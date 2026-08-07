@@ -1,0 +1,305 @@
+import { describe, expect, it, vi } from 'vitest'
+
+import { AgentsService, type AgentsCatalogSource } from './agents-service'
+import type { SpecialistProfileView } from '../../shared/specialist'
+import type { ProfileService } from '../specialist/service'
+import type { StoredConnectors } from '../settings/types'
+
+const profile = (overrides: Partial<SpecialistProfileView> = {}): SpecialistProfileView => ({
+  id: 'sp-1',
+  name: 'Bio Expert',
+  displayName: 'Bio Expert',
+  description: 'a specialist',
+  systemPrompt: 'SECRET INSTRUCTIONS',
+  iconKey: 'beaker',
+  colorKey: 'green',
+  enabled: true,
+  capabilityMode: 'selected',
+  fullAccess: { excludedSkillIds: [], excludedConnectorIds: [], connectorTools: [] },
+  selectedCapabilities: { skillIds: ['demo'], connectorIds: ['chemistry'], connectorTools: [] },
+  revision: 3,
+  ...overrides
+})
+
+const profileService = (profiles: SpecialistProfileView[]): ProfileService =>
+  ({
+    list: vi.fn(async () => profiles),
+    getByName: vi.fn(async (name: string) => {
+      const found = profiles.find((p) => p.name === name)
+      if (!found) throw new Error(`Specialist "${name}" not found.`)
+      return found
+    })
+  }) as unknown as ProfileService
+
+const catalog = (overrides: Partial<AgentsCatalogSource> = {}): AgentsCatalogSource => ({
+  listSkillCatalog: vi.fn(async () => [
+    {
+      id: 'demo',
+      frameworkName: 'demo',
+      displayName: 'demo',
+      source: 'featured',
+      mainEnabled: true,
+      available: true
+    },
+    {
+      id: 'personal-foo',
+      frameworkName: 'foo',
+      displayName: 'foo',
+      source: 'personal',
+      mainEnabled: false,
+      available: true
+    }
+  ]),
+  getConnectors: vi.fn(async () => ({ enabledIds: [], autoAllowIds: [] }) as StoredConnectors),
+  ...overrides
+})
+
+describe('AgentsService read surface', () => {
+  it('list() returns custom profiles and never synthesizes the Reviewer row', async () => {
+    const service = new AgentsService({
+      profileService: profileService([profile()]),
+      catalog: catalog()
+    })
+    const result = (await service.list()) as Awaited<ReturnType<typeof service.list>>
+    expect(result).toHaveLength(1)
+    expect(result[0].id).toBe('sp-1')
+    expect(result[0].revision).toBe(3)
+    expect(result.some((item) => item.id === 'reviewer')).toBe(false)
+  })
+
+  it('get(name) resolves the public name and returns id + revision', async () => {
+    const service = new AgentsService({
+      profileService: profileService([profile()]),
+      catalog: catalog()
+    })
+    const got = await service.get({ name: 'Bio Expert' })
+    expect(got.id).toBe('sp-1')
+    expect(got.revision).toBe(3)
+  })
+
+  it('get() rejects a missing name with a host.agents.get-prefixed error', async () => {
+    const service = new AgentsService({
+      profileService: profileService([]),
+      catalog: catalog()
+    })
+    await expect(service.read({ op: 'get', params: {} })).rejects.toThrow(/host\.agents\.get:/)
+  })
+
+  it('list_skills() returns the full catalog including Main-disabled skills', async () => {
+    const service = new AgentsService({
+      profileService: profileService([]),
+      catalog: catalog()
+    })
+    const skills = await service.listSkills({})
+    expect(skills).toHaveLength(2)
+    expect(skills.find((s) => s.id === 'personal-foo')?.mainEnabled).toBe(false)
+    expect(skills.find((s) => s.id === 'demo')).toEqual({
+      id: 'demo',
+      name: 'demo',
+      displayName: 'demo',
+      source: 'featured',
+      mainEnabled: true,
+      available: true
+    })
+  })
+
+  it('list_connectors() projects bundled + custom connectors without secrets', async () => {
+    const stored: StoredConnectors = {
+      enabledIds: [],
+      autoAllowIds: [],
+      disabledConnectorIds: ['chemistry'],
+      customMcpServers: [
+        { id: 'cust-1', name: 'My Server', transport: 'stdio', enabled: true, command: 'run' },
+        {
+          id: 'cust-reserved',
+          name: 'Chemistry!',
+          transport: 'stdio',
+          enabled: true,
+          command: 'run'
+        },
+        {
+          id: 'oauth-1',
+          name: 'OAuth Server',
+          transport: 'streamable_http',
+          enabled: true,
+          url: 'https://mcp.example.test',
+          oauth: {}
+        }
+      ]
+    }
+    const service = new AgentsService({
+      profileService: profileService([]),
+      catalog: catalog({ getConnectors: vi.fn(async () => stored) })
+    })
+    const connectors = await service.listConnectors({})
+    const chemistry = connectors.find((c) => c.id === 'chemistry')
+    expect(chemistry?.mainEnabled).toBe(false)
+    expect(chemistry?.availability).toBe('available')
+    expect(chemistry?.tools.length).toBeGreaterThan(0)
+    expect(chemistry).not.toHaveProperty('args')
+    expect(connectors.filter((connector) => connector.id === 'chemistry')).toHaveLength(1)
+    expect(connectors.some((connector) => connector.displayName === 'Chemistry!')).toBe(false)
+    const custom = connectors.find((c) => c.id === 'my-server')
+    expect(custom?.source).toBe('custom')
+    expect(custom?.mainEnabled).toBe(true)
+    expect(custom).not.toHaveProperty('command')
+    expect(custom).not.toHaveProperty('headers')
+    expect(custom).not.toHaveProperty('env')
+    const oauth = connectors.find((c) => c.id === 'oauth-server')
+    expect(oauth?.availability).toBe('unauthenticated')
+    expect(oauth?.mainEnabled).toBe(false)
+  })
+
+  it('filters by exact stable id first', async () => {
+    const service = new AgentsService({
+      profileService: profileService([]),
+      catalog: catalog()
+    })
+    const result = await service.listSkills({ name_or_id: 'personal-foo' })
+    expect(result).toHaveLength(1)
+    expect(result[0].id).toBe('personal-foo')
+  })
+
+  it('rejects an ambiguous public name with a stable-id instruction', async () => {
+    const service = new AgentsService({
+      profileService: profileService([]),
+      catalog: catalog({
+        listSkillCatalog: vi.fn(async () => [
+          {
+            id: 'a',
+            frameworkName: 'dup',
+            displayName: 'dup',
+            source: 'featured',
+            mainEnabled: true,
+            available: true
+          },
+          {
+            id: 'b',
+            frameworkName: 'dup',
+            displayName: 'dup',
+            source: 'featured',
+            mainEnabled: true,
+            available: true
+          }
+        ])
+      })
+    })
+    await expect(
+      service.read({ op: 'list_skills', params: { name_or_id: 'dup' } })
+    ).rejects.toThrow(/stable id/)
+  })
+
+  it('surfaces internal failures as sanitized host.agents.<method>: errors', async () => {
+    const failing = {
+      list: vi.fn(async () => {
+        throw new Error('internal secret: apikey=ABCDEF')
+      })
+    }
+    const service = new AgentsService({
+      profileService: failing as unknown as ProfileService,
+      catalog: catalog()
+    })
+    await expect(service.read({ op: 'list' })).rejects.toThrow(/host\.agents\.list:/)
+  })
+})
+
+// A ProfileService fake with the mutation surface dispatch needs for privileged ops (update/delete
+// + absence verification), so a delete/name-changing-update can complete end-to-end through
+// dispatch without a real store.
+const mutatingProfileService = (profiles: SpecialistProfileView[]): ProfileService => {
+  let store = [...profiles]
+  const service = {
+    list: vi.fn(async () => [...store]),
+    getByName: vi.fn(async (name: string) => {
+      const found = store.find((p) => p.name === name)
+      if (!found) throw new Error(`Specialist "${name}" not found.`)
+      return found
+    }),
+    getById: vi.fn(async (id: string) => {
+      const found = store.find((p) => p.id === id)
+      if (!found) throw new Error(`Specialist ${id} not found.`)
+      return found
+    }),
+    update: vi.fn(async (input: Record<string, unknown>) => {
+      const id = String(input.id)
+      const idx = store.findIndex((p) => p.id === id)
+      if (idx < 0) throw new Error('not found')
+      store[idx] = { ...store[idx], ...input, revision: store[idx].revision + 1 }
+      return store[idx]
+    }),
+    delete: vi.fn(async (id: string) => {
+      const idx = store.findIndex((p) => p.id === id)
+      if (idx < 0) throw new Error('not found')
+      store = store.filter((p) => p.id !== id)
+    })
+  } as unknown as ProfileService
+  service.resolveCustomMutationByName = vi.fn(async (name: string) => service.getByName(name))
+  return service
+}
+
+describe('AgentsService privileged dispatch — trusted session threading', () => {
+  it('threads the trusted calling session into the delete approval request', async () => {
+    const seenSessions: unknown[] = []
+    const service = new AgentsService({
+      profileService: mutatingProfileService([profile()]),
+      catalog: catalog(),
+      approvalGateway: {
+        decide: async (request) => {
+          seenSessions.push(request.session)
+          return { status: 'approved' }
+        }
+      }
+    })
+    const result = await service.dispatch(
+      { op: 'delete', params: { name: 'Bio Expert', revision: 3 } },
+      { sessionId: 'trusted-session-1' }
+    )
+    expect(result).toEqual({ status: 'deleted', name: 'Bio Expert' })
+    // The ACP-backed gateway parks the delete card on the CALLING session; an empty session would
+    // make the bridge report "approval surface is unavailable" and decline.
+    expect(seenSessions).toEqual([{ sessionId: 'trusted-session-1' }])
+  })
+
+  it('applies a rename as an ordinary mutation without consulting the approval gateway', async () => {
+    const decided: unknown[] = []
+    const service = new AgentsService({
+      profileService: mutatingProfileService([profile()]),
+      catalog: catalog(),
+      approvalGateway: {
+        decide: async (request) => {
+          decided.push(request)
+          return { status: 'approved' }
+        }
+      }
+    })
+    const result = await service.dispatch(
+      {
+        op: 'update',
+        params: {
+          name: 'Bio Expert',
+          patch: { name: 'Chem Expert', revision: 3 }
+        }
+      },
+      { sessionId: 'trusted-session-2' }
+    )
+    // Renames are ordinary chat-reviewed updates: the rename lands and no approval card is parked.
+    expect(result).toEqual<SpecialistProfileView>(expect.objectContaining({ name: 'Chem Expert' }))
+    expect(decided).toHaveLength(0)
+  })
+
+  it('passes an empty session to the gateway when no trusted context is supplied (test compatibility)', async () => {
+    const seenSessions: unknown[] = []
+    const service = new AgentsService({
+      profileService: mutatingProfileService([profile()]),
+      catalog: catalog(),
+      approvalGateway: {
+        decide: async (request) => {
+          seenSessions.push(request.session)
+          return { status: 'approved' }
+        }
+      }
+    })
+    await service.dispatch({ op: 'delete', params: { name: 'Bio Expert', revision: 3 } })
+    expect(seenSessions).toEqual([{}])
+  })
+})

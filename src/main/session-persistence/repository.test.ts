@@ -1,0 +1,974 @@
+import { mkdir, mkdtemp, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
+import { tmpdir } from 'node:os'
+import { pathToFileURL } from 'node:url'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+
+// Session encode/decode falls back to resolveDataRoot(), which reads electron's app.getPath.
+vi.mock('electron', () => ({
+  app: { getPath: () => '/home/user', isPackaged: true }
+}))
+
+import type { PersistedChatSession } from '../../shared/session-persistence'
+import { DEV_SESSION_DIR_NAME, SessionRepository, getSessionPersistenceDir } from './repository'
+
+let storageRoot: string | undefined
+
+const createStorageRoot = async (): Promise<string> => {
+  storageRoot = await mkdtemp(join(tmpdir(), 'purescience-sessions-'))
+  return storageRoot
+}
+
+const createSession = (overrides: Partial<PersistedChatSession> = {}): PersistedChatSession => ({
+  id: 'session-1',
+  projectId: 'project-a',
+  title: 'Saved conversation',
+  cwd: '/workspace/project',
+  status: 'idle',
+  messages: [
+    {
+      id: 'message-1',
+      role: 'user',
+      content: 'Summarize this file',
+      status: 'complete',
+      eventIds: [],
+      createdAt: 1710000000000,
+      updatedAt: 1710000000000
+    }
+  ],
+  createdAt: 1710000000000,
+  updatedAt: 1710000000100,
+  ...overrides
+})
+
+afterEach(async () => {
+  if (storageRoot) {
+    await rm(storageRoot, { recursive: true, force: true })
+    storageRoot = undefined
+  }
+})
+
+describe('session persistence repository (per-session files)', () => {
+  it('saves each session to sessions/<projectId>/<id>.json and loads it back', async () => {
+    const repository = new SessionRepository(await createStorageRoot())
+    const session = createSession()
+
+    await repository.saveSession(session)
+
+    const filePath = join(storageRoot!, 'sessions', 'project-a', 'session-1.json')
+    const raw = JSON.parse(await readFile(filePath, 'utf8')) as {
+      version: number
+      session: PersistedChatSession
+    }
+    expect(raw.version).toBe(2)
+    expect(raw.session.conversationGraph).toMatchObject({
+      schemaVersion: 1,
+      rootFrameId: 'root-frame-session-1'
+    })
+
+    const { sessions } = await repository.loadAll()
+    expect(sessions).toHaveLength(1)
+    expect(sessions[0]).toMatchObject({
+      id: 'session-1',
+      projectId: 'project-a',
+      title: 'Saved conversation',
+      messages: [{ content: 'Summarize this file' }]
+    })
+  })
+
+  it('retries a transient Windows file-replacement denial without losing the Session save', async () => {
+    const renameFile = vi
+      .fn<(source: string, destination: string) => Promise<void>>()
+      .mockRejectedValueOnce(Object.assign(new Error('operation not permitted'), { code: 'EPERM' }))
+      .mockImplementation((source, destination) => rename(source, destination))
+    const wait = vi.fn(async () => undefined)
+    const repository = new SessionRepository(await createStorageRoot(), { renameFile, wait })
+
+    await expect(repository.saveSession(createSession())).resolves.toBeUndefined()
+
+    expect(renameFile).toHaveBeenCalledTimes(2)
+    expect(wait).toHaveBeenCalledTimes(1)
+    await expect(
+      readFile(join(storageRoot!, 'sessions', 'project-a', 'session-1.json'), 'utf8')
+    ).resolves.toContain('Saved conversation')
+  })
+
+  it('fails closed and removes the temporary Session file after persistent replacement denial', async () => {
+    const failure = Object.assign(new Error('operation not permitted'), { code: 'EPERM' })
+    const renameFile = vi.fn(async () => Promise.reject(failure))
+    const wait = vi.fn(async () => undefined)
+    const repository = new SessionRepository(await createStorageRoot(), { renameFile, wait })
+
+    await expect(repository.saveSession(createSession())).rejects.toBe(failure)
+
+    expect(renameFile).toHaveBeenCalledTimes(6)
+    expect(wait).toHaveBeenCalledTimes(5)
+    await expect(readdir(join(storageRoot!, 'sessions', 'project-a'))).resolves.not.toEqual(
+      expect.arrayContaining([expect.stringContaining('.tmp')])
+    )
+  })
+
+  it('loads one session directly so callers can refresh durable state between turns', async () => {
+    const repository = new SessionRepository(await createStorageRoot())
+    await repository.saveSession(createSession({ title: 'Before correction' }))
+
+    await expect(repository.loadSession('project-a', 'session-1')).resolves.toMatchObject({
+      id: 'session-1',
+      title: 'Before correction'
+    })
+
+    await repository.saveSession(
+      createSession({
+        title: 'After correction',
+        messages: [
+          ...createSession().messages,
+          {
+            id: 'message-2',
+            role: 'agent',
+            content: 'Correction complete',
+            status: 'complete',
+            eventIds: [],
+            createdAt: 1710000000200,
+            updatedAt: 1710000000200
+          }
+        ]
+      })
+    )
+
+    const refreshed = await repository.loadSession('project-a', 'session-1')
+    expect(refreshed?.title).toBe('After correction')
+    expect(refreshed?.messages.at(-1)?.id).toBe('message-2')
+    await expect(repository.loadSession('project-a', 'missing')).resolves.toBeUndefined()
+    await expect(repository.loadSessionWithDiagnostics('project-a', 'missing')).resolves.toEqual({
+      status: 'missing'
+    })
+  })
+
+  it('never writes finalized upload absolute paths into Session JSON', async () => {
+    const repository = new SessionRepository(await createStorageRoot())
+    const session = createSession()
+    session.messages[0].uploads = [
+      {
+        id: 'upload-1',
+        versionId: 'upload-version-1',
+        versionNumber: 1,
+        sessionId: 'session-1',
+        name: 'input.csv',
+        originalName: 'input.csv',
+        path: '/Users/private/uploads/input.csv',
+        size: 12,
+        checksum: 'a'.repeat(64)
+      }
+    ]
+
+    await repository.saveSession(session)
+
+    const filePath = join(storageRoot!, 'sessions', 'project-a', 'session-1.json')
+    const serialized = await readFile(filePath, 'utf8')
+    expect(serialized).not.toContain('/Users/private/uploads/input.csv')
+    expect(JSON.parse(serialized).session.messages[0].uploads[0]).toMatchObject({
+      id: 'upload-1',
+      versionId: 'upload-version-1',
+      versionNumber: 1,
+      sha256: 'a'.repeat(64)
+    })
+  })
+
+  it('refuses to erase a legacy upload path before it has an immutable Version', async () => {
+    const repository = new SessionRepository(await createStorageRoot())
+    const session = createSession()
+    session.messages[0].uploads = [
+      {
+        id: 'legacy-upload-1',
+        sessionId: 'session-1',
+        name: 'input.csv',
+        originalName: 'input.csv',
+        path: '/Users/private/uploads/input.csv',
+        size: 12
+      }
+    ]
+
+    await expect(repository.saveSession(session)).rejects.toThrow(/upgraded.*Version/i)
+    await expect(
+      readFile(join(storageRoot!, 'sessions', 'project-a', 'session-1.json'), 'utf8')
+    ).rejects.toMatchObject({ code: 'ENOENT' })
+  })
+
+  it('sanitizes embedded message images before writing session JSON', async () => {
+    const repository = new SessionRepository(await createStorageRoot())
+    const session = createSession({
+      messages: [
+        {
+          ...createSession().messages[0],
+          role: 'agent',
+          content: '',
+          images: [
+            { id: 'image-1', mimeType: 'image/png', data: 'AQID', byteLength: 999 },
+            {
+              id: 'image-svg',
+              mimeType: 'image/svg+xml',
+              data: 'PHN2Zz4=',
+              byteLength: 5
+            }
+          ] as PersistedChatSession['messages'][number]['images']
+        }
+      ]
+    })
+
+    await repository.saveSession(session)
+
+    const filePath = join(storageRoot!, 'sessions', 'project-a', 'session-1.json')
+    const raw = await readFile(filePath, 'utf8')
+
+    expect(raw).toContain('AQID')
+    expect(raw).not.toContain('PHN2Zz4=')
+
+    const { sessions } = await repository.loadAll()
+    expect(sessions[0].messages[0].images).toEqual([
+      { id: 'image-1', mimeType: 'image/png', data: 'AQID', byteLength: 3 }
+    ])
+  })
+
+  it('returns an empty result when nothing is stored yet', async () => {
+    const repository = new SessionRepository(await createStorageRoot())
+
+    await expect(repository.loadAll()).resolves.toEqual({
+      sessions: [],
+      manifest: { version: 1 }
+    })
+  })
+
+  it('sanitizes untrusted session-file content on load', async () => {
+    const repository = new SessionRepository(await createStorageRoot())
+    const projectDir = join(storageRoot!, 'sessions', 'project-a')
+    await mkdir(projectDir, { recursive: true })
+    await writeFile(
+      join(projectDir, 'session-1.json'),
+      JSON.stringify({
+        version: 1,
+        session: {
+          id: 'session-1',
+          projectId: 'project-a',
+          title: 'Saved conversation',
+          cwd: '/workspace/project',
+          status: 'idle',
+          extra: 'drop me',
+          messages: [
+            {
+              id: 'message-1',
+              role: 'user',
+              content: 'Persisted prompt',
+              status: 'complete',
+              eventIds: ['event-1', 123],
+              createdAt: 1,
+              updatedAt: 1,
+              extra: 'drop me'
+            }
+          ],
+          artifacts: [
+            {
+              id: 'artifact-1',
+              kind: 'workspace-file',
+              path: '/workspace/project/report.md',
+              content: 'do not persist file contents'
+            }
+          ],
+          createdAt: 1,
+          updatedAt: 2
+        }
+      }),
+      'utf8'
+    )
+
+    const { sessions } = await repository.loadAll()
+
+    expect(sessions[0]).not.toHaveProperty('extra')
+    expect(sessions[0].messages[0]).toMatchObject({ eventIds: ['event-1'] })
+    expect(sessions[0].messages[0]).not.toHaveProperty('extra')
+    expect(sessions[0].artifacts?.[0]).toEqual({
+      id: 'artifact-1',
+      kind: 'workspace-file',
+      path: '/workspace/project/report.md',
+      // Decode always recomputes fileUrl from the (possibly-relocated) resolved path; pathToFileURL
+      // drive-prefixes on Windows, so derive the expected the same way rather than hardcoding it.
+      fileUrl: pathToFileURL('/workspace/project/report.md').href
+    })
+  })
+
+  it('backs up an unreadable session file and skips it', async () => {
+    const repository = new SessionRepository(await createStorageRoot())
+    const projectDir = join(storageRoot!, 'sessions', 'project-a')
+    await mkdir(projectDir, { recursive: true })
+    await writeFile(join(projectDir, 'broken.json'), '{broken json', 'utf8')
+
+    const { sessions } = await repository.loadAll()
+    expect(sessions).toEqual([])
+
+    const remaining = await readdir(projectDir)
+    expect(remaining).toContainEqual(expect.stringMatching(/^broken\.json\.invalid-/))
+  })
+
+  it('reports a complete scan when corrupt files were successfully isolated', async () => {
+    const repository = new SessionRepository(await createStorageRoot())
+    const projectDir = join(storageRoot!, 'sessions', 'project-a')
+    await mkdir(projectDir, { recursive: true })
+    await writeFile(join(projectDir, 'broken.json'), '{broken json', 'utf8')
+
+    const scan = await repository.loadAllWithDiagnostics()
+
+    expect(scan.result.sessions).toEqual([])
+    expect(scan.isComplete).toBe(true)
+    expect(scan.warnings).toEqual([
+      {
+        kind: 'corrupt',
+        projectId: 'project-a',
+        fileName: 'broken.json',
+        recovered: true
+      }
+    ])
+
+    const nextScan = await repository.loadAllWithDiagnostics()
+    expect(nextScan.warnings).toEqual(scan.warnings)
+  })
+
+  it('reports corrupt authority without moving files during a read-only scan', async () => {
+    const repository = new SessionRepository(await createStorageRoot())
+    const sessionsDir = join(storageRoot!, 'sessions')
+    const projectDir = join(sessionsDir, 'project-a')
+    await mkdir(projectDir, { recursive: true })
+    await writeFile(join(projectDir, 'broken.json'), '{broken session', 'utf8')
+    await writeFile(join(sessionsDir, 'manifest.json'), '{broken manifest', 'utf8')
+
+    const scan = await repository.loadAllWithDiagnostics({ mode: 'read-only' })
+
+    expect(scan.result.sessions).toEqual([])
+    expect(scan.isComplete).toBe(false)
+    expect(scan.warnings).toEqual([
+      {
+        kind: 'corrupt',
+        projectId: 'project-a',
+        fileName: 'broken.json',
+        recovered: false
+      },
+      {
+        kind: 'manifest-corrupt',
+        fileName: 'manifest.json',
+        recovered: false
+      }
+    ])
+    await expect(readFile(join(projectDir, 'broken.json'), 'utf8')).resolves.toBe('{broken session')
+    await expect(readFile(join(sessionsDir, 'manifest.json'), 'utf8')).resolves.toBe(
+      '{broken manifest'
+    )
+    expect(await readdir(projectDir)).toEqual(['broken.json'])
+    expect((await readdir(sessionsDir)).sort()).toEqual(['manifest.json', 'project-a'])
+  })
+
+  it('leaves structurally corrupt Session JSON in place during a read-only scan', async () => {
+    const repository = new SessionRepository(await createStorageRoot())
+    const projectDir = join(storageRoot!, 'sessions', 'project-a')
+    const damagedPath = join(projectDir, 'damaged.json')
+    const damagedJson = JSON.stringify({
+      version: 2,
+      session: { id: 'damaged', messages: 'not-an-array' }
+    })
+    await mkdir(projectDir, { recursive: true })
+    await writeFile(damagedPath, damagedJson, 'utf8')
+
+    const scan = await repository.loadAllWithDiagnostics({ mode: 'read-only' })
+
+    expect(scan.result.sessions).toEqual([])
+    expect(scan.isComplete).toBe(false)
+    expect(scan.warnings).toEqual([
+      {
+        kind: 'corrupt',
+        projectId: 'project-a',
+        fileName: 'damaged.json',
+        recovered: false
+      }
+    ])
+    await expect(readFile(damagedPath, 'utf8')).resolves.toBe(damagedJson)
+    await expect(readdir(projectDir)).resolves.toEqual(['damaged.json'])
+  })
+
+  it('quarantines a structurally corrupt Session instead of normalizing it to empty', async () => {
+    const repository = new SessionRepository(await createStorageRoot())
+    const projectDir = join(storageRoot!, 'sessions', 'project-a')
+    await mkdir(projectDir, { recursive: true })
+    await writeFile(
+      join(projectDir, 'damaged.json'),
+      JSON.stringify({ version: 2, session: { id: 'damaged', messages: 'not-an-array' } }),
+      'utf8'
+    )
+
+    const scan = await repository.loadAllWithDiagnostics()
+
+    expect(scan.result.sessions).toEqual([])
+    expect(scan.isComplete).toBe(true)
+    expect(scan.warnings).toEqual([
+      {
+        kind: 'corrupt',
+        projectId: 'project-a',
+        fileName: 'damaged.json',
+        recovered: true
+      }
+    ])
+    await expect(readdir(projectDir)).resolves.toContainEqual(
+      expect.stringMatching(/^damaged\.json\.invalid-/)
+    )
+  })
+
+  it('uses a valid conversation graph when the compatibility message list is malformed', async () => {
+    const repository = new SessionRepository(await createStorageRoot())
+    const session = createSession()
+    await repository.saveSession(session)
+    const filePath = join(storageRoot!, 'sessions', session.projectId, `${session.id}.json`)
+    const stored = JSON.parse(await readFile(filePath, 'utf8')) as {
+      session: { messages: unknown }
+    }
+    stored.session.messages = 'damaged compatibility projection'
+    await writeFile(filePath, JSON.stringify(stored), 'utf8')
+
+    const scan = await repository.loadAllWithDiagnostics()
+
+    expect(scan.result.sessions).toEqual([
+      expect.objectContaining({
+        id: session.id,
+        messages: [expect.objectContaining({ id: 'message-1', content: 'Summarize this file' })]
+      })
+    ])
+    expect(scan.warnings).toEqual([])
+  })
+
+  it('keeps a terminal Project scan incomplete while a quarantined Session preserves authority', async () => {
+    const repository = new SessionRepository(await createStorageRoot())
+    const projectDir = join(storageRoot!, 'sessions', 'project-a')
+    await mkdir(projectDir, { recursive: true })
+    await writeFile(join(projectDir, 'broken.json'), '{broken json', 'utf8')
+
+    const first = await repository.loadProjectWithDiagnostics('project-a')
+    const second = await repository.loadProjectWithDiagnostics('project-a')
+
+    expect(first).toEqual({ sessions: [], isComplete: false })
+    expect(second).toEqual({ sessions: [], isComplete: false })
+    expect(await readdir(projectDir)).toContainEqual(
+      expect.stringMatching(/^broken\.json\.invalid-/)
+    )
+  })
+
+  it('keeps a quarantined Session unreadable on later terminal lookups', async () => {
+    const repository = new SessionRepository(await createStorageRoot())
+    const projectDir = join(storageRoot!, 'sessions', 'project-a')
+    await mkdir(projectDir, { recursive: true })
+    await writeFile(join(projectDir, 'broken.json'), '{broken json', 'utf8')
+
+    await expect(repository.loadSessionWithDiagnostics('project-a', 'broken')).resolves.toEqual({
+      status: 'unreadable'
+    })
+    await expect(repository.loadSessionWithDiagnostics('project-a', 'broken')).resolves.toEqual({
+      status: 'unreadable'
+    })
+  })
+
+  it('lets a valid current Session supersede its retained older quarantine', async () => {
+    const repository = new SessionRepository(await createStorageRoot())
+    const session = createSession()
+    await repository.saveSession(session)
+    const projectDir = join(storageRoot!, 'sessions', session.projectId)
+    const quarantineName = `${session.id}.json.invalid-1710000000000-1`
+    await writeFile(join(projectDir, quarantineName), '{older malformed authority', 'utf8')
+
+    await expect(repository.loadSession(session.projectId, session.id)).resolves.toMatchObject({
+      id: session.id
+    })
+    await expect(
+      repository.loadSessionWithDiagnostics(session.projectId, session.id)
+    ).resolves.toEqual({ status: 'found', session: expect.objectContaining({ id: session.id }) })
+    await expect(repository.loadProjectWithDiagnostics(session.projectId)).resolves.toEqual({
+      sessions: [expect.objectContaining({ id: session.id })],
+      isComplete: true
+    })
+    await expect(readdir(projectDir)).resolves.toContain(quarantineName)
+  })
+
+  it('keeps the scan incomplete without quarantining a session file that cannot be read', async () => {
+    const root = await createStorageRoot()
+    const session = createSession()
+    await new SessionRepository(root).saveSession(session)
+    const readSessionFile = vi
+      .fn()
+      .mockRejectedValue(Object.assign(new Error('permission denied'), { code: 'EACCES' }))
+    const repository = new SessionRepository(root, { readSessionFile })
+
+    const scan = await repository.loadAllWithDiagnostics()
+
+    expect(scan.result.sessions).toEqual([])
+    expect(scan.isComplete).toBe(false)
+    expect(scan.warnings).toEqual([
+      {
+        kind: 'unreadable',
+        projectId: session.projectId,
+        fileName: `${session.id}.json`,
+        recovered: false
+      }
+    ])
+    await expect(
+      readFile(join(root, 'sessions', session.projectId, `${session.id}.json`), 'utf8')
+    ).resolves.toContain(session.id)
+    expect(readSessionFile).toHaveBeenCalledOnce()
+  })
+
+  it('keeps the scan incomplete when a listed Session disappears before it can be read', async () => {
+    const root = await createStorageRoot()
+    const session = createSession()
+    await new SessionRepository(root).saveSession(session)
+    const readSessionFile = vi
+      .fn()
+      .mockRejectedValue(
+        Object.assign(new Error('file disappeared during scan'), { code: 'ENOENT' })
+      )
+    const repository = new SessionRepository(root, { readSessionFile })
+
+    const scan = await repository.loadAllWithDiagnostics()
+
+    expect(scan.result.sessions).toEqual([])
+    expect(scan.isComplete).toBe(false)
+    expect(scan.warnings).toEqual([
+      {
+        kind: 'unreadable',
+        projectId: session.projectId,
+        fileName: `${session.id}.json`,
+        recovered: false
+      }
+    ])
+  })
+
+  it('keeps the scan incomplete when an enumerated Project directory disappears', async () => {
+    const root = await createStorageRoot()
+    const session = createSession()
+    await new SessionRepository(root).saveSession(session)
+    const sessionsDir = join(root, 'sessions')
+    const projectDir = join(sessionsDir, session.projectId)
+    const readDirectoryEntries = vi.fn(async (path: string) => {
+      const entries = await readdir(path, { withFileTypes: true })
+      if (path === sessionsDir) await rm(projectDir, { recursive: true, force: true })
+      return entries
+    })
+    const repository = new SessionRepository(root, { readDirectoryEntries })
+
+    const scan = await repository.loadAllWithDiagnostics()
+
+    expect(scan.result.sessions).toEqual([])
+    expect(scan.isComplete).toBe(false)
+    expect(readDirectoryEntries).toHaveBeenCalledWith(projectDir)
+  })
+
+  it('distinguishes an unreadable Session from an absent Session for terminal mutations', async () => {
+    const root = await createStorageRoot()
+    const session = createSession()
+    await new SessionRepository(root).saveSession(session)
+    const repository = new SessionRepository(root, {
+      readSessionFile: vi
+        .fn()
+        .mockRejectedValue(Object.assign(new Error('permission denied'), { code: 'EACCES' }))
+    })
+
+    await expect(
+      repository.loadSessionWithDiagnostics(session.projectId, session.id)
+    ).resolves.toEqual({ status: 'unreadable' })
+  })
+
+  it('keeps terminal diagnostics fail-closed when the Project path is not readable as a directory', async () => {
+    const root = await createStorageRoot()
+    await mkdir(join(root, 'sessions'), { recursive: true })
+    await writeFile(join(root, 'sessions', 'project-a'), 'not a directory', 'utf8')
+    const repository = new SessionRepository(root)
+
+    await expect(repository.loadProjectWithDiagnostics('project-a')).resolves.toEqual({
+      sessions: [],
+      isComplete: false
+    })
+    await expect(repository.loadSessionWithDiagnostics('project-a', 'session-1')).resolves.toEqual({
+      status: 'unreadable'
+    })
+  })
+
+  it('treats a directly loaded absent Project as an authoritative empty Project', async () => {
+    const repository = new SessionRepository(await createStorageRoot())
+
+    await expect(repository.loadProjectWithDiagnostics('missing-project')).resolves.toEqual({
+      sessions: [],
+      isComplete: true
+    })
+  })
+
+  it('scans one Project completely without reading an unrelated unreadable Project', async () => {
+    const root = await createStorageRoot()
+    const writer = new SessionRepository(root)
+    const projectASession = createSession({ id: 'session-a', projectId: 'project-a' })
+    const projectBSession = createSession({ id: 'session-b', projectId: 'project-b' })
+    await writer.saveSession(projectASession)
+    await writer.saveSession(projectBSession)
+    const readSessionFile = vi.fn(async (filePath: string) => {
+      if (filePath.includes(`${join('sessions', 'project-b')}`)) {
+        throw Object.assign(new Error('unrelated project unavailable'), { code: 'EACCES' })
+      }
+      return readFile(filePath, 'utf8')
+    })
+    const repository = new SessionRepository(root, { readSessionFile })
+
+    await expect(repository.loadProjectWithDiagnostics('project-a')).resolves.toEqual({
+      sessions: [expect.objectContaining({ id: 'session-a', projectId: 'project-a' })],
+      isComplete: true
+    })
+    expect(readSessionFile).not.toHaveBeenCalledWith(
+      expect.stringContaining(join('sessions', 'project-b'))
+    )
+    await expect(repository.loadAllWithDiagnostics()).resolves.toMatchObject({
+      isComplete: false
+    })
+  })
+
+  it('keeps default dependencies when optional overrides are explicitly undefined', async () => {
+    const root = await createStorageRoot()
+    const session = createSession()
+    await new SessionRepository(root).saveSession(session)
+    const repository = new SessionRepository(root, {
+      remove: undefined,
+      readSessionFile: undefined
+    })
+
+    await expect(repository.loadAll()).resolves.toMatchObject({
+      sessions: [{ id: session.id, projectId: session.projectId }]
+    })
+  })
+
+  it('normalizes interrupted runs and open activities on load', async () => {
+    const repository = new SessionRepository(await createStorageRoot())
+
+    // saveSession writes verbatim, so this simulates an app that closed mid-run.
+    await repository.saveSession(
+      createSession({
+        status: 'waiting-permission',
+        activeRun: { promptMessageId: 'message-1', startedAt: 1710000000200 },
+        messages: [
+          {
+            id: 'message-2',
+            role: 'agent',
+            content: 'Partial',
+            status: 'streaming',
+            streamId: 'assistant-message-1',
+            eventIds: ['event-1'],
+            createdAt: 1,
+            updatedAt: 1
+          }
+        ],
+        activities: [
+          {
+            id: 'activity-open',
+            kind: 'tool',
+            title: 'downloading',
+            status: 'in_progress',
+            sortIndex: 1,
+            eventIds: [],
+            createdAt: 1,
+            updatedAt: 1
+          }
+        ]
+      })
+    )
+
+    const { sessions } = await repository.loadAll()
+
+    expect(sessions[0]).toMatchObject({
+      status: 'error',
+      error: 'Session was interrupted before the app closed.'
+    })
+    expect(sessions[0].activeRun).toBeUndefined()
+    expect(sessions[0].messages[0].status).toBe('error')
+    expect(sessions[0].activities?.[0].status).toBe('failed')
+  })
+
+  it('deletes a single session file and a whole project directory', async () => {
+    const repository = new SessionRepository(await createStorageRoot())
+
+    await repository.saveSession(createSession({ id: 'session-1', projectId: 'project-a' }))
+    await repository.saveSession(createSession({ id: 'session-2', projectId: 'project-a' }))
+    await repository.saveSession(createSession({ id: 'session-3', projectId: 'project-b' }))
+
+    await repository.deleteSession('project-a', 'session-1')
+    expect((await repository.loadAll()).sessions.map((session) => session.id).sort()).toEqual([
+      'session-2',
+      'session-3'
+    ])
+
+    await expect(repository.deleteProjectSessions('project-a')).resolves.toBeUndefined()
+    expect((await repository.loadAll()).sessions.map((session) => session.id)).toEqual([
+      'session-3'
+    ])
+  })
+
+  it('keeps valid primary JSON when removing a superseded quarantine fails', async () => {
+    const root = await createStorageRoot()
+    const session = createSession()
+    const quarantinePath = join(
+      root,
+      'sessions',
+      session.projectId,
+      `${session.id}.json.invalid-1710000000000-1`
+    )
+    const removalFailure = new Error('backup is locked')
+    const remove = vi.fn(async (path: string, options: { force: boolean; recursive: boolean }) => {
+      if (path === quarantinePath) throw removalFailure
+      await rm(path, options)
+    })
+    const repository = new SessionRepository(root, { remove })
+    await repository.saveSession(session)
+    await writeFile(quarantinePath, '{older malformed authority', 'utf8')
+
+    await expect(repository.deleteSession(session.projectId, session.id)).rejects.toBe(
+      removalFailure
+    )
+
+    await expect(
+      repository.loadSessionWithDiagnostics(session.projectId, session.id)
+    ).resolves.toEqual({ status: 'found', session: expect.objectContaining({ id: session.id }) })
+    await expect(readFile(quarantinePath, 'utf8')).resolves.toBe('{older malformed authority')
+  })
+
+  it('does not delete orphan quarantines or current invalid primary authority', async () => {
+    const root = await createStorageRoot()
+    const projectDir = join(root, 'sessions', 'project-a')
+    const orphanPath = join(projectDir, 'orphan.json.invalid-1710000000000-1')
+    const invalidPath = join(projectDir, 'invalid.json')
+    await mkdir(projectDir, { recursive: true })
+    await writeFile(orphanPath, '{orphan authority', 'utf8')
+    await writeFile(invalidPath, '{current invalid authority', 'utf8')
+    const repository = new SessionRepository(root)
+
+    await expect(repository.deleteSession('project-a', 'orphan')).rejects.toThrow(/unreadable/i)
+    await expect(readFile(orphanPath, 'utf8')).resolves.toBe('{orphan authority')
+
+    await expect(repository.deleteSession('project-a', 'invalid')).rejects.toThrow(/unreadable/i)
+    const invalidBackup = (await readdir(projectDir)).find((name) =>
+      /^invalid\.json\.invalid-\d+-\d+$/u.test(name)
+    )
+    expect(invalidBackup).toBeDefined()
+    await expect(readFile(join(projectDir, invalidBackup!), 'utf8')).resolves.toBe(
+      '{current invalid authority'
+    )
+  })
+
+  it('keeps a marked Project tombstone through loadAll until tail completion', async () => {
+    const root = await createStorageRoot()
+    const repository = new SessionRepository(root)
+    await repository.saveSession(createSession({ id: 'session-1', projectId: 'project-a' }))
+    await repository.saveSession(createSession({ id: 'session-2', projectId: 'project-a' }))
+
+    await expect(repository.deleteProjectSessions('project-a')).resolves.toBeUndefined()
+    await expect(repository.loadAll()).resolves.toMatchObject({ sessions: [] })
+    expect((await readdir(join(root, 'deleted-sessions', 'project-a'))).sort()).toEqual([
+      '.project-deletion-committed',
+      'session-1.json',
+      'session-2.json'
+    ])
+    await expect(repository.getProjectSessionDeletionState('project-a')).resolves.toBe('prepared')
+    await expect(repository.listLegacyProjectSessionTombstones()).resolves.toEqual([])
+
+    await repository.completeProjectSessionDeletion('project-a')
+
+    await expect(repository.getProjectSessionDeletionState('project-a')).resolves.toBe('absent')
+  })
+
+  it('commits an empty Project Session phase with a durable marker', async () => {
+    const root = await createStorageRoot()
+    const repository = new SessionRepository(root)
+
+    await repository.deleteProjectSessions('project-empty')
+
+    await expect(repository.getProjectSessionDeletionState('project-empty')).resolves.toBe(
+      'prepared'
+    )
+    await expect(readdir(join(root, 'deleted-sessions', 'project-empty'))).resolves.toEqual([
+      '.project-deletion-committed'
+    ])
+  })
+
+  it('discovers an unmarked legacy Project tombstone without deleting its authority', async () => {
+    const root = await createStorageRoot()
+    const legacyTombstone = join(root, 'deleted-sessions', 'project-old')
+    await mkdir(legacyTombstone, { recursive: true })
+    await writeFile(join(legacyTombstone, 'session.json'), '{}', 'utf8')
+    const repository = new SessionRepository(root)
+
+    await expect(repository.getProjectSessionDeletionState('project-old')).resolves.toBe(
+      'legacy-committed'
+    )
+    await repository.loadAll()
+
+    await expect(readdir(legacyTombstone)).resolves.toEqual(['session.json'])
+    await expect(repository.listLegacyProjectSessionTombstones()).resolves.toEqual(['project-old'])
+    await expect(readdir(legacyTombstone)).resolves.toEqual(['session.json'])
+  })
+
+  it('retains a tombstone with a malformed commit marker as unknown authority', async () => {
+    const root = await createStorageRoot()
+    const tombstone = join(root, 'deleted-sessions', 'project-unknown')
+    const marker = join(tombstone, '.project-deletion-committed')
+    await mkdir(marker, { recursive: true })
+    const repository = new SessionRepository(root)
+
+    await expect(repository.getProjectSessionDeletionState('project-unknown')).rejects.toThrow(
+      /marker is invalid/i
+    )
+    await expect(repository.listLegacyProjectSessionTombstones()).rejects.toThrow(
+      /marker is invalid/i
+    )
+    await repository.loadAll()
+
+    await expect(readdir(tombstone)).resolves.toEqual(['.project-deletion-committed'])
+  })
+
+  it('rejects conflicting live authority beside a marked Project tombstone', async () => {
+    const root = await createStorageRoot()
+    const repository = new SessionRepository(root)
+    await repository.saveSession(createSession({ projectId: 'project-conflict' }))
+    const tombstone = join(root, 'deleted-sessions', 'project-conflict')
+    await mkdir(tombstone, { recursive: true })
+    await writeFile(join(tombstone, '.project-deletion-committed'), '', 'utf8')
+
+    await expect(repository.getProjectSessionDeletionState('project-conflict')).rejects.toThrow(
+      /conflicting live authority/i
+    )
+    await expect(repository.listLegacyProjectSessionTombstones()).rejects.toThrow(
+      /conflicting live authority/i
+    )
+  })
+
+  it('rejects conflicting live authority beside an unmarked legacy tombstone', async () => {
+    const root = await createStorageRoot()
+    const repository = new SessionRepository(root)
+    await repository.saveSession(createSession({ projectId: 'project-legacy-conflict' }))
+    const tombstone = join(root, 'deleted-sessions', 'project-legacy-conflict')
+    await mkdir(tombstone, { recursive: true })
+    await writeFile(join(tombstone, 'old-session.json'), '{}', 'utf8')
+
+    await expect(
+      repository.getProjectSessionDeletionState('project-legacy-conflict')
+    ).rejects.toThrow(/conflicting live authority/i)
+  })
+
+  it('round-trips the manifest', async () => {
+    const repository = new SessionRepository(await createStorageRoot())
+
+    await repository.saveManifest({ lastProjectId: 'project-a', lastSessionId: 'session-1' })
+
+    await expect(repository.loadAll()).resolves.toMatchObject({
+      manifest: { version: 1, lastProjectId: 'project-a', lastSessionId: 'session-1' }
+    })
+  })
+
+  it('isolates a corrupt manifest and reports the recovered selection data', async () => {
+    const root = await createStorageRoot()
+    const repository = new SessionRepository(root)
+    await mkdir(join(root, 'sessions'), { recursive: true })
+    await writeFile(join(root, 'sessions', 'manifest.json'), '{broken json', 'utf8')
+
+    await expect(repository.loadAllWithDiagnostics()).resolves.toMatchObject({
+      result: { sessions: [], manifest: { version: 1 } },
+      isComplete: true,
+      warnings: [
+        {
+          kind: 'manifest-corrupt',
+          fileName: 'manifest.json',
+          recovered: true
+        }
+      ]
+    })
+    expect(await readdir(join(root, 'sessions'))).toContainEqual(
+      expect.stringMatching(/^manifest\.json\.invalid-/)
+    )
+
+    await expect(repository.loadAllWithDiagnostics()).resolves.toMatchObject({
+      result: { sessions: [], manifest: { version: 1 } },
+      isComplete: true,
+      warnings: []
+    })
+  })
+
+  it('falls back to an empty selection without blocking a complete Session scan', async () => {
+    const root = await createStorageRoot()
+    const session = createSession()
+    await new SessionRepository(root).saveSession(session)
+    const readManifestFile = vi
+      .fn()
+      .mockRejectedValue(Object.assign(new Error('permission denied'), { code: 'EACCES' }))
+    const repository = new SessionRepository(root, { readManifestFile })
+
+    await expect(repository.loadAllWithDiagnostics()).resolves.toMatchObject({
+      result: {
+        sessions: [expect.objectContaining({ id: session.id })],
+        manifest: { version: 1 }
+      },
+      isComplete: true,
+      warnings: [
+        {
+          kind: 'manifest-unreadable',
+          fileName: 'manifest.json',
+          recovered: false
+        }
+      ]
+    })
+  })
+
+  it('ignores a legacy single-file sessions.json (migration was removed)', async () => {
+    const root = await createStorageRoot()
+    const repository = new SessionRepository(root)
+    await mkdir(root, { recursive: true })
+
+    await writeFile(
+      join(root, 'sessions.json'),
+      JSON.stringify({
+        version: 1,
+        selectedSessionId: 'legacy-1',
+        sessions: [{ id: 'legacy-1', title: 'Legacy', cwd: '/x', status: 'idle', messages: [] }]
+      }),
+      'utf8'
+    )
+
+    // The legacy file is neither imported nor deleted — it is simply left untouched on disk.
+    const { sessions } = await repository.loadAll()
+    expect(sessions).toEqual([])
+    const rootEntries = await readdir(root)
+    expect(rootEntries).toContain('sessions.json')
+  })
+
+  it('treats the session file directory as the authoritative project id', async () => {
+    const repository = new SessionRepository(await createStorageRoot())
+    const projectDir = join(storageRoot!, 'sessions', 'project-a')
+    await mkdir(projectDir, { recursive: true })
+    // File content claims a different project than its directory; the directory wins on load.
+    await writeFile(
+      join(projectDir, 'session-1.json'),
+      JSON.stringify({
+        version: 1,
+        session: createSession({ id: 'session-1', projectId: 'stale-project' })
+      }),
+      'utf8'
+    )
+
+    const { sessions } = await repository.loadAll()
+    expect(sessions[0]).toMatchObject({ id: 'session-1', projectId: 'project-a' })
+  })
+
+  it('keeps session data in ~/.purescience under the user home directory by default', () => {
+    // Build the expectation with join() so the separator matches the host the test runs on.
+    expect(getSessionPersistenceDir('/Users/example')).toBe(join('/Users/example', '.purescience'))
+  })
+
+  it('uses the isolated dev directory name when requested', () => {
+    expect(getSessionPersistenceDir('/Users/example', DEV_SESSION_DIR_NAME)).toBe(
+      join('/Users/example', '.purescience-project')
+    )
+  })
+})

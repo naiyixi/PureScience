@@ -1,0 +1,170 @@
+# PureScience — Product Requirements Document
+
+> Status: living document, tracks the shipped product plus near-term scope. For the long-range vision and phase-by-phase delivery plan, see [`ROADMAP.md`](../ROADMAP.md). For the visual/interaction spec, see [`design.md`](../design.md).
+
+## 1. Summary
+
+**PureScience is an open-source, model-agnostic AI workbench for scientific discovery.** It runs as a self-hosted desktop application that pairs a planning-and-execution agent with a persistent, managed compute runtime and durable project/session storage — so a researcher can hand off a real data-analysis or literature task to an agent and get back not just an answer, but the code, execution record, and artifacts that produced it.
+
+The project exists because the clearest current articulation of this product category is closed-source and single-vendor: gated by billing region, subscription tier, and one company's model and infrastructure choices. PureScience is an independent, from-scratch implementation of the same category of tool — not a proxy, wrapper, or jailbreak of any existing closed product — built so labs can choose compatible models and infrastructure on their own terms.
+
+## 2. Problem Statement
+
+A working researcher's day is a tour of disconnected tools: a reference manager, a notebook kernel, an SSH session into a cluster, browser tabs for database web forms, a stats package, and a manuscript editor that knows nothing about any of the above. None of these tools share state. None of them remember what was done yesterday. Reproducing an analysis from three months ago is often harder than running it the first time.
+
+This shows up as four structural pains:
+
+1. **Results aren't reproducible.** Code, data, and environment are scattered across machines, tracked (if at all) by manual habit. Nobody can reliably answer "which script, which parameters, which dependency versions produced this exact figure?"
+2. **Constant tool-switching.** A typical workflow bounces between a scripting language, a stats package, shell access to a cluster, and literature search — every switch loses context and forces manual data movement.
+3. **Fragmented compute.** A laptop, a lab server, an HPC cluster, and cloud GPUs are all valid places to run a job, but choosing and coordinating between them is manual, and data gets shuttled around unnecessarily.
+4. **Audit is an afterthought.** In regulated research settings, reconstructing "who generated what, with what code, at what time" usually means reading logs after the fact rather than relying on something the system tracked by default.
+
+## 3. Goals
+
+- Give a researcher an agent that can **plan, execute, and revise** multi-step analysis and research tasks, not just suggest code for a human to run.
+- Make every artifact the agent produces **traceable back to the code, data, and environment** that generated it.
+- Keep the system **model-agnostic and self-hostable** by design, so no single vendor's pricing, billing region, or infrastructure choices gate access to it.
+- Ship a **desktop-first experience** today, with the underlying orchestration core designed to support additional interfaces (CLI/SDK, web) later without a rewrite.
+- Be honest about maturity: this PRD documents what exists, what's partially built, and what's aspirational — see the [Roadmap](../ROADMAP.md) for the phase-by-phase breakdown.
+
+## 4. Non-Goals
+
+- **Not a real-time multi-user collaborative editor.** Team workflows happen through export/share/import, not simultaneous co-editing of one session.
+- **Not a replacement for domain-expert judgment.** Statistical validity, batch-effect analysis, and data-leakage risk remain calls the researcher makes; the system reduces the cost of _executing_ and _recording_ work, not the cost of _judging_ it.
+- **Not modeling research semantics.** The system's structured objects are computations and artifacts, not first-class "hypothesis / experiment / conclusion" entities.
+- **Not a proxy, reskin, or unofficial client of any closed-source product.** PureScience shares no code with any single vendor's client software.
+
+## 5. Target Users
+
+- **Individual researchers and small labs** running data-heavy analysis (genomics, proteomics, structural biology, cheminformatics, and beyond) who want an agent that can execute, not just chat.
+- **Institutions that cannot use a cloud-hosted, subscription-gated product** — due to data residency, billing region, or data-handling policy (e.g. PHI, unpublished data) — and need to self-host on their own infrastructure.
+- **Contributors and toolmakers** who want to extend the system with new connectors, kernels, or skills rather than being limited to a closed plugin marketplace.
+
+## 6. Product Principles
+
+These are the constraints the project treats as non-negotiable as it grows (see the founding vision in the [README](../README.md#design-principles) for full rationale):
+
+- **Access is a right, not a privilege.** No plan tier, billing-region allowlist, or approval queue stands between a researcher and the software.
+- **Model-agnostic core.** The agent runtime should ultimately talk to LLMs through a pluggable gateway — Claude, GPT, Gemini, DeepSeek, Qwen, or a locally-hosted open-weight model are all first-class citizens, not a hardcoded dependency. Today's product has pluggable Claude Code, OpenCode, and Codex backends, while provider compatibility still depends on the selected backend's supported API protocols — see [§8](#8-current-architecture-what-is-actually-implemented).
+- **Local-first, data-sovereign by default.** Self-hosting is the default deployment target, not an enterprise upsell.
+- **Reproducibility is a system property, not a discipline.** Every artifact should eventually carry the code, environment, and data lineage that produced it, generated automatically rather than maintained by hand.
+- **Skills should be plain files, not opaque plugins.** Versioned, human-readable, and forkable — auditable by the person trusting them with their analysis.
+- **Human-in-the-loop by construction.** New data sources, compute budgets, and external credentials require explicit, scoped approval; autonomy is opt-in, never ambient.
+- **Composability over monolith.** Small, swappable services (model gateway, skill runtime, compute broker, artifact renderer) instead of one inseparable black box.
+- **Trust is verified, not assumed.** Where the system makes a claim, that claim's basis (citation, computation, statistical method) should be checkable — ideally by another agent, not just by the researcher re-deriving it by hand.
+
+## 7. Core User Journeys
+
+1. **Start a project, run an analysis.** A researcher creates a project, opens a session, and asks the agent to load data, run a script, and produce a figure. The agent plans steps, executes them in the notebook kernel, and reports back with the resulting artifact — all without the researcher hand-writing the glue code.
+2. **Resume where you left off.** The researcher closes the app and comes back days later; the home page shows their projects and five most recent sessions, and reopening one restores full conversation and execution history.
+3. **Review what the agent did before trusting it.** Every tool call the agent makes is shown as a typed activity row (code diff, code block, web search, etc.), and higher-risk actions pause for explicit approval before running.
+4. **Preview outputs without leaving the app.** Generated CSVs, images, PDFs, Office documents, HTML reports, FASTA files, JSON, Markdown, molecular structures/reactions, and Notebook history render natively in-app instead of requiring the researcher to open them in a separate tool.
+5. **Organize work by project.** Multiple projects keep sessions, artifacts, and notebook workspaces isolated from each other, so a researcher running several concurrent lines of work doesn't have them bleed into one shared history.
+
+## 8. Current Architecture (What Is Actually Implemented)
+
+PureScience today is an Electron + React + TypeScript desktop application built around four cooperating layers:
+
+| Layer                      | Responsibility                                                            | Current implementation                                                                                                                                                                                                                    |
+| -------------------------- | ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Interface**              | Desktop shell, workspace UI, home page                                    | Electron main/renderer split; React + TypeScript; shadcn/Radix design system (see [`design.md`](../design.md))                                                                                                                            |
+| **Agent Harness**          | Plan → execute → reflect loop, tool-call visualization, permission gating | Agent runtime wrapped over the Agent Client Protocol (ACP), with Claude Code, OpenCode, and Codex selectable behind the same runtime; typed tool-activity rows; scoped permission gates; specialist profiles; and an opt-in reviewer      |
+| **Execution / Data Plane** | Managed code execution, artifact generation                               | Persistent Python, R, and REPL control-plane kernels plus stateless shell execution (`src/main/notebook/`) with durable, inspectable run history, app-managed environments, and remote SSH execution targets                              |
+| **Persistence**            | Project/session storage, artifact storage                                 | Prisma + SQLite for project and provenance metadata; per-project, per-file session storage on disk (`src/main/session-persistence/`); immutable artifact versions and evidence sidecars under app-managed storage (`src/main/artifacts/`) |
+
+### Runtime State Ownership and Surface Boundaries
+
+The main process has one composition root (`src/main/ipc.ts`). It constructs state owners once,
+installs transport adapters after ownership is established, and disposes modules in reverse order.
+The transport-neutral application command router and application event hub expose capabilities; they
+do not become alternate state stores.
+
+| Owner boundary                  | State and lifecycle responsibility                                                                                                                                                                                                                               |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Settings modules                | Persist provider, runtime, skill, connector, appearance, and related configuration. Runtime consumers capture a non-secret backend selection and resolve fresh credentials/configuration when a generation starts; they do not retain Settings mutable state.    |
+| ACP runtime coordinator         | Own runtime generations and stable application Session identity across reconnect/reset. A provider protocol Session id belongs to its generation and may be replaced; Codex fresh-session adoption, transcript replay, context reset, and cleanup remain intact. |
+| ACP runtime and Session owners  | Own one generation's live processes, prompts, permissions, resources, and per-turn terminal results. Context-window aggregation stays with the context-usage tracker; terminal timestamp, token usage, and model-turn count stay with the completed prompt turn. |
+| Notebook runtime                | Own runtime discovery, Session binding decisions, execution, environment operations, and durable run history. It consumes enablement snapshots through the named Settings capability rather than owning or reading raw Settings state.                           |
+| Persistence and artifact owners | Own project/session files, uploads, artifact versions, provenance, and deletion/finalization coordination. Application commands receive narrow handler capabilities instead of repositories.                                                                     |
+
+```mermaid
+flowchart LR
+  Electron["Electron IPC adapters"] --> Commands["Application command interfaces"]
+  LocalWeb["Local Web direct dispatcher"] --> Commands
+  RemoteWeb["Remote Web allow/reject dispatcher"] --> Commands
+  Task["Task / CLI subset"] --> Commands
+  Commands --> Owners["Existing Settings / ACP / Notebook / data owners"]
+  Owners --> Events["Application event interfaces"]
+  Future["Future orchestration (Issue #458)"] -. "declared interfaces only" .-> Commands
+  Future -. "publish / subscribe only" .-> Events
+```
+
+This boundary preserves the current surface asymmetry; it is not a parity roadmap:
+
+- Specialist management remains fully exposed only by Electron. The existing authenticated
+  `host.agents` capability remains separate and is not expanded into new Web or CLI management UI.
+- Permission management remains available on Electron and Web. Task/CLI retain only their current
+  permission-profile and event subset.
+- Compute management remains available on Electron and local Web. Remote Web continues to reject
+  download/reveal operations, and CLI/Task have no direct Compute management API.
+- Web and Task invoke transport-neutral application commands directly. Electron continues to use
+  typed IPC adapters; no Web or Task path captures or synthesizes an Electron sender.
+
+Issue #458 may add an orchestration layer above the ACP coordinator later. That layer must consume
+only declared Settings, ACP, Notebook, Artifact, Permission, Workspace, and Event interfaces. Compute
+remains orthogonal. It must not import concrete runtimes, Settings storage, repositories, Electron,
+renderer, Web/HTTP, Task, CLI, or Specialist modules. This refactor adds an architecture test for that
+future dependency rule, but adds no orchestration state, schema, public wire contract, or user-facing
+behavior.
+
+Key implemented capabilities, mapped to the codebase:
+
+- **Project layer.** Prisma + SQLite `Project` model; full CRUD via IPC (`projects:create/list/get/update/delete`); a home page showing all projects and the five most recent sessions across them.
+- **Per-project session storage.** Sessions live at `sessions/<projectId>/<sessionId>.json` (migrated from a legacy single-file format on first run, idempotently); a manifest file restores the last-open project/session; a save bridge diffs the in-memory store against disk so only changed sessions get written.
+- **Notebook execution runtime.** Warm Python, R, and REPL control-plane kernels are routed by session binding, while shell commands run in a fresh stateless process for each call in the session workspace. Cross-kernel handoff uses the shared workspace, and execution retains durable per-run history (`run.json`) through write-locking and atomic persistence. Environment and package mutations use a separate crash-recoverable operation journal. App-managed conda environments support offline provisioning and named-environment lifecycle; bring-your-own interpreter discovery and registration apply to Python and R, while package management for external R runtimes remains manual.
+- **App-local tool transport.** App-owned stdio MCP and control-REPL processes call the main-process Notebook, Artifact, and Skill services over authenticated local RPC. Windows uses named pipes for this boundary so host firewall or endpoint-security loopback rules cannot break the child-process connection; macOS and Linux retain loopback HTTP. The Windows Reviewer uses a stdio MCP proxy over the same named-pipe transport while keeping its existing scope and token checks in the main process.
+- **Artifacts and provenance.** An in-process MCP server (`purescience-artifacts`) exposes a `write_artifact_file` tool the agent calls with either inline content or a local file path. Each save creates an immutable, session-scoped artifact version with available producer code, execution history, input references, environment inventory, message context, and reviewer evidence.
+- **File preview.** Responsive multi-tab renderers cover CSV, FASTA, HTML, PDF, images including TIFF, JSON, Markdown, plain text, Office documents, molecular structures/reactions, and read-only Notebook history, with inline and full-screen preview surfaces.
+- **Permissions.** An `AcpPermissionBroker` intercepts tool-call permission requests from the agent runtime, resolves matching app-owned remembered grants, and surfaces unmatched requests to the renderer for explicit approval before the call proceeds. Durable allow grants can be scoped globally, by project, or by session, then filtered, revoked individually or by family, and restored through Undo. Secret values are encrypted through OS-backed secure storage when persisted by the app.
+- **Attachments.** File uploads up to 10 GB are streamed into managed storage and threaded into the agent's prompt context; existing project files can be referenced explicitly with `@`.
+- **Conversation Skill import.** Primary sessions receive an app-owned MCP action that can submit an eligible uploaded package or a validated public GitHub Skill URL to the same preview-and-confirm flow used by Settings. Its local RPC credential is bound to the owning session and restricted to the Skill import method; the server replaces request-body session fields with that authenticated binding before opening approval UI or importing content.
+
+### Provenance Guarantee Level
+
+The current provenance implementation is an audit and traceability record, not a deterministic replay contract:
+
+- Artifact bytes, version metadata, evidence manifests, and retained message projections are checksummed and validated for storage integrity.
+- Environment evidence is an immutable inventory observed at production time. It is not a solver lockfile, does not capture every external runtime, system library, or package source, and cannot by itself recreate the environment.
+- Retained message projections preserve the text and structured activity needed to inspect a producing branch. Binary media and large attachment payloads are intentionally omitted, so they are not a complete Session backup.
+- Code and execution evidence can be unavailable when no producer run can be proven. The UI reports that state instead of inferring lineage from an untrusted agent claim.
+
+Exact environment export/restore, portable lock generation, and full-fidelity Session replay remain separate capabilities. Product and reviewer claims should describe this version as provenance for audit and investigation, not guaranteed reproduction.
+
+For the gap between this and the full target architecture (model-agnostic gateway, deterministic reproduction, skills commons, remote compute, security hardening, etc.), see the [Capability Map in `ROADMAP.md`](../ROADMAP.md#capability-map) — this PRD describes what the product is _for_; the roadmap tracks what's _built_.
+
+## 9. Distribution & Packaging
+
+- **Platforms:** macOS, Windows, and Linux via `electron-builder` (`npm run build:mac` / `build:win` / `build:linux`).
+- **macOS signing & notarization.** Official release builds are **Developer ID signed and notarized by Apple** (notarization is decoupled into a capped, re-runnable `notarize-mac` CI job that staples the dmg/zip before publish), so downloaded releases open without a Gatekeeper prompt. Self-built or community-distributed `.app`s aren't notarized; they are deep ad-hoc signed at pack time (see `build/adhoc-sign.cjs`) so Gatekeeper shows the bypassable "unidentified developer" prompt instead of an unrecoverable "app is damaged" error on a quarantined copy — users right-click → Open or clear the quarantine flag; see [README: macOS Gatekeeper](../README.md#macos-gatekeeper) for the exact command. Windows builds are not yet signed with an Authenticode certificate.
+- **In-place auto-update.** Packaged builds self-update via `electron-updater` on macOS, Windows, and Linux — background checks against the stable release channel apply updates in place, with a manual-download fallback when auto-update can't complete.
+- **Prisma runtime.** The generated Prisma client ships outside the `asar` archive (via `extraResources`) because its native query engine can't load from inside an asar; the native Claude agent binary is similarly unpacked (`asarUnpack`) so it can be spawned as a child process at runtime.
+
+## 10. Success Signals (Directional, Not Committed Metrics)
+
+Since this is an early, community-driven project rather than a metrics-driven product, "success" for the current phase looks like:
+
+- A researcher can complete a real, non-trivial analysis task (multi-step, involving at least one script run and one artifact) without leaving the app.
+- Reopening a session after restarting the app restores full context with no data loss.
+- A new contributor can read this PRD + the Roadmap and know exactly which unimplemented capability to pick up next.
+
+## 11. Open Questions
+
+- **Model gateway design.** What's the right abstraction for routing different agents/sub-tasks to different model backends, given the current runtime is built tightly around the Agent Client Protocol?
+- **Provenance granularity.** How much lineage metadata (code snapshot, execution log, dependency versions, environment snapshot, conversation context) is captured by default versus opt-in, and how is it surfaced to the researcher without becoming noise?
+- **Skill format.** What should a portable, forkable "skill" file look like so it can move across models and frameworks (Horizon 2 in the Roadmap) without becoming vendor-specific again?
+
+These are tracked as open design questions in [Discussions](https://github.com/zerolink/purescience/discussions) rather than settled here — the goal of this PRD is to state the target and the current state clearly, not to pre-decide every implementation detail.
+
+---
+
+_This PRD reflects the current codebase and product direction, and is updated as scope and implementation evolve. See [`ROADMAP.md`](../ROADMAP.md) for delivery phases and the long-range vision._

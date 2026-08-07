@@ -1,0 +1,55 @@
+import { expect, test } from '@playwright/test'
+import { delimiter } from 'node:path'
+import { electronLaunchTarget, launchEnvironment } from './fixtures/electron-app'
+
+test('normalizes a Windows-style Path before injecting the fake Agent directory', () => {
+  const environment = launchEnvironment('storage-root', 'fake-agent-bin', {
+    ELECTRON_RENDERER_URL: 'http://127.0.0.1:5173',
+    Path: 'system-bin'
+  })
+
+  expect(environment.PATH).toBe(`fake-agent-bin${delimiter}system-bin`)
+  expect(environment.Path).toBeUndefined()
+  expect(environment.ELECTRON_RENDERER_URL).toBeUndefined()
+  expect(environment.PURESCIENCE_E2E_STORAGE_ROOT).toBeUndefined()
+  expect(environment.PURESCIENCE_STORAGE_ROOT).toBe('storage-root')
+})
+
+test('isolates packaged certification storage without changing the process home', () => {
+  const environment = launchEnvironment('storage-root', undefined, {
+    PURESCIENCE_E2E_EXECUTABLE: '/artifacts/PureScience'
+  })
+
+  expect(environment.PURESCIENCE_E2E_STORAGE_ROOT).toBe('storage-root')
+  expect(environment.PURESCIENCE_STORAGE_ROOT).toBe('storage-root')
+})
+
+test('enables the basic password store only for Linux E2E profiles', () => {
+  expect(electronLaunchTarget('profile-root', {}, 'linux')).toEqual({
+    args: ['--user-data-dir=profile-root', '--password-store=basic', expect.any(String)]
+  })
+  expect(electronLaunchTarget('profile-root', {}, 'darwin')).toEqual({
+    args: ['--user-data-dir=profile-root', expect.any(String)]
+  })
+  expect(electronLaunchTarget('profile-root', {}, 'win32')).toEqual({
+    args: ['--user-data-dir=profile-root', expect.any(String)]
+  })
+})
+
+test('launches packaged and source applications with the expected Linux arguments', () => {
+  expect(
+    electronLaunchTarget(
+      'profile-root',
+      {
+        PURESCIENCE_E2E_EXECUTABLE: '/artifacts/PureScience.app/Contents/MacOS/PureScience'
+      },
+      'linux'
+    )
+  ).toEqual({
+    args: ['--user-data-dir=profile-root', '--password-store=basic'],
+    executablePath: '/artifacts/PureScience.app/Contents/MacOS/PureScience'
+  })
+  expect(electronLaunchTarget('profile-root', {}, 'linux')).toEqual({
+    args: ['--user-data-dir=profile-root', '--password-store=basic', expect.any(String)]
+  })
+})

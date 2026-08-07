@@ -1,0 +1,488 @@
+name: Build
+
+# Reusable build workflow: packages the app for macOS (arm64 + x64) and Linux, each on its own
+# native runner, and uploads the installers as pipeline artifacts. Called by release.yml (stable,
+# on tag) and nightly.yml (rolling prerelease, on push to main) so the build matrix lives in one
+# place. Publishing is done by the caller, not here.
+#
+# `npm ci` on each runner installs the native binaries it needs (claude-agent-sdk optional package,
+# Prisma query engine). macOS uses native ARM64 and Intel macOS 26 runners so packaged-app
+# certification does not execute across architectures and Xcode 26 can compile the Icon Composer
+# asset; Linux runs on ubuntu-latest and Windows x64 on windows-latest.
+on:
+  workflow_call:
+    inputs:
+      nightly:
+        description: >-
+          Mark artifacts as a nightly build: appends `-nightly.<short-sha>` to the version so
+          nightly installers get distinct filenames (and in-app version) from stable releases.
+        type: boolean
+        default: false
+      mac_only:
+        description: >-
+          Build only the two macOS archs (skip Linux + Windows). Used by the notarization dry-run,
+          which only needs a signed mac build; release/nightly leave it false for the full matrix.
+        type: boolean
+        default: false
+      skip_verify:
+        description: >-
+          Skip the lint/typecheck/test job. Used by the notarization dry-run to test signing +
+          notarization in isolation; release/nightly leave it false so builds stay gated on tests.
+        type: boolean
+        default: false
+jobs:
+  # Gate every packaged build on the quality suite so nightly (push to main) and release (tag) can
+  # never publish installers that were never tested. Runs once on Apple Silicon to match the
+  # release/verification environment (see pr-check.yml for why macOS). The build matrix `needs` this.
+  verify:
+    name: Verify (lint + typecheck + test + package)
+    # Skipped by the notarization dry-run (skip_verify), which only needs a signed mac build.
+    if: ${{ !inputs.skip_verify }}
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test (with coverage)
+        run: npm run test:coverage
+
+      - name: Check CLI package
+        run: npm run check:cli-package
+
+  # Resolve the platform matrix. mac_only trims it to the two mac archs — used by the notarization
+  # dry-run (notarize-dryrun.yml), which only needs a signed mac build. With mac_only false (the
+  # release.yml / nightly.yml callers) the full matrix is emitted, so their behavior is unchanged.
+  setup:
+    name: Resolve platform matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set.outputs.matrix }}
+    steps:
+      - id: set
+        shell: bash
+        run: |
+          # Run each macOS package on its native macOS 26 architecture so P0, visual, and package
+          # smoke can execute the produced app while Xcode 26 compiles build/icon.icon. Windows'
+          # engine is query_engine-windows.dll.node (no `lib`
+          # prefix, .dll.node not .so/.dylib). engine_keep = substring of the engine file to keep.
+          # subdir/bin_os/bin_arch drive the notebook runtime staging step: `subdir` is the conda
+          # platform whose micromamba + offline bundle to fetch, and bin_os/bin_arch are the
+          # resources/bin/<os>/<arch> path electron-builder.yml reads the micromamba binary from.
+          mac='[
+            {"name":"macos-arm64","os":"macos-26","platform":"mac","eb_args":"--mac --arm64","engine_keep":"darwin-arm64","subdir":"osx-arm64","bin_os":"mac","bin_arch":"arm64"},
+            {"name":"macos-x64","os":"macos-26-intel","platform":"mac","eb_args":"--mac --x64","engine_keep":"darwin.dylib","subdir":"osx-64","bin_os":"mac","bin_arch":"x64"}
+          ]'
+          rest='[
+            {"name":"linux-x64","os":"ubuntu-latest","platform":"linux","eb_args":"--linux","engine_keep":".so.node","subdir":"linux-64","bin_os":"linux","bin_arch":"x64"},
+            {"name":"windows-x64","os":"windows-latest","platform":"win","eb_args":"--win --x64","engine_keep":"windows.dll","subdir":"win-64","bin_os":"win","bin_arch":"x64"}
+          ]'
+          if [ "${{ inputs.mac_only }}" = "true" ]; then
+            include=$(jq -c '.' <<<"$mac")
+          else
+            include=$(jq -c '. + $rest' --argjson rest "$rest" <<<"$mac")
+          fi
+          echo "matrix={\"include\":$include}" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build ${{ matrix.name }}
+    needs: [verify, setup]
+    # Run once the matrix is resolved. Tolerate a skipped verify (skip_verify dry-run) but still
+    # block on a real verify failure — matching the fail-closed behavior when verify runs.
+    if: ${{ always() && needs.setup.result == 'success' && (needs.verify.result == 'success' || needs.verify.result == 'skipped') }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # Don't let one platform's failure cancel the others.
+      fail-fast: false
+      matrix: ${{ fromJson(needs.setup.outputs.matrix) }}
+    # Keep native dependencies and packaged binaries compatible with the app's declared macOS 12
+    # minimum even though the native builders run on macOS 26.
+    env:
+      MACOSX_DEPLOYMENT_TARGET: ${{ matrix.platform == 'mac' && '12.0' || '' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: npm
+
+      # npm ci runs postinstall: prisma generate + electron-builder install-app-deps.
+      - name: Install dependencies
+        run: npm ci
+
+      # electron-builder compiles build/icon.icon with actool. Fail here with a focused diagnostic
+      # instead of much later in packaging if the runner image ever loses its Xcode 26 selection.
+      - name: Verify Icon Composer build tools
+        if: ${{ matrix.platform == 'mac' }}
+        run: actool --version
+
+      # Installers do not carry a managed-runtime bundle. Stable/nightly builds therefore fail closed
+      # unless the exact immutable manifest required by this app version and platform is already live
+      # on the official CDN. The notarization dry-run skips this release-readiness gate.
+      - name: Verify managed runtime bundle is published
+        if: ${{ !inputs.skip_verify }}
+        env:
+          PURESCIENCE_ENV_CDN_BASE: https://statics.zerolink.com/purescience
+        run: node scripts/verify-runtime-bundle.mjs "${{ matrix.subdir }}"
+
+      # The schema's binaryTargets generates Prisma engines for several platforms; keep only the one
+      # this build ships so each installer stays lean. Fails loudly if the expected engine is missing.
+      # The glob is `*query_engine-*` (not `libquery_engine-*`) so it also matches Windows' engine,
+      # which is named `query_engine-windows.dll.node` without the `lib` prefix.
+      - name: Prune foreign Prisma engines
+        shell: bash
+        run: |
+          keep='${{ matrix.engine_keep }}'
+          found=0
+          for f in node_modules/.prisma/client/*query_engine-*; do
+            [ -e "$f" ] || continue
+            case "$f" in
+              *"$keep"*) found=1 ;;
+              *) echo "pruning $(basename "$f")"; rm -f "$f" ;;
+            esac
+          done
+          echo "remaining engines:"; ls -1 node_modules/.prisma/client/*query_engine-* 2>/dev/null || true
+          [ "$found" = 1 ] || { echo "::error::no Prisma engine matching '$keep' was generated"; exit 1; }
+
+      # Stage the notebook runtime resources electron-builder.yml ships as extraResources, BEFORE the
+      # package+sign step so the mach-O micromamba is signed/notarized along with the app: the
+      # micromamba binary -> resources/bin/<os>/<arch>/ (REQUIRED — electron-builder's extraResources
+      # `from` would fail without it; fetched from the pinned official GitHub release asset).
+      #
+      # NOTE: the installer does not bake in the runtime packs. Default envs are fetched on demand
+      # from the immutable runtime bundle published by stage-runtime-bundle.yml; a developer can
+      # still provide PURESCIENCE_ENV_BUNDLE_DIR for a dropped-in local pack.
+      - name: Stage notebook runtime resources
+        shell: bash
+        run: |
+          name=micromamba
+          [ "${{ matrix.subdir }}" = "win-64" ] && name=micromamba.exe
+          # Pass the pinned version explicitly so the intent is visible in CI. Read it from the single
+          # source of truth (scripts/micromamba-versions.json) to avoid drifting from the digests the
+          # script verifies against.
+          export MICROMAMBA_VERSION=$(node -p "require('./scripts/micromamba-versions.json').version")
+          echo "using pinned micromamba $MICROMAMBA_VERSION"
+          node scripts/fetch-micromamba.mjs "${{ matrix.subdir }}" \
+            "resources/bin/${{ matrix.bin_os }}/${{ matrix.bin_arch }}/$name"
+
+      # electron-builder 26.15.3 creates its temporary keychain with a random password but invokes
+      # `security set-key-partition-list -k` with the P12 password. macOS 26 Intel rejects that
+      # mismatch with SecKeychainUnlock. Import the certificate ourselves with the correct password
+      # for each boundary, then give electron-builder only the prepared keychain path.
+      - name: Prepare macOS signing keychain
+        id: mac_signing
+        if: ${{ matrix.platform == 'mac' && !inputs.nightly }}
+        shell: bash
+        env:
+          MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          MAC_CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "${MAC_CSC_LINK:-}" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::MAC_CSC_LINK not set — the macOS package will use an ad-hoc signature."
+            exit 0
+          fi
+
+          keychain="$RUNNER_TEMP/purescience-signing-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${{ matrix.name }}.keychain-db"
+          certificate="$RUNNER_TEMP/purescience-signing-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${{ matrix.name }}.p12"
+          keychain_list="$RUNNER_TEMP/purescience-signing-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${{ matrix.name }}-user-keychains.txt"
+          keychain_password=$(openssl rand -base64 32)
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+          echo "keychain=$keychain" >> "$GITHUB_OUTPUT"
+          echo "certificate=$certificate" >> "$GITHUB_OUTPUT"
+          echo "keychain_list=$keychain_list" >> "$GITHUB_OUTPUT"
+
+          security list-keychains -d user > "$keychain_list"
+          printf '%s' "$MAC_CSC_LINK" | base64 --decode > "$certificate"
+          security create-keychain -p "$keychain_password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          user_keychains=()
+          while IFS= read -r entry; do
+            entry="${entry#*\"}"
+            entry="${entry%\"*}"
+            if [ -n "$entry" ] && [ "$entry" != "$keychain" ]; then
+              user_keychains+=("$entry")
+            fi
+          done < "$keychain_list"
+          # codesign ignores an explicitly selected keychain unless it is also in the user search
+          # list. Preserve the runner entries and restore them in the always-run cleanup below.
+          security list-keychains -d user -s "$keychain" "${user_keychains[@]}"
+          security import "$certificate" -k "$keychain" \
+            -P "${MAC_CSC_KEY_PASSWORD:-}" \
+            -T /usr/bin/codesign \
+            -T /usr/bin/productbuild
+          security set-key-partition-list \
+            -S apple-tool:,apple: \
+            -s \
+            -k "$keychain_password" \
+            "$keychain"
+          security find-identity -v -p codesigning "$keychain" | \
+            grep -q 'Developer ID Application:'
+
+      # Build the renderer + main and Web bundles, then package with electron-builder. The verify
+      # job already typechecks this exact checkout once, so the four platform jobs must not repeat it.
+      #
+      # macOS signing: this step only SIGNS (Developer ID), it never notarizes. Notarization +
+      # stapling is decoupled into notarize-mac.yml so the build never blocks on Apple's servers
+      # (see that workflow and release.yml). The workflow imports the base64 P12 into an isolated
+      # keychain above and electron-builder consumes only that keychain path. With no cert — or for
+      # any nightly (kept ad-hoc for speed) — Developer ID signing is skipped and the afterPack hook
+      # (build/adhoc-sign.cjs) applies a valid ad-hoc signature so Gatekeeper shows the bypassable
+      # "unidentified developer" prompt instead of "damaged". Linux has no signing concept. All
+      # secrets are optional — the build works with none set.
+      - name: Build & package
+        id: package
+        shell: bash
+        env:
+          # Windows remains unsigned until a code-signing certificate is provisioned. Stable macOS
+          # jobs consume the explicitly prepared keychain without exposing CSC_LINK to electron-builder.
+          CSC_KEYCHAIN: ${{ steps.mac_signing.outputs.keychain }}
+        run: |
+          npm run build:e2e
+          npm run build:web
+          # Nightly: override the packaged version with `<base>-nightly.<short-sha>` (valid semver
+          # prerelease). Every artifactName template uses ${version}, so this alone makes nightly
+          # filenames distinct from stable ones and ties each build to its commit.
+          eb_ver=()
+          if [ "${{ inputs.nightly }}" = "true" ]; then
+            base=$(node -p "require('./package.json').version")
+            eb_ver=(-c.extraMetadata.version="${base}-nightly.${GITHUB_SHA::7}")
+          fi
+          if [ "${{ steps.mac_signing.outputs.enabled }}" = "true" ]; then
+            # Stable build with a Developer ID cert -> SIGN ONLY (notarize:false). Notarization +
+            # stapling happens later in notarize-mac.yml, so this job never waits on Apple.
+            #
+            # Update channel stays the default `latest`, so `channel: latest` is baked into
+            # app-update.yml and the mac updater polls the standard `latest-mac.yml`. arm64 and x64
+            # build on separate runners; each emits its own `latest-mac.yml` listing only its arch,
+            # which the publish job merges into a single `latest-mac.yml` carrying both arch zips
+            # (electron-updater's MacUpdater picks the right one by arch at download time). This avoids
+            # the per-arch `${arch}-mac.yml` scheme, which shipped an app-update.yml the mac updater
+            # never matched against the published feed names.
+            npx electron-builder ${{ matrix.eb_args }} "${eb_ver[@]}" --publish never \
+              -c.mac.notarize=false
+          else
+            # No prepared cert, or a nightly build (ad-hoc on purpose): skip electron-builder's own
+            # signing. Drop any inherited certificate variables and disable auto-discovery so the
+            # afterPack hook (build/adhoc-sign.cjs) remains the only signer.
+            unset CSC_LINK CSC_KEY_PASSWORD
+            export CSC_IDENTITY_AUTO_DISCOVERY=false
+            unsigned_args=()
+            if [ "${{ matrix.platform }}" = "mac" ]; then
+              # electron-builder.yml signs stable DMGs so the outer container passes Gatekeeper's
+              # primary-signature assessment. Certificate-free and nightly builds must stay ad-hoc.
+              unsigned_args=(-c.dmg.sign=false)
+            fi
+            npx electron-builder ${{ matrix.eb_args }} "${eb_ver[@]}" "${unsigned_args[@]}" --publish never
+          fi
+
+      - name: Clean up macOS signing keychain
+        if: ${{ always() && steps.mac_signing.outputs.keychain != '' }}
+        shell: bash
+        env:
+          MAC_SIGNING_CERTIFICATE: ${{ steps.mac_signing.outputs.certificate }}
+          MAC_SIGNING_KEYCHAIN: ${{ steps.mac_signing.outputs.keychain }}
+          MAC_SIGNING_KEYCHAIN_LIST: ${{ steps.mac_signing.outputs.keychain_list }}
+        run: |
+          set -euo pipefail
+          if [ -f "$MAC_SIGNING_KEYCHAIN_LIST" ]; then
+            user_keychains=()
+            while IFS= read -r entry; do
+              entry="${entry#*\"}"
+              entry="${entry%\"*}"
+              [ -n "$entry" ] && user_keychains+=("$entry")
+            done < "$MAC_SIGNING_KEYCHAIN_LIST"
+            security list-keychains -d user -s "${user_keychains[@]}" || true
+          fi
+          security delete-keychain "$MAC_SIGNING_KEYCHAIN" || true
+          rm -f "$MAC_SIGNING_CERTIFICATE" "$MAC_SIGNING_KEYCHAIN_LIST"
+
+      - name: Resolve packaged Electron executable
+        id: packaged_app
+        if: ${{ !inputs.skip_verify }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "${{ matrix.platform }}" in
+            mac) candidate="$(find dist -type f -path '*/PureScience.app/Contents/MacOS/PureScience' -print -quit)" ;;
+            win) candidate="$(find dist -type f -path '*/win-unpacked/purescience.exe' -print -quit)" ;;
+            linux) candidate="$(find dist -type f -path '*/linux-unpacked/purescience' -print -quit)" ;;
+            *) echo "Unsupported packaged Electron platform" >&2; exit 1 ;;
+          esac
+          if [ -z "$candidate" ] || [ ! -f "$candidate" ]; then
+            echo "Packaged Electron executable was not produced for ${{ matrix.name }}" >&2
+            exit 1
+          fi
+          executable="$(node -e 'process.stdout.write(require("path").resolve(process.argv[1]))' "$candidate")"
+          echo "executable=$executable" >> "$GITHUB_OUTPUT"
+
+      # Run the portable release-critical desktop journeys once against the packaged ARM64 app.
+      # Native installer/package behavior remains hard-gated below for every published target.
+      - name: Run P0 Electron certification
+        id: p0
+        if: >-
+          ${{ !inputs.skip_verify &&
+              matrix.name == 'macos-arm64' &&
+              steps.packaged_app.outcome == 'success' }}
+        continue-on-error: true
+        shell: bash
+        env:
+          PURESCIENCE_E2E_EXECUTABLE: ${{ steps.packaged_app.outputs.executable }}
+        run: npm run test:e2e:p0
+
+      # Visual behavior uses the same renderer bundle on every package. Keep one canonical hard gate
+      # beside P0 instead of multiplying antialiasing and launch variance across four native runners.
+      - name: Run desktop visual regression
+        id: visual
+        if: >-
+          ${{ !inputs.skip_verify &&
+              matrix.name == 'macos-arm64' &&
+              steps.packaged_app.outcome == 'success' }}
+        continue-on-error: true
+        shell: bash
+        env:
+          PURESCIENCE_E2E_EXECUTABLE: ${{ steps.packaged_app.outputs.executable }}
+        run: npm run test:e2e:visual
+
+      # Exercise both macOS distributables rather than treating the unpacked app launch above as
+      # package coverage: mount the DMG, extract the ZIP, verify each bundle, and launch each app.
+      - name: Smoke test macOS packages
+        if: ${{ matrix.platform == 'mac' && !inputs.skip_verify }}
+        id: macos_smoke
+        continue-on-error: true
+        timeout-minutes: 10
+        run: node scripts/macos-package-smoke.mjs --artifact-dir dist
+
+      # Run the actual NSIS artifact, not the source tree: silent install into an isolated directory,
+      # start the packaged app in headless web mode, verify its authenticated bootstrap and bundled
+      # Windows runtime resources, request a clean shutdown, then silently uninstall it.
+      - name: Smoke test Windows installer
+        if: ${{ matrix.platform == 'win' && !inputs.skip_verify }}
+        id: windows_smoke
+        continue-on-error: true
+        timeout-minutes: 10
+        run: node scripts/windows-installer-smoke.mjs --installer-dir dist
+
+      # Install the deb with apt, launch the installed application, then extract and launch the
+      # AppImage. Both paths verify authenticated bootstrap and packaged native/runtime resources.
+      - name: Smoke test Linux packages
+        if: ${{ matrix.platform == 'linux' && !inputs.skip_verify }}
+        id: linux_smoke
+        continue-on-error: true
+        timeout-minutes: 10
+        shell: bash
+        run: |
+          sudo apt-get install --yes ./dist/*.deb
+          trap 'sudo apt-get remove --yes purescience || true' EXIT
+          xvfb-run -a node scripts/linux-package-smoke.mjs \
+            --artifact-dir dist \
+            --installed-executable /usr/bin/purescience
+
+      - name: Record platform certification evidence
+        if: >-
+          ${{ !inputs.skip_verify &&
+              steps.packaged_app.outcome == 'success' &&
+              ((matrix.name == 'macos-arm64' &&
+                steps.p0.outcome == 'success' &&
+                steps.visual.outcome == 'success') ||
+               (matrix.name != 'macos-arm64' &&
+                steps.p0.outcome == 'skipped' &&
+                steps.visual.outcome == 'skipped')) &&
+              ((matrix.platform == 'mac' && steps.macos_smoke.outcome == 'success') ||
+               (matrix.platform == 'win' && steps.windows_smoke.outcome == 'success') ||
+               (matrix.platform == 'linux' && steps.linux_smoke.outcome == 'success')) }}
+        shell: bash
+        run: |
+          electron_p0=not-applicable
+          visual_regression=not-applicable
+          if [ "${{ matrix.name }}" = "macos-arm64" ]; then
+            electron_p0=passed
+            visual_regression=passed
+          fi
+          package_smoke=passed
+          authenticode=not-applicable
+          if [ "${{ matrix.platform }}" = "win" ]; then
+            authenticode=not-required
+          fi
+          node scripts/ci/release-certification-evidence.mjs write \
+            --platform "${{ matrix.name }}" \
+            --artifact-dir dist \
+            --output "dist/certification-${{ matrix.name }}.json" \
+            --electron-p0 "$electron_p0" \
+            --visual-regression "$visual_regression" \
+            --package-smoke "$package_smoke" \
+            --authenticode "$authenticode"
+
+      # Upload only the distributables + electron-updater metadata for the caller's publish job.
+      - name: Upload build artifacts
+        if: ${{ always() && steps.package.outcome == 'success' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: ${{ matrix.name }}
+          retention-days: 1
+          path: |
+            dist/*.dmg
+            dist/*.zip
+            dist/*.exe
+            dist/*.AppImage
+            dist/*.deb
+            dist/*.blockmap
+            dist/latest*.yml
+            dist/*-mac.yml
+            dist/certification-*.json
+          if-no-files-found: error
+
+      - name: Enforce platform certification
+        if: ${{ !inputs.skip_verify && always() }}
+        shell: bash
+        env:
+          LINUX_SMOKE_OUTCOME: ${{ steps.linux_smoke.outcome }}
+          MACOS_SMOKE_OUTCOME: ${{ steps.macos_smoke.outcome }}
+          MATRIX_NAME: ${{ matrix.name }}
+          P0_OUTCOME: ${{ steps.p0.outcome }}
+          PACKAGED_APP_OUTCOME: ${{ steps.packaged_app.outcome }}
+          PLATFORM: ${{ matrix.platform }}
+          VISUAL_OUTCOME: ${{ steps.visual.outcome }}
+          WINDOWS_SMOKE_OUTCOME: ${{ steps.windows_smoke.outcome }}
+        run: |
+          set -euo pipefail
+          failed=0
+          check() {
+            if [[ "$2" != "success" ]]; then
+              echo "$1 ended with $2" >&2
+              failed=1
+            fi
+          }
+          check packaged_app "$PACKAGED_APP_OUTCOME"
+          if [[ "$MATRIX_NAME" == "macos-arm64" ]]; then
+            check p0 "$P0_OUTCOME"
+            check visual "$VISUAL_OUTCOME"
+          fi
+          case "$PLATFORM" in
+            mac) check macos_smoke "$MACOS_SMOKE_OUTCOME" ;;
+            win) check windows_smoke "$WINDOWS_SMOKE_OUTCOME" ;;
+            linux) check linux_smoke "$LINUX_SMOKE_OUTCOME" ;;
+            *) echo "Unsupported platform: $PLATFORM" >&2; failed=1 ;;
+          esac
+          exit "$failed"

@@ -1,0 +1,34 @@
+{
+  "name": "@zerolink/purescience",
+  "version": "0.1.0",
+  "description": "Node.js SDK and CLI for the PureScience local daemon",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.mjs"
+    }
+  },
+  "bin": {
+    "purescience": "./cli.mjs"
+  },
+  "files": [
+    "*.mjs",
+    "*.d.ts",
+    "LICENSE",
+    "README.md",
+    "CLI.md"
+  ],
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zerolink/purescience.git",
+    "directory": "packages/purescience"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

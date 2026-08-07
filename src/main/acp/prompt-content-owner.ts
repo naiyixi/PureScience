@@ -1,0 +1,617 @@
+import type { ContentBlock } from '@agentclientprotocol/sdk'
+import { readFile, stat } from 'node:fs/promises'
+import { pathToFileURL } from 'node:url'
+
+import type { AcpMessageImage } from '../../shared/acp'
+import type { FileReference } from '../../shared/artifacts'
+import { estimateHistoryTokens, truncateTextToEstimatedTokens } from '../../shared/history-preamble'
+import {
+  imageAttachmentMimeType,
+  PENDING_UPLOAD_SESSION_ID,
+  type UploadedAttachment
+} from '../../shared/uploads'
+import { readBoundedManagedFilePreview } from '../managed-file-preview'
+import {
+  buildImageContentData,
+  canInlineImageInSession,
+  consumeInlineImageBudget,
+  extractPdfText,
+  ImageContentError,
+  MAX_AUTO_EXTRACT_PDF_BYTES,
+  MAX_AUTO_PROCESS_IMAGE_BYTES,
+  MAX_SESSION_INLINE_IMAGE_BYTES,
+  type InlineImageBudget
+} from '../uploads/attachment-media'
+import type { UploadRepository } from '../uploads/repository'
+import { isImportableSkillArchivePath } from '../skills/skill-archive-sniffer'
+import {
+  ATTACHMENT_PREVIEW_BYTES,
+  MAX_EMBEDDED_TEXT_UPLOAD_BYTES,
+  buildDatasetAttachmentNotice,
+  buildDeferredMediaNotice,
+  buildOversizedAttachmentNotice,
+  isDatasetAttachment,
+  isTabularAttachment,
+  isTextLikeAttachment,
+  mimeEssence
+} from './attachment-content'
+import type { FileReferenceResolver } from './file-reference-resolver'
+
+type CodexSkillInput = {
+  name: string
+  path: string
+}
+
+type AcpPromptContentOwnerOptions = {
+  uploadRepository?: UploadRepository
+  fileReferenceResolver: FileReferenceResolver
+  inlineImageBudgetBytes?: number
+}
+
+type PrepareAcpPromptContentInput = {
+  appSessionId: string
+  projectId: string
+  text: string
+  historyImages: ReadonlyArray<AcpMessageImage>
+  historyUploads: ReadonlyArray<UploadedAttachment>
+  currentUploads: ReadonlyArray<UploadedAttachment>
+  references: ReadonlyArray<FileReference>
+  codexSkillInputs: ReadonlyArray<CodexSkillInput>
+  skillImportEnabled: boolean
+  fileTextBudget?: number
+  skillImportTurnToken?: string
+  onSkillImportAttachmentEligible?: (attachmentUri: string) => void
+}
+
+type AcpPromptTurnInputs = {
+  uploads: UploadedAttachment[]
+  references: FileReference[]
+}
+
+type PreparedAcpPromptContent = {
+  content: string | ContentBlock[]
+  turnInputs?: AcpPromptTurnInputs
+}
+
+type ResolvedPromptFile = {
+  absolutePath: string
+  uri: string
+  name: string
+  mimeType?: string
+  size: number
+  allowSkillImportReference: boolean
+}
+
+type PromptFileTextBudget = {
+  remaining: number
+  perFileLimit: number
+}
+
+const errorMessage = (error: unknown): string => {
+  try {
+    const raw = error instanceof Error ? (error as { message?: unknown }).message : error
+
+    return typeof raw === 'string' ? raw : String(raw)
+  } catch {
+    return 'unknown error'
+  }
+}
+
+// Owns provider-ready prompt content and the media budget associated with each provider context.
+// Session/turn admission, authorization leases, Notebook registration, and provider dispatch remain
+// with the runtime; every piece of content resolved here is supplied explicitly by the caller.
+class AcpPromptContentOwner {
+  private readonly sessionInlineImageBytes = new Map<string, number>()
+  private readonly inlineImageBudgetBytes: number
+
+  constructor(private readonly options: AcpPromptContentOwnerOptions) {
+    this.inlineImageBudgetBytes = options.inlineImageBudgetBytes ?? MAX_SESSION_INLINE_IMAGE_BYTES
+  }
+
+  async prepare(input: PrepareAcpPromptContentInput): Promise<PreparedAcpPromptContent> {
+    const hasUploads = input.historyUploads.length > 0 || input.currentUploads.length > 0
+    let promptUploads: UploadedAttachment[] = []
+
+    let content: string | ContentBlock[]
+    if (!hasUploads && input.references.length === 0 && input.historyImages.length === 0) {
+      content = input.text
+    } else {
+      const contentBlocks: ContentBlock[] = input.text.trim()
+        ? [{ type: 'text', text: input.text }]
+        : []
+      let imageBudget: InlineImageBudget = { imageCount: 0, base64Bytes: 0 }
+      const totalFileTextBudget = Math.max(1, Math.floor(input.fileTextBudget ?? 12_000))
+      const fileTextBudget: PromptFileTextBudget = {
+        remaining: totalFileTextBudget,
+        perFileLimit: Math.max(1, Math.floor(totalFileTextBudget / 2))
+      }
+      const appendBlock = (block: ContentBlock, overflowFallback?: ContentBlock): void => {
+        if (block.type === 'image') {
+          try {
+            imageBudget = consumeInlineImageBudget(imageBudget, {
+              data: block.data,
+              mimeType: block.mimeType
+            })
+          } catch (error) {
+            if (
+              error instanceof ImageContentError &&
+              error.code === 'IMAGE_TOTAL_BUDGET_EXCEEDED'
+            ) {
+              if (overflowFallback) contentBlocks.push(overflowFallback)
+              return
+            }
+            throw error
+          }
+        }
+        contentBlocks.push(block)
+      }
+
+      for (const image of input.historyImages) {
+        appendBlock({ type: 'image', data: image.data, mimeType: image.mimeType })
+      }
+      if (input.historyImages.length > 0) {
+        this.sessionInlineImageBytes.set(input.appSessionId, imageBudget.base64Bytes)
+      }
+
+      if (hasUploads) {
+        if (!this.options.uploadRepository) throw new Error('Upload storage is not configured.')
+
+        // Historical Versions retain their immutable source ownership. Branch reconciles its staged
+        // history first; other callers may still supply a genuine pending capability for this target.
+        const stagedHistoryUploads = input.historyUploads.filter(
+          (upload) => !upload.versionId && upload.sessionId === PENDING_UPLOAD_SESSION_ID
+        )
+        const uploadsToFinalize = [...stagedHistoryUploads, ...input.currentUploads]
+        const finalizedUploads =
+          uploadsToFinalize.length > 0
+            ? await this.options.uploadRepository.finalizePendingSessionUploads(
+                input.appSessionId,
+                uploadsToFinalize,
+                input.projectId
+              )
+            : []
+        const finalizedById = new Map(finalizedUploads.map((upload) => [upload.id, upload]))
+        promptUploads = [
+          ...input.historyUploads.map((upload) => finalizedById.get(upload.id) ?? upload),
+          ...input.currentUploads.map((upload) => finalizedById.get(upload.id) ?? upload)
+        ]
+
+        // Preserve the existing order: history uploads, current uploads, then explicit references.
+        for (let index = 0; index < promptUploads.length; index += 1) {
+          const attachment = promptUploads[index]
+          const blocks = await this.createAttachmentContentBlocks(
+            input,
+            attachment,
+            index < input.historyUploads.length,
+            fileTextBudget
+          )
+          for (const block of blocks) {
+            appendBlock(
+              block,
+              this.imageOverflowResourceLink(block, attachment.originalName, attachment.size)
+            )
+          }
+        }
+      }
+
+      for (const reference of input.references) {
+        const blocks = await this.createReferencedArtifactContentBlocks(
+          input,
+          reference,
+          fileTextBudget
+        )
+        for (const block of blocks) {
+          appendBlock(block, this.imageOverflowResourceLink(block, reference.name))
+        }
+      }
+
+      content = contentBlocks
+    }
+
+    const preparedContent = this.attachCodexSkillInputs(content, input.codexSkillInputs)
+    const turnInputUploads = promptUploads.filter(
+      (upload, index) => index >= input.historyUploads.length || upload.versionId
+    )
+    const hasTurnInputs = turnInputUploads.length > 0 || input.references.length > 0
+
+    return {
+      content: preparedContent,
+      ...(hasTurnInputs
+        ? {
+            turnInputs: {
+              uploads: turnInputUploads,
+              references: [...input.references]
+            }
+          }
+        : {})
+    }
+  }
+
+  resetSession(sessionId: string): void {
+    this.sessionInlineImageBytes.delete(sessionId)
+  }
+
+  clear(): void {
+    this.sessionInlineImageBytes.clear()
+  }
+
+  private attachCodexSkillInputs(
+    content: string | ContentBlock[],
+    descriptors: ReadonlyArray<CodexSkillInput>
+  ): string | ContentBlock[] {
+    if (descriptors.length === 0) return content
+
+    const skillInputs = descriptors.map((descriptor) => ({ ...descriptor }))
+    const metadata = { 'purescience/skill-inputs': skillInputs }
+    if (typeof content === 'string') {
+      return [{ type: 'text', text: content, _meta: metadata }]
+    }
+
+    const blocks = [...content]
+    const textIndex = blocks.findIndex((block) => block.type === 'text')
+    if (textIndex < 0) {
+      blocks.unshift({ type: 'text', text: '', _meta: metadata })
+      return blocks
+    }
+
+    const textBlock = blocks[textIndex]
+    if (textBlock.type === 'text') {
+      blocks[textIndex] = {
+        ...textBlock,
+        _meta: { ...(textBlock._meta ?? {}), ...metadata }
+      }
+    }
+    return blocks
+  }
+
+  private async createAttachmentContentBlocks(
+    input: PrepareAcpPromptContentInput,
+    attachment: UploadedAttachment,
+    isHistoryUpload: boolean,
+    fileTextBudget: PromptFileTextBudget
+  ): Promise<ContentBlock[]> {
+    if (!this.options.uploadRepository) throw new Error('Upload storage is not configured.')
+
+    const filePath = await this.options.uploadRepository.resolveManagedUploadPath(
+      { path: attachment.path },
+      {
+        projectId: input.projectId,
+        ...(isHistoryUpload ? {} : { sessionId: input.appSessionId })
+      }
+    )
+    const { size } = await stat(filePath)
+
+    return this.buildFileContentBlocks(
+      input,
+      {
+        absolutePath: filePath,
+        uri: pathToFileURL(filePath).href,
+        name: attachment.originalName || attachment.name,
+        mimeType: attachment.mimeType,
+        size,
+        allowSkillImportReference: true
+      },
+      fileTextBudget,
+      isHistoryUpload
+    )
+  }
+
+  private async createReferencedArtifactContentBlocks(
+    input: PrepareAcpPromptContentInput,
+    reference: FileReference,
+    fileTextBudget: PromptFileTextBudget
+  ): Promise<ContentBlock[]> {
+    const resolvedReference = await this.options.fileReferenceResolver.resolve(
+      { sessionId: input.appSessionId, projectId: input.projectId },
+      reference
+    )
+
+    return this.buildFileContentBlocks(input, resolvedReference, fileTextBudget, false)
+  }
+
+  private async buildFileContentBlocks(
+    input: PrepareAcpPromptContentInput,
+    descriptor: ResolvedPromptFile,
+    fileTextBudget: PromptFileTextBudget,
+    isHistoryUpload: boolean
+  ): Promise<ContentBlock[]> {
+    const { absolutePath, uri, name, mimeType, size, allowSkillImportReference } = descriptor
+
+    const attachmentTextReference = (
+      tag: 'attached_skill_package' | 'attached_local_archive',
+      skillImportEligible: boolean,
+      turnToken?: string
+    ): ContentBlock => ({
+      type: 'text',
+      text: [
+        `<${tag}>`,
+        JSON.stringify({
+          name,
+          uri,
+          mimeType,
+          size,
+          skillImportEligible,
+          ...(turnToken ? { skillImportTurnToken: turnToken } : {})
+        }),
+        `</${tag}>`
+      ].join('\n')
+    })
+    const localFileTextReference = (notice: string): ContentBlock => ({
+      type: 'text',
+      text: [
+        notice,
+        '<attached_local_file>',
+        JSON.stringify({ name, uri, mimeType, size }),
+        '</attached_local_file>'
+      ].join('\n')
+    })
+
+    // A replayed raster may still be required by the selected conversational turn. Every other
+    // historical file is a descriptor only: do not re-import archives or re-embed text/PDF bytes.
+    if (isHistoryUpload && !imageAttachmentMimeType(name, mimeType)) {
+      return [{ type: 'resource_link', uri, name, title: name, mimeType, size }]
+    }
+
+    if (
+      input.skillImportEnabled &&
+      allowSkillImportReference &&
+      (await this.isSkillPackageFile(name, absolutePath))
+    ) {
+      const turnToken = input.skillImportTurnToken
+      if (turnToken) {
+        try {
+          input.onSkillImportAttachmentEligible?.(uri)
+        } catch {
+          // Eligibility notification is observational and must not abort prompt preparation.
+        }
+        return [attachmentTextReference('attached_skill_package', true, turnToken)]
+      }
+    }
+
+    const normalizedName = name.toLowerCase()
+    const normalizedMimeType = mimeEssence(mimeType)
+    if (
+      normalizedName.endsWith('.zip') ||
+      normalizedName.endsWith('.skill') ||
+      normalizedMimeType === 'application/zip' ||
+      normalizedMimeType === 'application/x-zip-compressed'
+    ) {
+      return [attachmentTextReference('attached_local_archive', false)]
+    }
+
+    const imageMimeType = imageAttachmentMimeType(name, mimeType)
+    if (imageMimeType) {
+      if (size > MAX_AUTO_PROCESS_IMAGE_BYTES) {
+        return [
+          {
+            type: 'text',
+            text: buildDeferredMediaNotice({ name, size, kind: 'image' })
+          },
+          { type: 'resource_link', uri, name, title: name, mimeType: imageMimeType, size }
+        ]
+      }
+      const { data, mimeType: outMimeType } = await buildImageContentData(
+        absolutePath,
+        imageMimeType,
+        size
+      )
+
+      const alreadyInlined = this.sessionInlineImageBytes.get(input.appSessionId) ?? 0
+      if (!canInlineImageInSession(alreadyInlined, data.length, this.inlineImageBudgetBytes)) {
+        return [{ type: 'resource_link', uri, name, title: name, mimeType: imageMimeType, size }]
+      }
+
+      // Charge before the request-level append. Existing behavior retains this charge even if a later
+      // reference fails or the request image budget rejects this block.
+      this.sessionInlineImageBytes.set(input.appSessionId, alreadyInlined + data.length)
+      return [{ type: 'image', data, mimeType: outMimeType, uri }]
+    }
+
+    if (this.isPdfFile(name, mimeType)) {
+      if (size > MAX_AUTO_EXTRACT_PDF_BYTES) {
+        return [
+          {
+            type: 'text',
+            text: buildDeferredMediaNotice({ name, size, kind: 'PDF' })
+          },
+          { type: 'resource_link', uri, name, title: name, mimeType: 'application/pdf', size }
+        ]
+      }
+      const block = await this.createPdfContentBlock(name, absolutePath, uri)
+      return this.admitTextResource(block, descriptor, fileTextBudget, false)
+    }
+
+    if (isTextLikeAttachment(name, mimeType)) {
+      if (size <= MAX_EMBEDDED_TEXT_UPLOAD_BYTES) {
+        const block: ContentBlock = {
+          type: 'resource',
+          resource: { uri, mimeType, text: await readFile(absolutePath, 'utf8') }
+        }
+        return this.admitTextResource(
+          block,
+          descriptor,
+          fileTextBudget,
+          isTabularAttachment(name, mimeType)
+        )
+      }
+      return this.createBudgetedTextPreview(
+        descriptor,
+        fileTextBudget,
+        isTabularAttachment(name, mimeType)
+      )
+    }
+
+    if (isDatasetAttachment(name, mimeType)) {
+      return [localFileTextReference(buildDatasetAttachmentNotice({ name, size }))]
+    }
+
+    return [{ type: 'resource_link', uri, name, title: name, mimeType, size }]
+  }
+
+  private async admitTextResource(
+    block: ContentBlock,
+    descriptor: ResolvedPromptFile,
+    budget: PromptFileTextBudget,
+    tabular: boolean
+  ): Promise<ContentBlock[]> {
+    if (block.type !== 'resource' || !('text' in block.resource)) return [block]
+
+    const cost = estimateHistoryTokens(block.resource.text)
+    const allowance = Math.min(budget.remaining, budget.perFileLimit)
+    if (cost <= allowance) {
+      budget.remaining -= cost
+      return [block]
+    }
+
+    return this.createBudgetedTextPreview(descriptor, budget, tabular, block.resource.text)
+  }
+
+  private async createBudgetedTextPreview(
+    descriptor: ResolvedPromptFile,
+    budget: PromptFileTextBudget,
+    tabular: boolean,
+    sourceText?: string
+  ): Promise<ContentBlock[]> {
+    const { absolutePath, uri, name, mimeType, size } = descriptor
+    const fallback: ContentBlock[] = [
+      { type: 'resource_link', uri, name, title: name, mimeType, size }
+    ]
+    const allowance = Math.min(budget.remaining, budget.perFileLimit)
+    if (allowance <= 0) return fallback
+
+    const toBlock = (preview: string): Extract<ContentBlock, { type: 'text' }> => ({
+      type: 'text',
+      text: [
+        buildOversizedAttachmentNotice({
+          name,
+          size,
+          preview,
+          truncated: true,
+          tabular
+        }),
+        '<attached_local_file>',
+        JSON.stringify({ name, uri, mimeType, size }),
+        '</attached_local_file>'
+      ].join('\n')
+    })
+    const fixedCost = estimateHistoryTokens(toBlock('').text)
+    if (fixedCost >= allowance) return fallback
+
+    const previewBudget = allowance - fixedCost
+    let rawPreview: string
+    if (sourceText !== undefined) {
+      rawPreview = sourceText
+    } else {
+      const previewBytes = Math.min(ATTACHMENT_PREVIEW_BYTES, Math.max(256, previewBudget * 3))
+      const startBytes = tabular ? previewBytes : Math.ceil(previewBytes / 2)
+      const start = await readBoundedManagedFilePreview(
+        absolutePath,
+        { path: absolutePath, maxBytes: startBytes, encoding: 'utf8' },
+        'Attachment preview requires UTF-8 encoding.'
+      )
+      if (tabular) {
+        rawPreview = start.content
+      } else {
+        const endBytes = Math.max(1, previewBytes - startBytes)
+        const end = await readBoundedManagedFilePreview(
+          absolutePath,
+          {
+            path: absolutePath,
+            offset: Math.max(0, size - endBytes),
+            maxBytes: endBytes,
+            encoding: 'utf8'
+          },
+          'Attachment preview requires UTF-8 encoding.'
+        )
+        rawPreview = `${start.content}\n\n[…middle of file omitted…]\n\n${end.content}`
+      }
+    }
+
+    let preview = truncateTextToEstimatedTokens(
+      rawPreview,
+      previewBudget,
+      tabular ? 'start' : 'both'
+    )
+    let block = toBlock(preview)
+    let cost = estimateHistoryTokens(block.text)
+    if (cost > allowance) {
+      preview = truncateTextToEstimatedTokens(
+        preview,
+        Math.max(0, previewBudget - (cost - allowance)),
+        tabular ? 'start' : 'both'
+      )
+      block = toBlock(preview)
+      cost = estimateHistoryTokens(block.text)
+    }
+    if (cost > allowance) return fallback
+
+    budget.remaining -= cost
+    return [block]
+  }
+
+  private imageOverflowResourceLink(
+    block: ContentBlock,
+    name: string,
+    size?: number
+  ): ContentBlock | undefined {
+    if (block.type !== 'image' || !block.uri) return undefined
+
+    return {
+      type: 'resource_link',
+      uri: block.uri,
+      name,
+      title: name,
+      mimeType: block.mimeType,
+      size
+    }
+  }
+
+  private isPdfFile(name: string, mimeType?: string): boolean {
+    if (mimeType === 'application/pdf') return true
+    return name.toLowerCase().endsWith('.pdf')
+  }
+
+  private async isSkillPackageFile(name: string, filePath: string): Promise<boolean> {
+    const normalizedName = name.toLowerCase()
+    if (!normalizedName.endsWith('.skill') && !normalizedName.endsWith('.zip')) return false
+    return isImportableSkillArchivePath(filePath)
+  }
+
+  private async createPdfContentBlock(
+    name: string,
+    filePath: string,
+    uri: string
+  ): Promise<ContentBlock> {
+    const toResource = (text: string): ContentBlock => ({
+      type: 'resource',
+      resource: { uri, mimeType: 'text/plain', text }
+    })
+
+    try {
+      const { text, pageCount, truncated } = await extractPdfText(filePath)
+      if (!text) {
+        return toResource(
+          `[No selectable text could be extracted from "${name}" (${pageCount} page(s)). It may be a scanned or image-only PDF.]`
+        )
+      }
+
+      const header = `[PDF text extracted from "${name}" — ${pageCount} page(s)${
+        truncated ? ', truncated' : ''
+      }]`
+      return toResource(`${header}\n\n${text}`)
+    } catch (error) {
+      return toResource(
+        `[Failed to extract text from "${name}": ${errorMessage(error)}. The PDF was not sent to avoid exceeding the request size limit.]`
+      )
+    }
+  }
+}
+
+export { AcpPromptContentOwner }
+export type {
+  AcpPromptContentOwnerOptions,
+  AcpPromptTurnInputs,
+  CodexSkillInput,
+  PrepareAcpPromptContentInput,
+  PreparedAcpPromptContent
+}

@@ -1,0 +1,990 @@
+import { describe, expect, it } from 'vitest'
+import { Tiktoken } from 'js-tiktoken/lite'
+import cl100kBase from 'js-tiktoken/ranks/cl100k_base'
+import { z } from 'zod'
+
+import {
+  BASH_EXECUTE_DOC,
+  buildShellExecuteDoc,
+  INSPECT_PACKAGES_DOC,
+  MANAGE_ENVIRONMENTS_DOC,
+  MANAGE_PACKAGES_DOC,
+  NOTEBOOK_MCP_CONTROL_RESULT_LIMIT,
+  NOTEBOOK_MCP_EXECUTION_RESULT_LIMIT,
+  NOTEBOOK_MCP_STATE_RESULT_LIMIT,
+  REPL_EXECUTE_DOC,
+  NOTEBOOK_RPC_TOOLS,
+  NOTEBOOK_SYSTEM_PROMPT_APPEND,
+  callNotebookRpc,
+  compactNotebookExecutionResult,
+  compactNotebookStateResult,
+  compactManagePackagesResult,
+  compactInspectPackagesResult,
+  compactListRuntimesResult,
+  compactManageEnvironmentsResult,
+  compactRuntimeBindingResult,
+  compactShutdownResult,
+  compactRestartResult,
+  createNotebookMcpServerConfig,
+  serializeNotebookToolResult
+} from './mcp-server'
+
+const tokenizer = new Tiktoken(cl100kBase)
+
+describe('notebook MCP server config', () => {
+  it('builds an ACP stdio MCP server config scoped to the notebook runtime RPC endpoint', () => {
+    const config = createNotebookMcpServerConfig({
+      command: '/Applications/PureScience.app/Contents/MacOS/PureScience',
+      entryPath: '/app/out/main/index.js',
+      endpoint: 'http://127.0.0.1:4567',
+      token: 'secret-token',
+      projectName: 'default-project',
+      sessionId: 'session-1',
+      workspaceCwd: '/workspace'
+    })
+
+    expect(config).toEqual({
+      name: 'purescience-notebook',
+      command: '/Applications/PureScience.app/Contents/MacOS/PureScience',
+      args: ['/app/out/main/index.js', '--purescience-notebook-mcp'],
+      env: [
+        { name: 'ELECTRON_RUN_AS_NODE', value: '1' },
+        { name: 'PURESCIENCE_NOTEBOOK_RPC_ENDPOINT', value: 'http://127.0.0.1:4567' },
+        { name: 'PURESCIENCE_NOTEBOOK_RPC_TOKEN', value: 'secret-token' },
+        { name: 'PURESCIENCE_NOTEBOOK_PROJECT_NAME', value: 'default-project' },
+        { name: 'PURESCIENCE_NOTEBOOK_SESSION_ID', value: 'session-1' },
+        { name: 'PURESCIENCE_NOTEBOOK_WORKSPACE_CWD', value: '/workspace' }
+      ]
+    })
+  })
+
+  it('passes the Windows named-pipe path to the notebook MCP process', () => {
+    const config = createNotebookMcpServerConfig({
+      command: 'C:\\PureScience.exe',
+      entryPath: 'C:\\app\\main.js',
+      endpoint: 'http://localhost',
+      socketPath: '\\\\.\\pipe\\purescience-notebook',
+      token: 'secret-token',
+      projectName: 'default-project',
+      sessionId: 'session-1',
+      workspaceCwd: 'C:\\workspace'
+    })
+
+    expect(config.env).toContainEqual({
+      name: 'PURESCIENCE_NOTEBOOK_RPC_SOCKET_PATH',
+      value: '\\\\.\\pipe\\purescience-notebook'
+    })
+  })
+
+  it('keeps notebook instructions scoped to the notebook tools', () => {
+    expect(NOTEBOOK_SYSTEM_PROMPT_APPEND).toContain(
+      'only applies when using purescience-notebook tools'
+    )
+    expect(NOTEBOOK_SYSTEM_PROMPT_APPEND).toContain('PURESCIENCE_RUNTIME_DIR')
+    expect(NOTEBOOK_SYSTEM_PROMPT_APPEND).not.toContain('~/.purescience/runtime/')
+    // The prompt guides relative writes to the working directory rather than a guessed absolute path.
+    expect(NOTEBOOK_SYSTEM_PROMPT_APPEND).toContain('writable session workspace')
+    expect(NOTEBOOK_SYSTEM_PROMPT_APPEND).toContain('plain relative paths')
+    expect(NOTEBOOK_SYSTEM_PROMPT_APPEND).not.toContain(
+      '~/.purescience/notebooks/default-project/<sessionId>/'
+    )
+    expect(NOTEBOOK_SYSTEM_PROMPT_APPEND).toContain('workingFiles')
+    expect(NOTEBOOK_SYSTEM_PROMPT_APPEND).toContain(
+      'The notebook runtime does not classify files for you'
+    )
+    expect(NOTEBOOK_SYSTEM_PROMPT_APPEND).toContain('write_artifact_file')
+    expect(NOTEBOOK_SYSTEM_PROMPT_APPEND).toContain('purescience-artifacts')
+    expect(NOTEBOOK_SYSTEM_PROMPT_APPEND).not.toContain(
+      '`purescience-artifacts.write_artifact_file`'
+    )
+    expect(NOTEBOOK_SYSTEM_PROMPT_APPEND).toContain('"kind": "localPath"')
+    expect(NOTEBOOK_SYSTEM_PROMPT_APPEND).not.toContain(
+      'for binary final outputs, read base64 content'
+    )
+    // write_artifact_file now resolves a relative name against the notebook data dir, so the guidance
+    // must steer the model to the saved relative filename — not to a rebuilt absolute path. Guard the
+    // old "use an ABSOLUTE path" / "will not resolve a bare relative name" wording from regressing.
+    expect(NOTEBOOK_SYSTEM_PROMPT_APPEND).toContain('the SAME relative filename you saved with')
+    expect(NOTEBOOK_SYSTEM_PROMPT_APPEND).toContain(
+      'producerRunId` set to the exact `runId` returned by the execution'
+    )
+    expect(NOTEBOOK_SYSTEM_PROMPT_APPEND).not.toContain('use an ABSOLUTE path')
+    expect(NOTEBOOK_SYSTEM_PROMPT_APPEND).not.toContain('will not resolve a bare relative name')
+  })
+
+  it('does not inject a 4000-character output instruction into agent guidance', () => {
+    const agentGuidance = [
+      NOTEBOOK_SYSTEM_PROMPT_APPEND,
+      ...NOTEBOOK_RPC_TOOLS.map((tool) => tool.description)
+    ].join('\n')
+
+    expect(agentGuidance).not.toMatch(/\b4,?000\b/)
+    expect(REPL_EXECUTE_DOC).toContain('hand off large data from the REPL to Python/R')
+    expect(REPL_EXECUTE_DOC).toContain('Python/R reads the same PURESCIENCE_HANDOFF_DIR path')
+    expect(REPL_EXECUTE_DOC).not.toContain('Do not echo large data')
+  })
+
+  it('directs the agent to run code as one notebook_execute call per cell', () => {
+    // The single-step execute tool keeps each cell to one permission prompt and one activity row,
+    // instead of the old begin/append/finish/run streaming sequence.
+    expect(NOTEBOOK_SYSTEM_PROMPT_APPEND).toContain('notebook_execute')
+    expect(NOTEBOOK_SYSTEM_PROMPT_APPEND).not.toContain('append code deltas')
+    expect(NOTEBOOK_SYSTEM_PROMPT_APPEND).not.toContain('finish the cell')
+    const executeTool = NOTEBOOK_RPC_TOOLS.find((entry) => entry.name === 'notebook_execute')
+    expect(executeTool?.description).toContain('producerRunId')
+  })
+
+  it('exposes only the single-step execute tool for writing and running code', () => {
+    const toolNames = NOTEBOOK_RPC_TOOLS.map((tool) => tool.name)
+
+    expect(toolNames).toContain('notebook_execute')
+    expect(toolNames).not.toContain('notebook_begin_code_cell')
+    expect(toolNames).not.toContain('notebook_append_code_cell')
+    expect(toolNames).not.toContain('notebook_finish_code_cell')
+    expect(toolNames).not.toContain('notebook_run_cell')
+  })
+
+  it('exposes manage_environments and explains named environments are separate namespaces', () => {
+    const toolNames = NOTEBOOK_RPC_TOOLS.map((tool) => tool.name)
+    expect(toolNames).toContain('manage_environments')
+
+    expect(NOTEBOOK_SYSTEM_PROMPT_APPEND).toContain('manage_environments')
+    expect(NOTEBOOK_SYSTEM_PROMPT_APPEND).toContain('process.env.PURESCIENCE_HANDOFF_DIR')
+    expect(NOTEBOOK_SYSTEM_PROMPT_APPEND).not.toContain('./handoff/')
+    expect(NOTEBOOK_SYSTEM_PROMPT_APPEND.toLowerCase()).toContain('separate')
+  })
+})
+
+describe('notebook_execute tool', () => {
+  const tool = NOTEBOOK_RPC_TOOLS.find((entry) => entry.name === 'notebook_execute')
+
+  it('accepts an optional language enum defaulting to python when omitted', () => {
+    expect(tool).toBeDefined()
+    const schema = z.object(tool?.inputSchema ?? {})
+
+    // Omitted language must still validate — python is the implicit default.
+    expect(schema.parse({ code: 'print(1)' })).toEqual({ code: 'print(1)' })
+    expect(schema.parse({ code: '1 + 1', language: 'r' })).toEqual({
+      code: '1 + 1',
+      language: 'r'
+    })
+    expect(() => schema.parse({ code: 'x', language: 'julia' })).toThrow()
+  })
+
+  it('has no per-call environment param — the env is the session-bound runtime (v4)', () => {
+    expect(tool).toBeDefined()
+    // The env is the session's bound runtime (notebook_bind_runtime), not a per-call argument, so the
+    // schema has no `environment` key and strips it if passed.
+    expect(Object.keys(tool?.inputSchema ?? {})).not.toContain('environment')
+    const schema = z.object(tool?.inputSchema ?? {})
+    expect(schema.parse({ code: 'print(1)', environment: 'my-analysis' })).toEqual({
+      code: 'print(1)'
+    })
+  })
+
+  it('forwards the selected language straight through to the execute RPC call', async () => {
+    const environment = {
+      endpoint: 'http://127.0.0.1:4567',
+      token: 'secret-token',
+      projectName: 'default-project',
+      sessionId: 'session-1',
+      workspaceCwd: '/workspace'
+    }
+    // The MCP tool handler passes schema-validated input straight to callNotebookRpc as the
+    // RPC params, so asserting the call helper forwards `language` covers the handler wiring.
+    const fetchCalls: Array<{ body: string }> = []
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = (async (_url: unknown, init?: RequestInit) => {
+      fetchCalls.push({ body: String(init?.body ?? '') })
+      return {
+        ok: true,
+        json: async () => ({ result: { ok: true } })
+      } as Response
+    }) as typeof fetch
+
+    try {
+      const result = await callNotebookRpc(environment, 'execute', {
+        code: '1 + 1',
+        language: 'r'
+      })
+
+      expect(result).toEqual({ ok: true })
+      expect(fetchCalls).toHaveLength(1)
+      const sentBody = JSON.parse(fetchCalls[0].body) as { params: { language?: string } }
+      expect(sentBody.params.language).toBe('r')
+    } finally {
+      globalThis.fetch = originalFetch
+    }
+  })
+})
+
+describe('repl_execute tool', () => {
+  const tool = NOTEBOOK_RPC_TOOLS.find((entry) => entry.name === 'repl_execute')
+
+  it('registers repl_execute backed by the executeControl RPC method with a code/timeoutMs schema', () => {
+    expect(tool).toBeDefined()
+    expect(tool?.method).toBe('executeControl')
+
+    const schema = z.object(tool?.inputSchema ?? {})
+    expect(schema.parse({ code: 'return 1' })).toEqual({ code: 'return 1' })
+    expect(schema.parse({ code: 'return 1', timeoutMs: 5000 })).toEqual({
+      code: 'return 1',
+      timeoutMs: 5000
+    })
+    expect(() => schema.parse({})).toThrow()
+    // The control-plane repl takes no language/cellId — it is distinct from notebook_execute.
+    expect(Object.keys(tool?.inputSchema ?? {})).toEqual(['code', 'timeoutMs'])
+  })
+
+  it('describes the control-plane repl (host.mcp + handoff) distinctly from notebook_execute', () => {
+    expect(tool?.description).toBe(REPL_EXECUTE_DOC)
+    expect(tool?.description).toContain('host.mcp')
+    // host.compute (remote compute) is only reachable here too, same as host.mcp.
+    expect(tool?.description).toContain('host.compute')
+    expect(tool?.description).toContain('process.env.PURESCIENCE_HANDOFF_DIR')
+    expect(tool?.description).not.toContain('./handoff/')
+    expect(tool?.description.toLowerCase()).toContain('connector')
+    expect(tool?.description).toContain('notebook_execute')
+  })
+
+  it('forwards repl_execute input to the executeControl RPC method', async () => {
+    const environment = {
+      endpoint: 'http://127.0.0.1:4567',
+      token: 'secret-token',
+      projectName: 'default-project',
+      sessionId: 'session-1',
+      workspaceCwd: '/workspace'
+    }
+    const fetchCalls: Array<{ body: string }> = []
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = (async (_url: unknown, init?: RequestInit) => {
+      fetchCalls.push({ body: String(init?.body ?? '') })
+      return {
+        ok: true,
+        json: async () => ({ result: { status: 'completed' } })
+      } as Response
+    }) as typeof fetch
+
+    try {
+      await callNotebookRpc(environment, tool?.method ?? '', { code: 'return 2' })
+
+      expect(fetchCalls).toHaveLength(1)
+      const body = JSON.parse(fetchCalls[0].body) as {
+        method: string
+        params: { code?: string }
+      }
+      expect(body.method).toBe('executeControl')
+      expect(body.params.code).toBe('return 2')
+    } finally {
+      globalThis.fetch = originalFetch
+    }
+  })
+})
+
+describe('bash_execute tool', () => {
+  const tool = NOTEBOOK_RPC_TOOLS.find((entry) => entry.name === 'bash_execute')
+
+  it('registers bash_execute backed by the executeShell RPC method with a command/timeoutMs schema', () => {
+    expect(tool).toBeDefined()
+    expect(tool?.method).toBe('executeShell')
+
+    const schema = z.object(tool?.inputSchema ?? {})
+    expect(schema.parse({ command: 'echo hi' })).toEqual({ command: 'echo hi' })
+    expect(schema.parse({ command: 'echo hi', timeoutMs: 5000 })).toEqual({
+      command: 'echo hi',
+      timeoutMs: 5000
+    })
+    expect(() => schema.parse({})).toThrow()
+    expect(Object.keys(tool?.inputSchema ?? {})).toEqual(['command', 'timeoutMs'])
+  })
+
+  it('describes the stateless per-call shell distinctly from the persistent kernels', () => {
+    expect(tool?.description).toBe(BASH_EXECUTE_DOC)
+    expect(tool?.description.toLowerCase()).toContain('stateless')
+    expect(tool?.description).toContain('fresh process')
+    expect(tool?.description.toLowerCase()).toContain('persist')
+  })
+
+  it('documents the actual Windows PowerShell dialect and keeps generated notebook files out of shell copies', () => {
+    const windowsDoc = buildShellExecuteDoc('win32')
+
+    expect(windowsDoc).toContain('Windows PowerShell')
+    expect(windowsDoc).not.toContain('`sh -c`')
+    expect(windowsDoc).toContain('$env:PURESCIENCE_HANDOFF_DIR')
+    expect(windowsDoc).not.toContain('./handoff/')
+    expect(windowsDoc).toContain('Windows PowerShell 5.1')
+    expect(windowsDoc).toContain('`&&` is unavailable')
+    expect(windowsDoc).toContain('cmdlet failure')
+    expect(windowsDoc).toContain('unhandled cmdlet failure')
+    expect(windowsDoc).toContain('native programs must emit UTF-8')
+    expect(windowsDoc).toContain('write_artifact_file')
+    expect(windowsDoc).toContain('Do NOT copy a generated notebook output into the workspace')
+    // Aligned with the relative-path artifact flow: point at the saved relative filename, not the
+    // old "generated file's absolute local path" wording.
+    expect(windowsDoc).toContain('same relative filename you saved with')
+    expect(windowsDoc).not.toContain("generated file's absolute local path")
+  })
+
+  it('forwards bash_execute input to the executeShell RPC method', async () => {
+    const environment = {
+      endpoint: 'http://127.0.0.1:4567',
+      token: 'secret-token',
+      projectName: 'default-project',
+      sessionId: 'session-1',
+      workspaceCwd: '/workspace'
+    }
+    const fetchCalls: Array<{ body: string }> = []
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = (async (_url: unknown, init?: RequestInit) => {
+      fetchCalls.push({ body: String(init?.body ?? '') })
+      return {
+        ok: true,
+        json: async () => ({ result: { stdout: 'hi\n', stderr: '', exitCode: 0 } })
+      } as Response
+    }) as typeof fetch
+
+    try {
+      await callNotebookRpc(environment, tool?.method ?? '', { command: 'echo hi' })
+
+      expect(fetchCalls).toHaveLength(1)
+      const body = JSON.parse(fetchCalls[0].body) as {
+        method: string
+        params: { command?: string }
+      }
+      expect(body.method).toBe('executeShell')
+      expect(body.params.command).toBe('echo hi')
+    } finally {
+      globalThis.fetch = originalFetch
+    }
+  })
+})
+
+describe('manage_packages tool', () => {
+  const tool = NOTEBOOK_RPC_TOOLS.find((entry) => entry.name === 'manage_packages')
+
+  it('registers manage_packages backed by the managePackages RPC method', () => {
+    expect(tool).toBeDefined()
+    expect(tool?.method).toBe('managePackages')
+    expect(tool?.mapResult).toBe(compactManagePackagesResult)
+    expect(Object.keys(tool?.inputSchema ?? {})).toEqual(
+      expect.arrayContaining(['language', 'packages', 'usePip', 'channels'])
+    )
+  })
+
+  it('has no per-call environment param — installs target the session-bound runtime (v4)', () => {
+    // The env is the session's bound runtime, not a per-call argument, so the schema has no
+    // `environment` key and strips it if passed.
+    expect(Object.keys(tool?.inputSchema ?? {})).not.toContain('environment')
+    const schema = z.object(tool?.inputSchema ?? {})
+    expect(
+      schema.parse({ language: 'python', packages: ['numpy'], environment: 'my-analysis' })
+    ).toEqual({ language: 'python', packages: ['numpy'] })
+  })
+
+  it('accepts an optional operation enum (install/uninstall) defaulting to install when omitted', () => {
+    const schema = z.object(tool?.inputSchema ?? {})
+
+    expect(
+      schema.parse({ language: 'python', packages: ['numpy'], operation: 'uninstall' })
+    ).toEqual({ language: 'python', packages: ['numpy'], operation: 'uninstall' })
+    // Omitted operation still validates — install is the implicit default.
+    expect(schema.parse({ language: 'python', packages: ['numpy'] })).toEqual({
+      language: 'python',
+      packages: ['numpy']
+    })
+    expect(() =>
+      schema.parse({ language: 'python', packages: ['numpy'], operation: 'purge' })
+    ).toThrow()
+  })
+
+  it('documents the uninstall operation on the same env', () => {
+    expect(MANAGE_PACKAGES_DOC).toContain('operation:"uninstall"')
+  })
+
+  it('embeds the install contract forbidding kernel-side and OS installers', () => {
+    const doc = MANAGE_PACKAGES_DOC
+    for (const phrase of [
+      '%pip',
+      '!pip',
+      'install.packages(',
+      'sudo',
+      'apt',
+      'brew',
+      'curl | bash',
+      'subprocess'
+    ]) {
+      expect(doc).toContain(phrase)
+    }
+    // Routing, restart, and the stop-and-report boundary are all stated.
+    expect(doc).toContain('language="python"')
+    expect(doc).toContain('language="r"')
+    expect(doc).toContain('notebook_restart')
+    expect(doc).toMatch(/report .*user|tell the user/i)
+  })
+
+  it('uses the contract doc as the tool description so the agent sees it', () => {
+    expect(tool?.description).toBe(MANAGE_PACKAGES_DOC)
+  })
+
+  it('points the notebook system prompt at manage_packages as the only install path', () => {
+    expect(NOTEBOOK_SYSTEM_PROMPT_APPEND).toContain('manage_packages')
+  })
+})
+
+describe('inspect_packages tool', () => {
+  const tool = NOTEBOOK_RPC_TOOLS.find((entry) => entry.name === 'inspect_packages')
+
+  it('registers a targeted read-only package query for the session-bound runtime', () => {
+    expect(tool).toBeDefined()
+    expect(tool?.method).toBe('inspectPackages')
+    expect(tool?.description).toBe(INSPECT_PACKAGES_DOC)
+    expect(tool?.description).toMatch(/external runtime.*notebook_execute/)
+    expect(Object.keys(tool?.inputSchema ?? {})).toEqual(['language', 'packages'])
+
+    const schema = z.object(tool?.inputSchema ?? {})
+    expect(schema.parse({ language: 'python', packages: ['numpy'] })).toEqual({
+      language: 'python',
+      packages: ['numpy']
+    })
+    expect(() => schema.parse({ language: 'python', packages: [] })).toThrow()
+    expect(schema.parse({ language: 'r', packages: ['dplyr'], environment: 'other' })).toEqual({
+      language: 'r',
+      packages: ['dplyr']
+    })
+  })
+
+  it('returns only actionable package status fields with a bounded item count', () => {
+    const packages = Array.from({ length: 80 }, (_, index) => ({
+      requested: `pkg-${index}`,
+      name: `pkg-${index}`,
+      status: 'installed',
+      version: '1.0.0',
+      versionStatus: 'known',
+      ecosystem: 'python',
+      evidenceSources: ['python-importlib-metadata'],
+      libraryRank: index
+    }))
+
+    const compact = compactInspectPackagesResult({
+      language: 'python',
+      environmentName: 'default-python',
+      runtimeSource: 'managed',
+      runtimeId: '/private/runtime/python',
+      runtimeLabel: 'Managed Python',
+      inventory: { capturedAt: 'now', source: 'full-scan', validation: 'full-scan' },
+      packages,
+      warnings: ['x'.repeat(10_000)]
+    }) as Record<string, unknown>
+
+    expect(compact).not.toHaveProperty('runtimeId')
+    expect(compact.packages as unknown[]).toHaveLength(50)
+    expect(compact).toHaveProperty('omittedPackageCount', 30)
+    expect(JSON.stringify(compact)).not.toContain('evidenceSources')
+    expect(JSON.stringify(compact)).not.toContain('libraryRank')
+    expect(JSON.stringify(compact)).not.toContain('full output in notebook preview')
+    expect(JSON.stringify(compact)).toContain('omitted from this tool response')
+    expect(JSON.stringify(compact).length).toBeLessThanOrEqual(NOTEBOOK_MCP_CONTROL_RESULT_LIMIT)
+  })
+})
+
+describe('compactManagePackagesResult', () => {
+  it('keeps the package outcome while omitting verbose installer diagnostics', () => {
+    const compact = compactManagePackagesResult({
+      ok: true,
+      needsRestart: true,
+      method: 'conda',
+      prefix: '/runtime/envs/default-r',
+      fallbackUsed: false,
+      packageChanges: [
+        {
+          name: 'dplyr',
+          ecosystem: 'r',
+          relationship: 'requested',
+          change: 'unchanged',
+          beforeVersion: '1.1.4',
+          afterVersion: '1.1.4'
+        }
+      ],
+      log: JSON.stringify({
+        actions: {
+          FETCH: [{ name: 'r-dplyr', depends: Array.from({ length: 100 }, () => 'dependency') }],
+          LINK: [{ name: 'r-dplyr' }]
+        }
+      }),
+      attempts: [
+        {
+          groupOrdinal: 0,
+          installer: 'conda',
+          packages: ['r-dplyr'],
+          status: 'succeeded',
+          mutationRisk: 'confirmed'
+        }
+      ]
+    }) as Record<string, unknown>
+
+    expect(compact).toEqual({
+      ok: true,
+      needsRestart: true,
+      method: 'conda',
+      fallbackUsed: false,
+      packageChanges: [
+        {
+          name: 'dplyr',
+          ecosystem: 'r',
+          relationship: 'requested',
+          change: 'unchanged',
+          beforeVersion: '1.1.4',
+          afterVersion: '1.1.4'
+        }
+      ]
+    })
+    expect(JSON.stringify(compact)).not.toContain('FETCH')
+    expect(JSON.stringify(compact)).not.toContain('r-dplyr')
+  })
+
+  it('retains a concise failure reason and passes through non-object results', () => {
+    expect(
+      compactManagePackagesResult({
+        ok: false,
+        needsRestart: false,
+        log: 'very verbose diagnostics',
+        error: 'Package installation could not be verified: dplyr.'
+      })
+    ).toEqual({
+      ok: false,
+      needsRestart: false,
+      error: 'Package installation could not be verified: dplyr.'
+    })
+    expect(compactManagePackagesResult(null)).toBeNull()
+    expect(compactManagePackagesResult('x')).toBe('x')
+  })
+})
+
+describe('notebook control tool results', () => {
+  it('gives every notebook tool a purpose-specific projection and a global result budget', () => {
+    for (const tool of NOTEBOOK_RPC_TOOLS) {
+      expect(tool.mapResult, tool.name).toBeTypeOf('function')
+      expect(tool.resultLimitChars, tool.name).toBeGreaterThan(0)
+    }
+  })
+
+  it('pages selectable runtimes without making omitted runtime IDs undiscoverable', () => {
+    const compact = compactListRuntimesResult(
+      {
+        runtimes: Array.from({ length: 45 }, (_, index) => ({
+          language: 'python',
+          runtimeId: `managed-python-${index}`,
+          source: 'managed',
+          provenance: 'app-managed',
+          interpreterPath: '/private/runtime/bin/python',
+          label: `Managed Python ${index}`,
+          version: '3.13',
+          runnable: true,
+          bound: true
+        })),
+        bindings: {
+          python: {
+            language: 'python',
+            runtimeId: 'managed-python',
+            source: 'managed',
+            provenance: 'app-managed',
+            interpreterPath: '/private/runtime/bin/python',
+            label: 'Managed Python'
+          }
+        }
+      },
+      { offset: 40, limit: 5 }
+    ) as Record<string, unknown>
+
+    expect(compact).toMatchObject({ runtimeCount: 45, offset: 40 })
+    expect(compact.runtimes).toHaveLength(5)
+    expect(compact).not.toHaveProperty('nextOffset')
+    expect(JSON.stringify(compact)).toContain('managed-python-44')
+    expect(JSON.stringify(compact)).not.toContain('interpreterPath')
+    expect(JSON.stringify(compact)).not.toContain('/private/runtime')
+  })
+
+  it('projects bind, shutdown, and environment receipts to their next-step fields', () => {
+    expect(
+      compactRuntimeBindingResult({
+        bound: {
+          language: 'r',
+          runtimeId: 'managed-r',
+          source: 'managed',
+          provenance: 'app-managed',
+          interpreterPath: '/private/runtime/bin/R',
+          label: 'Managed R',
+          status: 'active'
+        },
+        bindings: { r: { interpreterPath: '/private/runtime/bin/R' } }
+      })
+    ).toEqual({
+      bound: {
+        language: 'r',
+        runtimeId: 'managed-r',
+        source: 'managed',
+        provenance: 'app-managed',
+        label: 'Managed R',
+        status: 'active'
+      }
+    })
+    expect(
+      compactShutdownResult({ sessionId: 'session-1', status: 'shutdown', cells: [] })
+    ).toEqual({
+      sessionId: 'session-1',
+      status: 'shutdown'
+    })
+    const environments = compactManageEnvironmentsResult(
+      {
+        environments: Array.from({ length: 40 }, (_, index) => ({
+          name: `env-${index}`,
+          language: 'python',
+          ready: true,
+          isDefault: false,
+          sizeBytes: 10,
+          internalPath: `/private/env-${index}`
+        }))
+      },
+      { offset: 30, limit: 10 }
+    ) as Record<string, unknown>
+    expect(environments).toMatchObject({ environmentCount: 40, offset: 30 })
+    expect(environments.environments).toHaveLength(10)
+    expect(environments).not.toHaveProperty('nextOffset')
+    expect(JSON.stringify(environments)).toContain('env-39')
+  })
+})
+
+describe('manage_environments tool', () => {
+  const tool = NOTEBOOK_RPC_TOOLS.find((entry) => entry.name === 'manage_environments')
+
+  it('registers manage_environments backed by the manageEnvironments RPC method', () => {
+    expect(tool).toBeDefined()
+    expect(tool?.method).toBe('manageEnvironments')
+    expect(Object.keys(tool?.inputSchema ?? {})).toEqual(
+      expect.arrayContaining(['action', 'language', 'name', 'packages', 'offset', 'limit'])
+    )
+  })
+
+  it('validates action enum and optional language/name/packages fields', () => {
+    const schema = z.object(tool?.inputSchema ?? {})
+
+    expect(
+      schema.parse({
+        action: 'create',
+        language: 'python',
+        name: 'my-analysis',
+        packages: ['numpy']
+      })
+    ).toEqual({
+      action: 'create',
+      language: 'python',
+      name: 'my-analysis',
+      packages: ['numpy']
+    })
+    expect(schema.parse({ action: 'list' })).toEqual({ action: 'list' })
+    expect(schema.parse({ action: 'remove', name: 'my-analysis' })).toEqual({
+      action: 'remove',
+      name: 'my-analysis'
+    })
+    expect(() => schema.parse({ action: 'destroy' })).toThrow()
+    expect(() => schema.parse({})).toThrow()
+  })
+
+  it('forwards manage_environments input to the manageEnvironments RPC method', async () => {
+    const environment = {
+      endpoint: 'http://127.0.0.1:4567',
+      token: 'secret-token',
+      projectName: 'default-project',
+      sessionId: 'session-1',
+      workspaceCwd: '/workspace'
+    }
+    const fetchCalls: Array<{ body: string }> = []
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = (async (_url: unknown, init?: RequestInit) => {
+      fetchCalls.push({ body: String(init?.body ?? '') })
+      return {
+        ok: true,
+        json: async () => ({ result: { environments: [] } })
+      } as Response
+    }) as typeof fetch
+
+    try {
+      await callNotebookRpc(environment, tool?.method ?? '', { action: 'list' })
+
+      expect(fetchCalls).toHaveLength(1)
+      const body = JSON.parse(fetchCalls[0].body) as { method: string; params: { action?: string } }
+      expect(body.method).toBe('manageEnvironments')
+      expect(body.params.action).toBe('list')
+    } finally {
+      globalThis.fetch = originalFetch
+    }
+  })
+
+  it('uses the contract doc as the manage_environments description', () => {
+    expect(tool?.description).toBe(MANAGE_ENVIRONMENTS_DOC)
+    expect(MANAGE_ENVIRONMENTS_DOC).toContain('action:"create"')
+    expect(MANAGE_ENVIRONMENTS_DOC).toContain('action:"list"')
+    expect(MANAGE_ENVIRONMENTS_DOC).toContain('action:"remove"')
+  })
+})
+
+describe('compactNotebookExecutionResult', () => {
+  const runSummary = (text: {
+    stdout?: string
+    stderr?: string
+    traceback?: string
+  }): Record<string, unknown> => ({
+    runId: 'notebook-run-1',
+    status: 'completed',
+    text: { stdout: '', stderr: '', traceback: '', plain: [], ...text },
+    outputs: [],
+    artifacts: [],
+    workingFiles: []
+  })
+
+  it('applies the compact projection and global budget to every execution tool', () => {
+    for (const name of ['notebook_execute', 'repl_execute', 'bash_execute']) {
+      const tool = NOTEBOOK_RPC_TOOLS.find((entry) => entry.name === name)
+      expect(tool?.mapResult).toBe(compactNotebookExecutionResult)
+      expect(tool?.resultLimitChars).toBe(NOTEBOOK_MCP_EXECUTION_RESULT_LIMIT)
+    }
+  })
+
+  it('keeps diagnostic streams once and removes duplicated structured stream outputs', () => {
+    const result = {
+      ...runSummary({ stdout: 'answer\n', stderr: 'warning\n' }),
+      script: 'print("answer")',
+      roots: { dataRoot: '/private/data' },
+      outputs: [
+        { type: 'stream', name: 'stdout', text: 'answer\n' },
+        { type: 'stream', name: 'stderr', text: 'warning\n' },
+        { type: 'display', data: { 'text/plain': '42' } }
+      ]
+    }
+
+    const compact = compactNotebookExecutionResult(result) as Record<string, unknown>
+
+    expect(compact).toMatchObject({ stdout: 'answer\n', stderr: 'warning\n' })
+    expect(compact).not.toHaveProperty('text')
+    expect(compact).not.toHaveProperty('script')
+    expect(compact).not.toHaveProperty('roots')
+    expect(compact.outputs).toEqual([{ type: 'display', data: { 'text/plain': '42' } }])
+  })
+
+  it('keeps a practical diagnostic stream inline for the next agent step', () => {
+    const stdout = 'x'.repeat(7_500)
+
+    const compact = compactNotebookExecutionResult(runSummary({ stdout })) as {
+      stdout: string
+      truncated?: boolean
+    }
+
+    expect(compact.stdout).toBe(stdout)
+    expect(compact.truncated).toBeUndefined()
+  })
+
+  it('keeps a practical connector trailing result inline', () => {
+    const text = 'x'.repeat(7_500)
+    const compact = compactNotebookExecutionResult({
+      ...runSummary({}),
+      outputs: [{ type: 'display', data: { 'text/plain': text } }]
+    }) as { outputs: Array<{ data: Record<string, string> }>; truncated?: boolean }
+
+    expect(compact.outputs[0].data['text/plain']).toBe(text)
+    expect(compact.truncated).toBeUndefined()
+  })
+
+  it('elides an image display output while preserving its notebook-preview marker', () => {
+    const base64 = 'A'.repeat(60_000)
+    const result = {
+      ...runSummary({ stdout: 'done' }),
+      outputs: [{ type: 'display', data: { 'image/png': base64, 'text/plain': 'small' } }]
+    }
+
+    const compact = compactNotebookExecutionResult(result) as {
+      outputs: { data: Record<string, string> }[]
+    }
+
+    expect(compact.outputs[0].data['image/png']).toContain('image/png')
+    expect(compact.outputs[0].data['image/png']).toContain('omitted')
+    expect(compact.outputs[0].data['image/png'].length).toBeLessThan(200)
+    expect(compact.outputs[0].data['text/plain']).toBe('small')
+    const serialized = JSON.stringify(compact)
+    expect(serialized.length).toBeLessThan(2_000)
+    expect(() => JSON.parse(serialized)).not.toThrow()
+    expect(result.outputs[0].data['image/png'].length).toBe(60_000)
+  })
+
+  it('applies a global execution-result budget to multiple large fields', () => {
+    const oversized = Array.from({ length: 100_000 }, (_, index) => `${index % 10}`).join('')
+    const result = {
+      status: 'completed',
+      environment: oversized,
+      stdout: oversized,
+      stderr: oversized,
+      traceback: oversized,
+      outputs: [
+        { type: 'stream', name: 'stdout', text: oversized },
+        { type: 'json', data: { value: oversized } }
+      ]
+    }
+
+    const serialized = serializeNotebookToolResult(
+      compactNotebookExecutionResult(result),
+      NOTEBOOK_MCP_EXECUTION_RESULT_LIMIT
+    )
+
+    expect(NOTEBOOK_MCP_EXECUTION_RESULT_LIMIT).toBe(24_000)
+    expect(serialized.length).toBeLessThanOrEqual(NOTEBOOK_MCP_EXECUTION_RESULT_LIMIT)
+    expect(tokenizer.encode(serialized).length).toBeLessThanOrEqual(8_000)
+    expect(JSON.parse(serialized)).toMatchObject({ status: 'completed', truncated: true })
+    expect(result.stdout.length).toBe(oversized.length)
+  })
+
+  it('passes through payloads that are neither run summaries nor state', () => {
+    expect(compactNotebookExecutionResult(null)).toBeNull()
+    expect(compactNotebookExecutionResult('plain')).toBe('plain')
+  })
+})
+
+describe('compactNotebookStateResult', () => {
+  it('applies the state projection and smaller global budget to notebook_state', () => {
+    const tool = NOTEBOOK_RPC_TOOLS.find((entry) => entry.name === 'notebook_state')
+    expect(tool?.mapResult).toBe(compactNotebookStateResult)
+    expect(tool?.resultLimitChars).toBe(NOTEBOOK_MCP_STATE_RESULT_LIMIT)
+  })
+
+  it('returns bounded recent metadata without duplicating the complete run history', () => {
+    const runs = Array.from({ length: 20 }, (_, index) => ({
+      runId: `run-${index}`,
+      cellId: `cell-${index}`,
+      kernelKind: 'python',
+      status: 'completed',
+      startedAt: index,
+      endedAt: index + 1,
+      script: 'print(1)'.repeat(10_000),
+      text: {
+        stdout: `output-${index}`.repeat(10_000),
+        stderr: '',
+        traceback: '',
+        plain: []
+      },
+      outputs: [{ type: 'stream', name: 'stdout', text: `output-${index}`.repeat(10_000) }]
+    }))
+    const state = {
+      sessionId: 'session-1',
+      kernelStatus: 'idle',
+      cwd: '/workspace',
+      dataRoot: '/workspace/data',
+      cells: [
+        { id: 'cell-19', language: 'python', code: 'x'.repeat(100_000), status: 'completed' }
+      ],
+      runs,
+      recentRuns: runs,
+      environments: [],
+      runtimeBindings: {}
+    }
+
+    const compact = compactNotebookStateResult(state) as Record<string, unknown>
+    const serialized = serializeNotebookToolResult(compact, NOTEBOOK_MCP_STATE_RESULT_LIMIT)
+    const parsed = JSON.parse(serialized) as Record<string, unknown>
+
+    expect(serialized.length).toBeLessThanOrEqual(NOTEBOOK_MCP_STATE_RESULT_LIMIT)
+    expect(tokenizer.encode(serialized).length).toBeLessThanOrEqual(2_000)
+    expect(parsed).not.toHaveProperty('runs')
+    expect(parsed).toHaveProperty('runCount', 20)
+    expect((parsed.recentRuns as unknown[]).length).toBe(10)
+    expect(serialized).not.toContain('print(1)')
+    expect(serialized).not.toContain('outputs')
+    expect(serialized).not.toContain('code')
+    expect(serialized).toContain('output-19')
+  })
+
+  it('keeps the latest successful text result available for recovery', () => {
+    const state = {
+      sessionId: 'session-1',
+      runs: [
+        {
+          runId: 'run-1',
+          status: 'completed',
+          text: { stdout: '', stderr: '', traceback: '', plain: [] },
+          outputs: [{ type: 'display', data: { 'text/plain': 'older result' } }]
+        },
+        {
+          runId: 'run-2',
+          status: 'completed',
+          text: { stdout: '', stderr: '', traceback: '', plain: [] },
+          outputs: [
+            {
+              type: 'display',
+              data: { 'text/plain': '{"total_count":42}', 'image/png': 'A'.repeat(60_000) }
+            }
+          ]
+        }
+      ]
+    }
+
+    const compact = compactNotebookStateResult(state) as {
+      recentRuns: Array<Record<string, unknown>>
+    }
+
+    expect(compact.recentRuns[0]).not.toHaveProperty('outputPreview')
+    expect(compact.recentRuns[1]).toHaveProperty('outputPreview', '{"total_count":42}')
+    expect(JSON.stringify(compact)).not.toContain('image/png')
+  })
+
+  it('passes through non-object state results', () => {
+    expect(compactNotebookStateResult(null)).toBeNull()
+    expect(compactNotebookStateResult('plain')).toBe('plain')
+  })
+
+  it('enforces the state budget when runtime metadata is unexpectedly large', () => {
+    const state = compactNotebookStateResult({
+      sessionId: 'session-1',
+      kernelStatus: 'idle',
+      cells: [],
+      runs: [],
+      recentRuns: [],
+      runtimeBindings: { python: { runtimeId: 'x'.repeat(100_000) } }
+    })
+    const serialized = serializeNotebookToolResult(state, NOTEBOOK_MCP_STATE_RESULT_LIMIT)
+
+    expect(serialized.length).toBeLessThanOrEqual(NOTEBOOK_MCP_STATE_RESULT_LIMIT)
+    expect(tokenizer.encode(serialized).length).toBeLessThanOrEqual(2_000)
+    expect(JSON.parse(serialized)).toMatchObject({
+      sessionId: 'session-1',
+      kernelStatus: 'idle',
+      truncated: true
+    })
+  })
+})
+
+describe('compactRestartResult', () => {
+  it('reduces a full session state to a compact restart confirmation', () => {
+    const state = {
+      sessionId: 's1',
+      kernelStatus: 'idle',
+      cells: [{ id: 'c1' }, { id: 'c2' }],
+      runs: [{ runId: 'r1', script: 'x'.repeat(5000) }],
+      recentRuns: [{ runId: 'r1' }]
+    }
+
+    const compact = compactRestartResult(state) as Record<string, unknown>
+
+    expect(compact.sessionId).toBe('s1')
+    expect(compact.kernelStatus).toBe('idle')
+    expect(compact.status).toBe('restarted')
+    expect(compact.cells).toBe(2)
+    expect(String(compact.note)).toContain('restarted')
+    // The verbose run history is NOT carried into the agent-facing restart result.
+    const serialized = JSON.stringify(compact)
+    expect(serialized).not.toContain('runs')
+    expect(serialized).not.toContain('script')
+    expect(serialized.length).toBeLessThan(400)
+  })
+
+  it('passes through a non-object restart result unchanged', () => {
+    expect(compactRestartResult(null)).toBeNull()
+    expect(compactRestartResult('x')).toBe('x')
+  })
+})
