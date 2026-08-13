@@ -1,0 +1,1417 @@
+import { describe, expect, it, vi } from 'vitest'
+
+import { SETTINGS_FILE_VERSION } from '../../shared/settings'
+import type { AgentConfigFile, AgentFrameworkId } from '../agent-framework'
+import { opencodeTransportProviderId } from '../agent-framework/opencode'
+import type { ResolvedProvider } from './provider-env'
+import type { ProviderRuntimeTarget, RuntimeProviderModelSelection } from './provider-accounts'
+import type { StoredProvider, StoredSettings } from './types'
+import {
+  AgentBackendResolver,
+  type AgentBackendConnectorPort,
+  type AgentBackendProviderPort,
+  type AgentBackendResolverOptions,
+  type AgentBackendRuntimePort
+} from './backend-resolver'
+
+type ResponsesBridgeFactory = NonNullable<AgentBackendResolverOptions['createResponsesBridge']>
+type ResponsesBridgeDouble = ReturnType<ResponsesBridgeFactory>
+type NativeResponsesProxyFactory = NonNullable<
+  AgentBackendResolverOptions['createNativeResponsesProxy']
+>
+type NativeResponsesProxyDouble = ReturnType<NativeResponsesProxyFactory>
+type AnthropicProviderBridgeFactory = NonNullable<
+  AgentBackendResolverOptions['createAnthropicProviderBridge']
+>
+type AnthropicProviderBridgeDouble = ReturnType<AnthropicProviderBridgeFactory>
+type OpenAiProviderBridgeFactory = NonNullable<
+  AgentBackendResolverOptions['createOpenAiProviderBridge']
+>
+type OpenAiProviderBridgeDouble = ReturnType<OpenAiProviderBridgeFactory>
+type ResolveRuntimeTarget = AgentBackendProviderPort['resolveRuntimeTarget']
+type ResolveRuntimeModelCatalog = AgentBackendProviderPort['resolveRuntimeModelCatalog']
+type TargetOverride = Omit<Partial<ProviderRuntimeTarget>, 'provider'> & {
+  provider?: Partial<ResolvedProvider>
+}
+
+const makeStoredProvider = (
+  id: string,
+  model = `${id}-default`,
+  keyRef = `${id}-key-ref`
+): StoredProvider => ({
+  id,
+  type: 'custom',
+  name: id,
+  apiEndpoints: ['anthropic', 'openai', 'responses'],
+  baseUrl: 'https://gateway.example/v1',
+  model,
+  keyRef
+})
+
+const makeSettings = (overrides: Partial<StoredSettings> = {}): StoredSettings => {
+  const provider = makeStoredProvider('provider-a', 'model-a')
+  return {
+    version: SETTINGS_FILE_VERSION,
+    providers: [provider],
+    activeProviderId: provider.id,
+    activeModel: provider.model,
+    agentFrameworkId: 'claude-code',
+    reasoningEffort: 'high',
+    ...overrides
+  }
+}
+
+const effectiveModelFor = (
+  provider: StoredProvider,
+  selection: RuntimeProviderModelSelection
+): string => {
+  if (selection.kind === 'required') return selection.model
+  if (selection.kind === 'configured' && selection.requestedModel) {
+    return selection.requestedModel
+  }
+  return provider.model ?? 'provider-default-model'
+}
+
+const makeResponsesBridgeDouble = (
+  options: {
+    startError?: Error
+    closeError?: Error
+  } = {}
+): ResponsesBridgeDouble => ({
+  start: vi.fn(async () => {
+    if (options.startError) throw options.startError
+    return { baseUrl: 'http://127.0.0.1:41001/v1', token: 'bridge-token' }
+  }),
+  close: vi.fn(async () => {
+    if (options.closeError) throw options.closeError
+  }),
+  selectSkills: vi.fn(async () => []),
+  registerReviewerSession: vi.fn(),
+  unregisterReviewerSession: vi.fn(() => false),
+  registerToolLessSession: vi.fn(),
+  unregisterToolLessSession: vi.fn(() => false),
+  setTarget: vi.fn(),
+  setReasoningEffort: vi.fn(),
+  setModelTarget: vi.fn()
+})
+
+const makeNativeResponsesProxyDouble = (
+  options: {
+    startError?: Error
+    closeError?: Error
+  } = {}
+): NativeResponsesProxyDouble => ({
+  start: vi.fn(async () => {
+    if (options.startError) throw options.startError
+    return {
+      baseUrl: 'http://127.0.0.1:41002/v1',
+      token: 'proxy-token',
+      kind: 'responses-compatibility' as const
+    }
+  }),
+  close: vi.fn(async () => {
+    if (options.closeError) throw options.closeError
+  }),
+  selectSkills: vi.fn(async () => []),
+  registerReviewerSession: vi.fn(),
+  unregisterReviewerSession: vi.fn(() => false),
+  registerToolLessSession: vi.fn(),
+  unregisterToolLessSession: vi.fn(() => false),
+  setTarget: vi.fn(),
+  setModelTarget: vi.fn()
+})
+
+const makeAnthropicProviderBridgeDouble = (): AnthropicProviderBridgeDouble => ({
+  start: vi.fn(async () => ({
+    baseUrl: 'http://127.0.0.1:41003',
+    token: 'anthropic-bridge-token'
+  })),
+  close: vi.fn(async () => undefined),
+  setTarget: vi.fn(() => true)
+})
+
+const makeOpenAiProviderBridgeDouble = (index: number): OpenAiProviderBridgeDouble => ({
+  start: vi.fn(async () => ({
+    baseUrl: `http://127.0.0.1:${42000 + index}`,
+    token: `openai-bridge-token-${index}`
+  })),
+  close: vi.fn(async () => undefined),
+  setTarget: vi.fn(() => true)
+})
+
+type HarnessOptions = {
+  settings?: StoredSettings
+  frameworkOverride?: string
+  connectorIds?: string[]
+  connectorSkillNames?: string[]
+  rejectRequiredModels?: ReadonlySet<string>
+  targetOverride?: (
+    provider: StoredProvider,
+    selection: RuntimeProviderModelSelection,
+    frameworkId: AgentFrameworkId
+  ) => TargetOverride
+  responsesBridgeBuilder?: (index: number) => ResponsesBridgeDouble
+  nativeResponsesProxyBuilder?: (index: number) => NativeResponsesProxyDouble
+  anthropicProviderBridgeBuilder?: (index: number) => AnthropicProviderBridgeDouble
+  openAiProviderBridgeBuilder?: (index: number) => OpenAiProviderBridgeDouble
+  nextGenerationId?: () => string
+}
+
+// The inferred return preserves each Vitest mock's concrete call signature for assertions below.
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+const makeHarness = (options: HarnessOptions = {}) => {
+  let currentSettings = options.settings ?? makeSettings()
+  const readSettings = vi.fn(async () => currentSettings)
+  const readFrameworkOverride = vi.fn(() => options.frameworkOverride)
+  const ensureCodexSubscriptionHome = vi.fn(async () => undefined)
+  const nextGenerationId = vi.fn(options.nextGenerationId ?? (() => 'generation'))
+
+  const resolveRuntimeTarget = vi.fn(
+    (
+      storedProvider: Parameters<ResolveRuntimeTarget>[0],
+      selection: Parameters<ResolveRuntimeTarget>[1],
+      framework: Parameters<ResolveRuntimeTarget>[2]
+    ): ProviderRuntimeTarget => {
+      if (selection.kind === 'required' && options.rejectRequiredModels?.has(selection.model)) {
+        throw new Error(`required model unavailable: ${selection.model}`)
+      }
+
+      const effectiveModel = effectiveModelFor(storedProvider, selection)
+      const provider: ResolvedProvider = {
+        type: storedProvider.type,
+        baseUrl: storedProvider.baseUrl ?? 'https://gateway.example/v1',
+        openaiBaseUrl: storedProvider.baseUrl ?? 'https://gateway.example/v1',
+        model: effectiveModel,
+        contextWindow: 128_000,
+        apiEndpoints: ['anthropic', 'openai', 'responses'],
+        ...(storedProvider.keyRef ? { key: `plain:${storedProvider.keyRef}` } : {})
+      }
+      const override = options.targetOverride?.(storedProvider, selection, framework.id)
+      const { provider: providerOverride, ...targetOverride } = override ?? {}
+      return {
+        providerId: storedProvider.id,
+        providerType: storedProvider.type,
+        effectiveModel,
+        apiEndpoints: ['anthropic', 'openai', 'responses'],
+        provider: { ...provider, ...providerOverride },
+        reasoningEffortProfile: {
+          supported: true,
+          slots: ['low', 'medium', 'high', 'xhigh', 'max']
+        },
+        frameworkCompatible: true,
+        modelBridgeSupported: true,
+        needsChatResponsesBridge: false,
+        needsNativeResponsesCompatibility: false,
+        ...targetOverride
+      }
+    }
+  )
+  const resolveRuntimeReasoningEffortProfile = vi.fn(() => ({
+    supported: true as const,
+    slots: ['low', 'medium', 'high', 'xhigh', 'max'] as const
+  }))
+  const resolveRuntimeModelCatalog = vi.fn(
+    (
+      storedProvider: Parameters<ResolveRuntimeModelCatalog>[0],
+      framework: Parameters<ResolveRuntimeModelCatalog>[1]
+    ): ProviderRuntimeTarget[] => {
+      void storedProvider
+      void framework
+      return []
+    }
+  )
+  const providers: AgentBackendProviderPort = {
+    resolveRuntimeTarget,
+    resolveRuntimeModelCatalog,
+    resolveRuntimeReasoningEffortProfile
+  }
+
+  const runtime = {
+    resolveClaudeExecutable: vi.fn(async () => '/runtime/claude'),
+    resolveOpencodeExecutable: vi.fn(async () => '/runtime/opencode'),
+    resolveCodexExecutable: vi.fn(async () => '/runtime/codex-acp'),
+    probeCodexNativeVersion: vi.fn(async () => '0.144.6'),
+    provisionClaudeRuntimeConfig: vi.fn(async () => '/storage/claude-config'),
+    materializeAgentSkills: vi.fn(async () => undefined),
+    materializeAgentConfigFiles: vi.fn(async (files?: AgentConfigFile[]) => {
+      void files
+    }),
+    reserveOpenCodeUsagePort: vi.fn(async () => 42_424),
+    resolveCodexProxyEnvironment: vi.fn(async () => undefined)
+  } satisfies AgentBackendRuntimePort
+  const connectors = {
+    enabledConnectorIds: vi.fn(() => options.connectorIds ?? []),
+    provisionedConnectorSkillNames: vi.fn(async () => options.connectorSkillNames ?? [])
+  } satisfies AgentBackendConnectorPort
+
+  const responsesBridges: ResponsesBridgeDouble[] = []
+  const createResponsesBridge = vi.fn((): ResponsesBridgeDouble => {
+    const bridge =
+      options.responsesBridgeBuilder?.(responsesBridges.length) ?? makeResponsesBridgeDouble()
+    responsesBridges.push(bridge)
+    return bridge
+  })
+  const nativeResponsesProxies: NativeResponsesProxyDouble[] = []
+  const createNativeResponsesProxy = vi.fn((): NativeResponsesProxyDouble => {
+    const proxy =
+      options.nativeResponsesProxyBuilder?.(nativeResponsesProxies.length) ??
+      makeNativeResponsesProxyDouble()
+    nativeResponsesProxies.push(proxy)
+    return proxy
+  })
+  const anthropicProviderBridges: AnthropicProviderBridgeDouble[] = []
+  const createAnthropicProviderBridge = vi.fn((): AnthropicProviderBridgeDouble => {
+    const bridge =
+      options.anthropicProviderBridgeBuilder?.(anthropicProviderBridges.length) ??
+      makeAnthropicProviderBridgeDouble()
+    anthropicProviderBridges.push(bridge)
+    return bridge
+  })
+  const openAiProviderBridges: OpenAiProviderBridgeDouble[] = []
+  const createOpenAiProviderBridge = vi.fn((): OpenAiProviderBridgeDouble => {
+    const bridge =
+      options.openAiProviderBridgeBuilder?.(openAiProviderBridges.length) ??
+      makeOpenAiProviderBridgeDouble(openAiProviderBridges.length)
+    openAiProviderBridges.push(bridge)
+    return bridge
+  })
+
+  const resolver = new AgentBackendResolver({
+    readSettings,
+    providers,
+    runtime,
+    connectors,
+    storageRoot: '/storage',
+    userClaudeDir: '/user/.claude',
+    readFrameworkOverride,
+    createResponsesBridge,
+    createNativeResponsesProxy,
+    createAnthropicProviderBridge,
+    createOpenAiProviderBridge,
+    ensureCodexSubscriptionHome,
+    nextGenerationId
+  })
+
+  return {
+    resolver,
+    readSettings,
+    readFrameworkOverride,
+    ensureCodexSubscriptionHome,
+    nextGenerationId,
+    resolveRuntimeTarget,
+    resolveRuntimeModelCatalog,
+    resolveRuntimeReasoningEffortProfile,
+    runtime,
+    connectors,
+    createResponsesBridge,
+    createNativeResponsesProxy,
+    createAnthropicProviderBridge,
+    createOpenAiProviderBridge,
+    responsesBridges,
+    nativeResponsesProxies,
+    anthropicProviderBridges,
+    openAiProviderBridges,
+    getSettings: () => currentSettings,
+    setSettings: (settings: StoredSettings) => {
+      currentSettings = settings
+    }
+  }
+}
+
+const expectRuntimeNotStarted = (runtime: ReturnType<typeof makeHarness>['runtime']): void => {
+  expect(runtime.resolveClaudeExecutable).not.toHaveBeenCalled()
+  expect(runtime.resolveOpencodeExecutable).not.toHaveBeenCalled()
+  expect(runtime.resolveCodexExecutable).not.toHaveBeenCalled()
+  expect(runtime.probeCodexNativeVersion).not.toHaveBeenCalled()
+  expect(runtime.provisionClaudeRuntimeConfig).not.toHaveBeenCalled()
+  expect(runtime.materializeAgentSkills).not.toHaveBeenCalled()
+  expect(runtime.materializeAgentConfigFiles).not.toHaveBeenCalled()
+  expect(runtime.reserveOpenCodeUsagePort).not.toHaveBeenCalled()
+  expect(runtime.resolveCodexProxyEnvironment).not.toHaveBeenCalled()
+}
+
+describe('AgentBackendResolver construction and selection', () => {
+  it('constructs without side effects and captures a secret-free framework selection', async () => {
+    const harness = makeHarness({
+      settings: makeSettings({ agentFrameworkId: 'codex' })
+    })
+
+    expect(harness.readSettings).not.toHaveBeenCalled()
+    expect(harness.readFrameworkOverride).not.toHaveBeenCalled()
+    expect(harness.resolveRuntimeTarget).not.toHaveBeenCalled()
+    expect(harness.resolveRuntimeReasoningEffortProfile).not.toHaveBeenCalled()
+    expect(harness.connectors.enabledConnectorIds).not.toHaveBeenCalled()
+    expect(harness.connectors.provisionedConnectorSkillNames).not.toHaveBeenCalled()
+    expect(harness.createResponsesBridge).not.toHaveBeenCalled()
+    expect(harness.createNativeResponsesProxy).not.toHaveBeenCalled()
+    expect(harness.createAnthropicProviderBridge).not.toHaveBeenCalled()
+    expect(harness.ensureCodexSubscriptionHome).not.toHaveBeenCalled()
+    expect(harness.nextGenerationId).not.toHaveBeenCalled()
+    expectRuntimeNotStarted(harness.runtime)
+
+    const selection = await harness.resolver.captureConfiguredSelection()
+
+    expect(selection).toEqual({ frameworkId: 'codex' })
+    expect(Object.keys(selection)).toEqual(['frameworkId'])
+    expect(JSON.stringify(selection)).not.toContain('key')
+    expect(harness.resolveRuntimeTarget).not.toHaveBeenCalled()
+    expect(harness.resolveRuntimeReasoningEffortProfile).not.toHaveBeenCalled()
+    expectRuntimeNotStarted(harness.runtime)
+  })
+
+  it('projects reasoning capability without resolving a secret-bearing runtime target', async () => {
+    const harness = makeHarness()
+
+    await expect(harness.resolver.resolveActiveReasoningEffort('max')).resolves.toBe('max')
+
+    expect(harness.resolveRuntimeReasoningEffortProfile).toHaveBeenCalledWith(
+      harness.getSettings().providers[0],
+      'model-a'
+    )
+    expect(harness.resolveRuntimeTarget).not.toHaveBeenCalled()
+    expectRuntimeNotStarted(harness.runtime)
+  })
+})
+
+describe('AgentBackendResolver configured and explicit targets', () => {
+  it('captures the click-time provider, model, framework, and effort as one explicit target', async () => {
+    const harness = makeHarness({
+      settings: makeSettings({ agentFrameworkId: 'codex', reasoningEffort: 'max' })
+    })
+
+    await expect(harness.resolver.captureExplicitTarget()).resolves.toEqual({
+      frameworkId: 'codex',
+      providerId: 'provider-a',
+      model: { kind: 'required', id: 'model-a' },
+      reasoningEffort: 'max'
+    })
+    expect(harness.resolveRuntimeTarget).not.toHaveBeenCalled()
+    expectRuntimeNotStarted(harness.runtime)
+  })
+
+  it('forces direct API-key Codex Responses through the existing compatibility proxy', async () => {
+    const harness = makeHarness({
+      settings: makeSettings({ agentFrameworkId: 'codex' }),
+      targetOverride: () => ({
+        apiEndpoints: ['responses'],
+        needsChatResponsesBridge: false,
+        needsNativeResponsesCompatibility: false,
+        provider: { apiEndpoints: ['responses'] }
+      })
+    })
+
+    const backend = await harness.resolver.resolveExplicitTarget(
+      {
+        frameworkId: 'codex',
+        providerId: 'provider-a',
+        model: { kind: 'required', id: 'model-a' },
+        reasoningEffort: 'high'
+      },
+      { forceCodexNativeResponsesCompatibility: true }
+    )
+
+    expect(backend.modelRoute).toBe('codex-responses-compatibility')
+    expect(harness.createNativeResponsesProxy).toHaveBeenCalledOnce()
+    expect(harness.createResponsesBridge).not.toHaveBeenCalled()
+    expect(backend.responsesBridgeLease).toBeDefined()
+    await backend.responsesBridgeLease?.release()
+  })
+
+  it('fails closed for Codex subscription reconstruction before starting a runtime', async () => {
+    const provider: StoredProvider = {
+      id: 'builtin-codex-subscription',
+      type: 'codex-isolated',
+      codexAuthMode: 'isolated',
+      name: 'Codex subscription',
+      model: 'gpt-5.4'
+    }
+    const harness = makeHarness({
+      settings: makeSettings({
+        providers: [provider],
+        activeProviderId: provider.id,
+        activeModel: provider.model,
+        agentFrameworkId: 'codex'
+      }),
+      targetOverride: () => ({
+        apiEndpoints: ['responses'],
+        provider: { apiEndpoints: ['responses'] }
+      })
+    })
+
+    await expect(
+      harness.resolver.resolveExplicitTarget(
+        {
+          frameworkId: 'codex',
+          providerId: provider.id,
+          model: { kind: 'required', id: 'gpt-5.4' },
+          reasoningEffort: 'high'
+        },
+        { forceCodexNativeResponsesCompatibility: true }
+      )
+    ).rejects.toThrow('unavailable with Codex subscription authentication')
+    expect(harness.createNativeResponsesProxy).not.toHaveBeenCalled()
+    expectRuntimeNotStarted(harness.runtime)
+  })
+
+  it('registers third-party Claude model ids through canonical override lanes', async () => {
+    const provider: StoredProvider = {
+      ...makeStoredProvider('provider-a', 'third-party/model-a'),
+      type: 'official',
+      vendorId: 'deepseek',
+      fetchedModels: ['third-party/model-a', 'third-party/model-b']
+    }
+    const harness = makeHarness({
+      settings: makeSettings({
+        providers: [provider],
+        activeProviderId: provider.id,
+        activeModel: provider.model,
+        agentFrameworkId: 'claude-code'
+      }),
+      targetOverride: () => ({
+        apiEndpoints: ['anthropic'],
+        provider: { type: 'custom', apiEndpoints: ['anthropic'], vendorId: 'deepseek' }
+      })
+    })
+    harness.resolveRuntimeModelCatalog.mockImplementation((storedProvider, framework) =>
+      ['third-party/model-a', 'third-party/model-b'].map((model) =>
+        harness.resolveRuntimeTarget(storedProvider, { kind: 'required', model }, framework)
+      )
+    )
+
+    const backend = await harness.resolver.resolveActiveBackend()
+    const modelConfig = (backend.sessionOptions as { settings?: unknown })?.settings
+
+    expect(modelConfig).toMatchObject({
+      availableModels: ['third-party/model-a', 'third-party/model-b'],
+      modelOverrides: {
+        'third-party/model-a': 'third-party/model-a',
+        'third-party/model-b': 'third-party/model-b'
+      }
+    })
+    expect(harness.runtime.provisionClaudeRuntimeConfig).toHaveBeenCalledWith(
+      harness.getSettings(),
+      new Set(),
+      {
+        availableModels: ['third-party/model-a', 'third-party/model-b'],
+        modelOverrides: {
+          'third-party/model-a': 'third-party/model-a',
+          'third-party/model-b': 'third-party/model-b'
+        }
+      }
+    )
+    expect(JSON.stringify(modelConfig)).not.toContain('plain:key-a')
+  })
+
+  it('leaves application prompt appends to the Claude session presentation owner', async () => {
+    const harness = makeHarness()
+
+    const backend = await harness.resolver.resolveExplicitTarget(
+      {
+        frameworkId: 'claude-code',
+        providerId: 'provider-a',
+        model: { kind: 'required', id: 'model-a' },
+        reasoningEffort: 'high'
+      },
+      { systemPromptAppends: ['Stable PureScience app guidance.'] }
+    )
+
+    expect(backend.systemPromptAppends).toBeUndefined()
+    await backend.anthropicBridgeLease?.release()
+  })
+
+  it('omits an Anthropic bridge target when the active generation has no bridge', async () => {
+    const harness = makeHarness()
+    const backend = await harness.resolver.resolveActiveBackend()
+
+    expect(backend.anthropicBridgeLease).toBeUndefined()
+    expect(harness.createAnthropicProviderBridge).not.toHaveBeenCalled()
+    await expect(harness.resolver.resolveActiveModelChangeTarget()).resolves.not.toHaveProperty(
+      'anthropicBridgeTargetId'
+    )
+  })
+
+  it('routes configured Claude API providers through one retargetable loopback generation', async () => {
+    const deepseek = {
+      ...makeStoredProvider('deepseek', 'deepseek-v4-pro'),
+      baseUrl: 'https://api.deepseek.example'
+    }
+    const kimi = {
+      ...makeStoredProvider('kimi', 'kimi-k3'),
+      baseUrl: 'https://api.kimi.example'
+    }
+    const harness = makeHarness({
+      settings: makeSettings({
+        providers: [deepseek, kimi],
+        activeProviderId: deepseek.id,
+        activeModel: deepseek.model,
+        agentFrameworkId: 'claude-code'
+      }),
+      targetOverride: (_provider, _selection, frameworkId) => ({
+        apiEndpoints: frameworkId === 'claude-code' ? ['anthropic'] : ['openai'],
+        provider: { apiEndpoints: ['anthropic'] }
+      })
+    })
+
+    const backend = await harness.resolver.resolveActiveBackend()
+
+    expect(harness.createAnthropicProviderBridge).toHaveBeenCalledWith(
+      [
+        {
+          id: JSON.stringify(['deepseek', 'deepseek-v4-pro']),
+          baseUrl: 'https://api.deepseek.example',
+          key: 'plain:deepseek-key-ref',
+          model: 'deepseek-v4-pro'
+        },
+        {
+          id: JSON.stringify(['kimi', 'kimi-k3']),
+          baseUrl: 'https://api.kimi.example',
+          key: 'plain:kimi-key-ref',
+          model: 'kimi-k3'
+        }
+      ],
+      JSON.stringify(['deepseek', 'deepseek-v4-pro'])
+    )
+    expect(backend.env).toMatchObject({
+      ANTHROPIC_BASE_URL: 'http://127.0.0.1:41003',
+      ANTHROPIC_AUTH_TOKEN: 'anthropic-bridge-token'
+    })
+    expect(JSON.stringify(backend)).not.toContain('plain:deepseek-key-ref')
+    expect(JSON.stringify(backend)).not.toContain('plain:kimi-key-ref')
+
+    harness.setSettings({
+      ...harness.getSettings(),
+      activeProviderId: kimi.id,
+      activeModel: kimi.model
+    })
+    await expect(harness.resolver.resolveActiveModelChangeTarget()).resolves.toMatchObject({
+      backendId: 'claude-code:kimi',
+      model: 'kimi-k3',
+      anthropicBridgeTargetId: JSON.stringify(['kimi', 'kimi-k3'])
+    })
+
+    backend.anthropicBridgeLease?.setTarget(JSON.stringify(['kimi', 'kimi-k3']))
+    expect(harness.anthropicProviderBridges[0].setTarget).toHaveBeenCalledWith(
+      JSON.stringify(['kimi', 'kimi-k3'])
+    )
+    await backend.anthropicBridgeLease?.release()
+    expect(harness.anthropicProviderBridges[0].close).toHaveBeenCalledOnce()
+  })
+
+  it('resolves a secret-free live model target without starting runtime resources', async () => {
+    const harness = makeHarness({
+      settings: makeSettings({ agentFrameworkId: 'codex', reasoningEffort: 'max' }),
+      targetOverride: () => ({
+        apiEndpoints: ['openai'],
+        needsChatResponsesBridge: true,
+        provider: {
+          apiEndpoints: ['openai'],
+          vendorId: 'deepseek',
+          supportsImageInput: true,
+          reasoningEffortTransport: 'deepseek'
+        }
+      })
+    })
+
+    const target = await harness.resolver.resolveActiveModelChangeTarget()
+
+    expect(target).toEqual({
+      frameworkId: 'codex',
+      backendId: 'codex:provider-a',
+      route: 'codex-bridge',
+      model: 'model-a',
+      sessionModel: 'gpt-5.4',
+      sessionModelRequired: false,
+      supportsImageInput: true,
+      reasoningEffort: 'max',
+      contextWindow: 128_000,
+      bridge: {
+        model: 'model-a',
+        vendorId: 'deepseek',
+        reasoningEffortTransport: 'deepseek'
+      }
+    })
+    expect(JSON.stringify(target)).not.toContain('plain:key-a')
+    expect(harness.createResponsesBridge).not.toHaveBeenCalled()
+    expectRuntimeNotStarted(harness.runtime)
+  })
+
+  it('distinguishes OpenCode endpoint routes so cross-route model changes reconnect', async () => {
+    const harness = makeHarness({
+      settings: makeSettings({ agentFrameworkId: 'opencode' }),
+      targetOverride: () => ({
+        apiEndpoints: ['openai'],
+        provider: { apiEndpoints: ['openai'] }
+      })
+    })
+
+    await expect(harness.resolver.resolveActiveModelChangeTarget()).resolves.toMatchObject({
+      route: 'opencode-openai'
+    })
+  })
+
+  it('pre-registers immutable OpenCode provider routes without exposing upstream credentials', async () => {
+    const providerA = {
+      ...makeStoredProvider('provider-a', 'model-a'),
+      baseUrl: 'https://provider-a.example/v1'
+    }
+    const providerB = {
+      ...makeStoredProvider('provider-b', 'model-b'),
+      baseUrl: 'https://provider-b.example/custom'
+    }
+    const harness = makeHarness({
+      settings: makeSettings({
+        providers: [providerA, providerB],
+        activeProviderId: providerA.id,
+        activeModel: providerA.model,
+        agentFrameworkId: 'opencode'
+      }),
+      targetOverride: () => ({
+        apiEndpoints: ['openai'],
+        provider: { apiEndpoints: ['openai'] }
+      })
+    })
+
+    const backend = await harness.resolver.resolveActiveBackend()
+    const providerAId = opencodeTransportProviderId(providerA.id, 'model-a')
+    const providerBId = opencodeTransportProviderId(providerB.id, 'model-b')
+    const configFiles = harness.runtime.materializeAgentConfigFiles.mock.calls[0]?.[0] ?? []
+    const opencodeConfig = configFiles.find((file) => file.path.endsWith('opencode.json'))
+
+    expect(harness.createOpenAiProviderBridge).toHaveBeenNthCalledWith(
+      1,
+      [
+        {
+          id: JSON.stringify(['opencode', 'provider-a', 'model-a']),
+          wire: 'chat-completions',
+          endpoint: 'https://provider-a.example/v1/chat/completions',
+          key: 'plain:provider-a-key-ref',
+          model: 'model-a'
+        }
+      ],
+      JSON.stringify(['opencode', 'provider-a', 'model-a'])
+    )
+    expect(harness.createOpenAiProviderBridge).toHaveBeenNthCalledWith(
+      2,
+      [
+        {
+          id: JSON.stringify(['opencode', 'provider-b', 'model-b']),
+          wire: 'chat-completions',
+          endpoint: 'https://provider-b.example/custom/chat/completions',
+          key: 'plain:provider-b-key-ref',
+          model: 'model-b'
+        }
+      ],
+      JSON.stringify(['opencode', 'provider-b', 'model-b'])
+    )
+    expect(backend.sessionModel).toBe(`${providerAId}/model-a`)
+    expect(opencodeConfig?.content).toContain(providerAId)
+    expect(opencodeConfig?.content).toContain(providerBId)
+    expect(JSON.stringify(backend)).not.toContain('plain:provider-a-key-ref')
+    expect(JSON.stringify(backend)).not.toContain('plain:provider-b-key-ref')
+    expect(
+      backend.providerTransportLease?.setTarget(
+        JSON.stringify(['opencode', 'provider-b', 'model-b'])
+      )
+    ).toBe(true)
+
+    harness.setSettings({
+      ...harness.getSettings(),
+      activeProviderId: providerB.id,
+      activeModel: providerB.model
+    })
+    await expect(harness.resolver.resolveActiveModelChangeTarget()).resolves.toMatchObject({
+      backendId: 'opencode:provider-b',
+      route: 'opencode-openai',
+      sessionModel: `${providerBId}/model-b`,
+      providerTransportTargetId: JSON.stringify(['opencode', 'provider-b', 'model-b'])
+    })
+
+    await backend.providerTransportLease?.release()
+    expect(harness.openAiProviderBridges[0].close).toHaveBeenCalledOnce()
+    expect(harness.openAiProviderBridges[1].close).toHaveBeenCalledOnce()
+  })
+
+  it('pre-registers immutable Anthropic routes for OpenCode providers', async () => {
+    const providerA = {
+      ...makeStoredProvider('provider-a', 'model-a'),
+      baseUrl: 'https://provider-a.example/anthropic'
+    }
+    const providerB = {
+      ...makeStoredProvider('provider-b', 'model-b'),
+      baseUrl: 'https://provider-b.example/anthropic'
+    }
+    const harness = makeHarness({
+      settings: makeSettings({
+        providers: [providerA, providerB],
+        activeProviderId: providerA.id,
+        activeModel: providerA.model,
+        agentFrameworkId: 'opencode'
+      }),
+      targetOverride: () => ({
+        apiEndpoints: ['anthropic'],
+        provider: { apiEndpoints: ['anthropic'] }
+      })
+    })
+
+    const backend = await harness.resolver.resolveActiveBackend()
+    const providerATargetId = JSON.stringify(['opencode', 'provider-a', 'model-a'])
+    const providerBTargetId = JSON.stringify(['opencode', 'provider-b', 'model-b'])
+
+    expect(harness.createAnthropicProviderBridge).toHaveBeenNthCalledWith(
+      1,
+      [
+        {
+          id: providerATargetId,
+          baseUrl: 'https://provider-a.example/anthropic',
+          key: 'plain:provider-a-key-ref',
+          model: 'model-a'
+        }
+      ],
+      providerATargetId
+    )
+    expect(harness.createAnthropicProviderBridge).toHaveBeenNthCalledWith(
+      2,
+      [
+        {
+          id: providerBTargetId,
+          baseUrl: 'https://provider-b.example/anthropic',
+          key: 'plain:provider-b-key-ref',
+          model: 'model-b'
+        }
+      ],
+      providerBTargetId
+    )
+    expect(backend.providerTransportLease?.setTarget(providerBTargetId)).toBe(true)
+    expect(JSON.stringify(backend)).not.toContain('plain:provider-a-key-ref')
+    expect(JSON.stringify(backend)).not.toContain('plain:provider-b-key-ref')
+  })
+
+  it('retargets a Codex Chat bridge across pre-registered providers', async () => {
+    const providerA = {
+      ...makeStoredProvider('provider-a', 'model-a'),
+      baseUrl: 'https://provider-a.example/v1'
+    }
+    const providerB = {
+      ...makeStoredProvider('provider-b', 'model-b'),
+      baseUrl: 'https://provider-b.example/custom'
+    }
+    const harness = makeHarness({
+      settings: makeSettings({
+        providers: [providerA, providerB],
+        activeProviderId: providerA.id,
+        activeModel: providerA.model,
+        agentFrameworkId: 'codex'
+      }),
+      targetOverride: () => ({
+        apiEndpoints: ['openai'],
+        needsChatResponsesBridge: true,
+        provider: { apiEndpoints: ['openai'] }
+      })
+    })
+
+    const backend = await harness.resolver.resolveActiveBackend()
+    const providerBTargetId = JSON.stringify(['codex', 'provider-b', 'model-b'])
+
+    expect(backend.providerTransportLease?.setTarget(providerBTargetId)).toBe(true)
+    expect(harness.responsesBridges[0].setTarget).toHaveBeenCalledWith(
+      expect.objectContaining({
+        baseUrl: 'https://provider-b.example/custom',
+        key: 'plain:provider-b-key-ref',
+        model: 'model-b'
+      })
+    )
+
+    harness.setSettings({
+      ...harness.getSettings(),
+      activeProviderId: providerB.id,
+      activeModel: providerB.model
+    })
+    await expect(harness.resolver.resolveActiveModelChangeTarget()).resolves.toMatchObject({
+      backendId: 'codex:provider-b',
+      route: 'codex-bridge',
+      providerTransportTargetId: providerBTargetId
+    })
+  })
+
+  it('retargets Codex Responses compatibility across pre-registered providers', async () => {
+    const providerA = {
+      ...makeStoredProvider('provider-a', 'model-a'),
+      baseUrl: 'https://provider-a.example/v1'
+    }
+    const providerB = {
+      ...makeStoredProvider('provider-b', 'model-b'),
+      baseUrl: 'https://provider-b.example/custom'
+    }
+    const harness = makeHarness({
+      settings: makeSettings({
+        providers: [providerA, providerB],
+        activeProviderId: providerA.id,
+        activeModel: providerA.model,
+        agentFrameworkId: 'codex'
+      }),
+      targetOverride: () => ({
+        apiEndpoints: ['responses'],
+        needsNativeResponsesCompatibility: true,
+        provider: { apiEndpoints: ['responses'] }
+      })
+    })
+
+    const backend = await harness.resolver.resolveActiveBackend()
+    const providerBTargetId = JSON.stringify(['codex', 'provider-b', 'model-b'])
+
+    expect(backend.providerTransportLease?.setTarget(providerBTargetId)).toBe(true)
+    expect(harness.nativeResponsesProxies[0].setTarget).toHaveBeenCalledWith(
+      expect.objectContaining({
+        baseUrl: 'https://provider-b.example/custom',
+        key: 'plain:provider-b-key-ref',
+        model: 'model-b'
+      })
+    )
+  })
+
+  it('routes native Codex Responses providers through one retargetable loopback', async () => {
+    const providerA = {
+      ...makeStoredProvider('provider-a', 'model-a'),
+      baseUrl: 'https://provider-a.example/v1'
+    }
+    const providerB = {
+      ...makeStoredProvider('provider-b', 'model-b'),
+      baseUrl: 'https://provider-b.example/custom'
+    }
+    const harness = makeHarness({
+      settings: makeSettings({
+        providers: [providerA, providerB],
+        activeProviderId: providerA.id,
+        activeModel: providerA.model,
+        agentFrameworkId: 'codex'
+      }),
+      targetOverride: () => ({
+        apiEndpoints: ['responses'],
+        provider: { apiEndpoints: ['responses'], vendorId: 'openai' }
+      })
+    })
+
+    const backend = await harness.resolver.resolveActiveBackend()
+    const providerATargetId = JSON.stringify(['codex', 'provider-a', 'model-a'])
+    const providerBTargetId = JSON.stringify(['codex', 'provider-b', 'model-b'])
+
+    expect(harness.createOpenAiProviderBridge).toHaveBeenCalledWith(
+      [
+        {
+          id: providerATargetId,
+          wire: 'responses',
+          endpoint: 'https://provider-a.example/v1/responses',
+          key: 'plain:provider-a-key-ref',
+          model: 'model-a'
+        },
+        {
+          id: providerBTargetId,
+          wire: 'responses',
+          endpoint: 'https://provider-b.example/custom/responses',
+          key: 'plain:provider-b-key-ref',
+          model: 'model-b'
+        }
+      ],
+      providerATargetId
+    )
+    expect(backend.authentication).toEqual({
+      methodId: 'api-key',
+      _meta: { 'api-key': { apiKey: 'openai-bridge-token-0' } }
+    })
+    expect(backend.providerTransportLease?.setTarget(providerBTargetId)).toBe(true)
+    expect(harness.openAiProviderBridges[0].setTarget).toHaveBeenCalledWith(providerBTargetId)
+    expect(JSON.stringify(backend)).not.toContain('plain:provider-a-key-ref')
+    expect(JSON.stringify(backend)).not.toContain('plain:provider-b-key-ref')
+  })
+
+  it('produces equivalent stable backends for configured and provider-default explicit targets', async () => {
+    const settings = makeSettings()
+    const harness = makeHarness({ settings })
+
+    const configured = await harness.resolver.resolveActiveBackend()
+    const explicit = await harness.resolver.resolveExplicitTarget({
+      frameworkId: 'claude-code',
+      providerId: 'provider-a',
+      model: { kind: 'provider-default' },
+      reasoningEffort: 'high'
+    })
+
+    expect(explicit).toEqual(configured)
+    expect(harness.resolveRuntimeTarget).toHaveBeenNthCalledWith(
+      1,
+      settings.providers[0],
+      { kind: 'configured', requestedModel: 'model-a' },
+      expect.objectContaining({ id: 'claude-code' })
+    )
+    expect(harness.resolveRuntimeTarget).toHaveBeenNthCalledWith(
+      2,
+      settings.providers[0],
+      { kind: 'provider-default' },
+      expect.objectContaining({ id: 'claude-code' })
+    )
+  })
+
+  it('late-binds a configured selection but keeps an explicit target fixed', async () => {
+    const providerA = makeStoredProvider('provider-a', 'model-a', 'key-a')
+    const providerB = makeStoredProvider('provider-b', 'model-b', 'key-b')
+    const harness = makeHarness({
+      settings: makeSettings({
+        providers: [providerA, providerB],
+        activeProviderId: providerA.id,
+        activeModel: providerA.model,
+        agentFrameworkId: 'codex',
+        reasoningEffort: 'high'
+      })
+    })
+    const selection = await harness.resolver.captureConfiguredSelection()
+    const rotatedProviderA = { ...providerA, keyRef: 'key-a-rotated' }
+    harness.setSettings(
+      makeSettings({
+        providers: [rotatedProviderA, providerB],
+        activeProviderId: providerB.id,
+        activeModel: 'model-b-current',
+        agentFrameworkId: 'claude-code',
+        reasoningEffort: 'low'
+      })
+    )
+
+    const lateBound = await harness.resolver.resolveSelection(selection)
+    const fixed = await harness.resolver.resolveExplicitTarget({
+      frameworkId: 'codex',
+      providerId: providerA.id,
+      model: { kind: 'required', id: 'model-a-fixed' },
+      reasoningEffort: 'max'
+    })
+
+    expect(lateBound).toMatchObject({
+      backendId: 'codex:provider-b',
+      sessionModel: 'model-b-current',
+      sessionEffort: 'low',
+      authentication: {
+        methodId: 'api-key',
+        _meta: { 'api-key': { apiKey: 'openai-bridge-token-0' } }
+      }
+    })
+    expect(fixed).toMatchObject({
+      backendId: 'codex:provider-a',
+      sessionModel: 'model-a-fixed',
+      sessionEffort: 'max',
+      authentication: {
+        methodId: 'api-key',
+        _meta: { 'api-key': { apiKey: 'openai-bridge-token-1' } }
+      }
+    })
+    expect(JSON.stringify(lateBound)).not.toContain('plain:key-b')
+    expect(JSON.stringify(fixed)).not.toContain('plain:key-a-rotated')
+    expect(harness.resolveRuntimeTarget).toHaveBeenCalledWith(
+      providerB,
+      { kind: 'configured', requestedModel: 'model-b-current' },
+      expect.objectContaining({ id: 'codex' })
+    )
+    expect(harness.resolveRuntimeTarget).toHaveBeenCalledWith(
+      rotatedProviderA,
+      { kind: 'required', model: 'model-a-fixed' },
+      expect.objectContaining({ id: 'codex' })
+    )
+  })
+
+  it('fails an unavailable required model before runtime work without mutating settings', async () => {
+    const harness = makeHarness({ rejectRequiredModels: new Set(['missing-model']) })
+    const before = structuredClone(harness.getSettings())
+
+    await expect(
+      harness.resolver.resolveExplicitTarget({
+        frameworkId: 'codex',
+        providerId: 'provider-a',
+        model: { kind: 'required', id: 'missing-model' },
+        reasoningEffort: 'high'
+      })
+    ).rejects.toThrow('required model unavailable: missing-model')
+
+    expect(harness.getSettings()).toEqual(before)
+    expect(harness.createResponsesBridge).not.toHaveBeenCalled()
+    expect(harness.createNativeResponsesProxy).not.toHaveBeenCalled()
+    expect(harness.nextGenerationId).not.toHaveBeenCalled()
+    expectRuntimeNotStarted(harness.runtime)
+  })
+
+  it('ignores the configured framework override for an explicit target', async () => {
+    const harness = makeHarness({ frameworkOverride: 'opencode' })
+
+    const backend = await harness.resolver.resolveExplicitTarget({
+      frameworkId: 'codex',
+      providerId: 'provider-a',
+      model: { kind: 'provider-default' },
+      reasoningEffort: 'high'
+    })
+
+    expect(backend.framework.id).toBe('codex')
+    expect(harness.readFrameworkOverride).not.toHaveBeenCalled()
+  })
+})
+
+describe('AgentBackendResolver runtime delegation', () => {
+  it('preserves legacy spawn-config error priority by resolving Claude before the provider', async () => {
+    const harness = makeHarness({
+      settings: makeSettings({ providers: [], activeProviderId: undefined })
+    })
+    const executableError = new Error('Claude executable is unavailable')
+    harness.runtime.resolveClaudeExecutable.mockRejectedValueOnce(executableError)
+
+    await expect(harness.resolver.resolveActiveSpawnConfig()).rejects.toBe(executableError)
+
+    expect(harness.resolveRuntimeTarget).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    { frameworkId: 'claude-code' as const, executableMethod: 'resolveClaudeExecutable' as const },
+    { frameworkId: 'opencode' as const, executableMethod: 'resolveOpencodeExecutable' as const },
+    { frameworkId: 'codex' as const, executableMethod: 'resolveCodexExecutable' as const }
+  ])('delegates $frameworkId preparation through the S5a runtime port', async (testCase) => {
+    const harness = makeHarness()
+
+    const backend = await harness.resolver.resolveExplicitTarget(
+      {
+        frameworkId: testCase.frameworkId,
+        providerId: 'provider-a',
+        model: { kind: 'provider-default' },
+        reasoningEffort: 'high'
+      },
+      { forcedSkillIds: ['forced-skill'] }
+    )
+
+    expect(backend.framework.id).toBe(testCase.frameworkId)
+    expect(harness.runtime[testCase.executableMethod]).toHaveBeenCalledTimes(1)
+    if (testCase.frameworkId === 'claude-code') {
+      expect(harness.runtime.provisionClaudeRuntimeConfig).toHaveBeenCalledWith(
+        harness.getSettings(),
+        new Set(['forced-skill']),
+        null
+      )
+      expect(harness.runtime.materializeAgentSkills).not.toHaveBeenCalled()
+      expect(harness.runtime.materializeAgentConfigFiles).not.toHaveBeenCalled()
+    } else {
+      expect(harness.runtime.materializeAgentSkills).toHaveBeenCalledWith(
+        harness.getSettings(),
+        expect.any(String),
+        new Set(['forced-skill'])
+      )
+      expect(harness.runtime.materializeAgentConfigFiles).toHaveBeenCalledTimes(1)
+    }
+    expect(harness.runtime.reserveOpenCodeUsagePort).toHaveBeenCalledTimes(
+      testCase.frameworkId === 'opencode' ? 1 : 0
+    )
+    expect(harness.runtime.probeCodexNativeVersion).toHaveBeenCalledTimes(
+      testCase.frameworkId === 'codex' ? 1 : 0
+    )
+  })
+})
+
+describe('AgentBackendResolver bridge predicates', () => {
+  it.each([
+    { name: 'Claude Code', frameworkId: 'claude-code' as const, target: {} },
+    { name: 'OpenCode', frameworkId: 'opencode' as const, target: {} },
+    {
+      name: 'Codex Responses',
+      frameworkId: 'codex' as const,
+      target: { provider: { apiEndpoints: ['responses'] as const } }
+    },
+    {
+      name: 'Codex bridge',
+      frameworkId: 'codex' as const,
+      target: {
+        needsChatResponsesBridge: true,
+        provider: { apiEndpoints: ['openai'] as const }
+      }
+    }
+  ])('advertises exact enabled Connector Skill names to $name', async (testCase) => {
+    const harness = makeHarness({
+      connectorIds: ['pubmed', 'literature'],
+      connectorSkillNames: ['mcp-pubmed', 'mcp-literature', 'mcp-custom-chemistry'],
+      targetOverride: () => testCase.target
+    })
+
+    const backend = await harness.resolver.resolveExplicitTarget({
+      frameworkId: testCase.frameworkId,
+      providerId: 'provider-a',
+      model: { kind: 'provider-default' },
+      reasoningEffort: 'high'
+    })
+    const instructions =
+      testCase.frameworkId === 'claude-code'
+        ? backend.systemPromptAppends?.join('\n\n')
+        : backend.persistentSystemPrompt
+
+    expect(instructions).toContain(
+      testCase.frameworkId === 'claude-code'
+        ? 'Globally Enabled Connector Skills: `mcp-pubmed`, `mcp-literature`, `mcp-custom-chemistry`.'
+        : 'Globally Enabled Connector Skills: `mcp-pubmed`, `mcp-literature`.'
+    )
+    expect(instructions).toContain('Allowed Specialist Skills for this session')
+    if (testCase.frameworkId !== 'claude-code') {
+      expect(instructions).not.toContain('`mcp-custom-chemistry`')
+    }
+    expect(instructions).not.toContain('`mcp-openalex`')
+    await backend.anthropicBridgeLease?.release()
+    await backend.responsesBridgeLease?.release()
+    await backend.providerTransportLease?.release()
+  })
+
+  it.each([
+    { name: 'direct Responses', chat: false, native: false, apiEndpoints: ['responses'] as const },
+    { name: 'Chat bridge', chat: true, native: false, apiEndpoints: ['openai'] as const },
+    {
+      name: 'Responses compatibility',
+      chat: false,
+      native: true,
+      apiEndpoints: ['responses'] as const
+    }
+  ])('persists skill-first connector guidance for Codex $name', async (testCase) => {
+    const harness = makeHarness({
+      connectorIds: ['pubmed'],
+      targetOverride: () => ({
+        needsChatResponsesBridge: testCase.chat,
+        needsNativeResponsesCompatibility: testCase.native,
+        provider: { apiEndpoints: [...testCase.apiEndpoints] }
+      })
+    })
+
+    const backend = await harness.resolver.resolveExplicitTarget({
+      frameworkId: 'codex',
+      providerId: 'provider-a',
+      model: { kind: 'provider-default' },
+      reasoningEffort: 'high'
+    })
+    const developerInstructions = JSON.parse(backend.env.CODEX_CONFIG ?? '{}')
+      .developer_instructions as string | undefined
+
+    expect(developerInstructions).toContain(
+      'Load the matching `mcp-*` skill before the first `host.mcp` call'
+    )
+    expect(developerInstructions).toContain('Never guess a connector server or method name')
+    expect(developerInstructions).not.toContain('search_articles')
+    expect(backend.persistentSystemPrompt).toBe(developerInstructions)
+    expect(backend.systemPromptAppends).toBeUndefined()
+    await backend.responsesBridgeLease?.release()
+  })
+
+  it.each([
+    { name: 'direct', chat: false, native: false, responseCalls: 0, nativeCalls: 0 },
+    {
+      name: 'Chat Completions bridge',
+      chat: true,
+      native: false,
+      responseCalls: 1,
+      nativeCalls: 0
+    },
+    {
+      name: 'native Responses compatibility',
+      chat: false,
+      native: true,
+      responseCalls: 0,
+      nativeCalls: 1
+    }
+  ])('honors the provider-owned $name predicate', async (testCase) => {
+    const harness = makeHarness({
+      targetOverride: () => ({
+        needsChatResponsesBridge: testCase.chat,
+        needsNativeResponsesCompatibility: testCase.native
+      })
+    })
+
+    const backend = await harness.resolver.resolveExplicitTarget({
+      frameworkId: 'codex',
+      providerId: 'provider-a',
+      model: { kind: 'provider-default' },
+      reasoningEffort: 'high'
+    })
+
+    expect(harness.createResponsesBridge).toHaveBeenCalledTimes(testCase.responseCalls)
+    expect(harness.createNativeResponsesProxy).toHaveBeenCalledTimes(testCase.nativeCalls)
+    expect(backend.responsesBridgeLease === undefined).toBe(
+      testCase.responseCalls + testCase.nativeCalls === 0
+    )
+    await backend.responsesBridgeLease?.release()
+  })
+
+  it('bypasses loopback without disabling inherited proxies for native Responses compatibility', async () => {
+    vi.stubEnv('HTTPS_PROXY', 'http://proxy.example.test:3128')
+    vi.stubEnv('NO_PROXY', 'metadata.example.test,existing.internal')
+    try {
+      const harness = makeHarness({
+        targetOverride: () => ({ needsNativeResponsesCompatibility: true })
+      })
+
+      const backend = await harness.resolver.resolveExplicitTarget({
+        frameworkId: 'codex',
+        providerId: 'provider-a',
+        model: { kind: 'provider-default' },
+        reasoningEffort: 'high'
+      })
+
+      expect(backend.proxyEnvironmentMode).toBeUndefined()
+      expect(backend.env).not.toHaveProperty('HTTPS_PROXY')
+      const loopbackBypass = ['localhost', '127.0.0.1', '127.0.0.0/8', '::1', '[::1]']
+      expect(backend.env.NO_PROXY?.split(',')).toEqual(
+        expect.arrayContaining(['metadata.example.test', 'existing.internal', ...loopbackBypass])
+      )
+      expect(backend.env.no_proxy?.split(',')).toEqual(
+        expect.arrayContaining(['metadata.example.test', 'existing.internal', ...loopbackBypass])
+      )
+      await backend.responsesBridgeLease?.release()
+    } finally {
+      vi.unstubAllEnvs()
+    }
+  })
+})
+
+describe('AgentBackendResolver bridge generations', () => {
+  it('creates unique generations and releases each lease idempotently', async () => {
+    let generation = 0
+    const harness = makeHarness({
+      targetOverride: () => ({ needsChatResponsesBridge: true }),
+      nextGenerationId: () => `generation-${++generation}`
+    })
+    const target = {
+      frameworkId: 'codex' as const,
+      providerId: 'provider-a',
+      model: { kind: 'provider-default' as const },
+      reasoningEffort: 'high' as const
+    }
+
+    const first = await harness.resolver.resolveExplicitTarget(target)
+    const second = await harness.resolver.resolveExplicitTarget(target)
+    first.responsesBridgeLease?.setReasoningEffort?.('low')
+    second.responsesBridgeLease?.setReasoningEffort?.('max')
+    first.responsesBridgeLease?.registerReviewerSession('first-reviewer')
+    second.responsesBridgeLease?.registerReviewerSession('second-reviewer')
+    await first.responsesBridgeLease?.release()
+    await first.responsesBridgeLease?.release()
+    await second.responsesBridgeLease?.release()
+
+    expect(harness.nextGenerationId).toHaveBeenCalledTimes(2)
+    expect(harness.nextGenerationId).toHaveNthReturnedWith(1, 'generation-1')
+    expect(harness.nextGenerationId).toHaveNthReturnedWith(2, 'generation-2')
+    expect(harness.createResponsesBridge).toHaveBeenCalledTimes(2)
+    expect(harness.responsesBridges).toHaveLength(2)
+    expect(harness.responsesBridges[0]?.close).toHaveBeenCalledTimes(1)
+    expect(harness.responsesBridges[1]?.close).toHaveBeenCalledTimes(1)
+    expect(harness.responsesBridges[0]?.setReasoningEffort).toHaveBeenCalledWith('low')
+    expect(harness.responsesBridges[0]?.setReasoningEffort).not.toHaveBeenCalledWith('max')
+    expect(harness.responsesBridges[1]?.setReasoningEffort).toHaveBeenCalledWith('max')
+    expect(harness.responsesBridges[1]?.setReasoningEffort).not.toHaveBeenCalledWith('low')
+    expect(harness.responsesBridges[0]?.registerReviewerSession).toHaveBeenCalledWith(
+      'first-reviewer'
+    )
+    expect(harness.responsesBridges[0]?.registerReviewerSession).toHaveBeenCalledTimes(1)
+    expect(harness.responsesBridges[0]?.registerReviewerSession).not.toHaveBeenCalledWith(
+      'second-reviewer'
+    )
+    expect(harness.responsesBridges[1]?.registerReviewerSession).toHaveBeenCalledWith(
+      'second-reviewer'
+    )
+    expect(harness.responsesBridges[1]?.registerReviewerSession).toHaveBeenCalledTimes(1)
+    expect(harness.responsesBridges[1]?.registerReviewerSession).not.toHaveBeenCalledWith(
+      'first-reviewer'
+    )
+  })
+})
+
+describe('AgentBackendResolver bridge cleanup', () => {
+  it.each(['chat', 'native'] as const)(
+    'closes a half-started %s resource and preserves the start error',
+    async (protocol) => {
+      const startError = new Error(`${protocol} start failed`)
+      const closeError = new Error(`${protocol} close failed`)
+      const resource =
+        protocol === 'chat'
+          ? makeResponsesBridgeDouble({ startError, closeError })
+          : makeNativeResponsesProxyDouble({ startError, closeError })
+      const harness = makeHarness({
+        targetOverride: () => ({
+          needsChatResponsesBridge: protocol === 'chat',
+          needsNativeResponsesCompatibility: protocol === 'native'
+        }),
+        ...(protocol === 'chat'
+          ? { responsesBridgeBuilder: () => resource as ResponsesBridgeDouble }
+          : { nativeResponsesProxyBuilder: () => resource as NativeResponsesProxyDouble })
+      })
+
+      await expect(
+        harness.resolver.resolveExplicitTarget({
+          frameworkId: 'codex',
+          providerId: 'provider-a',
+          model: { kind: 'provider-default' },
+          reasoningEffort: 'high'
+        })
+      ).rejects.toBe(startError)
+
+      expect(resource.close).toHaveBeenCalledTimes(1)
+      expect(harness.runtime.materializeAgentConfigFiles).not.toHaveBeenCalled()
+    }
+  )
+
+  it.each(['chat', 'native'] as const)(
+    'releases a started %s resource when later backend preparation fails',
+    async (protocol) => {
+      const preparationError = new Error(`${protocol} preparation failed`)
+      const resource =
+        protocol === 'chat' ? makeResponsesBridgeDouble() : makeNativeResponsesProxyDouble()
+      const harness = makeHarness({
+        targetOverride: () => ({
+          needsChatResponsesBridge: protocol === 'chat',
+          needsNativeResponsesCompatibility: protocol === 'native'
+        }),
+        ...(protocol === 'chat'
+          ? { responsesBridgeBuilder: () => resource as ResponsesBridgeDouble }
+          : { nativeResponsesProxyBuilder: () => resource as NativeResponsesProxyDouble })
+      })
+      harness.runtime.materializeAgentConfigFiles.mockRejectedValueOnce(preparationError)
+
+      await expect(
+        harness.resolver.resolveExplicitTarget({
+          frameworkId: 'codex',
+          providerId: 'provider-a',
+          model: { kind: 'provider-default' },
+          reasoningEffort: 'high'
+        })
+      ).rejects.toBe(preparationError)
+
+      expect(resource.start).toHaveBeenCalledTimes(1)
+      expect(resource.close).toHaveBeenCalledTimes(1)
+    }
+  )
+
+  it.each(['chat', 'native'] as const)(
+    'preserves the existing %s cleanup rejection priority after preparation fails',
+    async (protocol) => {
+      const preparationError = new Error(`${protocol} preparation failed`)
+      const closeError = new Error(`${protocol} close failed`)
+      const resource =
+        protocol === 'chat'
+          ? makeResponsesBridgeDouble({ closeError })
+          : makeNativeResponsesProxyDouble({ closeError })
+      const harness = makeHarness({
+        targetOverride: () => ({
+          needsChatResponsesBridge: protocol === 'chat',
+          needsNativeResponsesCompatibility: protocol === 'native'
+        }),
+        ...(protocol === 'chat'
+          ? { responsesBridgeBuilder: () => resource as ResponsesBridgeDouble }
+          : { nativeResponsesProxyBuilder: () => resource as NativeResponsesProxyDouble })
+      })
+      harness.runtime.materializeAgentConfigFiles.mockRejectedValueOnce(preparationError)
+
+      await expect(
+        harness.resolver.resolveExplicitTarget({
+          frameworkId: 'codex',
+          providerId: 'provider-a',
+          model: { kind: 'provider-default' },
+          reasoningEffort: 'high'
+        })
+      ).rejects.toBe(closeError)
+
+      expect(resource.close).toHaveBeenCalledTimes(1)
+    }
+  )
+})

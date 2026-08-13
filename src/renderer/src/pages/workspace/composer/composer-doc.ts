@@ -1,0 +1,271 @@
+// Pure serialization model for the composer: a document is an ordered list of text runs, skill
+// chips, and artifact chips. These functions are DOM-free except domToDoc/applyDocToDom, which
+// bridge the model to the contenteditable editor.
+
+import { getExtensionPreservingFileNameParts } from '../extension-preserving-file-name'
+
+import type { FileReference } from '../../../../../shared/artifacts'
+import type { MessagePart } from '../../../../../shared/session-persistence'
+
+// One file-reference chip in the composer doc. The linked-folder variant deliberately carries only
+// a granted root id plus a relative path, reserving the future source without exposing an absolute path.
+export type ComposerArtifactNode = { type: 'artifact' } & FileReference
+
+export type ComposerNode =
+  | { type: 'text'; text: string }
+  | { type: 'skill'; id: string; name: string }
+  | ComposerArtifactNode
+
+export type ComposerDoc = { nodes: ComposerNode[] }
+
+// Max artifact `@` mentions per message, mirroring the composer upload attachment cap.
+export const MAX_COMPOSER_ARTIFACT_MENTIONS = 10
+
+// Shared canonical empty document.
+export const emptyDoc: ComposerDoc = { nodes: [] }
+
+// Render a single node as its plain-text form: skills as `/<name>`, artifacts as `@<name>`.
+const nodeToText = (node: ComposerNode): string => {
+  if (node.type === 'text') return node.text
+  if (node.type === 'skill') return `/${node.name}`
+  return `@${node.name}`
+}
+
+// Render the document as plain text; chips serialize to their `/` or `@` label.
+export const docToText = (doc: ComposerDoc): string => doc.nodes.map(nodeToText).join('')
+
+// Collect picked skill ids in document order, dropping duplicates.
+export const docToSkillIds = (doc: ComposerDoc): string[] => {
+  const ids: string[] = []
+  for (const node of doc.nodes) {
+    if (node.type === 'skill' && !ids.includes(node.id)) ids.push(node.id)
+  }
+  return ids
+}
+
+// Collect referenced artifacts in document order, de-duplicated by path so the runtime attaches
+// each underlying file once even if the user mentions it twice.
+export const docToArtifactRefs = (doc: ComposerDoc): FileReference[] => {
+  const refs: FileReference[] = []
+  const seenLocations = new Set<string>()
+  for (const node of doc.nodes) {
+    if (node.type !== 'artifact') continue
+    const location =
+      node.source === 'linked-folder'
+        ? `${node.source}:${node.rootId}:${node.relativePath}`
+        : `${node.source}:${node.path}`
+    if (seenLocations.has(location)) continue
+    seenLocations.add(location)
+
+    if (node.source === 'linked-folder') {
+      refs.push({
+        id: node.id,
+        name: node.name,
+        source: node.source,
+        rootId: node.rootId,
+        relativePath: node.relativePath,
+        mimeType: node.mimeType
+      })
+    } else {
+      refs.push({
+        id: node.id,
+        name: node.name,
+        path: node.path,
+        source: node.source,
+        mimeType: node.mimeType,
+        versionId: node.versionId
+      })
+    }
+  }
+  return refs
+}
+
+// Count artifact chips, used to enforce the per-message mention cap.
+export const docArtifactCount = (doc: ComposerDoc): number =>
+  doc.nodes.reduce((total, node) => (node.type === 'artifact' ? total + 1 : total), 0)
+
+// Adds a complete immutable Artifact reference from a global action without routing it through the
+// contenteditable's caret-based mention trigger. Keep the operation pure so Workspace can preserve
+// its existing per-draft ownership and tests can cover the spacing/cap behavior directly.
+export const appendArtifactMention = (doc: ComposerDoc, reference: FileReference): ComposerDoc => {
+  if (docArtifactCount(doc) >= MAX_COMPOSER_ARTIFACT_MENTIONS) return doc
+
+  const previous = doc.nodes.at(-1)
+  const needsSpace =
+    previous !== undefined && (previous.type !== 'text' || !/\s$/.test(previous.text))
+
+  return {
+    nodes: [
+      ...doc.nodes,
+      ...(needsSpace ? [{ type: 'text' as const, text: ' ' }] : []),
+      { type: 'artifact', ...reference }
+    ]
+  }
+}
+
+// Hydrate a plain-text draft into a single text node; empty text yields the empty doc.
+export const docFromText = (text: string): ComposerDoc =>
+  text === '' ? emptyDoc : { nodes: [{ type: 'text', text }] }
+
+// Rebuild a draft doc from a sent user message's structured parts, restoring skill/artifact chips
+// so re-editing the message round-trips mentions instead of flattening them into plain text.
+export const docFromMessageParts = (parts: MessagePart[]): ComposerDoc => {
+  const nodes: ComposerNode[] = parts.map((part) => {
+    if (part.type === 'text') return { type: 'text', text: part.text }
+    if (part.type === 'skill') return { type: 'skill', id: part.id, name: part.name }
+    if (part.source === 'linked-folder') {
+      return {
+        type: 'artifact',
+        id: part.id,
+        name: part.name,
+        source: part.source,
+        rootId: part.rootId,
+        relativePath: part.relativePath,
+        mimeType: part.mimeType
+      }
+    }
+    return {
+      type: 'artifact',
+      id: part.id,
+      name: part.name,
+      path: part.path,
+      source: part.source,
+      mimeType: part.mimeType,
+      versionId: part.versionId
+    }
+  })
+
+  return nodes.length === 0 ? emptyDoc : { nodes }
+}
+
+// A doc is empty when it has no chips and no non-whitespace text.
+export const docIsEmpty = (doc: ComposerDoc): boolean =>
+  doc.nodes.every((node) => node.type === 'text' && node.text.trim() === '')
+
+// Chip markers on the contenteditable spans.
+const SKILL_MENTION_TYPE = 'skill'
+const ARTIFACT_MENTION_TYPE = 'artifact'
+
+// Read one artifact chip element back into a node; returns null when required attributes are missing.
+const artifactNodeFromEl = (el: HTMLElement): ComposerArtifactNode | null => {
+  const id = el.getAttribute('data-mention-id')
+  if (id === null) return null
+  const source = el.getAttribute('data-mention-source')
+  // Prefer the stored filename; fall back to the visible label with its leading `@` stripped.
+  const name = el.getAttribute('data-mention-filename') ?? (el.textContent ?? '').replace(/^@/, '')
+  const mimeType = el.getAttribute('data-mention-mime-type') ?? undefined
+  if (source === 'linked-folder') {
+    const rootId = el.getAttribute('data-mention-root-id')
+    const relativePath = el.getAttribute('data-mention-relative-path')
+    if (rootId === null || relativePath === null) return null
+    return { type: 'artifact', id, name, source, rootId, relativePath, mimeType }
+  }
+
+  const path = el.getAttribute('data-mention-path')
+  if (path === null || (source !== 'upload' && source !== 'artifact')) return null
+  const versionId = el.getAttribute('data-mention-version-id') ?? undefined
+  return { type: 'artifact', id, name, path, source, mimeType, versionId }
+}
+
+// Read a contenteditable root into a doc, mapping chip spans to skill/artifact nodes and collapsing
+// runs of adjacent text into a single text node.
+export const domToDoc = (root: HTMLElement): ComposerDoc => {
+  const nodes: ComposerNode[] = []
+  for (const child of Array.from(root.childNodes)) {
+    if (child.nodeType === Node.TEXT_NODE) {
+      const text = child.textContent ?? ''
+      const last = nodes[nodes.length - 1]
+      // Merge into a preceding text node so adjacent text collapses.
+      if (last && last.type === 'text') last.text += text
+      else nodes.push({ type: 'text', text })
+      continue
+    }
+    if (child.nodeType === Node.ELEMENT_NODE) {
+      const el = child as HTMLElement
+      const mentionType = el.getAttribute('data-mention-type')
+      if (mentionType === SKILL_MENTION_TYPE) {
+        const id = el.getAttribute('data-skill-id')
+        if (id !== null) {
+          // Chip label is `/<name>`; strip the leading slash to recover the display name.
+          const label = el.textContent ?? ''
+          nodes.push({ type: 'skill', id, name: label.replace(/^\//, '') })
+        }
+        continue
+      }
+      if (mentionType === ARTIFACT_MENTION_TYPE) {
+        const node = artifactNodeFromEl(el)
+        if (node) nodes.push(node)
+      }
+    }
+  }
+  return nodes.length === 0 ? emptyDoc : { nodes }
+}
+
+// Shared chip base styling; a capped width with truncation keeps a long name from stretching the
+// composer, and select-all keeps a chip atomic to text selection. Truncation is visual only, so
+// domToDoc still reads the full name back from textContent / the stored filename attribute.
+const CHIP_BASE_CLASS =
+  'inline-block max-w-[220px] truncate align-middle rounded px-1.5 py-0.5 mx-0.5 text-sm font-medium select-all'
+const ARTIFACT_CHIP_BASE_CLASS =
+  'inline-flex max-w-[220px] align-middle rounded px-1.5 py-0.5 mx-0.5 text-sm font-medium select-all'
+
+// Render a skill chip span: an atomic, non-editable blue mention token. Exported so the mention hook
+// inserts the exact same markup it re-renders here, and the styling can never drift between the two.
+export const createSkillChip = (node: { id: string; name: string }): HTMLSpanElement => {
+  const span = document.createElement('span')
+  span.setAttribute('contenteditable', 'false')
+  span.setAttribute('data-mention-type', SKILL_MENTION_TYPE)
+  span.setAttribute('data-skill-id', node.id)
+  // Blue mention pill using the dedicated skill-chip token.
+  span.className = `${CHIP_BASE_CLASS} bg-skill-chip text-skill-chip-foreground`
+  span.textContent = `/${node.name}`
+  return span
+}
+
+// Render an artifact chip span: an atomic, non-editable green mention token carrying the path/source
+// needed to round-trip through the DOM and resolve the file on send.
+export const createArtifactChip = (node: ComposerArtifactNode): HTMLSpanElement => {
+  const span = document.createElement('span')
+  span.setAttribute('contenteditable', 'false')
+  span.setAttribute('data-mention-type', ARTIFACT_MENTION_TYPE)
+  span.setAttribute('data-mention-id', node.id)
+  span.setAttribute('data-mention-source', node.source)
+  span.setAttribute('data-mention-filename', node.name)
+  if (node.source === 'linked-folder') {
+    span.setAttribute('data-mention-root-id', node.rootId)
+    span.setAttribute('data-mention-relative-path', node.relativePath)
+  } else {
+    span.setAttribute('data-mention-path', node.path)
+  }
+  if (node.mimeType) span.setAttribute('data-mention-mime-type', node.mimeType)
+  if (node.source !== 'linked-folder' && node.versionId) {
+    span.setAttribute('data-mention-version-id', node.versionId)
+  }
+  // Green mention pill, distinct from the blue skill chip.
+  span.className = `${ARTIFACT_CHIP_BASE_CLASS} bg-mention-chip text-mention-chip-foreground`
+  span.title = node.name
+  const { head, tail, extension } = getExtensionPreservingFileNameParts(node.name)
+  const headSpan = document.createElement('span')
+  headSpan.className = 'min-w-0 flex-1 truncate'
+  headSpan.textContent = `@${head}`
+  span.append(headSpan)
+
+  for (const segment of [tail, extension]) {
+    if (!segment) continue
+    const segmentSpan = document.createElement('span')
+    segmentSpan.className = 'shrink-0'
+    segmentSpan.textContent = segment
+    span.append(segmentSpan)
+  }
+  return span
+}
+
+// Replace the root's content with the doc rendered as text nodes and chip spans.
+export const applyDocToDom = (root: HTMLElement, doc: ComposerDoc): void => {
+  root.textContent = ''
+  for (const node of doc.nodes) {
+    if (node.type === 'text') root.appendChild(document.createTextNode(node.text))
+    else if (node.type === 'skill') root.appendChild(createSkillChip(node))
+    else root.appendChild(createArtifactChip(node))
+  }
+}

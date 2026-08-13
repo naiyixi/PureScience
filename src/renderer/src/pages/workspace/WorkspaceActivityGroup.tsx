@@ -1,0 +1,168 @@
+/* Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V5 */
+import { MessageScrollerItem } from '@/components/ui/message-scroller'
+import { cn } from '@/lib/utils'
+import { ChevronRight } from 'lucide-react'
+import { useEffect, useState } from 'react'
+
+import type { JobSummary } from '../../../../shared/compute'
+import { RemoteJobRow } from '@/components/RemoteJobRow'
+import { extractJobIdFromActivity } from '@/components/job-binding-utils'
+import { WorkspaceToolActivityRow } from './WorkspaceToolActivityRow'
+import { WorkspaceToolDetailsRow } from './WorkspaceToolDetailsRow'
+import { WorkspaceWebSearchActivityRow } from './WorkspaceWebSearchActivityRow'
+import { buildToolActivityDetails } from './workspace-tool-activity-details'
+import {
+  formatActivityGroupElapsed,
+  formatActivityGroupTitle,
+  formatStepCount,
+  getActivityGroupElapsedMs,
+  getRenderableActivityEntries,
+  isSearchActivity
+} from './workspace-tool-activity-groups'
+import type {
+  ActivityExpansionOverrides,
+  ConversationActivityGroupItem
+} from './workspace-tool-activity-groups'
+import { isActivityActive } from './workspace-conversation-items'
+import { formatWebSearchDetails } from './workspace-web-search-details'
+
+type WorkspaceActivityGroupProps = {
+  group: ConversationActivityGroupItem
+  isExpanded: boolean
+  onToggleGroup: (groupId: string) => void
+  expansionOverrides: ActivityExpansionOverrides
+  onToggleRow: (activityId: string, nextExpanded: boolean) => void
+  // Embedded transcript surfaces can supply their own horizontal gutter without changing live chat.
+  contentPaddingClassName?: string
+  // Map of job_id → JobSummary for jobs bound to activities in this group.
+  jobsByActivityId?: Map<string, JobSummary>
+  onOpenJobDetail?: (job: JobSummary) => void
+}
+
+const ACTIVE_ELAPSED_TICK_MS = 100
+
+// Isolates the ticking clock so active tools do not re-render the group's expanded detail rows.
+const ActivityGroupElapsed = ({
+  activities
+}: {
+  activities: ConversationActivityGroupItem['activities']
+}): React.JSX.Element => {
+  const isActive = activities.some(isActivityActive)
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    if (!isActive) return undefined
+
+    const timer = setInterval(() => setNow(Date.now()), ACTIVE_ELAPSED_TICK_MS)
+    return () => clearInterval(timer)
+  }, [isActive])
+
+  return <>{formatActivityGroupElapsed(getActivityGroupElapsedMs(activities, now))}</>
+}
+
+// Renders adjacent tool calls as one collapsible transcript row group.
+const WorkspaceActivityGroup = ({
+  group,
+  isExpanded,
+  onToggleGroup,
+  expansionOverrides,
+  onToggleRow,
+  contentPaddingClassName,
+  jobsByActivityId,
+  onOpenJobDetail
+}: WorkspaceActivityGroupProps): React.JSX.Element => {
+  // ToolSearch wrapper rows are hidden when concrete search rows are present.
+  const renderableActivityEntries = getRenderableActivityEntries(group.activities)
+  const visibleActivities = renderableActivityEntries.map(({ activity }) => activity)
+
+  return (
+    <MessageScrollerItem key={group.id} messageId={group.id} className="min-w-0">
+      <div className={cn('px-4 pb-0.5 pt-2.5 md:px-6', contentPaddingClassName)}>
+        <div
+          className="w-full overflow-hidden rounded-[14px] bg-bg-200/70 px-1.5 py-1"
+          data-testid="tool-group"
+        >
+          <button
+            type="button"
+            aria-expanded={isExpanded}
+            data-testid="tool-group-header"
+            className="flex w-full items-center gap-2 rounded-lg py-[5px] pl-1.5 pr-2.5 text-[13px] transition-colors hover:bg-bg-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+            onClick={() => onToggleGroup(group.id)}
+          >
+            <span
+              className={cn(
+                'inline-flex w-4 shrink-0 items-center justify-center text-text-100 transition-transform duration-200',
+                isExpanded ? 'rotate-90' : undefined
+              )}
+            >
+              <ChevronRight className="size-3.5" strokeWidth={2.2} aria-hidden="true" />
+            </span>
+            <span className="min-w-0 truncate text-left font-medium text-text-000">
+              {formatActivityGroupTitle(group.activities, group.title)}
+            </span>
+            <span className="ml-auto shrink-0 whitespace-nowrap text-[12px] tabular-nums text-text-100">
+              {formatStepCount(visibleActivities)} ·{' '}
+              <ActivityGroupElapsed activities={visibleActivities} />
+            </span>
+          </button>
+          {isExpanded ? (
+            <div className="grid grid-rows-[1fr] transition-[grid-template-rows] duration-200 ease-out">
+              <div className="min-h-0 overflow-hidden">
+                {renderableActivityEntries.map(({ activity, activityIndex }) => {
+                  // Search rows get bespoke query/result details; other tools reuse the shared builder.
+                  const isSearch = isSearchActivity(activity, group.activities, activityIndex)
+                  const searchDetails = isSearch ? formatWebSearchDetails(activity) : undefined
+                  const toolDetails = isSearch ? undefined : buildToolActivityDetails(activity)
+                  // All tool rows — notebook cells included — default collapsed (meaningful title
+                  // only); clicking the title reveals the code and output. A user toggle still wins.
+                  const isRowExpanded = expansionOverrides[activity.id] ?? false
+
+                  return (
+                    <div key={activity.id} className="w-full overflow-hidden">
+                      {searchDetails ? (
+                        <WorkspaceWebSearchActivityRow
+                          activity={activity}
+                          details={searchDetails}
+                          isExpanded={isRowExpanded}
+                          onToggleSearch={onToggleRow}
+                        />
+                      ) : toolDetails ? (
+                        <WorkspaceToolDetailsRow
+                          activity={activity}
+                          details={toolDetails}
+                          isExpanded={isRowExpanded}
+                          onToggle={onToggleRow}
+                        />
+                      ) : (
+                        <WorkspaceToolActivityRow activity={activity} />
+                      )}
+                      {/* RemoteJobRow: injected below a repl_execute activity that submitted a job */}
+                      {(() => {
+                        const jobId = extractJobIdFromActivity(activity)
+                        const boundJob = jobId ? jobsByActivityId?.get(jobId) : undefined
+                        if (!boundJob) return null
+                        // Only show RemoteJobRow for active (non-terminal) jobs
+                        const isActive =
+                          boundJob.status === 'running' || boundJob.status === 'submitted'
+                        if (!isActive) return null
+                        return (
+                          <RemoteJobRow
+                            key={`job-row-${boundJob.job_id}`}
+                            job={boundJob}
+                            onOpen={(job) => onOpenJobDetail?.(job)}
+                          />
+                        )
+                      })()}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </MessageScrollerItem>
+  )
+}
+
+export { WorkspaceActivityGroup }

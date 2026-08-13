@@ -1,0 +1,134 @@
+diff --git a/node_modules/@agentclientprotocol/claude-agent-acp/dist/acp-agent.d.ts b/node_modules/@agentclientprotocol/claude-agent-acp/dist/acp-agent.d.ts
+index f247a7e..266f90d 100644
+--- a/node_modules/@agentclientprotocol/claude-agent-acp/dist/acp-agent.d.ts
++++ b/node_modules/@agentclientprotocol/claude-agent-acp/dist/acp-agent.d.ts
+@@ -13,6 +13,7 @@ export interface Logger {
+     log: (...args: any[]) => void;
+     error: (...args: any[]) => void;
+ }
++export declare function waitForMcpServers(query: Pick<Query, "mcpServerStatus" | "close">, serverNames: string[], timeoutMs?: number, logger?: Pick<Logger, "error">): Promise<void>;
+ type AccumulatedUsage = {
+     inputTokens: number;
+     outputTokens: number;
+diff --git a/node_modules/@agentclientprotocol/claude-agent-acp/dist/acp-agent.js b/node_modules/@agentclientprotocol/claude-agent-acp/dist/acp-agent.js
+index 361d032..69371ea 100644
+--- a/node_modules/@agentclientprotocol/claude-agent-acp/dist/acp-agent.js
++++ b/node_modules/@agentclientprotocol/claude-agent-acp/dist/acp-agent.js
+@@ -438,6 +438,62 @@ class ClientConnection {
+         return this.ctx.notify(method, params);
+     }
+ }
++// Claude snapshots the available tool set when a model request starts. Wait for every MCP server
++// supplied by the ACP client before returning session/new so the first prompt cannot race startup.
++const MCP_STARTUP_TIMEOUT_MS = 10000;
++const MCP_STATUS_POLL_INTERVAL_MS = 50;
++const delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
++const withTimeout = (promise, milliseconds, timeoutError) => new Promise((resolve, reject) => {
++    const timer = setTimeout(() => reject(timeoutError()), milliseconds);
++    promise.then((value) => {
++        clearTimeout(timer);
++        resolve(value);
++    }, (error) => {
++        clearTimeout(timer);
++        reject(error);
++    });
++});
++export async function waitForMcpServers(query, serverNames, timeoutMs = MCP_STARTUP_TIMEOUT_MS, logger = console) {
++    if (serverNames.length === 0) {
++        return;
++    }
++    const pending = new Set(serverNames);
++    const deadline = Date.now() + timeoutMs;
++    while (pending.size > 0) {
++        const remainingMs = deadline - Date.now();
++        if (remainingMs <= 0) {
++            logger.error(`[mcp-readiness] Timed out waiting for MCP servers: ${[...pending].join(", ")}`);
++            query.close();
++            throw new Error(`Timed out waiting for MCP servers: ${[...pending].join(", ")}`);
++        }
++        let statuses;
++        try {
++            statuses = await withTimeout(query.mcpServerStatus(), remainingMs, () => new Error(`Timed out waiting for MCP servers: ${[...pending].join(", ")}`));
++        }
++        catch (error) {
++            logger.error(`[mcp-readiness] ${error instanceof Error ? error.message : String(error)}`);
++            query.close();
++            throw error;
++        }
++        for (const status of statuses) {
++            if (!pending.has(status.name)) {
++                continue;
++            }
++            if (status.status === "connected") {
++                pending.delete(status.name);
++                continue;
++            }
++            if (status.status === "failed" || status.status === "needs-auth" || status.status === "disabled") {
++                logger.error(`[mcp-readiness] MCP server ${status.name} is ${status.status}${status.error ? `: ${status.error}` : ""}`);
++                query.close();
++                throw new Error(`MCP server ${status.name} is ${status.status}${status.error ? `: ${status.error}` : ""}`);
++            }
++        }
++        if (pending.size > 0) {
++            await delay(Math.min(MCP_STATUS_POLL_INTERVAL_MS, Math.max(0, deadline - Date.now())));
++        }
++    }
++}
+ export class ClaudeAcpAgent {
+     sessions;
+     client;
+@@ -2353,7 +2409,7 @@ export class ClaudeAcpAgent {
+                                     cache_creation_input_tokens: usage.cache_creation_input_tokens ?? prev.cache_creation_input_tokens,
+                                 };
+                             }
+-                            const nextUsage = totalTokens(lastAssistantUsage);
++                            const nextUsage = contextTokens(lastAssistantUsage);
+                             if (nextUsage !== lastAssistantTotalUsage) {
+                                 lastAssistantTotalUsage = nextUsage;
+                                 await sendUpdate({
+@@ -2465,7 +2521,7 @@ export class ClaudeAcpAgent {
+                         // aligned with what the user's current selection is producing.
+                         if (message.type === "assistant" && message.parent_tool_use_id === null) {
+                             lastAssistantUsage = snapshotFromUsage(message.message.usage);
+-                            lastAssistantTotalUsage = totalTokens(lastAssistantUsage);
++                            lastAssistantTotalUsage = contextTokens(lastAssistantUsage);
+                             if (message.message.model && message.message.model !== "<synthetic>") {
+                                 lastAssistantModel = message.message.model;
+                             }
+@@ -4067,6 +4123,7 @@ export class ClaudeAcpAgent {
+         let initializationResult;
+         try {
+             initializationResult = await q.initializationResult();
++            await waitForMcpServers(q, Object.keys(mcpServers), undefined, this.logger);
+         }
+         catch (error) {
+             if (creationOpts.resume &&
+@@ -4282,15 +4339,10 @@ function sessionUsage(session) {
+             session.accumulatedUsage.cachedWriteTokens,
+     };
+ }
+-/** Sum all four fields as a proxy for post-turn context occupancy: the current
+- *  turn's output becomes next turn's input. Per the Anthropic API, input_tokens
+- *  excludes cache tokens — cache_read and cache_creation are reported
+- *  separately — so summing all four is not double-counting. */
+-function totalTokens(usage) {
+-    return (usage.input_tokens +
+-        usage.output_tokens +
+-        usage.cache_read_input_tokens +
+-        usage.cache_creation_input_tokens);
++/** Report the current upstream request's model-input context. Cache reads are
++ *  part of that input; completion tokens and cache writes are not. */
++function contextTokens(usage) {
++    return usage.input_tokens + usage.cache_read_input_tokens;
+ }
+ /**
+  * Build the `data` payload attached to a `RequestError.internalError` when we
+@@ -4307,7 +4359,7 @@ function errorKindData(errorKind) {
+ }
+ /** Project a nullable API usage object into our non-null snapshot shape.
+  *  Both SDK message_start and assistant message `usage` have `number | null`
+- *  cache fields; we coerce absent values to 0 so `totalTokens` never hits
++ *  cache fields; we coerce absent values to 0 so `contextTokens` never hits
+  *  NaN. `input_tokens`/`output_tokens` are typed `number` by the SDK but
+  *  synthetic or third-party-backend stream events have been observed emitting
+  *  them as null/undefined — coerce those too so a malformed upstream event

@@ -1,0 +1,1025 @@
+import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
+import { afterEach, describe, expect, it, vi } from 'vitest'
+
+import { environmentCaptureProcessEnv, EnvironmentStateTracker } from './environment-state-tracker'
+
+let dataRoot: string | undefined
+
+afterEach(async () => {
+  if (dataRoot) await rm(dataRoot, { recursive: true, force: true })
+  dataRoot = undefined
+})
+
+const target = {
+  language: 'python' as const,
+  environmentName: 'external-analysis',
+  runtimeSource: 'external' as const,
+  command: '/opt/python/bin/python',
+  args: []
+}
+
+const bindingPath = async (root: string): Promise<string> => {
+  const inventoryRoot = join(root, 'runtime', 'provenance', 'environment-inventory')
+  const [targetKey] = await readdir(inventoryRoot)
+  return join(inventoryRoot, targetKey, 'binding.json')
+}
+
+const readBinding = async (
+  root: string
+): Promise<{
+  operationLog: Array<{ operationId: string; timestamp: string }>
+  operationLogTruncation?: { omittedCount: number; earliestRetainedAt?: string }
+  dirtyOperationId?: string
+}> => {
+  return JSON.parse(await readFile(await bindingPath(root), 'utf8'))
+}
+
+describe('EnvironmentStateTracker', () => {
+  it('activates the complete Windows Conda DLL path for managed R probes', () => {
+    const inherited = { Path: 'C:\\Windows\\System32', KEEP_ME: 'yes' }
+    const prefix = 'C:\\Users\\Helix\\PureScience\\runtime\\envs\\.r'
+
+    expect(
+      environmentCaptureProcessEnv(
+        {
+          language: 'r',
+          environmentName: 'default-r',
+          runtimeSource: 'managed',
+          command: `${prefix}\\Lib\\R\\bin\\Rscript.exe`,
+          args: [],
+          condaPrefix: prefix
+        },
+        inherited,
+        'win32'
+      )
+    ).toEqual({
+      KEEP_ME: 'yes',
+      PATH: [
+        prefix,
+        `${prefix}\\Library\\mingw-w64\\bin`,
+        `${prefix}\\Library\\usr\\bin`,
+        `${prefix}\\Library\\bin`,
+        `${prefix}\\Scripts`,
+        `${prefix}\\bin`,
+        'C:\\Windows\\System32'
+      ].join(';')
+    })
+  })
+
+  it('passes the activated Windows Conda DLL path to default R inventory and fingerprint spawns', async () => {
+    dataRoot = await mkdtemp(join(tmpdir(), 'purescience-env-r-spawn-'))
+    const prefix = 'C:\\Users\\Helix\\PureScience\\runtime\\envs\\.r'
+    const execute = vi.fn(
+      async (
+        _command: string,
+        _args: string[],
+        options: { timeout: number; maxBuffer: number; env: NodeJS.ProcessEnv }
+      ) => ({
+        stdout:
+          options.maxBuffer === 8 * 1024 * 1024
+            ? 'FILE\tconda-meta/history\t1\t1\n'
+            : 'RUNTIME\t4.5.1\twin32\tx86_64\n' +
+              'PACKAGE\tbase\t4.5.1\tbase\t4.5.1\t1\tenvironment\n',
+        stderr: ''
+      })
+    )
+    const tracker = new EnvironmentStateTracker({
+      dataRoot,
+      platform: 'win32',
+      execFile: execute
+    })
+
+    await expect(
+      tracker.prepareRun({
+        language: 'r',
+        environmentName: 'default-r',
+        runtimeSource: 'managed',
+        command: `${prefix}\\Lib\\R\\bin\\Rscript.exe`,
+        args: [],
+        condaPrefix: prefix
+      })
+    ).resolves.toMatchObject({ inventoryRefreshed: true })
+
+    expect(execute).toHaveBeenCalledTimes(3)
+    expect(execute.mock.calls.map(([, , options]) => options.maxBuffer)).toEqual([
+      8 * 1024 * 1024,
+      16 * 1024 * 1024,
+      8 * 1024 * 1024
+    ])
+    for (const [command, , options] of execute.mock.calls) {
+      expect(command).toBe(`${prefix}\\Lib\\R\\bin\\Rscript.exe`)
+      expect(options.env.PATH).toContain(`${prefix}\\Library\\bin`)
+    }
+  })
+
+  it('logs bounded child-process diagnostics when an inventory probe fails', async () => {
+    dataRoot = await mkdtemp(join(tmpdir(), 'purescience-env-probe-log-'))
+    const warn = vi.fn()
+    const tracker = new EnvironmentStateTracker({
+      dataRoot,
+      logger: { warn, error: vi.fn() },
+      inspectInstalled: vi.fn().mockRejectedValue(
+        Object.assign(new Error('Rscript failed'), {
+          code: 3221225781,
+          stderr: 'token=super-secret libgcc_s_seh-1.dll missing',
+          stdout: 'probe output'
+        })
+      ),
+      captureFingerprint: vi.fn().mockResolvedValue('stable-r')
+    })
+
+    await expect(
+      tracker.prepareRun({
+        language: 'r',
+        environmentName: 'default-r',
+        runtimeSource: 'managed',
+        command: 'C:\\runtime\\envs\\.r\\Lib\\R\\bin\\Rscript.exe',
+        args: [],
+        condaPrefix: 'C:\\runtime\\envs\\.r'
+      })
+    ).resolves.toMatchObject({ inventoryRefreshed: false })
+
+    expect(warn).toHaveBeenCalledWith(
+      'environment inventory probe failed',
+      expect.objectContaining({
+        language: 'r',
+        environmentName: 'default-r',
+        code: 3221225781,
+        stderr: expect.objectContaining({ text: expect.stringContaining('token=[redacted]') })
+      })
+    )
+  })
+
+  it('inspects requested packages from the current installed inventory without importing them', async () => {
+    dataRoot = await mkdtemp(join(tmpdir(), 'purescience-env-inspect-'))
+    const inspectInstalled = vi.fn().mockResolvedValue({
+      runtimeVersion: '3.13.2',
+      packages: [
+        {
+          name: 'NumPy',
+          version: '2.2.0',
+          versionStatus: 'known',
+          ecosystem: 'python',
+          evidenceSources: ['python-importlib-metadata']
+        }
+      ]
+    })
+    const tracker = new EnvironmentStateTracker({
+      dataRoot,
+      inspectInstalled,
+      captureFingerprint: vi.fn().mockResolvedValue('stable-python')
+    })
+
+    const first = await tracker.inspectPackages(target, ['numpy', 'pandas'])
+    const second = await tracker.inspectPackages(target, ['numpy'])
+
+    expect(first).toMatchObject({
+      inventory: { source: 'full-scan', validation: 'full-scan' },
+      packages: [
+        {
+          requested: 'numpy',
+          name: 'NumPy',
+          status: 'installed',
+          version: '2.2.0',
+          versionStatus: 'known'
+        },
+        { requested: 'pandas', name: 'pandas', status: 'missing' }
+      ]
+    })
+    expect(second.inventory).toMatchObject({ source: 'cache-reused', validation: 'best-effort' })
+    expect(inspectInstalled).toHaveBeenCalledOnce()
+  })
+
+  it('reports unknown instead of missing when installed inventory cannot be read', async () => {
+    dataRoot = await mkdtemp(join(tmpdir(), 'purescience-env-inspect-unavailable-'))
+    const tracker = new EnvironmentStateTracker({
+      dataRoot,
+      inspectInstalled: vi.fn().mockRejectedValue(new Error('interpreter unavailable')),
+      captureFingerprint: vi.fn().mockResolvedValue('stable-python')
+    })
+
+    const result = await tracker.inspectPackages(target, ['numpy'])
+
+    expect(result).toMatchObject({
+      inventory: { source: 'unavailable', validation: 'unavailable' },
+      packages: [{ requested: 'numpy', name: 'numpy', status: 'unknown' }]
+    })
+    expect(result.warnings?.join('\n')).toContain('interpreter unavailable')
+  })
+
+  it('captures a baseline before the first package mutation so installs have a verified change', async () => {
+    dataRoot = await mkdtemp(join(tmpdir(), 'purescience-env-first-mutation-'))
+    const inspectInstalled = vi
+      .fn()
+      .mockResolvedValueOnce({ runtimeVersion: '3.13.2', packages: [] })
+      .mockResolvedValueOnce({
+        runtimeVersion: '3.13.2',
+        packages: [
+          {
+            name: 'numpy',
+            version: '2.2.0',
+            versionStatus: 'known',
+            ecosystem: 'python',
+            evidenceSources: ['python-importlib-metadata']
+          }
+        ]
+      })
+    const tracker = new EnvironmentStateTracker({
+      dataRoot,
+      inspectInstalled,
+      captureFingerprint: vi.fn().mockResolvedValue('stable-python')
+    })
+
+    await tracker.markPackageMutationDirty(target, {
+      operationId: 'operation-first-install',
+      operation: 'install',
+      packages: ['numpy']
+    })
+    const verification = await tracker.refreshAfterPackageMutation(target, {
+      operationId: 'operation-first-install',
+      operation: 'install',
+      packages: ['numpy'],
+      result: 'success'
+    })
+
+    expect(inspectInstalled).toHaveBeenCalledTimes(2)
+    expect(verification.packageChanges).toEqual([
+      expect.objectContaining({
+        name: 'numpy',
+        relationship: 'requested',
+        change: 'installed',
+        afterVersion: '2.2.0'
+      })
+    ])
+  })
+
+  it('captures a baseline before the first package mutation so uninstalls have a verified change', async () => {
+    dataRoot = await mkdtemp(join(tmpdir(), 'purescience-env-first-uninstall-'))
+    const inspectInstalled = vi
+      .fn()
+      .mockResolvedValueOnce({
+        runtimeVersion: '3.13.2',
+        packages: [
+          {
+            name: 'numpy',
+            version: '2.2.0',
+            versionStatus: 'known',
+            ecosystem: 'python',
+            evidenceSources: ['python-importlib-metadata']
+          }
+        ]
+      })
+      .mockResolvedValueOnce({ runtimeVersion: '3.13.2', packages: [] })
+    const tracker = new EnvironmentStateTracker({
+      dataRoot,
+      inspectInstalled,
+      captureFingerprint: vi.fn().mockResolvedValue('stable-python')
+    })
+
+    await tracker.markPackageMutationDirty(target, {
+      operationId: 'operation-first-uninstall',
+      operation: 'uninstall',
+      packages: ['numpy']
+    })
+    const verification = await tracker.refreshAfterPackageMutation(target, {
+      operationId: 'operation-first-uninstall',
+      operation: 'uninstall',
+      packages: ['numpy'],
+      result: 'success'
+    })
+
+    expect(inspectInstalled).toHaveBeenCalledTimes(2)
+    expect(verification.packageChanges).toEqual([
+      expect.objectContaining({
+        name: 'numpy',
+        relationship: 'requested',
+        change: 'removed',
+        beforeVersion: '2.2.0'
+      })
+    ])
+  })
+
+  it('keeps the first package mutation repairable when the baseline inventory is unavailable', async () => {
+    dataRoot = await mkdtemp(join(tmpdir(), 'purescience-env-unavailable-baseline-'))
+    const inspectInstalled = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('runtime metadata is temporarily unavailable'))
+      .mockResolvedValueOnce({
+        runtimeVersion: '3.13.2',
+        packages: [
+          {
+            name: 'numpy',
+            version: '2.2.0',
+            versionStatus: 'known',
+            ecosystem: 'python',
+            evidenceSources: ['python-importlib-metadata']
+          }
+        ]
+      })
+    const tracker = new EnvironmentStateTracker({
+      dataRoot,
+      inspectInstalled,
+      captureFingerprint: vi.fn().mockResolvedValue('stable-python')
+    })
+
+    await expect(
+      tracker.markPackageMutationDirty(target, {
+        operationId: 'operation-repair-install',
+        operation: 'install',
+        packages: ['numpy']
+      })
+    ).resolves.toBeUndefined()
+    const verification = await tracker.refreshAfterPackageMutation(target, {
+      operationId: 'operation-repair-install',
+      operation: 'install',
+      packages: ['numpy'],
+      result: 'success'
+    })
+
+    expect(inspectInstalled).toHaveBeenCalledTimes(2)
+    expect(verification).toMatchObject({
+      result: 'success',
+      packageChanges: [
+        expect.objectContaining({
+          name: 'numpy',
+          relationship: 'requested',
+          change: 'observed',
+          afterVersion: '2.2.0'
+        })
+      ]
+    })
+  })
+
+  it('reuses immutable installed inventory while capturing fresh live-Kernel state per run', async () => {
+    dataRoot = await mkdtemp(join(tmpdir(), 'purescience-env-state-'))
+    const inspectInstalled = vi.fn().mockResolvedValue({
+      runtimeVersion: '3.13.2',
+      platform: 'linux',
+      architecture: 'aarch64',
+      packages: [
+        {
+          name: 'numpy',
+          version: '2.2.0',
+          versionStatus: 'known',
+          ecosystem: 'python',
+          evidenceSources: ['python-importlib-metadata']
+        }
+      ]
+    })
+    const tracker = new EnvironmentStateTracker({
+      dataRoot,
+      inspectInstalled,
+      captureFingerprint: vi.fn().mockResolvedValue('stable-python')
+    })
+
+    const first = await tracker.captureCompletedRun(target, {
+      runtimeVersion: '3.13.2',
+      packages: [
+        {
+          name: 'numpy',
+          version: '2.2.0',
+          versionStatus: 'known',
+          ecosystem: 'python',
+          evidenceSources: ['python-kernel-modules'],
+          loadedState: 'loaded'
+        }
+      ]
+    })
+    const second = await tracker.captureCompletedRun(target, {
+      runtimeVersion: '3.13.2',
+      packages: [
+        {
+          name: 'pandas',
+          version: '2.2.3',
+          versionStatus: 'known',
+          ecosystem: 'python',
+          evidenceSources: ['python-kernel-modules'],
+          loadedState: 'loaded'
+        }
+      ]
+    })
+
+    expect(inspectInstalled).toHaveBeenCalledOnce()
+    expect(first.manifest.installedInventory.source).toBe('full-scan')
+    expect(second.manifest.installedInventory.source).toBe('cache-reused')
+    expect(second.manifest).toMatchObject({
+      complete: false,
+      captureStatus: 'partial',
+      installedInventory: { validation: 'best-effort' }
+    })
+    expect(second.manifest.warnings).toContain('inventory-cache-best-effort')
+    expect(first.manifest).toMatchObject({ platform: 'linux', architecture: 'aarch64' })
+    expect(second.manifest.packages).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'numpy', loadedState: 'installed-only' }),
+        expect.objectContaining({ name: 'pandas', loadedState: 'loaded' })
+      ])
+    )
+    expect(first.checksum).toMatch(/^[a-f0-9]{64}$/)
+    expect(second.checksum).toMatch(/^[a-f0-9]{64}$/)
+    await expect(readFile(first.storagePath, 'utf8')).resolves.toBe(
+      `${JSON.stringify(first.manifest, null, 2)}\n`
+    )
+  })
+
+  it('refreshes the inventory once after one logical package mutation', async () => {
+    dataRoot = await mkdtemp(join(tmpdir(), 'purescience-env-mutation-'))
+    const inspectInstalled = vi
+      .fn()
+      .mockResolvedValueOnce({
+        runtimeVersion: '4.5.1',
+        packages: [
+          {
+            name: 'cli',
+            version: '3.6.3',
+            versionStatus: 'known',
+            ecosystem: 'r',
+            evidenceSources: ['r-installed-packages']
+          },
+          {
+            name: 'rlang',
+            version: '1.1.4',
+            versionStatus: 'known',
+            ecosystem: 'r',
+            evidenceSources: ['r-installed-packages']
+          }
+        ]
+      })
+      .mockResolvedValueOnce({
+        runtimeVersion: '4.5.1',
+        packages: [
+          {
+            name: 'cli',
+            version: '3.6.3',
+            versionStatus: 'known',
+            ecosystem: 'r',
+            evidenceSources: ['r-installed-packages']
+          },
+          {
+            name: 'ggplot2',
+            version: '3.5.2',
+            versionStatus: 'known',
+            ecosystem: 'r',
+            evidenceSources: ['r-installed-packages']
+          },
+          {
+            name: 'rlang',
+            version: '1.1.5',
+            versionStatus: 'known',
+            ecosystem: 'r',
+            evidenceSources: ['r-installed-packages']
+          },
+          {
+            name: 'scales',
+            version: '1.3.0',
+            versionStatus: 'known',
+            ecosystem: 'r',
+            evidenceSources: ['r-installed-packages']
+          }
+        ]
+      })
+    const tracker = new EnvironmentStateTracker({
+      dataRoot,
+      inspectInstalled,
+      captureFingerprint: vi.fn().mockResolvedValue('stable-r')
+    })
+    const rTarget = {
+      language: 'r' as const,
+      environmentName: 'default-r',
+      runtimeSource: 'managed' as const,
+      command: '/runtime/default-r/bin/Rscript',
+      args: []
+    }
+    await tracker.captureCompletedRun(rTarget)
+
+    await tracker.markPackageMutationDirty(rTarget, {
+      operationId: 'operation-1',
+      operation: 'install',
+      packages: ['ggplot2']
+    })
+    const verification = await tracker.refreshAfterPackageMutation(rTarget, {
+      operationId: 'operation-1',
+      operation: 'install',
+      packages: ['ggplot2'],
+      result: 'success',
+      fallbackUsed: true,
+      attempts: [
+        {
+          groupOrdinal: 0,
+          installer: 'conda',
+          packages: ['r-ggplot2'],
+          status: 'failed',
+          mutationRisk: 'none',
+          reason: 'package-not-found'
+        },
+        {
+          groupOrdinal: 1,
+          installer: 'r-install-packages',
+          packages: ['ggplot2'],
+          status: 'succeeded',
+          mutationRisk: 'confirmed'
+        }
+      ]
+    })
+    const capture = await tracker.captureCompletedRun(rTarget)
+
+    expect(inspectInstalled).toHaveBeenCalledTimes(2)
+    expect(verification.packageChanges).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: 'ggplot2',
+          relationship: 'requested',
+          change: 'installed',
+          afterVersion: '3.5.2'
+        }),
+        expect.objectContaining({
+          name: 'rlang',
+          relationship: 'unattributed',
+          change: 'updated',
+          beforeVersion: '1.1.4',
+          afterVersion: '1.1.5'
+        })
+      ])
+    )
+    expect(capture.manifest.packages).toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: 'ggplot2', version: '3.5.2' })])
+    )
+    expect(capture.manifest.operationLog).toEqual([
+      expect.objectContaining({
+        operationId: 'operation-1',
+        result: 'success',
+        fallbackUsed: true,
+        inventoryRefresh: 'published',
+        inventoryRefreshAttempts: [expect.objectContaining({ result: 'published' })],
+        packageChanges: [
+          expect.objectContaining({
+            name: 'ggplot2',
+            relationship: 'requested',
+            change: 'installed',
+            afterVersion: '3.5.2'
+          }),
+          expect.objectContaining({
+            name: 'rlang',
+            relationship: 'unattributed',
+            change: 'updated',
+            beforeVersion: '1.1.4',
+            afterVersion: '1.1.5'
+          }),
+          expect.objectContaining({
+            name: 'scales',
+            relationship: 'unattributed',
+            change: 'installed',
+            afterVersion: '1.3.0'
+          })
+        ],
+        attempts: [
+          expect.objectContaining({ installer: 'conda', status: 'failed' }),
+          expect.objectContaining({ installer: 'r-install-packages', status: 'succeeded' })
+        ]
+      })
+    ])
+    const manifestDirectory = join(dataRoot, 'runtime', 'provenance', 'environment-manifests')
+    const manifests = await Promise.all(
+      (await readdir(manifestDirectory)).map(
+        async (name) =>
+          JSON.parse(await readFile(join(manifestDirectory, name), 'utf8')) as {
+            captureKind?: string
+            operationLog?: Array<{ operationId?: string }>
+          }
+      )
+    )
+    expect(manifests).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          captureKind: 'operation',
+          operationLog: [expect.objectContaining({ operationId: 'operation-1' })]
+        })
+      ])
+    )
+  })
+
+  it('retains only the newest completed operations within the entry budget', async () => {
+    dataRoot = await mkdtemp(join(tmpdir(), 'purescience-env-log-count-'))
+    let timestamp = Date.parse('2026-07-27T10:00:00.000Z')
+    const tracker = new EnvironmentStateTracker({
+      dataRoot,
+      inspectInstalled: vi.fn().mockResolvedValue({
+        runtimeVersion: '3.13.2',
+        packages: [
+          {
+            name: 'numpy',
+            version: '2.2.0',
+            versionStatus: 'known',
+            ecosystem: 'python',
+            evidenceSources: ['python-importlib-metadata']
+          }
+        ]
+      }),
+      captureFingerprint: vi.fn().mockResolvedValue('stable-python'),
+      now: () => new Date((timestamp += 1_000)),
+      operationLogLimits: { maxEntries: 3, maxBytes: 1_000_000 }
+    })
+
+    for (let index = 1; index <= 5; index += 1) {
+      const operationId = `operation-${index}`
+      await tracker.markPackageMutationDirty(target, {
+        operationId,
+        operation: 'install',
+        packages: ['numpy']
+      })
+      await tracker.refreshAfterPackageMutation(target, {
+        operationId,
+        operation: 'install',
+        packages: ['numpy'],
+        result: 'success'
+      })
+    }
+
+    const capture = await tracker.captureCompletedRun(target)
+    expect(capture.manifest.operationLog?.map((operation) => operation.operationId)).toEqual([
+      'operation-3',
+      'operation-4',
+      'operation-5'
+    ])
+    expect(capture.manifest.operationLogTruncation).toEqual({
+      omittedCount: 2,
+      earliestRetainedAt: capture.manifest.operationLog?.[0].timestamp
+    })
+    await expect(readBinding(dataRoot)).resolves.toMatchObject({
+      operationLog: [
+        { operationId: 'operation-3' },
+        { operationId: 'operation-4' },
+        { operationId: 'operation-5' }
+      ],
+      operationLogTruncation: { omittedCount: 2 }
+    })
+  })
+
+  it('bounds byte-heavy completed operation history by serialized size', async () => {
+    dataRoot = await mkdtemp(join(tmpdir(), 'purescience-env-log-bytes-'))
+    const maxBytes = 2_500
+    const tracker = new EnvironmentStateTracker({
+      dataRoot,
+      inspectInstalled: vi.fn().mockResolvedValue({ runtimeVersion: '3.13.2', packages: [] }),
+      captureFingerprint: vi.fn().mockResolvedValue('stable-python'),
+      operationLogLimits: { maxEntries: 20, maxBytes }
+    })
+
+    for (let index = 1; index <= 4; index += 1) {
+      const operationId = `large-operation-${index}`
+      const packageSpec = `missing-${index}-${'x'.repeat(300)}`
+      await tracker.markPackageMutationDirty(target, {
+        operationId,
+        operation: 'install',
+        packages: [packageSpec]
+      })
+      await tracker.refreshAfterPackageMutation(target, {
+        operationId,
+        operation: 'install',
+        packages: [packageSpec],
+        result: 'failure'
+      })
+    }
+
+    const binding = await readBinding(dataRoot)
+    const persistedBytes = Buffer.byteLength(await readFile(await bindingPath(dataRoot), 'utf8'))
+    expect(persistedBytes).toBeLessThanOrEqual(maxBytes)
+    expect(binding.operationLog.at(-1)?.operationId).toBe('large-operation-4')
+    expect(binding.operationLogTruncation?.omittedCount).toBeGreaterThan(0)
+  })
+
+  it('retains the recovery-critical operation even when it exceeds both budgets', async () => {
+    dataRoot = await mkdtemp(join(tmpdir(), 'purescience-env-log-recovery-'))
+    const tracker = new EnvironmentStateTracker({
+      dataRoot,
+      inspectInstalled: vi.fn().mockRejectedValue(new Error('inventory unavailable')),
+      captureFingerprint: vi.fn().mockResolvedValue('stable-python'),
+      operationLogLimits: { maxEntries: 0, maxBytes: 0 }
+    })
+
+    await tracker.markPackageMutationDirty(target, {
+      operationId: 'operation-pending-recovery',
+      operation: 'install',
+      packages: ['numpy']
+    })
+    await tracker.refreshAfterPackageMutation(target, {
+      operationId: 'operation-pending-recovery',
+      operation: 'install',
+      packages: ['numpy'],
+      result: 'success'
+    })
+
+    await expect(readBinding(dataRoot)).resolves.toMatchObject({
+      dirtyOperationId: 'operation-pending-recovery',
+      operationLog: [{ operationId: 'operation-pending-recovery' }]
+    })
+  })
+
+  it('marks a successful installer process as failed when the requested R package is absent', async () => {
+    dataRoot = await mkdtemp(join(tmpdir(), 'purescience-env-unverified-mutation-'))
+    const inspectInstalled = vi.fn().mockResolvedValue({
+      runtimeVersion: '4.4.3',
+      packages: [
+        {
+          name: 'ggplot2',
+          version: '4.0.3',
+          versionStatus: 'known',
+          ecosystem: 'r',
+          evidenceSources: ['r-installed-packages']
+        }
+      ]
+    })
+    const tracker = new EnvironmentStateTracker({
+      dataRoot,
+      inspectInstalled,
+      captureFingerprint: vi.fn().mockResolvedValue('stable-r')
+    })
+    const rTarget = {
+      language: 'r' as const,
+      environmentName: 'default-r',
+      runtimeSource: 'managed' as const,
+      command: '/runtime/default-r/bin/Rscript',
+      args: []
+    }
+
+    await tracker.markPackageMutationDirty(rTarget, {
+      operationId: 'operation-missing-dplyr',
+      operation: 'install',
+      packages: ['dplyr']
+    })
+    const verification = await tracker.refreshAfterPackageMutation(rTarget, {
+      operationId: 'operation-missing-dplyr',
+      operation: 'install',
+      packages: ['dplyr'],
+      result: 'success'
+    })
+    const capture = await tracker.captureCompletedRun(rTarget)
+
+    expect(verification).toEqual({ result: 'failure', unsatisfiedPackages: ['dplyr'] })
+    expect(capture.manifest.operationLog).toEqual([
+      expect.objectContaining({
+        operationId: 'operation-missing-dplyr',
+        result: 'failure',
+        packages: ['dplyr']
+      })
+    ])
+    expect(capture.manifest.packages).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: 'dplyr' })])
+    )
+  })
+
+  it('fails verification when the post-install inventory cannot be refreshed', async () => {
+    dataRoot = await mkdtemp(join(tmpdir(), 'purescience-env-refresh-failure-'))
+    const tracker = new EnvironmentStateTracker({
+      dataRoot,
+      inspectInstalled: vi
+        .fn()
+        .mockResolvedValueOnce({ runtimeVersion: '3.13.2', packages: [] })
+        .mockRejectedValueOnce(new Error('inventory unavailable')),
+      captureFingerprint: vi.fn().mockResolvedValue('stable-python')
+    })
+    const pythonTarget = {
+      language: 'python' as const,
+      environmentName: 'default-python',
+      runtimeSource: 'managed' as const,
+      command: '/runtime/default-python/bin/python',
+      args: []
+    }
+
+    await tracker.markPackageMutationDirty(pythonTarget, {
+      operationId: 'operation-inventory-failed',
+      operation: 'install',
+      packages: ['numpy']
+    })
+
+    await expect(
+      tracker.refreshAfterPackageMutation(pythonTarget, {
+        operationId: 'operation-inventory-failed',
+        operation: 'install',
+        packages: ['numpy'],
+        result: 'success'
+      })
+    ).resolves.toEqual({ result: 'failure', reason: 'inventory-refresh-failed' })
+  })
+
+  it('forces a terminal rescan and marks evidence partial when package state changes during a run', async () => {
+    dataRoot = await mkdtemp(join(tmpdir(), 'purescience-env-fingerprint-'))
+    const inspectInstalled = vi.fn().mockResolvedValue({
+      runtimeVersion: '3.13.2',
+      packages: []
+    })
+    const captureFingerprint = vi
+      .fn()
+      .mockResolvedValueOnce('before')
+      .mockResolvedValueOnce('before')
+      .mockResolvedValueOnce('after')
+    const tracker = new EnvironmentStateTracker({
+      dataRoot,
+      inspectInstalled,
+      captureFingerprint
+    })
+
+    const start = await tracker.prepareRun(target)
+    const capture = await tracker.captureCompletedRun(
+      target,
+      { runtimeVersion: '3.13.2', packages: [] },
+      start
+    )
+
+    expect(inspectInstalled).toHaveBeenCalledTimes(2)
+    expect(capture.manifest).toMatchObject({
+      captureStatus: 'partial',
+      complete: false,
+      installedInventory: { source: 'full-scan' }
+    })
+    expect(capture.manifest.warnings).toContain('environment-changed-during-run')
+  })
+
+  it('recovers a durable pending package operation before allowing the next run', async () => {
+    dataRoot = await mkdtemp(join(tmpdir(), 'purescience-env-recovery-'))
+    const initial = new EnvironmentStateTracker({
+      dataRoot,
+      inspectInstalled: vi.fn().mockResolvedValue({ runtimeVersion: '3.13.2', packages: [] }),
+      captureFingerprint: vi.fn().mockResolvedValue('before-install')
+    })
+    await initial.captureCompletedRun(target)
+    await initial.markPackageMutationDirty(target, {
+      operationId: 'operation-crashed',
+      operation: 'install',
+      packages: ['pandas']
+    })
+
+    const blocked = new EnvironmentStateTracker({
+      dataRoot,
+      inspectInstalled: vi.fn().mockRejectedValue(new Error('environment still locked')),
+      captureFingerprint: vi.fn().mockResolvedValue('unknown')
+    })
+    await expect(blocked.prepareRun(target)).rejects.toThrow(/recovery failed before Notebook/)
+
+    const recovered = new EnvironmentStateTracker({
+      dataRoot,
+      inspectInstalled: vi.fn().mockResolvedValue({
+        runtimeVersion: '3.13.2',
+        packages: [
+          {
+            name: 'pandas',
+            version: '2.3.3',
+            versionStatus: 'known',
+            ecosystem: 'python',
+            evidenceSources: ['python-importlib-metadata']
+          }
+        ]
+      }),
+      captureFingerprint: vi.fn().mockResolvedValue('after-install')
+    })
+    const recoveredStart = await recovered.prepareRun(target)
+    expect(recoveredStart).toMatchObject({
+      fingerprint: 'after-install',
+      inventoryRefreshed: true
+    })
+    const recoveredCapture = await recovered.captureCompletedRun(
+      target,
+      { runtimeVersion: '3.13.2', packages: [] },
+      recoveredStart
+    )
+    expect(recoveredCapture.manifest.operationLog).toEqual([
+      expect.objectContaining({
+        operationId: 'operation-crashed',
+        packageChanges: [
+          expect.objectContaining({
+            name: 'pandas',
+            relationship: 'requested',
+            change: 'installed',
+            afterVersion: '2.3.3'
+          })
+        ]
+      })
+    ])
+  })
+
+  it('records an explicit partial manifest when an external Runtime cannot be inspected', async () => {
+    dataRoot = await mkdtemp(join(tmpdir(), 'purescience-env-partial-'))
+    const tracker = new EnvironmentStateTracker({
+      dataRoot,
+      inspectInstalled: vi.fn().mockRejectedValue(new Error('interpreter unavailable')),
+      captureFingerprint: vi.fn().mockResolvedValue(undefined)
+    })
+
+    const capture = await tracker.captureCompletedRun(target)
+
+    expect(capture.manifest).toMatchObject({
+      runtimeSource: 'external',
+      complete: false,
+      captureStatus: 'partial',
+      packages: []
+    })
+    expect(capture.manifest.warnings?.join(' ')).toMatch(/interpreter unavailable/)
+  })
+
+  it('preserves same-named R packages installed in different library ranks', async () => {
+    dataRoot = await mkdtemp(join(tmpdir(), 'purescience-env-r-libraries-'))
+    const rTarget = {
+      language: 'r' as const,
+      environmentName: 'default-r',
+      runtimeSource: 'managed' as const,
+      command: '/runtime/default-r/bin/Rscript',
+      args: []
+    }
+    const tracker = new EnvironmentStateTracker({
+      dataRoot,
+      inspectInstalled: vi.fn().mockResolvedValue({
+        runtimeVersion: '4.5.1',
+        packages: [
+          {
+            name: 'rlang',
+            version: '1.1.6',
+            versionStatus: 'known',
+            ecosystem: 'r',
+            evidenceSources: ['r-installed-packages'],
+            libraryRank: 1,
+            libraryScope: 'environment'
+          },
+          {
+            name: 'rlang',
+            version: '1.1.5',
+            versionStatus: 'known',
+            ecosystem: 'r',
+            evidenceSources: ['r-installed-packages'],
+            libraryRank: 2,
+            libraryScope: 'user'
+          }
+        ]
+      }),
+      captureFingerprint: vi.fn().mockResolvedValue('stable-r-libraries')
+    })
+
+    const capture = await tracker.captureCompletedRun(rTarget, {
+      runtimeVersion: '4.5.1',
+      packages: [
+        {
+          name: 'rlang',
+          version: '1.1.6',
+          versionStatus: 'known',
+          ecosystem: 'r',
+          evidenceSources: ['r-session-info'],
+          loadedState: 'loaded',
+          libraryRank: 1
+        }
+      ]
+    })
+
+    expect(capture.manifest.packages).toEqual([
+      expect.objectContaining({
+        name: 'rlang',
+        version: '1.1.6',
+        libraryRank: 1,
+        libraryScope: 'environment',
+        loadedState: 'loaded'
+      }),
+      expect.objectContaining({
+        name: 'rlang',
+        version: '1.1.5',
+        libraryRank: 2,
+        libraryScope: 'user',
+        loadedState: 'installed-only'
+      })
+    ])
+  })
+
+  it('keeps pre-activation R recovery state visible after adding a Conda prefix', async () => {
+    dataRoot = await mkdtemp(join(tmpdir(), 'purescience-env-r-upgrade-recovery-'))
+    const legacyTarget = {
+      language: 'r' as const,
+      environmentName: 'default-r',
+      runtimeSource: 'managed' as const,
+      command: 'C:\\runtime\\envs\\.r\\Lib\\R\\bin\\Rscript.exe',
+      args: []
+    }
+    const initial = new EnvironmentStateTracker({
+      dataRoot,
+      inspectInstalled: vi.fn().mockResolvedValue({ runtimeVersion: '4.5.1', packages: [] }),
+      captureFingerprint: vi.fn().mockResolvedValue('before-install')
+    })
+    await initial.markPackageMutationDirty(legacyTarget, {
+      operationId: 'operation-from-older-nightly',
+      operation: 'install',
+      packages: ['ggplot2']
+    })
+
+    const upgraded = new EnvironmentStateTracker({
+      dataRoot,
+      inspectInstalled: vi.fn().mockRejectedValue(new Error('environment still locked')),
+      captureFingerprint: vi.fn().mockResolvedValue('unknown')
+    })
+
+    await expect(
+      upgraded.prepareRun({
+        ...legacyTarget,
+        condaPrefix: 'C:\\runtime\\envs\\.r'
+      })
+    ).rejects.toThrow(/recovery failed before Notebook/)
+  })
+})

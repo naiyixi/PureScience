@@ -1,0 +1,105 @@
+import type { PersistedChatSession } from '../../shared/session-persistence'
+import type {
+  ArtifactGroupPage,
+  GetProjectFilesOverviewRequest,
+  ListArtifactGroupsRequest,
+  ListProjectFilesRequest,
+  ProjectFilesOverview,
+  ProjectFilesPage,
+  ProjectFileSource,
+  SearchArtifactsRequest,
+  SearchArtifactsResult
+} from '../../shared/project-files'
+import {
+  ProjectFilesMutationOwner,
+  type ManagedFileSoftDeleteToken,
+  type ManagedFileSyncOptions
+} from './mutation-owner'
+import type {
+  ProjectFilesClient,
+  ProjectFilesClientFactory,
+  ProjectFilesClientProvider
+} from './mutation-projection'
+import { ProjectFilesQueryOwner } from './query-owner'
+
+// Stable public facade for the query-optimized Project Files projection. Session JSON remains
+// authoritative; internal owners separate read orchestration from mutation/completeness state.
+class ManagedFileIndexRepository {
+  private readonly mutationOwner: ProjectFilesMutationOwner
+  private readonly queryOwner: ProjectFilesQueryOwner
+
+  constructor(getClient: ProjectFilesClientProvider, dataRoot: string) {
+    this.mutationOwner = new ProjectFilesMutationOwner(getClient, dataRoot)
+    this.queryOwner = new ProjectFilesQueryOwner(getClient, dataRoot, (projectId) =>
+      this.mutationOwner.isIndexComplete(projectId)
+    )
+  }
+
+  syncSession(
+    session: PersistedChatSession,
+    options: ManagedFileSyncOptions = {}
+  ): Promise<ProjectFileSource[]> {
+    return this.mutationOwner.syncSession(session, options)
+  }
+
+  softDeleteSession(projectId: string, sessionId: string): Promise<ManagedFileSoftDeleteToken> {
+    return this.mutationOwner.softDeleteSession(projectId, sessionId)
+  }
+
+  restoreSession(
+    projectId: string,
+    sessionId: string,
+    token: ManagedFileSoftDeleteToken
+  ): Promise<void> {
+    return this.mutationOwner.restoreSession(projectId, sessionId, token)
+  }
+
+  softDeleteProject(projectId: string): Promise<ManagedFileSoftDeleteToken> {
+    return this.mutationOwner.softDeleteProject(projectId)
+  }
+
+  restoreProject(projectId: string, token: ManagedFileSoftDeleteToken): Promise<void> {
+    return this.mutationOwner.restoreProject(projectId, token)
+  }
+
+  reconcileActiveSessions(sessions: PersistedChatSession[]): Promise<void> {
+    return this.mutationOwner.reconcileActiveSessions(sessions)
+  }
+
+  markReconciliationIncomplete(): void {
+    this.mutationOwner.markReconciliationIncomplete()
+  }
+
+  async getOverview(
+    request: string | GetProjectFilesOverviewRequest
+  ): Promise<ProjectFilesOverview> {
+    return this.queryOwner.getOverview(request)
+  }
+
+  async listFiles(request: ListProjectFilesRequest): Promise<ProjectFilesPage> {
+    return this.queryOwner.listFiles(request)
+  }
+
+  async searchArtifacts(request: SearchArtifactsRequest): Promise<SearchArtifactsResult> {
+    return this.queryOwner.searchArtifacts(request)
+  }
+
+  async listArtifactGroups(request: ListArtifactGroupsRequest): Promise<ArtifactGroupPage> {
+    return this.queryOwner.listArtifactGroups(request)
+  }
+}
+
+const createManagedFileIndexRepository = (
+  getClientForRoot: ProjectFilesClientFactory,
+  configRoot: string,
+  dataRoot: string
+): ManagedFileIndexRepository =>
+  new ManagedFileIndexRepository(() => getClientForRoot(configRoot), dataRoot)
+
+export { createManagedFileIndexRepository, ManagedFileIndexRepository }
+export type {
+  ManagedFileSoftDeleteToken,
+  ProjectFilesClient,
+  ProjectFilesClientFactory,
+  ProjectFilesClientProvider
+}

@@ -1,0 +1,374 @@
+import { create, type StoreApi } from 'zustand'
+
+import type { OfficialVendorId } from '../../../shared/provider-registry'
+import {
+  DEFAULT_APP_ICON_VARIANT,
+  DEFAULT_CONVERSATION_SKILL_IMPORT_ENABLED,
+  DEFAULT_NOTIFICATIONS_ENABLED,
+  DEFAULT_REASONING_EFFORT,
+  isClaudeSubscriptionProvider,
+  providerValidationFailed,
+  selectClaudeSubscriptionProvider
+} from '../../../shared/settings'
+import type { PackageMirror } from '../../../shared/mirror'
+import type { CloseActionPreference } from '../../../shared/window-controls'
+import {
+  DEFAULT_PERMISSION_PROFILE,
+  getDefaultPermissionProfile,
+  type PermissionProfileId
+} from '../../../shared/permission-profiles'
+import { isMirrorConfigured } from '../pages/settings/mirror-view'
+import {
+  createSettingsWriteCoordinator,
+  type SettingsWriteCoordinator
+} from './settings-write-coordinator'
+import {
+  createInitialSettingsNavigationState,
+  createSettingsNavigationSlice,
+  type SettingsNavigationActions,
+  type SettingsNavigationState
+} from './settings-navigation-slice'
+import {
+  createInitialSettingsConnectorsState,
+  createSettingsConnectorsSlice,
+  type SettingsConnectorsActions,
+  type SettingsConnectorsState
+} from './settings-connectors-slice'
+import {
+  createSettingsPreferencesSlice,
+  type SettingsPreferencesActions
+} from './settings-preferences-slice'
+import {
+  createInitialSettingsSkillsState,
+  createSettingsSkillsSlice,
+  type SettingsSkillsActions,
+  type SettingsSkillsState
+} from './settings-skills-slice'
+import {
+  createProviderAuthSlice,
+  type ProviderAuthActions,
+  type SaveProviderResult
+} from './settings-provider-auth-slice'
+import {
+  createInitialRuntimeSetupState,
+  createRuntimeSetupLoadPatch,
+  createRuntimeSetupSlice,
+  type RuntimeSetupActions,
+  type RuntimeSetupState
+} from './settings-runtime-slice'
+export { selectAnyInstalling } from './settings-runtime-slice'
+import type {
+  ClaudeInfo,
+  ClaudeSubscriptionProviderId,
+  CodexInfo,
+  AgentFrameworkId,
+  AgentFrameworkView,
+  ChatApiEndpoint,
+  OpencodeInfo,
+  ProviderType,
+  ProviderView,
+  ReasoningEffort,
+  SettingsSnapshot,
+  AppIconVariant
+} from '../../../shared/settings'
+
+type SettingsStoreData = RuntimeSetupState &
+  SettingsNavigationState &
+  SettingsSkillsState &
+  SettingsConnectorsState & {
+    isLoaded: boolean
+    isLoading: boolean
+    loadError: string | undefined
+    // Latest failed Settings write, shown by the dialog until dismissed or another write starts.
+    settingsWriteError: string | undefined
+    settingsLoadGeneration: number
+    claude: ClaudeInfo
+    activeProviderId: string | undefined
+    claudeSubscriptionProviderId: ClaudeSubscriptionProviderId | undefined
+    // Active model within the active provider; undefined means the provider's own default.
+    activeModel: string | undefined
+    providers: ProviderView[]
+    // Selected agent backend and the frameworks available to choose from.
+    agentFrameworkId: AgentFrameworkId
+    agentFrameworks: AgentFrameworkView[]
+    // Detected opencode executable, for the framework-aware detection card.
+    opencode: OpencodeInfo
+    codex: CodexInfo
+    // Whether each framework's detected runtime is the app-managed install (only these can be uninstalled
+    // in-app). Mirrored from the main-process snapshot; a PATH/npm binary reads false.
+    claudeManaged: boolean
+    opencodeManaged: boolean
+    codexManaged: boolean
+    onboardingCompletedAt: number | undefined
+    encryptionAvailable: boolean
+    // Configured package mirror (conda/pip); undefined means public hosts (unconfigured).
+    packageMirror?: PackageMirror
+    // Reasoning-effort preference applied to agent requests; 'default' leaves the agent's own default.
+    reasoningEffort: ReasoningEffort
+    // Whether the app posts an OS notification when an agent task finishes or fails while unfocused.
+    notificationsEnabled: boolean
+    // Whether conversations receive the app-owned Skill package import tool and instructions.
+    conversationSkillImportEnabled: boolean
+    // Saved Windows titlebar-close behavior. Undefined means ask every time.
+    closePreference: CloseActionPreference | undefined
+    // Selected built-in app-icon look, applied to the window and dock/taskbar. Defaults to 'light'.
+    appIconVariant: AppIconVariant
+    // Approval profile applied only when creating a new conversation.
+    defaultPermissionProfile: PermissionProfileId
+  }
+
+type SettingsStoreCore = SettingsStoreData &
+  ProviderAuthActions &
+  SettingsPreferencesActions &
+  SettingsNavigationActions &
+  SettingsSkillsActions &
+  SettingsConnectorsActions &
+  SettingsStoreActions
+
+type SettingsStoreActions = {
+  load: (options?: { force?: boolean }) => Promise<boolean>
+  clearSettingsWriteError: () => void
+}
+
+type SettingsStore = SettingsStoreCore & RuntimeSetupActions
+
+export const createInitialSettingsState = (): SettingsStoreData => ({
+  ...createInitialRuntimeSetupState(),
+  ...createInitialSettingsNavigationState(),
+  ...createInitialSettingsSkillsState(),
+  ...createInitialSettingsConnectorsState(),
+  isLoaded: false,
+  isLoading: false,
+  loadError: undefined,
+  settingsWriteError: undefined,
+  settingsLoadGeneration: 0,
+  claude: {},
+  activeProviderId: undefined,
+  claudeSubscriptionProviderId: undefined,
+  activeModel: undefined,
+  providers: [],
+  agentFrameworkId: 'claude-code',
+  agentFrameworks: [],
+  opencode: {},
+  codex: {},
+  claudeManaged: false,
+  opencodeManaged: false,
+  codexManaged: false,
+  onboardingCompletedAt: undefined,
+  encryptionAvailable: true,
+  packageMirror: undefined,
+  reasoningEffort: DEFAULT_REASONING_EFFORT,
+  notificationsEnabled: DEFAULT_NOTIFICATIONS_ENABLED,
+  conversationSkillImportEnabled: DEFAULT_CONVERSATION_SKILL_IMPORT_ENABLED,
+  closePreference: undefined,
+  appIconVariant: DEFAULT_APP_ICON_VARIANT,
+  defaultPermissionProfile: DEFAULT_PERMISSION_PROFILE
+})
+
+// Applies a fresh main-process snapshot to the renderer cache.
+const applySnapshot = (snapshot: SettingsSnapshot): Partial<SettingsStoreData> => ({
+  claude: snapshot.claude,
+  activeProviderId: snapshot.activeProviderId,
+  claudeSubscriptionProviderId: snapshot.claudeSubscriptionProviderId,
+  activeModel: snapshot.activeModel,
+  providers: snapshot.providers,
+  onboardingCompletedAt: snapshot.onboardingCompletedAt,
+  packageMirror: isMirrorConfigured(snapshot.packageMirror) ? snapshot.packageMirror : undefined,
+  reasoningEffort: snapshot.reasoningEffort,
+  // Defensive: main always fills this, but an untyped snapshot (tests, older backends) must not
+  // write undefined into the boolean preference.
+  notificationsEnabled: snapshot.notificationsEnabled ?? DEFAULT_NOTIFICATIONS_ENABLED,
+  conversationSkillImportEnabled:
+    snapshot.conversationSkillImportEnabled ?? DEFAULT_CONVERSATION_SKILL_IMPORT_ENABLED,
+  closePreference: snapshot.closePreference,
+  appIconVariant: snapshot.appIconVariant ?? DEFAULT_APP_ICON_VARIANT,
+  defaultPermissionProfile: getDefaultPermissionProfile(snapshot),
+  agentFrameworkId: snapshot.agentFrameworkId,
+  agentFrameworks: snapshot.agentFrameworks,
+  opencode: snapshot.opencode,
+  codex: snapshot.codex ?? {},
+  claudeManaged: snapshot.claudeManaged,
+  opencodeManaged: snapshot.opencodeManaged,
+  codexManaged: snapshot.codexManaged ?? false
+})
+
+// Stable fallback reference so the selector returns the same array identity across renders
+// (a fresh literal would make useSettingsStore re-render every tick and loop).
+const DEFAULT_FRAMEWORK_API_ENDPOINTS: ChatApiEndpoint[] = ['anthropic']
+
+// The chat endpoints the currently-selected agent framework can drive; a provider is only usable when
+// it shares one. Defaults to Anthropic /v1/messages before the framework list has loaded.
+export const selectFrameworkApiEndpoints = (state: SettingsStoreData): ChatApiEndpoint[] =>
+  state.agentFrameworks.find((framework) => framework.id === state.agentFrameworkId)
+    ?.supportedApiTypes ?? DEFAULT_FRAMEWORK_API_ENDPOINTS
+
+// A single selectable (provider, model) entry for the composer picker. `model` is '' for a provider
+// with no concrete model, meaning "use the provider default".
+export type ProviderModelOption = {
+  providerId: string
+  providerName: string
+  providerType: ProviderType
+  vendorId?: OfficialVendorId
+  model: string
+}
+
+// Flattens providers into the composer's (provider, model) options: one per catalog model for an
+// official vendor, the single model for a custom provider, and one default entry for a provider that
+// exposes no concrete model. Providers whose last test failed are excluded so a broken provider can't
+// be picked as a model source. Pure so the composer and its tests can share it.
+export const selectProviderModelOptions = (
+  providers: ProviderView[],
+  activeProviderId?: string,
+  claudeSubscriptionProviderId?: ClaudeSubscriptionProviderId
+): ProviderModelOption[] => {
+  const selectedClaudeProvider = selectClaudeSubscriptionProvider(
+    providers,
+    activeProviderId,
+    claudeSubscriptionProviderId
+  )
+
+  return providers
+    .filter(
+      (provider) =>
+        !isClaudeSubscriptionProvider(provider.type) || provider.id === selectedClaudeProvider?.id
+    )
+    .filter((provider) => !providerValidationFailed(provider))
+    .flatMap((provider) => {
+      const models = provider.models.length > 0 ? provider.models : ['']
+
+      return models.map((model) => ({
+        providerId: provider.id,
+        providerName: provider.name,
+        providerType: provider.type,
+        vendorId: provider.vendorId,
+        model
+      }))
+    })
+}
+
+let settingsLoadPromise: Promise<boolean> | undefined
+const SAFE_SETTINGS_LOAD_ERROR = 'PureScience could not load settings. Retry to continue.'
+
+// Keep raw IPC diagnostics in the developer channel while renderer state remains path-safe.
+const reportSettingsLoadError = (error: unknown): void => {
+  console.warn('Settings startup loading failed', error)
+}
+
+// Renderer cache of the main-process settings service. The main process stays the source of truth
+// for secrets; this store only ever holds masked provider views.
+const createSettingsStoreState = (
+  set: StoreApi<SettingsStore>['setState'],
+  get: StoreApi<SettingsStore>['getState'],
+  writeCoordinator: SettingsWriteCoordinator
+): SettingsStore => ({
+  ...createInitialSettingsState(),
+  ...createRuntimeSetupSlice({
+    set,
+    get,
+    // Resolve browser globals only when an action runs; node-based renderer tests import this store.
+    getCommands: () => window.api.settings,
+    reconcileSnapshot: (snapshot, runtimePatch = {}) =>
+      set({ ...applySnapshot(snapshot), ...runtimePatch }),
+    reconcileClaudeDetection: (result, npmAvailable) =>
+      set(
+        result.found && result.path
+          ? { npmAvailable, claude: { resolvedPath: result.path, version: result.version } }
+          : { npmAvailable }
+      )
+  }),
+  ...createProviderAuthSlice({
+    get,
+    getCommands: () => window.api.settings,
+    reconcileSnapshot: (snapshot) => set(applySnapshot(snapshot)),
+    refreshPreflight: () => get().refreshPreflight(),
+    refreshFrameworkStatus: async (id) => {
+      if (id === 'opencode') {
+        await get().detectOpencode()
+      } else if (id === 'codex') {
+        await get().detectCodex()
+      } else {
+        await get().detectClaude()
+      }
+      await get().refreshPreflight()
+    },
+    writeCoordinator
+  }),
+  ...createSettingsPreferencesSlice({
+    getState: get,
+    setState: (patch) => set(patch),
+    getCommands: () => window.api.settings,
+    reconcileSnapshot: (snapshot) => set(applySnapshot(snapshot)),
+    writeCoordinator
+  }),
+  ...createSettingsNavigationSlice({ setState: (patch) => set(patch) }),
+  ...createSettingsSkillsSlice({
+    getState: get,
+    setState: (patch) => set(patch),
+    getCommands: () => window.api.settings
+  }),
+  ...createSettingsConnectorsSlice({
+    setState: (patch) => set(patch),
+    getCommands: () => window.api.settings
+  }),
+
+  // Loads settings, preflight, and encryption availability in one startup pass.
+  load: (options) => {
+    // StrictMode replays the startup effect. Reuse that identical in-flight pass so a duplicate
+    // request cannot supersede its successful result; an explicit user retry still starts a new
+    // generation and remains authoritative over any older request.
+    if (!options?.force && settingsLoadPromise) return settingsLoadPromise
+
+    const generation = get().settingsLoadGeneration + 1
+    set({ settingsLoadGeneration: generation, isLoading: true, loadError: undefined })
+
+    const loadPromise = (async (): Promise<boolean> => {
+      try {
+        const [snapshot, preflight, encryptionAvailable, npmAvailable] = await Promise.all([
+          window.api.settings.getSettings(),
+          window.api.settings.getPreflight(),
+          window.api.settings.isEncryptionAvailable(),
+          window.api.settings.isNpmAvailable()
+        ])
+
+        if (get().settingsLoadGeneration !== generation) return false
+
+        set({
+          ...applySnapshot(snapshot),
+          ...createRuntimeSetupLoadPatch(preflight, npmAvailable),
+          encryptionAvailable,
+          isLoaded: true,
+          isLoading: false,
+          loadError: undefined
+        })
+        return true
+      } catch (error) {
+        if (get().settingsLoadGeneration !== generation) return false
+
+        reportSettingsLoadError(error)
+        set({
+          isLoading: false,
+          loadError: SAFE_SETTINGS_LOAD_ERROR
+        })
+        return false
+      }
+    })()
+
+    settingsLoadPromise = loadPromise
+    void loadPromise.then(() => {
+      if (settingsLoadPromise === loadPromise) settingsLoadPromise = undefined
+    })
+    return loadPromise
+  },
+
+  clearSettingsWriteError: () => writeCoordinator.clearFailures()
+})
+
+export const useSettingsStore = create<SettingsStore>((set, get) =>
+  createSettingsStoreState(
+    set,
+    get,
+    createSettingsWriteCoordinator((settingsWriteError) => set({ settingsWriteError }))
+  )
+)
+
+export type { SaveProviderResult }

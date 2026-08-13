@@ -1,0 +1,187 @@
+import { mkdtemp, readFile, rm, stat } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+
+const pdescribe = describe.skipIf(process.platform === 'win32')
+
+import {
+  buildWindowsPathCommand,
+  getCliLauncherStatus,
+  installCliLauncher,
+  planCliLauncher,
+  uninstallCliLauncher,
+  type CliLauncherEnv
+} from './launcher'
+
+let home: string
+
+const posixEnv = (overrides: Partial<CliLauncherEnv> = {}): CliLauncherEnv => ({
+  platform: 'linux',
+  appExecPath: '/opt/PureScience/purescience',
+  cliEntryPath: '/opt/PureScience/resources/cli/index.mjs',
+  packaged: true,
+  homeDir: home,
+  userDataDir: join(home, '.config', 'PureScience'),
+  pathVar: '/usr/bin',
+  ...overrides
+})
+
+const winEnv = (overrides: Partial<CliLauncherEnv> = {}): CliLauncherEnv => ({
+  platform: 'win32',
+  appExecPath: 'C:\\Program Files\\PureScience\\purescience.exe',
+  cliEntryPath: 'C:\\Program Files\\PureScience\\resources\\cli\\index.mjs',
+  packaged: true,
+  homeDir: home,
+  userDataDir: join(home, 'AppData', 'Roaming', 'PureScience'),
+  pathVar: 'C:\\Windows\\System32',
+  ...overrides
+})
+
+beforeEach(async () => {
+  home = await mkdtemp(join(tmpdir(), 'os-cli-'))
+})
+
+afterEach(async () => {
+  await rm(home, { recursive: true, force: true })
+})
+
+describe('planCliLauncher', () => {
+  it('targets ~/.local/bin with an executable sh shim on POSIX', () => {
+    const plan = planCliLauncher(posixEnv())
+    expect(plan.target).toBe(join(home, '.local', 'bin', 'purescience'))
+    expect(plan.mode).toBe(0o755)
+    expect(plan.shim).toContain('#!/bin/sh')
+    expect(plan.shim).toContain('ELECTRON_RUN_AS_NODE=1')
+    // Packaged: pins the app path and single-quotes both paths (they contain a space).
+    expect(plan.shim).toContain("PURESCIENCE_APP_PATH='/opt/PureScience/purescience'")
+    expect(plan.shim).toContain('\'/opt/PureScience/resources/cli/index.mjs\' "$@"')
+  })
+
+  it('omits PURESCIENCE_APP_PATH for a development (unpackaged) build', () => {
+    const plan = planCliLauncher(posixEnv({ packaged: false }))
+    expect(plan.shim).not.toContain('PURESCIENCE_APP_PATH')
+  })
+
+  it('single-quotes POSIX paths so shell metacharacters cannot expand or break out', () => {
+    // A path with a space, $, backtick, backslash, and a single quote: none may be interpreted, and
+    // the embedded quote must be escaped via the '\'' idiom.
+    const nasty = "/opt/a b/$(x)`y`\\z/o'brien"
+    const plan = planCliLauncher(posixEnv({ appExecPath: nasty, packaged: true }))
+    // The whole path sits inside single quotes; the embedded ' is closed-escaped-reopened as '\''.
+    expect(plan.shim).toContain("PURESCIENCE_APP_PATH='/opt/a b/$(x)`y`\\z/o'\\''brien'")
+  })
+
+  it('targets a per-user bin dir with a .cmd shim on Windows', () => {
+    const plan = planCliLauncher(
+      posixEnv({
+        platform: 'win32',
+        appExecPath: 'C:\\Program Files\\PureScience\\purescience.exe',
+        userDataDir: 'C:\\Users\\me\\AppData\\Roaming\\PureScience'
+      })
+    )
+    expect(plan.target.endsWith('purescience.cmd')).toBe(true)
+    expect(plan.shim).toContain('@echo off')
+    expect(plan.shim).toContain('set ELECTRON_RUN_AS_NODE=1')
+    expect(plan.shim).toContain('%*')
+  })
+
+  it('reports onPath only when the bin dir is on PATH', () => {
+    // Use a drive-less fixture so a host Windows drive colon is not mistaken for the target POSIX
+    // PATH separator this injected-platform test is exercising.
+    const posixHome = '/home/alice'
+    const binDir = join(posixHome, '.local', 'bin')
+    expect(planCliLauncher(posixEnv()).onPath).toBe(false)
+    expect(
+      planCliLauncher(posixEnv({ homeDir: posixHome, pathVar: `/usr/bin:${binDir}` })).onPath
+    ).toBe(true)
+  })
+})
+
+pdescribe('installCliLauncher / status / uninstall (POSIX)', () => {
+  it('writes an executable shim and reports a PATH hint when not on PATH', async () => {
+    const status = await installCliLauncher(posixEnv())
+    expect(status.installed).toBe(true)
+    expect(status.onPath).toBe(false)
+    expect(status.pathHint).toContain('.local')
+
+    const mode = (await stat(status.target)).mode & 0o777
+    expect(mode & 0o100).toBe(0o100) // owner-executable
+    expect(await readFile(status.target, 'utf8')).toContain('ELECTRON_RUN_AS_NODE=1')
+  })
+
+  it('reports installed via getStatus, then removes the shim on uninstall', async () => {
+    const binDir = join(home, '.local', 'bin')
+    const env = posixEnv({ pathVar: binDir })
+
+    await installCliLauncher(env)
+    const status = await getCliLauncherStatus(env)
+    expect(status.installed).toBe(true)
+    expect(status.onPath).toBe(true)
+    expect(status.pathHint).toBeUndefined()
+
+    const removed = await uninstallCliLauncher(env)
+    expect(removed.installed).toBe(false)
+    expect((await getCliLauncherStatus(env)).installed).toBe(false)
+  })
+})
+
+describe('buildWindowsPathCommand', () => {
+  it('embeds the bin dir as a PowerShell literal, not via -args', () => {
+    const { command, args } = buildWindowsPathCommand(
+      'C:\\Users\\me\\AppData\\Roaming\\PureScience\\bin'
+    )
+    expect(command).toBe('powershell')
+    // The script must be passed to -Command and contain the actual dir literal; -args (the fragile
+    // form that could leave $args empty and write the wrong PATH) must not be used.
+    expect(args).toContain('-Command')
+    expect(args).not.toContain('-args')
+    const script = args[args.length - 1]
+    expect(script).toContain("$binDir = 'C:\\Users\\me\\AppData\\Roaming\\PureScience\\bin'")
+    expect(script).toContain("[Environment]::SetEnvironmentVariable('Path'")
+  })
+
+  it("doubles embedded single quotes so a quote in the path can't break out of the literal", () => {
+    const script = buildWindowsPathCommand("C:\\weird'dir\\bin").args.at(-1) ?? ''
+    expect(script).toContain("$binDir = 'C:\\weird''dir\\bin'")
+  })
+})
+
+describe('installCliLauncher on Windows PATH edit', () => {
+  it('runs the PATH command with the real bin dir and reports the new-terminal hint on success', async () => {
+    const calls: Array<{ command: string; args: string[] }> = []
+    const status = await installCliLauncher(winEnv(), (command, args) => {
+      calls.push({ command, args })
+      return true
+    })
+
+    expect(status.installed).toBe(true)
+    expect(status.onPath).toBe(true)
+    expect(status.pathHint).toContain('new terminal')
+    // The injected runner received the actual bin dir embedded in the script (regression guard for
+    // the -args passing bug).
+    const binDir = join(home, 'AppData', 'Roaming', 'PureScience', 'bin')
+    expect(calls).toHaveLength(1)
+    expect(calls[0].args.at(-1)).toContain(binDir)
+  })
+
+  it('keeps onPath false with an Add-to-PATH hint when the PATH edit fails', async () => {
+    const status = await installCliLauncher(winEnv(), () => false)
+    expect(status.onPath).toBe(false)
+    expect(status.pathHint).toContain('Add ')
+    expect(status.pathHint).toContain('PATH')
+  })
+
+  it('skips the PATH edit entirely when the bin dir is already on PATH', async () => {
+    const binDir = join(home, 'AppData', 'Roaming', 'PureScience', 'bin')
+    let called = false
+    const status = await installCliLauncher(winEnv({ pathVar: `C:\\Windows;${binDir}` }), () => {
+      called = true
+      return true
+    })
+    expect(called).toBe(false)
+    expect(status.onPath).toBe(true)
+    expect(status.pathHint).toBeUndefined()
+  })
+})

@@ -1,0 +1,120 @@
+import { describe, expect, it } from 'vitest'
+
+import { PRE_REGISTERED_PERMISSION_IDENTITIES } from '../permission-grants/identity-catalog'
+import { SESSION_PLAN_SYSTEM_PROMPT_APPEND } from '../session-plan/guidance'
+import {
+  appMcpToolIdentities,
+  appMcpServerAliases,
+  renderAppMcpToolReferences,
+  resolveCanonicalMcpToolIdentity
+} from './app-mcp-names'
+
+const APP_MCP_CODEC_CASES = appMcpToolIdentities().flatMap((identity) => {
+  const separator = identity.indexOf('/')
+  const server = identity.slice(0, separator)
+  const tool = identity.slice(separator + 1)
+  const safeServer = server.replace(/[^a-zA-Z0-9_]/g, '_')
+  return [
+    [server, `mcp__${safeServer}__${tool}`, identity],
+    [server, `mcp.${server}.${tool}`, identity],
+    [server, `${safeServer}_${tool}`, identity]
+  ] as const
+})
+
+describe('resolveCanonicalMcpToolIdentity', () => {
+  it('keeps the app MCP inventory aligned with the remembered-permission catalog', () => {
+    expect(PRE_REGISTERED_PERMISSION_IDENTITIES.mcp_tool.toSorted()).toEqual(
+      appMcpToolIdentities()
+        .map((identity) => `mcp:${identity}`)
+        .toSorted()
+    )
+  })
+
+  it('documents complete generation and approval call shapes', () => {
+    expect(SESSION_PLAN_SYSTEM_PROMPT_APPEND).toContain(
+      'generation supplies all four Plan fields (`task_summary`, `phases`, `desired_outputs`, and `feasibility`) in one call'
+    )
+    expect(SESSION_PLAN_SYSTEM_PROMPT_APPEND).toContain(
+      'call `generate_plan` again with only `decision: "approved"` or `decision: "rejected"`'
+    )
+    expect(SESSION_PLAN_SYSTEM_PROMPT_APPEND).toContain(
+      'Never call `update_step_status` while approval is pending'
+    )
+  })
+
+  it('keeps Conversation Turn completion independent from Session Plan status', () => {
+    expect(SESSION_PLAN_SYSTEM_PROMPT_APPEND).not.toContain('Do not call `end_turn`')
+    expect(SESSION_PLAN_SYSTEM_PROMPT_APPEND).not.toContain('do not end the turn')
+    expect(SESSION_PLAN_SYSTEM_PROMPT_APPEND).toContain(
+      'If an irreversible blocker makes later steps unreachable'
+    )
+  })
+
+  it.each([
+    [
+      'claude-code',
+      'mcp__purescience-plan__generate_plan',
+      'mcp__purescience-plan__update_step_status'
+    ],
+    ['codex', 'generate_plan', 'update_step_status'],
+    ['opencode', 'purescience_plan_generate_plan', 'purescience_plan_update_step_status']
+  ] as const)(
+    'renders the same planning policy with callable names for %s',
+    (frameworkId, generateTool, updateTool) => {
+      const guidance = renderAppMcpToolReferences(frameworkId, SESSION_PLAN_SYSTEM_PROMPT_APPEND)
+
+      expect(guidance).toContain('genuinely multi-stage')
+      expect(guidance).toContain('discover applicable skills before generating')
+      expect(guidance).toContain(generateTool)
+      expect(guidance).toContain(updateTool)
+      expect(guidance).toContain('Do not generate a Plan for simple')
+      expect(guidance).not.toContain('get_active_plan')
+      expect(guidance).not.toContain('Plan mode')
+    }
+  )
+
+  it.each([
+    'mcp__purescience-notebook__notebook_execute',
+    'mcp.purescience-notebook.notebook_execute',
+    'purescience_notebook_notebook_execute'
+  ])('normalizes a configured framework alias %s', (reportedName) => {
+    expect(resolveCanonicalMcpToolIdentity(reportedName, ['purescience-notebook'])).toBe(
+      'purescience-notebook/notebook_execute'
+    )
+  })
+
+  it('does not turn an unregistered Claude MCP prefix into durable identity', () => {
+    expect(
+      resolveCanonicalMcpToolIdentity('mcp__reported-only__dangerous_tool', [])
+    ).toBeUndefined()
+  })
+
+  it.each(APP_MCP_CODEC_CASES)(
+    'maps every registered app MCP identity from %s using provider name %s',
+    (server, reportedName, identity) => {
+      expect(resolveCanonicalMcpToolIdentity(reportedName, [server])).toBe(identity)
+    }
+  )
+
+  it('normalizes framework-safe aliases for configured dynamic servers', () => {
+    expect(appMcpServerAliases('custom-server')).toEqual(['custom-server', 'custom_server'])
+    expect(resolveCanonicalMcpToolIdentity('mcp__custom_server__lookup', ['custom-server'])).toBe(
+      'custom-server/lookup'
+    )
+    expect(resolveCanonicalMcpToolIdentity('mcp.custom_server.lookup', ['custom-server'])).toBe(
+      'custom-server/lookup'
+    )
+    expect(resolveCanonicalMcpToolIdentity('custom_server_lookup', ['custom-server'])).toBe(
+      'custom-server/lookup'
+    )
+  })
+
+  it('rejects a sanitized dynamic server alias when configured names collide', () => {
+    expect(
+      resolveCanonicalMcpToolIdentity('mcp__custom_server__lookup', [
+        'custom-server',
+        'custom_server'
+      ])
+    ).toBeUndefined()
+  })
+})

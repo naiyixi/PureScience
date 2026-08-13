@@ -1,0 +1,357 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import './agent-markdown.css';
+
+/* Explicit source root so utility scanning is independent of the Vite root — the localhost web
+   build (vite.web.config.ts) roots at src/renderer/web and would otherwise miss these files. */
+@source '../';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-session-running: var(--session-running);
+  --color-session-waiting: var(--session-waiting);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-bg-10: var(--bg-10);
+  --color-bg-000: var(--bg-000);
+  --color-bg-200: var(--bg-200);
+  --color-bg-300: var(--bg-300);
+  --color-bg-400: var(--bg-400);
+  --color-border-200: hsl(var(--border-ink-channel) / 0.15);
+  --color-border-300: hsl(var(--border-ink-channel) / 0.2);
+  --color-border-100: hsl(var(--border-ink-channel));
+  --color-text-000: var(--text-000);
+  --color-text-100: var(--text-100);
+  --color-text-200: var(--text-200);
+  --color-text-300: var(--text-300);
+  --color-danger-000: var(--danger-000);
+  --color-danger-900: var(--danger-900);
+  --color-warning-100: var(--warning-100);
+  --color-warning-900: var(--warning-900);
+  --color-success-000: var(--success-000);
+  --color-syntax-keyword: var(--syntax-keyword);
+  --color-syntax-string: var(--syntax-string);
+  --color-syntax-number: var(--syntax-number);
+  --color-action-panel-toggle: var(--action-panel-toggle);
+  --color-surface-control-hover: var(--surface-control-hover);
+  --color-message-user-text: var(--message-user-text);
+  --color-mention-chip: var(--mention-chip);
+  --color-mention-chip-foreground: var(--mention-chip-foreground);
+  --color-skill-chip: var(--skill-chip);
+  --color-skill-chip-foreground: var(--skill-chip-foreground);
+  --color-rail-card-bg: hsl(var(--rail-card-bg));
+  /* Routed through var() so .dark can strengthen elevation — subtle black shadows vanish on dark
+     surfaces, so the dark theme uses higher-opacity values (defined in :root / .dark below). */
+  --shadow-card: var(--shadow-card-value);
+  --shadow-card-opaque: var(--shadow-card-opaque-value);
+  --shadow-menu: var(--shadow-menu-value);
+  --shadow-dialog: var(--shadow-dialog-value);
+  --z-index-modal: 50;
+  --z-index-toast: 70;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  color-scheme: light;
+  --radius: 0.5rem;
+  /* Light-theme elevation (referenced by the shadow-* utilities via @theme inline). */
+  --shadow-card-value: 0 0 0 1px rgb(10 10 10 / 0.06), 0 4px 24px rgb(10 10 10 / 0.04);
+  --shadow-card-opaque-value: 0 0 0 1px rgb(10 10 10 / 0.08), 0 8px 28px rgb(10 10 10 / 0.1);
+  --shadow-menu-value: 0 2px 8px rgb(0 0 0 / 0.08);
+  --shadow-dialog-value: 0 8px 32px rgb(10 10 10 / 12%);
+  --bg-10: hsl(60 14% 99%);
+  --bg-000: hsl(0 0% 100%);
+  --bg-200: hsl(60 11% 95%);
+  --bg-300: hsl(45 12% 93%);
+  --bg-400: hsl(45 10% 88%);
+  --border-ink-channel: 60 2% 12%;
+  --text-000: hsl(0 0% 7%);
+  --text-100: hsl(43 3% 47%);
+  --text-200: hsl(43 3% 52%);
+  --text-300: hsl(43 3% 57%);
+  --rail-card-bg: 0 0% 100%;
+  --danger-000: hsl(0 45% 38%);
+  --danger-900: hsl(0 55% 95%);
+  --warning-100: hsl(45 80% 90%);
+  --warning-900: hsl(32 65% 28%);
+  --success-000: hsl(145 45% 38%);
+  /* Notebook code highlighting: distinct blue/green/purple hues so keywords, strings, and numbers
+     read apart from plain text on the warm paper surface. */
+  --syntax-keyword: hsl(222 60% 46%);
+  --syntax-string: hsl(140 52% 32%);
+  --syntax-number: hsl(280 48% 48%);
+  --action-panel-toggle: hsl(0 0% 42%);
+  --surface-control-hover: hsl(38 20% 90%);
+  --message-user-text: hsl(0 0% 12%);
+  /* Green pill for composer artifact/upload `@` mention chips, distinct from the blue skill chip. */
+  --mention-chip: hsl(110 42% 90%);
+  --mention-chip-foreground: hsl(140 55% 30%);
+  /* Blue pill for composer skill `/` mention chips. */
+  --skill-chip: hsl(214 95% 90%);
+  --skill-chip-foreground: hsl(222 63% 47%);
+  --always-black: 0 0% 0%;
+  --background: #fafaf8;
+  --foreground: #202321;
+  --card: #ffffff;
+  --card-foreground: #202321;
+  --popover: #ffffff;
+  --popover-foreground: #202321;
+  --primary: oklch(0.47 0.105 184);
+  --primary-foreground: oklch(0.985 0.008 180);
+  --secondary: #ececea;
+  --secondary-foreground: #202321;
+  --muted: #ececea;
+  --muted-foreground: #646762;
+  --accent: oklch(0.87 0.115 82);
+  --accent-foreground: oklch(0.2 0.03 62);
+  --destructive: oklch(0.58 0.22 25);
+  --chart-1: rgb(109 167 236);
+  --chart-2: rgb(88 176 133);
+  --chart-3: rgb(210 157 56);
+  --chart-4: rgb(178 132 229);
+  --chart-5: rgb(225 113 91);
+  --session-running: oklch(0.49 0.115 184);
+  --session-waiting: oklch(0.62 0.16 68);
+  --border: #dededa;
+  --input: #dededa;
+  --ring: oklch(0.58 0.11 184);
+}
+
+/* Dark theme: warm, low-chroma dark surfaces that keep the app's paper feel rather than a cold
+   pure-neutral gray. Activated by the `.dark` class on <html> (see @custom-variant above); every
+   token here overrides its :root light counterpart, so utilities like bg-background / text-foreground
+   flip automatically. Relative lightness ordering is preserved (bg-000 is the "raised" surface, the
+   bg-2/3/400 ramp gets progressively lighter for depth) so existing layering reads the same. */
+.dark {
+  color-scheme: dark;
+  /* Stronger, deeper shadows + a faint light ring so cards/menus read as raised against dark surfaces. */
+  --shadow-card-value: 0 0 0 1px rgb(0 0 0 / 0.5), 0 4px 24px rgb(0 0 0 / 0.45);
+  --shadow-card-opaque-value: 0 0 0 1px rgb(0 0 0 / 0.6), 0 8px 28px rgb(0 0 0 / 0.55);
+  --shadow-menu-value: 0 2px 8px rgb(0 0 0 / 0.5);
+  --shadow-dialog-value: 0 8px 32px rgb(0 0 0 / 0.6);
+  --bg-10: hsl(60 3% 10%);
+  --bg-000: hsl(48 4% 15%);
+  --bg-200: hsl(50 3% 18%);
+  --bg-300: hsl(48 3% 22%);
+  --bg-400: hsl(46 3% 28%);
+  --border-ink-channel: 48 8% 82%;
+  --text-000: hsl(48 12% 92%);
+  --text-100: hsl(45 5% 62%);
+  --text-200: hsl(45 5% 56%);
+  --text-300: hsl(45 4% 50%);
+  --rail-card-bg: 48 4% 15%;
+  --danger-000: hsl(0 70% 72%);
+  --danger-900: hsl(0 35% 20%);
+  --warning-100: hsl(45 45% 18%);
+  --warning-900: hsl(45 90% 62%);
+  --success-000: hsl(145 70% 72%);
+  /* Brighter code-highlight hues so keywords/strings/numbers keep enough contrast on the dark surface. */
+  --syntax-keyword: hsl(215 75% 72%);
+  --syntax-string: hsl(140 45% 62%);
+  --syntax-number: hsl(280 60% 74%);
+  --action-panel-toggle: hsl(45 5% 68%);
+  --surface-control-hover: hsl(48 4% 24%);
+  --message-user-text: hsl(48 12% 92%);
+  --mention-chip: hsl(140 30% 22%);
+  --mention-chip-foreground: hsl(140 45% 72%);
+  --skill-chip: hsl(217 45% 26%);
+  --skill-chip-foreground: hsl(214 90% 80%);
+  --background: #1a1a18;
+  --foreground: #e8e6df;
+  --card: #26251f;
+  --card-foreground: #e8e6df;
+  --popover: #26251f;
+  --popover-foreground: #e8e6df;
+  --primary: oklch(0.72 0.1 184);
+  --primary-foreground: oklch(0.18 0.03 190);
+  --secondary: #33322b;
+  --secondary-foreground: #e8e6df;
+  --muted: #33322b;
+  --muted-foreground: #a8a49a;
+  --accent: oklch(0.78 0.11 82);
+  --accent-foreground: oklch(0.2 0.03 62);
+  --destructive: oklch(0.68 0.19 25);
+  --chart-1: rgb(109 167 236);
+  --chart-2: rgb(88 176 133);
+  --chart-3: rgb(210 157 56);
+  --chart-4: rgb(178 132 229);
+  --chart-5: rgb(225 113 91);
+  --session-running: oklch(0.7 0.11 184);
+  --session-waiting: oklch(0.74 0.14 68);
+  --border: #3a3931;
+  --input: #3a3931;
+  --ring: oklch(0.66 0.1 184);
+}
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+    letter-spacing: 0;
+  }
+
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-ring/50;
+  }
+
+  html,
+  body,
+  #root {
+    min-height: 100vh;
+  }
+
+  body {
+    @apply bg-bg-10 text-foreground;
+    margin: 0;
+    overflow: hidden;
+    font-family:
+      Inter,
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      'Segoe UI',
+      sans-serif;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  button,
+  a,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+}
+
+@layer components {
+  /*
+   * Radix ScrollArea wraps content in display:table / min-width:100%, which lets
+   * long unbroken strings expand past the resizable panel. Force a normal block.
+   */
+  [data-slot='scroll-area-viewport'] {
+    @apply min-w-0!;
+
+    & > div {
+      @apply block! w-full min-w-0 max-w-full!;
+    }
+  }
+
+  /* Indeterminate install progress bar: a short segment sweeping left→right while a shelled
+   * installer (npm/official) streams output with no byte total to report. */
+  @keyframes install-progress-indeterminate {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(400%);
+    }
+  }
+
+  .install-progress-indeterminate {
+    animation: install-progress-indeterminate 1.2s ease-in-out infinite;
+  }
+
+  @keyframes purescience-thinking-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes purescience-thinking-breathe {
+    0%,
+    100% {
+      opacity: 0.55;
+      transform: scale(0.82);
+    }
+    45% {
+      opacity: 0.95;
+      transform: scale(1.08);
+    }
+  }
+
+  @keyframes purescience-thinking-orbit {
+    0%,
+    100% {
+      opacity: calc(var(--os-dot-alpha) * 0.48);
+      transform: rotate(var(--os-dot-angle)) translateX(calc(18px * var(--os-dot-distance) * 0.72))
+        scale(0.72);
+    }
+    44% {
+      opacity: var(--os-dot-alpha);
+      transform: rotate(var(--os-dot-angle)) translateX(calc(18px * var(--os-dot-distance)))
+        scale(1);
+    }
+  }
+
+  .purescience-thinking-indicator {
+    position: relative;
+    width: 18px;
+    height: 18px;
+    flex: 0 0 18px;
+    color: currentColor;
+    animation: purescience-thinking-spin 3.8s linear infinite;
+  }
+
+  .purescience-thinking-indicator::before {
+    position: absolute;
+    inset: 28%;
+    border-radius: 999px;
+    background: currentColor;
+    content: '';
+    transform-origin: center;
+    animation: purescience-thinking-breathe 1.8s ease-in-out infinite;
+  }
+
+  .purescience-thinking-indicator__dot {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: calc(18px * var(--os-dot-radius));
+    height: calc(18px * var(--os-dot-radius));
+    margin-top: calc(18px * var(--os-dot-radius) / -2);
+    margin-left: calc(18px * var(--os-dot-radius) / -2);
+    border-radius: 999px;
+    background: currentColor;
+    opacity: var(--os-dot-alpha);
+    transform: rotate(var(--os-dot-angle)) translateX(calc(18px * var(--os-dot-distance)));
+    animation: purescience-thinking-orbit 1.8s ease-in-out infinite;
+    animation-delay: var(--os-dot-delay);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .purescience-thinking-indicator,
+    .purescience-thinking-indicator::before,
+    .purescience-thinking-indicator__dot {
+      animation: none;
+    }
+  }
+}

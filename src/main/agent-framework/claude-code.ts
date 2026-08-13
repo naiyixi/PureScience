@@ -1,0 +1,111 @@
+import type { ChildProcessWithoutNullStreams } from 'node:child_process'
+import type { SessionModeState } from '@agentclientprotocol/sdk'
+
+import { spawnClaudeAgentAcp } from '../acp/agent-process'
+import {
+  resolvePermissionProfileApplication,
+  type PermissionProfileApplication
+} from '../acp/permission-profile-controller'
+import type { PermissionProfileId } from '../../shared/permission-profiles'
+import { buildProviderEnv, type ResolvedProvider } from '../settings/provider-env'
+import type {
+  AgentFramework,
+  AgentModelConfig,
+  AgentSpawnInput,
+  ModelConfigContext,
+  SessionSetup,
+  SessionSetupContext
+} from './types'
+import { renderAppMcpToolReferences } from './app-mcp-names'
+
+// Select Claude Code's complete built-in tool set explicitly instead of relying on
+// claude-agent-acp's current fallback. This keeps WebFetch/WebSearch available if the adapter's
+// default changes, while reviewer sessions can still replace this with `tools: []` at their boundary.
+const CLAUDE_CODE_BUILTIN_TOOLS = { type: 'preset', preset: 'claude_code' } as const
+
+// Claude Code adapter. A faithful extraction of behavior currently inline in AcpRuntime /
+// agent-process / provider-env — moving the runtime onto AgentFramework must not change it.
+export const claudeCodeFramework: AgentFramework = {
+  id: 'claude-code',
+  displayName: 'Claude Code',
+  contextCompaction: {
+    kind: 'native-command',
+    command: '/compact',
+    triggerAtPercent: 90,
+    failureTextPrefix: 'Compacting failed'
+  },
+  supportsSkills: true,
+  // Claude launches stdio MCP servers directly — the app's artifact/notebook tooling relies on this.
+  acceptsStdioMcp: true,
+  // The adapter advertises an `effort` select (category thought_level) and applies changes to live
+  // sessions via applyFlagSettings — no respawn needed.
+  supportsLiveEffortChange: true,
+  // Claude Code speaks only Anthropic /v1/messages.
+  supportedApiTypes: ['anthropic'],
+
+  spawn(input: AgentSpawnInput): ChildProcessWithoutNullStreams {
+    // Still routes through the existing spawner; env carries the resolved provider overrides.
+    return spawnClaudeAgentAcp({
+      envOverrides: input.env,
+      executablePath: input.executablePath
+    })
+  },
+
+  prepareModelConfig(provider: ResolvedProvider, ctx: ModelConfigContext): AgentModelConfig {
+    // Anthropic-shaped env (ANTHROPIC_* + CLAUDE_CONFIG_DIR/CLAUDE_CODE_EXECUTABLE).
+    return {
+      env: buildProviderEnv(provider, {
+        storageRoot: ctx.storageRoot,
+        claudeExecutablePath: ctx.executablePath
+      })
+    }
+  },
+
+  buildSessionSetup(ctx: SessionSetupContext): SessionSetup {
+    // settingSources:['user'] excludes workspace settings that could override the active provider.
+    // Shared mode adds app-owned settings/plugins at the SDK flag layer via sessionOptions.
+    const meta: Record<string, unknown> = {
+      claudeCode: {
+        // The ACP usage total omits Claude SDK's agentic turn count. Request only terminal result
+        // frames through the adapter's extension channel so the runtime can retain `num_turns`.
+        emitRawSDKMessages: [{ type: 'result' }],
+        options: {
+          tools: CLAUDE_CODE_BUILTIN_TOOLS,
+          settingSources: ['user'],
+          ...ctx.sessionOptions,
+          ...(ctx.skillWhitelist !== undefined ? { skills: ctx.skillWhitelist } : {})
+        }
+      }
+    }
+
+    const persistentSystemPrompt = ctx.systemPromptAppends
+      .map((append) => renderAppMcpToolReferences('claude-code', append))
+      .filter(Boolean)
+      .join('\n\n')
+    if (persistentSystemPrompt) {
+      meta.systemPrompt = {
+        type: 'preset',
+        preset: 'claude_code',
+        append: persistentSystemPrompt
+      }
+    }
+
+    const promptPrefix = ctx.turnPromptReminders
+      ?.map((append) => renderAppMcpToolReferences('claude-code', append))
+      .filter(Boolean)
+      .join('\n\n')
+
+    return {
+      meta,
+      ...(persistentSystemPrompt ? { persistentSystemPrompt } : {}),
+      ...(promptPrefix ? { promptPrefix } : {})
+    }
+  },
+
+  mapPermissionProfile(
+    profile: PermissionProfileId,
+    modes: SessionModeState | null | undefined
+  ): PermissionProfileApplication {
+    return resolvePermissionProfileApplication(profile, modes)
+  }
+}
