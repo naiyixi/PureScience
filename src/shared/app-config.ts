@@ -2,8 +2,8 @@
 // (GitHub star-count fetch) and the renderer (every entry-point link). Keep this UI-free — no
 // icons, no JSX — so both processes can import it and any screen reuses the same values.
 
-const GITHUB_OWNER = 'zerolink'
-const GITHUB_REPO = 'purescience'
+const GITHUB_OWNER = 'naiyixi'
+const GITHUB_REPO = 'PureScience'
 const GITHUB_REPO_URL = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`
 
 export const APP = {
@@ -21,7 +21,9 @@ export const APP = {
   },
   copyright: '© 2026 ZEROLINK. All rights reserved.',
   update: {
-    manifestUrl: 'https://statics.zerolink.com/purescience/app/stable/version.json',
-    downloadPage: 'https://www.zerolink.com/purescience'
+    // Fixed URL: GitHub rewrites /releases/latest/download/<asset> to the newest release's asset,
+    // so the client always polls the latest manifest without a per-version config change.
+    manifestUrl: `${GITHUB_REPO_URL}/releases/latest/download/version.json`,
+    downloadPage: `${GITHUB_REPO_URL}/releases`
   }
 } as const
