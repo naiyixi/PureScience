@@ -1,0 +1,426 @@
+import { describe, expect, it } from 'vitest'
+
+import type { ChatSession, ToolActivity } from '@/stores/session-store'
+import type { HandoffLifecycleEvent } from '../../../../shared/handoff-lifecycle'
+import {
+  createConversationItems,
+  formatActivityTitle,
+  isActivityActive
+} from './workspace-conversation-items'
+
+const baseSession: ChatSession = {
+  id: 'session-1',
+  projectId: 'default',
+  title: 'Session',
+  cwd: '/workspace/project',
+  status: 'running',
+  messages: [],
+  createdAt: 1710000000000,
+  updatedAt: 1710000000000
+}
+
+const createActivity = (overrides: Partial<ToolActivity>): ToolActivity => ({
+  id: 'tool-1',
+  kind: 'tool',
+  title: '',
+  status: 'completed',
+  eventIds: [],
+  sortIndex: 1,
+  createdAt: 1710000000000,
+  updatedAt: 1710000000000,
+  ...overrides
+})
+
+describe('workspace conversation items', () => {
+  it('shows an OpenCode Skill name without exposing its content', () => {
+    expect(
+      formatActivityTitle(
+        createActivity({ title: 'Loaded skill: mcp-pubmed', status: 'completed' })
+      )
+    ).toBe('Loaded skill: mcp-pubmed')
+  })
+
+  it('keeps the projected Codex Skill name when a load fails', () => {
+    expect(
+      formatActivityTitle(createActivity({ title: 'Loading skill: mcp-pubmed', status: 'failed' }))
+    ).toBe('Skill failed: mcp-pubmed')
+  })
+
+  it('orders messages and activities by stable runtime sort index when timestamps match', () => {
+    const session: ChatSession = {
+      ...baseSession,
+      messages: [
+        {
+          id: 'message-1',
+          role: 'user',
+          content: 'Search this',
+          status: 'complete',
+          eventIds: [],
+          sortIndex: 1,
+          createdAt: 1710000000000,
+          updatedAt: 1710000000000
+        },
+        {
+          id: 'message-2',
+          role: 'agent',
+          content: 'Here are the results',
+          status: 'streaming',
+          eventIds: ['event-3'],
+          sortIndex: 3,
+          createdAt: 1710000000000,
+          updatedAt: 1710000000000
+        }
+      ],
+      activities: [
+        createActivity({
+          id: 'tool-web-1',
+          title: '"public data repositories"',
+          toolKind: 'search',
+          sortIndex: 2
+        })
+      ]
+    }
+
+    expect(createConversationItems(session).map((item) => item.id)).toEqual([
+      'message-1',
+      'activity-tool-web-1',
+      'message-2'
+    ])
+  })
+
+  it('projects every generate_plan status as a standalone item and hides step status updates', () => {
+    const session: ChatSession = {
+      ...baseSession,
+      activities: [
+        createActivity({
+          id: 'plan-generate',
+          providerToolName: 'mcp__purescience-plan__generate_plan',
+          status: 'pending',
+          sortIndex: 1
+        }),
+        createActivity({
+          id: 'plan-status',
+          providerToolName: 'mcp.purescience-plan.update_step_status',
+          sortIndex: 2
+        }),
+        createActivity({
+          id: 'plan-opencode',
+          providerToolName: 'purescience_plan_generate_plan',
+          status: 'in_progress',
+          sortIndex: 3
+        }),
+        createActivity({
+          id: 'completed-plan',
+          title: 'generate_plan',
+          status: 'completed',
+          sortIndex: 4
+        }),
+        createActivity({
+          id: 'failed-plan',
+          providerToolName: 'generate_plan',
+          status: 'failed',
+          sortIndex: 5
+        }),
+        createActivity({
+          id: 'failed-status',
+          providerToolName: 'update_step_status',
+          status: 'failed',
+          sortIndex: 6
+        })
+      ]
+    }
+
+    expect(createConversationItems(session).map((item) => [item.id, item.type])).toEqual([
+      ['plan-activity-plan-generate', 'plan-activity'],
+      ['plan-activity-plan-opencode', 'plan-activity'],
+      ['plan-activity-completed-plan', 'plan-activity'],
+      ['plan-activity-failed-plan', 'plan-activity']
+    ])
+  })
+
+  it('keeps a generate_plan revision at its chronological position between messages and tools', () => {
+    const session: ChatSession = {
+      ...baseSession,
+      messages: [
+        {
+          id: 'feedback',
+          role: 'user',
+          content: 'Please revise step two',
+          status: 'complete',
+          eventIds: [],
+          sortIndex: 2,
+          createdAt: 1710000000000,
+          updatedAt: 1710000000000
+        }
+      ],
+      activities: [
+        createActivity({ id: 'read', toolKind: 'read', sortIndex: 1 }),
+        createActivity({
+          id: 'revision',
+          providerToolName: 'mcp.purescience_plan.generate_plan',
+          status: 'in_progress',
+          sortIndex: 3
+        })
+      ]
+    }
+
+    expect(createConversationItems(session).map((item) => item.id)).toEqual([
+      'activity-read',
+      'feedback',
+      'plan-activity-revision'
+    ])
+  })
+
+  it('anchors a handoff lifecycle row to the original user turn without inventing another user message', () => {
+    const session: ChatSession = {
+      ...baseSession,
+      messages: [
+        {
+          id: 'user-1',
+          role: 'user',
+          content: 'Analyze the sample',
+          status: 'complete',
+          eventIds: [],
+          sortIndex: 1,
+          createdAt: 1_000,
+          updatedAt: 1_000
+        },
+        {
+          id: 'assistant-1',
+          role: 'agent',
+          content: 'I will inspect the input first.',
+          status: 'complete',
+          responseToMessageId: 'user-1',
+          eventIds: [],
+          sortIndex: 3,
+          createdAt: 1_200,
+          updatedAt: 1_200
+        },
+        {
+          id: 'assistant-2',
+          role: 'agent',
+          content: 'Continuing with the approved specialist.',
+          status: 'streaming',
+          responseToMessageId: 'user-1',
+          eventIds: [],
+          sortIndex: 4,
+          createdAt: 1_300,
+          updatedAt: 1_300
+        }
+      ]
+    }
+    const handoff: HandoffLifecycleEvent = {
+      id: 'handoff-1',
+      sessionId: 'session-1',
+      sequence: 2,
+      observedAt: 1_100,
+      phase: 'reconfiguring',
+      target: { kind: 'specialist', name: 'Data analyst' },
+      provenance: {
+        originatingTurnId: 'turn-1',
+        originatingUserMessageId: 'user-1',
+        attachmentIds: ['upload-1'],
+        artifactIds: ['artifact-1']
+      }
+    }
+
+    const items = createConversationItems(session, [handoff])
+
+    expect(items.map((item) => item.id)).toEqual([
+      'user-1',
+      'handoff:session-1:turn-1',
+      'assistant-1',
+      'assistant-2'
+    ])
+    expect(
+      items.filter((item) => item.type === 'message' && item.message.role === 'user')
+    ).toHaveLength(1)
+    expect(items.find((item) => item.type === 'handoff')).toMatchObject({
+      originatingUserMessageId: 'user-1',
+      phase: 'reconfiguring',
+      provenance: { attachmentIds: ['upload-1'], artifactIds: ['artifact-1'] }
+    })
+  })
+
+  it('formats activities by tool identity without exposing title details', () => {
+    expect(
+      formatActivityTitle(
+        createActivity({
+          id: 'tool-search-1',
+          title: '"top news July 6 2026"',
+          status: 'completed',
+          toolKind: 'search'
+        })
+      )
+    ).toBe('Used tool: ToolSearch')
+
+    expect(
+      formatActivityTitle(
+        createActivity({
+          id: 'tool-search-2',
+          status: 'pending',
+          toolKind: 'search'
+        })
+      )
+    ).toBe('Using tool: ToolSearch')
+  })
+
+  it('formats non-search tools by kind instead of title details', () => {
+    expect(
+      formatActivityTitle(
+        createActivity({
+          id: 'tool-fetch-1',
+          title: 'Fetch https://example.com',
+          status: 'completed',
+          toolKind: 'fetch'
+        })
+      )
+    ).toBe('Used tool: ToolFetch')
+  })
+
+  it('formats tools by provider identity when available without exposing title details', () => {
+    expect(
+      formatActivityTitle(
+        createActivity({
+          id: 'tool-grep-1',
+          title: 'grep "secret pattern" /workspace/private',
+          status: 'completed',
+          providerToolName: 'Grep',
+          toolKind: 'search'
+        })
+      )
+    ).toBe('Used tool: Grep')
+  })
+
+  it('renders notebook MCP tools with a clean label instead of the raw provider name', () => {
+    expect(
+      formatActivityTitle(
+        createActivity({
+          id: 'tool-notebook-1',
+          status: 'completed',
+          providerToolName: 'mcp__purescience-notebook__notebook_execute',
+          toolKind: 'other'
+        })
+      )
+    ).toBe('Used tool: Notebook cell')
+
+    expect(
+      formatActivityTitle(
+        createActivity({
+          id: 'tool-notebook-2',
+          status: 'in_progress',
+          providerToolName: 'mcp__purescience-notebook__notebook_restart',
+          toolKind: 'other'
+        })
+      )
+    ).toBe('Using tool: Notebook restart')
+  })
+
+  it('detects notebook tools whose server name was underscore-sanitized (Codex/gpt bridge)', () => {
+    // The gpt/codex bridge rewrites the hyphenated server name to underscores; still a notebook cell.
+    expect(
+      formatActivityTitle(
+        createActivity({
+          id: 'tool-notebook-underscore',
+          status: 'completed',
+          providerToolName: 'mcp__purescience_notebook__notebook_execute',
+          toolKind: 'other'
+        })
+      )
+    ).toBe('Used tool: Notebook cell')
+  })
+
+  it('detects a Codex notebook activity whose MCP identity is only in the title', () => {
+    expect(
+      formatActivityTitle(
+        createActivity({
+          id: 'tool-codex-notebook',
+          title: 'mcp.purescience-notebook.notebook_execute',
+          status: 'completed',
+          toolKind: 'execute'
+        })
+      )
+    ).toBe('Used tool: Notebook cell')
+  })
+
+  it('falls back to readable tool kind names for unnamed tools', () => {
+    expect(
+      formatActivityTitle(
+        createActivity({
+          id: 'tool-search-1',
+          status: 'completed',
+          toolKind: 'search'
+        })
+      )
+    ).toBe('Used tool: ToolSearch')
+
+    expect(
+      formatActivityTitle(
+        createActivity({
+          id: 'tool-fetch-1',
+          status: 'completed',
+          toolKind: 'fetch'
+        })
+      )
+    ).toBe('Used tool: ToolFetch')
+
+    expect(
+      formatActivityTitle(
+        createActivity({
+          id: 'tool-execute-1',
+          status: 'in_progress',
+          toolKind: 'execute'
+        })
+      )
+    ).toBe('Using tool: ToolExecute')
+
+    expect(
+      formatActivityTitle(
+        createActivity({
+          id: 'tool-read-1',
+          status: 'completed',
+          toolKind: 'read'
+        })
+      )
+    ).toBe('Used tool: ToolRead')
+
+    expect(
+      formatActivityTitle(
+        createActivity({
+          id: 'tool-unknown-1',
+          status: 'completed',
+          toolKind: undefined
+        })
+      )
+    ).toBe('Used tool: tool')
+  })
+
+  it('preserves known wrapper tool titles when ACP omits a tool kind', () => {
+    expect(
+      formatActivityTitle(
+        createActivity({
+          id: 'tool-wrapper-1',
+          title: 'ToolSearch',
+          status: 'completed',
+          toolKind: undefined
+        })
+      )
+    ).toBe('Used tool: ToolSearch')
+  })
+
+  it('marks failed and active activities by status', () => {
+    expect(
+      formatActivityTitle(
+        createActivity({
+          id: 'tool-search-1',
+          status: 'failed',
+          toolKind: 'search'
+        })
+      )
+    ).toBe('Tool failed: ToolSearch')
+
+    expect(isActivityActive(createActivity({ status: 'pending' }))).toBe(true)
+    expect(isActivityActive(createActivity({ status: 'in_progress' }))).toBe(true)
+    expect(isActivityActive(createActivity({ status: 'completed' }))).toBe(false)
+  })
+})

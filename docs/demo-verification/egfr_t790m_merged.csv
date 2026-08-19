@@ -1,0 +1,6 @@
+compound,target,ic50_nM,trial_phase,trial_status,trial_sponsor
+Osimertinib,"EGFR (T790M, Homo sapiens)",0.002,PHASE3,ACTIVE_NOT_RECRUITING,AstraZeneca
+Aumolertinib,"EGFR (T790M, Homo sapiens)",0.18,PHASE3,RECRUITING,"Jiangsu Hansoh Pharmaceutical Co., Ltd."
+Lazertinib,"EGFR (T790M, Homo sapiens)",0.3,PHASE3,ACTIVE_NOT_RECRUITING,"Janssen Research & Development, LLC"
+Olmutinib,"EGFR (T790M, Homo sapiens)",0.9,None,None,None
+Rociletinib,"EGFR (T790M, Homo sapiens)",1.0,None,None,None

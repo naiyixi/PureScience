@@ -1,0 +1,2735 @@
+// @vitest-environment jsdom
+import { act, createRef } from 'react'
+import { createRoot, type Root } from 'react-dom/client'
+import { Dialog } from 'radix-ui'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { LinkSafetyModal } from '@/components/streamdown/LinkSafetyModal'
+import type { SpecialistProfileView } from '../../../../shared/specialist'
+import { createInitialProjectState, useProjectStore } from '@/stores/project-store'
+import { useSpecialistStore } from '@/stores/specialist-store'
+import { createInitialSettingsState, useSettingsStore } from '@/stores/settings-store'
+import { SettingsPage, type SettingsPageHandle } from './SettingsPage'
+import { clickRadixMenuItem, openRadixMenu } from './test-utils'
+
+if (!Element.prototype.hasPointerCapture) {
+  Element.prototype.hasPointerCapture = (): boolean => false
+  Element.prototype.setPointerCapture = (): void => undefined
+  Element.prototype.releasePointerCapture = (): void => undefined
+}
+
+let container: HTMLDivElement
+let root: Root
+
+// Minimal window.api surface the settings store touches when the dialog opens. Attached onto the
+// real jsdom window so DOM globals radix relies on (getComputedStyle, etc.) stay intact.
+const installApi = (): void => {
+  ;(window as unknown as { api: unknown }).api = {
+    settings: {
+      getSettings: vi.fn().mockResolvedValue({
+        claude: {},
+        opencode: {},
+        codex: {},
+        providers: [],
+        agentFrameworkId: 'claude-code',
+        agentFrameworks: [{ id: 'claude-code', displayName: 'Claude Code', supportsSkills: true }]
+      }),
+      detectOpencode: vi.fn().mockResolvedValue({
+        claude: {},
+        opencode: {},
+        codex: {},
+        providers: [],
+        agentFrameworkId: 'claude-code',
+        agentFrameworks: [{ id: 'claude-code', displayName: 'Claude Code', supportsSkills: true }]
+      }),
+      detectCodex: vi.fn().mockResolvedValue({
+        claude: {},
+        opencode: {},
+        codex: {},
+        providers: [],
+        agentFrameworkId: 'claude-code',
+        agentFrameworks: [{ id: 'claude-code', displayName: 'Claude Code', supportsSkills: true }]
+      }),
+      getPreflight: vi.fn().mockResolvedValue({ claudeReady: true, activeProviderReady: true }),
+      isEncryptionAvailable: vi.fn().mockResolvedValue(true),
+      isNpmAvailable: vi.fn().mockResolvedValue(true),
+      listAppIcons: vi.fn().mockResolvedValue([]),
+      setAppIconVariant: vi.fn().mockResolvedValue({ claude: {}, providers: [] }),
+      listSkills: vi.fn().mockResolvedValue([
+        {
+          id: 'alpha',
+          name: 'Alpha',
+          description: 'First',
+          source: 'featured',
+          updatedAt: '2026-07-08T00:00:00.000Z',
+          enabled: true
+        }
+      ]),
+      getSkillDetail: vi.fn().mockResolvedValue({
+        id: 'alpha',
+        name: 'Alpha',
+        description: 'First',
+        source: 'featured',
+        updatedAt: '2026-07-08T00:00:00.000Z',
+        enabled: true,
+        author: 'Test Author',
+        license: 'Test License',
+        body: '# Alpha body'
+      }),
+      listConnectors: vi.fn().mockResolvedValue({
+        connectors: [
+          {
+            id: 'chemistry',
+            displayName: 'Chemistry',
+            description: 'Small-molecule chemistry via PubChem.',
+            sources: ['PubChem'],
+            requiresNcbi: false,
+            enabled: true,
+            autoAllow: false
+          }
+        ],
+        customServers: [],
+        ncbi: { hasApiKey: false }
+      }),
+      getPackageMirror: vi.fn().mockResolvedValue({}),
+      setPackageMirror: vi.fn().mockResolvedValue({})
+    },
+    acp: {
+      getState: vi.fn().mockResolvedValue({ promptInFlight: false, promptInFlightSessionIds: [] }),
+      // AgentPanel subscribes to live prompt-in-flight state; the mock returns a no-op unsubscribe.
+      onState: vi.fn().mockReturnValue(() => {}),
+      cancel: vi.fn()
+    },
+    permissions: {
+      list: vi.fn().mockResolvedValue({
+        grants: [
+          {
+            id: 'grant-1',
+            revision: 1,
+            family: 'connectors',
+            capabilityKind: 'mcp_tool',
+            capabilityLabel: 'Search articles',
+            scopeKind: 'project',
+            scopeLabel: 'Project: Oncology review',
+            projectId: 'project-1'
+          }
+        ],
+        counts: { all: 1, global: 0, project: 1, session: 0 }
+      }),
+      onChanged: vi.fn().mockReturnValue(() => undefined)
+    },
+    logs: {
+      getPath: vi.fn().mockResolvedValue('/Users/x/Library/Logs/PureScience/main.log'),
+      openFile: vi.fn().mockResolvedValue({ opened: true }),
+      revealInFolder: vi.fn().mockResolvedValue({ revealed: true })
+    },
+    storage: {
+      getInfo: vi.fn().mockResolvedValue({
+        dataRoot: '/Users/x/.purescience',
+        isDefault: true,
+        usage: { categories: [], totalBytes: 0 },
+        availableBytes: 1_000_000_000
+      })
+    },
+    cli: {
+      getStatus: vi.fn().mockResolvedValue({
+        installed: false,
+        target: '/Users/x/.local/bin/purescience',
+        onPath: false
+      }),
+      install: vi.fn(),
+      uninstall: vi.fn()
+    },
+    remoteAccess: {
+      getSnapshot: vi.fn().mockResolvedValue({
+        canManage: true,
+        canManagePairing: true,
+        mode: 'off',
+        enabled: false,
+        lifecycle: 'disabled',
+        remoteIt: { installed: false, loggedIn: false, registered: false },
+        pendingRequests: [],
+        trustedBrowsers: []
+      }),
+      detect: vi.fn().mockResolvedValue({
+        canManage: true,
+        canManagePairing: true,
+        mode: 'off',
+        enabled: false,
+        lifecycle: 'disabled',
+        remoteIt: { installed: false, loggedIn: false, registered: false },
+        pendingRequests: [],
+        trustedBrowsers: []
+      }),
+      disable: vi.fn(),
+      setMode: vi.fn(),
+      approve: vi.fn(),
+      reject: vi.fn(),
+      revokeBrowser: vi.fn(),
+      onChanged: vi.fn(() => () => undefined)
+    },
+    specialist: {
+      list: vi.fn().mockResolvedValue([{ kind: 'reviewer', id: 'reviewer' }]),
+      create: vi.fn(),
+      setEnabled: vi.fn(),
+      onCatalogChanged: vi.fn(() => vi.fn())
+    }
+  }
+}
+
+beforeEach(() => {
+  installApi()
+  useSettingsStore.setState(createInitialSettingsState())
+  useProjectStore.setState(createInitialProjectState())
+  container = document.createElement('div')
+  document.body.appendChild(container)
+  root = createRoot(container)
+})
+
+afterEach(() => {
+  act(() => root.unmount())
+  container.remove()
+  document.body.innerHTML = ''
+  delete (window as unknown as { api?: unknown }).api
+  vi.unstubAllGlobals()
+})
+
+// Opens the Agent sub-panel via the left nav (the agent framework lives there; the Model panel
+// itself shows providers).
+const openAgentPanel = async (): Promise<void> => {
+  const item = Array.from(
+    document.body.querySelectorAll<HTMLButtonElement>('nav[aria-label="Settings"] button')
+  ).find((candidate) => candidate.textContent?.trim() === 'Agent')
+  await act(async () => item?.click())
+}
+
+// Finds a left-nav button by its exact label.
+const navButton = (label: string): HTMLButtonElement | undefined =>
+  Array.from(
+    document.body.querySelectorAll<HTMLButtonElement>('nav[aria-label="Settings"] button')
+  ).find((candidate) => candidate.textContent?.trim() === label)
+
+const settingsSection = (title: string): HTMLElement | undefined =>
+  Array.from(document.body.querySelectorAll<HTMLElement>('[data-slot="settings-section"]')).find(
+    (section) => section.querySelector('h3')?.textContent?.trim() === title
+  )
+
+describe('SettingsPage layout', () => {
+  it('uses the header breadcrumb for archived project details', async () => {
+    useProjectStore.setState({
+      ...createInitialProjectState(),
+      projects: [
+        {
+          id: 'project-1',
+          name: 'Archived project',
+          description: '',
+          isExample: false,
+          createdAt: 1,
+          updatedAt: 1,
+          archivedAt: 2
+        }
+      ],
+      isLoaded: true
+    })
+    await act(async () => root.render(<SettingsPage open onClose={vi.fn()} />))
+    await act(async () => navButton('Archived')?.click())
+
+    const manage = Array.from(document.body.querySelectorAll<HTMLButtonElement>('button')).find(
+      (button) => button.textContent?.includes('Manage')
+    )
+    await act(async () => manage?.click())
+
+    const backToArchived = document.body.querySelector<HTMLButtonElement>(
+      '[aria-label="Back to archived"]'
+    )
+    expect(backToArchived?.textContent).toBe('Archived')
+    expect(document.body.textContent).toContain('Archived project')
+    expect(document.body.textContent).not.toContain('Archived projects')
+
+    await act(async () => backToArchived?.click())
+    expect(document.body.querySelector('[aria-label="Back to archived"]')).toBeNull()
+  })
+
+  it('anchors Archived at the bottom of Settings navigation', async () => {
+    await act(async () => root.render(<SettingsPage open onClose={vi.fn()} />))
+
+    const archived = navButton('Archived')
+    const remoteControl = navButton('Remote control')
+
+    expect(archived?.parentElement?.parentElement?.parentElement?.className).toContain('mt-auto')
+    expect(
+      Array.from(document.body.querySelectorAll('nav[aria-label="Settings"] button')).indexOf(
+        archived as HTMLButtonElement
+      )
+    ).toBeGreaterThan(
+      Array.from(document.body.querySelectorAll('nav[aria-label="Settings"] button')).indexOf(
+        remoteControl as HTMLButtonElement
+      )
+    )
+  })
+
+  it('shows and dismisses a settings write failure above the scrolling content', async () => {
+    useSettingsStore.setState({
+      settingsWriteError: 'Could not save notification preference. Try again.'
+    })
+
+    act(() => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+
+    const alert = document.body.querySelector<HTMLElement>('[data-slot="settings-write-error"]')
+    const scroll = document.body.querySelector<HTMLElement>('[data-slot="settings-content-scroll"]')
+    expect(alert?.getAttribute('role')).toBe('alert')
+    expect(alert?.textContent).toContain('Could not save notification preference. Try again.')
+    expect(alert?.className).toContain('border-danger-000/30')
+    expect(alert?.className).toContain('bg-danger-000/10')
+    expect(alert?.className).toContain('text-danger-000')
+    expect(alert?.nextElementSibling).toBe(scroll)
+
+    const dismiss = alert?.querySelector<HTMLButtonElement>('[aria-label="Dismiss settings error"]')
+    await act(async () => dismiss?.focus())
+    expect(document.body.textContent).toContain('Dismiss')
+
+    act(() => {
+      dismiss?.click()
+    })
+
+    expect(useSettingsStore.getState().settingsWriteError).toBeUndefined()
+    expect(document.body.querySelector('[data-slot="settings-write-error"]')).toBeNull()
+  })
+
+  it('mounts the sidebar + content with grouped nav items and a close control', () => {
+    useSettingsStore.setState({
+      providers: [
+        {
+          id: 'p1',
+          type: 'custom',
+          name: 'Gateway',
+          baseUrl: 'https://gateway.test/v1',
+          model: 'test-model',
+          models: ['test-model'],
+          supportsImageInput: false,
+          maskedKey: 'sk-a…wxyz',
+          hasKey: true,
+          needsKey: false,
+          lastValidatedAt: 1
+        }
+      ],
+      activeProviderId: 'p1',
+      activeModel: 'test-model'
+    })
+
+    act(() => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+
+    // Dialog content is portaled to the document body.
+    const dialog = document.body.querySelector('[role="dialog"]')
+    expect(dialog).not.toBeNull()
+    expect(dialog?.getAttribute('data-slot')).toBe('settings-surface')
+    expect(dialog?.className).toContain('overscroll-contain')
+
+    // Left navigation grouped as Capabilities (Skills, Connectors, Specialists, Compute, Network)
+    // and Workspace (Model, Agent, Permissions, Runtimes, Storage, General).
+    // Remote access stays isolated and Archived is anchored at the navigation bottom.
+    const nav = document.body.querySelector('nav[aria-label="Settings"]')
+    expect(nav).not.toBeNull()
+    expect(nav?.className).toContain('bg-background')
+    expect(nav?.className).toContain('md:w-48')
+    expect(nav?.className).toContain('w-[min(86vw,320px)]')
+    expect(nav?.nextElementSibling?.className).toContain('bg-card')
+    expect(nav?.textContent).toContain('Capabilities')
+    expect(nav?.textContent).toContain('Workspace')
+    expect(nav?.textContent).toContain('Remote access')
+    const navItems = nav?.querySelectorAll('li') ?? []
+    expect(navItems).toHaveLength(14)
+    expect(navItems[0]?.textContent).toContain('Skills')
+    expect(navItems[1]?.textContent).toContain('Connectors')
+    expect(navItems[2]?.textContent).toContain('Specialists')
+    expect(navItems[3]?.textContent).toContain('Compute')
+    expect(navItems[4]?.textContent).toContain('Network')
+    expect(navItems[5]?.textContent).toContain('Model')
+    expect(navItems[6]?.textContent).toContain('Agent')
+    expect(navItems[7]?.textContent).toContain('Permissions')
+    expect(navItems[8]?.textContent).toContain('Runtimes')
+    expect(navItems[9]?.textContent).toContain('Storage')
+    expect(navItems[10]?.textContent).toContain('Token usage')
+    expect(navItems[11]?.textContent).toContain('General')
+    expect(navItems[12]?.textContent).toContain('Remote control')
+    expect(navItems[13]?.textContent).toContain('Archived')
+    const modelNavButton = navButton('Model')
+    const agentNavButton = navButton('Agent')
+    expect(modelNavButton?.querySelector('.lucide-brain')).not.toBeNull()
+    expect(agentNavButton?.querySelector('.lucide-bot')).not.toBeNull()
+    expect(modelNavButton?.className).toContain('h-8')
+    expect(agentNavButton?.className).toContain('h-8')
+    expect(agentNavButton?.className).toContain('text-sm')
+    expect(agentNavButton?.parentElement?.tagName).toBe('LI')
+    // Model is the default active panel.
+    expect(nav?.querySelector('[aria-current="page"]')?.textContent).toContain('Model')
+
+    // The header shows the panel title and a close control.
+    expect(document.body.querySelector('[aria-label="Close settings"]')).not.toBeNull()
+    expect(document.body.querySelector('[aria-label="Back"]')?.getAttribute('data-slot')).toBe(
+      'button'
+    )
+    expect(document.body.querySelector('[aria-label="Maximize"]')?.getAttribute('data-slot')).toBe(
+      'button'
+    )
+
+    // The Model panel splits Active model, Vision model, and Reasoning effort (their own sections)
+    // from provider management; the agent framework moved to the Agent sub-panel.
+    expect(document.body.textContent).toContain('Active model')
+    expect(document.body.textContent).toContain('Reasoning effort')
+    expect(document.body.textContent).toContain('preserve relative strength when models change')
+    expect(document.body.textContent).toContain('may approximate unsupported levels')
+    expect(document.body.textContent).toContain('Providers')
+    expect(document.body.textContent).not.toContain('Agent framework')
+    expect(document.body.querySelectorAll('[data-slot="settings-section"]')).toHaveLength(4)
+    // The add action lives with the list as a dashed ghost row, not a section-header button.
+    const addRow = Array.from(document.body.querySelectorAll<HTMLButtonElement>('button')).find(
+      (button) => button.textContent?.trim() === 'Add provider'
+    )
+    expect(addRow?.className).toContain('border-dashed')
+  })
+
+  it('opens the Permissions panel from Workspace navigation', async () => {
+    await act(async () => root.render(<SettingsPage open onClose={vi.fn()} />))
+    await act(async () => navButton('Permissions')?.click())
+
+    expect(document.body.querySelector('h2:not(.sr-only)')?.textContent).toBe('Permissions')
+    expect(
+      document.body.querySelector<HTMLButtonElement>('[aria-label="Filter permissions by scope"]')
+        ?.textContent
+    ).toContain('All (1)')
+    expect(document.body.textContent).toContain('Search articles')
+    expect(document.body.textContent).toContain('Project: Oncology review')
+    expect(
+      document.body.querySelector<HTMLElement>('[data-slot="settings-content-scroll"]')?.className
+    ).toContain('overflow-y-auto')
+    expect(
+      document.body.querySelector<HTMLElement>('[aria-label="Filter permissions by scope"]')
+        ?.parentElement?.className
+    ).toContain('sticky')
+  })
+
+  it('forwards session scope navigation from the Permissions panel', async () => {
+    const onOpenSession = vi.fn()
+    vi.mocked(window.api.permissions.list).mockResolvedValue({
+      version: 1,
+      incompleteStores: [],
+      grants: [
+        {
+          id: 'session-grant',
+          revision: 1,
+          family: 'file_operations',
+          capabilityKind: 'file_operation',
+          capabilityLabel: 'Edit',
+          scopeKind: 'session',
+          scopeLabel: 'Session: Analyze samples',
+          projectId: 'project-1',
+          sessionId: 'session-1'
+        }
+      ],
+      counts: { all: 1, global: 0, project: 0, session: 1 }
+    })
+
+    await act(async () =>
+      root.render(<SettingsPage open onClose={vi.fn()} onOpenSession={onOpenSession} />)
+    )
+    await act(async () => navButton('Permissions')?.click())
+    await act(async () =>
+      document.body
+        .querySelector<HTMLButtonElement>('[aria-label="Open Session: Analyze samples"]')
+        ?.click()
+    )
+
+    expect(onOpenSession).toHaveBeenCalledWith('session-1')
+  })
+
+  it('shows the agent framework on the Agent sub-panel', async () => {
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+
+    await openAgentPanel()
+
+    expect(document.body.textContent).toContain('Agent framework')
+    expect(document.body.textContent).not.toContain('Add provider')
+    expect(document.body.querySelector('nav [aria-current="page"]')?.textContent?.trim()).toBe(
+      'Agent'
+    )
+  })
+
+  it('shows Repair for the failed selected runtime even when it has no detected path', async () => {
+    const api = (window as unknown as { api: { settings: Record<string, unknown> } }).api
+    api.settings.getPreflight = vi.fn().mockResolvedValue({
+      claudeReady: false,
+      opencodeReady: false,
+      codexReady: false,
+      agentFrameworkId: 'claude-code',
+      agentReady: false,
+      activeProviderReady: false
+    })
+    useSettingsStore.setState({
+      environmentCheck: {
+        checkedAt: 1,
+        platform: 'darwin',
+        architecture: 'arm64',
+        ready: false,
+        canAutoInstall: false,
+        agentFrameworkId: 'claude-code',
+        runtime: { found: false },
+        checks: [
+          {
+            id: 'agent',
+            label: 'Claude runtime',
+            status: 'failed',
+            summary: 'Claude is missing.',
+            detail: 'No executable was found on PATH.'
+          }
+        ]
+      }
+    })
+
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+    await openAgentPanel()
+
+    expect(document.body.querySelector('[aria-label="Repair Claude Agent"]')).not.toBeNull()
+    expect(document.body.querySelector('[aria-label="Repair OpenCode"]')).toBeNull()
+    const repairNotice = document.body.querySelector('[aria-label="Agent runtime repair issues"]')
+    expect(repairNotice?.textContent).toContain('Claude Code cannot be accessed.')
+    expect(repairNotice?.textContent).toContain('Repair the selected agent before using it.')
+    expect(repairNotice?.textContent).toContain('Claude runtime')
+    expect(repairNotice?.textContent).toContain('Claude is missing.')
+    expect(repairNotice?.textContent).not.toContain('No executable was found on PATH.')
+  })
+
+  it('opens repair from a failed Agent card and removes the notice after repair succeeds', async () => {
+    const api = (window as unknown as { api: { settings: Record<string, unknown> } }).api
+    api.settings.getPreflight = vi.fn().mockResolvedValue({
+      claudeReady: false,
+      opencodeReady: false,
+      codexReady: false,
+      agentFrameworkId: 'claude-code',
+      agentReady: false,
+      activeProviderReady: false
+    })
+    const failedEnvironment = {
+      checkedAt: 1,
+      platform: 'darwin' as const,
+      architecture: 'arm64',
+      ready: false,
+      canAutoInstall: false,
+      agentFrameworkId: 'claude-code' as const,
+      runtime: { found: false },
+      checks: [
+        {
+          id: 'agent' as const,
+          label: 'Claude runtime',
+          status: 'failed' as const,
+          summary: 'Claude is missing.'
+        }
+      ]
+    }
+    const repairedEnvironment = {
+      ...failedEnvironment,
+      checkedAt: 2,
+      ready: true,
+      runtime: { found: true, path: '/data/claude' },
+      checks: []
+    }
+    const installClaude = vi.fn().mockResolvedValue({ installId: 'claude-test', ok: true })
+    const checkEnvironment = vi.fn().mockImplementation(async () => {
+      useSettingsStore.setState({ environmentCheck: repairedEnvironment })
+      return repairedEnvironment
+    })
+    useSettingsStore.setState({
+      environmentCheck: failedEnvironment,
+      installClaude,
+      checkEnvironment
+    })
+
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+    await openAgentPanel()
+    await act(async () => {
+      document.body
+        .querySelector<HTMLElement>('[aria-label="Repair required for Claude Agent"]')
+        ?.click()
+    })
+
+    const dialog = document.body.querySelector<HTMLElement>('[role="alertdialog"]')
+    expect(dialog?.textContent).toContain('Claude Agent needs repair')
+    const cancelButton = Array.from(
+      dialog?.querySelectorAll<HTMLButtonElement>('button') ?? []
+    ).find((button) => button.textContent === 'Cancel')
+    const repairButton = dialog?.querySelector<HTMLButtonElement>(
+      '[aria-label="Repair Claude Agent"]'
+    )
+    expect(cancelButton?.dataset.size).toBe('default')
+    expect(repairButton?.dataset.size).toBe(cancelButton?.dataset.size)
+
+    openRadixMenu(repairButton)
+    const managed = Array.from(
+      document.body.querySelectorAll<HTMLElement>('[role="menuitem"]')
+    ).find((item) => item.textContent?.includes('App-managed download (recommended)'))
+    await act(async () => {
+      clickRadixMenuItem(managed)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(installClaude).toHaveBeenCalledWith('managed', undefined)
+    expect(checkEnvironment).toHaveBeenCalledWith({ force: true })
+    expect(document.body.querySelector('[aria-label="Agent runtime repair issues"]')).toBeNull()
+  })
+
+  it('shows every failed Codex component in the Agent repair notice', async () => {
+    const api = (window as unknown as { api: { settings: Record<string, unknown> } }).api
+    api.settings.getSettings = vi.fn().mockResolvedValue({
+      claude: {},
+      opencode: {},
+      codex: { resolvedPath: '/usr/local/bin/codex-acp' },
+      providers: [],
+      agentFrameworkId: 'codex',
+      agentFrameworks: [{ id: 'codex', displayName: 'Codex', supportsSkills: false }]
+    })
+    api.settings.getPreflight = vi.fn().mockResolvedValue({
+      claudeReady: false,
+      opencodeReady: false,
+      codexReady: false,
+      agentFrameworkId: 'codex',
+      agentReady: false,
+      activeProviderReady: false
+    })
+    useSettingsStore.setState({
+      agentFrameworkId: 'codex',
+      environmentCheck: {
+        checkedAt: 1,
+        platform: 'darwin',
+        architecture: 'arm64',
+        ready: false,
+        canAutoInstall: false,
+        agentFrameworkId: 'codex',
+        runtime: { found: false },
+        checks: [
+          {
+            id: 'agent',
+            label: 'Codex native CLI',
+            status: 'failed',
+            summary: 'Native Codex CLI is not installed.'
+          },
+          {
+            id: 'agent',
+            label: 'Codex ACP adapter',
+            status: 'failed',
+            summary: 'Codex ACP adapter is not installed.'
+          }
+        ]
+      }
+    })
+
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+    await openAgentPanel()
+
+    const repairNotice = document.body.querySelector('[aria-label="Agent runtime repair issues"]')
+    expect(repairNotice?.textContent).toContain('Codex cannot be accessed.')
+    expect(repairNotice?.textContent).toContain('Repair the selected agent before using it.')
+    expect(repairNotice?.textContent).toContain('Codex native CLI')
+    expect(repairNotice?.textContent).toContain('Native Codex CLI is not installed.')
+    expect(repairNotice?.textContent).toContain('Codex ACP adapter')
+    expect(repairNotice?.textContent).toContain('Codex ACP adapter is not installed.')
+  })
+
+  it('shows system and installation-network blockers above the Agent cards', async () => {
+    const api = (window as unknown as { api: { settings: Record<string, unknown> } }).api
+    api.settings.getPreflight = vi.fn().mockResolvedValue({
+      claudeReady: false,
+      opencodeReady: false,
+      codexReady: false,
+      agentFrameworkId: 'claude-code',
+      agentReady: false,
+      activeProviderReady: false
+    })
+    useSettingsStore.setState({
+      environmentCheck: {
+        checkedAt: 1,
+        platform: 'darwin',
+        architecture: 'arm64',
+        ready: false,
+        canAutoInstall: false,
+        agentFrameworkId: 'claude-code',
+        runtime: { found: false },
+        checks: [
+          {
+            id: 'system',
+            label: 'System compatibility',
+            status: 'failed',
+            summary: 'This host has no app-managed runtime package.'
+          },
+          {
+            id: 'install-network',
+            label: 'Installation network',
+            status: 'failed',
+            summary: 'Neither trusted registry is reachable.'
+          }
+        ]
+      }
+    })
+
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+    await openAgentPanel()
+
+    const blocker = document.body.querySelector('[aria-label="Agent installation blockers"]')
+    expect(blocker?.textContent).toContain('System compatibility')
+    expect(blocker?.textContent).toContain('This host has no app-managed runtime package.')
+    expect(blocker?.textContent).toContain('Installation network')
+    expect(blocker?.textContent).toContain('Neither trusted registry is reachable.')
+
+    const claudeInstallTrigger = document.body.querySelector<HTMLButtonElement>(
+      '[aria-label="Install Claude Agent"]'
+    )
+    expect(claudeInstallTrigger).not.toBeNull()
+    openRadixMenu(claudeInstallTrigger)
+    const claudeManaged = Array.from(
+      document.body.querySelectorAll<HTMLElement>('[role="menuitem"]')
+    ).find((item) => item.textContent?.includes('App-managed download'))
+    expect(claudeManaged?.getAttribute('data-disabled')).toBe('')
+
+    await act(async () => {
+      document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    })
+    openRadixMenu(document.body.querySelector<HTMLButtonElement>('[aria-label="Install OpenCode"]'))
+    const opencodeManaged = Array.from(
+      document.body.querySelectorAll<HTMLElement>('[role="menuitem"]')
+    ).find((item) => item.textContent?.includes('App-managed download'))
+    expect(opencodeManaged?.getAttribute('data-disabled')).toBeNull()
+  })
+
+  it('keeps Model and Agent as first-level tabs while navigating settings', async () => {
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+
+    expect(navButton('Model')?.parentElement?.tagName).toBe('LI')
+    expect(navButton('Agent')?.parentElement?.tagName).toBe('LI')
+    await act(async () => navButton('General')?.click())
+    expect(navButton('Agent')).not.toBeUndefined()
+    expect(navButton('Agent')?.tabIndex).toBe(0)
+  })
+
+  it('keeps Agent available when a skill mention deep-links into settings', async () => {
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+
+    await act(async () => {
+      useSettingsStore.setState({ pendingSkillId: 'alpha' })
+    })
+
+    expect(navButton('Agent')?.parentElement?.tagName).toBe('LI')
+    expect(navButton('Agent')?.tabIndex).toBe(0)
+  })
+
+  it('uses an off-canvas settings navigation on a narrow browser viewport', async () => {
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn((query: string) => ({
+        matches: query === '(max-width: 767px)',
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn()
+      }))
+    )
+
+    const onClose = vi.fn()
+    const settingsRef = createRef<SettingsPageHandle>()
+    await act(async () => {
+      root.render(<SettingsPage ref={settingsRef} open onClose={onClose} />)
+    })
+    const nav = document.body.querySelector<HTMLElement>('nav[aria-label="Settings"]')
+    expect(nav?.getAttribute('aria-hidden')).toBe('true')
+    expect(document.body.querySelector('[data-slot="settings-surface"]')?.className).toContain(
+      'h-[100dvh]'
+    )
+
+    await act(async () => {
+      document.body
+        .querySelector<HTMLButtonElement>('[aria-label="Open settings navigation"]')
+        ?.click()
+    })
+    expect(nav?.getAttribute('aria-hidden')).toBeNull()
+
+    const generalTab = Array.from(nav?.querySelectorAll('button') ?? []).find((button) =>
+      /general/i.test(button.textContent ?? '')
+    )
+    await act(async () => generalTab?.click())
+    expect(nav?.getAttribute('aria-hidden')).toBe('true')
+    expect(
+      Array.from(document.body.querySelectorAll('h2')).some((heading) =>
+        heading.textContent?.includes('General')
+      )
+    ).toBe(true)
+
+    await act(async () => navButton('Model')?.click())
+    const addProvider = Array.from(
+      document.body.querySelectorAll<HTMLButtonElement>('button')
+    ).find((button) => button.textContent?.trim() === 'Add provider')
+    act(() => addProvider?.click())
+    expect(document.body.querySelector('[aria-label="Provider type"]')).not.toBeNull()
+
+    await act(async () => {
+      document.body
+        .querySelector<HTMLButtonElement>('[aria-label="Open settings navigation"]')
+        ?.click()
+    })
+    act(() => {
+      expect(settingsRef.current?.closeActivePane()).toBe(true)
+    })
+    expect(nav?.getAttribute('aria-hidden')).toBe('true')
+    expect(document.body.querySelector('[aria-label="Provider type"]')).not.toBeNull()
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('opens Add provider as a history-driven sub-page and returns via the back arrow', () => {
+    act(() => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+
+    const clickByText = (text: string): void => {
+      const button = Array.from(document.body.querySelectorAll<HTMLButtonElement>('button')).find(
+        (candidate) => candidate.textContent?.trim() === text
+      )
+      act(() => button?.click())
+    }
+
+    clickByText('Add provider')
+
+    // The sub-page shows a "Model › Add provider" breadcrumb and the provider-type dropdown, hiding
+    // the Claude section. There is no standalone in-content back arrow. With Claude Code as the
+    // active framework, the type defaults to Anthropic.
+    const crumb = document.body.querySelector<HTMLButtonElement>('[aria-label="Back to model"]')
+    expect(crumb).not.toBeNull()
+    expect(document.body.textContent).toContain('Add provider')
+    expect(document.body.querySelector('[aria-label="Back to providers"]')).toBeNull()
+    const typeTrigger = document.body.querySelector('[aria-label="Provider type"]')
+    expect(typeTrigger).not.toBeNull()
+    expect(typeTrigger?.textContent).toContain('Anthropic')
+    expect(document.body.querySelector('section[aria-label="Claude"]')).toBeNull()
+
+    // The shared top back arrow exits the form back to the provider list.
+    const back = document.body.querySelector<HTMLButtonElement>('[aria-label="Back"]')
+    act(() => back?.click())
+    expect(document.body.querySelector('section[aria-label="Providers"]')).not.toBeNull()
+    expect(document.body.querySelector('[aria-label="Provider type"]')).toBeNull()
+
+    // Forward re-enters the form as a history location.
+    const forward = document.body.querySelector<HTMLButtonElement>('[aria-label="Forward"]')
+    act(() => forward?.click())
+    expect(document.body.querySelector('[aria-label="Provider type"]')).not.toBeNull()
+
+    // The breadcrumb root crumb returns to the provider list too.
+    const rootCrumb = document.body.querySelector<HTMLButtonElement>('[aria-label="Back to model"]')
+    act(() => rootCrumb?.click())
+    expect(document.body.querySelector('section[aria-label="Providers"]')).not.toBeNull()
+  })
+
+  it('closes a nested dialog, then a breadcrumb, then Settings with the close-pane shortcut', () => {
+    const onClose = vi.fn()
+    const settingsRef = createRef<SettingsPageHandle>()
+    act(() => {
+      root.render(<SettingsPage ref={settingsRef} open onClose={onClose} />)
+    })
+
+    const addProvider = Array.from(
+      document.body.querySelectorAll<HTMLButtonElement>('button')
+    ).find((button) => button.textContent?.trim() === 'Add provider')
+    act(() => addProvider?.click())
+    expect(document.body.querySelector('[aria-label="Provider type"]')).not.toBeNull()
+
+    act(() => {
+      root.render(
+        <>
+          <SettingsPage ref={settingsRef} open onClose={onClose} />
+          <Dialog.Root defaultOpen>
+            <Dialog.Portal>
+              <Dialog.Content>
+                <Dialog.Title>Nested Settings dialog</Dialog.Title>
+              </Dialog.Content>
+            </Dialog.Portal>
+          </Dialog.Root>
+        </>
+      )
+    })
+    expect(document.body.textContent).toContain('Nested Settings dialog')
+
+    act(() => {
+      expect(settingsRef.current?.closeActivePane()).toBe(true)
+    })
+    expect(document.body.textContent).not.toContain('Nested Settings dialog')
+    expect(document.body.querySelector('[aria-label="Provider type"]')).not.toBeNull()
+    expect(onClose).not.toHaveBeenCalled()
+
+    const inlineDialog = document.createElement('div')
+    inlineDialog.setAttribute('role', 'dialog')
+    inlineDialog.setAttribute('aria-modal', 'true')
+    document.body.appendChild(inlineDialog)
+    act(() => {
+      expect(settingsRef.current?.closeActivePane()).toBe(true)
+    })
+    inlineDialog.remove()
+    expect(document.body.querySelector('section[aria-label="Providers"]')).not.toBeNull()
+    expect(document.body.querySelector<HTMLButtonElement>('[aria-label="Back"]')?.disabled).toBe(
+      true
+    )
+    expect(onClose).not.toHaveBeenCalled()
+
+    act(() => {
+      expect(settingsRef.current?.closeActivePane()).toBe(true)
+    })
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  it('dispatches the close-pane Escape to an active link-safety dialog', () => {
+    const settingsRef = createRef<SettingsPageHandle>()
+    const onLinkClose = vi.fn()
+    act(() => {
+      root.render(
+        <>
+          <SettingsPage ref={settingsRef} open onClose={vi.fn()} />
+          <LinkSafetyModal
+            url="https://example.com/paper"
+            isOpen
+            onClose={onLinkClose}
+            onConfirm={vi.fn()}
+          />
+        </>
+      )
+    })
+
+    act(() => {
+      expect(settingsRef.current?.closeActivePane()).toBe(true)
+    })
+
+    expect(onLinkClose).toHaveBeenCalledOnce()
+  })
+
+  it('defaults the Add provider type to the framework vendor (Codex → OpenAI, OpenCode → DeepSeek)', async () => {
+    // Claude Code → Anthropic is covered by the history-navigation test above.
+    const scenarios = [
+      { framework: 'codex', runtime: { codex: { resolvedPath: '/x/codex' } }, label: 'OpenAI' },
+      {
+        framework: 'opencode',
+        runtime: { opencode: { resolvedPath: '/x/opencode' } },
+        label: 'DeepSeek'
+      }
+    ] as const
+
+    for (const { framework, runtime, label } of scenarios) {
+      await act(async () => {
+        root.render(<SettingsPage open onClose={vi.fn()} />)
+      })
+      // Set the framework after the initial load() settles, and give the runtime a resolved path
+      // so the detect-on-view effect doesn't overwrite it.
+      useSettingsStore.setState({ agentFrameworkId: framework, ...runtime })
+
+      const addProvider = Array.from(
+        document.body.querySelectorAll<HTMLButtonElement>('button')
+      ).find((button) => button.textContent?.trim() === 'Add provider')
+      act(() => addProvider?.click())
+
+      expect(document.body.querySelector('[aria-label="Provider type"]')?.textContent).toContain(
+        label
+      )
+
+      act(() => root.unmount())
+      container.remove()
+      document.body.innerHTML = ''
+      container = document.createElement('div')
+      document.body.appendChild(container)
+      root = createRoot(container)
+    }
+  })
+
+  it('defaults a custom gateway to the active framework API format', async () => {
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+    useSettingsStore.setState({
+      agentFrameworkId: 'opencode',
+      agentFrameworks: [
+        {
+          id: 'opencode',
+          displayName: 'OpenCode',
+          supportedApiTypes: ['anthropic', 'openai'],
+          supportsSkills: true
+        }
+      ],
+      opencode: { resolvedPath: '/x/opencode' }
+    })
+
+    const addProvider = Array.from(
+      document.body.querySelectorAll<HTMLButtonElement>('button')
+    ).find((button) => button.textContent?.trim() === 'Add provider')
+    act(() => addProvider?.click())
+
+    openRadixMenu(document.body.querySelector<HTMLElement>('[aria-label="Provider type"]'))
+    const customGateway = Array.from(
+      document.body.querySelectorAll<HTMLElement>('[role="option"]')
+    ).find((option) => option.textContent?.includes('Custom Gateway'))
+    clickRadixMenuItem(customGateway)
+
+    expect(document.body.querySelector('[aria-label="API format"]')?.textContent).toContain(
+      '/v1/chat/completions'
+    )
+  })
+
+  it('preserves the saved API format when editing a custom gateway', async () => {
+    const api = (window as unknown as { api: { settings: Record<string, unknown> } }).api
+    const provider = {
+      id: 'custom-messages',
+      type: 'custom',
+      name: 'Messages gateway',
+      baseUrl: 'https://gateway.example',
+      model: 'model-a',
+      models: ['model-a'],
+      apiEndpoints: ['anthropic'],
+      supportsImageInput: false,
+      hasKey: true,
+      maskedKey: 'sk-…test',
+      needsKey: false
+    }
+    api.settings.getSettings = vi.fn().mockResolvedValue({
+      claude: {},
+      opencode: { resolvedPath: '/x/opencode' },
+      codex: {},
+      providers: [provider],
+      activeProviderId: provider.id,
+      activeModel: provider.model,
+      agentFrameworkId: 'opencode',
+      agentFrameworks: [
+        {
+          id: 'opencode',
+          displayName: 'OpenCode',
+          supportedApiTypes: ['anthropic', 'openai'],
+          supportsSkills: true
+        }
+      ]
+    })
+    api.settings.getPreflight = vi.fn().mockResolvedValue({
+      opencodeReady: true,
+      agentFrameworkId: 'opencode',
+      agentReady: true,
+      activeProviderReady: true
+    })
+
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+    await act(async () => {
+      document.body.querySelector<HTMLButtonElement>('[aria-label="Edit"]')?.click()
+    })
+
+    expect(document.body.querySelector('[aria-label="Provider type"]')?.textContent).toContain(
+      'Custom Gateway'
+    )
+    expect(document.body.querySelector('[aria-label="API format"]')?.textContent).toContain(
+      '/v1/messages'
+    )
+  })
+
+  it('switches to the General panel and shows the diagnostic log file', async () => {
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+
+    const generalTab = Array.from(
+      document.body.querySelectorAll('nav[aria-label="Settings"] button')
+    ).find((button) => /general/i.test(button.textContent ?? '')) as HTMLButtonElement | undefined
+    expect(generalTab).not.toBeUndefined()
+
+    await act(async () => {
+      generalTab?.click()
+    })
+
+    // Appearance, AppVersion, Notifications, App icon, Diagnostics, Command line tool, Community.
+    expect(document.body.querySelectorAll('[data-slot="settings-section"]')).toHaveLength(7)
+    expect(document.body.querySelector('[data-slot="settings-row"]')).not.toBeNull()
+
+    // The Diagnostics panel surfaces the log file path plus Open and Reveal controls.
+    expect(document.body.textContent).toContain('main.log')
+    const buttons = Array.from(document.body.querySelectorAll('button'))
+    const openButton = buttons.find((button) => /^open$/i.test((button.textContent ?? '').trim()))
+    const revealButton = buttons.find((button) =>
+      /^reveal$/i.test((button.textContent ?? '').trim())
+    )
+    expect(openButton).not.toBeUndefined()
+    expect(revealButton).not.toBeUndefined()
+
+    await act(async () => {
+      openButton?.click()
+    })
+
+    expect(
+      (window as unknown as { api: { logs: { openFile: ReturnType<typeof vi.fn> } } }).api.logs
+        .openFile
+    ).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      revealButton?.click()
+    })
+
+    expect(
+      (window as unknown as { api: { logs: { revealInFolder: ReturnType<typeof vi.fn> } } }).api
+        .logs.revealInFolder
+    ).toHaveBeenCalledTimes(1)
+  })
+
+  it('opens the isolated Remote control panel with three scenario-based access modes', async () => {
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+
+    const remoteTab = navButton('Remote control')
+    expect(remoteTab).not.toBeUndefined()
+
+    await act(async () => remoteTab?.click())
+    expect(document.body.textContent).toContain('Remote browser access')
+    expect(document.body.textContent).toContain('Off')
+    expect(document.body.textContent).toContain('App access')
+    expect(document.body.textContent).toContain('Browser access')
+    const remoteItDownload = document.body.querySelector<HTMLAnchorElement>(
+      'a[href="https://www.remote.it/download/"]'
+    )
+    expect(remoteItDownload?.textContent).toBe('Download Remote.It App')
+    expect(remoteItDownload?.className).toContain('underline')
+    expect(remoteItDownload?.className).toContain('bg-primary/10')
+    expect(remoteItDownload?.querySelector('svg')).not.toBeNull()
+    expect(remoteItDownload?.closest('[data-slot="settings-section"]')).toBe(
+      settingsSection('Remote browser access')
+    )
+    expect(remoteItDownload?.closest('button')).toBeNull()
+    expect(settingsSection('Remote App Access')).toBeUndefined()
+    expect(settingsSection('Remote Browser Access')).toBeUndefined()
+    expect(document.body.textContent).not.toContain('Trusted browsers')
+    expect(document.body.textContent).not.toContain('Pairing requests')
+    const status = document.body.querySelector('[data-testid="remote-access-status"]')
+    expect(status?.textContent).toBe('Remote access is off')
+    expect(status?.className).toContain('sm:absolute')
+    expect(status?.className).toContain('sm:right-0')
+    expect(status?.className).toContain('sm:top-0')
+    expect(status?.parentElement?.className).toContain('w-full')
+    expect(status?.parentElement?.className).toContain('sm:w-auto')
+    expect(document.body.textContent).not.toContain('Recommended')
+    expect(status?.closest('[data-slot="settings-section"]')).toBe(
+      settingsSection('Remote browser access')
+    )
+    expect(
+      document.body.querySelector('[data-testid="remote-control-panel"]')?.className
+    ).toContain('space-y-5')
+    expect(settingsSection('Remote browser access')?.lastElementChild?.className).toContain(
+      'space-y-3'
+    )
+    const modeGrid = document.body.querySelector(
+      '[role="radiogroup"][aria-label="Remote access mode"]'
+    )
+    expect(modeGrid?.className).toContain('grid-cols-1')
+    expect(modeGrid?.className).toContain('sm:grid-cols-3')
+    expect(document.body.textContent).not.toContain('route on exit')
+    expect(document.body.textContent).not.toContain('service on exit')
+    expect(
+      (window as unknown as { api: { remoteAccess: { detect: ReturnType<typeof vi.fn> } } }).api
+        .remoteAccess.detect
+    ).toHaveBeenCalledOnce()
+  })
+
+  it('covers the whole app while a remote mode system command is still running', async () => {
+    const remoteAccess = (
+      window as unknown as {
+        api: {
+          remoteAccess: {
+            getSnapshot: ReturnType<typeof vi.fn>
+            setMode: ReturnType<typeof vi.fn>
+            detect: ReturnType<typeof vi.fn>
+            onChanged: ReturnType<typeof vi.fn>
+          }
+        }
+      }
+    ).api.remoteAccess
+    const enabledSnapshot = {
+      canManage: true,
+      canManagePairing: true,
+      mode: 'remoteit',
+      enabled: true,
+      lifecycle: 'running',
+      remoteIt: {
+        installed: true,
+        loggedIn: true,
+        registered: true,
+        service: {
+          id: 'service-1',
+          host: '127.0.0.1',
+          port: 44100,
+          enabled: true,
+          ready: true
+        }
+      },
+      pendingRequests: [],
+      trustedBrowsers: []
+    }
+    let finishModeChange!: (snapshot: typeof enabledSnapshot) => void
+    remoteAccess.setMode.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finishModeChange = resolve
+        })
+    )
+
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+    await act(async () => navButton('Remote control')?.click())
+    const remoteItMode = document.body.querySelector<HTMLInputElement>(
+      'input[name="remote-access-mode"][aria-label="App access"]'
+    )
+
+    act(() => remoteItMode?.click())
+
+    expect(remoteAccess.setMode).toHaveBeenCalledTimes(1)
+    const overlay = document.body.querySelector('[data-testid="remote-access-operation-overlay"]')
+    expect(overlay).not.toBeNull()
+    expect(overlay?.textContent).toContain('Applying remote access settings')
+    expect(overlay?.className).toContain('fixed')
+    expect(overlay?.className).toContain('inset-0')
+    expect(document.body.querySelector('[data-testid="remote-access-status"]')?.textContent).toBe(
+      'Changing access mode…'
+    )
+
+    // The main process broadcasts lifecycle progress before the provider command has finished.
+    // Refreshing that progress must not dismiss the global operation overlay.
+    remoteAccess.getSnapshot.mockResolvedValue({
+      ...enabledSnapshot,
+      enabled: false,
+      lifecycle: 'starting'
+    })
+    const lifecycleListener = remoteAccess.onChanged.mock.calls[0]?.[0] as (() => void) | undefined
+    await act(async () => {
+      lifecycleListener?.()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(
+      document.body.querySelector('[data-testid="remote-access-operation-overlay"]')
+    ).not.toBeNull()
+    expect(document.body.querySelector('[data-testid="remote-access-status"]')?.textContent).toBe(
+      'Changing access mode…'
+    )
+
+    await act(async () => {
+      finishModeChange(enabledSnapshot)
+      await Promise.resolve()
+    })
+    expect(
+      document.body.querySelector('[data-testid="remote-access-operation-overlay"]')
+    ).toBeNull()
+    expect(document.body.querySelector('[data-testid="remote-access-status"]')?.textContent).toBe(
+      'App access is on'
+    )
+
+    let finishDetection!: (snapshot: typeof enabledSnapshot) => void
+    remoteAccess.detect.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishDetection = resolve
+        })
+    )
+    const detectButton = Array.from(document.body.querySelectorAll('button')).find((button) =>
+      button.textContent?.includes('Detect again')
+    )
+    act(() => detectButton?.click())
+    const detectOverlay = document.body.querySelector(
+      '[data-testid="remote-access-operation-overlay"]'
+    )
+    expect(detectOverlay?.textContent).toContain('Checking and setting up remote access')
+    expect(document.body.querySelector('[data-testid="remote-access-status"]')?.textContent).toBe(
+      'Checking access…'
+    )
+
+    await act(async () => {
+      finishDetection(enabledSnapshot)
+      await Promise.resolve()
+    })
+    expect(
+      document.body.querySelector('[data-testid="remote-access-operation-overlay"]')
+    ).toBeNull()
+  })
+
+  it('surfaces a provider detection error while access is Off', async () => {
+    const remoteAccess = (
+      window as unknown as {
+        api: {
+          remoteAccess: {
+            getSnapshot: ReturnType<typeof vi.fn>
+            detect: ReturnType<typeof vi.fn>
+          }
+        }
+      }
+    ).api.remoteAccess
+    const staleOffSnapshot = {
+      canManage: true,
+      canManagePairing: true,
+      mode: 'off',
+      enabled: false,
+      lifecycle: 'error',
+      error: 'The remote access app is not connected.',
+      remoteIt: { installed: true, loggedIn: true, registered: true },
+      pendingRequests: [],
+      trustedBrowsers: []
+    }
+    remoteAccess.getSnapshot.mockResolvedValue(staleOffSnapshot)
+    remoteAccess.detect.mockResolvedValue(staleOffSnapshot)
+
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+    await act(async () => navButton('Remote control')?.click())
+
+    expect(document.body.textContent).toContain('The remote access app is not connected')
+    expect(document.body.querySelector('[data-testid="remote-access-status"]')?.textContent).toBe(
+      'Remote access is off'
+    )
+  })
+
+  it('keeps a failed provider selected and shows only that mode error', async () => {
+    const remoteAccess = (
+      window as unknown as {
+        api: {
+          remoteAccess: {
+            getSnapshot: ReturnType<typeof vi.fn>
+            detect: ReturnType<typeof vi.fn>
+          }
+        }
+      }
+    ).api.remoteAccess
+    const appErrorSnapshot = {
+      canManage: true,
+      canManagePairing: true,
+      mode: 'remoteit',
+      enabled: false,
+      lifecycle: 'error',
+      error: 'The remote access app is installed but not signed in.',
+      remoteIt: { installed: true, loggedIn: false, registered: false },
+      pendingRequests: [],
+      trustedBrowsers: []
+    }
+    remoteAccess.getSnapshot.mockResolvedValue(appErrorSnapshot)
+    remoteAccess.detect.mockResolvedValue(appErrorSnapshot)
+
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+    await act(async () => navButton('Remote control')?.click())
+
+    expect(
+      document.body.querySelector<HTMLInputElement>(
+        'input[name="remote-access-mode"][aria-label="App access"]'
+      )?.checked
+    ).toBe(true)
+    expect(document.body.textContent).toContain(
+      'The remote access app is installed but not signed in'
+    )
+    expect(document.body.querySelector('[data-testid="remote-access-status"]')?.textContent).toBe(
+      'Needs attention'
+    )
+    expect(settingsSection('Remote App Access')).not.toBeUndefined()
+    expect(settingsSection('Remote Browser Access')).toBeUndefined()
+  })
+
+  it.each([
+    {
+      mode: 'remoteit',
+      accessUrl: undefined,
+      currentSection: 'Remote App Access',
+      otherSection: 'Remote Browser Access'
+    },
+    {
+      mode: 'remoteit-public',
+      accessUrl: 'https://purescience.connect.remote.it/',
+      currentSection: 'Remote Browser Access',
+      otherSection: 'Remote App Access'
+    }
+  ] as const)(
+    'lets an approved Web session manage two-step verification without desktop controls in $mode mode',
+    async ({ mode, accessUrl, currentSection, otherSection }) => {
+      const remoteAccess = (
+        window as unknown as {
+          api: {
+            remoteAccess: {
+              getSnapshot: ReturnType<typeof vi.fn>
+              detect: ReturnType<typeof vi.fn>
+            }
+          }
+        }
+      ).api.remoteAccess
+      remoteAccess.getSnapshot.mockResolvedValue({
+        canManage: false,
+        canManagePairing: true,
+        mode,
+        enabled: true,
+        lifecycle: 'running',
+        accessUrl,
+        remoteIt: { installed: true, loggedIn: true, registered: true },
+        pendingRequests: [
+          {
+            id: 'pending-1',
+            code: '123456',
+            browser: 'Google Chrome',
+            platform: 'Windows',
+            requestedAt: Date.now(),
+            expiresAt: Date.now() + 60_000
+          }
+        ],
+        trustedBrowsers: [
+          {
+            id: 'trusted-1',
+            browser: 'Chrome on iOS',
+            platform: 'iOS/iPadOS',
+            createdAt: Date.now(),
+            lastSeenAt: Date.now()
+          }
+        ]
+      })
+
+      await act(async () => {
+        root.render(<SettingsPage open onClose={vi.fn()} />)
+      })
+      await act(async () => navButton('Remote control')?.click())
+
+      expect(document.body.textContent).toContain('Chrome on iOS · iOS/iPadOS')
+      expect(document.body.textContent).toContain('Google Chrome · Windows')
+      expect(document.body.textContent).toContain('123456')
+      expect(document.body.textContent).toContain(
+        'Two-step verification requests and trusted browsers can be managed below'
+      )
+      expect(
+        document.body.querySelector<HTMLInputElement>('input[name="remote-access-mode"]:checked')
+          ?.disabled
+      ).toBe(true)
+      expect(settingsSection(currentSection)).not.toBeUndefined()
+      expect(settingsSection(otherSection)).toBeUndefined()
+      expect(remoteAccess.detect).not.toHaveBeenCalled()
+    }
+  )
+
+  it('shows the app-only Remote.It flow without asking for an IP address or port', async () => {
+    const remoteAccess = (
+      window as unknown as {
+        api: {
+          remoteAccess: {
+            getSnapshot: ReturnType<typeof vi.fn>
+            detect: ReturnType<typeof vi.fn>
+          }
+        }
+      }
+    ).api.remoteAccess
+    const remoteItSnapshot = {
+      canManage: true,
+      canManagePairing: true,
+      mode: 'remoteit',
+      enabled: true,
+      lifecycle: 'running',
+      remoteIt: {
+        installed: true,
+        loggedIn: true,
+        registered: true,
+        account: 'person@example.com',
+        service: {
+          id: 'service-1',
+          host: '127.0.0.1',
+          port: 44100,
+          enabled: true,
+          ready: true
+        }
+      },
+      pendingRequests: [],
+      trustedBrowsers: []
+    }
+    remoteAccess.getSnapshot.mockResolvedValue(remoteItSnapshot)
+    remoteAccess.detect.mockResolvedValue(remoteItSnapshot)
+
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+    await act(async () => navButton('Remote control')?.click())
+
+    expect(document.body.textContent).toContain('Remote App Access')
+    expect(document.body.textContent).not.toContain('127.0.0.1:44100')
+    expect(
+      document.body.querySelector<HTMLAnchorElement>('a[href="https://www.remote.it/download/"]')
+    ).not.toBeNull()
+    expect(document.body.textContent).toContain('six-digit code')
+    expect(document.body.textContent).toContain('Trusted browsers')
+    expect(document.body.textContent).toContain('Pairing requests')
+    expect(settingsSection('Remote App Access')).not.toBeUndefined()
+    expect(settingsSection('Remote Browser Access')).toBeUndefined()
+    const connectedBadge = Array.from(
+      settingsSection('Remote App Access')?.querySelectorAll('[data-slot="badge"]') ?? []
+    ).find((badge) => badge.textContent === 'Connected')
+    expect(connectedBadge?.className).toContain('bg-primary/10')
+    expect(connectedBadge?.className).toContain('text-primary')
+    expect(connectedBadge?.className).toContain('border-0')
+    const guide = document.body.querySelector('[data-testid="remoteit-access-guide"]')
+    expect(guide?.textContent).toContain('1.')
+    expect(guide?.textContent).toContain('2.')
+    expect(guide?.textContent).toContain('3.')
+    const phoneIcon = guide?.querySelector('[data-testid="remoteit-guide-phone-icon"]')
+    expect(phoneIcon?.getAttribute('class')).toContain('size-5')
+    expect(phoneIcon?.getAttribute('class')).toContain('mt-0.5')
+    expect(phoneIcon?.parentElement?.className).not.toContain('bg-')
+  })
+
+  it('keeps the intermediate Ready provider status neutral', async () => {
+    const remoteAccess = (
+      window as unknown as {
+        api: {
+          remoteAccess: {
+            getSnapshot: ReturnType<typeof vi.fn>
+            detect: ReturnType<typeof vi.fn>
+          }
+        }
+      }
+    ).api.remoteAccess
+    const readySnapshot = {
+      canManage: true,
+      canManagePairing: true,
+      mode: 'remoteit',
+      enabled: false,
+      lifecycle: 'starting',
+      remoteIt: {
+        installed: true,
+        loggedIn: true,
+        registered: true,
+        service: {
+          id: 'service-1',
+          host: '127.0.0.1',
+          port: 44100,
+          enabled: true,
+          ready: true
+        }
+      },
+      pendingRequests: [],
+      trustedBrowsers: []
+    }
+    remoteAccess.getSnapshot.mockResolvedValue(readySnapshot)
+    remoteAccess.detect.mockResolvedValue(readySnapshot)
+
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+    await act(async () => navButton('Remote control')?.click())
+
+    const readyBadge = Array.from(
+      settingsSection('Remote App Access')?.querySelectorAll('[data-slot="badge"]') ?? []
+    ).find((badge) => badge.textContent === 'Ready')
+    expect(readyBadge).not.toBeUndefined()
+    expect(readyBadge?.className).not.toContain('bg-primary/10')
+    expect(readyBadge?.className).not.toContain('text-primary')
+    expect(readyBadge?.className).not.toContain('border-0')
+  })
+
+  it('shows a paired Remote.It public browser URL with a scannable QR code', async () => {
+    const remoteAccess = (
+      window as unknown as {
+        api: {
+          remoteAccess: {
+            getSnapshot: ReturnType<typeof vi.fn>
+            detect: ReturnType<typeof vi.fn>
+          }
+        }
+      }
+    ).api.remoteAccess
+    const publicSnapshot = {
+      canManage: true,
+      canManagePairing: true,
+      mode: 'remoteit-public',
+      enabled: true,
+      lifecycle: 'running',
+      accessUrl: 'https://purescience.connect.remote.it/',
+      remoteItPublicUrl: 'https://purescience.connect.remote.it/',
+      remoteIt: {
+        installed: true,
+        loggedIn: true,
+        registered: true,
+        account: 'person@example.com',
+        service: {
+          id: 'service-1',
+          host: '127.0.0.1',
+          port: 44100,
+          enabled: true,
+          ready: true
+        }
+      },
+      pendingRequests: [],
+      trustedBrowsers: []
+    }
+    remoteAccess.getSnapshot.mockResolvedValue(publicSnapshot)
+    remoteAccess.detect.mockResolvedValue(publicSnapshot)
+
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+    await act(async () => navButton('Remote control')?.click())
+
+    expect(document.body.textContent).toContain('Browser access is on')
+    expect(document.body.textContent).toContain('Remote Browser Access')
+    expect(document.body.textContent).toContain('Download Remote.It App')
+    expect(document.body.textContent).toContain('Browser link is ready')
+    expect(document.body.textContent).toContain('Scan to open')
+    expect(document.body.textContent).toContain('two-step verification')
+    expect(document.body.textContent).toContain('six-digit code')
+    expect(document.body.textContent).toContain('Trusted browsers')
+    expect(document.body.textContent).toContain('Pairing requests')
+    const guide = document.body.querySelector('[data-testid="remoteit-public-access-guide"]')
+    const qr = guide?.querySelector('[data-testid="remoteit-public-qr"]')
+    const steps = guide?.querySelector('ol')
+    expect(qr?.querySelector('svg')).not.toBeNull()
+    expect(steps?.parentElement?.className).toContain('border-t')
+    expect(guide?.firstElementChild?.className).toContain('sm:grid-cols-[minmax(0,1fr)_auto]')
+    expect(guide?.firstElementChild?.firstElementChild?.contains(steps ?? null)).toBe(true)
+    expect(guide?.firstElementChild?.lastElementChild).toBe(qr)
+    expect(
+      document.body.querySelector('input[aria-label="Remote.It Persistent Public URL"]')
+    ).toBeNull()
+    expect(settingsSection('Remote Browser Access')).not.toBeUndefined()
+    expect(settingsSection('Remote App Access')).toBeUndefined()
+  })
+
+  it('explains Remote.It Device setup after a pre-install selection failed', async () => {
+    const remoteAccess = (
+      window as unknown as {
+        api: {
+          remoteAccess: {
+            getSnapshot: ReturnType<typeof vi.fn>
+            detect: ReturnType<typeof vi.fn>
+          }
+        }
+      }
+    ).api.remoteAccess
+    const setupSnapshot = {
+      canManage: true,
+      canManagePairing: true,
+      mode: 'remoteit',
+      enabled: false,
+      lifecycle: 'error',
+      error: 'Remote.It device setup is not complete.',
+      remoteIt: {
+        installed: true,
+        loggedIn: false,
+        registered: false,
+        version: '4.1.0'
+      },
+      pendingRequests: [],
+      trustedBrowsers: []
+    }
+    remoteAccess.getSnapshot.mockResolvedValue(setupSnapshot)
+    remoteAccess.detect.mockResolvedValue(setupSnapshot)
+
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+    await act(async () => navButton('Remote control')?.click())
+
+    expect(document.body.textContent).toContain('Detect again')
+    expect(document.body.textContent).toContain('added once')
+    const setupBadge = Array.from(
+      settingsSection('Remote App Access')?.querySelectorAll('[data-slot="badge"]') ?? []
+    ).find((badge) => badge.textContent === 'Device setup required')
+    expect(setupBadge?.className).not.toContain('bg-primary/10')
+    expect(document.body.textContent).not.toContain('Sign-in required')
+  })
+
+  it('switches to the Connectors panel and lists bundled connectors', async () => {
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+
+    const connectorsTab = Array.from(
+      document.body.querySelectorAll('nav[aria-label="Settings"] button')
+    ).find((button) => /connectors/i.test(button.textContent ?? '')) as
+      HTMLButtonElement | undefined
+    expect(connectorsTab).not.toBeUndefined()
+
+    await act(async () => {
+      connectorsTab?.click()
+    })
+
+    // The Connectors panel loads and renders the bundled connector rows + contact-email section.
+    expect(
+      (window as unknown as { api: { settings: { listConnectors: ReturnType<typeof vi.fn> } } }).api
+        .settings.listConnectors
+    ).toHaveBeenCalled()
+    expect(document.body.textContent).toContain('Chemistry')
+    expect(document.body.textContent).toContain('Contact email')
+  })
+
+  it('switches to the Network panel, configures a mirror, and saves it', async () => {
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+
+    const networkTab = Array.from(
+      document.body.querySelectorAll('nav[aria-label="Settings"] button')
+    ).find((button) => /network/i.test(button.textContent ?? '')) as HTMLButtonElement | undefined
+    expect(networkTab).not.toBeUndefined()
+
+    await act(async () => {
+      networkTab?.click()
+    })
+
+    // Unconfigured by default (the mocked getSettings snapshot has no packageMirror).
+    expect(document.body.textContent).toContain('Not configured')
+
+    const configureButton = Array.from(
+      document.body.querySelectorAll<HTMLButtonElement>('button')
+    ).find((button) => button.textContent?.trim() === 'Configure')
+    await act(async () => {
+      configureButton?.click()
+    })
+
+    const condaInput = document.body.querySelector<HTMLInputElement>('#mirror-conda-channel')
+    expect(condaInput).not.toBeNull()
+    await act(async () => {
+      condaInput?.dispatchEvent(new Event('focus'))
+      Object.defineProperty(condaInput, 'value', {
+        value: 'https://mirror.example/conda',
+        writable: true
+      })
+      condaInput?.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+
+    const saveButton = Array.from(document.body.querySelectorAll<HTMLButtonElement>('button')).find(
+      (button) => button.textContent?.trim() === 'Save'
+    )
+    await act(async () => {
+      saveButton?.click()
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    expect(
+      (window as unknown as { api: { settings: { setPackageMirror: ReturnType<typeof vi.fn> } } })
+        .api.settings.setPackageMirror
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ condaChannel: 'https://mirror.example/conda' })
+    )
+  })
+
+  it('shows a breadcrumb in the header when a skill detail is open, and returns on breadcrumb click', async () => {
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+
+    // Navigate to the Skills panel.
+    const skillsTab = Array.from(
+      document.body.querySelectorAll('nav[aria-label="Settings"] button')
+    ).find((button) => /skills/i.test(button.textContent ?? '')) as HTMLButtonElement | undefined
+    await act(async () => {
+      skillsTab?.click()
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    // Open the skill's detail view by clicking its row.
+    const alphaRow = Array.from(document.body.querySelectorAll<HTMLButtonElement>('button')).find(
+      (button) => button.textContent?.includes('Alpha')
+    )
+    await act(async () => {
+      alphaRow?.click()
+    })
+
+    // The header now shows a "Skills › Alpha" breadcrumb with a clickable "Skills" crumb.
+    const crumb = document.body.querySelector<HTMLButtonElement>('[aria-label="Back to skills"]')
+    expect(crumb).not.toBeNull()
+    expect(document.body.textContent).toContain('Alpha')
+
+    // Clicking the breadcrumb returns to the list (the crumb collapses back to the panel title).
+    await act(async () => {
+      crumb?.click()
+    })
+    expect(document.body.querySelector('[aria-label="Back to skills"]')).toBeNull()
+  })
+
+  it('opens directly on a skill detail when the store has a pending skill', async () => {
+    // A skill mention sets the pending id before the dialog opens.
+    useSettingsStore.setState({ pendingSkillId: 'alpha' })
+
+    const settingsRef = createRef<SettingsPageHandle>()
+    await act(async () => {
+      root.render(<SettingsPage ref={settingsRef} open onClose={vi.fn()} />)
+    })
+    // Flush the seeding effect, the skills-list load, and the skill-detail fetch.
+    await act(async () => {
+      await Promise.resolve()
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    // Landed on the skill's detail page (breadcrumb + detail), not the default Model panel.
+    expect(document.body.querySelector('[aria-label="Back to skills"]')).not.toBeNull()
+    expect(document.body.textContent).toContain('Alpha')
+    expect(document.body.querySelector('section[aria-label="Providers"]')).toBeNull()
+    // The pending id is consumed so a later normal open won't jump back to it.
+    expect(useSettingsStore.getState().pendingSkillId).toBeUndefined()
+
+    act(() => {
+      expect(settingsRef.current?.closeActivePane()).toBe(true)
+    })
+    expect(document.body.querySelector('[aria-label="Back to skills"]')).toBeNull()
+    expect(document.body.querySelector<HTMLButtonElement>('[aria-label="Back"]')?.disabled).toBe(
+      true
+    )
+  })
+
+  it('opens directly on a requested settings panel and consumes the target', async () => {
+    useSettingsStore.setState({ pendingSettingsPanel: 'storage' })
+
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    expect(navButton('Storage')?.getAttribute('aria-current')).toBe('page')
+    expect(useSettingsStore.getState().pendingSettingsPanel).toBeUndefined()
+  })
+
+  it('opens directly on a specialist editor when the store has a pending specialist', async () => {
+    // The switch approval card deep-links to one specialist's editor: the pending id is set
+    // before the dialog opens, and the catalog resolves that profile.
+    const researcher: SpecialistProfileView = {
+      id: 'spc-1',
+      name: 'RESEARCHER',
+      displayName: 'Researcher',
+      description: 'Conducts systematic literature reviews.',
+      systemPrompt: 'You are a literature review specialist.',
+      iconKey: 'search',
+      colorKey: 'blue',
+      enabled: true,
+      capabilityMode: 'full',
+      fullAccess: { excludedSkillIds: [], excludedConnectorIds: [], connectorTools: [] },
+      selectedCapabilities: { skillIds: [], connectorIds: [], connectorTools: [] },
+      revision: 1
+    }
+    ;(window.api.specialist.list as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { kind: 'custom', ...researcher }
+    ])
+    useSpecialistStore.setState({ items: [{ kind: 'custom', ...researcher }], isLoaded: true })
+    useSettingsStore.setState({ pendingSpecialistId: researcher.id })
+
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+    // Flush the seeding effect, the specialists-list load, and the editor mount.
+    await act(async () => {
+      await Promise.resolve()
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    // Landed on the specialist's editor (name input prefilled with the public name), not the
+    // default Model panel.
+    const name = document.body.querySelector<HTMLInputElement>('#sp-name')
+    expect(name?.value).toBe('RESEARCHER')
+    expect(document.body.querySelector('section[aria-label="Providers"]')).toBeNull()
+    // The pending id is consumed so a later normal open won't jump back to it.
+    expect(useSettingsStore.getState().pendingSpecialistId).toBeUndefined()
+  })
+
+  it('opens the specialist creation form from Write from scratch', async () => {
+    useSettingsStore.setState({ pendingSettingsPanel: 'specialists' })
+
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    openRadixMenu(
+      Array.from(document.body.querySelectorAll<HTMLButtonElement>('button')).find((button) =>
+        button.textContent?.includes('Add specialist')
+      )
+    )
+    const writeFromScratch = Array.from(
+      document.body.querySelectorAll<HTMLElement>('[role="menuitem"]')
+    ).find((item) => item.textContent?.includes('Write from scratch'))
+    await act(async () => {
+      clickRadixMenuItem(writeFromScratch)
+      await Promise.resolve()
+    })
+
+    expect(document.body.querySelector('h3')?.textContent).toBe('Identity')
+    expect(document.body.querySelector<HTMLInputElement>('#sp-name')).not.toBeNull()
+  })
+
+  it('pushes Agent after storage recovery so Back returns to Storage', async () => {
+    const failedStorage = {
+      checkedAt: 1,
+      platform: 'darwin',
+      architecture: 'arm64',
+      checks: [
+        {
+          id: 'storage' as const,
+          label: 'App storage permission',
+          status: 'failed' as const,
+          summary: 'PureScience cannot write to its private data folder.'
+        }
+      ],
+      ready: false,
+      canAutoInstall: false,
+      agentFrameworkId: 'claude-code' as const,
+      runtime: { found: false }
+    }
+    const repairedStorage = {
+      ...failedStorage,
+      checkedAt: 2,
+      checks: [
+        {
+          id: 'storage' as const,
+          label: 'App storage permission',
+          status: 'passed' as const,
+          summary: 'PureScience can write to its private data folder.'
+        },
+        {
+          id: 'agent' as const,
+          label: 'Claude runtime',
+          status: 'failed' as const,
+          summary: 'Claude is missing.'
+        }
+      ]
+    }
+    const checkEnvironment = vi.fn().mockImplementation(async () => {
+      useSettingsStore.setState({ environmentCheck: repairedStorage })
+      return repairedStorage
+    })
+    useSettingsStore.setState({
+      pendingSettingsPanel: 'storage',
+      environmentCheck: failedStorage,
+      checkEnvironment
+    })
+
+    await act(async () => root.render(<SettingsPage open onClose={vi.fn()} />))
+    await act(async () => {
+      await Promise.resolve()
+    })
+    const checkAgain = Array.from(document.body.querySelectorAll<HTMLButtonElement>('button')).find(
+      (button) => button.textContent?.trim() === 'Check again'
+    )
+    await act(async () => checkAgain?.click())
+    const continueToAgent = Array.from(
+      document.body.querySelectorAll<HTMLButtonElement>('button')
+    ).find((button) => button.textContent?.trim() === 'Continue to repair Agent')
+    await act(async () => continueToAgent?.click())
+
+    expect(navButton('Agent')?.getAttribute('aria-current')).toBe('page')
+    const back = document.body.querySelector<HTMLButtonElement>('[aria-label="Back"]')
+    expect(back?.disabled).toBe(false)
+    await act(async () => back?.click())
+    expect(navButton('Storage')?.getAttribute('aria-current')).toBe('page')
+  })
+
+  it('blocks key storage in the provider form when encryption is unavailable', async () => {
+    // The store loads encryptionAvailable from this call when the dialog opens.
+    ;(
+      window as unknown as {
+        api: { settings: { isEncryptionAvailable: ReturnType<typeof vi.fn> } }
+      }
+    ).api.settings.isEncryptionAvailable.mockResolvedValue(false)
+
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    // No secure-storage error appears on the provider list itself.
+    expect(document.body.textContent).not.toContain('Secure key storage is unavailable')
+
+    const addProvider = Array.from(
+      document.body.querySelectorAll<HTMLButtonElement>('button')
+    ).find((button) => button.textContent?.trim() === 'Add provider')
+    await act(async () => {
+      addProvider?.click()
+    })
+
+    // The Add provider sub-page explains that secret writes fail closed.
+    expect(document.body.textContent).toContain('Secure key storage is unavailable')
+    expect(document.body.textContent).toContain('API keys cannot be saved')
+  })
+
+  it('does not render when closed', () => {
+    act(() => {
+      root.render(<SettingsPage open={false} onClose={vi.fn()} />)
+    })
+
+    expect(document.body.querySelector('[role="dialog"]')).toBeNull()
+  })
+
+  it('navigates settings history with the back/forward controls', async () => {
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+
+    const back = (): HTMLButtonElement | null =>
+      document.body.querySelector<HTMLButtonElement>('[aria-label="Back"]')
+    const forward = (): HTMLButtonElement | null =>
+      document.body.querySelector<HTMLButtonElement>('[aria-label="Forward"]')
+
+    // Start on Model: back and forward are both disabled.
+    expect(back()?.disabled).toBe(true)
+    expect(forward()?.disabled).toBe(true)
+
+    // Navigate Model -> General enables Back.
+    const generalTab = Array.from(
+      document.body.querySelectorAll('nav[aria-label="Settings"] button')
+    ).find((button) => /general/i.test(button.textContent ?? '')) as HTMLButtonElement | undefined
+    await act(async () => {
+      generalTab?.click()
+    })
+    expect(back()?.disabled).toBe(false)
+
+    // Back returns to Model (its nav item is the current page) and enables Forward.
+    await act(async () => {
+      back()?.click()
+    })
+    const modelNav = Array.from(
+      document.body.querySelectorAll('nav[aria-label="Settings"] button')
+    ).find((button) => /model/i.test(button.textContent ?? '')) as HTMLButtonElement | undefined
+    expect(modelNav?.getAttribute('aria-current')).toBe('page')
+    expect(forward()?.disabled).toBe(false)
+  })
+
+  it('toggles the dialog size with the maximize control', async () => {
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+
+    const maximize = document.body.querySelector<HTMLButtonElement>('[aria-label="Maximize"]')
+    expect(maximize).not.toBeNull()
+
+    await act(async () => {
+      maximize?.click()
+    })
+
+    // After maximizing, the control flips to Restore.
+    expect(document.body.querySelector('[aria-label="Restore"]')).not.toBeNull()
+    expect(document.body.querySelector('[aria-label="Maximize"]')).toBeNull()
+    const dialog = document.body.querySelector<HTMLElement>('[data-slot="settings-surface"]')
+    expect(dialog?.className).toContain('inset-4')
+    expect(dialog?.className).not.toContain('h-[80vh]')
+    expect(dialog?.className).not.toContain('w-[80vw]')
+  })
+})
+
+describe('SettingsPage uninstall confirmation', () => {
+  const findButton = (root: ParentNode, text: string): HTMLButtonElement | undefined =>
+    Array.from(root.querySelectorAll('button')).find(
+      (button) => button.textContent?.trim() === text
+    )
+
+  const bothFrameworks = [
+    { id: 'claude-code', displayName: 'Claude Code', supportsSkills: true },
+    { id: 'opencode', displayName: 'OpenCode', supportsSkills: true }
+  ]
+
+  it('gates the uninstall call behind the confirmation dialog', async () => {
+    // Claude is managed but NOT the active framework (OpenCode is), so its Uninstall is enabled.
+    // OpenCode carries a path so the "auto-detect when active + missing" effect doesn't run.
+    const snapshot = {
+      claude: { resolvedPath: '/data/claude-code/bin/claude', version: '2.1.0' },
+      opencode: { resolvedPath: '/usr/local/bin/opencode', version: '1.18.3' },
+      providers: [],
+      agentFrameworkId: 'opencode',
+      agentFrameworks: bothFrameworks,
+      claudeManaged: true,
+      opencodeManaged: false
+    }
+    const api = (window as unknown as { api: { settings: Record<string, unknown> } }).api
+    api.settings.getSettings = vi.fn().mockResolvedValue(snapshot)
+    const uninstallClaude = vi
+      .fn()
+      .mockResolvedValue({ ...snapshot, claude: {}, claudeManaged: false })
+    api.settings.uninstallClaude = uninstallClaude
+
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+    await openAgentPanel()
+
+    // The inactive managed Claude card exposes an Uninstall action, and no confirmation is open yet.
+    const cardUninstall = findButton(document.body, 'Uninstall')
+    expect(cardUninstall).toBeDefined()
+    expect(cardUninstall?.disabled).toBe(false)
+    expect(document.body.querySelector('[role="alertdialog"]')).toBeNull()
+
+    // Clicking it only opens the confirmation — the uninstall must not fire yet.
+    await act(async () => {
+      cardUninstall?.click()
+    })
+    const confirmDialog = document.body.querySelector<HTMLElement>('[role="alertdialog"]')
+    expect(confirmDialog).not.toBeNull()
+    expect(uninstallClaude).not.toHaveBeenCalled()
+
+    // Only confirming in the dialog performs the uninstall.
+    const confirm = findButton(confirmDialog!, 'Uninstall')
+    expect(confirm).toBeDefined()
+    await act(async () => {
+      confirm?.click()
+    })
+    expect(uninstallClaude).toHaveBeenCalledTimes(1)
+  })
+
+  it('disables uninstall on the active runtime card', async () => {
+    const api = (window as unknown as { api: { settings: Record<string, unknown> } }).api
+    // Claude is both managed and the active framework — its Uninstall must be disabled.
+    api.settings.getSettings = vi.fn().mockResolvedValue({
+      claude: { resolvedPath: '/data/claude-code/bin/claude', version: '2.1.0' },
+      opencode: {},
+      providers: [],
+      agentFrameworkId: 'claude-code',
+      agentFrameworks: bothFrameworks,
+      claudeManaged: true,
+      opencodeManaged: false
+    })
+
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+    await openAgentPanel()
+
+    const cardUninstall = findButton(document.body, 'Uninstall')
+    expect(cardUninstall).toBeDefined()
+    // The active managed runtime is greyed via aria-disabled (kept hoverable for its explainer tooltip),
+    // not the native disabled attribute.
+    expect(cardUninstall?.getAttribute('aria-disabled')).toBe('true')
+  })
+
+  it('gates a framework switch behind the confirmation dialog', async () => {
+    const api = (window as unknown as { api: { settings: Record<string, unknown> } }).api
+    // OpenCode must be ready (preflight passed) to be selectable as the framework.
+    api.settings.getPreflight = vi
+      .fn()
+      .mockResolvedValue({ claudeReady: true, opencodeReady: true, activeProviderReady: true })
+    api.settings.getSettings = vi.fn().mockResolvedValue({
+      claude: { resolvedPath: '/data/claude-code/bin/claude', version: '2.1.0' },
+      opencode: { resolvedPath: '/usr/local/bin/opencode', version: '1.18.3' },
+      providers: [],
+      agentFrameworkId: 'claude-code',
+      agentFrameworks: bothFrameworks,
+      claudeManaged: true,
+      opencodeManaged: false
+    })
+    const setAgentFramework = vi.fn().mockResolvedValue({
+      claude: {},
+      opencode: {},
+      providers: [],
+      agentFrameworkId: 'opencode',
+      agentFrameworks: bothFrameworks,
+      claudeManaged: true,
+      opencodeManaged: false
+    })
+    api.settings.setAgentFramework = setAgentFramework
+
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+    await openAgentPanel()
+
+    // Selecting the inactive OpenCode card opens the switch confirmation without switching yet.
+    const opencodeRadio = document.body.querySelector<HTMLButtonElement>(
+      '[aria-label="Use OpenCode"]'
+    )
+    expect(opencodeRadio).not.toBeNull()
+    await act(async () => {
+      opencodeRadio?.click()
+    })
+    const dialog = document.body.querySelector<HTMLElement>('[role="alertdialog"]')
+    expect(dialog?.textContent).toContain('Switch to OpenCode?')
+    expect(setAgentFramework).not.toHaveBeenCalled()
+
+    // Confirming performs the switch.
+    await act(async () => {
+      findButton(dialog!, 'Switch')?.click()
+    })
+    expect(setAgentFramework).toHaveBeenCalledWith({ id: 'opencode' })
+  })
+
+  it('locks every framework card until a confirmed Settings switch finishes', async () => {
+    const api = (window as unknown as { api: { settings: Record<string, unknown> } }).api
+    api.settings.getPreflight = vi
+      .fn()
+      .mockResolvedValue({ claudeReady: true, opencodeReady: true, activeProviderReady: true })
+    const readySnapshot = {
+      claude: { resolvedPath: '/data/claude-code/bin/claude', version: '2.1.0' },
+      opencode: { resolvedPath: '/usr/local/bin/opencode', version: '1.18.3' },
+      providers: [],
+      agentFrameworkId: 'claude-code',
+      agentFrameworks: bothFrameworks,
+      claudeManaged: true,
+      opencodeManaged: false
+    }
+    api.settings.getSettings = vi.fn().mockResolvedValue(readySnapshot)
+    let resolveSwitch: ((snapshot: typeof readySnapshot) => void) | undefined
+    api.settings.setAgentFramework = vi.fn().mockImplementation(
+      () =>
+        new Promise<typeof readySnapshot>((resolve) => {
+          resolveSwitch = resolve
+        })
+    )
+    const checkEnvironment = vi.fn().mockResolvedValue(undefined)
+    useSettingsStore.setState({ checkEnvironment })
+
+    await act(async () => root.render(<SettingsPage open onClose={vi.fn()} />))
+    await openAgentPanel()
+    const opencodeRadio = document.body.querySelector<HTMLElement>('[aria-label="Use OpenCode"]')
+    await act(async () => opencodeRadio?.click())
+    const dialog = document.body.querySelector<HTMLElement>('[role="alertdialog"]')
+    await act(async () => findButton(dialog!, 'Switch')?.click())
+
+    expect(
+      document.body.querySelector('[aria-label="Use Claude Agent"]')?.getAttribute('aria-disabled')
+    ).toBe('true')
+    expect(
+      document.body.querySelector('[aria-label="Use OpenCode"]')?.getAttribute('aria-disabled')
+    ).toBe('true')
+    expect(checkEnvironment).not.toHaveBeenCalled()
+
+    await act(async () =>
+      resolveSwitch?.({
+        ...readySnapshot,
+        agentFrameworkId: 'opencode'
+      })
+    )
+
+    expect(checkEnvironment).toHaveBeenCalledWith({ force: true })
+  })
+
+  // An inactive but managed Claude (OpenCode active) whose Uninstall would otherwise be enabled.
+  const inactiveManagedClaudeSnapshot = {
+    claude: { resolvedPath: '/data/claude-code/bin/claude', version: '2.1.0' },
+    opencode: { resolvedPath: '/usr/local/bin/opencode', version: '1.18.3' },
+    providers: [],
+    agentFrameworkId: 'opencode',
+    agentFrameworks: bothFrameworks,
+    claudeManaged: true,
+    opencodeManaged: false
+  }
+
+  it('disables uninstall while a prompt is in flight and blocks confirming a dialog opened before it', async () => {
+    const api = (
+      window as unknown as {
+        api: { settings: Record<string, unknown>; acp: Record<string, unknown> }
+      }
+    ).api
+    api.settings.getSettings = vi.fn().mockResolvedValue(inactiveManagedClaudeSnapshot)
+    const uninstallClaude = vi.fn().mockResolvedValue(inactiveManagedClaudeSnapshot)
+    api.settings.uninstallClaude = uninstallClaude
+
+    // Capture the live listener; start idle so the dialog can be opened.
+    let emitAcp:
+      ((s: { promptInFlight: boolean; promptInFlightSessionIds: string[] }) => void) | undefined
+    api.acp.getState = vi
+      .fn()
+      .mockResolvedValue({ promptInFlight: false, promptInFlightSessionIds: [] })
+    api.acp.onState = vi.fn().mockImplementation((cb: typeof emitAcp) => {
+      emitAcp = cb
+      return () => {}
+    })
+
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+    await openAgentPanel()
+
+    // Idle → the card Uninstall is enabled and opens the confirmation.
+    const cardUninstall = findButton(document.body, 'Uninstall')
+    expect(cardUninstall?.disabled).toBe(false)
+    await act(async () => {
+      cardUninstall?.click()
+    })
+    expect(document.body.querySelector('[role="alertdialog"]')).not.toBeNull()
+
+    // A prompt starts while the dialog is open — the card control disables live, but confirming must
+    // also be intercepted so the busy runtime isn't torn down out from under the task.
+    await act(async () => {
+      emitAcp?.({ promptInFlight: true, promptInFlightSessionIds: ['s1'] })
+    })
+    const confirmDialog = document.body.querySelector<HTMLElement>('[role="alertdialog"]')
+    const confirm = confirmDialog ? findButton(confirmDialog, 'Uninstall') : undefined
+    await act(async () => {
+      confirm?.click()
+    })
+    expect(uninstallClaude).not.toHaveBeenCalled()
+    // Revalidation closes the dialog instead of proceeding.
+    expect(document.body.querySelector('[role="alertdialog"]')).toBeNull()
+  })
+
+  it('lets a live in-flight event win the race against a later idle initial snapshot', async () => {
+    const api = (
+      window as unknown as {
+        api: { settings: Record<string, unknown>; acp: Record<string, unknown> }
+      }
+    ).api
+    api.settings.getSettings = vi.fn().mockResolvedValue(inactiveManagedClaudeSnapshot)
+
+    // getState resolves LATE with a stale idle snapshot; a live in-flight event fires first. The
+    // effect must keep the button disabled — the stale snapshot must not clobber the live state.
+    let resolveGetState:
+      ((s: { promptInFlight: boolean; promptInFlightSessionIds: string[] }) => void) | undefined
+    api.acp.getState = vi.fn().mockReturnValue(
+      new Promise((resolve) => {
+        resolveGetState = resolve
+      })
+    )
+    let emitAcp:
+      ((s: { promptInFlight: boolean; promptInFlightSessionIds: string[] }) => void) | undefined
+    api.acp.onState = vi.fn().mockImplementation((cb: typeof emitAcp) => {
+      emitAcp = cb
+      return () => {}
+    })
+
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+    await openAgentPanel()
+
+    // Live event arrives first (prompt in flight), then the stale idle getState resolves last.
+    await act(async () => {
+      emitAcp?.({ promptInFlight: true, promptInFlightSessionIds: ['s1'] })
+      resolveGetState?.({ promptInFlight: false, promptInFlightSessionIds: [] })
+    })
+
+    const cardUninstall = findButton(document.body, 'Uninstall')
+    expect(cardUninstall?.getAttribute('aria-disabled')).toBe('true')
+  })
+})
+
+describe('SettingsPage Codex framework', () => {
+  const frameworks = [
+    { id: 'claude-code', displayName: 'Claude Code', supportsSkills: true },
+    { id: 'opencode', displayName: 'OpenCode', supportsSkills: true },
+    {
+      id: 'codex',
+      displayName: 'Codex',
+      supportsSkills: true,
+      supportedApiTypes: ['responses']
+    }
+  ]
+
+  it('offers Codex as a selectable framework behind the switch confirmation', async () => {
+    const api = (window as unknown as { api: { settings: Record<string, unknown> } }).api
+    const snapshot = {
+      claude: { resolvedPath: '/data/claude', version: '2.1.0' },
+      opencode: {},
+      codex: {
+        resolvedPath: '/data/codex-managed/adapter/dist/index.js',
+        version: '1.1.4',
+        nativeVersion: '0.144.6'
+      },
+      providers: [],
+      agentFrameworkId: 'claude-code',
+      agentFrameworks: frameworks,
+      claudeManaged: true,
+      opencodeManaged: false,
+      codexManaged: true
+    }
+    api.settings.getSettings = vi.fn().mockResolvedValue(snapshot)
+    api.settings.getPreflight = vi.fn().mockResolvedValue({
+      claudeReady: true,
+      opencodeReady: false,
+      codexReady: true,
+      agentFrameworkId: 'claude-code',
+      agentReady: true,
+      activeProviderReady: false
+    })
+    const setAgentFramework = vi.fn().mockResolvedValue({
+      ...snapshot,
+      agentFrameworkId: 'codex'
+    })
+    api.settings.setAgentFramework = setAgentFramework
+    const checkEnvironment = vi.fn().mockResolvedValue(undefined)
+    useSettingsStore.setState({ checkEnvironment })
+
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+    await openAgentPanel()
+
+    const codexRadio = document.body.querySelector<HTMLButtonElement>('[aria-label="Use Codex"]')
+    expect(codexRadio).not.toBeNull()
+    // The adapter version shows as a muted v-tag after the name; the repo link points at the ACP adapter.
+    expect(document.body.textContent).toContain('v1.1.4')
+    expect(document.body.textContent).toContain('agentclientprotocol/codex-acp')
+
+    await act(async () => codexRadio?.click())
+    const dialog = document.body.querySelector<HTMLElement>('[role="alertdialog"]')
+    expect(dialog?.textContent).toContain('Switch to Codex?')
+
+    const confirm = Array.from(dialog?.querySelectorAll('button') ?? []).find(
+      (button) => button.textContent?.trim() === 'Switch'
+    )
+    await act(async () => confirm?.click())
+    expect(setAgentFramework).toHaveBeenCalledWith({ id: 'codex' })
+    expect(checkEnvironment).toHaveBeenCalledWith({ force: true })
+  })
+
+  it('routes the default app-managed install action to installCodex', async () => {
+    const api = (window as unknown as { api: { settings: Record<string, unknown> } }).api
+    api.settings.getSettings = vi.fn().mockResolvedValue({
+      claude: { resolvedPath: '/data/claude', version: '2.1.0' },
+      opencode: { resolvedPath: '/usr/local/bin/opencode', version: '1.18.3' },
+      codex: {},
+      providers: [],
+      agentFrameworkId: 'claude-code',
+      agentFrameworks: frameworks,
+      claudeManaged: true,
+      opencodeManaged: false,
+      codexManaged: false
+    })
+    api.settings.getPreflight = vi.fn().mockResolvedValue({
+      claudeReady: true,
+      opencodeReady: true,
+      codexReady: false,
+      agentFrameworkId: 'claude-code',
+      agentReady: true,
+      activeProviderReady: false
+    })
+    const installCodex = vi.fn().mockResolvedValue({ installId: 'codex-test', ok: true })
+    api.settings.installCodex = installCodex
+    api.settings.onInstallLog = vi.fn().mockReturnValue(() => undefined)
+    const checkEnvironment = vi.fn().mockResolvedValue(undefined)
+    useSettingsStore.setState({ checkEnvironment })
+
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+    await openAgentPanel()
+
+    const installTrigger = document.body.querySelector<HTMLButtonElement>(
+      '[aria-label="Install Codex"]'
+    )
+    expect(installTrigger).not.toBeNull()
+    openRadixMenu(installTrigger)
+
+    // The Install button opens a source menu; the app-managed source is the recommended default.
+    const managedItem = Array.from(
+      document.body.querySelectorAll<HTMLElement>('[role="menuitem"]')
+    ).find((item) => item.textContent?.includes('App-managed download (recommended)'))
+    expect(managedItem).toBeDefined()
+    clickRadixMenuItem(managedItem)
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(installCodex).toHaveBeenCalledWith({ source: 'managed' })
+    expect(checkEnvironment).toHaveBeenCalledWith({ force: true })
+  })
+
+  it('groups cards by install state and re-detects every framework from the section action', async () => {
+    const api = (window as unknown as { api: { settings: Record<string, unknown> } }).api
+    const snapshot = {
+      claude: { resolvedPath: '/data/claude', version: '2.1.0' },
+      opencode: { resolvedPath: '/usr/local/bin/opencode', version: '1.18.3' },
+      codex: {},
+      providers: [],
+      agentFrameworkId: 'claude-code',
+      agentFrameworks: frameworks,
+      claudeManaged: true,
+      opencodeManaged: false,
+      codexManaged: false
+    }
+    api.settings.getSettings = vi.fn().mockResolvedValue(snapshot)
+    api.settings.getPreflight = vi.fn().mockResolvedValue({
+      claudeReady: true,
+      opencodeReady: true,
+      codexReady: false,
+      agentFrameworkId: 'claude-code',
+      agentReady: true,
+      activeProviderReady: false
+    })
+    const detectClaude = vi.fn().mockResolvedValue(snapshot)
+    const detectOpencode = vi.fn().mockResolvedValue(snapshot)
+    const detectCodex = vi.fn().mockResolvedValue(snapshot)
+    api.settings.detectClaude = detectClaude
+    api.settings.detectOpencode = detectOpencode
+    api.settings.detectCodex = detectCodex
+    const checkEnvironment = vi.fn().mockResolvedValue(undefined)
+    useSettingsStore.setState({ checkEnvironment })
+
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+    await openAgentPanel()
+
+    // Two ready runtimes land in the Installed group; Codex (not ready) in Available.
+    expect(document.body.textContent).toContain('Installed · 2')
+    expect(document.body.textContent).toContain('Available · 1')
+    // Claude is renamed in this panel only.
+    expect(document.body.textContent).toContain('Claude Agent')
+
+    // The section-level Re-detect re-scans all three frameworks at once.
+    const redetect = Array.from(document.body.querySelectorAll<HTMLButtonElement>('button')).find(
+      (button) => button.textContent?.trim() === 'Re-detect'
+    )
+    expect(redetect).toBeDefined()
+    expect(redetect?.parentElement?.className).toContain('ml-auto')
+    await act(async () => redetect?.click())
+
+    expect(detectClaude).toHaveBeenCalledTimes(1)
+    expect(detectOpencode).toHaveBeenCalledTimes(1)
+    expect(detectCodex).toHaveBeenCalledTimes(1)
+    expect(checkEnvironment).toHaveBeenCalledTimes(1)
+  })
+
+  it('routes isolated subscription sign-out from the provider list', async () => {
+    const api = (window as unknown as { api: { settings: Record<string, unknown> } }).api
+    const provider = {
+      id: 'builtin-codex-subscription',
+      type: 'codex-isolated',
+      name: 'Codex subscription',
+      apiEndpoints: ['responses'],
+      models: ['gpt-5.6-sol'],
+      supportsImageInput: true,
+      hasKey: false,
+      needsKey: false,
+      lastValidatedAt: 1
+    }
+    const snapshot = {
+      claude: {},
+      opencode: {},
+      codex: { resolvedPath: '/data/codex-acp', version: '1.1.4' },
+      providers: [provider],
+      activeProviderId: provider.id,
+      activeModel: 'gpt-5.6-sol',
+      agentFrameworkId: 'codex',
+      agentFrameworks: frameworks,
+      claudeManaged: false,
+      opencodeManaged: false,
+      codexManaged: true
+    }
+    api.settings.getSettings = vi.fn().mockResolvedValue(snapshot)
+    api.settings.getPreflight = vi.fn().mockResolvedValue({
+      codexReady: true,
+      agentFrameworkId: 'codex',
+      agentReady: true,
+      activeProviderReady: true
+    })
+    const logoutIsolatedCodex = vi.fn().mockResolvedValue({ ok: true, category: 'ok' })
+    api.settings.logoutIsolatedCodex = logoutIsolatedCodex
+
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+    const signOut = document.body.querySelector<HTMLButtonElement>('[aria-label="Sign out"]')
+    await act(async () => signOut?.click())
+
+    expect(logoutIsolatedCodex).toHaveBeenCalledOnce()
+    const errorAlert = document.body.querySelector('[role="alert"]')
+    expect(errorAlert).toBeNull()
+  })
+
+  it('surfaces a Codex sign-out timeout through the provider error alert', async () => {
+    const api = (window as unknown as { api: { settings: Record<string, unknown> } }).api
+    const provider = {
+      id: 'builtin-codex-subscription',
+      type: 'codex-isolated',
+      name: 'Codex subscription',
+      apiEndpoints: ['responses'],
+      models: ['gpt-5.6-sol'],
+      supportsImageInput: true,
+      hasKey: false,
+      needsKey: false,
+      verified: true,
+      lastValidatedAt: Date.now()
+    }
+    const snapshot = {
+      claude: {},
+      opencode: {},
+      codex: { resolvedPath: '/data/codex-acp', version: '1.1.4' },
+      providers: [provider],
+      activeProviderId: provider.id,
+      activeModel: 'gpt-5.6-sol',
+      agentFrameworkId: 'codex',
+      agentFrameworks: frameworks,
+      claudeManaged: false,
+      opencodeManaged: false,
+      codexManaged: true
+    }
+    api.settings.getSettings = vi.fn().mockResolvedValue(snapshot)
+    api.settings.getPreflight = vi.fn().mockResolvedValue({
+      codexReady: true,
+      agentFrameworkId: 'codex',
+      agentReady: true,
+      activeProviderReady: true
+    })
+    const logoutIsolatedCodex = vi
+      .fn()
+      .mockResolvedValue({ ok: false, category: 'timeout', message: 'Codex sign-out timed out.' })
+    api.settings.logoutIsolatedCodex = logoutIsolatedCodex
+
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+    const signOut = document.body.querySelector<HTMLButtonElement>('[aria-label="Sign out"]')
+    await act(async () => signOut?.click())
+
+    expect(logoutIsolatedCodex).toHaveBeenCalledOnce()
+    const errorAlert = document.body.querySelector('[role="alert"]')
+    expect(errorAlert?.textContent).toBe('Codex sign-out timed out.')
+  })
+
+  it('shows Codex login-check IPC failures instead of leaving an unhandled rejection', async () => {
+    const api = (window as unknown as { api: { settings: Record<string, unknown> } }).api
+    const provider = {
+      id: 'builtin-codex-subscription',
+      type: 'codex-shared',
+      name: 'Codex subscription',
+      apiEndpoints: ['responses'],
+      models: ['gpt-5.6-sol'],
+      supportsImageInput: true,
+      hasKey: false,
+      needsKey: false
+    }
+    api.settings.getSettings = vi.fn().mockResolvedValue({
+      claude: {},
+      opencode: {},
+      codex: { resolvedPath: '/data/codex-acp', version: '1.1.4' },
+      providers: [provider],
+      activeProviderId: provider.id,
+      agentFrameworkId: 'codex',
+      agentFrameworks: frameworks,
+      claudeManaged: false,
+      opencodeManaged: false,
+      codexManaged: true
+    })
+    api.settings.getPreflight = vi.fn().mockResolvedValue({
+      codexReady: true,
+      agentFrameworkId: 'codex',
+      agentReady: true,
+      activeProviderReady: false
+    })
+    api.settings.validateProvider = vi
+      .fn()
+      .mockRejectedValue(new Error('The Codex adapter does not support authentication status.'))
+
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+    const testLogin = document.body.querySelector<HTMLButtonElement>(
+      '[aria-label="Check Codex login"]'
+    )
+    await act(async () => testLogin?.click())
+
+    expect(document.body.querySelector('[role="alert"]')?.textContent).toContain(
+      'The Codex adapter does not support authentication status.'
+    )
+  })
+
+  it('cancels a pending isolated sign-in when the dialog closes mid-flow', async () => {
+    const api = (window as unknown as { api: { settings: Record<string, unknown> } }).api
+    const provider = {
+      id: 'builtin-codex-subscription',
+      type: 'codex-isolated',
+      name: 'Codex subscription',
+      apiEndpoints: ['responses'],
+      models: [],
+      supportsImageInput: true,
+      hasKey: false,
+      needsKey: false
+    }
+    api.settings.getSettings = vi.fn().mockResolvedValue({
+      claude: {},
+      opencode: {},
+      codex: { resolvedPath: '/data/codex-acp', version: '1.1.4' },
+      providers: [provider],
+      agentFrameworkId: 'codex',
+      agentFrameworks: frameworks,
+      claudeManaged: false,
+      opencodeManaged: false,
+      codexManaged: true
+    })
+    // The browser flow never settles on its own; closing the dialog is what cancels it.
+    api.settings.loginIsolatedCodex = vi.fn(() => new Promise(() => undefined))
+    api.settings.cancelCodexLogin = vi.fn().mockResolvedValue(undefined)
+
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+    const signIn = document.body.querySelector<HTMLButtonElement>('[aria-label="Sign in"]')
+    await act(async () => signIn?.click())
+    expect(document.body.querySelector('[aria-label="Cancel sign-in"]')).not.toBeNull()
+
+    await act(async () => {
+      root.render(<SettingsPage open={false} onClose={vi.fn()} />)
+    })
+
+    expect(api.settings.cancelCodexLogin).toHaveBeenCalledOnce()
+  })
+
+  it('surfaces isolated sign-in failures instead of leaving an unhandled rejection', async () => {
+    const api = (window as unknown as { api: { settings: Record<string, unknown> } }).api
+    const provider = {
+      id: 'builtin-codex-subscription',
+      type: 'codex-isolated',
+      name: 'Codex subscription',
+      apiEndpoints: ['responses'],
+      models: [],
+      supportsImageInput: true,
+      hasKey: false,
+      needsKey: false
+    }
+    api.settings.getSettings = vi.fn().mockResolvedValue({
+      claude: {},
+      opencode: {},
+      codex: { resolvedPath: '/data/codex-acp', version: '1.1.4' },
+      providers: [provider],
+      agentFrameworkId: 'codex',
+      agentFrameworks: frameworks,
+      claudeManaged: false,
+      opencodeManaged: false,
+      codexManaged: true
+    })
+    api.settings.loginIsolatedCodex = vi
+      .fn()
+      .mockRejectedValue(new Error('The Codex adapter failed to spawn.'))
+
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+    const signIn = document.body.querySelector<HTMLButtonElement>('[aria-label="Sign in"]')
+    await act(async () => signIn?.click())
+
+    expect(document.body.querySelector('[role="alert"]')?.textContent).toContain(
+      'The Codex adapter failed to spawn.'
+    )
+  })
+})

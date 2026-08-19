@@ -1,0 +1,221 @@
+{
+  "version": 1,
+  "skills": [
+    {
+      "id": "alphafold2",
+      "name": "AlphaFold2",
+      "source": "featured",
+      "updatedAt": "2026-07-14T00:00:00.000Z"
+    },
+    {
+      "id": "boltz",
+      "name": "Boltz",
+      "source": "featured",
+      "updatedAt": "2026-07-14T00:00:00.000Z"
+    },
+    {
+      "id": "borzoi",
+      "name": "Borzoi",
+      "source": "featured",
+      "updatedAt": "2026-07-14T00:00:00.000Z"
+    },
+    {
+      "id": "chai1",
+      "name": "Chai-1",
+      "source": "featured",
+      "updatedAt": "2026-07-14T00:00:00.000Z"
+    },
+    {
+      "id": "diffdock",
+      "name": "DiffDock",
+      "source": "featured",
+      "updatedAt": "2026-07-14T00:00:00.000Z"
+    },
+    {
+      "id": "esmfold2",
+      "name": "ESMFold2",
+      "source": "featured",
+      "updatedAt": "2026-07-14T00:00:00.000Z"
+    },
+    {
+      "id": "evo2",
+      "name": "Evo 2",
+      "source": "featured",
+      "updatedAt": "2026-07-14T00:00:00.000Z"
+    },
+    {
+      "id": "fair-esm2",
+      "name": "ESM-2",
+      "source": "featured",
+      "updatedAt": "2026-07-14T00:00:00.000Z"
+    },
+    {
+      "id": "ligandmpnn",
+      "name": "LigandMPNN",
+      "source": "featured",
+      "updatedAt": "2026-07-14T00:00:00.000Z"
+    },
+    {
+      "id": "openfold3",
+      "name": "OpenFold3",
+      "source": "featured",
+      "updatedAt": "2026-07-14T00:00:00.000Z"
+    },
+    {
+      "id": "proteinmpnn",
+      "name": "ProteinMPNN",
+      "source": "featured",
+      "updatedAt": "2026-07-14T00:00:00.000Z"
+    },
+    {
+      "id": "scgpt",
+      "name": "scGPT",
+      "source": "featured",
+      "updatedAt": "2026-07-14T00:00:00.000Z"
+    },
+    {
+      "id": "scvi-tools",
+      "name": "scvi-tools",
+      "source": "featured",
+      "updatedAt": "2026-07-14T00:00:00.000Z"
+    },
+    {
+      "id": "solublempnn",
+      "name": "SolubleMPNN",
+      "source": "featured",
+      "updatedAt": "2026-07-14T00:00:00.000Z"
+    },
+    {
+      "id": "indication-dossier",
+      "name": "Indication Dossier",
+      "source": "featured",
+      "updatedAt": "2026-07-14T00:00:00.000Z"
+    },
+    {
+      "id": "literature-review",
+      "name": "Literature Review",
+      "source": "featured",
+      "updatedAt": "2026-07-14T00:00:00.000Z"
+    },
+    {
+      "id": "env-management",
+      "name": "Environment & Packages",
+      "source": "featured",
+      "updatedAt": "2026-07-14T00:00:00.000Z"
+    },
+    {
+      "id": "remote-compute-ssh",
+      "name": "Remote Compute (SSH)",
+      "source": "featured",
+      "updatedAt": "2026-08-02T00:00:00.000Z"
+    },
+    {
+      "id": "customize",
+      "name": "Customize",
+      "source": "featured",
+      "updatedAt": "2026-07-31T00:00:00.000Z"
+    },
+    {
+      "id": "bionexus-biologics-design",
+      "name": "BioNexus Biologics Design",
+      "source": "featured",
+      "updatedAt": "2026-08-17T00:00:00.000Z"
+    },
+    {
+      "id": "bionexus-clinical-cohort-analysis",
+      "name": "BioNexus Clinical Cohort Analysis",
+      "source": "featured",
+      "updatedAt": "2026-08-17T00:00:00.000Z"
+    },
+    {
+      "id": "bionexus-experiment-design-agent",
+      "name": "BioNexus Experiment Design Agent",
+      "source": "featured",
+      "updatedAt": "2026-08-17T00:00:00.000Z"
+    },
+    {
+      "id": "bionexus-instrument-data-to-allotrope",
+      "name": "BioNexus Instrument Data To Allotrope",
+      "source": "featured",
+      "updatedAt": "2026-08-17T00:00:00.000Z"
+    },
+    {
+      "id": "bionexus-knowledge-graph-augmentation",
+      "name": "BioNexus Knowledge Graph Augmentation",
+      "source": "featured",
+      "updatedAt": "2026-08-17T00:00:00.000Z"
+    },
+    {
+      "id": "bionexus-multiome-integration",
+      "name": "BioNexus Multiome Integration",
+      "source": "featured",
+      "updatedAt": "2026-08-17T00:00:00.000Z"
+    },
+    {
+      "id": "bionexus-nextflow-development",
+      "name": "BioNexus Nextflow Development",
+      "source": "featured",
+      "updatedAt": "2026-08-17T00:00:00.000Z"
+    },
+    {
+      "id": "bionexus-protein-language-models",
+      "name": "BioNexus Protein Language Models",
+      "source": "featured",
+      "updatedAt": "2026-08-17T00:00:00.000Z"
+    },
+    {
+      "id": "bionexus-protein-structure-analysis",
+      "name": "BioNexus Protein Structure Analysis",
+      "source": "featured",
+      "updatedAt": "2026-08-17T00:00:00.000Z"
+    },
+    {
+      "id": "bionexus-provenance-and-audit",
+      "name": "BioNexus Provenance And Audit",
+      "source": "featured",
+      "updatedAt": "2026-08-17T00:00:00.000Z"
+    },
+    {
+      "id": "bionexus-research-workflow-orchestrator",
+      "name": "BioNexus Research Workflow Orchestrator",
+      "source": "featured",
+      "updatedAt": "2026-08-17T00:00:00.000Z"
+    },
+    {
+      "id": "bionexus-scientific-problem-selection",
+      "name": "BioNexus Scientific Problem Selection",
+      "source": "featured",
+      "updatedAt": "2026-08-17T00:00:00.000Z"
+    },
+    {
+      "id": "bionexus-scvi-tools",
+      "name": "BioNexus Scvi Tools",
+      "source": "featured",
+      "updatedAt": "2026-08-17T00:00:00.000Z"
+    },
+    {
+      "id": "bionexus-single-cell-rna-qc",
+      "name": "BioNexus Single Cell Rna Qc",
+      "source": "featured",
+      "updatedAt": "2026-08-17T00:00:00.000Z"
+    },
+    {
+      "id": "bionexus-spatial-transcriptomics",
+      "name": "BioNexus Spatial Transcriptomics",
+      "source": "featured",
+      "updatedAt": "2026-08-17T00:00:00.000Z"
+    },
+    {
+      "id": "bionexus-start",
+      "name": "BioNexus Start",
+      "source": "featured",
+      "updatedAt": "2026-08-17T00:00:00.000Z"
+    },
+    {
+      "id": "bionexus-variant-interpretation",
+      "name": "BioNexus Variant Interpretation",
+      "source": "featured",
+      "updatedAt": "2026-08-17T00:00:00.000Z"
+    }
+  ]
+}

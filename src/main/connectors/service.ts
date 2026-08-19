@@ -1,0 +1,551 @@
+import { createHmac, randomBytes } from 'node:crypto'
+
+import { ParserEngine } from './engine'
+import { ALL_CONNECTOR_IDS, getDescriptor } from './registry'
+import { isCustomMcpServerRouteSafe, toCustomMcpConfig } from './custom-mcp-bootstrap'
+import type { CustomMcpServerConfig } from './mcp-client-manager'
+import type { ConnectorCredentials, ToolContext, ToolDescriptor } from './types'
+import type { StoredConnectors, StoredCustomMcpServer } from '../settings/types'
+import type { PermissionGrantRegistry } from '../permission-grants/registry'
+import { ConnectorPermissionBroker } from '../permission-grants/connector-broker'
+import type { ConnectorPermissionRequest } from '../permission-grants/connector-broker'
+import type { PermissionGrantScope } from '../../shared/permission-grants'
+import type { ApprovalDecision, ConnectorApprovalScope } from '../../shared/settings'
+import type { SpecialistProfileView } from '../../shared/specialist'
+import { customConnectorSlug } from '../../shared/custom-connector'
+
+type McpClientManagerLike = {
+  listTools(config: CustomMcpServerConfig): Promise<Array<{ name: string }>>
+  call(
+    config: CustomMcpServerConfig,
+    method: string,
+    args: Record<string, unknown>
+  ): Promise<unknown>
+}
+
+type ConnectorServiceDeps = {
+  engine?: ParserEngine
+  // Optional sub-agent executor (ACP runtime) — enables multi-agent tools like delegate_tasks.
+  subAgent?: ToolContext['runSubAgent']
+  mcpClientManager?: McpClientManagerLike
+  getConnectors: () => StoredConnectors | undefined
+  // Re-read durable settings after an asynchronous approval/grant lookup so a policy change that
+  // completed while the call was waiting remains the final dispatch boundary.
+  getConnectorsFresh?: () => Promise<StoredConnectors | undefined>
+  resolveApiKey: (ref?: string) => string | undefined
+  permissionGrantRegistry?: PermissionGrantRegistry
+  // Human approval gate for a tool call that isn't pre-approved. A connector call sends data to an
+  // external service, so a call that is neither pre-allowed nor skip-approved fails closed when this
+  // transport is absent.
+  requestApproval?: (info: {
+    connector: string
+    method: string
+    args: Record<string, unknown>
+    // The session that triggered the call, when one is known, so the resulting notification can
+    // open the right conversation.
+    sessionId?: string
+    availableScopes: ConnectorApprovalScope[]
+  }) => Promise<ApprovalDecision>
+  // Handlers for bundled tools that run privileged local code (e.g. write an artifact, open a preview)
+  // instead of the read-only HTTP ParserEngine. Keyed by `${connector}/${method}`; invoked after the
+  // same enable/policy/approval gate as any other bundled call. The call context carries the id of the
+  // session that triggered the call so a handler can attribute side effects (e.g. a generated artifact)
+  // to the right session instead of a global "current" one.
+  localToolHandlers?: Record<
+    string,
+    (args: Record<string, unknown>, context: ConnectorCallContext) => Promise<unknown>
+  >
+  // Resolves the current specialist profile immediately before agent dispatch. This is intentionally
+  // a function (rather than a session-start snapshot) so edited/deleted profiles take effect on the
+  // next connector call.
+  resolveSpecialistProfile?: (specialistId: string) => Promise<SpecialistProfileView | undefined>
+}
+
+// Optional routing context for a connector call. Present for calls that originate inside a session
+// (e.g. notebook host.mcp); absent for context-free callers.
+export type ConnectorCallContext = {
+  sessionId?: string
+  projectId?: string
+  // Agent calls are untrusted model output and must be tied to a known session. Internal callers
+  // must opt in explicitly so they cannot accidentally inherit a session capability scope.
+  origin?: 'agent' | 'internal'
+  // This field is populated only by the main-process session registry, never from connector RPC
+  // parameters. It selects an independent Specialist capability configuration for this call.
+  specialistId?: string
+}
+
+type ConnectorAccess = {
+  bypassMainEnablement: boolean
+  bypassMainPolicy: boolean
+  specialistScoped: boolean
+}
+
+type CustomServerSecurityChangeGuard = {
+  commit(server: StoredCustomMcpServer): void
+  rollback(): void
+}
+
+const stableRecordEntries = (record: Record<string, string> | undefined): [string, string][] =>
+  Object.entries(record ?? {}).sort(([left], [right]) => left.localeCompare(right))
+
+const customServerSecurityFingerprintKey = randomBytes(32)
+
+// Authenticates fields that can contain credentials. The process-local key lets the barrier compare
+// a configuration generation without retaining another plaintext copy or exposing an enumerable
+// digest. OAuth configuration contains only public metadata, so it remains outside the keyed digest.
+const customServerCredentialFingerprint = (server: StoredCustomMcpServer): string =>
+  createHmac('sha256', customServerSecurityFingerprintKey)
+    .update(
+      JSON.stringify([
+        server.transport,
+        server.command ?? null,
+        server.args ?? [],
+        server.url ?? null,
+        stableRecordEntries(server.envRefs ?? server.env),
+        stableRecordEntries(server.headerRefs ?? server.headers)
+      ])
+    )
+    .digest('hex')
+
+const customServerSecurityFingerprint = (server: StoredCustomMcpServer): string =>
+  JSON.stringify([server.oauth ?? null, customServerCredentialFingerprint(server)])
+
+// Deliberately contains only a stable category. In particular it must not interpolate connector
+// arguments, custom-server headers, credentials, or a Specialist's system prompt into an error that
+// may be rendered back to an agent.
+class ConnectorGateError extends Error {
+  constructor(
+    readonly category: string,
+    message = `connector call rejected: ${category}`
+  ) {
+    super(message)
+    this.name = 'ConnectorGateError'
+  }
+}
+
+// Agent-agnostic gate: enforces enabled state + per-tool policy, prompts for approval on un-trusted
+// calls, injects credentials, and dispatches each call to either the bundled ParserEngine or a
+// user-added custom MCP server's McpClientManager. See docs/internal/2026-07-12-custom-mcp-connectors-plan4.md §3.2.
+export class ConnectorService {
+  private readonly engine: ParserEngine
+  // A connector that cannot authenticate or start is physically unavailable to every scope. Main
+  // enablement is only a logical preference and may be overridden by a Specialist; this state may not.
+  private readonly unavailableCustomConnectors = new Map<
+    string,
+    'connector_unavailable' | 'connector_unauthenticated'
+  >()
+  private readonly customServerFailureEpochs = new Map<string, number>()
+  private readonly permissionBroker: ConnectorPermissionBroker
+  private readonly customServerGenerations = new Map<string, number>()
+  private readonly customServerBarriers = new Map<
+    string,
+    { generation: number; expectedFingerprint?: string }
+  >()
+  constructor(private readonly deps: ConnectorServiceDeps) {
+    this.engine = deps.engine ?? new ParserEngine({ subAgent: deps.subAgent })
+    this.permissionBroker = new ConnectorPermissionBroker(
+      deps.permissionGrantRegistry,
+      deps.requestApproval
+    )
+  }
+
+  isEnabled(
+    connector: string,
+    connectors: StoredConnectors | undefined = this.deps.getConnectors()
+  ): boolean {
+    // Bundled connectors are enabled by default; only an explicit opt-out disables one.
+    return !(connectors?.disabledConnectorIds ?? []).includes(connector)
+  }
+
+  // Invalidates every call that captured the previous custom-server configuration. While the
+  // settings write is in progress, new calls fail closed. After commit they remain blocked until the
+  // refreshed connector snapshot exposes the exact persisted security configuration.
+  beginCustomServerSecurityChange(serverId: string): CustomServerSecurityChangeGuard {
+    const generation = (this.customServerGenerations.get(serverId) ?? 0) + 1
+    this.customServerGenerations.set(serverId, generation)
+    this.customServerBarriers.set(serverId, { generation })
+
+    return {
+      commit: (server) => {
+        const barrier = this.customServerBarriers.get(serverId)
+        if (barrier?.generation !== generation) return
+        this.customServerBarriers.set(serverId, {
+          generation,
+          expectedFingerprint: customServerSecurityFingerprint(server)
+        })
+      },
+      rollback: () => {
+        if (this.customServerBarriers.get(serverId)?.generation === generation) {
+          this.customServerBarriers.delete(serverId)
+        }
+      }
+    }
+  }
+
+  clearCustomServerFailure(serverId: string): void {
+    this.customServerFailureEpochs.set(
+      serverId,
+      (this.customServerFailureEpochs.get(serverId) ?? 0) + 1
+    )
+    this.unavailableCustomConnectors.delete(serverId)
+  }
+
+  async call(
+    connector: string,
+    method: string,
+    args: Record<string, unknown>,
+    context: ConnectorCallContext = {}
+  ): Promise<unknown> {
+    const descriptor = getDescriptor(connector, method)
+    const isBundled = descriptor !== undefined || ALL_CONNECTOR_IDS.includes(connector)
+    if (isBundled) {
+      const access = await this.resolveAccess(connector, context)
+      return this.callBundled(connector, method, args, descriptor, context, access)
+    }
+
+    const customServers = (await this.currentConnectors())?.customMcpServers ?? []
+    const custom =
+      customServers.find((server) => customConnectorSlug(server) === connector) ??
+      customServers.find((server) => server.name === connector)
+    const access = await this.resolveAccess(
+      connector,
+      context,
+      custom ? [customConnectorSlug(custom), custom.name, custom.id] : [connector]
+    )
+    if (!custom) {
+      throw new ConnectorGateError(
+        'connector_unavailable',
+        access.specialistScoped ? undefined : `connector not enabled: ${connector}`
+      )
+    }
+    return this.callCustom(custom, customServers, method, args, context, access)
+  }
+
+  private async resolveAccess(
+    connector: string,
+    context: ConnectorCallContext,
+    aliases: readonly string[] = [connector]
+  ): Promise<ConnectorAccess> {
+    if (context.origin === 'internal') {
+      return { bypassMainEnablement: false, bypassMainPolicy: false, specialistScoped: false }
+    }
+    // No call may silently become "internal". Agent entry points must mark their origin and supply a
+    // session; internal code must make the same origin declaration explicitly.
+    if (!context.sessionId) throw new ConnectorGateError('missing_session')
+    if (!context.specialistId) {
+      return { bypassMainEnablement: false, bypassMainPolicy: false, specialistScoped: false }
+    }
+    if (!this.deps.resolveSpecialistProfile) throw new ConnectorGateError('specialist_unavailable')
+
+    const profile = await this.deps.resolveSpecialistProfile(context.specialistId)
+    if (!profile || !profile.enabled) throw new ConnectorGateError('specialist_unavailable')
+
+    const allowed =
+      profile.capabilityMode === 'full'
+        ? !aliases.some((alias) => profile.fullAccess.excludedConnectorIds.includes(alias))
+        : aliases.some((alias) => profile.selectedCapabilities.connectorIds.includes(alias))
+    if (!allowed) throw new ConnectorGateError('specialist_capability_denied')
+
+    // A Specialist's configuration is independent from Main's enabled and Allow/Ask/Block settings.
+    // Physical availability is still checked by the actual bundled/custom dispatch path below.
+    return { bypassMainEnablement: true, bypassMainPolicy: true, specialistScoped: true }
+  }
+
+  private async callBundled(
+    connector: string,
+    method: string,
+    args: Record<string, unknown>,
+    descriptor: ToolDescriptor | undefined,
+    context: ConnectorCallContext,
+    access: ConnectorAccess
+  ): Promise<unknown> {
+    if (!descriptor)
+      throw new ConnectorGateError('connector_unavailable', `unknown tool: ${connector}/${method}`)
+
+    const authorizedConnectors = access.bypassMainPolicy
+      ? undefined
+      : await this.ensureAuthorized(connector, connector, [connector], method, args, context)
+
+    // Bundled tools that need privileged local behavior run here, after the same gate, instead of the
+    // read-only HTTP engine.
+    const localHandler = this.deps.localToolHandlers?.[`${connector}/${method}`]
+    if (localHandler) return localHandler(args, context)
+
+    return this.engine.call(descriptor, args, this.credentials(authorizedConnectors))
+  }
+
+  private async callCustom(
+    custom: NonNullable<StoredConnectors['customMcpServers']>[number],
+    customServers: readonly StoredCustomMcpServer[],
+    method: string,
+    args: Record<string, unknown>,
+    context: ConnectorCallContext,
+    access: ConnectorAccess
+  ): Promise<unknown> {
+    const generation = this.assertCustomServerCurrent(custom)
+    const failureEpoch = this.customServerFailureEpochs.get(custom.id) ?? 0
+    const physicalFailure = this.unavailableCustomConnectors.get(custom.id)
+    if (physicalFailure) throw new ConnectorGateError(physicalFailure)
+    if (!access.bypassMainEnablement && !custom.enabled) {
+      throw new ConnectorGateError('connector_disabled', `connector not enabled: ${custom.name}`)
+    }
+    if (!this.isCustomConfigRunnable(custom, customServers)) {
+      throw new ConnectorGateError('connector_unavailable')
+    }
+    if (custom.oauth && !custom.oauthState?.tokens?.access_token) {
+      throw new ConnectorGateError('connector_unauthenticated')
+    }
+    if (!this.deps.mcpClientManager) throw new ConnectorGateError('connector_runtime_unavailable')
+
+    // Approval must precede tools/list because even discovery connects the external server. The
+    // authorization state is retained across later policy rechecks so one Once approval never prompts
+    // twice merely because discovery itself was asynchronous.
+    let authorization = await this.authorizeCustomForCurrentPolicy(
+      custom,
+      method,
+      args,
+      context,
+      access,
+      generation
+    )
+    const config = toCustomMcpConfig(authorization.custom)
+
+    let tools: Array<{ name: string }>
+    try {
+      tools = await this.deps.mcpClientManager.listTools(config)
+    } catch (error) {
+      // Never relay a transport error: custom server URLs, headers, or server-provided diagnostics
+      // can contain credentials. Record only the availability category for subsequent fail-closed
+      // dispatches; a successful connection clears the transient state.
+      const category =
+        error instanceof Error &&
+        /(?:401|403|unauthoriz|authenticat|forbidden)/i.test(error.message)
+          ? 'connector_unauthenticated'
+          : 'connector_unavailable'
+      this.recordCustomServerFailure(custom.id, failureEpoch, category)
+      throw new ConnectorGateError(category)
+    }
+
+    if (!tools.some((tool) => tool.name === method)) {
+      throw new ConnectorGateError(
+        'connector_unavailable',
+        `unknown tool: ${authorization.custom.name}/${method}`
+      )
+    }
+    authorization = await this.authorizeCustomForCurrentPolicy(
+      authorization.custom,
+      method,
+      args,
+      context,
+      access,
+      generation,
+      authorization
+    )
+    if (authorization.deferredScope) {
+      await this.permissionBroker.remember(authorization.request, authorization.deferredScope)
+    }
+
+    await this.authorizeCustomForCurrentPolicy(
+      authorization.custom,
+      method,
+      args,
+      context,
+      access,
+      generation,
+      authorization
+    )
+
+    try {
+      const result = await this.deps.mcpClientManager.call(config, method, args)
+      if ((this.customServerFailureEpochs.get(custom.id) ?? 0) === failureEpoch) {
+        this.unavailableCustomConnectors.delete(custom.id)
+      }
+      return result
+    } catch (error) {
+      const category =
+        error instanceof Error &&
+        /(?:401|403|unauthoriz|authenticat|forbidden)/i.test(error.message)
+          ? 'connector_unauthenticated'
+          : 'connector_unavailable'
+      this.recordCustomServerFailure(custom.id, failureEpoch, category)
+      throw new ConnectorGateError(category)
+    }
+  }
+
+  private recordCustomServerFailure(
+    serverId: string,
+    expectedEpoch: number,
+    category: 'connector_unavailable' | 'connector_unauthenticated'
+  ): void {
+    if ((this.customServerFailureEpochs.get(serverId) ?? 0) === expectedEpoch) {
+      this.unavailableCustomConnectors.set(serverId, category)
+    }
+  }
+
+  private assertCustomServerCurrent(
+    custom: StoredCustomMcpServer,
+    expectedGeneration?: number
+  ): number {
+    const generation = this.customServerGenerations.get(custom.id) ?? 0
+    if (expectedGeneration !== undefined && expectedGeneration !== generation) {
+      throw new ConnectorGateError('connector_configuration_changed')
+    }
+
+    const barrier = this.customServerBarriers.get(custom.id)
+    if (!barrier) return generation
+    if (
+      barrier.expectedFingerprint === undefined ||
+      barrier.expectedFingerprint !== customServerSecurityFingerprint(custom)
+    ) {
+      throw new ConnectorGateError('connector_configuration_changed')
+    }
+
+    this.customServerBarriers.delete(custom.id)
+    return generation
+  }
+
+  private isCustomConfigRunnable(
+    custom: NonNullable<StoredConnectors['customMcpServers']>[number],
+    customServers: readonly StoredCustomMcpServer[]
+  ): boolean {
+    if (!isCustomMcpServerRouteSafe(custom, customServers)) return false
+    if (custom.transport === 'stdio') return Boolean(custom.command)
+    return Boolean(custom.url)
+  }
+
+  // The Permission Broker owns Connector policy precedence as well as durable grant matching. This
+  // service supplies only the registered identity, routing aliases, and current settings snapshot.
+  private async ensureAuthorized(
+    connectorLabel: string,
+    capabilityServerId: string,
+    policyIds: readonly string[],
+    method: string,
+    args: Record<string, unknown>,
+    context: ConnectorCallContext
+  ): Promise<StoredConnectors | undefined> {
+    let requireApprovalSatisfied = false
+    for (;;) {
+      const connectors = await this.currentConnectors()
+      if (!this.isEnabled(connectorLabel, connectors)) {
+        throw new ConnectorGateError(
+          'connector_disabled',
+          `connector not enabled: ${connectorLabel}`
+        )
+      }
+      const request = this.authorizationRequest(
+        connectorLabel,
+        capabilityServerId,
+        policyIds,
+        method,
+        args,
+        context,
+        connectors
+      )
+      const policyDecision = this.permissionBroker.preflight(request)
+      if (policyDecision === 'allow' || requireApprovalSatisfied) return connectors
+
+      await this.permissionBroker.authorize(request, policyDecision)
+      requireApprovalSatisfied = true
+    }
+  }
+
+  private async authorizeCustomForCurrentPolicy(
+    custom: StoredCustomMcpServer,
+    method: string,
+    args: Record<string, unknown>,
+    context: ConnectorCallContext,
+    access: ConnectorAccess,
+    generation: number,
+    prior?: {
+      requireApprovalSatisfied: boolean
+      deferredScope?: PermissionGrantScope
+    }
+  ): Promise<{
+    custom: StoredCustomMcpServer
+    request: ConnectorPermissionRequest
+    requireApprovalSatisfied: boolean
+    deferredScope?: PermissionGrantScope
+  }> {
+    let requireApprovalSatisfied = prior?.requireApprovalSatisfied ?? false
+    let deferredScope = prior?.deferredScope
+
+    for (;;) {
+      const connectors = await this.currentConnectors()
+      const customServers = connectors?.customMcpServers ?? []
+      const current = customServers.find((server) => server.id === custom.id)
+      if (!current) throw new ConnectorGateError('connector_unavailable')
+      this.assertCustomServerCurrent(current, generation)
+      if (!access.bypassMainEnablement && !current.enabled) {
+        throw new ConnectorGateError('connector_disabled', `connector not enabled: ${current.name}`)
+      }
+      if (!this.isCustomConfigRunnable(current, customServers)) {
+        throw new ConnectorGateError('connector_unavailable')
+      }
+
+      const request = this.authorizationRequest(
+        current.name,
+        current.id,
+        [current.id, customConnectorSlug(current), current.name],
+        method,
+        args,
+        context,
+        connectors
+      )
+      if (access.bypassMainPolicy) {
+        return { custom: current, request, requireApprovalSatisfied }
+      }
+
+      const policyDecision = this.permissionBroker.preflight(request)
+      if (policyDecision === 'allow') {
+        return { custom: current, request, requireApprovalSatisfied }
+      }
+      if (requireApprovalSatisfied) {
+        return {
+          custom: current,
+          request,
+          requireApprovalSatisfied,
+          ...(deferredScope ? { deferredScope } : {})
+        }
+      }
+
+      deferredScope = await this.permissionBroker.authorize(request, policyDecision, {
+        deferRemember: true
+      })
+      requireApprovalSatisfied = true
+    }
+  }
+
+  private currentConnectors(): Promise<StoredConnectors | undefined> {
+    return this.deps.getConnectorsFresh?.() ?? Promise.resolve(this.deps.getConnectors())
+  }
+
+  private authorizationRequest(
+    connectorLabel: string,
+    capabilityServerId: string,
+    policyIds: readonly string[],
+    method: string,
+    args: Record<string, unknown>,
+    context: ConnectorCallContext,
+    connectors: StoredConnectors | undefined = this.deps.getConnectors()
+  ): ConnectorPermissionRequest {
+    return {
+      capability: { kind: 'mcp_tool', key: `mcp:${capabilityServerId}/${method}` },
+      context,
+      connector: connectorLabel,
+      method,
+      args,
+      policy: {
+        aliases: policyIds,
+        autoAllowIds: connectors?.autoAllowIds,
+        blockedToolIds: connectors?.blockedToolIds,
+        askToolIds: connectors?.askToolIds
+      }
+    }
+  }
+
+  private credentials(
+    c: StoredConnectors | undefined = this.deps.getConnectors()
+  ): ConnectorCredentials {
+    return { ncbiEmail: c?.contactEmail, ncbiApiKey: this.deps.resolveApiKey(c?.ncbiApiKeyRef) }
+  }
+}

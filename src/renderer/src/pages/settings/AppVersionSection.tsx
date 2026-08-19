@@ -1,0 +1,104 @@
+import { Download, RefreshCw } from 'lucide-react'
+import { useLanguage } from '@/i18n'
+
+import { AppLogo } from '@/components/AppLogo'
+import { Button } from '@/components/ui/button'
+import { useUpdateStore } from '@/stores/update-store'
+import { APP } from '../../../../shared/app-config'
+import { SettingsRow, SettingsSection } from './SettingsLayout'
+
+// App identity + update control in Settings→General. Reads the shared update store so it stays in
+// sync with the external capsule; the update button opens the shared dialog (version + notes +
+// download), so the download/confirm UX lives in one place.
+const AppVersionSection = (): React.JSX.Element => {
+  const { t } = useLanguage()
+  const appInfo = useUpdateStore((state) => state.appInfo)
+  const status = useUpdateStore((state) => state.status)
+  const check = useUpdateStore((state) => state.check)
+  const openDialog = useUpdateStore((state) => state.openDialog)
+
+  const version = appInfo?.version ?? status.current
+  const isChecking = status.state === 'checking'
+  const isDownloading = status.state === 'downloading'
+  const hasUpdate = status.state === 'available' || isDownloading || status.state === 'ready'
+
+  const statusLine = ((): string => {
+    switch (status.state) {
+      case 'checking':
+        return t('settings.checkingForUpdates')
+      case 'available':
+        return `New version ${status.latest} is available`
+      case 'downloading':
+        return `Downloading… ${status.progress ?? 0}%`
+      case 'ready':
+        return t('settings.updateDownloaded')
+      case 'up-to-date':
+        return t('settings.onLatestVersion')
+      case 'error':
+        return status.error ?? t('settings.updateCheckFailed')
+      default:
+        return ''
+    }
+  })()
+
+  return (
+    <SettingsSection title={t('settings.about')} aria-label={t('settings.appVersion')}>
+      <SettingsRow
+        label={
+          <div className="flex min-w-0 items-center gap-3">
+            <AppLogo className="size-12 rounded-lg" />
+            <div className="min-w-0">
+              <p className="flex items-baseline gap-2">
+                <span className="text-sm font-semibold text-foreground">{APP.name}</span>
+                <span className="text-xs text-muted-foreground tabular-nums">v{version}</span>
+              </p>
+              <p className="mt-0.5 text-xs font-normal text-muted-foreground">{APP.copyright}</p>
+            </div>
+          </div>
+        }
+        controlClassName="w-auto justify-self-end"
+      >
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => void check()}
+            disabled={isChecking}
+          >
+            <RefreshCw
+              className={isChecking ? 'size-4 animate-spin' : 'size-4'}
+              aria-hidden="true"
+            />
+            {isChecking ? 'Checking…' : t('settings.checkNow')}
+          </Button>
+
+          {hasUpdate ? (
+            <Button type="button" onClick={() => openDialog()}>
+              <Download className="size-4" aria-hidden="true" />
+              {isDownloading
+                ? `Downloading ${status.progress ?? 0}%`
+                : status.state === 'ready'
+                  ? t('settings.updateReady')
+                  : `Update to ${status.latest}`}
+            </Button>
+          ) : null}
+        </div>
+      </SettingsRow>
+
+      {statusLine ? (
+        <p
+          className={
+            status.state === 'error'
+              ? 'mt-2 text-xs text-destructive'
+              : 'mt-2 text-xs text-muted-foreground'
+          }
+          role={status.state === 'error' ? 'alert' : undefined}
+        >
+          {statusLine}
+        </p>
+      ) : null}
+    </SettingsSection>
+  )
+}
+
+export { AppVersionSection }

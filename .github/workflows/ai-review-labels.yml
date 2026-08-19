@@ -1,0 +1,121 @@
+name: AI Review Labels
+
+# Type and stale-label operations run from the base branch with a write-capable token. Review
+# outcome labels are applied by the final job in ai-review-single.yml from that run's published
+# output.
+on:
+  pull_request_target:
+    branches:
+      - main
+    types: [opened, synchronize, reopened, edited]
+
+jobs:
+  reset_review_labels:
+    name: Reset review outcome labels
+    # A title edit does not change the reviewed commit, so outcome labels survive 'edited'.
+    if: ${{ github.event_name == 'pull_request_target' && github.event.action != 'edited' }}
+    runs-on: ubuntu-latest
+    # Label operations on a pull request require pull-requests write; the label REST endpoints
+    # return 403 with only issues write (GitHub reports "issues=write; pull_requests=write").
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Remove stale review outcome labels
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            // 'ready-to-merge' goes stale once new commits arrive. 'ai-reviewed' is the retired
+            // predecessor label; removing it here cleans up pull requests that still carry it.
+            for (const name of ['ready-to-merge', 'ai-reviewed']) {
+              try {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.payload.pull_request.number,
+                  name,
+                });
+              } catch (error) {
+                if (error.status !== 404) throw error;
+              }
+            }
+
+  apply_type_labels:
+    name: Apply type labels
+    # Adding an existing label is a no-op, so this job also heals labels removed by hand.
+    # Body-only edits cannot change the type, so 'edited' events without a title change skip it.
+    if: >-
+      ${{ github.event_name == 'pull_request_target' &&
+          (github.event.action != 'edited' || github.event.changes.title) }}
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Label the pull request from its conventional type
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            // Keep the allowed types in sync with commit-message-check.yml and CONTRIBUTING.md.
+            const typePattern = '(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)';
+            const pullRequest = context.payload.pull_request;
+            const type =
+              pullRequest.title.match(new RegExp(`^${typePattern}(\\([^)]*\\))?!?:`))?.[1] ??
+              pullRequest.head.ref.match(new RegExp(`^${typePattern}/`))?.[1];
+
+            const labelByType = {
+              feat: { name: 'enhancement', color: 'a2eeef', description: 'New feature or request' },
+              fix: { name: 'bug', color: 'd73a4a', description: "Something isn't working" },
+              docs: {
+                name: 'documentation',
+                color: '0075ca',
+                description: 'Improvements or additions to documentation',
+              },
+              chore: {
+                name: 'chore',
+                color: 'ededed',
+                description: 'Maintenance, cleanup, or tooling — no product behavior change',
+              },
+            };
+            const label = type ? labelByType[type] : undefined;
+
+            // This workflow owns the mapped labels: drop any managed label that no longer
+            // matches the current type so retitling a pull request cannot leave stale ones.
+            const currentNames = new Set(pullRequest.labels.map(({ name }) => name));
+            for (const { name } of Object.values(labelByType)) {
+              if (name === label?.name || !currentNames.has(name)) continue;
+              try {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pullRequest.number,
+                  name,
+                });
+              } catch (error) {
+                if (error.status !== 404) throw error;
+              }
+            }
+
+            if (!label) {
+              core.notice(`No built-in label maps to pull request type "${type ?? 'unknown'}".`);
+              return;
+            }
+
+            try {
+              await github.rest.issues.createLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ...label,
+              });
+            } catch (error) {
+              if (error.status !== 422) throw error;
+            }
+
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pullRequest.number,
+              labels: [label.name],
+            });

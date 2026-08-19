@@ -1,0 +1,4 @@
+provider: generic
+url: https://statics.zerolink.com/purescience/app/stable
+channel: latest
+updaterCacheDirName: purescience-updater

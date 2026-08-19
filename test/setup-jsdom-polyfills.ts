@@ -1,0 +1,35 @@
+// jsdom doesn't implement ResizeObserver, but react-zoom-pan-pinch constructs one on mount.
+if (!(globalThis as { ResizeObserver?: unknown }).ResizeObserver) {
+  ;(globalThis as { ResizeObserver?: unknown }).ResizeObserver = class {
+    observe(): void {
+      /* no-op: layout measurement isn't meaningful in jsdom */
+    }
+    unobserve(): void {
+      /* no-op */
+    }
+    disconnect(): void {
+      /* no-op */
+    }
+  }
+}
+
+// Node 26 exposes an unusable experimental localStorage getter unless --localstorage-file is set,
+// which can shadow jsdom's implementation and fail renderer tests before their first assertion.
+// Install the browser-compatible in-memory surface only when the active environment has none.
+if (typeof globalThis.localStorage === 'undefined') {
+  const values = new Map<string, string>()
+  const localStorage: Storage = {
+    get length() {
+      return values.size
+    },
+    clear: () => values.clear(),
+    getItem: (key) => values.get(String(key)) ?? null,
+    key: (index) => [...values.keys()][index] ?? null,
+    removeItem: (key) => values.delete(String(key)),
+    setItem: (key, value) => values.set(String(key), String(value))
+  }
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    value: localStorage
+  })
+}

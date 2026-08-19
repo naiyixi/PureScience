@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "kind": "purescience.connectors",
+  "servers": [
+    {
+      "schemaVersion": 1,
+      "kind": "purescience.connector",
+      "name": "BioRender",
+      "transport": "streamable_http",
+      "url": "https://mcp.services.biorender.com/mcp",
+      "description": "BioRender 科学插图——按关键词搜索已发布学术文献中的插图与示意图模板。"
+    },
+    {
+      "schemaVersion": 1,
+      "kind": "purescience.connector",
+      "name": "Consensus",
+      "transport": "streamable_http",
+      "url": "https://mcp.consensus.app/mcp",
+      "description": "Consensus 研究搜索引擎——自然语言查询科学论文并返回带引文的证据摘要。"
+    },
+    {
+      "schemaVersion": 1,
+      "kind": "purescience.connector",
+      "name": "Synapse",
+      "transport": "streamable_http",
+      "url": "https://mcp.synapse.org/mcp",
+      "description": "Synapse 生物医学数据平台——查询 Sage Bionetworks 数据集、项目与文件。"
+    },
+    {
+      "schemaVersion": 1,
+      "kind": "purescience.connector",
+      "name": "Wiley",
+      "transport": "streamable_http",
+      "url": "https://mcp.wiley.com/mcp",
+      "description": "Wiley 学术数据库——检索 Wiley 出版的期刊文章、章节与图书。"
+    },
+    {
+      "schemaVersion": 1,
+      "kind": "purescience.connector",
+      "name": "bioRxiv",
+      "transport": "streamable_http",
+      "url": "https://hcls.mcp.claude.com/biorxiv/mcp",
+      "description": "bioRxiv 预印本——检索未正式出版的生物学期刊预印本。"
+    },
+    {
+      "schemaVersion": 1,
+      "kind": "purescience.connector",
+      "name": "ClinicalTrials",
+      "transport": "streamable_http",
+      "url": "https://hcls.mcp.claude.com/clinical_trials/mcp",
+      "description": "ClinicalTrials.gov 临床试验——按条件、干预与状态检索临床试验。"
+    },
+    {
+      "schemaVersion": 1,
+      "kind": "purescience.connector",
+      "name": "ChEMBL",
+      "transport": "streamable_http",
+      "url": "https://hcls.mcp.claude.com/chembl/mcp",
+      "description": "ChEMBL 药物化学数据库——化合物活性、靶点与测定数据。"
+    }
+  ]
+}

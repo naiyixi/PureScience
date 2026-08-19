@@ -1,0 +1,717 @@
+import { afterEach, describe, expect, it, vi } from 'vitest'
+
+const logSpies = vi.hoisted(() => ({
+  debug: vi.fn(),
+  error: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn()
+}))
+
+vi.mock('../logger', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../logger')>()),
+  createLogger: () => logSpies
+}))
+
+import {
+  NativeResponsesCompatibilityProxy,
+  flattenNativeResponsesRequest,
+  restoreNativeResponsesPayload
+} from './native-responses-compatibility'
+
+afterEach(() => {
+  for (const spy of Object.values(logSpies)) spy.mockClear()
+})
+
+describe('native Responses compatibility', () => {
+  it('retargets endpoint, credential, and model without replacing the loopback connection', async () => {
+    const fetchImpl = vi.fn(async () =>
+      Response.json({ id: 'response', output: [], usage: { input_tokens: 1, output_tokens: 1 } })
+    )
+    const proxy = new NativeResponsesCompatibilityProxy(
+      { baseUrl: 'https://a.example/v1', key: 'key-a', model: 'model-a' },
+      fetchImpl
+    )
+    const connection = await proxy.start()
+    const send = async (): Promise<void> => {
+      const response = await fetch(`${connection.baseUrl}/responses`, {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${connection.token}`,
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({ model: 'untrusted', input: 'hello', stream: false })
+      })
+      expect(response.status).toBe(200)
+    }
+
+    try {
+      await send()
+      proxy.setTarget({ baseUrl: 'https://b.example/custom', key: 'key-b', model: 'model-b' })
+      await send()
+
+      expect(fetchImpl).toHaveBeenNthCalledWith(
+        1,
+        'https://a.example/v1/responses',
+        expect.objectContaining({
+          headers: expect.objectContaining({ authorization: 'Bearer key-a' }),
+          body: expect.stringContaining('"model":"model-a"')
+        })
+      )
+      expect(fetchImpl).toHaveBeenNthCalledWith(
+        2,
+        'https://b.example/custom/responses',
+        expect.objectContaining({
+          headers: expect.objectContaining({ authorization: 'Bearer key-b' }),
+          body: expect.stringContaining('"model":"model-b"')
+        })
+      )
+    } finally {
+      await proxy.close()
+    }
+  })
+
+  it('retargets the upstream model without replacing endpoint credentials', () => {
+    const proxy = new NativeResponsesCompatibilityProxy({
+      baseUrl: 'https://api.minimaxi.com/v1',
+      key: 'secret',
+      model: 'MiniMax-M3'
+    })
+
+    proxy.setModelTarget({ model: 'MiniMax-M4' })
+
+    expect((proxy as unknown as { target: Record<string, unknown> }).target).toEqual({
+      baseUrl: 'https://api.minimaxi.com/v1',
+      key: 'secret',
+      model: 'MiniMax-M4'
+    })
+  })
+
+  it('flattens namespace tools and matching history without changing plain functions', () => {
+    const { request, aliases } = flattenNativeResponsesRequest({
+      model: 'MiniMax-M3',
+      tools: [
+        {
+          type: 'namespace',
+          name: 'mcp__purescience_notebook',
+          description: 'PureScience notebook tools.',
+          tools: [
+            {
+              type: 'function',
+              name: 'repl_execute',
+              description: 'Run control-plane JavaScript.',
+              parameters: { type: 'object' },
+              strict: false
+            }
+          ]
+        },
+        {
+          type: 'function',
+          name: 'shell_command',
+          description: 'Run a shell command.',
+          parameters: { type: 'object' }
+        }
+      ],
+      tool_choice: {
+        type: 'function',
+        namespace: 'mcp__purescience_notebook',
+        name: 'repl_execute'
+      },
+      input: [
+        {
+          type: 'function_call',
+          namespace: 'mcp__purescience_notebook',
+          name: 'repl_execute',
+          call_id: 'call-1',
+          arguments: '{}'
+        },
+        { type: 'function_call_output', call_id: 'call-1', output: 'ok' }
+      ]
+    })
+
+    expect(request.tools).toEqual([
+      {
+        type: 'function',
+        name: 'mcp__purescience_notebook__repl_execute',
+        description: 'PureScience notebook tools.\n\nRun control-plane JavaScript.',
+        parameters: { type: 'object' },
+        strict: false
+      },
+      {
+        type: 'function',
+        name: 'shell_command',
+        description: 'Run a shell command.',
+        parameters: { type: 'object' }
+      }
+    ])
+    expect(request.tool_choice).toEqual({
+      type: 'function',
+      name: 'mcp__purescience_notebook__repl_execute'
+    })
+    expect(request.input[0]).toMatchObject({
+      type: 'function_call',
+      name: 'mcp__purescience_notebook__repl_execute'
+    })
+    expect(request.input[0]).not.toHaveProperty('namespace')
+    expect(aliases.get('mcp__purescience_notebook__repl_execute')).toEqual({
+      namespace: 'mcp__purescience_notebook',
+      name: 'repl_execute'
+    })
+  })
+
+  it('rejects an alias collision instead of routing a tool ambiguously', () => {
+    expect(() =>
+      flattenNativeResponsesRequest({
+        tools: [
+          {
+            type: 'namespace',
+            name: 'mcp__server',
+            tools: [{ type: 'function', name: 'echo', parameters: { type: 'object' } }]
+          },
+          {
+            type: 'function',
+            name: 'mcp__server__echo',
+            parameters: { type: 'object' }
+          }
+        ]
+      })
+    ).toThrow('duplicate native Responses tool alias')
+  })
+
+  it('restores namespace identity in streamed and completed response items', () => {
+    const aliases = new Map([
+      [
+        'mcp__purescience_notebook__repl_execute',
+        { namespace: 'mcp__purescience_notebook', name: 'repl_execute' }
+      ]
+    ])
+
+    expect(
+      restoreNativeResponsesPayload(
+        {
+          type: 'response.output_item.done',
+          item: {
+            type: 'function_call',
+            name: 'mcp__purescience_notebook__repl_execute',
+            arguments: '{}',
+            call_id: 'call-1'
+          }
+        },
+        aliases
+      )
+    ).toMatchObject({
+      item: {
+        type: 'function_call',
+        namespace: 'mcp__purescience_notebook',
+        name: 'repl_execute'
+      }
+    })
+
+    expect(
+      restoreNativeResponsesPayload(
+        {
+          id: 'resp-1',
+          output: [
+            {
+              type: 'function_call',
+              name: 'mcp__purescience_notebook__repl_execute',
+              arguments: '{}',
+              call_id: 'call-1'
+            }
+          ]
+        },
+        aliases
+      )
+    ).toMatchObject({
+      output: [
+        {
+          namespace: 'mcp__purescience_notebook',
+          name: 'repl_execute'
+        }
+      ]
+    })
+  })
+
+  it('selects matching Skills through the native Responses endpoint', async () => {
+    const fetchImpl = vi.fn(
+      async (url: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+        void url
+        void init
+        return new Response(
+          JSON.stringify({
+            id: 'resp-skills',
+            output: [
+              {
+                type: 'function_call',
+                name: 'select_skills',
+                call_id: 'call-skills',
+                arguments: '{"skill_names":["mcp-pubmed"]}'
+              }
+            ]
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        )
+      }
+    )
+    const proxy = new NativeResponsesCompatibilityProxy(
+      {
+        baseUrl: 'https://api.minimaxi.com/v1',
+        key: 'secret',
+        model: 'MiniMax-M3'
+      },
+      fetchImpl
+    )
+    const catalog = [
+      {
+        name: 'mcp-pubmed',
+        description: 'Search PubMed.',
+        path: '/skills/pubmed/SKILL.md',
+        source: 'connector' as const
+      },
+      {
+        name: 'mcp-chemistry',
+        description: 'Search chemistry.',
+        path: '/skills/chem/SKILL.md',
+        source: 'connector' as const
+      }
+    ]
+
+    await expect(proxy.selectSkills('查找肿瘤免疫相关的生物医学文献', catalog)).resolves.toEqual([
+      { name: 'mcp-pubmed', path: '/skills/pubmed/SKILL.md' }
+    ])
+    expect(fetchImpl).toHaveBeenCalledOnce()
+    const [url, init] = fetchImpl.mock.calls[0]
+    expect(String(url)).toBe('https://api.minimaxi.com/v1/responses')
+    expect(init?.headers).toMatchObject({ authorization: 'Bearer secret' })
+    expect(JSON.parse(String(init?.body))).toMatchObject({
+      model: 'MiniMax-M3',
+      stream: false,
+      tool_choice: { type: 'function', name: 'select_skills' },
+      tools: [expect.objectContaining({ type: 'function', name: 'select_skills' })]
+    })
+    const serializedLogs = JSON.stringify(Object.values(logSpies).flatMap((spy) => spy.mock.calls))
+    expect(serializedLogs).not.toContain('查找肿瘤免疫相关的生物医学文献')
+    expect(serializedLogs).not.toContain('mcp-pubmed')
+  })
+
+  it('selects an explicitly named connector Skill locally without an upstream request', async () => {
+    const fetchImpl = vi.fn<typeof fetch>()
+    const proxy = new NativeResponsesCompatibilityProxy(
+      { baseUrl: 'https://api.minimaxi.com/v1', model: 'MiniMax-M3' },
+      fetchImpl
+    )
+    const catalog = [
+      {
+        name: 'mcp-pubmed',
+        description: 'Search PubMed.',
+        path: '/skills/pubmed/SKILL.md',
+        source: 'connector' as const
+      },
+      {
+        name: 'mcp-chemistry',
+        description: 'Search chemistry.',
+        path: '/skills/chem/SKILL.md',
+        source: 'connector' as const
+      }
+    ]
+
+    await expect(proxy.selectSkills('用 PubMed 搜索肿瘤免疫文章', catalog)).resolves.toEqual([
+      { name: 'mcp-pubmed', path: '/skills/pubmed/SKILL.md' }
+    ])
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it('finds a named connector outside the bounded inference catalog', async () => {
+    const fetchImpl = vi.fn<typeof fetch>()
+    const proxy = new NativeResponsesCompatibilityProxy(
+      { baseUrl: 'https://api.minimaxi.com/v1', model: 'MiniMax-M3' },
+      fetchImpl
+    )
+    const catalog = [
+      ...Array.from({ length: 140 }, (_, index) => ({
+        name: `skill-${index}`,
+        description: `Description ${index}`,
+        path: `/skills/${index}/SKILL.md`
+      })),
+      {
+        name: 'mcp-pubmed',
+        description: 'Search PubMed.',
+        path: '/skills/pubmed/SKILL.md',
+        source: 'connector' as const
+      }
+    ]
+
+    await expect(proxy.selectSkills('用 PubMed 搜索文章', catalog)).resolves.toEqual([
+      { name: 'mcp-pubmed', path: '/skills/pubmed/SKILL.md' }
+    ])
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it('continues scanning for smaller Skills after a candidate exceeds the catalog byte budget', async () => {
+    const fetchImpl = vi.fn(
+      async (_url: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+        const request = JSON.parse(String(init?.body)) as {
+          tools: Array<{
+            parameters: { properties: { skill_names: { items: Record<string, unknown> } } }
+          }>
+          instructions: string
+        }
+        expect(request.tools[0].parameters.properties.skill_names.items).toEqual({ type: 'string' })
+        expect(request.instructions).toContain('mcp-late')
+        return new Response(
+          JSON.stringify({
+            output: [
+              {
+                type: 'function_call',
+                name: 'select_skills',
+                arguments: '{"skill_names":["mcp-late"]}'
+              }
+            ]
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        )
+      }
+    )
+    const proxy = new NativeResponsesCompatibilityProxy(
+      { baseUrl: 'https://api.minimaxi.com/v1', model: 'MiniMax-M3' },
+      fetchImpl
+    )
+    const catalog = [
+      ...Array.from({ length: 125 }, (_, index) => ({
+        name: `mcp-filler-${index}`,
+        description: 'x'.repeat(2_048),
+        path: `/skills/filler-${index}/SKILL.md`
+      })),
+      {
+        name: 'mcp-over-budget',
+        description: 'x'.repeat(2_048),
+        path: '/skills/over-budget/SKILL.md'
+      },
+      { name: 'mcp-late', description: 'Relevant small Skill.', path: '/skills/late/SKILL.md' }
+    ]
+
+    await expect(
+      proxy.selectSkills('route this request to a delayed capability', catalog)
+    ).resolves.toEqual([{ name: 'mcp-late', path: '/skills/late/SKILL.md' }])
+  })
+
+  it('replaces reviewer-session tools with only the scope-bounded reviewer surface', async () => {
+    const upstreamRequests: Record<string, unknown>[] = []
+    const fetchImpl = vi.fn(
+      async (_url: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+        upstreamRequests.push(JSON.parse(String(init?.body)) as Record<string, unknown>)
+        return new Response(JSON.stringify({ id: 'review-response', output: [] }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        })
+      }
+    )
+    const proxy = new NativeResponsesCompatibilityProxy(
+      {
+        baseUrl: 'https://api.minimaxi.com/v1',
+        model: 'MiniMax-M3',
+        reviewerScope: {
+          namespacedTools: [
+            {
+              namespace: 'mcp__purescience_reviewer',
+              name: 'submit_findings',
+              description: 'Submit review findings.',
+              parameters: { type: 'object' }
+            }
+          ]
+        }
+      },
+      fetchImpl
+    )
+    const connection = await proxy.start()
+    try {
+      expect(proxy.unregisterReviewerSession('never-observed')).toBe(false)
+      proxy.registerReviewerSession('reviewer-session')
+      const response = await fetch(`${connection.baseUrl}/responses`, {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${connection.token}`,
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'MiniMax-M3',
+          prompt_cache_key: 'reviewer-session',
+          stream: false,
+          tools: [
+            { type: 'function', name: 'shell_command', parameters: { type: 'object' } },
+            {
+              type: 'namespace',
+              name: 'mcp__purescience_notebook',
+              tools: [{ type: 'function', name: 'repl_execute', parameters: { type: 'object' } }]
+            }
+          ]
+        })
+      })
+      expect(response.ok).toBe(true)
+      expect(upstreamRequests).toHaveLength(1)
+      expect(upstreamRequests[0]).toMatchObject({
+        prompt_cache_key: 'reviewer-session',
+        tool_choice: 'auto',
+        tools: [
+          {
+            type: 'function',
+            name: 'mcp__purescience_reviewer__submit_findings',
+            description: 'Submit review findings.',
+            parameters: { type: 'object' }
+          }
+        ]
+      })
+      expect(JSON.stringify(upstreamRequests[0])).not.toContain('shell_command')
+      expect(JSON.stringify(upstreamRequests[0])).not.toContain('repl_execute')
+      expect(proxy.unregisterReviewerSession('reviewer-session')).toBe(true)
+    } finally {
+      await proxy.close()
+    }
+  })
+
+  it('removes native and namespace tools for a registered one-shot session key', async () => {
+    const upstreamRequests: Record<string, unknown>[] = []
+    const fetchImpl = vi.fn(
+      async (_url: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+        upstreamRequests.push(JSON.parse(String(init?.body)) as Record<string, unknown>)
+        return Response.json({ id: 'tool-less-response', output: [] })
+      }
+    )
+    const proxy = new NativeResponsesCompatibilityProxy(
+      { baseUrl: 'https://api.example/v1', model: 'model-a' },
+      fetchImpl
+    )
+    const connection = await proxy.start()
+
+    try {
+      proxy.registerToolLessSession('reconstruction-session')
+      const response = await fetch(`${connection.baseUrl}/responses`, {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${connection.token}`,
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'model-a',
+          prompt_cache_key: 'reconstruction-session',
+          stream: false,
+          tools: [
+            { type: 'function', name: 'shell_command', parameters: { type: 'object' } },
+            {
+              type: 'namespace',
+              name: 'mcp__purescience_notebook',
+              tools: [{ type: 'function', name: 'repl_execute', parameters: { type: 'object' } }]
+            }
+          ],
+          tool_choice: { type: 'function', name: 'shell_command' }
+        })
+      })
+
+      expect(response.ok).toBe(true)
+      expect(upstreamRequests[0]).toMatchObject({ tools: [], tool_choice: 'auto' })
+      expect(JSON.stringify(upstreamRequests[0])).not.toContain('shell_command')
+      expect(JSON.stringify(upstreamRequests[0])).not.toContain('repl_execute')
+      expect(proxy.unregisterToolLessSession('reconstruction-session')).toBe(true)
+    } finally {
+      await proxy.close()
+    }
+  })
+
+  it('forwards loopback requests without browser-controlled Fetch Metadata headers', async () => {
+    const fetchImpl = vi.fn(
+      async (_url: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+        const headers = new Headers(init?.headers)
+        if (headers.has('sec-fetch-mode')) throw new Error('net::ERR_INVALID_ARGUMENT')
+
+        return new Response(JSON.stringify({ id: 'response-1', output: [] }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        })
+      }
+    )
+    const proxy = new NativeResponsesCompatibilityProxy(
+      { baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-v4-flash' },
+      fetchImpl
+    )
+    const connection = await proxy.start()
+    try {
+      const response = await fetch(`${connection.baseUrl}/responses`, {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${connection.token}`,
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'deepseek-v4-flash',
+          input: 'ping'
+        })
+      })
+
+      expect(response.ok, await response.text()).toBe(true)
+      expect(fetchImpl).toHaveBeenCalledOnce()
+    } finally {
+      await proxy.close()
+    }
+  })
+
+  it('logs a privacy-safe lifecycle that distinguishes an upstream 502', async () => {
+    const privatePrompt = 'private medical prompt'
+    const privateUpstreamDetail = 'private gateway diagnostic'
+    const proxy = new NativeResponsesCompatibilityProxy(
+      {
+        baseUrl: 'https://api.deepseek.com/v1',
+        key: 'private-api-key',
+        model: 'deepseek-v4-flash'
+      },
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ error: { message: privateUpstreamDetail } }), {
+          status: 502,
+          headers: { 'content-type': 'application/json' }
+        })
+      )
+    )
+    const connection = await proxy.start()
+    try {
+      const response = await fetch(`${connection.baseUrl}/responses`, {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${connection.token}`,
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({ model: 'deepseek-v4-flash', input: privatePrompt })
+      })
+      expect(response.status).toBe(502)
+      await response.text()
+
+      const received = logSpies.info.mock.calls.find(
+        ([message]) => message === 'native Responses compatibility request'
+      )
+      const upstream = logSpies.info.mock.calls.find(
+        ([message]) => message === 'native Responses compatibility upstream response'
+      )
+      const completed = logSpies.info.mock.calls.find(
+        ([message]) => message === 'native Responses compatibility request completed'
+      )
+      expect(received?.[1]).toMatchObject({ requestId: expect.any(String) })
+      expect(upstream?.[1]).toMatchObject({
+        requestId: received?.[1]?.requestId,
+        status: 502,
+        responseType: 'json',
+        durationMs: expect.any(Number)
+      })
+      expect(completed?.[1]).toMatchObject({
+        requestId: received?.[1]?.requestId,
+        status: 502,
+        durationMs: expect.any(Number)
+      })
+      const serialized = JSON.stringify(Object.values(logSpies).flatMap((spy) => spy.mock.calls))
+      expect(serialized).not.toContain(privatePrompt)
+      expect(serialized).not.toContain(privateUpstreamDetail)
+      expect(serialized).not.toContain('private-api-key')
+      expect(serialized).not.toContain(connection.token)
+      expect(serialized).not.toContain('api.deepseek.com')
+    } finally {
+      await proxy.close()
+    }
+  })
+
+  it('classifies an upstream transport failure without logging its raw message', async () => {
+    const privateError = Object.assign(
+      new Error('fetch failed for https://private-gateway.example.test/account/alice'),
+      { code: 'ECONNRESET' }
+    )
+    const fetchImpl = vi.fn().mockRejectedValue(privateError)
+    const proxy = new NativeResponsesCompatibilityProxy(
+      { baseUrl: 'https://api.deepseek.com/v1', key: 'private-api-key' },
+      fetchImpl
+    )
+    const connection = await proxy.start()
+    try {
+      const response = await fetch(`${connection.baseUrl}/responses`, {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${connection.token}`,
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({ model: 'private-model', input: 'private prompt' })
+      })
+      expect(response.status).toBe(400)
+      const errorResponse = await response.json()
+      expect(errorResponse).toEqual({
+        error: {
+          type: 'invalid_request_error',
+          message: 'Native Responses compatibility request failed'
+        }
+      })
+      expect(JSON.stringify(errorResponse)).not.toContain('private-gateway.example.test')
+      expect(fetchImpl).toHaveBeenCalledOnce()
+
+      expect(logSpies.warn.mock.calls).toContainEqual([
+        'native Responses compatibility request failed',
+        expect.objectContaining({
+          requestId: expect.any(String),
+          phase: 'upstream-fetch',
+          outcome: 'error',
+          errorCategory: 'network',
+          errorCode: 'ECONNRESET',
+          durationMs: expect.any(Number)
+        })
+      ])
+      const serialized = JSON.stringify(Object.values(logSpies).flatMap((spy) => spy.mock.calls))
+      expect(serialized).not.toContain('private-gateway.example.test')
+      expect(serialized).not.toContain('private-api-key')
+      expect(serialized).not.toContain('private-model')
+      expect(serialized).not.toContain('private prompt')
+    } finally {
+      await proxy.close()
+    }
+  })
+
+  it('forwards a near-limit multimodal request larger than 32 MiB', async () => {
+    const upstreamBodies: string[] = []
+    const fetchImpl = vi.fn(
+      async (_url: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+        upstreamBodies.push(String(init?.body))
+        return new Response(JSON.stringify({ id: 'large-response', output: [] }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        })
+      }
+    )
+    const proxy = new NativeResponsesCompatibilityProxy(
+      { baseUrl: 'https://api.minimaxi.com/v1', model: 'MiniMax-M3' },
+      fetchImpl
+    )
+    const connection = await proxy.start()
+    try {
+      const response = await fetch(`${connection.baseUrl}/responses`, {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${connection.token}`,
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'MiniMax-M3',
+          stream: false,
+          input: [
+            {
+              role: 'user',
+              content: [
+                { type: 'input_text', text: 'p'.repeat(8 * 1024 * 1024) },
+                {
+                  type: 'input_image',
+                  image_url: `data:image/png;base64,${'a'.repeat(24 * 1024 * 1024)}`
+                }
+              ]
+            }
+          ]
+        })
+      })
+
+      expect(response.ok, await response.text()).toBe(true)
+      expect(upstreamBodies).toHaveLength(1)
+      expect(Buffer.byteLength(upstreamBodies[0], 'utf8')).toBeGreaterThan(32 * 1024 * 1024)
+    } finally {
+      await proxy.close()
+    }
+  })
+})
