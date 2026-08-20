@@ -422,10 +422,12 @@ const UserMessageActionTooltip = ({
   children: React.ReactElement
   label: string
 }): React.JSX.Element => (
-  <Tooltip>
-    <TooltipTrigger asChild>{children}</TooltipTrigger>
-    <TooltipContent>{label}</TooltipContent>
-  </Tooltip>
+  <TooltipProvider delayDuration={200}>
+    <Tooltip>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  </TooltipProvider>
 )
 // Inline editing replaces the bubble with a bordered multi-line editor card aligned to the right.
 const editCardClassName =
