@@ -18,7 +18,6 @@ import {
   verifyMarketplaceRoot
 } from './protocol'
 import { MarketplaceService } from './service'
-import { OFFICIAL_MARKETPLACE_SOURCE } from './official-source'
 
 const makeSource = (overrides: Partial<StoredMarketplaceSource> = {}): StoredMarketplaceSource => ({
   id: 'github-test-source',
@@ -290,9 +289,9 @@ describe('MarketplaceService official-source fail-closed', () => {
   })
 
   it('lists an empty but usable marketplace when the official source has no trusted key', async () => {
-    // OFFICIAL_MARKETPLACE_SOURCE.trustedKeys is intentionally empty until a release exists.
-    // The service must OMIT the official source (not throw) so the marketplace stays usable
-    // for user-approved GitHub sources.
+    // An official source with an EMPTY trustedKeys table must be OMITTED (not throw) so the
+    // marketplace stays usable for user-approved GitHub sources. Inject a keyless config rather
+    // than relying on OFFICIAL_MARKETPLACE_SOURCE's live key state.
     const repository = new MarketplaceRepository(dir)
     const service = new MarketplaceService({
       repository,
@@ -304,7 +303,15 @@ describe('MarketplaceService official-source fail-closed', () => {
         dispose: vi.fn()
       },
       fetch: vi.fn(),
-      officialSource: OFFICIAL_MARKETPLACE_SOURCE,
+      officialSource: {
+        id: 'test-official',
+        name: 'Test Official',
+        repositoryUrl: 'https://github.com/example/test-marketplace',
+        ref: 'main',
+        metadataBaseUrls: ['https://example.com/marketplace/'],
+        artifactBaseUrls: [],
+        trustedKeys: {}
+      },
       getDisabledSkillIds: async () => [],
       getInstalledSpecialists: async () => [],
       setSkillsMainEnabled: async () => {}
