@@ -119,6 +119,7 @@ type AcpPromptTurnWorkflowOptions = Readonly<{
     | 'cancellationCheckpoint'
     | 'captureTerminal'
     | 'current'
+    | 'isCancellationAccepted'
     | 'release'
     | 'reservePrompt'
     | 'settle'

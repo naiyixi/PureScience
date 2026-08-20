@@ -45,6 +45,7 @@ type Harness = {
     activatePrompt: Mock<AcpSessionInteractionOwner['activatePrompt']>
     cancellationCheckpoint: Mock<AcpSessionInteractionOwner['cancellationCheckpoint']>
     captureTerminal: Mock<AcpSessionInteractionOwner['captureTerminal']>
+    isCancellationAccepted: Mock<AcpSessionInteractionOwner['isCancellationAccepted']>
     settle: Mock<AcpSessionInteractionOwner['settle']>
     release: Mock<AcpSessionInteractionOwner['release']>
   }
@@ -181,6 +182,9 @@ const createHarness = (
       owner.captureTerminal(...args)
     ),
     settle: vi.fn((...args: Parameters<typeof owner.settle>) => owner.settle(...args)),
+    isCancellationAccepted: vi.fn((scope: Parameters<typeof owner.isCancellationAccepted>[0]) =>
+      owner.isCancellationAccepted(scope)
+    ),
     release: vi.fn((scope: Parameters<typeof owner.release>[0]) => owner.release(scope))
   }
   const skill = skillHandle()

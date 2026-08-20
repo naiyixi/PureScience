@@ -26,7 +26,7 @@ export type AcpPromptFinalizationHandles = Readonly<{
   sessionId: string
   promptMessageId?: string
   interaction: AcpPromptSessionInteractionScope
-  interactions: Pick<InteractionOwner, 'captureTerminal' | 'current' | 'release' | 'settle'>
+  interactions: Pick<InteractionOwner, 'captureTerminal' | 'current' | 'isCancellationAccepted' | 'release' | 'settle'>
   permission: Pick<AcpPermissionContext, 'clearCorrelationsForSession'>
   prepared?: Pick<PreparedPromptHandle, 'close'>
   context?: ContextUsageTurnHandle
@@ -138,7 +138,27 @@ export class AcpPromptOutcomeFinalizer {
       return true
     }
     try {
-      if (outcome.kind === 'failed') throw outcome.error
+      if (outcome.kind === 'failed') {
+        // A user-initiated stop/cancel already aborts the interaction (cancelPrompt →
+        // abortController.abort()). Some agent CLIs (Claude Code 2.1.220) respond to an
+        // interrupt with an internal error (e.g. `ede_diagnostic result_type=user
+        // stop_reason=tool_use`) instead of a clean `cancelled` stop — surfacing that as a
+        // failure leaves the session in an error state and the user "cannot continue". Treat
+        // a failure on an already-aborted interaction as a normal cancellation.
+        if (interactions.isCancellationAccepted(interaction)) {
+          skillOutcome = 'cancelled'
+          const response: PromptResponse = { stopReason: 'cancelled' }
+          observedStop = { response }
+          if (!interactions.captureTerminal(interaction, 'cancelled')) return response
+          handles.emitUserMessage()
+          await emitArtifact()
+          safeLog('info', 'prompt cancelled after user interruption', {})
+          context?.fail()
+          publishObservedStop()
+          return response
+        }
+        throw outcome.error
+      }
       if (outcome.kind === 'superseded') return outcome.response
       if (outcome.kind === 'not-dispatched') {
         skillOutcome = 'cancelled'

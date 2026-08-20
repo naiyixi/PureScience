@@ -206,6 +206,7 @@ describe('AcpPromptOutcomeFinalizer', () => {
     harness.handles.interactions = {
       captureTerminal: harness.interactions.captureTerminal.bind(harness.interactions),
       current: harness.interactions.current.bind(harness.interactions),
+      isCancellationAccepted: harness.interactions.isCancellationAccepted.bind(harness.interactions),
       settle: harness.interactions.settle.bind(harness.interactions),
       release: vi.fn((scope) => {
         harness.interactions.release(scope)
@@ -361,5 +362,39 @@ describe('AcpPromptOutcomeFinalizer', () => {
     )
     expect(harness.context.fail).toHaveBeenCalledOnce()
     expect(harness.handles.skill.close).toHaveBeenCalledWith('cancelled')
+  })
+
+  it('treats a failure on a user-cancelled interaction as a normal cancellation', async () => {
+    const harness = createHarness({ now: () => 789 })
+    harness.handles.interactions = Object.assign(harness.handles.interactions, {
+      isCancellationAccepted: () => true
+    })
+
+    // Claude Code 2.1.220 answers an interrupt with an internal error
+    // (`ede_diagnostic result_type=user stop_reason=tool_use`) instead of a clean
+    // `cancelled` stop — the finalizer must surface that as cancelled, not failed.
+    await expect(
+      new AcpPromptOutcomeFinalizer().finalize(harness.handles, {
+        kind: 'failed',
+        error: new Error('RequestError: Internal error: [ede_diagnostic] result_type=user stop_reason=tool_use')
+      })
+    ).resolves.toEqual({ stopReason: 'cancelled' })
+
+    expect(harness.handles.emitUserMessage).toHaveBeenCalledOnce()
+    expect(harness.events).toContainEqual(
+      expect.objectContaining({ kind: 'stop', timestamp: 789, text: 'cancelled' })
+    )
+    expect(harness.context.fail).toHaveBeenCalledOnce()
+    expect(harness.handles.skill.close).toHaveBeenCalledWith('cancelled')
+  })
+
+  it('still throws a real failure when the interaction was not cancelled', async () => {
+    const harness = createHarness()
+    await expect(
+      new AcpPromptOutcomeFinalizer().finalize(harness.handles, {
+        kind: 'failed',
+        error: new Error('provider connection lost')
+      })
+    ).rejects.toThrow('provider connection lost')
   })
 })
