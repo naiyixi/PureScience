@@ -714,7 +714,10 @@ export class MarketplaceService {
     if (!official) return stored
     const repository = githubRepository(official.repositoryUrl)
     const [keyId, publicKey] = Object.entries(official.trustedKeys)[0] ?? []
-    if (!keyId || !publicKey) throw new Error('Official Marketplace signing key is not configured.')
+    // No trusted key yet means no official release has been published: fail CLOSED by omitting
+    // the official source (the marketplace stays fully usable with user-approved GitHub sources)
+    // instead of throwing, which would take down the whole list.
+    if (!keyId || !publicKey) return stored
     return [
       {
         id: official.id,

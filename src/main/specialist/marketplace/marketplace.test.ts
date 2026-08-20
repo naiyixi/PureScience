@@ -2,7 +2,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
   MarketplaceRepository,
@@ -17,6 +17,8 @@ import {
   sha256,
   verifyMarketplaceRoot
 } from './protocol'
+import { MarketplaceService } from './service'
+import { OFFICIAL_MARKETPLACE_SOURCE } from './official-source'
 
 const makeSource = (overrides: Partial<StoredMarketplaceSource> = {}): StoredMarketplaceSource => ({
   id: 'github-test-source',
@@ -273,5 +275,43 @@ describe('marketplace protocol', () => {
     expect(() => parseMarketplaceSignature(bad)).toThrow()
     // Invalid UTF-8 must fail the fatal decoder, not produce replacement characters.
     expect(() => parseMarketplaceRoot(Uint8Array.from([0xff, 0xfe, 0xfd]))).toThrow()
+  })
+})
+
+describe('MarketplaceService official-source fail-closed', () => {
+  let dir: string
+
+  beforeEach(async () => {
+    dir = await mkdtemp(join(tmpdir(), 'marketplace-service-'))
+  })
+
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true })
+  })
+
+  it('lists an empty but usable marketplace when the official source has no trusted key', async () => {
+    // OFFICIAL_MARKETPLACE_SOURCE.trustedKeys is intentionally empty until a release exists.
+    // The service must OMIT the official source (not throw) so the marketplace stays usable
+    // for user-approved GitHub sources.
+    const repository = new MarketplaceRepository(dir)
+    const service = new MarketplaceService({
+      repository,
+      packages: {
+        preview: vi.fn(),
+        install: vi.fn(),
+        candidateNewSkillIds: vi.fn(),
+        cancel: vi.fn(),
+        dispose: vi.fn()
+      },
+      fetch: vi.fn(),
+      officialSource: OFFICIAL_MARKETPLACE_SOURCE,
+      getDisabledSkillIds: async () => [],
+      getInstalledSpecialists: async () => [],
+      setSkillsMainEnabled: async () => {}
+    })
+    const snapshot = await service.list()
+    expect(snapshot.sources).toEqual([])
+    expect(snapshot.specialists).toEqual([])
+    expect(snapshot.failures).toEqual([])
   })
 })

@@ -136,7 +136,7 @@ if $DRY_RUN; then
 fi
 
 # ---------- create release + upload ----------
-echo "==> creating release $TAG on $REPO…"
+echo "==> creating release $TAG on ${REPO}…"
 gh release create "$TAG" -R "$REPO" --title "PureScience $VERSION" --notes "$NOTES" \
   "$INSTALLER_PATH" "${INSTALLER_PATH}.blockmap" 2>/dev/null \
   || gh release create "$TAG" -R "$REPO" --title "PureScience $VERSION" --notes "$NOTES" \
