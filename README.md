@@ -4,11 +4,11 @@
 [![Version](https://img.shields.io/github/v/release/naiyixi/PureScience?label=Version&style=for-the-badge&color=4dabf7)](https://github.com/naiyixi/PureScience/releases/latest)
 [![License](https://img.shields.io/badge/License-Apache--2.0-4dabf7?style=for-the-badge)](LICENSE)
 
-**PureScience is an open-source, local-first, model-agnostic, self-hosted AI research workbench for reproducible scientific discovery.** Built for researchers, it runs on your own computer (macOS, Windows, Linux). Create a project, describe a task in plain language, and let the AI agent read files, run Python and R code, search the web, call scientific data connectors, and return reproducible reports, tables, and figures linked to an inspectable activity history in one workspace.
+**PureScience is an open-source, local-first, model-agnostic, self-hosted AI research workbench for reproducible scientific discovery.** Built for researchers, it runs on your own computer — currently shipped for **macOS (Apple Silicon)**, with Windows and Linux releases in progress. Create a project, describe a task in plain language, and let the AI agent read files, run Python and R code, search the web, call scientific data connectors, and return reproducible reports, tables, and figures linked to an inspectable activity history in one workspace.
 
 PureScience currently includes 18 featured research skills and 24 built-in scientific connectors, with its strongest coverage in bioinformatics, computational biology, biomedical research, genomics, structural biology, and computational drug discovery—and an extensible architecture designed to support more scientific disciplines over time.
 
-> 💡 **[PureScience v0.13.2 released](https://github.com/naiyixi/PureScience/releases/latest)** — 独立开源的科研 AI 工作台：官方专才市场（签名验证 + jsDelivr 国内加速）、可追溯产物（代码/执行/环境/消息/审查）、Notebook 原生预览、多智能体编排、17 个生物医学技能包、全界面中文适配。**更新日记（含版本代号）见 [CHANGELOG](CHANGELOG.md)**；官网：[purescience.work](https://purescience.work)
+> 💡 **[PureScience v0.13.4 released](https://github.com/naiyixi/PureScience/releases/latest)** — 独立开源的科研 AI 工作台：官方专才市场（签名验证 + jsDelivr 国内加速）、可追溯产物（代码/执行/环境/消息/审查）、Notebook 原生预览、产物自动预览、MCP 连接瞬断自愈、多智能体编排、17 个生物医学技能包、全界面中文适配。**更新日记（含版本代号）见 [CHANGELOG](CHANGELOG.md)**；官网：[purescience.work](https://purescience.work)
 
 <p align="center">
   <img src="docs/purescience-title.png" alt="PureScience" width="620" />
@@ -39,16 +39,14 @@ PureScience currently includes 18 featured research skills and 24 built-in scien
 
 Open the [latest release](https://github.com/naiyixi/PureScience/releases/latest), expand **Assets**, and choose the installer for your computer:
 
-| Your computer                       | Choose                                   |
-| ----------------------------------- | ---------------------------------------- |
-| macOS — Apple Silicon (M1 or newer) | The macOS DMG for Apple Silicon / ARM64  |
-| macOS — Intel                       | The macOS DMG for Intel / x64            |
-| Windows x64                         | The Windows x64 installer                |
-| Linux x64                           | The Linux x64 AppImage or Debian package |
+| Your computer                       | Choose                                                        |
+| ----------------------------------- | ------------------------------------------------------------- |
+| macOS — Apple Silicon (M1 or newer) | The macOS DMG for Apple Silicon / ARM64（当前发布版）          |
+| macOS — Intel / Windows / Linux     | 构建与发布进行中，敬请期待（可在 [Releases](https://github.com/naiyixi/PureScience/releases) 关注更新） |
 
 Review the assets and verification information published on the release page. See [Verifying your download](SECURITY.md#verifying-your-download) before installation if you need to validate a package.
 
-> If macOS or Windows shows an unidentified-developer or unknown-publisher warning, verify that the package came from the official Releases page before continuing.
+> If macOS shows an unidentified-developer warning, verify that the package came from the official Releases page before continuing.
 
 ### 2. Complete first-time setup
 
@@ -189,7 +187,7 @@ PureScience combines project management, multi-model agent execution, Python and
 | **Connectors**               | **24 built-in** research connectors, custom local/remote MCP connectors, contact metadata, and connector/tool-level permissions.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | **Safety controls**          | `Ask for approval`, `Auto-approve edits`, and `Full access` conversation profiles; approval dialogs with code previews and call/conversation decisions; durable global, project, and session-scoped allow grants with filtering, per-row and family revoke, and Undo; plus per-connector and per-tool policies.                                                                                                                                                                                                                                                                                                                                                                                                   |
 | **Review and verification**  | An opt-in reviewer that audits a completed turn against its own transcript, execution log, and artifacts, reports pass/warn/fail findings, and can run a bounded fix loop to correct them.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| **Distribution and support** | Installers for macOS, Windows, and Linux, plus update guidance, local diagnostics, and community links.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| **Distribution and support** | Installer for macOS (Apple Silicon; Windows and Linux releases in progress), plus update guidance, local diagnostics, and community links.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 
 ## Model Providers
 
