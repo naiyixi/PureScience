@@ -1,14 +1,14 @@
 # PureScience
 
 [![Download](https://img.shields.io/badge/Download-Latest%20Release-2f9e44?style=for-the-badge&logo=github)](https://github.com/naiyixi/PureScience/releases/latest)
-[![Version](https://img.shields.io/github/v/release/zerolink/purescience?label=Version&style=for-the-badge&color=4dabf7)](https://github.com/naiyixi/PureScience/releases/latest)
+[![Version](https://img.shields.io/github/v/release/naiyixi/PureScience?label=Version&style=for-the-badge&color=4dabf7)](https://github.com/naiyixi/PureScience/releases/latest)
 [![License](https://img.shields.io/badge/License-Apache--2.0-4dabf7?style=for-the-badge)](LICENSE)
 
 **PureScience is an open-source, local-first, model-agnostic, self-hosted AI research workbench for reproducible scientific discovery.** Built for researchers, it runs on your own computer (macOS, Windows, Linux). Create a project, describe a task in plain language, and let the AI agent read files, run Python and R code, search the web, call scientific data connectors, and return reproducible reports, tables, and figures linked to an inspectable activity history in one workspace.
 
 PureScience currently includes 18 featured research skills and 24 built-in scientific connectors, with its strongest coverage in bioinformatics, computational biology, biomedical research, genomics, structural biology, and computational drug discovery—and an extensible architecture designed to support more scientific disciplines over time.
 
-> 💡 **[PureScience v0.11.1 released](https://github.com/naiyixi/PureScience/releases/latest)** _(last updated August 6, 2026)_. Highlights include on-demand artifact code reconstruction, live permission profile changes during a running turn, project and session archiving, MCP connector OAuth and portable configuration sharing, tool-activity elapsed time, persistent plan call records, and branded loading indicators. See the [latest release notes](https://github.com/naiyixi/PureScience/releases/latest) for the full changelog.
+> 💡 **[PureScience v0.13.2 released](https://github.com/naiyixi/PureScience/releases/latest)** — 独立开源的科研 AI 工作台：官方专才市场（签名验证 + jsDelivr 国内加速）、可追溯产物（代码/执行/环境/消息/审查）、Notebook 原生预览、多智能体编排、17 个生物医学技能包、全界面中文适配。**更新日记（含版本代号）见 [CHANGELOG](CHANGELOG.md)**；官网：[purescience.work](https://purescience.work)
 
 <p align="center">
   <img src="docs/purescience-title.png" alt="PureScience" width="620" />
@@ -27,7 +27,7 @@ PureScience currently includes 18 featured research skills and 24 built-in scien
 - [Project Status](#project-status)
 - [Development & Packaging](#development--packaging)
 - [Roadmap](#roadmap)
-- [Relationship to the ZEROLINK Ecosystem](#relationship-to-the-zerolink-ecosystem)
+- [Brand & Ecosystem](#brand--ecosystem)
 - [What This Is Not](#what-this-is-not)
 - [Frequently Asked Questions](#frequently-asked-questions)
 - [Get Involved](#get-involved)
@@ -318,6 +318,16 @@ publishable package so there is one command reference to maintain:
 - [CLI guide](packages/purescience/CLI.md) - installation, service lifecycle, task automation,
   artifacts, output formats, and exit codes
 - [SDK package overview](packages/purescience/README.md) - Node.js quick start and package entry point
+
+## Brand & Ecosystem
+
+PureScience is an **independent, original open-source project** — its own codebase, data model,
+interface, and roadmap, developed openly for the benefit of all researchers. It is not a fork or
+a downstream derivative of any other product.
+
+- 官网 / Website: [purescience.work](https://purescience.work)
+- 更新日记（含版本代号）/ Changelog: [CHANGELOG.md](CHANGELOG.md)
+- GitHub: [naiyixi/PureScience](https://github.com/naiyixi/PureScience)
 
 ## Roadmap
 

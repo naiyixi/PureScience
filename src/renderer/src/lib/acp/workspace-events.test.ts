@@ -999,6 +999,81 @@ describe('workspace runtime events', () => {
     ])
   })
 
+  it('auto-opens the newest artifact in the preview panel when the panel is open', async () => {
+    const promptMessageId = useSessionStore.getState().sessions[0].activeRun?.promptMessageId
+    await applyWorkspaceRuntimeEvent(
+      createEvent({
+        id: 'assistant-event-auto',
+        role: 'assistant',
+        messageId: 'assistant-message-auto',
+        text: 'Saved the plot.'
+      })
+    )
+    await applyWorkspaceRuntimeEvent(createEvent({ id: 'stop-before-auto', kind: 'stop' }))
+    usePreviewWorkbenchStore.setState({ panelState: 'open' })
+    const finalizedArtifact = createArtifactFile({
+      id: 'transport-session-1:message-1:plot.png',
+      sessionId: 'transport-session-1',
+      messageId: 'message-1',
+      path: '/Users/example/.purescience/artifacts/default-project/transport-session-1/message-1/plot.png',
+      fileUrl: 'file:///Users/example/.purescience/artifacts/default-project/transport-session-1/message-1/plot.png'
+    })
+    const finalizeRunArtifacts = vi.fn().mockResolvedValue([finalizedArtifact])
+    const saveSession = vi.fn().mockResolvedValue(undefined)
+
+    await applyWorkspaceRuntimeEvent(
+      createEvent({
+        id: 'artifact-event-auto',
+        kind: 'artifact',
+        runId: 'run-1',
+        promptMessageId,
+        artifactSessionId: 'artifact-session-1',
+        artifactClaimId: 'claim-1',
+        artifacts: [finalizedArtifact]
+      }),
+      { finalizeRunArtifacts, saveSession }
+    )
+
+    const preview = usePreviewWorkbenchStore.getState()
+    expect(preview.items.length).toBeGreaterThan(0)
+    expect(preview.activeItemId).toBe(preview.items[preview.items.length - 1].id)
+    expect(preview.items[preview.items.length - 1]).toMatchObject({
+      type: 'file',
+      path: expect.stringContaining('/message-1/plot.png')
+    })
+  })
+
+  it('does not auto-open artifacts while the preview panel is collapsed', async () => {
+    const promptMessageId = useSessionStore.getState().sessions[0].activeRun?.promptMessageId
+    await applyWorkspaceRuntimeEvent(
+      createEvent({
+        id: 'assistant-event-collapsed',
+        role: 'assistant',
+        messageId: 'assistant-message-collapsed',
+        text: 'Saved the plot.'
+      })
+    )
+    await applyWorkspaceRuntimeEvent(createEvent({ id: 'stop-before-collapsed', kind: 'stop' }))
+    usePreviewWorkbenchStore.setState({ panelState: 'collapsed', items: [], activeItemId: undefined })
+    const finalizeRunArtifacts = vi.fn().mockResolvedValue([createArtifactFile()])
+    const saveSession = vi.fn().mockResolvedValue(undefined)
+
+    await applyWorkspaceRuntimeEvent(
+      createEvent({
+        id: 'artifact-event-collapsed',
+        kind: 'artifact',
+        runId: 'run-1',
+        promptMessageId,
+        artifactSessionId: 'artifact-session-1',
+        artifactClaimId: 'claim-1',
+        artifacts: [createArtifactFile()]
+      }),
+      { finalizeRunArtifacts, saveSession }
+    )
+
+    expect(usePreviewWorkbenchStore.getState().items).toEqual([])
+  })
+
   it('attaches a post-stop artifact event to the completed response for its prompt', async () => {
     const promptMessageId = useSessionStore.getState().sessions[0].activeRun?.promptMessageId
     await applyWorkspaceRuntimeEvent(

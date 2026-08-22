@@ -224,6 +224,18 @@ const attachArtifactEvent = (
     turnUsageUnavailable: turnUsage?.turnUsageUnavailable
   })
 
+// When the preview panel is already open, the newest finalized artifact replaces the active tab —
+// a notebook run that just produced figures flows straight to the screen without a manual click.
+// A collapsed/closed panel is left untouched so background runs never steal focus.
+const autoPreviewNewestArtifact = (artifacts: ArtifactFile[], sessionId: string): void => {
+  const previewState = usePreviewWorkbenchStore.getState()
+  if (previewState.panelState !== 'open') return
+  const projectId = useSessionStore.getState().sessions.find((s) => s.id === sessionId)?.projectId
+  const latest = artifacts[artifacts.length - 1]
+  const item = createPreviewFileItemFromArtifact(latest, sessionId, projectId)
+  if (item) usePreviewWorkbenchStore.getState().upsertAndActivateItem(item)
+}
+
 const finalizeArtifactEvent = async (
   event: AcpRuntimeEvent,
   dependencies: WorkspaceRuntimeEventDependencies,
@@ -234,6 +246,10 @@ const finalizeArtifactEvent = async (
   const attached = attachArtifactEvent(event, turnUsage)
 
   if (!attached) return true
+
+  // Auto-open the newest artifact in the preview panel when the panel is already open — a
+  // notebook run that just produced figures flows straight to the screen without a manual click.
+  autoPreviewNewestArtifact(event.artifacts, event.sessionId)
 
   const store = useSessionStore.getState()
 
