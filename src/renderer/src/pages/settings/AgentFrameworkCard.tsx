@@ -126,9 +126,9 @@ const AgentFrameworkCard = ({
   // Show the bar while this card's install runs; fall back to an indeterminate label before the
   // first progress tick arrives.
   const progress = install.installProgress
-    ? describeInstallProgress(install.installProgress)
+    ? describeInstallProgress(install.installProgress, t)
     : installing
-      ? { label: 'Starting…' }
+      ? { label: t('common.starting') }
       : null
   const percent = progress?.fraction != null ? Math.round(progress.fraction * 100) : undefined
 

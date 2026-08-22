@@ -156,7 +156,7 @@ const WorkspaceSidebar = ({
                 )}
               >
                 <ChevronLeft className="size-3.5" strokeWidth={2} aria-hidden="true" />
-                <span>All projects</span>
+                <span>{t('ws.allProjects')}</span>
               </button>
               <div
                 className="mt-1.5 truncate px-1.5 font-serif text-[16px] font-bold tracking-[-0.02em] text-text-000"
@@ -196,7 +196,7 @@ const WorkspaceSidebar = ({
               >
                 <Plus className="size-3.5" strokeWidth={2} />
               </span>
-              <span>New</span>
+              <span>{t('common.new')}</span>
             </button>
           </div>
           <div className="flex h-9 items-center gap-1 px-2">

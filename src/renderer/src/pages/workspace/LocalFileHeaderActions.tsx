@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
+import { useLanguage } from '@/i18n'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -61,6 +62,7 @@ export const LocalFileHeaderActions = ({
   onReload?: () => void
   tooltipClassName?: string
 }): React.JSX.Element => {
+  const { t } = useLanguage()
   const [copied, setCopied] = useState(false)
   // In-memory only by design: the staged upload joins the normal upload lifecycle, and the header
   // just reflects that this preview already handed the file over.
@@ -182,7 +184,7 @@ export const LocalFileHeaderActions = ({
               className="gap-2"
             >
               <PackagePlus className="size-4" aria-hidden="true" />
-              {saveAsArtifactState === 'saving' ? 'Saving…' : 'Save as artifact'}
+              {saveAsArtifactState === 'saving' ? t('common.saving') : t('common.saveAsArtifact')}
             </DropdownMenuItem>
           ) : null}
         </DropdownMenuContent>

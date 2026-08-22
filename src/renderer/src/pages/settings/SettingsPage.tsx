@@ -1105,7 +1105,7 @@ const SettingsPage = forwardRef<SettingsPageHandle, SettingsPageProps>(function 
                         Cancel
                       </Button>
                       <Button type="button" onClick={() => void handleSave()} disabled={!canSave}>
-                        {isSaving ? 'Saving…' : 'Save'}
+                        {isSaving ? t('common.saving') : t('common.save')}
                       </Button>
                     </div>
                   </div>

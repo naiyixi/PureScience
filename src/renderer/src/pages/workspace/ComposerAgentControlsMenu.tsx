@@ -536,7 +536,7 @@ const ComposerAgentControlsMenu = ({
                     </>
                   ) : (
                     <DropdownMenuItem disabled className="px-2 py-1.5 text-[13px] text-text-300">
-                      {isLoaded ? 'No SSH hosts registered' : 'Loading…'}
+                      {isLoaded ? t('common.noSshHosts') : t('common.loading')}
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuSeparator />

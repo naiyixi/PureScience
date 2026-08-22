@@ -152,6 +152,7 @@ const TurnTokenUsage = ({
   usage?: AcpTurnTokenUsage
   runtimeIdentity?: MessageRuntimeIdentity
 }): React.JSX.Element => {
+  const { t } = useLanguage()
   const [open, setOpen] = useState(false)
   const frameworks = useSettingsStore((state) =>
     open && runtimeIdentity ? state.agentFrameworks : undefined
@@ -361,7 +362,7 @@ const TurnTokenUsage = ({
           data-slot="turn-token-usage-total"
           className="mt-2 flex items-center justify-between gap-4 border-t border-border pt-2 font-medium whitespace-nowrap"
         >
-          <span>Total</span>
+          <span>{t('common.total')}</span>
           <span className="tabular-nums">
             {safeTotalTokens !== undefined ? tokenCountFormatter.format(safeTotalTokens) : '—'}
           </span>

@@ -225,7 +225,7 @@ const GeneralPanel = (): React.JSX.Element => {
               disabled={isOpening || !logPath}
             >
               <ExternalLink className="size-4" aria-hidden="true" />
-              {isOpening ? 'Opening…' : 'Open'}
+              {isOpening ? t('common.opening') : t('common.open')}
             </Button>
           </div>
         </SettingsRow>

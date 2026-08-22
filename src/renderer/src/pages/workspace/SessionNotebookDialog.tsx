@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Download, LoaderCircle, X } from 'lucide-react'
+import { useLanguage } from '@/i18n'
 import { Dialog } from 'radix-ui'
 
 import { dialogOverlayClassName, dialogPanelClassName } from '@/components/ui/dialog-chrome'
@@ -113,6 +114,7 @@ const SessionNotebookContent = ({
   onExport,
   onExportAll
 }: SessionNotebookContentProps): React.JSX.Element => {
+  const { t } = useLanguage()
   const [activeKind, setActiveKind] = useState<NotebookKernelKind>('python')
   const [exporting, setExporting] = useState(false)
   const [exportingAll, setExportingAll] = useState(false)
@@ -193,7 +195,7 @@ const SessionNotebookContent = ({
     <>
       <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-3.5">
         <h2 className="flex min-w-0 items-center gap-3 text-lg font-semibold text-foreground">
-          <span>Session notebook</span>
+          <span>{t('ws.sessionNotebook')}</span>
           <span className="rounded bg-muted px-2 py-0.5 font-mono text-xs font-normal text-muted-foreground">
             {shortId}
           </span>
@@ -304,7 +306,7 @@ const SessionNotebookContent = ({
                       ) : (
                         <Download className="size-3.5" aria-hidden="true" />
                       )}
-                      {exportingAll ? 'Exporting…' : `All (${exportAllCount})`}
+                      {exportingAll ? t('common.exporting') : t('common.all').replace('{n}', String(exportAllCount))}
                     </button>
                   </span>
                 </TooltipTrigger>
@@ -336,7 +338,7 @@ const SessionNotebookContent = ({
                     ) : (
                       <Download className="size-3.5" aria-hidden="true" />
                     )}
-                    {exporting ? 'Exporting…' : '.ipynb'}
+                    {exporting ? t('common.exporting') : '.ipynb'}
                   </button>
                 </span>
               </TooltipTrigger>
@@ -375,6 +377,7 @@ const SessionNotebookDialog = ({
   session,
   onClose
 }: SessionNotebookDialogProps): React.JSX.Element => {
+  const { t } = useLanguage()
   const [runs, setRuns] = useState<NotebookRunRecord[]>([])
   const [status, setStatus] = useState<SessionNotebookStatus>('loading')
   const [error, setError] = useState<string | undefined>(undefined)
@@ -436,7 +439,7 @@ const SessionNotebookDialog = ({
             'flex max-h-[85vh] w-[calc(100%-2rem)] max-w-5xl flex-col overflow-hidden p-0'
           )}
         >
-          <Dialog.Title className="sr-only">Session notebook</Dialog.Title>
+          <Dialog.Title className="sr-only">{t('ws.sessionNotebook')}</Dialog.Title>
           {dialogSession ? (
             <SessionNotebookContent
               // Remount per session: the dialog is mounted once and the session prop swaps in

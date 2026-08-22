@@ -2,6 +2,7 @@ import { AlertDialog } from 'radix-ui'
 import { FolderInput, RefreshCw } from 'lucide-react'
 import { useState } from 'react'
 
+import { useLanguage } from '@/i18n'
 import { Button } from '@/components/ui/button'
 import {
   dialogDescriptionClassName,
@@ -28,6 +29,7 @@ const DataRootMissingDialog = ({
   dataRoot,
   onResolved
 }: DataRootMissingDialogProps): React.JSX.Element => {
+  const { t } = useLanguage()
   const [isRetrying, setIsRetrying] = useState(false)
   const [stillMissing, setStillMissing] = useState(false)
   const [isChoosing, setIsChoosing] = useState(false)
@@ -102,7 +104,7 @@ const DataRootMissingDialog = ({
               onClick={() => void handleRetry()}
             >
               <RefreshCw aria-hidden="true" />
-              {isRetrying ? 'Checking…' : 'Reconnect & retry'}
+              {isRetrying ? t('common.checking') : t('common.reconnectRetry')}
             </Button>
             <Button
               type="button"
@@ -111,7 +113,7 @@ const DataRootMissingDialog = ({
               onClick={() => void handleChooseAnotherLocation()}
             >
               <FolderInput aria-hidden="true" />
-              {isChoosing ? 'Switching…' : 'Choose another location'}
+              {isChoosing ? t('common.switching') : t('common.chooseAnotherLocation')}
             </Button>
             <AlertDialog.Cancel asChild>
               <Button

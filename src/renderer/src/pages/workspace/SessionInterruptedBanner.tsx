@@ -1,5 +1,6 @@
 import { Loader2, Play } from 'lucide-react'
 
+import { useLanguage } from '@/i18n'
 import { Button } from '@/components/ui/button'
 
 type SessionInterruptedBannerProps = {
@@ -19,7 +20,9 @@ const SessionInterruptedBanner = ({
   isDisabled,
   isResuming,
   onResume
-}: SessionInterruptedBannerProps): React.JSX.Element => (
+}: SessionInterruptedBannerProps): React.JSX.Element => {
+  const { t } = useLanguage()
+  return (
   <div className="mb-2 flex items-center gap-3 rounded-lg border border-border-200 bg-bg-200 px-3 py-2">
     <p className="min-w-0 flex-1 text-[12px] leading-5 text-text-100">{message}</p>
     <Button
@@ -36,9 +39,10 @@ const SessionInterruptedBanner = ({
       ) : (
         <Play className="size-3.5" strokeWidth={2} aria-hidden="true" />
       )}
-      {isResuming ? 'Resuming…' : 'Resume'}
+      {isResuming ? t('common.resuming') : t('common.resume')}
     </Button>
   </div>
-)
+  )
+}
 
 export { SessionInterruptedBanner }

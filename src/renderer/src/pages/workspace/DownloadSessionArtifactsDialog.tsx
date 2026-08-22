@@ -282,7 +282,7 @@ const DownloadSessionArtifactsDialog = ({
                   <Download className="size-4" aria-hidden="true" />
                 )}
                 {isDownloading
-                  ? 'Downloading…'
+                  ? t('common.downloading')
                   : `Download ${pluralizeArtifact(selectedArtifacts.length)}`}
               </Button>
             </div>

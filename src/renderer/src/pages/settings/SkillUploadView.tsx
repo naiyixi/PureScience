@@ -371,7 +371,7 @@ const SkillUploadView = ({
               onClick={() => void importSelected()}
               disabled={busy || selected.size === 0}
             >
-              {busy ? 'Importing…' : `Import selected (${selected.size})`}
+              {busy ? t('common.importing') : t('common.importSelected').replace('{n}', String(selected.size))}
             </Button>
           </div>
 

@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import type { ThemePreference } from '@/lib/theme'
+import { useLanguage } from '@/i18n'
 import { useThemeStore } from '@/stores/theme-store'
 
 type ThemeOption = {
@@ -72,6 +73,7 @@ type ThemePreferenceMenuProps = {
 // The trigger shows the icon for the *current preference* (Monitor / Sun / Moon); the popover lists
 // all three choices with a check beside the active one.
 export const ThemePreferenceMenu = ({ className }: ThemePreferenceMenuProps): React.JSX.Element => {
+  const { t } = useLanguage()
   const preference = useThemeStore((state) => state.preference)
   const setPreference = useThemeStore((state) => state.setPreference)
   const active = THEME_OPTIONS.find((option) => option.value === preference) ?? THEME_OPTIONS[0]
@@ -93,7 +95,7 @@ export const ThemePreferenceMenu = ({ className }: ThemePreferenceMenuProps): Re
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-44">
-        <DropdownMenuLabel>Theme</DropdownMenuLabel>
+        <DropdownMenuLabel>{t('common.theme')}</DropdownMenuLabel>
         {THEME_OPTIONS.map(({ value, label, description, Icon }) => (
           <DropdownMenuItem key={value} onSelect={() => setPreference(value)} className="gap-2">
             <Icon className="size-4 text-muted-foreground" strokeWidth={2} aria-hidden="true" />

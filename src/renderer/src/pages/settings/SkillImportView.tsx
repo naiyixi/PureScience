@@ -186,7 +186,7 @@ const SkillImportView = ({ onImported }: SkillImportViewProps): React.JSX.Elemen
                 message.text === GITHUB_REPOSITORY_SEARCH_TOO_LONG_MESSAGE) ||
               undefined
             }
-            placeholder="keywords, owner/repo, owner/repo@ref, or a github.com URL"
+            placeholder="关键词、owner/repo、owner/repo@ref 或 github.com URL"
             className="[@media(pointer:coarse)]:min-h-11"
             value={input}
             onChange={(event) => updateInput(event.target.value)}

@@ -728,7 +728,7 @@ const ConversationPanel = ({
                               transfer.status === 'queued'
                                 ? 'Queued'
                                 : transfer.status === 'cancelling'
-                                  ? 'Cancelling…'
+                                  ? t('common.cancelling')
                                   : transfer.status === 'error'
                                     ? transfer.error || t('ws.uploadFailed')
                                     : `${percent}% of ${formatAttachmentSize(transfer.totalBytes)}`
@@ -1049,7 +1049,7 @@ const ConversationPanel = ({
                                       </Button>
                                     </DropdownMenuTrigger>
                                   </TooltipTrigger>
-                                  <TooltipContent side="top">More send options</TooltipContent>
+                                  <TooltipContent side="top">{t('common.moreSendOptions')}</TooltipContent>
                                 </Tooltip>
                                 <DropdownMenuContent side="top" align="end" className="w-56">
                                   <DropdownMenuItem

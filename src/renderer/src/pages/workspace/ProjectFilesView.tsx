@@ -914,7 +914,7 @@ const ProjectFilesFilterMenu = ({
         // The expanded files modal stacks at z-[56]; keep portaled popovers above it.
         className="z-[70] max-h-[360px] w-[320px] overflow-y-auto"
       >
-        <DropdownMenuLabel>Artifacts</DropdownMenuLabel>
+        <DropdownMenuLabel>{t('common.artifacts')}</DropdownMenuLabel>
         <DropdownMenuGroup>
           {fixedOptions.map((option) => (
             <FilterMenuItem
@@ -987,7 +987,7 @@ const ProjectFilesFilterMenu = ({
 
         {/* Remote section: SSH compute hosts */}
         <DropdownMenuSeparator />
-        <DropdownMenuLabel>Remote</DropdownMenuLabel>
+        <DropdownMenuLabel>{t('common.remote')}</DropdownMenuLabel>
         <DropdownMenuGroup>
           {hosts.map((host) => {
             const reachable = host.probeResult?.ok === true

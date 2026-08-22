@@ -2,6 +2,7 @@ import { AlertDialog } from 'radix-ui'
 import { FolderInput, FolderOpen } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
+import { useLanguage } from '@/i18n'
 import { Button } from '@/components/ui/button'
 import {
   dialogDescriptionClassName,
@@ -32,6 +33,7 @@ const LegacyDataMoveDialog = ({
   defaultParent,
   onDismiss
 }: LegacyDataMoveDialogProps): React.JSX.Element => {
+  const { t } = useLanguage()
   // When set, hand off to the shared migration modal targeting this parent; null returns to the prompt.
   const [migrationTarget, setMigrationTarget] = useState<string | null>(null)
   // The exact <home>/PureScience path "Move to PureScience" would create. Resolved server-side via
@@ -119,7 +121,7 @@ const LegacyDataMoveDialog = ({
                 className="mt-1 overflow-x-auto whitespace-pre-wrap break-all rounded-lg border border-border-200 bg-bg-10 px-2.5 py-1.5 font-mono text-xs text-text-000"
                 aria-label="New data location"
               >
-                {destination ?? 'Resolving…'}
+                {destination ?? t('common.resolving')}
               </pre>
             </div>
           </div>
@@ -142,7 +144,7 @@ const LegacyDataMoveDialog = ({
               onClick={() => void handleChooseFolder()}
             >
               <FolderOpen aria-hidden="true" />
-              {isPicking ? 'Checking…' : 'Choose another folder…'}
+              {isPicking ? t('common.checking') : t('common.chooseAnotherFolder')}
             </Button>
             <AlertDialog.Cancel asChild>
               <Button type="button" variant="ghost" disabled={isPicking} onClick={handleKeepHere}>

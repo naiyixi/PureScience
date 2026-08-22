@@ -53,7 +53,7 @@ const AgentInstallSourceMenu = ({
           ) : (
             <Icon aria-hidden />
           )}
-          {installing ? 'Installing…' : label}
+          {installing ? t('common.installing') : label}
           {!installing ? <ChevronDown aria-hidden="true" /> : null}
         </Button>
       </DropdownMenuTrigger>

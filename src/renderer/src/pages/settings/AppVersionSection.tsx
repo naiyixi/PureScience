@@ -27,9 +27,9 @@ const AppVersionSection = (): React.JSX.Element => {
       case 'checking':
         return t('settings.checkingForUpdates')
       case 'available':
-        return `New version ${status.latest} is available`
+        return t('common.newVersion').replace('{v}', status.latest ?? '')
       case 'downloading':
-        return `Downloading… ${status.progress ?? 0}%`
+        return `${t('common.downloading')} ${status.progress ?? 0}%`
       case 'ready':
         return t('settings.updateDownloaded')
       case 'up-to-date':
@@ -74,17 +74,17 @@ const AppVersionSection = (): React.JSX.Element => {
               className={isChecking ? 'size-4 animate-spin' : 'size-4'}
               aria-hidden="true"
             />
-            {isChecking ? 'Checking…' : t('settings.checkNow')}
+            {isChecking ? t('common.checking') : t('settings.checkNow')}
           </Button>
 
           {hasUpdate ? (
             <Button type="button" onClick={() => openDialog()}>
               <Download className="size-4" aria-hidden="true" />
               {isDownloading
-                ? `Downloading ${status.progress ?? 0}%`
+                ? `${t('common.downloading')} ${status.progress ?? 0}%`
                 : status.state === 'ready'
                   ? t('settings.updateReady')
-                  : `Update to ${status.latest}`}
+                  : t('common.updateTo').replace('{v}', status.latest ?? '')}
             </Button>
           ) : null}
         </div>

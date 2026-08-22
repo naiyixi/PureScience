@@ -1212,7 +1212,7 @@ const ArtifactProvenancePanel = ({
                     <Download aria-hidden="true" />
                   )}
                   {exportingNotebook
-                    ? 'Preparing…'
+                    ? t('common.preparing')
                     : executionKernels.length > 1
                       ? t('ws.downloadNotebooks')
                       : t('ws.downloadNotebook')}

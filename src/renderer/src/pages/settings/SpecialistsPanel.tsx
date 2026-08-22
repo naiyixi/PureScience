@@ -394,7 +394,7 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                   : 'bg-muted text-muted-foreground'
             }`}
           >
-            {exportPreview?.canExport ? '✓ Ready' : exportPreview ? '× Blocked' : 'Checking…'}
+            {exportPreview?.canExport ? `✓ ${t('common.ready')}` : exportPreview ? `× ${t('common.blocked')}` : t('common.checking')}
           </span>
         </div>
         {exportError ? (
@@ -559,7 +559,7 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                       : 'bg-danger-000/10 text-danger-000'
                   }`}
                 >
-                  {packagePreview.installable ? '✓ Installable' : '× Not installable'}
+                  {packagePreview.installable ? `✓ ${t('common.installable')}` : `× ${t('common.notInstallable')}`}
                 </span>
               ) : null}
             </h2>
@@ -699,7 +699,7 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-muted-foreground">Files</dt>
+                    <dt className="text-muted-foreground">{t('common.files')}</dt>
                     <dd>
                       {packagePreview.archive.fileCount ?? 0} /{' '}
                       {packagePreview.archive.limits.fileCount}

@@ -770,7 +770,7 @@ const SpecialistEditor = ({
               value={form.systemPrompt}
               onChange={(e) => setForm((prev) => ({ ...prev, systemPrompt: e.target.value }))}
               maxLength={SPECIALIST_SYSTEM_PROMPT_MAX_LENGTH}
-              placeholder="Optional — leave empty to use the base prompt as-is."
+              placeholder={t('settings.specialistPromptHint')}
               className="min-h-[120px] resize-y pb-7 text-[13px]"
             />
             <span className="pointer-events-none absolute bottom-2 right-3 text-[11px] tabular-nums text-muted-foreground">
@@ -909,7 +909,7 @@ const SpecialistEditor = ({
                           <input
                             ref={skillSearchRef}
                             type="search"
-                            placeholder="Search skills…"
+                            placeholder={t('common.searchSkills')}
                             value={skillSearchQuery}
                             onChange={(e) => setSkillSearchQuery(e.target.value)}
                             className="w-full rounded-md border border-border bg-card px-2.5 py-1.5 text-[12.5px] text-foreground placeholder:text-muted-foreground outline-none focus:border-primary"
@@ -963,7 +963,7 @@ const SpecialistEditor = ({
                           <input
                             ref={connectorSearchRef}
                             type="search"
-                            placeholder="Search connectors…"
+                            placeholder={t('common.searchConnectors')}
                             value={connectorSearchQuery}
                             onChange={(e) => setConnectorSearchQuery(e.target.value)}
                             className="w-full rounded-md border border-border bg-card px-2.5 py-1.5 text-[12.5px] text-foreground placeholder:text-muted-foreground outline-none focus:border-primary"
@@ -1163,8 +1163,8 @@ const SpecialistEditor = ({
           >
             {isSaving
               ? isEdit
-                ? 'Saving…'
-                : 'Creating…'
+                ? t('common.saving')
+                : t('common.creating')
               : isEdit
                 ? t('settings.saveChanges')
                 : t('settings.createSpecialist')}

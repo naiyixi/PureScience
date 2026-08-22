@@ -205,7 +205,7 @@ const AgentHomeImportView = ({ onImported }: AgentHomeImportViewProps): React.JS
           onClick={() => void rescan()}
           disabled={isScanning || importing}
         >
-          {isScanning ? 'Scanning…' : 'Rescan'}
+          {isScanning ? t('common.scanning') : t('common.rescan')}
         </Button>
         {currentSkills ? (
           <span className="text-xs text-muted-foreground">
@@ -248,7 +248,7 @@ const AgentHomeImportView = ({ onImported }: AgentHomeImportViewProps): React.JS
               onClick={() => void importSelected()}
               disabled={isScanning || importing || selected.size === 0}
             >
-              {importing ? 'Importing…' : `Import selected (${selected.size})`}
+              {importing ? t('common.importing') : t('common.importSelected').replace('{n}', String(selected.size))}
             </Button>
           </div>
 

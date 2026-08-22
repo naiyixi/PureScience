@@ -1,6 +1,8 @@
 import { Archive, KeyRound, LoaderCircle, RotateCcw, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 
+import { useLanguage } from '@/i18n'
+
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePermissionGrantsStore } from '@/stores/permission-grants-store'
@@ -20,6 +22,7 @@ const PermissionUndoItem = ({
   dismiss: (token: string) => void
   isRestoring: boolean
 }): React.JSX.Element => {
+  const { t } = useLanguage()
   const [pointerPaused, setPointerPaused] = useState(false)
   const [focusPaused, setFocusPaused] = useState(false)
   const paused = pointerPaused || focusPaused
@@ -90,7 +93,7 @@ const PermissionUndoItem = ({
           ) : (
             <RotateCcw className="size-4" aria-hidden="true" />
           )}
-          {isRestoring ? (undo.retry ? 'Retrying…' : 'Restoring…') : undo.retry ? 'Retry' : 'Undo'}
+          {isRestoring ? (undo.retry ? t('common.retrying') : t('common.restoring')) : undo.retry ? t('common.retry') : t('common.undo')}
         </Button>
       ) : null}
       <TooltipProvider delayDuration={200}>
@@ -126,6 +129,7 @@ const ArchiveUndoItem = ({
   restore: (key: string) => Promise<void>
   isRestoring: boolean
 }): React.JSX.Element => {
+  const { t } = useLanguage()
   const [pointerPaused, setPointerPaused] = useState(false)
   const [focusPaused, setFocusPaused] = useState(false)
   const paused = pointerPaused || focusPaused
@@ -171,7 +175,7 @@ const ArchiveUndoItem = ({
         ) : (
           <RotateCcw className="size-4" aria-hidden="true" />
         )}
-        {isRestoring ? (undo.retry ? 'Retrying…' : 'Restoring…') : undo.retry ? 'Retry' : 'Undo'}
+        {isRestoring ? (undo.retry ? t('common.retrying') : t('common.restoring')) : undo.retry ? t('common.retry') : t('common.undo')}
       </Button>
       <TooltipProvider delayDuration={200}>
         <Tooltip>

@@ -1,3 +1,4 @@
+import { useLanguage } from '@/i18n'
 import { Button } from '@/components/ui/button'
 import { useState } from 'react'
 
@@ -32,6 +33,7 @@ const HandoffLifecycleStatus = ({
   handoff: HandoffTranscriptProjection
   onRetry?: () => Promise<void>
 }): React.JSX.Element => {
+  const { t } = useLanguage()
   const isFailure = handoff.phase === 'failed'
   const [isRetrying, setIsRetrying] = useState(false)
   const [retryError, setRetryError] = useState<string | undefined>()
@@ -77,7 +79,7 @@ const HandoffLifecycleStatus = ({
           disabled={isRetrying}
           onClick={() => void retry()}
         >
-          {isRetrying ? 'Retrying…' : 'Retry handoff'}
+          {isRetrying ? t('common.retrying') : t('common.retryHandoff')}
         </Button>
       ) : null}
       {isFailure && retryError ? <span className="ml-1">{retryError}</span> : null}

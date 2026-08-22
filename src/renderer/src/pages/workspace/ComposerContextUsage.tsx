@@ -6,6 +6,7 @@
 import { Gauge, Minimize2 } from 'lucide-react'
 import { useEffect, useId, useRef, useState, type FocusEvent } from 'react'
 
+import { useLanguage } from '@/i18n'
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import type { AcpContextUsage, AcpContextUsageCategoryKey } from '../../../../shared/acp'
@@ -63,6 +64,7 @@ const ComposerContextUsage = ({
   compactDisabledReason,
   onCompact
 }: ComposerContextUsageProps): React.JSX.Element | null => {
+  const { t } = useLanguage()
   const [open, setOpen] = useState(false)
   const contentId = useId()
   const triggerRef = useRef<HTMLButtonElement | null>(null)
@@ -131,7 +133,7 @@ const ComposerContextUsage = ({
       className={`inline-flex h-6 w-full items-center justify-center gap-1 rounded-lg bg-bg-200 px-2 text-[11px] text-text-000 outline-none transition-colors duration-150 motion-reduce:transition-none hover:bg-bg-300 focus-visible:ring-3 focus-visible:ring-ring/50 active:bg-bg-400 disabled:cursor-not-allowed disabled:opacity-50 ${compactHint ? 'cursor-not-allowed opacity-50 hover:bg-bg-200' : ''}`}
     >
       <Minimize2 className="size-3" aria-hidden="true" />
-      {compacting ? 'Compacting…' : 'Compact'}
+      {compacting ? t('common.compacting') : t('common.compact')}
     </button>
   )
 

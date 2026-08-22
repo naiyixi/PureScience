@@ -205,6 +205,7 @@ const TerminalInput = ({
 
 // Renders the notebook preview and keeps it synchronized with main-process runtime events.
 const NotebookPreview = ({ item }: NotebookPreviewProps): React.JSX.Element => {
+  const { t } = useLanguage()
   const [notebookState, setNotebookState] = useState<NotebookSessionState | undefined>()
   const [terminalCode, setTerminalCode] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -473,7 +474,7 @@ const NotebookPreview = ({ item }: NotebookPreviewProps): React.JSX.Element => {
           className="flex shrink-0 items-center justify-between gap-2 border-b border-border-100 bg-bg-300 px-3 py-1.5 text-[11px] text-text-100"
           data-testid="r-restart-banner"
         >
-          <span>Installed R packages need a kernel restart to load.</span>
+          <span>{t('common.rKernelRestartHint')}</span>
           <button
             type="button"
             disabled={isRestarting}
@@ -481,7 +482,7 @@ const NotebookPreview = ({ item }: NotebookPreviewProps): React.JSX.Element => {
             className="shrink-0 rounded-md border border-border-200 px-2 py-0.5 font-medium text-text-100 transition-colors hover:bg-bg-200 disabled:opacity-50"
             data-testid="r-restart-button"
           >
-            {isRestarting ? 'Restarting…' : 'Restart R kernel'}
+            {isRestarting ? t('common.restarting') : t('common.restartRKernel')}
           </button>
         </div>
       ) : null}
