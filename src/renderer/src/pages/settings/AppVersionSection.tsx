@@ -90,6 +90,33 @@ const AppVersionSection = (): React.JSX.Element => {
         </div>
       </SettingsRow>
 
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t pt-3 text-xs">
+        <a
+          href={APP.links.website}
+          target="_blank"
+          rel="noreferrer"
+          className="text-muted-foreground underline-offset-4 hover:underline"
+        >
+          {t('settings.helpCenter')}
+        </a>
+        <a
+          href={APP.links.githubReleases}
+          target="_blank"
+          rel="noreferrer"
+          className="text-muted-foreground underline-offset-4 hover:underline"
+        >
+          {t('settings.releaseNotes')}
+        </a>
+        <a
+          href={APP.links.githubIssues}
+          target="_blank"
+          rel="noreferrer"
+          className="text-muted-foreground underline-offset-4 hover:underline"
+        >
+          {t('settings.reportIssue')}
+        </a>
+      </div>
+
       {statusLine ? (
         <p
           className={

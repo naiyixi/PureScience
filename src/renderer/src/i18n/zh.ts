@@ -1252,6 +1252,9 @@ export const zh = {
   'ws.sendMessage': '发送消息',
 
   'settings.about': '关于',
+  'settings.helpCenter': '帮助中心',
+  'settings.releaseNotes': '更新日记',
+  'settings.reportIssue': '报告问题',
 
   // settings — remote control panel
   'settings.remoteAccessIsOff': '远程访问已关闭',

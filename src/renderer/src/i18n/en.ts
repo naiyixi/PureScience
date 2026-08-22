@@ -1320,6 +1320,9 @@ export const en: Record<ZhKey, string> = {
   'ws.sendMessage': 'Send message',
 
   'settings.about': 'About',
+  'settings.helpCenter': 'Help center',
+  'settings.releaseNotes': 'Release notes',
+  'settings.reportIssue': 'Report an issue',
 
   // settings — remote control panel
   'settings.remoteAccessIsOff': 'Remote access is off',
