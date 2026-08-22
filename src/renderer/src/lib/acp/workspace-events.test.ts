@@ -539,7 +539,7 @@ describe('workspace runtime events', () => {
         level: 'error',
         providerError: true,
         title: 'Prompt failed',
-        text: 'Internal error: upstream exploded'
+        text: 'Internal error: source exploded'
       })
     )
 

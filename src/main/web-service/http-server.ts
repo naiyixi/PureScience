@@ -265,26 +265,26 @@ const streamPreviewResource = async (
   const headers = new Headers()
   if (request.headers.range) headers.set('range', request.headers.range)
   try {
-    const upstream = await net.fetch(resourceUrl, {
+    const source = await net.fetch(resourceUrl, {
       method: request.method,
       headers,
       signal: abortController.signal
     })
     if (abortController.signal.aborted) return
     const responseHeaders: Record<string, string> = {}
-    upstream.headers.forEach((value, key) => {
+    source.headers.forEach((value, key) => {
       if (!['connection', 'transfer-encoding'].includes(key.toLowerCase()))
         responseHeaders[key] = value
     })
     Object.assign(responseHeaders, responseOverrides)
-    response.writeHead(upstream.status, responseHeaders)
-    if (!upstream.body || request.method === 'HEAD') {
+    response.writeHead(source.status, responseHeaders)
+    if (!source.body || request.method === 'HEAD') {
       response.end()
       return
     }
     try {
-      const source = Readable.fromWeb(upstream.body as unknown as NodeReadableStream<Uint8Array>)
-      await pipeline(source, response, { signal: abortController.signal })
+      const readableBody = Readable.fromWeb(source.body as unknown as NodeReadableStream<Uint8Array>)
+      await pipeline(readableBody, response, { signal: abortController.signal })
     } catch (error) {
       if (!abortController.signal.aborted) throw error
     }

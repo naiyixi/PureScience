@@ -263,7 +263,7 @@ describe('gwas_get_study', () => {
     expect(out.study?.accession_id).toBe('GCST90841394')
   })
 
-  it('maps an upstream 404 to found:false', async () => {
+  it('maps an source 404 to found:false', async () => {
     const fetchImpl = vi.fn().mockResolvedValueOnce(errRes(404))
     const out = (await run('gwas_get_study', { accession_id: 'GCST99999999' }, fetchImpl)) as {
       found: boolean
@@ -302,7 +302,7 @@ describe('gwas_get_variant', () => {
     ])
   })
 
-  it('maps an upstream 404 to found:false', async () => {
+  it('maps an source 404 to found:false', async () => {
     const fetchImpl = vi.fn().mockResolvedValueOnce(errRes(404))
     const out = (await run('gwas_get_variant', { rs_id: 'rs00000zzz' }, fetchImpl)) as {
       found: boolean

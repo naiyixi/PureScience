@@ -15,7 +15,7 @@ const VCV_RE = /^VCV(\d+)(?:\.\d+)?$/i
 const RCV_RE = /^RCV\d+(?:\.\d+)?$/i
 const RSID_RE = /^rs\d+$/i
 
-// Structured "contact email required" result (mirrors the upstream _contact_required_result). Run()
+// Structured "contact email required" result (mirrors the source _contact_required_result). Run()
 // returns this instead of throwing so the message reaches the agent as a clean tool result.
 type ContactRequired = { error: 'contact_email_required'; message: string }
 function contactRequired(): ContactRequired {

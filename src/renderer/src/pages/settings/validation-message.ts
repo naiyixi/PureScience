@@ -10,7 +10,7 @@ const CATEGORY_MESSAGES: Record<ValidationCategory, string> = {
   'bad-url': 'The base URL is invalid. Enter a full URL like https://gateway.example/v1.',
   timeout: 'The request timed out and was stopped.',
   incompatible: "This provider isn't compatible with the active agent framework.",
-  'server-error': 'The gateway or upstream service is temporarily unavailable. Try again later.',
+  'server-error': 'The gateway or source service is temporarily unavailable. Try again later.',
   unknown: 'Validation failed for an unknown reason.'
 }
 

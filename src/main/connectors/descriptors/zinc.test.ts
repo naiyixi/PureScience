@@ -59,7 +59,7 @@ afterEach(() => {
 })
 
 describe('zinc / registration', () => {
-  it('exposes all five tools in upstream order, all on the zinc connector', () => {
+  it('exposes all five tools in source order, all on the zinc connector', () => {
     expect(ZINC_TOOLS.map((t) => t.id)).toEqual([
       'zinc_search_by_id',
       'zinc_search_by_smiles',
@@ -373,7 +373,7 @@ describe('zinc / zinc_random_sample', () => {
     expect(body.get('count')).toBe('3')
     expect(body.get('subset')).toBe('lead-like')
 
-    // count doubles as the response bound: 5 upstream rows, capped to 3.
+    // count doubles as the response bound: 5 source rows, capped to 3.
     const o = out as {
       query: Record<string, unknown>
       total_available: number

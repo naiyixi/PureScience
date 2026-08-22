@@ -11,7 +11,7 @@ const engine = (fetchImpl: unknown): ParserEngine =>
   new ParserEngine({ fetchImpl: fetchImpl as typeof fetch })
 
 describe('chemistry tool set', () => {
-  it('exposes exactly the 12 upstream tools and drops the removed ones', () => {
+  it('exposes exactly the 12 source tools and drops the removed ones', () => {
     expect(CHEMISTRY_TOOLS.map((t) => t.id).sort()).toEqual(
       [
         'bindingdb_ligands_by_target',

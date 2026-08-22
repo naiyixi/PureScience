@@ -535,7 +535,7 @@ describe('cancer_models / clinical_attributes', () => {
 })
 
 // Live integration tests against the real cBioPortal API. Opt-in via LIVE_API=1 to keep the default
-// suite offline and to respect upstream rate limits (each block hits the network a handful of times).
+// suite offline and to respect source rate limits (each block hits the network a handful of times).
 describe.skipIf(!process.env.LIVE_API)('cancer_models / LIVE cBioPortal', () => {
   const live = (id: string, args: Record<string, unknown>): Promise<unknown> =>
     new ParserEngine().call(tool(id), args, {})

@@ -11,7 +11,7 @@
 # Requirements: node, npm, gh (authenticated with workflow scope), ~10 min build.
 #
 # Pitfalls baked in (do not "simplify"):
-#   1. ALWAYS pass -R naiyixi/PureScience to gh: this repo has an `upstream` remote
+#   1. ALWAYS pass -R naiyixi/PureScience to gh: this repo has an `source` remote
 #      (aipoch/open-science); bare `gh release` resolves to the wrong repo silently.
 #   2. The client resolves installers by platformDownloadKey() in src/shared/update.ts:
 #      darwin/arm64 → "mac-arm64" (NOT "darwin-arm64"). A wrong key makes the client

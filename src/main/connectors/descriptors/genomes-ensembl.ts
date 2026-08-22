@@ -71,7 +71,7 @@ function leanColocated(c: Dict): Dict {
   }
 }
 
-// Collapses one upstream VEP result into a most-severe-first summary: sorted+capped per-transcript
+// Collapses one source VEP result into a most-severe-first summary: sorted+capped per-transcript
 // rows, a per-gene worst-impact roll-up over the FULL list, and colocated-variant/feature counts.
 function summarizeVepResult(r: Dict, maxConsequences: number): Dict {
   const tcs = (r.transcript_consequences as Dict[] | undefined) ?? []
@@ -167,7 +167,7 @@ export const GENOMES_ENSEMBL_TOOLS: ToolDescriptor[] = [
     id: 'ensembl_lookup',
     connector: 'genomes',
     description:
-      'Look up an Ensembl gene/transcript/protein by stable ID or a gene by symbol; returns the core annotation record (location, biotype, canonical transcript, description). Args: query (Ensembl stable ID ENSG.../ENST.../ENSP..., versioned accepted; or a gene symbol/alias like BRAF — true stable IDs [ENS + optional species code + feature letter + >=6-digit block, or LRG_N] route to the ID endpoint; everything else, incl. symbols starting with "ENS" like ENSA, to the symbol endpoint); species (Ensembl species name for symbol lookups, default homo_sapiens; ignored for stable IDs); expand (include the child feature tree — a gene\'s transcripts/exons/translation; default off). Returns {found, query, species, record}; record is null when nothing matches, else the upstream lookup dict — for a gene {id, display_name, description, biotype, object_type, seq_region_name, start, end, strand, assembly_name, canonical_transcript, version, ...} with 1-based inclusive coordinates.',
+      'Look up an Ensembl gene/transcript/protein by stable ID or a gene by symbol; returns the core annotation record (location, biotype, canonical transcript, description). Args: query (Ensembl stable ID ENSG.../ENST.../ENSP..., versioned accepted; or a gene symbol/alias like BRAF — true stable IDs [ENS + optional species code + feature letter + >=6-digit block, or LRG_N] route to the ID endpoint; everything else, incl. symbols starting with "ENS" like ENSA, to the symbol endpoint); species (Ensembl species name for symbol lookups, default homo_sapiens; ignored for stable IDs); expand (include the child feature tree — a gene\'s transcripts/exons/translation; default off). Returns {found, query, species, record}; record is null when nothing matches, else the source lookup dict — for a gene {id, display_name, description, biotype, object_type, seq_region_name, start, end, strand, assembly_name, canonical_transcript, version, ...} with 1-based inclusive coordinates.',
     input: {
       type: 'object',
       properties: {
@@ -179,7 +179,7 @@ export const GENOMES_ENSEMBL_TOOLS: ToolDescriptor[] = [
     },
     required: ['query'],
     returns:
-      '{found, query, species, record} — record is the upstream lookup dict (1-based inclusive coords) or null when nothing matches.',
+      '{found, query, species, record} — record is the source lookup dict (1-based inclusive coords) or null when nothing matches.',
     example: 'const result = await host.mcp("genomes", "ensembl_lookup", {"query": "BRAF"})',
     run: async (ctx, a) => {
       const query = String(a.query).trim()
@@ -201,7 +201,7 @@ export const GENOMES_ENSEMBL_TOOLS: ToolDescriptor[] = [
     id: 'ensembl_xrefs',
     connector: 'genomes',
     description:
-      'External cross-references of an Ensembl stable ID — the bridge from Ensembl gene/transcript IDs to HGNC, NCBI (EntrezGene), UniProt, OMIM, RefSeq, Expression Atlas and others. Args: stable_id (ENSG.../ENST...); external_db (optional exact upstream database-name filter, e.g. HGNC, EntrezGene, Uniprot_gn, MIM_GENE, RefSeq_mRNA; omit for all). Returns {stable_id, external_db, n_xrefs, xrefs} — the COMPLETE list (never truncated), sorted by (dbname, primary_id); each row {dbname, db_display_name, primary_id, display_id, description, synonyms, info_type}. Unknown IDs return n_xrefs:0.',
+      'External cross-references of an Ensembl stable ID — the bridge from Ensembl gene/transcript IDs to HGNC, NCBI (EntrezGene), UniProt, OMIM, RefSeq, Expression Atlas and others. Args: stable_id (ENSG.../ENST...); external_db (optional exact source database-name filter, e.g. HGNC, EntrezGene, Uniprot_gn, MIM_GENE, RefSeq_mRNA; omit for all). Returns {stable_id, external_db, n_xrefs, xrefs} — the COMPLETE list (never truncated), sorted by (dbname, primary_id); each row {dbname, db_display_name, primary_id, display_id, description, synonyms, info_type}. Unknown IDs return n_xrefs:0.',
     input: {
       type: 'object',
       properties: {
@@ -240,7 +240,7 @@ export const GENOMES_ENSEMBL_TOOLS: ToolDescriptor[] = [
     id: 'ensembl_vep_variant',
     connector: 'genomes',
     description:
-      'Predict variant consequences with Ensembl VEP — most-severe-first summary of the (often huge) per-transcript consequence list. Pass EITHER variant_id OR region+allele. Args: variant_id (dbSNP rsID rs7412, COSMIC COSV..., or HGMD ID); region (GRCh38 1-based inclusive chrom:start-end, e.g. 7:140753336-140753336; SNV start==end; insertion start=end+1; explicit strand suffix :1/:-1 accepted); allele (variant allele on forward strand for the region route, e.g. T or - for deletion); species (default homo_sapiens); max_consequences (cap on returned per-transcript rows, default 25; full count in n_transcript_consequences, rows kept are most severe HIGH>MODERATE>LOW>MODIFIER; transcript_consequences_truncated flags the cap). Returns {query, n_results, results:[{input, assembly_name, seq_region_name, start, end, strand, allele_string, most_severe_consequence, genes:[{gene_id, gene_symbol, worst_impact, n_transcripts}], n_transcript_consequences, transcript_consequences_truncated, transcript_consequences:[...], n_regulatory_feature_consequences, n_motif_feature_consequences, colocated_variants:[...]}]}. Unknown rsIDs raise with the upstream message.',
+      'Predict variant consequences with Ensembl VEP — most-severe-first summary of the (often huge) per-transcript consequence list. Pass EITHER variant_id OR region+allele. Args: variant_id (dbSNP rsID rs7412, COSMIC COSV..., or HGMD ID); region (GRCh38 1-based inclusive chrom:start-end, e.g. 7:140753336-140753336; SNV start==end; insertion start=end+1; explicit strand suffix :1/:-1 accepted); allele (variant allele on forward strand for the region route, e.g. T or - for deletion); species (default homo_sapiens); max_consequences (cap on returned per-transcript rows, default 25; full count in n_transcript_consequences, rows kept are most severe HIGH>MODERATE>LOW>MODIFIER; transcript_consequences_truncated flags the cap). Returns {query, n_results, results:[{input, assembly_name, seq_region_name, start, end, strand, allele_string, most_severe_consequence, genes:[{gene_id, gene_symbol, worst_impact, n_transcripts}], n_transcript_consequences, transcript_consequences_truncated, transcript_consequences:[...], n_regulatory_feature_consequences, n_motif_feature_consequences, colocated_variants:[...]}]}. Unknown rsIDs raise with the source message.',
     input: {
       type: 'object',
       properties: {
@@ -311,7 +311,7 @@ export const GENOMES_ENSEMBL_TOOLS: ToolDescriptor[] = [
       if ((symbol && geneId) || (!symbol && !geneId)) {
         throw new Error('ensembl_homology requires exactly one of gene_symbol or gene_id')
       }
-      // The /homology/symbol route stalls upstream — always resolve a symbol to a stable ID first.
+      // The /homology/symbol route stalls source — always resolve a symbol to a stable ID first.
       if (symbol) {
         const rec = (await ctx.fetchJson(
           `${ENSEMBL}/lookup/symbol/${encodeURIComponent(species)}/${encodeURIComponent(symbol)}?expand=0`
@@ -352,7 +352,7 @@ export const GENOMES_ENSEMBL_TOOLS: ToolDescriptor[] = [
     id: 'ensembl_sequence',
     connector: 'genomes',
     description:
-      'Fetch sequence from Ensembl — by stable ID (gene/transcript/protein) or by genomic region. Pass EITHER stable_id OR region. Args: stable_id (ENSG.../ENST.../ENSP...); region (1-based inclusive chrom:start..end or chrom:start-end, GRCh38 for human, max 10Mb); species (for region route, default homo_sapiens; ignored for stable IDs); seq_type (ID route: genomic default/cdna/cds/protein — protein only for ENST/ENSP; ignored for regions which always return genomic); max_bytes (payload guard default 400000 — larger sequences have `seq` omitted; length/sha256/metadata always returned; re-call with larger max_bytes for full text). Returns {found, query, seq_type, id, description, molecule, length, sha256, seq} — length in the unit implied by molecule (bases for dna, residues for protein); seq replaced by seq_omitted when capped; found:false with null fields for unknown stable IDs; malformed/oversized regions raise with the upstream message.',
+      'Fetch sequence from Ensembl — by stable ID (gene/transcript/protein) or by genomic region. Pass EITHER stable_id OR region. Args: stable_id (ENSG.../ENST.../ENSP...); region (1-based inclusive chrom:start..end or chrom:start-end, GRCh38 for human, max 10Mb); species (for region route, default homo_sapiens; ignored for stable IDs); seq_type (ID route: genomic default/cdna/cds/protein — protein only for ENST/ENSP; ignored for regions which always return genomic); max_bytes (payload guard default 400000 — larger sequences have `seq` omitted; length/sha256/metadata always returned; re-call with larger max_bytes for full text). Returns {found, query, seq_type, id, description, molecule, length, sha256, seq} — length in the unit implied by molecule (bases for dna, residues for protein); seq replaced by seq_omitted when capped; found:false with null fields for unknown stable IDs; malformed/oversized regions raise with the source message.',
     input: {
       type: 'object',
       properties: {
@@ -404,7 +404,7 @@ export const GENOMES_ENSEMBL_TOOLS: ToolDescriptor[] = [
           throw err
         }
       } else {
-        // Region route: malformed/oversized regions raise the upstream 400 (not caught).
+        // Region route: malformed/oversized regions raise the source 400 (not caught).
         resp = (await ctx.fetchJson(`${ENSEMBL}/sequence/region/${species}/${region}`)) as Dict
       }
 
@@ -429,7 +429,7 @@ export const GENOMES_ENSEMBL_TOOLS: ToolDescriptor[] = [
     id: 'ensembl_overlap_region',
     connector: 'genomes',
     description:
-      'List Ensembl features overlapping a genomic region — genes, transcripts, regulatory features (enhancers/promoters), repeats, variants, karyotype bands. Args: region (1-based inclusive chrom:start-end GRCh38, e.g. 7:140719327-140925199; upstream rejects spans >5Mb — split larger); feature (gene default/transcript/exon/cds/regulatory/motif/repeat/variation/structural_variation/band/simple/misc); species (default homo_sapiens); max_features (row cap default 500; n_total carries the complete overlap count, features_truncated flags the cap). Returns {region, species, feature, n_total, features_truncated, features} sorted by (start,id). Row shape varies — genes {id, external_name, biotype, description, start, end, strand, canonical_transcript, ...}; regulatory {id, description, start, end, extended_start/end, ...}. Empty regions return n_total:0.',
+      'List Ensembl features overlapping a genomic region — genes, transcripts, regulatory features (enhancers/promoters), repeats, variants, karyotype bands. Args: region (1-based inclusive chrom:start-end GRCh38, e.g. 7:140719327-140925199; source rejects spans >5Mb — split larger); feature (gene default/transcript/exon/cds/regulatory/motif/repeat/variation/structural_variation/band/simple/misc); species (default homo_sapiens); max_features (row cap default 500; n_total carries the complete overlap count, features_truncated flags the cap). Returns {region, species, feature, n_total, features_truncated, features} sorted by (start,id). Row shape varies — genes {id, external_name, biotype, description, start, end, strand, canonical_transcript, ...}; regulatory {id, description, start, end, extended_start/end, ...}. Empty regions return n_total:0.',
     input: {
       type: 'object',
       properties: {
@@ -467,7 +467,7 @@ export const GENOMES_ENSEMBL_TOOLS: ToolDescriptor[] = [
       const species = String(a.species ?? DEFAULT_SPECIES)
       const feature = String(a.feature ?? 'gene')
       const maxFeatures = clampInt(a.max_features, 500, 1, 100000)
-      // Oversized (>5Mb) or malformed regions raise the upstream 400 (not caught).
+      // Oversized (>5Mb) or malformed regions raise the source 400 (not caught).
       const raw =
         ((await ctx.fetchJson(
           `${ENSEMBL}/overlap/region/${species}/${region}?feature=${encodeURIComponent(feature)}`

@@ -4,7 +4,7 @@ import { HUMANGENETICS_EQTL_TOOLS } from './humangenetics-eqtl'
 import { HUMANGENETICS_PHEWAS_TOOLS } from './humangenetics-phewas'
 
 // "Human Genetics" connector: human genetic-association evidence across the GWAS Catalog, the
-// eQTL Catalogue, and PheWeb PheWAS portals (FinnGen, BioBank Japan). Split by upstream source;
+// eQTL Catalogue, and PheWeb PheWAS portals (FinnGen, BioBank Japan). Split by source source;
 // this module aggregates them in the connector's display order.
 export const HUMAN_GENETICS_TOOLS: ToolDescriptor[] = [
   ...HUMANGENETICS_GWAS_TOOLS,

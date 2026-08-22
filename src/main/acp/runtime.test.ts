@@ -12870,7 +12870,7 @@ describe('ACP runtime session management', () => {
     )
   })
 
-  it('tokenizes context with the upstream model instead of the ACP framework default', async () => {
+  it('tokenizes context with the source model instead of the ACP framework default', async () => {
     const process = new FakeAgentProcess()
     startFakeAgent(process, ['s1'])
     const runtime = new AcpRuntime({
@@ -13496,7 +13496,7 @@ describe('ACP runtime session management', () => {
       onPrompt: async ({ sessionId }) => {
         handleSessionUpdate(runtime, {
           sessionId,
-          // First upstream model response: 12 input + 3 cache read.
+          // First source model response: 12 input + 3 cache read.
           update: { sessionUpdate: 'usage_update', used: 15, size: 200000 }
         })
         firstUsageSent.resolve()
@@ -16300,7 +16300,7 @@ describe('ACP runtime session management', () => {
     const events: Array<{ kind: string; providerError?: boolean }> = []
     startFakeAgent(process, ['remote-session-1'], {
       onPrompt: () => {
-        // An upstream provider rejection the agent relays as an APIError — the user's to fix, not a bug.
+        // An provider rejection the agent relays as an APIError — the user's to fix, not a bug.
         throw acp.RequestError.internalError({ errorName: 'APIError' }, 'Invalid API key')
       }
     })
@@ -16326,7 +16326,7 @@ describe('ACP runtime session management', () => {
     const events: Array<{ kind: string; providerError?: boolean }> = []
     startFakeAgent(process, ['remote-session-1'], {
       onPrompt: () => {
-        // A protocol-level failure with no upstream provider signal is an app/ACP problem, not a
+        // A protocol-level failure with no provider signal is an app/ACP problem, not a
         // provider one, so it must NOT be tagged (the renderer keeps the Report button).
         throw acp.RequestError.internalError({ errorKind: 'invalid_request' }, 'malformed request')
       }
@@ -18383,7 +18383,7 @@ describe('ACP runtime — model hot switch', () => {
     ])
   })
 
-  it('waits for a generating Claude message before retargeting its upstream provider', async () => {
+  it('waits for a generating Claude message before retargeting its provider', async () => {
     const process = new FakeAgentProcess()
     const promptStarted = createDeferred()
     const finishPrompt = createDeferred()

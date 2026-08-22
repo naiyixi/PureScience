@@ -759,7 +759,7 @@ describe('renderOfficeFile', () => {
     expect(mocks.renderSpreadsheet).not.toHaveBeenCalled()
   })
 
-  it('renders PPTX with upstream ZIP limits and lazy windowing', async () => {
+  it('renders PPTX with source ZIP limits and lazy windowing', async () => {
     mocks.openPptx.mockResolvedValue(undefined)
     Object.defineProperty(container, 'clientWidth', { configurable: true, value: 800 })
 

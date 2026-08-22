@@ -1,6 +1,6 @@
 import type { ToolContext, ToolDescriptor } from '../types'
 
-// Gene-regulation domain connector aggregating three public REST APIs, mirroring the upstream
+// Gene-regulation domain connector aggregating three public REST APIs, mirroring the source
 // mcp-regulation server: ENCODE portal (functional-genomics experiments/biosamples/files), JASPAR
 // (TF binding profiles), and UniBind (ChIP-seq-derived direct TFBS). All read-only; the engine
 // retries 429/5xx. Complete result sets are paged server-side and count-verified (`total`/`count`
@@ -96,7 +96,7 @@ function sortedStrings(v: unknown): string[] {
 }
 
 // ENCODE stable-field record builders — extract the documented, reproducible subset of the full
-// portal object (volatile audits/analyses/internal status are excluded upstream and here).
+// portal object (volatile audits/analyses/internal status are excluded source and here).
 function experimentRecord(doc: Record<string, unknown>): Record<string, unknown> {
   const target = doc.target
   const bio = asRecord(doc.biosample_ontology)
@@ -192,7 +192,7 @@ function biosampleRecord(doc: Record<string, unknown>): Record<string, unknown> 
 }
 
 // Builds one /report/ page URL: sort=accession makes the from-walk cover exactly the full set
-// (/search/ ignores `from` upstream, so all paging goes through /report/).
+// (/search/ ignores `from` source, so all paging goes through /report/).
 function encodeReportUrl(
   type: string,
   filters: Record<string, unknown>,

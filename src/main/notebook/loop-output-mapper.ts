@@ -11,7 +11,7 @@ export type MappedLoopOutputs = {
   traceback: string
 }
 
-// 输出预算: 单次运行的文本输出上限 (对齐上游 v0.15.1 的共享 2 MiB 文本预算), 防止长会话/
+// 输出预算: 单次运行的文本输出上限 (对齐行业实践共享 2 MiB 文本预算), 防止长会话/
 // 大输出会话的内存与 IPC 尖峰; 超出部分截断并追加标记。
 export const NOTEBOOK_RUN_OUTPUT_TEXT_BUDGET = 2 * 1024 * 1024
 

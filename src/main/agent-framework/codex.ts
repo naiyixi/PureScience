@@ -33,7 +33,7 @@ import codexNativeModelInstructions from './codex-native-model-instructions.md?r
 
 const CODEX_PROVIDER_ID = 'purescience'
 // Catalog model used only for Codex's local metadata; the Responses bridge rewrites it to the selected
-// upstream provider model, so it never appears in the provider UI and does not decide which model
+// provider model, so it never appears in the provider UI and does not decide which model
 // answers. It MUST be a classic tool-mode entry (tool_mode unset), not a `code_mode_only` model like
 // the gpt-5.6-* family: code-mode models advertise no function tools and instead drive an
 // OpenAI-hosted code-execution host that a custom Chat Completions gateway cannot provide, so Codex
@@ -240,7 +240,7 @@ const buildCodexNativeModelCatalogEntry = (provider: CodexNativeModelCatalogInpu
     availability_nux: null,
     upgrade: null,
     base_instructions: codexNativeModelInstructions,
-    // Skill discovery is an app/runtime capability, not an optional upstream Responses tool.
+    // Skill discovery is an app/runtime capability, not an optional source Responses tool.
     // Keep Codex's native Skill guidance so materialized mcp-* connector skills remain usable.
     include_skills_usage_instructions: true,
     supports_reasoning_summaries: false,

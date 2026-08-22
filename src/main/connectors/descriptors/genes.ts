@@ -5,7 +5,7 @@ import { GENES_REACTOME_TOOLS } from './genes-reactome'
 
 // "Genes & Ontologies" connector: gene/protein identity (mygene.info, UniProt) plus ontology
 // terms (OLS4), GO annotations (QuickGO) and Reactome pathways. Tools are split across descriptor
-// files by upstream API; this module aggregates them in the connector's display order.
+// files by source API; this module aggregates them in the connector's display order.
 const POOL: ToolDescriptor[] = [
   ...GENES_PROTEINS_TOOLS,
   ...GENES_ONTOLOGY_TOOLS,

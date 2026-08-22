@@ -261,7 +261,7 @@ describe('logger: formatLine', () => {
         statusCode: 429,
         requestId: 'request-7319'
       },
-      cause: new Error(`upstream https://user:${sentinel}@example.test/v1`)
+      cause: new Error(`source https://user:${sentinel}@example.test/v1`)
     })
 
     const line = formatLine('error', 'acp', 'prompt failed', {

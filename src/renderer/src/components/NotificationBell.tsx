@@ -62,7 +62,7 @@ const MOBILE_MESSAGE_CENTER_QUERY = '(max-width: 47.999rem)'
 const clamp = (value: number, minimum: number, maximum: number): number =>
   Math.min(Math.max(value, minimum), maximum)
 
-// 审批回放 (v0.12 上游特性): 本基座的审批走独立通道 (settings/compute enqueue), 无需回放。
+// 审批回放 (v0.12 特性): 本基座的审批走独立通道 (settings/compute enqueue), 无需回放。
 // 保留 pending 状态的展示; 点击已读等行为在下方处理。
 const replayPendingApproval = async (): Promise<boolean> => false
 

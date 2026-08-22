@@ -46,7 +46,7 @@ const makeProvenance = (
   releaseDigest: 'b'.repeat(64),
   artifactDigest: 'c'.repeat(64),
   installedArchiveDigest: 'd'.repeat(64),
-  upstreamCommit: 'e'.repeat(40),
+  sourceCommit: 'e'.repeat(40),
   selectedSkillIds: ['skill-a'],
   selectedConnectorIds: ['connector-a'],
   installedAt: '2026-08-18T00:00:00.000Z',

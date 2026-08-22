@@ -32,7 +32,7 @@ export const RESUME_MODEL_INCOMPATIBLE_MESSAGE =
 export const IMAGE_REPLAY_UNSUPPORTED_MESSAGE =
   'This conversation needs image replay, but the selected model does not support image input.'
 
-// Vision-model image relay (upstream #1314 port): surfaced when image input must be translated
+// Vision-model image relay : surfaced when image input must be translated
 // through the configured Vision model and that translation cannot happen. The classifier treats
 // these as expected configuration failures (hidden report button).
 export const VISION_MODEL_NOT_CONFIGURED_MESSAGE =

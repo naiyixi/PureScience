@@ -57,7 +57,7 @@ export type AgentModelConfig = {
   authentication?: AgentAuthentication
   providerConfiguration?: AgentProviderConfiguration
   // Framework-specific model id used for local metadata/configuration. A bridge may keep this
-  // separate from the provider's upstream model id.
+  // separate from the provider's source model id.
   sessionModel?: string
   // Exact stable app guidance delivered through framework-native backend configuration rather than
   // ordinary ACP prompt content. The runtime uses this for context accounting and to avoid copying
@@ -268,10 +268,10 @@ export type ResolvedAgentBackend = {
   // Model-resolved reasoning effort to apply per session via ACP. The runtime uses exact matching;
   // undefined leaves the agent default unchanged.
   sessionEffort?: ModelReasoningEffort
-  // Exact context-window limit for the selected upstream provider model. Framework adapters may
+  // Exact context-window limit for the selected provider model. Framework adapters may
   // report a fallback or bridge transport model instead, so the runtime treats this as authoritative.
   contextWindow?: number
-  // Whether the selected upstream model accepts image input. Kept on the generation so a model-only
+  // Whether the selected source model accepts image input. Kept on the generation so a model-only
   // switch can fail closed when an adapter cannot remove images already retained in native history.
   supportsImageInput?: boolean
   // Upstream provider model used for local context tokenization. This is deliberately separate from

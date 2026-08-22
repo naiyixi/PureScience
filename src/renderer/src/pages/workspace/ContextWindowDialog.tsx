@@ -83,7 +83,7 @@ const visibleCategories = (usage: AcpContextUsage): AcpContextUsageCategory[] =>
 
 const signedTokens = (tokens: number): string => `${tokens > 0 ? '+' : ''}${formatTokens(tokens)}`
 
-// Catalog keys, not resolved copy. `satisfies` makes an upstream-added reason a compile failure.
+// Catalog keys, not resolved copy. `satisfies` makes an source-added reason a compile failure.
 const stopReasonLabel = {
   end_turn: 'ws.contextStopEndTurn',
   max_tokens: 'ws.contextStopMaxTokens',

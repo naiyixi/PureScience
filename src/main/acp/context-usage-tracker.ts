@@ -151,7 +151,7 @@ const tokenizerProfileFor = (
   model: string | undefined
 ): TokenizerProfile => {
   const normalized = model?.trim().toLowerCase().split('/').filter(Boolean).at(-1) ?? ''
-  // The framework describes the ACP transport, not necessarily the upstream model. Claude Code can
+  // The framework describes the ACP transport, not necessarily the source model. Claude Code can
   // drive DeepSeek/GLM/Kimi through an Anthropic-compatible endpoint, while Codex can bridge those
   // same models through Responses. Therefore an explicit model always wins; framework defaults are
   // only safe when the agent did not expose or receive a model id.

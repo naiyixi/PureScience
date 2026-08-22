@@ -15,7 +15,7 @@ import { providerKindKey } from './provider-form-value'
 // Separator for the composite (providerId, model) select value (same convention as ActiveModelSelect).
 const SEP = '␟'
 
-// The optional "Vision model" selector for Settings > Model (upstream #1314 port). Unlike the active
+// The optional "Vision model" selector for Settings > Model . Unlike the active
 // model, this is a fixed provider+model pair used ONLY to translate image input when the active
 // backend is text-only. It filters to providers that advertise image input, and supports clearing
 // the selection to disable the relay.

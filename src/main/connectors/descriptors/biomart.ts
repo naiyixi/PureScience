@@ -47,7 +47,7 @@ const COMMON_ATTRIBUTES = new Set<string>([
 // homologs page) to keep the response manageable.
 const PROBE_PREFIX = /^(affy|agilent|illumina|codelink|phalanx)_/
 
-// Escapes a value for use inside a double-quoted XML attribute (mirrors the upstream Python
+// Escapes a value for use inside a double-quoted XML attribute (mirrors the source Python
 // build_query_xml, which relies on ElementTree's own attribute escaping).
 function escapeXmlAttr(value: string): string {
   return value
@@ -58,7 +58,7 @@ function escapeXmlAttr(value: string): string {
 }
 
 // Filter values may be a string, a number, a bool (BioMart's own only/excluded convention), or an
-// array (joined with commas) — mirrors upstream biomart_query.client.build_query_xml.
+// array (joined with commas) — mirrors the official biomart_query.client.build_query_xml.
 function filterValue(value: unknown): string {
   if (typeof value === 'boolean') return value ? 'only' : 'excluded'
   if (Array.isArray(value)) return value.map(String).join(',')
@@ -93,7 +93,7 @@ function queryUrl(dataset: string, attributes: string[], filters: Record<string,
 }
 
 // Parses a completed martservice TSV body into rows, validating the completion stamp and column count
-// (mirrors upstream _post + _parse_tsv). Throws on a rejected query (BioMart returns 200 with a
+// (mirrors the official _post + _parse_tsv). Throws on a rejected query (BioMart returns 200 with a
 // "Query ERROR" / exception body for bad attribute/filter combos) or a truncated response.
 function parseTsvBody(text: string, nCols: number): string[][] {
   const head = text.slice(0, 2000)

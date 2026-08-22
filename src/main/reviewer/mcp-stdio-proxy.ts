@@ -49,12 +49,12 @@ const createReviewerMcpStdioProxyConfig = ({
 })
 
 // Presents the existing scope-enforcing Reviewer MCP server as stdio while moving only its local
-// transport over a Windows named pipe. Tool definitions, validation, and submission remain upstream.
+// transport over a Windows named pipe. Tool definitions, validation, and submission remain source.
 const createReviewerMcpStdioProxy = async (
   environment = createReviewerMcpProxyEnvironmentFromProcess()
 ): Promise<Server> => {
-  const upstream = new Client({ name: 'purescience-reviewer-proxy', version: '1.0.0' })
-  await upstream.connect(
+  const source = new Client({ name: 'purescience-reviewer-proxy', version: '1.0.0' })
+  await source.connect(
     new StreamableHTTPClientTransport(new URL('http://localhost/mcp'), {
       fetch: fetchOverSocket(environment.socketPath),
       requestInit: { headers: { authorization: `Bearer ${environment.token}` } }
@@ -66,12 +66,12 @@ const createReviewerMcpStdioProxy = async (
     { capabilities: { tools: {} } }
   )
   downstream.setRequestHandler(ListToolsRequestSchema, (request) =>
-    upstream.listTools(request.params)
+    source.listTools(request.params)
   )
   downstream.setRequestHandler(CallToolRequestSchema, (request) =>
-    upstream.callTool(request.params)
+    source.callTool(request.params)
   )
-  downstream.onclose = () => void upstream.close()
+  downstream.onclose = () => void source.close()
 
   return downstream
 }

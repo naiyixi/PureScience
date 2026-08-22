@@ -659,7 +659,7 @@ export type InstallOpencodeRequest = {
 
 export type CodexInstallSource = Exclude<ClaudeInstallSource, 'official-script'>
 
-// Codex supports only an app-managed bundle or the upstream npm-global adapter. Authentication is
+// Codex supports only an app-managed bundle or the npm-global adapter. Authentication is
 // always provider API-key based; ChatGPT/local Codex login is intentionally absent.
 export type InstallCodexRequest = {
   source: CodexInstallSource
@@ -1075,7 +1075,7 @@ export type ScanRepoResult =
   | { skills: ScannedSkillView[]; repositories?: never }
   | { skills: []; repositories: GitHubRepositorySearchView[] }
 
-// Outcome of an import: newly imported, refreshed from upstream, or an already-imported no-op. The
+// Outcome of an import: newly imported, refreshed from source, or an already-imported no-op. The
 // refreshed skill list is included so the renderer can update in one round-trip.
 export type ImportSkillResult = {
   status: 'imported' | 'unchanged' | 'updated'

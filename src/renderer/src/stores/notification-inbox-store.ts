@@ -80,7 +80,7 @@ export const useNotificationInboxStore = create<NotificationInboxStore>((set, ge
     const remove = api.onChanged(refresh)
     window.addEventListener('purescience:web-events-open', refresh)
     // Web 恢复重放: 页面从后台恢复或网络恢复时重新拉取最新状态 — 补上连接中断期间
-    // 错过的事件 (拉取式重放, 对齐上游 v0.15.1 web 事件恢复语义)。
+    // 错过的事件 (拉取式重放, 对齐行业实践 web 事件恢复语义)。
     const onVisibility = (): void => {
       if (document.visibilityState === 'visible') refresh()
     }

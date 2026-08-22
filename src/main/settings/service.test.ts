@@ -2623,11 +2623,11 @@ describe('SettingsService: preflight & spawn config', () => {
 
   it('resolves a Chat Completions provider through the Codex Responses bridge', async () => {
     const localFetch = globalThis.fetch
-    let upstreamRequest: Record<string, unknown> | undefined
+    let sourceRequest: Record<string, unknown> | undefined
     vi.stubGlobal(
       'fetch',
       vi.fn(async (_url: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
-        upstreamRequest = JSON.parse(String(init?.body)) as Record<string, unknown>
+        sourceRequest = JSON.parse(String(init?.body)) as Record<string, unknown>
         return new Response(
           [
             'data: ' +
@@ -2714,7 +2714,7 @@ describe('SettingsService: preflight & spawn config', () => {
       })
     })
     await bridgeResponse.text()
-    expect(upstreamRequest).toMatchObject({
+    expect(sourceRequest).toMatchObject({
       tools: expect.arrayContaining([
         expect.objectContaining({
           type: 'function',
@@ -2737,14 +2737,14 @@ describe('SettingsService: preflight & spawn config', () => {
         })
       ])
     })
-    expect(JSON.stringify(upstreamRequest?.tools)).not.toContain(
+    expect(JSON.stringify(sourceRequest?.tools)).not.toContain(
       'mcp__purescience_activity__begin_activity_group'
     )
-    const upstreamMessages = JSON.stringify(upstreamRequest?.messages)
-    expect(upstreamRequest).toMatchObject({ thinking: { type: 'disabled' } })
-    expect(upstreamRequest).not.toHaveProperty('reasoning_effort')
-    expect(upstreamMessages).not.toContain('<purescience_connector_instructions>')
-    expect(upstreamMessages).not.toContain('host.mcp("pubmed", "search_articles"')
+    const sourceMessages = JSON.stringify(sourceRequest?.messages)
+    expect(sourceRequest).toMatchObject({ thinking: { type: 'disabled' } })
+    expect(sourceRequest).not.toHaveProperty('reasoning_effort')
+    expect(sourceMessages).not.toContain('<purescience_connector_instructions>')
+    expect(sourceMessages).not.toContain('host.mcp("pubmed", "search_articles"')
 
     // Connector skill docs (host.mcp guidance) must be materialized into Codex's own home, not only
     // the Claude config dir, or bridged Codex never learns to reach connectors via the notebook.
@@ -2756,7 +2756,7 @@ describe('SettingsService: preflight & spawn config', () => {
 
     await backend.responsesBridgeLease?.release()
     await repository.setConversationSkillImportEnabled(false)
-    upstreamRequest = undefined
+    sourceRequest = undefined
     const disabledBackend = await resolveActiveBackend(service)
     const disabledBridgeResponse = await localFetch(
       `${disabledBackend.providerConfiguration?.baseUrl}/responses`,
@@ -2770,7 +2770,7 @@ describe('SettingsService: preflight & spawn config', () => {
       }
     )
     await disabledBridgeResponse.text()
-    const capturedDisabledRequest = upstreamRequest as unknown as
+    const capturedDisabledRequest = sourceRequest as unknown as
       Record<string, unknown> | undefined
     const disabledToolNames = (
       (capturedDisabledRequest?.tools as Array<{ function?: { name?: string } }> | undefined) ?? []
@@ -2782,19 +2782,19 @@ describe('SettingsService: preflight & spawn config', () => {
 
   it('keeps bridged Codex backends pinned to the provider target they were created for', async () => {
     const localFetch = globalThis.fetch
-    const upstreamRequests: Array<{ url: string; authorization: string; model: unknown }> = []
-    const upstreamToolNames: string[][] = []
+    const sourceRequests: Array<{ url: string; authorization: string; model: unknown }> = []
+    const sourceToolNames: string[][] = []
     vi.stubGlobal(
       'fetch',
       vi.fn(async (url: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
         const body = JSON.parse(String(init?.body)) as Record<string, unknown>
         const tools = Array.isArray(body.tools) ? body.tools : []
-        upstreamToolNames.push(
+        sourceToolNames.push(
           tools.map((tool) =>
             String((tool as { function?: { name?: unknown } }).function?.name ?? '')
           )
         )
-        upstreamRequests.push({
+        sourceRequests.push({
           url: String(url),
           authorization: String((init?.headers as Record<string, string>)?.authorization ?? ''),
           model: body.model
@@ -2802,7 +2802,7 @@ describe('SettingsService: preflight & spawn config', () => {
         return new Response(
           [
             `data: ${JSON.stringify({
-              id: `chat-${upstreamRequests.length}`,
+              id: `chat-${sourceRequests.length}`,
               model: body.model,
               choices: [{ index: 0, delta: {}, finish_reason: 'stop' }]
             })}`,
@@ -2885,7 +2885,7 @@ describe('SettingsService: preflight & spawn config', () => {
     await send(firstBackend, 'reviewer-one')
     await send(secondBackend, 'reviewer-two')
 
-    expect(upstreamRequests).toEqual([
+    expect(sourceRequests).toEqual([
       {
         url: 'https://one.example/v1/chat/completions',
         authorization: 'Bearer key-one',
@@ -2897,7 +2897,7 @@ describe('SettingsService: preflight & spawn config', () => {
         model: 'model-two'
       }
     ])
-    expect(upstreamToolNames).toEqual([
+    expect(sourceToolNames).toEqual([
       expect.arrayContaining(['mcp__purescience_reviewer__submit_findings']),
       expect.arrayContaining(['mcp__purescience_reviewer__submit_findings'])
     ])
@@ -3196,7 +3196,7 @@ describe('SettingsService: official vendors', () => {
     expect(config.contextWindow).toBe(1_000_000)
   })
 
-  it('carries the upstream model through the Claude backend for context tokenization', async () => {
+  it('carries the source model through the Claude backend for context tokenization', async () => {
     const service = createService()
     await repository.setClaudeInfo({ resolvedPath: execPath, version: '2.1.0' })
     await repository.setAgentFramework('claude-code')
@@ -4871,11 +4871,11 @@ describe('SettingsService: reasoning effort', () => {
 
   it('lets the owning runtime update its live bridge with a model-resolved effort', async () => {
     const localFetch = globalThis.fetch
-    let upstreamRequest: Record<string, unknown> | undefined
+    let sourceRequest: Record<string, unknown> | undefined
     vi.stubGlobal(
       'fetch',
       vi.fn(async (_url: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
-        upstreamRequest = JSON.parse(String(init?.body)) as Record<string, unknown>
+        sourceRequest = JSON.parse(String(init?.body)) as Record<string, unknown>
         return new Response(
           [
             'data: ' +
@@ -4936,23 +4936,23 @@ describe('SettingsService: reasoning effort', () => {
 
     // No explicit choice yet: Codex's own default effort is stripped, as pre-feature.
     await post()
-    expect(upstreamRequest).not.toHaveProperty('reasoning_effort')
+    expect(sourceRequest).not.toHaveProperty('reasoning_effort')
 
     // The active runtime owns this lease, so it updates only the bridge for its own provider/model.
     backend.responsesBridgeLease?.setReasoningEffort?.('high')
     await post()
-    expect(upstreamRequest).toMatchObject({ reasoning_effort: 'high' })
+    expect(sourceRequest).toMatchObject({ reasoning_effort: 'high' })
 
     // The bridge receives the concrete mapped value, not a forwarding boolean: it replaces Codex's
     // own request effort instead of letting an incompatible value leak to the selected model.
     backend.responsesBridgeLease?.setReasoningEffort?.('max')
     await post()
-    expect(upstreamRequest).toMatchObject({ reasoning_effort: 'max' })
+    expect(sourceRequest).toMatchObject({ reasoning_effort: 'max' })
 
-    // Back to 'default': stripping is restored so Codex's own effort can't leak upstream.
+    // Back to 'default': stripping is restored so Codex's own effort can't leak source.
     backend.responsesBridgeLease?.setReasoningEffort?.(undefined)
     await post()
-    expect(upstreamRequest).not.toHaveProperty('reasoning_effort')
+    expect(sourceRequest).not.toHaveProperty('reasoning_effort')
   })
 })
 

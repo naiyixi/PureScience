@@ -170,7 +170,7 @@ describe('ucsc_track_data', () => {
     expect(out.items_returned).toBe(1)
   })
 
-  it('propagates an unknown-track upstream 400 as an error', async () => {
+  it('propagates an unknown-track source 400 as an error', async () => {
     const fetchImpl = vi
       .fn()
       .mockResolvedValue({ ok: false, status: 400, json: async () => ({}) } as Response)
@@ -244,7 +244,7 @@ describe('ucsc_conservation', () => {
     ).rejects.toThrow(/not a score\/wiggle track/)
   })
 
-  it('raises when the upstream row list is itself truncated', async () => {
+  it('raises when the source row list is itself truncated', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(
       jsonRes({
         trackType: 'wig',
@@ -254,7 +254,7 @@ describe('ucsc_conservation', () => {
     )
     await expect(
       run('ucsc_conservation', { chrom: 'chr7', start: 100, end: 200 }, fetchImpl)
-    ).rejects.toThrow(/upstream truncated/)
+    ).rejects.toThrow(/source truncated/)
   })
 })
 

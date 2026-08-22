@@ -926,7 +926,7 @@ describe('UserSkillRepository', () => {
     const again = await repo.importFromGitHub(SKILL_URL, fakeFetch(skillMd))
     expect(again.status).toBe('unchanged')
 
-    // Re-importing after upstream changed refreshes in place.
+    // Re-importing after source changed refreshes in place.
     const changed = ['---', 'name: Foo', 'description: Now updated.', '---', 'body2'].join('\n')
     const updated = await repo.importFromGitHub(SKILL_URL, fakeFetch(changed))
     expect(updated).toEqual({ status: 'updated', id: 'imported-foo' })

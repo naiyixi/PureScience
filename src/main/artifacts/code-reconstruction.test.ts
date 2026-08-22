@@ -294,7 +294,7 @@ describe('ArtifactCodeReconstructionService', () => {
     expect(context.execution.runs[0]?.outputs[0]?.text).toContain('</artifact_execution_evidence>')
   })
 
-  it('tells the model how much immutable execution evidence was omitted upstream', async () => {
+  it('tells the model how much immutable execution evidence was omitted source', async () => {
     const value = provenance()
     value.execution!.truncation = {
       reason: 'payload-limit',

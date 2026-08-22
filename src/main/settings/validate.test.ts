@@ -535,7 +535,7 @@ describe('validate: provider dispatch', () => {
     })
   })
 
-  it('surfaces a JSON 5xx error message (e.g. an overloaded upstream)', async () => {
+  it('surfaces a JSON 5xx error message (e.g. an overloaded source)', async () => {
     const fetchImpl = vi.fn().mockResolvedValue({
       status: 503,
       text: () => Promise.resolve('{"error":{"message":"Service temporarily unavailable"}}')

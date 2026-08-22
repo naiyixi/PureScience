@@ -89,7 +89,7 @@ type SettingsStoreData = RuntimeSetupState &
     // Active model within the active provider; undefined means the provider's own default.
     activeModel: string | undefined
     // Optional fixed Vision model used to translate image input for a text-only backend
-    // (upstream #1314 port). Undefined means the image relay is disabled.
+    // . Undefined means the image relay is disabled.
     visionModel: VisionModelConfiguration | undefined
     providers: ProviderView[]
     // Selected agent backend and the frameworks available to choose from.

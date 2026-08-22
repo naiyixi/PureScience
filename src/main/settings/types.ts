@@ -211,7 +211,7 @@ export type StoredSettings = {
   // Production authorization never appends to this field; it is removed after a successful import.
   computeGrants?: StoredComputeGrant[]
   // Optional fixed Vision model used to translate image input when the active backend is text-only
-  // (upstream #1314 port). Absence means the image relay is disabled.
+  // . Absence means the image relay is disabled.
   visionModel?: VisionModelConfiguration
 }
 

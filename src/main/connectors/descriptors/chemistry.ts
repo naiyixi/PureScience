@@ -290,7 +290,7 @@ export const CHEMISTRY_TOOLS: ToolDescriptor[] = [
     },
     required: ['smiles'],
     returns:
-      '`{ "smiles": str, "threshold": int, "n_cids": int, "may_be_truncated": bool, "cids": [int], "properties": [ {...} ] }` — CIDs in upstream relevance order (the query compound is usually first). `threshold` is percent Tanimoto. The API does not report an uncapped total, so `may_be_truncated` is true exactly when the cap was filled. `properties` (when `with_properties`) covers the first 10 hits.',
+      '`{ "smiles": str, "threshold": int, "n_cids": int, "may_be_truncated": bool, "cids": [int], "properties": [ {...} ] }` — CIDs in source relevance order (the query compound is usually first). `threshold` is percent Tanimoto. The API does not report an uncapped total, so `may_be_truncated` is true exactly when the cap was filled. `properties` (when `with_properties`) covers the first 10 hits.',
     example:
       'const result = await host.mcp("chemistry", "pubchem_similarity_search", {"smiles": "CC(=O)OC1=CC=CC=C1C(=O)O", "threshold": 90})',
     run: async (ctx, a) => {
@@ -340,7 +340,7 @@ export const CHEMISTRY_TOOLS: ToolDescriptor[] = [
     },
     required: ['cid'],
     returns:
-      '`{ "cid": int, "active_only": bool, "n_rows_total": int, "truncated": bool, "rows": [ {...} ] }` — each row maps the upstream columns: AID, SID, CID, "Activity Outcome" (Active/Inactive/Unspecified/Inconclusive), "Target Accession", "Target GeneID", "Activity Value [uM]", "Activity Name", "Assay Name", "Assay Type", "PubMed ID". Filtering by `active_only` happens BEFORE the cap, so `n_rows_total` is the true (filtered) count. `rows` is `[]` for compounds with no assay data (not an error).',
+      '`{ "cid": int, "active_only": bool, "n_rows_total": int, "truncated": bool, "rows": [ {...} ] }` — each row maps the source columns: AID, SID, CID, "Activity Outcome" (Active/Inactive/Unspecified/Inconclusive), "Target Accession", "Target GeneID", "Activity Value [uM]", "Activity Name", "Assay Name", "Assay Type", "PubMed ID". Filtering by `active_only` happens BEFORE the cap, so `n_rows_total` is the true (filtered) count. `rows` is `[]` for compounds with no assay data (not an error).',
     example:
       'const result = await host.mcp("chemistry", "pubchem_get_bioassay_summary", {"cid": 2244, "active_only": true})',
     run: async (ctx, a) => {
@@ -817,7 +817,7 @@ export const CHEMISTRY_TOOLS: ToolDescriptor[] = [
     },
     required: ['smiles'],
     returns:
-      '`{ "smiles": str, "similarity": num, "api_hit_count": int, "n_rows_total": int, "truncated": bool, "rows": [ { monomer_id, smiles, ligand_name, target_name, species, affinity_type, affinity, tanimoto } ] }` — `smiles` per row is the matched analog. `api_hit_count` is the upstream matching-compound count (not row-for-row comparable with `n_rows_total`, which counts per-measurement rows). Rows capped at `max_rows`, sorted by (target_name, affinity_type, numeric affinity). `affinity` is a STRING (may carry `>`/`<`, in nM). No hits returns `n_rows_total=0`.',
+      '`{ "smiles": str, "similarity": num, "api_hit_count": int, "n_rows_total": int, "truncated": bool, "rows": [ { monomer_id, smiles, ligand_name, target_name, species, affinity_type, affinity, tanimoto } ] }` — `smiles` per row is the matched analog. `api_hit_count` is the source matching-compound count (not row-for-row comparable with `n_rows_total`, which counts per-measurement rows). Rows capped at `max_rows`, sorted by (target_name, affinity_type, numeric affinity). `affinity` is a STRING (may carry `>`/`<`, in nM). No hits returns `n_rows_total=0`.',
     example:
       'const result = await host.mcp("chemistry", "bindingdb_targets_by_compound", {"smiles": "CC(=O)OC1=CC=CC=C1C(=O)O", "similarity": 0.85})',
     run: async (ctx, a) => {

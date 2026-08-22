@@ -315,7 +315,7 @@ describe('phewas_variant', () => {
     expect(fetchImpl).not.toHaveBeenCalled()
   })
 
-  it('maps an upstream 404 to a clean not-found error', async () => {
+  it('maps an source 404 to a clean not-found error', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(notFoundRes())
     await expect(
       run('phewas_variant', { instance: 'finngen', variant: '19-99999999-C-T' }, fetchImpl)

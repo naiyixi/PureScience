@@ -243,11 +243,11 @@ export type AcpTurnTokenUsage = {
 export const ACP_TURN_TOKEN_USAGE_META_KEY = 'purescience/turn-usage'
 export const ACP_MODEL_TURN_COUNT_META_KEY = 'purescience/model-turn-count'
 
-// Tool activity name of a completed native context compaction (upstream #1321 port). Used by the
+// Tool activity name of a completed native context compaction . Used by the
 // context-window trend to mark the terminal outcome that owns a visible context drop.
 export const ACP_CONTEXT_COMPACTION_ACTIVITY_TOOL_NAME = 'ContextCompaction'
 
-// Context-window composition insights (upstream #1321 port): a frozen context snapshot published
+// Context-window composition insights : a frozen context snapshot published
 // with the terminal runtime event of each visible prompt execution. The renderer binds it to the
 // owning user Message (`contextWindowSamples`) and renders the trend dialog.
 export type AcpPromptStopReason = PromptResponse['stopReason']
@@ -413,7 +413,7 @@ export type AcpRuntimeEvent = {
   // Present on a completed prompt's stop event when the Agent reports whole-turn token totals.
   turnUsage?: AcpTurnTokenUsage
   // Frozen context-window snapshot published with the terminal event of each visible prompt
-  // execution (upstream #1321 port). The renderer binds it to the owning user Message.
+  // execution . The renderer binds it to the owning user Message.
   terminalContextWindow?: AcpTerminalContextWindow
   // Identifies who owns a native compaction lifecycle so overflow recovery can keep its retry gate
   // active until the replacement prompt takes over, even if control-turn events arrive first.
@@ -426,7 +426,7 @@ export type AcpRuntimeEvent = {
   // prompt text deliberately remain in the main-process recovery store, not this event.
   handoffFailure?: AcpHandoffFailure
   planProjection?: import('./session-plan/contract').ActivePlanProjection
-  // Set on an error event whose failure originates upstream of the app — the agent relayed a
+  // Set on an error event whose failure originates source of the app — the agent relayed a
   // model/provider error (bad key, rate limit, quota, provider 5xx/overloaded, wrong model id). The
   // renderer uses this to withhold the "Report error" affordance: a provider-side problem is the user's
   // or provider's to resolve, not an app bug worth a GitHub issue. Absent (falsy) means the failure came

@@ -102,8 +102,8 @@ const createOfficePreviewRuntimeProtocolHandler = (
       }
 
       const targetUrl = resolveOfficePreviewRuntimeTarget(url, options)
-      const upstream = await options.fetchRuntime(targetUrl, request)
-      const headers = new Headers(upstream.headers)
+      const source = await options.fetchRuntime(targetUrl, request)
+      const headers = new Headers(source.headers)
       headers.set('cache-control', 'no-store')
       headers.set('x-content-type-options', 'nosniff')
       if (url.pathname.endsWith('.html')) {
@@ -112,22 +112,22 @@ const createOfficePreviewRuntimeProtocolHandler = (
 
       if (request.method === 'HEAD') {
         return new Response(null, {
-          status: upstream.status,
-          statusText: upstream.statusText,
+          status: source.status,
+          statusText: source.statusText,
           headers
         })
       }
 
       // Runtime assets are small, trusted application files. Materializing them here avoids
       // forwarding stale transfer headers across Electron's custom-protocol response boundary.
-      const body = await upstream.arrayBuffer()
+      const body = await source.arrayBuffer()
       headers.delete('content-encoding')
       headers.delete('transfer-encoding')
       headers.set('content-length', String(body.byteLength))
 
       return new Response(body, {
-        status: upstream.status,
-        statusText: upstream.statusText,
+        status: source.status,
+        statusText: source.statusText,
         headers
       })
     } catch (error) {

@@ -208,7 +208,7 @@ describe('codexFramework', () => {
         baseUrl: 'https://gateway.example/v1',
         model: 'chat-model',
         contextWindow: 128_000,
-        key: 'upstream-secret'
+        key: 'source-secret'
       },
       {
         storageRoot: '/data',
@@ -242,7 +242,7 @@ describe('codexFramework', () => {
       baseUrl: 'http://127.0.0.1:43123/v1',
       headers: { authorization: 'Bearer local-token' }
     })
-    expect(config.env?.CODEX_CONFIG).not.toContain('upstream-secret')
+    expect(config.env?.CODEX_CONFIG).not.toContain('source-secret')
     expect(config.persistentSystemPrompt).toBe('Stable bridge guidance.')
   })
 

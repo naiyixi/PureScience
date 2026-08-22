@@ -1,6 +1,6 @@
 import type { ToolContext, ToolDescriptor } from '../types'
 
-// OpenAlex REST API (all disciplines, ~250M works). Per upstream etiquette this connector sends
+// OpenAlex REST API (all disciplines, ~250M works). Per source etiquette this connector sends
 // NO mailto and NO api key on any request; payloads are kept lean via `select=` and multi-page
 // walks use cursor paging with per-page=200 (the API maximum).
 const BASE = 'https://api.openalex.org'

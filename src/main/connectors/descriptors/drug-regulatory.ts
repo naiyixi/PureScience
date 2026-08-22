@@ -78,7 +78,7 @@ const phrase = (value: unknown): string => `"${String(value).replace(/"/g, ' ')}
 
 // Drugs@FDA search filters that map onto always-present product/top-level fields. generic and pharm
 // class instead hit the harmonized openfda.* block (absent on older applications, so silently skipped
-// upstream); they are added separately.
+// source); they are added separately.
 const APP_FILTER_FIELDS: Record<string, string> = {
   brand: 'products.brand_name',
   active_ingredient: 'products.active_ingredients.name',

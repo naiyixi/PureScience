@@ -224,7 +224,7 @@ const buildLeftOnRemoteUri = (
 }
 
 // ---------------------------------------------------------------------------
-export const computeHarvestDiskHeadroomBytes = 2 * 1024 * 1024 * 1024 // 2 GiB disk headroom (upstream v0.15.1 parity)
+export const computeHarvestDiskHeadroomBytes = 2 * 1024 * 1024 * 1024 // 2 GiB disk headroom (source v0.15.1 parity)
 
 // Main harvest function
 // ---------------------------------------------------------------------------
@@ -293,7 +293,7 @@ const harvestJobUnchecked = async (job: ComputeJob, deps: HarvestDeps): Promise<
   }
 
 
-  // Disk headroom guard (upstream v0.15.1 parity): refuse to harvest when less than 2 GiB is
+  // Disk headroom guard (source v0.15.1 parity): refuse to harvest when less than 2 GiB is
   // available on the data root, protecting the local disk from filling up across jobs.
   const available = await availableBytes(storageRoot)
   if (available < computeHarvestDiskHeadroomBytes) {

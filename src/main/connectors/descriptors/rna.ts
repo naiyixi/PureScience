@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import type { ToolContext, ToolDescriptor } from '../types'
 
-// Rfam REST API (https://rfam.org): read-only RNA family data. Mirrors the 9 upstream
+// Rfam REST API (https://rfam.org): read-only RNA family data. Mirrors the 9 source
 // tooluniverse/rfam methods — family metadata, seed alignment (Stockholm/FASTA), covariance
 // model, phylogenetic tree, sequence regions, PDB structure mapping, accession<->id conversion,
 // and async single-sequence cmscan search. Every /family route resolves an accession (RF00005)
@@ -15,7 +15,7 @@ const DEFAULT_MAX_BYTES = 400_000
 // Rfam accession shape (RF + 5 digits); id_to_accession validates the resolved value against it.
 const ACC_RE = /^RF\d{5}$/
 
-// Encode one argument as a single URL path segment (upstream uses urllib.quote(safe="")).
+// Encode one argument as a single URL path segment (source uses urllib.quote(safe="")).
 const seg = (value: unknown): string => encodeURIComponent(String(value))
 
 const sha256Text = (text: string): string => createHash('sha256').update(text, 'utf8').digest('hex')
@@ -37,7 +37,7 @@ type RfamFamilyPayload = {
   rfam?: Record<string, unknown>
 } & Record<string, unknown>
 
-// Flatten the /family JSON envelope into a stable record. Field names mirror the upstream
+// Flatten the /family JSON envelope into a stable record. Field names mirror the source
 // family_record(); gathering/trusted/noise cutoffs are read from cm.cutoffs (the live shape).
 function familyRecord(payload: RfamFamilyPayload): Record<string, unknown> {
   const rfam = (payload.rfam ?? payload) as Record<string, unknown>
@@ -171,7 +171,7 @@ function parseRegions(text: string): {
 
 type StructureRow = Record<string, unknown>
 
-// Deterministic order for /structures rows (server array order is nondeterministic upstream).
+// Deterministic order for /structures rows (server array order is nondeterministic source).
 function sortStructureMapping(mapping: StructureRow[]): StructureRow[] {
   const key = (m: StructureRow): [string, string, number, number, number] => [
     String(m.pdb_id),
@@ -222,7 +222,7 @@ export const RNA_TOOLS: ToolDescriptor[] = [
     id: 'get_family',
     connector: 'rna',
     description:
-      'Rfam family metadata for an accession (RF00005) or family id (tRNA) — both resolve. Flattened record plus the full upstream JSON in "raw".',
+      'Rfam family metadata for an accession (RF00005) or family id (tRNA) — both resolve. Flattened record plus the full source JSON in "raw".',
     input: {
       type: 'object',
       properties: { family: { type: 'string' } },
@@ -230,7 +230,7 @@ export const RNA_TOOLS: ToolDescriptor[] = [
     },
     required: ['family'],
     returns:
-      '`{ "rfam_acc": str, "rfam_id": str, "description": str, "comment": str, "clan_acc": str|null, "clan_id": str|null, "rna_type": str, "structure_source": str, "num_seed": int, "num_full": int, "num_species": int, "gathering_cutoff": float, "trusted_cutoff": float, "noise_cutoff": float, "release_number": str, "release_date": str, "raw": {…} }` — flattened metadata; `raw` is the complete upstream `rfam` record. Absent fields are `null`/`undefined`.',
+      '`{ "rfam_acc": str, "rfam_id": str, "description": str, "comment": str, "clan_acc": str|null, "clan_id": str|null, "rna_type": str, "structure_source": str, "num_seed": int, "num_full": int, "num_species": int, "gathering_cutoff": float, "trusted_cutoff": float, "noise_cutoff": float, "release_number": str, "release_date": str, "raw": {…} }` — flattened metadata; `raw` is the complete source `rfam` record. Absent fields are `null`/`undefined`.',
     example: 'const result = await host.mcp("rna", "get_family", {"family": "RF00005"})',
     url: (a) => `${RFAM}/family/${seg(a.family)}?content-type=application/json`,
     parse: (raw) => {
@@ -378,7 +378,7 @@ export const RNA_TOOLS: ToolDescriptor[] = [
     },
     required: ['family'],
     returns:
-      '`{ "family": str, "num_mappings": int, "num_pdb_ids": int, "pdb_ids": [str], "mapping": [ { "pdb_id": str, "chain": str, "pdb_start": int, "pdb_end": int, "cm_start": int, "cm_end": int, "bit_score": float, "evalue_score": str, "rfam_acc": str } ] }` — rows sorted by (pdb_id, chain, pdb_start, pdb_end, cm_start); exact per-row fields follow upstream. `mapping` is `[]` when no structures exist.',
+      '`{ "family": str, "num_mappings": int, "num_pdb_ids": int, "pdb_ids": [str], "mapping": [ { "pdb_id": str, "chain": str, "pdb_start": int, "pdb_end": int, "cm_start": int, "cm_end": int, "bit_score": float, "evalue_score": str, "rfam_acc": str } ] }` — rows sorted by (pdb_id, chain, pdb_start, pdb_end, cm_start); exact per-row fields follow source. `mapping` is `[]` when no structures exist.',
     example: 'const result = await host.mcp("rna", "get_structure_mapping", {"family": "RF00162"})',
     url: (a) => `${RFAM}/family/${seg(a.family)}/structures?content-type=application/json`,
     parse: (raw, a) => {
@@ -438,7 +438,7 @@ export const RNA_TOOLS: ToolDescriptor[] = [
     id: 'search_sequence',
     connector: 'rna',
     description:
-      'Search a single RNA/DNA sequence against all Rfam covariance models (async cmscan): submit to rfam.org and poll until done. Known upstream limitation: the job backend may be down (valid submissions return "SearchUnavailable … come back later"; invalid sequences still get a 400) — the error is surfaced as-is.',
+      'Search a single RNA/DNA sequence against all Rfam covariance models (async cmscan): submit to rfam.org and poll until done. Known source limitation: the job backend may be down (valid submissions return "SearchUnavailable … come back later"; invalid sequences still get a 400) — the error is surfaced as-is.',
     input: {
       type: 'object',
       properties: {
@@ -450,15 +450,15 @@ export const RNA_TOOLS: ToolDescriptor[] = [
     },
     required: ['sequence'],
     returns:
-      '`{ "job_id": str, "num_hits": int, "families": [str], "hits": { family_id: [ { e-value, score, alignment blocks, … } ] }, "search_sequence": str }` — hits grouped by matching family id. Surfaces upstream SearchUnavailable/400/timeout errors as-is; no local fallback.',
+      '`{ "job_id": str, "num_hits": int, "families": [str], "hits": { family_id: [ { e-value, score, alignment blocks, … } ] }, "search_sequence": str }` — hits grouped by matching family id. Surfaces source SearchUnavailable/400/timeout errors as-is; no local fallback.',
     example:
       'const result = await host.mcp("rna", "search_sequence", {"sequence": "GGUUCCGGGAAGGCAGCAGGUGGAAACCUGCCA"})',
     run: async (ctx: ToolContext, a) => {
       const sequence = String(a.sequence)
       const maxWaitS = Number(a.max_wait_s ?? 300)
       const pollIntervalS = Number(a.poll_interval_s ?? 5)
-      // Submit the async cmscan job (upstream posts { seq }). The engine surfaces a 400 (invalid
-      // sequence) or 5xx (backend down) as an HTTP error, matching the upstream pass-through.
+      // Submit the async cmscan job (source posts { seq }). The engine surfaces a 400 (invalid
+      // sequence) or 5xx (backend down) as an HTTP error, matching the source pass-through.
       const sub = (await ctx.postJson(`${RFAM}/search/sequence`, {
         seq: sequence
       })) as SearchSubmission

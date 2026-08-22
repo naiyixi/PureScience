@@ -27,7 +27,7 @@ const engine = (fetchImpl: typeof fetch): ParserEngine =>
   new ParserEngine({ fetchImpl, retries: 0 })
 
 describe('omics_archives tool set', () => {
-  it('exposes exactly the 17 upstream tools, all on connector omics_archives', () => {
+  it('exposes exactly the 17 source tools, all on connector omics_archives', () => {
     expect(OMICS_ARCHIVES_TOOLS.map((t) => t.id).sort()).toEqual(
       [
         'arrayexpress_get_experiment',

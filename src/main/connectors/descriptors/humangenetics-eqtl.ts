@@ -135,7 +135,7 @@ export const HUMANGENETICS_EQTL_TOOLS: ToolDescriptor[] = [
       const qs = queryString({ ...filters, size: maxRecords })
       const resp = await ctx.fetchJson(`${BASE}/datasets?${qs}`)
       const rows = asRows<EqtlDataset>(resp)
-      // Deterministic order regardless of upstream order.
+      // Deterministic order regardless of source order.
       rows.sort((x, y) => String(x.dataset_id).localeCompare(String(y.dataset_id)))
       const datasets = rows.map(leanDataset)
       return {
@@ -151,7 +151,7 @@ export const HUMANGENETICS_EQTL_TOOLS: ToolDescriptor[] = [
     id: 'eqtl_associations',
     connector: 'human_genetics',
     description:
-      'Molecular-QTL association rows from one eQTL Catalogue dataset, filtered by gene, variant or region. Args: dataset_id (QTD accession from eqtl_list_datasets, e.g. QTD000266); gene_id (unversioned Ensembl gene ID e.g. ENSG00000130203 APOE; at least one of gene_id/rsid/variant/pos is required); rsid (dbSNP rsID); variant (eQTL Catalogue variant string chr19_44908822_C_T, chr-prefixed underscore GRCh38); pos (genomic window chromosome:start-end GRCh38 no chr prefix, e.g. 19:44900000-44920000); nlog10p_min (significance floor: only rows with -log10(p) >= this, applied upstream); max_records (cap default 1000 = one page). Returns {dataset_id, filters, returned, truncated, associations}; each row {molecular_trait_id, gene_id, variant, rsid, chromosome, position, ref, alt, type, beta, se, pvalue, nlog10p, maf, ac, an, r2, median_tpm}. Rows cover ONLY the cis window the dataset tested (±1 Mb of each gene); empty means "not tested / not present". No total count is published: truncated=false proves exhaustion, truncated=true means the cap was hit.',
+      'Molecular-QTL association rows from one eQTL Catalogue dataset, filtered by gene, variant or region. Args: dataset_id (QTD accession from eqtl_list_datasets, e.g. QTD000266); gene_id (unversioned Ensembl gene ID e.g. ENSG00000130203 APOE; at least one of gene_id/rsid/variant/pos is required); rsid (dbSNP rsID); variant (eQTL Catalogue variant string chr19_44908822_C_T, chr-prefixed underscore GRCh38); pos (genomic window chromosome:start-end GRCh38 no chr prefix, e.g. 19:44900000-44920000); nlog10p_min (significance floor: only rows with -log10(p) >= this, applied source); max_records (cap default 1000 = one page). Returns {dataset_id, filters, returned, truncated, associations}; each row {molecular_trait_id, gene_id, variant, rsid, chromosome, position, ref, alt, type, beta, se, pvalue, nlog10p, maf, ac, an, r2, median_tpm}. Rows cover ONLY the cis window the dataset tested (±1 Mb of each gene); empty means "not tested / not present". No total count is published: truncated=false proves exhaustion, truncated=true means the cap was hit.',
     input: {
       type: 'object',
       properties: {

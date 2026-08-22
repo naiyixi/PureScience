@@ -47,7 +47,7 @@ const PHEWEB_INSTANCES: Record<PhewebKey, PhewebInstance> = {
   }
 }
 
-// ---- minimal upstream shapes (only the fields the normalized records read) ------------------
+// ---- minimal source shapes (only the fields the normalized records read) ------------------
 
 type FinngenGnomad = Record<string, unknown>
 type FinngenAnnotation = {
@@ -166,7 +166,7 @@ function leanGnomad(g: FinngenGnomad | undefined): Record<string, unknown> | nul
   return Object.keys(out).length ? out : null
 }
 
-// GET that maps an upstream 404 (unknown variant/gene) to a clean not-found error; other HTTP
+// GET that maps an source 404 (unknown variant/gene) to a clean not-found error; other HTTP
 // errors (surfaced by the engine as "HTTP <code>") propagate unchanged.
 async function fetchOrNotFound(ctx: ToolContext, url: string, notFound: string): Promise<unknown> {
   try {

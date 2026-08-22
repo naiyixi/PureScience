@@ -9,7 +9,7 @@ import {
   inputToMessages,
   responsesToChatRequest,
   toolsToChat,
-  upstreamErrorMessage
+  sourceErrorMessage
 } from './responses-bridge'
 import { selectExplicitConnectorSkills } from './skill-selector-routing'
 
@@ -110,7 +110,7 @@ describe('Responses-compatible bridge conversion', () => {
     })
   })
 
-  it('rejects malformed or unsupported Responses image content before calling upstream', () => {
+  it('rejects malformed or unsupported Responses image content before calling source', () => {
     const convertImage = (part: Record<string, unknown>): unknown =>
       responsesToChatRequest({
         input: [{ type: 'message', role: 'user', content: [part] }]
@@ -356,7 +356,7 @@ describe('Responses-compatible bridge conversion', () => {
     })
   })
 
-  it('rejects upstream image output instead of returning an empty Responses result', () => {
+  it('rejects source image output instead of returning an empty Responses result', () => {
     expect(() =>
       completionToResponse({
         id: 'chat-image',
@@ -522,7 +522,7 @@ describe('Responses-compatible bridge conversion', () => {
     ).toThrow(/tool_choice/)
   })
 
-  it('keeps the Codex metadata model separate from the upstream model', () => {
+  it('keeps the Codex metadata model separate from the source model', () => {
     expect(
       responsesToChatRequest({ model: 'gpt-5-codex', input: 'hello' }, 'deepseek-v4-flash')
     ).toMatchObject({ model: 'deepseek-v4-flash' })
@@ -644,18 +644,18 @@ describe('Responses-compatible bridge conversion', () => {
     ).toMatchObject({ stream_options: { include_usage: true } })
   })
 
-  it('surfaces a nested upstream error instead of hiding it behind HTTP status', () => {
+  it('surfaces a nested source error instead of hiding it behind HTTP status', () => {
     expect(
-      upstreamErrorMessage('{"error":{"message":"Model deepseek-v4-flash does not exist"}}', 400)
+      sourceErrorMessage('{"error":{"message":"Model deepseek-v4-flash does not exist"}}', 400)
     ).toBe('Model deepseek-v4-flash does not exist')
-    expect(upstreamErrorMessage('plain upstream failure', 400)).toBe('plain upstream failure')
+    expect(sourceErrorMessage('plain source failure', 400)).toBe('plain source failure')
   })
 
-  it('serves an authenticated Responses SSE stream from a Chat Completions upstream', async () => {
-    let upstreamRequest: Record<string, unknown> | undefined
-    const upstreamFetch = vi.fn(
+  it('serves an authenticated Responses SSE stream from a Chat Completions source', async () => {
+    let sourceRequest: Record<string, unknown> | undefined
+    const sourceFetch = vi.fn(
       async (_url: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
-        upstreamRequest = JSON.parse(String(init?.body)) as Record<string, unknown>
+        sourceRequest = JSON.parse(String(init?.body)) as Record<string, unknown>
         return new Response(
           [
             'data: ' +
@@ -688,8 +688,8 @@ describe('Responses-compatible bridge conversion', () => {
     )
     const { ResponsesBridge } = await import('./responses-bridge')
     const bridge = new ResponsesBridge(
-      { baseUrl: 'https://vendor.example/v1', key: 'upstream-key' },
-      upstreamFetch
+      { baseUrl: 'https://vendor.example/v1', key: 'source-key' },
+      sourceFetch
     )
     const connection = await bridge.start()
 
@@ -710,13 +710,13 @@ describe('Responses-compatible bridge conversion', () => {
       const output = await response.text()
 
       expect(response.status).toBe(200)
-      expect(upstreamFetch).toHaveBeenCalledWith(
+      expect(sourceFetch).toHaveBeenCalledWith(
         'https://vendor.example/v1/chat/completions',
         expect.objectContaining({
-          headers: { authorization: 'Bearer upstream-key', 'content-type': 'application/json' }
+          headers: { authorization: 'Bearer source-key', 'content-type': 'application/json' }
         })
       )
-      expect(upstreamRequest).toMatchObject({
+      expect(sourceRequest).toMatchObject({
         model: 'model-a',
         stream: true,
         stream_options: { include_usage: true },
@@ -747,11 +747,11 @@ describe('Responses-compatible bridge conversion', () => {
     }
   })
 
-  it('overrides Codex\u2019s effort with the model-resolved value at the upstream gateway', async () => {
-    let upstreamRequest: Record<string, unknown> | undefined
-    const upstreamFetch = vi.fn(
+  it('overrides Codex\u2019s effort with the model-resolved value at the source gateway', async () => {
+    let sourceRequest: Record<string, unknown> | undefined
+    const sourceFetch = vi.fn(
       async (_url: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
-        upstreamRequest = JSON.parse(String(init?.body)) as Record<string, unknown>
+        sourceRequest = JSON.parse(String(init?.body)) as Record<string, unknown>
         return new Response(
           [
             'data: ' +
@@ -769,8 +769,8 @@ describe('Responses-compatible bridge conversion', () => {
       }
     )
     const bridge = new ResponsesBridge(
-      { baseUrl: 'https://vendor.example/v1', key: 'upstream-key', reasoningEffort: 'max' },
-      upstreamFetch
+      { baseUrl: 'https://vendor.example/v1', key: 'source-key', reasoningEffort: 'max' },
+      sourceFetch
     )
     const connection = await bridge.start()
 
@@ -791,17 +791,17 @@ describe('Responses-compatible bridge conversion', () => {
       await response.text()
 
       expect(response.status).toBe(200)
-      expect(upstreamRequest).toMatchObject({ reasoning_effort: 'max' })
+      expect(sourceRequest).toMatchObject({ reasoning_effort: 'max' })
     } finally {
       await bridge.close()
     }
   })
 
   it('strips the reasoning effort when the user never chose a level', async () => {
-    let upstreamRequest: Record<string, unknown> | undefined
-    const upstreamFetch = vi.fn(
+    let sourceRequest: Record<string, unknown> | undefined
+    const sourceFetch = vi.fn(
       async (_url: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
-        upstreamRequest = JSON.parse(String(init?.body)) as Record<string, unknown>
+        sourceRequest = JSON.parse(String(init?.body)) as Record<string, unknown>
         return new Response(
           [
             'data: ' +
@@ -819,10 +819,10 @@ describe('Responses-compatible bridge conversion', () => {
       }
     )
     // No resolved override: Codex's own default effort must not change what existing bridged users
-    // send upstream.
+    // send source.
     const bridge = new ResponsesBridge(
-      { baseUrl: 'https://vendor.example/v1', key: 'upstream-key' },
-      upstreamFetch
+      { baseUrl: 'https://vendor.example/v1', key: 'source-key' },
+      sourceFetch
     )
     const connection = await bridge.start()
 
@@ -843,17 +843,17 @@ describe('Responses-compatible bridge conversion', () => {
       await response.text()
 
       expect(response.status).toBe(200)
-      expect(upstreamRequest).not.toHaveProperty('reasoning_effort')
+      expect(sourceRequest).not.toHaveProperty('reasoning_effort')
     } finally {
       await bridge.close()
     }
   })
 
   it('flips effort forwarding on a live bridge without replacing its target', async () => {
-    let upstreamRequest: Record<string, unknown> | undefined
-    const upstreamFetch = vi.fn(
+    let sourceRequest: Record<string, unknown> | undefined
+    const sourceFetch = vi.fn(
       async (_url: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
-        upstreamRequest = JSON.parse(String(init?.body)) as Record<string, unknown>
+        sourceRequest = JSON.parse(String(init?.body)) as Record<string, unknown>
         return new Response(
           [
             'data: ' +
@@ -871,8 +871,8 @@ describe('Responses-compatible bridge conversion', () => {
       }
     )
     const bridge = new ResponsesBridge(
-      { baseUrl: 'https://vendor.example/v1', key: 'upstream-key' },
-      upstreamFetch
+      { baseUrl: 'https://vendor.example/v1', key: 'source-key' },
+      sourceFetch
     )
     const connection = await bridge.start()
     const post = (): Promise<string> =>
@@ -892,28 +892,28 @@ describe('Responses-compatible bridge conversion', () => {
 
     try {
       await post()
-      expect(upstreamRequest).not.toHaveProperty('reasoning_effort')
+      expect(sourceRequest).not.toHaveProperty('reasoning_effort')
 
       // The model profile resolves a concrete level (Codex applies it live over ACP — the bridge
       // never reconnects).
       bridge.setReasoningEffort('max')
       await post()
-      expect(upstreamRequest).toMatchObject({ reasoning_effort: 'max' })
+      expect(sourceRequest).toMatchObject({ reasoning_effort: 'max' })
 
       // Back to default: stripping restored on the same live bridge.
       bridge.setReasoningEffort(undefined)
       await post()
-      expect(upstreamRequest).not.toHaveProperty('reasoning_effort')
+      expect(sourceRequest).not.toHaveProperty('reasoning_effort')
     } finally {
       await bridge.close()
     }
   })
 
   it('restores a namespaced MCP call when its Chat id, name, and arguments are fragmented', async () => {
-    let upstreamRequest: Record<string, unknown> | undefined
-    const upstreamFetch = vi.fn(
+    let sourceRequest: Record<string, unknown> | undefined
+    const sourceFetch = vi.fn(
       async (_url: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
-        upstreamRequest = JSON.parse(String(init?.body)) as Record<string, unknown>
+        sourceRequest = JSON.parse(String(init?.body)) as Record<string, unknown>
         return new Response(
           [
             'data: ' +
@@ -998,7 +998,7 @@ describe('Responses-compatible bridge conversion', () => {
     const bridge = new ResponsesBridge(
       {
         baseUrl: 'https://vendor.example/v1',
-        key: 'upstream-key',
+        key: 'source-key',
         namespacedTools: [
           {
             namespace: 'mcp__purescience_notebook',
@@ -1012,7 +1012,7 @@ describe('Responses-compatible bridge conversion', () => {
           }
         ]
       },
-      upstreamFetch
+      sourceFetch
     )
     const connection = await bridge.start()
 
@@ -1041,7 +1041,7 @@ describe('Responses-compatible bridge conversion', () => {
       })
       const output = await response.text()
 
-      expect(upstreamRequest).toMatchObject({
+      expect(sourceRequest).toMatchObject({
         tools: expect.arrayContaining([
           expect.objectContaining({
             type: 'function',
@@ -1052,7 +1052,7 @@ describe('Responses-compatible bridge conversion', () => {
           })
         ])
       })
-      const chatTools = (upstreamRequest?.tools ?? []) as Array<{
+      const chatTools = (sourceRequest?.tools ?? []) as Array<{
         function?: { name?: string }
       }>
       expect(chatTools.map((tool) => tool.function?.name)).toEqual([
@@ -1070,14 +1070,14 @@ describe('Responses-compatible bridge conversion', () => {
   })
 
   it('carries DeepSeek reviewer tool calls only for a trusted registered session key', async () => {
-    const upstreamRequests: Array<Record<string, unknown>> = []
-    const upstreamUrls: string[] = []
-    const upstreamFetch = vi.fn(
+    const sourceRequests: Array<Record<string, unknown>> = []
+    const sourceUrls: string[] = []
+    const sourceFetch = vi.fn(
       async (url: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
         const request = JSON.parse(String(init?.body)) as Record<string, unknown>
-        const reviewer = upstreamRequests.length === 1
-        upstreamUrls.push(String(url))
-        upstreamRequests.push(request)
+        const reviewer = sourceRequests.length === 1
+        sourceUrls.push(String(url))
+        sourceRequests.push(request)
         return new Response(
           [
             `data: ${JSON.stringify({
@@ -1138,7 +1138,7 @@ describe('Responses-compatible bridge conversion', () => {
           ]
         }
       },
-      upstreamFetch
+      sourceFetch
     )
     const connection = await bridge.start()
     const post = async (input: string, promptCacheKey: string): Promise<string> => {
@@ -1176,7 +1176,7 @@ describe('Responses-compatible bridge conversion', () => {
       )
       expect(bridge.unregisterReviewerSession('reviewer-session')).toBe(true)
 
-      const toolNames = upstreamRequests.map((request) =>
+      const toolNames = sourceRequests.map((request) =>
         ((request.tools ?? []) as Array<{ function?: { name?: string } }>).map(
           (tool) => tool.function?.name
         )
@@ -1186,12 +1186,12 @@ describe('Responses-compatible bridge conversion', () => {
         'mcp__purescience_reviewer__read_turn',
         'mcp__purescience_reviewer__submit_findings'
       ])
-      expect(upstreamRequests[0]?.tool_choice).toEqual({
+      expect(sourceRequests[0]?.tool_choice).toEqual({
         type: 'function',
         function: { name: 'exec_command' }
       })
-      expect(upstreamRequests[1]?.tool_choice).toBe('auto')
-      expect(upstreamUrls).toEqual([
+      expect(sourceRequests[1]?.tool_choice).toBe('auto')
+      expect(sourceUrls).toEqual([
         'https://api.deepseek.com/v1/chat/completions',
         'https://api.deepseek.com/v1/chat/completions'
       ])
@@ -1205,10 +1205,10 @@ describe('Responses-compatible bridge conversion', () => {
   })
 
   it('removes all tool declarations for a registered one-shot session key', async () => {
-    let upstreamRequest: Record<string, unknown> | undefined
-    const upstreamFetch = vi.fn(
+    let sourceRequest: Record<string, unknown> | undefined
+    const sourceFetch = vi.fn(
       async (_url: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
-        upstreamRequest = JSON.parse(String(init?.body)) as Record<string, unknown>
+        sourceRequest = JSON.parse(String(init?.body)) as Record<string, unknown>
         return Response.json({
           id: 'chat-tool-less',
           model: 'model-a',
@@ -1228,7 +1228,7 @@ describe('Responses-compatible bridge conversion', () => {
           }
         ]
       },
-      upstreamFetch
+      sourceFetch
     )
     const connection = await bridge.start()
 
@@ -1254,20 +1254,20 @@ describe('Responses-compatible bridge conversion', () => {
       })
 
       expect(response.ok).toBe(true)
-      expect(upstreamRequest).not.toHaveProperty('tools')
-      expect(JSON.stringify(upstreamRequest)).not.toContain('exec_command')
-      expect(JSON.stringify(upstreamRequest)).not.toContain('notebook_execute')
+      expect(sourceRequest).not.toHaveProperty('tools')
+      expect(JSON.stringify(sourceRequest)).not.toContain('exec_command')
+      expect(JSON.stringify(sourceRequest)).not.toContain('notebook_execute')
       expect(bridge.unregisterToolLessSession('reconstruction-session')).toBe(true)
     } finally {
       await bridge.close()
     }
   })
 
-  it('streams a clean, fully-readable body when the upstream emits reasoning_content', async () => {
-    // Regression: a reasoning-model upstream interleaves reasoning_content deltas. The bridge must
+  it('streams a clean, fully-readable body when the source emits reasoning_content', async () => {
+    // Regression: a reasoning-model source interleaves reasoning_content deltas. The bridge must
     // drop them and finish the SSE stream instead of resetting the socket (which reaches the agent
     // as "error decoding response body" / stream disconnected before completion).
-    const upstreamFetch = vi.fn(async () => {
+    const sourceFetch = vi.fn(async () => {
       const chunk = (delta: Record<string, unknown>, finish_reason: string | null = null): string =>
         'data: ' +
         JSON.stringify({
@@ -1294,7 +1294,7 @@ describe('Responses-compatible bridge conversion', () => {
     const { ResponsesBridge } = await import('./responses-bridge')
     const bridge = new ResponsesBridge(
       { baseUrl: 'https://vendor.example/v1', key: 'k' },
-      upstreamFetch
+      sourceFetch
     )
     const connection = await bridge.start()
 
@@ -1323,8 +1323,8 @@ describe('Responses-compatible bridge conversion', () => {
     }
   })
 
-  it('reports streamed upstream image output as unsupported', async () => {
-    const upstreamFetch = vi.fn(async () => {
+  it('reports streamed source image output as unsupported', async () => {
+    const sourceFetch = vi.fn(async () => {
       const chunk = (delta: Record<string, unknown>, finish_reason: string | null = null): string =>
         'data: ' +
         JSON.stringify({
@@ -1349,7 +1349,7 @@ describe('Responses-compatible bridge conversion', () => {
     })
     const bridge = new ResponsesBridge(
       { baseUrl: 'https://vendor.example/v1', key: 'k' },
-      upstreamFetch
+      sourceFetch
     )
     const connection = await bridge.start()
 
@@ -1366,7 +1366,7 @@ describe('Responses-compatible bridge conversion', () => {
 
       expect(response.status).toBe(200)
       expect(output).toContain('response.failed')
-      expect(output).toContain('unsupported_upstream_output')
+      expect(output).toContain('unsupported_source_output')
       expect(output).toContain('Upstream image output is not supported')
       expect(output).not.toContain('response.completed')
     } finally {
@@ -1374,8 +1374,8 @@ describe('Responses-compatible bridge conversion', () => {
     }
   })
 
-  it('returns a clear error for non-streaming upstream image output', async () => {
-    const upstreamFetch = vi.fn(async () =>
+  it('returns a clear error for non-streaming source image output', async () => {
+    const sourceFetch = vi.fn(async () =>
       Response.json({
         id: 'chat-image-json',
         model: 'model-a',
@@ -1391,7 +1391,7 @@ describe('Responses-compatible bridge conversion', () => {
     )
     const bridge = new ResponsesBridge(
       { baseUrl: 'https://vendor.example/v1', key: 'k' },
-      upstreamFetch
+      sourceFetch
     )
     const connection = await bridge.start()
 
@@ -1410,7 +1410,7 @@ describe('Responses-compatible bridge conversion', () => {
 
       expect(response.status).toBe(502)
       expect(result.error).toEqual({
-        type: 'unsupported_upstream_output',
+        type: 'unsupported_source_output',
         message: 'Upstream image output is not supported by this gateway'
       })
     } finally {
@@ -1418,7 +1418,7 @@ describe('Responses-compatible bridge conversion', () => {
     }
   })
 
-  it('aborts the upstream fetch when the incoming client connection closes', async () => {
+  it('aborts the source fetch when the incoming client connection closes', async () => {
     let signal: AbortSignal | undefined
     let markFetchStarted: (() => void) | undefined
     let markAborted: (() => void) | undefined
@@ -1428,7 +1428,7 @@ describe('Responses-compatible bridge conversion', () => {
     const aborted = new Promise<void>((resolve) => {
       markAborted = resolve
     })
-    const upstreamFetch = vi.fn(
+    const sourceFetch = vi.fn(
       async (_url: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
         signal = init?.signal ?? undefined
         markFetchStarted?.()
@@ -1446,7 +1446,7 @@ describe('Responses-compatible bridge conversion', () => {
     )
     const bridge = new ResponsesBridge(
       { baseUrl: 'https://vendor.example/v1', key: 'k' },
-      upstreamFetch
+      sourceFetch
     )
     const connection = await bridge.start()
     const endpoint = new URL(`${connection.baseUrl}/responses`)
@@ -1472,7 +1472,7 @@ describe('Responses-compatible bridge conversion', () => {
       await aborted
 
       expect(signal?.aborted).toBe(true)
-      expect(upstreamFetch).toHaveBeenCalledWith(
+      expect(sourceFetch).toHaveBeenCalledWith(
         'https://vendor.example/v1/chat/completions',
         expect.objectContaining({ signal })
       )
@@ -1515,10 +1515,10 @@ describe('Responses-compatible bridge conversion', () => {
     expect(socket.destroyed).toBe(true)
   })
 
-  it('reports a truncated upstream stream as failed rather than completed', async () => {
-    // The upstream yields content but its connection drops mid-stream: no finish_reason, no [DONE].
+  it('reports a truncated source stream as failed rather than completed', async () => {
+    // The source yields content but its connection drops mid-stream: no finish_reason, no [DONE].
     // The bridge must not present this as a complete turn.
-    const upstreamFetch = vi.fn(async () => {
+    const sourceFetch = vi.fn(async () => {
       return new Response(
         [
           'data: ' +
@@ -1536,7 +1536,7 @@ describe('Responses-compatible bridge conversion', () => {
     const { ResponsesBridge } = await import('./responses-bridge')
     const bridge = new ResponsesBridge(
       { baseUrl: 'https://vendor.example/v1', key: 'k' },
-      upstreamFetch
+      sourceFetch
     )
     const connection = await bridge.start()
 
@@ -1557,7 +1557,7 @@ describe('Responses-compatible bridge conversion', () => {
 
       expect(response.status).toBe(200)
       expect(output).toContain('response.failed')
-      expect(output).toContain('upstream_incomplete')
+      expect(output).toContain('source_incomplete')
       expect(output).not.toContain('response.completed')
     } finally {
       await bridge.close()
@@ -1565,7 +1565,7 @@ describe('Responses-compatible bridge conversion', () => {
   })
 
   it('reports a length-truncated stream as incomplete, not completed', async () => {
-    const upstreamFetch = vi.fn(async () => {
+    const sourceFetch = vi.fn(async () => {
       const chunk = (delta: Record<string, unknown>, finish_reason: string | null = null): string =>
         'data: ' +
         JSON.stringify({
@@ -1587,7 +1587,7 @@ describe('Responses-compatible bridge conversion', () => {
     const { ResponsesBridge } = await import('./responses-bridge')
     const bridge = new ResponsesBridge(
       { baseUrl: 'https://vendor.example/v1', key: 'k' },
-      upstreamFetch
+      sourceFetch
     )
     const connection = await bridge.start()
 
@@ -1618,7 +1618,7 @@ describe('Responses-compatible bridge conversion', () => {
     // The bridge receives the ALREADY-RESOLVED OpenAI base as target.baseUrl and only appends
     // /chat/completions. A GLM base carries its own /api/paas/v4 version segment, which must survive —
     // a consumer that hard-coded /v1/chat/completions would break here.
-    const upstreamFetch = vi.fn(async () =>
+    const sourceFetch = vi.fn(async () =>
       Response.json({
         id: 'c-glm',
         model: 'glm-5.2',
@@ -1627,7 +1627,7 @@ describe('Responses-compatible bridge conversion', () => {
     )
     const bridge = new ResponsesBridge(
       { baseUrl: 'https://api.z.ai/api/paas/v4', key: 'k', model: 'glm-5.2' },
-      upstreamFetch
+      sourceFetch
     )
     const connection = await bridge.start()
 
@@ -1641,7 +1641,7 @@ describe('Responses-compatible bridge conversion', () => {
         body: JSON.stringify({ model: 'glm-5.2', input: 'hi', stream: false })
       })
       expect(response.status).toBe(200)
-      expect(upstreamFetch).toHaveBeenCalledWith(
+      expect(sourceFetch).toHaveBeenCalledWith(
         'https://api.z.ai/api/paas/v4/chat/completions',
         expect.anything()
       )
@@ -1651,8 +1651,8 @@ describe('Responses-compatible bridge conversion', () => {
   })
 
   it('appends /chat/completions to a custom-resolved <root>/v1 base', async () => {
-    // A custom gateway is resolved upstream to `<root>/v1`; the bridge appends the endpoint onto that.
-    const upstreamFetch = vi.fn(async () =>
+    // A custom gateway is resolved source to `<root>/v1`; the bridge appends the endpoint onto that.
+    const sourceFetch = vi.fn(async () =>
       Response.json({
         id: 'c-proxy',
         model: 'm',
@@ -1661,7 +1661,7 @@ describe('Responses-compatible bridge conversion', () => {
     )
     const bridge = new ResponsesBridge(
       { baseUrl: 'https://host/proxy/v1', key: 'k', model: 'm' },
-      upstreamFetch
+      sourceFetch
     )
     const connection = await bridge.start()
 
@@ -1675,7 +1675,7 @@ describe('Responses-compatible bridge conversion', () => {
         body: JSON.stringify({ model: 'm', input: 'hi', stream: false })
       })
       expect(response.status).toBe(200)
-      expect(upstreamFetch).toHaveBeenCalledWith(
+      expect(sourceFetch).toHaveBeenCalledWith(
         'https://host/proxy/v1/chat/completions',
         expect.anything()
       )
@@ -1684,7 +1684,7 @@ describe('Responses-compatible bridge conversion', () => {
     }
   })
 
-  it('clears the reasoning cache only when the upstream target actually changes', () => {
+  it('clears the reasoning cache only when the source target actually changes', () => {
     const bridge = new ResponsesBridge({ baseUrl: 'https://a.example/v1', model: 'm1', key: 'k1' })
     const cache = (bridge as unknown as { reasoningByCallId: Map<string, string> })
       .reasoningByCallId
@@ -1741,13 +1741,13 @@ describe('Responses bridge Skill selector', () => {
   ]
 
   it('sends only current text plus names and descriptions and returns canonical bounded results', async () => {
-    let upstreamUrl = ''
-    let upstreamHeaders: HeadersInit | undefined
-    let upstreamBody: Record<string, unknown> = {}
-    const upstreamFetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
-      upstreamUrl = String(input)
-      upstreamHeaders = init?.headers
-      upstreamBody = JSON.parse(String(init?.body)) as Record<string, unknown>
+    let sourceUrl = ''
+    let sourceHeaders: HeadersInit | undefined
+    let sourceBody: Record<string, unknown> = {}
+    const sourceFetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      sourceUrl = String(input)
+      sourceHeaders = init?.headers
+      sourceBody = JSON.parse(String(init?.body)) as Record<string, unknown>
       return new Response(
         JSON.stringify({
           choices: [
@@ -1779,15 +1779,15 @@ describe('Responses bridge Skill selector', () => {
     })
     const bridge = new ResponsesBridge(
       { baseUrl: 'https://vendor.example/v1', key: 'secret-key', model: 'deepseek-v4-flash' },
-      upstreamFetch
+      sourceFetch
     )
 
     const selected = await bridge.selectSkills('查找肿瘤免疫相关的生物医学文献', catalog)
 
     expect(selected).toEqual(catalog.slice(0, 3).map(({ name, path }) => ({ name, path })))
-    expect(upstreamUrl).toBe('https://vendor.example/v1/chat/completions')
-    expect(upstreamHeaders).toMatchObject({ authorization: 'Bearer secret-key' })
-    expect(upstreamBody).toMatchObject({
+    expect(sourceUrl).toBe('https://vendor.example/v1/chat/completions')
+    expect(sourceHeaders).toMatchObject({ authorization: 'Bearer secret-key' })
+    expect(sourceBody).toMatchObject({
       model: 'deepseek-v4-flash',
       stream: false,
       temperature: 0,
@@ -1810,29 +1810,29 @@ describe('Responses bridge Skill selector', () => {
         }
       ]
     })
-    expect(upstreamBody).not.toHaveProperty('tool_choice')
-    const serialized = JSON.stringify(upstreamBody)
+    expect(sourceBody).not.toHaveProperty('tool_choice')
+    const serialized = JSON.stringify(sourceBody)
     expect(serialized).toContain('Search biomedical literature.')
     expect(serialized.match(/mcp-pubmed/g)).toHaveLength(1)
     expect(serialized).not.toContain('/private/')
     expect(serialized).not.toContain('secret-key')
   })
 
-  it('selects an explicitly named connector Skill locally without an upstream request', async () => {
-    const upstreamFetch = vi.fn<typeof fetch>()
+  it('selects an explicitly named connector Skill locally without an source request', async () => {
+    const sourceFetch = vi.fn<typeof fetch>()
     const bridge = new ResponsesBridge(
       { baseUrl: 'https://vendor.example/v1', model: 'deepseek-v4-flash' },
-      upstreamFetch
+      sourceFetch
     )
 
     await expect(bridge.selectSkills('用 PubMed 搜索肿瘤免疫文章', catalog)).resolves.toEqual([
       { name: 'mcp-pubmed', path: '/private/pubmed/SKILL.md' }
     ])
-    expect(upstreamFetch).not.toHaveBeenCalled()
+    expect(sourceFetch).not.toHaveBeenCalled()
   })
 
   it('does not treat an ordinary Skill name in natural text as an explicit local selection', async () => {
-    const upstreamFetch = vi.fn(
+    const sourceFetch = vi.fn(
       async () =>
         new Response(
           JSON.stringify({
@@ -1855,7 +1855,7 @@ describe('Responses bridge Skill selector', () => {
     )
     const bridge = new ResponsesBridge(
       { baseUrl: 'https://vendor.example/v1', model: 'model-a' },
-      upstreamFetch
+      sourceFetch
     )
     const mixedCatalog = [
       ...catalog,
@@ -1865,7 +1865,7 @@ describe('Responses bridge Skill selector', () => {
     await expect(bridge.selectSkills('research cancer treatments', mixedCatalog)).resolves.toEqual([
       { name: 'research', path: '/skills/research/SKILL.md' }
     ])
-    expect(upstreamFetch).toHaveBeenCalledOnce()
+    expect(sourceFetch).toHaveBeenCalledOnce()
   })
 
   it('does not infer connector provenance from a user-controlled mcp-* name', () => {
@@ -1881,10 +1881,10 @@ describe('Responses bridge Skill selector', () => {
   })
 
   it('finds an explicitly named connector before bounding the inference catalog', async () => {
-    const upstreamFetch = vi.fn<typeof fetch>()
+    const sourceFetch = vi.fn<typeof fetch>()
     const bridge = new ResponsesBridge(
       { baseUrl: 'https://vendor.example/v1', model: 'model-a' },
-      upstreamFetch
+      sourceFetch
     )
     const largeCatalog = [
       ...Array.from({ length: 140 }, (_, index) => ({
@@ -1903,11 +1903,11 @@ describe('Responses bridge Skill selector', () => {
     await expect(bridge.selectSkills('用 PubMed 搜索文章', largeCatalog)).resolves.toEqual([
       { name: 'mcp-pubmed', path: '/skills/pubmed/SKILL.md' }
     ])
-    expect(upstreamFetch).not.toHaveBeenCalled()
+    expect(sourceFetch).not.toHaveBeenCalled()
   })
 
   it.each([
-    ['an upstream error', new Response('provider unavailable', { status: 503 })],
+    ['an source error', new Response('provider unavailable', { status: 503 })],
     ['a malformed function result', new Response(JSON.stringify({ choices: [{ message: {} }] }))]
   ])('fails open for %s', async (_label, response) => {
     const bridge = new ResponsesBridge(
@@ -1919,9 +1919,9 @@ describe('Responses bridge Skill selector', () => {
   })
 
   it('bounds candidate fields, catalog count, and the complete serialized request', async () => {
-    let upstreamBody = ''
-    const upstreamFetch = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
-      upstreamBody = String(init?.body)
+    let sourceBody = ''
+    const sourceFetch = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+      sourceBody = String(init?.body)
       return new Response(
         JSON.stringify({
           choices: [
@@ -1951,12 +1951,12 @@ describe('Responses bridge Skill selector', () => {
     ]
     const bridge = new ResponsesBridge(
       { baseUrl: 'https://vendor.example/v1', model: 'model-a' },
-      upstreamFetch
+      sourceFetch
     )
 
     await expect(bridge.selectSkills('hello', oversizedCatalog)).resolves.toEqual([])
 
-    const request = JSON.parse(upstreamBody) as {
+    const request = JSON.parse(sourceBody) as {
       messages: Array<{ content: string }>
       tools: Array<{
         function: {
@@ -1972,11 +1972,11 @@ describe('Responses bridge Skill selector', () => {
       type: 'string'
     })
     expect(request.messages[0].content).not.toContain('x'.repeat(10_000))
-    expect(Buffer.byteLength(upstreamBody, 'utf8')).toBeLessThan(300 * 1024)
+    expect(Buffer.byteLength(sourceBody, 'utf8')).toBeLessThan(300 * 1024)
   })
 
   it('fails open when the selection deadline expires', async () => {
-    const upstreamFetch = vi.fn(
+    const sourceFetch = vi.fn(
       async (_input: string | URL | Request, init?: RequestInit): Promise<Response> =>
         new Promise((_resolve, reject) => {
           init?.signal?.addEventListener('abort', () => reject(init.signal?.reason), { once: true })
@@ -1984,19 +1984,19 @@ describe('Responses bridge Skill selector', () => {
     )
     const bridge = new ResponsesBridge(
       { baseUrl: 'https://vendor.example/v1', model: 'model-a' },
-      upstreamFetch,
+      sourceFetch,
       { skillSelectorTimeoutMs: 5 }
     )
 
     await expect(bridge.selectSkills('hello', catalog)).resolves.toEqual([])
   })
 
-  it('aborts the upstream selection when the caller cancels the turn', async () => {
+  it('aborts the source selection when the caller cancels the turn', async () => {
     let markStarted!: () => void
     const started = new Promise<void>((resolve) => {
       markStarted = resolve
     })
-    const upstreamFetch = vi.fn(
+    const sourceFetch = vi.fn(
       async (_input: string | URL | Request, init?: RequestInit): Promise<Response> => {
         markStarted()
         return new Promise((_resolve, reject) => {
@@ -2006,7 +2006,7 @@ describe('Responses bridge Skill selector', () => {
     )
     const bridge = new ResponsesBridge(
       { baseUrl: 'https://vendor.example/v1', model: 'model-a' },
-      upstreamFetch
+      sourceFetch
     )
     const controller = new AbortController()
 

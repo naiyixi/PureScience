@@ -649,7 +649,7 @@ describe('AgentBackendResolver configured and explicit targets', () => {
     })
   })
 
-  it('pre-registers immutable OpenCode provider routes without exposing upstream credentials', async () => {
+  it('pre-registers immutable OpenCode provider routes without exposing source credentials', async () => {
     const providerA = {
       ...makeStoredProvider('provider-a', 'model-a'),
       baseUrl: 'https://provider-a.example/v1'

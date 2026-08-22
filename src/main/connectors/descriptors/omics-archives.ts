@@ -2,7 +2,7 @@ import { ncbiEtiquette } from '../engine'
 import type { ToolContext, ToolDescriptor } from '../types'
 
 // Public read-only endpoints for the five omics data archives grouped under this connector.
-// Ported faithfully from the upstream purescience-mcp `mcp_omics_archives` fleet packages
+// Ported faithfully from the source purescience-mcp `mcp_omics_archives` fleet packages
 // (arrayexpress-experiments, geo-meta, metabolights-meta, mgnify-studies, pride-projects):
 // same request flow, pagination / count-verification, field names and output shapes.
 const BIOSTUDIES = 'https://www.ebi.ac.uk/biostudies/api/v1'
@@ -48,8 +48,8 @@ const byStr =
   (a: Obj, b: Obj): number =>
     key(a) < key(b) ? -1 : key(a) > key(b) ? 1 : 0
 
-// The engine surfaces upstream errors as `HTTP <status> for <url>`; 401/403/404 mean the record is
-// private/deprecated/absent (upstream treats these as "not found" rather than a hard failure).
+// The engine surfaces source errors as `HTTP <status> for <url>`; 401/403/404 mean the record is
+// private/deprecated/absent (source treats these as "not found" rather than a hard failure).
 const isNotFound = (err: unknown): boolean =>
   err instanceof Error && /HTTP (401|403|404)\b/.test(err.message)
 
@@ -330,7 +330,7 @@ function aeSearchParams(a: Obj): Record<string, string> {
 
 // Walk every result page, verifying the unique-record count against the API's totalHits. The server's
 // release_date tie order can differ between page fetches of one sweep, yielding a spurious count
-// mismatch; each retry uses a different page size to move every page boundary (upstream behaviour).
+// mismatch; each retry uses a different page size to move every page boundary (source behaviour).
 async function aeSearch(
   ctx: ToolContext,
   params: Record<string, string>,

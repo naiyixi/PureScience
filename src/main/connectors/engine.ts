@@ -107,7 +107,7 @@ export class ParserEngine {
           clearTimeout(timer)
         }
         if (res.ok) return res
-        // Retry only transient upstream statuses; client errors (4xx except 429) fail fast.
+        // Retry only transient source statuses; client errors (4xx except 429) fail fast.
         if (attempt < this.retries && RETRYABLE_STATUS.has(res.status)) {
           await sleep(nextDelay(attempt, res.headers?.get?.('retry-after') ?? null))
           continue

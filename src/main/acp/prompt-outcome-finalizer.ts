@@ -53,7 +53,7 @@ type ObservedPromptStop = Readonly<{
   modelTurnCount?: number
 }>
 export class AcpPromptOutcomeFinalizer {
-  // Optional resolver for the terminal context-window snapshot (upstream #1321 port). Injected by
+  // Optional resolver for the terminal context-window snapshot . Injected by
   // the runtime composition so the terminal event can carry a frozen context fact for the trend UI.
   constructor(
     private readonly options: Readonly<{

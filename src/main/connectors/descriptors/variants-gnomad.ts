@@ -1,11 +1,11 @@
 import type { ToolContext, ToolDescriptor } from '../types'
 
 // gnomAD is GraphQL-only: every call is a POST of {query, variables} to a single endpoint. Ported
-// from the upstream gnomad_variants library (client/queries/records/tool) — the 10 mirrored MCP
+// from the source gnomad_variants library (client/queries/records/tool) — the 10 mirrored MCP
 // methods, with the same lean field selections (the API is complexity-limited) and record shaping.
 const GNOMAD_API = 'https://gnomad.broadinstitute.org/api'
 
-// Dataset pins frozen to the 14 short-variant datasets the upstream tool exposes. Default is the
+// Dataset pins frozen to the 14 short-variant datasets the source tool exposes. Default is the
 // current release gnomad_r4 (exomes+genomes, GRCh38); r2.1/exac are GRCh37, r3 is genome-only.
 const DATASETS = [
   'gnomad_r4',
@@ -29,7 +29,7 @@ const DEFAULT_SV_DATASET = 'gnomad_sv_r4'
 // Region queries are capped so a runaway window can't ask gnomAD for the whole genome.
 const MAX_REGION_BP = 1_000_000
 
-// ---- GraphQL documents (transcribed verbatim from upstream queries.py) ----------------------
+// ---- GraphQL documents (transcribed verbatim from source queries.py) ----------------------
 
 const VARIANT_QUERY = `
 query Variant($variantId: String!, $dataset: DatasetId!) {
@@ -241,7 +241,7 @@ type LiftoverRow = {
 
 // ---- helpers --------------------------------------------------------------------------------
 
-// GraphQL error messages that mean "entity absent", not "request failed" — mirrors the upstream
+// GraphQL error messages that mean "entity absent", not "request failed" — mirrors the source
 // client's NOT_FOUND_MESSAGES. When only these are present the entity is simply not found.
 const NOT_FOUND_MESSAGES = new Set([
   'variant not found',
@@ -278,7 +278,7 @@ function clampInt(value: unknown, min?: number, max?: number, fallback = 0): num
   return v
 }
 
-// Enforces the upstream "pass exactly one of gene_symbol / gene_id" ValueError — a usage error, not
+// Enforces the source "pass exactly one of gene_symbol / gene_id" ValueError — a usage error, not
 // an empty result. Returns the GraphQL {symbol, geneId} variable pair.
 function geneArgs(a: Record<string, unknown>): { symbol: string | null; geneId: string | null } {
   const symbol = a.gene_symbol == null ? null : String(a.gene_symbol)
@@ -289,7 +289,7 @@ function geneArgs(a: Record<string, unknown>): { symbol: string | null; geneId: 
   return { symbol, geneId }
 }
 
-// Rejects an unknown dataset pin (usage error), matching upstream _check_dataset.
+// Rejects an unknown dataset pin (usage error), matching source _check_dataset.
 function checkDataset(dataset: string, allowed: readonly string[]): string {
   if (!allowed.includes(dataset)) {
     throw new Error(`unknown dataset '${dataset}'; allowed: ${allowed.join(', ')}`)
@@ -616,7 +616,7 @@ export const VARIANTS_GNOMAD_TOOLS: ToolDescriptor[] = [
       const start = clampInt(a.start, 0)
       const stop = clampInt(a.stop, 0)
       const dataset = checkDataset(String(a.dataset ?? DEFAULT_DATASET), DATASETS)
-      // Region size cap is a usage error (matches upstream ValueError), not an empty result.
+      // Region size cap is a usage error (matches source ValueError), not an empty result.
       if (stop - start > MAX_REGION_BP) {
         throw new Error(`region exceeds ${MAX_REGION_BP} bp; split the query`)
       }
@@ -811,7 +811,7 @@ export const VARIANTS_GNOMAD_TOOLS: ToolDescriptor[] = [
       const dataset = checkDataset(String(a.dataset ?? DEFAULT_DATASET), DATASETS)
       const hasStart = a.region_start != null
       const hasStop = a.region_stop != null
-      // Both region bounds go together (upstream ValueError), and a region excludes a gene.
+      // Both region bounds go together (source ValueError), and a region excludes a gene.
       if (hasStart !== hasStop) throw new Error('pass region_start and region_stop together')
       if (hasStart) {
         if (a.gene_symbol != null || a.gene_id != null) {

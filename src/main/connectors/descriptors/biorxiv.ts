@@ -151,7 +151,7 @@ const firstMessage = (payload: BiorxivPayload): BiorxivMessage => {
 
 type Page = { records: BiorxivRecord[]; total: number; status: string }
 
-// Fetch one upstream page: empty on "no posts found", raise on any non-"ok" status.
+// Fetch one source page: empty on "no posts found", raise on any non-"ok" status.
 const fetchPage = async (ctx: ToolContext, path: string): Promise<Page> => {
   const payload = (await ctx.fetchJson(BASE + path)) as BiorxivPayload
   const msg = firstMessage(payload)
@@ -221,7 +221,7 @@ const preprintSummary = (r: BiorxivRecord): Record<string, unknown> => ({
   abstract_preview: preview(r.abstract)
 })
 
-// Standard listing envelope. total is null on the funder route (no upstream total) so callers use
+// Standard listing envelope. total is null on the funder route (no source total) so callers use
 // count < limit to detect end-of-stream, never a lying 0 next to a non-empty page.
 const searchResponse = (
   records: BiorxivRecord[],
@@ -325,7 +325,7 @@ const categoriesResponse = (): Record<string, unknown> => ({
 
 const INTERVALS: Record<string, string> = { monthly: 'm', yearly: 'y' }
 
-// Map the interval arg to the upstream one-letter code (default monthly).
+// Map the interval arg to the source one-letter code (default monthly).
 const resolveInterval = (a: Record<string, unknown>): string => {
   const key = a.interval == null || a.interval === '' ? 'monthly' : String(a.interval)
   const code = INTERVALS[key]
@@ -522,7 +522,7 @@ export const BIORXIV_TOOLS: ToolDescriptor[] = [
       }
     },
     returns:
-      '`{ "success": bool, "results": [ { "biorxiv_doi", ...link fields } ], "cursor": int, "count": int, "total": int|null, "error": null }`. With include_details each result carries every upstream field (published_doi, published_journal, preprint_title, dates, etc.); with include_details=false, only the summary subset.',
+      '`{ "success": bool, "results": [ { "biorxiv_doi", ...link fields } ], "cursor": int, "count": int, "total": int|null, "error": null }`. With include_details each result carries every source field (published_doi, published_journal, preprint_title, dates, etc.); with include_details=false, only the summary subset.',
     example:
       'const result = await host.mcp("biorxiv", "search_published_preprints", {"publisher": "10.1038", "date_from": "2024-01-01", "date_to": "2024-01-05", "limit": 10})',
     run: async (ctx, a) => {
@@ -535,7 +535,7 @@ export const BIORXIV_TOOLS: ToolDescriptor[] = [
         if (publisher != null && publisher !== '') {
           if (server !== 'biorxiv') {
             throw new Error(
-              "the upstream /publisher route is bioRxiv-only; publisher cannot be combined with server='medrxiv'"
+              "the source /publisher route is bioRxiv-only; publisher cannot be combined with server='medrxiv'"
             )
           }
           if (!PUBLISHER_RE.test(String(publisher))) {

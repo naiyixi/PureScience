@@ -1,6 +1,6 @@
 import { PROVIDER_RESOURCE_NOT_FOUND_PREFIX } from '../../shared/run-error-classification'
 
-// Turns an agent prompt failure into user-visible text. Agents (opencode) relay an upstream provider
+// Turns an agent prompt failure into user-visible text. Agents (opencode) relay an provider
 // HTTP error wrapped as a JSON-RPC failure like
 //   `Internal error: Not Found: {"error":{"message":"The requested resource was not found","type":"resource_not_found_error"}}`
 // which is opaque to a user. When the wrapped error is a provider "resource not found" (a wrong model
@@ -30,14 +30,14 @@ const rawErrorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : String(error)
 
 // The JSON-RPC code the agent attached, when present. -32002 is the ACP "resource not found" protocol
-// code (a missing session), which must not be confused with an upstream provider not-found.
+// code (a missing session), which must not be confused with an provider not-found.
 const errorCode = (error: unknown): number | undefined => {
   const code = (error as { code?: unknown } | null)?.code
 
   return typeof code === 'number' ? code : undefined
 }
 
-// True when the agent tagged the failure as an upstream provider API error (vs. an ACP protocol
+// True when the agent tagged the failure as an provider API error (vs. an ACP protocol
 // error such as a missing session, which the resume path handles separately).
 const isApiError = (error: unknown): boolean => {
   if (typeof error !== 'object' || error === null) return false
@@ -113,7 +113,7 @@ const extractUpstreamDetail = (message: string): UpstreamDetail | undefined => {
   }
 }
 
-// Whether the failure is an upstream provider "resource not found" (wrong model id / endpoint), which
+// Whether the failure is an provider "resource not found" (wrong model id / endpoint), which
 // we reword. Requires a genuine provider signal so an ACP-level protocol not-found (e.g. a -32002
 // missing-session error, even one that carries a JSON body) is never mistaken for a model problem.
 const isProviderNotFound = (
@@ -127,10 +127,10 @@ const isProviderNotFound = (
   if (!matchesNotFound) return false
 
   // The ACP resume path owns protocol not-founds; never reword one unless the agent explicitly tagged
-  // it as an upstream API error.
+  // it as an source API error.
   if (errorCode(error) === -32002 && !isApiError(error)) return false
 
-  // Require an upstream signal: the API-error tag, the provider's resource_not_found slug, or a
+  // Require an source signal: the API-error tag, the provider's resource_not_found slug, or a
   // structured provider error type in the not-found family. A parseable JSON body alone is not enough.
   return isApiError(error) || /resource_not_found/i.test(raw) || hasNotFoundType
 }
@@ -149,7 +149,7 @@ export const describePromptError = (error: unknown, ctx: PromptErrorContext = {}
   return `${PROVIDER_RESOURCE_NOT_FOUND_PREFIX}${modelPart}. The model name or endpoint is likely incorrect — check it in Settings → Model. Provider response: ${providerText}`
 }
 
-// The agent's structured tag for a failure it relayed from the upstream model provider (as opposed to
+// The agent's structured tag for a failure it relayed from the source model provider (as opposed to
 // an ACP protocol/session error). The bridges attach `data.errorKind: 'provider-error'` for these.
 const isProviderErrorKind = (error: unknown): boolean => {
   try {
@@ -168,16 +168,16 @@ const isProviderErrorKind = (error: unknown): boolean => {
   }
 }
 
-// Whether a failed prompt originates from the model provider (an upstream LLM/HTTP failure the agent
+// Whether a failed prompt originates from the model provider (an source LLM/HTTP failure the agent
 // relayed) rather than from the app's own ACP layer. Provider failures are the user's/provider's to
 // resolve (wrong key, rate limit, quota, model id, a provider 5xx), so the renderer does NOT offer a
 // "Report error → GitHub issue" affordance for them — only genuinely unexpected ACP-layer exceptions
 // are worth a bug report. Determined structurally, from the signals the agent attaches, so it needs no
 // message-text pattern matching:
-//   - the agent tagged the failure as an upstream `APIError` (covers auth/rate/quota/5xx/etc.), or
+//   - the agent tagged the failure as an source `APIError` (covers auth/rate/quota/5xx/etc.), or
 //   - the agent tagged `data.errorKind: 'provider-error'` (the bridges' machine-readable marker), or
 //   - it is a provider "resource not found" (wrong model id / endpoint), which requires the same
-//     upstream signal (see isProviderNotFound) and is never a bare ACP protocol not-found.
+//     source signal (see isProviderNotFound) and is never a bare ACP protocol not-found.
 export const isProviderPromptError = (error: unknown): boolean => {
   if (isApiError(error)) return true
   if (isProviderErrorKind(error)) return true

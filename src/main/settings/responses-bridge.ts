@@ -17,11 +17,11 @@ import {
 } from './skill-selector-routing'
 
 // The bridge deliberately keeps protocol payloads open-ended; validation rejects unsupported shapes
-// at the boundary before values reach the upstream request.
+// at the boundary before values reach the source request.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type JsonObject = Record<string, any>
 
-// Diagnostics for the Codex Responses bridge. Logs the resolved upstream model, the tool translation
+// Diagnostics for the Codex Responses bridge. Logs the resolved source model, the tool translation
 // (Responses tool types in → Chat function names out), and what each turn actually produced (text vs
 // tool calls) so a "tools not called / task not continued" report can be traced. Never logs keys,
 // prompt text, or tool arguments — only shapes, counts, names, and the model id.
@@ -33,7 +33,7 @@ export type ResponsesBridgeTarget = {
   vendorId?: OfficialVendorId
   reasoningEffortTransport?: CustomReasoningEffortTransport
   // Codex uses a catalog model for its local metadata; bridge providers may need a different
-  // upstream model id (for example, DeepSeek's model name).
+  // source model id (for example, DeepSeek's model name).
   model?: string
   namespacedTools?: ResponsesBridgeNamespacedTool[]
   // The active model's resolved API value. This explicitly overrides Codex's transport-model effort,
@@ -111,7 +111,7 @@ const unsupportedUpstreamImageOutput = (): BridgeHttpError =>
   new BridgeHttpError(
     'Upstream image output is not supported by this gateway',
     502,
-    'unsupported_upstream_output'
+    'unsupported_source_output'
   )
 
 const UNSUPPORTED_FIELDS = [
@@ -181,12 +181,12 @@ const readBody = async (request: IncomingMessage): Promise<JsonObject> => {
   return JSON.parse(Buffer.concat(chunks).toString('utf8')) as JsonObject
 }
 
-// The upstream Chat Completions endpoint. `target.baseUrl` is already the resolved OpenAI base (an
+// The source Chat Completions endpoint. `target.baseUrl` is already the resolved OpenAI base (an
 // official vendor's exact versioned base, or a custom root normalized to `<root>/v1`), so this only
 // appends `/chat/completions` — preserving any query/hash on the base.
 const chatUrl = (value: string): string => appendChatCompletions(value)
 
-const upstreamErrorMessage = (body: string, status: number): string => {
+const sourceErrorMessage = (body: string, status: number): string => {
   const trimmed = body.trim()
   if (trimmed) {
     try {
@@ -202,7 +202,7 @@ const upstreamErrorMessage = (body: string, status: number): string => {
     }
   }
 
-  return `Chat Completions upstream returned ${status}`
+  return `Chat Completions source returned ${status}`
 }
 
 const imageUrlFromPart = (part: JsonObject): JsonObject => {
@@ -270,7 +270,7 @@ const textFromContent = (content: unknown): string | JsonObject[] => {
   })
 }
 
-const upstreamTextFromContent = (content: unknown): string => {
+const sourceTextFromContent = (content: unknown): string => {
   if (content === undefined || content === null) return ''
   if (typeof content === 'string') return content
   if (
@@ -281,9 +281,9 @@ const upstreamTextFromContent = (content: unknown): string => {
   }
   if (!Array.isArray(content)) {
     throw new BridgeHttpError(
-      'Unsupported upstream message content',
+      'Unsupported source message content',
       502,
-      'unsupported_upstream_output'
+      'unsupported_source_output'
     )
   }
 
@@ -291,24 +291,24 @@ const upstreamTextFromContent = (content: unknown): string => {
     .map((part) => {
       if (!part || typeof part !== 'object') {
         throw new BridgeHttpError(
-          'Unsupported upstream message content part',
+          'Unsupported source message content part',
           502,
-          'unsupported_upstream_output'
+          'unsupported_source_output'
         )
       }
       if (UPSTREAM_IMAGE_TYPES.has(String(part.type))) throw unsupportedUpstreamImageOutput()
       if (part.type !== 'text' && part.type !== 'output_text') {
         throw new BridgeHttpError(
-          `Unsupported upstream message content part: ${String(part.type)}`,
+          `Unsupported source message content part: ${String(part.type)}`,
           502,
-          'unsupported_upstream_output'
+          'unsupported_source_output'
         )
       }
       if (typeof part.text !== 'string') {
         throw new BridgeHttpError(
           'Upstream text output must contain string text',
           502,
-          'unsupported_upstream_output'
+          'unsupported_source_output'
         )
       }
       return part.text
@@ -381,7 +381,7 @@ const inputToMessages = (
   // tool message per tool_call_id. Codex emits parallel tool calls as consecutive function_call items
   // (fc_A, fc_B, output_A, output_B), so coalesce a run of function_call items into ONE assistant
   // message rather than one message each — otherwise assistant[A] is followed by assistant[B] and the
-  // upstream rejects it. Flushed when a message or a tool output ends the run.
+  // source rejects it. Flushed when a message or a tool output ends the run.
   let pendingToolCalls: JsonObject[] = []
   let pendingReasoning: string | undefined
   const flushToolCalls = (): void => {
@@ -554,7 +554,7 @@ const toolChoiceToChat = (toolChoice: unknown): unknown => {
 
 export const responsesToChatRequest = (
   body: JsonObject,
-  upstreamModel?: string,
+  sourceModel?: string,
   reasoningByCallId?: Map<string, string>,
   namespacedTools: readonly ResponsesBridgeNamespacedTool[] = [],
   options?: {
@@ -581,7 +581,7 @@ export const responsesToChatRequest = (
       }
     }
     // Codex requests `reasoning.encrypted_content` automatically. Chat Completions has no equivalent,
-    // so the one allowlisted advisory value is intentionally omitted from the upstream request.
+    // so the one allowlisted advisory value is intentionally omitted from the source request.
   }
   if (body.reasoning !== undefined && body.reasoning !== null) {
     if (typeof body.reasoning !== 'object' || Array.isArray(body.reasoning)) {
@@ -632,21 +632,21 @@ export const responsesToChatRequest = (
   const toolChoice = hasTools ? requestedToolChoice : undefined
   const stream = body.stream !== false
 
-  // The model profile already chose the upstream API value. Never derive it from Codex's request:
+  // The model profile already chose the source API value. Never derive it from Codex's request:
   // Codex runs a catalog transport model and may omit, default, or clamp values that the real model
   // supports. Undefined intentionally strips Codex's own effort from the Chat request.
   const chatReasoningEffort = options?.reasoningEffortOverride
   const reasoningTransport = chatReasoningEffort
     ? resolveChatReasoningTransport(
         options?.vendorId,
-        upstreamModel,
+        sourceModel,
         chatReasoningEffort,
         options?.reasoningEffortTransport
       )
     : undefined
 
   return {
-    model: upstreamModel ?? body.model,
+    model: sourceModel ?? body.model,
     messages: inputToMessages(body, reasoningByCallId, namespacedTools),
     ...(hasTools ? { tools } : {}),
     ...(toolChoice === undefined ? {} : { tool_choice: toolChoice }),
@@ -705,7 +705,7 @@ const responseEnvelope = (
 
 // Chat Completions and Responses use different usage field names. Codex validates the Responses
 // shape before publishing its ACP token-usage update, so passing Chat fields through makes usage
-// silently disappear even though the upstream reported it.
+// silently disappear even though the source reported it.
 const chatUsageToResponsesUsage = (usage: unknown): JsonObject | undefined => {
   if (typeof usage !== 'object' || usage === null || Array.isArray(usage)) return undefined
 
@@ -738,7 +738,7 @@ const completionToResponse = (
   if (hasUpstreamImageField(message)) throw unsupportedUpstreamImageOutput()
   // Mirror the streaming path: drop reasoning_content (no faithful Responses representation) and fall
   // back to a refusal as the visible answer, rather than rejecting model output outright.
-  const contentText = upstreamTextFromContent(message.content)
+  const contentText = sourceTextFromContent(message.content)
   const text =
     contentText.length > 0
       ? contentText
@@ -785,12 +785,12 @@ const writeEvent = (
 }
 
 const streamChatToResponses = async (
-  upstream: Response,
+  source: Response,
   response: ServerResponse,
   model: string,
   namespacedTools: readonly ResponsesBridgeNamespacedTool[] = []
 ): Promise<{ reasoning: string; callIds: string[] }> => {
-  if (!upstream.body) throw new Error('Chat Completions upstream returned no body')
+  if (!source.body) throw new Error('Chat Completions source returned no body')
   response.writeHead(200, {
     'content-type': 'text/event-stream',
     'cache-control': 'no-cache',
@@ -814,7 +814,7 @@ const streamChatToResponses = async (
 
   const decoder = new TextDecoder()
   let buffered = ''
-  // Classify how the upstream stream ended so a truncation or token-limit cutoff is never reported as a
+  // Classify how the source stream ended so a truncation or token-limit cutoff is never reported as a
   // clean completion. `terminalFinishReason` is the last finish_reason seen; `sawDone` marks the [DONE]
   // sentinel. Neither seen ⇒ the connection dropped mid-stream.
   let terminalFinishReason: string | undefined
@@ -855,7 +855,7 @@ const streamChatToResponses = async (
     // providers stream `reasoning_content` deltas that have no faithful Responses representation here,
     // so drop them; a `refusal` IS the model's answer, so surface it as visible text.
     if (typeof delta.reasoning_content === 'string') reasoning += delta.reasoning_content
-    const contentText = upstreamTextFromContent(delta.content)
+    const contentText = sourceTextFromContent(delta.content)
     const textDelta =
       contentText.length > 0
         ? contentText
@@ -927,7 +927,7 @@ const streamChatToResponses = async (
   // to emit a terminal response.failed below.
   let streamError: unknown
   try {
-    for await (const chunk of upstream.body) {
+    for await (const chunk of source.body) {
       buffered += decoder.decode(chunk, { stream: true })
       // SSE records are separated by a blank line; tolerate both LF and CRLF framing.
       const records = buffered.split(/\r?\n\r?\n/)
@@ -981,7 +981,7 @@ const streamChatToResponses = async (
   // `content_filter`) is a cut-off answer; a bare [DONE] with no finish_reason still counts as a proper
   // termination; anything else means the stream dropped with no terminal signal at all.
   if (streamError instanceof BridgeHttpError) {
-    log.warn('bridge unsupported upstream output', { model, type: streamError.type })
+    log.warn('bridge unsupported source output', { model, type: streamError.type })
     writeEvent(response, 'response.failed', sequence++, {
       response: responseEnvelope(responseId, model, output, undefined, 'failed', {
         type: streamError.type,
@@ -999,7 +999,7 @@ const streamChatToResponses = async (
     })
     writeEvent(response, 'response.failed', sequence++, {
       response: responseEnvelope(responseId, model, output, usage, 'failed', {
-        type: 'upstream_error',
+        type: 'source_error',
         message: 'Upstream stream ended before completion'
       })
     })
@@ -1018,11 +1018,11 @@ const streamChatToResponses = async (
       response: responseEnvelope(responseId, model, output, usage)
     })
   } else {
-    // No finish_reason and no [DONE]: the upstream ended mid-stream without a terminal signal.
+    // No finish_reason and no [DONE]: the source ended mid-stream without a terminal signal.
     log.warn('bridge stream truncated (no terminal finish_reason)', { model })
     writeEvent(response, 'response.failed', sequence++, {
       response: responseEnvelope(responseId, model, output, usage, 'failed', {
-        type: 'upstream_incomplete',
+        type: 'source_incomplete',
         message: 'Upstream stream ended without a terminal finish_reason'
       })
     })
@@ -1129,7 +1129,7 @@ export class ResponsesBridge {
       if (!response.ok) {
         log.warn('bridge skill selection failed', {
           model: this.target.model,
-          reason: 'upstream-http',
+          reason: 'source-http',
           status: response.status
         })
         return []
@@ -1171,7 +1171,7 @@ export class ResponsesBridge {
   }
 
   setTarget(target: ResponsesBridgeTarget): void {
-    // Clear the reasoning cache only when the upstream target actually changes. setTarget is also
+    // Clear the reasoning cache only when the source target actually changes. setTarget is also
     // called on same-provider reconnects (skill reload, session resume); clearing then would drop the
     // reasoning_content a resumed thinking-mode session still needs to replay. On a real provider
     // switch the old provider's reasoning must not leak into the new one.
@@ -1189,7 +1189,7 @@ export class ResponsesBridge {
     this.setTarget({ ...this.target, ...target })
   }
 
-  // Updates only the resolved upstream effort on the live target. Deliberately not a setTarget: the
+  // Updates only the resolved source effort on the live target. Deliberately not a setTarget: the
   // provider is unchanged, so the reasoning cache must be preserved.
   setReasoningEffort(effort?: ModelReasoningEffort): void {
     this.target = { ...this.target, reasoningEffort: effort }
@@ -1331,7 +1331,7 @@ export class ResponsesBridge {
       )
 
       // Reveals which real model actually serves the turn (Codex only ever sees the internal catalog
-      // model, not the upstream) and whether Codex's advertised tools survived translation into Chat
+      // model, not the source) and whether Codex's advertised tools survived translation into Chat
       // function tools. An empty incomingToolCount means Codex advertised nothing (e.g. a code_mode_only
       // catalog model); an empty outgoingToolNames with a non-empty incoming set means the bridge
       // filtered them.
@@ -1342,7 +1342,7 @@ export class ResponsesBridge {
       const outgoingToolNames = outgoingTools.map((tool) => tool?.function?.name)
       log.info('bridge request', {
         catalogModel: body.model,
-        upstreamModel: chatRequest.model,
+        sourceModel: chatRequest.model,
         stream: chatRequest.stream === true,
         incomingToolTypes: [
           ...new Set(incomingTools.map((tool) => String(tool?.type ?? '(missing)')))
@@ -1357,30 +1357,30 @@ export class ResponsesBridge {
         'content-type': 'application/json',
         ...(this.target.key ? { authorization: `Bearer ${this.target.key}` } : {})
       }
-      const upstream = await this.fetchImpl(chatUrl(this.target.baseUrl), {
+      const source = await this.fetchImpl(chatUrl(this.target.baseUrl), {
         method: 'POST',
         headers,
         body: JSON.stringify(chatRequest),
         signal: abortController.signal
       })
-      if (!upstream.ok) {
-        const errorBody = await upstream.text()
-        log.warn('bridge upstream error', {
-          upstreamModel: chatRequest.model,
-          status: upstream.status
+      if (!source.ok) {
+        const errorBody = await source.text()
+        log.warn('bridge source error', {
+          sourceModel: chatRequest.model,
+          status: source.status
         })
-        json(response, upstream.status, {
+        json(response, source.status, {
           error: {
-            type: 'upstream_error',
-            message: upstreamErrorMessage(errorBody, upstream.status),
-            status: upstream.status
+            type: 'source_error',
+            message: sourceErrorMessage(errorBody, source.status),
+            status: source.status
           }
         })
         return
       }
       if (chatRequest.stream) {
         const { reasoning, callIds } = await streamChatToResponses(
-          upstream,
+          source,
           response,
           String(body.model ?? ''),
           namespacedTools
@@ -1388,7 +1388,7 @@ export class ResponsesBridge {
         this.cacheReasoning(reasoning, callIds)
         return
       }
-      const completion = (await upstream.json()) as JsonObject
+      const completion = (await source.json()) as JsonObject
       const message = (completion.choices?.[0]?.message ?? {}) as JsonObject
       const result = completionToResponse(completion, namespacedTools)
       const outputItems = Array.isArray(result.output) ? (result.output as JsonObject[]) : []
@@ -1413,4 +1413,4 @@ export class ResponsesBridge {
   }
 }
 
-export { chatUrl, completionToResponse, inputToMessages, toolsToChat, upstreamErrorMessage }
+export { chatUrl, completionToResponse, inputToMessages, toolsToChat, sourceErrorMessage }

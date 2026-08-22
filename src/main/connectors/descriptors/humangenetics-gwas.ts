@@ -7,7 +7,7 @@ import type { ToolContext, ToolDescriptor } from '../types'
 const BASE = 'https://www.ebi.ac.uk/gwas/rest/api/v2'
 const PAGE_SIZE = 500
 
-// ---- upstream v2 JSON shapes (only the fields the lean rows surface) ------------------------
+// ---- source v2 JSON shapes (only the fields the lean rows surface) ------------------------
 
 type V2EfoTrait = { efo_id?: string; efo_trait?: string; uri?: string }
 type V2SnpAllele = { rs_id?: string; effect_allele?: string }
@@ -248,7 +248,7 @@ export const HUMANGENETICS_GWAS_TOOLS: ToolDescriptor[] = [
     id: 'gwas_associations_for_gene',
     connector: 'human_genetics',
     description:
-      "GWAS Catalog associations whose variants are MAPPED to a gene (catalog's Ensembl pipeline mapping, not author-reported), most significant first. Args: gene_symbol (HGNC symbol, exact match, e.g. PCSK9, APOE; case-sensitive upstream — pass canonical uppercase; intergenic variants map to flanking genes, so rows may sit outside the gene body); max_records (cap default 500; rows server-sorted by p-value ascending). Returns {gene_symbol, api_total, returned, truncated, associations} with the same row shape as gwas_associations_for_variant. A nonexistent symbol returns api_total=0, not an error.",
+      "GWAS Catalog associations whose variants are MAPPED to a gene (catalog's Ensembl pipeline mapping, not author-reported), most significant first. Args: gene_symbol (HGNC symbol, exact match, e.g. PCSK9, APOE; case-sensitive source — pass canonical uppercase; intergenic variants map to flanking genes, so rows may sit outside the gene body); max_records (cap default 500; rows server-sorted by p-value ascending). Returns {gene_symbol, api_total, returned, truncated, associations} with the same row shape as gwas_associations_for_variant. A nonexistent symbol returns api_total=0, not an error.",
     input: {
       type: 'object',
       properties: {
@@ -413,7 +413,7 @@ export const HUMANGENETICS_GWAS_TOOLS: ToolDescriptor[] = [
     id: 'gwas_get_variant',
     connector: 'human_genetics',
     description:
-      'Fetch one GWAS Catalog variant record (position, mapped genes, consequence) by rsID — lighter than pulling its associations. Args: rs_id (dbSNP rsID e.g. rs7412). Returns {found, rs_id, variant}; variant is {rs_id, merged, functional_class, most_severe_consequence, alleles (e.g. "C/T (forward)"), mapped_genes, locations:[{chromosome, position, region}], last_update_date} — positions GRCh38 — or null when the rsID is not in the catalog. merged=1 means the rsID was merged into another record upstream.',
+      'Fetch one GWAS Catalog variant record (position, mapped genes, consequence) by rsID — lighter than pulling its associations. Args: rs_id (dbSNP rsID e.g. rs7412). Returns {found, rs_id, variant}; variant is {rs_id, merged, functional_class, most_severe_consequence, alleles (e.g. "C/T (forward)"), mapped_genes, locations:[{chromosome, position, region}], last_update_date} — positions GRCh38 — or null when the rsID is not in the catalog. merged=1 means the rsID was merged into another record source.',
     input: {
       type: 'object',
       properties: {

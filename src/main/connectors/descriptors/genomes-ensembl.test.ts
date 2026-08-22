@@ -68,7 +68,7 @@ describe('ensembl_lookup', () => {
     }
   })
 
-  it('maps an upstream 400 to found:false, record:null', async () => {
+  it('maps an source 400 to found:false, record:null', async () => {
     const fetchImpl = vi.fn().mockResolvedValueOnce(errRes(400))
     const out = (await run('ensembl_lookup', { query: 'NOSUCHGENE' }, fetchImpl)) as {
       found: boolean

@@ -198,7 +198,7 @@ const resolveProcessKey = (request: NotebookExecutionRequest): ProcessKey => {
 // default (no resolvedInterpreter). ensureProc compares this against the live proc so a DEFAULT env
 // whose runtime changed (managed <-> external, or a different external interpreter) tears the old kernel
 // down instead of reusing its process + stale in-memory state. Kept OUT of the process key so there is
-// still exactly ONE proc per (kind, env), matching the (kind, env)-keyed status/lock tracking upstream.
+// still exactly ONE proc per (kind, env), matching the (kind, env)-keyed status/lock tracking source.
 const interpreterIdentity = (request: NotebookExecutionRequest): string => {
   const ri = request.resolvedInterpreter
   return ri ? [ri.command, ...(ri.args ?? []), ri.condaPrefix ?? ''].join('\n') : ''

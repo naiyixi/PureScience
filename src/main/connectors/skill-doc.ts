@@ -5,16 +5,16 @@ import { customConnectorSlug } from '../../shared/custom-connector'
 const CONVENTIONS = [
   'Reach this service ONLY from the REPL control-plane kernel: call it inside the `repl_execute` tool as `const result = await host.mcp(server, method, {...})`. host.mcp is async — always `await` it. The python and r DATA cells have NO connector access; do not call host.mcp (or urllib / requests / fetch) from them — it will fail.',
   "The result is a ready-to-use native JavaScript value — an object or array for most tools, sometimes a string or number. It is already parsed (not a JSON string). Each tool's **Returns** block gives its exact shape and field meanings; how you inspect or process it is up to you.",
-  'The REPL is a persistent session: assign a result you will reuse to `globalThis` (e.g. `globalThis.hits = result`) so later `repl_execute` calls can see it, instead of running the call again. Each call hits the rate-limited upstream — never re-issue the same call to look at or reprocess a result you already have.',
-  'Do NOT reimplement these calls with raw HTTP (urllib / requests / httpx / fetch) or hit the upstream endpoints directly — that bypasses the approval gate, per-tool policy, credentials, and rate limits, and can leak project data.',
-  'Prefer bulk/list tools over per-item loops — the upstream API is rate-limited and shared across subagents.',
+  'The REPL is a persistent session: assign a result you will reuse to `globalThis` (e.g. `globalThis.hits = result`) so later `repl_execute` calls can see it, instead of running the call again. Each call hits the rate-limited source — never re-issue the same call to look at or reprocess a result you already have.',
+  'Do NOT reimplement these calls with raw HTTP (urllib / requests / httpx / fetch) or hit the source endpoints directly — that bypasses the approval gate, per-tool policy, credentials, and rate limits, and can leak project data.',
+  'Prefer bulk/list tools over per-item loops — the source API is rate-limited and shared across subagents.',
   'To use a result in a python or r cell, have the REPL write it under `process.env.PURESCIENCE_HANDOFF_DIR`, then read the same `PURESCIENCE_HANDOFF_DIR` path from the data cell — not through the model context or a cwd-relative handoff path.'
 ].join('\n')
 
 // A Skill may be loaded outside the bundled-connector baseline (notably for custom MCP servers), so
 // keep the minimum calling and reuse contract local without copying the full shared policy block.
 const SKILL_CONVENTIONS =
-  'Use from `repl_execute` as `const result = await host.mcp(server, method, {...})`. Results are native JavaScript in a persistent REPL; save reusable values on `globalThis` instead of running the call again, and never re-issue the same upstream call.'
+  'Use from `repl_execute` as `const result = await host.mcp(server, method, {...})`. Results are native JavaScript in a persistent REPL; save reusable values on `globalThis` instead of running the call again, and never re-issue the same source call.'
 
 const CUSTOM_SKILL_CONVENTIONS =
   `${SKILL_CONVENTIONS} Do not bypass \`host.mcp\` with raw HTTP or calls from Python/R: ` +
@@ -103,7 +103,7 @@ export function renderSkillDoc(connectorId: string): string {
     )
     .join('\n')
   return (
-    `${header}\n> This connector is rate-limited at the upstream API.\n\n` +
+    `${header}\n> This connector is rate-limited at the source API.\n\n` +
     `${SKILL_CONVENTIONS}\n\n## Tools\n\n${methods}`
   )
 }
@@ -152,7 +152,7 @@ export function renderCustomSkillDoc(
     )
     .join('\n')
   return (
-    `${header}\n> This connector is rate-limited at the upstream API.\n\n` +
+    `${header}\n> This connector is rate-limited at the source API.\n\n` +
     `${CUSTOM_SKILL_CONVENTIONS}\n\n## Tools\n\n${methods}`
   )
 }

@@ -465,7 +465,7 @@ export const en: Record<ZhKey, string> = {
   'settings.testFailedModelNotFound': 'Test failed: the configured model was not found.',
   'settings.testFailedTimeout': 'Test failed: the connection timed out.',
   'settings.testFailedServerError':
-    'Test failed: the gateway or upstream service is temporarily unavailable.',
+    'Test failed: the gateway or source service is temporarily unavailable.',
   'settings.testFailedHttpStatus': 'Test failed: {message} (HTTP {status})',
   'settings.official': 'Official',
 

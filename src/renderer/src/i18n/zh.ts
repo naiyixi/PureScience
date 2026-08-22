@@ -447,7 +447,7 @@ export const zh = {
   'settings.testFailedBadUrl': '测试失败：基础 URL 看起来无效。',
   'settings.testFailedModelNotFound': '测试失败：未找到配置的模型。',
   'settings.testFailedTimeout': '测试失败：连接超时。',
-  'settings.testFailedServerError': '测试失败：网关或上游服务暂时不可用。',
+  'settings.testFailedServerError': '测试失败：网关或远程服务暂时不可用。',
   'settings.testFailedHttpStatus': '测试失败：{message}（HTTP {status}）',
   'settings.official': '官方',
 

@@ -90,7 +90,7 @@ const describeValidationFailure = (
       // The pairing, not the credential, is the problem — carry the specific route-mismatch reason.
       return failure.message ?? t('settings.notCompatibleWithAgent')
     case 'server-error':
-      // Gateway or upstream service temporarily unavailable — surface the specific error when present.
+      // Gateway or source service temporarily unavailable — surface the specific error when present.
       return failure.message
         ? t('settings.testFailedHttpStatus')
             .replace('{message}', failure.message)

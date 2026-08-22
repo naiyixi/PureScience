@@ -3,14 +3,14 @@ import type { ToolContext, ToolDescriptor } from '../types'
 // Research Resources aggregates two read-only registries:
 //  * Grants.gov search2 (POST-only funding-opportunity search, complete + count-verified).
 //  * The Antibody Registry (antibodyregistry.org, ~3.2M full-text antibody records).
-// Both mirror the upstream mcp-research-resources server (grants_gov_search + antibody_registry).
+// Both mirror the official mcp-research-resources server (grants_gov_search + antibody_registry).
 
 // ------------------------------------------------------------------ Grants.gov
 
 const GRANTS_URL = 'https://api.grants.gov/v1/api/search2'
-// search2 has no documented page-size limit; the upstream client walks 1000 rows per POST.
+// search2 has no documented page-size limit; the source client walks 1000 rows per POST.
 const GRANTS_ROWS_PER_PAGE = 1000
-// Valid oppStatuses; an invalid value is silently accepted upstream and yields empty pages.
+// Valid oppStatuses; an invalid value is silently accepted source and yields empty pages.
 const VALID_STATUSES = ['forecasted', 'posted', 'closed', 'archived']
 // The API's own default status set when oppStatuses is omitted (current opportunities).
 const DEFAULT_STATUSES = 'forecasted|posted'
@@ -126,7 +126,7 @@ const walkGrants = async (
 const AB_BASE = 'https://www.antibodyregistry.org/api'
 // Deepest row reachable without authentication on /fts-antibodies (page*size beyond this -> HTTP 401).
 const ANON_ROW_LIMIT = 500
-// Fields that change as the registry re-curates records; stripped from returned records (upstream _norm).
+// Fields that change as the registry re-curates records; stripped from returned records (source _norm).
 const VOLATILE_FIELDS = new Set([
   'curateTime',
   'lastEditTime',
@@ -272,7 +272,7 @@ export const RESEARCH_RESOURCES_TOOLS: ToolDescriptor[] = [
     id: 'search_antibodies',
     connector: 'research_resources',
     description:
-      'Full-text search the Antibody Registry (antibodyregistry.org, ~3.2M records). Token-based matching against antibody name/target/catalog text ("TP53" and "p53" are different queries). With page omitted, all pages are walked up to max_records or the anonymous depth cap (rows beyond offset 500 need authentication upstream, flagged as anonymous_limit_hit — never silently dropped). Pass a 1-based page for single-page retrieval (page*page_size must stay <= 500).',
+      'Full-text search the Antibody Registry (antibodyregistry.org, ~3.2M records). Token-based matching against antibody name/target/catalog text ("TP53" and "p53" are different queries). With page omitted, all pages are walked up to max_records or the anonymous depth cap (rows beyond offset 500 need authentication source, flagged as anonymous_limit_hit — never silently dropped). Pass a 1-based page for single-page retrieval (page*page_size must stay <= 500).',
     input: {
       type: 'object',
       properties: {
@@ -298,7 +298,7 @@ export const RESEARCH_RESOURCES_TOOLS: ToolDescriptor[] = [
         if (page * size > ANON_ROW_LIMIT) {
           throw new Error(
             `page*size=${page * size} exceeds the anonymous row limit (${ANON_ROW_LIMIT}); ` +
-              'upstream returns HTTP 401 beyond it'
+              'source returns HTTP 401 beyond it'
           )
         }
         const data = (await ctx.fetchJson(ftsUrl(q, page, size))) as FtsResponse
@@ -332,7 +332,7 @@ export const RESEARCH_RESOURCES_TOOLS: ToolDescriptor[] = [
     id: 'get_antibody',
     connector: 'research_resources',
     description:
-      'Fetch Antibody Registry detail record(s) for one antibody accession / RRID. Accepts a plain number ("3643095"), "AB_3643095", or "RRID:AB_3643095". The upstream route is list-valued (an accession can map to several curated records, e.g. multi-vendor duplicates). A nonexistent id yields record_count 0, not an error.',
+      'Fetch Antibody Registry detail record(s) for one antibody accession / RRID. Accepts a plain number ("3643095"), "AB_3643095", or "RRID:AB_3643095". The source route is list-valued (an accession can map to several curated records, e.g. multi-vendor duplicates). A nonexistent id yields record_count 0, not an error.',
     input: {
       type: 'object',
       properties: { antibody_id: { type: 'string' } },
@@ -359,7 +359,7 @@ export const RESEARCH_RESOURCES_TOOLS: ToolDescriptor[] = [
     id: 'find_antibodies_by_catalog',
     connector: 'research_resources',
     description:
-      'Find antibodies by vendor catalog number (exact, case-insensitive). Implemented as a full-text search plus client-side exact matching on the catalog number (or its listed alternatives), because the upstream column-filter route returns HTTP 500 for every key. Pass an optional vendor name (exact, case-insensitive) to further narrow the matches.',
+      'Find antibodies by vendor catalog number (exact, case-insensitive). Implemented as a full-text search plus client-side exact matching on the catalog number (or its listed alternatives), because the source column-filter route returns HTTP 500 for every key. Pass an optional vendor name (exact, case-insensitive) to further narrow the matches.',
     input: {
       type: 'object',
       properties: {
@@ -380,7 +380,7 @@ export const RESEARCH_RESOURCES_TOOLS: ToolDescriptor[] = [
       const size = Math.max(1, Number(a.page_size ?? 100))
       const vendor = a.vendor != null ? String(a.vendor) : null
       const want = catalog.toLowerCase()
-      // Walk the full-text search, then keep exact catalog-number matches (upstream default max 5000).
+      // Walk the full-text search, then keep exact catalog-number matches (source default max 5000).
       const { total, items } = await walkAntibodies(ctx, catalog, size, 5000)
       const wantVendor = vendor != null ? vendor.trim().toLowerCase() : null
       const matches = items.filter((r) => {
@@ -414,10 +414,10 @@ export const RESEARCH_RESOURCES_TOOLS: ToolDescriptor[] = [
     id: 'get_antibody_registry_stats',
     connector: 'research_resources',
     description:
-      'Antibody Registry statistics: total antibody count and last-update date. Returns the upstream /api/datainfo payload.',
+      'Antibody Registry statistics: total antibody count and last-update date. Returns the source /api/datainfo payload.',
     input: { type: 'object', properties: {} },
     returns:
-      '`{ total (registry size), lastupdate (YYYY-MM-DD) }` — the upstream /api/datainfo payload.',
+      '`{ total (registry size), lastupdate (YYYY-MM-DD) }` — the source /api/datainfo payload.',
     example:
       'const result = await host.mcp("research_resources", "get_antibody_registry_stats", {})',
     url: () => `${AB_BASE}/datainfo`,

@@ -1,10 +1,10 @@
 import type { ToolContext, ToolDescriptor } from '../types'
 
-// EBI IntAct molecular-interaction web service (www.ebi.ac.uk/intact/ws). Ports the upstream
+// EBI IntAct molecular-interaction web service (www.ebi.ac.uk/intact/ws). Ports the source
 // `intact_interactions` reference (client.py / core.py / details.py): a count-verified paginated
 // interaction sweep, interactor resolution, per-interaction detail, and a depth-1 network build.
 // The search route (findInteractionWithFacet) takes its params on the URL even though the HTTP
-// method is POST (verified live; matches the upstream httpx `params=` on a POST). The graph detail
+// method is POST (verified live; matches the source httpx `params=` on a POST). The graph detail
 // route answers unknown accessions with HTTP 200 and an EMPTY body — mapped to an explicit
 // not_found record (verified live).
 const INTACT_WS = 'https://www.ebi.ac.uk/intact/ws'
@@ -14,7 +14,7 @@ const GRAPH_DETAILS_PATH = 'graph/interaction/details'
 const GRAPH_PARTICIPANTS_PATH = 'graph/participants/details'
 
 // Page size for the full interaction sweep. The service accepted large pages in probing; 500 keeps
-// each response comfortably small while needing few requests per query (mirrors upstream core.py).
+// each response comfortably small while needing few requests per query (mirrors the official core.py).
 const SEARCH_PAGE_SIZE = 500
 const INTERACTOR_PAGE_SIZE = 100
 const PARTICIPANTS_PAGE_SIZE = 100
@@ -276,7 +276,7 @@ function searchUrl(
 }
 
 // Complete, count-verified interaction sweep for one query. Pages until the collected record count
-// equals the server-reported totalElements. THROWS (fails loudly, per the upstream contract) if
+// equals the server-reported totalElements. THROWS (fails loudly, per the source contract) if
 // totalElements is missing, drifts mid-sweep, a duplicate record appears, or the final tally
 // disagrees with totalElements — silent truncation is impossible.
 async function fetchInteractionsSweep(

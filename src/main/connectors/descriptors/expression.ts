@@ -30,7 +30,7 @@ function repeatParam(name: string, value: unknown): string {
 }
 
 // Walks every page of a GTEx paged route and returns the collected rows plus the API-reported total.
-// Stops early once `cap` rows are gathered (then `truncated` reflects that more rows exist upstream).
+// Stops early once `cap` rows are gathered (then `truncated` reflects that more rows exist source).
 async function walkPages(
   ctx: ToolContext,
   baseUrl: string,
@@ -52,7 +52,7 @@ async function walkPages(
     const numPages = res.paging_info?.numberOfPages ?? 1
     if (data.length === 0 || page + 1 >= numPages) break
   }
-  // A complete (uncapped) walk is count-verified against the API's own total, mirroring upstream.
+  // A complete (uncapped) walk is count-verified against the API's own total, mirroring the official implementation.
   if (cap == null && total > 0 && rows.length !== total) {
     throw new Error(`GTEx paging count mismatch: collected ${rows.length} of ${total} rows`)
   }
@@ -302,7 +302,7 @@ export const EXPRESSION_TOOLS: ToolDescriptor[] = [
       const query = String(a.gene)
       const q = query.toUpperCase()
       const qBare = q.split('.')[0]
-      // Mirror upstream: pick the exact symbol / gencode / unversioned-Ensembl match, not just row 0.
+      // Mirror source: pick the exact symbol / gencode / unversioned-Ensembl match, not just row 0.
       const first = (ref.data ?? []).find((g) => {
         const sym = String(g.geneSymbol ?? '').toUpperCase()
         const gid = String(g.gencodeId ?? '')
@@ -524,7 +524,7 @@ export const EXPRESSION_TOOLS: ToolDescriptor[] = [
         total,
         returned: rows.length,
         variants: rows.map((r) => {
-          // Rename each per-tissue metric block from upstream camelCase to snake_case.
+          // Rename each per-tissue metric block from source camelCase to snake_case.
           const tissuesRaw = (r.tissues ?? {}) as Record<string, Record<string, unknown>>
           const tissues: Record<string, unknown> = {}
           for (const [name, m] of Object.entries(tissuesRaw)) {

@@ -150,7 +150,7 @@ export type PersistedChatMessage = {
   // Marks the final Agent message for a turn whose provider did not report usable totals.
   turnUsageUnavailable?: true
   // Frozen context-window snapshots published with each visible prompt execution of this turn
-  // (upstream #1321 port). Bound to the owning user Message by the renderer on terminal events.
+  // . Bound to the owning user Message by the renderer on terminal events.
   contextWindowSamples?: AcpContextWindowSample[]
   // Plan-first user turns replay with the same intent on interrupted-turn continuation.
   turnIntent?: 'plan-first'

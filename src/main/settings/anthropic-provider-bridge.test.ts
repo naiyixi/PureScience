@@ -123,11 +123,11 @@ describe('AnthropicProviderBridge', () => {
   })
 
   it('fails closed for unknown targets and unauthenticated callers', async () => {
-    const upstream = createUpstream()
-    servers.push(upstream.server)
+    const source = createUpstream()
+    servers.push(source.server)
     const target = {
       id: 'provider/model-a',
-      baseUrl: await listen(upstream.server),
+      baseUrl: await listen(source.server),
       key: 'key-a',
       model: 'model-a'
     }
@@ -143,6 +143,6 @@ describe('AnthropicProviderBridge', () => {
     })
 
     expect(response.status).toBe(401)
-    expect(upstream.requests).toEqual([])
+    expect(source.requests).toEqual([])
   })
 })

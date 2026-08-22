@@ -13,7 +13,7 @@ const bodyOf = (
 ): { query: string; variables: unknown } =>
   JSON.parse((fetchImpl.mock.calls[i][1] as RequestInit).body as string)
 
-describe('clinical_genomics — has exactly the 20 upstream tools', () => {
+describe('clinical_genomics — has exactly the 20 source tools', () => {
   it('exposes the ClinGen + CIViC + Open Targets ids', () => {
     expect(CLINICAL_GENOMICS_TOOLS.map((t) => t.id).sort()).toEqual(
       [

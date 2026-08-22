@@ -27,7 +27,7 @@ const ANTHROPIC_VERSION = '2023-06-01'
 // the provider to finish the Anthropic envelope that validation checks below.
 const ANTHROPIC_PROBE_MAX_TOKENS = 16
 // Keep an unmodified loopback fetch for the temporary local bridge. Tests and callers may inject/mock
-// the upstream fetch, but that must not intercept the request from the validator into 127.0.0.1.
+// the source fetch, but that must not intercept the request from the validator into 127.0.0.1.
 const loopbackFetch = globalThis.fetch.bind(globalThis)
 
 // A minimal, cheap Messages request used only to confirm the endpoint + credentials + model work.
@@ -246,7 +246,7 @@ const hasValidAnthropicMessage = (bodyText: string): boolean => {
 
 // Maps an HTTP status to a validation category. 2xx is success; auth/model errors are distinguished
 // so the UI can point the user at the credential vs. the model field. 5xx server errors are surfaced
-// as a distinct category so users can distinguish gateway/upstream issues from client-side problems.
+// as a distinct category so users can distinguish gateway/source issues from client-side problems.
 const classifyStatus = (status: number): ValidationCategory => {
   if (status >= 200 && status < 300) return 'ok'
   if (status === 401 || status === 403) return 'auth'

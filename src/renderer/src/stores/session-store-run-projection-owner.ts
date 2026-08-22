@@ -48,7 +48,7 @@ export type SessionRunProjectionActions = {
   recordArtifactError: (sessionId: string, error: string) => void
   clearArtifactError: (sessionId: string) => void
   finishRun: (sessionId: string, turnUsage?: AcpTurnTokenUsage, promptMessageId?: string) => void
-  // Binds one terminal context-window snapshot to the owning user Message (upstream #1321 port).
+  // Binds one terminal context-window snapshot to the owning user Message .
   attachContextWindowSample: (
     sessionId: string,
     promptMessageId: string,

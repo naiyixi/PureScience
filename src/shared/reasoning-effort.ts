@@ -29,7 +29,7 @@ export type ReasoningEffortPresetSetting = ReasoningEffortPresetId | 'unsupporte
 
 // Custom gateways can expose the same model-effort vocabulary through different wire shapes. Keep
 // this explicit instead of guessing from a user-entered URL or model id: a compatible proxy may use
-// any hostname while still requiring its upstream provider's native request body.
+// any hostname while still requiring its provider's native request body.
 export type CustomReasoningEffortTransport =
   'reasoning-effort' | 'deepseek' | 'minimax' | 'xiaomimimo' | 'openrouter'
 

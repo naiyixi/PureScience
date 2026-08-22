@@ -110,12 +110,12 @@ describe('OpenAiProviderBridge', () => {
   })
 
   it('forwards the Responses wire and fails closed for other paths and unknown targets', async () => {
-    const upstream = createUpstream()
-    servers.push(upstream.server)
+    const source = createUpstream()
+    servers.push(source.server)
     const target: OpenAiProviderBridgeTarget = {
       id: 'provider/model-a',
       wire: 'responses',
-      endpoint: `${await listen(upstream.server)}/v1/responses`,
+      endpoint: `${await listen(source.server)}/v1/responses`,
       key: 'key-a',
       model: 'model-a'
     }
@@ -143,7 +143,7 @@ describe('OpenAiProviderBridge', () => {
 
     expect(wrongPath.status).toBe(404)
     expect(response.status).toBe(200)
-    expect(upstream.requests).toEqual([
+    expect(source.requests).toEqual([
       {
         authorization: 'Bearer key-a',
         body: { model: 'model-a', input: [] },

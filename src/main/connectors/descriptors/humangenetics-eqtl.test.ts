@@ -83,7 +83,7 @@ describe('eqtl_list_datasets', () => {
       tissue_label: 'macrophage',
       quant_method: 'ge'
     })
-    // Sorted ascending by dataset_id despite upstream returning QTD000002 first.
+    // Sorted ascending by dataset_id despite source returning QTD000002 first.
     expect(out.datasets.map((d) => d.dataset_id)).toEqual(['QTD000001', 'QTD000002'])
     expect(out.datasets[0]).toEqual({
       dataset_id: 'QTD000001',
@@ -168,7 +168,7 @@ describe('eqtl_associations', () => {
     const url = String(fetchImpl.mock.calls[0][0])
     expect(url).toContain('/datasets/QTD000001/associations?')
     expect(url).toContain('gene_id=ENSG00000215014')
-    // Tool-facing nlog10p_min becomes the upstream nlog10p query param.
+    // Tool-facing nlog10p_min becomes the source nlog10p query param.
     expect(url).toContain('nlog10p=0.5')
     expect(url).not.toContain('nlog10p_min=')
     expect(url).toContain('size=100')

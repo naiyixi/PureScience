@@ -201,20 +201,20 @@ export class AnthropicProviderBridge {
       if (!response.writableEnded) abort()
     })
 
-    const upstream = await fetch(`${baseUrl}${requestUrl.pathname}${requestUrl.search}`, {
+    const source = await fetch(`${baseUrl}${requestUrl.pathname}${requestUrl.search}`, {
       method: 'POST',
       headers: requestHeaders(request, target.key),
       body,
       redirect: 'manual',
       signal: controller.signal
     })
-    response.statusCode = upstream.status
-    response.statusMessage = upstream.statusText
-    copyResponseHeaders(upstream.headers, response)
-    if (!upstream.body) {
+    response.statusCode = source.status
+    response.statusMessage = source.statusText
+    copyResponseHeaders(source.headers, response)
+    if (!source.body) {
       response.end()
       return
     }
-    await pipeline(Readable.from(upstream.body as AsyncIterable<Uint8Array>), response)
+    await pipeline(Readable.from(source.body as AsyncIterable<Uint8Array>), response)
   }
 }

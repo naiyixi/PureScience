@@ -366,12 +366,12 @@ describe('defaultOperationChildLiveness (two-state pid-reuse guard: dead | unkno
       expect(await liveWith({ childStartToken: '80877' }, () => undefined)).toBe('unknown')
     })
 
-    it('DEMONSTRATES why non-canonical tokens must be rejected upstream: a raw compare misfires', async () => {
+    it('DEMONSTRATES why non-canonical tokens must be rejected source: a raw compare misfires', async () => {
       // The liveness probe TRUSTS its input is canonical and compares tokens as raw strings. So a
       // leading-zero token "000123" reaches here it WOULD misread a value-equal live token "123" as a
       // mismatch → 'dead' (reconcile under a live worker). This is exactly why isValidChildStartToken
       // rejects "000123" as corrupt at the sidecar/journal boundary, so it can never reach this compare.
-      expect(await liveWith({ childStartToken: '000123' }, () => '123')).toBe('dead') // the misfire we prevent upstream
+      expect(await liveWith({ childStartToken: '000123' }, () => '123')).toBe('dead') // the misfire we prevent source
       expect(await liveWith({ childStartToken: '123' }, () => '123')).toBe('unknown') // canonical: correctly blocks
     })
   })

@@ -1,6 +1,6 @@
 import type { ToolContext, ToolDescriptor } from '../types'
 
-// Three clinical-genomics knowledge bases behind one connector (faithful port of the upstream
+// Three clinical-genomics knowledge bases behind one connector (faithful port of the source
 // mcp-clinical-genomics server): ClinGen curations (REST), CIViC clinical evidence (GraphQL, fully
 // paginated + count-verified), and the Open Targets Platform GraphQL API. All tools are read-only.
 const CLINGEN_SEARCH = 'https://search.clinicalgenome.org'
@@ -18,14 +18,14 @@ const asObj = (x: unknown): Record<string, unknown> =>
   x !== null && typeof x === 'object' && !Array.isArray(x) ? (x as Record<string, unknown>) : {}
 const asArr = (x: unknown): unknown[] => (Array.isArray(x) ? x : [])
 
-// Null-safe string comparator; drives the tuple sorts that mirror the upstream's `sorted(key=...)`.
+// Null-safe string comparator; drives the tuple sorts that mirror the source's `sorted(key=...)`.
 function strCmp(a: unknown, b: unknown): number {
   const x = a == null ? '' : String(a)
   const y = b == null ? '' : String(b)
   return x < y ? -1 : x > y ? 1 : 0
 }
 
-// Build a lexicographic comparator over one or more string-valued getters (upstream sort keys).
+// Build a lexicographic comparator over one or more string-valued getters (source sort keys).
 function byKeys(
   ...getters: ((r: Record<string, unknown>) => unknown)[]
 ): (a: Record<string, unknown>, b: Record<string, unknown>) => number {
@@ -1035,7 +1035,7 @@ export const CLINICAL_GENOMICS_TOOLS: ToolDescriptor[] = [
     id: 'open_targets_graphql',
     connector: 'clinical_genomics',
     description:
-      'Run an arbitrary GraphQL query against the Open Targets Platform API (targets, diseases, drugs, target-disease association scores, evidence, tractability, safety, known drugs). Introspection queries work for schema discovery. Note knownDrugs was renamed to drugAndClinicalCandidates upstream.',
+      'Run an arbitrary GraphQL query against the Open Targets Platform API (targets, diseases, drugs, target-disease association scores, evidence, tractability, safety, known drugs). Introspection queries work for schema discovery. Note knownDrugs was renamed to drugAndClinicalCandidates source.',
     input: {
       type: 'object',
       properties: {

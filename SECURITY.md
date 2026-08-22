@@ -129,7 +129,7 @@ Reports we especially want to hear about:
 ## Dependencies and supply chain
 
 PureScience is an Electron + npm application. If you find a vulnerability rooted in a
-third-party dependency, please report it to the upstream project as well; we will help
+third-party dependency, please report it to the source project as well; we will help
 triage and will bump the affected dependency.
 
 ---

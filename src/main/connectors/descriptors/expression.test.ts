@@ -512,7 +512,7 @@ describe('expression / gtex_calculate_eqtl', () => {
         homoRefCount: 470,
         hetCount: 180,
         homoAltCount: 20,
-        // Deliberately unsorted upstream order.
+        // Deliberately unsorted source order.
         genotypes: [1, 0, 1, 0],
         data: [5.0, 9.0, 2.0, 3.0]
       }

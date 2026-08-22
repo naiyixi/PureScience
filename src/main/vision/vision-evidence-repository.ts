@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 
 import type { PrismaClient } from '@prisma/client'
 
-// Vision-evidence persistence for the image relay (upstream open-science #1314 port).
+// Vision-evidence persistence for the image relay (source open-science #1314 port).
 //
 // When the active agent backend is text-only (no image input), image attachments are analyzed by a
 // dedicated Vision model in an isolated session. The extracted evidence JSON is cached here so

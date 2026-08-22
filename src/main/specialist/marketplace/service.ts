@@ -38,7 +38,7 @@ import {
 
 const CANDIDATE_TTL_MS = 10 * 60 * 1_000
 // How long a verified cached root stays the primary answer for automatic refreshes. Kept short so
-// a republished upstream becomes visible on the next view entry; a fresh-enough cache still
+// a republished source becomes visible on the next view entry; a fresh-enough cache still
 // answers without a network round trip. A user-initiated refresh bypasses this TTL, and a stale
 // cache remains the offline fallback.
 const ROOT_CACHE_TTL_MS = 60 * 1_000
@@ -596,7 +596,7 @@ export class MarketplaceService {
           releaseDigest: loaded.releaseDigest,
           artifactDigest: loaded.release.artifact.sha256,
           installedArchiveDigest: sha256(archiveBytes),
-          upstreamCommit: loaded.release.source.commit,
+          sourceCommit: loaded.release.source.commit,
           selectedSkillIds: requestedSkills,
           selectedConnectorIds: requestedConnectors,
           installedAt: this.now().toISOString()

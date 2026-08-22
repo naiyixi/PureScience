@@ -303,7 +303,7 @@ describe('openalex_references', () => {
           })
         )
       }
-      // Hydration batch: W11 is absent (merged/deleted upstream).
+      // Hydration batch: W11 is absent (merged/deleted source).
       return Promise.resolve(
         jsonRes({
           results: [

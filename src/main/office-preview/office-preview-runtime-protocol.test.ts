@@ -138,7 +138,7 @@ describe('Office preview runtime protocol', () => {
     expect(fetchRuntime).not.toHaveBeenCalled()
   })
 
-  it('preserves HEAD semantics without buffering an upstream body', async () => {
+  it('preserves HEAD semantics without buffering an source body', async () => {
     const fetchRuntime = vi
       .fn()
       .mockResolvedValue(new Response('runtime', { headers: { 'content-length': '7' } }))

@@ -362,7 +362,7 @@ describe('research_resources / get_antibody', () => {
     )
   })
 
-  it('returns record_count 0 for a nonexistent id (upstream 200 + [])', async () => {
+  it('returns record_count 0 for a nonexistent id (source 200 + [])', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(jsonRes([]))
     const out = (await engine(fetchImpl).call(
       tool('get_antibody'),

@@ -28,7 +28,7 @@ export type MarketplaceInstallProvenance = {
   // Digest of the selection-filtered ZIP actually handed to SpecialistPackageService. Older
   // provenance records predate this field and remain readable, but cannot claim an exact install.
   installedArchiveDigest?: string
-  upstreamCommit: string
+  sourceCommit: string
   selectedSkillIds: string[]
   selectedConnectorIds: string[]
   installedAt: string
@@ -149,7 +149,7 @@ const sanitizeInstallation = (value: unknown): MarketplaceInstallProvenance | un
     !isSha256(item.releaseDigest) ||
     !isSha256(item.artifactDigest) ||
     (item.installedArchiveDigest !== undefined && !isSha256(item.installedArchiveDigest)) ||
-    !isGitCommit(item.upstreamCommit) ||
+    !isGitCommit(item.sourceCommit) ||
     !isStringArray(item.selectedSkillIds) ||
     !isStringArray(item.selectedConnectorIds) ||
     !isIsoTimestamp(item.installedAt)
@@ -165,7 +165,7 @@ const sanitizeInstallation = (value: unknown): MarketplaceInstallProvenance | un
     releaseDigest: item.releaseDigest,
     artifactDigest: item.artifactDigest,
     ...(item.installedArchiveDigest ? { installedArchiveDigest: item.installedArchiveDigest } : {}),
-    upstreamCommit: item.upstreamCommit,
+    sourceCommit: item.sourceCommit,
     selectedSkillIds: item.selectedSkillIds,
     selectedConnectorIds: item.selectedConnectorIds,
     installedAt: item.installedAt

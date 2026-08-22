@@ -555,7 +555,7 @@ const COMPUTE_JOB_ADD_LEFT_ON_REMOTE_DDL = `ALTER TABLE "ComputeJob" ADD COLUMN 
 const COMPUTE_JOB_ADD_NOTIFIED_AT_DDL = `ALTER TABLE "ComputeJob" ADD COLUMN "notifiedAt" DATETIME`
 const COMPUTE_JOB_ADD_NOTIFICATION_CONSUMED_AT_DDL = `ALTER TABLE "ComputeJob" ADD COLUMN "notificationConsumedAt" DATETIME`
 
-// Cached image-evidence results from the Vision model relay (upstream #1314 port). Pure-additive
+// Cached image-evidence results from the Vision model relay . Pure-additive
 // table referencing nothing, applied as CREATE TABLE IF NOT EXISTS so a packaged app stays
 // byte-compatible with the generated client without shipping the migrate engine. DDL mirrors the
 // Prisma model in schema.prisma (verified via `prisma migrate diff` in the compatibility tests).
@@ -748,7 +748,7 @@ const ensureProjectSchema = async (client: PrismaClient): Promise<void> => {
     COMPUTE_JOB_ADD_NOTIFICATION_CONSUMED_AT_DDL
   )
 
-  // Vision evidence cache (upstream #1314 port): pure-additive table + indexes, safe to (re)run
+  // Vision evidence cache : pure-additive table + indexes, safe to (re)run
   // on any existing DB (IF NOT EXISTS), same runtime-DDL approach as the tables above.
   await client.$executeRawUnsafe(VISION_EVIDENCE_TABLE_DDL)
   for (const ddl of VISION_EVIDENCE_INDEX_DDLS) {

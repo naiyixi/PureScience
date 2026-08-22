@@ -811,7 +811,7 @@ describe('installAcpIpcHandlers — resume-session diagnostics', () => {
         data: {
           errorKind: 'session_not_found',
           service: 'session',
-          details: 'private upstream details'
+          details: 'private source details'
         }
       }
     )
@@ -838,7 +838,7 @@ describe('installAcpIpcHandlers — resume-session diagnostics', () => {
     expect(serialized).not.toContain(request.sessionId)
     expect(serialized).not.toContain(request.cwd)
     expect(serialized).not.toContain('secret.example.test')
-    expect(serialized).not.toContain('private upstream details')
+    expect(serialized).not.toContain('private source details')
   })
 
   it('buckets an unknown numeric RPC code instead of copying it into the log', async () => {

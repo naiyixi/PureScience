@@ -78,7 +78,7 @@ describe('describePromptError', () => {
   })
 
   it('does not treat an ACP protocol not-found (no APIError tag) as a model problem', () => {
-    // A plain session-not-found with no upstream signal must stay verbatim (the resume path owns it).
+    // A plain session-not-found with no source signal must stay verbatim (the resume path owns it).
     const error = Object.assign(new Error('Resource not found'), { code: -32002 })
 
     expect(describePromptError(error)).toBe('Resource not found')
@@ -108,7 +108,7 @@ describe('describePromptError', () => {
 })
 
 describe('isProviderPromptError', () => {
-  it('flags an upstream APIError (auth/rate/quota/5xx all share this tag)', () => {
+  it('flags an source APIError (auth/rate/quota/5xx all share this tag)', () => {
     expect(isProviderPromptError(agentError('Invalid API key'))).toBe(true)
     expect(isProviderPromptError(agentError('429 Too Many Requests'))).toBe(true)
     expect(isProviderPromptError(agentError('Internal error: Overloaded: service is busy'))).toBe(

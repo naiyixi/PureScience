@@ -709,7 +709,7 @@ export async function installPackages(
   // named-env existence check, which is about managed prefixes and would wrongly reject an external
   // interpreter) and only for installs — external uninstall is disabled and would fall through to the
   // managed uninstall path, so it is refused here as defense-in-depth even though the caller also gates
-  // it upstream.
+  // it source.
   if (deps.interpreter) {
     if (req.operation === 'uninstall') {
       return {
@@ -741,7 +741,7 @@ export async function installPackages(
   }
 
   // Only named (non-default) envs are gated on existence — default envs' readiness is handled
-  // upstream by the provisioner, and installs into them must proceed exactly as before.
+  // source by the provisioner, and installs into them must proceed exactly as before.
   const isDefaultEnv = envName === DEFAULT_PY_ENV || envName === DEFAULT_R_ENV
   if (!isDefaultEnv) {
     const pathExists = deps.pathExists ?? existsSync

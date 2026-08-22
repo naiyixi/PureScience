@@ -70,7 +70,7 @@ describe('native Responses compatibility', () => {
     }
   })
 
-  it('retargets the upstream model without replacing endpoint credentials', () => {
+  it('retargets the source model without replacing endpoint credentials', () => {
     const proxy = new NativeResponsesCompatibilityProxy({
       baseUrl: 'https://api.minimaxi.com/v1',
       key: 'secret',
@@ -293,7 +293,7 @@ describe('native Responses compatibility', () => {
     expect(serializedLogs).not.toContain('mcp-pubmed')
   })
 
-  it('selects an explicitly named connector Skill locally without an upstream request', async () => {
+  it('selects an explicitly named connector Skill locally without an source request', async () => {
     const fetchImpl = vi.fn<typeof fetch>()
     const proxy = new NativeResponsesCompatibilityProxy(
       { baseUrl: 'https://api.minimaxi.com/v1', model: 'MiniMax-M3' },
@@ -395,10 +395,10 @@ describe('native Responses compatibility', () => {
   })
 
   it('replaces reviewer-session tools with only the scope-bounded reviewer surface', async () => {
-    const upstreamRequests: Record<string, unknown>[] = []
+    const sourceRequests: Record<string, unknown>[] = []
     const fetchImpl = vi.fn(
       async (_url: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
-        upstreamRequests.push(JSON.parse(String(init?.body)) as Record<string, unknown>)
+        sourceRequests.push(JSON.parse(String(init?.body)) as Record<string, unknown>)
         return new Response(JSON.stringify({ id: 'review-response', output: [] }), {
           status: 200,
           headers: { 'content-type': 'application/json' }
@@ -447,8 +447,8 @@ describe('native Responses compatibility', () => {
         })
       })
       expect(response.ok).toBe(true)
-      expect(upstreamRequests).toHaveLength(1)
-      expect(upstreamRequests[0]).toMatchObject({
+      expect(sourceRequests).toHaveLength(1)
+      expect(sourceRequests[0]).toMatchObject({
         prompt_cache_key: 'reviewer-session',
         tool_choice: 'auto',
         tools: [
@@ -460,8 +460,8 @@ describe('native Responses compatibility', () => {
           }
         ]
       })
-      expect(JSON.stringify(upstreamRequests[0])).not.toContain('shell_command')
-      expect(JSON.stringify(upstreamRequests[0])).not.toContain('repl_execute')
+      expect(JSON.stringify(sourceRequests[0])).not.toContain('shell_command')
+      expect(JSON.stringify(sourceRequests[0])).not.toContain('repl_execute')
       expect(proxy.unregisterReviewerSession('reviewer-session')).toBe(true)
     } finally {
       await proxy.close()
@@ -469,10 +469,10 @@ describe('native Responses compatibility', () => {
   })
 
   it('removes native and namespace tools for a registered one-shot session key', async () => {
-    const upstreamRequests: Record<string, unknown>[] = []
+    const sourceRequests: Record<string, unknown>[] = []
     const fetchImpl = vi.fn(
       async (_url: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
-        upstreamRequests.push(JSON.parse(String(init?.body)) as Record<string, unknown>)
+        sourceRequests.push(JSON.parse(String(init?.body)) as Record<string, unknown>)
         return Response.json({ id: 'tool-less-response', output: [] })
       }
     )
@@ -507,9 +507,9 @@ describe('native Responses compatibility', () => {
       })
 
       expect(response.ok).toBe(true)
-      expect(upstreamRequests[0]).toMatchObject({ tools: [], tool_choice: 'auto' })
-      expect(JSON.stringify(upstreamRequests[0])).not.toContain('shell_command')
-      expect(JSON.stringify(upstreamRequests[0])).not.toContain('repl_execute')
+      expect(sourceRequests[0]).toMatchObject({ tools: [], tool_choice: 'auto' })
+      expect(JSON.stringify(sourceRequests[0])).not.toContain('shell_command')
+      expect(JSON.stringify(sourceRequests[0])).not.toContain('repl_execute')
       expect(proxy.unregisterToolLessSession('reconstruction-session')).toBe(true)
     } finally {
       await proxy.close()
@@ -553,7 +553,7 @@ describe('native Responses compatibility', () => {
     }
   })
 
-  it('logs a privacy-safe lifecycle that distinguishes an upstream 502', async () => {
+  it('logs a privacy-safe lifecycle that distinguishes an source 502', async () => {
     const privatePrompt = 'private medical prompt'
     const privateUpstreamDetail = 'private gateway diagnostic'
     const proxy = new NativeResponsesCompatibilityProxy(
@@ -585,14 +585,14 @@ describe('native Responses compatibility', () => {
       const received = logSpies.info.mock.calls.find(
         ([message]) => message === 'native Responses compatibility request'
       )
-      const upstream = logSpies.info.mock.calls.find(
-        ([message]) => message === 'native Responses compatibility upstream response'
+      const source = logSpies.info.mock.calls.find(
+        ([message]) => message === 'native Responses compatibility source response'
       )
       const completed = logSpies.info.mock.calls.find(
         ([message]) => message === 'native Responses compatibility request completed'
       )
       expect(received?.[1]).toMatchObject({ requestId: expect.any(String) })
-      expect(upstream?.[1]).toMatchObject({
+      expect(source?.[1]).toMatchObject({
         requestId: received?.[1]?.requestId,
         status: 502,
         responseType: 'json',
@@ -614,7 +614,7 @@ describe('native Responses compatibility', () => {
     }
   })
 
-  it('classifies an upstream transport failure without logging its raw message', async () => {
+  it('classifies an source transport failure without logging its raw message', async () => {
     const privateError = Object.assign(
       new Error('fetch failed for https://private-gateway.example.test/account/alice'),
       { code: 'ECONNRESET' }
@@ -649,7 +649,7 @@ describe('native Responses compatibility', () => {
         'native Responses compatibility request failed',
         expect.objectContaining({
           requestId: expect.any(String),
-          phase: 'upstream-fetch',
+          phase: 'source-fetch',
           outcome: 'error',
           errorCategory: 'network',
           errorCode: 'ECONNRESET',
@@ -667,10 +667,10 @@ describe('native Responses compatibility', () => {
   })
 
   it('forwards a near-limit multimodal request larger than 32 MiB', async () => {
-    const upstreamBodies: string[] = []
+    const sourceBodies: string[] = []
     const fetchImpl = vi.fn(
       async (_url: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
-        upstreamBodies.push(String(init?.body))
+        sourceBodies.push(String(init?.body))
         return new Response(JSON.stringify({ id: 'large-response', output: [] }), {
           status: 200,
           headers: { 'content-type': 'application/json' }
@@ -708,8 +708,8 @@ describe('native Responses compatibility', () => {
       })
 
       expect(response.ok, await response.text()).toBe(true)
-      expect(upstreamBodies).toHaveLength(1)
-      expect(Buffer.byteLength(upstreamBodies[0], 'utf8')).toBeGreaterThan(32 * 1024 * 1024)
+      expect(sourceBodies).toHaveLength(1)
+      expect(Buffer.byteLength(sourceBodies[0], 'utf8')).toBeGreaterThan(32 * 1024 * 1024)
     } finally {
       await proxy.close()
     }

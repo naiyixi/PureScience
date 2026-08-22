@@ -5,15 +5,15 @@ import type { ToolDescriptor } from '../types'
 // fetched by polling GET /search/result/<uuid> until `status` is SUCCESS (or a status-less body
 // carries a `result` key). A naive GET ?param=value returns HTTP 400 or the HTML SPA shell.
 // ToolContext's fetchJson/fetchText/postJson can't express a form-encoded POST or a manual poll
-// loop, so these tools talk to the API directly via the global fetch (mirrors upstream
+// loop, so these tools talk to the API directly via the global fetch (mirrors the official
 // mcp_zinc/client.py's ZincClient). All five ZINC tools share this one submit-poll transport.
 const BASE_URL = 'https://cartblanche22.docking.org'
 const FILES_BASE_URL = 'https://files.docking.org/zinc22'
 const OUTPUT_FIELDS = 'zinc_id,smiles,tranche_name,catalogs'
 const USER_AGENT = 'PureScience/1.0 (+https://github.com/zerolink/purescience)'
 
-// Overall submit->result budget (default/clamp mirrors upstream DEFAULT/MIN/MAX_TIMEOUT_S, pulled
-// in a bit under the MCP-style 60s transport ceiling that upstream targets).
+// Overall submit->result budget (default/clamp mirrors the official DEFAULT/MIN/MAX_TIMEOUT_S, pulled
+// in a bit under the MCP-style 60s transport ceiling that source targets).
 const DEFAULT_TIMEOUT_S = 25
 const MIN_TIMEOUT_S = 5
 const MAX_TIMEOUT_S = 55
@@ -25,7 +25,7 @@ const MAX_RESULTS_CAP = 500
 const MAX_IDS_PER_CALL = 100 // batch lookup bound (one submit, many ids)
 const MAX_IDS_3D = 50 // 3D prep is per-compound work; keep batches small
 
-// Known CartBlanche22 random-sample subsets (passed through verbatim so new upstream subsets keep
+// Known CartBlanche22 random-sample subsets (passed through verbatim so new source subsets keep
 // working; these are the documented ones).
 const KNOWN_SUBSETS = ['fragment', 'lead-like', 'drug-like', 'lugs']
 
@@ -33,7 +33,7 @@ const ZINC_ID_RE = /^ZINC[a-zA-Z]?\d+$/i
 const NORMALIZE_RE = /^(ZINC[a-zA-Z]?)(\d+)$/i
 const TRANCHE_RE = /^H(\d{2})([PM])(\d{3})$/
 const ID_DELIM_RE = /[,\s]/
-// Result sources, presentation order (current release first) — mirrors upstream SOURCE_ORDER.
+// Result sources, presentation order (current release first) — mirrors the official SOURCE_ORDER.
 const SOURCE_ORDER = ['zinc22', 'zinc20']
 
 type ZincRecord = {
@@ -77,15 +77,15 @@ function clampMaxResults(raw: unknown): number {
 }
 
 // Quotes the offending value unambiguously in error messages (mirrors Python's !r used in the
-// upstream error messages this tool's wording is transcribed from).
+// source error messages this tool's wording is transcribed from).
 function idRepr(id: string): string {
   return `'${id}'`
 }
 
-// Normalizes + bounds an id list. Entries are joined with commas into the upstream form field, so a
+// Normalizes + bounds an id list. Entries are joined with commas into the source form field, so a
 // single entry containing a delimiter would let one list element submit many ids and defeat the
 // per-call bound — reject those explicitly. ZINC ids are additionally shape-validated; supplier
-// codes are free-form so they only get the delimiter check (mirrors upstream _require_ids).
+// codes are free-form so they only get the delimiter check (mirrors the official _require_ids).
 function requireIds(raw: unknown, bound: number, what: string, pattern?: RegExp): string[] {
   const list = Array.isArray(raw) ? raw : [raw]
   const cleaned = list.map((v) => String(v).trim()).filter((v) => v.length > 0)
@@ -110,9 +110,9 @@ function requireIds(raw: unknown, bound: number, what: string, pattern?: RegExp)
   return cleaned
 }
 
-// Canonicalize a ZINC id for result-map lookup: upstream returns zero-padded ZINC000000000012, so a
+// Canonicalize a ZINC id for result-map lookup: source returns zero-padded ZINC000000000012, so a
 // short-form input like ZINC12 must be padded to 12 digits or it misses its own result (mirrors
-// upstream _normalize_zinc_id). Non-ZINC strings pass through unchanged.
+// source _normalize_zinc_id). Non-ZINC strings pass through unchanged.
 function normalizeZincId(s: string): string {
   const m = NORMALIZE_RE.exec(s)
   if (!m) return s
@@ -121,7 +121,7 @@ function normalizeZincId(s: string): string {
 
 // Decode a ZINC tranche code (H##P###/H##M###) into heavy-atom count + logP bin (P positive,
 // M negative, value/100). Returns the properties and the validated code; non-string input (the
-// smiles.txt endpoint sends `tranche` as a dict) returns null (mirrors upstream parse_tranche).
+// smiles.txt endpoint sends `tranche` as a dict) returns null (mirrors the official parse_tranche).
 function parseTranche(name: unknown): { props: TrancheProps; code: string } | null {
   if (typeof name !== 'string') return null
   const m = TRANCHE_RE.exec(name.trim())
@@ -130,9 +130,9 @@ function parseTranche(name: unknown): { props: TrancheProps; code: string } | nu
   return { props: { heavy_atoms: Number(m[1]), logp: (sign * Number(m[3])) / 100 }, code: m[0] }
 }
 
-// Decode a record's tranche across all three upstream shapes: pre-decoded tranche_details dict, a
+// Decode a record's tranche across all three source shapes: pre-decoded tranche_details dict, a
 // tranche dict {h_num, p_num, ...} (smiles.txt), or a tranche_name/tranche code string
-// (substances.txt, catitems.txt) (mirrors upstream _tranche_properties).
+// (substances.txt, catitems.txt) (mirrors the official _tranche_properties).
 function trancheProperties(rec: ZincRecord): Record<string, unknown> | null {
   const details = rec.tranche_details
   if (details && typeof details === 'object' && 'heavy_atoms' in details) {
@@ -244,7 +244,7 @@ const PENDING_STATUSES = new Set(['PENDING', 'STARTED', 'PROGRESS', 'RETRY'])
 
 // Poll /search/result/<task> until completion (SUCCESS, or a status-less body whose `result` key
 // is present); throws a ZINC-task-timeout error naming the task uuid for manual re-poll once the
-// deadline passes, mirroring upstream ZincTaskTimeout.
+// deadline passes, mirroring the official implementation ZincTaskTimeout.
 async function poll(task: string, deadline: number): Promise<PollResponse> {
   const url = `${BASE_URL}/search/result/${encodeURIComponent(task)}`
   for (;;) {
@@ -290,7 +290,7 @@ async function poll(task: string, deadline: number): Promise<PollResponse> {
 
 // Flattens a per-source result ({zinc22: [...], zinc20: [...]}, or a bare list for a single-source
 // deployment) into one record list tagged with `source`, zinc22 first, plus per-source counts (the
-// disclosure for capped responses) — mirrors upstream flatten_result.
+// disclosure for capped responses) — mirrors the official flatten_result.
 function flattenResult(result: unknown): FlatResult {
   const records: ZincRecord[] = []
   const counts: Record<string, number> = {}
@@ -352,7 +352,7 @@ function pageResult(
 }
 
 // Validate a Tanimoto/anonymous-graph distance parameter (0-10; throws, not clamps, mirroring
-// upstream) with the fallback applied when the arg is omitted.
+// source) with the fallback applied when the arg is omitted.
 function requireDistance(raw: unknown, fallback: number, message: string): number {
   const n = Math.trunc(Number(raw ?? fallback))
   if (!Number.isFinite(n) || n < 0 || n > 10) throw new Error(message)
@@ -361,13 +361,13 @@ function requireDistance(raw: unknown, fallback: number, message: string): numbe
 
 // ZINC22 purchasable-compound search (CartBlanche22). Five tools on the shared async submit-poll
 // transport: id lookup, structure/analog search, supplier-code resolution, random sampling, and
-// docking-ready 3D-structure location. Order matches the upstream server.
+// docking-ready 3D-structure location. Order matches the official server.
 export const ZINC_TOOLS: ToolDescriptor[] = [
   {
     id: 'zinc_search_by_id',
     connector: 'zinc',
     description:
-      'Look up purchasable compounds in ZINC22/ZINC20 by ZINC identifier — answers "what is this compound and who sells it". Batched: pass up to 100 ids in one call rather than many single-id calls. Async upstream (submit + poll); can take up to timeout_s seconds.',
+      'Look up purchasable compounds in ZINC22/ZINC20 by ZINC identifier — answers "what is this compound and who sells it". Batched: pass up to 100 ids in one call rather than many single-id calls. Async source (submit + poll); can take up to timeout_s seconds.',
     input: {
       type: 'object',
       properties: {
@@ -467,7 +467,7 @@ export const ZINC_TOOLS: ToolDescriptor[] = [
     id: 'zinc_search_by_supplier',
     connector: 'zinc',
     description:
-      'Resolve vendor catalog numbers to ZINC compounds — answers "which ZINC substance is this supplier code, and what\'s its structure". Batched: up to 100 supplier codes per call. Async upstream (submit + poll).',
+      'Resolve vendor catalog numbers to ZINC compounds — answers "which ZINC substance is this supplier code, and what\'s its structure". Batched: up to 100 supplier codes per call. Async source (submit + poll).',
     input: {
       type: 'object',
       properties: {
@@ -512,7 +512,7 @@ export const ZINC_TOOLS: ToolDescriptor[] = [
     id: 'zinc_random_sample',
     connector: 'zinc',
     description:
-      "Draw a random sample of purchasable compounds from ZINC22 — for building screening decks, property baselines, or decoy sets. `count` doubles as this tool's `max_results`; re-calling draws a fresh sample. Async upstream (submit + poll).",
+      "Draw a random sample of purchasable compounds from ZINC22 — for building screening decks, property baselines, or decoy sets. `count` doubles as this tool's `max_results`; re-calling draws a fresh sample. Async source (submit + poll).",
     input: {
       type: 'object',
       properties: {
@@ -524,7 +524,7 @@ export const ZINC_TOOLS: ToolDescriptor[] = [
         subset: {
           type: 'string',
           description:
-            'Optional predefined property filter: fragment (MW < 250), lead-like (MW 250-350, logP <= 3.5), drug-like (MW 350-500, Lipinski), lugs (curated). Other upstream subset names pass through verbatim.'
+            'Optional predefined property filter: fragment (MW < 250), lead-like (MW 250-350, logP <= 3.5), drug-like (MW 350-500, Lipinski), lugs (curated). Other source subset names pass through verbatim.'
         },
         timeout_s: {
           type: 'number',
@@ -559,7 +559,7 @@ export const ZINC_TOOLS: ToolDescriptor[] = [
     id: 'zinc_get_3d',
     connector: 'zinc',
     description:
-      'Locate docking-ready 3D structures for ZINC compounds. ZINC22 ships pre-generated 3D conformers (DOCK .db2.gz, .mol2.gz, .sdf.gz) in its file repository, organized by tranche — this tool resolves each id to its tranche and returns the repository locations to download from for docking prep (DOCK6, AutoDock Vina, etc.). Max 50 ids per call (3D retrieval is per-compound work). Async upstream (submit + poll).',
+      'Locate docking-ready 3D structures for ZINC compounds. ZINC22 ships pre-generated 3D conformers (DOCK .db2.gz, .mol2.gz, .sdf.gz) in its file repository, organized by tranche — this tool resolves each id to its tranche and returns the repository locations to download from for docking prep (DOCK6, AutoDock Vina, etc.). Max 50 ids per call (3D retrieval is per-compound work). Async source (submit + poll).',
     input: {
       type: 'object',
       properties: {
@@ -589,7 +589,7 @@ export const ZINC_TOOLS: ToolDescriptor[] = [
         { zinc_ids: canonical.join(','), output_fields: OUTPUT_FIELDS },
         clampTimeoutS(a.timeout_s)
       )
-      // Key the result map by NORMALIZED id: upstream returns zero-padded ids, so a short-form
+      // Key the result map by NORMALIZED id: source returns zero-padded ids, so a short-form
       // input would otherwise miss its own result and report an authoritative-looking found:false.
       const byId = new Map<string, ZincRecord>()
       for (const rec of records) {

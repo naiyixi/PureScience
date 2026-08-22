@@ -38,7 +38,7 @@ export const buildTaskNotificationShow =
     const notification = new deps.notificationCtor({ title, body })
 
     // Logged so a silently-swallowed banner (OS permission, Focus mode) is distinguishable from a
-    // gate that stopped delivery upstream.
+    // gate that stopped delivery source.
     deps.log.info('delivering task notification', { title, supported: true })
     // Retain the instance until the banner resolves; a GC before click would silently drop the
     // handler on some platforms.

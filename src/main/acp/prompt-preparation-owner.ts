@@ -55,7 +55,7 @@ type AcpPromptPreparationOwnerOptions = Readonly<{
     peekHandoffContext?: (sessionId: string) => NotebookHandoffContext | undefined
     registerTurnInputs?: (input: NotebookTurnInputs) => Promise<void>
   }>
-  // Vision image relay (upstream #1314 port): when present and the active backend cannot accept
+  // Vision image relay : when present and the active backend cannot accept
   // image input, prepared image blocks are translated into text evidence by the configured Vision
   // model instead of being sent inline. Absent keeps legacy behavior (images inline or dropped).
   imageInputCompatibility?: Pick<ImageInputCompatibilityOwner, 'prepare'>
@@ -233,7 +233,7 @@ class AcpPromptPreparationOwner {
 
       contextTurn = this.options.contextUsage.beginTurn(input.request.sessionId)
 
-      // Vision image relay (upstream #1314 port): a text-only backend cannot consume inline image
+      // Vision image relay : a text-only backend cannot consume inline image
       // blocks, so translate them into evidence text via the configured Vision model. Historical
       // images (replay) degrade to omission markers when the relay is unavailable; current images
       // surface the configuration error instead of silently dropping user input.

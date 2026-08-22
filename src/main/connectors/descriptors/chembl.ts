@@ -36,7 +36,7 @@ const bool = (x: unknown): unknown => (x == null ? null : Boolean(x))
 // Passthrough that normalises undefined to null so JSON.stringify keeps the key (shape parity).
 const nz = (x: unknown): unknown => (x === undefined ? null : x)
 
-// Non-empty array or null (mirrors the upstream `value or None` for list fields).
+// Non-empty array or null (mirrors the source `value or None` for list fields).
 const listOrNull = (x: unknown): unknown => (Array.isArray(x) && x.length > 0 ? x : null)
 
 // Splits an id list into __in-sized chunks.
@@ -241,7 +241,7 @@ function compoundRecord(m: Rec): Rec {
   }
 }
 
-// { count, total (verified upstream total), compounds, truncated }.
+// { count, total (verified source total), compounds, truncated }.
 function compoundSearchResponse(records: Rec[], total: number | null): Rec {
   const compounds = records.map(compoundRecord)
   const t = total == null ? compounds.length : total
@@ -639,10 +639,10 @@ export const CHEMBL_TOOLS: ToolDescriptor[] = [
     id: 'compound_search',
     connector: 'chembl',
     description:
-      'Search ChEMBL chemical compounds by name (default), ChEMBL id, or molecular structure. By name: case-insensitive synonym substring match (falls back to a preferred-name match). By chembl_id: direct record lookup. By smiles: Tanimoto similarity search when similarity_threshold is set, else a substructure search (structure walks are capped and disclose walk_truncated/upstream_total). Optional max_phase filters by clinical stage. Pass at least one of name, chembl_id, or smiles. Use drug_search instead when searching by therapeutic indication.',
+      'Search ChEMBL chemical compounds by name (default), ChEMBL id, or molecular structure. By name: case-insensitive synonym substring match (falls back to a preferred-name match). By chembl_id: direct record lookup. By smiles: Tanimoto similarity search when similarity_threshold is set, else a substructure search (structure walks are capped and disclose walk_truncated/source_total). Optional max_phase filters by clinical stage. Pass at least one of name, chembl_id, or smiles. Use drug_search instead when searching by therapeutic indication.',
     input: COMPOUND_INPUT,
     returns:
-      '`{ count, total (verified upstream total_count), truncated, compounds: [ { molecule_chembl_id, pref_name, molecule_type, max_phase, first_approval, oral, parenteral, topical, black_box_warning, therapeutic_flag, natural_product, withdrawn_flag, molecule_properties: { alogp, aromatic_rings, full_mwt, hba, hbd, heavy_atoms, psa, rtb, ro3_pass, num_ro5_violations, qed_weighted, molecular_formula, mw_freebase, np_likeness_score, med_chem_friendly, molecular_species }, smiles, inchi, inchi_key, synonyms: [str], chirality, score, atc_classifications, molecule_hierarchy, ... } ] }`. Structure searches may add `walk_truncated` + `upstream_total`.',
+      '`{ count, total (verified source total_count), truncated, compounds: [ { molecule_chembl_id, pref_name, molecule_type, max_phase, first_approval, oral, parenteral, topical, black_box_warning, therapeutic_flag, natural_product, withdrawn_flag, molecule_properties: { alogp, aromatic_rings, full_mwt, hba, hbd, heavy_atoms, psa, rtb, ro3_pass, num_ro5_violations, qed_weighted, molecular_formula, mw_freebase, np_likeness_score, med_chem_friendly, molecular_species }, smiles, inchi, inchi_key, synonyms: [str], chirality, score, atc_classifications, molecule_hierarchy, ... } ] }`. Structure searches may add `walk_truncated` + `source_total`.',
     example:
       'const result = await host.mcp("chembl", "compound_search", {"name": "aspirin", "limit": 5})',
     run: async (ctx, a) => {
@@ -706,7 +706,7 @@ export const CHEMBL_TOOLS: ToolDescriptor[] = [
         const resp = compoundSearchResponse(recs.slice(0, limit), recs.length)
         if (walkTruncated) {
           resp.walk_truncated = true
-          resp.upstream_total = walk.total
+          resp.source_total = walk.total
         }
         return resp
       }
@@ -883,7 +883,7 @@ export const CHEMBL_TOOLS: ToolDescriptor[] = [
       }
     },
     returns:
-      '`{ count, total (verified upstream total_count), truncated, summary, activities: [ { activity_id, molecule_chembl_id, target_chembl_id, target_pref_name, standard_type, standard_relation, standard_value, standard_units, pchembl_value, assay_chembl_id, assay_type, ligand_efficiency, document_chembl_id, ... 45 keys } ] }`.',
+      '`{ count, total (verified source total_count), truncated, summary, activities: [ { activity_id, molecule_chembl_id, target_chembl_id, target_pref_name, standard_type, standard_relation, standard_value, standard_units, pchembl_value, assay_chembl_id, assay_type, ligand_efficiency, document_chembl_id, ... 45 keys } ] }`.',
     example:
       'const result = await host.mcp("chembl", "get_bioactivity", {"molecule_chembl_id": "CHEMBL25", "activity_type": "IC50", "limit": 10})',
     run: async (ctx, a) => {
@@ -993,7 +993,7 @@ export const CHEMBL_TOOLS: ToolDescriptor[] = [
       }
     },
     returns:
-      '`{ count, total (verified upstream total_count), truncated, targets: [ { target_chembl_id, pref_name, target_type, organism, tax_id, species_group_flag, cross_references, score, components: [ { component_id, component_type, accession, component_description, gene_symbol, relationship, target_component_xrefs: [ { xref_id, xref_name, xref_src_db, xref_src_url } ], xrefs_truncated_from? } ] } ] }`.',
+      '`{ count, total (verified source total_count), truncated, targets: [ { target_chembl_id, pref_name, target_type, organism, tax_id, species_group_flag, cross_references, score, components: [ { component_id, component_type, accession, component_description, gene_symbol, relationship, target_component_xrefs: [ { xref_id, xref_name, xref_src_db, xref_src_url } ], xrefs_truncated_from? } ] } ] }`.',
     example:
       'const result = await host.mcp("chembl", "target_search", {"gene_symbol": "EGFR", "organism": "Homo sapiens", "limit": 5})',
     run: async (ctx, a) => {

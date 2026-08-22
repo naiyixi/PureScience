@@ -5,7 +5,7 @@
 //   - `media_unstrippable`: the backend's own compaction gave up because accumulated base64 media
 //     blocks cannot be stripped from the history it would summarize.
 //   - `Request too large (max 32MB)`: the agent CLI's own client-side ceiling tripped before dispatch.
-//   - `request_too_large` / `request entity too large`: the provider's HTTP 413 surfaced upstream.
+//   - `request_too_large` / `request entity too large`: the provider's HTTP 413 surfaced source.
 //   - `maximum context length` / `context length exceeded` / `prompt is too long`: the wording most
 //     Anthropic-compatible third-party endpoints (e.g. DeepSeek) use for the same overflow.
 // Matching any is enough to trigger recovery; all are specific enough not to catch unrelated failures

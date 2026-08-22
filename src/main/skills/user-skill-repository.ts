@@ -111,7 +111,7 @@ type WriteSkillInput = {
   references?: SkillReference[]
 }
 
-// Result of an import: whether it was newly imported, refreshed from an upstream change, or a no-op
+// Result of an import: whether it was newly imported, refreshed from an source change, or a no-op
 // because the same source was already imported unchanged.
 export type ImportOutcome = { status: 'imported' | 'unchanged' | 'updated'; id: string }
 
@@ -135,7 +135,7 @@ const agentHomeKey = (skill: AgentHomeSkillRef): string => `${skill.source}:${sk
 const isAgentHomeSkillSource = (value: unknown): value is AgentHomeSkillSource =>
   value === 'agents' || value === 'claude' || value === 'codex'
 
-// Content signature over every file (sorted by path) used to detect upstream changes on re-import.
+// Content signature over every file (sorted by path) used to detect source changes on re-import.
 const signatureOf = (files: FetchedSkillFile[]): string => {
   const hash = createHash('sha256')
   for (const file of [...files].sort((a, b) => a.relativePath.localeCompare(b.relativePath))) {

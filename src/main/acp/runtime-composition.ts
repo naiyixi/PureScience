@@ -143,7 +143,7 @@ const createAcpRuntime = ({
   return new AcpRuntimeCoordinator(
     (runtimeCallbacks, permissionGrantStore) => {
       const selection = settingsService.captureActiveAgentBackendSelection()
-      // Vision image relay (upstream #1314 port): a text-only active backend translates attached
+      // Vision image relay : a text-only active backend translates attached
       // images into evidence text through the configured Vision model. The runner enforces a
       // tool-less, isolated session per analysis; evidence is cached in the Project DB.
       const visionRunner = new RestrictedInferenceRunner({

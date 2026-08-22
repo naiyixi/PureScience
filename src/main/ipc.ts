@@ -751,7 +751,7 @@ const createApplicationModules = async (
   settingsService.setSkillDeletionGuard((skillId) =>
     specialistPackageService.assertSkillDeletionAllowed(skillId)
   )
-  // Specialist Marketplace (upstream #1342 port): verified discovery + install provenance. The
+  // Specialist Marketplace : verified discovery + install provenance. The
   // official source carries no trusted keys yet (fails closed); users add verified GitHub sources.
   const marketplaceRepository = new MarketplaceRepository(resolveStorageRoot())
   const marketplaceService = new MarketplaceService({

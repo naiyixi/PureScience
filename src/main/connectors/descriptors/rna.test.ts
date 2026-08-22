@@ -13,7 +13,7 @@ const textRes = (body: string): Response =>
 const sha = (text: string): string => createHash('sha256').update(text, 'utf8').digest('hex')
 
 describe('rna / rfam', () => {
-  it('exposes exactly the 9 upstream tool ids', () => {
+  it('exposes exactly the 9 source tool ids', () => {
     expect(RNA_TOOLS.map((t) => t.id).sort()).toEqual(
       [
         'accession_to_id',
@@ -75,7 +75,7 @@ describe('rna / rfam', () => {
       release_number: '15.1',
       release_date: '2026-01-16'
     })
-    // raw carries the whole upstream rfam record
+    // raw carries the whole source rfam record
     expect(out.raw).toEqual(rfam)
   })
 
@@ -255,7 +255,7 @@ describe('rna / rfam', () => {
     })
   })
 
-  it('get_sequence_regions surfaces an upstream 403 as-is', async () => {
+  it('get_sequence_regions surfaces an source 403 as-is', async () => {
     const fetchImpl = vi.fn().mockResolvedValue({ ok: false, status: 403, headers: new Headers() })
     await expect(
       new ParserEngine({ fetchImpl, retries: 0 }).call(

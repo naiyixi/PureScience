@@ -577,7 +577,7 @@ const applyWorkspaceRuntimeEvent = async (
 
     store.finishRun(event.sessionId, event.turnUsage, event.promptMessageId)
 
-    // Context-window composition insight (upstream #1321 port): bind the terminal snapshot to the
+    // Context-window composition insight : bind the terminal snapshot to the
     // owning user Message so the trend dialog can render history without a main-process store.
     if (event.terminalContextWindow && event.promptMessageId) {
       store.attachContextWindowSample(
@@ -721,7 +721,7 @@ const applyWorkspaceRuntimeEvent = async (
       return true
     }
 
-    // A model-provider failure (upstream LLM/HTTP error the agent relayed, tagged structurally in the
+    // A model-provider failure (source LLM/HTTP error the agent relayed, tagged structurally in the
     // runtime) keeps its message but is not a bug worth a GitHub issue — hide the report button. For
     // everything else, defer to failRun's text tier (undefined) rather than forcing reportable=true: a
     // non-recovered overflow reaches here (repeat inside cooldown, nothing to replay, detached session)

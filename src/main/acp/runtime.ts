@@ -157,7 +157,7 @@ type AcpRuntimeOptions = {
   // Per-session cumulative inlined-image budget in base64 bytes. Defaults to MAX_SESSION_INLINE_IMAGE_BYTES;
   // injectable so tests can drive the degrade-to-file path with small fixtures.
   inlineImageBudgetBytes?: number
-  // Vision image relay (upstream #1314 port): when present and the active backend cannot accept
+  // Vision image relay : when present and the active backend cannot accept
   // image input, prepared image blocks are translated into text evidence via the configured Vision
   // model instead of being sent inline. Absent keeps legacy behavior (images inline or dropped).
   imageInputCompatibility?: Pick<ImageInputCompatibilityOwner, 'prepare'>

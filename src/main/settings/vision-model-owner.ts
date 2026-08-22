@@ -14,7 +14,7 @@ type VisionModelOwnerOptions = Readonly<{
   backendResolver: Pick<AgentBackendResolver, 'captureConfiguredSelection'>
 }>
 
-// Owns the optional Vision model relay target (upstream #1314 port). The Vision model is a fixed
+// Owns the optional Vision model relay target . The Vision model is a fixed
 // provider+model pair used ONLY to translate image input when the active backend is text-only.
 // Validation happens here before any write: the provider must exist, validate, not be a Codex
 // subscription, be usable by the active framework, and support image input.

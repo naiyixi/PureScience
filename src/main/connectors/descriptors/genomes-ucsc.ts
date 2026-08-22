@@ -88,7 +88,7 @@ type GetDataResponse = {
 } & Record<string, unknown>
 
 // GET one region of a track. maxItems maps to the API's maxItemsOutput; the engine throws on the
-// upstream 400 for an unknown track ("can not find track").
+// source 400 for an unknown track ("can not find track").
 async function fetchTrackData(
   ctx: ToolContext,
   genome: string,
@@ -169,7 +169,7 @@ export const GENOMES_UCSC_TOOLS: ToolDescriptor[] = [
     id: 'ucsc_track_data',
     connector: 'genomes',
     description:
-      "Fetch raw rows of any UCSC Genome Browser track in a region — the generic escape hatch behind ucsc_conservation / ucsc_tfbs_clusters (gene tracks, ClinVar, GWAS catalog, CpG islands, repeats, ...). Args: track (name from ucsc_list_tracks, e.g. knownGene, cpgIslandExt, clinvarMain); chrom (chr-prefixed, chr7/chrX — UCSC requires the prefix); start (0-based half-open; an Ensembl 1-based start is start-1 here); end (exclusive); genome (default hg38); max_rows (API maxItemsOutput, default 1000; truncated reflects the API's own maxItemsLimit flag). Returns {genome, track, chrom, start, end, track_type, items_returned, truncated, rows} — rows in upstream shape (BED-like {chrom, chromStart, chromEnd, name, score, ...}; wiggle {start, end, value}). Unknown tracks raise. Quirk: for some huge tracks the API caps output itself and points at dataDownloadUrl — echoed when present.",
+      "Fetch raw rows of any UCSC Genome Browser track in a region — the generic escape hatch behind ucsc_conservation / ucsc_tfbs_clusters (gene tracks, ClinVar, GWAS catalog, CpG islands, repeats, ...). Args: track (name from ucsc_list_tracks, e.g. knownGene, cpgIslandExt, clinvarMain); chrom (chr-prefixed, chr7/chrX — UCSC requires the prefix); start (0-based half-open; an Ensembl 1-based start is start-1 here); end (exclusive); genome (default hg38); max_rows (API maxItemsOutput, default 1000; truncated reflects the API's own maxItemsLimit flag). Returns {genome, track, chrom, start, end, track_type, items_returned, truncated, rows} — rows in source shape (BED-like {chrom, chromStart, chromEnd, name, score, ...}; wiggle {start, end, value}). Unknown tracks raise. Quirk: for some huge tracks the API caps output itself and points at dataDownloadUrl — echoed when present.",
     input: {
       type: 'object',
       properties: {
@@ -184,7 +184,7 @@ export const GENOMES_UCSC_TOOLS: ToolDescriptor[] = [
     },
     required: ['track', 'chrom', 'start', 'end'],
     returns:
-      '{genome, track, chrom, start, end, track_type, items_returned, truncated, rows, dataDownloadUrl?} — rows in the upstream shape; truncated reflects the API maxItemsLimit flag; dataDownloadUrl echoed when the API caps a huge track itself.',
+      '{genome, track, chrom, start, end, track_type, items_returned, truncated, rows, dataDownloadUrl?} — rows in the source shape; truncated reflects the API maxItemsLimit flag; dataDownloadUrl echoed when the API caps a huge track itself.',
     example:
       'const result = await host.mcp("genomes", "ucsc_track_data", {"track": "cpgIslandExt", "chrom": "chr7", "start": 140700000, "end": 140800000, "genome": "hg38"})',
     run: async (ctx, a) => {
@@ -215,7 +215,7 @@ export const GENOMES_UCSC_TOOLS: ToolDescriptor[] = [
     id: 'ucsc_conservation',
     connector: 'genomes',
     description:
-      "Evolutionary conservation summary for a region from UCSC phyloP / phastCons tracks (base-wise scores over multi-species alignments). Args: chrom (chr-prefixed); start (0-based half-open); end (exclusive; span capped at 100000 bp — split larger); genome (default hg38); track (default phyloP100way; positive=conserved, negative=fast-evolving; alternatives hg38 phastCons100way, phyloP30way, phastCons30way, phyloP447way, phyloP470way; hg19 phyloP100wayAll/phastCons100way); include_values (also return per-base {start,end,value} rows capped at max_values, values_truncated flags the cap; default false = summary only); max_values (per-base cap default 2000). Returns {genome, track, chrom, start, end, span_bp, n_bases_covered, coverage_fraction, mean, min, max} (+values, values_truncated when requested). Stats weighted by each row's base span, clipped to window; uncovered bases lower coverage_fraction, not zero-scored. Non-score tracks raise; an upstream-truncated row list also raises.",
+      "Evolutionary conservation summary for a region from UCSC phyloP / phastCons tracks (base-wise scores over multi-species alignments). Args: chrom (chr-prefixed); start (0-based half-open); end (exclusive; span capped at 100000 bp — split larger); genome (default hg38); track (default phyloP100way; positive=conserved, negative=fast-evolving; alternatives hg38 phastCons100way, phyloP30way, phastCons30way, phyloP447way, phyloP470way; hg19 phyloP100wayAll/phastCons100way); include_values (also return per-base {start,end,value} rows capped at max_values, values_truncated flags the cap; default false = summary only); max_values (per-base cap default 2000). Returns {genome, track, chrom, start, end, span_bp, n_bases_covered, coverage_fraction, mean, min, max} (+values, values_truncated when requested). Stats weighted by each row's base span, clipped to window; uncovered bases lower coverage_fraction, not zero-scored. Non-score tracks raise; an source-truncated row list also raises.",
     input: {
       type: 'object',
       properties: {
@@ -251,11 +251,11 @@ export const GENOMES_UCSC_TOOLS: ToolDescriptor[] = [
         )
       }
 
-      // Request one row beyond the window so an upstream cap is detectable rather than silent.
+      // Request one row beyond the window so an source cap is detectable rather than silent.
       const resp = await fetchTrackData(ctx, genome, track, chrom, start, end, 1_000_000)
       if (isUpstreamTruncated(resp)) {
         throw new Error(
-          `ucsc_conservation: upstream truncated the ${track} rows for this region — narrow the span.`
+          `ucsc_conservation: source truncated the ${track} rows for this region — narrow the span.`
         )
       }
       const rows = extractRows(resp, track)

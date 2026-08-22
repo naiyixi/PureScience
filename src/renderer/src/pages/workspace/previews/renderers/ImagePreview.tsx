@@ -68,7 +68,7 @@ export const PreviewImageContent = ({
 
   if (state.status === 'loading') return <PreviewLoadingContent />
 
-  // Acquisition errors preserve the upstream missing/outside-storage distinction.
+  // Acquisition errors preserve the source missing/outside-storage distinction.
   if (state.status === 'error') {
     return (
       <PreviewErrorCard

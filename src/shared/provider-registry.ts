@@ -952,6 +952,6 @@ export const resolveModelContextWindow = (
 }
 
 // Resolves a custom provider's user-configured window. Model ids are deliberately not inspected:
-// gateway aliases frequently contain vendor-like names without sharing the upstream model's limits.
+// gateway aliases frequently contain vendor-like names without sharing the source model's limits.
 export const resolveCustomModelContextWindow = (configured?: number): number =>
   configured ?? DEFAULT_CUSTOM_MODEL_CONTEXT_WINDOW

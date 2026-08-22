@@ -78,7 +78,7 @@ const safeNetworkErrorCode = (error: unknown): string | undefined => {
     : undefined
 }
 
-const upstreamResponseType = (contentType: string): 'event-stream' | 'json' | 'binary' => {
+const sourceResponseType = (contentType: string): 'event-stream' | 'json' | 'binary' => {
   if (contentType.includes('text/event-stream')) return 'event-stream'
   if (contentType.includes('application/json')) return 'json'
   return 'binary'
@@ -241,7 +241,7 @@ const HOP_BY_HOP_HEADERS = new Set([
   'upgrade'
 ])
 
-const upstreamHeaders = (
+const sourceHeaders = (
   request: IncomingMessage,
   key: string | undefined
 ): Record<string, string> => {
@@ -264,9 +264,9 @@ const upstreamHeaders = (
   return headers
 }
 
-const copyResponseHeaders = (upstream: Response): Record<string, string> => {
+const copyResponseHeaders = (source: Response): Record<string, string> => {
   const headers: Record<string, string> = {}
-  upstream.headers.forEach((value, name) => {
+  source.headers.forEach((value, name) => {
     // Fetch decodes compressed bodies. Forwarding the original encoding after rewriting would make
     // Codex try to decompress already-decoded bytes.
     if (!HOP_BY_HOP_HEADERS.has(name) && name !== 'content-encoding') headers[name] = value
@@ -286,15 +286,15 @@ const rewriteSseLine = (line: string, aliases: NativeResponsesToolAliases): stri
 }
 
 const streamResponse = async (
-  upstream: Response,
+  source: Response,
   response: ServerResponse,
   aliases: NativeResponsesToolAliases
 ): Promise<void> => {
-  if (!upstream.body) throw new Error('native Responses upstream returned no body')
-  response.writeHead(upstream.status, copyResponseHeaders(upstream))
+  if (!source.body) throw new Error('native Responses source returned no body')
+  response.writeHead(source.status, copyResponseHeaders(source))
   const decoder = new TextDecoder()
   let buffered = ''
-  for await (const chunk of upstream.body) {
+  for await (const chunk of source.body) {
     buffered += decoder.decode(chunk, { stream: true })
     const lines = buffered.split('\n')
     buffered = lines.pop() ?? ''
@@ -409,7 +409,7 @@ export class NativeResponsesCompatibilityProxy {
       if (!response.ok) {
         log.warn('native Responses Skill selection failed', {
           model: this.target.model,
-          reason: 'upstream-http',
+          reason: 'source-http',
           status: response.status
         })
         return []
@@ -571,7 +571,7 @@ export class NativeResponsesCompatibilityProxy {
       const routedBody = this.target.model
         ? { ...scopedBody, model: this.target.model }
         : scopedBody
-      const { request: upstreamRequest, aliases } = flattenNativeResponsesRequest(routedBody)
+      const { request: sourceRequest, aliases } = flattenNativeResponsesRequest(routedBody)
       log.info('native Responses compatibility request', {
         requestId,
         namespaceToolCount: aliases.size,
@@ -579,35 +579,35 @@ export class NativeResponsesCompatibilityProxy {
         reviewerScoped,
         toolLessScoped
       })
-      phase = 'upstream-fetch'
-      const upstream = await this.fetchImpl(responsesUrl(this.target.baseUrl), {
+      phase = 'source-fetch'
+      const source = await this.fetchImpl(responsesUrl(this.target.baseUrl), {
         method: 'POST',
-        headers: upstreamHeaders(request, this.target.key),
-        body: JSON.stringify(upstreamRequest),
+        headers: sourceHeaders(request, this.target.key),
+        body: JSON.stringify(sourceRequest),
         signal: abortController.signal
       })
-      const contentType = upstream.headers.get('content-type') ?? ''
-      const responseType = upstreamResponseType(contentType)
-      log.info('native Responses compatibility upstream response', {
+      const contentType = source.headers.get('content-type') ?? ''
+      const responseType = sourceResponseType(contentType)
+      log.info('native Responses compatibility source response', {
         requestId,
-        status: upstream.status,
+        status: source.status,
         responseType,
         durationMs: Math.max(0, Date.now() - startedAt)
       })
       phase = 'forward-response'
       if (responseType === 'event-stream') {
-        await streamResponse(upstream, response, aliases)
+        await streamResponse(source, response, aliases)
       } else if (responseType === 'json') {
-        const payload = restoreNativeResponsesPayload(await upstream.json(), aliases)
-        response.writeHead(upstream.status, copyResponseHeaders(upstream))
+        const payload = restoreNativeResponsesPayload(await source.json(), aliases)
+        response.writeHead(source.status, copyResponseHeaders(source))
         response.end(JSON.stringify(payload))
       } else {
-        response.writeHead(upstream.status, copyResponseHeaders(upstream))
-        response.end(Buffer.from(await upstream.arrayBuffer()))
+        response.writeHead(source.status, copyResponseHeaders(source))
+        response.end(Buffer.from(await source.arrayBuffer()))
       }
       log.info('native Responses compatibility request completed', {
         requestId,
-        status: upstream.status,
+        status: source.status,
         durationMs: Math.max(0, Date.now() - startedAt)
       })
     } catch (error) {

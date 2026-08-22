@@ -23,9 +23,9 @@ const run = async (
 
 const B = 'https://www.ebi.ac.uk/chembl/api/data'
 
-// ── the six tools exist with the exact upstream ids ──────────────────────────
+// ── the six tools exist with the exact source ids ──────────────────────────
 describe('chembl / registry', () => {
-  it('exposes exactly the six upstream tools', () => {
+  it('exposes exactly the six source tools', () => {
     expect(CHEMBL_TOOLS.map((t) => t.id).sort()).toEqual([
       'compound_search',
       'drug_search',
@@ -140,7 +140,7 @@ describe('chembl / compound_search', () => {
     expect(compounds[0].score).toBe(100)
   })
 
-  it('smiles substructure branch: discloses walk_truncated + upstream_total when capped', async () => {
+  it('smiles substructure branch: discloses walk_truncated + source_total when capped', async () => {
     const molecules = Array.from({ length: 1000 }, (_, i) => ({
       molecule_chembl_id: `CHEMBL${10000 + i}`
     }))
@@ -152,10 +152,10 @@ describe('chembl / compound_search', () => {
     expect(urls[0]).toBe(`${B}/substructure/c1ccccc1.json?limit=1000&offset=0`)
     const o = out as Record<string, unknown>
     expect(o.count).toBe(2)
-    // total is the count of what was walked/kept (1000), not the upstream match set.
+    // total is the count of what was walked/kept (1000), not the source match set.
     expect(o.total).toBe(1000)
     expect(o.walk_truncated).toBe(true)
-    expect(o.upstream_total).toBe(30000)
+    expect(o.source_total).toBe(30000)
   })
 })
 

@@ -1,6 +1,6 @@
 import type { ToolContext, ToolDescriptor } from '../types'
 
-// AlphaFold DB public prediction API (alphafold.ebi.ac.uk). Ported from the upstream
+// AlphaFold DB public prediction API (alphafold.ebi.ac.uk). Ported from the source
 // `alphafold_structures` client/records. Verified live against P04637 (canonical + isoforms):
 // model records are camelCase; the protein sequence lives under `uniprotSequence` (the older
 // `sequence` key is accepted as a fallback). Status quirks (also verified live): a well-formed
@@ -8,7 +8,7 @@ import type { ToolContext, ToolDescriptor } from '../types'
 // malformed identifier answers HTTP 400 with `{"error": ...}` -> explicit `error` field.
 const AFDB_BASE = 'https://alphafold.ebi.ac.uk/api'
 
-// Batch ceiling per coverage call (mirrors upstream MAX_IDS_PER_CALL): 40 unique accessions at the
+// Batch ceiling per coverage call (mirrors the official MAX_IDS_PER_CALL): 40 unique accessions at the
 // API's polite request rate stays inside the MCP transport budget.
 const MAX_IDS_PER_CALL = 40
 
@@ -54,7 +54,7 @@ type AlphaFoldRawModel = {
   amAnnotationsUrl?: string
 }
 
-// Output URL-block key -> raw model field (mirrors upstream _URL_FIELDS). Payloads are never
+// Output URL-block key -> raw model field (mirrors the official _URL_FIELDS). Payloads are never
 // downloaded; only URLs are surfaced.
 const URL_FIELDS: ReadonlyArray<readonly [string, keyof AlphaFoldRawModel]> = [
   ['cif', 'cifUrl'],
@@ -72,7 +72,7 @@ function modelSequence(m: AlphaFoldRawModel): string | undefined {
   return m.uniprotSequence ?? m.sequence
 }
 
-// Full per-model record (mirrors upstream parse_model).
+// Full per-model record (mirrors the official parse_model).
 function parseModel(m: AlphaFoldRawModel, includeSequence: boolean): Record<string, unknown> {
   const seq = modelSequence(m)
   const urls: Record<string, string> = {}

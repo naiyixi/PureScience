@@ -233,7 +233,7 @@ export type AgentBackendResolverOptions = {
 }
 
 // Codex exposes local MCP tools as namespaced Responses functions. Chat Completions has no namespace
-// field, so the bridge receives the app-owned notebook schemas and aliases them for the upstream.
+// field, so the bridge receives the app-owned notebook schemas and aliases them for the source.
 const CODEX_NOTEBOOK_TOOL_NAMESPACE = `mcp__${NOTEBOOK_MCP_SERVER_NAME.replace(
   /[^a-zA-Z0-9_]/g,
   '_'
@@ -244,7 +244,7 @@ const CODEX_BRIDGE_NOTEBOOK_TOOLS: ResponsesBridgeNamespacedTool[] = NOTEBOOK_RP
     name: tool.name,
     description:
       tool.name === 'notebook_execute'
-        ? `${tool.description} For PureScience data connectors, the Python code MUST call host.mcp(server, method, arguments). Never use requests, urllib, httpx, curl, or a raw upstream API for connector data; those bypass app permissions, credentials, and rate limits. Codex MCP resource-list tools are not connector discovery.`
+        ? `${tool.description} For PureScience data connectors, the Python code MUST call host.mcp(server, method, arguments). Never use requests, urllib, httpx, curl, or a raw source API for connector data; those bypass app permissions, credentials, and rate limits. Codex MCP resource-list tools are not connector discovery.`
         : tool.description,
     parameters: z.toJSONSchema(z.object(tool.inputSchema), {
       target: 'draft-7'
@@ -742,7 +742,7 @@ export class AgentBackendResolver {
         : undefined
       // Only the Codex child talks to the app-owned bridge at loopback. Add a bypass override for
       // that local hop without copying or clearing proxy variables. This leaves the main-process
-      // bridge's upstream network route untouched.
+      // bridge's source network route untouched.
       const loopbackProxyBypass =
         responsesBridge || openCodeProviderTransport || nativeCodexProviderTransport
           ? loopbackProxyBypassEnvironment(process.env)

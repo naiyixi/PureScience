@@ -1,6 +1,6 @@
 import type { ToolContext, ToolDescriptor } from '../types'
 
-// Public, version-pinned endpoints (ported from the upstream mcp_protein_annotation fleet libs).
+// Public, version-pinned endpoints (ported from the source mcp_protein_annotation fleet libs).
 const INTERPRO_BASE = 'https://www.ebi.ac.uk/interpro/api'
 const HPA_BASE = 'https://v25.proteinatlas.org' // Human Protein Atlas release 25.x (pinned host)
 const STRING_BASE = 'https://version-12-0.string-db.org/api' // STRING v12.0 (pinned)
@@ -52,7 +52,7 @@ async function walkEntries(
     }
     if (data === null) {
       if (pages === 1) return { count: 0, results: [] } // 204 on first page — legitimately empty
-      // 204 mid-pagination is an upstream defect (e.g. the proteome route): never return a partial set.
+      // 204 mid-pagination is an source defect (e.g. the proteome route): never return a partial set.
       throw new Error(
         `InterPro returned HTTP 204 mid-pagination (page ${pages}) — incomplete result set (${results.length} of ${count} rows)`
       )
@@ -846,7 +846,7 @@ export const PROTEIN_ANNOTATION_TOOLS: ToolDescriptor[] = [
       }
     },
     returns:
-      '`{ "count": int, "results": [ { "accession": str, "name": str, "source_database": str } ] }` — rows sorted by accession; an empty upstream result yields count 0.',
+      '`{ "count": int, "results": [ { "accession": str, "name": str, "source_database": str } ] }` — rows sorted by accession; an empty source result yields count 0.',
     example:
       'const result = await host.mcp("protein_annotation", "search_pfam_clans", {"query": "kinase"})',
     run: async (ctx, a) => {
@@ -943,7 +943,7 @@ export const PROTEIN_ANNOTATION_TOOLS: ToolDescriptor[] = [
     id: 'get_pfam_family_proteomes',
     connector: 'protein_annotation',
     description:
-      'Proteomes containing members of a Pfam family. count_only defaults true — the upstream proteome cursor pagination is defective for deep walks.',
+      'Proteomes containing members of a Pfam family. count_only defaults true — the source proteome cursor pagination is defective for deep walks.',
     input: {
       type: 'object',
       properties: {
@@ -958,7 +958,7 @@ export const PROTEIN_ANNOTATION_TOOLS: ToolDescriptor[] = [
     },
     required: ['pfam_accession'],
     returns:
-      '`{ "count": int, "results": [ { "accession": str, "name": str, "is_reference": bool, "taxonomy": ... } ] | null }` — `results` is null in count_only mode; a full walk raises if upstream pagination is defective.',
+      '`{ "count": int, "results": [ { "accession": str, "name": str, "is_reference": bool, "taxonomy": ... } ] | null }` — `results` is null in count_only mode; a full walk raises if source pagination is defective.',
     example:
       'const result = await host.mcp("protein_annotation", "get_pfam_family_proteomes", {"pfam_accession": "PF00069"})',
     run: async (ctx, a) => {

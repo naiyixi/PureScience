@@ -317,7 +317,7 @@ const ProvidersPanel = ({
         </SettingsSection>
       ) : null}
 
-      {/* Optional Vision model relay (upstream #1314 port): a fixed model that translates image
+      {/* Optional Vision model relay : a fixed model that translates image
           input for a text-only active backend. Independent of the active model; hidden when no
           provider advertises image input. */}
       <SettingsSection

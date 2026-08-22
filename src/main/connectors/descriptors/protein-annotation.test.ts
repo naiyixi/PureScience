@@ -31,7 +31,7 @@ const calls = (fetchImpl: typeof fetch): unknown[][] =>
   (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls
 
 describe('protein_annotation / tool set', () => {
-  it('exposes exactly the 13 upstream tool ids and drops the old string_* ids', () => {
+  it('exposes exactly the 13 source tool ids and drops the old string_* ids', () => {
     expect(PROTEIN_ANNOTATION_TOOLS.map((t) => t.id).sort()).toEqual(
       [
         'get_domain_architecture',

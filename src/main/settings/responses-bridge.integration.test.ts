@@ -64,14 +64,14 @@ it.runIf(runLiveContract)(
       'utf8'
     )
 
-    const upstreamRequests: Record<string, unknown>[] = []
-    const upstreamFetch = async (
+    const sourceRequests: Record<string, unknown>[] = []
+    const sourceFetch = async (
       _url: Parameters<typeof fetch>[0],
       init?: Parameters<typeof fetch>[1]
     ): Promise<Response> => {
       const request = JSON.parse(String(init?.body)) as Record<string, unknown>
-      upstreamRequests.push(request)
-      if (upstreamRequests.length === 1) {
+      sourceRequests.push(request)
+      if (sourceRequests.length === 1) {
         return responsesSse([
           { type: 'response.created', response: { id: 'native-call' } },
           {
@@ -115,7 +115,7 @@ it.runIf(runLiveContract)(
 
     const proxy = new NativeResponsesCompatibilityProxy(
       { baseUrl: 'https://vendor.invalid/v1', model: 'probe-native-model' },
-      upstreamFetch
+      sourceFetch
     )
     const connection = await proxy.start()
     const framework = createCodexFramework()
@@ -193,17 +193,17 @@ it.runIf(runLiveContract)(
             })
         })
 
-      const upstreamTools = (upstreamRequests[0]?.tools ?? []) as Array<Record<string, unknown>>
-      expect(upstreamTools).toEqual(
+      const sourceTools = (sourceRequests[0]?.tools ?? []) as Array<Record<string, unknown>>
+      expect(sourceTools).toEqual(
         expect.arrayContaining([
           expect.objectContaining({ type: 'function', name: 'mcp__probe_server__echo' })
         ])
       )
-      expect(upstreamTools).not.toEqual(
+      expect(sourceTools).not.toEqual(
         expect.arrayContaining([expect.objectContaining({ type: 'namespace' })])
       )
-      expect(JSON.stringify(upstreamRequests[1]?.input)).toContain('echo:native')
-      expect(JSON.stringify(upstreamRequests[1]?.input)).not.toContain('unsupported call')
+      expect(JSON.stringify(sourceRequests[1]?.input)).toContain('echo:native')
+      expect(JSON.stringify(sourceRequests[1]?.input)).not.toContain('unsupported call')
       expect(JSON.stringify(result)).toContain('mcp.probe-server.echo')
     } catch (error) {
       throw new Error(`${String(error)}\n${stderr.join('')}`)
@@ -244,7 +244,7 @@ it.runIf(runLiveContract)(
     )
 
     const chatRequests: Record<string, unknown>[] = []
-    const upstreamFetch = async (
+    const sourceFetch = async (
       _url: Parameters<typeof fetch>[0],
       init?: Parameters<typeof fetch>[1]
     ): Promise<Response> => {
@@ -334,7 +334,7 @@ it.runIf(runLiveContract)(
           }
         ]
       },
-      upstreamFetch
+      sourceFetch
     )
     const connection = await bridge.start()
     const child = spawn(adapterPath!, [], {
@@ -504,7 +504,7 @@ it.runIf(runLiveContract)(
     await reviewerMcp.start()
 
     const chatRequests: Record<string, unknown>[] = []
-    const upstreamFetch = async (
+    const sourceFetch = async (
       _url: Parameters<typeof fetch>[0],
       init?: Parameters<typeof fetch>[1]
     ): Promise<Response> => {
@@ -614,7 +614,7 @@ it.runIf(runLiveContract)(
           namespacedTools: REVIEWER_BRIDGE_NAMESPACED_TOOLS
         }
       },
-      upstreamFetch
+      sourceFetch
     )
     const connection = await bridge.start()
     const child = spawn(adapterPath!, [], {
@@ -702,13 +702,13 @@ it.runIf(runLiveContract)(
       const expectedReviewerTools = REVIEWER_BRIDGE_NAMESPACED_TOOLS.map(
         (tool) => `${tool.namespace}__${tool.name}`
       )
-      const upstreamToolNames = chatRequests.map((request) =>
+      const sourceToolNames = chatRequests.map((request) =>
         ((request.tools ?? []) as Array<{ function?: { name?: string } }>).map(
           (tool) => tool.function?.name
         )
       )
       expect(chatRequests).toHaveLength(3)
-      expect(upstreamToolNames).toEqual([
+      expect(sourceToolNames).toEqual([
         expectedReviewerTools,
         expectedReviewerTools,
         expectedReviewerTools
