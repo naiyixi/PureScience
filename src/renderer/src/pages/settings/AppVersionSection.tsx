@@ -50,9 +50,14 @@ const AppVersionSection = (): React.JSX.Element => {
             <div className="min-w-0">
               <p className="flex items-baseline gap-2">
                 <span className="text-sm font-semibold text-foreground">{APP.name}</span>
-                <span className="text-xs text-muted-foreground tabular-nums">v{version}</span>
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  v{version} · {APP.releaseCode}
+                </span>
               </p>
-              <p className="mt-0.5 text-xs font-normal text-muted-foreground">{APP.copyright}</p>
+              <p className="mt-0.5 text-xs font-normal text-muted-foreground">
+                {APP.releaseCodeMeaning} · {APP.copyright}
+              </p>
+              <p className="mt-0.5 text-xs font-normal text-muted-foreground">{APP.mission}</p>
             </div>
           </div>
         }

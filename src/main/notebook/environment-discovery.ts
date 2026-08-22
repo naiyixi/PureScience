@@ -67,6 +67,11 @@ const interpreterNames = (language: NotebookLanguage): string[] => {
 }
 
 // `which -a <name>` (POSIX) / `where <name>` (Windows) → existing absolute paths, best-effort.
+// macOS ships a CommandLineTools *stub* at /usr/bin/python3 that only prompts to install the
+// developer tools — it is never a usable scientific interpreter, so it is filtered out here
+// rather than letting a probe spawn it (which would hang or pop a dialog).
+const isMacDevtoolsStub = (candidate: string): boolean =>
+  process.platform === 'darwin' && candidate === '/usr/bin/python3'
 const whichAll = async (name: string): Promise<string[]> => {
   try {
     const { stdout } = isWin()
@@ -75,7 +80,7 @@ const whichAll = async (name: string): Promise<string[]> => {
     return stdout
       .split('\n')
       .map((line) => line.trim())
-      .filter((line) => line.length > 0 && existsSync(line))
+      .filter((line) => line.length > 0 && existsSync(line) && !isMacDevtoolsStub(line))
   } catch {
     return []
   }
