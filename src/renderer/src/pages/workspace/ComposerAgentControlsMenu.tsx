@@ -264,7 +264,7 @@ const ComposerAgentControlsMenu = ({
     <>
       <Shield className="size-4 shrink-0 text-text-200" strokeWidth={2} aria-hidden="true" />
       <span className="min-w-0 flex-1">
-        <span className="block text-[13px] font-medium leading-5">Permission mode</span>
+        <span className="block text-[13px] font-medium leading-5">{t('ws.permissionMode')}</span>
         <span className="block text-[11px] leading-4 text-text-300">
           {t('settings.appliesToFutureActions')}
         </span>
@@ -381,9 +381,9 @@ const ComposerAgentControlsMenu = ({
                   aria-hidden="true"
                 />
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[13px] font-medium leading-5">Auto-review</span>
+                  <span className="block text-[13px] font-medium leading-5">{t('ws.autoReview')}</span>
                   <span className="block text-[11px] leading-4 text-text-300">
-                    A reviewer agent checks every change before it lands.
+                    {t('ws.autoReviewDesc')}
                   </span>
                 </span>
                 <Switch
@@ -412,7 +412,7 @@ const ComposerAgentControlsMenu = ({
                         onClearGrants?.()
                       }}
                     >
-                      Clear all
+                      {t('ws.clearAll')}
                     </button>
                   </div>
                   <div className="max-h-40 overflow-y-auto">
@@ -471,9 +471,9 @@ const ComposerAgentControlsMenu = ({
                     aria-hidden="true"
                   />
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[13px] font-medium leading-5">Compute</span>
+                    <span className="block text-[13px] font-medium leading-5">{t('ws.compute')}</span>
                     <span className="block text-[11px] leading-4 text-text-300">
-                      Run jobs on a remote SSH host, or manage hosts.
+                      {t('ws.computeHint')}
                     </span>
                   </span>
                   {/* Align the chevron with the capsule chevrons on the Permission/Specialist

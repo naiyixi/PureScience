@@ -207,7 +207,7 @@ const GeneralPanel = (): React.JSX.Element => {
         aria-label={t('settings.diagnostics')}
         separated
       >
-        <SettingsRow label="Log file" controlClassName="w-auto justify-self-end" className="pt-0">
+        <SettingsRow label={t('settings.logFile')} controlClassName="w-auto justify-self-end" className="pt-0">
           <div className="flex items-center gap-2">
             <Button
               type="button"
@@ -216,7 +216,7 @@ const GeneralPanel = (): React.JSX.Element => {
               disabled={!logPath}
             >
               <FolderOpen className="size-4" aria-hidden="true" />
-              Reveal
+              {t('settings.revealInFinder')}
             </Button>
             <Button
               type="button"
@@ -244,7 +244,7 @@ const GeneralPanel = (): React.JSX.Element => {
         ) : null}
 
         <p className="mt-3 text-xs text-muted-foreground">
-          Something not working?{' '}
+          {t('settings.somethingNotWorking')}{' '}
           <ExternalTextLink href={APP.links.githubIssues}>
             {t('settings.openIssue')}
           </ExternalTextLink>{' '}
@@ -255,10 +255,7 @@ const GeneralPanel = (): React.JSX.Element => {
       <SettingsSection
         title={t('settings.commandLineTool')}
         description={
-          <>
-            Install the <code className="font-mono">purescience</code> command so you can start,
-            stop, and check the backend from a terminal, then use it entirely from your browser.
-          </>
+          <span dangerouslySetInnerHTML={{ __html: t('settings.cliInstallHint') }} />
         }
         aria-label={t('settings.commandLineTool')}
         separated

@@ -14,6 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator
 } from '@/components/ui/dropdown-menu'
+import { useLanguage } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { useSettingsStore } from '@/stores/settings-store'
 import { useSpecialistStore } from '@/stores/specialist-store'
@@ -48,6 +49,7 @@ const SpecialistSubmenu = ({
   unavailable = false,
   readOnly = false
 }: SpecialistSubmenuProps): React.JSX.Element => {
+  const { t } = useLanguage()
   const items = useSpecialistStore((state) => state.items)
   const isLoaded = useSpecialistStore((state) => state.isLoaded)
   const load = useSpecialistStore((state) => state.load)
@@ -105,10 +107,10 @@ const SpecialistSubmenu = ({
           aria-hidden="true"
         />
         <span className="min-w-0 flex-1">
-          <span className="block text-[13px] font-medium leading-5">Specialist</span>
+          <span className="block text-[13px] font-medium leading-5">{t('ws.specialist')}</span>
           {!showValue ? (
             <span className="block text-[11px] leading-4 text-text-300">
-              Bind a personal specialist to this conversation.
+              {t('ws.bindSpecialistHint')}
             </span>
           ) : null}
         </span>
@@ -146,7 +148,7 @@ const SpecialistSubmenu = ({
             >
               —
             </span>
-            <span className="min-w-0 flex-1 truncate text-[13px]">None</span>
+            <span className="min-w-0 flex-1 truncate text-[13px]">{t('ws.none')}</span>
             {isNone && !unavailable ? (
               <Check className="size-4 shrink-0 text-primary" strokeWidth={2} aria-hidden="true" />
             ) : null}

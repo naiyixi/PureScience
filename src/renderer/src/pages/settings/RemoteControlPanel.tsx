@@ -257,14 +257,12 @@ export const RemoteControlPanel = (): React.JSX.Element => {
         title={t('settings.remoteBrowserAccess')}
         description={
           <>
-            {t('settings.remoteWhoCanReach')}
-            files, and notebook runtimes continue to run on this computer. Install and sign in to
-            the Remote.It desktop app before enabling access.{' '}
+            {t('settings.remoteAccessHint')}{' '}
             <ExternalTextLink
               href={REMOTE_IT_DOWNLOAD_URL}
               className="box-decoration-clone rounded-sm bg-primary/10 px-1 py-0.5 font-medium text-primary underline decoration-primary/50 underline-offset-2 transition-colors hover:bg-primary/15 hover:decoration-primary"
             >
-              Download Remote.It App
+              {t('settings.downloadRemoteItApp')}
             </ExternalTextLink>
           </>
         }

@@ -218,7 +218,7 @@ const WorkspaceSidebar = ({
               >
                 <Files className="size-3.5" strokeWidth={2} />
               </span>
-              <span>Files</span>
+              <span>{t('common.files')}</span>
             </button>
           </div>
 

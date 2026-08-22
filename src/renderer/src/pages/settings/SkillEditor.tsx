@@ -212,7 +212,7 @@ const SkillEditor = ({ initial, onCancel, onSave }: SkillEditorProps): React.JSX
             </p>
             <div className="mt-4 flex flex-col gap-4">
               <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium text-foreground">Name</span>
+                <span className="text-sm font-medium text-foreground">{t('common.name')}</span>
                 <Input
                   aria-label={t('settings.skillName')}
                   value={name}

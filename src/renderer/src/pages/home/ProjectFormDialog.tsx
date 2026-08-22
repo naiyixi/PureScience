@@ -93,13 +93,13 @@ const ProjectFormDialog = ({
                   className="text-xs font-medium text-muted-foreground"
                   htmlFor="project-form-name"
                 >
-                  Name
+                  {t('common.name')}
                 </label>
                 <Input
                   id="project-form-name"
                   value={nameDraft}
                   onChange={(event) => onNameChange(event.target.value)}
-                  placeholder="e.g. Reproduction of published research"
+                  placeholder={t('home.projectNamePlaceholder')}
                   autoFocus
                   className={dialogInputClassName}
                 />
@@ -115,7 +115,7 @@ const ProjectFormDialog = ({
                   id="project-form-description"
                   value={descriptionDraft}
                   onChange={(event) => onDescriptionChange(event.target.value)}
-                  placeholder="What is this project about?"
+                  placeholder={t('home.projectDescriptionPlaceholder')}
                   rows={3}
                   className="w-full resize-none rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground shadow-none outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/25"
                 />
@@ -128,7 +128,7 @@ const ProjectFormDialog = ({
             ) : null}
             <div className={dialogFooterClassName}>
               <Button type="button" variant="outline" onClick={onCancel}>
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button type="submit" disabled={nameDraft.trim().length === 0 || isSubmitting}>
                 {dialogSubmitLabel}

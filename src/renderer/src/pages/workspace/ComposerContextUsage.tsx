@@ -6,7 +6,7 @@
 import { Gauge, Minimize2 } from 'lucide-react'
 import { useEffect, useId, useRef, useState, type FocusEvent } from 'react'
 
-import { useLanguage } from '@/i18n'
+import { useLanguage, type TranslationKey } from '@/i18n'
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import type { AcpContextUsage, AcpContextUsageCategoryKey } from '../../../../shared/acp'
@@ -22,15 +22,17 @@ type ComposerContextUsageProps = {
 
 const COMPACT_ACTION_THRESHOLD_PERCENT = 30
 
-const CATEGORY_PRESENTATION: Record<AcpContextUsageCategoryKey, { label: string; color: string }> =
-  {
-    system: { label: 'System prompt', color: 'bg-emerald-500' },
-    tools: { label: 'Tools and agents', color: 'bg-amber-400' },
-    messages: { label: 'Messages', color: 'bg-violet-500' },
-    mcp: { label: 'Connectors and MCP', color: 'bg-cyan-400' },
-    skills: { label: 'Skills', color: 'bg-blue-500' },
-    other: { label: 'Agent/framework overhead', color: 'bg-slate-400' }
-  }
+const CATEGORY_PRESENTATION: Record<
+  AcpContextUsageCategoryKey,
+  { labelKey: TranslationKey; color: string }
+> = {
+  system: { labelKey: 'ws.contextCategorySystem', color: 'bg-emerald-500' },
+  tools: { labelKey: 'ws.contextCategoryTools', color: 'bg-amber-400' },
+  messages: { labelKey: 'ws.contextCategoryMessages', color: 'bg-violet-500' },
+  mcp: { labelKey: 'ws.contextCategoryMcp', color: 'bg-cyan-400' },
+  skills: { labelKey: 'ws.contextCategorySkills', color: 'bg-blue-500' },
+  other: { labelKey: 'ws.contextCategoryOther', color: 'bg-slate-400' }
+}
 
 const TOKENIZER_LABELS = {
   anthropic: 'Anthropic approx.',
@@ -196,7 +198,7 @@ const ComposerContextUsage = ({
                 {usagePercent !== undefined ? `${usagePercent.toFixed(1)}%` : formatTokens(used)}
               </span>
               <span className="min-w-0 truncate text-muted-foreground tabular-nums">
-                {hasAgentTotal ? 'Agent used' : 'Local estimate'}
+                {hasAgentTotal ? t('ws.ctxAgentUsed') : t('ws.ctxLocalEstimate')}
                 {hasKnownSize
                   ? ` ${formatDetailedTokens(used)} / ${formatDetailedTokens(size)}`
                   : null}
@@ -209,8 +211,10 @@ const ComposerContextUsage = ({
                 className="flex h-2 overflow-hidden rounded-full bg-bg-200"
                 aria-label={
                   hasKnownSize
-                    ? `Estimated category occupancy: ${formatDetailedTokens(visualUsed)} of ${formatDetailedTokens(size)} tokens`
-                    : `Estimated category distribution: ${formatDetailedTokens(visualUsed)} tokens`
+                    ? t('ws.ctxCategoryOccupancy')
+                        .replace('{n}', formatDetailedTokens(visualUsed))
+                        .replace('{size}', formatDetailedTokens(size))
+                    : t('ws.ctxCategoryDistribution').replace('{n}', formatDetailedTokens(visualUsed))
                 }
               >
                 {categories.map((category) => {
@@ -222,7 +226,7 @@ const ComposerContextUsage = ({
                       key={category.key}
                       className={`${presentation.color} h-full border-r border-bg-000/80 last:border-r-0`}
                       style={{ width: `${width}%` }}
-                      title={`${presentation.label}: ${formatDetailedTokens(category.tokens)}`}
+                      title={`${t(presentation.labelKey)}: ${formatDetailedTokens(category.tokens)}`}
                     />
                   )
                 })}
@@ -237,7 +241,7 @@ const ComposerContextUsage = ({
                     >
                       <span className="flex min-w-0 items-center gap-2">
                         <span className={`${presentation.color} size-2 shrink-0 rounded-full`} />
-                        <span className="truncate">{presentation.label}</span>
+                        <span className="truncate">{t(presentation.labelKey)}</span>
                       </span>
                       <span className="shrink-0 tabular-nums text-muted-foreground">
                         {category.estimated ? '~' : ''}
@@ -271,7 +275,7 @@ const ComposerContextUsage = ({
                   </div>
                 )}
                 <div className="truncate whitespace-nowrap">
-                  {estimating ? 'Estimating' : 'Reconciled'}
+                  {estimating ? t('ws.ctxEstimating') : t('ws.ctxReconciled')}
                   {breakdown.tokenizer ? ` · ${TOKENIZER_LABELS[breakdown.tokenizer]}` : ''}
                   {breakdown.model ? ` · ${breakdown.model}` : ''}
                 </div>

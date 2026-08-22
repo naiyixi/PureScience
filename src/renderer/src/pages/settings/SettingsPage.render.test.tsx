@@ -1071,9 +1071,11 @@ describe('SettingsPage layout', () => {
     // The Diagnostics panel surfaces the log file path plus Open and Reveal controls.
     expect(document.body.textContent).toContain('main.log')
     const buttons = Array.from(document.body.querySelectorAll('button'))
-    const openButton = buttons.find((button) => /^open$/i.test((button.textContent ?? '').trim()))
+    const openButton = buttons.find((button) =>
+      /^(打开|open)$/i.test((button.textContent ?? '').trim())
+    )
     const revealButton = buttons.find((button) =>
-      /^reveal$/i.test((button.textContent ?? '').trim())
+      /^(在 Finder 中显示|reveal in finder|reveal)$/i.test((button.textContent ?? '').trim())
     )
     expect(openButton).not.toBeUndefined()
     expect(revealButton).not.toBeUndefined()

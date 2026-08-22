@@ -118,7 +118,7 @@ const MessageTimestamp = ({
   label,
   date
 }: {
-  label: 'Sent' | 'Completed' | 'Failed'
+  label: string
   date: Date
 }): React.JSX.Element => {
   return (
@@ -791,7 +791,7 @@ const WorkspaceMessageItem = ({
   const sentDate = toMessageDate(message.createdAt)
   const terminalDate = toMessageDate(terminalTimestamp)
   const turnStartedDate = toMessageDate(turnStartedAt)
-  const terminalLabel = message.status === 'error' ? 'Failed' : 'Completed'
+  const terminalLabel = message.status === 'error' ? t('ws.messageFailed') : t('ws.messageCompleted')
   const showRevisionNavigation =
     showUserActions && revisionNavigation && revisionNavigation.total > 1
   const [copied, setCopied] = useState(false)
@@ -1064,7 +1064,7 @@ const WorkspaceMessageItem = ({
                 {terminalDate && turnStartedDate ? (
                   <span data-slot="assistant-message-elapsed-segment" className="whitespace-nowrap">
                     <span aria-label="Elapsed run time">
-                      Elapsed{' '}
+                      {t('ws.elapsed')}{' '}
                       {formatElapsedDuration(terminalDate.getTime() - turnStartedDate.getTime())}
                     </span>
                   </span>

@@ -767,7 +767,7 @@ export function FileBrowserModal({
                 <div role="listbox" aria-label="Directory contents">
                   {/* Header row */}
                   <div className="grid grid-cols-[1fr_80px_80px] border-b border-border bg-muted/30 px-3 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">
-                    <span>Name</span>
+                    <span>{t('common.name')}</span>
                     <span className="text-right">Size</span>
                     <span className="text-right">Modified</span>
                   </div>

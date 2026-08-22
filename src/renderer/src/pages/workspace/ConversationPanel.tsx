@@ -844,7 +844,7 @@ const ConversationPanel = ({
                               onSelect={() => fileInputRef.current?.click()}
                             >
                               <FileText className="mr-2 size-4 text-text-300" aria-hidden="true" />
-                              Attach files
+                              {t('ws.attachFiles')}
                             </DropdownMenuItem>
                             <div
                               className="px-2 py-1.5 text-[11px] leading-4 text-text-300"
@@ -891,7 +891,7 @@ const ConversationPanel = ({
                               }}
                             >
                               <ScanEye className="mr-2 size-4 text-text-300" aria-hidden="true" />
-                              Request review
+                              {t('ws.requestReview')}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
