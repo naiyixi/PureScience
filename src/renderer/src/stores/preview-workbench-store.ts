@@ -23,6 +23,7 @@ export type PreviewFileFormat =
   | 'word'
   | 'spreadsheet'
   | 'presentation'
+  | 'notebook'
   | 'unknown'
 // Distinguishes generated artifacts from user uploads, notebook inputs, and local ("This computer")
 // files when preview readers and header actions differ. 'local' files live outside app storage:

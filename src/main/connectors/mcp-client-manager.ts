@@ -93,6 +93,17 @@ async function defaultCreateClient(
   return client
 }
 
+// Classifies a connection-level failure as transient (worth one reconnect-and-retry) vs. a
+// genuine request error (auth, bad arguments, server-side application error — surfaced as-is).
+// Connection failures are the SDK's transport/connection errors; everything else is the server
+// answering, which retrying cannot fix.
+const isTransientConnectionFailure = (error: unknown): boolean => {
+  const message = error instanceof Error ? error.message : String(error)
+  return /connection closed|connection lost|not connected|ECONNRESET|EPIPE|socket hang up|fetch failed|transport.*(closed|disconnect|error)|subprocess.*(exit|terminated)|server.*(exit|terminated)/i.test(
+    message
+  )
+}
+
 // MCP client for user-added custom servers (Phase 1: local/stdio). Mirrors the bundled
 // ParserEngine's structured-dict + isError-throws call contract so ConnectorService can
 // dispatch to either uniformly. Lazily connects and caches one client per server id.
@@ -123,9 +134,10 @@ export class McpClientManager {
   }
 
   async listTools(config: CustomMcpServerConfig): Promise<McpClientManagerTool[]> {
-    const client = await this.connect(config)
-    const { tools } = await client.listTools()
-    return tools
+    return this.withReconnectRetry(config, async (client) => {
+      const { tools } = await client.listTools()
+      return tools
+    })
   }
 
   async call(
@@ -133,9 +145,10 @@ export class McpClientManager {
     method: string,
     args: Record<string, unknown>
   ): Promise<unknown> {
-    const client = await this.connect(config)
-    const result = await client.callTool({ name: method, arguments: args })
-    return unwrapToolResult(result)
+    return this.withReconnectRetry(config, async (client) => {
+      const result = await client.callTool({ name: method, arguments: args })
+      return unwrapToolResult(result)
+    })
   }
 
   async close(id: string): Promise<void> {
@@ -266,6 +279,30 @@ export class McpClientManager {
       })
     this.connecting.set(config.id, connectPromise)
     return connectPromise
+  }
+
+  // A custom MCP server can drop mid-session: a stdio subprocess exits (crash, restart, upgrade) or
+  // an HTTP transport loses its socket. Rather than surfacing a dead connection as a hard error, a
+  // transient connection failure discards the stale cached client, reconnects once, and retries the
+  // operation — the server is expected to be reachable again after a brief interruption.
+  private async withReconnectRetry<T>(
+    config: CustomMcpServerConfig,
+    run: (client: Client) => Promise<T>
+  ): Promise<T> {
+    const client = await this.connect(config)
+    try {
+      return await run(client)
+    } catch (error) {
+      if (!isTransientConnectionFailure(error)) throw error
+      const cached = this.clients.get(config.id)
+      if (cached) {
+        this.clients.delete(config.id)
+        this.generations.set(config.id, this.generation(config.id) + 1)
+        await cached.close().catch(() => undefined)
+      }
+      const fresh = await this.connect(config)
+      return run(fresh)
+    }
   }
 
   private async createClientWithOAuth(

@@ -496,4 +496,58 @@ describe('buildTransport', () => {
   it('throws when an sse config is missing a url', () => {
     expect(() => buildTransport({ id: 'srv-sse', name: 'sse-server', transport: 'sse' })).toThrow()
   })
+
+  it('reconnects and retries once after a transient connection drop', async () => {
+    const config: CustomMcpServerConfig = {
+      id: 'srv-stdio',
+      name: 'stdio-server',
+      transport: 'stdio',
+      command: 'node'
+    }
+    const toolResult = { content: [{ type: 'text', text: '{"ok":true}' }] }
+    let calls = 0
+    const manager = new McpClientManager({
+      createClient: async () => {
+        // First client dies mid-session; the replacement works.
+        calls += 1
+        const client = new Client({ name: 'purescience', version: '0.0.0' })
+        if (calls === 1) {
+          client.callTool = async () => {
+            throw new Error('Connection closed: server subprocess exited')
+          }
+        } else {
+          client.callTool = async () => toolResult as never
+        }
+        return client
+      }
+    })
+
+    await expect(
+      manager.call(config, 'list_things', {})
+    ).resolves.toEqual({ ok: true })
+    expect(calls).toBe(2)
+  })
+
+  it('surfaces non-transient failures without retrying', async () => {
+    const config: CustomMcpServerConfig = {
+      id: 'srv-stdio',
+      name: 'stdio-server',
+      transport: 'stdio',
+      command: 'node'
+    }
+    let calls = 0
+    const manager = new McpClientManager({
+      createClient: async () => {
+        calls += 1
+        const client = new Client({ name: 'purescience', version: '0.0.0' })
+        client.callTool = async () => {
+          throw new Error('Unauthorized: invalid API key')
+        }
+        return client
+      }
+    })
+
+    await expect(manager.call(config, 'list_things', {})).rejects.toThrow('Unauthorized')
+    expect(calls).toBe(1)
+  })
 })
