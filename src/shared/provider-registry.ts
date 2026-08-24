@@ -184,6 +184,7 @@ export const OFFICIAL_VENDORS: OfficialVendor[] = [
     // audio, and video generation models, so exposing refresh would pollute the chat-model picker.
     // Experimental Grok 4.20 beta variants are intentionally omitted from the stable default list.
     models: [
+      { id: 'grok-4.6', contextWindow: 1_000_000, reasoningEffort: 'low-medium-high-xhigh' },
       { id: 'grok-4.5', contextWindow: 500_000 },
       {
         id: 'grok-4.3',

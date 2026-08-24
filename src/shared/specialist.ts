@@ -215,7 +215,7 @@ export type SpecialistProfileView = {
   selectedCapabilities: SpecialistSelectedConfig
   revision: number
   packageVersion?: string
-  origin?: 'local' | 'imported'
+  origin?: 'local' | 'imported' | 'marketplace'
   // Derived from the current portable profile and importBaseline; never persisted.
   modifiedSinceImport?: boolean
   ownedSkillIds?: string[]

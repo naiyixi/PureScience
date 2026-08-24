@@ -23,6 +23,7 @@ import {
 import { detectManagedRuntimeMutation } from './managed-runtime-guard'
 import type { NotebookRunRepository } from './repository'
 import { NotebookRunTerminalizationOwner } from './run-terminalization'
+import { extractVariablesWritten } from '../../shared/run-dependencies'
 import type {
   NotebookSessionAggregate,
   NotebookSessionExecutionResult,
@@ -160,6 +161,7 @@ class NotebookExecutionOwner {
       inputKind: request.inputKind ?? 'cell',
       kernelKind: cell.language,
       script: cell.code,
+      variablesWritten: extractVariablesWritten(cell.code),
       status: 'running',
       startedAt,
       cwdBefore,
@@ -333,6 +335,7 @@ class NotebookExecutionOwner {
       inputKind: 'cell',
       kernelKind: 'repl',
       script: request.code,
+      variablesWritten: extractVariablesWritten(request.code),
       status: 'running',
       startedAt: Date.now(),
       cwdBefore: session.cwd,
@@ -428,6 +431,7 @@ class NotebookExecutionOwner {
       inputKind: 'cell',
       kernelKind: 'bash',
       script: request.command,
+      variablesWritten: extractVariablesWritten(request.command),
       status: 'running',
       startedAt: Date.now(),
       cwdBefore: session.cwd,

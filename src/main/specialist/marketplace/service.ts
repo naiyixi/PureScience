@@ -82,7 +82,7 @@ type MarketplaceServiceOptions = {
   getInstalledSpecialists: () => Promise<
     readonly {
       id: string
-      origin?: 'local' | 'imported'
+      origin?: 'local' | 'imported' | 'marketplace'
       archiveDigest?: string
     }[]
   >
@@ -836,7 +836,7 @@ export class MarketplaceService {
     installations: readonly MarketplaceInstallProvenance[],
     installedSpecialists: readonly {
       id: string
-      origin?: 'local' | 'imported'
+      origin?: 'local' | 'imported' | 'marketplace'
       archiveDigest?: string
     }[]
   ): MarketplaceSpecialistListing[] {

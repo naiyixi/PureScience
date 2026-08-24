@@ -315,6 +315,9 @@ export type NotebookRunRecord = {
   kernelKind: NotebookKernelKind
   script: string
   status: NotebookRunStatus
+  // Base variable names this run's script wrote (assignments/deletions), captured at run time for
+  // cross-run staleness detection: a later completed run writing the same name makes this stale.
+  variablesWritten?: string[]
   startedAt: number
   endedAt?: number
   cwdBefore?: string
