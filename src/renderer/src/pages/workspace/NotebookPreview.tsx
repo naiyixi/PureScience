@@ -1,7 +1,8 @@
 import { useLanguage } from '@/i18n'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import type { PreviewToolItem } from '@/stores/preview-workbench-store'
+import { computeStaleRunIds } from '../../../../shared/run-dependencies'
 import { useNotebookEnvStore } from '@/stores/notebook-env-store'
 import { cn } from '@/lib/utils'
 
@@ -89,11 +90,14 @@ const getRunOutputText = (run: NotebookRunRecord | undefined): string => {
 // is the cell number shown in [n], and a failed run marks the offending line.
 const NotebookRunCell = ({
   run,
-  index
+  index,
+  isStale = false
 }: {
   run: NotebookRunRecord
   index: number
+  isStale?: boolean
 }): React.JSX.Element => {
+  const { t } = useLanguage()
   const isProblem = isProblemRunStatus(run.status)
   const errorLine = isProblem ? resolveRunErrorLine(run) : undefined
   const kind = resolveRunKernelKind(run)
@@ -107,6 +111,14 @@ const NotebookRunCell = ({
           <span className="rounded bg-bg-300 px-1.5 py-0.5 text-text-200">{kind}</span>
           {run.source === 'user' ? (
             <span className="rounded bg-accent px-1.5 py-0.5 font-medium text-accent">you</span>
+          ) : null}
+          {isStale ? (
+            <span
+              className="rounded bg-amber-500/15 px-1.5 py-0.5 font-medium text-amber-600"
+              data-testid="notebook-cell-stale"
+            >
+              {t('ws.notebookStale')}
+            </span>
           ) : null}
           {isProblem ? (
             errorLine ? (
@@ -238,6 +250,13 @@ const NotebookPreview = ({ item }: NotebookPreviewProps): React.JSX.Element => {
   const applyNotebookState = useCallback((nextState: NotebookSessionState): void => {
     setNotebookState(nextState)
   }, [])
+
+  // Cross-run dependency staleness: a later completed run that rewrote one of this run's written
+  // variables makes its output reflect an earlier state.
+  const staleRunIds = useMemo(
+    () => computeStaleRunIds(notebookState?.runs ?? []),
+    [notebookState?.runs]
+  )
 
   // Reads the latest notebook state from main, including full run history from run.json.
   const loadNotebookState = useCallback(async (): Promise<void> => {
@@ -493,7 +512,12 @@ const NotebookPreview = ({ item }: NotebookPreviewProps): React.JSX.Element => {
             <div className="min-h-0 flex-1 overflow-y-auto" data-testid="notebook-cells">
               <div className="divide-y divide-border-100">
                 {visibleRuns.map((run, index) => (
-                  <NotebookRunCell key={run.runId} run={run} index={index} />
+                  <NotebookRunCell
+                    key={run.runId}
+                    run={run}
+                    index={index}
+                    isStale={staleRunIds.has(run.runId)}
+                  />
                 ))}
               </div>
             </div>

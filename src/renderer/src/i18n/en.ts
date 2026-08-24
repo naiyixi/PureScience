@@ -204,6 +204,7 @@ export const en: Record<ZhKey, string> = {
   'ws.specialist': 'Specialist',
   'ws.bindSpecialistHint': 'Bind a personal specialist to this conversation.',
   'ws.none': 'None',
+  'ws.notebookStale': 'stale',
   'ws.compute': 'Compute',
   'ws.computeHint': 'Run jobs on a remote SSH host, or manage hosts.',
   'ws.messageCompleted': 'Completed',
