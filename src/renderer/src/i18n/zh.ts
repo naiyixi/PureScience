@@ -203,6 +203,8 @@ export const zh = {
   'ws.bindSpecialistHint': '将个人专才绑定到此会话。',
   'ws.none': '无',
   'ws.notebookStale': '已过期',
+  'settings.marketplaceInstalled': '市场安装',
+  'settings.duplicate': '复制',
   'ws.compute': '计算',
   'ws.computeHint': '在远程 SSH 主机上运行任务，或管理主机。',
   'ws.messageCompleted': '已完成',

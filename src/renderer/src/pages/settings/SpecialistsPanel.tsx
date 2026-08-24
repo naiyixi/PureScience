@@ -1201,6 +1201,9 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                                 : item.capabilityMode === 'full'
                                   ? t('settings.fullAccess')
                                   : t('settings.selectedCapabilities')}
+                              {!item.setupPending && item.origin === 'marketplace'
+                                ? ` · ${t('settings.marketplaceInstalled')} · v${item.packageVersion ?? '1.0.0'}`
+                                : ''}
                               {!item.setupPending && item.origin === 'imported'
                                 ? ` · Imported · Original version ${item.packageVersion ?? '0.1.0'} · ${
                                     item.modifiedSinceImport
@@ -1264,13 +1267,13 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                                 )
                               }
                             >
-                              <Copy className="size-3.5" aria-hidden="true" /> Duplicate
+                              <Copy className="size-3.5" aria-hidden="true" /> {t('settings.duplicate')}
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               className="gap-2 text-xs"
                               onSelect={() => void runDirectExport(item.id)}
                             >
-                              <Download className="size-3.5" aria-hidden="true" /> Export ZIP
+                              <Download className="size-3.5" aria-hidden="true" /> {t('settings.exportZip')}
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               className="gap-2 text-xs text-destructive"

@@ -79,6 +79,9 @@ type MarketplaceServiceOptions = {
   now?: () => Date
   token?: () => string
   getDisabledSkillIds: () => Promise<readonly string[]>
+  // Invoked after a marketplace install commits, so the caller can tag the installed specialist
+  // with the marketplace origin (governed packages). Best-effort: failures are swallowed.
+  onSpecialistInstalled?: (specialistId: string, revision: number) => Promise<void>
   getInstalledSpecialists: () => Promise<
     readonly {
       id: string
@@ -652,6 +655,9 @@ export class MarketplaceService {
     this.installCandidates.delete(request.candidateToken)
     try {
       await this.options.repository.completeInstallation(candidate.provenance)
+      if (result.status === 'installed' && this.options.onSpecialistInstalled) {
+        await this.options.onSpecialistInstalled(result.specialist.id, result.specialist.revision)
+      }
       return { ...result, provenanceLinked: true }
     } catch {
       try {

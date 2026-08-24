@@ -777,6 +777,18 @@ const createApplicationModules = async (
       for (const id of ids) {
         await settingsService.setSkillEnabled({ id, enabled })
       }
+    },
+    // Governed packages: tag the installed specialist with the marketplace origin so the UI can
+    // group it and protect publisher content from casual overwrite.
+    onSpecialistInstalled: async (specialistId, revision) => {
+      await specialistRepository
+        .update(specialistId, { origin: 'marketplace' }, revision)
+        .catch((error) => {
+          createLogger('marketplace').warn(
+            'install origin tagging failed',
+            diagnosticErrorFields(error)
+          )
+        })
     }
   })
   // Per-session specialist binding store. Shared between the SET_SESSION_SPECIALIST barrier
