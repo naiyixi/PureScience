@@ -78,6 +78,8 @@ export const resolveProviderReasoningEffortProfile = (
     case 'claude-shared':
     case 'claude-isolated':
       return model ? resolveVendorModelReasoningEffort('anthropic', model) : { supported: false }
+    case 'xai-subscription':
+      return model ? resolveVendorModelReasoningEffort('xai', model) : { supported: false }
     case 'custom':
       return resolveReasoningEffortProfile(provider.reasoningEffortPreset)
   }

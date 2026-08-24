@@ -54,6 +54,12 @@ export type StoredProvider = {
   // Optional custom-model output cap (max completion tokens). Absence means no explicit cap.
   maxOutputTokens?: number
   supportsImageInput?: boolean
+  // xAI Grok OAuth subscription tokens (encrypted keyRefs). Absent until the user signs in.
+  xaiOauth?: {
+    accessTokenRef: string
+    refreshTokenRef?: string
+    expiresAt: number
+  }
   // Custom-model effort capability. Absence resolves to the standard five-level preset.
   reasoningEffortPreset?: ReasoningEffortPresetSetting
   // Custom-gateway request shape. Absence resolves to the literal `reasoning_effort` field.

@@ -75,6 +75,15 @@ import {
   type ClaudeSharedAuthStatus
 } from './claude-shared-auth'
 import { encryptKey, isEncryptionAvailable, maskKey, tryDecryptKey } from './crypto'
+import {
+  isXaiTokenValid,
+  openXaiVerificationUrl,
+  pollXaiTokens,
+  refreshXaiTokens,
+  startXaiDeviceFlow,
+  type XaiDeviceCodeSession,
+  type XaiOauthTokens
+} from './xai-oauth'
 import { classifyStatus, validateProvider as validateProviderTarget } from './validate'
 import { listProviderModels } from './list-models'
 import { getAppClaudeConfigDir, type ResolvedProvider } from './provider-env'
@@ -323,6 +332,13 @@ class ProviderAccountsModule {
       credentialsChanged = model !== existing?.model
       if (model) provider.model = model
       if (existing?.disconnectedAt !== undefined) provider.disconnectedAt = existing.disconnectedAt
+    } else if (request.type === 'xai-subscription') {
+      // xAI Grok OAuth: credentials come from the device-code sign-in (xaiOauth tokens), not a key.
+      provider.apiEndpoints = ['openai', 'responses']
+      const model = request.model?.trim() || existing?.model || 'grok-4.6'
+      provider.model = model
+      if (existing?.xaiOauth) provider.xaiOauth = existing.xaiOauth
+      if (existing?.disconnectedAt !== undefined) provider.disconnectedAt = existing.disconnectedAt
     } else if (request.type === 'official') {
       const vendorId = isOfficialVendorId(request.vendorId) ? request.vendorId : existing?.vendorId
       if (!vendorId) throw new Error('A vendor is required for an official provider.')
@@ -403,6 +419,68 @@ class ProviderAccountsModule {
     }
 
     await this.repository.upsertProvider(provider)
+  }
+
+  // xAI Grok OAuth subscription: starts the device-authorization flow and opens the verification
+  // page in the system browser. Returns the session the caller must pass to completeXaiSignIn.
+  async startXaiSignIn(): Promise<{ session: XaiDeviceCodeSession; browserOpened: boolean }> {
+    const session = await startXaiDeviceFlow()
+    const browserOpened = await openXaiVerificationUrl(session.verificationUrl)
+    return { session, browserOpened }
+  }
+
+  // Polls the xAI token endpoint until the user authorizes, then persists the tokens encrypted.
+  async completeXaiSignIn(providerId: string, session: XaiDeviceCodeSession): Promise<void> {
+    const tokens = await pollXaiTokens(session)
+    await this.persistXaiTokens(providerId, tokens)
+  }
+
+  // Refreshes the subscription tokens when they are close to expiry. Returns false when no refresh
+  // token is stored (user must re-sign-in).
+  async refreshXaiOauth(providerId: string): Promise<boolean> {
+    const stored = await this.readProvider(providerId)
+    if (!stored?.xaiOauth?.refreshTokenRef) return false
+    const refreshToken = tryDecryptKey(stored.xaiOauth.refreshTokenRef)
+    if (!refreshToken) return false
+    const tokens = await refreshXaiTokens(refreshToken)
+    await this.persistXaiTokens(providerId, tokens)
+    return true
+  }
+
+  // Returns true when the stored xAI tokens are present and still valid.
+  async xaiOauthStatus(providerId: string): Promise<{ signedIn: boolean; expiresAt?: number }> {
+    const stored = await this.readProvider(providerId)
+    if (!stored?.xaiOauth) return { signedIn: false }
+    const tokens = {
+      accessToken: tryDecryptKey(stored.xaiOauth.accessTokenRef) ?? '',
+      expiresAt: stored.xaiOauth.expiresAt
+    }
+    return { signedIn: isXaiTokenValid(tokens), expiresAt: stored.xaiOauth.expiresAt }
+  }
+
+  // Clears the stored xAI OAuth tokens (keeps the provider record for re-sign-in).
+  async logoutXai(providerId: string): Promise<void> {
+    const stored = await this.readProvider(providerId)
+    if (!stored) return
+    await this.repository.upsertProvider({ ...stored, xaiOauth: undefined })
+  }
+
+  private async readProvider(providerId: string): Promise<StoredProvider | undefined> {
+    const settings = await this.repository.getSettings()
+    return settings.providers.find((provider) => provider.id === providerId)
+  }
+
+  private async persistXaiTokens(providerId: string, tokens: XaiOauthTokens): Promise<void> {
+    const stored = await this.readProvider(providerId)
+    if (!stored) throw new Error('Provider not found for xAI OAuth sign-in.')
+    await this.repository.upsertProvider({
+      ...stored,
+      xaiOauth: {
+        accessTokenRef: encryptKey(tokens.accessToken),
+        ...(tokens.refreshToken ? { refreshTokenRef: encryptKey(tokens.refreshToken) } : {}),
+        expiresAt: tokens.expiresAt
+      }
+    })
   }
 
   async deleteProvider(id: string): Promise<void> {
@@ -1139,6 +1217,23 @@ class ProviderAccountsModule {
 
   resolveProvider(provider: StoredProvider, modelOverride?: string): ResolvedProvider {
     const key = provider.keyRef ? tryDecryptKey(provider.keyRef) : undefined
+    if (provider.type === 'xai-subscription') {
+      // xAI Grok OAuth: the bearer token from the subscription is the API credential; OpenCode
+      // (Chat Completions) and Codex (Responses) both accept it at api.x.ai/v1.
+      const accessToken = provider.xaiOauth
+        ? tryDecryptKey(provider.xaiOauth.accessTokenRef)
+        : undefined
+      return {
+        type: 'xai-subscription',
+        baseUrl: 'https://api.x.ai',
+        openaiBaseUrl: 'https://api.x.ai/v1',
+        model: modelOverride ?? provider.model ?? 'grok-4.6',
+        key: accessToken,
+        apiEndpoints: ['openai', 'responses'],
+        supportsImageInput: true,
+        ...(provider.model === undefined ? {} : { contextWindow: 1_000_000 })
+      }
+    }
     if (provider.type === 'official' && provider.vendorId) {
       const model = modelOverride ?? defaultVendorModel(provider.vendorId)
       const contextWindow = resolveModelContextWindow(provider.vendorId, model)

@@ -83,6 +83,7 @@ import { NotebookRuntimeSettingsModule } from './notebook-runtime-settings'
 import { SkillCatalogModule } from './skill-catalog'
 import { ConnectorSettingsModule, type CustomServerSecurityChangeGuard } from './connector-settings'
 import { ProviderAccountsModule } from './provider-accounts'
+import type { XaiDeviceCodeSession } from './xai-oauth'
 import { createVisionModels, VisionModelOwner } from './vision-model-owner'
 import { AgentRuntimeManager, type ExecuteClaudeProbe } from './agent-runtime-manager'
 import {
@@ -766,6 +767,27 @@ class SettingsService {
 
   cancelCodexLogin(): void {
     this.providers.cancelCodexLogin()
+  }
+
+  // xAI Grok OAuth subscription
+  async startXaiSignIn(): Promise<{ session: XaiDeviceCodeSession; browserOpened: boolean }> {
+    return this.providers.startXaiSignIn()
+  }
+
+  async completeXaiSignIn(providerId: string, session: XaiDeviceCodeSession): Promise<void> {
+    await this.providers.completeXaiSignIn(providerId, session)
+  }
+
+  async refreshXaiOauth(providerId: string): Promise<boolean> {
+    return this.providers.refreshXaiOauth(providerId)
+  }
+
+  async xaiOauthStatus(providerId: string): Promise<{ signedIn: boolean; expiresAt?: number }> {
+    return this.providers.xaiOauthStatus(providerId)
+  }
+
+  async logoutXai(providerId: string): Promise<void> {
+    await this.providers.logoutXai(providerId)
   }
 
   cancelClaudeLogin(): void {

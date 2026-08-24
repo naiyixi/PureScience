@@ -39,6 +39,7 @@ const ProvidersPanel = ({
     (state) => state.claudeSubscriptionProviderId
   )
   const agentFrameworkId = useSettingsStore((state) => state.agentFrameworkId)
+  const loadSettings = useSettingsStore((state) => state.load)
   const deleteProvider = useSettingsStore((state) => state.deleteProvider)
   const saveProvider = useSettingsStore((state) => state.saveProvider)
   const validateProvider = useSettingsStore((state) => state.validateProvider)
@@ -57,6 +58,7 @@ const ProvidersPanel = ({
   const [providerTestError, setProviderTestError] = useState<string | undefined>(undefined)
   // True while the explicit isolated Codex sign-in is open in the browser; drives the cancel action.
   const [isCodexLoginPending, setIsCodexLoginPending] = useState(false)
+  const [isXaiLoginPending, setIsXaiLoginPending] = useState(false)
   // True while the explicit shared Claude sign-in is open in the browser.
   const [isClaudeSharedLoginPending, setIsClaudeSharedLoginPending] = useState(false)
   // True while the claude-isolated browser sign-in (`claude setup-token`) is open in the browser.
@@ -161,6 +163,38 @@ const ProvidersPanel = ({
     } catch (error) {
       setProviderTestError(
         error instanceof Error ? error.message : t('settings.couldNotSignOutOfCodex')
+      )
+    }
+  }
+
+  // xAI Grok OAuth subscription: starts the device flow (browser opens for authorization), then
+  // polls until the user approves and persists the encrypted tokens.
+  const handleXaiLogin = async (provider: { id: string }): Promise<void> => {
+    const providerId = provider.id
+    setIsXaiLoginPending(true)
+    setProviderTestError(undefined)
+    try {
+      const { session } = await window.api.settings.xaiOauthStart()
+      await window.api.settings.xaiOauthComplete({ providerId, session })
+      await loadSettings({ force: true })
+    } catch (error) {
+      setProviderTestError(
+        error instanceof Error ? error.message : t('settings.couldNotSignInToXai')
+      )
+    } finally {
+      setIsXaiLoginPending(false)
+    }
+  }
+
+  const handleXaiLogout = async (provider: { id: string }): Promise<void> => {
+    const providerId = provider.id
+    setProviderTestError(undefined)
+    try {
+      await window.api.settings.xaiOauthLogout({ providerId })
+      await loadSettings({ force: true })
+    } catch (error) {
+      setProviderTestError(
+        error instanceof Error ? error.message : t('settings.couldNotSignOutOfXai')
       )
     }
   }
@@ -354,6 +388,9 @@ const ProvidersPanel = ({
           onDelete={(provider) => void deleteProvider(provider.id)}
           onTest={(provider) => void handleTest(provider)}
           isCodexLoginPending={isCodexLoginPending}
+          isXaiLoginPending={isXaiLoginPending}
+          onLoginXai={(provider) => void handleXaiLogin(provider)}
+          onLogoutXai={(provider) => void handleXaiLogout(provider)}
           onCancelCodexLogin={() => void cancelCodexLogin()}
           onLoginIsolatedCodex={() => void handleCodexLogin()}
           onLogoutIsolatedCodex={() => void handleCodexLogout()}

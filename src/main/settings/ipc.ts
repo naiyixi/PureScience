@@ -141,6 +141,25 @@ const registerSettingsIpcHandlers = ({
   ipcMainHandle('settings:set-active-provider', (_event, request: SetActiveProviderRequest) =>
     workflows.runtime.setActiveProvider(request)
   )
+  ipcMainHandle('settings:xai-oauth-start', () => workflows.runtime.startXaiSignIn())
+  ipcMainHandle(
+    'settings:xai-oauth-complete',
+    async (
+      _event,
+      request: { providerId: string; session: { deviceCode: string; userCode: string; verificationUrl: string; expiresIn: number; interval: number } }
+    ) => {
+      await workflows.runtime.completeXaiSignIn(request.providerId, request.session)
+    }
+  )
+  ipcMainHandle('settings:xai-oauth-refresh', (_event, request: { providerId: string }) =>
+    workflows.runtime.refreshXaiOauth(request.providerId)
+  )
+  ipcMainHandle('settings:xai-oauth-status', (_event, request: { providerId: string }) =>
+    workflows.runtime.xaiOauthStatus(request.providerId)
+  )
+  ipcMainHandle('settings:xai-oauth-logout', (_event, request: { providerId: string }) =>
+    workflows.runtime.logoutXai(request.providerId)
+  )
   ipcMainHandle(
     'settings:set-agent-framework',
     async (_event, request: SetAgentFrameworkRequest) => {

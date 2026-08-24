@@ -817,8 +817,8 @@ describe('SpecialistsPanel', () => {
       '[aria-label="Filter specialists by category"] [role="tab"]'
     )
     const labels = Array.from(tabs).map((tab) => tab.textContent ?? '')
-    // 2 custom + 1 runnable builtin + Reviewer = 4 total
-    expect(labels).toEqual(['All(4)', 'Custom(2)', 'Built-in(2)'])
+    // 2 custom + 1 runnable builtin + Reviewer = 4 total; Marketplace tab counts marketplace-origin customs (0 here)
+    expect(labels).toEqual(['All(4)', 'Custom(2)', 'Marketplace(0)', 'Built-in(2)'])
   })
 
   it('shows a runnable builtin as a read-only row and opens its approved detail view', async () => {

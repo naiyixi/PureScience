@@ -415,6 +415,11 @@ export interface PureScienceAPI {
     upsertProvider(request: UpsertProviderRequest): Promise<SettingsSnapshot>
     deleteProvider(request: DeleteProviderRequest): Promise<SettingsSnapshot>
     setActiveProvider(request: SetActiveProviderRequest): Promise<SettingsSnapshot>
+    xaiOauthStart(): Promise<{ session: { deviceCode: string; userCode: string; verificationUrl: string; expiresIn: number; interval: number }; browserOpened: boolean }>
+    xaiOauthComplete(request: { providerId: string; session: { deviceCode: string; userCode: string; verificationUrl: string; expiresIn: number; interval: number } }): Promise<void>
+    xaiOauthRefresh(request: { providerId: string }): Promise<boolean>
+    xaiOauthStatus(request: { providerId: string }): Promise<{ signedIn: boolean; expiresAt?: number }>
+    xaiOauthLogout(request: { providerId: string }): Promise<void>
     setAgentFramework(request: SetAgentFrameworkRequest): Promise<SettingsSnapshot>
     setVisionModel(request: SetVisionModelRequest): Promise<SettingsSnapshot>
     setReasoningEffort(request: SetReasoningEffortRequest): Promise<SettingsSnapshot>

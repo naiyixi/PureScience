@@ -7,6 +7,7 @@ import {
   Pencil,
   PlugZap,
   RefreshCw,
+  Loader2,
   Route,
   TriangleAlert,
   Trash2,
@@ -50,6 +51,10 @@ type ProviderListProps = {
   onLoginIsolatedCodex?: () => void
   onLogoutIsolatedCodex?: () => void
   onReimportCodexAuthentication?: (provider: ProviderView) => void
+  // xAI Grok OAuth subscription sign-in: device-code flow (browser opens; poll completes).
+  isXaiLoginPending?: boolean
+  onLoginXai?: (provider: ProviderView) => void
+  onLogoutXai?: (provider: ProviderView) => void
   // Claude subscription's browser OAuth sign-in (shared mode): opens the browser and lands
   // credentials in ~/.claude. Mirrors the codex-isolated flow shape.
   isClaudeSharedLoginPending?: boolean
@@ -142,6 +147,9 @@ const ProviderList = ({
   onLoginIsolatedCodex,
   onLogoutIsolatedCodex,
   onReimportCodexAuthentication,
+  isXaiLoginPending = false,
+  onLoginXai,
+  onLogoutXai,
   isClaudeSharedLoginPending = false,
   onLoginSharedClaude,
   onCancelSharedClaudeLogin,
@@ -385,6 +393,30 @@ const ProviderList = ({
                       label={t('settings.signOut')}
                       icon={LogOut}
                       onClick={() => onLogoutIsolatedCodex?.()}
+                      className="border border-border text-foreground"
+                    />
+                  ) : null}
+                  {provider.type === 'xai-subscription' && !isVerified && !isXaiLoginPending ? (
+                    <SettingsIconAction
+                      label={t('settings.signInWithXai')}
+                      icon={LogIn}
+                      onClick={() => onLoginXai?.(provider)}
+                      disabled={isBusy}
+                      className="border border-border text-foreground"
+                    />
+                  ) : null}
+                  {provider.type === 'xai-subscription' && isXaiLoginPending ? (
+                    <SettingsIconAction
+                      label={t('settings.waitingForAuthorization')}
+                      icon={Loader2}
+                      className="border border-border text-foreground"
+                    />
+                  ) : null}
+                  {provider.type === 'xai-subscription' && isVerified && !isXaiLoginPending ? (
+                    <SettingsIconAction
+                      label={t('settings.signOut')}
+                      icon={LogOut}
+                      onClick={() => onLogoutXai?.(provider)}
                       className="border border-border text-foreground"
                     />
                   ) : null}

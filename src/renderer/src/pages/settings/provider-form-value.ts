@@ -202,6 +202,12 @@ export const PROVIDER_KINDS: ProviderKind[] = [
     description: 'Use an existing Claude profile or sign in with a separate PureScience profile.',
     group: 'claude'
   },
+  {
+    key: 'xai-subscription',
+    label: 'xAI Grok Subscription',
+    description: 'Sign in with SuperGrok or X Premium+ — no API key needed',
+    group: 'other'
+  },
   ...OFFICIAL_VENDORS.map((vendor): ProviderKind => ({
     key: `official:${vendor.id}`,
     label: vendor.label,
@@ -231,6 +237,22 @@ export const providerKindPatch = (
       apiEndpoint: 'responses',
       baseUrl: '',
       model: '',
+      contextWindow: '',
+      maxInputTokens: '',
+      maxOutputTokens: '',
+      key: '',
+      vendorId: undefined,
+      region: undefined
+    }
+  }
+
+  if (key === 'xai-subscription') {
+    return {
+      type: 'xai-subscription',
+      name: 'xAI Grok Subscription',
+      apiEndpoint: 'responses',
+      baseUrl: '',
+      model: 'grok-4.6',
       contextWindow: '',
       maxInputTokens: '',
       maxOutputTokens: '',
@@ -288,6 +310,9 @@ export const providerKindPatch = (
 
 // Maps the current form value back to its provider-kind key (the dropdown's selected value).
 export const selectedKindKey = (value: ProviderFormValue): string => {
+  if (value.type === 'xai-subscription') {
+    return 'xai-subscription'
+  }
   if (value.type === 'custom') {
     return 'custom'
   }
@@ -305,8 +330,10 @@ export const selectedKindKey = (value: ProviderFormValue): string => {
 export const providerKindKey = (type: ProviderType, vendorId?: OfficialVendorId): string =>
   type === 'official' && vendorId
     ? `official:${vendorId}`
-    : type === 'codex-shared' || type === 'codex-isolated'
-      ? 'codex-subscription'
-      : type === 'claude-shared' || type === 'claude-isolated'
-        ? 'claude-subscription'
-        : type
+    : type === 'xai-subscription'
+      ? 'xai-subscription'
+      : type === 'codex-shared' || type === 'codex-isolated'
+        ? 'codex-subscription'
+        : type === 'claude-shared' || type === 'claude-isolated'
+          ? 'claude-subscription'
+          : type

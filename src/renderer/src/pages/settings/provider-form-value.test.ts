@@ -136,7 +136,7 @@ describe('provider-kind helpers', () => {
     expect(groupKeys('codex')).toEqual(['codex-subscription'])
     expect(groupKeys('claude')).toEqual(['claude-subscription'])
     expect(apiKeys).not.toContain('claude-subscription')
-    expect(groupKeys('other')).toEqual(['custom'])
+    expect(groupKeys('other')).toEqual(['xai-subscription', 'custom'])
   })
 
   it('uses one provider kind while keeping the auth mode in the form value', () => {

@@ -16,6 +16,11 @@ PureScience 是一款面向科学研究的开源 AI 工作台：多智能体协�
 | 天工 | 天工开物——工具与工程体系的未来篇章 | （规划） |
 | 北斗 | 指路星辰——导航与检索体系的未来篇章 | （规划） |
 
+## v0.14.3 — 2026-08-22
+
+- **xAI Grok OAuth 订阅**：新增「xAI Grok 订阅」提供商——SuperGrok / X Premium+ 账号设备码登录（RFC 8628，auth.x.ai），无需 API key；token 加密存储 + 自动刷新；OpenCode（Chat Completions）与 Codex（Responses）双路由直达 api.x.ai/v1；默认 grok-4.6
+- 注：xAI 后端对 OAuth API 有订阅档位限制（部分档位登录后 403），官方 xAI API key 路径仍为可靠兜底
+
 ## v0.14.2 — 2026-08-22
 
 - **摘要优先启动**：会话列表启动不再逐个解析完整会话 JSON——每次保存时附带写入轻量摘要缓存（指纹校验 size+mtime），启动列表直接从摘要读取；会话文件变更时自动失效回退全文。会话多时启动明显提速

@@ -9,6 +9,7 @@ import {
   type UpsertProviderRequest
 } from '../../../shared/settings'
 import type { ResolvedReasoningEffort } from '../../../shared/reasoning-effort'
+import type { XaiDeviceCodeSession } from '../xai-oauth'
 import type { AgentFrameworkId, AgentModelChangeTarget } from '../../agent-framework'
 import type { SettingsService } from '../service'
 
@@ -33,6 +34,11 @@ type RuntimeSettingsWorkflowStore = Pick<
   | 'logoutIsolatedClaude'
   | 'loginIsolatedCodex'
   | 'logoutIsolatedCodex'
+  | 'startXaiSignIn'
+  | 'completeXaiSignIn'
+  | 'refreshXaiOauth'
+  | 'xaiOauthStatus'
+  | 'logoutXai'
 >
 
 type RuntimeSettingsWorkflowEffects = {
@@ -85,6 +91,32 @@ class RuntimeSettingsWorkflows {
     }
 
     return snapshot
+  }
+
+  // xAI Grok OAuth subscription passthroughs
+  async startXaiSignIn(): Promise<{ session: XaiDeviceCodeSession; browserOpened: boolean }> {
+    return this.settings.startXaiSignIn()
+  }
+
+  async completeXaiSignIn(
+    providerId: string,
+    session: XaiDeviceCodeSession
+  ): Promise<void> {
+    await this.settings.completeXaiSignIn(providerId, session)
+    this.effects.requestProviderReconnect()
+  }
+
+  async refreshXaiOauth(providerId: string): Promise<boolean> {
+    return this.settings.refreshXaiOauth(providerId)
+  }
+
+  async xaiOauthStatus(providerId: string): Promise<{ signedIn: boolean; expiresAt?: number }> {
+    return this.settings.xaiOauthStatus(providerId)
+  }
+
+  async logoutXai(providerId: string): Promise<void> {
+    await this.settings.logoutXai(providerId)
+    this.effects.requestProviderReconnect()
   }
 
   async deleteProvider(

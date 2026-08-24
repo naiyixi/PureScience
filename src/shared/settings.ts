@@ -23,7 +23,13 @@ export const SETTINGS_FILE_VERSION = 2
 // OAuth login via `claude auth login`); claude-isolated uses an app-owned CLAUDE_CONFIG_DIR
 // (setup-token paste, no ~/.claude touch).
 export type ProviderType =
-  'custom' | 'claude-shared' | 'claude-isolated' | 'official' | 'codex-shared' | 'codex-isolated'
+  | 'custom'
+  | 'claude-shared'
+  | 'claude-isolated'
+  | 'official'
+  | 'codex-shared'
+  | 'codex-isolated'
+  | 'xai-subscription'
 
 // The stored Codex subscription always uses the app-owned runtime type. This discriminator preserves
 // which setup choice produced it so editing an imported profile does not masquerade as an isolated
