@@ -213,12 +213,17 @@ export const OFFICIAL_VENDORS: OfficialVendor[] = [
     models: [
       { id: 'deepseek-v4-pro', contextWindow: 1_000_000 },
       { id: 'deepseek-v4-pro[1m]', contextWindow: 1_000_000 },
-      { id: 'deepseek-v4-flash', contextWindow: 1_000_000 }
+      { id: 'deepseek-v4-flash', contextWindow: 1_000_000 },
+      { id: 'deepseek-v4-flash-vision-exp', contextWindow: 1_000_000 }
     ],
     // DeepSeek serves a native Responses API for deepseek-v4-flash only; deepseek-v4-pro does not yet
     // implement /v1/responses (planned for early August 2026), so it stays on the Chat Completions bridge.
-    responsesModels: ['deepseek-v4-flash']
-    // DeepSeek's chat models are text-only, so no `multimodal` rule (image input stays disabled).
+    responsesModels: ['deepseek-v4-flash', 'deepseek-v4-flash-vision-exp'],
+    // deepseek-v4-flash-vision-exp is the vision-capable flash variant (multimodal rule below); the
+    // other chat models stay text-only.
+    multimodal: {
+      multimodalModels: ['deepseek-v4-flash-vision-exp']
+    }
   },
   {
     id: 'bailian',

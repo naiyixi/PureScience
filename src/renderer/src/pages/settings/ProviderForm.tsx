@@ -541,7 +541,7 @@ const ProviderForm = ({
 
           <div className="space-y-1.5">
             <label className={fieldLabelClassName} htmlFor="provider-context-window">
-              Context window
+              {t('settings.contextWindow')}
             </label>
             <Input
               id="provider-context-window"
@@ -558,6 +558,52 @@ const ProviderForm = ({
             {errors.contextWindow ? (
               <p className={fieldErrorClassName} role="alert">
                 {errors.contextWindow}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="space-y-1.5">
+            <label className={fieldLabelClassName} htmlFor="provider-max-input-tokens">
+              {t('settings.maxInputTokens')}
+            </label>
+            <Input
+              id="provider-max-input-tokens"
+              aria-label={t('settings.maxInputTokens')}
+              type="number"
+              inputMode="numeric"
+              min={1}
+              step={1000}
+              value={value.maxInputTokens}
+              disabled={disabled}
+              placeholder={t('settings.leaveEmptyForDefault')}
+              onChange={(event) => onChange({ maxInputTokens: event.target.value })}
+            />
+            {errors.maxInputTokens ? (
+              <p className={fieldErrorClassName} role="alert">
+                {errors.maxInputTokens}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="space-y-1.5">
+            <label className={fieldLabelClassName} htmlFor="provider-max-output-tokens">
+              {t('settings.maxOutputTokens')}
+            </label>
+            <Input
+              id="provider-max-output-tokens"
+              aria-label={t('settings.maxOutputTokens')}
+              type="number"
+              inputMode="numeric"
+              min={1}
+              step={1000}
+              value={value.maxOutputTokens}
+              disabled={disabled}
+              placeholder={t('settings.leaveEmptyForDefault')}
+              onChange={(event) => onChange({ maxOutputTokens: event.target.value })}
+            />
+            {errors.maxOutputTokens ? (
+              <p className={fieldErrorClassName} role="alert">
+                {errors.maxOutputTokens}
               </p>
             ) : null}
           </div>

@@ -26,6 +26,8 @@ export type ProviderFormValue = {
   model: string
   // Kept as text so an empty optional numeric input remains distinct from the 200k runtime default.
   contextWindow: string
+  maxInputTokens: string
+  maxOutputTokens: string
   // Which chat API a custom gateway speaks; drives which agent frameworks can use it. Defaults to
   // 'anthropic'. A custom provider serves exactly one endpoint (official providers take theirs from
   // the registry); it is stored as the single-entry apiEndpoints array.
@@ -55,6 +57,8 @@ export const createEmptyProviderFormValue = (
   baseUrl: '',
   model: '',
   contextWindow: '',
+  maxInputTokens: '',
+  maxOutputTokens: '',
   apiEndpoint: 'anthropic',
   providerFormTouched: false,
   supportsImageInput: false,
@@ -108,6 +112,8 @@ export const defaultProviderKindKey = (
 export type ProviderFormErrors = {
   baseUrl?: string
   contextWindow?: string
+  maxInputTokens?: string
+  maxOutputTokens?: string
   key?: string
   model?: string
 }
@@ -127,6 +133,18 @@ export const getProviderFormErrors = (
       const contextWindow = Number(value.contextWindow)
       if (!Number.isSafeInteger(contextWindow) || contextWindow <= 0) {
         errors.contextWindow = 'Context window must be a positive whole number of tokens.'
+      }
+    }
+    if (value.maxInputTokens.trim()) {
+      const maxInputTokens = Number(value.maxInputTokens)
+      if (!Number.isSafeInteger(maxInputTokens) || maxInputTokens <= 0) {
+        errors.maxInputTokens = 'Max input must be a positive whole number of tokens.'
+      }
+    }
+    if (value.maxOutputTokens.trim()) {
+      const maxOutputTokens = Number(value.maxOutputTokens)
+      if (!Number.isSafeInteger(maxOutputTokens) || maxOutputTokens <= 0) {
+        errors.maxOutputTokens = 'Max output must be a positive whole number of tokens.'
       }
     }
     if (!value.key.trim() && !options.hasStoredKey) errors.key = 'API key is required.'
@@ -214,6 +232,8 @@ export const providerKindPatch = (
       baseUrl: '',
       model: '',
       contextWindow: '',
+      maxInputTokens: '',
+      maxOutputTokens: '',
       key: '',
       vendorId: undefined,
       region: undefined
@@ -229,6 +249,8 @@ export const providerKindPatch = (
       baseUrl: '',
       model: '',
       contextWindow: '',
+      maxInputTokens: '',
+      maxOutputTokens: '',
       key: '',
       vendorId: undefined,
       region: undefined
@@ -246,7 +268,9 @@ export const providerKindPatch = (
       vendorId,
       region: vendor?.regions?.[0]?.id,
       model: '',
-      contextWindow: ''
+      contextWindow: '',
+      maxInputTokens: '',
+      maxOutputTokens: ''
     }
   }
 
@@ -256,7 +280,9 @@ export const providerKindPatch = (
     vendorId: undefined,
     region: undefined,
     model: '',
-    contextWindow: ''
+    contextWindow: '',
+    maxInputTokens: '',
+    maxOutputTokens: ''
   }
 }
 

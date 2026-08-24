@@ -160,7 +160,9 @@ describe('provider-kind helpers', () => {
       vendorId: 'minimax',
       region: 'global',
       model: '',
-      contextWindow: ''
+      contextWindow: '',
+      maxInputTokens: '',
+      maxOutputTokens: ''
     })
   })
 
@@ -171,7 +173,9 @@ describe('provider-kind helpers', () => {
       vendorId: 'openai',
       region: undefined,
       model: '',
-      contextWindow: ''
+      contextWindow: '',
+      maxInputTokens: '',
+      maxOutputTokens: ''
     })
     expect(
       selectedKindKey(createEmptyProviderFormValue({ type: 'official', vendorId: 'openai' }))
@@ -185,7 +189,9 @@ describe('provider-kind helpers', () => {
       vendorId: undefined,
       region: undefined,
       model: '',
-      contextWindow: ''
+      contextWindow: '',
+      maxInputTokens: '',
+      maxOutputTokens: ''
     })
   })
 

@@ -271,6 +271,10 @@ export type ResolvedAgentBackend = {
   // Exact context-window limit for the selected provider model. Framework adapters may
   // report a fallback or bridge transport model instead, so the runtime treats this as authoritative.
   contextWindow?: number
+  // Optional input cap (max prompt tokens) for a custom model. Absent means no explicit cap.
+  maxInputTokens?: number
+  // Optional output cap (max completion tokens) for a custom model. Absent means no explicit cap.
+  maxOutputTokens?: number
   // Whether the selected source model accepts image input. Kept on the generation so a model-only
   // switch can fail closed when an adapter cannot remove images already retained in native history.
   supportsImageInput?: boolean

@@ -32,6 +32,8 @@ export type ResolvedProvider = {
   // Context limit for the selected model. Framework adapters that register custom model ids (notably
   // OpenCode) must include this metadata or the framework cannot report context usage over ACP.
   contextWindow?: number
+  maxInputTokens?: number
+  maxOutputTokens?: number
   key?: string
   // Which chat APIs the endpoint speaks; opencode uses this to pick anthropic vs openai-compatible.
   // Absent ⇒ ['anthropic'].

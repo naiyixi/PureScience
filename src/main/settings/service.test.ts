@@ -3175,9 +3175,10 @@ describe('SettingsService: official vendors', () => {
       settings: {
         skipWebFetchPreflight: true,
         permissions: { ask: ['WebFetch'] },
-        availableModels: ['deepseek-v4-flash', 'deepseek-v4-pro', 'deepseek-v4-pro[1m]'],
+        availableModels: ['deepseek-v4-flash', 'deepseek-v4-pro', 'deepseek-v4-pro[1m]', 'deepseek-v4-flash-vision-exp'],
         modelOverrides: {
           'deepseek-v4-flash': 'deepseek-v4-flash',
+          'deepseek-v4-flash-vision-exp': 'deepseek-v4-flash-vision-exp',
           'deepseek-v4-pro': 'deepseek-v4-pro',
           'deepseek-v4-pro[1m]': 'deepseek-v4-pro[1m]'
         }
@@ -3186,9 +3187,10 @@ describe('SettingsService: official vendors', () => {
     await expect(
       readFile(join(getAppClaudeConfigDir(storageRoot), 'settings.json'), 'utf8').then(JSON.parse)
     ).resolves.toMatchObject({
-      availableModels: ['deepseek-v4-flash', 'deepseek-v4-pro', 'deepseek-v4-pro[1m]'],
+      availableModels: ['deepseek-v4-flash', 'deepseek-v4-pro', 'deepseek-v4-pro[1m]', 'deepseek-v4-flash-vision-exp'],
       modelOverrides: {
         'deepseek-v4-flash': 'deepseek-v4-flash',
+        'deepseek-v4-flash-vision-exp': 'deepseek-v4-flash-vision-exp',
         'deepseek-v4-pro': 'deepseek-v4-pro',
         'deepseek-v4-pro[1m]': 'deepseek-v4-pro[1m]'
       }

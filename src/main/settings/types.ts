@@ -49,6 +49,10 @@ export type StoredProvider = {
   model?: string
   // Optional custom-model override. Absence is meaningful and resolves to the shared 200k default.
   contextWindow?: number
+  // Optional custom-model input cap (max prompt tokens). Absence means no explicit cap.
+  maxInputTokens?: number
+  // Optional custom-model output cap (max completion tokens). Absence means no explicit cap.
+  maxOutputTokens?: number
   supportsImageInput?: boolean
   // Custom-model effort capability. Absence resolves to the standard five-level preset.
   reasoningEffortPreset?: ReasoningEffortPresetSetting

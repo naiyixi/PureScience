@@ -249,6 +249,10 @@ export type ProviderView = {
   model?: string
   // User-configured context-window size for a custom model. Omitted means the runtime uses 200k.
   contextWindow?: number
+  // Optional input-cap for a custom model (max prompt tokens). Omitted means no explicit cap.
+  maxInputTokens?: number
+  // Optional output-cap for a custom model (max completion tokens). Omitted means no explicit cap.
+  maxOutputTokens?: number
   supportsImageInput: boolean
   // Custom-model effort declaration. Absence intentionally means the standard five-level preset.
   reasoningEffortPreset?: ReasoningEffortPresetSetting
@@ -480,6 +484,10 @@ export type ProviderDraft = {
   // Custom model context-window size in tokens. `null` explicitly clears a saved override; omitted
   // leaves it unchanged on partial edits. A provider with no override resolves to 200k at runtime.
   contextWindow?: number | null
+  // Optional custom-model input cap (max prompt tokens). `null` clears an override; omitted leaves it unchanged.
+  maxInputTokens?: number | null
+  // Optional custom-model output cap (max completion tokens). `null` clears an override; omitted leaves it unchanged.
+  maxOutputTokens?: number | null
   supportsImageInput?: boolean
   // Optional custom-model effort declaration. Absence defaults to the standard five-level preset.
   reasoningEffortPreset?: ReasoningEffortPresetSetting

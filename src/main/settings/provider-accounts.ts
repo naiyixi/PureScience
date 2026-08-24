@@ -344,6 +344,14 @@ class ProviderAccountsModule {
         request.contextWindow === null
           ? undefined
           : (request.contextWindow ?? existing?.contextWindow)
+      const maxInputTokens =
+        request.maxInputTokens === null
+          ? undefined
+          : (request.maxInputTokens ?? existing?.maxInputTokens)
+      const maxOutputTokens =
+        request.maxOutputTokens === null
+          ? undefined
+          : (request.maxOutputTokens ?? existing?.maxOutputTokens)
       if (!baseUrl) throw new Error('Base URL is required for a custom provider.')
       if (!model) throw new Error('Model is required for a custom provider.')
       if (!carryKey()) throw new Error('API key is required for a custom provider.')
@@ -356,6 +364,8 @@ class ProviderAccountsModule {
       provider.baseUrl = baseUrl
       provider.model = model
       if (contextWindow !== undefined) provider.contextWindow = contextWindow
+      if (maxInputTokens !== undefined) provider.maxInputTokens = maxInputTokens
+      if (maxOutputTokens !== undefined) provider.maxOutputTokens = maxOutputTokens
       provider.supportsImageInput =
         request.supportsImageInput ?? existing?.supportsImageInput ?? false
       provider.reasoningEffortPreset =

@@ -101,6 +101,8 @@ export type AgentSpawnConfig = {
   envOverrides: Record<string, string>
   executablePath: string
   contextWindow?: number
+  maxInputTokens?: number
+  maxOutputTokens?: number
   sessionOptions?: Record<string, unknown>
 }
 
@@ -782,6 +784,8 @@ export class AgentBackendResolver {
           : {}),
         sessionEffort,
         contextWindow: provider.contextWindow,
+        maxInputTokens: provider.maxInputTokens,
+        maxOutputTokens: provider.maxOutputTokens,
         ...(provider.supportsImageInput ? { supportsImageInput: true } : {}),
         contextUsageModel: provider.model,
         authentication: modelConfig.authentication,
@@ -853,7 +857,9 @@ export class AgentBackendResolver {
       envOverrides,
       executablePath,
       sessionOptions,
-      contextWindow: provider.contextWindow
+      contextWindow: provider.contextWindow,
+      maxInputTokens: provider.maxInputTokens,
+      maxOutputTokens: provider.maxOutputTokens
     }
   }
 
