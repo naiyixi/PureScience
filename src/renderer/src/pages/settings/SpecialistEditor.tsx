@@ -537,9 +537,14 @@ const SpecialistEditor = ({
 
         {/* Identity section */}
         <section className="mb-6">
-          <h3 className="mb-1 text-base font-semibold text-foreground">Identity</h3>
+          {editSpecialist?.origin === 'marketplace' ? (
+            <div className="mb-4 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-primary">
+              {t('settings.marketplaceGovernedNotice')}
+            </div>
+          ) : null}
+          <h3 className="mb-1 text-base font-semibold text-foreground">{t('settings.identity')}</h3>
           <p className="mb-4 text-[13px] leading-5 text-muted-foreground">
-            How this specialist appears in the registry and session picker.
+            {t('settings.identityHint')}
           </p>
 
           {/* Live preview — reflects the current icon + color + name, matching the list */}
@@ -550,11 +555,11 @@ const SpecialistEditor = ({
                 {form.name.trim() || t('settings.untitledSpecialist')}
               </span>
               <span className="text-xs text-muted-foreground">
-                Preview — matches the list and picker.
+                {t('settings.identityPreviewHint')}
               </span>
             </div>
             <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
-              Live
+              {t('settings.liveBadge')}
             </span>
           </div>
 

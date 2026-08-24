@@ -66,11 +66,12 @@ export type SpecialistsView =
   | { kind: 'builtin'; id: string }
   | SpecialistMarketplaceView
 
-type CategoryFilter = 'all' | 'custom' | 'builtin'
+type CategoryFilter = 'all' | 'custom' | 'marketplace' | 'builtin'
 
 const FILTER_LABELS: Record<CategoryFilter, TranslationKey> = {
   all: 'settings.all',
   custom: 'settings.customFilter',
+  marketplace: 'settings.marketplaceFilter',
   builtin: 'settings.builtinFilter'
 }
 
@@ -227,7 +228,7 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
   // under Built-in. Only runnable builtins enter the Session picker.
   const reviewerItems = items.filter((i) => i.kind === 'reviewer')
   const visibleBuiltinItems = useMemo(() => {
-    if (filter === 'custom') return []
+    if (filter === 'custom' || filter === 'marketplace') return []
     const term = query.trim().toLowerCase()
     if (!term) return builtinItems
     return builtinItems.filter(
@@ -240,6 +241,16 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
   const visibleCustomItems = useMemo(() => {
     const term = query.trim().toLowerCase()
     if (filter === 'builtin') return []
+    if (filter === 'marketplace') {
+      const scoped = customItems.filter((i) => i.kind === 'custom' && i.origin === 'marketplace')
+      if (!term) return scoped
+      return scoped.filter(
+        (item) =>
+          (item.displayName ?? item.name).toLowerCase().includes(term) ||
+          item.name.toLowerCase().includes(term) ||
+          item.description.toLowerCase().includes(term)
+      )
+    }
     if (!term) return customItems
     return customItems.filter(
       (item) =>
@@ -1037,13 +1048,16 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
           role="tablist"
           aria-label={t('settings.filterSpecialistsByCategory')}
         >
-          {(['all', 'custom', 'builtin'] as const).map((key) => {
+          {(['all', 'custom', 'marketplace', 'builtin'] as const).map((key) => {
             const count =
               key === 'all'
                 ? items.length
                 : key === 'custom'
                   ? customItems.length
-                  : builtinItems.length + reviewerItems.length
+                  : key === 'marketplace'
+                    ? customItems.filter((i) => i.kind === 'custom' && i.origin === 'marketplace')
+                        .length
+                    : builtinItems.length + reviewerItems.length
             const active = filter === key
             return (
               <button
