@@ -228,6 +228,18 @@ export type PersistedActivityGroup = {
   completedAt?: number
 }
 
+// Summary-first session cache. The session list reads these lightweight files instead of parsing
+// every full session JSON at startup; the fingerprint (size + mtime of the session file at summary
+// time) invalidates the cache the moment the real file changes, falling back to a full parse.
+export type SessionSummaryFile = {
+  version: 1
+  sessionId: string
+  projectId: string
+  fingerprint: { size: number; mtimeMs: number }
+  // Lightweight metadata slice: messages/artifacts/conversationGraph are intentionally omitted.
+  session: PersistedChatSession
+}
+
 export type PersistedChatSession = {
   id: string
   // Owning project. On load this is authoritative from the file's directory (sessions/<projectId>/).

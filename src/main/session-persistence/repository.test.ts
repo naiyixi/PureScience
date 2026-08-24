@@ -770,7 +770,9 @@ describe('session persistence repository (per-session files)', () => {
     expect((await readdir(join(root, 'deleted-sessions', 'project-a'))).sort()).toEqual([
       '.project-deletion-committed',
       'session-1.json',
-      'session-2.json'
+      'session-1.json.summary.json',
+      'session-2.json',
+      'session-2.json.summary.json'
     ])
     await expect(repository.getProjectSessionDeletionState('project-a')).resolves.toBe('prepared')
     await expect(repository.listLegacyProjectSessionTombstones()).resolves.toEqual([])

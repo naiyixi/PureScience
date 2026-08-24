@@ -12,7 +12,8 @@ import {
   type PersistedSessionManifest,
   type SaveSessionManifestRequest,
   type SessionLoadFailure,
-  type SessionLoadWarning
+  type SessionLoadWarning,
+  type SessionSummaryFile
 } from '../../shared/session-persistence'
 import { decodeSessionDataPaths, encodeSessionDataPaths } from './session-data-paths'
 
@@ -58,6 +59,8 @@ type SessionRepositoryDependencies = {
   readDirectoryEntries(path: string): Promise<SessionDirectoryEntry[]>
   readManifestFile(path: string): Promise<string>
   readSessionFile(path: string): Promise<string>
+  statFile(path: string): Promise<{ size: number; mtimeMs: number }>
+  writeSummaryFile(path: string, content: string): Promise<void>
   renameFile(source: string, destination: string): Promise<void>
   wait(delayMs: number): Promise<void>
 }
@@ -67,6 +70,11 @@ const DEFAULT_DEPENDENCIES: SessionRepositoryDependencies = {
   readDirectoryEntries: (path) => readdir(path, { withFileTypes: true }),
   readManifestFile: (path) => readFile(path, 'utf8'),
   readSessionFile: (path) => readFile(path, 'utf8'),
+  statFile: async (path) => {
+    const stats = await lstat(path)
+    return { size: stats.size, mtimeMs: stats.mtimeMs }
+  },
+  writeSummaryFile: (path, content) => writeFile(path, content, 'utf8'),
   renameFile: (source, destination) => rename(source, destination),
   wait: (delayMs) => new Promise((resolve) => setTimeout(resolve, delayMs))
 }
@@ -125,6 +133,8 @@ class SessionRepository {
       readManifestFile: dependencies.readManifestFile ?? DEFAULT_DEPENDENCIES.readManifestFile,
       readSessionFile: dependencies.readSessionFile ?? DEFAULT_DEPENDENCIES.readSessionFile,
       renameFile: dependencies.renameFile ?? DEFAULT_DEPENDENCIES.renameFile,
+      statFile: dependencies.statFile ?? DEFAULT_DEPENDENCIES.statFile,
+      writeSummaryFile: dependencies.writeSummaryFile ?? DEFAULT_DEPENDENCIES.writeSummaryFile,
       wait: dependencies.wait ?? DEFAULT_DEPENDENCIES.wait
     }
   }
@@ -200,7 +210,8 @@ class SessionRepository {
   async loadAllWithDiagnostics(options: SessionScanOptions = {}): Promise<SessionLoadDiagnostics> {
     const quarantineInvalidFiles = options.mode !== 'read-only'
     const { sessions, isComplete, warnings } = await this.readAllSessions({
-      quarantineInvalidFiles
+      quarantineInvalidFiles,
+      ...(options.mode === 'read-only' ? { useSummary: true } : {})
     })
     const manifestRead = await this.readManifest({ quarantineInvalidFiles })
 
@@ -435,6 +446,8 @@ class SessionRepository {
 
     await mkdir(projectDirectory, { recursive: true })
     await this.atomicWrite(filePath, createSessionFile(encodeSessionDataPaths(sanitizedSession)))
+    // Warm the summary cache so the next startup skips parsing this file.
+    void this.writeSessionSummary(filePath, sanitizedSession)
   }
 
   private async writeManifest(request: SaveSessionManifestRequest): Promise<void> {
@@ -515,7 +528,10 @@ class SessionRepository {
   // Reads every project directory's session files and propagates completeness across every level.
   // Repair scans quarantine invalid data; read-only scans report it in place. I/O errors keep
   // reconciliation disabled until the next repair.
-  private async readAllSessions(options: { quarantineInvalidFiles: boolean }): Promise<{
+  private async readAllSessions(options: {
+    quarantineInvalidFiles: boolean
+    useSummary?: boolean
+  }): Promise<{
     sessions: PersistedChatSession[]
     isComplete: boolean
     warnings: SessionLoadWarning[]
@@ -529,6 +545,7 @@ class SessionRepository {
       const project = await this.readProjectSessions(projectId, {
         missingDirectoryIsIncomplete: true,
         quarantineInvalidFiles: options.quarantineInvalidFiles,
+        ...(options.useSummary ? { useSummary: true } : {}),
         warnings
       })
       sessions.push(...project.sessions)
@@ -544,6 +561,7 @@ class SessionRepository {
       missingDirectoryIsIncomplete?: boolean
       quarantinedIsIncomplete?: boolean
       quarantineInvalidFiles?: boolean
+      useSummary?: boolean
       warnings?: SessionLoadWarning[]
     } = {}
   ): Promise<ProjectSessionLoadDiagnostics> {
@@ -562,6 +580,7 @@ class SessionRepository {
       missingDirectoryIsIncomplete?: boolean
       quarantinedIsIncomplete?: boolean
       quarantineInvalidFiles?: boolean
+      useSummary?: boolean
       warnings?: SessionLoadWarning[]
     } = {}
   ): Promise<ProjectSessionLoadDiagnostics> {
@@ -577,7 +596,8 @@ class SessionRepository {
       // The directory is the authoritative owning project, regardless of the file's stored projectId.
       const read = await this.readSessionFile(join(projectDir, fileName), projectId, {
         missingIsIncomplete: true,
-        quarantineInvalidFiles: options.quarantineInvalidFiles
+        quarantineInvalidFiles: options.quarantineInvalidFiles,
+        ...(options.useSummary ? { useSummary: true } : {})
       })
       isComplete &&= read.isComplete
       if (options.quarantinedIsIncomplete && read.wasQuarantined) isComplete = false
@@ -607,16 +627,87 @@ class SessionRepository {
     return { sessions, isComplete }
   }
 
+  // Summary path for a session file: <session-file>.summary.json in the same directory.
+  private summaryPathFor(filePath: string): string {
+    return `${filePath}.summary.json`
+  }
+
+  // Reads the cached summary if its fingerprint still matches the session file on disk.
+  private async tryReadSessionSummary(
+    filePath: string
+  ): Promise<PersistedChatSession | undefined> {
+    try {
+      const [fingerprint, rawSummary] = await Promise.all([
+        this.dependencies.statFile(filePath),
+        this.dependencies.readSessionFile(this.summaryPathFor(filePath)).catch(() => undefined)
+      ])
+      if (!rawSummary) return undefined
+      const summary = JSON.parse(rawSummary) as SessionSummaryFile
+      if (
+        summary.version !== 1 ||
+        summary.fingerprint.size !== fingerprint.size ||
+        summary.fingerprint.mtimeMs !== fingerprint.mtimeMs
+      ) {
+        return undefined
+      }
+      return summary.session
+    } catch {
+      return undefined
+    }
+  }
+
+  // Writes a lightweight metadata cache next to the session file. Best-effort: a failed summary
+  // write never fails the session save/load.
+  private async writeSessionSummary(filePath: string, session: PersistedChatSession): Promise<void> {
+    try {
+      const fingerprint = await this.dependencies.statFile(filePath)
+      const summary: SessionSummaryFile = {
+        version: 1,
+        sessionId: session.id,
+        projectId: session.projectId,
+        fingerprint,
+        session: {
+          ...session,
+          // The summary is a metadata slice for the session list; heavy fields stay in the file.
+          messages: [],
+          artifacts: undefined,
+          conversationGraph: undefined,
+          activities: undefined,
+          activityGroups: undefined
+        }
+      }
+      await this.dependencies.writeSummaryFile(
+        this.summaryPathFor(filePath),
+        JSON.stringify(summary)
+      )
+    } catch {
+      // Cache is advisory only.
+    }
+  }
+
   private async readSessionFile(
     filePath: string,
     projectId: string,
-    options: { missingIsIncomplete?: boolean; quarantineInvalidFiles?: boolean } = {}
+    options: {
+      missingIsIncomplete?: boolean
+      quarantineInvalidFiles?: boolean
+      useSummary?: boolean
+    } = {}
   ): Promise<{
     session?: PersistedChatSession
     isComplete: boolean
     wasQuarantined?: boolean
     warning?: SessionLoadWarning
   }> {
+    // Summary-first: only the startup list path opts in; full-parse callers (recovery, exports)
+    // keep seeing the authoritative file.
+    if (options.useSummary) {
+      const cached = await this.tryReadSessionSummary(filePath)
+      if (cached) {
+        return { session: { ...cached, projectId }, isComplete: true }
+      }
+    }
+
     let raw: string
     try {
       raw = await this.dependencies.readSessionFile(filePath)
@@ -652,7 +743,10 @@ class SessionRepository {
         }
       }
 
-      return { session: decodeSessionDataPaths({ ...session, projectId }), isComplete: true }
+      const restored = decodeSessionDataPaths({ ...session, projectId })
+      // Warm the summary cache so the next startup skips the full parse.
+      void this.writeSessionSummary(filePath, restored)
+      return { session: restored, isComplete: true }
     } catch {
       const wasQuarantined =
         options.quarantineInvalidFiles !== false && (await this.tryBackupInvalidFile(filePath))
@@ -704,7 +798,9 @@ class SessionRepository {
               entry.isFile() &&
               entry.name.endsWith('.json') &&
               !entry.name.includes('.tmp') &&
-              !entry.name.includes('.invalid-')
+              !entry.name.includes('.invalid-') &&
+              // Summary caches (<session>.json.summary.json) are metadata, not session files.
+              !entry.name.endsWith('.summary.json')
           )
           .map((entry) => entry.name),
         isComplete: true,
