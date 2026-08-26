@@ -488,6 +488,7 @@ const WorkspacePage = ({
   const currentDraftKey = selectedSessionId ?? newConversationDraftKey
   const clearSelection = useSessionStore((state) => state.clearSelection)
   const renameSession = useSessionStore((state) => state.renameSession)
+  const setSessionDescription = useSessionStore((state) => state.setSessionDescription)
   const togglePinned = useSessionStore((state) => state.togglePinned)
   const updateSessionArchive = useSessionStore((state) => state.updateSessionArchive)
   const enqueueSessionArchive = useArchiveUndoStore((state) => state.enqueueSession)
@@ -769,6 +770,7 @@ const WorkspacePage = ({
   >({})
   const [sessionToRename, setSessionToRename] = useState<ChatSession | undefined>(undefined)
   const [renameDraft, setRenameDraft] = useState('')
+  const [descriptionDraft, setDescriptionDraft] = useState('')
   const [sessionToDownloadArtifacts, setSessionToDownloadArtifacts] = useState<
     ChatSession | undefined
   >(undefined)
@@ -2016,6 +2018,7 @@ const WorkspacePage = ({
 
     setSessionToRename(session)
     setRenameDraft(session.title)
+    setDescriptionDraft(session.description ?? '')
   }
 
   // Main reloads the durable session and owns both normalization and the native Save As operation.
@@ -2039,6 +2042,7 @@ const WorkspacePage = ({
   const closeRenameDialog = (): void => {
     setSessionToRename(undefined)
     setRenameDraft('')
+    setDescriptionDraft('')
   }
 
   // Commits a non-empty title change and closes the rename dialog.
@@ -2048,6 +2052,7 @@ const WorkspacePage = ({
     if (!isSessionPersistenceReady || !sessionToRename || renameDraft.trim().length === 0) return
 
     renameSession(sessionToRename.id, renameDraft)
+    setSessionDescription(sessionToRename.id, descriptionDraft)
     closeRenameDialog()
   }
 
@@ -2821,7 +2826,9 @@ const WorkspacePage = ({
       <RenameSessionDialog
         session={sessionToRename}
         renameDraft={renameDraft}
+        descriptionDraft={descriptionDraft}
         onRenameDraftChange={setRenameDraft}
+        onDescriptionDraftChange={setDescriptionDraft}
         onCancel={closeRenameDialog}
         onConfirmRename={confirmRenameSession}
       />

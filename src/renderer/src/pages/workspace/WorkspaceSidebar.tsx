@@ -406,6 +406,12 @@ const WorkspaceSidebar = ({
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
+                      {/* Self-describing sessions: a summary line under the title (open-science #1721). */}
+                      {session.description ? (
+                        <span className="line-clamp-2 mt-1 w-full whitespace-pre-wrap pl-5 pr-1.5 text-[11px] leading-snug text-muted-foreground">
+                          {session.description}
+                        </span>
+                      ) : null}
                     </div>
                   )
                 })}

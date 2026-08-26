@@ -18,7 +18,9 @@ import type { ChatSession } from '@/stores/session-store'
 type RenameSessionDialogProps = {
   session: ChatSession | undefined
   renameDraft: string
+  descriptionDraft: string
   onRenameDraftChange: (value: string) => void
+  onDescriptionDraftChange: (value: string) => void
   onCancel: () => void
   onConfirmRename: (event: React.FormEvent<HTMLFormElement>) => void
 }
@@ -30,7 +32,9 @@ const renameDialogInputClassName =
 const RenameSessionDialog = ({
   session,
   renameDraft,
+  descriptionDraft,
   onRenameDraftChange,
+  onDescriptionDraftChange,
   onCancel,
   onConfirmRename
 }: RenameSessionDialogProps): React.JSX.Element => {
@@ -70,13 +74,22 @@ const RenameSessionDialog = ({
                 <X className="size-4" aria-hidden="true" />
               </Button>
             </div>
-            <div className="mt-4">
+            <div className="mt-4 space-y-3">
               <Input
                 value={dialogRenameDraft}
                 onChange={(event) => onRenameDraftChange(event.target.value)}
                 aria-label="Session name"
                 autoFocus
                 className={renameDialogInputClassName}
+              />
+              <textarea
+                value={descriptionDraft}
+                onChange={(event) => onDescriptionDraftChange(event.target.value)}
+                aria-label="Session description"
+                rows={3}
+                maxLength={240}
+                placeholder="What this session is about (optional)"
+                className={`w-full resize-none rounded-lg border-border bg-card px-3 py-2 text-sm text-foreground shadow-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/25 ${renameDialogInputClassName}`}
               />
             </div>
             <div className={dialogFooterClassName}>
