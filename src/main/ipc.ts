@@ -2,6 +2,7 @@ import { basename, join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { readFile, stat, writeFile } from 'node:fs/promises'
 import { customConnectorSlug } from '../shared/custom-connector'
+import { isAllowedExternalUrl } from './navigation-policy'
 
 import {
   app,
@@ -878,7 +879,12 @@ const createApplicationModules = async (
   // server, so constructing it here does not spawn anything until a custom server is actually used.
   const mcpClientManager = await modules.add(undefined, () => {
     const manager = new McpClientManager({
-      openExternal: (url) => shell.openExternal(url),
+      // Classified external navigation: only the shared protocol allowlist (http/https/mailto) may
+      // reach the OS browser; anything else is refused (open-science #1744).
+      openExternal: (url) => {
+        if (isAllowedExternalUrl(url)) return shell.openExternal(url)
+        return Promise.reject(new Error(`Blocked external navigation to disallowed URL: ${url}`))
+      },
       saveOAuthState: (serverId, state) =>
         settingsService.saveCustomServerOAuthState(serverId, state)
     })

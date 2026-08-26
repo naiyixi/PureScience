@@ -15,7 +15,16 @@ describe('netFetch', () => {
     const init = { headers: { 'User-Agent': 'purescience' } }
     const result = await netFetch('https://api.github.com/repos/o/r', init)
 
-    expect(fetchMock).toHaveBeenCalledWith('https://api.github.com/repos/o/r', init)
+    // The correlation wrapper preserves the caller's headers and adds its own x-request-id.
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.github.com/repos/o/r',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          'User-Agent': 'purescience',
+          'x-request-id': expect.stringMatching(/^req-[a-f0-9]{8}$/)
+        })
+      })
+    )
     expect(result).toBe(response)
   })
 

@@ -1,16 +1,23 @@
 import { net } from 'electron'
 
+import { withCorrelatedFetch } from '../net/request-correlation'
 import type { FetchLike } from './github-import'
 
 // Routes GitHub skill imports through Electron's Chromium network stack, which honors the system/VPN
 // proxy the user's browser uses. Node's global fetch (undici) ignores that proxy and takes a direct
 // path, so in proxied environments GitHub returns 403 for the direct requests while net.fetch succeeds.
-export const netFetch: FetchLike = (url, init) =>
-  net.fetch(url, init) as unknown as ReturnType<FetchLike>
+// Every request is tagged with a correlation id (open-science #1703) so command/session/run logs can
+// be joined across the request's lifecycle.
+export const netFetch: FetchLike = withCorrelatedFetch((url, init) =>
+  net.fetch(url, init)
+) as unknown as FetchLike
 
 // A `typeof fetch`-shaped view of net.fetch for callers that need the full Response API (`.text()`,
 // AbortSignal, arbitrary headers) rather than the narrow FetchLike shape — e.g. the provider-validation
-// probe, which reads the error body and aborts on timeout. Same proxy-honoring Chromium stack. A lazy
-// arrow wrapper (like netFetch) so `net.fetch` is only read at call time — reading it eagerly at module
-// load crashes any test whose electron mock omits `net` — while the method call preserves the receiver.
-export const netFetchStandard = ((input, init) => net.fetch(input as string, init)) as typeof fetch
+// probe, which reads the error body and aborts on timeout. Same proxy-honoring Chromium stack, same
+// correlation tagging. A lazy arrow wrapper (like netFetch) so `net.fetch` is only read at call time —
+// reading it eagerly at module load crashes any test whose electron mock omits `net` — while the
+// method call preserves the receiver.
+export const netFetchStandard = withCorrelatedFetch(
+  ((input, init) => net.fetch(input as string, init)) as typeof fetch
+)
