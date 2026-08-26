@@ -64,6 +64,7 @@ type WorkspaceMessageItemProps = {
   onPreviewUploadAttachment: (attachment: MessageUploadAttachment) => void
   onOpenSkillMention: (skillId: string, name: string) => void
   onPreviewMentionArtifact: (part: ArtifactMentionPart) => void
+  onOpenSessionMention: (sessionId: string) => void
   artifacts?: MessageArtifact[]
   // Inline editing is only enabled once the session's run settles; confirming forks the
   // conversation at this message and resends the adjusted doc as a fresh turn.
@@ -683,12 +684,14 @@ const MessagePartsContent = ({
   parts,
   isStatic = false,
   onOpenSkillMention,
-  onPreviewMentionArtifact
+  onPreviewMentionArtifact,
+  onOpenSessionMention
 }: {
   parts: Array<MessagePart | ProvenanceMessagePart>
   isStatic?: boolean
   onOpenSkillMention: (skillId: string, name: string) => void
   onPreviewMentionArtifact: (part: ArtifactMentionPart) => void
+  onOpenSessionMention: (sessionId: string) => void
 }): React.JSX.Element => (
   <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
     {parts.map((part, index) => {
@@ -716,6 +719,33 @@ const MessagePartsContent = ({
             aria-label={`Open skill ${part.name}`}
           >
             /{part.name}
+          </button>
+        )
+      }
+      if (part.type === 'session') {
+        if (isStatic || !('id' in part)) {
+          return (
+            <span
+              key={index}
+              className={cn(mentionPillClassName, 'bg-session-chip text-session-chip-foreground')}
+            >
+              #{part.title}
+            </span>
+          )
+        }
+        return (
+          <button
+            key={index}
+            type="button"
+            className={cn(
+              mentionPillClassName,
+              mentionButtonClassName,
+              'bg-session-chip text-session-chip-foreground'
+            )}
+            onClick={() => onOpenSessionMention(part.id)}
+            aria-label={`Open session ${part.title}`}
+          >
+            #{part.title}
           </button>
         )
       }
@@ -763,6 +793,7 @@ const WorkspaceMessageItem = ({
   onPreviewUploadAttachment,
   onOpenSkillMention,
   onPreviewMentionArtifact,
+  onOpenSessionMention,
   canEditMessage = false,
   showUserActions = true,
   contentPaddingClassName,
@@ -947,12 +978,14 @@ const WorkspaceMessageItem = ({
                       isStatic
                       onOpenSkillMention={onOpenSkillMention}
                       onPreviewMentionArtifact={onPreviewMentionArtifact}
+                      onOpenSessionMention={onOpenSessionMention}
                     />
                   ) : message.parts && message.parts.length > 0 ? (
                     <MessagePartsContent
                       parts={message.parts}
                       onOpenSkillMention={onOpenSkillMention}
                       onPreviewMentionArtifact={onPreviewMentionArtifact}
+                      onOpenSessionMention={onOpenSessionMention}
                     />
                   ) : message.content ? (
                     <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">

@@ -369,6 +369,7 @@ const ProvenanceMessagesTimeline = ({
                       onPreviewUploadAttachment={ignoreUploadPreview}
                       onOpenSkillMention={ignoreSkillOpen}
                       onPreviewMentionArtifact={ignoreMentionPreview}
+                      onOpenSessionMention={ignoreMentionPreview}
                       artifacts={[]}
                       showUserActions={false}
                       contentPaddingClassName="px-0 md:px-0"

@@ -441,6 +441,7 @@ export type ProvenanceMessagePart =
   | { type: 'text'; text: string }
   | { type: 'skill'; name: string }
   | { type: 'artifact'; versionId?: string; name: string }
+  | { type: 'session'; id: string; title: string }
 
 export type ProvenanceMessage = {
   id: string

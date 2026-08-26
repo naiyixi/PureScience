@@ -1,5 +1,5 @@
 ---
-name: protein-structure-analysis
+name: bionexus-protein-structure-analysis
 description: Only if the user explicitly asked for structure I/O or docking prep. Fetches PDB/AF files and writes Vina config. Does not run AlphaFold/DiffDock. Not a default analysis skill.
 ---
 

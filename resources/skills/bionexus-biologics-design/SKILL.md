@@ -1,5 +1,5 @@
 ---
-name: biologics-design
+name: bionexus-biologics-design
 description: Only if the user explicitly asked for a grade-C heuristic. Sequence-level antibody Fv motif scan and codon-table rewrite. abnumber IMGT when installed; otherwise regex. Not SAP. Not a default analysis skill.
 ---
 

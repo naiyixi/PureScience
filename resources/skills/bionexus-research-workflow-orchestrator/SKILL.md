@@ -1,5 +1,5 @@
 ---
-name: research-workflow-orchestrator
+name: bionexus-research-workflow-orchestrator
 description: Deprecated YAML DAG runner. Prefer nextflow-development for sequencing. Not a default skill.
 ---
 

@@ -93,6 +93,7 @@ const renderMessageItem = async (
         onPreviewUploadAttachment={noop}
         onOpenSkillMention={noop}
         onPreviewMentionArtifact={noop}
+        onOpenSessionMention={noop}
         turnStartedAt={turnStartedAt}
         runtimeIdentity={runtimeIdentity}
       />
@@ -133,6 +134,7 @@ describe('WorkspaceMessageItem mention pills', () => {
           onPreviewUploadAttachment={noop}
           onOpenSkillMention={onOpenSkillMention}
           onPreviewMentionArtifact={onPreviewMentionArtifact}
+          onOpenSessionMention={noop}
         />
       )
     })
@@ -155,6 +157,7 @@ describe('WorkspaceMessageItem mention pills', () => {
           onPreviewUploadAttachment={noop}
           onOpenSkillMention={onOpenSkillMention}
           onPreviewMentionArtifact={noop}
+          onOpenSessionMention={noop}
         />
       )
     })
@@ -175,6 +178,7 @@ describe('WorkspaceMessageItem mention pills', () => {
           onPreviewUploadAttachment={noop}
           onOpenSkillMention={noop}
           onPreviewMentionArtifact={onPreviewMentionArtifact}
+          onOpenSessionMention={noop}
         />
       )
     })
@@ -294,6 +298,7 @@ describe('WorkspaceMessageItem missing artifact badge', () => {
             onPreviewUploadAttachment={noop}
             onOpenSkillMention={noop}
             onPreviewMentionArtifact={noop}
+            onOpenSessionMention={noop}
           />
         </StrictMode>
       )

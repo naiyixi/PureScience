@@ -61,6 +61,8 @@
   --color-mention-chip-foreground: var(--mention-chip-foreground);
   --color-skill-chip: var(--skill-chip);
   --color-skill-chip-foreground: var(--skill-chip-foreground);
+  --color-session-chip: var(--session-chip);
+  --color-session-chip-foreground: var(--session-chip-foreground);
   --color-rail-card-bg: hsl(var(--rail-card-bg));
   /* Routed through var() so .dark can strengthen elevation — subtle black shadows vanish on dark
      surfaces, so the dark theme uses higher-opacity values (defined in :root / .dark below). */
@@ -114,6 +116,9 @@
   /* Blue pill for composer skill `/` mention chips. */
   --skill-chip: hsl(214 95% 90%);
   --skill-chip-foreground: hsl(222 63% 47%);
+  /* Purple pill for composer session `#` reference chips. */
+  --session-chip: hsl(270 70% 90%);
+  --session-chip-foreground: hsl(262 70% 45%);
   --always-black: 0 0% 0%;
   --background: #fafaf8;
   --foreground: #202321;
@@ -181,6 +186,8 @@
   --mention-chip-foreground: hsl(140 45% 72%);
   --skill-chip: hsl(217 45% 26%);
   --skill-chip-foreground: hsl(214 90% 80%);
+  --session-chip: hsl(270 35% 24%);
+  --session-chip-foreground: hsl(270 80% 78%);
   --background: #1a1a18;
   --foreground: #e8e6df;
   --card: #26251f;

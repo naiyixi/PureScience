@@ -47,7 +47,12 @@ const expectedChannels = [
   'settings:set-default-permission-profile',
   'settings:set-notifications-enabled',
   'settings:set-package-mirror',
-  'settings:validate-provider'
+  'settings:validate-provider',
+  'settings:xai-oauth-start',
+  'settings:xai-oauth-complete',
+  'settings:xai-oauth-refresh',
+  'settings:xai-oauth-status',
+  'settings:xai-oauth-logout'
 ] as const
 
 type CommandArgs<Command> =

@@ -64,6 +64,11 @@ type CoreSettingsCommandStore = Pick<
   | 'setNotificationsEnabled'
   | 'setPackageMirror'
   | 'validateProvider'
+  | 'startXaiSignIn'
+  | 'completeXaiSignIn'
+  | 'refreshXaiOauth'
+  | 'xaiOauthStatus'
+  | 'logoutXai'
 >
 
 type StoreResult<Method extends keyof CoreSettingsCommandStore> =
@@ -230,7 +235,43 @@ const settingsCoreApplicationCommands = Object.freeze({
     'settings:validate-provider',
     readonly [request: ValidateProviderRequest],
     StoreResult<'validateProvider'>
-  >('settings:validate-provider')
+  >('settings:validate-provider'),
+  xaiOauthStart: defineApplicationCommand<
+    'settings:xai-oauth-start',
+    readonly [],
+    { session: unknown; browserOpened: boolean }
+  >('settings:xai-oauth-start'),
+  xaiOauthComplete: defineApplicationCommand<
+    'settings:xai-oauth-complete',
+    readonly [
+      request: {
+        providerId: string
+        session: {
+          deviceCode: string
+          userCode: string
+          verificationUrl: string
+          expiresIn: number
+          interval: number
+        }
+      }
+    ],
+    StoreResult<'completeXaiSignIn'>
+  >('settings:xai-oauth-complete'),
+  xaiOauthRefresh: defineApplicationCommand<
+    'settings:xai-oauth-refresh',
+    readonly [request: { providerId: string }],
+    StoreResult<'refreshXaiOauth'>
+  >('settings:xai-oauth-refresh'),
+  xaiOauthStatus: defineApplicationCommand<
+    'settings:xai-oauth-status',
+    readonly [request: { providerId: string }],
+    StoreResult<'xaiOauthStatus'>
+  >('settings:xai-oauth-status'),
+  xaiOauthLogout: defineApplicationCommand<
+    'settings:xai-oauth-logout',
+    readonly [request: { providerId: string }],
+    StoreResult<'logoutXai'>
+  >('settings:xai-oauth-logout')
 })
 
 const settingsCoreApplicationCommandGroup = defineApplicationCommandGroup('settings-core', [
@@ -265,7 +306,12 @@ const settingsCoreApplicationCommandGroup = defineApplicationCommandGroup('setti
   settingsCoreApplicationCommands.setDefaultPermissionProfile,
   settingsCoreApplicationCommands.setNotificationsEnabled,
   settingsCoreApplicationCommands.setPackageMirror,
-  settingsCoreApplicationCommands.validateProvider
+  settingsCoreApplicationCommands.validateProvider,
+  settingsCoreApplicationCommands.xaiOauthStart,
+  settingsCoreApplicationCommands.xaiOauthComplete,
+  settingsCoreApplicationCommands.xaiOauthRefresh,
+  settingsCoreApplicationCommands.xaiOauthStatus,
+  settingsCoreApplicationCommands.xaiOauthLogout
 ] as const)
 
 type CoreSettingsApplicationCommandDependencies = Readonly<{
@@ -359,7 +405,14 @@ const registerCoreSettingsApplicationCommands = (
         requireLocalCaller(callerContext, 'settings:set-package-mirror')
         return dependencies.service.setPackageMirror(args[0])
       },
-      'settings:validate-provider': ({ args }) => dependencies.service.validateProvider(args[0])
+      'settings:validate-provider': ({ args }) => dependencies.service.validateProvider(args[0]),
+      'settings:xai-oauth-start': () => dependencies.service.startXaiSignIn(),
+      'settings:xai-oauth-complete': ({ args }) =>
+        dependencies.service.completeXaiSignIn(args[0].providerId, args[0].session),
+      'settings:xai-oauth-refresh': ({ args }) =>
+        dependencies.service.refreshXaiOauth(args[0].providerId),
+      'settings:xai-oauth-status': ({ args }) => dependencies.service.xaiOauthStatus(args[0].providerId),
+      'settings:xai-oauth-logout': ({ args }) => dependencies.service.logoutXai(args[0].providerId)
     })
     return scope.complete()
   } catch (error) {

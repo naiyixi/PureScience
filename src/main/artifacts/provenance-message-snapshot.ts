@@ -72,6 +72,7 @@ const projectParts = (node: PersistedMessageNode): ProvenanceMessagePart[] | und
   const parts = node.parts?.flatMap((part): ProvenanceMessagePart[] => {
     if (part.type === 'text') return [{ type: 'text', text: part.text }]
     if (part.type === 'skill') return [{ type: 'skill', name: part.name }]
+    if (part.type === 'session') return [{ type: 'session', id: part.id, title: part.title }]
     return [
       {
         type: 'artifact',

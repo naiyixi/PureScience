@@ -67,6 +67,7 @@ const renderItem = async (
         onPreviewUploadAttachment={noop}
         onOpenSkillMention={noop}
         onPreviewMentionArtifact={noop}
+        onOpenSessionMention={noop}
         canEditMessage={options.canEditMessage ?? false}
         showUserActions={options.showUserActions}
         onSendEditedMessage={options.onSendEditedMessage}

@@ -620,6 +620,14 @@ const WorkspaceMessageScrollerImpl = ({
     useSettingsStore.getState().openSettingsToSkill(skillId)
   }
 
+  // # session-reference pill navigation: switch the workspace to the referenced session.
+  const onOpenSessionMention = (sessionId: string): void => {
+    const selectSession = useSessionStore.getState().selectSession
+    if (useSessionStore.getState().sessions.some((session) => session.id === sessionId)) {
+      selectSession(sessionId)
+    }
+  }
+
   // Toggles a whole adjacent tool-activity group without affecting other sessions.
   const toggleActivityGroup = (groupId: string): void => {
     setCollapsedActivityGroupState((currentState) => {
@@ -773,6 +781,7 @@ const WorkspaceMessageScrollerImpl = ({
                       onPreviewUploadAttachment,
                       onOpenSkillMention,
                       onPreviewMentionArtifact,
+                      onOpenSessionMention,
                       onSendEditedMessage,
                       canBranchInNewSession,
                       onBranchInNewSession,
