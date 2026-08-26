@@ -84,7 +84,9 @@ class ConnectorPermissionBroker {
       availableScopes
     })
     if (decision === 'deny' || !availableScopes.includes(decision)) {
-      throw new Error(`tool call denied by user: ${request.connector}/${request.method}`)
+      throw new Error(
+        `tool call denied by user: ${request.connector}/${request.method}. You do not have authorization for this operation and must not retry or approximate it through another route in the current turn.`
+      )
     }
     if (decision === 'once') return undefined
 

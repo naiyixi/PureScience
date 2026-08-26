@@ -10,6 +10,7 @@ import {
   dialogOverlayClassName,
   dialogPanelClassName
 } from '@/components/ui/dialog-chrome'
+import { useLanguage } from '@/i18n'
 import { useRetainedDialogValue } from '@/components/ui/use-retained-dialog-value'
 import { cn } from '@/lib/utils'
 import { useUpdateStore } from '@/stores/update-store'
@@ -20,6 +21,7 @@ import { formatBytes } from '../../../shared/update'
 // before a large download. Opened from the external capsule and the settings About section. When the
 // manifest carries no notes, it links to the matching GitHub release so the user can still read them.
 const UpdateDialog = (): React.JSX.Element | null => {
+  const { t, lang } = useLanguage()
   const status = useUpdateStore((state) => state.status)
   const isOpen = useUpdateStore((state) => state.isDialogOpen)
   const closeDialog = useUpdateStore((state) => state.closeDialog)
@@ -68,24 +70,30 @@ const UpdateDialog = (): React.JSX.Element | null => {
               </Dialog.Close>
             </div>
 
-            {dialogStatus.notes ? (
-              <div className="mt-3">
-                <p className="mb-1 text-xs font-medium text-muted-foreground">What&apos;s new</p>
-                <div className="max-h-96 overflow-auto rounded-lg bg-muted px-3 py-2">
-                  <AgentMarkdown content={dialogStatus.notes} />
+            {(() => {
+              const notes =
+                typeof dialogStatus.notes === 'string'
+                  ? dialogStatus.notes
+                  : (dialogStatus.notes?.[lang] ?? dialogStatus.notes?.zh ?? '')
+              return notes ? (
+                <div className="mt-3">
+                  <p className="mb-1 text-xs font-medium text-muted-foreground">{t('update.whatsNew')}</p>
+                  <div className="max-h-96 overflow-auto rounded-lg bg-muted px-3 py-2">
+                    <AgentMarkdown content={notes} />
+                  </div>
+                  <ExternalTextLink href={releaseUrl} className="mt-2 text-xs">
+                    {t('update.viewFullNotes')}
+                  </ExternalTextLink>
                 </div>
-                <ExternalTextLink href={releaseUrl} className="mt-2 text-xs">
-                  View full release notes on GitHub
-                </ExternalTextLink>
-              </div>
-            ) : (
-              <div className="mt-3 rounded-lg border border-border bg-muted/50 px-3 py-3 text-xs text-muted-foreground">
-                Release notes aren&apos;t available in-app for this version.{' '}
-                <ExternalTextLink href={releaseUrl} className="text-xs">
-                  View release notes on GitHub
-                </ExternalTextLink>
-              </div>
-            )}
+              ) : (
+                <div className="mt-3 rounded-lg border border-border bg-muted/50 px-3 py-3 text-xs text-muted-foreground">
+                  {t('update.notesUnavailable')}{' '}
+                  <ExternalTextLink href={releaseUrl} className="text-xs">
+                    {t('update.viewNotes')}
+                  </ExternalTextLink>
+                </div>
+              )
+            })()}
 
             {isDownloading ? (
               <div className="mt-4">

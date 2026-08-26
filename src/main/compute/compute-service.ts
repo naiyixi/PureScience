@@ -700,7 +700,8 @@ export class ComputeService {
       ) as Error & { computeCallError: ComputeCallError }
       err.computeCallError = {
         error_code: 'approval_denied',
-        message: `Approval denied for call_command on ${host.displayName}.`,
+        message:
+          `Approval denied for call_command on ${host.displayName}. You do not have authorization for this operation and must not retry or approximate it through another route in the current turn.`,
         retry_after_user_action: false
       }
       throw err
@@ -864,7 +865,7 @@ export class ComputeService {
 
       if (decision === 'deny') {
         const err = new Error(
-          `Download approval was denied for "${remotePath}" on host "${host.displayName}".`
+          `Download approval was denied for "${remotePath}" on host "${host.displayName}". You do not have authorization for this operation and must not retry or approximate it through another route in the current turn.`
         ) as Error & { code: string }
         err.code = 'download_denied'
         throw err
