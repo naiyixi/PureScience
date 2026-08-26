@@ -14,7 +14,8 @@ import { WorkspaceMessageItem } from './WorkspaceMessageItem'
 
 // Keep the transcript row and markdown surface as thin wrappers so the test never loads Shiki.
 vi.mock('@/components/ui/message-scroller', () => ({
-  MessageScrollerItem: ({ children }: PropsWithChildren): JSX.Element => <div>{children}</div>
+  MessageScrollerItem: ({ children }: PropsWithChildren): JSX.Element => <div>{children}</div>,
+  useMessageScrollerVisibility: () => ({ currentAnchorId: null, visibleMessageIds: [] })
 }))
 
 vi.mock('@/components/streamdown/AgentMarkdown', () => ({

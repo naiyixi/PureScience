@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { act } from 'react'
+import type React from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import type { PropsWithChildren } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -8,7 +9,8 @@ import type { ToolActivity } from '@/stores/session-store'
 import { WorkspacePlanActivityRecord } from './WorkspacePlanActivityRecord'
 
 vi.mock('@/components/ui/message-scroller', () => ({
-  MessageScrollerItem: ({ children }: PropsWithChildren) => <div>{children}</div>
+  MessageScrollerItem: ({ children }: PropsWithChildren): React.JSX.Element => <div>{children}</div>,
+  useMessageScrollerVisibility: () => ({ currentAnchorId: null, visibleMessageIds: [] })
 }))
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true

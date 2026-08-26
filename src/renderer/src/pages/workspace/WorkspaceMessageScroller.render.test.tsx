@@ -28,6 +28,10 @@ vi.mock('@/components/ui/message-scroller', () => {
     </div>
   )
   const Button = (): JSX.Element => <button type="button">Scroll to end</button>
+  const useMessageScrollerVisibility = (): { currentAnchorId: string | null; visibleMessageIds: string[] } => ({
+    currentAnchorId: null,
+    visibleMessageIds: []
+  })
 
   return {
     MessageScrollerProvider: Wrapper,
@@ -35,7 +39,8 @@ vi.mock('@/components/ui/message-scroller', () => {
     MessageScrollerViewport: Wrapper,
     MessageScrollerContent: Wrapper,
     MessageScrollerItem: Item,
-    MessageScrollerButton: Button
+    MessageScrollerButton: Button,
+    useMessageScrollerVisibility
   }
 })
 
