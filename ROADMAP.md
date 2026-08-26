@@ -72,7 +72,7 @@ That is an audit milestone, not the finish line for reproducibility. PureScience
 - ✅ A read-only session notebook viewer, and ACP reconnect-and-continue (Resume) on an abnormal disconnect
 - ✅ A guided first-run onboarding wizard, split into focused environment, agent, provider, notebook, and location steps, that checks and provisions the runtime environment automatically (app-managed Claude install with no Node/npm required), with background health checks and environment repair moved into Settings
 
-**Still open — several foundations are already shipping, but these broader targets remain:**
+Still open — several foundations are already shipping, but these broader targets remain:
 
 - 🟡 A backend-independent universal model gateway; multi-provider selection ships today (see below), and the OpenCode and Codex backends now reach OpenAI-compatible and Responses endpoints alongside Anthropic-compatible ones — but provider choice is still gated on the selected framework's endpoint compatibility, and unified per-agent routing across arbitrary native protocols is not yet built
 - 🟡 Deterministic provenance replay — immutable artifact versions and audit evidence ship today, while portable environment locks, full-fidelity Session replay, and one-click reconstruction remain future work
@@ -82,6 +82,23 @@ That is an audit milestone, not the finish line for reproducibility. PureScience
 - 🟡 Security hardening beyond scoped permissions — durable scoped grants, OS-backed encrypted secret storage, and workspace containment for app-owned file operations ship today; agent network sandboxing, user-configurable directory grants, and centralized credential inventory and rotation are not built yet
 - 🟡 A shared specialist commons — reusable personal specialist agent profiles with scoped capabilities ship today (see above); cross-machine discovery, forking, and sharing are not built yet
 - ⬜ Spatial annotations, editable scientific viewers, and automatic skill-aware context discovery
+
+### Competitive gaps vs. aipoch/open-science v0.20.0 (2026-08-26 tracking)
+
+> Direct competitor aipoch/open-science ships v0.20.0 on 2026-08-25 with nightly builds and ~1,320 commits. PureScience is at v0.14.3. This section tracks capabilities the competitor ships that we do not yet — kept here so the roadmap stays honest and the gaps are visible, not hidden. Full analysis: [`docs/competitive-tracking/aipoch-v0.20-gap.md`](docs/competitive-tracking/aipoch-v0.20-gap.md).
+
+- 🔴 **Cross-session references (`#`)** — insert a clickable chip in the composer giving the agent read-only access to another session's transcript, so one conversation can build on another (P0).
+- 🔴 **Side-chat advisories reaching the main agent mid-turn** — follow-up messages sent while a main turn is running now route through each framework's native follow-up channel (P0).
+- 🔴 **Token usage dashboard** — period summaries and activity charts (P1).
+- 🔴 **xAI (Grok) OAuth subscription provider** — one subscription account driving Grok across Claude Code's Anthropic protocol, OpenCode's Chat Completions, and Codex's Responses (P1).
+- 🔴 **GLM-5.3 / GLM-4.5-Air** on Zhipu (P1).
+- 🔴 **Scenario models card** — one Settings surface unifying the subagent, reviewer, and vision model policies (P1).
+- 🔴 **Notebook cross-run dependency tracking** (tree-sitter WASM) — later outputs marked stale when upstream variables changed (P1).
+- 🟡 **Marketplace governance** — published specialist packages read-only, SemVer baseline updates, unified install/update/uninstall lifecycle (we ship marketplace install; governance still open).
+- 🔴 **Context-compaction boundaries + SQLite session-metadata indexing** — summary-first startup, search by session number (P2).
+- 🔴 **Additional UI localizations** — Korean / French / Russian shipped by the competitor (P2).
+
+We do **not** claim parity on the above. Our differentiation lives in areas the competitor does not yet cover (35+ built-in science skills incl. BioNexus pack, 12,452 green tests + release certification, seven fully re-verified acceptance tests, China deployability with domestic models + HGR-compliant local execution, and full zh/en i18n). See the gap analysis linked above for prioritized action items.
 
 ## Capability Map
 
