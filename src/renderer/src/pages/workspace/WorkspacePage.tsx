@@ -67,6 +67,10 @@ import { DownloadSessionArtifactsDialog } from './DownloadSessionArtifactsDialog
 import { FilePreviewDialog } from './FilePreviewDialog'
 import { PreviewPanel } from './PreviewPanel'
 import { SideChatPanel } from './SideChatPanel'
+
+// Draft undo/redo coalescing window (ms) and stack depth cap.
+const DRAFT_UNDO_COALESCE_MS = 800
+const DRAFT_HISTORY_LIMIT = 100
 import { RenameSessionDialog } from './RenameSessionDialog'
 import { SessionNotebookDialog } from './SessionNotebookDialog'
 import { JobDetailModal } from '@/components/JobDetailModal'
@@ -558,11 +562,20 @@ const WorkspacePage = ({
   // Auto-trigger an analysis turn when a remote job finishes (design §11).
   useJobAnalysisEffect({ enabled: isSessionPersistenceReady, sendMessage })
   const [draftDoc, setDraftDoc] = useState<ComposerDoc>(emptyDoc)
+  const draftDocRef = useRef<ComposerDoc>(emptyDoc)
+  useEffect(() => {
+    draftDocRef.current = draftDoc
+  }, [draftDoc])
   const [historySkillCatalogReady, setHistorySkillCatalogReady] = useState(
     () => catalogSkills.length > 0 || !window.api?.settings?.listSkills
   )
   const previousDraftKeyRef = useRef<string>(currentDraftKey)
   const composerHistoryRef = useRef<Record<string, ComposerHistoryNavigation>>({})
+  // Draft undo/redo stacks (mirrors open-science unified draft history). Consecutive edits within
+  // the coalescing window collapse into one undo step so typing does not flood the stack.
+  const draftUndoRef = useRef<ComposerDoc[]>([])
+  const draftRedoRef = useRef<ComposerDoc[]>([])
+  const lastDraftEditAtRef = useRef(0)
   const [historyBrowsingKey, setHistoryBrowsingKey] = useState<string | undefined>(undefined)
   const [historyStatus, setHistoryStatus] = useState('')
   const clearComposerHistory = useCallback(
@@ -696,10 +709,54 @@ const WorkspacePage = ({
     (doc: ComposerDoc): void => {
       clearComposerHistory(previousDraftKeyRef.current)
       markComposerDraftChanged()
+      // Coalesce rapid typing into one undo step: push only when the previous edit is older than
+      // the coalescing window or the doc actually diverges structurally from the stack top.
+      const now = Date.now()
+      const coalescing = now - lastDraftEditAtRef.current < DRAFT_UNDO_COALESCE_MS
+      lastDraftEditAtRef.current = now
+      const top = draftUndoRef.current[draftUndoRef.current.length - 1]
+      if (!coalescing || !top || JSON.stringify(top.nodes) !== JSON.stringify(doc.nodes)) {
+        const previous = draftDocRef.current
+        if (previous && JSON.stringify(previous.nodes) !== JSON.stringify(doc.nodes)) {
+          draftUndoRef.current.push(previous)
+          if (draftUndoRef.current.length > DRAFT_HISTORY_LIMIT) {
+            draftUndoRef.current.shift()
+          }
+        }
+        draftRedoRef.current = []
+      }
       setDraftDoc(doc)
     },
-    [clearComposerHistory, markComposerDraftChanged, previousDraftKeyRef, setDraftDoc]
+    [
+      clearComposerHistory,
+      markComposerDraftChanged,
+      previousDraftKeyRef,
+      setDraftDoc,
+      draftDocRef
+    ]
   )
+
+  // Undo/redo restore previous draft states (Cmd+Z / Cmd+Shift+Z) — completes the unified draft
+  // history shared by text, pasted text, and attachments (open-science #1699).
+  const handleComposerUndo = useCallback((): void => {
+    const previous = draftUndoRef.current.pop()
+    if (!previous) return
+    const current = draftDocRef.current
+    draftRedoRef.current.push(current)
+    clearComposerHistory(previousDraftKeyRef.current)
+    markComposerDraftChanged()
+    setDraftDoc(previous)
+  }, [clearComposerHistory, markComposerDraftChanged, previousDraftKeyRef, setDraftDoc])
+
+  const handleComposerRedo = useCallback((): void => {
+    const next = draftRedoRef.current.pop()
+    if (!next) return
+    const current = draftDocRef.current
+    draftUndoRef.current.push(current)
+    clearComposerHistory(previousDraftKeyRef.current)
+    markComposerDraftChanged()
+    setDraftDoc(next)
+  }, [clearComposerHistory, markComposerDraftChanged, previousDraftKeyRef, setDraftDoc])
   const [attachments, setAttachments] = useState<UploadedAttachment[]>([])
   const [attachmentTransfers, setAttachmentTransfers] = useState<ComposerUploadTransfer[]>([])
   const attachmentTransfersRef = useRef<ComposerUploadTransfer[]>([])
@@ -2575,6 +2632,8 @@ const WorkspacePage = ({
             canChangePermissionProfile={canChangePermissionProfile}
             autoReviewEnabled={activeAutoReviewEnabled}
             onDraftDocChange={changeComposerDraftDoc}
+            onComposerUndo={handleComposerUndo}
+            onComposerRedo={handleComposerRedo}
             isHistoryBrowsing={historyBrowsingKey === currentDraftKey}
             historyStatus={historyStatus}
             onNavigateHistory={navigateComposerHistory}
