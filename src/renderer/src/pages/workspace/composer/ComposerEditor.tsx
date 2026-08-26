@@ -44,6 +44,9 @@ type ComposerEditorProps = {
   historyStatus?: string
   // Id of the active session; excluded from the # picker so a session cannot reference itself.
   sessionId?: string
+  // Draft undo/redo (Cmd/Ctrl+Z and Cmd/Ctrl+Shift+Z) — completed by the parent's draft history.
+  onUndo?: () => void
+  onRedo?: () => void
   onNavigateHistory?: (direction: 'previous' | 'next') => boolean
 }
 
@@ -166,6 +169,8 @@ export const ComposerEditor = ({
   historyStatus = '',
   // Id of the active session; excluded from the # picker so a session cannot reference itself.
   sessionId,
+  onUndo,
+  onRedo,
   onNavigateHistory
 }: ComposerEditorProps): React.JSX.Element => {
   const editorRef = useRef<HTMLDivElement>(null)
@@ -221,6 +226,18 @@ export const ComposerEditor = ({
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>): void => {
     if (disabled) return
+    // Draft undo/redo: Cmd/Ctrl+Z and Cmd/Ctrl+Shift+Z (never during IME composition).
+    if ((event.metaKey || event.ctrlKey) && !event.altKey && !composingRef.current) {
+      if (event.key.toLowerCase() === 'z') {
+        const redo = event.shiftKey
+        if (redo ? onRedo : onUndo) {
+          event.preventDefault()
+          if (redo) onRedo?.()
+          else onUndo?.()
+          return
+        }
+      }
+    }
     // While either mention popup is open it owns Enter/arrow keys; leave them to its document listener.
     if (mention.active || artifactMention.active || sessionMention.active) return
     if (

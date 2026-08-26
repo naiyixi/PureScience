@@ -181,6 +181,8 @@ type Overrides = Partial<{
   disabled: boolean
   isHistoryBrowsing: boolean
   historyStatus: string
+  onUndo: () => void
+  onRedo: () => void
   onNavigateHistory: (direction: 'previous' | 'next') => boolean
 }>
 
@@ -197,6 +199,8 @@ const renderEditor = (overrides: Overrides = {}): void => {
         ariaLabel="Ask anything"
         isHistoryBrowsing={overrides.isHistoryBrowsing}
         historyStatus={overrides.historyStatus}
+        onUndo={overrides.onUndo}
+        onRedo={overrides.onRedo}
         onNavigateHistory={overrides.onNavigateHistory}
       />
     )
@@ -642,5 +646,34 @@ describe('ComposerEditor', () => {
 
     expect(editor().querySelector('[data-mention-type="artifact"]')).toBeNull()
     expect(onDocChange).toHaveBeenLastCalledWith(emptyDoc)
+  })
+
+  it('triggers undo on Cmd+Z and redo on Cmd+Shift+Z', () => {
+    const onUndo = vi.fn()
+    const onRedo = vi.fn()
+    renderEditor({ onUndo, onRedo, doc: { nodes: [{ type: 'text', text: 'hello' }] } })
+
+    dispatchKey(editor(), 'z', { metaKey: true })
+    expect(onUndo).toHaveBeenCalledTimes(1)
+    expect(onRedo).not.toHaveBeenCalled()
+
+    dispatchKey(editor(), 'z', { metaKey: true, shiftKey: true })
+    expect(onRedo).toHaveBeenCalledTimes(1)
+    expect(onUndo).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not fire undo during IME composition', () => {
+    const onUndo = vi.fn()
+    renderEditor({ onUndo, doc: { nodes: [{ type: 'text', text: 'hi' }] } })
+
+    // Simulate composition: Enter is swallowed, and Cmd+Z must not undo mid-composition.
+    const editorEl = editor()
+    act(() => {
+      editorEl.dispatchEvent(
+        new CompositionEvent('compositionstart', { bubbles: true })
+      )
+    })
+    dispatchKey(editorEl, 'z', { metaKey: true })
+    expect(onUndo).not.toHaveBeenCalled()
   })
 })

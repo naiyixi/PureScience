@@ -154,6 +154,8 @@ type ConversationPanelProps = {
   // Auto-review toggle: whether the current session has auto-review enabled (default false).
   autoReviewEnabled: boolean
   onDraftDocChange: (doc: ComposerDoc) => void
+  onComposerUndo?: () => void
+  onComposerRedo?: () => void
   isHistoryBrowsing?: boolean
   historyStatus?: string
   onNavigateHistory?: (direction: 'previous' | 'next') => boolean
@@ -238,6 +240,8 @@ const ConversationPanel = ({
   canChangePermissionProfile,
   autoReviewEnabled,
   onDraftDocChange,
+  onComposerUndo,
+  onComposerRedo,
   isHistoryBrowsing = false,
   historyStatus = '',
   onNavigateHistory,
@@ -812,6 +816,8 @@ const ConversationPanel = ({
                           ariaLabel={t('ws.askAnything')}
                           allowedSkillIds={allowedSkillIds}
                           sessionId={activeSession?.id}
+                          onUndo={onComposerUndo}
+                          onRedo={onComposerRedo}
                           isHistoryBrowsing={isHistoryBrowsing}
                           historyStatus={historyStatus}
                           onNavigateHistory={onNavigateHistory}
