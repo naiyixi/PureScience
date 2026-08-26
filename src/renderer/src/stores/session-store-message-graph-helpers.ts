@@ -144,6 +144,17 @@ export const createTitleFromMessage = (content: string): string => {
   return normalizedTitle.length > 48 ? `${normalizedTitle.slice(0, 48)}...` : normalizedTitle
 }
 
+// A longer summary for self-describing sessions: strips markdown-ish noise and keeps up to 160
+// characters so session lists can show what a conversation is about (open-science #1721).
+export const createDescriptionFromMessage = (content: string): string => {
+  const normalized = content
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/[\s]+/g, ' ')
+    .trim()
+  if (!normalized) return ''
+  return normalized.length > 160 ? `${normalized.slice(0, 160)}...` : normalized
+}
+
 export const createBranchTitleFromMessage = (content: string): string =>
   content.replace(/\s+/g, ' ').trim()
 

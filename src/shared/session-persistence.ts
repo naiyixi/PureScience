@@ -246,6 +246,9 @@ export type PersistedChatSession = {
   // Owning project. On load this is authoritative from the file's directory (sessions/<projectId>/).
   projectId: string
   title: string
+  // Optional user/auto-generated summary shown in session lists (open-science self-describing
+  // sessions). Absent on older files; falls back to the title only.
+  description?: string
   cwd: string
   status: PersistedSessionStatus
   agentFrameworkId?: AgentFrameworkId

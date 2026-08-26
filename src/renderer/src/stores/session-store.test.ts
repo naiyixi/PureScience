@@ -2586,6 +2586,7 @@ describe('session store public contract', () => {
         'setFixLoopActive',
         'setPermissionPending',
         'setPermissionProfile',
+        'setSessionDescription',
         'setSessionSpecialistId',
         'togglePinned',
         'truncateSessionFromMessage',

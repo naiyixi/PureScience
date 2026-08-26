@@ -71,6 +71,7 @@ type SessionStore = SessionStoreData &
     // disabled for this session; when false (loop ended or cancelled), send is re-enabled.
     setFixLoopActive: (sessionId: string, active: boolean) => void
     renameSession: (sessionId: string, title: string) => void
+    setSessionDescription: (sessionId: string, description: string) => void
     deleteSession: (sessionId: string) => void
     removeSessionsForProject: (projectId: string) => void
   }
@@ -342,6 +343,23 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
           ? {
               ...session,
               title: trimmedTitle,
+              updatedAt: Date.now()
+            }
+          : session
+      )
+    }))
+  },
+
+  // Updates a session's summary description (blank clears it).
+  setSessionDescription: (sessionId, description) => {
+    const trimmed = description.trim()
+
+    set((state) => ({
+      sessions: state.sessions.map((session) =>
+        session.id === sessionId
+          ? {
+              ...session,
+              description: trimmed.length > 0 ? trimmed : undefined,
               updatedAt: Date.now()
             }
           : session

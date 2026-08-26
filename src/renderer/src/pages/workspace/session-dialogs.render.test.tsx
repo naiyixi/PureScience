@@ -104,7 +104,9 @@ describe('workspace session dialogs behavior wiring', () => {
     const tree = RenameSessionDialog({
       session: createSession(),
       renameDraft: 'Notebook review',
+      descriptionDraft: '',
       onRenameDraftChange,
+      onDescriptionDraftChange: vi.fn(),
       onCancel,
       onConfirmRename
     })
@@ -141,7 +143,9 @@ describe('workspace session dialogs behavior wiring', () => {
     const tree = RenameSessionDialog({
       session: createSession(),
       renameDraft: 'Notebook review',
+      descriptionDraft: '',
       onRenameDraftChange: vi.fn(),
+      onDescriptionDraftChange: vi.fn(),
       onCancel,
       onConfirmRename: vi.fn()
     })
