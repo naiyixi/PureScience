@@ -960,6 +960,8 @@ export const en: Record<ZhKey, string> = {
   'ws.contextWindowDescription': 'Current composition and terminal-run history for the active branch. Category values are estimates.',
   'ws.contextClose': 'Close context window',
   'ws.contextNoHistory': 'No run history yet',
+  'ws.contextCallsTitle': 'Per-call usage',
+  'ws.contextCallsHint': 'Input / cache / output token share per model call, newest first',
   'ws.contextNoHistoryHint': 'A bar appears after a run completes, is interrupted, or ends with an error. Older sessions remain compatible and may not contain history data.',
   'ws.contextDetails': 'Details',
   'ws.marketplaceLibrary': 'Specialist library',

@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dialog-chrome'
 import { cn } from '@/lib/utils'
 import { useSettingsStore } from '@/stores/settings-store'
-import type { ChatSession } from '@/stores/session-store'
+import type { ChatMessage, ChatSession } from '@/stores/session-store'
 import {
   Activity,
   AlertCircle,
@@ -67,6 +67,96 @@ const formatDateTime = (timestamp: number): string =>
     hour: 'numeric',
     minute: '2-digit'
   }).format(timestamp)
+
+// Per-call usage insights (open-science #1718): every agent message with reported token usage
+// becomes one stacked input/cache/output bar, newest first, so a turn's context-window share is
+// visible at a glance. Uses the persisted turn-level usage the ACP adapters already report.
+type UsageCallRecord = Readonly<{
+  id: string
+  createdAt: number
+  inputTokens: number
+  cacheTokens: number
+  outputTokens: number
+  turnCount?: number
+}>
+
+const selectUsageCallRecords = (messages: ChatMessage[] | undefined): UsageCallRecord[] => {
+  if (!messages) return []
+  const records: UsageCallRecord[] = []
+  for (const message of messages) {
+    if (message.role !== 'agent' || !message.turnUsage) continue
+    const { inputTokens, cacheTokens, outputTokens, turnCount } = message.turnUsage
+    if (inputTokens <= 0 && cacheTokens <= 0 && outputTokens <= 0) continue
+    records.push({
+      id: message.id,
+      createdAt: message.createdAt,
+      inputTokens,
+      cacheTokens,
+      outputTokens,
+      turnCount
+    })
+  }
+  return records.sort((a, b) => b.createdAt - a.createdAt)
+}
+
+const UsageCallsSection = ({
+  messages
+}: {
+  messages: ChatMessage[] | undefined
+}): React.JSX.Element | null => {
+  const { t } = useLanguage()
+  const records = useMemo(() => selectUsageCallRecords(messages), [messages])
+  if (records.length === 0) return null
+
+  const maxTotal = Math.max(
+    ...records.map(
+      (record) => record.inputTokens + record.cacheTokens + record.outputTokens
+    ),
+    1
+  )
+
+  return (
+    <section className="space-y-3" data-slot="context-window-calls">
+      <div>
+        <h3 className="text-sm font-medium text-foreground">{t('ws.contextCallsTitle')}</h3>
+        <p className="mt-0.5 text-xs text-muted-foreground">{t('ws.contextCallsHint')}</p>
+      </div>
+      <div className="space-y-2">
+        {records.slice(0, 50).map((record) => {
+          const total = record.inputTokens + record.cacheTokens + record.outputTokens
+          return (
+            <div key={record.id} className="group/call">
+              <div className="flex items-baseline justify-between gap-2 text-xs">
+                <span className="text-muted-foreground">{formatDateTime(record.createdAt)}</span>
+                <span className="text-foreground">
+                  {formatTokens(total)} tokens
+                  {record.turnCount ? ` · ${record.turnCount} model turn${record.turnCount === 1 ? '' : 's'}` : ''}
+                </span>
+              </div>
+              <div className="mt-1 flex h-3 w-full overflow-hidden rounded-full bg-bg-200">
+                <div
+                  className="h-full bg-amber-400"
+                  style={{ width: `${(record.inputTokens / maxTotal) * 100}%` }}
+                  title={`Input ${formatTokens(record.inputTokens)}`}
+                />
+                <div
+                  className="h-full bg-cyan-400"
+                  style={{ width: `${(record.cacheTokens / maxTotal) * 100}%` }}
+                  title={`Cache ${formatTokens(record.cacheTokens)}`}
+                />
+                <div
+                  className="h-full bg-emerald-500"
+                  style={{ width: `${(record.outputTokens / maxTotal) * 100}%` }}
+                  title={`Output ${formatTokens(record.outputTokens)}`}
+                />
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
 
 // Catalog keys stay unresolved at module scope so changing locale updates every render site.
 const categoryPresentation: Record<AcpContextUsageCategoryKey, { labelKey: TranslationKey; color: string }> = {
@@ -669,6 +759,7 @@ const ContextWindowDialog = ({
                   </div>
                 </div>
               )}
+              {messages ? <UsageCallsSection messages={messages} /> : null}
             </div>
           </div>
         </Dialog.Content>
