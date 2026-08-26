@@ -1,5 +1,5 @@
 ---
-name: protein-language-models
+name: bionexus-protein-language-models
 description: Only if the user explicitly asked for a grade-C heuristic or ESM-2 with BIONEXUS_ALLOW_ESM=1. Otherwise BLOSUM62 under its own name; never PP3. Not a default analysis skill.
 ---
 

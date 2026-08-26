@@ -46,6 +46,7 @@ import {
   docArtifactCount,
   docIsEmpty,
   docToArtifactRefs,
+  docToSessionRefs,
   docToSkillIds,
   docToText,
   emptyDoc,
@@ -1750,6 +1751,8 @@ const WorkspacePage = ({
           projectName: activeSession?.projectId ?? scopedProjectId,
           permissionProfile: activePermissionProfile,
           forcedSkillIds,
+          // # session references; the agent gets read-only access to their transcripts this turn.
+          sessionRefs: docToSessionRefs(doc),
           ...(options.turnIntent ? { turnIntent: options.turnIntent } : {}),
           // New-conversation only: the UUID is forwarded to createSession; main process reads latest Profile.
           specialistId: draftSpecialistId

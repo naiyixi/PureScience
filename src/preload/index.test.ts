@@ -576,7 +576,7 @@ describe('preload bridge — runtime renderer contract catalog', () => {
   it('routes all 189 owned methods through their cataloged Electron channels', async () => {
     const requestContracts = runtimeContracts.filter(({ kind }) => kind === 'method')
 
-    expect(runtimeContracts).toHaveLength(191)
+    expect(runtimeContracts).toHaveLength(196)
 
     for (const contract of requestContracts) {
       invokeMock.mockClear()

@@ -1,5 +1,5 @@
 ---
-name: multiome-integration
+name: bionexus-multiome-integration
 description: Only if the user explicitly asked for a grade-C multiome sketch. ExtraTrees co-expression, not SCENIC+. Not a default analysis skill.
 ---
 

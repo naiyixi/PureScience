@@ -1,5 +1,5 @@
 ---
-name: variant-interpretation
+name: bionexus-variant-interpretation
 description: Only if the user explicitly asked for an ACMG combination calculator on caller-supplied codes. No CLIA, no auto-PM2/PP3. Not a default analysis skill.
 ---
 

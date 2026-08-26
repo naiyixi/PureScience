@@ -77,6 +77,9 @@ type SendWorkspaceMessageInput = {
   historyReplayDescriptor?: HistoryReplayDescriptor
   // Skills the user picked in the composer; force-loaded and nudged for this turn only.
   forcedSkillIds?: string[]
+  // Sessions the user referenced with # in the composer; the agent receives read-only access to
+  // their visible transcripts for this turn.
+  sessionRefs?: { id: string; title: string }[]
   // Existing files referenced via `@` mentions; attached to the prompt as content blocks.
   referencedArtifacts?: FileReference[]
   // Structured mention segments of the draft, persisted so the sent bubble renders styled pills.

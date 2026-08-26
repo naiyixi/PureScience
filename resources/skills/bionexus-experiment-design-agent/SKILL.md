@@ -1,5 +1,5 @@
 ---
-name: experiment-design-agent
+name: bionexus-experiment-design-agent
 description: Deprecated outline helper. Use only if the user asked for a 5-phase study outline. Not analysis. Do not use as a default skill.
 ---
 

@@ -1,5 +1,5 @@
 ---
-name: knowledge-graph-augmentation
+name: bionexus-knowledge-graph-augmentation
 description: Deprecated in-memory graph over caller-supplied nodes. Not GraphRAG. Not a default skill.
 ---
 

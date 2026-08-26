@@ -1,5 +1,5 @@
 ---
-name: clinical-cohort-analysis
+name: bionexus-clinical-cohort-analysis
 description: Only if the user explicitly asked for a grade-C heuristic. KM/log-rank on caller arrays; Cox only with lifelines; NNLS only with a signature. Not a default analysis skill. Does not download DepMap.
 ---
 

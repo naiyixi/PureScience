@@ -15,11 +15,15 @@ export type ComposerNode =
   | { type: 'text'; text: string }
   | { type: 'skill'; id: string; name: string }
   | ComposerArtifactNode
+  | { type: 'session'; id: string; title: string }
 
 export type ComposerDoc = { nodes: ComposerNode[] }
 
 // Max artifact `@` mentions per message, mirroring the composer upload attachment cap.
 export const MAX_COMPOSER_ARTIFACT_MENTIONS = 10
+
+// Max `#` session references per message, keeping a reference list focused.
+export const MAX_COMPOSER_SESSION_REFS = 3
 
 // Shared canonical empty document.
 export const emptyDoc: ComposerDoc = { nodes: [] }
@@ -28,6 +32,7 @@ export const emptyDoc: ComposerDoc = { nodes: [] }
 const nodeToText = (node: ComposerNode): string => {
   if (node.type === 'text') return node.text
   if (node.type === 'skill') return `/${node.name}`
+  if (node.type === 'session') return `#${node.title}`
   return `@${node.name}`
 }
 
@@ -41,6 +46,22 @@ export const docToSkillIds = (doc: ComposerDoc): string[] => {
     if (node.type === 'skill' && !ids.includes(node.id)) ids.push(node.id)
   }
   return ids
+}
+
+// Count # session references in the document (for the composer's per-message cap).
+export const docSessionCount = (doc: ComposerDoc): number =>
+  doc.nodes.filter((node) => node.type === 'session').length
+
+// Collect # session references in document order, dropping duplicates.
+export const docToSessionRefs = (doc: ComposerDoc): { id: string; title: string }[] => {
+  const refs: { id: string; title: string }[] = []
+  const seen = new Set<string>()
+  for (const node of doc.nodes) {
+    if (node.type !== 'session' || seen.has(node.id)) continue
+    seen.add(node.id)
+    refs.push({ id: node.id, title: node.title })
+  }
+  return refs
 }
 
 // Collect referenced artifacts in document order, de-duplicated by path so the runtime attaches
@@ -113,6 +134,7 @@ export const docFromMessageParts = (parts: MessagePart[]): ComposerDoc => {
   const nodes: ComposerNode[] = parts.map((part) => {
     if (part.type === 'text') return { type: 'text', text: part.text }
     if (part.type === 'skill') return { type: 'skill', id: part.id, name: part.name }
+    if (part.type === 'session') return { type: 'session', id: part.id, title: part.title }
     if (part.source === 'linked-folder') {
       return {
         type: 'artifact',
@@ -145,6 +167,7 @@ export const docIsEmpty = (doc: ComposerDoc): boolean =>
 // Chip markers on the contenteditable spans.
 const SKILL_MENTION_TYPE = 'skill'
 const ARTIFACT_MENTION_TYPE = 'artifact'
+const SESSION_MENTION_TYPE = 'session'
 
 // Read one artifact chip element back into a node; returns null when required attributes are missing.
 const artifactNodeFromEl = (el: HTMLElement): ComposerArtifactNode | null => {
@@ -196,6 +219,11 @@ export const domToDoc = (root: HTMLElement): ComposerDoc => {
         const node = artifactNodeFromEl(el)
         if (node) nodes.push(node)
       }
+      if (mentionType === SESSION_MENTION_TYPE) {
+        const id = el.getAttribute('data-session-id')
+        const title = el.getAttribute('data-session-title') ?? ''
+        if (id !== null) nodes.push({ type: 'session', id, title })
+      }
     }
   }
   return nodes.length === 0 ? emptyDoc : { nodes }
@@ -219,6 +247,20 @@ export const createSkillChip = (node: { id: string; name: string }): HTMLSpanEle
   // Blue mention pill using the dedicated skill-chip token.
   span.className = `${CHIP_BASE_CLASS} bg-skill-chip text-skill-chip-foreground`
   span.textContent = `/${node.name}`
+  return span
+}
+
+// Render a session chip span: an atomic, non-editable purple mention token referencing another
+// session by id; clicking it navigates to that session. Exported so the # mention hook inserts the
+// exact same markup it re-renders here.
+export const createSessionChip = (node: { id: string; title: string }): HTMLSpanElement => {
+  const span = document.createElement('span')
+  span.setAttribute('contenteditable', 'false')
+  span.setAttribute('data-mention-type', SESSION_MENTION_TYPE)
+  span.setAttribute('data-session-id', node.id)
+  span.setAttribute('data-session-title', node.title)
+  span.className = `${CHIP_BASE_CLASS} bg-session-chip text-session-chip-foreground`
+  span.textContent = `#${node.title}`
   return span
 }
 
@@ -266,6 +308,7 @@ export const applyDocToDom = (root: HTMLElement, doc: ComposerDoc): void => {
   for (const node of doc.nodes) {
     if (node.type === 'text') root.appendChild(document.createTextNode(node.text))
     else if (node.type === 'skill') root.appendChild(createSkillChip(node))
+    else if (node.type === 'session') root.appendChild(createSessionChip(node))
     else root.appendChild(createArtifactChip(node))
   }
 }

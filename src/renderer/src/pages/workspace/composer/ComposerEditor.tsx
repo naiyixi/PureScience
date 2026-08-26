@@ -8,11 +8,14 @@ import {
   applyDocToDom,
   docArtifactCount,
   docIsEmpty,
+  docSessionCount,
   domToDoc,
   MAX_COMPOSER_ARTIFACT_MENTIONS,
+  MAX_COMPOSER_SESSION_REFS,
   type ComposerDoc,
   type ComposerNode
 } from './composer-doc'
+import { SessionMentionPopup } from './SessionMentionPopup'
 import { SkillMentionPopup } from './SkillMentionPopup'
 import { useMentionTrigger } from './useMentionTrigger'
 
@@ -39,6 +42,8 @@ type ComposerEditorProps = {
   allowedSkillIds?: readonly string[]
   isHistoryBrowsing?: boolean
   historyStatus?: string
+  // Id of the active session; excluded from the # picker so a session cannot reference itself.
+  sessionId?: string
   onNavigateHistory?: (direction: 'previous' | 'next') => boolean
 }
 
@@ -159,6 +164,8 @@ export const ComposerEditor = ({
   allowedSkillIds,
   isHistoryBrowsing = false,
   historyStatus = '',
+  // Id of the active session; excluded from the # picker so a session cannot reference itself.
+  sessionId,
   onNavigateHistory
 }: ComposerEditorProps): React.JSX.Element => {
   const editorRef = useRef<HTMLDivElement>(null)
@@ -185,6 +192,13 @@ export const ComposerEditor = ({
     disabled: disabled || docArtifactCount(doc) >= MAX_COMPOSER_ARTIFACT_MENTIONS
   })
 
+  // A `#` trigger for session references; at most three per message so a reference list stays focused.
+  const sessionMention = useMentionTrigger({
+    editorRef: editorRef as React.RefObject<HTMLElement>,
+    trigger: '#',
+    disabled: disabled || docSessionCount(doc) >= MAX_COMPOSER_SESSION_REFS
+  })
+
   // Read the live DOM back into a doc and notify the parent.
   const emitDocFromDom = useCallback((): void => {
     const root = editorRef.current
@@ -208,7 +222,7 @@ export const ComposerEditor = ({
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>): void => {
     if (disabled) return
     // While either mention popup is open it owns Enter/arrow keys; leave them to its document listener.
-    if (mention.active || artifactMention.active) return
+    if (mention.active || artifactMention.active || sessionMention.active) return
     if (
       (event.key === 'ArrowUp' || event.key === 'ArrowDown') &&
       onNavigateHistory &&
@@ -284,6 +298,11 @@ export const ComposerEditor = ({
     artifactMention.cancel()
   }
 
+  const handleSelectSession = (session: { id: string; title: string }): void => {
+    sessionMention.replaceTokenWith({ type: 'session', ...session })
+    sessionMention.cancel()
+  }
+
   return (
     <div className="relative min-w-0">
       <div
@@ -333,6 +352,14 @@ export const ComposerEditor = ({
           query={artifactMention.query}
           onSelect={handleSelectArtifact}
           onClose={artifactMention.cancel}
+        />
+      ) : null}
+      {sessionMention.active ? (
+        <SessionMentionPopup
+          query={sessionMention.query}
+          excludeId={sessionId}
+          onSelect={handleSelectSession}
+          onClose={sessionMention.cancel}
         />
       ) : null}
     </div>

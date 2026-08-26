@@ -189,15 +189,15 @@ const api: PureScienceAPI = {
       electronRendererContracts.invoke('settings.deleteProvider', request),
     setActiveProvider: (request) =>
       electronRendererContracts.invoke('settings.setActiveProvider', request),
-    xaiOauthStart: () => electronRendererContracts.invoke('settings.xai-oauth-start'),
+    xaiOauthStart: () => electronRendererContracts.invoke('settings.xaiOauthStart'),
     xaiOauthComplete: (request) =>
-      electronRendererContracts.invoke('settings.xai-oauth-complete', request),
+      electronRendererContracts.invoke('settings.xaiOauthComplete', request),
     xaiOauthRefresh: (request) =>
-      electronRendererContracts.invoke('settings.xai-oauth-refresh', request),
+      electronRendererContracts.invoke('settings.xaiOauthRefresh', request),
     xaiOauthStatus: (request) =>
-      electronRendererContracts.invoke('settings.xai-oauth-status', request),
+      electronRendererContracts.invoke('settings.xaiOauthStatus', request),
     xaiOauthLogout: (request) =>
-      electronRendererContracts.invoke('settings.xai-oauth-logout', request),
+      electronRendererContracts.invoke('settings.xaiOauthLogout', request),
     setAgentFramework: (request) =>
       electronRendererContracts.invoke('settings.setAgentFramework', request),
     setVisionModel: (request) =>

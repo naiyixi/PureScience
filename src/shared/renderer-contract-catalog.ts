@@ -339,6 +339,8 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['uninstallClaude', 'settings:uninstall-claude', LOCAL], ['uninstallCodex', 'settings:uninstall-codex', LOCAL],
     ['uninstallOpencode', 'settings:uninstall-opencode', LOCAL], ['updateCustomServer', 'settings:update-custom-server'],
     ['updateSkill', 'settings:update-skill'], ['upsertProvider', 'settings:upsert-provider'], ['validateProvider', 'settings:validate-provider'],
+    ['xaiOauthStart', 'settings:xai-oauth-start'], ['xaiOauthComplete', 'settings:xai-oauth-complete'], ['xaiOauthRefresh', 'settings:xai-oauth-refresh'],
+    ['xaiOauthStatus', 'settings:xai-oauth-status'], ['xaiOauthLogout', 'settings:xai-oauth-logout'],
   ]),
   group('specialist', 'specialist', [
     ['cancelHandoff', 'specialist:cancel-handoff', ELECTRON], ['cancelPackage', 'specialist:package-cancel', ELECTRON], ['create', 'specialist:create', ELECTRON], ['delete', 'specialist:delete', ELECTRON],

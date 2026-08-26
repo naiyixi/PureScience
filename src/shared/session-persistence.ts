@@ -129,6 +129,7 @@ export type MessagePart =
   | { type: 'text'; text: string }
   | { type: 'skill'; id: string; name: string }
   | ({ type: 'artifact' } & FileReference)
+  | { type: 'session'; id: string; title: string }
 
 export type PersistedChatMessage = {
   id: string
