@@ -324,7 +324,7 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['onSkillImportApprovalRequest', 'skills:conversation-import-request', EVENT],
     ['onSkillImportApprovalSettled', 'skills:conversation-import-settled', EVENT], ['previewAgentHomeSkill', 'settings:preview-agent-home-skill'], ['previewCustomServerTemplateExport', 'settings:preview-custom-server-template-export', ELECTRON],
     ['previewGitHubSkill', 'settings:preview-github-skill'], ['previewSkillZip', 'settings:preview-skill-zip'],
-    ['refreshProviderModels', 'settings:refresh-provider-models'], ['removeCustomServer', 'settings:remove-custom-server'],
+    ['refreshProviderModels', 'settings:refresh-provider-models'], ['removeCustomServer', 'settings:remove-custom-server'], ['exportMcpServers', 'settings:export-mcp-servers'], ['importMcpServers', 'settings:import-mcp-servers'],
     ['replayPendingSkillImportApprovals', 'skills:conversation-import-replay-pending'], ['respondConnectorApproval', 'connectors:approval-respond'],
     ['respondSkillImportApproval', 'skills:conversation-import-respond'], ['scanRepoSkills', 'settings:scan-repo-skills'], ['selectCustomServerTemplate', 'settings:select-custom-server-template', ELECTRON],
     ['setActiveProvider', 'settings:set-active-provider'], ['setAgentFramework', 'settings:set-agent-framework'],

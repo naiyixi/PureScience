@@ -292,6 +292,9 @@ const api: PureScienceAPI = {
       electronRendererContracts.invoke('settings.setCustomServerEnabled', request),
     removeCustomServer: (request: RemoveCustomServerRequest) =>
       electronRendererContracts.invoke('settings.removeCustomServer', request),
+    exportMcpServers: () => electronRendererContracts.invoke('settings.exportMcpServers'),
+    importMcpServers: (json: unknown) =>
+      electronRendererContracts.invoke('settings.importMcpServers', json),
     updateCustomServer: (request: UpdateCustomServerRequest) =>
       electronRendererContracts.invoke('settings.updateCustomServer', request),
     authenticateCustomServer: (request: AuthenticateCustomServerRequest) =>

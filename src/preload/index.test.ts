@@ -409,6 +409,7 @@ describe('preload bridge — public surface inventory', () => {
       'settings.detectCodex',
       'settings.detectOpencode',
       'settings.exportCustomServerTemplate',
+      'settings.exportMcpServers',
       'settings.exportSkill',
       'settings.getConnectorDetail',
       'settings.getPackageMirror',
@@ -416,6 +417,7 @@ describe('preload bridge — public surface inventory', () => {
       'settings.getSettings',
       'settings.getSkillDetail',
       'settings.importAgentHomeSkills',
+      'settings.importMcpServers',
       'settings.importSkill',
       'settings.importSkillZip',
       'settings.importSkillZipBatch',
@@ -576,7 +578,7 @@ describe('preload bridge — runtime renderer contract catalog', () => {
   it('routes all 189 owned methods through their cataloged Electron channels', async () => {
     const requestContracts = runtimeContracts.filter(({ kind }) => kind === 'method')
 
-    expect(runtimeContracts).toHaveLength(196)
+    expect(runtimeContracts).toHaveLength(198)
 
     for (const contract of requestContracts) {
       invokeMock.mockClear()

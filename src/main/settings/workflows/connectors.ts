@@ -25,6 +25,8 @@ type ConnectorSettingsWorkflowStore = Pick<
   | 'updateCustomServer'
   | 'authenticateCustomServer'
   | 'cancelCustomServerAuthentication'
+  | 'exportMcpServers'
+  | 'importMcpServers'
 >
 
 type ConnectorSettingsWorkflowEffects = {
@@ -90,6 +92,20 @@ class ConnectorSettingsWorkflows {
     if (serverId) await this.effects.pruneCustomServerPermissions(serverId)
     this.connectorsChanged()
     return snapshot
+  }
+
+  // Export/import are pure (non-mutating-import) or bulk-import; the bulk import refreshes the
+  // permission projection through the standard after-connectors-changed path.
+  async exportMcpServers(): WorkflowResult<'exportMcpServers'> {
+    return this.settings.exportMcpServers()
+  }
+
+  async importMcpServers(json: unknown): WorkflowResult<'importMcpServers'> {
+    const result = await this.settings.importMcpServers(json)
+    if (result.imported.length > 0) {
+      await this.afterConnectorsChanged(() => Promise.resolve())
+    }
+    return result
   }
 
   async updateCustomServer(

@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   ChevronDown,
   Download,
+  FileCode2,
   FileUp,
   Globe,
   Pencil,
@@ -124,6 +125,53 @@ export function ConnectorsPanel({ onNavigate }: ConnectorsPanelProps): React.JSX
   useEffect(() => {
     void loadConnectors()
   }, [loadConnectors])
+
+  // Standard mcpServers transfer (open-science #1698): export writes the shared client format with
+  // credential placeholders; import reads one and creates custom connectors from it.
+  const [mcpTransferNotice, setMcpTransferNotice] = useState<string | null>(null)
+
+  const handleExportMcpServers = async (): Promise<void> => {
+    try {
+      const config = await window.api.settings.exportMcpServers()
+      const blob = new Blob([JSON.stringify(config, null, 2)], {
+        type: 'application/json'
+      })
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = 'mcpServers.json'
+      anchor.click()
+      URL.revokeObjectURL(url)
+      setMcpTransferNotice(t('settings.exportMcpServersDone'))
+    } catch {
+      setMcpTransferNotice(t('settings.exportMcpServersFailed'))
+    }
+  }
+
+  const handleImportMcpServers = async (): Promise<void> => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = '.json,application/json'
+    input.onchange = async (): Promise<void> => {
+      const file = input.files?.[0]
+      if (!file) return
+      try {
+        const json = JSON.parse(await file.text())
+        const result = await window.api.settings.importMcpServers(json)
+        await loadConnectors()
+        setMcpTransferNotice(
+          result.imported.length > 0
+            ? `${t('settings.importMcpServersDone')} ${result.imported.length} (${t(
+                'settings.importMcpServersSkipped'
+              )} ${result.skipped.length})`
+            : t('settings.importMcpServersEmpty')
+        )
+      } catch {
+        setMcpTransferNotice(t('settings.importMcpServersFailed'))
+      }
+    }
+    input.click()
+  }
 
   const visibleConnectors = useMemo<ConnectorView[]>(() => {
     const term = query.trim().toLowerCase()
@@ -434,9 +482,44 @@ export function ConnectorsPanel({ onNavigate }: ConnectorsPanelProps): React.JSX
                 </span>
               </span>
             </DropdownMenuItem>
+            <DropdownMenuItem className="gap-2.5" onSelect={() => void handleImportMcpServers()}>
+              <FileCode2 className="size-4 shrink-0" aria-hidden="true" />
+              <span className="flex flex-col">
+                <span>{t('settings.importMcpServers')}</span>
+                <span className="text-xs text-muted-foreground">
+                  {t('settings.importMcpServersHint')}
+                </span>
+              </span>
+            </DropdownMenuItem>
+            <DropdownMenuItem className="gap-2.5" onSelect={() => void handleExportMcpServers()}>
+              <Download className="size-4 shrink-0" aria-hidden="true" />
+              <span className="flex flex-col">
+                <span>{t('settings.exportMcpServers')}</span>
+                <span className="text-xs text-muted-foreground">
+                  {t('settings.exportMcpServersHint')}
+                </span>
+              </span>
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      {mcpTransferNotice ? (
+        <div
+          className="mb-4 flex items-start gap-2 rounded-lg border border-border bg-bg-100/60 px-3 py-2 text-xs text-foreground"
+          role="status"
+        >
+          <span className="min-w-0 flex-1">{mcpTransferNotice}</span>
+          <button
+            type="button"
+            aria-label={t('common.close')}
+            className="shrink-0 text-muted-foreground hover:text-foreground"
+            onClick={() => setMcpTransferNotice(null)}
+          >
+            ×
+          </button>
+        </div>
+      ) : null}
 
       <div className="flex flex-col gap-4">
         {authError ? (

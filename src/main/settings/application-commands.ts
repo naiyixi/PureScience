@@ -69,6 +69,8 @@ type CoreSettingsCommandStore = Pick<
   | 'refreshXaiOauth'
   | 'xaiOauthStatus'
   | 'logoutXai'
+  | 'exportMcpServers'
+  | 'importMcpServers'
 >
 
 type StoreResult<Method extends keyof CoreSettingsCommandStore> =
@@ -271,7 +273,17 @@ const settingsCoreApplicationCommands = Object.freeze({
     'settings:xai-oauth-logout',
     readonly [request: { providerId: string }],
     StoreResult<'logoutXai'>
-  >('settings:xai-oauth-logout')
+  >('settings:xai-oauth-logout'),
+  exportMcpServers: defineApplicationCommand<
+    'settings:export-mcp-servers',
+    readonly [],
+    Record<string, unknown>
+  >('settings:export-mcp-servers'),
+  importMcpServers: defineApplicationCommand<
+    'settings:import-mcp-servers',
+    readonly [json: unknown],
+    { imported: string[]; skipped: string[] }
+  >('settings:import-mcp-servers')
 })
 
 const settingsCoreApplicationCommandGroup = defineApplicationCommandGroup('settings-core', [
@@ -311,7 +323,9 @@ const settingsCoreApplicationCommandGroup = defineApplicationCommandGroup('setti
   settingsCoreApplicationCommands.xaiOauthComplete,
   settingsCoreApplicationCommands.xaiOauthRefresh,
   settingsCoreApplicationCommands.xaiOauthStatus,
-  settingsCoreApplicationCommands.xaiOauthLogout
+  settingsCoreApplicationCommands.xaiOauthLogout,
+  settingsCoreApplicationCommands.exportMcpServers,
+  settingsCoreApplicationCommands.importMcpServers
 ] as const)
 
 type CoreSettingsApplicationCommandDependencies = Readonly<{
@@ -412,7 +426,9 @@ const registerCoreSettingsApplicationCommands = (
       'settings:xai-oauth-refresh': ({ args }) =>
         dependencies.service.refreshXaiOauth(args[0].providerId),
       'settings:xai-oauth-status': ({ args }) => dependencies.service.xaiOauthStatus(args[0].providerId),
-      'settings:xai-oauth-logout': ({ args }) => dependencies.service.logoutXai(args[0].providerId)
+      'settings:xai-oauth-logout': ({ args }) => dependencies.service.logoutXai(args[0].providerId),
+      'settings:export-mcp-servers': () => dependencies.service.exportMcpServers(),
+      'settings:import-mcp-servers': ({ args }) => dependencies.service.importMcpServers(args[0])
     })
     return scope.complete()
   } catch (error) {

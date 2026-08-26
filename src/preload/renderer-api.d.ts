@@ -484,6 +484,8 @@ export interface PureScienceAPI {
     addCustomServer(request: AddCustomServerRequest): Promise<ConnectorsSnapshot>
     setCustomServerEnabled(request: SetCustomServerEnabledRequest): Promise<ConnectorsSnapshot>
     removeCustomServer(request: RemoveCustomServerRequest): Promise<ConnectorsSnapshot>
+    exportMcpServers(): Promise<Record<string, unknown>>
+    importMcpServers(json: unknown): Promise<{ imported: string[]; skipped: string[] }>
     updateCustomServer(request: UpdateCustomServerRequest): Promise<ConnectorsSnapshot>
     authenticateCustomServer(request: AuthenticateCustomServerRequest): Promise<ConnectorsSnapshot>
     cancelCustomServerAuthentication(request: AuthenticateCustomServerRequest): Promise<void>

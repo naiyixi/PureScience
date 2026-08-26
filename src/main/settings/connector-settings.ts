@@ -534,7 +534,113 @@ class ConnectorSettingsModule {
       ncbi: this.ncbiView(connectors)
     }
   }
+
+  // ---- Standard mcpServers transfer (open-science #1698) ----
+
+  // Exports the user's custom MCP servers as the standard `mcpServers` client configuration used by
+  // other MCP hosts. Stored credentials and headers are never exported literally — every secret
+  // value becomes a `${NAME}` placeholder so the file is safe to share.
+  async exportMcpServers(): Promise<Record<string, unknown>> {
+    const connectors = await this.getConnectors()
+    const servers = connectors?.customMcpServers ?? []
+
+    const output: Record<string, unknown> = {}
+    for (const server of servers) {
+      const entry: Record<string, unknown> = {}
+      if (server.transport === 'stdio') {
+        if (server.command) entry.command = server.command
+        if (server.args?.length) entry.args = server.args
+      } else if (server.url) {
+        entry.url = server.url
+      }
+      const env = server.envRefs ? this.decryptSecretRecord(server.envRefs) : server.env
+      if (env && Object.keys(env).length > 0) {
+        entry.env = Object.fromEntries(
+          Object.entries(env).map(([key]) => [key, `\${${key}}`])
+        )
+      }
+      const headers = server.headerRefs ? this.decryptSecretRecord(server.headerRefs) : server.headers
+      if (headers && Object.keys(headers).length > 0) {
+        entry.headers = Object.fromEntries(
+          Object.entries(headers).map(([key]) => [key, `\${${key}}`])
+        )
+      }
+      output[server.name] = entry
+    }
+    return output
+  }
+
+  // Imports a standard `mcpServers` configuration (the shape used by Claude Desktop, Cursor, and
+  // other MCP hosts). Each server becomes a custom connector; `env` and `headers` values beginning
+  // with `${NAME}` are kept as placeholders, everything else is stored encrypted.
+  async importMcpServers(
+    json: unknown
+  ): Promise<{ imported: string[]; skipped: string[] }> {
+    if (!isRecord(json)) throw new Error('Expected a JSON object of MCP servers')
+    const imported: string[] = []
+    const skipped: string[] = []
+
+    for (const [name, rawEntry] of Object.entries(json)) {
+      if (!isRecord(rawEntry)) {
+        skipped.push(name)
+        continue
+      }
+      const transport: 'stdio' | 'streamable_http' | 'sse' =
+        typeof rawEntry.command === 'string'
+          ? 'stdio'
+          : typeof rawEntry.url === 'string'
+            ? 'streamable_http'
+            : 'stdio'
+      const isStdio = transport === 'stdio'
+      const envRecord = isRecord(rawEntry.env)
+        ? Object.fromEntries(
+            Object.entries(rawEntry.env).filter(
+              (entry): entry is [string, string] =>
+                typeof entry[1] === 'string' && !/^\$\{[^}]+\}$/.test(entry[1])
+            )
+          )
+        : undefined
+      const headersRecord = isRecord(rawEntry.headers)
+        ? Object.fromEntries(
+            Object.entries(rawEntry.headers).filter(
+              (entry): entry is [string, string] =>
+                typeof entry[1] === 'string' && !/^\$\{[^}]+\}$/.test(entry[1])
+            )
+          )
+        : undefined
+
+      try {
+        const nameValue = String(name)
+        const request: AddCustomServerRequest = {
+          name: nameValue,
+          slug: toCustomConnectorSlug(nameValue),
+          transport,
+          ...(isStdio
+            ? {
+                command: typeof rawEntry.command === 'string' ? rawEntry.command : undefined,
+                args: Array.isArray(rawEntry.args)
+                  ? rawEntry.args.filter((arg): arg is string => typeof arg === 'string')
+                  : undefined,
+                env: envRecord
+              }
+            : {
+                url: typeof rawEntry.url === 'string' ? rawEntry.url : undefined,
+                headers: headersRecord
+              })
+        }
+        await this.addCustomServer(request)
+        imported.push(nameValue)
+      } catch {
+        skipped.push(name)
+      }
+    }
+
+    return { imported, skipped }
+  }
 }
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
 
 export { ConnectorSettingsModule }
 export type { CustomServerSecurityChangeGuard }
