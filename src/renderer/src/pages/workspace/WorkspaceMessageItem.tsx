@@ -1,3 +1,5 @@
+import { memo } from 'react'
+
 import { useLanguage } from '@/i18n'
 import { AgentMarkdown } from '@/components/streamdown/AgentMarkdown'
 import { MessageScrollerItem } from '@/components/ui/message-scroller'
@@ -459,7 +461,13 @@ const assistantMessageSurfaceClassName =
   'relative w-full max-w-[56rem] text-sm leading-relaxed text-text-000 md:text-[15px]'
 
 // ACP message images are already MIME- and size-checked at runtime and persistence boundaries.
-const MessageImageList = ({ images }: { images: MessageImage[] }): React.JSX.Element | null => {
+// memoized: stable message objects (the common re-render case in long transcripts) skip the
+// base64 data-URL rebuild entirely, and lazy/async decoding keeps off-screen images cheap.
+const MessageImageList = memo(function MessageImageList({
+  images
+}: {
+  images: MessageImage[]
+}): React.JSX.Element | null {
   if (images.length === 0) return null
 
   return (
@@ -477,7 +485,7 @@ const MessageImageList = ({ images }: { images: MessageImage[] }): React.JSX.Ele
       ))}
     </div>
   )
-}
+})
 
 // Owns the bounded text data for one message thumbnail only while its card is near the viewport.
 const VisibleArtifactPreview = ({

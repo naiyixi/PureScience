@@ -3,8 +3,13 @@ import {
   MessageScrollerButton,
   MessageScrollerContent,
   MessageScrollerProvider,
-  MessageScrollerViewport
+  MessageScrollerViewport,
+  useMessageScrollerVisibility,
 } from '@/components/ui/message-scroller'
+// Bounded transcript rendering thresholds (see boundedRenderWindow below).
+const BOUNDED_RENDER_ITEM_THRESHOLD = 150
+const BOUNDED_RENDER_WINDOW_PADDING = 60
+
 import {
   usePreviewWorkbenchStore,
   createSessionReviewerPreviewItem
@@ -428,6 +433,26 @@ const WorkspaceMessageScrollerImpl = ({
       ),
     [activeSession, handoffEvents]
   )
+  // Long-session performance: beyond a threshold the transcript renders only the items around the
+  // visible window, collapsing far-off items into fixed-height skeletons so scroll anchoring and
+  // auto-scroll stay intact (mirrors open-science bounded transcript rendering).
+  const { visibleMessageIds } = useMessageScrollerVisibility()
+  const boundedRenderWindow = useMemo(() => {
+    if (conversationItems.length <= BOUNDED_RENDER_ITEM_THRESHOLD) return null
+    const visible = new Set(visibleMessageIds)
+    let firstVisible = -1
+    let lastVisible = -1
+    for (let index = 0; index < conversationItems.length; index += 1) {
+      if (!visible.has(conversationItems[index].id)) continue
+      if (firstVisible === -1) firstVisible = index
+      lastVisible = index
+    }
+    if (firstVisible === -1) return null
+    return {
+      first: Math.max(0, firstVisible - BOUNDED_RENDER_WINDOW_PADDING),
+      last: Math.min(conversationItems.length - 1, lastVisible + BOUNDED_RENDER_WINDOW_PADDING)
+    }
+  }, [conversationItems, visibleMessageIds])
   // Assistant text can be split into several messages around tool calls. All fragments share the
   // prompt they respond to, but only the last visible fragment in that turn owns whole-turn metadata.
   // Legacy unlinked messages remain independent so older transcripts do not lose their timestamps.
@@ -714,6 +739,23 @@ const WorkspaceMessageScrollerImpl = ({
               <div className={conversationContentClassName}>
                 {/* Messages and tool activities share one sorted transcript timeline. */}
                 {conversationItems.map((item, itemIndex) => {
+                  // Far-off items collapse to a fixed-height skeleton placeholder. The window
+                  // slides as the user scrolls, so approaching items render fully in time.
+                  if (
+                    boundedRenderWindow &&
+                    (itemIndex < boundedRenderWindow.first || itemIndex > boundedRenderWindow.last)
+                  ) {
+                    return (
+                      <MessageScrollerItem
+                        key={item.id}
+                        messageId={item.id}
+                        className="min-w-0"
+                        aria-hidden="true"
+                      >
+                        <div className="h-24 animate-pulse rounded-lg bg-muted/40" />
+                      </MessageScrollerItem>
+                    )
+                  }
                   if (item.type === 'message') {
                     const artifacts =
                       activeSession && item.message.role !== 'user'
