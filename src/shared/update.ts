@@ -5,7 +5,8 @@ export type PlatformDownload = { url: string; size: number; sha256: string }
 export type UpdateManifest = {
   version: string
   releaseDate: string
-  notes: string
+  // Release notes: a plain string (legacy) or { zh, en } keyed by interface language.
+  notes: string | Record<string, string>
   downloads: Record<string, PlatformDownload>
 }
 
@@ -17,7 +18,7 @@ export type UpdateStatus = {
   state: UpdateState
   current: string
   latest?: string
-  notes?: string
+  notes?: string | Record<string, string>
   download?: PlatformDownload
   progress?: number // 0-100 while downloading
   downloadedBytes?: number // bytes received so far while downloading

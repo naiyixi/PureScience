@@ -26,7 +26,13 @@ export const parseManifest = (data: unknown): UpdateManifest => {
   return {
     version: m.version,
     releaseDate: typeof m.releaseDate === 'string' ? m.releaseDate : '',
-    notes: typeof m.notes === 'string' ? m.notes : '',
+    // Localized notes: a plain string (legacy) or { zh, en } keyed by interface language.
+    notes:
+      typeof m.notes === 'string'
+        ? m.notes
+        : typeof m.notes === 'object' && m.notes !== null
+          ? m.notes
+          : '',
     downloads: m.downloads
   }
 }

@@ -418,7 +418,18 @@ const ConversationPanel = ({
 
     const files = Array.from(event.clipboardData.files)
 
-    if (files.length === 0) return
+    if (files.length === 0) {
+      // Long plain-text pastes (10k+ chars or 300+ lines) become a managed attachment card
+      // instead of flooding the draft; the original text is preserved verbatim in the file.
+      const text = event.clipboardData.getData('text/plain')
+      if (text.length > 10000 || text.split('\n').length > 300) {
+        event.preventDefault()
+        onStageAttachmentFiles([
+          new File([text], `pasted-text-${Date.now()}.txt`, { type: 'text/plain' })
+        ])
+      }
+      return
+    }
 
     event.preventDefault()
     onStageAttachmentFiles(files)

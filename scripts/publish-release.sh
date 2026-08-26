@@ -114,14 +114,22 @@ fi
 
 # ---------- version.json ----------
 # downloads key MUST match platformDownloadKey() (src/shared/update.ts), see pitfalls.
+# Localized notes: when dist/notes-<version>-en.md exists alongside the primary (Chinese) notes,
+# version.json carries { zh, en } so the update dialog follows the interface language.
 DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${TAG}/${INSTALLER_FILE}"
 MANIFEST_FILE="dist/version.json"
-node - "$VERSION" "$MANIFEST_KEY" "$DOWNLOAD_URL" "$SIZE" "$SHA256" "$MANIFEST_FILE" <<'NODE'
-const [version, key, url, size, sha256, out] = process.argv.slice(2)
+EN_NOTES_FILE="dist/notes-${VERSION}-en.md"
+if [[ -f "$EN_NOTES_FILE" ]]; then
+  EN_NOTES="$(cat "$EN_NOTES_FILE")"
+else
+  EN_NOTES=""
+fi
+node - "$VERSION" "$MANIFEST_KEY" "$DOWNLOAD_URL" "$SIZE" "$SHA256" "$MANIFEST_FILE" "$NOTES" "$EN_NOTES" <<'NODE'
+const [version, key, url, size, sha256, out, notes, enNotes] = process.argv.slice(2)
 const manifest = {
   version,
   releaseDate: new Date().toISOString(),
-  notes: '',
+  notes: enNotes ? { zh: notes, en: enNotes } : notes,
   downloads: { [key]: { url, size: Number(size), sha256 } }
 }
 require('fs').writeFileSync(out, JSON.stringify(manifest, null, 2) + '\n')
