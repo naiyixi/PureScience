@@ -7,6 +7,7 @@ import { delimiter, join } from 'node:path'
 import { createInterface, type Interface } from 'node:readline'
 
 import { terminateProcessTree, type ProcessTreeKillResult } from '../process-tree'
+import { resolveSystemProxyEnvironment } from '../settings/system-proxy'
 import {
   KERNEL_FIGURES_DIR_ENV,
   frameRRequest,
@@ -33,6 +34,21 @@ import type {
   NotebookExecutor
 } from './runtime-service'
 import { DEFAULT_TIMEOUT_MS, TimeoutController } from './timeout-controller'
+
+// Unified child-process proxy environment (open-science #1753): every spawned kernel resolves the
+// system proxy once (Electron session rules incl. PAC) and inherits it, so R/Python/REPL outbound
+// traffic honors the same proxy mode as every other app network path. Resolver failures fall back to
+// the inherited process env (no proxy override).
+const KernelExecutorProxyEnvironment: { proxyEnv: NodeJS.ProcessEnv | undefined } = {
+  proxyEnv: undefined
+}
+void resolveSystemProxyEnvironment()
+  .then((resolved) => {
+    KernelExecutorProxyEnvironment.proxyEnv = resolved
+  })
+  .catch(() => {
+    KernelExecutorProxyEnvironment.proxyEnv = undefined
+  })
 import { startWorkingFileObservation, type WorkingFileObservation } from './working-file-observer'
 
 // Driver-internal process kind. 'python'/'r' are the data kernels selected by the agent-facing
@@ -550,6 +566,7 @@ class NotebookKernelExecutor implements NotebookExecutor {
           : envPrefix(request.runtimeRoot, resolveRequestEnv(kind, request))
     const env: NodeJS.ProcessEnv = {
       ...process.env,
+      ...(KernelExecutorProxyEnvironment.proxyEnv ?? {}),
       // Force a non-interactive matplotlib backend so plt.show() never opens a GUI window in this
       // headless runtime; respect an explicitly configured backend if present.
       MPLBACKEND: process.env.MPLBACKEND || 'Agg',
