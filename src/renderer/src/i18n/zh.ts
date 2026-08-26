@@ -910,6 +910,8 @@ export const zh = {
   'ws.contextWindowDescription': '活动分支的当前构成与终端运行历史。分类值为估算。',
   'ws.contextClose': '关闭上下文窗口',
   'ws.contextNoHistory': '尚无运行历史',
+  'ws.contextCallsTitle': '模型调用用量',
+  'ws.contextCallsHint': '每次模型调用的输入 / 缓存 / 输出 token 占比（最新在前）',
   'ws.contextNoHistoryHint': '运行完成、中断或出错后会出现柱形。旧会话保持兼容，可能不含历史数据。',
   'ws.contextDetails': '详情',
   'ws.marketplaceLibrary': '专才库',
