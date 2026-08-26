@@ -673,4 +673,63 @@ describe('ConnectorSettingsModule', () => {
       service.updateCustomServer({ id: 'nope', transport: 'stdio', command: 'x' })
     ).rejects.toThrow(/Unknown custom connector/)
   })
+
+  it('exports custom servers as standard mcpServers with credential placeholders', async () => {
+    await service.addCustomServer({
+      name: 'memory',
+      transport: 'stdio',
+      command: 'npx',
+      args: ['-y', 'server-memory'],
+      env: { API_KEY: 'super-secret', PUBLIC: 'visible' }
+    })
+    await service.addCustomServer({
+      name: 'remote-mcp',
+      transport: 'streamable_http',
+      url: 'https://example.com/mcp',
+      headers: { Authorization: 'Bearer secret' }
+    })
+
+    const exported = await service.exportMcpServers()
+    expect(exported.memory).toEqual({
+      command: 'npx',
+      args: ['-y', 'server-memory'],
+      env: { API_KEY: '${API_KEY}', PUBLIC: '${PUBLIC}' }
+    })
+    expect(exported['remote-mcp']).toEqual({
+      url: 'https://example.com/mcp',
+      headers: { Authorization: '${Authorization}' }
+    })
+    // No literal secret ever leaves the module.
+    expect(JSON.stringify(exported)).not.toContain('super-secret')
+    expect(JSON.stringify(exported)).not.toContain('Bearer secret')
+  })
+
+  it('imports a standard mcpServers configuration, skipping placeholders and invalid entries', async () => {
+    const result = await service.importMcpServers({
+      memory: {
+        command: 'npx',
+        args: ['-y', 'server-memory'],
+        env: { API_KEY: '${API_KEY}', LOCAL_SECRET: 'real-value' }
+      },
+      remote: { url: 'https://example.com/mcp', headers: { Authorization: '${AUTH}' } },
+      'not-a-server': 'garbage'
+    })
+
+    expect(result.imported).toContain('memory')
+    expect(result.imported).toContain('remote')
+    expect(result.skipped).toContain('not-a-server')
+
+    const snapshot = await service.getConnectors()
+    const memory = snapshot?.customMcpServers?.find((server) => server.name === 'memory')
+    expect(memory?.command).toBe('npx')
+    // Placeholder values are dropped; real values are stored encrypted (envRefs) and never
+    // surface as plaintext in the stored configuration.
+    expect(memory?.envRefs).toBeDefined()
+    const stored = (await repository.getSettings()).connectors?.customMcpServers?.find(
+      (server) => server.name === 'memory'
+    )
+    expect(stored?.envRefs).toBeDefined()
+    expect(JSON.stringify(stored)).not.toContain('real-value')
+    expect(JSON.stringify(stored)).not.toContain('\${API_KEY}')
+  })
 })

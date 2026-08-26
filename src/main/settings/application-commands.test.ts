@@ -52,7 +52,9 @@ const expectedChannels = [
   'settings:xai-oauth-complete',
   'settings:xai-oauth-refresh',
   'settings:xai-oauth-status',
-  'settings:xai-oauth-logout'
+  'settings:xai-oauth-logout',
+  'settings:export-mcp-servers',
+  'settings:import-mcp-servers'
 ] as const
 
 type CommandArgs<Command> =

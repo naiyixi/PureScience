@@ -377,6 +377,10 @@ const registerSettingsIpcHandlers = ({
   ipcMainHandle('settings:add-custom-server', (_event, request: AddCustomServerRequest) =>
     workflows.connectors.addCustomServer(request)
   )
+  ipcMainHandle('settings:export-mcp-servers', () => workflows.connectors.exportMcpServers())
+  ipcMainHandle('settings:import-mcp-servers', (_event, json: unknown) =>
+    workflows.connectors.importMcpServers(json)
+  )
   ipcMainHandle(
     'settings:set-custom-server-enabled',
     (_event, request: SetCustomServerEnabledRequest) =>

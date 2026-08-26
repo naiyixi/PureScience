@@ -916,6 +916,19 @@ class SettingsService {
     return this.connectors.removeCustomServer(request)
   }
 
+  // Exports custom MCP servers as the standard `mcpServers` client configuration with credential
+  // placeholders (open-science #1698).
+  async exportMcpServers(): Promise<Record<string, unknown>> {
+    return this.connectors.exportMcpServers()
+  }
+
+  // Imports a standard `mcpServers` configuration as custom connectors.
+  async importMcpServers(
+    json: unknown
+  ): Promise<{ imported: string[]; skipped: string[] }> {
+    return this.connectors.importMcpServers(json)
+  }
+
   // Edits an existing custom MCP server, keeping its immutable identity (id, name, enabled, trust).
   // Omitted env/headers keep the stored secret values; providing them replaces the set. A caller can
   // invalidate remembered authority after validation but before persistence whenever the executable,
