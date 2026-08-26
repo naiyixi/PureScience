@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useLanguage } from '@/i18n'
 import { animate } from 'motion'
-import { PanelLeft, PanelRight } from 'lucide-react'
+import { MessagesSquare, PanelLeft, PanelRight } from 'lucide-react'
 import type { PanelImperativeHandle, PanelSize } from 'react-resizable-panels'
 
 import type { NotebookSessionReference } from '../../../../shared/notebook'
@@ -66,6 +66,7 @@ import { MobilePreviewSheet } from './MobilePreviewSheet'
 import { DownloadSessionArtifactsDialog } from './DownloadSessionArtifactsDialog'
 import { FilePreviewDialog } from './FilePreviewDialog'
 import { PreviewPanel } from './PreviewPanel'
+import { SideChatPanel } from './SideChatPanel'
 import { RenameSessionDialog } from './RenameSessionDialog'
 import { SessionNotebookDialog } from './SessionNotebookDialog'
 import { JobDetailModal } from '@/components/JobDetailModal'
@@ -377,6 +378,34 @@ const PreviewPanelToggleButton = ({
   )
 }
 
+// Side-chat toggle: a fixed button beside the preview toggle that opens the advisory panel.
+const SideChatToggleButton = ({
+  isOpen,
+  onToggle
+}: {
+  isOpen: boolean
+  onToggle: () => void
+}): React.JSX.Element => {
+  const { t } = useLanguage()
+  return (
+    <button
+      type="button"
+      data-testid="workspace-side-chat-toggle"
+      className={`absolute right-11 top-0 z-40 flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-lg ${
+        isOpen
+          ? 'bg-primary/20 shadow-card backdrop-blur text-action-panel-toggle'
+          : 'bg-transparent shadow-none text-action-panel-toggle hover:bg-surface-control-hover'
+      }`}
+      aria-label={isOpen ? t('ws.closeSideChat') : t('ws.openSideChat')}
+      aria-expanded={isOpen}
+      title={isOpen ? t('ws.closeSideChat') : t('ws.openSideChat')}
+      onClick={onToggle}
+    >
+      <MessagesSquare className="size-4" strokeWidth={2} fill="none" aria-hidden="true" />
+    </button>
+  )
+}
+
 // Provides stable names for pasted images, which often arrive without a useful filename.
 const getUploadFilename = (file: File, index: number): string => {
   const fileName = file.name.trim()
@@ -417,6 +446,7 @@ const WorkspacePage = ({
   })
   const isMobile = useMediaQuery('(max-width: 767px)')
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
+  const [isSideChatOpen, setIsSideChatOpen] = useState(false)
 
   // The active project scopes which sessions are visible and stamps newly created ones. The workspace
   // is only reachable via openProject/openSession (which set it); '' is a defensive sentinel that
@@ -2078,6 +2108,34 @@ const WorkspacePage = ({
     await resumeInterruptedSession(activeSession.id)
   }
 
+  // Forwards side-chat content into the active session. ACP has no mid-turn input, so when the
+  // main turn is running it is interrupted first and the advisory is then sent as a follow-up
+  // prompt — the protocol-compatible approximation of live side-chat injection.
+  const handleForwardSideChat = (advisory: string): void => {
+    if (!activeSession) return
+    const session = activeSession
+    const isRunning = session.status === 'running' || session.status === 'waiting-permission'
+    const advisoryPrompt = `${t('ws.sideChatAdvisoryPrefix')}\n${advisory}`
+    const dispatch = (): void => {
+      void sendMessage({
+        sessionId: session.id,
+        text: advisoryPrompt,
+        attachments: [],
+        cwd: session.cwd,
+        projectId: session.projectId,
+        projectName: session.projectId,
+        permissionProfile: session.permissionProfile ?? DEFAULT_PERMISSION_PROFILE
+      })
+    }
+    if (isRunning) {
+      // Interrupt the running turn, then send after the runtime has released prompt ownership.
+      cancelActiveRun()
+      setTimeout(dispatch, 600)
+      return
+    }
+    dispatch()
+  }
+
   // Forwards visible permission decisions to the runtime bridge.
   const respondToVisiblePermission = (requestId: string, optionId?: string): Promise<void> =>
     respondToPermission(requestId, optionId)
@@ -2670,11 +2728,26 @@ const WorkspacePage = ({
           />
         ) : null}
         {!isMobile ? (
+          <SideChatToggleButton isOpen={isSideChatOpen} onToggle={() => setIsSideChatOpen((open) => !open)} />
+        ) : null}
+        {!isMobile ? (
           <SidebarPanelToggleButton
             buttonRef={sidebarToggleRef}
             isCollapsed={sidebarPanelState === 'collapsed'}
             left={`calc(${SIDEBAR_PANEL_DEFAULT_SIZE_CSS} - ${SIDEBAR_TOGGLE_RIGHT_INSET}px)`}
             onToggle={toggleSidebarPanel}
+          />
+        ) : null}
+        {isSideChatOpen ? (
+          <SideChatPanel
+            isOpen
+            onClose={() => setIsSideChatOpen(false)}
+            onForward={handleForwardSideChat}
+            isSessionRunning={
+              activeSession !== undefined &&
+              (activeSession.status === 'running' || activeSession.status === 'waiting-permission')
+            }
+            sessionTitle={activeSession?.title}
           />
         ) : null}
       </div>
