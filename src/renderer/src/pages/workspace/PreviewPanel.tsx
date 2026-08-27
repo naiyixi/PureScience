@@ -1,4 +1,4 @@
-import { BookOpen, ClipboardCopy, Download, File, FileUp, FolderOpen, Layers, X } from 'lucide-react'
+import { BookOpen, ClipboardCopy, Download, File, FileUp, FolderOpen, Globe2, Layers, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { PanelImperativeHandle, PanelSize } from 'react-resizable-panels'
 
@@ -8,7 +8,8 @@ import { cn } from '@/lib/utils'
 import type {
   PreviewFileItem,
   PreviewItem,
-  PreviewToolItem
+  PreviewToolItem,
+  PreviewWebItem
 } from '@/stores/preview-workbench-store'
 import { useLanguage } from '@/i18n'
 import { useNavigationStore } from '@/stores/navigation-store'
@@ -16,6 +17,7 @@ import { usePreviewWorkbenchStore } from '@/stores/preview-workbench-store'
 
 import { ExtensionPreservingFileName } from './ExtensionPreservingFileName'
 import { PreviewFileSurface } from './PreviewFileSurface'
+import { WebPreviewSurface } from './previews/renderers/WebPreview'
 import { PreviewFileContent } from './previews/PreviewFileContent'
 import { PreviewToolContent } from './previews/PreviewToolContent'
 
@@ -32,9 +34,11 @@ type PreviewPanelSurfaceProps = {
 
 // Renders the active tab's content, or an empty state when nothing is previewed yet.
 const PreviewActiveContent = ({
-  item
+  item,
+  isActive
 }: {
   item: PreviewItem | undefined
+  isActive?: boolean
 }): React.JSX.Element | null => {
   if (!item) {
     return (
@@ -45,6 +49,10 @@ const PreviewActiveContent = ({
   }
 
   if (item.type === 'tool') return <PreviewToolContent item={item} />
+
+  if (item.type === 'web') {
+    return <WebPreviewSurface url={item.url} title={item.title} isActive={Boolean(isActive)} />
+  }
 
   return <PreviewFileContent item={item} />
 }
@@ -223,6 +231,8 @@ const PreviewTab = ({
     >
       {tab.type === 'file' ? (
         <File className="size-3.5 shrink-0" aria-hidden="true" />
+      ) : tab.type === 'web' ? (
+        <Globe2 className="size-3.5 shrink-0" aria-hidden="true" />
       ) : tab.toolKind === 'files' ? (
         <FolderOpen className="size-3.5 shrink-0" aria-hidden="true" />
       ) : tab.toolKind === 'notebook' ? (
@@ -526,7 +536,7 @@ const PreviewToolPanel = ({
   item,
   isActive
 }: {
-  item: PreviewToolItem
+  item: PreviewToolItem | PreviewWebItem
   isActive: boolean
 }): React.JSX.Element => {
   const isExpanded = usePreviewWorkbenchStore(
@@ -571,10 +581,12 @@ const PreviewToolPanel = ({
             ? dialogPanelClassName(
                 'z-[56] flex h-[90vh] w-[90vw] max-w-none min-h-0 flex-col overflow-hidden overscroll-contain p-0'
               )
-            : 'h-full min-h-0 w-full overflow-y-auto'
+            : item.type === 'web'
+              ? 'h-full min-h-0 w-full overflow-hidden'
+              : 'h-full min-h-0 w-full overflow-y-auto'
         }
       >
-        <PreviewActiveContent item={item} />
+        <PreviewActiveContent item={item} isActive={isActive} />
       </section>
     </>
   )
@@ -627,10 +639,11 @@ const PreviewPanelSurface = ({ className }: PreviewPanelSurfaceProps): React.JSX
         {!activeItem ? <PreviewActiveContent key={activeContentKey} item={activeItem} /> : null}
         {items.map((item) => {
           const isActivePanel = item.id === activeItemId && panelState === 'open'
-          // Tool panels render at this map position whether active or not, so React keeps the
-          // subtree mounted across tab switches. File panels re-create on activation anyway
+          // Tool and web panels render at this map position whether active or not, so React keeps
+          // the subtree mounted across tab switches (a web iframe keeps its scroll position and
+          // does not refetch on tab switches). File panels re-create on activation anyway
           // (contentKey encodes path+mtime), so an inactive one collapses to an empty region.
-          if (item.type === 'tool') {
+          if (item.type === 'tool' || item.type === 'web') {
             return <PreviewToolPanel key={item.id} item={item} isActive={isActivePanel} />
           }
 

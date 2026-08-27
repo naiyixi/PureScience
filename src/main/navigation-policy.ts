@@ -42,15 +42,17 @@ const isAllowedMainFrameNavigation = (url: string, currentUrl: string): boolean 
 const isAllowedFrameNavigation = (url: string, isMainFrame: boolean, currentUrl = ''): boolean =>
   isMainFrame
     ? isAllowedMainFrameNavigation(url, currentUrl)
-    : ALLOWED_PREVIEW_PROTOCOLS.has(getProtocol(url) ?? '')
+    : ALLOWED_PREVIEW_PROTOCOLS.has(getProtocol(url) ?? '') || getProtocol(url) === 'https:'
 
 // Decides whether a window-open request (target="_blank" / window.open) may be handed to the OS. It
 // gates on the protocol allowlist alone, deliberately NOT on the initiating referrer: app links use
 // rel="noreferrer" and the packaged app runs on a file:// origin (which Chromium strips from
-// cross-origin referrers), so the referrer is reliably empty for legitimate main-frame links. Nothing
-// is lost by dropping it — the only non-app frame is the HTML preview iframe, which is sandboxed with
-// "allow-scripts" but NOT "allow-popups", so it cannot reach setWindowOpenHandler at all. In-frame
-// navigations are confined separately by isAllowedFrameNavigation.
+// cross-origin referrers), so the referrer is reliably empty for legitimate main-frame links. The
+// in-app source iframe (WebPreview) is the one frame with allow-popups: a target="_blank" link inside
+// a previewed page reaches setWindowOpenHandler and opens in the system browser only when the URL is
+// on the http/https/mailto allowlist. In-frame navigations are confined separately by
+// isAllowedFrameNavigation (https: sub-frames so the sandboxed source iframe can browse, custom
+// preview protocols for bundled Office/HTML renderers, nothing else).
 const isAllowedExternalNavigation = (url: string): boolean => isAllowedExternalUrl(url)
 
 export { isAllowedExternalNavigation, isAllowedExternalUrl, isAllowedFrameNavigation }

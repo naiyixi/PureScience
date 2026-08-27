@@ -3,8 +3,6 @@ import {
   Component,
   memo,
   useMemo,
-  useState,
-  type ComponentProps,
   type ErrorInfo,
   type ReactNode
 } from 'react'
@@ -13,12 +11,12 @@ import { cjk } from '@streamdown/cjk'
 import { useLanguage } from '@/i18n'
 import { createMathPlugin } from '@streamdown/math'
 import { mermaid } from '@streamdown/mermaid'
-import { Globe2 } from 'lucide-react'
 import { Streamdown, type Components, type LinkSafetyConfig } from 'streamdown'
 import 'katex/dist/katex.min.css'
 
 import { AGENT_ALLOWED_TAGS, AGENT_CONTROLS } from './streamdown-config'
 import { LinkSafetyModal } from './LinkSafetyModal'
+import { SourceLink } from './SourceLink'
 import { normalizeAgentMarkdown } from './normalize-agent-markdown'
 import { cn } from '@/lib/utils'
 
@@ -29,86 +27,11 @@ type AgentMarkdownProps = {
   sessionLinks?: boolean
 }
 
-type SessionMessageLinkProps = ComponentProps<'a'> & {
-  node?: unknown
-  'data-incomplete'?: boolean
-}
+// Session links keep the legacy export name so existing callers and tests keep working; the
+// implementation is the source-link renderer (in-app preview for HTTPS, safety modal otherwise).
+const SessionMessageLink = SourceLink
 
-type FaviconState = 'loading' | 'success' | 'error'
-
-const getSessionLinkFaviconUrl = (href: string | undefined): string | undefined => {
-  if (!href) return undefined
-
-  try {
-    const url = new URL(href)
-    if ((url.protocol !== 'http:' && url.protocol !== 'https:') || !url.hostname) return undefined
-
-    return `https://${url.hostname.toLowerCase()}/favicon.ico`
-  } catch {
-    return undefined
-  }
-}
-
-const SessionLinkFavicon = ({ src }: { src: string }): React.JSX.Element => {
-  const [state, setState] = useState<FaviconState>('loading')
-
-  return (
-    <span data-session-link-favicon="" data-state={state} aria-hidden="true">
-      <Globe2 data-session-link-favicon-fallback="" />
-      {state !== 'error' ? (
-        <img
-          src={src}
-          alt=""
-          width="16"
-          height="16"
-          loading="lazy"
-          decoding="async"
-          referrerPolicy="no-referrer"
-          draggable={false}
-          onLoad={() => setState('success')}
-          onError={() => setState('error')}
-        />
-      ) : null}
-    </span>
-  )
-}
-
-const SessionMessageLink = ({
-  children,
-  className,
-  href,
-  'data-incomplete': dataIncomplete
-}: SessionMessageLinkProps): React.JSX.Element => {
-  const [isOpen, setIsOpen] = useState(false)
-  const faviconUrl = getSessionLinkFaviconUrl(href)
-
-  return (
-    <>
-      <button
-        type="button"
-        className={className}
-        data-incomplete={dataIncomplete}
-        data-session-message-link=""
-        data-streamdown="link"
-        disabled={!href}
-        onClick={() => setIsOpen(true)}
-      >
-        {faviconUrl ? <SessionLinkFavicon key={faviconUrl} src={faviconUrl} /> : null}
-        {children}
-      </button>
-      {href ? (
-        <LinkSafetyModal
-          url={href}
-          isOpen={isOpen}
-          onClose={() => setIsOpen(false)}
-          onConfirm={() => window.open(href, '_blank', 'noreferrer')}
-        />
-      ) : null}
-    </>
-  )
-}
-
-const sessionLinkComponents = { a: SessionMessageLink } satisfies Components
+const sessionLinkComponents = { a: SourceLink } satisfies Components
 
 // Import previews render untrusted Markdown. Removing every element that can initiate a media fetch
 // prevents opening a candidate from disclosing viewer activity to an external host. `use` is

@@ -31,6 +31,8 @@ vi.mock('streamdown', () => ({
 }))
 
 const { AgentMarkdown, SessionMessageLink } = await import('./AgentMarkdown')
+const { usePreviewWorkbenchStore } = await import('@/stores/preview-workbench-store')
+const { useSessionStore } = await import('@/stores/session-store')
 
 describe('AgentMarkdown renderer recovery', () => {
   let container: HTMLDivElement
@@ -50,6 +52,8 @@ describe('AgentMarkdown renderer recovery', () => {
     act(() => root.unmount())
     vi.restoreAllMocks()
     container.remove()
+    usePreviewWorkbenchStore.setState({ items: [], activeItemId: undefined })
+    useSessionStore.setState({ selectedSessionId: undefined })
   })
 
   it('keeps the original message and sibling UI visible when rich Markdown rendering fails', async () => {
@@ -151,14 +155,36 @@ describe('AgentMarkdown renderer recovery', () => {
     expect(container.querySelector('[data-session-link-favicon]')).toBeNull()
   })
 
-  it('keeps the external-link safety confirmation before opening a session link', async () => {
-    const open = vi.spyOn(window, 'open').mockImplementation(() => null)
+  it('opens an HTTPS session link in the in-app preview panel without a confirmation dialog', async () => {
+    useSessionStore.setState({ selectedSessionId: 'session-1' })
 
     await act(async () => {
       root.render(<SessionMessageLink href="https://example.com/paper">Paper</SessionMessageLink>)
     })
 
-    const link = container.querySelector<HTMLButtonElement>('[data-session-message-link]')
+    const link = container.querySelector<HTMLAnchorElement>('[data-session-message-link]')
+    await act(async () => {
+      link?.click()
+    })
+
+    const items = usePreviewWorkbenchStore.getState().items
+    expect(items).toContainEqual(
+      expect.objectContaining({ type: 'web', url: 'https://example.com/paper', sessionId: 'session-1' })
+    )
+    expect(usePreviewWorkbenchStore.getState().panelState).toBe('open')
+    expect(
+      document.body.querySelector('[role="dialog"][aria-label="Open external link?"]')
+    ).toBeNull()
+  })
+
+  it('keeps the external-link safety confirmation for a non-HTTPS session link', async () => {
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null)
+
+    await act(async () => {
+      root.render(<SessionMessageLink href="http://example.com/paper">Paper</SessionMessageLink>)
+    })
+
+    const link = container.querySelector<HTMLAnchorElement>('[data-session-message-link]')
     await act(async () => {
       link?.click()
     })
@@ -176,6 +202,36 @@ describe('AgentMarkdown renderer recovery', () => {
       openLink?.click()
     })
 
-    expect(open).toHaveBeenCalledWith('https://example.com/paper', '_blank', 'noreferrer')
+    expect(open).toHaveBeenCalledWith('http://example.com/paper', '_blank', 'noreferrer')
+  })
+
+  it('reveals the source card after a deliberate hover and closes it on Escape', async () => {
+    useSessionStore.setState({ selectedSessionId: 'session-1' })
+
+    await act(async () => {
+      root.render(
+        <SessionMessageLink href="https://pubmed.ncbi.nlm.nih.gov/123?view=full">
+          Paper
+        </SessionMessageLink>
+      )
+    })
+
+    const link = container.querySelector<HTMLAnchorElement>('[data-session-message-link]')
+    await act(async () => {
+      // React synthesizes mouseenter from mouseover; the card opens after the hover dwell.
+      link?.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))
+      await new Promise((resolve) => window.setTimeout(resolve, 400))
+    })
+
+    const card = container.querySelector<HTMLElement>('[data-source-link-card]')
+    expect(card).not.toBeNull()
+    expect(card?.getAttribute('aria-label')).toBe('Source: pubmed.ncbi.nlm.nih.gov')
+
+    await act(async () => {
+      link?.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
+      )
+    })
+    expect(container.querySelector('[data-source-link-card]')).toBeNull()
   })
 })
