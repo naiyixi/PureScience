@@ -185,6 +185,7 @@ import type {
   InstallClaudeRequest,
   InstallCodexRequest,
   InstallOpencodeRequest,
+  MemorySettings,
   Preflight,
   RefreshProviderModelsRequest,
   RefreshProviderModelsResult,
@@ -452,6 +453,8 @@ export interface PureScienceAPI {
     markOnboardingComplete(): Promise<SettingsSnapshot>
     getPackageMirror(): Promise<PackageMirror>
     setPackageMirror(request: SetPackageMirrorRequest): Promise<PackageMirror>
+    getMemory(): Promise<MemorySettings | undefined>
+    setMemory(memory: MemorySettings): Promise<MemorySettings>
     listSkills(): Promise<SkillView[]>
     getSkillDetail(id: string): Promise<SkillDetailView>
     exportSkill(request: ExportSkillRequest): Promise<ExportSkillResult>

@@ -14,6 +14,7 @@ import type {
   SetDefaultPermissionProfileRequest,
   SetNotificationsEnabledRequest,
   SetPackageMirrorRequest,
+  MemorySettings,
   ValidateProviderRequest
 } from '../../shared/settings'
 import {
@@ -42,6 +43,7 @@ type CoreSettingsCommandStore = Pick<
   | 'detectCodex'
   | 'detectOpencode'
   | 'getConnectorDetail'
+  | 'getMemory'
   | 'getPackageMirror'
   | 'getPreflight'
   | 'getSettingsView'
@@ -62,6 +64,7 @@ type CoreSettingsCommandStore = Pick<
   | 'setClosePreference'
   | 'setDefaultPermissionProfile'
   | 'setNotificationsEnabled'
+  | 'setMemory'
   | 'setPackageMirror'
   | 'validateProvider'
   | 'startXaiSignIn'
@@ -120,6 +123,11 @@ const settingsCoreApplicationCommands = Object.freeze({
     readonly [id: string],
     StoreResult<'getConnectorDetail'>
   >('settings:get-connector-detail'),
+  getMemory: defineApplicationCommand<
+    'settings:get-memory',
+    readonly [],
+    StoreResult<'getMemory'>
+  >('settings:get-memory'),
   getPackageMirror: defineApplicationCommand<
     'settings:get-package-mirror',
     readonly [],
@@ -223,6 +231,11 @@ const settingsCoreApplicationCommands = Object.freeze({
     readonly [request: SetDefaultPermissionProfileRequest],
     StoreResult<'setDefaultPermissionProfile'>
   >('settings:set-default-permission-profile'),
+  setMemory: defineApplicationCommand<
+    'settings:set-memory',
+    readonly [memory: MemorySettings],
+    StoreResult<'setMemory'>
+  >('settings:set-memory'),
   setNotificationsEnabled: defineApplicationCommand<
     'settings:set-notifications-enabled',
     readonly [request: SetNotificationsEnabledRequest],
@@ -295,6 +308,7 @@ const settingsCoreApplicationCommandGroup = defineApplicationCommandGroup('setti
   settingsCoreApplicationCommands.detectCodex,
   settingsCoreApplicationCommands.detectOpencode,
   settingsCoreApplicationCommands.getConnectorDetail,
+  settingsCoreApplicationCommands.getMemory,
   settingsCoreApplicationCommands.getPackageMirror,
   settingsCoreApplicationCommands.getPreflight,
   settingsCoreApplicationCommands.getSettings,
@@ -316,6 +330,7 @@ const settingsCoreApplicationCommandGroup = defineApplicationCommandGroup('setti
   settingsCoreApplicationCommands.setAppIconVariant,
   settingsCoreApplicationCommands.setClosePreference,
   settingsCoreApplicationCommands.setDefaultPermissionProfile,
+  settingsCoreApplicationCommands.setMemory,
   settingsCoreApplicationCommands.setNotificationsEnabled,
   settingsCoreApplicationCommands.setPackageMirror,
   settingsCoreApplicationCommands.validateProvider,
@@ -414,6 +429,14 @@ const registerCoreSettingsApplicationCommands = (
       'settings:set-notifications-enabled': ({ args, callerContext }) => {
         requireLocalCaller(callerContext, 'settings:set-notifications-enabled')
         return dependencies.service.setNotificationsEnabled(readNotificationsEnabled(args[0]))
+      },
+      'settings:get-memory': ({ callerContext }) => {
+        requireLocalCaller(callerContext, 'settings:get-memory')
+        return dependencies.service.getMemory()
+      },
+      'settings:set-memory': ({ args, callerContext }) => {
+        requireLocalCaller(callerContext, 'settings:set-memory')
+        return dependencies.service.setMemory(args[0])
       },
       'settings:set-package-mirror': ({ args, callerContext }) => {
         requireLocalCaller(callerContext, 'settings:set-package-mirror')

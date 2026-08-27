@@ -239,6 +239,8 @@ const api: PureScienceAPI = {
     getPackageMirror: () => electronRendererContracts.invoke('settings.getPackageMirror'),
     setPackageMirror: (request) =>
       electronRendererContracts.invoke('settings.setPackageMirror', request),
+    getMemory: () => electronRendererContracts.invoke('settings.getMemory'),
+    setMemory: (memory) => electronRendererContracts.invoke('settings.setMemory', memory),
     listSkills: () => electronRendererContracts.invoke('settings.listSkills'),
     getSkillDetail: (id: string) => electronRendererContracts.invoke('settings.getSkillDetail', id),
     exportSkill: (request: ExportSkillRequest) =>

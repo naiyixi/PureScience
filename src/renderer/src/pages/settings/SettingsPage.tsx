@@ -13,6 +13,7 @@ import {
   Minimize2,
   MonitorSmartphone,
   ChartNoAxesCombined,
+  BookOpenText,
   ScrollText,
   Settings2,
   TerminalSquare,
@@ -60,6 +61,7 @@ import { ComputePanel, type ComputeView } from './ComputePanel'
 import { ComputeAddForm } from './ComputeAddForm'
 import { ComputeHostDetail } from './ComputeHostDetail'
 import { PermissionsPanel } from './PermissionsPanel'
+import { MemoryPanel } from './MemoryPanel'
 import { ArchivedPanel, type ArchivedView } from './ArchivedPanel'
 import { TokenUsagePanel } from './TokenUsagePanel'
 import { resolveVendorModelsUrl } from '../../../../shared/provider-registry'
@@ -164,6 +166,7 @@ const buildSettingsGroups = (t: (key: TranslationKey) => string): ReadonlyArray<
       { id: 'skills', label: t('settings.skills'), Icon: ScrollText },
       { id: 'connectors', label: t('settings.connectors'), Icon: ConnectorsNavIcon },
       { id: 'specialists', label: t('settings.specialists'), Icon: Users },
+      { id: 'memory', label: t('settings.memory'), Icon: BookOpenText },
       { id: 'compute', label: t('settings.compute'), Icon: Zap },
       { id: 'network', label: t('settings.network'), Icon: Globe }
     ]
@@ -1029,6 +1032,8 @@ const SettingsPage = forwardRef<SettingsPageHandle, SettingsPageProps>(function 
                   ) : (
                     <ComputePanel onNavigate={navigateCompute} />
                   )
+                ) : activePanel === 'memory' ? (
+                  <MemoryPanel />
                 ) : activePanel === 'storage' ? (
                   <StoragePanel
                     onContinueToAgent={() => {
