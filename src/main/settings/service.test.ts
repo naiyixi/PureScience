@@ -3144,11 +3144,11 @@ describe('SettingsService: official vendors', () => {
 
     // An unknown model falls back to the vendor's first catalog entry.
     snapshot = await service.setActiveProvider(created.id, 'not-a-model')
-    expect(snapshot.activeModel).toBe('glm-5.2')
+    expect(snapshot.activeModel).toBe('glm-5.3')
 
     // No model given also defaults to the first catalog entry.
     snapshot = await service.setActiveProvider(created.id)
-    expect(snapshot.activeModel).toBe('glm-5.2')
+    expect(snapshot.activeModel).toBe('glm-5.3')
   })
 
   it('builds spawn env from the registry base URL and the active model', async () => {

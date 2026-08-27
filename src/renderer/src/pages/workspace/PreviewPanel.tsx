@@ -1,4 +1,4 @@
-import { BookOpen, File, FolderOpen, X } from 'lucide-react'
+import { BookOpen, ClipboardCopy, Download, File, FileUp, FolderOpen, Layers, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { PanelImperativeHandle, PanelSize } from 'react-resizable-panels'
 
@@ -10,6 +10,8 @@ import type {
   PreviewItem,
   PreviewToolItem
 } from '@/stores/preview-workbench-store'
+import { useLanguage } from '@/i18n'
+import { useNavigationStore } from '@/stores/navigation-store'
 import { usePreviewWorkbenchStore } from '@/stores/preview-workbench-store'
 
 import { ExtensionPreservingFileName } from './ExtensionPreservingFileName'
@@ -77,6 +79,101 @@ const scrollPreviewTabIntoView = (
   tabList.scrollTo({ left: tabList.scrollLeft + offset, behavior })
 }
 
+// Right-click menu actions for a preview tab (open-science #1764): close / close others for every
+// tab; download, copy path, and save-as-artifact for file tabs backed by a local path. A small
+// pointer-anchored menu avoids pulling in a dialog dependency for a single interaction.
+export const PreviewTabContextMenu = ({
+  x,
+  y,
+  tab,
+  onCloseTab,
+  onCloseOthers,
+  onDismiss
+}: {
+  x: number
+  y: number
+  tab: PreviewItem
+  onCloseTab: (id: string) => void
+  onCloseOthers: (id: string) => void
+  onDismiss: () => void
+}): React.JSX.Element => {
+  const { t } = useLanguage()
+  const activeProjectId = useNavigationStore((state) => state.activeProjectId)
+  const isFile = tab.type === 'file' && Boolean(tab.path)
+  const menuRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    const onPointerDown = (event: MouseEvent): void => {
+      if (!menuRef.current?.contains(event.target as Node)) onDismiss()
+    }
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') onDismiss()
+    }
+    window.addEventListener('mousedown', onPointerDown)
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      window.removeEventListener('mousedown', onPointerDown)
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [onDismiss])
+
+  const run = (action: () => void): void => {
+    onDismiss()
+    action()
+  }
+
+  const copyPath = (): void => {
+    if (tab.type === 'file' && tab.path) void navigator.clipboard.writeText(tab.path)
+  }
+  const download = (): void => {
+    if (tab.type === 'file' && tab.path) {
+      void window.api.saveManagedFile({ source: 'local', path: tab.path, suggestedName: tab.name })
+    }
+  }
+  const saveAsArtifact = (): void => {
+    if (tab.type === 'file' && tab.path) {
+      void window.api.uploads.stageLocalPath?.({
+        transferId: crypto.randomUUID(),
+        name: tab.name,
+        sourcePath: tab.path,
+        projectId: activeProjectId
+      })
+    }
+  }
+
+  const itemClassName = 'flex w-full cursor-pointer items-center gap-2 rounded px-2.5 py-1.5 text-left text-[13px] text-text-000 hover:bg-bg-300 focus-visible:outline-none'
+
+  return (
+    <div
+      ref={menuRef}
+      role="menu"
+      className="fixed z-[90] w-52 rounded-lg border border-border-200 bg-bg-000 p-1 shadow-card"
+      style={{ left: x, top: y }}
+    >
+      <button type="button" role="menuitem" className={itemClassName} onClick={() => run(() => onCloseTab(tab.id))}>
+        <X className="size-3.5" aria-hidden="true" /> {t('ws.previewTabClose')}
+      </button>
+      <button type="button" role="menuitem" className={itemClassName} onClick={() => run(() => onCloseOthers(tab.id))}>
+        <Layers className="size-3.5" aria-hidden="true" /> {t('ws.previewTabCloseOthers')}
+      </button>
+      {isFile ? (
+        <>
+          <div className="my-1 h-px bg-border-300/40" />
+          <button type="button" role="menuitem" className={itemClassName} onClick={() => run(copyPath)}>
+            <ClipboardCopy className="size-3.5" aria-hidden="true" /> {t('ws.previewTabCopyPath')}
+          </button>
+          <button type="button" role="menuitem" className={itemClassName} onClick={() => run(download)}>
+            <Download className="size-3.5" aria-hidden="true" /> {t('ws.previewTabDownload')}
+          </button>
+          <button type="button" role="menuitem" className={itemClassName} onClick={() => run(saveAsArtifact)}>
+            <FileUp className="size-3.5" aria-hidden="true" /> {t('ws.previewTabSaveAsArtifact')}
+          </button>
+        </>
+      ) : null}
+    </div>
+  )
+}
+
 // One tab owns activation/keyboard behavior while its sibling close button preserves quick removal.
 const PreviewTab = ({
   tab,
@@ -94,7 +191,11 @@ const PreviewTab = ({
   onActivate: (id: string) => void
   onClose: (id: string) => void
   onKeyDown: (event: React.KeyboardEvent<HTMLButtonElement>) => void
-}): React.JSX.Element => (
+}): React.JSX.Element => {
+  const removeItem = usePreviewWorkbenchStore((state) => state.removeItem)
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
+
+  return (
   <div
     ref={containerRef}
     role="presentation"
@@ -102,6 +203,10 @@ const PreviewTab = ({
       previewTabClassName,
       isActive ? 'bg-bg-300 text-text-000' : 'text-text-300 hover:bg-bg-200 hover:text-text-100'
     )}
+    onContextMenu={(event) => {
+      event.preventDefault()
+      setMenu({ x: event.clientX, y: event.clientY })
+    }}
   >
     <button
       ref={tabRef}
@@ -141,8 +246,22 @@ const PreviewTab = ({
     >
       <X className="size-3.5" aria-hidden="true" />
     </button>
+      {menu ? (
+        <PreviewTabContextMenu
+          x={menu.x}
+          y={menu.y}
+          tab={tab}
+          onCloseTab={onClose}
+          onCloseOthers={(id) => {
+            const others = usePreviewWorkbenchStore.getState().items.filter((item) => item.id !== id)
+            for (const other of others) removeItem(other.id)
+          }}
+          onDismiss={() => setMenu(null)}
+        />
+      ) : null}
   </div>
-)
+  )
+}
 
 // Horizontal, scrollable strip of every file the user has asked to preview this session.
 const PreviewTabBar = ({

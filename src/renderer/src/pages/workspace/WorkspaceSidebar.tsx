@@ -241,7 +241,14 @@ const WorkspaceSidebar = ({
                     <div
                       key={session.id}
                       className={cn(sessionRowClassName, isActive && 'bg-bg-300 text-text-000')}
-                      title={session.title}
+                      title={
+                        // Session hover preview (open-science #1775): the native tooltip shows the
+                        // full title and description on hover/keyboard focus, so truncated sidebar
+                        // rows stay identifiable (Chrome renders "\n" as a tooltip line break).
+                        session.description
+                          ? `${session.title}\n\n${session.description}`
+                          : session.title
+                      }
                     >
                       <div className="flex w-full min-w-0 items-center gap-1.5">
                         <button
