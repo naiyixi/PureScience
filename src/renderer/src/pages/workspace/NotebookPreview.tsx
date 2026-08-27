@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import type { PreviewToolItem } from '@/stores/preview-workbench-store'
 import { computeStaleRunIds } from '../../../../shared/run-dependencies'
+import { Braces } from 'lucide-react'
 import { useNotebookEnvStore } from '@/stores/notebook-env-store'
 import { cn } from '@/lib/utils'
 
@@ -12,7 +13,8 @@ import type {
   NotebookLanguage,
   NotebookRunRecord,
   NotebookSessionReference,
-  NotebookSessionState
+  NotebookSessionState,
+  NotebookVariable
 } from '../../../../shared/notebook'
 import { EnvProvisionOverlay } from './EnvProvisionOverlay'
 import { shouldProvisionR } from './lazy-r'
@@ -76,6 +78,86 @@ const createNotebookRequest = (
   sessionId: notebook.sessionId,
   workspaceCwd: notebook.workspaceCwd
 })
+
+// Read-only live-namespace browser (open-science #1748): names, types, shapes, and bounded
+// previews of the running Python/R kernel, refreshed after each execution. The kernel answers only
+// while alive; an undefined response renders as "unavailable" (no kernel started just to browse).
+const NotebookVariablesPanel = ({
+  variables,
+  state,
+  onRefresh
+}: {
+  variables: NotebookVariable[]
+  state: 'idle' | 'loading' | 'unavailable' | 'refreshing'
+  onRefresh: () => void
+}): React.JSX.Element => {
+  const { t } = useLanguage()
+
+  if (state === 'unavailable') {
+    return (
+      <div className="grid min-h-40 place-items-center px-4 py-6 text-center">
+        <div>
+          <Braces className="mx-auto size-5 text-text-300" aria-hidden="true" />
+          <p className="mt-2 text-xs text-text-300">{t('ws.notebookVariablesUnavailable')}</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (state === 'loading' && variables.length === 0) {
+    return (
+      <div className="px-4 py-6 text-xs text-text-300" data-testid="notebook-variables-loading">
+        {t('ws.notebookVariablesLoading')}
+      </div>
+    )
+  }
+
+  if (variables.length === 0) {
+    return (
+      <div className="px-4 py-6 text-xs text-text-300" data-testid="notebook-variables-empty">
+        {t('ws.notebookVariablesEmpty')}
+      </div>
+    )
+  }
+
+  return (
+    <div className="px-3 py-2" data-testid="notebook-variables">
+      <div className="mb-2 flex items-center justify-between">
+        <span className="text-[11px] font-medium text-text-300">
+          {variables.length} {t('ws.notebookVariablesCount')}
+        </span>
+        <button
+          type="button"
+          onClick={onRefresh}
+          className="rounded-md border border-border-200 px-2 py-0.5 text-[11px] text-text-200 transition-colors hover:bg-bg-200"
+          data-testid="notebook-variables-refresh"
+        >
+          {state === 'refreshing' ? t('ws.notebookVariablesRefreshing') : t('ws.notebookVariablesRefresh')}
+        </button>
+      </div>
+      <div className="divide-y divide-border-100 rounded-md border border-border-100">
+        {variables.map((variable) => (
+          <div key={variable.name} className="flex items-baseline gap-2 px-2.5 py-1.5">
+            <span className="min-w-0 flex-1 truncate font-mono text-xs text-text-000">
+              {variable.name}
+            </span>
+            <span className="shrink-0 rounded bg-bg-300 px-1.5 py-0.5 font-mono text-[10px] text-text-200">
+              {variable.type}
+            </span>
+            {variable.shape ? (
+              <span className="shrink-0 font-mono text-[10px] text-text-300">{variable.shape}</span>
+            ) : null}
+            {variable.preview ? (
+              <span className="max-w-64 truncate font-mono text-[10px] text-text-300" title={variable.preview}>
+                {variable.preview}
+              </span>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 // Collapses stdout, stderr, and traceback into the text block shown under each run.
 const getRunOutputText = (run: NotebookRunRecord | undefined): string => {
@@ -250,6 +332,40 @@ const NotebookPreview = ({ item }: NotebookPreviewProps): React.JSX.Element => {
   const applyNotebookState = useCallback((nextState: NotebookSessionState): void => {
     setNotebookState(nextState)
   }, [])
+
+  // Variables view state (open-science #1748): the panel is read-only and refreshed after each
+  // execution; it never starts a kernel just to browse.
+  const [variablesOpen, setVariablesOpen] = useState(false)
+  const [variables, setVariables] = useState<NotebookVariable[]>([])
+  const [variablesState, setVariablesState] = useState<
+    'idle' | 'loading' | 'unavailable' | 'refreshing'
+  >('idle')
+
+  const loadVariables = useCallback(async (): Promise<void> => {
+    setVariablesState((current) =>
+      current === 'loading' || current === 'refreshing' ? current : 'loading'
+    )
+    try {
+      const result = await window.api.notebook.inspectVariables(createNotebookRequest(item.notebook))
+      if (!result) {
+        setVariables([])
+        setVariablesState('unavailable')
+        return
+      }
+      setVariables(result.variables)
+      setVariablesState('idle')
+    } catch {
+      setVariables([])
+      setVariablesState('unavailable')
+    }
+  }, [item.notebook])
+
+  // Refresh the snapshot when the kernel publishes changes while the panel is open.
+  useEffect(() => {
+    if (!variablesOpen) return
+    void loadVariables()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [variablesOpen, item.notebook, notebookState?.activeRunId, loadVariables])
 
   // Cross-run dependency staleness: a later completed run that rewrote one of this run's written
   // variables makes its output reflect an earlier state.
@@ -455,6 +571,21 @@ const NotebookPreview = ({ item }: NotebookPreviewProps): React.JSX.Element => {
             )
           )}
         </div>
+        <button
+          type="button"
+          onClick={() => setVariablesOpen((open) => !open)}
+          aria-pressed={variablesOpen}
+          data-testid="notebook-variables-toggle"
+          className={cn(
+            'flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors',
+            variablesOpen
+              ? 'bg-bg-300 text-text-000'
+              : 'text-text-300 hover:bg-bg-200 hover:text-text-100'
+          )}
+        >
+          <Braces className="size-3.5" aria-hidden="true" />
+          {t('ws.notebookVariables')}
+        </button>
       </header>
 
       {showEnvSelector ? (
@@ -503,6 +634,19 @@ const NotebookPreview = ({ item }: NotebookPreviewProps): React.JSX.Element => {
           >
             {isRestarting ? t('common.restarting') : t('common.restartRKernel')}
           </button>
+        </div>
+      ) : null}
+
+      {variablesOpen ? (
+        <div
+          className="min-h-0 flex-[2_1_0] overflow-auto border-b border-border-100"
+          data-testid="notebook-variables-panel"
+        >
+          <NotebookVariablesPanel
+            variables={variables}
+            state={variablesState}
+            onRefresh={() => void loadVariables()}
+          />
         </div>
       ) : null}
 

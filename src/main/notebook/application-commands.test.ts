@@ -83,6 +83,7 @@ describe('Notebook application commands', () => {
       expect.objectContaining({ name: 'notebook:finish-code-cell' }),
       expect.objectContaining({ name: 'notebook:run-cell' }),
       expect.objectContaining({ name: 'notebook:execute' }),
+      expect.objectContaining({ name: 'notebook:inspect-variables' }),
       expect.objectContaining({ name: 'notebook:export-ipynb' }),
       expect.objectContaining({ name: 'notebook:export-ipynb-all' }),
       expect.objectContaining({ name: 'notebook:restart' }),

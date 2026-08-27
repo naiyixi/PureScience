@@ -239,6 +239,7 @@ describe('Notebook runtime facade architecture', () => {
         'getActiveNotebookSessions',
         'getSessionReference',
         'inspectPackages',
+        'inspectVariables',
         'isDefaultEnvRecoveryBlocked',
         'isPrefixLiveUnconfirmed',
         'isPrefixRecoveryBlocked',

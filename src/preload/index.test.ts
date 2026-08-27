@@ -301,6 +301,7 @@ describe('preload bridge — public surface inventory', () => {
       'notebook.exportIpynbAll',
       'notebook.finishCodeCell',
       'notebook.getReference',
+      'notebook.inspectVariables',
       'notebook.onAvailable',
       'notebook.onChanged',
       'notebook.readInputPreview',
@@ -578,7 +579,7 @@ describe('preload bridge — runtime renderer contract catalog', () => {
   it('routes all 189 owned methods through their cataloged Electron channels', async () => {
     const requestContracts = runtimeContracts.filter(({ kind }) => kind === 'method')
 
-    expect(runtimeContracts).toHaveLength(198)
+    expect(runtimeContracts).toHaveLength(199)
 
     for (const contract of requestContracts) {
       invokeMock.mockClear()

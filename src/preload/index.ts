@@ -641,6 +641,8 @@ const api: PureScienceAPI = {
       }>,
     runCell: (request) => electronRendererContracts.invoke('notebook.runCell', request),
     execute: (request) => electronRendererContracts.invoke('notebook.execute', request),
+    inspectVariables: (request) =>
+      electronRendererContracts.invoke('notebook.inspectVariables', request),
     exportIpynb: (request) => electronRendererContracts.invoke('notebook.exportIpynb', request),
     exportIpynbAll: (request) =>
       electronRendererContracts.invoke('notebook.exportIpynbAll', request),

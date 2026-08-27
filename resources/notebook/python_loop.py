@@ -5,6 +5,7 @@
 import ast
 import hashlib
 import io
+import inspect
 import json
 import os
 import sys
@@ -455,6 +456,49 @@ def _run(code):
             "environment": _capture_environment()}
 
 
+def _shape_of(value):
+    """Compact structural hint for the Variables view: array/frame dims, list length."""
+    try:
+        if hasattr(value, "shape"):
+            shape = value.shape
+            return "x".join(str(dim) for dim in shape) if shape else "()"
+        if isinstance(value, (list, tuple, set, frozenset)):
+            return str(len(value))
+        if isinstance(value, dict):
+            return "{} {}".format(len(value), "key" if len(value) == 1 else "keys")
+    except Exception:
+        pass
+    return None
+
+
+def _preview_of(value, limit=120):
+    try:
+        text = repr(value)
+        return text if len(text) <= limit else text[: limit - 1] + "…"
+    except Exception:
+        return None
+
+
+def _inspect_variables():
+    """Snapshot of the persistent namespace for the read-only Variables view (#1748)."""
+    out = []
+    for name in sorted(_globals):
+        if name.startswith("_") or name in ("__builtins__",):
+            continue
+        value = _globals[name]
+        if name == "__name__" or inspect.ismodule(value):
+            continue
+        try:
+            vtype = type(value).__name__
+        except Exception:
+            vtype = "?"
+        shape = _shape_of(value)
+        preview = _preview_of(value)
+        out.append({"name": name, "type": vtype,
+                    "shape": shape, "preview": preview})
+    return out
+
+
 def main():
     for line in sys.stdin:
         line = line.strip()
@@ -470,7 +514,13 @@ def main():
             # SIGINT (KeyboardInterrupt) can land at any point while handling a request,
             # including during figure capture or the response write itself. Catching it
             # here means the loop always survives instead of dying mid-request.
-            response = _run(request.get("code", ""))
+            if request.get("action") == "inspect_variables":
+                response = {"stdout": "", "stderr": "", "error": None, "result": None,
+                            "cwd": os.getcwd(), "figures": [],
+                            "environment": _capture_environment(),
+                            "variables": _inspect_variables()}
+            else:
+                response = _run(request.get("code", ""))
             response["req_id"] = req_id
             _protocol_out.write(json.dumps(response) + "\n")
             _protocol_out.flush()

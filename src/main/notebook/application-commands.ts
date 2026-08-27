@@ -62,6 +62,11 @@ const notebookExecuteCommand = defineApplicationCommand<
   WorkflowArgs<'execute'>,
   WorkflowResult<'execute'>
 >('notebook:execute')
+const notebookInspectVariablesCommand = defineApplicationCommand<
+  'notebook:inspect-variables',
+  WorkflowArgs<'inspectVariables'>,
+  WorkflowResult<'inspectVariables'>
+>('notebook:inspect-variables')
 const notebookExportIpynbCommand = defineApplicationCommand<
   'notebook:export-ipynb',
   WorkflowArgs<'exportIpynb'>,
@@ -96,6 +101,7 @@ const notebookApplicationCommands = defineApplicationCommandGroup('notebook', [
   notebookFinishCodeCellCommand,
   notebookRunCellCommand,
   notebookExecuteCommand,
+  notebookInspectVariablesCommand,
   notebookExportIpynbCommand,
   notebookExportIpynbAllCommand,
   notebookRestartCommand,
@@ -120,6 +126,8 @@ const installNotebookApplicationCommands = (
         dependencies.workflows.finishCodeCell(invocation.args[0]),
       'notebook:run-cell': (invocation) => dependencies.workflows.runCell(invocation.args[0]),
       'notebook:execute': (invocation) => dependencies.workflows.execute(invocation.args[0]),
+      'notebook:inspect-variables': (invocation) =>
+        dependencies.workflows.inspectVariables(invocation.args[0]),
       'notebook:export-ipynb': (invocation) => {
         assertLocalCaller(invocation.callerContext, notebookExportIpynbCommand.name)
         return dependencies.workflows.exportIpynb(invocation.args[0])
@@ -146,8 +154,9 @@ export {
   notebookApplicationCommands,
   notebookBeginCodeCellCommand,
   notebookExecuteCommand,
-  notebookExportIpynbAllCommand,
+  notebookInspectVariablesCommand,
   notebookExportIpynbCommand,
+  notebookExportIpynbAllCommand,
   notebookFinishCodeCellCommand,
   notebookReadInputPreviewCommand,
   notebookReferenceCommand,

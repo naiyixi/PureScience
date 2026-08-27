@@ -25,6 +25,7 @@ const createRuntime = (
   finishCodeCell: unavailable('finishCodeCell'),
   runCell: unavailable('runCell'),
   execute: unavailable('execute'),
+  inspectVariables: unavailable('inspectVariables'),
   exportIpynb: unavailable('exportIpynb'),
   exportIpynbAll: unavailable('exportIpynbAll'),
   restart: unavailable('restart'),
@@ -106,6 +107,7 @@ describe('Notebook command workflows', () => {
       finishCodeCell: vi.fn(),
       runCell: vi.fn(),
       execute: vi.fn(),
+      inspectVariables: vi.fn(),
       restart: vi.fn(),
       shutdown: vi.fn()
     })
