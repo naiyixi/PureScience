@@ -24,6 +24,7 @@ import type {
   InstallClaudeRequest,
   InstallCodexRequest,
   InstallOpencodeRequest,
+  MemorySettings,
   Preflight,
   RefreshProviderModelsRequest,
   RefreshProviderModelsResult,
@@ -280,6 +281,7 @@ class SettingsService {
       ),
       onboardingCompletedAt: preferences.onboardingCompletedAt,
       packageMirror: settings.packageMirror,
+      memory: settings.memory,
       reasoningEffort: preferences.reasoningEffort,
       notificationsEnabled: preferences.notificationsEnabled,
       conversationSkillImportEnabled: preferences.conversationSkillImportEnabled,
@@ -366,6 +368,17 @@ class SettingsService {
   // Sets (or clears) the package-mirror configuration and returns the sanitized, persisted value.
   async setPackageMirror(request: SetPackageMirrorRequest): Promise<PackageMirror> {
     return this.notebookRuntimeSettings.setPackageMirror(request)
+  }
+
+  // Persists the user's editable memory notes; returns the sanitized, persisted value.
+  async setMemory(memory: MemorySettings): Promise<MemorySettings> {
+    const persisted = await this.repository.setMemory(memory)
+    return persisted.memory ?? { enabled: false, categories: [], notes: [] }
+  }
+
+  // Reads the current memory settings; undefined means memory has never been written.
+  async getMemory(): Promise<MemorySettings | undefined> {
+    return (await this.repository.getSettings()).memory
   }
 
   private async migrateLegacyKeyRefs(settings: StoredSettings): Promise<StoredSettings> {

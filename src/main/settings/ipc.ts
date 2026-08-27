@@ -47,7 +47,8 @@ import {
   type SetVisionModelRequest,
   type UpdateSkillRequest,
   type UpsertProviderRequest,
-  type ValidateProviderRequest
+  type ValidateProviderRequest,
+  type MemorySettings
 } from '../../shared/settings'
 import { SettingsService } from './service'
 import type { SettingsWorkflows } from './workflows'
@@ -251,6 +252,11 @@ const registerSettingsIpcHandlers = ({
   ipcMainHandle('settings:get-package-mirror', () => service.getPackageMirror())
   ipcMainHandle('settings:set-package-mirror', (_event, request: SetPackageMirrorRequest) =>
     service.setPackageMirror(request)
+  )
+
+  ipcMainHandle('settings:get-memory', () => service.getMemory())
+  ipcMainHandle('settings:set-memory', (_event, memory: MemorySettings) =>
+    service.setMemory(memory)
   )
 
   ipcMainHandle('settings:list-skills', () => service.listSkills())

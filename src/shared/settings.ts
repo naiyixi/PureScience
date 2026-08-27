@@ -383,6 +383,31 @@ export type AgentFrameworkView = {
   supportsSkills: boolean
 }
 
+// The user's editable memory notes, mirroring the structured memory the app uses to recall
+// preferences about the user across sessions. Categories group notes (e.g. "About you"); the
+// built-in "About you" category is the default landing category.
+export type MemoryNote = {
+  id: string
+  categoryId: string
+  text: string
+  createdAt: number
+  updatedAt: number
+}
+
+export type MemoryCategory = {
+  id: string
+  name: string
+  createdAt: number
+}
+
+export type MemorySettings = {
+  // Master switch: off means the app neither saves new notes nor recalls existing ones, but the
+  // notes below stay editable. On resumes.
+  enabled: boolean
+  categories: MemoryCategory[]
+  notes: MemoryNote[]
+}
+
 // Full renderer snapshot of settings state.
 export type SettingsSnapshot = {
   claude: ClaudeInfo
@@ -427,6 +452,9 @@ export type SettingsSnapshot = {
   // The default permission profile for new sessions. Valid values: 'ask', 'auto', 'full'.
   // Absent or invalid falls back to 'ask' (the most restrictive mode).
   defaultPermissionProfile?: PermissionProfileId
+  // The user's editable memory notes (categories + notes + master switch). Absent means memory
+  // has never been written; the UI presents an empty memory with the built-in "About you" category.
+  memory?: MemorySettings
 }
 
 // Request to set (or clear, via omitted fields) the package-mirror configuration.

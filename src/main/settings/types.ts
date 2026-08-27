@@ -5,6 +5,7 @@ import type {
   ClaudeInfo,
   CodexSubscriptionAuthMode,
   CodexInfo,
+  MemorySettings,
   ProviderType,
   ProviderValidationFailure,
   ReasoningEffort
@@ -192,6 +193,8 @@ export type StoredSettings = {
   connectors?: StoredConnectors
   // Non-secret package-mirror overrides (conda/pypi/cran). Absent means public hosts.
   packageMirror?: PackageMirror
+  // User-editable memory notes (categories + notes + master switch). Absent means never written.
+  memory?: MemorySettings
   // Absolute path of the relocatable data root (artifacts/notebooks/runtime/uploads). Absent means
   // "use the config root" (default). Only written after a successful migration; a change needs a restart.
   dataRoot?: string

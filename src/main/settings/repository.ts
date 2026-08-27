@@ -8,6 +8,9 @@ import type {
   ChatApiEndpoint,
   ClaudeSubscriptionProviderId,
   ClaudeInfo,
+  MemoryCategory,
+  MemoryNote,
+  MemorySettings,
   ProviderType,
   ProviderValidationFailure,
   ReasoningEffort,
@@ -402,6 +405,53 @@ export const sanitizePackageMirror = (value: unknown): PackageMirror | undefined
   return Object.keys(result).length > 0 ? result : undefined
 }
 
+// Rebuilds MemorySettings from untrusted JSON: only string id/name/text and numeric timestamps
+// survive; notes pointing at a missing category are dropped; an empty enabled flag defaults to
+// false so memory never silently resumes after a corrupt write.
+export const sanitizeMemorySettings = (value: unknown): MemorySettings | undefined => {
+  if (!isRecord(value)) return undefined
+
+  const categories = Array.isArray(value.categories)
+    ? value.categories
+        .map((entry) => {
+          if (!isRecord(entry)) return undefined
+          const id = asString(entry.id)
+          const name = asString(entry.name)
+          if (!id || !name) return undefined
+          return { id, name, createdAt: asNumber(entry.createdAt) ?? 0 }
+        })
+        .filter((entry): entry is MemoryCategory => entry !== undefined)
+    : []
+
+  const categoryIds = new Set(categories.map((category) => category.id))
+  const notes = Array.isArray(value.notes)
+    ? value.notes
+        .map((entry) => {
+          if (!isRecord(entry)) return undefined
+          const id = asString(entry.id)
+          const categoryId = asString(entry.categoryId)
+          const text = asString(entry.text)
+          if (!id || !categoryId || !text || !categoryIds.has(categoryId)) return undefined
+          return {
+            id,
+            categoryId,
+            text,
+            createdAt: asNumber(entry.createdAt) ?? 0,
+            updatedAt: asNumber(entry.updatedAt) ?? 0
+          }
+        })
+        .filter((entry): entry is MemoryNote => entry !== undefined)
+    : []
+
+  // Categories and notes are deliberately non-optional: a hand-edited file that drops the arrays
+  // yields an empty memory rather than an undefined one the UI would have to treat as "never set".
+  return {
+    enabled: value.enabled === true,
+    categories,
+    notes
+  }
+}
+
 // Rebuilds the whole settings document, keeping activeProviderId only when it points at a provider.
 const sanitizeSettings = (value: unknown): StoredSettings => {
   if (!isRecord(value)) return createEmptySettings()
@@ -510,6 +560,10 @@ const sanitizeSettings = (value: unknown): StoredSettings => {
   const packageMirror = sanitizePackageMirror(value.packageMirror)
 
   if (packageMirror) settings.packageMirror = packageMirror
+
+  const memory = sanitizeMemorySettings(value.memory)
+
+  if (memory) settings.memory = memory
 
   const pathsNormalizedAt = asNumber(value.pathsNormalizedAt)
 
@@ -944,6 +998,14 @@ class SettingsRepository {
     const sanitized = sanitizePackageMirror(mirror)
 
     return this.mutate((settings) => ({ ...settings, packageMirror: sanitized }))
+  }
+
+  // Persists the user's editable memory notes. Sanitized before write so a malformed payload can
+  // never persist (a note referencing a missing category would silently vanish on next read).
+  async setMemory(memory: MemorySettings): Promise<StoredSettings> {
+    const sanitized = sanitizeMemorySettings(memory) ?? { enabled: false, categories: [], notes: [] }
+
+    return this.mutate((settings) => ({ ...settings, memory: sanitized }))
   }
 
   // Persists the selected agent backend; applied on the next reconnect.
