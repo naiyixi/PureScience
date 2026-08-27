@@ -484,12 +484,20 @@ it.runIf(runLiveContract)(
           content: 'audited evidence'
         }
       ]),
+      readTurnHistory: vi.fn(() => '[No earlier conversation in this session.]'),
       queryExecutionLog: vi.fn(() => []),
       readArtifact: vi.fn(async () => ({
         id: 'artifact-1',
         kind: 'raw' as const,
         content: 'artifact evidence',
         encoding: 'utf8' as const
+      })),
+      fetchSource: vi.fn(async (url: string) => ({
+        url,
+        finalUrl: url,
+        title: 'Source',
+        text: 'source evidence',
+        truncated: false
       }))
     }
     let submittedChecks: unknown

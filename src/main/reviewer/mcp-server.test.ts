@@ -17,7 +17,13 @@ import {
 } from './mcp-server'
 import { createReviewerMcpStdioProxy } from './mcp-stdio-proxy'
 import type { TurnScope } from '../../shared/reviewer'
-import type { ArtifactContent, ExecRecord, OrderedBlock, ReviewerHostServer } from './host-sdk'
+import type {
+  ArtifactContent,
+  ExecRecord,
+  OrderedBlock,
+  ReviewerHostServer,
+  SourceFetchResult
+} from './host-sdk'
 
 const scope: TurnScope = {
   turnMessageId: 'msg-2',
@@ -40,7 +46,10 @@ const scope: TurnScope = {
   artifactVersionIds: ['artifact-csv']
 }
 
-type ReviewerEvidence = Pick<ReviewerHostServer, 'readTurn' | 'queryExecutionLog' | 'readArtifact'>
+type ReviewerEvidence = Pick<
+  ReviewerHostServer,
+  'readTurn' | 'readTurnHistory' | 'queryExecutionLog' | 'readArtifact' | 'fetchSource'
+>
 
 const createReviewerEvidence = (): ReviewerEvidence => ({
   readTurn: vi.fn<() => OrderedBlock[]>().mockReturnValue([
@@ -63,6 +72,7 @@ const createReviewerEvidence = (): ReviewerEvidence => ({
       status: 'completed'
     }
   ]),
+  readTurnHistory: vi.fn<() => string>().mockReturnValue('[No earlier conversation in this session.]'),
   queryExecutionLog: vi
     .fn<(activityId?: string) => ExecRecord[]>()
     .mockReturnValue([
@@ -73,6 +83,13 @@ const createReviewerEvidence = (): ReviewerEvidence => ({
     kind: 'tabular',
     columns: { value: ['42'] },
     rowCount: 1
+  }),
+  fetchSource: vi.fn<(url: string) => Promise<SourceFetchResult>>().mockResolvedValue({
+    url: 'https://example.com/source',
+    finalUrl: 'https://example.com/source',
+    title: 'Example',
+    text: 'The source page content.',
+    truncated: false
   })
 })
 
@@ -360,9 +377,11 @@ describe('validateReviewerEvidenceAccess', () => {
     expect(() =>
       validateReviewerEvidenceAccess(checks, scope, {
         turnRead: false,
+        turnHistoryRead: false,
         allExecutionLogsRead: false,
         executionLogActivityIds: new Set(),
-        artifactVersionIds: new Set()
+        artifactVersionIds: new Set(),
+        fetchedSourceUrls: new Set()
       })
     ).toThrow(/must read the frozen turn/i)
   })
@@ -375,15 +394,19 @@ describe('validateReviewerEvidenceAccess', () => {
     for (const access of [
       {
         turnRead: false,
+        turnHistoryRead: false,
         allExecutionLogsRead: true,
         executionLogActivityIds: new Set<string>(),
-        artifactVersionIds: new Set<string>()
+        artifactVersionIds: new Set<string>(),
+        fetchedSourceUrls: new Set<string>()
       },
       {
         turnRead: false,
+        turnHistoryRead: false,
         allExecutionLogsRead: false,
         executionLogActivityIds: new Set<string>(),
-        artifactVersionIds: new Set(['artifact-csv'])
+        artifactVersionIds: new Set<string>(),
+        fetchedSourceUrls: new Set<string>(['https://example.com/source'])
       }
     ]) {
       expect(() => validateReviewerEvidenceAccess(checks, scope, access)).toThrow(
@@ -410,9 +433,11 @@ describe('validateReviewerEvidenceAccess', () => {
     expect(() =>
       validateReviewerEvidenceAccess(checks, scope, {
         turnRead: true,
+        turnHistoryRead: false,
         allExecutionLogsRead: false,
         executionLogActivityIds: new Set(),
-        artifactVersionIds: new Set()
+        artifactVersionIds: new Set(),
+        fetchedSourceUrls: new Set()
       })
     ).toThrow(/execution log.*was not read/i)
   })
@@ -432,17 +457,21 @@ describe('validateReviewerEvidenceAccess', () => {
     expect(() =>
       validateReviewerEvidenceAccess(checks, scope, {
         turnRead: true,
+        turnHistoryRead: false,
         allExecutionLogsRead: false,
         executionLogActivityIds: new Set(),
-        artifactVersionIds: new Set()
+        artifactVersionIds: new Set(),
+        fetchedSourceUrls: new Set()
       })
     ).toThrow(/artifact.*was not read/i)
     expect(() =>
       validateReviewerEvidenceAccess(checks, scope, {
         turnRead: true,
+        turnHistoryRead: false,
         allExecutionLogsRead: false,
         executionLogActivityIds: new Set(),
-        artifactVersionIds: new Set(['artifact-csv'])
+        artifactVersionIds: new Set(['artifact-csv']),
+        fetchedSourceUrls: new Set()
       })
     ).not.toThrow()
   })
@@ -622,13 +651,14 @@ describe('ReviewerMcpServer HTTP transport', () => {
     try {
       const { sessionId, headers } = await initialize(endpoint, token)
       const turn = await callTool(endpoint, sessionId, headers, 'read_turn', {})
+      const history = await callTool(endpoint, sessionId, headers, 'read_turn_history', {}, 3)
       const execution = await callTool(
         endpoint,
         sessionId,
         headers,
         'query_execution_log',
         { activityId: 'act-9' },
-        3
+        4
       )
       const artifact = await callTool(
         endpoint,
@@ -636,7 +666,15 @@ describe('ReviewerMcpServer HTTP transport', () => {
         headers,
         'read_artifact',
         { id: 'artifact-csv' },
-        4
+        5
+      )
+      const fetched = await callTool(
+        endpoint,
+        sessionId,
+        headers,
+        'fetch_source',
+        { url: 'https://example.com/source' },
+        6
       )
       const submitted = await callTool(
         endpoint,
@@ -651,7 +689,7 @@ describe('ReviewerMcpServer HTTP transport', () => {
             }
           ]
         },
-        5
+        7
       )
 
       expect(JSON.parse(turn.result?.content?.[0]?.text ?? 'null')).toEqual(
@@ -660,14 +698,24 @@ describe('ReviewerMcpServer HTTP transport', () => {
           expect.objectContaining({ sourceId: 'act-9' })
         ])
       )
+      expect(history.result?.content?.[0]?.text).toContain('No earlier conversation')
       expect(JSON.parse(execution.result?.content?.[0]?.text ?? 'null')).toEqual([
         expect.objectContaining({ activityId: 'act-9', status: 'completed' })
       ])
       expect(JSON.parse(artifact.result?.content?.[0]?.text ?? 'null')).toEqual(
         expect.objectContaining({ id: 'artifact-csv', kind: 'tabular', rowCount: 1 })
       )
+      expect(JSON.parse(fetched.result?.content?.[0]?.text ?? 'null')).toEqual(
+        expect.objectContaining({
+          url: 'https://example.com/source',
+          title: 'Example',
+          text: 'The source page content.'
+        })
+      )
+      expect(evidence.readTurnHistory).toHaveBeenCalledOnce()
       expect(evidence.queryExecutionLog).toHaveBeenCalledWith('act-9')
       expect(evidence.readArtifact).toHaveBeenCalledWith('artifact-csv')
+      expect(evidence.fetchSource).toHaveBeenCalledWith('https://example.com/source')
       expect(submitted.result?.isError).not.toBe(true)
       expect(onSubmit).toHaveBeenCalledOnce()
     } finally {

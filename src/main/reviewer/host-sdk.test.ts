@@ -572,8 +572,109 @@ describe('host RPC — method surface', () => {
     expect(body.result).toBeUndefined()
     expect(body.error).toMatch(/list_artifacts/)
     expect(body.error).toMatch(/read_turn/)
+    expect(body.error).toMatch(/read_turn_history/)
     expect(body.error).toMatch(/query_execution_log/)
     expect(body.error).toMatch(/read_artifact/)
+    expect(body.error).toMatch(/fetch_source/)
+  })
+})
+
+describe('host.read_turn_history — bounded earlier-window record', () => {
+  const makeMultiTurnSession = (): PersistedChatSession => ({
+    ...makeSession(),
+    messages: [
+      {
+        id: 'msg-0',
+        role: 'user',
+        content: 'First request: analyze the dataset',
+        status: 'complete',
+        eventIds: [],
+        createdAt: 1000,
+        updatedAt: 1000
+      },
+      {
+        id: 'msg-1',
+        role: 'agent',
+        content: 'I found 42 hits in the first pass.',
+        status: 'complete',
+        eventIds: [],
+        createdAt: 1100,
+        updatedAt: 1100
+      },
+      {
+        id: 'msg-2',
+        role: 'user',
+        content: 'Second request: compare against the baseline',
+        status: 'complete',
+        eventIds: [],
+        createdAt: 1200,
+        updatedAt: 1200
+      }
+    ]
+  })
+
+  it('returns a bounded record of turns BEFORE the audited turn only', async () => {
+    const session = makeMultiTurnSession()
+    const scope: TurnScope = {
+      turnMessageId: 'msg-2',
+      blocks: [],
+      artifactVersionIds: []
+    }
+    server = new ReviewerHostServer(session, scope, tmpDir)
+    ;({ endpoint, token } = await server.start())
+
+    const body = await post(endpoint, token, 'read_turn_history')
+
+    expect(body.result).toBeDefined()
+    const history = String(body.result)
+    expect(history).toContain('First request: analyze the dataset')
+    expect(history).toContain('I found 42 hits in the first pass.')
+    // The audited turn itself must never leak into the history window.
+    expect(history).not.toContain('Second request: compare against the baseline')
+  })
+
+  it('reports when there is no earlier conversation', async () => {
+    server = new ReviewerHostServer(makeSession(), makeScope(), tmpDir)
+    ;({ endpoint, token } = await server.start())
+
+    const body = await post(endpoint, token, 'read_turn_history')
+
+    expect(String(body.result)).toContain('No earlier conversation')
+  })
+})
+
+describe('host.fetch_source — injected external-source verification', () => {
+  it('delegates to the injected fetcher and surfaces its result', async () => {
+    const fetchSource = async (url: string) => ({
+      url,
+      finalUrl: url,
+      title: 'Example',
+      text: 'The paper says the effect is 42%.',
+      truncated: false
+    })
+    server = new ReviewerHostServer(makeSession(), makeScope(), tmpDir, undefined, undefined, fetchSource)
+    ;({ endpoint, token } = await server.start())
+
+    const body = await post(endpoint, token, 'fetch_source', {
+      url: 'https://example.com/paper'
+    })
+
+    expect(body.result).toMatchObject({
+      url: 'https://example.com/paper',
+      title: 'Example',
+      text: 'The paper says the effect is 42%.'
+    })
+  })
+
+  it('errors clearly when no fetcher is injected (unavailable verification path)', async () => {
+    server = new ReviewerHostServer(makeSession(), makeScope(), tmpDir)
+    ;({ endpoint, token } = await server.start())
+
+    const body = await post(endpoint, token, 'fetch_source', {
+      url: 'https://example.com/paper'
+    })
+
+    expect(String(body.error)).toMatch(/unavailable/i)
   })
 })
 

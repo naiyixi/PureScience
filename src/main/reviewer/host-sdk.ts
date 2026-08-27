@@ -8,6 +8,7 @@ import { readFile } from 'node:fs/promises'
 import { extname, join } from 'node:path'
 import { createHash, randomUUID } from 'node:crypto'
 
+import { buildHistoryPreamble, type HistoryMessage } from '../../shared/history-preamble'
 import { getProjectArtifactDir } from '../artifacts/repository'
 import type { PersistedChatSession } from '../../shared/session-persistence'
 import type { ReviewScopeSnapshotBlock, TurnScope, ScopeBlock } from '../../shared/reviewer'
@@ -71,9 +72,25 @@ export type ArtifactVersionContentResolver = (request: {
   versionId: string
 }) => Promise<{ path: string; filename: string; contentType?: string; checksum?: string }>
 
+// Verified external-source content returned by host.fetch_source(). Text is bounded and the URL is
+// echoed so the reviewer can cite exactly what it read.
+export type SourceFetchResult = {
+  url: string
+  finalUrl: string
+  title?: string
+  text: string
+  truncated: boolean
+}
+
 // The complete set of RPC methods the host exposes. Single-sourced so the unknown-method error can
 // tell a guessing reviewer exactly what IS available (it likes to try e.g. `list_artifacts`).
-export const SUPPORTED_HOST_METHODS = ['read_turn', 'query_execution_log', 'read_artifact'] as const
+export const SUPPORTED_HOST_METHODS = [
+  'read_turn',
+  'read_turn_history',
+  'query_execution_log',
+  'read_artifact',
+  'fetch_source'
+] as const
 
 // Scope-enforcing evidence reader with a legacy authenticated HTTP adapter.
 export class ReviewerHostServer {
@@ -87,7 +104,10 @@ export class ReviewerHostServer {
     private readonly scope: TurnScope,
     private readonly artifactStorageRoot: string,
     private readonly resolveArtifactVersion?: ArtifactVersionContentResolver,
-    frozenScopeSnapshot?: ReviewScopeSnapshotBlock[]
+    frozenScopeSnapshot?: ReviewScopeSnapshotBlock[],
+    // Injected fetch for the external-source verification tool. Keeping it out of the host's own
+    // dependency tree lets tests substitute a stub and keeps the host free of network concerns.
+    private readonly fetchExternalSource?: (url: string) => Promise<SourceFetchResult>
   ) {
     this.frozenScopeSnapshot = frozenScopeSnapshot ?? buildPersistedScopeSnapshot(session, scope)
     this.token = randomUUID()
@@ -154,11 +174,17 @@ export class ReviewerHostServer {
       case 'read_turn':
         result = this.readTurn()
         break
+      case 'read_turn_history':
+        result = this.readTurnHistory()
+        break
       case 'query_execution_log':
         result = this.queryExecutionLog(params.activityId as string | undefined)
         break
       case 'read_artifact':
         result = await this.readArtifact(params.id as string)
+        break
+      case 'fetch_source':
+        result = await this.fetchSource(params.url as string)
         break
       default:
         res.writeHead(400, { 'content-type': 'application/json' })
@@ -181,6 +207,38 @@ export class ReviewerHostServer {
     return this.frozenScopeSnapshot.map(
       ({ payload, ...block }) => ({ ...block, ...payload }) as OrderedBlock
     )
+  }
+
+  // Returns a bounded, token-budgeted record of the conversation BEFORE the audited turn. This is
+  // the cross-window drill (query_target_history equivalent): it lets the reviewer trace claims
+  // that refer to work done earlier in the session without exposing the turns AFTER the audited one.
+  // The window is built from the same bounded-replay machinery the app uses for agent handoffs,
+  // with a reviewer-specific header so the model reads it as evidence, not as a task to continue.
+  readTurnHistory(): string {
+    const historyMessages: HistoryMessage[] = []
+    for (const message of this.session.messages ?? []) {
+      if (message.id === this.scope.turnMessageId) break
+      if (message.role === 'user' || message.role === 'agent') {
+        historyMessages.push({ role: message.role, content: message.content ?? '' })
+      }
+    }
+
+    if (historyMessages.length === 0) {
+      return '[No earlier conversation in this session.]'
+    }
+
+    const preamble = buildHistoryPreamble(historyMessages, { target: 'reviewer' })
+    return preamble ?? '[Earlier conversation exceeds the review window budget.]'
+  }
+
+  // Verifies an external source (URL/DOI/PMID page) the audited turn cited. The fetch itself is
+  // injected: the host stays network-free and tests substitute a stub. The scope-bounded contract
+  // is unchanged — this is an optional verification path, not a route to session data.
+  async fetchSource(url: string): Promise<SourceFetchResult> {
+    if (!this.fetchExternalSource) {
+      throw new Error('External-source verification is unavailable in this review context.')
+    }
+    return this.fetchExternalSource(url)
   }
 
   // Returns execution records for this turn's activities, optionally filtered to one activity.

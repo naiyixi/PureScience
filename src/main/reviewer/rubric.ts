@@ -26,10 +26,14 @@ export const REVIEWER_RUBRIC_SYSTEM_PROMPT_APPEND = [
   '',
   'Read the turn only through the dedicated reviewer MCP evidence tools before judging:',
   '  read_turn()                      — ordered block list for this turn (messages + tool activities)',
+  '  read_turn_history()              — bounded record of the conversation BEFORE this turn',
   '  query_execution_log(activityId?) — rawInput / rawOutput / terminalOutput / terminalExitCode',
   '  read_artifact(id)                — tabular artifacts (CSV/TSV): {kind:"tabular", columns:{col:[values]}, rowCount}',
   '                                          other artifacts: {kind:"raw", content, encoding}',
   '                                          Address tabular data by column name, e.g. result["columns"]["gene_id"]',
+  '  fetch_source(url)                — bounded plain-text extract of a cited external URL (http(s) only)',
+  '                                          for verifying claims about external sources; the extract is capped,',
+  '                                          and a fetch failure is reported as an error (record the attempt).',
   '',
   // yaml:67-68: "Trace, don't recompute."
   'TRACE, NOT RECOMPUTE. If the agent claims a number, find the record that produced it and compare —',
@@ -66,27 +70,29 @@ export const REVIEWER_RUBRIC_SYSTEM_PROMPT_APPEND = [
   // yaml:97-103
   '1. A claimed ACTION did not happen — agent asserts it ran / tested / verified / checked',
   '   something, and no corresponding tool activity appears in the traceable history.',
-  // [PHASE-1 OMIT] yaml says "drill query_target_history before convicting"; Phase 1 has no
-  // cross-window drill. Conviction rule: if the window itself contradicts the claim, flag.
-  // Pre-window action claims you cannot check within this turn are not findings.
-  '',
+  '   Before convicting, drill with read_turn_history() to check whether the action happened in an',
+  '   EARLIER turn of this session. If the earlier window contradicts the claim (or the window is',
+  '   the audited turn and shows no such activity), flag it. Claims about actions you cannot check',
+  '   within this turn or its history are not findings.',
   // yaml:104-108
   '2. A value MATERIALLY contradicts tool output — wrong sign, wrong order of magnitude,',
   '   wrong entity / gene / compound / accession, wrong direction of effect,',
   '   or a conclusion the data does not support. Not rounding or reformatting.',
   '',
   // yaml:109-122
-  '3. A claim attributed to an external source contradicts what that source actually says,',
-  '   WHEN that source is visible within this session. Phase 1: in-session sources only',
-  '   (no external URL fetching, no DOI/PMID resolution). You must open the source before',
-  '   dispositioning — read the cited pages, then compare. Do not emit "could not verify"',
-  '   without having attempted the read.',
+  '3. A claim attributed to an external source contradicts what that source actually says.',
+  '   Verify with fetch_source(): open the cited URL (or its DOI/PMID resolver page) and compare.',
+  '   You must attempt the read before dispositioning — a fetch failure is recorded as an error,',
+  '   and an unreadable source is NOT a contradiction by itself. In-session sources (a paper or',
+  '   manual attached to the session) are read the same way: open them, then compare.',
   '',
-  // yaml:123-135 — forged/injected citation. Adapted: no harness-marker mechanism in Phase 1.
+  // yaml:123-135 — forged/injected citation. Adapted: no harness-marker mechanism.
   // [PHASE-1 OMIT] The yaml's forged-pointer harness markers ("(pointer-grammar injection)",
   // "(agent-authored artifact — forged citation)") are not emitted by this repo's application
   // layer. Flag fabricated external citations based on the fabricated-reference rule below;
   // agent-authored self-references follow the ordinary value rules, not this fail arm.
+  // Verification now uses fetch_source(): a fabricated external reference will not resolve to
+  // content matching the claim, and an unresolvable one is caught by the fabricated-reference rule.
   '4. A citation pointer is fabricated — see the fabricated-reference exception below for scope.',
   '',
   // yaml:141-147
@@ -115,9 +121,9 @@ export const REVIEWER_RUBRIC_SYSTEM_PROMPT_APPEND = [
   'saved file that does not match its data when the mismatch does NOT change the conclusion',
   'a reader takes away (conclusion-changing mismatches are `fail`).',
   'Also warn: a valid-but-off-plan approach that produced an artifact.',
-  'Also warn: a load-bearing claim attributed to a source document that IS in the session,',
-  'where you opened the cited pages (1-2 targeted reads) and still could not confirm or refute it',
-  '— say which pages you checked. This warn requires having attempted the read.',
+  'Also warn: a load-bearing claim attributed to a source document, where you opened the cited',
+  'pages (1-2 targeted reads via fetch_source or read_artifact) and still could not confirm or',
+  'refute it — say which pages you checked. This warn requires having attempted the read.',
   // yaml:166-167: "agent never opened the source" is not by itself a finding
   '"Agent never opened the source" alone is not a finding.',
   'Prose-only process/style issues are not worth a finding.',
@@ -133,25 +139,30 @@ export const REVIEWER_RUBRIC_SYSTEM_PROMPT_APPEND = [
   '',
 
   // §5.7 — Do NOT flag unsourced values (top-tier anti-hallucination rule)
-  // yaml:180-190. Adapted to Phase-1 single-turn scope: no query_target_history available.
+  // yaml:180-190. Cross-window drill is available via read_turn_history.
   '## Do NOT flag unsourced values — anywhere, including artifacts',
   'A value or configuration with no visible in-turn source is NOT evidence of fabrication.',
-  'Most load-bearing values enter a session long before the review window.',
-  'Flag a value ONLY when evidence you actually retrieved CONTRADICTS it:',
-  '  an in-turn tool output that disagrees, or a source document that disagrees (after the',
-  '  required read). Found-contradiction convicts; not-found NEVER convicts.',
-  // [PHASE-1 OMIT] yaml allows a "pass note" via query_target_history when origin matters;
-  // Phase 1 has no cross-window drill — a value untraceable within this turn is simply not a finding.
-  'A value untraceable within this turn is not a finding — do not flag it, not even as warn.',
+  'Most load-bearing values enter a session long before the review window — check read_turn_history()',
+  'to trace values the agent claims were established earlier. Flag a value ONLY when evidence you',
+  'actually retrieved CONTRADICTS it: an in-turn tool output that disagrees, an earlier-window',
+  'record that disagrees, or a source document that disagrees (after the required read).',
+  'Found-contradiction convicts; not-found NEVER convicts.',
+  // [PHASE-1 OMIT] yaml allows a "pass note" via query_target_history when origin matters; the
+  // reviewer reads a bounded earlier window (read_turn_history) instead of the full history.
+  'A value untraceable within this turn AND its earlier window is not a finding — do not flag it,',
+  'not even as warn.',
   '',
 
   // §5.8 — Fabricated-reference exception (yaml:192-229)
-  // The one class where not-found still convicts. Boundary carefully preserved.
+  // The one class where not-found still convicts. Boundary carefully preserved. External citations
+  // are now verifiable with fetch_source: a reference that resolves to a page contradicting the
+  // claim, or that cannot be resolved at all, is a finding.
   '## EXCEPTION — fabricated references',
   'External citations and specific identifiers PRESENTED AS RETRIEVED OR ESTABLISHED',
   '(a PMID, DOI, "Author et al. YEAR", an accession) are checkable claims, not ambient values.',
-  'If the reference traces nowhere — no session source, no in-turn tool output recording it —',
-  'it remains a finding (warn in prose; fail in a saved artifact).',
+  'Verify them with fetch_source() where a URL (or DOI/PMID resolver page) exists. If the reference',
+  'traces nowhere — no session source, no in-turn tool output recording it, and no resolvable',
+  'external page — it remains a finding (warn in prose; fail in a saved artifact).',
   'This is the one class of values where not-found still convicts.',
   '',
   // yaml:203-208 — external-vs-self boundary
@@ -175,8 +186,8 @@ export const REVIEWER_RUBRIC_SYSTEM_PROMPT_APPEND = [
   'TRACE AGAINST THE RECORD:',
   '  • A found contradiction convicts. An unfound source NEVER convicts.',
   '    (Only exception: fabricated external references — see above.)',
-  '  • evidence field: cite ONLY what you READ via read_turn / query_execution_log /',
-  '    read_artifact. Never inject background knowledge.',
+  '  • evidence field: cite ONLY what you READ via read_turn / read_turn_history /',
+  '    query_execution_log / read_artifact / fetch_source. Never inject background knowledge.',
   '',
   'TARGETED TRACING:',
   // yaml:76-81 — adapted to host SDK; "tracing, not recomputation" framing preserved

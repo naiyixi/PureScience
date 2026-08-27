@@ -31,7 +31,7 @@ const log = createLogger('reviewer:mcp')
 
 type ReviewerEvidenceAccess = Pick<
   ReviewerHostServer,
-  'readTurn' | 'queryExecutionLog' | 'readArtifact'
+  'readTurn' | 'readTurnHistory' | 'queryExecutionLog' | 'readArtifact' | 'fetchSource'
 >
 
 // Zod schema for the optional locator on a check submitted by the reviewer.
@@ -110,9 +110,11 @@ export type SubmitFindingsInput = z.infer<typeof submitFindingsInputSchema>
 
 export type ReviewerEvidenceAccessLedger = {
   turnRead: boolean
+  turnHistoryRead: boolean
   allExecutionLogsRead: boolean
   executionLogActivityIds: ReadonlySet<string>
   artifactVersionIds: ReadonlySet<string>
+  fetchedSourceUrls: ReadonlySet<string>
 }
 
 export const validateReviewerEvidenceAccess = (
@@ -231,9 +233,11 @@ export class ReviewerMcpServer {
   private readonly trackedFindingIds: ReadonlySet<string>
   private readonly evidenceAccess = {
     turnRead: false,
+    turnHistoryRead: false,
     allExecutionLogsRead: false,
     executionLogActivityIds: new Set<string>(),
-    artifactVersionIds: new Set<string>()
+    artifactVersionIds: new Set<string>(),
+    fetchedSourceUrls: new Set<string>()
   }
   private findingsSubmissionState: 'idle' | 'submitting' | 'submitted' = 'idle'
 
@@ -330,6 +334,54 @@ export class ReviewerMcpServer {
           const turn = evidence.readTurn()
           this.evidenceAccess.turnRead = true
           return { content: [{ type: 'text', text: JSON.stringify(turn) }] }
+        }
+      )
+
+      server.registerTool(
+        REVIEWER_MCP_TOOLS.readTurnHistory,
+        {
+          title: 'Read conversation history before the audited turn',
+          description:
+            'Return a bounded record of the conversation that happened BEFORE the audited turn ' +
+            '(token-budgeted; later turns are never included). Use it to trace claims the audited ' +
+            'turn makes about earlier work: an action it says happened earlier, a value it says was ' +
+            'established earlier, or a self-reference to an earlier artifact.',
+          inputSchema: {}
+        },
+        async () => {
+          const history = evidence.readTurnHistory()
+          this.evidenceAccess.turnHistoryRead = true
+          return { content: [{ type: 'text', text: history }] }
+        }
+      )
+
+      server.registerTool(
+        REVIEWER_MCP_TOOLS.fetchSource,
+        {
+          title: 'Fetch a cited external source',
+          description:
+            'Fetch the text of an external URL the audited turn cited (e.g. a paper page, DOI ' +
+            'resolver page, or PMID page) and return a bounded plain-text extract. Only http(s) ' +
+            'URLs are allowed. Use it to verify claims about external sources: open the cited ' +
+            'page, then compare its content against the claim. A fetch failure returns an error — ' +
+            'record that you attempted the read; do not invent content.',
+          inputSchema: { url: z.string().min(1).describe('The http(s) URL to fetch') }
+        },
+        async ({ url }) => {
+          try {
+            const fetched = await evidence.fetchSource(url)
+            this.evidenceAccess.fetchedSourceUrls.add(url)
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(fetched)
+                }
+              ]
+            }
+          } catch (error) {
+            return this.toolError(error)
+          }
         }
       )
 

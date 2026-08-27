@@ -1,4 +1,9 @@
-export type HistoryReplayTarget = 'claude-code' | 'opencode' | 'codex-response' | 'codex-bridge'
+export type HistoryReplayTarget =
+  | 'claude-code'
+  | 'opencode'
+  | 'codex-response'
+  | 'codex-bridge'
+  | 'reviewer'
 
 export type HistoryReplayDescriptor = {
   target: HistoryReplayTarget
@@ -16,7 +21,8 @@ const HISTORY_REPLAY_POLICIES: Record<HistoryReplayTarget, HistoryReplayPolicy> 
   'claude-code': { contextShare: 0.1, cap: 16_000 },
   opencode: { contextShare: 0.08, cap: 12_000 },
   'codex-response': { contextShare: 0.1, cap: 16_000 },
-  'codex-bridge': { contextShare: 0.05, cap: 8_000 }
+  'codex-bridge': { contextShare: 0.05, cap: 8_000 },
+  reviewer: { contextShare: 0.06, cap: 10_000 }
 }
 
 const MIN_REPLAY_BUDGET = 2_000
@@ -25,6 +31,13 @@ const HEADER =
   'The conversation below happened earlier in this session, before you joined it. It is an ' +
   'application-generated handoff; continue from the new user message after it and do not reply to ' +
   'this history directly.'
+
+// The reviewer reads the same bounded window for cross-turn verification. It must NOT treat the
+// window as a handoff to continue — it is evidence for the audit of a later turn.
+const REVIEWER_HEADER =
+  'The conversation below is a bounded record of earlier turns in this audited session. It is ' +
+  'provided as evidence for cross-window verification of the audited turn — do not respond to it ' +
+  'as a task; only use it to trace claims the audited turn makes about earlier work.'
 
 const OMISSION_NOTE = '[…middle turns omitted for replay budget…]'
 const RESPONSE_OMISSION_NOTE = '[…earlier response omitted for replay budget…]'
@@ -249,11 +262,12 @@ const projectTurn = (turn: HistoryTurn, budget: number): ProjectedTurn | undefin
 const renderLongPacket = (
   anchor: ProjectedTurn,
   recent: ProjectedTurn[],
-  totalTurns: number
+  totalTurns: number,
+  header: string = HEADER
 ): string => {
-  if (totalTurns === 1) return `${HEADER}\n\n## Conversation\n${anchor.text}`
+  if (totalTurns === 1) return `${header}\n\n## Conversation\n${anchor.text}`
 
-  const sections = [`${HEADER}\n\n## Original task\n${anchor.text}`]
+  const sections = [`${header}\n\n## Original task\n${anchor.text}`]
   const recentStartsAt = recent[0]?.index
   if (recentStartsAt === undefined || recentStartsAt > anchor.index + 1)
     sections.push(OMISSION_NOTE)
@@ -293,7 +307,8 @@ export const buildHistoryReplay = (
   if (turns.length === 0) return undefined
 
   const budget = resolveHistoryReplayBudget(descriptor)
-  const fullConversationPrefix = `${HEADER}\n\n## Conversation\n`
+  const header = descriptor.target === 'reviewer' ? REVIEWER_HEADER : HEADER
+  const fullConversationPrefix = `${header}\n\n## Conversation\n`
   let fullConversationCost = estimateHistoryTokens(fullConversationPrefix)
   const fullTurns: ProjectedTurn[] = []
   for (const turn of turns) {
@@ -315,10 +330,10 @@ export const buildHistoryReplay = (
 
   if (turns.length === 1) {
     const anchor = fitTurnForPacket(turns[0], budget, (projection) =>
-      renderLongPacket(projection, [], 1)
+      renderLongPacket(projection, [], 1, header)
     )
     if (!anchor) return undefined
-    const preamble = renderLongPacket(anchor, [], 1)
+    const preamble = renderLongPacket(anchor, [], 1, header)
     return {
       preamble,
       selectedMessageIndexes: anchor.selectedMessageIndexes,
@@ -332,10 +347,10 @@ export const buildHistoryReplay = (
   const preferredAnchor = projectTurn(anchorTurn, anchorProjectionBudget)
   const anchor =
     preferredAnchor &&
-    estimateHistoryTokens(renderLongPacket(preferredAnchor, [], turns.length)) <= budget
+    estimateHistoryTokens(renderLongPacket(preferredAnchor, [], turns.length, header)) <= budget
       ? preferredAnchor
       : fitTurnForPacket(anchorTurn, budget, (projection) =>
-          renderLongPacket(projection, [], turns.length)
+          renderLongPacket(projection, [], turns.length, header)
         )
   if (!anchor) return undefined
 
@@ -343,13 +358,13 @@ export const buildHistoryReplay = (
   const latestTurn = turns.at(-1)!
   const latestFull = estimateFullTurnTokens(latestTurn) <= budget ? fullTurn(latestTurn) : undefined
   const latestCandidate = latestFull
-    ? renderLongPacket(anchor, [latestFull], turns.length)
+    ? renderLongPacket(anchor, [latestFull], turns.length, header)
     : undefined
   if (latestFull && latestCandidate && estimateHistoryTokens(latestCandidate) <= budget) {
     recent.unshift(latestFull)
   } else {
     const latest = fitTurnForPacket(latestTurn, budget, (projection) =>
-      renderLongPacket(anchor, [projection], turns.length)
+      renderLongPacket(anchor, [projection], turns.length, header)
     )
     if (latest) recent.unshift(latest)
   }
@@ -357,12 +372,12 @@ export const buildHistoryReplay = (
   for (let index = turns.length - 2; index > 0; index -= 1) {
     if (estimateFullTurnTokens(turns[index]) > budget) break
     const turn = fullTurn(turns[index])
-    const candidate = renderLongPacket(anchor, [turn, ...recent], turns.length)
+    const candidate = renderLongPacket(anchor, [turn, ...recent], turns.length, header)
     if (estimateHistoryTokens(candidate) > budget) break
     recent.unshift(turn)
   }
 
-  const preamble = renderLongPacket(anchor, recent, turns.length)
+  const preamble = renderLongPacket(anchor, recent, turns.length, header)
   const estimatedTokens = estimateHistoryTokens(preamble)
   if (estimatedTokens > budget) return undefined
   return {
