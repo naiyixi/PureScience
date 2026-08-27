@@ -112,7 +112,7 @@ describe('provider registry', () => {
   it('exposes the first catalog entry as the default model', () => {
     expect(defaultVendorModel('openai')).toBe('gpt-5.6-sol')
     expect(defaultVendorModel('xai')).toBe('grok-4.6')
-    expect(defaultVendorModel('zhipu')).toBe('glm-5.2')
+    expect(defaultVendorModel('zhipu')).toBe('glm-5.3')
   })
 
   it('resolves model-specific static reasoning effort profiles without network discovery', () => {
