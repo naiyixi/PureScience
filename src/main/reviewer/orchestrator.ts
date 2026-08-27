@@ -31,6 +31,7 @@ import {
 } from '../../shared/session-persistence'
 import { ReviewerMcpServer } from './mcp-server'
 import { ReviewerHostServer, type ArtifactVersionContentResolver } from './host-sdk'
+import { createExternalSourceFetcher } from './external-source-fetch'
 import { buildReviewScopeSnapshot } from './scope-snapshot'
 import { REVIEWER_RUBRIC_SYSTEM_PROMPT_APPEND } from './rubric'
 import { injectAuditorMessage } from './correction'
@@ -899,7 +900,8 @@ const runScopedReview = async (options: {
       scope,
       artifactStorageRoot,
       artifactVersionContentResolver,
-      scopeSnapshot
+      scopeSnapshot,
+      createExternalSourceFetcher()
     )
 
     mcpServer = new ReviewerMcpServer(
@@ -1147,7 +1149,8 @@ const runReviewWithSession = async (
       scope,
       artifactStorageRoot,
       artifactVersionContentResolver,
-      scopeSnapshot
+      scopeSnapshot,
+      createExternalSourceFetcher()
     )
 
     mcpServer = new ReviewerMcpServer(

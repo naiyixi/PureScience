@@ -58,11 +58,16 @@ export type ReviewOutcome = 'pass' | 'flagged'
 
 // The only MCP server an unattended reviewer session may use. Keeping the name in shared code lets
 // the orchestrator and ACP permission gate enforce the same allowlist without importing each other.
+// Tool set: scope-bounded evidence reads (read_turn / query_execution_log / read_artifact), a
+// bounded earlier-window record (read_turn_history), verified external-source reads (fetch_source),
+// and the single submit_findings call.
 export const REVIEWER_MCP_SERVER_NAME = 'purescience-reviewer'
 export const REVIEWER_MCP_TOOLS = {
   readTurn: 'read_turn',
+  readTurnHistory: 'read_turn_history',
   queryExecutionLog: 'query_execution_log',
   readArtifact: 'read_artifact',
+  fetchSource: 'fetch_source',
   submitFindings: 'submit_findings'
 } as const
 
