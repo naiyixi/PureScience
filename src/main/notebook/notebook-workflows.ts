@@ -7,6 +7,8 @@ import type {
   ExportNotebookKernelRequest,
   ExportNotebookResult,
   FinishNotebookCodeCellRequest,
+  InspectNotebookVariablesRequest,
+  InspectNotebookVariablesResult,
   NotebookCell,
   NotebookRunSummary,
   NotebookSessionReference,
@@ -51,6 +53,9 @@ type NotebookCommandRuntime = {
   exportIpynbAll(request: ExportNotebookAllRequest): Promise<ExportNotebookAllResult>
   restart(request: NotebookSessionRequest): Promise<NotebookSessionState>
   shutdown(request: NotebookSessionRequest): Promise<NotebookShutdownResult>
+  inspectVariables(
+    request: InspectNotebookVariablesRequest
+  ): Promise<InspectNotebookVariablesResult | undefined>
 }
 
 type NotebookCommandWorkflows = {
@@ -65,10 +70,16 @@ type NotebookCommandWorkflows = {
   exportIpynbAll(request: ExportNotebookAllRequest): Promise<ExportNotebookAllResult>
   restart(request: NotebookSessionRequest): Promise<NotebookSessionState>
   shutdown(request: NotebookSessionRequest): Promise<NotebookShutdownResult>
+  inspectVariables(
+    request: InspectNotebookVariablesRequest
+  ): Promise<InspectNotebookVariablesResult | undefined>
 }
 
 const withoutTrustedTurnContext = <
-  Request extends RunNotebookCellRequest | ExecuteNotebookCodeRequest
+  Request extends
+    | RunNotebookCellRequest
+    | ExecuteNotebookCodeRequest
+    | InspectNotebookVariablesRequest
 >(
   request: Request
 ): Request => {
@@ -94,7 +105,9 @@ const createNotebookCommandWorkflows = (
   exportIpynb: (request) => runtime.exportIpynb(request),
   exportIpynbAll: (request) => runtime.exportIpynbAll(request),
   restart: (request) => withDataRootWrite(() => runtime.restart(request)),
-  shutdown: (request) => withDataRootWrite(() => runtime.shutdown(request))
+  shutdown: (request) => withDataRootWrite(() => runtime.shutdown(request)),
+  inspectVariables: (request) =>
+    withDataRootWrite(() => runtime.inspectVariables(withoutTrustedTurnContext(request)))
 })
 
 export { createNotebookCommandWorkflows }

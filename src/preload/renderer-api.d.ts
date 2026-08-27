@@ -103,6 +103,8 @@ import type {
   ExportNotebookAllRequest,
   ExportNotebookAllResult,
   ExportNotebookKernelRequest,
+  InspectNotebookVariablesRequest,
+  InspectNotebookVariablesResult,
   ExportNotebookResult,
   FinishNotebookCodeCellRequest,
   NotebookLanguage,
@@ -783,6 +785,9 @@ export interface PureScienceAPI {
     execute(request: ExecuteNotebookCodeRequest): Promise<NotebookRunSummary>
     exportIpynb(request: ExportNotebookKernelRequest): Promise<ExportNotebookResult>
     exportIpynbAll(request: ExportNotebookAllRequest): Promise<ExportNotebookAllResult>
+    inspectVariables(
+      request: InspectNotebookVariablesRequest
+    ): Promise<InspectNotebookVariablesResult | undefined>
     restart(request: NotebookSessionRequest): Promise<NotebookSessionState>
     shutdown(request: NotebookSessionRequest): Promise<{ sessionId: string; status: 'shutdown' }>
     onAvailable(listener: AcpListener<NotebookAvailableEvent>): RemoveListener

@@ -624,7 +624,8 @@ capture_environment <- function() {
   )
 }
 
-# Reads one request off the length-prefixed protocol; returns list(req_id, code) or NULL at EOF.
+# Reads one request off the length-prefixed protocol; returns list(req_id, code, action) or NULL
+# at EOF. A third header token carries an action (e.g. "inspect_variables" for the Variables view).
 read_request <- function() {
   header <- readLines(con, n = 1L, warn = FALSE)
   if (length(header) == 0L) return(NULL)
@@ -632,7 +633,8 @@ read_request <- function() {
   req_id <- parts[1]
   n <- as.integer(parts[2])
   code <- if (n > 0L) readChar(con, n, useBytes = TRUE) else ""
-  list(req_id = req_id, code = code)
+  action <- if (length(parts) >= 3L) parts[3] else ""
+  list(req_id = req_id, code = code, action = action)
 }
 
 run <- base::local({
@@ -1051,9 +1053,51 @@ run <- base::local({
 ))
 lockEnvironment(environment(run), bindings = TRUE)
 
+# Read-only snapshot of the persistent global environment for the Variables view (#1748).
+# Values are introspected without evaluating them: name, class, a compact shape hint
+# (vector length / matrix dims / data-frame dims), and a bounded printed preview.
+inspect_variables <- function() {
+  nms <- ls(envir = globalenv(), all.names = TRUE)
+  nms <- nms[!startsWith(nms, ".")]
+  out <- vector("list", length(nms))
+  k <- 0L
+  for (nm in nms) {
+    value <- tryCatch(get(nm, envir = globalenv(), inherits = FALSE), error = function(cnd) NULL)
+    if (is.null(value)) next
+    k <- k + 1L
+    cls <- tryCatch(paste(class(value), collapse = "/"), error = function(cnd) "?")
+    shape <- NULL
+    preview <- NULL
+    if (is.matrix(value) || is.array(value)) {
+      shape <- paste(dim(value), collapse = "x")
+    } else if (inherits(value, "data.frame")) {
+      shape <- paste(dim(value), collapse = "x")
+    } else if (is.atomic(value)) {
+      shape <- as.character(length(value))
+    } else if (is.list(value)) {
+      shape <- as.character(length(value))
+    }
+    txt <- tryCatch(paste(capture.output(str(value, max.level = 1L)), collapse = " "),
+                    error = function(cnd) "")
+    if (nzchar(txt)) {
+      preview <- if (nchar(txt) <= 120) txt else paste0(substr(txt, 1L, 119), "\u2026")
+    }
+    out[[k]] <- list(name = nm, type = cls, shape = shape, preview = preview)
+  }
+  out[seq_len(k)]
+}
+
 repeat {
   req <- read_request()
   if (is.null(req)) break
+  if (isTRUE(req$action == "inspect_variables")) {
+    resp <- list(stdout = "", stderr = "", error = NA, error_line = NULL, result = NA,
+                 cwd = getwd(), figures = list(), environment = capture_environment(),
+                 variables = inspect_variables())
+    resp$req_id <- req$req_id
+    emit(resp)
+    next
+  }
   resp <- run(req)
   resp$req_id <- req$req_id
   emit(resp)

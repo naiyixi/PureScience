@@ -18,6 +18,18 @@ export type KernelLoopResponse = {
   cwd: string
   figures: KernelLoopFigure[]
   environmentOverlay?: NotebookLiveEnvironmentOverlay
+  // Live namespace snapshot for the Variables view (open-science #1748): present only when the
+  // request asked for it (action: "inspect_variables").
+  variables?: KernelVariable[]
+}
+
+// One entry of the kernel's live namespace. `shape` is a compact structural hint (array dims,
+// frame dims, list length); `preview` is a bounded repr for inline display.
+export type KernelVariable = {
+  name: string
+  type: string
+  shape?: string
+  preview?: string
 }
 
 // Env var the driver sets so a loop script knows where to write captured figure files.
@@ -127,11 +139,13 @@ export function parseLoopResponse(line: string): KernelLoopResponse | null {
 export function framePythonRequest(
   reqId: string,
   code: string,
-  controlInvocationId?: string
+  controlInvocationId?: string,
+  action?: 'inspect_variables'
 ): string {
   return `${JSON.stringify({
     req_id: reqId,
     code,
+    ...(action ? { action } : {}),
     ...(controlInvocationId ? { control_invocation_id: controlInvocationId } : {})
   })}\n`
 }
@@ -139,8 +153,15 @@ export function framePythonRequest(
 // R length-prefixed frame: a "<reqId> <codeByteLength>\n" header followed by the exact UTF-8 code
 // bytes. The byte length (not JS string length) lets the R side read a precise number of bytes for
 // multibyte code.
-export function frameRRequest(reqId: string, code: string): Buffer {
+export function frameRRequest(
+  reqId: string,
+  code: string,
+  action?: 'inspect_variables'
+): Buffer {
   const codeBuf = Buffer.from(code, 'utf8')
-  const header = Buffer.from(`${reqId} ${codeBuf.byteLength}\n`, 'utf8')
+  // Third token is the optional action (empty for a normal cell); read_request splits on spaces
+  // so `reqId 0 inspect_variables` yields req$action = "inspect_variables".
+  const actionToken = action ? ` ${action}` : ''
+  const header = Buffer.from(`${reqId} ${codeBuf.byteLength}${actionToken}\n`, 'utf8')
   return Buffer.concat([header, codeBuf])
 }

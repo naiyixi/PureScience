@@ -147,6 +147,7 @@ describe('notebook IPC handlers', () => {
       'notebook:finish-code-cell',
       'notebook:run-cell',
       'notebook:execute',
+      'notebook:inspect-variables',
       'notebook:export-ipynb',
       'notebook:export-ipynb-all',
       'notebook:restart',

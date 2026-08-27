@@ -7,6 +7,7 @@ import type {
   ExportNotebookAllRequest,
   ExportNotebookKernelRequest,
   FinishNotebookCodeCellRequest,
+  InspectNotebookVariablesRequest,
   NotebookSessionRequest,
   RunNotebookCellRequest
 } from '../../shared/notebook'
@@ -34,6 +35,9 @@ const registerNotebookIpcHandlers = (handlers: NotebookCommandWorkflows): void =
   )
   ipcMainHandle('notebook:execute', (_event, request: ExecuteNotebookCodeRequest) =>
     handlers.execute(request)
+  )
+  ipcMainHandle('notebook:inspect-variables', (_event, request: InspectNotebookVariablesRequest) =>
+    handlers.inspectVariables(request)
   )
   ipcMainHandle('notebook:export-ipynb', (_event, request: ExportNotebookKernelRequest) =>
     handlers.exportIpynb(request)

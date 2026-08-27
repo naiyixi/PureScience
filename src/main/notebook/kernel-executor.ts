@@ -14,7 +14,8 @@ import {
   framePythonRequest,
   parseLoopResponse,
   type KernelLoopFigure,
-  type KernelLoopResponse
+  type KernelLoopResponse,
+  type KernelVariable
 } from './kernel-protocol'
 import { mapLoopOutputs, type MappedFigure } from './loop-output-mapper'
 import { protectManagedRuntimeWrites } from './managed-runtime-guard'
@@ -609,6 +610,38 @@ class NotebookKernelExecutor implements NotebookExecutor {
       env.PATH = condaActivatedPath(rEnvPrefix, process.env.PATH, this.platform)
     }
     return env
+  }
+
+  // Read-only snapshot of the kernel's live namespace for the Variables view (open-science
+  // #1748). Requires a live data kernel; the response's `variables` field is populated by the
+  // loop's inspect_variables action. Returns undefined when the kernel is gone or unresponsive.
+  async inspectVariables(
+    request: unknown
+  ): Promise<{ variables: KernelVariable[] } | undefined> {
+    const typed = request as NotebookExecutionRequest
+    const kind = resolveProcessKind(typed)
+    if (kind === 'repl') return undefined
+    const env = resolveRequestEnv(kind, typed)
+    const key = resolveProcessKey(typed)
+    const existing = this.procs.get(key)
+    if (!existing || !this.isLiveProc(existing)) return undefined
+
+    const proc = await this.ensureProc(key, kind, env, typed)
+    if (proc.pending) return undefined
+
+    const reqId = randomUUID()
+    const action = 'inspect_variables' as const
+    if (proc.kind === 'r') {
+      proc.child.stdin.write(frameRRequest(reqId, '', action))
+    } else {
+      proc.child.stdin.write(framePythonRequest(reqId, '', undefined, action))
+    }
+    const { response } = await this.sendRequest(proc, reqId, typed)
+    return { variables: response.variables ?? [] }
+  }
+
+  private isLiveProc(proc: ProcState): boolean {
+    return proc.alive && proc.child.exitCode === null && !proc.child.killed
   }
 
   // Frames one request onto the loop's stdin and returns a promise settled by the matching response

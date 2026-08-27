@@ -15,6 +15,8 @@ import type {
   ExportNotebookKernelRequest,
   ExportNotebookResult,
   FinishNotebookCodeCellRequest,
+  InspectNotebookVariablesRequest,
+  InspectNotebookVariablesResult,
   NotebookLanguage,
   NotebookRunSummary,
   NotebookSessionRequest,
@@ -738,6 +740,19 @@ class NotebookRuntimeService {
       ...request,
       cellId: begin.cellId
     })
+  }
+
+  // Read-only live-namespace snapshot for the Variables view (open-science #1748). Undefined when
+  // no data kernel is alive for this session; the caller surfaces that as 'unavailable'.
+  async inspectVariables(
+    request: InspectNotebookVariablesRequest
+  ): Promise<InspectNotebookVariablesResult | undefined> {
+    const session = await this.sessionLifecycle.ensure(request)
+    const owned = this.sessionLifecycle.createExecutor(session.id)
+    if (!owned.executor.inspectVariables) return undefined
+    const result = await owned.executor.inspectVariables(request)
+    if (!result) return undefined
+    return { variables: result.variables as InspectNotebookVariablesResult['variables'] }
   }
 
   // Compatibility facade for the control-plane REPL. Admission, capability lifetime, dispatch,
