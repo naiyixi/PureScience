@@ -1,7 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { describe, expect, it, vi } from 'vitest'
-
 import { withCorrelatedFetch } from './request-correlation'
 
 vi.mock('../logger', () => ({
@@ -20,7 +18,7 @@ const firstCall = (fn: ReturnType<typeof vi.fn>): CallArgs =>
 
 describe('withCorrelatedFetch', () => {
   it('adds an x-request-id header to every request', async () => {
-    const inner = vi.fn(async () => ({ status: 200 }))
+    const inner = vi.fn(async (_url: unknown, _init?: unknown) => ({ status: 200 }))
     const wrapped = withCorrelatedFetch(inner)
 
     await wrapped('https://example.com/data', { headers: { Accept: 'application/json' } })
@@ -32,7 +30,7 @@ describe('withCorrelatedFetch', () => {
   })
 
   it('generates a fresh id per request', async () => {
-    const inner = vi.fn(async () => ({ status: 200 }))
+    const inner = vi.fn(async (_url: unknown, _init?: unknown) => ({ status: 200 }))
     const wrapped = withCorrelatedFetch(inner)
 
     await wrapped('https://example.com/a')
@@ -44,7 +42,7 @@ describe('withCorrelatedFetch', () => {
   })
 
   it('propagates request errors after logging them', async () => {
-    const inner = vi.fn(async () => {
+    const inner = vi.fn(async (_url: unknown, _init?: unknown) => {
       throw new Error('boom')
     })
     const wrapped = withCorrelatedFetch(inner)

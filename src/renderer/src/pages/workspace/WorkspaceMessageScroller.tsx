@@ -339,6 +339,38 @@ const EditableWorkspaceMessageItem = (
 }
 
 // Owns transcript scrolling and session-scoped expansion state for activity groups.
+// Provider-scoped transcript body: the visibility hook MUST run inside MessageScrollerProvider,
+// so this tiny wrapper lives under it and hands the computed bounded window back to the impl's
+// render callback (which keeps all of the impl's closures). Without this split the hook threw
+// "useMessageScroller must be used within a MessageScroller" and the workspace white-screened.
+const WorkspaceMessageScrollerInner = ({
+  conversationItems,
+  render
+}: {
+  conversationItems: ReturnType<typeof groupConversationItems>
+  render: (boundedRenderWindow: { first: number; last: number } | null) => React.ReactNode
+}): React.JSX.Element => {
+  const { visibleMessageIds } = useMessageScrollerVisibility()
+  const boundedRenderWindow = useMemo(() => {
+    if (conversationItems.length <= BOUNDED_RENDER_ITEM_THRESHOLD) return null
+    const visible = new Set(visibleMessageIds)
+    let firstVisible = -1
+    let lastVisible = -1
+    for (let index = 0; index < conversationItems.length; index += 1) {
+      if (!visible.has(conversationItems[index].id)) continue
+      if (firstVisible === -1) firstVisible = index
+      lastVisible = index
+    }
+    if (firstVisible === -1) return null
+    return {
+      first: Math.max(0, firstVisible - BOUNDED_RENDER_WINDOW_PADDING),
+      last: Math.min(conversationItems.length - 1, lastVisible + BOUNDED_RENDER_WINDOW_PADDING)
+    }
+  }, [conversationItems, visibleMessageIds])
+
+  return <>{render(boundedRenderWindow)}</>
+}
+
 const WorkspaceMessageScrollerImpl = ({
   activeSession,
   onSendEditedMessage,
@@ -433,26 +465,6 @@ const WorkspaceMessageScrollerImpl = ({
       ),
     [activeSession, handoffEvents]
   )
-  // Long-session performance: beyond a threshold the transcript renders only the items around the
-  // visible window, collapsing far-off items into fixed-height skeletons so scroll anchoring and
-  // auto-scroll stay intact (mirrors open-science bounded transcript rendering).
-  const { visibleMessageIds } = useMessageScrollerVisibility()
-  const boundedRenderWindow = useMemo(() => {
-    if (conversationItems.length <= BOUNDED_RENDER_ITEM_THRESHOLD) return null
-    const visible = new Set(visibleMessageIds)
-    let firstVisible = -1
-    let lastVisible = -1
-    for (let index = 0; index < conversationItems.length; index += 1) {
-      if (!visible.has(conversationItems[index].id)) continue
-      if (firstVisible === -1) firstVisible = index
-      lastVisible = index
-    }
-    if (firstVisible === -1) return null
-    return {
-      first: Math.max(0, firstVisible - BOUNDED_RENDER_WINDOW_PADDING),
-      last: Math.min(conversationItems.length - 1, lastVisible + BOUNDED_RENDER_WINDOW_PADDING)
-    }
-  }, [conversationItems, visibleMessageIds])
   // Assistant text can be split into several messages around tool calls. All fragments share the
   // prompt they respond to, but only the last visible fragment in that turn owns whole-turn metadata.
   // Legacy unlinked messages remain independent so older transcripts do not lose their timestamps.
@@ -735,6 +747,9 @@ const WorkspaceMessageScrollerImpl = ({
           />
           {conversationItems.length === 0 ? <EmptyConversationBanner /> : null}
           <MessageScrollerViewport aria-label="Conversation">
+            <WorkspaceMessageScrollerInner
+              conversationItems={conversationItems}
+              render={(boundedRenderWindow) => (
             <MessageScrollerContent className="gap-0 px-4">
               <div className={conversationContentClassName}>
                 {/* Messages and tool activities share one sorted transcript timeline. */}
@@ -945,6 +960,8 @@ const WorkspaceMessageScrollerImpl = ({
                 ) : null}
               </div>
             </MessageScrollerContent>
+              )}
+            />
           </MessageScrollerViewport>
 
           <MessageScrollerButton className="z-10 border-border-200 bg-bg-000 shadow-card hover:bg-bg-200 data-[direction=end]:bottom-3" />
