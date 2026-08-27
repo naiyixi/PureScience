@@ -208,7 +208,7 @@ describe('window navigation policy', () => {
     expect(policy?.isAllowedExternalNavigation('file:///Users/example/private.txt')).toBe(false)
   })
 
-  it('keeps subframe navigation inside the managed preview protocol', async () => {
+  it('keeps subframe navigation inside managed preview protocols plus https source frames', async () => {
     const policy = await import('./navigation-policy').catch(() => undefined)
 
     expect(policy).toBeDefined()
@@ -221,7 +221,11 @@ describe('window navigation policy', () => {
         false
       )
     ).toBe(true)
-    expect(policy?.isAllowedFrameNavigation('https://example.com/exfiltrate', false)).toBe(false)
+    // The in-app source preview iframe loads HTTPS sources and browses within them; plain http and
+    // non-web protocols stay blocked for sub-frames.
+    expect(policy?.isAllowedFrameNavigation('https://example.com/paper', false)).toBe(true)
+    expect(policy?.isAllowedFrameNavigation('http://example.com/paper', false)).toBe(false)
+    expect(policy?.isAllowedFrameNavigation('file:///etc/passwd', false)).toBe(false)
     expect(
       policy?.isAllowedFrameNavigation(
         'https://app.example.com/workspace',

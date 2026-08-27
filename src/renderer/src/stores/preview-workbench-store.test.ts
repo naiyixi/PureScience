@@ -5,6 +5,7 @@ import { getUploadedAttachmentPath } from '../../../shared/uploads'
 import {
   createNotebookPreviewItem,
   createProjectFilesPreviewItem,
+  createWebPreviewItem,
   createInitialPreviewWorkbenchState,
   PROJECT_FILES_PREVIEW_ID,
   usePreviewWorkbenchStore
@@ -592,5 +593,40 @@ describe('preview workbench store', () => {
     expect(usePreviewWorkbenchStore.getState().activeItemId).toBe(
       'file:session-1:/workspace/project/report.md'
     )
+  })
+
+  it('opens a web source tab scoped to its session and reuses the same tab for the same URL', () => {
+    const store = usePreviewWorkbenchStore.getState()
+
+    store.upsertAndActivateItem(createWebPreviewItem('session-1', 'https://example.com/paper'))
+    store.upsertAndActivateItem(createWebPreviewItem('session-1', 'https://example.com/paper'))
+
+    expect(usePreviewWorkbenchStore.getState().items).toHaveLength(1)
+    expect(usePreviewWorkbenchStore.getState().items[0]).toMatchObject({
+      type: 'web',
+      sessionId: 'session-1',
+      url: 'https://example.com/paper',
+      title: 'example.com'
+    })
+    expect(usePreviewWorkbenchStore.getState().panelState).toBe('open')
+  })
+
+  it('keys web source tabs by session and URL so distinct sources open distinct tabs', () => {
+    const store = usePreviewWorkbenchStore.getState()
+
+    store.upsertAndActivateItem(createWebPreviewItem('session-1', 'https://example.com/paper'))
+    store.upsertAndActivateItem(createWebPreviewItem('session-1', 'https://pubmed.ncbi.nlm.nih.gov/123'))
+    store.upsertAndActivateItem(createWebPreviewItem('session-2', 'https://example.com/paper'))
+
+    expect(usePreviewWorkbenchStore.getState().items).toHaveLength(3)
+  })
+
+  it('drops web source tabs with their session', () => {
+    const store = usePreviewWorkbenchStore.getState()
+
+    store.upsertAndActivateItem(createWebPreviewItem('session-1', 'https://example.com/paper'))
+    store.removeSessionItems('session-1')
+
+    expect(usePreviewWorkbenchStore.getState().items).toHaveLength(0)
   })
 })

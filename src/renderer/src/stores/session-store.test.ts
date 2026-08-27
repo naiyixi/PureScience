@@ -2602,6 +2602,7 @@ describe('session store public contract', () => {
       'src/renderer/src/App.tsx',
       'src/renderer/src/components/global-search/GlobalSearchDialog.tsx',
       'src/renderer/src/components/job-binding-utils.ts',
+      'src/renderer/src/components/streamdown/SourceLink.tsx',
       'src/renderer/src/hooks/useLifecycleSync.ts',
       'src/renderer/src/hooks/useUnreadTaskViewSync.ts',
       'src/renderer/src/lib/acp/history-preamble.ts',

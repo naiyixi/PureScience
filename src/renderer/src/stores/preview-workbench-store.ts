@@ -53,6 +53,14 @@ export type PreviewFileItem = PreviewItemBase & {
   originSession?: ProjectFileOriginSession
 }
 
+// Runtime-only web-source tabs: an agent-response HTTPS link opened inside the sandboxed right
+// panel. Deliberately excluded from persistence below — a restored web tab would silently re-fetch
+// an external document long after the user asked to view it.
+export type PreviewWebItem = PreviewItemBase & {
+  type: 'web'
+  url: string
+}
+
 // Tool previews share the workbench chrome with files, but keep their own render path.
 export type PreviewToolItem = PreviewItemBase & {
   type: 'tool'
@@ -66,7 +74,7 @@ export type PreviewToolItem = PreviewItemBase & {
   planArtifactVersionId?: string
 }
 
-export type PreviewItem = PreviewFileItem | PreviewToolItem
+export type PreviewItem = PreviewFileItem | PreviewToolItem | PreviewWebItem
 
 type StoredPreviewItem = PreviewItem & {
   createdAt: number
@@ -225,6 +233,29 @@ const createSessionReviewerPreviewItem = (input: SessionReviewerPreviewInput): P
   reviewerReviewId: input.reviewId,
   reviewerActiveFindingId: input.findingId
 })
+
+// Builds the stable preview tab identity for one HTTPS source link inside a session. The id is
+// URL-scoped, not message-scoped, so clicking the same source from different replies reuses one tab.
+export const createWebPreviewItem = (
+  sessionId: string,
+  url: string,
+  title?: string
+): PreviewWebItem => {
+  let host = url
+  try {
+    host = new URL(url).hostname
+  } catch {
+    // Keep the raw URL as the fallback label when parsing fails.
+  }
+
+  return {
+    id: `web:${sessionId}:${url}`,
+    sessionId,
+    type: 'web',
+    url,
+    title: title?.trim() || host
+  }
+}
 
 // Chooses a stable fallback tab when the active preview item is removed.
 const getRepairedActiveItemId = (
@@ -465,6 +496,7 @@ export const usePreviewWorkbenchStore = create<PreviewWorkbenchStore>((set, get)
   }
 }))
 
+// createWebPreviewItem is exported at its declaration above.
 export {
   createNotebookPreviewItem,
   createProjectFilesPreviewItem,
