@@ -8,12 +8,14 @@ import type {
   ChatApiEndpoint,
   ClaudeSubscriptionProviderId,
   ClaudeInfo,
+  CredentialServiceId,
   MemoryCategory,
   MemoryNote,
   MemorySettings,
   ProviderType,
   ProviderValidationFailure,
   ReasoningEffort,
+  StoredCredential,
   ValidationCategory
 } from '../../shared/settings'
 import {
@@ -64,6 +66,18 @@ const PROVIDER_TYPES = new Set<ProviderType>([
   'official',
   'codex-shared',
   'codex-isolated'
+])
+
+const CREDENTIAL_SERVICE_IDS = new Set<CredentialServiceId>([
+  'aws',
+  'github',
+  'gcp',
+  'azure',
+  'modal',
+  'nvidia',
+  'openalex',
+  'literature',
+  'custom'
 ])
 
 const VALIDATION_CATEGORIES = new Set<ValidationCategory>([
@@ -405,6 +419,40 @@ export const sanitizePackageMirror = (value: unknown): PackageMirror | undefined
   return Object.keys(result).length > 0 ? result : undefined
 }
 
+// Rebuilds the stored credential list from untrusted JSON. Only entries with a valid service id
+// and a non-empty name survive; secrets stay as opaque keyRef strings (validated as such by the
+// service layer, never decrypted here). A malformed payload yields undefined so a corrupt write
+// falls back to "never written" rather than an empty store that could mask a real credential.
+export const sanitizeCredentials = (value: unknown): StoredCredential[] | undefined => {
+  if (!Array.isArray(value)) return undefined
+
+  const credentials = value
+    .map((entry) => {
+      if (!isRecord(entry)) return undefined
+      const id = asString(entry.id)
+      const name = asString(entry.name)
+      const serviceId = asString(entry.serviceId)
+      if (!id || !name || !serviceId) return undefined
+      if (!CREDENTIAL_SERVICE_IDS.has(serviceId as CredentialServiceId)) return undefined
+      const username = asString(entry.username)
+      const secretRef = asString(entry.secretRef)
+      const hint = asString(entry.hint)
+      return {
+        id,
+        serviceId: serviceId as CredentialServiceId,
+        name,
+        ...(username !== undefined ? { username } : {}),
+        ...(secretRef !== undefined ? { secretRef } : {}),
+        ...(hint !== undefined ? { hint } : {}),
+        createdAt: asNumber(entry.createdAt) ?? 0,
+        updatedAt: asNumber(entry.updatedAt) ?? 0
+      }
+    })
+    .filter((entry): entry is StoredCredential => entry !== undefined)
+
+  return credentials
+}
+
 // Rebuilds MemorySettings from untrusted JSON: only string id/name/text and numeric timestamps
 // survive; notes pointing at a missing category are dropped; an empty enabled flag defaults to
 // false so memory never silently resumes after a corrupt write.
@@ -577,6 +625,10 @@ const sanitizeSettings = (value: unknown): StoredSettings => {
   const memory = sanitizeMemorySettings(value.memory)
 
   if (memory) settings.memory = memory
+
+  const credentials = sanitizeCredentials(value.credentials)
+
+  if (credentials) settings.credentials = credentials
 
   const pathsNormalizedAt = asNumber(value.pathsNormalizedAt)
 
@@ -1016,9 +1068,19 @@ class SettingsRepository {
   // Persists the user's editable memory notes. Sanitized before write so a malformed payload can
   // never persist (a note referencing a missing category would silently vanish on next read).
   async setMemory(memory: MemorySettings): Promise<StoredSettings> {
-    const sanitized = sanitizeMemorySettings(memory) ?? { enabled: false, categories: [], notes: [] }
+    const sanitized = sanitizeMemorySettings(memory) ?? {
+      enabled: false,
+      categories: [],
+      notes: []
+    }
 
     return this.mutate((settings) => ({ ...settings, memory: sanitized }))
+  }
+
+  // Replaces the whole credential list (single-writer for the store; the service encrypts each
+  // secret before it reaches here).
+  async setCredentials(credentials: StoredCredential[]): Promise<StoredSettings> {
+    return this.mutate((settings) => ({ ...settings, credentials }))
   }
 
   // Persists the selected agent backend; applied on the next reconnect.
@@ -1060,7 +1122,9 @@ class SettingsRepository {
   // Persists the optional Vision model relay target; undefined disables the relay. Validation of
   // the target (provider exists, supports image input, framework-compatible) happens in the
   // VisionModelOwner before this write, so the repository stores whatever it is given.
-  async setVisionModel(configuration: VisionModelConfiguration | undefined): Promise<StoredSettings> {
+  async setVisionModel(
+    configuration: VisionModelConfiguration | undefined
+  ): Promise<StoredSettings> {
     return this.mutate((settings) => ({ ...settings, visionModel: configuration }))
   }
 

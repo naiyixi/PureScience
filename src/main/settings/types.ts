@@ -8,7 +8,8 @@ import type {
   MemorySettings,
   ProviderType,
   ProviderValidationFailure,
-  ReasoningEffort
+  ReasoningEffort,
+  StoredCredential
 } from '../../shared/settings'
 import { SETTINGS_FILE_VERSION } from '../../shared/settings'
 import type { OfficialVendorId } from '../../shared/provider-registry'
@@ -195,6 +196,9 @@ export type StoredSettings = {
   packageMirror?: PackageMirror
   // User-editable memory notes (categories + notes + master switch). Absent means never written.
   memory?: MemorySettings
+  // Unified credential store (API keys / tokens for scientific services). Absent means never
+  // written. Secret material is safeStorage ciphertext (see crypto.ts), never plaintext.
+  credentials?: StoredCredential[]
   // Absolute path of the relocatable data root (artifacts/notebooks/runtime/uploads). Absent means
   // "use the config root" (default). Only written after a successful migration; a change needs a restart.
   dataRoot?: string

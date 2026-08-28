@@ -57,8 +57,10 @@ export const en: Record<ZhKey, string> = {
   'common.total': 'Total',
   'settings.logFile': 'Log file',
   'settings.somethingNotWorking': 'Something not working?',
-  'settings.remoteAccessHint': 'All projects, agents, files, and notebook runtimes continue to run on this computer. Install and sign in to the Remote.It desktop app before enabling access.',
-  'settings.cliInstallHint': 'Install the <code>purescience</code> command so you can start, stop, and check the backend from a terminal, then use it entirely from your browser.',
+  'settings.remoteAccessHint':
+    'All projects, agents, files, and notebook runtimes continue to run on this computer. Install and sign in to the Remote.It desktop app before enabling access.',
+  'settings.cliInstallHint':
+    'Install the <code>purescience</code> command so you can start, stop, and check the backend from a terminal, then use it entirely from your browser.',
   'home.projectNamePlaceholder': 'e.g. Reproduction of published research',
   'home.projectDescriptionPlaceholder': 'What is this project about?',
   'common.searchSkills': 'Search skills…',
@@ -86,13 +88,16 @@ export const en: Record<ZhKey, string> = {
   'onboarding.appStoragePermission': 'App storage permission',
   'onboarding.secureCredentialStorage': 'Secure credential storage',
   'onboarding.installationNetwork': 'Installation network',
-  'onboarding.resolveActionNeeded': 'Resolve the items marked Action needed, then choose Check again.',
+  'onboarding.resolveActionNeeded':
+    'Resolve the items marked Action needed, then choose Check again.',
   'onboarding.setupCouldNotComplete': 'Setup could not be completed',
   'onboarding.prepareEnvironment': 'Prepare environment',
   'onboarding.checkAgain': 'Check again',
-  'onboarding.coreReqsConfirmed': 'PureScience confirms its core requirements before your first research session.',
+  'onboarding.coreReqsConfirmed':
+    'PureScience confirms its core requirements before your first research session.',
   'onboarding.whereStoreData': 'Where should PureScience store your data?',
-  'onboarding.largeFilesHere': 'Large files (artifacts, notebooks, environments) go here. Your settings and history always',
+  'onboarding.largeFilesHere':
+    'Large files (artifacts, notebooks, environments) go here. Your settings and history always',
   'onboarding.location': 'Location',
   'onboarding.dataWillBeStoredIn': 'Your data will be stored in ',
   'onboarding.useDefaultLocation': 'Use default location instead',
@@ -104,11 +109,13 @@ export const en: Record<ZhKey, string> = {
   'onboarding.stepModelProvider': 'Model provider',
   'onboarding.stepNotebookRuntime': 'Notebook runtime',
   'onboarding.stepDataLocation': 'Data location',
-  'onboarding.providerChangedDuringSignIn': 'The Codex provider changed during sign-in. Review the selection and try again.',
+  'onboarding.providerChangedDuringSignIn':
+    'The Codex provider changed during sign-in. Review the selection and try again.',
   'onboarding.couldNotSaveClaudeToken': 'Could not save the Claude token.',
   'onboarding.couldNotSaveProvider': 'Could not save provider.',
   'onboarding.connectModel': 'Connect a model',
-  'onboarding.chooseProvider': 'Choose the provider PureScience should use for new research sessions.',
+  'onboarding.chooseProvider':
+    'Choose the provider PureScience should use for new research sessions.',
   'onboarding.keychainUnavailable':
     'Secure key storage is unavailable. API keys cannot be saved until the system keychain',
   'onboarding.signInBrowserClaude':
@@ -117,7 +124,8 @@ export const en: Record<ZhKey, string> = {
   'onboarding.testAndContinue': 'Test & continue',
   'onboarding.providerChangedDuringTesting': 'The provider changed during testing. Try again.',
   'home.deleteProjectTitle': 'Delete project?',
-  'home.deleteProjectHint': "Files in the project's working folder are not deleted. This action cannot",
+  'home.deleteProjectHint':
+    "Files in the project's working folder are not deleted. This action cannot",
   'home.couldNotDeleteProject': 'Could not delete the project. Please try again.',
   'home.example': 'Example',
   'home.archive': 'Archive',
@@ -129,7 +137,8 @@ export const en: Record<ZhKey, string> = {
   'home.session': 'Session',
   'home.unknownSession': 'Unknown session',
   'home.creationTimeUnavailable': 'Creation time unavailable',
-  'home.mentionUnavailable': 'Mention is unavailable while the composer cannot accept another artifact.',
+  'home.mentionUnavailable':
+    'Mention is unavailable while the composer cannot accept another artifact.',
   'home.commandPalette': 'Command palette',
   'home.createProjectToSearch': 'Create a project to search sessions and artifacts.',
   'home.recentArtifacts': 'Recent artifacts',
@@ -207,14 +216,16 @@ export const en: Record<ZhKey, string> = {
   'ws.notebookVariables': 'Variables',
   'ws.notebookVariablesLoading': 'Reading kernel namespace…',
   'ws.notebookVariablesEmpty': 'No variables in the namespace yet',
-  'ws.notebookVariablesUnavailable': 'Kernel not running — start it and execute code to browse variables',
+  'ws.notebookVariablesUnavailable':
+    'Kernel not running — start it and execute code to browse variables',
   'ws.notebookVariablesCount': 'variables',
   'ws.notebookVariablesRefresh': 'Refresh',
   'ws.notebookVariablesRefreshing': 'Refreshing…',
   'ws.notebookStale': 'stale',
   'settings.marketplaceInstalled': 'Marketplace',
   'settings.marketplaceFilter': 'Marketplace',
-  'settings.marketplaceGovernedNotice': 'Marketplace-installed specialist: publisher content is managed by the market. To edit freely, create a local copy first via Duplicate.',
+  'settings.marketplaceGovernedNotice':
+    'Marketplace-installed specialist: publisher content is managed by the market. To edit freely, create a local copy first via Duplicate.',
   'settings.identity': 'Identity',
   'settings.identityHint': 'How this specialist appears in the registry and session picker.',
   'settings.identityPreviewHint': 'Preview — matches the list and picker.',
@@ -234,7 +245,8 @@ export const en: Record<ZhKey, string> = {
   'ws.messageFailed': 'Failed',
   'ws.elapsed': 'Elapsed',
   'notifications.previousTaskUpdate': 'Previous task update',
-  'notifications.previousTaskUpdateDesc': 'A task update was waiting before the message center upgrade.',
+  'notifications.previousTaskUpdateDesc':
+    'A task update was waiting before the message center upgrade.',
   'workspace.rename': 'Rename…',
   'workspace.downloadArtifacts': 'Download all artifacts',
   'workspace.viewNotebook': 'View notebook',
@@ -268,8 +280,10 @@ export const en: Record<ZhKey, string> = {
   'settings.importMcpServers': 'Import mcpServers config',
   'settings.importMcpServersHint': 'Import a standard mcpServers JSON (multiple servers)',
   'settings.exportMcpServers': 'Export mcpServers config',
-  'settings.exportMcpServersHint': 'Export standard mcpServers JSON (credentials as ${NAME} placeholders)',
-  'settings.exportMcpServersDone': 'Exported mcpServers.json (credentials replaced with placeholders)',
+  'settings.exportMcpServersHint':
+    'Export standard mcpServers JSON (credentials as ${NAME} placeholders)',
+  'settings.exportMcpServersDone':
+    'Exported mcpServers.json (credentials replaced with placeholders)',
   'settings.exportMcpServersFailed': 'Export failed',
   'settings.importMcpServersDone': 'Imported servers:',
   'settings.importMcpServersSkipped': 'skipped',
@@ -316,7 +330,8 @@ export const en: Record<ZhKey, string> = {
   'settings.skills': 'Skills',
   'settings.memory': 'Memory',
   'settings.memoryTitle': 'Memory',
-  'settings.memoryDescription': 'Editable notes about you. When memory is on, the app recalls these preferences across sessions.',
+  'settings.memoryDescription':
+    'Editable notes about you. When memory is on, the app recalls these preferences across sessions.',
   'settings.memoryEnabled': 'Memory switch',
   'settings.memoryClearAll': 'Clear all',
   'settings.memoryAddCategory': 'New category',
@@ -326,7 +341,8 @@ export const en: Record<ZhKey, string> = {
   'settings.memoryNoNotes': 'No notes yet.',
   'settings.memoryNotePlaceholder': 'Write what the app should remember…',
   'settings.memoryDeleteNote': 'Delete note',
-  'settings.memoryDisabledHint': 'Memory is off. The app won\'t save new notes or recall existing ones, but the notes below are kept and stay editable. Turn memory on to resume.',
+  'settings.memoryDisabledHint':
+    "Memory is off. The app won't save new notes or recall existing ones, but the notes below are kept and stay editable. Turn memory on to resume.",
   'settings.memoryLoading': 'Loading memory…',
   'settings.memoryOn': 'On',
   'settings.memoryOff': 'Off',
@@ -334,19 +350,54 @@ export const en: Record<ZhKey, string> = {
   'settings.memoryCancel': 'Cancel',
   'settings.memoryCreate': 'Create',
   'settings.memoryCategoryFormTitle': 'New category',
-  'settings.memoryCategoryFormDescription': 'Categories group notes by what kind of fact they are — like "footguns" or "experiment results" — across all your projects.',
+  'settings.memoryCategoryFormDescription':
+    'Categories group notes by what kind of fact they are — like "footguns" or "experiment results" — across all your projects.',
   'settings.memoryCategoryName': 'Name',
   'settings.memoryCategoryNamePlaceholder': 'e.g. footguns',
   'settings.memoryCategoryPrompt': 'When should the app save a note here?',
-  'settings.memoryCategoryPromptPlaceholder': 'Save anything that costs more than 10 minutes to debug',
+  'settings.memoryCategoryPromptPlaceholder':
+    'Save anything that costs more than 10 minutes to debug',
   'settings.memoryAutoRecall': 'Auto-recall',
-  'settings.memoryAutoRecallHint': "Off = saved and searchable, but never auto-injected into the app's context",
+  'settings.memoryAutoRecallHint':
+    "Off = saved and searchable, but never auto-injected into the app's context",
   'settings.memoryCategoryUsage': 'categories used',
   'settings.memoryNoteComposerPlaceholder': 'Add a note…',
+  'settings.credentials': 'Credentials',
+  'settings.credentialsDescription':
+    'API keys and tokens for the scientific services the app talks to. Secrets are encrypted with your system keychain and never leave this device as plaintext.',
+  'settings.credentialsSave': 'Save',
+  'settings.credentialsTest': 'Test',
+  'settings.credentialsDelete': 'Delete',
+  'settings.credentialsEdit': 'Edit',
+  'settings.credentialsSecretLabel': 'API key / token',
+  'settings.credentialsSecretPlaceholder': 'Paste the secret…',
+  'settings.credentialsUsernameLabel': 'Username / ID (optional)',
+  'settings.credentialsUsernamePlaceholder': 'e.g. GitHub username',
+  'settings.credentialsCustomNameLabel': 'Name',
+  'settings.credentialsCustomNamePlaceholder': 'e.g. lab gateway',
+  'settings.credentialsEmpty': 'No credential saved for this service yet.',
+  'settings.credentialsSaved': 'Saved',
+  'settings.credentialsNotConfigured': 'Not configured',
+  'settings.credentialsDeleteTitle': 'Delete credential?',
+  'settings.credentialsDeleteDescription':
+    'This removes the saved secret for {name}. This cannot be undone.',
+  'settings.credentialsTestOk': 'Connected successfully.',
+  'settings.credentialsTestFail': 'Connection failed: {message}',
+  'settings.credentialsAddCustom': 'Add custom credential',
+  'settings.credentialsServiceAws': 'AWS',
+  'settings.credentialsServiceGithub': 'GitHub',
+  'settings.credentialsServiceGcp': 'Google Cloud',
+  'settings.credentialsServiceAzure': 'Azure',
+  'settings.credentialsServiceModal': 'Modal',
+  'settings.credentialsServiceNvidia': 'NVIDIA',
+  'settings.credentialsServiceOpenalex': 'OpenAlex',
+  'settings.credentialsServiceLiterature': 'Literature access',
+  'settings.credentialsServiceCustom': 'Custom',
   'settings.memoryRenameCategory': 'Rename category',
   'settings.memoryDeleteCategory': 'Delete category',
   'settings.memoryDeleteCategoryTitle': 'Delete "{name}"?',
-  'settings.memoryDeleteCategoryDescription': 'This deletes the category and its {count} note(s). This cannot be undone.',
+  'settings.memoryDeleteCategoryDescription':
+    'This deletes the category and its {count} note(s). This cannot be undone.',
   'settings.archiveLimits': 'Archive limits',
   'settings.location': 'Location',
   'settings.noDataYet': 'No data yet.',
@@ -666,7 +717,8 @@ export const en: Record<ZhKey, string> = {
   'settings.couldNotListPackages': 'Could not list packages.',
   'settings.storedKey': 'stored key',
   'settings.leaveBlankToKeep': '{key} — leave blank to keep',
-  'settings.storedKeyUndecryptable': 'The stored key could not be decrypted. Enter it again to continue.',
+  'settings.storedKeyUndecryptable':
+    'The stored key could not be decrypted. Enter it again to continue.',
   'settings.codexAuthImportHint':
     "Copies Codex authentication and, when compatible, the active provider's non-secret loopback route into PureScience app data. Other global config, Skills and sessions are not imported.",
   'settings.leaveBlankForDefault': "Leave blank to use Claude's default",
@@ -687,7 +739,8 @@ export const en: Record<ZhKey, string> = {
   'settings.colorAmber': 'Amber',
   'settings.colorPurple': 'Purple',
   'settings.colorSlate': 'Slate',
-  'settings.noMatchingSkillRepos': 'No matching Skill repositories found. Try another keyword or paste an owner/repo reference.',
+  'settings.noMatchingSkillRepos':
+    'No matching Skill repositories found. Try another keyword or paste an owner/repo reference.',
   'settings.hide': 'Hide',
   'settings.show': 'Show',
   'settings.loading': 'Loading',
@@ -715,15 +768,20 @@ export const en: Record<ZhKey, string> = {
   'settings.repairAgentFirst': 'Repair the selected agent before using it.',
   'settings.appIconHint':
     'The new icon appears right away in the app window. The icon in Explorer, the taskbar, the Start menu, or a Linux launcher is part of the installed app and stays the same.',
-  'settings.hostNotesHint': 'Free-form notes about this provider. PureScience reads and adds to them as it learns.',
+  'settings.hostNotesHint':
+    'Free-form notes about this provider. PureScience reads and adds to them as it learns.',
   'settings.noNotesYet': 'No notes yet. Click Edit to add details about this provider.',
-  'settings.scratchRootHint': 'Working directory for remote jobs. Pinned paths are never overwritten by re-probe.',
-  'settings.concurrentJobLimitHint': 'Maximum jobs running at the same time on this host (1–500). Not yet enforced.',
-  'settings.openingBrowserToSignIn': 'Opening your browser to sign in… finish there and this closes automatically.',
+  'settings.scratchRootHint':
+    'Working directory for remote jobs. Pinned paths are never overwritten by re-probe.',
+  'settings.concurrentJobLimitHint':
+    'Maximum jobs running at the same time on this host (1–500). Not yet enforced.',
+  'settings.openingBrowserToSignIn':
+    'Opening your browser to sign in… finish there and this closes automatically.',
   'settings.sshCredentialsCopied': 'SSH credentials are copied.',
   'settings.remoteCommandsNotSandboxed':
     'Remote commands run as your account on the host and are not sandboxed. Approve only',
-  'settings.connectorSendsExternal': 'The agent wants to call a connector tool that sends data to an external service.',
+  'settings.connectorSendsExternal':
+    'The agent wants to call a connector tool that sends data to an external service.',
   'settings.exportReviewHint':
     'Review the portable configuration before saving it. Secret values, OAuth tokens, local permissions, and trust state are excluded.',
   'settings.importConnectorConfig': 'Import Connector configuration',
@@ -739,19 +797,23 @@ export const en: Record<ZhKey, string> = {
   'settings.rememberedPermissionsScopeHint':
     'New conversations can run commands, change files, and access the network without asking',
   'settings.noProvidersYet': 'No providers yet. Add one to choose your model source.',
-  'settings.browserOauthDidntOpen': "Opening your browser to sign in… Didn't open? Cancel and use a setup token.",
+  'settings.browserOauthDidntOpen':
+    "Opening your browser to sign in… Didn't open? Cancel and use a setup token.",
   'settings.setupTokenSuffix': '',
-  'settings.promptAppendedHint': "Appended to the app's base prompt — does not replace safety rules or tool",
+  'settings.promptAppendedHint':
+    "Appended to the app's base prompt — does not replace safety rules or tool",
   'settings.specialistCapabilitiesHint':
     'Skills and connectors this specialist can use. Anything not chosen here stays invisible',
   'settings.useAllMainAgentSkills':
     "Use all of the Main Agent's skills and connectors, including new ones added later. No need to configure each item.",
-  'settings.templateZipReady': 'purescience-specialist-template.zip is ready for contributor editing.',
+  'settings.templateZipReady':
+    'purescience-specialist-template.zip is ready for contributor editing.',
   'settings.builtinSkillsSelectedDefault':
     'Builtin and owned Skills are selected by default. Skills copied into the ZIP are discovered automatically on import; Connector IDs are carried as selected references.',
   'settings.onlyCheckedSkillsBundled':
     'Only checked Skills are bundled. Connector IDs are imported as selected references; full access can only be chosen later in the configuration page.',
-  'settings.packageParsedBeforeSave': 'The package will be safely parsed and previewed before it is saved.',
+  'settings.packageParsedBeforeSave':
+    'The package will be safely parsed and previewed before it is saved.',
   'settings.zipContainsHint':
     'The ZIP contains app metadata, the specialist.json you fill in, and a README.txt guide. Skills placed in the skills folder are discovered automatically.',
   'settings.checkingRunningSessions': 'Checking for running sessions…',
@@ -766,7 +828,8 @@ export const en: Record<ZhKey, string> = {
   'settings.adoptAsIsNotMerged': 'used as-is (not merged)',
   'settings.currentDataFolderKept': 'your current data folder is kept, so you can switch back',
   'settings.contentsNotMerged': 'its contents are not merged with your current data',
-  'settings.dataFolderUntouched': 'Your current data folder is left untouched, so you can switch back.',
+  'settings.dataFolderUntouched':
+    'Your current data folder is left untouched, so you can switch back.',
   'settings.switchStartsFreshSession':
     'agent session. Open conversations keep their existing messages, and their transcript is carried over). New conversations are unaffected.',
   'settings.uninstallLeavesManualInstall':
@@ -776,12 +839,14 @@ export const en: Record<ZhKey, string> = {
   'settings.largeFilesLinkedNotEmbedded': 'Large files are linked, not embedded.',
   'settings.anyFileType': 'Any file type · {size} per file.',
   'settings.uninstallTitle': 'Uninstall {name}?',
-  'settings.uninstallManagedHint': 'This removes the {name} runtime this app downloaded and manages. A separate {name} you installed yourself is not affected.',
+  'settings.uninstallManagedHint':
+    'This removes the {name} runtime this app downloaded and manages. A separate {name} you installed yourself is not affected.',
   'settings.agentControlsAria': 'Agent controls: {profile}, auto-review {review}',
   'settings.on': 'on',
   'settings.off': 'off',
   'settings.accessModeOff': 'Off',
-  'settings.autoApproveEditsHint2': 'Auto-approve edits to files in the workspace. Still ask before commands, network, and MCP.',
+  'settings.autoApproveEditsHint2':
+    'Auto-approve edits to files in the workspace. Still ask before commands, network, and MCP.',
   'settings.fullAccessHint2': 'Run everything without prompts, including commands and network.',
   'settings.auto': 'Auto',
   'settings.noNativeBypassMode': 'The current agent does not support native bypass mode.',
@@ -791,7 +856,8 @@ export const en: Record<ZhKey, string> = {
   'settings.thisSessionScope': 'This session',
   'settings.thisProjectScope': 'This project',
   'settings.allowExternalRequest': 'Allow external request?',
-  'settings.approveOnlyIfTrustConnector': 'Approve only if you trust this connector with the current request.',
+  'settings.approveOnlyIfTrustConnector':
+    'Approve only if you trust this connector with the current request.',
   'settings.allowOnce': 'Allow once',
   'settings.probeFailed': 'Probe failed',
   'settings.resources': 'Resources',
@@ -823,17 +889,19 @@ export const en: Record<ZhKey, string> = {
   'settings.howLongModelThinks': 'How long the model thinks before answering',
   'settings.providerAndModelForChat': 'Provider and model for this chat',
 
-  'settings.permissionsModeDesc2': 'Choose how much the agent can do without asking when a conversation starts.',
+  'settings.permissionsModeDesc2':
+    'Choose how much the agent can do without asking when a conversation starts.',
   'settings.newConvosKeepMode':
     'New conversations can run commands, change files, and access the network without asking first. Existing conversations keep their current permission mode.',
   'settings.newConvosNotebook':
     'New conversations can run commands, change files, execute notebook code, and access the network without asking first.',
   'settings.gatewayRootHint': 'The gateway root; a trailing ',
-  'settings.gatewayRootSuffix': ' is added automatically. Choose the API format below to match the endpoint.',
+  'settings.gatewayRootSuffix':
+    ' is added automatically. Choose the API format below to match the endpoint.',
   'settings.apiFormatHint': 'Which chat API this gateway speaks. Claude Code uses ',
-  'settings.apiFormatMid':
-    ', OpenCode accepts Messages or Chat Completions, and Codex uses ',
-  'settings.apiFormatSuffix': '. A provider is only selectable under an agent framework that supports its format.',
+  'settings.apiFormatMid': ', OpenCode accepts Messages or Chat Completions, and Codex uses ',
+  'settings.apiFormatSuffix':
+    '. A provider is only selectable under an agent framework that supports its format.',
   'settings.claudeSharedHint':
     'Sign in via browser OAuth. The Settings card will open your browser to sign in with your Claude account. Your credentials are stored in ',
   'settings.claudeSharedSuffix': '.',
@@ -844,11 +912,7 @@ export const en: Record<ZhKey, string> = {
   'settings.pasteTokenAfterSave':
     "Paste the token in the Settings card after saving — the wizard's Test & continue flow signs you in.",
 
-
-
   'settings.cancel': 'Cancel',
-
-
 
   'settings.couldNotChangeRuntime': 'Could not change that runtime.',
   'settings.couldNotAddInterpreter': 'Could not add that interpreter.',
@@ -956,7 +1020,8 @@ export const en: Record<ZhKey, string> = {
   'ws.approvePlanAndContinue': 'Approve the current Plan and continue.',
   'ws.dismissPlan': 'Dismiss the current Plan.',
   'ws.unableToRespondToPlan': 'Unable to respond to the Plan.',
-  'ws.syncDraftComputeHostsFailed': 'Failed to sync draft compute hosts to registry for new session',
+  'ws.syncDraftComputeHostsFailed':
+    'Failed to sync draft compute hosts to registry for new session',
   'ws.mainAgent': 'Main Agent',
   'ws.theSelectedSpecialist': 'the selected specialist',
   'ws.closeNavigation': 'Close navigation',
@@ -1004,15 +1069,18 @@ export const en: Record<ZhKey, string> = {
   'ws.contextPointAria': 'Run {run}, {state}, {tokens} context-window tokens',
   'ws.contextCompactedAfter': 'Context compacted after run {run}',
   'ws.contextHistory': 'History',
-  'ws.contextHistoryHint': 'One bar per terminal run; hover or focus to preview, then select to keep details visible.',
+  'ws.contextHistoryHint':
+    'One bar per terminal run; hover or focus to preview, then select to keep details visible.',
   'ws.contextCapacity': 'Capacity',
   'ws.contextWindow': 'Context window',
-  'ws.contextWindowDescription': 'Current composition and terminal-run history for the active branch. Category values are estimates.',
+  'ws.contextWindowDescription':
+    'Current composition and terminal-run history for the active branch. Category values are estimates.',
   'ws.contextClose': 'Close context window',
   'ws.contextNoHistory': 'No run history yet',
   'ws.contextCallsTitle': 'Per-call usage',
   'ws.contextCallsHint': 'Input / cache / output token share per model call, newest first',
-  'ws.contextNoHistoryHint': 'A bar appears after a run completes, is interrupted, or ends with an error. Older sessions remain compatible and may not contain history data.',
+  'ws.contextNoHistoryHint':
+    'A bar appears after a run completes, is interrupted, or ends with an error. Older sessions remain compatible and may not contain history data.',
   'ws.contextDetails': 'Details',
   'ws.marketplaceLibrary': 'Specialist library',
   'ws.marketplaceInstalledTab': 'Installed',
@@ -1023,10 +1091,12 @@ export const en: Record<ZhKey, string> = {
   'ws.marketplaceSourceRemoveError': 'Could not remove this Marketplace source.',
   'ws.marketplaceInstallBlocked': 'The downloaded package has blocking validation errors.',
   'ws.marketplaceInstallFailed': 'Installation failed. Try again.',
-  'ws.marketplaceRecoveryPending': 'This Specialist was installed, but Marketplace status is still being recovered. Return to Marketplace or restart the app to finish recovery.',
+  'ws.marketplaceRecoveryPending':
+    'This Specialist was installed, but Marketplace status is still being recovered. Return to Marketplace or restart the app to finish recovery.',
   'ws.marketplaceInstallError': 'Could not install this Specialist.',
   'ws.marketplaceSources': 'Marketplace sources',
-  'ws.marketplaceSourcesHint': 'Add a public GitHub repository that follows the Specialist Marketplace protocol.',
+  'ws.marketplaceSourcesHint':
+    'Add a public GitHub repository that follows the Specialist Marketplace protocol.',
   'ws.marketplaceGithubRepository': 'GitHub repository',
   'ws.marketplaceGithubUrlPlaceholder': 'https://github.com/owner/repository',
   'ws.marketplaceInspectSource': 'Inspect source',
@@ -1061,7 +1131,8 @@ export const en: Record<ZhKey, string> = {
   'ws.marketplacePackageVerified': 'Package verified',
   'ws.marketplaceResolveToContinue': 'Resolve the items below to continue installation.',
   'ws.marketplaceUpdateVersion': 'Update from v{current} to v{incoming}',
-  'ws.marketplaceLocalChangesReplaced': 'Local changes to this Specialist will be replaced by the Marketplace version.',
+  'ws.marketplaceLocalChangesReplaced':
+    'Local changes to this Specialist will be replaced by the Marketplace version.',
   'ws.marketplaceBackToMarketplace': 'Back to Marketplace',
   'ws.marketplaceRefresh': 'Refresh Marketplace',
   'ws.marketplaceManageSources': 'Manage Marketplace sources',
@@ -1071,9 +1142,12 @@ export const en: Record<ZhKey, string> = {
   'ws.marketplaceRefreshing': 'Refreshing Marketplace…',
   'ws.marketplaceShowingDataFrom': 'Showing data from {time}',
   'ws.marketplaceUpdated': 'Updated {time}',
-  'ws.marketplaceRefreshFailedStale': 'Could not refresh Marketplace. Showing the last available data.',
-  'ws.marketplaceCachedData': 'Showing verified cached data from {time} for {source}. Installation still requires a verified download.',
-  'ws.marketplaceAllSourcesUnavailable': 'Marketplace could not be reached from any configured source. Check your network and try again.',
+  'ws.marketplaceRefreshFailedStale':
+    'Could not refresh Marketplace. Showing the last available data.',
+  'ws.marketplaceCachedData':
+    'Showing verified cached data from {time} for {source}. Installation still requires a verified download.',
+  'ws.marketplaceAllSourcesUnavailable':
+    'Marketplace could not be reached from any configured source. Check your network and try again.',
   'ws.marketplaceSourceRefreshFailed': 'Could not refresh {source}',
   'ws.marketplaceNoMatches': 'No Specialists match “{query}”.',
   'ws.marketplaceNoSpecialists': 'No Marketplace Specialists available.',
@@ -1103,13 +1177,16 @@ export const en: Record<ZhKey, string> = {
   'settings.customSpecialistOnly': 'Custom Specialist only',
   'settings.chatWithAgent': 'Chat with agent',
   'settings.managedByAppAndKept': 'Managed by the app and will be kept.',
-  'settings.specialistChangedRefresh': 'This Specialist changed. Refresh the preview and review again.',
+  'settings.specialistChangedRefresh':
+    'This Specialist changed. Refresh the preview and review again.',
   'settings.agentClaudeName': 'Claude Agent',
   'settings.agentClaudeDesc': "Anthropic's agentic coding tool for the terminal.",
-  'settings.agentClaudeNotReady': 'Install Claude Agent below, or install it manually and re-detect.',
+  'settings.agentClaudeNotReady':
+    'Install Claude Agent below, or install it manually and re-detect.',
   'settings.agentOpencodeName': 'OpenCode',
   'settings.agentOpencodeDesc': 'Open-source coding agent for the terminal.',
-  'settings.agentOpencodeNotReady': 'OpenCode is required for this framework. Install it below, or install it manually (see ',
+  'settings.agentOpencodeNotReady':
+    'OpenCode is required for this framework. Install it below, or install it manually (see ',
   'settings.andRedetect': ') and re-detect.',
   'settings.specialistSingular': 'Specialist',
   'settings.specialistPlural': 'Specialists',
@@ -1117,7 +1194,8 @@ export const en: Record<ZhKey, string> = {
   'settings.their': 'Their',
   'settings.agentCodexName': 'Codex',
   'settings.agentCodexDesc': "OpenAI's coding agent, connected through the Codex ACP adapter.",
-  'settings.agentCodexNotReady': 'Codex ACP is required for this framework. Install it below, or install it manually and re-detect.',
+  'settings.agentCodexNotReady':
+    'Codex ACP is required for this framework. Install it below, or install it manually and re-detect.',
   'settings.detecting': 'Detecting…',
   'settings.redetect': 'Re-detect',
   'settings.oauthSignInFailed': 'OAuth sign-in failed.',
@@ -1205,18 +1283,22 @@ export const en: Record<ZhKey, string> = {
   'settings.usedByAutoReview': 'Used by Auto-review',
   'settings.sshHostsTitle': 'SSH hosts',
   'settings.sshHostsDesc': 'Servers, clusters or job submission nodes from your SSH host lists',
-  'settings.noSshHostsYet': 'No SSH hosts yet. Add one to let PureScience run compute on your servers.',
+  'settings.noSshHostsYet':
+    'No SSH hosts yet. Add one to let PureScience run compute on your servers.',
   'settings.addSshHost': 'Add SSH host',
   'settings.computeConnectHint': 'Connect where heavy compute runs — your own servers over SSH.',
   'settings.agentFrameworkCardDesc': 'Choose which coding-agent backend drives your sessions.',
   'settings.uninstall': 'Uninstall',
   'settings.notInstalled': 'Not installed',
   'settings.install': 'Install',
-  'settings.activeRuntimeCannotUninstall': "The active runtime can't be uninstalled — switch to the other one first.",
-  'settings.permissionsStartDesc': 'Choose how the agent can do without asking when a conversation starts.',
+  'settings.activeRuntimeCannotUninstall':
+    "The active runtime can't be uninstalled — switch to the other one first.",
+  'settings.permissionsStartDesc':
+    'Choose how the agent can do without asking when a conversation starts.',
   'settings.defaultPermissionModeHint2':
     'Applied only to new conversations. You can change it in Agent controls before sending the first message.',
-  'settings.rememberedPermissionsDesc': 'Review or revoke approvals saved for tools, projects, and conversations.',
+  'settings.rememberedPermissionsDesc':
+    'Review or revoke approvals saved for tools, projects, and conversations.',
   'settings.skipApprovals': 'Skip approvals',
   'settings.skipApprovalsHint':
     'Allow the agent to use every tool from this connector without showing an approval card each time.',
@@ -1234,7 +1316,8 @@ export const en: Record<ZhKey, string> = {
   'settings.timeRange': 'Time range',
   'settings.usageMayBeUnreported': 'Older conversations or some providers may not report usage.',
   'settings.dailyActivity': 'Daily activity',
-  'settings.dailyActivityDesc': 'Compare each day over the last 30 days. Darker cells indicate higher usage.',
+  'settings.dailyActivityDesc':
+    'Compare each day over the last 30 days. Darker cells indicate higher usage.',
   'settings.dailyActivityMetric': 'Daily activity metric',
   'settings.dailyActivityAria': 'Daily activity for the last 30 days',
   'settings.less': 'Less',
@@ -1267,7 +1350,8 @@ export const en: Record<ZhKey, string> = {
   'settings.newArtifacts': 'New artifacts',
   'settings.totalArtifacts': 'Total artifacts',
   'settings.runs': 'Runs',
-  'settings.tokenTotalsAvailable': 'Token totals are available for {reported} of {count} runs in this period.',
+  'settings.tokenTotalsAvailable':
+    'Token totals are available for {reported} of {count} runs in this period.',
   'settings.inputTokensShort': 'Input',
   'settings.cacheTokensShort': 'Cache',
   'settings.outputTokensShort': 'Output',
@@ -1278,8 +1362,6 @@ export const en: Record<ZhKey, string> = {
   'settings.skipApprovalsFor': 'Skip approvals for {name}',
   'settings.detectingRuntimes': 'Detecting runtimes…',
   'settings.packagesIn': 'Packages in {name}',
-
-
 
   'settings.idReservedByBuiltin': 'This ID is reserved by a built-in Connector.',
   'settings.idAlreadyExists': 'A custom Connector with this ID already exists.',
@@ -1307,11 +1389,6 @@ export const en: Record<ZhKey, string> = {
   'settings.fileModified': 'Modified',
   'settings.closeFileBrowser': 'Close file browser',
   'settings.goToLocations': 'Go-to locations',
-
-
-
-
-
 
   'ws.filterProjectFiles': 'Filter project files',
   'ws.showFewer': 'Show fewer',
@@ -1404,7 +1481,8 @@ export const en: Record<ZhKey, string> = {
   'settings.downloadAndSetUp': 'Download and set up',
   'settings.filterPackages': 'Filter packages',
   'settings.filterPackagesPlaceholder': 'Filter packages…',
-  'settings.remoteBrowserLinkHint': 'Open a persistent link in any browser with two-step verification.',
+  'settings.remoteBrowserLinkHint':
+    'Open a persistent link in any browser with two-step verification.',
   'settings.remoteBrowserAccess': 'Remote browser access',
   'settings.remoteBrowserAccessTitle': 'Remote Browser Access',
   'settings.remoteAccessMode': 'Remote access mode',
@@ -1437,13 +1515,10 @@ export const en: Record<ZhKey, string> = {
   'ws.environment': 'Environment',
   'ws.review': 'Review',
 
-
-
-
-
   // ws — artifact provenance panel
   'ws.executionLog': 'Execution Log',
-  'ws.producerRunNotIdentified': 'The producer run could not be identified from the captured evidence.',
+  'ws.producerRunNotIdentified':
+    'The producer run could not be identified from the captured evidence.',
   'ws.producerRunNoScript': 'The producer run did not retain a script to reconstruct.',
   'ws.inventoryCacheReused': 'Inventory cache was reused without a full validation.',
   'ws.environmentChangedDuringRun': 'The Environment changed while the producer run was executing.',
@@ -1463,8 +1538,10 @@ export const en: Record<ZhKey, string> = {
   'ws.environmentEvidenceNotCaptured': 'Environment evidence was not captured for this version.',
   'ws.reviewUnavailable': 'Review unavailable',
   'ws.noReviewForVersion': 'No review for this version',
-  'ws.sourceSessionDeletedBeforeReview': 'The source session was deleted before an applicable review was captured.',
-  'ws.versionGeneratedWithoutAudit': 'This version was generated without an applicable reviewer audit.',
+  'ws.sourceSessionDeletedBeforeReview':
+    'The source session was deleted before an applicable review was captured.',
+  'ws.versionGeneratedWithoutAudit':
+    'This version was generated without an applicable reviewer audit.',
 
   // ws — conversation panel
   'ws.openNavigation': 'Open navigation',
@@ -1479,7 +1556,8 @@ export const en: Record<ZhKey, string> = {
   'ws.sideChatRunning': 'Main session running · forwarding interrupts the current turn',
   'ws.sideChatIdle': 'Main session idle',
   'ws.sideChatForward': 'Send to main session',
-  'ws.sideChatForwardHint': 'Forward side-chat content to the main session as an advisory (interrupts a running turn)',
+  'ws.sideChatForwardHint':
+    'Forward side-chat content to the main session as an advisory (interrupts a running turn)',
   'ws.sideChatEmpty': 'Draft notes or questions below; forward them to the main agent anytime.',
   'ws.sideChatPlaceholder': 'Type side-chat content… (Enter to send)',
   'ws.sideChatSend': 'Send',
@@ -1638,7 +1716,8 @@ export const en: Record<ZhKey, string> = {
   'settings.uploads': 'Uploads',
   'settings.runtime': 'Runtime',
   'settings.notebooks': 'Notebooks',
-  'settings.planPhasesInOrder': 'Complete {count} phases in order. Delegations within a phase may run in parallel.',
+  'settings.planPhasesInOrder':
+    'Complete {count} phases in order. Delegations within a phase may run in parallel.',
   'settings.planPhaseLabel': 'PHASE {number}',
   'settings.planPrimaryAgent': 'primary agent',
   'settings.planRunsInParallel': 'runs in parallel',
@@ -1656,6 +1735,7 @@ export const en: Record<ZhKey, string> = {
   'settings.planConfidenceLow': 'low confidence',
   'settings.planViewRawJson': 'View raw JSON',
   'settings.planViewPlan': 'View plan',
-  'settings.planStaleBanner': 'This file is an older plan version; the current session is running a newer plan.',
+  'settings.planStaleBanner':
+    'This file is an older plan version; the current session is running a newer plan.',
   'settings.planSnapshotBanner': 'This file is a plan snapshot — step status is read-only.'
 }

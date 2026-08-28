@@ -186,6 +186,10 @@ import type {
   InstallCodexRequest,
   InstallOpencodeRequest,
   MemorySettings,
+  CredentialView,
+  CredentialTestResult,
+  SetCredentialRequest,
+  TestCredentialRequest,
   Preflight,
   RefreshProviderModelsRequest,
   RefreshProviderModelsResult,
@@ -418,10 +422,30 @@ export interface PureScienceAPI {
     upsertProvider(request: UpsertProviderRequest): Promise<SettingsSnapshot>
     deleteProvider(request: DeleteProviderRequest): Promise<SettingsSnapshot>
     setActiveProvider(request: SetActiveProviderRequest): Promise<SettingsSnapshot>
-    xaiOauthStart(): Promise<{ session: { deviceCode: string; userCode: string; verificationUrl: string; expiresIn: number; interval: number }; browserOpened: boolean }>
-    xaiOauthComplete(request: { providerId: string; session: { deviceCode: string; userCode: string; verificationUrl: string; expiresIn: number; interval: number } }): Promise<void>
+    xaiOauthStart(): Promise<{
+      session: {
+        deviceCode: string
+        userCode: string
+        verificationUrl: string
+        expiresIn: number
+        interval: number
+      }
+      browserOpened: boolean
+    }>
+    xaiOauthComplete(request: {
+      providerId: string
+      session: {
+        deviceCode: string
+        userCode: string
+        verificationUrl: string
+        expiresIn: number
+        interval: number
+      }
+    }): Promise<void>
     xaiOauthRefresh(request: { providerId: string }): Promise<boolean>
-    xaiOauthStatus(request: { providerId: string }): Promise<{ signedIn: boolean; expiresAt?: number }>
+    xaiOauthStatus(request: {
+      providerId: string
+    }): Promise<{ signedIn: boolean; expiresAt?: number }>
     xaiOauthLogout(request: { providerId: string }): Promise<void>
     setAgentFramework(request: SetAgentFrameworkRequest): Promise<SettingsSnapshot>
     setVisionModel(request: SetVisionModelRequest): Promise<SettingsSnapshot>
@@ -455,6 +479,10 @@ export interface PureScienceAPI {
     setPackageMirror(request: SetPackageMirrorRequest): Promise<PackageMirror>
     getMemory(): Promise<MemorySettings | undefined>
     setMemory(memory: MemorySettings): Promise<MemorySettings>
+    getCredentials(): Promise<CredentialView[]>
+    setCredential(request: SetCredentialRequest): Promise<CredentialView>
+    deleteCredential(id: string): Promise<CredentialView[]>
+    testCredential(request: TestCredentialRequest): Promise<CredentialTestResult>
     listSkills(): Promise<SkillView[]>
     getSkillDetail(id: string): Promise<SkillDetailView>
     exportSkill(request: ExportSkillRequest): Promise<ExportSkillResult>

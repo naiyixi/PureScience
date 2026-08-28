@@ -404,6 +404,7 @@ describe('preload bridge — public surface inventory', () => {
       'settings.cancelIsolatedClaudeLogin',
       'settings.checkEnvironment',
       'settings.createSkill',
+      'settings.deleteCredential',
       'settings.deleteProvider',
       'settings.deleteSkill',
       'settings.detectClaude',
@@ -413,6 +414,7 @@ describe('preload bridge — public surface inventory', () => {
       'settings.exportMcpServers',
       'settings.exportSkill',
       'settings.getConnectorDetail',
+      'settings.getCredentials',
       'settings.getMemory',
       'settings.getPackageMirror',
       'settings.getPreflight',
@@ -462,6 +464,7 @@ describe('preload bridge — public surface inventory', () => {
       'settings.setConnectorAutoAllow',
       'settings.setConnectorEnabled',
       'settings.setConversationSkillImportEnabled',
+      'settings.setCredential',
       'settings.setCustomServerEnabled',
       'settings.setDefaultPermissionProfile',
       'settings.setMemory',
@@ -472,6 +475,7 @@ describe('preload bridge — public surface inventory', () => {
       'settings.setSkillEnabled',
       'settings.setToolPermission',
       'settings.setVisionModel',
+      'settings.testCredential',
       'settings.uninstallClaude',
       'settings.uninstallCodex',
       'settings.uninstallOpencode',
@@ -578,10 +582,10 @@ describe('preload bridge — Connector configuration files', () => {
 })
 
 describe('preload bridge — runtime renderer contract catalog', () => {
-  it('routes all 189 owned methods through their cataloged Electron channels', async () => {
+  it('routes all 193 owned methods through their cataloged Electron channels', async () => {
     const requestContracts = runtimeContracts.filter(({ kind }) => kind === 'method')
 
-    expect(runtimeContracts).toHaveLength(201)
+    expect(runtimeContracts).toHaveLength(205)
 
     for (const contract of requestContracts) {
       invokeMock.mockClear()

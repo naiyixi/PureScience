@@ -25,6 +25,7 @@ const expectedChannels = [
   'settings:detect-opencode',
   'settings:get-connector-detail',
   'settings:get-memory',
+  'settings:list-credentials',
   'settings:get-package-mirror',
   'settings:get-preflight',
   'settings:get-settings',
@@ -47,6 +48,9 @@ const expectedChannels = [
   'settings:set-close-preference',
   'settings:set-default-permission-profile',
   'settings:set-memory',
+  'settings:set-credential',
+  'settings:delete-credential',
+  'settings:test-credential',
   'settings:set-notifications-enabled',
   'settings:set-package-mirror',
   'settings:validate-provider',
@@ -119,7 +123,7 @@ const createDependencies = (): Readonly<{
 }
 
 describe('Settings core application commands', () => {
-  it('installs the exact 32-command inventory and dispatches a remote-safe preflight query', async () => {
+  it('installs the exact 36-command inventory and dispatches a remote-safe preflight query', async () => {
     const { dependencies, serviceMethod } = createDependencies()
     const preflight = { agentReady: true }
     serviceMethod('getPreflight').mockResolvedValue(preflight)
