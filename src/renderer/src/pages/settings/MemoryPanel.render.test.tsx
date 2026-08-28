@@ -31,7 +31,11 @@ vi.mock('@/i18n', () => ({
       'settings.memoryCategoryPromptPlaceholder': 'Save anything that costs >10 minutes',
       'settings.memoryAutoRecall': 'Auto-recall',
       'settings.memoryAutoRecallHint': 'Off = saved and searchable, never auto-injected',
-      'settings.memoryCategoryUsage': 'categories used'
+      'settings.memoryCategoryUsage': 'categories used',
+      'settings.memoryRenameCategory': 'Rename category',
+      'settings.memoryDeleteCategory': 'Delete category',
+      'settings.memoryDeleteCategoryTitle': 'Delete "{name}"?',
+      'settings.memoryDeleteCategoryDescription': 'This deletes the category and its {count} note(s).'
     }
     return { t: (key: string): string => labels[key] ?? key }
   }
@@ -272,5 +276,82 @@ describe('MemoryPanel', () => {
     const persisted = updateMemory.mock.calls.at(-1)?.[0]
     expect(persisted.notes).toHaveLength(0)
     expect(persisted.categories).toHaveLength(2)
+  })
+
+  it('renames a category via the inline rename input', async () => {
+    await renderPanel()
+
+    // Fixture categories are [about-you, research]; the second rename action belongs to research.
+    const renameButtons = document.body.querySelectorAll<HTMLButtonElement>(
+      '[data-slot="memory-category-rename"]'
+    )
+    expect(renameButtons.length).toBeGreaterThanOrEqual(2)
+    await act(async () => {
+      renameButtons[1]?.click()
+    })
+
+    const renameInput = document.body.querySelector<HTMLInputElement>(
+      '[data-slot="memory-category-rename-input"]'
+    )
+    expect(renameInput).toBeTruthy()
+    await typeInto(renameInput!, 'Lab notes')
+    await act(async () => {
+      renameInput!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    })
+
+    const updateMemory = useMemoryStore.getState().updateMemory as ReturnType<typeof vi.fn>
+    const persisted = updateMemory.mock.calls.at(-1)?.[0]
+    expect(persisted.categories.find((category: { id: string }) => category.id === 'research')?.name).toBe('Lab notes')
+  })
+
+  it('deletes a custom category and its notes after confirmation', async () => {
+    useMemoryStore.setState({
+      memory: {
+        ...memoryFixture,
+        notes: [
+          ...memoryFixture.notes,
+          {
+            id: 'note-2',
+            categoryId: 'research',
+            text: 'Research note',
+            createdAt: 2000,
+            updatedAt: 2001
+          }
+        ]
+      }
+    })
+    await renderPanel()
+
+    const deleteButton = document.body.querySelector<HTMLButtonElement>(
+      '[data-slot="memory-category-delete"]'
+    )
+    await act(async () => {
+      deleteButton?.click()
+    })
+
+    // The confirmation dialog appears; confirm it.
+    const confirmButton = document.body.querySelector<HTMLButtonElement>(
+      '[data-slot="memory-category-delete-confirm"]'
+    )
+    expect(confirmButton).toBeTruthy()
+    await act(async () => {
+      confirmButton?.click()
+    })
+
+    const updateMemory = useMemoryStore.getState().updateMemory as ReturnType<typeof vi.fn>
+    const persisted = updateMemory.mock.calls.at(-1)?.[0]
+    expect(persisted.categories).toHaveLength(1)
+    expect(persisted.categories[0].id).toBe('about-you')
+    // Notes under the deleted category are removed; the About you note survives.
+    expect(persisted.notes).toHaveLength(1)
+    expect(persisted.notes[0].id).toBe('note-1')
+  })
+
+  it('does not offer a delete action for the built-in About you category', async () => {
+    await renderPanel()
+
+    // Only one delete affordance exists in the fixture (for "Research"); About you has none.
+    const deleteButtons = document.body.querySelectorAll('[data-slot="memory-category-delete"]')
+    expect(deleteButtons).toHaveLength(1)
   })
 })

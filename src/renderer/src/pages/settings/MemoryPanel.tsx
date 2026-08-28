@@ -1,9 +1,17 @@
 /* Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V5 */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { AlertDialog } from 'radix-ui'
 import { BookOpenText, ChevronLeft, Pencil, Plus, Trash2 } from 'lucide-react'
 
 import { useLanguage } from '@/i18n'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import {
+  dialogDescriptionClassName,
+  dialogOverlayClassName,
+  dialogPanelClassName,
+  dialogTitleClassName
+} from '@/components/ui/dialog-chrome'
 import { useMemoryStore } from '@/stores/memory-store'
 import type { MemoryCategory, MemoryNote, MemorySettings } from '../../../../shared/settings'
 
@@ -99,19 +107,30 @@ const MemoryHeader = ({
   )
 }
 
-// Left column: category list with per-category note counts and the add-category action.
+// Left column: category list with per-category note counts, hover actions (rename / delete),
+// and the add-category action. The built-in About you category can be renamed but not deleted —
+// it is re-created by normalization, so a delete affordance there would be misleading.
 const MemoryCategoryList = ({
   memory,
   selectedCategoryId,
   onSelect,
-  onAddCategory
+  onAddCategory,
+  onRenameCategory,
+  onDeleteCategory
 }: {
   memory: MemorySettings
   selectedCategoryId: string
   onSelect: (categoryId: string) => void
   onAddCategory: () => void
+  onRenameCategory: (categoryId: string, name: string) => void
+  onDeleteCategory: (categoryId: string) => void
 }): React.JSX.Element => {
   const { t } = useLanguage()
+  // Inline rename: the category id being edited and the draft name.
+  const [renamingId, setRenamingId] = useState<string | null>(null)
+  const [renameDraft, setRenameDraft] = useState('')
+  const [categoryPendingDelete, setCategoryPendingDelete] = useState<MemoryCategory | null>(null)
+  const renameInputRef = useRef<HTMLInputElement>(null)
 
   const counts = useMemo(() => {
     const result = new Map<string, number>()
@@ -121,27 +140,96 @@ const MemoryCategoryList = ({
     return result
   }, [memory.notes])
 
+  const startRename = (category: MemoryCategory): void => {
+    setRenamingId(category.id)
+    setRenameDraft(category.name)
+    // Focus after the input renders (the rename row swaps in the input in the same tick).
+    requestAnimationFrame(() => renameInputRef.current?.focus())
+  }
+
+  const commitRename = (): void => {
+    if (renamingId) {
+      const name = renameDraft.trim()
+      if (name.length > 0) onRenameCategory(renamingId, name)
+    }
+    setRenamingId(null)
+  }
+
+  const noteCountFor = (categoryId: string): number => counts.get(categoryId) ?? 0
+
   return (
     <div className="flex w-44 shrink-0 flex-col border-r border-border">
       <div className="flex-1 overflow-y-auto p-2">
-        {memory.categories.map((category) => (
-          <button
-            key={category.id}
-            type="button"
-            className={cn(
-              'flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-[12px] outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
-              selectedCategoryId === category.id
-                ? 'bg-bg-200 text-text-100'
-                : 'text-text-200 hover:bg-bg-100'
-            )}
-            onClick={() => onSelect(category.id)}
-          >
-            <span className="min-w-0 truncate">{category.name}</span>
-            <span className="ml-2 shrink-0 text-[11px] text-text-300">
-              {counts.get(category.id) ?? 0}
-            </span>
-          </button>
-        ))}
+        {memory.categories.map((category) => {
+          const isRenaming = renamingId === category.id
+          const isBuiltIn = category.id === 'about-you'
+          return (
+            <div
+              key={category.id}
+              className={cn(
+                'group flex w-full items-center rounded-md px-2 py-1 text-left text-[12px] outline-none',
+                selectedCategoryId === category.id
+                  ? 'bg-bg-200 text-text-100'
+                  : 'text-text-200 hover:bg-bg-100'
+              )}
+            >
+              {isRenaming ? (
+                <input
+                  ref={renameInputRef}
+                  value={renameDraft}
+                  data-slot="memory-category-rename-input"
+                  onChange={(event) => setRenameDraft(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') commitRename()
+                    if (event.key === 'Escape') setRenamingId(null)
+                  }}
+                  onBlur={commitRename}
+                  className="min-w-0 flex-1 rounded-sm border border-border bg-bg-00 px-1 py-0.5 text-[12px] text-text-100 outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                />
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="min-w-0 flex-1 truncate text-left outline-none"
+                    onClick={() => onSelect(category.id)}
+                  >
+                    {category.name}
+                  </button>
+                  <span
+                    className="ml-1 shrink-0 text-[11px] text-text-300"
+                    data-memory-category-count={category.id}
+                  >
+                    {noteCountFor(category.id)}
+                  </span>
+                  <span className="ml-1 flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                    <button
+                      type="button"
+                      data-slot="memory-category-rename"
+                      aria-label={t('settings.memoryRenameCategory')}
+                      title={t('settings.memoryRenameCategory')}
+                      className="rounded-sm p-0.5 text-text-300 outline-none hover:bg-bg-200 hover:text-text-100 focus-visible:ring-2 focus-visible:ring-ring/50"
+                      onClick={() => startRename(category)}
+                    >
+                      <Pencil className="size-3" aria-hidden="true" />
+                    </button>
+                    {!isBuiltIn ? (
+                      <button
+                        type="button"
+                        data-slot="memory-category-delete"
+                        aria-label={t('settings.memoryDeleteCategory')}
+                        title={t('settings.memoryDeleteCategory')}
+                        className="rounded-sm p-0.5 text-text-300 outline-none hover:bg-danger-000/10 hover:text-danger-000 focus-visible:ring-2 focus-visible:ring-ring/50"
+                        onClick={() => setCategoryPendingDelete(category)}
+                      >
+                        <Trash2 className="size-3" aria-hidden="true" />
+                      </button>
+                    ) : null}
+                  </span>
+                </>
+              )}
+            </div>
+          )
+        })}
       </div>
       <div className="border-t border-border p-2">
         <button
@@ -153,6 +241,52 @@ const MemoryCategoryList = ({
           {t('settings.memoryAddCategory')}
         </button>
       </div>
+
+      <AlertDialog.Root
+        open={categoryPendingDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setCategoryPendingDelete(null)
+        }}
+      >
+        <AlertDialog.Portal>
+          <AlertDialog.Overlay className={dialogOverlayClassName} />
+          <AlertDialog.Content
+            className={dialogPanelClassName('w-[min(440px,calc(100vw-2rem))]')}
+          >
+            <AlertDialog.Title className={dialogTitleClassName}>
+              {t('settings.memoryDeleteCategoryTitle').replace(
+                '{name}',
+                categoryPendingDelete?.name ?? ''
+              )}
+            </AlertDialog.Title>
+            <AlertDialog.Description className={dialogDescriptionClassName}>
+              {t('settings.memoryDeleteCategoryDescription').replace(
+                '{count}',
+                String(categoryPendingDelete ? noteCountFor(categoryPendingDelete.id) : 0)
+              )}
+            </AlertDialog.Description>
+            <div className="mt-6 flex justify-end gap-2">
+              <AlertDialog.Cancel asChild>
+                <Button type="button" variant="outline">
+                  {t('common.cancel')}
+                </Button>
+              </AlertDialog.Cancel>
+              <AlertDialog.Action asChild>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  data-slot="memory-category-delete-confirm"
+                  onClick={() => {
+                    if (categoryPendingDelete) onDeleteCategory(categoryPendingDelete.id)
+                  }}
+                >
+                  {t('common.delete')}
+                </Button>
+              </AlertDialog.Action>
+            </div>
+          </AlertDialog.Content>
+        </AlertDialog.Portal>
+      </AlertDialog.Root>
     </div>
   )
 }
@@ -490,6 +624,33 @@ export const MemoryPanel = (): React.JSX.Element => {
     [normalized, persist]
   )
 
+  // Renames a category in place (trimmed, non-empty only); the About you built-in is renamable.
+  const renameCategory = useCallback(
+    (categoryId: string, name: string): void => {
+      persist({
+        ...normalized,
+        categories: normalized.categories.map((category) =>
+          category.id === categoryId ? { ...category, name } : category
+        )
+      })
+    },
+    [normalized, persist]
+  )
+
+  // Deletes a category and its notes. The About you built-in never reaches here (no delete
+  // affordance), but the guard keeps a stale call from collapsing the default category.
+  const deleteCategory = useCallback(
+    (categoryId: string): void => {
+      if (categoryId === 'about-you') return
+      persist({
+        ...normalized,
+        categories: normalized.categories.filter((category) => category.id !== categoryId),
+        notes: normalized.notes.filter((note) => note.categoryId !== categoryId)
+      })
+    },
+    [normalized, persist]
+  )
+
   const selectedCategory = normalized.categories.find(
     (category) => category.id === selectedCategoryId
   )
@@ -537,6 +698,8 @@ export const MemoryPanel = (): React.JSX.Element => {
             setIsCreatingCategory(false)
           }}
           onAddCategory={() => setIsCreatingCategory(true)}
+          onRenameCategory={renameCategory}
+          onDeleteCategory={deleteCategory}
         />
         {isCreatingCategory ? (
           <MemoryCategoryForm
