@@ -2770,8 +2770,7 @@ describe('SettingsService: preflight & spawn config', () => {
       }
     )
     await disabledBridgeResponse.text()
-    const capturedDisabledRequest = sourceRequest as unknown as
-      Record<string, unknown> | undefined
+    const capturedDisabledRequest = sourceRequest as unknown as Record<string, unknown> | undefined
     const disabledToolNames = (
       (capturedDisabledRequest?.tools as Array<{ function?: { name?: string } }> | undefined) ?? []
     ).map((tool) => tool.function?.name)
@@ -3175,7 +3174,12 @@ describe('SettingsService: official vendors', () => {
       settings: {
         skipWebFetchPreflight: true,
         permissions: { ask: ['WebFetch'] },
-        availableModels: ['deepseek-v4-flash', 'deepseek-v4-pro', 'deepseek-v4-pro[1m]', 'deepseek-v4-flash-vision-exp'],
+        availableModels: [
+          'deepseek-v4-flash',
+          'deepseek-v4-pro',
+          'deepseek-v4-pro[1m]',
+          'deepseek-v4-flash-vision-exp'
+        ],
         modelOverrides: {
           'deepseek-v4-flash': 'deepseek-v4-flash',
           'deepseek-v4-flash-vision-exp': 'deepseek-v4-flash-vision-exp',
@@ -3187,7 +3191,12 @@ describe('SettingsService: official vendors', () => {
     await expect(
       readFile(join(getAppClaudeConfigDir(storageRoot), 'settings.json'), 'utf8').then(JSON.parse)
     ).resolves.toMatchObject({
-      availableModels: ['deepseek-v4-flash', 'deepseek-v4-pro', 'deepseek-v4-pro[1m]', 'deepseek-v4-flash-vision-exp'],
+      availableModels: [
+        'deepseek-v4-flash',
+        'deepseek-v4-pro',
+        'deepseek-v4-pro[1m]',
+        'deepseek-v4-flash-vision-exp'
+      ],
       modelOverrides: {
         'deepseek-v4-flash': 'deepseek-v4-flash',
         'deepseek-v4-flash-vision-exp': 'deepseek-v4-flash-vision-exp',
@@ -6754,5 +6763,58 @@ describe('SettingsService: claude-shared login orchestration', () => {
     const service = createService(undefined, { claudeSharedAuth: auth })
     service.cancelClaudeLogin()
     expect(auth.cancelLogin).toHaveBeenCalledOnce()
+  })
+})
+
+describe('SettingsService: agent memory save-note', () => {
+  it('saves a note into an existing category when memory is enabled', async () => {
+    const service = createService()
+    const seeded = {
+      enabled: true,
+      categories: [{ id: 'about-you', name: 'About you', createdAt: 1 }],
+      notes: []
+    }
+    await service.setMemory(seeded)
+
+    const result = await service.saveMemoryNote('About you', 'Prefers concise answers')
+    expect(result.saved).toBe(true)
+    expect(result.categoryId).toBe('about-you')
+
+    const memory = await service.getMemory()
+    expect(memory?.notes).toHaveLength(1)
+    expect(memory?.notes[0].text).toBe('Prefers concise answers')
+  })
+
+  it('rejects saves when memory is disabled', async () => {
+    const service = createService()
+    await service.setMemory({ enabled: false, categories: [], notes: [] })
+
+    const result = await service.saveMemoryNote('About you', 'ignored')
+    expect(result).toEqual({ saved: false, reason: 'memory-disabled' })
+  })
+
+  it('rejects saves into a category that does not exist', async () => {
+    const service = createService()
+    await service.setMemory({
+      enabled: true,
+      categories: [{ id: 'about-you', name: 'About you', createdAt: 1 }],
+      notes: []
+    })
+
+    const result = await service.saveMemoryNote('Nope', 'ignored')
+    expect(result).toEqual({ saved: false, reason: 'category-not-found' })
+  })
+
+  it('matches category names case-insensitively', async () => {
+    const service = createService()
+    await service.setMemory({
+      enabled: true,
+      categories: [{ id: 'lab', name: 'Lab facts', createdAt: 1 }],
+      notes: []
+    })
+
+    const result = await service.saveMemoryNote('LAB FACTS', 'centrifuged at 4C')
+    expect(result.saved).toBe(true)
+    expect(result.categoryId).toBe('lab')
   })
 })

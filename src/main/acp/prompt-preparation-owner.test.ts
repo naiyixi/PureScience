@@ -111,7 +111,7 @@ const setup = (): Fixture => {
           codexHome: '/codex'
         }
       },
-      tooling: { artifacts: true, notebook: true, skillImport: true },
+      tooling: { artifacts: true, notebook: true, skillImport: true, memory: false },
       specialistPrefix: 'Specialist identity.',
       projectId: 'project-1',
       fallbackPromptMessageId: 'prompt-fallback',

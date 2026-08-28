@@ -29,9 +29,7 @@ export const renderMemoryRecallInstructions = (
 ): string | undefined => {
   if (!memory?.enabled) return undefined
 
-  const recallCategories = memory.categories.filter(
-    (category) => category.autoRecall !== false
-  )
+  const recallCategories = memory.categories.filter((category) => category.autoRecall !== false)
   if (recallCategories.length === 0) return undefined
 
   const blocks: string[] = []
@@ -61,9 +59,21 @@ export const renderMemoryRecallInstructions = (
 
   if (blocks.length === 0) return undefined
 
+  // The save guidance mirrors the settings panel's category prompts: the agent reads it to decide
+  // when a session fact belongs in the user's memory (saved via the memory_save_note MCP tool).
+  const saveGuidance = memory.categories
+    .filter((category) => category.autoRecall !== false && category.prompt)
+    .map((category) => `${category.name}: ${category.prompt}`)
+
   return [
     'The user keeps a persistent memory of preferences and facts about their work, written across sessions.',
     'Use these notes whenever they are relevant to the current task:',
-    ...blocks
+    ...blocks,
+    ...(saveGuidance.length > 0
+      ? [
+          "Save guidance: when the session surfaces something matching a category below, add it to the user's memory with the memory_save_note tool:",
+          ...saveGuidance.map((line) => `- ${line}`)
+        ]
+      : [])
   ].join('\n\n')
 }

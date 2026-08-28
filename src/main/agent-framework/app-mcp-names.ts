@@ -46,6 +46,11 @@ const APP_MCP_SERVERS: readonly AppMcpServerDefinition[] = [
     canonicalName: 'purescience-plan',
     openCodeName: 'purescience_plan',
     tools: ['generate_plan', 'update_step_status']
+  },
+  {
+    canonicalName: 'purescience-memory',
+    openCodeName: 'purescience_memory',
+    tools: ['memory_save_note']
   }
 ]
 

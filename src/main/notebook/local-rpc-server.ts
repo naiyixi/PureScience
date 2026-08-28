@@ -110,6 +110,18 @@ type NotebookLocalRpcServerOptions = {
     }>
   }
   skillImporter?: Pick<ConversationSkillImporter, 'request'>
+  // Agent memory writes (memory_save_note MCP): main-process-owned persistence.
+  memoryWriter?: {
+    saveNote(
+      categoryName: string,
+      text: string
+    ): Promise<{
+      saved: boolean
+      categoryId?: string
+      noteId?: string
+      reason?: string
+    }>
+  }
   planService?: {
     call(input: {
       projectId: string
@@ -174,6 +186,7 @@ const DEFAULT_ARTIFACT_RPC_CAPABILITY_TTL_MS = 2 * 60 * 60 * 1_000
 const CONTROL_RPC_METHODS = new Set(['mcpCall', 'computeCall', 'agentsCall'])
 const SKILL_IMPORT_RPC_METHODS = new Set(['skillImport'])
 const PLAN_RPC_METHODS = new Set(['planCall'])
+const MEMORY_RPC_METHODS = new Set(['memorySaveNote'])
 
 const isArtifactRpcMethod = (method: string): method is ArtifactRpcMethod =>
   ARTIFACT_RPC_METHODS.has(method as ArtifactRpcMethod)
@@ -210,6 +223,7 @@ class NotebookLocalRpcServer {
   private readonly connectorService: NotebookLocalRpcServerOptions['connectorService']
   private readonly computeService: NotebookLocalRpcServerOptions['computeService']
   private readonly skillImporter: NotebookLocalRpcServerOptions['skillImporter']
+  private readonly memoryWriter: NotebookLocalRpcServerOptions['memoryWriter']
   private readonly planService: NotebookLocalRpcServerOptions['planService']
   private readonly artifactProvenance: NotebookLocalRpcServerOptions['artifactProvenance']
   private readonly inputRegistry: NotebookLocalRpcServerOptions['inputRegistry']
@@ -221,6 +235,7 @@ class NotebookLocalRpcServer {
   private readonly sessionRpcTokens = new Map<string, string>()
   private readonly skillImportRpcTokens = new Map<string, string>()
   private readonly planRpcTokens = new Map<string, string>()
+  private readonly memoryRpcTokens = new Map<string, string>()
   // The session → Specialist relationship is established by the ACP runtime, not supplied by the
   // notebook process. Keeping it here prevents an agent from selecting another Specialist's scope
   // by forging an RPC parameter.
@@ -244,6 +259,7 @@ class NotebookLocalRpcServer {
     this.connectorService = options.connectorService
     this.computeService = options.computeService
     this.skillImporter = options.skillImporter
+    this.memoryWriter = options.memoryWriter
     this.planService = options.planService
     this.artifactProvenance = options.artifactProvenance
     this.inputRegistry = options.inputRegistry
@@ -338,6 +354,7 @@ class NotebookLocalRpcServer {
     this.sessionRpcCapabilities.clear()
     this.sessionRpcTokens.clear()
     this.skillImportRpcTokens.clear()
+    this.memoryRpcTokens.clear()
 
     if (!server) return
 
@@ -398,6 +415,14 @@ class NotebookLocalRpcServer {
     }
   }
 
+  private revokeMemorySessionCapabilities(sessionId: string): void {
+    for (const ownedSessionId of this.resolveSessionCapabilityOwners(sessionId)) {
+      const token = this.memoryRpcTokens.get(ownedSessionId)
+      if (token) this.sessionRpcCapabilities.delete(token)
+      this.memoryRpcTokens.delete(ownedSessionId)
+    }
+  }
+
   private revokePlanSessionCapabilities(sessionId: string): void {
     for (const ownedSessionId of this.resolveSessionCapabilityOwners(sessionId)) {
       const token = this.planRpcTokens.get(ownedSessionId)
@@ -413,6 +438,7 @@ class NotebookLocalRpcServer {
 
     this.revokeAgentSessionCapabilities(sessionId)
     this.revokeSkillImportSessionCapabilities(sessionId)
+    this.revokeMemorySessionCapabilities(sessionId)
     this.revokePlanSessionCapabilities(sessionId)
     for (const ownedSessionId of ownedSessionIds) {
       this.sessionSpecialists.delete(ownedSessionId)
@@ -470,6 +496,29 @@ class NotebookLocalRpcServer {
       release: () => {
         if (this.skillImportRpcTokens.get(sessionId) === token) {
           this.skillImportRpcTokens.delete(sessionId)
+        }
+        this.sessionRpcCapabilities.delete(token)
+      }
+    }
+  }
+
+  async issueMemoryConnection(sessionId: string): Promise<NotebookRpcConnection> {
+    const connection = await this.ensureStarted()
+    this.revokeMemorySessionCapabilities(sessionId)
+
+    const token = randomUUID()
+    this.memoryRpcTokens.set(sessionId, token)
+    this.sessionRpcCapabilities.set(token, {
+      sessionId,
+      allowedMethods: MEMORY_RPC_METHODS
+    })
+    return {
+      endpoint: connection.endpoint,
+      socketPath: connection.socketPath,
+      token,
+      release: () => {
+        if (this.memoryRpcTokens.get(sessionId) === token) {
+          this.memoryRpcTokens.delete(sessionId)
         }
         this.sessionRpcCapabilities.delete(token)
       }
@@ -704,6 +753,7 @@ class NotebookLocalRpcServer {
           if (
             CONTROL_RPC_METHODS.has(method) ||
             SKILL_IMPORT_RPC_METHODS.has(method) ||
+            MEMORY_RPC_METHODS.has(method) ||
             PLAN_RPC_METHODS.has(method)
           ) {
             throw new RpcHttpError(401, 'A session-bound notebook RPC token is required.')
@@ -784,6 +834,20 @@ class NotebookLocalRpcServer {
         attachmentUri: params.attachmentUri
       }
       return this.skillImporter.request(request)
+    }
+
+    if (method === 'memorySaveNote') {
+      if (!this.memoryWriter) throw new Error('Agent memory writer is not configured.')
+      if (
+        typeof params.sessionId !== 'string' ||
+        typeof params.categoryName !== 'string' ||
+        typeof params.text !== 'string'
+      ) {
+        throw new Error(
+          'Memory save-note RPC params must include sessionId, categoryName, and text.'
+        )
+      }
+      return this.memoryWriter.saveNote(params.categoryName, params.text)
     }
 
     if (method === 'planCall') {

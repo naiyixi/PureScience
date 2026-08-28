@@ -10,7 +10,8 @@ describe('contextUsageMcpSections', () => {
     const sections = contextUsageMcpSections('opencode', {
       artifacts: true,
       notebook: true,
-      skillImport: true
+      skillImport: true,
+      memory: true
     })
 
     const text = sections.map((section) => section.text).join('\n')
@@ -29,7 +30,8 @@ describe('contextUsageMcpSections', () => {
     const sections = contextUsageMcpSections('codex', {
       artifacts: false,
       notebook: true,
-      skillImport: false
+      skillImport: false,
+      memory: false
     })
 
     const text = sections.map((section) => section.text).join('\n')
@@ -41,7 +43,8 @@ describe('contextUsageMcpSections', () => {
     const [{ text: schema }] = contextUsageMcpSections('codex', {
       artifacts: false,
       notebook: true,
-      skillImport: false
+      skillImport: false,
+      memory: false
     })
     const tokenizer = new Tiktoken(cl100kBase)
 
@@ -56,7 +59,8 @@ describe('contextUsageMcpSections', () => {
       artifacts: false,
       notebook: true,
       skillImport: false,
-      codexBridgeAliases: true
+      codexBridgeAliases: true,
+      memory: false
     })
 
     const text = sections.map((section) => section.text).join('\n')
@@ -68,7 +72,8 @@ describe('contextUsageMcpSections', () => {
     const sections = contextUsageMcpSections('claude-code', {
       artifacts: true,
       notebook: true,
-      skillImport: false
+      skillImport: false,
+      memory: false
     })
 
     expect(sections.map(({ sectionId }) => sectionId)).toEqual([
@@ -86,13 +91,14 @@ describe('contextUsageMcpSections', () => {
       contextUsageMcpSections('claude-code', {
         artifacts: false,
         notebook: false,
-        skillImport: false
+        skillImport: false,
+        memory: false
       })
     ).toEqual([])
   })
 
   it('caches each static availability combination', () => {
-    const options = { artifacts: false, notebook: true, skillImport: false }
+    const options = { artifacts: false, notebook: true, skillImport: false, memory: false }
     expect(contextUsageMcpSections('claude-code', options)).toBe(
       contextUsageMcpSections('claude-code', options)
     )

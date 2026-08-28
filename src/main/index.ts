@@ -17,6 +17,7 @@ try {
 // server modules (and their heavy SDK graph) remain lazy inside the matching execution branch.
 import {
   ARTIFACT_MCP_SERVER_ARG,
+  MEMORY_MCP_SERVER_ARG,
   NOTEBOOK_MCP_SERVER_ARG,
   PLAN_MCP_SERVER_ARG,
   REVIEWER_MCP_PROXY_ARG,
@@ -42,6 +43,7 @@ const shouldRunNotebookMcpServer = process.argv.includes(NOTEBOOK_MCP_SERVER_ARG
 const shouldRunReviewerMcpProxy = process.argv.includes(REVIEWER_MCP_PROXY_ARG)
 const shouldRunSkillImportMcpServer = process.argv.includes(SKILL_IMPORT_MCP_SERVER_ARG)
 const shouldRunPlanMcpServer = process.argv.includes(PLAN_MCP_SERVER_ARG)
+const shouldRunMemoryMcpServer = process.argv.includes(MEMORY_MCP_SERVER_ARG)
 let startupDiagnostics: DiagnosticOperation | undefined
 let startupFlush = flushLogs
 
@@ -78,6 +80,13 @@ if (shouldRunArtifactMcpServer) {
 } else if (shouldRunPlanMcpServer) {
   void import('./session-plan/plan-mcp-server')
     .then(({ runPlanMcpServer }) => runPlanMcpServer())
+    .catch((error: unknown) => {
+      console.error(error)
+      process.exitCode = 1
+    })
+} else if (shouldRunMemoryMcpServer) {
+  void import('./settings/memory-mcp-server')
+    .then(({ runMemoryMcpServer }) => runMemoryMcpServer())
     .catch((error: unknown) => {
       console.error(error)
       process.exitCode = 1

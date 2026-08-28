@@ -213,6 +213,12 @@ const createAcpRuntime = ({
             notebookRpcServer.releaseSessionCapabilities(sessionId),
           authorizeReferencedUploads: authorizeSkillImportReferencedUploads
         },
+        memory: {
+          mcpEntryPath,
+          getRpcConnection: ({ sessionId }) => notebookRpcServer.issueMemoryConnection(sessionId),
+          registerSessionAlias: (aliasSessionId, sessionId) =>
+            notebookRpcServer.registerSessionAlias(aliasSessionId, sessionId)
+        },
         ...(sessionPersistenceCoordinator
           ? {
               plan: {

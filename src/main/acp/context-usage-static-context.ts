@@ -9,11 +9,15 @@ import {
 import type { AgentFrameworkId } from '../agent-framework/types'
 import { modelFacingAppMcpToolName } from '../agent-framework/app-mcp-names'
 import { REQUEST_SKILL_IMPORT_TOOL_NAME } from '../../shared/skill-import'
+import { MEMORY_SAVE_NOTE_TOOL_NAME } from '../../shared/memory-mcp'
+import { MEMORY_MCP_SERVER_NAME } from '../settings/memory-mcp-server'
+import { memorySaveNoteToolDefinition } from '../settings/memory-mcp-server'
 
 type ContextUsageMcpOptions = {
   artifacts: boolean
   notebook: boolean
   skillImport: boolean
+  memory: boolean
   codexBridgeAliases?: boolean
 }
 
@@ -93,6 +97,14 @@ const contextUsageMcpSections = (
     sections.push(
       serializeToolDefinitions(frameworkId, codexBridgeAliases, SKILL_IMPORT_MCP_SERVER_NAME, [
         { name: REQUEST_SKILL_IMPORT_TOOL_NAME, definition: requestSkillImportToolDefinition }
+      ])
+    )
+  }
+
+  if (options.memory) {
+    sections.push(
+      serializeToolDefinitions(frameworkId, codexBridgeAliases, MEMORY_MCP_SERVER_NAME, [
+        { name: MEMORY_SAVE_NOTE_TOOL_NAME, definition: memorySaveNoteToolDefinition }
       ])
     )
   }

@@ -25,6 +25,7 @@ import type {
   InstallCodexRequest,
   InstallOpencodeRequest,
   MemorySettings,
+  MemoryNote,
   Preflight,
   RefreshProviderModelsRequest,
   RefreshProviderModelsResult,
@@ -381,6 +382,45 @@ class SettingsService {
     return (await this.repository.getSettings()).memory
   }
 
+  // Agent-facing save: appends a note to the named category. Returns a structured result so the
+  // agent can react (e.g. "category not found") without seeing raw settings internals. Honors the
+  // master switch: memory off means no new notes are saved, matching the recall contract.
+  async saveMemoryNote(
+    categoryName: string,
+    text: string
+  ): Promise<{
+    saved: boolean
+    categoryId?: string
+    noteId?: string
+    reason?: string
+  }> {
+    const settings = await this.repository.getSettings()
+    const memory = settings.memory
+    if (!memory?.enabled) {
+      return { saved: false, reason: 'memory-disabled' }
+    }
+    const category = memory.categories.find(
+      (candidate) => candidate.name.toLowerCase() === categoryName.toLowerCase()
+    )
+    if (!category) {
+      return { saved: false, reason: 'category-not-found' }
+    }
+    const now = Date.now()
+    const note: MemoryNote = {
+      id: `memory-${now.toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+      categoryId: category.id,
+      text,
+      createdAt: now,
+      updatedAt: now
+    }
+    const persisted = await this.repository.setMemory({
+      ...memory,
+      notes: [...memory.notes, note]
+    })
+    void persisted
+    return { saved: true, categoryId: category.id, noteId: note.id }
+  }
+
   private async migrateLegacyKeyRefs(settings: StoredSettings): Promise<StoredSettings> {
     if (!isEncryptionAvailable()) return settings
     let changed = await this.providers.migrateLegacyKeyRefs(settings.providers)
@@ -399,7 +439,9 @@ class SettingsService {
 
   // Validates + persists the optional Vision model relay target; undefined disables the relay.
   // Returns the refreshed snapshot for the renderer.
-  async setVisionModel(configuration: VisionModelConfiguration | undefined): Promise<SettingsSnapshot> {
+  async setVisionModel(
+    configuration: VisionModelConfiguration | undefined
+  ): Promise<SettingsSnapshot> {
     await this.visionModels.set(configuration)
 
     return this.getSettingsView()
@@ -936,9 +978,7 @@ class SettingsService {
   }
 
   // Imports a standard `mcpServers` configuration as custom connectors.
-  async importMcpServers(
-    json: unknown
-  ): Promise<{ imported: string[]; skipped: string[] }> {
+  async importMcpServers(json: unknown): Promise<{ imported: string[]; skipped: string[] }> {
     return this.connectors.importMcpServers(json)
   }
 

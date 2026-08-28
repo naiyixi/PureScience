@@ -86,7 +86,8 @@ export class AcpProviderSessionCreator {
         tooling: {
           artifacts: capability.descriptor.capabilities.includes('artifacts'),
           notebook: capability.descriptor.capabilities.includes('notebook'),
-          skillImport: capability.descriptor.capabilities.includes('skill-import')
+          skillImport: capability.descriptor.capabilities.includes('skill-import'),
+          memory: capability.descriptor.capabilities.includes('memory')
         },
         backendSystemPromptAppends: startupBackend.prompt.systemPromptAppends,
         extraSystemPromptAppends: specialist.append ? [specialist.append] : [],
