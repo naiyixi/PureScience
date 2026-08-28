@@ -116,7 +116,7 @@ index 361d032..69371ea 100644
 -        usage.output_tokens +
 -        usage.cache_read_input_tokens +
 -        usage.cache_creation_input_tokens);
-+/** Report the current upstream request's model-input context. Cache reads are
++/** Report the current request's model-input context. Cache reads are
 + *  part of that input; completion tokens and cache writes are not. */
 +function contextTokens(usage) {
 +    return usage.input_tokens + usage.cache_read_input_tokens;
@@ -131,4 +131,4 @@ index 361d032..69371ea 100644
 + *  cache fields; we coerce absent values to 0 so `contextTokens` never hits
   *  NaN. `input_tokens`/`output_tokens` are typed `number` by the SDK but
   *  synthetic or third-party-backend stream events have been observed emitting
-  *  them as null/undefined — coerce those too so a malformed upstream event
+  *  them as null/undefined — coerce those too so a malformed incoming event

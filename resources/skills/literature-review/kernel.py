@@ -6,7 +6,7 @@ Literature-review helpers — pure-skill, provider-agnostic.
 
 There is no ``host`` runtime here: these are plain HTTP/stdlib helpers. Load
 once per session by exec-ing this file in a Python cell (nothing auto-injects
-it outside Claude Science):
+it outside this app):
 
     exec(open("<this-skill-dir>/kernel.py").read())
 

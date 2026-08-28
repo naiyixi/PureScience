@@ -466,7 +466,7 @@ model NotificationInboxItem {
   @@index([projectId])
 }
 
-// Cached image-evidence results produced by a dedicated Vision model relay (upstream #1314 port).
+// Cached image-evidence results produced by a dedicated Vision model relay.
 // When the active backend is text-only, image attachments are analyzed in an isolated Vision
 // session; the extracted evidence JSON is cached here keyed by identityKey so replaying an
 // image-bearing session after restart does not re-pay for the same canonical analysis.

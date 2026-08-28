@@ -113,3 +113,5 @@ __pycache__/
 # Internal competitive intelligence & development logs (kept local, not shipped)
 docs/competitive-tracking/
 archive/OPTIMIZATION-LOG.md
+# Web-Rooter tool cache (local only)
+.web-rooter/

@@ -68,7 +68,7 @@ not assume a hang means a crash.
 
 ## The README's `--ligand` works on the CLI by accident — use `--ligand_description`
 
-The upstream README shows `--ligand`, which only works because argparse
+The official README shows `--ligand`, which only works because argparse
 prefix-matches it to the real flag `--ligand_description`. That shortcut is
 CLI-only: as a CSV column header or YAML key, `ligand` matches nothing and the
 row is silently treated as having no ligand. Spell the flag and the column
@@ -80,7 +80,7 @@ header out in full.
 |---|---|
 | `ValueError: not allowed to raise maximum limit` at startup | `setrlimit(NOFILE, 64000)` exceeds the sandbox hard limit — `sed` the constant in `inference.py` to `min(64000, rlimit[1])`. |
 | Silent SIGKILL a few minutes into the SO(3) precompute | Host RAM exhausted — see the gotcha above. |
-| `python3: not found` | You are on the upstream `rbgcsail/diffdock` image — that one runs from `/home/appuser/DiffDock` under `micromamba`. |
+| `python3: not found` | You are on the stock `rbgcsail/diffdock` image — that one runs from `/home/appuser/DiffDock` under `micromamba`. |
 
 ---
 

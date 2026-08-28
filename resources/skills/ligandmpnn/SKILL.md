@@ -96,7 +96,7 @@ baseline, switch `--model_type`.
 
 LigandMPNN does not warn when no ligand atoms are found; it just runs as if
 `--model_type protein_mpnn` had been picked. The two common ways this happens
-are an input PDB whose HETATM records were stripped by an upstream
+are an input PDB whose HETATM records were stripped by the source pipeline
 clean-up step, and `--parse_these_chains_only` naming the protein chains but
 not the ligand's. If `ligand_confidence` in the FASTA header is missing or
 zero across every design, the model never saw the ligand — fix the input, do
