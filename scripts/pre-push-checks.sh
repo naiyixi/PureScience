@@ -13,6 +13,16 @@
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Resolve symlinks: git invokes the hook via .git/hooks/pre-push -> scripts/pre-push-checks.sh,
+# so BASH_SOURCE[0] points inside .git/hooks and the naive ROOT above lands in .git. Follow the
+# link chain to the real script path before deriving the repo root.
+SOURCE_PATH="${BASH_SOURCE[0]}"
+while [[ -L "$SOURCE_PATH" ]]; do
+  DIR="$(cd -P "$(dirname "$SOURCE_PATH")" && pwd)"
+  SOURCE_PATH="$(readlink "$SOURCE_PATH")"
+  [[ "$SOURCE_PATH" != /* ]] && SOURCE_PATH="$DIR/$SOURCE_PATH"
+done
+ROOT="$(cd -P "$(dirname "$SOURCE_PATH")/.." && pwd)"
 cd "$ROOT"
 
 VERSION="$(node -p "require('./package.json').version" 2>/dev/null || echo '?')"
