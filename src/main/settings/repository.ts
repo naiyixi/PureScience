@@ -418,7 +418,15 @@ export const sanitizeMemorySettings = (value: unknown): MemorySettings | undefin
           const id = asString(entry.id)
           const name = asString(entry.name)
           if (!id || !name) return undefined
-          return { id, name, createdAt: asNumber(entry.createdAt) ?? 0 }
+          const prompt = asString(entry.prompt)
+          const autoRecall = asBoolean(entry.autoRecall)
+          return {
+            id,
+            name,
+            createdAt: asNumber(entry.createdAt) ?? 0,
+            ...(prompt !== undefined ? { prompt } : {}),
+            ...(autoRecall !== undefined ? { autoRecall } : {})
+          }
         })
         .filter((entry): entry is MemoryCategory => entry !== undefined)
     : []
@@ -431,7 +439,12 @@ export const sanitizeMemorySettings = (value: unknown): MemorySettings | undefin
           const id = asString(entry.id)
           const categoryId = asString(entry.categoryId)
           const text = asString(entry.text)
-          if (!id || !categoryId || !text || !categoryIds.has(categoryId)) return undefined
+          // Empty text is a valid mid-edit state: the panel creates notes through a composer, but a
+          // user can also clear an existing note's text and retype it. Dropping empty notes here
+          // used to silently delete the note being edited, so only a non-string text is rejected.
+          if (!id || !categoryId || text === undefined || !categoryIds.has(categoryId)) {
+            return undefined
+          }
           return {
             id,
             categoryId,

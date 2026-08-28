@@ -1,6 +1,6 @@
 /* Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V5 */
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { BookOpenText, Pencil, Plus, Trash2 } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { BookOpenText, ChevronLeft, Pencil, Plus, Trash2 } from 'lucide-react'
 
 import { useLanguage } from '@/i18n'
 import { cn } from '@/lib/utils'
@@ -9,6 +9,10 @@ import type { MemoryCategory, MemoryNote, MemorySettings } from '../../../../sha
 
 // The built-in landing category, present even for a fresh, never-written memory.
 const DEFAULT_MEMORY_CATEGORY_NAME = 'About you'
+
+// Matches the reference design: a bounded set of user-created categories keeps the recall prompt
+// small and the list scannable.
+const MAX_MEMORY_CATEGORIES = 10
 
 const createId = (): string =>
   `memory-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
@@ -40,7 +44,8 @@ const normalizeMemory = (memory: MemorySettings | undefined): MemorySettings => 
   return { enabled: memory.enabled, categories, notes }
 }
 
-// The master switch column: On/Off + Clear all, mirroring Claude Science's memory header.
+// The master switch row: On/Off + Clear all, right-aligned above the card like the reference
+// design. The panel title lives in the page header, so this row carries only the controls.
 const MemoryHeader = ({
   memory,
   onChange
@@ -59,35 +64,37 @@ const MemoryHeader = ({
   }, [memory, onChange])
 
   return (
-    <div className="flex items-center justify-between border-b border-border px-4 py-3">
-      <span className="text-[13px] font-medium text-text-100">{t('settings.memoryTitle')}</span>
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          role="switch"
-          aria-checked={memory.enabled}
-          aria-label={t('settings.memoryEnabled')}
+    <div className="flex items-center justify-end gap-2">
+      <span className="text-[13px] text-text-100">
+        {memory.enabled ? t('settings.memoryOn') : t('settings.memoryOff')}
+      </span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={memory.enabled}
+        aria-label={t('settings.memoryEnabled')}
+        className={cn(
+          'relative h-5 w-9 rounded-full transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
+          memory.enabled ? 'bg-accent' : 'bg-bg-200'
+        )}
+        onClick={toggleEnabled}
+      >
+        <span
           className={cn(
-            'relative h-5 w-9 rounded-full transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
-            memory.enabled ? 'bg-accent' : 'bg-bg-200'
+            'absolute top-0.5 size-4 rounded-full bg-white shadow transition-transform',
+            memory.enabled ? 'translate-x-[18px]' : 'translate-x-0.5'
           )}
-          onClick={toggleEnabled}
-        >
-          <span
-            className={cn(
-              'absolute top-0.5 size-4 rounded-full bg-white shadow transition-transform',
-              memory.enabled ? 'translate-x-[18px]' : 'translate-x-0.5'
-            )}
-          />
-        </button>
-        <button
-          type="button"
-          className="rounded-md px-2 py-1 text-[12px] text-text-300 outline-none hover:bg-bg-200 hover:text-text-100 focus-visible:ring-2 focus-visible:ring-ring/50"
-          onClick={clearAll}
-        >
-          {t('settings.memoryClearAll')}
-        </button>
-      </div>
+        />
+      </button>
+      <button
+        type="button"
+        data-slot="memory-clear-all"
+        className="ml-2 flex items-center gap-1.5 rounded-md px-2 py-1 text-[13px] text-text-300 outline-none hover:bg-bg-200 hover:text-text-100 focus-visible:ring-2 focus-visible:ring-ring/50"
+        onClick={clearAll}
+      >
+        <Trash2 className="size-3.5" aria-hidden="true" />
+        {t('settings.memoryClearAll')}
+      </button>
     </div>
   )
 }
@@ -150,21 +157,171 @@ const MemoryCategoryList = ({
   )
 }
 
-// Right column: the selected category's notes with inline add/delete and live text edits.
+// Right column in create mode: the full category form — name, save-timing guidance, auto-recall,
+// and the bounded-categories usage counter. Mirrors the reference design's New-category page.
+const MemoryCategoryForm = ({
+  usedCount,
+  onCancel,
+  onCreate
+}: {
+  usedCount: number
+  onCancel: () => void
+  onCreate: (draft: { name: string; prompt?: string; autoRecall: boolean }) => void
+}): React.JSX.Element => {
+  const { t } = useLanguage()
+  const [name, setName] = useState('')
+  const [prompt, setPrompt] = useState('')
+  const [autoRecall, setAutoRecall] = useState(true)
+
+  const canCreate = name.trim().length > 0 && usedCount < MAX_MEMORY_CATEGORIES
+
+  const create = useCallback((): void => {
+    if (!canCreate) return
+    const trimmedPrompt = prompt.trim()
+    onCreate({
+      name: name.trim(),
+      prompt: trimmedPrompt.length > 0 ? trimmedPrompt : undefined,
+      autoRecall
+    })
+  }, [autoRecall, canCreate, onCreate, name, prompt])
+
+  return (
+    <div
+      data-slot="memory-category-form"
+      className="flex min-w-0 flex-1 flex-col overflow-y-auto"
+    >
+      <div className="flex items-center gap-1.5 border-b border-border px-4 py-2.5">
+        <button
+          type="button"
+          data-slot="memory-category-form-back"
+          className="rounded-md p-1 text-text-300 outline-none hover:bg-bg-200 hover:text-text-100 focus-visible:ring-2 focus-visible:ring-ring/50"
+          aria-label={t('settings.memoryBack')}
+          onClick={onCancel}
+        >
+          <ChevronLeft className="size-4" aria-hidden="true" />
+        </button>
+        <span className="truncate text-[13px] font-medium text-text-100">
+          {t('settings.memoryCategoryFormTitle')}
+        </span>
+      </div>
+
+      <div className="flex-1 space-y-4 p-4">
+        <p className="max-w-xl text-[12px] leading-5 text-text-300">
+          {t('settings.memoryCategoryFormDescription')}
+        </p>
+
+        <div>
+          <label
+            htmlFor="memory-category-name"
+            className="mb-1 block text-[12px] font-medium text-text-100"
+          >
+            {t('settings.memoryCategoryName')}
+          </label>
+          <input
+            id="memory-category-name"
+            data-slot="memory-category-name-input"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder={t('settings.memoryCategoryNamePlaceholder')}
+            className="w-full rounded-md border border-border bg-bg-00 px-3 py-2 text-[12px] text-text-100 outline-none placeholder:text-text-300 focus-visible:ring-2 focus-visible:ring-ring/50"
+          />
+        </div>
+
+        <div>
+          <label
+            htmlFor="memory-category-prompt"
+            className="mb-1 block text-[12px] font-medium text-text-100"
+          >
+            {t('settings.memoryCategoryPrompt')}
+          </label>
+          <textarea
+            id="memory-category-prompt"
+            data-slot="memory-category-prompt-input"
+            value={prompt}
+            rows={3}
+            onChange={(event) => setPrompt(event.target.value)}
+            placeholder={t('settings.memoryCategoryPromptPlaceholder')}
+            className="w-full resize-y rounded-md border border-border bg-bg-00 px-3 py-2 text-[12px] leading-5 text-text-100 outline-none placeholder:text-text-300 focus-visible:ring-2 focus-visible:ring-ring/50"
+          />
+        </div>
+
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <div className="text-[13px] font-medium text-text-100">
+              {t('settings.memoryAutoRecall')}
+            </div>
+            <div className="mt-0.5 text-[12px] leading-5 text-text-300">
+              {t('settings.memoryAutoRecallHint')}
+            </div>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={autoRecall}
+            aria-label={t('settings.memoryAutoRecall')}
+            data-slot="memory-category-auto-recall"
+            className={cn(
+              'relative h-5 w-9 shrink-0 rounded-full transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
+              autoRecall ? 'bg-accent' : 'bg-bg-200'
+            )}
+            onClick={() => setAutoRecall((value) => !value)}
+          >
+            <span
+              className={cn(
+                'absolute top-0.5 size-4 rounded-full bg-white shadow transition-transform',
+                autoRecall ? 'translate-x-[18px]' : 'translate-x-0.5'
+              )}
+            />
+          </button>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between border-t border-border px-4 py-3">
+        <span className="text-[12px] text-text-300" data-slot="memory-category-usage">
+          {usedCount} / {MAX_MEMORY_CATEGORIES} {t('settings.memoryCategoryUsage')}
+        </span>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="rounded-md px-3 py-1.5 text-[12px] text-text-200 outline-none hover:bg-bg-200 hover:text-text-100 focus-visible:ring-2 focus-visible:ring-ring/50"
+            onClick={onCancel}
+          >
+            {t('settings.memoryCancel')}
+          </button>
+          <button
+            type="button"
+            data-slot="memory-category-create"
+            disabled={!canCreate}
+            className="rounded-md bg-accent px-3 py-1.5 text-[12px] text-white outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-40"
+            onClick={create}
+          >
+            {t('settings.memoryCreate')}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Right column in notes mode: an always-present composer ("Add a note…") plus the saved notes.
+// The composer is the primary writing surface — typing + Enter saves, so a note never exists as an
+// unreachable empty card. Saved notes stay inline-editable with a hover delete.
 const MemoryNoteList = ({
   category,
   notes,
-  onAddNote,
+  onSubmitNote,
   onUpdateNote,
   onDeleteNote
 }: {
   category: MemoryCategory | undefined
   notes: MemoryNote[]
-  onAddNote: () => void
+  onSubmitNote: (text: string) => void
   onUpdateNote: (note: MemoryNote, text: string) => void
   onDeleteNote: (noteId: string) => void
 }): React.JSX.Element => {
   const { t } = useLanguage()
+  const [draft, setDraft] = useState('')
+  const composerRef = useRef<HTMLInputElement>(null)
 
   if (!category) {
     return (
@@ -174,6 +331,14 @@ const MemoryNoteList = ({
     )
   }
 
+  const submitDraft = (): void => {
+    const text = draft.trim()
+    if (text.length === 0) return
+    onSubmitNote(text)
+    setDraft('')
+    composerRef.current?.focus()
+  }
+
   return (
     <div className="flex min-w-0 flex-1 flex-col">
       <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
@@ -181,13 +346,28 @@ const MemoryNoteList = ({
         <button
           type="button"
           className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[12px] text-text-200 outline-none hover:bg-bg-200 hover:text-text-100 focus-visible:ring-2 focus-visible:ring-ring/50"
-          onClick={onAddNote}
+          onClick={() => composerRef.current?.focus()}
         >
           <Plus className="size-3.5" aria-hidden="true" />
           {t('settings.memoryAddNote')}
         </button>
       </div>
       <div className="flex-1 space-y-2 overflow-y-auto p-4">
+        <input
+          ref={composerRef}
+          data-slot="memory-note-composer"
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
+              event.preventDefault()
+              submitDraft()
+            }
+          }}
+          placeholder={t('settings.memoryNoteComposerPlaceholder')}
+          aria-label={t('settings.memoryAddNote')}
+          className="w-full rounded-lg border border-border bg-bg-00 px-3 py-2 text-[12px] text-text-100 outline-none placeholder:text-text-300 focus-visible:ring-2 focus-visible:ring-ring/50"
+        />
         {notes.length === 0 ? (
           <div className="py-8 text-center text-[12px] text-text-300">
             {t('settings.memoryNoNotes')}
@@ -226,8 +406,8 @@ const MemoryNoteList = ({
 }
 
 // Editable memory: categories + notes + master switch. Mirrors Claude Science's structured memory
-// (About you / custom categories, On/Off, Clear all). Notes are user-authored plain text used by
-// the app to recall preferences about the user across sessions.
+// (About you / custom categories, On/Off, Clear all, bounded category count, auto-recall). Notes
+// are user-authored plain text used by the app to recall preferences across sessions.
 export const MemoryPanel = (): React.JSX.Element => {
   const { t } = useLanguage()
   const memory = useMemoryStore((state) => state.memory)
@@ -235,6 +415,7 @@ export const MemoryPanel = (): React.JSX.Element => {
   const loadMemory = useMemoryStore((state) => state.loadMemory)
   const updateMemory = useMemoryStore((state) => state.updateMemory)
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('about-you')
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false)
 
   // Load once on first open; a later settings snapshot does not carry memory (independent store).
   useEffect(() => {
@@ -253,28 +434,40 @@ export const MemoryPanel = (): React.JSX.Element => {
     [updateMemory]
   )
 
-  const addCategory = useCallback((): void => {
-    const now = Date.now()
-    const category: MemoryCategory = {
-      id: createId(),
-      name: t('settings.memoryNewCategory'),
-      createdAt: now
-    }
-    persist({ ...normalized, categories: [...normalized.categories, category] })
-    setSelectedCategoryId(category.id)
-  }, [normalized, persist, t])
+  // Submits the category form: persists the new category (with its prompt/auto-recall) and selects it.
+  const createCategory = useCallback(
+    (draft: { name: string; prompt?: string; autoRecall: boolean }): void => {
+      const now = Date.now()
+      const category: MemoryCategory = {
+        id: createId(),
+        name: draft.name,
+        createdAt: now,
+        ...(draft.prompt !== undefined ? { prompt: draft.prompt } : {}),
+        autoRecall: draft.autoRecall
+      }
+      persist({ ...normalized, categories: [...normalized.categories, category] })
+      setSelectedCategoryId(category.id)
+      setIsCreatingCategory(false)
+    },
+    [normalized, persist]
+  )
 
-  const addNote = useCallback((): void => {
-    const now = Date.now()
-    const note: MemoryNote = {
-      id: createId(),
-      categoryId: selectedCategoryId,
-      text: '',
-      createdAt: now,
-      updatedAt: now
-    }
-    persist({ ...normalized, notes: [...normalized.notes, note] })
-  }, [normalized, persist, selectedCategoryId])
+  // The composer is the only note-creation path: a note is born with its text, so the sanitizer
+  // never sees a dangling empty card and the note list never flashes.
+  const addNote = useCallback(
+    (text: string): void => {
+      const now = Date.now()
+      const note: MemoryNote = {
+        id: createId(),
+        categoryId: selectedCategoryId,
+        text,
+        createdAt: now,
+        updatedAt: now
+      }
+      persist({ ...normalized, notes: [...normalized.notes, note] })
+    },
+    [normalized, persist, selectedCategoryId]
+  )
 
   const updateNote = useCallback(
     (note: MemoryNote, text: string): void => {
@@ -331,7 +524,7 @@ export const MemoryPanel = (): React.JSX.Element => {
         </div>
       ) : null}
 
-      <div className="mt-4 flex min-h-0 flex-1 overflow-hidden rounded-lg border border-border bg-bg-10">
+      <div className="mt-3 pr-1">
         <MemoryHeader memory={normalized} onChange={persist} />
       </div>
 
@@ -339,16 +532,27 @@ export const MemoryPanel = (): React.JSX.Element => {
         <MemoryCategoryList
           memory={normalized}
           selectedCategoryId={selectedCategoryId}
-          onSelect={setSelectedCategoryId}
-          onAddCategory={addCategory}
+          onSelect={(categoryId) => {
+            setSelectedCategoryId(categoryId)
+            setIsCreatingCategory(false)
+          }}
+          onAddCategory={() => setIsCreatingCategory(true)}
         />
-        <MemoryNoteList
-          category={selectedCategory}
-          notes={selectedNotes}
-          onAddNote={addNote}
-          onUpdateNote={updateNote}
-          onDeleteNote={deleteNote}
-        />
+        {isCreatingCategory ? (
+          <MemoryCategoryForm
+            usedCount={normalized.categories.length}
+            onCancel={() => setIsCreatingCategory(false)}
+            onCreate={createCategory}
+          />
+        ) : (
+          <MemoryNoteList
+            category={selectedCategory}
+            notes={selectedNotes}
+            onSubmitNote={addNote}
+            onUpdateNote={updateNote}
+            onDeleteNote={deleteNote}
+          />
+        )}
       </div>
     </div>
   )

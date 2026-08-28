@@ -42,7 +42,7 @@ describe('sanitizeMemorySettings', () => {
         { id: 'note-2', categoryId: 'gone', text: 'Dangling', createdAt: 1, updatedAt: 1 },
         // Missing id: dropped.
         { categoryId: 'about-you', text: 'No id', createdAt: 1, updatedAt: 1 },
-        // Empty text: dropped.
+        // Empty text: kept — a cleared note is a valid mid-edit state, not a corrupt entry.
         { id: 'note-4', categoryId: 'about-you', text: '', createdAt: 1, updatedAt: 1 },
         // Non-string text: dropped.
         { id: 'note-5', categoryId: 'about-you', text: 42, createdAt: 1, updatedAt: 1 }
@@ -50,7 +50,36 @@ describe('sanitizeMemorySettings', () => {
     })
 
     expect(result?.notes).toEqual([
-      { id: 'note-1', categoryId: 'about-you', text: 'Keep', createdAt: 1, updatedAt: 1 }
+      { id: 'note-1', categoryId: 'about-you', text: 'Keep', createdAt: 1, updatedAt: 1 },
+      { id: 'note-4', categoryId: 'about-you', text: '', createdAt: 1, updatedAt: 1 }
+    ])
+  })
+
+  it('keeps category prompt/autoRecall extras and drops non-string ones', () => {
+    const result = sanitizeMemorySettings({
+      enabled: true,
+      categories: [
+        {
+          id: 'cat-1',
+          name: 'Footguns',
+          createdAt: 1000,
+          prompt: 'Anything that cost >10 minutes',
+          autoRecall: false
+        },
+        { id: 'cat-2', name: 'Broken', createdAt: 1001, prompt: 42, autoRecall: 'yes' }
+      ],
+      notes: []
+    })
+
+    expect(result?.categories).toEqual([
+      {
+        id: 'cat-1',
+        name: 'Footguns',
+        createdAt: 1000,
+        prompt: 'Anything that cost >10 minutes',
+        autoRecall: false
+      },
+      { id: 'cat-2', name: 'Broken', createdAt: 1001 }
     ])
   })
 
