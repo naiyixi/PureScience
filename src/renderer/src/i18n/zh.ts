@@ -58,8 +58,10 @@ export const zh = {
   'home.projectDescriptionPlaceholder': '这个项目是关于什么的？',
   'settings.logFile': '日志文件',
   'settings.somethingNotWorking': '有问题？',
-  'settings.remoteAccessHint': '所有项目、代理、文件和 Notebook 运行时都继续在这台计算机上运行。启用访问前，请先安装并登录 Remote.It 桌面应用。',
-  'settings.cliInstallHint': '安装 <code>purescience</code> 命令，即可在终端中启动、停止和检查后端，然后完全在浏览器中使用它。',
+  'settings.remoteAccessHint':
+    '所有项目、代理、文件和 Notebook 运行时都继续在这台计算机上运行。启用访问前，请先安装并登录 Remote.It 桌面应用。',
+  'settings.cliInstallHint':
+    '安装 <code>purescience</code> 命令，即可在终端中启动、停止和检查后端，然后完全在浏览器中使用它。',
   'common.searchSkills': '搜索技能…',
   'common.searchConnectors': '搜索连接器…',
   'common.dismiss': '关闭',
@@ -90,7 +92,8 @@ export const zh = {
   'onboarding.setupCouldNotComplete': '无法完成设置',
   'onboarding.prepareEnvironment': '准备环境',
   'onboarding.checkAgain': '重新检查',
-  'onboarding.coreReqsConfirmed': 'PureScience 会在开始你的首个研究会话前，确认你的计算机已满足核心要求。',
+  'onboarding.coreReqsConfirmed':
+    'PureScience 会在开始你的首个研究会话前，确认你的计算机已满足核心要求。',
   'onboarding.whereStoreData': 'PureScience 应该把数据存储在哪里？',
   'onboarding.largeFilesHere': '大文件（工件、笔记本、环境）放在这里。你的设置和历史记录始终',
   'onboarding.location': '位置',
@@ -212,7 +215,8 @@ export const zh = {
   'ws.notebookStale': '已过期',
   'settings.marketplaceInstalled': '市场安装',
   'settings.marketplaceFilter': '市场',
-  'settings.marketplaceGovernedNotice': '市场安装的专才：发布者内容由市场管理。如需自由修改，请先「复制」创建本地副本。',
+  'settings.marketplaceGovernedNotice':
+    '市场安装的专才：发布者内容由市场管理。如需自由修改，请先「复制」创建本地副本。',
   'settings.identity': '标识',
   'settings.identityHint': '此专才在注册表与会话选择器中的呈现方式。',
   'settings.identityPreviewHint': '预览——与列表和选择器一致。',
@@ -324,7 +328,8 @@ export const zh = {
   'settings.memoryNoNotes': '还没有笔记。',
   'settings.memoryNotePlaceholder': '写下应用应当记住的内容……',
   'settings.memoryDeleteNote': '删除笔记',
-  'settings.memoryDisabledHint': '记忆已关闭。应用不会保存新笔记或回忆已有笔记，但下方笔记会保留且仍可编辑。重新开启即可恢复。',
+  'settings.memoryDisabledHint':
+    '记忆已关闭。应用不会保存新笔记或回忆已有笔记，但下方笔记会保留且仍可编辑。重新开启即可恢复。',
   'settings.memoryLoading': '正在加载记忆……',
   'settings.memoryOn': '开',
   'settings.memoryOff': '关',
@@ -332,7 +337,8 @@ export const zh = {
   'settings.memoryCancel': '取消',
   'settings.memoryCreate': '创建',
   'settings.memoryCategoryFormTitle': '新建分类',
-  'settings.memoryCategoryFormDescription': '分类按事实类型给笔记分组——比如"踩坑记录"或"实验结果"——并跨所有项目生效。',
+  'settings.memoryCategoryFormDescription':
+    '分类按事实类型给笔记分组——比如"踩坑记录"或"实验结果"——并跨所有项目生效。',
   'settings.memoryCategoryName': '名称',
   'settings.memoryCategoryNamePlaceholder': '例如：踩坑记录',
   'settings.memoryCategoryPrompt': '应用何时应当在这里保存笔记？',
@@ -341,6 +347,36 @@ export const zh = {
   'settings.memoryAutoRecallHint': '关闭 = 仍会保存且可搜索，但绝不自动注入上下文',
   'settings.memoryCategoryUsage': '个分类已使用',
   'settings.memoryNoteComposerPlaceholder': '添加笔记……',
+  'settings.credentials': '凭据',
+  'settings.credentialsDescription':
+    '应用所对接科学服务的 API 密钥与令牌。密钥使用系统钥匙串加密存储，绝不以明文形式离开本机。',
+  'settings.credentialsSave': '保存',
+  'settings.credentialsTest': '测试',
+  'settings.credentialsDelete': '删除',
+  'settings.credentialsEdit': '编辑',
+  'settings.credentialsSecretLabel': 'API 密钥 / 令牌',
+  'settings.credentialsSecretPlaceholder': '粘贴密钥……',
+  'settings.credentialsUsernameLabel': '用户名 / ID（可选）',
+  'settings.credentialsUsernamePlaceholder': '例如 GitHub 用户名',
+  'settings.credentialsCustomNameLabel': '名称',
+  'settings.credentialsCustomNamePlaceholder': '例如：实验室网关',
+  'settings.credentialsEmpty': '该服务尚未保存凭据。',
+  'settings.credentialsSaved': '已保存',
+  'settings.credentialsNotConfigured': '未配置',
+  'settings.credentialsDeleteTitle': '删除凭据？',
+  'settings.credentialsDeleteDescription': '将删除为 {name} 保存的密钥，且无法撤销。',
+  'settings.credentialsTestOk': '连接成功。',
+  'settings.credentialsTestFail': '连接失败：{message}',
+  'settings.credentialsAddCustom': '添加自定义凭据',
+  'settings.credentialsServiceAws': 'AWS',
+  'settings.credentialsServiceGithub': 'GitHub',
+  'settings.credentialsServiceGcp': 'Google Cloud',
+  'settings.credentialsServiceAzure': 'Azure',
+  'settings.credentialsServiceModal': 'Modal',
+  'settings.credentialsServiceNvidia': 'NVIDIA',
+  'settings.credentialsServiceOpenalex': 'OpenAlex',
+  'settings.credentialsServiceLiterature': '文献访问',
+  'settings.credentialsServiceCustom': '自定义',
   'settings.memoryRenameCategory': '重命名分类',
   'settings.memoryDeleteCategory': '删除分类',
   'settings.memoryDeleteCategoryTitle': '删除「{name}」？',
@@ -590,7 +626,8 @@ export const zh = {
   'settings.visionModel': '视觉模型',
   'settings.visionModelDisabled': '禁用（不翻译图片）',
   'settings.visionModelClear': '清除',
-  'settings.visionModelHint': '当主模型不支持图片输入时，附加的图片会交给这个模型分析，并以文本证据的形式注入会话。分析结果会被缓存，同一张图不会重复付费。',
+  'settings.visionModelHint':
+    '当主模型不支持图片输入时，附加的图片会交给这个模型分析，并以文本证据的形式注入会话。分析结果会被缓存，同一张图不会重复付费。',
   'settings.reasoningEffort': '推理强度',
   'settings.reasoningEffortHint':
     '更高的级别思考更久，更低的级别响应更快。选项跟随所选模型，并在模型变化时保持相对强度；某些代理框架可能近似不支持的级别。适用于后续请求。',
@@ -649,10 +686,12 @@ export const zh = {
   'settings.storedKey': '已存储的密钥',
   'settings.leaveBlankToKeep': '{key} — 留空以保留',
   'settings.storedKeyUndecryptable': '无法解密已存储的密钥。请重新输入以继续。',
-  'settings.codexAuthImportHint': '将 Codex 认证以及（兼容时）活动提供商的非机密回环路由复制到 PureScience 应用数据。其他全局配置、技能和会话不会被导入。',
+  'settings.codexAuthImportHint':
+    '将 Codex 认证以及（兼容时）活动提供商的非机密回环路由复制到 PureScience 应用数据。其他全局配置、技能和会话不会被导入。',
   'settings.leaveBlankForDefault': '留空以使用 Claude 的默认值',
   'settings.eGMyGateway': '例如：我的网关',
-  'settings.pickRscriptHint': '选择你的 Rscript 可执行文件——例如 Rscript.exe（Windows）或 bin/Rscript（macOS/Linux）。选择文件，而不是文件夹。',
+  'settings.pickRscriptHint':
+    '选择你的 Rscript 可执行文件——例如 Rscript.exe（Windows）或 bin/Rscript（macOS/Linux）。选择文件，而不是文件夹。',
   'settings.resetRuntime': '重置运行时',
   'settings.retrySetup': '重试设置',
   'settings.iconBrain': '大脑',
@@ -687,57 +726,73 @@ export const zh = {
   'settings.cliOpenUrlHint': '启动后端并打开已认证的 URL，然后用',
   'settings.cliShutDownHint': '关闭它。',
   'settings.cliAlsoAvailable': '也可用。',
-  'settings.communityDesc': '免费且开源。在 GitHub 上为它点星以帮助更多人发现它，并来 Discord 和 X 与我们公开共建。感谢你的参与。',
+  'settings.communityDesc':
+    '免费且开源。在 GitHub 上为它点星以帮助更多人发现它，并来 Discord 和 X 与我们公开共建。感谢你的参与。',
   'settings.downloadRemoteItApp': '下载 Remote.It 应用',
-  'settings.shareLogHint': '并附加上面的日志。它仅保留在此设备上，绝不会自动发送；其中可能包含本地文件路径，分享前请先检查。',
+  'settings.shareLogHint':
+    '并附加上面的日志。它仅保留在此设备上，绝不会自动发送；其中可能包含本地文件路径，分享前请先检查。',
   'settings.repairAgentFirst': '使用前请先修复所选代理。',
-  'settings.appIconHint': '新图标会立即出现在应用窗口中。Explorer、任务栏、开始菜单或 Linux 启动器中的图标属于已安装应用的一部分，保持不变。',
+  'settings.appIconHint':
+    '新图标会立即出现在应用窗口中。Explorer、任务栏、开始菜单或 Linux 启动器中的图标属于已安装应用的一部分，保持不变。',
   'settings.hostNotesHint': '关于此提供商的自由格式备注。PureScience 会在学习过程中读取并补充。',
   'settings.noNotesYet': '还没有备注。点击编辑以添加此提供商的详细信息。',
   'settings.scratchRootHint': '远程作业的工作目录。固定的路径不会被重新探测覆盖。',
   'settings.concurrentJobLimitHint': '此主机上同时运行的最大作业数（1–500）。暂未强制执行。',
   'settings.openingBrowserToSignIn': '正在打开浏览器登录…在那里完成后此窗口将自动关闭。',
   'settings.sshCredentialsCopied': 'SSH 凭据会被复制。',
-  'settings.remoteCommandsNotSandboxed': '远程命令以你的账户在主机上运行，且不受沙箱保护。仅在确认命令来源可信时批准。',
+  'settings.remoteCommandsNotSandboxed':
+    '远程命令以你的账户在主机上运行，且不受沙箱保护。仅在确认命令来源可信时批准。',
   'settings.connectorSendsExternal': '代理想要调用一个向外部服务发送数据的连接器工具。',
-  'settings.exportReviewHint': '保存前请检查便携配置。密钥值、OAuth 令牌、本地权限和信任状态会被排除。',
+  'settings.exportReviewHint':
+    '保存前请检查便携配置。密钥值、OAuth 令牌、本地权限和信任状态会被排除。',
   'settings.importConnectorConfig': '导入连接器配置',
   'settings.importConnectorHint': '添加前请检查配置并输入任何必需的凭据。',
-  'settings.agentHomeCopyHint': '在这台计算机上。勾选要复制到 PureScience 的技能；原始文件保持在原位。',
+  'settings.agentHomeCopyHint':
+    '在这台计算机上。勾选要复制到 PureScience 的技能；原始文件保持在原位。',
   'settings.noInstalledSkillsFound': '在扫描的全局文件夹中未找到已安装的技能。',
-  'settings.newConvosRunWithoutAsking': '新对话可以在不询问的情况下运行命令、修改文件和访问网络。现有对话保持不变。',
+  'settings.newConvosRunWithoutAsking':
+    '新对话可以在不询问的情况下运行命令、修改文件和访问网络。现有对话保持不变。',
   'settings.rememberedPermissionsNone': '此范围内没有记住的权限。',
-  'settings.rememberedGrantsIncomplete': '无法加载。单个授权仍可撤销；在完整集合确定前，全部撤销保持禁用。',
-  'settings.rememberedPermissionsScopeHint': '新对话可以在不询问的情况下运行命令、修改文件和访问网络',
+  'settings.rememberedGrantsIncomplete':
+    '无法加载。单个授权仍可撤销；在完整集合确定前，全部撤销保持禁用。',
+  'settings.rememberedPermissionsScopeHint':
+    '新对话可以在不询问的情况下运行命令、修改文件和访问网络',
   'settings.noProvidersYet': '还没有提供商。添加一个以选择你的模型来源。',
   'settings.browserOauthDidntOpen': '正在打开浏览器登录…没有打开？取消并使用设置令牌。',
   'settings.setupTokenSuffix': '',
   'settings.promptAppendedHint': '附加到应用的基础提示——不会替换安全规则或工具',
-  'settings.specialistCapabilitiesHint': '此专家可使用的技能和连接器。未在此处选择的任何内容都保持不可见',
+  'settings.specialistCapabilitiesHint':
+    '此专家可使用的技能和连接器。未在此处选择的任何内容都保持不可见',
   'settings.useAllMainAgentSkills': '使用主代理的所有技能和连接器，包括之后新增的。无需逐项配置。',
   'settings.templateZipReady': 'purescience-specialist-template.zip 已准备好供贡献者编辑。',
-  'settings.builtinSkillsSelectedDefault': '内置和自有技能默认选中。复制到 ZIP 的技能会在导入时自动发现；连接器 ID 作为选中的引用携带。',
-  'settings.onlyCheckedSkillsBundled': '仅勾选的技能会被打包。连接器 ID 作为选中的引用导入；完全访问只能在配置页面中稍后选择。',
+  'settings.builtinSkillsSelectedDefault':
+    '内置和自有技能默认选中。复制到 ZIP 的技能会在导入时自动发现；连接器 ID 作为选中的引用携带。',
+  'settings.onlyCheckedSkillsBundled':
+    '仅勾选的技能会被打包。连接器 ID 作为选中的引用导入；完全访问只能在配置页面中稍后选择。',
   'settings.packageParsedBeforeSave': '软件包会在保存前被安全解析和预览。',
-  'settings.zipContainsHint': 'ZIP 包含应用元数据、你填写的 specialist.json 和一份 README.txt 指南。放在 skills 文件夹中的技能会自动被发现。',
+  'settings.zipContainsHint':
+    'ZIP 包含应用元数据、你填写的 specialist.json 和一份 README.txt 指南。放在 skills 文件夹中的技能会自动被发现。',
   'settings.checkingRunningSessions': '正在检查运行中的会话…',
   'settings.moveInterruptsSessions': '开始此迁移将中断下面运行中的会话并重启应用。',
   'settings.interruptAndMove': '中断并迁移',
-  'settings.restartToSwitch': '重启以切换到新位置。在你执行之前不会更改任何内容——选择保持当前位置以留在原处并丢弃副本。',
+  'settings.restartToSwitch':
+    '重启以切换到新位置。在你执行之前不会更改任何内容——选择保持当前位置以留在原处并丢弃副本。',
   'settings.finishingRestart': '正在完成并重启。这可能需要片刻——请不要退出。',
   'settings.continueRepairAgent': '继续修复代理',
   'settings.adoptAsIsNotMerged': '按原样使用（不合并）',
   'settings.currentDataFolderKept': '你的当前数据文件夹会被保留，因此你可以切换回来',
   'settings.contentsNotMerged': '其内容不会与你的当前数据合并',
   'settings.dataFolderUntouched': '你的当前数据文件夹保持不变，因此你可以切换回来。',
-  'settings.switchStartsFreshSession': '切换会启动全新的代理会话。打开的对话保留其现有消息，其记录会重放到新后端（新对话不受影响）。',
+  'settings.switchStartsFreshSession':
+    '切换会启动全新的代理会话。打开的对话保留其现有消息，其记录会重放到新后端（新对话不受影响）。',
   'settings.uninstallLeavesManualInstall': '你自己安装的版本不受影响。你可以随时在这里重新安装。',
   'settings.provenanceUnavailableLegacy': '此旧文件不可用出处信息。',
   'settings.compactingConversation': '正在压缩对话以适配上下文限制…',
   'settings.largeFilesLinkedNotEmbedded': '大文件以链接方式引用，而非内嵌。',
   'settings.anyFileType': '任意文件类型 · 每个 {size} 文件',
   'settings.uninstallTitle': '卸载 {name}？',
-  'settings.uninstallManagedHint': '这将移除应用下载并管理的 {name} 运行时。你自己单独安装的 {name} 不受影响。',
+  'settings.uninstallManagedHint':
+    '这将移除应用下载并管理的 {name} 运行时。你自己单独安装的 {name} 不受影响。',
   'settings.agentControlsAria': '代理控件：{profile}，自动评审{review}',
   'settings.on': '开',
   'settings.off': '关',
@@ -778,31 +833,32 @@ export const zh = {
   'settings.branchAndResend': '分支并重新发送',
   'settings.largeDirectoryNote': '仅显示首批条目——此目录非常大。',
   'settings.allowedThisSession': '本会话允许',
-  'settings.agentNoNativeAutoMode': '此代理没有原生自动模式。PureScience 仅自动批准对工作区文件的编辑',
+  'settings.agentNoNativeAutoMode':
+    '此代理没有原生自动模式。PureScience 仅自动批准对工作区文件的编辑',
   'settings.appliesToFutureActions': '适用于将来的操作；已完成的操作保持不变。',
   'settings.howLongModelThinks': '模型在回答前思考多长时间',
   'settings.providerAndModelForChat': '此聊天的提供商和模型',
 
   'settings.permissionsModeDesc2': '选择对话开始时代理可以在不询问的情况下做多少事情。',
-  'settings.newConvosKeepMode': '新对话可以在不询问的情况下运行命令、修改文件和访问网络。现有对话保持其当前的权限模式。',
-  'settings.newConvosNotebook': '新对话可以在不询问的情况下运行命令、修改文件、执行笔记本代码和访问网络',
+  'settings.newConvosKeepMode':
+    '新对话可以在不询问的情况下运行命令、修改文件和访问网络。现有对话保持其当前的权限模式。',
+  'settings.newConvosNotebook':
+    '新对话可以在不询问的情况下运行命令、修改文件、执行笔记本代码和访问网络',
   'settings.gatewayRootHint': '网关根路径；会自动追加尾部的 ',
   'settings.gatewayRootSuffix': '。请选择与端点匹配的 API 格式。',
   'settings.apiFormatHint': '此网关使用哪种聊天 API。Claude Code 使用 ',
   'settings.apiFormatMid': '，OpenCode 接受 Messages 或 Chat Completions，Codex 使用 ',
   'settings.apiFormatSuffix': '。提供商只能在支持其格式的代理框架下选择。',
-  'settings.claudeSharedHint': '通过浏览器 OAuth 登录。设置卡片将打开浏览器，使用你的 Claude 账户登录。你的凭据存储在 ',
+  'settings.claudeSharedHint':
+    '通过浏览器 OAuth 登录。设置卡片将打开浏览器，使用你的 Claude 账户登录。你的凭据存储在 ',
   'settings.claudeSharedSuffix': '。',
   'settings.claudeIsolatedHint': '在终端中运行 ',
-  'settings.claudeIsolatedMid': ' 并粘贴下面的令牌。它会在你应用拥有的 Claude 配置目录下加密存储；不会从 ',
+  'settings.claudeIsolatedMid':
+    ' 并粘贴下面的令牌。它会在你应用拥有的 Claude 配置目录下加密存储；不会从 ',
   'settings.claudeIsolatedSuffix': ' 读取或写入任何内容。',
   'settings.pasteTokenAfterSave': '保存后在设置卡片中粘贴令牌——向导的测试并继续流程会为你登录。',
 
-
-
   'settings.cancel': '取消',
-
-
 
   'settings.couldNotChangeRuntime': '无法更改该运行时。',
   'settings.couldNotAddInterpreter': '无法添加该解释器。',
@@ -973,7 +1029,8 @@ export const zh = {
   'ws.marketplaceSourceRemoveError': '无法移除该市场源。',
   'ws.marketplaceInstallBlocked': '下载的包存在阻止安装的校验错误。',
   'ws.marketplaceInstallFailed': '安装失败，请重试。',
-  'ws.marketplaceRecoveryPending': '该专才已安装，但市场状态仍在恢复中。返回市场或重启应用以完成恢复。',
+  'ws.marketplaceRecoveryPending':
+    '该专才已安装，但市场状态仍在恢复中。返回市场或重启应用以完成恢复。',
   'ws.marketplaceInstallError': '无法安装此专才。',
   'ws.marketplaceSources': '市场源',
   'ws.marketplaceSourcesHint': '添加遵循专才市场协议的公网 GitHub 仓库。',
@@ -1081,8 +1138,10 @@ export const zh = {
   'settings.enjoyingPureScience': '喜欢 PureScience？',
   'settings.community': '社区',
   'settings.copy': '复制',
-  'settings.trustedBrowsersHint': '受信任的浏览器可在同一远程地址保持可用时自动重连。撤销某个浏览器将在其下次请求或 WebSocket 重连时生效。',
-  'settings.twoStepVerificationHint': '两步验证使用六位代码。仅当新远程会话的代码与这里显示的请求一致时，才批准该会话。',
+  'settings.trustedBrowsersHint':
+    '受信任的浏览器可在同一远程地址保持可用时自动重连。撤销某个浏览器将在其下次请求或 WebSocket 重连时生效。',
+  'settings.twoStepVerificationHint':
+    '两步验证使用六位代码。仅当新远程会话的代码与这里显示的请求一致时，才批准该会话。',
   'settings.specialistName': '名称',
   'settings.specialistNamePlaceholder': '例如：我的专家',
   'settings.specialistId': 'ID（可选）',
@@ -1113,11 +1172,14 @@ export const zh = {
   'settings.fileTypeLabel': '类型',
   'settings.noPreview': '无预览 · {size}',
   'settings.notebookRuntimesTitle': '笔记本运行时',
-  'settings.notebookRuntimesDesc': '启用每种笔记本语言可运行的环境。应用托管环境默认开启；启用你自己的解释器可让代理使用它们。',
+  'settings.notebookRuntimesDesc':
+    '启用每种笔记本语言可运行的环境。应用托管环境默认开启；启用你自己的解释器可让代理使用它们。',
   'settings.agentFrameworkTitle': '代理框架',
-  'settings.agentFrameworkDesc': '选择驱动你会话的编码代理后端。选择卡片进行切换；切换会启动全新的代理会话，打开的对话记录会重放到新后端。活动运行时无法卸载——请先切换到另一个。',
+  'settings.agentFrameworkDesc':
+    '选择驱动你会话的编码代理后端。选择卡片进行切换；切换会启动全新的代理会话，打开的对话记录会重放到新后端。活动运行时无法卸载——请先切换到另一个。',
   'settings.allowPackageInstall': '允许安装软件包',
-  'settings.allowPackageInstallDesc': '允许 PureScience 向此环境安装软件包。安装会进入你自己的环境，而非应用托管存储。',
+  'settings.allowPackageInstallDesc':
+    '允许 PureScience 向此环境安装软件包。安装会进入你自己的环境，而非应用托管存储。',
   'settings.allowPackageInstallFor': '允许为 {name} 安装软件包',
   'settings.recheck': '重新检查',
   'settings.addInterpreter': '添加解释器…',
@@ -1125,15 +1187,19 @@ export const zh = {
   'settings.whereStorageLives': 'PureScience 在此设备上存储项目、工件和其他应用数据的位置。',
   'settings.onDiskDefaultLocation': '磁盘占用 {size} · 默认位置',
   'settings.diskSpaceAvailable': '可用磁盘空间',
-  'settings.appearanceDesc': '选择应用的外观。跟随系统会随设备变化；浅色和深色保持固定。你的选择会在此设备上被记住。',
+  'settings.appearanceDesc':
+    '选择应用的外观。跟随系统会随设备变化；浅色和深色保持固定。你的选择会在此设备上被记住。',
   'settings.notificationsDesc': '当任务完成、失败或在你离开应用期间等待审批时，发送桌面通知。',
-  'settings.taskNotificationsHint2': '仅在你使用其他应用时显示通知。你取消的任务和自动重试的失败保持静默。操作系统可能在首次显示通知时请求权限。',
+  'settings.taskNotificationsHint2':
+    '仅在你使用其他应用时显示通知。你取消的任务和自动重试的失败保持静默。操作系统可能在首次显示通知时请求权限。',
   'settings.diagnosticsDesc': '查看此设备的运行时日志——它记录应用正在做什么，以便诊断问题。',
   'settings.archivedDesc': '在这里恢复已归档的工作，或确认后永久删除。',
   'settings.noArchivedProjects': '没有已归档的项目。',
   'settings.noArchivedSessions': '没有单独归档的会话。',
-  'settings.remoteWhoCanReach': '选择谁可以访问这台计算机的 PureScience 工作区。所有项目、代理、文件和笔记本运行时都继续在这台计算机上运行。启用访问前，请安装并登录 Remote.It 桌面应用。',
-  'settings.remoteItThirdParty': 'Remote.It 是第三方服务。PureScience 仅调用用户安装的桌面 CLI，不包含、再分发、注册或为其创建账户。',
+  'settings.remoteWhoCanReach':
+    '选择谁可以访问这台计算机的 PureScience 工作区。所有项目、代理、文件和笔记本运行时都继续在这台计算机上运行。启用访问前，请安装并登录 Remote.It 桌面应用。',
+  'settings.remoteItThirdParty':
+    'Remote.It 是第三方服务。PureScience 仅调用用户安装的桌面 CLI，不包含、再分发、注册或为其创建账户。',
   'settings.marketplace': '市场',
   'settings.addSpecialist': '添加专家',
   'settings.customCreatedByYou': '由你创建。',
@@ -1152,7 +1218,8 @@ export const zh = {
   'settings.install': '安装',
   'settings.activeRuntimeCannotUninstall': '活动运行时无法卸载——请先切换到另一个。',
   'settings.permissionsStartDesc': '选择对话开始时代理可以在不询问的情况下做什么。',
-  'settings.defaultPermissionModeHint2': '仅适用于新对话。你可以在发送第一条消息前通过代理控件更改它。',
+  'settings.defaultPermissionModeHint2':
+    '仅适用于新对话。你可以在发送第一条消息前通过代理控件更改它。',
   'settings.rememberedPermissionsDesc': '查看或撤销为工具、项目和对话保存的审批。',
   'settings.skipApprovals': '跳过审批',
   'settings.skipApprovalsHint': '允许代理使用此连接器的每个工具，而无需每次显示审批卡片。',
@@ -1215,8 +1282,6 @@ export const zh = {
   'settings.detectingRuntimes': '正在检测运行时…',
   'settings.packagesIn': '{name} 中的软件包',
 
-
-
   'settings.idReservedByBuiltin': '此 ID 已被内置连接器保留。',
   'settings.idAlreadyExists': '已存在使用此 ID 的自定义连接器。',
   'settings.noMoreSkillsToAdd': '没有更多可添加的技能',
@@ -1243,11 +1308,6 @@ export const zh = {
   'settings.fileModified': '修改时间',
   'settings.closeFileBrowser': '关闭文件浏览器',
   'settings.goToLocations': '转到位置',
-
-
-
-
-
 
   'ws.filterProjectFiles': '筛选项目文件',
   'ws.showFewer': '显示更少',
@@ -1334,7 +1394,8 @@ export const zh = {
   'settings.couldNotRecheckRuntimes': '无法重新检查运行时。',
   'settings.couldNotChangePackageAuth': '无法更改软件包安装授权。',
   'settings.couldNotCancelSetup': '无法取消设置。',
-  'settings.pickPythonExecutable': '选择你的 Python 解释器可执行文件——例如 python.exe（Windows）或 bin/python（macOS/Linux）。选择文件，而不是文件夹。',
+  'settings.pickPythonExecutable':
+    '选择你的 Python 解释器可执行文件——例如 python.exe（Windows）或 bin/python（macOS/Linux）。选择文件，而不是文件夹。',
   'settings.downloadAndSetUp': '下载并设置',
   'settings.filterPackages': '筛选软件包',
   'settings.filterPackagesPlaceholder': '筛选软件包…',
@@ -1351,7 +1412,8 @@ export const zh = {
   'settings.couldNotAddHost': '无法添加主机。',
   'settings.noHostsInSshConfig': '~/.ssh/config 中没有主机',
   'settings.pickHost': '选择主机…',
-  'settings.jobPromptPlaceholder': '作业在这里如何运行——sbatch、qsub 或直接 bash？是否允许 pip/conda 安装？新环境应该放在哪里？需要使用任何分区、账户或模块吗？',
+  'settings.jobPromptPlaceholder':
+    '作业在这里如何运行——sbatch、qsub 或直接 bash？是否允许 pip/conda 安装？新环境应该放在哪里？需要使用任何分区、账户或模块吗？',
   'settings.addingHost': '正在添加主机…',
   'settings.add': '添加',
   'settings.block': '阻止',
@@ -1368,10 +1430,6 @@ export const zh = {
   'ws.messages': '消息',
   'ws.environment': '环境',
   'ws.review': '评审',
-
-
-
-
 
   // ws — artifact provenance panel
   'ws.executionLog': '执行日志',

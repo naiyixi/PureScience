@@ -15,6 +15,8 @@ import type {
   SetNotificationsEnabledRequest,
   SetPackageMirrorRequest,
   MemorySettings,
+  SetCredentialRequest,
+  TestCredentialRequest,
   ValidateProviderRequest
 } from '../../shared/settings'
 import {
@@ -44,6 +46,7 @@ type CoreSettingsCommandStore = Pick<
   | 'detectOpencode'
   | 'getConnectorDetail'
   | 'getMemory'
+  | 'listCredentials'
   | 'getPackageMirror'
   | 'getPreflight'
   | 'getSettingsView'
@@ -62,10 +65,13 @@ type CoreSettingsCommandStore = Pick<
   | 'refreshProviderModels'
   | 'scanRepoSkills'
   | 'setClosePreference'
+  | 'setCredential'
   | 'setDefaultPermissionProfile'
   | 'setNotificationsEnabled'
   | 'setMemory'
   | 'setPackageMirror'
+  | 'deleteCredential'
+  | 'testCredential'
   | 'validateProvider'
   | 'startXaiSignIn'
   | 'completeXaiSignIn'
@@ -123,11 +129,14 @@ const settingsCoreApplicationCommands = Object.freeze({
     readonly [id: string],
     StoreResult<'getConnectorDetail'>
   >('settings:get-connector-detail'),
-  getMemory: defineApplicationCommand<
-    'settings:get-memory',
+  getMemory: defineApplicationCommand<'settings:get-memory', readonly [], StoreResult<'getMemory'>>(
+    'settings:get-memory'
+  ),
+  getCredentials: defineApplicationCommand<
+    'settings:list-credentials',
     readonly [],
-    StoreResult<'getMemory'>
-  >('settings:get-memory'),
+    StoreResult<'listCredentials'>
+  >('settings:list-credentials'),
   getPackageMirror: defineApplicationCommand<
     'settings:get-package-mirror',
     readonly [],
@@ -236,6 +245,21 @@ const settingsCoreApplicationCommands = Object.freeze({
     readonly [memory: MemorySettings],
     StoreResult<'setMemory'>
   >('settings:set-memory'),
+  setCredential: defineApplicationCommand<
+    'settings:set-credential',
+    readonly [request: SetCredentialRequest],
+    StoreResult<'setCredential'>
+  >('settings:set-credential'),
+  deleteCredential: defineApplicationCommand<
+    'settings:delete-credential',
+    readonly [id: string],
+    StoreResult<'deleteCredential'>
+  >('settings:delete-credential'),
+  testCredential: defineApplicationCommand<
+    'settings:test-credential',
+    readonly [request: TestCredentialRequest],
+    StoreResult<'testCredential'>
+  >('settings:test-credential'),
   setNotificationsEnabled: defineApplicationCommand<
     'settings:set-notifications-enabled',
     readonly [request: SetNotificationsEnabledRequest],
@@ -309,6 +333,7 @@ const settingsCoreApplicationCommandGroup = defineApplicationCommandGroup('setti
   settingsCoreApplicationCommands.detectOpencode,
   settingsCoreApplicationCommands.getConnectorDetail,
   settingsCoreApplicationCommands.getMemory,
+  settingsCoreApplicationCommands.getCredentials,
   settingsCoreApplicationCommands.getPackageMirror,
   settingsCoreApplicationCommands.getPreflight,
   settingsCoreApplicationCommands.getSettings,
@@ -331,6 +356,9 @@ const settingsCoreApplicationCommandGroup = defineApplicationCommandGroup('setti
   settingsCoreApplicationCommands.setClosePreference,
   settingsCoreApplicationCommands.setDefaultPermissionProfile,
   settingsCoreApplicationCommands.setMemory,
+  settingsCoreApplicationCommands.setCredential,
+  settingsCoreApplicationCommands.deleteCredential,
+  settingsCoreApplicationCommands.testCredential,
   settingsCoreApplicationCommands.setNotificationsEnabled,
   settingsCoreApplicationCommands.setPackageMirror,
   settingsCoreApplicationCommands.validateProvider,
@@ -438,6 +466,22 @@ const registerCoreSettingsApplicationCommands = (
         requireLocalCaller(callerContext, 'settings:set-memory')
         return dependencies.service.setMemory(args[0])
       },
+      'settings:list-credentials': ({ callerContext }) => {
+        requireLocalCaller(callerContext, 'settings:list-credentials')
+        return dependencies.service.listCredentials()
+      },
+      'settings:set-credential': ({ args, callerContext }) => {
+        requireLocalCaller(callerContext, 'settings:set-credential')
+        return dependencies.service.setCredential(args[0])
+      },
+      'settings:delete-credential': ({ args, callerContext }) => {
+        requireLocalCaller(callerContext, 'settings:delete-credential')
+        return dependencies.service.deleteCredential(args[0])
+      },
+      'settings:test-credential': ({ args, callerContext }) => {
+        requireLocalCaller(callerContext, 'settings:test-credential')
+        return dependencies.service.testCredential(args[0].id, args[0].secret)
+      },
       'settings:set-package-mirror': ({ args, callerContext }) => {
         requireLocalCaller(callerContext, 'settings:set-package-mirror')
         return dependencies.service.setPackageMirror(args[0])
@@ -448,7 +492,8 @@ const registerCoreSettingsApplicationCommands = (
         dependencies.service.completeXaiSignIn(args[0].providerId, args[0].session),
       'settings:xai-oauth-refresh': ({ args }) =>
         dependencies.service.refreshXaiOauth(args[0].providerId),
-      'settings:xai-oauth-status': ({ args }) => dependencies.service.xaiOauthStatus(args[0].providerId),
+      'settings:xai-oauth-status': ({ args }) =>
+        dependencies.service.xaiOauthStatus(args[0].providerId),
       'settings:xai-oauth-logout': ({ args }) => dependencies.service.logoutXai(args[0].providerId),
       'settings:export-mcp-servers': () => dependencies.service.exportMcpServers(),
       'settings:import-mcp-servers': ({ args }) => dependencies.service.importMcpServers(args[0])

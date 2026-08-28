@@ -1169,6 +1169,64 @@ export type ConnectorDetailView = ConnectorView & {
 // NCBI / research-service credential state surfaced to the renderer (never the plaintext key).
 export type NcbiCredentialsView = { contactEmail?: string; hasApiKey: boolean }
 
+// Unified credential store: API keys / tokens for the scientific services the app talks to.
+// The 8 built-in service kinds cover the reference panel; `custom` accepts any named secret.
+export type CredentialServiceId =
+  'aws' | 'github' | 'gcp' | 'azure' | 'modal' | 'nvidia' | 'openalex' | 'literature' | 'custom'
+
+// On-disk credential entry. `secretRef` is always safeStorage ciphertext (see crypto.ts); the
+// renderer never receives it — it gets CredentialView instead.
+export type StoredCredential = {
+  id: string
+  serviceId: CredentialServiceId
+  // Display name; for built-in services this is the canonical service label, for custom it is
+  // user-supplied.
+  name: string
+  // Optional non-secret identity (AWS access key id, GitHub username, contact email…).
+  username?: string
+  secretRef?: string
+  // Masked preview of the secret (e.g. "sk-a…wxyz"), computed at write time and stored non-secret
+  // so the renderer never needs to decrypt just to show a hint.
+  hint?: string
+  createdAt: number
+  updatedAt: number
+}
+
+// Renderer-safe projection of one credential: no plaintext, no ciphertext.
+export type CredentialView = {
+  id: string
+  serviceId: CredentialServiceId
+  name: string
+  username?: string
+  hint?: string
+  hasSecret: boolean
+  createdAt: number
+  updatedAt: number
+}
+
+// Upsert request. `id` absent → create; present → update in place. `secret` empty/undefined keeps
+// the existing secret (edit without retyping); non-empty replaces it.
+export type SetCredentialRequest = {
+  id?: string
+  serviceId: CredentialServiceId
+  name?: string
+  username?: string
+  secret?: string
+}
+
+export type CredentialTestResult = {
+  ok: boolean
+  message: string
+  detail?: string
+}
+
+// Test request: the credential id plus an optional plaintext override (empty = use the stored
+// secret).
+export type TestCredentialRequest = {
+  id: string
+  secret?: string
+}
+
 // Transport for a user-added custom MCP server: stdio (local command) or a remote HTTP variant.
 export type CustomServerTransport = 'stdio' | 'streamable_http' | 'sse'
 

@@ -14,6 +14,7 @@ import {
   MonitorSmartphone,
   ChartNoAxesCombined,
   BookOpenText,
+  KeyRound,
   ScrollText,
   Settings2,
   TerminalSquare,
@@ -62,6 +63,7 @@ import { ComputeAddForm } from './ComputeAddForm'
 import { ComputeHostDetail } from './ComputeHostDetail'
 import { PermissionsPanel } from './PermissionsPanel'
 import { MemoryPanel } from './MemoryPanel'
+import { CredentialsPanel } from './CredentialsPanel'
 import { ArchivedPanel, type ArchivedView } from './ArchivedPanel'
 import { TokenUsagePanel } from './TokenUsagePanel'
 import { resolveVendorModelsUrl } from '../../../../shared/provider-registry'
@@ -165,6 +167,7 @@ const buildSettingsGroups = (t: (key: TranslationKey) => string): ReadonlyArray<
     panels: [
       { id: 'skills', label: t('settings.skills'), Icon: ScrollText },
       { id: 'connectors', label: t('settings.connectors'), Icon: ConnectorsNavIcon },
+      { id: 'credentials', label: t('settings.credentials'), Icon: KeyRound },
       { id: 'specialists', label: t('settings.specialists'), Icon: Users },
       { id: 'memory', label: t('settings.memory'), Icon: BookOpenText },
       { id: 'compute', label: t('settings.compute'), Icon: Zap },
@@ -728,7 +731,10 @@ const SettingsPage = forwardRef<SettingsPageHandle, SettingsPageProps>(function 
       setStatusMessage(
         result.ok
           ? `Loaded ${result.models?.length ?? 0} models from the vendor.`
-          : t('settings.couldNotFetchModels').replace('{message}', result.message ?? t('settings.requestFailed'))
+          : t('settings.couldNotFetchModels').replace(
+              '{message}',
+              result.message ?? t('settings.requestFailed')
+            )
       )
     } finally {
       setIsRefreshingModels(false)
@@ -921,7 +927,9 @@ const SettingsPage = forwardRef<SettingsPageHandle, SettingsPageProps>(function 
                         )}
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent>{isExpanded ? t('settings.restore') : t('settings.maximize')}</TooltipContent>
+                    <TooltipContent>
+                      {isExpanded ? t('settings.restore') : t('settings.maximize')}
+                    </TooltipContent>
                   </Tooltip>
                   <Tooltip>
                     <Dialog.Close asChild>
@@ -1034,6 +1042,8 @@ const SettingsPage = forwardRef<SettingsPageHandle, SettingsPageProps>(function 
                   )
                 ) : activePanel === 'memory' ? (
                   <MemoryPanel />
+                ) : activePanel === 'credentials' ? (
+                  <CredentialsPanel />
                 ) : activePanel === 'storage' ? (
                   <StoragePanel
                     onContinueToAgent={() => {
@@ -1061,10 +1071,7 @@ const SettingsPage = forwardRef<SettingsPageHandle, SettingsPageProps>(function 
                 ) : activePanel === 'network' ? (
                   <NetworkPanel view={networkView} onNavigate={navigateNetwork} />
                 ) : activePanel === 'usage' ? (
-                  <TokenUsagePanel
-                    sessions={sessions}
-                    projects={projects}
-                  />
+                  <TokenUsagePanel sessions={sessions} projects={projects} />
                 ) : activePanel === 'general' ? (
                   <GeneralPanel />
                 ) : activePanel === 'remote-control' ? (

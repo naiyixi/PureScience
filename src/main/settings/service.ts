@@ -56,7 +56,11 @@ import type {
   UpdateSkillRequest,
   UpsertProviderRequest,
   ValidateProviderRequest,
-  ValidateProviderResult
+  ValidateProviderResult,
+  CredentialTestResult,
+  CredentialView,
+  SetCredentialRequest,
+  StoredCredential
 } from '../../shared/settings'
 import type { PackageMirror } from '../../shared/mirror'
 import type { NotebookLanguage } from '../../shared/notebook'
@@ -77,7 +81,8 @@ import type { CodexDetectDeps } from './codex-detect'
 import type { InstallManagedOpencodeOptions } from './managed-opencode'
 import type { InstallManagedCodexOptions, ManagedCodexInstallOutcome } from './managed-codex'
 import type { InstallManagedClaudeOptions, ManagedInstallOutcome } from './managed-claude'
-import { isEncryptionAvailable } from './crypto'
+import { encryptKey, isEncryptionAvailable, maskKey, tryDecryptKey } from './crypto'
+import { CREDENTIAL_SERVICE_LABELS, testCredentialSecret, toCredentialView } from './credentials'
 import { getUserClaudeConfigDir } from './provider-env'
 import { SettingsRepository } from './repository'
 import { SettingsPreferencesModule, toSettingsPreferencesSnapshot } from './preferences'
@@ -419,6 +424,86 @@ class SettingsService {
     })
     void persisted
     return { saved: true, categoryId: category.id, noteId: note.id }
+  }
+
+  // Unified credential store — renderer-safe views only. Secrets are encrypted at rest
+  // (safeStorage via crypto.ts) and never leave main as plaintext; the renderer sees a masked hint.
+
+  // Lists credentials as secret-free views.
+  async listCredentials(): Promise<CredentialView[]> {
+    const settings = await this.repository.getSettings()
+    return (settings.credentials ?? []).map(toCredentialView)
+  }
+
+  // Upserts one credential. `secret` is plaintext from the renderer form; empty means keep the
+  // existing secret (edit without retyping). Returns the updated secret-free view.
+  async setCredential(request: SetCredentialRequest): Promise<CredentialView> {
+    const settings = await this.repository.getSettings()
+    const stored = settings.credentials ?? []
+    const now = Date.now()
+    const existing = request.id
+      ? stored.find((candidate) => candidate.id === request.id)
+      : undefined
+
+    const hasNewSecret = request.secret !== undefined && request.secret.trim().length > 0
+    const newSecret = hasNewSecret ? (request.secret as string).trim() : undefined
+    const secretRef = newSecret !== undefined ? encryptKey(newSecret) : existing?.secretRef
+    const hint = newSecret !== undefined ? maskKey(newSecret) : existing?.hint
+
+    const name =
+      request.name?.trim() ||
+      existing?.name ||
+      CREDENTIAL_SERVICE_LABELS[request.serviceId] ||
+      request.serviceId
+
+    const entry: StoredCredential = existing
+      ? {
+          ...existing,
+          name,
+          ...(request.username !== undefined
+            ? { username: request.username.trim() || undefined }
+            : {}),
+          ...(secretRef !== undefined ? { secretRef } : {}),
+          ...(hint !== undefined ? { hint } : {}),
+          updatedAt: now
+        }
+      : {
+          id: request.id ?? `cred-${now.toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+          serviceId: request.serviceId,
+          name,
+          ...(request.username?.trim() ? { username: request.username.trim() } : {}),
+          ...(secretRef !== undefined ? { secretRef } : {}),
+          ...(hint !== undefined ? { hint } : {}),
+          createdAt: now,
+          updatedAt: now
+        }
+
+    const next = existing
+      ? stored.map((candidate) => (candidate.id === entry.id ? entry : candidate))
+      : [...stored, entry]
+    await this.repository.setCredentials(next)
+    return toCredentialView(entry)
+  }
+
+  // Removes a credential by id. Returns the updated list.
+  async deleteCredential(id: string): Promise<CredentialView[]> {
+    const settings = await this.repository.getSettings()
+    const next = (settings.credentials ?? []).filter((candidate) => candidate.id !== id)
+    await this.repository.setCredentials(next)
+    return next.map(toCredentialView)
+  }
+
+  // Validates a credential against its service. `secret` is optional: empty means test the stored
+  // secret, so the panel can verify an existing credential without the user retyping it.
+  async testCredential(id: string, secret?: string): Promise<CredentialTestResult> {
+    const settings = await this.repository.getSettings()
+    const entry = (settings.credentials ?? []).find((candidate) => candidate.id === id)
+    if (!entry) return { ok: false, message: 'not-found' }
+
+    const plaintext = secret?.trim() || tryDecryptKey(entry.secretRef)
+    if (!plaintext) return { ok: false, message: 'no-secret' }
+
+    return testCredentialSecret(entry.serviceId, plaintext)
   }
 
   private async migrateLegacyKeyRefs(settings: StoredSettings): Promise<StoredSettings> {

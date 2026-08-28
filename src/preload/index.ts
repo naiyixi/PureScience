@@ -241,6 +241,12 @@ const api: PureScienceAPI = {
       electronRendererContracts.invoke('settings.setPackageMirror', request),
     getMemory: () => electronRendererContracts.invoke('settings.getMemory'),
     setMemory: (memory) => electronRendererContracts.invoke('settings.setMemory', memory),
+    getCredentials: () => electronRendererContracts.invoke('settings.getCredentials'),
+    setCredential: (request) => electronRendererContracts.invoke('settings.setCredential', request),
+    deleteCredential: (id: string) =>
+      electronRendererContracts.invoke('settings.deleteCredential', id),
+    testCredential: (request) =>
+      electronRendererContracts.invoke('settings.testCredential', request),
     listSkills: () => electronRendererContracts.invoke('settings.listSkills'),
     getSkillDetail: (id: string) => electronRendererContracts.invoke('settings.getSkillDetail', id),
     exportSkill: (request: ExportSkillRequest) =>

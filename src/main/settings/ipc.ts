@@ -48,7 +48,9 @@ import {
   type UpdateSkillRequest,
   type UpsertProviderRequest,
   type ValidateProviderRequest,
-  type MemorySettings
+  type MemorySettings,
+  type SetCredentialRequest,
+  type TestCredentialRequest
 } from '../../shared/settings'
 import { SettingsService } from './service'
 import type { SettingsWorkflows } from './workflows'
@@ -147,7 +149,16 @@ const registerSettingsIpcHandlers = ({
     'settings:xai-oauth-complete',
     async (
       _event,
-      request: { providerId: string; session: { deviceCode: string; userCode: string; verificationUrl: string; expiresIn: number; interval: number } }
+      request: {
+        providerId: string
+        session: {
+          deviceCode: string
+          userCode: string
+          verificationUrl: string
+          expiresIn: number
+          interval: number
+        }
+      }
     ) => {
       await workflows.runtime.completeXaiSignIn(request.providerId, request.session)
     }
@@ -168,13 +179,10 @@ const registerSettingsIpcHandlers = ({
       return workflows.runtime.setAgentFramework(request)
     }
   )
-  ipcMainHandle(
-    'settings:set-vision-model',
-    async (_event, request: SetVisionModelRequest) => {
-      log.info('set vision model requested', { enabled: request.configuration !== undefined })
-      return service.setVisionModel(request.configuration)
-    }
-  )
+  ipcMainHandle('settings:set-vision-model', async (_event, request: SetVisionModelRequest) => {
+    log.info('set vision model requested', { enabled: request.configuration !== undefined })
+    return service.setVisionModel(request.configuration)
+  })
   ipcMainHandle(
     'settings:set-reasoning-effort',
     async (_event, request: SetReasoningEffortRequest) => {
@@ -257,6 +265,15 @@ const registerSettingsIpcHandlers = ({
   ipcMainHandle('settings:get-memory', () => service.getMemory())
   ipcMainHandle('settings:set-memory', (_event, memory: MemorySettings) =>
     service.setMemory(memory)
+  )
+
+  ipcMainHandle('settings:list-credentials', () => service.listCredentials())
+  ipcMainHandle('settings:set-credential', (_event, request: SetCredentialRequest) =>
+    service.setCredential(request)
+  )
+  ipcMainHandle('settings:delete-credential', (_event, id: string) => service.deleteCredential(id))
+  ipcMainHandle('settings:test-credential', (_event, request: TestCredentialRequest) =>
+    service.testCredential(request.id, request.secret)
   )
 
   ipcMainHandle('settings:list-skills', () => service.listSkills())
