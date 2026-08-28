@@ -17,6 +17,7 @@ import type {
   MemorySettings,
   SetCredentialRequest,
   TestCredentialRequest,
+  EgressSettings,
   ValidateProviderRequest
 } from '../../shared/settings'
 import {
@@ -47,6 +48,7 @@ type CoreSettingsCommandStore = Pick<
   | 'getConnectorDetail'
   | 'getMemory'
   | 'listCredentials'
+  | 'getEgress'
   | 'getPackageMirror'
   | 'getPreflight'
   | 'getSettingsView'
@@ -72,6 +74,7 @@ type CoreSettingsCommandStore = Pick<
   | 'setPackageMirror'
   | 'deleteCredential'
   | 'testCredential'
+  | 'setEgress'
   | 'validateProvider'
   | 'startXaiSignIn'
   | 'completeXaiSignIn'
@@ -137,6 +140,9 @@ const settingsCoreApplicationCommands = Object.freeze({
     readonly [],
     StoreResult<'listCredentials'>
   >('settings:list-credentials'),
+  getEgress: defineApplicationCommand<'settings:get-egress', readonly [], StoreResult<'getEgress'>>(
+    'settings:get-egress'
+  ),
   getPackageMirror: defineApplicationCommand<
     'settings:get-package-mirror',
     readonly [],
@@ -260,6 +266,11 @@ const settingsCoreApplicationCommands = Object.freeze({
     readonly [request: TestCredentialRequest],
     StoreResult<'testCredential'>
   >('settings:test-credential'),
+  setEgress: defineApplicationCommand<
+    'settings:set-egress',
+    readonly [egress: EgressSettings],
+    StoreResult<'setEgress'>
+  >('settings:set-egress'),
   setNotificationsEnabled: defineApplicationCommand<
     'settings:set-notifications-enabled',
     readonly [request: SetNotificationsEnabledRequest],
@@ -334,6 +345,7 @@ const settingsCoreApplicationCommandGroup = defineApplicationCommandGroup('setti
   settingsCoreApplicationCommands.getConnectorDetail,
   settingsCoreApplicationCommands.getMemory,
   settingsCoreApplicationCommands.getCredentials,
+  settingsCoreApplicationCommands.getEgress,
   settingsCoreApplicationCommands.getPackageMirror,
   settingsCoreApplicationCommands.getPreflight,
   settingsCoreApplicationCommands.getSettings,
@@ -359,6 +371,7 @@ const settingsCoreApplicationCommandGroup = defineApplicationCommandGroup('setti
   settingsCoreApplicationCommands.setCredential,
   settingsCoreApplicationCommands.deleteCredential,
   settingsCoreApplicationCommands.testCredential,
+  settingsCoreApplicationCommands.setEgress,
   settingsCoreApplicationCommands.setNotificationsEnabled,
   settingsCoreApplicationCommands.setPackageMirror,
   settingsCoreApplicationCommands.validateProvider,
@@ -481,6 +494,14 @@ const registerCoreSettingsApplicationCommands = (
       'settings:test-credential': ({ args, callerContext }) => {
         requireLocalCaller(callerContext, 'settings:test-credential')
         return dependencies.service.testCredential(args[0].id, args[0].secret)
+      },
+      'settings:get-egress': ({ callerContext }) => {
+        requireLocalCaller(callerContext, 'settings:get-egress')
+        return dependencies.service.getEgress()
+      },
+      'settings:set-egress': ({ args, callerContext }) => {
+        requireLocalCaller(callerContext, 'settings:set-egress')
+        return dependencies.service.setEgress(args[0])
       },
       'settings:set-package-mirror': ({ args, callerContext }) => {
         requireLocalCaller(callerContext, 'settings:set-package-mirror')

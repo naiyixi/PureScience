@@ -50,7 +50,8 @@ import {
   type ValidateProviderRequest,
   type MemorySettings,
   type SetCredentialRequest,
-  type TestCredentialRequest
+  type TestCredentialRequest,
+  type EgressSettings
 } from '../../shared/settings'
 import { SettingsService } from './service'
 import type { SettingsWorkflows } from './workflows'
@@ -274,6 +275,11 @@ const registerSettingsIpcHandlers = ({
   ipcMainHandle('settings:delete-credential', (_event, id: string) => service.deleteCredential(id))
   ipcMainHandle('settings:test-credential', (_event, request: TestCredentialRequest) =>
     service.testCredential(request.id, request.secret)
+  )
+
+  ipcMainHandle('settings:get-egress', () => service.getEgress())
+  ipcMainHandle('settings:set-egress', (_event, egress: EgressSettings) =>
+    service.setEgress(egress)
   )
 
   ipcMainHandle('settings:list-skills', () => service.listSkills())

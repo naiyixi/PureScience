@@ -8,6 +8,7 @@ import { createInterface, type Interface } from 'node:readline'
 
 import { terminateProcessTree, type ProcessTreeKillResult } from '../process-tree'
 import { resolveSystemProxyEnvironment } from '../settings/system-proxy'
+import { egressProxyEnv } from '../net/egress-runtime'
 import {
   KERNEL_FIGURES_DIR_ENV,
   frameRRequest,
@@ -568,6 +569,7 @@ class NotebookKernelExecutor implements NotebookExecutor {
     const env: NodeJS.ProcessEnv = {
       ...process.env,
       ...(KernelExecutorProxyEnvironment.proxyEnv ?? {}),
+      ...egressProxyEnv(),
       // Force a non-interactive matplotlib backend so plt.show() never opens a GUI window in this
       // headless runtime; respect an explicitly configured backend if present.
       MPLBACKEND: process.env.MPLBACKEND || 'Agg',
@@ -614,9 +616,7 @@ class NotebookKernelExecutor implements NotebookExecutor {
 
   // Read-only snapshot of the kernel's live namespace for the Variables view. Requires a live data kernel; the response's `variables` field is populated by the
   // loop's inspect_variables action. Returns undefined when the kernel is gone or unresponsive.
-  async inspectVariables(
-    request: unknown
-  ): Promise<{ variables: KernelVariable[] } | undefined> {
+  async inspectVariables(request: unknown): Promise<{ variables: KernelVariable[] } | undefined> {
     const typed = request as NotebookExecutionRequest
     const kind = resolveProcessKind(typed)
     if (kind === 'repl') return undefined

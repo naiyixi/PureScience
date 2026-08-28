@@ -92,7 +92,9 @@ const installApi = (): void => {
         ncbi: { hasApiKey: false }
       }),
       getPackageMirror: vi.fn().mockResolvedValue({}),
-      setPackageMirror: vi.fn().mockResolvedValue({})
+      setPackageMirror: vi.fn().mockResolvedValue({}),
+      getEgress: vi.fn().mockResolvedValue({ enabled: false, groups: {}, customDomains: [] }),
+      setEgress: vi.fn().mockResolvedValue({ enabled: false, groups: {}, customDomains: [] })
     },
     acp: {
       getState: vi.fn().mockResolvedValue({ promptInFlight: false, promptInFlightSessionIds: [] }),

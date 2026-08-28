@@ -18,6 +18,7 @@ import type {
   StoredCredential,
   ValidationCategory
 } from '../../shared/settings'
+import type { EgressSettings } from '../../shared/egress'
 import {
   CLAUDE_ISOLATED_PROVIDER_ID,
   CLAUDE_SHARED_PROVIDER_ID,
@@ -453,6 +454,30 @@ export const sanitizeCredentials = (value: unknown): StoredCredential[] | undefi
   return credentials
 }
 
+// Rebuilds the stored egress allowlist settings from untrusted JSON: only boolean group flags and
+// string domains survive. A malformed payload yields undefined ("unrestricted default").
+export const sanitizeEgressSettings = (value: unknown): EgressSettings | undefined => {
+  if (!isRecord(value)) return undefined
+
+  const groups: Record<string, boolean> = {}
+  if (isRecord(value.groups)) {
+    for (const [key, enabled] of Object.entries(value.groups)) {
+      if (typeof enabled === 'boolean') groups[key] = enabled
+    }
+  }
+  const customDomains = asStringArray(value.customDomains)
+    .map((domain) =>
+      domain
+        .toLowerCase()
+        .trim()
+        .replace(/^https?:\/\//, '')
+        .replace(/\/.*$/, '')
+    )
+    .filter(Boolean)
+
+  return { enabled: value.enabled === true, groups, customDomains }
+}
+
 // Rebuilds MemorySettings from untrusted JSON: only string id/name/text and numeric timestamps
 // survive; notes pointing at a missing category are dropped; an empty enabled flag defaults to
 // false so memory never silently resumes after a corrupt write.
@@ -629,6 +654,10 @@ const sanitizeSettings = (value: unknown): StoredSettings => {
   const credentials = sanitizeCredentials(value.credentials)
 
   if (credentials) settings.credentials = credentials
+
+  const egress = sanitizeEgressSettings(value.egress)
+
+  if (egress) settings.egress = egress
 
   const pathsNormalizedAt = asNumber(value.pathsNormalizedAt)
 
@@ -1081,6 +1110,16 @@ class SettingsRepository {
   // secret before it reaches here).
   async setCredentials(credentials: StoredCredential[]): Promise<StoredSettings> {
     return this.mutate((settings) => ({ ...settings, credentials }))
+  }
+
+  // Persists the network egress allowlist settings. Sanitized before write.
+  async setEgress(egress: EgressSettings): Promise<StoredSettings> {
+    const sanitized = sanitizeEgressSettings(egress) ?? {
+      enabled: false,
+      groups: {},
+      customDomains: []
+    }
+    return this.mutate((settings) => ({ ...settings, egress: sanitized }))
   }
 
   // Persists the selected agent backend; applied on the next reconnect.

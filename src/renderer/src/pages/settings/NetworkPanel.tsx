@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import type { PackageMirror } from '../../../../shared/mirror'
 import type { NetworkConnectionType, NetworkInfo } from '../../../../shared/network'
+import type { EgressSettings, EgressDomainGroupId } from '../../../../shared/egress'
+import { EGRESS_DOMAIN_GROUPS } from '../../../../shared/egress'
 import type { EnvironmentCheckItem } from '../../../../shared/settings'
 import { EnvironmentCheckRow, PendingCheckRow } from '@/components/environment-check-row'
 import { Button } from '@/components/ui/button'
@@ -297,7 +299,191 @@ const NetworkPanel = ({ view, onNavigate }: NetworkPanelProps): React.JSX.Elemen
           <ExternalTextLink href={MIRROR_HELP_URL}>{t('settings.viewMirrors')}</ExternalTextLink>
         </p>
       </section>
+
+      <EgressSection />
     </div>
+  )
+}
+
+// Network egress allowlist: master switch + 6 scientific domain groups + custom domains. When the
+// switch is on, notebook/REPL/shell child processes are routed through a local filtering proxy that
+// only allows the enabled groups and custom domains. Persisted via settings IPC; applied to the
+// child-process runtime immediately on save.
+const EgressSection = (): React.JSX.Element => {
+  const { t } = useLanguage()
+  const [settings, setSettings] = useState<EgressSettings | undefined>(undefined)
+  const [loaded, setLoaded] = useState(false)
+  const [draftDomain, setDraftDomain] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    void window.api.settings.getEgress().then((value) => {
+      if (cancelled) return
+      setSettings(value ?? { enabled: false, groups: {}, customDomains: [] })
+      setLoaded(true)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const update = (next: EgressSettings): void => {
+    setSettings(next)
+    void window.api.settings
+      .setEgress(next)
+      .then(setSettings)
+      .catch(() => undefined)
+  }
+
+  if (!loaded) {
+    return (
+      <section className="mt-6 rounded-xl border border-border bg-card p-4">
+        <p className="text-xs text-muted-foreground">{t('settings.loading')}</p>
+      </section>
+    )
+  }
+
+  const current = settings ?? { enabled: false, groups: {}, customDomains: [] }
+  const groupIds = EGRESS_DOMAIN_GROUPS.map((group) => group.id)
+  const groupLabels: Record<EgressDomainGroupId, string> = {
+    literature: t('settings.egressGroupLiterature'),
+    genomics: t('settings.egressGroupGenomics'),
+    structures: t('settings.egressGroupStructures'),
+    clinical: t('settings.egressGroupClinical'),
+    bioinformatics: t('settings.egressGroupBioinformatics'),
+    repositories: t('settings.egressGroupRepositories')
+  }
+
+  const addDomain = (): void => {
+    const domain = draftDomain
+      .trim()
+      .toLowerCase()
+      .replace(/^https?:\/\//, '')
+      .replace(/\/.*$/, '')
+    if (!domain || current.customDomains.includes(domain)) {
+      setDraftDomain('')
+      return
+    }
+    update({ ...current, customDomains: [...current.customDomains, domain] })
+    setDraftDomain('')
+  }
+
+  return (
+    <section
+      className="mt-6 rounded-xl border border-border bg-card p-4"
+      data-slot="egress-section"
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h3 className="text-sm font-medium text-foreground">{t('settings.egressTitle')}</h3>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+            {t('settings.egressDescription')}
+          </p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={current.enabled}
+          aria-label={t('settings.egressEnabled')}
+          data-slot="egress-master-switch"
+          className={cn(
+            'relative h-5 w-9 shrink-0 rounded-full transition-colors',
+            current.enabled ? 'bg-primary' : 'bg-muted'
+          )}
+          onClick={() => update({ ...current, enabled: !current.enabled })}
+        >
+          <span
+            className={cn(
+              'absolute top-0.5 size-4 rounded-full bg-white shadow transition-transform',
+              current.enabled ? 'translate-x-[18px]' : 'translate-x-0.5'
+            )}
+          />
+        </button>
+      </div>
+
+      {current.enabled ? (
+        <div className="mt-4 space-y-4">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {groupIds.map((groupId) => (
+              <label
+                key={groupId}
+                className="flex cursor-pointer items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground"
+              >
+                <span>{groupLabels[groupId]}</span>
+                <input
+                  type="checkbox"
+                  data-slot={`egress-group-${groupId}`}
+                  checked={current.groups[groupId] !== false}
+                  onChange={(event) =>
+                    update({
+                      ...current,
+                      groups: { ...current.groups, [groupId]: event.target.checked }
+                    })
+                  }
+                />
+              </label>
+            ))}
+          </div>
+
+          <div data-slot="egress-custom">
+            <h4 className="text-xs font-medium text-foreground">
+              {t('settings.egressCustomDomains')}
+            </h4>
+            <div className="mt-2 flex gap-2">
+              <Input
+                data-slot="egress-domain-input"
+                value={draftDomain}
+                placeholder={t('settings.egressCustomPlaceholder')}
+                onChange={(event) => setDraftDomain(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault()
+                    addDomain()
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                data-slot="egress-add-domain"
+                onClick={addDomain}
+              >
+                {t('settings.egressAddDomain')}
+              </Button>
+            </div>
+            {current.customDomains.length === 0 ? (
+              <p className="mt-2 text-xs text-muted-foreground">{t('settings.egressNoCustom')}</p>
+            ) : (
+              <ul className="mt-2 flex flex-wrap gap-2">
+                {current.customDomains.map((domain) => (
+                  <li
+                    key={domain}
+                    className="flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-xs text-foreground"
+                  >
+                    <span>{domain}</span>
+                    <button
+                      type="button"
+                      aria-label={t('settings.egressRemoveDomain')}
+                      data-slot={`egress-remove-${domain}`}
+                      className="text-muted-foreground hover:text-destructive"
+                      onClick={() =>
+                        update({
+                          ...current,
+                          customDomains: current.customDomains.filter((d) => d !== domain)
+                        })
+                      }
+                    >
+                      ×
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      ) : null}
+    </section>
   )
 }
 
