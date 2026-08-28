@@ -133,4 +133,33 @@ describe('renderMemoryRecallInstructions', () => {
     expect(result).toContain('- Line one Line two Line three')
     expect(result).not.toContain('\n\n-')
   })
+
+  it('appends save guidance for categories with a prompt', () => {
+    const memory = memoryFixture({
+      categories: [
+        { id: 'about-you', name: 'About you', createdAt: 1 },
+        {
+          id: 'lab',
+          name: 'Lab facts',
+          createdAt: 2,
+          prompt: 'Save anything that cost >10 minutes to debug'
+        }
+      ],
+      notes: [
+        {
+          id: 'n1',
+          categoryId: 'about-you',
+          text: 'Prefers concise answers',
+          createdAt: 1,
+          updatedAt: 1
+        }
+      ]
+    })
+
+    const result = renderMemoryRecallInstructions(memory)
+    expect(result).toContain('memory_save_note')
+    expect(result).toContain('Lab facts: Save anything that cost >10 minutes to debug')
+    // Categories without a prompt are not listed in the save guidance.
+    expect(result).not.toContain('About you: ')
+  })
 })

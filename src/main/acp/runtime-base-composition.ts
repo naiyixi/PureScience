@@ -74,6 +74,7 @@ const composeAcpRuntimeBaseOwners = (options: AcpRuntimeOptions) => {
     notebook: options.notebook,
     skillImport: options.skillImport,
     plan: options.plan,
+    memory: options.memory,
     mcpHttpHost: options.mcpHttpHost
   })
   let generationConnectionEffects: AcpGenerationConnectionEffects | undefined

@@ -1114,6 +1114,9 @@ const createApplicationModules = async (
       connectorService,
       computeService: computeServiceWithRegistry,
       skillImporter: conversationSkillImporter,
+      memoryWriter: {
+        saveNote: (categoryName, text) => settingsService.saveMemoryNote(categoryName, text)
+      },
       planService: {
         call: (input) => {
           const runtime = runtimeRef.current

@@ -40,6 +40,7 @@ import type { NotebookRpcConnection } from '../notebook/mcp-server'
 import type { NotebookHandoffContext } from '../notebook/runtime-service'
 import type { ImageInputCompatibilityOwner } from './image-input-compatibility-owner'
 import type { SkillImportRpcConnection } from '../skills/mcp-server'
+import type { MemoryRpcConnection } from '../settings/memory-mcp-server'
 import { codexStorageDir, codexSubscriptionStorageDir } from '../agent-framework/codex'
 import { getAppClaudeConfigDir } from '../settings/provider-env'
 import type { PermissionGrantRegistry } from '../permission-grants/registry'
@@ -142,6 +143,7 @@ type AcpRuntimeOptions = {
   skillImport?: AcpRuntimeSkillImportOptions
   skills?: AcpTurnSkillHooks
   plan?: AcpRuntimePlanOptions
+  memory?: AcpRuntimeMemoryOptions
   // The agent backend to drive. Defaults to Claude Code; selecting another (opencode) swaps only the
   // framework-coupled behavior (spawn, session meta, permission-mode mapping) via AgentFramework.
   framework?: AgentFramework
@@ -263,6 +265,13 @@ type AcpRuntimePlanOptions = {
     | 'appendUserMessageToInteraction'
     | 'containsMessageOnActiveBranch'
   >
+}
+
+type AcpRuntimeMemoryOptions = {
+  mcpEntryPath: string
+  mcpCommand?: string
+  getRpcConnection: (binding: { sessionId: string }) => Promise<MemoryRpcConnection>
+  registerSessionAlias?: (aliasSessionId: string, sessionId: string) => void
 }
 // Converts unknown thrown values into user-visible error text. Total AND always returns a string: a
 // hostile message getter or a throwing String() coercion (e.g. a Proxy-wrapped Error) must not escape,

@@ -32,7 +32,8 @@ const PRE_REGISTERED_PERMISSION_IDENTITIES: Readonly<
     'mcp:purescience-activity/begin_activity_group',
     'mcp:purescience-skills/request_skill_import',
     'mcp:purescience-plan/generate_plan',
-    'mcp:purescience-plan/update_step_status'
+    'mcp:purescience-plan/update_step_status',
+    'mcp:purescience-memory/memory_save_note'
   ],
   execution: ['exec:local/python', 'exec:local/bash'],
   file_operation: [
