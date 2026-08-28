@@ -91,7 +91,7 @@ describe('createExternalSourceFetcher', () => {
     const result = await fetcher('https://example.com/paper.pdf')
 
     // The fetcher still extracts text from whatever body arrived; non-HTML pages are typically
-    // rejected upstream by content negotiation. The contract here is that a fetch error surfaces.
+    // rejected by the source via content negotiation. The contract here is that a fetch error surfaces.
     expect(result.text).toBe('not html')
   })
 

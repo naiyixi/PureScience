@@ -87,7 +87,7 @@ const scrollPreviewTabIntoView = (
   tabList.scrollTo({ left: tabList.scrollLeft + offset, behavior })
 }
 
-// Right-click menu actions for a preview tab (open-science #1764): close / close others for every
+// Right-click menu actions for a preview tab: close / close others for every
 // tab; download, copy path, and save-as-artifact for file tabs backed by a local path. A small
 // pointer-anchored menu avoids pulling in a dialog dependency for a single interaction.
 export const PreviewTabContextMenu = ({

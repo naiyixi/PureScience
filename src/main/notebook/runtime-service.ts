@@ -742,7 +742,7 @@ class NotebookRuntimeService {
     })
   }
 
-  // Read-only live-namespace snapshot for the Variables view (open-science #1748). Undefined when
+  // Read-only live-namespace snapshot for the Variables view. Undefined when
   // no data kernel is alive for this session; the caller surfaces that as 'unavailable'.
   async inspectVariables(
     request: InspectNotebookVariablesRequest

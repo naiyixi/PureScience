@@ -70,7 +70,7 @@ export type NotebookSessionExecutor<
   shutdown: () => Promise<{ reaped: boolean }>
   restart?: () => Promise<void>
   terminate?: (kind: 'python' | 'r' | 'repl', env: string) => Promise<void>
-  // Live-namespace snapshot for the Variables view (open-science #1748); absent on shells/repl.
+  // Live-namespace snapshot for the Variables view; absent on shells/repl.
   // Kept loosely typed so concrete executors can satisfy it without importing kernel-protocol.
   inspectVariables?: (request: unknown) => Promise<
     { variables: unknown[] } | undefined

@@ -9,7 +9,7 @@
 - 文件：`/Users/totota/.purescience-project/runtime/envs/default-python/lib/python3.12/site-packages/scanpy/datasets/10x_pbmc68k_reduced.h5ad`
 - 形状：`700 cells × 765 genes`；scanpy `1.12.3` 读取
 - 自带注释列：`bulk_labels`（10 类，见下）；文件内**不存在** `cell_type1/cell_type2` 列，以实际存在的列名为准。
-- `X` 取值含负值（min=-2.03）→ 已是缩放后矩阵；`raw.X` 为 log 归一化表达（非负，max≈6.49）。scanpy 文档确认该数据集上游已做 `normalize_per_cell/normalize_total + log1p + scale`，原始 count 未存于本文件。
+- `X` 取值含负值（min=-2.03）→ 已是缩放后矩阵；`raw.X` 为 log 归一化表达（非负，max≈6.49）。scanpy 文档确认该数据集前置处理已做 `normalize_per_cell/normalize_total + log1p + scale`，原始 count 未存于本文件。
 - QC 指标 `n_genes / n_counts / percent_mito` 采用提供者在原始 count 上预存的值（`percent_mito` 以分数存储，范围 0.0048–0.0400，即 0.5%–4.0%；报告统一换算为百分比）。
 
 ## 2. QC（先声明规则，后执行）
@@ -78,7 +78,7 @@
 - 数据来源：`/Users/totota/.purescience-project/runtime/envs/default-python/lib/python3.12/site-packages/scanpy/datasets/10x_pbmc68k_reduced.h5ad`，scanpy 1.12.3 读取，shape `700×765`；
   自带注释列实测为 `bulk_labels`（10 类），无 `cell_type1/cell_type2`，本报告按实际列名对照。
 - QC 规则先声明后执行：`min_genes≥200`, `min_counts≥500`, `mito%≤10.0`；过滤 `700→700`，被剔除 `0` 个并明确计数，无静默丢弃。
-- 每个关键数字有明确来源：obs 预存 QC 列（提供者原始 count 计算）、`raw.X`（上游 log 归一化）、本脚本 `PARAMS` 全部参数；敏感性表 `8` 行阈值组合均被记录。
+- 每个关键数字有明确来源：obs 预存 QC 列（提供者原始 count 计算）、`raw.X`（前置 log 归一化）、本脚本 `PARAMS` 全部参数；敏感性表 `8` 行阈值组合均被记录。
 - 主流程参数在脚本中可见：hvg=500, scale_max=10.0, pca=50, neighbors=15/30, umap seed=42, leiden resolution=1.0 seed=42。
 - Harmony（harmonypy）可用并成功运行（运行日志显示收敛）；校正前同批邻居比例 0.507 → 校正后 0.471，数值如实报告。
 - 注释对照：逐细胞一致率 74.4%，ARI(预测,bulk粗分) = 0.631；ARI(我的 leiden, 提供者 louvain) = 0.726 作为参考一致性。

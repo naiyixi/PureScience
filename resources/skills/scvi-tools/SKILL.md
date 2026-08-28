@@ -28,7 +28,7 @@ The only helper here is `h5ad_safe_obs`, which coerces an obs/var frame so
 exec(open("scvi-tools/kernel.py").read())   # path to this skill's kernel.py
 ```
 
-Nothing auto-loads it outside Claude Science. Then call `h5ad_safe_obs(...)`
+Nothing auto-loads it automatically in this app. Then call `h5ad_safe_obs(...)`
 directly. If it raises `NameError`, you haven't exec'd kernel.py.
 
 Dependencies: `pip install scvi-tools scanpy anndata`. Training needs a
@@ -115,7 +115,7 @@ mode).
 An A100-class GPU is recommended for >50k cells. Training is a plain Python
 script (`pipeline.py`) that reads counts, trains scVI/scANVI, and writes the
 output `.h5ad` — run it on whatever GPU you have (a local/cluster CUDA box, or a
-serverless GPU host such as Modal). There is no Claude-Science compute broker
+serverless GPU host such as Modal). There is no built-in compute broker
 here; drive the GPU host directly.
 
 **Modal** (serverless GPU) — wrap `pipeline.py` in a Modal app and run it with

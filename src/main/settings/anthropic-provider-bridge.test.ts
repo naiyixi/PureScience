@@ -30,7 +30,7 @@ const close = async (server: Server): Promise<void> => {
   )
 }
 
-const createUpstream = (): {
+const createProviderServer = (): {
   requests: CapturedRequest[]
   server: Server
 } => {
@@ -62,8 +62,8 @@ describe('AnthropicProviderBridge', () => {
   })
 
   it('retargets endpoint, credential, and model without replacing the loopback connection', async () => {
-    const first = createUpstream()
-    const second = createUpstream()
+    const first = createProviderServer()
+    const second = createProviderServer()
     servers.push(first.server, second.server)
     const firstBaseUrl = await listen(first.server)
     const secondBaseUrl = await listen(second.server)
@@ -123,7 +123,7 @@ describe('AnthropicProviderBridge', () => {
   })
 
   it('fails closed for unknown targets and unauthenticated callers', async () => {
-    const source = createUpstream()
+    const source = createProviderServer()
     servers.push(source.server)
     const target = {
       id: 'provider/model-a',

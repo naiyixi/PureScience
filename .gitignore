@@ -109,3 +109,7 @@ resources/default-envs/
 # Python bytecode cache generated when the notebook kernel loop scripts are imported/run locally.
 __pycache__/
 *.pyc
+
+# Internal competitive intelligence & development logs (kept local, not shipped)
+docs/competitive-tracking/
+archive/OPTIMIZATION-LOG.md

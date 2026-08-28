@@ -115,7 +115,7 @@ function extractRows(resp: GetDataResponse, track: string): Record<string, unkno
 }
 
 // True when the API flagged its own output cap on this response.
-function isUpstreamTruncated(resp: GetDataResponse): boolean {
+function isSourceTruncated(resp: GetDataResponse): boolean {
   return resp.maxItemsLimit === true || resp.maxItemsLimit === 'true'
 }
 
@@ -205,7 +205,7 @@ export const GENOMES_UCSC_TOOLS: ToolDescriptor[] = [
         end,
         track_type: resp.trackType ?? null,
         items_returned: rows.length,
-        truncated: isUpstreamTruncated(resp),
+        truncated: isSourceTruncated(resp),
         rows,
         ...(resp.dataDownloadUrl ? { dataDownloadUrl: resp.dataDownloadUrl } : {})
       }
@@ -253,7 +253,7 @@ export const GENOMES_UCSC_TOOLS: ToolDescriptor[] = [
 
       // Request one row beyond the window so an source cap is detectable rather than silent.
       const resp = await fetchTrackData(ctx, genome, track, chrom, start, end, 1_000_000)
-      if (isUpstreamTruncated(resp)) {
+      if (isSourceTruncated(resp)) {
         throw new Error(
           `ucsc_conservation: source truncated the ${track} rows for this region — narrow the span.`
         )
@@ -383,7 +383,7 @@ export const GENOMES_UCSC_TOOLS: ToolDescriptor[] = [
         start,
         end,
         items_returned: clusters.length,
-        truncated: isUpstreamTruncated(resp),
+        truncated: isSourceTruncated(resp),
         n_factors: factors.length,
         factors,
         clusters

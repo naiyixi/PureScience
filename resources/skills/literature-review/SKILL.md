@@ -31,7 +31,7 @@ This is a **pure skill** — `kernel.py` is deterministic Python (plain HTTP/std
 ```python
 exec(open("<this skill's directory>/kernel.py").read())
 ```
-Nothing auto-loads it outside Claude Science. Then call the helpers directly — `verify_dois`, `crossref_lookup`, `search_openalex`, `expand_citations`, `extract_dois`, `style_pass`. If a helper name is not defined, you haven't exec'd `kernel.py`.
+Nothing auto-loads it automatically in this app. Then call the helpers directly — `verify_dois`, `crossref_lookup`, `search_openalex`, `expand_citations`, `extract_dois`, `style_pass`. If a helper name is not defined, you haven't exec'd `kernel.py`.
 
 Configuration is via environment variables, not a host — no LLM key is involved:
 - `OPENALEX_API_KEY` — required for the OpenAlex-backed steps (`search_openalex`, `expand_citations`); free at https://openalex.org/settings/api.

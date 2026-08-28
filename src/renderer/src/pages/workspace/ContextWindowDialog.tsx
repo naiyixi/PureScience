@@ -68,7 +68,7 @@ const formatDateTime = (timestamp: number): string =>
     minute: '2-digit'
   }).format(timestamp)
 
-// Per-call usage insights (open-science #1718): every agent message with reported token usage
+// Per-call usage insights: every agent message with reported token usage
 // becomes one stacked input/cache/output bar, newest first, so a turn's context-window share is
 // visible at a glance. Uses the persisted turn-level usage the ACP adapters already report.
 type UsageCallRecord = Readonly<{

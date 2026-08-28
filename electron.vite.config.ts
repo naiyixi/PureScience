@@ -30,7 +30,7 @@ export default defineConfig({
       watch: { ignored: ['**/.claude/**'] }
     },
     plugins: [
-      // Apply upstream CJS interop for the spreadsheet Worker without injecting renderer presets.
+      // Apply CJS interop for the spreadsheet Worker without injecting renderer presets.
       fileViewerRenderers({
         formats: ['xls', 'xlsx'],
         inject: false,

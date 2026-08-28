@@ -535,7 +535,7 @@ class ConnectorSettingsModule {
     }
   }
 
-  // ---- Standard mcpServers transfer (open-science #1698) ----
+  // ---- Standard mcpServers transfer ----
 
   // Exports the user's custom MCP servers as the standard `mcpServers` client configuration used by
   // other MCP hosts. Stored credentials and headers are never exported literally — every secret

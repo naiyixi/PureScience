@@ -126,7 +126,7 @@ export function ConnectorsPanel({ onNavigate }: ConnectorsPanelProps): React.JSX
     void loadConnectors()
   }, [loadConnectors])
 
-  // Standard mcpServers transfer (open-science #1698): export writes the shared client format with
+  // Standard mcpServers transfer: export writes the shared client format with
   // credential placeholders; import reads one and creates custom connectors from it.
   const [mcpTransferNotice, setMcpTransferNotice] = useState<string | null>(null)
 

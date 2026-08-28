@@ -242,7 +242,7 @@ const WorkspaceSidebar = ({
                       key={session.id}
                       className={cn(sessionRowClassName, isActive && 'bg-bg-300 text-text-000')}
                       title={
-                        // Session hover preview (open-science #1775): the native tooltip shows the
+                        // Session hover preview: the native tooltip shows the
                         // full title and description on hover/keyboard focus, so truncated sidebar
                         // rows stay identifiable (Chrome renders "\n" as a tooltip line break).
                         session.description
@@ -413,7 +413,7 @@ const WorkspaceSidebar = ({
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
-                      {/* Self-describing sessions: a summary line under the title (open-science #1721). */}
+                      {/* Self-describing sessions: a summary line under the title. */}
                       {session.description ? (
                         <span className="line-clamp-2 mt-1 w-full whitespace-pre-wrap pl-5 pr-1.5 text-[11px] leading-snug text-muted-foreground">
                           {session.description}

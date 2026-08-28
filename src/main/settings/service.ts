@@ -1057,7 +1057,7 @@ class SettingsService {
   }
 
   // Exports custom MCP servers as the standard `mcpServers` client configuration with credential
-  // placeholders (open-science #1698).
+  // placeholders.
   async exportMcpServers(): Promise<Record<string, unknown>> {
     return this.connectors.exportMcpServers()
   }

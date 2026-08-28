@@ -6,7 +6,7 @@ import type { FetchLike } from './github-import'
 // Routes GitHub skill imports through Electron's Chromium network stack, which honors the system/VPN
 // proxy the user's browser uses. Node's global fetch (undici) ignores that proxy and takes a direct
 // path, so in proxied environments GitHub returns 403 for the direct requests while net.fetch succeeds.
-// Every request is tagged with a correlation id (open-science #1703) so command/session/run logs can
+// Every request is tagged with a correlation id so command/session/run logs can
 // be joined across the request's lifecycle.
 export const netFetch: FetchLike = withCorrelatedFetch((url, init) =>
   net.fetch(url, init)

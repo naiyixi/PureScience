@@ -145,7 +145,7 @@ export const createTitleFromMessage = (content: string): string => {
 }
 
 // A longer summary for self-describing sessions: strips markdown-ish noise and keeps up to 160
-// characters so session lists can show what a conversation is about (open-science #1721).
+// characters so session lists can show what a conversation is about.
 export const createDescriptionFromMessage = (content: string): string => {
   const normalized = content
     .replace(/```[\s\S]*?```/g, ' ')

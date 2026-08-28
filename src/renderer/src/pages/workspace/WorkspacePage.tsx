@@ -572,7 +572,7 @@ const WorkspacePage = ({
   )
   const previousDraftKeyRef = useRef<string>(currentDraftKey)
   const composerHistoryRef = useRef<Record<string, ComposerHistoryNavigation>>({})
-  // Draft undo/redo stacks (mirrors open-science unified draft history). Consecutive edits within
+  // Draft undo/redo stacks (mirrors the unified draft history). Consecutive edits within
   // the coalescing window collapse into one undo step so typing does not flood the stack.
   const draftUndoRef = useRef<ComposerDoc[]>([])
   const draftRedoRef = useRef<ComposerDoc[]>([])
@@ -738,7 +738,7 @@ const WorkspacePage = ({
   )
 
   // Undo/redo restore previous draft states (Cmd+Z / Cmd+Shift+Z) — completes the unified draft
-  // history shared by text, pasted text, and attachments (open-science #1699).
+  // history shared by text, pasted text, and attachments.
   const handleComposerUndo = useCallback((): void => {
     const previous = draftUndoRef.current.pop()
     if (!previous) return

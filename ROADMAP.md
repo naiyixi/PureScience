@@ -83,9 +83,9 @@ Still open — several foundations are already shipping, but these broader targe
 - 🟡 A shared specialist commons — reusable personal specialist agent profiles with scoped capabilities ship today (see above); cross-machine discovery, forking, and sharing are not built yet
 - ⬜ Spatial annotations, editable scientific viewers, and automatic skill-aware context discovery
 
-### Competitive gaps vs. aipoch/open-science v0.20.0 (2026-08-26 tracking)
+### Competitive gap tracking (2026-08-26 snapshot)
 
-> Direct competitor aipoch/open-science ships v0.20.0 on 2026-08-25 with nightly builds and ~1,320 commits. PureScience is at v0.14.3. This section tracks capabilities the competitor ships that we do not yet — kept here so the roadmap stays honest and the gaps are visible, not hidden. Full analysis: [`docs/competitive-tracking/aipoch-v0.20-gap.md`](docs/competitive-tracking/aipoch-v0.20-gap.md).
+> PureScience is at v0.14.3 against the broader research-workbench field (some peers ship faster release cadences and nightly builds). This section tracks capabilities peers ship that we do not yet — kept here so the roadmap stays honest and the gaps are visible, not hidden. The full analysis lives in the local competitive-tracking notes (kept out of the public repository).
 
 - 🔴 **Cross-session references (`#`)** — insert a clickable chip in the composer giving the agent read-only access to another session's transcript, so one conversation can build on another (P0).
 - 🔴 **Side-chat advisories reaching the main agent mid-turn** — follow-up messages sent while a main turn is running now route through each framework's native follow-up channel (P0).

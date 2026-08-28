@@ -555,7 +555,7 @@ describe('native Responses compatibility', () => {
 
   it('logs a privacy-safe lifecycle that distinguishes an source 502', async () => {
     const privatePrompt = 'private medical prompt'
-    const privateUpstreamDetail = 'private gateway diagnostic'
+    const privateProviderDetail = 'private gateway diagnostic'
     const proxy = new NativeResponsesCompatibilityProxy(
       {
         baseUrl: 'https://api.deepseek.com/v1',
@@ -563,7 +563,7 @@ describe('native Responses compatibility', () => {
         model: 'deepseek-v4-flash'
       },
       vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ error: { message: privateUpstreamDetail } }), {
+        new Response(JSON.stringify({ error: { message: privateProviderDetail } }), {
           status: 502,
           headers: { 'content-type': 'application/json' }
         })
@@ -605,7 +605,7 @@ describe('native Responses compatibility', () => {
       })
       const serialized = JSON.stringify(Object.values(logSpies).flatMap((spy) => spy.mock.calls))
       expect(serialized).not.toContain(privatePrompt)
-      expect(serialized).not.toContain(privateUpstreamDetail)
+      expect(serialized).not.toContain(privateProviderDetail)
       expect(serialized).not.toContain('private-api-key')
       expect(serialized).not.toContain(connection.token)
       expect(serialized).not.toContain('api.deepseek.com')

@@ -101,7 +101,7 @@ const modeForTransport = (transport: CustomServerTransport): ConnectorMode =>
   transport === 'stdio' ? 'local' : 'remote'
 
 // Add or edit a custom MCP server ("custom connector"): a local stdio command or a remote HTTP/SSE
-// server, gated behind an explicit trust confirmation the way Claude Science's "Add connector" flow is.
+// server, gated behind an explicit trust confirmation the way the reference "Add connector" flow is.
 export function ConnectorAddForm({
   initialTransport,
   initialTemplate,

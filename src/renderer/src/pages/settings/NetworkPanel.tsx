@@ -27,7 +27,7 @@ type NetworkPanelProps = { view: NetworkView; onNavigate: (view: NetworkView) =>
 // (navigator.onLine link signal plus the store's shared end-to-end reachability probe) and the
 // local interface details reported by the main process; the Package mirror section lets a user
 // behind a firewall or on a slow route to the public conda-forge / pip hosts point package
-// fetches at a mirror instead. The "Claude Science domains" egress allowlist from the mockup is
+// fetches at a mirror instead. The scientific-domains egress allowlist from the design is
 // phase-3 (spec §14, §9) and is intentionally not built here.
 const NetworkPanel = ({ view, onNavigate }: NetworkPanelProps): React.JSX.Element => {
   const { t } = useLanguage()
