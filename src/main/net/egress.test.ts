@@ -67,27 +67,27 @@ describe('egress allowlist helpers', () => {
 })
 
 describe('EgressProxy', () => {
-  let upstream: Server
+  let peer: Server
   let proxy: EgressProxy
 
   beforeEach(async () => {
-    upstream = createServer((_req, res) => {
+    peer = createServer((_req, res) => {
       res.writeHead(200, { 'content-type': 'text/plain' })
-      res.end('upstream-ok')
+      res.end('peer-ok')
     })
-    await new Promise<void>((resolve) => upstream.listen(0, '127.0.0.1', resolve))
+    await new Promise<void>((resolve) => peer.listen(0, '127.0.0.1', resolve))
   })
 
   afterEach(async () => {
     await proxy?.stop()
-    await new Promise<void>((resolve) => upstream.close(() => resolve()))
+    await new Promise<void>((resolve) => peer.close(() => resolve()))
   })
 
   it('forwards HTTP requests to allowed hosts and 403s denied hosts', async () => {
     proxy = new EgressProxy()
-    const upstreamPort = (upstream.address() as { port: number }).port
+    const peerPort = (peer.address() as { port: number }).port
     // The proxy forwards to the host named in the request's Host header; use the loopback
-    // upstream as the "target host" so the tunnel actually connects.
+    // the peer as the "target host" so the tunnel actually connects.
     proxy.setAllowlist(['127.0.0.1'])
     const port = await proxy.start()
 
@@ -105,10 +105,10 @@ describe('EgressProxy', () => {
         req.end()
       })
 
-    // Allowed host: the proxy forwards to the loopback upstream.
-    const allowed = await send(`127.0.0.1:${upstreamPort}`)
+    // Allowed host: the proxy forwards to the loopback peer.
+    const allowed = await send(`127.0.0.1:${peerPort}`)
     expect(allowed.status).toBe(200)
-    expect(allowed.body).toBe('upstream-ok')
+    expect(allowed.body).toBe('peer-ok')
 
     // Denied host: proxy answers 403 itself.
     const denied = await send('blocked.test')
@@ -119,7 +119,7 @@ describe('EgressProxy', () => {
     proxy = new EgressProxy()
     proxy.setAllowlist(undefined)
     const port = await proxy.start()
-    const upstreamPort = (upstream.address() as { port: number }).port
+    const peerPort = (peer.address() as { port: number }).port
 
     const status = await new Promise<number>((resolve, reject) => {
       const req = httpRequest(
@@ -127,7 +127,7 @@ describe('EgressProxy', () => {
           hostname: '127.0.0.1',
           port,
           path: '/probe',
-          headers: { host: `127.0.0.1:${upstreamPort}` }
+          headers: { host: `127.0.0.1:${peerPort}` }
         },
         (res) => {
           res.resume()
@@ -137,7 +137,7 @@ describe('EgressProxy', () => {
       req.on('error', reject)
       req.end()
     })
-    // Without an allowlist every host is allowed, so the loopback upstream is reachable.
+    // Without an allowlist every host is allowed, so the loopback peer is reachable.
     expect(status).toBe(200)
   })
 
