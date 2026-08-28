@@ -93,7 +93,7 @@ Still open — several foundations are already shipping, but these broader targe
 - 🔴 **xAI (Grok) OAuth subscription provider** — one subscription account driving Grok across Claude Code's Anthropic protocol, OpenCode's Chat Completions, and Codex's Responses (P1).
 - 🔴 **GLM-5.3 / GLM-4.5-Air** on Zhipu (P1).
 - 🔴 **Scenario models card** — one Settings surface unifying the subagent, reviewer, and vision model policies (P1).
-- 🔴 **Notebook cross-run dependency tracking** (tree-sitter WASM) — later outputs marked stale when upstream variables changed (P1).
+- 🔴 **Notebook cross-run dependency tracking** (tree-sitter WASM) — later outputs marked stale when prior-step variables changed (P1).
 - 🟡 **Marketplace governance** — published specialist packages read-only, SemVer baseline updates, unified install/update/uninstall lifecycle (we ship marketplace install; governance still open).
 - 🔴 **Context-compaction boundaries + SQLite session-metadata indexing** — summary-first startup, search by session number (P2).
 - 🔴 **Additional UI localizations** — Korean / French / Russian shipped by the competitor (P2).

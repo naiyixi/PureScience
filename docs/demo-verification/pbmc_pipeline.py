@@ -56,7 +56,7 @@ PARAMS = {
     #    percent_mito were computed by the provider on the ORIGINAL raw counts.
     #    The expression matrix raw.X is ALREADY log-transformed, per-cell
     #    normalised expression (scanpy docs: normalize_per_cell / normalize_total
-    #    + log1p were applied upstream; raw counts are NOT stored in this
+    #    + log1p were applied beforehand; raw counts are NOT stored in this
     #    reduced file). Re-applying normalize_total to already-normalised, log
     #    transformed data would be a methodological error, so it is intentionally
     #    skipped and recorded. target_sum = 1e4 is the standard 10x-PBMC
@@ -228,7 +228,7 @@ def main():
       f"文件内**不存在** `cell_type1/cell_type2` 列，以实际存在的列名为准。")
     R(f"- `X` 取值含负值（min={float(adata.X.min()):.2f}）→ 已是缩放后矩阵；"
       f"`raw.X` 为 log 归一化表达（非负，max≈{float(adata.raw.X.max()):.2f}）。"
-      f"scanpy 文档确认该数据集上游已做 `normalize_per_cell/normalize_total + log1p + scale`，"
+      f"scanpy 文档确认该数据集前置处理已做 `normalize_per_cell/normalize_total + log1p + scale`，"
       f"原始 count 未存于本文件。")
     R(f"- QC 指标 `n_genes / n_counts / percent_mito` 采用提供者在原始 count 上预存的值"
       f"（`percent_mito` 以分数存储，范围 {float(adata.obs['percent_mito'].min()):.4f}–"
@@ -504,7 +504,7 @@ def main():
         "  自带注释列实测为 `bulk_labels`（10 类），无 `cell_type1/cell_type2`，本报告按实际列名对照。",
         f"- QC 规则先声明后执行：`min_genes≥{PARAMS['qc_min_genes']}`, `min_counts≥{PARAMS['qc_min_counts']}`, "
         f"`mito%≤{PARAMS['qc_max_mito_pct']}`；过滤 `{n_before}→{n_after}`，被剔除 `{n_removed}` 个并明确计数，无静默丢弃。",
-        f"- 每个关键数字有明确来源：obs 预存 QC 列（提供者原始 count 计算）、`raw.X`（上游 log 归一化）、"
+        f"- 每个关键数字有明确来源：obs 预存 QC 列（提供者原始 count 计算）、`raw.X`（前置 log 归一化）、"
         f"本脚本 `PARAMS` 全部参数；敏感性表 `{len(sens)}` 行阈值组合均被记录。",
         f"- 主流程参数在脚本中可见：hvg={PARAMS['hvg_n_top_genes']}, scale_max={PARAMS['scale_max_value']}, "
         f"pca={PARAMS['pca_n_comps']}, neighbors={PARAMS['n_neighbors']}/{PARAMS['n_pcs']}, "
