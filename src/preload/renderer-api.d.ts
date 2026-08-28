@@ -190,6 +190,7 @@ import type {
   CredentialTestResult,
   SetCredentialRequest,
   TestCredentialRequest,
+  EgressSettings,
   Preflight,
   RefreshProviderModelsRequest,
   RefreshProviderModelsResult,
@@ -483,6 +484,8 @@ export interface PureScienceAPI {
     setCredential(request: SetCredentialRequest): Promise<CredentialView>
     deleteCredential(id: string): Promise<CredentialView[]>
     testCredential(request: TestCredentialRequest): Promise<CredentialTestResult>
+    getEgress(): Promise<EgressSettings | undefined>
+    setEgress(egress: EgressSettings): Promise<EgressSettings>
     listSkills(): Promise<SkillView[]>
     getSkillDetail(id: string): Promise<SkillDetailView>
     exportSkill(request: ExportSkillRequest): Promise<ExportSkillResult>

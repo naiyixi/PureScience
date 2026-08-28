@@ -60,7 +60,8 @@ import type {
   CredentialTestResult,
   CredentialView,
   SetCredentialRequest,
-  StoredCredential
+  StoredCredential,
+  EgressSettings
 } from '../../shared/settings'
 import type { PackageMirror } from '../../shared/mirror'
 import type { NotebookLanguage } from '../../shared/notebook'
@@ -83,6 +84,7 @@ import type { InstallManagedCodexOptions, ManagedCodexInstallOutcome } from './m
 import type { InstallManagedClaudeOptions, ManagedInstallOutcome } from './managed-claude'
 import { encryptKey, isEncryptionAvailable, maskKey, tryDecryptKey } from './crypto'
 import { CREDENTIAL_SERVICE_LABELS, testCredentialSecret, toCredentialView } from './credentials'
+import { applyEgressSettings } from '../net/egress-runtime'
 import { getUserClaudeConfigDir } from './provider-env'
 import { SettingsRepository } from './repository'
 import { SettingsPreferencesModule, toSettingsPreferencesSnapshot } from './preferences'
@@ -504,6 +506,19 @@ class SettingsService {
     if (!plaintext) return { ok: false, message: 'no-secret' }
 
     return testCredentialSecret(entry.serviceId, plaintext)
+  }
+
+  // Reads the persisted network egress allowlist settings.
+  async getEgress(): Promise<EgressSettings | undefined> {
+    return (await this.repository.getSettings()).egress
+  }
+
+  // Persists the network egress allowlist and applies it to the child-process proxy runtime, so a
+  // settings change takes effect for subsequently spawned kernels/shells immediately.
+  async setEgress(egress: EgressSettings): Promise<EgressSettings> {
+    const persisted = await this.repository.setEgress(egress)
+    await applyEgressSettings(persisted.egress)
+    return persisted.egress ?? { enabled: false, groups: {}, customDomains: [] }
   }
 
   private async migrateLegacyKeyRefs(settings: StoredSettings): Promise<StoredSettings> {

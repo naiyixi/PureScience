@@ -11,6 +11,7 @@ import type {
   ReasoningEffort,
   StoredCredential
 } from '../../shared/settings'
+import type { EgressSettings } from '../../shared/egress'
 import { SETTINGS_FILE_VERSION } from '../../shared/settings'
 import type { OfficialVendorId } from '../../shared/provider-registry'
 import type { PermissionProfileId } from '../../shared/permission-profiles'
@@ -199,6 +200,8 @@ export type StoredSettings = {
   // Unified credential store (API keys / tokens for scientific services). Absent means never
   // written. Secret material is safeStorage ciphertext (see crypto.ts), never plaintext.
   credentials?: StoredCredential[]
+  // Network egress allowlist for child processes (notebook/repl/shell). Absent means unrestricted.
+  egress?: EgressSettings
   // Absolute path of the relocatable data root (artifacts/notebooks/runtime/uploads). Absent means
   // "use the config root" (default). Only written after a successful migration; a change needs a restart.
   dataRoot?: string

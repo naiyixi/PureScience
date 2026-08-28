@@ -4,6 +4,7 @@ import { win32 } from 'node:path'
 import { protectManagedRuntimeWrites } from './managed-runtime-guard'
 import { terminateProcessTree } from '../process-tree'
 import { resolveWindowsPowerShellExecutable } from '../windows-powershell'
+import { egressProxyEnv } from '../net/egress-runtime'
 
 // Default bash_execute timeout, matching the data/repl kernels' own default.
 const DEFAULT_SHELL_TIMEOUT_MS = 120_000
@@ -33,6 +34,7 @@ type NotebookShellProcess = {
 }
 
 // Benign variables the shell may inherit; all other host variables are denied by default.
+// HTTP(S)_PROXY / NO_PROXY are added dynamically below when egress restrictions are active.
 const SHELL_ENV_ALLOWLIST = [
   'PATH',
   'HOME',
@@ -47,6 +49,17 @@ const SHELL_ENV_ALLOWLIST = [
   'TMPDIR',
   'TEMP',
   'TMP'
+]
+
+// Proxy variables the shell may carry when network egress restrictions are enabled (routed through
+// the local filtering proxy). They are injected from the egress runtime, never from host env.
+const SHELL_EGRESS_ENV_KEYS = [
+  'HTTP_PROXY',
+  'HTTPS_PROXY',
+  'NO_PROXY',
+  'http_proxy',
+  'https_proxy',
+  'no_proxy'
 ]
 
 // Safe OS paths PowerShell and Windows child processes need to locate built-in tools.
@@ -68,6 +81,16 @@ const buildShellEnv = (
   for (const key of keys) {
     const value = sourceEnv[key]
     if (value !== undefined) env[key] = value
+  }
+  // Egress restrictions: route the shell through the local filtering proxy. The proxy env comes
+  // from the egress runtime (never the host environment), and only the proxy keys are projected —
+  // everything else stays on the deny-by-default allowlist.
+  const egressEnv = egressProxyEnv()
+  if (egressEnv) {
+    for (const key of SHELL_EGRESS_ENV_KEYS) {
+      const value = egressEnv[key]
+      if (value !== undefined) env[key] = value
+    }
   }
   if (platform === 'win32') {
     const modulePaths: string[] = []

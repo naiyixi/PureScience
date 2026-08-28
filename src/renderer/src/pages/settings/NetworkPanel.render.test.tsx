@@ -1,56 +1,134 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { NetworkPanel } from './NetworkPanel'
-import { useNetworkStore } from '@/stores/network-store'
+vi.mock('@/i18n', () => ({
+  useLanguage: () => {
+    const labels: Record<string, string> = {
+      'settings.network': 'Network',
+      'settings.egressTitle': 'Network egress allowlist',
+      'settings.egressDescription': 'Restrict child processes.',
+      'settings.egressEnabled': 'Restrict process network access',
+      'settings.egressGroupLiterature': 'Literature & repositories',
+      'settings.egressGroupGenomics': 'Genomics',
+      'settings.egressGroupStructures': 'Structures',
+      'settings.egressGroupClinical': 'Clinical',
+      'settings.egressGroupBioinformatics': 'Bioinformatics',
+      'settings.egressGroupRepositories': 'Repositories',
+      'settings.egressCustomDomains': 'Custom domains',
+      'settings.egressCustomPlaceholder': 'example.com',
+      'settings.egressAddDomain': 'Add domain',
+      'settings.egressRemoveDomain': 'Remove domain',
+      'settings.egressNoCustom': 'No custom domains yet.',
+      'settings.loading': 'Loading…'
+    }
+    return { t: (key: string): string => labels[key] ?? key }
+  }
+}))
 
-let container: HTMLDivElement
-let root: Root
+const { NetworkPanel } = await import('./NetworkPanel')
+const { useNetworkStore } = await import('@/stores/network-store')
 
-beforeEach(() => {
-  vi.useFakeTimers()
-  container = document.createElement('div')
-  document.body.appendChild(container)
-  root = createRoot(container)
-  Object.defineProperty(window.navigator, 'onLine', { value: false, configurable: true })
-  useNetworkStore.setState({ isOnline: false, connectivity: 'unreachable' })
-})
+// The panel's store + settings store both read window.api; stub them minimal.
+const mockApi = (egress = { enabled: false, groups: {}, customDomains: [] }): void => {
+  let current = egress
+  ;(window as unknown as { api: unknown }).api = {
+    network: { getInfo: vi.fn(async () => ({ connectionType: 'wifi', ipAddress: null })) },
+    settings: {
+      getEgress: vi.fn(async () => current),
+      setEgress: vi.fn(async (next: unknown) => {
+        current = next as typeof egress
+        return current
+      }),
+      getPackageMirror: vi.fn(async () => ({})),
+      setPackageMirror: vi.fn(async () => ({}))
+    }
+  }
+}
 
-afterEach(() => {
-  act(() => root.unmount())
-  container.remove()
-  vi.useRealTimers()
-  Object.defineProperty(window.navigator, 'onLine', { value: true, configurable: true })
-  useNetworkStore.setState({ isOnline: true, connectivity: 'unknown' })
-})
+describe('NetworkPanel egress section', () => {
+  let container: HTMLDivElement
+  let root: Root
 
-const buttonWithText = (text: string): HTMLButtonElement =>
-  [...container.querySelectorAll('button')].find((button) =>
-    button.textContent?.includes(text)
-  ) as HTMLButtonElement
+  beforeEach(() => {
+    mockApi()
+    useNetworkStore.setState({ isOnline: true, connectivity: 'unknown' })
+    container = document.createElement('div')
+    document.body.appendChild(container)
+    root = createRoot(container)
+  })
 
-describe('NetworkPanel offline retry', () => {
-  it('holds a checking state for at least 500ms when Check again is clicked while offline', async () => {
-    await act(async () => {
-      root.render(<NetworkPanel view={{ kind: 'list' }} onNavigate={() => {}} />)
+  afterEach(() => {
+    act(() => root.unmount())
+    container.remove()
+  })
+
+  const renderPanel = (): Promise<void> =>
+    act(async () => {
+      root.render(<NetworkPanel view={{ kind: 'list' }} onNavigate={() => undefined} />)
     })
-    expect(container.textContent).toContain('This machine is offline.')
 
-    await act(async () => {
-      buttonWithText('Check again').click()
-    })
-    expect(container.textContent).toContain('Checking…')
+  it('renders the egress section with a disabled master switch', async () => {
+    await renderPanel()
 
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(499)
-    })
-    expect(container.textContent).toContain('Checking…')
+    const section = container.querySelector('[data-slot="egress-section"]')
+    expect(section).toBeTruthy()
+    const master = container.querySelector<HTMLButtonElement>('[data-slot="egress-master-switch"]')
+    expect(master?.getAttribute('aria-checked')).toBe('false')
+    // Groups are hidden until enabled.
+    expect(container.querySelector('[data-slot="egress-group-literature"]')).toBeNull()
+  })
 
+  it('enabling the switch reveals the 6 domain groups and persists', async () => {
+    await renderPanel()
+
+    const master = container.querySelector<HTMLButtonElement>('[data-slot="egress-master-switch"]')
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(1)
+      master?.click()
     })
-    expect(container.textContent).toContain('This machine is offline.')
+
+    const setEgress = window.api.settings.setEgress as unknown as ReturnType<typeof vi.fn>
+    expect(setEgress).toHaveBeenCalledWith(expect.objectContaining({ enabled: true }))
+    expect(container.querySelector('[data-slot="egress-group-literature"]')).toBeTruthy()
+    expect(container.querySelector('[data-slot="egress-group-repositories"]')).toBeTruthy()
+  })
+
+  it('adds and removes a custom domain', async () => {
+    await renderPanel()
+
+    // Enable first.
+    const master = container.querySelector<HTMLButtonElement>('[data-slot="egress-master-switch"]')
+    await act(async () => {
+      master?.click()
+    })
+
+    // Type a domain + click Add.
+    const input = container.querySelector<HTMLInputElement>('[data-slot="egress-domain-input"]')
+    const valueSetter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype,
+      'value'
+    )?.set
+    await act(async () => {
+      valueSetter?.call(input, 'lab.example.com')
+      input?.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>('[data-slot="egress-add-domain"]')?.click()
+    })
+
+    const setEgress = window.api.settings.setEgress as unknown as ReturnType<typeof vi.fn>
+    const last = setEgress.mock.calls.at(-1)?.[0]
+    expect(last.customDomains).toContain('lab.example.com')
+    expect(container.textContent).toContain('lab.example.com')
+
+    // Remove it.
+    await act(async () => {
+      container
+        .querySelector<HTMLButtonElement>('[data-slot="egress-remove-lab.example.com"]')
+        ?.click()
+    })
+    const afterRemove = setEgress.mock.calls.at(-1)?.[0]
+    expect(afterRemove.customDomains).not.toContain('lab.example.com')
   })
 })

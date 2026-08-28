@@ -247,6 +247,8 @@ const api: PureScienceAPI = {
       electronRendererContracts.invoke('settings.deleteCredential', id),
     testCredential: (request) =>
       electronRendererContracts.invoke('settings.testCredential', request),
+    getEgress: () => electronRendererContracts.invoke('settings.getEgress'),
+    setEgress: (egress) => electronRendererContracts.invoke('settings.setEgress', egress),
     listSkills: () => electronRendererContracts.invoke('settings.listSkills'),
     getSkillDetail: (id: string) => electronRendererContracts.invoke('settings.getSkillDetail', id),
     exportSkill: (request: ExportSkillRequest) =>
