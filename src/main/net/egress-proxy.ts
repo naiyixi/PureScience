@@ -78,7 +78,7 @@ export class EgressProxy {
   }
 
   // Plain HTTP request: forward via the target host if allowed, using node's http.request so the
-  // upstream response is parsed and re-emitted properly on the ServerResponse.
+  // the remote response is parsed and re-emitted properly on the ServerResponse.
   private handleHttp(req: IncomingMessage, res: ServerResponse): void {
     const host = req.headers.host
     if (!host || !this.isAllowed(host)) {
@@ -86,7 +86,7 @@ export class EgressProxy {
       return
     }
     const url = new URL(req.url ?? '/', `http://${host}`)
-    const upstreamReq = httpRequest(
+    const sourceReq = httpRequest(
       {
         hostname: url.hostname,
         port: Number(url.port || 80),
@@ -94,15 +94,15 @@ export class EgressProxy {
         method: req.method,
         headers: { ...req.headers, host }
       },
-      (upstreamRes) => {
-        res.writeHead(upstreamRes.statusCode ?? 502, upstreamRes.headers)
-        upstreamRes.pipe(res)
+      (sourceRes) => {
+        res.writeHead(sourceRes.statusCode ?? 502, sourceRes.headers)
+        sourceRes.pipe(res)
       }
     )
-    upstreamReq.on('error', () => {
-      this.refuse(res, 'PureScience egress proxy: upstream unreachable')
+    sourceReq.on('error', () => {
+      this.refuse(res, 'PureScience egress proxy: target unreachable')
     })
-    req.pipe(upstreamReq)
+    req.pipe(sourceReq)
   }
 
   // HTTPS CONNECT tunnel: open a raw TCP tunnel to the target if allowed.
@@ -114,13 +114,13 @@ export class EgressProxy {
       return
     }
     const port = Number(req.url?.split(':')[1] ?? 443)
-    const upstream = tcpConnect({ host, port })
-    upstream.on('error', () => socket.destroy())
-    upstream.on('connect', () => {
+    const targetConn = tcpConnect({ host, port })
+    targetConn.on('error', () => socket.destroy())
+    targetConn.on('connect', () => {
       socket.write('HTTP/1.1 200 Connection Established\r\n\r\n')
-      if (head.length > 0) upstream.write(head)
-      socket.pipe(upstream)
-      upstream.pipe(socket)
+      if (head.length > 0) targetConn.write(head)
+      socket.pipe(targetConn)
+      targetConn.pipe(socket)
     })
   }
 }
