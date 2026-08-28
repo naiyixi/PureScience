@@ -2,7 +2,7 @@ import type { ToolContext, ToolDescriptor } from '../types'
 
 // Multi-agent orchestration: delegates a batch of independent sub-tasks to fresh agent sessions that
 // run in parallel (each with its own model turn loop), then returns the consolidated outputs. This is
-// the tool-level counterpart of Claude Science's parallel sub-agents — useful for parallel literature
+// the tool-level counterpart of parallel sub-agents — useful for parallel literature
 // reviews, decompose-and-conquer analyses, or anything the main agent would otherwise serialize.
 export const DELEGATE_TOOLS: ToolDescriptor[] = [
   {

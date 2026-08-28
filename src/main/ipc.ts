@@ -880,7 +880,7 @@ const createApplicationModules = async (
   const mcpClientManager = await modules.add(undefined, () => {
     const manager = new McpClientManager({
       // Classified external navigation: only the shared protocol allowlist (http/https/mailto) may
-      // reach the OS browser; anything else is refused (open-science #1744).
+      // reach the OS browser; anything else is refused.
       openExternal: (url) => {
         if (isAllowedExternalUrl(url)) return shell.openExternal(url)
         return Promise.reject(new Error(`Blocked external navigation to disallowed URL: ${url}`))

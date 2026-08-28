@@ -4,7 +4,7 @@ import { searchOpenAlexWorks } from './literature-openalex'
 
 // 多源并行文献综述: 一次调用同时检索 arXiv 预印本 + OpenAlex 学术图谱 (~2.5 亿条记录),
 // 结果按来源合并 (每条记录带 source 标记), 单源失败不拖垮整体 (标记 error 继续返回其他源)。
-// 对齐 Claude Science 的"多代理并行文献综述"思路 — 轻量实现 (工具内 Promise.all 并行,
+// 对齐"多代理并行文献综述"思路 — 轻量实现 (工具内 Promise.all 并行,
 // 而非完整的多 agent 编排)。
 export const LITERATURE_REVIEW_TOOLS: ToolDescriptor[] = [
   {

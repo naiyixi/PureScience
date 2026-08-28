@@ -18,7 +18,7 @@ export type KernelLoopResponse = {
   cwd: string
   figures: KernelLoopFigure[]
   environmentOverlay?: NotebookLiveEnvironmentOverlay
-  // Live namespace snapshot for the Variables view (open-science #1748): present only when the
+  // Live namespace snapshot for the Variables view: present only when the
   // request asked for it (action: "inspect_variables").
   variables?: KernelVariable[]
 }

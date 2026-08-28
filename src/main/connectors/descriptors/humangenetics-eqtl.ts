@@ -197,7 +197,7 @@ export const HUMANGENETICS_EQTL_TOOLS: ToolDescriptor[] = [
       if (pos) filters['pos'] = pos
       if (nlog10pMin != null) filters['nlog10p_min'] = nlog10pMin
 
-      // Upstream min-significance filter is the `nlog10p` query param.
+      // The source min-significance filter is the `nlog10p` query param.
       const qs = queryString({
         gene_id: geneId,
         rsid,

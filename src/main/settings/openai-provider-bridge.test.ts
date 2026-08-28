@@ -27,7 +27,7 @@ const close = async (server: Server): Promise<void> => {
   )
 }
 
-const createUpstream = (): { requests: CapturedRequest[]; server: Server } => {
+const createProviderServer = (): { requests: CapturedRequest[]; server: Server } => {
   const requests: CapturedRequest[] = []
   const server = createServer((request, response) => {
     const chunks: Buffer[] = []
@@ -56,8 +56,8 @@ describe('OpenAiProviderBridge', () => {
   })
 
   it('retargets endpoint, credential, and model without replacing the loopback connection', async () => {
-    const first = createUpstream()
-    const second = createUpstream()
+    const first = createProviderServer()
+    const second = createProviderServer()
     servers.push(first.server, second.server)
     const targets: OpenAiProviderBridgeTarget[] = [
       {
@@ -110,7 +110,7 @@ describe('OpenAiProviderBridge', () => {
   })
 
   it('forwards the Responses wire and fails closed for other paths and unknown targets', async () => {
-    const source = createUpstream()
+    const source = createProviderServer()
     servers.push(source.server)
     const target: OpenAiProviderBridgeTarget = {
       id: 'provider/model-a',

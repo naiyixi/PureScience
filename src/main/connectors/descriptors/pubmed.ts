@@ -42,7 +42,7 @@ const MONTHS: Record<string, string> = {
 }
 
 // Verbatim from the original connector: the mandatory PubMed/DOI attribution notice returned on
-// get_article_metadata and get_full_text_article. Upstream typos are preserved for parity.
+// get_article_metadata and get_full_text_article. Source typos are preserved for parity.
 const IMPORTANT_LEGAL_NOTICE =
   '**Important Legal Requirement**\n' +
   '  Everytime one uses this tool, they MUST ALWAYS do the following two things:\n\n' +

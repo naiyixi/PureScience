@@ -534,14 +534,14 @@ export class NativeResponsesCompatibilityProxy {
     const requestId = randomUUID()
     const startedAt = Date.now()
     let phase = 'read-request'
-    const abortUpstream = (): void => abortController.abort()
+    const abortSource = (): void => abortController.abort()
     const abortOnRequestClose = (): void => {
-      if (request.aborted || !request.complete) abortUpstream()
+      if (request.aborted || !request.complete) abortSource()
     }
     const abortOnResponseClose = (): void => {
-      if (!response.writableEnded) abortUpstream()
+      if (!response.writableEnded) abortSource()
     }
-    request.once('aborted', abortUpstream)
+    request.once('aborted', abortSource)
     request.once('close', abortOnRequestClose)
     response.once('close', abortOnResponseClose)
 
@@ -622,7 +622,7 @@ export class NativeResponsesCompatibilityProxy {
       })
       throw error
     } finally {
-      request.off('aborted', abortUpstream)
+      request.off('aborted', abortSource)
       request.off('close', abortOnRequestClose)
       response.off('close', abortOnResponseClose)
     }

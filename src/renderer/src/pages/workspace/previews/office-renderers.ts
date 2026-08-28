@@ -605,7 +605,7 @@ export const renderOfficeFile = async ({
     })
     // The renderer factory may still be pending when a DOM parse error rejects this promise.
     void firstPaint.catch(() => undefined)
-    // Upstream does not call onProgressiveRender for parse errors, so observe its error node early.
+    // The source does not call onProgressiveRender for parse errors, so observe its error node early.
     const errorObserver = new MutationObserverCtor(() => {
       const error = getSpreadsheetParseError(container)
       if (!error || firstPaintSettled) return

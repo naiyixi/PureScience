@@ -569,7 +569,7 @@ export const EXPRESSION_TOOLS: ToolDescriptor[] = [
       const d = raw as Record<string, unknown>
       const genotypes = (d.genotypes as number[] | undefined) ?? []
       const expression = (d.data as number[] | undefined) ?? []
-      // Upstream returns genotype/expression in random order; pair and sort deterministically.
+      // The source returns genotype/expression in random order; pair and sort deterministically.
       const samples = genotypes
         .map((genotype, i) => ({ genotype, expression: expression[i] }))
         .sort((x, y) => x.genotype - y.genotype || x.expression - y.expression)

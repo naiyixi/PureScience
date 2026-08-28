@@ -105,11 +105,11 @@ const ALLOWED_REASONING_EFFORTS = new Set([
 ])
 const ALLOWED_REASONING_SUMMARIES = new Set(['auto', 'concise', 'detailed'])
 const ALLOWED_IMAGE_DETAILS = new Set(['auto', 'low', 'high'])
-const UPSTREAM_IMAGE_TYPES = new Set(['image', 'image_url', 'input_image', 'output_image'])
+const SOURCE_IMAGE_TYPES = new Set(['image', 'image_url', 'input_image', 'output_image'])
 
-const unsupportedUpstreamImageOutput = (): BridgeHttpError =>
+const unsupportedSourceImageOutput = (): BridgeHttpError =>
   new BridgeHttpError(
-    'Upstream image output is not supported by this gateway',
+    'Source image output is not supported by this gateway',
     502,
     'unsupported_source_output'
   )
@@ -275,9 +275,9 @@ const sourceTextFromContent = (content: unknown): string => {
   if (typeof content === 'string') return content
   if (
     typeof content === 'object' &&
-    UPSTREAM_IMAGE_TYPES.has(String((content as JsonObject).type))
+    SOURCE_IMAGE_TYPES.has(String((content as JsonObject).type))
   ) {
-    throw unsupportedUpstreamImageOutput()
+    throw unsupportedSourceImageOutput()
   }
   if (!Array.isArray(content)) {
     throw new BridgeHttpError(
@@ -296,7 +296,7 @@ const sourceTextFromContent = (content: unknown): string => {
           'unsupported_source_output'
         )
       }
-      if (UPSTREAM_IMAGE_TYPES.has(String(part.type))) throw unsupportedUpstreamImageOutput()
+      if (SOURCE_IMAGE_TYPES.has(String(part.type))) throw unsupportedSourceImageOutput()
       if (part.type !== 'text' && part.type !== 'output_text') {
         throw new BridgeHttpError(
           `Unsupported source message content part: ${String(part.type)}`,
@@ -306,7 +306,7 @@ const sourceTextFromContent = (content: unknown): string => {
       }
       if (typeof part.text !== 'string') {
         throw new BridgeHttpError(
-          'Upstream text output must contain string text',
+          'Source text output must contain string text',
           502,
           'unsupported_source_output'
         )
@@ -316,7 +316,7 @@ const sourceTextFromContent = (content: unknown): string => {
     .join('')
 }
 
-const hasUpstreamImageField = (value: JsonObject): boolean =>
+const hasSourceImageField = (value: JsonObject): boolean =>
   (Array.isArray(value.images) && value.images.length > 0) ||
   value.image !== undefined ||
   value.image_url !== undefined ||
@@ -735,7 +735,7 @@ const completionToResponse = (
 ): JsonObject => {
   const message = completion.choices?.[0]?.message ?? {}
   const output: JsonObject[] = []
-  if (hasUpstreamImageField(message)) throw unsupportedUpstreamImageOutput()
+  if (hasSourceImageField(message)) throw unsupportedSourceImageOutput()
   // Mirror the streaming path: drop reasoning_content (no faithful Responses representation) and fall
   // back to a refusal as the visible answer, rather than rejecting model output outright.
   const contentText = sourceTextFromContent(message.content)
@@ -849,7 +849,7 @@ const streamChatToResponses = async (
       terminalFinishReason = finishReason
     }
     const delta = chunk.choices?.[0]?.delta ?? {}
-    if (hasUpstreamImageField(delta)) throw unsupportedUpstreamImageOutput()
+    if (hasSourceImageField(delta)) throw unsupportedSourceImageOutput()
     // Never throw on model output mid-stream: the turn's headers are already sent, so a throw would
     // reset the socket and reach the agent as an opaque "error decoding response body". Reasoning-model
     // providers stream `reasoning_content` deltas that have no faithful Responses representation here,
@@ -1000,7 +1000,7 @@ const streamChatToResponses = async (
     writeEvent(response, 'response.failed', sequence++, {
       response: responseEnvelope(responseId, model, output, usage, 'failed', {
         type: 'source_error',
-        message: 'Upstream stream ended before completion'
+        message: 'Provider stream ended before completion'
       })
     })
   } else if (terminalFinishReason) {
@@ -1023,7 +1023,7 @@ const streamChatToResponses = async (
     writeEvent(response, 'response.failed', sequence++, {
       response: responseEnvelope(responseId, model, output, usage, 'failed', {
         type: 'source_incomplete',
-        message: 'Upstream stream ended without a terminal finish_reason'
+        message: 'Provider stream ended without a terminal finish_reason'
       })
     })
   }
@@ -1287,14 +1287,14 @@ export class ResponsesBridge {
       return
     }
     const abortController = new AbortController()
-    const abortUpstream = (): void => abortController.abort()
+    const abortSource = (): void => abortController.abort()
     const abortOnRequestClose = (): void => {
-      if (request.aborted || !request.complete) abortUpstream()
+      if (request.aborted || !request.complete) abortSource()
     }
     const abortOnResponseClose = (): void => {
-      if (!response.writableEnded) abortUpstream()
+      if (!response.writableEnded) abortSource()
     }
-    request.once('aborted', abortUpstream)
+    request.once('aborted', abortSource)
     request.once('close', abortOnRequestClose)
     response.once('close', abortOnResponseClose)
 
@@ -1406,7 +1406,7 @@ export class ResponsesBridge {
       response.writeHead(200, { 'content-type': 'application/json' })
       response.end(JSON.stringify(result))
     } finally {
-      request.off('aborted', abortUpstream)
+      request.off('aborted', abortSource)
       request.off('close', abortOnRequestClose)
       response.off('close', abortOnResponseClose)
     }

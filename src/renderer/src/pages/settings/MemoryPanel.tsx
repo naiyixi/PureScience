@@ -539,7 +539,7 @@ const MemoryNoteList = ({
   )
 }
 
-// Editable memory: categories + notes + master switch. Mirrors Claude Science's structured memory
+// Editable memory: categories + notes + master switch. Structured memory with categories, notes, and a master switch
 // (About you / custom categories, On/Off, Clear all, bounded category count, auto-recall). Notes
 // are user-authored plain text used by the app to recall preferences across sessions.
 export const MemoryPanel = (): React.JSX.Element => {

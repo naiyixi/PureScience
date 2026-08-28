@@ -15,7 +15,7 @@ export type PromptErrorContext = {
 }
 
 // The innermost provider detail pulled from a wrapped error message.
-type UpstreamDetail = { text: string; type?: string }
+type ProviderDetail = { text: string; type?: string }
 
 // The "resource not found" family. The agent renders the provider's HTTP error with an English status
 // label (`Not Found:`) and the provider's structured error type is an ASCII slug (`resource_not_found`),
@@ -85,7 +85,7 @@ const sliceBalancedJson = (message: string, start: number): string | undefined =
 
 // Extracts the provider's own `{ error: { message, type } }` payload when the wrapper carries one, so
 // we can show the human message instead of a raw JSON blob. Returns undefined for a text-only wrapper.
-const extractUpstreamDetail = (message: string): UpstreamDetail | undefined => {
+const extractProviderDetail = (message: string): ProviderDetail | undefined => {
   const braceStart = message.indexOf('{')
 
   if (braceStart === -1) return undefined
@@ -119,7 +119,7 @@ const extractUpstreamDetail = (message: string): UpstreamDetail | undefined => {
 const isProviderNotFound = (
   error: unknown,
   raw: string,
-  detail: UpstreamDetail | undefined
+  detail: ProviderDetail | undefined
 ): boolean => {
   const hasNotFoundType = detail?.type ? NOT_FOUND_PATTERN.test(detail.type) : false
   const matchesNotFound = NOT_FOUND_PATTERN.test(raw) || hasNotFoundType
@@ -139,7 +139,7 @@ const isProviderNotFound = (
 // not-found, else the original message untouched.
 export const describePromptError = (error: unknown, ctx: PromptErrorContext = {}): string => {
   const raw = rawErrorMessage(error)
-  const detail = extractUpstreamDetail(raw)
+  const detail = extractProviderDetail(raw)
 
   if (!isProviderNotFound(error, raw, detail)) return raw
 
@@ -184,5 +184,5 @@ export const isProviderPromptError = (error: unknown): boolean => {
 
   const raw = rawErrorMessage(error)
 
-  return isProviderNotFound(error, raw, extractUpstreamDetail(raw))
+  return isProviderNotFound(error, raw, extractProviderDetail(raw))
 }

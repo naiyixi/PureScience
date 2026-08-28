@@ -375,7 +375,7 @@ describe('Responses-compatible bridge conversion', () => {
           }
         ]
       })
-    ).toThrow(/Upstream image output is not supported/)
+    ).toThrow(/Source image output is not supported/)
     expect(() =>
       completionToResponse({
         id: 'chat-images',
@@ -384,7 +384,7 @@ describe('Responses-compatible bridge conversion', () => {
           { message: { role: 'assistant', images: [{ url: 'https://example.test/a.png' }] } }
         ]
       })
-    ).toThrow(/Upstream image output is not supported/)
+    ).toThrow(/Source image output is not supported/)
     expect(() =>
       completionToResponse({
         id: 'chat-image-object',
@@ -398,7 +398,7 @@ describe('Responses-compatible bridge conversion', () => {
           }
         ]
       })
-    ).toThrow(/Upstream image output is not supported/)
+    ).toThrow(/Source image output is not supported/)
   })
 
   it('rejects stateful features and filters non-translatable Codex tools', () => {
@@ -1367,7 +1367,7 @@ describe('Responses-compatible bridge conversion', () => {
       expect(response.status).toBe(200)
       expect(output).toContain('response.failed')
       expect(output).toContain('unsupported_source_output')
-      expect(output).toContain('Upstream image output is not supported')
+      expect(output).toContain('Source image output is not supported')
       expect(output).not.toContain('response.completed')
     } finally {
       await bridge.close()
@@ -1411,7 +1411,7 @@ describe('Responses-compatible bridge conversion', () => {
       expect(response.status).toBe(502)
       expect(result.error).toEqual({
         type: 'unsupported_source_output',
-        message: 'Upstream image output is not supported by this gateway'
+        message: 'Source image output is not supported by this gateway'
       })
     } finally {
       await bridge.close()

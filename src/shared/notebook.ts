@@ -542,7 +542,7 @@ export type RunNotebookCellRequest = NotebookSessionRequest & {
 // Convenience request that writes a cell and runs it in one command.
 export type InspectNotebookVariablesRequest = NotebookSessionRequest
 
-// Live namespace snapshot of a data kernel (open-science #1748). The kernel answers only when it
+// Live namespace snapshot of a data kernel. The kernel answers only when it
 // is alive; the Variables view treats an undefined response as 'unavailable'.
 export type NotebookVariable = {
   name: string

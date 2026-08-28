@@ -79,7 +79,7 @@ const createNotebookRequest = (
   workspaceCwd: notebook.workspaceCwd
 })
 
-// Read-only live-namespace browser (open-science #1748): names, types, shapes, and bounded
+// Read-only live-namespace browser: names, types, shapes, and bounded
 // previews of the running Python/R kernel, refreshed after each execution. The kernel answers only
 // while alive; an undefined response renders as "unavailable" (no kernel started just to browse).
 const NotebookVariablesPanel = ({
@@ -333,7 +333,7 @@ const NotebookPreview = ({ item }: NotebookPreviewProps): React.JSX.Element => {
     setNotebookState(nextState)
   }, [])
 
-  // Variables view state (open-science #1748): the panel is read-only and refreshed after each
+  // Variables view state: the panel is read-only and refreshed after each
   // execution; it never starts a kernel just to browse.
   const [variablesOpen, setVariablesOpen] = useState(false)
   const [variables, setVariables] = useState<NotebookVariable[]>([])

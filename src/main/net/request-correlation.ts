@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 
 import { createLogger } from '../logger'
 
-// Correlated HTTP request diagnostics (open-science #1703): every outbound web request gets a
+// Correlated HTTP request diagnostics: every outbound web request gets a
 // correlation id that ties command, session, and run logs together. The id travels as an
 // `x-request-id` header so server-side logs can join the same trace, and is logged locally with the
 // request outcome so app logs can be filtered by one id.

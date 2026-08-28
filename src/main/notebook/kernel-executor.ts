@@ -36,7 +36,7 @@ import type {
 } from './runtime-service'
 import { DEFAULT_TIMEOUT_MS, TimeoutController } from './timeout-controller'
 
-// Unified child-process proxy environment (open-science #1753): every spawned kernel resolves the
+// Unified child-process proxy environment: every spawned kernel resolves the
 // system proxy once (Electron session rules incl. PAC) and inherits it, so R/Python/REPL outbound
 // traffic honors the same proxy mode as every other app network path. Resolver failures fall back to
 // the inherited process env (no proxy override).
@@ -612,8 +612,7 @@ class NotebookKernelExecutor implements NotebookExecutor {
     return env
   }
 
-  // Read-only snapshot of the kernel's live namespace for the Variables view (open-science
-  // #1748). Requires a live data kernel; the response's `variables` field is populated by the
+  // Read-only snapshot of the kernel's live namespace for the Variables view. Requires a live data kernel; the response's `variables` field is populated by the
   // loop's inspect_variables action. Returns undefined when the kernel is gone or unresponsive.
   async inspectVariables(
     request: unknown

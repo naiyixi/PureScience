@@ -278,7 +278,7 @@ export type ResolvedAgentBackend = {
   // Whether the selected source model accepts image input. Kept on the generation so a model-only
   // switch can fail closed when an adapter cannot remove images already retained in native history.
   supportsImageInput?: boolean
-  // Upstream provider model used for local context tokenization. This is deliberately separate from
+  // The active provider model used for local context tokenization. This is deliberately separate from
   // `sessionModel`: a framework may select its model through env rather than ACP, or use a bridge
   // transport model whose id differs from the provider model that ultimately tokenizes the request.
   contextUsageModel?: string
