@@ -1415,3 +1415,76 @@ describe('AgentBackendResolver bridge cleanup', () => {
     }
   )
 })
+
+describe('AgentBackendResolver memory recall', () => {
+  const memorySettings = {
+    enabled: true,
+    categories: [
+      { id: 'about-you', name: 'About you', createdAt: 1 },
+      { id: 'private', name: 'Private', createdAt: 2, autoRecall: false }
+    ],
+    notes: [
+      {
+        id: 'n1',
+        categoryId: 'about-you',
+        text: 'Prefers concise answers',
+        createdAt: 1,
+        updatedAt: 1
+      },
+      {
+        id: 'n2',
+        categoryId: 'private',
+        text: 'Never auto-injected',
+        createdAt: 2,
+        updatedAt: 2
+      }
+    ]
+  }
+
+  it.each([
+    { name: 'Claude Code', frameworkId: 'claude-code' as const },
+    { name: 'OpenCode', frameworkId: 'opencode' as const },
+    { name: 'Codex', frameworkId: 'codex' as const }
+  ])('injects enabled memory into the $name session prompt', async (testCase) => {
+    const harness = makeHarness({
+      settings: makeSettings({
+        agentFrameworkId: testCase.frameworkId,
+        memory: memorySettings
+      }),
+      targetOverride: () => ({})
+    })
+
+    const backend = await harness.resolver.resolveExplicitTarget({
+      frameworkId: testCase.frameworkId,
+      providerId: 'provider-a',
+      model: { kind: 'provider-default' },
+      reasoningEffort: 'high'
+    })
+    const instructions =
+      testCase.frameworkId === 'claude-code'
+        ? backend.systemPromptAppends?.join('\n\n')
+        : backend.persistentSystemPrompt
+
+    expect(instructions).toContain('## About you')
+    expect(instructions).toContain('Prefers concise answers')
+    // autoRecall=false categories are never injected.
+    expect(instructions).not.toContain('Never auto-injected')
+    expect(instructions).not.toContain('## Private')
+  })
+
+  it('skips memory injection when memory is disabled', async () => {
+    const harness = makeHarness({
+      settings: makeSettings({ memory: { ...memorySettings, enabled: false } }),
+      targetOverride: () => ({})
+    })
+
+    const backend = await harness.resolver.resolveExplicitTarget({
+      frameworkId: 'claude-code',
+      providerId: 'provider-a',
+      model: { kind: 'provider-default' },
+      reasoningEffort: 'high'
+    })
+
+    expect((backend.systemPromptAppends ?? []).join('\n\n')).not.toContain('## About you')
+  })
+})

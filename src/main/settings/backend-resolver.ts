@@ -37,6 +37,7 @@ import {
   normalizeResponsesBaseUrl
 } from '../agent-framework/codex'
 import { renderConnectorInstructions } from '../connectors/skill-doc'
+import { renderMemoryRecallInstructions } from './memory-recall'
 import { NOTEBOOK_MCP_SERVER_NAME, NOTEBOOK_RPC_TOOLS } from '../notebook/mcp-server'
 import { ARTIFACT_MCP_SERVER_NAME, writeArtifactFileToolSchema } from '../artifacts/mcp-server'
 import { REVIEWER_BRIDGE_NAMESPACED_TOOLS } from '../reviewer/bridge-tools'
@@ -548,6 +549,10 @@ export class AgentBackendResolver {
     context: AgentBackendResolutionContext
   ): Promise<ResolvedAgentBackend> {
     const framework = getAgentFramework(frameworkId)
+    // The user's memory notes, rendered as a bounded system-prompt block when memory is enabled.
+    // Computed once for the whole resolution: claude-code returns early with its own appends, and
+    // the opencode/codex paths merge into the persistent appends below.
+    const memoryRecallInstructions = renderMemoryRecallInstructions(settings.memory)
     const storedProvider = providerId
       ? settings.providers.find((provider) => provider.id === providerId)
       : undefined
@@ -626,7 +631,14 @@ export class AgentBackendResolver {
           contextWindow,
           ...(target.provider.supportsImageInput ? { supportsImageInput: true } : {}),
           contextUsageModel: target.effectiveModel,
-          ...(connectorInstructions ? { systemPromptAppends: [connectorInstructions] } : {}),
+          ...(memoryRecallInstructions || connectorInstructions
+            ? {
+                systemPromptAppends: [
+                  ...(memoryRecallInstructions ? [memoryRecallInstructions] : []),
+                  ...(connectorInstructions ? [connectorInstructions] : [])
+                ]
+              }
+            : {}),
           ...(bridgeLease ? { anthropicBridgeLease: bridgeLease } : {})
         }
       } catch (error) {
@@ -716,6 +728,7 @@ export class AgentBackendResolver {
         : undefined
     const persistentSystemPromptAppends = [
       ...(context.systemPromptAppends ?? []),
+      ...(memoryRecallInstructions ? [memoryRecallInstructions] : []),
       ...(framework.id === 'codex' && connectorInstructions ? [connectorInstructions] : [])
     ]
 
