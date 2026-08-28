@@ -398,6 +398,12 @@ export type MemoryCategory = {
   id: string
   name: string
   createdAt: number
+  // Optional "when should a note be saved here" guidance captured in the category form. Undefined
+  // on the built-in category and on entries created before the form existed.
+  prompt?: string
+  // Whether notes in this category are eligible for automatic recall into context. Undefined
+  // behaves as on (the form's default), so pre-form entries keep the recall behavior.
+  autoRecall?: boolean
 }
 
 export type MemorySettings = {
