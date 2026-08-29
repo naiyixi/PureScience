@@ -157,6 +157,19 @@ const createTitle = (prompt: string): string => {
   return normalized.length <= 60 ? normalized : `${normalized.slice(0, 57)}...`
 }
 
+// Builds a one-line session description from the first user prompt: the first complete
+// sentence (Chinese or English punctuation), bounded so session lists stay scannable.
+// Falls back to a bounded prefix when the prompt has no sentence boundary. Blank prompts
+// (e.g. branch creation) yield no description.
+export const createDescription = (prompt: string): string | undefined => {
+  const normalized = prompt.replace(/\s+/g, ' ').trim()
+  if (!normalized) return undefined
+  const sentence = normalized.match(/^.*?[。．.!?！？…]/)
+  const candidate = (sentence?.[0] ?? normalized).trim()
+  if (!candidate) return undefined
+  return candidate.length <= 120 ? candidate : `${candidate.slice(0, 117)}...`
+}
+
 const createUserMessage = (id: string, content: string, now: number): PersistedChatMessage => ({
   id,
   role: 'user',
@@ -452,6 +465,7 @@ class TaskRunner {
           id: sessionInfo.sessionId,
           projectId: project.id,
           title: createTitle(prompt),
+          description: createDescription(prompt),
           cwd: sessionInfo.cwd ?? '',
           status: 'running',
           permissionProfile,
