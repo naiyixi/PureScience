@@ -15,6 +15,9 @@ export type SshOverrides = {
   user?: string
   port?: number
   identityFile?: string
+  // References a Credentials-panel credential whose secret is the SSH password. The password is
+  // decrypted only at dispatch time and injected via SSH_ASKPASS; it is never persisted here.
+  passwordCredentialId?: string
 }
 
 // One GPU model + how many of it a probe found. Part of the probe snapshot, not written in Phase 1.

@@ -321,6 +321,16 @@ export class ComputeService {
     this.scpRunner = scpRunner ?? new SystemScpRunner()
   }
 
+  // Decrypts the SSH password bound to a host's Credentials-panel credential (if any). The
+  // password is resolved only at dispatch time and injected via SSH_ASKPASS; it never touches
+  // the compute configuration or logs.
+  private async resolveSshPassword(host: { sshOverrides?: import('../../shared/compute').SshOverrides }): Promise<string | undefined> {
+    const credentialId = host.sshOverrides?.passwordCredentialId
+    if (!credentialId || !this.externalDispatch?.resolveCredentialSecret) return undefined
+    return this.externalDispatch.resolveCredentialSecret(credentialId)
+  }
+
+
   // Runs the probe bundle against the host identified by providerId. Persists the structured
   // probeResult and (conditionally) scratchRoot. Never touches detailsDoc.
   async probe(providerId: string): Promise<ProbeResult> {
@@ -351,7 +361,8 @@ export class ComputeService {
     let runResult = await this.runner.run(target, PROBE_SCRIPT, {
       timeoutMs: PROBE_TIMEOUT_MS,
       loginShell: true,
-      maxOutputBytes: PROBE_MAX_OUTPUT_BYTES
+      maxOutputBytes: PROBE_MAX_OUTPUT_BYTES,
+      password: await this.resolveSshPassword(host)
     })
 
     // SSH exit 255 signals a connection-level failure (host unreachable / batch-mode auth failure /
@@ -375,7 +386,8 @@ export class ComputeService {
         runResult = await this.runner.run(target, PROBE_SCRIPT, {
           timeoutMs: PROBE_TIMEOUT_MS,
           loginShell: true,
-          maxOutputBytes: PROBE_MAX_OUTPUT_BYTES
+          maxOutputBytes: PROBE_MAX_OUTPUT_BYTES,
+          password: await this.resolveSshPassword(host)
         })
       }
     }
@@ -585,7 +597,8 @@ export class ComputeService {
     const runResult = await this.runner.run(target, remoteCmd, {
       timeoutMs: LIST_DIR_TIMEOUT_MS,
       loginShell: false,
-      maxOutputBytes: LIST_DIR_MAX_OUTPUT_BYTES
+      maxOutputBytes: LIST_DIR_MAX_OUTPUT_BYTES,
+      password: await this.resolveSshPassword(host)
     })
 
     // Connection-level failure.
@@ -742,7 +755,8 @@ export class ComputeService {
     const runResult = await this.runner.run(target, wrappedCmd, {
       timeoutMs,
       loginShell,
-      maxOutputBytes: CALL_COMMAND_MAX_OUTPUT_BYTES
+      maxOutputBytes: CALL_COMMAND_MAX_OUTPUT_BYTES,
+      password: await this.resolveSshPassword(host)
     })
 
     // ── ERROR MAPPING ────────────────────────────────────────────────────────────────
@@ -1051,7 +1065,7 @@ export class ComputeService {
   // Runs a remote stat to get file type and size in a single SSH round-trip.
   // Output format: "<type> <size>" where type ∈ { f, d, ? }.
   private async _statRemote(
-    _host: ComputeHost,
+    host: ComputeHost,
     target: import('./ssh-runner').ResolvedSshTarget,
     remotePath: string
   ): Promise<{ fileType: string; size: number }> {
@@ -1073,7 +1087,8 @@ export class ComputeService {
     const result = await this.runner.run(target, cmd, {
       timeoutMs: 10_000,
       loginShell: false,
-      maxOutputBytes: 64
+      maxOutputBytes: 64,
+      password: await this.resolveSshPassword(host)
     })
 
     if (result.timedOut || result.exitCode === 255) {

@@ -30,13 +30,15 @@ const buildRequest = (
   detailsDoc: string,
   user: string,
   port: string,
-  identityFile: string
+  identityFile: string,
+  passwordCredentialId: string
 ): CreateComputeHostRequest => {
   const overrides: SshOverrides = {}
   if (user.trim()) overrides.user = user.trim()
   const portNum = Number.parseInt(port.trim(), 10)
   if (port.trim() !== '' && Number.isFinite(portNum)) overrides.port = portNum
   if (identityFile.trim()) overrides.identityFile = identityFile.trim()
+  if (passwordCredentialId.trim()) overrides.passwordCredentialId = passwordCredentialId.trim()
 
   return {
     sshAlias: alias.trim(),
@@ -58,6 +60,7 @@ export function ComputeAddForm({ onCreated, onCancel }: ComputeAddFormProps): Re
   const [user, setUser] = useState('')
   const [port, setPort] = useState('')
   const [identityFile, setIdentityFile] = useState('')
+  const [passwordCredentialId, setPasswordCredentialId] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | undefined>(undefined)
 
@@ -77,7 +80,7 @@ export function ComputeAddForm({ onCreated, onCancel }: ComputeAddFormProps): Re
     setError(undefined)
 
     try {
-      const host = await createHost(buildRequest(alias, detailsDoc, user, port, identityFile))
+      const host = await createHost(buildRequest(alias, detailsDoc, user, port, identityFile, passwordCredentialId))
       // Navigate to the detail page immediately; the probe runs in the background so the detail page
       // can show "Probing…" state (design.md §7: create record → auto-probe → redirect to detail).
       onCreated(host.providerId)
@@ -220,6 +223,20 @@ export function ComputeAddForm({ onCreated, onCancel }: ComputeAddFormProps): Re
                 />
                 <span className="text-xs text-muted-foreground">
                   Leave empty for ssh-agent / IdentityFile from ~/.ssh/config.
+                </span>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="compute-password-credential" className="text-sm font-medium text-foreground">
+                  {t('settings.sshPasswordCredential')}
+                </label>
+                <Input
+                  id="compute-password-credential"
+                  value={passwordCredentialId}
+                  onChange={(event) => setPasswordCredentialId(event.target.value)}
+                  placeholder={t('settings.sshPasswordCredentialPlaceholder')}
+                />
+                <span className="text-xs text-muted-foreground">
+                  {t('settings.sshPasswordCredentialHint')}
                 </span>
               </div>
             </div>
