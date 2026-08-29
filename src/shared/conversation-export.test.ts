@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   createConversationExportDocument,
+  getConversationTurnCount,
   renderConversationHtml,
   renderConversationMarkdown,
   sanitizeExportFilename,
@@ -232,5 +233,89 @@ describe('conversation export projection', () => {
     expect(sanitizeExportFilename('x'.repeat(300))).toBe(`${'x'.repeat(237)}...`)
     expect(sanitizeExportFilename('界'.repeat(80))).toBe('界'.repeat(80))
     expect(sanitizeExportFilename(`${'界'.repeat(81)}tail`)).toBe(`${'界'.repeat(79)}...`)
+  })
+
+  it('counts user turns for round-based export', () => {
+    const session = createSession()
+    session.messages.push(
+      {
+        id: 'message-user-2',
+        role: 'user',
+        content: 'Second prompt',
+        status: 'complete',
+        eventIds: [],
+        createdAt: 1_710_000_002_000,
+        updatedAt: 1_710_000_002_000
+      },
+      {
+        id: 'message-agent-2',
+        role: 'agent',
+        content: 'Second answer.',
+        status: 'complete',
+        eventIds: [],
+        createdAt: 1_710_000_003_000,
+        updatedAt: 1_710_000_003_000
+      }
+    )
+
+    expect(getConversationTurnCount(session)).toBe(2)
+  })
+
+  it('exports only the messages inside the selected round range', () => {
+    const session = createSession()
+    session.messages.push(
+      {
+        id: 'message-user-2',
+        role: 'user',
+        content: 'Second prompt',
+        status: 'complete',
+        eventIds: [],
+        createdAt: 1_710_000_002_000,
+        updatedAt: 1_710_000_002_000
+      },
+      {
+        id: 'message-agent-2',
+        role: 'agent',
+        content: 'Second answer.',
+        status: 'complete',
+        eventIds: [],
+        createdAt: 1_710_000_003_000,
+        updatedAt: 1_710_000_003_000
+      }
+    )
+
+    const document = createConversationExportDocument(
+      session,
+      1_710_000_004_000,
+      { from: 2, to: 2 }
+    )
+
+    expect(document.messages.map((message) => message.markdown)).toEqual([
+      'Second prompt',
+      'Second answer.'
+    ])
+  })
+
+  it('keeps the full transcript when no round selection is provided', () => {
+    const session = createSession()
+    const document = createConversationExportDocument(session, 1_710_000_004_000)
+
+    expect(document.messages).toHaveLength(2)
+    expect(document.messages[0].markdown).toContain('# Question')
+    expect(document.messages[1].markdown).toBe('Answer.')
+  })
+
+  it('clamps an out-of-range round selection to the actual turn count', () => {
+    const session = createSession()
+    const document = createConversationExportDocument(
+      session,
+      1_710_000_004_000,
+      { from: 1, to: 99 }
+    )
+
+    expect(document.messages.map((message) => message.markdown)).toEqual([
+      '# Question\n\nUse **Markdown**.',
+      'Answer.'
+    ])
   })
 })

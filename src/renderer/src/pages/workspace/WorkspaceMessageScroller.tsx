@@ -33,6 +33,7 @@ import { JobDetailModal } from '@/components/JobDetailModal'
 import { extractJobIdFromActivity } from '@/components/job-binding-utils'
 import { MessageScrollerItem } from '@/components/ui/message-scroller'
 import { ReviewerCard } from '@/components/ReviewerCard'
+import { RunMarksRail } from './RunMarksRail'
 import { WorkspaceActivityGroup } from './WorkspaceActivityGroup'
 import { WorkspacePlanActivityRecord } from './WorkspacePlanActivityRecord'
 import { WorkspaceAgentLoadingRow } from './WorkspaceAgentLoadingRow'
@@ -465,6 +466,14 @@ const WorkspaceMessageScrollerImpl = ({
       ),
     [activeSession, handoffEvents]
   )
+  // User turns in transcript order — the run-marks rail renders one dot per turn and jumps to it.
+  const runMarkUserMessageIds = useMemo(
+    () =>
+      conversationItems
+        .filter((item) => item.type === 'message' && item.message.role === 'user')
+        .map((item) => item.id),
+    [conversationItems]
+  )
   // Assistant text can be split into several messages around tool calls. All fragments share the
   // prompt they respond to, but only the last visible fragment in that turn owns whole-turn metadata.
   // Legacy unlinked messages remain independent so older transcripts do not lose their timestamps.
@@ -863,36 +872,43 @@ const WorkspaceMessageScrollerImpl = ({
                     }
 
                     return (
-                      <div key={item.id}>
-                        {/* Unbound completed jobs that belong chronologically before this message */}
-                        {jobsBeforeMessage.map((job) => (
-                          <MessageScrollerItem
-                            key={`completed-job-${job.job_id}`}
-                            messageId={`completed-job-${job.job_id}`}
-                            className="min-w-0"
-                          >
-                            <div className="px-4 py-1 md:px-6">
-                              <div className="mx-auto w-full max-w-4xl">
-                                <CompletedJobCard job={job} onOpen={handleOpenJobDetail} />
+                      <MessageScrollerItem
+                        key={item.id}
+                        messageId={item.message.id}
+                        disableContainment
+                        className="min-w-0"
+                      >
+                        <div>
+                          {/* Unbound completed jobs that belong chronologically before this message */}
+                          {jobsBeforeMessage.map((job) => (
+                            <MessageScrollerItem
+                              key={`completed-job-${job.job_id}`}
+                              messageId={`completed-job-${job.job_id}`}
+                              className="min-w-0"
+                            >
+                              <div className="px-4 py-1 md:px-6">
+                                <div className="mx-auto w-full max-w-4xl">
+                                  <CompletedJobCard job={job} onOpen={handleOpenJobDetail} />
+                                </div>
                               </div>
-                            </div>
-                          </MessageScrollerItem>
-                        ))}
-                        {item.message.role === 'user' ? (
-                          <EditableWorkspaceMessageItem {...messageItemProps} />
-                        ) : (
-                          <WorkspaceMessageItem {...messageItemProps} canEditMessage={false} />
-                        )}
-                        {currentSessionId && item.message.role === 'agent' ? (
-                          <WorkspaceMessageReview
-                            projectId={currentProjectId}
-                            sessionId={currentSessionId}
-                            turnMessageId={item.message.id}
-                            onGoToTranscript={handleGoToTranscript}
-                            onRerun={handleRerunReview}
-                          />
-                        ) : null}
-                      </div>
+                            </MessageScrollerItem>
+                          ))}
+                          {item.message.role === 'user' ? (
+                            <EditableWorkspaceMessageItem {...messageItemProps} />
+                          ) : (
+                            <WorkspaceMessageItem {...messageItemProps} canEditMessage={false} />
+                          )}
+                          {currentSessionId && item.message.role === 'agent' ? (
+                            <WorkspaceMessageReview
+                              projectId={currentProjectId}
+                              sessionId={currentSessionId}
+                              turnMessageId={item.message.id}
+                              onGoToTranscript={handleGoToTranscript}
+                              onRerun={handleRerunReview}
+                            />
+                          ) : null}
+                        </div>
+                      </MessageScrollerItem>
                     )
                   }
 
@@ -965,6 +981,9 @@ const WorkspaceMessageScrollerImpl = ({
           </MessageScrollerViewport>
 
           <MessageScrollerButton className="z-10 border-border-200 bg-bg-000 shadow-card hover:bg-bg-200 data-[direction=end]:bottom-3" />
+
+          {/* Run-marks rail: one dot per user turn; click to jump. Hidden below the turn threshold. */}
+          <RunMarksRail userMessageIds={runMarkUserMessageIds} />
 
           {/* Transient warning shown when a mention target no longer resolves to a file or skill. */}
           {mentionNotice ? (

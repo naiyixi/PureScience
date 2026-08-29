@@ -45,7 +45,7 @@ const renderSidebar = (sessions: ChatSession[]): HTMLDivElement => {
         canDownloadArtifacts
         onDownloadArtifacts={vi.fn()}
         onViewNotebook={vi.fn()}
-        onExportSession={vi.fn()}
+        onOpenExportDialog={vi.fn()}
         onTogglePin={vi.fn()}
         onDeleteSession={vi.fn()}
         onOpenSettings={vi.fn()}

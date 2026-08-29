@@ -93,7 +93,7 @@ const renderSidebar = async (sessions: ChatSession[]): Promise<string> => {
       canDownloadArtifacts
       onDownloadArtifacts={vi.fn()}
       onViewNotebook={vi.fn()}
-      onExportSession={vi.fn()}
+      onOpenExportDialog={vi.fn()}
       onTogglePin={vi.fn()}
       onDeleteSession={vi.fn()}
       onOpenSettings={vi.fn()}
@@ -197,14 +197,24 @@ describe('WorkspaceSidebar accessible render', () => {
 
   it('wires session open and row menu actions to the matching session', () => {
     const sessions = [
-      createSession({ id: 'session-a', title: 'Notebook review' }),
-      createSession({ id: 'session-b', title: 'Dataset cleanup' })
+      createSession({
+        id: 'session-a',
+        title: 'Notebook review',
+        status: 'idle',
+        messages: [createMessage()]
+      }),
+      createSession({
+        id: 'session-b',
+        title: 'Dataset cleanup',
+        status: 'idle',
+        messages: [createMessage()]
+      })
     ]
     const onOpenSession = vi.fn()
     const onRenameSession = vi.fn()
     const onDownloadArtifacts = vi.fn()
     const onDeleteSession = vi.fn()
-    const onExportSession = vi.fn()
+    const onOpenExportDialog = vi.fn()
     const onArchiveSession = vi.fn()
     const container = renderSidebarDom({
       projectName: 'Example project',
@@ -222,7 +232,7 @@ describe('WorkspaceSidebar accessible render', () => {
       canDownloadArtifacts: true,
       onDownloadArtifacts,
       onViewNotebook: vi.fn(),
-      onExportSession,
+      onOpenExportDialog,
       onTogglePin: vi.fn(),
       canArchiveSession: () => true,
       onArchiveSession,
@@ -239,11 +249,11 @@ describe('WorkspaceSidebar accessible render', () => {
     clickButtonAt(container, 'Download all artifacts', 1)
     expect(onDownloadArtifacts).toHaveBeenCalledWith(sessions[1])
 
-    clickButtonAt(container, 'Markdown', 0)
-    expect(onExportSession).toHaveBeenCalledWith(sessions[0], 'markdown')
+    clickButtonAt(container, 'Export conversation', 0)
+    expect(onOpenExportDialog).toHaveBeenCalledWith(sessions[0])
 
-    clickButtonAt(container, 'PDF', 1)
-    expect(onExportSession).toHaveBeenCalledWith(sessions[1], 'pdf')
+    clickButtonAt(container, 'Export conversation', 1)
+    expect(onOpenExportDialog).toHaveBeenCalledWith(sessions[1])
 
     clickButtonAt(container, 'Archive', 1)
     expect(onArchiveSession).toHaveBeenCalledWith(sessions[1])
@@ -270,7 +280,7 @@ describe('WorkspaceSidebar accessible render', () => {
       canDownloadArtifacts: true,
       onDownloadArtifacts: vi.fn(),
       onViewNotebook: vi.fn(),
-      onExportSession: vi.fn(),
+      onOpenExportDialog: vi.fn(),
       onTogglePin: vi.fn(),
       onDeleteSession: vi.fn(),
       onOpenSettings: vi.fn()
@@ -312,7 +322,7 @@ describe('WorkspaceSidebar accessible render', () => {
       onTogglePin: vi.fn(),
       onDeleteSession: vi.fn(),
       onViewNotebook,
-      onExportSession: vi.fn(),
+      onOpenExportDialog: vi.fn(),
       onOpenSettings: vi.fn()
     })
 
@@ -356,7 +366,7 @@ describe('WorkspaceSidebar accessible render', () => {
       canDownloadArtifacts: true,
       onDownloadArtifacts: vi.fn(),
       onViewNotebook: vi.fn(),
-      onExportSession: vi.fn(),
+      onOpenExportDialog: vi.fn(),
       onTogglePin,
       onDeleteSession: vi.fn(),
       onOpenSettings: vi.fn()
@@ -425,7 +435,7 @@ describe('WorkspaceSidebar accessible render', () => {
       canDownloadArtifacts: false,
       onDownloadArtifacts: vi.fn(),
       onViewNotebook: vi.fn(),
-      onExportSession: vi.fn(),
+      onOpenExportDialog: vi.fn(),
       onTogglePin: vi.fn(),
       onDeleteSession: vi.fn(),
       onOpenSettings: vi.fn()

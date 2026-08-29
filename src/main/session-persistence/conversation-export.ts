@@ -71,6 +71,19 @@ const assertExportConversationRequest = (
     throw new Error('Invalid conversation export request.')
   }
 
+  const rounds = request.rounds
+  if (
+    rounds !== undefined &&
+    (typeof rounds !== 'object' ||
+      rounds === null ||
+      !Number.isInteger(rounds.from) ||
+      !Number.isInteger(rounds.to) ||
+      rounds.from < 1 ||
+      rounds.to < rounds.from)
+  ) {
+    throw new Error('Invalid conversation export round selection.')
+  }
+
   return request
 }
 
@@ -116,7 +129,7 @@ const createConversationExportService = (
       }
       if (session.messages.length === 0) throw new Error('Conversation has no messages to export.')
 
-      const document = createConversationExportDocument(session, deps.now())
+      const document = createConversationExportDocument(session, deps.now(), request.rounds)
       const extension = request.format === 'markdown' ? 'md' : 'pdf'
       const defaultPath = join(
         deps.getDownloadsPath(),

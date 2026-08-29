@@ -72,6 +72,15 @@ vi.mock('@/components/ui/message-scroller', () => {
     currentAnchorId: null,
     visibleMessageIds: []
   })
+  const useMessageScroller = (): {
+    scrollToEnd: () => boolean
+    scrollToMessage: () => boolean
+    scrollToStart: () => boolean
+  } => ({
+    scrollToEnd: () => false,
+    scrollToMessage: () => false,
+    scrollToStart: () => false
+  })
 
   return {
     MessageScrollerProvider: Wrapper,
@@ -80,6 +89,7 @@ vi.mock('@/components/ui/message-scroller', () => {
     MessageScrollerContent: Wrapper,
     MessageScrollerItem: Item,
     MessageScrollerButton: Button,
+    useMessageScroller,
     useMessageScrollerVisibility
   }
 })
