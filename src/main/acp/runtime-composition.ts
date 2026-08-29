@@ -31,6 +31,7 @@ import { resolveConfigRoot, resolveDataRoot } from '../storage-root'
 import type { UploadRepository } from '../uploads/repository'
 import type { SessionPersistenceCoordinator } from '../session-persistence/coordinator'
 import { ElicitationBroker } from '../elicitation-broker'
+import { createBoundedEventAdmission } from '../event-admission'
 import { AgentMcpHttpHost } from './mcp-http-host'
 import { projectRegistrySessionGrants } from './permission-broker'
 import { AcpRuntime, type AcpRuntimeCallbacks, type AcpRuntimeOptions } from './runtime'
@@ -124,10 +125,14 @@ const createAcpRuntime = ({
   const elicitationBroker = new ElicitationBroker({
     emitRequest: (request) => broadcastToRenderers(ELICITATION_CHANNEL_REQUEST, request)
   })
+  // Bounded admission for the high-volume agent event stream: transient events are rate-limited
+  // per window (excess dropped; the snapshot reconciles), critical events always pass — so a
+  // tens-of-thousands-of-events turn never freezes the renderer.
+  const admitEvent = createBoundedEventAdmission((event) => broadcastToRenderers('acp:event', event))
   const callbacks: AcpRuntimeCallbacks = {
     onStateChanged: (state: AcpStateSnapshot) => broadcastToRenderers('acp:state', state),
     onEvent: (event: AcpRuntimeEvent) => {
-      broadcastToRenderers('acp:event', event)
+      admitEvent(event)
       // Fire-and-forget: a notification hiccup must never stall the renderer event stream.
       if (taskNotifications) {
         runTaskNotificationInBackground(

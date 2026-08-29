@@ -72,6 +72,10 @@ class FakeBrowserWindow {
   destroyed = false
   hideCalls = 0
   webContents = {
+    session: {
+      setPermissionRequestHandler: vi.fn(),
+      setPermissionCheckHandler: vi.fn()
+    },
     setWindowOpenHandler: (handler: (details: WindowOpenDetails) => unknown): void => {
       windowOpenHandler = handler
     },

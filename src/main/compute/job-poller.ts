@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto'
 
 import type { ComputeJob, JobSummary } from '../../shared/compute'
+import { redactSecrets } from '../../shared/secret-redaction'
 import type { ComputeJobRepository } from './job-repository'
 import type { ComputeHostRepository } from './repository'
 import type { SshRunner } from './ssh-runner'
@@ -444,13 +445,15 @@ export class JobPoller {
       const stderrEndMarker = `${nonce}STDERR_END:${jobId}`
       const stdoutStart = body.indexOf('\n', body.indexOf('\n', body.indexOf('\n') + 1) + 1) + 1
       const stdoutEnd = body.indexOf(stdoutEndMarker)
-      const stdoutTail =
+      const stdoutTail = redactSecrets(
         stdoutEnd > stdoutStart ? body.slice(stdoutStart, stdoutEnd).replace(/\n$/, '') : ''
+      )
 
       const stderrStart = body.indexOf('\n', stdoutEnd + stdoutEndMarker.length) + 1
       const stderrEnd = body.indexOf(stderrEndMarker)
-      const stderrTail =
+      const stderrTail = redactSecrets(
         stderrEnd > stderrStart ? body.slice(stderrStart, stderrEnd).replace(/\n$/, '') : ''
+      )
 
       await this._applyPollResult(
         job,
