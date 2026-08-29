@@ -9,6 +9,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { cn } from '@/lib/utils'
 import { useComputeStore } from '@/stores/compute-store'
 import { FileBrowserModal } from './FileBrowserModal'
+import { ExternalComputeSection } from './ExternalComputeSection'
 
 // The compute panel sub-view, driven by the settings navigation history. The add form and host detail
 // are separate components owned by SettingsPage; this panel renders the list + header banner only.
@@ -21,10 +22,7 @@ type ComputePanelProps = {
 
 // Renders a "probed X ago" relative label from an ISO timestamp. Placeholder chrome for Phase 1 — the
 // probe itself lands in a later issue, so an un-probed host shows nothing here.
-const probedLabel = (
-  host: ComputeHost,
-  t: (key: TranslationKey) => string
-): string | null => {
+const probedLabel = (host: ComputeHost, t: (key: TranslationKey) => string): string | null => {
   const probedAt = host.probeResult?.probedAt
   if (!probedAt) return null
   const then = Date.parse(probedAt)
@@ -248,12 +246,13 @@ export function ComputePanel({ onNavigate }: ComputePanelProps): React.JSX.Eleme
         )}
       </div>
 
-      {/* File browser modal — opened when a host folder button is clicked */}
       <FileBrowserModal
         open={browserProviderId !== undefined}
         onClose={() => setBrowserProviderId(undefined)}
         initialProviderId={browserProviderId}
       />
+
+      <ExternalComputeSection />
     </div>
   )
 }

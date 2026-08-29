@@ -405,6 +405,7 @@ describe('preload bridge — public surface inventory', () => {
       'settings.checkEnvironment',
       'settings.createSkill',
       'settings.deleteCredential',
+      'settings.deleteExternalComputeEndpoint',
       'settings.deleteProvider',
       'settings.deleteSkill',
       'settings.detectClaude',
@@ -416,6 +417,7 @@ describe('preload bridge — public surface inventory', () => {
       'settings.getConnectorDetail',
       'settings.getCredentials',
       'settings.getEgress',
+      'settings.getExternalComputeEndpoints',
       'settings.getMemory',
       'settings.getPackageMirror',
       'settings.getPreflight',
@@ -469,6 +471,7 @@ describe('preload bridge — public surface inventory', () => {
       'settings.setCustomServerEnabled',
       'settings.setDefaultPermissionProfile',
       'settings.setEgress',
+      'settings.setExternalComputeEndpoint',
       'settings.setMemory',
       'settings.setNcbiCredentials',
       'settings.setNotificationsEnabled',
@@ -584,10 +587,10 @@ describe('preload bridge — Connector configuration files', () => {
 })
 
 describe('preload bridge — runtime renderer contract catalog', () => {
-  it('routes all 195 owned methods through their cataloged Electron channels', async () => {
+  it('routes all 198 owned methods through their cataloged Electron channels', async () => {
     const requestContracts = runtimeContracts.filter(({ kind }) => kind === 'method')
 
-    expect(runtimeContracts).toHaveLength(207)
+    expect(runtimeContracts).toHaveLength(210)
 
     for (const contract of requestContracts) {
       invokeMock.mockClear()

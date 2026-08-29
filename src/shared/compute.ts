@@ -78,6 +78,52 @@ export const DETAILS_DOC_MAX_LENGTH = 32768
 // The single source of truth for the provider_id convention: "ssh:<alias>".
 export const computeProviderId = (alias: string): string => `ssh:${alias.trim()}`
 
+// ---------------------------------------------------------------------------
+// External compute endpoints (modal serverless GPU + NVIDIA NIM inference).
+// These are non-SSH execution targets: Modal runs serverless GPU jobs via its CLI
+// (authenticated with a Modal token from the Credentials panel), and an NVIDIA NIM
+// endpoint serves OpenAI-compatible model inference over HTTP (authenticated with an
+// NVIDIA API key from the Credentials panel).
+// ---------------------------------------------------------------------------
+
+export type ExternalComputeKind = 'modal' | 'nvidia_nim'
+
+// A configured external endpoint. `providerId` uses the `<kind>:<alias>` convention
+// ("modal:my-gpu", "nvidia_nim:my-nim") so the dispatcher can route by prefix.
+export type ExternalComputeEndpoint = {
+  id: string
+  providerId: string
+  kind: ExternalComputeKind
+  displayName: string
+  // Credentials-panel credential id holding the secret (Modal token / NVIDIA API key).
+  credentialId: string
+  // For NIM: the base URL of the OpenAI-compatible endpoint (e.g. http://127.0.0.1:8000/v1).
+  baseUrl?: string
+  // For NIM: the model name to request (e.g. "meta/llama-3.1-8b-instruct").
+  modelName?: string
+  detailsDoc: string
+  detailsUpdatedAt: number | undefined
+  createdAt: number
+  updatedAt: number
+}
+
+// Add-form payload for an external endpoint.
+export type CreateExternalComputeEndpointRequest = {
+  kind: ExternalComputeKind
+  alias: string
+  displayName?: string
+  credentialId: string
+  baseUrl?: string
+  modelName?: string
+  detailsDoc?: string
+}
+
+export const externalComputeProviderId = (kind: ExternalComputeKind, alias: string): string =>
+  `${kind}:${alias.trim()}`
+
+export const isExternalComputeProviderId = (providerId: string): boolean =>
+  providerId.startsWith('modal:') || providerId.startsWith('nvidia_nim:')
+
 // Result returned by call_command / computeCall RPC. exit_code is null when the process was killed
 // (e.g. timeout). truncated=true means at least one of stdout/stderr was capped at 64 KB.
 export type ExecResult = {

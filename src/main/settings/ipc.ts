@@ -51,7 +51,8 @@ import {
   type MemorySettings,
   type SetCredentialRequest,
   type TestCredentialRequest,
-  type EgressSettings
+  type EgressSettings,
+  type CreateExternalComputeEndpointRequest
 } from '../../shared/settings'
 import { SettingsService } from './service'
 import type { SettingsWorkflows } from './workflows'
@@ -280,6 +281,18 @@ const registerSettingsIpcHandlers = ({
   ipcMainHandle('settings:get-egress', () => service.getEgress())
   ipcMainHandle('settings:set-egress', (_event, egress: EgressSettings) =>
     service.setEgress(egress)
+  )
+
+  ipcMainHandle('settings:list-external-compute-endpoints', () =>
+    service.listExternalComputeEndpoints()
+  )
+  ipcMainHandle(
+    'settings:set-external-compute-endpoint',
+    (_event, request: CreateExternalComputeEndpointRequest) =>
+      service.setExternalComputeEndpoint(request)
+  )
+  ipcMainHandle('settings:delete-external-compute-endpoint', (_event, providerId: string) =>
+    service.deleteExternalComputeEndpoint(providerId)
   )
 
   ipcMainHandle('settings:list-skills', () => service.listSkills())

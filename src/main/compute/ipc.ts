@@ -33,6 +33,7 @@ import { getProjectDbClient } from '../projects/prisma-client'
 import { createLogger, errorLogFields } from '../logger'
 import { resolveDataRoot, resolveStorageRoot } from '../storage-root'
 import { SettingsRepository } from '../settings/repository'
+import { tryDecryptKey } from '../settings/crypto'
 import { getAppClaudeConfigDir } from '../settings/provider-env'
 import { codexStorageDir, codexSubscriptionStorageDir } from '../agent-framework/codex'
 import { opencodeConfigDir } from '../agent-framework/opencode'
@@ -279,6 +280,20 @@ const createComputeHandlers = (
       const sshRunner = new SystemSshRunner()
       const scpRunner = new SystemScpRunner()
 
+      // External compute dispatch (modal / nvidia_nim): resolves endpoint configs and their
+      // credential secrets from the settings repository, so the dispatcher can authenticate.
+      const externalDispatch = settingsRepository
+        ? {
+            externalEndpoints: async () =>
+              (await settingsRepository.getSettings()).externalComputeEndpoints ?? [],
+            resolveCredentialSecret: async (credentialId: string) => {
+              const credentials = (await settingsRepository.getSettings()).credentials ?? []
+              const entry = credentials.find((candidate) => candidate.id === credentialId)
+              return entry?.secretRef ? tryDecryptKey(entry.secretRef) : undefined
+            }
+          }
+        : undefined
+
       // ConcurrencyManager owns the complete publish-and-drain policy. It hands that same bound
       // sink to queued dispatches, while ComputeService delegates direct dispatch and poller updates
       // to it. This keeps one contract without a construction-order callback box.
@@ -292,7 +307,8 @@ const createComputeHandlers = (
                 scpRunner,
                 hostRepository: repository,
                 jobRepository,
-                onJobUpdated: handleJobUpdated
+                onJobUpdated: handleJobUpdated,
+                ...(externalDispatch ?? {})
               }),
             onJobUpdated
           )
@@ -308,7 +324,8 @@ const createComputeHandlers = (
         undefined,
         artifactResolver,
         storageRoot,
-        concurrencyManager
+        concurrencyManager,
+        externalDispatch
       )
     })()
 

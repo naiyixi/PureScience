@@ -63,6 +63,11 @@ import type {
   StoredCredential,
   EgressSettings
 } from '../../shared/settings'
+import type {
+  ExternalComputeEndpoint,
+  CreateExternalComputeEndpointRequest
+} from '../../shared/compute'
+import { externalComputeProviderId } from '../../shared/compute'
 import type { PackageMirror } from '../../shared/mirror'
 import type { NotebookLanguage } from '../../shared/notebook'
 import type { RuntimeEnablement, RuntimeSelection } from '../../shared/notebook-runtime'
@@ -519,6 +524,69 @@ class SettingsService {
     const persisted = await this.repository.setEgress(egress)
     await applyEgressSettings(persisted.egress)
     return persisted.egress ?? { enabled: false, groups: {}, customDomains: [] }
+  }
+
+  // Lists configured external compute endpoints (Modal / NVIDIA NIM).
+  async listExternalComputeEndpoints(): Promise<ExternalComputeEndpoint[]> {
+    return (await this.repository.getSettings()).externalComputeEndpoints ?? []
+  }
+
+  // Upserts an external compute endpoint. `id` absent → create with a generated providerId.
+  async setExternalComputeEndpoint(
+    request: CreateExternalComputeEndpointRequest
+  ): Promise<ExternalComputeEndpoint[]> {
+    const settings = await this.repository.getSettings()
+    const endpoints = settings.externalComputeEndpoints ?? []
+    const now = Date.now()
+    const existing = request.alias
+      ? endpoints.find(
+          (candidate) =>
+            candidate.providerId === externalComputeProviderId(request.kind, request.alias)
+        )
+      : undefined
+
+    const endpoint: ExternalComputeEndpoint = existing
+      ? {
+          ...existing,
+          displayName: request.displayName?.trim() || existing.displayName,
+          credentialId: request.credentialId,
+          ...(request.baseUrl !== undefined
+            ? { baseUrl: request.baseUrl.trim() || undefined }
+            : {}),
+          ...(request.modelName !== undefined
+            ? { modelName: request.modelName.trim() || undefined }
+            : {}),
+          updatedAt: now
+        }
+      : {
+          id: `ext-${now.toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+          providerId: externalComputeProviderId(request.kind, request.alias),
+          kind: request.kind,
+          displayName: request.displayName?.trim() || request.alias,
+          credentialId: request.credentialId,
+          ...(request.baseUrl?.trim() ? { baseUrl: request.baseUrl.trim() } : {}),
+          ...(request.modelName?.trim() ? { modelName: request.modelName.trim() } : {}),
+          detailsDoc: request.detailsDoc ?? '',
+          detailsUpdatedAt: undefined,
+          createdAt: now,
+          updatedAt: now
+        }
+
+    const next = existing
+      ? endpoints.map((candidate) => (candidate.id === endpoint.id ? endpoint : candidate))
+      : [...endpoints, endpoint]
+    await this.repository.setExternalComputeEndpoints(next)
+    return next
+  }
+
+  // Removes an external compute endpoint by providerId.
+  async deleteExternalComputeEndpoint(providerId: string): Promise<ExternalComputeEndpoint[]> {
+    const settings = await this.repository.getSettings()
+    const next = (settings.externalComputeEndpoints ?? []).filter(
+      (candidate) => candidate.providerId !== providerId
+    )
+    await this.repository.setExternalComputeEndpoints(next)
+    return next
   }
 
   private async migrateLegacyKeyRefs(settings: StoredSettings): Promise<StoredSettings> {

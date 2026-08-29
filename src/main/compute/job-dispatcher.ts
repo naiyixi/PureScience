@@ -1,8 +1,10 @@
 import { createHash } from 'node:crypto'
 
-import type { ComputeJob } from '../../shared/compute'
-import type { ComputeJobRepository } from './job-repository'
+import type { ComputeJob, ExternalComputeEndpoint } from '../../shared/compute'
+import { isExternalComputeProviderId } from '../../shared/compute'
+import { runModalJob, runNimJob } from './external-runner'
 import type { ComputeHostRepository } from './repository'
+import type { ComputeJobRepository } from './job-repository'
 import type { SshRunner } from './ssh-runner'
 import { resolveSshTarget } from './ssh-runner'
 import type { ScpRunner } from './scp-runner'
@@ -117,6 +119,12 @@ export type DispatcherDeps = {
   // Tracks this dispatch as in-flight so the poller won't mistake a job that is still staging
   // inputs for a restart-orphaned one. Defaults to the process-wide shared tracker.
   dispatchTracker?: DispatchTracker
+  // External compute endpoints (modal / nvidia_nim), resolved lazily from settings. Absent ⇒
+  // external provider ids fail dispatch with a clear error (unconfigured environment).
+  externalEndpoints?: () => Promise<ExternalComputeEndpoint[]>
+  // Resolves the plaintext secret for a Credentials-panel credential id. Absent ⇒ external
+  // dispatch cannot authenticate.
+  resolveCredentialSecret?: (credentialId: string) => Promise<string | undefined>
 }
 
 // Dispatches one job to its remote host asynchronously (not awaited by submit_job RPC).
@@ -133,12 +141,82 @@ export async function dispatchJob(jobId: string, deps: DispatcherDeps): Promise<
   }
 }
 
+// Dispatches a job to an external compute target (Modal serverless GPU or NVIDIA NIM inference).
+// The endpoint config and its credential secret come from the injected providers; without them the
+// job fails with a clear dispatch error.
+async function dispatchExternalJob(job: ComputeJob, deps: DispatcherDeps): Promise<void> {
+  const { jobRepository, onJobUpdated } = deps
+
+  const fail = async (
+    stderrTail: string,
+    errorCode: 'dispatch_failed' | 'host_unreachable' = 'dispatch_failed'
+  ): Promise<void> => {
+    const updated = await jobRepository.update(job.job_id, {
+      status: 'error',
+      errorCode,
+      stderrTail,
+      finishedAt: new Date()
+    })
+    onJobUpdated?.(updated)
+  }
+
+  if (!deps.externalEndpoints || !deps.resolveCredentialSecret) {
+    await fail('External compute dispatch is not configured in this environment.')
+    return
+  }
+
+  const endpoints = await deps.externalEndpoints()
+  const endpoint = endpoints.find((candidate) => candidate.providerId === job.provider_id)
+  if (!endpoint) {
+    await fail(
+      `No external compute endpoint configured for ${job.provider_id}.`,
+      'host_unreachable'
+    )
+    return
+  }
+
+  const secret = await deps.resolveCredentialSecret(endpoint.credentialId)
+  if (!secret) {
+    await fail(
+      `Credential ${endpoint.credentialId} has no secret — configure it in Settings → Credentials.`
+    )
+    return
+  }
+
+  let outcome
+  if (endpoint.kind === 'modal') {
+    // Modal: expose the credential as the standard Modal token env vars; the CLI authenticates
+    // from them. `modal run` executes the job command in a GPU container.
+    outcome = await runModalJob(endpoint, job.command, {
+      MODAL_TOKEN_ID: secret,
+      MODAL_TOKEN_SECRET: secret
+    })
+  } else {
+    outcome = await runNimJob(endpoint, job.command, secret)
+  }
+
+  const updated = await jobRepository.update(job.job_id, {
+    status: outcome.exitCode === 0 ? 'success' : 'failed',
+    exitCode: outcome.exitCode,
+    stdoutTail: outcome.stdout.slice(-64_000),
+    stderrTail: outcome.stderr.slice(-64_000),
+    finishedAt: new Date()
+  })
+  onJobUpdated?.(updated)
+}
+
 async function dispatchJobInner(jobId: string, deps: DispatcherDeps): Promise<void> {
   const { runner, hostRepository, jobRepository, onJobUpdated } = deps
   const scpRunner = deps.scpRunner ?? new SystemScpRunner()
 
   const job = await jobRepository.get(jobId)
   if (!job) return // already gone (unlikely but guard anyway)
+
+  // External compute targets (modal / nvidia_nim) are dispatched by kind instead of SSH.
+  if (isExternalComputeProviderId(job.provider_id)) {
+    await dispatchExternalJob(job, deps)
+    return
+  }
 
   const host = await hostRepository.get(job.provider_id)
   if (!host) {
