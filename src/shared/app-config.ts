@@ -9,8 +9,8 @@ const GITHUB_REPO_URL = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`
 export const APP = {
   name: 'PureScience',
   // Chinese release codename for the current version — see CHANGELOG.md「版本代号」.
-  releaseCode: '启明',
-  releaseCodeMeaning: '启明星，长夜之后的第一缕光',
+  releaseCode: '浑仪',
+  releaseCodeMeaning: '张衡浑天仪，窥天测地、度量万象——科学工作台的正式起点',
   githubOwner: GITHUB_OWNER,
   githubRepo: GITHUB_REPO,
   links: {
