@@ -36,7 +36,7 @@ pass "打包版存在，版本 $APP_VERSION"
 
 # 2. 线上更新清单
 MANIFEST_URL="https://github.com/naiyixi/PureScience/releases/latest/download/version.json"
-MANIFEST=$(curl -sL --max-time 20 "$MANIFEST_URL" 2>/dev/null) || fail "无法获取更新清单"
+MANIFEST=$(curl -sL --max-time 90 --retry 2 --retry-delay 2 "$MANIFEST_URL" 2>/dev/null) || fail "无法获取更新清单"
 LATEST=$(printf '%s' "$MANIFEST" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>console.log(JSON.parse(s).version))" 2>/dev/null)
 [[ -n "$LATEST" ]] || fail "更新清单解析失败"
 pass "线上最新版本: $LATEST"
@@ -44,11 +44,11 @@ pass "线上最新版本: $LATEST"
 # 3. 版本比较（1.0.0 > 0.17.2）
 node -e "
 const cmp=(a,b)=>{const p=a.split('.'),q=b.split('.');for(let i=0;i<Math.max(p.length,q.length);i++){const x=+p[i]||0,y=+q[i]||0;if(x>y)return 1;if(x<y)return -1}return 0};
-const newer=cmp('$LATEST','$APP_VERSION')>0;
+const newer=cmp('${LATEST}','${APP_VERSION}')>0;
 console.log(newer?'NEWER':'NOT_NEWER');
 process.exit(newer?0:1);
-" >/dev/null 2>&1 || fail "线上 $LATEST 未高于本地 $APP_VERSION —— 1.0.0 尚未发布或清单未更新"
-pass "版本跳迁可发现（$APP_VERSION → $LATEST）"
+" >/dev/null 2>&1 || fail "线上 ${LATEST} 未高于本地 ${APP_VERSION} —— 1.0.0 尚未发布或清单未更新"
+pass "版本跳迁可发现 (${APP_VERSION} -> ${LATEST})"
 
 # 4. 清单下载条目完整性（platformDownloadKey: mac-arm64）
 node -e "
