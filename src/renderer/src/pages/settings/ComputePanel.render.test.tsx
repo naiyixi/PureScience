@@ -34,6 +34,14 @@ beforeEach(() => {
   document.body.appendChild(container)
   root = createRoot(container)
   useComputeStore.setState({ ...createInitialComputeState(), isLoaded: true, loadHosts: vi.fn() })
+  // The ExternalComputeSection reads settings + credentials on mount; stub them so the panel
+  // renders without a bridge.
+  ;(window as unknown as { api: unknown }).api = {
+    settings: {
+      getExternalComputeEndpoints: vi.fn(async () => []),
+      getCredentials: vi.fn(async () => [])
+    }
+  }
 })
 
 afterEach(() => {

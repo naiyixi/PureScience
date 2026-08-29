@@ -12,6 +12,7 @@ import type {
   StoredCredential
 } from '../../shared/settings'
 import type { EgressSettings } from '../../shared/egress'
+import type { ExternalComputeEndpoint } from '../../shared/compute'
 import { SETTINGS_FILE_VERSION } from '../../shared/settings'
 import type { OfficialVendorId } from '../../shared/provider-registry'
 import type { PermissionProfileId } from '../../shared/permission-profiles'
@@ -202,6 +203,8 @@ export type StoredSettings = {
   credentials?: StoredCredential[]
   // Network egress allowlist for child processes (notebook/repl/shell). Absent means unrestricted.
   egress?: EgressSettings
+  // External compute endpoints (Modal serverless GPU, NVIDIA NIM inference). Absent means none.
+  externalComputeEndpoints?: ExternalComputeEndpoint[]
   // Absolute path of the relocatable data root (artifacts/notebooks/runtime/uploads). Absent means
   // "use the config root" (default). Only written after a successful migration; a change needs a restart.
   dataRoot?: string

@@ -27,6 +27,7 @@ const expectedChannels = [
   'settings:get-memory',
   'settings:list-credentials',
   'settings:get-egress',
+  'settings:list-external-compute-endpoints',
   'settings:get-package-mirror',
   'settings:get-preflight',
   'settings:get-settings',
@@ -53,6 +54,8 @@ const expectedChannels = [
   'settings:delete-credential',
   'settings:test-credential',
   'settings:set-egress',
+  'settings:set-external-compute-endpoint',
+  'settings:delete-external-compute-endpoint',
   'settings:set-notifications-enabled',
   'settings:set-package-mirror',
   'settings:validate-provider',
@@ -125,7 +128,7 @@ const createDependencies = (): Readonly<{
 }
 
 describe('Settings core application commands', () => {
-  it('installs the exact 38-command inventory and dispatches a remote-safe preflight query', async () => {
+  it('installs the exact 41-command inventory and dispatches a remote-safe preflight query', async () => {
     const { dependencies, serviceMethod } = createDependencies()
     const preflight = { agentReady: true }
     serviceMethod('getPreflight').mockResolvedValue(preflight)

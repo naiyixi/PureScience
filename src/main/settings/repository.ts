@@ -19,6 +19,7 @@ import type {
   ValidationCategory
 } from '../../shared/settings'
 import type { EgressSettings } from '../../shared/egress'
+import type { ExternalComputeEndpoint } from '../../shared/compute'
 import {
   CLAUDE_ISOLATED_PROVIDER_ID,
   CLAUDE_SHARED_PROVIDER_ID,
@@ -454,6 +455,46 @@ export const sanitizeCredentials = (value: unknown): StoredCredential[] | undefi
   return credentials
 }
 
+// Rebuilds the stored external compute endpoints from untrusted JSON: only valid kind/providerId
+// pairs with a credential reference survive.
+export const sanitizeExternalComputeEndpoints = (
+  value: unknown
+): ExternalComputeEndpoint[] | undefined => {
+  if (!Array.isArray(value)) return undefined
+
+  const endpoints = value
+    .map((entry) => {
+      if (!isRecord(entry)) return undefined
+      const id = asString(entry.id)
+      const providerId = asString(entry.providerId)
+      const kind = asString(entry.kind)
+      const displayName = asString(entry.displayName)
+      const credentialId = asString(entry.credentialId)
+      if (!id || !providerId || !kind || !displayName || !credentialId) return undefined
+      if (kind !== 'modal' && kind !== 'nvidia_nim') return undefined
+      if (!providerId.startsWith(`${kind}:`)) return undefined
+      const baseUrl = asString(entry.baseUrl)
+      const modelName = asString(entry.modelName)
+      const detailsDoc = asString(entry.detailsDoc)
+      return {
+        id,
+        providerId,
+        kind,
+        displayName,
+        credentialId,
+        ...(baseUrl !== undefined ? { baseUrl } : {}),
+        ...(modelName !== undefined ? { modelName } : {}),
+        detailsDoc: detailsDoc ?? '',
+        detailsUpdatedAt: asNumber(entry.detailsUpdatedAt),
+        createdAt: asNumber(entry.createdAt) ?? 0,
+        updatedAt: asNumber(entry.updatedAt) ?? 0
+      }
+    })
+    .filter((entry): entry is ExternalComputeEndpoint => entry !== undefined)
+
+  return endpoints
+}
+
 // Rebuilds the stored egress allowlist settings from untrusted JSON: only boolean group flags and
 // string domains survive. A malformed payload yields undefined ("unrestricted default").
 export const sanitizeEgressSettings = (value: unknown): EgressSettings | undefined => {
@@ -658,6 +699,10 @@ const sanitizeSettings = (value: unknown): StoredSettings => {
   const egress = sanitizeEgressSettings(value.egress)
 
   if (egress) settings.egress = egress
+
+  const externalComputeEndpoints = sanitizeExternalComputeEndpoints(value.externalComputeEndpoints)
+
+  if (externalComputeEndpoints) settings.externalComputeEndpoints = externalComputeEndpoints
 
   const pathsNormalizedAt = asNumber(value.pathsNormalizedAt)
 
@@ -1120,6 +1165,11 @@ class SettingsRepository {
       customDomains: []
     }
     return this.mutate((settings) => ({ ...settings, egress: sanitized }))
+  }
+
+  // Replaces the external compute endpoints list.
+  async setExternalComputeEndpoints(endpoints: ExternalComputeEndpoint[]): Promise<StoredSettings> {
+    return this.mutate((settings) => ({ ...settings, externalComputeEndpoints: endpoints }))
   }
 
   // Persists the selected agent backend; applied on the next reconnect.

@@ -36,6 +36,7 @@ import {
 } from './scp-runner'
 import type { ComputeJobRepository } from './job-repository'
 import { computeRemoteWorkdir, dispatchJob, hashCommand } from './job-dispatcher'
+import type { ExternalComputeEndpoint } from '../../shared/compute'
 import type { StagedInputEntry } from './job-dispatcher'
 import { getJobHarvestDir } from './harvest-engine'
 import { getNotebookSessionRoot } from '../notebook/repository'
@@ -311,7 +312,11 @@ export class ComputeService {
     private readonly onJobUpdated?: (job: import('../../shared/compute').ComputeJob) => void,
     private readonly artifactResolver?: ArtifactResolver,
     private readonly storageRoot?: string,
-    private readonly concurrencyManager?: ConcurrencyManager
+    private readonly concurrencyManager?: ConcurrencyManager,
+    private readonly externalDispatch?: {
+      externalEndpoints: () => Promise<ExternalComputeEndpoint[]>
+      resolveCredentialSecret: (credentialId: string) => Promise<string | undefined>
+    }
   ) {
     this.scpRunner = scpRunner ?? new SystemScpRunner()
   }
@@ -700,8 +705,7 @@ export class ComputeService {
       ) as Error & { computeCallError: ComputeCallError }
       err.computeCallError = {
         error_code: 'approval_denied',
-        message:
-          `Approval denied for call_command on ${host.displayName}. You do not have authorization for this operation and must not retry or approximate it through another route in the current turn.`,
+        message: `Approval denied for call_command on ${host.displayName}. You do not have authorization for this operation and must not retry or approximate it through another route in the current turn.`,
         retry_after_user_action: false
       }
       throw err
@@ -1302,7 +1306,8 @@ export class ComputeService {
         scpRunner: this.scpRunner,
         hostRepository: this.repository,
         jobRepository: this.jobRepository,
-        onJobUpdated: this.handleJobUpdated
+        onJobUpdated: this.handleJobUpdated,
+        ...(this.externalDispatch ? { ...this.externalDispatch } : {})
       })
     }
 

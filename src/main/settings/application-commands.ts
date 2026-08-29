@@ -18,6 +18,7 @@ import type {
   SetCredentialRequest,
   TestCredentialRequest,
   EgressSettings,
+  CreateExternalComputeEndpointRequest,
   ValidateProviderRequest
 } from '../../shared/settings'
 import {
@@ -49,6 +50,7 @@ type CoreSettingsCommandStore = Pick<
   | 'getMemory'
   | 'listCredentials'
   | 'getEgress'
+  | 'listExternalComputeEndpoints'
   | 'getPackageMirror'
   | 'getPreflight'
   | 'getSettingsView'
@@ -75,6 +77,8 @@ type CoreSettingsCommandStore = Pick<
   | 'deleteCredential'
   | 'testCredential'
   | 'setEgress'
+  | 'setExternalComputeEndpoint'
+  | 'deleteExternalComputeEndpoint'
   | 'validateProvider'
   | 'startXaiSignIn'
   | 'completeXaiSignIn'
@@ -143,6 +147,11 @@ const settingsCoreApplicationCommands = Object.freeze({
   getEgress: defineApplicationCommand<'settings:get-egress', readonly [], StoreResult<'getEgress'>>(
     'settings:get-egress'
   ),
+  getExternalComputeEndpoints: defineApplicationCommand<
+    'settings:list-external-compute-endpoints',
+    readonly [],
+    StoreResult<'listExternalComputeEndpoints'>
+  >('settings:list-external-compute-endpoints'),
   getPackageMirror: defineApplicationCommand<
     'settings:get-package-mirror',
     readonly [],
@@ -271,6 +280,16 @@ const settingsCoreApplicationCommands = Object.freeze({
     readonly [egress: EgressSettings],
     StoreResult<'setEgress'>
   >('settings:set-egress'),
+  setExternalComputeEndpoint: defineApplicationCommand<
+    'settings:set-external-compute-endpoint',
+    readonly [request: CreateExternalComputeEndpointRequest],
+    StoreResult<'setExternalComputeEndpoint'>
+  >('settings:set-external-compute-endpoint'),
+  deleteExternalComputeEndpoint: defineApplicationCommand<
+    'settings:delete-external-compute-endpoint',
+    readonly [providerId: string],
+    StoreResult<'deleteExternalComputeEndpoint'>
+  >('settings:delete-external-compute-endpoint'),
   setNotificationsEnabled: defineApplicationCommand<
     'settings:set-notifications-enabled',
     readonly [request: SetNotificationsEnabledRequest],
@@ -346,6 +365,7 @@ const settingsCoreApplicationCommandGroup = defineApplicationCommandGroup('setti
   settingsCoreApplicationCommands.getMemory,
   settingsCoreApplicationCommands.getCredentials,
   settingsCoreApplicationCommands.getEgress,
+  settingsCoreApplicationCommands.getExternalComputeEndpoints,
   settingsCoreApplicationCommands.getPackageMirror,
   settingsCoreApplicationCommands.getPreflight,
   settingsCoreApplicationCommands.getSettings,
@@ -372,6 +392,8 @@ const settingsCoreApplicationCommandGroup = defineApplicationCommandGroup('setti
   settingsCoreApplicationCommands.deleteCredential,
   settingsCoreApplicationCommands.testCredential,
   settingsCoreApplicationCommands.setEgress,
+  settingsCoreApplicationCommands.setExternalComputeEndpoint,
+  settingsCoreApplicationCommands.deleteExternalComputeEndpoint,
   settingsCoreApplicationCommands.setNotificationsEnabled,
   settingsCoreApplicationCommands.setPackageMirror,
   settingsCoreApplicationCommands.validateProvider,
@@ -502,6 +524,18 @@ const registerCoreSettingsApplicationCommands = (
       'settings:set-egress': ({ args, callerContext }) => {
         requireLocalCaller(callerContext, 'settings:set-egress')
         return dependencies.service.setEgress(args[0])
+      },
+      'settings:list-external-compute-endpoints': ({ callerContext }) => {
+        requireLocalCaller(callerContext, 'settings:list-external-compute-endpoints')
+        return dependencies.service.listExternalComputeEndpoints()
+      },
+      'settings:set-external-compute-endpoint': ({ args, callerContext }) => {
+        requireLocalCaller(callerContext, 'settings:set-external-compute-endpoint')
+        return dependencies.service.setExternalComputeEndpoint(args[0])
+      },
+      'settings:delete-external-compute-endpoint': ({ args, callerContext }) => {
+        requireLocalCaller(callerContext, 'settings:delete-external-compute-endpoint')
+        return dependencies.service.deleteExternalComputeEndpoint(args[0])
       },
       'settings:set-package-mirror': ({ args, callerContext }) => {
         requireLocalCaller(callerContext, 'settings:set-package-mirror')

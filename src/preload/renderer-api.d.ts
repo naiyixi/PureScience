@@ -191,6 +191,8 @@ import type {
   SetCredentialRequest,
   TestCredentialRequest,
   EgressSettings,
+  ExternalComputeEndpoint,
+  CreateExternalComputeEndpointRequest,
   Preflight,
   RefreshProviderModelsRequest,
   RefreshProviderModelsResult,
@@ -486,6 +488,11 @@ export interface PureScienceAPI {
     testCredential(request: TestCredentialRequest): Promise<CredentialTestResult>
     getEgress(): Promise<EgressSettings | undefined>
     setEgress(egress: EgressSettings): Promise<EgressSettings>
+    getExternalComputeEndpoints(): Promise<ExternalComputeEndpoint[]>
+    setExternalComputeEndpoint(
+      request: CreateExternalComputeEndpointRequest
+    ): Promise<ExternalComputeEndpoint[]>
+    deleteExternalComputeEndpoint(providerId: string): Promise<ExternalComputeEndpoint[]>
     listSkills(): Promise<SkillView[]>
     getSkillDetail(id: string): Promise<SkillDetailView>
     exportSkill(request: ExportSkillRequest): Promise<ExportSkillResult>
