@@ -10,6 +10,7 @@ export const WEB_INVOKE_CHANNELS = {
   'acp.getPlanProjection': 'acp:get-plan-projection',
   'acp.getState': 'acp:get-state',
   'acp.resetSessionContext': 'acp:reset-session-context',
+  'acp.respondElicitation': 'acp:respond-elicitation',
   'acp.respondPlan': 'acp:respond-plan',
   'acp.respondToPermission': 'acp:respond-permission',
   'acp.resumeSession': 'acp:resume-session',
@@ -256,6 +257,7 @@ export const WEB_INVOKE_CHANNELS = {
 } as const
 
 export const WEB_EVENT_CHANNELS = {
+  'acp.onElicitationRequest': 'acp:elicitation-request',
   'acp.onEvent': 'acp:event',
   'acp.onPermissionRequest': 'acp:permission-request',
   'acp.onState': 'acp:state',

@@ -3,6 +3,7 @@ import type {
   AcpPermissionRequest,
   AcpContextUsage
 } from '../../../../shared/acp'
+import type { ElicitationAnswer, ElicitationRequestView } from '../../../../shared/elicitation'
 import type { NotebookSessionReference } from '../../../../shared/notebook'
 import type {
   PermissionProfileId,
@@ -64,6 +65,7 @@ import { ComposerContextUsage } from './ComposerContextUsage'
 import { ContextWindowDialog } from './ContextWindowDialog'
 import { ComposerModelPicker } from './ComposerModelPicker'
 import { PermissionApprovalControls } from './PermissionApprovalControls'
+import { ElicitationCards } from './ElicitationCards'
 import { normalizeRunFailureError } from './error-report'
 import { ReportErrorDialog } from './ReportErrorDialog'
 import { SessionInterruptedBanner } from './SessionInterruptedBanner'
@@ -141,6 +143,7 @@ type ConversationPanelProps = {
   isUploadingAttachments: boolean
   notebookReference: NotebookSessionReference | undefined
   pendingPermissions: AcpPermissionRequest[]
+  pendingElicitations: ElicitationRequestView[]
   permissionProfile: PermissionProfileId
   permissionProfileState: SessionPermissionProfileState | undefined
   permissionGrants: AcpPermissionGrant[]
@@ -179,6 +182,11 @@ type ConversationPanelProps = {
   onTogglePreviewPanel?: () => void
   onOpenSidebar?: () => void
   onRespondToPermission: (requestId: string, optionId?: string) => Promise<void>
+  onRespondToElicitation: (
+    elicitationId: string,
+    action: 'accept' | 'decline',
+    answers?: ElicitationAnswer
+  ) => void
   onPermissionProfileChange: (profile: PermissionProfileId) => void
   onRevokePermissionGrant: (categoryKey: string) => void
   onClearPermissionGrants: () => void
@@ -229,6 +237,8 @@ const ConversationPanel = ({
   isUploadingAttachments,
   notebookReference,
   pendingPermissions,
+  pendingElicitations,
+  onRespondToElicitation,
   permissionProfile,
   permissionProfileState,
   permissionGrants,
@@ -556,6 +566,12 @@ const ConversationPanel = ({
                         }
                       : undefined
                   }
+                />
+
+                {/* Structured clarification cards (ACP elicitation) for the visible session. */}
+                <ElicitationCards
+                  requests={pendingElicitations}
+                  onRespond={onRespondToElicitation}
                 />
 
                 {/* Switching between a compact job bar and Notebook chrome remounts this layer so a

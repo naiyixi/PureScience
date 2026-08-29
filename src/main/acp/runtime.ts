@@ -1,5 +1,12 @@
 import * as acp from '@agentclientprotocol/sdk'
-import type { ActiveSession, ClientConnection, PromptResponse } from '@agentclientprotocol/sdk'
+import type {
+  ActiveSession,
+  ClientConnection,
+  CompleteElicitationNotification,
+  CreateElicitationRequest,
+  CreateElicitationResponse,
+  PromptResponse
+} from '@agentclientprotocol/sdk'
 import type { ChildProcessWithoutNullStreams } from 'node:child_process'
 import { join } from 'node:path'
 
@@ -144,6 +151,10 @@ type AcpRuntimeOptions = {
   skills?: AcpTurnSkillHooks
   plan?: AcpRuntimePlanOptions
   memory?: AcpRuntimeMemoryOptions
+  // App-owned structured clarification (ACP elicitation): when present, agent
+  // `elicitation/create` requests are projected to the renderer and block until the user
+  // answers. Absent ⇒ requests fail closed with `cancel` so the agent never hangs.
+  elicitation?: AcpRuntimeElicitationOptions
   // The agent backend to drive. Defaults to Claude Code; selecting another (opencode) swaps only the
   // framework-coupled behavior (spawn, session meta, permission-mode mapping) via AgentFramework.
   framework?: AgentFramework
@@ -273,6 +284,17 @@ type AcpRuntimeMemoryOptions = {
   getRpcConnection: (binding: { sessionId: string }) => Promise<MemoryRpcConnection>
   registerSessionAlias?: (aliasSessionId: string, sessionId: string) => void
 }
+
+// Structured clarification surface the runtime forwards agent elicitation requests to. Only the
+// blocking request and the agent-side completion notification cross the boundary; the broker owns
+// the pending map and the renderer projection.
+type AcpRuntimeElicitationOptions = Readonly<{
+  requestElicitation: (
+    request: CreateElicitationRequest,
+    sessionId: string
+  ) => Promise<CreateElicitationResponse>
+  observeElicitationComplete: (notification: CompleteElicitationNotification) => void
+}>
 // Converts unknown thrown values into user-visible error text. Total AND always returns a string: a
 // hostile message getter or a throwing String() coercion (e.g. a Proxy-wrapped Error) must not escape,
 // and a non-string message (object/bigint/Symbol/undefined) must be coerced — this text flows into the
@@ -804,6 +826,12 @@ class AcpRuntime {
   ): Promise<AcpAgentConnectionCandidate> {
     const hooks: AcpAgentConnectionHooks = {
       requestPermission: (params) => this.permissionContext.handleProviderRequest(params),
+      requestElicitation: (request, sessionId) =>
+        this.options.elicitation
+          ? this.options.elicitation.requestElicitation(request, sessionId)
+          : { action: 'cancel' },
+      observeElicitationComplete: (notification) =>
+        this.options.elicitation?.observeElicitationComplete(notification),
       observeSessionUpdate: (notification) =>
         this.permissionContext.observeProviderUpdate(notification),
       observeClaudeSdkMessage: (params) => this.observeClaudeSdkMessage(params),

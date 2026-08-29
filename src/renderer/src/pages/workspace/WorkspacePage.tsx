@@ -5,6 +5,7 @@ import { MessagesSquare, PanelLeft, PanelRight } from 'lucide-react'
 import type { PanelImperativeHandle, PanelSize } from 'react-resizable-panels'
 
 import type { NotebookSessionReference } from '../../../../shared/notebook'
+import type { ElicitationAnswer, ElicitationRequestView } from '../../../../shared/elicitation'
 import {
   DEFAULT_PERMISSION_PROFILE,
   type PermissionProfileId
@@ -1048,6 +1049,38 @@ const WorkspacePage = ({
   const visiblePermissionRequests = useMemo(
     () => getVisiblePermissionRequests(pendingPermissions, activeSession?.id),
     [activeSession?.id, pendingPermissions]
+  )
+  // Structured clarification (ACP elicitation) cards, scoped to the visible session. The broker
+  // broadcasts each pending request on its own channel; the renderer keeps a local copy until the
+  // user answers, declines, or the broker settles it (returns false on respond).
+  const [pendingElicitations, setPendingElicitations] = useState<ElicitationRequestView[]>([])
+  useEffect(() => {
+    // Optional for surfaces whose preload predates the elicitation channel (and tests that mock
+    // window.api partially): without the capability there is nothing to subscribe to.
+    return window.api.acp?.onElicitationRequest?.((request) => {
+      setPendingElicitations((current) => [
+        ...current.filter((item) => item.id !== request.id),
+        request
+      ])
+    })
+  }, [])
+  const respondToElicitation = useCallback(
+    (elicitationId: string, action: 'accept' | 'decline', answers?: ElicitationAnswer): void => {
+      void window.api.acp
+        .respondElicitation({ elicitationId, action, answers })
+        .then((settled) => {
+          if (settled) {
+            setPendingElicitations((current) =>
+              current.filter((item) => item.id !== elicitationId)
+            )
+          }
+        })
+    },
+    []
+  )
+  const visibleElicitations = useMemo(
+    () => pendingElicitations.filter((request) => request.sessionId === activeSession?.id),
+    [activeSession?.id, pendingElicitations]
   )
   const activeNotebookReference = activeSession ? notebookReferences[activeSession.id] : undefined
   const activePermissionProfile =
@@ -2626,6 +2659,8 @@ const WorkspacePage = ({
             isUploadingAttachments={isUploadingAttachments}
             notebookReference={activeNotebookReference}
             pendingPermissions={visiblePermissionRequests}
+            pendingElicitations={visibleElicitations}
+            onRespondToElicitation={respondToElicitation}
             permissionProfile={activePermissionProfile}
             permissionProfileState={activePermissionProfileState}
             permissionGrants={activePermissionGrants}

@@ -233,6 +233,7 @@ describe('ACP module transport seam', () => {
       'acp:get-plan-projection',
       'acp:get-state',
       'acp:reset-session-context',
+      'acp:respond-elicitation',
       'acp:respond-permission',
       'acp:respond-plan',
       'acp:resume-session',
@@ -241,7 +242,12 @@ describe('ACP module transport seam', () => {
       'acp:set-permission-profile'
     ])
     expect(invokeChannels).toEqual([...handlers.keys()].sort())
-    expect(eventChannels).toEqual(['acp:event', 'acp:permission-request', 'acp:state'])
+    expect(eventChannels).toEqual([
+      'acp:elicitation-request',
+      'acp:event',
+      'acp:permission-request',
+      'acp:state'
+    ])
   })
 
   it('constructs the coordinator before installing Electron handlers', () => {

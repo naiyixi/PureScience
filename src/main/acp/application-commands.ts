@@ -13,6 +13,7 @@ import type {
   AcpSetPermissionProfileRequest,
   AcpStateSnapshot
 } from '../../shared/acp'
+import type { ElicitationRespondRequest } from '../../shared/elicitation'
 import {
   defineApplicationCommand,
   defineApplicationCommandGroup,
@@ -100,7 +101,12 @@ const acpCommands = Object.freeze({
     'acp:respond-plan',
     readonly [request: Parameters<AcpRuntimeCoordinator['respondSessionPlan']>[0]],
     unknown
-  >('acp:respond-plan')
+  >('acp:respond-plan'),
+  respondElicitation: defineApplicationCommand<
+    'acp:respond-elicitation',
+    readonly [request: ElicitationRespondRequest],
+    boolean
+  >('acp:respond-elicitation')
 })
 
 const acpApplicationCommands = defineApplicationCommandGroup('acp', [
@@ -119,7 +125,8 @@ const acpApplicationCommands = defineApplicationCommandGroup('acp', [
   acpCommands.setPermissionProfile,
   acpCommands.revokePermissionGrant,
   acpCommands.getPlanProjection,
-  acpCommands.respondPlan
+  acpCommands.respondPlan,
+  acpCommands.respondElicitation
 ] as const)
 
 type AcpApplicationCommandRuntime = Pick<
@@ -136,6 +143,7 @@ type AcpApplicationCommandRuntime = Pick<
   | 'revokePermissionGrant'
   | 'getSessionPlanProjection'
   | 'respondSessionPlan'
+  | 'respondElicitation'
 >
 
 type AcpApplicationCommandDependencies = Readonly<{
@@ -227,6 +235,12 @@ const registerAcpCommands = (
               () => dependencies.runtime.respondSessionPlan(invocation.args[0])
             )
           : dependencies.runtime.respondSessionPlan(invocation.args[0])
+      },
+      'acp:respond-elicitation': (invocation) => {
+        if (!canSatisfyHumanApproval(invocation.callerContext)) {
+          throw new Error('Only a current human caller can respond to clarification requests.')
+        }
+        return dependencies.runtime.respondElicitation(invocation.args[0])
       }
     })
     return scope.complete()

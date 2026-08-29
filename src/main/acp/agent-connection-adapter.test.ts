@@ -50,6 +50,8 @@ const asAgentProcess = (process: FakeAgentProcess): ChildProcessWithoutNullStrea
 
 const hooks = (): AcpAgentConnectionHooks => ({
   requestPermission: vi.fn(async () => ({ outcome: { outcome: 'cancelled' as const } })),
+  requestElicitation: vi.fn(async () => ({ action: 'cancel' as const })),
+  observeElicitationComplete: vi.fn(),
   observeSessionUpdate: vi.fn(),
   observeClaudeSdkMessage: vi.fn(),
   filesystem: {

@@ -13,17 +13,17 @@ describe('renderer contract catalog', () => {
     const projection = projectRendererContractMaps(RENDERER_CONTRACT_CATALOG)
 
     expect(RENDERER_CONTRACT_GROUPS).toHaveLength(31)
-    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(350)
+    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(352)
     expect(projection.invoke).toEqual(WEB_INVOKE_CHANNELS)
     expect(projection.event).toEqual(WEB_EVENT_CHANNELS)
-    expect(Object.keys(projection.invoke)).toHaveLength(253)
-    expect(Object.keys(projection.event)).toHaveLength(32)
+    expect(Object.keys(projection.invoke)).toHaveLength(254)
+    expect(Object.keys(projection.event)).toHaveLength(33)
   })
 
   it('separates actual Web installation from the generated compatibility projection', () => {
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb !== 'unavailable')
-    ).toHaveLength(281)
+    ).toHaveLength(283)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb === 'browser-native')
     ).toEqual(['getRuntimeVersions', 'saveBlobFile', 'saveManagedFile', 'window.close'])
