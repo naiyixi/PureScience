@@ -1,5 +1,5 @@
 import { NOTEBOOK_SYSTEM_PROMPT_APPEND } from '../notebook/mcp-server'
-import { SKILL_IMPORT_SYSTEM_PROMPT_APPEND } from '../skills/mcp-server'
+import { SKILL_CREATE_SYSTEM_PROMPT_APPEND, SKILL_IMPORT_SYSTEM_PROMPT_APPEND } from '../skills/mcp-server'
 import { MEMORY_MCP_SYSTEM_PROMPT_APPEND } from '../../shared/memory-mcp'
 import type { AgentFramework, SessionSetup } from '../agent-framework/types'
 import type { EffectiveSpecialistSkills, SpecialistProfileView } from '../../shared/specialist'
@@ -101,7 +101,9 @@ class AcpSessionPresentationPolicy {
       LARGE_DATA_FILE_SYSTEM_PROMPT_APPEND,
       ...(tooling.artifacts ? [ARTIFACT_FILE_SYSTEM_PROMPT_APPEND] : []),
       ...(tooling.notebook ? [NOTEBOOK_SYSTEM_PROMPT_APPEND] : []),
-      ...(tooling.skillImport ? [SKILL_IMPORT_SYSTEM_PROMPT_APPEND] : []),
+      ...(tooling.skillImport
+        ? [SKILL_IMPORT_SYSTEM_PROMPT_APPEND, SKILL_CREATE_SYSTEM_PROMPT_APPEND]
+        : []),
       ...(tooling.memory ? [MEMORY_MCP_SYSTEM_PROMPT_APPEND] : [])
     ])
   }

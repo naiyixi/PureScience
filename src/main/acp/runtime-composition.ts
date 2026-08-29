@@ -280,6 +280,7 @@ const createAcpRuntime = ({
         },
         skillImport: {
           mcpEntryPath,
+          configDir: configRoot,
           isEnabled: () => settingsService.getConversationSkillImportEnabled(),
           getRpcConnection: ({ sessionId }) =>
             notebookRpcServer.issueSkillImportConnection(sessionId),
