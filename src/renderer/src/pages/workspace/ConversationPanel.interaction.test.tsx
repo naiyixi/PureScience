@@ -181,6 +181,8 @@ const renderPanel = (props: Partial<Parameters<typeof ConversationPanel>[0]> = {
         isUploadingAttachments={false}
         notebookReference={undefined}
         pendingPermissions={[]}
+        pendingElicitations={[]}
+        onRespondToElicitation={vi.fn()}
         permissionProfile="ask"
         permissionProfileState={undefined}
         permissionGrants={[]}

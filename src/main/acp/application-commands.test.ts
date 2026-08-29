@@ -53,7 +53,8 @@ const createDependencies = (): AcpApplicationCommandDependencies => ({
     getSessionPlanProjection: vi.fn(async () => null),
     respondSessionPlan: vi.fn(async () => ({ projection: {} as never, changed: true })),
     setPermissionProfile: vi.fn(async () => snapshot),
-    revokePermissionGrant: vi.fn(async () => snapshot)
+    revokePermissionGrant: vi.fn(async () => snapshot),
+    respondElicitation: vi.fn(() => true)
   },
   workflows: {
     createSession: vi.fn(async () => sessionResponse),
@@ -93,6 +94,7 @@ describe('ACP application commands', () => {
       'acp:get-plan-projection',
       'acp:get-state',
       'acp:reset-session-context',
+      'acp:respond-elicitation',
       'acp:respond-permission',
       'acp:respond-plan',
       'acp:resume-session',

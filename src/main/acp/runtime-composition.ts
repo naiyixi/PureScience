@@ -4,6 +4,7 @@ import { app } from 'electron'
 
 import type { AcpPermissionRequest, AcpRuntimeEvent, AcpStateSnapshot } from '../../shared/acp'
 import { DEFAULT_ARTIFACT_PROJECT_NAME } from '../../shared/artifacts'
+import { ELICITATION_CHANNEL_REQUEST } from '../../shared/elicitation'
 import {
   filterSpecialistConnectorSkills,
   resolveEffectiveSpecialistSkills
@@ -29,6 +30,7 @@ import type { ProfileService } from '../specialist/service'
 import { resolveConfigRoot, resolveDataRoot } from '../storage-root'
 import type { UploadRepository } from '../uploads/repository'
 import type { SessionPersistenceCoordinator } from '../session-persistence/coordinator'
+import { ElicitationBroker } from '../elicitation-broker'
 import { AgentMcpHttpHost } from './mcp-http-host'
 import { projectRegistrySessionGrants } from './permission-broker'
 import { AcpRuntime, type AcpRuntimeCallbacks, type AcpRuntimeOptions } from './runtime'
@@ -116,6 +118,12 @@ const createAcpRuntime = ({
   const configRoot = resolveConfigRoot()
   const dataRoot = resolveDataRoot()
   const defaultCwd = homedir()
+  // App-owned structured clarification: agent elicitation/create requests are projected to the
+  // renderer and block until the user answers, declines, or cancels. The broker is also handed to
+  // the coordinator so the renderer's acp:respond-elicitation IPC can settle pending cards.
+  const elicitationBroker = new ElicitationBroker({
+    emitRequest: (request) => broadcastToRenderers(ELICITATION_CHANNEL_REQUEST, request)
+  })
   const callbacks: AcpRuntimeCallbacks = {
     onStateChanged: (state: AcpStateSnapshot) => broadcastToRenderers('acp:state', state),
     onEvent: (event: AcpRuntimeEvent) => {
@@ -219,6 +227,12 @@ const createAcpRuntime = ({
           registerSessionAlias: (aliasSessionId, sessionId) =>
             notebookRpcServer.registerSessionAlias(aliasSessionId, sessionId)
         },
+        elicitation: {
+          requestElicitation: (request, sessionId) =>
+            elicitationBroker.requestElicitation(request, sessionId),
+          observeElicitationComplete: (notification) =>
+            elicitationBroker.observeElicitationComplete(notification)
+        },
         ...(sessionPersistenceCoordinator
           ? {
               plan: {
@@ -300,7 +314,8 @@ const createAcpRuntime = ({
     },
     permissionGrantRegistry
       ? () => projectRegistrySessionGrants(permissionGrantRegistry.listCached())
-      : undefined
+      : undefined,
+    elicitationBroker
   )
 }
 

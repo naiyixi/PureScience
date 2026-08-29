@@ -1615,6 +1615,11 @@ export const en: Record<ZhKey, string> = {
   'ws.specialistSwitchPending': 'Specialist switch pending',
   'ws.cancelRun': 'Cancel run',
   'ws.sendMessage': 'Send message',
+  'ws.elicitationSubmit': 'Submit answers',
+  'ws.elicitationSkip': 'Skip',
+  'ws.elicitationRequired': 'required',
+  'ws.elicitationTrue': 'True',
+  'ws.elicitationFalse': 'False',
 
   'settings.about': 'About',
   'settings.helpCenter': 'Help center',

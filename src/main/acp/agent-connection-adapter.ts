@@ -2,6 +2,9 @@ import * as acp from '@agentclientprotocol/sdk'
 import type {
   AuthenticateRequest,
   ClientConnection,
+  CompleteElicitationNotification,
+  CreateElicitationRequest,
+  CreateElicitationResponse,
   InitializeRequest,
   InitializeResponse,
   RequestPermissionRequest,
@@ -44,6 +47,13 @@ type AcpAgentConnectionHooks = Readonly<{
   requestPermission: (
     request: RequestPermissionRequest
   ) => RequestPermissionResponse | Promise<RequestPermissionResponse>
+  // Blocks until the user settles the structured clarification card; returns the agent-facing
+  // response (accept / decline / cancel). Implementations must never throw for a user decision.
+  requestElicitation: (
+    request: CreateElicitationRequest,
+    sessionId: string
+  ) => CreateElicitationResponse | Promise<CreateElicitationResponse>
+  observeElicitationComplete: (notification: CompleteElicitationNotification) => void
   observeSessionUpdate: (notification: SessionNotification) => void
   observeClaudeSdkMessage: (message: Record<string, unknown>) => void
   filesystem: Readonly<{
@@ -273,6 +283,13 @@ class AcpAgentConnectionAdapter {
       .client({ name: 'purescience' })
       .onRequest(acp.methods.client.session.requestPermission, (context) =>
         hooks.requestPermission(context.params)
+      )
+      .onRequest(acp.methods.client.elicitation.create, (context) => {
+        const params = context.params as CreateElicitationRequest & { sessionId?: string }
+        return hooks.requestElicitation(context.params, params.sessionId ?? '')
+      })
+      .onNotification(acp.methods.client.elicitation.complete, (context) =>
+        hooks.observeElicitationComplete(context.params)
       )
       .onNotification(acp.methods.client.session.update, (context) =>
         hooks.observeSessionUpdate(context.params)

@@ -134,7 +134,11 @@ const api: PureScienceAPI = {
     onState: (listener) => electronRendererContracts.subscribe('acp.onState', listener),
     onEvent: (listener) => electronRendererContracts.subscribe('acp.onEvent', listener),
     onPermissionRequest: (listener) =>
-      electronRendererContracts.subscribe('acp.onPermissionRequest', listener)
+      electronRendererContracts.subscribe('acp.onPermissionRequest', listener),
+    onElicitationRequest: (listener) =>
+      electronRendererContracts.subscribe('acp.onElicitationRequest', listener),
+    respondElicitation: (request) =>
+      electronRendererContracts.invoke('acp.respondElicitation', request)
   },
   permissions: {
     list: () => electronRendererContracts.invoke('permissions.list'),

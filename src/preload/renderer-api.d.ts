@@ -14,6 +14,7 @@ import type {
   AcpSetPermissionProfileRequest,
   AcpStateSnapshot
 } from '../shared/acp'
+import type { ElicitationRequestView, ElicitationRespondRequest } from '../shared/elicitation'
 import type { ActivePlanProjection, PlanResponseCommand } from '../shared/session-plan/contract'
 import type {
   ArtifactFile,
@@ -381,6 +382,8 @@ export interface PureScienceAPI {
     onState(listener: AcpListener<AcpStateSnapshot>): RemoveListener
     onEvent(listener: AcpListener<AcpRuntimeEvent>): RemoveListener
     onPermissionRequest(listener: AcpListener<AcpPermissionRequest>): RemoveListener
+    onElicitationRequest(listener: AcpListener<ElicitationRequestView>): RemoveListener
+    respondElicitation(request: ElicitationRespondRequest): Promise<boolean>
   }
   permissions: {
     list(): Promise<PermissionGrantSnapshot>

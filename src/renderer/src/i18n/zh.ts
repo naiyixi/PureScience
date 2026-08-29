@@ -1526,6 +1526,11 @@ export const zh = {
   'ws.specialistSwitchPending': '专家切换进行中',
   'ws.cancelRun': '取消运行',
   'ws.sendMessage': '发送消息',
+  'ws.elicitationSubmit': '提交回答',
+  'ws.elicitationSkip': '跳过',
+  'ws.elicitationRequired': '必填',
+  'ws.elicitationTrue': '是',
+  'ws.elicitationFalse': '否',
 
   'settings.about': '关于',
   'settings.helpCenter': '帮助中心',

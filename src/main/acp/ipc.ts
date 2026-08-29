@@ -19,6 +19,7 @@ import type {
   AcpRevokePermissionGrantRequest,
   AcpSetPermissionProfileRequest
 } from '../../shared/acp'
+import type { ElicitationRespondRequest } from '../../shared/elicitation'
 import { AcpRuntimeCoordinator } from './runtime-coordinator'
 import type { AcpHandlerWorkflows } from './handler-workflows'
 import { installAgentShutdownGuard } from './shutdown-guard'
@@ -69,6 +70,9 @@ const registerAcpIpcHandlerSet = (
   })
   ipcMainHandle('acp:respond-permission', (_event, response: AcpPermissionResponse) =>
     runtime.respondToPermission(response)
+  )
+  ipcMainHandle('acp:respond-elicitation', (_event, request: ElicitationRespondRequest) =>
+    runtime.respondElicitation(request)
   )
   ipcMainHandle('acp:get-plan-projection', (_event, projectId: string, sessionId: string) =>
     runtime.getSessionPlanProjection(projectId, sessionId)

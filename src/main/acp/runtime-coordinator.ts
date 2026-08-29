@@ -25,6 +25,8 @@ import { ConversationPermissionGrantStore } from './permission-broker'
 import type { ApprovedSwitchReadBack, ClaudeCodeReplayInput } from '../agents/claude-code-handoff'
 import type { ShutdownStepOutcome } from '../lifecycle-shutdown'
 import type { AgentModelChangeTarget } from '../agent-framework'
+import { ElicitationBroker } from '../elicitation-broker'
+import type { ElicitationRespondRequest } from '../../shared/elicitation'
 
 const MAX_EVENTS = 500
 const QUIT_PREPARATION_TIMEOUT_MS = 4_000
@@ -127,7 +129,8 @@ class AcpRuntimeCoordinator {
     private readonly onDisconnected?: () => void,
     private readonly onSessionUnavailable?: (sessionId: string) => void,
     private readonly teardownCallbacks: AcpRuntimeCoordinatorTeardownCallbacks = {},
-    private readonly permissionGrantSnapshot?: PermissionGrantSnapshotProvider
+    private readonly permissionGrantSnapshot?: PermissionGrantSnapshotProvider,
+    private readonly elicitationBroker?: ElicitationBroker
   ) {
     this.activeRuntime = this.addRuntime()
     this.lastRuntime = this.activeRuntime
@@ -711,6 +714,16 @@ class AcpRuntimeCoordinator {
       this.permissionRuntimes.delete(response.requestId)
     }
     return this.getSnapshot()
+  }
+
+  // Settles a pending structured clarification card. Returns false when the elicitation is no
+  // longer pending (already answered, cancelled, or timed out) so the renderer can drop the card.
+  respondElicitation(request: ElicitationRespondRequest): boolean {
+    return this.elicitationBroker?.respondElicitation(
+      request.elicitationId,
+      request.action,
+      request.answers
+    ) ?? false
   }
 
   // Keeps an app-owned approval on the runtime that owns the conversation, so the existing ACP
