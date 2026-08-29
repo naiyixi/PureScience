@@ -1,5 +1,11 @@
 import type { ArtifactPreviewResult, ReadArtifactPreviewRequest } from '../shared/artifacts'
 import type { CliLauncherStatus } from '../shared/cli'
+import type {
+  FolderGrant,
+  FolderGrantRequest,
+  FolderGrantRevokeRequest,
+  FolderGrantsSnapshot
+} from '../shared/folder-grants'
 import type { LocalDirListing, LocalRoots } from '../shared/local-fs'
 import type { OpenLogFileResult, RevealLogFileResult } from '../shared/logs'
 import type { OpenSessionFromNotificationRequest } from '../shared/notifications'
@@ -33,6 +39,7 @@ import {
 } from './application-command-router'
 import type { CallerContext } from './caller-context'
 import type { CliCommandOwner } from './cli-install/ipc'
+import type { FolderGrantsService } from './folder-grants'
 import type { GithubCommandOwner } from './github-ipc'
 import type { LocalFsService } from './local-fs/service'
 import type { LogsCommandOwner } from './logs-ipc'
@@ -95,6 +102,24 @@ const logsCommands = Object.freeze({
     readonly [],
     RevealLogFileResult
   >('logs:reveal-in-folder')
+})
+
+const folderGrantsCommands = Object.freeze({
+  grant: defineApplicationCommand<
+    'folder-grants:grant',
+    readonly [request: FolderGrantRequest],
+    FolderGrant
+  >('folder-grants:grant'),
+  list: defineApplicationCommand<
+    'folder-grants:list',
+    readonly [],
+    FolderGrantsSnapshot
+  >('folder-grants:list'),
+  revoke: defineApplicationCommand<
+    'folder-grants:revoke',
+    readonly [request: FolderGrantRevokeRequest],
+    boolean
+  >('folder-grants:revoke')
 })
 
 const notificationCommands = Object.freeze({
@@ -234,6 +259,7 @@ const updateCommands = Object.freeze({
 
 const hostApplicationCommands = Object.freeze({
   cli: cliCommands,
+  folderGrants: folderGrantsCommands,
   github: githubCommands,
   localFs: localFsCommands,
   logs: logsCommands,
@@ -246,6 +272,7 @@ const hostApplicationCommands = Object.freeze({
 
 const hostApplicationCommandGroups = Object.freeze([
   defineApplicationCommandGroup('cli', Object.values(cliCommands)),
+  defineApplicationCommandGroup('folderGrants', Object.values(folderGrantsCommands)),
   defineApplicationCommandGroup('github', Object.values(githubCommands)),
   defineApplicationCommandGroup('local-fs', Object.values(localFsCommands)),
   defineApplicationCommandGroup('logs', Object.values(logsCommands)),
@@ -258,6 +285,7 @@ const hostApplicationCommandGroups = Object.freeze([
 
 type HostApplicationCommandDependencies = Readonly<{
   cli: CliCommandOwner
+  folderGrants: Pick<FolderGrantsService, 'grant' | 'list' | 'revoke'>
   github: GithubCommandOwner
   localFs: Pick<
     LocalFsService,
@@ -317,9 +345,21 @@ const registerHostApplicationCommands = (
         localCommand(callerContext, 'cli:uninstall', () => dependencies.cli.uninstall())
     })
     scope.registerGroup(hostApplicationCommandGroups[1], {
-      'github:get-stars': () => dependencies.github.getStars()
+      'folder-grants:grant': ({ args, callerContext }) =>
+        localCommand(callerContext, 'folder-grants:grant', () =>
+          dependencies.folderGrants.grant(args[0].path)
+        ),
+      'folder-grants:list': ({ callerContext }) =>
+        localCommand(callerContext, 'folder-grants:list', () => dependencies.folderGrants.list()),
+      'folder-grants:revoke': ({ args, callerContext }) =>
+        localCommand(callerContext, 'folder-grants:revoke', () =>
+          dependencies.folderGrants.revoke(args[0].rootId)
+        )
     })
     scope.registerGroup(hostApplicationCommandGroups[2], {
+      'github:get-stars': () => dependencies.github.getStars()
+    })
+    scope.registerGroup(hostApplicationCommandGroups[3], {
       'local-fs:get-roots': ({ callerContext }) =>
         localCommand(callerContext, 'local-fs:get-roots', () => dependencies.localFs.getRoots()),
       'local-fs:list-dir': ({ args, callerContext }) =>
@@ -339,7 +379,7 @@ const registerHostApplicationCommands = (
           dependencies.localFs.revealInFolder(args[0])
         )
     })
-    scope.registerGroup(hostApplicationCommandGroups[3], {
+    scope.registerGroup(hostApplicationCommandGroups[4], {
       'logs:get-path': () => dependencies.logs.getPath(),
       'logs:open-file': ({ callerContext }) =>
         localCommand(callerContext, 'logs:open-file', () => dependencies.logs.openFile()),
@@ -348,7 +388,7 @@ const registerHostApplicationCommands = (
           dependencies.logs.revealInFolder()
         )
     })
-    scope.registerGroup(hostApplicationCommandGroups[4], {
+    scope.registerGroup(hostApplicationCommandGroups[5], {
       'notifications:peek-pending-open-session': () =>
         dependencies.notifications.peekPendingOpenSession(),
       'notifications:take-pending-open-session': ({ args }) =>
@@ -356,7 +396,7 @@ const registerHostApplicationCommands = (
           ? dependencies.notifications.takePendingOpenSession(args[0])
           : null
     })
-    scope.registerGroup(hostApplicationCommandGroups[5], {
+    scope.registerGroup(hostApplicationCommandGroups[6], {
       'remote-access:approve': ({ args, callerContext }) => {
         requirePairingManager(callerContext)
         const desktop = isDesktopCaller(callerContext)
@@ -397,12 +437,12 @@ const registerHostApplicationCommands = (
         return dependencies.remoteAccess.setMode(args[0].mode)
       }
     })
-    scope.registerGroup(hostApplicationCommandGroups[6], {
+    scope.registerGroup(hostApplicationCommandGroups[7], {
       'reviewer:abort-fix-loop': ({ args }) => dependencies.reviewer.abortFixLoop(args[0]),
       'reviewer:get-for-session': ({ args }) => dependencies.reviewer.getForSession(args[0]),
       'reviewer:run': ({ args }) => dependencies.reviewer.run(args[0])
     })
-    scope.registerGroup(hostApplicationCommandGroups[7], {
+    scope.registerGroup(hostApplicationCommandGroups[8], {
       'storage:cancel-migrate': ({ callerContext }) =>
         localCommand(callerContext, 'storage:cancel-migrate', () =>
           dependencies.storage.cancelMigrate()
@@ -441,7 +481,7 @@ const registerHostApplicationCommands = (
           dependencies.storage.validateDataRoot(args[0])
         )
     })
-    scope.registerGroup(hostApplicationCommandGroups[8], {
+    scope.registerGroup(hostApplicationCommandGroups[9], {
       'update:apply': ({ callerContext }) =>
         localCommand(callerContext, 'update:apply', () => dependencies.update.apply()),
       'update:cancel': ({ callerContext }) =>

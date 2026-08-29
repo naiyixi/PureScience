@@ -23,6 +23,7 @@ import {
 
 const HOST_CAPABILITIES = [
   'cli',
+  'folderGrants',
   'github',
   'local-fs',
   'logs',
@@ -68,6 +69,11 @@ const createDependencies = (): HostApplicationCommandDependencies => ({
       truncated: false
     })),
     revealInFolder: vi.fn(() => undefined)
+  },
+  folderGrants: {
+    grant: vi.fn(async () => ({ rootId: 'root-1', rootPath: '/data', label: 'data', createdAt: 1 })),
+    list: vi.fn(async () => ({ grants: [] })),
+    revoke: vi.fn(async () => true)
   },
   logs: {
     getPath: vi.fn(() => '/logs/main.log'),
@@ -166,13 +172,15 @@ describe('Host application commands', () => {
         .filter((channel): channel is string => channel !== null)
     }))
 
-    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(42)
-    expect(
-      hostApplicationCommandGroups.map(({ name, commands }) => ({
+    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(45)
+    const actualGroups = hostApplicationCommandGroups
+      .map(({ name, commands }) => ({
         capability: name,
         channels: commands.map(({ name: commandName }) => commandName)
       }))
-    ).toEqual(expected)
+      .sort((a, b) => a.capability.localeCompare(b.capability))
+    const expectedGroups = [...expected].sort((a, b) => a.capability.localeCompare(b.capability))
+    expect(actualGroups).toEqual(expectedGroups)
   })
 
   it('installs and uninstalls every host group atomically', () => {
@@ -182,7 +190,7 @@ describe('Host application commands', () => {
       {} as HostApplicationCommandDependencies
     )
 
-    expect(router.dispatcher.commandNames()).toHaveLength(42)
+    expect(router.dispatcher.commandNames()).toHaveLength(45)
     installation.uninstall()
     expect(router.dispatcher.commandNames()).toEqual([])
   })
@@ -292,7 +300,19 @@ describe('Host application commands', () => {
     await router.dispatcher.invoke(hostApplicationCommands.update.download, invocation([]))
     await router.dispatcher.invoke(hostApplicationCommands.update.getAppInfo, invocation([]))
     await router.dispatcher.invoke(hostApplicationCommands.update.getStatus, invocation([]))
+    await router.dispatcher.invoke(
+      hostApplicationCommands.folderGrants.grant,
+      invocation([{ path: '/data' }])
+    )
+    await router.dispatcher.invoke(hostApplicationCommands.folderGrants.list, invocation([]))
+    await router.dispatcher.invoke(
+      hostApplicationCommands.folderGrants.revoke,
+      invocation([{ rootId: 'root-1' }])
+    )
 
+    expect(dependencies.folderGrants.grant).toHaveBeenCalledWith('/data')
+    expect(dependencies.folderGrants.list).toHaveBeenCalled()
+    expect(dependencies.folderGrants.revoke).toHaveBeenCalledWith('root-1')
     expect(dependencies.localFs.listDir).toHaveBeenCalledWith('/data')
     expect(dependencies.localFs.readPreview).toHaveBeenCalledWith(previewRequest)
     expect(dependencies.notifications.takePendingOpenSession).toHaveBeenCalledWith(7)

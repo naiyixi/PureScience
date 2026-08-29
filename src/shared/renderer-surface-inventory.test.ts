@@ -240,12 +240,12 @@ describe('renderer surface inventory', () => {
       ...Object.keys(WEB_EVENT_CHANNELS)
     ])
 
-    expect(electronPaths).toHaveLength(352)
+    expect(electronPaths).toHaveLength(355)
     expectSameSet(
       electronPaths,
       RENDERER_CONTRACT_CATALOG.map(({ publicPath }) => publicPath)
     )
-    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(254)
+    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(257)
     expect(Object.keys(WEB_EVENT_CHANNELS)).toHaveLength(33)
     expectSameSet(
       electronPaths.filter((path) => !generatedPaths.has(path)),

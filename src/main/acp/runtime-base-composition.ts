@@ -167,7 +167,8 @@ const composeAcpRuntimeBaseOwners = (options: AcpRuntimeOptions) => {
   const fileReferenceResolver = createManagedFileReferenceResolver({
     uploads: uploadRepository,
     artifacts: artifactRepository,
-    artifactVersions: options.artifacts?.provenance
+    artifactVersions: options.artifacts?.provenance,
+    folderGrants: options.folderGrants
   })
 
   return Object.freeze({

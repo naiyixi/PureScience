@@ -240,6 +240,9 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['onChanged', 'permissions:changed', EVENT], ['extendUndo', 'permissions:extend-undo'], ['list', 'permissions:list'], ['restore', 'permissions:restore'],
     ['revoke', 'permissions:revoke'],
   ]),
+  group('folderGrants', 'folderGrants', [
+    ['grant', 'folder-grants:grant'], ['list', 'folder-grants:list'], ['revoke', 'folder-grants:revoke'],
+  ]),
   group('platform-file-save', '', [
     ['getRuntimeVersions', null, NATIVE], ['saveBlobFile', 'file:save-blob', MAPPED_NATIVE], ['saveManagedFile', 'file:save-managed', DELEGATED_NATIVE],
     ['saveSessionArtifacts', 'file:save-session-artifacts', MAPPED_ELECTRON],

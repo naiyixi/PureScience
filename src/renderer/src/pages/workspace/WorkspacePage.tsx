@@ -68,6 +68,7 @@ import {
 } from './composer/composer-history'
 import { buildCustomizePrefillDoc } from '@/lib/customize-chat'
 import { ConversationPanel } from './ConversationPanel'
+import { FolderGrantsPanel } from '@/components/FolderGrantsPanel'
 import { DeleteSessionDialog } from './DeleteSessionDialog'
 import { MobilePreviewSheet } from './MobilePreviewSheet'
 import { DownloadSessionArtifactsDialog } from './DownloadSessionArtifactsDialog'
@@ -1111,6 +1112,8 @@ const WorkspacePage = ({
   const removeAnnotation = useCallback((annotationId: string) => {
     setPendingAnnotations((current) => current.filter((item) => item.id !== annotationId))
   }, [])
+  // User-linked folder grants dialog (`@path/to/folder`): grant management + agent read access.
+  const [folderGrantsOpen, setFolderGrantsOpen] = useState(false)
   const activeNotebookReference = activeSession ? notebookReferences[activeSession.id] : undefined
   const activePermissionProfile =
     activeSession?.permissionProfile ?? newConversationPermissionProfile
@@ -2696,6 +2699,7 @@ const WorkspacePage = ({
             pendingAnnotations={pendingAnnotations}
             onRemoveAnnotation={removeAnnotation}
             onAnnotateSelection={addAnnotation}
+            onOpenFolderGrants={() => setFolderGrantsOpen(true)}
             permissionProfile={activePermissionProfile}
             permissionProfileState={activePermissionProfileState}
             permissionGrants={activePermissionGrants}
@@ -2908,6 +2912,12 @@ const WorkspacePage = ({
         canDelete={canDeleteConversations}
         onCancel={closeDeleteDialog}
         onConfirmDelete={confirmDeleteSession}
+      />
+
+      <FolderGrantsPanel
+        open={folderGrantsOpen}
+        onClose={() => setFolderGrantsOpen(false)}
+        onGranted={() => setFolderGrantsOpen(false)}
       />
 
       <DownloadSessionArtifactsDialog

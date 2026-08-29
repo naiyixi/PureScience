@@ -160,6 +160,8 @@ import { tryDecryptKey } from './settings/crypto'
 import { SETTINGS_INSTALL_LOG_CHANNEL, registerSettingsIpcHandlers } from './settings/ipc'
 import { registerLocalFsIpcHandlers } from './local-fs/ipc'
 import { LocalFsService } from './local-fs/service'
+import { FolderGrantsService } from './folder-grants'
+import { registerFolderGrantsIpcHandlers } from './folder-grants-ipc'
 import { getAppClaudeConfigDir } from './settings/provider-env'
 import { createDefaultSettingsService } from './settings/service'
 import type { NotebookRuntimeSettings } from './settings/capabilities'
@@ -426,6 +428,10 @@ const createApplicationModules = async (
   // Shared local-fs service backs both the "This computer" browser IPC and the managed-preview
   // resolver below, so path validation stays identical across both entry points.
   const localFsService = new LocalFsService()
+  // User-linked folder grants (`@path/to/folder`): owned here, injected into the ACP file
+  // reference resolver, and exposed to the renderer for grant management.
+  const folderGrantsService = new FolderGrantsService({ dataRoot: resolveDataRoot() })
+  registerFolderGrantsIpcHandlers(folderGrantsService)
   // One source-neutral resolver keeps previews and user-requested exports on identical trust checks.
   const resolveManagedFilePath = (
     source: ManagedPreviewSource,
@@ -1231,6 +1237,7 @@ const createApplicationModules = async (
       permissionGrantRegistry,
       taskNotifications,
       notificationInbox,
+      folderGrants: folderGrantsService,
       onSessionTurnStarted: (sessionId, turnToken) =>
         skillImportApprovalBroker.beginSessionTurn(sessionId, turnToken),
       onSessionTurnEnded: (sessionId, turnToken) =>
