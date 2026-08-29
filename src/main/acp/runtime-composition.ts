@@ -20,6 +20,7 @@ import {
   type TaskNotificationService
 } from '../notifications/task-notifications'
 import type { NotificationInboxController } from '../notifications/notification-inbox-controller'
+import type { FolderGrantsService } from '../folder-grants'
 import type { PermissionGrantRegistry } from '../permission-grants/registry'
 import { broadcastToRenderers } from '../renderer-broadcast'
 import type { AcpSettingsCapabilities } from '../settings/service-capabilities'
@@ -73,6 +74,8 @@ type AcpRuntimeCompositionOptions = AcpRuntimeArtifacts & {
   // Backend-owned message center: terminal task outcomes and blocking permission requests are
   // recorded here so desktop and Web clients share one notification inbox.
   notificationInbox?: Pick<NotificationInboxController, 'record'>
+  // User-linked folder grants (`@path/to/folder`) injected into the file-reference resolver.
+  folderGrants?: Pick<FolderGrantsService, 'resolveRoot'>
   onSessionTurnStarted?: (sessionId: string, turnToken: string) => void
   onSessionTurnEnded?: (sessionId: string, turnToken: string) => void
   onSkillImportAttachmentEligible?: (
@@ -110,6 +113,7 @@ const createAcpRuntime = ({
   initializationBarrier,
   taskNotifications,
   notificationInbox,
+  folderGrants,
   onSessionTurnStarted,
   onSessionTurnEnded,
   onSkillImportAttachmentEligible,
@@ -297,6 +301,7 @@ const createAcpRuntime = ({
           observeElicitationComplete: (notification) =>
             elicitationBroker.observeElicitationComplete(notification)
         },
+        folderGrants,
         ...(sessionPersistenceCoordinator
           ? {
               plan: {

@@ -51,6 +51,7 @@ import type { MemoryRpcConnection } from '../settings/memory-mcp-server'
 import { codexStorageDir, codexSubscriptionStorageDir } from '../agent-framework/codex'
 import { getAppClaudeConfigDir } from '../settings/provider-env'
 import type { PermissionGrantRegistry } from '../permission-grants/registry'
+import type { FolderGrantsService } from '../folder-grants'
 import { withDataRootWrite } from '../storage/migration-state'
 import { opencodeStorageDir } from '../agent-framework/opencode'
 import type { UploadRepository } from '../uploads/repository'
@@ -155,6 +156,9 @@ type AcpRuntimeOptions = {
   // `elicitation/create` requests are projected to the renderer and block until the user
   // answers. Absent ⇒ requests fail closed with `cancel` so the agent never hangs.
   elicitation?: AcpRuntimeElicitationOptions
+  // User-linked folder grants (`@path/to/folder`): resolves granted root ids for the
+  // linked-folder file-reference adapter. Absent ⇒ linked-folder references fail closed.
+  folderGrants?: Pick<FolderGrantsService, 'resolveRoot'>
   // The agent backend to drive. Defaults to Claude Code; selecting another (opencode) swaps only the
   // framework-coupled behavior (spawn, session meta, permission-mode mapping) via AgentFramework.
   framework?: AgentFramework

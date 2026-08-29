@@ -1,4 +1,5 @@
 import { stat } from 'node:fs/promises'
+import { resolve, sep } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 import type { FileReference } from '../../shared/artifacts'
@@ -6,6 +7,7 @@ import { parseArtifactVersionLocator } from '../../shared/artifact-provenance'
 import type { ArtifactRepository } from '../artifacts/repository'
 import type { ArtifactProvenanceRepository } from '../artifacts/provenance-repository'
 import type { UploadRepository } from '../uploads/repository'
+import type { FolderGrantsService } from '../folder-grants'
 
 export type FileReferenceContext = {
   projectId: string
@@ -60,7 +62,8 @@ export class FileReferenceResolver {
 export const createManagedFileReferenceResolver = (dependencies: {
   uploads?: UploadRepository
   artifacts?: ArtifactRepository
-  artifactVersions?: Partial<Pick<ArtifactProvenanceRepository, 'resolveVersionContent'>>
+  artifactVersions?: Partial<Pick<ArtifactProvenanceRepository, 'resolveVersionContent'>>,
+  folderGrants?: Pick<FolderGrantsService, 'resolveRoot'>
 }): FileReferenceResolver => {
   const adapters: FileReferenceAdapter[] = []
 
@@ -121,6 +124,30 @@ export const createManagedFileReferenceResolver = (dependencies: {
           absolutePath: await dependencies.artifacts!.resolveManagedFilePath({
             path: reference.path
           }),
+          name: reference.name,
+          mimeType: reference.mimeType,
+          allowSkillImportReference: false
+        }
+      }
+    })
+  }
+
+  if (dependencies.folderGrants) {
+    adapters.push({
+      source: 'linked-folder',
+      resolve: async (_context, reference) => {
+        if (reference.source !== 'linked-folder') throw new Error('Invalid folder reference.')
+        const rootPath = await dependencies.folderGrants!.resolveRoot(reference.rootId)
+        if (!rootPath) {
+          throw new Error('Linked folder is no longer granted (revoked or unknown).')
+        }
+        // Resolve the relative path strictly inside the granted root; traversal escapes fail
+        // closed. The grant service is the only authority on root paths.
+        const candidate = resolve(rootPath, reference.relativePath)
+        const withinRoot = candidate === rootPath || candidate.startsWith(`${rootPath}${sep}`)
+        if (!withinRoot) throw new Error('Folder reference escapes its granted root.')
+        return {
+          absolutePath: candidate,
           name: reference.name,
           mimeType: reference.mimeType,
           allowSkillImportReference: false

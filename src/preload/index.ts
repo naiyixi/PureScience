@@ -147,6 +147,11 @@ const api: PureScienceAPI = {
     restore: (request) => electronRendererContracts.invoke('permissions.restore', request),
     onChanged: (listener) => electronRendererContracts.subscribe('permissions.onChanged', listener)
   },
+  folderGrants: {
+    list: () => electronRendererContracts.invoke('folderGrants.list'),
+    grant: (request) => electronRendererContracts.invoke('folderGrants.grant', request),
+    revoke: (request) => electronRendererContracts.invoke('folderGrants.revoke', request)
+  },
   sessions: {
     // Loads every per-session file plus the last-open manifest from the main process.
     loadAll: () => electronRendererContracts.invoke('sessions.loadAll'),

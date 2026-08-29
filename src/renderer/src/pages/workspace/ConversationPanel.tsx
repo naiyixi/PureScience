@@ -29,6 +29,7 @@ import {
   Loader2,
   ListChecks,
   Menu,
+  FolderOpen,
   PanelRight,
   Plus,
   ScanEye,
@@ -193,6 +194,7 @@ type ConversationPanelProps = {
   pendingAnnotations: ConversationAnnotation[]
   onRemoveAnnotation: (annotationId: string) => void
   onAnnotateSelection: (source: string, text: string) => void
+  onOpenFolderGrants?: () => void
   onPermissionProfileChange: (profile: PermissionProfileId) => void
   onRevokePermissionGrant: (categoryKey: string) => void
   onClearPermissionGrants: () => void
@@ -248,6 +250,7 @@ const ConversationPanel = ({
   pendingAnnotations,
   onRemoveAnnotation,
   onAnnotateSelection,
+  onOpenFolderGrants,
   permissionProfile,
   permissionProfileState,
   permissionGrants,
@@ -484,6 +487,17 @@ const ConversationPanel = ({
           <h1 className="min-w-0 flex-1 truncate text-[13px] font-semibold text-text-000">
             {activeSession?.title ?? t('ws.newConversation')}
           </h1>
+          {onOpenFolderGrants ? (
+            <button
+              type="button"
+              aria-label={t('ws.folderGrantsTitle')}
+              title={t('ws.folderGrantsTitle')}
+              onClick={onOpenFolderGrants}
+              className="flex size-7 shrink-0 items-center justify-center rounded-lg text-text-300 hover:bg-surface-control-hover hover:text-text-000"
+            >
+              <FolderOpen className="size-4" strokeWidth={2} aria-hidden="true" />
+            </button>
+          ) : null}
           <NotificationBell className="md:hidden" />
           <button
             type="button"

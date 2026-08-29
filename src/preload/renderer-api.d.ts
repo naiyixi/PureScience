@@ -15,6 +15,12 @@ import type {
   AcpStateSnapshot
 } from '../shared/acp'
 import type { ElicitationRequestView, ElicitationRespondRequest } from '../shared/elicitation'
+import type {
+  FolderGrant,
+  FolderGrantRequest,
+  FolderGrantRevokeRequest,
+  FolderGrantsSnapshot
+} from '../shared/folder-grants'
 import type { ActivePlanProjection, PlanResponseCommand } from '../shared/session-plan/contract'
 import type {
   ArtifactFile,
@@ -393,6 +399,11 @@ export interface PureScienceAPI {
     ): Promise<PermissionGrantUndoReceipt | undefined>
     restore(request: PermissionGrantRestoreRequest): Promise<PermissionGrantMutationView>
     onChanged(listener: AcpListener<PermissionGrantsChangedEvent>): RemoveListener
+  }
+  folderGrants: {
+    list(): Promise<FolderGrantsSnapshot>
+    grant(request: FolderGrantRequest): Promise<FolderGrant>
+    revoke(request: FolderGrantRevokeRequest): Promise<boolean>
   }
   sessions: {
     loadAll(): Promise<LoadAllSessionsResult>

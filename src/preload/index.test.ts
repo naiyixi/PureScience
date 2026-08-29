@@ -280,6 +280,9 @@ describe('preload bridge — public surface inventory', () => {
       'compute.scratchSet',
       'compute.sshConfigAliases',
       'diagnostics.reportRendererFailure',
+      'folderGrants.grant',
+      'folderGrants.list',
+      'folderGrants.revoke',
       'getRuntimeVersions',
       'github.getStars',
       'handoff.list',
@@ -670,6 +673,7 @@ describe('preload bridge — core renderer contract catalog', () => {
       'network',
       'notifications',
       'office-preview',
+      'folderGrants',
       'platform-file-save',
       'preview',
       'preview-resources',
@@ -683,7 +687,7 @@ describe('preload bridge — core renderer contract catalog', () => {
       'uploads',
       'window'
     ])
-    expect(coreContracts).toHaveLength(140)
+    expect(coreContracts).toHaveLength(143)
     expect({
       requests: coreContracts.filter(
         ({ dispatchPolicy }) => dispatchPolicy.electron === 'electron-ipc-request'
@@ -695,7 +699,7 @@ describe('preload bridge — core renderer contract catalog', () => {
       surfaceNative: coreContracts.filter(
         ({ dispatchPolicy }) => dispatchPolicy.electron === 'surface-native'
       ).length
-    }).toEqual({ requests: 103, events: 26, sends: 10, surfaceNative: 1 })
+    }).toEqual({ requests: 106, events: 26, sends: 10, surfaceNative: 1 })
   })
 
   it('routes all 99 request methods through their cataloged Electron channels', async () => {
@@ -704,7 +708,7 @@ describe('preload bridge — core renderer contract catalog', () => {
     )
     const localFile = { name: 'catalog.csv' } as File
 
-    expect(requestContracts).toHaveLength(103)
+    expect(requestContracts).toHaveLength(106)
 
     for (const contract of requestContracts) {
       invokeMock.mockClear()
