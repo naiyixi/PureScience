@@ -9,6 +9,7 @@ import { ArtifactRepository } from '../artifacts/repository'
 import { createNotebookMcpServer, type NotebookMcpEnvironment } from '../notebook/mcp-server'
 import {
   callGitHubSkillImportRpc,
+  callSkillCreateRpc,
   callSkillImportRpc,
   createSkillImportMcpServer,
   type SkillImportMcpEnvironment
@@ -201,7 +202,8 @@ class AgentMcpHttpHost {
       requestImport: (attachmentUri, turnToken) =>
         callSkillImportRpc(skillImportEnvironment, attachmentUri, turnToken),
       requestGitHubImport: (githubUrl) =>
-        callGitHubSkillImportRpc(skillImportEnvironment, githubUrl)
+        callGitHubSkillImportRpc(skillImportEnvironment, githubUrl),
+      createSkill: (input) => callSkillCreateRpc(skillImportEnvironment, input)
     })
   }
 

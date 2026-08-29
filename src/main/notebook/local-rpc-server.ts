@@ -18,6 +18,8 @@ import type {
   ConversationSkillImporter,
   ConversationSkillImportRequest
 } from '../skills/conversation-import'
+import type { SkillCreator } from '../skills/skill-creator'
+import type { SkillCreateInput, SkillCreateResult } from '../../shared/skill-create'
 import type {
   ArtifactRpcCapabilityBinding,
   ArtifactRpcMethod,
@@ -110,6 +112,9 @@ type NotebookLocalRpcServerOptions = {
     }>
   }
   skillImporter?: Pick<ConversationSkillImporter, 'request'>
+  // App-owned conversational skill creation (create_skill MCP tool): the skill-import MCP child
+  // routes createSkill calls back here so validation + filesystem writes stay in the main process.
+  skillCreator?: Pick<SkillCreator, 'create'>
   // Agent memory writes (memory_save_note MCP): main-process-owned persistence.
   memoryWriter?: {
     saveNote(
@@ -223,6 +228,7 @@ class NotebookLocalRpcServer {
   private readonly connectorService: NotebookLocalRpcServerOptions['connectorService']
   private readonly computeService: NotebookLocalRpcServerOptions['computeService']
   private readonly skillImporter: NotebookLocalRpcServerOptions['skillImporter']
+  private readonly skillCreator: NotebookLocalRpcServerOptions['skillCreator']
   private readonly memoryWriter: NotebookLocalRpcServerOptions['memoryWriter']
   private readonly planService: NotebookLocalRpcServerOptions['planService']
   private readonly artifactProvenance: NotebookLocalRpcServerOptions['artifactProvenance']
@@ -259,6 +265,7 @@ class NotebookLocalRpcServer {
     this.connectorService = options.connectorService
     this.computeService = options.computeService
     this.skillImporter = options.skillImporter
+    this.skillCreator = options.skillCreator
     this.memoryWriter = options.memoryWriter
     this.planService = options.planService
     this.artifactProvenance = options.artifactProvenance
@@ -834,6 +841,30 @@ class NotebookLocalRpcServer {
         attachmentUri: params.attachmentUri
       }
       return this.skillImporter.request(request)
+    }
+
+    if (method === 'skillCreate') {
+      if (!this.skillCreator) throw new Error('Conversation skill creation is not configured.')
+      if (
+        typeof params.sessionId !== 'string' ||
+        typeof params.name !== 'string' ||
+        typeof params.description !== 'string' ||
+        (params.instructions !== undefined && typeof params.instructions !== 'string') ||
+        (params.references !== undefined &&
+          (!Array.isArray(params.references) ||
+            params.references.some((reference) => typeof reference !== 'string')))
+      ) {
+        throw new Error('Skill create RPC params must include sessionId, name and description.')
+      }
+      const input: SkillCreateInput = {
+        name: params.name,
+        description: params.description,
+        instructions: typeof params.instructions === 'string' ? params.instructions : '',
+        ...(Array.isArray(params.references)
+          ? { references: params.references as string[] }
+          : {})
+      }
+      return this.skillCreator.create(input) as Promise<SkillCreateResult>
     }
 
     if (method === 'memorySaveNote') {

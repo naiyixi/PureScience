@@ -90,7 +90,7 @@ type SkillImportMcpServerConfigRequest = SkillImportMcpEnvironment & {
 }
 
 type RpcResponse = {
-  result?: ConversationSkillImportResult
+  result?: ConversationSkillImportResult | SkillCreateResult
   error?: string
 }
 
@@ -200,10 +200,10 @@ const createSkillImportMcpEnvironmentFromProcess = (
   sessionId: requireEnvironmentVariable(env, 'PURESCIENCE_SKILL_IMPORT_SESSION_ID')
 })
 
-const callSkillImportRpcRequest = async (
+const callSkillImportRpcRequest = async <T>(
   environment: SkillImportMcpEnvironment,
   params: SkillImportRpcParams
-): Promise<ConversationSkillImportResult> => {
+): Promise<T> => {
   const response = await fetchLocalRpc(
     environment,
     {
@@ -224,7 +224,7 @@ const callSkillImportRpcRequest = async (
   if (!response.ok || payload.error || !payload.result) {
     throw new Error(payload.error ?? `Skill import RPC failed with status ${response.status}`)
   }
-  return payload.result
+  return payload.result as T
 }
 
 const callSkillImportRpc = (
@@ -238,6 +238,35 @@ const callGitHubSkillImportRpc = (
   environment: SkillImportMcpEnvironment,
   githubUrl: string
 ): Promise<ConversationSkillImportResult> => callSkillImportRpcRequest(environment, { githubUrl })
+
+// create_skill routes back into the main process the same way the import tools do, so the MCP
+// child never touches the skills directory itself over the HTTP-hosted transport.
+const callSkillCreateRpc = (
+  environment: SkillImportMcpEnvironment,
+  input: SkillCreateInput
+): Promise<SkillCreateResult> =>
+  fetchLocalRpc(
+    environment,
+    {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${environment.token}`,
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        method: 'skillCreate',
+        params: { sessionId: environment.sessionId, ...input }
+      })
+    },
+    'Skill create RPC'
+  ).then(async (response) => {
+    const payload = (await response.json()) as RpcResponse
+
+    if (!response.ok || payload.error || !payload.result) {
+      throw new Error(payload.error ?? `Skill create RPC failed with status ${response.status}`)
+    }
+    return payload.result as SkillCreateResult
+  })
 
 const runSkillImportMcpServer = async (
   environment = createSkillImportMcpEnvironmentFromProcess()
@@ -261,6 +290,7 @@ export {
   SKILL_IMPORT_SYSTEM_PROMPT_APPEND,
   SKILL_CREATE_SYSTEM_PROMPT_APPEND,
   callGitHubSkillImportRpc,
+  callSkillCreateRpc,
   callSkillImportRpc,
   createSkillImportMcpEnvironmentFromProcess,
   createSkillImportMcpServer,
