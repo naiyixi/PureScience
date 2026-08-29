@@ -1531,6 +1531,9 @@ export const zh = {
   'ws.elicitationRequired': '必填',
   'ws.elicitationTrue': '是',
   'ws.elicitationFalse': '否',
+  'ws.annotationAdd': '添加为注解',
+  'ws.annotationRemove': '移除注解',
+  'ws.annotationSourceFallback': '选中内容',
 
   'settings.about': '关于',
   'settings.helpCenter': '帮助中心',

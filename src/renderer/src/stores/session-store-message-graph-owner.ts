@@ -186,6 +186,7 @@ export const createSessionMessageGraphOwner = <
     sessionId,
     content,
     attachments = [],
+    annotations,
     parts,
     cwd,
     projectId,
@@ -201,7 +202,9 @@ export const createSessionMessageGraphOwner = <
     const normalizedAgentModel = agentModel?.trim() || undefined
     const uploads = attachments.map(createPersistedUpload)
 
-    if (!sessionId || (!trimmedContent && uploads.length === 0)) return undefined
+    if (!sessionId || (!trimmedContent && uploads.length === 0 && (annotations ?? []).length === 0)) {
+      return undefined
+    }
 
     const state = get()
     const existingSession = state.sessions.find((session) => session.id === sessionId)
@@ -215,6 +218,9 @@ export const createSessionMessageGraphOwner = <
       uploads,
       parts
     )
+    if (annotations && annotations.length > 0) {
+      userMessage.annotations = annotations
+    }
     const activeRun: ActiveRun = {
       promptMessageId: userMessage.id,
       startedAt: now

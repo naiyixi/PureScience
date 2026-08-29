@@ -7,6 +7,12 @@ import type { PanelImperativeHandle, PanelSize } from 'react-resizable-panels'
 import type { NotebookSessionReference } from '../../../../shared/notebook'
 import type { ElicitationAnswer, ElicitationRequestView } from '../../../../shared/elicitation'
 import {
+  ANNOTATION_MAX_PER_MESSAGE,
+  ANNOTATION_MAX_SOURCE_LENGTH,
+  ANNOTATION_MAX_TEXT_LENGTH,
+  type ConversationAnnotation
+} from '../../../../shared/annotations'
+import {
   DEFAULT_PERMISSION_PROFILE,
   type PermissionProfileId
 } from '../../../../shared/permission-profiles'
@@ -760,6 +766,8 @@ const WorkspacePage = ({
     setDraftDoc(next)
   }, [clearComposerHistory, markComposerDraftChanged, previousDraftKeyRef, setDraftDoc])
   const [attachments, setAttachments] = useState<UploadedAttachment[]>([])
+  // User-selected workspace context cards staged for the next message (annotations.ts).
+  const [pendingAnnotations, setPendingAnnotations] = useState<ConversationAnnotation[]>([])
   const [attachmentTransfers, setAttachmentTransfers] = useState<ComposerUploadTransfer[]>([])
   const attachmentTransfersRef = useRef<ComposerUploadTransfer[]>([])
   const attachmentTransferControllersRef = useRef<Record<string, AbortController>>({})
@@ -1082,6 +1090,27 @@ const WorkspacePage = ({
     () => pendingElicitations.filter((request) => request.sessionId === activeSession?.id),
     [activeSession?.id, pendingElicitations]
   )
+  // Annotation staging: user-selected workspace context cards attached to the next message.
+  const addAnnotation = useCallback((source: string, text: string) => {
+    const trimmed = text.trim()
+    if (!trimmed) return
+    setPendingAnnotations((current) => {
+      if (current.length >= ANNOTATION_MAX_PER_MESSAGE) return current
+      return [
+        ...current,
+        {
+          id: `annotation-${Date.now()}-${current.length}`,
+          kind: 'text',
+          source: source.slice(0, ANNOTATION_MAX_SOURCE_LENGTH),
+          text: trimmed.slice(0, ANNOTATION_MAX_TEXT_LENGTH),
+          createdAt: Date.now()
+        }
+      ]
+    })
+  }, [])
+  const removeAnnotation = useCallback((annotationId: string) => {
+    setPendingAnnotations((current) => current.filter((item) => item.id !== annotationId))
+  }, [])
   const activeNotebookReference = activeSession ? notebookReferences[activeSession.id] : undefined
   const activePermissionProfile =
     activeSession?.permissionProfile ?? newConversationPermissionProfile
@@ -1831,6 +1860,7 @@ const WorkspacePage = ({
 
     const doc = draftDoc
     const attachmentsForSend = attachments
+    const annotationsForSend = pendingAnnotations
     // Capture new-conversation intent before send: auto-review defaults off, so only an explicit
     // "on" needs to be stamped onto the created session (absent = off downstream).
     const wasNewConversation = !activeSession
@@ -1864,6 +1894,7 @@ const WorkspacePage = ({
             : {}),
           text: docToText(doc),
           attachments: attachmentsForSend,
+          annotations: annotationsForSend,
           // Existing files the user referenced via `@`; the runtime attaches each as a content block.
           referencedArtifacts: docToArtifactRefs(doc),
           // Persist the draft's structural segments so the sent bubble renders styled mention pills.
@@ -1994,6 +2025,7 @@ const WorkspacePage = ({
       clearComposerHistory(sessionId)
       delete composerDraftsRef.current[sessionId]
       setAttachments([])
+      setPendingAnnotations([])
       setAttachmentError(null)
       setReconfigureError(null)
 
@@ -2661,6 +2693,9 @@ const WorkspacePage = ({
             pendingPermissions={visiblePermissionRequests}
             pendingElicitations={visibleElicitations}
             onRespondToElicitation={respondToElicitation}
+            pendingAnnotations={pendingAnnotations}
+            onRemoveAnnotation={removeAnnotation}
+            onAnnotateSelection={addAnnotation}
             permissionProfile={activePermissionProfile}
             permissionProfileState={activePermissionProfileState}
             permissionGrants={activePermissionGrants}

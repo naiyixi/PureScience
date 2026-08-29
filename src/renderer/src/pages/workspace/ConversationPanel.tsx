@@ -4,6 +4,7 @@ import type {
   AcpContextUsage
 } from '../../../../shared/acp'
 import type { ElicitationAnswer, ElicitationRequestView } from '../../../../shared/elicitation'
+import type { ConversationAnnotation } from '../../../../shared/annotations'
 import type { NotebookSessionReference } from '../../../../shared/notebook'
 import type {
   PermissionProfileId,
@@ -66,6 +67,8 @@ import { ContextWindowDialog } from './ContextWindowDialog'
 import { ComposerModelPicker } from './ComposerModelPicker'
 import { PermissionApprovalControls } from './PermissionApprovalControls'
 import { ElicitationCards } from './ElicitationCards'
+import { AnnotationCards } from './AnnotationCards'
+import { SelectionAnnotator } from './SelectionAnnotator'
 import { normalizeRunFailureError } from './error-report'
 import { ReportErrorDialog } from './ReportErrorDialog'
 import { SessionInterruptedBanner } from './SessionInterruptedBanner'
@@ -187,6 +190,9 @@ type ConversationPanelProps = {
     action: 'accept' | 'decline',
     answers?: ElicitationAnswer
   ) => void
+  pendingAnnotations: ConversationAnnotation[]
+  onRemoveAnnotation: (annotationId: string) => void
+  onAnnotateSelection: (source: string, text: string) => void
   onPermissionProfileChange: (profile: PermissionProfileId) => void
   onRevokePermissionGrant: (categoryKey: string) => void
   onClearPermissionGrants: () => void
@@ -239,6 +245,9 @@ const ConversationPanel = ({
   pendingPermissions,
   pendingElicitations,
   onRespondToElicitation,
+  pendingAnnotations,
+  onRemoveAnnotation,
+  onAnnotateSelection,
   permissionProfile,
   permissionProfileState,
   permissionGrants,
@@ -450,9 +459,13 @@ const ConversationPanel = ({
   }
 
   return (
-    <ResizablePanel id="main-content" defaultSize="60%" minSize="30%">
+    <>
+      {/* Floating "add as annotation" affordance for text selections in the workspace. */}
+      <SelectionAnnotator onAnnotate={onAnnotateSelection} disabled={!canEditDraft} />
+      <ResizablePanel id="main-content" defaultSize="60%" minSize="30%">
       <section
         className="flex h-full min-w-0 flex-col overflow-hidden bg-bg-10 p-2 pl-4 max-md:p-0"
+        data-annotation-source="转录"
         data-session-id={activeSession?.id ?? ''}
         data-agent-running={activeSession?.status === 'running' ? 'true' : 'false'}
       >
@@ -506,6 +519,8 @@ const ConversationPanel = ({
           <div className="px-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] md:px-4 md:pb-2">
             {/* Runtime and session errors stay near the composer so recovery is visible. */}
             <div className={composerContentClassName}>
+              {/* Staged annotation cards (user-selected workspace context for the next message). */}
+              <AnnotationCards annotations={pendingAnnotations} onRemove={onRemoveAnnotation} />
               <div className="px-1 md:px-3">
                 {/* Interrupted sessions get a neutral banner with a Resume action instead of the
                     red error box, so the user can re-attach the runtime and keep chatting. */}
@@ -1154,6 +1169,7 @@ const ConversationPanel = ({
         />
       </section>
     </ResizablePanel>
+    </>
   )
 }
 

@@ -46,6 +46,7 @@ describe('AcpPromptContentOwner', () => {
       historyUploads: [],
       currentUploads: [],
       references: [],
+      annotations: [],
       codexSkillInputs: [],
       skillImportEnabled: false,
       skillImportTurnToken: undefined,
@@ -65,6 +66,7 @@ describe('AcpPromptContentOwner', () => {
       historyUploads: [],
       currentUploads: [],
       references: [],
+      annotations: [],
       codexSkillInputs,
       skillImportEnabled: false,
       skillImportTurnToken: undefined,
@@ -156,6 +158,7 @@ describe('AcpPromptContentOwner', () => {
       historyUploads: [immutableHistoryUpload],
       currentUploads: [currentUpload],
       references: [reference],
+      annotations: [],
       codexSkillInputs: [],
       skillImportEnabled: false,
       skillImportTurnToken: undefined,
@@ -228,6 +231,7 @@ describe('AcpPromptContentOwner', () => {
       historyUploads: [],
       currentUploads: staged,
       references: [],
+      annotations: [],
       codexSkillInputs: [],
       skillImportEnabled: false,
       fileTextBudget: 2_000
@@ -274,6 +278,7 @@ describe('AcpPromptContentOwner', () => {
       historyUploads: [stagedHistory],
       currentUploads: [],
       references: [],
+      annotations: [],
       codexSkillInputs: [],
       skillImportEnabled: false
     })
@@ -315,6 +320,7 @@ describe('AcpPromptContentOwner', () => {
       historyUploads: [{ ...legacyHistory, versionId: undefined }],
       currentUploads: [],
       references: [],
+      annotations: [],
       codexSkillInputs: [],
       skillImportEnabled: false
     })
@@ -355,6 +361,7 @@ describe('AcpPromptContentOwner', () => {
         historyUploads: [],
         currentUploads: [await stageImage(name)],
         references: [],
+      annotations: [],
         codexSkillInputs: [],
         skillImportEnabled: false,
         skillImportTurnToken: undefined,
@@ -413,6 +420,7 @@ describe('AcpPromptContentOwner', () => {
             relativePath: 'unavailable.txt'
           }
         ],
+        annotations: [],
         codexSkillInputs: [],
         skillImportEnabled: false,
         skillImportTurnToken: undefined,
@@ -428,6 +436,7 @@ describe('AcpPromptContentOwner', () => {
       historyUploads: [],
       currentUploads: [await stageImage('after-failure.png')],
       references: [],
+      annotations: [],
       codexSkillInputs: [],
       skillImportEnabled: false,
       skillImportTurnToken: undefined,

@@ -1620,6 +1620,9 @@ export const en: Record<ZhKey, string> = {
   'ws.elicitationRequired': 'required',
   'ws.elicitationTrue': 'True',
   'ws.elicitationFalse': 'False',
+  'ws.annotationAdd': 'Add as annotation',
+  'ws.annotationRemove': 'Remove annotation',
+  'ws.annotationSourceFallback': 'Selected content',
 
   'settings.about': 'About',
   'settings.helpCenter': 'Help center',

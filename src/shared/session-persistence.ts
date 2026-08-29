@@ -1,4 +1,9 @@
 import type { PersistedUploadedAttachment } from './uploads'
+import {
+  ANNOTATION_MAX_SOURCE_LENGTH,
+  ANNOTATION_MAX_TEXT_LENGTH,
+  type ConversationAnnotation
+} from './annotations'
 import type { FileReference } from './artifacts'
 import {
   MAX_ACP_MESSAGE_IMAGES_PER_MESSAGE,
@@ -142,6 +147,9 @@ export type PersistedChatMessage = {
   // Links a message to session-level artifact metadata without duplicating file records per message.
   artifactIds?: string[]
   uploads?: PersistedUploadedAttachment[]
+  // User-selected workspace context cards (transcript / preview text) attached to this message;
+  // persisted so annotations survive restarts and edit-and-resend.
+  annotations?: ConversationAnnotation[]
   // Bounded raster blocks emitted directly by ACP agent_message_chunk notifications.
   images?: PersistedMessageImage[]
   // Structured mention segments for the styled user bubble; optional for backward compatibility.
@@ -772,6 +780,21 @@ const sanitizeUploadedAttachment = (
   return sanitized
 }
 
+// Rebuilds an annotation card with strict bounds: unknown shapes, oversize text, and non-text
+// kinds fail closed (dropped). Only user-supplied workspace selections are accepted.
+const sanitizeConversationAnnotation = (annotation: unknown): ConversationAnnotation | undefined => {
+  if (!isRecord(annotation)) return undefined
+  if (annotation.kind !== 'text') return undefined
+  const id = asString(annotation.id)
+  const source = asString(annotation.source)
+  const text = asString(annotation.text)
+  const createdAt = asNumber(annotation.createdAt)
+  if (!id || !source || !text || createdAt === undefined) return undefined
+  if (source.length > ANNOTATION_MAX_SOURCE_LENGTH) return undefined
+  if (text.length > ANNOTATION_MAX_TEXT_LENGTH) return undefined
+  return { id, kind: 'text', source, text, createdAt }
+}
+
 // Persisting more than the UI shows is wasteful, so bound the large text-bearing fields.
 const MAX_PERSISTED_TEXT_CHARS = 16_000
 const MAX_PERSISTED_TOOL_CONTENT_CHARS = 32_000
@@ -1181,6 +1204,11 @@ const sanitizeMessage = (
   const parts = Array.isArray(message.parts)
     ? message.parts.map(sanitizeMessagePart).filter((item): item is MessagePart => !!item)
     : []
+  const annotations = Array.isArray(message.annotations)
+    ? message.annotations
+        .map(sanitizeConversationAnnotation)
+        .filter((item): item is ConversationAnnotation => !!item)
+    : []
   const images = sanitizeMessageImages(message.images)
   const turnUsage = role === 'agent' ? sanitizeAcpTurnTokenUsage(message.turnUsage) : undefined
   const turnUsageUnavailable =
@@ -1198,6 +1226,7 @@ const sanitizeMessage = (
   if (artifactIds.length > 0) sanitized.artifactIds = artifactIds
   if (uploads.length > 0) sanitized.uploads = uploads
   if (parts.length > 0) sanitized.parts = parts
+  if (annotations.length > 0) sanitized.annotations = annotations
   if (images) sanitized.images = images
   if (turnUsage) sanitized.turnUsage = turnUsage
   if (turnUsageUnavailable) sanitized.turnUsageUnavailable = true
