@@ -6,7 +6,6 @@ import {
   REQUEST_SKILL_IMPORT_TOOL_NAME,
   SKILL_IMPORT_MCP_SERVER_NAME,
   SKILL_IMPORT_SYSTEM_PROMPT_APPEND,
-  SKILL_CREATE_SYSTEM_PROMPT_APPEND,
   createSkillImportMcpServer
 } from './mcp-server'
 import { SKILL_CREATE_TOOL_NAME } from '../../shared/skill-create'

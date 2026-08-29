@@ -248,6 +248,7 @@ import {
   type NamedElectronSurfaceAdapter
 } from './runtime-electron-wiring'
 import { ConversationSkillImporter, SkillImportApprovalBroker } from './skills/conversation-import'
+import { SkillCreator } from './skills/skill-creator'
 import type { ConversationSkillImportApprovalResponse } from '../shared/settings'
 import type { TaskAgentPort } from './tasks/task-runner'
 
@@ -1120,6 +1121,7 @@ const createApplicationModules = async (
       connectorService,
       computeService: computeServiceWithRegistry,
       skillImporter: conversationSkillImporter,
+      skillCreator: new SkillCreator({ configDir: resolveConfigRoot() }),
       memoryWriter: {
         saveNote: (categoryName, text) => settingsService.saveMemoryNote(categoryName, text)
       },
@@ -1966,6 +1968,7 @@ const createApplicationModules = async (
     },
     host: {
       cli: cliCommandOwner,
+      folderGrants: folderGrantsService,
       github: githubCommandOwner,
       localFs: localFsService,
       logs: logsCommandOwner,
