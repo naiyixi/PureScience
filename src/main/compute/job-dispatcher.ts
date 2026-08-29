@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 
 import type { ComputeJob, ExternalComputeEndpoint } from '../../shared/compute'
 import { isExternalComputeProviderId } from '../../shared/compute'
+import { redactSecrets } from '../../shared/secret-redaction'
 import { runModalJob, runNimJob } from './external-runner'
 import type { ComputeHostRepository } from './repository'
 import type { ComputeJobRepository } from './job-repository'
@@ -198,8 +199,8 @@ async function dispatchExternalJob(job: ComputeJob, deps: DispatcherDeps): Promi
   const updated = await jobRepository.update(job.job_id, {
     status: outcome.exitCode === 0 ? 'success' : 'failed',
     exitCode: outcome.exitCode,
-    stdoutTail: outcome.stdout.slice(-64_000),
-    stderrTail: outcome.stderr.slice(-64_000),
+    stdoutTail: redactSecrets(outcome.stdout.slice(-64_000)),
+    stderrTail: redactSecrets(outcome.stderr.slice(-64_000)),
     finishedAt: new Date()
   })
   onJobUpdated?.(updated)

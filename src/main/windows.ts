@@ -76,6 +76,14 @@ const createAppWindow = (options: BrowserWindowConstructorOptions): BrowserWindo
     window.show()
   })
 
+  // Hardening: Chromium permission requests from the renderer are denied by default. The app's
+  // own surfaces never need web permissions (notifications, media, geolocation, etc. go through
+  // native/OS channels), so any request is treated as suspicious renderer code by construction.
+  window.webContents.session.setPermissionRequestHandler((_webContents, _permission, callback) => {
+    callback(false)
+  })
+  window.webContents.session.setPermissionCheckHandler(() => false)
+
   window.webContents.setWindowOpenHandler((details) => {
     if (isAllowedExternalNavigation(details.url)) {
       void shell.openExternal(details.url)

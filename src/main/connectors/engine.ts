@@ -88,16 +88,36 @@ export class ParserEngine {
     const doFetch = async (url: string, accept: string, init?: RequestInit): Promise<Response> => {
       for (let attempt = 0; ; attempt++) {
         const controller = new AbortController()
-        const timer = setTimeout(() => controller.abort(), this.timeoutMs)
+        // Deadline wins even if the transport ignores the abort signal: a stalled request must
+        // fail fast with a clear explanation (upstream parity — connector timeouts are not
+        // retried), never hang until the process-level timeout.
+        let timer: ReturnType<typeof setTimeout> | undefined
+        const deadline = new Promise<never>((_resolve, reject) => {
+          timer = setTimeout(() => {
+            controller.abort()
+            reject(
+              new Error(
+                `Request timed out after ${this.timeoutMs}ms for ${redactUrl(url)} (deadline reached; not retried)`
+              )
+            )
+          }, this.timeoutMs)
+        })
         let res: Response
         try {
-          res = await this.fetchImpl(url, {
-            ...init,
-            headers: { accept, 'user-agent': USER_AGENT, ...init?.headers },
-            signal: controller.signal
-          })
+          res = await Promise.race([
+            this.fetchImpl(url, {
+              ...init,
+              headers: { accept, 'user-agent': USER_AGENT, ...init?.headers },
+              signal: controller.signal
+            }),
+            deadline
+          ])
         } catch (err) {
-          // Network failure or timeout abort — retry a bounded number of times, then give up.
+          // A stalled request fails fast (deadline above); transient network errors (connection
+          // refused, DNS, etc.) still retry with backoff.
+          if (err instanceof Error && /timed out after/.test(err.message)) {
+            throw err
+          }
           if (attempt < this.retries) {
             await sleep(nextDelay(attempt, null))
             continue

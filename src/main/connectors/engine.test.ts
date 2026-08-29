@@ -74,7 +74,7 @@ describe('ParserEngine declarative path', () => {
     expect(fetchImpl).toHaveBeenCalledTimes(2)
   })
 
-  it('retries a network/timeout error then succeeds', async () => {
+  it('retries a transient network error then succeeds', async () => {
     const fetchImpl = vi
       .fn()
       .mockRejectedValueOnce(new Error('ECONNRESET'))
@@ -90,6 +90,24 @@ describe('ParserEngine declarative path', () => {
     }
     expect(await engine.call(desc, {}, {})).toBe(5)
     expect(fetchImpl).toHaveBeenCalledTimes(2)
+  })
+
+  it('fails fast on a timeout abort without retrying (stalled request)', async () => {
+    // The fetch never settles, so only the engine's own deadline timer can resolve it.
+    const fetchImpl = vi.fn(() => new Promise<Response>(() => {}))
+    const engine = new ParserEngine({ fetchImpl, retryBackoffMs: 0, timeoutMs: 50 })
+    const desc: ToolDescriptor = {
+      id: 't',
+      connector: 'c',
+      description: '',
+      input: {},
+      url: () => 'https://x.test',
+      parse: (raw) => (raw as { value: number }).value
+    }
+    // A stalled request must surface the deadline error immediately — the second (would-be
+    // retry) fetch must never run.
+    await expect(engine.call(desc, {}, {})).rejects.toThrow(/timed out after 50ms/)
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
   })
 
   it('does not retry a client error (4xx other than 429)', async () => {
