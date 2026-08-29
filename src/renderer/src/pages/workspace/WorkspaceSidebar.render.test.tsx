@@ -1,7 +1,51 @@
+// @vitest-environment jsdom
+import { act } from 'react'
+import { createRoot } from 'react-dom/client'
+import type { PropsWithChildren } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { Children, isValidElement, type ReactElement, type ReactNode } from 'react'
 import type { ChatSession } from '@/stores/session-store'
 import { describe, expect, it, vi } from 'vitest'
+import { WorkspaceSidebar } from './WorkspaceSidebar'
+
+// React's act() refuses to run unless the environment opts in to act-aware scheduling.
+;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+// Radix DropdownMenu calls pointer-capture APIs that jsdom does not implement.
+// Replace with a flat render so items are always visible in the DOM.
+vi.mock('@/components/ui/dropdown-menu', () => ({
+  DropdownMenu: ({ children }: PropsWithChildren): React.JSX.Element => <div>{children}</div>,
+  DropdownMenuTrigger: ({ children }: PropsWithChildren): React.JSX.Element => <>{children}</>,
+  DropdownMenuContent: ({ children }: PropsWithChildren): React.JSX.Element => (
+    <div>{children}</div>
+  ),
+  DropdownMenuSeparator: (): React.JSX.Element => <hr />,
+  DropdownMenuSub: ({ children }: PropsWithChildren): React.JSX.Element => <div>{children}</div>,
+  DropdownMenuSubTrigger: ({
+    children,
+    disabled,
+    ...rest
+  }: PropsWithChildren<{ disabled?: boolean }>): React.JSX.Element => (
+    <button type="button" disabled={disabled} {...rest}>
+      {children}
+    </button>
+  ),
+  DropdownMenuSubContent: ({ children }: PropsWithChildren): React.JSX.Element => (
+    <div>{children}</div>
+  ),
+  DropdownMenuItem: ({
+    children,
+    disabled,
+    onSelect,
+    ...rest
+  }: PropsWithChildren<{
+    disabled?: boolean
+    onSelect?: () => void
+  }>): React.JSX.Element => (
+    <button type="button" disabled={disabled} onClick={onSelect} {...rest}>
+      {children}
+    </button>
+  )
+}))
 
 vi.mock('@/lib/utils', () => ({
   cn: (...values: Array<string | false | undefined>) => values.filter(Boolean).join(' ')
@@ -57,32 +101,59 @@ const renderSidebar = async (sessions: ChatSession[]): Promise<string> => {
   )
 }
 
-type ElementWithProps = ReactElement<Record<string, unknown>>
-
-const collectElements = (node: ReactNode): ElementWithProps[] => {
-  const elements: ElementWithProps[] = []
-
-  const visit = (value: ReactNode): void => {
-    Children.forEach(value, (child) => {
-      if (!isValidElement(child)) return
-
-      const element = child as ElementWithProps
-      elements.push(element)
-      visit(element.props.children as ReactNode)
-    })
+// Renders the sidebar into the DOM (jsdom) so interaction wiring can be exercised with real
+// clicks. The flat dropdown-menu mock keeps every menu item visible in the tree.
+const renderSidebarDom = (
+  props: Omit<React.ComponentProps<typeof WorkspaceSidebar>, 'sessions'> & {
+    sessions: ChatSession[]
   }
+): HTMLDivElement => {
+  const container = document.createElement('div')
+  document.body.appendChild(container)
 
-  visit(node)
-  return elements
+  act(() => {
+    createRoot(container).render(<WorkspaceSidebar {...props} />)
+  })
+  return container
 }
 
-const getTextContent = (node: ReactNode): string => {
-  if (typeof node === 'string' || typeof node === 'number') return String(node)
-  if (!isValidElement(node)) return ''
+const findByText = (container: HTMLElement, text: string): HTMLButtonElement => {
+  const candidates = Array.from(container.querySelectorAll('button'))
+  const match = candidates.find((button) => button.textContent?.trim() === text)
+  if (!match) throw new Error(`Button with text "${text}" not found.`)
+  return match
+}
 
-  return Children.toArray((node as ElementWithProps).props.children as ReactNode)
-    .map(getTextContent)
-    .join('')
+const clickByText = (container: HTMLElement, text: string): void => {
+  act(() => {
+    findByText(container, text).click()
+  })
+}
+
+const findAllByText = (container: HTMLElement, text: string): HTMLButtonElement[] =>
+  Array.from(container.querySelectorAll('button')).filter(
+    (button) => button.textContent?.trim() === text
+  )
+
+// Session row buttons embed an sr-only status label before the title, so match by substring.
+const findRowButton = (container: HTMLElement, title: string): HTMLButtonElement => {
+  const match = Array.from(container.querySelectorAll('button')).find((button) =>
+    button.textContent?.includes(title)
+  )
+  if (!match) throw new Error(`Row button containing "${title}" not found.`)
+  return match
+}
+
+const clickRow = (container: HTMLElement, title: string): void => {
+  act(() => {
+    findRowButton(container, title).click()
+  })
+}
+
+const clickButtonAt = (container: HTMLElement, text: string, index: number): void => {
+  act(() => {
+    findAllByText(container, text)[index]?.click()
+  })
 }
 
 describe('WorkspaceSidebar accessible render', () => {
@@ -124,8 +195,7 @@ describe('WorkspaceSidebar accessible render', () => {
     expect(html).toContain('aria-label="Open actions for Dataset cleanup"')
   })
 
-  it('wires session open and row menu actions to the matching session', async () => {
-    const { WorkspaceSidebar } = await import('./WorkspaceSidebar')
+  it('wires session open and row menu actions to the matching session', () => {
     const sessions = [
       createSession({ id: 'session-a', title: 'Notebook review' }),
       createSession({ id: 'session-b', title: 'Dataset cleanup' })
@@ -136,7 +206,7 @@ describe('WorkspaceSidebar accessible render', () => {
     const onDeleteSession = vi.fn()
     const onExportSession = vi.fn()
     const onArchiveSession = vi.fn()
-    const tree = WorkspaceSidebar({
+    const container = renderSidebarDom({
       projectName: 'Example project',
       sessions,
       activeSessionId: sessions[0].id,
@@ -159,57 +229,32 @@ describe('WorkspaceSidebar accessible render', () => {
       onDeleteSession,
       onOpenSettings: vi.fn()
     })
-    const elements = collectElements(tree)
-    const notebookButton = elements.find(
-      (element) =>
-        element.type === 'button' &&
-        getTextContent(element).includes('Notebook review') &&
-        typeof element.props.onClick === 'function'
-    )
-    const renameItems = elements.filter((element) => getTextContent(element).trim() === 'Rename…')
-    const downloadItems = elements.filter(
-      (element) => getTextContent(element).trim() === 'Download all artifacts'
-    )
-    const deleteItems = elements.filter((element) => getTextContent(element).trim() === 'Delete')
-    const archiveItems = elements.filter((element) => getTextContent(element).trim() === 'Archive')
-    const markdownItems = elements.filter(
-      (element) => getTextContent(element).trim() === 'Markdown'
-    )
-    const pdfItems = elements.filter((element) => getTextContent(element).trim() === 'PDF')
 
-    expect(notebookButton?.props.onClick).toBeTypeOf('function')
-    ;(notebookButton?.props.onClick as () => void)()
+    clickRow(container, 'Notebook review')
     expect(onOpenSession).toHaveBeenCalledWith('session-a')
 
-    expect(renameItems[1]?.props.onSelect).toBeTypeOf('function')
-    ;(renameItems[1]?.props.onSelect as () => void)()
+    clickButtonAt(container, 'Rename…', 1)
     expect(onRenameSession).toHaveBeenCalledWith(sessions[1])
 
-    expect(downloadItems[1]?.props.onSelect).toBeTypeOf('function')
-    ;(downloadItems[1]?.props.onSelect as () => void)()
+    clickButtonAt(container, 'Download all artifacts', 1)
     expect(onDownloadArtifacts).toHaveBeenCalledWith(sessions[1])
 
-    expect(markdownItems[0]?.props.onSelect).toBeTypeOf('function')
-    ;(markdownItems[0]?.props.onSelect as () => void)()
+    clickButtonAt(container, 'Markdown', 0)
     expect(onExportSession).toHaveBeenCalledWith(sessions[0], 'markdown')
 
-    expect(pdfItems[1]?.props.onSelect).toBeTypeOf('function')
-    ;(pdfItems[1]?.props.onSelect as () => void)()
+    clickButtonAt(container, 'PDF', 1)
     expect(onExportSession).toHaveBeenCalledWith(sessions[1], 'pdf')
 
-    expect(archiveItems[1]?.props.onSelect).toBeTypeOf('function')
-    ;(archiveItems[1]?.props.onSelect as () => void)()
+    clickButtonAt(container, 'Archive', 1)
     expect(onArchiveSession).toHaveBeenCalledWith(sessions[1])
 
-    expect(deleteItems[0]?.props.onSelect).toBeTypeOf('function')
-    ;(deleteItems[0]?.props.onSelect as () => void)()
+    clickButtonAt(container, 'Delete', 0)
     expect(onDeleteSession).toHaveBeenCalledWith(sessions[0])
   })
 
-  it('renders Files directly after New and wires it to the preview opener', async () => {
-    const { WorkspaceSidebar } = await import('./WorkspaceSidebar')
+  it('renders Files directly after New and wires it to the preview opener', () => {
     const onOpenFiles = vi.fn()
-    const tree = WorkspaceSidebar({
+    const container = renderSidebarDom({
       projectName: 'Example project',
       sessions: [createSession({ id: 'session-a', title: 'Notebook review' })],
       activeSessionId: 'session-a',
@@ -230,28 +275,26 @@ describe('WorkspaceSidebar accessible render', () => {
       onDeleteSession: vi.fn(),
       onOpenSettings: vi.fn()
     })
-    const buttons = collectElements(tree).filter((element) => element.type === 'button')
-    const newButtonIndex = buttons.findIndex((button) => getTextContent(button).trim() === 'New')
-    const filesButton = buttons.find((button) => getTextContent(button).trim() === 'Files')
+    const buttons = Array.from(container.querySelectorAll('button'))
+    const newButtonIndex = buttons.findIndex((button) => button.textContent?.trim() === 'New')
+    const filesButton = buttons.find((button) => button.textContent?.trim() === 'Files')
 
     expect(newButtonIndex).toBeGreaterThanOrEqual(0)
     expect(buttons[newButtonIndex + 1]).toBe(filesButton)
-    expect(filesButton?.props['aria-controls']).toBe('right-panel')
-    expect(filesButton?.props['aria-pressed']).toBe(true)
+    expect(filesButton?.getAttribute('aria-controls')).toBe('right-panel')
+    expect(filesButton?.getAttribute('aria-pressed')).toBe('true')
 
-    expect(filesButton?.props.onClick).toBeTypeOf('function')
-    ;(filesButton?.props.onClick as () => void)()
+    clickByText(container, 'Files')
     expect(onOpenFiles).toHaveBeenCalledTimes(1)
   })
 
-  it('wires the View notebook menu item to the matching session', async () => {
-    const { WorkspaceSidebar } = await import('./WorkspaceSidebar')
+  it('wires the View notebook menu item to the matching session', () => {
     const sessions = [
       createSession({ id: 'session-a', title: 'Notebook review' }),
       createSession({ id: 'session-b', title: 'Dataset cleanup' })
     ]
     const onViewNotebook = vi.fn()
-    const tree = WorkspaceSidebar({
+    const container = renderSidebarDom({
       projectName: 'Example project',
       sessions,
       activeSessionId: sessions[0].id,
@@ -272,12 +315,8 @@ describe('WorkspaceSidebar accessible render', () => {
       onExportSession: vi.fn(),
       onOpenSettings: vi.fn()
     })
-    const viewNotebookItems = collectElements(tree).filter(
-      (element) => getTextContent(element).trim() === 'View notebook'
-    )
 
-    expect(viewNotebookItems[1]?.props.onSelect).toBeTypeOf('function')
-    ;(viewNotebookItems[1]?.props.onSelect as () => void)()
+    clickButtonAt(container, 'View notebook', 1)
     expect(onViewNotebook).toHaveBeenCalledWith(sessions[1])
   })
 
@@ -295,14 +334,13 @@ describe('WorkspaceSidebar accessible render', () => {
     expect(withPin.indexOf('>Pinned<')).toBeLessThan(withPin.indexOf('>Active<'))
   })
 
-  it('shows Pin for an unpinned session and Unpin for a pinned one, wired to the session', async () => {
-    const { WorkspaceSidebar } = await import('./WorkspaceSidebar')
+  it('shows Pin for an unpinned session and Unpin for a pinned one, wired to the session', () => {
     const sessions = [
       createSession({ id: 'session-a', title: 'Unpinned one' }),
       createSession({ id: 'session-b', title: 'Pinned one', pinned: true })
     ]
     const onTogglePin = vi.fn()
-    const tree = WorkspaceSidebar({
+    const container = renderSidebarDom({
       projectName: 'Example project',
       sessions,
       activeSessionId: sessions[0].id,
@@ -323,25 +361,19 @@ describe('WorkspaceSidebar accessible render', () => {
       onDeleteSession: vi.fn(),
       onOpenSettings: vi.fn()
     })
-    const elements = collectElements(tree)
-    const pinItem = elements.find((element) => getTextContent(element).trim() === 'Pin')
-    const unpinItem = elements.find((element) => getTextContent(element).trim() === 'Unpin')
 
     // The unpinned session-a shows "Pin"; the pinned session-b shows "Unpin".
-    expect(pinItem?.props.onSelect).toBeTypeOf('function')
-    ;(pinItem?.props.onSelect as () => void)()
+    clickButtonAt(container, 'Pin', 0)
     expect(onTogglePin).toHaveBeenCalledWith(sessions[0])
 
     onTogglePin.mockClear()
-    expect(unpinItem?.props.onSelect).toBeTypeOf('function')
-    ;(unpinItem?.props.onSelect as () => void)()
+    clickButtonAt(container, 'Unpin', 0)
     expect(onTogglePin).toHaveBeenCalledWith(sessions[1])
   })
 
-  it('keeps target-validated deletion available while other mutations are recovering', async () => {
-    const { WorkspaceSidebar } = await import('./WorkspaceSidebar')
+  it('keeps target-validated deletion available while other mutations are recovering', () => {
     const session = createSession({ id: 'session-a', title: 'Notebook review' })
-    const tree = WorkspaceSidebar({
+    const container = renderSidebarDom({
       projectName: 'Example project',
       sessions: [session],
       activeSessionId: session.id,
@@ -361,19 +393,14 @@ describe('WorkspaceSidebar accessible render', () => {
       onDeleteSession: vi.fn(),
       onOpenSettings: vi.fn()
     })
-    const elements = collectElements(tree)
-    const pinItem = elements.find((element) => getTextContent(element).trim() === 'Pin')
-    const renameItem = elements.find((element) => getTextContent(element).trim() === 'Rename…')
-    const deleteItem = elements.find((element) => getTextContent(element).trim() === 'Delete')
 
-    expect(pinItem?.props.disabled).toBe(true)
-    expect(renameItem?.props.disabled).toBe(true)
-    expect(deleteItem?.props.disabled).toBe(false)
+    expect(findAllByText(container, 'Pin')[0]?.disabled).toBe(true)
+    expect(findAllByText(container, 'Rename…')[0]?.disabled).toBe(true)
+    expect(findAllByText(container, 'Delete')[0]?.disabled).toBe(false)
   })
 
-  it('disables conversation export for running, waiting-permission, or empty sessions', async () => {
-    const { WorkspaceSidebar } = await import('./WorkspaceSidebar')
-    const tree = WorkspaceSidebar({
+  it('disables conversation export for running, waiting-permission, or empty sessions', () => {
+    const container = renderSidebarDom({
       projectName: 'Example project',
       sessions: [
         createSession({ id: 'running', status: 'running', messages: [createMessage()] }),
@@ -403,22 +430,17 @@ describe('WorkspaceSidebar accessible render', () => {
       onDeleteSession: vi.fn(),
       onOpenSettings: vi.fn()
     })
-    const exportTriggers = collectElements(tree).filter(
-      (element) =>
-        getTextContent(element).trim() === 'Export conversation' &&
-        typeof element.props.disabled === 'boolean'
-    )
+    const exportTriggers = findAllByText(container, 'Export conversation')
 
     expect(exportTriggers).toHaveLength(4)
-    expect(exportTriggers[0]?.props.disabled).toBe(true)
-    expect(exportTriggers[1]?.props.disabled).toBe(true)
-    expect(exportTriggers[2]?.props.disabled).toBe(true)
-    expect(exportTriggers[3]?.props.disabled).toBe(false)
+    expect(exportTriggers[0]?.disabled).toBe(true)
+    expect(exportTriggers[1]?.disabled).toBe(true)
+    expect(exportTriggers[2]?.disabled).toBe(true)
+    expect(exportTriggers[3]?.disabled).toBe(false)
   })
 
-  it('hides conversation export when the runtime does not expose that capability', async () => {
-    const { WorkspaceSidebar } = await import('./WorkspaceSidebar')
-    const tree = WorkspaceSidebar({
+  it('hides conversation export when the runtime does not expose that capability', () => {
+    const container = renderSidebarDom({
       projectName: 'Example project',
       sessions: [createSession({ status: 'idle', messages: [createMessage()] })],
       activeSessionId: 'session-1',
@@ -439,13 +461,12 @@ describe('WorkspaceSidebar accessible render', () => {
       onOpenSettings: vi.fn()
     })
 
-    expect(getTextContent(tree)).not.toContain('Export conversation')
+    expect(container.textContent).not.toContain('Export conversation')
   })
 
-  it('hides artifact downloads when the runtime does not provide the desktop save capability', async () => {
-    const { WorkspaceSidebar } = await import('./WorkspaceSidebar')
+  it('hides artifact downloads when the runtime does not provide the desktop save capability', () => {
     const session = createSession({ id: 'session-a', title: 'Notebook review' })
-    const tree = WorkspaceSidebar({
+    const container = renderSidebarDom({
       projectName: 'Example project',
       sessions: [session],
       activeSessionId: session.id,
@@ -466,10 +487,6 @@ describe('WorkspaceSidebar accessible render', () => {
       onOpenSettings: vi.fn()
     })
 
-    const downloadItem = collectElements(tree).find(
-      (element) => getTextContent(element).trim() === 'Download all artifacts'
-    )
-
-    expect(downloadItem).toBeUndefined()
+    expect(container.textContent).not.toContain('Download all artifacts')
   })
 })

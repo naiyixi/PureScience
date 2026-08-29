@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Archive,
   BookOpen,
@@ -32,6 +33,7 @@ import { useLanguage } from '@/i18n'
 import { NetworkStatusIndicator } from '@/components/NetworkStatusIndicator'
 import { UpdateCapsule } from '@/components/UpdateCapsule'
 import { NotificationBell } from '@/components/NotificationBell'
+import { SessionHoverCard, type SessionHoverAnchor } from './SessionHoverCard'
 import type { ChatSession, SessionStatus } from '@/stores/session-store'
 import type { ConversationExportFormat } from '../../../../shared/conversation-export'
 
@@ -81,6 +83,11 @@ const sessionStatusLabel: Record<SessionStatus, string> = {
 
 const sidebarInteractiveTransitionClassName = 'transition-colors duration-200 ease-out'
 
+// Hover card timing: a deliberate dwell opens it, a short grace closes it. Fast sweeps across
+// the list never flash a card because the open delay outlasts the dwell on each row.
+const SESSION_HOVER_OPEN_DELAY_MS = 250
+const SESSION_HOVER_CLOSE_DELAY_MS = 150
+
 const sessionRowClassName = cn(
   'group mx-1.5 select-none rounded-md px-2.5 py-1.5 text-sm text-text-000 hover:bg-bg-300',
   sidebarInteractiveTransitionClassName
@@ -123,6 +130,74 @@ const WorkspaceSidebar = ({
   // Partition sessions into pinned and unpinned groups; each group preserves the incoming order.
   const pinnedSessions = sessions.filter((s) => s.pinned)
   const activeSessions = sessions.filter((s) => !s.pinned)
+
+  // Session hover preview card: one card at a time, anchored to the row under the pointer.
+  const [hoverState, setHoverState] = useState<{
+    session: ChatSession
+    anchor: SessionHoverAnchor
+  } | null>(null)
+  const openTimerRef = useRef<number | null>(null)
+  const closeTimerRef = useRef<number | null>(null)
+
+  const clearHoverTimers = useCallback((): void => {
+    if (openTimerRef.current !== null) window.clearTimeout(openTimerRef.current)
+    if (closeTimerRef.current !== null) window.clearTimeout(closeTimerRef.current)
+    openTimerRef.current = null
+    closeTimerRef.current = null
+  }, [])
+
+  useEffect(() => clearHoverTimers, [clearHoverTimers])
+
+  const closeHoverCard = useCallback((): void => {
+    clearHoverTimers()
+    setHoverState(null)
+  }, [clearHoverTimers])
+
+  // A deliberate dwell opens the card; sweeping across a list of rows must not flash it.
+  const scheduleHoverOpen = useCallback((session: ChatSession, element: HTMLElement): void => {
+    if (closeTimerRef.current !== null) {
+      window.clearTimeout(closeTimerRef.current)
+      closeTimerRef.current = null
+    }
+    if (openTimerRef.current !== null) return
+    openTimerRef.current = window.setTimeout(() => {
+      openTimerRef.current = null
+      const rect = element.getBoundingClientRect()
+      setHoverState({
+        session,
+        anchor: { top: rect.top, left: rect.left, width: rect.width, height: rect.height }
+      })
+    }, SESSION_HOVER_OPEN_DELAY_MS)
+  }, [])
+
+  const scheduleHoverClose = useCallback((): void => {
+    if (openTimerRef.current !== null) {
+      window.clearTimeout(openTimerRef.current)
+      openTimerRef.current = null
+    }
+    if (closeTimerRef.current !== null) return
+    closeTimerRef.current = window.setTimeout(() => {
+      closeTimerRef.current = null
+      setHoverState(null)
+    }, SESSION_HOVER_CLOSE_DELAY_MS)
+  }, [])
+
+  // Scrolling the list invalidates every anchored position; dismiss the card immediately.
+  const handleSessionListScroll = useCallback((): void => {
+    closeHoverCard()
+  }, [closeHoverCard])
+
+  // A window resize can move the anchor row; dismiss rather than float detached.
+  useEffect(() => {
+    if (!hoverState) return
+    window.addEventListener('resize', closeHoverCard)
+    return () => window.removeEventListener('resize', closeHoverCard)
+  }, [hoverState, closeHoverCard])
+
+  // Switching sessions changes the row set; never keep a card for a row that may unmount.
+  useEffect(() => {
+    setHoverState(null)
+  }, [activeSessionId])
 
   // Build section descriptors so the list renders with a labelled header per group.
   const sections: Array<{ label: string; items: typeof sessions }> = []
@@ -224,7 +299,10 @@ const WorkspaceSidebar = ({
 
           <div className="mx-2 my-1 h-px bg-border-300/15" />
 
-          <div className="min-h-0 flex-1 overflow-y-auto py-1">
+          <div
+            className="min-h-0 flex-1 overflow-y-auto py-1"
+            onScroll={handleSessionListScroll}
+          >
             {sections.map((section) => (
               <div key={section.label}>
                 <div className="px-2 pb-[5px] pt-3.5 text-[11px] font-medium text-muted-foreground">
@@ -241,14 +319,10 @@ const WorkspaceSidebar = ({
                     <div
                       key={session.id}
                       className={cn(sessionRowClassName, isActive && 'bg-bg-300 text-text-000')}
-                      title={
-                        // Session hover preview: the native tooltip shows the
-                        // full title and description on hover/keyboard focus, so truncated sidebar
-                        // rows stay identifiable (Chrome renders "\n" as a tooltip line break).
-                        session.description
-                          ? `${session.title}\n\n${session.description}`
-                          : session.title
-                      }
+                      onMouseEnter={(event) => scheduleHoverOpen(session, event.currentTarget)}
+                      onMouseLeave={scheduleHoverClose}
+                      onFocus={(event) => scheduleHoverOpen(session, event.currentTarget)}
+                      onBlur={scheduleHoverClose}
                     >
                       <div className="flex w-full min-w-0 items-center gap-1.5">
                         <button
@@ -280,6 +354,7 @@ const WorkspaceSidebar = ({
                               type="button"
                               className={cn(sessionRowActionClassName, isActive && 'opacity-100')}
                               aria-label={`Open actions for ${session.title}`}
+                              onPointerDown={closeHoverCard}
                             >
                               <span
                                 className="flex size-3.5 items-center justify-center"
@@ -449,6 +524,9 @@ const WorkspaceSidebar = ({
           </div>
         </nav>
       </div>
+      {hoverState ? (
+        <SessionHoverCard session={hoverState.session} anchor={hoverState.anchor} />
+      ) : null}
     </aside>
   )
 }
