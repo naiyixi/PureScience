@@ -3,6 +3,8 @@ import { readFile, stat } from 'node:fs/promises'
 import { pathToFileURL } from 'node:url'
 
 import type { AcpMessageImage } from '../../shared/acp'
+import type { ConversationAnnotation } from '../../shared/annotations'
+import { formatAnnotationPromptBlock } from '../../shared/annotations'
 import type { FileReference } from '../../shared/artifacts'
 import { estimateHistoryTokens, truncateTextToEstimatedTokens } from '../../shared/history-preamble'
 import {
@@ -56,6 +58,8 @@ type PrepareAcpPromptContentInput = {
   historyUploads: ReadonlyArray<UploadedAttachment>
   currentUploads: ReadonlyArray<UploadedAttachment>
   references: ReadonlyArray<FileReference>
+  // User-selected workspace context cards (transcript / preview text) injected as cited blocks.
+  annotations: ReadonlyArray<ConversationAnnotation>
   codexSkillInputs: ReadonlyArray<CodexSkillInput>
   skillImportEnabled: boolean
   fileTextBudget?: number
@@ -203,6 +207,12 @@ class AcpPromptContentOwner {
         for (const block of blocks) {
           appendBlock(block, this.imageOverflowResourceLink(block, reference.name))
         }
+      }
+
+      // User-selected annotation cards: injected as clearly-cited context blocks after files so
+      // the agent sees them as authoritative user-supplied context for this turn.
+      for (const annotation of input.annotations) {
+        appendBlock({ type: 'text', text: formatAnnotationPromptBlock(annotation) })
       }
 
       content = contentBlocks

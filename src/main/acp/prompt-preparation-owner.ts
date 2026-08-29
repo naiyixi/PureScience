@@ -209,6 +209,7 @@ class AcpPromptPreparationOwner {
         historyUploads: input.request.historyAttachments ?? [],
         currentUploads: input.request.attachments ?? [],
         references: input.request.referencedArtifacts ?? [],
+        annotations: input.request.annotations ?? [],
         codexSkillInputs: skillActivityInputs,
         skillImportEnabled: input.skillImportEnabled,
         fileTextBudget: resolveFileTextBudget(input.backend.context.window),

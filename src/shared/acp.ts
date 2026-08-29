@@ -1,6 +1,7 @@
 import type { ToolCallContent, ToolCallLocation, ToolKind, Usage, PromptResponse } from '@agentclientprotocol/sdk'
 import type { ArtifactFile, FileReference } from './artifacts'
 import type { UploadedAttachment } from './uploads'
+import type { ConversationAnnotation } from './annotations'
 import type { PermissionProfileId, SessionPermissionProfileState } from './permission-profiles'
 import type { AgentFrameworkId } from './settings'
 
@@ -661,6 +662,10 @@ export type AcpPromptRequest = {
     runtimeSegmentId?: string
   }
   attachments?: UploadedAttachment[]
+  // User-selected workspace context (transcript / preview text) attached to this turn as
+  // explicitly-cited annotation cards; injected into the agent prompt and persisted with the
+  // user message.
+  annotations?: ConversationAnnotation[]
   // Skills the user explicitly picked in the composer; the runtime force-loads and nudges them.
   forcedSkillIds?: string[]
   // Existing files referenced via composer `@` mentions; appended as prompt content blocks.

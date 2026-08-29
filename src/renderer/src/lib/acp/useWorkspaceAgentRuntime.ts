@@ -9,6 +9,7 @@ import type {
   AcpContextUsage
 } from '../../../../shared/acp'
 import type { ActivePlanProjection } from '../../../../shared/session-plan/contract'
+import type { ConversationAnnotation } from '../../../../shared/annotations'
 import {
   DEFAULT_PERMISSION_PROFILE,
   type PermissionProfileId,
@@ -63,6 +64,8 @@ type SendWorkspaceMessageInput = {
     pendingAction?: 'review' | 'approve' | 'reject'
   }
   attachments?: UploadedAttachment[]
+  // User-selected workspace context cards attached to this turn; injected into the agent prompt.
+  annotations?: ConversationAnnotation[]
   cwd?: string
   // Durable owning project stamped on new sessions.
   projectId?: string
@@ -662,6 +665,7 @@ const startPendingSessionPrompt = (
   pending: SendWorkspaceMessageResult,
   content: string,
   attachments: UploadedAttachment[],
+  annotations: ConversationAnnotation[],
   cwd: string | undefined,
   projectName: string | undefined,
   permissionProfile: PermissionProfileId,
@@ -758,8 +762,10 @@ const startPendingSessionPrompt = (
       contextReset
     ] as const
     const promptRequest = turnIntent
-      ? runtime.sendPrompt(...sendPromptArguments, undefined, turnIntent)
-      : runtime.sendPrompt(...sendPromptArguments)
+      ? runtime.sendPrompt(...sendPromptArguments, undefined, turnIntent, annotations)
+      : annotations && annotations.length > 0
+        ? runtime.sendPrompt(...sendPromptArguments, undefined, undefined, annotations)
+        : runtime.sendPrompt(...sendPromptArguments)
     void promptRequest
       .then((snapshot) => {
         useSessionStore.getState().clearPendingContextReplay(runtimeSessionId, boundMessageId)
@@ -782,6 +788,7 @@ const sendWorkspaceMessage = async (
     branchSourceSessionId,
     text,
     attachments = [],
+    annotations = [],
     cwd,
     projectId,
     projectName,
@@ -823,8 +830,10 @@ const sendWorkspaceMessage = async (
           toRuntimeUploadedAttachment(upload, replaySession?.projectId)
         )
 
-  // Empty drafts are allowed only when the user attached at least one file.
-  if (!content && effectiveAttachments.length === 0 && !branchSourceMessageId) return undefined
+  // Empty drafts are allowed only when the user attached at least one file or an annotation card.
+  if (!content && effectiveAttachments.length === 0 && annotations.length === 0 && !branchSourceMessageId) {
+    return undefined
+  }
 
   const targetCwd = cwd
 
@@ -902,6 +911,7 @@ const sendWorkspaceMessage = async (
       pendingResult,
       content,
       attachments,
+      annotations,
       pendingSession.cwd || targetCwd,
       sessionProjectName,
       pendingSession.permissionProfile ?? DEFAULT_PERMISSION_PROFILE,
@@ -984,6 +994,7 @@ const sendWorkspaceMessage = async (
         appended,
         content,
         effectiveAttachments,
+        annotations,
         retryCwd,
         sessionProjectName,
         currentSession.permissionProfile ?? DEFAULT_PERMISSION_PROFILE,
@@ -1157,6 +1168,7 @@ const sendWorkspaceMessage = async (
       sessionId: targetSessionId,
       content,
       attachments: effectiveAttachments,
+      annotations,
       parts,
       cwd: targetCwd,
       projectId: projectId ?? preparedSession?.projectId,
@@ -1265,10 +1277,12 @@ const sendWorkspaceMessage = async (
         }
       : undefined
     const promptRequest = turnIntent
-      ? runtime.sendPrompt(...sendPromptArguments, continuation, turnIntent)
+      ? runtime.sendPrompt(...sendPromptArguments, continuation, turnIntent, annotations)
       : continuation
-        ? runtime.sendPrompt(...sendPromptArguments, continuation)
-        : runtime.sendPrompt(...sendPromptArguments)
+        ? runtime.sendPrompt(...sendPromptArguments, continuation, undefined, annotations)
+        : annotations && annotations.length > 0
+          ? runtime.sendPrompt(...sendPromptArguments, undefined, undefined, annotations)
+          : runtime.sendPrompt(...sendPromptArguments)
 
     void promptRequest
       .then((snapshot) => {
@@ -1312,6 +1326,7 @@ const sendWorkspaceMessage = async (
     pending,
     content,
     attachments,
+    annotations,
     targetCwd,
     projectName,
     permissionProfile ?? DEFAULT_PERMISSION_PROFILE,

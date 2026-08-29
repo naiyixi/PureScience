@@ -979,6 +979,23 @@ const WorkspaceMessageItem = ({
                     attachments={uploads}
                     onPreviewUploadAttachment={onPreviewUploadAttachment}
                   />
+                  {/* Annotation cards attached to this message render as small cited context chips. */}
+                  {message.annotations && message.annotations.length > 0 ? (
+                    <div className="mb-1.5 flex flex-col gap-1">
+                      {message.annotations.map((annotation) => (
+                        <span
+                          key={annotation.id}
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-bg-200 px-2 py-1 text-[11px] text-text-100"
+                          title={annotation.text}
+                        >
+                          <span className="shrink-0 rounded bg-bg-300 px-1 py-0.5 text-[10px] text-text-100">
+                            {annotation.source}
+                          </span>
+                          <span className="line-clamp-1">{annotation.text}</span>
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
                   {/* Structured parts drive styled pills; plain content is the backward-compatible fallback. */}
                   {staticParts && staticParts.length > 0 ? (
                     <MessagePartsContent

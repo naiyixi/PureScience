@@ -1311,7 +1311,8 @@ describe('workspace agent message sending', () => {
       expect.objectContaining({ promptMessageId: branched?.messageId }),
       true,
       undefined,
-      'plan-first'
+      'plan-first',
+      []
     )
   })
 

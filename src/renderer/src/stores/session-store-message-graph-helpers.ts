@@ -10,6 +10,7 @@ const isBeforeTimelineItem = (
   message: { sortIndex?: number }
 ): boolean => activity.sortIndex < (message.sortIndex ?? 0)
 import type { MessagePart } from '../../../shared/session-persistence'
+import type { ConversationAnnotation } from '../../../shared/annotations'
 import {
   sanitizeActivityGroup,
   sanitizeToolActivity,
@@ -34,6 +35,7 @@ export type AppendUserMessageInput = {
   sessionId: string
   content: string
   attachments?: PersistedUploadedAttachment[]
+  annotations?: ConversationAnnotation[]
   parts?: MessagePart[]
   cwd?: string
   projectId?: string

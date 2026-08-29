@@ -83,7 +83,8 @@ const useAcpRuntime = (): {
     provenanceContext?: AcpPromptRequest['provenanceContext'],
     contextReset?: AcpPromptRequest['contextReset'],
     planContinuation?: AcpPromptRequest['planContinuation'],
-    turnIntent?: AcpPromptRequest['turnIntent']
+    turnIntent?: AcpPromptRequest['turnIntent'],
+    annotations?: AcpPromptRequest['annotations']
   ) => Promise<AcpStateSnapshot>
   respondToPermission: (requestId: string, optionId?: string) => Promise<AcpStateSnapshot>
   setPermissionProfile: (
@@ -301,7 +302,8 @@ const useAcpRuntime = (): {
       provenanceContext?: AcpPromptRequest['provenanceContext'],
       contextReset?: AcpPromptRequest['contextReset'],
       planContinuation?: AcpPromptRequest['planContinuation'],
-      turnIntent?: AcpPromptRequest['turnIntent']
+      turnIntent?: AcpPromptRequest['turnIntent'],
+      annotations?: AcpPromptRequest['annotations']
     ) =>
       runSendPromptAction(() =>
         window.api.acp.sendPrompt({
@@ -320,7 +322,8 @@ const useAcpRuntime = (): {
           ...(provenanceContext ? { provenanceContext } : {}),
           ...(contextReset ? { contextReset: true } : {}),
           ...(planContinuation ? { planContinuation } : {}),
-          ...(turnIntent ? { turnIntent } : {})
+          ...(turnIntent ? { turnIntent } : {}),
+          ...(annotations && annotations.length > 0 ? { annotations } : {})
         })
       ),
     [runSendPromptAction]
