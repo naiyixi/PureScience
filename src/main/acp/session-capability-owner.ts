@@ -113,6 +113,9 @@ export type SessionCapabilityNotebookOptions = {
 export type SessionCapabilitySkillImportOptions = {
   mcpEntryPath: string
   mcpCommand?: string
+  // Framework config root containing `skills/`; passed to the skill MCP child for app-owned
+  // conversational skill creation.
+  configDir?: string
   isEnabled?: () => Promise<boolean>
   getRpcConnection: (binding: { sessionId: string }) => Promise<SkillImportRpcConnection>
   registerSessionAlias?: (aliasSessionId: string, sessionId: string) => void
@@ -850,6 +853,7 @@ export class AcpSessionCapabilityOwner {
           createSkillImportMcpServerConfig({
             command: this.options.skillImport.mcpCommand ?? process.execPath,
             entryPath: this.options.skillImport.mcpEntryPath,
+            configDir: this.options.skillImport.configDir ?? '',
             ...environment
           })
         )

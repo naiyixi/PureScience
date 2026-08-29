@@ -6,8 +6,10 @@ import {
   REQUEST_SKILL_IMPORT_TOOL_NAME,
   SKILL_IMPORT_MCP_SERVER_NAME,
   SKILL_IMPORT_SYSTEM_PROMPT_APPEND,
+  SKILL_CREATE_SYSTEM_PROMPT_APPEND,
   createSkillImportMcpServer
 } from './mcp-server'
+import { SKILL_CREATE_TOOL_NAME } from '../../shared/skill-create'
 
 describe('Skill import MCP server', () => {
   it('exposes one high-level request tool without exposing filesystem writes', async () => {
@@ -20,7 +22,11 @@ describe('Skill import MCP server', () => {
       status: 'imported',
       skills: [{ id: 'imported-slide-master', name: 'Slide Master', status: 'imported' }]
     })
-    const server = createSkillImportMcpServer({ requestImport, requestGitHubImport })
+    const server = createSkillImportMcpServer({
+      requestImport,
+      requestGitHubImport,
+      createSkill: vi.fn(async () => ({ created: true, skillName: 'probe', path: '/skills/probe' }))
+    })
     const client = new Client({ name: 'skill-import-test', version: '1.0.0' })
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
 
@@ -35,6 +41,16 @@ describe('Skill import MCP server', () => {
             attachment_uri: expect.any(Object),
             turn_token: expect.any(Object),
             github_url: expect.any(Object)
+          })
+        })
+      }),
+      expect.objectContaining({
+        name: SKILL_CREATE_TOOL_NAME,
+        inputSchema: expect.objectContaining({
+          properties: expect.objectContaining({
+            name: expect.any(Object),
+            description: expect.any(Object),
+            instructions: expect.any(Object)
           })
         })
       })

@@ -252,6 +252,9 @@ type AcpRuntimeNotebookOptions = {
 type AcpRuntimeSkillImportOptions = {
   mcpEntryPath: string
   mcpCommand?: string
+  // Framework config root containing `skills/`; forwarded to the skill MCP child for app-owned
+  // conversational skill creation.
+  configDir?: string
   // Read when building each agent session so a settings-triggered reconnect can add/remove the MCP
   // without constructing a new application service or keeping stale prompt guidance.
   isEnabled?: () => Promise<boolean>

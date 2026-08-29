@@ -4,7 +4,7 @@ import { claudeCodeFramework } from '../agent-framework/claude-code'
 import { codexFramework } from '../agent-framework/codex'
 import { opencodeFramework } from '../agent-framework/opencode'
 import { NOTEBOOK_SYSTEM_PROMPT_APPEND } from '../notebook/mcp-server'
-import { SKILL_IMPORT_SYSTEM_PROMPT_APPEND } from '../skills/mcp-server'
+import { SKILL_CREATE_SYSTEM_PROMPT_APPEND, SKILL_IMPORT_SYSTEM_PROMPT_APPEND } from '../skills/mcp-server'
 import { AcpSessionPresentationPolicy } from './session-presentation-policy'
 
 const TURN_CONTINUITY_APPEND = [
@@ -51,7 +51,8 @@ describe('ACP Session presentation policy', () => {
       LARGE_DATA_FILE_APPEND,
       ARTIFACT_FILE_APPEND,
       NOTEBOOK_SYSTEM_PROMPT_APPEND,
-      SKILL_IMPORT_SYSTEM_PROMPT_APPEND
+      SKILL_IMPORT_SYSTEM_PROMPT_APPEND,
+      SKILL_CREATE_SYSTEM_PROMPT_APPEND
     ])
     expect(Object.isFrozen(appends)).toBe(true)
   })

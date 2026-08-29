@@ -9,6 +9,20 @@ import {
   REQUEST_SKILL_IMPORT_TOOL_NAME,
   SKILL_IMPORT_MCP_SERVER_NAME
 } from '../../shared/skill-import'
+import {
+  SKILL_CREATE_MAX_DESCRIPTION_LENGTH,
+  SKILL_CREATE_MAX_INSTRUCTIONS_LENGTH,
+  SKILL_CREATE_MAX_NAME_LENGTH,
+  SKILL_CREATE_MAX_REFERENCE_LENGTH,
+  SKILL_CREATE_MAX_REFERENCES,
+  SKILL_CREATE_MIN_NAME_LENGTH,
+  SKILL_CREATE_SYSTEM_PROMPT_APPEND,
+  SKILL_CREATE_TOOL_DESCRIPTION,
+  SKILL_CREATE_TOOL_NAME,
+  type SkillCreateInput,
+  type SkillCreateResult
+} from '../../shared/skill-create'
+import { SkillCreator } from './skill-creator'
 import { SKILL_IMPORT_MCP_SERVER_ARG } from '../mcp-server-args'
 import { fetchLocalRpc, type LocalRpcTransport } from '../local-rpc-transport'
 import { parseGitHubSkillUrl } from './github-import'
@@ -64,11 +78,15 @@ type SkillImportMcpHandler = {
     turnToken: string
   ) => Promise<ConversationSkillImportResult>
   requestGitHubImport: (githubUrl: string) => Promise<ConversationSkillImportResult>
+  createSkill: (input: SkillCreateInput) => Promise<SkillCreateResult>
 }
 
 type SkillImportMcpServerConfigRequest = SkillImportMcpEnvironment & {
   command: string
   entryPath: string
+  // Framework config root containing `skills/`; lets the app-owned SkillCreator write drafts
+  // directly (the MCP child runs as ELECTRON_RUN_AS_NODE with local filesystem access).
+  configDir: string
 }
 
 type RpcResponse = {
@@ -105,6 +123,41 @@ const createSkillImportMcpServer = (handler: SkillImportMcpHandler): ModelContex
     }
   )
 
+  server.registerTool(
+    SKILL_CREATE_TOOL_NAME,
+    {
+      title: 'Create a skill',
+      description: SKILL_CREATE_TOOL_DESCRIPTION,
+      inputSchema: {
+        name: z
+          .string()
+          .min(SKILL_CREATE_MIN_NAME_LENGTH)
+          .max(SKILL_CREATE_MAX_NAME_LENGTH)
+          .regex(/^[a-z0-9_-]+$/, 'Lowercase letters, digits, hyphens, underscores.')
+          .describe('Skill name.'),
+        description: z
+          .string()
+          .max(SKILL_CREATE_MAX_DESCRIPTION_LENGTH)
+          .describe('One-line description of what the skill does.'),
+        instructions: z
+          .string()
+          .max(SKILL_CREATE_MAX_INSTRUCTIONS_LENGTH)
+          .describe('Step-by-step markdown instructions for the skill.'),
+        references: z
+          .array(z.string().max(SKILL_CREATE_MAX_REFERENCE_LENGTH))
+          .max(SKILL_CREATE_MAX_REFERENCES)
+          .optional()
+          .describe('Optional reference URLs or file paths the skill depends on.')
+      }
+    },
+    async (input: SkillCreateInput) => {
+      const result = await handler.createSkill(input)
+      return {
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+      }
+    }
+  )
+
   return server
 }
 
@@ -114,7 +167,8 @@ const createSkillImportMcpServerConfig = ({
   endpoint,
   socketPath,
   token,
-  sessionId
+  sessionId,
+  configDir
 }: SkillImportMcpServerConfigRequest): McpServerStdio => ({
   name: SKILL_IMPORT_MCP_SERVER_NAME,
   command,
@@ -126,7 +180,8 @@ const createSkillImportMcpServerConfig = ({
       ? [{ name: 'PURESCIENCE_SKILL_IMPORT_RPC_SOCKET_PATH', value: socketPath }]
       : []),
     { name: 'PURESCIENCE_SKILL_IMPORT_RPC_TOKEN', value: token },
-    { name: 'PURESCIENCE_SKILL_IMPORT_SESSION_ID', value: sessionId }
+    { name: 'PURESCIENCE_SKILL_IMPORT_SESSION_ID', value: sessionId },
+    { name: 'PURESCIENCE_SKILLS_CONFIG_DIR', value: configDir }
   ]
 })
 
@@ -187,10 +242,12 @@ const callGitHubSkillImportRpc = (
 const runSkillImportMcpServer = async (
   environment = createSkillImportMcpEnvironmentFromProcess()
 ): Promise<void> => {
+  const configDir = process.env['PURESCIENCE_SKILLS_CONFIG_DIR'] ?? ''
   const server = createSkillImportMcpServer({
     requestImport: (attachmentUri, turnToken) =>
       callSkillImportRpc(environment, attachmentUri, turnToken),
-    requestGitHubImport: (githubUrl) => callGitHubSkillImportRpc(environment, githubUrl)
+    requestGitHubImport: (githubUrl) => callGitHubSkillImportRpc(environment, githubUrl),
+    createSkill: (input) => new SkillCreator({ configDir }).create(input)
   })
   await server.connect(new StdioServerTransport())
 }
@@ -198,9 +255,11 @@ const runSkillImportMcpServer = async (
 export {
   REQUEST_SKILL_IMPORT_TOOL_NAME,
   REQUEST_SKILL_IMPORT_TOOL_DESCRIPTION,
+  SKILL_CREATE_TOOL_NAME,
   SKILL_IMPORT_MCP_SERVER_ARG,
   SKILL_IMPORT_MCP_SERVER_NAME,
   SKILL_IMPORT_SYSTEM_PROMPT_APPEND,
+  SKILL_CREATE_SYSTEM_PROMPT_APPEND,
   callGitHubSkillImportRpc,
   callSkillImportRpc,
   createSkillImportMcpEnvironmentFromProcess,
