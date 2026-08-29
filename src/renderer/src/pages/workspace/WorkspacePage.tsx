@@ -40,7 +40,6 @@ import {
   clearSuppressNextAutoReview
 } from '@/lib/acp/workspace-events'
 import type { UploadedAttachment } from '../../../../shared/uploads'
-import type { ConversationExportFormat } from '../../../../shared/conversation-export'
 import {
   resolveEffectiveSpecialistSkills,
   type CompletionHandoffLifecycleEvent
@@ -72,6 +71,7 @@ import { FolderGrantsPanel } from '@/components/FolderGrantsPanel'
 import { DeleteSessionDialog } from './DeleteSessionDialog'
 import { MobilePreviewSheet } from './MobilePreviewSheet'
 import { DownloadSessionArtifactsDialog } from './DownloadSessionArtifactsDialog'
+import { ExportConversationDialog, type ExportConversationOptions } from './ExportConversationDialog'
 import { FilePreviewDialog } from './FilePreviewDialog'
 import { PreviewPanel } from './PreviewPanel'
 import { SideChatPanel } from './SideChatPanel'
@@ -792,6 +792,7 @@ const WorkspacePage = ({
   const [sessionToViewNotebook, setSessionToViewNotebook] = useState<ChatSession | undefined>(
     undefined
   )
+  const [sessionToExport, setSessionToExport] = useState<ChatSession | undefined>(undefined)
   const [jobListModal, setJobListModal] = useState({ open: false, sessionId: '' })
 
   useEffect(() => {
@@ -2090,13 +2091,14 @@ const WorkspacePage = ({
   }
 
   // Main reloads the durable session and owns both normalization and the native Save As operation.
-  const exportConversation = (session: ChatSession, format: ConversationExportFormat): void => {
+  const exportConversation = (session: ChatSession, options: ExportConversationOptions): void => {
     setExportError(null)
     void window.api.sessions
       .exportConversation({
         projectId: session.projectId,
         sessionId: session.id,
-        format
+        format: options.format,
+        ...(options.rounds ? { rounds: options.rounds } : {})
       })
       .catch((error: unknown) => setExportError(getErrorMessage(error)))
   }
@@ -2582,14 +2584,10 @@ const WorkspacePage = ({
               setIsMobileSidebarOpen(false)
               setSessionToViewNotebook(session)
             }}
-            onExportSession={
-              typeof window.api.sessions?.exportConversation === 'function'
-                ? (session, format) => {
-                    setIsMobileSidebarOpen(false)
-                    exportConversation(session, format)
-                  }
-                : undefined
-            }
+            onOpenExportDialog={(session) => {
+              setIsMobileSidebarOpen(false)
+              setSessionToExport(session)
+            }}
             onTogglePin={(session) => {
               setIsMobileSidebarOpen(false)
               if (isSessionPersistenceReady) togglePinned(session.id)
@@ -2652,9 +2650,9 @@ const WorkspacePage = ({
                   canDownloadArtifacts={typeof window.api?.saveSessionArtifacts === 'function'}
                   onDownloadArtifacts={setSessionToDownloadArtifacts}
                   onViewNotebook={setSessionToViewNotebook}
-                  onExportSession={
+                  onOpenExportDialog={
                     typeof window.api.sessions?.exportConversation === 'function'
-                      ? exportConversation
+                      ? (session) => setSessionToExport(session)
                       : undefined
                   }
                   onTogglePin={(session) => {
@@ -2923,6 +2921,16 @@ const WorkspacePage = ({
       <DownloadSessionArtifactsDialog
         session={sessionToDownloadArtifacts}
         onClose={() => setSessionToDownloadArtifacts(undefined)}
+      />
+
+      <ExportConversationDialog
+        session={sessionToExport}
+        onClose={() => setSessionToExport(undefined)}
+        onExport={(options) => {
+          if (!sessionToExport) return
+          setSessionToExport(undefined)
+          exportConversation(sessionToExport, options)
+        }}
       />
 
       <FilePreviewDialog

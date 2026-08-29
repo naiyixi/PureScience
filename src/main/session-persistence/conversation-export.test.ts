@@ -248,6 +248,74 @@ describe('conversation export service', () => {
     ).rejects.toThrow('Invalid conversation export request.')
     expect(showSaveDialog).not.toHaveBeenCalled()
   })
+
+  it('rejects malformed round selections before touching the session', async () => {
+    const invalidRounds: unknown[] = [
+      { from: 0, to: 2 },
+      { from: 3, to: 2 },
+      { from: 1.5, to: 2 },
+      { from: 1, to: '2' },
+      { from: 1 }
+    ]
+
+    for (const rounds of invalidRounds) {
+      await expect(
+        createService().exportConversation({
+          projectId: 'project-1',
+          sessionId: 'session-1',
+          format: 'markdown',
+          rounds: rounds as { from: number; to: number }
+        })
+      ).rejects.toThrow('Invalid conversation export round selection.')
+    }
+    expect(loadSession).not.toHaveBeenCalled()
+    expect(showSaveDialog).not.toHaveBeenCalled()
+  })
+
+  it('accepts a valid round selection and exports only those turns', async () => {
+    const multiTurnSession = {
+      ...session,
+      messages: [
+        ...session.messages,
+        {
+          id: 'message-user-2',
+          role: 'user',
+          content: 'Second prompt',
+          status: 'complete',
+          eventIds: [],
+          createdAt: 2,
+          updatedAt: 2
+        },
+        {
+          id: 'message-agent-2',
+          role: 'agent',
+          content: 'Second answer.',
+          status: 'complete',
+          eventIds: [],
+          createdAt: 3,
+          updatedAt: 3
+        }
+      ]
+    }
+    loadSession.mockResolvedValueOnce(multiTurnSession)
+    showSaveDialog.mockResolvedValueOnce({ canceled: false, filePath: '/tmp/out.md' })
+
+    const result = await createService().exportConversation({
+      projectId: 'project-1',
+      sessionId: 'session-1',
+      format: 'markdown',
+      rounds: { from: 2, to: 2 }
+    })
+
+    expect(result.saved).toBe(true)
+    expect(writeExportFile).toHaveBeenCalledWith(
+      '/tmp/out.md',
+      expect.stringContaining('Second prompt')
+    )
+    const written = String(writeExportFile.mock.calls[0][1])
+    expect(written).not.toContain('# Question')
+    expect(written).toContain('Second answer.')
+  })
 })
 
 describe('conversation export IPC handler', () => {

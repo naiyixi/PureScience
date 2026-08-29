@@ -4,8 +4,6 @@ import {
   BookOpen,
   ChevronLeft,
   Download,
-  FileText,
-  FileType2,
   Files,
   MoreVertical,
   Pencil,
@@ -21,9 +19,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 
@@ -35,7 +30,6 @@ import { UpdateCapsule } from '@/components/UpdateCapsule'
 import { NotificationBell } from '@/components/NotificationBell'
 import { SessionHoverCard, type SessionHoverAnchor } from './SessionHoverCard'
 import type { ChatSession, SessionStatus } from '@/stores/session-store'
-import type { ConversationExportFormat } from '../../../../shared/conversation-export'
 
 type WorkspaceSidebarProps = {
   projectName: string
@@ -53,7 +47,7 @@ type WorkspaceSidebarProps = {
   canDownloadArtifacts: boolean
   onDownloadArtifacts: (session: ChatSession) => void
   onViewNotebook: (session: ChatSession) => void
-  onExportSession?: (session: ChatSession, format: ConversationExportFormat) => void
+  onOpenExportDialog?: (session: ChatSession) => void
   onTogglePin: (session: ChatSession) => void
   canArchiveSession?: (session: ChatSession) => boolean
   onArchiveSession?: (session: ChatSession) => void
@@ -116,7 +110,7 @@ const WorkspaceSidebar = ({
   canDownloadArtifacts,
   onDownloadArtifacts,
   onViewNotebook,
-  onExportSession,
+  onOpenExportDialog,
   onTogglePin,
   canArchiveSession,
   onArchiveSession,
@@ -418,50 +412,21 @@ const WorkspaceSidebar = ({
                               </span>
                               {t('workspace.viewNotebook')}
                             </DropdownMenuItem>
-                            {onExportSession ? (
-                              <DropdownMenuSub>
-                                <DropdownMenuSubTrigger
-                                  className="gap-2"
-                                  disabled={isExportDisabled}
-                                >
-                                  <span className={sessionMenuIconClassName}>
-                                    <Download
-                                      className="size-4"
-                                      strokeWidth={2}
-                                      aria-hidden="true"
-                                    />
-                                  </span>
-                                  <span className="flex-1">{t('workspace.exportConversation')}</span>
-                                </DropdownMenuSubTrigger>
-                                <DropdownMenuSubContent aria-label="Export conversation formats">
-                                  <DropdownMenuItem
-                                    className="gap-2"
-                                    onSelect={() => onExportSession(session, 'markdown')}
-                                  >
-                                    <span className={sessionMenuIconClassName}>
-                                      <FileText
-                                        className="size-4"
-                                        strokeWidth={2}
-                                        aria-hidden="true"
-                                      />
-                                    </span>
-                                    Markdown
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    className="gap-2"
-                                    onSelect={() => onExportSession(session, 'pdf')}
-                                  >
-                                    <span className={sessionMenuIconClassName}>
-                                      <FileType2
-                                        className="size-4"
-                                        strokeWidth={2}
-                                        aria-hidden="true"
-                                      />
-                                    </span>
-                                    PDF
-                                  </DropdownMenuItem>
-                                </DropdownMenuSubContent>
-                              </DropdownMenuSub>
+                            {onOpenExportDialog ? (
+                              <DropdownMenuItem
+                                className="gap-2"
+                                disabled={isExportDisabled}
+                                onSelect={() => onOpenExportDialog(session)}
+                              >
+                                <span className={sessionMenuIconClassName}>
+                                  <Download
+                                    className="size-4"
+                                    strokeWidth={2}
+                                    aria-hidden="true"
+                                  />
+                                </span>
+                                <span className="flex-1">{t('workspace.exportConversation')}</span>
+                              </DropdownMenuItem>
                             ) : null}
                             <DropdownMenuItem
                               className="gap-2"

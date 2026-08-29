@@ -9,10 +9,18 @@ import type {
 
 export type ConversationExportFormat = 'markdown' | 'pdf'
 
+// 1-based inclusive round range over user turns. A "round" starts at a user message and runs
+// through everything after it up to the next user message.
+export type ConversationRoundSelection = {
+  from: number
+  to: number
+}
+
 export type ExportConversationRequest = {
   projectId: string
   sessionId: string
   format: ConversationExportFormat
+  rounds?: ConversationRoundSelection
 }
 
 export type ExportConversationResult = {
@@ -197,15 +205,60 @@ export const sanitizeExportFilename = (title: string): string => {
   return `${truncated.trimEnd()}${suffix}`
 }
 
+// Assigns each message to its 1-based turn number: a turn starts at a user message and runs
+// through the assistant/tool messages that follow it until the next user message. Messages
+// before the first user message (rare preamble) belong to turn 0.
+const getMessageTurnNumbers = (
+  messages: PersistedChatMessage[]
+): ReadonlyArray<{ message: PersistedChatMessage; turn: number }> => {
+  let turn = 0
+  let sawUserMessage = false
+  return messages.map((message) => {
+    if (message.role === 'user') {
+      sawUserMessage = true
+      turn += 1
+    }
+    return { message, turn: sawUserMessage ? turn : 0 }
+  })
+}
+
+export const getConversationTurnCount = (session: PersistedChatSession): number =>
+  session.messages.reduce(
+    (count, message) => count + (message.role === 'user' ? 1 : 0),
+    0
+  )
+
 // Projects only the active-branch message view. Internal ids, runtime metadata, paths and tool
-// payloads never enter this stable export contract.
+// payloads never enter this stable export contract. When `rounds` is set, only messages whose
+// turn falls inside the inclusive 1-based range are exported; the range is clamped to the
+// session's actual turn count.
 export const createConversationExportDocument = (
   session: PersistedChatSession,
-  exportedAt: number
+  exportedAt: number,
+  rounds?: ConversationRoundSelection
 ): ConversationExportDocument => {
   const artifactsById = new Map(
     (session.artifacts ?? []).map((artifact) => [artifact.id, artifact])
   )
+
+  const totalTurns = getConversationTurnCount(session)
+  const from = rounds ? Math.max(1, Math.min(rounds.from, totalTurns)) : 1
+  const to = rounds ? Math.min(rounds.to, totalTurns) : totalTurns
+
+  const messages = getMessageTurnNumbers(session.messages)
+    .filter(({ turn }) => turn >= from && turn <= to)
+    .map(
+      ({ message }): ConversationExportMessage => ({
+        role: message.role === 'agent' ? 'assistant' : 'user',
+        createdAt: message.createdAt,
+        markdown:
+          message.role === 'agent'
+            ? sanitizeExportMarkdown(message.content)
+            : normalizeExportMarkdown(message.content),
+        attachments: getMessageAttachments(message, artifactsById),
+        images: (message.images ?? []).map(({ mimeType, data }) => ({ mimeType, data }))
+      })
+    )
 
   return {
     version: 1,
@@ -213,16 +266,7 @@ export const createConversationExportDocument = (
     createdAt: session.createdAt,
     updatedAt: session.updatedAt,
     exportedAt,
-    messages: session.messages.map((message) => ({
-      role: message.role === 'agent' ? 'assistant' : 'user',
-      createdAt: message.createdAt,
-      markdown:
-        message.role === 'agent'
-          ? sanitizeExportMarkdown(message.content)
-          : normalizeExportMarkdown(message.content),
-      attachments: getMessageAttachments(message, artifactsById),
-      images: (message.images ?? []).map(({ mimeType, data }) => ({ mimeType, data }))
-    }))
+    messages
   }
 }
 
