@@ -8,7 +8,7 @@
 
 PureScience currently includes 18 featured research skills and 24 built-in scientific connectors, with its strongest coverage in bioinformatics, computational biology, biomedical research, genomics, structural biology, and computational drug discovery—and an extensible architecture designed to support more scientific disciplines over time.
 
-> 💡 **[PureScience v1.4.0 released](https://github.com/naiyixi/PureScience/releases/latest)** — 独立开源的科研 AI 工作台：消息中心接入事件源（回合完成/失败/等待授权，桌面与 Web 共享收件箱）；文本注解进会话（选中即注解、跨重启保留）；安全加固批次（渲染器权限默认拒绝、作业输出凭据脱敏、连接器超时快速失败、事件流有界接纳）；结构化澄清工作流（agent 多问题选择卡）；独立版本号体系（v1.0.0 起）；Serverless GPU 与模型端点（Modal 作业 + NVIDIA NIM 推理，凭据面板联动）、网络出口白名单（6 组科学域 + 自定义域名，子进程级过滤代理）、统一凭据管理（8 类科学服务加密存储 + 连接测试）、完整记忆体系（分类笔记 + recall 注入 + agent 自动保存）、官方专才市场（签名验证 + jsDelivr 国内加速）、可追溯产物（代码/执行/环境/消息/审查）、Notebook 原生预览、产物自动预览、MCP 连接瞬断自愈、多智能体编排、生物医学技能包、全界面中文适配。**更新日记（含版本代号）见 [CHANGELOG](CHANGELOG.md)**；官网：[purescience.work](https://purescience.work)
+> 💡 **[PureScience v1.5.0 released](https://github.com/naiyixi/PureScience/releases/latest)** — 独立开源的科研 AI 工作台：@path 本地文件夹授权（跨盘浏览、授权管理、撤销即失效）；消息中心接入事件源（回合完成/失败/等待授权，桌面与 Web 共享收件箱）；文本注解进会话（选中即注解、跨重启保留）；安全加固批次（渲染器权限默认拒绝、作业输出凭据脱敏、连接器超时快速失败、事件流有界接纳）；结构化澄清工作流（agent 多问题选择卡）；独立版本号体系（v1.0.0 起）；Serverless GPU 与模型端点（Modal 作业 + NVIDIA NIM 推理，凭据面板联动）、网络出口白名单（6 组科学域 + 自定义域名，子进程级过滤代理）、统一凭据管理（8 类科学服务加密存储 + 连接测试）、完整记忆体系（分类笔记 + recall 注入 + agent 自动保存）、官方专才市场（签名验证 + jsDelivr 国内加速）、可追溯产物（代码/执行/环境/消息/审查）、Notebook 原生预览、产物自动预览、MCP 连接瞬断自愈、多智能体编排、生物医学技能包、全界面中文适配。**更新日记（含版本代号）见 [CHANGELOG](CHANGELOG.md)**；官网：[purescience.work](https://purescience.work)
 
 <p align="center">
   <img src="docs/purescience-title.png" alt="PureScience" width="620" />
