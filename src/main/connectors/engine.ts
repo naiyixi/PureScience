@@ -89,8 +89,8 @@ export class ParserEngine {
       for (let attempt = 0; ; attempt++) {
         const controller = new AbortController()
         // Deadline wins even if the transport ignores the abort signal: a stalled request must
-        // fail fast with a clear explanation (upstream parity — connector timeouts are not
-        // retried), never hang until the process-level timeout.
+        // fail fast with a clear explanation (timeouts are not retried), never hang until the
+        // process-level timeout.
         let timer: ReturnType<typeof setTimeout> | undefined
         const deadline = new Promise<never>((_resolve, reject) => {
           timer = setTimeout(() => {
