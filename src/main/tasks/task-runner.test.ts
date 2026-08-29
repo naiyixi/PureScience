@@ -6,6 +6,7 @@ import type { Project } from '../../shared/projects'
 import type { PersistedChatSession } from '../../shared/session-persistence'
 import {
   TaskRunner,
+  createDescription,
   type TaskPreviewResourcePort,
   type TaskProjectPort,
   type TaskRunnerDependencies,
@@ -268,6 +269,8 @@ describe('TaskRunner', () => {
     expect(savedSessions.at(-1)).toMatchObject({
       id: 'session-1',
       projectId: project.id,
+      title: 'Review these papers.',
+      description: 'Review these papers.',
       status: 'idle',
       permissionProfile: 'auto',
       messages: [
@@ -886,5 +889,42 @@ describe('TaskRunner', () => {
       expect.objectContaining({ code: 'run_not_found' })
     )
     expect(runner.getRun(latestRunId)).toMatchObject({ status: 'completed' })
+  })
+})
+
+describe('createDescription sentence extraction', () => {
+  it('extracts the first Chinese sentence', () => {
+    expect(createDescription('分析这批单细胞数据。重点看 CD8+T 细胞亚群，然后出图。')).toBe(
+      '分析这批单细胞数据。'
+    )
+  })
+
+  it('extracts the first English sentence', () => {
+    expect(createDescription('Run the docking pipeline. Then compare poses.')).toBe(
+      'Run the docking pipeline.'
+    )
+  })
+
+  it('falls back to a bounded prefix when no sentence boundary exists', () => {
+    expect(createDescription('pdb 对接 看结合能 排序 出表 写报告')).toBe(
+      'pdb 对接 看结合能 排序 出表 写报告'
+    )
+  })
+
+  it('bounds a long sentence', () => {
+    const long = '这是一个非常长的句子'.repeat(30)
+    const out = createDescription(long)
+    expect(out).toBeDefined()
+    expect(out!.length).toBeLessThanOrEqual(120)
+    expect(out!.endsWith('...')).toBe(true)
+  })
+
+  it('returns undefined for blank prompts', () => {
+    expect(createDescription('')).toBeUndefined()
+    expect(createDescription('   ')).toBeUndefined()
+  })
+
+  it('normalizes whitespace', () => {
+    expect(createDescription('多行\n\n  摘要内容。')).toBe('多行 摘要内容。')
   })
 })

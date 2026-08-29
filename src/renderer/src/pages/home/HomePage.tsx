@@ -55,12 +55,15 @@ const getRequiredEnvironmentFailures = (
   environment: EnvironmentCheckResult | undefined
 ): EnvironmentCheckItem[] => environment?.checks.filter((check) => check.status === 'failed') ?? []
 
-// Returns the first user prompt as a one-line preview for a session row.
-const getSessionPreview = (session: ChatSession): string =>
-  session.messages
+// Returns a one-line preview for a session row: the auto-generated description when
+// present, otherwise the first user prompt (kept as a fallback for older sessions).
+const getSessionPreview = (session: ChatSession): string => {
+  if (session.description) return session.description
+  return session.messages
     .find((message) => message.role === 'user')
     ?.content.replace(/\s+/g, ' ')
     .trim() ?? ''
+}
 
 const sectionHeadingClassName =
   'mb-3 flex items-center gap-2 text-[17px] font-medium leading-6 text-text-000'

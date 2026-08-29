@@ -197,3 +197,51 @@ describe('HomePage environment repair notice', () => {
     expect(openSettingsToPanel).toHaveBeenCalledWith('agent')
   })
 })
+
+describe('HomePage recent sessions preview', () => {
+  it('prefers the auto-generated description over the raw first prompt', async () => {
+    const project = { id: 'project-1', name: 'p', description: '', isExample: false, createdAt: 1, updatedAt: 1 }
+    useProjectStore.setState({
+      ...createInitialProjectState(),
+      projects: [project],
+      isLoaded: true
+    } as never)
+    useSessionStore.setState({
+      ...createInitialSessionState(),
+      sessions: [
+        {
+          id: 'session-1',
+          projectId: 'project-1',
+          title: 'Run the docking pipeline',
+          description: 'Run the docking pipeline.',
+          status: 'idle',
+          messages: [
+            { id: 'm1', role: 'user', content: 'Run the docking pipeline. Then compare poses.' }
+          ],
+          updatedAt: 3
+        },
+        {
+          id: 'session-2',
+          projectId: 'project-1',
+          title: 'Old session without description',
+          status: 'idle',
+          messages: [{ id: 'm2', role: 'user', content: 'Compare two datasets' }],
+          updatedAt: 2
+        }
+      ]
+    } as never)
+    useNavigationStore.setState({
+      view: 'home',
+      activeProjectId: undefined,
+      userNavigationRevision: 0,
+      explicitNavigationRevision: 0
+    })
+
+    await act(async () => root.render(<HomePage canDeleteProjects hasCompleteSessionCatalog />))
+
+    const text = document.body.textContent ?? ''
+    expect(text).toContain('Run the docking pipeline.') // description shown
+    expect(text).toContain('Compare two datasets') // fallback to first prompt
+    expect(text).not.toContain('Then compare poses.') // raw long prompt not shown
+  })
+})
