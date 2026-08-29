@@ -19,6 +19,7 @@ import {
   runTaskNotificationInBackground,
   type TaskNotificationService
 } from '../notifications/task-notifications'
+import type { NotificationInboxController } from '../notifications/notification-inbox-controller'
 import type { PermissionGrantRegistry } from '../permission-grants/registry'
 import { broadcastToRenderers } from '../renderer-broadcast'
 import type { AcpSettingsCapabilities } from '../settings/service-capabilities'
@@ -69,6 +70,9 @@ type AcpRuntimeCompositionOptions = AcpRuntimeArtifacts & {
   permissionGrantRegistry?: PermissionGrantRegistry
   initializationBarrier?: Promise<unknown>
   taskNotifications?: TaskNotificationService
+  // Backend-owned message center: terminal task outcomes and blocking permission requests are
+  // recorded here so desktop and Web clients share one notification inbox.
+  notificationInbox?: Pick<NotificationInboxController, 'record'>
   onSessionTurnStarted?: (sessionId: string, turnToken: string) => void
   onSessionTurnEnded?: (sessionId: string, turnToken: string) => void
   onSkillImportAttachmentEligible?: (
@@ -105,6 +109,7 @@ const createAcpRuntime = ({
   permissionGrantRegistry,
   initializationBarrier,
   taskNotifications,
+  notificationInbox,
   onSessionTurnStarted,
   onSessionTurnEnded,
   onSkillImportAttachmentEligible,
@@ -140,6 +145,7 @@ const createAcpRuntime = ({
           (error) => log.warn('task notification event failed', errorLogFields(error))
         )
       }
+      recordInboxOutcome(event)
     },
     onPermissionRequest: (request: AcpPermissionRequest) => {
       broadcastToRenderers('acp:permission-request', request)
@@ -150,7 +156,60 @@ const createAcpRuntime = ({
           (error) => log.warn('permission notification failed', errorLogFields(error))
         )
       }
+      recordInboxAuthorization(request)
     }
+  }
+
+  // Message-center wiring: terminal task outcomes and parked authorization requests are recorded
+  // into the shared inbox (desktop + Web). Deduping on (kind, session, origin) keeps a turn from
+  // creating duplicate cards across retries.
+  const recordInboxOutcome = (event: AcpRuntimeEvent): void => {
+    if (!notificationInbox) return
+    const sessionId = event.sessionId
+    if (!sessionId) return
+    if (event.kind === 'stop') {
+      notificationInbox
+        .record({
+          dedupeKey: `task.completed:${sessionId}:${event.messageId ?? 'turn'}`,
+          kind: 'task.completed',
+          source: 'agent-tool',
+          sessionId,
+          originId: event.id,
+          // Stable identifiers; the renderer maps them to the interface language.
+          title: 'Task completed',
+          summary: event.text ?? 'Agent turn completed',
+          actionState: 'resolved'
+        })
+        .catch((error) => log.warn('inbox record failed', errorLogFields(error)))
+    } else if (event.kind === 'error') {
+      notificationInbox
+        .record({
+          dedupeKey: `task.failed:${sessionId}:${event.messageId ?? 'turn'}`,
+          kind: 'task.failed',
+          source: 'agent-tool',
+          sessionId,
+          originId: event.id,
+          title: 'Task failed',
+          summary: event.text ?? 'Agent turn failed — inspect the conversation',
+          actionState: 'resolved'
+        })
+        .catch((error) => log.warn('inbox record failed', errorLogFields(error)))
+    }
+  }
+
+  const recordInboxAuthorization = (request: AcpPermissionRequest): void => {
+    notificationInbox
+      ?.record({
+        dedupeKey: `authorization.required:${request.sessionId}:${request.requestId}`,
+        kind: 'authorization.required',
+        source: 'agent-tool',
+        sessionId: request.sessionId,
+        originId: request.requestId,
+        title: 'Authorization required',
+        summary: request.title ?? 'The agent requests a sensitive operation',
+        actionState: 'pending'
+      })
+      .catch((error) => log.warn('inbox record failed', errorLogFields(error)))
   }
 
   return new AcpRuntimeCoordinator(

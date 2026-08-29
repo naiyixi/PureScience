@@ -1230,6 +1230,7 @@ const createApplicationModules = async (
       settingsService,
       permissionGrantRegistry,
       taskNotifications,
+      notificationInbox,
       onSessionTurnStarted: (sessionId, turnToken) =>
         skillImportApprovalBroker.beginSessionTurn(sessionId, turnToken),
       onSessionTurnEnded: (sessionId, turnToken) =>

@@ -354,7 +354,13 @@ const NotificationBell = ({
                               >
                                 {item.title === 'Previous task update'
                                   ? t('notifications.previousTaskUpdate')
-                                  : item.title}
+                                  : item.title === 'Task completed'
+                                    ? t('notifications.taskCompleted')
+                                    : item.title === 'Task failed'
+                                      ? t('notifications.taskFailed')
+                                      : item.title === 'Authorization required'
+                                        ? t('notifications.authorizationRequired')
+                                        : item.title}
                               </span>
                               <span
                                 className={cn(

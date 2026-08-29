@@ -245,6 +245,9 @@ export const en: Record<ZhKey, string> = {
   'ws.messageFailed': 'Failed',
   'ws.elapsed': 'Elapsed',
   'notifications.previousTaskUpdate': 'Previous task update',
+  'notifications.taskCompleted': 'Task completed',
+  'notifications.taskFailed': 'Task failed',
+  'notifications.authorizationRequired': 'Authorization required',
   'notifications.previousTaskUpdateDesc':
     'A task update was waiting before the message center upgrade.',
   'workspace.rename': 'Rename…',
