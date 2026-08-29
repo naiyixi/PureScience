@@ -1,7 +1,8 @@
 import { execFile } from 'node:child_process'
-import { existsSync, mkdirSync } from 'node:fs'
-import { homedir, platform } from 'node:os'
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { homedir, platform, tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { randomBytes } from 'node:crypto'
 import { promisify } from 'node:util'
 
 import type { SshOverrides } from '../../shared/compute'
@@ -40,6 +41,8 @@ export interface SshRunner {
       timeoutMs: number
       loginShell?: boolean
       maxOutputBytes?: number
+      // SSH password injected via SSH_ASKPASS (never on a command line).
+      password?: string
     }
   ): Promise<{
     exitCode: number | null
@@ -233,8 +236,35 @@ export class CappedOutput {
   }
 }
 
-// Real SSH runner: spawns the system ssh binary. Credentials stay in the OS ssh-agent — this code
-// never handles, stores, or transmits keys or passphrases (design.md §1, §2).
+// Real SSH runner: spawns the system ssh binary. Keys stay in the OS ssh-agent. Password
+// authentication (when the host binds a Credentials-panel password) is injected via SSH_ASKPASS:
+// ssh calls the askpass script when it needs a password and there is no controlling tty, so the
+// secret never appears on a command line and the temp script is removed right after spawn.
+export const createSshAskPass = (password: string): {
+  scriptPath: string
+  cleanup: () => void
+} => {
+  // Shell-quote the password into a single-quoted literal; the script prints it only when ssh's
+  // prompt asks for a password (never for passphrase/yes-no prompts).
+  const quoted = `'${password.replace(/'/g, `'\\''`)}'`
+  const scriptPath = join(tmpdir(), `purescience-askpass-${randomBytes(8).toString('hex')}.sh`)
+  writeFileSync(
+    scriptPath,
+    `#!/bin/sh\ncase "$1" in\n  *[Pp]assword*) echo ${quoted} ;;\n  *) exit 1 ;;\nesac\n`,
+    { mode: 0o700 }
+  )
+  return {
+    scriptPath,
+    cleanup: () => {
+      try {
+        rmSync(scriptPath, { force: true })
+      } catch {
+        // Best-effort: a leftover temp script is empty after cleanup races are benign.
+      }
+    }
+  }
+}
+
 export class SystemSshRunner implements SshRunner {
   async run(
     target: ResolvedSshTarget,
@@ -243,6 +273,7 @@ export class SystemSshRunner implements SshRunner {
       timeoutMs: number
       loginShell?: boolean
       maxOutputBytes?: number
+      password?: string
     }
   ): Promise<{
     exitCode: number | null
@@ -270,12 +301,30 @@ export class SystemSshRunner implements SshRunner {
 
     const args = [...target.extraArgs, target.host, finalCommand]
 
+    // SSH_ASKPASS-based password injection: the askpass script echoes the password when ssh asks
+    // (prompt mentions "password"), and is deleted immediately after spawn. SSH_ASKPASS_REQUIRE=force
+    // makes ssh consult it even with no tty, which is exactly our headless exec path.
+    const askPass = opts.password ? createSshAskPass(opts.password) : undefined
+    const execOptions: { timeout: number; encoding: 'buffer'; env?: NodeJS.ProcessEnv } = {
+      timeout: 0,
+      encoding: 'buffer'
+    }
+    if (askPass) {
+      execOptions.env = {
+        ...process.env,
+        SSH_ASKPASS: askPass.scriptPath,
+        SSH_ASKPASS_REQUIRE: 'force',
+        DISPLAY: process.env['DISPLAY'] ?? ':0'
+      }
+    }
+
     return new Promise((resolve) => {
       const stdoutBuf = new CappedOutput(maxBytes)
       const stderrBuf = new CappedOutput(maxBytes)
       let timedOut = false
 
-      const child = execFile(target.sshBinary, args, { timeout: 0, encoding: 'buffer' })
+      const child = execFile(target.sshBinary, args, execOptions)
+      askPass?.cleanup()
 
       const timer = setTimeout(() => {
         timedOut = true

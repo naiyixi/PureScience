@@ -907,6 +907,10 @@ export const en: Record<ZhKey, string> = {
   'settings.showMore': 'Show more',
   'settings.scratchRoot': 'Scratch root',
   'settings.identityFile': 'Identity file',
+  'settings.sshPasswordCredential': 'SSH password credential',
+  'settings.sshPasswordCredentialPlaceholder': 'credential id (from Credentials panel)',
+  'settings.sshPasswordCredentialHint':
+    'Optional: the id of a Credentials-panel credential whose secret is this host\'s SSH password. The password is decrypted only at connect time and never stored in the compute config.',
   'settings.anythingToKnow': 'Anything PureScience should know? (optional)',
   'settings.signInWithAnthropic': 'Sign in with Anthropic',
   'settings.setupTokenGuide': "Anthropic's setup-token guide",
