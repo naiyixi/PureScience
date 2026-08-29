@@ -8,7 +8,7 @@
 
 PureScience currently includes 18 featured research skills and 24 built-in scientific connectors, with its strongest coverage in bioinformatics, computational biology, biomedical research, genomics, structural biology, and computational drug discovery—and an extensible architecture designed to support more scientific disciplines over time.
 
-> 💡 **[PureScience v1.0.0「浑仪」released](https://github.com/naiyixi/PureScience/releases/latest)** — 独立开源的科研 AI 工作台：独立版本号体系正式启用（v1.0.0，张衡浑天仪，度量万象）；Serverless GPU 与模型端点（Modal 作业 + NVIDIA NIM 推理，凭据面板联动）、网络出口白名单（6 组科学域 + 自定义域名，子进程级过滤代理）、统一凭据管理（8 类科学服务加密存储 + 连接测试）、完整记忆体系（分类笔记 + recall 注入 + agent 自动保存）、官方专才市场（签名验证 + jsDelivr 国内加速）、可追溯产物（代码/执行/环境/消息/审查）、Notebook 原生预览、产物自动预览、MCP 连接瞬断自愈、多智能体编排、生物医学技能包、全界面中文适配。**更新日记（含版本代号）见 [CHANGELOG](CHANGELOG.md)**；官网：[purescience.work](https://purescience.work)
+> 💡 **[PureScience v1.1.0 released](https://github.com/naiyixi/PureScience/releases/latest)** — 独立开源的科研 AI 工作台：结构化澄清工作流（agent 多问题选择卡，回答注入上下文）；独立版本号体系（v1.0.0 起，与既有命名彻底解耦）；Serverless GPU 与模型端点（Modal 作业 + NVIDIA NIM 推理，凭据面板联动）、网络出口白名单（6 组科学域 + 自定义域名，子进程级过滤代理）、统一凭据管理（8 类科学服务加密存储 + 连接测试）、完整记忆体系（分类笔记 + recall 注入 + agent 自动保存）、官方专才市场（签名验证 + jsDelivr 国内加速）、可追溯产物（代码/执行/环境/消息/审查）、Notebook 原生预览、产物自动预览、MCP 连接瞬断自愈、多智能体编排、生物医学技能包、全界面中文适配。**更新日记（含版本代号）见 [CHANGELOG](CHANGELOG.md)**；官网：[purescience.work](https://purescience.work)
 
 <p align="center">
   <img src="docs/purescience-title.png" alt="PureScience" width="620" />
