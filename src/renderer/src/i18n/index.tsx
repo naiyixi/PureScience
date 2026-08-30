@@ -27,7 +27,8 @@ const detectInitialLanguage = (): Language => {
 type LanguageContextValue = {
   lang: Language
   setLang: (lang: Language) => void
-  t: (key: TranslationKey) => string
+  // Optional interpolation variables replace `{name}` placeholders in the resolved string.
+  t: (key: TranslationKey, vars?: Record<string, string | number>) => string
 }
 
 const LanguageContext = createContext<LanguageContextValue | null>(null)
@@ -48,7 +49,13 @@ const LanguageProvider = ({ children }: { children: ReactNode }): React.JSX.Elem
     () => ({
       lang,
       setLang: setLangState,
-      t: (key) => dictionaries[lang][key] ?? key
+      t: (key, vars) => {
+        const text = dictionaries[lang][key] ?? key
+        if (!vars) return text
+        return text.replace(/\{(\w+)\}/g, (match, name: string) =>
+          name in vars ? String(vars[name]) : match
+        )
+      }
     }),
     [lang]
   )

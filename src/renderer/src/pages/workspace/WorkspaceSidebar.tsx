@@ -25,6 +25,7 @@ import {
 import { cn } from '@/lib/utils'
 import { LanguageToggleButton } from '@/components/LanguageToggleButton'
 import { useLanguage } from '@/i18n'
+import { useSessionStore } from '@/stores/session-store'
 import { NetworkStatusIndicator } from '@/components/NetworkStatusIndicator'
 import { UpdateCapsule } from '@/components/UpdateCapsule'
 import { NotificationBell } from '@/components/NotificationBell'
@@ -121,6 +122,13 @@ const WorkspaceSidebar = ({
   onMobileClose
 }: WorkspaceSidebarProps): React.JSX.Element => {
   const { t } = useLanguage()
+  const lastReadAtBySession = useSessionStore((state) => state.lastReadAtBySession)
+  // A session has unseen activity when it changed after the user last opened it (or was never opened).
+  const isUnread = (session: ChatSession): boolean => {
+    if (session.id === activeSessionId) return false
+    const lastReadAt = lastReadAtBySession[session.id]
+    return lastReadAt === undefined ? session.updatedAt > 0 : session.updatedAt > lastReadAt
+  }
   // Partition sessions into pinned and unpinned groups; each group preserves the incoming order.
   const pinnedSessions = sessions.filter((s) => s.pinned)
   const activeSessions = sessions.filter((s) => !s.pinned)
@@ -339,6 +347,14 @@ const WorkspaceSidebar = ({
                             Session status: {sessionStatusLabel[session.status]}
                           </span>
                           <span className="min-w-0 flex-1 truncate">{session.title}</span>
+                          {!isActive && isUnread(session) ? (
+                            <span
+                              className="shrink-0 rounded-full bg-accent px-1.5 py-px text-[10px] font-medium text-white"
+                              aria-label={t('sidebar.unreadContent')}
+                            >
+                              {t('sidebar.newContent')}
+                            </span>
+                          ) : null}
                         </button>
 
                         <DropdownMenu>
