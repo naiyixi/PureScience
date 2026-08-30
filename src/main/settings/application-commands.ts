@@ -49,6 +49,7 @@ type CoreSettingsCommandStore = Pick<
   | 'getConnectorDetail'
   | 'getMemory'
   | 'listCredentials'
+  | 'thirdPartyLicenses'
   | 'getEgress'
   | 'listExternalComputeEndpoints'
   | 'getPackageMirror'
@@ -144,6 +145,11 @@ const settingsCoreApplicationCommands = Object.freeze({
     readonly [],
     StoreResult<'listCredentials'>
   >('settings:list-credentials'),
+  getThirdPartyLicenses: defineApplicationCommand<
+    'settings:third-party-licenses',
+    readonly [],
+    StoreResult<'thirdPartyLicenses'>
+  >('settings:third-party-licenses'),
   getEgress: defineApplicationCommand<'settings:get-egress', readonly [], StoreResult<'getEgress'>>(
     'settings:get-egress'
   ),
@@ -364,6 +370,7 @@ const settingsCoreApplicationCommandGroup = defineApplicationCommandGroup('setti
   settingsCoreApplicationCommands.getConnectorDetail,
   settingsCoreApplicationCommands.getMemory,
   settingsCoreApplicationCommands.getCredentials,
+  settingsCoreApplicationCommands.getThirdPartyLicenses,
   settingsCoreApplicationCommands.getEgress,
   settingsCoreApplicationCommands.getExternalComputeEndpoints,
   settingsCoreApplicationCommands.getPackageMirror,
@@ -504,6 +511,10 @@ const registerCoreSettingsApplicationCommands = (
       'settings:list-credentials': ({ callerContext }) => {
         requireLocalCaller(callerContext, 'settings:list-credentials')
         return dependencies.service.listCredentials()
+      },
+      'settings:third-party-licenses': ({ callerContext }) => {
+        requireLocalCaller(callerContext, 'settings:third-party-licenses')
+        return dependencies.service.thirdPartyLicenses()
       },
       'settings:set-credential': ({ args, callerContext }) => {
         requireLocalCaller(callerContext, 'settings:set-credential')

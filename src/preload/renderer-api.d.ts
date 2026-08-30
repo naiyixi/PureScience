@@ -497,6 +497,9 @@ export interface PureScienceAPI {
     getMemory(): Promise<MemorySettings | undefined>
     setMemory(memory: MemorySettings): Promise<MemorySettings>
     getCredentials(): Promise<CredentialView[]>
+    getThirdPartyLicenses(): Promise<
+      { name: string; version: string; license: string }[]
+    >
     setCredential(request: SetCredentialRequest): Promise<CredentialView>
     deleteCredential(id: string): Promise<CredentialView[]>
     testCredential(request: TestCredentialRequest): Promise<CredentialTestResult>

@@ -26,6 +26,7 @@ const expectedChannels = [
   'settings:get-connector-detail',
   'settings:get-memory',
   'settings:list-credentials',
+  'settings:third-party-licenses',
   'settings:get-egress',
   'settings:list-external-compute-endpoints',
   'settings:get-package-mirror',
@@ -128,7 +129,7 @@ const createDependencies = (): Readonly<{
 }
 
 describe('Settings core application commands', () => {
-  it('installs the exact 41-command inventory and dispatches a remote-safe preflight query', async () => {
+  it('installs the exact 42-command inventory and dispatches a remote-safe preflight query', async () => {
     const { dependencies, serviceMethod } = createDependencies()
     const preflight = { agentReady: true }
     serviceMethod('getPreflight').mockResolvedValue(preflight)

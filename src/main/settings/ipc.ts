@@ -270,6 +270,7 @@ const registerSettingsIpcHandlers = ({
   )
 
   ipcMainHandle('settings:list-credentials', () => service.listCredentials())
+  ipcMainHandle('settings:third-party-licenses', () => service.thirdPartyLicenses())
   ipcMainHandle('settings:set-credential', (_event, request: SetCredentialRequest) =>
     service.setCredential(request)
   )
