@@ -573,14 +573,18 @@ class ConnectorSettingsModule {
   // Imports a standard `mcpServers` configuration (the shape used by Claude Desktop, Cursor, and
   // other MCP hosts). Each server becomes a custom connector; `env` and `headers` values beginning
   // with `${NAME}` are kept as placeholders, everything else is stored encrypted.
+  //
+  // Accepts both the bare server map (`{ "server": { ... } }` — Cursor's mcp.json, a raw
+  // mcpServers.json) and the Claude Desktop host-file shape (`{ "mcpServers": { ... } }` from
+  // claude_desktop_config.json), so an export from any of the common hosts imports directly.
   async importMcpServers(
     json: unknown
   ): Promise<{ imported: string[]; skipped: string[] }> {
-    if (!isRecord(json)) throw new Error('Expected a JSON object of MCP servers')
+    const servers = normalizeMcpServersPayload(json)
     const imported: string[] = []
     const skipped: string[] = []
 
-    for (const [name, rawEntry] of Object.entries(json)) {
+    for (const [name, rawEntry] of Object.entries(servers)) {
       if (!isRecord(rawEntry)) {
         skipped.push(name)
         continue
@@ -641,6 +645,19 @@ class ConnectorSettingsModule {
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
+
+// Accepts a bare `mcpServers` map or a host config file that wraps one (`claude_desktop_config.json`
+// nests servers under `mcpServers`, alongside unrelated keys). Unknown shapes fail closed with the
+// same error the bare-map path used to raise.
+const normalizeMcpServersPayload = (json: unknown): Record<string, unknown> => {
+  if (!isRecord(json)) throw new Error('Expected a JSON object of MCP servers')
+  const nested = json.mcpServers
+  if (nested !== undefined) {
+    if (!isRecord(nested)) throw new Error('Expected `mcpServers` to be a JSON object of servers')
+    return nested
+  }
+  return json
+}
 
 export { ConnectorSettingsModule }
 export type { CustomServerSecurityChangeGuard }
