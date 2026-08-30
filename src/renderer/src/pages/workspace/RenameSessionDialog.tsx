@@ -1,6 +1,7 @@
 import { X } from 'lucide-react'
 import { Dialog } from 'radix-ui'
 
+import { useLanguage } from '@/i18n'
 import { Button } from '@/components/ui/button'
 import {
   dialogCloseButtonClassName,
@@ -38,6 +39,7 @@ const RenameSessionDialog = ({
   onCancel,
   onConfirmRename
 }: RenameSessionDialogProps): React.JSX.Element => {
+  const { t } = useLanguage()
   const dialogRenameDraft = useRetainedDialogValue(session ? renameDraft : undefined) ?? renameDraft
 
   return (
@@ -58,9 +60,9 @@ const RenameSessionDialog = ({
           <form onSubmit={onConfirmRename}>
             <div className={dialogHeaderClassName}>
               <div className="min-w-0">
-                <Dialog.Title className={dialogTitleClassName}>Rename session</Dialog.Title>
+                <Dialog.Title className={dialogTitleClassName}>{t('renameSession.title')}</Dialog.Title>
                 <Dialog.Description className={dialogDescriptionClassName}>
-                  Update the name shown in the session list.
+                  {t('renameSession.hint')}
                 </Dialog.Description>
               </div>
               <Button
@@ -78,14 +80,14 @@ const RenameSessionDialog = ({
               <Input
                 value={dialogRenameDraft}
                 onChange={(event) => onRenameDraftChange(event.target.value)}
-                aria-label="Session name"
+                aria-label={t('renameSession.name')}
                 autoFocus
                 className={renameDialogInputClassName}
               />
               <textarea
                 value={descriptionDraft}
                 onChange={(event) => onDescriptionDraftChange(event.target.value)}
-                aria-label="Session description"
+                aria-label={t('renameSession.description')}
                 rows={3}
                 maxLength={240}
                 placeholder="What this session is about (optional)"

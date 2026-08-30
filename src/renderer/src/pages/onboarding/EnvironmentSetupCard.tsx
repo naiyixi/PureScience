@@ -28,7 +28,7 @@ const EnvironmentSetupCard = ({
     <div className="space-y-4">
       <ul
         className="divide-y divide-border-200"
-        aria-label="Environment requirements"
+        aria-label={t('ui.environmentrequirements')}
         aria-live="polite"
       >
         {environment

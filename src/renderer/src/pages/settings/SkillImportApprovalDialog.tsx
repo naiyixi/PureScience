@@ -113,7 +113,7 @@ const SkillImportApprovalRequestDialog = ({
                 <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <input
                     type="checkbox"
-                    aria-label="Select all"
+                    aria-label={t('skillImportApproval.selectAll')}
                     checked={allSelected}
                     onChange={toggleAll}
                     className="size-4 shrink-0"
@@ -151,7 +151,7 @@ const SkillImportApprovalRequestDialog = ({
                       </span>
                     ) : candidate.replaceableId ? (
                       <span className="shrink-0 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs text-amber-600">
-                        Updates existing
+                        {t('skillImportApproval.updatesExisting')}
                       </span>
                     ) : null}
                     <Button
@@ -185,7 +185,7 @@ const SkillImportApprovalRequestDialog = ({
 
               {request.skipped.length > 0 ? (
                 <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-muted-foreground">
-                  <div className="font-medium text-foreground">Not importable</div>
+                  <div className="font-medium text-foreground">{t('skillImportApproval.notImportable')}</div>
                   <ul className="mt-1 list-disc space-y-1 pl-4">
                     {request.skipped.map((item) => (
                       <li key={`${item.source}:${item.reason}`}>

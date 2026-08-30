@@ -51,7 +51,7 @@ const UpdateDialog = (): React.JSX.Element | null => {
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <Dialog.Title className="text-base font-semibold">Update available</Dialog.Title>
+                <Dialog.Title className="text-base font-semibold">{t('update.available')}</Dialog.Title>
                 <Dialog.Description className="mt-0.5 text-xs text-muted-foreground tabular-nums">
                   v{dialogStatus.current} → v{dialogStatus.latest}
                 </Dialog.Description>
@@ -126,7 +126,7 @@ const UpdateDialog = (): React.JSX.Element | null => {
                 {/* Fallback when the in-app update fails (e.g. a blocked/failed in-place install): let the
                   user grab the installer by hand, mirroring the macOS manual-reinstall path. */}
                 <ExternalTextLink href={APP.update.downloadPage} className="mt-1 text-xs">
-                  Download manually
+                  {t('update.downloadManually')}
                 </ExternalTextLink>
               </div>
             ) : null}
@@ -158,12 +158,12 @@ const UpdateDialog = (): React.JSX.Element | null => {
                   {dialogStatus.applyKind === 'restart' ? (
                     <>
                       <RefreshCw className="size-4" aria-hidden="true" />
-                      Restart to update
+                      {t('update.restartToUpdate')}
                     </>
                   ) : (
                     <>
                       <ExternalLink className="size-4" aria-hidden="true" />
-                      Open installer
+                      {t('update.openInstaller')}
                     </>
                   )}
                 </button>

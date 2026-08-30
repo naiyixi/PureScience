@@ -226,7 +226,7 @@ const DownloadSessionArtifactsDialog = ({
                 {t('settings.noDownloadableArtifacts')}
               </div>
             ) : (
-              <div role="group" aria-label="Session artifacts">
+              <div role="group" aria-label={t('ui.sessionartifacts')}>
                 {artifacts.map((artifact) => (
                   <label
                     key={artifact.id}

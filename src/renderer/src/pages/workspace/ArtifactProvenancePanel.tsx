@@ -1039,7 +1039,7 @@ const ArtifactProvenancePanel = ({
                   onClick={() => void downloadScript(generatedCode.code, generatedCode.language)}
                 >
                   <Download aria-hidden="true" />
-                  Download script
+                  {t('artifact.downloadScript')}
                 </Button>
               ) : codeReconstructionResult?.status === 'generating' ? (
                 <Button type="button" size="sm" className="shrink-0 whitespace-nowrap" disabled>
@@ -1056,7 +1056,7 @@ const ArtifactProvenancePanel = ({
                   className="shrink-0 whitespace-nowrap"
                   onClick={() => void generateCodeReconstruction()}
                 >
-                  Generate script
+                  {t('artifact.generateScript')}
                 </Button>
               ) : codeReconstructionResult?.status === 'error' ? (
                 <Button
@@ -1073,7 +1073,7 @@ const ArtifactProvenancePanel = ({
                 </Button>
               ) : codeReconstructionState?.state === 'unavailable' ? (
                 <Button type="button" size="sm" className="shrink-0 whitespace-nowrap" disabled>
-                  Generate script
+                  {t('artifact.generateScript')}
                 </Button>
               ) : (
                 <LoaderCircle
@@ -1105,7 +1105,7 @@ const ArtifactProvenancePanel = ({
                 </p>
               ) : codeReconstructionResult?.status === 'generating' ? (
                 <p className="min-w-0 flex-1 truncate text-sm text-text-300">
-                  Using the provider and model selected when generation started.
+                  {t('artifact.generateScriptHint')}
                 </p>
               ) : codeReconstructionState?.state === 'ready' ? (
                 <p className="min-w-0 flex-1 truncate text-sm text-text-300">
@@ -1151,7 +1151,7 @@ const ArtifactProvenancePanel = ({
             ) : (
               <div className="space-y-3 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h3 className="text-sm font-semibold text-text-000">Captured producer block</h3>
+                  <h3 className="text-sm font-semibold text-text-000">{t('artifact.capturedProducerBlock')}</h3>
                   {reproductionCode ? (
                     <div className="flex items-center gap-1">
                       <Button
@@ -1230,7 +1230,7 @@ const ArtifactProvenancePanel = ({
             </div>
           ) : (
             <p className="p-5 text-sm text-text-300">
-              Unable to determine the producer execution for this version.
+              {t('artifact.noProducerExecution')}
             </p>
           )
         ) : null}
@@ -1279,7 +1279,7 @@ const ArtifactProvenancePanel = ({
                     role="status"
                     className="rounded-md border border-warning-100/50 bg-warning-100/10 px-3 py-2 text-xs text-text-200"
                   >
-                    <p className="font-medium text-text-100">Partial capture details</p>
+                    <p className="font-medium text-text-100">{t('artifact.partialCaptureDetails')}</p>
                     <ul className="mt-1 list-disc space-y-1 pl-4">
                       {environmentWarnings.map((warning) => (
                         <li key={warning}>{environmentWarningLabel(warning, t)}</li>
@@ -1414,7 +1414,7 @@ const ArtifactProvenancePanel = ({
                                       {dependencyChanges.length > 0 ? (
                                         <div>
                                           <span className="font-medium text-text-200">
-                                            Dependency impact
+                                            {t('artifact.dependencyImpact')}
                                           </span>
                                           <div className="mt-1 flex flex-wrap gap-1.5">
                                             {dependencyChanges.map((change, changeIndex) => (
@@ -1448,7 +1448,7 @@ const ArtifactProvenancePanel = ({
                                       ) : null}
                                       {dependencyChanges.length === 0 &&
                                       unattributedChanges.length === 0 ? (
-                                        <span>No additional package version changes</span>
+                                        <span>{t('artifact.noDependencyChanges')}</span>
                                       ) : null}
                                     </td>
                                   </tr>
@@ -1480,7 +1480,7 @@ const ArtifactProvenancePanel = ({
               />
               {lineage?.originSession.state === 'deleted' ? (
                 <p className="mt-3 text-xs text-text-300">
-                  Captured before source session deletion
+                  {t('artifact.capturedBeforeDeletion')}
                 </p>
               ) : null}
             </section>

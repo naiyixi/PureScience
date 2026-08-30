@@ -34,7 +34,7 @@ const AgentStep = ({ onBack, onContinue }: AgentStepProps): React.JSX.Element =>
       <CardContent className="flex-1 p-0">
         <AgentPanel
           variant="onboarding"
-          title="Set up the agent runtime"
+          title={t('ui.setuptheagentruntime')}
           description="Pick the agent PureScience drives, then install it. Only this agent needs to be installed to continue."
         />
       </CardContent>

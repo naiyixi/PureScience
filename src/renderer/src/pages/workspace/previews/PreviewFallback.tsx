@@ -15,6 +15,7 @@ import {
 } from './preview-errors'
 import { usePreviewRuntime } from './preview-runtime-context'
 
+import { useLanguage } from '@/i18n'
 type PreviewFormatPresentation = {
   badge: string
   loadingTitle: string
@@ -102,6 +103,7 @@ export const PreviewLoadingContent = ({
   title?: string
   description?: string
 } = {}): React.JSX.Element => {
+  const { t } = useLanguage()
   const runtime = usePreviewRuntime()
   const presentation = getFormatPresentation(runtime?.item.format, runtime?.item.name)
   const loadingTitle = title ?? presentation.loadingTitle
@@ -113,7 +115,7 @@ export const PreviewLoadingContent = ({
         data-preview-status="compact-loading"
         className="flex size-full items-center justify-center"
         role="status"
-        aria-label="Rendering preview"
+        aria-label={t('ui.renderingpreview')}
       >
         <PreviewActivityDots />
       </div>

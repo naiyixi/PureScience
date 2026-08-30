@@ -3,6 +3,8 @@ import { X } from 'lucide-react'
 
 import type { ExternalSessionNotice } from '@/hooks/useLifecycleSync'
 
+import { useLanguage } from '@/i18n'
+
 const AUTO_DISMISS_MS = 6000
 
 const LifecycleToast = ({
@@ -14,6 +16,7 @@ const LifecycleToast = ({
   onDismiss: () => void
   onView: () => void
 }): React.JSX.Element | null => {
+  const { t } = useLanguage()
   useEffect(() => {
     if (!notice) return
     const timeout = window.setTimeout(onDismiss, AUTO_DISMISS_MS)
@@ -29,7 +32,7 @@ const LifecycleToast = ({
       className="fixed right-3 top-3 z-50 flex max-w-sm items-center gap-3 rounded-lg border border-border-100 bg-bg-200 px-3 py-2 text-sm text-text-100 shadow-lg"
     >
       <span className="min-w-0 flex-1">
-        <span className="block">Session created externally</span>
+        <span className="block">{t('lifecycleToast.sessionCreatedExternally')}</span>
         <span className="block truncate text-xs text-text-300" title={notice.title}>
           {notice.title}
         </span>

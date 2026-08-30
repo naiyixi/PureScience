@@ -578,7 +578,7 @@ const RuntimesPanel = ({ title, description }: RuntimesPanelProps): React.JSX.El
                             disabled={busy}
                             onClick={() => void resetManaged(id)}
                           >
-                            Reset runtime
+                            {t('runtimes.reset')}
                           </Button>
                         </div>
                       ) : null}
@@ -755,7 +755,7 @@ const RuntimesPanel = ({ title, description }: RuntimesPanelProps): React.JSX.El
                   {dialogPackagesEnv.version ? ` · ${dialogPackagesEnv.version}` : ''}
                 </Dialog.Title>
                 <Dialog.Description className={dialogDescriptionClassName}>
-                  Installed packages in this environment.
+                  {t('runtimes.installedPackages')}.
                 </Dialog.Description>
 
                 <div className="mt-2 flex flex-wrap items-center gap-2 text-[13px] text-muted-foreground">
@@ -876,7 +876,7 @@ const RuntimesPanel = ({ title, description }: RuntimesPanelProps): React.JSX.El
                   ) : null}
                   {packages !== null && packagesError === null && packages.length === 0 ? (
                     <p className="px-3 py-6 text-center text-sm text-muted-foreground">
-                      No packages installed.
+                      {t('runtimes.noPackages')}.
                     </p>
                   ) : null}
                 </div>

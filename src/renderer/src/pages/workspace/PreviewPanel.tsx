@@ -40,10 +40,11 @@ const PreviewActiveContent = ({
   item: PreviewItem | undefined
   isActive?: boolean
 }): React.JSX.Element | null => {
+  const { t } = useLanguage()
   if (!item) {
     return (
       <div className="flex size-full items-center justify-center text-[12px] text-text-300">
-        No preview content
+        {t('ui.nopreviewcontent')}
       </div>
     )
   }
@@ -285,6 +286,7 @@ const PreviewTabBar = ({
   onActivate: (id: string) => void
   onClose: (id: string) => void
 }): React.JSX.Element => {
+  const { t } = useLanguage()
   const tabListRef = useRef<HTMLDivElement | null>(null)
   const tabContainerRefs = useRef<Array<HTMLDivElement | null>>([])
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([])
@@ -362,7 +364,7 @@ const PreviewTabBar = ({
     <div
       ref={tabListRef}
       role="tablist"
-      aria-label="Open previews"
+      aria-label={t('ui.openpreviews')}
       aria-orientation="horizontal"
       className="flex min-w-0 flex-1 basis-0 shrink-0 items-center gap-1 overflow-x-auto pb-2"
     >

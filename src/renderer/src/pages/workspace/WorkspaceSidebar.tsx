@@ -200,7 +200,7 @@ const WorkspaceSidebar = ({
 
   return (
     <aside
-      aria-label="Workspace navigation"
+      aria-label={t('sidebar.workspaceNav')}
       aria-hidden={mobileMode && !isMobileOpen ? true : undefined}
       inert={mobileMode && !isMobileOpen ? true : undefined}
       data-mobile-open={isMobileOpen ? 'true' : 'false'}
@@ -238,7 +238,7 @@ const WorkspaceSidebar = ({
                 type="button"
                 onClick={onMobileClose}
                 className="grid size-8 shrink-0 place-items-center rounded-lg text-text-300 hover:bg-bg-300 hover:text-text-000"
-                aria-label="Close navigation"
+                aria-label={t('sidebar.closeNav')}
               >
                 <X className="size-4" aria-hidden="true" />
               </button>
@@ -359,7 +359,7 @@ const WorkspaceSidebar = ({
                           </DropdownMenuTrigger>
                           {/* Session action menu: uses shadcn default light-surface tokens. */}
                           <DropdownMenuContent
-                            aria-label="Session actions"
+                            aria-label={t('sidebar.sessionActions')}
                             className="min-w-[9rem]"
                             side="right"
                             align="start"

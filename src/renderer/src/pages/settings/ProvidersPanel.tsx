@@ -424,7 +424,7 @@ const ProvidersPanel = ({
           className="mt-2 flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border text-sm text-muted-foreground transition-colors duration-150 motion-reduce:transition-none hover:bg-muted/60 hover:text-foreground"
         >
           <Plus className="size-4" aria-hidden="true" />
-          Add provider
+          {t('providers.addProvider')}
         </button>
       </SettingsSection>
       {/* The Claude subscription's sign-in modal collects the pasted token. Closing it (without a

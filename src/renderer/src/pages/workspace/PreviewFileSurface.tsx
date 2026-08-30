@@ -1,3 +1,4 @@
+import { useLanguage } from '@/i18n'
 import { ChevronLeft, ChevronRight, GitBranch, Maximize2, MoreHorizontal, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
@@ -83,7 +84,9 @@ const PreviewFileHeader = ({
   | 'onReload'
   | 'provenanceEntry'
   | 'tooltipClassName'
->): React.JSX.Element => (
+>): React.JSX.Element => {
+  const { t } = useLanguage()
+  return (
   <header
     data-testid="preview-card-header"
     className={`flex shrink-0 items-center gap-1 border-b border-border-300/50 px-2 ${
@@ -108,7 +111,7 @@ const PreviewFileHeader = ({
                 data-testid="local-file-path"
                 className="flex min-w-0 items-center gap-1 text-[10px] font-normal leading-tight text-text-100"
               >
-                <span className="shrink-0 rounded-full bg-muted px-1.5 py-px">This computer</span>
+                <span className="shrink-0 rounded-full bg-muted px-1.5 py-px">{t('previewSurface.thisComputer')}</span>
                 <span className="truncate">{item.path}</span>
               </span>
             ) : null}
@@ -148,7 +151,7 @@ const PreviewFileHeader = ({
             data-testid="deleted-origin-session"
             className="shrink-0 rounded bg-warning-100 px-1.5 py-0.5 text-[10px] text-warning-900"
           >
-            Source session deleted
+            {t('previewSurface.sourceDeleted')}
           </span>
         ) : null}
         {onOpenProvenance && provenanceEntry === 'menu' ? (
@@ -189,7 +192,7 @@ const PreviewFileHeader = ({
               <Maximize2 aria-hidden="true" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent className={tooltipClassName}>Open full screen preview</TooltipContent>
+          <TooltipContent className={tooltipClassName}>{t('previewSurface.fullScreen')}</TooltipContent>
         </Tooltip>
       </TooltipProvider>
     ) : null}
@@ -207,11 +210,12 @@ const PreviewFileHeader = ({
             <X aria-hidden="true" />
           </Button>
         </TooltipTrigger>
-        <TooltipContent className={tooltipClassName}>Close preview</TooltipContent>
+        <TooltipContent className={tooltipClassName}>{t('previewSurface.close')}</TooltipContent>
       </Tooltip>
     </TooltipProvider>
   </header>
-)
+  )
+}
 
 const ArtifactVersionNavigation = ({
   lineage,

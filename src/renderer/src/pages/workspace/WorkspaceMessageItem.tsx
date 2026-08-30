@@ -612,6 +612,7 @@ const MessageArtifactList = ({
   onPreviewArtifact: (artifact: MessageArtifact) => void
   artifacts: MessageArtifact[]
 }): React.JSX.Element | null => {
+  const { t } = useLanguage()
   const [expanded, setExpanded] = useState(false)
   const visibleCount = expanded ? artifacts.length : ARTIFACT_GALLERY_VISIBLE_COUNT
   const visibleArtifacts = artifacts.slice(0, visibleCount)
@@ -641,7 +642,7 @@ const MessageArtifactList = ({
                   'flex items-center justify-center text-[13px] font-semibold',
                   artifactCardClassName
                 )}
-                aria-label="Expand generated files"
+                aria-label={t('wsMessage.expandGeneratedFiles')}
               >
                 +{remainingCount} more
               </button>
@@ -655,9 +656,9 @@ const MessageArtifactList = ({
                   'flex items-center justify-center text-[13px]',
                   artifactCardClassName
                 )}
-                aria-label="Collapse generated files"
+                aria-label={t('wsMessage.collapseGeneratedFiles')}
               >
-                Show less
+                {t('wsMessage.showLess')}
               </button>
             </Collapsible.Trigger>
           ) : null}
@@ -932,8 +933,8 @@ const WorkspaceMessageItem = ({
                   onDocChange={setEditDoc}
                   onSubmit={handleConfirmEdit}
                   onPaste={ignoreEditPaste}
-                  placeholder="Edit your message"
-                  ariaLabel="Edit message"
+                  placeholder={t('wsMessage.editYourMessage')}
+                  ariaLabel={t('wsMessage.editMessage')}
                 />
                 <div className="flex items-center justify-end gap-1">
                   <button
@@ -978,11 +979,11 @@ const WorkspaceMessageItem = ({
                           )}
                         </button>
                       </UserMessageActionTooltip>
-                      <UserMessageActionTooltip label="Edit message">
+                      <UserMessageActionTooltip label={t('wsMessage.editMessage')}>
                         <button
                           type="button"
                           className={userMessageActionButtonClassName}
-                          aria-label="Edit message"
+                          aria-label={t('wsMessage.editMessage')}
                           disabled={!canEditMessage}
                           onClick={handleStartEdit}
                         >
@@ -1057,11 +1058,11 @@ const WorkspaceMessageItem = ({
                         data-slot="user-message-revision-navigation"
                         className="flex items-center gap-0.5 text-[13px] text-text-100"
                       >
-                        <UserMessageActionTooltip label="Previous message revision">
+                        <UserMessageActionTooltip label={t('wsMessage.previousRevision')}>
                           <button
                             type="button"
                             className={userMessageActionButtonClassName}
-                            aria-label="Previous message revision"
+                            aria-label={t('wsMessage.previousRevision')}
                             disabled={!revisionNavigation.onPrevious || !canEditMessage}
                             onClick={revisionNavigation.onPrevious}
                           >
@@ -1073,14 +1074,14 @@ const WorkspaceMessageItem = ({
                           className="size-3.5 text-text-300"
                           aria-hidden="true"
                         />
-                        <span aria-label="Message revision" className="min-w-7 text-center">
+                        <span aria-label={t('wsMessage.messageRevision')} className="min-w-7 text-center">
                           {revisionNavigation.index + 1}/{revisionNavigation.total}
                         </span>
-                        <UserMessageActionTooltip label="Next message revision">
+                        <UserMessageActionTooltip label={t('wsMessage.nextRevision')}>
                           <button
                             type="button"
                             className={userMessageActionButtonClassName}
-                            aria-label="Next message revision"
+                            aria-label={t('wsMessage.nextRevision')}
                             disabled={!revisionNavigation.onNext || !canEditMessage}
                             onClick={revisionNavigation.onNext}
                           >
@@ -1147,7 +1148,7 @@ const WorkspaceMessageItem = ({
                 ) : null}
                 {terminalDate && turnStartedDate ? (
                   <span data-slot="assistant-message-elapsed-segment" className="whitespace-nowrap">
-                    <span aria-label="Elapsed run time">
+                    <span aria-label={t('wsMessage.elapsedRunTime')}>
                       {t('ws.elapsed')}{' '}
                       {formatElapsedDuration(terminalDate.getTime() - turnStartedDate.getTime())}
                     </span>

@@ -13,6 +13,7 @@ import type {
   CloseConfirmRequest,
   CloseConfirmVariant
 } from '../../../shared/window-controls'
+import { useLanguage } from '@/i18n'
 
 type ActiveRequest = {
   requestId: string
@@ -30,6 +31,7 @@ export const CloseConfirmModal = ({
 }: {
   onOpenChange?: (open: boolean) => void
 }): React.JSX.Element | null => {
+  const { t } = useLanguage()
   const [request, setRequest] = useState<ActiveRequest | undefined>(undefined)
   const [remember, setRemember] = useState(true)
 
@@ -135,7 +137,7 @@ export const CloseConfirmModal = ({
               </AlertDialog.Cancel>
             ) : (
               <Button type="button" variant="ghost" onClick={() => reply('minimize')}>
-                Minimize to tray
+                {t('closeConfirm.minimizeToTray')}
               </Button>
             )}
             <Button type="button" onClick={() => reply('quit')}>

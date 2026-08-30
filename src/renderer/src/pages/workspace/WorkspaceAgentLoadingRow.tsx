@@ -6,6 +6,8 @@ import { cn } from '@/lib/utils'
 import { useSessionStore } from '@/stores/session-store'
 import type { AgentLoadingPhase } from './agent-loading-message'
 
+import { useLanguage } from '@/i18n'
+
 type WorkspaceAgentLoadingRowProps = {
   sessionId: string
   phase: Exclude<AgentLoadingPhase, 'hidden'>
@@ -71,6 +73,7 @@ const AgentLoadingIndicator = ({
   sessionId,
   phase
 }: WorkspaceAgentLoadingRowProps): React.JSX.Element => {
+  const { t } = useLanguage()
   return (
     <div className="flex min-h-5 flex-col gap-1" role="status" aria-live="polite">
       {phase === 'thinking' ? (
@@ -78,7 +81,7 @@ const AgentLoadingIndicator = ({
       ) : (
         <div className="flex items-center gap-2 text-xs text-text-000/70">
           <PureScienceThinkingIndicator />
-          <span>Interacting with tools</span>
+          <span>{t('ui.interactingwithtools')}</span>
         </div>
       )}
     </div>

@@ -10,6 +10,8 @@ import { SessionReviewerPanel } from '../SessionReviewerPanel'
 import { respondToSessionPlan } from '../session-plan/respond-to-session-plan'
 import { PlanPreviewSurface } from '../session-plan/SessionPlanSurfaces'
 
+import { useLanguage } from '@/i18n'
+
 const isNotebookPreviewItem = (item: PreviewToolItem): item is NotebookPreviewItem =>
   item.toolKind === 'notebook' && Boolean(item.notebook)
 
@@ -21,6 +23,7 @@ const SessionReviewerContent = ({
   item: PreviewToolItem
   projectId?: string
 }): React.JSX.Element | null => {
+  const { t } = useLanguage()
   const sessionId = item.reviewerSessionId ?? ''
   const reviews = useReviewStore((state) =>
     selectProjectSessionReviews(state.reviewsBySession, projectId, sessionId)
@@ -32,7 +35,7 @@ const SessionReviewerContent = ({
   if (!review) {
     return (
       <div className="flex size-full items-center justify-center text-[12px] text-text-300">
-        No review available for this session.
+        {t('ui.noreviewavailableforthissess')}
       </div>
     )
   }

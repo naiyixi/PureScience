@@ -110,16 +110,16 @@ const LegacyDataMoveDialog = ({
               <span className="text-xs font-medium text-text-100">Current (hidden)</span>
               <pre
                 className="mt-1 overflow-x-auto whitespace-pre-wrap break-all rounded-lg border border-border-200 bg-bg-10 px-2.5 py-1.5 font-mono text-xs text-text-000"
-                aria-label="Current data location"
+                aria-label={t('dataMove.currentLocation')}
               >
                 {currentDataRoot}
               </pre>
             </div>
             <div>
-              <span className="text-xs font-medium text-text-100">New location</span>
+              <span className="text-xs font-medium text-text-100">{t('dataMove.newLocation')}</span>
               <pre
                 className="mt-1 overflow-x-auto whitespace-pre-wrap break-all rounded-lg border border-border-200 bg-bg-10 px-2.5 py-1.5 font-mono text-xs text-text-000"
-                aria-label="New data location"
+                aria-label={t('dataMove.newLocation')}
               >
                 {destination ?? t('common.resolving')}
               </pre>
@@ -148,7 +148,7 @@ const LegacyDataMoveDialog = ({
             </Button>
             <AlertDialog.Cancel asChild>
               <Button type="button" variant="ghost" disabled={isPicking} onClick={handleKeepHere}>
-                Keep it in the current folder
+                {t('dataMove.keepCurrent')}
               </Button>
             </AlertDialog.Cancel>
             <p className="text-xs text-muted-foreground">

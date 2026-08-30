@@ -2,6 +2,7 @@ import { Dialog } from 'radix-ui'
 import { Check, Copy, ExternalLink, FolderOpen, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
+import { useLanguage } from '@/i18n'
 import { Button } from '@/components/ui/button'
 import {
   dialogCloseButtonClassName,
@@ -43,6 +44,7 @@ const ReportErrorDialog = ({
   subject,
   onClose
 }: ReportErrorDialogProps): React.JSX.Element => {
+  const { t } = useLanguage()
   const appVersion = useUpdateStore((state) => state.appInfo?.version)
   const providers = useSettingsStore((state) => state.providers)
   const agentFrameworks = useSettingsStore((state) => state.agentFrameworks)
@@ -161,7 +163,7 @@ const ReportErrorDialog = ({
         >
           <div className={dialogHeaderClassName}>
             <div className="min-w-0">
-              <Dialog.Title className={dialogTitleClassName}>Report this error</Dialog.Title>
+              <Dialog.Title className={dialogTitleClassName}>{t('reportError.reportThisError')}</Dialog.Title>
               <Dialog.Description className={dialogDescriptionClassName}>
                 This report is posted publicly on GitHub. Edit the error text below to remove
                 anything sensitive before sharing. Your runtime log stays on this device and is
@@ -182,11 +184,11 @@ const ReportErrorDialog = ({
           </div>
 
           <label className="mt-4 text-[11px] font-medium uppercase tracking-wide text-text-300">
-            Error details
+            {t('reportError.errorDetails')}
           </label>
           <textarea
             className="mt-1 min-h-0 flex-1 resize-none overflow-auto rounded-lg border border-border-200 bg-bg-100 px-3 py-2.5 font-mono text-[12px] leading-5 text-text-100 focus:outline-none focus:ring-1 focus:ring-primary/50"
-            aria-label="Error details"
+            aria-label={t('reportError.errorDetails')}
             value={editedError}
             onChange={(event) => {
               // Editing changes issueUrl, so consent lapses automatically via consentedUrl !== issueUrl.
@@ -195,11 +197,11 @@ const ReportErrorDialog = ({
           />
 
           <p className="mt-3 text-[11px] font-medium uppercase tracking-wide text-text-300">
-            Also included
+            {t('reportError.alsoIncluded')}
           </p>
           <pre
             className="mt-1 max-h-28 shrink-0 overflow-auto whitespace-pre-wrap rounded-lg border border-border-200 bg-bg-100 px-3 py-2 font-mono text-[11px] leading-5 text-text-200"
-            aria-label="Report environment"
+            aria-label={t('ui.reportenvironment')}
           >
             {environmentBlock}
           </pre>
@@ -207,11 +209,11 @@ const ReportErrorDialog = ({
           {issuePrefill.truncatedFields.length > 0 ? (
             <>
               <p className="mt-3 text-[11px] font-medium uppercase tracking-wide text-text-300">
-                GitHub issue prefill
+                {t('reportError.githubIssuePrefill')}
               </p>
               <pre
                 className="mt-1 max-h-28 shrink-0 overflow-auto whitespace-pre-wrap rounded-lg border border-border-200 bg-bg-100 px-3 py-2 font-mono text-[11px] leading-5 text-text-200"
-                aria-label="GitHub issue prefill"
+                aria-label={t('reportError.githubIssuePrefill')}
               >
                 {issuePrefillPreview}
               </pre>
@@ -255,7 +257,7 @@ const ReportErrorDialog = ({
               onClick={() => void handleRevealLog()}
             >
               <FolderOpen className="size-4" aria-hidden="true" />
-              Reveal log file
+              {t('reportError.revealLogFile')}
             </button>
             <button
               type="button"

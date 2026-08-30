@@ -61,7 +61,7 @@ const EnvironmentStep = ({ onContinue }: EnvironmentStepProps): React.JSX.Elemen
       <Separator className="bg-border-200" />
 
       <CardContent className="flex-1 px-6 py-5">
-        <section aria-label="Prepare environment" className="space-y-5">
+        <section aria-label={t('ui.prepareenvironment')} className="space-y-5">
           <EnvironmentSetupCard environment={environmentCheck} error={environmentCheckError} />
         </section>
       </CardContent>

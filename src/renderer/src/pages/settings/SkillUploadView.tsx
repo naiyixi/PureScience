@@ -220,7 +220,7 @@ const SkillUploadView = ({
       setCandidates(results.flatMap((result) => result.candidates))
       setErrors(results.map((result) => result.error).filter((error): error is string => !!error))
       setSkipped(results.flatMap((result) => result.skipped ?? []))
-      // Default selection is empty — the user opts in per row (or via Select all).
+      // Default selection is empty — the user opts in per row (or via {t('skillUpload.selectAll')}).
       setSelected(new Set())
     } finally {
       setBusy(false)
@@ -333,7 +333,7 @@ const SkillUploadView = ({
   if (candidates !== null && candidates.length > 0) {
     return (
       <div className="p-5">
-        <h2 className="text-base font-semibold text-foreground">Confirm import</h2>
+        <h2 className="text-base font-semibold text-foreground">{t('skillUpload.confirmImport')}</h2>
         <p className="mt-0.5 text-[13px] leading-5 text-muted-foreground">
           Pick the skills you want to add. Nothing is written until you import.
         </p>
@@ -347,7 +347,7 @@ const SkillUploadView = ({
               <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <input
                   type="checkbox"
-                  aria-label="Select all"
+                  aria-label={t('skillUpload.selectAll')}
                   checked={allSelected}
                   onChange={toggleAll}
                   disabled={busy}
@@ -424,11 +424,11 @@ const SkillUploadView = ({
                     </span>
                     {alreadyImported ? (
                       <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                        Already imported
+                        {t('skillUpload.alreadyImported')}
                       </span>
                     ) : nameExists ? (
                       <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                        Name exists
+                        {t('skillUpload.nameExists')}
                       </span>
                     ) : null}
                   </button>
@@ -458,7 +458,7 @@ const SkillUploadView = ({
             disabled={busy}
             className="text-muted-foreground"
           >
-            Choose different files
+            {t('skillUpload.chooseDifferentFiles')}
           </Button>
         </div>
         <SkillImportCandidatePreview {...candidatePreview.previewProps} />
@@ -468,7 +468,7 @@ const SkillUploadView = ({
 
   return (
     <div className="p-5">
-      <h2 className="text-base font-semibold text-foreground">Upload skills</h2>
+      <h2 className="text-base font-semibold text-foreground">{t('skillUpload.uploadSkills')}</h2>
       <p className="mt-0.5 text-[13px] leading-5 text-muted-foreground">
         Add skills from SKILL.md files or .zip / .skill bundles on your computer. You can select
         several files at once, and a single archive may contain multiple skills.
@@ -507,7 +507,7 @@ const SkillUploadView = ({
 
       <div className="mt-5 text-center">
         <Button type="button" variant="ghost" onClick={onWriteInstead}>
-          Write from scratch instead
+          {t('skillUpload.writeFromScratchInstead')}
         </Button>
       </div>
     </div>

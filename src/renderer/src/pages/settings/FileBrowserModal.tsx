@@ -568,7 +568,7 @@ export function FileBrowserModal({
             ))}
             <div className="flex-1" />
             <Dialog.Close asChild>
-              <Button type="button" variant="ghost" size="icon-sm" aria-label="Close file browser">
+              <Button type="button" variant="ghost" size="icon-sm" aria-label={t('fileBrowser.close')}>
                 <X className="size-4" />
               </Button>
             </Dialog.Close>
@@ -611,7 +611,7 @@ export function FileBrowserModal({
                 aria-expanded={gotoOpen}
               >
                 <MapPin className="size-3.5" />
-                Go to
+                {t('fileBrowser.goTo')}
                 <ChevronDown className="size-3.5 opacity-60" />
               </Button>
               {gotoOpen && (
@@ -745,7 +745,7 @@ export function FileBrowserModal({
                         className="text-xs"
                         onClick={() => void navigate(roots.scratch ?? roots.home ?? '~')}
                       >
-                        Go to home
+                        {t('fileBrowser.goToHome')}
                       </Button>
                     )}
                   </div>
@@ -764,7 +764,7 @@ export function FileBrowserModal({
 
               {/* Entry list */}
               {browserState.kind === 'ok' && (
-                <div role="listbox" aria-label="Directory contents">
+                <div role="listbox" aria-label={t('fileBrowser.directoryContents')}>
                   {/* Header row */}
                   <div className="grid grid-cols-[1fr_80px_80px] border-b border-border bg-muted/30 px-3 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">
                     <span>{t('common.name')}</span>
@@ -773,7 +773,7 @@ export function FileBrowserModal({
                   </div>
                   {listing?.entries.length === 0 && (
                     <p className="py-6 text-center text-xs text-muted-foreground">
-                      Empty directory
+                      {t('fileBrowser.emptyDirectory')}
                     </p>
                   )}
                   {listing?.entries.map((entry) => (

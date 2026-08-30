@@ -17,6 +17,8 @@ import { cn } from '@/lib/utils'
 
 import type { ReviewWithChecks, ReviewCheck, ReviewerLogEntry } from '../../../../shared/reviewer'
 
+import { useLanguage } from '@/i18n'
+
 type SessionReviewerPanelProps = {
   review: ReviewWithChecks
   // Check id to highlight/scroll to (from GoToTranscriptIntent). Undefined = no active check.
@@ -270,6 +272,7 @@ const SessionReviewerPanel = ({
   review,
   activeFindingId
 }: SessionReviewerPanelProps): React.JSX.Element => {
+  const { t } = useLanguage()
   // Sort checks by sortIndex for stable display order.
   const sortedChecks = [...review.checks].sort((a, b) => a.sortIndex - b.sortIndex)
 
@@ -303,7 +306,7 @@ const SessionReviewerPanel = ({
             )}
           </h3>
           {sortedChecks.length === 0 ? (
-            <p className="text-xs text-text-400">No checks recorded.</p>
+            <p className="text-xs text-text-400">{t('ui.nochecksrecorded')}</p>
           ) : (
             <div className="space-y-2">
               {sortedChecks.map((check) => (

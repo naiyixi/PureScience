@@ -3,6 +3,7 @@ import { Dialog } from 'radix-ui'
 
 import { PreviewPanelSurface } from './PreviewPanel'
 
+import { useLanguage } from '@/i18n'
 type MobilePreviewSheetProps = {
   open: boolean
   onClose: () => void
@@ -10,7 +11,9 @@ type MobilePreviewSheetProps = {
 
 // Mobile workbench presentation: generated files, code, and notebooks keep the desktop tab model,
 // but rise from the bottom so the conversation remains the primary screen.
-const MobilePreviewSheet = ({ open, onClose }: MobilePreviewSheetProps): React.JSX.Element => (
+const MobilePreviewSheet = ({ open, onClose }: MobilePreviewSheetProps): React.JSX.Element => {
+  const { t } = useLanguage()
+  return (
   <Dialog.Root open={open} onOpenChange={(next) => (next ? undefined : onClose())}>
     <Dialog.Portal>
       <Dialog.Overlay className="fixed inset-0 z-50 bg-black/45 data-[state=closed]:animate-out data-[state=open]:animate-in data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 motion-reduce:data-[state=closed]:animate-none motion-reduce:data-[state=open]:animate-none" />
@@ -28,7 +31,7 @@ const MobilePreviewSheet = ({ open, onClose }: MobilePreviewSheetProps): React.J
             <button
               type="button"
               className="grid size-8 shrink-0 place-items-center rounded-lg text-text-300 hover:bg-bg-200 hover:text-text-000"
-              aria-label="Close preview"
+              aria-label={t('ui.closepreview')}
             >
               <X className="size-4" aria-hidden="true" />
             </button>
@@ -38,6 +41,7 @@ const MobilePreviewSheet = ({ open, onClose }: MobilePreviewSheetProps): React.J
       </Dialog.Content>
     </Dialog.Portal>
   </Dialog.Root>
-)
+  )
+}
 
 export { MobilePreviewSheet }

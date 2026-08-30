@@ -67,7 +67,7 @@ const HandoffLifecycleStatus = ({
     >
       <span className="font-medium text-foreground">{statusCopy(handoff)}</span>
       {handoff.phase === 'continued' ? (
-        <span className="ml-1">The original task continues in this turn.</span>
+        <span className="ml-1">{t('ui.theoriginaltaskcontinuesinth')}</span>
       ) : null}
       {handoff.failure ? <span className="ml-1">{handoff.failure.message}</span> : null}
       {isFailure && onRetry ? (

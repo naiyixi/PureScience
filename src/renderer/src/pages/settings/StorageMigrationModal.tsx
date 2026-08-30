@@ -230,7 +230,7 @@ const StorageMigrationModal = ({
                 {t('settings.checkingRunningSessions')}
               </Dialog.Title>
               <Dialog.Description className="mt-1 text-xs text-muted-foreground">
-                One moment.
+                {t('ui.onemoment')}
               </Dialog.Description>
             </>
           ) : null}
@@ -311,7 +311,7 @@ const StorageMigrationModal = ({
                 </span>
                 <div className="min-w-0 flex-1">
                   <Dialog.Title className="text-sm font-semibold text-foreground">
-                    Data copied
+                    {t('ui.datacopied')}
                   </Dialog.Title>
                   <Dialog.Description className="mt-1 text-xs leading-relaxed text-muted-foreground">
                     {t('settings.restartToSwitch')}

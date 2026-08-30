@@ -489,7 +489,7 @@ const HomePage = ({
             )}
           </section>
 
-          <section className="min-w-0" aria-label="Recent sessions">
+          <section className="min-w-0" aria-label={t('ui.recentsessions')}>
             <h2 className={sectionHeadingClassName}>
               <Clock className="size-4 text-text-100" strokeWidth={2} aria-hidden="true" />
               {t('home.recentSessions')}

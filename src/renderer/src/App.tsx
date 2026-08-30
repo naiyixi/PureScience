@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import type { OpenSessionFromNotificationRequest } from '../../shared/notifications'
 
+import { useLanguage } from '@/i18n'
 import { useDeepLinkNavigation } from '@/lib/deep-link'
 import { useSessionPersistence } from '@/lib/session-persistence/session-persistence'
 import { CloseConfirmModal } from '@/components/CloseConfirmModal'
@@ -47,6 +48,7 @@ type NotificationOpenIntent = {
 }
 
 const App = (): React.JSX.Element | null => {
+  const { t } = useLanguage()
   // Persistence is started once at the top so sessions stay loaded for both Home and Workspace.
   const sessionPersistence = useSessionPersistence()
   useQuitPersistenceFlush()
@@ -445,7 +447,7 @@ const App = (): React.JSX.Element | null => {
         >
           <div className="w-full max-w-md rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm">
             <h1 className="text-base font-semibold text-foreground">
-              Settings could not be loaded
+              {t('app.settingsLoadFailed')}
             </h1>
             <p className="mt-2 break-words text-sm text-muted-foreground">{settingsLoadError}</p>
             <Button
@@ -502,7 +504,7 @@ const App = (): React.JSX.Element | null => {
         className="flex min-h-svh items-center justify-center bg-background p-6 text-foreground"
       >
         <SessionPersistenceAlert
-          title="Saved conversations could not be loaded"
+          title={t('app.conversationsLoadFailed')}
           message={sessionPersistence.loadError}
           inline
           onRetry={sessionPersistence.retryLoad}
@@ -516,19 +518,19 @@ const App = (): React.JSX.Element | null => {
       <EnvStatusBanner ui={envUi} onRetry={() => void retryEnv()} />
       {sessionPersistence.loadError ? (
         <SessionPersistenceAlert
-          title="Saved conversations could not be loaded"
+          title={t('app.conversationsLoadFailed')}
           message={sessionPersistence.loadError}
           onRetry={sessionPersistence.retryLoad}
         />
       ) : sessionPersistence.writeError ? (
         <SessionPersistenceAlert
-          title="Conversation storage needs attention"
+          title={t('app.storageNeedsAttention')}
           message={sessionPersistence.writeError}
           onRetry={sessionPersistence.retryWrites}
         />
       ) : sessionPersistence.loadWarning ? (
         <SessionPersistenceAlert
-          title="Saved conversation data was damaged"
+          title={t('app.conversationDataDamaged')}
           message={sessionPersistence.loadWarning}
           variant="warning"
           onDismiss={sessionPersistence.dismissLoadWarning}

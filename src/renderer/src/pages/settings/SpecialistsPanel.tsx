@@ -730,7 +730,7 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-muted-foreground">Per file</dt>
+                    <dt className="text-muted-foreground">{t('settings.specialistPerFile')}</dt>
                     <dd>Up to {formatBytes(packagePreview.archive.limits.fileBytes)}</dd>
                   </div>
                 </dl>
@@ -758,7 +758,7 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                     }}
                   >
                     <Copy data-icon="inline-start" aria-hidden="true" />
-                    Copy report
+                    {t('settings.specialistCopyReport')}
                   </Button>
                   <Button
                     type="button"
@@ -828,9 +828,9 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                 >
                   <CheckCircle2 className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
                   <div>
-                    <strong className="block">Validation passed</strong>
+                    <strong className="block">{t('settings.specialistValidationPassed')}</strong>
                     <span className="opacity-80">
-                      The package can be installed after explicit confirmation.
+                      {t('settings.specialistInstallAfterConfirmation')}
                     </span>
                   </div>
                 </div>
@@ -847,7 +847,7 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                 role="alert"
                 className="rounded-lg border border-warning-100/50 bg-warning-100/10 p-3 text-xs"
               >
-                Local edits will be replaced by this import.
+                {t('settings.specialistImportReplacesEdits')}
               </p>
             ) : null}
             {packageErrorCode ? (
@@ -904,7 +904,7 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                     className={dialogPanelClassName('w-[min(520px,calc(100vw-2rem))]')}
                   >
                     <AlertDialog.Title className={dialogTitleClassName}>
-                      Local changes will be permanently replaced
+                      {t('settings.specialistLocalChangesReplaced')}
                     </AlertDialog.Title>
                     <AlertDialog.Description className={dialogDescriptionClassName}>
                       Current local edits are not recoverable after a successful overwrite. A failed
@@ -912,11 +912,11 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                     </AlertDialog.Description>
                     <dl className="mt-4 grid grid-cols-2 gap-3 rounded-lg border border-border p-3 text-xs">
                       <div>
-                        <dt className="text-muted-foreground">Current version</dt>
+                        <dt className="text-muted-foreground">{t('settings.specialistCurrentVersion')}</dt>
                         <dd>{packagePreview.overwrite.currentVersion}</dd>
                       </div>
                       <div>
-                        <dt className="text-muted-foreground">Incoming version</dt>
+                        <dt className="text-muted-foreground">{t('settings.specialistIncomingVersion')}</dt>
                         <dd>
                           {packagePreview.overwrite.incomingVersion}
                           {packagePreview.diagnostics.some(
@@ -927,7 +927,7 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                         </dd>
                       </div>
                       <div>
-                        <dt className="text-muted-foreground">Local status</dt>
+                        <dt className="text-muted-foreground">{t('settings.specialistLocalStatus')}</dt>
                         <dd>
                           {packagePreview.overwrite.hasImportBaseline
                             ? packagePreview.overwrite.modifiedSinceImport
@@ -952,7 +952,7 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                         onNavigate({ kind: 'export', id: packagePreview.overwrite!.id })
                       }}
                     >
-                      Export current version first
+                      {t('settings.specialistExportFirst')}
                     </Button>
                     <div className="mt-6 flex justify-end gap-2">
                       <AlertDialog.Cancel asChild>
@@ -983,7 +983,7 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                             .finally(() => setPackageBusy(false))
                         }}
                       >
-                        Overwrite and continue
+                        {t('settings.specialistOverwriteContinue')}
                       </Button>
                     </div>
                   </AlertDialog.Content>
@@ -1014,7 +1014,7 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
       return (
         <div className="p-5">
           <Button type="button" variant="ghost" onClick={() => onNavigate({ kind: 'list' })}>
-            Back to specialists
+            {t('settings.specialistBackToSpecialists')}
           </Button>
           <div className="mt-5 flex items-start gap-3">
             <SpecialistAvatar iconKey={specialist.iconKey} colorKey={specialist.colorKey} />
@@ -1126,9 +1126,9 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
             <DropdownMenuItem className="gap-2.5" onSelect={() => onNavigate({ kind: 'create' })}>
               <Pencil className="size-4 shrink-0" aria-hidden="true" />
               <span className="flex flex-col">
-                <span>Write from scratch</span>
+                <span>{t('settings.specialistWriteFromScratch')}</span>
                 <span className="text-xs text-muted-foreground">
-                  Configure instructions and capabilities yourself
+                  {t('settings.specialistConfigureYourself')}
                 </span>
               </span>
             </DropdownMenuItem>

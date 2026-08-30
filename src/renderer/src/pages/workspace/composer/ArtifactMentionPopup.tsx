@@ -11,6 +11,8 @@ import { ArtifactFileIcon } from './artifact-file-icon'
 import { fuzzyScore, type FuzzyMatch } from './fuzzy-match'
 import { HighlightedText } from './HighlightedText'
 
+import { useLanguage } from '@/i18n'
+
 // The reference passed back to the composer when an artifact row is picked.
 export type PickedArtifact = {
   id: string
@@ -70,6 +72,7 @@ export const ArtifactMentionPopup = ({
   onSelect,
   onClose
 }: ArtifactMentionPopupProps): React.JSX.Element | null => {
+  const { t } = useLanguage()
   const activeProjectId = useNavigationStore((state) => state.activeProjectId)
   const listboxId = useId()
   const [projectFiles, setProjectFiles] = useState<{
@@ -252,7 +255,7 @@ export const ArtifactMentionPopup = ({
         <ul
           id={`${listboxId}-listbox`}
           role="listbox"
-          aria-label="Artifact suggestions"
+          aria-label={t('ui.artifactsuggestions')}
           className="overflow-y-auto max-h-[min(45vh,18rem)]"
         >
           {uploadMatches.length > 0 ? (

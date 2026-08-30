@@ -4,12 +4,15 @@ import type { ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
+import { useLanguage } from '@/i18n'
 type FieldHelpProps = {
   content: ReactNode
 }
 
 // Keeps field guidance compact and consistent while callers retain ownership of the help content.
-const FieldHelp = ({ content }: FieldHelpProps): React.JSX.Element => (
+const FieldHelp = ({ content }: FieldHelpProps): React.JSX.Element => {
+  const { t } = useLanguage()
+  return (
   <TooltipProvider delayDuration={200}>
     <Tooltip>
       <TooltipTrigger asChild>
@@ -17,7 +20,7 @@ const FieldHelp = ({ content }: FieldHelpProps): React.JSX.Element => (
           type="button"
           variant="ghost"
           size="icon-xs"
-          aria-label="More information"
+          aria-label={t('fieldHelp.moreInfo')}
           data-slot="field-help"
           className="size-[18px] rounded-full bg-transparent text-muted-foreground/50 hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground data-[state=delayed-open]:bg-muted data-[state=delayed-open]:text-foreground data-[state=instant-open]:bg-muted data-[state=instant-open]:text-foreground"
         >
@@ -33,6 +36,7 @@ const FieldHelp = ({ content }: FieldHelpProps): React.JSX.Element => (
       </TooltipContent>
     </Tooltip>
   </TooltipProvider>
-)
+  )
+}
 
 export { FieldHelp }

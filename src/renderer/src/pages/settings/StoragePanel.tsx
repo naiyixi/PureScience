@@ -331,7 +331,7 @@ const StoragePanel = ({ onContinueToAgent }: StoragePanelProps): React.JSX.Eleme
             <span className="text-xs font-medium text-muted-foreground">
               {t('settings.location')}
             </span>
-            <pre className={cn('mt-1', PATH_PILL)} aria-label="Data root path">
+            <pre className={cn('mt-1', PATH_PILL)} aria-label={t('storage.dataRootPath')}>
               {info.dataRoot}
             </pre>
             <p className="mt-1.5 text-xs text-muted-foreground">
@@ -386,7 +386,7 @@ const StoragePanel = ({ onContinueToAgent }: StoragePanelProps): React.JSX.Eleme
 
                 {(kind === 'move' || kind === 'adopt') && inspection ? (
                   <p className="mt-2 text-xs text-muted-foreground">
-                    Data will be stored in <span className="font-mono">{inspection.dataRoot}</span>
+                    {t('storage.dataStoredIn')} <span className="font-mono">{inspection.dataRoot}</span>
                   </p>
                 ) : null}
 

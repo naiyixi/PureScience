@@ -335,7 +335,7 @@ const ProviderList = ({
                           <div className="font-mono">Key: {provider.maskedKey}</div>
                         ) : null}
                         {provider.needsKey ? (
-                          <div className="text-destructive">Key needs re-entry</div>
+                          <div className="text-destructive">{t('ui.keyneedsreentry')}</div>
                         ) : null}
                       </>
                     )}
