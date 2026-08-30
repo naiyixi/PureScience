@@ -496,6 +496,7 @@ export interface PureScienceAPI {
     setPackageMirror(request: SetPackageMirrorRequest): Promise<PackageMirror>
     getMemory(): Promise<MemorySettings | undefined>
     setMemory(memory: MemorySettings): Promise<MemorySettings>
+    setUseIntent(useIntent: 'commercial' | 'non-commercial'): Promise<SettingsSnapshot>
     getCredentials(): Promise<CredentialView[]>
     getThirdPartyLicenses(): Promise<
       { name: string; version: string; license: string }[]

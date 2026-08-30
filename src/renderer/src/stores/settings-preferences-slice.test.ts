@@ -17,6 +17,7 @@ type PreferencesCommands = Pick<
   | 'setNotificationsEnabled'
   | 'setConversationSkillImportEnabled'
   | 'setClosePreference'
+  | 'setUseIntent'
   | 'setAppIconVariant'
   | 'setDefaultPermissionProfile'
   | 'markOnboardingComplete'
@@ -32,6 +33,7 @@ type TestStore = SettingsPreferencesActions & {
   notificationsEnabled: boolean
   conversationSkillImportEnabled: boolean
   closePreference: CloseActionPreference | undefined
+  useIntent: 'commercial' | 'non-commercial' | undefined
   appIconVariant: AppIconVariant
   defaultPermissionProfile: PermissionProfileId
   settingsWriteError: string | undefined
@@ -81,6 +83,7 @@ const createCommands = (): CommandMocks => ({
   setClosePreference: vi.fn(({ preference }) =>
     Promise.resolve(snapshot({ closePreference: preference }))
   ),
+  setUseIntent: vi.fn((intent) => Promise.resolve(snapshot({ useIntent: intent }))),
   setAppIconVariant: vi.fn(({ variant }) => Promise.resolve(snapshot({ appIconVariant: variant }))),
   setDefaultPermissionProfile: vi.fn(({ profile }) =>
     Promise.resolve(snapshot({ defaultPermissionProfile: profile }))
@@ -103,6 +106,7 @@ const createHarness = (): {
       notificationsEnabled: next.notificationsEnabled,
       conversationSkillImportEnabled: next.conversationSkillImportEnabled,
       closePreference: next.closePreference,
+      useIntent: next.useIntent,
       appIconVariant: next.appIconVariant,
       defaultPermissionProfile: next.defaultPermissionProfile ?? 'ask'
     })
@@ -112,6 +116,7 @@ const createHarness = (): {
     notificationsEnabled: true,
     conversationSkillImportEnabled: true,
     closePreference: undefined,
+    useIntent: undefined,
     appIconVariant: 'light',
     defaultPermissionProfile: 'ask',
     settingsWriteError: undefined,

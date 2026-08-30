@@ -6,6 +6,7 @@ export type SettingsWriteKey =
   | 'notifications'
   | 'conversationSkillImport'
   | 'closePreference'
+  | 'useIntent'
   | 'defaultPermissionProfile'
   | 'appIcon'
 
@@ -14,6 +15,7 @@ export type OptimisticSettingsWriteKey =
   | 'notifications'
   | 'conversationSkillImport'
   | 'closePreference'
+  | 'useIntent'
   | 'defaultPermissionProfile'
   | 'appIcon'
 

@@ -15,6 +15,7 @@ type SettingsPreferencesState = {
   notificationsEnabled: boolean
   conversationSkillImportEnabled: boolean
   closePreference: CloseActionPreference | undefined
+  useIntent: 'commercial' | 'non-commercial' | undefined
   appIconVariant: AppIconVariant
   defaultPermissionProfile: PermissionProfileId
 }
@@ -24,6 +25,7 @@ type OptimisticPreferenceField =
   | 'notificationsEnabled'
   | 'conversationSkillImportEnabled'
   | 'closePreference'
+  | 'useIntent'
   | 'appIconVariant'
   | 'defaultPermissionProfile'
 
@@ -32,6 +34,7 @@ export type SettingsPreferencesActions = {
   setNotificationsEnabled: (enabled: boolean) => Promise<void>
   setConversationSkillImportEnabled: (enabled: boolean) => Promise<void>
   setClosePreference: (preference: CloseActionPreference | undefined) => Promise<void>
+  setUseIntent: (intent: 'commercial' | 'non-commercial') => Promise<void>
   setAppIconVariant: (variant: AppIconVariant) => Promise<void>
   setDefaultPermissionProfile: (profile: PermissionProfileId) => Promise<void>
   completeOnboarding: () => Promise<void>
@@ -44,6 +47,7 @@ type SettingsPreferencesCommands = Pick<
   | 'setNotificationsEnabled'
   | 'setConversationSkillImportEnabled'
   | 'setClosePreference'
+  | 'setUseIntent'
   | 'setAppIconVariant'
   | 'setDefaultPermissionProfile'
   | 'markOnboardingComplete'
@@ -63,6 +67,7 @@ const SETTINGS_WRITE_ERRORS: Record<OptimisticSettingsWriteKey, string> = {
   notifications: 'Could not save notification preference. Try again.',
   conversationSkillImport: 'Could not save conversation Skill import preference. Try again.',
   closePreference: 'Could not save window close preference. Try again.',
+  useIntent: 'Could not save the licensed-skill use intent. Try again.',
   appIcon: 'Could not save app icon preference. Try again.',
   defaultPermissionProfile: 'Could not save the default permission mode. Try again.'
 }
@@ -137,6 +142,15 @@ export const createSettingsPreferencesSlice = ({
         preference,
         () => getCommands().setClosePreference({ preference }),
         'Failed to set close preference'
+      ),
+
+    setUseIntent: (intent) =>
+      runOptimisticWrite(
+        'useIntent',
+        'useIntent',
+        intent,
+        () => getCommands().setUseIntent(intent),
+        'Failed to set use intent'
       ),
 
     setAppIconVariant: (variant) =>

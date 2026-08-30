@@ -784,6 +784,12 @@ const sanitizeSettings = (value: unknown): StoredSettings => {
     settings.defaultPermissionProfile = defaultPermissionProfile
   }
 
+  const useIntent = value.useIntent
+
+  if (useIntent === 'commercial' || useIntent === 'non-commercial') {
+    settings.useIntent = useIntent
+  }
+
   const opencodePath = asString(value.opencodePath)
 
   if (opencodePath) {
@@ -1149,6 +1155,10 @@ class SettingsRepository {
     }
 
     return this.mutate((settings) => ({ ...settings, memory: sanitized }))
+  }
+
+  async setUseIntent(useIntent: 'commercial' | 'non-commercial'): Promise<StoredSettings> {
+    return this.mutate((settings) => ({ ...settings, useIntent }))
   }
 
   // Replaces the whole credential list (single-writer for the store; the service encrypts each

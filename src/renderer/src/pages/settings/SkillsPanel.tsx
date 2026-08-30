@@ -11,6 +11,7 @@ import {
   Trash2
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import { AlertDialog } from 'radix-ui'
 
 import type { SkillSource, SkillView } from '../../../../shared/settings'
 import { resolveEffectiveSpecialistSkills } from '../../../../shared/specialist'
@@ -26,6 +27,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/u
 import { useSettingsStore } from '@/stores/settings-store'
 import { useSpecialistStore } from '@/stores/specialist-store'
 import { useCatalogTagsStore } from '@/stores/catalog-tags-store'
+import { isRestrictedLicense } from '../../../../shared/skill-license'
 import { CatalogFavoriteButton } from '@/components/catalog/CatalogFavoriteButton'
 import { CatalogTagEditor } from '@/components/catalog/CatalogTagEditor'
 import { CatalogFilterChips } from '@/components/catalog/CatalogFilterChips'
@@ -99,6 +101,7 @@ const SkillsPanel = ({
   const skills = useSettingsStore((state) => state.skills)
   const loadSkills = useSettingsStore((state) => state.loadSkills)
   const setSkillEnabled = useSettingsStore((state) => state.setSkillEnabled)
+  const useIntent = useSettingsStore((state) => state.useIntent)
   const createSkill = useSettingsStore((state) => state.createSkill)
   const deleteSkill = useSettingsStore((state) => state.deleteSkill)
   const conversationSkillImportEnabled = useSettingsStore(
@@ -117,6 +120,7 @@ const SkillsPanel = ({
   const [batchMode, setBatchMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(new Set())
   const [batchError, setBatchError] = useState<string | undefined>()
+  const [pendingLicenseSkill, setPendingLicenseSkill] = useState<SkillView | null>(null)
   const [batchNotice, setBatchNotice] = useState<string | undefined>()
   const [deleteError, setDeleteError] = useState<string | undefined>()
   const [exportError, setExportError] = useState<string | undefined>()
@@ -306,6 +310,7 @@ const SkillsPanel = ({
   const groups = SOURCE_GROUPS.filter((group) => filter === 'all' || filter === group.source)
 
   return (
+    <>
     <div className="p-5">
       <SettingsSection
         title={t('settings.conversationImports')}
@@ -677,7 +682,17 @@ const SkillsPanel = ({
                           <SettingsToggle
                             enabled={skill.enabled}
                             aria-label={t('settings.toggleSkill').replace('{name}', skill.name)}
-                            onToggle={() => void setSkillEnabled(skill.id, !skill.enabled)}
+                            onToggle={() => {
+                              if (skill.enabled) {
+                                void setSkillEnabled(skill.id, false)
+                                return
+                              }
+                              if (isRestrictedLicense(skill.license) && useIntent !== 'non-commercial') {
+                                setPendingLicenseSkill(skill)
+                                return
+                              }
+                              void setSkillEnabled(skill.id, true)
+                            }}
                           />
                         </li>
                       )
@@ -698,6 +713,41 @@ const SkillsPanel = ({
         })}
       </div>
     </div>
+
+    <AlertDialog.Root
+      open={pendingLicenseSkill !== null}
+      onOpenChange={(open) => {
+        if (!open) setPendingLicenseSkill(null)
+      }}
+    >
+      <AlertDialog.Portal>
+        <AlertDialog.Overlay className="fixed inset-0 z-50 bg-black/50" />
+        <AlertDialog.Content className="fixed left-1/2 top-1/2 z-50 w-[min(420px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-bg-000 p-5 shadow-xl">
+          <AlertDialog.Title className="text-sm font-semibold text-foreground">
+            {t('settings.licenseConfirmTitle').replace('{name}', pendingLicenseSkill?.name ?? '')}
+          </AlertDialog.Title>
+          <AlertDialog.Description className="mt-2 text-xs leading-5 text-muted-foreground">
+            {t('settings.licenseConfirmBody').replace('{license}', pendingLicenseSkill?.license ?? '')}
+          </AlertDialog.Description>
+          <div className="mt-4 flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => setPendingLicenseSkill(null)}>
+              {t('common.cancel')}
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                const skill = pendingLicenseSkill
+                setPendingLicenseSkill(null)
+                if (skill) void setSkillEnabled(skill.id, true)
+              }}
+            >
+              {t('settings.licenseConfirmEnable')}
+            </Button>
+          </div>
+        </AlertDialog.Content>
+      </AlertDialog.Portal>
+    </AlertDialog.Root>
+    </>
   )
 }
 
