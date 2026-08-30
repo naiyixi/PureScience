@@ -189,9 +189,8 @@ const WorkspaceSidebar = ({
   }, [hoverState, closeHoverCard])
 
   // Switching sessions changes the row set; never keep a card for a row that may unmount.
-  useEffect(() => {
-    setHoverState(null)
-  }, [activeSessionId])
+  const visibleHoverState =
+    hoverState && hoverState.session.id === activeSessionId ? hoverState : null
 
   // Build section descriptors so the list renders with a labelled header per group.
   const sections: Array<{ label: string; items: typeof sessions }> = []
@@ -489,8 +488,8 @@ const WorkspaceSidebar = ({
           </div>
         </nav>
       </div>
-      {hoverState ? (
-        <SessionHoverCard session={hoverState.session} anchor={hoverState.anchor} />
+      {visibleHoverState ? (
+        <SessionHoverCard session={visibleHoverState.session} anchor={visibleHoverState.anchor} />
       ) : null}
     </aside>
   )
