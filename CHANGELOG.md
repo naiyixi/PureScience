@@ -17,6 +17,11 @@ PureScience 是一款面向科学研究的开源 AI 工作台：多智能体协�
 | 天工 | 天工开物——工具与工程体系的未来篇章 | （规划） |
 | 北斗 | 指路星辰——导航与检索体系的未来篇章 | （规划） |
 
+## v1.16.0 — 2026-10-27（P3 生态与提供商 · 4.3）
+
+- **MCP 标准配置导入导出**：导入兼容**宿主文件多形态**——Claude Desktop 的 `claude_desktop_config.json`（顶层 `mcpServers` 嵌套 + 无关键自动忽略）、Cursor 的 `mcp.json`、裸 `mcpServers.json` 均可直接导入；导出保持标准 `mcpServers` 形状且凭证以 `${NAME}` 占位符脱敏，可安全分享
+- **全量收尾**：Phase 3/4 全量回归（测试/typecheck/build/打包验证）、术语表终审回填（模型网关/目录标签/图片区域注解/MCP 配置等 8 条）
+
 ## v1.15.0 — 2026-10-22（P3 生态与提供商 · 4.2）
 
 - **Grok 三协议全通**：新增本地 Messages→Responses 翻译桥——Claude Code 的 Anthropic 协议请求经本地代理翻译为 xAI 原生 Responses 请求（消息/工具/流式事件双向映射），Grok 订阅（OAuth）与 xAI API Key 均可驱动 Claude Code，至此 Grok 在 Claude Code / OpenCode / Codex 三个框架下全部可用

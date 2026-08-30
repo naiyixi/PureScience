@@ -7,6 +7,9 @@
 > - 键对齐 100%（en/zh 各 1554 键，零缺漏）
 > - 机翻腔扫描：无「您/你」混用、无英文句式残留、无叠词错误
 > - 语义抽查 30 条全部高质量；占位符仅顺序差异（无害）
+>
+> 终审（2026-10-27，v1.16.0）：Phase 3/4 新增术语已回填（目录标签/收藏、批量操作、
+> 图片区域注解、MCP 服务器配置、模型网关目录、Responses API 保留原文）。
 
 ## 核心产品术语（不可随意改译）
 
@@ -53,6 +56,14 @@
 | Vision relay | 视觉中继 | — |
 | Evidence | 证据 | 溯源证据 |
 | Workbench | 工作台 | 产品定位词 |
+| Model gateway | 模型网关 | 聚合多供应商的推理入口（OpenCode Zen / TokenHub） |
+| Model catalog | 模型目录 | 供应商内置模型清单 |
+| Favorite | 收藏 | 目录行内星标 |
+| Tag | 标签 | 目录过滤标签（≤8 个/资源） |
+| Batch action | 批量操作 | 技能面板批量启/禁/删 |
+| Image region annotation | 图片区域注解 | 图片框选区域进会话 |
+| mcpServers config | MCP 服务器配置 | 标准 MCP 客户端配置文件，`mcpServers` 保留原文 |
+| Responses API | Responses API | 不译（OpenAI 原生协议名） |
 
 ## 高频操作动词
 

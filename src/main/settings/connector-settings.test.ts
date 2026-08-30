@@ -730,6 +730,36 @@ describe('ConnectorSettingsModule', () => {
     )
     expect(stored?.envRefs).toBeDefined()
     expect(JSON.stringify(stored)).not.toContain('real-value')
-    expect(JSON.stringify(stored)).not.toContain('\${API_KEY}')
+    expect(JSON.stringify(stored)).not.toContain('\\${API_KEY}')
+  })
+
+  it('imports a Claude Desktop host file by unwrapping its nested mcpServers key', async () => {
+    // claude_desktop_config.json nests servers under `mcpServers` next to unrelated keys.
+    const result = await service.importMcpServers({
+      mcpServers: {
+        filesystem: {
+          command: 'npx',
+          args: ['-y', '@modelcontextprotocol/server-filesystem', '/tmp']
+        }
+      },
+      globalShortcut: 'Ctrl+Shift+Space',
+      theme: 'dark'
+    })
+
+    expect(result.imported).toContain('filesystem')
+    expect(result.skipped).toEqual([])
+
+    const snapshot = await service.getConnectors()
+    const filesystem = snapshot?.customMcpServers?.find((server) => server.name === 'filesystem')
+    expect(filesystem?.command).toBe('npx')
+    expect(filesystem?.args).toContain('@modelcontextprotocol/server-filesystem')
+    // The unrelated host-file keys are never treated as servers.
+    expect(snapshot?.customMcpServers?.some((server) => server.name === 'theme')).toBe(false)
+  })
+
+  it('rejects a host file whose mcpServers value is not a server map', async () => {
+    await expect(
+      service.importMcpServers({ mcpServers: 'not-an-object' })
+    ).rejects.toThrow('Expected `mcpServers` to be a JSON object of servers')
   })
 })
