@@ -14,7 +14,7 @@ const manifest: UpdateManifest = {
   version: '0.3.0',
   releaseDate: '',
   notes: 'release notes',
-  downloads: { 'mac-arm64': { url: 'https://cdn/x-mac-arm64.dmg', size: 5, sha256: 'h' } }
+  downloads: { 'mac-arm64': { url: 'https://github.com/naiyixi/PureScience/releases/download/0.3.0/x-mac-arm64.dmg', size: 5, sha256: 'h' } }
 }
 
 const jsonResponse = (body: unknown): Response =>
@@ -174,7 +174,7 @@ describe('UpdateService.download', () => {
     notes: '',
     downloads: {
       'mac-arm64': {
-        url: 'https://statics.zerolink.com/releases/0.3.0/installer.dmg',
+        url: 'https://github.com/naiyixi/PureScience/releases/download/0.3.0/installer.dmg',
         size,
         sha256
       }
@@ -199,7 +199,7 @@ describe('UpdateService.download', () => {
       platform: 'darwin',
       arch: 'arm64',
       currentVersion: '0.2.0',
-      manifestUrl: 'https://statics.zerolink.com/version.json',
+      manifestUrl: 'https://github.com/naiyixi/PureScience/releases/download/0.3.0/version.json',
       broadcast: vi.fn(),
       promptSavePath: () => Promise.resolve(target)
     })
@@ -230,7 +230,7 @@ describe('UpdateService.download', () => {
       platform: 'darwin',
       arch: 'arm64',
       currentVersion: '0.2.0',
-      manifestUrl: 'https://statics.zerolink.com/version.json',
+      manifestUrl: 'https://github.com/naiyixi/PureScience/releases/download/0.3.0/version.json',
       broadcast: vi.fn(),
       promptSavePath: () => Promise.resolve(target),
       log
@@ -276,7 +276,7 @@ describe('UpdateService.download', () => {
       platform: 'darwin',
       arch: 'arm64',
       currentVersion: '0.2.0',
-      manifestUrl: 'https://statics.zerolink.com/version.json',
+      manifestUrl: 'https://github.com/naiyixi/PureScience/releases/download/0.3.0/version.json',
       broadcast: vi.fn(),
       promptSavePath: () => Promise.resolve(target),
       removeFile
@@ -311,7 +311,7 @@ describe('UpdateService.download', () => {
       platform: 'darwin',
       arch: 'arm64',
       currentVersion: '0.2.0',
-      manifestUrl: 'https://statics.zerolink.com/version.json',
+      manifestUrl: 'https://github.com/naiyixi/PureScience/releases/download/0.3.0/version.json',
       broadcast: vi.fn(),
       promptSavePath: () => Promise.resolve(target),
       removeFile
@@ -342,7 +342,7 @@ describe('UpdateService.download', () => {
       platform: 'darwin',
       arch: 'arm64',
       currentVersion: '0.2.0',
-      manifestUrl: 'https://statics.zerolink.com/version.json',
+      manifestUrl: 'https://github.com/naiyixi/PureScience/releases/download/0.3.0/version.json',
       broadcast: vi.fn(),
       promptSavePath: () => Promise.resolve(target),
       removeFile
@@ -379,7 +379,7 @@ describe('UpdateService.download', () => {
       platform: 'darwin',
       arch: 'arm64',
       currentVersion: '0.2.0',
-      manifestUrl: 'https://statics.zerolink.com/version.json',
+      manifestUrl: 'https://github.com/naiyixi/PureScience/releases/download/0.3.0/version.json',
       broadcast: vi.fn(),
       promptSavePath: () => Promise.resolve(target),
       removeFile
@@ -441,7 +441,7 @@ describe('UpdateService.download', () => {
       platform: 'darwin',
       arch: 'arm64',
       currentVersion: '0.2.0',
-      manifestUrl: 'https://statics.zerolink.com/version.json',
+      manifestUrl: 'https://github.com/naiyixi/PureScience/releases/download/0.3.0/version.json',
       broadcast: vi.fn((_channel: string, payload: unknown) => {
         const transferred = (payload as { transferred?: number } | undefined)?.transferred
         if (typeof transferred === 'number' && transferred >= 2) onTwoBytes?.()
@@ -481,7 +481,7 @@ describe('UpdateService.download', () => {
       platform: 'darwin',
       arch: 'arm64',
       currentVersion: '0.2.0',
-      manifestUrl: 'https://statics.zerolink.com/version.json',
+      manifestUrl: 'https://github.com/naiyixi/PureScience/releases/download/0.3.0/version.json',
       broadcast: vi.fn(),
       promptSavePath: () => Promise.resolve(null)
     })
@@ -504,7 +504,7 @@ describe('UpdateService.download', () => {
       platform: 'darwin',
       arch: 'arm64',
       currentVersion: '0.2.0',
-      manifestUrl: 'https://statics.zerolink.com/version.json',
+      manifestUrl: 'https://github.com/naiyixi/PureScience/releases/download/0.3.0/version.json',
       broadcast: vi.fn(),
       promptSavePath: () => Promise.reject(new Error('private shell diagnostic detail')),
       log
@@ -591,7 +591,7 @@ describe('UpdateService.download', () => {
       platform: 'darwin',
       arch: 'arm64',
       currentVersion: '0.2.0',
-      manifestUrl: 'https://statics.zerolink.com/version.json',
+      manifestUrl: 'https://github.com/naiyixi/PureScience/releases/download/0.3.0/version.json',
       broadcast: vi.fn(),
       promptSavePath: () => Promise.resolve(target),
       log
@@ -647,7 +647,7 @@ describe('UpdateService.download', () => {
       platform: 'darwin',
       arch: 'arm64',
       currentVersion: '0.2.0',
-      manifestUrl: 'https://statics.zerolink.com/version.json',
+      manifestUrl: 'https://github.com/naiyixi/PureScience/releases/download/0.3.0/version.json',
       broadcast: vi.fn(),
       promptSavePath: () => Promise.resolve(target)
     })
@@ -704,7 +704,7 @@ describe('UpdateService.download', () => {
       platform: 'darwin',
       arch: 'arm64',
       currentVersion: '0.2.0',
-      manifestUrl: 'https://statics.zerolink.com/version.json',
+      manifestUrl: 'https://github.com/naiyixi/PureScience/releases/download/0.3.0/version.json',
       broadcast: vi.fn(),
       promptSavePath: () => Promise.resolve(target)
     })
@@ -765,7 +765,7 @@ describe('UpdateService.download', () => {
       platform: 'darwin',
       arch: 'arm64',
       currentVersion: '0.2.0',
-      manifestUrl: 'https://statics.zerolink.com/version.json',
+      manifestUrl: 'https://github.com/naiyixi/PureScience/releases/download/0.3.0/version.json',
       broadcast: vi.fn(),
       promptSavePath: () => Promise.resolve(target)
     })
@@ -808,7 +808,7 @@ describe('UpdateService.download', () => {
       platform: 'darwin',
       arch: 'arm64',
       currentVersion: '0.2.0',
-      manifestUrl: 'https://statics.zerolink.com/version.json',
+      manifestUrl: 'https://github.com/naiyixi/PureScience/releases/download/0.3.0/version.json',
       broadcast: vi.fn(),
       // First prompt throws (e.g. a dialog failure); the second succeeds.
       promptSavePath: () =>
@@ -833,7 +833,7 @@ describe('UpdateService.download', () => {
       releaseDate: '',
       notes: '',
       downloads: {
-        'mac-arm64': { url: 'https://evil.example/x-mac-arm64.dmg', size: 5, sha256: 'h' }
+        'mac-arm64': { url: 'https://evil.example.com/x-mac-arm64.dmg', size: 5, sha256: 'h' }
       }
     }
     const fetchMock = vi.fn(() => Promise.resolve(jsonResponse(offHostManifest)))
@@ -854,7 +854,8 @@ describe('UpdateService.download', () => {
     const status = await service.download()
 
     expect(status.state).toBe('error')
-    expect(status.error).toBe('Untrusted download host')
+    // The manifest source allowlist now rejects the hostile host at parse time, before any download.
+    expect(status.error).toContain('Invalid download entry')
     expect(fetchMock).not.toHaveBeenCalled()
     expect(promptSavePath).not.toHaveBeenCalled()
   })
@@ -883,7 +884,7 @@ describe('UpdateService.apply', () => {
       notes: '',
       downloads: {
         'mac-arm64': {
-          url: 'https://statics.zerolink.com/releases/0.3.0/installer.dmg',
+          url: 'https://github.com/naiyixi/PureScience/releases/download/0.3.0/installer.dmg',
           size: body.byteLength,
           sha256: createHash('sha256').update(body).digest('hex')
         }
@@ -898,7 +899,7 @@ describe('UpdateService.apply', () => {
       platform: 'darwin',
       arch: 'arm64',
       currentVersion: '0.2.0',
-      manifestUrl: 'https://statics.zerolink.com/version.json',
+      manifestUrl: 'https://github.com/naiyixi/PureScience/releases/download/0.3.0/version.json',
       broadcast: vi.fn(),
       promptSavePath: () => Promise.resolve(target),
       ...overrides

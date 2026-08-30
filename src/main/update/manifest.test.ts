@@ -6,7 +6,13 @@ const valid = {
   version: '0.3.0',
   releaseDate: '2026-07-13',
   notes: 'n',
-  downloads: { 'mac-arm64': { url: 'https://cdn/a.dmg', size: 1, sha256: 'h' } }
+  downloads: {
+    'mac-arm64': {
+      url: 'https://github.com/naiyixi/PureScience/releases/download/v0.3.0/PureScience-0.3.0-arm64.dmg',
+      size: 1,
+      sha256: 'h'
+    }
+  }
 }
 
 describe('parseManifest', () => {
@@ -23,6 +29,37 @@ describe('parseManifest', () => {
   })
   it('throws on a malformed download entry', () => {
     expect(() => parseManifest({ version: '1.0.0', downloads: { x: { url: 1 } } })).toThrow()
+  })
+  it('rejects download URLs from hosts outside the allowlist', () => {
+    expect(() =>
+      parseManifest({
+        version: '1.0.0',
+        downloads: { x: { url: 'https://evil.example.com/a.dmg', size: 1, sha256: 'h' } }
+      })
+    ).toThrow()
+  })
+  it('rejects non-https download URLs', () => {
+    expect(() =>
+      parseManifest({
+        version: '1.0.0',
+        downloads: {
+          x: { url: 'http://github.com/a.dmg', size: 1, sha256: 'h' }
+        }
+      })
+    ).toThrow()
+  })
+  it('accepts githubusercontent release-asset hosts', () => {
+    const m = parseManifest({
+      version: '1.0.0',
+      downloads: {
+        x: {
+          url: 'https://release-assets.githubusercontent.com/a.zip',
+          size: 1,
+          sha256: 'h'
+        }
+      }
+    })
+    expect(m.downloads.x.url).toContain('githubusercontent')
   })
 })
 
