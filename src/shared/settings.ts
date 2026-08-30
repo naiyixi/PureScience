@@ -1239,6 +1239,9 @@ export type CredentialTestResult = {
   ok: boolean
   message: string
   detail?: string
+  // Failure category used by the UI to offer targeted recovery guidance
+  // ('auth': invalid/expired secret, 'network': unreachable service, 'format': malformed secret).
+  kind?: 'auth' | 'network' | 'format' | 'unknown'
 }
 
 // Re-export the egress allowlist schema (defined in shared/egress.ts) so consumers that import
