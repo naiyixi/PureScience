@@ -186,7 +186,15 @@ const CredentialEditor = ({
         ...(username.trim() ? { username: username.trim() } : {}),
         ...(secret.trim() ? { secret: secret.trim() } : {})
       })
-      onSaved()
+      // Guided-recovery loop: when a secret was (re)entered, re-probe it right away. Pass = close,
+      // fail = stay open with targeted recovery guidance so the user can fix and retry in place.
+      if (secret.trim()) {
+        const result = await store.test(credential?.id ?? '', secret.trim() || undefined)
+        setTestResult(result)
+        if (result.ok) onSaved()
+      } else {
+        onSaved()
+      }
     } finally {
       setIsSaving(false)
     }
@@ -282,6 +290,19 @@ const CredentialEditor = ({
                   '{message}',
                   testResult.message ?? testResult.detail ?? ''
                 )}
+            {!testResult.ok && testResult.kind ? (
+              <p className="mt-1 text-[11px] leading-4 opacity-80">
+                {t(
+                  testResult.kind === 'auth'
+                    ? 'settings.credentialsRecoveryAuth'
+                    : testResult.kind === 'network'
+                      ? 'settings.credentialsRecoveryNetwork'
+                      : testResult.kind === 'format'
+                        ? 'settings.credentialsRecoveryFormat'
+                        : 'settings.credentialsRecoveryUnknown'
+                )}
+              </p>
+            ) : null}
           </div>
         ) : null}
       </div>

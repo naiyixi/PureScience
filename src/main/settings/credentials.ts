@@ -50,16 +50,20 @@ export const testCredentialSecret = async (
         })
         if (response.ok) return { ok: true, message: 'GitHub token is valid.' }
         if (response.status === 401 || response.status === 403) {
-          return { ok: false, message: 'GitHub rejected the token (unauthorized).' }
+          return {
+            ok: false,
+            message: 'GitHub rejected the token (unauthorized).',
+            kind: 'auth'
+          }
         }
-        return { ok: false, message: `GitHub returned HTTP ${response.status}.` }
+        return { ok: false, message: `GitHub returned HTTP ${response.status}.`, kind: 'unknown' }
       } catch {
-        return { ok: false, message: 'Could not reach api.github.com.' }
+        return { ok: false, message: 'Could not reach api.github.com.', kind: 'network' }
       }
     }
     case 'modal': {
       if (!/^ak-[A-Za-z0-9]+$/.test(secret)) {
-        return { ok: false, message: 'Modal tokens look like ak-….' }
+        return { ok: false, message: 'Modal tokens look like ak-….', kind: 'format' }
       }
       return { ok: true, message: 'Saved — live probe not available in the settings panel.' }
     }
