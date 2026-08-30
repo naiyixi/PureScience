@@ -74,6 +74,7 @@ type CoreSettingsCommandStore = Pick<
   | 'setDefaultPermissionProfile'
   | 'setNotificationsEnabled'
   | 'setMemory'
+  | 'setUseIntent'
   | 'setPackageMirror'
   | 'deleteCredential'
   | 'testCredential'
@@ -266,6 +267,11 @@ const settingsCoreApplicationCommands = Object.freeze({
     readonly [memory: MemorySettings],
     StoreResult<'setMemory'>
   >('settings:set-memory'),
+  setUseIntent: defineApplicationCommand<
+    'settings:set-use-intent',
+    readonly [intent: 'commercial' | 'non-commercial'],
+    StoreResult<'setUseIntent'>
+  >('settings:set-use-intent'),
   setCredential: defineApplicationCommand<
     'settings:set-credential',
     readonly [request: SetCredentialRequest],
@@ -395,6 +401,7 @@ const settingsCoreApplicationCommandGroup = defineApplicationCommandGroup('setti
   settingsCoreApplicationCommands.setClosePreference,
   settingsCoreApplicationCommands.setDefaultPermissionProfile,
   settingsCoreApplicationCommands.setMemory,
+  settingsCoreApplicationCommands.setUseIntent,
   settingsCoreApplicationCommands.setCredential,
   settingsCoreApplicationCommands.deleteCredential,
   settingsCoreApplicationCommands.testCredential,
@@ -507,6 +514,10 @@ const registerCoreSettingsApplicationCommands = (
       'settings:set-memory': ({ args, callerContext }) => {
         requireLocalCaller(callerContext, 'settings:set-memory')
         return dependencies.service.setMemory(args[0])
+      },
+      'settings:set-use-intent': ({ args, callerContext }) => {
+        requireLocalCaller(callerContext, 'settings:set-use-intent')
+        return dependencies.service.setUseIntent(args[0])
       },
       'settings:list-credentials': ({ callerContext }) => {
         requireLocalCaller(callerContext, 'settings:list-credentials')

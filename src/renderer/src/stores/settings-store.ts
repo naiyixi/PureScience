@@ -119,6 +119,8 @@ type SettingsStoreData = RuntimeSetupState &
     appIconVariant: AppIconVariant
     // Approval profile applied only when creating a new conversation.
     defaultPermissionProfile: PermissionProfileId
+    // Declared licensed-skill use intent; absent means commercial (the safe default).
+    useIntent: 'commercial' | 'non-commercial' | undefined
   }
 
 type SettingsStoreCore = SettingsStoreData &
@@ -166,6 +168,7 @@ export const createInitialSettingsState = (): SettingsStoreData => ({
   notificationsEnabled: DEFAULT_NOTIFICATIONS_ENABLED,
   conversationSkillImportEnabled: DEFAULT_CONVERSATION_SKILL_IMPORT_ENABLED,
   closePreference: undefined,
+  useIntent: undefined,
   appIconVariant: DEFAULT_APP_ICON_VARIANT,
   defaultPermissionProfile: DEFAULT_PERMISSION_PROFILE
 })
@@ -187,6 +190,7 @@ const applySnapshot = (snapshot: SettingsSnapshot): Partial<SettingsStoreData> =
   conversationSkillImportEnabled:
     snapshot.conversationSkillImportEnabled ?? DEFAULT_CONVERSATION_SKILL_IMPORT_ENABLED,
   closePreference: snapshot.closePreference,
+  useIntent: snapshot.useIntent,
   appIconVariant: snapshot.appIconVariant ?? DEFAULT_APP_ICON_VARIANT,
   defaultPermissionProfile: getDefaultPermissionProfile(snapshot),
   agentFrameworkId: snapshot.agentFrameworkId,

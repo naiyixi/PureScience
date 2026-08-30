@@ -305,6 +305,7 @@ class SettingsService {
       closePreference: preferences.closePreference,
       appIconVariant: preferences.appIconVariant,
       defaultPermissionProfile: preferences.defaultPermissionProfile,
+      useIntent: settings.useIntent,
       agentFrameworkId: settings.agentFrameworkId ?? DEFAULT_AGENT_FRAMEWORK_ID,
       agentFrameworks: listAgentFrameworks().map((framework) => ({
         id: framework.id,
@@ -391,6 +392,12 @@ class SettingsService {
   async setMemory(memory: MemorySettings): Promise<MemorySettings> {
     const persisted = await this.repository.setMemory(memory)
     return persisted.memory ?? { enabled: false, categories: [], notes: [] }
+  }
+
+  // Declares the licensed-skill use intent ('commercial' | 'non-commercial').
+  async setUseIntent(useIntent: 'commercial' | 'non-commercial'): Promise<SettingsSnapshot> {
+    await this.repository.setUseIntent(useIntent)
+    return this.getSettingsView()
   }
 
   // Reads the current memory settings; undefined means memory has never been written.

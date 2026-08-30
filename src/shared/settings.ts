@@ -475,7 +475,14 @@ export type SettingsSnapshot = {
   // The user's editable memory notes (categories + notes + master switch). Absent means memory
   // has never been written; the UI presents an empty memory with the built-in "About you" category.
   memory?: MemorySettings
+  // The declared use intent for licensed skills: commercial (default) or non-commercial. Skills
+  // that restrict non-commercial use ask for confirmation before loading in commercial mode.
+  useIntent?: UseIntent
 }
+
+// Declared purpose for licensed skills. Commercial is the default; switching to non-commercial
+// declares academic/personal use and lifts the confirmation for non-commercial-restricted skills.
+export type UseIntent = 'commercial' | 'non-commercial'
 
 // Request to set (or clear, via omitted fields) the package-mirror configuration.
 export type SetPackageMirrorRequest = PackageMirror

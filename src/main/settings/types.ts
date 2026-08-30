@@ -198,6 +198,9 @@ export type StoredSettings = {
   packageMirror?: PackageMirror
   // User-editable memory notes (categories + notes + master switch). Absent means never written.
   memory?: MemorySettings
+  // Declared use intent for licensed skills ('commercial' default / 'non-commercial'). Absent
+  // means commercial (the safe default) — restricted skills then confirm before loading.
+  useIntent?: 'commercial' | 'non-commercial'
   // Unified credential store (API keys / tokens for scientific services). Absent means never
   // written. Secret material is safeStorage ciphertext (see crypto.ts), never plaintext.
   credentials?: StoredCredential[]

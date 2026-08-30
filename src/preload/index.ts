@@ -250,6 +250,8 @@ const api: PureScienceAPI = {
       electronRendererContracts.invoke('settings.setPackageMirror', request),
     getMemory: () => electronRendererContracts.invoke('settings.getMemory'),
     setMemory: (memory) => electronRendererContracts.invoke('settings.setMemory', memory),
+    setUseIntent: (useIntent) =>
+      electronRendererContracts.invoke('settings.setUseIntent', useIntent),
     getCredentials: () => electronRendererContracts.invoke('settings.getCredentials'),
     getThirdPartyLicenses: () =>
       electronRendererContracts.invoke('settings.getThirdPartyLicenses'),

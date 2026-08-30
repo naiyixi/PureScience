@@ -265,6 +265,7 @@ const registerSettingsIpcHandlers = ({
   )
 
   ipcMainHandle('settings:get-memory', () => service.getMemory())
+  ipcMainHandle('settings:set-use-intent', (_, useIntent: 'commercial' | 'non-commercial') => service.setUseIntent(useIntent))
   ipcMainHandle('settings:set-memory', (_event, memory: MemorySettings) =>
     service.setMemory(memory)
   )

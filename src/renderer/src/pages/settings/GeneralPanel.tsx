@@ -47,6 +47,8 @@ const GeneralPanel = (): React.JSX.Element => {
   const [cliError, setCliError] = useState<string | undefined>(undefined)
   const notificationsEnabled = useSettingsStore((state) => state.notificationsEnabled)
   const setNotificationsEnabled = useSettingsStore((state) => state.setNotificationsEnabled)
+  const useIntent = useSettingsStore((state) => state.useIntent)
+  const setUseIntent = useSettingsStore((state) => state.setUseIntent)
   const closePreference = useSettingsStore((state) => state.closePreference)
   const setClosePreference = useSettingsStore((state) => state.setClosePreference)
 
@@ -106,6 +108,41 @@ const GeneralPanel = (): React.JSX.Element => {
   return (
     <div className="space-y-5 p-5">
       <AppVersionSection />
+
+      <SettingsSection
+        title={t('settings.licensing')}
+        description={t('settings.licensingDesc')}
+        aria-label={t('settings.licensing')}
+        separated
+      >
+        <SettingsRow
+          label={t('settings.useIntent')}
+          description={t('settings.useIntentDesc')}
+          className="pt-0"
+          controlClassName="flex justify-end"
+        >
+          <Select
+            value={useIntent ?? 'commercial'}
+            onValueChange={(value) =>
+              void setUseIntent(value as 'commercial' | 'non-commercial')
+            }
+          >
+            <SelectTrigger aria-label={t('settings.useIntent')}>
+              <span>
+                {useIntent === 'non-commercial'
+                  ? t('settings.useIntentNonCommercial')
+                  : t('settings.useIntentCommercial')}
+              </span>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="commercial">{t('settings.useIntentCommercial')}</SelectItem>
+              <SelectItem value="non-commercial">
+                {t('settings.useIntentNonCommercial')}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </SettingsRow>
+      </SettingsSection>
 
       <SettingsSection
         title={t('settings.appearance')}

@@ -214,6 +214,7 @@ export const WEB_INVOKE_CHANNELS = {
   'settings.setReasoningEffort': 'settings:set-reasoning-effort',
   'settings.setSkillEnabled': 'settings:set-skill-enabled',
   'settings.setToolPermission': 'settings:set-tool-permission',
+  'settings.setUseIntent': 'settings:set-use-intent',
   'settings.setVisionModel': 'settings:set-vision-model',
   'settings.testCredential': 'settings:test-credential',
   'settings.uninstallClaude': 'settings:uninstall-claude',
