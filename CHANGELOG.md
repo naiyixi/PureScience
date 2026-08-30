@@ -17,6 +17,12 @@ PureScience 是一款面向科学研究的开源 AI 工作台：多智能体协�
 | 天工 | 天工开物——工具与工程体系的未来篇章 | （规划） |
 | 北斗 | 指路星辰——导航与检索体系的未来篇章 | （规划） |
 
+## v1.15.0 — 2026-10-22（P3 生态与提供商 · 4.2）
+
+- **Grok 三协议全通**：新增本地 Messages→Responses 翻译桥——Claude Code 的 Anthropic 协议请求经本地代理翻译为 xAI 原生 Responses 请求（消息/工具/流式事件双向映射），Grok 订阅（OAuth）与 xAI API Key 均可驱动 Claude Code，至此 Grok 在 Claude Code / OpenCode / Codex 三个框架下全部可用
+- **DeepSeek V4 Pro Responses 直连**：V4 Pro GA（2026-08-13）原生 Responses API——`deepseek-v4-pro`（含 `[1m]` 变体）不再走 Chat Completions 桥，与 V4 Flash 一样直连 `/v1/responses`
+- **GitHub 认证技能导入**：技能导入/预览/仓库扫描/搜索自动携带统一凭据中的 GitHub token（仅注入 github.com 与 api.github.com，限流提升 + 私有仓库导入），凭据验证/保存/替换复用统一凭据面板
+
 ## v1.14.0 — 2026-10-19（P3 生态与提供商 · 4.1）
 
 - **模型目录扩充**：新增 **OpenCode Zen** 精选网关（GPT-5.x / Claude / Gemini / Grok / 免费模型等 23 个精选条目，含原生 Responses 端点路由）与 **OpenCode Go** 配额计划目录（MiniMax / Kimi / GLM-5.3 / DeepSeek V4 / Qwen3.8 / Hy3 等 21 个条目）

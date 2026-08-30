@@ -37,7 +37,10 @@ import {
 } from '../skills/github-import'
 import { decodeBoundedBase64, SKILL_IMPORT_LIMITS } from '../skills/import-limits'
 import { ClaudeCodeSkillMaterializer, OS_SKILL_PREFIX } from '../skills/materializer'
+import { withGitHubToken } from '../skills/github-fetch'
+import type { FetchLike } from '../skills/github-import'
 import { netFetch } from '../skills/net-fetch'
+import { tryDecryptKey } from './crypto'
 import { SkillRegistry, type BundledSkill } from '../skills/registry'
 import { readSkillFile } from '../skills/skill-files'
 import { buildSkillExportArchive, type SkillExportArchive } from '../skills/export'
@@ -89,6 +92,17 @@ class SkillCatalogModule {
   constructor(private readonly options: SkillCatalogModuleOptions) {
     this.skillRegistry = options.skillRegistry ?? new SkillRegistry()
     this.userSkills = options.userSkills ?? new UserSkillRepository(options.storageRoot)
+  }
+
+  // GitHub fetch that carries the user's stored credential token when one exists (raises the API
+  // rate limit and unlocks private-repo imports); falls back to anonymous netFetch otherwise.
+  private async githubFetch(): Promise<FetchLike> {
+    const settings = await this.options.repository.getSettings()
+    const credential = (settings.credentials ?? []).find(
+      (candidate) => candidate.serviceId === 'github'
+    )
+    const token = credential?.secretRef ? tryDecryptKey(credential.secretRef) : undefined
+    return token ? withGitHubToken(netFetch, token) : netFetch
   }
 
   private async catalog(): Promise<BundledSkill[]> {
@@ -279,7 +293,10 @@ class SkillCatalogModule {
   }
 
   async importSkill(request: ImportSkillRequest): Promise<ImportSkillResult> {
-    const outcome = await this.userSkills.importFromGitHub(request.url, netFetch)
+    const outcome = await this.userSkills.importFromGitHub(
+      request.url,
+      await this.githubFetch()
+    )
     return { ...outcome, skills: await this.listSkills() }
   }
 
@@ -327,7 +344,10 @@ class SkillCatalogModule {
   async previewGitHubSkill(request: PreviewGitHubSkillRequest): Promise<SkillImportPreviewContent> {
     const location = parseGitHubSkillUrl(request.url)
     if (!location) throw new Error('Not a recognizable GitHub URL.')
-    const preview = await this.userSkills.previewGitHubSkill(request.url, netFetch)
+    const preview = await this.userSkills.previewGitHubSkill(
+      request.url,
+      await this.githubFetch()
+    )
     const suffix = location.path ? `/${location.path}` : ''
     const revision = location.ref ? `@${location.ref}` : ''
     return {
@@ -337,12 +357,13 @@ class SkillCatalogModule {
   }
 
   async scanRepoSkills(request: ScanRepoRequest): Promise<ScanRepoResult> {
+    const fetchLike = await this.githubFetch()
     if (parseGitHubRepo(request.repo)) {
-      return { skills: await this.userSkills.scanRepo(request.repo, netFetch) }
+      return { skills: await this.userSkills.scanRepo(request.repo, fetchLike) }
     }
     return {
       skills: [],
-      repositories: await searchGitHubSkillRepositories(request.repo, netFetch)
+      repositories: await searchGitHubSkillRepositories(request.repo, fetchLike)
     }
   }
 
