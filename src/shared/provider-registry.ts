@@ -220,9 +220,9 @@ export const OFFICIAL_VENDORS: OfficialVendor[] = [
       { id: 'deepseek-v4-flash', contextWindow: 1_000_000 },
       { id: 'deepseek-v4-flash-vision-exp', contextWindow: 1_000_000 }
     ],
-    // DeepSeek serves a native Responses API for deepseek-v4-flash only; deepseek-v4-pro does not yet
-    // implement /v1/responses (planned for early August 2026), so it stays on the Chat Completions bridge.
-    responsesModels: ['deepseek-v4-flash', 'deepseek-v4-flash-vision-exp'],
+    // DeepSeek serves a native Responses API for both V4 models since the V4 Pro GA (2026-08-13);
+    // the [1m] context variant shares the same Responses route.
+    responsesModels: ['deepseek-v4-pro', 'deepseek-v4-pro[1m]', 'deepseek-v4-flash', 'deepseek-v4-flash-vision-exp'],
     // deepseek-v4-flash-vision-exp is the vision-capable flash variant (multimodal rule below); the
     // other chat models stay text-only.
     multimodal: {

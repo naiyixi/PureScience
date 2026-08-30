@@ -2661,8 +2661,8 @@ describe('SettingsService: preflight & spawn config', () => {
     const provider = (
       await service.upsertProvider({
         type: 'official',
-        name: 'DeepSeek',
-        vendorId: 'deepseek',
+        name: 'Zhipu',
+        vendorId: 'zhipu',
         key: 'test-key'
       })
     ).providers[0]
@@ -2671,9 +2671,9 @@ describe('SettingsService: preflight & spawn config', () => {
       ...storedProvider,
       lastValidatedAt: Date.now()
     })
-    // deepseek-v4-pro does not yet support the native Responses API, so it drives the Chat Completions
-    // bridge (the test's whole purpose). deepseek-v4-flash would route to native Responses instead.
-    await service.setActiveProvider(provider.id, 'deepseek-v4-pro')
+    // GLM has no native Responses route on this vendor, so it drives the Chat Completions bridge
+    // (the test's whole purpose). DeepSeek V4 models now route to native Responses instead.
+    await service.setActiveProvider(provider.id, 'glm-5.2')
     await repository.setReasoningEffort('low')
 
     vi.stubEnv('PURESCIENCE_AGENT_FRAMEWORK', 'codex')
@@ -2741,8 +2741,10 @@ describe('SettingsService: preflight & spawn config', () => {
       'mcp__purescience_activity__begin_activity_group'
     )
     const sourceMessages = JSON.stringify(sourceRequest?.messages)
-    expect(sourceRequest).toMatchObject({ thinking: { type: 'disabled' } })
-    expect(sourceRequest).not.toHaveProperty('reasoning_effort')
+    // GLM exposes no reasoning-effort vocabulary on this endpoint, so the bridge sends no thinking
+    // switch; the effort intent is transported as a plain reasoning_effort literal instead.
+    expect(sourceRequest).not.toHaveProperty('thinking')
+    expect(sourceRequest?.reasoning_effort).toBe('none')
     expect(sourceMessages).not.toContain('<purescience_connector_instructions>')
     expect(sourceMessages).not.toContain('host.mcp("pubmed", "search_articles"')
 
@@ -3310,21 +3312,23 @@ describe('SettingsService: official vendors', () => {
     })
   })
 
-  it('probes DeepSeek with the bridge tool-call contract under Codex', async () => {
+  it('probes a Chat Completions vendor with the bridge tool-call contract under Codex', async () => {
     const service = createService()
     await repository.setAgentFramework('codex')
     const fetchMock = vi.fn().mockResolvedValue(validBridgeToolCallResponse())
     vi.stubGlobal('fetch', fetchMock)
 
     const result = await service.validateProvider({
-      draft: { type: 'official', vendorId: 'deepseek', key: 'sk-ds' }
+      // GLM has no native Responses route, so Codex reaches it through the Chat Completions bridge
+      // (the probe contract below). DeepSeek V4 models route to native Responses instead.
+      draft: { type: 'official', vendorId: 'zhipu', key: 'sk-zhipu' }
     })
 
     expect(result.ok).toBe(true)
     // The dual-endpoint vendor reaches Codex through the Chat Completions bridge, so the probe must
     // prove streaming function calls on the same OpenAI route before validation succeeds.
     const body = JSON.parse(String(fetchMock.mock.calls[0][1]?.body))
-    expect(fetchMock.mock.calls[0][0]).toBe('https://api.deepseek.com/v1/chat/completions')
+    expect(fetchMock.mock.calls[0][0]).toBe('https://api.z.ai/api/paas/v4/chat/completions')
     expect(body).toMatchObject({
       stream: true,
       tools: [{ type: 'function', function: { name: 'purescience_bridge_probe' } }]

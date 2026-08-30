@@ -315,6 +315,12 @@ export type ResolvedAgentBackend = {
     setTarget: (targetId: string) => boolean
     release: () => Promise<void>
   }
+  // Grok (xAI) generations drive Claude Code through the app-owned Messages→Responses bridge; the
+  // lease carries the same opaque-id routing contract as the Anthropic bridge lease.
+  xaiMessagesBridgeLease?: {
+    setTarget: (targetId: string) => boolean
+    release: () => Promise<void>
+  }
   providerTransportLease?: {
     setTarget: (targetId: string) => boolean
     release: () => Promise<void>

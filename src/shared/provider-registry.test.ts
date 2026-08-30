@@ -617,13 +617,10 @@ describe('provider registry', () => {
       expect(isVendorModelResponsesSupported('volcengine', 'doubao-seed-2-1-pro-260628')).toBe(true)
     })
 
-    it('returns true for DeepSeek flash only (per-model Responses support)', () => {
+    it('returns true for DeepSeek V4 models (native Responses since the V4 Pro GA)', () => {
       expect(isVendorModelResponsesSupported('deepseek', 'deepseek-v4-flash')).toBe(true)
-    })
-
-    it('returns false for DeepSeek models that do not yet implement Responses', () => {
-      expect(isVendorModelResponsesSupported('deepseek', 'deepseek-v4-pro')).toBe(false)
-      expect(isVendorModelResponsesSupported('deepseek', 'deepseek-v4-pro[1m]')).toBe(false)
+      expect(isVendorModelResponsesSupported('deepseek', 'deepseek-v4-pro')).toBe(true)
+      expect(isVendorModelResponsesSupported('deepseek', 'deepseek-v4-pro[1m]')).toBe(true)
     })
 
     it('returns false for vendors with no Responses support at all', () => {

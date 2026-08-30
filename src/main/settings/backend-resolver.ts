@@ -57,6 +57,10 @@ import {
   AnthropicProviderBridge,
   type AnthropicProviderBridgeTarget
 } from './anthropic-provider-bridge'
+import {
+  XaiMessagesBridge,
+  type XaiMessagesBridgeTarget
+} from './xai-messages-bridge'
 import { OpenAiProviderBridge, type OpenAiProviderBridgeTarget } from './openai-provider-bridge'
 import {
   ResponsesBridge,
@@ -147,6 +151,7 @@ type NativeResponsesProxyPort = BridgeBasePort &
   Pick<NativeResponsesCompatibilityProxy, 'setModelTarget' | 'setTarget'>
 type AnthropicProviderBridgePort = Pick<AnthropicProviderBridge, 'start' | 'close' | 'setTarget'>
 type OpenAiProviderBridgePort = Pick<OpenAiProviderBridge, 'start' | 'close' | 'setTarget'>
+type XaiMessagesBridgePort = Pick<XaiMessagesBridge, 'start' | 'close' | 'setTarget'>
 
 type NativeResponsesProxyTarget = NativeResponsesCompatibilityTarget & {
   reviewerScope: { namespacedTools: ResponsesBridgeNamespacedTool[] }
@@ -227,6 +232,9 @@ export type AgentBackendResolverOptions = {
     targets: readonly AnthropicProviderBridgeTarget[],
     initialTargetId: string
   ) => AnthropicProviderBridgePort
+  createXaiMessagesBridge?: (
+    target: XaiMessagesBridgeTarget
+  ) => XaiMessagesBridgePort
   createOpenAiProviderBridge?: (
     targets: readonly OpenAiProviderBridgeTarget[],
     initialTargetId: string
@@ -302,6 +310,7 @@ export class AgentBackendResolver {
     targets: readonly AnthropicProviderBridgeTarget[],
     initialTargetId: string
   ) => AnthropicProviderBridgePort
+  private readonly createXaiMessagesBridge: (target: XaiMessagesBridgeTarget) => XaiMessagesBridgePort
   private readonly createOpenAiProviderBridge: (
     targets: readonly OpenAiProviderBridgeTarget[],
     initialTargetId: string
@@ -331,6 +340,9 @@ export class AgentBackendResolver {
     this.createAnthropicProviderBridge =
       options.createAnthropicProviderBridge ??
       ((targets, initialTargetId) => new AnthropicProviderBridge(targets, initialTargetId))
+    this.createXaiMessagesBridge =
+      options.createXaiMessagesBridge ??
+      ((target) => new XaiMessagesBridge([target], target.id))
     this.createOpenAiProviderBridge =
       options.createOpenAiProviderBridge ??
       ((targets, initialTargetId) => new OpenAiProviderBridge(targets, initialTargetId))
@@ -595,7 +607,9 @@ export class AgentBackendResolver {
       const { envOverrides, executablePath, sessionOptions, contextWindow } =
         await this.resolveClaudeSpawnConfig(settings, target, forcedSkillIds)
       const bridgeCatalog = this.resolveClaudeBridgeCatalog(settings, target)
+      const xaiBridgeTarget = this.resolveXaiBridgeCatalog(target)
       let bridge: AnthropicProviderBridgePort | undefined
+      let xaiBridge: XaiMessagesBridgePort | undefined
       try {
         const bridgeConnection = bridgeCatalog
           ? await (bridge = this.createAnthropicProviderBridge(
@@ -603,11 +617,21 @@ export class AgentBackendResolver {
               bridgeCatalog.initialTargetId
             )).start()
           : undefined
+        const xaiBridgeConnection = xaiBridgeTarget
+          ? await (xaiBridge = this.createXaiMessagesBridge(xaiBridgeTarget)).start()
+          : undefined
         const startedBridge = bridge
         const bridgeLease = startedBridge
           ? {
               setTarget: (targetId: string) => startedBridge.setTarget(targetId),
               release: () => startedBridge.close()
+            }
+          : undefined
+        const startedXaiBridge = xaiBridge
+        const xaiBridgeLease = startedXaiBridge
+          ? {
+              setTarget: (targetId: string) => startedXaiBridge.setTarget(targetId),
+              release: () => startedXaiBridge.close()
             }
           : undefined
         return {
@@ -622,6 +646,14 @@ export class AgentBackendResolver {
                   ANTHROPIC_BASE_URL: bridgeConnection.baseUrl,
                   ANTHROPIC_AUTH_TOKEN: bridgeConnection.token,
                   ANTHROPIC_API_KEY: bridgeConnection.token,
+                  ...loopbackProxyBypassEnvironment(process.env)
+                }
+              : {}),
+            ...(xaiBridgeConnection
+              ? {
+                  ANTHROPIC_BASE_URL: xaiBridgeConnection.baseUrl,
+                  ANTHROPIC_AUTH_TOKEN: xaiBridgeConnection.token,
+                  ANTHROPIC_API_KEY: xaiBridgeConnection.token,
                   ...loopbackProxyBypassEnvironment(process.env)
                 }
               : {})
@@ -639,10 +671,12 @@ export class AgentBackendResolver {
                 ]
               }
             : {}),
-          ...(bridgeLease ? { anthropicBridgeLease: bridgeLease } : {})
+          ...(bridgeLease ? { anthropicBridgeLease: bridgeLease } : {}),
+          ...(xaiBridgeLease ? { xaiMessagesBridgeLease: xaiBridgeLease } : {})
         }
       } catch (error) {
         await bridge?.close().catch(() => undefined)
+        await xaiBridge?.close().catch(() => undefined)
         throw error
       }
     }
@@ -897,6 +931,26 @@ export class AgentBackendResolver {
         // adapter spike verifies that this has no three-alias ceiling and setModel accepts every row.
         Object.fromEntries(registered.map((model) => [model, model]))
       )
+    })
+  }
+
+  // A Grok provider (OAuth subscription or official xAI API key) drives Claude Code through the
+  // app's local Messages→Responses bridge: Claude Code speaks Anthropic Messages, xAI has no
+  // native Anthropic endpoint, so the bridge translates to api.x.ai/v1/responses.
+  private resolveXaiBridgeCatalog(
+    target: ProviderRuntimeTarget
+  ): XaiMessagesBridgeTarget | undefined {
+    if (target.provider.type !== 'xai-subscription') {
+      if (target.provider.type !== 'official' || target.provider.vendorId !== 'xai') {
+        return undefined
+      }
+    }
+    const model = target.effectiveModel ?? target.provider.model
+    if (!model || !target.provider.key) return undefined
+    return Object.freeze({
+      id: claudeBridgeTargetId(target.providerId, model),
+      model,
+      key: target.provider.key
     })
   }
 

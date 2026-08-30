@@ -104,6 +104,43 @@ describe('provider endpoint compatibility', () => {
       )
     }
   })
+
+  it('lets Grok (xAI) drive Claude Code through the Messages→Responses bridge', () => {
+    const claude = { id: 'claude-code' as const, supportedApiTypes: ['anthropic'] as const }
+    const opencode = {
+      id: 'opencode' as const,
+      supportedApiTypes: ['anthropic', 'openai'] as const
+    }
+
+    // OAuth subscription: usable by Claude Code (bridge) and OpenCode/Codex (native endpoints),
+    // despite exposing no Anthropic endpoint.
+    expect(
+      isProviderUsableByFramework(
+        { type: 'xai-subscription', apiEndpoints: ['openai', 'responses'] },
+        claude
+      )
+    ).toBe(true)
+    expect(
+      isProviderUsableByFramework(
+        { type: 'xai-subscription', apiEndpoints: ['openai', 'responses'] },
+        opencode
+      )
+    ).toBe(true)
+    // Official xAI API-key vendor: also usable by Claude Code via the bridge.
+    expect(
+      isProviderUsableByFramework(
+        { type: 'official', vendorId: 'xai', apiEndpoints: ['openai', 'responses'] },
+        claude
+      )
+    ).toBe(true)
+    // A different official vendor without an Anthropic endpoint stays unusable by Claude Code.
+    expect(
+      isProviderUsableByFramework(
+        { type: 'official', vendorId: 'deepseek', apiEndpoints: ['openai', 'responses'] },
+        claude
+      )
+    ).toBe(false)
+  })
 })
 
 describe('resolveCodexSubscriptionType', () => {

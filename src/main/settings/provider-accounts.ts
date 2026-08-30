@@ -1187,7 +1187,7 @@ class ProviderAccountsModule {
       provider,
       reasoningEffortProfile: resolveProviderReasoningEffortProfile(storedProvider, effectiveModel),
       frameworkCompatible: isProviderUsableByFramework(
-        { apiEndpoints, type: storedProvider.type },
+        { apiEndpoints, type: storedProvider.type, vendorId: storedProvider.vendorId },
         framework
       ),
       modelBridgeSupported: isModelBridgeSupported(storedProvider, effectiveModel),

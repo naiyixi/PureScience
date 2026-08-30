@@ -156,13 +156,27 @@ export const requiresChatCompletionsBridge = (
 // Codex subscription providers carry their own login and can only drive Codex regardless of
 // endpoint. Enforced both in the renderer gates and main-side (preflight + spawn).
 export const isProviderUsableByFramework = (
-  provider: { apiEndpoints?: readonly ChatApiEndpoint[]; type: ProviderType },
+  provider: {
+    apiEndpoints?: readonly ChatApiEndpoint[]
+    type: ProviderType
+    vendorId?: string
+  },
   framework: { id: AgentFrameworkId; supportedApiTypes: readonly ChatApiEndpoint[] }
 ): boolean => {
   if (isCodexSubscriptionProvider(provider.type)) return framework.id === 'codex'
   // Both Claude subscription modes rely on the ~/.claude or app-owned credential that only
   // claude-code knows how to read; OpenCode receives neither an endpoint nor a token.
   if (isClaudeSubscriptionProvider(provider.type) && framework.id !== 'claude-code') return false
+
+  // xAI (Grok subscription OAuth or official API key) drives Claude Code through the app's local
+  // Messages→Responses bridge, so it is usable despite xAI exposing no Anthropic endpoint.
+  if (
+    framework.id === 'claude-code' &&
+    (provider.type === 'xai-subscription' ||
+      (provider.type === 'official' && provider.vendorId === 'xai'))
+  ) {
+    return true
+  }
 
   const endpoints = providerEndpoints(provider)
 

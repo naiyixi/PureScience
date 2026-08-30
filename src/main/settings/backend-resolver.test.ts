@@ -28,6 +28,10 @@ type OpenAiProviderBridgeFactory = NonNullable<
   AgentBackendResolverOptions['createOpenAiProviderBridge']
 >
 type OpenAiProviderBridgeDouble = ReturnType<OpenAiProviderBridgeFactory>
+type XaiMessagesBridgeFactory = NonNullable<
+  AgentBackendResolverOptions['createXaiMessagesBridge']
+>
+type XaiMessagesBridgeDouble = ReturnType<XaiMessagesBridgeFactory>
 type ResolveRuntimeTarget = AgentBackendProviderPort['resolveRuntimeTarget']
 type ResolveRuntimeModelCatalog = AgentBackendProviderPort['resolveRuntimeModelCatalog']
 type TargetOverride = Omit<Partial<ProviderRuntimeTarget>, 'provider'> & {
@@ -267,6 +271,16 @@ const makeHarness = (options: HarnessOptions = {}) => {
     anthropicProviderBridges.push(bridge)
     return bridge
   })
+  const xaiMessagesBridges: XaiMessagesBridgeDouble[] = []
+  const createXaiMessagesBridge = vi.fn((): XaiMessagesBridgeDouble => {
+    const bridge = {
+      start: vi.fn(async () => ({ baseUrl: 'http://127.0.0.1:9999', token: 'xai-bridge-token' })),
+      close: vi.fn(async () => undefined),
+      setTarget: vi.fn(() => true)
+    } satisfies XaiMessagesBridgeDouble
+    xaiMessagesBridges.push(bridge)
+    return bridge
+  })
   const openAiProviderBridges: OpenAiProviderBridgeDouble[] = []
   const createOpenAiProviderBridge = vi.fn((): OpenAiProviderBridgeDouble => {
     const bridge =
@@ -287,6 +301,7 @@ const makeHarness = (options: HarnessOptions = {}) => {
     createResponsesBridge,
     createNativeResponsesProxy,
     createAnthropicProviderBridge,
+    createXaiMessagesBridge,
     createOpenAiProviderBridge,
     ensureCodexSubscriptionHome,
     nextGenerationId
@@ -306,10 +321,12 @@ const makeHarness = (options: HarnessOptions = {}) => {
     createResponsesBridge,
     createNativeResponsesProxy,
     createAnthropicProviderBridge,
+    createXaiMessagesBridge,
     createOpenAiProviderBridge,
     responsesBridges,
     nativeResponsesProxies,
     anthropicProviderBridges,
+    xaiMessagesBridges,
     openAiProviderBridges,
     getSettings: () => currentSettings,
     setSettings: (settings: StoredSettings) => {
@@ -528,6 +545,99 @@ describe('AgentBackendResolver configured and explicit targets', () => {
     await expect(harness.resolver.resolveActiveModelChangeTarget()).resolves.not.toHaveProperty(
       'anthropicBridgeTargetId'
     )
+  })
+
+  it('routes a Grok subscription to Claude Code through the Messages→Responses bridge', async () => {
+    const provider: StoredProvider = {
+      ...makeStoredProvider('grok', 'grok-4.6'),
+      type: 'xai-subscription'
+    }
+    const harness = makeHarness({
+      settings: makeSettings({
+        providers: [provider],
+        activeProviderId: provider.id,
+        activeModel: provider.model,
+        agentFrameworkId: 'claude-code'
+      }),
+      targetOverride: () => ({
+        apiEndpoints: ['openai', 'responses'],
+        provider: {
+          type: 'xai-subscription',
+          key: 'oauth-token',
+          apiEndpoints: ['openai', 'responses']
+        }
+      })
+    })
+
+    const backend = await harness.resolver.resolveActiveBackend()
+
+    expect(harness.createXaiMessagesBridge).toHaveBeenCalledTimes(1)
+    expect(harness.createAnthropicProviderBridge).not.toHaveBeenCalled()
+    expect(backend.env.ANTHROPIC_BASE_URL).toBe('http://127.0.0.1:9999')
+    expect(backend.env.ANTHROPIC_AUTH_TOKEN).toBe('xai-bridge-token')
+    expect(backend.xaiMessagesBridgeLease).toBeDefined()
+    await backend.xaiMessagesBridgeLease?.release()
+  })
+
+  it('keeps an official xAI API-key vendor on the same bridge route', async () => {
+    const provider: StoredProvider = {
+      ...makeStoredProvider('xai-official', 'grok-4.6'),
+      type: 'official',
+      vendorId: 'xai'
+    }
+    const harness = makeHarness({
+      settings: makeSettings({
+        providers: [provider],
+        activeProviderId: provider.id,
+        activeModel: provider.model,
+        agentFrameworkId: 'claude-code'
+      }),
+      targetOverride: () => ({
+        apiEndpoints: ['openai', 'responses'],
+        provider: {
+          type: 'official',
+          vendorId: 'xai',
+          key: 'xai-key',
+          apiEndpoints: ['openai', 'responses']
+        }
+      })
+    })
+
+    const backend = await harness.resolver.resolveActiveBackend()
+
+    expect(harness.createXaiMessagesBridge).toHaveBeenCalledTimes(1)
+    expect(backend.env.ANTHROPIC_BASE_URL).toBe('http://127.0.0.1:9999')
+    await backend.xaiMessagesBridgeLease?.release()
+  })
+
+  it('does not bridge a non-xAI official vendor without an Anthropic endpoint', async () => {
+    const provider: StoredProvider = {
+      ...makeStoredProvider('deepseek-official', 'deepseek-v4-pro'),
+      type: 'official',
+      vendorId: 'deepseek'
+    }
+    const harness = makeHarness({
+      settings: makeSettings({
+        providers: [provider],
+        activeProviderId: provider.id,
+        activeModel: provider.model,
+        agentFrameworkId: 'claude-code'
+      }),
+      targetOverride: () => ({
+        apiEndpoints: ['openai', 'responses'],
+        provider: {
+          type: 'official',
+          vendorId: 'deepseek',
+          key: 'ds-key',
+          apiEndpoints: ['openai', 'responses']
+        }
+      })
+    })
+
+    const backend = await harness.resolver.resolveActiveBackend()
+
+    expect(harness.createXaiMessagesBridge).not.toHaveBeenCalled()
+    expect(backend.env.ANTHROPIC_BASE_URL).toBeUndefined()
   })
 
   it('routes configured Claude API providers through one retargetable loopback generation', async () => {
