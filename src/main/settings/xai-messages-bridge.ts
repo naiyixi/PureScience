@@ -268,7 +268,7 @@ const writeSse = (response: ServerResponse, event: string, data: unknown): void 
   response.write(`data: ${JSON.stringify(data)}\n\n`)
 }
 
-// Translates an upstream Responses SSE payload into zero or more Anthropic SSE events. Returns the
+// Translates a source Responses SSE payload into zero or more Anthropic SSE events. Returns the
 // number of events written so the caller can flush; content index tracks the running block index.
 const translateSseEvent = (
   response: ServerResponse,
@@ -501,13 +501,13 @@ export class XaiMessagesBridge {
     }
 
     if (!translated.stream) {
-      const upstream = (await source.json().catch(() => undefined)) as unknown
-      const anthropic = toAnthropicResponse(upstream, this.target.model)
+      const sourceBody = (await source.json().catch(() => undefined)) as unknown
+      const anthropic = toAnthropicResponse(sourceBody, this.target.model)
       json(response, 200, anthropic)
       return
     }
 
-    // Streaming: relay the upstream Responses SSE, translating each event.
+    // Streaming: relay the source Responses SSE, translating each event.
     response.writeHead(200, {
       'content-type': 'text/event-stream',
       'cache-control': 'no-cache',
