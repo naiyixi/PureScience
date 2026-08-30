@@ -20,7 +20,9 @@ import type {
   ReviewOutcome,
   ReviewWithChecks,
   TurnScope,
-  UpdateReviewPatch
+  UpdateReviewPatch,
+  VerificationChecklist,
+  VerificationChecklistItem
 } from '../../shared/reviewer'
 
 // Legacy alias for callers still using FindingSeverity (now CheckStatus).
@@ -822,6 +824,101 @@ class ReviewRepository {
       orderBy: { sequence: 'asc' }
     })
     return rows.map(toFindingDisposition)
+  }
+
+  // Builds the session-level verification checklist: every warn/fail claim that ANY review of the
+  // session raised, as a stable per-finding item. The reviewer model mutates Finding rows IN PLACE
+  // across fix-loop rounds (reflagCount increments, resolution flips, dispositions are appended to
+  // ReviewFindingDisposition) rather than spawning new rows — so each warn/fail Finding is already
+  // the stable identity of one claim. assessmentCount is derived from the disposition history,
+  // which records every re-review assessment of the claim. Pass checks are excluded (they confirm
+  // correctness; the checklist tracks issues to resolve).
+  async getVerificationChecklist(projectId: string, sessionId: string): Promise<VerificationChecklist> {
+    const client = await this.getClient()
+    const reviews = await client.review.findMany({
+      where: { projectId, sessionId },
+      orderBy: { createdAt: 'asc' }
+    })
+    const reviewById = new Map(reviews.map((review) => [review.id, review]))
+
+    const checkRows = await client.finding.findMany({
+      where: {
+        reviewId: { in: reviews.map((review) => review.id) },
+        status: { in: ['warn', 'fail'] }
+      },
+      orderBy: { sortIndex: 'asc' }
+    })
+    const checks = checkRows.map(toCheck)
+
+    // Disposition count per finding = how many times the fix loop re-assessed this claim.
+    const dispositionRows = await client.reviewFindingDisposition.findMany({
+      where: { sourceFindingId: { in: checks.map((check) => check.id) } },
+      select: { sourceFindingId: true }
+    })
+    const dispositionCounts = new Map<string, number>()
+    for (const row of dispositionRows) {
+      dispositionCounts.set(row.sourceFindingId, (dispositionCounts.get(row.sourceFindingId) ?? 0) + 1)
+    }
+
+    const items: VerificationChecklistItem[] = checks.map((check) => {
+      const review = reviewById.get(check.reviewId)
+      return {
+        rootFindingId: check.id,
+        claim: check.claim,
+        latestStatus: check.status,
+        latestEvidence: check.evidence,
+        resolution: check.resolution,
+        reflagCount: check.reflagCount,
+        firstReviewId: check.reviewId,
+        firstTurnMessageId: review?.turnMessageId ?? '',
+        firstReviewedAt: review?.createdAt.getTime() ?? 0,
+        latestReviewId: check.reviewId,
+        latestTurnMessageId: review?.turnMessageId ?? '',
+        lastReviewedAt: review?.createdAt.getTime() ?? 0,
+        assessmentCount: (dispositionCounts.get(check.id) ?? 0) + 1,
+        latestLocator: check.locator
+      }
+    })
+
+    return {
+      projectId,
+      sessionId,
+      items: items.sort((a, b) => b.lastReviewedAt - a.lastReviewedAt)
+    }
+  }
+
+  // Flips the resolution of a checklist claim ("Mark addressed" / "Reopen"). The claim is anchored
+  // by its stable Finding id; the reviewer model mutates that row in place, so the update is direct.
+  // Reuses the per-finding update path with the same review-scoped ownership guard.
+  async updateChecklistClaimResolution(
+    projectId: string,
+    sessionId: string,
+    rootFindingId: string,
+    resolution: FindingResolution
+  ): Promise<void> {
+    const client = await this.getClient()
+    const finding = await client.finding.findUnique({ where: { id: rootFindingId } })
+    if (!finding) throw new Error(`Claim not found: ${rootFindingId}`)
+    const review = await client.review.findUnique({ where: { id: finding.reviewId } })
+    if (
+      !review ||
+      review.projectId !== projectId ||
+      review.sessionId !== sessionId ||
+      (finding.status !== 'warn' && finding.status !== 'fail')
+    ) {
+      throw new Error(`Claim ${rootFindingId} is not a warn/fail check of this session.`)
+    }
+
+    await client.$transaction(async (tx) => {
+      const updated = await tx.finding.updateMany({
+        where: { id: finding.id, reviewId: finding.reviewId },
+        data: { resolution }
+      })
+      if (updated.count !== 1) {
+        throw new Error(`Finding ${finding.id} could not be updated.`)
+      }
+      await touchReview(tx, finding.reviewId)
+    })
   }
 
   // Test/diagnostic helper: total check rows, used to assert no orphans survive a cascade delete.

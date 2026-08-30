@@ -96,7 +96,9 @@ const createDependencies = (): HostApplicationCommandDependencies => ({
   reviewer: {
     run: vi.fn(async () => ({ started: true })),
     getForSession: vi.fn(async () => []),
-    abortFixLoop: vi.fn(() => undefined)
+    abortFixLoop: vi.fn(() => undefined),
+    getChecklist: vi.fn(async () => ({ projectId: 'p', sessionId: 's', items: [] })),
+    mutateChecklist: vi.fn(async () => undefined)
   },
   storage: {
     getInfo: vi.fn(async () => ({
@@ -172,7 +174,7 @@ describe('Host application commands', () => {
         .filter((channel): channel is string => channel !== null)
     }))
 
-    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(45)
+    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(47)
     const actualGroups = hostApplicationCommandGroups
       .map(({ name, commands }) => ({
         capability: name,
@@ -190,7 +192,7 @@ describe('Host application commands', () => {
       {} as HostApplicationCommandDependencies
     )
 
-    expect(router.dispatcher.commandNames()).toHaveLength(45)
+    expect(router.dispatcher.commandNames()).toHaveLength(47)
     installation.uninstall()
     expect(router.dispatcher.commandNames()).toEqual([])
   })
@@ -260,8 +262,16 @@ describe('Host application commands', () => {
       invocation([reviewSession])
     )
     await router.dispatcher.invoke(
+      hostApplicationCommands.reviewer.getChecklist,
+      invocation([reviewSession])
+    )
+    await router.dispatcher.invoke(
       hostApplicationCommands.reviewer.getForSession,
       invocation([reviewSession])
+    )
+    await router.dispatcher.invoke(
+      hostApplicationCommands.reviewer.mutateChecklist,
+      invocation([{ ...reviewSession, rootFindingId: 'finding-1', resolution: 'resolved' }])
     )
     await router.dispatcher.invoke(hostApplicationCommands.reviewer.run, invocation([reviewRun]))
     await router.dispatcher.invoke(hostApplicationCommands.storage.cancelMigrate, invocation([]))
@@ -326,6 +336,12 @@ describe('Host application commands', () => {
     expect(dependencies.remoteAccess.setMode).toHaveBeenCalledWith('remoteit')
     expect(dependencies.reviewer.run).toHaveBeenCalledWith(reviewRun)
     expect(dependencies.reviewer.getForSession).toHaveBeenCalledWith(reviewSession)
+    expect(dependencies.reviewer.getChecklist).toHaveBeenCalledWith(reviewSession)
+    expect(dependencies.reviewer.mutateChecklist).toHaveBeenCalledWith({
+      ...reviewSession,
+      rootFindingId: 'finding-1',
+      resolution: 'resolved'
+    })
     expect(dependencies.storage.commitAndRelaunch).toHaveBeenCalledWith(parent)
     expect(dependencies.storage.setDataRootAndRelaunch).toHaveBeenCalledWith(root)
 

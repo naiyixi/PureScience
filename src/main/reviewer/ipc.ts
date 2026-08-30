@@ -10,7 +10,9 @@ import type {
   ReviewRunResult,
   ReviewUpdateEvent,
   ReviewSessionRequest,
-  ReviewSuppressionEvent
+  ReviewSuppressionEvent,
+  VerificationChecklist,
+  VerificationChecklistMutationRequest
 } from '../../shared/reviewer'
 import type { PersistedChatSession } from '../../shared/session-persistence'
 import { REVIEWER_IPC } from '../../shared/reviewer'
@@ -93,6 +95,8 @@ type ReviewerCommandOwner = Readonly<{
   triggerReview: (request: ReviewRunRequest) => Promise<ReviewRunResult>
   getForSession: (request: ReviewSessionRequest) => Promise<ReviewWithChecks[]>
   abortFixLoop: (request: ReviewSessionRequest) => void
+  getChecklist: (request: ReviewSessionRequest) => Promise<VerificationChecklist>
+  mutateChecklist: (request: VerificationChecklistMutationRequest) => Promise<void>
 }>
 
 // Owns reviewer arbitration and fix-loop cancellation independently from any command transport.
@@ -147,6 +151,29 @@ const createReviewerCommandOwner = (options: ReviewerIpcOptions): ReviewerComman
     } else {
       log.warn('abort-fix-loop: no active fix loop found for session', request)
     }
+  }
+
+  // Loads the session's aggregated verification checklist (all warn/fail claims across reviews).
+  const getChecklist = async (request: ReviewSessionRequest): Promise<VerificationChecklist> => {
+    return reviewRepository.getVerificationChecklist(
+      request.projectId,
+      request.appSessionId
+    )
+  }
+
+  // Marks a checklist claim addressed (or reopens it). After the mutation the session's reviews
+  // are re-pushed so every open window sees the flipped resolution immediately.
+  const mutateChecklist = async (
+    request: VerificationChecklistMutationRequest
+  ): Promise<void> => {
+    await reviewRepository.updateChecklistClaimResolution(
+      request.projectId,
+      request.appSessionId,
+      request.rootFindingId,
+      request.resolution
+    )
+    const reviews = await getForSession(request)
+    for (const review of reviews) broadcastReviewUpdate({ review })
   }
 
   // Returns whether a review actually STARTED. The session is loaded up front (not in the background)
@@ -335,7 +362,7 @@ const createReviewerCommandOwner = (options: ReviewerIpcOptions): ReviewerComman
     })
   }
 
-  return { run: triggerReview, triggerReview, getForSession, abortFixLoop }
+  return { run: triggerReview, triggerReview, getForSession, abortFixLoop, getChecklist, mutateChecklist }
 }
 
 // Registers the legacy Electron adapter against an injectable owner. A future Host command
@@ -350,6 +377,12 @@ const registerReviewerIpcHandlers = (
   )
   ipcMainHandle(REVIEWER_IPC.ABORT_FIX_LOOP, (_event, request: ReviewSessionRequest) =>
     owner.abortFixLoop(request)
+  )
+  ipcMainHandle(REVIEWER_IPC.GET_CHECKLIST, (_event, request: ReviewSessionRequest) =>
+    owner.getChecklist(request)
+  )
+  ipcMainHandle(REVIEWER_IPC.MUTATE_CHECKLIST, (_event, request: VerificationChecklistMutationRequest) =>
+    owner.mutateChecklist(request)
   )
   return owner
 }

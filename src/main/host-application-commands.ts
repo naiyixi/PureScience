@@ -20,7 +20,9 @@ import type {
   ReviewRunRequest,
   ReviewRunResult,
   ReviewSessionRequest,
-  ReviewWithChecks
+  ReviewWithChecks,
+  VerificationChecklist,
+  VerificationChecklistMutationRequest
 } from '../shared/reviewer'
 import type {
   ActiveSessionInfo,
@@ -175,11 +177,21 @@ const reviewerCommands = Object.freeze({
     readonly [request: ReviewSessionRequest],
     void
   >('reviewer:abort-fix-loop'),
+  getChecklist: defineApplicationCommand<
+    'reviewer:get-checklist',
+    readonly [request: ReviewSessionRequest],
+    VerificationChecklist
+  >('reviewer:get-checklist'),
   getForSession: defineApplicationCommand<
     'reviewer:get-for-session',
     readonly [request: ReviewSessionRequest],
     ReviewWithChecks[]
   >('reviewer:get-for-session'),
+  mutateChecklist: defineApplicationCommand<
+    'reviewer:mutate-checklist',
+    readonly [request: VerificationChecklistMutationRequest],
+    void
+  >('reviewer:mutate-checklist'),
   run: defineApplicationCommand<
     'reviewer:run',
     readonly [request: ReviewRunRequest],
@@ -300,7 +312,10 @@ type HostApplicationCommandDependencies = Readonly<{
     RemoteAccessService,
     'snapshot' | 'detect' | 'setMode' | 'disable' | 'approve' | 'reject' | 'revoke'
   >
-  reviewer: Pick<ReviewerCommandOwner, 'run' | 'getForSession' | 'abortFixLoop'>
+  reviewer: Pick<
+    ReviewerCommandOwner,
+    'run' | 'getForSession' | 'abortFixLoop' | 'getChecklist' | 'mutateChecklist'
+  >
   storage: Readonly<{
     getInfo: () => Promise<StorageInfo>
     revealAppStorage: () => Promise<RevealAppStorageResult>
@@ -439,7 +454,9 @@ const registerHostApplicationCommands = (
     })
     scope.registerGroup(hostApplicationCommandGroups[7], {
       'reviewer:abort-fix-loop': ({ args }) => dependencies.reviewer.abortFixLoop(args[0]),
+      'reviewer:get-checklist': ({ args }) => dependencies.reviewer.getChecklist(args[0]),
       'reviewer:get-for-session': ({ args }) => dependencies.reviewer.getForSession(args[0]),
+      'reviewer:mutate-checklist': ({ args }) => dependencies.reviewer.mutateChecklist(args[0]),
       'reviewer:run': ({ args }) => dependencies.reviewer.run(args[0])
     })
     scope.registerGroup(hostApplicationCommandGroups[8], {
