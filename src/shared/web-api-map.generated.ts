@@ -163,6 +163,7 @@ export const WEB_INVOKE_CHANNELS = {
   'settings.getPreflight': 'settings:get-preflight',
   'settings.getSettings': 'settings:get-settings',
   'settings.getSkillDetail': 'settings:get-skill-detail',
+  'settings.getThirdPartyLicenses': 'settings:third-party-licenses',
   'settings.importAgentHomeSkills': 'settings:import-agent-home-skills',
   'settings.importMcpServers': 'settings:import-mcp-servers',
   'settings.importSkill': 'settings:import-skill',

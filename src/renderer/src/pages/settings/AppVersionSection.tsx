@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { Download, RefreshCw } from 'lucide-react'
 import { useLanguage } from '@/i18n'
 
 import { AppLogo } from '@/components/AppLogo'
 import { Button } from '@/components/ui/button'
+import { ThirdPartyLicensesDialog } from '@/components/ThirdPartyLicensesDialog'
 import { useUpdateStore } from '@/stores/update-store'
 import { APP } from '../../../../shared/app-config'
 import { SettingsRow, SettingsSection } from './SettingsLayout'
@@ -12,6 +14,7 @@ import { SettingsRow, SettingsSection } from './SettingsLayout'
 // download), so the download/confirm UX lives in one place.
 const AppVersionSection = (): React.JSX.Element => {
   const { t } = useLanguage()
+  const [licensesOpen, setLicensesOpen] = useState(false)
   const appInfo = useUpdateStore((state) => state.appInfo)
   const status = useUpdateStore((state) => state.status)
   const check = useUpdateStore((state) => state.check)
@@ -115,7 +118,16 @@ const AppVersionSection = (): React.JSX.Element => {
         >
           {t('settings.reportIssue')}
         </a>
+        <button
+          type="button"
+          onClick={() => setLicensesOpen(true)}
+          className="text-muted-foreground underline-offset-4 hover:underline"
+        >
+          {t('settings.thirdPartyLicenses')}
+        </button>
       </div>
+
+      <ThirdPartyLicensesDialog open={licensesOpen} onOpenChange={setLicensesOpen} />
 
       {statusLine ? (
         <p

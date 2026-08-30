@@ -314,7 +314,7 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['deleteExternalComputeEndpoint', 'settings:delete-external-compute-endpoint', LOCAL],
     ['detectOpencode', 'settings:detect-opencode'], ['exportCustomServerTemplate', 'settings:export-custom-server-template', ELECTRON], ['exportSkill', 'settings:export-skill', ELECTRON], ['getConnectorDetail', 'settings:get-connector-detail'],
     ['getMemory', 'settings:get-memory', LOCAL], ['getPackageMirror', 'settings:get-package-mirror'], ['getPreflight', 'settings:get-preflight'], ['getSettings', 'settings:get-settings'],
-    ['getCredentials', 'settings:list-credentials', LOCAL], ['getSkillDetail', 'settings:get-skill-detail'], ['getEgress', 'settings:get-egress', LOCAL], ['getExternalComputeEndpoints', 'settings:list-external-compute-endpoints', LOCAL], ['importAgentHomeSkills', 'settings:import-agent-home-skills', MAPPED_ELECTRON],
+    ['getCredentials', 'settings:list-credentials', LOCAL], ['getThirdPartyLicenses', 'settings:third-party-licenses', LOCAL], ['getSkillDetail', 'settings:get-skill-detail'], ['getEgress', 'settings:get-egress', LOCAL], ['getExternalComputeEndpoints', 'settings:list-external-compute-endpoints', LOCAL], ['importAgentHomeSkills', 'settings:import-agent-home-skills', MAPPED_ELECTRON],
     ['importSkill', 'settings:import-skill'], ['importSkillZip', 'settings:import-skill-zip'], ['importSkillZipBatch', 'settings:import-skill-zip-batch'],
     ['installClaude', 'settings:install-claude', LOCAL], ['installCodex', 'settings:install-codex', LOCAL],
     ['installOpencode', 'settings:install-opencode', LOCAL], ['isEncryptionAvailable', 'settings:encryption-available'],
