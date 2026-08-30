@@ -83,6 +83,9 @@ export type ChatSession = Omit<
 export type SessionStoreData = {
   sessions: ChatSession[]
   selectedSessionId: string | undefined
+  // Per-session last-read timestamp (ms) for the sidebar unread indicator. Renderer-local,
+  // persisted to localStorage — deliberately not part of the durable session file.
+  lastReadAtBySession: Record<string, number>
 }
 
 export type SessionHydrationSelection = {
@@ -110,8 +113,35 @@ const externallyHydratedSessions = new WeakSet<ChatSession>()
 // Builds the empty in-memory state used by the app and isolated tests.
 export const createInitialSessionState = (): SessionStoreData => ({
   sessions: [],
-  selectedSessionId: undefined
+  selectedSessionId: undefined,
+  lastReadAtBySession: loadLastReadTimestamps()
 })
+
+const LAST_READ_STORAGE_KEY = 'purescience.session-last-read.v1'
+
+const loadLastReadTimestamps = (): Record<string, number> => {
+  try {
+    const raw = window.localStorage.getItem(LAST_READ_STORAGE_KEY)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw) as unknown
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return {}
+    const out: Record<string, number> = {}
+    for (const [id, value] of Object.entries(parsed)) {
+      if (typeof value === 'number' && Number.isFinite(value)) out[id] = value
+    }
+    return out
+  } catch {
+    return {}
+  }
+}
+
+export const saveLastReadTimestamps = (timestamps: Record<string, number>): void => {
+  try {
+    window.localStorage.setItem(LAST_READ_STORAGE_KEY, JSON.stringify(timestamps))
+  } catch {
+    // storage unavailable — keep the in-memory state only
+  }
+}
 
 export const stripTransientMessageState = (message: ChatMessage): PersistedChatMessage => {
   const { sortIndex, ...persistedMessage } = message

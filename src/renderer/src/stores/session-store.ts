@@ -15,6 +15,7 @@ import {
   createInitialSessionState,
   createSessionPersistenceOwner,
   hydrateSession,
+  saveLastReadTimestamps,
   type ChatSession,
   type SessionPersistenceActions,
   type SessionStoreData
@@ -74,6 +75,8 @@ type SessionStore = SessionStoreData &
     setSessionDescription: (sessionId: string, description: string) => void
     deleteSession: (sessionId: string) => void
     removeSessionsForProject: (projectId: string) => void
+    // Marks a session read (now) and persists the timestamp for the sidebar unread indicator.
+    markSessionRead: (sessionId: string) => void
   }
 
 // Stores all transient workspace conversation state for the renderer process.
@@ -85,6 +88,16 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     if (!get().sessions.some((session) => session.id === sessionId)) return
 
     set({ selectedSessionId: sessionId })
+    get().markSessionRead(sessionId)
+  },
+
+  // Marks a session read (now) and persists the timestamp for the sidebar unread indicator.
+  markSessionRead: (sessionId) => {
+    const current = get().lastReadAtBySession[sessionId]
+    const now = Date.now()
+    if (current !== undefined && current >= now) return
+    set({ lastReadAtBySession: { ...get().lastReadAtBySession, [sessionId]: now } })
+    saveLastReadTimestamps(get().lastReadAtBySession)
   },
 
   // Clears visible conversation selection without deleting session history.

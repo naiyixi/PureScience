@@ -181,7 +181,7 @@ const ComposerModelPicker = (): React.JSX.Element | null => {
             !hasUsable &&
               'text-amber-700 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-400'
           )}
-          aria-label={hasUsable ? 'Select model' : 'No compatible model'}
+          aria-label={hasUsable ? t('modelPicker.selectModel') : t('modelPicker.noCompatible')}
         >
           {hasUsable ? (
             <>
@@ -234,7 +234,7 @@ const ComposerModelPicker = (): React.JSX.Element | null => {
                 </span>
               </span>
               <span className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-bg-200 px-2 py-0.5 text-[11px] font-medium leading-4 text-text-100">
-                {defaultEffortChecked ? 'Default' : selectedEffortLabel}
+                {defaultEffortChecked ? t('modelPicker.defaultEffort') : selectedEffortLabel}
                 <ChevronRight
                   className="size-3 shrink-0 opacity-60"
                   strokeWidth={2}
@@ -246,9 +246,9 @@ const ComposerModelPicker = (): React.JSX.Element | null => {
               <MenuRadioItem
                 checked={defaultEffortChecked}
                 onSelect={() => void setReasoningEffort('default')}
-                hint="provider default"
+                hint={t('modelPicker.providerDefaultHint')}
               >
-                Default
+                {t('modelPicker.defaultEffort')}
               </MenuRadioItem>
               {effortControl.options.map((option) => (
                 // Checked by concrete value, not intent: several intents can project onto one
@@ -306,7 +306,7 @@ const ComposerModelPicker = (): React.JSX.Element | null => {
               </span>
             ) : (
               <>
-                <span className="shrink-0 text-[11px] text-text-300">Select</span>
+                <span className="shrink-0 text-[11px] text-text-300">{t('modelPicker.select')}</span>
                 <ChevronRight
                   className="size-3.5 shrink-0 opacity-60"
                   strokeWidth={2}
@@ -332,7 +332,7 @@ const ComposerModelPicker = (): React.JSX.Element | null => {
               const reason = compatible
                 ? undefined
                 : endpointCompatible && agentFrameworkId === 'codex'
-                  ? `No model from ${group.provider.name} is supported over the Codex Chat Completions bridge.`
+                  ? t('modelPicker.codexBridgeReason', { name: group.provider.name })
                   : incompatibilityReason(
                       {
                         apiEndpoints: group.provider.apiEndpoints,
@@ -356,7 +356,7 @@ const ComposerModelPicker = (): React.JSX.Element | null => {
                         // Endpoint is fine but this model is statically marked unsupported over the Codex
                         // bridge. Grey it with a warning icon; the full reason is on hover (title) and read
                         // by assistive tech (aria-label), so it isn't a long inline string.
-                        const optionReason = `${optionLabel(option)} is not supported over the Codex Chat Completions bridge.`
+                        const optionReason = t('modelPicker.bridgeUnsupportedReason', { model: optionLabel(option) })
                         return (
                           <DropdownMenuItem
                             key={`${option.providerId}:${option.model}`}
@@ -368,7 +368,7 @@ const ComposerModelPicker = (): React.JSX.Element | null => {
                           >
                             <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
                             <span className="min-w-0 flex-1 truncate">{optionLabel(option)}</span>
-                            <span className="text-xs">unsupported</span>
+                            <span className="text-xs">{t('modelPicker.unsupported')}</span>
                           </DropdownMenuItem>
                         )
                       }

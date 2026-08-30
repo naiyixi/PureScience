@@ -2527,8 +2527,12 @@ describe('session store public contract', () => {
     const first = createInitialSessionState()
     const second = createInitialSessionState()
 
-    expect(first).toEqual({ sessions: [], selectedSessionId: undefined })
-    expect(Object.keys(first).sort()).toEqual(['selectedSessionId', 'sessions'])
+    expect(first).toEqual({ sessions: [], selectedSessionId: undefined, lastReadAtBySession: {} })
+    expect(Object.keys(first).sort()).toEqual([
+      'lastReadAtBySession',
+      'selectedSessionId',
+      'sessions'
+    ])
     expect(first.sessions).not.toBe(second.sessions)
   })
 
@@ -2567,6 +2571,7 @@ describe('session store public contract', () => {
         'hydrateSessions',
         'markDisconnected',
         'markResumed',
+        'markSessionRead',
         'markSpecialistSwitchResetRequired',
         'recordArtifactError',
         'removeMessage',
