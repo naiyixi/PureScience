@@ -1,8 +1,8 @@
-# PureScience 全面超越 Claude Science 更新计划
+# PureScience 全面超越对标产品的更新计划
 
 > 版本：v1.0（计划稿）
 > 日期：2026-08-30
-> 依据：Claude Science v0.1.15-dev（2026-07-01 构建）深层代码剖析（bunfs 源码 bundle + drizzle 97 迁移 + 87 MCP servers + 30 skills + agents metadata），以及 PureScience v1.24.0 现有能力盘点（CHANGELOG + src 全量 grep 验证）。
+> 依据：对标产品 CS v0.1.15-dev（2026-07-01 构建）深层代码剖析（bunfs 源码 bundle + drizzle 97 迁移 + 87 MCP servers + 30 skills + agents metadata），以及 PureScience v1.24.0 现有能力盘点（CHANGELOG + src 全量 grep 验证）。
 > 目标：在 **防幻觉核验、长上下文、记忆溯源、生态规模、可审计执行** 五个维度全面反超，同时守住 PureScience 已有的 **生物医药垂直、中文体验、CN 网络适配、BYOK 多提供商** 差异化护城河。
 
 ---
@@ -24,7 +24,7 @@
 | 生物医学技能包（BioNexus 17-skill） | ✅ 已有 | 规模 vs 对方 30 skill + 87 MCP —见差距 G6 |
 | 生成式会话标题/描述 | ✅ v1.20.1 等价 | 无差距 |
 
-## 1. 差距清单（G1–G8）——来自 Claude Science 深层代码剖析
+## 1. 差距清单（G1–G8）——来自 对标产品 CS 深层代码剖析
 
 ### G1. 防幻觉核验：从「turn 级审计」升级到「claim 级闭环」⭐ 最高优先级
 
@@ -301,4 +301,4 @@ G8 计算编排 ──┘
 
 ---
 
-*本文档由 Claude Science v0.1.15 深层剖析驱动，差距清单 G1–G8 均来自对方实际代码（drizzle schema / bundle 事件枚举 / agents metadata / mcp-servers 目录），非推测。*
+*本文档由 对标产品 CS v0.1.15 深层剖析驱动，差距清单 G1–G8 均来自对方实际代码（drizzle schema / bundle 事件枚举 / agents metadata / mcp-servers 目录），非推测。*
