@@ -42,6 +42,10 @@ import { useNavigationStore } from '@/stores/navigation-store'
 import { useProjectStore } from '@/stores/project-store'
 import { useSettingsStore } from '@/stores/settings-store'
 import { useSpecialistStore } from '@/stores/specialist-store'
+import { useCatalogTagsStore } from '@/stores/catalog-tags-store'
+import { CatalogFavoriteButton } from '@/components/catalog/CatalogFavoriteButton'
+import { CatalogTagEditor } from '@/components/catalog/CatalogTagEditor'
+import { CatalogFilterChips } from '@/components/catalog/CatalogFilterChips'
 import {
   SpecialistMarketplace,
   type SpecialistMarketplaceView
@@ -138,6 +142,9 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
   const projects = useProjectStore((s) => s.projects)
   const [filter, setFilter] = useState<CategoryFilter>('all')
   const [query, setQuery] = useState('')
+  const [showFavorites, setShowFavorites] = useState(false)
+  const [activeTags, setActiveTags] = useState<string[]>([])
+  const catalogEntries = useCatalogTagsStore((state) => state.entries)
   const [deletingItem, setDeletingItem] = useState<{
     id: string
     revision: number
@@ -227,38 +234,44 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
   // Keep runnable builtins distinct from the Reviewer placeholder even though Settings groups both
   // under Built-in. Only runnable builtins enter the Session picker.
   const reviewerItems = items.filter((i) => i.kind === 'reviewer')
+  // Shared catalog tags/favorites predicate used by both specialist lists.
+  const matchesCatalogFilter = (resourceId: string): boolean => {
+    const entry = catalogEntries[resourceId]
+    if (showFavorites && !entry?.favorite) return false
+    if (activeTags.length > 0) {
+      const tags = entry?.tags ?? []
+      if (!activeTags.every((tag) => tags.includes(tag))) return false
+    }
+    return true
+  }
+
   const visibleBuiltinItems = useMemo(() => {
     if (filter === 'custom' || filter === 'marketplace') return []
     const term = query.trim().toLowerCase()
-    if (!term) return builtinItems
-    return builtinItems.filter(
-      (item) =>
+    return builtinItems.filter((item) => {
+      if (!matchesCatalogFilter(`specialist:${item.id}`)) return false
+      if (!term) return true
+      return (
         (item.displayName ?? item.name).toLowerCase().includes(term) ||
         item.name.toLowerCase().includes(term) ||
         item.description.toLowerCase().includes(term)
-    )
-  }, [builtinItems, filter, query])
+      )
+    })
+  }, [builtinItems, filter, query, catalogEntries, showFavorites, activeTags])
   const visibleCustomItems = useMemo(() => {
     const term = query.trim().toLowerCase()
     if (filter === 'builtin') return []
-    if (filter === 'marketplace') {
-      const scoped = customItems.filter((i) => i.kind === 'custom' && i.origin === 'marketplace')
-      if (!term) return scoped
-      return scoped.filter(
-        (item) =>
-          (item.displayName ?? item.name).toLowerCase().includes(term) ||
-          item.name.toLowerCase().includes(term) ||
-          item.description.toLowerCase().includes(term)
-      )
-    }
-    if (!term) return customItems
-    return customItems.filter(
-      (item) =>
+    const source = filter === 'marketplace' ? customItems.filter((i) => i.kind === 'custom' && i.origin === 'marketplace') : customItems
+    return source.filter((item) => {
+      if (!matchesCatalogFilter(`specialist:${item.id}`)) return false
+      if (!term) return true
+      return (
         (item.displayName ?? item.name).toLowerCase().includes(term) ||
         item.name.toLowerCase().includes(term) ||
         item.description.toLowerCase().includes(term)
-    )
-  }, [customItems, filter, query])
+      )
+    })
+  }, [customItems, filter, query, catalogEntries, showFavorites, activeTags])
   const visibleReviewerItems = useMemo(() => {
     if (filter === 'custom') return []
     const term = query.trim().toLowerCase()
@@ -1163,6 +1176,24 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
         </DropdownMenu>
       </div>
 
+      <div className="mb-4">
+        <CatalogFilterChips
+          resourceIds={items.map((item) => `specialist:${item.id}`)}
+          showFavorites={showFavorites}
+          activeTags={activeTags}
+          onToggleFavorites={() => setShowFavorites((value) => !value)}
+          onToggleTag={(tag) =>
+            setActiveTags((prev) =>
+              prev.includes(tag) ? prev.filter((candidate) => candidate !== tag) : [...prev, tag]
+            )
+          }
+          onClear={() => {
+            setShowFavorites(false)
+            setActiveTags([])
+          }}
+        />
+      </div>
+
       {!isLoaded ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : (
@@ -1186,6 +1217,14 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                         className="flex min-h-14 items-center gap-2 py-2.5"
                       >
                         {/* Click the row body to open the editor (prefilled) */}
+                        <CatalogFavoriteButton
+                          resourceId={`specialist:${item.id}`}
+                          label={t('settings.favoriteSpecialist').replace(
+                            '{name}',
+                            item.displayName ?? item.name
+                          )}
+                        />
+                        <div className="min-w-0 flex-1">
                         <button
                           type="button"
                           onClick={() => onNavigate({ kind: 'edit', id: item.id })}
@@ -1194,7 +1233,7 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                               ? `Continue setup for ${item.displayName ?? item.name}`
                               : `Edit ${item.displayName ?? item.name}`
                           }
-                          className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          className="flex w-full cursor-pointer items-center gap-2 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
                           {/* Avatar */}
                           <SpecialistAvatar iconKey={item.iconKey} colorKey={item.colorKey} />
@@ -1228,6 +1267,15 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                             </span>
                           </div>
                         </button>
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5 pl-9">
+                          <CatalogTagEditor
+                            resourceId={`specialist:${item.id}`}
+                            addLabel={t('settings.addTag')}
+                            tagsLabel={t('settings.tags')}
+                            placeholder={t('settings.addTag')}
+                          />
+                        </div>
+                        </div>
 
                         {/* Enabled toggle */}
                         <SettingsToggle
@@ -1340,11 +1388,19 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                     data-slot="settings-list-row"
                     className="flex min-h-14 items-center gap-2 py-2.5"
                   >
+                    <CatalogFavoriteButton
+                      resourceId={`specialist:${item.id}`}
+                      label={t('settings.favoriteSpecialist').replace(
+                        '{name}',
+                        item.displayName ?? item.name
+                      )}
+                    />
+                    <div className="min-w-0 flex-1">
                     <button
                       type="button"
                       onClick={() => onNavigate({ kind: 'builtin', id: item.id })}
                       aria-label={`View ${item.displayName ?? item.name}`}
-                      className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="flex w-full cursor-pointer items-center gap-2 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       <SpecialistAvatar iconKey={item.iconKey} colorKey={item.colorKey} />
                       <div className="min-w-0 flex-1">
@@ -1359,6 +1415,15 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                         </span>
                       </div>
                     </button>
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5 pl-9">
+                      <CatalogTagEditor
+                        resourceId={`specialist:${item.id}`}
+                        addLabel={t('settings.addTag')}
+                        tagsLabel={t('settings.tags')}
+                        placeholder={t('settings.addTag')}
+                      />
+                    </div>
+                    </div>
                   </li>
                 ))}
                 {visibleReviewerItems.map(() => (

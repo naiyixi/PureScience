@@ -37,6 +37,10 @@ import {
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select'
 import { useSettingsStore } from '@/stores/settings-store'
+import { useCatalogTagsStore } from '@/stores/catalog-tags-store'
+import { CatalogFavoriteButton } from '@/components/catalog/CatalogFavoriteButton'
+import { CatalogTagEditor } from '@/components/catalog/CatalogTagEditor'
+import { CatalogFilterChips } from '@/components/catalog/CatalogFilterChips'
 import { useSpecialistStore } from '@/stores/specialist-store'
 import { ConnectorGlyph } from './connector-icons'
 import { SettingsIconAction, SettingsSection, SettingsToggle } from './SettingsLayout'
@@ -106,6 +110,9 @@ export function ConnectorsPanel({ onNavigate }: ConnectorsPanelProps): React.JSX
 
   const [filter, setFilter] = useState<GroupFilter>('all')
   const [query, setQuery] = useState('')
+  const [showFavorites, setShowFavorites] = useState(false)
+  const [activeTags, setActiveTags] = useState<string[]>([])
+  const catalogEntries = useCatalogTagsStore((state) => state.entries)
   const [collapsed, setCollapsed] = useState<
     Partial<Record<'featured' | 'directory' | 'custom', boolean>>
   >({})
@@ -175,13 +182,20 @@ export function ConnectorsPanel({ onNavigate }: ConnectorsPanelProps): React.JSX
 
   const visibleConnectors = useMemo<ConnectorView[]>(() => {
     const term = query.trim().toLowerCase()
-    if (!term) return connectors
-    return connectors.filter(
-      (connector) =>
-        connector.displayName.toLowerCase().includes(term) ||
-        connector.description.toLowerCase().includes(term)
-    )
-  }, [connectors, query])
+    return connectors.filter((connector) => {
+      if (term && !connector.displayName.toLowerCase().includes(term) &&
+          !connector.description.toLowerCase().includes(term)) {
+        return false
+      }
+      const entry = catalogEntries[`connector:${connector.id}`]
+      if (showFavorites && !entry?.favorite) return false
+      if (activeTags.length > 0) {
+        const tags = entry?.tags ?? []
+        if (!activeTags.every((tag) => tags.includes(tag))) return false
+      }
+      return true
+    })
+  }, [connectors, query, catalogEntries, showFavorites, activeTags])
 
   const visibleCustomServers = useMemo<CustomServerView[]>(() => {
     const term = query.trim().toLowerCase()
@@ -324,18 +338,32 @@ export function ConnectorsPanel({ onNavigate }: ConnectorsPanelProps): React.JSX
                   className="flex min-h-14 items-center gap-3 py-2.5"
                 >
                   <ConnectorGlyph size={24} />
-                  <button
-                    type="button"
-                    onClick={() => onNavigate({ kind: 'detail', id: connector.id })}
-                    className="min-w-0 flex-1 text-left"
-                  >
-                    <span className="block truncate text-sm text-foreground">
-                      {connector.displayName}
-                    </span>
-                    <span className="block truncate text-xs text-muted-foreground">
-                      {connector.description}
-                    </span>
-                  </button>
+                  <CatalogFavoriteButton
+                    resourceId={`connector:${connector.id}`}
+                    label={t('settings.favoriteConnector').replace('{name}', connector.displayName)}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <button
+                      type="button"
+                      onClick={() => onNavigate({ kind: 'detail', id: connector.id })}
+                      className="block w-full text-left"
+                    >
+                      <span className="block truncate text-sm text-foreground">
+                        {connector.displayName}
+                      </span>
+                      <span className="block truncate text-xs text-muted-foreground">
+                        {connector.description}
+                      </span>
+                    </button>
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                      <CatalogTagEditor
+                        resourceId={`connector:${connector.id}`}
+                        addLabel={t('settings.addTag')}
+                        tagsLabel={t('settings.tags')}
+                        placeholder={t('settings.addTag')}
+                      />
+                    </div>
+                  </div>
                   <SettingsToggle
                     enabled={connector.enabled}
                     aria-label={connector.displayName}
@@ -502,6 +530,24 @@ export function ConnectorsPanel({ onNavigate }: ConnectorsPanelProps): React.JSX
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+      </div>
+
+      <div className="mb-4">
+        <CatalogFilterChips
+          resourceIds={connectors.map((connector) => `connector:${connector.id}`)}
+          showFavorites={showFavorites}
+          activeTags={activeTags}
+          onToggleFavorites={() => setShowFavorites((value) => !value)}
+          onToggleTag={(tag) =>
+            setActiveTags((prev) =>
+              prev.includes(tag) ? prev.filter((candidate) => candidate !== tag) : [...prev, tag]
+            )
+          }
+          onClear={() => {
+            setShowFavorites(false)
+            setActiveTags([])
+          }}
+        />
       </div>
 
       {mcpTransferNotice ? (
