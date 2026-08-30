@@ -269,7 +269,8 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
   group('reviewer', 'reviewer', [
     ['onFixLoopEnd', 'reviewer:fix-loop-end', EVENT], ['onFixLoopStart', 'reviewer:fix-loop-start', EVENT],
     ['onSuppressNextAutoReview', 'reviewer:suppress-next-auto-review', EVENT], ['onUpdated', 'reviewer:updated', EVENT],
-    ['abortFixLoop', 'reviewer:abort-fix-loop'], ['getForSession', 'reviewer:get-for-session'], ['run', 'reviewer:run'],
+    ['abortFixLoop', 'reviewer:abort-fix-loop'], ['getChecklist', 'reviewer:get-checklist'],
+    ['getForSession', 'reviewer:get-for-session'], ['mutateChecklist', 'reviewer:mutate-checklist'], ['run', 'reviewer:run'],
   ]),
   group('runtime', 'runtime', [
     ['describeUsage', 'runtime:describe-usage', WEB, RUNTIME_LANGUAGE_ENV, POSITIONAL],

@@ -291,7 +291,9 @@ import type {
   ReviewRunResult,
   ReviewSessionRequest,
   ReviewSuppressionEvent,
-  ReviewUpdateEvent
+  ReviewUpdateEvent,
+  VerificationChecklist,
+  VerificationChecklistMutationRequest
 } from '../shared/reviewer'
 import type {
   ApproveRemotePairingRequest,
@@ -940,6 +942,10 @@ export interface PureScienceAPI {
     onFixLoopEnd(listener: AcpListener<ReviewSessionRequest>): RemoveListener
     // Sends an abort request to stop the running fix loop for a session.
     abortFixLoop(request: ReviewSessionRequest): Promise<void>
+    // Loads the session's aggregated verification checklist (all warn/fail claims across reviews).
+    getChecklist(request: ReviewSessionRequest): Promise<VerificationChecklist>
+    // Marks a checklist claim addressed (or reopens it).
+    mutateChecklist(request: VerificationChecklistMutationRequest): Promise<void>
   }
   window: {
     // Closes the focused window (the Cmd+W / Ctrl+W fallback when no preview panel is open).

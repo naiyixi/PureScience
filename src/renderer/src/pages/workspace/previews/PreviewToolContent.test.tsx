@@ -42,6 +42,11 @@ vi.mock('../SessionReviewerPanel', () => ({
     </div>
   )
 }))
+vi.mock('../VerificationChecklistPanel', () => ({
+  VerificationChecklistPanel: (): React.JSX.Element => (
+    <div data-testid="checklist-panel">checklist</div>
+  )
+}))
 
 import { PreviewToolContent } from './PreviewToolContent'
 
@@ -66,11 +71,11 @@ describe('PreviewToolContent', () => {
     expect(render(createItem({ toolKind: 'files' }))).toContain('data-testid="project-files"')
   })
 
-  it('shows the reviewer empty state when the requested session has no reviews', () => {
+  it('shows the checklist panel when the requested session has no reviews', () => {
     const html = render(createItem({ toolKind: 'reviewer', reviewerSessionId: 'review-session' }))
 
     expect(mocks.getReviewsForSession).toHaveBeenCalledWith('review-session', 'project-1')
-    expect(html).toContain('No review available for this session.')
+    expect(html).toContain('data-testid="checklist-panel"')
   })
 
   it('selects the requested review and forwards the active finding', () => {

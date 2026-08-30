@@ -327,7 +327,54 @@ export type GoToTranscriptIntent = {
   locator?: ReviewCheck['locator']
 }
 
-// IPC channel names for the reviewer feature.
+// A session-level verification checklist item: one stable claim (a warn/fail check) aggregated
+// across all reviews of the session. The same underlying issue re-flagged across fix-loop rounds
+// (or surfaced by a re-run) is ONE item whose latest status/resolution/reflagCount come from the
+// newest review that touched it, while history stays visible per review. Modeled on the reference
+// product's session_claims + verification_checks loop, projected onto the existing Finding rows so
+// no duplicated store is needed.
+export type VerificationChecklistItem = {
+  // Stable identity of the claim across reviews: the ORIGINAL finding id (first review that
+  // raised it). Re-reviews track back to it via sourceFindingId chains.
+  rootFindingId: string
+  claim: string
+  // Latest verdict seen for this claim (from the newest review that assessed it).
+  latestStatus: CheckStatus
+  // Latest evidence text (from the newest review that assessed it).
+  latestEvidence: string
+  // Current user-facing resolution — derived from the newest warn/fail check on this claim.
+  resolution: FindingResolution
+  // Total re-flags across all reviews that touched this claim.
+  reflagCount: number
+  // The review + turn that first raised the claim (navigation anchor).
+  firstReviewId: string
+  firstTurnMessageId: string
+  firstReviewedAt: number
+  // The review + turn of the newest assessment.
+  latestReviewId: string
+  latestTurnMessageId: string
+  lastReviewedAt: number
+  // How many reviews have assessed this claim (incl. fix-loop re-reviews).
+  assessmentCount: number
+  // Optional locator of the LATEST warn/fail check, for "Go to transcript".
+  latestLocator?: FindingLocator
+}
+
+// A claim on the session checklist, as returned by reviewer:get-checklist.
+export type VerificationChecklist = {
+  projectId: string
+  sessionId: string
+  items: VerificationChecklistItem[]
+}
+
+// Request to mark a checklist claim addressed (or back to open). Targets the claim's ROOT finding;
+// the repository resolves the newest warn/fail check on that claim and flips its resolution.
+export type VerificationChecklistMutationRequest = ReviewSessionRequest & {
+  rootFindingId: string
+  resolution: FindingResolution
+}
+
+
 export const REVIEWER_IPC = {
   // Renderer → main: trigger a review run.
   RUN: 'reviewer:run',
@@ -344,5 +391,9 @@ export const REVIEWER_IPC = {
   // Main → renderer: fix loop ended or aborted for a session (unlock composer send button).
   FIX_LOOP_END: 'reviewer:fix-loop-end',
   // Renderer → main: abort the running fix loop for a session.
-  ABORT_FIX_LOOP: 'reviewer:abort-fix-loop'
+  ABORT_FIX_LOOP: 'reviewer:abort-fix-loop',
+  // Renderer → main: load the session's aggregated verification checklist.
+  GET_CHECKLIST: 'reviewer:get-checklist',
+  // Renderer → main: mark a checklist claim addressed (or back to open).
+  MUTATE_CHECKLIST: 'reviewer:mutate-checklist'
 } as const

@@ -3,11 +3,18 @@
 
 import { create } from 'zustand'
 
-import type { ReviewWithChecks, ReviewUpdateEvent } from '../../../shared/reviewer'
+import type {
+  ReviewWithChecks,
+  ReviewUpdateEvent,
+  VerificationChecklist,
+  VerificationChecklistMutationRequest
+} from '../../../shared/reviewer'
 
 type ReviewStoreData = {
   // Map from projectId + sessionId to that session's reviews (newest first).
   reviewsBySession: Record<string, ReviewWithChecks[]>
+  // Map from projectId + sessionId to the session's aggregated verification checklist.
+  checklistsBySession: Record<string, VerificationChecklist>
 }
 
 type ReviewStore = ReviewStoreData & {
@@ -23,6 +30,12 @@ type ReviewStore = ReviewStoreData & {
     turnMessageId: string,
     projectId?: string
   ) => ReviewWithChecks | undefined
+  // Loads the session's aggregated verification checklist (all warn/fail claims across reviews).
+  loadChecklist: (sessionId: string, projectId: string) => Promise<void>
+  // Returns the cached checklist for a session (empty items when not yet loaded).
+  getChecklist: (sessionId: string, projectId: string) => VerificationChecklist
+  // Marks a claim addressed (or reopens it), then refreshes the cached checklist.
+  mutateChecklist: (request: VerificationChecklistMutationRequest) => Promise<void>
 }
 
 // Inserts or replaces a review in the list by id, keeping the list in createdAt desc order. `stale` is
@@ -73,7 +86,8 @@ const mergeLoadedReviews = (
 }
 
 export const createInitialReviewState = (): ReviewStoreData => ({
-  reviewsBySession: {}
+  reviewsBySession: {},
+  checklistsBySession: {}
 })
 
 // Session ids with a load in flight, so repeated focus events don't launch overlapping loads. Kept
@@ -145,5 +159,34 @@ export const useReviewStore = create<ReviewStore>((set, get) => ({
   getReviewForTurn: (sessionId: string, turnMessageId: string, projectId?: string) =>
     get()
       .getReviewsForSession(sessionId, projectId)
-      .find((review) => review.turnMessageId === turnMessageId)
+      .find((review) => review.turnMessageId === turnMessageId),
+
+  loadChecklist: async (sessionId: string, projectId: string) => {
+    try {
+      const checklist = (await window.api.reviewer.getChecklist({
+        projectId,
+        appSessionId: sessionId
+      })) as VerificationChecklist
+      set((state) => ({
+        checklistsBySession: {
+          ...state.checklistsBySession,
+          [reviewSessionKey(projectId, sessionId)]: checklist
+        }
+      }))
+    } catch {
+      // Silent: the panel falls back to its empty state until the next load.
+    }
+  },
+
+  getChecklist: (sessionId: string, projectId: string) =>
+    get().checklistsBySession[reviewSessionKey(projectId, sessionId)] ?? {
+      projectId,
+      sessionId,
+      items: []
+    },
+
+  mutateChecklist: async (request: VerificationChecklistMutationRequest) => {
+    await window.api.reviewer.mutateChecklist(request)
+    await get().loadChecklist(request.appSessionId, request.projectId)
+  }
 }))

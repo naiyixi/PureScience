@@ -62,7 +62,8 @@ import type {
 import type {
   ReviewRunRequest,
   ReviewSessionRequest,
-  ReviewSuppressionEvent
+  ReviewSuppressionEvent,
+  VerificationChecklistMutationRequest
 } from '../shared/reviewer'
 import type { HandoffEventsRequest, HandoffRetryRequest } from '../shared/handoff-lifecycle'
 import { announceWindowFindReady, subscribeCloseActivePane } from '../shared/window-controls'
@@ -766,7 +767,13 @@ const api: PureScienceAPI = {
       electronRendererContracts.subscribe('reviewer.onFixLoopEnd', listener),
     // Sends an abort request to the main process to stop the running fix loop for a session.
     abortFixLoop: (request: ReviewSessionRequest) =>
-      electronRendererContracts.invoke('reviewer.abortFixLoop', request)
+      electronRendererContracts.invoke('reviewer.abortFixLoop', request),
+    // Loads the session's aggregated verification checklist.
+    getChecklist: (request: ReviewSessionRequest) =>
+      electronRendererContracts.invoke('reviewer.getChecklist', request),
+    // Marks a checklist claim addressed (or reopens it).
+    mutateChecklist: (request: VerificationChecklistMutationRequest) =>
+      electronRendererContracts.invoke('reviewer.mutateChecklist', request)
   },
   window: {
     close: () => electronRendererContracts.invoke('window.close'),

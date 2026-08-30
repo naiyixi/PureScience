@@ -1343,6 +1343,8 @@ export const en: Record<ZhKey, string> = {
   'ui.closepreview': 'Close preview',
   'ui.interactingwithtools': 'Interacting with tools',
   'ui.nochecksrecorded': 'No checks recorded.',
+  'ui.checks': 'Checks',
+  'ui.checklist': 'Checklist',
   'ui.theoriginaltaskcontinuesinth': 'The original task continues in this turn.',
   'ui.contextwindow': 'Context window',
   'ui.resumesession': 'Resume session',

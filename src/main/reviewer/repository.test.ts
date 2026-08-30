@@ -986,4 +986,118 @@ describe('review repository (integration)', () => {
     const [stored] = await repository.getReviewsForSession('session-rollback')
     expect(stored.checks[0]!.reflagCount).toBe(0)
   })
+
+  it('aggregates the session verification checklist from warn/fail findings', async () => {
+    const repository = await createRepository()
+    const review = await repository.createReview({
+      projectId: 'project-1',
+      sessionId: 'session-checklist',
+      turnMessageId: 'a1',
+      scope: scope('a1')
+    })
+    await repository.addChecks(review.id, checks())
+
+    const checklist = await repository.getVerificationChecklist('project-1', 'session-checklist')
+
+    // checks() has 2 warn/fail + 1 pass; the pass check is excluded.
+    expect(checklist.items).toHaveLength(2)
+    const failItem = checklist.items.find((item) => item.latestStatus === 'fail')!
+    expect(failItem.claim).toBe('ran 33 rows')
+    expect(failItem.rootFindingId).toBeTruthy()
+    expect(failItem.assessmentCount).toBe(1)
+    expect(failItem.resolution).toBe('open')
+    // A session with no reviews yields an empty checklist.
+    const empty = await repository.getVerificationChecklist('project-1', 'session-none')
+    expect(empty.items).toEqual([])
+  })
+
+  it('counts fix-loop re-assessments via disposition history', async () => {
+    const repository = await createRepository()
+    const review = await repository.createReview({
+      projectId: 'project-1',
+      sessionId: 'session-dispo',
+      turnMessageId: 'a1',
+      scope: scope('a1')
+    })
+    await repository.addChecks(review.id, [checks()[0]!])
+
+    const [stored] = await repository.getReviewsForSession('session-dispo')
+    const findingId = stored.checks[0]!.id
+    await repository.commitFindingDisposition({
+      reviewId: review.id,
+      sourceFindingId: findingId,
+      causeReviewId: review.id,
+      trigger: 'review_submission',
+      outcome: 'still_open'
+    })
+
+    const checklist = await repository.getVerificationChecklist('project-1', 'session-dispo')
+    expect(checklist.items[0]!.assessmentCount).toBe(2)
+    expect(checklist.items[0]!.reflagCount).toBe(1)
+  })
+
+  it('marks a checklist claim addressed and reopens it', async () => {
+    const repository = await createRepository()
+    const review = await repository.createReview({
+      projectId: 'project-1',
+      sessionId: 'session-mutate',
+      turnMessageId: 'a1',
+      scope: scope('a1')
+    })
+    await repository.addChecks(review.id, [checks()[0]!])
+
+    const [before] = await repository.getReviewsForSession('session-mutate')
+    const findingId = before.checks[0]!.id
+
+    await repository.updateChecklistClaimResolution(
+      'project-1',
+      'session-mutate',
+      findingId,
+      'resolved'
+    )
+    let checklist = await repository.getVerificationChecklist('project-1', 'session-mutate')
+    expect(checklist.items[0]!.resolution).toBe('resolved')
+
+    await repository.updateChecklistClaimResolution(
+      'project-1',
+      'session-mutate',
+      findingId,
+      'open'
+    )
+    checklist = await repository.getVerificationChecklist('project-1', 'session-mutate')
+    expect(checklist.items[0]!.resolution).toBe('open')
+  })
+
+  it('refuses checklist mutations for claims outside the session', async () => {
+    const repository = await createRepository()
+    const review = await repository.createReview({
+      projectId: 'project-1',
+      sessionId: 'session-mutate-other',
+      turnMessageId: 'a1',
+      scope: scope('a1')
+    })
+    await repository.addChecks(review.id, [checks()[0]!])
+
+    const [stored] = await repository.getReviewsForSession('session-mutate-other')
+    const findingId = stored.checks[0]!.id
+
+    // Wrong session: the claim belongs to session-mutate-other, not session-none.
+    await expect(
+      repository.updateChecklistClaimResolution(
+        'project-1',
+        'session-none',
+        findingId,
+        'resolved'
+      )
+    ).rejects.toThrow(/not a warn\/fail check of this session/)
+    // Unknown claim id.
+    await expect(
+      repository.updateChecklistClaimResolution(
+        'project-1',
+        'session-mutate-other',
+        'missing-finding',
+        'resolved'
+      )
+    ).rejects.toThrow(/Claim not found/)
+  })
 })
