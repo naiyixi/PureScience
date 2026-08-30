@@ -28,6 +28,7 @@ import {
 } from './preview-file-item'
 import { createPreviewRequestScope } from './previews/preview-file-reader'
 import type { JobSummary } from '../../../../shared/compute'
+import type { AnnotationImageRef, AnnotationRegion } from '../../../../shared/annotations'
 import { CompletedJobCard } from '@/components/CompletedJobCard'
 import { JobDetailModal } from '@/components/JobDetailModal'
 import { extractJobIdFromActivity } from '@/components/job-binding-utils'
@@ -64,6 +65,8 @@ type WorkspaceMessageScrollerProps = {
   onSendEditedMessage: (messageId: string, doc: ComposerDoc) => void
   canBranchInNewSession?: boolean
   onBranchInNewSession?: (messageId: string) => void
+  // Region-annotation picks on agent images stage an image annotation card for the next message.
+  onAnnotateImage?: (image: AnnotationImageRef, region: AnnotationRegion) => void
   // Events are read-only projections; retry sends an intent that main validates against its state.
   handoffLifecycleSource?: HandoffLifecycleEventSource
   onRetryHandoff?: (request: HandoffRetryRequest) => Promise<void>
@@ -377,6 +380,7 @@ const WorkspaceMessageScrollerImpl = ({
   onSendEditedMessage,
   canBranchInNewSession = false,
   onBranchInNewSession,
+  onAnnotateImage,
   handoffLifecycleSource,
   onRetryHandoff
 }: WorkspaceMessageScrollerProps): React.JSX.Element => {
@@ -848,6 +852,7 @@ const WorkspaceMessageScrollerImpl = ({
                       onOpenSkillMention,
                       onPreviewMentionArtifact,
                       onOpenSessionMention,
+                      onAnnotateImage,
                       onSendEditedMessage,
                       canBranchInNewSession,
                       onBranchInNewSession,
@@ -1041,6 +1046,7 @@ const areWorkspaceMessageScrollerPropsEqual = (
   next: WorkspaceMessageScrollerProps
 ): boolean =>
   previous.onSendEditedMessage === next.onSendEditedMessage &&
+  previous.onAnnotateImage === next.onAnnotateImage &&
   areSessionsEqualForTranscript(previous.activeSession, next.activeSession)
 
 const WorkspaceMessageScroller = memo(

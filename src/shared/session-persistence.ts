@@ -2,6 +2,7 @@ import type { PersistedUploadedAttachment } from './uploads'
 import {
   ANNOTATION_MAX_SOURCE_LENGTH,
   ANNOTATION_MAX_TEXT_LENGTH,
+  isValidAnnotationRegion,
   type ConversationAnnotation
 } from './annotations'
 import type { FileReference } from './artifacts'
@@ -784,15 +785,53 @@ const sanitizeUploadedAttachment = (
 // kinds fail closed (dropped). Only user-supplied workspace selections are accepted.
 const sanitizeConversationAnnotation = (annotation: unknown): ConversationAnnotation | undefined => {
   if (!isRecord(annotation)) return undefined
-  if (annotation.kind !== 'text') return undefined
   const id = asString(annotation.id)
   const source = asString(annotation.source)
-  const text = asString(annotation.text)
   const createdAt = asNumber(annotation.createdAt)
-  if (!id || !source || !text || createdAt === undefined) return undefined
+  if (!id || !source || createdAt === undefined) return undefined
   if (source.length > ANNOTATION_MAX_SOURCE_LENGTH) return undefined
-  if (text.length > ANNOTATION_MAX_TEXT_LENGTH) return undefined
-  return { id, kind: 'text', source, text, createdAt }
+
+  if (annotation.kind === 'text') {
+    const text = asString(annotation.text)
+    if (!text || text.length > ANNOTATION_MAX_TEXT_LENGTH) return undefined
+    return { id, kind: 'text', source, text, createdAt }
+  }
+
+  if (annotation.kind === 'image') {
+    const image = isRecord(annotation.image) ? annotation.image : undefined
+    const mediaPath = image ? asString(image.mediaPath) : undefined
+    const width = image ? asNumber(image.width) : undefined
+    const height = image ? asNumber(image.height) : undefined
+    const regionRecord = isRecord(annotation.region) ? annotation.region : undefined
+    const regionX = regionRecord ? asNumber(regionRecord.x) : undefined
+    const regionY = regionRecord ? asNumber(regionRecord.y) : undefined
+    const regionWidth = regionRecord ? asNumber(regionRecord.width) : undefined
+    const regionHeight = regionRecord ? asNumber(regionRecord.height) : undefined
+    const region =
+      regionX !== undefined &&
+      regionY !== undefined &&
+      regionWidth !== undefined &&
+      regionHeight !== undefined &&
+      isValidAnnotationRegion({
+        x: regionX,
+        y: regionY,
+        width: regionWidth,
+        height: regionHeight
+      })
+        ? { x: regionX, y: regionY, width: regionWidth, height: regionHeight }
+        : undefined
+    if (!mediaPath || !region) return undefined
+    return {
+      id,
+      kind: 'image',
+      source,
+      image: { mediaPath, width, height },
+      region,
+      createdAt
+    }
+  }
+
+  return undefined
 }
 
 // Persisting more than the UI shows is wasteful, so bound the large text-bearing fields.

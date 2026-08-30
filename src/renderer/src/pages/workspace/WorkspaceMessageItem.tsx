@@ -26,12 +26,14 @@ import { useEffect, useId, useRef, useState, type FocusEvent } from 'react'
 import type { ArtifactPreviewResult } from '../../../../shared/artifacts'
 import type { ProvenanceMessagePart } from '../../../../shared/artifact-provenance'
 import type { AcpTurnTokenUsage } from '../../../../shared/acp'
+import type { AnnotationImageRef, AnnotationRegion } from '../../../../shared/annotations'
 import type { PersistedRuntimeSegment } from '../../../../shared/conversation-graph'
 import type { MessagePart } from '../../../../shared/session-persistence'
 import { getUploadedAttachmentName } from '../../../../shared/uploads'
 
 import { ArtifactPreview } from './artifact-preview'
 import { ComposerEditor } from './composer/ComposerEditor'
+import { ImageRegionAnnotator } from './ImageRegionAnnotator'
 import { EditMessageConfirmDialog } from './EditMessageConfirmDialog'
 import { ExtensionPreservingFileName } from './ExtensionPreservingFileName'
 import { providerKindKey } from '../settings/provider-form-value'
@@ -67,6 +69,7 @@ type WorkspaceMessageItemProps = {
   onOpenSkillMention: (skillId: string, name: string) => void
   onPreviewMentionArtifact: (part: ArtifactMentionPart) => void
   onOpenSessionMention: (sessionId: string) => void
+  onAnnotateImage?: (image: AnnotationImageRef, region: AnnotationRegion) => void
   artifacts?: MessageArtifact[]
   // Inline editing is only enabled once the session's run settles; confirming forks the
   // conversation at this message and resends the adjusted doc as a fresh turn.
@@ -464,25 +467,39 @@ const assistantMessageSurfaceClassName =
 // memoized: stable message objects (the common re-render case in long transcripts) skip the
 // base64 data-URL rebuild entirely, and lazy/async decoding keeps off-screen images cheap.
 const MessageImageList = memo(function MessageImageList({
-  images
+  images,
+  onAnnotateImage
 }: {
   images: MessageImage[]
+  onAnnotateImage?: (image: AnnotationImageRef, region: AnnotationRegion) => void
 }): React.JSX.Element | null {
   if (images.length === 0) return null
 
   return (
     <div className="mt-3 grid max-w-full grid-cols-1 gap-3 sm:grid-cols-2">
-      {images.map((image, index) => (
-        <img
-          key={image.id}
-          src={`data:${image.mimeType};base64,${image.data}`}
-          alt={`Agent-generated image ${index + 1}`}
-          className="max-h-[40rem] w-auto max-w-full rounded-lg border border-border-200 bg-bg-000 object-contain"
-          loading="lazy"
-          decoding="async"
-          draggable={false}
-        />
-      ))}
+      {images.map((image, index) => {
+        const element = (
+          <img
+            key={image.id}
+            src={`data:${image.mimeType};base64,${image.data}`}
+            alt={`Agent-generated image ${index + 1}`}
+            className="max-h-[40rem] w-auto max-w-full rounded-lg border border-border-200 bg-bg-000 object-contain"
+            loading="lazy"
+            decoding="async"
+            draggable={false}
+          />
+        )
+        if (!onAnnotateImage) return element
+        return (
+          <ImageRegionAnnotator
+            key={image.id}
+            image={{ mediaPath: image.id }}
+            onAnnotate={onAnnotateImage}
+          >
+            {element}
+          </ImageRegionAnnotator>
+        )
+      })}
     </div>
   )
 })
@@ -802,6 +819,7 @@ const WorkspaceMessageItem = ({
   onOpenSkillMention,
   onPreviewMentionArtifact,
   onOpenSessionMention,
+  onAnnotateImage,
   canEditMessage = false,
   showUserActions = true,
   contentPaddingClassName,
@@ -986,12 +1004,20 @@ const WorkspaceMessageItem = ({
                         <span
                           key={annotation.id}
                           className="inline-flex items-center gap-1.5 rounded-lg bg-bg-200 px-2 py-1 text-[11px] text-text-100"
-                          title={annotation.text}
+                          title={
+                            annotation.kind === 'text'
+                              ? annotation.text
+                              : t('ws.annotationImageRegionLabel')
+                          }
                         >
                           <span className="shrink-0 rounded bg-bg-300 px-1 py-0.5 text-[10px] text-text-100">
                             {annotation.source}
                           </span>
-                          <span className="line-clamp-1">{annotation.text}</span>
+                          <span className="line-clamp-1">
+                            {annotation.kind === 'text'
+                              ? annotation.text
+                              : t('ws.annotationImageRegionLabel')}
+                          </span>
                         </span>
                       ))}
                     </div>
@@ -1077,7 +1103,7 @@ const WorkspaceMessageItem = ({
                 sessionLinks
               />
             ) : null}
-            <MessageImageList images={message.images ?? []} />
+            <MessageImageList images={message.images ?? []} onAnnotateImage={onAnnotateImage} />
             <MessageArtifactList onPreviewArtifact={onPreviewArtifact} artifacts={artifacts} />
             {showAssistantFooter &&
             (terminalDate ||

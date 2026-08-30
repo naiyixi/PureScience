@@ -1049,3 +1049,99 @@ describe('normalizeSessionFile with activities', () => {
     expect(noError?.errorReportable).toBeUndefined()
   })
 })
+
+describe('message annotation persistence', () => {
+  it('round-trips image region annotations alongside text annotations', () => {
+    const restored = normalizeSessionFile({
+      id: 'session-1',
+      projectId: 'project-a',
+      title: 'Annotations',
+      cwd: '/workspace',
+      status: 'idle',
+      messages: [
+        {
+          id: 'message-1',
+          role: 'user',
+          content: '请标注',
+          status: 'complete',
+          eventIds: ['event-1'],
+          annotations: [
+            {
+              id: 'annotation-1',
+              kind: 'text',
+              source: '转录',
+              text: '对比两组表达量',
+              createdAt: 1
+            },
+            {
+              id: 'annotation-2',
+              kind: 'image',
+              source: 'gel.jpg',
+              image: { mediaPath: 'img-42', width: 800, height: 600 },
+              region: { x: 0.25, y: 0.1, width: 0.5, height: 0.33 },
+              createdAt: 2
+            }
+          ],
+          createdAt: 1,
+          updatedAt: 1
+        }
+      ],
+      createdAt: 1,
+      updatedAt: 1
+    })
+
+    expect(restored?.messages[0].annotations).toEqual([
+      { id: 'annotation-1', kind: 'text', source: '转录', text: '对比两组表达量', createdAt: 1 },
+      {
+        id: 'annotation-2',
+        kind: 'image',
+        source: 'gel.jpg',
+        image: { mediaPath: 'img-42', width: 800, height: 600 },
+        region: { x: 0.25, y: 0.1, width: 0.5, height: 0.33 },
+        createdAt: 2
+      }
+    ])
+  })
+
+  it('drops image annotations with malformed regions and unknown kinds', () => {
+    const restored = normalizeSessionFile({
+      id: 'session-1',
+      projectId: 'project-a',
+      title: 'Annotations',
+      cwd: '/workspace',
+      status: 'idle',
+      messages: [
+        {
+          id: 'message-1',
+          role: 'user',
+          content: '标注',
+          status: 'complete',
+          eventIds: ['event-1'],
+          annotations: [
+            {
+              id: 'annotation-bad-region',
+              kind: 'image',
+              source: 'gel.jpg',
+              image: { mediaPath: 'img-42', width: 800, height: 600 },
+              region: { x: 0.6, y: 0, width: 0.5, height: 0.5 },
+              createdAt: 1
+            },
+            {
+              id: 'annotation-bad-kind',
+              kind: 'video',
+              source: 'clip.mp4',
+              text: 'x',
+              createdAt: 2
+            }
+          ],
+          createdAt: 1,
+          updatedAt: 1
+        }
+      ],
+      createdAt: 1,
+      updatedAt: 1
+    })
+
+    expect(restored?.messages[0].annotations).toBeUndefined()
+  })
+})

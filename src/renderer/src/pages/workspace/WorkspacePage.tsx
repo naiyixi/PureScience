@@ -10,6 +10,9 @@ import {
   ANNOTATION_MAX_PER_MESSAGE,
   ANNOTATION_MAX_SOURCE_LENGTH,
   ANNOTATION_MAX_TEXT_LENGTH,
+  isValidAnnotationRegion,
+  type AnnotationImageRef,
+  type AnnotationRegion,
   type ConversationAnnotation
 } from '../../../../shared/annotations'
 import {
@@ -1110,6 +1113,24 @@ const WorkspacePage = ({
       ]
     })
   }, [])
+  // Image region annotations arrive from the per-image region picker with a normalized region.
+  const addImageAnnotation = useCallback((image: AnnotationImageRef, region: AnnotationRegion) => {
+    if (!isValidAnnotationRegion(region)) return
+    setPendingAnnotations((current) => {
+      if (current.length >= ANNOTATION_MAX_PER_MESSAGE) return current
+      return [
+        ...current,
+        {
+          id: `annotation-${Date.now()}-${current.length}`,
+          kind: 'image',
+          source: t('ws.annotationImageRegionLabel'),
+          image: { mediaPath: image.mediaPath.slice(0, ANNOTATION_MAX_SOURCE_LENGTH) },
+          region,
+          createdAt: Date.now()
+        }
+      ]
+    })
+  }, [t])
   const removeAnnotation = useCallback((annotationId: string) => {
     setPendingAnnotations((current) => current.filter((item) => item.id !== annotationId))
   }, [])
@@ -2697,6 +2718,7 @@ const WorkspacePage = ({
             pendingAnnotations={pendingAnnotations}
             onRemoveAnnotation={removeAnnotation}
             onAnnotateSelection={addAnnotation}
+            onAnnotateImage={addImageAnnotation}
             onOpenFolderGrants={() => setFolderGrantsOpen(true)}
             permissionProfile={activePermissionProfile}
             permissionProfileState={activePermissionProfileState}
