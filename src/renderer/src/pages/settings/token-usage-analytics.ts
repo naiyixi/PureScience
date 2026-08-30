@@ -4,6 +4,7 @@ import {
   type PersistedChatMessage,
   type PersistedChatSession
 } from '../../../../shared/session-persistence'
+import type { PersistedAgentFrame } from '../../../../shared/conversation-graph'
 import type { Project } from '../../../../shared/projects'
 
 export type TokenUsagePeriod = 'today' | 'week' | '30-days' | 'all'
@@ -17,6 +18,22 @@ export type TokenUsageHeatmapMetric =
   | 'newProjects'
   | 'newArtifacts'
   | 'runs'
+
+// One attributed run: a root agent frame with the tokens it consumed directly plus the tokens of
+// every descendant frame (sub-agent delegations, reviewers) so a run's real cost is visible.
+export type TokenUsageRun = {
+  frameId: string
+  kind: 'root' | 'reviewer' | 'delegate' | 'compatibility'
+  parentFrameId?: string
+  startedAt: number
+  agentName?: string
+  inputTokens: number
+  cacheTokens: number
+  outputTokens: number
+  totalTokens: number
+  subRunCount: number
+  subRunTokens: number
+}
 
 export type TokenUsageDailyPoint = {
   dateKey: string
@@ -47,6 +64,7 @@ export type TokenUsageAnalytics = {
   artifactCreatedAt: readonly number[]
   runsAt: readonly number[]
   usageEvents: readonly TokenUsageEvent[]
+  runs: readonly TokenUsageRun[]
   totalArtifacts: number
 }
 
@@ -187,6 +205,92 @@ export const buildTokenUsageAnalytics = (
     }
   }
 
+
+  // Per-run attribution: group agent-message usage by agent frame. A root frame's run rolls up the
+  // tokens of every descendant frame (delegates/reviewers) so each run shows its true cost.
+  const frameById = new Map<string, PersistedAgentFrame>()
+  for (const session of sessions) {
+    for (const frame of session.conversationGraph?.frames ?? []) frameById.set(frame.id, frame)
+  }
+  const ownUsageByFrame = new Map<string, { input: number; cache: number; output: number }>()
+  for (const session of sessions) {
+    for (const message of session.conversationGraph?.messages ?? []) {
+      if (message.role !== 'agent' || !message.turnUsage || !message.agentFrameId) continue
+      const current = ownUsageByFrame.get(message.agentFrameId) ?? { input: 0, cache: 0, output: 0 }
+      current.input += finiteNonNegative(message.turnUsage.inputTokens)
+      current.cache += finiteNonNegative(message.turnUsage.cacheTokens)
+      current.output += finiteNonNegative(message.turnUsage.outputTokens)
+      ownUsageByFrame.set(message.agentFrameId, current)
+    }
+  }
+  const runs: TokenUsageRun[] = []
+  const parentOf = new Map<string, string | undefined>()
+  for (const frame of frameById.values()) {
+    const parentId = frame.kind === 'root' ? undefined : frame.parentFrameId
+    parentOf.set(frame.id, parentId)
+  }
+  const subtreeTokens = (frameId: string, count: { n: number }): { input: number; cache: number; output: number } => {
+    let input = 0
+    let cache = 0
+    let output = 0
+    for (const [id, parentId] of parentOf) {
+      if (parentId !== frameId) continue
+      const own = ownUsageByFrame.get(id) ?? { input: 0, cache: 0, output: 0 }
+      count.n += 1
+      input += own.input
+      cache += own.cache
+      output += own.output
+      const deeper = subtreeTokens(id, count)
+      input += deeper.input
+      cache += deeper.cache
+      output += deeper.output
+    }
+    return { input, cache, output }
+  }
+  for (const frame of frameById.values()) {
+    const own = ownUsageByFrame.get(frame.id) ?? { input: 0, cache: 0, output: 0 }
+    const sub = { n: 0 }
+    const rolled = subtreeTokens(frame.id, sub)
+    runs.push({
+      frameId: frame.id,
+      kind: frame.kind,
+      ...(frame.parentFrameId ? { parentFrameId: frame.parentFrameId } : {}),
+      startedAt: frame.createdAt,
+      ...(frame.agentName ? { agentName: frame.agentName } : {}),
+      inputTokens: own.input,
+      cacheTokens: own.cache,
+      outputTokens: own.output,
+      totalTokens: own.input + own.cache + own.output,
+      subRunCount: sub.n,
+      subRunTokens: rolled.input + rolled.cache + rolled.output
+    })
+  }
+  // Sessions without a conversation graph: synthesize one root run from their agent-message usage.
+  for (const session of sessions) {
+    if (session.conversationGraph) continue
+    let input = 0
+    let cache = 0
+    let output = 0
+    for (const message of session.messages) {
+      if (message.role !== 'agent' || !message.turnUsage) continue
+      input += finiteNonNegative(message.turnUsage.inputTokens)
+      cache += finiteNonNegative(message.turnUsage.cacheTokens)
+      output += finiteNonNegative(message.turnUsage.outputTokens)
+    }
+    runs.push({
+      frameId: session.id,
+      kind: 'root',
+      startedAt: session.createdAt,
+      inputTokens: input,
+      cacheTokens: cache,
+      outputTokens: output,
+      totalTokens: input + cache + output,
+      subRunCount: 0,
+      subRunTokens: 0
+    })
+  }
+  runs.sort((a, b) => a.startedAt - b.startedAt)
+
   const artifactCreatedAt = Array.from(artifactIds).flatMap((artifactId) => {
     const timestamp =
       persistedArtifactCreatedAt.get(artifactId) ?? associatedArtifactCreatedAt.get(artifactId)
@@ -236,6 +340,7 @@ export const buildTokenUsageAnalytics = (
     artifactCreatedAt,
     runsAt,
     usageEvents,
+    runs,
     totalArtifacts: artifactIds.size
   }
 }
