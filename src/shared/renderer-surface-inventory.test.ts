@@ -186,6 +186,8 @@ const REMOTE_LOCAL_ONLY_CHANNELS: GroupedInventory = {
     'set-memory',
     'set-notifications-enabled',
     'set-package-mirror',
+    'set-use-intent',
+    'third-party-licenses',
     'uninstall-claude',
     'uninstall-codex',
     'uninstall-opencode'
@@ -240,12 +242,12 @@ describe('renderer surface inventory', () => {
       ...Object.keys(WEB_EVENT_CHANNELS)
     ])
 
-    expect(electronPaths).toHaveLength(355)
+    expect(electronPaths).toHaveLength(357)
     expectSameSet(
       electronPaths,
       RENDERER_CONTRACT_CATALOG.map(({ publicPath }) => publicPath)
     )
-    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(257)
+    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(259)
     expect(Object.keys(WEB_EVENT_CHANNELS)).toHaveLength(33)
     expectSameSet(
       electronPaths.filter((path) => !generatedPaths.has(path)),
@@ -281,7 +283,7 @@ describe('renderer surface inventory', () => {
     const expectedRemoteLocalOnly = expand(REMOTE_LOCAL_ONLY_CHANNELS, ':')
 
     expectSameSet(REMOTE_LOCAL_ONLY_RPC_CHANNELS, expectedRemoteLocalOnly)
-    expect(expectedRemoteLocalOnly).toHaveLength(70)
+    expect(expectedRemoteLocalOnly).toHaveLength(72)
     expect(
       expectedRemoteLocalOnly.every((channel) => WEB_RPC_ALLOWED_CHANNELS.includes(channel))
     ).toBe(true)
