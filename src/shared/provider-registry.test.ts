@@ -693,4 +693,81 @@ describe('provider registry', () => {
       expect(resolveCustomModelContextWindow(undefined)).toBe(200_000)
     })
   })
+
+  describe('Phase 4 gateways: OpenCode Zen / Go and Tencent TokenHub', () => {
+    it('registers the three new official vendors with their OpenAI-compatible routes', () => {
+      expect(isOfficialVendorId('opencodezen')).toBe(true)
+      expect(isOfficialVendorId('opencodego')).toBe(true)
+      expect(isOfficialVendorId('tokenhub')).toBe(true)
+
+      expect(resolveVendorApiEndpoints('opencodezen')).toEqual(['openai'])
+      expect(resolveVendorApiEndpoints('opencodego')).toEqual(['openai'])
+      expect(resolveVendorApiEndpoints('tokenhub')).toEqual(['openai'])
+
+      expect(resolveVendorOpenAiBaseUrl('opencodezen')).toBe('https://opencode.ai/zen/v1')
+      expect(resolveVendorOpenAiBaseUrl('opencodego')).toBe('https://opencode.ai/zen/go/v1')
+      expect(resolveVendorOpenAiBaseUrl('tokenhub')).toBe('https://tokenhub.tencentmaas.com/v1')
+
+      // Live model-list refresh is exposed only where the vendor publishes a documented endpoint.
+      expect(getOfficialVendor('opencodezen')?.modelsListUrl).toBe(
+        'https://opencode.ai/zen/v1/models'
+      )
+      expect(getOfficialVendor('opencodego')?.modelsListUrl).toBe(
+        'https://opencode.ai/zen/go/v1/models'
+      )
+      expect(getOfficialVendor('tokenhub')?.modelsListUrl).toBeUndefined()
+    })
+
+    it('routes Zen GPT-5.x models to native Responses and the rest of the catalog to Chat Completions', () => {
+      // Per-model Responses metadata: the documented /zen/v1/responses endpoint.
+      expect(isVendorModelResponsesSupported('opencodezen', 'gpt-5.6-sol')).toBe(true)
+      expect(isVendorModelResponsesSupported('opencodezen', 'gpt-5.6-luna')).toBe(true)
+      expect(isVendorModelResponsesSupported('opencodezen', 'gpt-5.3-codex')).toBe(true)
+      expect(isVendorModelResponsesSupported('opencodezen', 'gpt-5.1-codex')).toBe(true)
+      // Live-refreshed GPT ids are covered too (they are listed in responsesModels).
+      expect(isVendorModelResponsesSupported('opencodezen', 'gpt-5.2-codex')).toBe(true)
+      // Non-GPT families stay on Chat Completions.
+      expect(isVendorModelResponsesSupported('opencodezen', 'claude-opus-5')).toBe(false)
+      expect(isVendorModelResponsesSupported('opencodezen', 'gemini-3.5-flash')).toBe(false)
+      expect(isVendorModelResponsesSupported('opencodezen', 'deepseek-v4-pro')).toBe(false)
+      expect(isVendorModelResponsesSupported('opencodezen', 'grok-4.6')).toBe(false)
+    })
+
+    it('keeps OpenCode Go entirely on Chat Completions', () => {
+      expect(isVendorModelResponsesSupported('opencodego', 'minimax-m3')).toBe(false)
+      expect(isVendorModelResponsesSupported('opencodego', 'gpt-5.6-luna')).toBe(false)
+      expect(isVendorModelResponsesSupported('opencodego', 'hy3')).toBe(false)
+      expect(getOfficialVendor('opencodego')?.models.length).toBeGreaterThan(0)
+    })
+
+    it('routes TokenHub Hy3 and DeepSeek V4 to native Responses', () => {
+      expect(isVendorModelResponsesSupported('tokenhub', 'hy3')).toBe(true)
+      expect(isVendorModelResponsesSupported('tokenhub', 'hy3-preview')).toBe(true)
+      expect(isVendorModelResponsesSupported('tokenhub', 'deepseek-v4-pro')).toBe(true)
+      expect(isVendorModelResponsesSupported('tokenhub', 'deepseek-v4-flash')).toBe(true)
+      // GLM / Kimi / MiniMax models stay on Chat Completions on this endpoint.
+      expect(isVendorModelResponsesSupported('tokenhub', 'glm-5.3')).toBe(false)
+      expect(isVendorModelResponsesSupported('tokenhub', 'kimi-k3')).toBe(false)
+      expect(isVendorModelResponsesSupported('tokenhub', 'minimax-m3')).toBe(false)
+    })
+
+    it('exposes curated catalogs and multimodal metadata for the new vendors', () => {
+      // Zen ships free-tier models; Go carries the coding-plan catalog; TokenHub mirrors its
+      // documented model list.
+      expect(getOfficialVendor('opencodezen')?.models.some((m) => m.id.endsWith('-free'))).toBe(
+        true
+      )
+      expect(
+        getOfficialVendor('opencodezen')?.models.find((m) => m.id === 'gpt-5.6-sol')
+          ?.reasoningEffort
+      ).toBe('low-medium-high-xhigh-ultra')
+      expect(
+        getOfficialVendor('opencodego')?.models.find((m) => m.id === 'glm-5.3')?.contextWindow
+      ).toBe(1_000_000)
+      // GLM vision variant is the only documented multimodal id on TokenHub.
+      expect(
+        getOfficialVendor('tokenhub')?.multimodal?.multimodalModels
+      ).toEqual(['glm-5v-turbo'])
+    })
+  })
 })

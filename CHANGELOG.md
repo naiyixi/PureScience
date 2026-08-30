@@ -17,6 +17,12 @@ PureScience 是一款面向科学研究的开源 AI 工作台：多智能体协�
 | 天工 | 天工开物——工具与工程体系的未来篇章 | （规划） |
 | 北斗 | 指路星辰——导航与检索体系的未来篇章 | （规划） |
 
+## v1.14.0 — 2026-10-19（P3 生态与提供商 · 4.1）
+
+- **模型目录扩充**：新增 **OpenCode Zen** 精选网关（GPT-5.x / Claude / Gemini / Grok / 免费模型等 23 个精选条目，含原生 Responses 端点路由）与 **OpenCode Go** 配额计划目录（MiniMax / Kimi / GLM-5.3 / DeepSeek V4 / Qwen3.8 / Hy3 等 21 个条目）
+- **腾讯 TokenHub 提供商**：腾讯大模型服务平台（原混元 / DeepSeek API 入口迁移目标）——DeepSeek V4 Pro/Flash、Hy3、GLM-5.3、Kimi-K3、MiniMax-M3 等 13 个模型，Hy3 与 DeepSeek V4 家族支持原生 Responses 路由
+- **混合协议端点路由**：Zen 的 GPT-5.x 家族走 `/zen/v1/responses` 原生端点、其余模型走 Chat Completions——per-model 端点元数据驱动，live 模型刷新同样覆盖
+
 ## v1.13.0 — 2026-10-14（P2 体验打磨 · 3.4）
 
 - **注解图片版补全**：agent 生成的图片支持框选区域注解——点「框选图片区域」进入框选模式，拖拽圈定区域；选中后可**放大 2 倍精调边界**（四角手柄微调）、**重选**或**取消**；确认后生成图片区域注解卡（含归一化坐标），随下一条消息作为引用上下文发送给 agent

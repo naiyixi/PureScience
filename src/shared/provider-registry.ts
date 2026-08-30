@@ -32,6 +32,9 @@ export type OfficialVendorId =
   | 'sensenova'
   | 'volcengine'
   | 'openrouter'
+  | 'opencodezen'
+  | 'opencodego'
+  | 'tokenhub'
 
 // A selectable endpoint for vendors that publish more than one host — e.g. a Global vs. China region
 // (MiniMax) or a separate overseas/domestic console (GLM's Z.AI vs. BigModel). Each carries its own
@@ -752,6 +755,182 @@ export const OFFICIAL_VENDORS: OfficialVendor[] = [
         'qwen/qwen3.7-max'
       ]
     }
+  },
+  {
+    id: 'opencodezen',
+    label: 'OpenCode Zen',
+    // The Zen gateway aggregates unrelated model families, so effort stays hidden unless a curated
+    // model documents its own vocabulary (the GPT-5.x entries below). Everything else inherits the
+    // conservative 'unsupported' default rather than pretending to support five levels.
+    reasoningEffort: 'unsupported',
+    // Zen serves an OpenAI-compatible Chat Completions route plus a native Responses route under the
+    // same `/zen/v1` root. Only the GPT-5.x family is documented on the Responses endpoint
+    // (https://opencode.ai/zen/v1/responses); the rest of the catalog is Chat Completions, so per-model
+    // `responsesModels` — not a vendor-wide 'responses' declaration — drives the protocol routing.
+    apiEndpoints: ['openai'],
+    baseUrl: 'https://opencode.ai',
+    openaiBaseUrl: 'https://opencode.ai/zen/v1',
+    apiKeyUrl: 'https://opencode.ai/zen',
+    modelsListUrl: 'https://opencode.ai/zen/v1/models',
+    models: [
+      // OpenAI family — native Responses endpoint (per-model routing below).
+      {
+        id: 'gpt-5.6-sol',
+        contextWindow: 1_050_000,
+        reasoningEffort: 'low-medium-high-xhigh-ultra'
+      },
+      {
+        id: 'gpt-5.6-terra',
+        contextWindow: 1_050_000,
+        reasoningEffort: 'low-medium-high-xhigh-ultra'
+      },
+      { id: 'gpt-5.6-luna', contextWindow: 1_050_000, reasoningEffort: 'standard-5' },
+      {
+        id: 'gpt-5.5',
+        contextWindow: 1_050_000,
+        reasoningEffort: 'none-low-medium-high-xhigh'
+      },
+      { id: 'gpt-5.4', contextWindow: 1_050_000 },
+      { id: 'gpt-5.3-codex', contextWindow: 400_000, reasoningEffort: 'none-low-medium-high-xhigh' },
+      { id: 'gpt-5.1-codex', contextWindow: 400_000 },
+      // Anthropic family
+      { id: 'claude-opus-5', contextWindow: 1_000_000, reasoningEffort: 'standard-5' },
+      { id: 'claude-sonnet-5', contextWindow: 1_000_000, reasoningEffort: 'standard-5' },
+      // Google family
+      { id: 'gemini-3.5-flash', contextWindow: 1_048_576 },
+      { id: 'gemini-3.1-pro', contextWindow: 1_048_576 },
+      // Other top vendors on the gateway
+      { id: 'grok-4.6', contextWindow: 1_000_000, reasoningEffort: 'low-medium-high-xhigh' },
+      { id: 'grok-4.5', contextWindow: 500_000 },
+      { id: 'deepseek-v4-pro', contextWindow: 1_000_000 },
+      { id: 'deepseek-v4-flash', contextWindow: 1_000_000 },
+      { id: 'glm-5.2', contextWindow: 1_000_000 },
+      { id: 'kimi-k3', contextWindow: 1_000_000 },
+      { id: 'minimax-m3', contextWindow: 1_000_000 },
+      { id: 'qwen3.6-plus', contextWindow: 1_000_000 },
+      { id: 'muse-spark-1.2', contextWindow: 200_000 },
+      // Free tier
+      { id: 'deepseek-v4-flash-free', contextWindow: 200_000 },
+      { id: 'nemotron-3-ultra-free', contextWindow: 200_000 },
+      { id: 'mimo-v2.5-free', contextWindow: 200_000 }
+    ],
+    // GPT-5.x models on Zen serve native Responses (the documented `/zen/v1/responses` endpoint);
+    // the remainder of the curated catalog goes through Chat Completions.
+    responsesModels: [
+      'gpt-5.6-sol',
+      'gpt-5.6-terra',
+      'gpt-5.6-luna',
+      'gpt-5.5',
+      'gpt-5.5-pro',
+      'gpt-5.4',
+      'gpt-5.4-pro',
+      'gpt-5.4-mini',
+      'gpt-5.4-nano',
+      'gpt-5.3-codex',
+      'gpt-5.3-codex-spark',
+      'gpt-5.2',
+      'gpt-5.2-codex',
+      'gpt-5.1',
+      'gpt-5.1-codex',
+      'gpt-5.1-codex-max',
+      'gpt-5.1-codex-mini',
+      'gpt-5',
+      'gpt-5-codex',
+      'gpt-5-nano'
+    ],
+    // The gateway's cross-vendor catalog mixes vision-capable families (GPT-5.x, Claude, Gemini,
+    // Grok) with text-only coding models (deepseek-v4-pro, glm-5.2), so it is an explicit id list.
+    multimodal: {
+      multimodalModels: [
+        'gpt-5.6-sol',
+        'gpt-5.6-terra',
+        'gpt-5.6-luna',
+        'gpt-5.5',
+        'gpt-5.4',
+        'claude-opus-5',
+        'claude-sonnet-5',
+        'gemini-3.5-flash',
+        'gemini-3.1-pro',
+        'grok-4.6',
+        'grok-4.5'
+      ]
+    }
+  },
+  {
+    id: 'opencodego',
+    label: 'OpenCode Go',
+    // Quota-based gateway (the Go plan) with a fixed OpenAI-compatible catalog; no documented effort
+    // vocabulary, so effort stays hidden across the board.
+    reasoningEffort: 'unsupported',
+    apiEndpoints: ['openai'],
+    baseUrl: 'https://opencode.ai',
+    openaiBaseUrl: 'https://opencode.ai/zen/go/v1',
+    apiKeyUrl: 'https://opencode.ai/zen',
+    modelsListUrl: 'https://opencode.ai/zen/go/v1/models',
+    models: [
+      { id: 'minimax-m3', contextWindow: 1_000_000 },
+      { id: 'minimax-m2.7', contextWindow: 256_000 },
+      { id: 'kimi-k3', contextWindow: 1_000_000 },
+      { id: 'kimi-k2.7-code', contextWindow: 256_000 },
+      { id: 'kimi-k2.6', contextWindow: 256_000 },
+      { id: 'glm-5.3', contextWindow: 1_000_000 },
+      { id: 'glm-5.3-flash', contextWindow: 200_000 },
+      { id: 'glm-5.2', contextWindow: 1_000_000 },
+      { id: 'deepseek-v4-pro', contextWindow: 1_000_000 },
+      { id: 'deepseek-v4-flash', contextWindow: 1_000_000 },
+      { id: 'deepseek-v4-flash-vision-exp', contextWindow: 1_000_000 },
+      { id: 'qwen3.8-max', contextWindow: 1_000_000 },
+      { id: 'qwen3.8-flash', contextWindow: 1_000_000 },
+      { id: 'qwen3.7-max', contextWindow: 1_000_000 },
+      { id: 'hy3', contextWindow: 1_000_000 },
+      { id: 'hy3-preview', contextWindow: 1_000_000 },
+      { id: 'gpt-5.6-luna', contextWindow: 1_050_000, reasoningEffort: 'standard-5' },
+      { id: 'grok-4.6', contextWindow: 1_000_000, reasoningEffort: 'low-medium-high-xhigh' },
+      { id: 'grok-4.5', contextWindow: 500_000 },
+      { id: 'muse-spark-1.2-contributor', contextWindow: 200_000 },
+      { id: 'mimo-v2.5-pro', contextWindow: 200_000 }
+    ],
+    multimodal: {
+      multimodalModels: [
+        'deepseek-v4-flash-vision-exp',
+        'gpt-5.6-luna',
+        'grok-4.6',
+        'grok-4.5',
+        'mimo-v2.5-pro'
+      ]
+    }
+  },
+  {
+    id: 'tokenhub',
+    label: 'Tencent TokenHub',
+    // Tencent's Model-as-a-Service gateway (successor to the Hunyuan / DeepSeek API portals):
+    // OpenAI-compatible Chat Completions under `/v1`; Hy3 and the DeepSeek V4 family also serve
+    // native Responses. Effort controls are not part of the documented API, so effort stays hidden.
+    reasoningEffort: 'unsupported',
+    apiEndpoints: ['openai'],
+    baseUrl: 'https://tokenhub.tencentmaas.com',
+    openaiBaseUrl: 'https://tokenhub.tencentmaas.com/v1',
+    apiKeyUrl: 'https://console.cloud.tencent.com/tokenhub',
+    models: [
+      { id: 'deepseek-v4-pro', contextWindow: 1_000_000 },
+      { id: 'deepseek-v4-flash', contextWindow: 1_000_000 },
+      { id: 'hy3', contextWindow: 1_000_000 },
+      { id: 'hy3-preview', contextWindow: 1_000_000 },
+      { id: 'glm-5.3', contextWindow: 1_000_000 },
+      { id: 'glm-5.2', contextWindow: 1_000_000 },
+      { id: 'glm-5.1', contextWindow: 200_000 },
+      { id: 'glm-5v-turbo', contextWindow: 200_000 },
+      { id: 'glm-5-turbo', contextWindow: 200_000 },
+      { id: 'kimi-k3', contextWindow: 1_000_000 },
+      { id: 'kimi-k2.6', contextWindow: 256_000 },
+      { id: 'minimax-m3', contextWindow: 1_000_000 },
+      { id: 'minimax-m2.7', contextWindow: 256_000 }
+    ],
+    // Hy3 and the DeepSeek V4 family ship with native Responses support on TokenHub (documented
+    // alongside the online-search capability); the rest of the catalog stays on Chat Completions.
+    responsesModels: ['hy3', 'hy3-preview', 'deepseek-v4-pro', 'deepseek-v4-flash'],
+    // Only the GLM vision variant is documented as image-capable on this endpoint.
+    multimodal: { multimodalModels: ['glm-5v-turbo'] }
   }
 ]
 
