@@ -6,6 +6,8 @@ import { useSettingsStore } from '@/stores/settings-store'
 import { fuzzyScore } from './fuzzy-match'
 import { HighlightedText } from './HighlightedText'
 
+import { useLanguage } from '@/i18n'
+
 // A skill plus the name-match positions to highlight (empty when it matched on description only).
 type SkillMatch = { skill: SkillView; positions: number[] }
 
@@ -36,6 +38,7 @@ export const SkillMentionPopup = ({
   onSelect,
   onClose
 }: SkillMentionPopupProps): React.JSX.Element | null => {
+  const { t } = useLanguage()
   const skills = useSettingsStore((state) => state.skills)
   const loadSkills = useSettingsStore((state) => state.loadSkills)
   const listboxId = useId()
@@ -124,7 +127,7 @@ export const SkillMentionPopup = ({
       <ul
         id={`${listboxId}-listbox`}
         role="listbox"
-        aria-label="Skill suggestions"
+        aria-label={t('ui.skillsuggestions')}
         className="overflow-y-auto max-h-[min(45vh,18rem)]"
       >
         {matches.map(({ skill, positions }, index) => {

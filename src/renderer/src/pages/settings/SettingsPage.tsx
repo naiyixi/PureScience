@@ -770,7 +770,7 @@ const SettingsPage = forwardRef<SettingsPageHandle, SettingsPageProps>(function 
           {/* Radix requires a Title/Description for a11y; the visible panel title lives in the header. */}
           <Dialog.Title className="sr-only">Settings</Dialog.Title>
           <Dialog.Description className="sr-only">
-            Manage your agent runtime and model providers.
+            {t('settingsPage.runtimeHint')}
           </Dialog.Description>
 
           {isMobileNavOpen ? (

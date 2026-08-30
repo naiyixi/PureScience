@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { FileWarning } from 'lucide-react'
 
+import { useLanguage } from '@/i18n'
 import type { PreviewFileItem, PreviewFileSource } from '@/stores/preview-workbench-store'
 import type {
   OfficePreviewErrorCode,
@@ -114,6 +115,7 @@ const RemoteOfficePreviewContent = ({
   item: PreviewFileItem
   source: OfficePreviewSource
 }): React.JSX.Element => {
+  const { t } = useLanguage()
   const hostId = useId()
   const frameRef = useRef<HTMLIFrameElement | null>(null)
   const runtime = usePreviewRuntime()
@@ -273,7 +275,7 @@ const RemoteOfficePreviewContent = ({
       <OfficeDownloadFallback
         item={item}
         source={source}
-        title="File too large to preview"
+        title={t('officePreview.tooLarge')}
         message="This file is larger than 40 MB. Download it to view."
       />
     )
@@ -285,7 +287,7 @@ const RemoteOfficePreviewContent = ({
         <OfficeDownloadFallback
           item={item}
           source={source}
-          title="Preview unavailable"
+          title={t('officePreview.unavailable')}
           message={downloadOnlyMessage}
         />
       )
@@ -339,6 +341,7 @@ export const OfficePreviewContent = ({
   item: PreviewFileItem
   source?: PreviewFileSource
 }): React.JSX.Element => {
+  const { t } = useLanguage()
   if (source === 'local') {
     return (
       <PreviewFallbackCard
@@ -354,7 +357,7 @@ export const OfficePreviewContent = ({
       <OfficeDownloadFallback
         item={item}
         source={source}
-        title="Preview unavailable"
+        title={t('ui.previewunavailable54')}
         message="Office preview is only available in the desktop app. Download this file to view it."
       />
     )

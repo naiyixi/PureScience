@@ -133,7 +133,7 @@ const ConnectorDetailView = ({
       {/* Tools: per-tool permission controls. */}
       <section className="mt-6 border-t border-border pt-4">
         <h2 className="text-sm font-semibold text-foreground">{t('settings.toolsTitle')}</h2>
-        <p className="text-xs text-muted-foreground">What the agent can do with this connector</p>
+        <p className="text-xs text-muted-foreground">{t('ui.whattheagentcandowiththiscon')}</p>
         {detail.tools.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">{t('settings.thisConnectorHasNoTools')}</p>
         ) : (

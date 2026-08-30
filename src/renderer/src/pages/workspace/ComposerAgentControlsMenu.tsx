@@ -404,7 +404,7 @@ const ComposerAgentControlsMenu = ({
                     <button
                       type="button"
                       className="shrink-0 text-[11px] text-text-300 hover:text-text-000 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:text-text-300"
-                      aria-label="Clear all session grants"
+                      aria-label={t('agentControls.clearGrants')}
                       disabled={grantActionsReadOnly}
                       onClick={(event) => {
                         event.preventDefault()
@@ -545,7 +545,7 @@ const ComposerAgentControlsMenu = ({
                     className="items-center gap-2 px-2 py-1.5 text-[13px] text-text-200"
                   >
                     <Settings className="size-4 shrink-0" aria-hidden="true" />
-                    Manage compute...
+                    {t('agentControls.manageCompute')}
                   </DropdownMenuItem>
                 </DropdownMenuSubContent>
               </DropdownMenuSub>

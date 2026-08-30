@@ -19,6 +19,8 @@ import { WorkspaceToolActivityRowButton } from './WorkspaceToolActivityRowButton
 import { WorkspaceToolCodeBlock } from './WorkspaceToolCodeBlock'
 import { WorkspaceToolDiffBlock } from './WorkspaceToolDiffBlock'
 
+import { useLanguage, type TranslationKey } from '@/i18n'
+
 type WorkspaceToolDetailsRowProps = {
   activity: ToolActivity
   details: ToolActivityDetails
@@ -31,10 +33,13 @@ type WorkspaceToolDetailsRowProps = {
 const sectionLabelClassName = 'text-[11px] font-medium uppercase tracking-wide text-text-300'
 
 // Renders a code block plus its optional truncation note.
-const renderCodeBody = (section: ToolCodeSection): React.JSX.Element => (
+const renderCodeBody = (
+  section: ToolCodeSection,
+  t: (key: TranslationKey) => string
+): React.JSX.Element => (
   <>
     <WorkspaceToolCodeBlock code={section.text} language={section.language} />
-    {section.truncated ? <div className="text-[11px] text-text-300">Output truncated</div> : null}
+    {section.truncated ? <div className="text-[11px] text-text-300">{t('ui.outputtruncated')}</div> : null}
   </>
 )
 
@@ -89,7 +94,11 @@ const WorkspaceToolImageOutput = ({
 
 // Renders one detail section as a diff, an image preview, a collapsible code panel, or a plain
 // code block.
-const renderSection = (section: ToolDetailSection, index: number): React.JSX.Element => {
+const renderSection = (
+  section: ToolDetailSection,
+  index: number,
+  t: (key: TranslationKey) => string
+): React.JSX.Element => {
   if (section.kind === 'diff') {
     return (
       <div key={index} className="space-y-1">
@@ -115,7 +124,7 @@ const renderSection = (section: ToolDetailSection, index: number): React.JSX.Ele
         <summary className={`${sectionLabelClassName} cursor-pointer select-none`}>
           {section.label}
         </summary>
-        <div className="mt-1">{renderCodeBody(section)}</div>
+        <div className="mt-1">{renderCodeBody(section, t)}</div>
       </details>
     )
   }
@@ -123,7 +132,7 @@ const renderSection = (section: ToolDetailSection, index: number): React.JSX.Ele
   return (
     <div key={index} className="space-y-1">
       <div className={sectionLabelClassName}>{section.label}</div>
-      {renderCodeBody(section)}
+      {renderCodeBody(section, t)}
     </div>
   )
 }
@@ -136,6 +145,7 @@ const WorkspaceToolDetailsRow = ({
   isExpanded,
   onToggle
 }: WorkspaceToolDetailsRowProps): React.JSX.Element => {
+  const { t } = useLanguage()
   const notebookFigureMeta = notebookRun ? formatNotebookRunFigureMeta(notebookRun) : undefined
 
   return (
@@ -155,7 +165,7 @@ const WorkspaceToolDetailsRow = ({
       panelTestId="tool-details"
       onToggle={onToggle}
     >
-      {details.sections.map(renderSection)}
+      {details.sections.map((section, index) => renderSection(section, index, t))}
       {notebookRun ? <NotebookRunFigureOutputs run={notebookRun} align="start" /> : null}
     </WorkspaceToolActivityRowButton>
   )

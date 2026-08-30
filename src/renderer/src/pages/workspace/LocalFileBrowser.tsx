@@ -128,7 +128,9 @@ const GoToMenu = ({
   onNavigate: (path: string) => void
   onPinCurrent: () => void
   onRemoveBookmark: (path: string) => void
-}): React.JSX.Element => (
+}): React.JSX.Element => {
+  const { t } = useLanguage()
+  return (
   <DropdownMenu>
     <Hint label="Jump to Home or a pinned folder">
       {/* Label at the default 13px: at text-xs it was the smallest type in the row despite being
@@ -140,7 +142,7 @@ const GoToMenu = ({
           size="sm"
           className="gap-1 text-sm font-normal text-text-000"
         >
-          Go to
+          {t('fileBrowser.goTo')}
           <ChevronDown className="size-3.5 text-text-300" strokeWidth={TOOLBAR_ICON_STROKE} />
         </Button>
       </DropdownMenuTrigger>
@@ -185,7 +187,7 @@ const GoToMenu = ({
                   the highlighted row already shows, so the square reads as its own control.
                   stopPropagation keeps the click from selecting the row (which would navigate and
                   close the menu) — unpinning leaves the list open so several can go at once. */}
-              <Hint label="Remove from Go to (the folder is not deleted)">
+              <Hint label={`Remove from ${t('fileBrowser.goTo')} (the folder is not deleted)`}>
                 <button
                   type="button"
                   onClick={(e) => {
@@ -204,7 +206,8 @@ const GoToMenu = ({
       ) : null}
     </DropdownMenuContent>
   </DropdownMenu>
-)
+  )
+}
 
 // Directory listing table: dirs first, single-click opens (navigate for dirs, preview tab for files).
 const LocalListing = ({
@@ -245,10 +248,10 @@ const LocalListing = ({
       ) : null}
       {state.entries.length === 0 ? (
         <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-          Empty folder
+          {t('fileBrowser.emptyFolder')}
         </div>
       ) : (
-        <ul role="listbox" aria-label="Directory contents">
+        <ul role="listbox" aria-label={t('fileBrowser.directoryContents')}>
           {state.entries.map((entry) => (
             <li key={entry.name} className="border-b border-border-300/40 last:border-b-0">
               <button
@@ -287,6 +290,7 @@ export const LocalFileBrowser = ({
   // Reports the visible entry count so the Files tab header can show it next to the source picker.
   onEntryCountChange?: (count: number | undefined) => void
 }): React.JSX.Element => {
+  const { t } = useLanguage()
   const [roots, setRoots] = useState<LocalRoots | null>(null)
   const [cwd, setCwd] = useState('')
   const [state, setState] = useState<BrowserState>({ kind: 'loading' })
@@ -419,14 +423,14 @@ export const LocalFileBrowser = ({
   return (
     <div
       className="mx-4 mb-1.5 flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border-300/50 bg-bg-000"
-      aria-label="Local file browser"
+      aria-label={t('fileBrowser.localFileBrowser')}
     >
       {/* Toolbar */}
       <TooltipProvider delayDuration={200}>
         <div className="flex shrink-0 items-center gap-1.5 border-b border-border-300/40 px-3 py-1.5">
           {/* One arrow only: it goes to the parent directory. A separate up-arrow beside it read as a
               duplicate of the same action, so this is the single way to move a level out. */}
-          <Hint label="Go to the parent folder">
+          <Hint label={`${t('fileBrowser.goTo')} the parent folder`}>
             <Button
               type="button"
               variant="ghost"
@@ -434,7 +438,7 @@ export const LocalFileBrowser = ({
               className={TOOLBAR_ICON_BUTTON}
               disabled={isAtRoot}
               onClick={() => void navigate(parentLocalPath(currentPath, window.api.platform))}
-              aria-label="Go to parent directory"
+              aria-label={`${t('fileBrowser.goTo')} parent directory`}
             >
               <ArrowLeft className="size-4" strokeWidth={TOOLBAR_ICON_STROKE} />
             </Button>
@@ -460,7 +464,7 @@ export const LocalFileBrowser = ({
               onBlur={handleAddressSubmit}
               spellCheck={false}
               className="w-full rounded-md border border-border bg-bg-000 px-2 py-1 font-mono text-xs text-text-100 outline-none focus:text-text-000 focus:ring-2 focus:ring-ring/50"
-              aria-label="Directory path"
+              aria-label={t('fileBrowser.directoryPath')}
             />
           </form>
 
@@ -471,14 +475,14 @@ export const LocalFileBrowser = ({
               size="icon-sm"
               className={TOOLBAR_ICON_BUTTON}
               onClick={() => void navigate(currentPath)}
-              aria-label="Refresh directory"
+              aria-label={t('fileBrowser.refreshDirectory')}
             >
               <RefreshCw className="size-4" strokeWidth={TOOLBAR_ICON_STROKE} />
             </Button>
           </Hint>
           <Hint
             label={
-              isBookmarked ? 'Unpin this folder from Go to' : 'Pin this folder to the Go to menu'
+              isBookmarked ? `Unpin this folder from ${t('fileBrowser.goTo')}` : `Pin this folder to the ${t('fileBrowser.goTo')} menu`
             }
           >
             <Button

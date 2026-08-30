@@ -140,7 +140,7 @@ export function ConnectorImportView({
           <div>
             <div className="mb-2 flex items-center gap-2">
               <FileJson className="size-4 text-muted-foreground" aria-hidden="true" />
-              <h3 className="text-sm font-medium text-foreground">Configuration preview</h3>
+              <h3 className="text-sm font-medium text-foreground">{t('connectorImport.configPreview')}</h3>
             </div>
             <dl className="divide-y divide-border border-y border-border text-sm">
               <div className="grid grid-cols-[8rem_1fr] gap-3 py-2.5">
@@ -176,7 +176,7 @@ export function ConnectorImportView({
         ) : null}
 
         {preview?.diagnostics.length ? (
-          <div className="space-y-2" aria-label="Configuration diagnostics">
+          <div className="space-y-2" aria-label={t('connectorImport.configDiagnostics')}>
             {preview.diagnostics.map((item) => (
               <div
                 key={`${item.code}:${item.path ?? ''}`}
@@ -199,7 +199,7 @@ export function ConnectorImportView({
               disabled={!preview?.ready || !definition}
               onClick={() => definition && onUse(definition)}
             >
-              Use configuration
+              {t('connectorImport.useConfig')}
             </Button>
           ) : null}
         </div>

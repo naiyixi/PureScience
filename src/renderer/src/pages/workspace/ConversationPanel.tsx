@@ -700,7 +700,7 @@ const ConversationPanel = ({
                             onClick={onReconfigureChooseOther}
                             className="flex h-6 items-center rounded px-2 text-[11px] text-red-400/80 hover:bg-red-500/10 border border-red-500/20"
                           >
-                            Choose another specialist
+                            {t('conversation.chooseSpecialist')}
                           </button>
                           <button
                             type="button"
@@ -1007,7 +1007,7 @@ const ConversationPanel = ({
                             data-testid="specialist-pending-switch-chip"
                             aria-label={t('ws.specialistSwitchPending')}
                           >
-                            Switching in this turn
+                            {t('conversation.switchingThisTurn')}
                           </span>
                         ) : null}
 
@@ -1129,7 +1129,7 @@ const ConversationPanel = ({
                                       className="mr-2 size-4 text-text-300"
                                       aria-hidden="true"
                                     />
-                                    Plan first
+                                    {t('conversation.planFirst')}
                                   </DropdownMenuItem>
                                   <DropdownMenuItem
                                     data-testid="menu-branch-in-new-session"
@@ -1141,7 +1141,7 @@ const ConversationPanel = ({
                                       className="mr-2 size-4 text-text-300"
                                       aria-hidden="true"
                                     />
-                                    Branch in new session
+                                    {t('conversation.branchNewSession')}
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>

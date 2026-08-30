@@ -227,7 +227,7 @@ const SkillImportView = ({ onImported }: SkillImportViewProps): React.JSX.Elemen
         ) : null}
 
         {repositories ? (
-          <section aria-label="Repository results" className="mt-5 border-b border-border pb-5">
+          <section aria-label={t('skillImport.repoResults')} className="mt-5 border-b border-border pb-5">
             <div className="flex items-center justify-between gap-3">
               <h3 className="text-sm font-semibold text-foreground">
                 Repositories ({repositories.length})
@@ -390,7 +390,7 @@ const SkillImportView = ({ onImported }: SkillImportViewProps): React.JSX.Elemen
                 className="[@media(pointer:coarse)]:min-h-11"
                 onClick={invertSelection}
               >
-                Invert selection
+                {t('skillImport.invertSelection')}
               </Button>
             </div>
 
@@ -434,7 +434,7 @@ const SkillImportView = ({ onImported }: SkillImportViewProps): React.JSX.Elemen
       </div>
 
       <h3 className="mt-8 border-t border-border pt-5 text-sm font-semibold text-foreground">
-        Imported skills
+        {t('skillImport.importedSkills')}
       </h3>
       {imported.length > 0 ? (
         <ul className="mt-2 flex flex-col divide-y divide-border">

@@ -129,13 +129,13 @@ export const LocalFileHeaderActions = ({
                 variant="ghost"
                 size="icon-xs"
                 className="text-text-100 hover:text-text-000"
-                aria-label="Reload file"
+                aria-label={t('fileHeader.reload')}
                 onClick={onReload}
               >
                 <RotateCw aria-hidden="true" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent className={tooltipClassName}>Reload from disk</TooltipContent>
+            <TooltipContent className={tooltipClassName}>{t('fileHeader.reloadFromDisk')}</TooltipContent>
           </Tooltip>
         </TooltipProvider>
       ) : null}
@@ -146,7 +146,7 @@ export const LocalFileHeaderActions = ({
             variant="ghost"
             size="icon-xs"
             className="text-text-100 hover:text-text-000"
-            aria-label="More actions"
+            aria-label={t('fileHeader.moreActions')}
           >
             <MoreHorizontal aria-hidden="true" />
           </Button>

@@ -1,6 +1,8 @@
 import { DownloadProgressLine } from '@/components/DownloadProgressLine'
 import type { ProvisionUiState } from './provisioning-view'
 
+import { useLanguage } from '@/i18n'
+
 // Floating top-of-app pill for the launch-time upgrade gate (spec §6.2). First-run python preparation
 // is surfaced by the onboarding step and the notebook pane gate instead, so this banner only shows for
 // an in-progress background upgrade or a blocking failure — never for the initial python bootstrap.
@@ -14,6 +16,7 @@ const EnvStatusBanner = ({
   ui: ProvisionUiState
   onRetry?: () => void
 }): React.JSX.Element | null => {
+  const { t } = useLanguage()
   const show = (ui.kind === 'preparing' && ui.scope === 'upgrade') || ui.kind === 'error'
   if (!show) return null
 
@@ -37,7 +40,7 @@ const EnvStatusBanner = ({
       {ui.kind === 'error' ? (
         <>
           <div className="min-w-0 flex-1">
-            <p className="font-medium text-foreground">Environment update failed</p>
+            <p className="font-medium text-foreground">{t('ui.environmentupdatefailed')}</p>
             <p className="mt-0.5 max-h-28 overflow-y-auto whitespace-pre-wrap break-words text-muted-foreground">
               {ui.message}
             </p>

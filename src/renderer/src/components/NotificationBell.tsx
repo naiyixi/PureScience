@@ -237,7 +237,7 @@ const NotificationBell = ({
               {isMobile ? (
                 <button
                   type="button"
-                  aria-label="Dismiss messages"
+                  aria-label={t('notif.dismiss')}
                   onClick={() => setOpen(false)}
                   className="fixed inset-0 z-[80] bg-black/45 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-200 active:bg-black/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:animate-none"
                 />
@@ -246,7 +246,7 @@ const NotificationBell = ({
                 ref={panelRef}
                 id={panelId}
                 role="dialog"
-                aria-label="Message center"
+                aria-label={t('notif.center')}
                 aria-modal={isMobile || undefined}
                 tabIndex={-1}
                 style={isMobile ? undefined : position}
@@ -273,7 +273,7 @@ const NotificationBell = ({
                     {isMobile ? (
                       <button
                         type="button"
-                        aria-label="Close messages"
+                        aria-label={t('notif.close')}
                         onClick={() => {
                           setOpen(false)
                           triggerRef.current?.focus()

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { useLanguage } from '@/i18n'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
@@ -21,6 +22,7 @@ export const SourcePreviewContent = ({
   lineClassName,
   language
 }: SourcePreviewContentProps): React.JSX.Element => {
+  const { t } = useLanguage()
   const lineNumberWidth = `${Math.max(String(content.replace(/\0/g, '').split(/\r?\n/).length).length, 2) + 1}ch`
 
   return (
@@ -33,8 +35,8 @@ export const SourcePreviewContent = ({
             <button
               type="button"
               className="rounded p-1 hover:bg-bg-200 disabled:opacity-40"
-              aria-label="Previous preview page"
-              title="Previous page"
+              aria-label={t('sourcePreview.prevPage')}
+              title={t('sourcePreview.prevPage')}
               disabled={!pagination.hasPrevious}
               onClick={pagination.previousPage}
             >
@@ -43,8 +45,8 @@ export const SourcePreviewContent = ({
             <button
               type="button"
               className="rounded p-1 hover:bg-bg-200 disabled:opacity-40"
-              aria-label="Next preview page"
-              title="Next page"
+              aria-label={t('sourcePreview.nextPage')}
+              title={t('sourcePreview.nextPage')}
               disabled={!pagination.hasNext}
               onClick={pagination.nextPage}
             >

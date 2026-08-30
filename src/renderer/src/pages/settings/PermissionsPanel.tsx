@@ -348,14 +348,14 @@ const PermissionsPanel = ({
             className="mt-3"
             onClick={() => void load()}
           >
-            Try again
+            {t('permissions.tryAgain')}
           </Button>
         </div>
       ) : null}
 
       <div className="scroll-pb-24">
         {status === 'loading' && grants.length === 0 ? (
-          <div className="space-y-3" aria-label="Loading permissions">
+          <div className="space-y-3" aria-label={t('permissions.loading')}>
             {[0, 1, 2].map((row) => (
               <div
                 key={row}

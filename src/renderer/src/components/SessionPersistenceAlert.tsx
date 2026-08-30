@@ -2,6 +2,7 @@ import { X } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 
+import { useLanguage } from '@/i18n'
 type SessionPersistenceAlertProps = {
   title: string
   message: string
@@ -18,7 +19,9 @@ const SessionPersistenceAlert = ({
   inline = false,
   onDismiss,
   onRetry
-}: SessionPersistenceAlertProps): React.JSX.Element => (
+}: SessionPersistenceAlertProps): React.JSX.Element => {
+  const { t } = useLanguage()
+  return (
   <div
     role="alert"
     data-testid="session-persistence-alert"
@@ -47,7 +50,7 @@ const SessionPersistenceAlert = ({
         type="button"
         variant="ghost"
         size="icon-sm"
-        aria-label="Dismiss storage warning"
+        aria-label={t('sessionPersist.dismissWarning')}
         data-testid="session-persistence-dismiss"
         onClick={onDismiss}
         className="shrink-0"
@@ -56,6 +59,7 @@ const SessionPersistenceAlert = ({
       </Button>
     ) : null}
   </div>
-)
+  )
+}
 
 export { SessionPersistenceAlert }

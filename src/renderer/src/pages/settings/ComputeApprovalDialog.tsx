@@ -105,11 +105,11 @@ export function ComputeApprovalDialog(): React.JSX.Element | null {
                   >
                     {showFull ? (
                       <>
-                        <ChevronUp className="size-3" aria-hidden="true" /> Show less
+                        <ChevronUp className="size-3" aria-hidden="true" /> {t('ui.showless')}
                       </>
                     ) : (
                       <>
-                        <ChevronDown className="size-3" aria-hidden="true" /> Show full command
+                        <ChevronDown className="size-3" aria-hidden="true" /> {t('ui.showfullcommand')}
                       </>
                     )}
                   </button>

@@ -87,7 +87,9 @@ const providerStatus = (
   return t('settings.ready')
 }
 
-const BrowserAccessSteps = (): React.JSX.Element => (
+const BrowserAccessSteps = (): React.JSX.Element => {
+  const { t } = useLanguage()
+  return (
   <div className="mt-4 flex items-start gap-3 border-t border-blue-600/15 pt-4">
     <Smartphone className="mt-0.5 size-5 shrink-0 text-blue-600" aria-hidden="true" />
     <ol className="min-w-0 space-y-2 text-sm leading-relaxed text-foreground">
@@ -100,12 +102,13 @@ const BrowserAccessSteps = (): React.JSX.Element => (
         six-digit code, then approve the request from this computer or a trusted browser.
       </li>
       <li>
-        <span className="font-medium">3.</span> Choose “Always trust this browser” for direct access
+        <span className="font-medium">3.</span> Choose “{t('remoteControl.alwaysTrustBrowser')}” for direct access
         on future visits while Browser access is on.
       </li>
     </ol>
   </div>
-)
+  )
+}
 
 export const RemoteControlPanel = (): React.JSX.Element => {
   const { t } = useLanguage()
@@ -218,7 +221,7 @@ export const RemoteControlPanel = (): React.JSX.Element => {
         className={`size-3.5 ${busy === 'detect' ? 'animate-spin' : ''}`}
         aria-hidden="true"
       />
-      Detect again
+      {t('remoteControl.detectAgain')}
     </Button>
   ) : null
 
@@ -242,7 +245,7 @@ export const RemoteControlPanel = (): React.JSX.Element => {
                       : t('settings.applyingRemoteSettings')}
                   </div>
                   <div className="mt-1 text-xs text-muted-foreground">
-                    Waiting for the system command to finish.
+                    {t('remoteControl.waitingForCommand')}
                   </div>
                 </div>
               </div>
@@ -382,8 +385,7 @@ export const RemoteControlPanel = (): React.JSX.Element => {
               />
               <ol className="min-w-0 space-y-2 text-sm leading-relaxed text-foreground">
                 <li>
-                  <span className="font-medium">1.</span> Open the mobile app and sign in to the
-                  same account as this computer.
+                  <span className="font-medium">1.</span> {t('ui.openthemobileappandsignintot')}
                 </li>
                 <li>
                   <span className="font-medium">2.</span> Select this computer, then select{' '}
@@ -394,7 +396,7 @@ export const RemoteControlPanel = (): React.JSX.Element => {
                   code, then approve the request from this computer or an already trusted browser.
                 </li>
                 <li>
-                  <span className="font-medium">4.</span> Choose “Always trust this browser” to skip
+                  <span className="font-medium">4.</span> Choose “{t('remoteControl.alwaysTrustBrowser')}” to skip
                   approval on future visits to the same remote address.
                 </li>
               </ol>
@@ -436,7 +438,7 @@ export const RemoteControlPanel = (): React.JSX.Element => {
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="text-sm font-medium text-foreground">
-                          Browser link is ready
+                          {t('remoteControl.browserLinkReady')}
                         </div>
                         <div className="flex shrink-0 items-center gap-2">
                           <Button
@@ -477,7 +479,7 @@ export const RemoteControlPanel = (): React.JSX.Element => {
                     title={t('settings.scanToOpenPureScience')}
                   />
                   <div className="mt-1 text-center text-[11px] font-medium text-slate-700">
-                    Scan to open
+                    {t('remoteControl.scanToOpen')}
                   </div>
                 </div>
               </div>
@@ -500,7 +502,7 @@ export const RemoteControlPanel = (): React.JSX.Element => {
         >
           {snapshot.trustedBrowsers.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
-              No browser has permanent access.
+              {t('remoteControl.noPermanentAccess')}
             </div>
           ) : (
             <div className="divide-y divide-border rounded-xl border border-border">
@@ -544,7 +546,7 @@ export const RemoteControlPanel = (): React.JSX.Element => {
         >
           {snapshot.pendingRequests.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
-              No browsers are waiting for approval.
+              {t('remoteControl.noBrowsersWaiting')}
             </div>
           ) : (
             <div className="space-y-3">
@@ -588,7 +590,7 @@ export const RemoteControlPanel = (): React.JSX.Element => {
                       disabled={busy !== null}
                       onClick={() => approve(request.id, 'once')}
                     >
-                      Allow once
+                      {t('remoteControl.allowOnce')}
                     </Button>
                     <Button
                       type="button"
@@ -596,7 +598,7 @@ export const RemoteControlPanel = (): React.JSX.Element => {
                       disabled={busy !== null}
                       onClick={() => approve(request.id, 'always')}
                     >
-                      Always trust this browser
+                      {t('remoteControl.alwaysTrustBrowser')}
                     </Button>
                   </div>
                 </div>

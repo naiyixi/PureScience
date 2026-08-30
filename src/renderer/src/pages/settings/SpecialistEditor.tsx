@@ -516,7 +516,7 @@ const SpecialistEditor = ({
               </p>
               {editSpecialist.origin === 'imported' ? (
                 <div className="mt-2 text-xs text-muted-foreground">
-                  <strong className="text-foreground">Package provenance</strong>
+                  <strong className="text-foreground">{t('specialistEditor.packageProvenance')}</strong>
                   <span className="block">
                     Imported · Original version {editSpecialist.packageVersion ?? '0.1.0'} ·{' '}
                     {editSpecialist.modifiedSinceImport
@@ -723,7 +723,7 @@ const SpecialistEditor = ({
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <div>
                 <label htmlFor="sp-package-version" className="mb-1.5 block text-xs font-semibold">
-                  Package version
+                  {t('specialistEditor.packageVersion')}
                 </label>
                 <Input
                   id="sp-package-version"
@@ -796,13 +796,13 @@ const SpecialistEditor = ({
             and unreachable in its sessions, even when enabled globally.
           </p>
 
-          {/* Full access — single option, default selected. Loads every Main Agent skill and
+          {/* {t('specialistEditor.fullAccess')} — single option, default selected. Loads every Main Agent skill and
               connector; selecting it disables the Select capabilities panel below. */}
           <button
             type="button"
             role="switch"
             aria-checked={isFullAccess}
-            aria-label="Full access"
+            aria-label={t('specialistEditor.fullAccess')}
             onClick={() =>
               setForm((prev) => ({
                 ...prev,
@@ -842,8 +842,8 @@ const SpecialistEditor = ({
             <span className="h-px flex-1 bg-border" />
           </div>
 
-          {/* Select capabilities — greyed and non-interactive while Full access is on. Clicking the
-              greyed panel turns Full access off so the lists become editable. */}
+          {/* Select capabilities — greyed and non-interactive while {t('specialistEditor.fullAccess')} is on. Clicking the
+              greyed panel turns {t('specialistEditor.fullAccess')} off so the lists become editable. */}
           <div className="relative">
             <div
               className={cn(
@@ -1010,7 +1010,7 @@ const SpecialistEditor = ({
                   <div className="overflow-hidden rounded-lg border border-border">
                     {selectedSkillRows.length === 0 ? (
                       <p className="px-3 py-3.5 text-[12px] text-muted-foreground">
-                        No skills added yet.
+                        {t('specialistEditor.noSkillsAdded')}
                       </p>
                     ) : (
                       selectedSkillRows.map((skill) => (
@@ -1069,7 +1069,7 @@ const SpecialistEditor = ({
                   <div className="overflow-hidden rounded-lg border border-border">
                     {selectedConnectorRows.length === 0 ? (
                       <p className="px-3 py-3.5 text-[12px] text-muted-foreground">
-                        No connectors added yet.
+                        {t('specialistEditor.noConnectorsAdded')}
                       </p>
                     ) : (
                       selectedConnectorRows.map((connector) => (
@@ -1118,7 +1118,7 @@ const SpecialistEditor = ({
             {isFullAccess ? (
               <button
                 type="button"
-                aria-label="Enable select capabilities"
+                aria-label={t('specialistEditor.enableSelectCapabilities')}
                 onClick={() => setForm((prev) => ({ ...prev, capabilityMode: 'selected' }))}
                 className="absolute inset-0 cursor-pointer rounded-lg"
               />
@@ -1126,12 +1126,12 @@ const SpecialistEditor = ({
           </div>
         </section>
 
-        {/* Revision conflict banner — shown when another save raced ahead.
+        {/* {t('specialistEditor.revisionConflict')} banner — shown when another save raced ahead.
             Local edits are preserved so the user can review before reloading. */}
         {hasConflict ? (
           <div
             role="alert"
-            aria-label="Revision conflict"
+            aria-label={t('specialistEditor.revisionConflict')}
             className="mt-4 flex items-start gap-3 rounded-lg border border-border bg-muted/50 p-3 text-sm"
           >
             <div className="min-w-0 flex-1">

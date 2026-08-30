@@ -1,5 +1,6 @@
 import { AlertDialog } from 'radix-ui'
 
+import { useLanguage } from '@/i18n'
 import { Button } from '@/components/ui/button'
 import type { ClaudeInstallSource } from '../../../../shared/settings'
 import { AgentInstallSourceMenu, type AgentInstallSourceMenuProps } from './AgentInstallSourceMenu'
@@ -24,7 +25,9 @@ const RepairFrameworkDialog = ({
   blockedInstallSources,
   onCancel,
   onRepair
-}: RepairFrameworkDialogProps): React.JSX.Element => (
+}: RepairFrameworkDialogProps): React.JSX.Element => {
+  const { t } = useLanguage()
+  return (
   <AlertDialog.Root
     open={Boolean(name)}
     onOpenChange={(open) => {
@@ -38,7 +41,7 @@ const RepairFrameworkDialog = ({
           {name} needs repair
         </AlertDialog.Title>
         <AlertDialog.Description className="mt-2 text-sm leading-relaxed text-muted-foreground">
-          Repair this agent before selecting it.
+          {t('ui.repairthisagentbeforeselecti')}
         </AlertDialog.Description>
         <div className="mt-6 flex justify-end gap-2">
           <AlertDialog.Cancel asChild>
@@ -63,6 +66,7 @@ const RepairFrameworkDialog = ({
       </AlertDialog.Content>
     </AlertDialog.Portal>
   </AlertDialog.Root>
-)
+  )
+}
 
 export { RepairFrameworkDialog }

@@ -89,12 +89,12 @@ export function ConnectorApprovalDialog(): React.JSX.Element | null {
             </Button>
             {availableScopes.includes('session') ? (
               <Button type="button" variant="outline" onClick={() => allow('session')}>
-                This session
+                {t('connectorApproval.thisSession')}
               </Button>
             ) : null}
             {availableScopes.includes('project') ? (
               <Button type="button" variant="outline" onClick={() => allow('project')}>
-                This project
+                {t('connectorApproval.thisProject')}
               </Button>
             ) : null}
             {availableScopes.includes('global') ? (

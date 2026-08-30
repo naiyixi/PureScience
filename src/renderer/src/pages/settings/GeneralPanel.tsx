@@ -232,7 +232,7 @@ const GeneralPanel = (): React.JSX.Element => {
 
         <pre
           className="overflow-x-auto rounded-lg border border-border bg-muted/60 px-3 py-2.5 font-mono text-xs text-foreground"
-          aria-label="Log file path"
+          aria-label={t('generalPanel.logFilePath')}
         >
           {logPath ?? t('settings.notAvailableYet')}
         </pre>

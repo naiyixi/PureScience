@@ -223,7 +223,7 @@ const SessionNotebookContent = ({
           </p>
         ) : runs.length === 0 ? (
           <p className="px-5 py-16 text-center text-sm text-muted-foreground">
-            No execution records for this session.
+            {t('ui.noexecutionrecordsforthisses')}
           </p>
         ) : (
           <>

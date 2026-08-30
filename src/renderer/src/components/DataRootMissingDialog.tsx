@@ -78,10 +78,10 @@ const DataRootMissingDialog = ({
         <AlertDialog.Overlay className={dialogOverlayClassName} />
         <AlertDialog.Content className={dialogPanelClassName('w-[min(460px,calc(100vw-2rem))]')}>
           <AlertDialog.Title className={dialogTitleClassName}>
-            Data folder not found
+            {t('dataRoot.folderNotFound')}
           </AlertDialog.Title>
           <AlertDialog.Description className={dialogDescriptionClassName}>
-            Your data folder <span className="font-mono">{dialogDataRoot}</span> can&apos;t be
+            {t('dataRoot.yourDataFolder')} <span className="font-mono">{dialogDataRoot}</span> can&apos;t be
             found. It may have been deleted, or it&apos;s on a drive that isn&apos;t connected.
           </AlertDialog.Description>
 
@@ -122,7 +122,7 @@ const DataRootMissingDialog = ({
                 disabled={isRetrying || isChoosing}
                 onClick={onResolved}
               >
-                Continue with an empty folder
+                {t('dataRoot.continueEmpty')}
               </Button>
             </AlertDialog.Cancel>
             <p className="text-xs text-muted-foreground">

@@ -74,7 +74,7 @@ const BASE_URL_HELP_CONTENT = (t: (key: TranslationKey) => string): React.JSX.El
   </>
 )
 
-// Human labels for the provider API format (which chat endpoint the gateway speaks).
+// Human labels for the provider {t('providerForm.apiFormat')} (which chat endpoint the gateway speaks).
 const API_FORMAT_LABELS: Record<ProviderFormValue['apiEndpoint'], string> = {
   openai: 'Chat Completions API (/v1/chat/completions)',
   anthropic: 'Messages API (/v1/messages)',
@@ -151,7 +151,7 @@ const ProviderForm = ({
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1">
           <label className={fieldLabelClassName} htmlFor="provider-key">
-            API key
+            {t('providerForm.apiKey')}
             <RequiredMark />
           </label>
           <FieldHelp
@@ -165,7 +165,7 @@ const ProviderForm = ({
         </div>
         {apiKeyUrl ? (
           <ExternalTextLink href={apiKeyUrl} className="text-xs">
-            Get an API key
+            Get an {t('providerForm.apiKey')}
           </ExternalTextLink>
         ) : null}
       </div>
@@ -194,7 +194,7 @@ const ProviderForm = ({
     <div className="space-y-4">
       <div className="space-y-1.5">
         <div className="flex items-center gap-1">
-          <span className={fieldLabelClassName}>Provider type</span>
+          <span className={fieldLabelClassName}>{t('providerForm.providerType')}</span>
           {selectedKind ? <FieldHelp content={selectedKind.description} /> : null}
         </div>
         <Select
@@ -261,7 +261,7 @@ const ProviderForm = ({
       {isCodexSubscription ? (
         <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-3">
           <div className="space-y-1.5">
-            <span className={fieldLabelClassName}>Codex authentication</span>
+            <span className={fieldLabelClassName}>{t('providerForm.codexAuthentication')}</span>
             <Select
               value={value.type}
               disabled={disabled}
@@ -292,7 +292,7 @@ const ProviderForm = ({
         <>
           <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-3">
             <div className="space-y-1.5">
-              <span className={fieldLabelClassName}>Claude authentication</span>
+              <span className={fieldLabelClassName}>{t('providerForm.claudeAuthentication')}</span>
               <Select
                 value={value.type}
                 disabled={disabled}
@@ -386,7 +386,7 @@ const ProviderForm = ({
 
           <div className="space-y-1.5">
             <div className="flex items-center gap-1">
-              <span className={fieldLabelClassName}>API format</span>
+              <span className={fieldLabelClassName}>{t('providerForm.apiFormat')}</span>
               <FieldHelp content={API_FORMAT_HELP_CONTENT(t)} />
             </div>
             <Select
@@ -411,9 +411,9 @@ const ProviderForm = ({
 
           <div className="flex items-center justify-between gap-4 border-t border-border-200 pt-3">
             <label className="space-y-0.5" htmlFor="provider-image-input">
-              <span className="block text-xs font-medium">Image input</span>
+              <span className="block text-xs font-medium">{t('providerForm.imageInput')}</span>
               <span className="block text-xs text-muted-foreground">
-                Enable only when this gateway and model accept image content.
+                {t('providerForm.imageInputHint')}
               </span>
             </label>
             <Switch
@@ -428,7 +428,7 @@ const ProviderForm = ({
           <div className="space-y-3 border-t border-border-200 pt-3">
             <div className="flex items-center justify-between gap-4">
               <label className="space-y-0.5" htmlFor="provider-reasoning-effort">
-                <span className="block text-xs font-medium">Reasoning effort</span>
+                <span className="block text-xs font-medium">{t('providerForm.reasoningEffort')}</span>
                 <span className="block text-xs text-muted-foreground">
                   Choose the exact effort levels accepted by this model. PureScience maps five
                   relative strengths onto them, then sends the selected level using the request
@@ -481,7 +481,7 @@ const ProviderForm = ({
                 </Select>
 
                 <div className="space-y-1.5">
-                  <span className="block text-xs font-medium">Request format</span>
+                  <span className="block text-xs font-medium">{t('providerForm.requestFormat')}</span>
                   <Select
                     value={value.reasoningEffortTransport}
                     disabled={disabled}
@@ -646,7 +646,7 @@ const ProviderForm = ({
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1">
-                    <span className={fieldLabelClassName}>Supported models</span>
+                    <span className={fieldLabelClassName}>{t('providerForm.supportedModels')}</span>
                     <FieldHelp content={SUPPORTED_MODELS_HELP_CONTENT} />
                   </div>
                   {onRefreshModels ? (

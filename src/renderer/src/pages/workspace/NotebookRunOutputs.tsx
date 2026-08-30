@@ -1,6 +1,8 @@
 import type { NotebookOutput, NotebookRunRecord } from '../../../../shared/notebook'
 import { resolveNotebookRunFigures } from './notebook-run-figures'
 
+import { useLanguage } from '@/i18n'
+
 // Shared cell-output area for Notebook, Session dialog, and conversation tool rows. Text and figures
 // are intentionally separate: text owns its collapse control, while every figure stays visible in an
 // individual frame. Older runs without outputs[] fall back to flattened text streams. ANSI SGR codes
@@ -244,6 +246,7 @@ const LegacyTextOutput = ({ run }: { run: NotebookRunRecord }): React.JSX.Elemen
 }
 
 const NotebookRunTextOutputs = ({ run }: { run: NotebookRunRecord }): React.JSX.Element | null => {
+  const { t } = useLanguage()
   let rendered: React.JSX.Element[]
 
   if (run.outputs.length > 0) {
@@ -266,8 +269,8 @@ const NotebookRunTextOutputs = ({ run }: { run: NotebookRunRecord }): React.JSX.
         <span aria-hidden="true" className="transition-transform group-open:rotate-90">
           ▸
         </span>
-        <span className="group-open:hidden">Show output</span>
-        <span className="hidden group-open:inline">Hide output</span>
+        <span className="group-open:hidden">{t('ui.showoutput')}</span>
+        <span className="hidden group-open:inline">{t('ui.hideoutput')}</span>
       </summary>
       <div className="space-y-1 pt-1">{rendered}</div>
     </details>

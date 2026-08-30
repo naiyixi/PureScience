@@ -147,7 +147,7 @@ const LocationStep = ({
       <Separator className="bg-border-200" />
 
       <CardContent className="flex-1 px-6 py-5">
-        <section aria-label="Choose data location" className="space-y-5">
+        <section aria-label={t('ui.choosedatalocation')} className="space-y-5">
           {relaunchError ? (
             <p
               className="rounded-lg border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive"
@@ -162,7 +162,7 @@ const LocationStep = ({
             <span className="text-xs font-medium text-text-100">{t('onboarding.location')}</span>
             <div className="mt-1 flex items-center gap-2">
               <p
-                aria-label="Data location path"
+                aria-label={t('ui.datalocationpath')}
                 className="flex-1 truncate rounded-lg border border-border-200 bg-bg-000 px-2.5 py-1.5 font-mono text-xs"
               >
                 {chosenDataRoot || dataRootInfo?.dataRoot || ''}

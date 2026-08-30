@@ -32,7 +32,7 @@ const SessionInterruptedBanner = ({
       className={resumeButtonClassName}
       onClick={onResume}
       disabled={isDisabled || isResuming}
-      aria-label="Resume session"
+      aria-label={t('ui.resumesession')}
     >
       {isResuming ? (
         <Loader2 className="size-3.5 animate-spin" strokeWidth={2} aria-hidden="true" />

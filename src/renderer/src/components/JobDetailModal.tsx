@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowLeft, ExternalLink, X } from 'lucide-react'
 import { Dialog } from 'radix-ui'
 
+import { useLanguage } from '@/i18n'
 import type { JobSummary } from '../../../shared/compute'
 import { useSessionJobStore } from '@/stores/session-job-store'
 import { Button } from '@/components/ui/button'
@@ -28,6 +29,7 @@ function SessionJobsList({
   onSelectJob,
   onClose
 }: SessionJobsListProps): React.JSX.Element {
+  const { t } = useLanguage()
   const jobsById = useSessionJobStore((s) => s.jobsById)
   const jobs = Array.from(jobsById.values())
     .filter((j) => j.session_id === sessionId)
@@ -45,7 +47,7 @@ function SessionJobsList({
       <div className="flex min-h-0 flex-1 flex-col overflow-auto" data-testid="session-jobs-list">
         {jobs.length === 0 ? (
           <div className="flex flex-1 items-center justify-center py-10 text-sm text-muted-foreground">
-            No remote jobs in this session.
+            {t('jobDetail.noRemoteJobs')}
           </div>
         ) : (
           jobs.map((job) => {
@@ -293,6 +295,7 @@ export function JobDetailModal({
   initialJob,
   onClose
 }: JobDetailModalProps): React.JSX.Element {
+  const { t } = useLanguage()
   const [view, setView] = useState<ModalView>(() =>
     initialJob ? { kind: 'detail', job: initialJob } : { kind: 'list' }
   )
@@ -346,12 +349,12 @@ export function JobDetailModal({
             className={dialogPanelClassName(
               'z-[70] flex w-[640px] max-w-[calc(100vw-2rem)] max-h-[82vh] flex-col overflow-hidden p-0'
             )}
-            aria-label="Remote job details"
+            aria-label={t('jobDetail.remoteJobDetails')}
             data-testid="job-detail-modal"
           >
             {/* Header */}
             <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
-              <span className="text-[14px] font-semibold">Running jobs in this session</span>
+              <span className="text-[14px] font-semibold">{t('jobDetail.runningJobs')}</span>
               <Dialog.Close asChild>
                 <Button type="button" variant="ghost" size="icon-sm" aria-label="Close">
                   <X className="size-4" />

@@ -189,7 +189,7 @@ const ComposerContextUsage = ({
       >
         <div className="space-y-2.5 text-[12px]">
           <div>
-            <div className="text-[13px] font-medium">Context window</div>
+            <div className="text-[13px] font-medium">{t('ui.contextwindow')}</div>
             <div
               data-slot="context-usage-summary"
               className="mt-1 flex min-w-0 items-baseline gap-2 whitespace-nowrap"

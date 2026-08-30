@@ -146,7 +146,7 @@ const ComposerModelPicker = (): React.JSX.Element | null => {
         aria-label="No model available — open settings"
       >
         <AlertTriangle className="size-4 shrink-0" strokeWidth={2} aria-hidden="true" />
-        <span className="truncate">No model available</span>
+        <span className="truncate">{t('modelPicker.noModel')}</span>
       </button>
     )
   }
@@ -206,14 +206,14 @@ const ComposerModelPicker = (): React.JSX.Element | null => {
                     ) : null}
                   </>
                 ) : (
-                  <span className="truncate">Select model</span>
+                  <span className="truncate">{t('modelPicker.selectModel')}</span>
                 )}
               </span>
             </>
           ) : (
             <>
               <AlertTriangle className="size-4 shrink-0" strokeWidth={2} aria-hidden="true" />
-              <span className="truncate">No compatible model</span>
+              <span className="truncate">{t('modelPicker.noCompatible')}</span>
             </>
           )}
           <ChevronDown className="size-3.5 shrink-0" aria-hidden="true" />
@@ -228,7 +228,7 @@ const ComposerModelPicker = (): React.JSX.Element | null => {
             <DropdownMenuSubTrigger className="items-center gap-2 px-2 py-1.5">
               <Brain className="size-4 shrink-0 text-text-200" strokeWidth={2} aria-hidden="true" />
               <span className="min-w-0 flex-1">
-                <span className="block text-[13px] font-medium leading-5">Reasoning effort</span>
+                <span className="block text-[13px] font-medium leading-5">{t('modelPicker.reasoningEffort')}</span>
                 <span className="block text-[11px] leading-4 text-text-300">
                   {t('settings.howLongModelThinks')}
                 </span>

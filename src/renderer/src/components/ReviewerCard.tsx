@@ -12,6 +12,7 @@
 
 import { useState } from 'react'
 import { ChevronDown, ChevronRight, ShieldCheck, AlertTriangle, Loader } from 'lucide-react'
+import { useLanguage } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { PureScienceThinkingIndicator } from '@/components/PureScienceThinkingIndicator'
 
@@ -176,6 +177,7 @@ export const ReviewerCard = ({
   onGoToTranscript,
   onRerun
 }: ReviewerCardProps): React.JSX.Element => {
+  const { t } = useLanguage()
   const [expanded, setExpanded] = useState(defaultExpanded)
   // Latches on the first Re-run click so the button can't fire twice. Reset whenever the review updates
   // (a fresh review row arrived, or its lifecycle/timestamp changed) so a later re-stale review can be
@@ -319,7 +321,7 @@ export const ReviewerCard = ({
           data-testid="reviewer-stale-notice"
         >
           <span className="text-[11px] text-amber-800 dark:text-amber-300">
-            Turn changed after this review ran.
+            {t('reviewer.turnChanged')}
           </span>
           {onRerun && (
             <button
@@ -373,7 +375,7 @@ export const ReviewerCard = ({
           {/* Self-correct footer note — shown only for warn/fail (flagged) expansions. */}
           {isFlagged && (
             <p className="mt-1 text-[11px] italic text-text-400">
-              The agent reads these findings and self-corrects in its next message.
+              {t('ui.theagentreadsthesefindingsan')}
             </p>
           )}
         </div>

@@ -2,6 +2,8 @@ import { useId, useMemo } from 'react'
 
 import { useSessionStore } from '@/stores/session-store'
 
+import { useLanguage } from '@/i18n'
+
 // # session reference picker: lists known sessions by title so the composer can reference another
 // conversation. Selecting one inserts an atomic # session chip; the agent receives read-only access
 // to that session's visible transcript for the current turn.
@@ -22,6 +24,7 @@ export const SessionMentionPopup = ({
   onSelect,
   onClose
 }: SessionMentionPopupProps): React.JSX.Element | null => {
+  const { t } = useLanguage()
   const sessions = useSessionStore((state) => state.sessions)
   const listboxId = useId()
 
@@ -44,7 +47,7 @@ export const SessionMentionPopup = ({
         className="max-h-56 overflow-y-auto p-1"
       >
         {matches.length === 0 ? (
-          <li className="px-2 py-1.5 text-sm text-muted-foreground">No matching sessions</li>
+          <li className="px-2 py-1.5 text-sm text-muted-foreground">{t('ui.nomatchingsessions')}</li>
         ) : (
           matches.slice(0, 20).map((session) => (
             <li key={session.id} role="option" aria-selected="false">

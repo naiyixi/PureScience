@@ -89,7 +89,7 @@ export function ConnectorExportView({ id, onDone }: ConnectorExportViewProps): R
           <div>
             <div className="mb-2 flex items-center gap-2">
               <FileJson className="size-4 text-muted-foreground" aria-hidden="true" />
-              <h4 className="text-sm font-medium text-foreground">Configuration preview</h4>
+              <h4 className="text-sm font-medium text-foreground">{t('connectorExport.configPreview')}</h4>
             </div>
             <dl className="divide-y divide-border border-y border-border text-sm">
               <div className="grid grid-cols-[8rem_1fr] gap-3 py-2.5">
@@ -125,7 +125,7 @@ export function ConnectorExportView({ id, onDone }: ConnectorExportViewProps): R
         ) : null}
 
         {preview?.diagnostics.length ? (
-          <div className="space-y-2" aria-label="Configuration diagnostics">
+          <div className="space-y-2" aria-label={t('connectorExport.configDiagnostics')}>
             {preview.diagnostics.map((item) => (
               <div
                 key={`${item.code}:${item.path ?? ''}`}
@@ -145,7 +145,7 @@ export function ConnectorExportView({ id, onDone }: ConnectorExportViewProps): R
         {saved ? (
           <p className="flex items-center gap-2 text-xs text-foreground" role="status">
             <CheckCircle2 className="size-4 text-primary" aria-hidden="true" />
-            Configuration saved.
+            {t('connectorExport.configSaved')}
           </p>
         ) : null}
 

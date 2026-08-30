@@ -64,6 +64,10 @@
 | Image region annotation | 图片区域注解 | 图片框选区域进会话 |
 | mcpServers config | MCP 服务器配置 | 标准 MCP 客户端配置文件，`mcpServers` 保留原文 |
 | Responses API | Responses API | 不译（OpenAI 原生协议名） |
+| Permission mode | 权限模式 | 权限审批连用的模式选择 |
+| Configuration preview | 配置预览 | 导入/导出前预览配置结构 |
+| Configuration diagnostics | 配置诊断 | 配置健康检查结果 |
+| Repository results | 仓库结果 | GitHub 技能仓库搜索结果 |
 
 ## 高频操作动词
 

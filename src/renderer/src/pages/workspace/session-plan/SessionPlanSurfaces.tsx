@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Textarea } from '@/components/ui/textarea'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { useLanguage } from '@/i18n'
 
 import {
   parsePlanDocumentV1,
@@ -262,6 +263,7 @@ const PlanPreviewSurface = ({
   onRespond,
   onToggleFullScreen
 }: PlanPreviewSurfaceProps): React.JSX.Element => {
+  const { t } = useLanguage()
   const planDocument = validatedPreviewDocument(projection.document)
 
   const download =
@@ -414,7 +416,7 @@ const PlanPreviewSurface = ({
               </section>
             ))}
             <section className="mt-7 border-t border-border pt-6">
-              <h2 className="text-sm font-medium">Desired outputs</h2>
+              <h2 className="text-sm font-medium">{t('ui.desiredoutputs')}</h2>
               {planDocument.desired_outputs.length > 0 ? (
                 <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-muted-foreground">
                   {planDocument.desired_outputs.map((output) => (
@@ -422,7 +424,7 @@ const PlanPreviewSurface = ({
                   ))}
                 </ul>
               ) : (
-                <p className="mt-2 text-xs text-muted-foreground">No desired outputs specified.</p>
+                <p className="mt-2 text-xs text-muted-foreground">{t('ui.nodesiredoutputsspecified')}</p>
               )}
             </section>
             <div className="mt-7 rounded-lg bg-muted p-4">

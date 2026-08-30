@@ -334,7 +334,7 @@ const ProviderStep = ({
       <Separator className="bg-border-200" />
 
       <CardContent className="flex-1 px-6 py-5">
-        <section aria-label="Configure model">
+        <section aria-label={t('ui.configuremodel')}>
           {!encryptionAvailable ? (
             <p className="mb-4 rounded-lg border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">
               {t('onboarding.keychainUnavailable')}

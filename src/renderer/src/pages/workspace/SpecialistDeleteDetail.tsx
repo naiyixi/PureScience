@@ -5,6 +5,8 @@ import type { AcpPermissionRequest } from '../../../../shared/acp'
 import { useSpecialistStore } from '@/stores/specialist-store'
 import { SpecialistAvatar } from '../settings/specialist-avatar'
 
+import { useLanguage } from '@/i18n'
+
 // The redacted delete approval payload carried by the ACP request. Only the public name travels in
 // the payload (main-side redaction); description / capabilities are resolved renderer-side by name,
 // matching the main process `getByName` validation identity exactly.
@@ -31,6 +33,7 @@ const SpecialistDeleteDetail = ({
 }: {
   request: AcpPermissionRequest
 }): React.JSX.Element => {
+  const { t } = useLanguage()
   const items = useSpecialistStore((state) => state.items)
   const isLoaded = useSpecialistStore((state) => state.isLoaded)
   const load = useSpecialistStore((state) => state.load)
@@ -94,7 +97,7 @@ const SpecialistDeleteDetail = ({
       <div className="flex gap-2 rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-xs leading-relaxed">
         <AlertTriangle aria-hidden="true" className="mt-0.5 size-3.5 shrink-0 text-destructive" />
         <p className="text-foreground">
-          Conversations still bound to <b>{profile.displayName ?? profile.name}</b> will become{' '}
+          {t('ui.conversationsstillboundto')} <b>{profile.displayName ?? profile.name}</b> will become{' '}
           <b>unavailable</b> and will <b>not</b> be switched to Main Agent automatically. For each
           affected conversation you&apos;ll explicitly choose a new specialist or Main Agent before
           it can send again.

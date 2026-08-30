@@ -477,7 +477,7 @@ const PageLoadError = ({
 )
 
 // All mode uses a compact per-section button; category mode normally scroll-loads. Both modes share
-// the same terminal state so each upload/session section says No more independently.
+// the same terminal state so each upload/session section says {t('workspace.noMoreSessions')} independently.
 const FilePageFooter = ({
   page,
   mode,
@@ -502,7 +502,7 @@ const FilePageFooter = ({
         data-testid="project-files-end"
         className="px-4 py-2 text-center text-[11px] text-text-300"
       >
-        No more
+        {t('workspace.noMoreSessions')}
       </div>
     )
   }
@@ -542,7 +542,9 @@ const FileActionButtons = ({
   disabled: boolean
   className: string
   onOpenInPanel: () => void
-}): React.JSX.Element => (
+}): React.JSX.Element => {
+  const { t } = useLanguage()
+  return (
   <div
     className={cn(
       'absolute z-10 flex items-center gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100 motion-reduce:transition-none [@media(hover:none)]:opacity-100',
@@ -572,11 +574,12 @@ const FileActionButtons = ({
             <ArrowUpRight aria-hidden="true" />
           </Button>
         </TooltipTrigger>
-        <TooltipContent>Open in split view beside the session</TooltipContent>
+        <TooltipContent>{t('workspace.openInSplitView')}</TooltipContent>
       </Tooltip>
     </TooltipProvider>
   </div>
-)
+  )
+}
 
 const FileTile = ({
   name,
@@ -941,7 +944,7 @@ const ProjectFilesFilterMenu = ({
                 onLoadMoreOptions()
               }}
             >
-              Retry loading sessions
+              {t('workspace.retryLoadingSessions')}
             </DropdownMenuItem>
           ) : null}
           {showSessionOptionsToggle ? (
@@ -1014,7 +1017,7 @@ const ProjectFilesFilterMenu = ({
                 />
                 <span className="min-w-0 flex-1 truncate">{host.displayName}</span>
                 {!reachable && (
-                  <span className="shrink-0 text-[11px] text-text-300">Host unreachable</span>
+                  <span className="shrink-0 text-[11px] text-text-300">{t('workspace.hostUnreachable')}</span>
                 )}
               </DropdownMenuItem>
             )
@@ -1718,7 +1721,7 @@ const ProjectFilesViewContent = ({
                       <LayoutGrid className="size-3.5" strokeWidth={1.8} aria-hidden="true" />
                     </ToggleGroup.Item>
                   </TooltipTrigger>
-                  <TooltipContent className="z-[70]">Grid view</TooltipContent>
+                  <TooltipContent className="z-[70]">{t('workspace.gridView')}</TooltipContent>
                 </Tooltip>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -1730,7 +1733,7 @@ const ProjectFilesViewContent = ({
                       <List className="size-3.5" strokeWidth={1.8} aria-hidden="true" />
                     </ToggleGroup.Item>
                   </TooltipTrigger>
-                  <TooltipContent className="z-[70]">List view</TooltipContent>
+                  <TooltipContent className="z-[70]">{t('workspace.listView')}</TooltipContent>
                 </Tooltip>
               </ToggleGroup.Root>
             )}
@@ -1773,7 +1776,7 @@ const ProjectFilesViewContent = ({
             <Input
               type="search"
               aria-label={t('ws.searchProjectFiles')}
-              placeholder="Search artifacts..."
+              placeholder={t('ui.searchartifacts')}
               value={searchQuery}
               maxLength={256}
               className="h-[30px] border-0 bg-transparent pl-8 pr-8 shadow-none [&::-webkit-search-cancel-button]:hidden"
@@ -1795,7 +1798,7 @@ const ProjectFilesViewContent = ({
                       <X className="size-3.5" strokeWidth={2} aria-hidden="true" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent className="z-[70]">Clear search</TooltipContent>
+                  <TooltipContent className="z-[70]">{t('workspace.clearSearch')}</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
             ) : null}
@@ -1909,7 +1912,7 @@ const ProjectFilesViewContent = ({
             <section>
               {isAllFilter ? (
                 <div className="px-4 pb-1 pt-3 text-[11px] font-medium uppercase tracking-normal text-text-300">
-                  Generated files
+                  {t('workspace.generatedFiles')}
                 </div>
               ) : null}
               {visibleArtifactGroups.map((group, groupIndex) => (
@@ -1957,7 +1960,7 @@ const ProjectFilesViewContent = ({
                     className={loadMoreButtonClassName}
                     onClick={() => void index.loadMoreGroups()}
                   >
-                    Load more sessions
+                    {t('workspace.loadMoreSessions')}
                   </Button>
                 </div>
               ) : null}
