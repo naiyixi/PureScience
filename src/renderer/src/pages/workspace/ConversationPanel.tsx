@@ -4,7 +4,7 @@ import type {
   AcpContextUsage
 } from '../../../../shared/acp'
 import type { ElicitationAnswer, ElicitationRequestView } from '../../../../shared/elicitation'
-import type { ConversationAnnotation } from '../../../../shared/annotations'
+import type { AnnotationImageRef, AnnotationRegion, ConversationAnnotation } from '../../../../shared/annotations'
 import type { NotebookSessionReference } from '../../../../shared/notebook'
 import type {
   PermissionProfileId,
@@ -194,6 +194,8 @@ type ConversationPanelProps = {
   pendingAnnotations: ConversationAnnotation[]
   onRemoveAnnotation: (annotationId: string) => void
   onAnnotateSelection: (source: string, text: string) => void
+  // Region annotations picked on agent-generated images stage an image annotation card.
+  onAnnotateImage?: (image: AnnotationImageRef, region: AnnotationRegion) => void
   onOpenFolderGrants?: () => void
   onPermissionProfileChange: (profile: PermissionProfileId) => void
   onRevokePermissionGrant: (categoryKey: string) => void
@@ -250,6 +252,7 @@ const ConversationPanel = ({
   pendingAnnotations,
   onRemoveAnnotation,
   onAnnotateSelection,
+  onAnnotateImage,
   onOpenFolderGrants,
   permissionProfile,
   permissionProfileState,
@@ -519,6 +522,7 @@ const ConversationPanel = ({
             onSendEditedMessage={onSendEditedMessage}
             canBranchInNewSession={canBranchInNewSession}
             onBranchInNewSession={onBranchFromAgentMessage}
+            onAnnotateImage={onAnnotateImage}
             handoffLifecycleSource={workspaceHandoffLifecycleClient}
             onRetryHandoff={(request) => workspaceHandoffLifecycleClient.retry(request)}
           />
