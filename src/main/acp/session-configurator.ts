@@ -21,7 +21,13 @@ type ConfigurationContext = Readonly<{
   connection: ClientConnection
 }>
 type StartupConfiguration = ConfigurationContext &
-  Readonly<{ session: ActiveSession; permissionProfile: PermissionProfileId }>
+  Readonly<{
+    session: ActiveSession
+    permissionProfile: PermissionProfileId
+    // Optional per-session model override (sub-agent sessions pin their own model). When absent the
+    // backend's currently selected session model is used.
+    modelId?: string
+  }>
 type LiveEffortSession = Readonly<{
   session: ActiveSession
   configOptions: readonly SessionConfigOption[] | null | undefined
@@ -146,7 +152,7 @@ export class AcpSessionConfigurator {
   }
 
   private async applyModel(input: StartupConfiguration): Promise<ModelApplication> {
-    const model = input.backend.session.model
+    const model = input.modelId ?? input.backend.session.model
     if (!model) return { appliedModel: undefined, configOptions: undefined }
     const configOptions = configOptionsOf(input.session)
     const selection = matchSessionModelOption(configOptions, model)

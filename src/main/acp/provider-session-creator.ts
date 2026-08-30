@@ -119,7 +119,8 @@ export class AcpProviderSessionCreator {
         backend,
         connection,
         session,
-        permissionProfile
+        permissionProfile,
+        ...(request.modelId ? { modelId: request.modelId } : {})
       })
       for (;;) {
         // A live effort change can overlap the provider request above. Replay against the newest
@@ -132,7 +133,8 @@ export class AcpProviderSessionCreator {
             backend,
             connection,
             session,
-            permissionProfile
+            permissionProfile,
+            ...(request.modelId ? { modelId: request.modelId } : {})
           })
           continue
         }

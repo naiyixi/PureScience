@@ -97,6 +97,46 @@ describe('AcpSessionConfigurator', () => {
     expect(Object.isFrozen(facts.configOptions)).toBe(true)
   })
 
+  it('prefers a per-session modelId override over the backend model', async () => {
+    const initialOptions = [
+      // The session's current model is model-a (from the backend's previous selection).
+      selectOption('model', 'model', 'model-a', ['model-a', 'model-b'])
+    ]
+    const requests: Array<{ method: unknown; params: unknown }> = []
+    const request = vi.fn(async (method: unknown, params: unknown) => {
+      requests.push({ method, params })
+      return {}
+    })
+    const connection = { agent: { request } } as unknown as ClientConnection
+    const session = {
+      sessionId: 'session-1',
+      modes: {
+        currentModeId: 'default',
+        availableModes: [{ id: 'default', name: 'Default' }, { id: 'bypassPermissions', name: 'Full access' }]
+      },
+      newSessionResponse: { configOptions: initialOptions }
+    } as unknown as ActiveSession
+    const configurator = new AcpSessionConfigurator({
+      assertCurrentConnection: vi.fn(),
+      diagnosticContext: () => ({ framework: 'claude-code', generation: 1, status: 'connected' })
+    })
+
+    const facts = await configurator.configure({
+      backend: backendView({ model: 'model-a', modelRequired: true }),
+      connection,
+      session,
+      permissionProfile: 'full',
+      // Sub-agent sessions pin their own model; the backend's current model must be ignored.
+      modelId: 'model-b'
+    })
+
+    expect(facts.appliedModel).toBe('model-b')
+    const modelRequest = requests.find(
+      (r) => r.method === acp.methods.agent.session.setConfigOption
+    )
+    expect(modelRequest?.params).toEqual({ sessionId: 'session-1', configId: 'model', value: 'model-b' })
+  })
+
   it('applies a permission-only change and returns an immutable profile fact', async () => {
     const request = vi.fn(async () => ({}))
     const connection = { agent: { request } } as unknown as ClientConnection
