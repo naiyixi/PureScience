@@ -7,6 +7,9 @@ import type { PersistedChatSession } from '../../shared/session-persistence'
 import {
   TaskRunner,
   createDescription,
+  type TaskAgentCreateSessionRequest,
+  type TaskAgentPort,
+  type TaskAgentResumeSessionRequest,
   type TaskPreviewResourcePort,
   type TaskProjectPort,
   type TaskRunnerDependencies,
@@ -927,4 +930,32 @@ describe('createDescription sentence extraction', () => {
   it('normalizes whitespace', () => {
     expect(createDescription('多行\n\n  摘要内容。')).toBe('多行 摘要内容。')
   })
+
+  it('passes a modelId override through to sub-agent session creation', async () => {
+    const created: unknown[] = []
+    const agent: TaskAgentPort = {
+      withSessionAvailable: async <Result>(_projectId: string, _sessionId: string, operation: () => Promise<Result>) => operation(),
+      listAttachedSessionIds: async () => [],
+      createSession: async (request: TaskAgentCreateSessionRequest) => {
+        created.push(request)
+        return { sessionId: 'session-model' }
+      },
+      resumeSession: async (request: TaskAgentResumeSessionRequest) => ({ sessionId: request.sessionId }),
+      setPermissionProfile: async () => undefined,
+      prompt: async () => undefined
+    }
+    const projects: TaskProjectPort = { list: async () => [project], create: async (request) => ({ ...project, ...request }) }
+    const runner = createRunner({ agent, projects })
+
+    await runner.startRun({
+      project: project.id,
+      prompt: 'delegate this',
+      permissionProfile: 'full',
+      modelId: 'model-b'
+    })
+
+    expect(created).toHaveLength(1)
+    expect(created[0]).toMatchObject({ projectId: project.id, permissionProfile: 'full', modelId: 'model-b' })
+  })
+
 })

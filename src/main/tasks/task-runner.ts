@@ -64,6 +64,8 @@ type TaskAgentSession = {
 type TaskAgentCreateSessionRequest = {
   projectId: string
   permissionProfile: PermissionProfileId
+  // Optional model override for the sub-agent session (defaults to the backend's current model).
+  modelId?: string
 }
 
 type TaskAgentResumeSessionRequest = {
@@ -416,6 +418,7 @@ class TaskRunner {
     const now = this.dependencies.now()
     const permissionProfile =
       request.permissionProfile ?? existing?.permissionProfile ?? DEFAULT_PERMISSION_PROFILE
+    const modelId = request.modelId
     let sessionInfo: TaskAgentSession
 
     if (existing) {
@@ -443,7 +446,8 @@ class TaskRunner {
     } else {
       sessionInfo = await this.dependencies.agent.createSession({
         projectId: project.id,
-        permissionProfile
+        permissionProfile,
+        ...(modelId ? { modelId } : {})
       })
     }
 

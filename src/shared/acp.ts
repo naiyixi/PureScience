@@ -573,6 +573,10 @@ export type AcpCreateSessionRequest = {
   // session-creation time — the renderer MUST NOT send systemPrompt or capability data, only the
   // stable UUID. Absent or undefined means no specialist; use Main Agent.
   specialistId?: string
+  // Optional per-session model override. When present, the session is configured to use this model
+  // instead of the backend's currently selected model (used by sub-agent/task sessions so a
+  // delegation can pin its own model independently of the main conversation).
+  modelId?: string
 }
 
 export type AcpCreateSessionResponse = {

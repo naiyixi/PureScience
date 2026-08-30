@@ -11,6 +11,8 @@ export type StartTaskRunRequest = {
   sessionId?: string
   permissionProfile?: PermissionProfileId
   skillIds?: string[]
+  // Optional model override for the sub-agent session (defaults to the backend's current model).
+  modelId?: string
 }
 
 export type TaskRun = {
