@@ -231,7 +231,15 @@ const validateSessionGraphs = async (authorityRoot: string): Promise<void> => {
   for (const project of await readEntries(sessionsRoot)) {
     if (!project.isDirectory()) continue
     for (const entry of await readEntries(join(sessionsRoot, project.name))) {
-      if (!entry.isFile() || !entry.name.endsWith('.json') || entry.name.includes('.tmp')) continue
+      // Summary caches (<session>.json.summary.json) are metadata, not session files.
+      if (
+        !entry.isFile() ||
+        !entry.name.endsWith('.json') ||
+        entry.name.endsWith('.summary.json') ||
+        entry.name.includes('.tmp')
+      ) {
+        continue
+      }
       const path = join(sessionsRoot, project.name, entry.name)
       const session = normalizeSessionFile(JSON.parse(await readFile(path, 'utf8')) as unknown, {
         preserveLegacyUploadPaths: true
