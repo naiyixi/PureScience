@@ -36,8 +36,10 @@ export const renderMemoryRecallInstructions = (
   let remaining = MAX_MEMORY_BLOCK_CHARS
 
   for (const category of recallCategories) {
+    // Superseded notes stay readable in the panel but are never recalled: a newer note replaced
+    // them, so injecting both would waste context and could contradict the current fact.
     const notes = memory.notes
-      .filter((note) => note.categoryId === category.id)
+      .filter((note) => note.categoryId === category.id && !note.supersededBy)
       .sort((left, right) => right.updatedAt - left.updatedAt)
       .slice(0, NOTES_PER_CATEGORY)
     if (notes.length === 0) continue

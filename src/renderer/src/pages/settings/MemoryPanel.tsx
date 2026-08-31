@@ -520,6 +520,24 @@ const MemoryNoteList = ({
                 className="min-h-0 w-full resize-y bg-transparent text-[12px] leading-5 text-text-100 outline-none placeholder:text-text-300"
                 onChange={(event) => onUpdateNote(note, event.target.value)}
               />
+              {(note.evidence || note.supersededBy) && (
+                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-text-400">
+                  {note.supersededBy && (
+                    <span
+                      className="rounded bg-bg-200 px-1 py-0.5 font-medium text-text-300"
+                      data-testid="memory-note-superseded"
+                      title={t('settings.memorySupersededTooltip')}
+                    >
+                      {t('settings.memorySuperseded')}
+                    </span>
+                  )}
+                  {note.evidence && (
+                    <span data-testid="memory-note-evidence" className="truncate">
+                      {t('settings.memoryEvidence')}: {note.evidence}
+                    </span>
+                  )}
+                </div>
+              )}
               <div className="mt-1 flex items-center justify-end">
                 <button
                   type="button"

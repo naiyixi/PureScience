@@ -354,4 +354,62 @@ describe('MemoryPanel', () => {
     const deleteButtons = document.body.querySelectorAll('[data-slot="memory-category-delete"]')
     expect(deleteButtons).toHaveLength(1)
   })
+
+  it('renders the evidence source on notes that carry provenance', async () => {
+    useMemoryStore.setState({
+      memory: {
+        enabled: true,
+        categories: [{ id: 'about-you', name: 'About you', createdAt: 1000 }],
+        notes: [
+          {
+            id: 'note-ev',
+            categoryId: 'about-you',
+            text: 'T790M is the resistance driver',
+            createdAt: 1,
+            updatedAt: 1,
+            evidence: 'from variant analysis session'
+          }
+        ]
+      },
+      isLoading: false
+    })
+    await renderPanel()
+
+    const evidence = container.querySelector('[data-testid="memory-note-evidence"]')
+    expect(evidence).not.toBeNull()
+    expect(evidence!.textContent).toContain('from variant analysis session')
+  })
+
+  it('renders the superseded marker on notes replaced by a newer note', async () => {
+    useMemoryStore.setState({
+      memory: {
+        enabled: true,
+        categories: [{ id: 'about-you', name: 'About you', createdAt: 1000 }],
+        notes: [
+          {
+            id: 'note-old',
+            categoryId: 'about-you',
+            text: 'Old preference',
+            createdAt: 1,
+            updatedAt: 1,
+            supersededBy: 'note-new'
+          },
+          {
+            id: 'note-new',
+            categoryId: 'about-you',
+            text: 'New preference',
+            createdAt: 2,
+            updatedAt: 2
+          }
+        ]
+      },
+      isLoading: false
+    })
+    await renderPanel()
+
+    const marker = container.querySelector('[data-testid="memory-note-superseded"]')
+    expect(marker).not.toBeNull()
+    // The t() shim in jsdom returns the raw key; assert on the marker's presence + data attribute.
+    expect(marker!.getAttribute('data-testid')).toBe('memory-note-superseded')
+  })
 })

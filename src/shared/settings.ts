@@ -406,6 +406,15 @@ export type MemoryNote = {
   text: string
   createdAt: number
   updatedAt: number
+  // Provenance of the note: where it came from and whether it has been superseded.
+  // `evidence` is a short human-readable source note (e.g. which session/artifact the fact came
+  // from). `subjectVersionId` pins the artifact version the note describes, when applicable.
+  // `supersededBy` is the id of a newer note that replaced this one (the older note stays readable
+  // but is not recalled); `lastSurfacedAt` tracks when recall last injected it.
+  evidence?: string
+  subjectVersionId?: string
+  supersededBy?: string
+  lastSurfacedAt?: number
 }
 
 export type MemoryCategory = {

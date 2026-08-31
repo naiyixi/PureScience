@@ -1128,7 +1128,8 @@ const createApplicationModules = async (
       skillImporter: conversationSkillImporter,
       skillCreator: new SkillCreator({ configDir: resolveConfigRoot() }),
       memoryWriter: {
-        saveNote: (categoryName, text) => settingsService.saveMemoryNote(categoryName, text)
+        saveNote: (categoryName, text, evidence) =>
+          settingsService.saveMemoryNote(categoryName, text, evidence)
       },
       contextSummary: {
         queryChunk: (sessionId, summaryId, question) =>

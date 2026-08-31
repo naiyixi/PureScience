@@ -162,4 +162,40 @@ describe('renderMemoryRecallInstructions', () => {
     // Categories without a prompt are not listed in the save guidance.
     expect(result).not.toContain('About you: ')
   })
+
+  it('excludes superseded notes from recall (provenance)', () => {
+    const memory = memoryFixture({
+      notes: [
+        {
+          id: 'n1',
+          categoryId: 'about-you',
+          text: 'Prefers concise answers',
+          createdAt: 1,
+          updatedAt: 1
+        },
+        {
+          id: 'n2',
+          categoryId: 'about-you',
+          text: 'Prefers terse bullet answers now',
+          createdAt: 2,
+          updatedAt: 2
+        },
+        {
+          id: 'n3',
+          categoryId: 'about-you',
+          text: 'Old superseded note',
+          createdAt: 3,
+          updatedAt: 3,
+          supersededBy: 'n4'
+        }
+      ]
+    })
+
+    const result = renderMemoryRecallInstructions(memory)
+    // Active notes are recalled.
+    expect(result).toContain('- Prefers concise answers')
+    expect(result).toContain('- Prefers terse bullet answers now')
+    // The superseded note is not recalled.
+    expect(result).not.toContain('Old superseded note')
+  })
 })

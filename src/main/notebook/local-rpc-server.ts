@@ -119,7 +119,8 @@ type NotebookLocalRpcServerOptions = {
   memoryWriter?: {
     saveNote(
       categoryName: string,
-      text: string
+      text: string,
+      evidence?: string
     ): Promise<{
       saved: boolean
       categoryId?: string
@@ -919,7 +920,8 @@ class NotebookLocalRpcServer {
           'Memory save-note RPC params must include sessionId, categoryName, and text.'
         )
       }
-      return this.memoryWriter.saveNote(params.categoryName, params.text)
+      const evidence = typeof params.evidence === 'string' ? params.evidence : undefined
+      return this.memoryWriter.saveNote(params.categoryName, params.text, evidence)
     }
 
     if (method === 'summaryQueryChunk') {

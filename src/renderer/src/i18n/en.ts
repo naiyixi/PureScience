@@ -366,6 +366,9 @@ export const en: Record<ZhKey, string> = {
   'settings.memoryNoNotes': 'No notes yet.',
   'settings.memoryNotePlaceholder': 'Write what the app should remember…',
   'settings.memoryDeleteNote': 'Delete note',
+  'settings.memoryEvidence': 'Source',
+  'settings.memorySuperseded': 'superseded',
+  'settings.memorySupersededTooltip': 'A newer note replaced this one; it stays visible but is no longer recalled.',
   'settings.memoryDisabledHint':
     "Memory is off. The app won't save new notes or recall existing ones, but the notes below are kept and stay editable. Turn memory on to resume.",
   'settings.memoryLoading': 'Loading memory…',

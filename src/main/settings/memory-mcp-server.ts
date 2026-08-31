@@ -26,7 +26,12 @@ const memorySaveNoteToolSchema = {
     .string()
     .min(1)
     .max(4000)
-    .describe('The note to remember. Keep it concise and self-contained.')
+    .describe('The note to remember. Keep it concise and self-contained.'),
+  evidence: z
+    .string()
+    .max(500)
+    .optional()
+    .describe('Optional short source note for provenance — e.g. which artifact, file, or session the fact came from.')
 }
 const memorySaveNoteToolDefinition = {
   title: 'Save a memory note',
@@ -51,7 +56,11 @@ type MemoryMcpEnvironment = MemoryRpcConnection & {
 }
 
 type MemoryMcpHandler = {
-  saveNote: (categoryName: string, text: string) => Promise<MemorySaveNoteResult>
+  saveNote: (
+    categoryName: string,
+    text: string,
+    evidence?: string
+  ) => Promise<MemorySaveNoteResult>
 }
 
 type MemoryMcpServerConfigRequest = MemoryMcpEnvironment & {
@@ -71,7 +80,12 @@ const createMemoryMcpServer = (handler: MemoryMcpHandler): ModelContextProtocolS
   })
 
   server.registerTool(MEMORY_SAVE_NOTE_TOOL_NAME, memorySaveNoteToolDefinition, async (input) => {
-    const result = await handler.saveNote(input.category_name.trim(), input.text.trim())
+    const evidence = typeof input.evidence === 'string' ? input.evidence.trim() : undefined
+    const result = await handler.saveNote(
+      input.category_name.trim(),
+      input.text.trim(),
+      evidence || undefined
+    )
     return {
       content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
     }
@@ -120,7 +134,8 @@ const createMemoryMcpEnvironmentFromProcess = (
 const callMemorySaveNoteRpc = async (
   environment: MemoryMcpEnvironment,
   categoryName: string,
-  text: string
+  text: string,
+  evidence?: string
 ): Promise<MemorySaveNoteResult> => {
   const response = await fetchLocalRpc(
     environment,
@@ -132,7 +147,7 @@ const callMemorySaveNoteRpc = async (
       },
       body: JSON.stringify({
         method: 'memorySaveNote',
-        params: { sessionId: environment.sessionId, categoryName, text }
+        params: { sessionId: environment.sessionId, categoryName, text, evidence }
       })
     },
     'Memory save-note RPC'
@@ -149,7 +164,8 @@ const runMemoryMcpServer = async (
   environment = createMemoryMcpEnvironmentFromProcess()
 ): Promise<void> => {
   const server = createMemoryMcpServer({
-    saveNote: (categoryName, text) => callMemorySaveNoteRpc(environment, categoryName, text)
+    saveNote: (categoryName, text, evidence) =>
+      callMemorySaveNoteRpc(environment, categoryName, text, evidence)
   })
   await server.connect(new StdioServerTransport())
 }

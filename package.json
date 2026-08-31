@@ -2,7 +2,7 @@
   "name": "purescience",
   "productName": "PureScience",
   "desktopName": "purescience.desktop",
-  "version": "1.27.0",
+  "version": "1.28.0",
   "description": "PureScience — an open-source, model-agnostic AI workbench for scientific discovery.",
   "main": "./out/main/index.js",
   "author": "zerolink",

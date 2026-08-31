@@ -408,9 +408,11 @@ class SettingsService {
   // Agent-facing save: appends a note to the named category. Returns a structured result so the
   // agent can react (e.g. "category not found") without seeing raw settings internals. Honors the
   // master switch: memory off means no new notes are saved, matching the recall contract.
+  // `evidence` (optional) records where the fact came from for provenance.
   async saveMemoryNote(
     categoryName: string,
-    text: string
+    text: string,
+    evidence?: string
   ): Promise<{
     saved: boolean
     categoryId?: string
@@ -434,7 +436,8 @@ class SettingsService {
       categoryId: category.id,
       text,
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
+      ...(evidence ? { evidence } : {})
     }
     const persisted = await this.repository.setMemory({
       ...memory,
