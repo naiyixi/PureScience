@@ -12,12 +12,19 @@ import { REQUEST_SKILL_IMPORT_TOOL_NAME } from '../../shared/skill-import'
 import { MEMORY_SAVE_NOTE_TOOL_NAME } from '../../shared/memory-mcp'
 import { MEMORY_MCP_SERVER_NAME } from '../settings/memory-mcp-server'
 import { memorySaveNoteToolDefinition } from '../settings/memory-mcp-server'
+import {
+  CONTEXT_SUMMARY_MCP_SERVER_NAME,
+  SUMMARY_QUERY_TOOL_NAME,
+  BOUNDARY_TOOL_NAME
+} from '../../shared/context-summary-mcp'
+import { summaryQueryToolDefinition, boundaryToolDefinition } from '../settings/context-summary-mcp-server'
 
 type ContextUsageMcpOptions = {
   artifacts: boolean
   notebook: boolean
   skillImport: boolean
   memory: boolean
+  contextSummary: boolean
   codexBridgeAliases?: boolean
 }
 
@@ -105,6 +112,15 @@ const contextUsageMcpSections = (
     sections.push(
       serializeToolDefinitions(frameworkId, codexBridgeAliases, MEMORY_MCP_SERVER_NAME, [
         { name: MEMORY_SAVE_NOTE_TOOL_NAME, definition: memorySaveNoteToolDefinition }
+      ])
+    )
+  }
+
+  if (options.contextSummary) {
+    sections.push(
+      serializeToolDefinitions(frameworkId, codexBridgeAliases, CONTEXT_SUMMARY_MCP_SERVER_NAME, [
+        { name: SUMMARY_QUERY_TOOL_NAME, definition: summaryQueryToolDefinition },
+        { name: BOUNDARY_TOOL_NAME, definition: boundaryToolDefinition }
       ])
     )
   }

@@ -10,6 +10,7 @@ import type { NotebookPreviewItem } from '../NotebookPreview'
 import { ProjectFilesView } from '../ProjectFilesView'
 import { SessionReviewerPanel } from '../SessionReviewerPanel'
 import { VerificationChecklistPanel } from '../VerificationChecklistPanel'
+import { FoldTimelinePanel } from '../FoldTimelinePanel'
 import { respondToSessionPlan } from '../session-plan/respond-to-session-plan'
 import { PlanPreviewSurface } from '../session-plan/SessionPlanSurfaces'
 
@@ -31,7 +32,7 @@ const SessionReviewerContent = ({
 }): React.JSX.Element | null => {
   const { t } = useLanguage()
   const sessionId = item.reviewerSessionId ?? ''
-  const [tab, setTab] = useState<'checks' | 'checklist'>('checks')
+  const [tab, setTab] = useState<'checks' | 'checklist' | 'context'>('checks')
   const reviews = useReviewStore((state) =>
     selectProjectSessionReviews(state.reviewsBySession, projectId, sessionId)
   )
@@ -39,7 +40,7 @@ const SessionReviewerContent = ({
   // no reviewId (e.g. a session-level entry point) or that review is gone.
   const review = reviews.find((r) => r.id === item.reviewerReviewId) ?? reviews[0]
 
-  const tabButton = (value: 'checks' | 'checklist', label: string): React.JSX.Element => (
+  const tabButton = (value: 'checks' | 'checklist' | 'context', label: string): React.JSX.Element => (
     <button
       type="button"
       className={cn(
@@ -85,12 +86,13 @@ const SessionReviewerContent = ({
         <div className="flex items-center gap-1" role="tablist" aria-label="Reviewer views">
           {tabButton('checks', t('ui.checks'))}
           {tabButton('checklist', t('ui.checklist'))}
+          {tabButton('context', t('ui.foldedcontext'))}
         </div>
       </div>
       <div className="flex-1 overflow-hidden">
         {tab === 'checks' ? (
           <SessionReviewerPanel review={review} activeFindingId={item.reviewerActiveFindingId} />
-        ) : (
+        ) : tab === 'checklist' ? (
           <VerificationChecklistPanel
             projectId={projectId ?? ''}
             sessionId={sessionId}
@@ -100,6 +102,8 @@ const SessionReviewerContent = ({
               setTab('checks')
             }}
           />
+        ) : (
+          <FoldTimelinePanel projectId={projectId ?? ''} sessionId={sessionId} />
         )}
       </div>
     </div>

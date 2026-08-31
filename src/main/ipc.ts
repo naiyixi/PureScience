@@ -164,6 +164,8 @@ import { FolderGrantsService } from './folder-grants'
 import { registerFolderGrantsIpcHandlers } from './folder-grants-ipc'
 import { getAppClaudeConfigDir } from './settings/provider-env'
 import { createDefaultSettingsService } from './settings/service'
+import { ContextSummaryRepository } from './settings/context-summary-repository'
+import { createContextSummaryCapture } from './settings/context-summary-capture'
 import type { NotebookRuntimeSettings } from './settings/capabilities'
 import type { WindowSettingsCapabilities } from './settings/service-capabilities'
 import { createSettingsWorkflows } from './settings/workflows'
@@ -1115,6 +1117,9 @@ const createApplicationModules = async (
       await sessionPersistenceCoordinator.saveSessionSpecialistBinding(session, specialistId)
     }
   })
+  const contextSummaryRepository = new ContextSummaryRepository({
+    storageRoot: resolveDataRoot()
+  })
   const notebookRpcServer = await modules.add(
     new NotebookLocalRpcServer(notebookLocalRpc, {
       onSessionReleased: (sessionId) => completionGateCoordinator.releaseSession(sessionId),
@@ -1124,6 +1129,12 @@ const createApplicationModules = async (
       skillCreator: new SkillCreator({ configDir: resolveConfigRoot() }),
       memoryWriter: {
         saveNote: (categoryName, text) => settingsService.saveMemoryNote(categoryName, text)
+      },
+      contextSummary: {
+        queryChunk: (sessionId, summaryId, question) =>
+          contextSummaryRepository.queryChunk(sessionId, summaryId, question),
+        recordBoundary: (sessionId, label) =>
+          contextSummaryRepository.recordBoundary(sessionId, label)
       },
       planService: {
         call: (input) => {
@@ -1224,6 +1235,20 @@ const createApplicationModules = async (
   })
   // ACP identity resolution and the Specialist settings IPC must use the same service instance.
   // Creating it only for settings leaves create-session unable to resolve a selected UUID.
+  const contextSummaryCapture = createContextSummaryCapture({
+    repository: contextSummaryRepository,
+    loadSession: (projectId, sessionId) => sessionRepository.loadSession(projectId, sessionId),
+    projectIdForSession: async (sessionId) => {
+      // Session ids are not globally unique across projects; resolve by scanning the loaded set.
+      // Compaction is rare, so a full scan is acceptable.
+      try {
+        const { sessions } = await sessionRepository.loadAll()
+        return sessions.find((session) => session.id === sessionId)?.projectId
+      } catch {
+        return undefined
+      }
+    }
+  })
   const runtime = await modules.add(
     {
       mcpEntryPath: mainEntryPath,
@@ -1254,7 +1279,8 @@ const createApplicationModules = async (
         notebookService.shutdownSession(sessionId).then(() => undefined),
       initializationBarrier: initialConnectorSkillsReady,
       profileService,
-      sessionPersistenceCoordinator
+      sessionPersistenceCoordinator,
+      contextSummaryCapture
     },
     (options) => {
       const runtime = createAcpRuntime(options)
@@ -1882,7 +1908,21 @@ const createApplicationModules = async (
       projectId: string,
       sessionId: string,
       mutation: () => Promise<Result>
-    ) => sessionPersistenceCoordinator.runSessionMutation(projectId, sessionId, mutation)
+    ) => sessionPersistenceCoordinator.runSessionMutation(projectId, sessionId, mutation),
+    // Fold timeline: map persisted chunks to the UI view model.
+    contextSummaryChunks: async (sessionId) => {
+      const chunks = await contextSummaryRepository.listChunks(sessionId)
+      return chunks.map((chunk) => ({
+        id: chunk.id,
+        level: chunk.level,
+        foldedAt: chunk.foldedAt,
+        reason: chunk.reason,
+        boundaryLabel: chunk.boundaryLabel,
+        foldedTokens: chunk.foldedTokens,
+        summaryText: chunk.summaryText,
+        transcriptPreview: chunk.transcript.slice(0, 500)
+      }))
+    }
   }
   const reviewerCommandOwner = createReviewerCommandOwner(reviewerOptions)
   declareElectronAdapter('reviewer', () => {

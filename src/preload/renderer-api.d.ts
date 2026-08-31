@@ -293,7 +293,8 @@ import type {
   ReviewSuppressionEvent,
   ReviewUpdateEvent,
   VerificationChecklist,
-  VerificationChecklistMutationRequest
+  VerificationChecklistMutationRequest,
+  ContextSummaryChunkView
 } from '../shared/reviewer'
 import type {
   ApproveRemotePairingRequest,
@@ -946,6 +947,8 @@ export interface PureScienceAPI {
     getChecklist(request: ReviewSessionRequest): Promise<VerificationChecklist>
     // Marks a checklist claim addressed (or reopens it).
     mutateChecklist(request: VerificationChecklistMutationRequest): Promise<void>
+    // Loads the session's folded-context chunks (fold timeline).
+    getChunks(request: ReviewSessionRequest): Promise<ContextSummaryChunkView[]>
   }
   window: {
     // Closes the focused window (the Cmd+W / Ctrl+W fallback when no preview panel is open).

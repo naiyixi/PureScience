@@ -116,6 +116,7 @@ export const WEB_INVOKE_CHANNELS = {
   'remoteAccess.setMode': 'remote-access:set-mode',
   'reviewer.abortFixLoop': 'reviewer:abort-fix-loop',
   'reviewer.getChecklist': 'reviewer:get-checklist',
+  'reviewer.getChunks': 'reviewer:get-chunks',
   'reviewer.getForSession': 'reviewer:get-for-session',
   'reviewer.mutateChecklist': 'reviewer:mutate-checklist',
   'reviewer.run': 'reviewer:run',

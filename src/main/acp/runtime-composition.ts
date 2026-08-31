@@ -296,6 +296,13 @@ const createAcpRuntime = ({
           registerSessionAlias: (aliasSessionId, sessionId) =>
             notebookRpcServer.registerSessionAlias(aliasSessionId, sessionId)
         },
+        contextSummary: {
+          mcpEntryPath,
+          getRpcConnection: ({ sessionId }) =>
+            notebookRpcServer.issueContextSummaryConnection(sessionId),
+          registerSessionAlias: (aliasSessionId, sessionId) =>
+            notebookRpcServer.registerSessionAlias(aliasSessionId, sessionId)
+        },
         elicitation: {
           requestElicitation: (request, sessionId) =>
             elicitationBroker.requestElicitation(request, sessionId),

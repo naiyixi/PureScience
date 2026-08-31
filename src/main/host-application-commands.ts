@@ -22,7 +22,8 @@ import type {
   ReviewSessionRequest,
   ReviewWithChecks,
   VerificationChecklist,
-  VerificationChecklistMutationRequest
+  VerificationChecklistMutationRequest,
+  ContextSummaryChunkView
 } from '../shared/reviewer'
 import type {
   ActiveSessionInfo,
@@ -192,6 +193,11 @@ const reviewerCommands = Object.freeze({
     readonly [request: VerificationChecklistMutationRequest],
     void
   >('reviewer:mutate-checklist'),
+  getChunks: defineApplicationCommand<
+    'reviewer:get-chunks',
+    readonly [request: ReviewSessionRequest],
+    ContextSummaryChunkView[]
+  >('reviewer:get-chunks'),
   run: defineApplicationCommand<
     'reviewer:run',
     readonly [request: ReviewRunRequest],
@@ -314,7 +320,12 @@ type HostApplicationCommandDependencies = Readonly<{
   >
   reviewer: Pick<
     ReviewerCommandOwner,
-    'run' | 'getForSession' | 'abortFixLoop' | 'getChecklist' | 'mutateChecklist'
+    | 'run'
+    | 'getForSession'
+    | 'abortFixLoop'
+    | 'getChecklist'
+    | 'mutateChecklist'
+    | 'getChunks'
   >
   storage: Readonly<{
     getInfo: () => Promise<StorageInfo>
@@ -457,6 +468,7 @@ const registerHostApplicationCommands = (
       'reviewer:get-checklist': ({ args }) => dependencies.reviewer.getChecklist(args[0]),
       'reviewer:get-for-session': ({ args }) => dependencies.reviewer.getForSession(args[0]),
       'reviewer:mutate-checklist': ({ args }) => dependencies.reviewer.mutateChecklist(args[0]),
+      'reviewer:get-chunks': ({ args }) => dependencies.reviewer.getChunks(args[0]),
       'reviewer:run': ({ args }) => dependencies.reviewer.run(args[0])
     })
     scope.registerGroup(hostApplicationCommandGroups[8], {

@@ -30,6 +30,10 @@ type AcpContextCompactionWorkflowOptions = Readonly<{
   pushEvent: (event: RuntimeEventInput) => void
   emitState: () => void
   errorMessage: (error: unknown) => string
+  // Called after a compaction completes, with the compaction reason, so the app can persist the
+  // folded-away window as an immutable summary chunk (searchable long context). Optional: absent
+  // means the feature is not wired (pure native compaction).
+  onCompacted?: (input: { sessionId: string; reason: CompactionReason }) => Promise<void> | void
 }>
 
 type AcpAutomaticCompactionRequest = Readonly<{
@@ -147,6 +151,12 @@ class AcpContextCompactionWorkflow {
             this.options.selectedContextWindow(sessionId)
           )
           this.options.promptContent.resetSession(sessionId)
+          // Best-effort: a chunk-persistence failure must never fail the compaction itself.
+          try {
+            await this.options.onCompacted?.({ sessionId, reason })
+          } catch (error) {
+            log.warn('context summary chunk capture failed', errorLogFields(error))
+          }
           this.publishEvent({
             kind: 'compaction',
             compactionReason: reason,

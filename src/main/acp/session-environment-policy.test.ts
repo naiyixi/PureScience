@@ -54,7 +54,8 @@ const createPolicy = (
       skillImport: true,
       plan: false,
       hostAgents: false,
-      memory: false
+      memory: false,
+      contextSummary: false
     })
   )
   const applicationSystemPromptAppends = vi.fn(() => Object.freeze(['Application guidance.']))

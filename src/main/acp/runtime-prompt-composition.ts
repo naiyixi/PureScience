@@ -172,7 +172,10 @@ const composeAcpRuntimePromptOwners = (
       }),
     pushEvent: (event) => session.publication.pushEvent(event),
     emitState,
-    errorMessage
+    errorMessage,
+    onCompacted: options.contextSummaryCapture
+      ? (input) => options.contextSummaryCapture?.(input)
+      : undefined
   })
   const promptTurnWorkflow = new AcpPromptTurnWorkflow({
     registry: session.sessionRegistry,

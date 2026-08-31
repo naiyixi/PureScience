@@ -1273,6 +1273,7 @@ export const zh = {
   'ui.nochecksrecorded': 'No checks recorded.',
   'ui.checks': 'Checks',
   'ui.checklist': 'Checklist',
+  'ui.foldedcontext': '已折叠上下文',
   'ui.theoriginaltaskcontinuesinth': 'The original task continues in this turn.',
   'ui.contextwindow': 'Context window',
   'ui.resumesession': 'Resume session',

@@ -127,6 +127,11 @@ type NotebookLocalRpcServerOptions = {
       reason?: string
     }>
   }
+  // Folded-context queries (summary_query / boundary MCP): main-process-owned chunk persistence.
+  contextSummary?: {
+    queryChunk(sessionId: string, summaryId: string, question: string): Promise<unknown>
+    recordBoundary(sessionId: string, label: string): Promise<unknown>
+  }
   planService?: {
     call(input: {
       projectId: string
@@ -192,6 +197,7 @@ const CONTROL_RPC_METHODS = new Set(['mcpCall', 'computeCall', 'agentsCall'])
 const SKILL_IMPORT_RPC_METHODS = new Set(['skillImport'])
 const PLAN_RPC_METHODS = new Set(['planCall'])
 const MEMORY_RPC_METHODS = new Set(['memorySaveNote'])
+const CONTEXT_SUMMARY_RPC_METHODS = new Set(['summaryQueryChunk', 'recordBoundary'])
 
 const isArtifactRpcMethod = (method: string): method is ArtifactRpcMethod =>
   ARTIFACT_RPC_METHODS.has(method as ArtifactRpcMethod)
@@ -242,6 +248,8 @@ class NotebookLocalRpcServer {
   private readonly skillImportRpcTokens = new Map<string, string>()
   private readonly planRpcTokens = new Map<string, string>()
   private readonly memoryRpcTokens = new Map<string, string>()
+  private readonly contextSummaryRpcTokens = new Map<string, string>()
+  private readonly contextSummary?: NotebookLocalRpcServerOptions['contextSummary']
   // The session → Specialist relationship is established by the ACP runtime, not supplied by the
   // notebook process. Keeping it here prevents an agent from selecting another Specialist's scope
   // by forging an RPC parameter.
@@ -267,6 +275,7 @@ class NotebookLocalRpcServer {
     this.skillImporter = options.skillImporter
     this.skillCreator = options.skillCreator
     this.memoryWriter = options.memoryWriter
+    this.contextSummary = options.contextSummary
     this.planService = options.planService
     this.artifactProvenance = options.artifactProvenance
     this.inputRegistry = options.inputRegistry
@@ -430,6 +439,14 @@ class NotebookLocalRpcServer {
     }
   }
 
+  private revokeContextSummarySessionCapabilities(sessionId: string): void {
+    for (const ownedSessionId of this.resolveSessionCapabilityOwners(sessionId)) {
+      const token = this.contextSummaryRpcTokens.get(ownedSessionId)
+      if (token) this.sessionRpcCapabilities.delete(token)
+      this.contextSummaryRpcTokens.delete(ownedSessionId)
+    }
+  }
+
   private revokePlanSessionCapabilities(sessionId: string): void {
     for (const ownedSessionId of this.resolveSessionCapabilityOwners(sessionId)) {
       const token = this.planRpcTokens.get(ownedSessionId)
@@ -446,6 +463,7 @@ class NotebookLocalRpcServer {
     this.revokeAgentSessionCapabilities(sessionId)
     this.revokeSkillImportSessionCapabilities(sessionId)
     this.revokeMemorySessionCapabilities(sessionId)
+    this.revokeContextSummarySessionCapabilities(sessionId)
     this.revokePlanSessionCapabilities(sessionId)
     for (const ownedSessionId of ownedSessionIds) {
       this.sessionSpecialists.delete(ownedSessionId)
@@ -526,6 +544,29 @@ class NotebookLocalRpcServer {
       release: () => {
         if (this.memoryRpcTokens.get(sessionId) === token) {
           this.memoryRpcTokens.delete(sessionId)
+        }
+        this.sessionRpcCapabilities.delete(token)
+      }
+    }
+  }
+
+  async issueContextSummaryConnection(sessionId: string): Promise<NotebookRpcConnection> {
+    const connection = await this.ensureStarted()
+    this.revokeContextSummarySessionCapabilities(sessionId)
+
+    const token = randomUUID()
+    this.contextSummaryRpcTokens.set(sessionId, token)
+    this.sessionRpcCapabilities.set(token, {
+      sessionId,
+      allowedMethods: CONTEXT_SUMMARY_RPC_METHODS
+    })
+    return {
+      endpoint: connection.endpoint,
+      socketPath: connection.socketPath,
+      token,
+      release: () => {
+        if (this.contextSummaryRpcTokens.get(sessionId) === token) {
+          this.contextSummaryRpcTokens.delete(sessionId)
         }
         this.sessionRpcCapabilities.delete(token)
       }
@@ -879,6 +920,32 @@ class NotebookLocalRpcServer {
         )
       }
       return this.memoryWriter.saveNote(params.categoryName, params.text)
+    }
+
+    if (method === 'summaryQueryChunk') {
+      if (!this.contextSummary) {
+        throw new Error('Context-summary query handler is not configured.')
+      }
+      if (
+        typeof params.sessionId !== 'string' ||
+        typeof params.summaryId !== 'string' ||
+        typeof params.question !== 'string'
+      ) {
+        throw new Error(
+          'Context-summary query RPC params must include sessionId, summaryId, and question.'
+        )
+      }
+      return this.contextSummary.queryChunk(params.sessionId, params.summaryId, params.question)
+    }
+
+    if (method === 'recordBoundary') {
+      if (!this.contextSummary) {
+        throw new Error('Context-summary boundary handler is not configured.')
+      }
+      if (typeof params.sessionId !== 'string' || typeof params.label !== 'string') {
+        throw new Error('Context-summary boundary RPC params must include sessionId and label.')
+      }
+      return this.contextSummary.recordBoundary(params.sessionId, params.label)
     }
 
     if (method === 'planCall') {
