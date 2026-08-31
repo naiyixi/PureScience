@@ -483,7 +483,7 @@ describe('conversation message scroller integration', () => {
     expect(workspaceToolRowButtonSource).toContain('aria-controls={canExpand ? detailsDomId')
     // Code blocks reuse the shared Shiki highlighter for consistent syntax colors.
     expect(workspaceToolCodeBlockSource).toContain("from '@streamdown/code'")
-    expect(workspaceToolCodeBlockSource).toContain('code.highlight(')
+    expect(workspaceToolCodeBlockSource).toContain('streamdownCode.highlight(')
   })
 
   it('keeps generated artifact cards the same size when expanded inline', () => {
