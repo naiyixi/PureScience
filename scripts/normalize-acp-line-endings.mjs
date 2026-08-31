@@ -6,14 +6,15 @@
 // patch". Normalizing the two dist files to LF first makes the patch apply deterministically
 // on every platform (macOS, Linux, Windows).
 import { readFile, writeFile } from 'node:fs/promises'
+import { dirname, join } from 'node:path'
 import { createRequire } from 'node:module'
 
 const require = createRequire(import.meta.url)
-const packageDir = require.resolve('@agentclientprotocol/claude-agent-acp/package.json').replace(/package\.json$/, '')
+const packageDir = dirname(require.resolve('@agentclientprotocol/claude-agent-acp/package.json'))
 const targets = ['dist/acp-agent.js', 'dist/acp-agent.d.ts']
 
 for (const relative of targets) {
-  const absolute = new URL(relative, new URL(`file://${packageDir}`)).pathname
+  const absolute = join(packageDir, relative)
   let data = await readFile(absolute)
   const original = data
   data = data.toString('utf8').replace(/\r\n/g, '\n')
