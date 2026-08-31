@@ -293,7 +293,13 @@ const createHarness = (
     providerReconnectPending: input.providerReconnectPending ?? (() => false),
     environment: {
       backend: () => backend,
-      tooling: () => ({ artifacts: true, notebook: true, skillImport: true, memory: false, contextSummary: false }),
+      tooling: () => ({
+        artifacts: true,
+        notebook: true,
+        skillImport: true,
+        memory: false,
+        contextSummary: false
+      }),
       bridgeSkillsAvailable: () => true,
       skillImportEnabled: () => true,
       contextEstimateInput: () => ({ frameworkId: 'opencode' }),

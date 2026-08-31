@@ -36,15 +36,18 @@ const ThirdPartyLicensesDialog = ({
 
   useEffect(() => {
     if (!open || entries.length > 0 || loading) return
-    setLoading(true)
-    void window.api.settings
-      .getThirdPartyLicenses()
-      .then((result) => {
+    void (async () => {
+      setLoading(true)
+      try {
+        const result = await window.api.settings.getThirdPartyLicenses()
         setEntries(result)
         setError(null)
-      })
-      .catch(() => setError(t('settings.thirdPartyLicensesFailed')))
-      .finally(() => setLoading(false))
+      } catch {
+        setError(t('settings.thirdPartyLicensesFailed'))
+      } finally {
+        setLoading(false)
+      }
+    })()
   }, [open, entries.length, loading, t])
 
   return (

@@ -833,7 +833,10 @@ class ReviewRepository {
   // the stable identity of one claim. assessmentCount is derived from the disposition history,
   // which records every re-review assessment of the claim. Pass checks are excluded (they confirm
   // correctness; the checklist tracks issues to resolve).
-  async getVerificationChecklist(projectId: string, sessionId: string): Promise<VerificationChecklist> {
+  async getVerificationChecklist(
+    projectId: string,
+    sessionId: string
+  ): Promise<VerificationChecklist> {
     const client = await this.getClient()
     const reviews = await client.review.findMany({
       where: { projectId, sessionId },
@@ -857,7 +860,10 @@ class ReviewRepository {
     })
     const dispositionCounts = new Map<string, number>()
     for (const row of dispositionRows) {
-      dispositionCounts.set(row.sourceFindingId, (dispositionCounts.get(row.sourceFindingId) ?? 0) + 1)
+      dispositionCounts.set(
+        row.sourceFindingId,
+        (dispositionCounts.get(row.sourceFindingId) ?? 0) + 1
+      )
     }
 
     const items: VerificationChecklistItem[] = checks.map((check) => {

@@ -57,10 +57,7 @@ import {
   AnthropicProviderBridge,
   type AnthropicProviderBridgeTarget
 } from './anthropic-provider-bridge'
-import {
-  XaiMessagesBridge,
-  type XaiMessagesBridgeTarget
-} from './xai-messages-bridge'
+import { XaiMessagesBridge, type XaiMessagesBridgeTarget } from './xai-messages-bridge'
 import { OpenAiProviderBridge, type OpenAiProviderBridgeTarget } from './openai-provider-bridge'
 import {
   ResponsesBridge,
@@ -232,9 +229,7 @@ export type AgentBackendResolverOptions = {
     targets: readonly AnthropicProviderBridgeTarget[],
     initialTargetId: string
   ) => AnthropicProviderBridgePort
-  createXaiMessagesBridge?: (
-    target: XaiMessagesBridgeTarget
-  ) => XaiMessagesBridgePort
+  createXaiMessagesBridge?: (target: XaiMessagesBridgeTarget) => XaiMessagesBridgePort
   createOpenAiProviderBridge?: (
     targets: readonly OpenAiProviderBridgeTarget[],
     initialTargetId: string
@@ -310,7 +305,9 @@ export class AgentBackendResolver {
     targets: readonly AnthropicProviderBridgeTarget[],
     initialTargetId: string
   ) => AnthropicProviderBridgePort
-  private readonly createXaiMessagesBridge: (target: XaiMessagesBridgeTarget) => XaiMessagesBridgePort
+  private readonly createXaiMessagesBridge: (
+    target: XaiMessagesBridgeTarget
+  ) => XaiMessagesBridgePort
   private readonly createOpenAiProviderBridge: (
     targets: readonly OpenAiProviderBridgeTarget[],
     initialTargetId: string
@@ -341,8 +338,7 @@ export class AgentBackendResolver {
       options.createAnthropicProviderBridge ??
       ((targets, initialTargetId) => new AnthropicProviderBridge(targets, initialTargetId))
     this.createXaiMessagesBridge =
-      options.createXaiMessagesBridge ??
-      ((target) => new XaiMessagesBridge([target], target.id))
+      options.createXaiMessagesBridge ?? ((target) => new XaiMessagesBridge([target], target.id))
     this.createOpenAiProviderBridge =
       options.createOpenAiProviderBridge ??
       ((targets, initialTargetId) => new OpenAiProviderBridge(targets, initialTargetId))

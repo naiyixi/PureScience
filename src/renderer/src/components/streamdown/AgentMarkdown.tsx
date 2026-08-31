@@ -1,11 +1,5 @@
 /* Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V5 */
-import {
-  Component,
-  memo,
-  useMemo,
-  type ErrorInfo,
-  type ReactNode
-} from 'react'
+import { Component, memo, useMemo, type ErrorInfo, type ReactNode } from 'react'
 import { code } from '@streamdown/code'
 import { cjk } from '@streamdown/cjk'
 import { useLanguage } from '@/i18n'
@@ -67,33 +61,33 @@ type MermaidErrorPanelProps = {
 const MermaidErrorPanel = ({ chart, error, retry }: MermaidErrorPanelProps): React.JSX.Element => {
   const { t } = useLanguage()
   return (
-  <div className="my-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-[13px] leading-5 text-amber-950 dark:border-amber-800/50 dark:bg-amber-950/20 dark:text-amber-100">
-    <p className="font-medium">{t('home.mermaidNotRendered')}</p>
-    <p className="mt-1 text-[12px] text-amber-900/90 dark:text-amber-200/90">{error}</p>
-    <p className="mt-2 text-[12px] text-amber-800/80 dark:text-amber-300/80">
-      Common causes: an xychart is missing the{' '}
-      <code className="rounded bg-amber-100/80 px-1 dark:bg-amber-900/50">title</code> keyword, axis
-      labels are not quoted, or{' '}
-      <code className="rounded bg-amber-100/80 px-1 dark:bg-amber-900/50">y-axis</code> or{' '}
-      <code className="rounded bg-amber-100/80 px-1 dark:bg-amber-900/50">bar/line</code> data rows
-      are missing.
-    </p>
-    <details className="mt-2">
-      <summary className="cursor-pointer text-[12px] text-amber-900/90 dark:text-amber-200/90">
-        {t('home.viewSource')}
-      </summary>
-      <pre className="mt-2 max-h-40 overflow-auto rounded-md border border-amber-200/80 bg-white/70 p-2 font-mono text-[11px] leading-relaxed text-[#1a1a1a] dark:border-amber-800/40 dark:bg-amber-950/40 dark:text-amber-100">
-        {chart}
-      </pre>
-    </details>
-    <button
-      type="button"
-      className="mt-2 rounded-md border border-amber-300 bg-white px-2.5 py-1 text-[12px] text-amber-950 hover:bg-amber-100/80 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100 dark:hover:bg-amber-900/40"
-      onClick={retry}
-    >
-      Retry
-    </button>
-  </div>
+    <div className="my-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-[13px] leading-5 text-amber-950 dark:border-amber-800/50 dark:bg-amber-950/20 dark:text-amber-100">
+      <p className="font-medium">{t('home.mermaidNotRendered')}</p>
+      <p className="mt-1 text-[12px] text-amber-900/90 dark:text-amber-200/90">{error}</p>
+      <p className="mt-2 text-[12px] text-amber-800/80 dark:text-amber-300/80">
+        Common causes: an xychart is missing the{' '}
+        <code className="rounded bg-amber-100/80 px-1 dark:bg-amber-900/50">title</code> keyword,
+        axis labels are not quoted, or{' '}
+        <code className="rounded bg-amber-100/80 px-1 dark:bg-amber-900/50">y-axis</code> or{' '}
+        <code className="rounded bg-amber-100/80 px-1 dark:bg-amber-900/50">bar/line</code> data
+        rows are missing.
+      </p>
+      <details className="mt-2">
+        <summary className="cursor-pointer text-[12px] text-amber-900/90 dark:text-amber-200/90">
+          {t('home.viewSource')}
+        </summary>
+        <pre className="mt-2 max-h-40 overflow-auto rounded-md border border-amber-200/80 bg-white/70 p-2 font-mono text-[11px] leading-relaxed text-[#1a1a1a] dark:border-amber-800/40 dark:bg-amber-950/40 dark:text-amber-100">
+          {chart}
+        </pre>
+      </details>
+      <button
+        type="button"
+        className="mt-2 rounded-md border border-amber-300 bg-white px-2.5 py-1 text-[12px] text-amber-950 hover:bg-amber-100/80 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100 dark:hover:bg-amber-900/40"
+        onClick={retry}
+      >
+        Retry
+      </button>
+    </div>
   )
 }
 

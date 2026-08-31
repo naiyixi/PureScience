@@ -16,7 +16,7 @@ describe('createSshAskPass', () => {
     created.push(scriptPath)
     expect(existsSync(scriptPath)).toBe(true)
     const script = readFileSync(scriptPath, 'utf8')
-    expect(script).toContain("[Pp]assword*")
+    expect(script).toContain('[Pp]assword*')
     expect(script).toContain("echo 'hunter2'")
     cleanup()
     expect(existsSync(scriptPath)).toBe(false)

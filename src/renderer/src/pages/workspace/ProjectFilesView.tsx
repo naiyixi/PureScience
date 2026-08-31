@@ -545,39 +545,39 @@ const FileActionButtons = ({
 }): React.JSX.Element => {
   const { t } = useLanguage()
   return (
-  <div
-    className={cn(
-      'absolute z-10 flex items-center gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100 motion-reduce:transition-none [@media(hover:none)]:opacity-100',
-      className
-    )}
-  >
-    <ManagedFileDownloadButton
-      source={source}
-      path={path}
-      suggestedName={name}
-      disabled={disabled}
-      iconSize="icon-sm"
-      className="cursor-pointer border-border bg-bg-000/95 shadow-sm"
-    />
-    <TooltipProvider delayDuration={200}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            type="button"
-            variant="outline"
-            size="icon-sm"
-            className="cursor-pointer bg-bg-000/95 text-text-100 shadow-sm"
-            aria-label={`Open ${name} in split view beside the session`}
-            disabled={disabled}
-            onClick={onOpenInPanel}
-          >
-            <ArrowUpRight aria-hidden="true" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>{t('workspace.openInSplitView')}</TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  </div>
+    <div
+      className={cn(
+        'absolute z-10 flex items-center gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100 motion-reduce:transition-none [@media(hover:none)]:opacity-100',
+        className
+      )}
+    >
+      <ManagedFileDownloadButton
+        source={source}
+        path={path}
+        suggestedName={name}
+        disabled={disabled}
+        iconSize="icon-sm"
+        className="cursor-pointer border-border bg-bg-000/95 shadow-sm"
+      />
+      <TooltipProvider delayDuration={200}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon-sm"
+              className="cursor-pointer bg-bg-000/95 text-text-100 shadow-sm"
+              aria-label={`Open ${name} in split view beside the session`}
+              disabled={disabled}
+              onClick={onOpenInPanel}
+            >
+              <ArrowUpRight aria-hidden="true" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{t('workspace.openInSplitView')}</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    </div>
   )
 }
 
@@ -956,7 +956,9 @@ const ProjectFilesFilterMenu = ({
                 onShowAllSessionsChange(!showAllSessions)
               }}
             >
-              {showAllSessions ? t('ws.showFewer') : t('ws.showAllSessions').replace('{n}', String(sessionOptionCount))}
+              {showAllSessions
+                ? t('ws.showFewer')
+                : t('ws.showAllSessions').replace('{n}', String(sessionOptionCount))}
             </DropdownMenuItem>
           ) : null}
         </DropdownMenuGroup>
@@ -1017,7 +1019,9 @@ const ProjectFilesFilterMenu = ({
                 />
                 <span className="min-w-0 flex-1 truncate">{host.displayName}</span>
                 {!reachable && (
-                  <span className="shrink-0 text-[11px] text-text-300">{t('workspace.hostUnreachable')}</span>
+                  <span className="shrink-0 text-[11px] text-text-300">
+                    {t('workspace.hostUnreachable')}
+                  </span>
                 )}
               </DropdownMenuItem>
             )

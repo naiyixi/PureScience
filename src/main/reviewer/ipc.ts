@@ -160,17 +160,12 @@ const createReviewerCommandOwner = (options: ReviewerIpcOptions): ReviewerComman
 
   // Loads the session's aggregated verification checklist (all warn/fail claims across reviews).
   const getChecklist = async (request: ReviewSessionRequest): Promise<VerificationChecklist> => {
-    return reviewRepository.getVerificationChecklist(
-      request.projectId,
-      request.appSessionId
-    )
+    return reviewRepository.getVerificationChecklist(request.projectId, request.appSessionId)
   }
 
   // Marks a checklist claim addressed (or reopens it). After the mutation the session's reviews
   // are re-pushed so every open window sees the flipped resolution immediately.
-  const mutateChecklist = async (
-    request: VerificationChecklistMutationRequest
-  ): Promise<void> => {
+  const mutateChecklist = async (request: VerificationChecklistMutationRequest): Promise<void> => {
     await reviewRepository.updateChecklistClaimResolution(
       request.projectId,
       request.appSessionId,
@@ -401,8 +396,9 @@ const registerReviewerIpcHandlers = (
   ipcMainHandle(REVIEWER_IPC.GET_CHECKLIST, (_event, request: ReviewSessionRequest) =>
     owner.getChecklist(request)
   )
-  ipcMainHandle(REVIEWER_IPC.MUTATE_CHECKLIST, (_event, request: VerificationChecklistMutationRequest) =>
-    owner.mutateChecklist(request)
+  ipcMainHandle(
+    REVIEWER_IPC.MUTATE_CHECKLIST,
+    (_event, request: VerificationChecklistMutationRequest) => owner.mutateChecklist(request)
   )
   ipcMainHandle(REVIEWER_IPC.GET_CHUNKS, (_event, request: ReviewSessionRequest) =>
     owner.getChunks(request)

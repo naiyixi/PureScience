@@ -645,7 +645,10 @@ export const CANCER_MODELS_TOOLS: ToolDescriptor[] = [
     input: {
       type: 'object',
       properties: {
-        query: { type: 'string', description: 'Free-text match on cell line name, disease, or model id' },
+        query: {
+          type: 'string',
+          description: 'Free-text match on cell line name, disease, or model id'
+        },
         max_records: { type: 'integer', default: 25 }
       },
       required: ['query']

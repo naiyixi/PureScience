@@ -86,7 +86,9 @@ describe('SkillsPanel licensed-skill confirmation', () => {
     render()
     toggleSkill('NC Skill')
     const confirm = [...document.body.querySelectorAll<HTMLButtonElement>('button')].find(
-      (button) => button.textContent?.includes('确认并启用') || button.textContent?.includes('Confirm and enable')
+      (button) =>
+        button.textContent?.includes('确认并启用') ||
+        button.textContent?.includes('Confirm and enable')
     )
     if (!confirm) throw new Error('confirm button not found')
     act(() => confirm.click())

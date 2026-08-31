@@ -30,7 +30,9 @@ const summaryQueryToolSchema = {
     .string()
     .min(1)
     .max(2000)
-    .describe('What you need from the original chunk. Ask for the exact detail (a value, a name, a decision).')
+    .describe(
+      'What you need from the original chunk. Ask for the exact detail (a value, a name, a decision).'
+    )
 }
 const summaryQueryToolDefinition = {
   title: 'Query a folded context chunk',
@@ -179,7 +181,9 @@ const callSummaryQueryRpc = async (
   const payload = (await response.json()) as RpcResponse
 
   if (!response.ok || payload.error || !payload.result) {
-    throw new Error(payload.error ?? `Context-summary query RPC failed with status ${response.status}`)
+    throw new Error(
+      payload.error ?? `Context-summary query RPC failed with status ${response.status}`
+    )
   }
   return payload.result as SummaryQueryResult
 }
@@ -206,7 +210,9 @@ const callRecordBoundaryRpc = async (
   const payload = (await response.json()) as RpcResponse
 
   if (!response.ok || payload.error || !payload.result) {
-    throw new Error(payload.error ?? `Context-summary boundary RPC failed with status ${response.status}`)
+    throw new Error(
+      payload.error ?? `Context-summary boundary RPC failed with status ${response.status}`
+    )
   }
   return payload.result as SummaryBoundaryResult
 }

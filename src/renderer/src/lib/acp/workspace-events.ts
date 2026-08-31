@@ -580,15 +580,11 @@ const applyWorkspaceRuntimeEvent = async (
     // Context-window composition insight : bind the terminal snapshot to the
     // owning user Message so the trend dialog can render history without a main-process store.
     if (event.terminalContextWindow && event.promptMessageId) {
-      store.attachContextWindowSample(
-        event.sessionId,
-        event.promptMessageId,
-        {
-          ...event.terminalContextWindow,
-          id: event.id,
-          timestamp: event.timestamp
-        }
-      )
+      store.attachContextWindowSample(event.sessionId, event.promptMessageId, {
+        ...event.terminalContextWindow,
+        id: event.id,
+        timestamp: event.timestamp
+      })
     }
 
     const terminalSession = useSessionStore

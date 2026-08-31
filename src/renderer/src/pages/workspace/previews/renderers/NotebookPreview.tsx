@@ -30,7 +30,9 @@ type NotebookCell =
 const joinSource = (source: string | string[] | undefined): string =>
   Array.isArray(source) ? source.join('') : (source ?? '')
 
-const outputText = (output: NonNullable<Extract<NotebookCell, { cell_type: 'code' }>['outputs']>[number]): string => {
+const outputText = (
+  output: NonNullable<Extract<NotebookCell, { cell_type: 'code' }>['outputs']>[number]
+): string => {
   if (output.output_type === 'error') {
     return `${output.ename ?? 'Error'}: ${output.evalue ?? ''}`
   }
@@ -43,9 +45,7 @@ const outputText = (output: NonNullable<Extract<NotebookCell, { cell_type: 'code
   return ''
 }
 
-export const NotebookPreviewRenderer = ({
-  item
-}: PreviewFileRendererProps): React.JSX.Element => {
+export const NotebookPreviewRenderer = ({ item }: PreviewFileRendererProps): React.JSX.Element => {
   const { t } = useLanguage()
   const load = usePreviewFileContent({
     projectId: item.projectId,
@@ -106,10 +106,7 @@ export const NotebookPreviewRenderer = ({
             const key = cell.id ?? `${index}`
             if (cell.cell_type === 'markdown') {
               return (
-                <div
-                  key={key}
-                  className="rounded-lg border border-border-200 bg-bg-000 px-4 py-3"
-                >
+                <div key={key} className="rounded-lg border border-border-200 bg-bg-000 px-4 py-3">
                   <div className="mb-1 text-[10px] font-medium uppercase tracking-wide text-text-300">
                     Markdown
                   </div>

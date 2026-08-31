@@ -108,9 +108,7 @@ describe('MarketplaceRepository', () => {
     const filePath = join(dir, 'specialist-marketplace.json')
     const raw = await readFile(filePath, 'utf8')
     const tampered = raw.replace('a'.repeat(64), 'not-a-fingerprint')
-    await import('node:fs/promises').then(({ writeFile }) =>
-      writeFile(filePath, tampered, 'utf8')
-    )
+    await import('node:fs/promises').then(({ writeFile }) => writeFile(filePath, tampered, 'utf8'))
 
     const reloaded = new MarketplaceRepository(dir)
     const document = await reloaded.getAll()
@@ -189,7 +187,10 @@ describe('marketplace protocol', () => {
             display_name: 'S',
             summary: 's',
             publisher: { id: 'p', name: 'P' },
-            latest: { version: '1.0.0', release: { path: '../escape.json', sha256: 'f'.repeat(64) } }
+            latest: {
+              version: '1.0.0',
+              release: { path: '../escape.json', sha256: 'f'.repeat(64) }
+            }
           }
         ]
       })
@@ -239,7 +240,9 @@ describe('marketplace protocol', () => {
 
   it('computes sha256 and key fingerprints', () => {
     expect(sha256(new Uint8Array())).toHaveLength(64)
-    expect(marketplaceKeyFingerprint('MCowBQYDK2VwAyEA8Jt1UypmPMFX0N8u8QJdJzRkmEwX2b0kK0v6Qy6iN4Q=')).toHaveLength(64)
+    expect(
+      marketplaceKeyFingerprint('MCowBQYDK2VwAyEA8Jt1UypmPMFX0N8u8QJdJzRkmEwX2b0kK0v6Qy6iN4Q=')
+    ).toHaveLength(64)
   })
 
   it('rejects a signature whose key does not verify the root', () => {

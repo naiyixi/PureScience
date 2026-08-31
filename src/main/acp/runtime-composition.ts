@@ -137,7 +137,9 @@ const createAcpRuntime = ({
   // Bounded admission for the high-volume agent event stream: transient events are rate-limited
   // per window (excess dropped; the snapshot reconciles), critical events always pass — so a
   // tens-of-thousands-of-events turn never freezes the renderer.
-  const admitEvent = createBoundedEventAdmission((event) => broadcastToRenderers('acp:event', event))
+  const admitEvent = createBoundedEventAdmission((event) =>
+    broadcastToRenderers('acp:event', event)
+  )
   const callbacks: AcpRuntimeCallbacks = {
     onStateChanged: (state: AcpStateSnapshot) => broadcastToRenderers('acp:state', state),
     onEvent: (event: AcpRuntimeEvent) => {

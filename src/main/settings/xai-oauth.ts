@@ -149,7 +149,9 @@ export const pollXaiTokens = async (
       continue
     }
     if (payload.error === 'expired_token' || payload.error === 'access_denied') {
-      throw new Error(`xAI OAuth ${payload.error}: ${payload.error_description ?? 'authorization failed'}`)
+      throw new Error(
+        `xAI OAuth ${payload.error}: ${payload.error_description ?? 'authorization failed'}`
+      )
     }
     // Unknown error — surface it.
     throw new Error(`xAI OAuth error: ${payload.error} ${payload.error_description ?? ''}`.trim())

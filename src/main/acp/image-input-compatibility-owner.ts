@@ -19,7 +19,10 @@ import type {
   RestrictedInferenceResult,
   RestrictedInferenceRunInput
 } from './restricted-inference-runner'
-import type { VisionEvidencePersistence, VisionEvidenceSource } from '../vision/vision-evidence-repository'
+import type {
+  VisionEvidencePersistence,
+  VisionEvidenceSource
+} from '../vision/vision-evidence-repository'
 
 const EVIDENCE_SCHEMA_VERSION = 2
 const MAX_CACHE_ENTRIES = 64

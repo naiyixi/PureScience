@@ -110,10 +110,7 @@ const SkillDetailView = ({ skillId }: SkillDetailViewProps): React.JSX.Element =
           {detail.author ? <DetailRow label="Author" value={detail.author} /> : null}
           {detail.license ? <DetailRow label="License" value={detail.license} /> : null}
           {detail.thirdParty ? (
-            <DetailRow
-              label={t('settings.thirdPartySoftware')}
-              value={detail.thirdParty}
-            />
+            <DetailRow label={t('settings.thirdPartySoftware')} value={detail.thirdParty} />
           ) : null}
           {genericMetadata.map(([key, value]) => (
             <DetailRow key={key} label={metadataLabel(key)} value={value} />

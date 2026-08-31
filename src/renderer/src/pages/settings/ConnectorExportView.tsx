@@ -89,7 +89,9 @@ export function ConnectorExportView({ id, onDone }: ConnectorExportViewProps): R
           <div>
             <div className="mb-2 flex items-center gap-2">
               <FileJson className="size-4 text-muted-foreground" aria-hidden="true" />
-              <h4 className="text-sm font-medium text-foreground">{t('connectorExport.configPreview')}</h4>
+              <h4 className="text-sm font-medium text-foreground">
+                {t('connectorExport.configPreview')}
+              </h4>
             </div>
             <dl className="divide-y divide-border border-y border-border text-sm">
               <div className="grid grid-cols-[8rem_1fr] gap-3 py-2.5">

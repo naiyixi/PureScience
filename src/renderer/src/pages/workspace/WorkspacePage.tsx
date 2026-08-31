@@ -74,7 +74,10 @@ import { FolderGrantsPanel } from '@/components/FolderGrantsPanel'
 import { DeleteSessionDialog } from './DeleteSessionDialog'
 import { MobilePreviewSheet } from './MobilePreviewSheet'
 import { DownloadSessionArtifactsDialog } from './DownloadSessionArtifactsDialog'
-import { ExportConversationDialog, type ExportConversationOptions } from './ExportConversationDialog'
+import {
+  ExportConversationDialog,
+  type ExportConversationOptions
+} from './ExportConversationDialog'
 import { FilePreviewDialog } from './FilePreviewDialog'
 import { PreviewPanel } from './PreviewPanel'
 import { SideChatPanel } from './SideChatPanel'
@@ -344,20 +347,20 @@ const SidebarPanelToggleButton = ({
 }): React.JSX.Element => {
   const { t } = useLanguage()
   return (
-  <button
-    ref={buttonRef}
-    type="button"
-    data-testid="workspace-sidebar-toggle"
-    className="absolute top-0 z-40 flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-transparent text-action-panel-toggle shadow-none hover:bg-surface-control-hover"
-    style={{ left }}
-    aria-label={isCollapsed ? t('ws.expandSidebarPanel') : t('ws.collapseSidebarPanel')}
-    aria-expanded={!isCollapsed}
-    aria-controls="left-panel"
-    title={isCollapsed ? t('ws.expandSidebarPanel') : t('ws.collapseSidebarPanel')}
-    onClick={onToggle}
-  >
-    <PanelLeft className="size-4" strokeWidth={2} fill="none" aria-hidden="true" />
-  </button>
+    <button
+      ref={buttonRef}
+      type="button"
+      data-testid="workspace-sidebar-toggle"
+      className="absolute top-0 z-40 flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-transparent text-action-panel-toggle shadow-none hover:bg-surface-control-hover"
+      style={{ left }}
+      aria-label={isCollapsed ? t('ws.expandSidebarPanel') : t('ws.collapseSidebarPanel')}
+      aria-expanded={!isCollapsed}
+      aria-controls="left-panel"
+      title={isCollapsed ? t('ws.expandSidebarPanel') : t('ws.collapseSidebarPanel')}
+      onClick={onToggle}
+    >
+      <PanelLeft className="size-4" strokeWidth={2} fill="none" aria-hidden="true" />
+    </button>
   )
 }
 
@@ -373,23 +376,23 @@ const PreviewPanelToggleButton = ({
 }): React.JSX.Element => {
   const { t } = useLanguage()
   return (
-  <button
-    ref={buttonRef}
-    type="button"
-    data-testid="workspace-preview-toggle"
-    className={`absolute right-2 top-0 z-40 flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-lg ${
-      isCollapsed
-        ? 'bg-transparent shadow-none text-action-panel-toggle hover:bg-surface-control-hover'
-        : 'bg-primary/20 shadow-card backdrop-blur text-action-panel-toggle'
-    }`}
-    aria-label={isCollapsed ? t('ws.expandPreviewPanel') : t('ws.collapsePreviewPanel')}
-    aria-expanded={!isCollapsed}
-    aria-controls="right-panel"
-    title={isCollapsed ? t('ws.expandPreviewPanel') : t('ws.collapsePreviewPanel')}
-    onClick={onToggle}
-  >
-    <PanelRight className="size-4" strokeWidth={2} fill="none" aria-hidden="true" />
-  </button>
+    <button
+      ref={buttonRef}
+      type="button"
+      data-testid="workspace-preview-toggle"
+      className={`absolute right-2 top-0 z-40 flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-lg ${
+        isCollapsed
+          ? 'bg-transparent shadow-none text-action-panel-toggle hover:bg-surface-control-hover'
+          : 'bg-primary/20 shadow-card backdrop-blur text-action-panel-toggle'
+      }`}
+      aria-label={isCollapsed ? t('ws.expandPreviewPanel') : t('ws.collapsePreviewPanel')}
+      aria-expanded={!isCollapsed}
+      aria-controls="right-panel"
+      title={isCollapsed ? t('ws.expandPreviewPanel') : t('ws.collapsePreviewPanel')}
+      onClick={onToggle}
+    >
+      <PanelRight className="size-4" strokeWidth={2} fill="none" aria-hidden="true" />
+    </button>
   )
 }
 
@@ -739,13 +742,7 @@ const WorkspacePage = ({
       }
       setDraftDoc(doc)
     },
-    [
-      clearComposerHistory,
-      markComposerDraftChanged,
-      previousDraftKeyRef,
-      setDraftDoc,
-      draftDocRef
-    ]
+    [clearComposerHistory, markComposerDraftChanged, previousDraftKeyRef, setDraftDoc, draftDocRef]
   )
 
   // Undo/redo restore previous draft states (Cmd+Z / Cmd+Shift+Z) — completes the unified draft
@@ -1079,15 +1076,11 @@ const WorkspacePage = ({
   }, [])
   const respondToElicitation = useCallback(
     (elicitationId: string, action: 'accept' | 'decline', answers?: ElicitationAnswer): void => {
-      void window.api.acp
-        .respondElicitation({ elicitationId, action, answers })
-        .then((settled) => {
-          if (settled) {
-            setPendingElicitations((current) =>
-              current.filter((item) => item.id !== elicitationId)
-            )
-          }
-        })
+      void window.api.acp.respondElicitation({ elicitationId, action, answers }).then((settled) => {
+        if (settled) {
+          setPendingElicitations((current) => current.filter((item) => item.id !== elicitationId))
+        }
+      })
     },
     []
   )
@@ -1114,23 +1107,26 @@ const WorkspacePage = ({
     })
   }, [])
   // Image region annotations arrive from the per-image region picker with a normalized region.
-  const addImageAnnotation = useCallback((image: AnnotationImageRef, region: AnnotationRegion) => {
-    if (!isValidAnnotationRegion(region)) return
-    setPendingAnnotations((current) => {
-      if (current.length >= ANNOTATION_MAX_PER_MESSAGE) return current
-      return [
-        ...current,
-        {
-          id: `annotation-${Date.now()}-${current.length}`,
-          kind: 'image',
-          source: t('ws.annotationImageRegionLabel'),
-          image: { mediaPath: image.mediaPath.slice(0, ANNOTATION_MAX_SOURCE_LENGTH) },
-          region,
-          createdAt: Date.now()
-        }
-      ]
-    })
-  }, [t])
+  const addImageAnnotation = useCallback(
+    (image: AnnotationImageRef, region: AnnotationRegion) => {
+      if (!isValidAnnotationRegion(region)) return
+      setPendingAnnotations((current) => {
+        if (current.length >= ANNOTATION_MAX_PER_MESSAGE) return current
+        return [
+          ...current,
+          {
+            id: `annotation-${Date.now()}-${current.length}`,
+            kind: 'image',
+            source: t('ws.annotationImageRegionLabel'),
+            image: { mediaPath: image.mediaPath.slice(0, ANNOTATION_MAX_SOURCE_LENGTH) },
+            region,
+            createdAt: Date.now()
+          }
+        ]
+      })
+    },
+    [t]
+  )
   const removeAnnotation = useCallback((annotationId: string) => {
     setPendingAnnotations((current) => current.filter((item) => item.id !== annotationId))
   }, [])
@@ -2886,7 +2882,10 @@ const WorkspacePage = ({
           />
         ) : null}
         {!isMobile ? (
-          <SideChatToggleButton isOpen={isSideChatOpen} onToggle={() => setIsSideChatOpen((open) => !open)} />
+          <SideChatToggleButton
+            isOpen={isSideChatOpen}
+            onToggle={() => setIsSideChatOpen((open) => !open)}
+          />
         ) : null}
         {!isMobile ? (
           <SidebarPanelToggleButton

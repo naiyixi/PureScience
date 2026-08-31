@@ -292,7 +292,6 @@ const harvestJobUnchecked = async (job: ComputeJob, deps: HarvestDeps): Promise<
     }
   }
 
-
   // Disk headroom guard (source v0.15.1 parity): refuse to harvest when less than 2 GiB is
   // available on the data root, protecting the local disk from filling up across jobs.
   const available = await availableBytes(storageRoot)

@@ -131,81 +131,81 @@ const GoToMenu = ({
 }): React.JSX.Element => {
   const { t } = useLanguage()
   return (
-  <DropdownMenu>
-    <Hint label="Jump to Home or a pinned folder">
-      {/* Label at the default 13px: at text-xs it was the smallest type in the row despite being
+    <DropdownMenu>
+      <Hint label="Jump to Home or a pinned folder">
+        {/* Label at the default 13px: at text-xs it was the smallest type in the row despite being
           the only worded control there. */}
-      <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="gap-1 text-sm font-normal text-text-000"
-        >
-          {t('fileBrowser.goTo')}
-          <ChevronDown className="size-3.5 text-text-300" strokeWidth={TOOLBAR_ICON_STROKE} />
-        </Button>
-      </DropdownMenuTrigger>
-    </Hint>
-    <DropdownMenuContent align="start" className="w-[300px] max-w-[70vw]">
-      {home ? (
-        <DropdownMenuItem className="items-start gap-2 text-xs" onSelect={() => onNavigate(home)}>
-          <GoToRow
-            icon={<Home className="size-3.5 text-muted-foreground" strokeWidth={1.5} />}
-            label="Home"
-            path={home}
-          />
-        </DropdownMenuItem>
-      ) : null}
-      {!isBookmarked && currentPath ? (
-        <DropdownMenuItem className="items-start gap-2 text-xs" onSelect={onPinCurrent}>
-          <GoToRow
-            icon={<Pin className="size-3.5 text-muted-foreground" strokeWidth={1.5} />}
-            label="Pin current folder"
-            path={currentPath}
-          />
-        </DropdownMenuItem>
-      ) : null}
-      {bookmarks.length > 0 ? (
-        <>
-          <DropdownMenuLabel className="text-[10px] font-semibold uppercase tracking-wide">
-            Pinned
-          </DropdownMenuLabel>
-          {bookmarks.map((path) => (
-            <DropdownMenuItem
-              key={path}
-              className="items-start gap-2 pr-1 text-xs"
-              onSelect={() => onNavigate(path)}
-            >
-              <GoToRow
-                icon={<Pin className="size-3.5 text-muted-foreground" strokeWidth={1.5} />}
-                label={path.split('/').pop() || path}
-                path={path}
-              />
-              {/* The crossed-out pushpin can read as "delete this folder", so the hint says it
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="gap-1 text-sm font-normal text-text-000"
+          >
+            {t('fileBrowser.goTo')}
+            <ChevronDown className="size-3.5 text-text-300" strokeWidth={TOOLBAR_ICON_STROKE} />
+          </Button>
+        </DropdownMenuTrigger>
+      </Hint>
+      <DropdownMenuContent align="start" className="w-[300px] max-w-[70vw]">
+        {home ? (
+          <DropdownMenuItem className="items-start gap-2 text-xs" onSelect={() => onNavigate(home)}>
+            <GoToRow
+              icon={<Home className="size-3.5 text-muted-foreground" strokeWidth={1.5} />}
+              label="Home"
+              path={home}
+            />
+          </DropdownMenuItem>
+        ) : null}
+        {!isBookmarked && currentPath ? (
+          <DropdownMenuItem className="items-start gap-2 text-xs" onSelect={onPinCurrent}>
+            <GoToRow
+              icon={<Pin className="size-3.5 text-muted-foreground" strokeWidth={1.5} />}
+              label="Pin current folder"
+              path={currentPath}
+            />
+          </DropdownMenuItem>
+        ) : null}
+        {bookmarks.length > 0 ? (
+          <>
+            <DropdownMenuLabel className="text-[10px] font-semibold uppercase tracking-wide">
+              Pinned
+            </DropdownMenuLabel>
+            {bookmarks.map((path) => (
+              <DropdownMenuItem
+                key={path}
+                className="items-start gap-2 pr-1 text-xs"
+                onSelect={() => onNavigate(path)}
+              >
+                <GoToRow
+                  icon={<Pin className="size-3.5 text-muted-foreground" strokeWidth={1.5} />}
+                  label={path.split('/').pop() || path}
+                  path={path}
+                />
+                {/* The crossed-out pushpin can read as "delete this folder", so the hint says it
                   unpins. Its hover fill is surface-control-hover, a step darker than the muted fill
                   the highlighted row already shows, so the square reads as its own control.
                   stopPropagation keeps the click from selecting the row (which would navigate and
                   close the menu) — unpinning leaves the list open so several can go at once. */}
-              <Hint label={`Remove from ${t('fileBrowser.goTo')} (the folder is not deleted)`}>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onRemoveBookmark(path)
-                  }}
-                  aria-label={`Unpin ${path}`}
-                  className="flex size-6 shrink-0 items-center justify-center self-center rounded-md text-muted-foreground transition-colors hover:bg-surface-control-hover hover:text-text-000"
-                >
-                  <PinOff className="size-3.5" strokeWidth={1.5} />
-                </button>
-              </Hint>
-            </DropdownMenuItem>
-          ))}
-        </>
-      ) : null}
-    </DropdownMenuContent>
-  </DropdownMenu>
+                <Hint label={`Remove from ${t('fileBrowser.goTo')} (the folder is not deleted)`}>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onRemoveBookmark(path)
+                    }}
+                    aria-label={`Unpin ${path}`}
+                    className="flex size-6 shrink-0 items-center justify-center self-center rounded-md text-muted-foreground transition-colors hover:bg-surface-control-hover hover:text-text-000"
+                  >
+                    <PinOff className="size-3.5" strokeWidth={1.5} />
+                  </button>
+                </Hint>
+              </DropdownMenuItem>
+            ))}
+          </>
+        ) : null}
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 
@@ -482,7 +482,9 @@ export const LocalFileBrowser = ({
           </Hint>
           <Hint
             label={
-              isBookmarked ? `Unpin this folder from ${t('fileBrowser.goTo')}` : `Pin this folder to the ${t('fileBrowser.goTo')} menu`
+              isBookmarked
+                ? `Unpin this folder from ${t('fileBrowser.goTo')}`
+                : `Pin this folder to the ${t('fileBrowser.goTo')} menu`
             }
           >
             <Button

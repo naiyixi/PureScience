@@ -386,7 +386,8 @@ const StoragePanel = ({ onContinueToAgent }: StoragePanelProps): React.JSX.Eleme
 
                 {(kind === 'move' || kind === 'adopt') && inspection ? (
                   <p className="mt-2 text-xs text-muted-foreground">
-                    {t('storage.dataStoredIn')} <span className="font-mono">{inspection.dataRoot}</span>
+                    {t('storage.dataStoredIn')}{' '}
+                    <span className="font-mono">{inspection.dataRoot}</span>
                   </p>
                 ) : null}
 
@@ -461,7 +462,11 @@ const StoragePanel = ({ onContinueToAgent }: StoragePanelProps): React.JSX.Eleme
       </SettingsSection>
 
       {info !== null ? (
-        <SettingsSection title={t('settings.diskUsage')} aria-label={t('settings.diskUsage')} separated>
+        <SettingsSection
+          title={t('settings.diskUsage')}
+          aria-label={t('settings.diskUsage')}
+          separated
+        >
           {totalBytes > 0 ? (
             <div className="flex h-2 gap-0.5 overflow-hidden rounded bg-muted">
               {categories

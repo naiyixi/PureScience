@@ -18,6 +18,5 @@ export const netFetch: FetchLike = withCorrelatedFetch((url, init) =>
 // correlation tagging. A lazy arrow wrapper (like netFetch) so `net.fetch` is only read at call time —
 // reading it eagerly at module load crashes any test whose electron mock omits `net` — while the
 // method call preserves the receiver.
-export const netFetchStandard = withCorrelatedFetch(
-  ((input, init) => net.fetch(input as string, init)) as typeof fetch
-)
+export const netFetchStandard = withCorrelatedFetch(((input, init) =>
+  net.fetch(input as string, init)) as typeof fetch)

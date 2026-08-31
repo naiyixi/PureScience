@@ -28,7 +28,7 @@ export type XaiMessagesBridgeConnection = Readonly<{
   token: string
 }>
 
-type JsonObject = Record<string, any>
+type JsonObject = Record<string, unknown>
 
 const json = (response: ServerResponse, status: number, body: unknown): void => {
   response.writeHead(status, { 'content-type': 'application/json' })
@@ -79,7 +79,11 @@ export const toResponsesRequest = (raw: unknown, model: string): TranslationInpu
     if (role === 'system') {
       // A stray system message becomes a user message with its text.
       if (typeof message.content === 'string') {
-        input.push({ type: 'message', role: 'user', content: [{ type: 'input_text', text: message.content }] })
+        input.push({
+          type: 'message',
+          role: 'user',
+          content: [{ type: 'input_text', text: message.content }]
+        })
       }
       continue
     }
@@ -98,12 +102,19 @@ export const toResponsesRequest = (raw: unknown, model: string): TranslationInpu
               ? block.content
               : Array.isArray(block.content)
                 ? (block.content as JsonObject[])
-                    .map((part) => (typeof part === 'object' && part !== null && typeof part.text === 'string' ? part.text : ''))
+                    .map((part) =>
+                      typeof part === 'object' && part !== null && typeof part.text === 'string'
+                        ? part.text
+                        : ''
+                    )
                     .join('\n')
                 : ''
           toolResults.push({ type: 'function_call_output', call_id: callId, output })
         } else if (block.type === 'image') {
-          const source = typeof block.source === 'object' && block.source !== null ? (block.source as JsonObject) : undefined
+          const source =
+            typeof block.source === 'object' && block.source !== null
+              ? (block.source as JsonObject)
+              : undefined
           const data = source?.data !== undefined ? String(source.data) : undefined
           const mediaType = asString(source?.media_type)
           if (data && mediaType) {
@@ -174,7 +185,9 @@ export const toResponsesRequest = (raw: unknown, model: string): TranslationInpu
     instructions = body.system
   } else if (Array.isArray(body.system)) {
     instructions = (body.system as JsonObject[])
-      .map((block) => (typeof block === 'object' && block !== null ? asString(block.text) : undefined))
+      .map((block) =>
+        typeof block === 'object' && block !== null ? asString(block.text) : undefined
+      )
       .filter((text): text is string => Boolean(text))
       .join('\n\n')
   }
@@ -244,7 +257,8 @@ export const toAnthropicResponse = (raw: unknown, model: string): JsonObject => 
   }
   if (stopReason === null && content.length > 0) stopReason = 'end_turn'
 
-  const usage = typeof body.usage === 'object' && body.usage !== null ? (body.usage as JsonObject) : undefined
+  const usage =
+    typeof body.usage === 'object' && body.usage !== null ? (body.usage as JsonObject) : undefined
   const inputTokens = typeof usage?.input_tokens === 'number' ? usage.input_tokens : 0
   const outputTokens = typeof usage?.output_tokens === 'number' ? usage.output_tokens : 0
 
@@ -341,14 +355,25 @@ const translateSseEvent = (
       break
     }
     case 'response.function_call_arguments.done': {
-      writeSse(response, 'content_block_stop', { type: 'content_block_stop', index: state.blockIndex })
+      writeSse(response, 'content_block_stop', {
+        type: 'content_block_stop',
+        index: state.blockIndex
+      })
       break
     }
     case 'response.completed': {
-      const final = typeof data.response === 'object' && data.response !== null ? (data.response as JsonObject) : undefined
+      const final =
+        typeof data.response === 'object' && data.response !== null
+          ? (data.response as JsonObject)
+          : undefined
       const output = Array.isArray(final?.output) ? (final.output as JsonObject[]) : []
-      const lastToolCall = output.some((item) => typeof item === 'object' && item !== null && item.type === 'function_call')
-      const usage = typeof final?.usage === 'object' && final.usage !== null ? (final.usage as JsonObject) : undefined
+      const lastToolCall = output.some(
+        (item) => typeof item === 'object' && item !== null && item.type === 'function_call'
+      )
+      const usage =
+        typeof final?.usage === 'object' && final.usage !== null
+          ? (final.usage as JsonObject)
+          : undefined
       writeSse(response, 'message_delta', {
         type: 'message_delta',
         delta: { stop_reason: lastToolCall ? 'tool_use' : 'end_turn', stop_sequence: null },
@@ -409,7 +434,10 @@ export class XaiMessagesBridge {
           return
         }
         json(response, 502, {
-          error: { type: 'api_error', message: error instanceof Error ? error.message : 'xAI bridge request failed.' }
+          error: {
+            type: 'api_error',
+            message: error instanceof Error ? error.message : 'xAI bridge request failed.'
+          }
         })
       })
     })
@@ -459,7 +487,9 @@ export class XaiMessagesBridge {
       return
     }
     if (request.method !== 'POST') {
-      json(response, 405, { error: { type: 'invalid_request_error', message: 'Method not allowed' } })
+      json(response, 405, {
+        error: { type: 'invalid_request_error', message: 'Method not allowed' }
+      })
       return
     }
     const requestUrl = new URL(request.url ?? '/', 'http://127.0.0.1')
@@ -472,7 +502,9 @@ export class XaiMessagesBridge {
     const parsed = JSON.parse(rawBody.toString('utf8')) as unknown
     const translated = toResponsesRequest(parsed, this.target.model)
     if (!translated) {
-      json(response, 400, { error: { type: 'invalid_request_error', message: 'Expected a JSON object request body.' } })
+      json(response, 400, {
+        error: { type: 'invalid_request_error', message: 'Expected a JSON object request body.' }
+      })
       return
     }
 
@@ -495,7 +527,10 @@ export class XaiMessagesBridge {
     if (source.status !== 200) {
       const errorBody = await source.text().catch(() => '')
       json(response, 502, {
-        error: { type: 'api_error', message: `xAI returned HTTP ${source.status}. ${errorBody.slice(0, 300)}` }
+        error: {
+          type: 'api_error',
+          message: `xAI returned HTTP ${source.status}. ${errorBody.slice(0, 300)}`
+        }
       })
       return
     }
@@ -513,7 +548,12 @@ export class XaiMessagesBridge {
       'cache-control': 'no-cache',
       connection: 'keep-alive'
     })
-    const state = { blockIndex: 0, messageId: `msg_${Date.now().toString(36)}`, started: false, model: this.target.model }
+    const state = {
+      blockIndex: 0,
+      messageId: `msg_${Date.now().toString(36)}`,
+      started: false,
+      model: this.target.model
+    }
     if (!source.body) {
       response.end()
       return

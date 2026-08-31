@@ -1083,12 +1083,7 @@ describe('review repository (integration)', () => {
 
     // Wrong session: the claim belongs to session-mutate-other, not session-none.
     await expect(
-      repository.updateChecklistClaimResolution(
-        'project-1',
-        'session-none',
-        findingId,
-        'resolved'
-      )
+      repository.updateChecklistClaimResolution('project-1', 'session-none', findingId, 'resolved')
     ).rejects.toThrow(/not a warn\/fail check of this session/)
     // Unknown claim id.
     await expect(

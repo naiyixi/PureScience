@@ -81,8 +81,9 @@ const DataRootMissingDialog = ({
             {t('dataRoot.folderNotFound')}
           </AlertDialog.Title>
           <AlertDialog.Description className={dialogDescriptionClassName}>
-            {t('dataRoot.yourDataFolder')} <span className="font-mono">{dialogDataRoot}</span> can&apos;t be
-            found. It may have been deleted, or it&apos;s on a drive that isn&apos;t connected.
+            {t('dataRoot.yourDataFolder')} <span className="font-mono">{dialogDataRoot}</span>{' '}
+            can&apos;t be found. It may have been deleted, or it&apos;s on a drive that isn&apos;t
+            connected.
           </AlertDialog.Description>
 
           {stillMissing ? (

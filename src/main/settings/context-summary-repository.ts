@@ -124,19 +124,19 @@ export class ContextSummaryRepository {
 
   // Records a task boundary. The boundary is attached to the NEXT appended chunk; until then it is
   // held as the session's pending boundary (single slot, newest wins).
-  async recordBoundary(sessionId: string, label: string
+  async recordBoundary(
+    sessionId: string,
+    label: string
   ): Promise<{ recorded: boolean; boundaryId?: string }> {
     // Boundaries live in the chunk file as a small sidecar so the agent's call is acknowledged
     // even before the next fold. We store a dedicated boundaries file (append-only).
-    const target = join(
-      resolveChunksRoot(this.options.storageRoot, sessionId),
-      'boundaries.json'
-    )
+    const target = join(resolveChunksRoot(this.options.storageRoot, sessionId), 'boundaries.json')
     let boundaries: Array<{ id: string; label: string; createdAt: number }> = []
     try {
       const raw = await readFile(target, 'utf8')
       const parsed = JSON.parse(raw) as unknown
-      if (Array.isArray(parsed)) boundaries = parsed as Array<{ id: string; label: string; createdAt: number }>
+      if (Array.isArray(parsed))
+        boundaries = parsed as Array<{ id: string; label: string; createdAt: number }>
     } catch {
       boundaries = []
     }
@@ -151,10 +151,7 @@ export class ContextSummaryRepository {
 
   // Loads the most recent boundary label (for attaching to the next fold).
   async latestBoundaryLabel(sessionId: string): Promise<string | undefined> {
-    const target = join(
-      resolveChunksRoot(this.options.storageRoot, sessionId),
-      'boundaries.json'
-    )
+    const target = join(resolveChunksRoot(this.options.storageRoot, sessionId), 'boundaries.json')
     try {
       const raw = await readFile(target, 'utf8')
       const parsed = JSON.parse(raw) as unknown
@@ -202,21 +199,22 @@ export class ContextSummaryRepository {
     const lines = transcript.split('\n')
     const scored = lines.map((line, index) => {
       const lower = line.toLowerCase()
-      const score = terms.reduce(
-        (sum, term) => sum + (lower.includes(term) ? 1 : 0),
-        0
-      )
+      const score = terms.reduce((sum, term) => sum + (lower.includes(term) ? 1 : 0), 0)
       return { line, index, score }
     })
     const best = scored
-      .map((entry) => ({ ...entry, distance: Math.abs(entry.index - Math.floor(lines.length / 2)) }))
+      .map((entry) => ({
+        ...entry,
+        distance: Math.abs(entry.index - Math.floor(lines.length / 2))
+      }))
       .sort((a, b) => b.score - a.score || a.distance - b.distance)[0]
 
     if (!best || best.score === 0) {
       return {
         found: true,
         summaryId: chunk.summaryId,
-        answer: 'No verbatim match found in the folded chunk. The summary below is the only record: ' +
+        answer:
+          'No verbatim match found in the folded chunk. The summary below is the only record: ' +
           chunk.summaryText,
         summaryText: chunk.summaryText
       }

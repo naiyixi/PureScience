@@ -26,7 +26,11 @@ type TokenUsagePanelProps = {
   now?: number
 }
 
-const PERIODS: ReadonlyArray<{ value: TokenUsagePeriod; label: TranslationKey; shortLabel: TranslationKey }> = [
+const PERIODS: ReadonlyArray<{
+  value: TokenUsagePeriod
+  label: TranslationKey
+  shortLabel: TranslationKey
+}> = [
   { value: 'today', label: 'settings.usageToday', shortLabel: 'settings.usageToday' },
   { value: 'week', label: 'settings.usageThisWeek', shortLabel: 'settings.usageWeek' },
   { value: '30-days', label: 'settings.usageLast30Days', shortLabel: 'settings.usage30Days' },
@@ -124,7 +128,13 @@ function TokenUsagePanel({
     [lang]
   )
   const timeFormatter = useMemo(
-    () => new Intl.DateTimeFormat(lang, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+    () =>
+      new Intl.DateTimeFormat(lang, {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }),
     [lang]
   )
   const fullDateFormatter = useMemo(
@@ -611,7 +621,10 @@ function TokenUsagePanel({
           </div>
         </section>
 
-        <section aria-labelledby="per-run-usage-title" className="min-w-0 border-t border-border px-4 py-6 sm:px-5">
+        <section
+          aria-labelledby="per-run-usage-title"
+          className="min-w-0 border-t border-border px-4 py-6 sm:px-5"
+        >
           <div className="flex flex-col gap-1">
             <h2 id="per-run-usage-title" className="text-base font-semibold text-foreground">
               {t('settings.perRunUsage')}
@@ -621,7 +634,9 @@ function TokenUsagePanel({
             </p>
           </div>
           {analytics.runs.length === 0 ? (
-            <div className="mt-4 text-sm text-muted-foreground">{t('settings.noUsageReported')}</div>
+            <div className="mt-4 text-sm text-muted-foreground">
+              {t('settings.noUsageReported')}
+            </div>
           ) : (
             <div className="mt-4 min-w-0 overflow-x-auto" data-slot="per-run-usage-list">
               <table className="w-full min-w-[480px] border-collapse text-left text-xs">
@@ -629,34 +644,41 @@ function TokenUsagePanel({
                   <tr className="border-b border-border text-muted-foreground">
                     <th className="pb-2 pr-3 font-medium">{t('settings.perRunColumnTime')}</th>
                     <th className="pb-2 pr-3 font-medium">{t('settings.perRunColumnRun')}</th>
-                    <th className="pb-2 pr-3 text-right font-medium">{t('settings.perRunColumnTokens')}</th>
-                    <th className="pb-2 pr-3 text-right font-medium">{t('settings.perRunColumnSubRuns')}</th>
+                    <th className="pb-2 pr-3 text-right font-medium">
+                      {t('settings.perRunColumnTokens')}
+                    </th>
+                    <th className="pb-2 pr-3 text-right font-medium">
+                      {t('settings.perRunColumnSubRuns')}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {[...analytics.runs].reverse().slice(0, 20).map((run) => (
-                    <tr key={run.frameId} className="border-b border-border/50 last:border-b-0">
-                      <td className="py-2 pr-3 tabular-nums text-muted-foreground">
-                        {timeFormatter.format(run.startedAt)}
-                      </td>
-                      <td className="py-2 pr-3 text-foreground">
-                        {run.kind === 'root'
-                          ? t('settings.perRunRootRun')
-                          : `${run.agentName ?? run.kind}`}
-                        {run.subRunCount > 0 ? (
-                          <span className="ml-1 text-muted-foreground">
-                            ({t('settings.perRunIncludingSubRuns')})
-                          </span>
-                        ) : null}
-                      </td>
-                      <td className="py-2 pr-3 text-right tabular-nums text-foreground">
-                        {formatNumber(run.totalTokens + run.subRunTokens)}
-                      </td>
-                      <td className="py-2 pr-3 text-right tabular-nums text-muted-foreground">
-                        {run.subRunCount > 0 ? run.subRunCount : '—'}
-                      </td>
-                    </tr>
-                  ))}
+                  {[...analytics.runs]
+                    .reverse()
+                    .slice(0, 20)
+                    .map((run) => (
+                      <tr key={run.frameId} className="border-b border-border/50 last:border-b-0">
+                        <td className="py-2 pr-3 tabular-nums text-muted-foreground">
+                          {timeFormatter.format(run.startedAt)}
+                        </td>
+                        <td className="py-2 pr-3 text-foreground">
+                          {run.kind === 'root'
+                            ? t('settings.perRunRootRun')
+                            : `${run.agentName ?? run.kind}`}
+                          {run.subRunCount > 0 ? (
+                            <span className="ml-1 text-muted-foreground">
+                              ({t('settings.perRunIncludingSubRuns')})
+                            </span>
+                          ) : null}
+                        </td>
+                        <td className="py-2 pr-3 text-right tabular-nums text-foreground">
+                          {formatNumber(run.totalTokens + run.subRunTokens)}
+                        </td>
+                        <td className="py-2 pr-3 text-right tabular-nums text-muted-foreground">
+                          {run.subRunCount > 0 ? run.subRunCount : '—'}
+                        </td>
+                      </tr>
+                    ))}
                 </tbody>
               </table>
             </div>

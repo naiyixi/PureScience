@@ -32,8 +32,8 @@ const SAMPLE_NOTEBOOK = JSON.stringify({
 describe('NotebookPreviewRenderer', () => {
   it('renders markdown and code cells with outputs and errors', async () => {
     vi.stubGlobal('window', {
-    api: { artifacts: { readPreview: vi.fn(async () => ({ content: SAMPLE_NOTEBOOK })) } }
-  })
+      api: { artifacts: { readPreview: vi.fn(async () => ({ content: SAMPLE_NOTEBOOK })) } }
+    })
 
     render(
       <NotebookPreviewRenderer

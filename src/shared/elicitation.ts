@@ -7,12 +7,7 @@
 // agent. This file carries the renderer-facing projection of a pending elicitation plus the IPC
 // channel names, keeping bounds in one place.
 
-export type ElicitationPropertyKind =
-  | 'string'
-  | 'number'
-  | 'integer'
-  | 'boolean'
-  | 'array'
+export type ElicitationPropertyKind = 'string' | 'number' | 'integer' | 'boolean' | 'array'
 
 // One form field as shown to the user. `choices` is present for single-select strings
 // (JSON Schema enum) and multi-select arrays (items enum); otherwise the field is free-form.

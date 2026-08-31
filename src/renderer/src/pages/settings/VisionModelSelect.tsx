@@ -28,16 +28,17 @@ const VisionModelSelect = (): React.JSX.Element | null => {
   // Only providers whose current model supports image input can act as the Vision model.
   const options = providers.flatMap((provider) => {
     if (provider.supportsImageInput !== true) return []
-    return (provider.models.length > 0 ? provider.models : provider.model ? [provider.model] : []).map(
-      (model) => ({ provider, model })
-    )
+    return (
+      provider.models.length > 0 ? provider.models : provider.model ? [provider.model] : []
+    ).map((model) => ({ provider, model }))
   })
 
   if (options.length === 0) return null
 
   const current = visionModel
     ? options.find(
-        (option) => option.provider.id === visionModel.providerId && option.model === visionModel.model
+        (option) =>
+          option.provider.id === visionModel.providerId && option.model === visionModel.model
       )
     : undefined
 

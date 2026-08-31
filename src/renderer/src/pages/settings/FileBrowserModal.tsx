@@ -223,13 +223,21 @@ function DetailPanel({
 
         <div className="space-y-1.5">
           <MetaRow label={t('settings.fileSize')} value={formatSize(entry.size)} />
-          <MetaRow label={t('settings.fileModified')} value={new Date(entry.mtimeMs).toLocaleString()} />
-          <MetaRow label={t('settings.fileTypeLabel')} value={t(inferType(entry.name) as TranslationKey)} />
+          <MetaRow
+            label={t('settings.fileModified')}
+            value={new Date(entry.mtimeMs).toLocaleString()}
+          />
+          <MetaRow
+            label={t('settings.fileTypeLabel')}
+            value={t(inferType(entry.name) as TranslationKey)}
+          />
         </div>
 
         {/* No preview placeholder */}
         <div className="rounded border border-dashed border-border bg-muted/30 px-3 py-4 text-center">
-          <p className="text-xs text-muted-foreground">{t('settings.noPreview').replace('{size}', formatSize(entry.size))}</p>
+          <p className="text-xs text-muted-foreground">
+            {t('settings.noPreview').replace('{size}', formatSize(entry.size))}
+          </p>
         </div>
 
         {/* Action status banner */}
@@ -568,7 +576,12 @@ export function FileBrowserModal({
             ))}
             <div className="flex-1" />
             <Dialog.Close asChild>
-              <Button type="button" variant="ghost" size="icon-sm" aria-label={t('fileBrowser.close')}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label={t('fileBrowser.close')}
+              >
                 <X className="size-4" />
               </Button>
             </Dialog.Close>

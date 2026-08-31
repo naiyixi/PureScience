@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import {
-  toAnthropicResponse,
-  toResponsesRequest
-} from './xai-messages-bridge'
+import { toAnthropicResponse, toResponsesRequest } from './xai-messages-bridge'
 
 describe('toResponsesRequest (Anthropic Messages → OpenAI Responses)', () => {
   it('translates a plain chat request', () => {
@@ -122,7 +119,9 @@ describe('toAnthropicResponse (OpenAI Responses → Anthropic Messages)', () => 
     const out = toAnthropicResponse(
       {
         id: 'resp_1',
-        output: [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'Hi!' }] }],
+        output: [
+          { type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'Hi!' }] }
+        ],
         usage: { input_tokens: 12, output_tokens: 3 }
       },
       'grok-4.6'
@@ -166,6 +165,7 @@ describe('toAnthropicResponse (OpenAI Responses → Anthropic Messages)', () => 
       },
       'grok-4.6'
     )
-    expect(out.content[0]).toMatchObject({ type: 'tool_use', input: {} })
+    const content = out.content as Array<Record<string, unknown>>
+    expect(content[0]).toMatchObject({ type: 'tool_use', input: {} })
   })
 })

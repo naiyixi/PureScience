@@ -2,7 +2,10 @@ import { describe, expect, it, vi } from 'vitest'
 
 import type { ContentBlock } from '@agentclientprotocol/sdk'
 import type { ExplicitAgentBackendTarget } from '../settings/backend-resolver'
-import { ImageInputCompatibilityError, ImageInputCompatibilityOwner } from './image-input-compatibility-owner'
+import {
+  ImageInputCompatibilityError,
+  ImageInputCompatibilityOwner
+} from './image-input-compatibility-owner'
 
 const sha256 = async (value: string): Promise<string> => {
   const { createHash } = await import('node:crypto')
@@ -32,13 +35,30 @@ const validEvidenceJson = JSON.stringify({
   uncertainty: []
 })
 
-const createOwner = (overrides: Record<string, unknown> = {}) => {
+type CreateOwnerResult = {
+  owner: ImageInputCompatibilityOwner
+  runner: { run: ReturnType<typeof vi.fn> }
+  evidenceRepository: {
+    find: ReturnType<typeof vi.fn>
+    save: { save: (input: never) => Promise<void>; mock: { calls: Array<[Record<string, unknown>]> } }
+  }
+  captureTarget: ReturnType<typeof vi.fn>
+}
+
+const createOwner = (
+  overrides: Record<string, unknown> = {}
+): CreateOwnerResult => createOwnerInner(overrides)
+
+function createOwnerInner(overrides: Record<string, unknown> = {}): CreateOwnerResult {
   const runner = {
     run: vi.fn(async () => ({ text: validEvidenceJson }))
   }
   const evidenceRepository = {
     find: vi.fn(async () => undefined as string | undefined),
-    save: vi.fn(async () => undefined) as unknown as { save: (input: never) => Promise<void>; mock: { calls: Array<[Record<string, unknown>]> } }
+    save: vi.fn(async () => undefined) as unknown as {
+      save: (input: never) => Promise<void>
+      mock: { calls: Array<[Record<string, unknown>]> }
+    }
   }
   const captureTarget = vi.fn(async () => target)
   const owner = new ImageInputCompatibilityOwner({
@@ -76,10 +96,7 @@ describe('ImageInputCompatibilityOwner.prepare', () => {
 
   it('replaces image blocks with evidence text for a text-only backend', async () => {
     const { owner, runner } = createOwner()
-    const content: ContentBlock[] = [
-      { type: 'text', text: 'Look at this:' },
-      imageBlock('QUJD')
-    ]
+    const content: ContentBlock[] = [{ type: 'text', text: 'Look at this:' }, imageBlock('QUJD')]
     const result = (await owner.prepare({
       content,
       supportsImageInput: false,
@@ -165,7 +182,13 @@ describe('ImageInputCompatibilityOwner.prepare', () => {
   it('rejects oversized resource_link images', async () => {
     const { owner } = createOwner()
     const content: ContentBlock[] = [
-      { type: 'resource_link', uri: 'file:///big.png', name: 'big.png', mimeType: 'image/png', size: 10_000_000 }
+      {
+        type: 'resource_link',
+        uri: 'file:///big.png',
+        name: 'big.png',
+        mimeType: 'image/png',
+        size: 10_000_000
+      }
     ]
     await expect(
       owner.prepare({ content, supportsImageInput: false, projectId: 'p1', sessionId: 's1' })

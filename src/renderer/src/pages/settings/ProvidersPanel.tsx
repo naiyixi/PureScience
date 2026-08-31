@@ -378,7 +378,11 @@ const ProvidersPanel = ({
         </div>
       </SettingsSection>
 
-      <SettingsSection title={t('settings.providersTitle')} aria-label={t('settings.providersTitle')} separated>
+      <SettingsSection
+        title={t('settings.providersTitle')}
+        aria-label={t('settings.providersTitle')}
+        separated
+      >
         <ProviderList
           providers={visibleProviders}
           activeProviderId={activeProviderId}

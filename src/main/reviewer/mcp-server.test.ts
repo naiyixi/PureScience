@@ -72,7 +72,9 @@ const createReviewerEvidence = (): ReviewerEvidence => ({
       status: 'completed'
     }
   ]),
-  readTurnHistory: vi.fn<() => string>().mockReturnValue('[No earlier conversation in this session.]'),
+  readTurnHistory: vi
+    .fn<() => string>()
+    .mockReturnValue('[No earlier conversation in this session.]'),
   queryExecutionLog: vi
     .fn<(activityId?: string) => ExecRecord[]>()
     .mockReturnValue([

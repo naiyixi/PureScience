@@ -17,7 +17,7 @@ const SECRET_PATTERNS: readonly RegExp[] = [
   // Query-style assignments: token=, api_key=, apikey=, secret=, password=, access_token=.
   // A word-char/underscore/hyphen prefix is allowed so compound names (MODAL_TOKEN_SECRET,
   // GH_TOKEN, NVIDIA_API_KEY) redact too; the whole key=value span is replaced.
-  /\b[A-Za-z0-9_\-]*(?:token|api[_-]?key|secret|password|passwd|access[_-]?token|client[_-]?secret)\b\s*=\s*[^\s&"'`;]{6,}/gi
+  /\b[A-Za-z0-9_-]*(?:token|api[_-]?key|secret|password|passwd|access[_-]?token|client[_-]?secret)\b\s*=\s*[^\s&"'`;]{6,}/gi
 ]
 
 const REDACTED = '[REDACTED]'

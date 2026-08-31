@@ -34,7 +34,10 @@ import type {
 } from '../../shared/specialist-package'
 import type { SpecialistPackageService } from './package/service'
 import type { MarketplaceService } from './marketplace/service'
-import { SPECIALIST_MARKETPLACE_IPC, type MarketplaceDownloadProgress } from '../../shared/specialist-marketplace'
+import {
+  SPECIALIST_MARKETPLACE_IPC,
+  type MarketplaceDownloadProgress
+} from '../../shared/specialist-marketplace'
 import type {
   AddMarketplaceSourceRequest,
   CancelMarketplaceCandidateRequest,
@@ -361,8 +364,9 @@ export const registerSpecialistIpcHandlers = (
 
   if (marketplace) {
     const { service: marketplaceService, broadcastDownloadProgress } = marketplace
-    ipcMainHandle(SPECIALIST_MARKETPLACE_IPC.LIST, async (_event, request?: { forceRefresh?: boolean }) =>
-      marketplaceService.list(request)
+    ipcMainHandle(
+      SPECIALIST_MARKETPLACE_IPC.LIST,
+      async (_event, request?: { forceRefresh?: boolean }) => marketplaceService.list(request)
     )
     ipcMainHandle(
       SPECIALIST_MARKETPLACE_IPC.INSPECT_GITHUB_SOURCE,
@@ -375,11 +379,13 @@ export const registerSpecialistIpcHandlers = (
     )
     ipcMainHandle(
       SPECIALIST_MARKETPLACE_IPC.REMOVE_SOURCE,
-      async (_event, request: RemoveMarketplaceSourceRequest) => marketplaceService.removeSource(request)
+      async (_event, request: RemoveMarketplaceSourceRequest) =>
+        marketplaceService.removeSource(request)
     )
     ipcMainHandle(
       SPECIALIST_MARKETPLACE_IPC.GET_RELEASE,
-      async (_event, request: GetMarketplaceReleaseRequest) => marketplaceService.getRelease(request)
+      async (_event, request: GetMarketplaceReleaseRequest) =>
+        marketplaceService.getRelease(request)
     )
     ipcMainHandle(
       SPECIALIST_MARKETPLACE_IPC.PREPARE_INSTALL,

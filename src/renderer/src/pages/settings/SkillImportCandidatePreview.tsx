@@ -118,7 +118,9 @@ const SkillImportCandidatePreview = ({
 
                 {content.files.length > 0 ? (
                   <section className="mt-5 border-t border-border pt-4">
-                    <h2 className="mb-2 text-sm font-semibold text-foreground">{t('common.files')}</h2>
+                    <h2 className="mb-2 text-sm font-semibold text-foreground">
+                      {t('common.files')}
+                    </h2>
                     <ul className="flex flex-col gap-1 font-mono text-xs text-muted-foreground">
                       {content.files.map((file) => (
                         <li key={file} className="break-all rounded bg-muted/50 px-2 py-1">

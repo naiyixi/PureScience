@@ -49,7 +49,9 @@ const EnvironmentSetupCard = ({
           className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3"
           role="alert"
         >
-          <p className="text-xs font-semibold text-destructive">{t('onboarding.setupCouldNotComplete')}</p>
+          <p className="text-xs font-semibold text-destructive">
+            {t('onboarding.setupCouldNotComplete')}
+          </p>
           <p className="mt-1 break-words text-xs text-destructive/90">{error}</p>
         </div>
       ) : null}

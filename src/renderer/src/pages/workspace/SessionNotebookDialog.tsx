@@ -306,7 +306,9 @@ const SessionNotebookContent = ({
                       ) : (
                         <Download className="size-3.5" aria-hidden="true" />
                       )}
-                      {exportingAll ? t('common.exporting') : t('common.all').replace('{n}', String(exportAllCount))}
+                      {exportingAll
+                        ? t('common.exporting')
+                        : t('common.all').replace('{n}', String(exportAllCount))}
                     </button>
                   </span>
                 </TooltipTrigger>

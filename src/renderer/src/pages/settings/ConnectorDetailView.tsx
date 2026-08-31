@@ -135,7 +135,9 @@ const ConnectorDetailView = ({
         <h2 className="text-sm font-semibold text-foreground">{t('settings.toolsTitle')}</h2>
         <p className="text-xs text-muted-foreground">{t('ui.whattheagentcandowiththiscon')}</p>
         {detail.tools.length === 0 ? (
-          <p className="mt-3 text-sm text-muted-foreground">{t('settings.thisConnectorHasNoTools')}</p>
+          <p className="mt-3 text-sm text-muted-foreground">
+            {t('settings.thisConnectorHasNoTools')}
+          </p>
         ) : (
           <div className="mt-2 flex flex-col">
             {detail.tools.map((tool) => {

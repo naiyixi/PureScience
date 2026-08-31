@@ -97,10 +97,10 @@ const SpecialistDeleteDetail = ({
       <div className="flex gap-2 rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-xs leading-relaxed">
         <AlertTriangle aria-hidden="true" className="mt-0.5 size-3.5 shrink-0 text-destructive" />
         <p className="text-foreground">
-          {t('ui.conversationsstillboundto')} <b>{profile.displayName ?? profile.name}</b> will become{' '}
-          <b>unavailable</b> and will <b>not</b> be switched to Main Agent automatically. For each
-          affected conversation you&apos;ll explicitly choose a new specialist or Main Agent before
-          it can send again.
+          {t('ui.conversationsstillboundto')} <b>{profile.displayName ?? profile.name}</b> will
+          become <b>unavailable</b> and will <b>not</b> be switched to Main Agent automatically. For
+          each affected conversation you&apos;ll explicitly choose a new specialist or Main Agent
+          before it can send again.
         </p>
       </div>
     </div>

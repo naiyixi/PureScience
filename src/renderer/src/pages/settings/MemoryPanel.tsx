@@ -250,9 +250,7 @@ const MemoryCategoryList = ({
       >
         <AlertDialog.Portal>
           <AlertDialog.Overlay className={dialogOverlayClassName} />
-          <AlertDialog.Content
-            className={dialogPanelClassName('w-[min(440px,calc(100vw-2rem))]')}
-          >
+          <AlertDialog.Content className={dialogPanelClassName('w-[min(440px,calc(100vw-2rem))]')}>
             <AlertDialog.Title className={dialogTitleClassName}>
               {t('settings.memoryDeleteCategoryTitle').replace(
                 '{name}',
@@ -320,10 +318,7 @@ const MemoryCategoryForm = ({
   }, [autoRecall, canCreate, onCreate, name, prompt])
 
   return (
-    <div
-      data-slot="memory-category-form"
-      className="flex min-w-0 flex-1 flex-col overflow-y-auto"
-    >
+    <div data-slot="memory-category-form" className="flex min-w-0 flex-1 flex-col overflow-y-auto">
       <div className="flex items-center gap-1.5 border-b border-border px-4 py-2.5">
         <button
           type="button"
@@ -626,9 +621,7 @@ export const MemoryPanel = (): React.JSX.Element => {
       persist({
         ...normalized,
         notes: normalized.notes.map((candidate) =>
-          candidate.id === note.id
-            ? { ...candidate, text, updatedAt: Date.now() }
-            : candidate
+          candidate.id === note.id ? { ...candidate, text, updatedAt: Date.now() } : candidate
         )
       })
     },

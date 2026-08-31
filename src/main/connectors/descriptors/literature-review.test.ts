@@ -66,7 +66,10 @@ describe('literature review tools', () => {
     const tool = LITERATURE_REVIEW_TOOLS[0]
     if (!tool?.run) throw new Error('missing run')
 
-    const result = (await tool.run(ctx, { query: 'base editing', max_per_source: 10 })) as ReviewResult
+    const result = (await tool.run(ctx, {
+      query: 'base editing',
+      max_per_source: 10
+    })) as ReviewResult
 
     expect(ctx.fetchText).toHaveBeenCalledTimes(1) // arxiv
     expect(ctx.fetchJson).toHaveBeenCalledTimes(1) // openalex (single page)
@@ -99,9 +102,7 @@ describe('literature review tools', () => {
 
   it('keeps the other source when one source fails', async () => {
     const ctx = makeContext()
-    ;(ctx.fetchText as ReturnType<typeof vi.fn>).mockRejectedValue(
-      new Error('arxiv rate limited')
-    )
+    ;(ctx.fetchText as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('arxiv rate limited'))
     const tool = LITERATURE_REVIEW_TOOLS[0]
     if (!tool?.run) throw new Error('missing run')
 

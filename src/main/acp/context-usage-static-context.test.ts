@@ -12,7 +12,7 @@ describe('contextUsageMcpSections', () => {
       notebook: true,
       skillImport: true,
       memory: true,
-      contextSummary: false,
+      contextSummary: false
     })
 
     const text = sections.map((section) => section.text).join('\n')
@@ -33,7 +33,7 @@ describe('contextUsageMcpSections', () => {
       notebook: true,
       skillImport: false,
       memory: false,
-      contextSummary: false,
+      contextSummary: false
     })
 
     const text = sections.map((section) => section.text).join('\n')
@@ -47,7 +47,7 @@ describe('contextUsageMcpSections', () => {
       notebook: true,
       skillImport: false,
       memory: false,
-      contextSummary: false,
+      contextSummary: false
     })
     const tokenizer = new Tiktoken(cl100kBase)
 
@@ -64,7 +64,7 @@ describe('contextUsageMcpSections', () => {
       skillImport: false,
       codexBridgeAliases: true,
       memory: false,
-      contextSummary: false,
+      contextSummary: false
     })
 
     const text = sections.map((section) => section.text).join('\n')
@@ -78,7 +78,7 @@ describe('contextUsageMcpSections', () => {
       notebook: true,
       skillImport: false,
       memory: false,
-      contextSummary: false,
+      contextSummary: false
     })
 
     expect(sections.map(({ sectionId }) => sectionId)).toEqual([
@@ -98,7 +98,7 @@ describe('contextUsageMcpSections', () => {
         notebook: false,
         skillImport: false,
         memory: false,
-        contextSummary: false,
+        contextSummary: false
       })
     ).toEqual([])
   })

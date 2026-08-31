@@ -47,8 +47,12 @@ export const WebPreviewSurface = ({
 
   // Reset for each URL change so re-pointing a tab restarts the indicator.
   useEffect(() => {
-    setProgress(0)
-    setLoaded(false)
+    // Defer the reset past the effect phase (avoids cascading-render warning).
+    const handle = window.setTimeout(() => {
+      setProgress(0)
+      setLoaded(false)
+    }, 0)
+    return () => window.clearTimeout(handle)
   }, [url])
 
   useEffect(() => {
@@ -98,10 +102,7 @@ export const WebPreviewSurface = ({
       </div>
       {/* The indicator doubles as the header bottom border while loading, then disappears. */}
       <div
-        className={cn(
-          'h-[2px] shrink-0 overflow-hidden bg-transparent',
-          !loaded && 'bg-bg-200'
-        )}
+        className={cn('h-[2px] shrink-0 overflow-hidden bg-transparent', !loaded && 'bg-bg-200')}
         role="progressbar"
         aria-hidden="true"
       >

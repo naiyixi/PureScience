@@ -374,7 +374,6 @@ export type VerificationChecklistMutationRequest = ReviewSessionRequest & {
   resolution: FindingResolution
 }
 
-
 // A chunk list view model for the UI fold timeline: the immutable persisted chunks of a session.
 export type ContextSummaryChunkView = {
   id: string

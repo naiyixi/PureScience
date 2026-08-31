@@ -223,10 +223,7 @@ const getMessageTurnNumbers = (
 }
 
 export const getConversationTurnCount = (session: PersistedChatSession): number =>
-  session.messages.reduce(
-    (count, message) => count + (message.role === 'user' ? 1 : 0),
-    0
-  )
+  session.messages.reduce((count, message) => count + (message.role === 'user' ? 1 : 0), 0)
 
 // Projects only the active-branch message view. Internal ids, runtime metadata, paths and tool
 // payloads never enter this stable export contract. When `rounds` is set, only messages whose
@@ -247,18 +244,16 @@ export const createConversationExportDocument = (
 
   const messages = getMessageTurnNumbers(session.messages)
     .filter(({ turn }) => turn >= from && turn <= to)
-    .map(
-      ({ message }): ConversationExportMessage => ({
-        role: message.role === 'agent' ? 'assistant' : 'user',
-        createdAt: message.createdAt,
-        markdown:
-          message.role === 'agent'
-            ? sanitizeExportMarkdown(message.content)
-            : normalizeExportMarkdown(message.content),
-        attachments: getMessageAttachments(message, artifactsById),
-        images: (message.images ?? []).map(({ mimeType, data }) => ({ mimeType, data }))
-      })
-    )
+    .map(({ message }): ConversationExportMessage => ({
+      role: message.role === 'agent' ? 'assistant' : 'user',
+      createdAt: message.createdAt,
+      markdown:
+        message.role === 'agent'
+          ? sanitizeExportMarkdown(message.content)
+          : normalizeExportMarkdown(message.content),
+      attachments: getMessageAttachments(message, artifactsById),
+      images: (message.images ?? []).map(({ mimeType, data }) => ({ mimeType, data }))
+    }))
 
   return {
     version: 1,

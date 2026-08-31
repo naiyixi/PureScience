@@ -633,9 +633,7 @@ class SessionRepository {
   }
 
   // Reads the cached summary if its fingerprint still matches the session file on disk.
-  private async tryReadSessionSummary(
-    filePath: string
-  ): Promise<PersistedChatSession | undefined> {
+  private async tryReadSessionSummary(filePath: string): Promise<PersistedChatSession | undefined> {
     try {
       const [fingerprint, rawSummary] = await Promise.all([
         this.dependencies.statFile(filePath),
@@ -658,7 +656,10 @@ class SessionRepository {
 
   // Writes a lightweight metadata cache next to the session file. Best-effort: a failed summary
   // write never fails the session save/load.
-  private async writeSessionSummary(filePath: string, session: PersistedChatSession): Promise<void> {
+  private async writeSessionSummary(
+    filePath: string,
+    session: PersistedChatSession
+  ): Promise<void> {
     try {
       const fingerprint = await this.dependencies.statFile(filePath)
       const summary: SessionSummaryFile = {

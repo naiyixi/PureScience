@@ -77,7 +77,10 @@ const ExportConversationDialog = ({
   }
 
   return (
-    <Dialog.Root open={Boolean(dialogSession)} onOpenChange={(open) => (open ? undefined : onClose())}>
+    <Dialog.Root
+      open={Boolean(dialogSession)}
+      onOpenChange={(open) => (open ? undefined : onClose())}
+    >
       <Dialog.Overlay className={dialogOverlayClassName} />
       <Dialog.Content
         className={dialogPanelClassName('w-[26rem] max-w-[calc(100vw-2rem)]')}

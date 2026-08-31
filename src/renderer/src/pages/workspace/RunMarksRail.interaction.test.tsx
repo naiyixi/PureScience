@@ -66,7 +66,9 @@ describe('RunMarksRail', () => {
     const ids = makeIds(12)
     const container = renderRail(ids)
 
-    const dots = Array.from(container.querySelectorAll<HTMLButtonElement>('[data-testid="run-mark"]'))
+    const dots = Array.from(
+      container.querySelectorAll<HTMLButtonElement>('[data-testid="run-mark"]')
+    )
     act(() => {
       dots[7]?.click()
     })
@@ -81,7 +83,9 @@ describe('RunMarksRail', () => {
     mocks.visibleMessageIds = ['user-message-1', 'user-message-2', 'user-message-3']
     const container = renderRail(ids)
 
-    const dots = Array.from(container.querySelectorAll<HTMLButtonElement>('[data-testid="run-mark"]'))
+    const dots = Array.from(
+      container.querySelectorAll<HTMLButtonElement>('[data-testid="run-mark"]')
+    )
     const activeDots = dots.filter((dot) => dot.dataset.active === 'true')
     expect(activeDots).toHaveLength(1)
     // user-message-3 is the last visible turn → index 2.
@@ -90,7 +94,9 @@ describe('RunMarksRail', () => {
 
   it('marks each dot with an accessible turn label', () => {
     const container = renderRail(makeIds(9))
-    const dots = Array.from(container.querySelectorAll<HTMLButtonElement>('[data-testid="run-mark"]'))
+    const dots = Array.from(
+      container.querySelectorAll<HTMLButtonElement>('[data-testid="run-mark"]')
+    )
     expect(dots[0]?.getAttribute('aria-label')).toBe('Jump to turn 1')
     expect(dots[8]?.getAttribute('aria-label')).toBe('Jump to turn 9')
   })

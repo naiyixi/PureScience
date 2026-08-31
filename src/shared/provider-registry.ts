@@ -222,7 +222,12 @@ export const OFFICIAL_VENDORS: OfficialVendor[] = [
     ],
     // DeepSeek serves a native Responses API for both V4 models since the V4 Pro GA (2026-08-13);
     // the [1m] context variant shares the same Responses route.
-    responsesModels: ['deepseek-v4-pro', 'deepseek-v4-pro[1m]', 'deepseek-v4-flash', 'deepseek-v4-flash-vision-exp'],
+    responsesModels: [
+      'deepseek-v4-pro',
+      'deepseek-v4-pro[1m]',
+      'deepseek-v4-flash',
+      'deepseek-v4-flash-vision-exp'
+    ],
     // deepseek-v4-flash-vision-exp is the vision-capable flash variant (multimodal rule below); the
     // other chat models stay text-only.
     multimodal: {
@@ -791,7 +796,11 @@ export const OFFICIAL_VENDORS: OfficialVendor[] = [
         reasoningEffort: 'none-low-medium-high-xhigh'
       },
       { id: 'gpt-5.4', contextWindow: 1_050_000 },
-      { id: 'gpt-5.3-codex', contextWindow: 400_000, reasoningEffort: 'none-low-medium-high-xhigh' },
+      {
+        id: 'gpt-5.3-codex',
+        contextWindow: 400_000,
+        reasoningEffort: 'none-low-medium-high-xhigh'
+      },
       { id: 'gpt-5.1-codex', contextWindow: 400_000 },
       // Anthropic family
       { id: 'claude-opus-5', contextWindow: 1_000_000, reasoningEffort: 'standard-5' },

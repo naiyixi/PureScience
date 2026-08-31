@@ -169,7 +169,11 @@ describe('AgentMarkdown renderer recovery', () => {
 
     const items = usePreviewWorkbenchStore.getState().items
     expect(items).toContainEqual(
-      expect.objectContaining({ type: 'web', url: 'https://example.com/paper', sessionId: 'session-1' })
+      expect.objectContaining({
+        type: 'web',
+        url: 'https://example.com/paper',
+        sessionId: 'session-1'
+      })
     )
     expect(usePreviewWorkbenchStore.getState().panelState).toBe('open')
     expect(

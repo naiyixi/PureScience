@@ -14,7 +14,13 @@ const manifest: UpdateManifest = {
   version: '0.3.0',
   releaseDate: '',
   notes: 'release notes',
-  downloads: { 'mac-arm64': { url: 'https://github.com/naiyixi/PureScience/releases/download/0.3.0/x-mac-arm64.dmg', size: 5, sha256: 'h' } }
+  downloads: {
+    'mac-arm64': {
+      url: 'https://github.com/naiyixi/PureScience/releases/download/0.3.0/x-mac-arm64.dmg',
+      size: 5,
+      sha256: 'h'
+    }
+  }
 }
 
 const jsonResponse = (body: unknown): Response =>

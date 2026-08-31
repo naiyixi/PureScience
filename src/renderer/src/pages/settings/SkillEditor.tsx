@@ -207,9 +207,7 @@ const SkillEditor = ({ initial, onCancel, onSave }: SkillEditorProps): React.JSX
         <div className="p-5">
           <section>
             <h2 className="text-base font-semibold text-foreground">Identity</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              {t('skillEditor.catalogHint')}.
-            </p>
+            <p className="mt-0.5 text-xs text-muted-foreground">{t('skillEditor.catalogHint')}.</p>
             <div className="mt-4 flex flex-col gap-4">
               <label className="flex flex-col gap-1.5">
                 <span className="text-sm font-medium text-foreground">{t('common.name')}</span>
@@ -335,7 +333,9 @@ const SkillEditor = ({ initial, onCancel, onSave }: SkillEditorProps): React.JSX
                     className="mt-3 flex items-start justify-between gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2"
                   >
                     <div className="min-w-0">
-                      <p className="text-xs font-medium text-foreground">{t('skillEditor.savedMetadata')}</p>
+                      <p className="text-xs font-medium text-foreground">
+                        {t('skillEditor.savedMetadata')}
+                      </p>
                       <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
                         {metadataEntries.map(([key, value]) => (
                           <span key={key} className="break-all">
@@ -404,7 +404,8 @@ const SkillEditor = ({ initial, onCancel, onSave }: SkillEditorProps): React.JSX
                 {t('skillEditor.dropReferences')}
               </span>
               <span className="text-xs text-muted-foreground">
-                {t('skillEditor.savedUnder')} <code className="font-mono">references/</code> in the skill.
+                {t('skillEditor.savedUnder')} <code className="font-mono">references/</code> in the
+                skill.
               </span>
             </label>
 

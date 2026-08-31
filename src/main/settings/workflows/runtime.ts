@@ -98,10 +98,7 @@ class RuntimeSettingsWorkflows {
     return this.settings.startXaiSignIn()
   }
 
-  async completeXaiSignIn(
-    providerId: string,
-    session: XaiDeviceCodeSession
-  ): Promise<void> {
+  async completeXaiSignIn(providerId: string, session: XaiDeviceCodeSession): Promise<void> {
     await this.settings.completeXaiSignIn(providerId, session)
     this.effects.requestProviderReconnect()
   }

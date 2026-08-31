@@ -47,7 +47,13 @@ export default defineConfig(
     },
     rules: {
       ...eslintPluginReactHooks.configs.recommended.rules,
-      ...eslintPluginReactRefresh.configs.vite.rules
+      ...eslintPluginReactRefresh.configs.vite.rules,
+      // Underscore-prefixed params/vars are intentional placeholders (mock signatures,
+      // unused destructure slots); recommended config doesn't exempt them by default.
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }
+      ]
     }
   },
   eslintConfigPrettier

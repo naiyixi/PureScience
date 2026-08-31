@@ -206,7 +206,9 @@ describe('AcpPromptOutcomeFinalizer', () => {
     harness.handles.interactions = {
       captureTerminal: harness.interactions.captureTerminal.bind(harness.interactions),
       current: harness.interactions.current.bind(harness.interactions),
-      isCancellationAccepted: harness.interactions.isCancellationAccepted.bind(harness.interactions),
+      isCancellationAccepted: harness.interactions.isCancellationAccepted.bind(
+        harness.interactions
+      ),
       settle: harness.interactions.settle.bind(harness.interactions),
       release: vi.fn((scope) => {
         harness.interactions.release(scope)
@@ -376,7 +378,9 @@ describe('AcpPromptOutcomeFinalizer', () => {
     await expect(
       new AcpPromptOutcomeFinalizer().finalize(harness.handles, {
         kind: 'failed',
-        error: new Error('RequestError: Internal error: [ede_diagnostic] result_type=user stop_reason=tool_use')
+        error: new Error(
+          'RequestError: Internal error: [ede_diagnostic] result_type=user stop_reason=tool_use'
+        )
       })
     ).resolves.toEqual({ stopReason: 'cancelled' })
 

@@ -47,7 +47,9 @@ export const SessionMentionPopup = ({
         className="max-h-56 overflow-y-auto p-1"
       >
         {matches.length === 0 ? (
-          <li className="px-2 py-1.5 text-sm text-muted-foreground">{t('ui.nomatchingsessions')}</li>
+          <li className="px-2 py-1.5 text-sm text-muted-foreground">
+            {t('ui.nomatchingsessions')}
+          </li>
         ) : (
           matches.slice(0, 20).map((session) => (
             <li key={session.id} role="option" aria-selected="false">
@@ -61,9 +63,7 @@ export const SessionMentionPopup = ({
                 }}
               >
                 <span className="shrink-0 text-muted-foreground">#</span>
-                <span className="min-w-0 flex-1 truncate">
-                  {session.title || EMPTY_TITLE}
-                </span>
+                <span className="min-w-0 flex-1 truncate">{session.title || EMPTY_TITLE}</span>
               </button>
             </li>
           ))

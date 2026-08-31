@@ -113,11 +113,9 @@ const folderGrantsCommands = Object.freeze({
     readonly [request: FolderGrantRequest],
     FolderGrant
   >('folder-grants:grant'),
-  list: defineApplicationCommand<
-    'folder-grants:list',
-    readonly [],
-    FolderGrantsSnapshot
-  >('folder-grants:list'),
+  list: defineApplicationCommand<'folder-grants:list', readonly [], FolderGrantsSnapshot>(
+    'folder-grants:list'
+  ),
   revoke: defineApplicationCommand<
     'folder-grants:revoke',
     readonly [request: FolderGrantRevokeRequest],
@@ -320,12 +318,7 @@ type HostApplicationCommandDependencies = Readonly<{
   >
   reviewer: Pick<
     ReviewerCommandOwner,
-    | 'run'
-    | 'getForSession'
-    | 'abortFixLoop'
-    | 'getChecklist'
-    | 'mutateChecklist'
-    | 'getChunks'
+    'run' | 'getForSession' | 'abortFixLoop' | 'getChecklist' | 'mutateChecklist' | 'getChunks'
   >
   storage: Readonly<{
     getInfo: () => Promise<StorageInfo>

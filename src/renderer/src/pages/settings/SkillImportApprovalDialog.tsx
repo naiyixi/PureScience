@@ -185,7 +185,9 @@ const SkillImportApprovalRequestDialog = ({
 
               {request.skipped.length > 0 ? (
                 <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-muted-foreground">
-                  <div className="font-medium text-foreground">{t('skillImportApproval.notImportable')}</div>
+                  <div className="font-medium text-foreground">
+                    {t('skillImportApproval.notImportable')}
+                  </div>
                   <ul className="mt-1 list-disc space-y-1 pl-4">
                     {request.skipped.map((item) => (
                       <li key={`${item.source}:${item.reason}`}>

@@ -72,9 +72,7 @@ export type NotebookSessionExecutor<
   terminate?: (kind: 'python' | 'r' | 'repl', env: string) => Promise<void>
   // Live-namespace snapshot for the Variables view; absent on shells/repl.
   // Kept loosely typed so concrete executors can satisfy it without importing kernel-protocol.
-  inspectVariables?: (request: unknown) => Promise<
-    { variables: unknown[] } | undefined
-  >
+  inspectVariables?: (request: unknown) => Promise<{ variables: unknown[] } | undefined>
 }
 
 export type NotebookSessionExecutorGeneration = symbol

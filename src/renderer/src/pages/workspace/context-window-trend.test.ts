@@ -5,9 +5,7 @@ import type { PersistedRuntimeSegment } from '../../../../shared/conversation-gr
 import type { ChatSession } from '@/stores/session-store'
 import { selectContextWindowTrendPoints } from './context-window-trend'
 
-const makeSample = (
-  overrides: Partial<AcpContextWindowSample> = {}
-): AcpContextWindowSample => ({
+const makeSample = (overrides: Partial<AcpContextWindowSample> = {}): AcpContextWindowSample => ({
   id: overrides.id ?? 'sample-1',
   timestamp: overrides.timestamp ?? 1000,
   termination: overrides.termination ?? { kind: 'stop', stopReason: 'end_turn' },
@@ -16,7 +14,9 @@ const makeSample = (
   ...overrides
 })
 
-const makeRuntime = (overrides: Partial<PersistedRuntimeSegment> = {}): PersistedRuntimeSegment => ({
+const makeRuntime = (
+  overrides: Partial<PersistedRuntimeSegment> = {}
+): PersistedRuntimeSegment => ({
   id: 'runtime-1',
   frameworkId: 'claude-code',
   agentFrameId: 'frame-1',
@@ -27,9 +27,7 @@ const makeRuntime = (overrides: Partial<PersistedRuntimeSegment> = {}): Persiste
   ...overrides
 })
 
-const makeSession = (
-  overrides: Partial<ChatSession> = {}
-): ChatSession =>
+const makeSession = (overrides: Partial<ChatSession> = {}): ChatSession =>
   ({
     id: 'session-1',
     messages: [],
@@ -60,7 +58,9 @@ describe('selectContextWindowTrendPoints', () => {
           createdAt: 1,
           updatedAt: 1,
           eventIds: [],
-          contextWindowSamples: [makeSample({ id: 's2', timestamp: 2000, runtimeSegmentId: 'runtime-1' })]
+          contextWindowSamples: [
+            makeSample({ id: 's2', timestamp: 2000, runtimeSegmentId: 'runtime-1' })
+          ]
         },
         {
           id: 'agent-1',
@@ -198,7 +198,9 @@ describe('selectContextWindowTrendPoints', () => {
           createdAt: 1,
           updatedAt: 1,
           eventIds: [],
-          contextWindowSamples: [makeSample({ id: 's2', timestamp: 2000, runtimeSegmentId: 'runtime-1' })]
+          contextWindowSamples: [
+            makeSample({ id: 's2', timestamp: 2000, runtimeSegmentId: 'runtime-1' })
+          ]
         },
         {
           id: 'user-1',

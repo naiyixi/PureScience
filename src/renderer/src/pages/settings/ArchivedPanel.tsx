@@ -238,9 +238,7 @@ const ArchivedPanel = ({ view, onNavigate }: ArchivedPanelProps): React.JSX.Elem
         <>
           <div>
             <h3 className="text-base font-semibold text-foreground">{t('settings.archived')}</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {t('settings.archivedDesc')}
-            </p>
+            <p className="mt-1 text-sm text-muted-foreground">{t('settings.archivedDesc')}</p>
           </div>
           <section className="space-y-2">
             <h4 className="text-sm font-medium text-foreground">{t('settings.projects')}</h4>

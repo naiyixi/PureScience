@@ -311,442 +311,460 @@ const SkillsPanel = ({
 
   return (
     <>
-    <div className="p-5">
-      <SettingsSection
-        title={t('settings.conversationImports')}
-        description={t('settings.conversationImportsDescription')}
-        aria-label={t('settings.conversationImports')}
-        className="mb-4 border-b border-border pb-4"
-        contentClassName="mt-1"
-      >
-        <SettingsRow
-          label={t('settings.skillPackages')}
-          description={
-            <span className="line-clamp-2">{t('settings.skillPackagesDescription')}</span>
-          }
-          className="min-h-0 py-1.5"
+      <div className="p-5">
+        <SettingsSection
+          title={t('settings.conversationImports')}
+          description={t('settings.conversationImportsDescription')}
+          aria-label={t('settings.conversationImports')}
+          className="mb-4 border-b border-border pb-4"
+          contentClassName="mt-1"
         >
-          <div className="flex justify-end">
-            <SettingsToggle
-              enabled={conversationSkillImportEnabled}
-              aria-label={t('settings.toggleConversationSkillImports')}
-              onToggle={() =>
-                void setConversationSkillImportEnabled(!conversationSkillImportEnabled)
-              }
+          <SettingsRow
+            label={t('settings.skillPackages')}
+            description={
+              <span className="line-clamp-2">{t('settings.skillPackagesDescription')}</span>
+            }
+            className="min-h-0 py-1.5"
+          >
+            <div className="flex justify-end">
+              <SettingsToggle
+                enabled={conversationSkillImportEnabled}
+                aria-label={t('settings.toggleConversationSkillImports')}
+                onToggle={() =>
+                  void setConversationSkillImportEnabled(!conversationSkillImportEnabled)
+                }
+              />
+            </div>
+          </SettingsRow>
+        </SettingsSection>
+
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <div
+            role="group"
+            aria-label={t('settings.scope')}
+            className="inline-flex overflow-hidden rounded-lg border border-border-200"
+          >
+            {(
+              [
+                ['all', t('settings.all')],
+                ['main', t('settings.mainAgent')],
+                ['specialist', t('settings.specialistSkills')]
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={scope === value}
+                onClick={() => setScope(value)}
+                className={cn(
+                  'px-2.5 py-1.5 text-xs transition-colors',
+                  scope === value
+                    ? 'bg-bg-200 text-foreground'
+                    : 'text-muted-foreground hover:bg-bg-100 hover:text-foreground'
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <Button
+            variant={batchMode ? 'secondary' : 'outline'}
+            size="sm"
+            className="shrink-0"
+            aria-pressed={batchMode}
+            onClick={() => {
+              setBatchMode((enabled) => !enabled)
+              setSelectedIds(new Set())
+              setBatchError(undefined)
+              setBatchNotice(undefined)
+            }}
+          >
+            <ListChecks className="size-4" aria-hidden="true" />
+            {t('settings.batchMode')}
+          </Button>
+        </div>
+
+        <div className="mb-3">
+          <CatalogFilterChips
+            resourceIds={scoped.map((skill) => `skill:${skill.id}`)}
+            showFavorites={showFavorites}
+            activeTags={activeTags}
+            onToggleFavorites={() => setShowFavorites((value) => !value)}
+            onToggleTag={(tag) =>
+              setActiveTags((prev) =>
+                prev.includes(tag) ? prev.filter((candidate) => candidate !== tag) : [...prev, tag]
+              )
+            }
+            onClear={() => {
+              setShowFavorites(false)
+              setActiveTags([])
+            }}
+          />
+        </div>
+
+        {batchMode ? (
+          <div
+            data-testid="skills-batch-bar"
+            className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-border-200 bg-bg-100 px-3 py-2 text-xs"
+          >
+            <span className="text-foreground">
+              {t('settings.selectedCount').replace('{n}', String(selectedIds.size))}
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={visible.length === 0}
+              onClick={() => setSelectedIds(new Set(visible.map((skill) => skill.id)))}
+            >
+              {t('settings.batchSelectAll')}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={selectedIds.size === 0}
+              onClick={batchEnable}
+            >
+              {t('settings.batchEnable')}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={selectedIds.size === 0}
+              onClick={batchDisable}
+            >
+              {t('settings.batchDisable')}
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              disabled={selectedIds.size === 0}
+              onClick={batchDelete}
+            >
+              {t('settings.batchDelete')}
+            </Button>
+          </div>
+        ) : null}
+
+        {batchNotice ? (
+          <p className="mb-3 rounded-lg border border-border-200 bg-bg-100 px-3 py-2 text-xs text-muted-foreground">
+            {batchNotice}
+          </p>
+        ) : null}
+
+        {batchError ? (
+          <p
+            role="alert"
+            className="mb-3 rounded-lg border border-danger-000/30 bg-danger-000/10 px-3 py-2 text-xs text-danger-000"
+          >
+            {batchError}
+          </p>
+        ) : null}
+
+        <div className="mb-4 flex items-center gap-2">
+          <Select value={filter} onValueChange={(value) => setFilter(value as SourceFilter)}>
+            <SelectTrigger aria-label={t('settings.filterSkillsBySource')} className="w-36">
+              <span>{t(FILTER_LABELS[filter])}</span>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t('settings.all')}</SelectItem>
+              <SelectItem value="featured">{t('settings.featured')}</SelectItem>
+              <SelectItem value="imported">{t('settings.imported')}</SelectItem>
+              <SelectItem value="personal">{t('settings.personal')}</SelectItem>
+            </SelectContent>
+          </Select>
+          <div className="relative flex-1">
+            <Search
+              className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <Input
+              type="search"
+              aria-label={t('settings.searchSkills')}
+              placeholder={t('settings.searchSkillsPlaceholder')}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              className="pl-8"
             />
           </div>
-        </SettingsRow>
-      </SettingsSection>
-
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <div
-          role="group"
-          aria-label={t('settings.scope')}
-          className="inline-flex overflow-hidden rounded-lg border border-border-200"
-        >
-          {(
-            [
-              ['all', t('settings.all')],
-              ['main', t('settings.mainAgent')],
-              ['specialist', t('settings.specialistSkills')]
-            ] as const
-          ).map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              aria-pressed={scope === value}
-              onClick={() => setScope(value)}
-              className={cn(
-                'px-2.5 py-1.5 text-xs transition-colors',
-                scope === value
-                  ? 'bg-bg-200 text-foreground'
-                  : 'text-muted-foreground hover:bg-bg-100 hover:text-foreground'
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        <Button
-          variant={batchMode ? 'secondary' : 'outline'}
-          size="sm"
-          className="shrink-0"
-          aria-pressed={batchMode}
-          onClick={() => {
-            setBatchMode((enabled) => !enabled)
-            setSelectedIds(new Set())
-            setBatchError(undefined)
-            setBatchNotice(undefined)
-          }}
-        >
-          <ListChecks className="size-4" aria-hidden="true" />
-          {t('settings.batchMode')}
-        </Button>
-      </div>
-
-      <div className="mb-3">
-        <CatalogFilterChips
-          resourceIds={scoped.map((skill) => `skill:${skill.id}`)}
-          showFavorites={showFavorites}
-          activeTags={activeTags}
-          onToggleFavorites={() => setShowFavorites((value) => !value)}
-          onToggleTag={(tag) =>
-            setActiveTags((prev) =>
-              prev.includes(tag) ? prev.filter((candidate) => candidate !== tag) : [...prev, tag]
-            )
-          }
-          onClear={() => {
-            setShowFavorites(false)
-            setActiveTags([])
-          }}
-        />
-      </div>
-
-      {batchMode ? (
-        <div
-          data-testid="skills-batch-bar"
-          className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-border-200 bg-bg-100 px-3 py-2 text-xs"
-        >
-          <span className="text-foreground">
-            {t('settings.selectedCount').replace('{n}', String(selectedIds.size))}
-          </span>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={visible.length === 0}
-            onClick={() => setSelectedIds(new Set(visible.map((skill) => skill.id)))}
-          >
-            {t('settings.batchSelectAll')}
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={selectedIds.size === 0}
-            onClick={batchEnable}
-          >
-            {t('settings.batchEnable')}
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={selectedIds.size === 0}
-            onClick={batchDisable}
-          >
-            {t('settings.batchDisable')}
-          </Button>
-          <Button
-            size="sm"
-            variant="destructive"
-            disabled={selectedIds.size === 0}
-            onClick={batchDelete}
-          >
-            {t('settings.batchDelete')}
-          </Button>
-        </div>
-      ) : null}
-
-      {batchNotice ? (
-        <p className="mb-3 rounded-lg border border-border-200 bg-bg-100 px-3 py-2 text-xs text-muted-foreground">
-          {batchNotice}
-        </p>
-      ) : null}
-
-      {batchError ? (
-        <p role="alert" className="mb-3 rounded-lg border border-danger-000/30 bg-danger-000/10 px-3 py-2 text-xs text-danger-000">
-          {batchError}
-        </p>
-      ) : null}
-
-      <div className="mb-4 flex items-center gap-2">
-        <Select value={filter} onValueChange={(value) => setFilter(value as SourceFilter)}>
-          <SelectTrigger aria-label={t('settings.filterSkillsBySource')} className="w-36">
-            <span>{t(FILTER_LABELS[filter])}</span>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t('settings.all')}</SelectItem>
-            <SelectItem value="featured">{t('settings.featured')}</SelectItem>
-            <SelectItem value="imported">{t('settings.imported')}</SelectItem>
-            <SelectItem value="personal">{t('settings.personal')}</SelectItem>
-          </SelectContent>
-        </Select>
-        <div className="relative flex-1">
-          <Search
-            className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-            aria-hidden="true"
-          />
-          <Input
-            type="search"
-            aria-label={t('settings.searchSkills')}
-            placeholder={t('settings.searchSkillsPlaceholder')}
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            className="pl-8"
-          />
-        </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="shrink-0">
-              <Plus data-icon="inline-start" aria-hidden="true" />
-              {t('settings.addSkill')}
-              <ChevronDown data-icon="inline-end" className="opacity-70" aria-hidden="true" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem className="gap-2.5" onSelect={() => onNavigate({ kind: 'create' })}>
-              <Pencil className="size-4 shrink-0" aria-hidden="true" />
-              <span className="flex flex-col">
-                <span>{t('settings.writeFromScratch')}</span>
-                <span className="text-xs text-muted-foreground">
-                  {t('settings.openSkillCreator')}
-                </span>
-              </span>
-            </DropdownMenuItem>
-            <DropdownMenuItem className="gap-2.5" onSelect={() => onNavigate({ kind: 'upload' })}>
-              <FileUp className="size-4 shrink-0" aria-hidden="true" />
-              <span className="flex flex-col">
-                <span>{t('settings.uploadSkills')}</span>
-                <span className="text-xs text-muted-foreground">{t('settings.pickSkillMd')}</span>
-              </span>
-            </DropdownMenuItem>
-            <DropdownMenuItem className="gap-2.5" onSelect={() => onNavigate({ kind: 'import' })}>
-              <Download className="size-4 shrink-0" aria-hidden="true" />
-              <span className="flex flex-col">
-                <span>{t('settings.importFromGitHub')}</span>
-                <span className="text-xs text-muted-foreground">
-                  {t('settings.addSkillFromRepo')}
-                </span>
-              </span>
-            </DropdownMenuItem>
-            {canImportInstalledSkills ? (
-              <DropdownMenuItem
-                className="gap-2.5"
-                onSelect={() => onNavigate({ kind: 'import-agent-home' })}
-              >
-                <FolderInput className="size-4 shrink-0" aria-hidden="true" />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="shrink-0">
+                <Plus data-icon="inline-start" aria-hidden="true" />
+                {t('settings.addSkill')}
+                <ChevronDown data-icon="inline-end" className="opacity-70" aria-hidden="true" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem className="gap-2.5" onSelect={() => onNavigate({ kind: 'create' })}>
+                <Pencil className="size-4 shrink-0" aria-hidden="true" />
                 <span className="flex flex-col">
-                  <span>{t('settings.importInstalledSkills')}</span>
+                  <span>{t('settings.writeFromScratch')}</span>
                   <span className="text-xs text-muted-foreground">
-                    {t('settings.scanGlobalSkills')}
+                    {t('settings.openSkillCreator')}
                   </span>
                 </span>
               </DropdownMenuItem>
-            ) : null}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      {deleteError ? (
-        <p
-          role="alert"
-          className="mb-3 rounded-lg border border-danger-000/30 bg-danger-000/10 px-3 py-2 text-xs text-danger-000"
-        >
-          {deleteError}
-        </p>
-      ) : null}
-
-      {exportError ? (
-        <p
-          role="alert"
-          className="mb-3 rounded-lg border border-danger-000/30 bg-danger-000/10 px-3 py-2 text-xs text-danger-000"
-        >
-          {exportError}
-        </p>
-      ) : null}
-
-      <div className="flex flex-col gap-4">
-        {groups.map((group) => {
-          const rows = visible.filter((skill) => skill.source === group.source)
-          const expanded = !collapsed[group.source]
-
-          return (
-            <div key={group.source}>
-              <button
-                type="button"
-                aria-expanded={expanded}
-                onClick={() =>
-                  setCollapsed((prev) => ({ ...prev, [group.source]: !prev[group.source] }))
-                }
-                className="flex w-full flex-col items-start gap-0.5 text-left"
-              >
-                <span className="flex items-center gap-1 text-sm font-semibold text-foreground">
-                  {t(group.label)}
-                  <ChevronDown
-                    className={`size-4 shrink-0 text-muted-foreground transition-transform motion-reduce:transition-none ${
-                      expanded ? '' : '-rotate-90'
-                    }`}
-                    aria-hidden="true"
-                  />
+              <DropdownMenuItem className="gap-2.5" onSelect={() => onNavigate({ kind: 'upload' })}>
+                <FileUp className="size-4 shrink-0" aria-hidden="true" />
+                <span className="flex flex-col">
+                  <span>{t('settings.uploadSkills')}</span>
+                  <span className="text-xs text-muted-foreground">{t('settings.pickSkillMd')}</span>
                 </span>
-                <span className="text-xs text-muted-foreground">{t(group.subtitle)}</span>
-              </button>
-
-              {expanded ? (
-                rows.length > 0 ? (
-                  <ul className="mt-2 flex flex-col divide-y divide-border">
-                    {rows.map((skill) => {
-                      const ownerNames = specialistNamesBySkillId.get(skill.id) ?? []
-                      return (
-                        <li
-                          key={skill.id}
-                          data-slot="settings-list-row"
-                          className="flex min-h-14 items-center gap-2 py-2.5"
-                        >
-                          {batchMode ? (
-                            <input
-                              type="checkbox"
-                              aria-label={t('settings.batchSelect').replace('{name}', skill.name)}
-                              checked={selectedIds.has(skill.id)}
-                              onChange={() => toggleSelection(skill.id)}
-                              className="size-4 shrink-0 accent-[var(--accent)]"
-                            />
-                          ) : null}
-                          <CatalogFavoriteButton
-                            resourceId={`skill:${skill.id}`}
-                            label={t('settings.favoriteSkill').replace('{name}', skill.name)}
-                          />
-                          <div className="min-w-0 flex-1">
-                            <button
-                              type="button"
-                              onClick={() => onNavigate({ kind: 'detail', id: skill.id })}
-                              className="block w-full text-left"
-                            >
-                              <span className="block truncate text-sm text-foreground">
-                                {skill.name}
-                              </span>
-                              <span className="block truncate text-xs text-muted-foreground">
-                                {skill.description}
-                              </span>
-                            </button>
-                            <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                              {ownerNames.length > 0 ? (
-                                <span
-                                  data-testid="skill-owner-badge"
-                                  title={ownerNames.join(', ')}
-                                  className="shrink-0 rounded-full border border-border-200 bg-bg-100 px-2 py-0.5 text-[11px] text-muted-foreground"
-                                >
-                                  {t('settings.ownerSpecialists')}
-                                </span>
-                              ) : (
-                                <span
-                                  data-testid="skill-owner-badge"
-                                  className="shrink-0 rounded-full border border-border-200 bg-bg-100 px-2 py-0.5 text-[11px] text-muted-foreground"
-                                >
-                                  {t('settings.ownerMainAgent')}
-                                </span>
-                              )}
-                              <CatalogTagEditor
-                                resourceId={`skill:${skill.id}`}
-                                addLabel={t('settings.addTag')}
-                                tagsLabel={t('settings.tags')}
-                                placeholder={t('settings.addTag')}
-                              />
-                            </div>
-                          </div>
-                          {exportStatus?.id === skill.id ? (
-                            <span role="status" className="shrink-0 text-xs text-muted-foreground">
-                              {exportStatus.message}
-                            </span>
-                          ) : null}
-                          {skill.source !== 'featured' && canExportSkills ? (
-                            <SettingsIconAction
-                              label={t('settings.exportSkillAction').replace('{name}', skill.name)}
-                              icon={Download}
-                              disabled={exportingId !== undefined}
-                              onClick={() => void exportSkill(skill.id, skill.name)}
-                            />
-                          ) : null}
-                          {skill.source === 'personal' ? (
-                            <SettingsIconAction
-                              label={t('settings.editSkillAction').replace('{name}', skill.name)}
-                              icon={Pencil}
-                              onClick={() => onNavigate({ kind: 'edit', id: skill.id })}
-                            />
-                          ) : null}
-                          {skill.source !== 'featured' ? (
-                            <SettingsIconAction
-                              label={t('settings.deleteSkillAction').replace('{name}', skill.name)}
-                              icon={Trash2}
-                              onClick={() => {
-                                setDeleteError(undefined)
-                                void deleteSkill(skill.id).catch((error) =>
-                                  setDeleteError(
-                                    error instanceof Error
-                                      ? error.message
-                                      : t('settings.thisSkillProtected')
-                                  )
-                                )
-                              }}
-                              danger
-                            />
-                          ) : null}
-                          <SettingsToggle
-                            enabled={skill.enabled}
-                            aria-label={t('settings.toggleSkill').replace('{name}', skill.name)}
-                            onToggle={() => {
-                              if (skill.enabled) {
-                                void setSkillEnabled(skill.id, false)
-                                return
-                              }
-                              if (isRestrictedLicense(skill.license) && useIntent !== 'non-commercial') {
-                                setPendingLicenseSkill(skill)
-                                return
-                              }
-                              void setSkillEnabled(skill.id, true)
-                            }}
-                          />
-                        </li>
-                      )
-                    })}
-                  </ul>
-                ) : (
-                  <p className="mt-2 py-2 text-xs text-muted-foreground">
-                    {group.source === 'personal'
-                      ? t('settings.createSkillHint')
-                      : group.source === 'imported'
-                        ? t('settings.noImportedSkillsYet')
-                        : t('settings.noSkillsMatchSearch')}
-                  </p>
-                )
+              </DropdownMenuItem>
+              <DropdownMenuItem className="gap-2.5" onSelect={() => onNavigate({ kind: 'import' })}>
+                <Download className="size-4 shrink-0" aria-hidden="true" />
+                <span className="flex flex-col">
+                  <span>{t('settings.importFromGitHub')}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {t('settings.addSkillFromRepo')}
+                  </span>
+                </span>
+              </DropdownMenuItem>
+              {canImportInstalledSkills ? (
+                <DropdownMenuItem
+                  className="gap-2.5"
+                  onSelect={() => onNavigate({ kind: 'import-agent-home' })}
+                >
+                  <FolderInput className="size-4 shrink-0" aria-hidden="true" />
+                  <span className="flex flex-col">
+                    <span>{t('settings.importInstalledSkills')}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {t('settings.scanGlobalSkills')}
+                    </span>
+                  </span>
+                </DropdownMenuItem>
               ) : null}
-            </div>
-          )
-        })}
-      </div>
-    </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
 
-    <AlertDialog.Root
-      open={pendingLicenseSkill !== null}
-      onOpenChange={(open) => {
-        if (!open) setPendingLicenseSkill(null)
-      }}
-    >
-      <AlertDialog.Portal>
-        <AlertDialog.Overlay className="fixed inset-0 z-50 bg-black/50" />
-        <AlertDialog.Content className="fixed left-1/2 top-1/2 z-50 w-[min(420px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-bg-000 p-5 shadow-xl">
-          <AlertDialog.Title className="text-sm font-semibold text-foreground">
-            {t('settings.licenseConfirmTitle').replace('{name}', pendingLicenseSkill?.name ?? '')}
-          </AlertDialog.Title>
-          <AlertDialog.Description className="mt-2 text-xs leading-5 text-muted-foreground">
-            {t('settings.licenseConfirmBody').replace('{license}', pendingLicenseSkill?.license ?? '')}
-          </AlertDialog.Description>
-          <div className="mt-4 flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setPendingLicenseSkill(null)}>
-              {t('common.cancel')}
-            </Button>
-            <Button
-              type="button"
-              onClick={() => {
-                const skill = pendingLicenseSkill
-                setPendingLicenseSkill(null)
-                if (skill) void setSkillEnabled(skill.id, true)
-              }}
-            >
-              {t('settings.licenseConfirmEnable')}
-            </Button>
-          </div>
-        </AlertDialog.Content>
-      </AlertDialog.Portal>
-    </AlertDialog.Root>
+        {deleteError ? (
+          <p
+            role="alert"
+            className="mb-3 rounded-lg border border-danger-000/30 bg-danger-000/10 px-3 py-2 text-xs text-danger-000"
+          >
+            {deleteError}
+          </p>
+        ) : null}
+
+        {exportError ? (
+          <p
+            role="alert"
+            className="mb-3 rounded-lg border border-danger-000/30 bg-danger-000/10 px-3 py-2 text-xs text-danger-000"
+          >
+            {exportError}
+          </p>
+        ) : null}
+
+        <div className="flex flex-col gap-4">
+          {groups.map((group) => {
+            const rows = visible.filter((skill) => skill.source === group.source)
+            const expanded = !collapsed[group.source]
+
+            return (
+              <div key={group.source}>
+                <button
+                  type="button"
+                  aria-expanded={expanded}
+                  onClick={() =>
+                    setCollapsed((prev) => ({ ...prev, [group.source]: !prev[group.source] }))
+                  }
+                  className="flex w-full flex-col items-start gap-0.5 text-left"
+                >
+                  <span className="flex items-center gap-1 text-sm font-semibold text-foreground">
+                    {t(group.label)}
+                    <ChevronDown
+                      className={`size-4 shrink-0 text-muted-foreground transition-transform motion-reduce:transition-none ${
+                        expanded ? '' : '-rotate-90'
+                      }`}
+                      aria-hidden="true"
+                    />
+                  </span>
+                  <span className="text-xs text-muted-foreground">{t(group.subtitle)}</span>
+                </button>
+
+                {expanded ? (
+                  rows.length > 0 ? (
+                    <ul className="mt-2 flex flex-col divide-y divide-border">
+                      {rows.map((skill) => {
+                        const ownerNames = specialistNamesBySkillId.get(skill.id) ?? []
+                        return (
+                          <li
+                            key={skill.id}
+                            data-slot="settings-list-row"
+                            className="flex min-h-14 items-center gap-2 py-2.5"
+                          >
+                            {batchMode ? (
+                              <input
+                                type="checkbox"
+                                aria-label={t('settings.batchSelect').replace('{name}', skill.name)}
+                                checked={selectedIds.has(skill.id)}
+                                onChange={() => toggleSelection(skill.id)}
+                                className="size-4 shrink-0 accent-[var(--accent)]"
+                              />
+                            ) : null}
+                            <CatalogFavoriteButton
+                              resourceId={`skill:${skill.id}`}
+                              label={t('settings.favoriteSkill').replace('{name}', skill.name)}
+                            />
+                            <div className="min-w-0 flex-1">
+                              <button
+                                type="button"
+                                onClick={() => onNavigate({ kind: 'detail', id: skill.id })}
+                                className="block w-full text-left"
+                              >
+                                <span className="block truncate text-sm text-foreground">
+                                  {skill.name}
+                                </span>
+                                <span className="block truncate text-xs text-muted-foreground">
+                                  {skill.description}
+                                </span>
+                              </button>
+                              <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                                {ownerNames.length > 0 ? (
+                                  <span
+                                    data-testid="skill-owner-badge"
+                                    title={ownerNames.join(', ')}
+                                    className="shrink-0 rounded-full border border-border-200 bg-bg-100 px-2 py-0.5 text-[11px] text-muted-foreground"
+                                  >
+                                    {t('settings.ownerSpecialists')}
+                                  </span>
+                                ) : (
+                                  <span
+                                    data-testid="skill-owner-badge"
+                                    className="shrink-0 rounded-full border border-border-200 bg-bg-100 px-2 py-0.5 text-[11px] text-muted-foreground"
+                                  >
+                                    {t('settings.ownerMainAgent')}
+                                  </span>
+                                )}
+                                <CatalogTagEditor
+                                  resourceId={`skill:${skill.id}`}
+                                  addLabel={t('settings.addTag')}
+                                  tagsLabel={t('settings.tags')}
+                                  placeholder={t('settings.addTag')}
+                                />
+                              </div>
+                            </div>
+                            {exportStatus?.id === skill.id ? (
+                              <span
+                                role="status"
+                                className="shrink-0 text-xs text-muted-foreground"
+                              >
+                                {exportStatus.message}
+                              </span>
+                            ) : null}
+                            {skill.source !== 'featured' && canExportSkills ? (
+                              <SettingsIconAction
+                                label={t('settings.exportSkillAction').replace(
+                                  '{name}',
+                                  skill.name
+                                )}
+                                icon={Download}
+                                disabled={exportingId !== undefined}
+                                onClick={() => void exportSkill(skill.id, skill.name)}
+                              />
+                            ) : null}
+                            {skill.source === 'personal' ? (
+                              <SettingsIconAction
+                                label={t('settings.editSkillAction').replace('{name}', skill.name)}
+                                icon={Pencil}
+                                onClick={() => onNavigate({ kind: 'edit', id: skill.id })}
+                              />
+                            ) : null}
+                            {skill.source !== 'featured' ? (
+                              <SettingsIconAction
+                                label={t('settings.deleteSkillAction').replace(
+                                  '{name}',
+                                  skill.name
+                                )}
+                                icon={Trash2}
+                                onClick={() => {
+                                  setDeleteError(undefined)
+                                  void deleteSkill(skill.id).catch((error) =>
+                                    setDeleteError(
+                                      error instanceof Error
+                                        ? error.message
+                                        : t('settings.thisSkillProtected')
+                                    )
+                                  )
+                                }}
+                                danger
+                              />
+                            ) : null}
+                            <SettingsToggle
+                              enabled={skill.enabled}
+                              aria-label={t('settings.toggleSkill').replace('{name}', skill.name)}
+                              onToggle={() => {
+                                if (skill.enabled) {
+                                  void setSkillEnabled(skill.id, false)
+                                  return
+                                }
+                                if (
+                                  isRestrictedLicense(skill.license) &&
+                                  useIntent !== 'non-commercial'
+                                ) {
+                                  setPendingLicenseSkill(skill)
+                                  return
+                                }
+                                void setSkillEnabled(skill.id, true)
+                              }}
+                            />
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  ) : (
+                    <p className="mt-2 py-2 text-xs text-muted-foreground">
+                      {group.source === 'personal'
+                        ? t('settings.createSkillHint')
+                        : group.source === 'imported'
+                          ? t('settings.noImportedSkillsYet')
+                          : t('settings.noSkillsMatchSearch')}
+                    </p>
+                  )
+                ) : null}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      <AlertDialog.Root
+        open={pendingLicenseSkill !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingLicenseSkill(null)
+        }}
+      >
+        <AlertDialog.Portal>
+          <AlertDialog.Overlay className="fixed inset-0 z-50 bg-black/50" />
+          <AlertDialog.Content className="fixed left-1/2 top-1/2 z-50 w-[min(420px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-bg-000 p-5 shadow-xl">
+            <AlertDialog.Title className="text-sm font-semibold text-foreground">
+              {t('settings.licenseConfirmTitle').replace('{name}', pendingLicenseSkill?.name ?? '')}
+            </AlertDialog.Title>
+            <AlertDialog.Description className="mt-2 text-xs leading-5 text-muted-foreground">
+              {t('settings.licenseConfirmBody').replace(
+                '{license}',
+                pendingLicenseSkill?.license ?? ''
+              )}
+            </AlertDialog.Description>
+            <div className="mt-4 flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setPendingLicenseSkill(null)}>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  const skill = pendingLicenseSkill
+                  setPendingLicenseSkill(null)
+                  if (skill) void setSkillEnabled(skill.id, true)
+                }}
+              >
+                {t('settings.licenseConfirmEnable')}
+              </Button>
+            </div>
+          </AlertDialog.Content>
+        </AlertDialog.Portal>
+      </AlertDialog.Root>
     </>
   )
 }

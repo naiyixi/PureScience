@@ -11,7 +11,10 @@ type SelectionAnnotatorProps = {
 // Floating "add as annotation" affordance: when the user selects text inside the workspace, a small
 // button appears near the selection. Clicking it stages the selected text as an annotation card
 // for the next message. The source label is derived from the nearest annotated container.
-const SelectionAnnotator = ({ onAnnotate, disabled = false }: SelectionAnnotatorProps): React.JSX.Element | null => {
+const SelectionAnnotator = ({
+  onAnnotate,
+  disabled = false
+}: SelectionAnnotatorProps): React.JSX.Element | null => {
   const { t } = useLanguage()
   const [selection, setSelection] = useState<{
     text: string

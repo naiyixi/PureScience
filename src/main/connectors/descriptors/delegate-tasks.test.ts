@@ -40,11 +40,7 @@ describe('delegate_tasks tool', () => {
     if (!tool?.run) throw new Error('missing run')
 
     const result = (await tool.run(makeContext(runSubAgent), {
-      tasks: [
-        { prompt: 'task A' },
-        { prompt: 'task B' },
-        { prompt: 'task C' }
-      ]
+      tasks: [{ prompt: 'task A' }, { prompt: 'task B' }, { prompt: 'task C' }]
     })) as DelegateResult
 
     expect(result.results).toHaveLength(3)
@@ -93,9 +89,9 @@ describe('delegate_tasks tool', () => {
   it('fails with a clear error when no sub-agent executor is available', async () => {
     const tool = DELEGATE_TOOLS[0]
     if (!tool?.run) throw new Error('missing run')
-    await expect(
-      tool.run(makeContext(), { tasks: [{ prompt: 'task' }] })
-    ).rejects.toThrow('live agent session')
+    await expect(tool.run(makeContext(), { tasks: [{ prompt: 'task' }] })).rejects.toThrow(
+      'live agent session'
+    )
   })
 
   it('rejects empty task lists and more than 12 tasks', async () => {

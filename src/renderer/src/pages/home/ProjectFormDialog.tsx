@@ -109,7 +109,8 @@ const ProjectFormDialog = ({
                   className="text-xs font-medium text-muted-foreground"
                   htmlFor="project-form-description"
                 >
-                  {t('home.projectDescription')} <span className="text-muted-foreground">{t('common.optional')}</span>
+                  {t('home.projectDescription')}{' '}
+                  <span className="text-muted-foreground">{t('common.optional')}</span>
                 </label>
                 <textarea
                   id="project-form-description"

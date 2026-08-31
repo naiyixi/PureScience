@@ -14,7 +14,11 @@ import type { VerificationChecklist, VerificationChecklistItem } from '../../../
 // --- store mock ---
 const mutateChecklist = vi.fn()
 const loadChecklist = vi.fn()
-let checklistFixture: VerificationChecklist = { projectId: 'project-1', sessionId: 'session-1', items: [] }
+let checklistFixture: VerificationChecklist = {
+  projectId: 'project-1',
+  sessionId: 'session-1',
+  items: []
+}
 
 vi.mock('@/stores/review-store', () => ({
   useReviewStore: (selector: (state: unknown) => unknown) =>

@@ -153,11 +153,7 @@ export function framePythonRequest(
 // R length-prefixed frame: a "<reqId> <codeByteLength>\n" header followed by the exact UTF-8 code
 // bytes. The byte length (not JS string length) lets the R side read a precise number of bytes for
 // multibyte code.
-export function frameRRequest(
-  reqId: string,
-  code: string,
-  action?: 'inspect_variables'
-): Buffer {
+export function frameRRequest(reqId: string, code: string, action?: 'inspect_variables'): Buffer {
   const codeBuf = Buffer.from(code, 'utf8')
   // Third token is the optional action (empty for a normal cell); read_request splits on spaces
   // so `reqId 0 inspect_variables` yields req$action = "inspect_variables".

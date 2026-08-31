@@ -333,7 +333,9 @@ const SkillUploadView = ({
   if (candidates !== null && candidates.length > 0) {
     return (
       <div className="p-5">
-        <h2 className="text-base font-semibold text-foreground">{t('skillUpload.confirmImport')}</h2>
+        <h2 className="text-base font-semibold text-foreground">
+          {t('skillUpload.confirmImport')}
+        </h2>
         <p className="mt-0.5 text-[13px] leading-5 text-muted-foreground">
           Pick the skills you want to add. Nothing is written until you import.
         </p>
@@ -371,7 +373,9 @@ const SkillUploadView = ({
               onClick={() => void importSelected()}
               disabled={busy || selected.size === 0}
             >
-              {busy ? t('common.importing') : t('common.importSelected').replace('{n}', String(selected.size))}
+              {busy
+                ? t('common.importing')
+                : t('common.importSelected').replace('{n}', String(selected.size))}
             </Button>
           </div>
 

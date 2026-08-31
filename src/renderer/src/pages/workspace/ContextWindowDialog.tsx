@@ -109,9 +109,7 @@ const UsageCallsSection = ({
   if (records.length === 0) return null
 
   const maxTotal = Math.max(
-    ...records.map(
-      (record) => record.inputTokens + record.cacheTokens + record.outputTokens
-    ),
+    ...records.map((record) => record.inputTokens + record.cacheTokens + record.outputTokens),
     1
   )
 
@@ -130,7 +128,9 @@ const UsageCallsSection = ({
                 <span className="text-muted-foreground">{formatDateTime(record.createdAt)}</span>
                 <span className="text-foreground">
                   {formatTokens(total)} tokens
-                  {record.turnCount ? ` · ${record.turnCount} model turn${record.turnCount === 1 ? '' : 's'}` : ''}
+                  {record.turnCount
+                    ? ` · ${record.turnCount} model turn${record.turnCount === 1 ? '' : 's'}`
+                    : ''}
                 </span>
               </div>
               <div className="mt-1 flex h-3 w-full overflow-hidden rounded-full bg-bg-200">
@@ -159,7 +159,10 @@ const UsageCallsSection = ({
 }
 
 // Catalog keys stay unresolved at module scope so changing locale updates every render site.
-const categoryPresentation: Record<AcpContextUsageCategoryKey, { labelKey: TranslationKey; color: string }> = {
+const categoryPresentation: Record<
+  AcpContextUsageCategoryKey,
+  { labelKey: TranslationKey; color: string }
+> = {
   system: { labelKey: 'ws.contextCategorySystem', color: 'bg-emerald-500' },
   tools: { labelKey: 'ws.contextCategoryTools', color: 'bg-amber-400' },
   messages: { labelKey: 'ws.contextCategoryMessages', color: 'bg-violet-500' },
@@ -230,7 +233,9 @@ const CompositionStrip = ({ usage }: { usage: AcpContextUsage }): React.JSX.Elem
       data-slot="context-composition-strip"
       aria-label={
         usage.size
-          ? t('ws.contextStripAriaWithSize').replace('{used}', formatTokens(visualTotal)).replace('{size}', formatTokens(usage.size))
+          ? t('ws.contextStripAriaWithSize')
+              .replace('{used}', formatTokens(visualTotal))
+              .replace('{size}', formatTokens(usage.size))
           : t('ws.contextStripAria').replace('{used}', formatTokens(visualTotal))
       }
     >
@@ -367,9 +372,7 @@ const CurrentComposition = ({
           <CategoryLegend usage={usage} singleRow />
         </div>
       ) : (
-        <p className="mt-2 text-xs text-muted-foreground">
-          {t('ws.contextBreakdownUnavailable')}
-        </p>
+        <p className="mt-2 text-xs text-muted-foreground">{t('ws.contextBreakdownUnavailable')}</p>
       )}
       <div className="mt-2">
         <BreakdownDiagnostics usage={usage} />
@@ -602,8 +605,14 @@ const ContextHistoryChart = ({
                       className="absolute -right-2.5 bottom-1 z-10 grid size-5 place-items-center rounded-full border border-border bg-background text-muted-foreground"
                       data-slot="context-window-compaction-marker"
                       role="img"
-                      title={t('ws.contextCompactedAfter').replace('{run}', String(point.runNumber))}
-                      aria-label={t('ws.contextCompactedAfter').replace('{run}', String(point.runNumber))}
+                      title={t('ws.contextCompactedAfter').replace(
+                        '{run}',
+                        String(point.runNumber)
+                      )}
+                      aria-label={t('ws.contextCompactedAfter').replace(
+                        '{run}',
+                        String(point.runNumber)
+                      )}
                     >
                       <Scissors className="size-3" aria-hidden="true" />
                     </span>
@@ -636,9 +645,7 @@ const ContextHistory = ({ points }: { points: ContextWindowTrendPoint[] }): Reac
           <h3 id="context-window-history-title" className="text-sm font-medium text-foreground">
             {t('ws.contextHistory')}
           </h3>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {t('ws.contextHistoryHint')}
-          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{t('ws.contextHistoryHint')}</p>
         </div>
         <div className="flex shrink-0 items-center gap-3 text-[11px] text-muted-foreground">
           <span className="flex items-center gap-1.5 whitespace-nowrap">
@@ -733,10 +740,7 @@ const ContextWindowDialog = ({
             </Dialog.Close>
           </div>
 
-          <div
-            className="min-h-0 flex-1 overflow-y-auto"
-            data-slot="context-window-dialog-body"
-          >
+          <div className="min-h-0 flex-1 overflow-y-auto" data-slot="context-window-dialog-body">
             <div className="space-y-6">
               {currentUsage ? (
                 <CurrentComposition

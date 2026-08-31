@@ -202,7 +202,10 @@ export const createSessionMessageGraphOwner = <
     const normalizedAgentModel = agentModel?.trim() || undefined
     const uploads = attachments.map(createPersistedUpload)
 
-    if (!sessionId || (!trimmedContent && uploads.length === 0 && (annotations ?? []).length === 0)) {
+    if (
+      !sessionId ||
+      (!trimmedContent && uploads.length === 0 && (annotations ?? []).length === 0)
+    ) {
       return undefined
     }
 
@@ -280,9 +283,7 @@ export const createSessionMessageGraphOwner = <
         projectId: projectId ?? '',
         isPending: isPending ? true : undefined,
         title: createTitleFromMessage(trimmedContent || createTitleFromUploads(uploads)),
-        description: trimmedContent
-          ? createDescriptionFromMessage(trimmedContent)
-          : undefined,
+        description: trimmedContent ? createDescriptionFromMessage(trimmedContent) : undefined,
         cwd: cwd ?? '',
         status: 'running',
         permissionProfile: permissionProfile ?? DEFAULT_PERMISSION_PROFILE,

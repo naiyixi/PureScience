@@ -112,7 +112,10 @@ describe('AcpSessionConfigurator', () => {
       sessionId: 'session-1',
       modes: {
         currentModeId: 'default',
-        availableModes: [{ id: 'default', name: 'Default' }, { id: 'bypassPermissions', name: 'Full access' }]
+        availableModes: [
+          { id: 'default', name: 'Default' },
+          { id: 'bypassPermissions', name: 'Full access' }
+        ]
       },
       newSessionResponse: { configOptions: initialOptions }
     } as unknown as ActiveSession
@@ -134,7 +137,11 @@ describe('AcpSessionConfigurator', () => {
     const modelRequest = requests.find(
       (r) => r.method === acp.methods.agent.session.setConfigOption
     )
-    expect(modelRequest?.params).toEqual({ sessionId: 'session-1', configId: 'model', value: 'model-b' })
+    expect(modelRequest?.params).toEqual({
+      sessionId: 'session-1',
+      configId: 'model',
+      value: 'model-b'
+    })
   })
 
   it('applies a permission-only change and returns an immutable profile fact', async () => {

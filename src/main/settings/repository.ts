@@ -566,7 +566,9 @@ export const sanitizeMemorySettings = (value: unknown): MemorySettings | undefin
             createdAt: asNumber(entry.createdAt) ?? 0,
             updatedAt: asNumber(entry.updatedAt) ?? 0,
             // Provenance fields are optional; preserve them when present.
-            ...(asString(entry.evidence) !== undefined ? { evidence: asString(entry.evidence) } : {}),
+            ...(asString(entry.evidence) !== undefined
+              ? { evidence: asString(entry.evidence) }
+              : {}),
             ...(asString(entry.subjectVersionId) !== undefined
               ? { subjectVersionId: asString(entry.subjectVersionId) }
               : {}),

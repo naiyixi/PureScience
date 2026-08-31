@@ -522,9 +522,7 @@ describe('buildTransport', () => {
       }
     })
 
-    await expect(
-      manager.call(config, 'list_things', {})
-    ).resolves.toEqual({ ok: true })
+    await expect(manager.call(config, 'list_things', {})).resolves.toEqual({ ok: true })
     expect(calls).toBe(2)
   })
 

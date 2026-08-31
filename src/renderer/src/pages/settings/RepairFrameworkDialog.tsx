@@ -28,44 +28,44 @@ const RepairFrameworkDialog = ({
 }: RepairFrameworkDialogProps): React.JSX.Element => {
   const { t } = useLanguage()
   return (
-  <AlertDialog.Root
-    open={Boolean(name)}
-    onOpenChange={(open) => {
-      if (!open) onCancel()
-    }}
-  >
-    <AlertDialog.Portal>
-      <AlertDialog.Overlay className="fixed inset-0 z-[60] bg-black/50" />
-      <AlertDialog.Content className="fixed left-1/2 top-1/2 z-[60] w-[min(440px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-popover p-6 text-foreground shadow-menu">
-        <AlertDialog.Title className="text-base font-semibold text-foreground">
-          {name} needs repair
-        </AlertDialog.Title>
-        <AlertDialog.Description className="mt-2 text-sm leading-relaxed text-muted-foreground">
-          {t('ui.repairthisagentbeforeselecti')}
-        </AlertDialog.Description>
-        <div className="mt-6 flex justify-end gap-2">
-          <AlertDialog.Cancel asChild>
-            <Button type="button" variant="outline">
-              Cancel
-            </Button>
-          </AlertDialog.Cancel>
-          {name ? (
-            <AgentInstallSourceMenu
-              name={name}
-              label="Repair"
-              sources={sources}
-              installing={installing}
-              disabled={disabled}
-              npmAvailable={npmAvailable}
-              blockedInstallSources={blockedInstallSources}
-              buttonSize="default"
-              onInstall={onRepair}
-            />
-          ) : null}
-        </div>
-      </AlertDialog.Content>
-    </AlertDialog.Portal>
-  </AlertDialog.Root>
+    <AlertDialog.Root
+      open={Boolean(name)}
+      onOpenChange={(open) => {
+        if (!open) onCancel()
+      }}
+    >
+      <AlertDialog.Portal>
+        <AlertDialog.Overlay className="fixed inset-0 z-[60] bg-black/50" />
+        <AlertDialog.Content className="fixed left-1/2 top-1/2 z-[60] w-[min(440px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-popover p-6 text-foreground shadow-menu">
+          <AlertDialog.Title className="text-base font-semibold text-foreground">
+            {name} needs repair
+          </AlertDialog.Title>
+          <AlertDialog.Description className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            {t('ui.repairthisagentbeforeselecti')}
+          </AlertDialog.Description>
+          <div className="mt-6 flex justify-end gap-2">
+            <AlertDialog.Cancel asChild>
+              <Button type="button" variant="outline">
+                Cancel
+              </Button>
+            </AlertDialog.Cancel>
+            {name ? (
+              <AgentInstallSourceMenu
+                name={name}
+                label="Repair"
+                sources={sources}
+                installing={installing}
+                disabled={disabled}
+                npmAvailable={npmAvailable}
+                blockedInstallSources={blockedInstallSources}
+                buttonSize="default"
+                onInstall={onRepair}
+              />
+            ) : null}
+          </div>
+        </AlertDialog.Content>
+      </AlertDialog.Portal>
+    </AlertDialog.Root>
   )
 }
 

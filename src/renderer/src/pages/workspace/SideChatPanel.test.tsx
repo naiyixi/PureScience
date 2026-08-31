@@ -47,23 +47,26 @@ const renderPanel = (props: Partial<React.ComponentProps<typeof SideChatPanel>> 
   })
 }
 
-const textarea = (): HTMLTextAreaElement => container.querySelector('textarea') as HTMLTextAreaElement
+const textarea = (): HTMLTextAreaElement =>
+  container.querySelector('textarea') as HTMLTextAreaElement
 
 // React-controlled inputs need the native value setter to fire onChange.
 const typeInto = (element: HTMLTextAreaElement, value: string): void => {
-  const setter = Object.getOwnPropertyDescriptor(
-    HTMLTextAreaElement.prototype,
-    'value'
-  )?.set as ((value: string) => void) | undefined
+  const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set as
+    ((value: string) => void) | undefined
   act(() => {
     setter?.call(element, value)
     element.dispatchEvent(new Event('input', { bubbles: true }))
   })
 }
 const sendButton = (): HTMLButtonElement =>
-  [...container.querySelectorAll('button')].find((button) => button.getAttribute('aria-label') === 'ws.sideChatSend') as HTMLButtonElement
+  [...container.querySelectorAll('button')].find(
+    (button) => button.getAttribute('aria-label') === 'ws.sideChatSend'
+  ) as HTMLButtonElement
 const forwardButton = (): HTMLButtonElement =>
-  [...container.querySelectorAll('button')].find((button) => button.textContent === 'ws.sideChatForward') as HTMLButtonElement
+  [...container.querySelectorAll('button')].find(
+    (button) => button.textContent === 'ws.sideChatForward'
+  ) as HTMLButtonElement
 
 describe('SideChatPanel', () => {
   beforeEach(() => {

@@ -71,8 +71,7 @@ const DeleteProjectDialog = ({
                     : ''
                   : ' and all of its saved conversations, including any that could not be loaded during recovery'}
                 . Generated artifacts and uploaded files stored by PureScience will also be deleted.
-                {t('home.deleteProjectHint')} be
-                undone.
+                {t('home.deleteProjectHint')} be undone.
               </AlertDialog.Description>
             </div>
             <Button

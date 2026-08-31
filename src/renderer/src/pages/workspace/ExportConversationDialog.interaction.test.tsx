@@ -56,10 +56,14 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-const renderDialog = (onExport: (options: unknown) => void = vi.fn()): { onClose: ReturnType<typeof vi.fn> } => {
+const renderDialog = (
+  onExport: (options: unknown) => void = vi.fn()
+): { onClose: ReturnType<typeof vi.fn> } => {
   const onClose = vi.fn()
   act(() => {
-    root.render(<ExportConversationDialog session={session} onClose={onClose} onExport={onExport} />)
+    root.render(
+      <ExportConversationDialog session={session} onClose={onClose} onExport={onExport} />
+    )
   })
   return { onClose }
 }
@@ -187,9 +191,9 @@ describe('ExportConversationDialog', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
 
     act(() => {
-      ;[...document.body.querySelectorAll<HTMLButtonElement>('button')].find(
-        (button) => button.getAttribute('aria-label') === 'Close'
-      )?.click()
+      ;[...document.body.querySelectorAll<HTMLButtonElement>('button')]
+        .find((button) => button.getAttribute('aria-label') === 'Close')
+        ?.click()
     })
     expect(onClose).toHaveBeenCalledTimes(2)
   })

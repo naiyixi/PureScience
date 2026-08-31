@@ -4,9 +4,7 @@ import type { CreateElicitationRequest } from '@agentclientprotocol/sdk'
 
 import { ElicitationBroker } from './elicitation-broker'
 
-const formRequest = (
-  overrides: Partial<CreateElicitationRequest> = {}
-): CreateElicitationRequest =>
+const formRequest = (overrides: Partial<CreateElicitationRequest> = {}): CreateElicitationRequest =>
   ({
     mode: 'form',
     message: 'How should I analyze this dataset?',
@@ -28,7 +26,7 @@ const formRequest = (
     ...overrides
   }) as unknown as CreateElicitationRequest
 
-const createBroker = () => {
+const createBroker = (): { broker: ElicitationBroker; emitRequest: ReturnType<typeof vi.fn> } => {
   const emitRequest = vi.fn()
   const broker = new ElicitationBroker({ emitRequest, now: () => 1000 })
   return { broker, emitRequest }
@@ -44,7 +42,13 @@ describe('ElicitationBroker', () => {
     expect(view.message).toBe('How should I analyze this dataset?')
     expect(view.sessionId).toBe('session-1')
     expect(view.fields).toEqual([
-      { key: 'method', kind: 'string', label: 'Method', required: true, choices: ['DE', 'GSEA', 'Both'] },
+      {
+        key: 'method',
+        kind: 'string',
+        label: 'Method',
+        required: true,
+        choices: ['DE', 'GSEA', 'Both']
+      },
       { key: 'alpha', kind: 'number', label: 'Alpha', required: false },
       { key: 'include_plots', kind: 'boolean', label: 'Include plots', required: false }
     ])
@@ -86,7 +90,10 @@ describe('ElicitationBroker', () => {
   it('fails closed on unsupported modes and empty messages', async () => {
     const { broker } = createBroker()
     await expect(
-      broker.requestElicitation({ mode: 'url', message: 'x' } as unknown as CreateElicitationRequest, 's')
+      broker.requestElicitation(
+        { mode: 'url', message: 'x' } as unknown as CreateElicitationRequest,
+        's'
+      )
     ).resolves.toEqual({ action: 'cancel' })
     await expect(broker.requestElicitation(formRequest({ message: '   ' }), 's')).resolves.toEqual({
       action: 'cancel'

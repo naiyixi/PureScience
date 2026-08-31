@@ -43,14 +43,12 @@ export const createBoundedEventAdmission = (
 
   let windowStart = 0
   let emittedInWindow = 0
-  let droppedInWindow = 0
   let flushHandle: ReturnType<typeof setTimeout> | undefined
 
   const flush = (): void => {
     flushHandle = undefined
     windowStart = 0
     emittedInWindow = 0
-    droppedInWindow = 0
   }
 
   return (event: AcpRuntimeEvent): void => {
@@ -61,7 +59,6 @@ export const createBoundedEventAdmission = (
       // Open a fresh window; critical events always pass, transients start with a clean budget.
       windowStart = now()
       emittedInWindow = 0
-      droppedInWindow = 0
       if (flushHandle !== undefined) {
         clearTimer(flushHandle)
         flushHandle = undefined
@@ -87,6 +84,5 @@ export const createBoundedEventAdmission = (
       return
     }
     // Budget exhausted: drop this transient event (fail-safe; snapshot reconciles).
-    droppedInWindow += 1
   }
 }

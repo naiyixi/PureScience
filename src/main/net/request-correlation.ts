@@ -38,7 +38,9 @@ export const withCorrelatedFetch = <Fetch extends (...args: never[]) => Promise<
         return result
       },
       (error: unknown) => {
-        log.warn(`${correlationId} ${url} failed: ${error instanceof Error ? error.message : String(error)}`)
+        log.warn(
+          `${correlationId} ${url} failed: ${error instanceof Error ? error.message : String(error)}`
+        )
         throw error
       }
     )

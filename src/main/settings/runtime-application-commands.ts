@@ -175,8 +175,7 @@ const registerRuntimeSettingsApplicationCommands = (
         dependencies.workflows.setActiveProvider(args[0]),
       'settings:set-agent-framework': ({ args }) =>
         dependencies.workflows.setAgentFramework(args[0]),
-      'settings:set-vision-model': ({ args }) =>
-        dependencies.workflows.setVisionModel(args[0]),
+      'settings:set-vision-model': ({ args }) => dependencies.workflows.setVisionModel(args[0]),
       'settings:set-reasoning-effort': ({ args }) =>
         dependencies.workflows.setReasoningEffort({ effort: readReasoningEffort(args[0]) }),
       'settings:login-shared-claude': ({ callerContext }) => {

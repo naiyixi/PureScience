@@ -31,7 +31,9 @@ const memorySaveNoteToolSchema = {
     .string()
     .max(500)
     .optional()
-    .describe('Optional short source note for provenance — e.g. which artifact, file, or session the fact came from.')
+    .describe(
+      'Optional short source note for provenance — e.g. which artifact, file, or session the fact came from.'
+    )
 }
 const memorySaveNoteToolDefinition = {
   title: 'Save a memory note',
@@ -56,11 +58,7 @@ type MemoryMcpEnvironment = MemoryRpcConnection & {
 }
 
 type MemoryMcpHandler = {
-  saveNote: (
-    categoryName: string,
-    text: string,
-    evidence?: string
-  ) => Promise<MemorySaveNoteResult>
+  saveNote: (categoryName: string, text: string, evidence?: string) => Promise<MemorySaveNoteResult>
 }
 
 type MemoryMcpServerConfigRequest = MemoryMcpEnvironment & {
@@ -108,9 +106,7 @@ const createMemoryMcpServerConfig = ({
   env: [
     { name: 'ELECTRON_RUN_AS_NODE', value: '1' },
     { name: 'PURESCIENCE_MEMORY_RPC_ENDPOINT', value: endpoint },
-    ...(socketPath
-      ? [{ name: 'PURESCIENCE_MEMORY_RPC_SOCKET_PATH', value: socketPath }]
-      : []),
+    ...(socketPath ? [{ name: 'PURESCIENCE_MEMORY_RPC_SOCKET_PATH', value: socketPath }] : []),
     { name: 'PURESCIENCE_MEMORY_RPC_TOKEN', value: token },
     { name: 'PURESCIENCE_MEMORY_SESSION_ID', value: sessionId }
   ]

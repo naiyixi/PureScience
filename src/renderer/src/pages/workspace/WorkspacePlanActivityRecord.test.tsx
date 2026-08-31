@@ -9,7 +9,9 @@ import type { ToolActivity } from '@/stores/session-store'
 import { WorkspacePlanActivityRecord } from './WorkspacePlanActivityRecord'
 
 vi.mock('@/components/ui/message-scroller', () => ({
-  MessageScrollerItem: ({ children }: PropsWithChildren): React.JSX.Element => <div>{children}</div>,
+  MessageScrollerItem: ({ children }: PropsWithChildren): React.JSX.Element => (
+    <div>{children}</div>
+  ),
   useMessageScrollerVisibility: () => ({ currentAnchorId: null, visibleMessageIds: [] })
 }))
 

@@ -50,7 +50,9 @@ const assertChrom = (value: unknown): string => {
 }
 
 const assertAllele = (value: unknown, label: string): string => {
-  const base = String(value ?? '').trim().toUpperCase()
+  const base = String(value ?? '')
+    .trim()
+    .toUpperCase()
   if (!/^[ACGTN]+$/.test(base)) throw new Error(`${label} must be a DNA allele (A/C/G/T/N)`)
   return base
 }
@@ -64,10 +66,23 @@ const assertVersion = (value: unknown): string => {
 }
 
 // Maps one API row to the agent-facing shape with a plain-language severity band.
-const scoreRow = (row: { Alt: string; Chrom: string; PHRED: string; Pos: string; RawScore: string; Ref: string }): Record<string, unknown> => {
+const scoreRow = (row: {
+  Alt: string
+  Chrom: string
+  PHRED: string
+  Pos: string
+  RawScore: string
+  Ref: string
+}): Record<string, unknown> => {
   const phr = Number.parseFloat(row.PHRED)
   const band =
-    phr >= 30 ? 'high (top 0.1% deleterious)' : phr >= 20 ? 'medium-high (top 1%)' : phr >= 10 ? 'medium (top 10%)' : 'low'
+    phr >= 30
+      ? 'high (top 0.1% deleterious)'
+      : phr >= 20
+        ? 'medium-high (top 1%)'
+        : phr >= 10
+          ? 'medium (top 10%)'
+          : 'low'
   return {
     variant_id: `${row.Chrom}:${row.Pos}:${row.Ref}:${row.Alt}`,
     chrom: row.Chrom,
@@ -95,7 +110,11 @@ export const VARIANTS_CADD_TOOLS: ToolDescriptor[] = [
         pos: { type: 'integer', description: '1-based genomic position (GRCh37 by default).' },
         ref: { type: 'string', description: 'Reference allele (A/C/G/T).' },
         alt: { type: 'string', description: 'Alternate allele (A/C/G/T).' },
-        version: { type: 'string', default: DEFAULT_VERSION, description: 'CADD release, e.g. GRCh37-v1.6, GRCh38-v1.7' }
+        version: {
+          type: 'string',
+          default: DEFAULT_VERSION,
+          description: 'CADD release, e.g. GRCh37-v1.6, GRCh38-v1.7'
+        }
       },
       required: ['chrom', 'pos', 'ref', 'alt']
     },
@@ -128,7 +147,11 @@ export const VARIANTS_CADD_TOOLS: ToolDescriptor[] = [
       properties: {
         chrom: { type: 'string', description: 'Chromosome: 1-22, X, Y, or MT.' },
         pos: { type: 'integer', description: '1-based genomic position (GRCh37 by default).' },
-        version: { type: 'string', default: DEFAULT_VERSION, description: 'CADD release, e.g. GRCh37-v1.6, GRCh38-v1.7' }
+        version: {
+          type: 'string',
+          default: DEFAULT_VERSION,
+          description: 'CADD release, e.g. GRCh37-v1.6, GRCh38-v1.7'
+        }
       },
       required: ['chrom', 'pos']
     },

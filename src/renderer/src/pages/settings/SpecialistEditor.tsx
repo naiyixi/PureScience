@@ -516,7 +516,9 @@ const SpecialistEditor = ({
               </p>
               {editSpecialist.origin === 'imported' ? (
                 <div className="mt-2 text-xs text-muted-foreground">
-                  <strong className="text-foreground">{t('specialistEditor.packageProvenance')}</strong>
+                  <strong className="text-foreground">
+                    {t('specialistEditor.packageProvenance')}
+                  </strong>
                   <span className="block">
                     Imported · Original version {editSpecialist.packageVersion ?? '0.1.0'} ·{' '}
                     {editSpecialist.modifiedSinceImport
@@ -576,7 +578,12 @@ const SpecialistEditor = ({
                       const Icon = AVATAR_ICONS[form.iconKey] ?? AVATAR_ICONS.brain
                       return <Icon className="size-4 shrink-0" aria-hidden="true" />
                     })()}
-                    <span>{t(ICON_OPTIONS.find((option) => option.key === form.iconKey)?.label ?? 'settings.iconBrain')}</span>
+                    <span>
+                      {t(
+                        ICON_OPTIONS.find((option) => option.key === form.iconKey)?.label ??
+                          'settings.iconBrain'
+                      )}
+                    </span>
                   </span>
                 </SelectTrigger>
                 <SelectContent>
@@ -608,7 +615,10 @@ const SpecialistEditor = ({
                       aria-hidden="true"
                     />
                     <span>
-                      {t(COLOR_OPTIONS.find((option) => option.key === form.colorKey)?.label ?? 'settings.colorBlue')}
+                      {t(
+                        COLOR_OPTIONS.find((option) => option.key === form.colorKey)?.label ??
+                          'settings.colorBlue'
+                      )}
                     </span>
                   </span>
                 </SelectTrigger>

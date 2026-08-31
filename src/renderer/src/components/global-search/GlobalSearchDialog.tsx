@@ -641,7 +641,9 @@ export const GlobalSearchDialog = ({
               sessionTitles.get(`${artifact.projectId}:${artifact.sessionId}`) ??
               t('home.unknownSession')}{' '}
             ·{' '}
-            {createdAt === undefined ? t('home.creationTimeUnavailable') : formatRelativeTime(createdAt)}
+            {createdAt === undefined
+              ? t('home.creationTimeUnavailable')
+              : formatRelativeTime(createdAt)}
           </span>
         </span>
         {active ? (
@@ -669,9 +671,7 @@ export const GlobalSearchDialog = ({
                     </span>
                   </TooltipTrigger>
                   <TooltipContent>
-                    {canMention
-                      ? `Mention ${artifact.name}`
-                      : t('home.mentionUnavailable')}
+                    {canMention ? `Mention ${artifact.name}` : t('home.mentionUnavailable')}
                   </TooltipContent>
                 </Tooltip>
               ) : null}

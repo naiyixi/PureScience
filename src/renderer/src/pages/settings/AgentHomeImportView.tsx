@@ -186,7 +186,9 @@ const AgentHomeImportView = ({ onImported }: AgentHomeImportViewProps): React.JS
 
   return (
     <div className="p-5">
-      <h2 className="text-base font-semibold text-foreground">{t('settings.importInstalledSkillsTitle')}</h2>
+      <h2 className="text-base font-semibold text-foreground">
+        {t('settings.importInstalledSkillsTitle')}
+      </h2>
       <p className="mt-0.5 text-[13px] leading-5 text-muted-foreground">
         Scan <code className="font-mono">{SOURCE_INFO.agents.path}</code>
         {frameworkSource ? (
@@ -248,7 +250,9 @@ const AgentHomeImportView = ({ onImported }: AgentHomeImportViewProps): React.JS
               onClick={() => void importSelected()}
               disabled={isScanning || importing || selected.size === 0}
             >
-              {importing ? t('common.importing') : t('common.importSelected').replace('{n}', String(selected.size))}
+              {importing
+                ? t('common.importing')
+                : t('common.importSelected').replace('{n}', String(selected.size))}
             </Button>
           </div>
 
@@ -291,9 +295,7 @@ const AgentHomeImportView = ({ onImported }: AgentHomeImportViewProps): React.JS
           </ul>
         </div>
       ) : !isScanning && currentSkills && currentSkills.length === 0 ? (
-        <p className="mt-5 text-xs text-muted-foreground">
-          {t('settings.noInstalledSkillsFound')}
-        </p>
+        <p className="mt-5 text-xs text-muted-foreground">{t('settings.noInstalledSkillsFound')}</p>
       ) : null}
 
       <SkillImportCandidatePreview {...candidatePreview.previewProps} />

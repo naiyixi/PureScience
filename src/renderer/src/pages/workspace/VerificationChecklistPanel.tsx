@@ -29,13 +29,22 @@ type VerificationChecklistPanelProps = {
 }
 
 // Icon for a claim's latest verdict.
-const VerdictIcon = ({ status }: { status: VerificationChecklistItem['latestStatus'] }): React.JSX.Element => {
+const VerdictIcon = ({
+  status
+}: {
+  status: VerificationChecklistItem['latestStatus']
+}): React.JSX.Element => {
   if (status === 'fail')
-    return <XCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-600 dark:text-red-400" aria-hidden />
+    return (
+      <XCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-600 dark:text-red-400" aria-hidden />
+    )
   if (status === 'warn')
     return <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-yellow-500" aria-hidden />
   return (
-    <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-green-600 dark:text-green-400" aria-hidden />
+    <CheckCircle2
+      className="mt-0.5 h-3.5 w-3.5 shrink-0 text-green-600 dark:text-green-400"
+      aria-hidden
+    />
   )
 }
 

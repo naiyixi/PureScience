@@ -76,9 +76,7 @@ export const SourceLink = ({
   const linkRef = useRef<HTMLAnchorElement | null>(null)
 
   const selectedSessionId = useSessionStore((state) => state.selectedSessionId)
-  const upsertAndActivateItem = usePreviewWorkbenchStore(
-    (state) => state.upsertAndActivateItem
-  )
+  const upsertAndActivateItem = usePreviewWorkbenchStore((state) => state.upsertAndActivateItem)
 
   let parsedUrl: URL | undefined
   try {

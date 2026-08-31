@@ -62,7 +62,7 @@ export class FileReferenceResolver {
 export const createManagedFileReferenceResolver = (dependencies: {
   uploads?: UploadRepository
   artifacts?: ArtifactRepository
-  artifactVersions?: Partial<Pick<ArtifactProvenanceRepository, 'resolveVersionContent'>>,
+  artifactVersions?: Partial<Pick<ArtifactProvenanceRepository, 'resolveVersionContent'>>
   folderGrants?: Pick<FolderGrantsService, 'resolveRoot'>
 }): FileReferenceResolver => {
   const adapters: FileReferenceAdapter[] = []

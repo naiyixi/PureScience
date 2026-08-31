@@ -324,12 +324,13 @@ export class ComputeService {
   // Decrypts the SSH password bound to a host's Credentials-panel credential (if any). The
   // password is resolved only at dispatch time and injected via SSH_ASKPASS; it never touches
   // the compute configuration or logs.
-  private async resolveSshPassword(host: { sshOverrides?: import('../../shared/compute').SshOverrides }): Promise<string | undefined> {
+  private async resolveSshPassword(host: {
+    sshOverrides?: import('../../shared/compute').SshOverrides
+  }): Promise<string | undefined> {
     const credentialId = host.sshOverrides?.passwordCredentialId
     if (!credentialId || !this.externalDispatch?.resolveCredentialSecret) return undefined
     return this.externalDispatch.resolveCredentialSecret(credentialId)
   }
-
 
   // Runs the probe bundle against the host identified by providerId. Persists the structured
   // probeResult and (conditionally) scratchRoot. Never touches detailsDoc.

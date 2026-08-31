@@ -1016,7 +1016,8 @@ describe('workspace runtime events', () => {
       sessionId: 'transport-session-1',
       messageId: 'message-1',
       path: '/Users/example/.purescience/artifacts/default-project/transport-session-1/message-1/plot.png',
-      fileUrl: 'file:///Users/example/.purescience/artifacts/default-project/transport-session-1/message-1/plot.png'
+      fileUrl:
+        'file:///Users/example/.purescience/artifacts/default-project/transport-session-1/message-1/plot.png'
     })
     const finalizeRunArtifacts = vi.fn().mockResolvedValue([finalizedArtifact])
     const saveSession = vi.fn().mockResolvedValue(undefined)
@@ -1054,7 +1055,11 @@ describe('workspace runtime events', () => {
       })
     )
     await applyWorkspaceRuntimeEvent(createEvent({ id: 'stop-before-collapsed', kind: 'stop' }))
-    usePreviewWorkbenchStore.setState({ panelState: 'collapsed', items: [], activeItemId: undefined })
+    usePreviewWorkbenchStore.setState({
+      panelState: 'collapsed',
+      items: [],
+      activeItemId: undefined
+    })
     const finalizeRunArtifacts = vi.fn().mockResolvedValue([createArtifactFile()])
     const saveSession = vi.fn().mockResolvedValue(undefined)
 

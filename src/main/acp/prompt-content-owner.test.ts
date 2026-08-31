@@ -361,7 +361,7 @@ describe('AcpPromptContentOwner', () => {
         historyUploads: [],
         currentUploads: [await stageImage(name)],
         references: [],
-      annotations: [],
+        annotations: [],
         codexSkillInputs: [],
         skillImportEnabled: false,
         skillImportTurnToken: undefined,

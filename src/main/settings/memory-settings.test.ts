@@ -18,7 +18,13 @@ describe('sanitizeMemorySettings', () => {
       enabled: true,
       categories: [{ id: 'about-you', name: 'About you', createdAt: 1000 }],
       notes: [
-        { id: 'note-1', categoryId: 'about-you', text: 'Prefers concise answers', createdAt: 1001, updatedAt: 1002 }
+        {
+          id: 'note-1',
+          categoryId: 'about-you',
+          text: 'Prefers concise answers',
+          createdAt: 1001,
+          updatedAt: 1002
+        }
       ]
     })
 
@@ -26,7 +32,13 @@ describe('sanitizeMemorySettings', () => {
       enabled: true,
       categories: [{ id: 'about-you', name: 'About you', createdAt: 1000 }],
       notes: [
-        { id: 'note-1', categoryId: 'about-you', text: 'Prefers concise answers', createdAt: 1001, updatedAt: 1002 }
+        {
+          id: 'note-1',
+          categoryId: 'about-you',
+          text: 'Prefers concise answers',
+          createdAt: 1001,
+          updatedAt: 1002
+        }
       ]
     })
   })
@@ -85,7 +97,9 @@ describe('sanitizeMemorySettings', () => {
 
   it('defaults the master switch to off for a malformed or absent flag', () => {
     expect(sanitizeMemorySettings({ categories: [], notes: [] })?.enabled).toBe(false)
-    expect(sanitizeMemorySettings({ enabled: 'yes', categories: [], notes: [] })?.enabled).toBe(false)
+    expect(sanitizeMemorySettings({ enabled: 'yes', categories: [], notes: [] })?.enabled).toBe(
+      false
+    )
     expect(sanitizeMemorySettings({ enabled: true, categories: [], notes: [] })?.enabled).toBe(true)
   })
 

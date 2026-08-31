@@ -77,7 +77,12 @@ describe('buildTokenUsageAnalytics per-run attribution', () => {
     }
     const messages = [
       humanMessage('m1', 1000),
-      agentMessage('m2', 'frame-root', { inputTokens: 100, cacheTokens: 50, outputTokens: 30 }, 1050),
+      agentMessage(
+        'm2',
+        'frame-root',
+        { inputTokens: 100, cacheTokens: 50, outputTokens: 30 },
+        1050
+      ),
       agentMessage(
         'm3',
         'frame-delegate',
@@ -85,10 +90,7 @@ describe('buildTokenUsageAnalytics per-run attribution', () => {
         1150
       )
     ]
-    const analytics = buildTokenUsageAnalytics(
-      [sessionWithGraph(messages, [root, delegate])],
-      5000
-    )
+    const analytics = buildTokenUsageAnalytics([sessionWithGraph(messages, [root, delegate])], 5000)
 
     const rootRun = analytics.runs.find((run) => run.frameId === 'frame-root')
     const delegateRun = analytics.runs.find((run) => run.frameId === 'frame-delegate')

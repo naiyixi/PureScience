@@ -68,9 +68,7 @@ const createReviewerMcpStdioProxy = async (
   downstream.setRequestHandler(ListToolsRequestSchema, (request) =>
     source.listTools(request.params)
   )
-  downstream.setRequestHandler(CallToolRequestSchema, (request) =>
-    source.callTool(request.params)
-  )
+  downstream.setRequestHandler(CallToolRequestSchema, (request) => source.callTool(request.params))
   downstream.onclose = () => void source.close()
 
   return downstream

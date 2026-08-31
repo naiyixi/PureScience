@@ -96,13 +96,23 @@ const ImageRegionAnnotator = ({
         const point = clientToContainer(event.clientX, event.clientY)
         const next = { ...draft }
         if (activeCorner.includes('w')) {
-          next.x = clamp01(Math.min(point.x / containerSize().width, draft.x + draft.width - ANNOTATION_MIN_REGION_EDGE))
+          next.x = clamp01(
+            Math.min(
+              point.x / containerSize().width,
+              draft.x + draft.width - ANNOTATION_MIN_REGION_EDGE
+            )
+          )
           next.width = draft.x + draft.width - next.x
         } else {
           next.width = clamp01(point.x / containerSize().width - draft.x)
         }
         if (activeCorner.includes('n')) {
-          next.y = clamp01(Math.min(point.y / containerSize().height, draft.y + draft.height - ANNOTATION_MIN_REGION_EDGE))
+          next.y = clamp01(
+            Math.min(
+              point.y / containerSize().height,
+              draft.y + draft.height - ANNOTATION_MIN_REGION_EDGE
+            )
+          )
           next.height = draft.y + draft.height - next.y
         } else {
           next.height = clamp01(point.y / containerSize().height - draft.y)
@@ -125,7 +135,11 @@ const ImageRegionAnnotator = ({
     }
     if (!dragStart || mode !== 'selecting') return
     setDragStart(null)
-    if (draft && draft.width >= ANNOTATION_MIN_REGION_EDGE && draft.height >= ANNOTATION_MIN_REGION_EDGE) {
+    if (
+      draft &&
+      draft.width >= ANNOTATION_MIN_REGION_EDGE &&
+      draft.height >= ANNOTATION_MIN_REGION_EDGE
+    ) {
       setMode('selected')
     } else {
       setDraft(null)

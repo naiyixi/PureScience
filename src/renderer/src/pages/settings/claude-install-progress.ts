@@ -2,7 +2,8 @@ import type { ClaudeInstallProgressEvent } from '../../../../shared/settings'
 
 const mb = (bytes: number): string => (bytes / (1024 * 1024)).toFixed(1)
 
-type InstallLabelKey = 'common.resolving' | 'common.downloading' | 'common.extracting' | 'common.installing'
+type InstallLabelKey =
+  'common.resolving' | 'common.downloading' | 'common.extracting' | 'common.installing'
 type Translate = (key: InstallLabelKey) => string
 
 // Maps one progress tick to a human label and (when determinate) a 0..1 fill fraction. A missing

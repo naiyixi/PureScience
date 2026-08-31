@@ -135,7 +135,9 @@ export const LocalFileHeaderActions = ({
                 <RotateCw aria-hidden="true" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent className={tooltipClassName}>{t('fileHeader.reloadFromDisk')}</TooltipContent>
+            <TooltipContent className={tooltipClassName}>
+              {t('fileHeader.reloadFromDisk')}
+            </TooltipContent>
           </Tooltip>
         </TooltipProvider>
       ) : null}

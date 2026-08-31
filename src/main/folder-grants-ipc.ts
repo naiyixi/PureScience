@@ -14,9 +14,7 @@ import { FolderGrantsService } from './folder-grants'
 
 // Registers the folder-grants IPC handlers (`@path/to/folder` linked folders) against a service
 // instance. Injectable service for tests; defaults to a service rooted at the data root.
-export const registerFolderGrantsIpcHandlers = (
-  service: FolderGrantsService
-): void => {
+export const registerFolderGrantsIpcHandlers = (service: FolderGrantsService): void => {
   ipcMainHandle(FOLDER_GRANTS_CHANNEL_LIST, (): Promise<FolderGrantsSnapshot> => service.list())
   ipcMainHandle(
     FOLDER_GRANTS_CHANNEL_GRANT,

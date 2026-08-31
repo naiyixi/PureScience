@@ -28,9 +28,7 @@ type OpenAiProviderBridgeFactory = NonNullable<
   AgentBackendResolverOptions['createOpenAiProviderBridge']
 >
 type OpenAiProviderBridgeDouble = ReturnType<OpenAiProviderBridgeFactory>
-type XaiMessagesBridgeFactory = NonNullable<
-  AgentBackendResolverOptions['createXaiMessagesBridge']
->
+type XaiMessagesBridgeFactory = NonNullable<AgentBackendResolverOptions['createXaiMessagesBridge']>
 type XaiMessagesBridgeDouble = ReturnType<XaiMessagesBridgeFactory>
 type ResolveRuntimeTarget = AgentBackendProviderPort['resolveRuntimeTarget']
 type ResolveRuntimeModelCatalog = AgentBackendProviderPort['resolveRuntimeModelCatalog']

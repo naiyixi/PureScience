@@ -44,7 +44,9 @@ describe('ImageRegionAnnotator', () => {
         </ImageRegionAnnotator>
       )
     })
-    const annotator = container.querySelector('[data-testid="image-region-annotator"]') as HTMLElement
+    const annotator = container.querySelector(
+      '[data-testid="image-region-annotator"]'
+    ) as HTMLElement
     mockRect(annotator)
     return annotator
   }
@@ -56,7 +58,13 @@ describe('ImageRegionAnnotator', () => {
   const button = (annotator: HTMLElement, testid: string): HTMLElement =>
     annotator.querySelector(`[data-testid="${testid}"]`) as HTMLElement
 
-  const dragSelect = (annotator: HTMLElement, fromX: number, fromY: number, toX: number, toY: number): void => {
+  const dragSelect = (
+    annotator: HTMLElement,
+    fromX: number,
+    fromY: number,
+    toX: number,
+    toY: number
+  ): void => {
     const pickerEl = picker(annotator)
     if (pickerEl) {
       act(() => {

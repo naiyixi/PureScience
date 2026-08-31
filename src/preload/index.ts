@@ -255,8 +255,7 @@ const api: PureScienceAPI = {
     setUseIntent: (useIntent) =>
       electronRendererContracts.invoke('settings.setUseIntent', useIntent),
     getCredentials: () => electronRendererContracts.invoke('settings.getCredentials'),
-    getThirdPartyLicenses: () =>
-      electronRendererContracts.invoke('settings.getThirdPartyLicenses'),
+    getThirdPartyLicenses: () => electronRendererContracts.invoke('settings.getThirdPartyLicenses'),
     setCredential: (request) => electronRendererContracts.invoke('settings.setCredential', request),
     deleteCredential: (id: string) =>
       electronRendererContracts.invoke('settings.deleteCredential', id),

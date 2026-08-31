@@ -148,9 +148,7 @@ const LinkSafetyModal = ({
           </div>
 
           <div className="sd-link-safety-body">
-            <p className="sd-link-safety-description">
-              {t('home.externalSiteWarning')}
-            </p>
+            <p className="sd-link-safety-description">{t('home.externalSiteWarning')}</p>
 
             <div
               className={url.length > 100 ? 'sd-link-safety-url max-scroll' : 'sd-link-safety-url'}

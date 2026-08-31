@@ -227,7 +227,10 @@ const SkillImportView = ({ onImported }: SkillImportViewProps): React.JSX.Elemen
         ) : null}
 
         {repositories ? (
-          <section aria-label={t('skillImport.repoResults')} className="mt-5 border-b border-border pb-5">
+          <section
+            aria-label={t('skillImport.repoResults')}
+            className="mt-5 border-b border-border pb-5"
+          >
             <div className="flex items-center justify-between gap-3">
               <h3 className="text-sm font-semibold text-foreground">
                 Repositories ({repositories.length})

@@ -35,7 +35,8 @@ vi.mock('@/i18n', () => ({
       'settings.memoryRenameCategory': 'Rename category',
       'settings.memoryDeleteCategory': 'Delete category',
       'settings.memoryDeleteCategoryTitle': 'Delete "{name}"?',
-      'settings.memoryDeleteCategoryDescription': 'This deletes the category and its {count} note(s).'
+      'settings.memoryDeleteCategoryDescription':
+        'This deletes the category and its {count} note(s).'
     }
     return { t: (key: string): string => labels[key] ?? key }
   }
@@ -63,10 +64,14 @@ const memoryFixture = {
 
 // Sets a controlled input/textarea value the way React's runtime expects (native setter + input
 // event), then flushes — the shared pattern used by the other settings-panel render tests.
-const typeInto = async (element: HTMLInputElement | HTMLTextAreaElement, text: string): Promise<void> => {
-  const prototype = element instanceof HTMLTextAreaElement
-    ? window.HTMLTextAreaElement.prototype
-    : window.HTMLInputElement.prototype
+const typeInto = async (
+  element: HTMLInputElement | HTMLTextAreaElement,
+  text: string
+): Promise<void> => {
+  const prototype =
+    element instanceof HTMLTextAreaElement
+      ? window.HTMLTextAreaElement.prototype
+      : window.HTMLInputElement.prototype
   const valueSetter = Object.getOwnPropertyDescriptor(prototype, 'value')?.set
   await act(async () => {
     valueSetter?.call(element, text)
@@ -110,7 +115,9 @@ describe('MemoryPanel', () => {
   it('renders categories, notes, the master switch, and the note composer', async () => {
     await renderPanel()
 
-    expect(container.querySelector('[data-memory-enabled]')?.getAttribute('data-memory-enabled')).toBe('true')
+    expect(
+      container.querySelector('[data-memory-enabled]')?.getAttribute('data-memory-enabled')
+    ).toBe('true')
     expect(container.textContent).toContain('About you')
     expect(container.textContent).toContain('Research')
     expect(container.textContent).toContain('Prefers concise answers')
@@ -148,7 +155,9 @@ describe('MemoryPanel', () => {
   it('keeps editing an existing note inline', async () => {
     await renderPanel()
 
-    const noteTextarea = container.querySelector<HTMLTextAreaElement>('[data-memory-note="note-1"] textarea')!
+    const noteTextarea = container.querySelector<HTMLTextAreaElement>(
+      '[data-memory-note="note-1"] textarea'
+    )!
     await typeInto(noteTextarea, 'Prefers concise answers and zh output')
 
     const updateMemory = useMemoryStore.getState().updateMemory as ReturnType<typeof vi.fn>
@@ -177,16 +186,20 @@ describe('MemoryPanel', () => {
       'Footguns'
     )
     await typeInto(
-      document.body.querySelector<HTMLTextAreaElement>('[data-slot="memory-category-prompt-input"]')!,
+      document.body.querySelector<HTMLTextAreaElement>(
+        '[data-slot="memory-category-prompt-input"]'
+      )!,
       'Anything that costs >10 minutes to debug'
     )
     await act(async () => {
-      document
-        .body.querySelector<HTMLButtonElement>('[data-slot="memory-category-auto-recall"]')!
+      document.body
+        .querySelector<HTMLButtonElement>('[data-slot="memory-category-auto-recall"]')!
         .click()
     })
     await act(async () => {
-      document.body.querySelector<HTMLButtonElement>('[data-slot="memory-category-create"]')!.click()
+      document.body
+        .querySelector<HTMLButtonElement>('[data-slot="memory-category-create"]')!
+        .click()
     })
 
     updateMemory = useMemoryStore.getState().updateMemory as ReturnType<typeof vi.fn>
@@ -224,8 +237,8 @@ describe('MemoryPanel', () => {
     expect(createButton.disabled).toBe(false)
 
     await act(async () => {
-      document
-        .body.querySelector<HTMLButtonElement>('[data-slot="memory-category-form-back"]')!
+      document.body
+        .querySelector<HTMLButtonElement>('[data-slot="memory-category-form-back"]')!
         .click()
     })
     const updateMemory = useMemoryStore.getState().updateMemory as ReturnType<typeof vi.fn>
@@ -267,7 +280,9 @@ describe('MemoryPanel', () => {
   it('clears all notes with the Clear all action', async () => {
     await renderPanel()
 
-    const clearAll = document.body.querySelector<HTMLButtonElement>('[data-slot="memory-clear-all"]')
+    const clearAll = document.body.querySelector<HTMLButtonElement>(
+      '[data-slot="memory-clear-all"]'
+    )
     await act(async () => {
       clearAll?.click()
     })
@@ -301,7 +316,9 @@ describe('MemoryPanel', () => {
 
     const updateMemory = useMemoryStore.getState().updateMemory as ReturnType<typeof vi.fn>
     const persisted = updateMemory.mock.calls.at(-1)?.[0]
-    expect(persisted.categories.find((category: { id: string }) => category.id === 'research')?.name).toBe('Lab notes')
+    expect(
+      persisted.categories.find((category: { id: string }) => category.id === 'research')?.name
+    ).toBe('Lab notes')
   })
 
   it('deletes a custom category and its notes after confirmation', async () => {

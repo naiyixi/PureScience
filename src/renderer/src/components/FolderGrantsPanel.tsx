@@ -13,7 +13,11 @@ type FolderGrantsPanelProps = {
 
 // Manage user-linked folders (`@path/to/folder`): browse local volumes, grant a directory for
 // agent read access, list and revoke existing grants. Grants persist across sessions in main.
-const FolderGrantsPanel = ({ open, onClose, onGranted }: FolderGrantsPanelProps): React.JSX.Element | null => {
+const FolderGrantsPanel = ({
+  open,
+  onClose,
+  onGranted
+}: FolderGrantsPanelProps): React.JSX.Element | null => {
   const { t } = useLanguage()
   const [grants, setGrants] = useState<FolderGrant[]>([])
   const [currentPath, setCurrentPath] = useState('')
@@ -30,14 +34,6 @@ const FolderGrantsPanel = ({ open, onClose, onGranted }: FolderGrantsPanelProps)
     }
   }, [t])
 
-  useEffect(() => {
-    if (!open) return
-    setError(null)
-    void refresh()
-    void listDir('')
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open])
-
   const listDir = useCallback(
     async (path: string): Promise<void> => {
       setError(null)
@@ -51,6 +47,17 @@ const FolderGrantsPanel = ({ open, onClose, onGranted }: FolderGrantsPanelProps)
     },
     [t]
   )
+
+  useEffect(() => {
+    if (!open) return
+    // Defer past the effect phase (refresh/listDir set state synchronously).
+    const handle = window.setTimeout(() => {
+      void refresh()
+      void listDir('')
+    }, 0)
+    return () => window.clearTimeout(handle)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
 
   const grantCurrent = async (): Promise<void> => {
     if (!currentPath || granting) return
@@ -105,7 +112,11 @@ const FolderGrantsPanel = ({ open, onClose, onGranted }: FolderGrantsPanelProps)
 
         <p className="mt-1 text-xs leading-5 text-text-100">{t('ws.folderGrantsHint')}</p>
 
-        {error ? <p className="mt-2 rounded-lg bg-danger-900/40 px-2 py-1 text-xs text-danger-000">{error}</p> : null}
+        {error ? (
+          <p className="mt-2 rounded-lg bg-danger-900/40 px-2 py-1 text-xs text-danger-000">
+            {error}
+          </p>
+        ) : null}
 
         {/* Directory browser */}
         <div className="mt-3 rounded-xl border border-border-200 bg-bg-100 p-2">
@@ -145,7 +156,11 @@ const FolderGrantsPanel = ({ open, onClose, onGranted }: FolderGrantsPanelProps)
                   onClick={() => void listDir(childPath)}
                   className="flex w-full items-center gap-1.5 rounded-lg px-2 py-1 text-left text-xs text-text-100 hover:bg-bg-200 hover:text-text-000"
                 >
-                  <FolderOpen className="size-3.5 shrink-0 text-text-300" strokeWidth={2} aria-hidden="true" />
+                  <FolderOpen
+                    className="size-3.5 shrink-0 text-text-300"
+                    strokeWidth={2}
+                    aria-hidden="true"
+                  />
                   <span className="truncate">{entry.name}</span>
                 </button>
               )
@@ -174,11 +189,20 @@ const FolderGrantsPanel = ({ open, onClose, onGranted }: FolderGrantsPanelProps)
                 key={grant.rootId}
                 className="flex items-center gap-2 rounded-lg bg-bg-100 px-2 py-1.5"
               >
-                <FolderOpen className="size-3.5 shrink-0 text-text-300" strokeWidth={2} aria-hidden="true" />
-                <span className="min-w-0 flex-1 truncate text-xs text-text-000" title={grant.rootPath}>
+                <FolderOpen
+                  className="size-3.5 shrink-0 text-text-300"
+                  strokeWidth={2}
+                  aria-hidden="true"
+                />
+                <span
+                  className="min-w-0 flex-1 truncate text-xs text-text-000"
+                  title={grant.rootPath}
+                >
                   {grant.label}
                 </span>
-                <span className="shrink-0 truncate text-[10px] text-text-300">{grant.rootPath}</span>
+                <span className="shrink-0 truncate text-[10px] text-text-300">
+                  {grant.rootPath}
+                </span>
                 <button
                   type="button"
                   aria-label={t('ws.folderGrantsRevoke')}

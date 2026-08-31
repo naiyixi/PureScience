@@ -758,8 +758,8 @@ describe('ConnectorSettingsModule', () => {
   })
 
   it('rejects a host file whose mcpServers value is not a server map', async () => {
-    await expect(
-      service.importMcpServers({ mcpServers: 'not-an-object' })
-    ).rejects.toThrow('Expected `mcpServers` to be a JSON object of servers')
+    await expect(service.importMcpServers({ mcpServers: 'not-an-object' })).rejects.toThrow(
+      'Expected `mcpServers` to be a JSON object of servers'
+    )
   })
 })

@@ -13,29 +13,29 @@ type FieldHelpProps = {
 const FieldHelp = ({ content }: FieldHelpProps): React.JSX.Element => {
   const { t } = useLanguage()
   return (
-  <TooltipProvider delayDuration={200}>
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-xs"
-          aria-label={t('fieldHelp.moreInfo')}
-          data-slot="field-help"
-          className="size-[18px] rounded-full bg-transparent text-muted-foreground/50 hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground data-[state=delayed-open]:bg-muted data-[state=delayed-open]:text-foreground data-[state=instant-open]:bg-muted data-[state=instant-open]:text-foreground"
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            aria-label={t('fieldHelp.moreInfo')}
+            data-slot="field-help"
+            className="size-[18px] rounded-full bg-transparent text-muted-foreground/50 hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground data-[state=delayed-open]:bg-muted data-[state=delayed-open]:text-foreground data-[state=instant-open]:bg-muted data-[state=instant-open]:text-foreground"
+          >
+            <CircleHelp className="size-3" aria-hidden="true" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent
+          side="top"
+          sideOffset={6}
+          className="max-w-[280px] px-3 py-2 text-xs leading-5 whitespace-normal"
         >
-          <CircleHelp className="size-3" aria-hidden="true" />
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent
-        side="top"
-        sideOffset={6}
-        className="max-w-[280px] px-3 py-2 text-xs leading-5 whitespace-normal"
-      >
-        {content}
-      </TooltipContent>
-    </Tooltip>
-  </TooltipProvider>
+          {content}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   )
 }
 

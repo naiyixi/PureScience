@@ -88,10 +88,7 @@ import type { InstallManagedOpencodeOptions } from './managed-opencode'
 import type { InstallManagedCodexOptions, ManagedCodexInstallOutcome } from './managed-codex'
 import type { InstallManagedClaudeOptions, ManagedInstallOutcome } from './managed-claude'
 import { encryptKey, isEncryptionAvailable, maskKey, tryDecryptKey } from './crypto'
-import {
-  collectThirdPartyLicenses,
-  type ThirdPartyLicenseEntry
-} from '../third-party-licenses'
+import { collectThirdPartyLicenses, type ThirdPartyLicenseEntry } from '../third-party-licenses'
 import { CREDENTIAL_SERVICE_LABELS, testCredentialSecret, toCredentialView } from './credentials'
 import { applyEgressSettings } from '../net/egress-runtime'
 import { getUserClaudeConfigDir } from './provider-env'

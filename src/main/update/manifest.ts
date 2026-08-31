@@ -24,7 +24,12 @@ const isAllowedDownloadHost = (host: string): boolean => {
 
 const isDownload = (value: unknown): value is PlatformDownload => {
   const d = value as PlatformDownload
-  if (!d || typeof d.url !== 'string' || typeof d.size !== 'number' || typeof d.sha256 !== 'string') {
+  if (
+    !d ||
+    typeof d.url !== 'string' ||
+    typeof d.size !== 'number' ||
+    typeof d.sha256 !== 'string'
+  ) {
     return false
   }
   let parsed: URL

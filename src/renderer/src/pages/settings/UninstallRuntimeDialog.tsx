@@ -55,7 +55,9 @@ const UninstallRuntimeDialog = ({
       <AlertDialog.Portal>
         <AlertDialog.Overlay className={dialogOverlayClassName} />
         <AlertDialog.Content className={dialogPanelClassName('w-[min(440px,calc(100vw-2rem))]')}>
-          <AlertDialog.Title className={dialogTitleClassName}>{t('settings.uninstallTitle').replace('{name}', name)}</AlertDialog.Title>
+          <AlertDialog.Title className={dialogTitleClassName}>
+            {t('settings.uninstallTitle').replace('{name}', name)}
+          </AlertDialog.Title>
           <AlertDialog.Description className={dialogDescriptionClassName}>
             {t('settings.uninstallManagedHint').replace(/\{name\}/g, name)}
           </AlertDialog.Description>

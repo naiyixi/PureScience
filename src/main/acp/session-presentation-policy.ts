@@ -1,5 +1,8 @@
 import { NOTEBOOK_SYSTEM_PROMPT_APPEND } from '../notebook/mcp-server'
-import { SKILL_CREATE_SYSTEM_PROMPT_APPEND, SKILL_IMPORT_SYSTEM_PROMPT_APPEND } from '../skills/mcp-server'
+import {
+  SKILL_CREATE_SYSTEM_PROMPT_APPEND,
+  SKILL_IMPORT_SYSTEM_PROMPT_APPEND
+} from '../skills/mcp-server'
 import { MEMORY_MCP_SYSTEM_PROMPT_APPEND } from '../../shared/memory-mcp'
 import { CONTEXT_SUMMARY_MCP_SYSTEM_PROMPT_APPEND } from '../../shared/context-summary-mcp'
 import type { AgentFramework, SessionSetup } from '../agent-framework/types'

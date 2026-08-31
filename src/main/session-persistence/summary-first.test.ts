@@ -13,7 +13,9 @@ import { SessionRepository } from './repository'
 // Summary-first startup: the session list must load from the lightweight summary without parsing
 // the full session JSON, and a changed session file must invalidate the cached summary.
 
-const buildSession = (overrides: Partial<{ id: string; title: string }> = {}): PersistedChatSession =>
+const buildSession = (
+  overrides: Partial<{ id: string; title: string }> = {}
+): PersistedChatSession =>
   ({
     id: overrides.id ?? 'sess-1',
     projectId: 'proj-1',

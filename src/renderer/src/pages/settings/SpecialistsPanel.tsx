@@ -46,10 +46,7 @@ import { useCatalogTagsStore } from '@/stores/catalog-tags-store'
 import { CatalogFavoriteButton } from '@/components/catalog/CatalogFavoriteButton'
 import { CatalogTagEditor } from '@/components/catalog/CatalogTagEditor'
 import { CatalogFilterChips } from '@/components/catalog/CatalogFilterChips'
-import {
-  SpecialistMarketplace,
-  type SpecialistMarketplaceView
-} from './SpecialistMarketplace'
+import { SpecialistMarketplace, type SpecialistMarketplaceView } from './SpecialistMarketplace'
 import type { CreateSpecialistInput } from '../../../../shared/specialist'
 import type { SkillSource } from '../../../../shared/settings'
 import { specialistPackageReportFromPreview } from '../../../../shared/specialist-package'
@@ -261,7 +258,10 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
   const visibleCustomItems = useMemo(() => {
     const term = query.trim().toLowerCase()
     if (filter === 'builtin') return []
-    const source = filter === 'marketplace' ? customItems.filter((i) => i.kind === 'custom' && i.origin === 'marketplace') : customItems
+    const source =
+      filter === 'marketplace'
+        ? customItems.filter((i) => i.kind === 'custom' && i.origin === 'marketplace')
+        : customItems
     return source.filter((item) => {
       if (!matchesCatalogFilter(`specialist:${item.id}`)) return false
       if (!term) return true
@@ -342,9 +342,7 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
             ✓
           </div>
           <h3 className="mt-4 text-lg font-semibold">{t('settings.templateSaved')}</h3>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {t('settings.templateZipReady')}
-          </p>
+          <p className="mt-2 text-sm text-muted-foreground">{t('settings.templateZipReady')}</p>
           <Button type="button" className="mt-5" onClick={() => setTemplateSaved(false)}>
             Done
           </Button>
@@ -418,7 +416,11 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                   : 'bg-muted text-muted-foreground'
             }`}
           >
-            {exportPreview?.canExport ? `✓ ${t('common.ready')}` : exportPreview ? `× ${t('common.blocked')}` : t('common.checking')}
+            {exportPreview?.canExport
+              ? `✓ ${t('common.ready')}`
+              : exportPreview
+                ? `× ${t('common.blocked')}`
+                : t('common.checking')}
           </span>
         </div>
         {exportError ? (
@@ -583,7 +585,9 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                       : 'bg-danger-000/10 text-danger-000'
                   }`}
                 >
-                  {packagePreview.installable ? `✓ ${t('common.installable')}` : `× ${t('common.notInstallable')}`}
+                  {packagePreview.installable
+                    ? `✓ ${t('common.installable')}`
+                    : `× ${t('common.notInstallable')}`}
                 </span>
               ) : null}
             </h2>
@@ -912,11 +916,15 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                     </AlertDialog.Description>
                     <dl className="mt-4 grid grid-cols-2 gap-3 rounded-lg border border-border p-3 text-xs">
                       <div>
-                        <dt className="text-muted-foreground">{t('settings.specialistCurrentVersion')}</dt>
+                        <dt className="text-muted-foreground">
+                          {t('settings.specialistCurrentVersion')}
+                        </dt>
                         <dd>{packagePreview.overwrite.currentVersion}</dd>
                       </div>
                       <div>
-                        <dt className="text-muted-foreground">{t('settings.specialistIncomingVersion')}</dt>
+                        <dt className="text-muted-foreground">
+                          {t('settings.specialistIncomingVersion')}
+                        </dt>
                         <dd>
                           {packagePreview.overwrite.incomingVersion}
                           {packagePreview.diagnostics.some(
@@ -927,7 +935,9 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                         </dd>
                       </div>
                       <div>
-                        <dt className="text-muted-foreground">{t('settings.specialistLocalStatus')}</dt>
+                        <dt className="text-muted-foreground">
+                          {t('settings.specialistLocalStatus')}
+                        </dt>
                         <dd>
                           {packagePreview.overwrite.hasImportBaseline
                             ? packagePreview.overwrite.modifiedSinceImport
@@ -1203,7 +1213,9 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
             <div>
               <div className="mb-1 flex flex-col gap-0.5">
                 <span className="text-sm font-semibold text-foreground">Custom</span>
-                <span className="text-xs text-muted-foreground">{t('settings.customCreatedByYou')}</span>
+                <span className="text-xs text-muted-foreground">
+                  {t('settings.customCreatedByYou')}
+                </span>
               </div>
 
               {visibleCustomItems.length > 0 ? (
@@ -1225,56 +1237,56 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                           )}
                         />
                         <div className="min-w-0 flex-1">
-                        <button
-                          type="button"
-                          onClick={() => onNavigate({ kind: 'edit', id: item.id })}
-                          aria-label={
-                            item.setupPending
-                              ? `Continue setup for ${item.displayName ?? item.name}`
-                              : `Edit ${item.displayName ?? item.name}`
-                          }
-                          className="flex w-full cursor-pointer items-center gap-2 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        >
-                          {/* Avatar */}
-                          <SpecialistAvatar iconKey={item.iconKey} colorKey={item.colorKey} />
+                          <button
+                            type="button"
+                            onClick={() => onNavigate({ kind: 'edit', id: item.id })}
+                            aria-label={
+                              item.setupPending
+                                ? `Continue setup for ${item.displayName ?? item.name}`
+                                : `Edit ${item.displayName ?? item.name}`
+                            }
+                            className="flex w-full cursor-pointer items-center gap-2 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          >
+                            {/* Avatar */}
+                            <SpecialistAvatar iconKey={item.iconKey} colorKey={item.colorKey} />
 
-                          {/* Body: name + description */}
-                          <div className="min-w-0 flex-1">
-                            <span className="block truncate text-sm text-foreground">
-                              {item.displayName ?? item.name}
-                            </span>
-                            {item.description ? (
-                              <span className="block truncate text-xs text-muted-foreground">
-                                {item.description}
+                            {/* Body: name + description */}
+                            <div className="min-w-0 flex-1">
+                              <span className="block truncate text-sm text-foreground">
+                                {item.displayName ?? item.name}
                               </span>
-                            ) : null}
-                            <span className="block text-[11px] text-muted-foreground">
-                              {item.setupPending
-                                ? t('settings.setupIncompleteContinueSetup')
-                                : item.capabilityMode === 'full'
-                                  ? t('settings.fullAccess')
-                                  : t('settings.selectedCapabilities')}
-                              {!item.setupPending && item.origin === 'marketplace'
-                                ? ` · ${t('settings.marketplaceInstalled')} · v${item.packageVersion ?? '1.0.0'}`
-                                : ''}
-                              {!item.setupPending && item.origin === 'imported'
-                                ? ` · Imported · Original version ${item.packageVersion ?? '0.1.0'} · ${
-                                    item.modifiedSinceImport
-                                      ? t('settings.modifiedAfterImport')
-                                      : t('settings.unchangedSinceImport')
-                                  }`
-                                : ''}
-                            </span>
+                              {item.description ? (
+                                <span className="block truncate text-xs text-muted-foreground">
+                                  {item.description}
+                                </span>
+                              ) : null}
+                              <span className="block text-[11px] text-muted-foreground">
+                                {item.setupPending
+                                  ? t('settings.setupIncompleteContinueSetup')
+                                  : item.capabilityMode === 'full'
+                                    ? t('settings.fullAccess')
+                                    : t('settings.selectedCapabilities')}
+                                {!item.setupPending && item.origin === 'marketplace'
+                                  ? ` · ${t('settings.marketplaceInstalled')} · v${item.packageVersion ?? '1.0.0'}`
+                                  : ''}
+                                {!item.setupPending && item.origin === 'imported'
+                                  ? ` · Imported · Original version ${item.packageVersion ?? '0.1.0'} · ${
+                                      item.modifiedSinceImport
+                                        ? t('settings.modifiedAfterImport')
+                                        : t('settings.unchangedSinceImport')
+                                    }`
+                                  : ''}
+                              </span>
+                            </div>
+                          </button>
+                          <div className="mt-1 flex flex-wrap items-center gap-1.5 pl-9">
+                            <CatalogTagEditor
+                              resourceId={`specialist:${item.id}`}
+                              addLabel={t('settings.addTag')}
+                              tagsLabel={t('settings.tags')}
+                              placeholder={t('settings.addTag')}
+                            />
                           </div>
-                        </button>
-                        <div className="mt-1 flex flex-wrap items-center gap-1.5 pl-9">
-                          <CatalogTagEditor
-                            resourceId={`specialist:${item.id}`}
-                            addLabel={t('settings.addTag')}
-                            tagsLabel={t('settings.tags')}
-                            placeholder={t('settings.addTag')}
-                          />
-                        </div>
                         </div>
 
                         {/* Enabled toggle */}
@@ -1329,13 +1341,15 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                                 )
                               }
                             >
-                              <Copy className="size-3.5" aria-hidden="true" /> {t('settings.duplicate')}
+                              <Copy className="size-3.5" aria-hidden="true" />{' '}
+                              {t('settings.duplicate')}
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               className="gap-2 text-xs"
                               onSelect={() => void runDirectExport(item.id)}
                             >
-                              <Download className="size-3.5" aria-hidden="true" /> {t('settings.exportZip')}
+                              <Download className="size-3.5" aria-hidden="true" />{' '}
+                              {t('settings.exportZip')}
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               className="gap-2 text-xs text-destructive"
@@ -1396,33 +1410,33 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                       )}
                     />
                     <div className="min-w-0 flex-1">
-                    <button
-                      type="button"
-                      onClick={() => onNavigate({ kind: 'builtin', id: item.id })}
-                      aria-label={`View ${item.displayName ?? item.name}`}
-                      className="flex w-full cursor-pointer items-center gap-2 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      <SpecialistAvatar iconKey={item.iconKey} colorKey={item.colorKey} />
-                      <div className="min-w-0 flex-1">
-                        <span className="block truncate text-sm text-foreground">
-                          {item.displayName ?? item.name}
-                        </span>
-                        <span className="block truncate text-xs text-muted-foreground">
-                          {item.description}
-                        </span>
-                        <span className="block text-[11px] text-muted-foreground">
-                          Built-in · Version {item.version}
-                        </span>
+                      <button
+                        type="button"
+                        onClick={() => onNavigate({ kind: 'builtin', id: item.id })}
+                        aria-label={`View ${item.displayName ?? item.name}`}
+                        className="flex w-full cursor-pointer items-center gap-2 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <SpecialistAvatar iconKey={item.iconKey} colorKey={item.colorKey} />
+                        <div className="min-w-0 flex-1">
+                          <span className="block truncate text-sm text-foreground">
+                            {item.displayName ?? item.name}
+                          </span>
+                          <span className="block truncate text-xs text-muted-foreground">
+                            {item.description}
+                          </span>
+                          <span className="block text-[11px] text-muted-foreground">
+                            Built-in · Version {item.version}
+                          </span>
+                        </div>
+                      </button>
+                      <div className="mt-1 flex flex-wrap items-center gap-1.5 pl-9">
+                        <CatalogTagEditor
+                          resourceId={`specialist:${item.id}`}
+                          addLabel={t('settings.addTag')}
+                          tagsLabel={t('settings.tags')}
+                          placeholder={t('settings.addTag')}
+                        />
                       </div>
-                    </button>
-                    <div className="mt-1 flex flex-wrap items-center gap-1.5 pl-9">
-                      <CatalogTagEditor
-                        resourceId={`specialist:${item.id}`}
-                        addLabel={t('settings.addTag')}
-                        tagsLabel={t('settings.tags')}
-                        placeholder={t('settings.addTag')}
-                      />
-                    </div>
                     </div>
                   </li>
                 ))}
@@ -1439,7 +1453,9 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                       ✓
                     </span>
                     <div className="min-w-0 flex-1">
-                      <span className="block truncate text-sm text-foreground">{t('settings.reviewer')}</span>
+                      <span className="block truncate text-sm text-foreground">
+                        {t('settings.reviewer')}
+                      </span>
                       <span className="block truncate text-xs text-muted-foreground">
                         {t('settings.usedByAutoReview')}
                       </span>
@@ -1570,8 +1586,7 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                       } else {
                         const messages: Record<typeof result.code, string> = {
                           'stale-preview': t('settings.skillRelationshipsChanged'),
-                          'revision-conflict':
-                            t('settings.specialistChangedRefresh'),
+                          'revision-conflict': t('settings.specialistChangedRefresh'),
                           'protected-skill': 'A selected Skill is protected and cannot be deleted.',
                           'protected-target': 'This Specialist is read-only and cannot be deleted.',
                           'recovery-failed': t('settings.storageRecoveryFailed'),

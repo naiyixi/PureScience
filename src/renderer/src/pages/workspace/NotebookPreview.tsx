@@ -133,7 +133,9 @@ const NotebookVariablesPanel = ({
           className="rounded-md border border-border-200 px-2 py-0.5 text-[11px] text-text-200 transition-colors hover:bg-bg-200"
           data-testid="notebook-variables-refresh"
         >
-          {state === 'refreshing' ? t('ws.notebookVariablesRefreshing') : t('ws.notebookVariablesRefresh')}
+          {state === 'refreshing'
+            ? t('ws.notebookVariablesRefreshing')
+            : t('ws.notebookVariablesRefresh')}
         </button>
       </div>
       <div className="divide-y divide-border-100 rounded-md border border-border-100">
@@ -149,7 +151,10 @@ const NotebookVariablesPanel = ({
               <span className="shrink-0 font-mono text-[10px] text-text-300">{variable.shape}</span>
             ) : null}
             {variable.preview ? (
-              <span className="max-w-64 truncate font-mono text-[10px] text-text-300" title={variable.preview}>
+              <span
+                className="max-w-64 truncate font-mono text-[10px] text-text-300"
+                title={variable.preview}
+              >
                 {variable.preview}
               </span>
             ) : null}
@@ -348,7 +353,9 @@ const NotebookPreview = ({ item }: NotebookPreviewProps): React.JSX.Element => {
       current === 'loading' || current === 'refreshing' ? current : 'loading'
     )
     try {
-      const result = await window.api.notebook.inspectVariables(createNotebookRequest(item.notebook))
+      const result = await window.api.notebook.inspectVariables(
+        createNotebookRequest(item.notebook)
+      )
       if (!result) {
         setVariables([])
         setVariablesState('unavailable')
@@ -365,8 +372,12 @@ const NotebookPreview = ({ item }: NotebookPreviewProps): React.JSX.Element => {
   // Refresh the snapshot when the kernel publishes changes while the panel is open.
   useEffect(() => {
     if (!variablesOpen) return
-    void loadVariables()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Defer so the first synchronous setState in loadVariables happens after the
+    // effect phase (avoids a cascading render warning on open).
+    const handle = window.setTimeout(() => {
+      void loadVariables()
+    }, 0)
+    return () => window.clearTimeout(handle)
   }, [variablesOpen, item.notebook, notebookState?.activeRunId, loadVariables])
 
   // Cross-run dependency staleness: a later completed run that rewrote one of this run's written

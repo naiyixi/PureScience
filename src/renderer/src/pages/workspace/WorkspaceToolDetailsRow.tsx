@@ -39,7 +39,9 @@ const renderCodeBody = (
 ): React.JSX.Element => (
   <>
     <WorkspaceToolCodeBlock code={section.text} language={section.language} />
-    {section.truncated ? <div className="text-[11px] text-text-300">{t('ui.outputtruncated')}</div> : null}
+    {section.truncated ? (
+      <div className="text-[11px] text-text-300">{t('ui.outputtruncated')}</div>
+    ) : null}
   </>
 )
 

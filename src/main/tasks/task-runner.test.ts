@@ -43,32 +43,32 @@ const createRunner = (
   new TaskRunner(
     {
       projects: {
-      list: async () => [project],
-      create: async (request) => ({ ...project, ...request })
+        list: async () => [project],
+        create: async (request) => ({ ...project, ...request })
+      },
+      sessions: { list: async () => [], save: async () => undefined },
+      previewResources: {
+        acquire: async () => ({ id: 'resource-1', url: 'preview://resource-1', size: 0 }),
+        release: async () => undefined
+      },
+      agent: {
+        withSessionAvailable: async (_projectId, _sessionId, operation) => operation(),
+        listAttachedSessionIds: async () => [],
+        createSession: async () => ({ sessionId: 'session-created' }),
+        resumeSession: async (request) => ({ sessionId: request.sessionId }),
+        setPermissionProfile: async () => undefined,
+        prompt: async () => undefined
+      },
+      artifacts: {
+        finalizeRun: async () => ({ ok: true, artifacts: [] })
+      },
+      runtimeEvents: { subscribe: () => () => undefined },
+      createId: () => 'generated-id',
+      now: () => 1,
+      ...overrides
     },
-    sessions: { list: async () => [], save: async () => undefined },
-    previewResources: {
-      acquire: async () => ({ id: 'resource-1', url: 'preview://resource-1', size: 0 }),
-      release: async () => undefined
-    },
-    agent: {
-      withSessionAvailable: async (_projectId, _sessionId, operation) => operation(),
-      listAttachedSessionIds: async () => [],
-      createSession: async () => ({ sessionId: 'session-created' }),
-      resumeSession: async (request) => ({ sessionId: request.sessionId }),
-      setPermissionProfile: async () => undefined,
-      prompt: async () => undefined
-    },
-    artifacts: {
-      finalizeRun: async () => ({ ok: true, artifacts: [] })
-    },
-    runtimeEvents: { subscribe: () => () => undefined },
-    createId: () => 'generated-id',
-    now: () => 1,
-    ...overrides
-  },
-  options
-)
+    options
+  )
 
 describe('TaskRunner', () => {
   it('lists projects through its public interface', async () => {
@@ -940,17 +940,26 @@ describe('createDescription sentence extraction', () => {
   it('passes a modelId override through to sub-agent session creation', async () => {
     const created: unknown[] = []
     const agent: TaskAgentPort = {
-      withSessionAvailable: async <Result>(_projectId: string, _sessionId: string, operation: () => Promise<Result>) => operation(),
+      withSessionAvailable: async <Result>(
+        _projectId: string,
+        _sessionId: string,
+        operation: () => Promise<Result>
+      ) => operation(),
       listAttachedSessionIds: async () => [],
       createSession: async (request: TaskAgentCreateSessionRequest) => {
         created.push(request)
         return { sessionId: 'session-model' }
       },
-      resumeSession: async (request: TaskAgentResumeSessionRequest) => ({ sessionId: request.sessionId }),
+      resumeSession: async (request: TaskAgentResumeSessionRequest) => ({
+        sessionId: request.sessionId
+      }),
       setPermissionProfile: async () => undefined,
       prompt: async () => undefined
     }
-    const projects: TaskProjectPort = { list: async () => [project], create: async (request) => ({ ...project, ...request }) }
+    const projects: TaskProjectPort = {
+      list: async () => [project],
+      create: async (request) => ({ ...project, ...request })
+    }
     const runner = createRunner({ agent, projects })
 
     await runner.startRun({
@@ -961,7 +970,11 @@ describe('createDescription sentence extraction', () => {
     })
 
     expect(created).toHaveLength(1)
-    expect(created[0]).toMatchObject({ projectId: project.id, permissionProfile: 'full', modelId: 'model-b' })
+    expect(created[0]).toMatchObject({
+      projectId: project.id,
+      permissionProfile: 'full',
+      modelId: 'model-b'
+    })
   })
 
   it('enforces the global concurrency ceiling across sessions', async () => {
@@ -989,9 +1002,9 @@ describe('createDescription sentence extraction', () => {
 
     const first = runner.startRun({ project: project.id, prompt: 'first' })
 
-    await expect(
-      runner.startRun({ project: project.id, prompt: 'second' })
-    ).rejects.toMatchObject({ code: 'concurrency_limit' })
+    await expect(runner.startRun({ project: project.id, prompt: 'second' })).rejects.toMatchObject({
+      code: 'concurrency_limit'
+    })
 
     // Release the first run so the test can complete cleanly.
     releaseFirstPrompt?.()
@@ -1017,9 +1030,6 @@ describe('createDescription sentence extraction', () => {
     await runner.waitForRun(first.id)
 
     // After completion the slot is free: a new run starts normally.
-    await expect(
-      runner.startRun({ project: project.id, prompt: 'after' })
-    ).resolves.toBeDefined()
+    await expect(runner.startRun({ project: project.id, prompt: 'after' })).resolves.toBeDefined()
   })
-
 })

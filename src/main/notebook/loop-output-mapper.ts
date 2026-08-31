@@ -28,7 +28,14 @@ export function mapLoopOutputs(input: {
   result: string | null
   figures: MappedFigure[]
 }): MappedLoopOutputs {
-  const { stdout: rawStdout, stderr: rawStderr, error, errorLine, result: rawResult, figures } = input
+  const {
+    stdout: rawStdout,
+    stderr: rawStderr,
+    error,
+    errorLine,
+    result: rawResult,
+    figures
+  } = input
   const stdout = truncateText(rawStdout, NOTEBOOK_RUN_OUTPUT_TEXT_BUDGET)
   const stderr = truncateText(rawStderr, NOTEBOOK_RUN_OUTPUT_TEXT_BUDGET)
   const result = truncateText(rawResult ?? '', NOTEBOOK_RUN_OUTPUT_TEXT_BUDGET)

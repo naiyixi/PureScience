@@ -300,10 +300,7 @@ const WorkspaceSidebar = ({
 
           <div className="mx-2 my-1 h-px bg-border-300/15" />
 
-          <div
-            className="min-h-0 flex-1 overflow-y-auto py-1"
-            onScroll={handleSessionListScroll}
-          >
+          <div className="min-h-0 flex-1 overflow-y-auto py-1" onScroll={handleSessionListScroll}>
             {sections.map((section) => (
               <div key={section.label}>
                 <div className="px-2 pb-[5px] pt-3.5 text-[11px] font-medium text-muted-foreground">
@@ -434,11 +431,7 @@ const WorkspaceSidebar = ({
                                 onSelect={() => onOpenExportDialog(session)}
                               >
                                 <span className={sessionMenuIconClassName}>
-                                  <Download
-                                    className="size-4"
-                                    strokeWidth={2}
-                                    aria-hidden="true"
-                                  />
+                                  <Download className="size-4" strokeWidth={2} aria-hidden="true" />
                                 </span>
                                 <span className="flex-1">{t('workspace.exportConversation')}</span>
                               </DropdownMenuItem>

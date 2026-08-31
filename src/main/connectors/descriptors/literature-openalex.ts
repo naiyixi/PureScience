@@ -469,8 +469,7 @@ export const searchOpenAlexWorks = async (
   const filters: Record<string, string> = {}
   if (a.yearFrom != null)
     filters['from_publication_date'] = `${clampInt(a.yearFrom, 0, 0, 9999)}-01-01`
-  if (a.yearTo != null)
-    filters['to_publication_date'] = `${clampInt(a.yearTo, 0, 0, 9999)}-12-31`
+  if (a.yearTo != null) filters['to_publication_date'] = `${clampInt(a.yearTo, 0, 0, 9999)}-12-31`
   if (a.workType != null && a.workType !== '') filters['type'] = a.workType
   if (a.openAccessOnly === true) filters['is_oa'] = 'true'
   const hasVenue = a.venue != null && a.venue.trim() !== ''
