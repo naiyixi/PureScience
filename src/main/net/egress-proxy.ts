@@ -15,7 +15,7 @@ import {
 import { connect as tcpConnect } from 'node:net'
 import type { Duplex } from 'node:stream'
 
-import { isHostAllowed } from '../../shared/egress'
+import { isHostAllowed, isHostDenied } from '../../shared/egress'
 
 export type EgressProxyState = {
   // Current allowlist; undefined means unrestricted (proxy refuses to start or is idle).
@@ -64,6 +64,9 @@ export class EgressProxy {
   }
 
   private isAllowed(host: string): boolean {
+    // The built-in deny list always wins: an exfiltration target stays blocked even when the
+    // allowlist mechanism is off or the host was user-added.
+    if (isHostDenied(host)) return false
     if (this.allowlist === undefined) return true // unrestricted
     return isHostAllowed(host, this.allowlist)
   }

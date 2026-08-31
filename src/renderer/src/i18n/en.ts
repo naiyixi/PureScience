@@ -215,6 +215,7 @@ export const en: Record<ZhKey, string> = {
   'ws.bindSpecialistHint': 'Bind a personal specialist to this conversation.',
   'ws.none': 'None',
   'ws.notebookVariables': 'Variables',
+  'ws.notebookWriteAudit': 'Write audit',
   'ws.notebookVariablesLoading': 'Reading kernel namespace…',
   'ws.notebookVariablesEmpty': 'No variables in the namespace yet',
   'ws.notebookVariablesUnavailable':

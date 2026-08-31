@@ -96,24 +96,43 @@ const resolveChangedFile = async (
 const diffSnapshots = (
   before: ReadonlyMap<string, SnapshotEntry>,
   after: ReadonlyMap<string, SnapshotEntry>
-): NotebookWorkingFile[] =>
-  Array.from(after.values())
-    .filter((file) => {
-      const previous = before.get(file.path)
-      return (
-        !previous ||
-        previous.size !== file.size ||
+): NotebookWorkingFile[] => {
+  const changed: NotebookWorkingFile[] = []
+  // Files present after the run: created (no before entry) or modified (metadata changed).
+  for (const file of after.values()) {
+    const previous = before.get(file.path)
+    const isNew = !previous
+    const isModified =
+      previous !== undefined &&
+      (previous.size !== file.size ||
         previous.mtimeMs !== file.mtimeMs ||
-        previous.ctimeMs !== file.ctimeMs
-      )
-    })
-    .map((file) => ({
+        previous.ctimeMs !== file.ctimeMs)
+    if (!isNew && !isModified) continue
+    changed.push({
       path: file.path,
       relativePath: file.relativePath,
       kind: file.kind,
+      changeKind: isNew ? 'created' : 'modified',
       size: file.size,
       mtimeMs: file.mtimeMs
-    }))
+    })
+  }
+  // Files that existed before but are gone after: removed by the run. The observer captures the
+  // before-entry's metadata so the audit still shows what was deleted.
+  for (const [path, entry] of before.entries()) {
+    if (!after.has(path)) {
+      changed.push({
+        path: entry.path,
+        relativePath: entry.relativePath,
+        kind: entry.kind,
+        changeKind: 'removed',
+        size: entry.size,
+        mtimeMs: entry.mtimeMs
+      })
+    }
+  }
+  return changed
+}
 
 const captureFallbackSnapshot = async (
   dataRoot: string,

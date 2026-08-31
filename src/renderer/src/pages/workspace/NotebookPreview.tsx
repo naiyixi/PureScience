@@ -3,9 +3,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import type { PreviewToolItem } from '@/stores/preview-workbench-store'
 import { computeStaleRunIds } from '../../../../shared/run-dependencies'
-import { Braces } from 'lucide-react'
+import { Braces, FilePenLine } from 'lucide-react'
 import { useNotebookEnvStore } from '@/stores/notebook-env-store'
 import { cn } from '@/lib/utils'
+import { WriteAuditPanel } from './WriteAuditPanel'
 
 import type {
   NotebookEnvironmentStatus,
@@ -336,6 +337,7 @@ const NotebookPreview = ({ item }: NotebookPreviewProps): React.JSX.Element => {
   // Variables view state: the panel is read-only and refreshed after each
   // execution; it never starts a kernel just to browse.
   const [variablesOpen, setVariablesOpen] = useState(false)
+  const [auditOpen, setAuditOpen] = useState(false)
   const [variables, setVariables] = useState<NotebookVariable[]>([])
   const [variablesState, setVariablesState] = useState<
     'idle' | 'loading' | 'unavailable' | 'refreshing'
@@ -586,6 +588,21 @@ const NotebookPreview = ({ item }: NotebookPreviewProps): React.JSX.Element => {
           <Braces className="size-3.5" aria-hidden="true" />
           {t('ws.notebookVariables')}
         </button>
+        <button
+          type="button"
+          onClick={() => setAuditOpen((open) => !open)}
+          aria-pressed={auditOpen}
+          data-testid="notebook-write-audit-toggle"
+          className={cn(
+            'flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors',
+            auditOpen
+              ? 'bg-bg-300 text-text-000'
+              : 'text-text-300 hover:bg-bg-200 hover:text-text-100'
+          )}
+        >
+          <FilePenLine className="size-3.5" aria-hidden="true" />
+          {t('ws.notebookWriteAudit')}
+        </button>
       </header>
 
       {showEnvSelector ? (
@@ -647,6 +664,15 @@ const NotebookPreview = ({ item }: NotebookPreviewProps): React.JSX.Element => {
             state={variablesState}
             onRefresh={() => void loadVariables()}
           />
+        </div>
+      ) : null}
+
+      {auditOpen ? (
+        <div
+          className="min-h-0 flex-[2_1_0] overflow-auto border-b border-border-100"
+          data-testid="notebook-write-audit-panel"
+        >
+          <WriteAuditPanel runs={runs} />
         </div>
       ) : null}
 
