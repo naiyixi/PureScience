@@ -631,5 +631,126 @@ export const CANCER_MODELS_TOOLS: ToolDescriptor[] = [
         attributes: attributes.slice(0, maxRecords)
       }
     }
+  },
+  // ---- DepMap (Broad Institute cancer dependency map) -------------------------------
+  // Keyless GraphQL endpoint over cell-line dependency/effect data. The public schema exposes
+  // cell lines, genes, and dependency scores; a subset is queryable without an API token.
+  {
+    id: 'depmap_search_cell_line',
+    connector: 'cancer_models',
+    description:
+      'Search DepMap cancer cell lines by name, disease (lineage), or partial model id. Returns ' +
+      'the matched cell lines with their model id, name, disease/lineage, and sex — the id is the ' +
+      'key used by depmap_dependencies_for_cell_line.',
+    input: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Free-text match on cell line name, disease, or model id' },
+        max_records: { type: 'integer', default: 25 }
+      },
+      required: ['query']
+    },
+    returns:
+      '`{ query: str, count: int, truncated: bool, cell_lines: [ { model_id, cell_line_name, disease, lineage, sex } ] }`.',
+    example:
+      'const result = await host.mcp("cancer_models", "depmap_search_cell_line", {"query": "A549"})',
+    run: async (ctx, a) => {
+      const query = String(a.query).trim()
+      const maxRecords = Number(a.max_records ?? 25)
+      if (!query) throw new Error('query is required')
+      const response = (await ctx.postJson('https://api.depmap.org/graphql', {
+        query: `query($q: String!) {
+          cellLines(modelId: $q) { model_id cell_line_name disease lineage sex }
+          cellLinesByAlias(alias: $q) { model_id cell_line_name disease lineage sex }
+        }`,
+        variables: { q: query }
+      })) as Record<string, unknown>
+      const data = (response.data ?? response) as Record<string, unknown>
+      const direct = (data.cellLines ?? []) as Record<string, unknown>[]
+      const alias = (data.cellLinesByAlias ?? []) as Record<string, unknown>[]
+      const merged = new Map<string, Record<string, unknown>>()
+      for (const row of [...direct, ...alias]) {
+        const id = String(row.model_id ?? '')
+        if (id && !merged.has(id)) merged.set(id, row)
+      }
+      const rows = [...merged.values()]
+        .filter((r) => {
+          const name = String(r.cell_line_name ?? '').toLowerCase()
+          const disease = String(r.disease ?? '').toLowerCase()
+          const id = String(r.model_id ?? '').toLowerCase()
+          const q = query.toLowerCase()
+          return name.includes(q) || disease.includes(q) || id.includes(q)
+        })
+        .slice(0, maxRecords)
+      return {
+        query,
+        count: rows.length,
+        truncated: merged.size > maxRecords,
+        cell_lines: rows.map((r) => ({
+          model_id: r.model_id,
+          cell_line_name: r.cell_line_name,
+          disease: r.disease,
+          lineage: r.lineage,
+          sex: r.sex
+        }))
+      }
+    }
+  },
+  {
+    id: 'depmap_dependencies_for_gene',
+    connector: 'cancer_models',
+    description:
+      'DepMap dependency scores (Chronos) for one gene across cell lines: the most dependent ' +
+      'cell lines first. More negative scores mean the cell line depends more on the gene for ' +
+      'survival (a dependency). Use to find which cancer models are sensitive to knocking out a gene.',
+    input: {
+      type: 'object',
+      properties: {
+        gene_symbol: { type: 'string', description: 'HUGO gene symbol, e.g. KRAS, EGFR' },
+        max_records: { type: 'integer', default: 20 }
+      },
+      required: ['gene_symbol']
+    },
+    returns:
+      '`{ gene_symbol: str, count: int, dependencies: [ { model_id, cell_line_name, disease, chronos_score } ] }` — sorted by ascending Chronos (most dependent first).',
+    example:
+      'const result = await host.mcp("cancer_models", "depmap_dependencies_for_gene", {"gene_symbol": "KRAS"})',
+    run: async (ctx, a) => {
+      const symbol = String(a.gene_symbol).trim().toUpperCase()
+      const maxRecords = Number(a.max_records ?? 20)
+      if (!symbol) throw new Error('gene_symbol is required')
+      const response = (await ctx.postJson('https://api.depmap.org/graphql', {
+        query: `query($g: String!) {
+          gene(geneName: $g) {
+            id
+            dependencies {
+              model_id
+              cell_line_name
+              disease
+              chronos_score
+            }
+          }
+        }`,
+        variables: { g: symbol }
+      })) as Record<string, unknown>
+      const data = (response.data ?? response) as Record<string, unknown>
+      const gene = data.gene as Record<string, unknown> | null
+      if (!gene) return { gene_symbol: symbol, found: false, count: 0, dependencies: [] }
+      const deps = ((gene.dependencies ?? []) as Record<string, unknown>[])
+        .filter((d) => typeof d.chronos_score === 'number')
+        .sort((x, y) => (x.chronos_score as number) - (y.chronos_score as number))
+        .slice(0, maxRecords)
+      return {
+        gene_symbol: symbol,
+        found: true,
+        count: deps.length,
+        dependencies: deps.map((d) => ({
+          model_id: d.model_id,
+          cell_line_name: d.cell_line_name,
+          disease: d.disease,
+          chronos_score: d.chronos_score
+        }))
+      }
+    }
   }
 ]
