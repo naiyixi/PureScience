@@ -1,6 +1,9 @@
 import { code as streamdownCode } from '@streamdown/code'
 import type { HighlightResult } from '@streamdown/code'
-import type { BundledLanguage } from 'shiki'
+// Language type must match the shiki copy @streamdown/code bundles (3.x nested) —
+// the top-level shiki is 4.x for other consumers and its language union type is
+// incompatible with streamdown's runtime lookup.
+type StreamdownLanguage = Parameters<typeof streamdownCode.supportsLanguage>[0]
 import { useEffect, useState } from 'react'
 
 import { cn } from '@/lib/utils'
@@ -49,7 +52,7 @@ const HighlightedCodeLines = ({
   const lines = source.length > 0 ? source.split(/\r?\n/) : ['']
   const shouldHighlight =
     Boolean(language) &&
-    streamdownCode.supportsLanguage(language as BundledLanguage) &&
+    streamdownCode.supportsLanguage(language as StreamdownLanguage) &&
     new TextEncoder().encode(source).byteLength <= MAX_HIGHLIGHT_BYTES
 
   useEffect(() => {
@@ -62,7 +65,7 @@ const HighlightedCodeLines = ({
     const immediate = streamdownCode.highlight(
       {
         code: source,
-        language: language as BundledLanguage,
+        language: language as StreamdownLanguage,
         themes: streamdownCode.getThemes()
       },
       apply
