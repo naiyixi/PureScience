@@ -1,4 +1,5 @@
 import type { ToolContext, ToolDescriptor } from '../types'
+import { EXPRESSION_PANGLAODB_TOOLS } from './expression-panglaodb'
 
 const GTEX = 'https://gtexportal.org/api/v2'
 const DEFAULT_DATASET = 'gtex_v8'
@@ -79,8 +80,10 @@ function geneRecord(g: Record<string, unknown>): Record<string, unknown> {
 
 // GTEx Portal API v2 (https://gtexportal.org/api/v2): read-only tissue/sample metadata, bulk RNA-seq
 // expression, and precomputed/on-the-fly eQTL associations. Tool ids mirror the official purescience
-// GTEx surface; paged routes are walked to a count-verified `total`.
+// GTEx surface; paged routes are walked to a count-verified `total`. PanglaoDB canonical markers
+// (offline) are appended as the single-cell annotation surface of the same connector.
 export const EXPRESSION_TOOLS: ToolDescriptor[] = [
+  ...EXPRESSION_PANGLAODB_TOOLS,
   {
     id: 'gtex_tissue_sites',
     connector: 'expression',

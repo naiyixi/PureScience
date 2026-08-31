@@ -18,7 +18,9 @@ const EXPECTED_IDS = [
   'clinvar_get_records',
   'clinvar_variant_by_rsid',
   'dbsnp_get_rsids',
-  'dbsnp_search_by_region'
+  'dbsnp_search_by_region',
+  'cadd_score_variant',
+  'cadd_score_at_position'
 ]
 
 describe('variants / aggregate', () => {

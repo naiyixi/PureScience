@@ -93,11 +93,11 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   {
     id: 'variants',
     displayName: '变异',
-    aliases: ['gnomAD', 'ClinVar', 'dbSNP', 'genetic variant'],
-    description: '人类遗传变异——gnomAD 群体频率/约束、ClinVar 记录/搜索（NCBI 直连）、dbSNP、结构变异和线粒体变异。',
+    aliases: ['gnomAD', 'ClinVar', 'dbSNP', 'CADD', 'genetic variant'],
+    description: '人类遗传变异——gnomAD 群体频率/约束、ClinVar 记录/搜索（NCBI 直连）、dbSNP、CADD 危害评分、结构变异和线粒体变异。',
     useWhen:
-      'Use when you need human genetic-variant data — gnomAD population allele frequencies, gene constraint (pLI/LOEUF), structural or mitochondrial variants, and build liftover; ClinVar clinical significance (gnomAD mirror or direct NCBI search/records by accession or rsID); or dbSNP RefSNP records and region lookups.',
-    sources: ['gnomAD', 'ClinVar', 'dbSNP'],
+      'Use when you need human genetic-variant data — gnomAD population allele frequencies, gene constraint (pLI/LOEUF), structural or mitochondrial variants, and build liftover; ClinVar clinical significance (gnomAD mirror or direct NCBI search/records by accession or rsID); dbSNP RefSNP records and region lookups; or CADD deleteriousness scores (PHRED/raw) for SNVs.',
+    sources: ['gnomAD', 'ClinVar', 'dbSNP', 'CADD'],
     termsUrl: 'https://www.ncbi.nlm.nih.gov/clinvar/docs/maintenance_use/',
     requiresNcbi: true
   },
@@ -178,10 +178,10 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   {
     id: 'expression',
     displayName: '表达',
-    description: '通过 GTEx 门户获取人类组织表达和 eQTL 数据。',
+    description: '通过 GTEx 门户获取人类组织表达和 eQTL 数据；PanglaoDB 规范标记基因（离线）用于单细胞注释。',
     useWhen:
-      'Use for GTEx tissue expression and eQTL evidence — listing tissue sites or dataset releases, resolving gene symbols to versioned GENCODE ids, median or per-sample expression (TPM) by tissue, top-expressed genes per tissue, sample/donor metadata, and cis-eQTLs (eGenes, single-tissue, multi-tissue METASOFT, or on-the-fly calculation) for a gene or variant. Sourced from GTEx.',
-    sources: ['GTEx'],
+      'Use for GTEx tissue expression and eQTL evidence — listing tissue sites or dataset releases, resolving gene symbols to versioned GENCODE ids, median or per-sample expression (TPM) by tissue, top-expressed genes per tissue, sample/donor metadata, and cis-eQTLs (eGenes, single-tissue, multi-tissue METASOFT, or on-the-fly calculation) for a gene or variant. Sourced from GTEx. Also use for single-cell annotation — canonical marker genes per cell type (PanglaoDB set, offline) and reverse marker lookup.',
+    sources: ['GTEx', 'PanglaoDB'],
     termsUrl: 'https://gtexportal.org/home/license',
     requiresNcbi: false
   },
@@ -198,10 +198,10 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   {
     id: 'cancer_models',
     displayName: '癌症模型',
-    description: '通过 cBioPortal REST API 获取癌症基因组学研究记录。',
+    description: '通过 cBioPortal REST API 获取癌症基因组学研究记录；DepMap 癌细胞系依赖性评分。',
     useWhen:
-      "Use when you need cancer genomics data from cBioPortal — listing or looking up cancer studies (cancer type, sample counts, citation), the mutations of a gene in a study (recurrent protein changes, mutation types), a gene's mutation frequency across several studies, discrete copy-number alterations (deletions/amplifications) of a gene, or a study's clinical attributes and survival endpoints.",
-    sources: ['cBioPortal'],
+      "Use when you need cancer genomics data from cBioPortal — listing or looking up cancer studies (cancer type, sample counts, citation), the mutations of a gene in a study (recurrent protein changes, mutation types), a gene's mutation frequency across several studies, discrete copy-number alterations (deletions/amplifications) of a gene, or a study's clinical attributes and survival endpoints. Also use for DepMap cancer dependency data — searching cancer cell lines and gene dependency scores (Chronos) across cell lines.",
+    sources: ['cBioPortal', 'DepMap'],
     termsUrl: 'https://www.cbioportal.org/faq',
     requiresNcbi: false
   },
