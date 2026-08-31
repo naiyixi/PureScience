@@ -30,9 +30,7 @@ describe('redactSecrets', () => {
   })
 
   it('redacts api_key query-style assignments', () => {
-    expect(redactSecrets('curl -H "api_key=deadbeefcafe1234" url')).toBe(
-      'curl -H "[REDACTED]" url'
-    )
+    expect(redactSecrets('curl -H "api_key=deadbeefcafe1234" url')).toBe('curl -H "[REDACTED]" url')
   })
 
   it('leaves ordinary output untouched', () => {

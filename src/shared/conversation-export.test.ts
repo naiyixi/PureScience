@@ -284,11 +284,10 @@ describe('conversation export projection', () => {
       }
     )
 
-    const document = createConversationExportDocument(
-      session,
-      1_710_000_004_000,
-      { from: 2, to: 2 }
-    )
+    const document = createConversationExportDocument(session, 1_710_000_004_000, {
+      from: 2,
+      to: 2
+    })
 
     expect(document.messages.map((message) => message.markdown)).toEqual([
       'Second prompt',
@@ -307,11 +306,10 @@ describe('conversation export projection', () => {
 
   it('clamps an out-of-range round selection to the actual turn count', () => {
     const session = createSession()
-    const document = createConversationExportDocument(
-      session,
-      1_710_000_004_000,
-      { from: 1, to: 99 }
-    )
+    const document = createConversationExportDocument(session, 1_710_000_004_000, {
+      from: 1,
+      to: 99
+    })
 
     expect(document.messages.map((message) => message.markdown)).toEqual([
       '# Question\n\nUse **Markdown**.',

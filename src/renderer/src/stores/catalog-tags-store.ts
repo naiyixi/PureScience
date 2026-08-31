@@ -48,7 +48,9 @@ const loadEntries = (): Record<string, CatalogTagsEntry> => {
       if (typeof resourceId !== 'string' || resourceId.length === 0) continue
       if (typeof entry !== 'object' || entry === null) continue
       const tags = Array.isArray(entry.tags)
-        ? entry.tags.filter((tag): tag is string => typeof tag === 'string').slice(0, MAX_TAGS_PER_RESOURCE)
+        ? entry.tags
+            .filter((tag): tag is string => typeof tag === 'string')
+            .slice(0, MAX_TAGS_PER_RESOURCE)
         : []
       cleaned[resourceId] = { tags, favorite: Boolean(entry.favorite) }
     }

@@ -39,7 +39,9 @@ const EnvironmentStep = ({ onContinue }: EnvironmentStepProps): React.JSX.Elemen
   return (
     <>
       <CardHeader className="gap-1 rounded-t-lg px-6 py-5">
-        <CardTitle className="text-[15px] font-semibold">{t('onboarding.prepareEnvironment')}</CardTitle>
+        <CardTitle className="text-[15px] font-semibold">
+          {t('onboarding.prepareEnvironment')}
+        </CardTitle>
         {/* Re-check lives on the title row (the setup card's own intro row is hidden via hideIntro),
             so the step header and the checklist read as one surface. */}
         <CardAction>
@@ -67,9 +69,7 @@ const EnvironmentStep = ({ onContinue }: EnvironmentStepProps): React.JSX.Elemen
       </CardContent>
       <CardFooter className="mt-auto items-center justify-between gap-4 rounded-b-lg border-border-200 bg-bg-10 px-6 py-3">
         <p className="text-xs leading-5 text-muted-foreground">
-          {hostReady
-            ? t('onboarding.envChecksPassed')
-            : t('onboarding.completeRequiredItems')}
+          {hostReady ? t('onboarding.envChecksPassed') : t('onboarding.completeRequiredItems')}
         </p>
         <Button type="button" onClick={onContinue} disabled={!hostReady} className="px-4">
           {t('onboarding.continue')}

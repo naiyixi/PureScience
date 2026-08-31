@@ -1227,12 +1227,14 @@ export const zh = {
   'settings.credentialsRecoveryFormat': '密钥格式不正确——请检查是否完整粘贴（不要包含多余空格）。',
   'settings.credentialsRecoveryUnknown': '验证失败——请检查密钥是否正确，或稍后重试。',
   'settings.licenseConfirmTitle': '启用受限许可技能「{name}」？',
-  'settings.licenseConfirmBody': '该技能声明为「{license}」，可能限制商业用途。请确认你的使用符合许可条款。',
+  'settings.licenseConfirmBody':
+    '该技能声明为「{license}」，可能限制商业用途。请确认你的使用符合许可条款。',
   'settings.licenseConfirmEnable': '确认并启用',
   'settings.licensing': '许可',
   'settings.licensingDesc': '声明你使用受限许可技能的目的。',
   'settings.useIntent': '使用目的',
-  'settings.useIntentDesc': '选择商业用途（默认）或非商业用途。限制非商业用途的技能在商业模式下加载前需要确认。',
+  'settings.useIntentDesc':
+    '选择商业用途（默认）或非商业用途。限制非商业用途的技能在商业模式下加载前需要确认。',
   'settings.useIntentCommercial': '商业用途（默认）',
   'settings.useIntentNonCommercial': '非商业用途',
   'settings.thirdPartyLicenses': '第三方许可证',
@@ -1249,7 +1251,8 @@ export const zh = {
   'modelPicker.codexBridgeReason': '{name} 的模型无法通过 Codex Chat Completions 桥使用。',
   'modelPicker.bridgeUnsupportedReason': '{model} 无法通过 Codex Chat Completions 桥使用。',
   'closeConfirm.minimizeToTray': '最小化到托盘',
-  'ui.theagentreadsthesefindingsan': 'The agent reads these findings and self-corrects in its next message.',
+  'ui.theagentreadsthesefindingsan':
+    'The agent reads these findings and self-corrects in its next message.',
   'lifecycleToast.sessionCreatedExternally': '会话在外部创建',
   'sessionPersist.dismissWarning': '忽略存储警告',
   'fieldHelp.moreInfo': '更多信息',
@@ -1258,7 +1261,8 @@ export const zh = {
   'fileBrowser.goTo': '转到',
   'generalPanel.logFilePath': '日志文件路径',
   'ui.whattheagentcandowiththiscon': 'What the agent can do with this connector',
-  'ui.openthemobileappandsignintot': 'Open the mobile app and sign in to the\n                  same account as this computer.',
+  'ui.openthemobileappandsignintot':
+    'Open the mobile app and sign in to the\n                  same account as this computer.',
   'ui.showless': 'Show less',
   'ui.showfullcommand': 'Show full command',
   'ui.onemoment': 'One moment.',

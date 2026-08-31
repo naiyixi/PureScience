@@ -120,13 +120,7 @@ const toMessageDate = (timestamp: number | undefined): Date | undefined => {
   return Number.isNaN(date.getTime()) ? undefined : date
 }
 
-const MessageTimestamp = ({
-  label,
-  date
-}: {
-  label: string
-  date: Date
-}): React.JSX.Element => {
+const MessageTimestamp = ({ label, date }: { label: string; date: Date }): React.JSX.Element => {
   return (
     <time dateTime={date.toISOString()} title={messageTimestampTitleFormatter.format(date)}>
       {label} {messageTimestampFormatter.format(date)}
@@ -849,7 +843,8 @@ const WorkspaceMessageItem = ({
   const sentDate = toMessageDate(message.createdAt)
   const terminalDate = toMessageDate(terminalTimestamp)
   const turnStartedDate = toMessageDate(turnStartedAt)
-  const terminalLabel = message.status === 'error' ? t('ws.messageFailed') : t('ws.messageCompleted')
+  const terminalLabel =
+    message.status === 'error' ? t('ws.messageFailed') : t('ws.messageCompleted')
   const showRevisionNavigation =
     showUserActions && revisionNavigation && revisionNavigation.total > 1
   const [copied, setCopied] = useState(false)
@@ -1074,7 +1069,10 @@ const WorkspaceMessageItem = ({
                           className="size-3.5 text-text-300"
                           aria-hidden="true"
                         />
-                        <span aria-label={t('wsMessage.messageRevision')} className="min-w-7 text-center">
+                        <span
+                          aria-label={t('wsMessage.messageRevision')}
+                          className="min-w-7 text-center"
+                        >
                           {revisionNavigation.index + 1}/{revisionNavigation.total}
                         </span>
                         <UserMessageActionTooltip label={t('wsMessage.nextRevision')}>

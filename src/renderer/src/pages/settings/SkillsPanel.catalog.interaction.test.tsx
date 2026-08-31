@@ -45,9 +45,9 @@ let deleteSkill: Mock<(id: string) => Promise<void>>
 beforeEach(() => {
   window.localStorage.clear()
   useCatalogTagsStore.setState({ entries: {} })
-  setSkillEnabled = vi.fn<(id: string, enabled: boolean) => Promise<void>>().mockResolvedValue(
-    undefined
-  )
+  setSkillEnabled = vi
+    .fn<(id: string, enabled: boolean) => Promise<void>>()
+    .mockResolvedValue(undefined)
   deleteSkill = vi.fn<(id: string) => Promise<void>>().mockResolvedValue(undefined)
   useSettingsStore.setState({
     ...createInitialSettingsState(),
@@ -82,9 +82,9 @@ const renderPanel = (): void => {
 }
 
 const skillRow = (name: string): HTMLLIElement => {
-  const row = [...container.querySelectorAll<HTMLLIElement>('[data-slot="settings-list-row"]')].find(
-    (candidate) => candidate.textContent?.includes(name)
-  )
+  const row = [
+    ...container.querySelectorAll<HTMLLIElement>('[data-slot="settings-list-row"]')
+  ].find((candidate) => candidate.textContent?.includes(name))
   if (!row) throw new Error(`skill row "${name}" not found`)
   return row
 }
@@ -143,9 +143,9 @@ describe('SkillsPanel catalog tags and favorites', () => {
     setTagInput(skillRow('Alpha'), 'docking')
     expect(skillRow('Alpha').textContent).toContain('docking')
 
-    const chip = [...container.querySelectorAll<HTMLButtonElement>('[data-testid="catalog-filter-tag"]')].find(
-      (candidate) => candidate.textContent?.trim() === 'docking'
-    )
+    const chip = [
+      ...container.querySelectorAll<HTMLButtonElement>('[data-testid="catalog-filter-tag"]')
+    ].find((candidate) => candidate.textContent?.trim() === 'docking')
     expect(chip).toBeDefined()
     act(() => chip?.click())
 

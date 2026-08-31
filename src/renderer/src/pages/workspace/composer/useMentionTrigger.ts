@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { createArtifactChip, createSessionChip, createSkillChip, type ComposerNode } from './composer-doc'
+import {
+  createArtifactChip,
+  createSessionChip,
+  createSkillChip,
+  type ComposerNode
+} from './composer-doc'
 
 // A trigger match derived purely from the text before the caret.
 export type TriggerMatch = { active: boolean; query: string }

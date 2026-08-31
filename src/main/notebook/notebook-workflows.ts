@@ -77,9 +77,7 @@ type NotebookCommandWorkflows = {
 
 const withoutTrustedTurnContext = <
   Request extends
-    | RunNotebookCellRequest
-    | ExecuteNotebookCodeRequest
-    | InspectNotebookVariablesRequest
+    RunNotebookCellRequest | ExecuteNotebookCodeRequest | InspectNotebookVariablesRequest
 >(
   request: Request
 ): Request => {

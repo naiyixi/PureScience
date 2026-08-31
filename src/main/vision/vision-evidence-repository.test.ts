@@ -29,12 +29,29 @@ describe('VisionEvidenceRepository (SQLite-backed)', () => {
     await rm(storageRoot, { recursive: true, force: true })
   })
 
-  const makeInput = async (overrides: Record<string, string | number> = {}) => {
+  const makeInput = async (
+    overrides: Record<string, string | number> = {}
+  ): Promise<ReturnType<typeof makeInputInner>> => makeInputInner(overrides)
+
+  async function makeInputInner(
+    overrides: Record<string, string | number> = {}
+  ): Promise<{
+    identityKey: string
+    imageChecksum: string
+    extractorFingerprint: string
+    evidenceSchemaVersion: number
+    evidenceJson: string
+    projectId: string
+    sessionId: string
+    source: { kind: 'message-image'; messageId: string; imageId: string }
+    mimeType: string
+  }> {
     const imageChecksum = (overrides.imageChecksum as string) ?? (await sha256('image-bytes'))
     const extractorFingerprint =
       (overrides.extractorFingerprint as string) ?? (await sha256('extractor-v1'))
     const evidenceSchemaVersion = (overrides.evidenceSchemaVersion as number) ?? 1
-    const evidenceJson = (overrides.evidenceJson as string) ?? JSON.stringify({ caption: 'a chart' })
+    const evidenceJson =
+      (overrides.evidenceJson as string) ?? JSON.stringify({ caption: 'a chart' })
     const identityKey = await sha256(
       [imageChecksum, extractorFingerprint, String(evidenceSchemaVersion)].join('|')
     )

@@ -555,11 +555,11 @@ class ConnectorSettingsModule {
       }
       const env = server.envRefs ? this.decryptSecretRecord(server.envRefs) : server.env
       if (env && Object.keys(env).length > 0) {
-        entry.env = Object.fromEntries(
-          Object.entries(env).map(([key]) => [key, `\${${key}}`])
-        )
+        entry.env = Object.fromEntries(Object.entries(env).map(([key]) => [key, `\${${key}}`]))
       }
-      const headers = server.headerRefs ? this.decryptSecretRecord(server.headerRefs) : server.headers
+      const headers = server.headerRefs
+        ? this.decryptSecretRecord(server.headerRefs)
+        : server.headers
       if (headers && Object.keys(headers).length > 0) {
         entry.headers = Object.fromEntries(
           Object.entries(headers).map(([key]) => [key, `\${${key}}`])
@@ -577,9 +577,7 @@ class ConnectorSettingsModule {
   // Accepts both the bare server map (`{ "server": { ... } }` — Cursor's mcp.json, a raw
   // mcpServers.json) and the Claude Desktop host-file shape (`{ "mcpServers": { ... } }` from
   // claude_desktop_config.json), so an export from any of the common hosts imports directly.
-  async importMcpServers(
-    json: unknown
-  ): Promise<{ imported: string[]; skipped: string[] }> {
+  async importMcpServers(json: unknown): Promise<{ imported: string[]; skipped: string[] }> {
     const servers = normalizeMcpServersPayload(json)
     const imported: string[] = []
     const skipped: string[] = []

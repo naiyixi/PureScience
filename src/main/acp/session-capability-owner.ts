@@ -31,8 +31,14 @@ import {
 } from '../session-plan/plan-mcp-server'
 import type { MemoryMcpEnvironment, MemoryRpcConnection } from '../settings/memory-mcp-server'
 import { MEMORY_MCP_SERVER_NAME, createMemoryMcpServerConfig } from '../settings/memory-mcp-server'
-import type { ContextSummaryMcpEnvironment, ContextSummaryRpcConnection } from '../settings/context-summary-mcp-server'
-import { CONTEXT_SUMMARY_MCP_SERVER_NAME, createContextSummaryMcpServerConfig } from '../settings/context-summary-mcp-server'
+import type {
+  ContextSummaryMcpEnvironment,
+  ContextSummaryRpcConnection
+} from '../settings/context-summary-mcp-server'
+import {
+  CONTEXT_SUMMARY_MCP_SERVER_NAME,
+  createContextSummaryMcpServerConfig
+} from '../settings/context-summary-mcp-server'
 import type { AgentMcpHttpHost } from './mcp-http-host'
 
 const log = createLogger('acp')
@@ -457,7 +463,9 @@ export class AcpSessionCapabilityOwner {
         ? `skill-import-session-${timestamp}-${this.skillImportSessionSequence}`
         : '',
       plan: this.options.plan ? `plan-session-${timestamp}-${this.planSessionSequence}` : '',
-      memory: this.options.memory ? `memory-session-${timestamp}-${this.memorySessionSequence}` : '',
+      memory: this.options.memory
+        ? `memory-session-${timestamp}-${this.memorySessionSequence}`
+        : '',
       contextSummary: this.options.contextSummary
         ? `context-summary-session-${timestamp}-${this.contextSummarySessionSequence}`
         : ''

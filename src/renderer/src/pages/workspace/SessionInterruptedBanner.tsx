@@ -23,25 +23,25 @@ const SessionInterruptedBanner = ({
 }: SessionInterruptedBannerProps): React.JSX.Element => {
   const { t } = useLanguage()
   return (
-  <div className="mb-2 flex items-center gap-3 rounded-lg border border-border-200 bg-bg-200 px-3 py-2">
-    <p className="min-w-0 flex-1 text-[12px] leading-5 text-text-100">{message}</p>
-    <Button
-      type="button"
-      variant="ghost"
-      size="sm"
-      className={resumeButtonClassName}
-      onClick={onResume}
-      disabled={isDisabled || isResuming}
-      aria-label={t('ui.resumesession')}
-    >
-      {isResuming ? (
-        <Loader2 className="size-3.5 animate-spin" strokeWidth={2} aria-hidden="true" />
-      ) : (
-        <Play className="size-3.5" strokeWidth={2} aria-hidden="true" />
-      )}
-      {isResuming ? t('common.resuming') : t('common.resume')}
-    </Button>
-  </div>
+    <div className="mb-2 flex items-center gap-3 rounded-lg border border-border-200 bg-bg-200 px-3 py-2">
+      <p className="min-w-0 flex-1 text-[12px] leading-5 text-text-100">{message}</p>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className={resumeButtonClassName}
+        onClick={onResume}
+        disabled={isDisabled || isResuming}
+        aria-label={t('ui.resumesession')}
+      >
+        {isResuming ? (
+          <Loader2 className="size-3.5 animate-spin" strokeWidth={2} aria-hidden="true" />
+        ) : (
+          <Play className="size-3.5" strokeWidth={2} aria-hidden="true" />
+        )}
+        {isResuming ? t('common.resuming') : t('common.resume')}
+      </Button>
+    </div>
   )
 }
 

@@ -107,7 +107,11 @@ const WriteAuditPanel = ({ runs }: WriteAuditPanelProps): React.JSX.Element => {
           {rows.length} file change{rows.length === 1 ? '' : 's'} — created {created} · modified{' '}
           {modified} · removed {removed}
         </p>
-        <div className="mt-2 flex items-center gap-1" role="group" aria-label="Filter by change kind">
+        <div
+          className="mt-2 flex items-center gap-1"
+          role="group"
+          aria-label="Filter by change kind"
+        >
           {filterButton('all', 'All')}
           {CHANGE_KINDS.map((kind) => filterButton(kind, KIND_LABELS[kind]))}
         </div>
@@ -138,7 +142,9 @@ const WriteAuditPanel = ({ runs }: WriteAuditPanelProps): React.JSX.Element => {
                   className="border-b border-border-100 last:border-0"
                   data-testid="write-audit-row"
                 >
-                  <td className="py-1.5 pr-2 font-mono text-text-100">{row.file.relativePath ?? row.file.path}</td>
+                  <td className="py-1.5 pr-2 font-mono text-text-100">
+                    {row.file.relativePath ?? row.file.path}
+                  </td>
                   <td className="py-1.5 pr-2">
                     <span
                       className={cn(
@@ -165,4 +171,3 @@ const WriteAuditPanel = ({ runs }: WriteAuditPanelProps): React.JSX.Element => {
 }
 
 export { WriteAuditPanel }
-

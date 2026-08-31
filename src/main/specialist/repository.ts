@@ -141,7 +141,9 @@ export const sanitizeStoredSpecialist = (v: unknown): StoredSpecialist | undefin
     selectedCapabilities: sanitizeSelectedConfig(v.selectedCapabilities),
     revision,
     packageVersion: asString(v.packageVersion) ?? '0.1.0',
-    origin: (v.origin === 'imported' || v.origin === 'marketplace' ? v.origin : 'local') satisfies SpecialistOrigin,
+    origin: (v.origin === 'imported' || v.origin === 'marketplace'
+      ? v.origin
+      : 'local') satisfies SpecialistOrigin,
     ownedSkillIds: asStringArray(v.ownedSkillIds)
   }
   const importBaseline = sanitizeImportBaseline(v.importBaseline)

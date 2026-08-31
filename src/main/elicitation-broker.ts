@@ -49,7 +49,11 @@ const projectField = (
   property: ElicitationPropertySchema,
   required: boolean
 ): ElicitationFieldView | undefined => {
-  if (typeof key !== 'string' || key.length === 0 || key.length > ELICITATION_MAX_FIELD_LABEL_LENGTH) {
+  if (
+    typeof key !== 'string' ||
+    key.length === 0 ||
+    key.length > ELICITATION_MAX_FIELD_LABEL_LENGTH
+  ) {
     return undefined
   }
   let label = key

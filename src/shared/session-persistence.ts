@@ -175,9 +175,8 @@ export const isHiddenControlMessage = (
   message: Pick<PersistedChatMessage, 'turnIntent'>
 ): boolean => (message.turnIntent as string | undefined) === 'save-as-skill'
 
-export const isHumanUserMessage = (
-  message: Pick<PersistedChatMessage, 'role'>
-): boolean => message.role === 'user'
+export const isHumanUserMessage = (message: Pick<PersistedChatMessage, 'role'>): boolean =>
+  message.role === 'user'
 
 export type PersistedActiveRun = {
   promptMessageId: string
@@ -783,7 +782,9 @@ const sanitizeUploadedAttachment = (
 
 // Rebuilds an annotation card with strict bounds: unknown shapes, oversize text, and non-text
 // kinds fail closed (dropped). Only user-supplied workspace selections are accepted.
-const sanitizeConversationAnnotation = (annotation: unknown): ConversationAnnotation | undefined => {
+const sanitizeConversationAnnotation = (
+  annotation: unknown
+): ConversationAnnotation | undefined => {
   if (!isRecord(annotation)) return undefined
   const id = asString(annotation.id)
   const source = asString(annotation.source)

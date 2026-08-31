@@ -183,8 +183,11 @@ export function ConnectorsPanel({ onNavigate }: ConnectorsPanelProps): React.JSX
   const visibleConnectors = useMemo<ConnectorView[]>(() => {
     const term = query.trim().toLowerCase()
     return connectors.filter((connector) => {
-      if (term && !connector.displayName.toLowerCase().includes(term) &&
-          !connector.description.toLowerCase().includes(term)) {
+      if (
+        term &&
+        !connector.displayName.toLowerCase().includes(term) &&
+        !connector.description.toLowerCase().includes(term)
+      ) {
         return false
       }
       const entry = catalogEntries[`connector:${connector.id}`]
@@ -286,7 +289,9 @@ export function ConnectorsPanel({ onNavigate }: ConnectorsPanelProps): React.JSX
       await removeCustomServer(removal.server.id)
       setRemoval(null)
     } catch (error) {
-      setRemovalError(error instanceof Error ? error.message : t('settings.couldNotRemoveConnector'))
+      setRemovalError(
+        error instanceof Error ? error.message : t('settings.couldNotRemoveConnector')
+      )
     } finally {
       setRemoving(false)
     }
@@ -722,9 +727,14 @@ export function ConnectorsPanel({ onNavigate }: ConnectorsPanelProps): React.JSX
                     .replace('{count}', String(removal.specialistNames.length))
                     .replace(
                       '{specialist}',
-                      removal.specialistNames.length === 1 ? t('settings.specialistSingular') : t('settings.specialistPlural')
+                      removal.specialistNames.length === 1
+                        ? t('settings.specialistSingular')
+                        : t('settings.specialistPlural')
                     )
-                    .replace('{its}', removal.specialistNames.length === 1 ? t('settings.its') : t('settings.their'))}
+                    .replace(
+                      '{its}',
+                      removal.specialistNames.length === 1 ? t('settings.its') : t('settings.their')
+                    )}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {removal.specialistNames.join(', ')}

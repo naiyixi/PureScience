@@ -34,9 +34,7 @@ describe('variants-cadd', () => {
       { chrom: '7', pos: 55249071, ref: 'c', alt: 't' },
       [{ Alt: 'T', Chrom: '7', PHRED: '29.5', Pos: '55249071', RawScore: '4.210661', Ref: 'C' }]
     )
-    expect(url).toBe(
-      'https://cadd.gs.washington.edu/api/v1.0/GRCh37-v1.6/7:55249071_C_T'
-    )
+    expect(url).toBe('https://cadd.gs.washington.edu/api/v1.0/GRCh37-v1.6/7:55249071_C_T')
     expect(out).toMatchObject({
       variant_id: '7:55249071:C:T',
       phred_score: 29.5,
@@ -51,9 +49,7 @@ describe('variants-cadd', () => {
       { chrom: '7', pos: 55249071, ref: 'C', alt: 'T', version: 'GRCh38-v1.7' },
       []
     )
-    expect(url).toBe(
-      'https://cadd.gs.washington.edu/api/v1.0/GRCh38-v1.7/7:55249071_C_T'
-    )
+    expect(url).toBe('https://cadd.gs.washington.edu/api/v1.0/GRCh38-v1.7/7:55249071_C_T')
   })
 
   it('cadd_score_variant: reports found:false on an empty array (no score for build/allele)', async () => {
@@ -75,21 +71,21 @@ describe('variants-cadd', () => {
       engine.call(tool('cadd_score_variant'), { chrom: '1', pos: 1, ref: 'X', alt: 'G' }, {})
     ).rejects.toThrow(/DNA allele/)
     await expect(
-      engine.call(tool('cadd_score_variant'), { chrom: '1', pos: 1, ref: 'A', alt: 'G', version: 'bogus' }, {})
+      engine.call(
+        tool('cadd_score_variant'),
+        { chrom: '1', pos: 1, ref: 'A', alt: 'G', version: 'bogus' },
+        {}
+      )
     ).rejects.toThrow(/unknown CADD version/)
     expect(fetchImpl).not.toHaveBeenCalled()
   })
 
   it('cadd_score_at_position: returns all three SNV alternatives at a position', async () => {
-    const { out, url } = await run(
-      'cadd_score_at_position',
-      { chrom: '5', pos: 2003402 },
-      [
-        { Alt: 'A', Chrom: '5', PHRED: '0.850', Pos: '2003402', RawScore: '-0.251851', Ref: 'C' },
-        { Alt: 'G', Chrom: '5', PHRED: '1.200', Pos: '2003402', RawScore: '-0.1', Ref: 'C' },
-        { Alt: 'T', Chrom: '5', PHRED: '2.5', Pos: '2003402', RawScore: '0.3', Ref: 'C' }
-      ]
-    )
+    const { out, url } = await run('cadd_score_at_position', { chrom: '5', pos: 2003402 }, [
+      { Alt: 'A', Chrom: '5', PHRED: '0.850', Pos: '2003402', RawScore: '-0.251851', Ref: 'C' },
+      { Alt: 'G', Chrom: '5', PHRED: '1.200', Pos: '2003402', RawScore: '-0.1', Ref: 'C' },
+      { Alt: 'T', Chrom: '5', PHRED: '2.5', Pos: '2003402', RawScore: '0.3', Ref: 'C' }
+    ])
     expect(url).toBe('https://cadd.gs.washington.edu/api/v1.0/GRCh37-v1.6/5:2003402')
     expect(out).toMatchObject({
       chrom: '5',

@@ -669,9 +669,7 @@ describe('ComposerEditor', () => {
     // Simulate composition: Enter is swallowed, and Cmd+Z must not undo mid-composition.
     const editorEl = editor()
     act(() => {
-      editorEl.dispatchEvent(
-        new CompositionEvent('compositionstart', { bubbles: true })
-      )
+      editorEl.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }))
     })
     dispatchKey(editorEl, 'z', { metaKey: true })
     expect(onUndo).not.toHaveBeenCalled()

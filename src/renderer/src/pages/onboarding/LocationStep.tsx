@@ -178,8 +178,9 @@ const LocationStep = ({
 
             {chosenDataRoot ? (
               <p className="mt-2 text-xs text-text-100">
-                {t('onboarding.dataWillBeStoredIn')}<span className="font-mono">{chosenDataRoot}</span>.
-                PureScience will restart to set this up.{' '}
+                {t('onboarding.dataWillBeStoredIn')}
+                <span className="font-mono">{chosenDataRoot}</span>. PureScience will restart to set
+                this up.{' '}
                 <button
                   type="button"
                   onClick={handleResetLocation}

@@ -60,7 +60,9 @@ const RenameSessionDialog = ({
           <form onSubmit={onConfirmRename}>
             <div className={dialogHeaderClassName}>
               <div className="min-w-0">
-                <Dialog.Title className={dialogTitleClassName}>{t('renameSession.title')}</Dialog.Title>
+                <Dialog.Title className={dialogTitleClassName}>
+                  {t('renameSession.title')}
+                </Dialog.Title>
                 <Dialog.Description className={dialogDescriptionClassName}>
                   {t('renameSession.hint')}
                 </Dialog.Description>

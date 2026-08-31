@@ -79,5 +79,8 @@ const useLanguage = (): LanguageContextValue => {
   }
 }
 
+// LanguageProvider is a component; useLanguage is a hook — react-refresh wants
+// components-only exports, but this is a provider module (mixed export is by design).
+// eslint-disable-next-line react-refresh/only-export-components
 export { LanguageProvider, useLanguage }
 export type { LanguageContextValue }

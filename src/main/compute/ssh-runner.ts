@@ -240,7 +240,9 @@ export class CappedOutput {
 // authentication (when the host binds a Credentials-panel password) is injected via SSH_ASKPASS:
 // ssh calls the askpass script when it needs a password and there is no controlling tty, so the
 // secret never appears on a command line and the temp script is removed right after spawn.
-export const createSshAskPass = (password: string): {
+export const createSshAskPass = (
+  password: string
+): {
   scriptPath: string
   cleanup: () => void
 } => {

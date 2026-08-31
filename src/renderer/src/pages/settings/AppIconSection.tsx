@@ -82,9 +82,7 @@ const AppIconSection = (): React.JSX.Element => {
         })}
       </div>
 
-      <p className="mt-3 text-xs text-muted-foreground">
-        {t('settings.appIconHint')}
-      </p>
+      <p className="mt-3 text-xs text-muted-foreground">{t('settings.appIconHint')}</p>
     </SettingsSection>
   )
 }

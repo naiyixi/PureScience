@@ -10,7 +10,13 @@ const memoryFixture = {
   enabled: true,
   categories: [{ id: 'about-you', name: 'About you', createdAt: 1000 }],
   notes: [
-    { id: 'note-1', categoryId: 'about-you', text: 'Prefers concise answers', createdAt: 1001, updatedAt: 1002 }
+    {
+      id: 'note-1',
+      categoryId: 'about-you',
+      text: 'Prefers concise answers',
+      createdAt: 1001,
+      updatedAt: 1002
+    }
   ]
 }
 
@@ -66,9 +72,9 @@ describe('memory store', () => {
 
     useMemoryStore.setState({ memory: memoryFixture })
 
-    await expect(useMemoryStore.getState().updateMemory({ ...memoryFixture, enabled: false })).rejects.toThrow(
-      'disk full'
-    )
+    await expect(
+      useMemoryStore.getState().updateMemory({ ...memoryFixture, enabled: false })
+    ).rejects.toThrow('disk full')
     expect(useMemoryStore.getState().memory).toEqual(memoryFixture)
 
     vi.unstubAllGlobals()

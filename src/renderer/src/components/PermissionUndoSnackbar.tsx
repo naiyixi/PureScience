@@ -93,7 +93,13 @@ const PermissionUndoItem = ({
           ) : (
             <RotateCcw className="size-4" aria-hidden="true" />
           )}
-          {isRestoring ? (undo.retry ? t('common.retrying') : t('common.restoring')) : undo.retry ? t('common.retry') : t('common.undo')}
+          {isRestoring
+            ? undo.retry
+              ? t('common.retrying')
+              : t('common.restoring')
+            : undo.retry
+              ? t('common.retry')
+              : t('common.undo')}
         </Button>
       ) : null}
       <TooltipProvider delayDuration={200}>
@@ -175,7 +181,13 @@ const ArchiveUndoItem = ({
         ) : (
           <RotateCcw className="size-4" aria-hidden="true" />
         )}
-        {isRestoring ? (undo.retry ? t('common.retrying') : t('common.restoring')) : undo.retry ? t('common.retry') : t('common.undo')}
+        {isRestoring
+          ? undo.retry
+            ? t('common.retrying')
+            : t('common.restoring')
+          : undo.retry
+            ? t('common.retry')
+            : t('common.undo')}
       </Button>
       <TooltipProvider delayDuration={200}>
         <Tooltip>

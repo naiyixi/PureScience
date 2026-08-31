@@ -40,14 +40,15 @@ const SessionReviewerContent = ({
   // no reviewId (e.g. a session-level entry point) or that review is gone.
   const review = reviews.find((r) => r.id === item.reviewerReviewId) ?? reviews[0]
 
-  const tabButton = (value: 'checks' | 'checklist' | 'context', label: string): React.JSX.Element => (
+  const tabButton = (
+    value: 'checks' | 'checklist' | 'context',
+    label: string
+  ): React.JSX.Element => (
     <button
       type="button"
       className={cn(
         'rounded px-2 py-1 text-[11px] font-medium transition-colors',
-        tab === value
-          ? 'bg-bg-200 text-text-000'
-          : 'text-text-400 hover:text-text-300'
+        tab === value ? 'bg-bg-200 text-text-000' : 'text-text-400 hover:text-text-300'
       )}
       onClick={() => setTab(value)}
       data-testid={`reviewer-tab-${value}`}

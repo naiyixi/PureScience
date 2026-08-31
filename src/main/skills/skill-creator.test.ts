@@ -57,9 +57,8 @@ describe('SkillCreator', () => {
   it('bounds oversize descriptions and instructions', async () => {
     const longDescription = 'x'.repeat(201)
     expect(
-      (
-        await creator.create({ name: 'ok-name', description: longDescription, instructions: 'i' })
-      ).created
+      (await creator.create({ name: 'ok-name', description: longDescription, instructions: 'i' }))
+        .created
     ).toBe(false)
     const longInstructions = 'y'.repeat(20_001)
     expect(

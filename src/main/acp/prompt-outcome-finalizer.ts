@@ -26,7 +26,10 @@ export type AcpPromptFinalizationHandles = Readonly<{
   sessionId: string
   promptMessageId?: string
   interaction: AcpPromptSessionInteractionScope
-  interactions: Pick<InteractionOwner, 'captureTerminal' | 'current' | 'isCancellationAccepted' | 'release' | 'settle'>
+  interactions: Pick<
+    InteractionOwner,
+    'captureTerminal' | 'current' | 'isCancellationAccepted' | 'release' | 'settle'
+  >
   permission: Pick<AcpPermissionContext, 'clearCorrelationsForSession'>
   prepared?: Pick<PreparedPromptHandle, 'close'>
   context?: ContextUsageTurnHandle

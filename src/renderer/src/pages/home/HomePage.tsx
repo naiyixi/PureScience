@@ -59,10 +59,12 @@ const getRequiredEnvironmentFailures = (
 // present, otherwise the first user prompt (kept as a fallback for older sessions).
 const getSessionPreview = (session: ChatSession): string => {
   if (session.description) return session.description
-  return session.messages
-    .find((message) => message.role === 'user')
-    ?.content.replace(/\s+/g, ' ')
-    .trim() ?? ''
+  return (
+    session.messages
+      .find((message) => message.role === 'user')
+      ?.content.replace(/\s+/g, ' ')
+      .trim() ?? ''
+  )
 }
 
 const sectionHeadingClassName =
@@ -319,10 +321,9 @@ const HomePage = ({
 
   const formTitle = formState?.mode === 'edit' ? t('home.editProject') : t('home.newProject')
   const formDescription =
-    formState?.mode === 'edit'
-      ? t('home.renameProjectHint')
-      : t('home.createProjectHint')
-  const formSubmitLabel = formState?.mode === 'edit' ? t('home.saveChanges') : t('home.createProject')
+    formState?.mode === 'edit' ? t('home.renameProjectHint') : t('home.createProjectHint')
+  const formSubmitLabel =
+    formState?.mode === 'edit' ? t('home.saveChanges') : t('home.createProject')
 
   return (
     <main className="min-h-svh bg-bg-10 text-text-000">
@@ -431,7 +432,10 @@ const HomePage = ({
                     </button>
                     <span className="shrink-0 text-xs text-text-100">
                       {hasCompleteSessionCatalog
-                        ? (sessionCount === 1 ? t('home.sessionCountOne') : t('home.sessionCount')).replace('{n}', String(sessionCount))
+                        ? (sessionCount === 1
+                            ? t('home.sessionCountOne')
+                            : t('home.sessionCount')
+                          ).replace('{n}', String(sessionCount))
                         : t('home.sessionCountUnavailable')}
                     </span>
                     <span className="hidden w-8 shrink-0 text-right text-xs text-text-300 sm:inline">
@@ -469,7 +473,9 @@ const HomePage = ({
                             onSelect={() => archiveProject(project)}
                           >
                             <Archive className="size-4" strokeWidth={2} aria-hidden="true" />
-                            {archivingProjectIds.has(project.id) ? t('home.archiving') : t('home.archive')}
+                            {archivingProjectIds.has(project.id)
+                              ? t('home.archiving')
+                              : t('home.archive')}
                           </DropdownMenu.Item>
                           <DropdownMenu.Separator className="mx-1 my-1 h-px bg-border-300" />
                           <DropdownMenu.Item

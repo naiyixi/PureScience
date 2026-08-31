@@ -4,7 +4,7 @@ import {
   MessageScrollerContent,
   MessageScrollerProvider,
   MessageScrollerViewport,
-  useMessageScrollerVisibility,
+  useMessageScrollerVisibility
 } from '@/components/ui/message-scroller'
 // Bounded transcript rendering thresholds (see boundedRenderWindow below).
 const BOUNDED_RENDER_ITEM_THRESHOLD = 150
@@ -763,224 +763,235 @@ const WorkspaceMessageScrollerImpl = ({
             <WorkspaceMessageScrollerInner
               conversationItems={conversationItems}
               render={(boundedRenderWindow) => (
-            <MessageScrollerContent className="gap-0 px-4">
-              <div className={conversationContentClassName}>
-                {/* Messages and tool activities share one sorted transcript timeline. */}
-                {conversationItems.map((item, itemIndex) => {
-                  // Far-off items collapse to a fixed-height skeleton placeholder. The window
-                  // slides as the user scrolls, so approaching items render fully in time.
-                  if (
-                    boundedRenderWindow &&
-                    (itemIndex < boundedRenderWindow.first || itemIndex > boundedRenderWindow.last)
-                  ) {
-                    return (
-                      <MessageScrollerItem
-                        key={item.id}
-                        messageId={item.id}
-                        className="min-w-0"
-                        aria-hidden="true"
-                      >
-                        <div className="h-24 animate-pulse rounded-lg bg-muted/40" />
-                      </MessageScrollerItem>
-                    )
-                  }
-                  if (item.type === 'message') {
-                    const artifacts =
-                      activeSession && item.message.role !== 'user'
-                        ? getMessageArtifacts(
-                            activeSession,
-                            item.message,
-                            historicalArtifactsByVersionId
-                          )
-                        : []
-                    // Jobs pre-assigned to this slot: each job appears in exactly one slot.
-                    const jobsBeforeMessage = jobSlotsByItemIndex.get(itemIndex) ?? []
-                    const graph = activeSession?.conversationGraph
-                    const messageNode = graph?.messages.find(
-                      (message) => message.id === item.message.id
-                    )
-                    const runtimeSegment = messageNode?.runtimeSegmentId
-                      ? graph?.runtimeSegments.find(
-                          (segment) => segment.id === messageNode.runtimeSegmentId
+                <MessageScrollerContent className="gap-0 px-4">
+                  <div className={conversationContentClassName}>
+                    {/* Messages and tool activities share one sorted transcript timeline. */}
+                    {conversationItems.map((item, itemIndex) => {
+                      // Far-off items collapse to a fixed-height skeleton placeholder. The window
+                      // slides as the user scrolls, so approaching items render fully in time.
+                      if (
+                        boundedRenderWindow &&
+                        (itemIndex < boundedRenderWindow.first ||
+                          itemIndex > boundedRenderWindow.last)
+                      ) {
+                        return (
+                          <MessageScrollerItem
+                            key={item.id}
+                            messageId={item.id}
+                            className="min-w-0"
+                            aria-hidden="true"
+                          >
+                            <div className="h-24 animate-pulse rounded-lg bg-muted/40" />
+                          </MessageScrollerItem>
                         )
-                      : undefined
-                    // Legacy sessions synthesize this segment with a fallback framework. Keep only
-                    // the session-level values that were actually persisted.
-                    const synthesizedLegacyRuntime =
-                      runtimeSegment?.id === `runtime-segment-${activeSession?.id}` &&
-                      !activeSession?.agentFrameworkId
-                    const runtimeIdentity = synthesizedLegacyRuntime
-                      ? activeSession?.agentBackendId || activeSession?.agentModel
-                        ? {
-                            backendId: activeSession.agentBackendId,
-                            model: activeSession.agentModel
-                          }
-                        : undefined
-                      : runtimeSegment
-                    const revisionRootMessageId = messageNode?.revisionRootMessageId
-                    const revisions = revisionRootMessageId
-                      ? (graph?.messages
-                          .filter(
-                            (message) =>
-                              message.role === 'user' &&
-                              message.revisionRootMessageId === revisionRootMessageId
-                          )
-                          .sort(
-                            (left, right) =>
-                              left.createdAt - right.createdAt || left.id.localeCompare(right.id)
-                          ) ?? [])
-                      : []
-                    const revisionIndex = revisions.findIndex(
-                      (message) => message.id === item.message.id
-                    )
-                    const activateRevision = (index: number): (() => void) | undefined => {
-                      const revision = revisions[index]
-                      return revision && activeSession
-                        ? () =>
-                            useSessionStore
-                              .getState()
-                              .activateMessageBranch(
-                                activeSession.id,
-                                revision.introducedOnBranchId
+                      }
+                      if (item.type === 'message') {
+                        const artifacts =
+                          activeSession && item.message.role !== 'user'
+                            ? getMessageArtifacts(
+                                activeSession,
+                                item.message,
+                                historicalArtifactsByVersionId
                               )
-                        : undefined
-                    }
-                    const messageItemProps: EditableWorkspaceMessageItemProps = {
-                      message: item.message,
-                      onPreviewArtifact,
-                      onPreviewUploadAttachment,
-                      onOpenSkillMention,
-                      onPreviewMentionArtifact,
-                      onOpenSessionMention,
-                      onAnnotateImage,
-                      onSendEditedMessage,
-                      canBranchInNewSession,
-                      onBranchInNewSession,
-                      turnStartedAt: item.message.responseToMessageId
-                        ? messageCreatedAtById.get(item.message.responseToMessageId)
-                        : undefined,
-                      runtimeIdentity,
-                      showAssistantFooter:
-                        item.message.role !== 'agent' ||
-                        assistantFooterMessageIds.has(item.message.id),
-                      subsequentTurns: subsequentTurnCountByMessageId.get(item.message.id) ?? 0,
-                      revisionNavigation:
-                        revisionIndex >= 0 && revisions.length > 1
-                          ? {
-                              index: revisionIndex,
-                              total: revisions.length,
-                              onPrevious: activateRevision(revisionIndex - 1),
-                              onNext: activateRevision(revisionIndex + 1)
-                            }
-                          : undefined,
-                      artifacts
-                    }
+                            : []
+                        // Jobs pre-assigned to this slot: each job appears in exactly one slot.
+                        const jobsBeforeMessage = jobSlotsByItemIndex.get(itemIndex) ?? []
+                        const graph = activeSession?.conversationGraph
+                        const messageNode = graph?.messages.find(
+                          (message) => message.id === item.message.id
+                        )
+                        const runtimeSegment = messageNode?.runtimeSegmentId
+                          ? graph?.runtimeSegments.find(
+                              (segment) => segment.id === messageNode.runtimeSegmentId
+                            )
+                          : undefined
+                        // Legacy sessions synthesize this segment with a fallback framework. Keep only
+                        // the session-level values that were actually persisted.
+                        const synthesizedLegacyRuntime =
+                          runtimeSegment?.id === `runtime-segment-${activeSession?.id}` &&
+                          !activeSession?.agentFrameworkId
+                        const runtimeIdentity = synthesizedLegacyRuntime
+                          ? activeSession?.agentBackendId || activeSession?.agentModel
+                            ? {
+                                backendId: activeSession.agentBackendId,
+                                model: activeSession.agentModel
+                              }
+                            : undefined
+                          : runtimeSegment
+                        const revisionRootMessageId = messageNode?.revisionRootMessageId
+                        const revisions = revisionRootMessageId
+                          ? (graph?.messages
+                              .filter(
+                                (message) =>
+                                  message.role === 'user' &&
+                                  message.revisionRootMessageId === revisionRootMessageId
+                              )
+                              .sort(
+                                (left, right) =>
+                                  left.createdAt - right.createdAt ||
+                                  left.id.localeCompare(right.id)
+                              ) ?? [])
+                          : []
+                        const revisionIndex = revisions.findIndex(
+                          (message) => message.id === item.message.id
+                        )
+                        const activateRevision = (index: number): (() => void) | undefined => {
+                          const revision = revisions[index]
+                          return revision && activeSession
+                            ? () =>
+                                useSessionStore
+                                  .getState()
+                                  .activateMessageBranch(
+                                    activeSession.id,
+                                    revision.introducedOnBranchId
+                                  )
+                            : undefined
+                        }
+                        const messageItemProps: EditableWorkspaceMessageItemProps = {
+                          message: item.message,
+                          onPreviewArtifact,
+                          onPreviewUploadAttachment,
+                          onOpenSkillMention,
+                          onPreviewMentionArtifact,
+                          onOpenSessionMention,
+                          onAnnotateImage,
+                          onSendEditedMessage,
+                          canBranchInNewSession,
+                          onBranchInNewSession,
+                          turnStartedAt: item.message.responseToMessageId
+                            ? messageCreatedAtById.get(item.message.responseToMessageId)
+                            : undefined,
+                          runtimeIdentity,
+                          showAssistantFooter:
+                            item.message.role !== 'agent' ||
+                            assistantFooterMessageIds.has(item.message.id),
+                          subsequentTurns: subsequentTurnCountByMessageId.get(item.message.id) ?? 0,
+                          revisionNavigation:
+                            revisionIndex >= 0 && revisions.length > 1
+                              ? {
+                                  index: revisionIndex,
+                                  total: revisions.length,
+                                  onPrevious: activateRevision(revisionIndex - 1),
+                                  onNext: activateRevision(revisionIndex + 1)
+                                }
+                              : undefined,
+                          artifacts
+                        }
 
-                    return (
+                        return (
+                          <MessageScrollerItem
+                            key={item.id}
+                            messageId={item.message.id}
+                            disableContainment
+                            className="min-w-0"
+                          >
+                            <div>
+                              {/* Unbound completed jobs that belong chronologically before this message */}
+                              {jobsBeforeMessage.map((job) => (
+                                <MessageScrollerItem
+                                  key={`completed-job-${job.job_id}`}
+                                  messageId={`completed-job-${job.job_id}`}
+                                  className="min-w-0"
+                                >
+                                  <div className="px-4 py-1 md:px-6">
+                                    <div className="mx-auto w-full max-w-4xl">
+                                      <CompletedJobCard job={job} onOpen={handleOpenJobDetail} />
+                                    </div>
+                                  </div>
+                                </MessageScrollerItem>
+                              ))}
+                              {item.message.role === 'user' ? (
+                                <EditableWorkspaceMessageItem {...messageItemProps} />
+                              ) : (
+                                <WorkspaceMessageItem
+                                  {...messageItemProps}
+                                  canEditMessage={false}
+                                />
+                              )}
+                              {currentSessionId && item.message.role === 'agent' ? (
+                                <WorkspaceMessageReview
+                                  projectId={currentProjectId}
+                                  sessionId={currentSessionId}
+                                  turnMessageId={item.message.id}
+                                  onGoToTranscript={handleGoToTranscript}
+                                  onRerun={handleRerunReview}
+                                />
+                              ) : null}
+                            </div>
+                          </MessageScrollerItem>
+                        )
+                      }
+
+                      if (item.type === 'handoff') {
+                        return (
+                          <MessageScrollerItem
+                            key={item.id}
+                            messageId={item.id}
+                            className="min-w-0"
+                          >
+                            <div className="px-4 pb-1 pt-3 md:px-6">
+                              <div className="mx-auto w-full max-w-[56rem]">
+                                <HandoffLifecycleStatus
+                                  handoff={item}
+                                  onRetry={
+                                    item.phase === 'failed' && onRetryHandoff
+                                      ? async () =>
+                                          onRetryHandoff({
+                                            sessionId: item.sessionId,
+                                            originatingTurnId: item.originatingTurnId
+                                          })
+                                      : undefined
+                                  }
+                                />
+                              </div>
+                            </div>
+                          </MessageScrollerItem>
+                        )
+                      }
+
+                      if (item.type === 'plan-activity') {
+                        return (
+                          <WorkspacePlanActivityRecord key={item.id} activity={item.activity} />
+                        )
+                      }
+
+                      return (
+                        <WorkspaceActivityGroup
+                          key={item.id}
+                          group={item}
+                          isExpanded={!collapsedActivityGroups.has(item.id)}
+                          onToggleGroup={toggleActivityGroup}
+                          expansionOverrides={activityExpansionOverrides}
+                          onToggleRow={toggleActivityRow}
+                          jobsByActivityId={jobsByActivityId}
+                          onOpenJobDetail={handleOpenJobDetail}
+                        />
+                      )
+                    })}
+
+                    {/* Render any remaining unbound completed jobs after all conversation items */}
+                    {trailingJobs.map((job) => (
                       <MessageScrollerItem
-                        key={item.id}
-                        messageId={item.message.id}
-                        disableContainment
+                        key={`completed-job-${job.job_id}`}
+                        messageId={`completed-job-${job.job_id}`}
                         className="min-w-0"
                       >
-                        <div>
-                          {/* Unbound completed jobs that belong chronologically before this message */}
-                          {jobsBeforeMessage.map((job) => (
-                            <MessageScrollerItem
-                              key={`completed-job-${job.job_id}`}
-                              messageId={`completed-job-${job.job_id}`}
-                              className="min-w-0"
-                            >
-                              <div className="px-4 py-1 md:px-6">
-                                <div className="mx-auto w-full max-w-4xl">
-                                  <CompletedJobCard job={job} onOpen={handleOpenJobDetail} />
-                                </div>
-                              </div>
-                            </MessageScrollerItem>
-                          ))}
-                          {item.message.role === 'user' ? (
-                            <EditableWorkspaceMessageItem {...messageItemProps} />
-                          ) : (
-                            <WorkspaceMessageItem {...messageItemProps} canEditMessage={false} />
-                          )}
-                          {currentSessionId && item.message.role === 'agent' ? (
-                            <WorkspaceMessageReview
-                              projectId={currentProjectId}
-                              sessionId={currentSessionId}
-                              turnMessageId={item.message.id}
-                              onGoToTranscript={handleGoToTranscript}
-                              onRerun={handleRerunReview}
-                            />
-                          ) : null}
-                        </div>
-                      </MessageScrollerItem>
-                    )
-                  }
-
-                  if (item.type === 'handoff') {
-                    return (
-                      <MessageScrollerItem key={item.id} messageId={item.id} className="min-w-0">
-                        <div className="px-4 pb-1 pt-3 md:px-6">
-                          <div className="mx-auto w-full max-w-[56rem]">
-                            <HandoffLifecycleStatus
-                              handoff={item}
-                              onRetry={
-                                item.phase === 'failed' && onRetryHandoff
-                                  ? async () =>
-                                      onRetryHandoff({
-                                        sessionId: item.sessionId,
-                                        originatingTurnId: item.originatingTurnId
-                                      })
-                                  : undefined
-                              }
-                            />
+                        <div className="px-4 py-1 md:px-6">
+                          <div className="mx-auto w-full max-w-4xl">
+                            <CompletedJobCard job={job} onOpen={handleOpenJobDetail} />
                           </div>
                         </div>
                       </MessageScrollerItem>
-                    )
-                  }
+                    ))}
 
-                  if (item.type === 'plan-activity') {
-                    return <WorkspacePlanActivityRecord key={item.id} activity={item.activity} />
-                  }
-
-                  return (
-                    <WorkspaceActivityGroup
-                      key={item.id}
-                      group={item}
-                      isExpanded={!collapsedActivityGroups.has(item.id)}
-                      onToggleGroup={toggleActivityGroup}
-                      expansionOverrides={activityExpansionOverrides}
-                      onToggleRow={toggleActivityRow}
-                      jobsByActivityId={jobsByActivityId}
-                      onOpenJobDetail={handleOpenJobDetail}
-                    />
-                  )
-                })}
-
-                {/* Render any remaining unbound completed jobs after all conversation items */}
-                {trailingJobs.map((job) => (
-                  <MessageScrollerItem
-                    key={`completed-job-${job.job_id}`}
-                    messageId={`completed-job-${job.job_id}`}
-                    className="min-w-0"
-                  >
-                    <div className="px-4 py-1 md:px-6">
-                      <div className="mx-auto w-full max-w-4xl">
-                        <CompletedJobCard job={job} onOpen={handleOpenJobDetail} />
-                      </div>
-                    </div>
-                  </MessageScrollerItem>
-                ))}
-
-                {agentLoadingPhase !== 'hidden' && activeSession ? (
-                  <WorkspaceAgentLoadingRow
-                    sessionId={activeSession.id}
-                    phase={agentLoadingPhase}
-                  />
-                ) : null}
-              </div>
-            </MessageScrollerContent>
+                    {agentLoadingPhase !== 'hidden' && activeSession ? (
+                      <WorkspaceAgentLoadingRow
+                        sessionId={activeSession.id}
+                        phase={agentLoadingPhase}
+                      />
+                    ) : null}
+                  </div>
+                </MessageScrollerContent>
               )}
             />
           </MessageScrollerViewport>

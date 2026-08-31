@@ -13,11 +13,27 @@ vi.mock('@/i18n', () => ({
 
 vi.mock('@/components/ui/button', () => ({
   Button: ({ children, ...props }: React.PropsWithChildren): React.JSX.Element => (
-    <button type="button" {...props}>{children}</button>
+    <button type="button" {...props}>
+      {children}
+    </button>
   )
 }))
 
-const usageMessage = (id: string, createdAt: number, input: number, cache: number, output: number) => ({
+const usageMessage = (
+  id: string,
+  createdAt: number,
+  input: number,
+  cache: number,
+  output: number
+): {
+  id: string
+  role: 'agent'
+  content: string
+  createdAt: number
+  status: 'complete'
+  eventIds: never[]
+  turnUsage: { inputTokens: number; cacheTokens: number; outputTokens: number; turnCount: number }
+} => ({
   id,
   role: 'agent' as const,
   content: `turn ${id}`,
@@ -33,10 +49,7 @@ const baseSession = {
   title: 'Session',
   cwd: '/tmp',
   status: 'idle' as const,
-  messages: [
-    usageMessage('m1', 1000, 100, 50, 20),
-    usageMessage('m2', 2000, 300, 80, 40)
-  ],
+  messages: [usageMessage('m1', 1000, 100, 50, 20), usageMessage('m2', 2000, 300, 80, 40)],
   activities: [],
   createdAt: 1000,
   updatedAt: 2000

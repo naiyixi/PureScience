@@ -245,7 +245,10 @@ class AcpPromptPreparationOwner {
           ...(input.request.historyImages ?? []).map(() => undefined),
           ...(input.request.attachments ?? []).map((attachment) =>
             attachment.versionId
-              ? ({ kind: 'upload-version' as const, uploadVersionId: attachment.versionId } as const)
+              ? ({
+                  kind: 'upload-version' as const,
+                  uploadVersionId: attachment.versionId
+                } as const)
               : undefined
           )
         ]

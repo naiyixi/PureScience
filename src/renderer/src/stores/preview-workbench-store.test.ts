@@ -615,7 +615,9 @@ describe('preview workbench store', () => {
     const store = usePreviewWorkbenchStore.getState()
 
     store.upsertAndActivateItem(createWebPreviewItem('session-1', 'https://example.com/paper'))
-    store.upsertAndActivateItem(createWebPreviewItem('session-1', 'https://pubmed.ncbi.nlm.nih.gov/123'))
+    store.upsertAndActivateItem(
+      createWebPreviewItem('session-1', 'https://pubmed.ncbi.nlm.nih.gov/123')
+    )
     store.upsertAndActivateItem(createWebPreviewItem('session-2', 'https://example.com/paper'))
 
     expect(usePreviewWorkbenchStore.getState().items).toHaveLength(3)

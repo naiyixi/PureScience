@@ -34,11 +34,7 @@ describe('WebPreviewSurface', () => {
     container.remove()
   })
 
-  const renderSurface = (props: {
-    url: string
-    title: string
-    isActive: boolean
-  }): Promise<void> =>
+  const renderSurface = (props: { url: string; title: string; isActive: boolean }): Promise<void> =>
     act(async () => {
       root.render(<WebPreviewSurface {...props} />)
     })
@@ -56,7 +52,11 @@ describe('WebPreviewSurface', () => {
   })
 
   it('shows the hostname and full URL in the header bar', async () => {
-    await renderSurface({ url: 'https://pubmed.ncbi.nlm.nih.gov/123', title: 'PubMed', isActive: true })
+    await renderSurface({
+      url: 'https://pubmed.ncbi.nlm.nih.gov/123',
+      title: 'PubMed',
+      isActive: true
+    })
 
     expect(container.textContent).toContain('pubmed.ncbi.nlm.nih.gov')
     expect(container.textContent).toContain('https://pubmed.ncbi.nlm.nih.gov/123')
@@ -121,7 +121,9 @@ describe('WebPreviewSurface', () => {
 
     await renderSurface({ url: 'https://example.com/paper', title: 'Paper', isActive: true })
 
-    const button = container.querySelector<HTMLButtonElement>('[aria-label="Open in system browser"]')
+    const button = container.querySelector<HTMLButtonElement>(
+      '[aria-label="Open in system browser"]'
+    )
     await act(async () => {
       button?.click()
     })

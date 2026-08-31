@@ -23,10 +23,7 @@ type SessionHoverCardProps = {
   anchor: SessionHoverAnchor
 }
 
-export const SessionHoverCard = ({
-  session,
-  anchor
-}: SessionHoverCardProps): React.JSX.Element => {
+export const SessionHoverCard = ({ session, anchor }: SessionHoverCardProps): React.JSX.Element => {
   const viewportWidth = window.innerWidth
   const viewportHeight = window.innerHeight
 

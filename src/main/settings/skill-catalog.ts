@@ -293,10 +293,7 @@ class SkillCatalogModule {
   }
 
   async importSkill(request: ImportSkillRequest): Promise<ImportSkillResult> {
-    const outcome = await this.userSkills.importFromGitHub(
-      request.url,
-      await this.githubFetch()
-    )
+    const outcome = await this.userSkills.importFromGitHub(request.url, await this.githubFetch())
     return { ...outcome, skills: await this.listSkills() }
   }
 
@@ -344,10 +341,7 @@ class SkillCatalogModule {
   async previewGitHubSkill(request: PreviewGitHubSkillRequest): Promise<SkillImportPreviewContent> {
     const location = parseGitHubSkillUrl(request.url)
     if (!location) throw new Error('Not a recognizable GitHub URL.')
-    const preview = await this.userSkills.previewGitHubSkill(
-      request.url,
-      await this.githubFetch()
-    )
+    const preview = await this.userSkills.previewGitHubSkill(request.url, await this.githubFetch())
     const suffix = location.path ? `/${location.path}` : ''
     const revision = location.ref ? `@${location.ref}` : ''
     return {

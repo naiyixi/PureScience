@@ -288,7 +288,9 @@ const NotificationBell = ({
                         {t('notifications.title')}
                       </div>
                       <div className={cn('text-text-300', isMobile ? 'text-xs' : 'text-[11px]')}>
-                        {unreadCount > 0 ? `${unreadCount} ${t('notifications.unreadCount')}` : t('notifications.allCaughtUp')}
+                        {unreadCount > 0
+                          ? `${unreadCount} ${t('notifications.unreadCount')}`
+                          : t('notifications.allCaughtUp')}
                       </div>
                     </div>
                   </div>
@@ -318,7 +320,9 @@ const NotificationBell = ({
                     </div>
                   ) : items.length === 0 ? (
                     <div className="px-3 py-10 text-center text-sm text-text-300">
-                      {status === 'loading' ? t('notifications.loadingMessages') : t('notifications.noMessages')}
+                      {status === 'loading'
+                        ? t('notifications.loadingMessages')
+                        : t('notifications.noMessages')}
                     </div>
                   ) : (
                     items.map((item) => {
@@ -377,7 +381,8 @@ const NotificationBell = ({
                                 isMobile ? 'text-sm leading-5' : 'text-[11px] leading-4'
                               )}
                             >
-                              {item.summary === 'A task update was waiting before the message center upgrade.'
+                              {item.summary ===
+                              'A task update was waiting before the message center upgrade.'
                                 ? t('notifications.previousTaskUpdateDesc')
                                 : item.summary}
                             </span>

@@ -10,40 +10,102 @@ const sha256 = async (value: string): Promise<string> => {
 }
 
 // A provider that supports image input and is framework-compatible.
-const makeProvider = (overrides: Record<string, unknown> = {}) => ({
-  id: 'vision-provider',
-  type: 'custom',
-  name: 'Vision Provider',
-  baseUrl: 'https://vision.example.com/v1',
-  model: 'vision-model',
-  supportsImageInput: true,
-  lastValidatedAt: Date.now(),
-  ...overrides
-})
+const makeProvider = (
+  overrides: Record<string, unknown> = {}
+): ReturnType<typeof makeProviderInner> => makeProviderInner(overrides)
 
-const makeRuntimeTarget = (overrides: Record<string, unknown> = {}) => ({
-  providerId: 'vision-provider',
-  providerType: 'custom',
-  effectiveModel: 'vision-model',
-  apiEndpoints: ['openai'],
-  provider: { supportsImageInput: true },
-  reasoningEffortProfile: { supported: true },
-  frameworkCompatible: true,
-  modelBridgeSupported: true,
-  ...overrides
-})
+function makeProviderInner(
+  overrides: Record<string, unknown> = {}
+): {
+  id: string
+  type: string
+  name: string
+  baseUrl: string
+  model: string
+  supportsImageInput: boolean
+  lastValidatedAt: number
+  [key: string]: unknown
+} {
+  return {
+    id: 'vision-provider',
+    type: 'custom',
+    name: 'Vision Provider',
+    baseUrl: 'https://vision.example.com/v1',
+    model: 'vision-model',
+    supportsImageInput: true,
+    lastValidatedAt: Date.now(),
+    ...overrides
+  }
+}
 
-const makeSettings = (overrides: Record<string, unknown> = {}) => ({
-  version: 1,
-  providers: [makeProvider()],
-  ...overrides
-})
+const makeRuntimeTarget = (
+  overrides: Record<string, unknown> = {}
+): ReturnType<typeof makeRuntimeTargetInner> => makeRuntimeTargetInner(overrides)
 
-const createOwner = (overrides: {
-  repository?: Partial<Record<keyof SettingsRepository, unknown>>
-  providers?: Partial<Record<keyof ProviderAccountsModule, unknown>>
-  backendResolver?: Record<string, unknown>
-} = {}) => {
+function makeRuntimeTargetInner(
+  overrides: Record<string, unknown> = {}
+): {
+  providerId: string
+  providerType: string
+  effectiveModel: string
+  apiEndpoints: string[]
+  provider: { supportsImageInput: boolean }
+  reasoningEffortProfile: { supported: boolean }
+  frameworkCompatible: boolean
+  modelBridgeSupported: boolean
+  [key: string]: unknown
+} {
+  return {
+    providerId: 'vision-provider',
+    providerType: 'custom',
+    effectiveModel: 'vision-model',
+    apiEndpoints: ['openai'],
+    provider: { supportsImageInput: true },
+    reasoningEffortProfile: { supported: true },
+    frameworkCompatible: true,
+    modelBridgeSupported: true,
+    ...overrides
+  }
+}
+
+const makeSettings = (
+  overrides: Record<string, unknown> = {}
+): ReturnType<typeof makeSettingsInner> => makeSettingsInner(overrides)
+
+function makeSettingsInner(
+  overrides: Record<string, unknown> = {}
+): {
+  version: number
+  providers: ReturnType<typeof makeProvider>[]
+  [key: string]: unknown
+} {
+  return {
+    version: 1,
+    providers: [makeProvider()],
+    ...overrides
+  }
+}
+
+const createOwner = (
+  overrides: {
+    repository?: Partial<Record<keyof SettingsRepository, unknown>>
+    providers?: Partial<Record<keyof ProviderAccountsModule, unknown>>
+    backendResolver?: Record<string, unknown>
+  } = {}
+): ReturnType<typeof createOwnerInner> => createOwnerInner(overrides)
+
+function createOwnerInner(
+  overrides: {
+    repository?: Partial<Record<keyof SettingsRepository, unknown>>
+    providers?: Partial<Record<keyof ProviderAccountsModule, unknown>>
+    backendResolver?: Record<string, unknown>
+  } = {}
+): {
+  owner: VisionModelOwner
+  repository: SettingsRepository
+  providers: ProviderAccountsModule
+  backendResolver: { captureConfiguredSelection: ReturnType<typeof vi.fn> }
+} {
   const repository = {
     getSettings: vi.fn(async () => makeSettings()),
     setVisionModel: vi.fn(async () => makeSettings()),

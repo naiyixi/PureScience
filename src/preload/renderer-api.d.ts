@@ -501,9 +501,7 @@ export interface PureScienceAPI {
     setMemory(memory: MemorySettings): Promise<MemorySettings>
     setUseIntent(useIntent: 'commercial' | 'non-commercial'): Promise<SettingsSnapshot>
     getCredentials(): Promise<CredentialView[]>
-    getThirdPartyLicenses(): Promise<
-      { name: string; version: string; license: string }[]
-    >
+    getThirdPartyLicenses(): Promise<{ name: string; version: string; license: string }[]>
     setCredential(request: SetCredentialRequest): Promise<CredentialView>
     deleteCredential(id: string): Promise<CredentialView[]>
     testCredential(request: TestCredentialRequest): Promise<CredentialTestResult>

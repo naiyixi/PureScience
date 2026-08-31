@@ -240,9 +240,7 @@ const ComposerAgentControlsMenu = ({
                   isFull ? 'text-amber-600/70 dark:text-amber-400/70' : 'text-text-300'
                 )}
               >
-                {isDisabled
-                  ? t('settings.noNativeBypassMode')
-                  : t(candidate.description)}
+                {isDisabled ? t('settings.noNativeBypassMode') : t(candidate.description)}
               </span>
             </span>
             {isSelected ? (
@@ -292,7 +290,9 @@ const ComposerAgentControlsMenu = ({
           <button
             type="button"
             className={triggerButtonClassName}
-            aria-label={t('settings.agentControlsAria').replace('{profile}', t(selectedProfile.label)).replace('{review}', autoReviewEnabled ? t('settings.on') : t('settings.off'))}
+            aria-label={t('settings.agentControlsAria')
+              .replace('{profile}', t(selectedProfile.label))
+              .replace('{review}', autoReviewEnabled ? t('settings.on') : t('settings.off'))}
             data-testid="composer-controls-trigger"
           >
             <SlidersHorizontal className="size-4 shrink-0" strokeWidth={2} aria-hidden="true" />
@@ -381,7 +381,9 @@ const ComposerAgentControlsMenu = ({
                   aria-hidden="true"
                 />
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[13px] font-medium leading-5">{t('ws.autoReview')}</span>
+                  <span className="block text-[13px] font-medium leading-5">
+                    {t('ws.autoReview')}
+                  </span>
                   <span className="block text-[11px] leading-4 text-text-300">
                     {t('ws.autoReviewDesc')}
                   </span>
@@ -471,7 +473,9 @@ const ComposerAgentControlsMenu = ({
                     aria-hidden="true"
                   />
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[13px] font-medium leading-5">{t('ws.compute')}</span>
+                    <span className="block text-[13px] font-medium leading-5">
+                      {t('ws.compute')}
+                    </span>
                     <span className="block text-[11px] leading-4 text-text-300">
                       {t('ws.computeHint')}
                     </span>

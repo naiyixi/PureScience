@@ -18,9 +18,7 @@ const savedView: CredentialView = {
   updatedAt: 1751932800000
 }
 
-const createTestResult = (
-  overrides: Partial<CredentialTestResult> = {}
-): CredentialTestResult => ({
+const createTestResult = (overrides: Partial<CredentialTestResult> = {}): CredentialTestResult => ({
   ok: false,
   message: 'GitHub rejected the token (unauthorized).',
   kind: 'auth',

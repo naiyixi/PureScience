@@ -55,13 +55,19 @@ const ChunkRow = ({ chunk }: { chunk: ContextSummaryChunkView }): React.JSX.Elem
           </p>
         </div>
         <ChevronRight
-          className={cn('h-3.5 w-3.5 shrink-0 text-text-400 transition-transform', expanded && 'rotate-90')}
+          className={cn(
+            'h-3.5 w-3.5 shrink-0 text-text-400 transition-transform',
+            expanded && 'rotate-90'
+          )}
           aria-hidden
         />
       </button>
 
       {expanded && (
-        <div className="mt-2 space-y-2 border-t border-border-200 pt-2" data-testid="fold-chunk-body">
+        <div
+          className="mt-2 space-y-2 border-t border-border-200 pt-2"
+          data-testid="fold-chunk-body"
+        >
           <p className="text-xs leading-relaxed text-text-300">{chunk.summaryText}</p>
           {chunk.transcriptPreview && (
             <details className="text-[11px]">
@@ -86,18 +92,17 @@ const FoldTimelinePanel = ({ projectId, sessionId }: FoldTimelinePanelProps): Re
 
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
-    window.api.reviewer
-      .getChunks({ projectId, appSessionId: sessionId })
-      .then((loaded) => {
+    void (async () => {
+      setLoading(true)
+      try {
+        const loaded = await window.api.reviewer.getChunks({ projectId, appSessionId: sessionId })
         if (!cancelled) setChunks(loaded)
-      })
-      .catch(() => {
+      } catch {
         if (!cancelled) setChunks([])
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setLoading(false)
-      })
+      }
+    })()
     return () => {
       cancelled = true
     }
@@ -109,7 +114,8 @@ const FoldTimelinePanel = ({ projectId, sessionId }: FoldTimelinePanelProps): Re
       <div className="shrink-0 border-b border-border-200 px-4 py-3">
         <h2 className="text-[13px] font-semibold text-text-000">Folded context</h2>
         <p className="mt-0.5 text-[11px] text-text-300">
-          {chunks.length} fold{chunks.length === 1 ? '' : 's'} — original text kept for summary_query
+          {chunks.length} fold{chunks.length === 1 ? '' : 's'} — original text kept for
+          summary_query
         </p>
       </div>
 
@@ -121,7 +127,7 @@ const FoldTimelinePanel = ({ projectId, sessionId }: FoldTimelinePanelProps): Re
           </p>
         ) : chunks.length === 0 ? (
           <p className="text-xs text-text-400" data-testid="fold-timeline-empty">
-            No context folds yet. When the agent's context is compacted, the folded window is kept
+            No context folds yet. When the agent&apos;s context is compacted, the folded window is kept
             here and remains queryable.
           </p>
         ) : (

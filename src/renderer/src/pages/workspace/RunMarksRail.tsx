@@ -1,8 +1,5 @@
 import { useLanguage } from '@/i18n'
-import {
-  useMessageScroller,
-  useMessageScrollerVisibility
-} from '@/components/ui/message-scroller'
+import { useMessageScroller, useMessageScrollerVisibility } from '@/components/ui/message-scroller'
 
 // Run-marks navigation rail: one dot per user turn along the right edge of a long transcript.
 // Clicking a dot scrolls the conversation to that turn; the dot for the turn currently in view

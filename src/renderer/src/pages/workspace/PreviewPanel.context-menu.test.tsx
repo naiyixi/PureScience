@@ -12,7 +12,8 @@ vi.mock('@/i18n', () => ({
 }))
 
 vi.mock('@/stores/navigation-store', () => ({
-  useNavigationStore: (selector: (state: never) => unknown) => selector({ activeProjectId: 'p1' } as never)
+  useNavigationStore: (selector: (state: never) => unknown) =>
+    selector({ activeProjectId: 'p1' } as never)
 }))
 
 const fileTab = {
@@ -61,7 +62,9 @@ describe('PreviewTabContextMenu', () => {
     renderMenu()
     const menu = document.body.querySelector('[role="menu"]')
     expect(menu).not.toBeNull()
-    const items = [...document.body.querySelectorAll('[role="menuitem"]')].map((el) => (el.textContent ?? '').trim())
+    const items = [...document.body.querySelectorAll('[role="menuitem"]')].map((el) =>
+      (el.textContent ?? '').trim()
+    )
     expect(items).toContain('ws.previewTabClose')
     expect(items).toContain('ws.previewTabCloseOthers')
     expect(items).toContain('ws.previewTabCopyPath')
@@ -73,7 +76,9 @@ describe('PreviewTabContextMenu', () => {
     renderMenu({
       tab: { id: 'tool-1', sessionId: 's1', title: 'files', type: 'tool', toolKind: 'files' }
     })
-    const items = [...document.body.querySelectorAll('[role="menuitem"]')].map((el) => (el.textContent ?? '').trim())
+    const items = [...document.body.querySelectorAll('[role="menuitem"]')].map((el) =>
+      (el.textContent ?? '').trim()
+    )
     expect(items).toContain('ws.previewTabClose')
     expect(items).toContain('ws.previewTabCloseOthers')
     expect(items).not.toContain('ws.previewTabCopyPath')

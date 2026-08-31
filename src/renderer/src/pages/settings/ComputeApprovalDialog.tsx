@@ -65,7 +65,9 @@ export function ComputeApprovalDialog(): React.JSX.Element | null {
           <div className="flex items-start gap-3">
             <ShieldAlert className="mt-0.5 size-5 shrink-0 text-amber-500" aria-hidden="true" />
             <div className="min-w-0">
-              <Dialog.Title className={dialogTitleClassName}>{t('settings.allowRemoteCommand')}</Dialog.Title>
+              <Dialog.Title className={dialogTitleClassName}>
+                {t('settings.allowRemoteCommand')}
+              </Dialog.Title>
               <Dialog.Description
                 className={cn(dialogDescriptionClassName, 'text-xs [text-wrap:pretty]')}
               >
@@ -109,7 +111,8 @@ export function ComputeApprovalDialog(): React.JSX.Element | null {
                       </>
                     ) : (
                       <>
-                        <ChevronDown className="size-3" aria-hidden="true" /> {t('ui.showfullcommand')}
+                        <ChevronDown className="size-3" aria-hidden="true" />{' '}
+                        {t('ui.showfullcommand')}
                       </>
                     )}
                   </button>

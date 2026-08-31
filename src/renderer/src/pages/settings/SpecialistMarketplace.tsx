@@ -70,10 +70,7 @@ const formatRelativeTime = (iso: string): string => {
 }
 
 type MarketplacePresentationStatus =
-  | 'available'
-  | 'installed'
-  | 'update-available'
-  | 'setup-incomplete'
+  'available' | 'installed' | 'update-available' | 'setup-incomplete'
 
 const identityTones = [
   'bg-chart-1/15 text-chart-1 ring-chart-1/20',
@@ -574,7 +571,9 @@ const SpecialistMarketplace = ({ view, onNavigate }: Props): React.JSX.Element =
         ) : null}
 
         <div className="mt-6">
-          <h3 className="text-sm font-semibold text-foreground">{t('ws.marketplaceConfiguredSources')}</h3>
+          <h3 className="text-sm font-semibold text-foreground">
+            {t('ws.marketplaceConfiguredSources')}
+          </h3>
           {loading ? (
             <MarketplaceLoading label={t('ws.marketplaceLoading')} />
           ) : !snapshot && lastRefreshFailed ? (
@@ -601,10 +600,7 @@ const SpecialistMarketplace = ({ view, onNavigate }: Props): React.JSX.Element =
                   {source.removable ? (
                     <button
                       type="button"
-                      aria-label={t('ws.marketplaceRemoveSource').replace(
-                        '{name}',
-                        source.name
-                      )}
+                      aria-label={t('ws.marketplaceRemoveSource').replace('{name}', source.name)}
                       className="text-muted-foreground hover:text-danger-000"
                       onClick={() => void removeSource(source.id)}
                     >
@@ -666,10 +662,7 @@ const SpecialistMarketplace = ({ view, onNavigate }: Props): React.JSX.Element =
                     </span>
                   ) : null}
                   <span className="rounded-full border border-border px-2 py-1 text-muted-foreground">
-                    {t('ws.marketplaceByPublisher').replace(
-                      '{publisher}',
-                      release.publisher.name
-                    )}
+                    {t('ws.marketplaceByPublisher').replace('{publisher}', release.publisher.name)}
                   </span>
                   <span className="rounded-full border border-border px-2 py-1 text-muted-foreground">
                     v{release.version}
@@ -766,7 +759,9 @@ const SpecialistMarketplace = ({ view, onNavigate }: Props): React.JSX.Element =
                     aria-hidden="true"
                   />
                   <div className="min-w-0 flex-1">
-                    <h3 className="text-sm font-semibold text-foreground">{t('ws.marketplaceSkills')}</h3>
+                    <h3 className="text-sm font-semibold text-foreground">
+                      {t('ws.marketplaceSkills')}
+                    </h3>
                     <p className="mt-0.5 text-xs text-muted-foreground">
                       {t('ws.marketplaceSelectedOfTotal')
                         .replace('{selected}', String(selectedSkillIds.size))
@@ -822,7 +817,9 @@ const SpecialistMarketplace = ({ view, onNavigate }: Props): React.JSX.Element =
                 >
                   <ConnectorsNavIcon className="size-5 shrink-0 text-muted-foreground" />
                   <div className="min-w-0 flex-1">
-                    <h3 className="text-sm font-semibold text-foreground">{t('ws.marketplaceConnectors')}</h3>
+                    <h3 className="text-sm font-semibold text-foreground">
+                      {t('ws.marketplaceConnectors')}
+                    </h3>
                     <p className="mt-0.5 text-xs text-muted-foreground">
                       {t('ws.marketplaceSelectedOfTotal')
                         .replace('{selected}', String(selectedConnectorIds.size))
@@ -1004,12 +1001,18 @@ const SpecialistMarketplace = ({ view, onNavigate }: Props): React.JSX.Element =
               <span className="font-medium text-foreground">{t('ws.marketplaceRefreshing')}</span>
               {lastDataAt ? (
                 <span>
-                  · {t('ws.marketplaceShowingDataFrom').replace('{time}', formatRelativeTime(lastDataAt))}
+                  ·{' '}
+                  {t('ws.marketplaceShowingDataFrom').replace(
+                    '{time}',
+                    formatRelativeTime(lastDataAt)
+                  )}
                 </span>
               ) : null}
             </>
           ) : lastDataAt ? (
-            <span>{t('ws.marketplaceUpdated').replace('{time}', formatRelativeTime(lastDataAt))}</span>
+            <span>
+              {t('ws.marketplaceUpdated').replace('{time}', formatRelativeTime(lastDataAt))}
+            </span>
           ) : null}
         </p>
       ) : null}

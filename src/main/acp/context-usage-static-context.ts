@@ -17,7 +17,10 @@ import {
   SUMMARY_QUERY_TOOL_NAME,
   BOUNDARY_TOOL_NAME
 } from '../../shared/context-summary-mcp'
-import { summaryQueryToolDefinition, boundaryToolDefinition } from '../settings/context-summary-mcp-server'
+import {
+  summaryQueryToolDefinition,
+  boundaryToolDefinition
+} from '../settings/context-summary-mcp-server'
 
 type ContextUsageMcpOptions = {
   artifacts: boolean

@@ -902,9 +902,7 @@ class NotebookLocalRpcServer {
         name: params.name,
         description: params.description,
         instructions: typeof params.instructions === 'string' ? params.instructions : '',
-        ...(Array.isArray(params.references)
-          ? { references: params.references as string[] }
-          : {})
+        ...(Array.isArray(params.references) ? { references: params.references as string[] } : {})
       }
       return this.skillCreator.create(input) as Promise<SkillCreateResult>
     }

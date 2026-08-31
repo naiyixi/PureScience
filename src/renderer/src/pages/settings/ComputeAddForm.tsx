@@ -80,7 +80,9 @@ export function ComputeAddForm({ onCreated, onCancel }: ComputeAddFormProps): Re
     setError(undefined)
 
     try {
-      const host = await createHost(buildRequest(alias, detailsDoc, user, port, identityFile, passwordCredentialId))
+      const host = await createHost(
+        buildRequest(alias, detailsDoc, user, port, identityFile, passwordCredentialId)
+      )
       // Navigate to the detail page immediately; the probe runs in the background so the detail page
       // can show "Probing…" state (design.md §7: create record → auto-probe → redirect to detail).
       onCreated(host.providerId)
@@ -111,7 +113,11 @@ export function ComputeAddForm({ onCreated, onCancel }: ComputeAddFormProps): Re
           >
             <SelectTrigger aria-label="Pick a host from ~/.ssh/config">
               <SelectValue
-                placeholder={sshAliases.length === 0 ? t('settings.noHostsInSshConfig') : t('settings.pickHost')}
+                placeholder={
+                  sshAliases.length === 0
+                    ? t('settings.noHostsInSshConfig')
+                    : t('settings.pickHost')
+                }
               />
             </SelectTrigger>
             <SelectContent>
@@ -226,7 +232,10 @@ export function ComputeAddForm({ onCreated, onCancel }: ComputeAddFormProps): Re
                 </span>
               </div>
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="compute-password-credential" className="text-sm font-medium text-foreground">
+                <label
+                  htmlFor="compute-password-credential"
+                  className="text-sm font-medium text-foreground"
+                >
                   {t('settings.sshPasswordCredential')}
                 </label>
                 <Input

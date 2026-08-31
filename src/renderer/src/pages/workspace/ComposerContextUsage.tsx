@@ -214,7 +214,10 @@ const ComposerContextUsage = ({
                     ? t('ws.ctxCategoryOccupancy')
                         .replace('{n}', formatDetailedTokens(visualUsed))
                         .replace('{size}', formatDetailedTokens(size))
-                    : t('ws.ctxCategoryDistribution').replace('{n}', formatDetailedTokens(visualUsed))
+                    : t('ws.ctxCategoryDistribution').replace(
+                        '{n}',
+                        formatDetailedTokens(visualUsed)
+                      )
                 }
               >
                 {categories.map((category) => {

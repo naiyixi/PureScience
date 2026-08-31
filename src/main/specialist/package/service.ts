@@ -700,10 +700,7 @@ export class SpecialistPackageService {
   // New Skill ids the marketplace intends to install for a previewed package candidate (the ones
   // whose disposition is 'install'). Used to scope Main-Agent enablement while a marketplace
   // installation is pending.
-  candidateNewSkillIds(
-    candidateToken: unknown,
-    ownerId?: number
-  ): readonly string[] | undefined {
+  candidateNewSkillIds(candidateToken: unknown, ownerId?: number): readonly string[] | undefined {
     if (typeof candidateToken !== 'string') return undefined
     const candidate = this.candidates.get(candidateToken)
     return candidate && candidate.ownerId === ownerId

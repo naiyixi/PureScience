@@ -51,7 +51,8 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   {
     id: 'molecule',
     displayName: '分子查看器',
-    description: '验证并预览 2D 分子结构和反应（OpenChemLib）。支撑 .mol/.sdf/.smi/.smiles/.rxn 工件查看器。',
+    description:
+      '验证并预览 2D 分子结构和反应（OpenChemLib）。支撑 .mol/.sdf/.smi/.smiles/.rxn 工件查看器。',
     useWhen:
       'Use when the user provides or wants to inspect a chemical structure — validating or normalizing a SMILES or MDL molfile, computing a molecular formula / weight / heavy-atom count, or turning a structure into a previewable 2D depiction. The paired viewer also renders MDL reaction (.rxn) files. Self-contained: pass a SMILES or molfile directly, no other connector required. Sourced from OpenChemLib (offline, in-app).',
     sources: ['OpenChemLib'],
@@ -61,7 +62,8 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
     id: 'pubmed',
     displayName: 'PubMed',
     aliases: ['NCBI literature', 'PMC', 'Europe PMC'],
-    description: '通过 NCBI E-utilities、PMC ID 转换器和 Europe PMC 检索生物医学文献——搜索、元数据、相关文章、引用查询、ID 转换、全文与版权。',
+    description:
+      '通过 NCBI E-utilities、PMC ID 转换器和 Europe PMC 检索生物医学文献——搜索、元数据、相关文章、引用查询、ID 转换、全文与版权。',
     useWhen:
       'Use to search the biomedical literature and retrieve article metadata (authors, abstract, DOIs, MeSH), find related/similar articles, resolve citations to PMIDs, convert between PMID/PMCID/DOI, fetch open-access full text from PubMed Central, or check copyright/license status. Sourced from PubMed (NCBI), PMC and Europe PMC.',
     sources: ['PubMed', 'PMC', 'Europe PMC'],
@@ -73,7 +75,8 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
     id: 'genes',
     displayName: '基因与本体',
     aliases: ['MyGene', 'mygene.info', 'UniProt', 'gene information', 'gene annotation'],
-    description: '基因/蛋白质身份与本体术语——mygene.info、UniProt、OLS4 本体、GO 注释、Reactome 通路。',
+    description:
+      '基因/蛋白质身份与本体术语——mygene.info、UniProt、OLS4 本体、GO 注释、Reactome 通路。',
     useWhen:
       'Use when you need to resolve gene symbols/identifiers (mygene.info), fetch UniProt protein records, look up or search ontology terms (EFO, GO, CL, ChEBI, MONDO via OLS4), retrieve GO annotations for a protein (QuickGO), or map genes to Reactome pathways.',
     sources: ['MyGene', 'UniProt', 'OLS', 'QuickGO', 'Reactome'],
@@ -94,7 +97,8 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
     id: 'variants',
     displayName: '变异',
     aliases: ['gnomAD', 'ClinVar', 'dbSNP', 'CADD', 'genetic variant'],
-    description: '人类遗传变异——gnomAD 群体频率/约束、ClinVar 记录/搜索（NCBI 直连）、dbSNP、CADD 危害评分、结构变异和线粒体变异。',
+    description:
+      '人类遗传变异——gnomAD 群体频率/约束、ClinVar 记录/搜索（NCBI 直连）、dbSNP、CADD 危害评分、结构变异和线粒体变异。',
     useWhen:
       'Use when you need human genetic-variant data — gnomAD population allele frequencies, gene constraint (pLI/LOEUF), structural or mitochondrial variants, and build liftover; ClinVar clinical significance (gnomAD mirror or direct NCBI search/records by accession or rsID); dbSNP RefSNP records and region lookups; or CADD deleteriousness scores (PHRED/raw) for SNVs.',
     sources: ['gnomAD', 'ClinVar', 'dbSNP', 'CADD'],
@@ -126,7 +130,8 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   {
     id: 'structures',
     displayName: '结构与相互作用',
-    description: '结构与分子相互作用——PDB 结构、AlphaFold 预测、EMDB 冷冻电镜条目、Complex Portal 复合物、IntAct 相互作用网络。',
+    description:
+      '结构与分子相互作用——PDB 结构、AlphaFold 预测、EMDB 冷冻电镜条目、Complex Portal 复合物、IntAct 相互作用网络。',
     useWhen:
       'Use when you need a macromolecular 3D structure or a molecular interaction — experimental PDB entries (search, summaries, polymer entities, ligands), AlphaFold predicted models, EMDB cryo-EM metadata/validation, curated Complex Portal complexes, or IntAct binary interactions and networks.',
     sources: ['PDB', 'AlphaFold', 'EMDB', 'Complex Portal', 'IntAct'],
@@ -147,7 +152,8 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   {
     id: 'biorxiv',
     displayName: 'bioRxiv',
-    description: 'bioRxiv/medRxiv 预印本——按日期/类别搜索、按 DOI 获取元数据、期刊发表链接、资助方列表和平台统计。',
+    description:
+      'bioRxiv/medRxiv 预印本——按日期/类别搜索、按 DOI 获取元数据、期刊发表链接、资助方列表和平台统计。',
     useWhen:
       'Use when working with bioRxiv or medRxiv preprints — searching by date range and category (no keyword search), fetching full metadata for a DOI, finding which preprints were published in journals (optionally by publisher DOI prefix), listing preprints by funder (ROR id), or reporting submission/usage statistics over time. Sourced from bioRxiv and medRxiv (funder ids via ROR).',
     sources: ['bioRxiv', 'medRxiv', 'ROR'],
@@ -168,7 +174,8 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   {
     id: 'human_genetics',
     displayName: '人类遗传学',
-    description: '人类遗传关联证据——GWAS Catalog、eQTL Catalogue 和 PheWeb PheWAS 门户（FinnGen、BioBank Japan）。',
+    description:
+      '人类遗传关联证据——GWAS Catalog、eQTL Catalogue 和 PheWeb PheWAS 门户（FinnGen、BioBank Japan）。',
     useWhen:
       'Use when you need human genetic-association evidence — GWAS Catalog associations/studies/traits for a variant, gene or trait; eQTL Catalogue molecular-QTL datasets and associations; or PheWAS scans (variant- or gene-level) from FinnGen and BioBank Japan PheWeb portals.',
     sources: ['GWAS Catalog', 'eQTL Catalogue', 'PheWeb'],
@@ -178,7 +185,8 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   {
     id: 'expression',
     displayName: '表达',
-    description: '通过 GTEx 门户获取人类组织表达和 eQTL 数据；PanglaoDB 规范标记基因（离线）用于单细胞注释。',
+    description:
+      '通过 GTEx 门户获取人类组织表达和 eQTL 数据；PanglaoDB 规范标记基因（离线）用于单细胞注释。',
     useWhen:
       'Use for GTEx tissue expression and eQTL evidence — listing tissue sites or dataset releases, resolving gene symbols to versioned GENCODE ids, median or per-sample expression (TPM) by tissue, top-expressed genes per tissue, sample/donor metadata, and cis-eQTLs (eGenes, single-tissue, multi-tissue METASOFT, or on-the-fly calculation) for a gene or variant. Sourced from GTEx. Also use for single-cell annotation — canonical marker genes per cell type (PanglaoDB set, offline) and reverse marker lookup.',
     sources: ['GTEx', 'PanglaoDB'],
@@ -188,7 +196,8 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   {
     id: 'protein_annotation',
     displayName: '蛋白质注释',
-    description: '蛋白质结构域架构、家族/进化枝成员、表达图谱和相互作用网络——InterPro/Pfam、人类蛋白质图谱和 STRING。',
+    description:
+      '蛋白质结构域架构、家族/进化枝成员、表达图谱和相互作用网络——InterPro/Pfam、人类蛋白质图谱和 STRING。',
     useWhen:
       "Use when you need protein annotation — a protein's complete InterPro/Pfam domain architecture, entry/family/clan search and detail, member proteins or proteomes of a Pfam family, Human Protein Atlas per-gene expression (tissue/subcellular/pathology/blood/brain) and bulk search, or STRING id mapping, interaction networks and homology similarity. Sourced from InterPro, Pfam, the Human Protein Atlas and STRING.",
     sources: ['InterPro', 'Pfam', 'Human Protein Atlas', 'STRING'],
@@ -218,7 +227,8 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   {
     id: 'omics_archives',
     displayName: '组学数据库',
-    description: '组学数据档案——表达（ArrayExpress、GEO）、代谢组学（MetaboLights）、宏基因组学（MGnify）和蛋白质组学（PRIDE）。',
+    description:
+      '组学数据档案——表达（ArrayExpress、GEO）、代谢组学（MetaboLights）、宏基因组学（MGnify）和蛋白质组学（PRIDE）。',
     useWhen:
       'Use when finding or looking up omics datasets across the major archives — functional-genomics / expression experiments in ArrayExpress (BioStudies) or NCBI GEO series (by keyword, organism, assay, or accession, with per-sample metadata); metabolomics studies and data files in MetaboLights (MTBLS); metagenomics studies and analyses in MGnify (MGYS, by free text or biome lineage); or proteomics projects and proteins in PRIDE Archive (PXD, by keyword/organism/instrument/disease, or protein↔project). Sourced from ArrayExpress, GEO, MetaboLights, MGnify and PRIDE.',
     sources: ['ArrayExpress', 'GEO', 'MetaboLights', 'MGnify', 'PRIDE'],
@@ -238,7 +248,8 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   {
     id: 'regulation',
     displayName: '基因调控',
-    description: '基因调控功能基因组学——ENCODE 实验/生物样本/文件、JASPAR 转录因子结合谱和 UniBind ChIP-seq TFBS。',
+    description:
+      '基因调控功能基因组学——ENCODE 实验/生物样本/文件、JASPAR 转录因子结合谱和 UniBind ChIP-seq TFBS。',
     useWhen:
       'Use when you need gene-regulation / functional-genomics data — ENCODE experiments (ChIP-seq, ATAC-seq, ...), biosamples and data files (complete, count-verified searches by assay/target/organism/format, or a record by accession); JASPAR transcription-factor binding profiles (PFM by versioned matrix id, version history, filtered profile catalog by species/collection, and the species/taxa/collections/releases listings); or UniBind high-confidence TF binding sites (search ChIP-seq datasets, per-model TFBS detail with BED/FASTA URLs, and TFBS overlapping a genomic region). Sourced from ENCODE, JASPAR and UniBind.',
     sources: ['ENCODE', 'JASPAR', 'UniBind'],
@@ -268,7 +279,8 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   {
     id: 'zinc',
     displayName: 'ZINC',
-    description: 'ZINC22 可购买化学空间（CartBlanche22）——按 ZINC ID 查询化合物、SMILES 精确/相似度搜索、供应商代码解析、随机采样、用于对接的 3D 结构定位。',
+    description:
+      'ZINC22 可购买化学空间（CartBlanche22）——按 ZINC ID 查询化合物、SMILES 精确/相似度搜索、供应商代码解析、随机采样、用于对接的 3D 结构定位。',
     useWhen:
       'Use when you need purchasable small molecules from ZINC22 — look up compounds by ZINC id, search by SMILES (exact or analog/similarity), resolve vendor catalog codes, draw a random compound sample, or locate docking-ready 3D structures. Sourced from ZINC22 / CartBlanche22.',
     sources: ['ZINC'],

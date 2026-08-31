@@ -424,7 +424,9 @@ const PlanPreviewSurface = ({
                   ))}
                 </ul>
               ) : (
-                <p className="mt-2 text-xs text-muted-foreground">{t('ui.nodesiredoutputsspecified')}</p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {t('ui.nodesiredoutputsspecified')}
+                </p>
               )}
             </section>
             <div className="mt-7 rounded-lg bg-muted p-4">

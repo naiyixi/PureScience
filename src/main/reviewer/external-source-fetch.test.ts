@@ -13,7 +13,17 @@ const { createExternalSourceFetcher } = await import('./external-source-fetch')
 
 type FetchMock = ReturnType<typeof vi.fn>
 
-const htmlResponse = (html: string, init: { status?: number; statusText?: string; headers?: Record<string, string> } = {}) => ({
+const htmlResponse = (
+  html: string,
+  init: { status?: number; statusText?: string; headers?: Record<string, string> } = {}
+): {
+  ok: boolean
+  status: number
+  statusText: string
+  headers: { get: (name: string) => string | null }
+  url: string
+  text: () => Promise<string>
+} => ({
   ok: (init.status ?? 200) < 400,
   status: init.status ?? 200,
   statusText: init.statusText ?? 'OK',

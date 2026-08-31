@@ -831,7 +831,12 @@ const sendWorkspaceMessage = async (
         )
 
   // Empty drafts are allowed only when the user attached at least one file or an annotation card.
-  if (!content && effectiveAttachments.length === 0 && annotations.length === 0 && !branchSourceMessageId) {
+  if (
+    !content &&
+    effectiveAttachments.length === 0 &&
+    annotations.length === 0 &&
+    !branchSourceMessageId
+  ) {
     return undefined
   }
 

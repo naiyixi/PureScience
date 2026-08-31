@@ -1,20 +1,24 @@
 import { useState } from 'react'
 import { useLanguage } from '@/i18n'
 
-import type {
-  ElicitationAnswer,
-  ElicitationRequestView
-} from '../../../../shared/elicitation'
+import type { ElicitationAnswer, ElicitationRequestView } from '../../../../shared/elicitation'
 
 type ElicitationCardsProps = {
   requests: ElicitationRequestView[]
-  onRespond: (elicitationId: string, action: 'accept' | 'decline', answers?: ElicitationAnswer) => void
+  onRespond: (
+    elicitationId: string,
+    action: 'accept' | 'decline',
+    answers?: ElicitationAnswer
+  ) => void
 }
 
 // App-owned structured clarification card: the agent asks the user one or more questions with
 // typed fields (single-select choices, free text, number, boolean, multi-select). Answers are
 // returned to the agent as the blocking `elicitation/create` response.
-const ElicitationCards = ({ requests, onRespond }: ElicitationCardsProps): React.JSX.Element | null => {
+const ElicitationCards = ({
+  requests,
+  onRespond
+}: ElicitationCardsProps): React.JSX.Element | null => {
   if (requests.length === 0) return null
 
   return (
@@ -131,7 +135,9 @@ const ElicitationCard = ({
                       : 'border-border-200 bg-bg-100 text-text-100 hover:bg-bg-200'
                   }`}
                 >
-                  {answers[field.key] === true ? `✓ ${t('ws.elicitationTrue')}` : t('ws.elicitationTrue')}
+                  {answers[field.key] === true
+                    ? `✓ ${t('ws.elicitationTrue')}`
+                    : t('ws.elicitationTrue')}
                 </button>
                 <button
                   type="button"
@@ -142,7 +148,9 @@ const ElicitationCard = ({
                       : 'border-border-200 bg-bg-100 text-text-100 hover:bg-bg-200'
                   }`}
                 >
-                  {answers[field.key] === false ? `✓ ${t('ws.elicitationFalse')}` : t('ws.elicitationFalse')}
+                  {answers[field.key] === false
+                    ? `✓ ${t('ws.elicitationFalse')}`
+                    : t('ws.elicitationFalse')}
                 </button>
               </div>
             ) : (

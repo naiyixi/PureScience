@@ -283,7 +283,9 @@ const streamPreviewResource = async (
       return
     }
     try {
-      const readableBody = Readable.fromWeb(source.body as unknown as NodeReadableStream<Uint8Array>)
+      const readableBody = Readable.fromWeb(
+        source.body as unknown as NodeReadableStream<Uint8Array>
+      )
       await pipeline(readableBody, response, { signal: abortController.signal })
     } catch (error) {
       if (!abortController.signal.aborted) throw error

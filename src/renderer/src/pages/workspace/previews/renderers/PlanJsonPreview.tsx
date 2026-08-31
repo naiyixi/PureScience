@@ -79,9 +79,7 @@ export const PlanJsonPreview = ({ item }: PreviewFileRendererProps): React.JSX.E
       </div>
       {isPlanView ? (
         <>
-          {stale ? (
-            <PlanNoticeBanner>{t('settings.planStaleBanner')}</PlanNoticeBanner>
-          ) : null}
+          {stale ? <PlanNoticeBanner>{t('settings.planStaleBanner')}</PlanNoticeBanner> : null}
           {snapshot ? (
             <PlanNoticeBanner>{t('settings.planSnapshotBanner')}</PlanNoticeBanner>
           ) : null}

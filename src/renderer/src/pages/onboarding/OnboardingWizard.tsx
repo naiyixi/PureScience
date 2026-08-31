@@ -162,7 +162,9 @@ const OnboardingWizard = (): React.JSX.Element => {
           className="mt-12 grid grid-cols-[240px_minmax(0,1fr)] gap-10"
         >
           <section aria-labelledby="onboarding-introduction-title" className="pt-2">
-            <p className="text-[11px] font-medium text-muted-foreground">{t('onboarding.firstTimeSetup')}</p>
+            <p className="text-[11px] font-medium text-muted-foreground">
+              {t('onboarding.firstTimeSetup')}
+            </p>
             <h1
               id="onboarding-introduction-title"
               className="mt-2 font-serif text-[28px] leading-[1.15] font-medium text-text-000"

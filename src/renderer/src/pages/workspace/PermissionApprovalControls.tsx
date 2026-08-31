@@ -131,7 +131,10 @@ const CANONICAL_ACTION_LABEL: Record<string, TranslationKey> = {
 // Label for an extra-option button. For a known kind, use the canonical action word and append the
 // provider name only to disambiguate (never as the action itself). For an unknown kind, the
 // provider name is all we have, so show it verbatim.
-const getExtraOptionLabel = (option: PermissionOption, t: (key: TranslationKey) => string): string => {
+const getExtraOptionLabel = (
+  option: PermissionOption,
+  t: (key: TranslationKey) => string
+): string => {
   const canonicalKey = CANONICAL_ACTION_LABEL[option.kind.toLowerCase()]
   const canonical = canonicalKey ? t(canonicalKey) : undefined
   if (!canonical) return option.name
@@ -252,7 +255,8 @@ const getPermissionActionTitle = (
   if (resolveNotebookToolName(request)) return t('ws.runNotebookCell')
   if (isArtifactWriteRequest(request)) return t('ws.artifactFileInput')
   if (isMcpPermissionRequest(request)) return t('ws.externalServiceInput')
-  if (request.toolKind === 'execute' || request.providerToolName === 'Bash') return t('ws.runCommand')
+  if (request.toolKind === 'execute' || request.providerToolName === 'Bash')
+    return t('ws.runCommand')
   return fallback
 }
 
@@ -380,26 +384,26 @@ const PermissionImpactTip = ({
 }): React.JSX.Element => {
   const { t } = useLanguage()
   return (
-  <TooltipProvider delayDuration={200}>
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          type="button"
-          aria-label={t('ws.permissionImpactInfo')}
-          data-testid="permission-impact-info"
-          className="flex size-5 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
-          <Info className="size-3.5" aria-hidden="true" />
-        </button>
-      </TooltipTrigger>
-      <TooltipContent className="max-w-none whitespace-nowrap">
-        <div className="space-y-1">
-          {detail ? <p>{detail}</p> : null}
-          <p className={detail ? 'text-muted-foreground' : undefined}>{description}</p>
-        </div>
-      </TooltipContent>
-    </Tooltip>
-  </TooltipProvider>
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            aria-label={t('ws.permissionImpactInfo')}
+            data-testid="permission-impact-info"
+            className="flex size-5 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <Info className="size-3.5" aria-hidden="true" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-none whitespace-nowrap">
+          <div className="space-y-1">
+            {detail ? <p>{detail}</p> : null}
+            <p className={detail ? 'text-muted-foreground' : undefined}>{description}</p>
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   )
 }
 

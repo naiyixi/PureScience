@@ -189,7 +189,9 @@ const ProviderList = ({
     ...(selectedCodexProvider
       ? [{ ...selectedCodexProvider, name: codexSubscriptionProviderIdentity().name }]
       : []),
-    ...(selectedClaudeProvider ? [{ ...selectedClaudeProvider, name: t('settings.claudeSubscription') }] : [])
+    ...(selectedClaudeProvider
+      ? [{ ...selectedClaudeProvider, name: t('settings.claudeSubscription') }]
+      : [])
   ]
 
   return (
@@ -361,7 +363,11 @@ const ProviderList = ({
                     <></>
                   ) : (
                     <SettingsIconAction
-                      label={isCodexSubscription ? t('settings.checkCodexLogin') : t('settings.testConnection')}
+                      label={
+                        isCodexSubscription
+                          ? t('settings.checkCodexLogin')
+                          : t('settings.testConnection')
+                      }
                       icon={PlugZap}
                       onClick={() => onTest(provider)}
                       disabled={isBusy}

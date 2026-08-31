@@ -175,7 +175,11 @@ const ProviderForm = ({
         type="password"
         value={value.key}
         disabled={disabled}
-        placeholder={hasStoredKey ? t('settings.leaveBlankToKeep').replace('{key}', maskedKey ?? t('settings.storedKey')) : 'sk-...'}
+        placeholder={
+          hasStoredKey
+            ? t('settings.leaveBlankToKeep').replace('{key}', maskedKey ?? t('settings.storedKey'))
+            : 'sk-...'
+        }
         onChange={(event) => onChange({ key: event.target.value })}
       />
       {needsKey ? (
@@ -311,7 +315,9 @@ const ProviderForm = ({
                   <SelectItem value="claude-shared">
                     Use existing Claude profile (Recommended)
                   </SelectItem>
-                  <SelectItem value="claude-isolated">{t('settings.signInSeparatelyIsolated')}</SelectItem>
+                  <SelectItem value="claude-isolated">
+                    {t('settings.signInSeparatelyIsolated')}
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -340,9 +346,7 @@ const ProviderForm = ({
               </p>
             </div>
             {value.type === 'claude-isolated' && (
-              <p className="text-xs text-muted-foreground">
-                {t('settings.pasteTokenAfterSave')}
-              </p>
+              <p className="text-xs text-muted-foreground">{t('settings.pasteTokenAfterSave')}</p>
             )}
           </div>
           <div className="space-y-1.5">
@@ -428,7 +432,9 @@ const ProviderForm = ({
           <div className="space-y-3 border-t border-border-200 pt-3">
             <div className="flex items-center justify-between gap-4">
               <label className="space-y-0.5" htmlFor="provider-reasoning-effort">
-                <span className="block text-xs font-medium">{t('providerForm.reasoningEffort')}</span>
+                <span className="block text-xs font-medium">
+                  {t('providerForm.reasoningEffort')}
+                </span>
                 <span className="block text-xs text-muted-foreground">
                   Choose the exact effort levels accepted by this model. PureScience maps five
                   relative strengths onto them, then sends the selected level using the request
@@ -481,7 +487,9 @@ const ProviderForm = ({
                 </Select>
 
                 <div className="space-y-1.5">
-                  <span className="block text-xs font-medium">{t('providerForm.requestFormat')}</span>
+                  <span className="block text-xs font-medium">
+                    {t('providerForm.requestFormat')}
+                  </span>
                   <Select
                     value={value.reasoningEffortTransport}
                     disabled={disabled}

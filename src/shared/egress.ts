@@ -167,5 +167,7 @@ export const EGRESS_DENY_DOMAINS: readonly string[] = Object.freeze([
 // True when the host is on the built-in deny list (suffix match, case-insensitive).
 export const isHostDenied = (host: string): boolean => {
   const normalized = host.toLowerCase().replace(/:\d+$/, '')
-  return EGRESS_DENY_DOMAINS.some((denied) => normalized === denied || normalized.endsWith(`.${denied}`))
+  return EGRESS_DENY_DOMAINS.some(
+    (denied) => normalized === denied || normalized.endsWith(`.${denied}`)
+  )
 }

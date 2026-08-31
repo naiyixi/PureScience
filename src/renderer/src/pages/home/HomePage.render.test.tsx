@@ -200,7 +200,14 @@ describe('HomePage environment repair notice', () => {
 
 describe('HomePage recent sessions preview', () => {
   it('prefers the auto-generated description over the raw first prompt', async () => {
-    const project = { id: 'project-1', name: 'p', description: '', isExample: false, createdAt: 1, updatedAt: 1 }
+    const project = {
+      id: 'project-1',
+      name: 'p',
+      description: '',
+      isExample: false,
+      createdAt: 1,
+      updatedAt: 1
+    }
     useProjectStore.setState({
       ...createInitialProjectState(),
       projects: [project],

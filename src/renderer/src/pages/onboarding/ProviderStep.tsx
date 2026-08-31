@@ -139,8 +139,7 @@ const ProviderStep = ({
     try {
       const result = await loginIsolatedClaude(token)
       if (result.applied === false) {
-        const message =
-          t('onboarding.providerChangedDuringSignIn')
+        const message = t('onboarding.providerChangedDuringSignIn')
         setValidationOk(false)
         setValidationMessage(message)
         return { ...result, ok: false, message }
@@ -159,7 +158,8 @@ const ProviderStep = ({
 
       return result
     } catch (error) {
-      const message = error instanceof Error ? error.message : t('onboarding.couldNotSaveClaudeToken')
+      const message =
+        error instanceof Error ? error.message : t('onboarding.couldNotSaveClaudeToken')
       setValidationOk(false)
       setValidationMessage(message)
       return { ok: false, category: 'unknown', message }
@@ -212,9 +212,7 @@ const ProviderStep = ({
         // on an unverified profile. Keep the user here to retry against the provider they now have.
         if (validation.applied === false) {
           setValidationOk(false)
-          setValidationMessage(
-            t('onboarding.providerChangedDuringSignIn')
-          )
+          setValidationMessage(t('onboarding.providerChangedDuringSignIn'))
           return
         }
 
@@ -250,9 +248,7 @@ const ProviderStep = ({
         if (validation.applied === false) {
           setIsClaudeSignInOpen(false)
           setValidationOk(false)
-          setValidationMessage(
-            t('onboarding.providerChangedDuringSignIn')
-          )
+          setValidationMessage(t('onboarding.providerChangedDuringSignIn'))
           return
         }
 
@@ -282,9 +278,7 @@ const ProviderStep = ({
 
         if (validation.applied === false) {
           setValidationOk(false)
-          setValidationMessage(
-            t('onboarding.providerChangedDuringSignIn')
-          )
+          setValidationMessage(t('onboarding.providerChangedDuringSignIn'))
           return
         }
 
@@ -317,7 +311,9 @@ const ProviderStep = ({
       }
     } catch (error) {
       setValidationOk(false)
-      setValidationMessage(error instanceof Error ? error.message : t('onboarding.couldNotSaveProvider'))
+      setValidationMessage(
+        error instanceof Error ? error.message : t('onboarding.couldNotSaveProvider')
+      )
     } finally {
       setIsSaving(false)
     }

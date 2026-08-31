@@ -39,7 +39,15 @@ describe('cancer-models DepMap tools', () => {
       { query: 'A549' },
       {
         data: {
-          cellLines: [{ model_id: 'ACH-000681', cell_line_name: 'A549', disease: 'Lung Cancer', lineage: 'Lung', sex: 'Male' }],
+          cellLines: [
+            {
+              model_id: 'ACH-000681',
+              cell_line_name: 'A549',
+              disease: 'Lung Cancer',
+              lineage: 'Lung',
+              sex: 'Male'
+            }
+          ],
           cellLinesByAlias: []
         }
       }
@@ -84,9 +92,13 @@ describe('cancer-models DepMap tools', () => {
   })
 
   it('depmap_dependencies_for_gene: reports found:false for unknown genes', async () => {
-    const { out } = await runDepmap('depmap_dependencies_for_gene', { gene_symbol: 'ZZZ' }, {
-      data: { gene: null }
-    })
+    const { out } = await runDepmap(
+      'depmap_dependencies_for_gene',
+      { gene_symbol: 'ZZZ' },
+      {
+        data: { gene: null }
+      }
+    )
     expect(out).toMatchObject({ gene_symbol: 'ZZZ', found: false, count: 0, dependencies: [] })
   })
 

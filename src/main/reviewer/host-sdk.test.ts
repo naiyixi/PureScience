@@ -645,14 +645,27 @@ describe('host.read_turn_history — bounded earlier-window record', () => {
 
 describe('host.fetch_source — injected external-source verification', () => {
   it('delegates to the injected fetcher and surfaces its result', async () => {
-    const fetchSource = async (url: string) => ({
+    const fetchSource = async (url: string): Promise<{
+      url: string
+      finalUrl: string
+      title: string
+      text: string
+      truncated: boolean
+    }> => ({
       url,
       finalUrl: url,
       title: 'Example',
       text: 'The paper says the effect is 42%.',
       truncated: false
     })
-    server = new ReviewerHostServer(makeSession(), makeScope(), tmpDir, undefined, undefined, fetchSource)
+    server = new ReviewerHostServer(
+      makeSession(),
+      makeScope(),
+      tmpDir,
+      undefined,
+      undefined,
+      fetchSource
+    )
     ;({ endpoint, token } = await server.start())
 
     const body = await post(endpoint, token, 'fetch_source', {

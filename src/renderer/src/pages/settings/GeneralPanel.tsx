@@ -66,9 +66,7 @@ const GeneralPanel = (): React.JSX.Element => {
         action === 'install' ? await window.api.cli.install() : await window.api.cli.uninstall()
       )
     } catch (error) {
-      setCliError(
-        error instanceof Error ? error.message : t('settings.couldNotUpdateCliTool')
-      )
+      setCliError(error instanceof Error ? error.message : t('settings.couldNotUpdateCliTool'))
     } finally {
       setIsUpdatingCli(false)
     }
@@ -123,9 +121,7 @@ const GeneralPanel = (): React.JSX.Element => {
         >
           <Select
             value={useIntent ?? 'commercial'}
-            onValueChange={(value) =>
-              void setUseIntent(value as 'commercial' | 'non-commercial')
-            }
+            onValueChange={(value) => void setUseIntent(value as 'commercial' | 'non-commercial')}
           >
             <SelectTrigger aria-label={t('settings.useIntent')}>
               <span>
@@ -136,9 +132,7 @@ const GeneralPanel = (): React.JSX.Element => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="commercial">{t('settings.useIntentCommercial')}</SelectItem>
-              <SelectItem value="non-commercial">
-                {t('settings.useIntentNonCommercial')}
-              </SelectItem>
+              <SelectItem value="non-commercial">{t('settings.useIntentNonCommercial')}</SelectItem>
             </SelectContent>
           </Select>
         </SettingsRow>
@@ -203,11 +197,7 @@ const GeneralPanel = (): React.JSX.Element => {
 
       <SettingsSection
         title={t('settings.notifications')}
-        description={
-          <>
-            {t('settings.notificationsDesc')}
-          </>
-        }
+        description={<>{t('settings.notificationsDesc')}</>}
         aria-label={t('settings.notifications')}
         separated
       >
@@ -225,9 +215,7 @@ const GeneralPanel = (): React.JSX.Element => {
           </div>
         </SettingsRow>
 
-        <p className="mt-1 text-xs text-muted-foreground">
-          {t('settings.taskNotificationsHint2')}
-        </p>
+        <p className="mt-1 text-xs text-muted-foreground">{t('settings.taskNotificationsHint2')}</p>
       </SettingsSection>
 
       {/* macOS uses the adaptive build/icon.icon for the installed app and binds its live Dock icon
@@ -236,15 +224,15 @@ const GeneralPanel = (): React.JSX.Element => {
 
       <SettingsSection
         title={t('settings.diagnostics')}
-        description={
-          <>
-            {t('settings.diagnosticsDesc')}
-          </>
-        }
+        description={<>{t('settings.diagnosticsDesc')}</>}
         aria-label={t('settings.diagnostics')}
         separated
       >
-        <SettingsRow label={t('settings.logFile')} controlClassName="w-auto justify-self-end" className="pt-0">
+        <SettingsRow
+          label={t('settings.logFile')}
+          controlClassName="w-auto justify-self-end"
+          className="pt-0"
+        >
           <div className="flex items-center gap-2">
             <Button
               type="button"
@@ -291,9 +279,7 @@ const GeneralPanel = (): React.JSX.Element => {
 
       <SettingsSection
         title={t('settings.commandLineTool')}
-        description={
-          <span dangerouslySetInnerHTML={{ __html: t('settings.cliInstallHint') }} />
-        }
+        description={<span dangerouslySetInnerHTML={{ __html: t('settings.cliInstallHint') }} />}
         aria-label={t('settings.commandLineTool')}
         separated
       >
@@ -309,7 +295,11 @@ const GeneralPanel = (): React.JSX.Element => {
             disabled={isUpdatingCli || cli === null}
           >
             <Terminal className="size-4" aria-hidden="true" />
-            {isUpdatingCli ? t('settings.working') : cli?.installed ? t('settings.uninstallCommand') : t('settings.installCommand')}
+            {isUpdatingCli
+              ? t('settings.working')
+              : cli?.installed
+                ? t('settings.uninstallCommand')
+                : t('settings.installCommand')}
           </Button>
         </SettingsRow>
 
@@ -333,23 +323,16 @@ const GeneralPanel = (): React.JSX.Element => {
         ) : null}
 
         <p className="mt-3 text-xs text-muted-foreground">
-          {t('settings.cliRunHint')}{' '}
-          <code className="font-mono">purescience start</code>{' '}
-          {t('settings.cliOpenUrlHint')}{' '}
-          <code className="font-mono">purescience stop</code>{' '}
-          {t('settings.cliShutDownHint')}{' '}
-          <code className="font-mono">status</code> / <code className="font-mono">url</code>{' '}
-          {t('settings.cliAlsoAvailable')}
+          {t('settings.cliRunHint')} <code className="font-mono">purescience start</code>{' '}
+          {t('settings.cliOpenUrlHint')} <code className="font-mono">purescience stop</code>{' '}
+          {t('settings.cliShutDownHint')} <code className="font-mono">status</code> /{' '}
+          <code className="font-mono">url</code> {t('settings.cliAlsoAvailable')}
         </p>
       </SettingsSection>
 
       <SettingsSection
         title={t('settings.enjoyingPureScience')}
-        description={
-          <>
-            {t('settings.communityDesc')}
-          </>
-        }
+        description={<>{t('settings.communityDesc')}</>}
         aria-label={t('settings.community')}
         separated
       >

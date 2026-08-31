@@ -369,7 +369,8 @@ export const en: Record<ZhKey, string> = {
   'settings.memoryDeleteNote': 'Delete note',
   'settings.memoryEvidence': 'Source',
   'settings.memorySuperseded': 'superseded',
-  'settings.memorySupersededTooltip': 'A newer note replaced this one; it stays visible but is no longer recalled.',
+  'settings.memorySupersededTooltip':
+    'A newer note replaced this one; it stays visible but is no longer recalled.',
   'settings.memoryDisabledHint':
     "Memory is off. The app won't save new notes or recall existing ones, but the notes below are kept and stay editable. Turn memory on to resume.",
   'settings.memoryLoading': 'Loading memory…',
@@ -936,7 +937,7 @@ export const en: Record<ZhKey, string> = {
   'settings.sshPasswordCredential': 'SSH password credential',
   'settings.sshPasswordCredentialPlaceholder': 'credential id (from Credentials panel)',
   'settings.sshPasswordCredentialHint':
-    'Optional: the id of a Credentials-panel credential whose secret is this host\'s SSH password. The password is decrypted only at connect time and never stored in the compute config.',
+    "Optional: the id of a Credentials-panel credential whose secret is this host's SSH password. The password is decrypted only at connect time and never stored in the compute config.",
   'settings.anythingToKnow': 'Anything PureScience should know? (optional)',
   'settings.signInWithAnthropic': 'Sign in with Anthropic',
   'settings.setupTokenGuide': "Anthropic's setup-token guide",
@@ -1287,28 +1288,36 @@ export const en: Record<ZhKey, string> = {
   'settings.specialistName': 'Name',
   'settings.specialistNamePlaceholder': 'e.g. My specialist',
   'settings.perRunUsage': 'Usage by run',
-  'settings.perRunUsageDesc': 'Tokens actually consumed per run (including delegated sub-runs), to spot expensive tasks.',
+  'settings.perRunUsageDesc':
+    'Tokens actually consumed per run (including delegated sub-runs), to spot expensive tasks.',
   'settings.perRunColumnTime': 'Time',
   'settings.perRunColumnRun': 'Run',
   'settings.perRunColumnTokens': 'Tokens',
   'settings.perRunColumnSubRuns': 'Sub-runs',
   'settings.perRunRootRun': 'Main run',
   'settings.perRunIncludingSubRuns': 'incl. sub-runs',
-  'settings.credentialsRecoveryAuth': 'The secret is invalid or expired — re-enter the correct API key.',
-  'settings.credentialsRecoveryNetwork': 'Could not reach this service — check your network connection or try again later.',
-  'settings.credentialsRecoveryFormat': 'The secret format looks wrong — paste the full key without extra spaces.',
-  'settings.credentialsRecoveryUnknown': 'Verification failed — check the secret or try again later.',
+  'settings.credentialsRecoveryAuth':
+    'The secret is invalid or expired — re-enter the correct API key.',
+  'settings.credentialsRecoveryNetwork':
+    'Could not reach this service — check your network connection or try again later.',
+  'settings.credentialsRecoveryFormat':
+    'The secret format looks wrong — paste the full key without extra spaces.',
+  'settings.credentialsRecoveryUnknown':
+    'Verification failed — check the secret or try again later.',
   'settings.licenseConfirmTitle': 'Enable the restricted-license skill "{name}"?',
-  'settings.licenseConfirmBody': 'This skill declares "{license}", which may restrict commercial use. Confirm that your use complies with the license terms.',
+  'settings.licenseConfirmBody':
+    'This skill declares "{license}", which may restrict commercial use. Confirm that your use complies with the license terms.',
   'settings.licenseConfirmEnable': 'Confirm and enable',
   'settings.licensing': 'Licensing',
   'settings.licensingDesc': 'Declare your purpose for using skills with restricted licenses.',
   'settings.useIntent': 'Use intent',
-  'settings.useIntentDesc': 'Choose commercial use (default) or non-commercial use. Skills that restrict non-commercial use ask for confirmation before loading in commercial mode.',
+  'settings.useIntentDesc':
+    'Choose commercial use (default) or non-commercial use. Skills that restrict non-commercial use ask for confirmation before loading in commercial mode.',
   'settings.useIntentCommercial': 'Commercial use (default)',
   'settings.useIntentNonCommercial': 'Non-commercial use',
   'settings.thirdPartyLicenses': 'Third-Party Licenses',
-  'settings.thirdPartyLicensesDesc': 'License summaries for the open-source software this app depends on, collected from the installed dependency tree.',
+  'settings.thirdPartyLicensesDesc':
+    'License summaries for the open-source software this app depends on, collected from the installed dependency tree.',
   'settings.thirdPartyLicensesLoading': 'Loading…',
   'settings.thirdPartyLicensesEmpty': 'No license information found.',
   'settings.thirdPartyLicensesFailed': 'Failed to load licenses. Please try again.',
@@ -1318,10 +1327,13 @@ export const en: Record<ZhKey, string> = {
   'modelPicker.providerDefaultHint': 'provider default',
   'modelPicker.select': 'Select',
   'modelPicker.unsupported': 'unsupported',
-  'modelPicker.codexBridgeReason': 'No model from {name} is supported over the Codex Chat Completions bridge.',
-  'modelPicker.bridgeUnsupportedReason': '{model} is not supported over the Codex Chat Completions bridge.',
+  'modelPicker.codexBridgeReason':
+    'No model from {name} is supported over the Codex Chat Completions bridge.',
+  'modelPicker.bridgeUnsupportedReason':
+    '{model} is not supported over the Codex Chat Completions bridge.',
   'closeConfirm.minimizeToTray': 'Minimize to tray',
-  'ui.theagentreadsthesefindingsan': 'The agent reads these findings and self-corrects in its next message.',
+  'ui.theagentreadsthesefindingsan':
+    'The agent reads these findings and self-corrects in its next message.',
   'lifecycleToast.sessionCreatedExternally': 'Session created externally',
   'sessionPersist.dismissWarning': 'Dismiss storage warning',
   'fieldHelp.moreInfo': 'More information',
@@ -1330,7 +1342,8 @@ export const en: Record<ZhKey, string> = {
   'fileBrowser.goTo': 'Go to',
   'generalPanel.logFilePath': 'Log file path',
   'ui.whattheagentcandowiththiscon': 'What the agent can do with this connector',
-  'ui.openthemobileappandsignintot': 'Open the mobile app and sign in to the\n                  same account as this computer.',
+  'ui.openthemobileappandsignintot':
+    'Open the mobile app and sign in to the\n                  same account as this computer.',
   'ui.showless': 'Show less',
   'ui.showfullcommand': 'Show full command',
   'ui.onemoment': 'One moment.',
@@ -1525,7 +1538,8 @@ export const en: Record<ZhKey, string> = {
   'settings.specialistPerFile': 'Per file',
   'settings.specialistCopyReport': 'Copy report',
   'settings.specialistValidationPassed': 'Validation passed',
-  'settings.specialistInstallAfterConfirmation': 'The package can be installed after explicit confirmation.',
+  'settings.specialistInstallAfterConfirmation':
+    'The package can be installed after explicit confirmation.',
   'settings.specialistImportReplacesEdits': 'Local edits will be replaced by this import.',
   'settings.specialistLocalChangesReplaced': 'Local changes will be permanently replaced',
   'settings.specialistCurrentVersion': 'Current version',
@@ -1928,7 +1942,8 @@ export const en: Record<ZhKey, string> = {
   'ws.annotationRemove': 'Remove annotation',
   'ws.annotationSourceFallback': 'Selected content',
   'ws.folderGrantsTitle': 'Link folders',
-  'ws.folderGrantsHint': 'Grant the agent read access to a local directory. Linked folders persist across sessions and can be revoked anytime.',
+  'ws.folderGrantsHint':
+    'Grant the agent read access to a local directory. Linked folders persist across sessions and can be revoked anytime.',
   'ws.folderGrantsClose': 'Close',
   'ws.folderGrantsRefresh': 'Refresh',
   'ws.folderGrantsPath': 'Folder path',

@@ -762,9 +762,7 @@ describe('provider registry', () => {
         getOfficialVendor('opencodego')?.models.find((m) => m.id === 'glm-5.3')?.contextWindow
       ).toBe(1_000_000)
       // GLM vision variant is the only documented multimodal id on TokenHub.
-      expect(
-        getOfficialVendor('tokenhub')?.multimodal?.multimodalModels
-      ).toEqual(['glm-5v-turbo'])
+      expect(getOfficialVendor('tokenhub')?.multimodal?.multimodalModels).toEqual(['glm-5v-turbo'])
     })
   })
 })

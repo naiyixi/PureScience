@@ -228,7 +228,9 @@ const ComposerModelPicker = (): React.JSX.Element | null => {
             <DropdownMenuSubTrigger className="items-center gap-2 px-2 py-1.5">
               <Brain className="size-4 shrink-0 text-text-200" strokeWidth={2} aria-hidden="true" />
               <span className="min-w-0 flex-1">
-                <span className="block text-[13px] font-medium leading-5">{t('modelPicker.reasoningEffort')}</span>
+                <span className="block text-[13px] font-medium leading-5">
+                  {t('modelPicker.reasoningEffort')}
+                </span>
                 <span className="block text-[11px] leading-4 text-text-300">
                   {t('settings.howLongModelThinks')}
                 </span>
@@ -306,7 +308,9 @@ const ComposerModelPicker = (): React.JSX.Element | null => {
               </span>
             ) : (
               <>
-                <span className="shrink-0 text-[11px] text-text-300">{t('modelPicker.select')}</span>
+                <span className="shrink-0 text-[11px] text-text-300">
+                  {t('modelPicker.select')}
+                </span>
                 <ChevronRight
                   className="size-3.5 shrink-0 opacity-60"
                   strokeWidth={2}
@@ -356,7 +360,9 @@ const ComposerModelPicker = (): React.JSX.Element | null => {
                         // Endpoint is fine but this model is statically marked unsupported over the Codex
                         // bridge. Grey it with a warning icon; the full reason is on hover (title) and read
                         // by assistive tech (aria-label), so it isn't a long inline string.
-                        const optionReason = t('modelPicker.bridgeUnsupportedReason', { model: optionLabel(option) })
+                        const optionReason = t('modelPicker.bridgeUnsupportedReason', {
+                          model: optionLabel(option)
+                        })
                         return (
                           <DropdownMenuItem
                             key={`${option.providerId}:${option.model}`}

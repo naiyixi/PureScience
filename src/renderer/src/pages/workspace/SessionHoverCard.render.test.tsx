@@ -17,7 +17,12 @@ const session: ChatSession = {
   updatedAt: 0
 }
 
-const renderCard = (anchor: { top: number; left: number; width: number; height: number }): HTMLElement => {
+const renderCard = (anchor: {
+  top: number
+  left: number
+  width: number
+  height: number
+}): HTMLElement => {
   const container = document.createElement('div')
   document.body.appendChild(container)
 

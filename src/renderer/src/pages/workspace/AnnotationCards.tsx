@@ -11,7 +11,10 @@ type AnnotationCardsProps = {
 // Staged annotation cards shown above the composer: user-selected workspace context that will be
 // attached to the next message as cited context for the agent. Text cards carry the selection;
 // image cards reference the selected region of an agent-generated image.
-const AnnotationCards = ({ annotations, onRemove }: AnnotationCardsProps): React.JSX.Element | null => {
+const AnnotationCards = ({
+  annotations,
+  onRemove
+}: AnnotationCardsProps): React.JSX.Element | null => {
   const { t } = useLanguage()
   if (annotations.length === 0) return null
 

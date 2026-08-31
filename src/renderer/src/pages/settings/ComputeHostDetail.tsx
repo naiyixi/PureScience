@@ -390,9 +390,7 @@ export function ComputeHostDetail({
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <h4 className="text-sm font-medium text-foreground">{t('settings.details')}</h4>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              {t('settings.hostNotesHint')}
-            </p>
+            <p className="mt-0.5 text-xs text-muted-foreground">{t('settings.hostNotesHint')}</p>
           </div>
           {!isEditingDetails ? (
             <Button
@@ -499,9 +497,7 @@ export function ComputeHostDetail({
             ) : null}
           </div>
         ) : (
-          <p className="mt-3 text-xs italic text-muted-foreground">
-            {t('settings.noNotesYet')}
-          </p>
+          <p className="mt-3 text-xs italic text-muted-foreground">{t('settings.noNotesYet')}</p>
         )}
       </div>
 
@@ -510,9 +506,7 @@ export function ComputeHostDetail({
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <h4 className="text-sm font-medium text-foreground">{t('settings.scratchRoot')}</h4>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              {t('settings.scratchRootHint')}
-            </p>
+            <p className="mt-0.5 text-xs text-muted-foreground">{t('settings.scratchRootHint')}</p>
           </div>
           {!isEditingScratch ? (
             <Button
@@ -593,7 +587,9 @@ export function ComputeHostDetail({
       <div className="mt-7">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <h4 className="text-sm font-medium text-foreground">{t('settings.concurrentJobLimit')}</h4>
+            <h4 className="text-sm font-medium text-foreground">
+              {t('settings.concurrentJobLimit')}
+            </h4>
             <p className="mt-0.5 text-xs text-muted-foreground">
               {t('settings.concurrentJobLimitHint')}
             </p>

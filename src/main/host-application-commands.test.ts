@@ -71,7 +71,12 @@ const createDependencies = (): HostApplicationCommandDependencies => ({
     revealInFolder: vi.fn(() => undefined)
   },
   folderGrants: {
-    grant: vi.fn(async () => ({ rootId: 'root-1', rootPath: '/data', label: 'data', createdAt: 1 })),
+    grant: vi.fn(async () => ({
+      rootId: 'root-1',
+      rootPath: '/data',
+      label: 'data',
+      createdAt: 1
+    })),
     list: vi.fn(async () => ({ grants: [] })),
     revoke: vi.fn(async () => true)
   },

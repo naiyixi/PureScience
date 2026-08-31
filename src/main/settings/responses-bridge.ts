@@ -273,10 +273,7 @@ const textFromContent = (content: unknown): string | JsonObject[] => {
 const sourceTextFromContent = (content: unknown): string => {
   if (content === undefined || content === null) return ''
   if (typeof content === 'string') return content
-  if (
-    typeof content === 'object' &&
-    SOURCE_IMAGE_TYPES.has(String((content as JsonObject).type))
-  ) {
+  if (typeof content === 'object' && SOURCE_IMAGE_TYPES.has(String((content as JsonObject).type))) {
     throw unsupportedSourceImageOutput()
   }
   if (!Array.isArray(content)) {

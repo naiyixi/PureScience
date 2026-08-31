@@ -28,20 +28,40 @@ const PANCLAO_MARKERS: PanglaoMarkerEntry[] = [
   { cellType: 'Monocytes', organ: 'Blood', markers: ['CD14', 'LYZ', 'FCGR3A', 'S100A8'] },
   { cellType: 'Macrophages', organ: 'Blood', markers: ['CD68', 'C1QA', 'C1QB', 'MRC1'] },
   { cellType: 'Dendritic cells', organ: 'Blood', markers: ['FCER1A', 'CLEC9A', 'ITGAX'] },
-  { cellType: 'Plasmacytoid dendritic cells', organ: 'Blood', markers: ['LILRA4', 'IL3RA', 'GZMB'] },
+  {
+    cellType: 'Plasmacytoid dendritic cells',
+    organ: 'Blood',
+    markers: ['LILRA4', 'IL3RA', 'GZMB']
+  },
   { cellType: 'Neutrophils', organ: 'Blood', markers: ['FCGR3B', 'CSF3R', 'S100A8', 'S100A9'] },
   { cellType: 'Erythrocytes', organ: 'Blood', markers: ['HBA1', 'HBB', 'AHSP'] },
   { cellType: 'Platelets', organ: 'Blood', markers: ['PF4', 'PPBP', 'ITGA2B'] },
   { cellType: 'Mast cells', organ: 'Blood', markers: ['TPSAB1', 'TPSB2', 'CPA3', 'MS4A2'] },
-  { cellType: 'Endothelial cells', organ: 'Vasculature', markers: ['PECAM1', 'VWF', 'CLDN5', 'CDH5'] },
-  { cellType: 'Fibroblasts', organ: 'Connective', markers: ['COL1A1', 'COL1A2', 'DCN', 'LUM', 'PDGFRA'] },
+  {
+    cellType: 'Endothelial cells',
+    organ: 'Vasculature',
+    markers: ['PECAM1', 'VWF', 'CLDN5', 'CDH5']
+  },
+  {
+    cellType: 'Fibroblasts',
+    organ: 'Connective',
+    markers: ['COL1A1', 'COL1A2', 'DCN', 'LUM', 'PDGFRA']
+  },
   { cellType: 'Smooth muscle cells', organ: 'Vasculature', markers: ['ACTA2', 'MYH11', 'TAGLN'] },
   { cellType: 'Pericytes', organ: 'Vasculature', markers: ['RGS5', 'PDGFRB', 'NOTCH3'] },
-  { cellType: 'Epithelial cells', organ: 'Epithelium', markers: ['EPCAM', 'KRT8', 'KRT18', 'KRT19'] },
+  {
+    cellType: 'Epithelial cells',
+    organ: 'Epithelium',
+    markers: ['EPCAM', 'KRT8', 'KRT18', 'KRT19']
+  },
   { cellType: 'Hepatocytes', organ: 'Liver', markers: ['ALB', 'APOA1', 'APOB', 'CYP2E1', 'TTR'] },
   { cellType: 'Kupffer cells', organ: 'Liver', markers: ['CD68', 'MRC1', 'C1QB'] },
   { cellType: 'Alveolar type I cells', organ: 'Lung', markers: ['AGER', 'PDPN', 'CAV1'] },
-  { cellType: 'Alveolar type II cells', organ: 'Lung', markers: ['SFTPC', 'SFTPA1', 'SFTPB', 'NAPSA'] },
+  {
+    cellType: 'Alveolar type II cells',
+    organ: 'Lung',
+    markers: ['SFTPC', 'SFTPA1', 'SFTPB', 'NAPSA']
+  },
   { cellType: 'Cardiomyocytes', organ: 'Heart', markers: ['TNNT2', 'TTN', 'MYL7', 'NPPA'] },
   { cellType: 'Podocytes', organ: 'Kidney', markers: ['NPHS1', 'NPHS2', 'PODXL'] },
   { cellType: 'Proximal tubule cells', organ: 'Kidney', markers: ['SLC34A1', 'SLC22A6', 'CUBN'] },
@@ -54,7 +74,11 @@ const PANCLAO_MARKERS: PanglaoMarkerEntry[] = [
   { cellType: 'Microglia', organ: 'Brain', markers: ['P2RY12', 'CX3CR1', 'TMEM119', 'CSF1R'] },
   { cellType: 'Excitatory neurons', organ: 'Brain', markers: ['SLC17A7', 'CAMK2A', 'NRGN'] },
   { cellType: 'Inhibitory neurons', organ: 'Brain', markers: ['GAD1', 'GAD2', 'SLC32A1'] },
-  { cellType: 'Skeletal muscle satellite cells', organ: 'Muscle', markers: ['PAX7', 'MYF5', 'MYOD1'] }
+  {
+    cellType: 'Skeletal muscle satellite cells',
+    organ: 'Muscle',
+    markers: ['PAX7', 'MYF5', 'MYOD1']
+  }
 ]
 
 export const EXPRESSION_PANGLAODB_TOOLS: ToolDescriptor[] = [
@@ -79,10 +103,15 @@ export const EXPRESSION_PANGLAODB_TOOLS: ToolDescriptor[] = [
     example:
       'const result = await host.mcp("expression", "panglaodb_markers_for_cell_type", {"cell_type": "microglia"})',
     run: async (_ctx, a) => {
-      const query = String(a.cell_type ?? '').trim().toLowerCase()
+      const query = String(a.cell_type ?? '')
+        .trim()
+        .toLowerCase()
       if (!query) throw new Error('cell_type is required')
       const exact = PANCLAO_MARKERS.filter((entry) => entry.cellType.toLowerCase() === query)
-      const matches = exact.length > 0 ? exact : PANCLAO_MARKERS.filter((entry) => entry.cellType.toLowerCase().includes(query))
+      const matches =
+        exact.length > 0
+          ? exact
+          : PANCLAO_MARKERS.filter((entry) => entry.cellType.toLowerCase().includes(query))
       return {
         query: String(a.cell_type),
         match: exact.length > 0 ? 'exact' : matches.length > 0 ? 'partial' : 'none',
@@ -114,7 +143,9 @@ export const EXPRESSION_PANGLAODB_TOOLS: ToolDescriptor[] = [
     example:
       'const result = await host.mcp("expression", "panglaodb_cell_type_for_gene", {"gene": "GFAP"})',
     run: async (_ctx, a) => {
-      const gene = String(a.gene ?? '').trim().toUpperCase()
+      const gene = String(a.gene ?? '')
+        .trim()
+        .toUpperCase()
       if (!gene) throw new Error('gene is required')
       const matches = PANCLAO_MARKERS.filter((entry) => entry.markers.includes(gene))
       return {
@@ -136,12 +167,13 @@ export const EXPRESSION_PANGLAODB_TOOLS: ToolDescriptor[] = [
         organ: { type: 'string', description: 'Optional organ filter, e.g. "Blood", "Brain"' }
       }
     },
-    returns:
-      '`{ count, cell_types: [ { cell_type, organ, n_markers } ] }` sorted by cell type.',
+    returns: '`{ count, cell_types: [ { cell_type, organ, n_markers } ] }` sorted by cell type.',
     example: 'const result = await host.mcp("expression", "panglaodb_list_cell_types", {})',
     run: async (_ctx, a) => {
       const organ = a.organ != null ? String(a.organ).trim().toLowerCase() : undefined
-      const rows = PANCLAO_MARKERS.filter((entry) => !organ || entry.organ.toLowerCase().includes(organ))
+      const rows = PANCLAO_MARKERS.filter(
+        (entry) => !organ || entry.organ.toLowerCase().includes(organ)
+      )
         .map((entry) => ({
           cell_type: entry.cellType,
           organ: entry.organ,

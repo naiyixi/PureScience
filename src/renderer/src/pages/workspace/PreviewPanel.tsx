@@ -1,4 +1,14 @@
-import { BookOpen, ClipboardCopy, Download, File, FileUp, FolderOpen, Globe2, Layers, X } from 'lucide-react'
+import {
+  BookOpen,
+  ClipboardCopy,
+  Download,
+  File,
+  FileUp,
+  FolderOpen,
+  Globe2,
+  Layers,
+  X
+} from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { PanelImperativeHandle, PanelSize } from 'react-resizable-panels'
 
@@ -150,7 +160,8 @@ export const PreviewTabContextMenu = ({
     }
   }
 
-  const itemClassName = 'flex w-full cursor-pointer items-center gap-2 rounded px-2.5 py-1.5 text-left text-[13px] text-text-000 hover:bg-bg-300 focus-visible:outline-none'
+  const itemClassName =
+    'flex w-full cursor-pointer items-center gap-2 rounded px-2.5 py-1.5 text-left text-[13px] text-text-000 hover:bg-bg-300 focus-visible:outline-none'
 
   return (
     <div
@@ -159,22 +170,47 @@ export const PreviewTabContextMenu = ({
       className="fixed z-[90] w-52 rounded-lg border border-border-200 bg-bg-000 p-1 shadow-card"
       style={{ left: x, top: y }}
     >
-      <button type="button" role="menuitem" className={itemClassName} onClick={() => run(() => onCloseTab(tab.id))}>
+      <button
+        type="button"
+        role="menuitem"
+        className={itemClassName}
+        onClick={() => run(() => onCloseTab(tab.id))}
+      >
         <X className="size-3.5" aria-hidden="true" /> {t('ws.previewTabClose')}
       </button>
-      <button type="button" role="menuitem" className={itemClassName} onClick={() => run(() => onCloseOthers(tab.id))}>
+      <button
+        type="button"
+        role="menuitem"
+        className={itemClassName}
+        onClick={() => run(() => onCloseOthers(tab.id))}
+      >
         <Layers className="size-3.5" aria-hidden="true" /> {t('ws.previewTabCloseOthers')}
       </button>
       {isFile ? (
         <>
           <div className="my-1 h-px bg-border-300/40" />
-          <button type="button" role="menuitem" className={itemClassName} onClick={() => run(copyPath)}>
+          <button
+            type="button"
+            role="menuitem"
+            className={itemClassName}
+            onClick={() => run(copyPath)}
+          >
             <ClipboardCopy className="size-3.5" aria-hidden="true" /> {t('ws.previewTabCopyPath')}
           </button>
-          <button type="button" role="menuitem" className={itemClassName} onClick={() => run(download)}>
+          <button
+            type="button"
+            role="menuitem"
+            className={itemClassName}
+            onClick={() => run(download)}
+          >
             <Download className="size-3.5" aria-hidden="true" /> {t('ws.previewTabDownload')}
           </button>
-          <button type="button" role="menuitem" className={itemClassName} onClick={() => run(saveAsArtifact)}>
+          <button
+            type="button"
+            role="menuitem"
+            className={itemClassName}
+            onClick={() => run(saveAsArtifact)}
+          >
             <FileUp className="size-3.5" aria-hidden="true" /> {t('ws.previewTabSaveAsArtifact')}
           </button>
         </>
@@ -205,58 +241,58 @@ const PreviewTab = ({
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
 
   return (
-  <div
-    ref={containerRef}
-    role="presentation"
-    className={cn(
-      previewTabClassName,
-      isActive ? 'bg-bg-300 text-text-000' : 'text-text-300 hover:bg-bg-200 hover:text-text-100'
-    )}
-    onContextMenu={(event) => {
-      event.preventDefault()
-      setMenu({ x: event.clientX, y: event.clientY })
-    }}
-  >
-    <button
-      ref={tabRef}
-      type="button"
-      role="tab"
-      id={getPreviewTabId(tab.id)}
-      aria-controls={getPreviewPanelId(tab.id)}
-      aria-selected={isActive}
-      tabIndex={isActive ? 0 : -1}
-      className="flex min-w-0 flex-1 items-center gap-1 self-stretch text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50"
-      onClick={() => onActivate(tab.id)}
-      onKeyDown={onKeyDown}
-      title={tab.title}
-    >
-      {tab.type === 'file' ? (
-        <File className="size-3.5 shrink-0" aria-hidden="true" />
-      ) : tab.type === 'web' ? (
-        <Globe2 className="size-3.5 shrink-0" aria-hidden="true" />
-      ) : tab.toolKind === 'files' ? (
-        <FolderOpen className="size-3.5 shrink-0" aria-hidden="true" />
-      ) : tab.toolKind === 'notebook' ? (
-        <BookOpen className="size-3.5 shrink-0" strokeWidth={2} aria-hidden="true" />
-      ) : null}
-      {tab.type === 'file' ? (
-        <ExtensionPreservingFileName name={tab.name} className="flex-1" />
-      ) : (
-        <span className="min-w-0 truncate">{tab.title}</span>
-      )}
-    </button>
-    <button
-      type="button"
-      tabIndex={-1}
+    <div
+      ref={containerRef}
+      role="presentation"
       className={cn(
-        'shrink-0 rounded-sm p-0.5 outline-none hover:bg-bg-000/60 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50',
-        isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+        previewTabClassName,
+        isActive ? 'bg-bg-300 text-text-000' : 'text-text-300 hover:bg-bg-200 hover:text-text-100'
       )}
-      onClick={() => onClose(tab.id)}
-      aria-label={`Close preview of ${tab.title}`}
+      onContextMenu={(event) => {
+        event.preventDefault()
+        setMenu({ x: event.clientX, y: event.clientY })
+      }}
     >
-      <X className="size-3.5" aria-hidden="true" />
-    </button>
+      <button
+        ref={tabRef}
+        type="button"
+        role="tab"
+        id={getPreviewTabId(tab.id)}
+        aria-controls={getPreviewPanelId(tab.id)}
+        aria-selected={isActive}
+        tabIndex={isActive ? 0 : -1}
+        className="flex min-w-0 flex-1 items-center gap-1 self-stretch text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50"
+        onClick={() => onActivate(tab.id)}
+        onKeyDown={onKeyDown}
+        title={tab.title}
+      >
+        {tab.type === 'file' ? (
+          <File className="size-3.5 shrink-0" aria-hidden="true" />
+        ) : tab.type === 'web' ? (
+          <Globe2 className="size-3.5 shrink-0" aria-hidden="true" />
+        ) : tab.toolKind === 'files' ? (
+          <FolderOpen className="size-3.5 shrink-0" aria-hidden="true" />
+        ) : tab.toolKind === 'notebook' ? (
+          <BookOpen className="size-3.5 shrink-0" strokeWidth={2} aria-hidden="true" />
+        ) : null}
+        {tab.type === 'file' ? (
+          <ExtensionPreservingFileName name={tab.name} className="flex-1" />
+        ) : (
+          <span className="min-w-0 truncate">{tab.title}</span>
+        )}
+      </button>
+      <button
+        type="button"
+        tabIndex={-1}
+        className={cn(
+          'shrink-0 rounded-sm p-0.5 outline-none hover:bg-bg-000/60 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50',
+          isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+        )}
+        onClick={() => onClose(tab.id)}
+        aria-label={`Close preview of ${tab.title}`}
+      >
+        <X className="size-3.5" aria-hidden="true" />
+      </button>
       {menu ? (
         <PreviewTabContextMenu
           x={menu.x}
@@ -264,13 +300,15 @@ const PreviewTab = ({
           tab={tab}
           onCloseTab={onClose}
           onCloseOthers={(id) => {
-            const others = usePreviewWorkbenchStore.getState().items.filter((item) => item.id !== id)
+            const others = usePreviewWorkbenchStore
+              .getState()
+              .items.filter((item) => item.id !== id)
             for (const other of others) removeItem(other.id)
           }}
           onDismiss={() => setMenu(null)}
         />
       ) : null}
-  </div>
+    </div>
   )
 }
 

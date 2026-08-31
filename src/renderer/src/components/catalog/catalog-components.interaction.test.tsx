@@ -40,12 +40,14 @@ describe('CatalogFavoriteButton', () => {
     act(() => button?.click())
     expect(useCatalogTagsStore.getState().entries['skill:alpha']?.favorite).toBe(true)
     expect(
-      container.querySelector<HTMLButtonElement>('[data-testid="catalog-favorite"]')?.getAttribute(
-        'aria-pressed'
-      )
+      container
+        .querySelector<HTMLButtonElement>('[data-testid="catalog-favorite"]')
+        ?.getAttribute('aria-pressed')
     ).toBe('true')
 
-    act(() => container.querySelector<HTMLButtonElement>('[data-testid="catalog-favorite"]')?.click())
+    act(() =>
+      container.querySelector<HTMLButtonElement>('[data-testid="catalog-favorite"]')?.click()
+    )
     expect(useCatalogTagsStore.getState().entries['skill:alpha']?.favorite).toBe(false)
   })
 })
@@ -53,7 +55,9 @@ describe('CatalogFavoriteButton', () => {
 describe('CatalogTagEditor', () => {
   it('adds a tag with Enter and removes it with the chip close button', () => {
     render(<CatalogTagEditor resourceId="skill:alpha" addLabel="Add tag" tagsLabel="Tags" />)
-    act(() => container.querySelector<HTMLButtonElement>('[data-testid="catalog-tag-add"]')?.click())
+    act(() =>
+      container.querySelector<HTMLButtonElement>('[data-testid="catalog-tag-add"]')?.click()
+    )
 
     const input = container.querySelector<HTMLInputElement>('[data-testid="catalog-tag-input"]')
     expect(input).not.toBeNull()
@@ -79,7 +83,9 @@ describe('CatalogTagEditor', () => {
 
   it('rejects empty input and closes the editor on blur', () => {
     render(<CatalogTagEditor resourceId="skill:alpha" addLabel="Add tag" tagsLabel="Tags" />)
-    act(() => container.querySelector<HTMLButtonElement>('[data-testid="catalog-tag-add"]')?.click())
+    act(() =>
+      container.querySelector<HTMLButtonElement>('[data-testid="catalog-tag-add"]')?.click()
+    )
     const input = container.querySelector<HTMLInputElement>('[data-testid="catalog-tag-input"]')
     act(() => {
       input?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))

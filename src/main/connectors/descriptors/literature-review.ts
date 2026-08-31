@@ -2,6 +2,21 @@ import type { ToolContext, ToolDescriptor } from '../types'
 import { searchArxiv } from './literature-arxiv'
 import { searchOpenAlexWorks } from './literature-openalex'
 
+/** One per-query result: merged records from both sources with per-source status. */
+interface LiteratureSourceReport {
+  status: 'ok' | 'error'
+  n_records_returned: number
+  api_total: number
+  error?: string
+}
+
+interface LiteratureQueryResult {
+  query: string
+  sources: { arxiv: LiteratureSourceReport; openalex: LiteratureSourceReport }
+  total_records: number
+  records: Array<Record<string, unknown>>
+}
+
 // 多源并行文献综述: 一次调用同时检索 arXiv 预印本 + OpenAlex 学术图谱 (~2.5 亿条记录),
 // 结果按来源合并 (每条记录带 source 标记), 单源失败不拖垮整体 (标记 error 继续返回其他源)。
 // 对齐"多代理并行文献综述"思路 — 轻量实现 (工具内 Promise.all 并行,
@@ -42,7 +57,7 @@ export const LITERATURE_REVIEW_TOOLS: ToolDescriptor[] = [
       const yearTo = a.year_to != null ? Number(a.year_to) : undefined
       const openAccessOnly = a.open_access_only === true
 
-      const runOne = async (q: string) => {
+      const runOne = async (q: string): Promise<LiteratureQueryResult> => {
         const [arxivResult, openalexResult] = await Promise.all([
           searchArxiv(ctx, { query: `all:${q}`, maxResults: maxPerSource }).then(
             (result) => ({ status: 'ok' as const, ...result }),

@@ -36,10 +36,7 @@ export const SideChatPanel = ({
   const [draft, setDraft] = useState('')
   const nextId = useId()
 
-  const canForward = useMemo(
-    () => messages.some((message) => message.role === 'user'),
-    [messages]
-  )
+  const canForward = useMemo(() => messages.some((message) => message.role === 'user'), [messages])
 
   if (!isOpen) return null
 
@@ -83,7 +80,13 @@ export const SideChatPanel = ({
           >
             {t('ws.sideChatForward')}
           </Button>
-          <Button type="button" size="icon" variant="ghost" onClick={onClose} aria-label={t('common.close')}>
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            onClick={onClose}
+            aria-label={t('common.close')}
+          >
             <X className="size-4" />
           </Button>
         </div>

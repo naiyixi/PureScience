@@ -163,7 +163,9 @@ const ReportErrorDialog = ({
         >
           <div className={dialogHeaderClassName}>
             <div className="min-w-0">
-              <Dialog.Title className={dialogTitleClassName}>{t('reportError.reportThisError')}</Dialog.Title>
+              <Dialog.Title className={dialogTitleClassName}>
+                {t('reportError.reportThisError')}
+              </Dialog.Title>
               <Dialog.Description className={dialogDescriptionClassName}>
                 This report is posted publicly on GitHub. Edit the error text below to remove
                 anything sensitive before sharing. Your runtime log stays on this device and is

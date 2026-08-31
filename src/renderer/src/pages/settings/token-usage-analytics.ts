@@ -182,11 +182,7 @@ export const buildTokenUsageAnalytics = (
         }
       }
 
-      if (
-        isRootMessage &&
-        isHumanUserMessage(message) &&
-        !isHiddenControlMessage(message)
-      ) {
+      if (isRootMessage && isHumanUserMessage(message) && !isHiddenControlMessage(message)) {
         runsAt.push(message.createdAt || session.createdAt)
       }
 
@@ -204,7 +200,6 @@ export const buildTokenUsageAnalytics = (
       })
     }
   }
-
 
   // Per-run attribution: group agent-message usage by agent frame. A root frame's run rolls up the
   // tokens of every descendant frame (delegates/reviewers) so each run shows its true cost.
@@ -229,7 +224,10 @@ export const buildTokenUsageAnalytics = (
     const parentId = frame.kind === 'root' ? undefined : frame.parentFrameId
     parentOf.set(frame.id, parentId)
   }
-  const subtreeTokens = (frameId: string, count: { n: number }): { input: number; cache: number; output: number } => {
+  const subtreeTokens = (
+    frameId: string,
+    count: { n: number }
+  ): { input: number; cache: number; output: number } => {
     let input = 0
     let cache = 0
     let output = 0

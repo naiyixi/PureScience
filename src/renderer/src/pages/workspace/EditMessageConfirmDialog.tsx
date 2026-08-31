@@ -31,38 +31,38 @@ const EditMessageConfirmDialog = ({
 }: EditMessageConfirmDialogProps): React.JSX.Element => {
   const { t } = useLanguage()
   return (
-  <AlertDialog.Root
-    open={open}
-    onOpenChange={(nextOpen) => {
-      if (!nextOpen) onCancel()
-    }}
-  >
-    <AlertDialog.Portal>
-      <AlertDialog.Overlay className={dialogOverlayClassName} />
-      <AlertDialog.Content className={dialogPanelClassName('w-[min(420px,calc(100vw-2rem))]')}>
-        <AlertDialog.Title className={dialogTitleClassName}>
-          Resend on a new branch?
-        </AlertDialog.Title>
-        <AlertDialog.Description className={dialogDescriptionClassName}>
-          Sending this edited prompt starts a new branch from here. The {subsequentTurns}{' '}
-          {subsequentTurns === 1 ? 'turn' : 'turns'} that currently follow remain available from the
-          message revision controls.
-        </AlertDialog.Description>
-        <div className={dialogFooterClassName}>
-          <AlertDialog.Cancel asChild>
-            <Button type="button" variant="outline" className={cancelButtonClassName}>
-              Cancel
-            </Button>
-          </AlertDialog.Cancel>
-          <AlertDialog.Action asChild>
-            <Button type="button" className={confirmButtonClassName} onClick={onConfirm}>
-              {t('settings.branchAndResend')}
-            </Button>
-          </AlertDialog.Action>
-        </div>
-      </AlertDialog.Content>
-    </AlertDialog.Portal>
-  </AlertDialog.Root>
+    <AlertDialog.Root
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) onCancel()
+      }}
+    >
+      <AlertDialog.Portal>
+        <AlertDialog.Overlay className={dialogOverlayClassName} />
+        <AlertDialog.Content className={dialogPanelClassName('w-[min(420px,calc(100vw-2rem))]')}>
+          <AlertDialog.Title className={dialogTitleClassName}>
+            Resend on a new branch?
+          </AlertDialog.Title>
+          <AlertDialog.Description className={dialogDescriptionClassName}>
+            Sending this edited prompt starts a new branch from here. The {subsequentTurns}{' '}
+            {subsequentTurns === 1 ? 'turn' : 'turns'} that currently follow remain available from
+            the message revision controls.
+          </AlertDialog.Description>
+          <div className={dialogFooterClassName}>
+            <AlertDialog.Cancel asChild>
+              <Button type="button" variant="outline" className={cancelButtonClassName}>
+                Cancel
+              </Button>
+            </AlertDialog.Cancel>
+            <AlertDialog.Action asChild>
+              <Button type="button" className={confirmButtonClassName} onClick={onConfirm}>
+                {t('settings.branchAndResend')}
+              </Button>
+            </AlertDialog.Action>
+          </div>
+        </AlertDialog.Content>
+      </AlertDialog.Portal>
+    </AlertDialog.Root>
   )
 }
 

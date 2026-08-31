@@ -62,8 +62,22 @@ describe('WriteAuditPanel', () => {
         executionCount: 1,
         startedAt: 1_000,
         workingFiles: [
-          { path: '/data/r1.csv', relativePath: 'r1.csv', kind: 'raw-data', changeKind: 'created', size: 1024, mtimeMs: 500 },
-          { path: '/data/r1.csv', relativePath: 'r1.csv', kind: 'raw-data', changeKind: 'modified', size: 2048, mtimeMs: 600 }
+          {
+            path: '/data/r1.csv',
+            relativePath: 'r1.csv',
+            kind: 'raw-data',
+            changeKind: 'created',
+            size: 1024,
+            mtimeMs: 500
+          },
+          {
+            path: '/data/r1.csv',
+            relativePath: 'r1.csv',
+            kind: 'raw-data',
+            changeKind: 'modified',
+            size: 2048,
+            mtimeMs: 600
+          }
         ]
       }),
       makeRun({
@@ -71,7 +85,14 @@ describe('WriteAuditPanel', () => {
         executionCount: 2,
         startedAt: 2_000,
         workingFiles: [
-          { path: '/data/old.txt', relativePath: 'old.txt', kind: 'other', changeKind: 'removed', size: 64, mtimeMs: 700 }
+          {
+            path: '/data/old.txt',
+            relativePath: 'old.txt',
+            kind: 'other',
+            changeKind: 'removed',
+            size: 64,
+            mtimeMs: 700
+          }
         ]
       })
     ])
@@ -98,13 +119,17 @@ describe('WriteAuditPanel', () => {
       })
     ])
 
-    const createdButton = container.querySelector('[data-testid="write-audit-filter-created"]') as HTMLButtonElement
+    const createdButton = container.querySelector(
+      '[data-testid="write-audit-filter-created"]'
+    ) as HTMLButtonElement
     act(() => createdButton.click())
     let rows = container.querySelectorAll('[data-testid="write-audit-row"]')
     expect(rows).toHaveLength(1)
     expect(rows[0]!.textContent).toContain('a')
 
-    const removedButton = container.querySelector('[data-testid="write-audit-filter-removed"]') as HTMLButtonElement
+    const removedButton = container.querySelector(
+      '[data-testid="write-audit-filter-removed"]'
+    ) as HTMLButtonElement
     act(() => removedButton.click())
     rows = container.querySelectorAll('[data-testid="write-audit-row"]')
     expect(rows).toHaveLength(1)

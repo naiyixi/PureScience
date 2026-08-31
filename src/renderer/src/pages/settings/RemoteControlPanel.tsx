@@ -90,23 +90,23 @@ const providerStatus = (
 const BrowserAccessSteps = (): React.JSX.Element => {
   const { t } = useLanguage()
   return (
-  <div className="mt-4 flex items-start gap-3 border-t border-blue-600/15 pt-4">
-    <Smartphone className="mt-0.5 size-5 shrink-0 text-blue-600" aria-hidden="true" />
-    <ol className="min-w-0 space-y-2 text-sm leading-relaxed text-foreground">
-      <li>
-        <span className="font-medium">1.</span> Scan the QR code or open the saved link in a
-        browser.
-      </li>
-      <li>
-        <span className="font-medium">2.</span> Complete two-step verification by matching the
-        six-digit code, then approve the request from this computer or a trusted browser.
-      </li>
-      <li>
-        <span className="font-medium">3.</span> Choose “{t('remoteControl.alwaysTrustBrowser')}” for direct access
-        on future visits while Browser access is on.
-      </li>
-    </ol>
-  </div>
+    <div className="mt-4 flex items-start gap-3 border-t border-blue-600/15 pt-4">
+      <Smartphone className="mt-0.5 size-5 shrink-0 text-blue-600" aria-hidden="true" />
+      <ol className="min-w-0 space-y-2 text-sm leading-relaxed text-foreground">
+        <li>
+          <span className="font-medium">1.</span> Scan the QR code or open the saved link in a
+          browser.
+        </li>
+        <li>
+          <span className="font-medium">2.</span> Complete two-step verification by matching the
+          six-digit code, then approve the request from this computer or a trusted browser.
+        </li>
+        <li>
+          <span className="font-medium">3.</span> Choose “{t('remoteControl.alwaysTrustBrowser')}”
+          for direct access on future visits while Browser access is on.
+        </li>
+      </ol>
+    </div>
   )
 }
 
@@ -396,8 +396,9 @@ export const RemoteControlPanel = (): React.JSX.Element => {
                   code, then approve the request from this computer or an already trusted browser.
                 </li>
                 <li>
-                  <span className="font-medium">4.</span> Choose “{t('remoteControl.alwaysTrustBrowser')}” to skip
-                  approval on future visits to the same remote address.
+                  <span className="font-medium">4.</span> Choose “
+                  {t('remoteControl.alwaysTrustBrowser')}” to skip approval on future visits to the
+                  same remote address.
                 </li>
               </ol>
             </div>

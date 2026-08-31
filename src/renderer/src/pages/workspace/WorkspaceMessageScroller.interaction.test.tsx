@@ -68,7 +68,10 @@ vi.mock('@/components/ui/message-scroller', () => {
   const Button = (): React.JSX.Element => <button type="button">Scroll to end</button>
 
   // Everything is visible in tests: the bounded-render window collapses to the full transcript.
-  const useMessageScrollerVisibility = (): { currentAnchorId: string | null; visibleMessageIds: string[] } => ({
+  const useMessageScrollerVisibility = (): {
+    currentAnchorId: string | null
+    visibleMessageIds: string[]
+  } => ({
     currentAnchorId: null,
     visibleMessageIds: []
   })

@@ -719,11 +719,13 @@ class AcpRuntimeCoordinator {
   // Settles a pending structured clarification card. Returns false when the elicitation is no
   // longer pending (already answered, cancelled, or timed out) so the renderer can drop the card.
   respondElicitation(request: ElicitationRespondRequest): boolean {
-    return this.elicitationBroker?.respondElicitation(
-      request.elicitationId,
-      request.action,
-      request.answers
-    ) ?? false
+    return (
+      this.elicitationBroker?.respondElicitation(
+        request.elicitationId,
+        request.action,
+        request.answers
+      ) ?? false
+    )
   }
 
   // Keeps an app-owned approval on the runtime that owns the conversation, so the existing ACP

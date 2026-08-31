@@ -51,7 +51,9 @@ const UpdateDialog = (): React.JSX.Element | null => {
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <Dialog.Title className="text-base font-semibold">{t('update.available')}</Dialog.Title>
+                <Dialog.Title className="text-base font-semibold">
+                  {t('update.available')}
+                </Dialog.Title>
                 <Dialog.Description className="mt-0.5 text-xs text-muted-foreground tabular-nums">
                   v{dialogStatus.current} → v{dialogStatus.latest}
                 </Dialog.Description>
@@ -77,7 +79,9 @@ const UpdateDialog = (): React.JSX.Element | null => {
                   : (dialogStatus.notes?.[lang] ?? dialogStatus.notes?.zh ?? '')
               return notes ? (
                 <div className="mt-3">
-                  <p className="mb-1 text-xs font-medium text-muted-foreground">{t('update.whatsNew')}</p>
+                  <p className="mb-1 text-xs font-medium text-muted-foreground">
+                    {t('update.whatsNew')}
+                  </p>
                   <div className="max-h-96 overflow-auto rounded-lg bg-muted px-3 py-2">
                     <AgentMarkdown content={notes} />
                   </div>

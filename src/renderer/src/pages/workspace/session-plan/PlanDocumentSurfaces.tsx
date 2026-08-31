@@ -17,12 +17,10 @@ const PlanNoticeBanner = ({
   </div>
 )
 
-type PlanStepStatus = PlanDocumentProjection['stepStatuses'][string]['status'] | 'not_started' | 'not_run'
+type PlanStepStatus =
+  PlanDocumentProjection['stepStatuses'][string]['status'] | 'not_started' | 'not_run'
 
-const STEP_STATUS_PRESENTATION: Record<
-  PlanStepStatus,
-  { mark: string; className: string }
-> = {
+const STEP_STATUS_PRESENTATION: Record<PlanStepStatus, { mark: string; className: string }> = {
   not_started: { mark: '', className: 'border-border text-muted-foreground' },
   not_run: { mark: '', className: 'border-border text-muted-foreground' },
   in_progress: { mark: '…', className: 'border-primary text-primary' },
@@ -32,14 +30,16 @@ const STEP_STATUS_PRESENTATION: Record<
 }
 
 const stepStatusLabel = (status: PlanStepStatus): TranslationKey =>
-  ({
-    not_started: 'settings.planStepNotStarted',
-    not_run: 'settings.planStepNotStarted',
-    in_progress: 'settings.planStepInProgress',
-    completed: 'settings.planStepCompleted',
-    blocked: 'settings.planStepBlocked',
-    skipped: 'settings.planStepSkipped'
-  } as Record<PlanStepStatus, TranslationKey>)[status]
+  (
+    ({
+      not_started: 'settings.planStepNotStarted',
+      not_run: 'settings.planStepNotStarted',
+      in_progress: 'settings.planStepInProgress',
+      completed: 'settings.planStepCompleted',
+      blocked: 'settings.planStepBlocked',
+      skipped: 'settings.planStepSkipped'
+    }) as Record<PlanStepStatus, TranslationKey>
+  )[status]
 
 const validatedPreviewDocument = (value: unknown): PlanDocumentV1 | null => {
   if (!value || typeof value !== 'object') return null
@@ -110,7 +110,8 @@ const PlanDocumentBody = ({
                       <div>
                         <div className="text-sm font-medium">{step.title}</div>
                         <div className="text-xs text-muted-foreground">{step.description}</div>
-                        {state.notes && (state.status === 'blocked' || state.status === 'skipped') ? (
+                        {state.notes &&
+                        (state.status === 'blocked' || state.status === 'skipped') ? (
                           <div className="mt-1.5 rounded-md bg-muted px-2 py-1.5 text-[11px] text-muted-foreground">
                             {state.notes}
                           </div>

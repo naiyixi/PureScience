@@ -1,4 +1,10 @@
-import type { ToolCallContent, ToolCallLocation, ToolKind, Usage, PromptResponse } from '@agentclientprotocol/sdk'
+import type {
+  ToolCallContent,
+  ToolCallLocation,
+  ToolKind,
+  Usage,
+  PromptResponse
+} from '@agentclientprotocol/sdk'
 import type { ArtifactFile, FileReference } from './artifacts'
 import type { UploadedAttachment } from './uploads'
 import type { ConversationAnnotation } from './annotations'
@@ -300,9 +306,8 @@ const sanitizeAcpPromptTermination = (value: unknown): AcpPromptTermination | un
 }
 
 const asSampleSource = (value: unknown): AcpContextWindowSampleSource | undefined =>
-  typeof value === 'string' && ACP_CONTEXT_WINDOW_SAMPLE_SOURCES.has(
-    value as AcpContextWindowSampleSource
-  )
+  typeof value === 'string' &&
+  ACP_CONTEXT_WINDOW_SAMPLE_SOURCES.has(value as AcpContextWindowSampleSource)
     ? (value as AcpContextWindowSampleSource)
     : undefined
 
@@ -335,7 +340,8 @@ export const sanitizeAcpContextWindowSample = (
   const id = asSampleId(sample.id)
   const timestamp = asSampleTimestamp(sample.timestamp)
   if (!id || timestamp === undefined) return undefined
-  const runtimeSegmentId = typeof sample.runtimeSegmentId === 'string' ? sample.runtimeSegmentId : undefined
+  const runtimeSegmentId =
+    typeof sample.runtimeSegmentId === 'string' ? sample.runtimeSegmentId : undefined
   return { ...terminal, id, timestamp, ...(runtimeSegmentId ? { runtimeSegmentId } : {}) }
 }
 
