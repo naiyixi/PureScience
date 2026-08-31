@@ -9,6 +9,7 @@ import {
   EGRESS_DOMAIN_GROUPS,
   DEFAULT_EGRESS_SETTINGS,
   isHostAllowed,
+  isHostDenied,
   resolveEgressAllowlist
 } from '../../shared/egress'
 import { EgressProxy } from './egress-proxy'
@@ -63,6 +64,19 @@ describe('egress allowlist helpers', () => {
     expect(isHostAllowed('other.org', allowlist)).toBe(false)
     // Ports are stripped.
     expect(isHostAllowed('arxiv.org:443', allowlist)).toBe(true)
+  })
+
+  it('deny list blocks cloud-metadata exfiltration endpoints unconditionally', () => {
+    // The deny list is checked FIRST (deny wins over allow).
+    expect(isHostDenied('169.254.169.254')).toBe(true)
+    expect(isHostDenied('metadata.google.internal')).toBe(true)
+    expect(isHostDenied('169.254.170.2')).toBe(true)
+    expect(isHostDenied('100.100.100.200')).toBe(true)
+    // Ports are stripped before matching.
+    expect(isHostDenied('169.254.169.254:80')).toBe(true)
+    // Ordinary scientific hosts are never denied.
+    expect(isHostDenied('arxiv.org')).toBe(false)
+    expect(isHostDenied('eutils.ncbi.nlm.nih.gov')).toBe(false)
   })
 })
 
@@ -139,6 +153,55 @@ describe('EgressProxy', () => {
     })
     // Without an allowlist every host is allowed, so the loopback peer is reachable.
     expect(status).toBe(200)
+  })
+
+  it('blocks deny-list hosts even when no allowlist is set (deny wins)', async () => {
+    proxy = new EgressProxy()
+    proxy.setAllowlist(undefined) // unrestricted, but the built-in deny list still applies
+    const port = await proxy.start()
+
+    const status = await new Promise<number>((resolve, reject) => {
+      const req = httpRequest(
+        {
+          hostname: '127.0.0.1',
+          port,
+          path: '/probe',
+          headers: { host: '169.254.169.254' }
+        },
+        (res) => {
+          res.resume()
+          res.on('end', () => resolve(res.statusCode ?? 0))
+        }
+      )
+      req.on('error', reject)
+      req.end()
+    })
+    // The cloud-metadata endpoint is denied unconditionally, even with no allowlist configured.
+    expect(status).toBe(403)
+  })
+
+  it('blocks deny-list hosts even when allowlisted (deny beats allow)', async () => {
+    proxy = new EgressProxy()
+    proxy.setAllowlist(['169.254.169.254']) // explicitly allowed, but deny wins
+    const port = await proxy.start()
+
+    const status = await new Promise<number>((resolve, reject) => {
+      const req = httpRequest(
+        {
+          hostname: '127.0.0.1',
+          port,
+          path: '/probe',
+          headers: { host: '169.254.169.254' }
+        },
+        (res) => {
+          res.resume()
+          res.on('end', () => resolve(res.statusCode ?? 0))
+        }
+      )
+      req.on('error', reject)
+      req.end()
+    })
+    expect(status).toBe(403)
   })
 
   it('rejects CONNECT tunnels for denied hosts', async () => {

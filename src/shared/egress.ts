@@ -151,3 +151,21 @@ export const isHostAllowed = (host: string, allowlist: string[]): boolean => {
   const normalized = host.toLowerCase().replace(/:\d+$/, '')
   return allowlist.some((allowed) => normalized === allowed || normalized.endsWith(`.${allowed}`))
 }
+
+// Built-in exfiltration deny list: hosts that are NEVER permitted, regardless of the allowlist
+// state. These are the canonical external-exfiltration targets — cloud metadata endpoints that
+// leak credentials, and well-known paste/exfil services. The deny list is unconditional: it wins
+// over any allowlist entry, and it applies even when the egress mechanism is otherwise off.
+export const EGRESS_DENY_DOMAINS: readonly string[] = Object.freeze([
+  // Cloud instance-metadata endpoints (credential exfiltration).
+  '169.254.169.254',
+  'metadata.google.internal',
+  '169.254.170.2', // AWS ECS container credentials
+  '100.100.100.200' // Alibaba Cloud metadata
+])
+
+// True when the host is on the built-in deny list (suffix match, case-insensitive).
+export const isHostDenied = (host: string): boolean => {
+  const normalized = host.toLowerCase().replace(/:\d+$/, '')
+  return EGRESS_DENY_DOMAINS.some((denied) => normalized === denied || normalized.endsWith(`.${denied}`))
+}

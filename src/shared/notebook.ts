@@ -283,6 +283,9 @@ export type NotebookWorkingFile = {
   path: string
   relativePath: string
   kind: NotebookWorkingFileKind
+  // How the file changed during the run: created (new), modified (content/mtime changed), or
+  // removed (deleted by the run). Absent on legacy rows written before this field existed.
+  changeKind?: 'created' | 'modified' | 'removed'
   size?: number
   mtimeMs?: number
   createdByRunId?: string

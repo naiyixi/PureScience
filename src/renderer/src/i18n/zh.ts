@@ -207,6 +207,7 @@ export const zh = {
   'ws.bindSpecialistHint': '将个人专才绑定到此会话。',
   'ws.none': '无',
   'ws.notebookVariables': '变量',
+  'ws.notebookWriteAudit': '写入审计',
   'ws.notebookVariablesLoading': '正在读取内核命名空间…',
   'ws.notebookVariablesEmpty': '命名空间中暂无变量',
   'ws.notebookVariablesUnavailable': '内核未运行——启动内核并执行代码后可查看变量',
