@@ -37,9 +37,11 @@ bad()  { printf '\033[1;31m  ✗\033[0m %s\n' "$*"; }
 # ---------- 1. sensitive-word scan (hard fail) ----------
 say "敏感词扫描 (brand/borrowed-terminology scan)"
 SENSITIVE_PATTERNS='aipoch|open-science|Claude Science|claude-science|CSSwitch|upstream|Upstream|上游|术语统一'
-# Scan only tracked files (staged + committed), skipping .web-rooter, dist, and this
-# script itself (it legitimately lists the patterns it scans for).
-HITS="$(git grep -niE "$SENSITIVE_PATTERNS" -- . ':(exclude).web-rooter' ':(exclude)dist' ':(exclude)scripts/pre-push-checks.sh' 2>/dev/null | grep -v 'Binary file' || true)"
+# Scan only tracked files (staged + committed), skipping .web-rooter, dist, this
+# script itself (it legitimately lists the patterns it scans for), and patches/
+# (patch files are byte-exact copies of third-party npm package content — they
+# must match the upstream tarball verbatim or patch-package fails to apply).
+HITS="$(git grep -niE "$SENSITIVE_PATTERNS" -- . ':(exclude).web-rooter' ':(exclude)dist' ':(exclude)patches' ':(exclude)scripts/pre-push-checks.sh' 2>/dev/null | grep -v 'Binary file' || true)"
 if [[ -n "$HITS" ]]; then
   bad "发现敏感词（${VERSION}）:"
   echo "$HITS" | head -10 | sed 's/^/      /'
