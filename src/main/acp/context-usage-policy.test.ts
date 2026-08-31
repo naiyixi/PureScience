@@ -21,7 +21,7 @@ describe('AcpContextUsagePolicy', () => {
       backend: currentBackend,
       appliedModel: () => selection.appliedModel,
       systemPromptAppends: () => ['app guidance'],
-      tooling: () => ({ artifacts: false, notebook: false, skillImport: false, memory: false })
+      tooling: () => ({ artifacts: false, notebook: false, skillImport: false, memory: false, contextSummary: false })
     })
 
     expect(policy.resolve('session-1')).toEqual({
@@ -49,7 +49,7 @@ describe('AcpContextUsagePolicy', () => {
         }),
       appliedModel: () => 'confirmed/model',
       systemPromptAppends: () => ['must not replace provider prompt'],
-      tooling: () => ({ artifacts: true, notebook: false, skillImport: false, memory: false })
+      tooling: () => ({ artifacts: true, notebook: false, skillImport: false, memory: false, contextSummary: false })
     })
 
     const resolved = policy.resolve('session-1')

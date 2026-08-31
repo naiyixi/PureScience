@@ -47,6 +47,9 @@ vi.mock('../VerificationChecklistPanel', () => ({
     <div data-testid="checklist-panel">checklist</div>
   )
 }))
+vi.mock('../FoldTimelinePanel', () => ({
+  FoldTimelinePanel: (): React.JSX.Element => <div data-testid="fold-panel">fold</div>
+}))
 
 import { PreviewToolContent } from './PreviewToolContent'
 

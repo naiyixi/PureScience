@@ -226,7 +226,8 @@ export class AcpProviderSessionResumer {
           artifacts: capability.descriptor.capabilities.includes('artifacts'),
           notebook: capability.descriptor.capabilities.includes('notebook'),
           skillImport: capability.descriptor.capabilities.includes('skill-import'),
-          memory: capability.descriptor.capabilities.includes('memory')
+          memory: capability.descriptor.capabilities.includes('memory'),
+          contextSummary: capability.descriptor.capabilities.includes('context-summary')
         },
         backendSystemPromptAppends: backend.prompt.systemPromptAppends,
         sessionOptions: backend.session.options,

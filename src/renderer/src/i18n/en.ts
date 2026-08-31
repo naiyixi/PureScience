@@ -1345,6 +1345,7 @@ export const en: Record<ZhKey, string> = {
   'ui.nochecksrecorded': 'No checks recorded.',
   'ui.checks': 'Checks',
   'ui.checklist': 'Checklist',
+  'ui.foldedcontext': 'Folded context',
   'ui.theoriginaltaskcontinuesinth': 'The original task continues in this turn.',
   'ui.contextwindow': 'Context window',
   'ui.resumesession': 'Resume session',

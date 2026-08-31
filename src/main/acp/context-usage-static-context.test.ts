@@ -11,7 +11,8 @@ describe('contextUsageMcpSections', () => {
       artifacts: true,
       notebook: true,
       skillImport: true,
-      memory: true
+      memory: true,
+      contextSummary: false,
     })
 
     const text = sections.map((section) => section.text).join('\n')
@@ -31,7 +32,8 @@ describe('contextUsageMcpSections', () => {
       artifacts: false,
       notebook: true,
       skillImport: false,
-      memory: false
+      memory: false,
+      contextSummary: false,
     })
 
     const text = sections.map((section) => section.text).join('\n')
@@ -44,7 +46,8 @@ describe('contextUsageMcpSections', () => {
       artifacts: false,
       notebook: true,
       skillImport: false,
-      memory: false
+      memory: false,
+      contextSummary: false,
     })
     const tokenizer = new Tiktoken(cl100kBase)
 
@@ -60,7 +63,8 @@ describe('contextUsageMcpSections', () => {
       notebook: true,
       skillImport: false,
       codexBridgeAliases: true,
-      memory: false
+      memory: false,
+      contextSummary: false,
     })
 
     const text = sections.map((section) => section.text).join('\n')
@@ -73,7 +77,8 @@ describe('contextUsageMcpSections', () => {
       artifacts: true,
       notebook: true,
       skillImport: false,
-      memory: false
+      memory: false,
+      contextSummary: false,
     })
 
     expect(sections.map(({ sectionId }) => sectionId)).toEqual([
@@ -92,13 +97,20 @@ describe('contextUsageMcpSections', () => {
         artifacts: false,
         notebook: false,
         skillImport: false,
-        memory: false
+        memory: false,
+        contextSummary: false,
       })
     ).toEqual([])
   })
 
   it('caches each static availability combination', () => {
-    const options = { artifacts: false, notebook: true, skillImport: false, memory: false }
+    const options = {
+      artifacts: false,
+      notebook: true,
+      skillImport: false,
+      memory: false,
+      contextSummary: false
+    }
     expect(contextUsageMcpSections('claude-code', options)).toBe(
       contextUsageMcpSections('claude-code', options)
     )

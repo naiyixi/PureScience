@@ -48,6 +48,7 @@ import type { NotebookHandoffContext } from '../notebook/runtime-service'
 import type { ImageInputCompatibilityOwner } from './image-input-compatibility-owner'
 import type { SkillImportRpcConnection } from '../skills/mcp-server'
 import type { MemoryRpcConnection } from '../settings/memory-mcp-server'
+import type { ContextSummaryRpcConnection } from '../settings/context-summary-mcp-server'
 import { codexStorageDir, codexSubscriptionStorageDir } from '../agent-framework/codex'
 import { getAppClaudeConfigDir } from '../settings/provider-env'
 import type { PermissionGrantRegistry } from '../permission-grants/registry'
@@ -152,6 +153,10 @@ type AcpRuntimeOptions = {
   skills?: AcpTurnSkillHooks
   plan?: AcpRuntimePlanOptions
   memory?: AcpRuntimeMemoryOptions
+  contextSummary?: AcpRuntimeContextSummaryOptions
+  // Optional hook called after a context compaction completes, so the app can persist the
+  // folded-away window as an immutable summary chunk. Injected by the app runtime assembly.
+  contextSummaryCapture?: (input: { sessionId: string; reason: string }) => Promise<void> | void
   // App-owned structured clarification (ACP elicitation): when present, agent
   // `elicitation/create` requests are projected to the renderer and block until the user
   // answers. Absent ⇒ requests fail closed with `cancel` so the agent never hangs.
@@ -289,6 +294,13 @@ type AcpRuntimeMemoryOptions = {
   mcpEntryPath: string
   mcpCommand?: string
   getRpcConnection: (binding: { sessionId: string }) => Promise<MemoryRpcConnection>
+  registerSessionAlias?: (aliasSessionId: string, sessionId: string) => void
+}
+
+type AcpRuntimeContextSummaryOptions = {
+  mcpEntryPath: string
+  mcpCommand?: string
+  getRpcConnection: (binding: { sessionId: string }) => Promise<ContextSummaryRpcConnection>
   registerSessionAlias?: (aliasSessionId: string, sessionId: string) => void
 }
 

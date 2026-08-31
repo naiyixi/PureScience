@@ -12,7 +12,8 @@ import type {
   ReviewSessionRequest,
   ReviewSuppressionEvent,
   VerificationChecklist,
-  VerificationChecklistMutationRequest
+  VerificationChecklistMutationRequest,
+  ContextSummaryChunkView
 } from '../../shared/reviewer'
 import type { PersistedChatSession } from '../../shared/session-persistence'
 import { REVIEWER_IPC } from '../../shared/reviewer'
@@ -88,6 +89,9 @@ type ReviewerIpcOptions = {
     sessionId: string,
     mutation: () => Promise<Result>
   ) => Promise<Result>
+  // Optional loader for the session's folded-context chunks (fold timeline UI). Absent ⇒ the
+  // reviewer command returns an empty list (feature not wired).
+  contextSummaryChunks?: (sessionId: string) => Promise<ContextSummaryChunkView[]>
 }
 
 type ReviewerCommandOwner = Readonly<{
@@ -97,6 +101,7 @@ type ReviewerCommandOwner = Readonly<{
   abortFixLoop: (request: ReviewSessionRequest) => void
   getChecklist: (request: ReviewSessionRequest) => Promise<VerificationChecklist>
   mutateChecklist: (request: VerificationChecklistMutationRequest) => Promise<void>
+  getChunks: (request: ReviewSessionRequest) => Promise<ContextSummaryChunkView[]>
 }>
 
 // Owns reviewer arbitration and fix-loop cancellation independently from any command transport.
@@ -174,6 +179,13 @@ const createReviewerCommandOwner = (options: ReviewerIpcOptions): ReviewerComman
     )
     const reviews = await getForSession(request)
     for (const review of reviews) broadcastReviewUpdate({ review })
+  }
+
+  // Loads the session's folded-context chunks (fold timeline). Returns [] when the feature is not
+  // wired or the session has no chunks.
+  const getChunks = async (request: ReviewSessionRequest): Promise<ContextSummaryChunkView[]> => {
+    if (!options.contextSummaryChunks) return []
+    return options.contextSummaryChunks(request.appSessionId)
   }
 
   // Returns whether a review actually STARTED. The session is loaded up front (not in the background)
@@ -362,7 +374,15 @@ const createReviewerCommandOwner = (options: ReviewerIpcOptions): ReviewerComman
     })
   }
 
-  return { run: triggerReview, triggerReview, getForSession, abortFixLoop, getChecklist, mutateChecklist }
+  return {
+    run: triggerReview,
+    triggerReview,
+    getForSession,
+    abortFixLoop,
+    getChecklist,
+    mutateChecklist,
+    getChunks
+  }
 }
 
 // Registers the legacy Electron adapter against an injectable owner. A future Host command
@@ -383,6 +403,9 @@ const registerReviewerIpcHandlers = (
   )
   ipcMainHandle(REVIEWER_IPC.MUTATE_CHECKLIST, (_event, request: VerificationChecklistMutationRequest) =>
     owner.mutateChecklist(request)
+  )
+  ipcMainHandle(REVIEWER_IPC.GET_CHUNKS, (_event, request: ReviewSessionRequest) =>
+    owner.getChunks(request)
   )
   return owner
 }

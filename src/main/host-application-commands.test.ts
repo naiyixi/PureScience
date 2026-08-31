@@ -98,7 +98,8 @@ const createDependencies = (): HostApplicationCommandDependencies => ({
     getForSession: vi.fn(async () => []),
     abortFixLoop: vi.fn(() => undefined),
     getChecklist: vi.fn(async () => ({ projectId: 'p', sessionId: 's', items: [] })),
-    mutateChecklist: vi.fn(async () => undefined)
+    mutateChecklist: vi.fn(async () => undefined),
+    getChunks: vi.fn(async () => [])
   },
   storage: {
     getInfo: vi.fn(async () => ({
@@ -174,7 +175,7 @@ describe('Host application commands', () => {
         .filter((channel): channel is string => channel !== null)
     }))
 
-    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(47)
+    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(48)
     const actualGroups = hostApplicationCommandGroups
       .map(({ name, commands }) => ({
         capability: name,
@@ -192,7 +193,7 @@ describe('Host application commands', () => {
       {} as HostApplicationCommandDependencies
     )
 
-    expect(router.dispatcher.commandNames()).toHaveLength(47)
+    expect(router.dispatcher.commandNames()).toHaveLength(48)
     installation.uninstall()
     expect(router.dispatcher.commandNames()).toEqual([])
   })
@@ -273,6 +274,10 @@ describe('Host application commands', () => {
       hostApplicationCommands.reviewer.mutateChecklist,
       invocation([{ ...reviewSession, rootFindingId: 'finding-1', resolution: 'resolved' }])
     )
+    await router.dispatcher.invoke(
+      hostApplicationCommands.reviewer.getChunks,
+      invocation([reviewSession])
+    )
     await router.dispatcher.invoke(hostApplicationCommands.reviewer.run, invocation([reviewRun]))
     await router.dispatcher.invoke(hostApplicationCommands.storage.cancelMigrate, invocation([]))
     await router.dispatcher.invoke(
@@ -342,6 +347,7 @@ describe('Host application commands', () => {
       rootFindingId: 'finding-1',
       resolution: 'resolved'
     })
+    expect(dependencies.reviewer.getChunks).toHaveBeenCalledWith(reviewSession)
     expect(dependencies.storage.commitAndRelaunch).toHaveBeenCalledWith(parent)
     expect(dependencies.storage.setDataRootAndRelaunch).toHaveBeenCalledWith(root)
 

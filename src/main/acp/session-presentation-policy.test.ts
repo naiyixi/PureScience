@@ -43,7 +43,8 @@ describe('ACP Session presentation policy', () => {
       artifacts: true,
       notebook: true,
       skillImport: true,
-      memory: false
+      memory: false,
+      contextSummary: false,
     })
 
     expect(appends).toEqual([
@@ -62,7 +63,8 @@ describe('ACP Session presentation policy', () => {
       artifacts: false,
       notebook: false,
       skillImport: false,
-      memory: false
+      memory: false,
+      contextSummary: false,
     })
 
     expect(appends).toEqual([TURN_CONTINUITY_APPEND, LARGE_DATA_FILE_APPEND])
@@ -72,7 +74,7 @@ describe('ACP Session presentation policy', () => {
   it('builds immutable Claude Session metadata in exact append order and fails closed on Skills', () => {
     const presentation = policy.buildSessionSetup({
       framework: claudeCodeFramework,
-      tooling: { artifacts: false, notebook: false, skillImport: false, memory: false },
+      tooling: { artifacts: false, notebook: false, skillImport: false, memory: false, contextSummary: false },
       backendSystemPromptAppends: ['Backend connector guidance.'],
       extraSystemPromptAppends: ['Specialist identity.'],
       sessionOptions: { plugins: [{ type: 'local', path: '/app/claude' }] },
@@ -111,7 +113,7 @@ describe('ACP Session presentation policy', () => {
     expect(
       policy.buildSessionSetup({
         framework: codexFramework,
-        tooling: { artifacts: true, notebook: true, skillImport: true, memory: false },
+        tooling: { artifacts: true, notebook: true, skillImport: true, memory: false, contextSummary: false },
         backendSystemPromptAppends: ['Already installed by the backend.'],
         extraSystemPromptAppends: ['One-off Session guidance.'],
         persistentSystemPrompt: 'Baked Codex developer instructions.'
@@ -164,7 +166,7 @@ describe('ACP Session presentation policy', () => {
     expect(
       policy.buildTurnPromptPrefix({
         framework: opencodeFramework,
-        tooling: { artifacts: false, notebook: false, skillImport: false, memory: false },
+        tooling: { artifacts: false, notebook: false, skillImport: false, memory: false, contextSummary: false },
         persistentSystemPrompt: 'Baked OpenCode instructions.',
         specialistPrefix: 'Specialist identity prefix.',
         specialistSkills: {
@@ -189,7 +191,7 @@ describe('ACP Session presentation policy', () => {
       frameworkNames: ['Research'],
       missingSkillIds: []
     }
-    const tooling = { artifacts: false, notebook: false, skillImport: false, memory: false }
+    const tooling = { artifacts: false, notebook: false, skillImport: false, memory: false, contextSummary: false }
 
     expect(
       policy.buildTurnPromptPrefix({

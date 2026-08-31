@@ -375,6 +375,21 @@ export type VerificationChecklistMutationRequest = ReviewSessionRequest & {
 }
 
 
+// A chunk list view model for the UI fold timeline: the immutable persisted chunks of a session.
+export type ContextSummaryChunkView = {
+  id: string
+  level: 1 | 2
+  foldedAt: number
+  reason: string
+  boundaryLabel?: string
+  foldedTokens?: number
+  summaryText: string
+  // Preview of the folded transcript (first N chars) for the expandable summary.
+  transcriptPreview: string
+}
+
+export type ContextSummaryChunkListRequest = ReviewSessionRequest
+
 export const REVIEWER_IPC = {
   // Renderer → main: trigger a review run.
   RUN: 'reviewer:run',
@@ -395,5 +410,7 @@ export const REVIEWER_IPC = {
   // Renderer → main: load the session's aggregated verification checklist.
   GET_CHECKLIST: 'reviewer:get-checklist',
   // Renderer → main: mark a checklist claim addressed (or back to open).
-  MUTATE_CHECKLIST: 'reviewer:mutate-checklist'
+  MUTATE_CHECKLIST: 'reviewer:mutate-checklist',
+  // Renderer → main: load the session's folded-context chunks (fold timeline).
+  GET_CHUNKS: 'reviewer:get-chunks'
 } as const
