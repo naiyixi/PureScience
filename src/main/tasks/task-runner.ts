@@ -229,8 +229,17 @@ class TaskRunner {
   private readonly runs = new Map<string, MutableTaskRun>()
   private readonly activeRunBySession = new Map<string, string>()
   private readonly unsubscribeEvents: () => void
+  // Global concurrency ceiling: how many task runs may be active at once across all sessions.
+  // Mirrors the reference session-concurrency concept at the runner level; defaults are generous
+  // (unlimited) unless the app is constructed with a bound.
+  private activeRunCount = 0
+  private readonly maxConcurrentRuns: number
 
-  constructor(private readonly dependencies: TaskRunnerDependencies) {
+  constructor(
+    private readonly dependencies: TaskRunnerDependencies,
+    options: { maxConcurrentRuns?: number } = {}
+  ) {
+    this.maxConcurrentRuns = options.maxConcurrentRuns ?? Number.POSITIVE_INFINITY
     this.unsubscribeEvents = dependencies.runtimeEvents.subscribe((event) =>
       this.captureEvent(event)
     )
@@ -394,12 +403,21 @@ class TaskRunner {
     if (activeRunId && activeRunId !== runId) {
       throw new TaskRunnerError('session_busy', `Session already has an active run: ${sessionId}`)
     }
+    // Global ceiling check: refuse to start when too many runs are active across sessions.
+    if (this.activeRunCount >= this.maxConcurrentRuns) {
+      throw new TaskRunnerError(
+        'concurrency_limit',
+        `Too many concurrent task runs (limit ${this.maxConcurrentRuns}). Retry after an active run completes.`
+      )
+    }
     this.activeRunBySession.set(sessionId, runId)
+    this.activeRunCount += 1
   }
 
   private releaseSession(sessionId: string, runId: string): void {
     if (this.activeRunBySession.get(sessionId) === runId) {
       this.activeRunBySession.delete(sessionId)
+      this.activeRunCount = Math.max(0, this.activeRunCount - 1)
     }
   }
 

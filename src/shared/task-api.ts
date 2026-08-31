@@ -58,3 +58,4 @@ export type TaskApiErrorCode =
   | 'session_busy'
   | 'run_not_found'
   | 'artifact_not_found'
+  | 'concurrency_limit'
