@@ -36,9 +36,13 @@ const session: PersistedChatSession = {
   updatedAt: 2
 }
 
-const createRunner = (overrides: Partial<TaskRunnerDependencies> = {}): TaskRunner =>
-  new TaskRunner({
-    projects: {
+const createRunner = (
+  overrides: Partial<TaskRunnerDependencies> = {},
+  options: { maxConcurrentRuns?: number } = {}
+): TaskRunner =>
+  new TaskRunner(
+    {
+      projects: {
       list: async () => [project],
       create: async (request) => ({ ...project, ...request })
     },
@@ -62,7 +66,9 @@ const createRunner = (overrides: Partial<TaskRunnerDependencies> = {}): TaskRunn
     createId: () => 'generated-id',
     now: () => 1,
     ...overrides
-  })
+  },
+  options
+)
 
 describe('TaskRunner', () => {
   it('lists projects through its public interface', async () => {
@@ -956,6 +962,64 @@ describe('createDescription sentence extraction', () => {
 
     expect(created).toHaveLength(1)
     expect(created[0]).toMatchObject({ projectId: project.id, permissionProfile: 'full', modelId: 'model-b' })
+  })
+
+  it('enforces the global concurrency ceiling across sessions', async () => {
+    // Keep the first run ACTIVE by holding its prompt unresolved until we release it.
+    let releaseFirstPrompt: (() => void) | undefined
+    const firstPromptGate = new Promise<void>((resolve) => {
+      releaseFirstPrompt = resolve
+    })
+    const agent: TaskAgentPort = {
+      withSessionAvailable: async (_projectId, _sessionId, operation) => operation(),
+      listAttachedSessionIds: async () => [],
+      createSession: async () => ({ sessionId: 'session-created' }),
+      resumeSession: async (request) => ({ sessionId: request.sessionId }),
+      setPermissionProfile: async () => undefined,
+      prompt: async () => {
+        await firstPromptGate
+      }
+    }
+    const projects: TaskProjectPort = {
+      list: async () => [project],
+      create: async (request) => ({ ...project, ...request })
+    }
+    // Ceiling of 1: a second run must be refused while the first is active.
+    const runner = createRunner({ agent, projects }, { maxConcurrentRuns: 1 })
+
+    const first = runner.startRun({ project: project.id, prompt: 'first' })
+
+    await expect(
+      runner.startRun({ project: project.id, prompt: 'second' })
+    ).rejects.toMatchObject({ code: 'concurrency_limit' })
+
+    // Release the first run so the test can complete cleanly.
+    releaseFirstPrompt?.()
+    await first
+  })
+
+  it('releases the concurrency slot when a run completes', async () => {
+    const agent: TaskAgentPort = {
+      withSessionAvailable: async (_projectId, _sessionId, operation) => operation(),
+      listAttachedSessionIds: async () => [],
+      createSession: async () => ({ sessionId: 'session-created' }),
+      resumeSession: async (request) => ({ sessionId: request.sessionId }),
+      setPermissionProfile: async () => undefined,
+      prompt: async () => undefined
+    }
+    const projects: TaskProjectPort = {
+      list: async () => [project],
+      create: async (request) => ({ ...project, ...request })
+    }
+    const runner = createRunner({ agent, projects }, { maxConcurrentRuns: 1 })
+
+    const first = await runner.startRun({ project: project.id, prompt: 'first' })
+    await runner.waitForRun(first.id)
+
+    // After completion the slot is free: a new run starts normally.
+    await expect(
+      runner.startRun({ project: project.id, prompt: 'after' })
+    ).resolves.toBeDefined()
   })
 
 })
