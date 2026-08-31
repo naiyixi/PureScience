@@ -6821,4 +6821,36 @@ describe('SettingsService: agent memory save-note', () => {
     expect(result.saved).toBe(true)
     expect(result.categoryId).toBe('lab')
   })
+
+  it('records evidence on the note when provided (memory provenance)', async () => {
+    const service = createService()
+    await service.setMemory({
+      enabled: true,
+      categories: [{ id: 'about-you', name: 'About you', createdAt: 1 }],
+      notes: []
+    })
+
+    const result = await service.saveMemoryNote(
+      'About you',
+      'Prefers concise answers',
+      'from session on T790M analysis'
+    )
+    expect(result.saved).toBe(true)
+
+    const memory = await service.getMemory()
+    expect(memory?.notes[0].evidence).toBe('from session on T790M analysis')
+  })
+
+  it('omits the evidence field when not provided', async () => {
+    const service = createService()
+    await service.setMemory({
+      enabled: true,
+      categories: [{ id: 'about-you', name: 'About you', createdAt: 1 }],
+      notes: []
+    })
+
+    await service.saveMemoryNote('About you', 'Plain note')
+    const memory = await service.getMemory()
+    expect(memory?.notes[0].evidence).toBeUndefined()
+  })
 })

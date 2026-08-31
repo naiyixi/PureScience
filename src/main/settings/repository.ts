@@ -564,7 +564,18 @@ export const sanitizeMemorySettings = (value: unknown): MemorySettings | undefin
             categoryId,
             text,
             createdAt: asNumber(entry.createdAt) ?? 0,
-            updatedAt: asNumber(entry.updatedAt) ?? 0
+            updatedAt: asNumber(entry.updatedAt) ?? 0,
+            // Provenance fields are optional; preserve them when present.
+            ...(asString(entry.evidence) !== undefined ? { evidence: asString(entry.evidence) } : {}),
+            ...(asString(entry.subjectVersionId) !== undefined
+              ? { subjectVersionId: asString(entry.subjectVersionId) }
+              : {}),
+            ...(asString(entry.supersededBy) !== undefined
+              ? { supersededBy: asString(entry.supersededBy) }
+              : {}),
+            ...(asNumber(entry.lastSurfacedAt) !== undefined
+              ? { lastSurfacedAt: asNumber(entry.lastSurfacedAt) }
+              : {})
           }
         })
         .filter((entry): entry is MemoryNote => entry !== undefined)

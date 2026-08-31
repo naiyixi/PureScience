@@ -10,7 +10,9 @@ export const MEMORY_SAVE_NOTE_TOOL_NAME = 'memory_save_note'
 export const MEMORY_SAVE_NOTE_TOOL_DESCRIPTION =
   'Saves a note into the user\'s persistent memory, grouped under an existing category. ' +
   'Use it when the user states a durable preference, fact, or lesson about themselves or their ' +
-  'work that should be remembered across sessions. Do not use it for transient task details.'
+  'work that should be remembered across sessions. Do not use it for transient task details. ' +
+  'Include `evidence` (a short source note, e.g. which artifact/session the fact came from) when ' +
+  'available, so the memory has provenance.'
 
 // Rendered into the session prompt when the memory MCP is available: tells the agent WHEN to save
 // (the category guidance lives in the recall block) and how (the tool, never direct file writes).

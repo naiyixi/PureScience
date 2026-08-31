@@ -353,6 +353,9 @@ export const zh = {
   'settings.memoryNoNotes': '还没有笔记。',
   'settings.memoryNotePlaceholder': '写下应用应当记住的内容……',
   'settings.memoryDeleteNote': '删除笔记',
+  'settings.memoryEvidence': '来源',
+  'settings.memorySuperseded': '已取代',
+  'settings.memorySupersededTooltip': '此笔记已被更新的笔记取代；保留可见但不再被回忆。',
   'settings.memoryDisabledHint':
     '记忆已关闭。应用不会保存新笔记或回忆已有笔记，但下方笔记会保留且仍可编辑。重新开启即可恢复。',
   'settings.memoryLoading': '正在加载记忆……',
