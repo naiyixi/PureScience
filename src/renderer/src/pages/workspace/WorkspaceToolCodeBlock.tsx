@@ -1,9 +1,12 @@
-import { code } from '@streamdown/code'
+import { code as streamdownCode } from '@streamdown/code'
 import type { HighlightResult } from '@streamdown/code'
 import { cn } from '@/lib/utils'
 import { Copy } from 'lucide-react'
 import { Fragment, useCallback, useEffect, useState } from 'react'
-import type { BundledLanguage } from 'shiki'
+// Language type must match the shiki copy @streamdown/code bundles (3.x nested) —
+// the top-level shiki is 4.x for other consumers and its language union type is
+// incompatible with streamdown's runtime lookup.
+type StreamdownLanguage = Parameters<typeof streamdownCode.supportsLanguage>[0]
 
 type WorkspaceToolCodeBlockProps = {
   code: string
@@ -60,15 +63,15 @@ const WorkspaceToolCodeBlock = ({
   }, [source])
 
   useEffect(() => {
-    if (!language || !code.supportsLanguage(language as BundledLanguage)) return
+    if (!language || !streamdownCode.supportsLanguage(language as StreamdownLanguage)) return
 
     let active = true
     const apply = (result: HighlightResult): void => {
       if (active) setHighlighted({ key: highlightKey, result })
     }
     // The highlighter loads languages/themes asynchronously; cached hits return immediately instead.
-    const immediate = code.highlight(
-      { code: source, language: language as BundledLanguage, themes: code.getThemes() },
+    const immediate = streamdownCode.highlight(
+      { code: source, language: language as StreamdownLanguage, themes: streamdownCode.getThemes() },
       apply
     )
 

@@ -1,4 +1,4 @@
-import { DOMParser } from '@xmldom/xmldom'
+import { DOMParser, type Document as XmlDocument, type Element as XmlElement } from '@xmldom/xmldom'
 import type { ToolContext, ToolDescriptor } from '../types'
 
 const ARXIV_API = 'https://export.arxiv.org/api/query'
@@ -23,7 +23,7 @@ type ArxivRecord = {
 }
 
 // Trimmed text of the first descendant with the given (possibly namespaced) tag name, else null.
-function tagText(parent: Element, tag: string): string | null {
+function tagText(parent: XmlElement, tag: string): string | null {
   const t = parent.getElementsByTagName(tag)[0]?.textContent
   return t != null ? t.trim() : null
 }
@@ -40,7 +40,7 @@ function clamp(n: number, lo: number, hi: number): number {
 }
 
 // Reads an integer-valued tag off the feed document, with a fallback when absent/unparseable.
-function intTag(doc: Document, tag: string, fallback: number): number {
+function intTag(doc: XmlDocument, tag: string, fallback: number): number {
   const t = doc.getElementsByTagName(tag)[0]?.textContent
   const n = t != null ? parseInt(t.trim(), 10) : NaN
   return Number.isFinite(n) ? n : fallback
@@ -63,7 +63,7 @@ function splitVersion(id: string): { base: string; version: number | null } {
 }
 
 // Collects <author><name> strings on an entry.
-function authorNames(entry: Element): string[] {
+function authorNames(entry: XmlElement): string[] {
   const names: string[] = []
   const authors = entry.getElementsByTagName('author')
   for (let i = 0; i < authors.length; i++) {
@@ -74,7 +74,7 @@ function authorNames(entry: Element): string[] {
 }
 
 // Collects the term attribute from every <category> element on an entry.
-function categoryTerms(entry: Element): string[] {
+function categoryTerms(entry: XmlElement): string[] {
   const terms: string[] = []
   const cats = entry.getElementsByTagName('category')
   for (let i = 0; i < cats.length; i++) {
@@ -85,7 +85,7 @@ function categoryTerms(entry: Element): string[] {
 }
 
 // Finds the PDF href on an entry: a <link title="pdf"> or a type="application/pdf" link, else null.
-function pdfUrl(entry: Element): string | null {
+function pdfUrl(entry: XmlElement): string | null {
   const links = entry.getElementsByTagName('link')
   for (let i = 0; i < links.length; i++) {
     const link = links[i]
@@ -97,7 +97,7 @@ function pdfUrl(entry: Element): string | null {
 }
 
 // Maps one Atom <entry> to an ArxivRecord (namespaced fields matched by qualified name).
-function parseEntry(entry: Element): ArxivRecord {
+function parseEntry(entry: XmlElement): ArxivRecord {
   const absUrl = (entry.getElementsByTagName('id')[0]?.textContent ?? '').trim()
   const idVersioned = idFromAbsUrl(absUrl)
   const { base, version } = splitVersion(idVersioned)
@@ -123,7 +123,7 @@ function parseEntry(entry: Element): ArxivRecord {
 
 // Parses the Atom feed to a Document, detecting arXiv's HTTP-200 error feed (a single entry whose
 // <id> points at /api/errors) and throwing with the entry's summary rather than returning it.
-function parseFeed(xml: string): Document {
+function parseFeed(xml: string): XmlDocument {
   const doc = new DOMParser().parseFromString(xml, 'text/xml')
   const entries = doc.getElementsByTagName('entry')
   if (entries.length === 1) {
