@@ -50,6 +50,7 @@ export const AnnotationDialog = ({
   }, [open, projectId, target])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- load() awaits before any setState (fetch-on-mount); no cascading renders
     if (open) void load()
   }, [open, load])
 

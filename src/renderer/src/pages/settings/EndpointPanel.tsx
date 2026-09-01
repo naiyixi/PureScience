@@ -43,6 +43,7 @@ export const EndpointPanel = (): React.JSX.Element => {
   }, [])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- load() awaits before any setState (fetch-on-mount); no cascading renders
     void load()
   }, [load])
 

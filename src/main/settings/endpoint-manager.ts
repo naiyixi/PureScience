@@ -54,7 +54,7 @@ export class EndpointManager {
   async freePort(): Promise<EndpointFreePortResult> {
     const endpoints = await this.deps.repository.list()
     const owned = new Set(endpoints.map((endpoint) => endpoint.port))
-    const bound = async (port: number) => {
+    const bound = async (port: number): Promise<boolean> => {
       if (owned.has(port)) return true
       try {
         return await this.deps.isPortBound?.(port)

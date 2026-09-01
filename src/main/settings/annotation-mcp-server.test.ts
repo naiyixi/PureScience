@@ -28,7 +28,7 @@ const makeAnnotation = (overrides: Partial<FileAnnotation> = {}): FileAnnotation
   ...overrides
 })
 
-const makeHandler = () => ({
+const makeHandler = (): AnnotationMcpHandler => ({
   set: vi.fn(async () => ({ annotation: makeAnnotation(), replaced: false })),
   list: vi.fn(async () => ({ annotations: [makeAnnotation()] })),
   remove: vi.fn(async () => ({ removed: true }))
