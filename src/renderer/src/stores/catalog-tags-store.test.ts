@@ -5,6 +5,7 @@ import {
   isValidTag,
   MAX_TAGS_PER_RESOURCE,
   normalizeTag,
+  selectTagSummaries,
   useCatalogTagsStore
 } from './catalog-tags-store'
 
@@ -83,5 +84,45 @@ describe('catalog tags store', () => {
     expect(isValidTag('x'.repeat(24))).toBe(true)
     expect(isValidTag('x'.repeat(25))).toBe(false)
     expect(isValidTag('   ')).toBe(false)
+  })
+
+  it('deletes a tag from every resource carrying it', () => {
+    const { addTag, deleteTag } = useCatalogTagsStore.getState()
+    addTag('skill:alpha', 'docking')
+    addTag('connector:pubmed', 'docking')
+    addTag('connector:pubmed', 'literature')
+    deleteTag('DOCKING')
+
+    expect(useCatalogTagsStore.getState().entries['skill:alpha']?.tags).toEqual([])
+    expect(useCatalogTagsStore.getState().entries['connector:pubmed']?.tags).toEqual([
+      'literature'
+    ])
+  })
+
+  it('renames a tag across resources and merges into an existing tag', () => {
+    const { addTag, renameTag } = useCatalogTagsStore.getState()
+    addTag('skill:alpha', 'docking')
+    addTag('skill:beta', 'docking')
+    addTag('skill:beta', 'md')
+    addTag('connector:pubmed', 'other')
+    renameTag('docking', 'MD')
+
+    expect(useCatalogTagsStore.getState().entries['skill:alpha']?.tags).toEqual(['MD'])
+    // Both renamed and existing tags merge case-insensitively, deduplicated.
+    expect(useCatalogTagsStore.getState().entries['skill:beta']?.tags).toEqual(['MD'])
+    expect(useCatalogTagsStore.getState().entries['connector:pubmed']?.tags).toEqual(['other'])
+  })
+
+  it('summarizes tags with per-resource counts sorted by frequency', () => {
+    const { addTag } = useCatalogTagsStore.getState()
+    addTag('skill:alpha', 'docking')
+    addTag('skill:beta', 'docking')
+    addTag('connector:pubmed', 'literature')
+
+    const summaries = selectTagSummaries(useCatalogTagsStore.getState().entries)
+    expect(summaries).toEqual([
+      { name: 'docking', resourceCount: 2 },
+      { name: 'literature', resourceCount: 1 }
+    ])
   })
 })

@@ -20,6 +20,7 @@ import {
   ScrollText,
   Search,
   Settings2,
+  Tags,
   TerminalSquare,
   Users,
   X,
@@ -67,6 +68,7 @@ import { ComputeAddForm } from './ComputeAddForm'
 import { ComputeHostDetail } from './ComputeHostDetail'
 import { PermissionsPanel } from './PermissionsPanel'
 import { MemoryPanel } from './MemoryPanel'
+import { TagsPanel } from './TagsPanel'
 import { RoutinePanel } from './RoutinePanel'
 import { EndpointPanel } from './EndpointPanel'
 import { CredentialsPanel } from './CredentialsPanel'
@@ -176,6 +178,7 @@ const buildSettingsGroups = (t: (key: TranslationKey) => string): ReadonlyArray<
       { id: 'credentials', label: t('settings.credentials'), Icon: KeyRound },
       { id: 'specialists', label: t('settings.specialists'), Icon: Users },
       { id: 'memory', label: t('settings.memory'), Icon: BookOpenText },
+      { id: 'tags', label: t('settings.tags'), Icon: Tags },
       { id: 'compute', label: t('settings.compute'), Icon: Zap },
       { id: 'routine', label: t('settings.routine'), Icon: CalendarClock },
       { id: 'endpoint', label: t('settings.endpoints'), Icon: CircleDot },
@@ -1154,6 +1157,15 @@ const SettingsPage = forwardRef<SettingsPageHandle, SettingsPageProps>(function 
                   )
                 ) : activePanel === 'memory' ? (
                   <MemoryPanel />
+                ) : activePanel === 'tags' ? (
+                  <TagsPanel
+                    onOpenResource={(resource) => {
+                      // Navigate to the owning panel's detail/edit view for the tagged resource.
+                      if (resource.kind === 'skill') navigatePanel('skills')
+                      else if (resource.kind === 'connector') navigatePanel('connectors')
+                      else navigatePanel('specialists')
+                    }}
+                  />
                 ) : activePanel === 'routine' ? (
                   <RoutinePanel />
                 ) : activePanel === 'endpoint' ? (
