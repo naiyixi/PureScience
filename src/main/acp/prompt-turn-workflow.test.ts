@@ -303,7 +303,8 @@ const createHarness = (
       endpoint: false,
       annotation: false,
       pdf: false,
-      figure: false
+      figure: false,
+      query: false
       }),
       bridgeSkillsAvailable: () => true,
       skillImportEnabled: () => true,

@@ -45,6 +45,8 @@ import type { PdfOpenResult, PdfPagesResult, PdfOutlineResult, PdfScanResult } f
 import type { PdfCommandOwner } from './settings/pdf-ipc'
 import type { FigureReviewResult, FigureReviewRequest } from '../shared/figure'
 import type { FigureCommandOwner } from './settings/figure-ipc'
+import type { HostQueryResult } from '../shared/host-query'
+import type { HostQueryCommandOwner } from './settings/host-query-ipc'
 import {
   defineApplicationCommand,
   defineApplicationCommandGroup,
@@ -389,6 +391,14 @@ const figureCommands = Object.freeze({
   >('figure:review')
 })
 
+const queryCommands = Object.freeze({
+  run: defineApplicationCommand<
+    'query:run',
+    readonly [request: { projectId: string; sql: string }],
+    HostQueryResult
+  >('query:run')
+})
+
 const hostApplicationCommands = Object.freeze({
   cli: cliCommands,
   folderGrants: folderGrantsCommands,
@@ -403,6 +413,7 @@ const hostApplicationCommands = Object.freeze({
   annotation: annotationCommands,
   pdf: pdfCommands,
   figure: figureCommands,
+  query: queryCommands,
   storage: storageCommands,
   update: updateCommands
 })
@@ -421,6 +432,7 @@ const hostApplicationCommandGroups = Object.freeze([
   defineApplicationCommandGroup('annotation', Object.values(annotationCommands)),
   defineApplicationCommandGroup('pdf', Object.values(pdfCommands)),
   defineApplicationCommandGroup('figure', Object.values(figureCommands)),
+  defineApplicationCommandGroup('query', Object.values(queryCommands)),
   defineApplicationCommandGroup('storage', Object.values(storageCommands)),
   defineApplicationCommandGroup('update', Object.values(updateCommands))
 ] as const)
@@ -460,6 +472,7 @@ type HostApplicationCommandDependencies = Readonly<{
   annotation: AnnotationCommandOwner
   pdf: PdfCommandOwner
   figure: FigureCommandOwner
+  query: HostQueryCommandOwner
   storage: Readonly<{
     getInfo: () => Promise<StorageInfo>
     revealAppStorage: () => Promise<RevealAppStorageResult>
@@ -679,6 +692,12 @@ const registerHostApplicationCommands = (
         )
     })
     scope.registerGroup(hostApplicationCommandGroups[13], {
+      'query:run': ({ args, callerContext }) =>
+        localCommand(callerContext, 'query:run', () =>
+          dependencies.query.run(args[0].projectId, args[0].sql)
+        )
+    })
+    scope.registerGroup(hostApplicationCommandGroups[14], {
       'storage:cancel-migrate': ({ callerContext }) =>
         localCommand(callerContext, 'storage:cancel-migrate', () =>
           dependencies.storage.cancelMigrate()
@@ -717,7 +736,7 @@ const registerHostApplicationCommands = (
           dependencies.storage.validateDataRoot(args[0])
         )
     })
-    scope.registerGroup(hostApplicationCommandGroups[14], {
+    scope.registerGroup(hostApplicationCommandGroups[15], {
       'update:apply': ({ callerContext }) =>
         localCommand(callerContext, 'update:apply', () => dependencies.update.apply()),
       'update:cancel': ({ callerContext }) =>

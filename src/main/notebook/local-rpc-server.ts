@@ -161,6 +161,10 @@ type NotebookLocalRpcServerOptions = {
     list(sessionId: string, projectId: string, target: string | null): Promise<unknown>
     remove(sessionId: string, projectId: string, annotationId: string): Promise<unknown>
   }
+  // Agent self-awareness (host_query MCP): read-only DB introspection.
+  hostQuery?: {
+    query(sessionId: string, projectId: string, sql: string): Promise<unknown>
+  }
   // Publication-grade figure correctness (figure_* MCP): pure-rule review engine.
   figure?: {
     review(sessionId: string, projectId: string, request: unknown): Promise<unknown>
@@ -242,6 +246,7 @@ const ROUTINE_RPC_METHODS = new Set(['routineConfigure', 'routineStatus', 'routi
 const ANNOTATION_RPC_METHODS = new Set(['annotationSet', 'annotationList', 'annotationRemove'])
 const PDF_RPC_METHODS = new Set(['pdfOpen', 'pdfPages', 'pdfOutline', 'pdfScan'])
 const FIGURE_RPC_METHODS = new Set(['figureReview'])
+const HOST_QUERY_RPC_METHODS = new Set(['hostQuery'])
 const ENDPOINT_RPC_METHODS = new Set([
   'endpointRegister',
   'endpointUnregister',
@@ -307,12 +312,14 @@ class NotebookLocalRpcServer {
   private readonly annotationRpcTokens = new Map<string, string>()
   private readonly pdfRpcTokens = new Map<string, string>()
   private readonly figureRpcTokens = new Map<string, string>()
+  private readonly hostQueryRpcTokens = new Map<string, string>()
   private readonly contextSummary?: NotebookLocalRpcServerOptions['contextSummary']
   private readonly routine?: NotebookLocalRpcServerOptions['routine']
   private readonly endpoints?: NotebookLocalRpcServerOptions['endpoints']
   private readonly annotations?: NotebookLocalRpcServerOptions['annotations']
   private readonly pdf?: NotebookLocalRpcServerOptions['pdf']
   private readonly figure?: NotebookLocalRpcServerOptions['figure']
+  private readonly hostQuery?: NotebookLocalRpcServerOptions['hostQuery']
   // The session → Specialist relationship is established by the ACP runtime, not supplied by the
   // notebook process. Keeping it here prevents an agent from selecting another Specialist's scope
   // by forging an RPC parameter.
@@ -344,6 +351,7 @@ class NotebookLocalRpcServer {
     this.annotations = options.annotations
     this.pdf = options.pdf
     this.figure = options.figure
+    this.hostQuery = options.hostQuery
     this.planService = options.planService
     this.artifactProvenance = options.artifactProvenance
     this.inputRegistry = options.inputRegistry
@@ -555,6 +563,14 @@ class NotebookLocalRpcServer {
     }
   }
 
+  private revokeHostQuerySessionCapabilities(sessionId: string): void {
+    for (const ownedSessionId of this.resolveSessionCapabilityOwners(sessionId)) {
+      const token = this.hostQueryRpcTokens.get(ownedSessionId)
+      if (token) this.sessionRpcCapabilities.delete(token)
+      this.hostQueryRpcTokens.delete(ownedSessionId)
+    }
+  }
+
   private revokePlanSessionCapabilities(sessionId: string): void {
     for (const ownedSessionId of this.resolveSessionCapabilityOwners(sessionId)) {
       const token = this.planRpcTokens.get(ownedSessionId)
@@ -577,6 +593,7 @@ class NotebookLocalRpcServer {
     this.revokeAnnotationSessionCapabilities(sessionId)
     this.revokePdfSessionCapabilities(sessionId)
     this.revokeFigureSessionCapabilities(sessionId)
+    this.revokeHostQuerySessionCapabilities(sessionId)
     this.revokePlanSessionCapabilities(sessionId)
     for (const ownedSessionId of ownedSessionIds) {
       this.sessionSpecialists.delete(ownedSessionId)
@@ -807,6 +824,33 @@ class NotebookLocalRpcServer {
       release: () => {
         if (this.figureRpcTokens.get(sessionId) === token) {
           this.figureRpcTokens.delete(sessionId)
+        }
+        this.sessionRpcCapabilities.delete(token)
+      }
+    }
+  }
+
+  async issueHostQueryConnection(
+    sessionId: string,
+    projectId: string
+  ): Promise<NotebookRpcConnection> {
+    const connection = await this.ensureStarted()
+    this.revokeHostQuerySessionCapabilities(sessionId)
+
+    const token = randomUUID()
+    this.hostQueryRpcTokens.set(sessionId, token)
+    this.sessionRpcCapabilities.set(token, {
+      sessionId,
+      projectId,
+      allowedMethods: HOST_QUERY_RPC_METHODS
+    })
+    return {
+      endpoint: connection.endpoint,
+      socketPath: connection.socketPath,
+      token,
+      release: () => {
+        if (this.hostQueryRpcTokens.get(sessionId) === token) {
+          this.hostQueryRpcTokens.delete(sessionId)
         }
         this.sessionRpcCapabilities.delete(token)
       }
@@ -1313,6 +1357,14 @@ class NotebookLocalRpcServer {
         )
       }
       return this.annotations.remove(params.sessionId, params.projectId, params.annotationId)
+    }
+
+    if (method === 'hostQuery') {
+      if (!this.hostQuery) throw new Error('Host-query handler is not configured.')
+      if (typeof params.sessionId !== 'string' || typeof params.projectId !== 'string' || typeof params.sql !== 'string') {
+        throw new Error('Host-query RPC params must include sessionId, projectId, and sql.')
+      }
+      return this.hostQuery.query(params.sessionId, params.projectId, params.sql)
     }
 
     if (method === 'figureReview') {

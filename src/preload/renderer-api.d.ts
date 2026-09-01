@@ -301,6 +301,7 @@ import type { EndpointRegisterRequest, ManagedEndpoint } from '../shared/endpoin
 import type { AnnotationSetRequest, FileAnnotation } from '../shared/annotation'
 import type { PdfOpenResult, PdfOutlineResult, PdfPagesResult, PdfScanResult } from '../shared/pdf'
 import type { FigureReviewRequest, FigureReviewResult } from '../shared/figure'
+import type { HostQueryResult } from '../shared/host-query'
 import type {
   ApproveRemotePairingRequest,
   RemoteAccessSnapshot,
@@ -1004,6 +1005,10 @@ export interface PureScienceAPI {
   figure: {
     // Reviews a figure against the publication-grade correctness checklist.
     review(request: { projectId: string; request: FigureReviewRequest }): Promise<FigureReviewResult>
+  }
+  query: {
+    // Runs a read-only introspection query against the app database (project-scoped, 200-row cap).
+    run(request: { projectId: string; sql: string }): Promise<HostQueryResult>
   }
   window: {
     // Closes the focused window (the Cmd+W / Ctrl+W fallback when no preview panel is open).
