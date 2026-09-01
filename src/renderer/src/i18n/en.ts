@@ -335,6 +335,7 @@ export const en: Record<ZhKey, string> = {
   'settings.packageMirror': 'Package mirror',
   'settings.viewMirrors': 'View available mirrors',
   'settings.rememberedPermissions': 'Remembered permissions',
+  'settings.restoreDefaults': 'Restore defaults',
   'settings.permissionDetailsUnavailable': 'Some permission details are unavailable',
   'settings.remoteControl': 'Remote control',
   'settings.appManaged': 'App-managed',

@@ -238,7 +238,7 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
   ]),
   group('permissions', 'permissions', [
     ['onChanged', 'permissions:changed', EVENT], ['extendUndo', 'permissions:extend-undo'], ['list', 'permissions:list'], ['restore', 'permissions:restore'],
-    ['revoke', 'permissions:revoke'],
+    ['restoreDefaults', 'permissions:restore-defaults'], ['revoke', 'permissions:revoke'],
   ]),
   group('folderGrants', 'folderGrants', [
     ['grant', 'folder-grants:grant'], ['list', 'folder-grants:list'], ['revoke', 'folder-grants:revoke'],

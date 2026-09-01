@@ -4,7 +4,8 @@ import type {
   PermissionGrantRevokeRequest,
   PermissionGrantSnapshot,
   PermissionGrantUndoExtendRequest,
-  PermissionGrantUndoReceipt
+  PermissionGrantUndoReceipt,
+  RestoreDefaultsPermissionGrants
 } from '../../shared/permission-grants'
 import {
   defineApplicationCommand,
@@ -35,13 +36,19 @@ const permissionGrantApplicationCommands = Object.freeze({
     'permissions:restore',
     readonly [request: PermissionGrantRestoreRequest],
     PermissionGrantMutationView
-  >('permissions:restore')
+  >('permissions:restore'),
+  restoreDefaults: defineApplicationCommand<
+    'permissions:restore-defaults',
+    readonly [request: RestoreDefaultsPermissionGrants],
+    PermissionGrantMutationView
+  >('permissions:restore-defaults')
 })
 
 const permissionGrantApplicationCommandGroup = defineApplicationCommandGroup('permission-grants', [
   permissionGrantApplicationCommands.extendUndo,
   permissionGrantApplicationCommands.list,
   permissionGrantApplicationCommands.restore,
+  permissionGrantApplicationCommands.restoreDefaults,
   permissionGrantApplicationCommands.revoke
 ] as const)
 
@@ -55,7 +62,8 @@ const registerPermissionGrantApplicationCommands = (
       'permissions:list': () => owner.list(),
       'permissions:revoke': ({ args }) => owner.revoke(args[0]),
       'permissions:extend-undo': ({ args }) => owner.extendUndo(args[0]),
-      'permissions:restore': ({ args }) => owner.restore(args[0])
+      'permissions:restore': ({ args }) => owner.restore(args[0]),
+      'permissions:restore-defaults': ({ args }) => owner.restoreDefaults(args[0])
     })
     return scope.complete()
   } catch (error) {

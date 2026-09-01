@@ -49,6 +49,7 @@ type PermissionGrantRegistry = {
     context: PermissionGrantContext
   ): Promise<PermissionGrantMatch | undefined>
   remember(command: RememberPermissionGrant): Promise<PermissionGrantRecord>
+  restoreDefaults(capabilities: readonly PermissionCapability[]): Promise<PermissionGrantMutationResult>
   list(): Promise<PermissionGrantRecord[]>
   listCached(): PermissionGrantRecord[]
   revoke(command: RevokePermissionGrants): Promise<PermissionGrantMutationResult>
@@ -352,6 +353,62 @@ const createPermissionGrantRegistry = async (
 
     async list() {
       return sortedRecords(records.values())
+    },
+
+    restoreDefaults(capabilities) {
+      return runMutation(async () => {
+        const conflicts: PermissionGrantMutationConflict[] = []
+        const added: PermissionGrantRow[] = []
+        const client = await options.getClient()
+
+        for (const capability of capabilities) {
+          validateCapability(capability)
+          const scope: PermissionGrantScope = { kind: 'global' }
+          const fingerprint = fingerprintFor(capability, scope)
+          if (records.has(fingerprint)) continue
+
+          const qualifier = qualifierColumns(capability)
+          const target = scopeColumns(scope)
+          const createdAt = now()
+          const row = await client.$transaction(async (transaction) => {
+            await transaction.$executeRawUnsafe(
+              `INSERT OR IGNORE INTO "PermissionGrant" (
+                "id", "capabilityKind", "capabilityKey", "qualifierMode", "qualifierValue",
+                "scopeKind", "projectId", "sessionId", "fingerprint", "revision", "createdAt"
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`,
+              createId(),
+              capability.kind,
+              capability.key,
+              qualifier.mode,
+              qualifier.value,
+              scope.kind,
+              target.projectId,
+              target.sessionId,
+              fingerprint,
+              createdAt
+            )
+            const [persisted] = await transaction.$queryRawUnsafe<PermissionGrantRow[]>(
+              'SELECT * FROM "PermissionGrant" WHERE "fingerprint" = ? LIMIT 1',
+              fingerprint
+            )
+            return persisted
+          })
+          if (row) added.push(row)
+          else conflicts.push({ id: fingerprint, reason: 'missing' })
+        }
+
+        for (const row of added) {
+          const record = recordFromRow(row)
+          records.set(row.fingerprint, record)
+        }
+
+        const mutation: PermissionGrantMutationResult = {
+          grants: sortedRecords(records.values()),
+          conflicts
+        }
+        if (added.length > 0) publish()
+        return mutation
+      })
     },
 
     listCached() {

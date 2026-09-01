@@ -352,6 +352,7 @@ describe('preload bridge — public surface inventory', () => {
       'permissions.list',
       'permissions.onChanged',
       'permissions.restore',
+      'permissions.restoreDefaults',
       'permissions.revoke',
       'preview.delete',
       'preview.load',
@@ -619,7 +620,7 @@ describe('preload bridge — runtime renderer contract catalog', () => {
   it('routes all 200 owned methods through their cataloged Electron channels', async () => {
     const requestContracts = runtimeContracts.filter(({ kind }) => kind === 'method')
 
-    expect(runtimeContracts).toHaveLength(214)
+    expect(runtimeContracts).toHaveLength(215)
 
     for (const contract of requestContracts) {
       invokeMock.mockClear()

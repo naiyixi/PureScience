@@ -200,6 +200,7 @@ const PermissionsPanel = ({
   const error = usePermissionGrantsStore((state) => state.error)
   const load = usePermissionGrantsStore((state) => state.load)
   const revoke = usePermissionGrantsStore((state) => state.revoke)
+  const restoreDefaults = usePermissionGrantsStore((state) => state.restoreDefaults)
   const defaultPermissionProfile = useSettingsStore((state) => state.defaultPermissionProfile)
   const setDefaultPermissionProfile = useSettingsStore((state) => state.setDefaultPermissionProfile)
   const [filter, setFilter] = useState<ScopeFilter>('all')
@@ -297,13 +298,25 @@ const PermissionsPanel = ({
       </SettingsSection>
 
       <div className="sticky top-0 z-10 -mx-5 mt-5 mb-2 border-t border-border bg-card px-5 py-5">
-        <div className="mb-3">
-          <h3 className="text-base font-semibold text-foreground">
-            {t('settings.rememberedPermissions')}
-          </h3>
-          <p className="mt-0.5 max-w-2xl text-[13px] leading-5 text-muted-foreground">
-            {t('settings.rememberedPermissionsDesc')}
-          </p>
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <div>
+            <h3 className="text-base font-semibold text-foreground">
+              {t('settings.rememberedPermissions')}
+            </h3>
+            <p className="mt-0.5 max-w-2xl text-[13px] leading-5 text-muted-foreground">
+              {t('settings.rememberedPermissionsDesc')}
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={incompleteStores.length > 0 || status === 'loading'}
+            onClick={() => void restoreDefaults()}
+            className="shrink-0 whitespace-nowrap"
+          >
+            {t('settings.restoreDefaults')}
+          </Button>
         </div>
         <Select value={filter} onValueChange={(value) => setFilter(value as ScopeFilter)}>
           <SelectTrigger

@@ -2,7 +2,8 @@ import type {
   PermissionGrantRestoreRequest,
   PermissionGrantRevokeRequest,
   PermissionGrantUndoExtendRequest,
-  PermissionGrantsChangedEvent
+  PermissionGrantsChangedEvent,
+  RestoreDefaultsPermissionGrants
 } from '../../shared/permission-grants'
 import { ipcMainHandle } from '../ipc-handler-registry'
 import { broadcastToRenderers } from '../renderer-broadcast'
@@ -37,6 +38,10 @@ const registerPermissionGrantIpcAdapter = (owner: PermissionGrantProjection): vo
   )
   ipcMainHandle('permissions:restore', (_event, request: PermissionGrantRestoreRequest) =>
     owner.restore(request)
+  )
+  ipcMainHandle(
+    'permissions:restore-defaults',
+    (_event, request: RestoreDefaultsPermissionGrants) => owner.restoreDefaults(request)
   )
 }
 

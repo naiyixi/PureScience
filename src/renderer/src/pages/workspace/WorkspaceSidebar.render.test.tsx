@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client'
 import type { PropsWithChildren } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import type { ChatSession } from '@/stores/session-store'
+import type { Project } from '../../../../shared/projects'
 import { describe, expect, it, vi } from 'vitest'
 import { WorkspaceSidebar } from './WorkspaceSidebar'
 
@@ -70,7 +71,6 @@ const createMessage = (): ChatSession['messages'][number] => ({
   status: 'complete',
   eventIds: [],
   createdAt: 1,
-          isExample: false,
   updatedAt: 1
 })
 
@@ -108,8 +108,14 @@ const renderSidebar = async (sessions: ChatSession[]): Promise<string> => {
 // Renders the sidebar into the DOM (jsdom) so interaction wiring can be exercised with real
 // clicks. The flat dropdown-menu mock keeps every menu item visible in the tree.
 const renderSidebarDom = (
-  props: Omit<React.ComponentProps<typeof WorkspaceSidebar>, 'sessions'> & {
+  props: Omit<
+    React.ComponentProps<typeof WorkspaceSidebar>,
+    'sessions' | 'projects' | 'activeProjectId' | 'onSwitchProject'
+  > & {
     sessions: ChatSession[]
+    projects?: Project[]
+    activeProjectId?: string
+    onSwitchProject?: (projectId: string) => void
   }
 ): HTMLDivElement => {
   const container = document.createElement('div')

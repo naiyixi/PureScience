@@ -323,6 +323,7 @@ export const zh = {
   'settings.packageMirror': '软件包镜像',
   'settings.viewMirrors': '查看可用镜像',
   'settings.rememberedPermissions': '记住的权限',
+  'settings.restoreDefaults': '恢复默认',
   'settings.permissionDetailsUnavailable': '部分权限详情不可用',
   'settings.remoteControl': '远程控制',
   'settings.appManaged': '应用托管',

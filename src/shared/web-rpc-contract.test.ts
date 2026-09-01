@@ -41,6 +41,7 @@ describe('Web RPC contract', () => {
       'permissions.extendUndo',
       'permissions.list',
       'permissions.restore',
+      'permissions.restoreDefaults',
       'permissions.revoke'
     ])
     expect(

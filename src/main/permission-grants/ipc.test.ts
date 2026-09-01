@@ -167,6 +167,7 @@ describe('permission grant IPC', () => {
         revokedCount: 1
       }),
       restore: vi.fn().mockResolvedValue({ grants: [], conflicts: [] }),
+      restoreDefaults: vi.fn().mockResolvedValue({ grants: [], conflicts: [] }),
       subscribe: vi.fn((next: () => void) => {
         listener = next
         return () => undefined
@@ -184,16 +185,23 @@ describe('permission grant IPC', () => {
       'permissions:list',
       'permissions:revoke',
       'permissions:extend-undo',
-      'permissions:restore'
+      'permissions:restore',
+      'permissions:restore-defaults'
     ])
     await handlers.get('permissions:revoke')?.(undefined, {
       grants: [{ id: 'grant-1', revision: 2 }]
     })
     await handlers.get('permissions:extend-undo')?.(undefined, { undoToken: 'undo-1' })
     await handlers.get('permissions:restore')?.(undefined, { undoToken: 'undo-1' })
+    await handlers.get('permissions:restore-defaults')?.(undefined, {
+      capabilities: [{ kind: 'skill_operation', key: 'skill:invoke' }]
+    })
     expect(registry.revoke).toHaveBeenCalledWith({ grants: [{ id: 'grant-1', revision: 2 }] })
     expect(registry.extendUndo).toHaveBeenCalledWith({ undoToken: 'undo-1' })
     expect(registry.restore).toHaveBeenCalledWith({ undoToken: 'undo-1' })
+    expect(registry.restoreDefaults).toHaveBeenCalledWith([
+      { kind: 'skill_operation', key: 'skill:invoke' }
+    ])
 
     controller.invalidateProjection()
     expect(broadcast).toHaveBeenCalledWith('permissions:changed', { revision: 1 })

@@ -6,7 +6,8 @@ import type {
   PermissionGrantSnapshot,
   PermissionGrantUndoExtendRequest,
   PermissionGrantUndoReceipt,
-  PermissionGrantsChangedEvent
+  PermissionGrantsChangedEvent,
+  RestoreDefaultsPermissionGrants
 } from '../../shared/permission-grants'
 import type { Project } from '../../shared/projects'
 import type { SessionMetadataSnapshot } from '../session-persistence/coordinator'
@@ -32,6 +33,9 @@ type PermissionGrantProjection = Readonly<{
     request: PermissionGrantUndoExtendRequest
   ): Promise<PermissionGrantUndoReceipt | undefined>
   restore(request: PermissionGrantRestoreRequest): Promise<PermissionGrantMutationView>
+  restoreDefaults(
+    request: RestoreDefaultsPermissionGrants
+  ): Promise<PermissionGrantMutationView>
 }>
 
 type PermissionGrantProjectionController = PermissionGrantProjection & {
@@ -137,13 +141,29 @@ const createPermissionGrantProjectionController = (
     validateRestoreRequest(request)
     return mutationSnapshot(await options.registry.restore(request))
   }
+  const restoreDefaults = async (
+    request: RestoreDefaultsPermissionGrants
+  ): Promise<PermissionGrantMutationView> => {
+    if (!request || !Array.isArray(request.capabilities)) {
+      throw new Error('Restore defaults requires a capability list.')
+    }
+    return mutationSnapshot(await options.registry.restoreDefaults(request.capabilities))
+  }
   const invalidateProjection = (): void => {
     version += 1
     options.publishChanged({ revision: version })
   }
   const dispose = options.registry.subscribe(invalidateProjection)
 
-  return { list, revoke, extendUndo, restore, invalidateProjection, dispose }
+  return {
+    list,
+    revoke,
+    extendUndo,
+    restore,
+    restoreDefaults,
+    invalidateProjection,
+    dispose
+  }
 }
 
 export { createPermissionGrantProjectionController }

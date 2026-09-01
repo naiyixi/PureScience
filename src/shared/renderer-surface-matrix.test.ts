@@ -42,6 +42,7 @@ const permissionPaths = [
   'permissions.extendUndo',
   'permissions.list',
   'permissions.restore',
+  'permissions.restoreDefaults',
   'permissions.revoke'
 ] as const
 
@@ -179,6 +180,7 @@ describe('renderer surface compatibility matrix', () => {
       'permissions:extend-undo',
       'permissions:list',
       'permissions:restore',
+      'permissions:restore-defaults',
       'permissions:revoke'
     ])
     expect(permissionPaths.map((path) => WEB_INVOKE_CHANNELS[path]).every(isWebRpcChannel)).toBe(

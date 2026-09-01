@@ -126,6 +126,7 @@ const controlledEmptyGrantRegistry = (): {
     revoke: vi.fn(),
     extendUndo: vi.fn(),
     restore: vi.fn(),
+    restoreDefaults: vi.fn(),
     prune: vi.fn(),
     finalizeOwnerDeletion: vi.fn(),
     subscribe: vi.fn().mockReturnValue(() => undefined)
@@ -156,6 +157,7 @@ describe('ACP permission broker with durable grants', () => {
       revoke: vi.fn(),
       extendUndo: vi.fn(),
       restore: vi.fn(),
+    restoreDefaults: vi.fn(),
       prune: vi.fn(),
       finalizeOwnerDeletion: vi.fn(),
       subscribe: vi.fn().mockReturnValue(() => undefined)
@@ -270,6 +272,7 @@ describe('ACP permission broker with durable grants', () => {
       revoke: vi.fn(),
       extendUndo: vi.fn(),
       restore: vi.fn(),
+    restoreDefaults: vi.fn(),
       prune: vi.fn(),
       finalizeOwnerDeletion: vi.fn(),
       subscribe: vi.fn().mockReturnValue(() => undefined)
