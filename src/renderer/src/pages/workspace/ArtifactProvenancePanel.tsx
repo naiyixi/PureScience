@@ -391,6 +391,10 @@ const ProvenanceMessagesTimeline = ({
                   )
                 }
 
+                // Config-change dividers are a live-transcript affordance; the immutable
+                // provenance snapshot renders the raw messages without them.
+                if (conversationItem.type === 'config-change') return null
+
                 return (
                   <WorkspaceActivityGroup
                     key={conversationItem.id}

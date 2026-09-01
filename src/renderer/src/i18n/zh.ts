@@ -75,6 +75,7 @@ export const zh = {
   'ws.egressAllowOnce': '仅此一次',
   'ws.egressAllowAlways': '始终允许',
   'ws.egressConnectNote': '此决定仅对这一次连接尝试生效。',
+  'ws.configChanged': '配置已变更',
   'ws.sessionNotebook': '会话笔记本',
   'common.save': '保存',
   'common.delete': '删除',

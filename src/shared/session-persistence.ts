@@ -164,6 +164,13 @@ export type PersistedChatMessage = {
   contextWindowSamples?: AcpContextWindowSample[]
   // Plan-first user turns replay with the same intent on interrupted-turn continuation.
   turnIntent?: 'plan-first'
+  // The agent configuration this turn ran under (framework / model / reasoning effort). Captured
+  // at send time so the transcript can show a quiet divider when the user changed configuration
+  // between turns — the session-level fields only hold the latest values.
+  turnConfig?: {
+    agentFrameworkId?: string
+    agentModel?: string
+  }
   createdAt: number
   // Stable terminal timestamps survive later artifact/upload reconciliation that advances updatedAt.
   completedAt?: number

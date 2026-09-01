@@ -76,6 +76,7 @@ export const en: Record<ZhKey, string> = {
   'ws.egressAllowOnce': 'Allow once',
   'ws.egressAllowAlways': 'Always allow',
   'ws.egressConnectNote': 'This applies to this one connection attempt only.',
+  'ws.configChanged': 'Configuration changed',
   'ws.sessionNotebook': 'Session notebook',
   'common.save': 'Save',
   'common.delete': 'Delete',

@@ -34,11 +34,25 @@ type ConversationHandoffItem = HandoffTranscriptProjection & {
   sortIndex: number
 }
 
+// A quiet divider marking where the user changed the session's agent configuration (framework /
+// model) between turns. Rendered as a muted separator so later answers have a visible reason for
+// reading differently. Not an interactive message and never part of the graph.
+type ConversationConfigChangeItem = {
+  id: string
+  type: 'config-change'
+  createdAt: number
+  sortIndex: number
+  // The configuration the NEXT user turn ran under (what changed to).
+  agentFrameworkId?: string
+  agentModel?: string
+}
+
 type ConversationItem =
   | ConversationMessageItem
   | ConversationActivityItem
   | ConversationPlanActivityItem
   | ConversationHandoffItem
+  | ConversationConfigChangeItem
 
 const KNOWN_TITLE_TOOL_NAMES = new Set(['ToolSearch'])
 
@@ -155,6 +169,34 @@ const createConversationItems = (
   session: ChatSession | undefined,
   handoffEvents: readonly HandoffLifecycleEvent[] = []
 ): ConversationItem[] => {
+  // Quiet config-change dividers: when two consecutive user turns ran under different agent
+  // configurations (framework / model), insert a separator at the boundary so the transcript
+  // shows why later answers read differently. The divider follows the earlier turn and carries
+  // the new configuration, mirroring the design's "config change marker" pattern.
+  const configChanges: ConversationConfigChangeItem[] = []
+  if (session) {
+    let previousConfig: { agentFrameworkId?: string; agentModel?: string } | undefined
+    for (const message of session.messages) {
+      if (message.role !== 'user') continue
+      const currentConfig = message.turnConfig
+      if (
+        previousConfig &&
+        currentConfig &&
+        (previousConfig.agentFrameworkId !== currentConfig.agentFrameworkId ||
+          previousConfig.agentModel !== currentConfig.agentModel)
+      ) {
+        configChanges.push({
+          id: `config-change-${message.id}`,
+          type: 'config-change',
+          createdAt: message.createdAt,
+          sortIndex: message.sortIndex ?? session.messages.indexOf(message),
+          agentFrameworkId: currentConfig.agentFrameworkId,
+          agentModel: currentConfig.agentModel
+        })
+      }
+      if (currentConfig) previousConfig = currentConfig
+    }
+  }
   const messages: ConversationItem[] =
     session?.messages.map((message, index) => ({
       id: message.id,
@@ -190,7 +232,7 @@ const createConversationItems = (
   }))
 
   // Runtime events and chat chunks use separate sequences, so sorting uses timestamps first.
-  return [...messages, ...activities, ...handoffs].sort((left, right) => {
+  return [...messages, ...activities, ...handoffs, ...configChanges].sort((left, right) => {
     if (left.createdAt !== right.createdAt) return left.createdAt - right.createdAt
     if (left.sortIndex !== right.sortIndex) return left.sortIndex - right.sortIndex
     return left.id.localeCompare(right.id)

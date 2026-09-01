@@ -17,6 +17,7 @@ import {
 import { selectProjectSessionReviews, useReviewStore } from '@/stores/review-store'
 import { useSettingsStore } from '@/stores/settings-store'
 import { useSessionStore, type ChatSession } from '@/stores/session-store'
+import { useLanguage } from '@/i18n'
 import { flushSessionPersistence } from '@/lib/session-persistence/session-persistence'
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ComponentProps } from 'react'
 
@@ -384,6 +385,7 @@ const WorkspaceMessageScrollerImpl = ({
   handoffLifecycleSource,
   onRetryHandoff
 }: WorkspaceMessageScrollerProps): React.JSX.Element => {
+  const { t } = useLanguage()
   const currentSessionId = activeSession?.id
   const currentProjectId = activeSession?.projectId
   const historicalArtifactsByVersionId = useHistoricalArtifactDescriptors(activeSession)
@@ -952,6 +954,31 @@ const WorkspaceMessageScrollerImpl = ({
                       if (item.type === 'plan-activity') {
                         return (
                           <WorkspacePlanActivityRecord key={item.id} activity={item.activity} />
+                        )
+                      }
+
+                      if (item.type === 'config-change') {
+                        return (
+                          <MessageScrollerItem
+                            key={item.id}
+                            messageId={item.id}
+                            className="min-w-0"
+                          >
+                            <div className="px-4 pt-2 md:px-6">
+                              <div className="mx-auto flex w-full max-w-[56rem] items-center gap-3">
+                                <span aria-hidden="true" className="h-px flex-1 bg-border" />
+                                <span className="shrink-0 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                                  {t('ws.configChanged')}
+                                </span>
+                                {item.agentModel ? (
+                                  <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground">
+                                    {item.agentModel}
+                                  </span>
+                                ) : null}
+                                <span aria-hidden="true" className="h-px flex-1 bg-border" />
+                              </div>
+                            </div>
+                          </MessageScrollerItem>
                         )
                       }
 
