@@ -234,6 +234,12 @@
       "name": "出版级图表正确性",
       "source": "featured",
       "updatedAt": "2026-09-01T00:00:00.000Z"
+    },
+    {
+      "id": "self-awareness",
+      "name": "Agent 自省",
+      "source": "featured",
+      "updatedAt": "2026-09-01T00:00:00.000Z"
     }
   ]
 }

@@ -271,6 +271,11 @@ session_concurrency 表（max_concurrent）
 - 交付：skill_eval（描述可触发质量 0-10 分评估器：首句自包含/动作词/具体主题/关键词/长度 + 改写建议）+ skill_list/skill_read（技能库检视，防重复造轮子）+ 与既有 create_skill 组成自举循环；纯规则无外部模型
 - 版本：v1.36.0
 
+### 里程碑 N7「省」— Agent 自省 host_query（2026-08-31 二轮深挖新增）
+- 目标：agent 只读自省应用数据库——查自己做过什么、项目什么状态
+- 交付：host_query MCP 工具（SELECT-only + 表白名单 + 项目隔离后置过滤 + 200 行 cap）+ self-awareness 内置技能（11 张自省表参考 + 示例查询）
+- 版本：v1.37.0 —— **N1-N7 编排层差距全部清零**
+
 ### 持续项（贯穿全程）
 - **实测驱动**：每个机制上线前先建 benchmark（复刻对方 bench-reviewer 方法），用数据说话
 - **i18n**：所有新 UI 同步 zh/en

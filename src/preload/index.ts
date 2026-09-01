@@ -822,6 +822,10 @@ const api: PureScienceAPI = {
     review: (request: { projectId: string; request: FigureReviewRequest }) =>
       electronRendererContracts.invoke('figure.review', request)
   },
+  query: {
+    run: (request: { projectId: string; sql: string }) =>
+      electronRendererContracts.invoke('query.run', request)
+  },
   window: {
     close: () => electronRendererContracts.invoke('window.close'),
     // The shared helper announces READY on subscribe (so main forwards the chord here) and UNREADY on

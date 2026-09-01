@@ -81,6 +81,7 @@ const composeAcpRuntimeBaseOwners = (options: AcpRuntimeOptions) => {
     annotations: options.annotations,
     pdf: options.pdf,
     figure: options.figure,
+    query: options.query,
     mcpHttpHost: options.mcpHttpHost
   })
   let generationConnectionEffects: AcpGenerationConnectionEffects | undefined

@@ -10,6 +10,7 @@ import { ENDPOINT_MCP_SYSTEM_PROMPT_APPEND } from '../../shared/endpoint'
 import { ANNOTATION_MCP_SYSTEM_PROMPT_APPEND } from '../../shared/annotation'
 import { PDF_MCP_SYSTEM_PROMPT_APPEND } from '../../shared/pdf'
 import { FIGURE_MCP_SYSTEM_PROMPT_APPEND } from '../../shared/figure'
+import { HOST_QUERY_SYSTEM_PROMPT_APPEND } from '../../shared/host-query'
 import type { AgentFramework, SessionSetup } from '../agent-framework/types'
 import type { EffectiveSpecialistSkills, SpecialistProfileView } from '../../shared/specialist'
 import type { AcpPromptRequest } from '../../shared/acp'
@@ -25,6 +26,7 @@ type AcpSessionToolingAvailability = Readonly<{
   annotation: boolean
   pdf: boolean
   figure: boolean
+  query: boolean
 }>
 
 type AcpSessionSetupPresentationInput = Readonly<{
@@ -125,7 +127,8 @@ class AcpSessionPresentationPolicy {
       ...(tooling.endpoint ? [ENDPOINT_MCP_SYSTEM_PROMPT_APPEND] : []),
       ...(tooling.annotation ? [ANNOTATION_MCP_SYSTEM_PROMPT_APPEND] : []),
       ...(tooling.pdf ? [PDF_MCP_SYSTEM_PROMPT_APPEND] : []),
-      ...(tooling.figure ? [FIGURE_MCP_SYSTEM_PROMPT_APPEND] : [])
+      ...(tooling.figure ? [FIGURE_MCP_SYSTEM_PROMPT_APPEND] : []),
+      ...(tooling.query ? [HOST_QUERY_SYSTEM_PROMPT_APPEND] : [])
     ])
   }
 

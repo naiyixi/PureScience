@@ -48,10 +48,12 @@ import type { EndpointMcpEnvironment, EndpointRpcConnection } from '../settings/
 import type { AnnotationMcpEnvironment, AnnotationRpcConnection } from '../settings/annotation-mcp-server'
 import type { PdfMcpEnvironment, PdfRpcConnection } from '../settings/pdf-mcp-server'
 import type { FigureMcpEnvironment, FigureRpcConnection } from '../settings/figure-mcp-server'
+import type { HostQueryMcpEnvironment, HostQueryRpcConnection } from '../settings/host-query-mcp-server'
 import { ENDPOINT_MCP_SERVER_NAME, createEndpointMcpServerConfig } from '../settings/endpoint-mcp-server'
 import { ANNOTATION_MCP_SERVER_NAME, createAnnotationMcpServerConfig } from '../settings/annotation-mcp-server'
 import { PDF_MCP_SERVER_NAME, createPdfMcpServerConfig } from '../settings/pdf-mcp-server'
 import { FIGURE_MCP_SERVER_NAME, createFigureMcpServerConfig } from '../settings/figure-mcp-server'
+import { HOST_QUERY_MCP_SERVER_NAME, createHostQueryMcpServerConfig } from '../settings/host-query-mcp-server'
 import type { AgentMcpHttpHost } from './mcp-http-host'
 
 const log = createLogger('acp')
@@ -68,6 +70,7 @@ const CURRENT_PRIMARY_CAPABILITIES = [
   'annotation',
   'pdf',
   'figure',
+  'query',
   'host-agents'
 ] as const
 const NOTEBOOK_CONTROL_RPC_METHODS = ['mcpCall', 'computeCall', 'agentsCall'] as const
@@ -121,6 +124,7 @@ type SessionCapabilityRoutingIds = Readonly<{
   annotation: string
   pdf: string
   figure: string
+  query: string
 }>
 
 export type SessionCapabilityArtifactOptions = {
@@ -230,6 +234,17 @@ export type SessionCapabilityFigureOptions = {
   registerSessionAlias?: (aliasSessionId: string, sessionId: string) => void
 }
 
+export type SessionCapabilityQueryOptions = {
+  mcpEntryPath: string
+  mcpCommand?: string
+  isEnabled?: () => Promise<boolean>
+  getRpcConnection: (binding: {
+    sessionId: string
+    projectId: string
+  }) => Promise<HostQueryRpcConnection>
+  registerSessionAlias?: (aliasSessionId: string, sessionId: string) => void
+}
+
 type BuildSessionCapabilitiesRequest = {
   framework: Pick<AgentFramework, 'id' | 'acceptsStdioMcp'>
   nativeMcpEnabled: boolean
@@ -250,6 +265,7 @@ type BuildSessionCapabilitiesRequest = {
   onAnnotationConnection?: (connection: AnnotationRpcConnection) => void
   onPdfConnection?: (connection: PdfRpcConnection) => void
   onFigureConnection?: (connection: FigureRpcConnection) => void
+  onQueryConnection?: (connection: HostQueryRpcConnection) => void
 }
 
 type BuiltSessionCapabilities = Readonly<{
@@ -294,6 +310,7 @@ type CommitSessionCapabilitiesRequest = {
   annotationRelease?: () => void
   pdfRelease?: () => void
   figureRelease?: () => void
+  queryRelease?: () => void
 }
 
 type RevokeProvisionalSessionCapabilitiesRequest = {
@@ -310,6 +327,7 @@ type RevokeProvisionalSessionCapabilitiesRequest = {
   annotationRelease?: () => void
   pdfRelease?: () => void
   figureRelease?: () => void
+  queryRelease?: () => void
   ownsStableIdentity: boolean
 }
 
@@ -325,6 +343,7 @@ type SessionCapabilityOwnerOptions = {
   annotations?: SessionCapabilityAnnotationOptions
   pdf?: SessionCapabilityPdfOptions
   figure?: SessionCapabilityFigureOptions
+  query?: SessionCapabilityQueryOptions
   mcpHttpHost?: AgentMcpHttpHost
 }
 
@@ -378,6 +397,7 @@ export class AcpSessionCapabilityOwner {
   private annotationSessionSequence = 0
   private pdfSessionSequence = 0
   private figureSessionSequence = 0
+  private querySessionSequence = 0
   private skillImportEnabled = true
 
   constructor(private readonly options: SessionCapabilityOwnerOptions) {}
@@ -398,6 +418,7 @@ export class AcpSessionCapabilityOwner {
     let annotationRelease: (() => void) | undefined
     let pdfRelease: (() => void) | undefined
     let figureRelease: (() => void) | undefined
+    let queryRelease: (() => void) | undefined
     let built: BuiltSessionCapabilities
     try {
       built = await this.build({
@@ -439,6 +460,9 @@ export class AcpSessionCapabilityOwner {
         },
         onFigureConnection: (connection) => {
           figureRelease = connection.release
+        },
+        onQueryConnection: (connection) => {
+          queryRelease = connection.release
         }
       })
     } catch (error) {
@@ -455,7 +479,8 @@ export class AcpSessionCapabilityOwner {
           routingIds.endpoint,
           routingIds.annotation,
           routingIds.pdf,
-          routingIds.figure
+          routingIds.figure,
+          routingIds.query
         ],
         usedHttpTransport: ownsStableIdentity && !request.framework.acceptsStdioMcp,
         notebookSessionId: routingIds.notebook || undefined,
@@ -468,6 +493,7 @@ export class AcpSessionCapabilityOwner {
         annotationRelease,
         pdfRelease,
         figureRelease,
+        queryRelease,
         ownsStableIdentity
       })
       this.finishProvisionalRoutingOwner(routingIds, routingOwner)
@@ -494,7 +520,8 @@ export class AcpSessionCapabilityOwner {
               routingIds.endpoint,
               routingIds.annotation,
               routingIds.pdf,
-              routingIds.figure
+              routingIds.figure,
+              routingIds.query
             ],
             usedHttpTransport: ownsRoutingIds && !request.framework.acceptsStdioMcp,
             notebookSessionId: routingIds.notebook || undefined,
@@ -508,6 +535,7 @@ export class AcpSessionCapabilityOwner {
             annotationRelease,
             pdfRelease,
             figureRelease,
+            queryRelease,
             ownsStableIdentity: ownsRoutingIds
           })
           this.finishProvisionalRoutingOwner(routingIds, routingOwner)
@@ -528,6 +556,7 @@ export class AcpSessionCapabilityOwner {
             annotationRelease,
             pdfRelease,
             figureRelease,
+            queryRelease,
             ownsStableIdentity: false
           })
           this.finishProvisionalRoutingOwner(routingIds, routingOwner)
@@ -546,7 +575,8 @@ export class AcpSessionCapabilityOwner {
           endpointRelease,
           annotationRelease,
           pdfRelease,
-          figureRelease
+          figureRelease,
+          queryRelease
         })
         this.finishProvisionalRoutingOwner(routingIds, routingOwner)
       },
@@ -568,7 +598,8 @@ export class AcpSessionCapabilityOwner {
             routingIds.endpoint,
             routingIds.annotation,
             routingIds.pdf,
-            routingIds.figure
+            routingIds.figure,
+            routingIds.query
           ],
           usedHttpTransport: ownsStableIdentity && !request.framework.acceptsStdioMcp,
           notebookSessionId: routingIds.notebook || undefined,
@@ -582,6 +613,7 @@ export class AcpSessionCapabilityOwner {
           annotationRelease,
           pdfRelease,
           figureRelease,
+          queryRelease,
           ownsStableIdentity
         })
         this.finishProvisionalRoutingOwner(routingIds, routingOwner)
@@ -602,7 +634,8 @@ export class AcpSessionCapabilityOwner {
         endpoint: this.options.endpoints ? stableAppSessionId : '',
         annotation: this.options.annotations ? stableAppSessionId : '',
         pdf: this.options.pdf ? stableAppSessionId : '',
-        figure: this.options.figure ? stableAppSessionId : ''
+        figure: this.options.figure ? stableAppSessionId : '',
+        query: this.options.query ? stableAppSessionId : ''
       })
     }
 
@@ -618,6 +651,7 @@ export class AcpSessionCapabilityOwner {
     if (this.options.annotations) this.annotationSessionSequence += 1
     if (this.options.pdf) this.pdfSessionSequence += 1
     if (this.options.figure) this.figureSessionSequence += 1
+    if (this.options.query) this.querySessionSequence += 1
 
     return Object.freeze({
       artifact: this.options.artifacts
@@ -650,6 +684,9 @@ export class AcpSessionCapabilityOwner {
         : '',
       figure: this.options.figure
         ? `figure-session-${timestamp}-${this.figureSessionSequence}`
+        : '',
+      query: this.options.query
+        ? `query-session-${timestamp}-${this.querySessionSequence}`
         : ''
     })
   }
@@ -673,6 +710,7 @@ export class AcpSessionCapabilityOwner {
     const annotationAllowed = policyAllowsSessionCapability(request.policy, 'annotation')
     const pdfAllowed = policyAllowsSessionCapability(request.policy, 'pdf')
     const figureAllowed = policyAllowsSessionCapability(request.policy, 'figure')
+    const queryAllowed = policyAllowsSessionCapability(request.policy, 'query')
 
     const servers =
       transport === 'stdio'
@@ -687,7 +725,8 @@ export class AcpSessionCapabilityOwner {
             endpoint: endpointAllowed,
             annotation: annotationAllowed,
             pdf: pdfAllowed,
-            figure: figureAllowed
+            figure: figureAllowed,
+            query: queryAllowed
           })
         : transport === 'http'
           ? await this.buildHttpServers(request, {
@@ -701,7 +740,8 @@ export class AcpSessionCapabilityOwner {
               endpoint: endpointAllowed,
               annotation: annotationAllowed,
               pdf: pdfAllowed,
-              figure: figureAllowed
+              figure: figureAllowed,
+              query: queryAllowed
             })
           : []
     const modelFacingServers = servers.map((server) => {
@@ -740,6 +780,9 @@ export class AcpSessionCapabilityOwner {
     }
     if (canonicalMcpServerNames.includes(FIGURE_MCP_SERVER_NAME)) {
       capabilities.push('figure')
+    }
+    if (canonicalMcpServerNames.includes(HOST_QUERY_MCP_SERVER_NAME)) {
+      capabilities.push('query')
     }
     if (
       capabilities.includes('notebook') &&
@@ -966,6 +1009,7 @@ export class AcpSessionCapabilityOwner {
     annotation: boolean
     pdf: boolean
     figure: boolean
+    query: boolean
   }> {
     const transportAvailable = input.framework.acceptsStdioMcp || Boolean(this.options.mcpHttpHost)
     const notebook =
@@ -1016,7 +1060,11 @@ export class AcpSessionCapabilityOwner {
       figure:
         transportAvailable &&
         Boolean(this.options.figure) &&
-        policyAllowsSessionCapability(input.policy, 'figure')
+        policyAllowsSessionCapability(input.policy, 'figure'),
+      query:
+        transportAvailable &&
+        Boolean(this.options.query) &&
+        policyAllowsSessionCapability(input.policy, 'query')
     })
   }
 
@@ -1104,6 +1152,7 @@ export class AcpSessionCapabilityOwner {
       annotation: boolean
       pdf: boolean
       figure: boolean
+      query: boolean
     }
   ): Promise<McpServer[]> {
     const servers: McpServer[] = []
@@ -1280,6 +1329,22 @@ export class AcpSessionCapabilityOwner {
         )
       }
     }
+    if (enabled.query) {
+      const environment = await this.buildQueryEnvironment(
+        request.routingIds.query,
+        request.projectName,
+        request.onQueryConnection
+      )
+      if (environment && this.options.query) {
+        servers.push(
+          createHostQueryMcpServerConfig({
+            command: this.options.query.mcpCommand ?? process.execPath,
+            entryPath: this.options.query.mcpEntryPath,
+            ...environment
+          })
+        )
+      }
+    }
     return servers
   }
 
@@ -1365,6 +1430,20 @@ export class AcpSessionCapabilityOwner {
     return { ...connection, sessionId: routingId, projectId: projectName }
   }
 
+  private async buildQueryEnvironment(
+    routingId: string,
+    projectName: string,
+    onConnection?: (connection: HostQueryRpcConnection) => void
+  ): Promise<HostQueryMcpEnvironment | undefined> {
+    if (!this.options.query || !routingId || !projectName) return undefined
+    const connection = await this.options.query.getRpcConnection({
+      sessionId: routingId,
+      projectId: projectName
+    })
+    onConnection?.(connection)
+    return { ...connection, sessionId: routingId, projectId: projectName }
+  }
+
   private async buildHttpServers(
     request: BuildSessionCapabilitiesRequest,
     enabled: {
@@ -1379,6 +1458,7 @@ export class AcpSessionCapabilityOwner {
       annotation: boolean
       pdf: boolean
       figure: boolean
+      query: boolean
     }
   ): Promise<McpServer[]> {
     const host = this.options.mcpHttpHost

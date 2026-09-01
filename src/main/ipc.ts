@@ -147,6 +147,8 @@ import { createPdfCommandOwner, registerPdfIpcHandlers } from './settings/pdf-ip
 import { PdfService } from './settings/pdf-service'
 import { createFigureCommandOwner, registerFigureIpcHandlers } from './settings/figure-ipc'
 import { reviewFigure } from './settings/figure-review-service'
+import { createHostQueryCommandOwner, registerHostQueryIpcHandlers } from './settings/host-query-ipc'
+import { HostQueryService } from './settings/host-query-service'
 import type { FigureReviewRequest } from '../shared/figure'
 import {
   createDefaultReviewRepository,
@@ -1161,6 +1163,9 @@ const createApplicationModules = async (
     storageRoot: resolveDataRoot(),
     resolvePath: async (path) => (path.startsWith('/') ? path : join(resolveDataRoot(), path))
   })
+  const hostQueryService = new HostQueryService({
+    getClient: () => getProjectDbClient(resolveStorageRoot())
+  })
   const notebookRpcServer = await modules.add(
     new NotebookLocalRpcServer(notebookLocalRpc, {
       onSessionReleased: (sessionId) => completionGateCoordinator.releaseSession(sessionId),
@@ -1211,6 +1216,9 @@ const createApplicationModules = async (
           const figureRequest = request as FigureReviewRequest
           return Promise.resolve(reviewFigure(figureRequest.panels, figureRequest.figureNote))
         }
+      },
+      hostQuery: {
+        query: (_sessionId, projectId, sql) => hostQueryService.query(sql, projectId)
       },
       planService: {
         call: (input) => {
@@ -2072,6 +2080,9 @@ const createApplicationModules = async (
       createFigureCommandOwner((request) => reviewFigure(request.panels, request.figureNote))
     )
   })
+  declareElectronAdapter('query', () => {
+    registerHostQueryIpcHandlers(createHostQueryCommandOwner(hostQueryService))
+  })
 
   const electronSenderFor = (
     invocation: ApplicationInvocation<readonly unknown[]>
@@ -2169,6 +2180,7 @@ const createApplicationModules = async (
       figure: createFigureCommandOwner((request) =>
         reviewFigure(request.panels, request.figureNote)
       ),
+      query: createHostQueryCommandOwner(hostQueryService),
       storage: storageCommandOwner,
       update: updateCommandOwner
     }

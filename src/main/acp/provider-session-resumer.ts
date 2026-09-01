@@ -232,7 +232,8 @@ export class AcpProviderSessionResumer {
           endpoint: capability.descriptor.capabilities.includes('endpoint'),
           annotation: capability.descriptor.capabilities.includes('annotation'),
           pdf: capability.descriptor.capabilities.includes('pdf'),
-          figure: capability.descriptor.capabilities.includes('figure')
+          figure: capability.descriptor.capabilities.includes('figure'),
+          query: capability.descriptor.capabilities.includes('query')
         },
         backendSystemPromptAppends: backend.prompt.systemPromptAppends,
         sessionOptions: backend.session.options,

@@ -31,7 +31,8 @@ describe('AcpContextUsagePolicy', () => {
       endpoint: false,
       annotation: false,
       pdf: false,
-      figure: false
+      figure: false,
+      query: false
       })
     })
 
@@ -70,7 +71,8 @@ describe('AcpContextUsagePolicy', () => {
       endpoint: false,
       annotation: false,
       pdf: false,
-      figure: false
+      figure: false,
+      query: false
       })
     })
 

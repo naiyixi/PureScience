@@ -121,6 +121,7 @@ export const WEB_INVOKE_CHANNELS = {
   'projects.list': 'projects:list',
   'projects.update': 'projects:update',
   'projects.updateArchive': 'projects:update-archive',
+  'query.run': 'query:run',
   'remoteAccess.approve': 'remote-access:approve',
   'remoteAccess.detect': 'remote-access:detect',
   'remoteAccess.disable': 'remote-access:disable',

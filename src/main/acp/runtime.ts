@@ -54,6 +54,7 @@ import type { EndpointRpcConnection } from '../settings/endpoint-mcp-server'
 import type { AnnotationRpcConnection } from '../settings/annotation-mcp-server'
 import type { PdfRpcConnection } from '../settings/pdf-mcp-server'
 import type { FigureRpcConnection } from '../settings/figure-mcp-server'
+import type { HostQueryRpcConnection } from '../settings/host-query-mcp-server'
 import { codexStorageDir, codexSubscriptionStorageDir } from '../agent-framework/codex'
 import { getAppClaudeConfigDir } from '../settings/provider-env'
 import type { PermissionGrantRegistry } from '../permission-grants/registry'
@@ -164,6 +165,7 @@ type AcpRuntimeOptions = {
   annotations?: AcpRuntimeAnnotationOptions
   pdf?: AcpRuntimePdfOptions
   figure?: AcpRuntimeFigureOptions
+  query?: AcpRuntimeQueryOptions
   // Optional hook called after a context compaction completes, so the app can persist the
   // folded-away window as an immutable summary chunk. Injected by the app runtime assembly.
   contextSummaryCapture?: (input: { sessionId: string; reason: string }) => Promise<void> | void
@@ -355,6 +357,16 @@ type AcpRuntimeFigureOptions = {
     sessionId: string
     projectId: string
   }) => Promise<FigureRpcConnection>
+  registerSessionAlias?: (aliasSessionId: string, sessionId: string) => void
+}
+
+type AcpRuntimeQueryOptions = {
+  mcpEntryPath: string
+  mcpCommand?: string
+  getRpcConnection: (binding: {
+    sessionId: string
+    projectId: string
+  }) => Promise<HostQueryRpcConnection>
   registerSessionAlias?: (aliasSessionId: string, sessionId: string) => void
 }
 
