@@ -221,6 +221,13 @@ export const createSessionMessageGraphOwner = <
       uploads,
       parts
     )
+    // Freeze the configuration this turn runs under so the transcript can show a quiet divider
+    // when the user changes framework/model between turns (session-level fields hold only the
+    // latest values and would hide an earlier configuration).
+    userMessage.turnConfig = {
+      agentFrameworkId: agentFrameworkId ?? existingSession?.agentFrameworkId,
+      agentModel: normalizedAgentModel ?? existingSession?.agentModel
+    }
     if (annotations && annotations.length > 0) {
       userMessage.annotations = annotations
     }

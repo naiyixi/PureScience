@@ -20,7 +20,7 @@ type ConversationActivityGroupItem = {
 }
 
 type GroupedConversationItem =
-  | Extract<ConversationItem, { type: 'message' | 'handoff' | 'plan-activity' }>
+  | Extract<ConversationItem, { type: 'message' | 'handoff' | 'plan-activity' | 'config-change' }>
   | ConversationActivityGroupItem
 type ActivityExpansionOverrides = Record<string, boolean>
 type RenderableActivityEntry = {
@@ -39,9 +39,15 @@ const groupConversationItems = (
   const groupsById = new Map(activityGroups.map((group) => [group.id, group]))
 
   for (const item of items) {
-    // Handoff annotations and Plan call records are standalone transcript items. Keep their
-    // timeline position and prevent them from merging into an adjacent ordinary-tool group.
-    if (item.type === 'message' || item.type === 'handoff' || item.type === 'plan-activity') {
+    // Handoff annotations, Plan call records, and config-change dividers are standalone
+    // transcript items. Keep their timeline position and prevent them from merging into an
+    // adjacent ordinary-tool group.
+    if (
+      item.type === 'message' ||
+      item.type === 'handoff' ||
+      item.type === 'plan-activity' ||
+      item.type === 'config-change'
+    ) {
       groupedItems.push(item)
       continue
     }

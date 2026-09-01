@@ -423,4 +423,85 @@ describe('workspace conversation items', () => {
     expect(isActivityActive(createActivity({ status: 'in_progress' }))).toBe(true)
     expect(isActivityActive(createActivity({ status: 'completed' }))).toBe(false)
   })
+
+  it('inserts a quiet config-change divider when consecutive user turns change model', () => {
+    const session: ChatSession = {
+      ...baseSession,
+      messages: [
+        {
+          id: 'message-1',
+          role: 'user',
+          content: 'First',
+          status: 'complete',
+          eventIds: [],
+          createdAt: 1710000000000,
+          updatedAt: 1710000000000,
+          turnConfig: { agentFrameworkId: 'claude-code', agentModel: 'claude-4.5' }
+        },
+        {
+          id: 'message-2',
+          role: 'agent',
+          content: 'Answer one',
+          status: 'complete',
+          eventIds: ['event-2'],
+          createdAt: 1710000001000,
+          updatedAt: 1710000001000
+        },
+        {
+          id: 'message-3',
+          role: 'user',
+          content: 'Second',
+          status: 'complete',
+          eventIds: [],
+          createdAt: 1710000002000,
+          updatedAt: 1710000002000,
+          turnConfig: { agentFrameworkId: 'claude-code', agentModel: 'claude-5' }
+        }
+      ]
+    }
+
+    const items = createConversationItems(session)
+    const divider = items.find((item) => item.type === 'config-change')
+    expect(divider).toBeDefined()
+    if (divider?.type === 'config-change') {
+      expect(divider.agentModel).toBe('claude-5')
+      expect(divider.createdAt).toBe(1710000002000)
+    }
+    // The divider sits between the two turns in timeline order.
+    const order = items.map((item) => item.id)
+    expect(order.indexOf('config-change-message-3')).toBeGreaterThan(
+      order.indexOf('message-2')
+    )
+  })
+
+  it('skips the divider when the configuration is unchanged between turns', () => {
+    const session: ChatSession = {
+      ...baseSession,
+      messages: [
+        {
+          id: 'message-1',
+          role: 'user',
+          content: 'First',
+          status: 'complete',
+          eventIds: [],
+          createdAt: 1710000000000,
+          updatedAt: 1710000000000,
+          turnConfig: { agentFrameworkId: 'codex', agentModel: 'gpt-5' }
+        },
+        {
+          id: 'message-2',
+          role: 'user',
+          content: 'Second',
+          status: 'complete',
+          eventIds: [],
+          createdAt: 1710000002000,
+          updatedAt: 1710000002000,
+          turnConfig: { agentFrameworkId: 'codex', agentModel: 'gpt-5' }
+        }
+      ]
+    }
+
+    const items = createConversationItems(session)
+    expect(items.some((item) => item.type === 'config-change')).toBe(false)
+  })
 })
