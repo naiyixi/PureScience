@@ -22,6 +22,7 @@ import {
   NOTEBOOK_MCP_SERVER_ARG,
   PLAN_MCP_SERVER_ARG,
   REVIEWER_MCP_PROXY_ARG,
+  ROUTINE_MCP_SERVER_ARG,
   SKILL_IMPORT_MCP_SERVER_ARG
 } from './mcp-server-args'
 import { withApplicationRuntimeShutdown } from './application-runtime'
@@ -46,6 +47,7 @@ const shouldRunSkillImportMcpServer = process.argv.includes(SKILL_IMPORT_MCP_SER
 const shouldRunPlanMcpServer = process.argv.includes(PLAN_MCP_SERVER_ARG)
 const shouldRunMemoryMcpServer = process.argv.includes(MEMORY_MCP_SERVER_ARG)
 const shouldRunContextSummaryMcpServer = process.argv.includes(CONTEXT_SUMMARY_MCP_SERVER_ARG)
+const shouldRunRoutineMcpServer = process.argv.includes(ROUTINE_MCP_SERVER_ARG)
 let startupDiagnostics: DiagnosticOperation | undefined
 let startupFlush = flushLogs
 
@@ -96,6 +98,13 @@ if (shouldRunArtifactMcpServer) {
 } else if (shouldRunContextSummaryMcpServer) {
   void import('./settings/context-summary-mcp-server')
     .then(({ runContextSummaryMcpServer }) => runContextSummaryMcpServer())
+    .catch((error: unknown) => {
+      console.error(error)
+      process.exitCode = 1
+    })
+} else if (shouldRunRoutineMcpServer) {
+  void import('./settings/routine-mcp-server')
+    .then(({ runRoutineMcpServer }) => runRoutineMcpServer())
     .catch((error: unknown) => {
       console.error(error)
       process.exitCode = 1

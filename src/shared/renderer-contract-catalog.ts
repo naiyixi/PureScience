@@ -273,6 +273,10 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['getForSession', 'reviewer:get-for-session'], ['mutateChecklist', 'reviewer:mutate-checklist'],
     ['getChunks', 'reviewer:get-chunks'], ['run', 'reviewer:run'],
   ]),
+  group('routine', 'routine', [
+    ['listAll', 'routine:list-all', LOCAL], ['upsert', 'routine:upsert', LOCAL],
+    ['remove', 'routine:remove', LOCAL], ['setEnabled', 'routine:set-enabled', LOCAL],
+  ]),
   group('runtime', 'runtime', [
     ['describeUsage', 'runtime:describe-usage', WEB, RUNTIME_LANGUAGE_ENV, POSITIONAL],
     ['getEnablement', 'runtime:get-enablement', WEB, RUNTIME_LANGUAGE, POSITIONAL], ['listEnvironments', 'runtime:list-environments'],

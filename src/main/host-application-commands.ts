@@ -34,6 +34,8 @@ import type {
   StorageInfo
 } from '../shared/storage'
 import type { AppInfo, UpdateStatus } from '../shared/update'
+import type { RoutineSchedule } from '../shared/routine'
+import type { RoutineConfigureRequest } from '../shared/routine'
 import {
   defineApplicationCommand,
   defineApplicationCommandGroup,
@@ -273,6 +275,29 @@ const updateCommands = Object.freeze({
   )
 })
 
+const routineCommands = Object.freeze({
+  listAll: defineApplicationCommand<
+    'routine:list-all',
+    readonly [],
+    RoutineSchedule[]
+  >('routine:list-all'),
+  upsert: defineApplicationCommand<
+    'routine:upsert',
+    readonly [request: { sessionId: string; configure: RoutineConfigureRequest }],
+    RoutineSchedule
+  >('routine:upsert'),
+  remove: defineApplicationCommand<
+    'routine:remove',
+    readonly [request: { sessionId: string; routineId: string }],
+    boolean
+  >('routine:remove'),
+  setEnabled: defineApplicationCommand<
+    'routine:set-enabled',
+    readonly [request: { sessionId: string; routineId: string; enabled: boolean }],
+    RoutineSchedule | null
+  >('routine:set-enabled')
+})
+
 const hostApplicationCommands = Object.freeze({
   cli: cliCommands,
   folderGrants: folderGrantsCommands,
@@ -282,6 +307,7 @@ const hostApplicationCommands = Object.freeze({
   notifications: notificationCommands,
   remoteAccess: remoteAccessCommands,
   reviewer: reviewerCommands,
+  routine: routineCommands,
   storage: storageCommands,
   update: updateCommands
 })
@@ -295,6 +321,7 @@ const hostApplicationCommandGroups = Object.freeze([
   defineApplicationCommandGroup('notifications', Object.values(notificationCommands)),
   defineApplicationCommandGroup('remote-access', Object.values(remoteAccessCommands)),
   defineApplicationCommandGroup('reviewer', Object.values(reviewerCommands)),
+  defineApplicationCommandGroup('routine', Object.values(routineCommands)),
   defineApplicationCommandGroup('storage', Object.values(storageCommands)),
   defineApplicationCommandGroup('update', Object.values(updateCommands))
 ] as const)
@@ -320,6 +347,16 @@ type HostApplicationCommandDependencies = Readonly<{
     ReviewerCommandOwner,
     'run' | 'getForSession' | 'abortFixLoop' | 'getChecklist' | 'mutateChecklist' | 'getChunks'
   >
+  routine: Readonly<{
+    listAll: () => Promise<RoutineSchedule[]>
+    upsert: (sessionId: string, configure: RoutineConfigureRequest) => Promise<RoutineSchedule>
+    remove: (sessionId: string, routineId: string) => Promise<boolean>
+    setEnabled: (
+      sessionId: string,
+      routineId: string,
+      enabled: boolean
+    ) => Promise<RoutineSchedule | null>
+  }>
   storage: Readonly<{
     getInfo: () => Promise<StorageInfo>
     revealAppStorage: () => Promise<RevealAppStorageResult>
@@ -465,6 +502,22 @@ const registerHostApplicationCommands = (
       'reviewer:run': ({ args }) => dependencies.reviewer.run(args[0])
     })
     scope.registerGroup(hostApplicationCommandGroups[8], {
+      'routine:list-all': ({ callerContext }) =>
+        localCommand(callerContext, 'routine:list-all', () => dependencies.routine.listAll()),
+      'routine:upsert': ({ args, callerContext }) =>
+        localCommand(callerContext, 'routine:upsert', () =>
+          dependencies.routine.upsert(args[0].sessionId, args[0].configure)
+        ),
+      'routine:remove': ({ args, callerContext }) =>
+        localCommand(callerContext, 'routine:remove', () =>
+          dependencies.routine.remove(args[0].sessionId, args[0].routineId)
+        ),
+      'routine:set-enabled': ({ args, callerContext }) =>
+        localCommand(callerContext, 'routine:set-enabled', () =>
+          dependencies.routine.setEnabled(args[0].sessionId, args[0].routineId, args[0].enabled)
+        )
+    })
+    scope.registerGroup(hostApplicationCommandGroups[9], {
       'storage:cancel-migrate': ({ callerContext }) =>
         localCommand(callerContext, 'storage:cancel-migrate', () =>
           dependencies.storage.cancelMigrate()
@@ -503,7 +556,7 @@ const registerHostApplicationCommands = (
           dependencies.storage.validateDataRoot(args[0])
         )
     })
-    scope.registerGroup(hostApplicationCommandGroups[9], {
+    scope.registerGroup(hostApplicationCommandGroups[10], {
       'update:apply': ({ callerContext }) =>
         localCommand(callerContext, 'update:apply', () => dependencies.update.apply()),
       'update:cancel': ({ callerContext }) =>

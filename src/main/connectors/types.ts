@@ -40,6 +40,9 @@ export type ToolDescriptor = {
   example?: string
   required?: string[]
   format?: 'json' | 'text'
+  // License gate: when true, this tool fails closed unless the user declared non-commercial use.
+  // Mark sources whose terms restrict commercial use (e.g. CADD: free for non-commercial only).
+  noncommercialOnly?: boolean
   url?: (args: Record<string, unknown>) => string
   parse?: (raw: unknown, args: Record<string, unknown>) => unknown
   run?: (ctx: ToolContext, args: Record<string, unknown>) => Promise<unknown>

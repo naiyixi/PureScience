@@ -47,7 +47,8 @@ describe('ACP Session presentation policy', () => {
       notebook: true,
       skillImport: true,
       memory: false,
-      contextSummary: false
+      contextSummary: false,
+      routine: false
     })
 
     expect(appends).toEqual([
@@ -67,7 +68,8 @@ describe('ACP Session presentation policy', () => {
       notebook: false,
       skillImport: false,
       memory: false,
-      contextSummary: false
+      contextSummary: false,
+      routine: false
     })
 
     expect(appends).toEqual([TURN_CONTINUITY_APPEND, LARGE_DATA_FILE_APPEND])
@@ -82,7 +84,8 @@ describe('ACP Session presentation policy', () => {
         notebook: false,
         skillImport: false,
         memory: false,
-        contextSummary: false
+        contextSummary: false,
+        routine: false
       },
       backendSystemPromptAppends: ['Backend connector guidance.'],
       extraSystemPromptAppends: ['Specialist identity.'],
@@ -127,7 +130,8 @@ describe('ACP Session presentation policy', () => {
           notebook: true,
           skillImport: true,
           memory: false,
-          contextSummary: false
+          contextSummary: false,
+          routine: false
         },
         backendSystemPromptAppends: ['Already installed by the backend.'],
         extraSystemPromptAppends: ['One-off Session guidance.'],
@@ -186,7 +190,8 @@ describe('ACP Session presentation policy', () => {
           notebook: false,
           skillImport: false,
           memory: false,
-          contextSummary: false
+          contextSummary: false,
+          routine: false
         },
         persistentSystemPrompt: 'Baked OpenCode instructions.',
         specialistPrefix: 'Specialist identity prefix.',
@@ -217,7 +222,8 @@ describe('ACP Session presentation policy', () => {
       notebook: false,
       skillImport: false,
       memory: false,
-      contextSummary: false
+      contextSummary: false,
+      routine: false
     }
 
     expect(

@@ -26,7 +26,8 @@ describe('AcpContextUsagePolicy', () => {
         notebook: false,
         skillImport: false,
         memory: false,
-        contextSummary: false
+        contextSummary: false,
+        routine: false
       })
     })
 
@@ -60,7 +61,8 @@ describe('AcpContextUsagePolicy', () => {
         notebook: false,
         skillImport: false,
         memory: false,
-        contextSummary: false
+        contextSummary: false,
+        routine: false
       })
     })
 

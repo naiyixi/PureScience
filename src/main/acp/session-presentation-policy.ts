@@ -5,6 +5,7 @@ import {
 } from '../skills/mcp-server'
 import { MEMORY_MCP_SYSTEM_PROMPT_APPEND } from '../../shared/memory-mcp'
 import { CONTEXT_SUMMARY_MCP_SYSTEM_PROMPT_APPEND } from '../../shared/context-summary-mcp'
+import { ROUTINE_MCP_SYSTEM_PROMPT_APPEND } from '../../shared/routine'
 import type { AgentFramework, SessionSetup } from '../agent-framework/types'
 import type { EffectiveSpecialistSkills, SpecialistProfileView } from '../../shared/specialist'
 import type { AcpPromptRequest } from '../../shared/acp'
@@ -15,6 +16,7 @@ type AcpSessionToolingAvailability = Readonly<{
   skillImport: boolean
   memory: boolean
   contextSummary: boolean
+  routine: boolean
 }>
 
 type AcpSessionSetupPresentationInput = Readonly<{
@@ -110,7 +112,8 @@ class AcpSessionPresentationPolicy {
         ? [SKILL_IMPORT_SYSTEM_PROMPT_APPEND, SKILL_CREATE_SYSTEM_PROMPT_APPEND]
         : []),
       ...(tooling.memory ? [MEMORY_MCP_SYSTEM_PROMPT_APPEND] : []),
-      ...(tooling.contextSummary ? [CONTEXT_SUMMARY_MCP_SYSTEM_PROMPT_APPEND] : [])
+      ...(tooling.contextSummary ? [CONTEXT_SUMMARY_MCP_SYSTEM_PROMPT_APPEND] : []),
+      ...(tooling.routine ? [ROUTINE_MCP_SYSTEM_PROMPT_APPEND] : [])
     ])
   }
 

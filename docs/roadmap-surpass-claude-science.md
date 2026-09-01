@@ -224,6 +224,7 @@ session_concurrency 表（max_concurrent）
 - 交付：MCPPool + 20 个内置 server + 依赖自装 + CN 适配
 - 验收：pubmed/gnomad/pdb 等可用；离线降级友好
 - 版本：v1.27.0
+- **状态 ✅ 已闭环**：60 原子包对照 58 覆盖（含 M3 补的 CADD/DepMap/PanglaoDB——参考产品自身因许可门控禁用的 3 个源）；剩余仅 KEGG（许可限制，可选）。v1.31.0 补**许可门控机制**（工具级 `noncommercialOnly` + use-intent fail-closed，CADD 已标记）——从"覆盖齐"升级为"合规可讲"。
 
 ### 里程碑 M4「源」— 记忆溯源 + Artifact 快照（对应 G4 + G7）
 - 目标：所有产出可溯源
@@ -239,6 +240,11 @@ session_concurrency 表（max_concurrent）
 - 目标：用户可编程的 agent 生态 + 远程计算完备
 - 交付：user_agents 档案 + 技能绑定、SSH 密码认证、并发上限
 - 版本：v1.30.0
+
+### 里程碑 N1「律」— 定时任务编排 + 许可门控（2026-08-31 二轮深挖新增）
+- 目标：agent 可编排周期任务（无人值守监控），数据源合规门控
+- 交付：routine MCP（configure/status/cancel）+ 30s tick 调度器（missed/idle/stuck 记账、连败 3 次自动暂停）+ 设置面板「定时任务」+ `noncommercialOnly` 许可门控（CADD 标记，commercial 模式 fail-closed）
+- 版本：v1.31.0
 
 ### 持续项（贯穿全程）
 - **实测驱动**：每个机制上线前先建 benchmark（复刻对方 bench-reviewer 方法），用数据说话

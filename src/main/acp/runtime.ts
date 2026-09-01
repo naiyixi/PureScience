@@ -49,6 +49,7 @@ import type { ImageInputCompatibilityOwner } from './image-input-compatibility-o
 import type { SkillImportRpcConnection } from '../skills/mcp-server'
 import type { MemoryRpcConnection } from '../settings/memory-mcp-server'
 import type { ContextSummaryRpcConnection } from '../settings/context-summary-mcp-server'
+import type { RoutineRpcConnection } from '../settings/routine-mcp-server'
 import { codexStorageDir, codexSubscriptionStorageDir } from '../agent-framework/codex'
 import { getAppClaudeConfigDir } from '../settings/provider-env'
 import type { PermissionGrantRegistry } from '../permission-grants/registry'
@@ -154,6 +155,7 @@ type AcpRuntimeOptions = {
   plan?: AcpRuntimePlanOptions
   memory?: AcpRuntimeMemoryOptions
   contextSummary?: AcpRuntimeContextSummaryOptions
+  routine?: AcpRuntimeRoutineOptions
   // Optional hook called after a context compaction completes, so the app can persist the
   // folded-away window as an immutable summary chunk. Injected by the app runtime assembly.
   contextSummaryCapture?: (input: { sessionId: string; reason: string }) => Promise<void> | void
@@ -301,6 +303,13 @@ type AcpRuntimeContextSummaryOptions = {
   mcpEntryPath: string
   mcpCommand?: string
   getRpcConnection: (binding: { sessionId: string }) => Promise<ContextSummaryRpcConnection>
+  registerSessionAlias?: (aliasSessionId: string, sessionId: string) => void
+}
+
+type AcpRuntimeRoutineOptions = {
+  mcpEntryPath: string
+  mcpCommand?: string
+  getRpcConnection: (binding: { sessionId: string }) => Promise<RoutineRpcConnection>
   registerSessionAlias?: (aliasSessionId: string, sessionId: string) => void
 }
 

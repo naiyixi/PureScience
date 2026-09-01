@@ -116,7 +116,8 @@ const setup = (): Fixture => {
         notebook: true,
         skillImport: true,
         memory: false,
-        contextSummary: false
+        contextSummary: false,
+        routine: false
       },
       specialistPrefix: 'Specialist identity.',
       projectId: 'project-1',

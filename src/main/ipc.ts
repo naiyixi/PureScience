@@ -133,6 +133,7 @@ import {
   registerProjectIpcHandlers
 } from './projects/ipc'
 import { createReviewerCommandOwner, registerReviewerIpcHandlers } from './reviewer/ipc'
+import { createRoutineCommandOwner, registerRoutineIpcHandlers } from './settings/routine-ipc'
 import {
   createDefaultReviewRepository,
   createDefaultSessionRepository,
@@ -166,6 +167,8 @@ import { getAppClaudeConfigDir } from './settings/provider-env'
 import { createDefaultSettingsService } from './settings/service'
 import { ContextSummaryRepository } from './settings/context-summary-repository'
 import { createContextSummaryCapture } from './settings/context-summary-capture'
+import { RoutineRepository } from './settings/routine-repository'
+import { RoutineScheduler } from './settings/routine-scheduler'
 import type { NotebookRuntimeSettings } from './settings/capabilities'
 import type { WindowSettingsCapabilities } from './settings/service-capabilities'
 import { createSettingsWorkflows } from './settings/workflows'
@@ -974,6 +977,7 @@ const createApplicationModules = async (
   const connectorService = new ConnectorService({
     getConnectors: () => connectorRuntimeSettings.current(),
     getConnectorsFresh: () => settingsService.getConnectors(),
+    getUseIntent: async () => (await settingsService.getStoredSettings()).useIntent,
     resolveApiKey: (ref) => tryDecryptKey(ref),
     mcpClientManager,
     permissionGrantRegistry,
@@ -1120,6 +1124,9 @@ const createApplicationModules = async (
   const contextSummaryRepository = new ContextSummaryRepository({
     storageRoot: resolveDataRoot()
   })
+  const routineRepository = new RoutineRepository({
+    storageRoot: resolveDataRoot()
+  })
   const notebookRpcServer = await modules.add(
     new NotebookLocalRpcServer(notebookLocalRpc, {
       onSessionReleased: (sessionId) => completionGateCoordinator.releaseSession(sessionId),
@@ -1136,6 +1143,11 @@ const createApplicationModules = async (
           contextSummaryRepository.queryChunk(sessionId, summaryId, question),
         recordBoundary: (sessionId, label) =>
           contextSummaryRepository.recordBoundary(sessionId, label)
+      },
+      routine: {
+        configure: (sessionId, request) => routineRepository.upsert(sessionId, request),
+        status: (sessionId) => routineRepository.list(sessionId),
+        cancel: (sessionId, routineId) => routineRepository.remove(sessionId, routineId)
       },
       planService: {
         call: (input) => {
@@ -1348,6 +1360,55 @@ const createApplicationModules = async (
     createSessionWorkflow,
     taskNotifications,
     archiveCoordinator
+  )
+  await modules.add(
+    undefined,
+    () => {
+      const scheduler = new RoutineScheduler({
+        repository: {
+          listAllSchedules: () => routineRepository.listAllSchedules(),
+          recordTick: (sessionId, routineId, result) =>
+            routineRepository.recordTick(sessionId, routineId, result),
+          setEnabled: (sessionId, routineId, enabled) =>
+            routineRepository.setEnabled(sessionId, routineId, enabled)
+        },
+        dispatchTick: async (schedule) => {
+          try {
+            // A scheduled tick runs as a fresh task session in the owning session's project. The
+            // instruction is a self-contained prompt, so the fresh session needs no memory of the
+            // scheduling conversation.
+            const owner = (await sessionRepository.loadAll()).sessions.find(
+              (session) => session.id === schedule.sessionId
+            )
+            if (!owner) {
+              return { kind: 'error', message: 'Owning session no longer exists.' }
+            }
+            const created = await taskAgent.createSession({
+              projectId: owner.projectId,
+              permissionProfile: 'ask'
+            })
+            await taskAgent.prompt({
+              sessionId: created.sessionId,
+              promptMessageId: randomUUID(),
+              text: schedule.instruction
+            })
+            return { kind: 'ok', runId: created.sessionId }
+          } catch (error) {
+            return {
+              kind: 'error',
+              message: error instanceof Error ? error.message : String(error)
+            }
+          }
+        }
+      })
+      return {
+        name: 'routine-scheduler',
+        capability: scheduler,
+        start: () => scheduler.start(),
+        rollback: () => scheduler.stop(),
+        dispose: () => scheduler.stop()
+      }
+    }
   )
   {
     // Framework-specific adapters declare their own session selector. The registry resolves those
@@ -1929,6 +1990,9 @@ const createApplicationModules = async (
   declareElectronAdapter('reviewer', () => {
     registerReviewerIpcHandlers(reviewerOptions, reviewerCommandOwner)
   })
+  declareElectronAdapter('routine', () => {
+    registerRoutineIpcHandlers(createRoutineCommandOwner(routineRepository))
+  })
 
   const electronSenderFor = (
     invocation: ApplicationInvocation<readonly unknown[]>
@@ -2019,6 +2083,7 @@ const createApplicationModules = async (
           taskNotifications.takePendingOpenSession(expectedToken)
       },
       reviewer: reviewerCommandOwner,
+      routine: createRoutineCommandOwner(routineRepository),
       storage: storageCommandOwner,
       update: updateCommandOwner
     }

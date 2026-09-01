@@ -99,6 +99,7 @@ export const VARIANTS_CADD_TOOLS: ToolDescriptor[] = [
   {
     id: 'cadd_score_variant',
     connector: 'variants',
+    noncommercialOnly: true,
     description:
       'Get the CADD deleteriousness score (PHRED + raw) for a single SNV. CADD ranks how ' +
       'deleterious a variant is relative to all possible SNVs: PHRED ≥20 means top 1%, ≥30 means ' +
@@ -139,6 +140,7 @@ export const VARIANTS_CADD_TOOLS: ToolDescriptor[] = [
   {
     id: 'cadd_score_at_position',
     connector: 'variants',
+    noncommercialOnly: true,
     description:
       'Get CADD scores for all three SNVs at a genomic position (ref→A/C/G alternatives). ' +
       'Positions are GRCh37 by default.',
