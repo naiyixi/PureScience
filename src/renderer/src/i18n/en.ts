@@ -279,6 +279,7 @@ export const en: Record<ZhKey, string> = {
   'workspace.moreSendOptions': 'More send options',
   'workspace.askAnything': 'Ask anything',
   'workspace.runCodePlaceholder': 'run code in this kernel...',
+  'workspace.variableSuggestions': 'Kernel variable suggestions',
   'workspace.deleteSessionConfirmTitle': 'Delete Session?',
   'workspace.deleteSessionConfirm':
     'This will permanently delete "{title}". Artifacts created in this session will remain in the project. This action cannot be undone.',

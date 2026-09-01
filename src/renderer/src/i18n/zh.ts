@@ -269,6 +269,7 @@ export const zh = {
   'workspace.moreSendOptions': '更多发送选项',
   'workspace.askAnything': '随便问问',
   'workspace.runCodePlaceholder': '在此内核中运行代码…',
+  'workspace.variableSuggestions': '内核变量建议',
   'workspace.deleteSessionConfirmTitle': '删除会话？',
   'workspace.deleteSessionConfirm':
     '这将永久删除"{title}"。此会话中创建的产物将保留在项目中。此操作无法撤销。',

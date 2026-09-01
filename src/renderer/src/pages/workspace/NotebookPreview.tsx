@@ -262,43 +262,145 @@ const TerminalScrollback = ({ runs }: { runs: NotebookRunRecord[] }): React.JSX.
   </div>
 )
 
-// Captures one-line terminal code and submits on Enter while Shift+Enter keeps editing.
+const variableSuggestionPattern = /^[A-Za-z_]/u
+
+// Pure suggestion logic: matches live kernel variable names against the current token prefix.
+// Exported for focused tests; the input UI consumes it for Tab/click completion.
+const suggestVariableNames = (
+  code: string,
+  variableNames: readonly string[]
+): string[] => {
+  const currentToken = code.split(/[\s()[\].,;:]/).at(-1) ?? ''
+  if (!variableSuggestionPattern.test(currentToken) || currentToken.length < 1) return []
+  const prefix = currentToken.toLowerCase()
+  return variableNames.filter((name) => name.toLowerCase().startsWith(prefix)).slice(0, 8)
+}
+
+// Captures one-line terminal code and submits on Enter while Shift+Enter keeps editing. While
+// typing, it suggests live kernel variable names (matched against the current token prefix);
+// Tab/click accepts, Arrow keys navigate, Escape dismisses.
 const TerminalInput = ({
   code,
   disabled,
   onChange,
-  onSubmit
+  onSubmit,
+  variableNames
 }: {
   code: string
   disabled: boolean
   onChange: (value: string) => void
   onSubmit: () => void
+  // Live kernel variable names for in-line suggestions; empty hides the affordance.
+  variableNames: string[]
 }): React.JSX.Element => {
   const { t } = useLanguage()
-  // Match Python REPL ergonomics while avoiding submit during IME composition.
+  const [suggestionIndex, setSuggestionIndex] = useState(0)
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  // The variable name currently being typed (the last whitespace-delimited token starting with
+  // a letter/underscore); suggestions are matched against its prefix.
+  const currentToken = code.split(/[\s()[\].,;:]/).at(-1) ?? ''
+  const isVariableToken = variableSuggestionPattern.test(currentToken)
+  const suggestions = useMemo(
+    () => suggestVariableNames(code, variableNames),
+    [code, variableNames]
+  )
+
+  const applySuggestion = (): void => {
+    const suggestion = suggestions[suggestionIndex]
+    if (!suggestion) return
+    // Replace the trailing token with the accepted variable name, keeping any earlier text.
+    const replaceAt = code.length - currentToken.length
+    onChange(`${code.slice(0, replaceAt)}${suggestion}`)
+    setShowSuggestions(false)
+    setSuggestionIndex(0)
+  }
+
+  // Match Python REPL ergonomics while avoiding submit during IME composition. Tab accepts the
+  // highlighted suggestion; Escape closes the suggestion list.
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>): void => {
+    if (event.key === 'Escape' && suggestions.length > 0) {
+      event.preventDefault()
+      setShowSuggestions(false)
+      return
+    }
+    if (event.key === 'Tab' && suggestions.length > 0) {
+      event.preventDefault()
+      applySuggestion()
+      return
+    }
+    if (event.key === 'ArrowDown' && suggestions.length > 0) {
+      event.preventDefault()
+      setSuggestionIndex((index) => (index + 1) % suggestions.length)
+      return
+    }
+    if (event.key === 'ArrowUp' && suggestions.length > 0) {
+      event.preventDefault()
+      setSuggestionIndex((index) => (index - 1 + suggestions.length) % suggestions.length)
+      return
+    }
     if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return
 
     event.preventDefault()
     onSubmit()
   }
 
+  // Recompute the highlight when the token or list changes; open the list while typing a match.
+  useEffect(() => {
+    setSuggestionIndex(0)
+    setShowSuggestions(suggestions.length > 0 && isVariableToken)
+  }, [isVariableToken, suggestions])
+
   return (
-    <div className="flex items-start gap-2 border-t border-border-100/60 px-3 py-2">
-      <span className="pt-0.5 font-mono text-xs text-primary">&gt;&gt;&gt;</span>
-      <textarea
-        rows={1}
-        value={code}
-        disabled={disabled}
-        placeholder={t('workspace.runCodePlaceholder')}
-        spellCheck={false}
-        autoCapitalize="off"
-        autoComplete="off"
-        className="min-h-0 flex-1 resize-none bg-transparent font-mono text-xs text-text-000 outline-none placeholder:text-text-300 disabled:cursor-not-allowed disabled:opacity-50"
-        data-testid="kernel-terminal-input"
-        onChange={(event) => onChange(event.target.value)}
-        onKeyDown={handleKeyDown}
-      />
+    <div className="relative">
+      <div className="flex items-start gap-2 border-t border-border-100/60 px-3 py-2">
+        <span className="pt-0.5 font-mono text-xs text-primary">&gt;&gt;&gt;</span>
+        <textarea
+          rows={1}
+          value={code}
+          disabled={disabled}
+          placeholder={t('workspace.runCodePlaceholder')}
+          spellCheck={false}
+          autoCapitalize="off"
+          autoComplete="off"
+          className="min-h-0 flex-1 resize-none bg-transparent font-mono text-xs text-text-000 outline-none placeholder:text-text-300 disabled:cursor-not-allowed disabled:opacity-50"
+          data-testid="kernel-terminal-input"
+          onChange={(event) => onChange(event.target.value)}
+          onKeyDown={handleKeyDown}
+          onBlur={() => setShowSuggestions(false)}
+          aria-expanded={showSuggestions ? 'true' : 'false'}
+          aria-controls={showSuggestions ? 'kernel-variable-suggestions' : undefined}
+        />
+      </div>
+      {showSuggestions && suggestions.length > 0 ? (
+        <div
+          id="kernel-variable-suggestions"
+          role="listbox"
+          aria-label={t('workspace.variableSuggestions')}
+          className="absolute bottom-full left-3 z-10 max-h-48 w-64 overflow-y-auto rounded-lg border border-border bg-card p-1 shadow-lg"
+          data-testid="kernel-variable-suggestions"
+        >
+          {suggestions.map((name, index) => (
+            <button
+              key={name}
+              type="button"
+              role="option"
+              aria-selected={index === suggestionIndex}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => {
+                setSuggestionIndex(index)
+                applySuggestion()
+              }}
+              className={`flex w-full items-center gap-2 rounded-md px-2 py-1 text-left font-mono text-xs ${
+                index === suggestionIndex
+                  ? 'bg-muted text-foreground'
+                  : 'text-muted-foreground hover:bg-muted/60'
+              }`}
+            >
+              <span className="truncate">{name}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -731,6 +833,7 @@ const NotebookPreview = ({ item }: NotebookPreviewProps): React.JSX.Element => {
               onSubmit={() => {
                 void submitTerminalCode()
               }}
+              variableNames={variables.map((variable) => variable.name)}
             />
           </div>
         </div>
@@ -739,4 +842,4 @@ const NotebookPreview = ({ item }: NotebookPreviewProps): React.JSX.Element => {
   )
 }
 
-export { NotebookPreview }
+export { NotebookPreview, suggestVariableNames }
