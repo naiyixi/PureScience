@@ -96,6 +96,9 @@ export const defaultProviderKindKey = (
       return 'official:openai'
     case 'opencode':
       return 'official:deepseek'
+    case 'codebuddy':
+      // CodeBuddy drives OpenAI-compatible endpoints; default to the OpenAI vendor slot.
+      return 'official:openai'
     default: {
       // The never assignment keeps the switch exhaustive at compile time. Persisted state could
       // still hold a stale value outside the union; this runs during render, so degrade to the

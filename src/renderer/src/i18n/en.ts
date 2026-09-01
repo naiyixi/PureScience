@@ -1357,6 +1357,10 @@ export const en: Record<ZhKey, string> = {
   'settings.agentCodexDesc': "OpenAI's coding agent, connected through the Codex ACP adapter.",
   'settings.agentCodexNotReady':
     'Codex ACP is required for this framework. Install it below, or install it manually and re-detect.',
+  'settings.agentCodeBuddyName': 'CodeBuddy',
+  'settings.agentCodeBuddyDesc': "Tencent's coding agent, connected through an OpenAI-compatible endpoint.",
+  'settings.agentCodeBuddyNotReady':
+    'CodeBuddy is required for this framework. Install @tencent-ai/codebuddy-code manually and re-detect.',
   'settings.detecting': 'Detecting…',
   'settings.redetect': 'Re-detect',
   'settings.oauthSignInFailed': 'OAuth sign-in failed.',

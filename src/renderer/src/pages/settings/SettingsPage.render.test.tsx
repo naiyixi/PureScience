@@ -2502,9 +2502,9 @@ describe('SettingsPage Codex framework', () => {
     })
     await openAgentPanel()
 
-    // Two ready runtimes land in the Installed group; Codex (not ready) in Available.
+    // Two ready runtimes land in the Installed group; Codex + CodeBuddy (not ready) in Available.
     expect(document.body.textContent).toContain('Installed · 2')
-    expect(document.body.textContent).toContain('Available · 1')
+    expect(document.body.textContent).toContain('Available · 2')
     // Claude is renamed in this panel only.
     expect(document.body.textContent).toContain('Claude Agent')
 

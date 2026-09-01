@@ -27,6 +27,7 @@ type RuntimeCommands = Pick<
   | 'checkEnvironment'
   | 'detectClaude'
   | 'detectOpencode'
+  | 'detectCodebuddy'
   | 'detectCodex'
   | 'installClaude'
   | 'installOpencode'
@@ -57,9 +58,11 @@ const snapshot = (): SettingsSnapshot => ({
   agentFrameworkId: 'claude-code',
   agentFrameworks: [],
   opencode: {},
+  codebuddy: {},
   codex: {},
   claudeManaged: false,
   opencodeManaged: false,
+  codebuddyManaged: false,
   codexManaged: false,
   reasoningEffort: 'default',
   notificationsEnabled: true,
@@ -70,7 +73,7 @@ const snapshot = (): SettingsSnapshot => ({
 const preflight = (): Preflight => ({
   claudeReady: false,
   opencodeReady: false,
-  codexReady: false,
+  codebuddyReady: false, codexReady: false,
   agentFrameworkId: 'claude-code',
   agentReady: false,
   activeProviderReady: false
@@ -111,6 +114,7 @@ const createCommands = (): RuntimeCommandMocks => ({
   checkEnvironment: vi.fn().mockResolvedValue(environment()),
   detectClaude: vi.fn().mockResolvedValue({ found: true, path: '/bin/claude', version: '1.0.0' }),
   detectOpencode: vi.fn().mockResolvedValue(snapshot()),
+  detectCodebuddy: vi.fn().mockResolvedValue(snapshot()),
   detectCodex: vi.fn().mockResolvedValue(snapshot()),
   installClaude: vi.fn().mockResolvedValue({ installId: 'claude-1', ok: true }),
   installOpencode: vi.fn().mockResolvedValue({ installId: 'opencode-1', ok: true }),

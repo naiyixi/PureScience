@@ -271,6 +271,10 @@ class SettingsService {
     return {
       claude: settings.claude ?? {},
       opencode: { resolvedPath: settings.opencodePath, version: settings.opencodeVersion },
+      codebuddy: {
+        resolvedPath: settings.codebuddyPath,
+        version: settings.codebuddyVersion
+      },
       codex: {
         resolvedPath: settings.codex?.resolvedPath,
         version: settings.codex?.version,
@@ -284,6 +288,9 @@ class SettingsService {
         : false,
       codexManaged: settings.codex?.resolvedPath
         ? this.runtimeManager.isManagedRuntimePath('codex', settings.codex.resolvedPath)
+        : false,
+      codebuddyManaged: settings.codebuddyPath
+        ? this.runtimeManager.isManagedRuntimePath('codebuddy', settings.codebuddyPath)
         : false,
       activeProviderId: settings.activeProviderId,
       claudeSubscriptionProviderId: settings.claudeSubscriptionProviderId,
@@ -744,6 +751,11 @@ class SettingsService {
 
   async detectCodex(): Promise<SettingsSnapshot> {
     await this.runtimeManager.detectCodex()
+    return this.getSettingsView()
+  }
+
+  async detectCodebuddy(): Promise<SettingsSnapshot> {
+    await this.runtimeManager.detectCodebuddy()
     return this.getSettingsView()
   }
 

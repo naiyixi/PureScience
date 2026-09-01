@@ -16,6 +16,8 @@ export type PreflightInput = {
   opencodePathExists: boolean
   // Whether the recorded codex-acp adapter still reports a version.
   codexPathExists: boolean
+  // Whether the recorded CodeBuddy executable still reports a version.
+  codebuddyPathExists: boolean
   // The selected framework, resolved (default applied) by the caller.
   agentFrameworkId: AgentFrameworkId
   // Whether a provider's credentials are usable (codex subscriptions always; custom must decrypt).
@@ -33,6 +35,7 @@ const computePreflight = ({
   claudePathExists,
   opencodePathExists,
   codexPathExists,
+  codebuddyPathExists,
   agentFrameworkId,
   isProviderKeyUsable,
   activeProviderCompatible
@@ -40,10 +43,12 @@ const computePreflight = ({
   const claudeReady = Boolean(settings.claude?.resolvedPath) && claudePathExists
   const opencodeReady = Boolean(settings.opencodePath) && opencodePathExists
   const codexReady = Boolean(settings.codex?.resolvedPath) && codexPathExists
+  const codebuddyReady = Boolean(settings.codebuddyPath) && codebuddyPathExists
   const readyByFramework: Record<AgentFrameworkId, boolean> = {
     'claude-code': claudeReady,
     opencode: opencodeReady,
-    codex: codexReady
+    codex: codexReady,
+    codebuddy: codebuddyReady
   }
   const agentReady = readyByFramework[agentFrameworkId]
 
@@ -65,6 +70,7 @@ const computePreflight = ({
     claudeReady,
     opencodeReady,
     codexReady,
+    codebuddyReady,
     agentFrameworkId,
     agentReady,
     activeProviderReady

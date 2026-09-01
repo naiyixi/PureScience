@@ -62,6 +62,7 @@ type PreloadApi = {
   }
   settings: {
     detectOpencode: () => unknown
+    detectCodebuddy: () => unknown
     detectCodex: () => unknown
     installOpencode: (request: unknown) => unknown
     installCodex: (request: unknown) => unknown
@@ -439,6 +440,7 @@ describe('preload bridge — public surface inventory', () => {
       'settings.deleteProvider',
       'settings.deleteSkill',
       'settings.detectClaude',
+      'settings.detectCodebuddy',
       'settings.detectCodex',
       'settings.detectOpencode',
       'settings.exportCustomServerTemplate',
@@ -622,7 +624,7 @@ describe('preload bridge — runtime renderer contract catalog', () => {
   it('routes all 200 owned methods through their cataloged Electron channels', async () => {
     const requestContracts = runtimeContracts.filter(({ kind }) => kind === 'method')
 
-    expect(runtimeContracts).toHaveLength(215)
+    expect(runtimeContracts).toHaveLength(216)
 
     for (const contract of requestContracts) {
       invokeMock.mockClear()
@@ -1108,6 +1110,12 @@ const cases: ForwardingCase[] = [
     name: 'settings.detectCodex → settings:detect-codex (no args)',
     invoke: (a) => a.settings.detectCodex(),
     channel: 'settings:detect-codex',
+    args: []
+  },
+  {
+    name: 'settings.detectCodebuddy → settings:detect-codebuddy (no args)',
+    invoke: (a) => a.settings.detectCodebuddy(),
+    channel: 'settings:detect-codebuddy',
     args: []
   },
   {

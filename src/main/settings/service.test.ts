@@ -1725,6 +1725,7 @@ describe('SettingsService: preflight & spawn config', () => {
       claudeReady: true,
       opencodeReady: false,
       codexReady: false,
+      codebuddyReady: false,
       agentFrameworkId: 'claude-code',
       agentReady: true,
       activeProviderReady: true
@@ -4447,9 +4448,16 @@ describe('checkEnvironment', () => {
       'Claude Code runtime',
       'OpenCode runtime',
       'Codex native CLI',
-      'Codex ACP adapter'
+      'Codex ACP adapter',
+      'CodeBuddy runtime'
     ])
-    expect(agentRows.map((row) => row.status)).toEqual(['passed', 'passed', 'warning', 'warning'])
+    expect(agentRows.map((row) => row.status)).toEqual([
+      'passed',
+      'passed',
+      'warning',
+      'warning',
+      'warning'
+    ])
     expect(result.agentFrameworkId).toBe('opencode')
     expect(result.runtime).toEqual({
       found: true,
@@ -4484,7 +4492,8 @@ describe('checkEnvironment', () => {
       'Claude Code runtime:passed',
       'OpenCode runtime:failed',
       'Codex native CLI:warning',
-      'Codex ACP adapter:warning'
+      'Codex ACP adapter:warning',
+      'CodeBuddy runtime:warning'
     ])
     // Selection drives readiness: the missing selected runtime blocks Continue even though Claude runs.
     expect(result.agentFrameworkId).toBe('opencode')

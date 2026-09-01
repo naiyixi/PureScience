@@ -1249,6 +1249,27 @@ class SettingsRepository {
     }))
   }
 
+  // Records the detected CodeBuddy executable path + version for later spawns + the settings status card.
+  async setCodebuddyInfo(resolvedPath: string, version?: string): Promise<StoredSettings> {
+    return this.mutate((settings) => ({
+      ...settings,
+      codebuddyPath: resolvedPath,
+      codebuddyVersion: version
+    }))
+  }
+
+  // Forgets the recorded CodeBuddy executable so the status card and gates reflect an uninstall.
+  async clearCodebuddyInfo(): Promise<StoredSettings> {
+    return this.mutate((settings) => {
+      const { codebuddyPath, codebuddyVersion, ...rest } = settings
+
+      void codebuddyPath
+      void codebuddyVersion
+
+      return rest
+    })
+  }
+
   async setCodexInfo(codex: StoredCodexInfo): Promise<StoredSettings> {
     return this.mutate((settings) => ({ ...settings, codex }))
   }

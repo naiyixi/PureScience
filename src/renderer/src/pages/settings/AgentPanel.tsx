@@ -25,7 +25,7 @@ import { UninstallRuntimeDialog } from './UninstallRuntimeDialog'
 
 // The agent frameworks the settings page manages, keyed by their short name (used for the
 // uninstall dialog target and the framework card descriptors).
-type FrameworkKey = 'claude' | 'opencode' | 'codex'
+type FrameworkKey = 'claude' | 'opencode' | 'codex' | 'codebuddy'
 
 type AgentPanelProps = {
   variant?: 'settings' | 'onboarding'
@@ -58,6 +58,9 @@ const AgentPanel = ({
   const isDetectingOpencode = useSettingsStore((state) => state.isDetectingOpencode)
   const detectOpencode = useSettingsStore((state) => state.detectOpencode)
   const installOpencode = useSettingsStore((state) => state.installOpencode)
+  const codebuddy = useSettingsStore((state) => state.codebuddy)
+  const isDetectingCodebuddy = useSettingsStore((state) => state.isDetectingCodebuddy)
+  const detectCodebuddy = useSettingsStore((state) => state.detectCodebuddy)
   const codex = useSettingsStore((state) => state.codex)
   const isDetectingCodex = useSettingsStore((state) => state.isDetectingCodex)
   const detectCodex = useSettingsStore((state) => state.detectCodex)
@@ -65,12 +68,14 @@ const AgentPanel = ({
   // Per-runtime install slices: each card renders only its own progress/logs/error (issue #278).
   const claudeInstall = useSettingsStore((state) => state.installStates['claude-code'])
   const opencodeInstall = useSettingsStore((state) => state.installStates.opencode)
+  const codebuddyInstall = useSettingsStore((state) => state.installStates.codebuddy)
   const codexInstall = useSettingsStore((state) => state.installStates.codex)
   // Any install running locks the framework selector and every card's uninstall button.
   const anyInstalling = useSettingsStore(selectAnyInstalling)
   const npmAvailable = useSettingsStore((state) => state.npmAvailable)
   const claudeManaged = useSettingsStore((state) => state.claudeManaged)
   const opencodeManaged = useSettingsStore((state) => state.opencodeManaged)
+  const codebuddyManaged = useSettingsStore((state) => state.codebuddyManaged)
   const codexManaged = useSettingsStore((state) => state.codexManaged)
   const uninstallClaude = useSettingsStore((state) => state.uninstallClaude)
   const uninstallOpencode = useSettingsStore((state) => state.uninstallOpencode)
@@ -253,7 +258,8 @@ const AgentPanel = ({
     const readyByFramework: Record<AgentFrameworkId, boolean> = {
       'claude-code': preflight.claudeReady,
       opencode: preflight.opencodeReady,
-      codex: preflight.codexReady
+      codex: preflight.codexReady,
+      codebuddy: preflight.codebuddyReady
     }
     if (readyByFramework[agentFrameworkId]) return
 
@@ -274,13 +280,19 @@ const AgentPanel = ({
 
   // The section-level Re-detect re-scans all three frameworks at once; the per-card detect buttons
   // were removed in favor of this single action.
-  const isDetectingAnyFramework = isDetectingClaude || isDetectingOpencode || isDetectingCodex
+  const isDetectingAnyFramework =
+    isDetectingClaude || isDetectingOpencode || isDetectingCodebuddy || isDetectingCodex
   const handleDetectAllFrameworks = async (): Promise<void> => {
     setFrameworkDetectionError(undefined)
     setInstallActionError(undefined)
     // A non-selected runtime may be broken independently of the framework the user is configuring.
     // Wait for every detector, then refresh the selected environment even when one detector rejected.
-    const results = await Promise.allSettled([detectClaude(), detectOpencode(), detectCodex()])
+    const results = await Promise.allSettled([
+      detectClaude(),
+      detectOpencode(),
+      detectCodebuddy(),
+      detectCodex()
+    ])
     await checkEnvironment({ force: true })
 
     const failure = results.find(
@@ -392,6 +404,24 @@ const AgentPanel = ({
         if (source !== 'official-script') return installCodex(source)
         return Promise.resolve(undefined)
       }
+    },
+    {
+      key: 'codebuddy',
+      frameworkId: 'codebuddy',
+      name: t('settings.agentCodeBuddyName'),
+      icon: <AgentFrameworkIcon frameworkId="codebuddy" size={24} />,
+      description: t('settings.agentCodeBuddyDesc'),
+      ready: preflight.codebuddyReady,
+      version: codebuddy.version,
+      path: codebuddy.resolvedPath,
+      sourceLabel: 'TencentAI/codebuddy-code',
+      sourceUrl: 'https://github.com/TencentAI/codebuddy-code',
+      notReadyHint: t('settings.agentCodeBuddyNotReady'),
+      uninstallCommand: 'npm uninstall -g @tencent-ai/codebuddy-code',
+      managed: codebuddyManaged,
+      installSources: [],
+      install: codebuddyInstall,
+      onInstall: () => Promise.resolve(undefined)
     }
   ]
 
