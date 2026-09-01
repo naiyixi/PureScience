@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
+import { de } from './de'
 import { en } from './en'
+import { es } from './es'
+import { fr } from './fr'
+import { ja } from './ja'
+import { ko } from './ko'
+import { ru } from './ru'
 import { zh } from './zh'
+import { zhHant } from './zh-Hant'
 
 // PureScience 中文翻译质量门禁
 //
@@ -211,3 +218,77 @@ describe('zh 翻译质量门禁', () => {
     expect(violations).toEqual([])
   })
 })
+
+// 多语言扩展门禁：每个新增字典的键必须是 en 已知键的子集（缺失键运行时回退英文，因此
+// 绝不引入未知键）；至少覆盖核心导航键，避免整本空字典。
+const EXTRA_DICTIONARIES: ReadonlyArray<{ name: string; dict: Record<string, string> }> = [
+  { name: 'zh-Hant', dict: zhHant },
+  { name: 'ja', dict: ja },
+  { name: 'ko', dict: ko },
+  { name: 'fr', dict: fr },
+  { name: 'de', dict: de },
+  { name: 'es', dict: es },
+  { name: 'ru', dict: ru }
+]
+
+// 每个语言都必须覆盖的最小导航/通用键集（第一屏可见的界面骨架）。
+const MINIMUM_CORE_KEYS = [
+  'common.save',
+  'common.cancel',
+  'common.close',
+  'common.delete',
+  'common.settings',
+  'common.language',
+  'settings.skills',
+  'settings.connectors',
+  'settings.memory',
+  'settings.credentials',
+  'settings.specialists',
+  'settings.tags',
+  'settings.compute',
+  'settings.network',
+  'settings.model',
+  'settings.agent',
+  'settings.general',
+  'settings.storage',
+  'settings.permissions',
+  'settings.archived'
+] as const
+
+describe('多语言扩展门禁', () => {
+  it.each(EXTRA_DICTIONARIES)('$name 键全部存在于 en（无未知键）', ({ dict }) => {
+    const enKeySet = new Set<string>(Object.keys(en))
+    const unknown = Object.keys(dict).filter((key) => !enKeySet.has(key))
+    expect(unknown).toEqual([])
+  })
+
+  it.each(EXTRA_DICTIONARIES)('$name 覆盖最小核心键集', ({ dict }) => {
+    const missing = MINIMUM_CORE_KEYS.filter((key) => !(key in dict))
+    expect(missing).toEqual([])
+  })
+
+  it.each(EXTRA_DICTIONARIES)('$name 值不为空且与英文不同（允许品牌名白名单）', ({ dict }) => {
+    const violations = Object.entries(dict).filter(([key, value]) => {
+      if (value === '') return true
+      if (value === en[key as keyof typeof en]) {
+        return !KEPT_IN_ENGLISH.has(value) && !LATIN_COGNATES.has(value)
+      }
+      return false
+    })
+    expect(violations).toEqual([])
+  })
+})
+
+// 合法的跨语言同形词：这些词在法语/德语/西班牙语等语言里本来就是同一写法（不是未翻译）。
+const LATIN_COGNATES = new Set<string>([
+  'Installable',
+  'Total',
+  'Agent',
+  'Name',
+  'Remote',
+  '(optional)',
+  'Compute',
+  'Tags',
+  'Runtimes',
+  'General'
+])

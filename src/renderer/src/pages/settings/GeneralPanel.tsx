@@ -1,4 +1,4 @@
-import { useLanguage } from '@/i18n'
+import { useLanguage, LANGUAGES, type Language } from '@/i18n'
 import { ExternalLink, FolderOpen, Globe, Terminal } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
@@ -37,7 +37,7 @@ const XMark = ({ className }: { className?: string }): React.JSX.Element => (
 // General app settings. Hosts the Diagnostics (log file) tools and the community/connect links. The log
 // file stays on this device and is never transmitted by the app.
 const GeneralPanel = (): React.JSX.Element => {
-  const { t } = useLanguage()
+  const { t, lang, setLang } = useLanguage()
   const isMac = window.api.platform === 'darwin'
   const [logPath, setLogPath] = useState<string | null>(null)
   const [message, setMessage] = useState<string | undefined>(undefined)
@@ -145,11 +145,32 @@ const GeneralPanel = (): React.JSX.Element => {
         separated
       >
         <SettingsRow
+          label={t('common.language')}
+          description="Interface language. Untranslated strings fall back to English."
+          className="pt-0"
+          controlClassName="flex justify-end"
+        >
+          <Select
+            value={lang}
+            onValueChange={(value) => setLang(value as Language)}
+          >
+            <SelectTrigger aria-label={t('common.language')}>
+              <span>{LANGUAGES.find((entry) => entry.id === lang)?.label ?? lang}</span>
+            </SelectTrigger>
+            <SelectContent>
+              {LANGUAGES.map((entry) => (
+                <SelectItem key={entry.id} value={entry.id}>
+                  {entry.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </SettingsRow>
+        <SettingsRow
           label="Theme"
           description={
             isMac ? t('settings.themeHint') : 'Follow the system setting, or force light or dark.'
           }
-          className="pt-0"
           controlClassName="flex justify-end"
         >
           <ThemeSegmentedControl />
