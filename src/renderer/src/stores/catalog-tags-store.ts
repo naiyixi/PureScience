@@ -22,6 +22,28 @@ export type CatalogTagsStoreActions = {
   addTag: (resourceId: string, tag: string) => void
   removeTag: (resourceId: string, tag: string) => void
   setTags: (resourceId: string, tags: readonly string[]) => void
+  // Deletes a tag from every resource that carries it (cross-resource management).
+  deleteTag: (tag: string) => void
+  // Renames a tag across every resource, merging into an existing tag when present.
+  renameTag: (from: string, to: string) => void
+}
+
+// Aggregate view of one tag across all catalog resources (for the Tags settings surface).
+export type CatalogTagSummary = {
+  name: string
+  resourceCount: number
+}
+
+export const selectTagSummaries = (entries: Record<string, CatalogTagsEntry>): CatalogTagSummary[] => {
+  const counts = new Map<string, number>()
+  for (const entry of Object.values(entries)) {
+    for (const tag of entry.tags) {
+      counts.set(tag.toLowerCase(), (counts.get(tag.toLowerCase()) ?? 0) + 1)
+    }
+  }
+  return Array.from(counts.entries())
+    .map(([key, resourceCount]) => ({ name: key, resourceCount }))
+    .sort((left, right) => right.resourceCount - left.resourceCount || left.name.localeCompare(right.name))
 }
 
 export type CatalogTagsStore = CatalogTagsStoreData & CatalogTagsStoreActions
@@ -110,6 +132,46 @@ export const useCatalogTagsStore = create<CatalogTagsStore>((set, get) => ({
       if (deduped.length >= MAX_TAGS_PER_RESOURCE) break
     }
     set({ entries: updateEntry(get().entries, resourceId, { tags: deduped }) })
+  },
+
+  deleteTag: (tag) => {
+    const target = normalizeTag(tag).toLowerCase()
+    if (!target) return
+    const entries: Record<string, CatalogTagsEntry> = {}
+    for (const [resourceId, entry] of Object.entries(get().entries)) {
+      const tags = entry.tags.filter((existing) => existing.toLowerCase() !== target)
+      if (tags.length !== entry.tags.length || entry.favorite) {
+        entries[resourceId] = tags.length === entry.tags.length ? entry : { ...entry, tags }
+      }
+    }
+    set({ entries })
+  },
+
+  renameTag: (from, to) => {
+    const source = normalizeTag(from).toLowerCase()
+    const destination = normalizeTag(to)
+    if (!source || !isValidTag(destination) || source === destination.toLowerCase()) return
+    const entries: Record<string, CatalogTagsEntry> = {}
+    for (const [resourceId, entry] of Object.entries(get().entries)) {
+      const hadSource = entry.tags.some((tag) => tag.toLowerCase() === source)
+      if (!hadSource) {
+        entries[resourceId] = entry
+        continue
+      }
+      const seen = new Set<string>()
+      const tags: string[] = []
+      for (const tag of entry.tags) {
+        // Dedupe against the post-rename identity so renaming 'docking' to 'MD' merges with an
+        // existing 'md' instead of leaving both spellings.
+        const key = tag.toLowerCase() === source ? destination.toLowerCase() : tag.toLowerCase()
+        if (seen.has(key)) continue
+        seen.add(key)
+        tags.push(tag.toLowerCase() === source ? destination : tag)
+        if (tags.length >= MAX_TAGS_PER_RESOURCE) break
+      }
+      entries[resourceId] = { ...entry, tags }
+    }
+    set({ entries })
   }
 }))
 

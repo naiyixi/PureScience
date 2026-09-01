@@ -8,6 +8,7 @@ export type SettingsPanelId =
   | 'credentials'
   | 'specialists'
   | 'memory'
+  | 'tags'
   | 'compute'
   | 'routine'
   | 'endpoint'
