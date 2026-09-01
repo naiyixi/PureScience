@@ -282,6 +282,10 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['approve', 'endpoint:approve', LOCAL], ['start', 'endpoint:start', LOCAL],
     ['stop', 'endpoint:stop', LOCAL], ['remove', 'endpoint:remove', LOCAL],
   ]),
+  group('annotation', 'annotation', [
+    ['set', 'annotation:set', LOCAL], ['list', 'annotation:list', LOCAL],
+    ['remove', 'annotation:remove', LOCAL],
+  ]),
   group('runtime', 'runtime', [
     ['describeUsage', 'runtime:describe-usage', WEB, RUNTIME_LANGUAGE_ENV, POSITIONAL],
     ['getEnablement', 'runtime:get-enablement', WEB, RUNTIME_LANGUAGE, POSITIONAL], ['listEnvironments', 'runtime:list-environments'],

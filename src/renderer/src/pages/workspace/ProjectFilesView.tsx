@@ -9,6 +9,7 @@ import {
   LayoutGrid,
   List,
   Maximize2,
+  MessageSquareText,
   Minimize2,
   Monitor,
   Paperclip,
@@ -36,6 +37,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { formatRelativeTime } from '@/lib/format-relative-time'
 import { cn, formatByteSize } from '@/lib/utils'
 import { useNavigationStore } from '@/stores/navigation-store'
+import { AnnotationDialog } from './AnnotationDialog'
 import {
   PROJECT_FILES_PREVIEW_ID,
   usePreviewWorkbenchStore
@@ -694,7 +696,9 @@ const FileListRow = ({
   onPreview: () => void
   onOpenInPanel: () => void
 }): React.JSX.Element => {
+  const { t } = useLanguage()
   const [setRowElement, isNearViewport] = useNearViewport<HTMLButtonElement>()
+  const [annotationsOpen, setAnnotationsOpen] = useState(false)
   const missing = useUnavailablePreviewProbe({
     enabled: isNearViewport,
     projectId: file.projectId,
@@ -745,6 +749,21 @@ const FileListRow = ({
         disabled={missing}
         className="right-2 top-1/2 -translate-y-1/2"
         onOpenInPanel={onOpenInPanel}
+      />
+      <button
+        type="button"
+        aria-label={t('files.annotationsTitle')}
+        title={t('files.annotationsTitle')}
+        className="absolute right-11 top-1/2 hidden -translate-y-1/2 rounded p-1 text-text-300 opacity-0 transition-opacity hover:bg-bg-200 hover:text-text-000 group-hover:opacity-100 focus-visible:opacity-100 sm:block"
+        onClick={() => setAnnotationsOpen(true)}
+      >
+        <MessageSquareText className="size-3.5" strokeWidth={1.7} aria-hidden="true" />
+      </button>
+      <AnnotationDialog
+        open={annotationsOpen}
+        projectId={file.projectId}
+        target={file.path}
+        onClose={() => setAnnotationsOpen(false)}
       />
     </div>
   )

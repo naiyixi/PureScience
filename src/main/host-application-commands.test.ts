@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { RemoteAccessSnapshot } from '../shared/remote-access'
 import type { RoutineConfigureRequest } from '../shared/routine'
 import type { EndpointRegisterRequest, ManagedEndpoint } from '../shared/endpoint'
+import type { AnnotationSetRequest, FileAnnotation } from '../shared/annotation'
 import { RENDERER_CONTRACT_GROUPS } from '../shared/renderer-contract-catalog'
 import type { UpdateStatus } from '../shared/update'
 import {
@@ -34,6 +35,7 @@ const HOST_CAPABILITIES = [
   'reviewer',
   'routine',
   'endpoint',
+  'annotation',
   'storage',
   'update'
 ] as const
@@ -198,6 +200,30 @@ const createDependencies = (): HostApplicationCommandDependencies => ({
     ),
     remove: vi.fn(async () => true)
   },
+  annotation: {
+    set: vi.fn(
+      async (_projectId: string, request: AnnotationSetRequest): Promise<{
+        annotation: FileAnnotation
+        replaced: boolean
+      }> => ({
+        annotation: {
+          id: 'ann-1',
+          projectId: _projectId,
+          targetKind: 'file',
+          targetKey: request.target,
+          label: request.label,
+          contentChecksum: request.fileSha256 ?? null,
+          note: request.note,
+          createdBy: 'user',
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        },
+        replaced: false
+      })
+    ),
+    list: vi.fn(async () => []),
+    remove: vi.fn(async () => true)
+  },
   storage: {
     getInfo: vi.fn(async () => ({
       dataRoot: '/data',
@@ -272,7 +298,7 @@ describe('Host application commands', () => {
         .filter((channel): channel is string => channel !== null)
     }))
 
-    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(58)
+    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(61)
     const actualGroups = hostApplicationCommandGroups
       .map(({ name, commands }) => ({
         capability: name,
@@ -290,7 +316,7 @@ describe('Host application commands', () => {
       {} as HostApplicationCommandDependencies
     )
 
-    expect(router.dispatcher.commandNames()).toHaveLength(58)
+    expect(router.dispatcher.commandNames()).toHaveLength(61)
     installation.uninstall()
     expect(router.dispatcher.commandNames()).toEqual([])
   })
@@ -318,6 +344,11 @@ describe('Host application commands', () => {
       startScript: 'docker inspect esm && docker start esm || docker run -d -p $HOST_PORT:80 esm',
       stopScript: 'docker stop esm',
       livePath: '/v1/models'
+    }
+    const annotationRequest = {
+      target: 'src/main.ts',
+      label: 'todo' as const,
+      note: 'Refactor the parsing loop.'
     }
     const parent = { parent: '/target' }
     const root = { parent: '/target', markOnboarding: true }
@@ -413,6 +444,18 @@ describe('Host application commands', () => {
     await router.dispatcher.invoke(hostApplicationCommands.endpoint.start, invocation(['esm']))
     await router.dispatcher.invoke(hostApplicationCommands.endpoint.stop, invocation(['esm']))
     await router.dispatcher.invoke(hostApplicationCommands.endpoint.remove, invocation(['esm']))
+    await router.dispatcher.invoke(
+      hostApplicationCommands.annotation.set,
+      invocation([{ projectId: 'project-1', request: annotationRequest }])
+    )
+    await router.dispatcher.invoke(
+      hostApplicationCommands.annotation.list,
+      invocation([{ projectId: 'project-1', target: 'src/main.ts' }])
+    )
+    await router.dispatcher.invoke(
+      hostApplicationCommands.annotation.remove,
+      invocation([{ projectId: 'project-1', annotationId: 'ann-1' }])
+    )
     await router.dispatcher.invoke(hostApplicationCommands.storage.cancelMigrate, invocation([]))
     await router.dispatcher.invoke(
       hostApplicationCommands.storage.commitAndRelaunch,
@@ -492,6 +535,9 @@ describe('Host application commands', () => {
     expect(dependencies.endpoint.start).toHaveBeenCalledWith('esm')
     expect(dependencies.endpoint.stop).toHaveBeenCalledWith('esm')
     expect(dependencies.endpoint.remove).toHaveBeenCalledWith('esm')
+    expect(dependencies.annotation.set).toHaveBeenCalledWith('project-1', annotationRequest)
+    expect(dependencies.annotation.list).toHaveBeenCalledWith('project-1', 'src/main.ts')
+    expect(dependencies.annotation.remove).toHaveBeenCalledWith('project-1', 'ann-1')
     expect(dependencies.storage.commitAndRelaunch).toHaveBeenCalledWith(parent)
     expect(dependencies.storage.setDataRootAndRelaunch).toHaveBeenCalledWith(root)
 
@@ -508,6 +554,11 @@ describe('Host application commands', () => {
     const remoteCaller = createWebCallerContext('remote-browser', { location: 'remote' })
     const previewRequest = { path: '/data/result.txt', encoding: 'utf8' as const }
     const parent = { parent: '/target' }
+    const annotationRequest = {
+      target: 'src/main.ts',
+      label: 'todo' as const,
+      note: 'Refactor the parsing loop.'
+    }
     const argsByChannel: Readonly<Record<string, readonly unknown[]>> = {
       'local-fs:list-dir': ['/data'],
       'local-fs:open-path': ['/data/result.txt'],
@@ -524,7 +575,10 @@ describe('Host application commands', () => {
       'endpoint:start': ['esm'],
       'endpoint:stop': ['esm'],
       'endpoint:remove': ['esm'],
-      'endpoint:list-all': []
+      'endpoint:list-all': [],
+      'annotation:set': [{ projectId: 'project-1', request: annotationRequest }],
+      'annotation:list': [{ projectId: 'project-1', target: 'src/main.ts' }],
+      'annotation:remove': [{ projectId: 'project-1', annotationId: 'ann-1' }]
     }
     const localOnlyChannels = RENDERER_CONTRACT_GROUPS.filter(({ capability }) =>
       HOST_CAPABILITIES.includes(capability as (typeof HOST_CAPABILITIES)[number])
@@ -539,7 +593,7 @@ describe('Host application commands', () => {
         .filter((channel): channel is string => channel !== null)
     )
 
-    expect(localOnlyChannels).toHaveLength(31)
+    expect(localOnlyChannels).toHaveLength(34)
     for (const channel of localOnlyChannels) {
       await expect(
         router.dispatcher.invoke(

@@ -139,6 +139,11 @@ import {
   registerEndpointIpcHandlers
 } from './settings/endpoint-ipc'
 import {
+  createAnnotationCommandOwner,
+  registerAnnotationIpcHandlers
+} from './settings/annotation-ipc'
+import { AnnotationRepository } from './settings/annotation-repository'
+import {
   createDefaultReviewRepository,
   createDefaultSessionRepository,
   createSessionPersistenceHandlers,
@@ -1144,6 +1149,9 @@ const createApplicationModules = async (
       return entry ? tryDecryptKey(entry.secretRef) : undefined
     }
   })
+  const annotationRepository = new AnnotationRepository({
+    storageRoot: resolveDataRoot()
+  })
   const notebookRpcServer = await modules.add(
     new NotebookLocalRpcServer(notebookLocalRpc, {
       onSessionReleased: (sessionId) => completionGateCoordinator.releaseSession(sessionId),
@@ -1174,6 +1182,13 @@ const createApplicationModules = async (
         status: (_sessionId, name) => endpointRepository.get(name),
         list: () => endpointRepository.list(),
         freePort: () => endpointManager.freePort()
+      },
+      annotations: {
+        set: (_sessionId, projectId, request) =>
+          annotationRepository.set(projectId, request, 'agent'),
+        list: (_sessionId, projectId, target) => annotationRepository.list(projectId, target ?? undefined),
+        remove: (_sessionId, projectId, annotationId) =>
+          annotationRepository.remove(projectId, annotationId)
       },
       planService: {
         call: (input) => {
@@ -2024,6 +2039,9 @@ const createApplicationModules = async (
       createEndpointCommandOwner(endpointRepository, endpointManager)
     )
   })
+  declareElectronAdapter('annotation', () => {
+    registerAnnotationIpcHandlers(createAnnotationCommandOwner(annotationRepository))
+  })
 
   const electronSenderFor = (
     invocation: ApplicationInvocation<readonly unknown[]>
@@ -2116,6 +2134,7 @@ const createApplicationModules = async (
       reviewer: reviewerCommandOwner,
       routine: createRoutineCommandOwner(routineRepository),
       endpoint: createEndpointCommandOwner(endpointRepository, endpointManager),
+      annotation: createAnnotationCommandOwner(annotationRepository),
       storage: storageCommandOwner,
       update: updateCommandOwner
     }
