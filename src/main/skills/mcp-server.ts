@@ -10,6 +10,18 @@ import {
   SKILL_IMPORT_MCP_SERVER_NAME
 } from '../../shared/skill-import'
 import {
+  SKILL_BOOTSTRAP_SYSTEM_PROMPT_APPEND,
+  SKILL_EVAL_TOOL_DESCRIPTION,
+  SKILL_EVAL_TOOL_NAME,
+  SKILL_LIST_TOOL_DESCRIPTION,
+  SKILL_LIST_TOOL_NAME,
+  SKILL_READ_TOOL_DESCRIPTION,
+  SKILL_READ_TOOL_NAME,
+  type SkillEvalResult,
+  type SkillLibraryListResult,
+  type SkillLibraryReadResult
+} from '../../shared/skill-eval'
+import {
   SKILL_CREATE_MAX_DESCRIPTION_LENGTH,
   SKILL_CREATE_MAX_INSTRUCTIONS_LENGTH,
   SKILL_CREATE_MAX_NAME_LENGTH,
@@ -23,6 +35,8 @@ import {
   type SkillCreateResult
 } from '../../shared/skill-create'
 import { SkillCreator } from './skill-creator'
+import { SkillLibrary } from './skill-library'
+import { evaluateSkillDescription } from './skill-eval-service'
 import { SKILL_IMPORT_MCP_SERVER_ARG } from '../mcp-server-args'
 import { fetchLocalRpc, type LocalRpcTransport } from '../local-rpc-transport'
 import { parseGitHubSkillUrl } from './github-import'
@@ -50,6 +64,39 @@ const requestSkillImportToolDefinition = {
   description: REQUEST_SKILL_IMPORT_TOOL_DESCRIPTION,
   inputSchema: requestSkillImportToolSchema
 }
+const skillEvalToolSchema = {
+  description: z
+    .string()
+    .min(1)
+    .max(300)
+    .describe('The skill description to evaluate (the frontmatter description line).')
+}
+const skillEvalToolDefinition = {
+  title: 'Evaluate a skill description',
+  description: SKILL_EVAL_TOOL_DESCRIPTION,
+  inputSchema: skillEvalToolSchema
+}
+
+const skillListToolDefinition = {
+  title: 'List installed skills',
+  description: SKILL_LIST_TOOL_DESCRIPTION,
+  inputSchema: {}
+}
+
+const skillReadToolSchema = {
+  name: z
+    .string()
+    .min(2)
+    .max(64)
+    .regex(/^[a-z0-9_-]+$/)
+    .describe('Skill name (lowercase letters, digits, hyphens, underscores).')
+}
+const skillReadToolDefinition = {
+  title: 'Read a skill',
+  description: SKILL_READ_TOOL_DESCRIPTION,
+  inputSchema: skillReadToolSchema
+}
+
 const SKILL_IMPORT_SYSTEM_PROMPT_APPEND = [
   '<purescience_skill_import_instructions>',
   'When the user explicitly asks to install or import an attachment wrapped in <attached_skill_package> and marked skillImportEligible, call request_skill_import with its exact URI as attachment_uri and skillImportTurnToken as turn_token.',
@@ -79,6 +126,9 @@ type SkillImportMcpHandler = {
   ) => Promise<ConversationSkillImportResult>
   requestGitHubImport: (githubUrl: string) => Promise<ConversationSkillImportResult>
   createSkill: (input: SkillCreateInput) => Promise<SkillCreateResult>
+  evalDescription: (description: string) => Promise<SkillEvalResult>
+  listSkills: () => Promise<SkillLibraryListResult>
+  readSkill: (name: string) => Promise<SkillLibraryReadResult>
 }
 
 type SkillImportMcpServerConfigRequest = SkillImportMcpEnvironment & {
@@ -90,7 +140,12 @@ type SkillImportMcpServerConfigRequest = SkillImportMcpEnvironment & {
 }
 
 type RpcResponse = {
-  result?: ConversationSkillImportResult | SkillCreateResult
+  result?:
+    | ConversationSkillImportResult
+    | SkillCreateResult
+    | SkillEvalResult
+    | SkillLibraryListResult
+    | SkillLibraryReadResult
   error?: string
 }
 
@@ -157,6 +212,27 @@ const createSkillImportMcpServer = (handler: SkillImportMcpHandler): ModelContex
       }
     }
   )
+
+  server.registerTool(SKILL_EVAL_TOOL_NAME, skillEvalToolDefinition, async (input) => {
+    const result = await handler.evalDescription(input.description)
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+    }
+  })
+
+  server.registerTool(SKILL_LIST_TOOL_NAME, skillListToolDefinition, async () => {
+    const result = await handler.listSkills()
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+    }
+  })
+
+  server.registerTool(SKILL_READ_TOOL_NAME, skillReadToolDefinition, async (input) => {
+    const result = await handler.readSkill(input.name)
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+    }
+  })
 
   return server
 }
@@ -272,16 +348,24 @@ const runSkillImportMcpServer = async (
   environment = createSkillImportMcpEnvironmentFromProcess()
 ): Promise<void> => {
   const configDir = process.env['PURESCIENCE_SKILLS_CONFIG_DIR'] ?? ''
+  const skillLibrary = new SkillLibrary(configDir)
   const server = createSkillImportMcpServer({
     requestImport: (attachmentUri, turnToken) =>
       callSkillImportRpc(environment, attachmentUri, turnToken),
     requestGitHubImport: (githubUrl) => callGitHubSkillImportRpc(environment, githubUrl),
-    createSkill: (input) => new SkillCreator({ configDir }).create(input)
+    createSkill: (input) => new SkillCreator({ configDir }).create(input),
+    evalDescription: async (description) => evaluateSkillDescription(description),
+    listSkills: () => skillLibrary.list(),
+    readSkill: (name) => skillLibrary.read(name)
   })
   await server.connect(new StdioServerTransport())
 }
 
 export {
+  SKILL_BOOTSTRAP_SYSTEM_PROMPT_APPEND,
+  SKILL_EVAL_TOOL_NAME,
+  SKILL_LIST_TOOL_NAME,
+  SKILL_READ_TOOL_NAME,
   REQUEST_SKILL_IMPORT_TOOL_NAME,
   REQUEST_SKILL_IMPORT_TOOL_DESCRIPTION,
   SKILL_CREATE_TOOL_NAME,

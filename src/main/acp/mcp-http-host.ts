@@ -14,6 +14,7 @@ import {
   createSkillImportMcpServer,
   type SkillImportMcpEnvironment
 } from '../skills/mcp-server'
+import { evaluateSkillDescription } from '../skills/skill-eval-service'
 import {
   createPlanMcpServerForEnvironment,
   type PlanMcpEnvironment
@@ -203,7 +204,13 @@ class AgentMcpHttpHost {
         callSkillImportRpc(skillImportEnvironment, attachmentUri, turnToken),
       requestGitHubImport: (githubUrl) =>
         callGitHubSkillImportRpc(skillImportEnvironment, githubUrl),
-      createSkill: (input) => callSkillCreateRpc(skillImportEnvironment, input)
+      createSkill: (input) => callSkillCreateRpc(skillImportEnvironment, input),
+      evalDescription: async (description) =>
+        evaluateSkillDescription(description),
+      listSkills: async () => ({ skills: [] }),
+      readSkill: async (name) => {
+        throw new Error(`Skill library reads are unavailable over the HTTP transport: ${name}`)
+      }
     })
   }
 
