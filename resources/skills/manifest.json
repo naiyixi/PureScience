@@ -216,6 +216,12 @@
       "name": "BioNexus Variant Interpretation",
       "source": "featured",
       "updatedAt": "2026-08-17T00:00:00.000Z"
+    },
+    {
+      "id": "llamacpp-local-server",
+      "name": "llama.cpp 本地模型服务",
+      "source": "featured",
+      "updatedAt": "2026-09-01T00:00:00.000Z"
     }
   ]
 }

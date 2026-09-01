@@ -40,6 +40,7 @@ import {
 import { createLogger, errorLogFields } from '../logger'
 import { PlanCommandError } from '../../shared/session-plan/contract'
 import type { RoutineConfigureRequest } from '../../shared/routine'
+import type { EndpointRegisterRequest } from '../../shared/endpoint'
 
 const log = createLogger('notebook:local-rpc')
 
@@ -140,6 +141,19 @@ type NotebookLocalRpcServerOptions = {
     status(sessionId: string): Promise<unknown>
     cancel(sessionId: string, routineId: string): Promise<unknown>
   }
+  // Managed local model services (endpoint_* MCP): main-process-owned lifecycle.
+  endpoints?: {
+    register(
+      sessionId: string,
+      request: EndpointRegisterRequest
+    ): Promise<unknown>
+    unregister(sessionId: string, name: string): Promise<unknown>
+    start(sessionId: string, name: string): Promise<unknown>
+    stop(sessionId: string, name: string): Promise<unknown>
+    status(sessionId: string, name: string): Promise<unknown>
+    list(): Promise<unknown>
+    freePort(): Promise<unknown>
+  }
   planService?: {
     call(input: {
       projectId: string
@@ -207,6 +221,15 @@ const PLAN_RPC_METHODS = new Set(['planCall'])
 const MEMORY_RPC_METHODS = new Set(['memorySaveNote'])
 const CONTEXT_SUMMARY_RPC_METHODS = new Set(['summaryQueryChunk', 'recordBoundary'])
 const ROUTINE_RPC_METHODS = new Set(['routineConfigure', 'routineStatus', 'routineCancel'])
+const ENDPOINT_RPC_METHODS = new Set([
+  'endpointRegister',
+  'endpointUnregister',
+  'endpointStart',
+  'endpointStop',
+  'endpointStatus',
+  'endpointList',
+  'endpointFreePort'
+])
 
 const isArtifactRpcMethod = (method: string): method is ArtifactRpcMethod =>
   ARTIFACT_RPC_METHODS.has(method as ArtifactRpcMethod)
@@ -259,8 +282,10 @@ class NotebookLocalRpcServer {
   private readonly memoryRpcTokens = new Map<string, string>()
   private readonly contextSummaryRpcTokens = new Map<string, string>()
   private readonly routineRpcTokens = new Map<string, string>()
+  private readonly endpointRpcTokens = new Map<string, string>()
   private readonly contextSummary?: NotebookLocalRpcServerOptions['contextSummary']
   private readonly routine?: NotebookLocalRpcServerOptions['routine']
+  private readonly endpoints?: NotebookLocalRpcServerOptions['endpoints']
   // The session → Specialist relationship is established by the ACP runtime, not supplied by the
   // notebook process. Keeping it here prevents an agent from selecting another Specialist's scope
   // by forging an RPC parameter.
@@ -288,6 +313,7 @@ class NotebookLocalRpcServer {
     this.memoryWriter = options.memoryWriter
     this.contextSummary = options.contextSummary
     this.routine = options.routine
+    this.endpoints = options.endpoints
     this.planService = options.planService
     this.artifactProvenance = options.artifactProvenance
     this.inputRegistry = options.inputRegistry
@@ -467,6 +493,14 @@ class NotebookLocalRpcServer {
     }
   }
 
+  private revokeEndpointSessionCapabilities(sessionId: string): void {
+    for (const ownedSessionId of this.resolveSessionCapabilityOwners(sessionId)) {
+      const token = this.endpointRpcTokens.get(ownedSessionId)
+      if (token) this.sessionRpcCapabilities.delete(token)
+      this.endpointRpcTokens.delete(ownedSessionId)
+    }
+  }
+
   private revokePlanSessionCapabilities(sessionId: string): void {
     for (const ownedSessionId of this.resolveSessionCapabilityOwners(sessionId)) {
       const token = this.planRpcTokens.get(ownedSessionId)
@@ -485,6 +519,7 @@ class NotebookLocalRpcServer {
     this.revokeMemorySessionCapabilities(sessionId)
     this.revokeContextSummarySessionCapabilities(sessionId)
     this.revokeRoutineSessionCapabilities(sessionId)
+    this.revokeEndpointSessionCapabilities(sessionId)
     this.revokePlanSessionCapabilities(sessionId)
     for (const ownedSessionId of ownedSessionIds) {
       this.sessionSpecialists.delete(ownedSessionId)
@@ -611,6 +646,29 @@ class NotebookLocalRpcServer {
       release: () => {
         if (this.routineRpcTokens.get(sessionId) === token) {
           this.routineRpcTokens.delete(sessionId)
+        }
+        this.sessionRpcCapabilities.delete(token)
+      }
+    }
+  }
+
+  async issueEndpointConnection(sessionId: string): Promise<NotebookRpcConnection> {
+    const connection = await this.ensureStarted()
+    this.revokeEndpointSessionCapabilities(sessionId)
+
+    const token = randomUUID()
+    this.endpointRpcTokens.set(sessionId, token)
+    this.sessionRpcCapabilities.set(token, {
+      sessionId,
+      allowedMethods: ENDPOINT_RPC_METHODS
+    })
+    return {
+      endpoint: connection.endpoint,
+      socketPath: connection.socketPath,
+      token,
+      release: () => {
+        if (this.endpointRpcTokens.get(sessionId) === token) {
+          this.endpointRpcTokens.delete(sessionId)
         }
         this.sessionRpcCapabilities.delete(token)
       }
@@ -1024,6 +1082,56 @@ class NotebookLocalRpcServer {
         throw new Error('Routine cancel RPC params must include sessionId and routineId.')
       }
       return this.routine.cancel(params.sessionId, params.routineId)
+    }
+
+    if (method === 'endpointRegister') {
+      if (!this.endpoints) throw new Error('Endpoint handler is not configured.')
+      if (typeof params.sessionId !== 'string' || typeof params.request !== 'object' || params.request === null) {
+        throw new Error('Endpoint register RPC params must include sessionId and request.')
+      }
+      return this.endpoints.register(params.sessionId, params.request as EndpointRegisterRequest)
+    }
+
+    if (method === 'endpointUnregister') {
+      if (!this.endpoints) throw new Error('Endpoint handler is not configured.')
+      if (typeof params.sessionId !== 'string' || typeof params.name !== 'string') {
+        throw new Error('Endpoint unregister RPC params must include sessionId and name.')
+      }
+      return this.endpoints.unregister(params.sessionId, params.name)
+    }
+
+    if (method === 'endpointStart') {
+      if (!this.endpoints) throw new Error('Endpoint handler is not configured.')
+      if (typeof params.sessionId !== 'string' || typeof params.name !== 'string') {
+        throw new Error('Endpoint start RPC params must include sessionId and name.')
+      }
+      return this.endpoints.start(params.sessionId, params.name)
+    }
+
+    if (method === 'endpointStop') {
+      if (!this.endpoints) throw new Error('Endpoint handler is not configured.')
+      if (typeof params.sessionId !== 'string' || typeof params.name !== 'string') {
+        throw new Error('Endpoint stop RPC params must include sessionId and name.')
+      }
+      return this.endpoints.stop(params.sessionId, params.name)
+    }
+
+    if (method === 'endpointStatus') {
+      if (!this.endpoints) throw new Error('Endpoint handler is not configured.')
+      if (typeof params.sessionId !== 'string' || typeof params.name !== 'string') {
+        throw new Error('Endpoint status RPC params must include sessionId and name.')
+      }
+      return this.endpoints.status(params.sessionId, params.name)
+    }
+
+    if (method === 'endpointList') {
+      if (!this.endpoints) throw new Error('Endpoint handler is not configured.')
+      return this.endpoints.list()
+    }
+
+    if (method === 'endpointFreePort') {
+      if (!this.endpoints) throw new Error('Endpoint handler is not configured.')
+      return this.endpoints.freePort()
     }
 
     if (method === 'planCall') {

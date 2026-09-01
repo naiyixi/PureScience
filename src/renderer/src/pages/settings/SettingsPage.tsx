@@ -6,6 +6,7 @@ import {
   Bot,
   Brain,
   CalendarClock,
+  CircleDot,
   Cloud,
   Globe,
   LockKeyhole,
@@ -65,6 +66,7 @@ import { ComputeHostDetail } from './ComputeHostDetail'
 import { PermissionsPanel } from './PermissionsPanel'
 import { MemoryPanel } from './MemoryPanel'
 import { RoutinePanel } from './RoutinePanel'
+import { EndpointPanel } from './EndpointPanel'
 import { CredentialsPanel } from './CredentialsPanel'
 import { ArchivedPanel, type ArchivedView } from './ArchivedPanel'
 import { TokenUsagePanel } from './TokenUsagePanel'
@@ -174,6 +176,7 @@ const buildSettingsGroups = (t: (key: TranslationKey) => string): ReadonlyArray<
       { id: 'memory', label: t('settings.memory'), Icon: BookOpenText },
       { id: 'compute', label: t('settings.compute'), Icon: Zap },
       { id: 'routine', label: t('settings.routine'), Icon: CalendarClock },
+      { id: 'endpoint', label: t('settings.endpoints'), Icon: CircleDot },
       { id: 'network', label: t('settings.network'), Icon: Globe }
     ]
   },
@@ -1047,6 +1050,8 @@ const SettingsPage = forwardRef<SettingsPageHandle, SettingsPageProps>(function 
                   <MemoryPanel />
                 ) : activePanel === 'routine' ? (
                   <RoutinePanel />
+                ) : activePanel === 'endpoint' ? (
+                  <EndpointPanel />
                 ) : activePanel === 'credentials' ? (
                   <CredentialsPanel />
                 ) : activePanel === 'storage' ? (

@@ -297,6 +297,7 @@ import type {
   ContextSummaryChunkView
 } from '../shared/reviewer'
 import type { RoutineConfigureRequest, RoutineSchedule } from '../shared/routine'
+import type { EndpointRegisterRequest, ManagedEndpoint } from '../shared/endpoint'
 import type {
   ApproveRemotePairingRequest,
   RemoteAccessSnapshot,
@@ -958,6 +959,23 @@ export interface PureScienceAPI {
     remove(request: { sessionId: string; routineId: string }): Promise<boolean>
     // Pauses (enabled=false) or resumes (enabled=true) one schedule.
     setEnabled(request: { sessionId: string; routineId: string; enabled: boolean }): Promise<RoutineSchedule | null>
+  }
+  endpoint: {
+    // Lists every managed local model service (settings panel).
+    listAll(): Promise<ManagedEndpoint[]>
+    // Registers one; newlyApproved is true when the script set needs a user approval first.
+    register(request: {
+      sessionId: string
+      request: EndpointRegisterRequest
+    }): Promise<{ endpoint: ManagedEndpoint; newlyApproved: boolean }>
+    // Approves a pending script set so start() is allowed.
+    approve(name: string): Promise<boolean>
+    // Starts (approved) endpoint; resolves with the updated endpoint state.
+    start(name: string): Promise<ManagedEndpoint>
+    // Stops a live endpoint.
+    stop(name: string): Promise<ManagedEndpoint>
+    // Removes one (stopped first if live).
+    remove(name: string): Promise<boolean>
   }
   window: {
     // Closes the focused window (the Cmd+W / Ctrl+W fallback when no preview panel is open).

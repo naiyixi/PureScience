@@ -67,6 +67,7 @@ import type {
   ContextSummaryChunkView
 } from '../shared/reviewer'
 import type { RoutineConfigureRequest } from '../shared/routine'
+import type { EndpointRegisterRequest } from '../shared/endpoint'
 import type { HandoffEventsRequest, HandoffRetryRequest } from '../shared/handoff-lifecycle'
 import { announceWindowFindReady, subscribeCloseActivePane } from '../shared/window-controls'
 
@@ -787,6 +788,15 @@ const api: PureScienceAPI = {
       electronRendererContracts.invoke('routine.remove', request),
     setEnabled: (request: { sessionId: string; routineId: string; enabled: boolean }) =>
       electronRendererContracts.invoke('routine.setEnabled', request)
+  },
+  endpoint: {
+    listAll: () => electronRendererContracts.invoke('endpoint.listAll'),
+    register: (request: { sessionId: string; request: EndpointRegisterRequest }) =>
+      electronRendererContracts.invoke('endpoint.register', request),
+    approve: (name: string) => electronRendererContracts.invoke('endpoint.approve', name),
+    start: (name: string) => electronRendererContracts.invoke('endpoint.start', name),
+    stop: (name: string) => electronRendererContracts.invoke('endpoint.stop', name),
+    remove: (name: string) => electronRendererContracts.invoke('endpoint.remove', name)
   },
   window: {
     close: () => electronRendererContracts.invoke('window.close'),

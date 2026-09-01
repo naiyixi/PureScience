@@ -344,7 +344,7 @@ describe('SettingsPage layout', () => {
     expect(nav?.textContent).toContain('Workspace')
     expect(nav?.textContent).toContain('Remote access')
     const navItems = nav?.querySelectorAll('li') ?? []
-    expect(navItems).toHaveLength(17)
+    expect(navItems).toHaveLength(18)
     expect(navItems[0]?.textContent).toContain('Skills')
     expect(navItems[1]?.textContent).toContain('Connectors')
     expect(navItems[2]?.textContent).toContain('Credentials')
@@ -352,16 +352,17 @@ describe('SettingsPage layout', () => {
     expect(navItems[4]?.textContent).toContain('Memory')
     expect(navItems[5]?.textContent).toContain('Compute')
     expect(navItems[6]?.textContent).toContain('Scheduled tasks')
-    expect(navItems[7]?.textContent).toContain('Network')
-    expect(navItems[8]?.textContent).toContain('Model')
-    expect(navItems[9]?.textContent).toContain('Agent')
-    expect(navItems[10]?.textContent).toContain('Permissions')
-    expect(navItems[11]?.textContent).toContain('Runtimes')
-    expect(navItems[12]?.textContent).toContain('Storage')
-    expect(navItems[13]?.textContent).toContain('Token usage')
-    expect(navItems[14]?.textContent).toContain('General')
-    expect(navItems[15]?.textContent).toContain('Remote control')
-    expect(navItems[16]?.textContent).toContain('Archived')
+    expect(navItems[7]?.textContent).toContain('Local models')
+    expect(navItems[8]?.textContent).toContain('Network')
+    expect(navItems[9]?.textContent).toContain('Model')
+    expect(navItems[10]?.textContent).toContain('Agent')
+    expect(navItems[11]?.textContent).toContain('Permissions')
+    expect(navItems[12]?.textContent).toContain('Runtimes')
+    expect(navItems[13]?.textContent).toContain('Storage')
+    expect(navItems[14]?.textContent).toContain('Token usage')
+    expect(navItems[15]?.textContent).toContain('General')
+    expect(navItems[16]?.textContent).toContain('Remote control')
+    expect(navItems[17]?.textContent).toContain('Archived')
     const modelNavButton = navButton('Model')
     const agentNavButton = navButton('Agent')
     expect(modelNavButton?.querySelector('.lucide-brain')).not.toBeNull()
@@ -2027,9 +2028,12 @@ describe('SettingsPage layout', () => {
     await act(async () => {
       back()?.click()
     })
-    const modelNav = Array.from(
+    const allNavButtons = Array.from(
       document.body.querySelectorAll('nav[aria-label="Settings"] button')
-    ).find((button) => /model/i.test(button.textContent ?? '')) as HTMLButtonElement | undefined
+    )
+    const modelNav = allNavButtons.find(
+      (button) => (button.textContent ?? '').trim().toLowerCase() === 'model'
+    ) as HTMLButtonElement | undefined
     expect(modelNav?.getAttribute('aria-current')).toBe('page')
     expect(forward()?.disabled).toBe(false)
   })

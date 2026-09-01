@@ -246,6 +246,11 @@ session_concurrency 表（max_concurrent）
 - 交付：routine MCP（configure/status/cancel）+ 30s tick 调度器（missed/idle/stuck 记账、连败 3 次自动暂停）+ 设置面板「定时任务」+ `noncommercialOnly` 许可门控（CADD 标记，commercial 模式 fail-closed）
 - 版本：v1.31.0
 
+### 里程碑 N2「驻」— 本地模型服务 managed endpoints（2026-08-31 二轮深挖新增）
+- 目标：守护进程托管本地模型服务器（容器/本地推理进程），生命周期全自动
+- 交付：endpoint_* MCP（register/unregister/start/stop/status/list/free_port）+ 状态机（stopped→starting→live→failed + setStateIfStill 防竞态）+ 脚本 sha256 审批白名单（字节相同静默）+ 就绪路由探测放行 + 凭据 env 注入 + 设置面板「本地模型」+ llama.cpp runbook（首批 1 个模型，ESMFold2 等 13 个分批补）
+- 版本：v1.32.0
+
 ### 持续项（贯穿全程）
 - **实测驱动**：每个机制上线前先建 benchmark（复刻对方 bench-reviewer 方法），用数据说话
 - **i18n**：所有新 UI 同步 zh/en
