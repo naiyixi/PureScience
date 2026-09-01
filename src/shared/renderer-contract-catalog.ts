@@ -240,6 +240,9 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['onChanged', 'permissions:changed', EVENT], ['extendUndo', 'permissions:extend-undo'], ['list', 'permissions:list'], ['restore', 'permissions:restore'],
     ['restoreDefaults', 'permissions:restore-defaults'], ['revoke', 'permissions:revoke'],
   ]),
+  group('egress', 'egress', [
+    ['onApprovalRequest', 'egress:approval-request', EVENT], ['respondApproval', 'egress:respond-approval'],
+  ]),
   group('folderGrants', 'folderGrants', [
     ['grant', 'folder-grants:grant'], ['list', 'folder-grants:list'], ['revoke', 'folder-grants:revoke'],
   ]),

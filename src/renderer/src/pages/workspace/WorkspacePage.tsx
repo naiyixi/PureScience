@@ -6,6 +6,7 @@ import type { PanelImperativeHandle, PanelSize } from 'react-resizable-panels'
 
 import type { NotebookSessionReference } from '../../../../shared/notebook'
 import type { ElicitationAnswer, ElicitationRequestView } from '../../../../shared/elicitation'
+import type { EgressApprovalDecision, EgressApprovalRequest } from '../../../../shared/egress'
 import {
   ANNOTATION_MAX_PER_MESSAGE,
   ANNOTATION_MAX_SOURCE_LENGTH,
@@ -1076,6 +1077,29 @@ const WorkspacePage = ({
       ])
     })
   }, [])
+  // Blocked egress destinations broadcast by the main process surface as in-conversation cards;
+  // answering settles the suspended request (deny / allow once / allow always).
+  const [pendingEgressApprovals, setPendingEgressApprovals] = useState<EgressApprovalRequest[]>([])
+  useEffect(() => {
+    return window.api.egress?.onApprovalRequest?.((request) => {
+      setPendingEgressApprovals((current) => [
+        ...current.filter((item) => item.requestId !== request.requestId),
+        request
+      ])
+    })
+  }, [])
+  const respondToEgressApproval = useCallback(
+    (requestId: string, decision: EgressApprovalDecision): void => {
+      void window.api.egress.respondApproval({ requestId, decision }).then((settled) => {
+        if (settled) {
+          setPendingEgressApprovals((current) =>
+            current.filter((item) => item.requestId !== requestId)
+          )
+        }
+      })
+    },
+    []
+  )
   const respondToElicitation = useCallback(
     (elicitationId: string, action: 'accept' | 'decline', answers?: ElicitationAnswer): void => {
       void window.api.acp.respondElicitation({ elicitationId, action, answers }).then((settled) => {
@@ -2722,6 +2746,8 @@ const WorkspacePage = ({
             pendingPermissions={visiblePermissionRequests}
             pendingElicitations={visibleElicitations}
             onRespondToElicitation={respondToElicitation}
+            pendingEgressApprovals={pendingEgressApprovals}
+            onRespondToEgressApproval={respondToEgressApproval}
             pendingAnnotations={pendingAnnotations}
             onRemoveAnnotation={removeAnnotation}
             onAnnotateSelection={addAnnotation}

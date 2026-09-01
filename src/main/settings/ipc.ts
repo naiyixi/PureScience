@@ -2,6 +2,12 @@ import { ipcMainHandle } from '../ipc-handler-registry'
 import type { WebContents } from 'electron'
 
 import {
+  EGRESS_APPROVAL_CHANNEL,
+  type EgressApprovalRespondRequest
+} from '../../shared/egress'
+import { respondToEgressApproval } from '../net/egress-runtime'
+
+import {
   type AppIconPreview,
   type SetAppIconVariantRequest,
   type CreateSkillRequest,
@@ -106,6 +112,14 @@ const registerSettingsIpcHandlers = ({
   connectorTemplateFiles,
   skillExportFiles
 }: SettingsIpcOptions): void => {
+  // Blocked egress destinations surface as in-conversation approval cards; the renderer's
+  // decision settles the suspended request (deny / allow once / allow always).
+  service.onEgressApprovalRequest = (request) => {
+    broadcastToRenderers(EGRESS_APPROVAL_CHANNEL, request)
+  }
+  ipcMainHandle('egress:respond-approval', (_event, request: EgressApprovalRespondRequest) =>
+    respondToEgressApproval(request.requestId, request.decision)
+  )
   ipcMainHandle('settings:get-preflight', () => service.getPreflight())
   ipcMainHandle('settings:get-settings', () => service.getSettingsView())
   ipcMainHandle('settings:encryption-available', () => service.isEncryptionAvailable())

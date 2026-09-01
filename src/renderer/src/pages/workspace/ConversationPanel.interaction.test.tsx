@@ -183,6 +183,8 @@ const renderPanel = (props: Partial<Parameters<typeof ConversationPanel>[0]> = {
         pendingPermissions={[]}
         pendingElicitations={[]}
         onRespondToElicitation={vi.fn()}
+        pendingEgressApprovals={[]}
+        onRespondToEgressApproval={vi.fn()}
         pendingAnnotations={[]}
         onRemoveAnnotation={vi.fn()}
         onAnnotateSelection={vi.fn()}

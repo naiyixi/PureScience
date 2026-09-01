@@ -122,6 +122,25 @@ export const DEFAULT_EGRESS_SETTINGS: EgressSettings = {
   customDomains: []
 }
 
+// Renderer contract for in-conversation egress approval. The proxy suspends a blocked (non-deny)
+// destination until the user decides; the decision settles the exact request that triggered it.
+export const EGRESS_APPROVAL_CHANNEL = 'egress:approval-request'
+
+export type EgressApprovalDecision = 'deny' | 'allow_once' | 'allow_always'
+
+export type EgressApprovalRequest = {
+  requestId: string
+  host: string
+  method: string
+  path: string
+  expiresInSec: number
+}
+
+export type EgressApprovalRespondRequest = {
+  requestId: string
+  decision: EgressApprovalDecision
+}
+
 // Renders the effective allowlist from settings: enabled groups' domains + custom domains.
 // Returns undefined when the mechanism is off (callers keep current behavior).
 export const resolveEgressAllowlist = (

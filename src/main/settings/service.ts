@@ -90,7 +90,7 @@ import type { InstallManagedClaudeOptions, ManagedInstallOutcome } from './manag
 import { encryptKey, isEncryptionAvailable, maskKey, tryDecryptKey } from './crypto'
 import { collectThirdPartyLicenses, type ThirdPartyLicenseEntry } from '../third-party-licenses'
 import { CREDENTIAL_SERVICE_LABELS, testCredentialSecret, toCredentialView } from './credentials'
-import { applyEgressSettings } from '../net/egress-runtime'
+import { applyEgressSettings, type EgressApprovalRequest } from '../net/egress-runtime'
 import { getUserClaudeConfigDir } from './provider-env'
 import { SettingsRepository } from './repository'
 import { SettingsPreferencesModule, toSettingsPreferencesSnapshot } from './preferences'
@@ -194,6 +194,8 @@ class SettingsService {
   private customServerAuthenticator?: (serverId: string) => Promise<void>
   private customServerAuthenticationCanceller?: (serverId: string) => Promise<void>
   private skillDeletionGuard?: (skillId: string) => Promise<void>
+  // Broadcasts blocked-destination approval requests to renderers (wired by the IPC layer).
+  onEgressApprovalRequest?: (request: EgressApprovalRequest) => void
   constructor(options: SettingsServiceOptions = {}) {
     this.storageRoot = options.storageRoot ?? resolveStorageRoot()
     this.repository = options.repository ?? new SettingsRepository(this.storageRoot)
@@ -538,8 +540,30 @@ class SettingsService {
   // settings change takes effect for subsequently spawned kernels/shells immediately.
   async setEgress(egress: EgressSettings): Promise<EgressSettings> {
     const persisted = await this.repository.setEgress(egress)
-    await applyEgressSettings(persisted.egress)
+    await applyEgressSettings(persisted.egress, this.egressRuntimeOptions())
     return persisted.egress ?? { enabled: false, groups: {}, customDomains: [] }
+  }
+
+  // Wires conversation approval for blocked egress destinations: broadcast the request to
+  // renderers and persist allow_always hosts back into the customDomains list.
+  private egressRuntimeOptions(): {
+    onApprovalRequest: (request: EgressApprovalRequest) => void
+    persistCustomDomain: (host: string) => Promise<void>
+  } {
+    return {
+      onApprovalRequest: (request) => this.onEgressApprovalRequest?.(request),
+      persistCustomDomain: async (host) => {
+        const current = (await this.repository.getSettings()).egress
+        const customDomains = current?.customDomains ?? []
+        if (!customDomains.includes(host)) {
+          await this.setEgress({
+            enabled: current?.enabled ?? true,
+            groups: current?.groups ?? {},
+            customDomains: [...customDomains, host]
+          })
+        }
+      }
+    }
   }
 
   // Lists configured external compute endpoints (Modal / NVIDIA NIM).

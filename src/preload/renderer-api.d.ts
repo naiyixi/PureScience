@@ -102,6 +102,7 @@ import type {
   PermissionGrantsChangedEvent,
   RestoreDefaultsPermissionGrants
 } from '../shared/permission-grants'
+import type { EgressApprovalRequest, EgressApprovalRespondRequest } from '../shared/egress'
 import type {
   AppendNotebookCodeCellRequest,
   BeginNotebookCodeCellRequest,
@@ -412,6 +413,10 @@ export interface PureScienceAPI {
       request: RestoreDefaultsPermissionGrants
     ): Promise<PermissionGrantMutationView>
     onChanged(listener: AcpListener<PermissionGrantsChangedEvent>): RemoveListener
+  }
+  egress: {
+    onApprovalRequest(listener: AcpListener<EgressApprovalRequest>): RemoveListener
+    respondApproval(request: EgressApprovalRespondRequest): Promise<boolean>
   }
   folderGrants: {
     list(): Promise<FolderGrantsSnapshot>

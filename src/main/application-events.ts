@@ -1,5 +1,6 @@
 import type { AcpPermissionRequest, AcpRuntimeEvent, AcpStateSnapshot } from '../shared/acp'
 import type { ElicitationRequestView } from '../shared/elicitation'
+import type { EgressApprovalRequest } from '../shared/egress'
 import type { CompletionGateLifecycleEvent } from './agents/completion-gate'
 import type { MarketplaceDownloadProgress } from '../shared/specialist-marketplace'
 import type { ComputeApprovalRequest, JobSummary } from '../shared/compute'
@@ -36,6 +37,7 @@ export type ApplicationEventMap = {
   'acp:event': AcpRuntimeEvent
   'acp:permission-request': AcpPermissionRequest
   'acp:elicitation-request': ElicitationRequestView
+  'egress:approval-request': EgressApprovalRequest
   'notebook:available': NotebookAvailableEvent
   'notebook:changed': NotebookChangedEvent
   'project:created': Project

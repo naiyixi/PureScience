@@ -69,6 +69,13 @@ export const en: Record<ZhKey, string> = {
   'ws.allProjects': 'All projects',
   'ws.switchProject': 'Switch project',
   'ws.moreProjects': '{count} more projects…',
+  'ws.egressApprovalTitle': 'Network access blocked',
+  'ws.egressApprovalDescription':
+    'The notebook runtime tried to reach {method} {host}, which is outside the allowed domains.',
+  'ws.egressDeny': 'Deny',
+  'ws.egressAllowOnce': 'Allow once',
+  'ws.egressAllowAlways': 'Always allow',
+  'ws.egressConnectNote': 'This applies to this one connection attempt only.',
   'ws.sessionNotebook': 'Session notebook',
   'common.save': 'Save',
   'common.delete': 'Delete',

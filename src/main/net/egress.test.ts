@@ -226,4 +226,119 @@ describe('EgressProxy', () => {
     })
     expect(result.ok).toBe(false)
   })
+
+  it('routes blocked non-deny destinations through the approval handler and honors allow once', async () => {
+    proxy = new EgressProxy()
+    // The allowlist names a domain that never resolves; the loopback request host is NOT allowed,
+    // so it is suspended and routed through approval, then Allow once forwards it to the peer.
+    proxy.setAllowlist(['allowed.test'])
+    const seen: Array<{ host: string; method: string }> = []
+    proxy.setApprovalHandler((approvalRequest, decide) => {
+      seen.push({ host: approvalRequest.host, method: approvalRequest.method })
+      // Simulate the user choosing Allow once after a tick, like a real conversation card.
+      setTimeout(() => decide('allow_once'), 5)
+    })
+    const port = await proxy.start()
+    const peerPort = (peer.address() as { port: number }).port
+
+    const status = await new Promise<number>((resolve, reject) => {
+      const req = httpRequest(
+        {
+          hostname: '127.0.0.1',
+          port,
+          path: '/probe',
+          headers: { host: `127.0.0.1:${peerPort}` }
+        },
+        (res) => {
+          res.resume()
+          res.on('end', () => resolve(res.statusCode ?? 0))
+        }
+      )
+      req.on('error', reject)
+      req.end()
+    })
+
+    expect(seen).toEqual([{ host: `127.0.0.1:${peerPort}`, method: 'GET' }])
+    expect(status).toBe(200)
+  })
+
+  it('refuses blocked destinations when the approval decision is deny', async () => {
+    proxy = new EgressProxy()
+    proxy.setAllowlist(['127.0.0.1'])
+    proxy.setApprovalHandler((_approvalRequest, decide) => decide('deny'))
+    const port = await proxy.start()
+
+    const status = await new Promise<number>((resolve, reject) => {
+      const req = httpRequest(
+        {
+          hostname: '127.0.0.1',
+          port,
+          path: '/probe',
+          headers: { host: 'blocked.test' }
+        },
+        (res) => {
+          res.resume()
+          res.on('end', () => resolve(res.statusCode ?? 0))
+        }
+      )
+      req.on('error', reject)
+      req.end()
+    })
+    expect(status).toBe(403)
+  })
+
+  it('refuses immediately when no approval handler is installed (historical behavior)', async () => {
+    proxy = new EgressProxy()
+    proxy.setAllowlist(['127.0.0.1'])
+    const port = await proxy.start()
+
+    const status = await new Promise<number>((resolve, reject) => {
+      const req = httpRequest(
+        {
+          hostname: '127.0.0.1',
+          port,
+          path: '/probe',
+          headers: { host: 'blocked.test' }
+        },
+        (res) => {
+          res.resume()
+          res.on('end', () => resolve(res.statusCode ?? 0))
+        }
+      )
+      req.on('error', reject)
+      req.end()
+    })
+    expect(status).toBe(403)
+  })
+
+  it('never routes deny-list hosts through approval (deny wins unconditionally)', async () => {
+    proxy = new EgressProxy()
+    proxy.setAllowlist(['127.0.0.1'])
+    const seen: unknown[] = []
+    proxy.setApprovalHandler((approvalRequest, decide) => {
+      seen.push(approvalRequest.host)
+      decide('allow_once')
+    })
+    const port = await proxy.start()
+
+    const status = await new Promise<number>((resolve, reject) => {
+      const req = httpRequest(
+        {
+          hostname: '127.0.0.1',
+          port,
+          path: '/probe',
+          headers: { host: '169.254.169.254' }
+        },
+        (res) => {
+          res.resume()
+          res.on('end', () => resolve(res.statusCode ?? 0))
+        }
+      )
+      req.on('error', reject)
+      req.end()
+    })
+    // The deny list wins before approval is consulted; the handler never fires.
+    expect(seen).toEqual([])
+    expect(status).toBe(403)
+  })
 })
