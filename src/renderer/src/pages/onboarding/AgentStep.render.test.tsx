@@ -83,7 +83,7 @@ describe('AgentStep', () => {
       preflight: {
         claudeReady: true,
         opencodeReady: false,
-        codexReady: false,
+        codebuddyReady: false, codexReady: false,
         agentFrameworkId: 'claude-code',
         agentReady: true,
         activeProviderReady: false
@@ -104,7 +104,7 @@ describe('AgentStep', () => {
     expect(panel?.querySelector('button')?.textContent).toContain('Re-detect')
     expect(container.textContent).not.toContain('Agent framework')
     expect(container.textContent).toContain('Installed · 1')
-    expect(container.textContent).toContain('Available · 2')
+    expect(container.textContent).toContain('Available · 3')
     expect(container.querySelector('[aria-label="Use Claude Agent"]')).not.toBeNull()
     expect(container.querySelector('[aria-label="Install OpenCode"]')).not.toBeNull()
     expect(container.textContent).not.toContain('Uninstall')
@@ -117,7 +117,7 @@ describe('AgentStep', () => {
       preflight: {
         claudeReady: false,
         opencodeReady: false,
-        codexReady: false,
+        codebuddyReady: false, codexReady: false,
         agentFrameworkId: 'claude-code',
         agentReady: false,
         activeProviderReady: false
@@ -141,7 +141,7 @@ describe('AgentStep', () => {
       preflight: {
         claudeReady: false,
         opencodeReady: false,
-        codexReady: false,
+        codebuddyReady: false, codexReady: false,
         agentFrameworkId: 'claude-code',
         agentReady: false,
         activeProviderReady: false
@@ -167,7 +167,7 @@ describe('AgentStep', () => {
       preflight: {
         claudeReady: true,
         opencodeReady: false,
-        codexReady: false,
+        codebuddyReady: false, codexReady: false,
         agentFrameworkId: 'claude-code',
         agentReady: true,
         activeProviderReady: false
@@ -197,7 +197,7 @@ describe('AgentStep', () => {
       preflight: {
         claudeReady: true,
         opencodeReady: false,
-        codexReady: false,
+        codebuddyReady: false, codexReady: false,
         agentFrameworkId: 'claude-code',
         agentReady: true,
         activeProviderReady: false
@@ -238,7 +238,7 @@ describe('AgentStep', () => {
       preflight: {
         claudeReady: true,
         opencodeReady: true,
-        codexReady: true,
+        codebuddyReady: false, codexReady: true,
         agentFrameworkId: 'claude-code',
         agentReady: true,
         activeProviderReady: false
@@ -269,7 +269,7 @@ describe('AgentStep', () => {
       preflight: {
         claudeReady: true,
         opencodeReady: false,
-        codexReady: true,
+        codebuddyReady: false, codexReady: true,
         agentFrameworkId: 'claude-code',
         agentReady: true,
         activeProviderReady: false
@@ -300,7 +300,7 @@ describe('AgentStep', () => {
       preflight: {
         claudeReady: true,
         opencodeReady: false,
-        codexReady: false,
+        codebuddyReady: false, codexReady: false,
         agentFrameworkId: 'claude-code',
         agentReady: true,
         activeProviderReady: false
@@ -325,7 +325,7 @@ describe('AgentStep', () => {
       preflight: {
         claudeReady: true,
         opencodeReady: true,
-        codexReady: false,
+        codebuddyReady: false, codexReady: false,
         agentFrameworkId: 'opencode',
         agentReady: true,
         activeProviderReady: false
@@ -344,7 +344,7 @@ describe('AgentStep', () => {
       preflight: {
         claudeReady: false,
         opencodeReady: false,
-        codexReady: false,
+        codebuddyReady: false, codexReady: false,
         agentFrameworkId: 'claude-code',
         agentReady: false,
         activeProviderReady: false
@@ -383,7 +383,7 @@ describe('AgentStep', () => {
       preflight: {
         claudeReady: false,
         opencodeReady: true,
-        codexReady: false,
+        codebuddyReady: false, codexReady: false,
         agentFrameworkId: 'claude-code',
         agentReady: false,
         activeProviderReady: false
@@ -407,7 +407,7 @@ describe('AgentStep', () => {
       preflight: {
         claudeReady: false,
         opencodeReady: false,
-        codexReady: true,
+        codebuddyReady: false, codexReady: true,
         agentFrameworkId: 'claude-code',
         agentReady: false,
         activeProviderReady: false
@@ -437,7 +437,7 @@ describe('AgentStep', () => {
       preflight: {
         claudeReady: false,
         opencodeReady: true,
-        codexReady: true,
+        codebuddyReady: false, codexReady: true,
         agentFrameworkId: 'claude-code',
         agentReady: false,
         activeProviderReady: false
@@ -479,7 +479,7 @@ describe('AgentStep', () => {
       preflight: {
         claudeReady: true,
         opencodeReady: false,
-        codexReady: true,
+        codebuddyReady: false, codexReady: true,
         agentFrameworkId: 'claude-code',
         agentReady: true,
         activeProviderReady: false
@@ -505,7 +505,7 @@ describe('AgentStep', () => {
       preflight: {
         claudeReady: true,
         opencodeReady: true,
-        codexReady: false,
+        codebuddyReady: false, codexReady: false,
         agentFrameworkId: 'claude-code',
         agentReady: true,
         activeProviderReady: false
@@ -531,7 +531,7 @@ describe('AgentStep', () => {
       preflight: {
         claudeReady: true,
         opencodeReady: true,
-        codexReady: true,
+        codebuddyReady: false, codexReady: true,
         agentFrameworkId: 'claude-code',
         agentReady: true,
         activeProviderReady: false
@@ -562,7 +562,7 @@ describe('AgentStep', () => {
       preflight: {
         claudeReady: false,
         opencodeReady: false,
-        codexReady: false,
+        codebuddyReady: false, codexReady: false,
         agentFrameworkId: 'claude-code',
         agentReady: false,
         activeProviderReady: false
@@ -589,7 +589,7 @@ describe('AgentStep', () => {
       preflight: {
         claudeReady: false,
         opencodeReady: false,
-        codexReady: false,
+        codebuddyReady: false, codexReady: false,
         agentFrameworkId: 'claude-code',
         agentReady: false,
         activeProviderReady: false
@@ -616,7 +616,7 @@ describe('AgentStep', () => {
       preflight: {
         claudeReady: false,
         opencodeReady: false,
-        codexReady: false,
+        codebuddyReady: false, codexReady: false,
         agentFrameworkId: 'claude-code',
         agentReady: false,
         activeProviderReady: false
@@ -648,7 +648,7 @@ describe('AgentStep', () => {
       preflight: {
         claudeReady: false,
         opencodeReady: false,
-        codexReady: false,
+        codebuddyReady: false, codexReady: false,
         agentFrameworkId: 'claude-code',
         agentReady: false,
         activeProviderReady: false
@@ -671,12 +671,14 @@ describe('AgentStep', () => {
   it('re-detects all frameworks and refreshes the environment gate', async () => {
     const detectClaude = vi.fn().mockResolvedValue({ found: false })
     const detectOpencode = vi.fn().mockResolvedValue(undefined)
+    const detectCodebuddy = vi.fn().mockResolvedValue(undefined)
     const detectCodex = vi.fn().mockResolvedValue(undefined)
     const checkEnvironment = vi.fn().mockResolvedValue(undefined)
     useSettingsStore.setState({
       agentFrameworks: threeFrameworks,
       detectClaude,
       detectOpencode,
+      detectCodebuddy,
       detectCodex,
       checkEnvironment,
       environmentCheck: environment(false)
@@ -687,6 +689,7 @@ describe('AgentStep', () => {
 
     expect(detectClaude).toHaveBeenCalledOnce()
     expect(detectOpencode).toHaveBeenCalledOnce()
+    expect(detectCodebuddy).toHaveBeenCalledOnce()
     expect(detectCodex).toHaveBeenCalledOnce()
     expect(checkEnvironment).toHaveBeenCalledOnce()
   })
@@ -758,7 +761,7 @@ describe('AgentStep', () => {
       preflight: {
         claudeReady: false,
         opencodeReady: false,
-        codexReady: false,
+        codebuddyReady: false, codexReady: false,
         agentFrameworkId: 'claude-code',
         agentReady: false,
         activeProviderReady: false
@@ -784,6 +787,12 @@ describe('AgentStep', () => {
           installError: undefined
         },
         codex: {
+          isInstalling: false,
+          installLogs: [],
+          installProgress: null,
+          installError: undefined
+        },
+        codebuddy: {
           isInstalling: false,
           installLogs: [],
           installProgress: null,

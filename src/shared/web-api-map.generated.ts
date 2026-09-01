@@ -177,6 +177,7 @@ export const WEB_INVOKE_CHANNELS = {
   'settings.detectClaude': 'settings:detect-claude',
   'settings.detectCodex': 'settings:detect-codex',
   'settings.detectOpencode': 'settings:detect-opencode',
+  'settings.detectCodebuddy': 'settings:detect-codebuddy',
   'settings.exportMcpServers': 'settings:export-mcp-servers',
   'settings.getConnectorDetail': 'settings:get-connector-detail',
   'settings.getCredentials': 'settings:list-credentials',

@@ -72,6 +72,7 @@ export type AgentModelRoute =
   | 'codex-responses'
   | 'codex-responses-compatibility'
   | 'codex-bridge'
+  | 'codebuddy-openai'
 
 export type AgentModelCatalogEntry = Readonly<{
   provider: ResolvedProvider

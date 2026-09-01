@@ -7,12 +7,22 @@ describe('agent framework registry', () => {
     expect(listAgentFrameworks().map((framework) => framework.id)).toEqual([
       'claude-code',
       'opencode',
-      'codex'
+      'codex',
+      'codebuddy'
     ])
     expect(getAgentFramework('codex')).toMatchObject({
       displayName: 'Codex',
       supportedApiTypes: ['responses'],
       supportsSkills: true,
+      acceptsStdioMcp: true
+    })
+  })
+
+  it('registers CodeBuddy as an OpenAI-only framework', () => {
+    expect(getAgentFramework('codebuddy')).toMatchObject({
+      displayName: 'CodeBuddy',
+      supportedApiTypes: ['openai'],
+      supportsSkills: false,
       acceptsStdioMcp: true
     })
   })
@@ -32,6 +42,11 @@ describe('agent framework registry', () => {
     expect(getAgentFramework('codex').contextCompaction).toEqual({
       kind: 'native-command',
       command: '/compact'
+    })
+    expect(getAgentFramework('codebuddy').contextCompaction).toEqual({
+      kind: 'native-command',
+      command: '/compact',
+      triggerAtPercent: 90
     })
   })
 })

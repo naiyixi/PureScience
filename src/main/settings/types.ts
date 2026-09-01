@@ -179,6 +179,9 @@ export type StoredSettings = {
   opencodeVersion?: string
   // codex-acp adapter plus the native Codex runtime it launches.
   codex?: StoredCodexInfo
+  // Detected CodeBuddy executable path + reported version (for the status card). Absent = detect on PATH.
+  codebuddyPath?: string
+  codebuddyVersion?: string
   activeProviderId?: string
   // Last explicitly configured Claude subscription mode. Kept separately from activeProviderId so
   // switching to a custom provider does not make the collapsed Claude card fall back to list order.

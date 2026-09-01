@@ -338,7 +338,7 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['addCustomServer', 'settings:add-custom-server'], ['authenticateCustomServer', 'settings:authenticate-custom-server', LOCAL], ['cancelCustomServerAuthentication', 'settings:cancel-custom-server-authentication', LOCAL], ['cancelClaudeLogin', 'settings:cancel-claude-login', LOCAL],
     ['cancelCodexLogin', 'settings:cancel-codex-login', LOCAL], ['cancelIsolatedClaudeLogin', 'settings:cancel-isolated-claude-login', LOCAL],
     ['checkEnvironment', 'settings:check-environment'], ['createSkill', 'settings:create-skill'], ['deleteProvider', 'settings:delete-provider'],
-    ['deleteCredential', 'settings:delete-credential', LOCAL], ['deleteSkill', 'settings:delete-skill'], ['detectClaude', 'settings:detect-claude'], ['detectCodex', 'settings:detect-codex'],
+    ['deleteCredential', 'settings:delete-credential', LOCAL], ['deleteSkill', 'settings:delete-skill'], ['detectClaude', 'settings:detect-claude'], ['detectCodebuddy', 'settings:detect-codebuddy'], ['detectCodex', 'settings:detect-codex'],
     ['deleteExternalComputeEndpoint', 'settings:delete-external-compute-endpoint', LOCAL],
     ['detectOpencode', 'settings:detect-opencode'], ['exportCustomServerTemplate', 'settings:export-custom-server-template', ELECTRON], ['exportSkill', 'settings:export-skill', ELECTRON], ['getConnectorDetail', 'settings:get-connector-detail'],
     ['getMemory', 'settings:get-memory', LOCAL], ['getPackageMirror', 'settings:get-package-mirror'], ['getPreflight', 'settings:get-preflight'], ['getSettings', 'settings:get-settings'],

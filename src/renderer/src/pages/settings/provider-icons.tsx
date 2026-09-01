@@ -37,6 +37,9 @@ export const AgentFrameworkIcon = ({
   if (frameworkId === 'opencode') {
     return <OpenCode size={size} className={cn('text-foreground', className)} />
   }
+  if (frameworkId === 'codebuddy') {
+    return <Codex size={size} className={cn('text-foreground', className)} />
+  }
   return <Codex size={size} className={cn('text-foreground', className)} />
 }
 

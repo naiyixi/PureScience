@@ -44,9 +44,11 @@ const testEffects = (effects: TestSettingsWorkflowEffects = {}): SettingsWorkflo
 const snapshot = (overrides: Partial<SettingsSnapshot> = {}): SettingsSnapshot => ({
   claude: {},
   opencode: {},
+  codebuddy: {},
   codex: {},
   claudeManaged: false,
   opencodeManaged: false,
+  codebuddyManaged: false,
   codexManaged: false,
   providers: [],
   agentFrameworkId: 'claude-code',

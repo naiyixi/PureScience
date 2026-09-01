@@ -30,6 +30,7 @@ export type RuntimeSetupState = {
   envCheckGeneration: number
   isDetectingClaude: boolean
   isDetectingOpencode: boolean
+  isDetectingCodebuddy: boolean
   isDetectingCodex: boolean
   installStates: Record<AgentFrameworkId, RuntimeInstallState>
 }
@@ -39,6 +40,7 @@ export type RuntimeSetupActions = {
   checkEnvironment: (options?: { force?: boolean }) => Promise<EnvironmentCheckResult | undefined>
   detectClaude: () => Promise<ClaudeDetectResult>
   detectOpencode: () => Promise<void>
+  detectCodebuddy: () => Promise<void>
   detectCodex: () => Promise<void>
   installClaude: (
     source: ClaudeInstallSource,
@@ -67,6 +69,7 @@ type RuntimeSetupCommands = Pick<
   | 'checkEnvironment'
   | 'detectClaude'
   | 'detectOpencode'
+  | 'detectCodebuddy'
   | 'detectCodex'
   | 'installClaude'
   | 'installOpencode'
@@ -106,6 +109,7 @@ const createInitialPreflight = (): Preflight => ({
   claudeReady: false,
   opencodeReady: false,
   codexReady: false,
+  codebuddyReady: false,
   agentFrameworkId: 'claude-code',
   agentReady: false,
   activeProviderReady: false
@@ -121,11 +125,13 @@ export const createInitialRuntimeSetupState = (): RuntimeSetupState => ({
   envCheckGeneration: 0,
   isDetectingClaude: false,
   isDetectingOpencode: false,
+  isDetectingCodebuddy: false,
   isDetectingCodex: false,
   installStates: {
     'claude-code': createInitialRuntimeInstallState(),
     opencode: createInitialRuntimeInstallState(),
-    codex: createInitialRuntimeInstallState()
+    codex: createInitialRuntimeInstallState(),
+    codebuddy: createInitialRuntimeInstallState()
   }
 })
 
@@ -137,7 +143,8 @@ export const createRuntimeSetupLoadPatch = (
 export const selectAnyInstalling = (state: RuntimeSetupState): boolean =>
   state.installStates['claude-code'].isInstalling ||
   state.installStates.opencode.isInstalling ||
-  state.installStates.codex.isInstalling
+  state.installStates.codex.isInstalling ||
+  state.installStates.codebuddy.isInstalling
 
 const patchRuntimeSetupState = <Store extends RuntimeSetupHost>(
   set: StoreApi<Store>['setState'],
@@ -328,6 +335,15 @@ export const createRuntimeSetupSlice = <Store extends RuntimeSetupHost>({
     }
   },
 
+  detectCodebuddy: async () => {
+    patchRuntimeSetupState(set, { isDetectingCodebuddy: true })
+    try {
+      reconcileSnapshot(await getCommands().detectCodebuddy())
+    } finally {
+      patchRuntimeSetupState(set, { isDetectingCodebuddy: false })
+    }
+  },
+
   detectCodex: async () => {
     patchRuntimeSetupState(set, { isDetectingCodex: true })
     try {
@@ -367,7 +383,7 @@ export const createRuntimeSetupSlice = <Store extends RuntimeSetupHost>({
     updateInstallStates(set, (current) => {
       const runtimes: AgentFrameworkId[] = runtime
         ? [runtime]
-        : ['claude-code', 'opencode', 'codex']
+        : ['claude-code', 'opencode', 'codex', 'codebuddy']
       const installStates = { ...current }
 
       for (const id of runtimes) {

@@ -447,6 +447,7 @@ export interface PureScienceAPI {
     checkEnvironment(): Promise<EnvironmentCheckResult>
     detectClaude(): Promise<ClaudeDetectResult>
     detectOpencode(): Promise<SettingsSnapshot>
+    detectCodebuddy(): Promise<SettingsSnapshot>
     detectCodex(): Promise<SettingsSnapshot>
     installClaude(request: InstallClaudeRequest): Promise<ClaudeInstallResult>
     installOpencode(request: InstallOpencodeRequest): Promise<ClaudeInstallResult>

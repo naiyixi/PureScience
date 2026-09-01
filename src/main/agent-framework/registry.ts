@@ -1,4 +1,5 @@
 import { claudeCodeFramework } from './claude-code'
+import { codeBuddyFramework } from './codebuddy'
 import { codexFramework } from './codex'
 import { opencodeFramework } from './opencode'
 import type { AgentFramework, AgentFrameworkId } from './types'
@@ -6,7 +7,8 @@ import type { AgentFramework, AgentFrameworkId } from './types'
 const FRAMEWORKS: Record<AgentFrameworkId, AgentFramework> = {
   'claude-code': claudeCodeFramework,
   opencode: opencodeFramework,
-  codex: codexFramework
+  codex: codexFramework,
+  codebuddy: codeBuddyFramework
 }
 
 // The default framework until framework selection is wired into settings.

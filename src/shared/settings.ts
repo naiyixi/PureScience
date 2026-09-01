@@ -316,7 +316,7 @@ export const providerValidationFailed = (provider: {
 
 // The agent backends the app can drive over ACP. Persisted settings and the UI reference these ids;
 // the main-process AgentFramework registry is keyed by the same union.
-export type AgentFrameworkId = 'claude-code' | 'opencode' | 'codex'
+export type AgentFrameworkId = 'claude-code' | 'opencode' | 'codex' | 'codebuddy'
 
 // How much reasoning effort the user asks the agent to spend. 'default' means "don't override": the
 // agent keeps its own default and nothing is sent. The concrete levels form a relative scale
@@ -442,6 +442,8 @@ export type SettingsSnapshot = {
   claude: ClaudeInfo
   // Detected opencode executable, for the framework-aware detection card.
   opencode: OpencodeInfo
+  // Detected CodeBuddy executable, for the framework-aware detection card.
+  codebuddy: OpencodeInfo
   // Detected codex-acp adapter and its paired native Codex runtime.
   codex: CodexInfo
   activeProviderId?: string
@@ -462,6 +464,7 @@ export type SettingsSnapshot = {
   // is never removed. Derived each read from the resolved path, never persisted.
   claudeManaged: boolean
   opencodeManaged: boolean
+  codebuddyManaged: boolean
   codexManaged: boolean
   // Timestamp of first-run onboarding completion; undefined until it finishes at least once.
   onboardingCompletedAt?: number
@@ -538,6 +541,7 @@ export type Preflight = {
   claudeReady: boolean
   opencodeReady: boolean
   codexReady: boolean
+  codebuddyReady: boolean
   // Readiness of the selected agent framework, plus which one it is.
   agentFrameworkId: AgentFrameworkId
   agentReady: boolean

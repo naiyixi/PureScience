@@ -97,11 +97,13 @@ type SettingsStoreData = RuntimeSetupState &
     agentFrameworks: AgentFrameworkView[]
     // Detected opencode executable, for the framework-aware detection card.
     opencode: OpencodeInfo
+    codebuddy: OpencodeInfo
     codex: CodexInfo
     // Whether each framework's detected runtime is the app-managed install (only these can be uninstalled
     // in-app). Mirrored from the main-process snapshot; a PATH/npm binary reads false.
     claudeManaged: boolean
     opencodeManaged: boolean
+    codebuddyManaged: boolean
     codexManaged: boolean
     onboardingCompletedAt: number | undefined
     encryptionAvailable: boolean
@@ -157,9 +159,11 @@ export const createInitialSettingsState = (): SettingsStoreData => ({
   agentFrameworkId: 'claude-code',
   agentFrameworks: [],
   opencode: {},
+  codebuddy: {},
   codex: {},
   claudeManaged: false,
   opencodeManaged: false,
+  codebuddyManaged: false,
   codexManaged: false,
   onboardingCompletedAt: undefined,
   encryptionAvailable: true,
@@ -196,9 +200,11 @@ const applySnapshot = (snapshot: SettingsSnapshot): Partial<SettingsStoreData> =
   agentFrameworkId: snapshot.agentFrameworkId,
   agentFrameworks: snapshot.agentFrameworks,
   opencode: snapshot.opencode,
+  codebuddy: snapshot.codebuddy ?? {},
   codex: snapshot.codex ?? {},
   claudeManaged: snapshot.claudeManaged,
   opencodeManaged: snapshot.opencodeManaged,
+  codebuddyManaged: snapshot.codebuddyManaged ?? false,
   codexManaged: snapshot.codexManaged ?? false
 })
 
@@ -294,6 +300,8 @@ const createSettingsStoreState = (
     refreshFrameworkStatus: async (id) => {
       if (id === 'opencode') {
         await get().detectOpencode()
+      } else if (id === 'codebuddy') {
+        await get().detectCodebuddy()
       } else if (id === 'codex') {
         await get().detectCodex()
       } else {

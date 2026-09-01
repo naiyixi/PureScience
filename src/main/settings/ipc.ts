@@ -127,6 +127,7 @@ const registerSettingsIpcHandlers = ({
   ipcMainHandle('settings:check-environment', () => service.checkEnvironment())
   ipcMainHandle('settings:detect-claude', () => service.detectClaude())
   ipcMainHandle('settings:detect-opencode', () => service.detectOpencode())
+  ipcMainHandle('settings:detect-codebuddy', () => service.detectCodebuddy())
   ipcMainHandle('settings:detect-codex', () => service.detectCodex())
   ipcMainHandle('settings:install-opencode', (_event, request: InstallOpencodeRequest) =>
     service.installOpencode(request, broadcastInstallEvent)

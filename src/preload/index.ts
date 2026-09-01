@@ -197,6 +197,7 @@ const api: PureScienceAPI = {
     checkEnvironment: () => electronRendererContracts.invoke('settings.checkEnvironment'),
     detectClaude: () => electronRendererContracts.invoke('settings.detectClaude'),
     detectOpencode: () => electronRendererContracts.invoke('settings.detectOpencode'),
+    detectCodebuddy: () => electronRendererContracts.invoke('settings.detectCodebuddy'),
     detectCodex: () => electronRendererContracts.invoke('settings.detectCodex'),
     installClaude: (request) => electronRendererContracts.invoke('settings.installClaude', request),
     installOpencode: (request) =>

@@ -38,6 +38,11 @@ import {
   type OpencodeDetectDeps
 } from './opencode-detect'
 import {
+  createDefaultDetectDeps as createCodeBuddyDetectDeps,
+  detectCodeBuddy,
+  type CodeBuddyDetectDeps
+} from './codebuddy-detect'
+import {
   detectCodex,
   parseVersion as parseCodexVersion,
   runAcpInitializeSmoke,
@@ -209,6 +214,7 @@ export type AgentRuntimeManagerOptions = {
   allocateSettingsIdSequence: () => number
   detectDeps?: ClaudeDetectDeps
   opencodeDetectDeps?: OpencodeDetectDeps
+  codebuddyDetectDeps?: CodeBuddyDetectDeps
   codexDetectDeps?: CodexDetectDeps
   allocateOpenCodeUsagePort?: () => Promise<number>
   executeClaudeProbe?: ExecuteClaudeProbe
@@ -237,6 +243,7 @@ export class AgentRuntimeManager {
   private readonly allocateSettingsIdSequence: () => number
   private readonly detectDeps: ClaudeDetectDeps
   private readonly opencodeDetectDeps: OpencodeDetectDeps
+  private readonly codebuddyDetectDeps: CodeBuddyDetectDeps
   private readonly codexDetectDeps: CodexDetectDeps
   private readonly allocateOpenCodeUsagePort: () => Promise<number>
   private readonly executeClaudeProbe: ExecuteClaudeProbe
@@ -270,6 +277,13 @@ export class AgentRuntimeManager {
     this.opencodeDetectDeps = {
       ...baseOpencodeDetectDeps,
       extraDirs: [...(baseOpencodeDetectDeps.extraDirs ?? []), managedOpencodeDir(this.storageRoot)]
+    }
+
+    const baseCodeBuddyDetectDeps =
+      options.codebuddyDetectDeps ?? createCodeBuddyDetectDeps()
+    this.codebuddyDetectDeps = {
+      ...baseCodeBuddyDetectDeps,
+      extraDirs: [...(baseCodeBuddyDetectDeps.extraDirs ?? []), managedOpencodeDir(this.storageRoot)]
     }
 
     const managedAdapterPath = managedCodexAdapterEntry(this.storageRoot)
@@ -315,6 +329,9 @@ export class AgentRuntimeManager {
       ? (await this.opencodeDetectDeps.getVersion(settings.opencodePath)) !== undefined
       : false
     const codexPathExists = (await this.probeCodexRuntime(settings.codex)) !== undefined
+    const codebuddyPathExists = settings.codebuddyPath
+      ? (await this.codebuddyDetectDeps.getVersion(settings.codebuddyPath)) !== undefined
+      : false
 
     const agentFrameworkId = settings.agentFrameworkId ?? DEFAULT_AGENT_FRAMEWORK_ID
     const framework = getAgentFramework(agentFrameworkId)
@@ -345,6 +362,7 @@ export class AgentRuntimeManager {
       claudePathExists,
       opencodePathExists,
       codexPathExists,
+      codebuddyPathExists,
       agentFrameworkId,
       isProviderKeyUsable: (provider) =>
         provider.id === activeProvider?.id && activeProviderKeyUsable,
@@ -355,10 +373,11 @@ export class AgentRuntimeManager {
   async checkEnvironment(): Promise<EnvironmentCheckResult> {
     const settings = await this.repository.getSettings()
     const agentFrameworkId = settings.agentFrameworkId ?? DEFAULT_AGENT_FRAMEWORK_ID
-    const [claudeRuntime, opencodeRuntime, codexRuntime] = await Promise.all([
+    const [claudeRuntime, opencodeRuntime, codexRuntime, codebuddyRuntime] = await Promise.all([
       this.resolveClaudeRuntime(settings),
       this.resolveOpencodeRuntime(settings),
-      this.resolveCodexRuntime(settings)
+      this.resolveCodexRuntime(settings),
+      this.resolveCodebuddyRuntime(settings)
     ])
 
     return runEnvironmentCheck({
@@ -379,6 +398,11 @@ export class AgentRuntimeManager {
           id: 'codex',
           label: getAgentFramework('codex').displayName,
           runtime: codexRuntime
+        },
+        {
+          id: 'codebuddy',
+          label: getAgentFramework('codebuddy').displayName,
+          runtime: codebuddyRuntime
         }
       ],
       encryptionAvailable: isEncryptionAvailable()
@@ -424,6 +448,17 @@ export class AgentRuntimeManager {
     } else {
       const cached = (await this.repository.getSettings()).codex?.resolvedPath
       if (cached && !(await this.pathExists(cached))) await this.repository.clearCodexInfo()
+    }
+  }
+
+  async detectCodebuddy(): Promise<void> {
+    const detected = await detectCodeBuddy(this.codebuddyDetectDeps)
+
+    if (detected) {
+      await this.repository.setCodebuddyInfo(detected.resolvedPath, detected.version)
+    } else {
+      const cached = (await this.repository.getSettings()).codebuddyPath
+      if (cached && !(await this.pathExists(cached))) await this.repository.clearCodebuddyInfo()
     }
   }
 
@@ -889,6 +924,28 @@ export class AgentRuntimeManager {
         adapterFailureReason: components.adapterFailureReason
       }
     }
+  }
+
+  private async resolveCodebuddyRuntime(settings: StoredSettings): Promise<ClaudeDetectResult> {
+    const cachedPath = settings.codebuddyPath
+    if (cachedPath) {
+      const version = await this.codebuddyDetectDeps.getVersion(cachedPath)
+      if (version) {
+        if (version !== settings.codebuddyVersion) {
+          await this.repository.setCodebuddyInfo(cachedPath, version)
+        }
+        return { found: true, path: cachedPath, version }
+      }
+    }
+
+    const detected = await detectCodeBuddy(this.codebuddyDetectDeps)
+    if (detected) {
+      await this.repository.setCodebuddyInfo(detected.resolvedPath, detected.version)
+      return { found: true, path: detected.resolvedPath, version: detected.version }
+    }
+    if (cachedPath && !(await this.pathExists(cachedPath)))
+      await this.repository.clearCodebuddyInfo()
+    return { found: false }
   }
 
   private async probeCodexRuntime(
