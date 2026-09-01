@@ -71,6 +71,8 @@ import { ComposerContextUsage } from './ComposerContextUsage'
 import { ContextWindowDialog } from './ContextWindowDialog'
 import { ComposerModelPicker } from './ComposerModelPicker'
 import { PermissionApprovalControls } from './PermissionApprovalControls'
+import { EgressApprovalCard } from './EgressApprovalCard'
+import type { EgressApprovalDecision, EgressApprovalRequest } from '../../../../shared/egress'
 import { ElicitationCards } from './ElicitationCards'
 import { AnnotationCards } from './AnnotationCards'
 import { SelectionAnnotator } from './SelectionAnnotator'
@@ -152,6 +154,11 @@ type ConversationPanelProps = {
   notebookReference: NotebookSessionReference | undefined
   pendingPermissions: AcpPermissionRequest[]
   pendingElicitations: ElicitationRequestView[]
+  pendingEgressApprovals: EgressApprovalRequest[]
+  onRespondToEgressApproval: (
+    requestId: string,
+    decision: EgressApprovalDecision
+  ) => void
   permissionProfile: PermissionProfileId
   permissionProfileState: SessionPermissionProfileState | undefined
   permissionGrants: AcpPermissionGrant[]
@@ -253,6 +260,8 @@ const ConversationPanel = ({
   pendingPermissions,
   pendingElicitations,
   onRespondToElicitation,
+  pendingEgressApprovals,
+  onRespondToEgressApproval,
   pendingAnnotations,
   onRemoveAnnotation,
   onAnnotateSelection,
@@ -616,6 +625,15 @@ const ConversationPanel = ({
                     requests={pendingElicitations}
                     onRespond={onRespondToElicitation}
                   />
+
+                  {/* Blocked egress destinations surface as in-conversation approval cards. */}
+                  {pendingEgressApprovals.map((request) => (
+                    <EgressApprovalCard
+                      key={request.requestId}
+                      request={request}
+                      onRespond={onRespondToEgressApproval}
+                    />
+                  ))}
 
                   {/* Switching between a compact job bar and Notebook chrome remounts this layer so a
                     Notebook that becomes available after jobs still receives its entrance animation. */}

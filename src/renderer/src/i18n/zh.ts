@@ -68,6 +68,13 @@ export const zh = {
   'ws.allProjects': '全部项目',
   'ws.switchProject': '切换项目',
   'ws.moreProjects': '其余 {count} 个项目…',
+  'ws.egressApprovalTitle': '网络访问被拦截',
+  'ws.egressApprovalDescription':
+    '笔记本运行时尝试访问 {method} {host}，该目标不在允许的域名范围内。',
+  'ws.egressDeny': '拒绝',
+  'ws.egressAllowOnce': '仅此一次',
+  'ws.egressAllowAlways': '始终允许',
+  'ws.egressConnectNote': '此决定仅对这一次连接尝试生效。',
   'ws.sessionNotebook': '会话笔记本',
   'common.save': '保存',
   'common.delete': '删除',
