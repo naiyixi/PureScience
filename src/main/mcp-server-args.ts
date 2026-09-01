@@ -13,3 +13,4 @@ export const CONTEXT_SUMMARY_MCP_SERVER_ARG = '--purescience-context-summary-mcp
 export const ROUTINE_MCP_SERVER_ARG = '--purescience-routine-mcp'
 export const ENDPOINT_MCP_SERVER_ARG = '--purescience-endpoint-mcp'
 export const ANNOTATION_MCP_SERVER_ARG = '--purescience-annotation-mcp'
+export const PDF_MCP_SERVER_ARG = '--purescience-pdf-mcp'

@@ -299,6 +299,7 @@ import type {
 import type { RoutineConfigureRequest, RoutineSchedule } from '../shared/routine'
 import type { EndpointRegisterRequest, ManagedEndpoint } from '../shared/endpoint'
 import type { AnnotationSetRequest, FileAnnotation } from '../shared/annotation'
+import type { PdfOpenResult, PdfOutlineResult, PdfPagesResult, PdfScanResult } from '../shared/pdf'
 import type {
   ApproveRemotePairingRequest,
   RemoteAccessSnapshot,
@@ -988,6 +989,16 @@ export interface PureScienceAPI {
     list(request: { projectId: string; target?: string }): Promise<FileAnnotation[]>
     // Removes one annotation by id.
     remove(request: { projectId: string; annotationId: string }): Promise<boolean>
+  }
+  pdf: {
+    // Registers a PDF for layered reading (parses + persists page text).
+    open(request: { projectId: string; path: string }): Promise<PdfOpenResult>
+    // Reads a page range as text.
+    pages(request: { projectId: string; docId: string; start: number; end?: number }): Promise<PdfPagesResult>
+    // Lists the table of contents.
+    outline(request: { projectId: string; docId: string }): Promise<PdfOutlineResult>
+    // Scans pages for a query, ranked by relevance.
+    scan(request: { projectId: string; docId: string; query: string }): Promise<PdfScanResult>
   }
   window: {
     // Closes the focused window (the Cmd+W / Ctrl+W fallback when no preview panel is open).

@@ -4,6 +4,7 @@ import type { RemoteAccessSnapshot } from '../shared/remote-access'
 import type { RoutineConfigureRequest } from '../shared/routine'
 import type { EndpointRegisterRequest, ManagedEndpoint } from '../shared/endpoint'
 import type { AnnotationSetRequest, FileAnnotation } from '../shared/annotation'
+import type { PdfOpenResult, PdfOutlineResult, PdfPagesResult, PdfScanResult } from '../shared/pdf'
 import { RENDERER_CONTRACT_GROUPS } from '../shared/renderer-contract-catalog'
 import type { UpdateStatus } from '../shared/update'
 import {
@@ -36,6 +37,7 @@ const HOST_CAPABILITIES = [
   'routine',
   'endpoint',
   'annotation',
+  'pdf',
   'storage',
   'update'
 ] as const
@@ -224,6 +226,30 @@ const createDependencies = (): HostApplicationCommandDependencies => ({
     list: vi.fn(async () => []),
     remove: vi.fn(async () => true)
   },
+  pdf: {
+    open: vi.fn(async (_projectId: string, path: string): Promise<PdfOpenResult> => ({
+      doc: { docId: 'doc-1', title: path, pageCount: 3, outline: [] },
+      textPageCount: 3,
+      emptyPageCount: 0
+    })),
+    pages: vi.fn(async (): Promise<PdfPagesResult> => ({
+      docId: 'doc-1',
+      start: 1,
+      end: 1,
+      pages: [{ page: 1, text: 'page one' }]
+    })),
+    outline: vi.fn(async (): Promise<PdfOutlineResult> => ({
+      docId: 'doc-1',
+      title: 'doc',
+      pageCount: 3,
+      outline: [{ title: 'Intro', page: 1, level: 1 }]
+    })),
+    scan: vi.fn(async (): Promise<PdfScanResult> => ({
+      docId: 'doc-1',
+      query: 'query',
+      hits: [{ page: 2, score: 1, snippet: 'hit' }]
+    }))
+  },
   storage: {
     getInfo: vi.fn(async () => ({
       dataRoot: '/data',
@@ -298,7 +324,7 @@ describe('Host application commands', () => {
         .filter((channel): channel is string => channel !== null)
     }))
 
-    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(61)
+    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(65)
     const actualGroups = hostApplicationCommandGroups
       .map(({ name, commands }) => ({
         capability: name,
@@ -316,7 +342,7 @@ describe('Host application commands', () => {
       {} as HostApplicationCommandDependencies
     )
 
-    expect(router.dispatcher.commandNames()).toHaveLength(61)
+    expect(router.dispatcher.commandNames()).toHaveLength(65)
     installation.uninstall()
     expect(router.dispatcher.commandNames()).toEqual([])
   })
@@ -351,6 +377,7 @@ describe('Host application commands', () => {
       note: 'Refactor the parsing loop.'
     }
     const parent = { parent: '/target' }
+    const pdfPath = '/data/paper.pdf'
     const root = { parent: '/target', markOnboarding: true }
 
     await router.dispatcher.invoke(hostApplicationCommands.cli.getStatus, invocation([]))
@@ -456,6 +483,22 @@ describe('Host application commands', () => {
       hostApplicationCommands.annotation.remove,
       invocation([{ projectId: 'project-1', annotationId: 'ann-1' }])
     )
+    await router.dispatcher.invoke(
+      hostApplicationCommands.pdf.open,
+      invocation([{ projectId: 'project-1', path: pdfPath }])
+    )
+    await router.dispatcher.invoke(
+      hostApplicationCommands.pdf.pages,
+      invocation([{ projectId: 'project-1', docId: 'doc-1', start: 1, end: 2 }])
+    )
+    await router.dispatcher.invoke(
+      hostApplicationCommands.pdf.outline,
+      invocation([{ projectId: 'project-1', docId: 'doc-1' }])
+    )
+    await router.dispatcher.invoke(
+      hostApplicationCommands.pdf.scan,
+      invocation([{ projectId: 'project-1', docId: 'doc-1', query: 'attention' }])
+    )
     await router.dispatcher.invoke(hostApplicationCommands.storage.cancelMigrate, invocation([]))
     await router.dispatcher.invoke(
       hostApplicationCommands.storage.commitAndRelaunch,
@@ -538,6 +581,10 @@ describe('Host application commands', () => {
     expect(dependencies.annotation.set).toHaveBeenCalledWith('project-1', annotationRequest)
     expect(dependencies.annotation.list).toHaveBeenCalledWith('project-1', 'src/main.ts')
     expect(dependencies.annotation.remove).toHaveBeenCalledWith('project-1', 'ann-1')
+    expect(dependencies.pdf.open).toHaveBeenCalledWith('project-1', pdfPath)
+    expect(dependencies.pdf.pages).toHaveBeenCalledWith('project-1', 'doc-1', 1, 2)
+    expect(dependencies.pdf.outline).toHaveBeenCalledWith('project-1', 'doc-1')
+    expect(dependencies.pdf.scan).toHaveBeenCalledWith('project-1', 'doc-1', 'attention')
     expect(dependencies.storage.commitAndRelaunch).toHaveBeenCalledWith(parent)
     expect(dependencies.storage.setDataRootAndRelaunch).toHaveBeenCalledWith(root)
 
@@ -578,7 +625,11 @@ describe('Host application commands', () => {
       'endpoint:list-all': [],
       'annotation:set': [{ projectId: 'project-1', request: annotationRequest }],
       'annotation:list': [{ projectId: 'project-1', target: 'src/main.ts' }],
-      'annotation:remove': [{ projectId: 'project-1', annotationId: 'ann-1' }]
+      'annotation:remove': [{ projectId: 'project-1', annotationId: 'ann-1' }],
+      'pdf:open': [{ projectId: 'project-1', path: '/data/paper.pdf' }],
+      'pdf:pages': [{ projectId: 'project-1', docId: 'doc-1', start: 1 }],
+      'pdf:outline': [{ projectId: 'project-1', docId: 'doc-1' }],
+      'pdf:scan': [{ projectId: 'project-1', docId: 'doc-1', query: 'x' }]
     }
     const localOnlyChannels = RENDERER_CONTRACT_GROUPS.filter(({ capability }) =>
       HOST_CAPABILITIES.includes(capability as (typeof HOST_CAPABILITIES)[number])
@@ -593,7 +644,7 @@ describe('Host application commands', () => {
         .filter((channel): channel is string => channel !== null)
     )
 
-    expect(localOnlyChannels).toHaveLength(34)
+    expect(localOnlyChannels).toHaveLength(38)
     for (const channel of localOnlyChannels) {
       await expect(
         router.dispatcher.invoke(

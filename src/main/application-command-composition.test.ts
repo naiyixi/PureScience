@@ -169,7 +169,7 @@ describe('application command composition', () => {
     const composition = createApplicationCommandComposition(dependencies())
 
     expect(composition.localWeb.commandNames()).toEqual(expectedLocalWebCommands())
-    expect(composition.localWeb.commandNames()).toHaveLength(267)
+    expect(composition.localWeb.commandNames()).toHaveLength(271)
   })
 
   it('partitions remote Web dispatch from fail-closed pre-dispatch rejections', async () => {
@@ -186,7 +186,7 @@ describe('application command composition', () => {
     expect(composition.remoteWeb.commandNames()).toEqual(expectedRemoteCommands())
     expect(composition.remoteWeb.commandNames()).toHaveLength(182)
     expect(composition.remoteWeb.rejectedCommandNames()).toEqual(expectedRemoteRejections())
-    expect(composition.remoteWeb.rejectedCommandNames()).toHaveLength(85)
+    expect(composition.remoteWeb.rejectedCommandNames()).toHaveLength(89)
     await expect(
       composition.remoteWeb.invoke('compute:download', invocation('remote'))
     ).rejects.toThrow('Application command is rejected before dispatch: compute:download')

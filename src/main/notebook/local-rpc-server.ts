@@ -161,6 +161,13 @@ type NotebookLocalRpcServerOptions = {
     list(sessionId: string, projectId: string, target: string | null): Promise<unknown>
     remove(sessionId: string, projectId: string, annotationId: string): Promise<unknown>
   }
+  // Layered PDF reading (pdf_* MCP): main-process-owned parsing + persistence.
+  pdf?: {
+    open(sessionId: string, projectId: string, path: string): Promise<unknown>
+    pages(sessionId: string, projectId: string, docId: string, start: number, end?: number): Promise<unknown>
+    outline(sessionId: string, projectId: string, docId: string): Promise<unknown>
+    scan(sessionId: string, projectId: string, docId: string, query: string): Promise<unknown>
+  }
   planService?: {
     call(input: {
       projectId: string
@@ -229,6 +236,7 @@ const MEMORY_RPC_METHODS = new Set(['memorySaveNote'])
 const CONTEXT_SUMMARY_RPC_METHODS = new Set(['summaryQueryChunk', 'recordBoundary'])
 const ROUTINE_RPC_METHODS = new Set(['routineConfigure', 'routineStatus', 'routineCancel'])
 const ANNOTATION_RPC_METHODS = new Set(['annotationSet', 'annotationList', 'annotationRemove'])
+const PDF_RPC_METHODS = new Set(['pdfOpen', 'pdfPages', 'pdfOutline', 'pdfScan'])
 const ENDPOINT_RPC_METHODS = new Set([
   'endpointRegister',
   'endpointUnregister',
@@ -292,10 +300,12 @@ class NotebookLocalRpcServer {
   private readonly routineRpcTokens = new Map<string, string>()
   private readonly endpointRpcTokens = new Map<string, string>()
   private readonly annotationRpcTokens = new Map<string, string>()
+  private readonly pdfRpcTokens = new Map<string, string>()
   private readonly contextSummary?: NotebookLocalRpcServerOptions['contextSummary']
   private readonly routine?: NotebookLocalRpcServerOptions['routine']
   private readonly endpoints?: NotebookLocalRpcServerOptions['endpoints']
   private readonly annotations?: NotebookLocalRpcServerOptions['annotations']
+  private readonly pdf?: NotebookLocalRpcServerOptions['pdf']
   // The session → Specialist relationship is established by the ACP runtime, not supplied by the
   // notebook process. Keeping it here prevents an agent from selecting another Specialist's scope
   // by forging an RPC parameter.
@@ -325,6 +335,7 @@ class NotebookLocalRpcServer {
     this.routine = options.routine
     this.endpoints = options.endpoints
     this.annotations = options.annotations
+    this.pdf = options.pdf
     this.planService = options.planService
     this.artifactProvenance = options.artifactProvenance
     this.inputRegistry = options.inputRegistry
@@ -520,6 +531,14 @@ class NotebookLocalRpcServer {
     }
   }
 
+  private revokePdfSessionCapabilities(sessionId: string): void {
+    for (const ownedSessionId of this.resolveSessionCapabilityOwners(sessionId)) {
+      const token = this.pdfRpcTokens.get(ownedSessionId)
+      if (token) this.sessionRpcCapabilities.delete(token)
+      this.pdfRpcTokens.delete(ownedSessionId)
+    }
+  }
+
   private revokePlanSessionCapabilities(sessionId: string): void {
     for (const ownedSessionId of this.resolveSessionCapabilityOwners(sessionId)) {
       const token = this.planRpcTokens.get(ownedSessionId)
@@ -540,6 +559,7 @@ class NotebookLocalRpcServer {
     this.revokeRoutineSessionCapabilities(sessionId)
     this.revokeEndpointSessionCapabilities(sessionId)
     this.revokeAnnotationSessionCapabilities(sessionId)
+    this.revokePdfSessionCapabilities(sessionId)
     this.revokePlanSessionCapabilities(sessionId)
     for (const ownedSessionId of ownedSessionIds) {
       this.sessionSpecialists.delete(ownedSessionId)
@@ -716,6 +736,33 @@ class NotebookLocalRpcServer {
       release: () => {
         if (this.annotationRpcTokens.get(sessionId) === token) {
           this.annotationRpcTokens.delete(sessionId)
+        }
+        this.sessionRpcCapabilities.delete(token)
+      }
+    }
+  }
+
+  async issuePdfConnection(
+    sessionId: string,
+    projectId: string
+  ): Promise<NotebookRpcConnection> {
+    const connection = await this.ensureStarted()
+    this.revokePdfSessionCapabilities(sessionId)
+
+    const token = randomUUID()
+    this.pdfRpcTokens.set(sessionId, token)
+    this.sessionRpcCapabilities.set(token, {
+      sessionId,
+      projectId,
+      allowedMethods: PDF_RPC_METHODS
+    })
+    return {
+      endpoint: connection.endpoint,
+      socketPath: connection.socketPath,
+      token,
+      release: () => {
+        if (this.pdfRpcTokens.get(sessionId) === token) {
+          this.pdfRpcTokens.delete(sessionId)
         }
         this.sessionRpcCapabilities.delete(token)
       }
@@ -1222,6 +1269,49 @@ class NotebookLocalRpcServer {
         )
       }
       return this.annotations.remove(params.sessionId, params.projectId, params.annotationId)
+    }
+
+    if (method === 'pdfOpen') {
+      if (!this.pdf) throw new Error('PDF handler is not configured.')
+      if (typeof params.sessionId !== 'string' || typeof params.projectId !== 'string' || typeof params.path !== 'string') {
+        throw new Error('PDF open RPC params must include sessionId, projectId, and path.')
+      }
+      return this.pdf.open(params.sessionId, params.projectId, params.path)
+    }
+
+    if (method === 'pdfPages') {
+      if (!this.pdf) throw new Error('PDF handler is not configured.')
+      if (
+        typeof params.sessionId !== 'string' ||
+        typeof params.projectId !== 'string' ||
+        typeof params.docId !== 'string' ||
+        typeof params.start !== 'number'
+      ) {
+        throw new Error('PDF pages RPC params must include sessionId, projectId, docId, and start.')
+      }
+      return this.pdf.pages(
+        params.sessionId,
+        params.projectId,
+        params.docId,
+        params.start,
+        typeof params.end === 'number' ? params.end : undefined
+      )
+    }
+
+    if (method === 'pdfOutline') {
+      if (!this.pdf) throw new Error('PDF handler is not configured.')
+      if (typeof params.sessionId !== 'string' || typeof params.projectId !== 'string' || typeof params.docId !== 'string') {
+        throw new Error('PDF outline RPC params must include sessionId, projectId, and docId.')
+      }
+      return this.pdf.outline(params.sessionId, params.projectId, params.docId)
+    }
+
+    if (method === 'pdfScan') {
+      if (!this.pdf) throw new Error('PDF handler is not configured.')
+      if (typeof params.sessionId !== 'string' || typeof params.projectId !== 'string' || typeof params.docId !== 'string' || typeof params.query !== 'string') {
+        throw new Error('PDF scan RPC params must include sessionId, projectId, docId, and query.')
+      }
+      return this.pdf.scan(params.sessionId, params.projectId, params.docId, params.query)
     }
 
     if (method === 'planCall') {
