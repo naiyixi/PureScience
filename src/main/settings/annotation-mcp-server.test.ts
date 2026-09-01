@@ -13,6 +13,7 @@ import {
   createAnnotationMcpServerConfig
 } from './annotation-mcp-server'
 import type { FileAnnotation } from '../../shared/annotation'
+import type { AnnotationMcpHandler } from './annotation-mcp-server'
 
 const makeAnnotation = (overrides: Partial<FileAnnotation> = {}): FileAnnotation => ({
   id: 'ann-1',
