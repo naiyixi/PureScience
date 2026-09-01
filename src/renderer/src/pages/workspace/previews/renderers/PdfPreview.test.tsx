@@ -37,6 +37,7 @@ describe('PdfPreviewContent', () => {
     )
     getPage = vi.fn().mockResolvedValue({
       getViewport: vi.fn(() => ({ width: 600, height: 800 })),
+      getTextContent: vi.fn().mockResolvedValue({ items: [] }),
       render: vi.fn(() => ({ promise: Promise.resolve(), cancel: vi.fn() })),
       cleanup: vi.fn()
     })
@@ -95,6 +96,7 @@ describe('PdfPreviewContent', () => {
   it('uses each PDF page aspect ratio instead of stretching it into a fixed frame', async () => {
     getPage.mockResolvedValue({
       getViewport: vi.fn(() => ({ width: 900, height: 450 })),
+      getTextContent: vi.fn().mockResolvedValue({ items: [] }),
       render: vi.fn(() => ({ promise: Promise.resolve(), cancel: vi.fn() })),
       cleanup: vi.fn()
     })
@@ -128,7 +130,8 @@ describe('PdfPreviewContent', () => {
         height: 500 * scale
       })),
       render,
-      cleanup: vi.fn()
+      cleanup: vi.fn(),
+      getTextContent: vi.fn().mockResolvedValue({ items: [] }),
     })
 
     await act(async () => {
@@ -160,7 +163,8 @@ describe('PdfPreviewContent', () => {
         height: 560 * scale
       })),
       render: vi.fn(() => ({ promise: Promise.resolve(), cancel: vi.fn() })),
-      cleanup: vi.fn()
+      cleanup: vi.fn(),
+      getTextContent: vi.fn().mockResolvedValue({ items: [] }),
     })
 
     await act(async () => {
@@ -199,7 +203,8 @@ describe('PdfPreviewContent', () => {
         height: 560 * scale
       })),
       render: vi.fn(() => ({ promise: Promise.resolve(), cancel: vi.fn() })),
-      cleanup: vi.fn()
+      cleanup: vi.fn(),
+      getTextContent: vi.fn().mockResolvedValue({ items: [] }),
     })
 
     await act(async () => {
@@ -242,7 +247,8 @@ describe('PdfPreviewContent', () => {
         height: 560 * scale
       })),
       render: vi.fn(() => ({ promise: Promise.resolve(), cancel: vi.fn() })),
-      cleanup: vi.fn()
+      cleanup: vi.fn(),
+      getTextContent: vi.fn().mockResolvedValue({ items: [] }),
     })
 
     await act(async () => {
@@ -275,7 +281,8 @@ describe('PdfPreviewContent', () => {
         height: 842 * scale
       })),
       render: vi.fn(() => ({ promise: Promise.resolve(), cancel: vi.fn() })),
-      cleanup: vi.fn()
+      cleanup: vi.fn(),
+      getTextContent: vi.fn().mockResolvedValue({ items: [] }),
     })
 
     await act(async () => {
@@ -344,7 +351,8 @@ describe('PdfPreviewContent', () => {
         height: 560 * scale
       })),
       render: vi.fn(() => ({ promise: Promise.resolve(), cancel: vi.fn() })),
-      cleanup: vi.fn()
+      cleanup: vi.fn(),
+      getTextContent: vi.fn().mockResolvedValue({ items: [] }),
     })
 
     await act(async () => {
@@ -421,7 +429,8 @@ describe('PdfPreviewContent', () => {
         height: 560 * scale
       })),
       render: vi.fn(() => ({ promise: Promise.resolve(), cancel: vi.fn() })),
-      cleanup: vi.fn()
+      cleanup: vi.fn(),
+      getTextContent: vi.fn().mockResolvedValue({ items: [] }),
     })
 
     await act(async () => {
@@ -472,7 +481,8 @@ describe('PdfPreviewContent', () => {
         height: 560 * scale
       })),
       render: vi.fn(() => ({ promise: Promise.resolve(), cancel: vi.fn() })),
-      cleanup: vi.fn()
+      cleanup: vi.fn(),
+      getTextContent: vi.fn().mockResolvedValue({ items: [] }),
     })
 
     await act(async () => {
@@ -528,7 +538,8 @@ describe('PdfPreviewContent', () => {
         height: 560 * scale
       })),
       render,
-      cleanup: vi.fn()
+      cleanup: vi.fn(),
+      getTextContent: vi.fn().mockResolvedValue({ items: [] }),
     })
 
     await act(async () => {
@@ -587,7 +598,8 @@ describe('PdfPreviewContent', () => {
         height: 12000 * scale
       })),
       render: vi.fn(() => ({ promise: Promise.resolve(), cancel: vi.fn() })),
-      cleanup: vi.fn()
+      cleanup: vi.fn(),
+      getTextContent: vi.fn().mockResolvedValue({ items: [] }),
     })
 
     await act(async () => {
@@ -622,7 +634,8 @@ describe('PdfPreviewContent', () => {
         height: 842 * scale
       })),
       render: vi.fn(() => ({ promise: Promise.resolve(), cancel: vi.fn() })),
-      cleanup: vi.fn()
+      cleanup: vi.fn(),
+      getTextContent: vi.fn().mockResolvedValue({ items: [] }),
     })
 
     await act(async () => {
@@ -666,7 +679,8 @@ describe('PdfPreviewContent', () => {
         height: 842 * scale
       })),
       render: vi.fn(() => ({ promise: Promise.resolve(), cancel: vi.fn() })),
-      cleanup: vi.fn()
+      cleanup: vi.fn(),
+      getTextContent: vi.fn().mockResolvedValue({ items: [] }),
     })
 
     await act(async () => {
@@ -995,5 +1009,46 @@ describe('PdfPreviewContent', () => {
     expect(cleanupPage.mock.invocationCallOrder[0]).toBeLessThan(
       destroyDocument.mock.invocationCallOrder[0] as number
     )
+  })
+
+  it('lays out a selectable text layer and labels the page as an annotation source', async () => {
+    const clientWidthSpy = vi
+      .spyOn(HTMLElement.prototype, 'clientWidth', 'get')
+      .mockReturnValue(700)
+    getPage.mockResolvedValue({
+      getViewport: vi.fn(() => ({ width: 600, height: 800 })),
+      getTextContent: vi.fn().mockResolvedValue({
+        items: [
+          { str: 'Evidence', transform: [1, 0, 0, 1, 10, 20] },
+          { str: 'passage', transform: [1, 0, 0, 1, 70, 20] },
+          { str: ' ', transform: [1, 0, 0, 1, 130, 20] }
+        ]
+      }),
+      render: vi.fn(() => ({ promise: Promise.resolve(), cancel: vi.fn() })),
+      cleanup: vi.fn()
+    })
+
+    await act(async () => {
+      root.render(
+        <PdfPreviewContent path="/workspace/evidence.pdf" name="evidence.pdf" source="artifact" />
+      )
+    })
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    await act(async () => {
+      await vi.waitFor(() =>
+        expect(container.querySelectorAll('[data-slot="pdf-text-span"]')).toHaveLength(2)
+      )
+    })
+
+    // The page carries the annotation-source label the workspace annotator reads, naming the
+    // document and page so evidence picked here stays locatable in the source.
+    const page = container.querySelector<HTMLElement>('[data-page-number="1"]')
+    expect(page?.dataset.annotationSource).toBe('PDF · evidence.pdf · p.1')
+
+    clientWidthSpy.mockRestore()
   })
 })

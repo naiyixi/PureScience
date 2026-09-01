@@ -19,6 +19,17 @@ type DocumentState =
   | { requestKey: string; status: 'ready'; document: PdfDocument }
   | { requestKey: string; status: 'error'; error: unknown }
 
+// A text-layer span placed by pdf.js textContent geometry. The layer sits exactly on top of the
+// page canvas and makes the rendered text selectable, so the workspace SelectionAnnotator can pick
+// a passage as evidence and the source locator knows which page it came from.
+type TextSpan = {
+  text: string
+  left: number
+  top: number
+  fontSize: number
+  lineHeight: number
+}
+
 // Comfortable reading width a page fills at 100%; zoom scales the displayed page beyond it.
 const FIT_PAGE_WIDTH = 768
 const MIN_ZOOM = 0.5
@@ -96,11 +107,13 @@ const PdfPageCanvas = ({
   document,
   pageNumber,
   pageWidth,
+  documentName,
   registerDisposer
 }: {
   document: PdfDocument
   pageNumber: number
   pageWidth: number
+  documentName: string
   registerDisposer: (dispose: () => void) => () => void
 }): React.JSX.Element => {
   const [setNearViewportRef, isNearViewport] = useNearViewport<HTMLDivElement>()
@@ -113,6 +126,9 @@ const PdfPageCanvas = ({
   const [aspectRatio, setAspectRatio] = useState(3 / 4)
   // Bumped when a fresh page proxy is acquired so rasterization re-runs against the new page.
   const [pageEpoch, setPageEpoch] = useState(0)
+  // Selectable text spans for the evidence annotator, keyed by the pageWidth they were laid out
+  // at (text layer geometry is relative to the base viewport, scaled to the current page width).
+  const [textSpans, setTextSpans] = useState<TextSpan[] | undefined>(undefined)
 
   // Acquire the page once while it is near the viewport and keep it alive; width changes then
   // re-rasterize this same page rather than reloading it through the range transport.
@@ -229,6 +245,47 @@ const PdfPageCanvas = ({
 
   const displayedStatus = isNearViewport ? status : 'idle'
 
+  // Lay out the selectable text layer at the current page width. pdf.js textContent items carry
+  // base-viewport geometry (transform: 1x1 units); scale positions/fonts by the same ratio the
+  // canvas rasterization uses so spans land exactly on the rendered glyphs. Empty (scanned) pages
+  // produce no items and stay canvas-only, which keeps selection unavailable for non-text PDFs.
+  useEffect(() => {
+    const page = pageRef.current
+    if (!isNearViewport || !page || pageWidth <= 0) return
+    let canceled = false
+
+    void page
+      .getTextContent()
+      .then((content) => {
+        if (canceled) return
+        const baseViewport = page.getViewport({ scale: 1 })
+        const scale = pageWidth / baseViewport.width
+        const spans: TextSpan[] = []
+        for (const item of content.items) {
+          if (!('str' in item) || !item.str.trim()) continue
+          const tx = item.transform
+          const fontSize = Math.hypot(tx[2], tx[3]) * scale
+          if (fontSize <= 0.5) continue
+          spans.push({
+            text: item.str,
+            left: tx[4] * scale,
+            top: (tx[5] - fontSize) * scale,
+            fontSize,
+            lineHeight: fontSize * 1.2
+          })
+        }
+        setTextSpans(spans.length > 0 ? spans : undefined)
+      })
+      .catch(() => {
+        // A text layer failure must never break the canvas preview.
+        if (!canceled) setTextSpans(undefined)
+      })
+
+    return () => {
+      canceled = true
+    }
+  }, [isNearViewport, pageEpoch, pageNumber, pageWidth])
+
   return (
     <div
       ref={setNearViewportRef}
@@ -240,6 +297,9 @@ const PdfPageCanvas = ({
       )}
       style={pageWidth > 0 ? { aspectRatio, width: pageWidth } : { aspectRatio }}
       data-page-number={pageNumber}
+      // The workspace SelectionAnnotator reads this to label evidence picked from this page;
+      // the resulting card names the PDF and the page, so the source passage stays locatable.
+      data-annotation-source={`PDF · ${documentName} · p.${pageNumber}`}
     >
       {displayedStatus === 'loading' || (displayedStatus === 'idle' && isNearViewport) ? (
         <div className="absolute inset-0">
@@ -253,6 +313,28 @@ const PdfPageCanvas = ({
       ) : null}
       {isNearViewport ? (
         <canvas ref={canvasRef} width={0} height={0} className="block size-full object-contain" />
+      ) : null}
+      {/* Selectable text layer: positioned exactly over the canvas so the annotator can select
+          a passage as evidence. The wrapper ignores pointer events (scroll/wheel pass through to
+          the scroller); each span opts back in so the text itself is selectable/copyable. */}
+      {isNearViewport && textSpans ? (
+        <div className="pointer-events-none absolute inset-0" aria-hidden="false">
+          {textSpans.map((span, index) => (
+            <span
+              key={index}
+              data-slot="pdf-text-span"
+              className="pointer-events-auto absolute origin-top-left whitespace-pre leading-none text-transparent"
+              style={{
+                left: span.left,
+                top: span.top,
+                fontSize: span.fontSize,
+                lineHeight: span.lineHeight
+              }}
+            >
+              {span.text}
+            </span>
+          ))}
+        </div>
       ) : null}
     </div>
   )
@@ -482,6 +564,7 @@ export const PdfPreviewContent = ({
                 document={document}
                 pageNumber={index + 1}
                 pageWidth={pageWidth}
+                documentName={name}
                 registerDisposer={registerPageDisposer}
               />
             ))}
