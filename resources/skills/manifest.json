@@ -228,6 +228,12 @@
       "name": "生物模型本地托管",
       "source": "featured",
       "updatedAt": "2026-09-01T00:00:00.000Z"
+    },
+    {
+      "id": "figure-style",
+      "name": "出版级图表正确性",
+      "source": "featured",
+      "updatedAt": "2026-09-01T00:00:00.000Z"
     }
   ]
 }

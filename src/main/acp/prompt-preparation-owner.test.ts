@@ -120,7 +120,8 @@ const setup = (): Fixture => {
         routine: false,
       endpoint: false,
       annotation: false,
-      pdf: false
+      pdf: false,
+      figure: false
       },
       specialistPrefix: 'Specialist identity.',
       projectId: 'project-1',

@@ -161,6 +161,10 @@ type NotebookLocalRpcServerOptions = {
     list(sessionId: string, projectId: string, target: string | null): Promise<unknown>
     remove(sessionId: string, projectId: string, annotationId: string): Promise<unknown>
   }
+  // Publication-grade figure correctness (figure_* MCP): pure-rule review engine.
+  figure?: {
+    review(sessionId: string, projectId: string, request: unknown): Promise<unknown>
+  }
   // Layered PDF reading (pdf_* MCP): main-process-owned parsing + persistence.
   pdf?: {
     open(sessionId: string, projectId: string, path: string): Promise<unknown>
@@ -237,6 +241,7 @@ const CONTEXT_SUMMARY_RPC_METHODS = new Set(['summaryQueryChunk', 'recordBoundar
 const ROUTINE_RPC_METHODS = new Set(['routineConfigure', 'routineStatus', 'routineCancel'])
 const ANNOTATION_RPC_METHODS = new Set(['annotationSet', 'annotationList', 'annotationRemove'])
 const PDF_RPC_METHODS = new Set(['pdfOpen', 'pdfPages', 'pdfOutline', 'pdfScan'])
+const FIGURE_RPC_METHODS = new Set(['figureReview'])
 const ENDPOINT_RPC_METHODS = new Set([
   'endpointRegister',
   'endpointUnregister',
@@ -301,11 +306,13 @@ class NotebookLocalRpcServer {
   private readonly endpointRpcTokens = new Map<string, string>()
   private readonly annotationRpcTokens = new Map<string, string>()
   private readonly pdfRpcTokens = new Map<string, string>()
+  private readonly figureRpcTokens = new Map<string, string>()
   private readonly contextSummary?: NotebookLocalRpcServerOptions['contextSummary']
   private readonly routine?: NotebookLocalRpcServerOptions['routine']
   private readonly endpoints?: NotebookLocalRpcServerOptions['endpoints']
   private readonly annotations?: NotebookLocalRpcServerOptions['annotations']
   private readonly pdf?: NotebookLocalRpcServerOptions['pdf']
+  private readonly figure?: NotebookLocalRpcServerOptions['figure']
   // The session → Specialist relationship is established by the ACP runtime, not supplied by the
   // notebook process. Keeping it here prevents an agent from selecting another Specialist's scope
   // by forging an RPC parameter.
@@ -336,6 +343,7 @@ class NotebookLocalRpcServer {
     this.endpoints = options.endpoints
     this.annotations = options.annotations
     this.pdf = options.pdf
+    this.figure = options.figure
     this.planService = options.planService
     this.artifactProvenance = options.artifactProvenance
     this.inputRegistry = options.inputRegistry
@@ -539,6 +547,14 @@ class NotebookLocalRpcServer {
     }
   }
 
+  private revokeFigureSessionCapabilities(sessionId: string): void {
+    for (const ownedSessionId of this.resolveSessionCapabilityOwners(sessionId)) {
+      const token = this.figureRpcTokens.get(ownedSessionId)
+      if (token) this.sessionRpcCapabilities.delete(token)
+      this.figureRpcTokens.delete(ownedSessionId)
+    }
+  }
+
   private revokePlanSessionCapabilities(sessionId: string): void {
     for (const ownedSessionId of this.resolveSessionCapabilityOwners(sessionId)) {
       const token = this.planRpcTokens.get(ownedSessionId)
@@ -560,6 +576,7 @@ class NotebookLocalRpcServer {
     this.revokeEndpointSessionCapabilities(sessionId)
     this.revokeAnnotationSessionCapabilities(sessionId)
     this.revokePdfSessionCapabilities(sessionId)
+    this.revokeFigureSessionCapabilities(sessionId)
     this.revokePlanSessionCapabilities(sessionId)
     for (const ownedSessionId of ownedSessionIds) {
       this.sessionSpecialists.delete(ownedSessionId)
@@ -763,6 +780,33 @@ class NotebookLocalRpcServer {
       release: () => {
         if (this.pdfRpcTokens.get(sessionId) === token) {
           this.pdfRpcTokens.delete(sessionId)
+        }
+        this.sessionRpcCapabilities.delete(token)
+      }
+    }
+  }
+
+  async issueFigureConnection(
+    sessionId: string,
+    projectId: string
+  ): Promise<NotebookRpcConnection> {
+    const connection = await this.ensureStarted()
+    this.revokeFigureSessionCapabilities(sessionId)
+
+    const token = randomUUID()
+    this.figureRpcTokens.set(sessionId, token)
+    this.sessionRpcCapabilities.set(token, {
+      sessionId,
+      projectId,
+      allowedMethods: FIGURE_RPC_METHODS
+    })
+    return {
+      endpoint: connection.endpoint,
+      socketPath: connection.socketPath,
+      token,
+      release: () => {
+        if (this.figureRpcTokens.get(sessionId) === token) {
+          this.figureRpcTokens.delete(sessionId)
         }
         this.sessionRpcCapabilities.delete(token)
       }
@@ -1269,6 +1313,14 @@ class NotebookLocalRpcServer {
         )
       }
       return this.annotations.remove(params.sessionId, params.projectId, params.annotationId)
+    }
+
+    if (method === 'figureReview') {
+      if (!this.figure) throw new Error('Figure handler is not configured.')
+      if (typeof params.sessionId !== 'string' || typeof params.projectId !== 'string' || typeof params.request !== 'object' || params.request === null) {
+        throw new Error('Figure review RPC params must include sessionId, projectId, and request.')
+      }
+      return this.figure.review(params.sessionId, params.projectId, params.request)
     }
 
     if (method === 'pdfOpen') {
