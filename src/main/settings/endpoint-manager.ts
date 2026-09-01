@@ -57,7 +57,7 @@ export class EndpointManager {
     const bound = async (port: number): Promise<boolean> => {
       if (owned.has(port)) return true
       try {
-        return await this.deps.isPortBound?.(port)
+        return (await this.deps.isPortBound?.(port)) ?? true
       } catch {
         return true // be conservative: skip if we cannot tell
       }
