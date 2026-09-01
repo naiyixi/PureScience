@@ -9,6 +9,11 @@ import {
   createSkillImportMcpServer
 } from './mcp-server'
 import { SKILL_CREATE_TOOL_NAME } from '../../shared/skill-create'
+import {
+  SKILL_EVAL_TOOL_NAME,
+  SKILL_LIST_TOOL_NAME,
+  SKILL_READ_TOOL_NAME
+} from '../../shared/skill-eval'
 
 describe('Skill import MCP server', () => {
   it('exposes one high-level request tool without exposing filesystem writes', async () => {
@@ -24,7 +29,18 @@ describe('Skill import MCP server', () => {
     const server = createSkillImportMcpServer({
       requestImport,
       requestGitHubImport,
-      createSkill: vi.fn(async () => ({ created: true, skillName: 'probe', path: '/skills/probe' }))
+      createSkill: vi.fn(async () => ({ created: true, skillName: 'probe', path: '/skills/probe' })),
+      evalDescription: vi.fn(async () => ({
+        score: 8,
+        checks: [{ id: 'length', passed: true, message: 'ok' }],
+        suggestions: []
+      })),
+      listSkills: vi.fn(async () => ({ skills: [] })),
+      readSkill: vi.fn(async () => ({
+        name: 'probe',
+        description: 'Probe skill.',
+        instructions: '# Probe\n\nBody.'
+      }))
     })
     const client = new Client({ name: 'skill-import-test', version: '1.0.0' })
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
@@ -50,6 +66,23 @@ describe('Skill import MCP server', () => {
             name: expect.any(Object),
             description: expect.any(Object),
             instructions: expect.any(Object)
+          })
+        })
+      }),
+      expect.objectContaining({
+        name: SKILL_EVAL_TOOL_NAME,
+        inputSchema: expect.objectContaining({
+          properties: expect.objectContaining({
+            description: expect.any(Object)
+          })
+        })
+      }),
+      expect.objectContaining({ name: SKILL_LIST_TOOL_NAME }),
+      expect.objectContaining({
+        name: SKILL_READ_TOOL_NAME,
+        inputSchema: expect.objectContaining({
+          properties: expect.objectContaining({
+            name: expect.any(Object)
           })
         })
       })

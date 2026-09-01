@@ -266,6 +266,11 @@ session_concurrency 表（max_concurrent）
 - 交付：figure_review MCP 工具（五条规则引擎，结构化面板输入 → 违规清单）+ figure-style 内置技能（完整规则文档 + 数据形态选图表）；figure-composer fan-out 与 paper-narrative 故事线审查分版推进
 - 版本：v1.35.0
 
+### 里程碑 N6「创」— 技能自举 skill bootstrap（2026-08-31 二轮深挖新增）
+- 目标：技能创建/评估/迭代循环——描述 trigger 优化器 + 技能库检视
+- 交付：skill_eval（描述可触发质量 0-10 分评估器：首句自包含/动作词/具体主题/关键词/长度 + 改写建议）+ skill_list/skill_read（技能库检视，防重复造轮子）+ 与既有 create_skill 组成自举循环；纯规则无外部模型
+- 版本：v1.36.0
+
 ### 持续项（贯穿全程）
 - **实测驱动**：每个机制上线前先建 benchmark（复刻对方 bench-reviewer 方法），用数据说话
 - **i18n**：所有新 UI 同步 zh/en
