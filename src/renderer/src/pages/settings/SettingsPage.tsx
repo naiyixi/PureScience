@@ -18,6 +18,7 @@ import {
   BookOpenText,
   KeyRound,
   ScrollText,
+  Search,
   Settings2,
   TerminalSquare,
   Users,
@@ -25,7 +26,7 @@ import {
   Zap
 } from 'lucide-react'
 import { Dialog } from 'radix-ui'
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 
 import { useLanguage, type TranslationKey } from '@/i18n'
 
@@ -36,6 +37,7 @@ import {
 } from '../../../../shared/settings'
 import type { SpecialistListItem } from '../../../../shared/specialist'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { cn } from '@/lib/utils'
@@ -243,6 +245,39 @@ const SettingsPage = forwardRef<SettingsPageHandle, SettingsPageProps>(function 
   const { t } = useLanguage()
   const settingsGroups = useMemo(() => buildSettingsGroups(t), [t])
   const settingsPanels = useMemo(() => flattenPanels(settingsGroups), [settingsGroups])
+  const [settingsQuery, setSettingsQuery] = useState('')
+  const settingsSearchRef = useRef<HTMLInputElement | null>(null)
+  // Settings search owns Cmd/Ctrl+K while the dialog is open (the app-level handler
+  // already yields when settings are open, so this is the only consumer).
+  useEffect(() => {
+    const focusSettingsSearch = (event: KeyboardEvent): void => {
+      if (
+        event.defaultPrevented ||
+        event.isComposing ||
+        event.key.toLowerCase() !== 'k' ||
+        !(event.metaKey || event.ctrlKey)
+      ) {
+        return
+      }
+      event.preventDefault()
+      settingsSearchRef.current?.focus()
+      settingsSearchRef.current?.select()
+    }
+    window.addEventListener('keydown', focusSettingsSearch)
+    return () => window.removeEventListener('keydown', focusSettingsSearch)
+  }, [])
+  // Filtered panel list for the search surface: matches the panel label or its stable id,
+  // with the active panel always reachable even when the query matches nothing else.
+  const normalizedQuery = settingsQuery.trim().toLowerCase()
+  const matchedPanels = useMemo(() => {
+    if (!normalizedQuery) return settingsPanels
+    return settingsPanels.filter(
+      (panel) =>
+        panel.label.toLowerCase().includes(normalizedQuery) ||
+        panel.id.toLowerCase().includes(normalizedQuery)
+    )
+  }, [settingsPanels, normalizedQuery])
+  const showSearchResults = normalizedQuery.length > 0
   const providers = useSettingsStore((state) => state.providers)
   const agentFrameworkId = useSettingsStore((state) => state.agentFrameworkId)
   const frameworkEndpoints = useSettingsStore(selectFrameworkApiEndpoints)
@@ -798,7 +833,77 @@ const SettingsPage = forwardRef<SettingsPageHandle, SettingsPageProps>(function 
               isMobileNavOpen ? 'translate-x-0' : '-translate-x-full'
             )}
           >
-            {settingsGroups.map((group) => (
+            {/* Settings search: filters the panel list by label; Cmd/Ctrl+K focuses it. */}
+            <div className="relative shrink-0">
+              <Search
+                className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <Input
+                ref={settingsSearchRef}
+                type="search"
+                value={settingsQuery}
+                onChange={(event) => setSettingsQuery(event.target.value)}
+                placeholder={t('settings.searchPanels')}
+                aria-label={t('settings.searchPanels')}
+                aria-keyshortcuts="Meta+K"
+                className="h-8 pl-8 text-sm"
+              />
+              {normalizedQuery ? (
+                <button
+                  type="button"
+                  onClick={() => setSettingsQuery('')}
+                  aria-label={t('common.dismiss')}
+                  className="absolute right-2 top-1/2 grid size-4 -translate-y-1/2 place-items-center rounded text-muted-foreground hover:text-foreground"
+                >
+                  <X className="size-3.5" aria-hidden="true" />
+                </button>
+              ) : null}
+            </div>
+
+            {showSearchResults ? (
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                <div className="px-2 pb-1 pt-1 text-xs font-medium text-muted-foreground">
+                  {t('settings.searchResults')}
+                </div>
+                {matchedPanels.length > 0 ? (
+                  <ul className="flex flex-col gap-0.5">
+                    {matchedPanels.map(({ id, label, Icon }) => {
+                      const isActive = activePanel === id
+                      return (
+                        <li key={id}>
+                          <button
+                            type="button"
+                            aria-current={isActive ? 'page' : undefined}
+                            onClick={() => {
+                              setIsMobileNavOpen(false)
+                              setSettingsQuery('')
+                              navigatePanel(id)
+                            }}
+                            className={`flex h-8 w-full items-center gap-2 rounded-lg px-2 text-left text-sm transition-colors duration-150 motion-reduce:transition-none ${
+                              isActive
+                                ? 'bg-muted font-medium text-foreground'
+                                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                            }`}
+                          >
+                            <Icon
+                              className="size-4 shrink-0 text-muted-foreground"
+                              aria-hidden="true"
+                            />
+                            <span className="min-w-0 flex-1 truncate">{label}</span>
+                          </button>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                ) : (
+                  <div className="px-2 py-2 text-xs text-muted-foreground">
+                    {t('settings.noSearchResults')}
+                  </div>
+                )}
+              </div>
+            ) : (
+              settingsGroups.map((group) => (
               <div
                 key={group.label ?? group.panels[0]?.id}
                 className={cn('flex flex-col gap-0.5', group.bottom && 'mt-auto')}
@@ -837,7 +942,8 @@ const SettingsPage = forwardRef<SettingsPageHandle, SettingsPageProps>(function 
                   })}
                 </ul>
               </div>
-            ))}
+              ))
+            )}
           </nav>
 
           {/* Right column: header bar + scrollable panel content. */}

@@ -2743,4 +2743,95 @@ describe('SettingsPage Codex framework', () => {
       'The Codex adapter failed to spawn.'
     )
   })
+
+  it('filters the settings panel list as the search query changes', async () => {
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+
+    // The search input lives at the top of the left navigation.
+    const search = document.body.querySelector<HTMLInputElement>('input[type="search"]')
+    expect(search).not.toBeNull()
+    // All panel labels render initially (no query).
+    expect(document.body.textContent).toContain('Skills')
+    expect(document.body.textContent).toContain('Network')
+
+    act(() => {
+      // React 19: fire a native input event so the controlled input updates.
+      const setter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        'value'
+      )?.set
+      setter?.call(search, 'network')
+      search?.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+
+    expect(document.body.textContent).toContain('Network')
+    expect(document.body.textContent).toContain('Search results')
+    // Non-matching panels disappear from the filtered list.
+    expect(document.body.textContent).not.toContain('Skills')
+  })
+
+  it('shows an empty state when the search query matches no panel', async () => {
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+    const search = document.body.querySelector<HTMLInputElement>('input[type="search"]')
+    act(() => {
+      const setter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        'value'
+      )?.set
+      setter?.call(search, 'zzz-no-such-panel')
+      search?.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+
+    expect(document.body.textContent).toContain('No matching settings panel.')
+    // The empty-state message replaces the panel list (no panel labels remain).
+    expect(document.body.textContent).not.toContain('Skills')
+  })
+
+  it('navigates to the matched panel when a search result is clicked', async () => {
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+    const search = document.body.querySelector<HTMLInputElement>('input[type="search"]')
+    act(() => {
+      const setter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        'value'
+      )?.set
+      setter?.call(search, 'network')
+      search?.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+
+    const result = Array.from(document.body.querySelectorAll<HTMLButtonElement>('button')).find(
+      (button) => button.textContent?.trim() === 'Network'
+    )
+    await act(async () => result?.click())
+
+    // Navigating clears the query and opens the panel (its heading renders).
+    expect((search as HTMLInputElement | null)?.value ?? '').toBe('')
+    expect(
+      Array.from(document.body.querySelectorAll('h2')).some((heading) =>
+        heading.textContent?.includes('Network')
+      )
+    ).toBe(true)
+  })
+
+  it('focuses the settings search on Cmd+K', async () => {
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+    const search = document.body.querySelector<HTMLInputElement>('input[type="search"]')
+    // Blur first so the focus assertion is meaningful.
+    act(() => (search as HTMLInputElement).blur())
+
+    await act(async () => {
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'k', metaKey: true, cancelable: true })
+      )
+    })
+    expect(document.activeElement).toBe(search)
+  })
 })

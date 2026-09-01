@@ -29,6 +29,9 @@ const renderSidebar = (sessions: ChatSession[], activeSessionId?: string): HTMLE
     root.render(
       <WorkspaceSidebar
         projectName="Test project"
+        projects={[]}
+        activeProjectId="project-a"
+        onSwitchProject={() => undefined}
         sessions={sessions}
         activeSessionId={activeSessionId}
         canCreateConversation

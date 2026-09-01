@@ -478,6 +478,8 @@ const WorkspacePage = ({
     (state) => state.setArtifactMentionAvailability
   )
   const goHome = useNavigationStore((state) => state.goHome)
+  const openProject = useNavigationStore((state) => state.openProject)
+  const projects = useProjectStore((state) => state.projects)
   const openSettings = useSettingsStore((state) => state.openSettings)
   const activeProviderId = useSettingsStore((state) => state.activeProviderId)
   const defaultPermissionProfile = useSettingsStore((state) => state.defaultPermissionProfile)
@@ -2566,6 +2568,12 @@ const WorkspacePage = ({
         {isMobile ? (
           <WorkspaceSidebar
             projectName={activeProject?.name ?? 'Project'}
+            projects={projects}
+            activeProjectId={scopedProjectId}
+            onSwitchProject={(projectId) => {
+              setIsMobileSidebarOpen(false)
+              openProject(projectId, 'user')
+            }}
             sessions={sessions}
             activeSessionId={selectedSessionId}
             canCreateConversation={isSessionPersistenceReady}
@@ -2653,6 +2661,9 @@ const WorkspacePage = ({
               >
                 <WorkspaceSidebar
                   projectName={activeProject?.name ?? 'Project'}
+                  projects={projects}
+                  activeProjectId={scopedProjectId}
+                  onSwitchProject={(projectId) => openProject(projectId, 'user')}
                   sessions={sessions}
                   activeSessionId={selectedSessionId}
                   canCreateConversation={isSessionPersistenceReady}
