@@ -41,6 +41,8 @@ import type { EndpointRegisterRequest } from '../shared/endpoint'
 import type { EndpointCommandOwner } from './settings/endpoint-ipc'
 import type { FileAnnotation, AnnotationSetRequest } from '../shared/annotation'
 import type { AnnotationCommandOwner } from './settings/annotation-ipc'
+import type { PdfOpenResult, PdfPagesResult, PdfOutlineResult, PdfScanResult } from '../shared/pdf'
+import type { PdfCommandOwner } from './settings/pdf-ipc'
 import {
   defineApplicationCommand,
   defineApplicationCommandGroup,
@@ -354,6 +356,29 @@ const annotationCommands = Object.freeze({
   >('annotation:remove')
 })
 
+const pdfCommands = Object.freeze({
+  open: defineApplicationCommand<
+    'pdf:open',
+    readonly [request: { projectId: string; path: string }],
+    PdfOpenResult
+  >('pdf:open'),
+  pages: defineApplicationCommand<
+    'pdf:pages',
+    readonly [request: { projectId: string; docId: string; start: number; end?: number }],
+    PdfPagesResult
+  >('pdf:pages'),
+  outline: defineApplicationCommand<
+    'pdf:outline',
+    readonly [request: { projectId: string; docId: string }],
+    PdfOutlineResult
+  >('pdf:outline'),
+  scan: defineApplicationCommand<
+    'pdf:scan',
+    readonly [request: { projectId: string; docId: string; query: string }],
+    PdfScanResult
+  >('pdf:scan')
+})
+
 const hostApplicationCommands = Object.freeze({
   cli: cliCommands,
   folderGrants: folderGrantsCommands,
@@ -366,6 +391,7 @@ const hostApplicationCommands = Object.freeze({
   routine: routineCommands,
   endpoint: endpointCommands,
   annotation: annotationCommands,
+  pdf: pdfCommands,
   storage: storageCommands,
   update: updateCommands
 })
@@ -382,6 +408,7 @@ const hostApplicationCommandGroups = Object.freeze([
   defineApplicationCommandGroup('routine', Object.values(routineCommands)),
   defineApplicationCommandGroup('endpoint', Object.values(endpointCommands)),
   defineApplicationCommandGroup('annotation', Object.values(annotationCommands)),
+  defineApplicationCommandGroup('pdf', Object.values(pdfCommands)),
   defineApplicationCommandGroup('storage', Object.values(storageCommands)),
   defineApplicationCommandGroup('update', Object.values(updateCommands))
 ] as const)
@@ -419,6 +446,7 @@ type HostApplicationCommandDependencies = Readonly<{
   }>
   endpoint: EndpointCommandOwner
   annotation: AnnotationCommandOwner
+  pdf: PdfCommandOwner
   storage: Readonly<{
     getInfo: () => Promise<StorageInfo>
     revealAppStorage: () => Promise<RevealAppStorageResult>
@@ -614,6 +642,24 @@ const registerHostApplicationCommands = (
         )
     })
     scope.registerGroup(hostApplicationCommandGroups[11], {
+      'pdf:open': ({ args, callerContext }) =>
+        localCommand(callerContext, 'pdf:open', () =>
+          dependencies.pdf.open(args[0].projectId, args[0].path)
+        ),
+      'pdf:pages': ({ args, callerContext }) =>
+        localCommand(callerContext, 'pdf:pages', () =>
+          dependencies.pdf.pages(args[0].projectId, args[0].docId, args[0].start, args[0].end)
+        ),
+      'pdf:outline': ({ args, callerContext }) =>
+        localCommand(callerContext, 'pdf:outline', () =>
+          dependencies.pdf.outline(args[0].projectId, args[0].docId)
+        ),
+      'pdf:scan': ({ args, callerContext }) =>
+        localCommand(callerContext, 'pdf:scan', () =>
+          dependencies.pdf.scan(args[0].projectId, args[0].docId, args[0].query)
+        )
+    })
+    scope.registerGroup(hostApplicationCommandGroups[12], {
       'storage:cancel-migrate': ({ callerContext }) =>
         localCommand(callerContext, 'storage:cancel-migrate', () =>
           dependencies.storage.cancelMigrate()
@@ -652,7 +698,7 @@ const registerHostApplicationCommands = (
           dependencies.storage.validateDataRoot(args[0])
         )
     })
-    scope.registerGroup(hostApplicationCommandGroups[12], {
+    scope.registerGroup(hostApplicationCommandGroups[13], {
       'update:apply': ({ callerContext }) =>
         localCommand(callerContext, 'update:apply', () => dependencies.update.apply()),
       'update:cancel': ({ callerContext }) =>

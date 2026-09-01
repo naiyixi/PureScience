@@ -143,6 +143,8 @@ import {
   registerAnnotationIpcHandlers
 } from './settings/annotation-ipc'
 import { AnnotationRepository } from './settings/annotation-repository'
+import { createPdfCommandOwner, registerPdfIpcHandlers } from './settings/pdf-ipc'
+import { PdfService } from './settings/pdf-service'
 import {
   createDefaultReviewRepository,
   createDefaultSessionRepository,
@@ -1152,6 +1154,10 @@ const createApplicationModules = async (
   const annotationRepository = new AnnotationRepository({
     storageRoot: resolveDataRoot()
   })
+  const pdfService = new PdfService({
+    storageRoot: resolveDataRoot(),
+    resolvePath: async (path) => (path.startsWith('/') ? path : join(resolveDataRoot(), path))
+  })
   const notebookRpcServer = await modules.add(
     new NotebookLocalRpcServer(notebookLocalRpc, {
       onSessionReleased: (sessionId) => completionGateCoordinator.releaseSession(sessionId),
@@ -1189,6 +1195,13 @@ const createApplicationModules = async (
         list: (_sessionId, projectId, target) => annotationRepository.list(projectId, target ?? undefined),
         remove: (_sessionId, projectId, annotationId) =>
           annotationRepository.remove(projectId, annotationId)
+      },
+      pdf: {
+        open: (_sessionId, projectId, path) => pdfService.open(path, projectId),
+        pages: (_sessionId, _projectId, docId, start, end) =>
+          pdfService.pages(docId, start, end),
+        outline: (_sessionId, _projectId, docId) => pdfService.outline(docId),
+        scan: (_sessionId, _projectId, docId, query) => pdfService.scan(docId, query)
       },
       planService: {
         call: (input) => {
@@ -2042,6 +2055,9 @@ const createApplicationModules = async (
   declareElectronAdapter('annotation', () => {
     registerAnnotationIpcHandlers(createAnnotationCommandOwner(annotationRepository))
   })
+  declareElectronAdapter('pdf', () => {
+    registerPdfIpcHandlers(createPdfCommandOwner(pdfService))
+  })
 
   const electronSenderFor = (
     invocation: ApplicationInvocation<readonly unknown[]>
@@ -2135,6 +2151,7 @@ const createApplicationModules = async (
       routine: createRoutineCommandOwner(routineRepository),
       endpoint: createEndpointCommandOwner(endpointRepository, endpointManager),
       annotation: createAnnotationCommandOwner(annotationRepository),
+      pdf: createPdfCommandOwner(pdfService),
       storage: storageCommandOwner,
       update: updateCommandOwner
     }

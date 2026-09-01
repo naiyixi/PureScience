@@ -807,6 +807,16 @@ const api: PureScienceAPI = {
     remove: (request: { projectId: string; annotationId: string }) =>
       electronRendererContracts.invoke('annotation.remove', request)
   },
+  pdf: {
+    open: (request: { projectId: string; path: string }) =>
+      electronRendererContracts.invoke('pdf.open', request),
+    pages: (request: { projectId: string; docId: string; start: number; end?: number }) =>
+      electronRendererContracts.invoke('pdf.pages', request),
+    outline: (request: { projectId: string; docId: string }) =>
+      electronRendererContracts.invoke('pdf.outline', request),
+    scan: (request: { projectId: string; docId: string; query: string }) =>
+      electronRendererContracts.invoke('pdf.scan', request)
+  },
   window: {
     close: () => electronRendererContracts.invoke('window.close'),
     // The shared helper announces READY on subscribe (so main forwards the chord here) and UNREADY on

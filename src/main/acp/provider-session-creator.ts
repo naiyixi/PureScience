@@ -91,7 +91,8 @@ export class AcpProviderSessionCreator {
           contextSummary: capability.descriptor.capabilities.includes('context-summary'),
           routine: capability.descriptor.capabilities.includes('routine'),
           endpoint: capability.descriptor.capabilities.includes('endpoint'),
-          annotation: capability.descriptor.capabilities.includes('annotation')
+          annotation: capability.descriptor.capabilities.includes('annotation'),
+          pdf: capability.descriptor.capabilities.includes('pdf')
         },
         backendSystemPromptAppends: startupBackend.prompt.systemPromptAppends,
         extraSystemPromptAppends: specialist.append ? [specialist.append] : [],

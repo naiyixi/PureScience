@@ -30,6 +30,7 @@ describe('AcpContextUsagePolicy', () => {
         routine: false,
       endpoint: false,
       annotation: false,
+      pdf: false
       })
     })
 
@@ -67,6 +68,7 @@ describe('AcpContextUsagePolicy', () => {
         routine: false,
       endpoint: false,
       annotation: false,
+      pdf: false
       })
     })
 

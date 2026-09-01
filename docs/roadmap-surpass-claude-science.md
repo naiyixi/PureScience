@@ -256,6 +256,11 @@ session_concurrency 表（max_concurrent）
 - 交付：annotation_* MCP（set/list/remove）+ 项目级 JSON 持久化（targetKind/targetKey/label/contentChecksum 对齐统一注解表）+ 路径安全校验 + 文件面板行内注解弹窗（zh/en 双语）+ 模型 runbook 扩充（managed-bio-endpoints 通用托管模式 + fair-esm2/esmfold2 示例）
 - 版本：v1.33.0
 
+### 里程碑 N4「览」— PDF 分层阅读 pdf-explore（2026-08-31 二轮深挖新增）
+- 目标：50 页 PDF 不占上下文——文本持久化 + 目录 + 相关度扫描 + 按需取页
+- 交付：pdf_* MCP（open/pages/outline/scan）+ pdfjs 解析（逐页文本 + 书签大纲）+ 词频相关度扫描（无外部模型）+ 页/文档上限保护 + 扫描件空页识别
+- 版本：v1.34.0
+
 ### 持续项（贯穿全程）
 - **实测驱动**：每个机制上线前先建 benchmark（复刻对方 bench-reviewer 方法），用数据说话
 - **i18n**：所有新 UI 同步 zh/en

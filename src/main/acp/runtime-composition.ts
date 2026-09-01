@@ -326,6 +326,13 @@ const createAcpRuntime = ({
           registerSessionAlias: (aliasSessionId, sessionId) =>
             notebookRpcServer.registerSessionAlias(aliasSessionId, sessionId)
         },
+        pdf: {
+          mcpEntryPath,
+          getRpcConnection: ({ sessionId, projectId }) =>
+            notebookRpcServer.issuePdfConnection(sessionId, projectId),
+          registerSessionAlias: (aliasSessionId, sessionId) =>
+            notebookRpcServer.registerSessionAlias(aliasSessionId, sessionId)
+        },
         elicitation: {
           requestElicitation: (request, sessionId) =>
             elicitationBroker.requestElicitation(request, sessionId),
