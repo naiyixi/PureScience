@@ -43,6 +43,7 @@ beforeEach(() => {
   document.body.appendChild(container)
   root = createRoot(container)
   usePermissionGrantsStore.setState({
+    version: 0,
     grants: [],
     counts: { all: 0, global: 0, project: 0, session: 0 },
     incompleteStores: [],
@@ -334,5 +335,61 @@ describe('PermissionsPanel', () => {
     expect(
       document.body.querySelector<HTMLButtonElement>('[aria-label="Revoke Shell"]')?.disabled
     ).toBeFalsy()
+  })
+
+  it('calls restore defaults with the baseline capabilities and refreshes from the result', async () => {
+    const restoreDefaults = vi.fn().mockResolvedValue({
+      version: 2,
+      incompleteStores: [],
+      grants: [
+        {
+          id: 'grant-default',
+          revision: 1,
+          family: 'skills',
+          capabilityKind: 'skill_operation',
+          capabilityLabel: 'Skill invocation',
+          scopeKind: 'global',
+          scopeLabel: 'Global'
+        }
+      ],
+      counts: { all: 1, global: 1, project: 0, session: 0 },
+      conflicts: []
+    })
+    setPermissionApi({
+      list: vi.fn().mockResolvedValue({
+        version: 1,
+        incompleteStores: [],
+        grants: [],
+        counts: { all: 0, global: 0, project: 0, session: 0 }
+      }),
+      restoreDefaults
+    })
+    await act(async () => root.render(<PermissionsPanel />))
+
+    const button = Array.from(document.body.querySelectorAll<HTMLButtonElement>('button')).find(
+      (candidate) => candidate.textContent?.trim() === 'Restore defaults'
+    )
+    expect(button).toBeDefined()
+    await act(async () => button?.click())
+
+    expect(restoreDefaults).toHaveBeenCalledWith({
+      capabilities: [{ kind: 'skill_operation', key: 'skill:invoke' }]
+    })
+    expect(document.body.textContent).toContain('Skill invocation')
+  })
+
+  it('disables restore defaults while stores are incomplete', async () => {
+    setPermissionApi({
+      list: vi.fn().mockResolvedValue({
+        ...snapshot,
+        incompleteStores: ['sessions']
+      })
+    })
+    await act(async () => root.render(<PermissionsPanel />))
+
+    const button = Array.from(document.body.querySelectorAll<HTMLButtonElement>('button')).find(
+      (candidate) => candidate.textContent?.trim() === 'Restore defaults'
+    )
+    expect(button?.disabled).toBe(true)
   })
 })

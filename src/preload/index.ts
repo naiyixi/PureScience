@@ -151,6 +151,8 @@ const api: PureScienceAPI = {
     revoke: (request) => electronRendererContracts.invoke('permissions.revoke', request),
     extendUndo: (request) => electronRendererContracts.invoke('permissions.extendUndo', request),
     restore: (request) => electronRendererContracts.invoke('permissions.restore', request),
+    restoreDefaults: (request) =>
+      electronRendererContracts.invoke('permissions.restoreDefaults', request),
     onChanged: (listener) => electronRendererContracts.subscribe('permissions.onChanged', listener)
   },
   folderGrants: {

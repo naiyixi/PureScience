@@ -99,7 +99,8 @@ import type {
   PermissionGrantSnapshot,
   PermissionGrantUndoExtendRequest,
   PermissionGrantUndoReceipt,
-  PermissionGrantsChangedEvent
+  PermissionGrantsChangedEvent,
+  RestoreDefaultsPermissionGrants
 } from '../shared/permission-grants'
 import type {
   AppendNotebookCodeCellRequest,
@@ -407,6 +408,9 @@ export interface PureScienceAPI {
       request: PermissionGrantUndoExtendRequest
     ): Promise<PermissionGrantUndoReceipt | undefined>
     restore(request: PermissionGrantRestoreRequest): Promise<PermissionGrantMutationView>
+    restoreDefaults(
+      request: RestoreDefaultsPermissionGrants
+    ): Promise<PermissionGrantMutationView>
     onChanged(listener: AcpListener<PermissionGrantsChangedEvent>): RemoveListener
   }
   folderGrants: {

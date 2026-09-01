@@ -26,7 +26,8 @@ const createOwner = (): PermissionGrantProjection => ({
   list: vi.fn(async () => snapshot),
   revoke: vi.fn(async () => ({ ...snapshot, receipt: undefined, conflicts: [] })),
   extendUndo: vi.fn(async () => ({ undoToken: 'undo-1', expiresAt: 10, revokedCount: 1 })),
-  restore: vi.fn(async () => ({ ...snapshot, conflicts: [] }))
+  restore: vi.fn(async () => ({ ...snapshot, conflicts: [] })),
+  restoreDefaults: vi.fn(async () => ({ ...snapshot, conflicts: [] }))
 })
 
 const invocation = <Args extends readonly unknown[]>(args: Args): ApplicationInvocation<Args> => {
@@ -48,7 +49,7 @@ describe('Permission Grant application commands', () => {
       ?.contracts.filter((contract) => contract.kind === 'method')
       .map((contract) => contract.channel)
 
-    expect(publicPermissionChannels).toHaveLength(4)
+    expect(publicPermissionChannels).toHaveLength(5)
     expect(permissionGrantApplicationCommandGroup.commands.map(({ name }) => name)).toEqual(
       publicPermissionChannels
     )

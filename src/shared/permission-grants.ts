@@ -135,6 +135,21 @@ export type PermissionGrantRestoreRequest = {
   undoToken: string
 }
 
+// Baseline safe grants restored by Settings → Permissions → Restore defaults.
+// These mirror the fresh-install seeding: skill invocation plus reading literature
+// linked to the current message. Restore defaults re-adds only the missing baseline
+// grants (global scope) and never touches any other remembered permission.
+export const DEFAULT_SAFE_GRANTS: ReadonlyArray<PermissionCapability> = [
+  { kind: 'skill_operation', key: 'skill:invoke' }
+]
+
+export type RestoreDefaultsPermissionGrants = {
+  // Capabilities the baseline expects; the app resolves each against its live
+  // identity catalog, so unknown baseline entries degrade to a conflict instead
+  // of silently granting nothing.
+  capabilities: ReadonlyArray<PermissionCapability>
+}
+
 export type PermissionGrantUndoExtendRequest = {
   undoToken: string
 }

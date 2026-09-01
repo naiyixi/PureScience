@@ -5,6 +5,7 @@ import type {
   PermissionGrantSnapshot,
   PermissionGrantView
 } from '../../../shared/permission-grants'
+import { DEFAULT_SAFE_GRANTS } from '../../../shared/permission-grants'
 
 const EMPTY_SNAPSHOT: PermissionGrantSnapshot = {
   version: 0,
@@ -31,6 +32,7 @@ type PermissionGrantsStore = PermissionGrantSnapshot & {
   revoke: (grants: PermissionGrantView[]) => Promise<void>
   extendUndo: (token: string) => Promise<number | undefined>
   restore: (token?: string) => Promise<void>
+  restoreDefaults: () => Promise<void>
   dismissUndo: (token?: string) => void
   listen: () => () => void
 }
@@ -361,6 +363,22 @@ const usePermissionGrantsStore = create<PermissionGrantsStore>((set, get) => ({
 
   dismissUndo: (token) =>
     set((state) => (token ? withoutUndoToken(state, token) : nextUndoState(state.undoQueue))),
+
+  restoreDefaults: async () => {
+    set({ status: 'loading', error: undefined })
+    try {
+      const result = await window.api.permissions.restoreDefaults({
+        capabilities: DEFAULT_SAFE_GRANTS
+      })
+      set((state) => ({
+        ...applyAuthoritativeSnapshot(state, mutationState(result)),
+        status: 'ready',
+        error: undefined
+      }))
+    } catch (error) {
+      set({ status: 'error', error: errorMessage(error) })
+    }
+  },
 
   listen: () => window.api.permissions?.onChanged?.(() => void get().load()) ?? (() => undefined)
 }))
