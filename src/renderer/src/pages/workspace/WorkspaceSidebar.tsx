@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Archive,
   BookOpen,
+  Check,
+  ChevronDown,
   ChevronLeft,
   Download,
   Files,
@@ -31,9 +33,13 @@ import { UpdateCapsule } from '@/components/UpdateCapsule'
 import { NotificationBell } from '@/components/NotificationBell'
 import { SessionHoverCard, type SessionHoverAnchor } from './SessionHoverCard'
 import type { ChatSession, SessionStatus } from '@/stores/session-store'
+import type { Project } from '../../../../shared/projects'
 
 type WorkspaceSidebarProps = {
   projectName: string
+  projects: Project[]
+  activeProjectId: string | undefined
+  onSwitchProject: (projectId: string) => void
   sessions: ChatSession[]
   activeSessionId: string | undefined
   canCreateConversation: boolean
@@ -97,6 +103,9 @@ const sessionMenuIconClassName = 'flex size-4 shrink-0 items-center justify-cent
 // Left navigation owns session selection, creation entry, and workspace settings.
 const WorkspaceSidebar = ({
   projectName,
+  projects,
+  activeProjectId,
+  onSwitchProject,
   sessions,
   activeSessionId,
   canCreateConversation,
@@ -238,7 +247,56 @@ const WorkspaceSidebar = ({
                 className="mt-1.5 truncate px-1.5 font-serif text-[16px] font-bold tracking-[-0.02em] text-text-000"
                 title={projectName}
               >
-                {projectName}
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    className="flex max-w-full cursor-pointer items-center gap-1 rounded-md px-1 py-0.5 transition-colors hover:bg-bg-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    aria-label={t('ws.switchProject')}
+                  >
+                    <span className="truncate">{projectName}</span>
+                    <ChevronDown className="size-3.5 shrink-0 text-text-200" aria-hidden="true" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="start"
+                    side="bottom"
+                    className="w-[280px] bg-card"
+                    sideOffset={4}
+                  >
+                    {projects
+                      .filter((project) => project.id !== activeProjectId)
+                      .slice(0, 5)
+                      .map((project) => (
+                        <DropdownMenuItem
+                          key={project.id}
+                          onSelect={() => onSwitchProject(project.id)}
+                          className="flex flex-col items-start gap-0.5 py-2"
+                        >
+                          <span className="w-full truncate text-sm font-medium text-foreground">
+                            {project.name}
+                          </span>
+                          {project.description ? (
+                            <span className="w-full truncate text-xs text-muted-foreground">
+                              {project.description}
+                            </span>
+                          ) : null}
+                        </DropdownMenuItem>
+                      ))}
+                    {projects.length - 1 > 5 ? (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onSelect={onGoHome} className="py-2">
+                          <span className="text-sm text-muted-foreground">
+                            {t('ws.moreProjects', { count: projects.length - 6 })}
+                          </span>
+                        </DropdownMenuItem>
+                      </>
+                    ) : null}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onSelect={onGoHome} className="py-2">
+                      <Check className="size-4 text-muted-foreground" aria-hidden="true" />
+                      <span className="text-sm">{t('ws.allProjects')}</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
             {mobileMode ? (

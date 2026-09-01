@@ -31,6 +31,9 @@ const renderSidebar = (sessions: ChatSession[]): HTMLDivElement => {
     createRoot(container).render(
       <WorkspaceSidebar
         projectName="Example project"
+        projects={[]}
+        activeProjectId="project-a"
+        onSwitchProject={vi.fn()}
         sessions={sessions}
         activeSessionId={sessions[0]?.id}
         canCreateConversation

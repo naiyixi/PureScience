@@ -67,6 +67,8 @@ export const en: Record<ZhKey, string> = {
   'common.searchConnectors': 'Search connectors…',
   'common.dismiss': 'Dismiss',
   'ws.allProjects': 'All projects',
+  'ws.switchProject': 'Switch project',
+  'ws.moreProjects': '{count} more projects…',
   'ws.sessionNotebook': 'Session notebook',
   'common.save': 'Save',
   'common.delete': 'Delete',
@@ -1672,6 +1674,9 @@ export const en: Record<ZhKey, string> = {
   'settings.diagnosticsDesc':
     "View this device's runtime log — it records what the app is doing so problems can be diagnosed.",
   'settings.archivedDesc': 'Restore archived work here, or permanently delete it after confirming.',
+  'settings.searchPanels': 'Search settings…',
+  'settings.searchResults': 'Search results',
+  'settings.noSearchResults': 'No matching settings panel.',
   'settings.noArchivedProjects': 'No archived projects.',
   'settings.noArchivedSessions': 'No individually archived sessions.',
   'settings.remoteWhoCanReach':

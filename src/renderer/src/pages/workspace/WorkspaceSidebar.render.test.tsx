@@ -70,6 +70,7 @@ const createMessage = (): ChatSession['messages'][number] => ({
   status: 'complete',
   eventIds: [],
   createdAt: 1,
+          isExample: false,
   updatedAt: 1
 })
 
@@ -79,6 +80,9 @@ const renderSidebar = async (sessions: ChatSession[]): Promise<string> => {
   return renderToStaticMarkup(
     <WorkspaceSidebar
       projectName="Example project"
+      projects={[]}
+      activeProjectId="project-a"
+      onSwitchProject={vi.fn()}
       sessions={sessions}
       activeSessionId={sessions[0]?.id}
       canCreateConversation
@@ -112,7 +116,14 @@ const renderSidebarDom = (
   document.body.appendChild(container)
 
   act(() => {
-    createRoot(container).render(<WorkspaceSidebar {...props} />)
+    createRoot(container).render(
+      <WorkspaceSidebar
+        {...props}
+        projects={props.projects ?? []}
+        activeProjectId={props.activeProjectId ?? 'project-a'}
+        onSwitchProject={props.onSwitchProject ?? vi.fn()}
+      />
+    )
   })
   return container
 }
@@ -498,5 +509,163 @@ describe('WorkspaceSidebar accessible render', () => {
     })
 
     expect(container.textContent).not.toContain('Download all artifacts')
+  })
+
+  it('lists other active projects with name and description in the switcher menu', () => {
+    const container = renderSidebarDom({
+      projectName: 'Current project',
+      projects: [
+        {
+          id: 'project-current',
+          name: 'Current project',
+          description: 'Active project description',
+          createdAt: 1,
+          isExample: false,
+          updatedAt: 3
+        },
+        {
+          id: 'project-b',
+          name: 'Genomics pipeline',
+          description: 'Variant calling on cohort data',
+          createdAt: 1,
+          isExample: false,
+          updatedAt: 2
+        },
+        {
+          id: 'project-c',
+          name: 'Protein folding',
+          description: '',
+          createdAt: 1,
+          isExample: false,
+          updatedAt: 1
+        }
+      ],
+      activeProjectId: 'project-current',
+      onSwitchProject: vi.fn(),
+      sessions: [],
+      activeSessionId: undefined,
+      canCreateConversation: true,
+      canMutateConversations: true,
+      canDeleteConversations: true,
+      onGoHome: vi.fn(),
+      onNewConversation: vi.fn(),
+      isFilesOpen: false,
+      onOpenFiles: vi.fn(),
+      onOpenSession: vi.fn(),
+      onRenameSession: vi.fn(),
+      canDownloadArtifacts: false,
+      onDownloadArtifacts: vi.fn(),
+      onViewNotebook: vi.fn(),
+      onTogglePin: vi.fn(),
+      onDeleteSession: vi.fn(),
+      onOpenSettings: vi.fn()
+    })
+
+    // The current project is excluded; other projects show name + description.
+    expect(container.textContent).toContain('Genomics pipeline')
+    expect(container.textContent).toContain('Variant calling on cohort data')
+    expect(container.textContent).toContain('Protein folding')
+    // The active project name is the trigger label, not a menu row.
+    expect(container.textContent).toContain('Current project')
+    // Description-less projects still render.
+    expect(container.textContent).toContain('All projects')
+  })
+
+  it('switches project when a menu row is selected', () => {
+    const onSwitchProject = vi.fn()
+    const container = renderSidebarDom({
+      projectName: 'Current project',
+      projects: [
+        {
+          id: 'project-current',
+          name: 'Current project',
+          description: '',
+          createdAt: 1,
+          isExample: false,
+          updatedAt: 2
+        },
+        {
+          id: 'project-b',
+          name: 'Genomics pipeline',
+          description: 'Variant calling',
+          createdAt: 1,
+          isExample: false,
+          updatedAt: 1
+        }
+      ],
+      activeProjectId: 'project-current',
+      onSwitchProject,
+      sessions: [],
+      activeSessionId: undefined,
+      canCreateConversation: true,
+      canMutateConversations: true,
+      canDeleteConversations: true,
+      onGoHome: vi.fn(),
+      onNewConversation: vi.fn(),
+      isFilesOpen: false,
+      onOpenFiles: vi.fn(),
+      onOpenSession: vi.fn(),
+      onRenameSession: vi.fn(),
+      canDownloadArtifacts: false,
+      onDownloadArtifacts: vi.fn(),
+      onViewNotebook: vi.fn(),
+      onTogglePin: vi.fn(),
+      onDeleteSession: vi.fn(),
+      onOpenSettings: vi.fn()
+    })
+
+    clickRow(container, 'Genomics pipeline')
+    expect(onSwitchProject).toHaveBeenCalledWith('project-b')
+  })
+
+  it('shows the overflow row when more than five other projects exist', () => {
+    const projects = [
+      {
+        id: 'project-current',
+        name: 'Current project',
+        description: '',
+        createdAt: 1,
+          isExample: false,
+        updatedAt: 10
+      },
+      ...Array.from({ length: 7 }, (_, index) => ({
+        id: `project-${index}`,
+        name: `Project ${index}`,
+        description: '',
+        createdAt: 1,
+          isExample: false,
+        updatedAt: 9 - index
+      }))
+    ]
+    const container = renderSidebarDom({
+      projectName: 'Current project',
+      projects,
+      activeProjectId: 'project-current',
+      onSwitchProject: vi.fn(),
+      sessions: [],
+      activeSessionId: undefined,
+      canCreateConversation: true,
+      canMutateConversations: true,
+      canDeleteConversations: true,
+      onGoHome: vi.fn(),
+      onNewConversation: vi.fn(),
+      isFilesOpen: false,
+      onOpenFiles: vi.fn(),
+      onOpenSession: vi.fn(),
+      onRenameSession: vi.fn(),
+      canDownloadArtifacts: false,
+      onDownloadArtifacts: vi.fn(),
+      onViewNotebook: vi.fn(),
+      onTogglePin: vi.fn(),
+      onDeleteSession: vi.fn(),
+      onOpenSettings: vi.fn()
+    })
+
+    // 7 other projects: 5 visible rows + 1 overflow row ("2 more projects…").
+    // The test environment's fallback t() does not interpolate, so the raw template
+    // with the {count} placeholder is what renders here.
+    expect(container.textContent).toContain('Project 0')
+    expect(container.textContent).toContain('Project 4')
+    expect(container.textContent).toContain('{count} more projects…')
   })
 })

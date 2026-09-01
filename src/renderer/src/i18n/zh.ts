@@ -66,6 +66,8 @@ export const zh = {
   'common.searchConnectors': '搜索连接器…',
   'common.dismiss': '关闭',
   'ws.allProjects': '全部项目',
+  'ws.switchProject': '切换项目',
+  'ws.moreProjects': '其余 {count} 个项目…',
   'ws.sessionNotebook': '会话笔记本',
   'common.save': '保存',
   'common.delete': '删除',
@@ -1582,6 +1584,9 @@ export const zh = {
     '仅在你使用其他应用时显示通知。你取消的任务和自动重试的失败保持静默。操作系统可能在首次显示通知时请求权限。',
   'settings.diagnosticsDesc': '查看此设备的运行时日志——记录应用当前正在做什么，便于诊断问题。',
   'settings.archivedDesc': '在这里恢复已归档的工作，或确认后永久删除。',
+  'settings.searchPanels': '搜索设置…',
+  'settings.searchResults': '搜索结果',
+  'settings.noSearchResults': '没有匹配的设置面板。',
   'settings.noArchivedProjects': '没有已归档的项目。',
   'settings.noArchivedSessions': '没有单独归档的会话。',
   'settings.remoteWhoCanReach':
