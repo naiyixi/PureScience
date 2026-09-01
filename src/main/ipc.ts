@@ -145,6 +145,9 @@ import {
 import { AnnotationRepository } from './settings/annotation-repository'
 import { createPdfCommandOwner, registerPdfIpcHandlers } from './settings/pdf-ipc'
 import { PdfService } from './settings/pdf-service'
+import { createFigureCommandOwner, registerFigureIpcHandlers } from './settings/figure-ipc'
+import { reviewFigure } from './settings/figure-review-service'
+import type { FigureReviewRequest } from '../shared/figure'
 import {
   createDefaultReviewRepository,
   createDefaultSessionRepository,
@@ -1203,6 +1206,12 @@ const createApplicationModules = async (
         outline: (_sessionId, _projectId, docId) => pdfService.outline(docId),
         scan: (_sessionId, _projectId, docId, query) => pdfService.scan(docId, query)
       },
+      figure: {
+        review: (_sessionId, _projectId, request) => {
+          const figureRequest = request as FigureReviewRequest
+          return Promise.resolve(reviewFigure(figureRequest.panels, figureRequest.figureNote))
+        }
+      },
       planService: {
         call: (input) => {
           const runtime = runtimeRef.current
@@ -2058,6 +2067,11 @@ const createApplicationModules = async (
   declareElectronAdapter('pdf', () => {
     registerPdfIpcHandlers(createPdfCommandOwner(pdfService))
   })
+  declareElectronAdapter('figure', () => {
+    registerFigureIpcHandlers(
+      createFigureCommandOwner((request) => reviewFigure(request.panels, request.figureNote))
+    )
+  })
 
   const electronSenderFor = (
     invocation: ApplicationInvocation<readonly unknown[]>
@@ -2152,6 +2166,9 @@ const createApplicationModules = async (
       endpoint: createEndpointCommandOwner(endpointRepository, endpointManager),
       annotation: createAnnotationCommandOwner(annotationRepository),
       pdf: createPdfCommandOwner(pdfService),
+      figure: createFigureCommandOwner((request) =>
+        reviewFigure(request.panels, request.figureNote)
+      ),
       storage: storageCommandOwner,
       update: updateCommandOwner
     }

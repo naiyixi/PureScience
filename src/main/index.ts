@@ -26,6 +26,7 @@ import {
   ENDPOINT_MCP_SERVER_ARG,
   ANNOTATION_MCP_SERVER_ARG,
   PDF_MCP_SERVER_ARG,
+  FIGURE_MCP_SERVER_ARG,
   SKILL_IMPORT_MCP_SERVER_ARG
 } from './mcp-server-args'
 import { withApplicationRuntimeShutdown } from './application-runtime'
@@ -54,6 +55,7 @@ const shouldRunRoutineMcpServer = process.argv.includes(ROUTINE_MCP_SERVER_ARG)
 const shouldRunEndpointMcpServer = process.argv.includes(ENDPOINT_MCP_SERVER_ARG)
 const shouldRunAnnotationMcpServer = process.argv.includes(ANNOTATION_MCP_SERVER_ARG)
 const shouldRunPdfMcpServer = process.argv.includes(PDF_MCP_SERVER_ARG)
+const shouldRunFigureMcpServer = process.argv.includes(FIGURE_MCP_SERVER_ARG)
 let startupDiagnostics: DiagnosticOperation | undefined
 let startupFlush = flushLogs
 
@@ -132,6 +134,13 @@ if (shouldRunArtifactMcpServer) {
 } else if (shouldRunPdfMcpServer) {
   void import('./settings/pdf-mcp-server')
     .then(({ runPdfMcpServer }) => runPdfMcpServer())
+    .catch((error: unknown) => {
+      console.error(error)
+      process.exitCode = 1
+    })
+} else if (shouldRunFigureMcpServer) {
+  void import('./settings/figure-mcp-server')
+    .then(({ runFigureMcpServer }) => runFigureMcpServer())
     .catch((error: unknown) => {
       console.error(error)
       process.exitCode = 1

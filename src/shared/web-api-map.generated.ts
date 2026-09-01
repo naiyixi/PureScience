@@ -63,6 +63,7 @@ export const WEB_INVOKE_CHANNELS = {
   'endpoint.remove': 'endpoint:remove',
   'endpoint.start': 'endpoint:start',
   'endpoint.stop': 'endpoint:stop',
+  'figure.review': 'figure:review',
   'folderGrants.grant': 'folder-grants:grant',
   'folderGrants.list': 'folder-grants:list',
   'folderGrants.revoke': 'folder-grants:revoke',

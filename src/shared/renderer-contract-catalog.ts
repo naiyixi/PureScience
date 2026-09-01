@@ -290,6 +290,9 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['open', 'pdf:open', LOCAL], ['pages', 'pdf:pages', LOCAL],
     ['outline', 'pdf:outline', LOCAL], ['scan', 'pdf:scan', LOCAL],
   ]),
+  group('figure', 'figure', [
+    ['review', 'figure:review', LOCAL],
+  ]),
   group('runtime', 'runtime', [
     ['describeUsage', 'runtime:describe-usage', WEB, RUNTIME_LANGUAGE_ENV, POSITIONAL],
     ['getEnablement', 'runtime:get-enablement', WEB, RUNTIME_LANGUAGE, POSITIONAL], ['listEnvironments', 'runtime:list-environments'],

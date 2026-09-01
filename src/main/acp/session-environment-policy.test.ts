@@ -59,7 +59,8 @@ const createPolicy = (
       routine: false,
       endpoint: false,
       annotation: false,
-      pdf: false
+      pdf: false,
+      figure: false
     })
   )
   const applicationSystemPromptAppends = vi.fn(() => Object.freeze(['Application guidance.']))

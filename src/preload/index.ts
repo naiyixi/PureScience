@@ -69,6 +69,7 @@ import type {
 import type { RoutineConfigureRequest } from '../shared/routine'
 import type { EndpointRegisterRequest } from '../shared/endpoint'
 import type { AnnotationSetRequest } from '../shared/annotation'
+import type { FigureReviewRequest } from '../shared/figure'
 import type { HandoffEventsRequest, HandoffRetryRequest } from '../shared/handoff-lifecycle'
 import { announceWindowFindReady, subscribeCloseActivePane } from '../shared/window-controls'
 
@@ -816,6 +817,10 @@ const api: PureScienceAPI = {
       electronRendererContracts.invoke('pdf.outline', request),
     scan: (request: { projectId: string; docId: string; query: string }) =>
       electronRendererContracts.invoke('pdf.scan', request)
+  },
+  figure: {
+    review: (request: { projectId: string; request: FigureReviewRequest }) =>
+      electronRendererContracts.invoke('figure.review', request)
   },
   window: {
     close: () => electronRendererContracts.invoke('window.close'),

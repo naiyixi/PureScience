@@ -5,6 +5,7 @@ import type { RoutineConfigureRequest } from '../shared/routine'
 import type { EndpointRegisterRequest, ManagedEndpoint } from '../shared/endpoint'
 import type { AnnotationSetRequest, FileAnnotation } from '../shared/annotation'
 import type { PdfOpenResult, PdfOutlineResult, PdfPagesResult, PdfScanResult } from '../shared/pdf'
+import type { FigureReviewRequest, FigureReviewResult } from '../shared/figure'
 import { RENDERER_CONTRACT_GROUPS } from '../shared/renderer-contract-catalog'
 import type { UpdateStatus } from '../shared/update'
 import {
@@ -38,6 +39,7 @@ const HOST_CAPABILITIES = [
   'endpoint',
   'annotation',
   'pdf',
+  'figure',
   'storage',
   'update'
 ] as const
@@ -250,6 +252,13 @@ const createDependencies = (): HostApplicationCommandDependencies => ({
       hits: [{ page: 2, score: 1, snippet: 'hit' }]
     }))
   },
+  figure: {
+    review: vi.fn(async (_projectId: string, request: FigureReviewRequest): Promise<FigureReviewResult> => ({
+      panels: request.panels.length,
+      violations: [],
+      clean: true
+    }))
+  },
   storage: {
     getInfo: vi.fn(async () => ({
       dataRoot: '/data',
@@ -324,7 +333,7 @@ describe('Host application commands', () => {
         .filter((channel): channel is string => channel !== null)
     }))
 
-    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(65)
+    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(66)
     const actualGroups = hostApplicationCommandGroups
       .map(({ name, commands }) => ({
         capability: name,
@@ -342,7 +351,7 @@ describe('Host application commands', () => {
       {} as HostApplicationCommandDependencies
     )
 
-    expect(router.dispatcher.commandNames()).toHaveLength(65)
+    expect(router.dispatcher.commandNames()).toHaveLength(66)
     installation.uninstall()
     expect(router.dispatcher.commandNames()).toEqual([])
   })
@@ -378,6 +387,10 @@ describe('Host application commands', () => {
     }
     const parent = { parent: '/target' }
     const pdfPath = '/data/paper.pdf'
+    const figureRequest = {
+      figureNote: 'Figure 3',
+      panels: [{ id: 'A', chartType: 'bar' as const, dataShape: { categorical: true } }]
+    }
     const root = { parent: '/target', markOnboarding: true }
 
     await router.dispatcher.invoke(hostApplicationCommands.cli.getStatus, invocation([]))
@@ -499,6 +512,10 @@ describe('Host application commands', () => {
       hostApplicationCommands.pdf.scan,
       invocation([{ projectId: 'project-1', docId: 'doc-1', query: 'attention' }])
     )
+    await router.dispatcher.invoke(
+      hostApplicationCommands.figure.review,
+      invocation([{ projectId: 'project-1', request: figureRequest }])
+    )
     await router.dispatcher.invoke(hostApplicationCommands.storage.cancelMigrate, invocation([]))
     await router.dispatcher.invoke(
       hostApplicationCommands.storage.commitAndRelaunch,
@@ -585,6 +602,7 @@ describe('Host application commands', () => {
     expect(dependencies.pdf.pages).toHaveBeenCalledWith('project-1', 'doc-1', 1, 2)
     expect(dependencies.pdf.outline).toHaveBeenCalledWith('project-1', 'doc-1')
     expect(dependencies.pdf.scan).toHaveBeenCalledWith('project-1', 'doc-1', 'attention')
+    expect(dependencies.figure.review).toHaveBeenCalledWith('project-1', figureRequest)
     expect(dependencies.storage.commitAndRelaunch).toHaveBeenCalledWith(parent)
     expect(dependencies.storage.setDataRootAndRelaunch).toHaveBeenCalledWith(root)
 
@@ -629,7 +647,8 @@ describe('Host application commands', () => {
       'pdf:open': [{ projectId: 'project-1', path: '/data/paper.pdf' }],
       'pdf:pages': [{ projectId: 'project-1', docId: 'doc-1', start: 1 }],
       'pdf:outline': [{ projectId: 'project-1', docId: 'doc-1' }],
-      'pdf:scan': [{ projectId: 'project-1', docId: 'doc-1', query: 'x' }]
+      'pdf:scan': [{ projectId: 'project-1', docId: 'doc-1', query: 'x' }],
+      'figure:review': [{ projectId: 'project-1', request: { panels: [{ id: 'A', chartType: 'bar' }] } }]
     }
     const localOnlyChannels = RENDERER_CONTRACT_GROUPS.filter(({ capability }) =>
       HOST_CAPABILITIES.includes(capability as (typeof HOST_CAPABILITIES)[number])
@@ -644,7 +663,7 @@ describe('Host application commands', () => {
         .filter((channel): channel is string => channel !== null)
     )
 
-    expect(localOnlyChannels).toHaveLength(38)
+    expect(localOnlyChannels).toHaveLength(39)
     for (const channel of localOnlyChannels) {
       await expect(
         router.dispatcher.invoke(

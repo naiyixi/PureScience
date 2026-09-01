@@ -261,6 +261,11 @@ session_concurrency 表（max_concurrent）
 - 交付：pdf_* MCP（open/pages/outline/scan）+ pdfjs 解析（逐页文本 + 书签大纲）+ 词频相关度扫描（无外部模型）+ 页/文档上限保护 + 扫描件空页识别
 - 版本：v1.34.0
 
+### 里程碑 N5「绘」— 出版级图表流水线 figure-style（2026-08-31 二轮深挖新增）
+- 目标：科学图表正确性规则化——数据保真/label/色彩/选图/渲染五查，纯规则无审美
+- 交付：figure_review MCP 工具（五条规则引擎，结构化面板输入 → 违规清单）+ figure-style 内置技能（完整规则文档 + 数据形态选图表）；figure-composer fan-out 与 paper-narrative 故事线审查分版推进
+- 版本：v1.35.0
+
 ### 持续项（贯穿全程）
 - **实测驱动**：每个机制上线前先建 benchmark（复刻对方 bench-reviewer 方法），用数据说话
 - **i18n**：所有新 UI 同步 zh/en

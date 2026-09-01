@@ -43,6 +43,8 @@ import type { FileAnnotation, AnnotationSetRequest } from '../shared/annotation'
 import type { AnnotationCommandOwner } from './settings/annotation-ipc'
 import type { PdfOpenResult, PdfPagesResult, PdfOutlineResult, PdfScanResult } from '../shared/pdf'
 import type { PdfCommandOwner } from './settings/pdf-ipc'
+import type { FigureReviewResult, FigureReviewRequest } from '../shared/figure'
+import type { FigureCommandOwner } from './settings/figure-ipc'
 import {
   defineApplicationCommand,
   defineApplicationCommandGroup,
@@ -379,6 +381,14 @@ const pdfCommands = Object.freeze({
   >('pdf:scan')
 })
 
+const figureCommands = Object.freeze({
+  review: defineApplicationCommand<
+    'figure:review',
+    readonly [request: { projectId: string; request: FigureReviewRequest }],
+    FigureReviewResult
+  >('figure:review')
+})
+
 const hostApplicationCommands = Object.freeze({
   cli: cliCommands,
   folderGrants: folderGrantsCommands,
@@ -392,6 +402,7 @@ const hostApplicationCommands = Object.freeze({
   endpoint: endpointCommands,
   annotation: annotationCommands,
   pdf: pdfCommands,
+  figure: figureCommands,
   storage: storageCommands,
   update: updateCommands
 })
@@ -409,6 +420,7 @@ const hostApplicationCommandGroups = Object.freeze([
   defineApplicationCommandGroup('endpoint', Object.values(endpointCommands)),
   defineApplicationCommandGroup('annotation', Object.values(annotationCommands)),
   defineApplicationCommandGroup('pdf', Object.values(pdfCommands)),
+  defineApplicationCommandGroup('figure', Object.values(figureCommands)),
   defineApplicationCommandGroup('storage', Object.values(storageCommands)),
   defineApplicationCommandGroup('update', Object.values(updateCommands))
 ] as const)
@@ -447,6 +459,7 @@ type HostApplicationCommandDependencies = Readonly<{
   endpoint: EndpointCommandOwner
   annotation: AnnotationCommandOwner
   pdf: PdfCommandOwner
+  figure: FigureCommandOwner
   storage: Readonly<{
     getInfo: () => Promise<StorageInfo>
     revealAppStorage: () => Promise<RevealAppStorageResult>
@@ -660,6 +673,12 @@ const registerHostApplicationCommands = (
         )
     })
     scope.registerGroup(hostApplicationCommandGroups[12], {
+      'figure:review': ({ args, callerContext }) =>
+        localCommand(callerContext, 'figure:review', () =>
+          dependencies.figure.review(args[0].projectId, args[0].request)
+        )
+    })
+    scope.registerGroup(hostApplicationCommandGroups[13], {
       'storage:cancel-migrate': ({ callerContext }) =>
         localCommand(callerContext, 'storage:cancel-migrate', () =>
           dependencies.storage.cancelMigrate()
@@ -698,7 +717,7 @@ const registerHostApplicationCommands = (
           dependencies.storage.validateDataRoot(args[0])
         )
     })
-    scope.registerGroup(hostApplicationCommandGroups[13], {
+    scope.registerGroup(hostApplicationCommandGroups[14], {
       'update:apply': ({ callerContext }) =>
         localCommand(callerContext, 'update:apply', () => dependencies.update.apply()),
       'update:cancel': ({ callerContext }) =>

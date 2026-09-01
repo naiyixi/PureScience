@@ -47,9 +47,11 @@ import { ROUTINE_MCP_SERVER_NAME, createRoutineMcpServerConfig } from '../settin
 import type { EndpointMcpEnvironment, EndpointRpcConnection } from '../settings/endpoint-mcp-server'
 import type { AnnotationMcpEnvironment, AnnotationRpcConnection } from '../settings/annotation-mcp-server'
 import type { PdfMcpEnvironment, PdfRpcConnection } from '../settings/pdf-mcp-server'
+import type { FigureMcpEnvironment, FigureRpcConnection } from '../settings/figure-mcp-server'
 import { ENDPOINT_MCP_SERVER_NAME, createEndpointMcpServerConfig } from '../settings/endpoint-mcp-server'
 import { ANNOTATION_MCP_SERVER_NAME, createAnnotationMcpServerConfig } from '../settings/annotation-mcp-server'
 import { PDF_MCP_SERVER_NAME, createPdfMcpServerConfig } from '../settings/pdf-mcp-server'
+import { FIGURE_MCP_SERVER_NAME, createFigureMcpServerConfig } from '../settings/figure-mcp-server'
 import type { AgentMcpHttpHost } from './mcp-http-host'
 
 const log = createLogger('acp')
@@ -65,6 +67,7 @@ const CURRENT_PRIMARY_CAPABILITIES = [
   'endpoint',
   'annotation',
   'pdf',
+  'figure',
   'host-agents'
 ] as const
 const NOTEBOOK_CONTROL_RPC_METHODS = ['mcpCall', 'computeCall', 'agentsCall'] as const
@@ -117,6 +120,7 @@ type SessionCapabilityRoutingIds = Readonly<{
   endpoint: string
   annotation: string
   pdf: string
+  figure: string
 }>
 
 export type SessionCapabilityArtifactOptions = {
@@ -215,6 +219,17 @@ export type SessionCapabilityPdfOptions = {
   registerSessionAlias?: (aliasSessionId: string, sessionId: string) => void
 }
 
+export type SessionCapabilityFigureOptions = {
+  mcpEntryPath: string
+  mcpCommand?: string
+  isEnabled?: () => Promise<boolean>
+  getRpcConnection: (binding: {
+    sessionId: string
+    projectId: string
+  }) => Promise<FigureRpcConnection>
+  registerSessionAlias?: (aliasSessionId: string, sessionId: string) => void
+}
+
 type BuildSessionCapabilitiesRequest = {
   framework: Pick<AgentFramework, 'id' | 'acceptsStdioMcp'>
   nativeMcpEnabled: boolean
@@ -234,6 +249,7 @@ type BuildSessionCapabilitiesRequest = {
   onEndpointConnection?: (connection: EndpointRpcConnection) => void
   onAnnotationConnection?: (connection: AnnotationRpcConnection) => void
   onPdfConnection?: (connection: PdfRpcConnection) => void
+  onFigureConnection?: (connection: FigureRpcConnection) => void
 }
 
 type BuiltSessionCapabilities = Readonly<{
@@ -277,6 +293,7 @@ type CommitSessionCapabilitiesRequest = {
   endpointRelease?: () => void
   annotationRelease?: () => void
   pdfRelease?: () => void
+  figureRelease?: () => void
 }
 
 type RevokeProvisionalSessionCapabilitiesRequest = {
@@ -292,6 +309,7 @@ type RevokeProvisionalSessionCapabilitiesRequest = {
   endpointRelease?: () => void
   annotationRelease?: () => void
   pdfRelease?: () => void
+  figureRelease?: () => void
   ownsStableIdentity: boolean
 }
 
@@ -306,6 +324,7 @@ type SessionCapabilityOwnerOptions = {
   endpoints?: SessionCapabilityEndpointOptions
   annotations?: SessionCapabilityAnnotationOptions
   pdf?: SessionCapabilityPdfOptions
+  figure?: SessionCapabilityFigureOptions
   mcpHttpHost?: AgentMcpHttpHost
 }
 
@@ -358,6 +377,7 @@ export class AcpSessionCapabilityOwner {
   private endpointSessionSequence = 0
   private annotationSessionSequence = 0
   private pdfSessionSequence = 0
+  private figureSessionSequence = 0
   private skillImportEnabled = true
 
   constructor(private readonly options: SessionCapabilityOwnerOptions) {}
@@ -377,6 +397,7 @@ export class AcpSessionCapabilityOwner {
     let endpointRelease: (() => void) | undefined
     let annotationRelease: (() => void) | undefined
     let pdfRelease: (() => void) | undefined
+    let figureRelease: (() => void) | undefined
     let built: BuiltSessionCapabilities
     try {
       built = await this.build({
@@ -415,6 +436,9 @@ export class AcpSessionCapabilityOwner {
         },
         onPdfConnection: (connection) => {
           pdfRelease = connection.release
+        },
+        onFigureConnection: (connection) => {
+          figureRelease = connection.release
         }
       })
     } catch (error) {
@@ -430,7 +454,8 @@ export class AcpSessionCapabilityOwner {
           routingIds.routine,
           routingIds.endpoint,
           routingIds.annotation,
-          routingIds.pdf
+          routingIds.pdf,
+          routingIds.figure
         ],
         usedHttpTransport: ownsStableIdentity && !request.framework.acceptsStdioMcp,
         notebookSessionId: routingIds.notebook || undefined,
@@ -442,6 +467,7 @@ export class AcpSessionCapabilityOwner {
         endpointRelease,
         annotationRelease,
         pdfRelease,
+        figureRelease,
         ownsStableIdentity
       })
       this.finishProvisionalRoutingOwner(routingIds, routingOwner)
@@ -467,7 +493,8 @@ export class AcpSessionCapabilityOwner {
               routingIds.routine,
               routingIds.endpoint,
               routingIds.annotation,
-              routingIds.pdf
+              routingIds.pdf,
+              routingIds.figure
             ],
             usedHttpTransport: ownsRoutingIds && !request.framework.acceptsStdioMcp,
             notebookSessionId: routingIds.notebook || undefined,
@@ -480,6 +507,7 @@ export class AcpSessionCapabilityOwner {
             endpointRelease,
             annotationRelease,
             pdfRelease,
+            figureRelease,
             ownsStableIdentity: ownsRoutingIds
           })
           this.finishProvisionalRoutingOwner(routingIds, routingOwner)
@@ -499,6 +527,7 @@ export class AcpSessionCapabilityOwner {
             endpointRelease,
             annotationRelease,
             pdfRelease,
+            figureRelease,
             ownsStableIdentity: false
           })
           this.finishProvisionalRoutingOwner(routingIds, routingOwner)
@@ -516,7 +545,8 @@ export class AcpSessionCapabilityOwner {
           routineRelease,
           endpointRelease,
           annotationRelease,
-          pdfRelease
+          pdfRelease,
+          figureRelease
         })
         this.finishProvisionalRoutingOwner(routingIds, routingOwner)
       },
@@ -537,7 +567,8 @@ export class AcpSessionCapabilityOwner {
             routingIds.routine,
             routingIds.endpoint,
             routingIds.annotation,
-            routingIds.pdf
+            routingIds.pdf,
+            routingIds.figure
           ],
           usedHttpTransport: ownsStableIdentity && !request.framework.acceptsStdioMcp,
           notebookSessionId: routingIds.notebook || undefined,
@@ -550,6 +581,7 @@ export class AcpSessionCapabilityOwner {
           endpointRelease,
           annotationRelease,
           pdfRelease,
+          figureRelease,
           ownsStableIdentity
         })
         this.finishProvisionalRoutingOwner(routingIds, routingOwner)
@@ -569,7 +601,8 @@ export class AcpSessionCapabilityOwner {
         routine: this.options.routine ? stableAppSessionId : '',
         endpoint: this.options.endpoints ? stableAppSessionId : '',
         annotation: this.options.annotations ? stableAppSessionId : '',
-        pdf: this.options.pdf ? stableAppSessionId : ''
+        pdf: this.options.pdf ? stableAppSessionId : '',
+        figure: this.options.figure ? stableAppSessionId : ''
       })
     }
 
@@ -584,6 +617,7 @@ export class AcpSessionCapabilityOwner {
     if (this.options.endpoints) this.endpointSessionSequence += 1
     if (this.options.annotations) this.annotationSessionSequence += 1
     if (this.options.pdf) this.pdfSessionSequence += 1
+    if (this.options.figure) this.figureSessionSequence += 1
 
     return Object.freeze({
       artifact: this.options.artifacts
@@ -613,6 +647,9 @@ export class AcpSessionCapabilityOwner {
         : '',
       pdf: this.options.pdf
         ? `pdf-session-${timestamp}-${this.pdfSessionSequence}`
+        : '',
+      figure: this.options.figure
+        ? `figure-session-${timestamp}-${this.figureSessionSequence}`
         : ''
     })
   }
@@ -635,6 +672,7 @@ export class AcpSessionCapabilityOwner {
     const endpointAllowed = policyAllowsSessionCapability(request.policy, 'endpoint')
     const annotationAllowed = policyAllowsSessionCapability(request.policy, 'annotation')
     const pdfAllowed = policyAllowsSessionCapability(request.policy, 'pdf')
+    const figureAllowed = policyAllowsSessionCapability(request.policy, 'figure')
 
     const servers =
       transport === 'stdio'
@@ -648,7 +686,8 @@ export class AcpSessionCapabilityOwner {
             routine: routineAllowed,
             endpoint: endpointAllowed,
             annotation: annotationAllowed,
-            pdf: pdfAllowed
+            pdf: pdfAllowed,
+            figure: figureAllowed
           })
         : transport === 'http'
           ? await this.buildHttpServers(request, {
@@ -661,7 +700,8 @@ export class AcpSessionCapabilityOwner {
               routine: routineAllowed,
               endpoint: endpointAllowed,
               annotation: annotationAllowed,
-              pdf: pdfAllowed
+              pdf: pdfAllowed,
+              figure: figureAllowed
             })
           : []
     const modelFacingServers = servers.map((server) => {
@@ -697,6 +737,9 @@ export class AcpSessionCapabilityOwner {
     }
     if (canonicalMcpServerNames.includes(PDF_MCP_SERVER_NAME)) {
       capabilities.push('pdf')
+    }
+    if (canonicalMcpServerNames.includes(FIGURE_MCP_SERVER_NAME)) {
+      capabilities.push('figure')
     }
     if (
       capabilities.includes('notebook') &&
@@ -922,6 +965,7 @@ export class AcpSessionCapabilityOwner {
     endpoint: boolean
     annotation: boolean
     pdf: boolean
+    figure: boolean
   }> {
     const transportAvailable = input.framework.acceptsStdioMcp || Boolean(this.options.mcpHttpHost)
     const notebook =
@@ -968,7 +1012,11 @@ export class AcpSessionCapabilityOwner {
       pdf:
         transportAvailable &&
         Boolean(this.options.pdf) &&
-        policyAllowsSessionCapability(input.policy, 'pdf')
+        policyAllowsSessionCapability(input.policy, 'pdf'),
+      figure:
+        transportAvailable &&
+        Boolean(this.options.figure) &&
+        policyAllowsSessionCapability(input.policy, 'figure')
     })
   }
 
@@ -1055,6 +1103,7 @@ export class AcpSessionCapabilityOwner {
       endpoint: boolean
       annotation: boolean
       pdf: boolean
+      figure: boolean
     }
   ): Promise<McpServer[]> {
     const servers: McpServer[] = []
@@ -1215,6 +1264,22 @@ export class AcpSessionCapabilityOwner {
         )
       }
     }
+    if (enabled.figure) {
+      const environment = await this.buildFigureEnvironment(
+        request.routingIds.figure,
+        request.projectName,
+        request.onFigureConnection
+      )
+      if (environment && this.options.figure) {
+        servers.push(
+          createFigureMcpServerConfig({
+            command: this.options.figure.mcpCommand ?? process.execPath,
+            entryPath: this.options.figure.mcpEntryPath,
+            ...environment
+          })
+        )
+      }
+    }
     return servers
   }
 
@@ -1286,6 +1351,20 @@ export class AcpSessionCapabilityOwner {
     return { ...connection, sessionId: routingId, projectId: projectName }
   }
 
+  private async buildFigureEnvironment(
+    routingId: string,
+    projectName: string,
+    onConnection?: (connection: FigureRpcConnection) => void
+  ): Promise<FigureMcpEnvironment | undefined> {
+    if (!this.options.figure || !routingId || !projectName) return undefined
+    const connection = await this.options.figure.getRpcConnection({
+      sessionId: routingId,
+      projectId: projectName
+    })
+    onConnection?.(connection)
+    return { ...connection, sessionId: routingId, projectId: projectName }
+  }
+
   private async buildHttpServers(
     request: BuildSessionCapabilitiesRequest,
     enabled: {
@@ -1299,6 +1378,7 @@ export class AcpSessionCapabilityOwner {
       endpoint: boolean
       annotation: boolean
       pdf: boolean
+      figure: boolean
     }
   ): Promise<McpServer[]> {
     const host = this.options.mcpHttpHost

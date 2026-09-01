@@ -300,6 +300,7 @@ import type { RoutineConfigureRequest, RoutineSchedule } from '../shared/routine
 import type { EndpointRegisterRequest, ManagedEndpoint } from '../shared/endpoint'
 import type { AnnotationSetRequest, FileAnnotation } from '../shared/annotation'
 import type { PdfOpenResult, PdfOutlineResult, PdfPagesResult, PdfScanResult } from '../shared/pdf'
+import type { FigureReviewRequest, FigureReviewResult } from '../shared/figure'
 import type {
   ApproveRemotePairingRequest,
   RemoteAccessSnapshot,
@@ -999,6 +1000,10 @@ export interface PureScienceAPI {
     outline(request: { projectId: string; docId: string }): Promise<PdfOutlineResult>
     // Scans pages for a query, ranked by relevance.
     scan(request: { projectId: string; docId: string; query: string }): Promise<PdfScanResult>
+  }
+  figure: {
+    // Reviews a figure against the publication-grade correctness checklist.
+    review(request: { projectId: string; request: FigureReviewRequest }): Promise<FigureReviewResult>
   }
   window: {
     // Closes the focused window (the Cmd+W / Ctrl+W fallback when no preview panel is open).
