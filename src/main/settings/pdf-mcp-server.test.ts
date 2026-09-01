@@ -13,8 +13,9 @@ import {
   createPdfMcpServer,
   createPdfMcpServerConfig
 } from './pdf-mcp-server'
+import type { PdfMcpHandler } from './pdf-mcp-server'
 
-const makeHandler = () => ({
+const makeHandler = (): PdfMcpHandler => ({
   open: vi.fn(async () => ({
     doc: { docId: 'doc-1', title: 'paper', pageCount: 3, outline: [] },
     textPageCount: 3,

@@ -37,6 +37,7 @@ export const RoutinePanel = (): React.JSX.Element => {
   }, [])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- load() awaits before any setState (fetch-on-mount); no cascading renders
     void load()
   }, [load])
 
@@ -101,9 +102,13 @@ export const RoutinePanel = (): React.JSX.Element => {
     [load]
   )
 
+  // Rendered-clock for "due in Xm" labels. A single render-stable timestamp avoids calling
+  // Date.now() during render (impure) while staying fresh on every list reload.
+  const [clockNow] = useState(() => Date.now())
+
   const formatNextDue = (schedule: RoutineSchedule): string => {
     if (!schedule.enabled || schedule.nextDue === null) return t('settings.routinePaused')
-    const delta = schedule.nextDue - Date.now()
+    const delta = schedule.nextDue - clockNow
     if (delta <= 0) return t('settings.routineDue')
     const mins = Math.round(delta / 60_000)
     if (mins < 60) return `${mins} ${t('settings.routineMinutes')}`
