@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 import type { RemoteAccessSnapshot } from '../shared/remote-access'
 import type { RoutineConfigureRequest } from '../shared/routine'
+import type { EndpointRegisterRequest, ManagedEndpoint } from '../shared/endpoint'
 import { RENDERER_CONTRACT_GROUPS } from '../shared/renderer-contract-catalog'
 import type { UpdateStatus } from '../shared/update'
 import {
@@ -32,6 +33,7 @@ const HOST_CAPABILITIES = [
   'remote-access',
   'reviewer',
   'routine',
+  'endpoint',
   'storage',
   'update'
 ] as const
@@ -131,6 +133,71 @@ const createDependencies = (): HostApplicationCommandDependencies => ({
     remove: vi.fn(async () => true),
     setEnabled: vi.fn(async () => null)
   },
+  endpoint: {
+    listAll: vi.fn(async () => []),
+    register: vi.fn(
+      async (_sessionId: string, request: EndpointRegisterRequest): Promise<{
+        endpoint: ManagedEndpoint
+        newlyApproved: boolean
+      }> => ({
+        endpoint: {
+          name: request.name,
+          url: request.url,
+          port: 20001,
+          skillName: request.skillName,
+          startScript: request.startScript,
+          stopScript: request.stopScript,
+          livePath: request.livePath,
+          approvedScriptHash: 'hash',
+          state: 'stopped',
+          stateChangedAt: Date.now(),
+          lastError: null,
+          transcript: null,
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        },
+        newlyApproved: true
+      })
+    ),
+    approve: vi.fn(async () => true),
+    start: vi.fn(
+      async (): Promise<ManagedEndpoint> => ({
+        name: 'esm',
+        url: 'http://127.0.0.1:20001',
+        port: 20001,
+        skillName: 's',
+        startScript: 's',
+        stopScript: 's',
+        livePath: '/health',
+        approvedScriptHash: 'hash',
+        state: 'live',
+        stateChangedAt: Date.now(),
+        lastError: null,
+        transcript: null,
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      })
+    ),
+    stop: vi.fn(
+      async (): Promise<ManagedEndpoint> => ({
+        name: 'esm',
+        url: 'http://127.0.0.1:20001',
+        port: 20001,
+        skillName: 's',
+        startScript: 's',
+        stopScript: 's',
+        livePath: '/health',
+        approvedScriptHash: 'hash',
+        state: 'stopped',
+        stateChangedAt: Date.now(),
+        lastError: null,
+        transcript: null,
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      })
+    ),
+    remove: vi.fn(async () => true)
+  },
   storage: {
     getInfo: vi.fn(async () => ({
       dataRoot: '/data',
@@ -205,7 +272,7 @@ describe('Host application commands', () => {
         .filter((channel): channel is string => channel !== null)
     }))
 
-    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(52)
+    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(58)
     const actualGroups = hostApplicationCommandGroups
       .map(({ name, commands }) => ({
         capability: name,
@@ -223,7 +290,7 @@ describe('Host application commands', () => {
       {} as HostApplicationCommandDependencies
     )
 
-    expect(router.dispatcher.commandNames()).toHaveLength(52)
+    expect(router.dispatcher.commandNames()).toHaveLength(58)
     installation.uninstall()
     expect(router.dispatcher.commandNames()).toEqual([])
   })
@@ -243,6 +310,14 @@ describe('Host application commands', () => {
     const routineConfigure = {
       everyMinutes: 60,
       instruction: 'Check for new variants.'
+    }
+    const endpointRegisterRequest = {
+      name: 'esm',
+      url: 'http://127.0.0.1:20001',
+      skillName: 'esm-runbook',
+      startScript: 'docker inspect esm && docker start esm || docker run -d -p $HOST_PORT:80 esm',
+      stopScript: 'docker stop esm',
+      livePath: '/v1/models'
     }
     const parent = { parent: '/target' }
     const root = { parent: '/target', markOnboarding: true }
@@ -326,6 +401,18 @@ describe('Host application commands', () => {
       hostApplicationCommands.routine.setEnabled,
       invocation([{ sessionId: 'session-1', routineId: 'routine-1', enabled: false }])
     )
+    await router.dispatcher.invoke(hostApplicationCommands.endpoint.listAll, invocation([]))
+    await router.dispatcher.invoke(
+      hostApplicationCommands.endpoint.register,
+      invocation([{ sessionId: 'session-1', request: endpointRegisterRequest }])
+    )
+    await router.dispatcher.invoke(
+      hostApplicationCommands.endpoint.approve,
+      invocation(['esm'])
+    )
+    await router.dispatcher.invoke(hostApplicationCommands.endpoint.start, invocation(['esm']))
+    await router.dispatcher.invoke(hostApplicationCommands.endpoint.stop, invocation(['esm']))
+    await router.dispatcher.invoke(hostApplicationCommands.endpoint.remove, invocation(['esm']))
     await router.dispatcher.invoke(hostApplicationCommands.storage.cancelMigrate, invocation([]))
     await router.dispatcher.invoke(
       hostApplicationCommands.storage.commitAndRelaunch,
@@ -399,6 +486,12 @@ describe('Host application commands', () => {
     expect(dependencies.routine.upsert).toHaveBeenCalledWith('session-1', routineConfigure)
     expect(dependencies.routine.remove).toHaveBeenCalledWith('session-1', 'routine-1')
     expect(dependencies.routine.setEnabled).toHaveBeenCalledWith('session-1', 'routine-1', false)
+    expect(dependencies.endpoint.listAll).toHaveBeenCalledWith()
+    expect(dependencies.endpoint.register).toHaveBeenCalledWith('session-1', endpointRegisterRequest)
+    expect(dependencies.endpoint.approve).toHaveBeenCalledWith('esm')
+    expect(dependencies.endpoint.start).toHaveBeenCalledWith('esm')
+    expect(dependencies.endpoint.stop).toHaveBeenCalledWith('esm')
+    expect(dependencies.endpoint.remove).toHaveBeenCalledWith('esm')
     expect(dependencies.storage.commitAndRelaunch).toHaveBeenCalledWith(parent)
     expect(dependencies.storage.setDataRootAndRelaunch).toHaveBeenCalledWith(root)
 
@@ -425,7 +518,13 @@ describe('Host application commands', () => {
       'storage:inspect-data-root': [parent],
       'storage:migrate': [parent],
       'storage:set-data-root-and-relaunch': [{ ...parent, markOnboarding: true }],
-      'storage:validate-data-root': [parent]
+      'storage:validate-data-root': [parent],
+      'endpoint:approve': ['esm'],
+      'endpoint:register': [{ sessionId: 'session-1', request: { name: 'esm', url: 'http://127.0.0.1:20001', skillName: 'esm-runbook', startScript: 's', stopScript: 's', livePath: '/v1/models' } }],
+      'endpoint:start': ['esm'],
+      'endpoint:stop': ['esm'],
+      'endpoint:remove': ['esm'],
+      'endpoint:list-all': []
     }
     const localOnlyChannels = RENDERER_CONTRACT_GROUPS.filter(({ capability }) =>
       HOST_CAPABILITIES.includes(capability as (typeof HOST_CAPABILITIES)[number])
@@ -440,7 +539,7 @@ describe('Host application commands', () => {
         .filter((channel): channel is string => channel !== null)
     )
 
-    expect(localOnlyChannels).toHaveLength(25)
+    expect(localOnlyChannels).toHaveLength(31)
     for (const channel of localOnlyChannels) {
       await expect(
         router.dispatcher.invoke(

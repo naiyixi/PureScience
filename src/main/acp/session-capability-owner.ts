@@ -44,6 +44,8 @@ import type {
   RoutineRpcConnection
 } from '../settings/routine-mcp-server'
 import { ROUTINE_MCP_SERVER_NAME, createRoutineMcpServerConfig } from '../settings/routine-mcp-server'
+import type { EndpointMcpEnvironment, EndpointRpcConnection } from '../settings/endpoint-mcp-server'
+import { ENDPOINT_MCP_SERVER_NAME, createEndpointMcpServerConfig } from '../settings/endpoint-mcp-server'
 import type { AgentMcpHttpHost } from './mcp-http-host'
 
 const log = createLogger('acp')
@@ -56,6 +58,7 @@ const CURRENT_PRIMARY_CAPABILITIES = [
   'memory',
   'context-summary',
   'routine',
+  'endpoint',
   'host-agents'
 ] as const
 const NOTEBOOK_CONTROL_RPC_METHODS = ['mcpCall', 'computeCall', 'agentsCall'] as const
@@ -105,6 +108,7 @@ type SessionCapabilityRoutingIds = Readonly<{
   memory: string
   contextSummary: string
   routine: string
+  endpoint: string
 }>
 
 export type SessionCapabilityArtifactOptions = {
@@ -173,6 +177,14 @@ export type SessionCapabilityRoutineOptions = {
   registerSessionAlias?: (aliasSessionId: string, sessionId: string) => void
 }
 
+export type SessionCapabilityEndpointOptions = {
+  mcpEntryPath: string
+  mcpCommand?: string
+  isEnabled?: () => Promise<boolean>
+  getRpcConnection: (binding: { sessionId: string }) => Promise<EndpointRpcConnection>
+  registerSessionAlias?: (aliasSessionId: string, sessionId: string) => void
+}
+
 type BuildSessionCapabilitiesRequest = {
   framework: Pick<AgentFramework, 'id' | 'acceptsStdioMcp'>
   nativeMcpEnabled: boolean
@@ -189,6 +201,7 @@ type BuildSessionCapabilitiesRequest = {
   onMemoryConnection?: (connection: MemoryRpcConnection) => void
   onContextSummaryConnection?: (connection: ContextSummaryRpcConnection) => void
   onRoutineConnection?: (connection: RoutineRpcConnection) => void
+  onEndpointConnection?: (connection: EndpointRpcConnection) => void
 }
 
 type BuiltSessionCapabilities = Readonly<{
@@ -229,6 +242,7 @@ type CommitSessionCapabilitiesRequest = {
   memoryRelease?: () => void
   contextSummaryRelease?: () => void
   routineRelease?: () => void
+  endpointRelease?: () => void
 }
 
 type RevokeProvisionalSessionCapabilitiesRequest = {
@@ -241,6 +255,7 @@ type RevokeProvisionalSessionCapabilitiesRequest = {
   memoryRelease?: () => void
   contextSummaryRelease?: () => void
   routineRelease?: () => void
+  endpointRelease?: () => void
   ownsStableIdentity: boolean
 }
 
@@ -252,6 +267,7 @@ type SessionCapabilityOwnerOptions = {
   memory?: SessionCapabilityMemoryOptions
   contextSummary?: SessionCapabilityContextSummaryOptions
   routine?: SessionCapabilityRoutineOptions
+  endpoints?: SessionCapabilityEndpointOptions
   mcpHttpHost?: AgentMcpHttpHost
 }
 
@@ -301,6 +317,7 @@ export class AcpSessionCapabilityOwner {
   private memorySessionSequence = 0
   private contextSummarySessionSequence = 0
   private routineSessionSequence = 0
+  private endpointSessionSequence = 0
   private skillImportEnabled = true
 
   constructor(private readonly options: SessionCapabilityOwnerOptions) {}
@@ -317,6 +334,7 @@ export class AcpSessionCapabilityOwner {
     let memoryRelease: (() => void) | undefined
     let contextSummaryRelease: (() => void) | undefined
     let routineRelease: (() => void) | undefined
+    let endpointRelease: (() => void) | undefined
     let built: BuiltSessionCapabilities
     try {
       built = await this.build({
@@ -346,6 +364,9 @@ export class AcpSessionCapabilityOwner {
         },
         onRoutineConnection: (connection) => {
           routineRelease = connection.release
+        },
+        onEndpointConnection: (connection) => {
+          endpointRelease = connection.release
         }
       })
     } catch (error) {
@@ -358,7 +379,8 @@ export class AcpSessionCapabilityOwner {
           routingIds.plan,
           routingIds.memory,
           routingIds.contextSummary,
-          routingIds.routine
+          routingIds.routine,
+          routingIds.endpoint
         ],
         usedHttpTransport: ownsStableIdentity && !request.framework.acceptsStdioMcp,
         notebookSessionId: routingIds.notebook || undefined,
@@ -367,6 +389,7 @@ export class AcpSessionCapabilityOwner {
         planRelease,
         contextSummaryRelease,
         routineRelease,
+        endpointRelease,
         ownsStableIdentity
       })
       this.finishProvisionalRoutingOwner(routingIds, routingOwner)
@@ -389,7 +412,8 @@ export class AcpSessionCapabilityOwner {
               routingIds.plan,
               routingIds.memory,
               routingIds.contextSummary,
-              routingIds.routine
+              routingIds.routine,
+              routingIds.endpoint
             ],
             usedHttpTransport: ownsRoutingIds && !request.framework.acceptsStdioMcp,
             notebookSessionId: routingIds.notebook || undefined,
@@ -399,6 +423,7 @@ export class AcpSessionCapabilityOwner {
             memoryRelease,
             contextSummaryRelease,
             routineRelease,
+            endpointRelease,
             ownsStableIdentity: ownsRoutingIds
           })
           this.finishProvisionalRoutingOwner(routingIds, routingOwner)
@@ -415,6 +440,7 @@ export class AcpSessionCapabilityOwner {
             memoryRelease,
             contextSummaryRelease,
             routineRelease,
+            endpointRelease,
             ownsStableIdentity: false
           })
           this.finishProvisionalRoutingOwner(routingIds, routingOwner)
@@ -429,7 +455,8 @@ export class AcpSessionCapabilityOwner {
           planRelease,
           memoryRelease,
           contextSummaryRelease,
-          routineRelease
+          routineRelease,
+          endpointRelease
         })
         this.finishProvisionalRoutingOwner(routingIds, routingOwner)
       },
@@ -447,7 +474,8 @@ export class AcpSessionCapabilityOwner {
             routingIds.plan,
             routingIds.memory,
             routingIds.contextSummary,
-            routingIds.routine
+            routingIds.routine,
+            routingIds.endpoint
           ],
           usedHttpTransport: ownsStableIdentity && !request.framework.acceptsStdioMcp,
           notebookSessionId: routingIds.notebook || undefined,
@@ -457,6 +485,7 @@ export class AcpSessionCapabilityOwner {
           memoryRelease,
           contextSummaryRelease,
           routineRelease,
+          endpointRelease,
           ownsStableIdentity
         })
         this.finishProvisionalRoutingOwner(routingIds, routingOwner)
@@ -473,7 +502,8 @@ export class AcpSessionCapabilityOwner {
         plan: this.options.plan ? stableAppSessionId : '',
         memory: this.options.memory ? stableAppSessionId : '',
         contextSummary: this.options.contextSummary ? stableAppSessionId : '',
-        routine: this.options.routine ? stableAppSessionId : ''
+        routine: this.options.routine ? stableAppSessionId : '',
+        endpoint: this.options.endpoints ? stableAppSessionId : ''
       })
     }
 
@@ -485,6 +515,7 @@ export class AcpSessionCapabilityOwner {
     if (this.options.memory) this.memorySessionSequence += 1
     if (this.options.contextSummary) this.contextSummarySessionSequence += 1
     if (this.options.routine) this.routineSessionSequence += 1
+    if (this.options.endpoints) this.endpointSessionSequence += 1
 
     return Object.freeze({
       artifact: this.options.artifacts
@@ -505,6 +536,9 @@ export class AcpSessionCapabilityOwner {
         : '',
       routine: this.options.routine
         ? `routine-session-${timestamp}-${this.routineSessionSequence}`
+        : '',
+      endpoint: this.options.endpoints
+        ? `endpoint-session-${timestamp}-${this.endpointSessionSequence}`
         : ''
     })
   }
@@ -524,6 +558,7 @@ export class AcpSessionCapabilityOwner {
     const memoryAllowed = policyAllowsSessionCapability(request.policy, 'memory')
     const contextSummaryAllowed = policyAllowsSessionCapability(request.policy, 'context-summary')
     const routineAllowed = policyAllowsSessionCapability(request.policy, 'routine')
+    const endpointAllowed = policyAllowsSessionCapability(request.policy, 'endpoint')
 
     const servers =
       transport === 'stdio'
@@ -534,7 +569,8 @@ export class AcpSessionCapabilityOwner {
             plan: planAllowed,
             memory: memoryAllowed,
             contextSummary: contextSummaryAllowed,
-            routine: routineAllowed
+            routine: routineAllowed,
+            endpoint: endpointAllowed
           })
         : transport === 'http'
           ? await this.buildHttpServers(request, {
@@ -544,7 +580,8 @@ export class AcpSessionCapabilityOwner {
               plan: planAllowed,
               memory: memoryAllowed,
               contextSummary: contextSummaryAllowed,
-              routine: routineAllowed
+              routine: routineAllowed,
+              endpoint: endpointAllowed
             })
           : []
     const modelFacingServers = servers.map((server) => {
@@ -571,6 +608,9 @@ export class AcpSessionCapabilityOwner {
     }
     if (canonicalMcpServerNames.includes(ROUTINE_MCP_SERVER_NAME)) {
       capabilities.push('routine')
+    }
+    if (canonicalMcpServerNames.includes(ENDPOINT_MCP_SERVER_NAME)) {
+      capabilities.push('endpoint')
     }
     if (
       capabilities.includes('notebook') &&
@@ -793,6 +833,7 @@ export class AcpSessionCapabilityOwner {
     memory: boolean
     contextSummary: boolean
     routine: boolean
+    endpoint: boolean
   }> {
     const transportAvailable = input.framework.acceptsStdioMcp || Boolean(this.options.mcpHttpHost)
     const notebook =
@@ -827,7 +868,11 @@ export class AcpSessionCapabilityOwner {
       routine:
         transportAvailable &&
         Boolean(this.options.routine) &&
-        policyAllowsSessionCapability(input.policy, 'routine')
+        policyAllowsSessionCapability(input.policy, 'routine'),
+      endpoint:
+        transportAvailable &&
+        Boolean(this.options.endpoints) &&
+        policyAllowsSessionCapability(input.policy, 'endpoint')
     })
   }
 
@@ -911,6 +956,7 @@ export class AcpSessionCapabilityOwner {
       memory: boolean
       contextSummary: boolean
       routine: boolean
+      endpoint: boolean
     }
   ): Promise<McpServer[]> {
     const servers: McpServer[] = []
@@ -1024,6 +1070,21 @@ export class AcpSessionCapabilityOwner {
         )
       }
     }
+    if (enabled.endpoint) {
+      const environment = await this.buildEndpointEnvironment(
+        request.routingIds.endpoint,
+        request.onEndpointConnection
+      )
+      if (environment && this.options.endpoints) {
+        servers.push(
+          createEndpointMcpServerConfig({
+            command: this.options.endpoints.mcpCommand ?? process.execPath,
+            entryPath: this.options.endpoints.mcpEntryPath,
+            ...environment
+          })
+        )
+      }
+    }
     return servers
   }
 
@@ -1057,6 +1118,16 @@ export class AcpSessionCapabilityOwner {
     return { ...connection, sessionId: routingId }
   }
 
+  private async buildEndpointEnvironment(
+    routingId: string,
+    onConnection?: (connection: EndpointRpcConnection) => void
+  ): Promise<EndpointMcpEnvironment | undefined> {
+    if (!this.options.endpoints || !routingId) return undefined
+    const connection = await this.options.endpoints.getRpcConnection({ sessionId: routingId })
+    onConnection?.(connection)
+    return { ...connection, sessionId: routingId }
+  }
+
   private async buildHttpServers(
     request: BuildSessionCapabilitiesRequest,
     enabled: {
@@ -1067,6 +1138,7 @@ export class AcpSessionCapabilityOwner {
       memory: boolean
       contextSummary: boolean
       routine: boolean
+      endpoint: boolean
     }
   ): Promise<McpServer[]> {
     const host = this.options.mcpHttpHost

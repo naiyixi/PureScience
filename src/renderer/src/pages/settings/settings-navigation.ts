@@ -10,6 +10,7 @@ export type SettingsPanelId =
   | 'memory'
   | 'compute'
   | 'routine'
+  | 'endpoint'
   | 'permissions'
   | 'archived'
   | 'usage'

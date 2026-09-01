@@ -277,6 +277,11 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['listAll', 'routine:list-all', LOCAL], ['upsert', 'routine:upsert', LOCAL],
     ['remove', 'routine:remove', LOCAL], ['setEnabled', 'routine:set-enabled', LOCAL],
   ]),
+  group('endpoint', 'endpoint', [
+    ['listAll', 'endpoint:list-all', LOCAL], ['register', 'endpoint:register', LOCAL],
+    ['approve', 'endpoint:approve', LOCAL], ['start', 'endpoint:start', LOCAL],
+    ['stop', 'endpoint:stop', LOCAL], ['remove', 'endpoint:remove', LOCAL],
+  ]),
   group('runtime', 'runtime', [
     ['describeUsage', 'runtime:describe-usage', WEB, RUNTIME_LANGUAGE_ENV, POSITIONAL],
     ['getEnablement', 'runtime:get-enablement', WEB, RUNTIME_LANGUAGE, POSITIONAL], ['listEnvironments', 'runtime:list-environments'],

@@ -95,7 +95,8 @@ export class AcpProviderSessionAdopter {
           skillImport: capability.descriptor.capabilities.includes('skill-import'),
           memory: capability.descriptor.capabilities.includes('memory'),
           contextSummary: capability.descriptor.capabilities.includes('context-summary'),
-          routine: capability.descriptor.capabilities.includes('routine')
+          routine: capability.descriptor.capabilities.includes('routine'),
+          endpoint: capability.descriptor.capabilities.includes('endpoint')
         },
         backendSystemPromptAppends: startupBackend.prompt.systemPromptAppends,
         extraSystemPromptAppends: [specialistIdentity?.append, handoffAppend].filter(

@@ -36,6 +36,9 @@ import type {
 import type { AppInfo, UpdateStatus } from '../shared/update'
 import type { RoutineSchedule } from '../shared/routine'
 import type { RoutineConfigureRequest } from '../shared/routine'
+import type { ManagedEndpoint } from '../shared/endpoint'
+import type { EndpointRegisterRequest } from '../shared/endpoint'
+import type { EndpointCommandOwner } from './settings/endpoint-ipc'
 import {
   defineApplicationCommand,
   defineApplicationCommandGroup,
@@ -298,6 +301,39 @@ const routineCommands = Object.freeze({
   >('routine:set-enabled')
 })
 
+const endpointCommands = Object.freeze({
+  listAll: defineApplicationCommand<
+    'endpoint:list-all',
+    readonly [],
+    ManagedEndpoint[]
+  >('endpoint:list-all'),
+  register: defineApplicationCommand<
+    'endpoint:register',
+    readonly [request: { sessionId: string; request: EndpointRegisterRequest }],
+    { endpoint: ManagedEndpoint; newlyApproved: boolean }
+  >('endpoint:register'),
+  approve: defineApplicationCommand<
+    'endpoint:approve',
+    readonly [name: string],
+    boolean
+  >('endpoint:approve'),
+  start: defineApplicationCommand<
+    'endpoint:start',
+    readonly [name: string],
+    ManagedEndpoint
+  >('endpoint:start'),
+  stop: defineApplicationCommand<
+    'endpoint:stop',
+    readonly [name: string],
+    ManagedEndpoint
+  >('endpoint:stop'),
+  remove: defineApplicationCommand<
+    'endpoint:remove',
+    readonly [name: string],
+    boolean
+  >('endpoint:remove')
+})
+
 const hostApplicationCommands = Object.freeze({
   cli: cliCommands,
   folderGrants: folderGrantsCommands,
@@ -308,6 +344,7 @@ const hostApplicationCommands = Object.freeze({
   remoteAccess: remoteAccessCommands,
   reviewer: reviewerCommands,
   routine: routineCommands,
+  endpoint: endpointCommands,
   storage: storageCommands,
   update: updateCommands
 })
@@ -322,6 +359,7 @@ const hostApplicationCommandGroups = Object.freeze([
   defineApplicationCommandGroup('remote-access', Object.values(remoteAccessCommands)),
   defineApplicationCommandGroup('reviewer', Object.values(reviewerCommands)),
   defineApplicationCommandGroup('routine', Object.values(routineCommands)),
+  defineApplicationCommandGroup('endpoint', Object.values(endpointCommands)),
   defineApplicationCommandGroup('storage', Object.values(storageCommands)),
   defineApplicationCommandGroup('update', Object.values(updateCommands))
 ] as const)
@@ -357,6 +395,7 @@ type HostApplicationCommandDependencies = Readonly<{
       enabled: boolean
     ) => Promise<RoutineSchedule | null>
   }>
+  endpoint: EndpointCommandOwner
   storage: Readonly<{
     getInfo: () => Promise<StorageInfo>
     revealAppStorage: () => Promise<RevealAppStorageResult>
@@ -518,6 +557,26 @@ const registerHostApplicationCommands = (
         )
     })
     scope.registerGroup(hostApplicationCommandGroups[9], {
+      'endpoint:list-all': ({ callerContext }) =>
+        localCommand(callerContext, 'endpoint:list-all', () => dependencies.endpoint.listAll()),
+      'endpoint:register': ({ args, callerContext }) =>
+        localCommand(callerContext, 'endpoint:register', () =>
+          dependencies.endpoint.register(args[0].sessionId, args[0].request)
+        ),
+      'endpoint:approve': ({ args, callerContext }) =>
+        localCommand(callerContext, 'endpoint:approve', () =>
+          dependencies.endpoint.approve(args[0])
+        ),
+      'endpoint:start': ({ args, callerContext }) =>
+        localCommand(callerContext, 'endpoint:start', () => dependencies.endpoint.start(args[0])),
+      'endpoint:stop': ({ args, callerContext }) =>
+        localCommand(callerContext, 'endpoint:stop', () => dependencies.endpoint.stop(args[0])),
+      'endpoint:remove': ({ args, callerContext }) =>
+        localCommand(callerContext, 'endpoint:remove', () =>
+          dependencies.endpoint.remove(args[0])
+        )
+    })
+    scope.registerGroup(hostApplicationCommandGroups[10], {
       'storage:cancel-migrate': ({ callerContext }) =>
         localCommand(callerContext, 'storage:cancel-migrate', () =>
           dependencies.storage.cancelMigrate()
@@ -556,7 +615,7 @@ const registerHostApplicationCommands = (
           dependencies.storage.validateDataRoot(args[0])
         )
     })
-    scope.registerGroup(hostApplicationCommandGroups[10], {
+    scope.registerGroup(hostApplicationCommandGroups[11], {
       'update:apply': ({ callerContext }) =>
         localCommand(callerContext, 'update:apply', () => dependencies.update.apply()),
       'update:cancel': ({ callerContext }) =>

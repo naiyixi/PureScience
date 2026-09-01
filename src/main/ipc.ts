@@ -135,6 +135,10 @@ import {
 import { createReviewerCommandOwner, registerReviewerIpcHandlers } from './reviewer/ipc'
 import { createRoutineCommandOwner, registerRoutineIpcHandlers } from './settings/routine-ipc'
 import {
+  createEndpointCommandOwner,
+  registerEndpointIpcHandlers
+} from './settings/endpoint-ipc'
+import {
   createDefaultReviewRepository,
   createDefaultSessionRepository,
   createSessionPersistenceHandlers,
@@ -168,6 +172,8 @@ import { createDefaultSettingsService } from './settings/service'
 import { ContextSummaryRepository } from './settings/context-summary-repository'
 import { createContextSummaryCapture } from './settings/context-summary-capture'
 import { RoutineRepository } from './settings/routine-repository'
+import { EndpointRepository } from './settings/endpoint-repository'
+import { EndpointManager } from './settings/endpoint-manager'
 import { RoutineScheduler } from './settings/routine-scheduler'
 import type { NotebookRuntimeSettings } from './settings/capabilities'
 import type { WindowSettingsCapabilities } from './settings/service-capabilities'
@@ -1127,6 +1133,17 @@ const createApplicationModules = async (
   const routineRepository = new RoutineRepository({
     storageRoot: resolveDataRoot()
   })
+  const endpointRepository = new EndpointRepository({
+    storageRoot: resolveDataRoot()
+  })
+  const endpointManager = new EndpointManager({
+    repository: endpointRepository,
+    resolveCredential: async (name) => {
+      const settings = await settingsService.getStoredSettings()
+      const entry = (settings.credentials ?? []).find((candidate) => candidate.id === name)
+      return entry ? tryDecryptKey(entry.secretRef) : undefined
+    }
+  })
   const notebookRpcServer = await modules.add(
     new NotebookLocalRpcServer(notebookLocalRpc, {
       onSessionReleased: (sessionId) => completionGateCoordinator.releaseSession(sessionId),
@@ -1148,6 +1165,15 @@ const createApplicationModules = async (
         configure: (sessionId, request) => routineRepository.upsert(sessionId, request),
         status: (sessionId) => routineRepository.list(sessionId),
         cancel: (sessionId, routineId) => routineRepository.remove(sessionId, routineId)
+      },
+      endpoints: {
+        register: (sessionId, request) => endpointRepository.upsert(request, sessionId),
+        unregister: (_sessionId, name) => endpointManager.unregister(name),
+        start: (_sessionId, name) => endpointManager.start(name),
+        stop: (_sessionId, name) => endpointManager.stop(name),
+        status: (_sessionId, name) => endpointRepository.get(name),
+        list: () => endpointRepository.list(),
+        freePort: () => endpointManager.freePort()
       },
       planService: {
         call: (input) => {
@@ -1993,6 +2019,11 @@ const createApplicationModules = async (
   declareElectronAdapter('routine', () => {
     registerRoutineIpcHandlers(createRoutineCommandOwner(routineRepository))
   })
+  declareElectronAdapter('endpoint', () => {
+    registerEndpointIpcHandlers(
+      createEndpointCommandOwner(endpointRepository, endpointManager)
+    )
+  })
 
   const electronSenderFor = (
     invocation: ApplicationInvocation<readonly unknown[]>
@@ -2084,6 +2115,7 @@ const createApplicationModules = async (
       },
       reviewer: reviewerCommandOwner,
       routine: createRoutineCommandOwner(routineRepository),
+      endpoint: createEndpointCommandOwner(endpointRepository, endpointManager),
       storage: storageCommandOwner,
       update: updateCommandOwner
     }

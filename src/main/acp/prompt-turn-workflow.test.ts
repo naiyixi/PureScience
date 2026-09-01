@@ -299,7 +299,8 @@ const createHarness = (
         skillImport: true,
         memory: false,
         contextSummary: false,
-        routine: false
+        routine: false,
+      endpoint: false
       }),
       bridgeSkillsAvailable: () => true,
       skillImportEnabled: () => true,
