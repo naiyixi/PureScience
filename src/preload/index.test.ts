@@ -378,6 +378,10 @@ describe('preload bridge — public surface inventory', () => {
       'reviewer.onSuppressNextAutoReview',
       'reviewer.onUpdated',
       'reviewer.run',
+      'routine.listAll',
+      'routine.remove',
+      'routine.setEnabled',
+      'routine.upsert',
       'runtime.describeUsage',
       'runtime.getEnablement',
       'runtime.listEnvironments',
@@ -666,7 +670,7 @@ describe('preload bridge — runtime renderer contract catalog', () => {
 })
 
 describe('preload bridge — core renderer contract catalog', () => {
-  it('pins the exact 22-group, 135-callable T1d complement', () => {
+  it('pins the exact 23-group, 139-callable T1d complement', () => {
     expect(coreContractGroups.map(({ capability }) => capability)).toEqual([
       'artifacts',
       'cli',
@@ -686,13 +690,14 @@ describe('preload bridge — core renderer contract catalog', () => {
       'projects',
       'remote-access',
       'reviewer',
+      'routine',
       'sessions',
       'storage',
       'update',
       'uploads',
       'window'
     ])
-    expect(coreContracts).toHaveLength(146)
+    expect(coreContracts).toHaveLength(150)
     expect({
       requests: coreContracts.filter(
         ({ dispatchPolicy }) => dispatchPolicy.electron === 'electron-ipc-request'
@@ -704,7 +709,7 @@ describe('preload bridge — core renderer contract catalog', () => {
       surfaceNative: coreContracts.filter(
         ({ dispatchPolicy }) => dispatchPolicy.electron === 'surface-native'
       ).length
-    }).toEqual({ requests: 109, events: 26, sends: 10, surfaceNative: 1 })
+    }).toEqual({ requests: 113, events: 26, sends: 10, surfaceNative: 1 })
   })
 
   it('routes all 99 request methods through their cataloged Electron channels', async () => {
@@ -713,7 +718,7 @@ describe('preload bridge — core renderer contract catalog', () => {
     )
     const localFile = { name: 'catalog.csv' } as File
 
-    expect(requestContracts).toHaveLength(109)
+    expect(requestContracts).toHaveLength(113)
 
     for (const contract of requestContracts) {
       invokeMock.mockClear()

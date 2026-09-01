@@ -12,6 +12,9 @@ export type ConnectorMeta = {
   sources: string[]
   termsUrl?: string
   requiresNcbi: boolean
+  // License gate: when true, calls fail closed unless the user declared non-commercial use
+  // (Settings → General → Use intent). Mark sources whose terms restrict commercial use.
+  noncommercialOnly?: boolean
   // Settings-list section. Absent = "featured" (Anthropic research connectors); "directory" connectors
   // mirror entries in the Claude Connectors Directory.
   group?: ConnectorGroup

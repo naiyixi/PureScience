@@ -146,6 +146,7 @@ const REMOTE_LOCAL_ONLY_CHANNELS: GroupedInventory = {
   logs: ['open-file', 'reveal-in-folder'],
   'notebook-env': ['cancel', 'provision', 'repair'],
   notebook: ['export-ipynb', 'export-ipynb-all'],
+  routine: ['list-all', 'remove', 'set-enabled', 'upsert'],
   runtime: [
     'pick-interpreter',
     'register-interpreter',
@@ -242,12 +243,12 @@ describe('renderer surface inventory', () => {
       ...Object.keys(WEB_EVENT_CHANNELS)
     ])
 
-    expect(electronPaths).toHaveLength(360)
+    expect(electronPaths).toHaveLength(364)
     expectSameSet(
       electronPaths,
       RENDERER_CONTRACT_CATALOG.map(({ publicPath }) => publicPath)
     )
-    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(262)
+    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(266)
     expect(Object.keys(WEB_EVENT_CHANNELS)).toHaveLength(33)
     expectSameSet(
       electronPaths.filter((path) => !generatedPaths.has(path)),
@@ -283,7 +284,7 @@ describe('renderer surface inventory', () => {
     const expectedRemoteLocalOnly = expand(REMOTE_LOCAL_ONLY_CHANNELS, ':')
 
     expectSameSet(REMOTE_LOCAL_ONLY_RPC_CHANNELS, expectedRemoteLocalOnly)
-    expect(expectedRemoteLocalOnly).toHaveLength(72)
+    expect(expectedRemoteLocalOnly).toHaveLength(76)
     expect(
       expectedRemoteLocalOnly.every((channel) => WEB_RPC_ALLOWED_CHANNELS.includes(channel))
     ).toBe(true)

@@ -39,6 +39,7 @@ import {
 } from '../local-rpc-transport'
 import { createLogger, errorLogFields } from '../logger'
 import { PlanCommandError } from '../../shared/session-plan/contract'
+import type { RoutineConfigureRequest } from '../../shared/routine'
 
 const log = createLogger('notebook:local-rpc')
 
@@ -133,6 +134,12 @@ type NotebookLocalRpcServerOptions = {
     queryChunk(sessionId: string, summaryId: string, question: string): Promise<unknown>
     recordBoundary(sessionId: string, label: string): Promise<unknown>
   }
+  // Recurring scheduled tasks (routine_* MCP): main-process-owned schedule persistence + dispatch.
+  routine?: {
+    configure(sessionId: string, request: RoutineConfigureRequest): Promise<unknown>
+    status(sessionId: string): Promise<unknown>
+    cancel(sessionId: string, routineId: string): Promise<unknown>
+  }
   planService?: {
     call(input: {
       projectId: string
@@ -199,6 +206,7 @@ const SKILL_IMPORT_RPC_METHODS = new Set(['skillImport'])
 const PLAN_RPC_METHODS = new Set(['planCall'])
 const MEMORY_RPC_METHODS = new Set(['memorySaveNote'])
 const CONTEXT_SUMMARY_RPC_METHODS = new Set(['summaryQueryChunk', 'recordBoundary'])
+const ROUTINE_RPC_METHODS = new Set(['routineConfigure', 'routineStatus', 'routineCancel'])
 
 const isArtifactRpcMethod = (method: string): method is ArtifactRpcMethod =>
   ARTIFACT_RPC_METHODS.has(method as ArtifactRpcMethod)
@@ -250,7 +258,9 @@ class NotebookLocalRpcServer {
   private readonly planRpcTokens = new Map<string, string>()
   private readonly memoryRpcTokens = new Map<string, string>()
   private readonly contextSummaryRpcTokens = new Map<string, string>()
+  private readonly routineRpcTokens = new Map<string, string>()
   private readonly contextSummary?: NotebookLocalRpcServerOptions['contextSummary']
+  private readonly routine?: NotebookLocalRpcServerOptions['routine']
   // The session → Specialist relationship is established by the ACP runtime, not supplied by the
   // notebook process. Keeping it here prevents an agent from selecting another Specialist's scope
   // by forging an RPC parameter.
@@ -277,6 +287,7 @@ class NotebookLocalRpcServer {
     this.skillCreator = options.skillCreator
     this.memoryWriter = options.memoryWriter
     this.contextSummary = options.contextSummary
+    this.routine = options.routine
     this.planService = options.planService
     this.artifactProvenance = options.artifactProvenance
     this.inputRegistry = options.inputRegistry
@@ -448,6 +459,14 @@ class NotebookLocalRpcServer {
     }
   }
 
+  private revokeRoutineSessionCapabilities(sessionId: string): void {
+    for (const ownedSessionId of this.resolveSessionCapabilityOwners(sessionId)) {
+      const token = this.routineRpcTokens.get(ownedSessionId)
+      if (token) this.sessionRpcCapabilities.delete(token)
+      this.routineRpcTokens.delete(ownedSessionId)
+    }
+  }
+
   private revokePlanSessionCapabilities(sessionId: string): void {
     for (const ownedSessionId of this.resolveSessionCapabilityOwners(sessionId)) {
       const token = this.planRpcTokens.get(ownedSessionId)
@@ -465,6 +484,7 @@ class NotebookLocalRpcServer {
     this.revokeSkillImportSessionCapabilities(sessionId)
     this.revokeMemorySessionCapabilities(sessionId)
     this.revokeContextSummarySessionCapabilities(sessionId)
+    this.revokeRoutineSessionCapabilities(sessionId)
     this.revokePlanSessionCapabilities(sessionId)
     for (const ownedSessionId of ownedSessionIds) {
       this.sessionSpecialists.delete(ownedSessionId)
@@ -568,6 +588,29 @@ class NotebookLocalRpcServer {
       release: () => {
         if (this.contextSummaryRpcTokens.get(sessionId) === token) {
           this.contextSummaryRpcTokens.delete(sessionId)
+        }
+        this.sessionRpcCapabilities.delete(token)
+      }
+    }
+  }
+
+  async issueRoutineConnection(sessionId: string): Promise<NotebookRpcConnection> {
+    const connection = await this.ensureStarted()
+    this.revokeRoutineSessionCapabilities(sessionId)
+
+    const token = randomUUID()
+    this.routineRpcTokens.set(sessionId, token)
+    this.sessionRpcCapabilities.set(token, {
+      sessionId,
+      allowedMethods: ROUTINE_RPC_METHODS
+    })
+    return {
+      endpoint: connection.endpoint,
+      socketPath: connection.socketPath,
+      token,
+      release: () => {
+        if (this.routineRpcTokens.get(sessionId) === token) {
+          this.routineRpcTokens.delete(sessionId)
         }
         this.sessionRpcCapabilities.delete(token)
       }
@@ -946,6 +989,41 @@ class NotebookLocalRpcServer {
         throw new Error('Context-summary boundary RPC params must include sessionId and label.')
       }
       return this.contextSummary.recordBoundary(params.sessionId, params.label)
+    }
+
+    if (method === 'routineConfigure') {
+      if (!this.routine) throw new Error('Routine handler is not configured.')
+      if (
+        typeof params.sessionId !== 'string' ||
+        typeof params.everyMinutes !== 'number' ||
+        typeof params.instruction !== 'string'
+      ) {
+        throw new Error(
+          'Routine configure RPC params must include sessionId, everyMinutes, and instruction.'
+        )
+      }
+      return this.routine.configure(params.sessionId, {
+        routineId: typeof params.routineId === 'string' ? params.routineId : undefined,
+        everyMinutes: params.everyMinutes,
+        instruction: params.instruction,
+        label: typeof params.label === 'string' ? params.label : undefined
+      })
+    }
+
+    if (method === 'routineStatus') {
+      if (!this.routine) throw new Error('Routine handler is not configured.')
+      if (typeof params.sessionId !== 'string') {
+        throw new Error('Routine status RPC params must include sessionId.')
+      }
+      return this.routine.status(params.sessionId)
+    }
+
+    if (method === 'routineCancel') {
+      if (!this.routine) throw new Error('Routine handler is not configured.')
+      if (typeof params.sessionId !== 'string' || typeof params.routineId !== 'string') {
+        throw new Error('Routine cancel RPC params must include sessionId and routineId.')
+      }
+      return this.routine.cancel(params.sessionId, params.routineId)
     }
 
     if (method === 'planCall') {

@@ -1352,4 +1352,42 @@ describe('ConnectorService specialist capability gate', () => {
     ).resolves.toEqual({ ok: true })
     await expect(svc.call('molecule', 'preview_molecule', {})).rejects.toThrow('missing_session')
   })
+
+  it('fails closed on a noncommercial-only tool under commercial use intent', async () => {
+    const svc = new ConnectorService({
+      getConnectors: () => ({ enabledIds: [], autoAllowIds: [] }),
+      resolveApiKey: () => undefined,
+      getUseIntent: async () => 'commercial'
+    })
+    // CADD tools are marked noncommercialOnly; the variant connector itself is not.
+    await expect(
+      svc.call('variants', 'cadd_score_variant', { chrom: '7', pos: 1, ref: 'C', alt: 'T' }, internal)
+    ).rejects.toThrow(/restricted to non-commercial use/)
+  })
+
+  it('allows a noncommercial-only tool when use intent is non-commercial', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonRes({ found: false }))
+    const svc = new ConnectorService({
+      engine: new ParserEngine({ fetchImpl }),
+      getConnectors: () => ({ enabledIds: [], autoAllowIds: [] }),
+      resolveApiKey: () => undefined,
+      getUseIntent: async () => 'non-commercial'
+    })
+    await expect(
+      svc.call('variants', 'cadd_score_variant', { chrom: '7', pos: 1, ref: 'C', alt: 'T' }, internal)
+    ).resolves.toBeDefined()
+  })
+
+  it('allows non-restricted tools regardless of use intent', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonRes({ entries: [] }))
+    const svc = new ConnectorService({
+      engine: new ParserEngine({ fetchImpl }),
+      getConnectors: () => ({ enabledIds: [], autoAllowIds: [] }),
+      resolveApiKey: () => undefined,
+      getUseIntent: async () => 'commercial'
+    })
+    await expect(
+      svc.call('variants', 'search_variants', { query: 'EGFR' }, internal)
+    ).resolves.toBeDefined()
+  })
 })

@@ -59,6 +59,9 @@ type ConnectorServiceDeps = {
   // a function (rather than a session-start snapshot) so edited/deleted profiles take effect on the
   // next connector call.
   resolveSpecialistProfile?: (specialistId: string) => Promise<SpecialistProfileView | undefined>
+  // Declared use intent ('commercial' | 'non-commercial'), when the app exposes it. Connectors
+  // marked noncommercialOnly fail closed in commercial mode (license gate — see catalog).
+  getUseIntent?: () => Promise<'commercial' | 'non-commercial' | undefined>
 }
 
 // Optional routing context for a connector call. Present for calls that originate inside a session
@@ -197,6 +200,7 @@ export class ConnectorService {
     context: ConnectorCallContext = {}
   ): Promise<unknown> {
     const descriptor = getDescriptor(connector, method)
+    await this.enforceLicenseGate(connector, descriptor)
     const isBundled = descriptor !== undefined || ALL_CONNECTOR_IDS.includes(connector)
     if (isBundled) {
       const access = await this.resolveAccess(connector, context)
@@ -219,6 +223,21 @@ export class ConnectorService {
       )
     }
     return this.callCustom(custom, customServers, method, args, context, access)
+  }
+
+  // License gate (fail-closed): tools marked noncommercialOnly are rejected when the user has
+  // declared commercial use. Mirrors the reference product's deferred-tools license gate — the
+  // tool stays installed and visible, but calls fail with an explicit reason instead of silently
+  // burning a restricted source API.
+  private async enforceLicenseGate(connector: string, descriptor?: ToolDescriptor): Promise<void> {
+    if (!descriptor?.noncommercialOnly) return
+    const useIntent = await this.deps.getUseIntent?.()
+    if (useIntent !== 'non-commercial') {
+      throw new ConnectorGateError(
+        'license_restricted',
+        `"${connector}/${descriptor.id}" is restricted to non-commercial use. Switch Settings → General → Use intent to non-commercial to enable it.`
+      )
+    }
   }
 
   private async resolveAccess(

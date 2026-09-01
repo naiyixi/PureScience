@@ -5,6 +5,7 @@ import {
   ArrowRight,
   Bot,
   Brain,
+  CalendarClock,
   Cloud,
   Globe,
   LockKeyhole,
@@ -63,6 +64,7 @@ import { ComputeAddForm } from './ComputeAddForm'
 import { ComputeHostDetail } from './ComputeHostDetail'
 import { PermissionsPanel } from './PermissionsPanel'
 import { MemoryPanel } from './MemoryPanel'
+import { RoutinePanel } from './RoutinePanel'
 import { CredentialsPanel } from './CredentialsPanel'
 import { ArchivedPanel, type ArchivedView } from './ArchivedPanel'
 import { TokenUsagePanel } from './TokenUsagePanel'
@@ -171,6 +173,7 @@ const buildSettingsGroups = (t: (key: TranslationKey) => string): ReadonlyArray<
       { id: 'specialists', label: t('settings.specialists'), Icon: Users },
       { id: 'memory', label: t('settings.memory'), Icon: BookOpenText },
       { id: 'compute', label: t('settings.compute'), Icon: Zap },
+      { id: 'routine', label: t('settings.routine'), Icon: CalendarClock },
       { id: 'network', label: t('settings.network'), Icon: Globe }
     ]
   },
@@ -1042,6 +1045,8 @@ const SettingsPage = forwardRef<SettingsPageHandle, SettingsPageProps>(function 
                   )
                 ) : activePanel === 'memory' ? (
                   <MemoryPanel />
+                ) : activePanel === 'routine' ? (
+                  <RoutinePanel />
                 ) : activePanel === 'credentials' ? (
                   <CredentialsPanel />
                 ) : activePanel === 'storage' ? (

@@ -298,7 +298,8 @@ const createHarness = (
         notebook: true,
         skillImport: true,
         memory: false,
-        contextSummary: false
+        contextSummary: false,
+        routine: false
       }),
       bridgeSkillsAvailable: () => true,
       skillImportEnabled: () => true,

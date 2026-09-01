@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import type { RemoteAccessSnapshot } from '../shared/remote-access'
+import type { RoutineConfigureRequest } from '../shared/routine'
 import { RENDERER_CONTRACT_GROUPS } from '../shared/renderer-contract-catalog'
 import type { UpdateStatus } from '../shared/update'
 import {
@@ -30,6 +31,7 @@ const HOST_CAPABILITIES = [
   'notifications',
   'remote-access',
   'reviewer',
+  'routine',
   'storage',
   'update'
 ] as const
@@ -106,6 +108,29 @@ const createDependencies = (): HostApplicationCommandDependencies => ({
     mutateChecklist: vi.fn(async () => undefined),
     getChunks: vi.fn(async () => [])
   },
+  routine: {
+    listAll: vi.fn(async () => []),
+    upsert: vi.fn(async (_sessionId: string, configure: RoutineConfigureRequest) => ({
+      id: 'routine-1',
+      sessionId: _sessionId,
+      label: configure.label,
+      instruction: configure.instruction,
+      everyMinutes: configure.everyMinutes,
+      enabled: true,
+      nextDue: Date.now(),
+      lastFireAt: null,
+      lastOkAt: null,
+      tickCount: 0,
+      missedTicks: 0,
+      idleStreak: 0,
+      pausedReason: null,
+      lastResults: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    })),
+    remove: vi.fn(async () => true),
+    setEnabled: vi.fn(async () => null)
+  },
   storage: {
     getInfo: vi.fn(async () => ({
       dataRoot: '/data',
@@ -166,7 +191,7 @@ const commandByName = (name: string): ApplicationCommand<string, readonly unknow
 }
 
 describe('Host application commands', () => {
-  it('defines the exact 42 request channels in their existing capability groups', () => {
+  it('defines the exact 46 request channels in their existing capability groups', () => {
     const expected = RENDERER_CONTRACT_GROUPS.filter(({ capability }) =>
       HOST_CAPABILITIES.includes(capability as (typeof HOST_CAPABILITIES)[number])
     ).map(({ capability, contracts }) => ({
@@ -180,7 +205,7 @@ describe('Host application commands', () => {
         .filter((channel): channel is string => channel !== null)
     }))
 
-    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(48)
+    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(52)
     const actualGroups = hostApplicationCommandGroups
       .map(({ name, commands }) => ({
         capability: name,
@@ -198,7 +223,7 @@ describe('Host application commands', () => {
       {} as HostApplicationCommandDependencies
     )
 
-    expect(router.dispatcher.commandNames()).toHaveLength(48)
+    expect(router.dispatcher.commandNames()).toHaveLength(52)
     installation.uninstall()
     expect(router.dispatcher.commandNames()).toEqual([])
   })
@@ -215,6 +240,10 @@ describe('Host application commands', () => {
       origin: 'manual' as const
     }
     const reviewSession = { projectId: 'project-1', appSessionId: 'session-1' }
+    const routineConfigure = {
+      everyMinutes: 60,
+      instruction: 'Check for new variants.'
+    }
     const parent = { parent: '/target' }
     const root = { parent: '/target', markOnboarding: true }
 
@@ -284,6 +313,19 @@ describe('Host application commands', () => {
       invocation([reviewSession])
     )
     await router.dispatcher.invoke(hostApplicationCommands.reviewer.run, invocation([reviewRun]))
+    await router.dispatcher.invoke(hostApplicationCommands.routine.listAll, invocation([]))
+    await router.dispatcher.invoke(
+      hostApplicationCommands.routine.upsert,
+      invocation([{ sessionId: 'session-1', configure: routineConfigure }])
+    )
+    await router.dispatcher.invoke(
+      hostApplicationCommands.routine.remove,
+      invocation([{ sessionId: 'session-1', routineId: 'routine-1' }])
+    )
+    await router.dispatcher.invoke(
+      hostApplicationCommands.routine.setEnabled,
+      invocation([{ sessionId: 'session-1', routineId: 'routine-1', enabled: false }])
+    )
     await router.dispatcher.invoke(hostApplicationCommands.storage.cancelMigrate, invocation([]))
     await router.dispatcher.invoke(
       hostApplicationCommands.storage.commitAndRelaunch,
@@ -353,6 +395,10 @@ describe('Host application commands', () => {
       resolution: 'resolved'
     })
     expect(dependencies.reviewer.getChunks).toHaveBeenCalledWith(reviewSession)
+    expect(dependencies.routine.listAll).toHaveBeenCalledWith()
+    expect(dependencies.routine.upsert).toHaveBeenCalledWith('session-1', routineConfigure)
+    expect(dependencies.routine.remove).toHaveBeenCalledWith('session-1', 'routine-1')
+    expect(dependencies.routine.setEnabled).toHaveBeenCalledWith('session-1', 'routine-1', false)
     expect(dependencies.storage.commitAndRelaunch).toHaveBeenCalledWith(parent)
     expect(dependencies.storage.setDataRootAndRelaunch).toHaveBeenCalledWith(root)
 
@@ -394,7 +440,7 @@ describe('Host application commands', () => {
         .filter((channel): channel is string => channel !== null)
     )
 
-    expect(localOnlyChannels).toHaveLength(21)
+    expect(localOnlyChannels).toHaveLength(25)
     for (const channel of localOnlyChannels) {
       await expect(
         router.dispatcher.invoke(

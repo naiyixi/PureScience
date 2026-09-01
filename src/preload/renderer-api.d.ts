@@ -296,6 +296,7 @@ import type {
   VerificationChecklistMutationRequest,
   ContextSummaryChunkView
 } from '../shared/reviewer'
+import type { RoutineConfigureRequest, RoutineSchedule } from '../shared/routine'
 import type {
   ApproveRemotePairingRequest,
   RemoteAccessSnapshot,
@@ -947,6 +948,16 @@ export interface PureScienceAPI {
     mutateChecklist(request: VerificationChecklistMutationRequest): Promise<void>
     // Loads the session's folded-context chunks (fold timeline).
     getChunks(request: ReviewSessionRequest): Promise<ContextSummaryChunkView[]>
+  }
+  routine: {
+    // Lists every scheduled task across sessions (settings panel).
+    listAll(): Promise<RoutineSchedule[]>
+    // Creates or updates one schedule.
+    upsert(request: { sessionId: string; configure: RoutineConfigureRequest }): Promise<RoutineSchedule>
+    // Deletes one schedule; resolves false when it did not exist.
+    remove(request: { sessionId: string; routineId: string }): Promise<boolean>
+    // Pauses (enabled=false) or resumes (enabled=true) one schedule.
+    setEnabled(request: { sessionId: string; routineId: string; enabled: boolean }): Promise<RoutineSchedule | null>
   }
   window: {
     // Closes the focused window (the Cmd+W / Ctrl+W fallback when no preview panel is open).

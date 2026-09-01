@@ -66,6 +66,7 @@ import type {
   VerificationChecklistMutationRequest,
   ContextSummaryChunkView
 } from '../shared/reviewer'
+import type { RoutineConfigureRequest } from '../shared/routine'
 import type { HandoffEventsRequest, HandoffRetryRequest } from '../shared/handoff-lifecycle'
 import { announceWindowFindReady, subscribeCloseActivePane } from '../shared/window-controls'
 
@@ -777,6 +778,15 @@ const api: PureScienceAPI = {
     // Marks a checklist claim addressed (or reopens it).
     mutateChecklist: (request: VerificationChecklistMutationRequest) =>
       electronRendererContracts.invoke('reviewer.mutateChecklist', request)
+  },
+  routine: {
+    listAll: () => electronRendererContracts.invoke('routine.listAll'),
+    upsert: (request: { sessionId: string; configure: RoutineConfigureRequest }) =>
+      electronRendererContracts.invoke('routine.upsert', request),
+    remove: (request: { sessionId: string; routineId: string }) =>
+      electronRendererContracts.invoke('routine.remove', request),
+    setEnabled: (request: { sessionId: string; routineId: string; enabled: boolean }) =>
+      electronRendererContracts.invoke('routine.setEnabled', request)
   },
   window: {
     close: () => electronRendererContracts.invoke('window.close'),
