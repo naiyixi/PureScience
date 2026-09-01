@@ -222,6 +222,12 @@
       "name": "llama.cpp 本地模型服务",
       "source": "featured",
       "updatedAt": "2026-09-01T00:00:00.000Z"
+    },
+    {
+      "id": "managed-bio-endpoints",
+      "name": "生物模型本地托管",
+      "source": "featured",
+      "updatedAt": "2026-09-01T00:00:00.000Z"
     }
   ]
 }

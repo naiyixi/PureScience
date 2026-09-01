@@ -68,6 +68,7 @@ import type {
 } from '../shared/reviewer'
 import type { RoutineConfigureRequest } from '../shared/routine'
 import type { EndpointRegisterRequest } from '../shared/endpoint'
+import type { AnnotationSetRequest } from '../shared/annotation'
 import type { HandoffEventsRequest, HandoffRetryRequest } from '../shared/handoff-lifecycle'
 import { announceWindowFindReady, subscribeCloseActivePane } from '../shared/window-controls'
 
@@ -797,6 +798,14 @@ const api: PureScienceAPI = {
     start: (name: string) => electronRendererContracts.invoke('endpoint.start', name),
     stop: (name: string) => electronRendererContracts.invoke('endpoint.stop', name),
     remove: (name: string) => electronRendererContracts.invoke('endpoint.remove', name)
+  },
+  annotation: {
+    set: (request: { projectId: string; request: AnnotationSetRequest }) =>
+      electronRendererContracts.invoke('annotation.set', request),
+    list: (request: { projectId: string; target?: string }) =>
+      electronRendererContracts.invoke('annotation.list', request),
+    remove: (request: { projectId: string; annotationId: string }) =>
+      electronRendererContracts.invoke('annotation.remove', request)
   },
   window: {
     close: () => electronRendererContracts.invoke('window.close'),

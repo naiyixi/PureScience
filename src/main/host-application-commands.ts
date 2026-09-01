@@ -39,6 +39,8 @@ import type { RoutineConfigureRequest } from '../shared/routine'
 import type { ManagedEndpoint } from '../shared/endpoint'
 import type { EndpointRegisterRequest } from '../shared/endpoint'
 import type { EndpointCommandOwner } from './settings/endpoint-ipc'
+import type { FileAnnotation, AnnotationSetRequest } from '../shared/annotation'
+import type { AnnotationCommandOwner } from './settings/annotation-ipc'
 import {
   defineApplicationCommand,
   defineApplicationCommandGroup,
@@ -334,6 +336,24 @@ const endpointCommands = Object.freeze({
   >('endpoint:remove')
 })
 
+const annotationCommands = Object.freeze({
+  set: defineApplicationCommand<
+    'annotation:set',
+    readonly [request: { projectId: string; request: AnnotationSetRequest }],
+    { annotation: FileAnnotation; replaced: boolean }
+  >('annotation:set'),
+  list: defineApplicationCommand<
+    'annotation:list',
+    readonly [request: { projectId: string; target?: string }],
+    FileAnnotation[]
+  >('annotation:list'),
+  remove: defineApplicationCommand<
+    'annotation:remove',
+    readonly [request: { projectId: string; annotationId: string }],
+    boolean
+  >('annotation:remove')
+})
+
 const hostApplicationCommands = Object.freeze({
   cli: cliCommands,
   folderGrants: folderGrantsCommands,
@@ -345,6 +365,7 @@ const hostApplicationCommands = Object.freeze({
   reviewer: reviewerCommands,
   routine: routineCommands,
   endpoint: endpointCommands,
+  annotation: annotationCommands,
   storage: storageCommands,
   update: updateCommands
 })
@@ -360,6 +381,7 @@ const hostApplicationCommandGroups = Object.freeze([
   defineApplicationCommandGroup('reviewer', Object.values(reviewerCommands)),
   defineApplicationCommandGroup('routine', Object.values(routineCommands)),
   defineApplicationCommandGroup('endpoint', Object.values(endpointCommands)),
+  defineApplicationCommandGroup('annotation', Object.values(annotationCommands)),
   defineApplicationCommandGroup('storage', Object.values(storageCommands)),
   defineApplicationCommandGroup('update', Object.values(updateCommands))
 ] as const)
@@ -396,6 +418,7 @@ type HostApplicationCommandDependencies = Readonly<{
     ) => Promise<RoutineSchedule | null>
   }>
   endpoint: EndpointCommandOwner
+  annotation: AnnotationCommandOwner
   storage: Readonly<{
     getInfo: () => Promise<StorageInfo>
     revealAppStorage: () => Promise<RevealAppStorageResult>
@@ -577,6 +600,20 @@ const registerHostApplicationCommands = (
         )
     })
     scope.registerGroup(hostApplicationCommandGroups[10], {
+      'annotation:set': ({ args, callerContext }) =>
+        localCommand(callerContext, 'annotation:set', () =>
+          dependencies.annotation.set(args[0].projectId, args[0].request)
+        ),
+      'annotation:list': ({ args, callerContext }) =>
+        localCommand(callerContext, 'annotation:list', () =>
+          dependencies.annotation.list(args[0].projectId, args[0].target)
+        ),
+      'annotation:remove': ({ args, callerContext }) =>
+        localCommand(callerContext, 'annotation:remove', () =>
+          dependencies.annotation.remove(args[0].projectId, args[0].annotationId)
+        )
+    })
+    scope.registerGroup(hostApplicationCommandGroups[11], {
       'storage:cancel-migrate': ({ callerContext }) =>
         localCommand(callerContext, 'storage:cancel-migrate', () =>
           dependencies.storage.cancelMigrate()
@@ -615,7 +652,7 @@ const registerHostApplicationCommands = (
           dependencies.storage.validateDataRoot(args[0])
         )
     })
-    scope.registerGroup(hostApplicationCommandGroups[11], {
+    scope.registerGroup(hostApplicationCommandGroups[12], {
       'update:apply': ({ callerContext }) =>
         localCommand(callerContext, 'update:apply', () => dependencies.update.apply()),
       'update:cancel': ({ callerContext }) =>

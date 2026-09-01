@@ -24,6 +24,7 @@ import {
   REVIEWER_MCP_PROXY_ARG,
   ROUTINE_MCP_SERVER_ARG,
   ENDPOINT_MCP_SERVER_ARG,
+  ANNOTATION_MCP_SERVER_ARG,
   SKILL_IMPORT_MCP_SERVER_ARG
 } from './mcp-server-args'
 import { withApplicationRuntimeShutdown } from './application-runtime'
@@ -50,6 +51,7 @@ const shouldRunMemoryMcpServer = process.argv.includes(MEMORY_MCP_SERVER_ARG)
 const shouldRunContextSummaryMcpServer = process.argv.includes(CONTEXT_SUMMARY_MCP_SERVER_ARG)
 const shouldRunRoutineMcpServer = process.argv.includes(ROUTINE_MCP_SERVER_ARG)
 const shouldRunEndpointMcpServer = process.argv.includes(ENDPOINT_MCP_SERVER_ARG)
+const shouldRunAnnotationMcpServer = process.argv.includes(ANNOTATION_MCP_SERVER_ARG)
 let startupDiagnostics: DiagnosticOperation | undefined
 let startupFlush = flushLogs
 
@@ -114,6 +116,13 @@ if (shouldRunArtifactMcpServer) {
 } else if (shouldRunEndpointMcpServer) {
   void import('./settings/endpoint-mcp-server')
     .then(({ runEndpointMcpServer }) => runEndpointMcpServer())
+    .catch((error: unknown) => {
+      console.error(error)
+      process.exitCode = 1
+    })
+} else if (shouldRunAnnotationMcpServer) {
+  void import('./settings/annotation-mcp-server')
+    .then(({ runAnnotationMcpServer }) => runAnnotationMcpServer())
     .catch((error: unknown) => {
       console.error(error)
       process.exitCode = 1

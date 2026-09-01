@@ -298,6 +298,7 @@ import type {
 } from '../shared/reviewer'
 import type { RoutineConfigureRequest, RoutineSchedule } from '../shared/routine'
 import type { EndpointRegisterRequest, ManagedEndpoint } from '../shared/endpoint'
+import type { AnnotationSetRequest, FileAnnotation } from '../shared/annotation'
 import type {
   ApproveRemotePairingRequest,
   RemoteAccessSnapshot,
@@ -976,6 +977,17 @@ export interface PureScienceAPI {
     stop(name: string): Promise<ManagedEndpoint>
     // Removes one (stopped first if live).
     remove(name: string): Promise<boolean>
+  }
+  annotation: {
+    // Attaches (or replaces) a labeled note on a file in a project.
+    set(request: { projectId: string; request: AnnotationSetRequest }): Promise<{
+      annotation: FileAnnotation
+      replaced: boolean
+    }>
+    // Lists a project's annotations (optionally filtered to one file).
+    list(request: { projectId: string; target?: string }): Promise<FileAnnotation[]>
+    // Removes one annotation by id.
+    remove(request: { projectId: string; annotationId: string }): Promise<boolean>
   }
   window: {
     // Closes the focused window (the Cmd+W / Ctrl+W fallback when no preview panel is open).

@@ -70,6 +70,13 @@ export const zh = {
   'common.save': '保存',
   'common.delete': '删除',
   'common.close': '关闭',
+  'files.annotationsTitle': '文件注解',
+  'files.annotationsLoading': '正在加载注解…',
+  'files.annotationsEmpty': '这个文件还没有注解。',
+  'files.annotationsRemove': '删除注解',
+  'files.annotationsNotePlaceholder': '给这个文件写一条简短备注…',
+  'files.annotationsAdd': '添加备注',
+
   'common.export': '导出',
   'common.confirm': '确认',
   'common.continue': '继续',

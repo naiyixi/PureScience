@@ -251,6 +251,11 @@ session_concurrency 表（max_concurrent）
 - 交付：endpoint_* MCP（register/unregister/start/stop/status/list/free_port）+ 状态机（stopped→starting→live→failed + setStateIfStill 防竞态）+ 脚本 sha256 审批白名单（字节相同静默）+ 就绪路由探测放行 + 凭据 env 注入 + 设置面板「本地模型」+ llama.cpp runbook（首批 1 个模型，ESMFold2 等 13 个分批补）
 - 版本：v1.32.0
 
+### 里程碑 N3「注」— 文件注解 file annotations（2026-08-31 二轮深挖新增）
+- 目标：文件级轻量注解（标签 + 备注），agent 与用户共用的低噪声记忆
+- 交付：annotation_* MCP（set/list/remove）+ 项目级 JSON 持久化（targetKind/targetKey/label/contentChecksum 对齐统一注解表）+ 路径安全校验 + 文件面板行内注解弹窗（zh/en 双语）+ 模型 runbook 扩充（managed-bio-endpoints 通用托管模式 + fair-esm2/esmfold2 示例）
+- 版本：v1.33.0
+
 ### 持续项（贯穿全程）
 - **实测驱动**：每个机制上线前先建 benchmark（复刻对方 bench-reviewer 方法），用数据说话
 - **i18n**：所有新 UI 同步 zh/en

@@ -71,6 +71,13 @@ export const en: Record<ZhKey, string> = {
   'common.save': 'Save',
   'common.delete': 'Delete',
   'common.close': 'Close',
+  'files.annotationsTitle': 'File annotations',
+  'files.annotationsLoading': 'Loading annotations…',
+  'files.annotationsEmpty': 'No annotations for this file yet.',
+  'files.annotationsRemove': 'Remove annotation',
+  'files.annotationsNotePlaceholder': 'Short note for this file…',
+  'files.annotationsAdd': 'Add note',
+
   'common.export': 'Export',
   'common.confirm': 'Confirm',
   'common.continue': 'Continue',

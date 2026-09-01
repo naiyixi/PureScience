@@ -28,7 +28,8 @@ describe('AcpContextUsagePolicy', () => {
         memory: false,
         contextSummary: false,
         routine: false,
-      endpoint: false
+      endpoint: false,
+      annotation: false,
       })
     })
 
@@ -64,7 +65,8 @@ describe('AcpContextUsagePolicy', () => {
         memory: false,
         contextSummary: false,
         routine: false,
-      endpoint: false
+      endpoint: false,
+      annotation: false,
       })
     })
 

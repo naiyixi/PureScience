@@ -49,7 +49,8 @@ describe('ACP Session presentation policy', () => {
       memory: false,
       contextSummary: false,
       routine: false,
-    endpoint: false
+    endpoint: false,
+    annotation: false,
     })
 
     expect(appends).toEqual([
@@ -71,7 +72,8 @@ describe('ACP Session presentation policy', () => {
       memory: false,
       contextSummary: false,
       routine: false,
-    endpoint: false
+    endpoint: false,
+    annotation: false,
     })
 
     expect(appends).toEqual([TURN_CONTINUITY_APPEND, LARGE_DATA_FILE_APPEND])
@@ -88,7 +90,8 @@ describe('ACP Session presentation policy', () => {
         memory: false,
         contextSummary: false,
         routine: false,
-      endpoint: false
+      endpoint: false,
+      annotation: false,
       },
       backendSystemPromptAppends: ['Backend connector guidance.'],
       extraSystemPromptAppends: ['Specialist identity.'],
@@ -135,7 +138,8 @@ describe('ACP Session presentation policy', () => {
           memory: false,
           contextSummary: false,
           routine: false,
-        endpoint: false
+        endpoint: false,
+        annotation: false,
         },
         backendSystemPromptAppends: ['Already installed by the backend.'],
         extraSystemPromptAppends: ['One-off Session guidance.'],
@@ -196,7 +200,8 @@ describe('ACP Session presentation policy', () => {
           memory: false,
           contextSummary: false,
           routine: false,
-        endpoint: false
+        endpoint: false,
+        annotation: false,
         },
         persistentSystemPrompt: 'Baked OpenCode instructions.',
         specialistPrefix: 'Specialist identity prefix.',
@@ -229,7 +234,8 @@ describe('ACP Session presentation policy', () => {
       memory: false,
       contextSummary: false,
       routine: false,
-    endpoint: false
+    endpoint: false,
+    annotation: false,
     }
 
     expect(

@@ -41,6 +41,7 @@ import { createLogger, errorLogFields } from '../logger'
 import { PlanCommandError } from '../../shared/session-plan/contract'
 import type { RoutineConfigureRequest } from '../../shared/routine'
 import type { EndpointRegisterRequest } from '../../shared/endpoint'
+import type { AnnotationSetRequest } from '../../shared/annotation'
 
 const log = createLogger('notebook:local-rpc')
 
@@ -154,6 +155,12 @@ type NotebookLocalRpcServerOptions = {
     list(): Promise<unknown>
     freePort(): Promise<unknown>
   }
+  // File annotations (annotation_* MCP): main-process-owned, project-scoped persistence.
+  annotations?: {
+    set(sessionId: string, projectId: string, request: AnnotationSetRequest): Promise<unknown>
+    list(sessionId: string, projectId: string, target: string | null): Promise<unknown>
+    remove(sessionId: string, projectId: string, annotationId: string): Promise<unknown>
+  }
   planService?: {
     call(input: {
       projectId: string
@@ -221,6 +228,7 @@ const PLAN_RPC_METHODS = new Set(['planCall'])
 const MEMORY_RPC_METHODS = new Set(['memorySaveNote'])
 const CONTEXT_SUMMARY_RPC_METHODS = new Set(['summaryQueryChunk', 'recordBoundary'])
 const ROUTINE_RPC_METHODS = new Set(['routineConfigure', 'routineStatus', 'routineCancel'])
+const ANNOTATION_RPC_METHODS = new Set(['annotationSet', 'annotationList', 'annotationRemove'])
 const ENDPOINT_RPC_METHODS = new Set([
   'endpointRegister',
   'endpointUnregister',
@@ -283,9 +291,11 @@ class NotebookLocalRpcServer {
   private readonly contextSummaryRpcTokens = new Map<string, string>()
   private readonly routineRpcTokens = new Map<string, string>()
   private readonly endpointRpcTokens = new Map<string, string>()
+  private readonly annotationRpcTokens = new Map<string, string>()
   private readonly contextSummary?: NotebookLocalRpcServerOptions['contextSummary']
   private readonly routine?: NotebookLocalRpcServerOptions['routine']
   private readonly endpoints?: NotebookLocalRpcServerOptions['endpoints']
+  private readonly annotations?: NotebookLocalRpcServerOptions['annotations']
   // The session → Specialist relationship is established by the ACP runtime, not supplied by the
   // notebook process. Keeping it here prevents an agent from selecting another Specialist's scope
   // by forging an RPC parameter.
@@ -314,6 +324,7 @@ class NotebookLocalRpcServer {
     this.contextSummary = options.contextSummary
     this.routine = options.routine
     this.endpoints = options.endpoints
+    this.annotations = options.annotations
     this.planService = options.planService
     this.artifactProvenance = options.artifactProvenance
     this.inputRegistry = options.inputRegistry
@@ -501,6 +512,14 @@ class NotebookLocalRpcServer {
     }
   }
 
+  private revokeAnnotationSessionCapabilities(sessionId: string): void {
+    for (const ownedSessionId of this.resolveSessionCapabilityOwners(sessionId)) {
+      const token = this.annotationRpcTokens.get(ownedSessionId)
+      if (token) this.sessionRpcCapabilities.delete(token)
+      this.annotationRpcTokens.delete(ownedSessionId)
+    }
+  }
+
   private revokePlanSessionCapabilities(sessionId: string): void {
     for (const ownedSessionId of this.resolveSessionCapabilityOwners(sessionId)) {
       const token = this.planRpcTokens.get(ownedSessionId)
@@ -520,6 +539,7 @@ class NotebookLocalRpcServer {
     this.revokeContextSummarySessionCapabilities(sessionId)
     this.revokeRoutineSessionCapabilities(sessionId)
     this.revokeEndpointSessionCapabilities(sessionId)
+    this.revokeAnnotationSessionCapabilities(sessionId)
     this.revokePlanSessionCapabilities(sessionId)
     for (const ownedSessionId of ownedSessionIds) {
       this.sessionSpecialists.delete(ownedSessionId)
@@ -669,6 +689,33 @@ class NotebookLocalRpcServer {
       release: () => {
         if (this.endpointRpcTokens.get(sessionId) === token) {
           this.endpointRpcTokens.delete(sessionId)
+        }
+        this.sessionRpcCapabilities.delete(token)
+      }
+    }
+  }
+
+  async issueAnnotationConnection(
+    sessionId: string,
+    projectId: string
+  ): Promise<NotebookRpcConnection> {
+    const connection = await this.ensureStarted()
+    this.revokeAnnotationSessionCapabilities(sessionId)
+
+    const token = randomUUID()
+    this.annotationRpcTokens.set(sessionId, token)
+    this.sessionRpcCapabilities.set(token, {
+      sessionId,
+      projectId,
+      allowedMethods: ANNOTATION_RPC_METHODS
+    })
+    return {
+      endpoint: connection.endpoint,
+      socketPath: connection.socketPath,
+      token,
+      release: () => {
+        if (this.annotationRpcTokens.get(sessionId) === token) {
+          this.annotationRpcTokens.delete(sessionId)
         }
         this.sessionRpcCapabilities.delete(token)
       }
@@ -1132,6 +1179,49 @@ class NotebookLocalRpcServer {
     if (method === 'endpointFreePort') {
       if (!this.endpoints) throw new Error('Endpoint handler is not configured.')
       return this.endpoints.freePort()
+    }
+
+    if (method === 'annotationSet') {
+      if (!this.annotations) throw new Error('Annotation handler is not configured.')
+      if (
+        typeof params.sessionId !== 'string' ||
+        typeof params.projectId !== 'string' ||
+        typeof params.request !== 'object' ||
+        params.request === null
+      ) {
+        throw new Error('Annotation set RPC params must include sessionId, projectId, and request.')
+      }
+      return this.annotations.set(
+        params.sessionId,
+        params.projectId,
+        params.request as AnnotationSetRequest
+      )
+    }
+
+    if (method === 'annotationList') {
+      if (!this.annotations) throw new Error('Annotation handler is not configured.')
+      if (typeof params.sessionId !== 'string' || typeof params.projectId !== 'string') {
+        throw new Error('Annotation list RPC params must include sessionId and projectId.')
+      }
+      return this.annotations.list(
+        params.sessionId,
+        params.projectId,
+        typeof params.target === 'string' ? params.target : null
+      )
+    }
+
+    if (method === 'annotationRemove') {
+      if (!this.annotations) throw new Error('Annotation handler is not configured.')
+      if (
+        typeof params.sessionId !== 'string' ||
+        typeof params.projectId !== 'string' ||
+        typeof params.annotationId !== 'string'
+      ) {
+        throw new Error(
+          'Annotation remove RPC params must include sessionId, projectId, and annotationId.'
+        )
+      }
+      return this.annotations.remove(params.sessionId, params.projectId, params.annotationId)
     }
 
     if (method === 'planCall') {

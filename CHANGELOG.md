@@ -17,6 +17,11 @@ PureScience 是一款面向科学研究的开源 AI 工作台：多智能体协�
 | 天工 | 天工开物——工具与工程体系的未来篇章 | （规划） |
 | 北斗 | 指路星辰——导航与检索体系的未来篇章 | （规划） |
 
+## v1.33.0 — 2026-12-03（能力批次）
+
+- **文件注解（file annotations）**：agent 可通过新 MCP 工具 **annotation_set** 给项目文件打带标签的注解（todo/question/important/note/review + 简短备注，路径相对项目根，同标签重复设置自动替换），**annotation_list** 查看（可按文件过滤），**annotation_remove** 删除；注解锚定内容版本（可选 file_sha256，检测内容漂移）；路径安全校验拒绝绝对路径与 .. 逃逸；文件面板每行新增注解按钮（hover 显示），弹窗内可视化查看/添加/删除（zh/en 双语）
+- **模型 runbook 扩充**：新增 **生物模型本地托管**（managed-bio-endpoints）——通用托管模式（FastAPI 包装 + 幂等启停 + 就绪路由 + 权重缓存挂载）+ fair-esm2 轻量示例与 esmfold2 GPU 示例；连同 llamacpp-local-server 共 2 个本地托管 runbook，38 个内置技能
+
 ## v1.32.0 — 2026-12-02（能力批次）
 
 - **本地模型服务（managed endpoints）**：agent 可通过新 MCP 工具 **endpoint_register** 注册本地模型服务（名称 + 回环地址 + 模型技能 + 幂等启停脚本 + 就绪路由），**endpoint_free_port** 从托管区间（20000-29999）分配端口，**endpoint_start/endpoint_stop** 掌控生命周期，**endpoint_status/endpoint_list** 查看状态；主进程守护生命周期——首次注册的脚本集需在设置 → 本地模型面板批准（sha256 白名单，字节相同静默通过，任何改动重新审批），启动后轮询就绪路由，就绪才放行调用，连续失败进入 failed 并记录 last_error；凭据值经环境变量注入启动脚本（agent 端永不见明文）；内置 llama.cpp 本地推理 runbook（zh/en 双语）
