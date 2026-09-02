@@ -2179,5 +2179,5 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.useAllMainAgentSkills':
     'メインエージェントのすべてのスキルとコネクタを使用します（後から追加されたものを含む）。各項目を個別に設定する必要はありません。',
   'update.notesUnavailable': 'このバージョンのリリースノートは、アプリ内では表示できません。',
-  'update.whatsNew': '更新内容',
+  'update.whatsNew': '更新内容'
 }

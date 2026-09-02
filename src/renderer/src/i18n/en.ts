@@ -2215,5 +2215,5 @@ export const en: Record<ZhKey, string> = {
     'This file is an older plan version; the current session is running a newer plan.',
   'settings.planSnapshotBanner': 'This file is a plan snapshot — step status is read-only.',
   'home.searchSessionsAndArtifacts': 'Search sessions and artifacts…',
-  'settings.languageSystem': 'Follow system',
+  'settings.languageSystem': 'Follow system'
 }
