@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
 // i18n coverage report — parses the TS dictionary files under src/renderer/src/i18n and prints the
 // per-language key coverage vs English. Exit code is 0 unless `--min <pct>` is given and a language
 // falls below the threshold. Usage: node scripts/i18n-coverage.mjs [--min 99.5]
