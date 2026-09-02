@@ -110,7 +110,7 @@ const PermissionUndoItem = ({
               variant="ghost"
               size="icon"
               className="relative size-8 shrink-0 before:absolute before:-inset-1.5 before:content-['']"
-              aria-label="Dismiss permission Undo"
+              aria-label={t('permissionUndo.dismissPermission')}
               disabled={isRestoring}
               onClick={() => dismiss(undo.token)}
             >
@@ -197,7 +197,7 @@ const ArchiveUndoItem = ({
               variant="ghost"
               size="icon"
               className="relative size-8 shrink-0 before:absolute before:-inset-1.5 before:content-['']"
-              aria-label="Dismiss archive Undo"
+              aria-label={t('permissionUndo.dismissArchive')}
               disabled={isRestoring}
               onClick={() => dismiss(undo.key)}
             >

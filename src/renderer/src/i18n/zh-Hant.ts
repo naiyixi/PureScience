@@ -2043,5 +2043,13 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'connectorImport.dropToValidate': '放開以驗證',
   'jobDetail.remoteWorkdir': '遠端工作目錄',
   'onboarding.notebookRuntimeOptional': 'Notebook 執行環境（選填）',
-  'settings.languageDescription': '介面語言。未翻譯的字串會回退為英文。'
+  'settings.languageDescription': '介面語言。未翻譯的字串會回退為英文。',
+  'permissionUndo.dismissPermission': '關閉權限復原提示',
+  'permissionUndo.dismissArchive': '關閉封存復原提示',
+  'previewFile.previousVersion': '上一個產物版本',
+  'previewFile.nextVersion': '下一個產物版本',
+  'renameSession.purposePlaceholder': '這個對話是關於什麼的（可選）',
+  'wsMessage.conversation': '對話',
+  'conversation.referenceSession': '引用一個對話',
+  'sessionPlan.downloadPlan': '下載計畫'
 }

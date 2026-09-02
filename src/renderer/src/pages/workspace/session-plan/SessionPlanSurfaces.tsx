@@ -291,7 +291,7 @@ const PlanPreviewSurface = ({
         <div className="flex items-center gap-1">
           <Button
             type="button"
-            aria-label="Download Plan"
+            aria-label={t('sessionPlan.downloadPlan')}
             variant="ghost"
             onClick={() => void download()}
           >

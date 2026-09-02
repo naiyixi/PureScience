@@ -761,7 +761,7 @@ const WorkspaceMessageScrollerImpl = ({
             className="pointer-events-none absolute inset-x-0 top-0 z-10 h-6 bg-gradient-to-b from-bg-10 to-bg-10/0"
           />
           {conversationItems.length === 0 ? <EmptyConversationBanner /> : null}
-          <MessageScrollerViewport aria-label="Conversation">
+          <MessageScrollerViewport aria-label={t('wsMessage.conversation')}>
             <WorkspaceMessageScrollerInner
               conversationItems={conversationItems}
               render={(boundedRenderWindow) => (

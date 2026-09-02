@@ -2226,4 +2226,12 @@ export const en: Record<ZhKey, string> = {
   'jobDetail.remoteWorkdir': 'Remote workdir',
   'onboarding.notebookRuntimeOptional': 'Notebook runtime (optional)',
   'settings.languageDescription': 'Interface language. Untranslated strings fall back to English.',
+  'permissionUndo.dismissPermission': 'Dismiss permission Undo',
+  'permissionUndo.dismissArchive': 'Dismiss archive Undo',
+  'previewFile.previousVersion': 'Previous Artifact version',
+  'previewFile.nextVersion': 'Next Artifact version',
+  'renameSession.purposePlaceholder': 'What this session is about (optional)',
+  'wsMessage.conversation': 'Conversation',
+  'conversation.referenceSession': 'Reference a session',
+  'sessionPlan.downloadPlan': 'Download Plan',
 }

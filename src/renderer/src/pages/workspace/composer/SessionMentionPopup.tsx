@@ -43,7 +43,7 @@ export const SessionMentionPopup = ({
       <ul
         id={listboxId}
         role="listbox"
-        aria-label="Reference a session"
+        aria-label={t('conversation.referenceSession')}
         className="max-h-56 overflow-y-auto p-1"
       >
         {matches.length === 0 ? (

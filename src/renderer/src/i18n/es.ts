@@ -2216,5 +2216,13 @@ export const es: Partial<Record<ZhKey, string>> = {
   'jobDetail.remoteWorkdir': 'Directorio de trabajo remoto',
   'onboarding.notebookRuntimeOptional': 'Runtime de cuaderno (opcional)',
   'settings.languageDescription':
-    'Idioma de la interfaz. Las cadenas no traducidas vuelven al inglés.'
+    'Idioma de la interfaz. Las cadenas no traducidas vuelven al inglés.',
+  'permissionUndo.dismissPermission': 'Cerrar el aviso para deshacer el permiso',
+  'permissionUndo.dismissArchive': 'Cerrar el aviso para deshacer el archivado',
+  'previewFile.previousVersion': 'Versión anterior del artefacto',
+  'previewFile.nextVersion': 'Siguiente versión del artefacto',
+  'renameSession.purposePlaceholder': 'De qué trata esta sesión (opcional)',
+  'wsMessage.conversation': 'Conversación',
+  'conversation.referenceSession': 'Referenciar una sesión',
+  'sessionPlan.downloadPlan': 'Descargar plan'
 }
