@@ -5,7 +5,6 @@ import {
   EGRESS_APPROVAL_CHANNEL,
   type EgressApprovalRespondRequest
 } from '../../shared/egress'
-import { respondToEgressApproval } from '../net/egress-runtime'
 
 import {
   type AppIconPreview,
@@ -118,7 +117,7 @@ const registerSettingsIpcHandlers = ({
     broadcastToRenderers(EGRESS_APPROVAL_CHANNEL, request)
   }
   ipcMainHandle('egress:respond-approval', (_event, request: EgressApprovalRespondRequest) =>
-    respondToEgressApproval(request.requestId, request.decision)
+    service.respondEgressApproval(request.requestId, request.decision)
   )
   ipcMainHandle('settings:get-preflight', () => service.getPreflight())
   ipcMainHandle('settings:get-settings', () => service.getSettingsView())

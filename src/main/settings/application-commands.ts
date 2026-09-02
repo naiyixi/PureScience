@@ -21,6 +21,7 @@ import type {
   CreateExternalComputeEndpointRequest,
   ValidateProviderRequest
 } from '../../shared/settings'
+import type { EgressApprovalDecision } from '../net/egress-runtime'
 import {
   defineApplicationCommand,
   defineApplicationCommandGroup,
@@ -44,6 +45,7 @@ type CoreSettingsCommandStore = Pick<
   | 'cancelClaudeIsolatedLogin'
   | 'checkEnvironment'
   | 'detectClaude'
+  | 'detectCodebuddy'
   | 'detectCodex'
   | 'detectOpencode'
   | 'getConnectorDetail'
@@ -51,6 +53,7 @@ type CoreSettingsCommandStore = Pick<
   | 'listCredentials'
   | 'thirdPartyLicenses'
   | 'getEgress'
+  | 'respondEgressApproval'
   | 'listExternalComputeEndpoints'
   | 'getPackageMirror'
   | 'getPreflight'
@@ -128,6 +131,11 @@ const settingsCoreApplicationCommands = Object.freeze({
     readonly [],
     StoreResult<'detectCodex'>
   >('settings:detect-codex'),
+  detectCodebuddy: defineApplicationCommand<
+    'settings:detect-codebuddy',
+    readonly [],
+    StoreResult<'detectCodebuddy'>
+  >('settings:detect-codebuddy'),
   detectOpencode: defineApplicationCommand<
     'settings:detect-opencode',
     readonly [],
@@ -292,6 +300,11 @@ const settingsCoreApplicationCommands = Object.freeze({
     readonly [egress: EgressSettings],
     StoreResult<'setEgress'>
   >('settings:set-egress'),
+  respondApproval: defineApplicationCommand<
+    'egress:respond-approval',
+    readonly [requestId: string, decision: EgressApprovalDecision],
+    StoreResult<'respondEgressApproval'>
+  >('egress:respond-approval'),
   setExternalComputeEndpoint: defineApplicationCommand<
     'settings:set-external-compute-endpoint',
     readonly [request: CreateExternalComputeEndpointRequest],
@@ -371,6 +384,7 @@ const settingsCoreApplicationCommandGroup = defineApplicationCommandGroup('setti
   settingsCoreApplicationCommands.cancelIsolatedClaudeLogin,
   settingsCoreApplicationCommands.checkEnvironment,
   settingsCoreApplicationCommands.detectClaude,
+  settingsCoreApplicationCommands.detectCodebuddy,
   settingsCoreApplicationCommands.detectCodex,
   settingsCoreApplicationCommands.detectOpencode,
   settingsCoreApplicationCommands.getConnectorDetail,
@@ -406,6 +420,7 @@ const settingsCoreApplicationCommandGroup = defineApplicationCommandGroup('setti
   settingsCoreApplicationCommands.deleteCredential,
   settingsCoreApplicationCommands.testCredential,
   settingsCoreApplicationCommands.setEgress,
+  settingsCoreApplicationCommands.respondApproval,
   settingsCoreApplicationCommands.setExternalComputeEndpoint,
   settingsCoreApplicationCommands.deleteExternalComputeEndpoint,
   settingsCoreApplicationCommands.setNotificationsEnabled,
@@ -455,6 +470,7 @@ const registerCoreSettingsApplicationCommands = (
       },
       'settings:check-environment': () => dependencies.service.checkEnvironment(),
       'settings:detect-claude': () => dependencies.service.detectClaude(),
+      'settings:detect-codebuddy': () => dependencies.service.detectCodebuddy(),
       'settings:detect-codex': () => dependencies.service.detectCodex(),
       'settings:detect-opencode': () => dependencies.service.detectOpencode(),
       'settings:get-connector-detail': ({ args }) =>
@@ -546,6 +562,10 @@ const registerCoreSettingsApplicationCommands = (
       'settings:set-egress': ({ args, callerContext }) => {
         requireLocalCaller(callerContext, 'settings:set-egress')
         return dependencies.service.setEgress(args[0])
+      },
+      'egress:respond-approval': ({ args, callerContext }) => {
+        requireLocalCaller(callerContext, 'egress:respond-approval')
+        return dependencies.service.respondEgressApproval(args[0], args[1])
       },
       'settings:list-external-compute-endpoints': ({ callerContext }) => {
         requireLocalCaller(callerContext, 'settings:list-external-compute-endpoints')

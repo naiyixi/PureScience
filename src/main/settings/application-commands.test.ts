@@ -21,6 +21,7 @@ const expectedChannels = [
   'settings:cancel-isolated-claude-login',
   'settings:check-environment',
   'settings:detect-claude',
+  'settings:detect-codebuddy',
   'settings:detect-codex',
   'settings:detect-opencode',
   'settings:get-connector-detail',
@@ -56,6 +57,7 @@ const expectedChannels = [
   'settings:delete-credential',
   'settings:test-credential',
   'settings:set-egress',
+  'egress:respond-approval',
   'settings:set-external-compute-endpoint',
   'settings:delete-external-compute-endpoint',
   'settings:set-notifications-enabled',
@@ -143,7 +145,9 @@ describe('Settings core application commands', () => {
     expect(settingsCoreApplicationCommandGroup.commands.map((command) => command.name)).toEqual(
       expectedChannels
     )
-    expect(settingsChannels).toEqual(expect.arrayContaining([...expectedChannels]))
+    expect(settingsChannels).toEqual(
+      expect.arrayContaining([...expectedChannels.filter((channel) => channel !== 'egress:respond-approval')])
+    )
     expect(router.dispatcher.commandNames()).toEqual([...expectedChannels].sort())
     await expect(
       router.dispatcher.invoke(
