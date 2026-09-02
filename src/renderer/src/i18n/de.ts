@@ -738,7 +738,7 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.connectorConfigMustBeJson': 'Konnektor-Konfigurationen müssen JSON-Dateien sein.',
   'settings.connectorId': 'Konnektor-ID',
   'settings.connectorIdHint':
-    'Verwendet von host.mcp(\"{slug}\", …), Spezialisten und der generierten MCP-Fähigkeit.',
+    'Verwendet von host.mcp("{slug}", …), Spezialisten und der generierten MCP-Fähigkeit.',
   'settings.connectorPolicy': 'Konnektor-Richtlinie',
   'settings.connectorSendsExternal':
     'Der Agent möchte ein Konnektor-Tool aufrufen, das Daten an einen externen Dienst sendet.',
@@ -2224,5 +2224,5 @@ export const de: Partial<Record<ZhKey, string>> = {
     'Verwenden Sie alle Fähigkeiten und Konnektoren des Hauptagenten, auch die später hinzugefügten. Sie müssen nichts einzeln konfigurieren.',
   'update.notesUnavailable':
     'Für diese Version sind die Versionshinweise nicht in der App verfügbar.',
-  'update.whatsNew': 'Neuerungen',
+  'update.whatsNew': 'Neuerungen'
 }

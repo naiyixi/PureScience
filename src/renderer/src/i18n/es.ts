@@ -2206,5 +2206,5 @@ export const es: Partial<Record<ZhKey, string>> = {
     'Usa todas las habilidades y conectores del agente principal, incluidos los que se añadan más adelante. No es necesario configurar cada elemento.',
   'update.notesUnavailable':
     'Las notas de la versión no están disponibles en la aplicación para esta versión.',
-  'update.whatsNew': 'Novedades',
+  'update.whatsNew': 'Novedades'
 }

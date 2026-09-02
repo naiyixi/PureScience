@@ -2034,5 +2034,5 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.useAllMainAgentSkills':
     '使用主智能體的所有技能與連接器，包括日後新增的項目。無需逐一設定。',
   'update.notesUnavailable': '此版本的更新說明目前不支援在應用程式內檢視。',
-  'update.whatsNew': '更新內容',
+  'update.whatsNew': '更新內容'
 }
