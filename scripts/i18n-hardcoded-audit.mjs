@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
 // Dev audit: surface user-visible English literals that bypass t().
 // Pure-Node scan; heuristic patterns; no CI gate (drives the keying backlog).
 // Usage: node scripts/i18n-hardcoded-audit.mjs
