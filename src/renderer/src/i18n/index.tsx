@@ -1,46 +1,10 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 
-import { en } from './en'
-import { zh } from './zh'
-import { zhHant } from './zh-Hant'
-import { ja } from './ja'
-import { ko } from './ko'
-import { fr } from './fr'
-import { de } from './de'
-import { es } from './es'
-import { ru } from './ru'
+import { dictionaries, LOCALE_TAG, languageFromLocale, type Language } from './languages'
 
-export type Language = 'zh' | 'zh-Hant' | 'en' | 'ja' | 'ko' | 'fr' | 'de' | 'es' | 'ru'
-
-export type TranslationKey = keyof typeof en
-
-// Every dictionary is a PARTIAL map over the English keys: a missing key falls back to English, so a
-// newly added key never leaves a language with a blank/garbled string. This mirrors the reference
-// product's i18n mechanism (English strings as keys + English fallback) and lets each language ship
-// incrementally.
-type Dictionary = Partial<Record<TranslationKey, string>>
-
-const dictionaries: Record<Language, Dictionary> = { zh, 'zh-Hant': zhHant, en, ja, ko, fr, de, es, ru }
+export type { Language, LanguageInfo, TranslationKey } from './languages'
 
 const STORAGE_KEY = 'purescience-language'
-
-// Maps the browser's navigator.language (e.g. 'zh-TW', 'ja-JP') onto the supported set.
-const languageFromLocale = (locale: string): Language | undefined => {
-  const normalized = locale.toLowerCase()
-  if (normalized.startsWith('zh')) {
-    if (normalized.includes('tw') || normalized.includes('hk') || normalized.includes('hant')) {
-      return 'zh-Hant'
-    }
-    return 'zh'
-  }
-  if (normalized.startsWith('ja')) return 'ja'
-  if (normalized.startsWith('ko')) return 'ko'
-  if (normalized.startsWith('fr')) return 'fr'
-  if (normalized.startsWith('de')) return 'de'
-  if (normalized.startsWith('es')) return 'es'
-  if (normalized.startsWith('ru')) return 'ru'
-  return undefined
-}
 
 const detectInitialLanguage = (): Language => {
   try {
@@ -53,44 +17,11 @@ const detectInitialLanguage = (): Language => {
   }
 }
 
-// Document-level locale tag for each supported language (drives spellcheck/direction hints).
-const LOCALE_TAG: Record<Language, string> = {
-  zh: 'zh-CN',
-  'zh-Hant': 'zh-TW',
-  en: 'en',
-  ja: 'ja',
-  ko: 'ko',
-  fr: 'fr',
-  de: 'de',
-  es: 'es',
-  ru: 'ru'
-}
-
-export type LanguageInfo = {
-  id: Language
-  // Native endonym shown in the language picker (e.g. 繁體中文 for zh-Hant).
-  label: string
-}
-
-// The ordered language list rendered by the settings picker. Native endonyms only — a user who cannot
-// read English should still find their language.
-export const LANGUAGES: readonly LanguageInfo[] = [
-  { id: 'zh', label: '简体中文' },
-  { id: 'zh-Hant', label: '繁體中文' },
-  { id: 'en', label: 'English' },
-  { id: 'ja', label: '日本語' },
-  { id: 'ko', label: '한국어' },
-  { id: 'fr', label: 'Français' },
-  { id: 'de', label: 'Deutsch' },
-  { id: 'es', label: 'Español' },
-  { id: 'ru', label: 'Русский' }
-]
-
 type LanguageContextValue = {
   lang: Language
   setLang: (lang: Language) => void
   // Optional interpolation variables replace `{name}` placeholders in the resolved string.
-  t: (key: TranslationKey, vars?: Record<string, string | number>) => string
+  t: (key: keyof typeof dictionaries.en, vars?: Record<string, string | number>) => string
 }
 
 const LanguageContext = createContext<LanguageContextValue | null>(null)
@@ -112,7 +43,7 @@ const LanguageProvider = ({ children }: { children: ReactNode }): React.JSX.Elem
       lang,
       setLang: setLangState,
       t: (key, vars) => {
-        const text = dictionaries[lang][key] ?? en[key] ?? key
+        const text = dictionaries[lang][key] ?? dictionaries.en[key] ?? key
         if (!vars) return text
         return text.replace(/\{(\w+)\}/g, (match, name: string) =>
           name in vars ? String(vars[name]) : match
@@ -137,8 +68,12 @@ const useLanguage = (): LanguageContextValue => {
   return {
     lang: 'en',
     setLang: () => {},
-    t: (key) => en[key] ?? key
+    t: (key) => dictionaries.en[key] ?? key
   }
 }
 
+// LanguageProvider is a context provider (JSX, must live in a .tsx); useLanguage is its public
+// consumer hook and LanguageProvider is its only mount point, so both must export from this file.
+// Splitting them would force every consumer through two imports for no HMR benefit.
+// eslint-disable-next-line react-refresh/only-export-components
 export { LanguageProvider, useLanguage }

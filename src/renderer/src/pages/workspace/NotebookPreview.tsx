@@ -7,6 +7,10 @@ import { Braces, FilePenLine } from 'lucide-react'
 import { useNotebookEnvStore } from '@/stores/notebook-env-store'
 import { cn } from '@/lib/utils'
 import { WriteAuditPanel } from './WriteAuditPanel'
+import {
+  isVariableToken as isVariableTokenSuggestion,
+  suggestVariableNames
+} from './notebook-variable-suggestions'
 
 import type {
   NotebookEnvironmentStatus,
@@ -262,20 +266,6 @@ const TerminalScrollback = ({ runs }: { runs: NotebookRunRecord[] }): React.JSX.
   </div>
 )
 
-const variableSuggestionPattern = /^[A-Za-z_]/u
-
-// Pure suggestion logic: matches live kernel variable names against the current token prefix.
-// Exported for focused tests; the input UI consumes it for Tab/click completion.
-const suggestVariableNames = (
-  code: string,
-  variableNames: readonly string[]
-): string[] => {
-  const currentToken = code.split(/[\s()[\].,;:]/).at(-1) ?? ''
-  if (!variableSuggestionPattern.test(currentToken) || currentToken.length < 1) return []
-  const prefix = currentToken.toLowerCase()
-  return variableNames.filter((name) => name.toLowerCase().startsWith(prefix)).slice(0, 8)
-}
-
 // Captures one-line terminal code and submits on Enter while Shift+Enter keeps editing. While
 // typing, it suggests live kernel variable names (matched against the current token prefix);
 // Tab/click accepts, Arrow keys navigate, Escape dismisses.
@@ -299,7 +289,7 @@ const TerminalInput = ({
   // The variable name currently being typed (the last whitespace-delimited token starting with
   // a letter/underscore); suggestions are matched against its prefix.
   const currentToken = code.split(/[\s()[\].,;:]/).at(-1) ?? ''
-  const isVariableToken = variableSuggestionPattern.test(currentToken)
+  const isVariableToken = isVariableTokenSuggestion(code)
   const suggestions = useMemo(
     () => suggestVariableNames(code, variableNames),
     [code, variableNames]
@@ -345,10 +335,14 @@ const TerminalInput = ({
   }
 
   // Recompute the highlight when the token or list changes; open the list while typing a match.
+  // The setters reset ephemeral UI navigation state in response to the suggestion list changing,
+  // never in the same tick as a render the user observes — no cascading renders.
+  /* eslint-disable react-hooks/set-state-in-effect -- see note above */
   useEffect(() => {
     setSuggestionIndex(0)
     setShowSuggestions(suggestions.length > 0 && isVariableToken)
   }, [isVariableToken, suggestions])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   return (
     <div className="relative">
@@ -842,4 +836,4 @@ const NotebookPreview = ({ item }: NotebookPreviewProps): React.JSX.Element => {
   )
 }
 
-export { NotebookPreview, suggestVariableNames }
+export { NotebookPreview }

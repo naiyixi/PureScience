@@ -3,7 +3,8 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { LANGUAGES, LanguageProvider, useLanguage, type Language } from './index'
+import { LANGUAGES, type Language } from './languages'
+import { LanguageProvider, useLanguage } from './index'
 
 let container: HTMLDivElement
 let root: Root
