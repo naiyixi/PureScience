@@ -7,7 +7,8 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
-import { LANGUAGES, useLanguage } from '@/i18n'
+import { LANGUAGES } from '@/i18n/languages'
+import { useLanguage } from '@/i18n'
 
 type LanguageToggleButtonProps = {
   className?: string

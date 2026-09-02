@@ -52,7 +52,8 @@ describe('codeBuddyFramework', () => {
     const settings = JSON.parse(settingsFile?.content ?? '{}')
     expect(settings.autoCompactEnabled).toBe(false)
     expect(settings.permissions.deny).toEqual(['WebFetch', 'WebSearch'])
-    expect(settings.sandbox.enabled).toBe(true)
+    // Sandbox is enabled everywhere except Windows (CodeBuddy's native sandbox is POSIX-only).
+    expect(settings.sandbox.enabled).toBe(process.platform !== 'win32')
   })
 
   it('denies network tools via args and keeps local tools only', () => {
@@ -78,12 +79,12 @@ describe('codeBuddyFramework', () => {
       }
     )
 
-    const promptFile = config.configFiles?.find((file) =>
-      file.path.endsWith('system-prompt.md')
-    )
+    const promptFile = config.configFiles?.find((file) => file.path.endsWith('system-prompt.md'))
     expect(promptFile?.content).toBe('Use notebook routing.\n\nThen write artifacts.')
     const flagIndex = config.args?.indexOf('--system-prompt-file')
-    expect(config.args?.[(flagIndex ?? 0) + 1]).toBe(join(codeBuddyStorageDir('/data'), 'system-prompt.md'))
+    expect(config.args?.[(flagIndex ?? 0) + 1]).toBe(
+      join(codeBuddyStorageDir('/data'), 'system-prompt.md')
+    )
     expect(config.persistentSystemPrompt).toBe(promptFile?.content)
   })
 

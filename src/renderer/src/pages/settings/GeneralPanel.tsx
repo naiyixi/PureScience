@@ -1,4 +1,5 @@
-import { useLanguage, LANGUAGES, type Language } from '@/i18n'
+import { useLanguage, type Language } from '@/i18n'
+import { LANGUAGES } from '@/i18n/languages'
 import { ExternalLink, FolderOpen, Globe, Terminal } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
@@ -150,10 +151,7 @@ const GeneralPanel = (): React.JSX.Element => {
           className="pt-0"
           controlClassName="flex justify-end"
         >
-          <Select
-            value={lang}
-            onValueChange={(value) => setLang(value as Language)}
-          >
+          <Select value={lang} onValueChange={(value) => setLang(value as Language)}>
             <SelectTrigger aria-label={t('common.language')}>
               <span>{LANGUAGES.find((entry) => entry.id === lang)?.label ?? lang}</span>
             </SelectTrigger>

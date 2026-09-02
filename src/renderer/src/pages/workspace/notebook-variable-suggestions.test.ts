@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { suggestVariableNames } from './NotebookPreview'
+import { suggestVariableNames } from './notebook-variable-suggestions'
 
 describe('suggestVariableNames', () => {
   const variables = ['count', 'data_frame', 'mean_value', 'results', 'x']

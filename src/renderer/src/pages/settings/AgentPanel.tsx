@@ -273,6 +273,7 @@ const AgentPanel = ({
     agentFrameworks,
     isOnboarding,
     preflight.claudeReady,
+    preflight.codebuddyReady,
     preflight.codexReady,
     preflight.opencodeReady,
     queueOnboardingSwitch
