@@ -273,16 +273,20 @@ describe('多语言扩展门禁', () => {
     expect(missing).toEqual([])
   })
 
-  it.each(EXTRA_DICTIONARIES)('$name 值不为空且与英文不同（允许品牌名白名单）', ({ dict }) => {
-    const violations = Object.entries(dict).filter(([key, value]) => {
-      if (value === '') return true
-      if (value === en[key as keyof typeof en]) {
-        return !KEPT_IN_ENGLISH.has(value) && !LATIN_COGNATES.has(value)
-      }
-      return false
-    })
-    expect(violations).toEqual([])
-  })
+  it.each(EXTRA_DICTIONARIES)(
+    '$name 值不为空且与英文不同（允许品牌名白名单）',
+    ({ name, dict }) => {
+      const violations = Object.entries(dict).filter(([key, value]) => {
+        if (value === '')
+          return en[key as keyof typeof en] !== '' && !ALLOWED_EMPTY[name]?.includes(key)
+        if (value === en[key as keyof typeof en]) {
+          return !KEPT_IN_ENGLISH.has(value) && !LATIN_COGNATES.has(value)
+        }
+        return false
+      })
+      expect(violations).toEqual([])
+    }
+  )
 
   it.each(EXTRA_DICTIONARIES)(
     '$name 未覆盖键已在 pending-translations 登记（新增键必须翻译或显式登记，防止静默烂尾）',
@@ -334,5 +338,265 @@ const LATIN_COGNATES = new Set<string>([
   'Compute',
   'Tags',
   'Runtimes',
-  'General'
+  'General',
+  // 2026-09 全量翻译后的合法同形/借词与占位符：多语言复核确认这些词在各语言中本就与英文同形
+  'Marketplace',
+  'Streamable HTTP',
+  'Ethernet',
+  'Alias',
+  'Global',
+  'Cache',
+  'Code',
+  'Format',
+  'Version',
+  'Navigation',
+  'Notebooks',
+  'Runtime',
+  'Transport',
+  'Tokens',
+  'Variables',
+  'variables',
+  'Sessions',
+  'Session',
+  'Messages',
+  'Notifications',
+  'Description',
+  'Source',
+  'Community',
+  'Details',
+  'Build',
+  'Log',
+  'Text',
+  'Live',
+  'System',
+  'Tools',
+  'Uploads',
+  'Agent:',
+  'Personal',
+  'Error',
+  'Archive',
+  'Image',
+  'Type',
+  'Microscope',
+  'Diagnostics',
+  'Arguments',
+  'Instruction',
+  'PHASE {number}',
+  '{n} sessions',
+  '{n} session',
+  '{date}: {value} {metric}',
+  '.',
+  'h',
+  'min',
+  'ID (optional)',
+  'R Data'
 ])
+
+// 语言语法性省略：日语的属格拼接片段（Its/Their）在句内自然省略为 ∅，zh 用「其」。
+const ALLOWED_EMPTY: Readonly<Record<string, readonly string[]>> = {
+  ja: ['settings.its', 'settings.their']
+}
+
+// 繁体（zh-Hant）专属门禁：全量值必须为台湾惯用繁体，任何简体字残留即为违规。
+// 简体→繁体高置信度对照表（仅收录严格一一对应、不会误伤繁体中同形字的常用字）。
+const SIMPLIFIED_CHARS: ReadonlyArray<[string, string]> = [
+  ['设', '設'],
+  ['与', '與'],
+  ['关', '關'],
+  ['发', '發'],
+  ['会', '會'],
+  ['后', '後'],
+  ['开', '開'],
+  ['时', '時'],
+  ['过', '過'],
+  ['对', '對'],
+  ['说', '說'],
+  ['样', '樣'],
+  ['见', '見'],
+  ['来', '來'],
+  ['个', '個'],
+  ['动', '動'],
+  ['产', '產'],
+  ['长', '長'],
+  ['们', '們'],
+  ['为', '為'],
+  ['现', '現'],
+  ['让', '讓'],
+  ['还', '還'],
+  ['这', '這'],
+  ['进', '進'],
+  ['经', '經'],
+  ['间', '間'],
+  ['电', '電'],
+  ['当', '當'],
+  ['该', '該'],
+  ['认', '認'],
+  ['识', '識'],
+  ['职', '職'],
+  ['风', '風'],
+  ['车', '車'],
+  ['马', '馬'],
+  ['门', '門'],
+  ['问', '問'],
+  ['题', '題'],
+  ['体', '體'],
+  ['层', '層'],
+  ['应', '應'],
+  ['结', '結'],
+  ['号', '號'],
+  ['汇', '匯'],
+  ['汉', '漢'],
+  ['标', '標'],
+  ['红', '紅'],
+  ['纸', '紙'],
+  ['级', '級'],
+  ['纪', '紀'],
+  ['约', '約'],
+  ['苏', '蘇'],
+  ['艺', '藝'],
+  ['节', '節'],
+  ['补', '補'],
+  ['评', '評'],
+  ['话', '話'],
+  ['词', '詞'],
+  ['语', '語'],
+  ['请', '請'],
+  ['调', '調'],
+  ['课', '課'],
+  ['贝', '貝'],
+  ['负', '負'],
+  ['贵', '貴'],
+  ['费', '費'],
+  ['买', '買'],
+  ['卖', '賣'],
+  ['质', '質'],
+  ['账', '賬'],
+  ['败', '敗'],
+  ['购', '購'],
+  ['跃', '躍'],
+  ['践', '踐'],
+  ['踪', '蹤'],
+  ['轮', '輪'],
+  ['输', '輸'],
+  ['辞', '辭'],
+  ['边', '邊'],
+  ['达', '達'],
+  ['远', '遠'],
+  ['运', '運'],
+  ['适', '適'],
+  ['选', '選'],
+  ['视', '視'],
+  ['观', '觀'],
+  ['欢', '歡'],
+  ['华', '華'],
+  ['义', '義'],
+  ['传', '傳'],
+  ['优', '優'],
+  ['伤', '傷'],
+  ['伟', '偉'],
+  ['价', '價'],
+  ['众', '眾'],
+  ['万', '萬'],
+  ['专', '專'],
+  ['业', '業'],
+  ['东', '東'],
+  ['丝', '絲'],
+  ['丢', '丟'],
+  ['两', '兩'],
+  ['严', '嚴'],
+  ['丧', '喪'],
+  ['丰', '豐'],
+  ['临', '臨'],
+  ['丽', '麗'],
+  ['举', '舉'],
+  ['书', '書'],
+  ['乱', '亂'],
+  ['争', '爭'],
+  ['亏', '虧'],
+  ['头', '頭'],
+  ['实', '實'],
+  ['宝', '寶'],
+  ['将', '將'],
+  ['导', '導'],
+  ['寿', '壽'],
+  ['学', '學'],
+  ['审', '審'],
+  ['写', '寫'],
+  ['军', '軍'],
+  ['农', '農'],
+  ['冲', '衝'],
+  ['况', '況'],
+  ['净', '淨'],
+  ['减', '減'],
+  ['决', '決'],
+  ['机', '機'],
+  ['杀', '殺'],
+  ['杂', '雜'],
+  ['条', '條'],
+  ['极', '極'],
+  ['梦', '夢'],
+  ['检', '檢'],
+  ['楼', '樓'],
+  ['术', '術'],
+  ['礼', '禮'],
+  ['稳', '穩'],
+  ['积', '積'],
+  ['称', '稱'],
+  ['种', '種'],
+  ['穷', '窮'],
+  ['竞', '競'],
+  ['笔', '筆'],
+  ['简', '簡'],
+  ['类', '類'],
+  ['粮', '糧'],
+  ['纠', '糾'],
+  ['纪', '紀'],
+  ['纲', '綱'],
+  ['纳', '納'],
+  ['纵', '縱'],
+  ['纷', '紛'],
+  ['纸', '紙'],
+  ['纹', '紋'],
+  ['纺', '紡'],
+  ['细', '細'],
+  ['终', '終'],
+  ['组', '組'],
+  ['绍', '紹'],
+  ['经', '經'],
+  ['给', '給'],
+  ['络', '絡'],
+  ['统', '統'],
+  ['继', '繼'],
+  ['绩', '績'],
+  ['绪', '緒'],
+  ['续', '續'],
+  ['绳', '繩'],
+  ['维', '維'],
+  ['绵', '綿'],
+  ['综', '綜'],
+  ['编', '編'],
+  ['缓', '緩'],
+  ['编', '編'],
+  ['缘', '緣'],
+  ['线', '線'],
+  ['练', '練']
+]
+// 去重并转成“简体字 → 繁体字”提示
+const SIMPLIFIED_LOOKUP = new Map<string, string>()
+for (const [simp, trad] of SIMPLIFIED_CHARS) {
+  if (!SIMPLIFIED_LOOKUP.has(simp)) SIMPLIFIED_LOOKUP.set(simp, trad)
+}
+
+describe('zh-Hant 繁体残留门禁', () => {
+  it('zh-Hant 值不含简体字（全量繁体，台湾惯用）', () => {
+    const violations = Object.entries(zhHant).flatMap(([key, value]) => {
+      const found = [...new Set([...value].filter((ch) => SIMPLIFIED_LOOKUP.has(ch)))]
+      return found.map((ch) => ({
+        key,
+        char: ch,
+        shouldBe: SIMPLIFIED_LOOKUP.get(ch)
+      }))
+    })
+    expect(violations).toEqual([])
+  })
+})
