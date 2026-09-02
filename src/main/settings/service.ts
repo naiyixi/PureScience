@@ -90,7 +90,12 @@ import type { InstallManagedClaudeOptions, ManagedInstallOutcome } from './manag
 import { encryptKey, isEncryptionAvailable, maskKey, tryDecryptKey } from './crypto'
 import { collectThirdPartyLicenses, type ThirdPartyLicenseEntry } from '../third-party-licenses'
 import { CREDENTIAL_SERVICE_LABELS, testCredentialSecret, toCredentialView } from './credentials'
-import { applyEgressSettings, type EgressApprovalRequest } from '../net/egress-runtime'
+import {
+  applyEgressSettings,
+  respondToEgressApproval,
+  type EgressApprovalRequest,
+  type EgressApprovalDecision
+} from '../net/egress-runtime'
 import { getUserClaudeConfigDir } from './provider-env'
 import { SettingsRepository } from './repository'
 import { SettingsPreferencesModule, toSettingsPreferencesSnapshot } from './preferences'
@@ -549,6 +554,16 @@ class SettingsService {
     const persisted = await this.repository.setEgress(egress)
     await applyEgressSettings(persisted.egress, this.egressRuntimeOptions())
     return persisted.egress ?? { enabled: false, groups: {}, customDomains: [] }
+  }
+
+  // Settles a suspended egress approval from the in-conversation card (deny / allow once /
+  // allow always). Exposed through the application command registry so the web surface and the
+  // preload bridge share one entry point.
+  async respondEgressApproval(
+    requestId: string,
+    decision: EgressApprovalDecision
+  ): Promise<void> {
+    await respondToEgressApproval(requestId, decision)
   }
 
   // Wires conversation approval for blocked egress destinations: broadcast the request to
