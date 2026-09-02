@@ -5,6 +5,7 @@ import {
   MoreVertical,
   Pencil,
   Plus,
+  Search,
   Settings,
   Trash2
 } from 'lucide-react'
@@ -21,6 +22,7 @@ import { useSessionStore } from '@/stores/session-store'
 import { useProjectStore } from '@/stores/project-store'
 import { useArchiveUndoStore } from '@/stores/archive-undo-store'
 import { useSettingsStore } from '@/stores/settings-store'
+import { GLOBAL_SEARCH_OPEN_EVENT } from '@/lib/app-events'
 import { LanguageToggleButton } from '@/components/LanguageToggleButton'
 import { NetworkStatusIndicator } from '@/components/NetworkStatusIndicator'
 import { ThemePreferenceMenu } from '@/components/ThemeControls'
@@ -341,6 +343,20 @@ const HomePage = ({
             <div className="mt-1 text-[11px] text-muted-foreground">{t('home.beta')}</div>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-1 sm:gap-2">
+            <button
+              type="button"
+              aria-label={t('home.searchSessionsAndArtifacts')}
+              onClick={() => window.dispatchEvent(new Event(GLOBAL_SEARCH_OPEN_EVENT))}
+              className="group inline-flex h-8 w-44 items-center gap-2 rounded-lg border border-border bg-bg-00 px-2.5 text-xs text-muted-foreground transition-colors duration-150 ease-out hover:border-text-300/60 hover:text-text-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 sm:w-56"
+            >
+              <Search className="size-3.5 shrink-0" strokeWidth={2} aria-hidden="true" />
+              <span className="min-w-0 flex-1 truncate text-left">
+                {t('home.searchSessionsAndArtifacts')}
+              </span>
+              <kbd className="hidden shrink-0 items-center gap-0.5 rounded-md border border-border bg-bg-200 px-1.5 font-mono text-[10px] text-text-300 sm:inline-flex">
+                ⌘K
+              </kbd>
+            </button>
             <UpdateCapsule />
             {requiredEnvironmentFailures.length > 0 && environmentRepairPanel ? (
               <button

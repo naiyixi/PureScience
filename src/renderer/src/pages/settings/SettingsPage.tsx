@@ -808,7 +808,7 @@ const SettingsPage = forwardRef<SettingsPageHandle, SettingsPageProps>(function 
             'fixed z-50 flex overflow-hidden overscroll-contain rounded-xl border border-border bg-card text-foreground shadow-dialog outline-none data-[state=closed]:animate-out data-[state=open]:animate-in data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 motion-reduce:data-[state=closed]:animate-none motion-reduce:data-[state=open]:animate-none',
             isExpanded
               ? 'inset-0 rounded-none md:inset-4 md:rounded-xl'
-              : 'inset-0 h-[100dvh] w-screen rounded-none md:bottom-auto md:left-1/2 md:right-auto md:top-1/2 md:h-[min(688px,calc(100vh-2rem))] md:w-[min(960px,calc(100vw-2rem))] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-xl'
+              : 'inset-0 h-[100dvh] w-screen rounded-none md:bottom-auto md:left-1/2 md:right-auto md:top-1/2 md:h-[min(760px,calc(100vh-2rem))] md:w-[min(960px,calc(100vw-2rem))] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-xl'
           )}
         >
           {/* Radix requires a Title/Description for a11y; the visible panel title lives in the header. */}
@@ -832,7 +832,7 @@ const SettingsPage = forwardRef<SettingsPageHandle, SettingsPageProps>(function 
             aria-hidden={isMobile && !isMobileNavOpen ? true : undefined}
             inert={isMobile && !isMobileNavOpen ? true : undefined}
             className={cn(
-              'fixed inset-y-0 left-0 z-[70] flex w-[min(86vw,320px)] shrink-0 flex-col gap-4 border-r border-border bg-background p-3 transition-transform duration-200 ease-out md:static md:z-auto md:w-48 md:translate-x-0',
+              'fixed inset-y-0 left-0 z-[70] flex w-[min(86vw,320px)] shrink-0 flex-col gap-2 overflow-y-auto overscroll-contain border-r border-border bg-background p-3 transition-transform duration-200 ease-out md:static md:z-auto md:w-48 md:translate-x-0',
               isMobileNavOpen ? 'translate-x-0' : '-translate-x-full'
             )}
           >
@@ -883,7 +883,7 @@ const SettingsPage = forwardRef<SettingsPageHandle, SettingsPageProps>(function 
                               setSettingsQuery('')
                               navigatePanel(id)
                             }}
-                            className={`flex h-8 w-full items-center gap-2 rounded-lg px-2 text-left text-sm transition-colors duration-150 motion-reduce:transition-none ${
+                            className={`flex h-7 w-full items-center gap-2 rounded-lg px-2 text-left text-sm transition-colors duration-150 motion-reduce:transition-none ${
                               isActive
                                 ? 'bg-muted font-medium text-foreground'
                                 : 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -907,44 +907,44 @@ const SettingsPage = forwardRef<SettingsPageHandle, SettingsPageProps>(function 
               </div>
             ) : (
               settingsGroups.map((group) => (
-              <div
-                key={group.label ?? group.panels[0]?.id}
-                className={cn('flex flex-col gap-0.5', group.bottom && 'mt-auto')}
-              >
-                {group.label ? (
-                  <div className="px-2 pb-1 pt-1 text-xs font-medium text-muted-foreground">
-                    {group.label}
-                  </div>
-                ) : null}
-                <ul className="flex flex-col gap-0.5">
-                  {group.panels.map(({ id, label, Icon }) => {
-                    const isActive = activePanel === id
-                    return (
-                      <li key={id}>
-                        <button
-                          type="button"
-                          aria-current={isActive ? 'page' : undefined}
-                          onClick={() => {
-                            setIsMobileNavOpen(false)
-                            navigatePanel(id)
-                          }}
-                          className={`flex h-8 w-full items-center gap-2 rounded-lg px-2 text-left text-sm transition-colors duration-150 motion-reduce:transition-none ${
-                            isActive
-                              ? 'bg-muted font-medium text-foreground'
-                              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                          }`}
-                        >
-                          <Icon
-                            className="size-4 shrink-0 text-muted-foreground"
-                            aria-hidden="true"
-                          />
-                          <span className="min-w-0 flex-1 truncate">{label}</span>
-                        </button>
-                      </li>
-                    )
-                  })}
-                </ul>
-              </div>
+                <div
+                  key={group.label ?? group.panels[0]?.id}
+                  className={cn('flex flex-col gap-0.5', group.bottom && 'mt-auto')}
+                >
+                  {group.label ? (
+                    <div className="px-2 pb-0.5 pt-0.5 text-xs font-medium text-muted-foreground">
+                      {group.label}
+                    </div>
+                  ) : null}
+                  <ul className="flex flex-col gap-0.5">
+                    {group.panels.map(({ id, label, Icon }) => {
+                      const isActive = activePanel === id
+                      return (
+                        <li key={id}>
+                          <button
+                            type="button"
+                            aria-current={isActive ? 'page' : undefined}
+                            onClick={() => {
+                              setIsMobileNavOpen(false)
+                              navigatePanel(id)
+                            }}
+                            className={`flex h-7 w-full items-center gap-2 rounded-lg px-2 text-left text-sm transition-colors duration-150 motion-reduce:transition-none ${
+                              isActive
+                                ? 'bg-muted font-medium text-foreground'
+                                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                            }`}
+                          >
+                            <Icon
+                              className="size-4 shrink-0 text-muted-foreground"
+                              aria-hidden="true"
+                            />
+                            <span className="min-w-0 flex-1 truncate">{label}</span>
+                          </button>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </div>
               ))
             )}
           </nav>

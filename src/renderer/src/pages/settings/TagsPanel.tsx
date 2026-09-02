@@ -7,7 +7,11 @@ import {
   selectTagSummaries,
   useCatalogTagsStore
 } from '@/stores/catalog-tags-store'
-import { useCatalogTagsCounts, resolveCatalogResourceName, type CatalogTagResource } from './tags-catalog-lookup'
+import {
+  useCatalogTagsCounts,
+  resolveCatalogResourceName,
+  type CatalogTagResource
+} from './tags-catalog-lookup'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
@@ -24,9 +28,11 @@ type TagsPanelProps = {
 const TagsPanel = ({ onOpenResource }: TagsPanelProps): React.JSX.Element => {
   const { t } = useLanguage()
   const entries = useCatalogTagsStore((state) => state.entries)
+  const standalone = useCatalogTagsStore((state) => state.standalone)
   const deleteTag = useCatalogTagsStore((state) => state.deleteTag)
   const renameTag = useCatalogTagsStore((state) => state.renameTag)
-  const summaries = useMemo(() => selectTagSummaries(entries), [entries])
+  const createStandaloneTag = useCatalogTagsStore((state) => state.createStandaloneTag)
+  const summaries = useMemo(() => selectTagSummaries(entries, standalone), [entries, standalone])
   const [selectedTag, setSelectedTag] = useState<string | undefined>(undefined)
   const [creating, setCreating] = useState(false)
   const [draft, setDraft] = useState('')
@@ -36,16 +42,23 @@ const TagsPanel = ({ onOpenResource }: TagsPanelProps): React.JSX.Element => {
 
   const commitCreate = (): void => {
     const value = draft.trim()
-    if (value.length > 0) {
-      // Creating a tag with zero resources is not useful; keep it a no-op unless the tag
-      // already exists (then select it).
-      const existing = summaries.find((summary) => summary.name === value.toLowerCase())
-      if (existing) setSelectedTag(existing.name)
+    if (value.length === 0) {
       setCreating(false)
       setDraft('')
-    } else {
-      setCreating(false)
+      return
     }
+    const key = value.toLowerCase()
+    const existing = summaries.find((summary) => summary.name === key)
+    if (existing) {
+      setSelectedTag(existing.name)
+    } else {
+      // Persist a zero-resource tag so users can build a vocabulary up front; the right column
+      // then shows the "no resources yet" empty state instead of silently discarding the name.
+      createStandaloneTag(value)
+      setSelectedTag(key)
+    }
+    setCreating(false)
+    setDraft('')
   }
 
   const commitRename = (): void => {
@@ -216,7 +229,9 @@ const TagsPanel = ({ onOpenResource }: TagsPanelProps): React.JSX.Element => {
                       onClick={() => onOpenResource(resource)}
                       className="flex h-9 w-full items-center gap-2 rounded-lg px-2 text-left text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
                     >
-                      <span className="min-w-0 flex-1 truncate">{resolveCatalogResourceName(resource)}</span>
+                      <span className="min-w-0 flex-1 truncate">
+                        {resolveCatalogResourceName(resource)}
+                      </span>
                       <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">
                         {t(resourceKindLabel(resource.kind))}
                       </span>
