@@ -2034,5 +2034,14 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.useAllMainAgentSkills':
     '使用主智能體的所有技能與連接器，包括日後新增的項目。無需逐一設定。',
   'update.notesUnavailable': '此版本的更新說明目前不支援在應用程式內檢視。',
-  'update.whatsNew': '更新內容'
+  'update.whatsNew': '更新內容',
+  'dataMove.currentHidden': '目前（隱藏）',
+  'common.reviewing': '審查中…',
+  'connectorExport.exportTitle': '匯出連接器組態',
+  'connectorShare.transport': '傳輸方式',
+  'connectorShare.credentials': '憑證',
+  'connectorImport.dropToValidate': '放開以驗證',
+  'jobDetail.remoteWorkdir': '遠端工作目錄',
+  'onboarding.notebookRuntimeOptional': 'Notebook 執行環境（選填）',
+  'settings.languageDescription': '介面語言。未翻譯的字串會回退為英文。'
 }

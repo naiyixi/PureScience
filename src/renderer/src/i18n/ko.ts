@@ -2130,5 +2130,14 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.useAllMainAgentSkills':
     '메인 에이전트의 모든 스킬과 커넥터를 사용합니다(나중에 추가되는 항목 포함). 각 항목을 구성할 필요가 없습니다.',
   'update.notesUnavailable': '이 버전의 릴리스 노트는 앱 내에서 볼 수 없습니다.',
-  'update.whatsNew': '새로운 기능'
+  'update.whatsNew': '새로운 기능',
+  'dataMove.currentHidden': '현재(숨김)',
+  'common.reviewing': '검토 중…',
+  'connectorExport.exportTitle': '커넥터 구성 내보내기',
+  'connectorShare.transport': '전송',
+  'connectorShare.credentials': '자격 증명',
+  'connectorImport.dropToValidate': '드롭하여 검증',
+  'jobDetail.remoteWorkdir': '원격 작업 디렉터리',
+  'onboarding.notebookRuntimeOptional': '노트북 런타임(선택 사항)',
+  'settings.languageDescription': '인터페이스 언어. 번역되지 않은 문자열은 영어로 폴백됩니다.'
 }

@@ -2179,5 +2179,15 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.useAllMainAgentSkills':
     'メインエージェントのすべてのスキルとコネクタを使用します（後から追加されたものを含む）。各項目を個別に設定する必要はありません。',
   'update.notesUnavailable': 'このバージョンのリリースノートは、アプリ内では表示できません。',
-  'update.whatsNew': '更新内容'
+  'update.whatsNew': '更新内容',
+  'dataMove.currentHidden': '現在（非表示）',
+  'common.reviewing': 'レビュー中…',
+  'connectorExport.exportTitle': 'コネクタ設定のエクスポート',
+  'connectorShare.transport': 'トランスポート',
+  'connectorShare.credentials': '認証情報',
+  'connectorImport.dropToValidate': 'ドロップして検証',
+  'jobDetail.remoteWorkdir': 'リモート作業ディレクトリ',
+  'onboarding.notebookRuntimeOptional': 'Notebook ランタイム（任意）',
+  'settings.languageDescription':
+    'インターフェース言語。未翻訳の文字列は英語にフォールバックします。'
 }

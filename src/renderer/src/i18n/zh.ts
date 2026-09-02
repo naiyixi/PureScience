@@ -2099,7 +2099,17 @@ export const zh = {
   'settings.planStaleBanner': '此文件是较早的计划版本；当前会话已运行更新的计划。',
   'settings.planSnapshotBanner': '此文件是计划快照——步骤状态为只读。',
   'home.searchSessionsAndArtifacts': '搜索会话和产物…',
-  'settings.languageSystem': '跟随系统'
+  'settings.languageSystem': '跟随系统',
+
+  'dataMove.currentHidden': '当前（隐藏）',
+  'common.reviewing': '审查中…',
+  'connectorExport.exportTitle': '导出连接器配置',
+  'connectorShare.transport': '传输方式',
+  'connectorShare.credentials': '凭据',
+  'connectorImport.dropToValidate': '松开以校验',
+  'jobDetail.remoteWorkdir': '远程工作目录',
+  'onboarding.notebookRuntimeOptional': 'Notebook 运行时（可选）',
+  'settings.languageDescription': '界面语言。未翻译的字符串会回退为英文。',
 }
 
 export type ZhKey = keyof typeof zh

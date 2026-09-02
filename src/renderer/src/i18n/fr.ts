@@ -2216,5 +2216,15 @@ export const fr: Partial<Record<ZhKey, string>> = {
     'Utilisez toutes les compétences et tous les connecteurs de l’agent principal, y compris ceux ajoutés ultérieurement. Aucune configuration individuelle n’est nécessaire.',
   'update.notesUnavailable':
     'Les notes de version ne sont pas disponibles dans l’application pour cette version.',
-  'update.whatsNew': 'Nouveautés'
+  'update.whatsNew': 'Nouveautés',
+  'dataMove.currentHidden': 'Actuel (masqué)',
+  'common.reviewing': 'Revue…',
+  'connectorExport.exportTitle': 'Exporter la configuration du connecteur',
+  'connectorShare.transport': 'Transport',
+  'connectorShare.credentials': 'Identifiants',
+  'connectorImport.dropToValidate': 'Déposer pour valider',
+  'jobDetail.remoteWorkdir': 'Répertoire de travail distant',
+  'onboarding.notebookRuntimeOptional': 'Runtime de notebook (facultatif)',
+  'settings.languageDescription':
+    'Langue de l’interface. Les chaînes non traduites reviennent à l’anglais.'
 }

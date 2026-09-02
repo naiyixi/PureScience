@@ -107,7 +107,9 @@ export function ConnectorImportView({
           onClick={() => void applySelection()}
           className="relative flex w-full cursor-pointer flex-col items-center gap-3 rounded-lg border border-dashed border-border bg-muted/20 px-6 py-10 text-center transition-colors motion-reduce:transition-none hover:bg-muted/40 disabled:cursor-default disabled:opacity-60"
         >
-          {isDragging ? <FileDropOverlay label="Drop to validate" className="rounded-lg" /> : null}
+          {isDragging ? (
+            <FileDropOverlay label={t('connectorImport.dropToValidate')} className="rounded-lg" />
+          ) : null}
           <span className="inline-flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
             <Upload className="size-5" aria-hidden="true" />
           </span>
@@ -150,7 +152,7 @@ export function ConnectorImportView({
                 <dd className="min-w-0 break-words text-foreground">{definition.name}</dd>
               </div>
               <div className="grid grid-cols-[8rem_1fr] gap-3 py-2.5">
-                <dt className="text-muted-foreground">Transport</dt>
+                <dt className="text-muted-foreground">{t('connectorShare.transport')}</dt>
                 <dd className="text-foreground">{t(transportLabel(definition))}</dd>
               </div>
               <div className="grid grid-cols-[8rem_1fr] gap-3 py-2.5">
@@ -164,7 +166,7 @@ export function ConnectorImportView({
                 </dd>
               </div>
               <div className="grid grid-cols-[8rem_1fr] gap-3 py-2.5">
-                <dt className="text-muted-foreground">Credentials</dt>
+                <dt className="text-muted-foreground">{t('connectorShare.credentials')}</dt>
                 <dd className="text-foreground">
                   {definition.oauth
                     ? t('settings.oauthAfterAdding')

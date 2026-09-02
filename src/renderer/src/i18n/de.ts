@@ -2224,5 +2224,15 @@ export const de: Partial<Record<ZhKey, string>> = {
     'Verwenden Sie alle Fähigkeiten und Konnektoren des Hauptagenten, auch die später hinzugefügten. Sie müssen nichts einzeln konfigurieren.',
   'update.notesUnavailable':
     'Für diese Version sind die Versionshinweise nicht in der App verfügbar.',
-  'update.whatsNew': 'Neuerungen'
+  'update.whatsNew': 'Neuerungen',
+  'dataMove.currentHidden': 'Aktuell (ausgeblendet)',
+  'common.reviewing': 'Überprüfung…',
+  'connectorExport.exportTitle': 'Konnektorkonfiguration exportieren',
+  'connectorShare.transport': 'Transport',
+  'connectorShare.credentials': 'Anmeldedaten',
+  'connectorImport.dropToValidate': 'Zum Validieren ablegen',
+  'jobDetail.remoteWorkdir': 'Remote-Arbeitsverzeichnis',
+  'onboarding.notebookRuntimeOptional': 'Notebook-Laufzeit (optional)',
+  'settings.languageDescription':
+    'Sprache der Benutzeroberfläche. Nicht übersetzte Zeichenfolgen fallen auf Englisch zurück.'
 }
