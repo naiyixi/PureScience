@@ -84,7 +84,7 @@ describe('ReviewerCard — running state', () => {
 
     const runningState = container.querySelector('[data-testid="reviewer-running-state"]')
     expect(runningState).not.toBeNull()
-    expect(runningState?.textContent).toBe('Reviewing...')
+    expect(runningState?.textContent).toBe('Reviewing…')
     expect(runningState?.className).toContain('px-0')
     expect(runningState?.className).not.toContain('px-3')
     expect(runningState?.className).not.toMatch(/\bbg-|\bborder(?:-|\b)/)

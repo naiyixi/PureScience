@@ -2108,7 +2108,7 @@ export const zh = {
   'connectorShare.credentials': '凭据',
   'connectorImport.dropToValidate': '松开以校验',
   'jobDetail.remoteWorkdir': '远程工作目录',
-  'onboarding.notebookRuntimeOptional': 'Notebook 运行时（可选）',
+  'onboarding.notebookRuntimeOptional': '笔记本运行时（可选）',
   'settings.languageDescription': '界面语言。未翻译的字符串会回退为英文。',
   'permissionUndo.dismissPermission': '关闭权限撤销提示',
   'permissionUndo.dismissArchive': '关闭归档撤销提示',
@@ -2117,7 +2117,7 @@ export const zh = {
   'renameSession.purposePlaceholder': '这个会话是关于什么的（可选）',
   'wsMessage.conversation': '对话',
   'conversation.referenceSession': '引用一个会话',
-  'sessionPlan.downloadPlan': '下载计划',
+  'sessionPlan.downloadPlan': '下载计划'
 }
 
 export type ZhKey = keyof typeof zh

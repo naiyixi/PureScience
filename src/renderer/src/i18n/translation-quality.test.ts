@@ -389,7 +389,8 @@ const LATIN_COGNATES = new Set<string>([
   'h',
   'min',
   'ID (optional)',
-  'R Data'
+  'R Data',
+  'Conversation'
 ])
 
 // 语言语法性省略：日语的属格拼接片段（Its/Their）在句内自然省略为 ∅，zh 用「其」。
