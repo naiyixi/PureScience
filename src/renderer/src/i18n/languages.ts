@@ -10,6 +10,15 @@ import { zhHant } from './zh-Hant'
 
 export type Language = 'zh' | 'zh-Hant' | 'en' | 'ja' | 'ko' | 'fr' | 'de' | 'es' | 'ru'
 
+// A user preference is either an explicit language or 'system' (follow the OS/browser language).
+export type LanguagePreference = 'system' | Language
+
+// Resolves the 'system' preference against the current runtime locale, falling back to English.
+export const resolveSystemLanguage = (): Language => {
+  if (typeof navigator === 'undefined') return 'en'
+  return languageFromLocale(navigator.language ?? '') ?? 'en'
+}
+
 export type TranslationKey = keyof typeof en
 
 // Every dictionary is a PARTIAL map over the English keys: a missing key falls back to English, so a

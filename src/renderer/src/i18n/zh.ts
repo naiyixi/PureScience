@@ -487,12 +487,12 @@ export const zh = {
   'settings.specialists': '专才',
   'settings.compute': '计算',
   'settings.routine': '定时任务',
-  'settings.routineDesc':
-    '按固定间隔把自包含指令派发为全新任务运行。适合周期性检查、监控与跟进。',
+  'settings.routineDesc': '按固定间隔把自包含指令派发为全新任务运行。适合周期性检查、监控与跟进。',
   'settings.routineNew': '新建计划',
   'settings.routineRefresh': '刷新',
   'settings.routineInstruction': '指令',
-  'settings.routineInstructionPlaceholder': '每次运行做什么？请写自包含——新运行不会记得之前的对话。',
+  'settings.routineInstructionPlaceholder':
+    '每次运行做什么？请写自包含——新运行不会记得之前的对话。',
   'settings.routineInterval': '间隔（分钟）',
   'settings.routineIntervalHint': '介于 5 与 1440 分钟之间。',
   'settings.routineLabel': '标签（可选）',
@@ -913,7 +913,8 @@ export const zh = {
   'settings.promptAppendedHint': '附加到应用的基础提示——不会替换安全规则或工具',
   'settings.specialistCapabilitiesHint':
     '此专才可使用的技能和连接器。未在此处选择的任何内容都保持不可见',
-  'settings.useAllMainAgentSkills': '使用主智能体的所有技能和连接器，包括之后新增的。无需逐项配置。',
+  'settings.useAllMainAgentSkills':
+    '使用主智能体的所有技能和连接器，包括之后新增的。无需逐项配置。',
   'settings.templateZipReady': 'purescience-specialist-template.zip 已准备好供贡献者编辑。',
   'settings.builtinSkillsSelectedDefault':
     '内置和自有技能默认选中。复制到 ZIP 的技能会在导入时自动发现；连接器 ID 作为选中的引用携带。',
@@ -1281,7 +1282,8 @@ export const zh = {
   'settings.agentCodexNotReady': '此框架需要 Codex ACP。在下方安装它，或手动安装后重新检测。',
   'settings.agentCodeBuddyName': 'CodeBuddy',
   'settings.agentCodeBuddyDesc': '腾讯的编码智能体，通过 OpenAI 兼容端点连接。',
-  'settings.agentCodeBuddyNotReady': '此框架需要 CodeBuddy。手动安装 @tencent-ai/codebuddy-code 后重新检测。',
+  'settings.agentCodeBuddyNotReady':
+    '此框架需要 CodeBuddy。手动安装 @tencent-ai/codebuddy-code 后重新检测。',
   'settings.detecting': '正在检测…',
   'settings.redetect': '重新检测',
   'settings.oauthSignInFailed': 'OAuth 登录失败。',
@@ -1338,8 +1340,7 @@ export const zh = {
   'modelPicker.codexBridgeReason': '{name} 的模型无法通过 Codex Chat Completions 桥使用。',
   'modelPicker.bridgeUnsupportedReason': '{model} 无法通过 Codex Chat Completions 桥使用。',
   'closeConfirm.minimizeToTray': '最小化到托盘',
-  'ui.theagentreadsthesefindingsan':
-    '智能体会阅读这些发现，并在下一条消息中自我修正。',
+  'ui.theagentreadsthesefindingsan': '智能体会阅读这些发现，并在下一条消息中自我修正。',
   'lifecycleToast.sessionCreatedExternally': '会话在外部创建',
   'sessionPersist.dismissWarning': '忽略存储警告',
   'fieldHelp.moreInfo': '更多信息',
@@ -1348,8 +1349,7 @@ export const zh = {
   'fileBrowser.goTo': '转到',
   'generalPanel.logFilePath': '日志文件路径',
   'ui.whattheagentcandowiththiscon': '智能体可以使用此连接器做什么',
-  'ui.openthemobileappandsignintot':
-    '打开移动应用，并登录与此计算机相同的账户。',
+  'ui.openthemobileappandsignintot': '打开移动应用，并登录与此计算机相同的账户。',
   'ui.showless': '显示更少',
   'ui.showfullcommand': '显示完整命令',
   'ui.onemoment': '请稍候。',
@@ -2097,7 +2097,9 @@ export const zh = {
   'settings.planViewRawJson': '查看原始 JSON',
   'settings.planViewPlan': '查看计划',
   'settings.planStaleBanner': '此文件是较早的计划版本；当前会话已运行更新的计划。',
-  'settings.planSnapshotBanner': '此文件是计划快照——步骤状态为只读。'
+  'settings.planSnapshotBanner': '此文件是计划快照——步骤状态为只读。',
+  'home.searchSessionsAndArtifacts': '搜索会话和产物…',
+  'settings.languageSystem': '跟随系统'
 }
 
 export type ZhKey = keyof typeof zh

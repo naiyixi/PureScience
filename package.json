@@ -28,6 +28,7 @@
     "test:cli": "vitest run packages/purescience",
     "test:npm-release": "vitest run scripts/validate-npm-release.test.ts",
     "test:coverage": "vitest run --coverage",
+    "i18n:coverage": "node scripts/i18n-coverage.mjs",
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json --composite false",
     "typecheck": "npm run typecheck:node && npm run typecheck:web",

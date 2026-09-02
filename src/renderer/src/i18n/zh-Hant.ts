@@ -92,11 +92,13 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.tokenUsage': '詞元用量',
   'settings.archived': '已封存',
   'settings.appearance': '外觀',
-  'settings.appearanceDesc': '選擇應用程式外觀。系統跟隨你的裝置；淺色與深色為固定。你的選擇會記錄在此裝置上。',
+  'settings.appearanceDesc':
+    '選擇應用程式外觀。系統跟隨你的裝置；淺色與深色為固定。你的選擇會記錄在此裝置上。',
   'settings.licensing': '授權',
   'settings.licensingDesc': '宣告你使用受限授權技能的目的。',
   'settings.useIntent': '使用目的',
-  'settings.useIntentDesc': '選擇商業使用（預設）或非商業使用。限制非商業使用的技能，在商業模式下載入前會要求確認。',
+  'settings.useIntentDesc':
+    '選擇商業使用（預設）或非商業使用。限制非商業使用的技能，在商業模式下載入前會要求確認。',
   'settings.useIntentCommercial': '商業使用（預設）',
   'settings.useIntentNonCommercial': '非商業使用',
   'settings.themeHint': '跟隨系統設定，或強制淺色／深色。Dock 圖示會跟隨解析後的佈景。',
@@ -111,7 +113,8 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.tagNoResources': '此標籤下沒有資源。',
   'ws.configChanged': '組態已變更',
   'ws.egressApprovalTitle': '網路存取已封鎖',
-  'ws.egressApprovalDescription': '筆記本執行環境嘗試連線至 {method} {host}，該位址不在允許的網域內。',
+  'ws.egressApprovalDescription':
+    '筆記本執行環境嘗試連線至 {method} {host}，該位址不在允許的網域內。',
   'ws.egressDeny': '拒絕',
   'ws.egressAllowOnce': '僅允許一次',
   'ws.egressAllowAlways': '一律允許',
@@ -129,5 +132,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.agentOpencodeDesc': '開放原始碼的終端編碼智能體。',
   'settings.agentClaudeDesc': 'Anthropic 的終端編碼智能體。',
   'settings.agentCodexDesc': 'OpenAI 的編碼智能體，透過 Codex ACP 介接器連線。',
-  'settings.agentCodeBuddyDesc': '騰訊的編碼智能體，透過 OpenAI 相容端點連線。'
+  'settings.agentCodeBuddyDesc': '騰訊的編碼智能體，透過 OpenAI 相容端點連線。',
+  'home.searchSessionsAndArtifacts': '搜尋對話與產物…',
+  'settings.languageSystem': '跟隨系統'
 }

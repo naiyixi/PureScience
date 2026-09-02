@@ -37,7 +37,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'common.reconnectRetry': '再接続して再試行',
   'common.noSshHosts': 'SSH ホストが登録されていません',
   'common.restartRKernel': 'R カーネルを再起動',
-  'common.rKernelRestartHint': 'インストールした R パッケージの読み込みにはカーネルの再起動が必要です。',
+  'common.rKernelRestartHint':
+    'インストールした R パッケージの読み込みにはカーネルの再起動が必要です。',
   'common.saveAsArtifact': '成果物として保存',
   'common.retryHandoff': '引き継ぎを再試行',
   'common.compact': '圧縮',
@@ -123,5 +124,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.agentOpencodeDesc': 'ターミナル向けオープンソースのコーディングエージェント。',
   'settings.agentClaudeDesc': 'Anthropic のターミナル向けコーディングツール。',
   'settings.agentCodexDesc': 'OpenAI のコーディングエージェント（Codex ACP アダプタ経由）。',
-  'settings.agentCodeBuddyDesc': 'OpenAI 互換エンドポイント経由で接続する Tencent のコーディングエージェント。',
+  'settings.agentCodeBuddyDesc':
+    'OpenAI 互換エンドポイント経由で接続する Tencent のコーディングエージェント。',
+  'home.searchSessionsAndArtifacts': 'セッションと成果物を検索…',
+  'settings.languageSystem': 'システムに従う'
 }

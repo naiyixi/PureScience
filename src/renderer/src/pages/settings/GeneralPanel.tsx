@@ -38,7 +38,7 @@ const XMark = ({ className }: { className?: string }): React.JSX.Element => (
 // General app settings. Hosts the Diagnostics (log file) tools and the community/connect links. The log
 // file stays on this device and is never transmitted by the app.
 const GeneralPanel = (): React.JSX.Element => {
-  const { t, lang, setLang } = useLanguage()
+  const { t, lang, preference, setLang } = useLanguage()
   const isMac = window.api.platform === 'darwin'
   const [logPath, setLogPath] = useState<string | null>(null)
   const [message, setMessage] = useState<string | undefined>(undefined)
@@ -151,11 +151,19 @@ const GeneralPanel = (): React.JSX.Element => {
           className="pt-0"
           controlClassName="flex justify-end"
         >
-          <Select value={lang} onValueChange={(value) => setLang(value as Language)}>
+          <Select
+            value={preference}
+            onValueChange={(value) => setLang(value as Language | 'system')}
+          >
             <SelectTrigger aria-label={t('common.language')}>
-              <span>{LANGUAGES.find((entry) => entry.id === lang)?.label ?? lang}</span>
+              <span>
+                {preference === 'system'
+                  ? t('settings.languageSystem')
+                  : (LANGUAGES.find((entry) => entry.id === lang)?.label ?? lang)}
+              </span>
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="system">{t('settings.languageSystem')}</SelectItem>
               {LANGUAGES.map((entry) => (
                 <SelectItem key={entry.id} value={entry.id}>
                   {entry.label}

@@ -552,7 +552,8 @@ export const en: Record<ZhKey, string> = {
   'settings.endpointsStartScriptPlaceholder':
     'Idempotent bash — receives HOST_PORT, SERVICE_DIR and the credential value in env. e.g. docker inspect … && docker start … || docker run -d …',
   'settings.endpointsStopScript': 'Stop script',
-  'settings.endpointsStopScriptPlaceholder': 'bash that exits 0 only when fully stopped, e.g. docker stop <name>',
+  'settings.endpointsStopScriptPlaceholder':
+    'bash that exits 0 only when fully stopped, e.g. docker stop <name>',
   'settings.endpointsRegister': 'Register',
   'settings.endpointsLoading': 'Loading local model services…',
   'settings.endpointsEmpty': 'No local model services yet.',
@@ -1358,7 +1359,8 @@ export const en: Record<ZhKey, string> = {
   'settings.agentCodexNotReady':
     'Codex ACP is required for this framework. Install it below, or install it manually and re-detect.',
   'settings.agentCodeBuddyName': 'CodeBuddy',
-  'settings.agentCodeBuddyDesc': "Tencent's coding agent, connected through an OpenAI-compatible endpoint.",
+  'settings.agentCodeBuddyDesc':
+    "Tencent's coding agent, connected through an OpenAI-compatible endpoint.",
   'settings.agentCodeBuddyNotReady':
     'CodeBuddy is required for this framework. Install @tencent-ai/codebuddy-code manually and re-detect.',
   'settings.detecting': 'Detecting…',
@@ -2211,5 +2213,7 @@ export const en: Record<ZhKey, string> = {
   'settings.planViewPlan': 'View plan',
   'settings.planStaleBanner':
     'This file is an older plan version; the current session is running a newer plan.',
-  'settings.planSnapshotBanner': 'This file is a plan snapshot — step status is read-only.'
+  'settings.planSnapshotBanner': 'This file is a plan snapshot — step status is read-only.',
+  'home.searchSessionsAndArtifacts': 'Search sessions and artifacts…',
+  'settings.languageSystem': 'Follow system'
 }
