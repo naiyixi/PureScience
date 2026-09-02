@@ -30,6 +30,7 @@ import {
   HOST_QUERY_MCP_SERVER_ARG,
   SKILL_IMPORT_MCP_SERVER_ARG
 } from './mcp-server-args'
+import { trayLabelsForLocale } from '../shared/tray-labels'
 import { withApplicationRuntimeShutdown } from './application-runtime'
 import { installChildProcessGoneLogging, startLocalCrashReporting } from './crash-diagnostics'
 import type { DiagnosticOperation } from './diagnostics/operation'
@@ -542,6 +543,7 @@ async function startElectronApp(mainEntryPath: string): Promise<void> {
                 variantIconPaths: trayVariantIconPaths,
                 initialVariant: ctx.getAppIconVariant(),
                 templateIconPath: process.platform === 'darwin' ? trayMacTemplate : undefined,
+                labels: trayLabelsForLocale(app.getLocale()),
                 ...handlers,
                 ...(headlessWeb
                   ? {

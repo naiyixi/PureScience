@@ -14,12 +14,16 @@ type LanguageToggleButtonProps = {
   className?: string
 }
 
-// 语言选择菜单: 点击展开全部支持的语言 (简体/繁体中文、英文、日韩法德西俄)。
-// 语言选择持久化 (localStorage + document.lang)。原为二元切换按钮, 扩展为菜单以覆盖 9 语言。
+// 语言选择菜单: 「跟随系统」+ 全部支持的语言 (简体/繁体中文、英文、日韩法德西俄)。
+// 偏好持久化 (localStorage + document.lang)。原为二元切换按钮, 扩展为菜单以覆盖 9 语言;
+// 「跟随系统」位于首位, 与参考产品 LANGUAGE_PREFERENCES=['system', ...] 的模型一致。
 const LanguageToggleButton = ({ className }: LanguageToggleButtonProps): React.JSX.Element => {
-  const { lang, setLang } = useLanguage()
+  const { t, lang, preference, setLang } = useLanguage()
 
-  const current = LANGUAGES.find((entry) => entry.id === lang)
+  const label =
+    preference === 'system'
+      ? t('settings.languageSystem')
+      : (LANGUAGES.find((entry) => entry.id === lang)?.label ?? lang)
 
   return (
     <DropdownMenu>
@@ -27,15 +31,19 @@ const LanguageToggleButton = ({ className }: LanguageToggleButtonProps): React.J
         <Button
           variant="ghost"
           size="sm"
-          aria-label="Language"
-          title="Language"
+          aria-label={t('common.language')}
+          title={t('common.language')}
           className={cn('gap-1.5 text-muted-foreground hover:text-foreground', className)}
         >
           <Languages className="h-4 w-4" aria-hidden="true" />
-          <span className="text-xs font-medium">{current?.label ?? lang}</span>
+          <span className="text-xs font-medium">{label}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={() => setLang('system')} className="justify-between gap-4">
+          <span>{t('settings.languageSystem')}</span>
+          {preference === 'system' ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : null}
+        </DropdownMenuItem>
         {LANGUAGES.map((entry) => (
           <DropdownMenuItem
             key={entry.id}
@@ -43,7 +51,7 @@ const LanguageToggleButton = ({ className }: LanguageToggleButtonProps): React.J
             className="justify-between gap-4"
           >
             <span>{entry.label}</span>
-            {entry.id === lang ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : null}
+            {preference === entry.id ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : null}
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

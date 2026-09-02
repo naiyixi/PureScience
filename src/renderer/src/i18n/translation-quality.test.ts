@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+
 import { describe, expect, it } from 'vitest'
 
 import { de } from './de'
@@ -110,7 +112,7 @@ const KEPT_IN_ENGLISH = new Set<string>([
   'NCBI',
   'EBI',
   'OurResearch',
-  'Explorer',
+  'Explorer'
 ])
 
 /** 机翻腔标记词：出现即视为可疑，需要人工确认为自然中文表达 */
@@ -128,7 +130,7 @@ const MT_MARKERS = [
   '您',
   '该文件夹',
   '该会话',
-  '该文件',
+  '该文件'
 ]
 
 /** 术语表强制映射：值内出现左列即违规（应使用右列） */
@@ -140,7 +142,7 @@ const TERMINOLOGY_RULES: ReadonlyArray<readonly [string, string]> = [
   ['工件', '产物'],
   ['来源证明', '溯源'],
   ['数据源插件', '连接器'],
-  ['专家', '专才'], // specialist 语境（与 expert 区分）
+  ['专家', '专才'] // specialist 语境（与 expert 区分）
 ]
 
 /** 「代理」作为 proxy 语义、「证书」作为 TLS/CA 证书语义时的豁免键 */
@@ -149,14 +151,18 @@ const PROXY_KEYS = new Set<string>([
   'settings.egressDescription',
   'settings.egressEnabledHint',
   'settings.pemBundleHint',
-  'settings.caBundlePath',
+  'settings.caBundlePath'
 ])
 
 /** 认证令牌（credential）语境保留 token 的键 */
 const CREDENTIAL_TOKEN_KEYS = new Set<string>(['settings.externalComputeModalHint'])
 
 function isProxyContext(key: string): boolean {
-  return PROXY_KEYS.has(key) || CREDENTIAL_TOKEN_KEYS.has(key) || /proxy|mirror|network|egress/i.test(key)
+  return (
+    PROXY_KEYS.has(key) ||
+    CREDENTIAL_TOKEN_KEYS.has(key) ||
+    /proxy|mirror|network|egress/i.test(key)
+  )
 }
 
 describe('zh 翻译质量门禁', () => {
@@ -277,7 +283,45 @@ describe('多语言扩展门禁', () => {
     })
     expect(violations).toEqual([])
   })
+
+  it.each(EXTRA_DICTIONARIES)(
+    '$name 未覆盖键已在 pending-translations 登记（新增键必须翻译或显式登记，防止静默烂尾）',
+    ({ name, dict }) => {
+      const pending = loadPendingKeys(name)
+      const enKeySet = new Set<string>(Object.keys(en))
+      const missing = [...enKeySet].filter((key) => !(key in dict))
+      const unregistered = missing.filter((key) => !pending.has(key))
+      expect({
+        unregistered,
+        hint: '翻译该键到 $name，或把它加进 pending-translations/$name.pending.json（P2 翻译工程完成后应清空）'
+      }).toEqual({ unregistered: [], hint: expect.any(String) })
+    }
+  )
+
+  it.each(EXTRA_DICTIONARIES)(
+    '$name pending-translations 无陈旧条目（已翻译的键必须从登记中移除）',
+    ({ name, dict }) => {
+      const pending = loadPendingKeys(name)
+      const stale = [...pending].filter((key) => key in dict)
+      expect({
+        stale,
+        hint: '这些键已经翻译，请从 pending-translations/$name.pending.json 移除，保持登记只含真实缺口'
+      }).toEqual({ stale: [], hint: expect.any(String) })
+    }
+  )
 })
+
+// 防退化登记表：P2 全量翻译完成前，每个未翻译语言的缺口键都登记在
+// src/renderer/src/i18n/pending-translations/<lang>.pending.json。新加 en 键后，要么当 PR 直接
+// 翻译进所有语言，要么登记进这张表 —— 测试强制二选一，杜绝"新键只进 en/zh、其余语言逐年烂尾"。
+const loadPendingKeys = (language: string): Set<string> => {
+  const fileUrl = new URL(`./pending-translations/${language}.pending.json`, import.meta.url)
+  const raw = readFileSync(fileUrl, 'utf8')
+  const parsed: unknown = JSON.parse(raw)
+  return new Set(
+    Array.isArray(parsed) ? parsed.filter((key): key is string => typeof key === 'string') : []
+  )
+}
 
 // 合法的跨语言同形词：这些词在法语/德语/西班牙语等语言里本来就是同一写法（不是未翻译）。
 const LATIN_COGNATES = new Set<string>([

@@ -122,6 +122,10 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.agentCodeBuddyName': 'CodeBuddy',
   'settings.agentOpencodeDesc': 'Agente de código abierto para terminal.',
   'settings.agentClaudeDesc': 'La herramienta de codificación agéntica de Anthropic para terminal.',
-  'settings.agentCodexDesc': 'El agente de codificación de OpenAI, conectado mediante el adaptador Codex ACP.',
-  'settings.agentCodeBuddyDesc': 'El agente de codificación de Tencent, conectado mediante un endpoint compatible con OpenAI.',
+  'settings.agentCodexDesc':
+    'El agente de codificación de OpenAI, conectado mediante el adaptador Codex ACP.',
+  'settings.agentCodeBuddyDesc':
+    'El agente de codificación de Tencent, conectado mediante un endpoint compatible con OpenAI.',
+  'home.searchSessionsAndArtifacts': 'Buscar sesiones y artefactos…',
+  'settings.languageSystem': 'Seguir el sistema'
 }

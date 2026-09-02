@@ -123,5 +123,8 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.agentOpencodeDesc': 'Open-Source-Coding-Agent für das Terminal.',
   'settings.agentClaudeDesc': 'Anthropics agentisches Codierungswerkzeug für das Terminal.',
   'settings.agentCodexDesc': 'OpenAI-Coding-Agent, verbunden über den Codex-ACP-Adapter.',
-  'settings.agentCodeBuddyDesc': 'Tencent-Coding-Agent, verbunden über einen OpenAI-kompatiblen Endpunkt.',
+  'settings.agentCodeBuddyDesc':
+    'Tencent-Coding-Agent, verbunden über einen OpenAI-kompatiblen Endpunkt.',
+  'home.searchSessionsAndArtifacts': 'Sitzungen und Artefakte suchen…',
+  'settings.languageSystem': 'System folgen'
 }

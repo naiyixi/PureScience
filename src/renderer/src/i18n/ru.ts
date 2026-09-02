@@ -123,5 +123,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.agentOpencodeDesc': 'Агент кодирования с открытым исходным кодом для терминала.',
   'settings.agentClaudeDesc': 'Агентный инструмент кодирования Anthropic для терминала.',
   'settings.agentCodexDesc': 'Агент кодирования OpenAI через адаптер Codex ACP.',
-  'settings.agentCodeBuddyDesc': 'Агент кодирования Tencent через совместимую с OpenAI конечную точку.',
+  'settings.agentCodeBuddyDesc':
+    'Агент кодирования Tencent через совместимую с OpenAI конечную точку.',
+  'home.searchSessionsAndArtifacts': 'Поиск сессий и артефактов…',
+  'settings.languageSystem': 'Следовать системе'
 }

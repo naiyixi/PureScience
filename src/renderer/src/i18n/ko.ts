@@ -124,4 +124,6 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.agentClaudeDesc': '터미널용 Anthropic 코딩 도구입니다.',
   'settings.agentCodexDesc': 'Codex ACP 어댑터로 연결되는 OpenAI 코딩 에이전트입니다.',
   'settings.agentCodeBuddyDesc': 'OpenAI 호환 엔드포인트로 연결되는 Tencent 코딩 에이전트입니다.',
+  'home.searchSessionsAndArtifacts': '세션 및 산출물 검색…',
+  'settings.languageSystem': '시스템 언어 사용'
 }

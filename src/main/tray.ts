@@ -1,6 +1,7 @@
 import { Menu, Tray, nativeImage, screen, type NativeImage } from 'electron'
 
 import { DEFAULT_APP_ICON_VARIANT, type AppIconVariant } from '../shared/settings'
+import { trayLabelsForLocale, type TrayLabels } from '../shared/tray-labels'
 import { createLogger } from './logger'
 
 const logger = createLogger('tray')
@@ -95,6 +96,8 @@ const createAppTray = (opts: {
   variantIconPaths?: Partial<Record<AppIconVariant, string>>
   // The persisted variant to start with; defaults to the shared default when unset.
   initialVariant?: AppIconVariant
+  // Localized menu/tooltip strings (resolved from the system/persisted locale at creation).
+  labels?: TrayLabels
   onShow: () => void
   onHide: () => void
   onQuit: () => void
@@ -120,23 +123,24 @@ const createAppTray = (opts: {
     const tray = new Tray(icon)
 
     const headlessWeb = opts.headless && opts.onOpenWeb && opts.onCopyWebUrl
+    const labels = opts.labels ?? trayLabelsForLocale('en')
     const menu = Menu.buildFromTemplate(
       headlessWeb
         ? [
-            { label: 'Open Web UI', click: () => void opts.onOpenWeb!() },
-            { label: 'Copy URL', click: () => void opts.onCopyWebUrl!() },
+            { label: labels.openWebUi, click: () => void opts.onOpenWeb!() },
+            { label: labels.copyUrl, click: () => void opts.onCopyWebUrl!() },
             { type: 'separator' },
-            { label: 'Quit', click: () => opts.onQuit() }
+            { label: labels.quit, click: () => opts.onQuit() }
           ]
         : [
-            { label: 'Show', click: () => opts.onShow() },
-            { label: 'Hide', click: () => opts.onHide() },
+            { label: labels.show, click: () => opts.onShow() },
+            { label: labels.hide, click: () => opts.onHide() },
             { type: 'separator' },
-            { label: 'Quit', click: () => opts.onQuit() }
+            { label: labels.quit, click: () => opts.onQuit() }
           ]
     )
 
-    tray.setToolTip(headlessWeb ? 'PureScience (Web)' : 'PureScience')
+    tray.setToolTip(headlessWeb ? labels.webTooltip : labels.tooltip)
 
     const primaryAction = (): void => {
       if (headlessWeb) void opts.onOpenWeb!()

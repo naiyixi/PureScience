@@ -1,25 +1,39 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 
-import { dictionaries, LOCALE_TAG, languageFromLocale, type Language } from './languages'
+import {
+  dictionaries,
+  LOCALE_TAG,
+  resolveSystemLanguage,
+  type Language,
+  type LanguagePreference
+} from './languages'
 
-export type { Language, LanguageInfo, TranslationKey } from './languages'
+export type { Language, LanguageInfo, LanguagePreference, TranslationKey } from './languages'
 
+// Holds the *preference* ('system' or an explicit language). The context below additionally exposes
+// the resolved concrete language so consumers render through one `lang` value.
 const STORAGE_KEY = 'purescience-language'
 
-const detectInitialLanguage = (): Language => {
+const readStoredPreference = (): LanguagePreference => {
   try {
     const stored = window.localStorage.getItem(STORAGE_KEY)
+    if (stored === 'system') return 'system'
     if (stored && stored in dictionaries) return stored as Language
-    const system = window.navigator.language ?? ''
-    return languageFromLocale(system) ?? 'en'
   } catch {
-    return 'en'
+    // storage unavailable — fall through to the system default
   }
+  // Default follows the system so the first launch matches the OS language (mirrors the reference
+  // product's DEFAULT_LANGUAGE_PREFERENCE = 'system').
+  return 'system'
 }
 
 type LanguageContextValue = {
+  // The concrete language currently in effect ('system' has already been resolved against the
+  // runtime locale). Consumers should render from this value.
   lang: Language
-  setLang: (lang: Language) => void
+  // The stored preference ('system' or an explicit language) for pickers that show a checkmark.
+  preference: LanguagePreference
+  setLang: (preference: LanguagePreference) => void
   // Optional interpolation variables replace `{name}` placeholders in the resolved string.
   t: (key: keyof typeof dictionaries.en, vars?: Record<string, string | number>) => string
 }
@@ -27,21 +41,39 @@ type LanguageContextValue = {
 const LanguageContext = createContext<LanguageContextValue | null>(null)
 
 const LanguageProvider = ({ children }: { children: ReactNode }): React.JSX.Element => {
-  const [lang, setLangState] = useState<Language>(detectInitialLanguage)
+  const [preference, setPreference] = useState<LanguagePreference>(readStoredPreference)
+  // The live system language; only consulted while preference === 'system'. Re-resolved when the
+  // runtime fires `languagechange` (OS/browser locale change), so "follow system" keeps working
+  // without a reload.
+  const [systemLang, setSystemLang] = useState<Language>(resolveSystemLanguage)
+
+  const lang: Language = preference === 'system' ? systemLang : preference
+
+  useEffect(() => {
+    const onLanguageChange = (): void => setSystemLang(resolveSystemLanguage())
+    window.addEventListener('languagechange', onLanguageChange)
+    return () => window.removeEventListener('languagechange', onLanguageChange)
+  }, [])
 
   useEffect(() => {
     try {
-      window.localStorage.setItem(STORAGE_KEY, lang)
+      window.localStorage.setItem(STORAGE_KEY, preference)
     } catch {
       // storage unavailable — keep the in-memory selection
     }
+    // lang is derived; recompute on preference change is enough — document.lang follows the effect
+    // below which depends on `lang`.
+  }, [preference])
+
+  useEffect(() => {
     document.documentElement.lang = LOCALE_TAG[lang]
   }, [lang])
 
   const value = useMemo<LanguageContextValue>(
     () => ({
       lang,
-      setLang: setLangState,
+      preference,
+      setLang: setPreference,
       t: (key, vars) => {
         const text = dictionaries[lang][key] ?? dictionaries.en[key] ?? key
         if (!vars) return text
@@ -50,7 +82,7 @@ const LanguageProvider = ({ children }: { children: ReactNode }): React.JSX.Elem
         )
       }
     }),
-    [lang]
+    [lang, preference]
   )
 
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>
@@ -67,6 +99,7 @@ const useLanguage = (): LanguageContextValue => {
   }
   return {
     lang: 'en',
+    preference: 'en',
     setLang: () => {},
     t: (key) => dictionaries.en[key] ?? key
   }
