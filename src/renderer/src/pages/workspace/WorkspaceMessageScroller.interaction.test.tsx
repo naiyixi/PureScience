@@ -336,7 +336,7 @@ describe('WorkspaceMessageScroller artifact click behavior', () => {
     await act(async () => {
       root.render(<ReviewLifecycleParent />)
     })
-    expect(container.textContent).toContain('Reviewing...')
+    expect(container.textContent).toContain('Reviewing…')
     expect(container.querySelector('[data-testid="reviewer-running-state"]')).not.toBeNull()
     expect(container.querySelector('[data-testid="reviewer-card"]')).toBeNull()
     expect(container.querySelector('[data-reviewing="true"]')).not.toBeNull()
@@ -357,7 +357,7 @@ describe('WorkspaceMessageScroller artifact click behavior', () => {
       useReviewStore.getState().getReviewForTurn('session-1', 'reply-1', 'default')?.lifecycle
     ).toBe('complete')
     expect(container.textContent).toContain('No issues found')
-    expect(container.textContent).not.toContain('Reviewing...')
+    expect(container.textContent).not.toContain('Reviewing…')
     expect(container.querySelector('[data-testid="reviewer-running-state"]')).toBeNull()
     expect(container.querySelector('[data-testid="reviewer-card"]')).not.toBeNull()
     expect(container.querySelector('[data-reviewing="false"]')).not.toBeNull()
