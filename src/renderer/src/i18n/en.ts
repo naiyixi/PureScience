@@ -2215,5 +2215,15 @@ export const en: Record<ZhKey, string> = {
     'This file is an older plan version; the current session is running a newer plan.',
   'settings.planSnapshotBanner': 'This file is a plan snapshot — step status is read-only.',
   'home.searchSessionsAndArtifacts': 'Search sessions and artifacts…',
-  'settings.languageSystem': 'Follow system'
+  'settings.languageSystem': 'Follow system',
+
+  'dataMove.currentHidden': 'Current (hidden)',
+  'common.reviewing': 'Reviewing…',
+  'connectorExport.exportTitle': 'Export Connector configuration',
+  'connectorShare.transport': 'Transport',
+  'connectorShare.credentials': 'Credentials',
+  'connectorImport.dropToValidate': 'Drop to validate',
+  'jobDetail.remoteWorkdir': 'Remote workdir',
+  'onboarding.notebookRuntimeOptional': 'Notebook runtime (optional)',
+  'settings.languageDescription': 'Interface language. Untranslated strings fall back to English.',
 }

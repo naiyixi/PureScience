@@ -104,6 +104,7 @@ type JobDetailViewProps = {
 }
 
 function JobDetailView({ job, onBack, onOpenFileBrowser }: JobDetailViewProps): React.JSX.Element {
+  const { t } = useLanguage()
   const [activeTab, setActiveTab] = useState<ActiveTab>('stdout')
 
   // Pull latest data from the store on every render (store subscribes to compute:job-updated).
@@ -180,7 +181,7 @@ function JobDetailView({ job, onBack, onOpenFileBrowser }: JobDetailViewProps): 
         <MetaRow label="Status" value={latestJob.status} />
         <MetaRow label="Runtime" value={runtimeDisplay()} />
         <MetaRow
-          label="Remote workdir"
+          label={t('jobDetail.remoteWorkdir')}
           value={latestJob.remote_workdir ?? '—'}
           isLink={!!latestJob.remote_workdir}
           onLinkClick={

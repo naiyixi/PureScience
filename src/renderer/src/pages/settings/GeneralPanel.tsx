@@ -147,7 +147,7 @@ const GeneralPanel = (): React.JSX.Element => {
       >
         <SettingsRow
           label={t('common.language')}
-          description="Interface language. Untranslated strings fall back to English."
+          description={t('settings.languageDescription')}
           className="pt-0"
           controlClassName="flex justify-end"
         >

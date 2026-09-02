@@ -67,7 +67,7 @@ export function ConnectorExportView({ id, onDone }: ConnectorExportViewProps): R
     <div className="p-5">
       <div className="flex w-full flex-col gap-5">
         <div>
-          <h3 className="text-sm font-semibold text-foreground">Export Connector configuration</h3>
+          <h3 className="text-sm font-semibold text-foreground">{t('connectorExport.exportTitle')}</h3>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
             {t('settings.exportReviewHint')}
           </p>
@@ -99,7 +99,7 @@ export function ConnectorExportView({ id, onDone }: ConnectorExportViewProps): R
                 <dd className="min-w-0 break-words text-foreground">{definition.name}</dd>
               </div>
               <div className="grid grid-cols-[8rem_1fr] gap-3 py-2.5">
-                <dt className="text-muted-foreground">Transport</dt>
+                <dt className="text-muted-foreground">{t('connectorShare.transport')}</dt>
                 <dd className="text-foreground">{definition.transport}</dd>
               </div>
               <div className="grid grid-cols-[8rem_1fr] gap-3 py-2.5">
@@ -113,7 +113,7 @@ export function ConnectorExportView({ id, onDone }: ConnectorExportViewProps): R
                 </dd>
               </div>
               <div className="grid grid-cols-[8rem_1fr] gap-3 py-2.5">
-                <dt className="text-muted-foreground">Credentials</dt>
+                <dt className="text-muted-foreground">{t('connectorShare.credentials')}</dt>
                 <dd className="text-foreground">
                   {definition.oauth
                     ? 'OAuth configuration only; tokens excluded'

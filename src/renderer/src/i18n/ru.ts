@@ -2179,5 +2179,15 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.useAllMainAgentSkills':
     'Используйте все навыки и коннекторы основного агента, включая те, что будут добавлены позже. Настраивать каждый пункт не нужно.',
   'update.notesUnavailable': 'Примечания к выпуску недоступны в приложении для этой версии.',
-  'update.whatsNew': 'Что нового'
+  'update.whatsNew': 'Что нового',
+  'dataMove.currentHidden': 'Текущее (скрыто)',
+  'common.reviewing': 'Проверка…',
+  'connectorExport.exportTitle': 'Экспорт конфигурации коннектора',
+  'connectorShare.transport': 'Транспорт',
+  'connectorShare.credentials': 'Учётные данные',
+  'connectorImport.dropToValidate': 'Отпустите для проверки',
+  'jobDetail.remoteWorkdir': 'Удалённый рабочий каталог',
+  'onboarding.notebookRuntimeOptional': 'Среда выполнения Notebook (необязательно)',
+  'settings.languageDescription':
+    'Язык интерфейса. Непереведённые строки возвращаются к английскому.'
 }

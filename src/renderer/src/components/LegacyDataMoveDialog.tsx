@@ -107,7 +107,7 @@ const LegacyDataMoveDialog = ({
 
           <div className="mt-4 space-y-3">
             <div>
-              <span className="text-xs font-medium text-text-100">Current (hidden)</span>
+              <span className="text-xs font-medium text-text-100">{t('dataMove.currentHidden')}</span>
               <pre
                 className="mt-1 overflow-x-auto whitespace-pre-wrap break-all rounded-lg border border-border-200 bg-bg-10 px-2.5 py-1.5 font-mono text-xs text-text-000"
                 aria-label={t('dataMove.currentLocation')}

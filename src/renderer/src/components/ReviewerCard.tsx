@@ -201,7 +201,7 @@ export const ReviewerCard = ({
         aria-live="polite"
       >
         <PureScienceThinkingIndicator />
-        <span>Reviewing...</span>
+        <span>{t('common.reviewing')}</span>
       </div>
     )
   }
