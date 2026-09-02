@@ -2139,5 +2139,13 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'connectorImport.dropToValidate': '드롭하여 검증',
   'jobDetail.remoteWorkdir': '원격 작업 디렉터리',
   'onboarding.notebookRuntimeOptional': '노트북 런타임(선택 사항)',
-  'settings.languageDescription': '인터페이스 언어. 번역되지 않은 문자열은 영어로 폴백됩니다.'
+  'settings.languageDescription': '인터페이스 언어. 번역되지 않은 문자열은 영어로 폴백됩니다.',
+  'permissionUndo.dismissPermission': '권한 실행 취소 알림 닫기',
+  'permissionUndo.dismissArchive': '보관 실행 취소 알림 닫기',
+  'previewFile.previousVersion': '이전 산출물 버전',
+  'previewFile.nextVersion': '다음 산출물 버전',
+  'renameSession.purposePlaceholder': '이 세션이 무엇에 관한 것인지(선택 사항)',
+  'wsMessage.conversation': '대화',
+  'conversation.referenceSession': '세션 참조',
+  'sessionPlan.downloadPlan': '계획 다운로드'
 }

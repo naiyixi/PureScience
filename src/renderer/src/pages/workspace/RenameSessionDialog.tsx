@@ -92,7 +92,7 @@ const RenameSessionDialog = ({
                 aria-label={t('renameSession.description')}
                 rows={3}
                 maxLength={240}
-                placeholder="What this session is about (optional)"
+                placeholder={t('renameSession.purposePlaceholder')}
                 className={`w-full resize-none rounded-lg border-border bg-card px-3 py-2 text-sm text-foreground shadow-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/25 ${renameDialogInputClassName}`}
               />
             </div>

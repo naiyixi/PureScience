@@ -2189,5 +2189,13 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'jobDetail.remoteWorkdir': 'リモート作業ディレクトリ',
   'onboarding.notebookRuntimeOptional': 'Notebook ランタイム（任意）',
   'settings.languageDescription':
-    'インターフェース言語。未翻訳の文字列は英語にフォールバックします。'
+    'インターフェース言語。未翻訳の文字列は英語にフォールバックします。',
+  'permissionUndo.dismissPermission': '権限の元に戻す通知を閉じる',
+  'permissionUndo.dismissArchive': 'アーカイブの元に戻す通知を閉じる',
+  'previewFile.previousVersion': '前の成果物バージョン',
+  'previewFile.nextVersion': '次の成果物バージョン',
+  'renameSession.purposePlaceholder': 'このセッションは何についてのものか（任意）',
+  'wsMessage.conversation': '会話',
+  'conversation.referenceSession': 'セッションを参照',
+  'sessionPlan.downloadPlan': 'プランをダウンロード'
 }

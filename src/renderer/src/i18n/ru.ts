@@ -2189,5 +2189,13 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'jobDetail.remoteWorkdir': 'Удалённый рабочий каталог',
   'onboarding.notebookRuntimeOptional': 'Среда выполнения Notebook (необязательно)',
   'settings.languageDescription':
-    'Язык интерфейса. Непереведённые строки возвращаются к английскому.'
+    'Язык интерфейса. Непереведённые строки возвращаются к английскому.',
+  'permissionUndo.dismissPermission': 'Закрыть уведомление об отмене разрешения',
+  'permissionUndo.dismissArchive': 'Закрыть уведомление об отмене архивирования',
+  'previewFile.previousVersion': 'Предыдущая версия артефакта',
+  'previewFile.nextVersion': 'Следующая версия артефакта',
+  'renameSession.purposePlaceholder': 'О чём эта сессия (необязательно)',
+  'wsMessage.conversation': 'Диалог',
+  'conversation.referenceSession': 'Сослаться на сессию',
+  'sessionPlan.downloadPlan': 'Скачать план'
 }

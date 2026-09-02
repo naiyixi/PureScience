@@ -9,13 +9,19 @@ const ROOTS = ['src/renderer/src', 'src/main']
 const EXT = new Set(['.tsx', '.ts'])
 
 const patterns = [
-  { name: 'attr literal', re: /(?:aria-label|title|placeholder)="([A-Za-z][A-Za-z0-9 ,.&/():'’_%+–-]{5,})"/g },
+  {
+    name: 'attr literal',
+    re: /(?:aria-label|title|placeholder)="([A-Za-z][A-Za-z0-9 ,.&/():'’_%+–-]{5,})"/g
+  },
   { name: 'jsx-text', re: />([A-Za-z][A-Za-z0-9 ,.&/():'’_%+–-]{8,})</g },
   { name: 'dquote', re: /"([A-Z][a-z]+ [A-Za-z0-9 ,.&/():'’_%+–-]{6,})"/g }
 ]
 
 const skip = /(test|spec)\.(ts|tsx)$/
-const ignoreLine = (ln) => /t\(|useLanguage|eslint-disable|aria-hidden|console\.|\.css|import |require\(|http|https|\/\/|language.*'|style=/.test(ln)
+const ignoreLine = (ln) =>
+  /t\(|useLanguage|eslint-disable|aria-hidden|console\.|\.css|import |require\(|http|https|\/\/|language.*'|style=/.test(
+    ln
+  )
 
 const hits = []
 for (const root of ROOTS) {

@@ -230,6 +230,7 @@ const ArtifactVersionNavigation = ({
   selectedVersionId: string | undefined
   onSelect: (versionId: string) => void
 }): React.JSX.Element | null => {
+  const { t } = useLanguage()
   const selectedIndex = lineage.versions.findIndex(
     (version) => version.versionId === selectedVersionId
   )
@@ -244,7 +245,7 @@ const ArtifactVersionNavigation = ({
         type="button"
         variant="ghost"
         size="icon-xs"
-        aria-label="Previous Artifact version"
+        aria-label={t('previewFile.previousVersion')}
         disabled={selectedIndex <= 0}
         onClick={() => {
           const versionId = lineage.versions[selectedIndex - 1]?.versionId
@@ -260,7 +261,7 @@ const ArtifactVersionNavigation = ({
         type="button"
         variant="ghost"
         size="icon-xs"
-        aria-label="Next Artifact version"
+        aria-label={t('previewFile.nextVersion')}
         disabled={selectedIndex >= lineage.versions.length - 1}
         onClick={() => {
           const versionId = lineage.versions[selectedIndex + 1]?.versionId
