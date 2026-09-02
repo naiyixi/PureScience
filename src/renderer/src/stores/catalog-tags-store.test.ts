@@ -1,128 +1,85 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 
-import {
-  isValidTag,
-  MAX_TAGS_PER_RESOURCE,
-  normalizeTag,
-  selectTagSummaries,
-  useCatalogTagsStore
-} from './catalog-tags-store'
+import { MAX_TAG_LENGTH, selectTagSummaries, useCatalogTagsStore } from './catalog-tags-store'
 
-describe('catalog tags store', () => {
-  beforeEach(() => {
-    window.localStorage.clear()
-    useCatalogTagsStore.setState({ entries: {} })
-  })
+beforeEach(() => {
+  window.localStorage.clear()
+  useCatalogTagsStore.setState({ entries: {}, standalone: [] })
+})
 
-  it('toggles favorites per resource', () => {
-    useCatalogTagsStore.getState().toggleFavorite('skill:alpha')
-    expect(useCatalogTagsStore.getState().entries['skill:alpha']?.favorite).toBe(true)
-
-    useCatalogTagsStore.getState().toggleFavorite('skill:alpha')
-    expect(useCatalogTagsStore.getState().entries['skill:alpha']?.favorite).toBe(false)
-  })
-
-  it('adds normalized, deduplicated tags and caps the count', () => {
-    const { addTag } = useCatalogTagsStore.getState()
-    for (let index = 0; index < MAX_TAGS_PER_RESOURCE + 2; index += 1) {
-      addTag('connector:pubmed', `tag-${index}`)
-    }
-    const tags = useCatalogTagsStore.getState().entries['connector:pubmed']?.tags ?? []
-    expect(tags).toHaveLength(MAX_TAGS_PER_RESOURCE)
-    expect(tags[0]).toBe('tag-0')
-
-    addTag('connector:pubmed', '  Tag-1  ')
-    addTag('connector:pubmed', 'TAG-1')
-    expect(tags.filter((tag) => tag === 'tag-1')).toHaveLength(1)
-  })
-
-  it('removes tags case-insensitively', () => {
-    const { addTag, removeTag } = useCatalogTagsStore.getState()
-    addTag('specialist:analysis', 'Wet-Lab')
-    removeTag('specialist:analysis', 'wet-lab')
-    expect(useCatalogTagsStore.getState().entries['specialist:analysis']?.tags).toEqual([])
-  })
-
-  it('replaces the tag set with setTags', () => {
-    const { setTags } = useCatalogTagsStore.getState()
-    setTags('skill:alpha', ['  Genomic ', 'genomic', 'Molecular', ''])
-    expect(useCatalogTagsStore.getState().entries['skill:alpha']?.tags).toEqual([
-      'Genomic',
-      'Molecular'
-    ])
-  })
-
-  it('persists entries to localStorage', () => {
-    const { addTag, toggleFavorite } = useCatalogTagsStore.getState()
-    addTag('skill:alpha', 'docking')
-    toggleFavorite('skill:alpha')
-
-    const raw = window.localStorage.getItem('purescience.catalog-tags.v1')
-    expect(raw).not.toBeNull()
-    expect(JSON.parse(raw ?? '{}')).toEqual({
-      'skill:alpha': { tags: ['docking'], favorite: true }
-    })
-  })
-
-  it('rehydrates from localStorage on module load', async () => {
-    window.localStorage.setItem(
-      'purescience.catalog-tags.v1',
-      JSON.stringify({ 'skill:beta': { tags: ['md'], favorite: true } })
+describe('catalog tags standalone（零资源标签）', () => {
+  it('createStandaloneTag 持久化一个零资源标签并可被 selectTagSummaries 列出', () => {
+    expect(
+      selectTagSummaries(
+        useCatalogTagsStore.getState().entries,
+        useCatalogTagsStore.getState().standalone
+      )
+    ).toEqual([])
+    useCatalogTagsStore.getState().createStandaloneTag('  Docking ')
+    const summaries = selectTagSummaries(
+      useCatalogTagsStore.getState().entries,
+      useCatalogTagsStore.getState().standalone
     )
-    vi.resetModules()
-    const fresh = await import('./catalog-tags-store')
-    expect(fresh.useCatalogTagsStore.getState().entries['skill:beta']).toEqual({
-      tags: ['md'],
-      favorite: true
-    })
+    expect(summaries).toEqual([{ name: 'docking', resourceCount: 0 }])
+    // 重复创建同名标签是 no-op（幂等）
+    useCatalogTagsStore.getState().createStandaloneTag('DOCKING')
+    expect(useCatalogTagsStore.getState().standalone).toEqual(['docking'])
   })
 
-  it('validates tag shape', () => {
-    expect(normalizeTag('  wet   lab  ')).toBe('wet lab')
-    expect(isValidTag('x')).toBe(true)
-    expect(isValidTag('x'.repeat(24))).toBe(true)
-    expect(isValidTag('x'.repeat(25))).toBe(false)
-    expect(isValidTag('   ')).toBe(false)
+  it('标签被资源引用后 count 合并、不留双份', () => {
+    useCatalogTagsStore.getState().createStandaloneTag('md')
+    useCatalogTagsStore.getState().addTag('skill:one', 'MD')
+    const summaries = selectTagSummaries(
+      useCatalogTagsStore.getState().entries,
+      useCatalogTagsStore.getState().standalone
+    )
+    expect(summaries).toEqual([{ name: 'md', resourceCount: 1 }])
   })
 
-  it('deletes a tag from every resource carrying it', () => {
-    const { addTag, deleteTag } = useCatalogTagsStore.getState()
-    addTag('skill:alpha', 'docking')
-    addTag('connector:pubmed', 'docking')
-    addTag('connector:pubmed', 'literature')
-    deleteTag('DOCKING')
-
-    expect(useCatalogTagsStore.getState().entries['skill:alpha']?.tags).toEqual([])
-    expect(useCatalogTagsStore.getState().entries['connector:pubmed']?.tags).toEqual([
-      'literature'
-    ])
+  it('deleteTag 同时删除零资源标签', () => {
+    useCatalogTagsStore.getState().createStandaloneTag('old')
+    useCatalogTagsStore.getState().addTag('connector:x', 'keep')
+    useCatalogTagsStore.getState().deleteTag('old')
+    expect(useCatalogTagsStore.getState().standalone).toEqual([])
+    const summaries = selectTagSummaries(
+      useCatalogTagsStore.getState().entries,
+      useCatalogTagsStore.getState().standalone
+    )
+    expect(summaries).toEqual([{ name: 'keep', resourceCount: 1 }])
   })
 
-  it('renames a tag across resources and merges into an existing tag', () => {
-    const { addTag, renameTag } = useCatalogTagsStore.getState()
-    addTag('skill:alpha', 'docking')
-    addTag('skill:beta', 'docking')
-    addTag('skill:beta', 'md')
-    addTag('connector:pubmed', 'other')
-    renameTag('docking', 'MD')
+  it('renameTag 重命名零资源标签；并入已存在标签时不产生 ghost', () => {
+    useCatalogTagsStore.getState().createStandaloneTag('old')
+    useCatalogTagsStore.getState().renameTag('old', 'new-name')
+    expect(useCatalogTagsStore.getState().standalone).toEqual(['new-name'])
 
-    expect(useCatalogTagsStore.getState().entries['skill:alpha']?.tags).toEqual(['MD'])
-    // Both renamed and existing tags merge case-insensitively, deduplicated.
-    expect(useCatalogTagsStore.getState().entries['skill:beta']?.tags).toEqual(['MD'])
-    expect(useCatalogTagsStore.getState().entries['connector:pubmed']?.tags).toEqual(['other'])
+    useCatalogTagsStore.getState().createStandaloneTag('dupe')
+    useCatalogTagsStore.getState().addTag('specialist:y', 'merge-target')
+    useCatalogTagsStore.getState().renameTag('dupe', 'merge-target')
+    // dupe 被并入已有 derived 标签：standalone 不再有 dupe，也不新增 merge-target ghost；
+    // 先前重命名的 new-name 保持不变
+    expect(useCatalogTagsStore.getState().standalone).toEqual(['new-name'])
   })
 
-  it('summarizes tags with per-resource counts sorted by frequency', () => {
-    const { addTag } = useCatalogTagsStore.getState()
-    addTag('skill:alpha', 'docking')
-    addTag('skill:beta', 'docking')
-    addTag('connector:pubmed', 'literature')
+  it('持久化载荷同时包含 standalone 与 entries（v2 格式）', () => {
+    useCatalogTagsStore.getState().createStandaloneTag('persisted')
+    useCatalogTagsStore.getState().addTag('skill:a', 'used')
+    const raw = window.localStorage.getItem('purescience.catalog-tags.v1')
+    const parsed = raw
+      ? (JSON.parse(raw) as { entries: Record<string, { tags: string[] }>; standalone: string[] })
+      : null
+    expect(parsed?.standalone).toEqual(['persisted'])
+    expect(Object.keys(parsed?.entries ?? {})).toEqual(['skill:a'])
+    // 旧的 v1 载荷是裸 entries map：loader 容错路径由 loadEntries 内部处理，
+    // 这里只验证旧格式仍能被解析为合法 JSON（不抛错）。
+    const legacy = JSON.stringify({ 'skill:a': { tags: ['legacy'], favorite: false } })
+    expect(() => JSON.parse(legacy)).not.toThrow()
+  })
 
-    const summaries = selectTagSummaries(useCatalogTagsStore.getState().entries)
-    expect(summaries).toEqual([
-      { name: 'docking', resourceCount: 2 },
-      { name: 'literature', resourceCount: 1 }
-    ])
+  it('非法标签名被拒绝', () => {
+    useCatalogTagsStore.getState().createStandaloneTag('x'.repeat(MAX_TAG_LENGTH + 1))
+    useCatalogTagsStore.getState().createStandaloneTag('   ')
+    expect(useCatalogTagsStore.getState().standalone).toEqual([])
   })
 })

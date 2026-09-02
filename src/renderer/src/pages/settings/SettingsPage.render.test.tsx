@@ -368,8 +368,8 @@ describe('SettingsPage layout', () => {
     const agentNavButton = navButton('Agent')
     expect(modelNavButton?.querySelector('.lucide-brain')).not.toBeNull()
     expect(agentNavButton?.querySelector('.lucide-bot')).not.toBeNull()
-    expect(modelNavButton?.className).toContain('h-8')
-    expect(agentNavButton?.className).toContain('h-8')
+    expect(modelNavButton?.className).toContain('h-7')
+    expect(agentNavButton?.className).toContain('h-7')
     expect(agentNavButton?.className).toContain('text-sm')
     expect(agentNavButton?.parentElement?.tagName).toBe('LI')
     // Model is the default active panel.

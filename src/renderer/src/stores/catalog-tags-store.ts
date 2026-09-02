@@ -15,6 +15,10 @@ export type CatalogTagsEntry = {
 
 export type CatalogTagsStoreData = {
   entries: Record<string, CatalogTagsEntry>
+  // Standalone tags created from the Tags settings surface that no resource carries yet. They let
+  // users build a tag vocabulary up front; the moment a resource is tagged with the same name the
+  // standalone entry and the derived count are merged by selectTagSummaries.
+  standalone: string[]
 }
 
 export type CatalogTagsStoreActions = {
@@ -22,6 +26,8 @@ export type CatalogTagsStoreActions = {
   addTag: (resourceId: string, tag: string) => void
   removeTag: (resourceId: string, tag: string) => void
   setTags: (resourceId: string, tags: readonly string[]) => void
+  // Creates a zero-resource tag (no-op when the name already exists anywhere).
+  createStandaloneTag: (tag: string) => void
   // Deletes a tag from every resource that carries it (cross-resource management).
   deleteTag: (tag: string) => void
   // Renames a tag across every resource, merging into an existing tag when present.
@@ -34,16 +40,26 @@ export type CatalogTagSummary = {
   resourceCount: number
 }
 
-export const selectTagSummaries = (entries: Record<string, CatalogTagsEntry>): CatalogTagSummary[] => {
+export const selectTagSummaries = (
+  entries: Record<string, CatalogTagsEntry>,
+  standalone: readonly string[] = []
+): CatalogTagSummary[] => {
   const counts = new Map<string, number>()
   for (const entry of Object.values(entries)) {
     for (const tag of entry.tags) {
       counts.set(tag.toLowerCase(), (counts.get(tag.toLowerCase()) ?? 0) + 1)
     }
   }
+  for (const tag of standalone) {
+    const key = tag.toLowerCase()
+    if (!counts.has(key)) counts.set(key, 0)
+  }
   return Array.from(counts.entries())
     .map(([key, resourceCount]) => ({ name: key, resourceCount }))
-    .sort((left, right) => right.resourceCount - left.resourceCount || left.name.localeCompare(right.name))
+    .sort(
+      (left, right) =>
+        right.resourceCount - left.resourceCount || left.name.localeCompare(right.name)
+    )
 }
 
 export type CatalogTagsStore = CatalogTagsStoreData & CatalogTagsStoreActions
@@ -58,27 +74,40 @@ export const isValidTag = (tag: string): boolean => {
   return normalized.length >= 1 && normalized.length <= MAX_TAG_LENGTH
 }
 
-const loadEntries = (): Record<string, CatalogTagsEntry> => {
-  if (typeof window === 'undefined') return {}
+const loadEntries = (): CatalogTagsStoreData => {
+  if (typeof window === 'undefined') return { entries: {}, standalone: [] }
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
-    if (!raw) return {}
-    const parsed = JSON.parse(raw) as Record<string, CatalogTagsEntry>
-    if (typeof parsed !== 'object' || parsed === null) return {}
+    if (!raw) return { entries: {}, standalone: [] }
+    const parsed = JSON.parse(raw) as
+      | { entries?: Record<string, CatalogTagsEntry>; standalone?: unknown }
+      | Record<string, CatalogTagsEntry>
+    // v1 payloads were the bare entries map; v2 wraps { entries, standalone }.
+    const entries =
+      parsed && typeof parsed === 'object' && 'entries' in parsed && parsed.entries
+        ? parsed.entries
+        : (parsed as Record<string, CatalogTagsEntry>)
     const cleaned: Record<string, CatalogTagsEntry> = {}
-    for (const [resourceId, entry] of Object.entries(parsed)) {
-      if (typeof resourceId !== 'string' || resourceId.length === 0) continue
-      if (typeof entry !== 'object' || entry === null) continue
-      const tags = Array.isArray(entry.tags)
-        ? entry.tags
-            .filter((tag): tag is string => typeof tag === 'string')
-            .slice(0, MAX_TAGS_PER_RESOURCE)
-        : []
-      cleaned[resourceId] = { tags, favorite: Boolean(entry.favorite) }
+    if (entries && typeof entries === 'object') {
+      for (const [resourceId, entry] of Object.entries(entries)) {
+        if (typeof resourceId !== 'string' || resourceId.length === 0) continue
+        if (typeof entry !== 'object' || entry === null) continue
+        const tags = Array.isArray(entry.tags)
+          ? entry.tags
+              .filter((tag): tag is string => typeof tag === 'string')
+              .slice(0, MAX_TAGS_PER_RESOURCE)
+          : []
+        cleaned[resourceId] = { tags, favorite: Boolean(entry.favorite) }
+      }
     }
-    return cleaned
+    const standalone = Array.isArray(parsed && 'standalone' in parsed ? parsed.standalone : [])
+      ? (parsed.standalone as unknown[])
+          .filter((tag): tag is string => typeof tag === 'string' && isValidTag(normalizeTag(tag)))
+          .map((tag) => normalizeTag(tag).toLowerCase())
+      : []
+    return { entries: cleaned, standalone: [...new Set(standalone)] }
   } catch {
-    return {}
+    return { entries: {}, standalone: [] }
   }
 }
 
@@ -92,7 +121,7 @@ const updateEntry = (
 }
 
 export const useCatalogTagsStore = create<CatalogTagsStore>((set, get) => ({
-  entries: loadEntries(),
+  ...loadEntries(),
 
   toggleFavorite: (resourceId) =>
     set({
@@ -134,23 +163,46 @@ export const useCatalogTagsStore = create<CatalogTagsStore>((set, get) => ({
     set({ entries: updateEntry(get().entries, resourceId, { tags: deduped }) })
   },
 
+  createStandaloneTag: (tag) => {
+    const normalized = normalizeTag(tag).toLowerCase()
+    if (!isValidTag(normalized)) return
+    const existing = new Set<string>([
+      ...Object.values(get().entries).flatMap((entry) => entry.tags.map((t) => t.toLowerCase())),
+      ...get().standalone
+    ])
+    if (existing.has(normalized)) return
+    set({ standalone: [...get().standalone, normalized] })
+  },
+
   deleteTag: (tag) => {
     const target = normalizeTag(tag).toLowerCase()
     if (!target) return
     const entries: Record<string, CatalogTagsEntry> = {}
     for (const [resourceId, entry] of Object.entries(get().entries)) {
       const tags = entry.tags.filter((existing) => existing.toLowerCase() !== target)
-      if (tags.length !== entry.tags.length || entry.favorite) {
-        entries[resourceId] = tags.length === entry.tags.length ? entry : { ...entry, tags }
+      if (tags.length === entry.tags.length) {
+        // Untouched resource keeps its entry unchanged (removing one tag must never drop others).
+        entries[resourceId] = entry
+      } else if (tags.length > 0 || entry.favorite) {
+        entries[resourceId] = { ...entry, tags }
       }
+      // A resource that lost its last tag (and is not favorited) is pruned: absence == no tags.
     }
-    set({ entries })
+    set({
+      entries,
+      standalone: get().standalone.filter((existing) => existing !== target)
+    })
   },
 
   renameTag: (from, to) => {
     const source = normalizeTag(from).toLowerCase()
-    const destination = normalizeTag(to)
-    if (!source || !isValidTag(destination) || source === destination.toLowerCase()) return
+    const destination = normalizeTag(to).toLowerCase()
+    if (!source || !isValidTag(destination) || source === destination) return
+    // Destination identities that already exist anywhere (derived or standalone) absorb the rename.
+    const derived = new Set(
+      Object.values(get().entries).flatMap((entry) => entry.tags.map((tag) => tag.toLowerCase()))
+    )
+    const standaloneHasDestination = get().standalone.includes(destination)
     const entries: Record<string, CatalogTagsEntry> = {}
     for (const [resourceId, entry] of Object.entries(get().entries)) {
       const hadSource = entry.tags.some((tag) => tag.toLowerCase() === source)
@@ -163,15 +215,24 @@ export const useCatalogTagsStore = create<CatalogTagsStore>((set, get) => ({
       for (const tag of entry.tags) {
         // Dedupe against the post-rename identity so renaming 'docking' to 'MD' merges with an
         // existing 'md' instead of leaving both spellings.
-        const key = tag.toLowerCase() === source ? destination.toLowerCase() : tag.toLowerCase()
+        const key = tag.toLowerCase() === source ? destination : tag.toLowerCase()
         if (seen.has(key)) continue
         seen.add(key)
-        tags.push(tag.toLowerCase() === source ? destination : tag)
+        tags.push(tag.toLowerCase() === source ? to : tag)
         if (tags.length >= MAX_TAGS_PER_RESOURCE) break
       }
       entries[resourceId] = { ...entry, tags }
     }
-    set({ entries })
+    // Standalone bookkeeping: only touch the standalone list when the renamed tag itself was
+    // standalone (renames of derived tags never create zero-resource ghosts).
+    const sourceWasStandalone = get().standalone.includes(source)
+    const standalone = sourceWasStandalone
+      ? [
+          ...get().standalone.filter((existing) => existing !== source),
+          ...(standaloneHasDestination || derived.has(destination) ? [] : [destination])
+        ]
+      : get().standalone
+    set({ entries, standalone: [...new Set(standalone)] })
   }
 }))
 
@@ -180,7 +241,10 @@ export const useCatalogTagsStore = create<CatalogTagsStore>((set, get) => ({
 if (typeof window !== 'undefined') {
   useCatalogTagsStore.subscribe((state) => {
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state.entries))
+      window.localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ entries: state.entries, standalone: state.standalone })
+      )
     } catch {
       // Storage can be unavailable (private mode / quota); tags just stay in memory.
     }

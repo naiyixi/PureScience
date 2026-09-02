@@ -23,6 +23,7 @@ import { ComputeApprovalDialog } from '@/pages/settings/ComputeApprovalDialog'
 import { ConnectorApprovalDialog } from '@/pages/settings/ConnectorApprovalDialog'
 import { SkillImportApprovalDialog } from '@/pages/settings/SkillImportApprovalDialog'
 import { SettingsPage, type SettingsPageHandle } from '@/pages/settings/SettingsPage'
+import { GLOBAL_SEARCH_OPEN_EVENT } from '@/lib/app-events'
 import { EnvStatusBanner } from '@/pages/workspace/EnvStatusBanner'
 import { WorkspacePage } from '@/pages/workspace/WorkspacePage'
 import { useCloseActivePaneShortcut } from '@/hooks/useCloseActivePaneShortcut'
@@ -203,6 +204,45 @@ const App = (): React.JSX.Element | null => {
     legacyMove,
     missingDataRoot,
     openSettings,
+    startupView
+  ])
+
+  // Leaf affordances (e.g. the Home header search box) dispatch this event to open the dialog;
+  // the shortcut handler above remains the keyboard path. Scope: only when no blocking gate is up.
+  useEffect(() => {
+    const openFromEvent = (): void => {
+      if (
+        !isSettingsLoaded ||
+        startupView !== 'app' ||
+        !isSessionPersistenceHydrated ||
+        isSettingsOpen ||
+        hasConnectorApproval ||
+        hasComputeApproval ||
+        hasSkillImportApproval ||
+        isUpdateDialogOpen ||
+        isPreviewModalOpen ||
+        isCloseConfirmOpen ||
+        missingDataRoot !== undefined ||
+        legacyMove !== undefined
+      ) {
+        return
+      }
+      setIsGlobalSearchOpen(true)
+    }
+    window.addEventListener(GLOBAL_SEARCH_OPEN_EVENT, openFromEvent)
+    return () => window.removeEventListener(GLOBAL_SEARCH_OPEN_EVENT, openFromEvent)
+  }, [
+    hasComputeApproval,
+    hasConnectorApproval,
+    hasSkillImportApproval,
+    isCloseConfirmOpen,
+    isPreviewModalOpen,
+    isSessionPersistenceHydrated,
+    isSettingsLoaded,
+    isSettingsOpen,
+    isUpdateDialogOpen,
+    legacyMove,
+    missingDataRoot,
     startupView
   ])
 
