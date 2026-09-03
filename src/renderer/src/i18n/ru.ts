@@ -2012,6 +2012,9 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'ws.marketplaceNoMatches': 'Ни один специалист не соответствует «{query}».',
   'ws.marketplaceNoSources': 'Источники маркетплейса не настроены.',
   'ws.marketplaceNoSpecialists': 'Доступных специалистов маркетплейса нет.',
+  'ws.marketplaceSort': 'Сортировка',
+  'ws.marketplaceSortVersion': 'Последняя версия',
+  'ws.marketplaceSortName': 'Название',
   'ws.marketplaceOfficial': 'Официальный',
   'ws.marketplacePackageVerified': 'Пакет проверен',
   'ws.marketplaceRecoveryPending':
