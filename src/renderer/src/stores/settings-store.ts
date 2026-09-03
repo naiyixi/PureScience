@@ -70,7 +70,8 @@ import type {
   ReasoningEffort,
   SettingsSnapshot,
   AppIconVariant,
-  VisionModelConfiguration
+  VisionModelConfiguration,
+  ScenarioModels
 } from '../../../shared/settings'
 
 type SettingsStoreData = RuntimeSetupState &
@@ -91,6 +92,7 @@ type SettingsStoreData = RuntimeSetupState &
     // Optional fixed Vision model used to translate image input for a text-only backend
     // . Undefined means the image relay is disabled.
     visionModel: VisionModelConfiguration | undefined
+    scenarioModels: ScenarioModels | undefined
     providers: ProviderView[]
     // Selected agent backend and the frameworks available to choose from.
     agentFrameworkId: AgentFrameworkId
@@ -155,6 +157,7 @@ export const createInitialSettingsState = (): SettingsStoreData => ({
   claudeSubscriptionProviderId: undefined,
   activeModel: undefined,
   visionModel: undefined,
+  scenarioModels: undefined,
   providers: [],
   agentFrameworkId: 'claude-code',
   agentFrameworks: [],
@@ -184,6 +187,7 @@ const applySnapshot = (snapshot: SettingsSnapshot): Partial<SettingsStoreData> =
   claudeSubscriptionProviderId: snapshot.claudeSubscriptionProviderId,
   activeModel: snapshot.activeModel,
   visionModel: snapshot.visionModel,
+  scenarioModels: snapshot.scenarioModels,
   providers: snapshot.providers,
   onboardingCompletedAt: snapshot.onboardingCompletedAt,
   packageMirror: isMirrorConfigured(snapshot.packageMirror) ? snapshot.packageMirror : undefined,

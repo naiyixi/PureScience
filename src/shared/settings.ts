@@ -332,6 +332,35 @@ export type VisionModelConfiguration = Readonly<{
   reasoningEffort: ReasoningEffort
 }>
 
+// Scenarios that can pin their own default model instead of inheriting the active model:
+// - 'session-detail': conversation-detail/summary generation
+// - 'subagent': sessions derived from the main session (delegate_tasks)
+// - 'review': the review/fix-loop agent pass
+// Absence of an id means "same as the active model" (the default). Vision is handled by the
+// separate visionModel configuration because the image relay is opt-in, not inherit-by-default.
+export type ScenarioModelId = 'session-detail' | 'subagent' | 'review'
+
+export const SCENARIO_MODEL_IDS: readonly ScenarioModelId[] = [
+  'session-detail',
+  'subagent',
+  'review'
+]
+
+// Per-scenario model override. Absence of an id in the map = inherit the active model.
+export type ScenarioModelOverride = Readonly<{
+  providerId: string
+  model: string
+  reasoningEffort?: ReasoningEffort
+}>
+
+export type ScenarioModels = Partial<Record<ScenarioModelId, ScenarioModelOverride>>
+
+export type SetScenarioModelRequest = {
+  scenario: ScenarioModelId
+  // Undefined clears the override back to "same as the active model".
+  configuration?: ScenarioModelOverride
+}
+
 export type SetVisionModelRequest = {
   configuration?: VisionModelConfiguration
 }
@@ -455,6 +484,9 @@ export type SettingsSnapshot = {
   // Optional fixed Vision model used to translate image input when the active backend is text-only.
   // Undefined means the image relay is disabled.
   visionModel?: VisionModelConfiguration
+  // Per-scenario default-model overrides (conversation detail / subagent / review). Absence of an
+  // id means that scenario inherits the active model.
+  scenarioModels?: ScenarioModels
   providers: ProviderView[]
   // The selected agent backend, and the frameworks available to choose from.
   agentFrameworkId: AgentFrameworkId

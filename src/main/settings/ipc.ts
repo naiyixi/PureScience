@@ -48,6 +48,7 @@ import {
   type SetSkillEnabledRequest,
   type SetToolPermissionRequest,
   type SetVisionModelRequest,
+  type SetScenarioModelRequest,
   type UpdateSkillRequest,
   type UpsertProviderRequest,
   type ValidateProviderRequest,
@@ -196,6 +197,10 @@ const registerSettingsIpcHandlers = ({
   ipcMainHandle('settings:set-vision-model', async (_event, request: SetVisionModelRequest) => {
     log.info('set vision model requested', { enabled: request.configuration !== undefined })
     return service.setVisionModel(request.configuration)
+  })
+  ipcMainHandle('settings:set-scenario-model', async (_event, request: SetScenarioModelRequest) => {
+    log.info('set scenario model requested', { scenario: request.scenario })
+    return service.setScenarioModel(request)
   })
   ipcMainHandle(
     'settings:set-reasoning-effort',

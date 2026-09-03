@@ -437,6 +437,15 @@ export const zh = {
   'settings.proxyPortInvalid': '端口须为 1–65535 之间的数字。',
   'settings.proxySaveFailed': '无法保存代理设置。',
   'settings.egressCustomCount': '已允许 {n} 个自定义域名',
+  'settings.scenarioModels': '场景模型',
+  'settings.scenarioModelsHint':
+    '会话详情、子智能体与审查各自使用的默认模型；未在此单独指定时，与主模型相同。',
+  'settings.scenarioModelInherit': '与主模型相同',
+  'settings.scenarioModelSessionDetail': '会话详情',
+  'settings.scenarioModelSubagent': '子智能体',
+  'settings.scenarioModelReview': '审查',
+  'settings.scenarioModelsScopeNote':
+    '说明：当智能体框架经 ACP 运行时，子智能体与审查的独立模型可能受框架限制而无法逐会话下发，此时回退使用主模型。',
   'settings.proxyTitle': '代理',
   'settings.proxyDescription':
     '控制笔记本、REPL 与 Shell 进程如何连接互联网。默认跟随系统；在 VPN 或公司网关后可用手动代理。',

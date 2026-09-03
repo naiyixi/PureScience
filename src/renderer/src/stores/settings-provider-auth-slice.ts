@@ -10,6 +10,8 @@ import type {
   AgentFrameworkId,
   ProviderView,
   RefreshProviderModelsResult,
+  ScenarioModelId,
+  ScenarioModelOverride,
   SettingsSnapshot,
   UpsertProviderRequest,
   ValidateProviderRequest,
@@ -42,6 +44,10 @@ export type ProviderAuthActions = {
   setActiveProvider: (providerId: string, model?: string) => Promise<void>
   setAgentFramework: (id: AgentFrameworkId) => Promise<void>
   setVisionModel: (configuration: VisionModelConfiguration | undefined) => Promise<void>
+  setScenarioModel: (
+    scenario: ScenarioModelId,
+    configuration: ScenarioModelOverride | undefined
+  ) => Promise<void>
   deleteProvider: (providerId: string) => Promise<void>
 }
 
@@ -58,6 +64,7 @@ type ProviderAuthCommands = Pick<
   | 'setActiveProvider'
   | 'setAgentFramework'
   | 'setVisionModel'
+  | 'setScenarioModel'
   | 'validateProvider'
   | 'cancelCodexLogin'
   | 'cancelClaudeLogin'
@@ -271,6 +278,22 @@ export const createProviderAuthSlice = <Store extends ProviderAuthHost>({
     } catch (error) {
       write.fail('Could not save the Vision model. Try again.')
       console.error('Failed to set vision model', error)
+      throw error
+    }
+
+    if (!write.isCurrent()) return
+    reconcileSnapshot(snapshot)
+    write.succeed()
+  },
+
+  setScenarioModel: async (scenario, configuration) => {
+    const write = writeCoordinator.begin('scenarioModels')
+    let snapshot: SettingsSnapshot
+    try {
+      snapshot = await getCommands().setScenarioModel({ scenario, configuration })
+    } catch (error) {
+      write.fail('Could not save the scenario model. Try again.')
+      console.error('Failed to set scenario model', error)
       throw error
     }
 

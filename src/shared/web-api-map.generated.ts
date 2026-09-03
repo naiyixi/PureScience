@@ -239,6 +239,7 @@ export const WEB_INVOKE_CHANNELS = {
   'settings.setPackageMirror': 'settings:set-package-mirror',
   'settings.setProxy': 'settings:set-proxy',
   'settings.setReasoningEffort': 'settings:set-reasoning-effort',
+  'settings.setScenarioModel': 'settings:set-scenario-model',
   'settings.setSkillEnabled': 'settings:set-skill-enabled',
   'settings.setToolPermission': 'settings:set-tool-permission',
   'settings.setUseIntent': 'settings:set-use-intent',

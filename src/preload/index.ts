@@ -226,6 +226,8 @@ const api: PureScienceAPI = {
       electronRendererContracts.invoke('settings.setAgentFramework', request),
     setVisionModel: (request) =>
       electronRendererContracts.invoke('settings.setVisionModel', request),
+    setScenarioModel: (request) =>
+      electronRendererContracts.invoke('settings.setScenarioModel', request),
     setReasoningEffort: (request) =>
       electronRendererContracts.invoke('settings.setReasoningEffort', request),
     setNotificationsEnabled: (request) =>

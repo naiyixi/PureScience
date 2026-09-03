@@ -897,6 +897,15 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.proxyPortInvalid': '포트는 1~65535 사이의 숫자여야 합니다.',
   'settings.proxySaveFailed': '프록시 설정을 저장하지 못했습니다.',
   'settings.egressCustomCount': '사용자 지정 도메인 {n}개 허용됨',
+  'settings.scenarioModels': '시나리오 모델',
+  'settings.scenarioModelsHint':
+    '대화 상세·서브에이전트·리뷰에 사용하는 기본 모델입니다. 여기서 지정하지 않으면 각 시나리오는 활성 모델을 따릅니다.',
+  'settings.scenarioModelInherit': '활성 모델과 동일',
+  'settings.scenarioModelSessionDetail': '대화 상세',
+  'settings.scenarioModelSubagent': '서브에이전트',
+  'settings.scenarioModelReview': '리뷰',
+  'settings.scenarioModelsScopeNote':
+    '참고: 에이전트 프레임워크가 ACP를 통해 실행될 때 서브에이전트와 리뷰의 모델 지정은 프레임워크에 따라 적용되지 않을 수 있으며, 그 경우 활성 모델로 대체됩니다.',
   'settings.proxyTitle': '프록시',
   'settings.proxyDescription':
     'Notebook·REPL·Shell 프로세스가 인터넷에 연결하는 방식을 제어합니다. 기본적으로 시스템을 따르며, VPN이나 회사 게이트웨이 뒤에서는 수동 프록시를 설정할 수 있습니다.',

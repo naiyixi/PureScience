@@ -363,6 +363,7 @@ const LATIN_COGNATES = new Set<string>([
   'Proxy',
   'Port',
   'Server',
+  'Review',
   'Sessions',
   'Session',
   'Messages',

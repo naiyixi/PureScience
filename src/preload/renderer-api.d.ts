@@ -215,6 +215,8 @@ import type {
   SetDefaultPermissionProfileRequest,
   SetAppIconVariantRequest,
   SetReasoningEffortRequest,
+  SetVisionModelRequest,
+  SetScenarioModelRequest,
   SetSkillEnabledRequest,
   SettingsSnapshot,
   AppIconPreview,
@@ -484,6 +486,7 @@ export interface PureScienceAPI {
     xaiOauthLogout(request: { providerId: string }): Promise<void>
     setAgentFramework(request: SetAgentFrameworkRequest): Promise<SettingsSnapshot>
     setVisionModel(request: SetVisionModelRequest): Promise<SettingsSnapshot>
+    setScenarioModel(request: SetScenarioModelRequest): Promise<SettingsSnapshot>
     setReasoningEffort(request: SetReasoningEffortRequest): Promise<SettingsSnapshot>
     setNotificationsEnabled(request: SetNotificationsEnabledRequest): Promise<SettingsSnapshot>
     setConversationSkillImportEnabled(

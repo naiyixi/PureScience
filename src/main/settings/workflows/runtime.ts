@@ -5,6 +5,7 @@ import {
   type SetActiveProviderRequest,
   type SetAgentFrameworkRequest,
   type SetReasoningEffortRequest,
+  type SetScenarioModelRequest,
   type SetVisionModelRequest,
   type UpsertProviderRequest
 } from '../../../shared/settings'
@@ -24,6 +25,7 @@ type RuntimeSettingsWorkflowStore = Pick<
   | 'setActiveProvider'
   | 'setAgentFramework'
   | 'setVisionModel'
+  | 'setScenarioModel'
   | 'setReasoningEffort'
   | 'resolveActiveReasoningEffort'
   | 'resolveActiveModelChangeTarget'
@@ -157,6 +159,12 @@ class RuntimeSettingsWorkflows {
     request: SetVisionModelRequest
   ): Promise<Awaited<ReturnType<RuntimeSettingsWorkflowStore['setVisionModel']>>> {
     return this.settings.setVisionModel(request.configuration)
+  }
+
+  async setScenarioModel(
+    request: SetScenarioModelRequest
+  ): Promise<Awaited<ReturnType<RuntimeSettingsWorkflowStore['setScenarioModel']>>> {
+    return this.settings.setScenarioModel(request)
   }
 
   async setReasoningEffort(
