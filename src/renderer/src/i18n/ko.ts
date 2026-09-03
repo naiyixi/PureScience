@@ -2147,5 +2147,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'renameSession.purposePlaceholder': '이 세션이 무엇에 관한 것인지(선택 사항)',
   'wsMessage.conversation': '대화',
   'conversation.referenceSession': '세션 참조',
-  'sessionPlan.downloadPlan': '계획 다운로드'
+  'sessionPlan.downloadPlan': '계획 다운로드',
+  'writeAudit.filterKind': '변경 유형별로 필터링',
+  'tiffPreview.decoding': 'TIFF 이미지를 디코딩하는 중…'
 }

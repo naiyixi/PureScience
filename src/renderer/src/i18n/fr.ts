@@ -2234,5 +2234,7 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'renameSession.purposePlaceholder': 'Le sujet de cette session (facultatif)',
   'wsMessage.conversation': 'Conversation',
   'conversation.referenceSession': 'Référencer une session',
-  'sessionPlan.downloadPlan': 'Télécharger le plan'
+  'sessionPlan.downloadPlan': 'Télécharger le plan',
+  'writeAudit.filterKind': 'Filtrer par type de modification',
+  'tiffPreview.decoding': 'Décodage de l’image TIFF…'
 }

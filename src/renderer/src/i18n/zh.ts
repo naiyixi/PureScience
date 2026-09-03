@@ -2117,7 +2117,9 @@ export const zh = {
   'renameSession.purposePlaceholder': '这个会话是关于什么的（可选）',
   'wsMessage.conversation': '对话',
   'conversation.referenceSession': '引用一个会话',
-  'sessionPlan.downloadPlan': '下载计划'
+  'sessionPlan.downloadPlan': '下载计划',
+  'writeAudit.filterKind': '按变更类型筛选',
+  'tiffPreview.decoding': '正在解码 TIFF 图像',
 }
 
 export type ZhKey = keyof typeof zh

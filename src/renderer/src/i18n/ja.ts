@@ -2197,5 +2197,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'renameSession.purposePlaceholder': 'このセッションは何についてのものか（任意）',
   'wsMessage.conversation': '会話',
   'conversation.referenceSession': 'セッションを参照',
-  'sessionPlan.downloadPlan': 'プランをダウンロード'
+  'sessionPlan.downloadPlan': 'プランをダウンロード',
+  'writeAudit.filterKind': '変更の種類で絞り込み',
+  'tiffPreview.decoding': 'TIFF 画像をデコード中…'
 }
