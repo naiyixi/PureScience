@@ -31,6 +31,7 @@ import {
   SKILL_IMPORT_MCP_SERVER_ARG
 } from './mcp-server-args'
 import { trayLabelsForLocale } from '../shared/tray-labels'
+import { installLocalizedApplicationMenu } from './app-menu'
 import { withApplicationRuntimeShutdown } from './application-runtime'
 import { installChildProcessGoneLogging, startLocalCrashReporting } from './crash-diagnostics'
 import type { DiagnosticOperation } from './diagnostics/operation'
@@ -344,6 +345,10 @@ async function startElectronApp(mainEntryPath: string): Promise<void> {
       startupDiagnostics?.phase('electron-ready')
       await app.whenReady()
       startupDiagnostics?.phase('compose-runtime')
+
+      // Replace Electron's default English menu with the locale-following application menu (roles
+      // preserve native accelerators; labels follow the OS language).
+      installLocalizedApplicationMenu()
 
       // Set app user model id for windows
       electronApp.setAppUserModelId(APP_USER_MODEL_ID)
