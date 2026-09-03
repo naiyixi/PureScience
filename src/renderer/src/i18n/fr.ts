@@ -912,7 +912,7 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.egressCustomDomains': 'Domaines personnalisés',
   'settings.egressCustomPlaceholder': 'example.com',
   'settings.egressDescription':
-    'Lorsqu’elle est activée, les processus notebook, REPL et shell ne peuvent atteindre que les domaines scientifiques ci-dessous. Tout le reste est bloqué par un proxy de filtrage local.',
+    'Contrôle les domaines internet auxquels les processus notebook (Python, R, REPL et Bash) peuvent accéder. Tout le reste est bloqué par un proxy de filtrage local.',
   'settings.egressEnabled': 'Restreindre l’accès réseau des processus',
   'settings.egressEnabledHint':
     'Activé = les processus enfants passent par un proxy local qui n’autorise que les groupes de domaines activés et vos domaines personnalisés.',
@@ -924,7 +924,32 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.egressGroupStructures': 'Structures et chimie',
   'settings.egressNoCustom': 'Aucun domaine personnalisé pour l’instant.',
   'settings.egressRemoveDomain': 'Retirer le domaine',
-  'settings.egressTitle': 'Liste d’autorisation réseau sortante',
+  'settings.proxyHostRequired': 'Saisissez l’adresse du serveur proxy.',
+  'settings.proxyPortInvalid': 'Le port doit être un nombre entre 1 et 65535.',
+  'settings.proxySaveFailed': 'Impossible d’enregistrer les réglages du proxy.',
+  'settings.egressCustomCount': 'Autorise {n} domaines personnalisés',
+  'settings.proxyTitle': 'Proxy',
+  'settings.proxyDescription':
+    'Contrôle la façon dont les processus notebook, REPL et shell se connectent à Internet. Suit le système par défaut ; un proxy manuel est utile derrière un VPN ou une passerelle d’entreprise.',
+  'settings.proxyModeSystem': 'Suivre le système',
+  'settings.proxyModeSystemHint':
+    'Les processus enfants utilisent les réglages proxy actuels du système d’exploitation (recommandé).',
+  'settings.proxyModeManual': 'Configuration manuelle',
+  'settings.proxyModeManualHint': 'Acheminer chaque processus enfant par un serveur proxy fixe.',
+  'settings.proxyTypeLabel': 'Type',
+  'settings.proxyTypeHttp': 'HTTP',
+  'settings.proxyTypeHttps': 'HTTPS',
+  'settings.proxyTypeSocks5': 'SOCKS5',
+  'settings.proxyHostLabel': 'Serveur',
+  'settings.proxyHostPlaceholder': '127.0.0.1 ou proxy.example.com',
+  'settings.proxyPortLabel': 'Port',
+  'settings.proxyNoProxyLabel': 'Liste d’exclusion',
+  'settings.proxyNoProxyHint':
+    'Hôtes ou IP à connecter directement, séparés par des virgules. localhost et 127.0.0.1 contournent toujours le proxy.',
+  'settings.proxyStatusSystem':
+    'Suit le système : les processus enfants utilisent les réglages réseau du système.',
+  'settings.proxyStatusManual': 'Proxy manuel : {url}',
+  'settings.egressTitle': 'Accès réseau des notebooks',
   'settings.elapsedTime': 'Temps écoulé',
   'settings.endpoint': 'Point d’accès',
   'settings.endpointsApprove': 'Approuver les scripts',

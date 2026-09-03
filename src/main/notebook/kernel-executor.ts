@@ -9,6 +9,7 @@ import { createInterface, type Interface } from 'node:readline'
 import { terminateProcessTree, type ProcessTreeKillResult } from '../process-tree'
 import { resolveSystemProxyEnvironment } from '../settings/system-proxy'
 import { egressProxyEnv } from '../net/egress-runtime'
+import { manualProxyEnvironment } from '../net/proxy-runtime'
 import {
   KERNEL_FIGURES_DIR_ENV,
   frameRRequest,
@@ -568,8 +569,15 @@ class NotebookKernelExecutor implements NotebookExecutor {
           : envPrefix(request.runtimeRoot, resolveRequestEnv(kind, request))
     const env: NodeJS.ProcessEnv = {
       ...process.env,
-      ...(KernelExecutorProxyEnvironment.proxyEnv ?? {}),
-      ...egressProxyEnv(),
+      // Proxy precedence for child processes: the egress filtering proxy owns the
+      // route while the allowlist is on; otherwise a configured manual proxy wins;
+      // otherwise the resolved system proxy; otherwise inherit the host environment
+      // (the `??` chain picks exactly one source, so e.g. a manual HTTP proxy never
+      // leaks a stale system ALL_PROXY alongside it).
+      ...(egressProxyEnv() ??
+        manualProxyEnvironment() ??
+        KernelExecutorProxyEnvironment.proxyEnv ??
+        {}),
       // Force a non-interactive matplotlib backend so plt.show() never opens a GUI window in this
       // headless runtime; respect an explicitly configured backend if present.
       MPLBACKEND: process.env.MPLBACKEND || 'Agg',

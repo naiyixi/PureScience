@@ -96,6 +96,8 @@ import {
   type EgressApprovalRequest,
   type EgressApprovalDecision
 } from '../net/egress-runtime'
+import { applyProxySettings } from '../net/proxy-runtime'
+import type { ProxySettings } from '../../shared/proxy'
 import { getUserClaudeConfigDir } from './provider-env'
 import { SettingsRepository } from './repository'
 import { SettingsPreferencesModule, toSettingsPreferencesSnapshot } from './preferences'
@@ -548,6 +550,33 @@ class SettingsService {
     return (await this.repository.getSettings()).egress
   }
 
+  // Reads the persisted child-process proxy settings (undefined = follow system).
+  async getProxy(): Promise<ProxySettings | undefined> {
+    return (await this.repository.getSettings()).proxy
+  }
+
+  // Persists the child-process proxy settings and applies them to the runtime so
+  // subsequently spawned kernels/shells pick up the new route immediately.
+  async setProxy(proxy: ProxySettings): Promise<ProxySettings | undefined> {
+    const persisted = await this.repository.setProxy(proxy)
+    applyProxySettings(persisted.proxy)
+    return persisted.proxy
+  }
+
+  // Re-applies the persisted child-process network controls (egress allowlist +
+  // manual proxy) at startup. Spawn sites read runtime module state, so without this
+  // a restart would silently drop restrictions/route until the next settings edit.
+  // Never allowed to block startup: a proxy bind failure is logged and ignored here —
+  // the next settings edit re-applies and surfaces it.
+  async hydrateChildProxyRuntime(stored: StoredSettings): Promise<void> {
+    try {
+      await applyEgressSettings(stored.egress, this.egressRuntimeOptions())
+    } catch {
+      // Ignore: startup continues; the egress runtime is re-applied on the next edit.
+    }
+    applyProxySettings(stored.proxy)
+  }
+
   // Persists the network egress allowlist and applies it to the child-process proxy runtime, so a
   // settings change takes effect for subsequently spawned kernels/shells immediately.
   async setEgress(egress: EgressSettings): Promise<EgressSettings> {
@@ -559,10 +588,7 @@ class SettingsService {
   // Settles a suspended egress approval from the in-conversation card (deny / allow once /
   // allow always). Exposed through the application command registry so the web surface and the
   // preload bridge share one entry point.
-  async respondEgressApproval(
-    requestId: string,
-    decision: EgressApprovalDecision
-  ): Promise<void> {
+  async respondEgressApproval(requestId: string, decision: EgressApprovalDecision): Promise<void> {
     await respondToEgressApproval(requestId, decision)
   }
 

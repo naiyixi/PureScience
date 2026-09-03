@@ -450,9 +450,34 @@ export const en: Record<ZhKey, string> = {
   'settings.credentialsServiceOpenalex': 'OpenAlex',
   'settings.credentialsServiceLiterature': 'Literature access',
   'settings.credentialsServiceCustom': 'Custom',
-  'settings.egressTitle': 'Network egress allowlist',
+  'settings.proxyHostRequired': 'Enter a proxy server address.',
+  'settings.proxyPortInvalid': 'Port must be a number between 1 and 65535.',
+  'settings.proxySaveFailed': 'Could not save the proxy settings.',
+  'settings.egressCustomCount': 'Allows {n} custom domains',
+  'settings.proxyTitle': 'Proxy',
+  'settings.proxyDescription':
+    'Controls how notebook, REPL and shell processes connect to the internet. Follows your system by default; a manual proxy helps behind a VPN or corporate gateway.',
+  'settings.proxyModeSystem': 'Follow system',
+  'settings.proxyModeSystemHint':
+    "Child processes use the operating system's current proxy settings (recommended).",
+  'settings.proxyModeManual': 'Manual configuration',
+  'settings.proxyModeManualHint': 'Route every child process through a fixed proxy server.',
+  'settings.proxyTypeLabel': 'Type',
+  'settings.proxyTypeHttp': 'HTTP',
+  'settings.proxyTypeHttps': 'HTTPS',
+  'settings.proxyTypeSocks5': 'SOCKS5',
+  'settings.proxyHostLabel': 'Server',
+  'settings.proxyHostPlaceholder': '127.0.0.1 or proxy.example.com',
+  'settings.proxyPortLabel': 'Port',
+  'settings.proxyNoProxyLabel': 'Bypass list',
+  'settings.proxyNoProxyHint':
+    'Comma-separated hosts or IPs that connect directly. localhost and 127.0.0.1 always bypass the proxy.',
+  'settings.proxyStatusSystem':
+    "Following system: child processes use the operating system's network settings.",
+  'settings.proxyStatusManual': 'Manual proxy: {url}',
+  'settings.egressTitle': 'Notebook internet access',
   'settings.egressDescription':
-    'When enabled, notebook, REPL and shell processes may only reach the scientific domains below. Everything else is blocked by a local filtering proxy.',
+    'Controls which internet domains notebook Python, R, REPL and Bash processes can access. Everything else is blocked by a local filtering proxy.',
   'settings.egressEnabled': 'Restrict process network access',
   'settings.egressEnabledHint':
     'On = child processes are routed through a local proxy that only allows the enabled domain groups and your custom domains.',
@@ -2235,5 +2260,5 @@ export const en: Record<ZhKey, string> = {
   'conversation.referenceSession': 'Reference a session',
   'sessionPlan.downloadPlan': 'Download Plan',
   'writeAudit.filterKind': 'Filter by change kind',
-  'tiffPreview.decoding': 'Decoding TIFF image',
+  'tiffPreview.decoding': 'Decoding TIFF image'
 }

@@ -5,6 +5,7 @@ import { protectManagedRuntimeWrites } from './managed-runtime-guard'
 import { terminateProcessTree } from '../process-tree'
 import { resolveWindowsPowerShellExecutable } from '../windows-powershell'
 import { egressProxyEnv } from '../net/egress-runtime'
+import { manualProxyEnvironment } from '../net/proxy-runtime'
 
 // Default bash_execute timeout, matching the data/repl kernels' own default.
 const DEFAULT_SHELL_TIMEOUT_MS = 120_000
@@ -52,14 +53,17 @@ const SHELL_ENV_ALLOWLIST = [
 ]
 
 // Proxy variables the shell may carry when network egress restrictions are enabled (routed through
-// the local filtering proxy). They are injected from the egress runtime, never from host env.
+// the local filtering proxy) or when the user configured a manual proxy. They are injected from the
+// egress/manual runtimes, never from host env.
 const SHELL_EGRESS_ENV_KEYS = [
   'HTTP_PROXY',
   'HTTPS_PROXY',
   'NO_PROXY',
+  'ALL_PROXY',
   'http_proxy',
   'https_proxy',
-  'no_proxy'
+  'no_proxy',
+  'all_proxy'
 ]
 
 // Safe OS paths PowerShell and Windows child processes need to locate built-in tools.
@@ -84,11 +88,13 @@ const buildShellEnv = (
   }
   // Egress restrictions: route the shell through the local filtering proxy. The proxy env comes
   // from the egress runtime (never the host environment), and only the proxy keys are projected —
-  // everything else stays on the deny-by-default allowlist.
+  // everything else stays on the deny-by-default allowlist. When egress is off but the user
+  // configured a manual proxy, project that instead so bash curls honor the same route as kernels.
   const egressEnv = egressProxyEnv()
-  if (egressEnv) {
+  const proxyEnv = egressEnv ?? manualProxyEnvironment()
+  if (proxyEnv) {
     for (const key of SHELL_EGRESS_ENV_KEYS) {
-      const value = egressEnv[key]
+      const value = proxyEnv[key]
       if (value !== undefined) env[key] = value
     }
   }

@@ -18,6 +18,7 @@ import type {
   SetCredentialRequest,
   TestCredentialRequest,
   EgressSettings,
+  ProxySettings,
   CreateExternalComputeEndpointRequest,
   ValidateProviderRequest
 } from '../../shared/settings'
@@ -56,6 +57,7 @@ type CoreSettingsCommandStore = Pick<
   | 'respondEgressApproval'
   | 'listExternalComputeEndpoints'
   | 'getPackageMirror'
+  | 'getProxy'
   | 'getPreflight'
   | 'getSettingsView'
   | 'getSkillDetail'
@@ -79,6 +81,7 @@ type CoreSettingsCommandStore = Pick<
   | 'setMemory'
   | 'setUseIntent'
   | 'setPackageMirror'
+  | 'setProxy'
   | 'deleteCredential'
   | 'testCredential'
   | 'setEgress'
@@ -172,6 +175,9 @@ const settingsCoreApplicationCommands = Object.freeze({
     readonly [],
     StoreResult<'getPackageMirror'>
   >('settings:get-package-mirror'),
+  getProxy: defineApplicationCommand<'settings:get-proxy', readonly [], StoreResult<'getProxy'>>(
+    'settings:get-proxy'
+  ),
   getPreflight: defineApplicationCommand<
     'settings:get-preflight',
     readonly [],
@@ -325,6 +331,11 @@ const settingsCoreApplicationCommands = Object.freeze({
     readonly [request: SetPackageMirrorRequest],
     StoreResult<'setPackageMirror'>
   >('settings:set-package-mirror'),
+  setProxy: defineApplicationCommand<
+    'settings:set-proxy',
+    readonly [proxy: ProxySettings],
+    StoreResult<'setProxy'>
+  >('settings:set-proxy'),
   validateProvider: defineApplicationCommand<
     'settings:validate-provider',
     readonly [request: ValidateProviderRequest],
@@ -394,6 +405,7 @@ const settingsCoreApplicationCommandGroup = defineApplicationCommandGroup('setti
   settingsCoreApplicationCommands.getEgress,
   settingsCoreApplicationCommands.getExternalComputeEndpoints,
   settingsCoreApplicationCommands.getPackageMirror,
+  settingsCoreApplicationCommands.getProxy,
   settingsCoreApplicationCommands.getPreflight,
   settingsCoreApplicationCommands.getSettings,
   settingsCoreApplicationCommands.getSkillDetail,
@@ -425,6 +437,7 @@ const settingsCoreApplicationCommandGroup = defineApplicationCommandGroup('setti
   settingsCoreApplicationCommands.deleteExternalComputeEndpoint,
   settingsCoreApplicationCommands.setNotificationsEnabled,
   settingsCoreApplicationCommands.setPackageMirror,
+  settingsCoreApplicationCommands.setProxy,
   settingsCoreApplicationCommands.validateProvider,
   settingsCoreApplicationCommands.xaiOauthStart,
   settingsCoreApplicationCommands.xaiOauthComplete,
@@ -558,6 +571,14 @@ const registerCoreSettingsApplicationCommands = (
       'settings:get-egress': ({ callerContext }) => {
         requireLocalCaller(callerContext, 'settings:get-egress')
         return dependencies.service.getEgress()
+      },
+      'settings:get-proxy': ({ callerContext }) => {
+        requireLocalCaller(callerContext, 'settings:get-proxy')
+        return dependencies.service.getProxy()
+      },
+      'settings:set-proxy': ({ args, callerContext }) => {
+        requireLocalCaller(callerContext, 'settings:set-proxy')
+        return dependencies.service.setProxy(args[0])
       },
       'settings:set-egress': ({ args, callerContext }) => {
         requireLocalCaller(callerContext, 'settings:set-egress')

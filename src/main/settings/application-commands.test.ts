@@ -31,6 +31,7 @@ const expectedChannels = [
   'settings:get-egress',
   'settings:list-external-compute-endpoints',
   'settings:get-package-mirror',
+  'settings:get-proxy',
   'settings:get-preflight',
   'settings:get-settings',
   'settings:get-skill-detail',
@@ -62,6 +63,7 @@ const expectedChannels = [
   'settings:delete-external-compute-endpoint',
   'settings:set-notifications-enabled',
   'settings:set-package-mirror',
+  'settings:set-proxy',
   'settings:validate-provider',
   'settings:xai-oauth-start',
   'settings:xai-oauth-complete',
@@ -132,7 +134,7 @@ const createDependencies = (): Readonly<{
 }
 
 describe('Settings core application commands', () => {
-  it('installs the exact 43-command inventory and dispatches a remote-safe preflight query', async () => {
+  it('installs the exact 45-command inventory and dispatches a remote-safe preflight query', async () => {
     const { dependencies, serviceMethod } = createDependencies()
     const preflight = { agentReady: true }
     serviceMethod('getPreflight').mockResolvedValue(preflight)

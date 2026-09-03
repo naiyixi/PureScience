@@ -1,10 +1,8 @@
 import { ipcMainHandle } from '../ipc-handler-registry'
 import type { WebContents } from 'electron'
 
-import {
-  EGRESS_APPROVAL_CHANNEL,
-  type EgressApprovalRespondRequest
-} from '../../shared/egress'
+import { EGRESS_APPROVAL_CHANNEL, type EgressApprovalRespondRequest } from '../../shared/egress'
+import type { ProxySettings } from '../../shared/proxy'
 
 import {
   type AppIconPreview,
@@ -300,6 +298,8 @@ const registerSettingsIpcHandlers = ({
   ipcMainHandle('settings:set-egress', (_event, egress: EgressSettings) =>
     service.setEgress(egress)
   )
+  ipcMainHandle('settings:get-proxy', () => service.getProxy())
+  ipcMainHandle('settings:set-proxy', (_event, proxy: ProxySettings) => service.setProxy(proxy))
 
   ipcMainHandle('settings:list-external-compute-endpoints', () =>
     service.listExternalComputeEndpoints()

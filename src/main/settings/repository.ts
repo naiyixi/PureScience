@@ -19,6 +19,7 @@ import type {
   ValidationCategory
 } from '../../shared/settings'
 import type { EgressSettings } from '../../shared/egress'
+import type { ManualProxyConfig, ProxySettings } from '../../shared/proxy'
 import type { ExternalComputeEndpoint } from '../../shared/compute'
 import {
   CLAUDE_ISOLATED_PROVIDER_ID,
@@ -519,6 +520,38 @@ export const sanitizeEgressSettings = (value: unknown): EgressSettings | undefin
   return { enabled: value.enabled === true, groups, customDomains }
 }
 
+// Rebuilds the stored child-process proxy settings from untrusted JSON: mode must be
+// 'system' or 'manual', and a manual entry only survives with a known type, a non-empty
+// host, and a port in 1..65535. A malformed payload yields undefined (follow system).
+export const sanitizeProxySettings = (value: unknown): ProxySettings | undefined => {
+  if (!isRecord(value)) return undefined
+
+  const mode = value.mode === 'manual' ? 'manual' : value.mode === 'system' ? 'system' : undefined
+  if (!mode) return undefined
+
+  if (mode === 'system') return { mode: 'system' }
+
+  const manual = isRecord(value.manual) ? value.manual : undefined
+  if (!manual) return undefined
+
+  const type =
+    manual.type === 'http' || manual.type === 'https' || manual.type === 'socks5'
+      ? manual.type
+      : undefined
+  const host = asString(manual.host)?.trim()
+  const port = asNumber(manual.port)
+  if (!type || !host || port === undefined || !Number.isInteger(port) || port < 1 || port > 65535) {
+    return undefined
+  }
+
+  const noProxy = asStringArray(manual.noProxy)
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+  const config: ManualProxyConfig = { type, host, port, ...(noProxy.length > 0 ? { noProxy } : {}) }
+
+  return { mode: 'manual', manual: config }
+}
+
 // Rebuilds MemorySettings from untrusted JSON: only string id/name/text and numeric timestamps
 // survive; notes pointing at a missing category are dropped; an empty enabled flag defaults to
 // false so memory never silently resumes after a corrupt write.
@@ -712,6 +745,10 @@ const sanitizeSettings = (value: unknown): StoredSettings => {
   const egress = sanitizeEgressSettings(value.egress)
 
   if (egress) settings.egress = egress
+
+  const proxy = sanitizeProxySettings(value.proxy)
+
+  if (proxy) settings.proxy = proxy
 
   const externalComputeEndpoints = sanitizeExternalComputeEndpoints(value.externalComputeEndpoints)
 
@@ -1188,6 +1225,13 @@ class SettingsRepository {
       customDomains: []
     }
     return this.mutate((settings) => ({ ...settings, egress: sanitized }))
+  }
+
+  // Persists the child-process proxy settings. Sanitized before write; a malformed
+  // payload falls back to the default (follow system).
+  async setProxy(proxy: ProxySettings): Promise<StoredSettings> {
+    const sanitized = sanitizeProxySettings(proxy) ?? { mode: 'system' }
+    return this.mutate((settings) => ({ ...settings, proxy: sanitized }))
   }
 
   // Replaces the external compute endpoints list.

@@ -200,6 +200,7 @@ import type {
   SetCredentialRequest,
   TestCredentialRequest,
   EgressSettings,
+  ProxySettings,
   ExternalComputeEndpoint,
   CreateExternalComputeEndpointRequest,
   Preflight,
@@ -409,9 +410,7 @@ export interface PureScienceAPI {
       request: PermissionGrantUndoExtendRequest
     ): Promise<PermissionGrantUndoReceipt | undefined>
     restore(request: PermissionGrantRestoreRequest): Promise<PermissionGrantMutationView>
-    restoreDefaults(
-      request: RestoreDefaultsPermissionGrants
-    ): Promise<PermissionGrantMutationView>
+    restoreDefaults(request: RestoreDefaultsPermissionGrants): Promise<PermissionGrantMutationView>
     onChanged(listener: AcpListener<PermissionGrantsChangedEvent>): RemoveListener
   }
   egress: {
@@ -523,6 +522,8 @@ export interface PureScienceAPI {
     testCredential(request: TestCredentialRequest): Promise<CredentialTestResult>
     getEgress(): Promise<EgressSettings | undefined>
     setEgress(egress: EgressSettings): Promise<EgressSettings>
+    getProxy(): Promise<ProxySettings | undefined>
+    setProxy(proxy: ProxySettings): Promise<ProxySettings | undefined>
     getExternalComputeEndpoints(): Promise<ExternalComputeEndpoint[]>
     setExternalComputeEndpoint(
       request: CreateExternalComputeEndpointRequest
@@ -968,11 +969,18 @@ export interface PureScienceAPI {
     // Lists every scheduled task across sessions (settings panel).
     listAll(): Promise<RoutineSchedule[]>
     // Creates or updates one schedule.
-    upsert(request: { sessionId: string; configure: RoutineConfigureRequest }): Promise<RoutineSchedule>
+    upsert(request: {
+      sessionId: string
+      configure: RoutineConfigureRequest
+    }): Promise<RoutineSchedule>
     // Deletes one schedule; resolves false when it did not exist.
     remove(request: { sessionId: string; routineId: string }): Promise<boolean>
     // Pauses (enabled=false) or resumes (enabled=true) one schedule.
-    setEnabled(request: { sessionId: string; routineId: string; enabled: boolean }): Promise<RoutineSchedule | null>
+    setEnabled(request: {
+      sessionId: string
+      routineId: string
+      enabled: boolean
+    }): Promise<RoutineSchedule | null>
   }
   endpoint: {
     // Lists every managed local model service (settings panel).
@@ -1006,7 +1014,12 @@ export interface PureScienceAPI {
     // Registers a PDF for layered reading (parses + persists page text).
     open(request: { projectId: string; path: string }): Promise<PdfOpenResult>
     // Reads a page range as text.
-    pages(request: { projectId: string; docId: string; start: number; end?: number }): Promise<PdfPagesResult>
+    pages(request: {
+      projectId: string
+      docId: string
+      start: number
+      end?: number
+    }): Promise<PdfPagesResult>
     // Lists the table of contents.
     outline(request: { projectId: string; docId: string }): Promise<PdfOutlineResult>
     // Scans pages for a query, ranked by relevance.
@@ -1014,7 +1027,10 @@ export interface PureScienceAPI {
   }
   figure: {
     // Reviews a figure against the publication-grade correctness checklist.
-    review(request: { projectId: string; request: FigureReviewRequest }): Promise<FigureReviewResult>
+    review(request: {
+      projectId: string
+      request: FigureReviewRequest
+    }): Promise<FigureReviewResult>
   }
   query: {
     // Runs a read-only introspection query against the app database (project-scoped, 200-row cap).

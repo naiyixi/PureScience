@@ -6,6 +6,13 @@ import type { PackageMirror } from '../../../../shared/mirror'
 import type { NetworkConnectionType, NetworkInfo } from '../../../../shared/network'
 import type { EgressSettings, EgressDomainGroupId } from '../../../../shared/egress'
 import { EGRESS_DOMAIN_GROUPS } from '../../../../shared/egress'
+import type { ProxySettings, ProxyType } from '../../../../shared/proxy'
+import {
+  DEFAULT_PROXY_SETTINGS,
+  PROXY_PORT_RANGE,
+  PROXY_TYPES,
+  proxyUrlFor
+} from '../../../../shared/proxy'
 import type { EnvironmentCheckItem } from '../../../../shared/settings'
 import { EnvironmentCheckRow, PendingCheckRow } from '@/components/environment-check-row'
 import { Button } from '@/components/ui/button'
@@ -301,6 +308,7 @@ const NetworkPanel = ({ view, onNavigate }: NetworkPanelProps): React.JSX.Elemen
       </section>
 
       <EgressSection />
+      <ProxySection />
     </div>
   )
 }
@@ -403,6 +411,11 @@ const EgressSection = (): React.JSX.Element => {
 
       {current.enabled ? (
         <div className="mt-4 space-y-4">
+          {current.customDomains.length > 0 ? (
+            <p className="text-xs text-muted-foreground" data-slot="egress-custom-count">
+              {t('settings.egressCustomCount').replace('{n}', String(current.customDomains.length))}
+            </p>
+          ) : null}
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {groupIds.map((groupId) => (
               <label
@@ -485,6 +498,285 @@ const EgressSection = (): React.JSX.Element => {
       ) : null}
     </section>
   )
+}
+
+// Child-process proxy: follow the operating system (default) or pin a manual proxy
+// (HTTP / HTTPS / SOCKS5) that notebook kernels, the REPL and shells route through.
+// Persisted via settings IPC and applied to the child-process runtime immediately on
+// save. While the egress allowlist above is enabled it owns the route (the filtering
+// proxy must stay the only hop), so the manual proxy applies only when egress is off.
+const ProxySection = (): React.JSX.Element => {
+  const { t } = useLanguage()
+  const [saved, setSaved] = useState<ProxySettings | undefined>(undefined)
+  const [draft, setDraft] = useState<ProxySettings>(DEFAULT_PROXY_SETTINGS)
+  const [loaded, setLoaded] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState<string | undefined>(undefined)
+
+  useEffect(() => {
+    let cancelled = false
+    void window.api.settings.getProxy().then((value) => {
+      if (cancelled) return
+      const current = value ?? DEFAULT_PROXY_SETTINGS
+      setSaved(current)
+      setDraft(cloneProxySettings(current))
+      setLoaded(true)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const manual = draft.manual ?? { type: 'http' as ProxyType, host: '', port: 0, noProxy: [] }
+  const isDirty = JSON.stringify(draft) !== JSON.stringify(saved)
+
+  const patchManual = (patchValue: Partial<ProxySettings['manual']>): void => {
+    setDraft({ ...draft, mode: 'manual', manual: { ...manual, ...patchValue } })
+  }
+
+  const selectType = (type: ProxyType): void => patchManual({ type })
+
+  const parsePort = (raw: string): number | undefined => {
+    const value = Number(raw)
+    return Number.isInteger(value) && value >= PROXY_PORT_RANGE.min && value <= PROXY_PORT_RANGE.max
+      ? value
+      : undefined
+  }
+
+  const splitNoProxy = (raw: string): string[] =>
+    raw
+      .split(',')
+      .map((entry) => entry.trim())
+      .filter(Boolean)
+
+  const handleSave = async (): Promise<void> => {
+    setFormError(undefined)
+    if (draft.mode === 'manual') {
+      if (!manual.host.trim()) {
+        setFormError(t('settings.proxyHostRequired'))
+        return
+      }
+      if (manual.port === undefined || parsePort(String(manual.port)) === undefined) {
+        setFormError(t('settings.proxyPortInvalid'))
+        return
+      }
+    }
+
+    setSaving(true)
+    try {
+      const next: ProxySettings =
+        draft.mode === 'system'
+          ? { mode: 'system' }
+          : {
+              mode: 'manual',
+              manual: {
+                type: manual.type,
+                host: manual.host.trim(),
+                port: parsePort(String(manual.port)) ?? PROXY_PORT_RANGE.min,
+                ...(splitNoProxy(manual.noProxy?.join(', ') ?? '').length > 0
+                  ? { noProxy: splitNoProxy(manual.noProxy?.join(', ') ?? '') }
+                  : {})
+              }
+            }
+      const persisted = await window.api.settings.setProxy(next)
+      setSaved(persisted ?? DEFAULT_PROXY_SETTINGS)
+      setDraft(cloneProxySettings(persisted ?? DEFAULT_PROXY_SETTINGS))
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : t('settings.proxySaveFailed'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (!loaded) {
+    return (
+      <section className="mt-6 rounded-xl border border-border bg-card p-4">
+        <p className="text-xs text-muted-foreground">{t('settings.loading')}</p>
+      </section>
+    )
+  }
+
+  const savedManual =
+    saved?.mode === 'manual' && saved.manual && saved.manual.host.trim() !== ''
+      ? saved.manual
+      : undefined
+
+  return (
+    <section className="mt-6 rounded-xl border border-border bg-card p-4" data-slot="proxy-section">
+      <div>
+        <h3 className="text-sm font-medium text-foreground">{t('settings.proxyTitle')}</h3>
+        <p className="mt-1 text-xs leading-5 text-muted-foreground">
+          {t('settings.proxyDescription')}
+        </p>
+      </div>
+
+      <div className="mt-4 space-y-2">
+        <button
+          type="button"
+          role="radio"
+          aria-checked={draft.mode === 'system'}
+          data-slot="proxy-mode-system"
+          className={cn(
+            'flex w-full items-start gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors',
+            draft.mode === 'system'
+              ? 'border-primary bg-primary/5'
+              : 'border-border bg-card hover:bg-muted/60'
+          )}
+          onClick={() => setDraft({ ...draft, mode: 'system' })}
+        >
+          <input
+            type="radio"
+            name="proxy-mode"
+            className="mt-0.5 accent-primary"
+            checked={draft.mode === 'system'}
+            onChange={() => setDraft({ ...draft, mode: 'system' })}
+          />
+          <span className="min-w-0">
+            <span className="block text-sm font-medium text-foreground">
+              {t('settings.proxyModeSystem')}
+            </span>
+            <span className="block text-xs text-muted-foreground">
+              {t('settings.proxyModeSystemHint')}
+            </span>
+          </span>
+        </button>
+
+        <button
+          type="button"
+          role="radio"
+          aria-checked={draft.mode === 'manual'}
+          data-slot="proxy-mode-manual"
+          className={cn(
+            'flex w-full items-start gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors',
+            draft.mode === 'manual'
+              ? 'border-primary bg-primary/5'
+              : 'border-border bg-card hover:bg-muted/60'
+          )}
+          onClick={() => setDraft({ ...draft, mode: 'manual' })}
+        >
+          <input
+            type="radio"
+            name="proxy-mode"
+            className="mt-0.5 accent-primary"
+            checked={draft.mode === 'manual'}
+            onChange={() => setDraft({ ...draft, mode: 'manual' })}
+          />
+          <span className="min-w-0">
+            <span className="block text-sm font-medium text-foreground">
+              {t('settings.proxyModeManual')}
+            </span>
+            <span className="block text-xs text-muted-foreground">
+              {t('settings.proxyModeManualHint')}
+            </span>
+          </span>
+        </button>
+      </div>
+
+      {draft.mode === 'manual' ? (
+        <div className="mt-4 space-y-3" data-slot="proxy-manual-fields">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_2fr_1fr]">
+            <div className="space-y-1.5">
+              <label className={fieldLabelClassName} htmlFor="proxy-type">
+                {t('settings.proxyTypeLabel')}
+              </label>
+              <select
+                id="proxy-type"
+                data-slot="proxy-type"
+                value={manual.type}
+                onChange={(event) => selectType(event.target.value as ProxyType)}
+                className="h-9 w-full rounded-lg border border-border bg-card px-2.5 text-sm text-foreground"
+              >
+                {PROXY_TYPES.map((type) => (
+                  <option key={type} value={type}>
+                    {proxyTypeOptionLabel(type, t)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label className={fieldLabelClassName} htmlFor="proxy-host">
+                {t('settings.proxyHostLabel')}
+              </label>
+              <Input
+                id="proxy-host"
+                data-slot="proxy-host"
+                value={manual.host}
+                placeholder={t('settings.proxyHostPlaceholder')}
+                onChange={(event) => patchManual({ host: event.target.value })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className={fieldLabelClassName} htmlFor="proxy-port">
+                {t('settings.proxyPortLabel')}
+              </label>
+              <Input
+                id="proxy-port"
+                data-slot="proxy-port"
+                value={manual.port === 0 ? '' : String(manual.port)}
+                placeholder="7890"
+                inputMode="numeric"
+                onChange={(event) => patchManual({ port: parsePort(event.target.value) })}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className={fieldLabelClassName} htmlFor="proxy-no-proxy">
+              {t('settings.proxyNoProxyLabel')}
+            </label>
+            <Input
+              id="proxy-no-proxy"
+              data-slot="proxy-no-proxy"
+              value={manual.noProxy?.join(', ') ?? ''}
+              placeholder="example.com, 10.0.0.0/8"
+              onChange={(event) => patchManual({ noProxy: splitNoProxy(event.target.value) })}
+            />
+            <p className="text-[11px] text-muted-foreground">{t('settings.proxyNoProxyHint')}</p>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="mt-4 flex items-center justify-between gap-3">
+        <p className="text-xs text-muted-foreground" data-slot="proxy-status">
+          {savedManual
+            ? t('settings.proxyStatusManual').replace('{url}', proxyUrlFor(savedManual))
+            : t('settings.proxyStatusSystem')}
+        </p>
+        <div className="flex items-center gap-2">
+          {formError ? (
+            <p className="text-xs text-destructive" role="alert">
+              {formError}
+            </p>
+          ) : null}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            data-slot="proxy-save"
+            onClick={() => void handleSave()}
+            disabled={!isDirty || saving}
+          >
+            {saving ? t('common.saving') : t('common.save')}
+          </Button>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+const cloneProxySettings = (settings: ProxySettings): ProxySettings =>
+  JSON.parse(JSON.stringify(settings)) as ProxySettings
+
+// Literal option labels for the proxy scheme select (t() only accepts literal keys).
+const proxyTypeOptionLabel = (type: ProxyType, t: ReturnType<typeof useLanguage>['t']): string => {
+  switch (type) {
+    case 'http':
+      return t('settings.proxyTypeHttp')
+    case 'https':
+      return t('settings.proxyTypeHttps')
+    case 'socks5':
+      return t('settings.proxyTypeSocks5')
+  }
 }
 
 export { NetworkPanel }

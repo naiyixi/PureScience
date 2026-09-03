@@ -21,6 +21,9 @@ vi.mock('@/i18n', () => ({
       'settings.egressAddDomain': 'Add domain',
       'settings.egressRemoveDomain': 'Remove domain',
       'settings.egressNoCustom': 'No custom domains yet.',
+      'settings.proxyTitle': 'Proxy',
+      'settings.proxyModeSystem': 'Follow system',
+      'settings.proxyModeManual': 'Manual configuration',
       'settings.loading': 'Loading…'
     }
     return { t: (key: string): string => labels[key] ?? key }
@@ -42,7 +45,9 @@ const mockApi = (egress = { enabled: false, groups: {}, customDomains: [] }): vo
         return current
       }),
       getPackageMirror: vi.fn(async () => ({})),
-      setPackageMirror: vi.fn(async () => ({}))
+      setPackageMirror: vi.fn(async () => ({})),
+      getProxy: vi.fn(async () => ({ mode: 'system' })),
+      setProxy: vi.fn(async (next: unknown) => next)
     }
   }
 }
@@ -130,5 +135,39 @@ describe('NetworkPanel egress section', () => {
     })
     const afterRemove = setEgress.mock.calls.at(-1)?.[0]
     expect(afterRemove.customDomains).not.toContain('lab.example.com')
+  })
+
+  it('configures and persists a manual proxy from the proxy section', async () => {
+    await renderPanel()
+
+    // Switch to manual configuration; the fields appear.
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>('[data-slot="proxy-mode-manual"]')?.click()
+    })
+    expect(container.querySelector('[data-slot="proxy-manual-fields"]')).toBeTruthy()
+
+    const valueSetter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype,
+      'value'
+    )?.set
+    const type = (slot: string, value: string): void => {
+      void act(async () => {
+        const input = container.querySelector<HTMLInputElement>(`[data-slot="${slot}"]`)
+        valueSetter?.call(input, value)
+        input?.dispatchEvent(new Event('input', { bubbles: true }))
+      })
+    }
+    type('proxy-host', '127.0.0.1')
+    type('proxy-port', '7890')
+
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>('[data-slot="proxy-save"]')?.click()
+    })
+
+    const setProxy = window.api.settings.setProxy as unknown as ReturnType<typeof vi.fn>
+    expect(setProxy).toHaveBeenCalledWith({
+      mode: 'manual',
+      manual: { type: 'http', host: '127.0.0.1', port: 7890 }
+    })
   })
 })

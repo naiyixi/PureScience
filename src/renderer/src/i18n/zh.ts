@@ -433,9 +433,31 @@ export const zh = {
   'settings.credentialsServiceOpenalex': 'OpenAlex',
   'settings.credentialsServiceLiterature': '文献访问',
   'settings.credentialsServiceCustom': '自定义',
-  'settings.egressTitle': '网络出口白名单',
+  'settings.proxyHostRequired': '请输入代理服务器地址。',
+  'settings.proxyPortInvalid': '端口须为 1–65535 之间的数字。',
+  'settings.proxySaveFailed': '无法保存代理设置。',
+  'settings.egressCustomCount': '已允许 {n} 个自定义域名',
+  'settings.proxyTitle': '代理',
+  'settings.proxyDescription':
+    '控制笔记本、REPL 与 Shell 进程如何连接互联网。默认跟随系统；在 VPN 或公司网关后可用手动代理。',
+  'settings.proxyModeSystem': '跟随系统',
+  'settings.proxyModeSystemHint': '子进程使用操作系统当前的代理设置（推荐）。',
+  'settings.proxyModeManual': '手动配置',
+  'settings.proxyModeManualHint': '让所有子进程都经由一个固定代理服务器联网。',
+  'settings.proxyTypeLabel': '类型',
+  'settings.proxyTypeHttp': 'HTTP',
+  'settings.proxyTypeHttps': 'HTTPS',
+  'settings.proxyTypeSocks5': 'SOCKS5',
+  'settings.proxyHostLabel': '代理服务器',
+  'settings.proxyHostPlaceholder': '127.0.0.1 或 proxy.example.com',
+  'settings.proxyPortLabel': '端口',
+  'settings.proxyNoProxyLabel': '免代理列表',
+  'settings.proxyNoProxyHint': '逗号分隔的直连主机或 IP；localhost 与 127.0.0.1 始终绕过代理。',
+  'settings.proxyStatusSystem': '跟随系统：子进程使用操作系统的网络设置。',
+  'settings.proxyStatusManual': '手动代理：{url}',
+  'settings.egressTitle': '笔记本网络访问',
   'settings.egressDescription':
-    '开启后，笔记本、REPL 与 Shell 子进程只能访问下方科学域名，其余地址由本地过滤代理拦截。',
+    '控制笔记本中的 Python、R、REPL 与 Bash 进程可以访问哪些互联网域名，其余地址一律由本地过滤代理拦截。',
   'settings.egressEnabled': '限制子进程网络访问',
   'settings.egressEnabledHint': '开启 = 子进程经本地代理转发，仅放行已启用的域名分组与自定义域名。',
   'settings.egressGroupLiterature': '文献与仓储',
@@ -2119,7 +2141,7 @@ export const zh = {
   'conversation.referenceSession': '引用一个会话',
   'sessionPlan.downloadPlan': '下载计划',
   'writeAudit.filterKind': '按变更类型筛选',
-  'tiffPreview.decoding': '正在解码 TIFF 图像',
+  'tiffPreview.decoding': '正在解码 TIFF 图像'
 }
 
 export type ZhKey = keyof typeof zh

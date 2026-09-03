@@ -915,7 +915,7 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.egressCustomDomains': 'Dominios personalizados',
   'settings.egressCustomPlaceholder': 'example.com',
   'settings.egressDescription':
-    'Cuando está activado, los procesos de cuaderno, REPL y shell solo pueden alcanzar los dominios científicos indicados. Todo lo demás queda bloqueado por un proxy de filtrado local.',
+    'Controla los dominios de internet a los que pueden acceder los procesos de notebook (Python, R, REPL y Bash). Todo lo demás se bloquea mediante un proxy de filtrado local.',
   'settings.egressEnabled': 'Restringir el acceso de red de los procesos',
   'settings.egressEnabledHint':
     'Activado: los procesos secundarios se enrutan por un proxy local que solo permite los grupos de dominios activados y tus dominios personalizados.',
@@ -927,7 +927,32 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.egressGroupStructures': 'Estructuras y química',
   'settings.egressNoCustom': 'Aún no hay dominios personalizados.',
   'settings.egressRemoveDomain': 'Quitar dominio',
-  'settings.egressTitle': 'Lista blanca de salida de red',
+  'settings.proxyHostRequired': 'Introduce la dirección del servidor proxy.',
+  'settings.proxyPortInvalid': 'El puerto debe ser un número entre 1 y 65535.',
+  'settings.proxySaveFailed': 'No se pudieron guardar los ajustes del proxy.',
+  'settings.egressCustomCount': 'Permite {n} dominios personalizados',
+  'settings.proxyTitle': 'Proxy',
+  'settings.proxyDescription':
+    'Controla cómo se conectan a internet los procesos de notebook, REPL y shell. Por defecto sigue el sistema; un proxy manual resulta útil detrás de una VPN o de una pasarela corporativa.',
+  'settings.proxyModeSystem': 'Seguir el sistema',
+  'settings.proxyModeSystemHint':
+    'Los subprocesos usan la configuración de proxy actual del sistema operativo (recomendado).',
+  'settings.proxyModeManual': 'Configuración manual',
+  'settings.proxyModeManualHint': 'Enrutar todos los subprocesos por un servidor proxy fijo.',
+  'settings.proxyTypeLabel': 'Tipo',
+  'settings.proxyTypeHttp': 'HTTP',
+  'settings.proxyTypeHttps': 'HTTPS',
+  'settings.proxyTypeSocks5': 'SOCKS5',
+  'settings.proxyHostLabel': 'Servidor',
+  'settings.proxyHostPlaceholder': '127.0.0.1 o proxy.example.com',
+  'settings.proxyPortLabel': 'Puerto',
+  'settings.proxyNoProxyLabel': 'Lista de excepciones',
+  'settings.proxyNoProxyHint':
+    'Hosts o IPs separados por comas que se conectan directamente. localhost y 127.0.0.1 siempre omiten el proxy.',
+  'settings.proxyStatusSystem':
+    'Siguiendo el sistema: los subprocesos usan la configuración de red del sistema.',
+  'settings.proxyStatusManual': 'Proxy manual: {url}',
+  'settings.egressTitle': 'Acceso de red de los notebooks',
   'settings.elapsedTime': 'Tiempo transcurrido',
   'settings.endpoint': 'Punto de conexión',
   'settings.endpointsApprove': 'Aprobar scripts',

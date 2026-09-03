@@ -11,6 +11,7 @@ import {
   runShellCommand,
   terminateShellOnTimeout
 } from './shell-process'
+import { applyProxySettings, resetProxyRuntimeForTest } from '../net/proxy-runtime'
 
 afterEach(() => vi.unstubAllEnvs())
 
@@ -231,5 +232,56 @@ describe('notebook shell process behavior', () => {
         exitCode: null
       })
     })
+  })
+})
+
+describe('buildShellEnv proxy projection', () => {
+  const baseEnv = { PATH: '/usr/bin', HOME: '/home/u' }
+  const keys = [
+    'HTTP_PROXY',
+    'HTTPS_PROXY',
+    'NO_PROXY',
+    'ALL_PROXY',
+    'http_proxy',
+    'https_proxy',
+    'no_proxy',
+    'all_proxy'
+  ]
+
+  afterEach(() => {
+    resetProxyRuntimeForTest()
+  })
+
+  it('projects a manual HTTP proxy onto the shell env when egress is off', () => {
+    applyProxySettings({
+      mode: 'manual',
+      manual: { type: 'http', host: '127.0.0.1', port: 7890, noProxy: ['example.com'] }
+    })
+    const env = buildShellEnv('/handoff', 'linux', baseEnv)
+    expect(env.HTTP_PROXY).toBe('http://127.0.0.1:7890')
+    expect(env.HTTPS_PROXY).toBe('http://127.0.0.1:7890')
+    expect(env.http_proxy).toBe('http://127.0.0.1:7890')
+    expect(env.NO_PROXY).toContain('example.com')
+    expect(env.NO_PROXY).toContain('localhost')
+  })
+
+  it('projects a manual SOCKS5 proxy through ALL_PROXY only', () => {
+    applyProxySettings({
+      mode: 'manual',
+      manual: { type: 'socks5', host: 'proxy.example.com', port: 1080 }
+    })
+    const env = buildShellEnv('/handoff', 'linux', baseEnv)
+    expect(env.ALL_PROXY).toBe('socks5://proxy.example.com:1080')
+    expect(env.HTTP_PROXY).toBeUndefined()
+    expect(env.all_proxy).toBe('socks5://proxy.example.com:1080')
+  })
+
+  it('never projects host proxy variables while following system (deny-by-default env)', () => {
+    const env = buildShellEnv('/handoff', 'linux', {
+      ...baseEnv,
+      HTTP_PROXY: 'http://host-proxy.example:3128',
+      https_proxy: 'http://host-proxy.example:3128'
+    })
+    for (const key of keys) expect(env[key]).toBeUndefined()
   })
 })
