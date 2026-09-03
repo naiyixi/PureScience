@@ -31,7 +31,6 @@ import {
   SKILL_IMPORT_MCP_SERVER_ARG
 } from './mcp-server-args'
 import { trayLabelsForLocale } from '../shared/tray-labels'
-import { installLocalizedApplicationMenu } from './app-menu'
 import { withApplicationRuntimeShutdown } from './application-runtime'
 import { installChildProcessGoneLogging, startLocalCrashReporting } from './crash-diagnostics'
 import type { DiagnosticOperation } from './diagnostics/operation'
@@ -349,9 +348,13 @@ async function startElectronApp(mainEntryPath: string): Promise<void> {
       // Replace Electron's default English menu with the locale-following application menu (roles
       // preserve native accelerators; labels follow the OS language). Skipped under the packaged
       // e2e harness (its English selectors must see the default menu) and failure-guarded so a
-      // menu problem can never abort app startup.
+      // menu problem can never abort app startup. The menu module imports 'electron' statically,
+      // so it MUST be loaded here dynamically: the same out/main/index.js bundle runs the MCP
+      // server children as plain node (ELECTRON_RUN_AS_NODE, no electron module) and a static
+      // top-level import would crash every child before any guard could run.
       if (!process.env.PURESCIENCE_E2E_STORAGE_ROOT) {
         try {
+          const { installLocalizedApplicationMenu } = await import('./app-menu')
           installLocalizedApplicationMenu()
         } catch (error) {
           createLogger('app-menu').error('failed to install localized application menu; keeping default', error)
