@@ -121,10 +121,12 @@ describe('CredentialsPanel', () => {
   it('opens the editor for an empty service and saves a secret', async () => {
     await renderPanel()
 
-    // AWS has no credential yet; its nav entry opens the editor.
-    const awsNav = container.querySelector<HTMLButtonElement>('[data-slot="credential-nav-aws"]')
+    // AWS has no credential yet; its row's add action opens the editor.
+    const awsAdd = container.querySelector<HTMLButtonElement>(
+      '[data-slot="credential-service-aws"] [data-slot="credential-add"]'
+    )
     await act(async () => {
-      awsNav?.click()
+      awsAdd?.click()
     })
     expect(container.querySelector('[data-slot="credential-editor"]')).toBeTruthy()
 
