@@ -38,6 +38,9 @@ import { ProjectFormDialog } from './ProjectFormDialog'
 
 const RECENT_SESSION_LIMIT = 5
 
+// Cap for the distinct file-type chips shown per project row (MD / DOCX / CSV …).
+const PROJECT_FILE_KIND_LIMIT = 4
+
 type ProjectSummary = {
   project: Project
   sessionCount: number
@@ -89,6 +92,27 @@ const menuItemClassName =
 const menuDangerItemClassName =
   'flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm text-danger-000 transition-colors duration-150 ease-out outline-none data-[highlighted]:bg-danger-900 data-[disabled]:pointer-events-none data-[disabled]:opacity-50'
 
+// File-type chip (MD / DOCX / CSV …) rendered next to a project row, mirroring the reference
+// home surface. Decorative: the chip text is the uppercase extension itself (no dictionary key).
+const fileKindChipClassName =
+  'rounded-[5px] border border-border-200/70 bg-bg-200 px-1 py-px font-mono text-[9px] font-medium leading-3 text-text-200'
+
+// Derives the up-to-N most recent distinct file types from a project file page (newest first).
+const deriveProjectFileKinds = (
+  items: ReadonlyArray<{ name: string; sortAtMs: number }>
+): string[] => {
+  const kinds: string[] = []
+  for (const item of [...items].sort((left, right) => right.sortAtMs - left.sortAtMs)) {
+    const dot = item.name.lastIndexOf('.')
+    if (dot <= 0 || dot === item.name.length - 1) continue
+    const ext = item.name.slice(dot + 1).toUpperCase()
+    if (!/^[A-Z0-9]{1,5}$/.test(ext) || kinds.includes(ext)) continue
+    kinds.push(ext)
+    if (kinds.length >= PROJECT_FILE_KIND_LIMIT) break
+  }
+  return kinds
+}
+
 // Landing screen: pick a project or jump back into a recent session.
 const HomePage = ({
   canDeleteProjects,
@@ -123,6 +147,8 @@ const HomePage = ({
   const [deleteProjectError, setDeleteProjectError] = useState<string | undefined>(undefined)
   const [archivingProjectIds, setArchivingProjectIds] = useState<Set<string>>(() => new Set())
   const [archiveProjectError, setArchiveProjectError] = useState<string | undefined>(undefined)
+  // projectId -> up-to-N distinct file-type chips (MD/DOCX/…) from the project Files catalog.
+  const [projectFileKinds, setProjectFileKinds] = useState<Record<string, string[]>>({})
 
   const activeProjects = useMemo(
     () => projects.filter((project) => project.archivedAt === undefined),
@@ -195,6 +221,36 @@ const HomePage = ({
       consumeProjectCreation()
     })
   }, [consumeProjectCreation, pendingProjectCreation])
+
+  // Per-project file-type chips: one lightweight read of the Files catalog per visible project.
+  // Absent (web build without the preload bridge, or a project with no files) renders no chips.
+  useEffect(() => {
+    const listFiles = window.api?.projectFiles?.listFiles
+    if (!listFiles || activeProjects.length === 0) return
+    let cancelled = false
+    void Promise.allSettled(
+      activeProjects.map(async (project) => {
+        const page = await listFiles({
+          projectId: project.id,
+          collection: { kind: 'all' },
+          limit: 30
+        })
+        return [project.id, deriveProjectFileKinds(page.items)] as const
+      })
+    ).then((results) => {
+      if (cancelled) return
+      const next: Record<string, string[]> = {}
+      for (const result of results) {
+        if (result.status === 'fulfilled' && result.value[1].length > 0) {
+          next[result.value[0]] = result.value[1]
+        }
+      }
+      setProjectFileKinds(next)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [activeProjects])
 
   const openEditDialog = (project: Project): void => {
     setFormState({ mode: 'edit', projectId: project.id })
@@ -446,6 +502,18 @@ const HomePage = ({
                         </span>
                       ) : null}
                     </button>
+                    {projectFileKinds[project.id]?.length ? (
+                      <span
+                        aria-hidden="true"
+                        className="hidden shrink-0 items-center gap-1 sm:flex"
+                      >
+                        {projectFileKinds[project.id].map((kind) => (
+                          <span key={kind} className={fileKindChipClassName}>
+                            {kind}
+                          </span>
+                        ))}
+                      </span>
+                    ) : null}
                     <span className="shrink-0 text-xs text-text-100">
                       {hasCompleteSessionCatalog
                         ? (sessionCount === 1
