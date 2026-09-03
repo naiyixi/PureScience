@@ -1,11 +1,22 @@
 /* Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V5 */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AlertDialog } from 'radix-ui'
-import { KeyRound, Loader2, Plus, ShieldCheck, Trash2 } from 'lucide-react'
+import {
+  BookOpen,
+  Cloud,
+  Cpu,
+  KeyRound,
+  Loader2,
+  Plus,
+  Server,
+  ShieldCheck,
+  Trash2
+} from 'lucide-react'
 
 import { useLanguage, type TranslationKey } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { GitHubMark } from '@/components/GitHubStarBadge'
 import {
   dialogDescriptionClassName,
   dialogOverlayClassName,
@@ -46,6 +57,21 @@ const SERVICE_LABEL_KEYS: Record<CredentialServiceId, TranslationKey> = {
 
 const serviceLabel = (t: (key: TranslationKey) => string, serviceId: CredentialServiceId): string =>
   t(SERVICE_LABEL_KEYS[serviceId])
+
+// Service identity chips. Built-in scientific services have no bundled brand assets (the app never
+// ships third-party marks it does not own), so each row gets a neutral glyph that reads as the
+// service's kind; GitHub is the one official mark we carry (inline octocat, see GitHubStarBadge).
+const SERVICE_ICONS: Record<CredentialServiceId, React.ComponentType<{ className?: string }>> = {
+  aws: Cloud,
+  github: GitHubMark,
+  gcp: Cloud,
+  azure: Cloud,
+  modal: Server,
+  nvidia: Cpu,
+  openalex: BookOpen,
+  literature: BookOpen,
+  custom: KeyRound
+}
 
 type CredentialsStore = {
   credentials: CredentialView[]
@@ -97,12 +123,17 @@ const useCredentialsStore = (): CredentialsStore => {
   return { credentials, isLoading, load, set, remove, test }
 }
 
+// One saved credential. `variant="plain"` drops the card chrome so rows can sit flush inside a
+// divided section list (the three-section layout); the default keeps the standalone card used by
+// the custom section when it lists many entries.
 const CredentialRow = ({
   credential,
+  variant = 'card',
   onEdit,
   onDelete
 }: {
   credential: CredentialView
+  variant?: 'card' | 'plain'
   onEdit: () => void
   onDelete: () => void
 }): React.JSX.Element => {
@@ -110,7 +141,10 @@ const CredentialRow = ({
   return (
     <div
       data-slot="credential-row"
-      className="flex items-center justify-between rounded-lg border border-border bg-bg-00 px-3 py-2.5"
+      className={cn(
+        'flex items-center justify-between',
+        variant === 'card' && 'rounded-lg border border-border bg-bg-00 px-3 py-2.5'
+      )}
     >
       <div className="min-w-0">
         <div className="flex items-center gap-2 text-[13px] text-text-100">
@@ -342,8 +376,13 @@ const CredentialEditor = ({
   )
 }
 
-// Unified credential store panel: 8 built-in scientific services + custom entries. Each entry holds
-// an optional non-secret username and an encrypted secret; the panel never sees plaintext.
+// Unified credential store panel, aligned to the three-section credentials layout (reference
+// 20.05.22): ① 服务 — one row per built-in scientific service with an identity chip and a
+// saved/not-configured state plus a manage/add action; ② 连接器凭据 — the device-global named
+// credentials that custom connectors and endpoints can reference (empty state + new action);
+// ③ 自定义 — the note that Custom MCP Connectors and model providers keep their credentials in
+// their own configuration. All three share the same encrypted store and CRUD flow; no new
+// backends.
 export const CredentialsPanel = (): React.JSX.Element => {
   const { t } = useLanguage()
   const store = useCredentialsStore()
@@ -376,41 +415,60 @@ export const CredentialsPanel = (): React.JSX.Element => {
 
   const renderServiceRow = (serviceId: CredentialServiceId): React.JSX.Element => {
     const entries = byService.get(serviceId) ?? []
-    const label = serviceLabel(t, serviceId)
+    const Icon = SERVICE_ICONS[serviceId]
     return (
-      <div key={serviceId} className="space-y-2" data-slot={`credential-service-${serviceId}`}>
-        <div className="flex items-center justify-between">
-          <span className="text-[13px] font-medium text-text-100">{label}</span>
-          {entries.length === 0 ? (
+      <div
+        key={serviceId}
+        data-slot={`credential-service-${serviceId}`}
+        className="flex items-center gap-3 px-3 py-2.5"
+      >
+        <span
+          aria-hidden="true"
+          className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-bg-00 text-text-200"
+        >
+          <Icon className="size-4" />
+        </span>
+        {entries.length === 0 ? (
+          <>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 text-[13px] text-text-100">
+                <span className="truncate font-medium">{serviceLabel(t, serviceId)}</span>
+                <span className="rounded-full bg-bg-200 px-2 py-0.5 text-[11px] text-text-300">
+                  {t('settings.credentialsNotConfigured')}
+                </span>
+              </div>
+              <div className="mt-0.5 text-[12px] text-text-300">
+                {t('settings.credentialsEmpty')}
+              </div>
+            </div>
             <button
               type="button"
               data-slot="credential-add"
-              className="flex items-center gap-1 rounded-md px-2 py-1 text-[12px] text-text-200 outline-none hover:bg-bg-200 hover:text-text-100 focus-visible:ring-2 focus-visible:ring-ring/50"
+              className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[12px] text-text-200 outline-none hover:bg-bg-200 hover:text-text-100 focus-visible:ring-2 focus-visible:ring-ring/50"
               onClick={() => setEditing({ kind: 'new', serviceId })}
             >
               <Plus className="size-3.5" aria-hidden="true" />
               {t('settings.credentialsEdit')}
             </button>
-          ) : null}
-        </div>
-        {entries.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-border px-3 py-2.5 text-[12px] text-text-300">
-            {t('settings.credentialsEmpty')}
-          </div>
+          </>
         ) : (
-          entries.map((credential) => (
-            <CredentialRow
-              key={credential.id}
-              credential={credential}
-              onEdit={() => setEditing({ kind: 'edit', credential })}
-              onDelete={() => setPendingDelete(credential)}
-            />
-          ))
+          <div className="min-w-0 flex-1 space-y-1">
+            {entries.map((credential) => (
+              <CredentialRow
+                key={credential.id}
+                credential={credential}
+                variant="plain"
+                onEdit={() => setEditing({ kind: 'edit', credential })}
+                onDelete={() => setPendingDelete(credential)}
+              />
+            ))}
+          </div>
         )}
       </div>
     )
   }
 
+  const customEntries = byService.get('custom') ?? []
   const editingView = editing?.kind === 'edit' ? editing.credential : undefined
   const editingServiceId = editing
     ? editing.kind === 'edit'
@@ -430,41 +488,13 @@ export const CredentialsPanel = (): React.JSX.Element => {
         </div>
       </div>
 
-      <div className="mt-4 flex min-h-0 flex-1 gap-4 overflow-hidden">
-        <div className="flex w-44 shrink-0 flex-col overflow-y-auto rounded-lg border border-border bg-bg-10 p-2">
-          {BUILTIN_SERVICE_IDS.map((serviceId) => (
-            <button
-              key={serviceId}
-              type="button"
-              data-slot={`credential-nav-${serviceId}`}
-              className={cn(
-                'flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-[12px] outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
-                editingServiceId === serviceId
-                  ? 'bg-bg-200 text-text-100'
-                  : 'text-text-200 hover:bg-bg-100'
-              )}
-              onClick={() =>
-                setEditing(
-                  (byService.get(serviceId) ?? [])[0]
-                    ? { kind: 'edit', credential: (byService.get(serviceId) ?? [])[0] }
-                    : { kind: 'new', serviceId }
-                )
-              }
-            >
-              <span className="min-w-0 truncate">{serviceLabel(t, serviceId)}</span>
-              <span className="ml-1 shrink-0 text-[11px] text-text-300">
-                {(byService.get(serviceId) ?? []).length}
-              </span>
-            </button>
-          ))}
-        </div>
-
-        <div className="flex min-w-0 flex-1 flex-col overflow-y-auto rounded-lg border border-border bg-bg-10">
-          {store.isLoading && store.credentials.length === 0 ? (
-            <div className="flex flex-1 items-center justify-center text-[12px] text-text-300">
-              {t('settings.memoryLoading')}
-            </div>
-          ) : editing && editingServiceId ? (
+      <div className="mt-4 min-h-0 flex-1 px-4 pb-4">
+        {store.isLoading && store.credentials.length === 0 ? (
+          <div className="flex h-full items-center justify-center text-[12px] text-text-300">
+            {t('settings.memoryLoading')}
+          </div>
+        ) : editing && editingServiceId ? (
+          <div className="mx-auto h-full w-full max-w-3xl overflow-hidden rounded-lg border border-border bg-bg-10">
             <CredentialEditor
               credential={editingView}
               serviceId={editingServiceId}
@@ -472,37 +502,82 @@ export const CredentialsPanel = (): React.JSX.Element => {
               onSaved={() => setEditing(undefined)}
               store={store}
             />
-          ) : (
-            <div className="space-y-6 p-4">
-              {BUILTIN_SERVICE_IDS.map(renderServiceRow)}
-              <div className="border-t border-border pt-4">
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="text-[13px] font-medium text-text-100">
-                    {serviceLabel(t, 'custom')}
-                  </span>
-                  <button
-                    type="button"
-                    data-slot="credential-add-custom"
-                    className="flex items-center gap-1 rounded-md px-2 py-1 text-[12px] text-text-200 outline-none hover:bg-bg-200 hover:text-text-100 focus-visible:ring-2 focus-visible:ring-ring/50"
-                    onClick={() => setEditing({ kind: 'new', serviceId: 'custom' })}
-                  >
-                    <Plus className="size-3.5" aria-hidden="true" />
-                    {t('settings.credentialsAddCustom')}
-                  </button>
-                </div>
-                {(byService.get('custom') ?? []).map((credential) => (
-                  <div key={credential.id} className="mt-2">
-                    <CredentialRow
-                      credential={credential}
-                      onEdit={() => setEditing({ kind: 'edit', credential })}
-                      onDelete={() => setPendingDelete(credential)}
-                    />
-                  </div>
-                ))}
+          </div>
+        ) : (
+          <div className="mx-auto h-full w-full max-w-3xl space-y-7 overflow-y-auto pr-0.5">
+            {/* Section ① 服务 — one manage row per built-in scientific service. */}
+            {/* i18n note: heading copy ('Services') to be keyed by the parent — i18n files are frozen for this task. */}
+            <section aria-label="Services">
+              <h3 className="text-[13px] font-medium text-text-100">Services</h3>
+              <div className="mt-2 divide-y divide-border overflow-hidden rounded-xl border border-border bg-bg-10">
+                {BUILTIN_SERVICE_IDS.map(renderServiceRow)}
               </div>
-            </div>
-          )}
-        </div>
+            </section>
+
+            {/* Section ② 连接器凭据 — device-global named credentials custom connectors and
+                endpoints can reference; empty state + new-credential action. */}
+            {/* i18n note: heading/description/empty-state copy ('Connector credentials', ...) to be
+                keyed by the parent — i18n files are frozen for this task. */}
+            <section aria-label="Connector credentials">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-[13px] font-medium text-text-100">Connector credentials</h3>
+                <button
+                  type="button"
+                  data-slot="credential-add-custom"
+                  className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[12px] text-text-200 outline-none hover:bg-bg-200 hover:text-text-100 focus-visible:ring-2 focus-visible:ring-ring/50"
+                  onClick={() => setEditing({ kind: 'new', serviceId: 'custom' })}
+                >
+                  <Plus className="size-3.5" aria-hidden="true" />
+                  {t('settings.credentialsAddCustom')}
+                </button>
+              </div>
+              <p className="mt-0.5 text-[12px] leading-5 text-text-300">
+                Device-global credentials that the custom connectors and endpoints you choose can
+                share.
+              </p>
+              <div className="mt-2 divide-y divide-border overflow-hidden rounded-xl border border-border bg-bg-10">
+                {customEntries.length === 0 ? (
+                  <div className="px-3 py-3 text-[12px] text-text-300">
+                    No connector credentials yet.
+                  </div>
+                ) : (
+                  customEntries.map((credential) => (
+                    <div key={credential.id} className="flex items-center gap-3 px-3 py-2.5">
+                      <span
+                        aria-hidden="true"
+                        className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-bg-00 text-text-200"
+                      >
+                        <KeyRound className="size-4" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <CredentialRow
+                          credential={credential}
+                          variant="plain"
+                          onEdit={() => setEditing({ kind: 'edit', credential })}
+                          onDelete={() => setPendingDelete(credential)}
+                        />
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </section>
+
+            {/* Section ③ 自定义 — the note that Custom MCP Connectors and model providers keep
+                their credentials in their own configuration (managed on their own settings
+                panels), so nothing is duplicated here. */}
+            <section aria-label={t('settings.credentialsServiceCustom')}>
+              <h3 className="text-[13px] font-medium text-text-100">
+                {t('settings.credentialsServiceCustom')}
+              </h3>
+              <p className="mt-1 text-[12px] leading-5 text-text-300">
+                Credentials used by Custom MCP Connectors and model providers stay in their existing
+                configuration — nothing is stored here, and each is managed on its own settings
+                page.
+              </p>
+            </section>
+          </div>
+        )}
       </div>
 
       <AlertDialog.Root

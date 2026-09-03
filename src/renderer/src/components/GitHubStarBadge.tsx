@@ -68,4 +68,4 @@ const GitHubStarBadge = ({ className }: GitHubStarBadgeProps): React.JSX.Element
   )
 }
 
-export { GitHubStarBadge }
+export { GitHubMark, GitHubStarBadge }
