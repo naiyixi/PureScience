@@ -1,7 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 import { sanitizeProxySettings } from './repository'
 import { sanitizeScenarioModels } from './repository'
+import { SettingsRepository } from './repository'
 import {
   applyProxySettings,
   manualProxyEnvironment,
@@ -96,6 +100,39 @@ describe('sanitizeScenarioModels', () => {
         review: { providerId: 'p', model: 'm', reasoningEffort: 'turbo' }
       })
     ).toEqual({ review: { providerId: 'p', model: 'm' } })
+  })
+})
+
+describe('SettingsRepository scenario-model persistence', () => {
+  const withRepo = async (fn: (repo: SettingsRepository) => Promise<void>): Promise<void> => {
+    const dir = await mkdtemp(join(tmpdir(), 'osci-scenario-models-'))
+    try {
+      await fn(new SettingsRepository(dir))
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  }
+
+  it('persists a scenario override map and reads it back sanitized', async () => {
+    await withRepo(async (repo) => {
+      await repo.setScenarioModels({
+        review: { providerId: 'p1', model: 'model-a' },
+        subagent: { providerId: 'p2', model: 'model-b', reasoningEffort: 'high' }
+      })
+      expect((await repo.getSettings()).scenarioModels).toEqual({
+        review: { providerId: 'p1', model: 'model-a' },
+        subagent: { providerId: 'p2', model: 'model-b', reasoningEffort: 'high' }
+      })
+    })
+  })
+
+  it('clearing the map removes the persisted field (regression: empty map used to no-op)', async () => {
+    await withRepo(async (repo) => {
+      await repo.setScenarioModels({ review: { providerId: 'p1', model: 'model-a' } })
+      expect((await repo.getSettings()).scenarioModels).toBeTruthy()
+      await repo.setScenarioModels({})
+      expect((await repo.getSettings()).scenarioModels).toBeUndefined()
+    })
   })
 })
 

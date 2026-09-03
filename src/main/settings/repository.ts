@@ -1276,10 +1276,10 @@ class SettingsRepository {
   async setScenarioModels(scenarioModels: ScenarioModels): Promise<StoredSettings> {
     const sanitized = sanitizeScenarioModels(scenarioModels)
     const next = sanitized && Object.keys(sanitized).length > 0 ? sanitized : undefined
-    return this.mutate((settings) => ({
-      ...settings,
-      ...(next ? { scenarioModels: next } : {})
-    }))
+    return this.mutate((settings) => {
+      const { scenarioModels: _dropped, ...rest } = settings
+      return next ? { ...rest, scenarioModels: next } : rest
+    })
   }
 
   // Replaces the external compute endpoints list.
