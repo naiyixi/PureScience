@@ -252,3 +252,72 @@ describe('HomePage recent sessions preview', () => {
     expect(text).not.toContain('Then compare poses.') // raw long prompt not shown
   })
 })
+
+describe('HomePage project file-type chips', () => {
+  const project = {
+    id: 'proj-file-kinds',
+    name: 'Filing project',
+    updatedAt: 5,
+    isExample: false
+  }
+
+  beforeEach(() => {
+    useProjectStore.setState({
+      projects: [project as never]
+    } as never)
+  })
+
+  afterEach(() => {
+    delete (window as unknown as { api?: unknown }).api
+  })
+
+  it('renders distinct file-type chips from the project Files catalog', async () => {
+    const listFiles = vi.fn(async () => ({
+      items: [
+        { name: 'draft.md', sortAtMs: 40 },
+        { name: 'notes.docx', sortAtMs: 30 },
+        { name: 'figure.PNG', sortAtMs: 20 },
+        { name: 'table.csv', sortAtMs: 10 },
+        { name: 'old.txt', sortAtMs: 1 }
+      ],
+      nextCursor: undefined,
+      totalCount: 5
+    }))
+    ;(window as unknown as { api: unknown }).api = {
+      projectFiles: { listFiles }
+    }
+
+    await act(async () => root.render(<HomePage canDeleteProjects hasCompleteSessionCatalog />))
+    // Flush the effect's promise chain.
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    expect(listFiles).toHaveBeenCalledWith({
+      projectId: 'proj-file-kinds',
+      collection: { kind: 'all' },
+      limit: 30
+    })
+    expect(container.textContent).toContain('MD')
+    expect(container.textContent).toContain('DOCX')
+    expect(container.textContent).toContain('PNG')
+    // Newest-first distinct kinds; 'TXT' falls outside the 4-chip cap.
+    expect(container.textContent).not.toContain('TXT')
+  })
+
+  it('renders no chips when the catalog is empty or the bridge is absent', async () => {
+    ;(window as unknown as { api: unknown }).api = {
+      projectFiles: {
+        listFiles: vi.fn(async () => ({ items: [], nextCursor: undefined, totalCount: 0 }))
+      }
+    }
+
+    await act(async () => root.render(<HomePage canDeleteProjects hasCompleteSessionCatalog />))
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    expect(container.textContent).toContain('Filing project')
+    expect(container.querySelectorAll('.rounded-\\[5px\\]')).toHaveLength(0)
+  })
+})
