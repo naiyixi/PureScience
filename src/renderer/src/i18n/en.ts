@@ -2234,4 +2234,6 @@ export const en: Record<ZhKey, string> = {
   'wsMessage.conversation': 'Conversation',
   'conversation.referenceSession': 'Reference a session',
   'sessionPlan.downloadPlan': 'Download Plan',
+  'writeAudit.filterKind': 'Filter by change kind',
+  'tiffPreview.decoding': 'Decoding TIFF image',
 }

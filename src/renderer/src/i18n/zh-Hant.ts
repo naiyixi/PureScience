@@ -2051,5 +2051,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'renameSession.purposePlaceholder': '這個對話是關於什麼的（可選）',
   'wsMessage.conversation': '對話',
   'conversation.referenceSession': '引用一個對話',
-  'sessionPlan.downloadPlan': '下載計畫'
+  'sessionPlan.downloadPlan': '下載計畫',
+  'writeAudit.filterKind': '依變更類型篩選',
+  'tiffPreview.decoding': '正在解碼 TIFF 影像'
 }

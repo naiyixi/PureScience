@@ -2224,5 +2224,7 @@ export const es: Partial<Record<ZhKey, string>> = {
   'renameSession.purposePlaceholder': 'De qué trata esta sesión (opcional)',
   'wsMessage.conversation': 'Conversación',
   'conversation.referenceSession': 'Referenciar una sesión',
-  'sessionPlan.downloadPlan': 'Descargar plan'
+  'sessionPlan.downloadPlan': 'Descargar plan',
+  'writeAudit.filterKind': 'Filtrar por tipo de cambio',
+  'tiffPreview.decoding': 'Decodificando imagen TIFF…'
 }

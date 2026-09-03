@@ -5,6 +5,7 @@
 
 import { useMemo, useState } from 'react'
 import { FilePenLine } from 'lucide-react'
+import { useLanguage } from '@/i18n'
 import { cn } from '@/lib/utils'
 
 import type { NotebookRunRecord, NotebookWorkingFile } from '../../../../shared/notebook'
@@ -51,6 +52,7 @@ type AuditRow = {
 }
 
 const WriteAuditPanel = ({ runs }: WriteAuditPanelProps): React.JSX.Element => {
+  const { t } = useLanguage()
   const [kindFilter, setKindFilter] = useState<ChangeKind | 'all'>('all')
 
   const rows = useMemo<AuditRow[]>(() => {
@@ -110,7 +112,7 @@ const WriteAuditPanel = ({ runs }: WriteAuditPanelProps): React.JSX.Element => {
         <div
           className="mt-2 flex items-center gap-1"
           role="group"
-          aria-label="Filter by change kind"
+          aria-label={t('writeAudit.filterKind')}
         >
           {filterButton('all', 'All')}
           {CHANGE_KINDS.map((kind) => filterButton(kind, KIND_LABELS[kind]))}
