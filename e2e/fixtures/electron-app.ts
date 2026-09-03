@@ -20,6 +20,10 @@ const electronLaunchTarget = (
   const executablePath = environment.PURESCIENCE_E2E_EXECUTABLE
   return {
     args: [
+      // Force English so selectors stay deterministic regardless of the host OS locale
+      // (the app's "follow system" language default would otherwise localize the UI on
+      // zh-CN developers' machines and every non-English CI runner).
+      '--lang=en-US',
       `--user-data-dir=${userDataRoot}`,
       ...(platform === 'linux' ? ['--password-store=basic'] : []),
       ...(executablePath ? [] : [APP_ROOT])
