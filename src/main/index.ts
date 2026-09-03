@@ -347,16 +347,8 @@ async function startElectronApp(mainEntryPath: string): Promise<void> {
       startupDiagnostics?.phase('compose-runtime')
 
       // Replace Electron's default English menu with the locale-following application menu (roles
-      // preserve native accelerators; labels follow the OS language). Skipped under the packaged
-      // e2e harness (its English selectors must see the default menu) and failure-guarded so a
-      // menu problem can never abort app startup.
-      if (!process.env.PURESCIENCE_E2E_STORAGE_ROOT) {
-        try {
-          installLocalizedApplicationMenu()
-        } catch (error) {
-          createLogger('app-menu').error('failed to install localized application menu; keeping default', error)
-        }
-      }
+      // preserve native accelerators; labels follow the OS language).
+      installLocalizedApplicationMenu()
 
       // Set app user model id for windows
       electronApp.setAppUserModelId(APP_USER_MODEL_ID)
