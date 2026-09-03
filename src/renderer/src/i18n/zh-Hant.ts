@@ -1888,6 +1888,9 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'ws.marketplaceNoMatches': '沒有符合「{query}」的專才。',
   'ws.marketplaceNoSources': '尚未設定市集來源。',
   'ws.marketplaceNoSpecialists': '目前沒有可用的市集專才。',
+  'ws.marketplaceSort': '排序',
+  'ws.marketplaceSortVersion': '最新版本',
+  'ws.marketplaceSortName': '名稱',
   'ws.marketplaceOfficial': '官方',
   'ws.marketplacePackageVerified': '套件已驗證',
   'ws.marketplaceRecoveryPending':

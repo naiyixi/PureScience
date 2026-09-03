@@ -16,6 +16,7 @@ import {
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select'
 import { useMarketplaceStore } from '@/stores/marketplace-store'
 import { useSettingsStore } from '@/stores/settings-store'
 import { useSpecialistStore } from '@/stores/specialist-store'
@@ -26,6 +27,7 @@ import type {
   MarketplaceSpecialistRelease
 } from '../../../../shared/specialist-marketplace'
 import { ConnectorsNavIcon } from './connector-icons'
+import { sortMarketplaceListings, type MarketplaceSortKind } from './specialist-marketplace-sort'
 
 export type SpecialistMarketplaceView =
   | { kind: 'marketplace' }
@@ -210,6 +212,9 @@ const SpecialistMarketplace = ({ view, onNavigate }: Props): React.JSX.Element =
   // the refresh state, and a failed first load flips this to false so the error renders instead.
   const loading = snapshot === undefined && !lastRefreshFailed
   const [query, setQuery] = useState('')
+  // Marketplace listing order. The snapshot carries no release dates, so the closest truthful
+  // options are semantic-version (newest release first) and name; see specialist-marketplace-sort.
+  const [sortKind, setSortKind] = useState<MarketplaceSortKind>('version')
   const [repositoryUrl, setRepositoryUrl] = useState('')
   const [sourceCandidate, setSourceCandidate] = useState<MarketplaceSourceCandidate>()
   const [sourceBusy, setSourceBusy] = useState(false)
@@ -323,14 +328,16 @@ const SpecialistMarketplace = ({ view, onNavigate }: Props): React.JSX.Element =
 
   const visibleListings = useMemo(() => {
     const term = query.trim().toLowerCase()
-    if (!term) return snapshot?.specialists ?? []
-    return (snapshot?.specialists ?? []).filter((item) =>
-      [item.displayName, item.summary, item.publisher.name, item.sourceName]
-        .join(' ')
-        .toLowerCase()
-        .includes(term)
-    )
-  }, [query, snapshot])
+    const filtered = term
+      ? (snapshot?.specialists ?? []).filter((item) =>
+          [item.displayName, item.summary, item.publisher.name, item.sourceName]
+            .join(' ')
+            .toLowerCase()
+            .includes(term)
+        )
+      : (snapshot?.specialists ?? [])
+    return sortMarketplaceListings(filtered, sortKind)
+  }, [query, snapshot, sortKind])
 
   // The newest per-source refresh timestamp answers "how old is the data on screen", covering both
   // the TTL-hit case (a few minutes ago) and a just-completed network refresh (now).
@@ -976,6 +983,18 @@ const SpecialistMarketplace = ({ view, onNavigate }: Props): React.JSX.Element =
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
+        <Select
+          value={sortKind}
+          onValueChange={(value) => setSortKind(value as MarketplaceSortKind)}
+        >
+          <SelectTrigger aria-label={t('ws.marketplaceSort')} className="w-40 shrink-0">
+            {sortKind === 'version' ? t('ws.marketplaceSortVersion') : t('ws.marketplaceSortName')}
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="version">{t('ws.marketplaceSortVersion')}</SelectItem>
+            <SelectItem value="name">{t('ws.marketplaceSortName')}</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
       {loading ? <MarketplaceLoading label={t('ws.marketplaceLoadingMarketplace')} /> : null}
       {!loading && !snapshot && lastRefreshFailed ? (

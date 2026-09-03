@@ -1967,6 +1967,9 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'ws.marketplaceNoMatches': '“{query}”와(과) 일치하는 전문가가 없습니다.',
   'ws.marketplaceNoSources': '구성된 마켓플레이스 소스가 없습니다.',
   'ws.marketplaceNoSpecialists': '사용 가능한 마켓플레이스 전문가가 없습니다.',
+  'ws.marketplaceSort': '정렬',
+  'ws.marketplaceSortVersion': '최신 버전',
+  'ws.marketplaceSortName': '이름',
   'ws.marketplaceOfficial': '공식',
   'ws.marketplacePackageVerified': '패키지 검증됨',
   'ws.marketplaceRecoveryPending':

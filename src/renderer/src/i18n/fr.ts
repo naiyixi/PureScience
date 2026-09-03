@@ -2044,6 +2044,9 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'ws.marketplaceNoMatches': 'Aucun spécialiste ne correspond à « {query} ».',
   'ws.marketplaceNoSources': 'Aucune source de Marketplace configurée.',
   'ws.marketplaceNoSpecialists': 'Aucun spécialiste disponible sur la Marketplace.',
+  'ws.marketplaceSort': 'Trier',
+  'ws.marketplaceSortVersion': 'Version la plus récente',
+  'ws.marketplaceSortName': 'Nom',
   'ws.marketplaceOfficial': 'Officiel',
   'ws.marketplacePackageVerified': 'Paquet vérifié',
   'ws.marketplaceRecoveryPending':

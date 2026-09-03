@@ -2010,6 +2010,9 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'ws.marketplaceNoMatches': '「{query}」に一致するスペシャリストがありません。',
   'ws.marketplaceNoSources': 'マーケットプレイスのソースが設定されていません。',
   'ws.marketplaceNoSpecialists': '利用可能なマーケットプレイススペシャリストがありません。',
+  'ws.marketplaceSort': '並び替え',
+  'ws.marketplaceSortVersion': '最新バージョン',
+  'ws.marketplaceSortName': '名前',
   'ws.marketplaceOfficial': '公式',
   'ws.marketplacePackageVerified': 'パッケージを検証しました',
   'ws.marketplaceRecoveryPending':
