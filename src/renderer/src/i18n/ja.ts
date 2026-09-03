@@ -915,6 +915,15 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.proxyPortInvalid': 'ポートは 1〜65535 の数値で指定してください。',
   'settings.proxySaveFailed': 'プロキシ設定を保存できませんでした。',
   'settings.egressCustomCount': 'カスタムドメイン {n} 件を許可',
+  'settings.scenarioModels': 'シナリオ別モデル',
+  'settings.scenarioModelsHint':
+    '会話詳細・サブエージェント・レビューで使う既定モデル。ここで指定しない限り、各シナリオはアクティブモデルを引き継ぎます。',
+  'settings.scenarioModelInherit': 'アクティブモデルと同じ',
+  'settings.scenarioModelSessionDetail': '会話詳細',
+  'settings.scenarioModelSubagent': 'サブエージェント',
+  'settings.scenarioModelReview': 'レビュー',
+  'settings.scenarioModelsScopeNote':
+    '注：エージェントフレームワークが ACP 経由で動作する場合、サブエージェントとレビューのモデル上書きがフレームワークにより適用されないことがあり、その際はアクティブモデルにフォールバックします。',
   'settings.proxyTitle': 'プロキシ',
   'settings.proxyDescription':
     'Notebook・REPL・Shell のプロセスがインターネットへ接続する方法を制御します。既定ではシステムに従い、VPN や社内ゲートウェイの背後では手動プロキシを設定できます。',

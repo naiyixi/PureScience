@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { sanitizeProxySettings } from './repository'
+import { sanitizeScenarioModels } from './repository'
 import {
   applyProxySettings,
   manualProxyEnvironment,
@@ -64,6 +65,37 @@ describe('sanitizeProxySettings', () => {
       mode: 'manual',
       manual: { type: 'socks5', host: 'proxy.example.com', port: 1080 }
     })
+  })
+})
+
+describe('sanitizeScenarioModels', () => {
+  it('keeps only known scenarios with a non-empty provider and model', () => {
+    expect(
+      sanitizeScenarioModels({
+        'session-detail': { providerId: ' p1 ', model: 'model-a' },
+        subagent: { providerId: 'p2', model: 'model-b', reasoningEffort: 'high' },
+        review: { providerId: '', model: 'model-c' },
+        'unknown-scenario': { providerId: 'p3', model: 'model-d' }
+      })
+    ).toEqual({
+      'session-detail': { providerId: 'p1', model: 'model-a' },
+      subagent: { providerId: 'p2', model: 'model-b', reasoningEffort: 'high' }
+    })
+  })
+
+  it('returns undefined for empty or malformed payloads', () => {
+    expect(sanitizeScenarioModels(undefined)).toBeUndefined()
+    expect(sanitizeScenarioModels({})).toBeUndefined()
+    expect(sanitizeScenarioModels({ 'session-detail': 'not-an-object' })).toBeUndefined()
+    expect(sanitizeScenarioModels('nope')).toBeUndefined()
+  })
+
+  it('drops a malformed reasoning effort', () => {
+    expect(
+      sanitizeScenarioModels({
+        review: { providerId: 'p', model: 'm', reasoningEffort: 'turbo' }
+      })
+    ).toEqual({ review: { providerId: 'p', model: 'm' } })
   })
 })
 

@@ -1,4 +1,8 @@
-import type { DeleteProviderRequest, SetVisionModelRequest } from '../../shared/settings'
+import type {
+  DeleteProviderRequest,
+  SetScenarioModelRequest,
+  SetVisionModelRequest
+} from '../../shared/settings'
 import {
   defineApplicationCommand,
   defineApplicationCommandGroup,
@@ -22,6 +26,7 @@ type RuntimeSettingsCommandWorkflows = Pick<
   | 'setActiveProvider'
   | 'setAgentFramework'
   | 'setVisionModel'
+  | 'setScenarioModel'
   | 'setReasoningEffort'
   | 'uninstallRuntime'
   | 'upsertProvider'
@@ -78,6 +83,11 @@ const settingsRuntimeApplicationCommands = Object.freeze({
     readonly [request: SetVisionModelRequest],
     WorkflowResult<'setVisionModel'>
   >('settings:set-vision-model'),
+  setScenarioModel: defineApplicationCommand<
+    'settings:set-scenario-model',
+    readonly [request: SetScenarioModelRequest],
+    WorkflowResult<'setScenarioModel'>
+  >('settings:set-scenario-model'),
   setReasoningEffort: defineApplicationCommand<
     'settings:set-reasoning-effort',
     WorkflowArgs<'setReasoningEffort'>,
@@ -129,6 +139,7 @@ const settingsRuntimeApplicationCommandGroup = defineApplicationCommandGroup('se
   settingsRuntimeApplicationCommands.setActiveProvider,
   settingsRuntimeApplicationCommands.setAgentFramework,
   settingsRuntimeApplicationCommands.setVisionModel,
+  settingsRuntimeApplicationCommands.setScenarioModel,
   settingsRuntimeApplicationCommands.setReasoningEffort,
   settingsRuntimeApplicationCommands.loginSharedClaude,
   settingsRuntimeApplicationCommands.logoutSharedClaude,
@@ -176,6 +187,7 @@ const registerRuntimeSettingsApplicationCommands = (
       'settings:set-agent-framework': ({ args }) =>
         dependencies.workflows.setAgentFramework(args[0]),
       'settings:set-vision-model': ({ args }) => dependencies.workflows.setVisionModel(args[0]),
+      'settings:set-scenario-model': ({ args }) => dependencies.workflows.setScenarioModel(args[0]),
       'settings:set-reasoning-effort': ({ args }) =>
         dependencies.workflows.setReasoningEffort({ effort: readReasoningEffort(args[0]) }),
       'settings:login-shared-claude': ({ callerContext }) => {

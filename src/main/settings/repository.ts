@@ -20,6 +20,8 @@ import type {
 } from '../../shared/settings'
 import type { EgressSettings } from '../../shared/egress'
 import type { ManualProxyConfig, ProxySettings } from '../../shared/proxy'
+import { SCENARIO_MODEL_IDS } from '../../shared/settings'
+import type { ScenarioModels } from '../../shared/settings'
 import type { ExternalComputeEndpoint } from '../../shared/compute'
 import {
   CLAUDE_ISOLATED_PROVIDER_ID,
@@ -552,6 +554,37 @@ export const sanitizeProxySettings = (value: unknown): ProxySettings | undefined
   return { mode: 'manual', manual: config }
 }
 
+// Rebuilds the per-scenario model overrides from untrusted JSON: only the three known scenario ids
+// survive, and each override needs a non-empty providerId + model. Unknown ids/entries are dropped
+// (they inherit the active model); a malformed payload yields undefined (no overrides).
+export const sanitizeScenarioModels = (value: unknown): ScenarioModels | undefined => {
+  if (!isRecord(value)) return undefined
+
+  const result: ScenarioModels = {}
+  for (const scenario of SCENARIO_MODEL_IDS) {
+    const entry = isRecord(value[scenario]) ? value[scenario] : undefined
+    if (!entry) continue
+    const providerId = asString(entry.providerId)?.trim()
+    const model = asString(entry.model)?.trim()
+    if (!providerId || !model) continue
+    const reasoningEffort =
+      entry.reasoningEffort === 'default' ||
+      entry.reasoningEffort === 'low' ||
+      entry.reasoningEffort === 'medium' ||
+      entry.reasoningEffort === 'high' ||
+      entry.reasoningEffort === 'xhigh' ||
+      entry.reasoningEffort === 'max'
+        ? entry.reasoningEffort
+        : undefined
+    result[scenario] = {
+      providerId,
+      model,
+      ...(reasoningEffort !== undefined ? { reasoningEffort } : {})
+    }
+  }
+  return Object.keys(result).length > 0 ? result : undefined
+}
+
 // Rebuilds MemorySettings from untrusted JSON: only string id/name/text and numeric timestamps
 // survive; notes pointing at a missing category are dropped; an empty enabled flag defaults to
 // false so memory never silently resumes after a corrupt write.
@@ -749,6 +782,10 @@ const sanitizeSettings = (value: unknown): StoredSettings => {
   const proxy = sanitizeProxySettings(value.proxy)
 
   if (proxy) settings.proxy = proxy
+
+  const scenarioModels = sanitizeScenarioModels(value.scenarioModels)
+
+  if (scenarioModels) settings.scenarioModels = scenarioModels
 
   const externalComputeEndpoints = sanitizeExternalComputeEndpoints(value.externalComputeEndpoints)
 
@@ -1232,6 +1269,17 @@ class SettingsRepository {
   async setProxy(proxy: ProxySettings): Promise<StoredSettings> {
     const sanitized = sanitizeProxySettings(proxy) ?? { mode: 'system' }
     return this.mutate((settings) => ({ ...settings, proxy: sanitized }))
+  }
+
+  // Persists the per-scenario model override map. Sanitized before write; an empty or
+  // malformed map clears the overrides (every scenario inherits the active model).
+  async setScenarioModels(scenarioModels: ScenarioModels): Promise<StoredSettings> {
+    const sanitized = sanitizeScenarioModels(scenarioModels)
+    const next = sanitized && Object.keys(sanitized).length > 0 ? sanitized : undefined
+    return this.mutate((settings) => ({
+      ...settings,
+      ...(next ? { scenarioModels: next } : {})
+    }))
   }
 
   // Replaces the external compute endpoints list.

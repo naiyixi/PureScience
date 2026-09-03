@@ -19,6 +19,7 @@ type ProviderCommands = Pick<
   | 'setActiveProvider'
   | 'setAgentFramework'
   | 'setVisionModel'
+  | 'setScenarioModel'
   | 'validateProvider'
   | 'cancelCodexLogin'
   | 'cancelClaudeLogin'
@@ -98,6 +99,7 @@ const createCommands = (): CommandMocks => ({
   setActiveProvider: vi.fn().mockResolvedValue(snapshot()),
   setAgentFramework: vi.fn().mockResolvedValue(snapshot()),
   setVisionModel: vi.fn().mockResolvedValue(snapshot()),
+  setScenarioModel: vi.fn().mockResolvedValue(snapshot()),
   validateProvider: vi.fn().mockResolvedValue({ ok: true, category: 'ok' }),
   cancelCodexLogin: vi.fn().mockResolvedValue(undefined),
   cancelClaudeLogin: vi.fn().mockResolvedValue(undefined),

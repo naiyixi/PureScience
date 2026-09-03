@@ -7,6 +7,7 @@ import type { ProviderView, ValidateProviderResult } from '../../../../shared/se
 import { isCodexSubscriptionProvider } from '../../../../shared/settings'
 import { ActiveModelSelect } from './ActiveModelSelect'
 import { VisionModelSelect } from './VisionModelSelect'
+import { ScenarioModelRow } from './ScenarioModelSelect'
 import { ProviderList } from './ProviderList'
 import { ReasoningEffortSelect } from './ReasoningEffortSelect'
 import { SettingsSection } from './SettingsLayout'
@@ -350,6 +351,28 @@ const ProvidersPanel = ({
           </div>
         </SettingsSection>
       ) : null}
+
+      {/* Scenario models: per-scenario defaults for conversation details / sub-agents / review.
+          Each row inherits the active model unless the user pins an override here. The Vision
+          model section right below covers the image-understanding scenario separately. */}
+      <SettingsSection
+        title={t('settings.scenarioModels')}
+        aria-label={t('settings.scenarioModels')}
+        description={t('settings.scenarioModelsHint')}
+        separated={visibleProviders.length > 0}
+      >
+        <div className="max-w-md space-y-4">
+          <ScenarioModelRow
+            scenario="session-detail"
+            label={t('settings.scenarioModelSessionDetail')}
+          />
+          <ScenarioModelRow scenario="subagent" label={t('settings.scenarioModelSubagent')} />
+          <ScenarioModelRow scenario="review" label={t('settings.scenarioModelReview')} />
+        </div>
+        <p className="mt-3 text-xs text-muted-foreground">
+          {t('settings.scenarioModelsScopeNote')}
+        </p>
+      </SettingsSection>
 
       {/* Optional Vision model relay : a fixed model that translates image
           input for a text-only active backend. Independent of the active model; hidden when no

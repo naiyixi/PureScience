@@ -18,6 +18,7 @@ import { SETTINGS_FILE_VERSION } from '../../shared/settings'
 import type { OfficialVendorId } from '../../shared/provider-registry'
 import type { PermissionProfileId } from '../../shared/permission-profiles'
 import type { VisionModelConfiguration } from '../../shared/settings'
+import type { ScenarioModels } from '../../shared/settings'
 import type {
   CustomReasoningEffortTransport,
   ReasoningEffortPresetSetting
@@ -246,6 +247,9 @@ export type StoredSettings = {
   // Optional fixed Vision model used to translate image input when the active backend is text-only
   // . Absence means the image relay is disabled.
   visionModel?: VisionModelConfiguration
+  // Per-scenario default-model overrides (conversation detail / subagent / review). Absence of an
+  // id means that scenario inherits the active model.
+  scenarioModels?: ScenarioModels
 }
 
 // Legacy settings.json shape retained only so existing installations can migrate without data loss.

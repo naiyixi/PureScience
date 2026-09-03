@@ -939,6 +939,15 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.proxyPortInvalid': 'Der Port muss eine Zahl zwischen 1 und 65535 sein.',
   'settings.proxySaveFailed': 'Die Proxy-Einstellungen konnten nicht gespeichert werden.',
   'settings.egressCustomCount': 'Erlaubt {n} benutzerdefinierte Domains',
+  'settings.scenarioModels': 'Szenariomodelle',
+  'settings.scenarioModelsHint':
+    'Standardmodelle für abgeleitete Arbeiten: Konversationsdetails, Sub-Agents und Review. Jedes Szenario übernimmt das aktive Modell, sofern hier nichts anderes festgelegt ist.',
+  'settings.scenarioModelInherit': 'Wie aktives Modell',
+  'settings.scenarioModelSessionDetail': 'Konversationsdetails',
+  'settings.scenarioModelSubagent': 'Sub-Agents',
+  'settings.scenarioModelReview': 'Review',
+  'settings.scenarioModelsScopeNote':
+    'Hinweis: Läuft das Agent-Framework über ACP, kann das Framework die Modellüberschreibung für Sub-Agents und Review unter Umständen nicht anwenden — dann greift das aktive Modell.',
   'settings.proxyTitle': 'Proxy',
   'settings.proxyDescription':
     'Steuert, wie Notebook-, REPL- und Shell-Prozesse eine Verbindung zum Internet herstellen. Standardmäßig wird das System befolgt; ein manueller Proxy hilft hinter einem VPN oder Firmen-Gateway.',

@@ -870,6 +870,15 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.proxyPortInvalid': '連接埠必須是 1–65535 之間的數字。',
   'settings.proxySaveFailed': '無法儲存代理設定。',
   'settings.egressCustomCount': '已允許 {n} 個自訂網域',
+  'settings.scenarioModels': '場景模型',
+  'settings.scenarioModelsHint':
+    '會話詳情、子智能體與審查各自使用的預設模型；未在此單獨指定時，與主模型相同。',
+  'settings.scenarioModelInherit': '與主模型相同',
+  'settings.scenarioModelSessionDetail': '會話詳情',
+  'settings.scenarioModelSubagent': '子智能體',
+  'settings.scenarioModelReview': '審查',
+  'settings.scenarioModelsScopeNote':
+    '說明：當智能體框架經 ACP 執行時，子智能體與審查的獨立模型可能受限於框架而無法逐會話下發，此時會改回使用主模型。',
   'settings.proxyTitle': '代理',
   'settings.proxyDescription':
     '控制筆記本、REPL 與 Shell 程序如何連上網際網路。預設跟隨系統；位於 VPN 或公司閘道後方時可改用手動代理。',

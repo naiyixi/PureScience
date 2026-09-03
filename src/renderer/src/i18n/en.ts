@@ -454,6 +454,15 @@ export const en: Record<ZhKey, string> = {
   'settings.proxyPortInvalid': 'Port must be a number between 1 and 65535.',
   'settings.proxySaveFailed': 'Could not save the proxy settings.',
   'settings.egressCustomCount': 'Allows {n} custom domains',
+  'settings.scenarioModels': 'Scenario models',
+  'settings.scenarioModelsHint':
+    'Default models used for derived work: conversation details, sub-agents and review. Each scenario inherits the active model unless overridden here.',
+  'settings.scenarioModelInherit': 'Same as active model',
+  'settings.scenarioModelSessionDetail': 'Conversation details',
+  'settings.scenarioModelSubagent': 'Sub-agents',
+  'settings.scenarioModelReview': 'Review',
+  'settings.scenarioModelsScopeNote':
+    'Note: when the active agent framework runs over ACP, per-session model overrides for sub-agents and review may not be applied by the framework — they then fall back to the active model.',
   'settings.proxyTitle': 'Proxy',
   'settings.proxyDescription':
     'Controls how notebook, REPL and shell processes connect to the internet. Follows your system by default; a manual proxy helps behind a VPN or corporate gateway.',

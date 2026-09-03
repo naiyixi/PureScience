@@ -916,6 +916,15 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.proxyPortInvalid': 'Порт должен быть числом от 1 до 65535.',
   'settings.proxySaveFailed': 'Не удалось сохранить настройки прокси.',
   'settings.egressCustomCount': 'Разрешено {n} пользовательских доменов',
+  'settings.scenarioModels': 'Модели по сценариям',
+  'settings.scenarioModelsHint':
+    'Модели по умолчанию для производных задач: деталей разговора, субагентов и рецензирования. Каждый сценарий наследует активную модель, если не указано иное.',
+  'settings.scenarioModelInherit': 'Как активная модель',
+  'settings.scenarioModelSessionDetail': 'Детали разговора',
+  'settings.scenarioModelSubagent': 'Субагенты',
+  'settings.scenarioModelReview': 'Рецензирование',
+  'settings.scenarioModelsScopeNote':
+    'Примечание: когда агентный фреймворк работает через ACP, переопределение модели для субагентов и рецензирования может не применяться — тогда используется активная модель.',
   'settings.proxyTitle': 'Прокси',
   'settings.proxyDescription':
     'Управляет тем, как процессы notebook, REPL и shell подключаются к интернету. По умолчанию следуют системным настройкам; ручной прокси полезен за VPN или корпоративным шлюзом.',

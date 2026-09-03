@@ -98,6 +98,7 @@ import {
 } from '../net/egress-runtime'
 import { applyProxySettings } from '../net/proxy-runtime'
 import type { ProxySettings } from '../../shared/proxy'
+import type { ScenarioModels, SetScenarioModelRequest } from '../../shared/settings'
 import { getUserClaudeConfigDir } from './provider-env'
 import { SettingsRepository } from './repository'
 import { SettingsPreferencesModule, toSettingsPreferencesSnapshot } from './preferences'
@@ -303,6 +304,7 @@ class SettingsService {
       claudeSubscriptionProviderId: settings.claudeSubscriptionProviderId,
       activeModel: settings.activeModel,
       visionModel: settings.visionModel,
+      scenarioModels: settings.scenarioModels,
       providers: settings.providers.map((provider) =>
         this.providers.toProviderView(
           provider,
@@ -575,6 +577,36 @@ class SettingsService {
       // Ignore: startup continues; the egress runtime is re-applied on the next edit.
     }
     applyProxySettings(stored.proxy)
+  }
+
+  // Reads the persisted per-scenario model overrides (undefined = every scenario inherits the
+  // active model).
+  async getScenarioModels(): Promise<ScenarioModels | undefined> {
+    return (await this.repository.getSettings()).scenarioModels
+  }
+
+  // Merges one scenario override (undefined clears it back to "same as the active model") and
+  // returns the refreshed settings snapshot, mirroring the Vision model write path. Validates the
+  // target provider still exists so a stale override cannot silently pin a removed account's model.
+  async setScenarioModel(request: SetScenarioModelRequest): Promise<SettingsSnapshot> {
+    const { scenario, configuration } = request
+    const settings = await this.repository.getSettings()
+    if (configuration) {
+      const provider = settings.providers.find((entry) => entry.id === configuration.providerId)
+      if (!provider) {
+        throw new Error(
+          'The selected scenario model is no longer available. Refresh the model catalog.'
+        )
+      }
+    }
+    const next: ScenarioModels = { ...(settings.scenarioModels ?? {}) }
+    if (configuration) {
+      next[scenario] = configuration
+    } else {
+      delete next[scenario]
+    }
+    await this.repository.setScenarioModels(next)
+    return this.getSettingsView()
   }
 
   // Persists the network egress allowlist and applies it to the child-process proxy runtime, so a

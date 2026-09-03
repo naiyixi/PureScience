@@ -23,6 +23,7 @@ const expectedChannels = [
   'settings:set-active-provider',
   'settings:set-agent-framework',
   'settings:set-vision-model',
+  'settings:set-scenario-model',
   'settings:set-reasoning-effort',
   'settings:login-shared-claude',
   'settings:logout-shared-claude',
