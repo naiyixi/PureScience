@@ -12,6 +12,7 @@ import type {
   StoredCredential
 } from '../../shared/settings'
 import type { EgressSettings } from '../../shared/egress'
+import type { ProxySettings } from '../../shared/proxy'
 import type { ExternalComputeEndpoint } from '../../shared/compute'
 import { SETTINGS_FILE_VERSION } from '../../shared/settings'
 import type { OfficialVendorId } from '../../shared/provider-registry'
@@ -209,6 +210,9 @@ export type StoredSettings = {
   credentials?: StoredCredential[]
   // Network egress allowlist for child processes (notebook/repl/shell). Absent means unrestricted.
   egress?: EgressSettings
+  // Outbound proxy for child processes (notebook/repl/shell): 'system' (default) or a
+  // manual proxy. Absent means follow the system settings.
+  proxy?: ProxySettings
   // External compute endpoints (Modal serverless GPU, NVIDIA NIM inference). Absent means none.
   externalComputeEndpoints?: ExternalComputeEndpoint[]
   // Absolute path of the relocatable data root (artifacts/notebooks/runtime/uploads). Absent means

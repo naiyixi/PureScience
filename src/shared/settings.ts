@@ -1260,6 +1260,7 @@ export type CredentialTestResult = {
 // Re-export the egress allowlist schema (defined in shared/egress.ts) so consumers that import
 // settings types from here keep one source.
 export type { EgressSettings, EgressDomainGroupId } from './egress'
+export type { ProxySettings, ProxyMode, ProxyType, ManualProxyConfig } from './proxy'
 export type { ExternalComputeEndpoint, CreateExternalComputeEndpointRequest } from './compute'
 
 // Test request: the credential id plus an optional plaintext override (empty = use the stored

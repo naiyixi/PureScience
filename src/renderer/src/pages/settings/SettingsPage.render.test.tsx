@@ -94,7 +94,9 @@ const installApi = (): void => {
       getPackageMirror: vi.fn().mockResolvedValue({}),
       setPackageMirror: vi.fn().mockResolvedValue({}),
       getEgress: vi.fn().mockResolvedValue({ enabled: false, groups: {}, customDomains: [] }),
-      setEgress: vi.fn().mockResolvedValue({ enabled: false, groups: {}, customDomains: [] })
+      setEgress: vi.fn().mockResolvedValue({ enabled: false, groups: {}, customDomains: [] }),
+      getProxy: vi.fn().mockResolvedValue({ mode: 'system' }),
+      setProxy: vi.fn().mockResolvedValue({ mode: 'system' })
     },
     acp: {
       getState: vi.fn().mockResolvedValue({ promptInFlight: false, promptInFlightSessionIds: [] }),

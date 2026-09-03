@@ -900,7 +900,7 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.egressCustomDomains': 'Свои домены',
   'settings.egressCustomPlaceholder': 'example.com',
   'settings.egressDescription':
-    'При включении процессы Notebook, REPL и Shell смогут обращаться только к указанным ниже научным доменам. Всё остальное блокируется локальным фильтрующим прокси.',
+    'Управляет доменами интернета, к которым могут обращаться процессы notebook (Python, R, REPL и Bash). Всё остальное блокируется локальным фильтрующим прокси.',
   'settings.egressEnabled': 'Ограничить сетевой доступ процессов',
   'settings.egressEnabledHint':
     'Вкл. = дочерние процессы направляются через локальный прокси, пропускающий только включённые группы доменов и ваши собственные домены.',
@@ -912,7 +912,33 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.egressGroupStructures': 'Структуры и химия',
   'settings.egressNoCustom': 'Своих доменов пока нет.',
   'settings.egressRemoveDomain': 'Удалить домен',
-  'settings.egressTitle': 'Разрешённые исходящие подключения',
+  'settings.proxyHostRequired': 'Укажите адрес прокси-сервера.',
+  'settings.proxyPortInvalid': 'Порт должен быть числом от 1 до 65535.',
+  'settings.proxySaveFailed': 'Не удалось сохранить настройки прокси.',
+  'settings.egressCustomCount': 'Разрешено {n} пользовательских доменов',
+  'settings.proxyTitle': 'Прокси',
+  'settings.proxyDescription':
+    'Управляет тем, как процессы notebook, REPL и shell подключаются к интернету. По умолчанию следуют системным настройкам; ручной прокси полезен за VPN или корпоративным шлюзом.',
+  'settings.proxyModeSystem': 'Следовать системе',
+  'settings.proxyModeSystemHint':
+    'Дочерние процессы используют текущие настройки прокси ОС (рекомендуется).',
+  'settings.proxyModeManual': 'Ручная настройка',
+  'settings.proxyModeManualHint':
+    'Направлять все дочерние процессы через фиксированный прокси-сервер.',
+  'settings.proxyTypeLabel': 'Тип',
+  'settings.proxyTypeHttp': 'HTTP',
+  'settings.proxyTypeHttps': 'HTTPS',
+  'settings.proxyTypeSocks5': 'SOCKS5',
+  'settings.proxyHostLabel': 'Сервер',
+  'settings.proxyHostPlaceholder': '127.0.0.1 или proxy.example.com',
+  'settings.proxyPortLabel': 'Порт',
+  'settings.proxyNoProxyLabel': 'Список исключений',
+  'settings.proxyNoProxyHint':
+    'Хосты и IP через запятую, подключающиеся напрямую. localhost и 127.0.0.1 всегда обходят прокси.',
+  'settings.proxyStatusSystem':
+    'Следует системе: дочерние процессы используют сетевые настройки ОС.',
+  'settings.proxyStatusManual': 'Ручной прокси: {url}',
+  'settings.egressTitle': 'Сетевой доступ Notebook',
   'settings.elapsedTime': 'Затраченное время',
   'settings.endpoint': 'Конечная точка',
   'settings.endpointsApprove': 'Одобрить скрипты',

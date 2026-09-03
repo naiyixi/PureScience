@@ -373,6 +373,9 @@ const createApplicationModules = async (
   // Prime the data-root cache from settings before any data repository is constructed below. A change
   // to this value only takes effect after a restart, so reading it once here is sufficient.
   initDataRoot(storedSettings.dataRoot)
+  // Re-apply persisted child-process network controls (egress allowlist + manual proxy) so a
+  // restart keeps the previous session's restrictions/route without requiring a settings edit.
+  await settingsService.hydrateChildProxyRuntime(storedSettings)
   const notificationInbox = createNotificationInboxController({
     headless,
     repository: new NotificationInboxDbRepository(() => getProjectDbClient(resolveStorageRoot())),
