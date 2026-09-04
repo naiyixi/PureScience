@@ -727,9 +727,7 @@ export const GlobalSearchDialog = ({
               aria-autocomplete="list"
               aria-controls={listboxId}
               aria-activedescendant={selectableRows.length > 0 ? activeRowId : undefined}
-              placeholder={
-                isProjectScope ? 'Search this project…' : 'Search sessions and artifacts…'
-              }
+              placeholder={isProjectScope ? t('gs.placeholderProject') : t('gs.placeholderAll')}
               maxLength={256}
               className="h-auto min-w-0 flex-1 rounded-none border-0 bg-transparent px-0 text-xl text-foreground placeholder:text-muted-foreground focus-visible:border-transparent focus-visible:ring-0"
             />
@@ -740,7 +738,7 @@ export const GlobalSearchDialog = ({
             ) : null}
           </div>
           <p className="sr-only" aria-live="polite">
-            {resultCount} results
+            {t('gs.resultsCount').replace('{n}', String(resultCount))}
           </p>
           {actionError ? (
             <p role="alert" className="border-b border-border px-4 py-2 text-sm text-destructive">
@@ -776,14 +774,14 @@ export const GlobalSearchDialog = ({
               ) : (
                 <>
                   {displayedArtifacts.length || artifactStatus === 'loading' || artifactError ? (
-                    <section role="group" aria-label="Artifacts">
+                    <section role="group" aria-label={t('gs.regionArtifacts')}>
                       <h2 className={sectionTitleClassName}>{t('home.artifacts')}</h2>
                       {displayedArtifacts.map((artifact) =>
                         renderArtifactRow(artifact, nextIndex())
                       )}
                       {artifactStatus === 'loading' && displayedArtifacts.length === 0 ? (
                         <p className="px-4 py-3 text-sm text-muted-foreground">
-                          Searching artifacts…
+                          {t('gs.searchingArtifacts')}
                         </p>
                       ) : null}
                       {artifactError ? (
@@ -823,7 +821,7 @@ export const GlobalSearchDialog = ({
                     </section>
                   ) : null}
                   {sessionGroups?.primary.length ? (
-                    <section role="group" aria-label="Sessions">
+                    <section role="group" aria-label={t('gs.regionSessions')}>
                       <h2 className={sectionTitleClassName}>{t('home.sessions')}</h2>
                       {sessionGroups.primary.map((session) =>
                         renderSessionRow(session, nextIndex())
@@ -871,7 +869,7 @@ export const GlobalSearchDialog = ({
                 </>
               )}
               {!isProjectScope || primaryProject ? (
-                <section role="group" aria-label="Commands">
+                <section role="group" aria-label={t('gs.regionCommands')}>
                   <h2 className={sectionTitleClassName}>{t('home.commands')}</h2>
                   <Button
                     id={`global-search-option-${nextIndex()}`}

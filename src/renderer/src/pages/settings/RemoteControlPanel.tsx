@@ -1,4 +1,5 @@
 import { useLanguage, type TranslationKey } from '@/i18n'
+import { localizeRemoteMessage } from '@/lib/remote-error-catalog'
 import { QRCodeSVG } from '@rc-component/qrcode'
 import {
   CheckCircle2,
@@ -94,16 +95,17 @@ const BrowserAccessSteps = (): React.JSX.Element => {
       <Smartphone className="mt-0.5 size-5 shrink-0 text-blue-600" aria-hidden="true" />
       <ol className="min-w-0 space-y-2 text-sm leading-relaxed text-foreground">
         <li>
-          <span className="font-medium">1.</span> Scan the QR code or open the saved link in a
-          browser.
+          <span className="font-medium">1.</span> {t('remoteControl.browserStep1')}
         </li>
         <li>
-          <span className="font-medium">2.</span> Complete two-step verification by matching the
-          six-digit code, then approve the request from this computer or a trusted browser.
+          <span className="font-medium">2.</span> {t('remoteControl.browserStep2')}
         </li>
         <li>
-          <span className="font-medium">3.</span> Choose “{t('remoteControl.alwaysTrustBrowser')}”
-          for direct access on future visits while Browser access is on.
+          <span className="font-medium">3.</span>{' '}
+          {t('remoteControl.browserStep3').replace(
+            '{trust}',
+            t('remoteControl.alwaysTrustBrowser')
+          )}
         </li>
       </ol>
     </div>
@@ -188,7 +190,7 @@ export const RemoteControlPanel = (): React.JSX.Element => {
     return (
       <div className="flex min-h-64 items-center justify-center text-sm text-muted-foreground">
         <LoaderCircle className="mr-2 size-4 animate-spin" aria-hidden="true" />
-        Loading remote access…
+        {t('remoteControl.loadingRemote')}
       </div>
     )
   }
@@ -342,7 +344,7 @@ export const RemoteControlPanel = (): React.JSX.Element => {
 
         {modeError ? (
           <div className="rounded-lg border border-destructive/35 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-            {modeError}
+            {localizeRemoteMessage(t, modeError)}
           </div>
         ) : null}
 
@@ -393,9 +395,11 @@ export const RemoteControlPanel = (): React.JSX.Element => {
                   <span className="font-medium">3.</span> {t('remoteControl.step3')}
                 </li>
                 <li>
-                  <span className="font-medium">4.</span> Choose “
-                  {t('remoteControl.alwaysTrustBrowser')}” to skip approval on future visits to the
-                  same remote address.
+                  <span className="font-medium">4.</span>{' '}
+                  {t('remoteControl.appStep4').replace(
+                    '{trust}',
+                    t('remoteControl.alwaysTrustBrowser')
+                  )}
                 </li>
               </ol>
             </div>
@@ -450,7 +454,7 @@ export const RemoteControlPanel = (): React.JSX.Element => {
                           <Button type="button" variant="outline" size="sm" asChild>
                             <a href={snapshot.accessUrl} target="_blank" rel="noreferrer">
                               <ExternalLink className="size-3.5" aria-hidden="true" />
-                              Open
+                              {t('remoteControl.open')}
                             </a>
                           </Button>
                         </div>
@@ -483,7 +487,7 @@ export const RemoteControlPanel = (): React.JSX.Element => {
             ) : (
               <div>
                 <div className="text-sm text-muted-foreground">
-                  The browser link and QR code appear here after setup is complete.
+                  {t('remoteControl.browserSetupPending')}
                 </div>
                 <BrowserAccessSteps />
               </div>
@@ -511,7 +515,7 @@ export const RemoteControlPanel = (): React.JSX.Element => {
                       {browser.browser} · {browser.platform}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      Last used {timeLabel(browser.lastSeenAt)}
+                      {t('remoteControl.lastUsed').replace('{time}', timeLabel(browser.lastSeenAt))}
                     </div>
                   </div>
                   <Button
@@ -524,7 +528,7 @@ export const RemoteControlPanel = (): React.JSX.Element => {
                         window.api.remoteAccess.revokeBrowser({ browserId: browser.id })
                       )
                     }
-                    aria-label={`Revoke ${browser.browser}`}
+                    aria-label={t('remoteControl.revokeAria').replace('{name}', browser.browser)}
                     className="text-muted-foreground hover:text-destructive"
                   >
                     <Trash2 className="size-4" aria-hidden="true" />

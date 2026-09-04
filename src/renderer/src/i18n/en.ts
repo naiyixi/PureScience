@@ -1824,6 +1824,82 @@ export const en: Record<ZhKey, string> = {
   'settings.dismissSettingsError': 'Dismiss settings error',
   'settings.endpoint': 'Endpoint',
   'settings.tokenUsage': 'Token usage',
+  'toolActivity.webSearch': 'Web Search',
+  'toolActivity.query': 'query',
+  'remoteError.approvalCancelled':
+    'Administrator approval was cancelled or Remote.It could not complete the command.',
+  'remoteError.approvalCancelledPlural':
+    'Administrator approval was cancelled or Remote.It could not complete the commands.',
+  'remoteError.routeKeptWhileDisabled':
+    'Provider route kept configured while local remote access is disabled',
+  'remoteError.disabledLocally': 'Remote access disabled locally',
+  'remoteError.notInitialized': 'Remote access is not initialized yet.',
+  'remoteError.invalidHttpsBrowserUrl': 'Remote access returned an invalid HTTPS browser URL.',
+  'remoteError.invalidBrowserUrl': 'Remote access returned an invalid browser URL.',
+  'remoteError.couldNotCreateService':
+    'Remote.It could not create the PureScience service. On macOS or Linux, service management may require administrator approval.',
+  'remoteError.couldNotDisablePublicEndpoint':
+    'Remote.It could not disable the service public endpoint.',
+  'remoteError.couldNotEnablePersistentUrl':
+    'Remote.It could not enable the Persistent Public URL for PureScience.',
+  'remoteError.windowsServicesUnclear':
+    'Remote.It could not identify existing Windows services, so PureScience stopped before creating duplicates.',
+  'remoteError.couldNotPrepareServices':
+    'Remote.It could not prepare the App and Browser services. On macOS or Linux, initial service management may require administrator approval.',
+  'remoteError.couldNotUpdateService':
+    'Remote.It could not update the PureScience service. On macOS or Linux, service management may require administrator approval.',
+  'remoteError.createdButNotEnabled':
+    'Remote.It created the PureScience service but it is not enabled.',
+  'remoteError.createdNoIdentifier':
+    'Remote.It created the service but did not report its identifier.',
+  'remoteError.didNotDisablePublicEndpoint':
+    'Remote.It did not disable the service public endpoint.',
+  'remoteError.didNotEnablePersistentUrl':
+    'Remote.It did not enable a Persistent Public URL for PureScience.',
+  'remoteError.noCloudConfig': 'Remote.It did not return cloud configuration data.',
+  'remoteError.noTwoServiceIdentifiers':
+    'Remote.It did not return two distinct PureScience service identifiers.',
+  'remoteError.notFinishedSwitchingMode':
+    'Remote.It has not finished switching its background service mode. Wait a few seconds, then click Detect again. Do not add the device again.',
+  'remoteError.stillSwitchingMode':
+    'Remote.It is still switching its background service mode. Wait a few seconds, then click Detect again. Do not add the device again.',
+  'remoteError.rejectedCloudConfig': 'Remote.It rejected the cloud configuration request.',
+  'remoteError.reportedError': 'Remote.It reported an error.',
+  'remoteError.invalidServiceIdentifier': 'Remote.It returned an invalid service identifier.',
+  'remoteError.incompletePreparation':
+    'Remote.It returned incomplete results while preparing remote access.',
+  'remoteError.invalidCloudConfigData': 'Remote.It returned invalid cloud configuration data.',
+  'remoteError.invalidStatusData': 'Remote.It returned invalid status data.',
+  'remoteError.statusChangesPending':
+    'Remote.It status has not reported all accepted service changes yet.',
+  'remoteError.statusUnavailable': 'Remote.It status is temporarily unavailable.',
+  'remoteError.localWebStopped':
+    'The local web service stopped. Detect again to restore remote access.',
+  'remoteError.appNotInstalled':
+    'The remote access app is not installed. Install the desktop app, sign in, then detect again.',
+  'remoteError.appUnavailable': 'The remote access app is unavailable.',
+  'remoteError.unableReadStatus': 'Unable to read Remote.It status.',
+  'gs.placeholderProject': 'Search this project…',
+  'gs.placeholderAll': 'Search sessions and artifacts…',
+  'gs.resultsCount': '{n} results',
+  'gs.searchingArtifacts': 'Searching artifacts…',
+  'gs.regionArtifacts': 'Artifacts',
+  'gs.regionSessions': 'Sessions',
+  'gs.regionCommands': 'Commands',
+  'remoteControl.open': 'Open',
+  'remoteControl.loadingRemote': 'Loading remote access…',
+  'remoteControl.lastUsed': 'Last used {time}',
+  'remoteControl.revokeAria': 'Revoke {name}',
+  'remoteControl.browserSetupPending':
+    'The browser link and QR code appear here after setup is complete.',
+  'remoteControl.appStep4':
+    'Choose “{trust}” to skip approval on future visits to the same remote address.',
+  'remoteControl.browserStep1': 'Scan the QR code or open the saved link in a browser.',
+  'remoteControl.browserStep2':
+    'Complete two-step verification by matching the six-digit code, then approve the request from this computer or a trusted browser.',
+  'remoteControl.browserStep3':
+    'Choose “{trust}” for direct access on future visits while Browser access is on.',
+
   'settings.tokenUsageDesc': 'Review token volume, daily composition, and conversation activity.',
   'settings.timeRange': 'Time range',
   'settings.usageMayBeUnreported': 'Older conversations or some providers may not report usage.',

@@ -90,6 +90,81 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.general': '일반',
   'settings.tags': '태그',
   'settings.tokenUsage': '토큰 사용량',
+  'toolActivity.webSearch': '웹 검색',
+  'toolActivity.query': '쿼리',
+  'remoteError.approvalCancelled':
+    '관리자 승인이 취소되었거나 Remote.It이 해당 명령을 완료하지 못했습니다.',
+  'remoteError.approvalCancelledPlural':
+    '관리자 승인이 취소되었거나 Remote.It이 이 명령들을 완료하지 못했습니다.',
+  'remoteError.routeKeptWhileDisabled':
+    '로컬 원격 액세스가 비활성화된 상태에서 공급자 경로가 계속 구성되어 있습니다.',
+  'remoteError.disabledLocally': '로컬 원격 액세스가 비활성화되었습니다.',
+  'remoteError.notInitialized': '원격 액세스가 아직 초기화되지 않았습니다.',
+  'remoteError.invalidHttpsBrowserUrl': 'Remote.It이 잘못된 HTTPS 브라우저 URL을 반환했습니다.',
+  'remoteError.invalidBrowserUrl': 'Remote.It이 잘못된 브라우저 URL을 반환했습니다.',
+  'remoteError.couldNotCreateService':
+    'Remote.It이 PureScience 서비스를 만들지 못했습니다. macOS 또는 Linux에서는 서비스 관리에 관리자 승인이 필요할 수 있습니다.',
+  'remoteError.couldNotDisablePublicEndpoint':
+    'Remote.It이 서비스 공용 엔드포인트를 비활성화하지 못했습니다.',
+  'remoteError.couldNotEnablePersistentUrl':
+    'Remote.It이 PureScience에 대한 영구 공용 URL을 활성화하지 못했습니다.',
+  'remoteError.windowsServicesUnclear':
+    'Remote.It이 기존 Windows 서비스를 식별하지 못해 PureScience가 중복 생성을 중단했습니다.',
+  'remoteError.couldNotPrepareServices':
+    'Remote.It이 App 및 브라우저 서비스를 준비하지 못했습니다. macOS 또는 Linux에서는 초기 서비스 관리에 관리자 승인이 필요할 수 있습니다.',
+  'remoteError.couldNotUpdateService':
+    'Remote.It이 PureScience 서비스를 업데이트하지 못했습니다. macOS 또는 Linux에서는 서비스 관리에 관리자 승인이 필요할 수 있습니다.',
+  'remoteError.createdButNotEnabled':
+    'Remote.It이 PureScience 서비스를 만들었지만 활성화되지 않았습니다.',
+  'remoteError.createdNoIdentifier':
+    'Remote.It이 서비스를 만들었지만 식별자를 보고하지 않았습니다.',
+  'remoteError.didNotDisablePublicEndpoint':
+    'Remote.It이 서비스 공용 엔드포인트를 비활성화하지 않았습니다.',
+  'remoteError.didNotEnablePersistentUrl':
+    'Remote.It이 PureScience에 대한 영구 공용 URL을 활성화하지 않았습니다.',
+  'remoteError.noCloudConfig': 'Remote.It이 클라우드 구성 데이터를 반환하지 않았습니다.',
+  'remoteError.noTwoServiceIdentifiers':
+    'Remote.It이 서로 다른 두 PureScience 서비스 식별자를 반환하지 않았습니다.',
+  'remoteError.notFinishedSwitchingMode':
+    'Remote.It이 백그라운드 서비스 모드 전환을 아직 완료하지 않았습니다. 몇 초 기다린 후 "다시 감지"를 클릭하세요. 기기를 다시 추가하지 마세요.',
+  'remoteError.stillSwitchingMode':
+    'Remote.It이 아직 백그라운드 서비스 모드를 전환 중입니다. 몇 초 기다린 후 "다시 감지"를 클릭하세요. 기기를 다시 추가하지 마세요.',
+  'remoteError.rejectedCloudConfig': 'Remote.It이 클라우드 구성 요청을 거부했습니다.',
+  'remoteError.reportedError': 'Remote.It이 오류를 보고했습니다.',
+  'remoteError.invalidServiceIdentifier': 'Remote.It이 잘못된 서비스 식별자를 반환했습니다.',
+  'remoteError.incompletePreparation':
+    'Remote.It이 원격 액세스 준비 중 불완전한 결과를 반환했습니다.',
+  'remoteError.invalidCloudConfigData': 'Remote.It이 잘못된 클라우드 구성 데이터를 반환했습니다.',
+  'remoteError.invalidStatusData': 'Remote.It이 잘못된 상태 데이터를 반환했습니다.',
+  'remoteError.statusChangesPending':
+    'Remote.It 상태가 수락된 서비스 변경 사항을 아직 모두 보고하지 않았습니다.',
+  'remoteError.statusUnavailable': 'Remote.It 상태를 일시적으로 사용할 수 없습니다.',
+  'remoteError.localWebStopped':
+    '로컬 웹 서비스가 중지되었습니다. 다시 감지하여 원격 액세스를 복원하세요.',
+  'remoteError.appNotInstalled':
+    '원격 액세스 앱이 설치되지 않았습니다. 데스크톱 앱을 설치하고 로그인한 후 다시 감지하세요.',
+  'remoteError.appUnavailable': '원격 액세스 앱을 사용할 수 없습니다.',
+  'remoteError.unableReadStatus': 'Remote.It 상태를 읽을 수 없습니다.',
+  'gs.placeholderProject': '이 프로젝트 검색…',
+  'gs.placeholderAll': '세션 및 산출물 검색…',
+  'gs.resultsCount': '{n}개 결과',
+  'gs.searchingArtifacts': '산출물 검색 중…',
+  'gs.regionArtifacts': '산출물',
+  'gs.regionSessions': '세션',
+  'gs.regionCommands': '명령',
+  'remoteControl.open': '열기',
+  'remoteControl.loadingRemote': '원격 액세스 불러오는 중…',
+  'remoteControl.lastUsed': '마지막 사용 {time}',
+  'remoteControl.revokeAria': '{name} 취소',
+  'remoteControl.browserSetupPending':
+    '설정이 완료되면 브라우저 링크와 QR 코드가 여기에 표시됩니다.',
+  'remoteControl.appStep4':
+    '앞으로 동일한 원격 주소에 방문할 때 승인을 건너뛰려면 “{trust}”를 선택하세요.',
+  'remoteControl.browserStep1': 'QR 코드를 스캔하거나 저장된 링크를 브라우저에서 여세요.',
+  'remoteControl.browserStep2':
+    '여섯 자리 코드를 일치시켜 2단계 인증을 완료한 후 이 컴퓨터 또는 신뢰하는 브라우저에서 요청을 승인하세요.',
+  'remoteControl.browserStep3':
+    '브라우저 액세스가 켜져 있는 동안 향후 방문에서 직접 액세스하려면 “{trust}”를 선택하세요.',
   'settings.archived': '보관됨',
   'settings.appearance': '모양',
   'settings.licensing': '라이선스',

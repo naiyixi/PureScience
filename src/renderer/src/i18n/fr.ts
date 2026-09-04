@@ -90,6 +90,83 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.general': 'Général',
   'settings.tags': 'Étiquettes',
   'settings.tokenUsage': 'Utilisation de tokens',
+  'toolActivity.webSearch': 'Recherche Web',
+  'toolActivity.query': 'requête',
+  'remoteError.approvalCancelled':
+    'L’approbation de l’administrateur a été annulée ou Remote.It n’a pas pu exécuter la commande.',
+  'remoteError.approvalCancelledPlural':
+    'L’approbation de l’administrateur a été annulée ou Remote.It n’a pas pu exécuter les commandes.',
+  'remoteError.routeKeptWhileDisabled':
+    'La route du fournisseur reste configurée alors que l’accès à distance local est désactivé.',
+  'remoteError.disabledLocally': 'L’accès à distance local est désactivé.',
+  'remoteError.notInitialized': 'L’accès à distance n’est pas encore initialisé.',
+  'remoteError.invalidHttpsBrowserUrl': 'Remote.It a renvoyé une URL de navigateur HTTPS invalide.',
+  'remoteError.invalidBrowserUrl': 'Remote.It a renvoyé une URL de navigateur invalide.',
+  'remoteError.couldNotCreateService':
+    'Remote.It n’a pas pu créer le service PureScience. Sur macOS ou Linux, la gestion des services peut nécessiter l’approbation de l’administrateur.',
+  'remoteError.couldNotDisablePublicEndpoint':
+    'Remote.It n’a pas pu désactiver le point de terminaison public du service.',
+  'remoteError.couldNotEnablePersistentUrl':
+    'Remote.It n’a pas pu activer l’URL publique permanente pour PureScience.',
+  'remoteError.windowsServicesUnclear':
+    'Remote.It n’a pas pu identifier les services Windows existants ; PureScience s’est arrêté avant de créer des doublons.',
+  'remoteError.couldNotPrepareServices':
+    'Remote.It n’a pas pu préparer les services App et navigateur. Sur macOS ou Linux, la gestion initiale des services peut nécessiter l’approbation de l’administrateur.',
+  'remoteError.couldNotUpdateService':
+    'Remote.It n’a pas pu mettre à jour le service PureScience. Sur macOS ou Linux, la gestion des services peut nécessiter l’approbation de l’administrateur.',
+  'remoteError.createdButNotEnabled':
+    'Remote.It a créé le service PureScience mais il n’est pas activé.',
+  'remoteError.createdNoIdentifier':
+    'Remote.It a créé le service mais n’a pas signalé son identifiant.',
+  'remoteError.didNotDisablePublicEndpoint':
+    'Remote.It n’a pas désactivé le point de terminaison public du service.',
+  'remoteError.didNotEnablePersistentUrl':
+    'Remote.It n’a pas activé d’URL publique permanente pour PureScience.',
+  'remoteError.noCloudConfig': 'Remote.It n’a pas renvoyé de données de configuration cloud.',
+  'remoteError.noTwoServiceIdentifiers':
+    'Remote.It n’a pas renvoyé deux identifiants de service PureScience distincts.',
+  'remoteError.notFinishedSwitchingMode':
+    'Remote.It n’a pas fini de basculer son mode de service en arrière-plan. Patientez quelques secondes puis cliquez sur Détecter à nouveau. N’ajoutez plus l’appareil.',
+  'remoteError.stillSwitchingMode':
+    'Remote.It est encore en train de basculer son mode de service en arrière-plan. Patientez quelques secondes puis cliquez sur Détecter à nouveau. N’ajoutez plus l’appareil.',
+  'remoteError.rejectedCloudConfig': 'Remote.It a rejeté la demande de configuration cloud.',
+  'remoteError.reportedError': 'Remote.It a signalé une erreur.',
+  'remoteError.invalidServiceIdentifier': 'Remote.It a renvoyé un identifiant de service invalide.',
+  'remoteError.incompletePreparation':
+    'Remote.It a renvoyé des résultats incomplets lors de la préparation de l’accès à distance.',
+  'remoteError.invalidCloudConfigData':
+    'Remote.It a renvoyé des données de configuration cloud invalides.',
+  'remoteError.invalidStatusData': 'Remote.It a renvoyé des données d’état invalides.',
+  'remoteError.statusChangesPending':
+    'Remote.It n’a pas encore signalé toutes les modifications de service acceptées.',
+  'remoteError.statusUnavailable': 'L’état de Remote.It est temporairement indisponible.',
+  'remoteError.localWebStopped':
+    'Le service Web local s’est arrêté. Détectez à nouveau pour restaurer l’accès à distance.',
+  'remoteError.appNotInstalled':
+    'L’application d’accès à distance n’est pas installée. Installez l’application de bureau, connectez-vous, puis détectez à nouveau.',
+  'remoteError.appUnavailable': 'L’application d’accès à distance est indisponible.',
+  'remoteError.unableReadStatus': 'Impossible de lire l’état de Remote.It.',
+  'gs.placeholderProject': 'Rechercher dans ce projet…',
+  'gs.placeholderAll': 'Rechercher sessions et artefacts…',
+  'gs.resultsCount': '{n} résultats',
+  'gs.searchingArtifacts': 'Recherche des artefacts…',
+  'gs.regionArtifacts': 'Artefacts',
+  'gs.regionSessions': 'Sessions',
+  'gs.regionCommands': 'Commandes',
+  'remoteControl.open': 'Ouvrir',
+  'remoteControl.loadingRemote': 'Chargement de l’accès à distance…',
+  'remoteControl.lastUsed': 'Dernière utilisation {time}',
+  'remoteControl.revokeAria': 'Révoquer {name}',
+  'remoteControl.browserSetupPending':
+    'Le lien navigateur et le code QR apparaissent ici une fois la configuration terminée.',
+  'remoteControl.appStep4':
+    'Choisissez « {trust} » pour ignorer l’approbation lors des prochaines visites de la même adresse distante.',
+  'remoteControl.browserStep1':
+    'Scannez le code QR ou ouvrez le lien enregistré dans un navigateur.',
+  'remoteControl.browserStep2':
+    'Terminez la vérification en deux étapes en saisissant le code à six chiffres, puis approuvez la demande depuis cet ordinateur ou un navigateur de confiance.',
+  'remoteControl.browserStep3':
+    'Choisissez « {trust} » pour un accès direct lors des prochaines visites tant que l’accès navigateur est activé.',
   'settings.archived': 'Archivé',
   'settings.appearance': 'Apparence',
   'settings.licensing': 'Licences',

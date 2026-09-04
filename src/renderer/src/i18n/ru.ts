@@ -90,6 +90,80 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.general': 'Общие',
   'settings.tags': 'Теги',
   'settings.tokenUsage': 'Использование токенов',
+  'toolActivity.webSearch': 'Веб-поиск',
+  'toolActivity.query': 'запрос',
+  'remoteError.approvalCancelled':
+    'Подтверждение администратора было отменено, или Remote.It не смог выполнить команду.',
+  'remoteError.approvalCancelledPlural':
+    'Подтверждение администратора было отменено, или Remote.It не смог выполнить команды.',
+  'remoteError.routeKeptWhileDisabled':
+    'Маршрут провайдера остаётся настроенным при отключённом локальном удалённом доступе.',
+  'remoteError.disabledLocally': 'Локальный удалённый доступ отключён.',
+  'remoteError.notInitialized': 'Удалённый доступ ещё не инициализирован.',
+  'remoteError.invalidHttpsBrowserUrl': 'Remote.It вернул недопустимый HTTPS-адрес браузера.',
+  'remoteError.invalidBrowserUrl': 'Remote.It вернул недопустимый адрес браузера.',
+  'remoteError.couldNotCreateService':
+    'Remote.It не смог создать службу PureScience. На macOS или Linux управление службами может требовать подтверждения администратора.',
+  'remoteError.couldNotDisablePublicEndpoint':
+    'Remote.It не смог отключить публичную конечную точку службы.',
+  'remoteError.couldNotEnablePersistentUrl':
+    'Remote.It не смог включить постоянный публичный URL для PureScience.',
+  'remoteError.windowsServicesUnclear':
+    'Remote.It не смог определить существующие службы Windows, поэтому PureScience остановился, не создавая дубликатов.',
+  'remoteError.couldNotPrepareServices':
+    'Remote.It не смог подготовить службы приложения и браузера. На macOS или Linux первоначальное управление службами может требовать подтверждения администратора.',
+  'remoteError.couldNotUpdateService':
+    'Remote.It не смог обновить службу PureScience. На macOS или Linux управление службами может требовать подтверждения администратора.',
+  'remoteError.createdButNotEnabled': 'Remote.It создал службу PureScience, но она не включена.',
+  'remoteError.createdNoIdentifier': 'Remote.It создал службу, но не сообщил её идентификатор.',
+  'remoteError.didNotDisablePublicEndpoint':
+    'Remote.It не отключил публичную конечную точку службы.',
+  'remoteError.didNotEnablePersistentUrl':
+    'Remote.It не включил постоянный публичный URL для PureScience.',
+  'remoteError.noCloudConfig': 'Remote.It не вернул данные облачной конфигурации.',
+  'remoteError.noTwoServiceIdentifiers':
+    'Remote.It не вернул два различных идентификатора службы PureScience.',
+  'remoteError.notFinishedSwitchingMode':
+    'Remote.It ещё не завершил переключение фонового режима службы. Подождите несколько секунд и нажмите «Обнаружить снова». Не добавляйте устройство повторно.',
+  'remoteError.stillSwitchingMode':
+    'Remote.It всё ещё переключает фоновый режим службы. Подождите несколько секунд и нажмите «Обнаружить снова». Не добавляйте устройство повторно.',
+  'remoteError.rejectedCloudConfig': 'Remote.It отклонил запрос облачной конфигурации.',
+  'remoteError.reportedError': 'Remote.It сообщил об ошибке.',
+  'remoteError.invalidServiceIdentifier': 'Remote.It вернул недопустимый идентификатор службы.',
+  'remoteError.incompletePreparation':
+    'Remote.It вернул неполные результаты при подготовке удалённого доступа.',
+  'remoteError.invalidCloudConfigData':
+    'Remote.It вернул недопустимые данные облачной конфигурации.',
+  'remoteError.invalidStatusData': 'Remote.It вернул недопустимые данные состояния.',
+  'remoteError.statusChangesPending':
+    'Состояние Remote.It ещё не сообщило обо всех принятых изменениях служб.',
+  'remoteError.statusUnavailable': 'Состояние Remote.It временно недоступно.',
+  'remoteError.localWebStopped':
+    'Локальная веб-служба остановлена. Нажмите «Обнаружить снова», чтобы восстановить удалённый доступ.',
+  'remoteError.appNotInstalled':
+    'Приложение удалённого доступа не установлено. Установите настольное приложение, войдите и нажмите «Обнаружить снова».',
+  'remoteError.appUnavailable': 'Приложение удалённого доступа недоступно.',
+  'remoteError.unableReadStatus': 'Не удаётся прочитать состояние Remote.It.',
+  'gs.placeholderProject': 'Поиск по этому проекту…',
+  'gs.placeholderAll': 'Поиск сеансов и артефактов…',
+  'gs.resultsCount': '{n} результатов',
+  'gs.searchingArtifacts': 'Поиск артефактов…',
+  'gs.regionArtifacts': 'Артефакты',
+  'gs.regionSessions': 'Сеансы',
+  'gs.regionCommands': 'Команды',
+  'remoteControl.open': 'Открыть',
+  'remoteControl.loadingRemote': 'Загрузка удалённого доступа…',
+  'remoteControl.lastUsed': 'Последнее использование {time}',
+  'remoteControl.revokeAria': 'Отозвать {name}',
+  'remoteControl.browserSetupPending':
+    'Ссылка для браузера и QR-код появятся здесь после завершения настройки.',
+  'remoteControl.appStep4':
+    'Выберите «{trust}», чтобы пропускать подтверждение при последующих посещениях того же удалённого адреса.',
+  'remoteControl.browserStep1': 'Отсканируйте QR-код или откройте сохранённую ссылку в браузере.',
+  'remoteControl.browserStep2':
+    'Завершите двухэтапную проверку, сопоставив шестизначный код, затем подтвердите запрос с этого компьютера или из доверенного браузера.',
+  'remoteControl.browserStep3':
+    'Выберите «{trust}», чтобы получать прямой доступ при последующих посещениях, пока включён доступ через браузер.',
   'settings.archived': 'Архивировано',
   'settings.appearance': 'Внешний вид',
   'settings.licensing': 'Лицензирование',
