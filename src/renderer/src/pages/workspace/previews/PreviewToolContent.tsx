@@ -64,7 +64,11 @@ const SessionReviewerContent = ({
     return (
       <div className="flex size-full flex-col overflow-hidden">
         <div className="shrink-0 border-b border-border-200 px-4 py-2">
-          <div className="flex items-center gap-1" role="tablist" aria-label="Reviewer views">
+          <div
+            className="flex items-center gap-1"
+            role="tablist"
+            aria-label={t('reviewer.viewsTablist')}
+          >
             {tabButton('checklist', t('ui.checklist'))}
           </div>
         </div>
@@ -84,7 +88,11 @@ const SessionReviewerContent = ({
   return (
     <div className="flex size-full flex-col overflow-hidden">
       <div className="shrink-0 border-b border-border-200 px-4 py-2">
-        <div className="flex items-center gap-1" role="tablist" aria-label="Reviewer views">
+        <div
+          className="flex items-center gap-1"
+          role="tablist"
+          aria-label={t('reviewer.viewsTablist')}
+        >
           {tabButton('checks', t('ui.checks'))}
           {tabButton('checklist', t('ui.checklist'))}
           {tabButton('context', t('ui.foldedcontext'))}

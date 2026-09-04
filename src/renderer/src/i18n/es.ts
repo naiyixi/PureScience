@@ -90,6 +90,12 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.general': 'General',
   'settings.tags': 'Etiquetas',
   'settings.tokenUsage': 'Uso de tokens',
+  'writeAudit.title': 'Auditoría de escritura',
+  'writeAudit.summary':
+    '{n} cambio{s} de archivo — creado {created} · modificado {modified} · eliminado {removed}',
+  'modelPicker.noModelAria': 'No hay ningún modelo disponible — abrir ajustes',
+  'modelPicker.openSettings': 'Abrir ajustes',
+  'reviewer.viewsTablist': 'Vistas de revisión',
   'foldTimeline.reasonAutomatic': 'automático',
   'foldTimeline.reasonManual': 'manualmente',
   'foldTimeline.reasonOverflow': 'recuperación por desbordamiento',

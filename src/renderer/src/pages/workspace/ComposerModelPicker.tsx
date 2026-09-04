@@ -143,7 +143,7 @@ const ComposerModelPicker = (): React.JSX.Element | null => {
         type="button"
         onClick={() => openSettings()}
         className="flex h-8 items-center gap-1.5 rounded-md px-2.5 text-sm text-amber-700 hover:bg-amber-50 transition-colors dark:text-amber-400 dark:hover:bg-amber-950/30"
-        aria-label="No model available — open settings"
+        aria-label={t('modelPicker.noModelAria')}
       >
         <AlertTriangle className="size-4 shrink-0" strokeWidth={2} aria-hidden="true" />
         <span className="truncate">{t('modelPicker.noModel')}</span>
@@ -431,7 +431,9 @@ const ComposerModelPicker = (): React.JSX.Element | null => {
         {hasUsable ? null : (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={() => openSettings()}>Open Settings</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => openSettings()}>
+              {t('modelPicker.openSettings')}
+            </DropdownMenuItem>
           </>
         )}
       </DropdownMenuContent>
