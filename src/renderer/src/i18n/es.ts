@@ -90,6 +90,10 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.general': 'General',
   'settings.tags': 'Etiquetas',
   'settings.tokenUsage': 'Uso de tokens',
+  'ws.reportError': 'Informar del error',
+  'ws.dropFilesToAttach': 'Suelta archivos para adjuntar',
+  'lifecycle.view': 'Ver',
+  'lifecycle.dismiss': 'Cerrar',
   'runtimes.appManagedEnv': 'Entorno gestionado por la app',
   'runtimes.disableTitle': '¿Desactivar {env}?',
   'runtimes.disableDescOne':

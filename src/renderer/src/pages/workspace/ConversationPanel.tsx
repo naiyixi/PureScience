@@ -594,7 +594,7 @@ const ConversationPanel = ({
                               aria-label={t('ws.reportThisError')}
                             >
                               <Flag className="size-3" strokeWidth={2.2} aria-hidden="true" />
-                              Report error
+                              {t('ws.reportError')}
                             </button>
                           ) : null}
                         </div>
@@ -762,7 +762,10 @@ const ConversationPanel = ({
                     >
                       {/* File-drag overlay is scoped to the composer input card only. */}
                       {isDragging ? (
-                        <FileDropOverlay label="Drop files to attach" className="rounded-2xl" />
+                        <FileDropOverlay
+                          label={t('ws.dropFilesToAttach')}
+                          className="rounded-2xl"
+                        />
                       ) : null}
                       <div className="flex flex-col gap-2">
                         {attachments.length > 0 || attachmentTransfers.length > 0 ? (

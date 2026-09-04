@@ -42,11 +42,11 @@ const LifecycleToast = ({
         onClick={onView}
         className="shrink-0 rounded px-2 py-1 text-xs font-medium text-accent-main-100 hover:bg-bg-300"
       >
-        View
+        {t('lifecycle.view')}
       </button>
       <button
         type="button"
-        aria-label="Dismiss"
+        aria-label={t('lifecycle.dismiss')}
         onClick={onDismiss}
         className="shrink-0 rounded p-1 text-text-300 hover:bg-bg-300 hover:text-text-100"
       >

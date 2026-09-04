@@ -90,6 +90,10 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.general': '일반',
   'settings.tags': '태그',
   'settings.tokenUsage': '토큰 사용량',
+  'ws.reportError': '오류 신고',
+  'ws.dropFilesToAttach': '파일을 끌어다 놓아 첨부',
+  'lifecycle.view': '보기',
+  'lifecycle.dismiss': '닫기',
   'runtimes.appManagedEnv': '앱 관리 환경',
   'runtimes.disableTitle': '{env}을(를) 비활성화할까요?',
   'runtimes.disableDescOne':

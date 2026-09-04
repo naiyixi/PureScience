@@ -91,6 +91,10 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.general': '一般',
   'settings.tags': 'タグ',
   'settings.tokenUsage': 'トークン使用量',
+  'ws.reportError': 'エラーを報告',
+  'ws.dropFilesToAttach': 'ファイルをドロップして添付',
+  'lifecycle.view': '表示',
+  'lifecycle.dismiss': '閉じる',
   'runtimes.appManagedEnv': 'アプリ管理環境',
   'runtimes.disableTitle': '{env} を無効にしますか？',
   'runtimes.disableDescOne':
