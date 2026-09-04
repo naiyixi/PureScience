@@ -19,6 +19,7 @@ PureScience currently includes 18 featured research skills and 24 built-in scien
 - [Quick Start](#-quick-start)
 - [Product Tour](#product-tour)
 - [Showcase](#showcase)
+- [Real Runs Behind the Claims](#real-runs-behind-the-claims-the-ai4s-dry-wet-loop-in-action)
 - [Why PureScience](#why-purescience)
 - [Design Principles](#design-principles)
 - [Core Capabilities](#core-capabilities)
@@ -155,6 +156,30 @@ All key data points were re-checked against the public APIs after the run: 5/5 C
 <p align="center">
   <img src="docs/demo-verification/assets/shot1-timeline.png" alt="PureScience session — tool activity timeline in the transcript" width="620" />
 </p>
+
+## Real Runs Behind the Claims: the AI4S dry-wet loop, in action
+
+PureScience is built around one position: **AI for science only pays off when the loop between computation and experiment actually closes.** We frame that loop as *hypothesis (dry) → AI prediction (dry) → computational verification (before the wet bench) → wet-lab handoff → data feedback → knowledge reuse*, and every step must land as a real, versioned, re-runnable artifact — not a chat summary.
+
+That is why PureScience is implemented as the **open, local-first, model-agnostic agent-and-workflow layer** of the AI4S stack — with an evidence, reproducibility and compliance layer running across the whole loop — rather than a hosted research chat that ships your data somewhere else. Screenshots below come from real local sessions on **v1.37**: no demo data, every file on disk. The 13-project acceptance suite spans seven capability levels (L1 literature synthesis → L7 evidence chain & reproducibility); most chat-style tools stop at L1–L2.
+
+#### 13 项能力验收项目（The 13-project acceptance suite）
+![The 13-project acceptance suite](docs/capability-2026-09/acceptance-13-projects.png)
+*Protein design, cross-database consistency, paper reproduction with counter-evidence, compound-target selectivity audits, anti-hallucination stress tests, single-cell analysis, environment reconstruction, drug-evidence cross-checks — each project holds real sessions and real artifacts.*
+
+#### 干湿交接：蛋白设计工作区（Dry side meets the wet bench）
+![Protein-design workspace](docs/capability-2026-09/protein-design-wetlab-panel.png)
+*Three tasks in one project — a GFP/enzyme panel for E. coli expression, de-novo SARS-CoV-2 RBD binders (PDB 6M0J), and 1,000-sequence Ubiquitin inverse folding (PDB 1UBQ). The 9-row GFP panel (V0–V8: designed spectra, monomerization, pH axis, dark control) is delivered as a handoff document for the wet lab, with ORF FASTA and metadata TSV beside it.*
+
+#### 诚实性即产物：失败与局限照实入库（Honesty is logged, not hidden）
+![GFP design run — self-correction on record](docs/capability-2026-09/gfp-honesty-run.png)
+*Mid-run the agent caught its own bug and fixed it on record — “chromophore detection was wrong: water molecules were treated as protein-like HETATM.” Without a GPU it stated ESMFold was unavailable and switched to structure-anchored design instead of pretending. Failures and limits are recorded as negative samples — the data layer AI4S needs most — and every report separates “verified via connectors” from “could not be verified”.*
+
+#### 物理计算本地跑通，结果可复算（Physics runs locally, results re-runnable）
+![Molecular dynamics results — docking scoring + MD stability](docs/capability-2026-09/md-results-stability.png)
+*SARS-CoV-2 Mpro (PDB 7VH8) + nirmatrelvir: 280 docking poses scored by interaction energy (best E_int −52.9 kcal/mol; 16/21 pocket contacts match the crystal), then explicit-solvent molecular dynamics with 82,563 atoms — protein Cα RMSD 0.93 Å, ligand RMSD 0.79 Å, key Glu166 hydrogen bond held in 62% of frames. The whole OpenMM pipeline ran on a laptop, and the report states its own limitations (charge model, non-covalent approximation, 1 ns scale, monomer).*
+
+> **中文速览**：PureScience 把 AI4S 干湿闭环跑成真实产物——以上截图均为 v1.37 本机实跑（13 项能力验收 + 蛋白设计 / 分子动力学 / 多库情报真实会话），每个截图对应的产物文件均可按会话路径复核；报告自带「已验证 / 无法核实」分离与局限声明。更多可复核的独立验证见 [demo verification report](docs/demo-verification/egfr-t790m-dossier-verification.md)。
 
 ## Design Principles
 
