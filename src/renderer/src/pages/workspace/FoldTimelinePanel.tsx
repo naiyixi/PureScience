@@ -5,6 +5,8 @@
 
 import { useEffect, useState } from 'react'
 import { ChevronRight, FoldHorizontal } from 'lucide-react'
+import { useLanguage } from '@/i18n'
+import { getUiLocale } from '@/lib/ui-locale'
 import { cn } from '@/lib/utils'
 
 import type { ContextSummaryChunkView } from '../../../../shared/reviewer'
@@ -14,16 +16,18 @@ type FoldTimelinePanelProps = {
   sessionId: string
 }
 
-const REASON_LABELS: Record<string, string> = {
-  automatic: 'automatic',
-  manual: 'manual',
-  'overflow-recovery': 'overflow recovery'
+const REASON_KEY: Record<string, string> = {
+  automatic: 'foldTimeline.reasonAutomatic',
+  manual: 'foldTimeline.reasonManual',
+  'overflow-recovery': 'foldTimeline.reasonOverflow'
 }
 
 const ChunkRow = ({ chunk }: { chunk: ContextSummaryChunkView }): React.JSX.Element => {
+  const { t } = useLanguage()
   const [expanded, setExpanded] = useState(false)
-  const reason = REASON_LABELS[chunk.reason] ?? chunk.reason
-  const when = new Date(chunk.foldedAt).toLocaleString()
+  const reasonKey = REASON_KEY[chunk.reason]
+  const reason = reasonKey ? (t as (key: string) => string)(reasonKey) : chunk.reason
+  const when = new Date(chunk.foldedAt).toLocaleString(getUiLocale())
 
   return (
     <div
@@ -72,7 +76,7 @@ const ChunkRow = ({ chunk }: { chunk: ContextSummaryChunkView }): React.JSX.Elem
           {chunk.transcriptPreview && (
             <details className="text-[11px]">
               <summary className="cursor-pointer font-medium text-text-400 hover:text-text-300">
-                Folded transcript preview
+                {t('foldTimeline.previewSummary')}
               </summary>
               <pre className="mt-1.5 max-h-48 overflow-y-auto whitespace-pre-wrap rounded bg-bg-200/50 p-2 text-[11px] leading-relaxed text-text-300">
                 {chunk.transcriptPreview}
@@ -87,6 +91,7 @@ const ChunkRow = ({ chunk }: { chunk: ContextSummaryChunkView }): React.JSX.Elem
 }
 
 const FoldTimelinePanel = ({ projectId, sessionId }: FoldTimelinePanelProps): React.JSX.Element => {
+  const { t } = useLanguage()
   const [chunks, setChunks] = useState<ContextSummaryChunkView[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -112,10 +117,12 @@ const FoldTimelinePanel = ({ projectId, sessionId }: FoldTimelinePanelProps): Re
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
       <div className="shrink-0 border-b border-border-200 px-4 py-3">
-        <h2 className="text-[13px] font-semibold text-text-000">Folded context</h2>
+        <h2 className="text-[13px] font-semibold text-text-000">{t('foldTimeline.title')}</h2>
         <p className="mt-0.5 text-[11px] text-text-300">
-          {chunks.length} fold{chunks.length === 1 ? '' : 's'} — original text kept for
-          summary_query
+          {t('foldTimeline.foldCount')
+            .replace('{n}', String(chunks.length))
+            .replace('{s}', chunks.length === 1 ? '' : 's')
+            .replace('{tool}', 'summary_query')}
         </p>
       </div>
 
@@ -127,8 +134,8 @@ const FoldTimelinePanel = ({ projectId, sessionId }: FoldTimelinePanelProps): Re
           </p>
         ) : chunks.length === 0 ? (
           <p className="text-xs text-text-400" data-testid="fold-timeline-empty">
-            No context folds yet. When the agent&apos;s context is compacted, the folded window is kept
-            here and remains queryable.
+            No context folds yet. When the agent&apos;s context is compacted, the folded window is
+            kept here and remains queryable.
           </p>
         ) : (
           <div className="space-y-2">

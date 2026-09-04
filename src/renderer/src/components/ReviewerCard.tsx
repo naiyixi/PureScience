@@ -72,58 +72,61 @@ const ItemCard = ({
   model,
   onGoToTranscript,
   reflagCount
-}: ItemCardProps): React.JSX.Element => (
-  <div className="rounded-lg bg-bg-000 p-3" data-testid={testId}>
-    {/* Badge + title row */}
-    <div className="flex items-start gap-2">
-      <span
-        className={cn(
-          'mt-0.5 shrink-0 rounded bg-bg-200 px-1 py-0.5 text-[11px] font-semibold uppercase',
-          badgeClassName
-        )}
-        data-testid="reviewer-item-badge"
-      >
-        {badgeText}
-      </span>
-      <span className="min-w-0 flex-1 break-words text-xs font-semibold leading-snug text-text-000 [overflow-wrap:anywhere]">
-        {title}
-      </span>
-      {/* Re-flag marker: shown when this claim was re-flagged in the fix loop. */}
-      {reflagCount != null && reflagCount > 0 && (
+}: ItemCardProps): React.JSX.Element => {
+  const { t } = useLanguage()
+  return (
+    <div className="rounded-lg bg-bg-000 p-3" data-testid={testId}>
+      {/* Badge + title row */}
+      <div className="flex items-start gap-2">
         <span
-          className="shrink-0 rounded bg-bg-200 px-1 py-0.5 text-[11px] text-yellow-600 dark:text-yellow-400"
-          data-testid="reviewer-reflag-marker"
+          className={cn(
+            'mt-0.5 shrink-0 rounded bg-bg-200 px-1 py-0.5 text-[11px] font-semibold uppercase',
+            badgeClassName
+          )}
+          data-testid="reviewer-item-badge"
         >
-          re-flagged ×{reflagCount}
+          {badgeText}
         </span>
-      )}
-    </div>
+        <span className="min-w-0 flex-1 break-words text-xs font-semibold leading-snug text-text-000 [overflow-wrap:anywhere]">
+          {title}
+        </span>
+        {/* Re-flag marker: shown when this claim was re-flagged in the fix loop. */}
+        {reflagCount != null && reflagCount > 0 && (
+          <span
+            className="shrink-0 rounded bg-bg-200 px-1 py-0.5 text-[11px] text-yellow-600 dark:text-yellow-400"
+            data-testid="reviewer-reflag-marker"
+          >
+            re-flagged ×{reflagCount}
+          </span>
+        )}
+      </div>
 
-    {/* Body — evidence for all check types */}
-    {body ? (
-      <p className="mt-2 break-words text-xs leading-relaxed text-text-300 [overflow-wrap:anywhere]">
-        {body}
-      </p>
-    ) : null}
+      {/* Body — evidence for all check types */}
+      {body ? (
+        <p className="mt-2 break-words text-xs leading-relaxed text-text-300 [overflow-wrap:anywhere]">
+          {body}
+        </p>
+      ) : null}
 
-    {/* Footer row: model pill (left) + Go to transcript button (right) */}
-    <div className="mt-3 flex items-center justify-between gap-2">
-      <span
-        className="rounded bg-bg-200 px-1.5 py-0.5 text-[11px] text-text-400"
-        data-testid="reviewer-model-pill"
-      >
-        {model}
-      </span>
-      <button
-        type="button"
-        className="rounded bg-bg-200 px-2 py-0.5 text-[11px] text-text-300 transition-colors hover:bg-bg-300 hover:text-text-000"
-        onClick={onGoToTranscript}
-      >
-        Go to transcript
-      </button>
+      {/* Footer row: model pill (left) + Go to transcript button (right) */}
+      <div className="mt-3 flex items-center justify-between gap-2">
+        <span
+          className="rounded bg-bg-200 px-1.5 py-0.5 text-[11px] text-text-400"
+          data-testid="reviewer-model-pill"
+        >
+          {model}
+        </span>
+        <button
+          type="button"
+          className="rounded bg-bg-200 px-2 py-0.5 text-[11px] text-text-300 transition-colors hover:bg-bg-300 hover:text-text-000"
+          onClick={onGoToTranscript}
+        >
+          {t('reviewer.goToTranscript')}
+        </button>
+      </div>
     </div>
-  </div>
-)
+  )
+}
 
 // ── Check card ───────────────────────────────────────────────────────────────
 
@@ -339,7 +342,7 @@ export const ReviewerCard = ({
                 })
               }}
             >
-              {rerunRequested ? 'Re-running…' : 'Re-run review'}
+              {rerunRequested ? t('reviewer.rerunning') : t('reviewer.rerunReview')}
             </button>
           )}
         </div>
