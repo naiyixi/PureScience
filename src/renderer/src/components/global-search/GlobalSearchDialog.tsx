@@ -585,7 +585,7 @@ export const GlobalSearchDialog = ({
           </span>
         </span>
         {active ? (
-          <Hash className="size-5 shrink-0 text-foreground" aria-label="Session" />
+          <Hash className="size-5 shrink-0 text-foreground" aria-label={t('gs.regionSessions')} />
         ) : (
           <span className="rounded bg-primary/15 px-2 py-0.5 text-xs font-medium text-primary">
             {t('home.session')}

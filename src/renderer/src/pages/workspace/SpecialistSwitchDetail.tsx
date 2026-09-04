@@ -1,3 +1,4 @@
+import { useLanguage } from '@/i18n'
 import { ArrowUpRight } from 'lucide-react'
 import { useEffect } from 'react'
 
@@ -42,6 +43,7 @@ const SpecialistSwitchDetail = ({
   // Kept at the top with the other hooks: the detail block can be replaced by a fallback
   // branch on later renders, so hook order must not depend on the resolved profile.
   const openSettingsToSpecialist = useSettingsStore((state) => state.openSettingsToSpecialist)
+  const { t } = useLanguage()
 
   useEffect(() => {
     if (!isLoaded) void load()
@@ -60,7 +62,7 @@ const SpecialistSwitchDetail = ({
   // names resolve to their display names through the catalog when available, matching the detail
   // block's identity presentation.
   const resolveLabel = (name: string | null): string => {
-    if (name === null) return 'Main Agent'
+    if (name === null) return t('specialist.mainAgent')
     const found = items.find((item) => item.kind === 'custom' && item.name === name)
     return found && found.kind === 'custom' ? (found.displayName ?? found.name) : name
   }
@@ -80,10 +82,9 @@ const SpecialistSwitchDetail = ({
   if (targetName === null) {
     return (
       <div className="flex flex-col gap-2 rounded-xl border border-border bg-muted/60 p-3">
-        <div className="text-sm font-semibold text-foreground">Main Agent</div>
+        <div className="text-sm font-semibold text-foreground">{t('specialist.mainAgent')}</div>
         <p className="text-xs leading-relaxed text-muted-foreground">
-          Reverts to the default agent. Specialist capability scoping is removed — all enabled
-          skills and connectors become available again.
+          {t('specialist.mainAgentRevert')}
         </p>
         {direction}
       </div>
@@ -97,8 +98,7 @@ const SpecialistSwitchDetail = ({
       <div className="flex flex-col gap-2 rounded-xl border border-destructive/40 bg-destructive/10 p-3">
         <div className="text-sm font-semibold text-destructive">{targetName}</div>
         <p className="text-xs leading-relaxed text-destructive">
-          This Specialist can no longer be resolved by name — it was renamed or removed since the
-          request started. Approving will be rejected.
+          {t('specialist.unresolvableNote')}
         </p>
         {direction}
       </div>
@@ -106,7 +106,9 @@ const SpecialistSwitchDetail = ({
   }
 
   const capabilityLabel =
-    profile.capabilityMode === 'full' ? 'Full access' : 'Selected capabilities'
+    profile.capabilityMode === 'full'
+      ? t('specialist.fullAccess')
+      : t('specialist.selectedCapabilities')
   const openConfig = (): void => openSettingsToSpecialist(profile.id)
 
   return (
@@ -114,7 +116,10 @@ const SpecialistSwitchDetail = ({
       <button
         type="button"
         data-testid="specialist-detail"
-        aria-label={`Open ${profile.displayName ?? profile.name} configuration`}
+        aria-label={t('specialist.openConfigAria').replace(
+          '{name}',
+          profile.displayName ?? profile.name
+        )}
         onClick={openConfig}
         onKeyDown={(event) => {
           if (event.key === 'Enter' || event.key === ' ') {
@@ -140,14 +145,12 @@ const SpecialistSwitchDetail = ({
             </span>
             {!profile.enabled ? (
               <span className="inline-flex items-center rounded-md border border-destructive/40 bg-destructive/10 px-1.5 py-0.5 text-[11px] font-semibold text-destructive">
-                Disabled
+                {t('specialist.disabled')}
               </span>
             ) : null}
           </div>
           {!profile.enabled ? (
-            <p className="mt-1 text-xs text-destructive">
-              This Specialist is disabled. Approving will be rejected.
-            </p>
+            <p className="mt-1 text-xs text-destructive">{t('specialist.disabledNote')}</p>
           ) : null}
         </div>
         {/* Affordance that the block opens the specialist config; revealed on hover/focus. */}

@@ -1722,6 +1722,16 @@ export const zh = {
   'settings.dismissSettingsError': '关闭设置错误',
   'settings.endpoint': '端点',
   'settings.tokenUsage': '词元用量',
+  'specialist.unresolvableNote':
+    '此专才已无法按名称解析——自请求发起后它被重命名或删除。批准请求将被拒绝。',
+  'specialist.fullAccess': '完整访问权限',
+  'specialist.selectedCapabilities': '所选能力',
+  'specialist.openConfigAria': '打开 {name} 的配置',
+  'specialist.mainAgent': '主智能体',
+  'specialist.mainAgentRevert':
+    '恢复为默认智能体。移除了专才的能力范围限制——所有已启用的技能与连接器将再次可用。',
+  'specialist.disabledNote': '此专才已停用。批准请求将被拒绝。',
+  'specialist.disabled': '已停用',
   'storage.newLocationLabel': '新位置',
   'storage.changeDataLocationTitle': '更改数据位置？',
   'storage.changeDataLocationDesc': '可以将 PureScience 的数据移动到本设备上的另一个文件夹。',

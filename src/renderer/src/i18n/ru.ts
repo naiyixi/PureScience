@@ -90,6 +90,16 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.general': 'Общие',
   'settings.tags': 'Теги',
   'settings.tokenUsage': 'Использование токенов',
+  'specialist.unresolvableNote':
+    'Этот специалист больше не разрешается по имени — он был переименован или удалён после начала запроса. Подтверждение будет отклонено.',
+  'specialist.fullAccess': 'Полный доступ',
+  'specialist.selectedCapabilities': 'Выбранные возможности',
+  'specialist.openConfigAria': 'Открыть конфигурацию {name}',
+  'specialist.mainAgent': 'Основной агент',
+  'specialist.mainAgentRevert':
+    'Возврат к агенту по умолчанию. Ограничение возможностей специалиста снимается — все включённые навыки и коннекторы снова доступны.',
+  'specialist.disabledNote': 'Этот специалист отключён. Подтверждение будет отклонено.',
+  'specialist.disabled': 'Отключён',
   'storage.newLocationLabel': 'Новое расположение',
   'storage.changeDataLocationTitle': 'Изменить расположение данных?',
   'storage.changeDataLocationDesc':

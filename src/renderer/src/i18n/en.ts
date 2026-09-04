@@ -1824,6 +1824,16 @@ export const en: Record<ZhKey, string> = {
   'settings.dismissSettingsError': 'Dismiss settings error',
   'settings.endpoint': 'Endpoint',
   'settings.tokenUsage': 'Token usage',
+  'specialist.unresolvableNote':
+    'This Specialist can no longer be resolved by name — it was renamed or removed since the request started. Approving will be rejected.',
+  'specialist.fullAccess': 'Full access',
+  'specialist.selectedCapabilities': 'Selected capabilities',
+  'specialist.openConfigAria': 'Open {name} configuration',
+  'specialist.mainAgent': 'Main Agent',
+  'specialist.mainAgentRevert':
+    'Reverts to the default agent. Specialist capability scoping is removed — all enabled skills and connectors become available again.',
+  'specialist.disabledNote': 'This Specialist is disabled. Approving will be rejected.',
+  'specialist.disabled': 'Disabled',
   'storage.newLocationLabel': 'New location',
   'storage.changeDataLocationTitle': 'Change data location?',
   'storage.changeDataLocationDesc':

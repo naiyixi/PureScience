@@ -90,6 +90,16 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.general': '일반',
   'settings.tags': '태그',
   'settings.tokenUsage': '토큰 사용량',
+  'specialist.unresolvableNote':
+    '이 스페셜리스트는 이름으로 확인할 수 없습니다. 요청 시작 후 이름이 바뀌거나 삭제되었습니다. 승인하면 거부됩니다.',
+  'specialist.fullAccess': '전체 액세스',
+  'specialist.selectedCapabilities': '선택한 기능',
+  'specialist.openConfigAria': '{name} 구성 열기',
+  'specialist.mainAgent': '메인 에이전트',
+  'specialist.mainAgentRevert':
+    '기본 에이전트로 돌아갑니다. 스페셜리스트의 기능 범위 제한이 제거되어 활성화된 모든 스킬과 커넥터를 다시 사용할 수 있습니다.',
+  'specialist.disabledNote': '이 스페셜리스트는 비활성화되어 있습니다. 승인하면 거부됩니다.',
+  'specialist.disabled': '비활성화됨',
   'storage.newLocationLabel': '새 위치',
   'storage.changeDataLocationTitle': '데이터 위치를 변경할까요?',
   'storage.changeDataLocationDesc':
