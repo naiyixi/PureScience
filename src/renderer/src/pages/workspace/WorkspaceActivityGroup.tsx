@@ -1,5 +1,6 @@
 /* Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V5 */
 import { MessageScrollerItem } from '@/components/ui/message-scroller'
+import { useLanguage } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { ChevronRight } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -71,6 +72,13 @@ const WorkspaceActivityGroup = ({
   jobsByActivityId,
   onOpenJobDetail
 }: WorkspaceActivityGroupProps): React.JSX.Element => {
+  const { t } = useLanguage()
+  // Localized labels for the framework-free search row (the row module itself is i18n-free).
+  const searchRowUi = {
+    webSearch: t('toolActivity.webSearch'),
+    query: t('toolActivity.query'),
+    count: (n: number): string => t('gs.resultsCount').replace('{n}', String(n))
+  }
   // ToolSearch wrapper rows are hidden when concrete search rows are present.
   const renderableActivityEntries = getRenderableActivityEntries(group.activities)
   const visibleActivities = renderableActivityEntries.map(({ activity }) => activity)
@@ -125,6 +133,9 @@ const WorkspaceActivityGroup = ({
                           details={searchDetails}
                           isExpanded={isRowExpanded}
                           onToggleSearch={onToggleRow}
+                          webSearchLabel={searchRowUi.webSearch}
+                          resultCountLabel={searchRowUi.count(searchDetails.resultCount)}
+                          queryLabel={searchRowUi.query}
                         />
                       ) : toolDetails ? (
                         <WorkspaceToolDetailsRow
