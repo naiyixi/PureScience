@@ -56,6 +56,7 @@ PureScience 是一款面向科学研究的开源 AI 工作台：多智能体协�
 - **第四批组 4d2（文件浏览器）**：在访达中显示、目录截断说明；2 键 × 9 语言（字典每语言 2,155 键）；审查：Show in Finder 经 handleReveal 调系统访达揭示、5,000 截断为真实服务端限制并有子目录导航提示
 - **第四批组 4e-1（技能编辑器主体）**：Identity/Description/Content/References 区块标题、技能 ID 标签（复用 settings.skillId）、用途说明、粘贴 SKILL.md 提示（前后段包裹 --- 代码元素）、拖放以上传浮层、上传标题与说明、支持文件说明、references/ 保存尾句、移除引用 aria；13 键 × 9 语言（字典每语言 2,168 键）；审查：粘贴自动解析 frontmatter 填充字段（既有）、引用文件经 input multiple onChange 添加、移除 X 按钮真删引用
 - **第四批组 4e-2a（专才面板）**：导入 ZIP 提示/选择 ZIP/下载 JSON/只读与内置不可改说明/Capabilities 复用键/需先开项目提示/预览后编辑器完成/包检查器 Compressed·Uncompressed·Diagnostics·Target·Custom 分区标题；12 键 × 9 语言（字典每语言 2,180 键）；审查：Choose ZIP 经 selectPackage 真导入预览、Download JSON 导出报告、内置专才只读态由源码数据源标记
+- **第四批组 4e-2b（提供商列表/表单）**：重新导入 Codex 登录、断开 PureScience 连接、Model: 前缀（复用）、N 个模型计数、Base URL、Endpoint aria；6 键 × 9 语言（字典每语言 2,187 键）；审查：重新导入/断开按钮分别接 onReimportCodexAuthentication/onLogoutSharedClaude 真回调
 - **开机加载文案键控（组 1b）**：设置加载门"正在加载设置…"、重试、会话恢复门"正在加载已保存的会话…"随界面语言（语言在首帧即从本地存储解析，不受设置加载影响）；4 键 × 9 语言（字典每语言 2,102 键）
 - **第四批组 1（JobDetail/权限面板）**：任务详情弹层 Job ID/提供商/状态/运行时标签、权限面板“全部撤销”按钮+aria、“默认使用完整访问权限？”对话框标题/确认钮/取消键控（9 键 × 9 语言，字典每语言 2,098 键）
 - **远程控制/全局搜索/Web 搜索行残留键控（2026-09-04，第三批，一次到位）**：

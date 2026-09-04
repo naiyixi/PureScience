@@ -625,7 +625,7 @@ const ProviderForm = ({
                 value={value.region ?? vendor.regions[0]?.id}
                 onValueChange={(region) => onChange({ region })}
               >
-                <SelectTrigger aria-label="Endpoint">
+                <SelectTrigger aria-label={t('providerForm.endpointAria')}>
                   <span>
                     {vendor.regions.find((region) => region.id === value.region)?.label ??
                       vendor.regions[0]?.label}

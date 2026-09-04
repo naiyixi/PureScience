@@ -328,10 +328,18 @@ const ProviderList = ({
                       // catalog (shown as a count) rather than a single stored model.
                       <>
                         {provider.type === 'custom' && provider.model ? (
-                          <div className="truncate">Model: {provider.model}</div>
+                          <div className="truncate">
+                            {t('ws.usageModelPrefix')}
+                            {provider.model}
+                          </div>
                         ) : null}
                         {provider.type === 'official' && provider.models.length > 0 ? (
-                          <div className="truncate">{provider.models.length} models</div>
+                          <div className="truncate">
+                            {t('providerList.modelCount').replace(
+                              '{n}',
+                              String(provider.models.length)
+                            )}
+                          </div>
                         ) : null}
                         {provider.maskedKey ? (
                           <div className="font-mono">Key: {provider.maskedKey}</div>
@@ -376,7 +384,7 @@ const ProviderList = ({
                   )}
                   {codexSubscriptionType === 'codex-shared' && !isCodexLoginPending ? (
                     <SettingsIconAction
-                      label="Re-import Codex login"
+                      label={t('providerList.reimportCodexLogin')}
                       icon={RefreshCw}
                       onClick={() => onReimportCodexAuthentication?.(provider)}
                       disabled={isBusy}
@@ -487,7 +495,7 @@ const ProviderList = ({
                   ) : null}
                   {provider.type === 'claude-shared' && isVerified ? (
                     <SettingsIconAction
-                      label="Disconnect from PureScience"
+                      label={t('providerList.disconnectFromPureScience')}
                       icon={LogOut}
                       onClick={() => onLogoutSharedClaude?.()}
                       className="border border-border text-foreground"
