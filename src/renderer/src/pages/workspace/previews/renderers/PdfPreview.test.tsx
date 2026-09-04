@@ -131,7 +131,7 @@ describe('PdfPreviewContent', () => {
       })),
       render,
       cleanup: vi.fn(),
-      getTextContent: vi.fn().mockResolvedValue({ items: [] }),
+      getTextContent: vi.fn().mockResolvedValue({ items: [] })
     })
 
     await act(async () => {
@@ -164,7 +164,7 @@ describe('PdfPreviewContent', () => {
       })),
       render: vi.fn(() => ({ promise: Promise.resolve(), cancel: vi.fn() })),
       cleanup: vi.fn(),
-      getTextContent: vi.fn().mockResolvedValue({ items: [] }),
+      getTextContent: vi.fn().mockResolvedValue({ items: [] })
     })
 
     await act(async () => {
@@ -204,7 +204,7 @@ describe('PdfPreviewContent', () => {
       })),
       render: vi.fn(() => ({ promise: Promise.resolve(), cancel: vi.fn() })),
       cleanup: vi.fn(),
-      getTextContent: vi.fn().mockResolvedValue({ items: [] }),
+      getTextContent: vi.fn().mockResolvedValue({ items: [] })
     })
 
     await act(async () => {
@@ -248,7 +248,7 @@ describe('PdfPreviewContent', () => {
       })),
       render: vi.fn(() => ({ promise: Promise.resolve(), cancel: vi.fn() })),
       cleanup: vi.fn(),
-      getTextContent: vi.fn().mockResolvedValue({ items: [] }),
+      getTextContent: vi.fn().mockResolvedValue({ items: [] })
     })
 
     await act(async () => {
@@ -282,7 +282,7 @@ describe('PdfPreviewContent', () => {
       })),
       render: vi.fn(() => ({ promise: Promise.resolve(), cancel: vi.fn() })),
       cleanup: vi.fn(),
-      getTextContent: vi.fn().mockResolvedValue({ items: [] }),
+      getTextContent: vi.fn().mockResolvedValue({ items: [] })
     })
 
     await act(async () => {
@@ -352,7 +352,7 @@ describe('PdfPreviewContent', () => {
       })),
       render: vi.fn(() => ({ promise: Promise.resolve(), cancel: vi.fn() })),
       cleanup: vi.fn(),
-      getTextContent: vi.fn().mockResolvedValue({ items: [] }),
+      getTextContent: vi.fn().mockResolvedValue({ items: [] })
     })
 
     await act(async () => {
@@ -430,7 +430,7 @@ describe('PdfPreviewContent', () => {
       })),
       render: vi.fn(() => ({ promise: Promise.resolve(), cancel: vi.fn() })),
       cleanup: vi.fn(),
-      getTextContent: vi.fn().mockResolvedValue({ items: [] }),
+      getTextContent: vi.fn().mockResolvedValue({ items: [] })
     })
 
     await act(async () => {
@@ -482,7 +482,7 @@ describe('PdfPreviewContent', () => {
       })),
       render: vi.fn(() => ({ promise: Promise.resolve(), cancel: vi.fn() })),
       cleanup: vi.fn(),
-      getTextContent: vi.fn().mockResolvedValue({ items: [] }),
+      getTextContent: vi.fn().mockResolvedValue({ items: [] })
     })
 
     await act(async () => {
@@ -539,7 +539,7 @@ describe('PdfPreviewContent', () => {
       })),
       render,
       cleanup: vi.fn(),
-      getTextContent: vi.fn().mockResolvedValue({ items: [] }),
+      getTextContent: vi.fn().mockResolvedValue({ items: [] })
     })
 
     await act(async () => {
@@ -599,7 +599,7 @@ describe('PdfPreviewContent', () => {
       })),
       render: vi.fn(() => ({ promise: Promise.resolve(), cancel: vi.fn() })),
       cleanup: vi.fn(),
-      getTextContent: vi.fn().mockResolvedValue({ items: [] }),
+      getTextContent: vi.fn().mockResolvedValue({ items: [] })
     })
 
     await act(async () => {
@@ -635,7 +635,7 @@ describe('PdfPreviewContent', () => {
       })),
       render: vi.fn(() => ({ promise: Promise.resolve(), cancel: vi.fn() })),
       cleanup: vi.fn(),
-      getTextContent: vi.fn().mockResolvedValue({ items: [] }),
+      getTextContent: vi.fn().mockResolvedValue({ items: [] })
     })
 
     await act(async () => {
@@ -680,7 +680,7 @@ describe('PdfPreviewContent', () => {
       })),
       render: vi.fn(() => ({ promise: Promise.resolve(), cancel: vi.fn() })),
       cleanup: vi.fn(),
-      getTextContent: vi.fn().mockResolvedValue({ items: [] }),
+      getTextContent: vi.fn().mockResolvedValue({ items: [] })
     })
 
     await act(async () => {

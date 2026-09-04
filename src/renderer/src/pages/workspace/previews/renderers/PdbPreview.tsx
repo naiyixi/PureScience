@@ -1,3 +1,4 @@
+import { useLanguage } from '@/i18n'
 import { Box } from 'lucide-react'
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { GLViewer } from '3dmol'
@@ -135,6 +136,7 @@ const PdbPreviewViewer = ({
   content: string
   name: string
 }): React.JSX.Element => {
+  const { t } = useLanguage()
   const viewerElementRef = useRef<HTMLDivElement | null>(null)
   const viewerStateRef = useRef<{ viewer: GLViewer; threeDmol: ThreeDmolModule } | undefined>(
     undefined
@@ -254,10 +256,12 @@ const PdbPreviewViewer = ({
         <div className="flex min-w-0 items-center gap-2 text-[12px] text-text-300">
           <Box className="size-3.5 shrink-0 text-text-300" aria-hidden="true" />
           <span className="truncate" title={name}>
-            Using 3Dmol.js viewer
+            {t('preview.viewerPdb')}
           </span>
         </div>
-        <div className="shrink-0 text-[12px] text-text-300">{atomCount.toLocaleString()} atoms</div>
+        <div className="shrink-0 text-[12px] text-text-300">
+          {t('preview.atomCount').replace('{n}', atomCount.toLocaleString())}
+        </div>
       </div>
       <div className="flex shrink-0 items-center gap-2 border-b border-border-300 bg-bg-000 px-3 py-2">
         <span className="text-[12px] text-text-300">Style:</span>

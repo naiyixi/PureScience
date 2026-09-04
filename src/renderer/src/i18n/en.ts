@@ -1823,6 +1823,16 @@ export const en: Record<ZhKey, string> = {
   'settings.dismissSettingsError': 'Dismiss settings error',
   'settings.endpoint': 'Endpoint',
   'settings.tokenUsage': 'Token usage',
+  'preview.atomCount': '{n} atoms',
+  'storage.adoptPre': 'This folder already contains PureScience data. It will be',
+  'storage.adoptPost': '. The app will restart.',
+  'storage.moveBold': 'Your existing data (~{size}) will be moved',
+  'storage.moveAfter':
+    'to the new location — your files come with it, and nothing is left behind in the current folder.',
+  'storage.rebuildNote':
+    'Python/R environments are rebuilt at the new location on first use (not moved).',
+  'preview.viewerMolecule': 'Using OpenChemLib viewer',
+  'preview.viewerPdb': 'Using 3Dmol.js viewer',
   'computeAdd.pickParagraph':
     'Pick a host alias from your {cfg}, or type one. PureScience will use it as a compute provider via your existing SSH key — no SSH credentials are copied.',
   'localFile.jumpHint': 'Jump to Home or a pinned folder',

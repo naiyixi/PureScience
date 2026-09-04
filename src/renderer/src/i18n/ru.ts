@@ -90,6 +90,16 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.general': 'Общие',
   'settings.tags': 'Теги',
   'settings.tokenUsage': 'Использование токенов',
+  'preview.atomCount': 'Атомов: {n}',
+  'storage.adoptPre': 'Эта папка уже содержит данные PureScience. Она будет',
+  'storage.adoptPost': '. Приложение перезапустится.',
+  'storage.moveBold': 'Ваши существующие данные (~{size}) будут перемещены',
+  'storage.moveAfter':
+    'в новое расположение — файлы переедут вместе с вами, а в текущей папке ничего не останется.',
+  'storage.rebuildNote':
+    'Среды Python/R пересоздаются в новом расположении при первом использовании (не перемещаются).',
+  'preview.viewerMolecule': 'С использованием средства просмотра OpenChemLib',
+  'preview.viewerPdb': 'С использованием средства просмотра 3Dmol.js',
   'computeAdd.pickParagraph':
     'Выберите псевдоним хоста из {cfg} или введите его. PureScience будет использовать его как вычислительного провайдера через ваш существующий SSH-ключ — учётные данные SSH не копируются.',
   'localFile.jumpHint': 'Перейти к Home или закреплённой папке',

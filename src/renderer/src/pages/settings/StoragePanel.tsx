@@ -393,7 +393,7 @@ const StoragePanel = ({ onContinueToAgent }: StoragePanelProps): React.JSX.Eleme
 
                 {kind === 'adopt' ? (
                   <p className="mt-2 text-xs text-muted-foreground">
-                    This folder already contains PureScience data. It will be{' '}
+                    {t('storage.adoptPre')}{' '}
                     <strong className="font-semibold text-foreground">
                       {t('settings.adoptAsIsNotMerged')}
                     </strong>
@@ -401,21 +401,17 @@ const StoragePanel = ({ onContinueToAgent }: StoragePanelProps): React.JSX.Eleme
                     <strong className="font-semibold text-foreground">
                       {t('settings.currentDataFolderKept')}
                     </strong>
-                    . The app will restart.
+                    {t('storage.adoptPost')}
                   </p>
                 ) : (
                   <>
                     <p className="mt-2 text-xs text-muted-foreground">
                       <strong className="font-semibold text-foreground">
-                        Your existing data (~{formatBytes(migratableBytes)}) will be moved
+                        {t('storage.moveBold').replace('{size}', formatBytes(migratableBytes))}
                       </strong>{' '}
-                      to the new location — your files come with it, and nothing is left behind in
-                      the current folder.
+                      {t('storage.moveAfter')}
                     </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Python/R environments are rebuilt at the new location on first use (not
-                      moved).
-                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">{t('storage.rebuildNote')}</p>
                   </>
                 )}
 

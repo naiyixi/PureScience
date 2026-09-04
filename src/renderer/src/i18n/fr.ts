@@ -90,6 +90,16 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.general': 'Général',
   'settings.tags': 'Étiquettes',
   'settings.tokenUsage': 'Utilisation de tokens',
+  'preview.atomCount': '{n} atomes',
+  'storage.adoptPre': 'Ce dossier contient déjà des données PureScience. Il sera',
+  'storage.adoptPost': '. L’application redémarrera.',
+  'storage.moveBold': 'Vos données existantes (~{size}) seront déplacées',
+  'storage.moveAfter':
+    'vers le nouvel emplacement — vos fichiers suivent et rien n’est laissé dans le dossier actuel.',
+  'storage.rebuildNote':
+    'Les environnements Python/R sont reconstruits au nouvel emplacement lors de la première utilisation (non déplacés).',
+  'preview.viewerMolecule': 'Avec le visualiseur OpenChemLib',
+  'preview.viewerPdb': 'Avec le visualiseur 3Dmol.js',
   'computeAdd.pickParagraph':
     'Choisissez un alias d’hôte depuis votre {cfg}, ou saisissez-en un. PureScience l’utilisera comme fournisseur de calcul via votre clé SSH existante — aucune information SSH n’est copiée.',
   'localFile.jumpHint': 'Aller à l’accueil ou à un dossier épinglé',
