@@ -1824,6 +1824,9 @@ export const en: Record<ZhKey, string> = {
   'settings.dismissSettingsError': 'Dismiss settings error',
   'settings.endpoint': 'Endpoint',
   'settings.tokenUsage': 'Token usage',
+  'fileBrowser.showInFinder': 'Show in Finder',
+  'fileBrowser.truncatedNote':
+    'Showing first 5,000 entries. Navigate into a subdirectory to see more.',
   'dataRoot.stillMissingNote':
     'Still not found. Reconnect the drive and try again, or choose another location.',
   'legacyDataMove.title': 'Move your data to a visible folder?',

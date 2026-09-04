@@ -90,6 +90,9 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.general': '일반',
   'settings.tags': '태그',
   'settings.tokenUsage': '토큰 사용량',
+  'fileBrowser.showInFinder': 'Finder에서 보기',
+  'fileBrowser.truncatedNote':
+    '처음 5,000개 항목만 표시됩니다. 하위 폴더로 들어가면 더 볼 수 있습니다.',
   'dataRoot.stillMissingNote':
     '아직 찾지 못했습니다. 드라이브를 다시 연결하고 다시 시도하거나 다른 위치를 선택하세요.',
   'legacyDataMove.title': '데이터를 보이는 폴더로 이동할까요?',

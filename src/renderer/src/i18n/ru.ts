@@ -90,6 +90,9 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.general': 'Общие',
   'settings.tags': 'Теги',
   'settings.tokenUsage': 'Использование токенов',
+  'fileBrowser.showInFinder': 'Показать в Finder',
+  'fileBrowser.truncatedNote':
+    'Показаны первые 5 000 элементов. Перейдите в подпапку, чтобы увидеть больше.',
   'dataRoot.stillMissingNote':
     'По-прежнему не найдено. Подключите диск снова и повторите попытку или выберите другое расположение.',
   'legacyDataMove.title': 'Переместить данные в видимую папку?',

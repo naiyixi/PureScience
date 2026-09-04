@@ -1722,6 +1722,8 @@ export const zh = {
   'settings.dismissSettingsError': '关闭设置错误',
   'settings.endpoint': '端点',
   'settings.tokenUsage': '词元用量',
+  'fileBrowser.showInFinder': '在访达中显示',
+  'fileBrowser.truncatedNote': '仅显示前 5,000 项。进入子目录可查看更多。',
   'dataRoot.stillMissingNote': '仍未找到。请重新连接驱动器后重试，或选择其他位置。',
   'legacyDataMove.title': '将数据移动到可见文件夹？',
   'legacyDataMove.desc':

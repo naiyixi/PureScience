@@ -250,7 +250,7 @@ function DetailPanel({
                 className="underline text-xs"
                 onClick={() => handleReveal(actionStatus.filePath!)}
               >
-                Show in Finder
+                {t('fileBrowser.showInFinder')}
               </button>
             )}
           </div>
@@ -823,7 +823,7 @@ export function FileBrowserModal({
                   ))}
                   {listing?.truncated && (
                     <p className="border-t border-border px-3 py-2 text-center text-xs text-muted-foreground">
-                      Showing first 5,000 entries. Navigate into a subdirectory to see more.
+                      {t('fileBrowser.truncatedNote')}
                     </p>
                   )}
                 </div>
