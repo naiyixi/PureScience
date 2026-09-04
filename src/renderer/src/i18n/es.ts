@@ -90,6 +90,10 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.general': 'General',
   'settings.tags': 'Etiquetas',
   'settings.tokenUsage': 'Uso de tokens',
+  'boot.loadingSettings': 'Cargando ajustes…',
+  'boot.retrying': 'Reintentando…',
+  'boot.retry': 'Reintentar',
+  'boot.loadingSaved': 'Cargando conversaciones guardadas…',
   'toolActivity.webSearch': 'Búsqueda web',
   'toolActivity.query': 'consulta',
   'remoteError.approvalCancelled':

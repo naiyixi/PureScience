@@ -1824,6 +1824,10 @@ export const en: Record<ZhKey, string> = {
   'settings.dismissSettingsError': 'Dismiss settings error',
   'settings.endpoint': 'Endpoint',
   'settings.tokenUsage': 'Token usage',
+  'boot.loadingSettings': 'Loading settings…',
+  'boot.retrying': 'Retrying…',
+  'boot.retry': 'Retry',
+  'boot.loadingSaved': 'Loading saved conversations…',
   'toolActivity.webSearch': 'Web Search',
   'toolActivity.query': 'query',
   'remoteError.approvalCancelled':
