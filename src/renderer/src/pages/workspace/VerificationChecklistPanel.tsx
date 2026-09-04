@@ -66,6 +66,7 @@ const ClaimRow = ({
   onReopen: (item: VerificationChecklistItem) => void
   onGoToTranscript?: (checkId: string) => void
 }): React.JSX.Element => {
+  const { t } = useLanguage()
   const isResolved = item.resolution === 'resolved'
   const badgeStyles: Record<string, string> = {
     fail: 'bg-red-50 border-red-200 text-red-700 dark:bg-red-950/20 dark:border-red-800/50 dark:text-red-300',
@@ -126,7 +127,7 @@ const ClaimRow = ({
             onClick={() => onGoToTranscript(item.rootFindingId)}
             data-testid="checklist-go-transcript"
           >
-            Go to transcript
+            {t('reviewer.goToTranscript')}
           </button>
         )}
       </div>
@@ -151,7 +152,7 @@ const ClaimRow = ({
             data-testid="checklist-mark-addressed"
           >
             <ShieldCheck className="h-3 w-3" aria-hidden />
-            Mark addressed
+            {t('checklist.markAddressed')}
           </button>
         )}
       </div>
@@ -202,9 +203,13 @@ const VerificationChecklistPanel = ({
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
       <div className="shrink-0 border-b border-border-200 px-4 py-3">
-        <h2 className="text-[13px] font-semibold text-text-000">Verification checklist</h2>
+        <h2 className="text-[13px] font-semibold text-text-000">
+          {t('checklist.verificationTitle')}
+        </h2>
         <p className="mt-0.5 text-[11px] text-text-300">
-          {openCount} open of {items.length} claims
+          {t('checklist.openOfClaims')
+            .replace('{open}', String(openCount))
+            .replace('{total}', String(items.length))}
         </p>
       </div>
 

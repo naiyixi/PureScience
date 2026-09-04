@@ -48,6 +48,7 @@ PureScience 是一款面向科学研究的开源 AI 工作台：多智能体协�
   - 本批新增 18 枚界面键九语言同步（字典每语言 2,037 键）
 - **第四批组 2（运行环境/技能详情）**：App 托管环境标题、禁用对话框（标题/两条影响说明含 {active}{running}{idle} 插值/停止运行/当前工作结束后禁用/Cancel）、技能详情 Details 标题与 Author/License 键控；禁用影响文案经 zh 机翻腔门禁修正（该会话→此会话）；9 键 × 9 语言（字典每语言 2,111 键）；键控同时核验交互闭环：Stop/Disable 按钮分别绑定 confirmForceStop(强制 abort 并记 cancelled)/confirmDisable(排空后关内核)
 - **第四批组 3a（对话区/生命周期）**：运行失败区"报告错误"按钮（aria 已有键）、拖放附加浮层提示、LifecycleToast View/关闭 aria 键控；4 键 × 9 语言（字典每语言 2,115 键）；审查：Report error→openReportDialog 对话框入口存在、Toast onView/onDismiss + 6s 自动关均接真回调
+- **第四批组 3b（审查者/验证清单/折叠时间线）**：Go to transcript（ReviewerCard+清单共用）、Re-running/Re-run review、Mark addressed、Verification checklist、"{open} 项待处理，共 {total} 项"、折叠上下文/预览/折叠计数（{n} fold{s}）、折叠原因标签（自动/手动/溢出恢复，原 REASON_LABELS 英文硬映射）、时间随界面语言（toLocaleString(getUiLocale)）；12 键 × 9 语言（字典每语言 2,127 键）；审查：清单行 Mark addressed/Reopen 绑定 onMarkAddressed/onReopen、Go to transcript 均接 GoToTranscriptIntent 链路
 - **开机加载文案键控（组 1b）**：设置加载门"正在加载设置…"、重试、会话恢复门"正在加载已保存的会话…"随界面语言（语言在首帧即从本地存储解析，不受设置加载影响）；4 键 × 9 语言（字典每语言 2,102 键）
 - **第四批组 1（JobDetail/权限面板）**：任务详情弹层 Job ID/提供商/状态/运行时标签、权限面板“全部撤销”按钮+aria、“默认使用完整访问权限？”对话框标题/确认钮/取消键控（9 键 × 9 语言，字典每语言 2,098 键）
 - **远程控制/全局搜索/Web 搜索行残留键控（2026-09-04，第三批，一次到位）**：
