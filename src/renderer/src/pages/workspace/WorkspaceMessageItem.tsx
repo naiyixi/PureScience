@@ -1,6 +1,7 @@
 import { memo } from 'react'
 
 import { useLanguage } from '@/i18n'
+import { getUiLocale } from '@/lib/ui-locale'
 import { AgentMarkdown } from '@/components/streamdown/AgentMarkdown'
 import { MessageScrollerItem } from '@/components/ui/message-scroller'
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
@@ -103,16 +104,18 @@ type WorkspaceMessageItemProps = {
 
 const ARTIFACT_GALLERY_VISIBLE_COUNT = 5
 const tokenCountFormatter = new Intl.NumberFormat('en-US')
-const messageTimestampFormatter = new Intl.DateTimeFormat('en-US', {
-  month: 'short',
-  day: 'numeric',
-  hour: 'numeric',
-  minute: '2-digit'
-})
-const messageTimestampTitleFormatter = new Intl.DateTimeFormat('en-US', {
-  dateStyle: 'full',
-  timeStyle: 'long'
-})
+const formatMessageTimestamp = (date: Date): string =>
+  new Intl.DateTimeFormat(getUiLocale(), {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+  }).format(date)
+const formatMessageTimestampTitle = (date: Date): string =>
+  new Intl.DateTimeFormat(getUiLocale(), {
+    dateStyle: 'full',
+    timeStyle: 'long'
+  }).format(date)
 
 const toMessageDate = (timestamp: number | undefined): Date | undefined => {
   if (timestamp === undefined) return undefined
@@ -122,8 +125,8 @@ const toMessageDate = (timestamp: number | undefined): Date | undefined => {
 
 const MessageTimestamp = ({ label, date }: { label: string; date: Date }): React.JSX.Element => {
   return (
-    <time dateTime={date.toISOString()} title={messageTimestampTitleFormatter.format(date)}>
-      {label} {messageTimestampFormatter.format(date)}
+    <time dateTime={date.toISOString()} title={formatMessageTimestampTitle(date)}>
+      {label} {formatMessageTimestamp(date)}
     </time>
   )
 }
@@ -172,9 +175,16 @@ const TurnTokenUsage = ({
   const contentRef = useRef<HTMLDivElement | null>(null)
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const openedFromPointerRef = useRef(false)
-  const accessibleLabel = usage
-    ? 'Token usage for this response'
-    : 'Token usage unavailable for this response'
+  const USAGE_LABEL_KEYS: Record<string, string> = {
+    Input: 'ws.usageInput',
+    'Cache read': 'ws.usageCacheRead',
+    'Cache write': 'ws.usageCacheWrite',
+    Cache: 'ws.usageCache',
+    Output: 'ws.usageOutput'
+  }
+  const usageLabel = (label: string): string =>
+    (t as (key: string) => string)(USAGE_LABEL_KEYS[label] ?? label)
+  const accessibleLabel = usage ? t('ws.usageAriaAvailable') : t('ws.usageAriaUnavailable')
   const hasCacheBreakdown =
     usage?.cachedReadTokens !== undefined && usage.cachedWriteTokens !== undefined
   const entries: readonly TurnTokenUsageEntry[] = hasCacheBreakdown
@@ -194,9 +204,11 @@ const TurnTokenUsage = ({
   const breakdownLabel =
     usage && safeTotalTokens !== undefined
       ? `${entries
-          .map(([label, value]) => `${label} ${tokenCountFormatter.format(value ?? 0)}`)
-          .join(', ')}; Total ${tokenCountFormatter.format(safeTotalTokens)} tokens`
-      : 'Token usage breakdown unavailable'
+          .map(([label, value]) => `${usageLabel(label)} ${tokenCountFormatter.format(value ?? 0)}`)
+          .join(
+            ', '
+          )}; ${t('ws.usageAriaTotal').replace('{total}', tokenCountFormatter.format(safeTotalTokens))}`
+      : t('ws.usageAriaBreakdownUnavailable')
 
   const keepOpen = (): void => {
     if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
@@ -317,7 +329,8 @@ const TurnTokenUsage = ({
               data-slot="turn-token-usage-turn-count"
               className="text-[10px] font-normal text-muted-foreground tabular-nums"
             >
-              {usage.turnCount} {usage.turnCount === 1 ? 'turn' : 'turns'}
+              {usage.turnCount}{' '}
+              {usage.turnCount === 1 ? t('ws.usageTurnOne') : t('ws.usageTurnMany')}
             </div>
           ) : null}
         </div>
@@ -350,7 +363,7 @@ const TurnTokenUsage = ({
                   className={`${markerClassName} size-2 shrink-0 rounded-full`}
                   aria-hidden="true"
                 />
-                {label}
+                {usageLabel(label)}
               </dt>
               <dd className="tabular-nums text-muted-foreground">
                 {typeof value === 'number' ? tokenCountFormatter.format(value) : '—'}
@@ -381,7 +394,10 @@ const TurnTokenUsage = ({
                 >
                   <Bot className="size-2.5" strokeWidth={2} />
                 </span>
-                <span className="truncate">Agent: {frameworkName}</span>
+                <span className="truncate">
+                  {t('ws.usageAgentPrefix')}
+                  {frameworkName}
+                </span>
               </div>
             ) : null}
             {model ? (
@@ -393,7 +409,10 @@ const TurnTokenUsage = ({
                 >
                   <Brain className="size-2.5" strokeWidth={2} />
                 </span>
-                <span className="truncate">Model: {model}</span>
+                <span className="truncate">
+                  {t('ws.usageModelPrefix')}
+                  {model}
+                </span>
               </div>
             ) : null}
           </div>
