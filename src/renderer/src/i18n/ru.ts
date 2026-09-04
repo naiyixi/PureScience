@@ -90,6 +90,21 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.general': 'Общие',
   'settings.tags': 'Теги',
   'settings.tokenUsage': 'Использование токенов',
+  'skillEditor.identity': 'Идентичность',
+  'skillEditor.descriptionHeader': 'Описание',
+  'skillEditor.contentHeader': 'Содержимое',
+  'skillEditor.referencesHeader': 'Ссылки',
+  'skillEditor.identityHint': 'Так агент решает, когда использовать навык — будьте конкретны.',
+  'skillEditor.pasteHintA': 'Вставьте полный SKILL.md — если в его начале есть',
+  'skillEditor.pasteHintB': 'блок метаданных — поля выше заполнятся автоматически.',
+  'skillEditor.dropToUpload': 'Перетащите для загрузки',
+  'skillEditor.uploadTitle': 'Загрузить SKILL.md или текстовый файл',
+  'skillEditor.uploadHint':
+    'Его содержимое заполнит редактор; вернитесь в режим написания, чтобы поправить.',
+  'skillEditor.refsSupportSentence':
+    'Вспомогательные файлы (скрипты, шаблоны, данные), которые навык может читать во время выполнения.',
+  'skillEditor.refsSavedTail': 'в навыке.',
+  'skillEditor.removeAria': 'Удалить {name}',
   'fileBrowser.showInFinder': 'Показать в Finder',
   'fileBrowser.truncatedNote':
     'Показаны первые 5 000 элементов. Перейдите в подпапку, чтобы увидеть больше.',

@@ -90,6 +90,23 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.general': 'Général',
   'settings.tags': 'Étiquettes',
   'settings.tokenUsage': 'Utilisation de tokens',
+  'skillEditor.identity': 'Identité',
+  'skillEditor.descriptionHeader': 'Description',
+  'skillEditor.contentHeader': 'Contenu',
+  'skillEditor.referencesHeader': 'Références',
+  'skillEditor.identityHint':
+    'C’est ainsi que l’agent décide quand utiliser la compétence — soyez précis.',
+  'skillEditor.pasteHintA': 'Collez un SKILL.md complet — s’il contient un',
+  'skillEditor.pasteHintB':
+    'bloc de métadonnées en tête, les champs ci-dessus se remplissent automatiquement.',
+  'skillEditor.dropToUpload': 'Déposez pour téléverser',
+  'skillEditor.uploadTitle': 'Téléverser un SKILL.md ou un fichier texte',
+  'skillEditor.uploadHint':
+    'Son contenu remplit l’éditeur ; repassez en mode Écriture pour ajuster.',
+  'skillEditor.refsSupportSentence':
+    'Fichiers d’appui (scripts, modèles, données) que la compétence peut lire à l’exécution.',
+  'skillEditor.refsSavedTail': 'dans la compétence.',
+  'skillEditor.removeAria': 'Retirer {name}',
   'fileBrowser.showInFinder': 'Afficher dans le Finder',
   'fileBrowser.truncatedNote':
     'Affichage des 5 000 premières entrées. Naviguez dans un sous-dossier pour en voir plus.',
