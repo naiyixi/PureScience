@@ -364,6 +364,7 @@ const LATIN_COGNATES = new Set<string>([
   'Port',
   'Server',
   'Review',
+  'Services',
   'Sessions',
   'Session',
   'Messages',

@@ -403,6 +403,9 @@ export const en: Record<ZhKey, string> = {
   'settings.memoryLoading': 'Loading memory…',
   'settings.memoryOn': 'On',
   'settings.memoryOff': 'Off',
+  'settings.memoryAboutYou': 'About you',
+  'settings.visionModelUnavailable':
+    'No vision-capable model is available. Add a provider whose model supports images, and options will appear here.',
   'settings.memoryBack': 'Back',
   'settings.memoryCancel': 'Cancel',
   'settings.memoryCreate': 'Create',
@@ -449,6 +452,13 @@ export const en: Record<ZhKey, string> = {
   'settings.credentialsServiceNvidia': 'NVIDIA',
   'settings.credentialsServiceOpenalex': 'OpenAlex',
   'settings.credentialsServiceLiterature': 'Literature access',
+  'settings.credentialsServicesHeading': 'Services',
+  'settings.credentialsConnectorHeading': 'Connector credentials',
+  'settings.credentialsConnectorDescription':
+    'Device-global credentials that the custom connectors and endpoints you choose can share.',
+  'settings.credentialsConnectorEmpty': 'No connector credentials yet.',
+  'settings.credentialsCustomDescription':
+    'Credentials used by Custom MCP Connectors and model providers stay in their existing configuration — nothing is stored here, and each is managed on its own settings page.',
   'settings.credentialsServiceCustom': 'Custom',
   'settings.proxyHostRequired': 'Enter a proxy server address.',
   'settings.proxyPortInvalid': 'Port must be a number between 1 and 65535.',
@@ -1606,6 +1616,20 @@ export const en: Record<ZhKey, string> = {
   'remoteControl.noPermanentAccess': 'No browser has permanent access.',
   'remoteControl.noBrowsersWaiting': 'No browsers are waiting for approval.',
   'remoteControl.allowOnce': 'Allow once',
+  'remoteControl.canManageOnly':
+    'Remote access settings can only be changed from the PureScience desktop window on the home computer.',
+  'remoteControl.canManagePairingNote':
+    'Remote access settings can only be changed from the PureScience desktop window on the home computer. Two-step verification requests and trusted browsers can be managed below.',
+  'remoteControl.appIntro':
+    'Open this computer from the signed-in mobile app. PureScience creates and maintains the local service automatically after this computer is added once.',
+  'remoteControl.step2': 'Select this computer, then select PureScience Remote.',
+  'remoteControl.step3':
+    'Tap Connect or Launch, match the six-digit code, then approve the request from this computer or an already trusted browser.',
+  'remoteControl.browserIntro':
+    'Open a persistent HTTPS address from any modern browser. PureScience creates and maintains the public browser service automatically.',
+  'remoteControl.pairingRequests': 'Pairing requests',
+  'remoteControl.reject': 'Reject',
+  'remoteControl.requestedAt': 'Requested {time}',
   'remoteControl.alwaysTrustBrowser': 'Always trust this browser',
   'wsMessage.showLess': 'Show less',
   'wsMessage.expandGeneratedFiles': 'Expand generated files',

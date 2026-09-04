@@ -338,6 +338,20 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'providerForm.supportedModels': '지원되는 모델',
   'providers.addProvider': '공급자 추가',
   'remoteControl.allowOnce': '한 번만 허용',
+  'remoteControl.canManageOnly':
+    '원격 액세스 설정은 이 컴퓨터의 PureScience 데스크톱 창에서만 변경할 수 있습니다.',
+  'remoteControl.canManagePairingNote':
+    '원격 액세스 설정은 이 컴퓨터의 PureScience 데스크톱 창에서만 변경할 수 있습니다. 2단계 인증 요청과 신뢰하는 브라우저는 아래에서 관리할 수 있습니다.',
+  'remoteControl.appIntro':
+    '로그인한 모바일 앱에서 이 컴퓨터를 엽니다. 한 번 추가하면 PureScience가 로컬 서비스를 자동으로 만들고 유지합니다.',
+  'remoteControl.step2': '이 컴퓨터를 선택한 다음 PureScience Remote를 선택합니다.',
+  'remoteControl.step3':
+    'Connect 또는 Launch를 탭하고 여섯 자리 코드를 일치시킨 뒤, 이 컴퓨터 또는 신뢰하는 브라우저에서 요청을 승인합니다.',
+  'remoteControl.browserIntro':
+    '최신 브라우저에서 영구 HTTPS 주소를 엽니다. PureScience가 공개 브라우저 서비스를 자동으로 만들고 유지합니다.',
+  'remoteControl.pairingRequests': '페어링 요청',
+  'remoteControl.reject': '거부',
+  'remoteControl.requestedAt': '{time}에 요청됨',
   'remoteControl.alwaysTrustBrowser': '이 브라우저 항상 신뢰',
   'remoteControl.browserLinkReady': '브라우저 링크가 준비되었습니다',
   'remoteControl.detectAgain': '다시 감지',
@@ -808,6 +822,13 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.credentialsSecretPlaceholder': '비밀 키 붙여넣기…',
   'settings.credentialsServiceAws': 'AWS',
   'settings.credentialsServiceAzure': 'Azure',
+  'settings.credentialsServicesHeading': '서비스',
+  'settings.credentialsConnectorHeading': '커넥터 자격 증명',
+  'settings.credentialsConnectorDescription':
+    '기기 수준 자격 증명으로, 선택한 사용자 지정 커넥터와 외부 엔드포인트가 공유할 수 있습니다.',
+  'settings.credentialsConnectorEmpty': '아직 커넥터 자격 증명이 없습니다.',
+  'settings.credentialsCustomDescription':
+    '사용자 지정 MCP 커넥터와 모델 제공업체의 자격 증명은 각자의 기존 설정에 유지됩니다. 여기에는 저장되지 않으며 각 항목은 각자의 설정 페이지에서 관리됩니다.',
   'settings.credentialsServiceCustom': '사용자 지정',
   'settings.credentialsServiceGcp': 'Google Cloud',
   'settings.credentialsServiceGithub': 'GitHub',
@@ -1173,6 +1194,9 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.memoryAddCategory': '새 카테고리',
   'settings.memoryAddNote': '메모 추가',
   'settings.memoryAutoRecall': '자동 회상',
+  'settings.memoryAboutYou': '사용자 정보',
+  'settings.visionModelUnavailable':
+    '이미지 입력을 지원하는 모델이 없습니다. 이미지 지원 제공업체를 추가하면 옵션이 여기에 표시됩니다.',
   'settings.memoryBack': '뒤로',
   'settings.memoryCancel': '취소',
   'settings.memoryCategoryFormDescription':

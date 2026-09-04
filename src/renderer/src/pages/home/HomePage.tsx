@@ -22,6 +22,7 @@ import { useSessionStore } from '@/stores/session-store'
 import { useProjectStore } from '@/stores/project-store'
 import { useArchiveUndoStore } from '@/stores/archive-undo-store'
 import { useSettingsStore } from '@/stores/settings-store'
+import { useUpdateStore } from '@/stores/update-store'
 import { GLOBAL_SEARCH_OPEN_EVENT } from '@/lib/app-events'
 import { LanguageToggleButton } from '@/components/LanguageToggleButton'
 import { NetworkStatusIndicator } from '@/components/NetworkStatusIndicator'
@@ -134,6 +135,9 @@ const HomePage = ({
   const openSettings = useSettingsStore((state) => state.openSettings)
   const environmentCheck = useSettingsStore((state) => state.environmentCheck)
   const openSettingsToPanel = useSettingsStore((state) => state.openSettingsToPanel)
+  // App version shown next to the wordmark (replaces the old untranslated Beta label; the number
+  // itself needs no dictionary key). Falls back to hiding when the update store has no version yet.
+  const appVersion = useUpdateStore((state) => state.appInfo?.version ?? state.status.current)
   const requiredEnvironmentFailures = getRequiredEnvironmentFailures(environmentCheck)
   const environmentRepairPanel = getEnvironmentRepairPanel(requiredEnvironmentFailures)
 
@@ -396,7 +400,9 @@ const HomePage = ({
             >
               PureScience
             </a>
-            <div className="mt-1 text-[11px] text-muted-foreground">{t('home.beta')}</div>
+            {appVersion ? (
+              <div className="mt-1 text-[11px] text-muted-foreground">v{appVersion}</div>
+            ) : null}
           </div>
           <div className="flex flex-wrap items-center justify-end gap-1 sm:gap-2">
             <button

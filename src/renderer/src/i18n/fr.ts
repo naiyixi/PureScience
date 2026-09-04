@@ -345,6 +345,20 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'providerForm.supportedModels': 'Modèles pris en charge',
   'providers.addProvider': 'Ajouter un fournisseur',
   'remoteControl.allowOnce': 'Autoriser une fois',
+  'remoteControl.canManageOnly':
+    'Les réglages d’accès à distance ne peuvent être modifiés que depuis la fenêtre de bureau PureScience de cet ordinateur.',
+  'remoteControl.canManagePairingNote':
+    'Les réglages d’accès à distance ne peuvent être modifiés que depuis la fenêtre de bureau PureScience de cet ordinateur. Les demandes de vérification en deux étapes et les navigateurs approuvés se gèrent ci-dessous.',
+  'remoteControl.appIntro':
+    'Ouvrez cet ordinateur depuis l’application mobile connectée. Une fois cet ordinateur ajouté, PureScience crée et maintient le service local automatiquement.',
+  'remoteControl.step2': 'Sélectionnez cet ordinateur, puis PureScience Remote.',
+  'remoteControl.step3':
+    'Appuyez sur Connect ou Launch, saisissez le code à six chiffres, puis approuvez la demande depuis cet ordinateur ou un navigateur déjà approuvé.',
+  'remoteControl.browserIntro':
+    'Ouvrez une adresse HTTPS persistante depuis n’importe quel navigateur moderne. PureScience crée et maintient automatiquement le service navigateur public.',
+  'remoteControl.pairingRequests': 'Demandes d’appairage',
+  'remoteControl.reject': 'Rejeter',
+  'remoteControl.requestedAt': 'Demandé {time}',
   'remoteControl.alwaysTrustBrowser': 'Toujours faire confiance à ce navigateur',
   'remoteControl.browserLinkReady': 'Le lien du navigateur est prêt',
   'remoteControl.detectAgain': 'Détecter à nouveau',
@@ -835,6 +849,13 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.credentialsSecretPlaceholder': 'Collez le secret…',
   'settings.credentialsServiceAws': 'AWS',
   'settings.credentialsServiceAzure': 'Azure',
+  'settings.credentialsServicesHeading': 'Services',
+  'settings.credentialsConnectorHeading': 'Identifiants de connecteur',
+  'settings.credentialsConnectorDescription':
+    'Identifiants au niveau de l’appareil, partageables entre les connecteurs personnalisés et les endpoints choisis.',
+  'settings.credentialsConnectorEmpty': 'Aucun identifiant de connecteur pour l’instant.',
+  'settings.credentialsCustomDescription':
+    'Les identifiants des connecteurs MCP personnalisés et des fournisseurs de modèles restent dans leur configuration existante — rien n’est stocké ici et chaque élément est géré sur sa propre page de réglages.',
   'settings.credentialsServiceCustom': 'Personnalisé',
   'settings.credentialsServiceGcp': 'Google Cloud',
   'settings.credentialsServiceGithub': 'GitHub',
@@ -1213,6 +1234,9 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.memoryAddCategory': 'Nouvelle catégorie',
   'settings.memoryAddNote': 'Ajouter une note',
   'settings.memoryAutoRecall': 'Rappel automatique',
+  'settings.memoryAboutYou': 'À propos de vous',
+  'settings.visionModelUnavailable':
+    'Aucun modèle compatible image n’est disponible. Ajoutez un fournisseur dont le modèle accepte les images : les options apparaîtront ici.',
   'settings.memoryBack': 'Retour',
   'settings.memoryCancel': 'Annuler',
   'settings.memoryCategoryFormDescription':

@@ -337,6 +337,19 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'providerForm.supportedModels': '支援的模型',
   'providers.addProvider': '新增提供者',
   'remoteControl.allowOnce': '僅允許一次',
+  'remoteControl.canManageOnly': '遠端存取設定只能在此電腦上的 PureScience 桌面視窗中變更。',
+  'remoteControl.canManagePairingNote':
+    '遠端存取設定只能在此電腦上的 PureScience 桌面視窗中變更。兩步驗證請求與受信任瀏覽器可在下方管理。',
+  'remoteControl.appIntro':
+    '從已登入的行動應用程式開啟這台電腦。本機加入一次後，PureScience 會自動建立並維護本機服務。',
+  'remoteControl.step2': '選擇此電腦，然後選擇 PureScience Remote。',
+  'remoteControl.step3':
+    '點按 Connect 或 Launch，比對六位代碼，然後在此電腦或已受信任的瀏覽器上核准請求。',
+  'remoteControl.browserIntro':
+    '從任何現代瀏覽器開啟持久的 HTTPS 位址。PureScience 會自動建立並維護公開瀏覽器服務。',
+  'remoteControl.pairingRequests': '配對請求',
+  'remoteControl.reject': '拒絕',
+  'remoteControl.requestedAt': '請求於 {time}',
   'remoteControl.alwaysTrustBrowser': '一律信任此瀏覽器',
   'remoteControl.browserLinkReady': '瀏覽器連結已就緒',
   'remoteControl.detectAgain': '再次偵測',
@@ -783,6 +796,12 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.credentialsSecretPlaceholder': '貼上機密資料…',
   'settings.credentialsServiceAws': 'AWS',
   'settings.credentialsServiceAzure': 'Azure',
+  'settings.credentialsServicesHeading': '服務',
+  'settings.credentialsConnectorHeading': '連接器憑證',
+  'settings.credentialsConnectorDescription': '設備級憑證：供你選用的自訂連接器與外部端點共用。',
+  'settings.credentialsConnectorEmpty': '尚無連接器憑證。',
+  'settings.credentialsCustomDescription':
+    '自訂 MCP 連接器與模型提供商的憑證保留在各自的既有設定中——此處不儲存任何內容，各項在各自設定頁面管理。',
   'settings.credentialsServiceCustom': '自訂',
   'settings.credentialsServiceGcp': 'Google Cloud',
   'settings.credentialsServiceGithub': 'GitHub',
@@ -1136,6 +1155,9 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.memoryAddCategory': '新增分類',
   'settings.memoryAddNote': '新增筆記',
   'settings.memoryAutoRecall': '自動回憶',
+  'settings.memoryAboutYou': '關於你',
+  'settings.visionModelUnavailable':
+    '目前沒有支援影像輸入的模型可選。設定支援視覺的供應商後，選項會出現在這裡。',
   'settings.memoryBack': '返回',
   'settings.memoryCancel': '取消',
   'settings.memoryCategoryFormDescription':

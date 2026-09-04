@@ -7,6 +7,7 @@ vi.mock('@/i18n', () => ({
   useLanguage: () => {
     const labels: Record<string, string> = {
       'settings.memoryTitle': 'Memory',
+      'settings.memoryAboutYou': 'About you',
       'settings.memoryDescription': 'Editable notes about you.',
       'settings.memoryEnabled': 'Memory switch',
       'settings.memoryOn': 'On',

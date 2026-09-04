@@ -17,10 +17,20 @@ import type { MemoryCategory, MemoryNote, MemorySettings } from '../../../../sha
 
 // The built-in landing category, present even for a fresh, never-written memory.
 const DEFAULT_MEMORY_CATEGORY_NAME = 'About you'
-
 // Matches the reference design: a bounded set of user-created categories keeps the recall prompt
 // small and the list scannable.
 const MAX_MEMORY_CATEGORIES = 10
+
+// Display name for a memory category. The built-in "About you" category is localized on screen as
+// long as the user never renamed it (id + untouched English default => translated label); once
+// renamed, the user's own name is authoritative and shown verbatim.
+const displayCategoryName = (
+  category: { id: string; name: string },
+  t: ReturnType<typeof useLanguage>['t']
+): string =>
+  category.id === 'about-you' && category.name === DEFAULT_MEMORY_CATEGORY_NAME
+    ? t('settings.memoryAboutYou')
+    : category.name
 
 const createId = (): string =>
   `memory-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
@@ -142,7 +152,7 @@ const MemoryCategoryList = ({
 
   const startRename = (category: MemoryCategory): void => {
     setRenamingId(category.id)
-    setRenameDraft(category.name)
+    setRenameDraft(displayCategoryName(category, t))
     // Focus after the input renders (the rename row swaps in the input in the same tick).
     requestAnimationFrame(() => renameInputRef.current?.focus())
   }
@@ -193,7 +203,7 @@ const MemoryCategoryList = ({
                     className="min-w-0 flex-1 truncate text-left outline-none"
                     onClick={() => onSelect(category.id)}
                   >
-                    {category.name}
+                    {displayCategoryName(category, t)}
                   </button>
                   <span
                     className="ml-1 shrink-0 text-[11px] text-text-300"
@@ -471,7 +481,9 @@ const MemoryNoteList = ({
   return (
     <div className="flex min-w-0 flex-1 flex-col">
       <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
-        <span className="truncate text-[13px] font-medium text-text-100">{category.name}</span>
+        <span className="truncate text-[13px] font-medium text-text-100">
+          {displayCategoryName(category, t)}
+        </span>
         <button
           type="button"
           className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[12px] text-text-200 outline-none hover:bg-bg-200 hover:text-text-100 focus-visible:ring-2 focus-visible:ring-ring/50"

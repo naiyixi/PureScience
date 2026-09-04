@@ -344,6 +344,20 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'providerForm.supportedModels': 'Поддерживаемые модели',
   'providers.addProvider': 'Добавить провайдера',
   'remoteControl.allowOnce': 'Разрешить один раз',
+  'remoteControl.canManageOnly':
+    'Настройки удалённого доступа можно изменить только в окне PureScience на этом компьютере.',
+  'remoteControl.canManagePairingNote':
+    'Настройки удалённого доступа можно изменить только в окне PureScience на этом компьютере. Запросы двухэтапной проверки и доверенные браузеры можно управлять ниже.',
+  'remoteControl.appIntro':
+    'Откройте этот компьютер из вошедшего мобильного приложения. PureScience автоматически создаёт и поддерживает локальный сервис после однократного добавления компьютера.',
+  'remoteControl.step2': 'Выберите этот компьютер, затем выберите PureScience Remote.',
+  'remoteControl.step3':
+    'Нажмите Connect или Launch, введите шестизначный код и одобрите запрос с этого компьютера или уже доверенного браузера.',
+  'remoteControl.browserIntro':
+    'Откройте постоянный HTTPS-адрес в любом современном браузере. PureScience автоматически создаёт и поддерживает публичный браузерный сервис.',
+  'remoteControl.pairingRequests': 'Запросы сопряжения',
+  'remoteControl.reject': 'Отклонить',
+  'remoteControl.requestedAt': 'Запрошено {time}',
   'remoteControl.alwaysTrustBrowser': 'Всегда доверять этому браузеру',
   'remoteControl.browserLinkReady': 'Ссылка для браузера готова',
   'remoteControl.detectAgain': 'Обнаружить снова',
@@ -825,6 +839,13 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.credentialsSecretPlaceholder': 'Вставьте секрет…',
   'settings.credentialsServiceAws': 'AWS',
   'settings.credentialsServiceAzure': 'Azure',
+  'settings.credentialsServicesHeading': 'Сервисы',
+  'settings.credentialsConnectorHeading': 'Учётные данные коннекторов',
+  'settings.credentialsConnectorDescription':
+    'Учётные данные уровня устройства, доступные выбранным пользовательским коннекторам и внешним конечным точкам.',
+  'settings.credentialsConnectorEmpty': 'Пока нет учётных данных коннекторов.',
+  'settings.credentialsCustomDescription':
+    'Учётные данные пользовательских MCP-коннекторов и провайдеров моделей хранятся в их собственной конфигурации — здесь ничего не сохраняется, каждый элемент управляется на своей странице настроек.',
   'settings.credentialsServiceCustom': 'Своё',
   'settings.credentialsServiceGcp': 'Google Cloud',
   'settings.credentialsServiceGithub': 'GitHub',
@@ -1196,6 +1217,9 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.memoryAddCategory': 'Новая категория',
   'settings.memoryAddNote': 'Добавить заметку',
   'settings.memoryAutoRecall': 'Автовоспоминание',
+  'settings.memoryAboutYou': 'О вас',
+  'settings.visionModelUnavailable':
+    'Нет модели, поддерживающей изображения. Добавьте провайдера с поддержкой изображений — варианты появятся здесь.',
   'settings.memoryBack': 'Назад',
   'settings.memoryCancel': 'Отмена',
   'settings.memoryCategoryFormDescription':

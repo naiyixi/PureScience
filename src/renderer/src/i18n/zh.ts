@@ -389,6 +389,9 @@ export const zh = {
   'settings.memoryLoading': '正在加载记忆……',
   'settings.memoryOn': '开',
   'settings.memoryOff': '关',
+  'settings.memoryAboutYou': '关于你',
+  'settings.visionModelUnavailable':
+    '当前没有支持图像输入的模型可选。配置支持视觉的供应商后，选项会出现在这里。',
   'settings.memoryBack': '返回',
   'settings.memoryCancel': '取消',
   'settings.memoryCreate': '创建',
@@ -432,6 +435,13 @@ export const zh = {
   'settings.credentialsServiceNvidia': 'NVIDIA',
   'settings.credentialsServiceOpenalex': 'OpenAlex',
   'settings.credentialsServiceLiterature': '文献访问',
+  'settings.credentialsServicesHeading': '服务',
+  'settings.credentialsConnectorHeading': '连接器凭据',
+  'settings.credentialsConnectorDescription':
+    '设备级凭据：可供你选用的自定义连接器与外部端点共享。',
+  'settings.credentialsConnectorEmpty': '暂无连接器凭据。',
+  'settings.credentialsCustomDescription':
+    '自定义 MCP 连接器与模型提供商的凭据保留在其各自的配置中——此处不存储任何内容，各项在各自设置页管理。',
   'settings.credentialsServiceCustom': '自定义',
   'settings.proxyHostRequired': '请输入代理服务器地址。',
   'settings.proxyPortInvalid': '端口须为 1–65535 之间的数字。',
@@ -1514,6 +1524,19 @@ export const zh = {
   'remoteControl.noPermanentAccess': '没有浏览器拥有永久访问权限。',
   'remoteControl.noBrowsersWaiting': '没有等待批准的浏览器。',
   'remoteControl.allowOnce': '允许一次',
+  'remoteControl.canManageOnly': '远程访问设置只能在此计算机上的 PureScience 桌面窗口中更改。',
+  'remoteControl.canManagePairingNote':
+    '远程访问设置只能在此计算机上的 PureScience 桌面窗口中更改。两步验证请求与受信任浏览器可在下方管理。',
+  'remoteControl.appIntro':
+    '从已登录的移动应用打开这台计算机。本机添加一次后，PureScience 会自动创建并维护本地服务。',
+  'remoteControl.step2': '选择此计算机，然后选择 PureScience Remote。',
+  'remoteControl.step3':
+    '点按 Connect 或 Launch，匹配六位代码，然后在此计算机或已受信任的浏览器上批准请求。',
+  'remoteControl.browserIntro':
+    '从任意现代浏览器打开持久的 HTTPS 地址。PureScience 会自动创建并维护公共浏览器服务。',
+  'remoteControl.pairingRequests': '配对请求',
+  'remoteControl.reject': '拒绝',
+  'remoteControl.requestedAt': '请求于 {time}',
   'remoteControl.alwaysTrustBrowser': '始终信任此浏览器',
   'wsMessage.showLess': '显示更少',
   'wsMessage.expandGeneratedFiles': '展开生成的文件',

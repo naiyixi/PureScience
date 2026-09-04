@@ -1,9 +1,13 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 
-import { formatRelativeTime } from './format-relative-time'
+import { formatRelativeTime, setRelativeTimeLanguage } from './format-relative-time'
 
 const NOW = 1_800_000_000_000
 const day = 24 * 60 * 60 * 1000
+
+afterEach(() => {
+  setRelativeTimeLanguage('en')
+})
 
 describe('formatRelativeTime', () => {
   it('formats sub-minute, minute, hour, and day ranges', () => {
@@ -20,5 +24,19 @@ describe('formatRelativeTime', () => {
     expect(formatRelativeTime(NOW - 364 * day, NOW)).toBe('12mo')
     expect(formatRelativeTime(NOW - 365 * day, NOW)).toBe('1y')
     expect(formatRelativeTime(NOW - 400 * day, NOW)).toBe('1y')
+  })
+
+  it('uses localized unit labels for the active language (e.g. "2周" in Chinese)', () => {
+    setRelativeTimeLanguage('zh')
+    expect(formatRelativeTime(NOW - 10_000, NOW)).toBe('刚刚')
+    expect(formatRelativeTime(NOW - 2 * day, NOW)).toBe('2天')
+    expect(formatRelativeTime(NOW - 14 * day, NOW)).toBe('2周')
+    expect(formatRelativeTime(NOW - 60 * day, NOW)).toBe('2个月')
+    expect(formatRelativeTime(NOW - 400 * day, NOW)).toBe('1年')
+    setRelativeTimeLanguage('ja')
+    expect(formatRelativeTime(NOW - 14 * day, NOW)).toBe('2週間')
+    // Unknown languages fall back to English abbreviations.
+    setRelativeTimeLanguage('xx')
+    expect(formatRelativeTime(NOW - 14 * day, NOW)).toBe('2w')
   })
 })
