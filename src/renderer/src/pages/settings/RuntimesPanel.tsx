@@ -27,6 +27,21 @@ import type { NotebookLanguage } from '../../../../shared/notebook'
 import { SettingsRow, SettingsSection, SettingsToggle } from './SettingsLayout'
 import { PythonIcon, RIcon } from './language-icons'
 
+// Localized prose for the disable-impact dialog; placeholders survive the
+// string-key translator (tests' `t` does not interpolate), so fill them here.
+const describeDisableImpact = (
+  t: (key: string) => string,
+  usage: { running: number; idle: number } | undefined
+): string => {
+  if (!usage) return ''
+  const active = usage.running + usage.idle
+  const template = active === 1 ? t('runtimes.disableDescOne') : t('runtimes.disableDescMany')
+  return template
+    .replace('{active}', String(active))
+    .replace('{running}', String(usage.running))
+    .replace('{idle}', String(usage.idle))
+}
+
 // v4 Runtime Registry write surface: one CARD per discovered interpreter per language. Each card can
 // be enabled/disabled (the agent only ever sees enabled envs); external envs additionally expose a
 // separate, high-risk "allow package install" opt-in. A separate section drives the app-managed
@@ -592,7 +607,7 @@ const RuntimesPanel = ({ title, description }: RuntimesPanelProps): React.JSX.El
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-medium text-foreground">
-                              App-managed environment
+                              {t('runtimes.appManagedEnv')}
                             </span>
                             <Badge variant="secondary">{t('settings.appManaged')}</Badge>
                           </div>
@@ -698,19 +713,15 @@ const RuntimesPanel = ({ title, description }: RuntimesPanelProps): React.JSX.El
             className={dialogPanelClassName('w-[min(440px,calc(100vw-2rem))]')}
           >
             <AlertDialog.Title className={dialogTitleClassName}>
-              Disable {dialogDisableImpact?.env.label}?
+              {t('runtimes.disableTitle').replace('{env}', dialogDisableImpact?.env.label ?? '')}
             </AlertDialog.Title>
             <AlertDialog.Description className={dialogDescriptionClassName}>
-              It is in use by{' '}
-              {(dialogDisableImpact?.usage.running ?? 0) + (dialogDisableImpact?.usage.idle ?? 0)}{' '}
-              active session(s) — {dialogDisableImpact?.usage.running ?? 0} running,{' '}
-              {dialogDisableImpact?.usage.idle ?? 0} idle. Disabling lets any running cell finish,
-              then closes its kernel; those sessions must switch to another runtime to keep working.
+              {describeDisableImpact(t as (key: string) => string, dialogDisableImpact?.usage)}
             </AlertDialog.Description>
             <div className="mt-6 flex justify-end gap-2">
               <AlertDialog.Cancel asChild>
                 <Button type="button" variant="outline">
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
               </AlertDialog.Cancel>
               {(dialogDisableImpact?.usage.running ?? 0) > 0 ? (
@@ -720,13 +731,13 @@ const RuntimesPanel = ({ title, description }: RuntimesPanelProps): React.JSX.El
                     variant="destructive"
                     onClick={() => void confirmForceStop()}
                   >
-                    Stop running work
+                    {t('runtimes.stopRunningWork')}
                   </Button>
                 </AlertDialog.Action>
               ) : null}
               <AlertDialog.Action asChild>
                 <Button type="button" onClick={() => void confirmDisable()}>
-                  Disable after current work
+                  {t('runtimes.disableAfterCurrentWork')}
                 </Button>
               </AlertDialog.Action>
             </div>

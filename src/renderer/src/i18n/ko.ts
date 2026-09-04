@@ -90,6 +90,17 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.general': '일반',
   'settings.tags': '태그',
   'settings.tokenUsage': '토큰 사용량',
+  'runtimes.appManagedEnv': '앱 관리 환경',
+  'runtimes.disableTitle': '{env}을(를) 비활성화할까요?',
+  'runtimes.disableDescOne':
+    '활성 세션 1개가 사용 중입니다(실행 중 {running}, 유휴 {idle}). 비활성화하면 실행 중인 셀이 끝난 뒤 커널이 닫히며, 해당 세션은 계속 작업하려면 다른 런타임으로 전환해야 합니다.',
+  'runtimes.disableDescMany':
+    '활성 세션 {active}개가 사용 중입니다(실행 중 {running}, 유휴 {idle}). 비활성화하면 실행 중인 셀이 끝난 뒤 커널이 닫히며, 해당 세션들은 계속 작업하려면 다른 런타임으로 전환해야 합니다.',
+  'runtimes.stopRunningWork': '실행 중인 작업 중지',
+  'runtimes.disableAfterCurrentWork': '현재 작업 종료 후 비활성화',
+  'skillDetail.detailsTitle': '세부 정보',
+  'skillDetail.author': '작성자',
+  'skillDetail.license': '라이선스',
   'boot.loadingSettings': '설정을 불러오는 중…',
   'boot.retrying': '다시 시도하는 중…',
   'boot.retry': '다시 시도',

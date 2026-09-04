@@ -90,6 +90,17 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.general': 'Général',
   'settings.tags': 'Étiquettes',
   'settings.tokenUsage': 'Utilisation de tokens',
+  'runtimes.appManagedEnv': 'Environnement géré par l’app',
+  'runtimes.disableTitle': 'Désactiver {env} ?',
+  'runtimes.disableDescOne':
+    'Cet environnement est utilisé par 1 session active — {running} en cours, {idle} inactives. La désactivation laisse la cellule en cours se terminer, puis ferme son noyau ; cette session doit passer à un autre environnement d’exécution pour continuer.',
+  'runtimes.disableDescMany':
+    'Cet environnement est utilisé par {active} sessions actives — {running} en cours, {idle} inactives. La désactivation laisse les cellules en cours se terminer, puis ferme leurs noyaux ; ces sessions doivent passer à un autre environnement d’exécution pour continuer.',
+  'runtimes.stopRunningWork': 'Arrêter le travail en cours',
+  'runtimes.disableAfterCurrentWork': 'Désactiver après le travail en cours',
+  'skillDetail.detailsTitle': 'Détails',
+  'skillDetail.author': 'Auteur',
+  'skillDetail.license': 'Licence',
   'boot.loadingSettings': 'Chargement des réglages…',
   'boot.retrying': 'Nouvelle tentative…',
   'boot.retry': 'Réessayer',

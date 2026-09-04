@@ -90,6 +90,17 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.general': '一般',
   'settings.tags': '標籤',
   'settings.tokenUsage': '詞元用量',
+  'runtimes.appManagedEnv': '應用託管環境',
+  'runtimes.disableTitle': '停用 {env}？',
+  'runtimes.disableDescOne':
+    '此環境正被 1 個作用中工作階段使用（執行中 {running}，閒置 {idle}）。停用後，執行中的單元會執行完畢再關閉其核心；該工作階段必須切換至其他執行環境才能繼續運作。',
+  'runtimes.disableDescMany':
+    '此環境正被 {active} 個作用中工作階段使用（執行中 {running}，閒置 {idle}）。停用後，執行中的單元會執行完畢再關閉其核心；這些工作階段必須切換至其他執行環境才能繼續運作。',
+  'runtimes.stopRunningWork': '停止執行中的工作',
+  'runtimes.disableAfterCurrentWork': '在目前工作結束後停用',
+  'skillDetail.detailsTitle': '詳細',
+  'skillDetail.author': '作者',
+  'skillDetail.license': '授權條款',
   'boot.loadingSettings': '正在載入設定…',
   'boot.retrying': '正在重試…',
   'boot.retry': '重試',
