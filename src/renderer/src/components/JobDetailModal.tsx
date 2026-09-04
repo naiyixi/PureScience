@@ -177,9 +177,9 @@ function JobDetailView({ job, onBack, onOpenFileBrowser }: JobDetailViewProps): 
         className="grid shrink-0 grid-cols-2 bg-muted/40 border-b border-border"
         data-testid="job-meta"
       >
-        <MetaRow label="Provider" value={latestJob.display_name} />
-        <MetaRow label="Status" value={latestJob.status} />
-        <MetaRow label="Runtime" value={runtimeDisplay()} />
+        <MetaRow label={t('jobDetail.provider')} value={latestJob.display_name} />
+        <MetaRow label={t('jobDetail.status')} value={latestJob.status} />
+        <MetaRow label={t('jobDetail.runtime')} value={runtimeDisplay()} />
         <MetaRow
           label={t('jobDetail.remoteWorkdir')}
           value={latestJob.remote_workdir ?? '—'}
@@ -192,7 +192,9 @@ function JobDetailView({ job, onBack, onOpenFileBrowser }: JobDetailViewProps): 
         />
         {/* Job ID spans full width (design.md: mono, break-all) */}
         <div className="col-span-2 flex items-baseline gap-2 border-b border-border px-4 py-1.5">
-          <span className="min-w-[54px] shrink-0 text-[11px] text-muted-foreground">Job ID</span>
+          <span className="min-w-[54px] shrink-0 text-[11px] text-muted-foreground">
+            {t('jobDetail.jobId')}
+          </span>
           <span className="break-all font-mono text-[10.5px] text-muted-foreground">
             {latestJob.job_id}
           </span>
