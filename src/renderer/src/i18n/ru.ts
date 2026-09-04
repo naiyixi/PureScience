@@ -90,6 +90,10 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.general': 'Общие',
   'settings.tags': 'Теги',
   'settings.tokenUsage': 'Использование токенов',
+  'boot.loadingSettings': 'Загрузка настроек…',
+  'boot.retrying': 'Повтор попытки…',
+  'boot.retry': 'Повторить',
+  'boot.loadingSaved': 'Загрузка сохранённых бесед…',
   'toolActivity.webSearch': 'Веб-поиск',
   'toolActivity.query': 'запрос',
   'remoteError.approvalCancelled':

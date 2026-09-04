@@ -91,6 +91,10 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.general': '一般',
   'settings.tags': 'タグ',
   'settings.tokenUsage': 'トークン使用量',
+  'boot.loadingSettings': '設定を読み込み中…',
+  'boot.retrying': '再試行中…',
+  'boot.retry': '再試行',
+  'boot.loadingSaved': '保存済みの会話を読み込み中…',
   'toolActivity.webSearch': 'ウェブ検索',
   'toolActivity.query': 'クエリ',
   'remoteError.approvalCancelled':

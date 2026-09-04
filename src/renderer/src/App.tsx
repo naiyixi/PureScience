@@ -498,7 +498,7 @@ const App = (): React.JSX.Element | null => {
               onClick={() => void retrySettingsInitialization()}
               className="mt-4"
             >
-              {isSettingsLoading ? 'Retrying…' : 'Retry'}
+              {isSettingsLoading ? t('boot.retrying') : t('boot.retry')}
             </Button>
           </div>
         </main>
@@ -513,7 +513,7 @@ const App = (): React.JSX.Element | null => {
       >
         <div className="flex flex-col items-center gap-14">
           <PureScienceLogoLoader />
-          <span className="text-sm text-muted-foreground">Loading settings…</span>
+          <span className="text-sm text-muted-foreground">{t('boot.loadingSettings')}</span>
         </div>
       </main>
     )
@@ -530,7 +530,7 @@ const App = (): React.JSX.Element | null => {
         role="status"
         className="flex min-h-svh items-center justify-center bg-background text-foreground"
       >
-        <span className="text-sm text-muted-foreground">Loading saved conversations…</span>
+        <span className="text-sm text-muted-foreground">{t('boot.loadingSaved')}</span>
       </main>
     )
   }

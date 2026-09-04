@@ -90,6 +90,10 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.general': '일반',
   'settings.tags': '태그',
   'settings.tokenUsage': '토큰 사용량',
+  'boot.loadingSettings': '설정을 불러오는 중…',
+  'boot.retrying': '다시 시도하는 중…',
+  'boot.retry': '다시 시도',
+  'boot.loadingSaved': '저장된 대화를 불러오는 중…',
   'toolActivity.webSearch': '웹 검색',
   'toolActivity.query': '쿼리',
   'remoteError.approvalCancelled':
