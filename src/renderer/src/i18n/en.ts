@@ -979,7 +979,6 @@ export const en: Record<ZhKey, string> = {
     'Maximum jobs running at the same time on this host (1–500). Not yet enforced.',
   'settings.openingBrowserToSignIn':
     'Opening your browser to sign in… finish there and this closes automatically.',
-  'settings.sshCredentialsCopied': 'SSH credentials are copied.',
   'settings.remoteCommandsNotSandboxed':
     'Remote commands run as your account on the host and are not sandboxed. Approve only',
   'settings.connectorSendsExternal':
@@ -1824,6 +1823,17 @@ export const en: Record<ZhKey, string> = {
   'settings.dismissSettingsError': 'Dismiss settings error',
   'settings.endpoint': 'Endpoint',
   'settings.tokenUsage': 'Token usage',
+  'computeAdd.pickParagraph':
+    'Pick a host alias from your {cfg}, or type one. PureScience will use it as a compute provider via your existing SSH key — no SSH credentials are copied.',
+  'localFile.jumpHint': 'Jump to Home or a pinned folder',
+  'localFile.pinCurrent': 'Pin current folder',
+  'localFile.rereadFolder': 'Re-read this folder from disk',
+  'repair.repairAria': 'Repair',
+  'computeAdd.fromSshLabel': 'From ~/.ssh/config',
+  'computeAdd.pickHostAria': 'Pick a host from ~/.ssh/config',
+  'computeAdd.orTypeAlias': 'Or type a host alias',
+  'signIn.oauthHintA': 'Use a long-lived OAuth token from',
+  'signIn.oauthHintB': '.',
   'providerList.modelCount': '{n} models',
   'providerList.reimportCodexLogin': 'Re-import Codex login',
   'providerList.disconnectFromPureScience': 'Disconnect from PureScience',

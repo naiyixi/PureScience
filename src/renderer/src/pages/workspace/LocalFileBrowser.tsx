@@ -132,7 +132,7 @@ const GoToMenu = ({
   const { t } = useLanguage()
   return (
     <DropdownMenu>
-      <Hint label="Jump to Home or a pinned folder">
+      <Hint label={t('localFile.jumpHint')}>
         {/* Label at the default 13px: at text-xs it was the smallest type in the row despite being
           the only worded control there. */}
         <DropdownMenuTrigger asChild>
@@ -161,7 +161,7 @@ const GoToMenu = ({
           <DropdownMenuItem className="items-start gap-2 text-xs" onSelect={onPinCurrent}>
             <GoToRow
               icon={<Pin className="size-3.5 text-muted-foreground" strokeWidth={1.5} />}
-              label="Pin current folder"
+              label={t('localFile.pinCurrent')}
               path={currentPath}
             />
           </DropdownMenuItem>
@@ -468,7 +468,7 @@ export const LocalFileBrowser = ({
             />
           </form>
 
-          <Hint label="Re-read this folder from disk">
+          <Hint label={t('localFile.rereadFolder')}>
             <Button
               type="button"
               variant="ghost"
