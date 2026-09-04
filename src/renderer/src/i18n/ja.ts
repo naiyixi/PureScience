@@ -91,6 +91,81 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.general': '一般',
   'settings.tags': 'タグ',
   'settings.tokenUsage': 'トークン使用量',
+  'toolActivity.webSearch': 'ウェブ検索',
+  'toolActivity.query': 'クエリ',
+  'remoteError.approvalCancelled':
+    '管理者の承認がキャンセルされたか、Remote.It がそのコマンドを完了できませんでした。',
+  'remoteError.approvalCancelledPlural':
+    '管理者の承認がキャンセルされたか、Remote.It がこれらのコマンドを完了できませんでした。',
+  'remoteError.routeKeptWhileDisabled':
+    'ローカルのリモートアクセスが無効なのに、プロバイダールートが設定されたままです。',
+  'remoteError.disabledLocally': 'ローカルのリモートアクセスは無効です。',
+  'remoteError.notInitialized': 'リモートアクセスはまだ初期化されていません。',
+  'remoteError.invalidHttpsBrowserUrl': 'Remote.It が無効な HTTPS ブラウザ URL を返しました。',
+  'remoteError.invalidBrowserUrl': 'Remote.It が無効なブラウザ URL を返しました。',
+  'remoteError.couldNotCreateService':
+    'Remote.It が PureScience サービスを作成できませんでした。macOS または Linux では、サービス管理に管理者の承認が必要な場合があります。',
+  'remoteError.couldNotDisablePublicEndpoint':
+    'Remote.It がサービスのパブリックエンドポイントを無効にできませんでした。',
+  'remoteError.couldNotEnablePersistentUrl':
+    'Remote.It が PureScience の永続的なパブリック URL を有効にできませんでした。',
+  'remoteError.windowsServicesUnclear':
+    'Remote.It が既存の Windows サービスを識別できなかったため、PureScience は重複を作成せずに停止しました。',
+  'remoteError.couldNotPrepareServices':
+    'Remote.It が App サービスとブラウザサービスを準備できませんでした。macOS または Linux では、最初のサービス管理に管理者の承認が必要な場合があります。',
+  'remoteError.couldNotUpdateService':
+    'Remote.It が PureScience サービスを更新できませんでした。macOS または Linux では、サービス管理に管理者の承認が必要な場合があります。',
+  'remoteError.createdButNotEnabled':
+    'Remote.It は PureScience サービスを作成しましたが、有効になっていません。',
+  'remoteError.createdNoIdentifier':
+    'Remote.It はサービスを作成しましたが、その識別子を報告しませんでした。',
+  'remoteError.didNotDisablePublicEndpoint':
+    'Remote.It がサービスのパブリックエンドポイントを無効にしませんでした。',
+  'remoteError.didNotEnablePersistentUrl':
+    'Remote.It が PureScience の永続的なパブリック URL を有効にしませんでした。',
+  'remoteError.noCloudConfig': 'Remote.It がクラウド設定データを返しませんでした。',
+  'remoteError.noTwoServiceIdentifiers':
+    'Remote.It が 2 つの異なる PureScience サービス識別子を返しませんでした。',
+  'remoteError.notFinishedSwitchingMode':
+    'Remote.It はバックグラウンドサービスモードの切り替えをまだ完了していません。数秒待ってから「再検出」をクリックしてください。デバイスを再度追加しないでください。',
+  'remoteError.stillSwitchingMode':
+    'Remote.It はバックグラウンドサービスモードを切り替え中です。数秒待ってから「再検出」をクリックしてください。デバイスを再度追加しないでください。',
+  'remoteError.rejectedCloudConfig': 'Remote.It がクラウド設定リクエストを拒否しました。',
+  'remoteError.reportedError': 'Remote.It がエラーを報告しました。',
+  'remoteError.invalidServiceIdentifier': 'Remote.It が無効なサービス識別子を返しました。',
+  'remoteError.incompletePreparation':
+    'Remote.It がリモートアクセスの準備中に不完全な結果を返しました。',
+  'remoteError.invalidCloudConfigData': 'Remote.It が無効なクラウド設定データを返しました。',
+  'remoteError.invalidStatusData': 'Remote.It が無効な状態データを返しました。',
+  'remoteError.statusChangesPending':
+    'Remote.It の状態は、受け入れられたサービス変更をまだすべて報告していません。',
+  'remoteError.statusUnavailable': 'Remote.It の状態は一時的に利用できません。',
+  'remoteError.localWebStopped':
+    'ローカル Web サービスが停止しました。再検出してリモートアクセスを復元してください。',
+  'remoteError.appNotInstalled':
+    'リモートアクセスアプリがインストールされていません。デスクトップアプリをインストールしてサインインし、再検出してください。',
+  'remoteError.appUnavailable': 'リモートアクセスアプリを利用できません。',
+  'remoteError.unableReadStatus': 'Remote.It の状態を読み取れません。',
+  'gs.placeholderProject': 'このプロジェクトを検索…',
+  'gs.placeholderAll': 'セッションと成果物を検索…',
+  'gs.resultsCount': '{n} 件の結果',
+  'gs.searchingArtifacts': '成果物を検索中…',
+  'gs.regionArtifacts': '成果物',
+  'gs.regionSessions': 'セッション',
+  'gs.regionCommands': 'コマンド',
+  'remoteControl.open': '開く',
+  'remoteControl.loadingRemote': 'リモートアクセスを読み込み中…',
+  'remoteControl.lastUsed': '最終使用 {time}',
+  'remoteControl.revokeAria': '{name}を取り消す',
+  'remoteControl.browserSetupPending':
+    '設定が完了すると、ブラウザのリンクとQRコードがここに表示されます。',
+  'remoteControl.appStep4':
+    '今後同じリモートアドレスにアクセスする際に承認を省略するには「{trust}」を選択します。',
+  'remoteControl.browserStep1': 'QRコードをスキャンするか、保存したリンクをブラウザで開きます。',
+  'remoteControl.browserStep2':
+    '6桁のコードを照合して2段階認証を完了し、このコンピュータまたは信頼済みブラウザでリクエストを承認します。',
+  'remoteControl.browserStep3':
+    'ブラウザアクセスがオンの間、今後のアクセスで直接接続するには「{trust}」を選択します。',
   'settings.archived': 'アーカイブ済み',
   'settings.appearance': '外観',
   'settings.licensing': 'ライセンス',
