@@ -170,3 +170,58 @@ jobs:
           aws s3 cp resources/default-envs/manifest.json "$base/manifest.json" \
             --cache-control "public, max-age=31536000, immutable" --only-show-errors
           echo "published manifest.json + ${#archives[@]} pack archives to ${ns:+$ns/}runtime-bundle/$VERSION/${{ matrix.subdir }}/"
+
+  # Zero-infra mirror: publish the same bundle as a single-root snapshot on the `runtime-cdn`
+  # orphan branch so consumers can fetch via raw.githubusercontent.com (works without any CDN
+  # account/domain). The consumer default base (runtime-paths.ts DEFAULT_RUNTIME_CDN_BASE) points
+  # here; the branch is force-rewritten to hold ONLY the requested version, so it never grows.
+  mirror-github:
+    name: Mirror bundle to GitHub runtime-cdn branch
+    needs: stage
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Resolve bundle version
+        id: ver
+        shell: bash
+        run: |
+          current=$(node -e "const s=require('fs').readFileSync('src/main/notebook/runtime-paths.ts','utf8');process.stdout.write(String(s.match(/DEFAULT_ENV_VERSION\s*=\s*(\d+)/)[1]))")
+          echo "version=$current" >> "$GITHUB_OUTPUT"
+          echo "mirroring runtime bundle version $current"
+
+      - name: Configure AWS credentials
+        env:
+          S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
+          S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
+          S3_REGION: ${{ vars.S3_REGION }}
+        shell: bash
+        run: |
+          aws configure set aws_access_key_id "$S3_ACCESS_KEY_ID"
+          aws configure set aws_secret_access_key "$S3_SECRET_ACCESS_KEY"
+          aws configure set default.region "$S3_REGION"
+
+      - name: Snapshot bundle onto runtime-cdn branch
+        shell: bash
+        env:
+          S3_BUCKET: ${{ secrets.S3_BUCKET }}
+          S3_PREFIX: ${{ vars.S3_PREFIX }}
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          set -euo pipefail
+          ns="${S3_PREFIX%%/*}"
+          git checkout --orphan mirror-snapshot
+          git rm -rf --quiet . >/dev/null 2>&1 || true
+          mkdir -p "purescience/runtime-bundle/$VERSION"
+          aws s3 sync "s3://$S3_BUCKET${ns:+/$ns}/runtime-bundle/$VERSION" \
+            "purescience/runtime-bundle/$VERSION" --only-show-errors
+          test -f "purescience/runtime-bundle/$VERSION/osx-arm64/manifest.json"
+          git add -A
+          git -c user.name='PureScience Runtime Mirror' \
+              -c user.email='actions@users.noreply.github.com' \
+              commit -q -m "runtime-bundle v$VERSION (GitHub mirror snapshot)"
+          git push -f origin "HEAD:runtime-cdn"
+          echo "mirrored ${ns:+$ns/}runtime-bundle/$VERSION to runtime-cdn branch"

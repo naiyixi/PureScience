@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url'
 
 import { VERSIONS, packArchiveFile, packId, readDefaultEnvVersion } from './stage-default-envs.mjs'
 
-export const DEFAULT_CDN_BASE = 'https://statics.zerolink.com/purescience'
+export const DEFAULT_CDN_BASE = 'https://raw.githubusercontent.com/naiyixi/PureScience/runtime-cdn/purescience'
 
 export const runtimeManifestUrl = (cdnBase, envVersion, subdir) =>
   `${cdnBase.replace(/\/+$/, '')}/runtime-bundle/${envVersion}/${subdir}/manifest.json`
