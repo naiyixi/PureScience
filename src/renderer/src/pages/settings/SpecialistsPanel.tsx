@@ -329,12 +329,10 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
               {t('settings.importZip')}
             </p>
             <h2 className="mt-1 text-xl font-semibold">{t('settings.importSpecialist')}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Choose one ZIP containing exactly one Specialist.
-            </p>
+            <p className="mt-1 text-sm text-muted-foreground">{t('specialist.chooseZipHint')}</p>
           </div>
           <Button type="button" variant="outline" onClick={() => onNavigate({ kind: 'list' })}>
-            Back
+            {t('common.back')}
           </Button>
         </div>
         <div className="rounded-xl border border-border px-6 py-10 text-center" role="status">
@@ -634,7 +632,7 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                   void selectPackage().finally(() => setPackageBusy(false))
                 }}
               >
-                Choose ZIP
+                {t('specialist.chooseZip')}
               </Button>
             </div>
             {templateSaveError ? (
@@ -713,14 +711,14 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                 <h3 className="text-sm font-semibold">{t('settings.archiveLimits')}</h3>
                 <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
                   <div>
-                    <dt className="text-muted-foreground">Compressed</dt>
+                    <dt className="text-muted-foreground">{t('specialist.compressed')}</dt>
                     <dd>
                       {formatBytes(packagePreview.archive.compressedBytes)} /{' '}
                       {formatBytes(packagePreview.archive.limits.compressedBytes)}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-muted-foreground">Uncompressed</dt>
+                    <dt className="text-muted-foreground">{t('specialist.uncompressed')}</dt>
                     <dd>
                       {formatBytes(packagePreview.archive.uncompressedBytes ?? 0)} /{' '}
                       {formatBytes(packagePreview.archive.limits.uncompressedBytes)}
@@ -743,7 +741,7 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
 
             <section className="rounded-xl border border-border p-4">
               <div className="flex items-center justify-between gap-2">
-                <h3 className="text-sm font-semibold">Diagnostics</h3>
+                <h3 className="text-sm font-semibold">{t('specialist.diagnostics')}</h3>
                 <div className="flex gap-2">
                   <Button
                     type="button"
@@ -778,7 +776,7 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                     }}
                   >
                     <Download data-icon="inline-start" aria-hidden="true" />
-                    Download JSON
+                    {t('specialist.downloadJson')}
                   </Button>
                 </div>
               </div>
@@ -947,7 +945,7 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                         </dd>
                       </div>
                       <div>
-                        <dt className="text-muted-foreground">Target</dt>
+                        <dt className="text-muted-foreground">{t('specialist.target')}</dt>
                         <dd>{t('settings.customSpecialistOnly')}</dd>
                       </div>
                     </dl>
@@ -1039,13 +1037,11 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
           </div>
           <p className="mt-4 text-sm text-foreground">{specialist.description}</p>
           <div className="mt-5 rounded-lg border border-border bg-muted/30 p-3">
-            <p className="text-sm font-medium text-foreground">Read-only</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              This Specialist ships with the app and cannot be changed.
-            </p>
+            <p className="text-sm font-medium text-foreground">{t('specialist.readOnly')}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t('specialist.shipsWithApp')}</p>
           </div>
           <div className="mt-5">
-            <h3 className="text-sm font-semibold text-foreground">Capabilities</h3>
+            <h3 className="text-sm font-semibold text-foreground">{t('settings.capabilities')}</h3>
             <p className="mt-1 text-xs text-muted-foreground">
               {specialist.capabilityMode === 'full' ? 'Full access' : 'Selected capabilities'}
             </p>
@@ -1168,7 +1164,7 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
               <>
                 <DropdownMenuSeparator />
                 <p className="px-2.5 pb-1 pt-0.5 text-xs text-muted-foreground">
-                  Open a project to chat with the agent
+                  {t('specialist.needProjectToChat')}
                 </p>
               </>
             ) : null}
@@ -1178,7 +1174,7 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
               <span className="flex flex-col">
                 <span>{t('settings.importZip')}</span>
                 <span className="text-xs text-muted-foreground">
-                  Preview a package, then finish setup in the existing editor
+                  {t('specialist.previewThenFinish')}
                 </span>
               </span>
             </DropdownMenuItem>
@@ -1212,7 +1208,9 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
           {filter !== 'builtin' ? (
             <div>
               <div className="mb-1 flex flex-col gap-0.5">
-                <span className="text-sm font-semibold text-foreground">Custom</span>
+                <span className="text-sm font-semibold text-foreground">
+                  {t('specialist.custom')}
+                </span>
                 <span className="text-xs text-muted-foreground">
                   {t('settings.customCreatedByYou')}
                 </span>
