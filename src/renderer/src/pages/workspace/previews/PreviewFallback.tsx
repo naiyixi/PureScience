@@ -7,12 +7,7 @@ import type { PreviewFileFormat, PreviewFileSource } from '@/stores/preview-work
 import { LocalFileFallbackAction } from '../LocalFileHeaderActions'
 import { ManagedFileDownloadButton } from '../ManagedFileDownloadButton'
 import { getFileExtension } from '../preview-support'
-import {
-  FILE_MISSING_MESSAGE,
-  FILE_OUTSIDE_STORAGE_MESSAGE,
-  isMissingFileError,
-  isOutsideStorageError
-} from './preview-errors'
+import { isMissingFileError, isOutsideStorageError } from './preview-errors'
 import { usePreviewRuntime } from './preview-runtime-context'
 
 import { useLanguage } from '@/i18n'
@@ -22,22 +17,22 @@ type PreviewFormatPresentation = {
 }
 
 const FORMAT_LOADING_TITLES: Record<PreviewFileFormat, string> = {
-  code: 'Preparing code file',
-  csv: 'Preparing data',
-  fasta: 'Preparing sequence',
-  html: 'Preparing document',
-  image: 'Preparing image',
-  json: 'Preparing data',
-  markdown: 'Preparing document',
-  molecule: 'Preparing structure',
-  notebook: 'Preparing notebook',
-  pdb: 'Preparing structure',
-  pdf: 'Preparing document',
-  presentation: 'Preparing presentation',
-  spreadsheet: 'Preparing spreadsheet',
-  text: 'Preparing text file',
-  tiff: 'Preparing image',
-  unknown: 'Preparing preview',
+  code: 'preview.loadingCode',
+  csv: 'preview.loadingCsv',
+  fasta: 'preview.loadingFasta',
+  html: 'preview.loadingHtml',
+  image: 'preview.loadingImage',
+  json: 'preview.loadingJson',
+  markdown: 'preview.loadingMarkdown',
+  molecule: 'preview.loadingMolecule',
+  notebook: 'preview.loadingNotebook',
+  pdb: 'preview.loadingPdb',
+  pdf: 'preview.loadingPdf',
+  presentation: 'preview.loadingPresentation',
+  spreadsheet: 'preview.loadingSpreadsheet',
+  text: 'preview.loadingText',
+  tiff: 'preview.loadingTiff',
+  unknown: 'preview.loadingUnknown',
   word: 'Preparing document'
 }
 
@@ -132,7 +127,9 @@ export const PreviewLoadingContent = ({
       <div className="grid w-full max-w-[19rem] grid-cols-[2.25rem_minmax(0,1fr)_auto] items-center gap-x-3">
         <PreviewFormatTile badge={presentation.badge} />
         <div className="min-w-0">
-          <div className="truncate text-[12px] font-medium text-text-000">{loadingTitle}</div>
+          <div className="truncate text-[12px] font-medium text-text-000">
+            {(t as (key: string) => string)(loadingTitle)}
+          </div>
           {loadingDescription ? (
             <div className="mt-0.5 truncate text-[10px] text-text-300" title={loadingDescription}>
               {loadingDescription}
@@ -210,15 +207,16 @@ export const PreviewErrorCard = (props: {
   error?: unknown
   fallbackMessage: string
 }): React.JSX.Element => {
+  const { t } = useLanguage()
   const { name, error, fallbackMessage } = props
   const missing = isMissingFileError(error)
   const outside = !missing && isOutsideStorageError(error)
   const unavailable = missing || outside
 
   const message = missing
-    ? FILE_MISSING_MESSAGE
+    ? t('preview.fileMissing')
     : outside
-      ? FILE_OUTSIDE_STORAGE_MESSAGE
+      ? t('preview.fileOutside')
       : fallbackMessage
 
   return (
