@@ -195,11 +195,16 @@ jobs:
           VERSION: ${{ steps.ver.outputs.version }}
         run: |
           set -euo pipefail
-          test -f "/tmp/cdn/purescience/runtime-bundle/$VERSION/osx-arm64/manifest.json"
+          echo "== downloaded tree layout (top 40) =="
+          find /tmp/cdn -maxdepth 7 | head -40
+          # Locate the bundle root regardless of artifact nesting depth.
+          bundle_root="$(dirname "$(dirname "$(find /tmp/cdn -type f -name manifest.json -path '*osx-arm64*' | head -1)")")"
+          echo "bundle_root=$bundle_root"
+          test -f "$bundle_root/osx-arm64/manifest.json"
           git checkout --orphan mirror-snapshot
           git rm -rf --quiet . >/dev/null 2>&1 || true
           mkdir -p "purescience/runtime-bundle/$VERSION"
-          cp -R "/tmp/cdn/purescience/runtime-bundle/$VERSION/." "purescience/runtime-bundle/$VERSION/"
+          cp -R "$bundle_root/." "purescience/runtime-bundle/$VERSION/"
           git add -A
           git -c user.name='PureScience Runtime Mirror' \
               -c user.email='actions@users.noreply.github.com' \
