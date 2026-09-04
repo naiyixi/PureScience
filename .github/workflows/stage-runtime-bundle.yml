@@ -108,7 +108,7 @@ jobs:
       # Ship each platform's bundle as a CI artifact; the collect/publish jobs below snapshot them
       # onto the runtime-cdn branch (GitHub-native, no external storage required).
       - name: Upload bundle artifact
-        uses: actions/upload-artifact@65c4c4a1ddee5b7f6983f2c5c1505f13c9f6e1b0 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: runtime-bundle-${{ matrix.subdir }}
           path: resources/default-envs/
@@ -135,13 +135,13 @@ jobs:
           echo "version=$current" >> "$GITHUB_OUTPUT"
 
       - name: Download bundle artifact
-        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v4
         with:
           name: runtime-bundle-${{ matrix.subdir }}
           path: /tmp/cdn/purescience/runtime-bundle/${{ steps.ver.outputs.version }}/${{ matrix.subdir }}
 
       - name: Upload collected tree
-        uses: actions/upload-artifact@65c4c4a1ddee5b7f6983f2c5c1505f13c9f6e1b0 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: runtime-tree
           path: /tmp/cdn/
@@ -159,7 +159,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Download collected tree
-        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v4
         with:
           name: runtime-tree
           path: /tmp/cdn/
