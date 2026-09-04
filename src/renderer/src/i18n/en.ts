@@ -1824,6 +1824,12 @@ export const en: Record<ZhKey, string> = {
   'settings.dismissSettingsError': 'Dismiss settings error',
   'settings.endpoint': 'Endpoint',
   'settings.tokenUsage': 'Token usage',
+  'writeAudit.title': 'Write audit',
+  'writeAudit.summary':
+    '{n} file change{s} — created {created} · modified {modified} · removed {removed}',
+  'modelPicker.noModelAria': 'No model available — open settings',
+  'modelPicker.openSettings': 'Open Settings',
+  'reviewer.viewsTablist': 'Reviewer views',
   'foldTimeline.reasonAutomatic': 'automatic',
   'foldTimeline.reasonManual': 'manual',
   'foldTimeline.reasonOverflow': 'overflow recovery',

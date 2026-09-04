@@ -103,11 +103,15 @@ const WriteAuditPanel = ({ runs }: WriteAuditPanelProps): React.JSX.Element => {
       <div className="shrink-0 border-b border-border-200 px-4 py-3">
         <div className="flex items-center gap-2">
           <FilePenLine className="h-3.5 w-3.5 text-text-400" aria-hidden />
-          <h2 className="text-[13px] font-semibold text-text-000">Write audit</h2>
+          <h2 className="text-[13px] font-semibold text-text-000">{t('writeAudit.title')}</h2>
         </div>
         <p className="mt-1 text-[11px] text-text-400">
-          {rows.length} file change{rows.length === 1 ? '' : 's'} — created {created} · modified{' '}
-          {modified} · removed {removed}
+          {t('writeAudit.summary')
+            .replace('{n}', String(rows.length))
+            .replace('{s}', rows.length === 1 ? '' : 's')
+            .replace('{created}', String(created))
+            .replace('{modified}', String(modified))
+            .replace('{removed}', String(removed))}
         </p>
         <div
           className="mt-2 flex items-center gap-1"

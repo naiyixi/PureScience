@@ -90,6 +90,12 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.general': 'Общие',
   'settings.tags': 'Теги',
   'settings.tokenUsage': 'Использование токенов',
+  'writeAudit.title': 'Аудит записи',
+  'writeAudit.summary':
+    'Изменено файлов: {n} — создано {created} · изменено {modified} · удалено {removed}',
+  'modelPicker.noModelAria': 'Нет доступных моделей — открыть настройки',
+  'modelPicker.openSettings': 'Открыть настройки',
+  'reviewer.viewsTablist': 'Представления проверки',
   'foldTimeline.reasonAutomatic': 'автоматически',
   'foldTimeline.reasonManual': 'вручную',
   'foldTimeline.reasonOverflow': 'восстановление после переполнения',
