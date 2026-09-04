@@ -2181,7 +2181,7 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'ws.usageModelPrefix': 'Modèle : ',
   'ws.composerSlashSkills': '/ compétences',
   'ws.composerAtFiles': '@ fichiers',
-  'ws.composerHashSessions': '# sessions',
+  'ws.composerHashSessions': '# séances',
   'ws.composerSearchHint': '{k} recherche',
   'ws.composerHistoryHint': '↑↓ historique',
   'ws.marketplaceSetupIncomplete': 'Configuration incomplète',

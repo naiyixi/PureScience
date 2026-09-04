@@ -2187,7 +2187,7 @@ export const de: Partial<Record<ZhKey, string>> = {
   'ws.usageAriaTotal': 'Insgesamt {total} Token',
   'ws.usageTurnOne': 'Runde',
   'ws.usageTurnMany': 'Runden',
-  'ws.usageAgentPrefix': 'Agent: ',
+  'ws.usageAgentPrefix': 'Assistent: ',
   'ws.usageModelPrefix': 'Modell: ',
   'ws.composerSlashSkills': '/ Skills',
   'ws.composerAtFiles': '@ Dateien',
