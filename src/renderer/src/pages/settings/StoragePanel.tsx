@@ -346,7 +346,7 @@ const StoragePanel = ({ onContinueToAgent }: StoragePanelProps): React.JSX.Eleme
                   htmlFor="data-dir-path-input"
                   className="mb-1 block text-xs font-medium text-muted-foreground"
                 >
-                  New location
+                  {t('storage.newLocationLabel')}
                 </label>
                 <div className="flex gap-2">
                   <Input
@@ -561,10 +561,10 @@ const StoragePanel = ({ onContinueToAgent }: StoragePanelProps): React.JSX.Eleme
           <AlertDialog.Overlay className={dialogOverlayClassName} />
           <AlertDialog.Content className={dialogPanelClassName('w-[min(440px,calc(100vw-2rem))]')}>
             <AlertDialog.Title className={dialogTitleClassName}>
-              Change data location?
+              {t('storage.changeDataLocationTitle')}
             </AlertDialog.Title>
             <AlertDialog.Description className={dialogDescriptionClassName}>
-              You can move PureScience&apos;s data to another folder on this device.
+              {t('storage.changeDataLocationDesc')}
             </AlertDialog.Description>
             <div className="mt-3">
               <DataRootWarning />
@@ -583,7 +583,7 @@ const StoragePanel = ({ onContinueToAgent }: StoragePanelProps): React.JSX.Eleme
                     setIsEditing(true)
                   }}
                 >
-                  Continue
+                  {t('common.continue')}
                 </Button>
               </AlertDialog.Action>
             </div>
@@ -595,14 +595,16 @@ const StoragePanel = ({ onContinueToAgent }: StoragePanelProps): React.JSX.Eleme
         <AlertDialog.Portal>
           <AlertDialog.Overlay className={dialogOverlayClassName} />
           <AlertDialog.Content className={dialogPanelClassName('w-[min(420px,calc(100vw-2rem))]')}>
-            <AlertDialog.Title className={dialogTitleClassName}>Use this folder?</AlertDialog.Title>
+            <AlertDialog.Title className={dialogTitleClassName}>
+              {t('storage.useThisFolderQuestion')}
+            </AlertDialog.Title>
             <pre className={cn('mt-3', PATH_PILL)}>{inspection?.dataRoot ?? trimmedNewPath}</pre>
             <AlertDialog.Description className={cn(dialogDescriptionClassName, 'mt-3')}>
-              PureScience will restart and use this folder as-is —{' '}
+              {t('storage.restartAsIsStart')}{' '}
               <strong className="font-semibold text-text-000">
                 {t('settings.contentsNotMerged')}
               </strong>
-              , and anything it&apos;s missing will show as unavailable.{' '}
+              {t('storage.missingShownUnavailable')}{' '}
               <strong className="font-semibold text-text-000">
                 {t('settings.dataFolderUntouched')}
               </strong>
@@ -615,7 +617,7 @@ const StoragePanel = ({ onContinueToAgent }: StoragePanelProps): React.JSX.Eleme
               </AlertDialog.Cancel>
               <AlertDialog.Action asChild>
                 <Button type="button" onClick={() => void handleAdopt()}>
-                  Use this folder
+                  {t('settings.useThisFolder')}
                 </Button>
               </AlertDialog.Action>
             </div>

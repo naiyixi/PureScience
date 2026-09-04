@@ -1824,6 +1824,16 @@ export const en: Record<ZhKey, string> = {
   'settings.dismissSettingsError': 'Dismiss settings error',
   'settings.endpoint': 'Endpoint',
   'settings.tokenUsage': 'Token usage',
+  'storage.newLocationLabel': 'New location',
+  'storage.changeDataLocationTitle': 'Change data location?',
+  'storage.changeDataLocationDesc':
+    "You can move PureScience's data to another folder on this device.",
+  'storage.useThisFolderQuestion': 'Use this folder?',
+  'storage.restartAsIsStart': 'PureScience will restart and use this folder as-is —',
+  'storage.missingShownUnavailable': ", and anything it's missing will show as unavailable.",
+  'reviewer.logTitle': 'Reviewer log',
+  'reviewer.logExpand': 'Expand Reviewer log',
+  'reviewer.logCollapse': 'Collapse Reviewer log',
   'writeAudit.title': 'Write audit',
   'writeAudit.summary':
     '{n} file change{s} — created {created} · modified {modified} · removed {removed}',

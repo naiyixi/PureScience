@@ -90,6 +90,16 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.general': 'Général',
   'settings.tags': 'Étiquettes',
   'settings.tokenUsage': 'Utilisation de tokens',
+  'storage.newLocationLabel': 'Nouvel emplacement',
+  'storage.changeDataLocationTitle': 'Changer l’emplacement des données ?',
+  'storage.changeDataLocationDesc':
+    'Vous pouvez déplacer les données de PureScience vers un autre dossier de cet appareil.',
+  'storage.useThisFolderQuestion': 'Utiliser ce dossier ?',
+  'storage.restartAsIsStart': 'PureScience redémarrera et utilisera ce dossier tel quel —',
+  'storage.missingShownUnavailable': ", et tout élément manquant s'affichera comme indisponible.",
+  'reviewer.logTitle': 'Journal de la revue',
+  'reviewer.logExpand': 'Déplier le journal de la revue',
+  'reviewer.logCollapse': 'Replier le journal de la revue',
   'writeAudit.title': 'Audit d’écriture',
   'writeAudit.summary':
     '{n} fichier{s} modifié{s} — créé {created} · modifié {modified} · supprimé {removed}',

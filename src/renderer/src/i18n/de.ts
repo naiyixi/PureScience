@@ -90,6 +90,17 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.general': 'Allgemein',
   'settings.tags': 'Tags',
   'settings.tokenUsage': 'Token-Verbrauch',
+  'storage.newLocationLabel': 'Neuer Speicherort',
+  'storage.changeDataLocationTitle': 'Datenspeicherort ändern?',
+  'storage.changeDataLocationDesc':
+    'Sie können die Daten von PureScience in einen anderen Ordner auf diesem Gerät verschieben.',
+  'storage.useThisFolderQuestion': 'Diesen Ordner verwenden?',
+  'storage.restartAsIsStart':
+    'PureScience wird neu gestartet und verwendet diesen Ordner unverändert —',
+  'storage.missingShownUnavailable': ' und alles Fehlende wird als nicht verfügbar angezeigt.',
+  'reviewer.logTitle': 'Prüfprotokoll',
+  'reviewer.logExpand': 'Prüfprotokoll erweitern',
+  'reviewer.logCollapse': 'Prüfprotokoll einklappen',
   'writeAudit.title': 'Schreibprotokoll',
   'writeAudit.summary':
     '{n} Dateiänderung{en} — erstellt {created} · geändert {modified} · entfernt {removed}',
