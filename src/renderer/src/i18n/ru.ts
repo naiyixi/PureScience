@@ -90,6 +90,10 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.general': 'Общие',
   'settings.tags': 'Теги',
   'settings.tokenUsage': 'Использование токенов',
+  'ws.reportError': 'Сообщить об ошибке',
+  'ws.dropFilesToAttach': 'Перетащите файлы, чтобы прикрепить',
+  'lifecycle.view': 'Просмотреть',
+  'lifecycle.dismiss': 'Закрыть',
   'runtimes.appManagedEnv': 'Среда под управлением приложения',
   'runtimes.disableTitle': 'Отключить {env}?',
   'runtimes.disableDescOne':

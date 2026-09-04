@@ -90,6 +90,10 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.general': '一般',
   'settings.tags': '標籤',
   'settings.tokenUsage': '詞元用量',
+  'ws.reportError': '回報錯誤',
+  'ws.dropFilesToAttach': '拖放檔案以附加',
+  'lifecycle.view': '檢視',
+  'lifecycle.dismiss': '關閉',
   'runtimes.appManagedEnv': '應用託管環境',
   'runtimes.disableTitle': '停用 {env}？',
   'runtimes.disableDescOne':

@@ -1824,6 +1824,10 @@ export const en: Record<ZhKey, string> = {
   'settings.dismissSettingsError': 'Dismiss settings error',
   'settings.endpoint': 'Endpoint',
   'settings.tokenUsage': 'Token usage',
+  'ws.reportError': 'Report error',
+  'ws.dropFilesToAttach': 'Drop files to attach',
+  'lifecycle.view': 'View',
+  'lifecycle.dismiss': 'Dismiss',
   'runtimes.appManagedEnv': 'App-managed environment',
   'runtimes.disableTitle': 'Disable {env}?',
   'runtimes.disableDescOne':

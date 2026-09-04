@@ -1722,6 +1722,10 @@ export const zh = {
   'settings.dismissSettingsError': '关闭设置错误',
   'settings.endpoint': '端点',
   'settings.tokenUsage': '词元用量',
+  'ws.reportError': '报告错误',
+  'ws.dropFilesToAttach': '拖放文件以附加',
+  'lifecycle.view': '查看',
+  'lifecycle.dismiss': '关闭',
   'runtimes.appManagedEnv': '应用托管环境',
   'runtimes.disableTitle': '禁用 {env}？',
   'runtimes.disableDescOne':
