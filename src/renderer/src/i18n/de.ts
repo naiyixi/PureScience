@@ -90,6 +90,16 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.general': 'Allgemein',
   'settings.tags': 'Tags',
   'settings.tokenUsage': 'Token-Verbrauch',
+  'specialist.unresolvableNote':
+    'Dieser Spezialist kann nicht mehr über seinen Namen aufgelöst werden — er wurde seit Beginn der Anfrage umbenannt oder entfernt. Die Freigabe wird abgelehnt.',
+  'specialist.fullAccess': 'Vollzugriff',
+  'specialist.selectedCapabilities': 'Ausgewählte Fähigkeiten',
+  'specialist.openConfigAria': 'Konfiguration von {name} öffnen',
+  'specialist.mainAgent': 'Hauptagent',
+  'specialist.mainAgentRevert':
+    'Kehrt zum Standard-Agenten zurück. Die Fähigkeitseingrenzung des Spezialisten wird entfernt — alle aktivierten Skills und Verbindungen sind wieder verfügbar.',
+  'specialist.disabledNote': 'Dieser Spezialist ist deaktiviert. Die Freigabe wird abgelehnt.',
+  'specialist.disabled': 'Deaktiviert',
   'storage.newLocationLabel': 'Neuer Speicherort',
   'storage.changeDataLocationTitle': 'Datenspeicherort ändern?',
   'storage.changeDataLocationDesc':

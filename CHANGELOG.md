@@ -51,6 +51,7 @@ PureScience 是一款面向科学研究的开源 AI 工作台：多智能体协�
 - **第四批组 3b（审查者/验证清单/折叠时间线）**：Go to transcript（ReviewerCard+清单共用）、Re-running/Re-run review、Mark addressed、Verification checklist、"{open} 项待处理，共 {total} 项"、折叠上下文/预览/折叠计数（{n} fold{s}）、折叠原因标签（自动/手动/溢出恢复，原 REASON_LABELS 英文硬映射）、时间随界面语言（toLocaleString(getUiLocale)）；12 键 × 9 语言（字典每语言 2,127 键）；审查：清单行 Mark addressed/Reopen 绑定 onMarkAddressed/onReopen、Go to transcript 均接 GoToTranscriptIntent 链路
 - **第四批组 4a（模型选择器/预览/写入审计）**：无可用模型 aria、"打开设置"菜单项、审查视图 tablist aria（两处）、写入审计标题与"N 个文件变更—新建/修改/删除"摘要（{n}/{s}/{created}… 插值）；5 键 × 9 语言（字典每语言 2,132 键）；审查：无模型按钮 openSettings 打开设置对话框链路、tab 切换三视图均有对应面板组件
 - **第四批组 4b（存储/审查者日志）**：存储页新位置标签、改位置确认对话框（标题/说明）、采用文件夹对话框（标题/重启按现状提示/缺失不可用说明）、Continue/Cancel、采用按钮复用 settings.useThisFolder；SessionReviewer 审查日志标题与展开/收起；10 键 × 9 语言（字典每语言 2,142 键）；审查：改位置经 StorageMigrationModal 真实迁移、adopt 仅切 dataRoot 重启、审查日志空则整段隐藏（acceptance 空态）
+- **第四批组 4c（专才切换详情/全局搜索 aria）**：Main Agent 命名与"恢复默认智能体"说明、专才停用拒批提示、名称解析失败提示、Full access/所选能力、打开配置 aria、Disabled 徽标；全局搜索会话 Hash aria 键控；8 键 × 9 语言（字典每语言 2,150 键）；审查：详情块点击打开专才配置(openSettingsToSpecialist)、解析失败/停用态与主进程 getByName 校验身份一致（代码注释佐证）
 - **开机加载文案键控（组 1b）**：设置加载门"正在加载设置…"、重试、会话恢复门"正在加载已保存的会话…"随界面语言（语言在首帧即从本地存储解析，不受设置加载影响）；4 键 × 9 语言（字典每语言 2,102 键）
 - **第四批组 1（JobDetail/权限面板）**：任务详情弹层 Job ID/提供商/状态/运行时标签、权限面板“全部撤销”按钮+aria、“默认使用完整访问权限？”对话框标题/确认钮/取消键控（9 键 × 9 语言，字典每语言 2,098 键）
 - **远程控制/全局搜索/Web 搜索行残留键控（2026-09-04，第三批，一次到位）**：

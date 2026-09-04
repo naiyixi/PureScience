@@ -90,6 +90,16 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.general': '一般',
   'settings.tags': '標籤',
   'settings.tokenUsage': '詞元用量',
+  'specialist.unresolvableNote':
+    '此專才已無法依名稱解析——自請求發起後它被重新命名或刪除。核准請求將被拒絕。',
+  'specialist.fullAccess': '完整存取權限',
+  'specialist.selectedCapabilities': '所選能力',
+  'specialist.openConfigAria': '開啟 {name} 的設定',
+  'specialist.mainAgent': '主智慧體',
+  'specialist.mainAgentRevert':
+    '恢復為預設智慧體。移除了專才的能力範圍限制——所有已啟用的技能與連接器將再次可用。',
+  'specialist.disabledNote': '此專才已停用。核准請求將被拒絕。',
+  'specialist.disabled': '已停用',
   'storage.newLocationLabel': '新位置',
   'storage.changeDataLocationTitle': '變更資料位置？',
   'storage.changeDataLocationDesc': '可以將 PureScience 的資料移至本裝置上的另一個資料夾。',

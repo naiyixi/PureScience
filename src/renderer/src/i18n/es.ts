@@ -90,6 +90,16 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.general': 'General',
   'settings.tags': 'Etiquetas',
   'settings.tokenUsage': 'Uso de tokens',
+  'specialist.unresolvableNote':
+    'Este especialista ya no puede resolverse por nombre: se renombró o eliminó desde que comenzó la solicitud. La aprobación será rechazada.',
+  'specialist.fullAccess': 'Acceso completo',
+  'specialist.selectedCapabilities': 'Capacidades seleccionadas',
+  'specialist.openConfigAria': 'Abrir la configuración de {name}',
+  'specialist.mainAgent': 'Agente principal',
+  'specialist.mainAgentRevert':
+    'Vuelve al agente predeterminado. Se elimina la delimitación de capacidades del especialista: todas las habilidades y conectores activados vuelven a estar disponibles.',
+  'specialist.disabledNote': 'Este especialista está desactivado. La aprobación será rechazada.',
+  'specialist.disabled': 'Desactivado',
   'storage.newLocationLabel': 'Nueva ubicación',
   'storage.changeDataLocationTitle': '¿Cambiar la ubicación de los datos?',
   'storage.changeDataLocationDesc':

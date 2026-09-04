@@ -91,6 +91,16 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.general': '一般',
   'settings.tags': 'タグ',
   'settings.tokenUsage': 'トークン使用量',
+  'specialist.unresolvableNote':
+    'このスペシャリストは名前で解決できなくなりました。リクエスト開始後に名前が変更されたか削除されたためです。承認は拒否されます。',
+  'specialist.fullAccess': 'フルアクセス',
+  'specialist.selectedCapabilities': '選択した機能',
+  'specialist.openConfigAria': '{name} の設定を開く',
+  'specialist.mainAgent': 'メインエージェント',
+  'specialist.mainAgentRevert':
+    'デフォルトのエージェントに戻ります。スペシャリストによる能力スコープが解除され、有効なスキルとコネクタがすべて再び利用可能になります。',
+  'specialist.disabledNote': 'このスペシャリストは無効です。承認は拒否されます。',
+  'specialist.disabled': '無効',
   'storage.newLocationLabel': '新しい場所',
   'storage.changeDataLocationTitle': 'データの場所を変更しますか？',
   'storage.changeDataLocationDesc':
