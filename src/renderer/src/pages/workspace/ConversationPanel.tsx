@@ -155,10 +155,7 @@ type ConversationPanelProps = {
   pendingPermissions: AcpPermissionRequest[]
   pendingElicitations: ElicitationRequestView[]
   pendingEgressApprovals: EgressApprovalRequest[]
-  onRespondToEgressApproval: (
-    requestId: string,
-    decision: EgressApprovalDecision
-  ) => void
+  onRespondToEgressApproval: (requestId: string, decision: EgressApprovalDecision) => void
   permissionProfile: PermissionProfileId
   permissionProfileState: SessionPermissionProfileState | undefined
   permissionGrants: AcpPermissionGrant[]
@@ -893,7 +890,7 @@ const ConversationPanel = ({
                             onSubmit={handleSubmit}
                             onPaste={handleMessageDraftPaste}
                             disabled={!canEditDraft}
-                            placeholder={`${t('workspace.askAnything')} — / skills · @ files · # sessions · ${globalSearchShortcut} search · ↑↓ history`}
+                            placeholder={`${t('workspace.askAnything')} — ${t('ws.composerSlashSkills')} · ${t('ws.composerAtFiles')} · ${t('ws.composerHashSessions')} · ${t('ws.composerSearchHint').replace('{k}', globalSearchShortcut)} · ${t('ws.composerHistoryHint')}`}
                             ariaLabel={t('ws.askAnything')}
                             allowedSkillIds={allowedSkillIds}
                             sessionId={activeSession?.id}
