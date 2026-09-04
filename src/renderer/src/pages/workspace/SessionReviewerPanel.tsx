@@ -228,6 +228,7 @@ const ReviewerLogRow = ({ entry }: { entry: ReviewerLogEntry }): React.JSX.Eleme
 // The "Reviewer log" section: collapsed by default, visually de-emphasized with muted left-rule.
 // Reuses WorkspaceMessageItem/activity-style patterns adapted to ReviewerLogEntry (props-driven).
 const ReviewerLogSection = ({ log }: { log: ReviewerLogEntry[] }): React.JSX.Element | null => {
+  const { t } = useLanguage()
   const [expanded, setExpanded] = useState(false)
 
   // If the log is empty, show nothing (graceful empty state per acceptance criterion).
@@ -236,7 +237,7 @@ const ReviewerLogSection = ({ log }: { log: ReviewerLogEntry[] }): React.JSX.Ele
   return (
     <section>
       <h3 className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-text-300">
-        Reviewer log
+        {t('reviewer.logTitle')}
       </h3>
       <button
         type="button"
@@ -249,7 +250,7 @@ const ReviewerLogSection = ({ log }: { log: ReviewerLogEntry[] }): React.JSX.Ele
           className={cn('h-3 w-3 transition-transform duration-150', expanded ? 'rotate-90' : '')}
           aria-hidden
         />
-        {expanded ? 'Collapse Reviewer log' : 'Expand Reviewer log'}
+        {expanded ? t('reviewer.logCollapse') : t('reviewer.logExpand')}
       </button>
 
       {expanded && (

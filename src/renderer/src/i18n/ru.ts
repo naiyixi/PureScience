@@ -90,6 +90,17 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.general': 'Общие',
   'settings.tags': 'Теги',
   'settings.tokenUsage': 'Использование токенов',
+  'storage.newLocationLabel': 'Новое расположение',
+  'storage.changeDataLocationTitle': 'Изменить расположение данных?',
+  'storage.changeDataLocationDesc':
+    'Вы можете переместить данные PureScience в другую папку на этом устройстве.',
+  'storage.useThisFolderQuestion': 'Использовать эту папку?',
+  'storage.restartAsIsStart':
+    'PureScience перезапустится и будет использовать эту папку как есть —',
+  'storage.missingShownUnavailable': ', а отсутствующее будет отображаться как недоступное.',
+  'reviewer.logTitle': 'Журнал проверки',
+  'reviewer.logExpand': 'Развернуть журнал проверки',
+  'reviewer.logCollapse': 'Свернуть журнал проверки',
   'writeAudit.title': 'Аудит записи',
   'writeAudit.summary':
     'Изменено файлов: {n} — создано {created} · изменено {modified} · удалено {removed}',

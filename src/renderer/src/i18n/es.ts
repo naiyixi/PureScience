@@ -90,6 +90,16 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.general': 'General',
   'settings.tags': 'Etiquetas',
   'settings.tokenUsage': 'Uso de tokens',
+  'storage.newLocationLabel': 'Nueva ubicación',
+  'storage.changeDataLocationTitle': '¿Cambiar la ubicación de los datos?',
+  'storage.changeDataLocationDesc':
+    'Puede mover los datos de PureScience a otra carpeta de este dispositivo.',
+  'storage.useThisFolderQuestion': '¿Usar esta carpeta?',
+  'storage.restartAsIsStart': 'PureScience se reiniciará y usará esta carpeta tal cual —',
+  'storage.missingShownUnavailable': ', y todo lo que falte se mostrará como no disponible.',
+  'reviewer.logTitle': 'Registro de revisión',
+  'reviewer.logExpand': 'Ampliar el registro de revisión',
+  'reviewer.logCollapse': 'Contraer el registro de revisión',
   'writeAudit.title': 'Auditoría de escritura',
   'writeAudit.summary':
     '{n} cambio{s} de archivo — creado {created} · modificado {modified} · eliminado {removed}',
