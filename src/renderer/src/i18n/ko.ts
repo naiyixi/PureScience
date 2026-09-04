@@ -90,6 +90,12 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.general': '일반',
   'settings.tags': '태그',
   'settings.tokenUsage': '토큰 사용량',
+  'dataRoot.stillMissingNote':
+    '아직 찾지 못했습니다. 드라이브를 다시 연결하고 다시 시도하거나 다른 위치를 선택하세요.',
+  'legacyDataMove.title': '데이터를 보이는 폴더로 이동할까요?',
+  'legacyDataMove.desc':
+    '연구 데이터가 숨김 폴더에 있습니다. 보이는 PureScience 폴더로 이동하면 찾기와 백업이 쉬워집니다. 설정과 기록은 원래 위치에 유지됩니다.',
+  'legacyDataMove.moveAction': 'PureScience로 이동',
   'specialist.unresolvableNote':
     '이 스페셜리스트는 이름으로 확인할 수 없습니다. 요청 시작 후 이름이 바뀌거나 삭제되었습니다. 승인하면 거부됩니다.',
   'specialist.fullAccess': '전체 액세스',

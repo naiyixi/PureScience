@@ -98,16 +98,17 @@ const LegacyDataMoveDialog = ({
         <AlertDialog.Overlay className={dialogOverlayClassName} />
         <AlertDialog.Content className={dialogPanelClassName('w-[min(460px,calc(100vw-2rem))]')}>
           <AlertDialog.Title className={dialogTitleClassName}>
-            Move your data to a visible folder?
+            {t('legacyDataMove.title')}
           </AlertDialog.Title>
           <AlertDialog.Description className={dialogDescriptionClassName}>
-            Your research data is in a hidden folder. Moving it into a visible PureScience folder
-            makes it easy to find and back up — your settings and history stay where they are.
+            {t('legacyDataMove.desc')}
           </AlertDialog.Description>
 
           <div className="mt-4 space-y-3">
             <div>
-              <span className="text-xs font-medium text-text-100">{t('dataMove.currentHidden')}</span>
+              <span className="text-xs font-medium text-text-100">
+                {t('dataMove.currentHidden')}
+              </span>
               <pre
                 className="mt-1 overflow-x-auto whitespace-pre-wrap break-all rounded-lg border border-border-200 bg-bg-10 px-2.5 py-1.5 font-mono text-xs text-text-000"
                 aria-label={t('dataMove.currentLocation')}
@@ -135,7 +136,7 @@ const LegacyDataMoveDialog = ({
           <div className="mt-6 flex flex-col gap-2">
             <Button type="button" disabled={isPicking} onClick={handleMoveToDefault}>
               <FolderInput aria-hidden="true" />
-              Move to PureScience
+              {t('legacyDataMove.moveAction')}
             </Button>
             <Button
               type="button"

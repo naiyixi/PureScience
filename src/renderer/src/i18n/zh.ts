@@ -1722,6 +1722,11 @@ export const zh = {
   'settings.dismissSettingsError': '关闭设置错误',
   'settings.endpoint': '端点',
   'settings.tokenUsage': '词元用量',
+  'dataRoot.stillMissingNote': '仍未找到。请重新连接驱动器后重试，或选择其他位置。',
+  'legacyDataMove.title': '将数据移动到可见文件夹？',
+  'legacyDataMove.desc':
+    '你的研究数据位于隐藏文件夹中。移动到可见的 PureScience 文件夹后更易于查找与备份——设置与历史记录保留在原处。',
+  'legacyDataMove.moveAction': '移动到 PureScience',
   'specialist.unresolvableNote':
     '此专才已无法按名称解析——自请求发起后它被重命名或删除。批准请求将被拒绝。',
   'specialist.fullAccess': '完整访问权限',

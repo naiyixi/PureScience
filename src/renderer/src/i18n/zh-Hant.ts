@@ -90,6 +90,11 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.general': '一般',
   'settings.tags': '標籤',
   'settings.tokenUsage': '詞元用量',
+  'dataRoot.stillMissingNote': '仍未找到。請重新連接磁碟後重試，或選擇其他位置。',
+  'legacyDataMove.title': '將資料移至可見的資料夾？',
+  'legacyDataMove.desc':
+    '你的研究資料位於隱藏資料夾中。移至可見的 PureScience 資料夾後更容易尋找與備份——設定與歷史記錄保留在原處。',
+  'legacyDataMove.moveAction': '移至 PureScience',
   'specialist.unresolvableNote':
     '此專才已無法依名稱解析——自請求發起後它被重新命名或刪除。核准請求將被拒絕。',
   'specialist.fullAccess': '完整存取權限',

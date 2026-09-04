@@ -91,6 +91,12 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.general': '一般',
   'settings.tags': 'タグ',
   'settings.tokenUsage': 'トークン使用量',
+  'dataRoot.stillMissingNote':
+    'まだ見つかりません。ドライブを再接続して再試行するか、別の場所を選択してください。',
+  'legacyDataMove.title': 'データを表示されるフォルダーに移動しますか？',
+  'legacyDataMove.desc':
+    '研究データは隠しフォルダーにあります。表示される PureScience フォルダーに移動すると、検索とバックアップが簡単になります。設定と履歴は元の場所に残ります。',
+  'legacyDataMove.moveAction': 'PureScience に移動',
   'specialist.unresolvableNote':
     'このスペシャリストは名前で解決できなくなりました。リクエスト開始後に名前が変更されたか削除されたためです。承認は拒否されます。',
   'specialist.fullAccess': 'フルアクセス',
