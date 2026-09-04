@@ -90,6 +90,9 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.general': 'Général',
   'settings.tags': 'Étiquettes',
   'settings.tokenUsage': 'Utilisation de tokens',
+  'fileBrowser.showInFinder': 'Afficher dans le Finder',
+  'fileBrowser.truncatedNote':
+    'Affichage des 5 000 premières entrées. Naviguez dans un sous-dossier pour en voir plus.',
   'dataRoot.stillMissingNote':
     'Toujours introuvable. Reconnectez le lecteur et réessayez, ou choisissez un autre emplacement.',
   'legacyDataMove.title': 'Déplacer vos données vers un dossier visible ?',

@@ -90,6 +90,9 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.general': 'General',
   'settings.tags': 'Etiquetas',
   'settings.tokenUsage': 'Uso de tokens',
+  'fileBrowser.showInFinder': 'Mostrar en Finder',
+  'fileBrowser.truncatedNote':
+    'Mostrando las primeras 5.000 entradas. Navegue a un subdirectorio para ver más.',
   'dataRoot.stillMissingNote':
     'Todavía no se encuentra. Reconecte la unidad e inténtelo de nuevo, o elija otra ubicación.',
   'legacyDataMove.title': '¿Mover los datos a una carpeta visible?',

@@ -90,6 +90,9 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.general': 'Allgemein',
   'settings.tags': 'Tags',
   'settings.tokenUsage': 'Token-Verbrauch',
+  'fileBrowser.showInFinder': 'Im Finder anzeigen',
+  'fileBrowser.truncatedNote':
+    'Die ersten 5.000 Einträge werden angezeigt. Navigieren Sie in ein Unterverzeichnis, um mehr zu sehen.',
   'dataRoot.stillMissingNote':
     'Immer noch nicht gefunden. Schließen Sie das Laufwerk wieder an und versuchen Sie es erneut, oder wählen Sie einen anderen Speicherort.',
   'legacyDataMove.title': 'Daten in einen sichtbaren Ordner verschieben?',

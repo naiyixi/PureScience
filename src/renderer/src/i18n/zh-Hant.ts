@@ -90,6 +90,8 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.general': '一般',
   'settings.tags': '標籤',
   'settings.tokenUsage': '詞元用量',
+  'fileBrowser.showInFinder': '在 Finder 中顯示',
+  'fileBrowser.truncatedNote': '僅顯示前 5,000 項。進入子目錄可查看更多。',
   'dataRoot.stillMissingNote': '仍未找到。請重新連接磁碟後重試，或選擇其他位置。',
   'legacyDataMove.title': '將資料移至可見的資料夾？',
   'legacyDataMove.desc':

@@ -91,6 +91,9 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.general': '一般',
   'settings.tags': 'タグ',
   'settings.tokenUsage': 'トークン使用量',
+  'fileBrowser.showInFinder': 'Finder に表示',
+  'fileBrowser.truncatedNote':
+    '最初の 5,000 件のみ表示しています。サブディレクトリに入るとさらに表示されます。',
   'dataRoot.stillMissingNote':
     'まだ見つかりません。ドライブを再接続して再試行するか、別の場所を選択してください。',
   'legacyDataMove.title': 'データを表示されるフォルダーに移動しますか？',
