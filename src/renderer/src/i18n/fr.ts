@@ -90,6 +90,12 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.general': 'Général',
   'settings.tags': 'Étiquettes',
   'settings.tokenUsage': 'Utilisation de tokens',
+  'dataRoot.stillMissingNote':
+    'Toujours introuvable. Reconnectez le lecteur et réessayez, ou choisissez un autre emplacement.',
+  'legacyDataMove.title': 'Déplacer vos données vers un dossier visible ?',
+  'legacyDataMove.desc':
+    'Vos données de recherche se trouvent dans un dossier caché. Les déplacer vers un dossier PureScience visible facilite leur recherche et leur sauvegarde — vos réglages et votre historique restent en place.',
+  'legacyDataMove.moveAction': 'Déplacer vers PureScience',
   'specialist.unresolvableNote':
     'Ce spécialiste ne peut plus être résolu par son nom — il a été renommé ou supprimé depuis le début de la demande. L’approbation sera rejetée.',
   'specialist.fullAccess': 'Accès complet',

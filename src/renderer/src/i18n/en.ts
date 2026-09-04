@@ -1824,6 +1824,12 @@ export const en: Record<ZhKey, string> = {
   'settings.dismissSettingsError': 'Dismiss settings error',
   'settings.endpoint': 'Endpoint',
   'settings.tokenUsage': 'Token usage',
+  'dataRoot.stillMissingNote':
+    'Still not found. Reconnect the drive and try again, or choose another location.',
+  'legacyDataMove.title': 'Move your data to a visible folder?',
+  'legacyDataMove.desc':
+    'Your research data is in a hidden folder. Moving it into a visible PureScience folder makes it easy to find and back up — your settings and history stay where they are.',
+  'legacyDataMove.moveAction': 'Move to PureScience',
   'specialist.unresolvableNote':
     'This Specialist can no longer be resolved by name — it was renamed or removed since the request started. Approving will be rejected.',
   'specialist.fullAccess': 'Full access',

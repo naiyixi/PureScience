@@ -90,6 +90,12 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.general': 'Allgemein',
   'settings.tags': 'Tags',
   'settings.tokenUsage': 'Token-Verbrauch',
+  'dataRoot.stillMissingNote':
+    'Immer noch nicht gefunden. Schließen Sie das Laufwerk wieder an und versuchen Sie es erneut, oder wählen Sie einen anderen Speicherort.',
+  'legacyDataMove.title': 'Daten in einen sichtbaren Ordner verschieben?',
+  'legacyDataMove.desc':
+    'Ihre Forschungsdaten liegen in einem versteckten Ordner. Durch das Verschieben in einen sichtbaren PureScience-Ordner lassen sie sich leichter finden und sichern — Einstellungen und Verlauf bleiben unverändert.',
+  'legacyDataMove.moveAction': 'Zu PureScience verschieben',
   'specialist.unresolvableNote':
     'Dieser Spezialist kann nicht mehr über seinen Namen aufgelöst werden — er wurde seit Beginn der Anfrage umbenannt oder entfernt. Die Freigabe wird abgelehnt.',
   'specialist.fullAccess': 'Vollzugriff',

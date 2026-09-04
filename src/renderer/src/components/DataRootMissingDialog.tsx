@@ -88,7 +88,7 @@ const DataRootMissingDialog = ({
 
           {stillMissing ? (
             <p className="mt-3 text-xs text-destructive" role="alert">
-              Still not found. Reconnect the drive and try again, or choose another location.
+              {t('dataRoot.stillMissingNote')}
             </p>
           ) : null}
 

@@ -90,6 +90,12 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.general': 'Общие',
   'settings.tags': 'Теги',
   'settings.tokenUsage': 'Использование токенов',
+  'dataRoot.stillMissingNote':
+    'По-прежнему не найдено. Подключите диск снова и повторите попытку или выберите другое расположение.',
+  'legacyDataMove.title': 'Переместить данные в видимую папку?',
+  'legacyDataMove.desc':
+    'Ваши исследовательские данные находятся в скрытой папке. Перемещение в видимую папку PureScience упрощает поиск и резервное копирование — настройки и история остаются на месте.',
+  'legacyDataMove.moveAction': 'Переместить в PureScience',
   'specialist.unresolvableNote':
     'Этот специалист больше не разрешается по имени — он был переименован или удалён после начала запроса. Подтверждение будет отклонено.',
   'specialist.fullAccess': 'Полный доступ',

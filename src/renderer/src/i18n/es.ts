@@ -90,6 +90,12 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.general': 'General',
   'settings.tags': 'Etiquetas',
   'settings.tokenUsage': 'Uso de tokens',
+  'dataRoot.stillMissingNote':
+    'Todavía no se encuentra. Reconecte la unidad e inténtelo de nuevo, o elija otra ubicación.',
+  'legacyDataMove.title': '¿Mover los datos a una carpeta visible?',
+  'legacyDataMove.desc':
+    'Sus datos de investigación están en una carpeta oculta. Moverlos a una carpeta visible de PureScience facilita encontrarlos y hacer copias: los ajustes y el historial permanecen donde están.',
+  'legacyDataMove.moveAction': 'Mover a PureScience',
   'specialist.unresolvableNote':
     'Este especialista ya no puede resolverse por nombre: se renombró o eliminó desde que comenzó la solicitud. La aprobación será rechazada.',
   'specialist.fullAccess': 'Acceso completo',
