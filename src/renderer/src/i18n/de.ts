@@ -351,6 +351,20 @@ export const de: Partial<Record<ZhKey, string>> = {
   'providerForm.supportedModels': 'Unterstützte Modelle',
   'providers.addProvider': 'Anbieter hinzufügen',
   'remoteControl.allowOnce': 'Einmal erlauben',
+  'remoteControl.canManageOnly':
+    'Die Einstellungen für den Fernzugriff können nur im PureScience-Desktopfenster auf diesem Computer geändert werden.',
+  'remoteControl.canManagePairingNote':
+    'Die Einstellungen für den Fernzugriff können nur im PureScience-Desktopfenster auf diesem Computer geändert werden. Zwei-Schritt-Verifizierungsanfragen und vertrauenswürdige Browser können unten verwaltet werden.',
+  'remoteControl.appIntro':
+    'Öffnen Sie diesen Computer über die angemeldete Mobile-App. Nach einmaligem Hinzufügen erstellt und pflegt PureScience den lokalen Dienst automatisch.',
+  'remoteControl.step2': 'Wählen Sie diesen Computer und dann PureScience Remote aus.',
+  'remoteControl.step3':
+    'Tippen Sie auf Connect oder Launch, gleichen Sie den sechsstelligen Code ab und bestätigen Sie die Anfrage auf diesem Computer oder einem bereits vertrauenswürdigen Browser.',
+  'remoteControl.browserIntro':
+    'Öffnen Sie eine dauerhafte HTTPS-Adresse in einem beliebigen modernen Browser. PureScience erstellt und pflegt den öffentlichen Browserdienst automatisch.',
+  'remoteControl.pairingRequests': 'Pairing-Anfragen',
+  'remoteControl.reject': 'Ablehnen',
+  'remoteControl.requestedAt': 'Angefragt {time}',
   'remoteControl.alwaysTrustBrowser': 'Diesem Browser immer vertrauen',
   'remoteControl.browserLinkReady': 'Browserlink ist bereit',
   'remoteControl.detectAgain': 'Erneut erkennen',
@@ -847,6 +861,13 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.credentialsSecretPlaceholder': 'Geheimnis einfügen…',
   'settings.credentialsServiceAws': 'AWS',
   'settings.credentialsServiceAzure': 'Azure',
+  'settings.credentialsServicesHeading': 'Dienste',
+  'settings.credentialsConnectorHeading': 'Verbindungsanmeldedaten',
+  'settings.credentialsConnectorDescription':
+    'Geräteweite Anmeldedaten, die Ihre gewählten benutzerdefinierten Verbindungen und Endpoints gemeinsam nutzen können.',
+  'settings.credentialsConnectorEmpty': 'Noch keine Verbindungsanmeldedaten.',
+  'settings.credentialsCustomDescription':
+    'Die Anmeldedaten benutzerdefinierter MCP-Verbindungen und Modellanbieter bleiben in deren bestehender Konfiguration — hier wird nichts gespeichert, jeder Eintrag wird auf seiner eigenen Einstellungsseite verwaltet.',
   'settings.credentialsServiceCustom': 'Benutzerdefiniert',
   'settings.credentialsServiceGcp': 'Google Cloud',
   'settings.credentialsServiceGithub': 'GitHub',
@@ -1226,6 +1247,9 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.memoryAddCategory': 'Neue Kategorie',
   'settings.memoryAddNote': 'Notiz hinzufügen',
   'settings.memoryAutoRecall': 'Automatischer Abruf',
+  'settings.memoryAboutYou': 'Über dich',
+  'settings.visionModelUnavailable':
+    'Kein bildfähiges Modell verfügbar. Fügen Sie einen Anbieter hinzu, dessen Modell Bilder unterstützt — die Optionen erscheinen dann hier.',
   'settings.memoryBack': 'Zurück',
   'settings.memoryCancel': 'Abbrechen',
   'settings.memoryCategoryFormDescription':

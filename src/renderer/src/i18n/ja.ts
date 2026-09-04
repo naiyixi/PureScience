@@ -343,6 +343,20 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'providerForm.supportedModels': '対応モデル',
   'providers.addProvider': 'プロバイダーを追加',
   'remoteControl.allowOnce': '1回だけ許可',
+  'remoteControl.canManageOnly':
+    'リモートアクセス設定は、このコンピューターの PureScience デスクトップウィンドウでのみ変更できます。',
+  'remoteControl.canManagePairingNote':
+    'リモートアクセス設定は、このコンピューターの PureScience デスクトップウィンドウでのみ変更できます。2段階認証のリクエストと信頼済みブラウザーは以下で管理できます。',
+  'remoteControl.appIntro':
+    'サインイン済みのモバイルアプリからこのコンピューターを開きます。一度追加すると、PureScience がローカルサービスを自動的に作成・維持します。',
+  'remoteControl.step2': 'このコンピューターを選択し、次に PureScience Remote を選択します。',
+  'remoteControl.step3':
+    'Connect または Launch をタップし、6桁のコードを照合して、このコンピューターまたは信頼済みブラウザーでリクエストを承認します。',
+  'remoteControl.browserIntro':
+    '最新のブラウザーから永続的な HTTPS アドレスを開きます。PureScience が公開ブラウザーサービスを自動的に作成・維持します。',
+  'remoteControl.pairingRequests': 'ペアリングリクエスト',
+  'remoteControl.reject': '拒否',
+  'remoteControl.requestedAt': '{time} にリクエスト',
   'remoteControl.alwaysTrustBrowser': 'このブラウザを常に信頼',
   'remoteControl.browserLinkReady': 'ブラウザリンクの準備ができました',
   'remoteControl.detectAgain': '再検出',
@@ -824,6 +838,13 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.credentialsSecretPlaceholder': 'シークレットを貼り付け…',
   'settings.credentialsServiceAws': 'AWS',
   'settings.credentialsServiceAzure': 'Azure',
+  'settings.credentialsServicesHeading': 'サービス',
+  'settings.credentialsConnectorHeading': 'コネクタの認証情報',
+  'settings.credentialsConnectorDescription':
+    'デバイスレベルの認証情報です。選択したカスタムコネクタと外部エンドポイントが共有できます。',
+  'settings.credentialsConnectorEmpty': 'コネクタの認証情報はまだありません。',
+  'settings.credentialsCustomDescription':
+    'カスタム MCP コネクタとモデルプロバイダーの認証情報は、それぞれの既存設定に保持されます。ここには何も保存されず、各項目はそれぞれの設定ページで管理されます。',
   'settings.credentialsServiceCustom': 'カスタム',
   'settings.credentialsServiceGcp': 'Google Cloud',
   'settings.credentialsServiceGithub': 'GitHub',
@@ -1195,6 +1216,9 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.memoryAddCategory': '新しいカテゴリ',
   'settings.memoryAddNote': 'メモを追加',
   'settings.memoryAutoRecall': '自動呼び出し',
+  'settings.memoryAboutYou': 'あなたについて',
+  'settings.visionModelUnavailable':
+    '画像入力に対応したモデルがありません。画像対応のプロバイダーを追加すると、ここに選択肢が表示されます。',
   'settings.memoryBack': '戻る',
   'settings.memoryCancel': 'キャンセル',
   'settings.memoryCategoryFormDescription':

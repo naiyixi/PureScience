@@ -507,8 +507,10 @@ export const CredentialsPanel = (): React.JSX.Element => {
           <div className="mx-auto h-full w-full max-w-3xl space-y-7 overflow-y-auto pr-0.5">
             {/* Section ① 服务 — one manage row per built-in scientific service. */}
             {/* i18n note: heading copy ('Services') to be keyed by the parent — i18n files are frozen for this task. */}
-            <section aria-label="Services">
-              <h3 className="text-[13px] font-medium text-text-100">Services</h3>
+            <section aria-label={t('settings.credentialsServicesHeading')}>
+              <h3 className="text-[13px] font-medium text-text-100">
+                {t('settings.credentialsServicesHeading')}
+              </h3>
               <div className="mt-2 divide-y divide-border overflow-hidden rounded-xl border border-border bg-bg-10">
                 {BUILTIN_SERVICE_IDS.map(renderServiceRow)}
               </div>
@@ -516,11 +518,11 @@ export const CredentialsPanel = (): React.JSX.Element => {
 
             {/* Section ② 连接器凭据 — device-global named credentials custom connectors and
                 endpoints can reference; empty state + new-credential action. */}
-            {/* i18n note: heading/description/empty-state copy ('Connector credentials', ...) to be
-                keyed by the parent — i18n files are frozen for this task. */}
-            <section aria-label="Connector credentials">
+            <section aria-label={t('settings.credentialsConnectorHeading')}>
               <div className="flex items-center justify-between gap-2">
-                <h3 className="text-[13px] font-medium text-text-100">Connector credentials</h3>
+                <h3 className="text-[13px] font-medium text-text-100">
+                  {t('settings.credentialsConnectorHeading')}
+                </h3>
                 <button
                   type="button"
                   data-slot="credential-add-custom"
@@ -532,13 +534,12 @@ export const CredentialsPanel = (): React.JSX.Element => {
                 </button>
               </div>
               <p className="mt-0.5 text-[12px] leading-5 text-text-300">
-                Device-global credentials that the custom connectors and endpoints you choose can
-                share.
+                {t('settings.credentialsConnectorDescription')}
               </p>
               <div className="mt-2 divide-y divide-border overflow-hidden rounded-xl border border-border bg-bg-10">
                 {customEntries.length === 0 ? (
                   <div className="px-3 py-3 text-[12px] text-text-300">
-                    No connector credentials yet.
+                    {t('settings.credentialsConnectorEmpty')}
                   </div>
                 ) : (
                   customEntries.map((credential) => (
@@ -571,9 +572,7 @@ export const CredentialsPanel = (): React.JSX.Element => {
                 {t('settings.credentialsServiceCustom')}
               </h3>
               <p className="mt-1 text-[12px] leading-5 text-text-300">
-                Credentials used by Custom MCP Connectors and model providers stay in their existing
-                configuration — nothing is stored here, and each is managed on its own settings
-                page.
+                {t('settings.credentialsCustomDescription')}
               </p>
             </section>
           </div>

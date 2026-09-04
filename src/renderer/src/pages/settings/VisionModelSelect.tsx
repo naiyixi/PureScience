@@ -33,7 +33,11 @@ const VisionModelSelect = (): React.JSX.Element | null => {
     ).map((model) => ({ provider, model }))
   })
 
-  if (options.length === 0) return null
+  if (options.length === 0) {
+    // No vision-capable provider is configured: the section keeps its heading/description (owned by
+    // the parent) and explains why the picker is absent instead of silently rendering nothing.
+    return <p className="text-xs text-muted-foreground">{t('settings.visionModelUnavailable')}</p>
+  }
 
   const current = visionModel
     ? options.find(

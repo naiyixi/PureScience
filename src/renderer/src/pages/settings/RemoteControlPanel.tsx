@@ -349,8 +349,8 @@ export const RemoteControlPanel = (): React.JSX.Element => {
         {!snapshot.canManage ? (
           <div className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
             {snapshot.canManagePairing && accessUsesPairing
-              ? 'Remote access settings can only be changed from the PureScience desktop window on the home computer. Two-step verification requests and trusted browsers can be managed below.'
-              : 'Remote access settings can only be changed from the PureScience desktop window on the home computer.'}
+              ? t('remoteControl.canManagePairingNote')
+              : t('remoteControl.canManageOnly')}
           </div>
         ) : null}
       </SettingsSection>
@@ -367,8 +367,7 @@ export const RemoteControlPanel = (): React.JSX.Element => {
         >
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <p className="max-w-2xl text-[13px] leading-5 text-muted-foreground">
-              Open this computer from the signed-in mobile app. PureScience creates and maintains
-              the local service automatically after this computer is added once.
+              {t('remoteControl.appIntro')}
             </p>
             {detectButton}
           </div>
@@ -388,12 +387,10 @@ export const RemoteControlPanel = (): React.JSX.Element => {
                   <span className="font-medium">1.</span> {t('ui.openthemobileappandsignintot')}
                 </li>
                 <li>
-                  <span className="font-medium">2.</span> Select this computer, then select{' '}
-                  <span className="font-medium">PureScience Remote</span>.
+                  <span className="font-medium">2.</span> {t('remoteControl.step2')}
                 </li>
                 <li>
-                  <span className="font-medium">3.</span> Tap Connect or Launch, match the six-digit
-                  code, then approve the request from this computer or an already trusted browser.
+                  <span className="font-medium">3.</span> {t('remoteControl.step3')}
                 </li>
                 <li>
                   <span className="font-medium">4.</span> Choose “
@@ -418,8 +415,7 @@ export const RemoteControlPanel = (): React.JSX.Element => {
         >
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <p className="max-w-2xl text-[13px] leading-5 text-muted-foreground">
-              Open a persistent HTTPS address from any modern browser. PureScience creates and
-              maintains the public browser service automatically.
+              {t('remoteControl.browserIntro')}
             </p>
             {detectButton}
           </div>
@@ -542,7 +538,9 @@ export const RemoteControlPanel = (): React.JSX.Element => {
 
       {snapshot.canManagePairing && accessUsesPairing ? (
         <SettingsSection
-          title={`Pairing requests${snapshot.pendingRequests.length ? ` (${snapshot.pendingRequests.length})` : ''}`}
+          title={`${t('remoteControl.pairingRequests')}${
+            snapshot.pendingRequests.length ? ` (${snapshot.pendingRequests.length})` : ''
+          }`}
           description={t('settings.twoStepVerificationHint')}
         >
           {snapshot.pendingRequests.length === 0 ? (
@@ -562,7 +560,10 @@ export const RemoteControlPanel = (): React.JSX.Element => {
                         {request.browser} · {request.platform}
                       </div>
                       <div className="mt-1 text-xs text-muted-foreground">
-                        Requested {timeLabel(request.requestedAt)}
+                        {t('remoteControl.requestedAt').replace(
+                          '{time}',
+                          timeLabel(request.requestedAt)
+                        )}
                         {request.address ? ` · ${request.address}` : ''}
                       </div>
                     </div>
@@ -582,7 +583,7 @@ export const RemoteControlPanel = (): React.JSX.Element => {
                         )
                       }
                     >
-                      Reject
+                      {t('remoteControl.reject')}
                     </Button>
                     <Button
                       type="button"
@@ -611,7 +612,6 @@ export const RemoteControlPanel = (): React.JSX.Element => {
 
       <p className="mt-5 text-xs leading-relaxed text-muted-foreground">
         {t('settings.remoteItThirdParty')}
-        and does not include, redistribute, register, or create an account for it.
       </p>
     </div>
   )

@@ -7,6 +7,7 @@ import {
   type Language,
   type LanguagePreference
 } from './languages'
+import { setRelativeTimeLanguage } from '@/lib/format-relative-time'
 
 export type { Language, LanguageInfo, LanguagePreference, TranslationKey } from './languages'
 
@@ -67,6 +68,8 @@ const LanguageProvider = ({ children }: { children: ReactNode }): React.JSX.Elem
 
   useEffect(() => {
     document.documentElement.lang = LOCALE_TAG[lang]
+    // Dense relative labels ("2周" vs "2w") follow the same concrete language.
+    setRelativeTimeLanguage(lang)
   }, [lang])
 
   const value = useMemo<LanguageContextValue>(
