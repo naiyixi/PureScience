@@ -91,6 +91,16 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.general': '一般',
   'settings.tags': 'タグ',
   'settings.tokenUsage': 'トークン使用量',
+  'preview.atomCount': '{n} 個の原子',
+  'storage.adoptPre': 'このフォルダーには PureScience データが既にあります。',
+  'storage.adoptPost': '。アプリは再起動します。',
+  'storage.moveBold': '既存のデータ（約 {size}）が移動されます',
+  'storage.moveAfter':
+    '新しい場所へ移動します。ファイルも一緒に移動し、現在のフォルダーには何も残りません。',
+  'storage.rebuildNote':
+    'Python/R 環境は新しい場所で初回使用時に再構築されます（移動されません）。',
+  'preview.viewerMolecule': 'OpenChemLib ビューアーを使用',
+  'preview.viewerPdb': '3Dmol.js ビューアーを使用',
   'computeAdd.pickParagraph':
     'あなたの {cfg} からホストエイリアスを選択するか、入力してください。PureScience は既存の SSH キーを介してこれを計算プロバイダーとして使用します。SSH 資格情報はコピーされません。',
   'localFile.jumpHint': 'ホームまたはピン留めしたフォルダーへ移動',

@@ -90,6 +90,16 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.general': 'Allgemein',
   'settings.tags': 'Tags',
   'settings.tokenUsage': 'Token-Verbrauch',
+  'preview.atomCount': '{n} Atome',
+  'storage.adoptPre': 'Dieser Ordner enthält bereits PureScience-Daten. Er wird',
+  'storage.adoptPost': '. Die App wird neu gestartet.',
+  'storage.moveBold': 'Ihre vorhandenen Daten (~{size}) werden verschoben',
+  'storage.moveAfter':
+    'an den neuen Speicherort — Ihre Dateien ziehen mit, und im aktuellen Ordner bleibt nichts zurück.',
+  'storage.rebuildNote':
+    'Python/R-Umgebungen werden am neuen Speicherort bei der ersten Nutzung neu aufgebaut (nicht verschoben).',
+  'preview.viewerMolecule': 'Mit dem OpenChemLib-Viewer',
+  'preview.viewerPdb': 'Mit dem 3Dmol.js-Viewer',
   'computeAdd.pickParagraph':
     'Wählen Sie einen Host-Alias aus Ihrer {cfg} oder geben Sie einen ein. PureScience verwendet ihn über Ihren vorhandenen SSH-Schlüssel als Compute-Anbieter — es werden keine SSH-Anmeldedaten kopiert.',
   'localFile.jumpHint': 'Zu „Home“ oder einem angehefteten Ordner springen',

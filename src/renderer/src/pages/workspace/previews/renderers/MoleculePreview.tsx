@@ -1,3 +1,4 @@
+import { useLanguage } from '@/i18n'
 import { FlaskConical } from 'lucide-react'
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 
@@ -26,6 +27,7 @@ const MoleculePreviewCanvas = ({
   extension: string
   name: string
 }): React.JSX.Element => {
+  const { t } = useLanguage()
   const containerRef = useRef<HTMLDivElement | null>(null)
   const oclRef = useRef<OclModule | undefined>(undefined)
   // OCL namespaces the SVG's internal ids with this string; useId() carries colons that are invalid there.
@@ -102,7 +104,7 @@ const MoleculePreviewCanvas = ({
       <div className="flex shrink-0 items-center gap-2 border-b border-border-300 bg-bg-000 px-3 py-2 text-[12px] text-text-300">
         <FlaskConical className="size-3.5 shrink-0 text-text-300" aria-hidden="true" />
         <span className="truncate" title={name}>
-          Using OpenChemLib viewer
+          {t('preview.viewerMolecule')}
         </span>
       </div>
       <div className="relative min-h-0 flex-1 overflow-hidden bg-bg-000">

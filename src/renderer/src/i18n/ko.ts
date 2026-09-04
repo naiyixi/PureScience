@@ -90,6 +90,16 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.general': '일반',
   'settings.tags': '태그',
   'settings.tokenUsage': '토큰 사용량',
+  'preview.atomCount': '원자 {n}개',
+  'storage.adoptPre': '이 폴더에는 이미 PureScience 데이터가 있습니다.',
+  'storage.adoptPost': '. 앱이 다시 시작됩니다.',
+  'storage.moveBold': '기존 데이터(약 {size})가 이동됩니다',
+  'storage.moveAfter':
+    '새 위치로 이동하며 파일도 함께 이동하고 현재 폴더에는 아무것도 남지 않습니다.',
+  'storage.rebuildNote':
+    'Python/R 환경은 새 위치에서 처음 사용할 때 다시 빌드됩니다(이동되지 않음).',
+  'preview.viewerMolecule': 'OpenChemLib 뷰어 사용',
+  'preview.viewerPdb': '3Dmol.js 뷰어 사용',
   'computeAdd.pickParagraph':
     '{cfg}에서 호스트 별칭을 선택하거나 직접 입력하세요. PureScience는 기존 SSH 키를 통해 이를 컴퓨팅 공급자로 사용하며 SSH 자격 증명은 복사되지 않습니다.',
   'localFile.jumpHint': '홈 또는 고정 폴더로 이동',
