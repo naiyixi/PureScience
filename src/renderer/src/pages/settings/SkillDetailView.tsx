@@ -106,9 +106,15 @@ const SkillDetailView = ({ skillId }: SkillDetailViewProps): React.JSX.Element =
       {detail &&
       (detail.author || detail.license || detail.thirdParty || genericMetadata.length > 0) ? (
         <section className="mt-6 border-t border-border pt-4">
-          <h2 className="mb-1 text-sm font-semibold text-foreground">Details</h2>
-          {detail.author ? <DetailRow label="Author" value={detail.author} /> : null}
-          {detail.license ? <DetailRow label="License" value={detail.license} /> : null}
+          <h2 className="mb-1 text-sm font-semibold text-foreground">
+            {t('skillDetail.detailsTitle')}
+          </h2>
+          {detail.author ? (
+            <DetailRow label={t('skillDetail.author')} value={detail.author} />
+          ) : null}
+          {detail.license ? (
+            <DetailRow label={t('skillDetail.license')} value={detail.license} />
+          ) : null}
           {detail.thirdParty ? (
             <DetailRow label={t('settings.thirdPartySoftware')} value={detail.thirdParty} />
           ) : null}

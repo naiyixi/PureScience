@@ -1722,6 +1722,17 @@ export const zh = {
   'settings.dismissSettingsError': '关闭设置错误',
   'settings.endpoint': '端点',
   'settings.tokenUsage': '词元用量',
+  'runtimes.appManagedEnv': '应用托管环境',
+  'runtimes.disableTitle': '禁用 {env}？',
+  'runtimes.disableDescOne':
+    '该环境正被 1 个活动会话使用（运行中 {running}，空闲 {idle}）。禁用后，运行中的单元可执行完毕再关闭其内核；此会话需切换至其他运行时方可继续工作。',
+  'runtimes.disableDescMany':
+    '该环境正被 {active} 个活动会话使用（运行中 {running}，空闲 {idle}）。禁用后，运行中的单元可执行完毕再关闭其内核；这些会话必须切换到其他运行时才能继续工作。',
+  'runtimes.stopRunningWork': '停止运行中的工作',
+  'runtimes.disableAfterCurrentWork': '在当前工作结束后禁用',
+  'skillDetail.detailsTitle': '详情',
+  'skillDetail.author': '作者',
+  'skillDetail.license': '许可证',
   'boot.loadingSettings': '正在加载设置…',
   'boot.retrying': '正在重试…',
   'boot.retry': '重试',

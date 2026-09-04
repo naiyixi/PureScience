@@ -1824,6 +1824,17 @@ export const en: Record<ZhKey, string> = {
   'settings.dismissSettingsError': 'Dismiss settings error',
   'settings.endpoint': 'Endpoint',
   'settings.tokenUsage': 'Token usage',
+  'runtimes.appManagedEnv': 'App-managed environment',
+  'runtimes.disableTitle': 'Disable {env}?',
+  'runtimes.disableDescOne':
+    'It is in use by 1 active session — {running} running, {idle} idle. Disabling lets the running cell finish, then closes its kernel; that session must switch to another runtime to keep working.',
+  'runtimes.disableDescMany':
+    'It is in use by {active} active sessions — {running} running, {idle} idle. Disabling lets any running cell finish, then closes its kernel; those sessions must switch to another runtime to keep working.',
+  'runtimes.stopRunningWork': 'Stop running work',
+  'runtimes.disableAfterCurrentWork': 'Disable after current work',
+  'skillDetail.detailsTitle': 'Details',
+  'skillDetail.author': 'Author',
+  'skillDetail.license': 'License',
   'boot.loadingSettings': 'Loading settings…',
   'boot.retrying': 'Retrying…',
   'boot.retry': 'Retry',

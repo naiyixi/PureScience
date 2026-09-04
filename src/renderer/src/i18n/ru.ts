@@ -90,6 +90,17 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.general': 'Общие',
   'settings.tags': 'Теги',
   'settings.tokenUsage': 'Использование токенов',
+  'runtimes.appManagedEnv': 'Среда под управлением приложения',
+  'runtimes.disableTitle': 'Отключить {env}?',
+  'runtimes.disableDescOne':
+    'Используется 1 активным сеансом — {running} выполняется, {idle} простаивают. После отключения работающая ячейка завершится, затем её ядро закроется; этому сеансу нужно переключиться на другую среду выполнения, чтобы продолжить работу.',
+  'runtimes.disableDescMany':
+    'Используется {active} активными сеансами — {running} выполняется, {idle} простаивают. После отключения работающие ячейки завершатся, затем их ядра закроются; этим сеансам нужно переключиться на другую среду выполнения, чтобы продолжить работу.',
+  'runtimes.stopRunningWork': 'Остановить выполняемую работу',
+  'runtimes.disableAfterCurrentWork': 'Отключить после завершения текущей работы',
+  'skillDetail.detailsTitle': 'Подробности',
+  'skillDetail.author': 'Автор',
+  'skillDetail.license': 'Лицензия',
   'boot.loadingSettings': 'Загрузка настроек…',
   'boot.retrying': 'Повтор попытки…',
   'boot.retry': 'Повторить',

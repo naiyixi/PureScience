@@ -91,6 +91,17 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.general': '一般',
   'settings.tags': 'タグ',
   'settings.tokenUsage': 'トークン使用量',
+  'runtimes.appManagedEnv': 'アプリ管理環境',
+  'runtimes.disableTitle': '{env} を無効にしますか？',
+  'runtimes.disableDescOne':
+    '1 つのアクティブセッションが使用中です（実行中 {running}、アイドル {idle}）。無効にすると、実行中のセルが終了してからカーネルが閉じられます。このセッションは作業を続けるには別のランタイムに切り替える必要があります。',
+  'runtimes.disableDescMany':
+    '{active} 個のアクティブセッションが使用中です（実行中 {running}、アイドル {idle}）。無効にすると、実行中のセルが終了してからカーネルが閉じられます。これらのセッションは作業を続けるには別のランタイムに切り替える必要があります。',
+  'runtimes.stopRunningWork': '実行中の作業を停止',
+  'runtimes.disableAfterCurrentWork': '現在の作業完了後に無効にする',
+  'skillDetail.detailsTitle': '詳細',
+  'skillDetail.author': '作者',
+  'skillDetail.license': 'ライセンス',
   'boot.loadingSettings': '設定を読み込み中…',
   'boot.retrying': '再試行中…',
   'boot.retry': '再試行',
