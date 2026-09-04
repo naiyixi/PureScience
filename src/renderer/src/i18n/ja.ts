@@ -91,6 +91,22 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.general': '一般',
   'settings.tags': 'タグ',
   'settings.tokenUsage': 'トークン使用量',
+  'skillEditor.identity': 'ID・名前',
+  'skillEditor.descriptionHeader': '説明',
+  'skillEditor.contentHeader': 'コンテンツ',
+  'skillEditor.referencesHeader': '参照ファイル',
+  'skillEditor.identityHint':
+    'エージェントがこのスキルを使うタイミングを判断する基準です。具体的に記述してください。',
+  'skillEditor.pasteHintA': '完全な SKILL.md を貼り付けます。先頭に',
+  'skillEditor.pasteHintB': 'メタデータブロックがあれば、上のフィールドは自動入力されます。',
+  'skillEditor.dropToUpload': 'ドロップしてアップロード',
+  'skillEditor.uploadTitle': 'SKILL.md またはテキストファイルをアップロード',
+  'skillEditor.uploadHint':
+    '内容がエディターに反映されます。手直しするには「記述」モードに戻してください。',
+  'skillEditor.refsSupportSentence':
+    'スキルが実行時に読み取れる補助ファイル（スクリプト、テンプレート、データ）。',
+  'skillEditor.refsSavedTail': '（スキル内に保存されます）。',
+  'skillEditor.removeAria': '{name} を削除',
   'fileBrowser.showInFinder': 'Finder に表示',
   'fileBrowser.truncatedNote':
     '最初の 5,000 件のみ表示しています。サブディレクトリに入るとさらに表示されます。',

@@ -90,6 +90,21 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.general': '일반',
   'settings.tags': '태그',
   'settings.tokenUsage': '토큰 사용량',
+  'skillEditor.identity': '정체성',
+  'skillEditor.descriptionHeader': '설명',
+  'skillEditor.contentHeader': '콘텐츠',
+  'skillEditor.referencesHeader': '참조 파일',
+  'skillEditor.identityHint':
+    '에이전트가 이 스킬을 사용할 시기를 결정하는 기준입니다. 구체적으로 작성하세요.',
+  'skillEditor.pasteHintA': '전체 SKILL.md를 붙여넣으세요. 상단에',
+  'skillEditor.pasteHintB': '메타데이터 블록이 있으면 위 필드가 자동으로 채워집니다.',
+  'skillEditor.dropToUpload': '끌어다 놓아 업로드',
+  'skillEditor.uploadTitle': 'SKILL.md 또는 텍스트 파일 업로드',
+  'skillEditor.uploadHint': '내용이 편집기를 채웁니다. 수정하려면 작성 모드로 돌아가세요.',
+  'skillEditor.refsSupportSentence':
+    '스킬이 실행 중 읽을 수 있는 보조 파일(스크립트, 템플릿, 데이터).',
+  'skillEditor.refsSavedTail': '(스킬에 함께 저장됨).',
+  'skillEditor.removeAria': '{name} 제거',
   'fileBrowser.showInFinder': 'Finder에서 보기',
   'fileBrowser.truncatedNote':
     '처음 5,000개 항목만 표시됩니다. 하위 폴더로 들어가면 더 볼 수 있습니다.',

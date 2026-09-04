@@ -206,7 +206,7 @@ const SkillEditor = ({ initial, onCancel, onSave }: SkillEditorProps): React.JSX
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="p-5">
           <section>
-            <h2 className="text-base font-semibold text-foreground">Identity</h2>
+            <h2 className="text-base font-semibold text-foreground">{t('skillEditor.identity')}</h2>
             <p className="mt-0.5 text-xs text-muted-foreground">{t('skillEditor.catalogHint')}.</p>
             <div className="mt-4 flex flex-col gap-4">
               <label className="flex flex-col gap-1.5">
@@ -219,7 +219,7 @@ const SkillEditor = ({ initial, onCancel, onSave }: SkillEditorProps): React.JSX
                 />
               </label>
               <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium text-foreground">Skill ID</span>
+                <span className="text-sm font-medium text-foreground">{t('settings.skillId')}</span>
                 <Input
                   aria-label={t('settings.skillId')}
                   value={isCreate ? currentSlug : (initial.id ?? '').replace(/^personal-/, '')}
@@ -262,7 +262,7 @@ const SkillEditor = ({ initial, onCancel, onSave }: SkillEditorProps): React.JSX
                   className="resize-none text-sm"
                 />
                 <span className="text-xs text-muted-foreground">
-                  This is how the agent decides when to use the skill — be specific.
+                  {t('skillEditor.identityHint')}
                 </span>
               </label>
             </div>
@@ -273,7 +273,9 @@ const SkillEditor = ({ initial, onCancel, onSave }: SkillEditorProps): React.JSX
           <section>
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h2 className="text-base font-semibold text-foreground">Content</h2>
+                <h2 className="text-base font-semibold text-foreground">
+                  {t('skillEditor.contentHeader')}
+                </h2>
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   {t('skillEditor.markdownHint')}.
                 </p>
@@ -324,8 +326,8 @@ const SkillEditor = ({ initial, onCancel, onSave }: SkillEditorProps): React.JSX
                   className="mt-4 min-h-64 resize-none font-mono text-[13px]"
                 />
                 <p className="mt-1.5 text-xs text-muted-foreground">
-                  Paste a full SKILL.md — if it has a <code className="font-mono">---</code>{' '}
-                  metadata block at the top, the fields above auto-fill.
+                  {t('skillEditor.pasteHintA')} <code className="font-mono">---</code>{' '}
+                  {t('skillEditor.pasteHintB')}
                 </p>
                 {!frontmatterImportMode && metadataEntries.length > 0 ? (
                   <div
@@ -364,15 +366,13 @@ const SkillEditor = ({ initial, onCancel, onSave }: SkillEditorProps): React.JSX
                 className="relative mt-4 flex w-full flex-col items-center gap-2 rounded-lg border border-dashed border-border px-6 py-8 text-center transition-colors motion-reduce:transition-none hover:bg-muted/50"
               >
                 {contentDrop.isDragging ? (
-                  <FileDropOverlay label="Drop to upload" className="rounded-lg" />
+                  <FileDropOverlay label={t('skillEditor.dropToUpload')} className="rounded-lg" />
                 ) : null}
                 <Upload className="size-5 text-muted-foreground" aria-hidden="true" />
                 <span className="text-sm font-medium text-foreground">
-                  Upload a SKILL.md or text file
+                  {t('skillEditor.uploadTitle')}
                 </span>
-                <span className="text-xs text-muted-foreground">
-                  Its contents fill the editor; switch back to Write to tweak.
-                </span>
+                <span className="text-xs text-muted-foreground">{t('skillEditor.uploadHint')}</span>
               </button>
             )}
           </section>
@@ -380,9 +380,11 @@ const SkillEditor = ({ initial, onCancel, onSave }: SkillEditorProps): React.JSX
           <div className="my-6 h-px bg-border" />
 
           <section>
-            <h2 className="text-base font-semibold text-foreground">References</h2>
+            <h2 className="text-base font-semibold text-foreground">
+              {t('skillEditor.referencesHeader')}
+            </h2>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Supporting files (scripts, templates, data) the skill can read at runtime.
+              {t('skillEditor.refsSupportSentence')}
             </p>
 
             <label
@@ -390,7 +392,7 @@ const SkillEditor = ({ initial, onCancel, onSave }: SkillEditorProps): React.JSX
               className="relative mt-4 flex cursor-pointer flex-col items-center gap-2 rounded-lg border border-dashed border-border px-6 py-6 text-center transition-colors motion-reduce:transition-none hover:bg-muted/50"
             >
               {referenceDrop.isDragging ? (
-                <FileDropOverlay label="Drop reference files" className="rounded-lg" />
+                <FileDropOverlay label={t('skillEditor.dropToUpload')} className="rounded-lg" />
               ) : null}
               <input
                 type="file"
@@ -404,8 +406,8 @@ const SkillEditor = ({ initial, onCancel, onSave }: SkillEditorProps): React.JSX
                 {t('skillEditor.dropReferences')}
               </span>
               <span className="text-xs text-muted-foreground">
-                {t('skillEditor.savedUnder')} <code className="font-mono">references/</code> in the
-                skill.
+                {t('skillEditor.savedUnder')} <code className="font-mono">references/</code>{' '}
+                {t('skillEditor.refsSavedTail')}
               </span>
             </label>
 
@@ -417,7 +419,7 @@ const SkillEditor = ({ initial, onCancel, onSave }: SkillEditorProps): React.JSX
                       references/{ref.path}
                     </span>
                     <SettingsIconAction
-                      label={`Remove ${ref.path}`}
+                      label={t('skillEditor.removeAria').replace('{name}', ref.path)}
                       icon={X}
                       onClick={() =>
                         setReferences((prev) => prev.filter((item) => item.path !== ref.path))
