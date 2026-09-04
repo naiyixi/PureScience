@@ -98,20 +98,20 @@ export function ComputeAddForm({ onCreated, onCancel }: ComputeAddFormProps): Re
   return (
     <div className="p-5">
       <p className="mb-5 text-[13px] leading-5 text-muted-foreground">
-        Pick a host alias from your <code className="font-mono text-xs">~/.ssh/config</code>, or
-        type one. PureScience will use it as a compute provider via your existing SSH key — no
-        {t('settings.sshCredentialsCopied')}
+        {t('computeAdd.pickParagraph').replace('{cfg}', '~/.ssh/config')}
       </p>
 
       <div className="flex flex-col gap-5">
         <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-foreground">From ~/.ssh/config</label>
+          <label className="text-sm font-medium text-foreground">
+            {t('computeAdd.fromSshLabel')}
+          </label>
           <Select
             value={alias}
             onValueChange={(value) => setAlias(value)}
             disabled={sshAliases.length === 0}
           >
-            <SelectTrigger aria-label="Pick a host from ~/.ssh/config">
+            <SelectTrigger aria-label={t('computeAdd.pickHostAria')}>
               <SelectValue
                 placeholder={
                   sshAliases.length === 0
@@ -132,7 +132,7 @@ export function ComputeAddForm({ onCreated, onCancel }: ComputeAddFormProps): Re
 
         <div className="flex flex-col gap-1.5">
           <label htmlFor="compute-alias" className="text-sm font-medium text-foreground">
-            Or type a host alias
+            {t('computeAdd.orTypeAlias')}
           </label>
           <Input
             id="compute-alias"

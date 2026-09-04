@@ -124,7 +124,8 @@ const ClaudeIsolatedSignInModalBody = ({
           {t('settings.signInWithAnthropic')}
         </AlertDialog.Title>
         <AlertDialog.Description className={dialogDescriptionClassName}>
-          Use a long-lived OAuth token from <code className="font-mono">claude setup-token</code>.
+          {t('signIn.oauthHintA')} <code className="font-mono">claude setup-token</code>
+          {t('signIn.oauthHintB')}
           The token is encrypted in PureScience app storage and never read from or written to{' '}
           <code className="font-mono">~/.claude</code>. See{' '}
           <a

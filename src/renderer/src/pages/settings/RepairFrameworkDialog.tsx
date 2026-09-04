@@ -52,7 +52,7 @@ const RepairFrameworkDialog = ({
             {name ? (
               <AgentInstallSourceMenu
                 name={name}
-                label="Repair"
+                label={t('repair.repairAria') as 'Repair'}
                 sources={sources}
                 installing={installing}
                 disabled={disabled}
