@@ -397,12 +397,12 @@ const PermissionsPanel = ({
                       type="button"
                       variant="outline"
                       size="sm"
-                      aria-label={`Revoke all ${filter === 'all' ? '' : `${FILTER_LABELS[filter]} `}${title} permissions`}
+                      aria-label={t('permissions.revokeAll')}
                       disabled={incompleteStores.length > 0}
                       className="whitespace-nowrap"
                       onClick={() => void revoke(familyGrants)}
                     >
-                      Revoke all
+                      {t('permissions.revokeAll')}
                     </Button>
                   }
                   aria-labelledby={`permission-family-${id}`}
@@ -444,7 +444,7 @@ const PermissionsPanel = ({
                 </span>
                 <div className="min-w-0">
                   <AlertDialog.Title className={dialogTitleClassName}>
-                    Use Full access by default?
+                    {t('permissions.useFullAccessTitle')}
                   </AlertDialog.Title>
                   <AlertDialog.Description className={dialogDescriptionClassName}>
                     {t('settings.newConvosNotebook')}
@@ -467,7 +467,7 @@ const PermissionsPanel = ({
             <div className={dialogFooterClassName}>
               <AlertDialog.Cancel asChild>
                 <Button type="button" variant="outline">
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
               </AlertDialog.Cancel>
               <AlertDialog.Action asChild>
@@ -476,7 +476,7 @@ const PermissionsPanel = ({
                   className="bg-amber-600 text-white hover:bg-amber-700"
                   onClick={() => void setDefaultPermissionProfile('full')}
                 >
-                  Use Full access
+                  {t('permissions.useFullAccess')}
                 </Button>
               </AlertDialog.Action>
             </div>
