@@ -165,7 +165,7 @@ type ArtifactEnvironmentUnavailableReason = Extract<
 >['reason']
 
 export type ArtifactProducerUnavailableReason =
-  'producer-not-supplied' | 'producer-source-unverifiable'
+  'producer-not-supplied' | 'producer-source-unverifiable' | 'user-edit'
 
 export type ArtifactVersionAvailability =
   | { state: 'available' | 'partial' }

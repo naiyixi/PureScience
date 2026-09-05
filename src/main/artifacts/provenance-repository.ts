@@ -1437,6 +1437,223 @@ class ArtifactProvenanceRepository {
     )
   }
 
+  /**
+   * Publishes a user-edited revision of an existing text Artifact Version. The edit becomes a NEW
+   * immutable Version in the same lineage (versionNumber = max + 1): the previous version stays
+   * navigable and the transcript provenance is untouched. The new version copies the frame/run
+   * context of the edited (source) version so it hangs off the same session graph, but carries no
+   * message-snapshot or producer association (producer = unavailable, reason user-edit) and is
+   * finalized immediately — it never waits for an agent-run finalization it will never receive.
+   */
+  async writeUserEditedVersion(request: {
+    projectId: string
+    appSessionId: string
+    artifactStorageSessionId: string
+    sourceVersionId: string
+    content: string
+    contentType?: string
+  }): Promise<ArtifactVersionFile> {
+    const projectId = assertSafeSegment(request.projectId, 'project id')
+    const appSessionId = assertSafeSegment(request.appSessionId, 'app session id')
+    const artifactStorageSessionId = assertSafeSegment(
+      request.artifactStorageSessionId,
+      'artifact storage session id'
+    )
+    const sourceVersionId = assertSafeSegment(request.sourceVersionId, 'source version id')
+    const client = await this.options.getClient()
+    const source = await client.artifactVersion.findFirst({
+      where: {
+        id: sourceVersionId,
+        state: 'finalized',
+        artifact: { is: { projectId, sessionId: appSessionId } }
+      },
+      include: { artifact: true }
+    })
+    if (!source) {
+      throw new Error(`User-edit source Artifact Version not found: ${sourceVersionId}`)
+    }
+    const lineageId = source.artifactId
+    const writeOperationId = `artifact-user-edit-${this.createId()}`
+
+    const contentChecksum = sha256(Buffer.from(request.content, 'utf8'))
+    const writeRequestChecksum = sha256(
+      canonicalJson({
+        contentChecksum,
+        contentType: request.contentType ?? null,
+        filename: source.filename,
+        producerRunId: null,
+        sourceKind: 'user-edit',
+        sourceFileObservation: null
+      })
+    )
+
+    const version = await this.compatibilityRepository.withPendingFileTransaction<ArtifactVersionFile>(
+      {
+        projectName: projectId,
+        sessionId: artifactStorageSessionId,
+        runId: source.artifactRunId,
+        filename: source.filename,
+        mimeType: request.contentType,
+        kind: 'plan',
+        source: { kind: 'inline', content: request.content, encoding: 'utf8' }
+      },
+      {},
+      async (pendingFile, _sourceFileObservation, bindVersionRouting) => {
+        const versionId = this.createId()
+        const createdAt = this.now()
+        const stagingStorageKey = storageKey(
+          'artifacts',
+          projectId,
+          appSessionId,
+          '.provenance',
+          '.staging',
+          'versions',
+          versionId
+        )
+        const stagingDirectory = join(this.options.storageRoot, ...stagingStorageKey.split('/'))
+        const stagingContentPath = join(stagingDirectory, 'content')
+        await mkdir(stagingDirectory, { recursive: true })
+        await copyFile(pendingFile.path, stagingContentPath)
+        await this.durability.syncFile(stagingContentPath)
+
+        const latest = await client.artifactVersion.aggregate({
+          where: { artifactId: lineageId },
+          _max: { versionNumber: true }
+        })
+        const versionNumber = (latest._max.versionNumber ?? 0) + 1
+        const contentStorageKey = storageKey(
+          'artifacts',
+          projectId,
+          appSessionId,
+          '.provenance',
+          lineageId,
+          'versions',
+          versionId,
+          'content'
+        )
+        const evidenceStorageKey = storageKey(
+          'artifacts',
+          projectId,
+          appSessionId,
+          '.provenance',
+          lineageId,
+          'versions',
+          versionId,
+          'evidence.json'
+        )
+        const evidence: ArtifactVersionEvidence = {
+          app_session_id: appSessionId,
+          artifact_id: lineageId,
+          checksum: contentChecksum,
+          ...(request.contentType ? { content_type: request.contentType } : {}),
+          conversation: {
+            agent_frame_id: source.agentFrameId,
+            message_branch_id: source.messageBranchId,
+            prompt_message_id: source.promptMessageId,
+            root_frame_id: source.rootFrameId,
+            runtime_segment_id: source.runtimeSegmentId
+          },
+          created_at: createdAt.toISOString(),
+          environment_status: { reason: 'user-edit', state: 'unavailable' },
+          execution_status: { reason: 'user-edit', state: 'unavailable' },
+          filename: source.filename,
+          inputs: [],
+          is_user_upload: false,
+          producer: { reason: 'user-edit', state: 'unavailable' },
+          project_id: projectId,
+          schema_version: 1,
+          size_bytes: Buffer.byteLength(request.content, 'utf8'),
+          version_id: versionId,
+          version_number: versionNumber
+        }
+        const evidenceJson = canonicalJson(evidence as unknown as CanonicalJson)
+
+        const persisted = await withVersionAllocationRetry(() =>
+          client.$transaction(async (transaction) => {
+            const origin = await transaction.fileOriginSession.upsert({
+              where: { projectId_sessionId: { projectId, sessionId: appSessionId } },
+              create: { projectId, sessionId: appSessionId },
+              update: {}
+            })
+            if (origin.state !== 'active') {
+              throw new Error(
+                'Artifact origin Session is being deleted and cannot accept a Version.'
+              )
+            }
+            return transaction.artifactVersion.create({
+              data: {
+                id: versionId,
+                artifactId: lineageId,
+                versionNumber,
+                filename: source.filename,
+                artifactRunId: source.artifactRunId,
+                writeOperationId,
+                writeRequestChecksum,
+                rootFrameId: source.rootFrameId,
+                agentFrameId: source.agentFrameId,
+                messageBranchId: source.messageBranchId,
+                runtimeSegmentId: source.runtimeSegmentId,
+                promptMessageId: source.promptMessageId,
+                state: 'staging',
+                contentStorageKey,
+                evidenceStorageKey,
+                contentType: request.contentType ?? source.contentType ?? undefined,
+                sizeBytes: BigInt(Buffer.byteLength(request.content, 'utf8')),
+                checksum: contentChecksum,
+                evidenceJson,
+                evidenceChecksum: sha256(evidenceJson),
+                createdAt
+              }
+            })
+          })
+        )
+
+        const evidencePath = join(stagingDirectory, 'evidence.json')
+        await writeFile(evidencePath, persisted.evidenceJson, 'utf8')
+        await this.syncAndVerifyFile(
+          evidencePath,
+          persisted.evidenceChecksum,
+          `Artifact Version evidence mirror is corrupt: ${persisted.id}`
+        )
+        const finalContentPath = join(
+          this.options.storageRoot,
+          ...persisted.contentStorageKey.split('/')
+        )
+        await mkdir(dirname(dirname(finalContentPath)), { recursive: true })
+        await this.durability.syncDirectory(stagingDirectory)
+        const finalDirectory = dirname(finalContentPath)
+        await rename(stagingDirectory, finalDirectory)
+        await this.durability.syncDirectory(dirname(finalDirectory))
+
+        await bindVersionRouting(
+          {
+            artifactId: persisted.artifactId,
+            versionId: persisted.id,
+            versionNumber: persisted.versionNumber,
+            artifactRunId: persisted.artifactRunId,
+            checksum: persisted.checksum,
+            mimeType: persisted.contentType ?? undefined
+          },
+          resolveStorageKey(this.options.storageRoot, persisted.contentStorageKey)
+        )
+
+        // User edits are finalized immediately: no agent run will ever finalize them.
+        const finalized = await client.$transaction(async (transaction) => {
+          await transaction.artifactLineage.update({
+            where: { id: persisted.artifactId },
+            data: { filename: source.filename }
+          })
+          return transaction.artifactVersion.update({
+            where: { id: persisted.id },
+            data: { state: 'finalized' }
+          })
+        })
+        return this.toArtifactVersionFile(finalized, projectId, appSessionId)
+      }
+    )
+    return version
+  }
+
   async createVersion(request: CreateArtifactVersionRequest): Promise<ArtifactVersionFile> {
     return this.createVersionWithOptions(
       request,
