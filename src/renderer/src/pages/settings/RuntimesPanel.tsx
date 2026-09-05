@@ -1,5 +1,13 @@
 import { useLanguage, type TranslationKey } from '@/i18n'
-import { CheckCircle2, FolderInput, Package, RefreshCw, Search } from 'lucide-react'
+import {
+  CheckCircle2,
+  FolderInput,
+  Package,
+  RefreshCw,
+  Search,
+  ShieldCheck,
+  ShieldOff
+} from 'lucide-react'
 import { AlertDialog, Dialog } from 'radix-ui'
 import { useEffect, useRef, useState } from 'react'
 
@@ -16,6 +24,7 @@ import { useRetainedDialogValue } from '@/components/ui/use-retained-dialog-valu
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { useNotebookEnvStore } from '@/stores/notebook-env-store'
+import { DEFAULT_EGRESS_SETTINGS, type EgressSettings } from '../../../../shared/egress'
 import {
   isEnvEnabled,
   type DiscoveredInterpreter,
@@ -60,6 +69,9 @@ type Enablements = Partial<Record<NotebookLanguage, RuntimeEnablement>>
 type RuntimesPanelProps = {
   title: string
   description: React.ReactNode
+  // Optional jump from the (off-state) protection card to Settings → Network. Absent in contexts
+  // without a settings nav (e.g. onboarding), where the card then shows the off note without a CTA.
+  onOpenNetwork?: () => void
 }
 
 // Human provider/type for the card badge (provenance + conda env name), e.g. "App-managed",
@@ -89,13 +101,22 @@ const managedLine = (
   return runnable ? t('settings.installedAndReady') : t('settings.managedRuntimeNotSetUp')
 }
 
-const RuntimesPanel = ({ title, description }: RuntimesPanelProps): React.JSX.Element => {
+const RuntimesPanel = ({
+  title,
+  description,
+  onOpenNetwork
+}: RuntimesPanelProps): React.JSX.Element => {
   const { t } = useLanguage()
   const [envs, setEnvs] = useState<EnvLists | null>(null)
   const [enablement, setEnablement] = useState<Enablements>({})
   const [loaded, setLoaded] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Network-protection status: mirrors the persisted egress master switch from Settings → Network
+  // (the same source the NetworkPanel switch reads), fetched independently of runtime discovery so
+  // the card renders even while envs are still loading. Optional-chaining guard: render tests stub
+  // window.api without the settings namespace — when it is absent the card simply stays hidden.
+  const [egress, setEgress] = useState<EgressSettings | undefined>(undefined)
   const [managedOperations, setManagedOperations] = useState<
     Partial<Record<NotebookLanguage, boolean>>
   >({})
@@ -133,6 +154,26 @@ const RuntimesPanel = ({ title, description }: RuntimesPanelProps): React.JSX.El
   useEffect(() => {
     void initEnv()
   }, [initEnv])
+
+  useEffect(() => {
+    const getEgress = (
+      window.api.settings as { getEgress?: () => Promise<EgressSettings | undefined> }
+    )?.getEgress
+    if (typeof getEgress !== 'function') return
+    let cancelled = false
+    void getEgress()
+      .then((value) => {
+        // Absent persisted settings == the default (protection off), same as the Network panel.
+        if (!cancelled) setEgress(value ?? DEFAULT_EGRESS_SETTINGS)
+      })
+      .catch(() => {
+        // Unknown state degrades to "off" rather than surfacing an error in the runtime list.
+        if (!cancelled) setEgress(DEFAULT_EGRESS_SETTINGS)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   // On failure fall back to empty results (a recoverable "couldn't detect" state with Recheck)
   // rather than hanging on "Detecting…" forever. Loads the discovered envs plus the PERSISTED
@@ -506,6 +547,32 @@ const RuntimesPanel = ({ title, description }: RuntimesPanelProps): React.JSX.El
           </Button>
         }
       >
+        {egress !== undefined ? (
+          <div
+            data-testid="runtimes-egress-card"
+            className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-border bg-card px-3 py-2.5"
+          >
+            {egress.enabled ? (
+              <ShieldCheck className="size-4 shrink-0 text-primary" aria-hidden="true" />
+            ) : (
+              <ShieldOff className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            )}
+            <p className="min-w-0 flex-1 text-[13px] text-foreground">
+              {egress.enabled ? t('settings.egressStatusActive') : t('settings.egressStatusOff')}
+            </p>
+            {!egress.enabled && onOpenNetwork ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                data-testid="runtimes-egress-open-network"
+                onClick={onOpenNetwork}
+              >
+                {t('settings.egressStatusOpen')}
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
         {error !== null && (
           <p role="alert" className="text-sm text-destructive" data-testid="runtimes-error">
             {error}

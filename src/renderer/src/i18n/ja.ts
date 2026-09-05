@@ -1138,6 +1138,10 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.egressDescription':
     'Notebook 内の Python・R・REPL・Bash プロセスがアクセスできるインターネットドメインを制御します。それ以外の宛先はローカルのフィルタリングプロキシでブロックされます。',
   'settings.egressEnabled': 'プロセスのネットワークアクセスを制限',
+  'settings.egressStatusActive': 'ノートブックのネットワーク保護は有効です',
+  'settings.egressStatusOff':
+    'ネットワーク保護は無効です — ノートブックのプロセスはどのウェブサイトにもアクセスできます',
+  'settings.egressStatusOpen': 'ネットワーク設定を開く',
   'settings.egressEnabledHint':
     'オン = 子プロセスはローカルプロキシ経由で転送され、有効なドメイングループとカスタムドメインのみが許可されます。',
   'settings.egressGroupBioinformatics': 'バイオインフォマティクスツールとデータベース',

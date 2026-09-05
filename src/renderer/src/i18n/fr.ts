@@ -1157,6 +1157,10 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.egressDescription':
     'Contrôle les domaines internet auxquels les processus notebook (Python, R, REPL et Bash) peuvent accéder. Tout le reste est bloqué par un proxy de filtrage local.',
   'settings.egressEnabled': 'Restreindre l’accès réseau des processus',
+  'settings.egressStatusActive': 'La protection réseau des notebooks est active',
+  'settings.egressStatusOff':
+    'La protection réseau est désactivée — les processus des notebooks peuvent accéder à n’importe quel site web',
+  'settings.egressStatusOpen': 'Ouvrir les paramètres réseau',
   'settings.egressEnabledHint':
     'Activé = les processus enfants passent par un proxy local qui n’autorise que les groupes de domaines activés et vos domaines personnalisés.',
   'settings.egressGroupBioinformatics': 'Outils et bases de données de bio-informatique',
@@ -2112,7 +2116,8 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'ws.autoReview': 'Revue automatique',
   'ws.autoReviewDesc': 'Un agent réviseur vérifie chaque changement avant qu’il ne soit appliqué.',
   'ws.delegation': 'Délégation',
-  'ws.delegationDesc': 'Permet à l’agent de déléguer des sous-tâches à des sous-agents en parallèle.',
+  'ws.delegationDesc':
+    'Permet à l’agent de déléguer des sous-tâches à des sous-agents en parallèle.',
   'ws.bindSpecialistHint': 'Liez un spécialiste personnel à cette conversation.',
   'ws.branchInNewSession': 'Créer une branche dans une nouvelle session',
   'ws.cancelRun': 'Annuler l’exécution',
@@ -2544,7 +2549,8 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'artifactEdit.editAction': 'Modifier le contenu de l’artefact',
   'artifactEdit.title': 'Modifier l’artefact',
   'artifactEdit.contentAria': 'Contenu d’artefact modifiable',
-  'artifactEdit.publishHint': 'L’enregistrement crée une nouvelle version. v{version} reste inchangée.',
+  'artifactEdit.publishHint':
+    'L’enregistrement crée une nouvelle version. v{version} reste inchangée.',
   'artifactEdit.loadFailed': 'Impossible de charger le contenu de l’artefact pour modification.',
   'artifactEdit.tooLarge': 'Cet artefact est trop volumineux pour être modifié dans l’aperçu.',
   'artifactEdit.saveFailed': 'Impossible d’enregistrer la version modifiée.',

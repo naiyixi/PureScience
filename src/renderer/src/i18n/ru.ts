@@ -1139,6 +1139,10 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.egressDescription':
     'Управляет доменами интернета, к которым могут обращаться процессы notebook (Python, R, REPL и Bash). Всё остальное блокируется локальным фильтрующим прокси.',
   'settings.egressEnabled': 'Ограничить сетевой доступ процессов',
+  'settings.egressStatusActive': 'Защита сети для ноутбуков включена',
+  'settings.egressStatusOff':
+    'Защита сети отключена — процессы ноутбуков могут обращаться к любым сайтам',
+  'settings.egressStatusOpen': 'Открыть сетевые настройки',
   'settings.egressEnabledHint':
     'Вкл. = дочерние процессы направляются через локальный прокси, пропускающий только включённые группы доменов и ваши собственные домены.',
   'settings.egressGroupBioinformatics': 'Биоинформатические инструменты и базы данных',
@@ -2502,7 +2506,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'artifactEdit.editAction': 'Редактировать содержимое артефакта',
   'artifactEdit.title': 'Редактировать артефакт',
   'artifactEdit.contentAria': 'Редактируемое содержимое артефакта',
-  'artifactEdit.publishHint': 'Сохранение создаст новую версию. v{version} останется без изменений.',
+  'artifactEdit.publishHint':
+    'Сохранение создаст новую версию. v{version} останется без изменений.',
   'artifactEdit.loadFailed': 'Не удалось загрузить содержимое артефакта для редактирования.',
   'artifactEdit.tooLarge': 'Артефакт слишком велик для редактирования в предпросмотре.',
   'artifactEdit.saveFailed': 'Не удалось сохранить изменённую версию.',

@@ -1064,6 +1064,9 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.egressDescription':
     '控制筆記本中的 Python、R、REPL 與 Bash 程序可以存取哪些網際網路網域，其餘位址一律由本機過濾代理程式封鎖。',
   'settings.egressEnabled': '限制程序網路存取',
+  'settings.egressStatusActive': '筆記本網路防護已開啟',
+  'settings.egressStatusOff': '網路防護未開啟 — 筆記本程序可存取任意網站',
+  'settings.egressStatusOpen': '開啟網路設定',
   'settings.egressEnabledHint':
     '開啟 = 子程序會經由本機代理程式轉送，僅允許已啟用的網域群組與你的自訂網域。',
   'settings.egressGroupBioinformatics': '生物資訊工具與資料庫',

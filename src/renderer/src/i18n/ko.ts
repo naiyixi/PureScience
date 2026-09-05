@@ -1119,6 +1119,10 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.egressDescription':
     'Notebook의 Python·R·REPL·Bash 프로세스가 접근할 수 있는 인터넷 도메인을 제어합니다. 그 외 대상은 로컬 필터링 프록시로 차단됩니다.',
   'settings.egressEnabled': '프로세스 네트워크 액세스 제한',
+  'settings.egressStatusActive': '노트북 네트워크 보호가 켜져 있습니다',
+  'settings.egressStatusOff':
+    '네트워크 보호가 꺼져 있습니다 — 노트북 프로세스는 모든 웹사이트에 접근할 수 있습니다',
+  'settings.egressStatusOpen': '네트워크 설정 열기',
   'settings.egressEnabledHint':
     '켬 = 자식 프로세스가 로컬 프록시를 거치며, 활성화된 도메인 그룹과 사용자 지정 도메인만 허용됩니다.',
   'settings.egressGroupBioinformatics': '생물정보학 도구 및 데이터베이스',
@@ -2448,7 +2452,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'artifactEdit.editAction': '산출물 내용 편집',
   'artifactEdit.title': '산출물 편집',
   'artifactEdit.contentAria': '편집 가능한 산출물 내용',
-  'artifactEdit.publishHint': '저장하면 새 버전이 만들어집니다. v{version}은(는) 그대로 유지됩니다.',
+  'artifactEdit.publishHint':
+    '저장하면 새 버전이 만들어집니다. v{version}은(는) 그대로 유지됩니다.',
   'artifactEdit.loadFailed': '편집할 산출물 내용을 불러오지 못했습니다.',
   'artifactEdit.tooLarge': '이 산출물은 너무 커서 미리보기에서 편집할 수 없습니다.',
   'artifactEdit.saveFailed': '편집한 버전을 저장하지 못했습니다.',

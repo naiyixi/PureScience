@@ -683,3 +683,68 @@ describe('RuntimesPanel packages dialog', () => {
     expect(occurrences(dialog, 'Conda: bio')).toBe(1)
   })
 })
+
+describe('RuntimesPanel network-protection status card', () => {
+  // Stubs the egress master switch the card mirrors (same window.api.settings.getEgress source as
+  // Settings → Network). The module beforeEach window.api stub has no `settings` namespace, so the
+  // card stays hidden unless a test adds one.
+  const mountWithEgress = async (enabled: boolean, onOpenNetwork?: () => void): Promise<void> => {
+    const getEgress = vi.fn().mockResolvedValue({ enabled, groups: {}, customDomains: [] })
+    const api = (
+      window as unknown as { api: { settings?: { getEgress: ReturnType<typeof vi.fn> } } }
+    ).api
+    api.settings = { getEgress }
+    await act(async () => {
+      root.render(
+        <RuntimesPanel
+          title="Notebook runtimes"
+          description="Enable the environments each notebook language may run in."
+          onOpenNetwork={onOpenNetwork}
+        />
+      )
+    })
+    await act(async () => {})
+    await act(async () => {})
+    await act(async () => {})
+  }
+
+  it('renders the active state when the egress master switch is on', async () => {
+    await mountWithEgress(true)
+
+    const card = container.querySelector('[data-testid="runtimes-egress-card"]')
+    expect(card).not.toBeNull()
+    expect(card?.textContent).toContain('Notebook network protection is on')
+    // Active state needs no affordance to change anything.
+    expect(card?.querySelector('button')).toBeNull()
+  })
+
+  it('renders the off state and jumps to Network settings when navigation is available', async () => {
+    const onOpenNetwork = vi.fn()
+    await mountWithEgress(false, onOpenNetwork)
+
+    const card = container.querySelector('[data-testid="runtimes-egress-card"]')
+    expect(card?.textContent).toContain('Network protection is off')
+    const openButton = card?.querySelector<HTMLButtonElement>(
+      '[data-testid="runtimes-egress-open-network"]'
+    )
+    expect(openButton?.textContent).toContain('Open Network settings')
+    await click(openButton ?? null)
+    expect(onOpenNetwork).toHaveBeenCalledTimes(1)
+  })
+
+  it('omits the Network-settings action when no navigation callback is provided', async () => {
+    await mountWithEgress(false)
+
+    const card = container.querySelector('[data-testid="runtimes-egress-card"]')
+    expect(card?.textContent).toContain('Network protection is off')
+    expect(card?.querySelector('button')).toBeNull()
+  })
+
+  it('keeps the card hidden when window.api.settings is not exposed (guard)', async () => {
+    // beforeEach leaves window.api without `settings` — existing suites mount the panel that way
+    // and must keep rendering unchanged (no card, no extra fetch).
+    await render()
+
+    expect(container.querySelector('[data-testid="runtimes-egress-card"]')).toBeNull()
+  })
+})

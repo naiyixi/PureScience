@@ -1195,6 +1195,7 @@ const SettingsPage = forwardRef<SettingsPageHandle, SettingsPageProps>(function 
                   <RuntimesPanel
                     title={t('settings.notebookRuntimesTitle')}
                     description={t('settings.notebookRuntimesDesc')}
+                    onOpenNetwork={() => navigatePanel('network')}
                   />
                 ) : activePanel === 'network' ? (
                   <NetworkPanel view={networkView} onNavigate={navigateNetwork} />

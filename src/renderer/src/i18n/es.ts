@@ -1158,6 +1158,10 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.egressDescription':
     'Controla los dominios de internet a los que pueden acceder los procesos de notebook (Python, R, REPL y Bash). Todo lo demás se bloquea mediante un proxy de filtrado local.',
   'settings.egressEnabled': 'Restringir el acceso de red de los procesos',
+  'settings.egressStatusActive': 'La protección de red de los notebooks está activada',
+  'settings.egressStatusOff':
+    'La protección de red está desactivada — los procesos de los notebooks pueden acceder a cualquier sitio web',
+  'settings.egressStatusOpen': 'Abrir configuración de red',
   'settings.egressEnabledHint':
     'Activado: los procesos secundarios se enrutan por un proxy local que solo permite los grupos de dominios activados y tus dominios personalizados.',
   'settings.egressGroupBioinformatics': 'Herramientas y bases de datos de bioinformática',
