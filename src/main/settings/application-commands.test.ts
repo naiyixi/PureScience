@@ -29,6 +29,7 @@ const expectedChannels = [
   'settings:list-credentials',
   'settings:third-party-licenses',
   'settings:get-egress',
+  'settings:get-auto-apply',
   'settings:list-external-compute-endpoints',
   'settings:get-package-mirror',
   'settings:get-proxy',
@@ -58,6 +59,7 @@ const expectedChannels = [
   'settings:delete-credential',
   'settings:test-credential',
   'settings:set-egress',
+  'settings:set-auto-apply',
   'egress:respond-approval',
   'settings:set-external-compute-endpoint',
   'settings:delete-external-compute-endpoint',
@@ -148,7 +150,9 @@ describe('Settings core application commands', () => {
       expectedChannels
     )
     expect(settingsChannels).toEqual(
-      expect.arrayContaining([...expectedChannels.filter((channel) => channel !== 'egress:respond-approval')])
+      expect.arrayContaining([
+        ...expectedChannels.filter((channel) => channel !== 'egress:respond-approval')
+      ])
     )
     expect(router.dispatcher.commandNames()).toEqual([...expectedChannels].sort())
     await expect(

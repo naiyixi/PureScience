@@ -54,6 +54,7 @@ type CoreSettingsCommandStore = Pick<
   | 'listCredentials'
   | 'thirdPartyLicenses'
   | 'getEgress'
+  | 'getAutoApply'
   | 'respondEgressApproval'
   | 'listExternalComputeEndpoints'
   | 'getPackageMirror'
@@ -85,6 +86,7 @@ type CoreSettingsCommandStore = Pick<
   | 'deleteCredential'
   | 'testCredential'
   | 'setEgress'
+  | 'setAutoApply'
   | 'setExternalComputeEndpoint'
   | 'deleteExternalComputeEndpoint'
   | 'validateProvider'
@@ -165,6 +167,11 @@ const settingsCoreApplicationCommands = Object.freeze({
   getEgress: defineApplicationCommand<'settings:get-egress', readonly [], StoreResult<'getEgress'>>(
     'settings:get-egress'
   ),
+  getAutoApply: defineApplicationCommand<
+    'settings:get-auto-apply',
+    readonly [],
+    StoreResult<'getAutoApply'>
+  >('settings:get-auto-apply'),
   getExternalComputeEndpoints: defineApplicationCommand<
     'settings:list-external-compute-endpoints',
     readonly [],
@@ -306,6 +313,11 @@ const settingsCoreApplicationCommands = Object.freeze({
     readonly [egress: EgressSettings],
     StoreResult<'setEgress'>
   >('settings:set-egress'),
+  setAutoApply: defineApplicationCommand<
+    'settings:set-auto-apply',
+    readonly [enabled: boolean],
+    StoreResult<'setAutoApply'>
+  >('settings:set-auto-apply'),
   respondApproval: defineApplicationCommand<
     'egress:respond-approval',
     readonly [requestId: string, decision: EgressApprovalDecision],
@@ -403,6 +415,7 @@ const settingsCoreApplicationCommandGroup = defineApplicationCommandGroup('setti
   settingsCoreApplicationCommands.getCredentials,
   settingsCoreApplicationCommands.getThirdPartyLicenses,
   settingsCoreApplicationCommands.getEgress,
+  settingsCoreApplicationCommands.getAutoApply,
   settingsCoreApplicationCommands.getExternalComputeEndpoints,
   settingsCoreApplicationCommands.getPackageMirror,
   settingsCoreApplicationCommands.getProxy,
@@ -432,6 +445,7 @@ const settingsCoreApplicationCommandGroup = defineApplicationCommandGroup('setti
   settingsCoreApplicationCommands.deleteCredential,
   settingsCoreApplicationCommands.testCredential,
   settingsCoreApplicationCommands.setEgress,
+  settingsCoreApplicationCommands.setAutoApply,
   settingsCoreApplicationCommands.respondApproval,
   settingsCoreApplicationCommands.setExternalComputeEndpoint,
   settingsCoreApplicationCommands.deleteExternalComputeEndpoint,
@@ -572,6 +586,10 @@ const registerCoreSettingsApplicationCommands = (
         requireLocalCaller(callerContext, 'settings:get-egress')
         return dependencies.service.getEgress()
       },
+      'settings:get-auto-apply': ({ callerContext }) => {
+        requireLocalCaller(callerContext, 'settings:get-auto-apply')
+        return dependencies.service.getAutoApply()
+      },
       'settings:get-proxy': ({ callerContext }) => {
         requireLocalCaller(callerContext, 'settings:get-proxy')
         return dependencies.service.getProxy()
@@ -583,6 +601,10 @@ const registerCoreSettingsApplicationCommands = (
       'settings:set-egress': ({ args, callerContext }) => {
         requireLocalCaller(callerContext, 'settings:set-egress')
         return dependencies.service.setEgress(args[0])
+      },
+      'settings:set-auto-apply': ({ args, callerContext }) => {
+        requireLocalCaller(callerContext, 'settings:set-auto-apply')
+        return dependencies.service.setAutoApply(args[0])
       },
       'egress:respond-approval': ({ args, callerContext }) => {
         requireLocalCaller(callerContext, 'egress:respond-approval')
