@@ -59,7 +59,9 @@ type SessionStore = SessionStoreData &
     setContextUsage: (sessionId: string, contextUsage: AcpContextUsage | undefined) => void
     setPermissionProfile: (sessionId: string, profile: PermissionProfileId) => void
     // Persists the per-session auto-review toggle. true = on; false = off (default).
-    setAutoReviewEnabled: (sessionId: string, enabled: boolean) => void
+    // Delegation switch (per-session): when off, delegate_tasks is refused fail-closed.
+  setDelegationEnabled: (sessionId: string, enabled: boolean) => void
+  setAutoReviewEnabled: (sessionId: string, enabled: boolean) => void
     // Sets the per-session enabled compute hosts (single-select, stored as array for extensibility).
     setEnabledComputeHosts: (sessionId: string, providerIds: string[]) => void
     // Updates the persisted specialist UUID for an existing session after reconfigure succeeds.
@@ -232,6 +234,20 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   },
 
   // Persists the per-session auto-review toggle so finishRun can skip a review when disabled.
+  setDelegationEnabled: (sessionId, enabled) => {
+    set((state) => ({
+      sessions: state.sessions.map((session) =>
+        session.id === sessionId
+          ? {
+              ...session,
+              delegationEnabled: enabled,
+              updatedAt: Date.now()
+            }
+          : session
+      )
+    }))
+  },
+
   setAutoReviewEnabled: (sessionId, enabled) => {
     set((state) => ({
       sessions: state.sessions.map((session) =>

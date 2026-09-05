@@ -510,6 +510,7 @@ const WorkspacePage = ({
   const updateSessionArchive = useSessionStore((state) => state.updateSessionArchive)
   const enqueueSessionArchive = useArchiveUndoStore((state) => state.enqueueSession)
   const setAutoReviewEnabled = useSessionStore((state) => state.setAutoReviewEnabled)
+  const setDelegationEnabled = useSessionStore((state) => state.setDelegationEnabled)
   const setEnabledComputeHosts = useSessionStore((state) => state.setEnabledComputeHosts)
   const setSessionSpecialistId = useSessionStore((state) => state.setSessionSpecialistId)
   const markSpecialistSwitchResetRequired = useSessionStore(
@@ -610,6 +611,8 @@ const WorkspacePage = ({
   // conversation starts disabled; the user can toggle it on before sending. On send it is stamped
   // onto the created session (see sendCurrentMessage).
   const [newConversationAutoReviewEnabled, setNewConversationAutoReviewEnabled] = useState(false)
+  // Delegation defaults ON for new conversations; the user can switch it off before sending.
+  const [newConversationDelegationEnabled, setNewConversationDelegationEnabled] = useState(true)
   // Draft compute hosts for a not-yet-created conversation. Cleared when a new conversation draft
   // is started, and stamped onto the session when the first message is sent (see sendCurrentMessage).
   const [newConversationEnabledComputeHosts, setNewConversationEnabledComputeHosts] = useState<
@@ -1177,6 +1180,9 @@ const WorkspacePage = ({
   const activeAutoReviewEnabled = activeSession
     ? activeSession.autoReviewEnabled === true
     : newConversationAutoReviewEnabled
+  const activeDelegationEnabled = activeSession
+    ? activeSession.delegationEnabled !== false
+    : newConversationDelegationEnabled
   // Per-session enabled compute hosts (providerIds like "ssh:<alias>"). Empty when no host is selected.
   // New conversations use the draft state, which is cleared when a new conversation draft is started.
   const activeEnabledComputeHosts = activeSession
@@ -1992,6 +1998,9 @@ const WorkspacePage = ({
           if (wasNewConversation && draftAutoReviewEnabled) {
             setAutoReviewEnabled(result.sessionId, true)
           }
+          if (wasNewConversation) {
+            setDelegationEnabled(result.sessionId, newConversationDelegationEnabled)
+          }
           // Carry the draft compute host selection onto the newly created session.
           if (wasNewConversation && draftEnabledComputeHosts.length > 0) {
             setEnabledComputeHosts(result.sessionId, draftEnabledComputeHosts)
@@ -2002,6 +2011,7 @@ const WorkspacePage = ({
               })
           }
           setNewConversationAutoReviewEnabled(false)
+          setNewConversationDelegationEnabled(true)
           setNewConversationEnabledComputeHosts([])
           setNewConversationSpecialistId(undefined)
         })
@@ -2337,6 +2347,17 @@ const WorkspacePage = ({
     }
 
     setAutoReviewEnabled(activeSession.id, enabled)
+  }
+
+  // Persists the delegation toggle for the active session; off refuses delegate_tasks fail-closed.
+  // For a not-yet-created conversation, updates the draft state, stamped onto the session on send.
+  const changeDelegationEnabled = (enabled: boolean): void => {
+    if (!activeSession) {
+      setNewConversationDelegationEnabled(enabled)
+      return
+    }
+
+    setDelegationEnabled(activeSession.id, enabled)
   }
 
   // Enables or disables a compute host for the active session (single-select semantics).
@@ -2763,6 +2784,7 @@ const WorkspacePage = ({
             canChangeAgentControls={canChangeAgentControls}
             canChangePermissionProfile={canChangePermissionProfile}
             autoReviewEnabled={activeAutoReviewEnabled}
+    delegationEnabled={activeDelegationEnabled}
             onDraftDocChange={changeComposerDraftDoc}
             onComposerUndo={handleComposerUndo}
             onComposerRedo={handleComposerRedo}
@@ -2786,6 +2808,7 @@ const WorkspacePage = ({
             onRevokePermissionGrant={revokeActivePermissionGrant}
             onClearPermissionGrants={clearActivePermissionGrants}
             onAutoReviewToggle={changeAutoReviewEnabled}
+    onDelegationToggle={changeDelegationEnabled}
             enabledComputeHosts={activeEnabledComputeHosts}
             onComputeHostToggle={handleComputeHostToggle}
             onRequestReview={requestManualReview}

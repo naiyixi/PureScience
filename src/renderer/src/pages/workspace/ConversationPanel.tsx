@@ -209,6 +209,9 @@ type ConversationPanelProps = {
   onRevokePermissionGrant: (categoryKey: string) => void
   onClearPermissionGrants: () => void
   onAutoReviewToggle: (enabled: boolean) => void
+  // Delegation switch (per-session): off refuses delegate_tasks fail-closed. Optional: defaults on.
+  delegationEnabled?: boolean
+  onDelegationToggle?: (enabled: boolean) => void
   // Enabled compute hosts for this session (providerIds); toggling is single-select.
   enabledComputeHosts: string[]
   onComputeHostToggle: (providerId: string, enabled: boolean) => void
@@ -274,6 +277,8 @@ const ConversationPanel = ({
   canChangeAgentControls,
   canChangePermissionProfile,
   autoReviewEnabled,
+  delegationEnabled = true,
+  onDelegationToggle = () => undefined,
   onDraftDocChange,
   onComposerUndo,
   onComposerRedo,
@@ -1024,6 +1029,8 @@ const ConversationPanel = ({
                             onComputeHostToggle={onComputeHostToggle}
                             onProfileChange={onPermissionProfileChange}
                             onAutoReviewChange={onAutoReviewToggle}
+    delegationEnabled={delegationEnabled}
+    onDelegationChange={onDelegationToggle}
                             onRevokeGrant={onRevokePermissionGrant}
                             onClearGrants={onClearPermissionGrants}
                             showSpecialist={

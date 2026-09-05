@@ -42,6 +42,7 @@ const SESSION_CONFLICT_REBASE_FIELDS = [
   'title',
   'permissionProfile',
   'autoReviewEnabled',
+  'delegationEnabled',
   'enabledComputeHosts',
   'pinned',
   'specialistId'

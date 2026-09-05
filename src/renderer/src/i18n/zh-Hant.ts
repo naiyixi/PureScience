@@ -1932,6 +1932,8 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'ws.authorizationScope': '授權範圍',
   'ws.autoReview': '自動審查',
   'ws.autoReviewDesc': '審查智能體會在每項變更落地前進行檢查。',
+  'ws.delegation': '委託',
+  'ws.delegationDesc': '允許智能體將子任務委託給並行的子智能體處理。',
   'ws.bindSpecialistHint': '將個人專才綁定到此對話。',
   'ws.branchInNewSession': '在新對話中分支',
   'ws.cancelRun': '取消執行',

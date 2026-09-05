@@ -27,7 +27,8 @@ import {
   ShieldAlert,
   ShieldCheck,
   SlidersHorizontal,
-  X
+  X,
+  Network
 } from 'lucide-react'
 import { useState } from 'react'
 import { useLanguage, type TranslationKey } from '@/i18n'
@@ -72,6 +73,8 @@ type ComposerAgentControlsMenuProps = {
   profileState?: SessionPermissionProfileState
   grants?: AcpPermissionGrant[]
   autoReviewEnabled: boolean
+  delegationEnabled?: boolean
+  onDelegationChange?: (enabled: boolean) => void
   // Read-only while a session is running: the menu stays openable and the permission
   // submenu still expands on hover, but profiles, auto-review, and compute stay immutable.
   readOnly?: boolean
@@ -141,6 +144,8 @@ const ComposerAgentControlsMenu = ({
   profileState,
   grants,
   autoReviewEnabled,
+  delegationEnabled = true,
+  onDelegationChange = () => undefined,
   readOnly = false,
   permissionProfileReadOnly = readOnly,
   grantActionsReadOnly = readOnly,
@@ -391,6 +396,36 @@ const ComposerAgentControlsMenu = ({
                 <Switch
                   size="sm"
                   checked={autoReviewEnabled}
+                  tabIndex={-1}
+                  aria-hidden="true"
+                  className="pointer-events-none"
+                />
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                disabled={readOnly}
+                className="items-center gap-2 px-2 py-1.5"
+                onSelect={(event) => {
+                  event.preventDefault()
+                  onDelegationChange(!delegationEnabled)
+                }}
+              >
+                <Network
+                  className="size-4 shrink-0 text-text-200"
+                  strokeWidth={2}
+                  aria-hidden="true"
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[13px] font-medium leading-5">
+                    {t('ws.delegation')}
+                  </span>
+                  <span className="block text-[11px] leading-4 text-text-300">
+                    {t('ws.delegationDesc')}
+                  </span>
+                </span>
+                <Switch
+                  size="sm"
+                  checked={delegationEnabled}
                   tabIndex={-1}
                   aria-hidden="true"
                   className="pointer-events-none"

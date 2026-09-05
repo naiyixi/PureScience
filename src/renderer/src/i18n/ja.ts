@@ -2076,6 +2076,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'ws.authorizationScope': '承認スコープ',
   'ws.autoReview': '自動レビュー',
   'ws.autoReviewDesc': 'レビュアーエージェントがすべての変更を、反映される前にチェックします。',
+  'ws.delegation': '委任',
+  'ws.delegationDesc': 'エージェントがサブタスクを並列サブエージェントに委任できるようにします。',
   'ws.bindSpecialistHint': 'この会話に個人用スペシャリストをバインドします。',
   'ws.branchInNewSession': '新しいセッションで分岐',
   'ws.cancelRun': '実行をキャンセル',

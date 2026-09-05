@@ -2122,6 +2122,8 @@ export const de: Partial<Record<ZhKey, string>> = {
   'ws.authorizationScope': 'Autorisierungsumfang',
   'ws.autoReview': 'Automatische Überprüfung',
   'ws.autoReviewDesc': 'Ein Prüfagent prüft jede Änderung, bevor sie übernommen wird.',
+  'ws.delegation': 'Delegierung',
+  'ws.delegationDesc': 'Erlaubt dem Agenten, Teilaufgaben an parallele Sub-Agenten zu delegieren.',
   'ws.bindSpecialistHint': 'Einen persönlichen Spezialisten an diese Konversation binden.',
   'ws.branchInNewSession': 'In neuer Sitzung verzweigen',
   'ws.cancelRun': 'Lauf abbrechen',

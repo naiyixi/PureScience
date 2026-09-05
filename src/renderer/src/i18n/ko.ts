@@ -2033,6 +2033,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'ws.authorizationScope': '승인 범위',
   'ws.autoReview': '자동 검토',
   'ws.autoReviewDesc': '검토자 에이전트가 모든 변경 사항을 반영 전에 확인합니다.',
+  'ws.delegation': '위임',
+  'ws.delegationDesc': '에이전트가 하위 작업을 병렬 하위 에이전트에 위임할 수 있도록 허용합니다.',
   'ws.bindSpecialistHint': '이 대화에 개인 전문가를 바인딩하세요.',
   'ws.branchInNewSession': '새 세션에서 분기',
   'ws.cancelRun': '실행 취소',

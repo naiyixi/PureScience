@@ -2076,6 +2076,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'ws.authorizationScope': 'Область авторизации',
   'ws.autoReview': 'Автопроверка',
   'ws.autoReviewDesc': 'Агент-проверяющий проверяет каждое изменение перед применением.',
+  'ws.delegation': 'Делегирование',
+  'ws.delegationDesc': 'Позволяет агенту делегировать подзадачи параллельным субагентам.',
   'ws.bindSpecialistHint': 'Привяжите личного специалиста к этому диалогу.',
   'ws.branchInNewSession': 'Создать ветку в новой сессии',
   'ws.cancelRun': 'Отменить запуск',
