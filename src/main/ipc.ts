@@ -134,10 +134,7 @@ import {
 } from './projects/ipc'
 import { createReviewerCommandOwner, registerReviewerIpcHandlers } from './reviewer/ipc'
 import { createRoutineCommandOwner, registerRoutineIpcHandlers } from './settings/routine-ipc'
-import {
-  createEndpointCommandOwner,
-  registerEndpointIpcHandlers
-} from './settings/endpoint-ipc'
+import { createEndpointCommandOwner, registerEndpointIpcHandlers } from './settings/endpoint-ipc'
 import {
   createAnnotationCommandOwner,
   registerAnnotationIpcHandlers
@@ -147,7 +144,10 @@ import { createPdfCommandOwner, registerPdfIpcHandlers } from './settings/pdf-ip
 import { PdfService } from './settings/pdf-service'
 import { createFigureCommandOwner, registerFigureIpcHandlers } from './settings/figure-ipc'
 import { reviewFigure } from './settings/figure-review-service'
-import { createHostQueryCommandOwner, registerHostQueryIpcHandlers } from './settings/host-query-ipc'
+import {
+  createHostQueryCommandOwner,
+  registerHostQueryIpcHandlers
+} from './settings/host-query-ipc'
 import { HostQueryService } from './settings/host-query-service'
 import type { FigureReviewRequest } from '../shared/figure'
 import {
@@ -1203,14 +1203,14 @@ const createApplicationModules = async (
       annotations: {
         set: (_sessionId, projectId, request) =>
           annotationRepository.set(projectId, request, 'agent'),
-        list: (_sessionId, projectId, target) => annotationRepository.list(projectId, target ?? undefined),
+        list: (_sessionId, projectId, target) =>
+          annotationRepository.list(projectId, target ?? undefined),
         remove: (_sessionId, projectId, annotationId) =>
           annotationRepository.remove(projectId, annotationId)
       },
       pdf: {
         open: (_sessionId, projectId, path) => pdfService.open(path, projectId),
-        pages: (_sessionId, _projectId, docId, start, end) =>
-          pdfService.pages(docId, start, end),
+        pages: (_sessionId, _projectId, docId, start, end) => pdfService.pages(docId, start, end),
         outline: (_sessionId, _projectId, docId) => pdfService.outline(docId),
         scan: (_sessionId, _projectId, docId, query) => pdfService.scan(docId, query)
       },
@@ -1435,55 +1435,52 @@ const createApplicationModules = async (
     taskNotifications,
     archiveCoordinator
   )
-  await modules.add(
-    undefined,
-    () => {
-      const scheduler = new RoutineScheduler({
-        repository: {
-          listAllSchedules: () => routineRepository.listAllSchedules(),
-          recordTick: (sessionId, routineId, result) =>
-            routineRepository.recordTick(sessionId, routineId, result),
-          setEnabled: (sessionId, routineId, enabled) =>
-            routineRepository.setEnabled(sessionId, routineId, enabled)
-        },
-        dispatchTick: async (schedule) => {
-          try {
-            // A scheduled tick runs as a fresh task session in the owning session's project. The
-            // instruction is a self-contained prompt, so the fresh session needs no memory of the
-            // scheduling conversation.
-            const owner = (await sessionRepository.loadAll()).sessions.find(
-              (session) => session.id === schedule.sessionId
-            )
-            if (!owner) {
-              return { kind: 'error', message: 'Owning session no longer exists.' }
-            }
-            const created = await taskAgent.createSession({
-              projectId: owner.projectId,
-              permissionProfile: 'ask'
-            })
-            await taskAgent.prompt({
-              sessionId: created.sessionId,
-              promptMessageId: randomUUID(),
-              text: schedule.instruction
-            })
-            return { kind: 'ok', runId: created.sessionId }
-          } catch (error) {
-            return {
-              kind: 'error',
-              message: error instanceof Error ? error.message : String(error)
-            }
+  await modules.add(undefined, () => {
+    const scheduler = new RoutineScheduler({
+      repository: {
+        listAllSchedules: () => routineRepository.listAllSchedules(),
+        recordTick: (sessionId, routineId, result) =>
+          routineRepository.recordTick(sessionId, routineId, result),
+        setEnabled: (sessionId, routineId, enabled) =>
+          routineRepository.setEnabled(sessionId, routineId, enabled)
+      },
+      dispatchTick: async (schedule) => {
+        try {
+          // A scheduled tick runs as a fresh task session in the owning session's project. The
+          // instruction is a self-contained prompt, so the fresh session needs no memory of the
+          // scheduling conversation.
+          const owner = (await sessionRepository.loadAll()).sessions.find(
+            (session) => session.id === schedule.sessionId
+          )
+          if (!owner) {
+            return { kind: 'error', message: 'Owning session no longer exists.' }
+          }
+          const created = await taskAgent.createSession({
+            projectId: owner.projectId,
+            permissionProfile: 'ask'
+          })
+          await taskAgent.prompt({
+            sessionId: created.sessionId,
+            promptMessageId: randomUUID(),
+            text: schedule.instruction
+          })
+          return { kind: 'ok', runId: created.sessionId }
+        } catch (error) {
+          return {
+            kind: 'error',
+            message: error instanceof Error ? error.message : String(error)
           }
         }
-      })
-      return {
-        name: 'routine-scheduler',
-        capability: scheduler,
-        start: () => scheduler.start(),
-        rollback: () => scheduler.stop(),
-        dispose: () => scheduler.stop()
       }
+    })
+    return {
+      name: 'routine-scheduler',
+      capability: scheduler,
+      start: () => scheduler.start(),
+      rollback: () => scheduler.stop(),
+      dispose: () => scheduler.stop()
     }
-  )
+  })
   {
     // Framework-specific adapters declare their own session selector. The registry resolves those
     // selectors before its generic fallback, so registration order cannot route a Codex/OpenCode
@@ -1570,7 +1567,11 @@ const createApplicationModules = async (
   const updateStrategy = createUpdateStrategy(process.platform, {
     installGate: () => shutdownCoordinator.runForUpdateGate(UPDATE_SHUTDOWN_BUDGET_MS)
   })
-  const updateCommandOwner = createUpdateCommandOwner(updateStrategy)
+  const updateCommandOwner = createUpdateCommandOwner(updateStrategy, {
+    // Settings → General auto-apply opt-in: when on, a finished in-place download restarts the
+    // app to install instead of waiting for the user's click.
+    isAutoApplyEnabled: () => settingsService.getAutoApply()
+  })
   let stopUpdateScheduler: (() => void) | undefined
   await modules.add(undefined, () => ({
     name: 'update-scheduler',
@@ -2068,9 +2069,7 @@ const createApplicationModules = async (
     registerRoutineIpcHandlers(createRoutineCommandOwner(routineRepository))
   })
   declareElectronAdapter('endpoint', () => {
-    registerEndpointIpcHandlers(
-      createEndpointCommandOwner(endpointRepository, endpointManager)
-    )
+    registerEndpointIpcHandlers(createEndpointCommandOwner(endpointRepository, endpointManager))
   })
   declareElectronAdapter('annotation', () => {
     registerAnnotationIpcHandlers(createAnnotationCommandOwner(annotationRepository))

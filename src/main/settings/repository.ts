@@ -783,6 +783,10 @@ const sanitizeSettings = (value: unknown): StoredSettings => {
 
   if (proxy) settings.proxy = proxy
 
+  const autoApplyUpdate = value.autoApplyUpdate
+
+  if (typeof autoApplyUpdate === 'boolean') settings.autoApplyUpdate = autoApplyUpdate
+
   const scenarioModels = sanitizeScenarioModels(value.scenarioModels)
 
   if (scenarioModels) settings.scenarioModels = scenarioModels
@@ -1279,6 +1283,15 @@ class SettingsRepository {
     return this.mutate((settings) => {
       const { scenarioModels: _dropped, ...rest } = settings
       return next ? { ...rest, scenarioModels: next } : rest
+    })
+  }
+
+  // Persists the opt-in update auto-apply flag. Absence means off (manual apply), so false is
+  // dropped rather than stored — the default state is simply the field's absence.
+  async setAutoApplyUpdate(enabled: boolean): Promise<StoredSettings> {
+    return this.mutate((settings) => {
+      const { autoApplyUpdate: _dropped, ...rest } = settings
+      return enabled ? { ...rest, autoApplyUpdate: true } : rest
     })
   }
 

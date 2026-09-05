@@ -2023,6 +2023,9 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.unknownError': 'Error desconocido',
   'settings.untitledSpecialist': 'Especialista sin título',
   'settings.updateCheckFailed': 'Falló la comprobación de actualizaciones',
+  'settings.autoApplyUpdate': 'Reiniciar automáticamente para completar la actualización',
+  'settings.autoApplyUpdateHint':
+    'Cuando una actualización termine de descargarse, PureScience se reinicia solo para instalarla. Se aplica a las actualizaciones in situ (Windows/Linux); en macOS se abre el instalador para que lo ejecutes.',
   'settings.updateDownloaded': 'Actualización descargada: abre el instalador para terminar',
   'settings.updateReady': 'Actualización lista',
   'settings.updatedToday': 'Actualizado hoy',

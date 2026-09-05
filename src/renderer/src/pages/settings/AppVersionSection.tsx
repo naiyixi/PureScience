@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Download, RefreshCw } from 'lucide-react'
 import { useLanguage } from '@/i18n'
 
@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { ThirdPartyLicensesDialog } from '@/components/ThirdPartyLicensesDialog'
 import { useUpdateStore } from '@/stores/update-store'
 import { APP } from '../../../../shared/app-config'
-import { SettingsRow, SettingsSection } from './SettingsLayout'
+import { SettingsRow, SettingsSection, SettingsToggle } from './SettingsLayout'
 
 // App identity + update control in Settings→General. Reads the shared update store so it stays in
 // sync with the external capsule; the update button opens the shared dialog (version + notes +
@@ -19,6 +19,27 @@ const AppVersionSection = (): React.JSX.Element => {
   const status = useUpdateStore((state) => state.status)
   const check = useUpdateStore((state) => state.check)
   const openDialog = useUpdateStore((state) => state.openDialog)
+  // Update auto-apply opt-in (Settings → General): persisted in the main settings store, read
+  // here so the toggle reflects the real flag. Guarded with optional chaining so render suites
+  // that stub window.api without the settings namespace keep working (toggle stays hidden-off).
+  const [autoApply, setAutoApply] = useState(false)
+  const [autoApplyLoaded, setAutoApplyLoaded] = useState(false)
+
+  useEffect(() => {
+    const getAutoApply = (window.api as { settings?: { getAutoApply?: () => Promise<boolean> } })
+      ?.settings?.getAutoApply
+    if (typeof getAutoApply !== 'function') return
+    let cancelled = false
+    void getAutoApply().then((enabled) => {
+      if (!cancelled) {
+        setAutoApply(enabled)
+        setAutoApplyLoaded(true)
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const version = appInfo?.version ?? status.current
   const isChecking = status.state === 'checking'
@@ -90,6 +111,30 @@ const AppVersionSection = (): React.JSX.Element => {
                   : t('common.updateTo').replace('{v}', status.latest ?? '')}
             </Button>
           ) : null}
+        </div>
+      </SettingsRow>
+
+      <SettingsRow
+        label={t('settings.autoApplyUpdate')}
+        description={t('settings.autoApplyUpdateHint')}
+      >
+        <div className="flex justify-end">
+          <SettingsToggle
+            enabled={autoApply}
+            onToggle={() => {
+              const setAutoApplyApi = (
+                window.api as {
+                  settings?: { setAutoApply?: (enabled: boolean) => Promise<boolean> }
+                }
+              )?.settings?.setAutoApply
+              if (!setAutoApplyApi) return
+              setAutoApplyApi(!autoApply)
+                .then(setAutoApply)
+                .catch(() => undefined)
+            }}
+            disabled={!autoApplyLoaded}
+            aria-label={t('settings.autoApplyUpdate')}
+          />
         </div>
       </SettingsRow>
 

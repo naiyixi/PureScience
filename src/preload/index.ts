@@ -278,6 +278,8 @@ const api: PureScienceAPI = {
       electronRendererContracts.invoke('settings.testCredential', request),
     getEgress: () => electronRendererContracts.invoke('settings.getEgress'),
     setEgress: (egress) => electronRendererContracts.invoke('settings.setEgress', egress),
+    getAutoApply: () => electronRendererContracts.invoke('settings.getAutoApply'),
+    setAutoApply: (enabled) => electronRendererContracts.invoke('settings.setAutoApply', enabled),
     getProxy: () => electronRendererContracts.invoke('settings.getProxy'),
     setProxy: (proxy) => electronRendererContracts.invoke('settings.setProxy', proxy),
     getExternalComputeEndpoints: () =>

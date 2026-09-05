@@ -6863,3 +6863,24 @@ describe('SettingsService: agent memory save-note', () => {
     expect(memory?.notes[0].evidence).toBeUndefined()
   })
 })
+
+describe('SettingsService: update auto-apply preference', () => {
+  it('defaults to manual (false) when nothing is stored', async () => {
+    const service = createService()
+
+    expect(await service.getAutoApply()).toBe(false)
+  })
+
+  it('persists the opt-in and reports it back', async () => {
+    const service = createService()
+
+    expect(await service.setAutoApply(true)).toBe(true)
+    expect(await service.getAutoApply()).toBe(true)
+    expect((await repository.getSettings()).autoApplyUpdate).toBe(true)
+
+    // Turning it off drops the field (absence = the manual default).
+    expect(await service.setAutoApply(false)).toBe(false)
+    expect(await service.getAutoApply()).toBe(false)
+    expect((await repository.getSettings()).autoApplyUpdate).toBeUndefined()
+  })
+})

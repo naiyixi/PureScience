@@ -99,4 +99,44 @@ describe('AppVersionSection', () => {
 
     expect(button).toBeDefined()
   })
+
+  it('reflects the persisted auto-apply opt-in on the toggle', async () => {
+    ;(window as unknown as { api?: { settings?: { getAutoApply: () => Promise<boolean> } } }).api =
+      {
+        settings: { getAutoApply: vi.fn().mockResolvedValue(true) }
+      }
+    act(() => {
+      root.render(<AppVersionSection />)
+    })
+    await act(async () => {})
+
+    const toggle = container.querySelector('[role="switch"]')
+    expect(toggle?.getAttribute('aria-checked')).toBe('true')
+    delete (window as unknown as { api?: unknown }).api
+  })
+
+  it('persists a toggle flip through the settings IPC', async () => {
+    const setAutoApply = vi.fn().mockResolvedValue(true)
+    ;(window as unknown as { api?: unknown }).api = {
+      settings: {
+        getAutoApply: vi.fn().mockResolvedValue(false),
+        setAutoApply
+      }
+    }
+    act(() => {
+      root.render(<AppVersionSection />)
+    })
+    await act(async () => {})
+
+    const toggle = container.querySelector<HTMLButtonElement>('[role="switch"]')
+    expect(toggle?.getAttribute('aria-checked')).toBe('false')
+    act(() => {
+      toggle?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await act(async () => {})
+
+    expect(setAutoApply).toHaveBeenCalledWith(true)
+    expect(toggle?.getAttribute('aria-checked')).toBe('true')
+    delete (window as unknown as { api?: unknown }).api
+  })
 })

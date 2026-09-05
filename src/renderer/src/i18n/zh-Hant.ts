@@ -1860,6 +1860,9 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.unknownError': '未知錯誤',
   'settings.untitledSpecialist': '未命名的專才',
   'settings.updateCheckFailed': '更新檢查失敗',
+  'settings.autoApplyUpdate': '下載完成後自動重新啟動應用程式',
+  'settings.autoApplyUpdateHint':
+    '更新下載完成後，PureScience 會自動重新啟動以完成安裝。適用於就地更新（Windows/Linux）；macOS 版仍會開啟安裝程式由你手動執行。',
   'settings.updateDownloaded': '更新已下載——開啟安裝程式以完成',
   'settings.updateReady': '更新已就緒',
   'settings.updatedToday': '今天更新',

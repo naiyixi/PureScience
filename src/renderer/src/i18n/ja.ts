@@ -1997,6 +1997,9 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.unknownError': '不明なエラー',
   'settings.untitledSpecialist': '無題のスペシャリスト',
   'settings.updateCheckFailed': 'アップデートの確認に失敗しました',
+  'settings.autoApplyUpdate': 'ダウンロード完了後に自動で再起動して更新',
+  'settings.autoApplyUpdateHint':
+    '更新のダウンロードが完了すると、PureScience が自動的に再起動してインストールします。インプレース更新（Windows/Linux）向け。macOS 版は従来どおりインストーラーを開いて手動で実行します。',
   'settings.updateDownloaded':
     'アップデートをダウンロードしました — インストーラーを開いて完了してください',
   'settings.updateReady': 'アップデートの準備ができました',

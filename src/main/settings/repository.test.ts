@@ -1172,3 +1172,21 @@ describe('settings repository: unknown provider type on load (claude-default rem
     expect(settings.providers.find((p) => p.id === 'p-removed')).toBeUndefined()
   })
 })
+
+describe('auto-apply update flag', () => {
+  it('keeps only a boolean autoApplyUpdate through sanitize', async () => {
+    expect(sanitizeSettings({ autoApplyUpdate: true }).autoApplyUpdate).toBe(true)
+    expect(sanitizeSettings({ autoApplyUpdate: false }).autoApplyUpdate).toBe(false)
+    expect(sanitizeSettings({ autoApplyUpdate: 'yes' }).autoApplyUpdate).toBeUndefined()
+  })
+
+  it('persists true and drops false so absence stays the default (off)', async () => {
+    const repository = new SettingsRepository(await createStorageRoot())
+
+    await repository.setAutoApplyUpdate(true)
+    expect((await repository.getSettings()).autoApplyUpdate).toBe(true)
+
+    await repository.setAutoApplyUpdate(false)
+    expect((await repository.getSettings()).autoApplyUpdate).toBeUndefined()
+  })
+})
