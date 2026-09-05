@@ -278,6 +278,8 @@ export type PersistedChatSession = {
   // Per-conversation auto-review toggle. Absent (older files) or non-true is treated as disabled;
   // only an explicit true enables it.
   autoReviewEnabled?: boolean
+  // Per-session delegation switch (mirrors autoReviewEnabled). Absent = enabled.
+  delegationEnabled?: boolean
   // Per-session enabled compute hosts (providerIds like "ssh:alias"). Stored as an array for JSON
   // compatibility; semantically a set (single-select for now, multi-select-ready internally).
   // Absent on older sessions — treated as empty (no host enabled).
@@ -331,6 +333,7 @@ export type SessionConflictRebaseField =
   | 'title'
   | 'permissionProfile'
   | 'autoReviewEnabled'
+| 'delegationEnabled'
   | 'enabledComputeHosts'
   | 'pinned'
   | 'specialistId'
@@ -1577,6 +1580,7 @@ const sanitizeSession = (
     // Auto-review defaults off: a missing or non-boolean value restores as disabled, and only an
     // explicit true turns it on.
     autoReviewEnabled: session.autoReviewEnabled === true ? true : false,
+      delegationEnabled: session.delegationEnabled !== false,
     messages: Array.isArray(session.messages)
       ? session.messages
           .map((message) => sanitizeMessage(message, options))
