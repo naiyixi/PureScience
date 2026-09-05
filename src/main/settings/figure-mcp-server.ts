@@ -28,7 +28,10 @@ const figurePanelSchema = z.object({
       time_series: z.boolean().optional().describe('True when the x-axis is time/ordered.'),
       categorical: z.boolean().optional().describe('True when comparing categories.'),
       distribution: z.boolean().optional().describe('True when showing a distribution.'),
-      relationship: z.boolean().optional().describe('True when showing a two-variable relationship.')
+      relationship: z
+        .boolean()
+        .optional()
+        .describe('True when showing a two-variable relationship.')
     })
     .default({})
     .describe('Data shape hints for the chart-by-shape check.'),
@@ -44,7 +47,10 @@ const figurePanelSchema = z.object({
 })
 
 const figureReviewToolSchema = {
-  figure_note: z.string().optional().describe('Optional figure-level note (figure number, context).'),
+  figure_note: z
+    .string()
+    .optional()
+    .describe('Optional figure-level note (figure number, context).'),
   panels: z.array(figurePanelSchema).min(1).describe('The panels of the figure to review.')
 }
 const figureReviewToolDefinition = {
@@ -104,7 +110,9 @@ const createFigureMcpServer = (handler: FigureMcpHandler): ModelContextProtocolS
         labelCount: typeof panel.label_count === 'number' ? panel.label_count : undefined,
         excludedRows: typeof panel.excluded_rows === 'number' ? panel.excluded_rows : undefined,
         summaryUsedExcluded:
-          typeof panel.summary_used_excluded === 'boolean' ? panel.summary_used_excluded : undefined,
+          typeof panel.summary_used_excluded === 'boolean'
+            ? panel.summary_used_excluded
+            : undefined,
         rendered: typeof panel.rendered === 'boolean' ? panel.rendered : undefined,
         note: typeof panel.note === 'string' ? panel.note : undefined
       }
@@ -136,9 +144,7 @@ const createFigureMcpServerConfig = ({
   env: [
     { name: 'ELECTRON_RUN_AS_NODE', value: '1' },
     { name: 'PURESCIENCE_FIGURE_RPC_ENDPOINT', value: endpoint },
-    ...(socketPath
-      ? [{ name: 'PURESCIENCE_FIGURE_RPC_SOCKET_PATH', value: socketPath }]
-      : []),
+    ...(socketPath ? [{ name: 'PURESCIENCE_FIGURE_RPC_SOCKET_PATH', value: socketPath }] : []),
     { name: 'PURESCIENCE_FIGURE_RPC_TOKEN', value: token },
     { name: 'PURESCIENCE_FIGURE_SESSION_ID', value: sessionId },
     { name: 'PURESCIENCE_FIGURE_PROJECT_ID', value: projectId }
@@ -161,6 +167,16 @@ const createFigureMcpEnvironmentFromProcess = (
   projectId: requireEnvironmentVariable(env, 'PURESCIENCE_FIGURE_PROJECT_ID')
 })
 
+// The RPC gateway routes figureReview with the review request NESTED under `request` — the same
+// envelope shape the figure:review IPC channel uses ({ projectId, request }). Unlike the sibling
+// pdf/annotation routes (flat scalar args), spreading the request flat here fails the gateway's
+// param validation on every call. Pure builder so the contract is unit-testable.
+const figureReviewRpcParams = (
+  sessionId: string,
+  projectId: string,
+  request: Record<string, unknown>
+): Record<string, unknown> => ({ sessionId, projectId, request })
+
 const callFigureRpc = async (
   environment: FigureMcpEnvironment,
   params: Record<string, unknown>
@@ -175,11 +191,7 @@ const callFigureRpc = async (
       },
       body: JSON.stringify({
         method: 'figureReview',
-        params: {
-          sessionId: environment.sessionId,
-          projectId: environment.projectId,
-          ...params
-        }
+        params: figureReviewRpcParams(environment.sessionId, environment.projectId, params)
       })
     },
     'figureReview RPC'
@@ -206,6 +218,7 @@ export {
   FIGURE_MCP_SERVER_NAME,
   FIGURE_REVIEW_TOOL_NAME,
   figureReviewToolDefinition,
+  figureReviewRpcParams,
   createFigureMcpEnvironmentFromProcess,
   createFigureMcpServer,
   createFigureMcpServerConfig,

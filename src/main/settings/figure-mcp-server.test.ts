@@ -8,7 +8,8 @@ import {
   FIGURE_MCP_SERVER_NAME,
   FIGURE_REVIEW_TOOL_NAME,
   createFigureMcpServer,
-  createFigureMcpServerConfig
+  createFigureMcpServerConfig,
+  figureReviewRpcParams
 } from './figure-mcp-server'
 
 describe('figure MCP server contract', () => {
@@ -51,7 +52,9 @@ describe('figure MCP server contract', () => {
     const tools = (server as unknown as { _registeredTools: Record<string, unknown> })
       ._registeredTools
     const reviewTool = tools[FIGURE_REVIEW_TOOL_NAME] as {
-      handler: (input: Record<string, unknown>) => Promise<{ content: { type: string; text: string }[] }>
+      handler: (
+        input: Record<string, unknown>
+      ) => Promise<{ content: { type: string; text: string }[] }>
     }
     await reviewTool.handler({
       figure_note: 'Figure 3',
@@ -73,5 +76,26 @@ describe('figure MCP server contract', () => {
     expect(request.figureNote).toBe('Figure 3')
     expect(request.panels[0]?.chartType).toBe('bar')
     expect(request.panels[0]?.dataShape.categorical).toBe(true)
+  })
+
+  it('nests the review request under `request` for the RPC gateway contract', () => {
+    // Regression: the gateway routes figureReview with { sessionId, projectId, request } and
+    // rejects the envelope when `request` is missing — spreading the review flat (the pdf/
+    // annotation style) failed every figure_review call at the RPC layer.
+    const payload = figureReviewRpcParams('session-9', 'project-1', {
+      panels: [{ id: 'A', chartType: 'bar' }],
+      figureNote: 'Figure 3'
+    })
+
+    expect(payload.sessionId).toBe('session-9')
+    expect(payload.projectId).toBe('project-1')
+    expect(payload.request).toEqual({
+      panels: [{ id: 'A', chartType: 'bar' }],
+      figureNote: 'Figure 3'
+    })
+    // The review args must NOT leak into the envelope's top level (gateway validation fails
+    // without the nested `request` object).
+    expect('panels' in payload).toBe(false)
+    expect('figureNote' in payload).toBe(false)
   })
 })
