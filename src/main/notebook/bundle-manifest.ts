@@ -246,11 +246,23 @@ export const verifyPackChecksum = async (
   }
 }
 
-// CDN key for the shared manifest: runtime-bundle/<envVersion>/<subdir>/manifest.json.
+// GitHub Releases serve flat asset names (no path nesting, up to 2 GB per file — unlike the raw
+// branch, which hard-caps files at 100 MB). When the base is a `…/releases/download/<tag>` URL we
+// use flat keys `<subdir>-manifest.json` / `<subdir>-<file>`; any other base keeps the hierarchical
+// object-store layout `runtime-bundle/<envVersion>/<subdir>/…`.
+const isFlatReleaseAssetBase = (cdnBase: string): boolean =>
+  /\/releases\/download\/[^/]+\/?$/.test(cdnBase)
+
+// CDN key for the shared manifest: runtime-bundle/<envVersion>/<subdir>/manifest.json, or the flat
+// `<subdir>-manifest.json` when the base is a GitHub Releases download URL.
 export const manifestUrl = (cdnBase: string, version: number, subdir: string): string =>
-  `${cdnBase}/runtime-bundle/${version}/${subdir}/manifest.json`
+  isFlatReleaseAssetBase(cdnBase)
+    ? `${cdnBase.replace(/\/+$/, '')}/${subdir}-manifest.json`
+    : `${cdnBase}/runtime-bundle/${version}/${subdir}/manifest.json`
 
 // CDN key for one pack object: runtime-bundle/<envVersion>/<subdir>/<file>, where `file` is the
-// manifest entry's `file` (e.g. "python-3.11.tar.zst").
+// manifest entry's `file` (e.g. "python-3.11.tar.zst"). Flat release-asset bases prefix the subdir.
 export const packUrl = (cdnBase: string, version: number, subdir: string, file: string): string =>
-  `${cdnBase}/runtime-bundle/${version}/${subdir}/${file}`
+  isFlatReleaseAssetBase(cdnBase)
+    ? `${cdnBase.replace(/\/+$/, '')}/${subdir}-${file}`
+    : `${cdnBase}/runtime-bundle/${version}/${subdir}/${file}`

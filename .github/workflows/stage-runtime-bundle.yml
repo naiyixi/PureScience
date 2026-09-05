@@ -1,11 +1,10 @@
 name: Stage runtime bundle
 
-# Build the per-platform offline default-environment bundle and publish it. Consumers fetch packs
-# from the `runtime-cdn` ORPHAN BRANCH of this repository via raw.githubusercontent.com — the
+# Build the per-platform offline default-environment bundle and publish it. Consumers fetch packs from
+# the GitHub Release tag `runtime-v<N>` (flat assets named `<subdir>-…`, up to 2 GB/file) — the
 # consumer default base is src/main/notebook/runtime-paths.ts DEFAULT_RUNTIME_CDN_BASE
-# (…/runtime-cdn/purescience). The branch is force-rewritten to a SINGLE-ROOT snapshot holding only
-# the requested version, so it never grows; the same snapshot doubles as the zero-infra fallback
-# until a real object-storage CDN is provisioned (re-add an S3 upload step behind secrets then).
+# (…/releases/download/runtime-v1). No external storage/domain required; a real object-storage CDN can
+# later replace the default with a one-line base swap (the release upload step stays optional backup).
 #
 # Published layout (per conda subdir): `<language>-<version>.tar.zst` pack archives (packId) and
 # manifest.json — the files the local bundle adapter looks up under resources/default-envs. Run by
@@ -164,8 +163,8 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-  publish-github:
-    name: Publish runtime-cdn branch snapshot
+  publish-assets:
+    name: Publish runtime release assets
     needs: collect
     runs-on: ubuntu-latest
     permissions:
@@ -205,35 +204,40 @@ jobs:
           current=$(node -e "const s=require('fs').readFileSync('src/main/notebook/runtime-paths.ts','utf8');process.stdout.write(String(s.match(/DEFAULT_ENV_VERSION\s*=\s*(\d+)/)[1]))")
           echo "version=$current" >> "$GITHUB_OUTPUT"
 
-      # Force-rewrite the orphan branch to a single-root snapshot containing ONLY this version, so the
-      # branch never accumulates history/bloat. raw.githubusercontent.com serves the manifest + packs.
-      - name: Snapshot tree onto runtime-cdn branch
+      - name: Upload runtime assets to release
         shell: bash
         env:
           VERSION: ${{ steps.ver.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          tag="runtime-v$VERSION"
+          # Create the tag release once; subsequent runs clobber same-named assets in place.
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" \
+              --title "PureScience runtime packs v$VERSION" \
+              --notes "Per-platform default environment packs (manifest + self-contained tar.zst archives), consumed as flat release assets."
+          fi
+          mkdir -p /tmp/assets
           for subdir in osx-arm64 osx-64 linux-64 win-64; do
             test -f "/tmp/final/$subdir/manifest.json"
+            for file in "/tmp/final/$subdir"/*; do
+              cp "$file" "/tmp/assets/${subdir}-$(basename "$file")"
+            done
           done
-          git checkout --orphan mirror-snapshot
-          git rm -rf --quiet . >/dev/null 2>&1 || true
-          mkdir -p "purescience/runtime-bundle/$VERSION"
-          cp -R /tmp/final/. "purescience/runtime-bundle/$VERSION/"
-          git add -A
-          git -c user.name='PureScience Runtime Mirror' \
-              -c user.email='actions@users.noreply.github.com' \
-              commit -q -m "runtime-bundle v$VERSION (GitHub mirror snapshot)"
-          git push -f origin "HEAD:runtime-cdn"
-          echo "published runtime-bundle v$VERSION to runtime-cdn branch"
+          for asset in /tmp/assets/*; do
+            gh release upload "$tag" "$asset" --clobber --clobber-uploads 2>/dev/null \
+              || gh release upload "$tag" "$asset" --clobber
+          done
+          echo "assets uploaded to $tag"
 
-      - name: Verify snapshot URLs
+      - name: Verify release asset URLs
         shell: bash
         env:
           VERSION: ${{ steps.ver.outputs.version }}
         run: |
           for subdir in osx-arm64 osx-64 linux-64 win-64; do
-            url="https://raw.githubusercontent.com/naiyixi/PureScience/runtime-cdn/purescience/runtime-bundle/$VERSION/$subdir/manifest.json"
+            url="https://github.com/naiyixi/PureScience/releases/download/runtime-v$VERSION/$subdir-manifest.json"
             code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "$url")
             echo "$subdir manifest -> HTTP $code"
             test "$code" = "200"
