@@ -1648,6 +1648,11 @@ class ArtifactProvenanceRepository {
             data: { state: 'finalized' }
           })
         })
+        // No agent run will ever finalize this write, so remove the pending staging file ourselves
+        // (mirroring finalizeRunArtifacts' cleanup); the run directory is pruned only when empty so
+        // unrelated pending files of a still-active run are never touched.
+        await rm(pendingFile.path, { force: true }).catch(() => undefined)
+        await rm(dirname(pendingFile.path), { force: true }).catch(() => undefined)
         return this.toArtifactVersionFile(finalized, projectId, appSessionId)
       }
     )
