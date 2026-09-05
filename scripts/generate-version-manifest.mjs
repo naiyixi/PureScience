@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
 // Generates the version.json client manifest for a release's installers and writes it into the
 // artifacts directory for upload. The installed app's manifest-update flow polls
 // <repo>/releases/latest/download/version.json (see APP.update.manifestUrl) — that asset must be
@@ -33,7 +34,9 @@ const INSTALLERS = [
 ]
 
 const sha256 = async (file) =>
-  createHash('sha256').update(await readFile(file)).digest('hex')
+  createHash('sha256')
+    .update(await readFile(file))
+    .digest('hex')
 
 const main = async () => {
   const [, , dirArg, versionArg] = process.argv
