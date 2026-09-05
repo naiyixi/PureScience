@@ -154,13 +154,13 @@ jobs:
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v4
         with:
           name: runtime-bundle-${{ matrix.subdir }}
-          path: /tmp/cdn/purescience/runtime-bundle/${{ steps.ver.outputs.version }}/${{ matrix.subdir }}
+          path: /tmp/raw/${{ matrix.subdir }}
 
       - name: Upload collected tree
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
-          name: runtime-tree
-          path: /tmp/cdn/
+          name: runtime-tree-${{ matrix.subdir }}
+          path: /tmp/raw/${{ matrix.subdir }}/
           if-no-files-found: error
           retention-days: 1
 
@@ -174,11 +174,29 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - name: Download collected tree
+      - name: Download runtime-tree osx-arm64
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v4
         with:
-          name: runtime-tree
-          path: /tmp/cdn/
+          name: runtime-tree-osx-arm64
+          path: /tmp/final/osx-arm64
+
+      - name: Download runtime-tree osx-64
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v4
+        with:
+          name: runtime-tree-osx-64
+          path: /tmp/final/osx-64
+
+      - name: Download runtime-tree linux-64
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v4
+        with:
+          name: runtime-tree-linux-64
+          path: /tmp/final/linux-64
+
+      - name: Download runtime-tree win-64
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v4
+        with:
+          name: runtime-tree-win-64
+          path: /tmp/final/win-64
 
       - name: Resolve bundle version
         id: ver
@@ -195,16 +213,13 @@ jobs:
           VERSION: ${{ steps.ver.outputs.version }}
         run: |
           set -euo pipefail
-          echo "== downloaded tree layout (top 40) =="
-          find /tmp/cdn -maxdepth 7 | head -40
-          # Locate the bundle root regardless of artifact nesting depth.
-          bundle_root="$(dirname "$(dirname "$(find /tmp/cdn -type f -name manifest.json -path '*osx-arm64*' | head -1)")")"
-          echo "bundle_root=$bundle_root"
-          test -f "$bundle_root/osx-arm64/manifest.json"
+          for subdir in osx-arm64 osx-64 linux-64 win-64; do
+            test -f "/tmp/final/$subdir/manifest.json"
+          done
           git checkout --orphan mirror-snapshot
           git rm -rf --quiet . >/dev/null 2>&1 || true
           mkdir -p "purescience/runtime-bundle/$VERSION"
-          cp -R "$bundle_root/." "purescience/runtime-bundle/$VERSION/"
+          cp -R /tmp/final/. "purescience/runtime-bundle/$VERSION/"
           git add -A
           git -c user.name='PureScience Runtime Mirror' \
               -c user.email='actions@users.noreply.github.com' \
