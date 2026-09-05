@@ -1532,6 +1532,8 @@ export const zh = {
   'modelPicker.noModel': '没有可用模型',
   'modelPicker.selectModel': '选择模型',
   'modelPicker.noCompatible': '没有兼容的模型',
+  'modelPicker.searchModels': '搜索模型…',
+  'modelPicker.noResults': '没有匹配的模型',
   'modelPicker.reasoningEffort': '推理强度',
   'fileHeader.reloadFromDisk': '从磁盘重新加载',
   'fileHeader.reload': '重新加载文件',

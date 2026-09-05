@@ -463,6 +463,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
     '{name} のモデルは Codex Chat Completions ブリッジではサポートされていません。',
   'modelPicker.defaultEffort': 'デフォルト',
   'modelPicker.noCompatible': '互換性のあるモデルがありません',
+  'modelPicker.searchModels': 'モデルを検索…',
+  'modelPicker.noResults': '一致するモデルがありません',
   'modelPicker.noModel': '利用可能なモデルがありません',
   'modelPicker.providerDefaultHint': 'プロバイダーのデフォルト',
   'modelPicker.reasoningEffort': '推論強度',

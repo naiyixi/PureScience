@@ -437,6 +437,8 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'modelPicker.codexBridgeReason': '{name} 的模型無法透過 Codex Chat Completions 橋接使用。',
   'modelPicker.defaultEffort': '預設',
   'modelPicker.noCompatible': '沒有相容的模型',
+  'modelPicker.searchModels': '搜尋模型…',
+  'modelPicker.noResults': '沒有符合的模型',
   'modelPicker.noModel': '沒有可用的模型',
   'modelPicker.providerDefaultHint': '提供者預設',
   'modelPicker.reasoningEffort': '推理強度',
