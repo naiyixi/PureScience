@@ -250,7 +250,7 @@ jobs:
       # "Manifest fetch failed: 404" on check-for-updates; stable in-place clients use the
       # electron-updater feeds uploaded below instead.
       - name: Generate version.json client manifest
-        run: node scripts/generate-version-manifest.mjs artifacts
+        run: node scripts/generate-version-manifest.mjs artifacts --github
 
       # Sign a SLSA build-provenance attestation for the exact installer bytes about to be published,
       # so users can prove each download was built by this workflow from this commit (verify with
