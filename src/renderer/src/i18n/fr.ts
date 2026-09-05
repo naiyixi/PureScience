@@ -690,6 +690,17 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'ui.theoriginaltaskcontinuesinth': 'La tâche d’origine se poursuit dans ce tour.',
   'ui.whattheagentcandowiththiscon': 'Ce que l’agent peut faire avec ce connecteur',
   'update.available': 'Mise à jour disponible',
+  'update.close': 'Fermer',
+  'update.download': 'Télécharger la mise à jour',
+  'update.downloadSize': 'Télécharger la mise à jour ({size})',
+  'update.downloadingPercent': 'Téléchargement {percent} %',
+  'update.preparing': 'Préparation de la mise à jour…',
+  'update.failed': 'Échec de la mise à jour',
+  'update.applyNote':
+    'PureScience arrête les tâches en arrière-plan et va se fermer pour terminer l’installation. Cela peut prendre un moment ; veuillez ne pas rouvrir l’application pendant cette étape. L’application se rouvrira automatiquement.',
+  'update.readyRestartHint': 'Téléchargée — redémarrez PureScience pour terminer l’installation.',
+  'update.readyInstallerHint':
+    'Téléchargée — exécutez le programme d’installation pour terminer la mise à jour.',
   'update.downloadManually': 'Télécharger manuellement',
   'update.openInstaller': 'Ouvrir l’installateur',
   'update.restartToUpdate': 'Redémarrer pour mettre à jour',

@@ -681,6 +681,17 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'ui.theoriginaltaskcontinuesinth': '元のタスクはこのターンで続行されます。',
   'ui.whattheagentcandowiththiscon': 'このコネクタでエージェントができること',
   'update.available': '利用可能なアップデート',
+  'update.close': '閉じる',
+  'update.download': 'アップデートをダウンロード',
+  'update.downloadSize': 'アップデートをダウンロード（{size}）',
+  'update.downloadingPercent': 'ダウンロード中 {percent}%',
+  'update.preparing': 'アップデートを準備中…',
+  'update.failed': 'アップデートに失敗しました',
+  'update.applyNote':
+    'PureScience はバックグラウンドタスクを停止し、インストールを完了するために閉じます。しばらくかかる場合があります。この間アプリを開き直さないでください。完了すると自動的に再起動します。',
+  'update.readyRestartHint':
+    'ダウンロード完了 — PureScience を再起動するとインストールが完了します。',
+  'update.readyInstallerHint': 'ダウンロード完了 — インストーラーを実行して更新を完了します。',
   'update.downloadManually': '手動でダウンロード',
   'update.openInstaller': 'インストーラーを開く',
   'update.restartToUpdate': '再起動して更新',
