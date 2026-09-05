@@ -1,6 +1,6 @@
 # PureScience
 
-> English: [README.en.md](README.en.md)
+> **English edition.** The primary [README.md](README.md) carries a few Chinese notes; this file is the English mirror for international readers.
 
 [![Download](https://img.shields.io/badge/Download-Latest%20Release-2f9e44?style=for-the-badge&logo=github)](https://github.com/naiyixi/PureScience/releases/latest)
 [![Version](https://img.shields.io/github/v/release/naiyixi/PureScience?label=Version&style=for-the-badge&color=4dabf7)](https://github.com/naiyixi/PureScience/releases/latest)
@@ -10,7 +10,7 @@
 
 PureScience currently includes 18 featured research skills and 24 built-in scientific connectors, with its strongest coverage in bioinformatics, computational biology, biomedical research, genomics, structural biology, and computational drug discovery—and an extensible architecture designed to support more scientific disciplines over time.
 
-> 💡 **[PureScience v1.42.0 released](https://github.com/naiyixi/PureScience/releases/latest)** — 独立开源的科研 AI 工作台：Agent 自省（agent 可用 host_query 对应用数据库做只读自省——SELECT-only + 表白名单 + 项目隔离三重防护，查项目/审查/发现/计算任务/产物状态，回答「我在这个项目里做过什么」；内置 self-awareness 技能）；技能自举（agent 可用 skill_eval 评估技能描述可触发质量——首句自包含/动作词/具体主题/关键词/长度五项打分，弱开头与空泛词给出改写建议，≥8 分再落盘；skill_list/skill_read 检视技能库防重复造轮子；与 create_skill 组成评估→创建→检查→迭代循环）；出版级图表正确性（agent 画图前可用 figure_review 做五条纯规则复查——数据保真（排除的行不得渗入摘要统计）/标签经济/色彩串线/按数据形态选图/渲染自检，结构化面板输入、违规清单输出、修完 error 重跑；内置 figure-style 技能）；PDF 分层阅读（agent 可用 pdf_open 注册论文——主进程解析文本 + 书签目录逐页持久化、零上下文占用，pdf_outline 看目录、pdf_scan 词频扫描定位、pdf_pages 按需取页，50 页论文不再整篇读入）；文件注解（agent 可用 annotation_set 给项目文件打带标签的备注——todo/question/important/note/review 五种标签，路径相对项目根，同标签自动替换，可选 file_sha256 锚定内容版本；文件面板行内注解弹窗可视化查看/添加/删除）；模型 runbook 扩充（生物模型本地托管通用模式——FastAPI 包装 + 幂等启停 + 就绪路由 + 权重缓存，附 fair-esm2 与 esmfold2 示例）；本地模型服务（agent 可用 endpoint_register 注册本地模型服务器——名称 + 回环地址 + 幂等启停脚本 + 就绪路由，主进程守护生命周期：首次脚本集需批准（sha256 白名单）、启动后探测就绪才放行、凭据经环境变量注入永不见明文；设置 → 本地模型面板可视化管理；内置 llama.cpp 本地推理 runbook）；定时任务（agent 可用 routine_configure 编排周期任务——自包含指令 + 5–1440 分钟间隔，到点自动派发为全新任务运行，连续 3 次失败自动暂停，设置 → 定时任务面板可视化管理）；数据源许可门控（非商业用途限制的数据源如 CADD 在商业模式下 fail-closed 拒绝，合规边界调用期强制）；任务并发上限（全局可配置，超限拒绝新任务，完成自动释放）；Deny-first 网络防护（内置外泄域名黑名单——云元数据凭据端点永远 403，deny 优先于 allow，白名单关闭也生效）；写入审计（notebook 新增审计面板——每次代码/Shell 执行的创建/修改/删除文件一目了然，可筛选）；记忆溯源（记忆笔记携带来源证据——agent 保存时记录来自哪个会话/产物，面板显示来源标签；被取代的笔记标记「已取代」且不再自动回忆）；科学数据补齐（新增 CADD 变异危害评分、DepMap 癌细胞系依赖性、PanglaoDB 单细胞标记基因——「变异」「表达」「癌症模型」connector 全面增强）；可检索长上下文（上下文压缩不再丢弃原文——折叠窗口持久化为不可变 chunk，agent 可用 summary_query 检索逐字细节、boundary 标记任务边界，审查工具新增 Folded context 折叠时间线）；核验清单（审查工具跨 review 聚合全部 warn/fail 声明，一键标记已解决）；第三方许可证面板（设置 → 关于，依赖许可证摘要）；会话未读续接引导（侧栏「新」徽标 + 自动已读）；模型选择器不可用原因本地化；中文翻译覆盖度全量审计（234 处硬编码英文补齐、术语「专才」全界面统一、en/zh 1826 键完全对齐）；MCP 标准配置导入导出（Claude Desktop / Cursor / 裸 mcpServers.json 多形态直接导入，导出凭证脱敏）；Grok 三协议全通（Claude Code 经本地 Messages→Responses 桥 + OpenCode + Codex）；DeepSeek V4 Pro 原生 Responses 直连；模型目录扩充（OpenCode Zen / Go 精选网关 + 腾讯 TokenHub）；GitHub 认证技能导入；注解图片版补全；跨资源目录标签与收藏；技能面板重设计；run-marks 轮次导航轨与按轮次导出；会话式技能创建；@path 本地文件夹授权；消息中心事件源；安全加固批次；结构化澄清工作流；Serverless GPU 与模型端点、统一凭据管理、完整记忆体系、官方专才市场、可追溯产物、MCP 连接瞬断自愈、多智能体编排、生物医学技能包、全界面中文适配。**更新日记（含版本代号）见 [CHANGELOG](CHANGELOG.md)**；官网：[purescience.work](https://purescience.work)
+> 💡 **[PureScience v1.42.0 released](https://github.com/naiyixi/PureScience/releases/latest)** — the update-experience release: an opt-in “restart automatically to finish updates” toggle (Windows/Linux in-place updates), clearer update-state copy across the update dialog and Settings → About (kind-aware “restart to finish installing” vs “run the installer”), and a full audit of the update chain (source allowlist, streaming sha256 + size verification, cross-session cleanup). Version history with release code names: [CHANGELOG](CHANGELOG.md) · Website: [purescience.work](https://purescience.work)
 
 <p align="center">
   <img src="docs/purescience-title.png" alt="PureScience" width="620" />
@@ -45,8 +45,8 @@ Open the [latest release](https://github.com/naiyixi/PureScience/releases/latest
 
 | Your computer                       | Choose                                                        |
 | ----------------------------------- | ------------------------------------------------------------- |
-| macOS — Apple Silicon (M1 or newer) | The macOS DMG for Apple Silicon / ARM64（当前发布版）          |
-| macOS — Intel / Windows / Linux     | 构建与发布进行中，敬请期待（可在 [Releases](https://github.com/naiyixi/PureScience/releases) 关注更新） |
+| macOS — Apple Silicon (M1 or newer) | The macOS DMG for Apple Silicon / ARM64 (the current shipped release)          |
+| macOS — Intel / Windows / Linux     | In progress — watch the [Releases](https://github.com/naiyixi/PureScience/releases) page |
 
 Review the assets and verification information published on the release page. See [Verifying your download](SECURITY.md#verifying-your-download) before installation if you need to validate a package.
 
@@ -166,41 +166,41 @@ PureScience is built around one position: **AI for science only pays off when th
 
 That is why PureScience is implemented as the **open, local-first, model-agnostic agent-and-workflow layer** of the AI4S stack — with an evidence, reproducibility and compliance layer running across the whole loop — rather than a hosted research chat that ships your data somewhere else. Screenshots below come from real local sessions on **v1.37**: no demo data, every file on disk. The 13-project acceptance suite spans seven capability levels (L1 literature synthesis → L7 evidence chain & reproducibility); most chat-style tools stop at L1–L2.
 
-#### 13 项能力验收项目（The 13-project acceptance suite）
+#### The 13-project acceptance suite
 ![The 13-project acceptance suite](docs/capability-2026-09/acceptance-13-projects.png)
 *Protein design, cross-database consistency, paper reproduction with counter-evidence, compound-target selectivity audits, anti-hallucination stress tests, single-cell analysis, environment reconstruction, drug-evidence cross-checks — each project holds real sessions and real artifacts.*
 
-#### 干湿交接：蛋白设计工作区（Dry side meets the wet bench）
+#### Dry side meets the wet bench: the protein-design workspace
 ![Protein-design workspace](docs/capability-2026-09/protein-design-wetlab-panel.png)
 *Three tasks in one project — a GFP/enzyme panel for E. coli expression, de-novo SARS-CoV-2 RBD binders (PDB 6M0J), and 1,000-sequence Ubiquitin inverse folding (PDB 1UBQ). The 9-row GFP panel (V0–V8: designed spectra, monomerization, pH axis, dark control) is delivered as a handoff document for the wet lab, with ORF FASTA and metadata TSV beside it.*
 
-#### 诚实性即产物：失败与局限照实入库（Honesty is logged, not hidden）
+#### Honesty is logged, not hidden
 ![GFP design run — self-correction on record](docs/capability-2026-09/gfp-honesty-run.png)
 *Mid-run the agent caught its own bug and fixed it on record — “chromophore detection was wrong: water molecules were treated as protein-like HETATM.” Without a GPU it stated ESMFold was unavailable and switched to structure-anchored design instead of pretending. Failures and limits are recorded as negative samples — the data layer AI4S needs most — and every report separates “verified via connectors” from “could not be verified”.*
 
-#### 物理计算本地跑通，结果可复算（Physics runs locally, results re-runnable）
+#### Physics runs locally, results re-runnable
 ![Molecular dynamics results — docking scoring + MD stability](docs/capability-2026-09/md-results-stability.png)
 *SARS-CoV-2 Mpro (PDB 7VH8) + nirmatrelvir: 280 docking poses scored by interaction energy (best E_int −52.9 kcal/mol; 16/21 pocket contacts match the crystal), then explicit-solvent molecular dynamics with 82,563 atoms — protein Cα RMSD 0.93 Å, ligand RMSD 0.79 Å, key Glu166 hydrogen bond held in 62% of frames. The whole OpenMM pipeline ran on a laptop, and the report states its own limitations (charge model, non-covalent approximation, 1 ns scale, monomer).*
 
-> **中文速览**：PureScience 把 AI4S 干湿闭环跑成真实产物——以上截图均为 v1.37 本机实跑（13 项能力验收 + 蛋白设计 / 分子动力学 / 多库情报真实会话），每个截图对应的产物文件均可按会话路径复核；报告自带「已验证 / 无法核实」分离与局限声明。更多可复核的独立验证见 [demo verification report](docs/demo-verification/egfr-t790m-dossier-verification.md)。
+> **Quick recap:** PureScience turns the AI4S dry–wet loop into real artifacts — the screenshots above are real local sessions on v1.37 (the 13-project acceptance suite, protein design, molecular dynamics, multi-database intelligence). Every artifact behind a screenshot can be re-verified by its session path; reports separate “verified via connectors” from “could not be verified” and state their own limits. More independently re-checkable runs: [demo verification report](docs/demo-verification/egfr-t790m-dossier-verification.md).
 
 ## How PureScience Compares
 
 PureScience competes on **architecture**, not on feature-count prose. The table contrasts PureScience with the common profile of **hosted, closed-source, single-model AI research workstations** (profile assembled from public documentation and sandbox audits, 2026-08 — treat their own docs as authoritative). No product is named here: the differences are structural and apply to the category.
 
-| Dimension | Hosted · closed · single-model workstation | PureScience | 一句话 |
+| Dimension | Hosted · closed · single-model workstation | PureScience | Takeaway |
 |---|---|---|---|
-| Deployment | Cloud-hosted; research data flows through the vendor | Local-first desktop + optional loopback web UI; self-hostable | 数据不出实验室 |
-| Model choice | Bound to one vendor model | Model-agnostic: many built-in cloud providers, custom gateways, subscription reuse — across **four selectable agent backends** | 不锁模型 |
-| Openness | Closed source | Apache-2.0 — inspectable and forkable | 合规可审计 |
-| Data governance | Data + artifacts transit vendor cloud | Local storage, OS-keychain credentials, optional network egress allowlist, license-gated connectors (non-commercial sources fail closed) | 数据主权是准入门槛 |
-| Evidence | Text-level citations | Checksummed artifact versions with producer code / execution history / environment / branch + reviewer findings; “verified” and “could not be verified” kept separate | 做得对且能重做 |
-| Scientific data | Broad coverage, but license-limited sources are often disabled | 24 built-in connectors across genomics, variants, human genetics, chemistry, clinical trials, literature, structures, expression, cancer models and more; same biomedical domains covered per the 2026-08 audit | 覆盖持平 + 合规反超 |
-| Honesty | Chat-level disclaimers | Anti-hallucination stress suite; mid-run self-correction stays on record; failures and limits logged as negative samples | 诚实性即产物 |
-| Orchestration | Adding scheduled jobs, hosted model endpoints, PDF layering (2026-08 wave) | Same mechanisms landed locally: routine tasks, local model endpoints, layered PDF reading, figure checks, skill authoring, agent self-introspection, file annotations | 对齐并本地化 |
-| Language | English-first | Nine interface languages (English fallback); Chinese-native scientific reports | 本地化就绪 |
+| Deployment | Cloud-hosted; research data flows through the vendor | Local-first desktop + optional loopback web UI; self-hostable | Data stays in the lab |
+| Model choice | Bound to one vendor model | Model-agnostic: many built-in cloud providers, custom gateways, subscription reuse — across **four selectable agent backends** | No model lock-in |
+| Openness | Closed source | Apache-2.0 — inspectable and forkable | Compliant and auditable |
+| Data governance | Data + artifacts transit vendor cloud | Local storage, OS-keychain credentials, optional network egress allowlist, license-gated connectors (non-commercial sources fail closed) | Data sovereignty is the entry bar |
+| Evidence | Text-level citations | Checksummed artifact versions with producer code / execution history / environment / branch + reviewer findings; “verified” and “could not be verified” kept separate | Done right, and re-runnable |
+| Scientific data | Broad coverage, but license-limited sources are often disabled | 24 built-in connectors across genomics, variants, human genetics, chemistry, clinical trials, literature, structures, expression, cancer models and more; same biomedical domains covered per the 2026-08 audit | Coverage on par, compliance ahead |
+| Honesty | Chat-level disclaimers | Anti-hallucination stress suite; mid-run self-correction stays on record; failures and limits logged as negative samples | Honesty is a deliverable |
+| Orchestration | Adding scheduled jobs, hosted model endpoints, PDF layering (2026-08 wave) | Same mechanisms landed locally: routine tasks, local model endpoints, layered PDF reading, figure checks, skill authoring, agent self-introspection, file annotations | Aligned — and local-first |
+| Language | English-first | Nine interface languages (English fallback); Chinese-native scientific reports | Localization-ready |
 
-**诚实边界（我们不宣称什么）**：交互式分子查看、云同步类便利功能等少数前端体验暂未提供——我们刻意先做执行—证据—主权三条主轴；“同域覆盖”基于 2026-08 的审计结论，双方版本演进后需复核；本表为 v1.37 已发布形态，安装版应用内的目录与界面为准。
+**Honest boundaries (what we do not claim):** a few front-end conveniences — interactive molecular viewing, cloud-sync conveniences and the like — are not shipped yet; we deliberately build the three main axes first: execution, evidence, and sovereignty. “Same-domain coverage” reflects the 2026-08 audit and must be re-checked as both products evolve. The table describes the released v1.37 shape; the installed app is authoritative.
 
 ## Design Principles
 
@@ -376,8 +376,8 @@ PureScience is an **independent, original open-source project** — its own code
 interface, and roadmap, developed openly for the benefit of all researchers. It is not a fork or
 a downstream derivative of any other product.
 
-- 官网 / Website: [purescience.work](https://purescience.work)
-- 更新日记（含版本代号）/ Changelog: [CHANGELOG.md](CHANGELOG.md)
+- Website: [purescience.work](https://purescience.work)
+- Changelog (release code names): [CHANGELOG.md](CHANGELOG.md)
 - GitHub: [naiyixi/PureScience](https://github.com/naiyixi/PureScience)
 
 ## Roadmap
