@@ -172,6 +172,10 @@ const dataContentApplicationCommands = Object.freeze({
     'artifacts:reconcile-pending',
     'reconcilePendingArtifacts'
   ),
+  artifactWriteUserEditedVersion: artifactCommand(
+    'artifacts:write-user-edited-version',
+    'writeUserEditedVersion'
+  ),
   artifactResolveVersionDescriptors: artifactCommand(
     'artifacts:resolve-version-descriptors',
     'resolveVersionDescriptors'
@@ -261,7 +265,8 @@ const dataContentApplicationCommandGroups = Object.freeze([
     dataContentApplicationCommands.artifactOpenFile,
     dataContentApplicationCommands.artifactReadPreview,
     dataContentApplicationCommands.artifactReconcilePending,
-    dataContentApplicationCommands.artifactResolveVersionDescriptors
+    dataContentApplicationCommands.artifactResolveVersionDescriptors,
+    dataContentApplicationCommands.artifactWriteUserEditedVersion
   ] as const),
   defineApplicationCommandGroup('lifecycle', [
     dataContentApplicationCommands.lifecycleClientId
@@ -394,7 +399,9 @@ const registerDataContentApplicationCommands = (
       'artifacts:reconcile-pending': ({ args }) =>
         dependencies.artifacts.reconcilePendingArtifacts(args[0]),
       'artifacts:resolve-version-descriptors': ({ args }) =>
-        dependencies.artifacts.resolveVersionDescriptors(args[0])
+        dependencies.artifacts.resolveVersionDescriptors(args[0]),
+      'artifacts:write-user-edited-version': ({ args }) =>
+        dependencies.artifacts.writeUserEditedVersion(args[0])
     })
     scope.registerGroup(dataContentApplicationCommandGroups[1], {
       'lifecycle:client-id': ({ callerContext }) => callerContext.lifecycleClientId
