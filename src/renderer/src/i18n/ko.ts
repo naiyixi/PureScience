@@ -457,6 +457,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
     '{name}의 모델은 Codex Chat Completions 브리지에서 지원되지 않습니다.',
   'modelPicker.defaultEffort': '기본값',
   'modelPicker.noCompatible': '호환되는 모델 없음',
+  'modelPicker.searchModels': '모델 검색…',
+  'modelPicker.noResults': '일치하는 모델이 없습니다',
   'modelPicker.noModel': '사용 가능한 모델 없음',
   'modelPicker.providerDefaultHint': '공급자 기본값',
   'modelPicker.reasoningEffort': '추론 강도',

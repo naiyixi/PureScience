@@ -469,6 +469,8 @@ export const fr: Partial<Record<ZhKey, string>> = {
     'Aucun modèle de {name} n’est pris en charge par le pont Codex Chat Completions.',
   'modelPicker.defaultEffort': 'Par défaut',
   'modelPicker.noCompatible': 'Aucun modèle compatible',
+  'modelPicker.searchModels': 'Rechercher des modèles…',
+  'modelPicker.noResults': 'Aucun modèle correspondant',
   'modelPicker.noModel': 'Aucun modèle disponible',
   'modelPicker.providerDefaultHint': 'défaut du fournisseur',
   'modelPicker.reasoningEffort': 'Effort de raisonnement',

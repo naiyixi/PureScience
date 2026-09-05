@@ -476,6 +476,8 @@ export const de: Partial<Record<ZhKey, string>> = {
     'Kein Modell von {name} wird über die Codex-Chat-Completions-Bridge unterstützt.',
   'modelPicker.defaultEffort': 'Standard',
   'modelPicker.noCompatible': 'Kein kompatibles Modell',
+  'modelPicker.searchModels': 'Modelle durchsuchen…',
+  'modelPicker.noResults': 'Keine passenden Modelle',
   'modelPicker.noModel': 'Kein Modell verfügbar',
   'modelPicker.providerDefaultHint': 'Anbieterstandard',
   'modelPicker.reasoningEffort': 'Denkaufwand',

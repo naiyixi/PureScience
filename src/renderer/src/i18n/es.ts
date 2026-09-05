@@ -468,6 +468,8 @@ export const es: Partial<Record<ZhKey, string>> = {
     'Ningún modelo de {name} es compatible con el puente Codex Chat Completions.',
   'modelPicker.defaultEffort': 'Predeterminado',
   'modelPicker.noCompatible': 'Ningún modelo compatible',
+  'modelPicker.searchModels': 'Buscar modelos…',
+  'modelPicker.noResults': 'No hay modelos que coincidan',
   'modelPicker.noModel': 'No hay modelo disponible',
   'modelPicker.providerDefaultHint': 'predeterminado del proveedor',
   'modelPicker.reasoningEffort': 'Esfuerzo de razonamiento',

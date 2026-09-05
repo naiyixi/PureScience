@@ -1625,6 +1625,8 @@ export const en: Record<ZhKey, string> = {
   'modelPicker.noModel': 'No model available',
   'modelPicker.selectModel': 'Select model',
   'modelPicker.noCompatible': 'No compatible model',
+  'modelPicker.searchModels': 'Search models…',
+  'modelPicker.noResults': 'No matching models',
   'modelPicker.reasoningEffort': 'Reasoning effort',
   'fileHeader.reloadFromDisk': 'Reload from disk',
   'fileHeader.reload': 'Reload file',

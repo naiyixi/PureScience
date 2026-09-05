@@ -128,6 +128,19 @@ const arrowKey = async (key: 'ArrowDown' | 'ArrowUp'): Promise<void> => {
 const menuItems = (): HTMLElement[] =>
   Array.from(document.querySelectorAll<HTMLElement>('[role="menuitem"]'))
 
+// Type into the model search box the way user-event would: React tracks the value setter on the
+// input prototype, so the native setter plus an input event is what actually updates state.
+const typeIntoSearch = async (value: string): Promise<void> => {
+  const input = document.querySelector<HTMLInputElement>('[data-testid="model-search-input"]')
+  expect(input, 'expected the model search input').not.toBeNull()
+  act(() => {
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
+    setter?.call(input, value)
+    input!.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+  await flush()
+}
+
 const radioItems = (): HTMLElement[] =>
   Array.from(document.querySelectorAll<HTMLElement>('[role="menuitemradio"]'))
 
@@ -659,5 +672,80 @@ describe('ComposerModelPicker', () => {
     expect(gatewayModel, 'expected the Gateway model menu item').toBeDefined()
     act(() => gatewayModel!.click())
     expect(setActiveProvider).toHaveBeenCalledWith('gw', 'gm')
+  })
+
+  it('fuzzy-filters the model catalog while typing', async () => {
+    useSettingsStore.setState({
+      providers: [
+        provider({ id: 'ds', name: 'DeepSeek', models: ['deepseek-v4-flash', 'deepseek-v4-pro'] }),
+        provider({ id: 'ki', name: 'Kimi', models: ['kimi-k3', 'kimi-k2.6'] })
+      ]
+    })
+    render()
+    const trigger = container.querySelector('[aria-label="Select model"]')
+    expect(trigger).not.toBeNull()
+    await openMenu(trigger!)
+    await openSubmenu(modelRowTrigger()!)
+
+    // Everything renders before any query.
+    expect(document.body.textContent).toContain('DeepSeek')
+    expect(document.body.textContent).toContain('kimi-k3')
+
+    // An option-level query keeps only the matching provider and model rows.
+    await typeIntoSearch('k3')
+    expect(document.body.textContent).toContain('kimi-k3')
+    expect(document.body.textContent).not.toContain('kimi-k2.6')
+    expect(document.body.textContent).not.toContain('DeepSeek')
+
+    // A provider-name query keeps that provider's whole catalog (its models all listed).
+    await typeIntoSearch('deep')
+    expect(document.body.textContent).toContain('deepseek-v4-flash')
+    expect(document.body.textContent).toContain('deepseek-v4-pro')
+    expect(document.body.textContent).not.toContain('Kimi')
+  })
+
+  it('shows an empty state when no model or provider matches the query', async () => {
+    useSettingsStore.setState({
+      providers: [
+        provider({
+          id: 'ds',
+          name: 'DeepSeek',
+          models: ['deepseek-v4-flash', 'deepseek-v4-pro']
+        })
+      ]
+    })
+    render()
+    const trigger = container.querySelector('[aria-label="Select model"]')
+    expect(trigger).not.toBeNull()
+    await openMenu(trigger!)
+    await openSubmenu(modelRowTrigger()!)
+
+    await typeIntoSearch('zzzz')
+    expect(document.querySelector('[data-testid="model-search-empty"]')?.textContent).toContain(
+      'No matching models'
+    )
+  })
+
+  it('lets a model picked from a narrowed search still switch providers', async () => {
+    const setActiveProvider = vi.fn().mockResolvedValue(undefined)
+    useSettingsStore.setState({
+      providers: [
+        provider({ id: 'ds', name: 'DeepSeek', models: ['deepseek-v4-flash', 'deepseek-v4-pro'] })
+      ],
+      activeProviderId: 'ds',
+      activeModel: 'deepseek-v4-flash',
+      setActiveProvider
+    })
+    render()
+    const trigger = container.querySelector('[aria-label="Select model"]')
+    expect(trigger).not.toBeNull()
+    await openMenu(trigger!)
+    await openSubmenu(modelRowTrigger()!)
+
+    await typeIntoSearch('pro')
+    const row = radioItems().find((el) => el.textContent === 'deepseek-v4-pro')
+    expect(row, 'expected the narrowed result row').toBeDefined()
+    act(() => row!.click())
+    expect(setActiveProvider).toHaveBeenCalledWith('ds', 'deepseek-v4-pro')
   })
 })

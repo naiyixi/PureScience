@@ -1,7 +1,9 @@
-import { AlertTriangle, Brain, Check, ChevronDown, ChevronRight, Cpu } from 'lucide-react'
+import { useState } from 'react'
+import { AlertTriangle, Brain, Check, ChevronDown, ChevronRight, Cpu, Search } from 'lucide-react'
 import { useLanguage } from '@/i18n'
 
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,12 +33,18 @@ import {
 } from '../../../../shared/provider-reasoning-effort'
 import { resolveReasoningEffortControl } from '../../../../shared/reasoning-effort'
 import { incompatibilityReason } from './composer-model-picker-utils'
+import { fuzzyScore, type FuzzyMatch } from './composer/fuzzy-match'
+import { HighlightedText } from './composer/HighlightedText'
 
 const triggerClassName =
   'flex h-8 max-w-[220px] items-center gap-1 rounded-md px-2.5 text-sm text-text-300 hover:bg-bg-200 hover:text-text-100 disabled:cursor-not-allowed disabled:opacity-50 transition-colors'
 
 // Label for an option: the model name, or the provider name when the option carries no concrete model.
 const optionLabel = (option: ProviderModelOption): string => option.model || option.providerName
+
+// Option label rendered with its fuzzy-match runs underlined when the query hit this exact option.
+const matchLabel = (label: string, match: FuzzyMatch | null): React.ReactNode =>
+  match ? <HighlightedText text={label} positions={match.positions} /> : label
 
 // One radio row shape shared by both submenus: menuitemradio semantics, bold + trailing Check when
 // picked, optional leading icon and trailing hint. The three call sites (default effort, effort
@@ -75,6 +83,11 @@ const MenuRadioItem = ({
 // (there's nothing to switch between); otherwise it renders the switcher.
 const ComposerModelPicker = (): React.JSX.Element | null => {
   const { t } = useLanguage()
+  // The model submenu's fuzzy-search box. `modelSubOpen` exists only to reset the query when the
+  // submenu reopens, so the catalog never appears pre-filtered from an earlier search.
+  const [modelSubOpen, setModelSubOpen] = useState(false)
+  const [modelQuery, setModelQuery] = useState('')
+  const query = modelQuery.trim()
   const providers = useSettingsStore((state) => state.providers)
   const activeProviderId = useSettingsStore((state) => state.activeProviderId)
   const claudeSubscriptionProviderId = useSettingsStore(
@@ -170,6 +183,31 @@ const ComposerModelPicker = (): React.JSX.Element | null => {
       options: options.filter((option) => option.providerId === provider.id)
     }))
     .filter((group) => group.options.length > 0)
+
+  // Fuzzy-search view of the catalog (same ordered-subsequence matcher as the composer / and @
+  // popups). A provider stays visible when its name or any of its models matches; a name-only hit
+  // keeps the whole catalog of that provider, an option-level hit narrows it to the matches sorted
+  // by relevance (closest first). With no query every entry is shown in the stable provider order.
+  type OptionMatch = { option: ProviderModelOption; match: FuzzyMatch | null }
+  const isOptionMatch = (entry: OptionMatch): entry is OptionMatch & { match: FuzzyMatch } =>
+    entry.match !== null
+  const modelSearchGroups = groups.map((group) => {
+    const nameMatch = query ? fuzzyScore(query, group.provider.name) : null
+    const optionMatches: OptionMatch[] = group.options.map((option) => ({
+      option,
+      match: query ? fuzzyScore(query, optionLabel(option)) : null
+    }))
+    if (query !== '' && nameMatch === null && !optionMatches.some(isOptionMatch)) {
+      return { group, entries: [] as OptionMatch[] }
+    }
+    const entries =
+      query === '' || nameMatch !== null
+        ? optionMatches
+        : [...optionMatches].filter(isOptionMatch).sort((a, b) => b.match.score - a.match.score)
+    return { group, entries }
+  })
+  const hasSearchResults =
+    query === '' || modelSearchGroups.some((entry) => entry.entries.length > 0)
 
   return (
     <DropdownMenu>
@@ -268,7 +306,15 @@ const ComposerModelPicker = (): React.JSX.Element | null => {
             </DropdownMenuSubContent>
           </DropdownMenuSub>
         ) : null}
-        <DropdownMenuSub>
+        <DropdownMenuSub
+          open={modelSubOpen}
+          onOpenChange={(open) => {
+            setModelSubOpen(open)
+            // Fresh catalog on every open: a stale query must never hide the list behind a
+            // re-triggered submenu.
+            if (open) setModelQuery('')
+          }}
+        >
           <DropdownMenuSubTrigger
             data-testid="model-row"
             className="items-center gap-2 px-2 py-1.5"
@@ -320,112 +366,145 @@ const ComposerModelPicker = (): React.JSX.Element | null => {
             )}
           </DropdownMenuSubTrigger>
           {/* The full grouped catalog (compatibility rows included) lives one level down so the
-              first level stays a summary; behavior per item is unchanged from the flat menu. */}
+              first level stays a summary; behavior per item is unchanged from the flat menu. A
+              fuzzy search box narrows the catalog: query text matches model and provider names,
+              matched runs are underlined, and a provider whose name alone hit keeps its whole
+              catalog. */}
           <DropdownMenuSubContent className="max-h-[320px] min-w-[15rem] overflow-y-auto p-1">
-            {groups.map((group) => {
-              const compatible = group.options.some((option) =>
-                isCompatible(group.provider, option.model)
-              )
-              const endpointCompatible = isProviderUsableByFramework(
-                {
-                  apiEndpoints: group.provider.apiEndpoints,
-                  type: group.provider.type
-                },
-                { id: agentFrameworkId, supportedApiTypes: frameworkEndpoints }
-              )
-              const reason = compatible
-                ? undefined
-                : endpointCompatible && agentFrameworkId === 'codex'
-                  ? t('modelPicker.codexBridgeReason', { name: group.provider.name })
-                  : incompatibilityReason(
-                      {
-                        apiEndpoints: group.provider.apiEndpoints,
-                        type: group.provider.type,
-                        name: group.provider.name
-                      },
-                      frameworkName,
-                      frameworkEndpoints
-                    )
-
-              return (
-                <DropdownMenuGroup key={group.provider.id}>
-                  <DropdownMenuLabel>{group.provider.name}</DropdownMenuLabel>
-                  {compatible ? (
-                    group.options.map((option) => {
-                      const isActive =
-                        option.providerId === activeProviderId && option.model === activeKeyModel
-                      const optionCompatible = isCompatible(group.provider, option.model)
-
-                      if (!optionCompatible) {
-                        // Endpoint is fine but this model is statically marked unsupported over the Codex
-                        // bridge. Grey it with a warning icon; the full reason is on hover (title) and read
-                        // by assistive tech (aria-label), so it isn't a long inline string.
-                        const optionReason = t('modelPicker.bridgeUnsupportedReason', {
-                          model: optionLabel(option)
-                        })
-                        return (
-                          <DropdownMenuItem
-                            key={`${option.providerId}:${option.model}`}
-                            aria-disabled
-                            aria-label={optionReason}
-                            title={optionReason}
-                            onSelect={(event) => event.preventDefault()}
-                            className="gap-2 text-text-300"
-                          >
-                            <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
-                            <span className="min-w-0 flex-1 truncate">{optionLabel(option)}</span>
-                            <span className="text-xs">{t('modelPicker.unsupported')}</span>
-                          </DropdownMenuItem>
-                        )
-                      }
-
-                      return (
-                        <MenuRadioItem
-                          key={`${option.providerId}:${option.model}`}
-                          checked={isActive}
-                          onSelect={() =>
-                            void setActiveProvider(option.providerId, option.model).catch(
-                              () => undefined
-                            )
-                          }
-                          leading={
-                            <ProviderKindIcon
-                              kindKey={providerKindKey(option.providerType, option.vendorId)}
-                              className="size-4 shrink-0"
-                            />
-                          }
-                        >
-                          {optionLabel(option)}
-                        </MenuRadioItem>
+            <div className="relative mb-1">
+              <Search
+                className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <Input
+                value={modelQuery}
+                onChange={(event) => setModelQuery(event.target.value)}
+                placeholder={t('modelPicker.searchModels')}
+                aria-label={t('modelPicker.searchModels')}
+                data-testid="model-search-input"
+                className="h-8 pl-8 text-[13px]"
+                // Keep typing local: without this, the menu's built-in typeahead would swallow
+                // the letters before the input ever sees them.
+                onKeyDown={(event) => event.stopPropagation()}
+              />
+            </div>
+            {query !== '' && !hasSearchResults ? (
+              <p
+                className="px-2 py-2 text-center text-xs text-muted-foreground"
+                data-testid="model-search-empty"
+              >
+                {t('modelPicker.noResults')}
+              </p>
+            ) : (
+              modelSearchGroups.map(({ group, entries }) => {
+                const compatible = group.options.some((option) =>
+                  isCompatible(group.provider, option.model)
+                )
+                const endpointCompatible = isProviderUsableByFramework(
+                  {
+                    apiEndpoints: group.provider.apiEndpoints,
+                    type: group.provider.type
+                  },
+                  { id: agentFrameworkId, supportedApiTypes: frameworkEndpoints }
+                )
+                const reason = compatible
+                  ? undefined
+                  : endpointCompatible && agentFrameworkId === 'codex'
+                    ? t('modelPicker.codexBridgeReason', { name: group.provider.name })
+                    : incompatibilityReason(
+                        {
+                          apiEndpoints: group.provider.apiEndpoints,
+                          type: group.provider.type,
+                          name: group.provider.name
+                        },
+                        frameworkName,
+                        frameworkEndpoints
                       )
-                    })
-                  ) : (
-                    // An incompatible provider gets one greyed, non-actionable row: a short "Unavailable"
-                    // label + warning icon, with the full reason on hover (title) and exposed to assistive
-                    // tech (aria-label) — so the dropdown stays compact instead of wrapping a long
-                    // sentence. It stays keyboard-reachable via roving focus (a `disabled` item is skipped,
-                    // and a label is not focusable), aria-disabled marks it unselectable, and onSelect is
-                    // prevented so it never switches the model.
-                    <DropdownMenuItem
-                      aria-disabled
-                      aria-label={reason}
-                      title={reason}
-                      onSelect={(event) => event.preventDefault()}
-                      className="gap-2 text-text-300"
-                    >
-                      <AlertTriangle
-                        className="size-4 shrink-0"
-                        strokeWidth={2}
-                        aria-hidden="true"
-                      />
-                      <span className="min-w-0 flex-1 truncate">
-                        Unavailable for {frameworkName}
-                      </span>
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuGroup>
-              )
-            })}
+                if (entries.length === 0) return null
+
+                return (
+                  <DropdownMenuGroup key={group.provider.id}>
+                    <DropdownMenuLabel>{group.provider.name}</DropdownMenuLabel>
+                    {compatible ? (
+                      entries.map(({ option, match }) => {
+                        const isActive =
+                          option.providerId === activeProviderId && option.model === activeKeyModel
+                        const optionCompatible = isCompatible(group.provider, option.model)
+
+                        if (!optionCompatible) {
+                          // Endpoint is fine but this model is statically marked unsupported over the
+                          // Codex bridge. Grey it with a warning icon; the full reason is on hover
+                          // (title) and read by assistive tech (aria-label), so it isn't a long inline
+                          // string.
+                          const optionReason = t('modelPicker.bridgeUnsupportedReason', {
+                            model: optionLabel(option)
+                          })
+                          return (
+                            <DropdownMenuItem
+                              key={`${option.providerId}:${option.model}`}
+                              aria-disabled
+                              aria-label={optionReason}
+                              title={optionReason}
+                              onSelect={(event) => event.preventDefault()}
+                              className="gap-2 text-text-300"
+                            >
+                              <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
+                              <span className="min-w-0 flex-1 truncate">
+                                {matchLabel(optionLabel(option), match)}
+                              </span>
+                              <span className="text-xs">{t('modelPicker.unsupported')}</span>
+                            </DropdownMenuItem>
+                          )
+                        }
+
+                        return (
+                          <MenuRadioItem
+                            key={`${option.providerId}:${option.model}`}
+                            checked={isActive}
+                            onSelect={() =>
+                              void setActiveProvider(option.providerId, option.model).catch(
+                                () => undefined
+                              )
+                            }
+                            leading={
+                              <ProviderKindIcon
+                                kindKey={providerKindKey(option.providerType, option.vendorId)}
+                                className="size-4 shrink-0"
+                              />
+                            }
+                          >
+                            {matchLabel(optionLabel(option), match)}
+                          </MenuRadioItem>
+                        )
+                      })
+                    ) : (
+                      // An incompatible provider gets one greyed, non-actionable row: a short
+                      // "Unavailable" label + warning icon, with the full reason on hover (title) and
+                      // exposed to assistive tech (aria-label) — so the dropdown stays compact instead
+                      // of wrapping a long sentence. It stays keyboard-reachable via roving focus (a
+                      // `disabled` item is skipped, and a label is not focusable), aria-disabled marks
+                      // it unselectable, and onSelect is prevented so it never switches the model.
+                      <DropdownMenuItem
+                        aria-disabled
+                        aria-label={reason}
+                        title={reason}
+                        onSelect={(event) => event.preventDefault()}
+                        className="gap-2 text-text-300"
+                      >
+                        <AlertTriangle
+                          className="size-4 shrink-0"
+                          strokeWidth={2}
+                          aria-hidden="true"
+                        />
+                        <span className="min-w-0 flex-1 truncate">
+                          Unavailable for {frameworkName}
+                        </span>
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuGroup>
+                )
+              })
+            )}
           </DropdownMenuSubContent>
         </DropdownMenuSub>
         {hasUsable ? null : (

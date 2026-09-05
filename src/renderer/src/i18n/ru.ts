@@ -462,6 +462,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
     'Ни одна модель от {name} не поддерживается через мост Codex Chat Completions.',
   'modelPicker.defaultEffort': 'По умолчанию',
   'modelPicker.noCompatible': 'Нет совместимой модели',
+  'modelPicker.searchModels': 'Поиск моделей…',
+  'modelPicker.noResults': 'Нет подходящих моделей',
   'modelPicker.noModel': 'Нет доступной модели',
   'modelPicker.providerDefaultHint': 'по умолчанию у провайдера',
   'modelPicker.reasoningEffort': 'Уровень рассуждения',
