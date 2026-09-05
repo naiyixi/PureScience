@@ -2056,7 +2056,7 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.updateCheckFailed': 'Update-Prüfung fehlgeschlagen',
   'settings.autoApplyUpdate': 'Zum Abschließen von Updates automatisch neu starten',
   'settings.autoApplyUpdateHint':
-    'Sobald ein Update heruntergeladen ist, startet PureScience automatisch neu, um es zu installieren. Gilt für direkte Updates (Windows/Linux); unter macOS wird weiterhin das Installationsprogramm geöffnet.',
+    'Sobald ein Update heruntergeladen ist, startet PureScience automatisch neu, um es zu installieren. Windows, Linux und signierte stabile macOS-Builds aktualisieren direkt an Ort und Stelle; lokale, nächtliche und unsignierte Builds (sowie der manuelle Neuinstallations-Ersatz) öffnen das heruntergeladene Installationsprogramm.',
   'settings.updateDownloaded': 'Update heruntergeladen — öffnen Sie den Installer zum Abschluss',
   'settings.updateReady': 'Update bereit',
   'settings.updatedToday': 'Heute aktualisiert',

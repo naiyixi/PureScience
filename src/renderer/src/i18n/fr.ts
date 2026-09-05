@@ -2044,7 +2044,7 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.updateCheckFailed': 'Échec de la vérification de mise à jour',
   'settings.autoApplyUpdate': 'Redémarrer automatiquement pour terminer les mises à jour',
   'settings.autoApplyUpdateHint':
-    'Lorsqu’une mise à jour est téléchargée, PureScience redémarre automatiquement pour l’installer. S’applique aux mises à jour sur place (Windows/Linux) ; la version macOS ouvre toujours le programme d’installation.',
+    'Lorsqu’une mise à jour est téléchargée, PureScience redémarre automatiquement pour l’installer. Windows, Linux et les versions macOS stables signées se mettent à jour sur place ; les versions locales, nocturnes ou non signées (ainsi que l’option de réinstallation manuelle) ouvrent le programme d’installation téléchargé.',
   'settings.updateDownloaded': 'Mise à jour téléchargée — ouvrez l’installateur pour terminer',
   'settings.updateReady': 'Mise à jour prête',
   'settings.updatedToday': 'Mis à jour aujourd’hui',

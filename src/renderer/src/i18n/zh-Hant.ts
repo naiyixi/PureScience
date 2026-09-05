@@ -1872,7 +1872,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.updateCheckFailed': '更新檢查失敗',
   'settings.autoApplyUpdate': '下載完成後自動重新啟動應用程式',
   'settings.autoApplyUpdateHint':
-    '更新下載完成後，PureScience 會自動重新啟動以完成安裝。適用於就地更新（Windows/Linux）；macOS 版仍會開啟安裝程式由你手動執行。',
+    '更新下載完成後，PureScience 會自動重新啟動以完成安裝——Windows、Linux 與正式簽名的 macOS 版均為就地更新；本機開發版、夜間建置與未簽名安裝（以及手動重裝回退）會開啟下載好的安裝程式由你執行。',
   'settings.updateDownloaded': '更新已下載——開啟安裝程式以完成',
   'settings.updateReady': '更新已就緒',
   'settings.updatedToday': '今天更新',

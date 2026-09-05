@@ -2010,7 +2010,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.updateCheckFailed': 'アップデートの確認に失敗しました',
   'settings.autoApplyUpdate': 'ダウンロード完了後に自動で再起動して更新',
   'settings.autoApplyUpdateHint':
-    '更新のダウンロードが完了すると、PureScience が自動的に再起動してインストールします。インプレース更新（Windows/Linux）向け。macOS 版は従来どおりインストーラーを開いて手動で実行します。',
+    '更新のダウンロードが完了すると、PureScience が自動的に再起動してインストールします。Windows・Linux・署名済みの正式版 macOS はいずれもその場で更新されます。ローカル開発版・ナイトリービルド・未署名ビルド（および手動再インストールのフォールバック）では、ダウンロードしたインストーラーを開いて手動で実行します。',
   'settings.updateDownloaded':
     'アップデートをダウンロードしました — インストーラーを開いて完了してください',
   'settings.updateReady': 'アップデートの準備ができました',

@@ -2352,7 +2352,7 @@ export const zh = {
   'settings.askForApproval': '请求批准',
   'settings.autoApplyUpdate': '下载完成后自动重启应用',
   'settings.autoApplyUpdateHint':
-    '更新下载完成后，PureScience 自动重启以完成安装。适用于就地更新（Windows/Linux）；macOS 版仍会打开安装包由你手动运行。',
+    '更新下载完成后，PureScience 自动重启以完成安装——Windows、Linux 与正式签名的 macOS 版均就地更新；本地调试版、夜间构建与未签名安装（以及手动重装回退）会打开下载好的安装包由你运行。',
   'settings.updateDownloaded': '更新已下载——打开安装程序以完成',
   'settings.fileOperationsHint': '已批准的读取、写入、移动和删除',
   'settings.shared': '共享',

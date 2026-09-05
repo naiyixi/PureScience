@@ -1969,7 +1969,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.updateCheckFailed': '업데이트 확인 실패',
   'settings.autoApplyUpdate': '다운로드 완료 후 자동으로 다시 시작하여 업데이트',
   'settings.autoApplyUpdateHint':
-    '업데이트 다운로드가 완료되면 PureScience가 자동으로 다시 시작되어 설치합니다. 현재 위치 업데이트(Windows/Linux)에 해당합니다. macOS에서는 설치 프로그램을 직접 열어 실행해야 합니다.',
+    '업데이트 다운로드가 완료되면 PureScience가 자동으로 다시 시작되어 설치합니다. Windows, Linux, 서명된 정식 macOS 빌드 모두 현재 위치에서 업데이트됩니다. 로컬·나이틀리·서명되지 않은 빌드(및 수동 재설치 폴백)에서는 설치 프로그램을 직접 열어 실행해야 합니다.',
   'settings.updateDownloaded': '업데이트가 다운로드되었습니다 — 설치 프로그램을 열어 마무리하세요',
   'settings.updateReady': '업데이트 준비됨',
   'settings.updatedToday': '오늘 업데이트됨',
