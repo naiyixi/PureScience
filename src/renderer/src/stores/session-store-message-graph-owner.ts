@@ -412,6 +412,11 @@ export const createSessionMessageGraphOwner = <
       ...(source.autoReviewEnabled !== undefined
         ? { autoReviewEnabled: source.autoReviewEnabled }
         : {}),
+        ...(source.delegationEnabled !== undefined
+
+        ? { delegationEnabled: source.delegationEnabled }
+
+        : {}),
       ...(source.enabledComputeHosts
         ? { enabledComputeHosts: [...source.enabledComputeHosts] }
         : {}),

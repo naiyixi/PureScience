@@ -2111,6 +2111,8 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'ws.authorizationScope': 'Portée de l’autorisation',
   'ws.autoReview': 'Revue automatique',
   'ws.autoReviewDesc': 'Un agent réviseur vérifie chaque changement avant qu’il ne soit appliqué.',
+  'ws.delegation': 'Délégation',
+  'ws.delegationDesc': 'Permet à l’agent de déléguer des sous-tâches à des sous-agents en parallèle.',
   'ws.bindSpecialistHint': 'Liez un spécialiste personnel à cette conversation.',
   'ws.branchInNewSession': 'Créer une branche dans une nouvelle session',
   'ws.cancelRun': 'Annuler l’exécution',

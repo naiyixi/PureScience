@@ -2587,6 +2587,7 @@ describe('session store public contract', () => {
         'setAwaitingFirstAgentOutput',
         'setBranchSwitchBlocked',
         'setContextUsage',
+        'setDelegationEnabled',
         'setEnabledComputeHosts',
         'setFixLoopActive',
         'setPermissionPending',

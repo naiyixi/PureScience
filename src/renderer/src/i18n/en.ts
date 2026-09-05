@@ -226,6 +226,8 @@ export const en: Record<ZhKey, string> = {
   'ws.permissionMode': 'Permission mode',
   'ws.autoReview': 'Auto-review',
   'ws.autoReviewDesc': 'A reviewer agent checks every change before it lands.',
+  'ws.delegation': 'Delegation',
+  'ws.delegationDesc': 'Allow the agent to delegate sub-tasks to parallel sub-agents.',
   'ws.clearAll': 'Clear all',
   'ws.attachFiles': 'Attach files',
   'ws.specialist': 'Specialist',

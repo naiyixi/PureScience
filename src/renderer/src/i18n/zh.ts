@@ -218,6 +218,8 @@ export const zh = {
   'ws.permissionMode': '权限模式',
   'ws.autoReview': '自动审查',
   'ws.autoReviewDesc': '审查智能体会检查每一项变更，确认无误后才落地。',
+  'ws.delegation': '委托',
+  'ws.delegationDesc': '允许智能体将子任务委托给并行的子智能体并行处理。',
   'ws.clearAll': '全部清除',
   'ws.attachFiles': '附加文件',
   'ws.specialist': '专才',
