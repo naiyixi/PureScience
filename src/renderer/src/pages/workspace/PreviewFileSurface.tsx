@@ -1,13 +1,29 @@
 import { useLanguage } from '@/i18n'
-import { ChevronLeft, ChevronRight, GitBranch, Maximize2, MoreHorizontal, X } from 'lucide-react'
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  GitBranch,
+  GitCompare,
+  Maximize2,
+  MoreHorizontal,
+  Pencil,
+  X
+} from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import type { PreviewFileItem } from '@/stores/preview-workbench-store'
+import type { PreviewFileFormat, PreviewFileItem } from '@/stores/preview-workbench-store'
 import { usePreviewWorkbenchStore } from '@/stores/preview-workbench-store'
 import { useSessionStore } from '@/stores/session-store'
-import type { ArtifactLineageProvenance } from '../../../../shared/artifact-provenance'
+import type { ArtifactFile } from '../../../../shared/artifacts'
+import type {
+  ArtifactLineageProvenance,
+  ArtifactVersionDescriptor,
+  ArtifactVersionFile
+} from '../../../../shared/artifact-provenance'
+import { createArtifactVersionLocator } from '../../../../shared/artifact-provenance'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,6 +31,8 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 
+import { ArtifactCompareDialog } from './ArtifactCompareDialog'
+import { ArtifactEditDialog } from './ArtifactEditDialog'
 import { ExtensionPreservingFileName } from './ExtensionPreservingFileName'
 import { LocalFileHeaderActions } from './LocalFileHeaderActions'
 import { ManagedFileDownloadButton } from './ManagedFileDownloadButton'
@@ -22,8 +40,13 @@ import {
   createPreviewFileItemForArtifactVersion,
   resolveArtifactVersionDescriptor
 } from './preview-file-item'
+import { formatVersionTimestamp } from './artifact-version-content'
 import { PreviewFileContent } from './previews/PreviewFileContent'
 import { ArtifactProvenancePanel } from './ArtifactProvenancePanel'
+
+// User-editable preview formats: plain-text renderers whose content round-trips through the edit
+// dialog. Binary/structured formats (images, PDFs, notebooks) never offer an Edit action.
+const EDITABLE_PREVIEW_FORMATS = new Set<PreviewFileFormat>(['markdown', 'text', 'code', 'json'])
 
 type PreviewFileSurfaceProps = {
   item: PreviewFileItem
@@ -221,25 +244,43 @@ const PreviewFileHeader = ({
   )
 }
 
-const ArtifactVersionNavigation = ({
-  lineage,
-  selectedVersionId,
-  onSelect
-}: {
+type ArtifactVersionNavigationProps = {
   lineage: ArtifactLineageProvenance
   selectedVersionId: string | undefined
   onSelect: (versionId: string) => void
-}): React.JSX.Element | null => {
+  // Edit/Compare affordances exist only for managed text artifacts; the surface gates them here so
+  // the version bar stays a pure navigator for images/PDFs/notebooks.
+  editableText: boolean
+  canCompare: boolean
+  onEdit: () => void
+  onCompare: () => void
+}
+
+const ArtifactVersionNavigation = ({
+  lineage,
+  selectedVersionId,
+  onSelect,
+  editableText,
+  canCompare,
+  onEdit,
+  onCompare
+}: ArtifactVersionNavigationProps): React.JSX.Element | null => {
   const { t } = useLanguage()
   const selectedIndex = lineage.versions.findIndex(
     (version) => version.versionId === selectedVersionId
   )
   if (selectedIndex < 0) return null
 
+  const selectedVersion = lineage.versions[selectedIndex]
+  // Only finalized Versions are listed: pending staging rows are transient and cannot be edited.
+  const selectableVersions = lineage.versions
+    .filter((version) => version.state === 'finalized')
+    .reverse()
+
   return (
     <div
       data-testid="artifact-preview-version-navigation"
-      className="flex h-9 shrink-0 items-center gap-2 border-b border-border-300/60 px-2"
+      className="flex h-9 shrink-0 items-center gap-1 border-b border-border-300/60 px-2"
     >
       <Button
         type="button"
@@ -254,9 +295,35 @@ const ArtifactVersionNavigation = ({
       >
         <ChevronLeft aria-hidden="true" />
       </Button>
-      <span className="text-xs font-medium text-text-100">
-        v{lineage.versions[selectedIndex]?.versionNumber}
-      </span>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            aria-label={t('previewFile.chooseVersion')}
+            className="gap-0.5 px-1.5 text-xs font-medium text-text-100"
+          >
+            v{selectedVersion.versionNumber}
+            <ChevronDown className="size-3 opacity-60" aria-hidden="true" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="z-[70] min-w-48">
+          {selectableVersions.map((version) => (
+            <DropdownMenuItem
+              key={version.versionId}
+              disabled={version.versionId === selectedVersionId}
+              onSelect={() => onSelect(version.versionId)}
+              data-version-number={version.versionNumber}
+            >
+              <span className="min-w-0 flex-1 truncate">v{version.versionNumber}</span>
+              <span className="shrink-0 pl-3 text-[11px] text-text-300">
+                {formatVersionTimestamp(version.createdAt)}
+              </span>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
       <Button
         type="button"
         variant="ghost"
@@ -270,6 +337,48 @@ const ArtifactVersionNavigation = ({
       >
         <ChevronRight aria-hidden="true" />
       </Button>
+      {editableText ? (
+        <div className="ml-auto flex items-center gap-0.5">
+          <TooltipProvider delayDuration={300}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="inline-flex">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-xs"
+                    className="text-text-100 hover:text-text-000"
+                    aria-label={t('artifactCompare.openAction')}
+                    disabled={!canCompare}
+                    onClick={onCompare}
+                  >
+                    <GitCompare aria-hidden="true" />
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>{t('artifactCompare.openAction')}</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="inline-flex">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-xs"
+                    className="text-text-100 hover:text-text-000"
+                    aria-label={t('artifactEdit.editAction')}
+                    disabled={!editableText || selectedVersion.state !== 'finalized'}
+                    onClick={onEdit}
+                  >
+                    <Pencil aria-hidden="true" />
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>{t('artifactEdit.editAction')}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -288,6 +397,11 @@ const PreviewFileSurface = ({
   const [provenanceTarget, setProvenanceTarget] = useState<string>()
   // Bumping this token remounts the content tree so a local file is re-read from disk.
   const [reloadToken, setReloadToken] = useState(0)
+  // Immutable Version selected as the edit source; opening the dialog freezes it so a lineage
+  // refresh during editing never retargets the write.
+  const [editTarget, setEditTarget] = useState<ArtifactVersionDescriptor>()
+  const [compareOpen, setCompareOpen] = useState(false)
+  const [compareTargetVersionId, setCompareTargetVersionId] = useState<string | undefined>()
   const [versionOverride, setVersionOverride] = useState<{
     key: string
     item: PreviewFileItem
@@ -388,6 +502,63 @@ const PreviewFileSurface = ({
     )
   }
 
+  // Text-editable managed artifacts carry the edit/compare actions; uploads, local files, and
+  // binary formats stay read-only previews.
+  const editableText =
+    previewItem.source === 'artifact' &&
+    Boolean(previewItem.artifactId) &&
+    EDITABLE_PREVIEW_FORMATS.has(previewItem.format)
+  const finalizedVersions = (
+    lineage?.versions.filter((version) => version.state === 'finalized') ?? []
+  )
+    .slice()
+    .sort((left, right) => left.versionNumber - right.versionNumber)
+  // Compare answers "what did this Version change?" — the selected Version needs a finalized
+  // predecessor to diff against, so the first finalized Version never enables Compare.
+  const finalizedSelectedIndex =
+    selectedVersion?.state === 'finalized'
+      ? finalizedVersions.findIndex((version) => version.versionId === selectedVersion.versionId)
+      : -1
+  const canCompare = editableText && finalizedVersions.length >= 2 && finalizedSelectedIndex > 0
+
+  const handleOpenEdit = (): void => {
+    if (!selectedVersion || selectedVersion.state !== 'finalized') return
+    setEditTarget(selectedVersion)
+  }
+
+  const handleOpenCompare = (): void => {
+    setCompareTargetVersionId(selectedVersion?.versionId)
+    setCompareOpen(true)
+  }
+
+  // A user edit returns the freshly finalized Version file; jump the preview to it so the written
+  // content is immediately visible, then let the lineage refetch refresh the navigator.
+  const handleUserEditSaved = (version: ArtifactFile): void => {
+    if (!projectId || !previewItem.artifactId) return
+    const versionFile = version as ArtifactVersionFile
+    const descriptor: ArtifactVersionDescriptor = {
+      id: versionFile.id ?? versionFile.versionId,
+      versionId: versionFile.versionId,
+      artifactId: versionFile.artifactId,
+      versionNumber: versionFile.versionNumber,
+      checksum: versionFile.checksum ?? '',
+      createdAt: versionFile.createdAt ?? new Date().toISOString(),
+      state: 'finalized',
+      projectName: versionFile.projectName,
+      sessionId: versionFile.sessionId,
+      runId: versionFile.runId,
+      name: versionFile.name,
+      size: versionFile.size,
+      mtimeMs: versionFile.mtimeMs,
+      producerRunId: versionFile.producerRunId,
+      environment: versionFile.environment
+    }
+    applyVersionItem(
+      createPreviewFileItemForArtifactVersion({ item: previewItem, version: descriptor, projectId })
+    )
+    setEditTarget(undefined)
+  }
+
   return (
     <div className="flex size-full min-h-0 flex-col overflow-hidden">
       <PreviewFileHeader
@@ -408,6 +579,10 @@ const PreviewFileSurface = ({
           lineage={lineage}
           selectedVersionId={selectedVersionId}
           onSelect={selectPreviewVersion}
+          editableText={editableText}
+          canCompare={canCompare}
+          onEdit={handleOpenEdit}
+          onCompare={handleOpenCompare}
         />
       ) : null}
       <div className="min-h-0 flex-1 overflow-y-auto bg-bg-000">
@@ -425,6 +600,39 @@ const PreviewFileSurface = ({
           />
         ) : null}
       </div>
+      {editTarget && projectId && previewItem.artifactId ? (
+        <ArtifactEditDialog
+          open
+          name={editTarget.name}
+          versionNumber={editTarget.versionNumber}
+          projectId={projectId}
+          sessionId={previewItem.sessionId}
+          storageSessionId={previewItem.sessionId}
+          sourceVersionId={editTarget.versionId}
+          path={createArtifactVersionLocator({
+            projectId,
+            appSessionId: previewItem.sessionId,
+            artifactId: previewItem.artifactId,
+            versionId: editTarget.versionId
+          })}
+          contentType={previewItem.mimeType}
+          monospace={previewItem.format === 'code' || previewItem.format === 'json'}
+          onClose={() => setEditTarget(undefined)}
+          onSaved={handleUserEditSaved}
+        />
+      ) : null}
+      {compareOpen && projectId && previewItem.artifactId ? (
+        <ArtifactCompareDialog
+          open
+          name={previewItem.name}
+          projectId={projectId}
+          sessionId={previewItem.sessionId}
+          artifactId={previewItem.artifactId}
+          versions={finalizedVersions}
+          initialTargetVersionId={compareTargetVersionId}
+          onClose={() => setCompareOpen(false)}
+        />
+      ) : null}
     </div>
   )
 }
