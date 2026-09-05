@@ -238,7 +238,7 @@ jobs:
         run: |
           for subdir in osx-arm64 osx-64 linux-64 win-64; do
             url="https://github.com/naiyixi/PureScience/releases/download/runtime-v$VERSION/$subdir-manifest.json"
-            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "$url")
+            code=$(curl -sL -o /dev/null -w '%{http_code}' --max-time 60 "$url")
             echo "$subdir manifest -> HTTP $code"
             test "$code" = "200"
           done
