@@ -63,7 +63,7 @@ const UpdateDialog = (): React.JSX.Element | null => {
                   type="button"
                   variant="ghost"
                   size="icon-sm"
-                  aria-label="Close"
+                  aria-label={t('update.close')}
                   disabled={isApplying}
                   className={dialogCloseButtonClassName}
                 >
@@ -118,15 +118,25 @@ const UpdateDialog = (): React.JSX.Element | null => {
 
             {isApplying ? (
               <div className="mt-4 rounded-lg border border-border bg-muted/50 px-3 py-3 text-xs text-muted-foreground">
-                PureScience is stopping background tasks and will close to finish installing. The
-                update may take a moment; please don&apos;t reopen the app during this step. The
-                updated app will reopen automatically.
+                {t('update.applyNote')}
               </div>
+            ) : null}
+
+            {isReady ? (
+              // U1: say plainly what the user must do next — the old dialog only carried the
+              // affordance button, so a "downloaded…" state read as silent.
+              <p className="mt-3 text-xs text-muted-foreground" data-testid="update-ready-hint">
+                {dialogStatus.applyKind === 'restart'
+                  ? t('update.readyRestartHint')
+                  : t('update.readyInstallerHint')}
+              </p>
             ) : null}
 
             {dialogStatus.state === 'error' ? (
               <div className="mt-3" role="alert">
-                <p className="text-xs text-destructive">{dialogStatus.error ?? 'Update failed'}</p>
+                <p className="text-xs text-destructive">
+                  {dialogStatus.error ?? t('update.failed')}
+                </p>
                 {/* Fallback when the in-app update fails (e.g. a blocked/failed in-place install): let the
                   user grab the installer by hand, mirroring the macOS manual-reinstall path. */}
                 <ExternalTextLink href={APP.update.downloadPage} className="mt-1 text-xs">
@@ -142,7 +152,7 @@ const UpdateDialog = (): React.JSX.Element | null => {
                 disabled={isApplying}
                 className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-bg-300"
               >
-                {isReady ? 'Close' : 'Cancel'}
+                {isReady ? t('update.close') : t('common.cancel')}
               </button>
               {isApplying ? (
                 <button
@@ -151,7 +161,7 @@ const UpdateDialog = (): React.JSX.Element | null => {
                   className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground opacity-70"
                 >
                   <RefreshCw className="size-4 animate-spin" aria-hidden="true" />
-                  Preparing update…
+                  {t('update.preparing')}
                 </button>
               ) : isReady ? (
                 <button
@@ -180,10 +190,16 @@ const UpdateDialog = (): React.JSX.Element | null => {
                 >
                   <Download className="size-4" aria-hidden="true" />
                   {isDownloading
-                    ? `Downloading ${dialogStatus.progress ?? 0}%`
+                    ? t('update.downloadingPercent').replace(
+                        '{percent}',
+                        String(dialogStatus.progress ?? 0)
+                      )
                     : dialogStatus.totalBytes
-                      ? `Download update (${formatBytes(dialogStatus.totalBytes)})`
-                      : 'Download update'}
+                      ? t('update.downloadSize').replace(
+                          '{size}',
+                          formatBytes(dialogStatus.totalBytes)
+                        )
+                      : t('update.download')}
                 </button>
               )}
             </div>

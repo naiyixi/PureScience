@@ -55,7 +55,11 @@ const AppVersionSection = (): React.JSX.Element => {
       case 'downloading':
         return `${t('common.downloading')} ${status.progress ?? 0}%`
       case 'ready':
-        return t('settings.updateDownloaded')
+        // Kind-aware: in-place (win/linux) updates finish by restarting; the mac flow hands the
+        // user the downloaded installer. The generic "downloaded" copy said neither clearly.
+        return status.applyKind === 'restart'
+          ? t('update.readyRestartHint')
+          : t('update.readyInstallerHint')
       case 'up-to-date':
         return t('settings.onLatestVersion')
       case 'error':

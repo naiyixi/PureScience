@@ -698,6 +698,18 @@ export const de: Partial<Record<ZhKey, string>> = {
   'ui.theoriginaltaskcontinuesinth': 'Die ursprüngliche Aufgabe wird in diesem Turn fortgesetzt.',
   'ui.whattheagentcandowiththiscon': 'Was der Agent mit diesem Konnektor tun kann',
   'update.available': 'Update verfügbar',
+  'update.close': 'Schließen',
+  'update.download': 'Update herunterladen',
+  'update.downloadSize': 'Update herunterladen ({size})',
+  'update.downloadingPercent': 'Lade {percent} %',
+  'update.preparing': 'Update wird vorbereitet…',
+  'update.failed': 'Update fehlgeschlagen',
+  'update.applyNote':
+    'PureScience stoppt Hintergrundaufgaben und wird geschlossen, um die Installation abzuschließen. Das kann einen Moment dauern; öffnen Sie die App währenddessen nicht erneut. Die App startet danach automatisch neu.',
+  'update.readyRestartHint':
+    'Heruntergeladen — starten Sie PureScience neu, um die Installation abzuschließen.',
+  'update.readyInstallerHint':
+    'Heruntergeladen — führen Sie das Installationsprogramm aus, um das Update abzuschließen.',
   'update.downloadManually': 'Manuell herunterladen',
   'update.openInstaller': 'Installer öffnen',
   'update.restartToUpdate': 'Zum Aktualisieren neu starten',

@@ -112,6 +112,19 @@ describe('UpdateDialog', () => {
     act(() => root.render(<UpdateDialog />))
     expect(document.body.textContent).toContain('Restart to update')
     expect(document.body.textContent).not.toContain('Open installer')
+    // U1: the downloaded state says plainly that restarting finishes the install.
+    expect(document.body.textContent).toContain('restart PureScience to finish installing')
+  })
+
+  it('points a ready installer-kind update at the downloaded package (macOS)', () => {
+    useUpdateStore.setState({
+      isDialogOpen: true,
+      status: { state: 'ready', current: '0.1.0', latest: '0.2.0', applyKind: 'installer' }
+    })
+    act(() => root.render(<UpdateDialog />))
+    expect(document.body.textContent).toContain('Open installer')
+    expect(document.body.textContent).toContain('run the installer to finish updating')
+    expect(document.body.textContent).not.toContain('Restart to update')
   })
 
   it('explains the install wait and locks actions while applying', () => {
@@ -123,7 +136,7 @@ describe('UpdateDialog', () => {
 
     expect(document.body.textContent).toContain('Preparing update…')
     expect(document.body.textContent).toContain('update may take a moment')
-    expect(document.body.textContent).toContain("please don't reopen the app")
+    expect(document.body.textContent).toContain('please don’t reopen the app')
     expect(
       Array.from(document.body.querySelectorAll('button')).every((button) => button.disabled)
     ).toBe(true)
