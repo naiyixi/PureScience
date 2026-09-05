@@ -178,6 +178,7 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['getVersionReview', 'artifacts:get-version-review'], ['listProjectFiles', 'artifacts:list-project-files'], ['openFile', 'artifacts:open-file', LOCAL],
     ['readPreview', 'artifacts:read-preview'], ['reconcilePendingArtifacts', 'artifacts:reconcile-pending'],
     ['resolveVersionDescriptors', 'artifacts:resolve-version-descriptors'],
+    ['writeUserEditedVersion', 'artifacts:write-user-edited-version'],
   ]),
   group('cli', 'cli', [
     ['getStatus', 'cli:get-status'], ['install', 'cli:install', LOCAL], ['uninstall', 'cli:uninstall', LOCAL],

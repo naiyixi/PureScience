@@ -844,7 +844,8 @@ describe('artifact IPC handler registration', () => {
       'artifacts:open-file',
       'artifacts:read-preview',
       'artifacts:reconcile-pending',
-      'artifacts:resolve-version-descriptors'
+      'artifacts:resolve-version-descriptors',
+      'artifacts:write-user-edited-version'
     ])
   })
 
@@ -889,6 +890,7 @@ describe('artifact IPC handler registration', () => {
       reconcilePendingArtifacts: vi.fn(),
       openFile: vi.fn(),
       readPreview: vi.fn(),
+      writeUserEditedVersion: vi.fn(),
       getLineage: vi.fn(),
       getVersionProvenance: vi.fn(),
       getVersionExecution: vi.fn(),

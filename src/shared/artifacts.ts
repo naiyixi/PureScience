@@ -101,6 +101,18 @@ export type FinalizeRunArtifactsResult =
 export type OpenArtifactFileRequest = {
   path: string
 }
+// Renderer-originated edit of an existing text Artifact Version: publishes a NEW immutable version
+// in the same lineage (source version untouched). sourceVersionId must reference a finalized version
+// of the session; the edit is finalized immediately and carries no agent/message association.
+export type WriteUserEditedVersionRequest = {
+  projectId: string
+  appSessionId: string
+  artifactStorageSessionId: string
+  sourceVersionId: string
+  content: string
+  contentType?: string
+}
+
 
 // Renderer request for a bounded text preview of one managed artifact.
 export type ReadArtifactPreviewRequest = {
