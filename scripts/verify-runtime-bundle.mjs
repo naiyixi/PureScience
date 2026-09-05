@@ -5,10 +5,17 @@ import { pathToFileURL } from 'node:url'
 
 import { VERSIONS, packArchiveFile, packId, readDefaultEnvVersion } from './stage-default-envs.mjs'
 
-export const DEFAULT_CDN_BASE = 'https://raw.githubusercontent.com/naiyixi/PureScience/runtime-cdn/purescience'
+export const DEFAULT_CDN_BASE = 'https://github.com/naiyixi/PureScience/releases/download/runtime-v1'
 
-export const runtimeManifestUrl = (cdnBase, envVersion, subdir) =>
-  `${cdnBase.replace(/\/+$/, '')}/runtime-bundle/${envVersion}/${subdir}/manifest.json`
+// GitHub Releases serve flat asset names; any other base keeps the hierarchical object-store layout.
+const isFlatReleaseAssetBase = (base) => /\/releases\/download\/[^/]+\/?$/.test(base)
+
+export const runtimeManifestUrl = (cdnBase, envVersion, subdir) => {
+  const base = cdnBase.replace(/\/+$/, '')
+  return isFlatReleaseAssetBase(base)
+    ? `${base}/${subdir}-manifest.json`
+    : `${base}/runtime-bundle/${envVersion}/${subdir}/manifest.json`
+}
 
 export const validatePublishedManifest = (manifest, envVersion, subdir) => {
   if (!manifest || manifest.schema !== 1) throw new Error('manifest schema must be 1')

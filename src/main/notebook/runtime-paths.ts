@@ -18,7 +18,7 @@ import type { NotebookLanguage } from '../../shared/notebook'
 //      manifest is live before packaging an installer.
 export const DEFAULT_ENV_VERSION = 1
 
-export const DEFAULT_RUNTIME_CDN_BASE = 'https://raw.githubusercontent.com/naiyixi/PureScience/runtime-cdn/purescience'
+export const DEFAULT_RUNTIME_CDN_BASE = 'https://github.com/naiyixi/PureScience/releases/download/runtime-v1'
 
 // The runtime bundle publisher and consumer must agree on the conda platform segment. Keep this
 // mapping here rather than letting each caller infer a CDN key independently.
