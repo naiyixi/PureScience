@@ -124,6 +124,20 @@ if [[ -f "$EN_NOTES_FILE" ]]; then
 else
   EN_NOTES=""
 fi
+# GitHub release body = primary (Chinese) notes + English summary when the localized file exists.
+# The in-app update dialog still reads the { zh, en } manifest pair above; this only makes the
+# GitHub release page readable to international visitors.
+if [[ -n "$EN_NOTES" ]]; then
+  GITHUB_NOTES="$NOTES
+
+---
+
+*English summary*
+
+$EN_NOTES"
+else
+  GITHUB_NOTES="$NOTES"
+fi
 node - "$VERSION" "$MANIFEST_KEY" "$DOWNLOAD_URL" "$SIZE" "$SHA256" "$MANIFEST_FILE" "$NOTES" "$EN_NOTES" <<'NODE'
 const [version, key, url, size, sha256, out, notes, enNotes] = process.argv.slice(2)
 const manifest = {
@@ -145,9 +159,9 @@ fi
 
 # ---------- create release + upload ----------
 echo "==> creating release $TAG on ${REPO}…"
-gh release create "$TAG" -R "$REPO" --title "PureScience $VERSION" --notes "$NOTES" \
+gh release create "$TAG" -R "$REPO" --title "PureScience $VERSION" --notes "$GITHUB_NOTES" \
   "$INSTALLER_PATH" "${INSTALLER_PATH}.blockmap" 2>/dev/null \
-  || gh release create "$TAG" -R "$REPO" --title "PureScience $VERSION" --notes "$NOTES" \
+  || gh release create "$TAG" -R "$REPO" --title "PureScience $VERSION" --notes "$GITHUB_NOTES" \
        "$INSTALLER_PATH"
 
 # version.json must ALWAYS be (re)uploaded: the client polls
