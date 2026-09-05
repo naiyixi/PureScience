@@ -80,7 +80,8 @@ const createDependencies = () => {
     getVersionReview: vi.fn(),
     getCodeReconstruction: vi.fn(),
     generateCodeReconstruction: vi.fn(),
-    resolveVersionDescriptors: vi.fn(async () => [])
+    resolveVersionDescriptors: vi.fn(async () => []),
+    writeUserEditedVersion: vi.fn(async () => ({}) as never)
   }
   const events = { publish: vi.fn() }
   const managedPreview = {
@@ -235,7 +236,7 @@ const dispatchCommand = (
 }
 
 describe('Data and content application commands', () => {
-  it('owns exactly the 46 current data and content invoke channels', () => {
+  it('owns exactly the 47 current data and content invoke channels', () => {
     expect(registeredCommands()).toEqual(
       [
         'artifacts:finalize-run',
@@ -251,6 +252,7 @@ describe('Data and content application commands', () => {
         'artifacts:read-preview',
         'artifacts:reconcile-pending',
         'artifacts:resolve-version-descriptors',
+        'artifacts:write-user-edited-version',
         'lifecycle:client-id',
         'preview:delete',
         'preview:load',
@@ -370,6 +372,11 @@ describe('Data and content application commands', () => {
         key: 'artifactResolveVersionDescriptors',
         args: [request('artifact-version-descriptors')],
         owner: deps.artifacts.resolveVersionDescriptors
+      },
+      {
+        key: 'artifactWriteUserEditedVersion',
+        args: [request('artifact-user-edit')],
+        owner: deps.artifacts.writeUserEditedVersion
       },
       { key: 'previewDelete', args: [request('preview-delete')], owner: deps.preview.delete },
       { key: 'previewLoad', args: [request('preview-load')], owner: deps.preview.load },
