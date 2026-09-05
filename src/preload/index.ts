@@ -612,6 +612,8 @@ const api: PureScienceAPI = {
     // Keep preview reads on the same managed-file trust path as opening files.
     readPreview: (request) => electronRendererContracts.invoke('artifacts.readPreview', request),
     getLineage: (request) => electronRendererContracts.invoke('artifacts.getLineage', request),
+    writeUserEditedVersion: (request) =>
+      electronRendererContracts.invoke('artifacts.writeUserEditedVersion', request),
     getVersionProvenance: (request) =>
       electronRendererContracts.invoke('artifacts.getVersionProvenance', request),
     getVersionExecution: (request) =>

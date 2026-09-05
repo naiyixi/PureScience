@@ -30,7 +30,8 @@ import type {
   ListProjectArtifactsRequest,
   OpenArtifactFileRequest,
   ReadArtifactPreviewRequest,
-  ReconcilePendingArtifactsRequest
+  ReconcilePendingArtifactsRequest,
+  WriteUserEditedVersionRequest
 } from '../../shared/artifacts'
 import { resolveDataRoot } from '../storage-root'
 import { withDataRootWrite } from '../storage/migration-state'
@@ -53,6 +54,7 @@ type ArtifactHandlers = {
   openFile: (request: OpenArtifactFileRequest) => Promise<void>
   readPreview: (request: ReadArtifactPreviewRequest) => Promise<ArtifactPreviewResult>
   getLineage: (request: GetArtifactLineageRequest) => Promise<ArtifactLineageProvenance | undefined>
+  writeUserEditedVersion: (request: WriteUserEditedVersionRequest) => Promise<ArtifactFile>
   getVersionProvenance: (
     request: GetArtifactVersionProvenanceRequest
   ) => Promise<ArtifactVersionProvenance>
@@ -91,6 +93,7 @@ type ArtifactHandlerDependencies = {
     ArtifactProvenanceRepository,
     | 'finalizeRun'
     | 'getLineage'
+    | 'writeUserEditedVersion'
     | 'getVersionProvenance'
     | 'getVersionCore'
     | 'getVersionExecution'
@@ -200,6 +203,14 @@ const createArtifactHandlers = (
     getLineage: (request) => {
       if (!dependencies.provenance) throw new Error('Artifact Provenance is not configured.')
       return dependencies.provenance.getLineage(request)
+    },
+    writeUserEditedVersion: (request) => {
+      if (!dependencies.provenance) throw new Error('Artifact Provenance is not configured.')
+      const write = (): Promise<ArtifactFile> =>
+        dependencies.provenance!.writeUserEditedVersion(request)
+      return dependencies.withSessionMutation
+        ? dependencies.withSessionMutation(request.projectId, request.appSessionId, write)
+        : write()
     },
     getVersionProvenance: (request) => {
       if (!dependencies.provenance) throw new Error('Artifact Provenance is not configured.')
@@ -376,6 +387,7 @@ const registerArtifactIpcHandlers = (
     ArtifactProvenanceRepository,
     | 'finalizeRun'
     | 'getLineage'
+    | 'writeUserEditedVersion'
     | 'getVersionProvenance'
     | 'getVersionCore'
     | 'getVersionExecution'
@@ -416,6 +428,10 @@ const registerArtifactIpcHandlers = (
   )
   ipcMainHandle('artifacts:open-file', (_event, request: OpenArtifactFileRequest) =>
     handlers.openFile(request)
+  )
+  ipcMainHandle(
+    'artifacts:write-user-edited-version',
+    (_event, request: WriteUserEditedVersionRequest) => handlers.writeUserEditedVersion(request)
   )
   ipcMainHandle('artifacts:read-preview', (_event, request: ReadArtifactPreviewRequest) =>
     handlers.readPreview(request)

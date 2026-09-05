@@ -33,6 +33,7 @@ export const WEB_INVOKE_CHANNELS = {
   'artifacts.readPreview': 'artifacts:read-preview',
   'artifacts.reconcilePendingArtifacts': 'artifacts:reconcile-pending',
   'artifacts.resolveVersionDescriptors': 'artifacts:resolve-version-descriptors',
+  'artifacts.writeUserEditedVersion': 'artifacts:write-user-edited-version',
   'cli.getStatus': 'cli:get-status',
   'cli.install': 'cli:install',
   'cli.uninstall': 'cli:uninstall',
