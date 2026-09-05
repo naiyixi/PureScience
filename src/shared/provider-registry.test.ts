@@ -765,4 +765,45 @@ describe('provider registry', () => {
       expect(getOfficialVendor('tokenhub')?.multimodal?.multimodalModels).toEqual(['glm-5v-turbo'])
     })
   })
+
+  describe('NVIDIA Build curated provider', () => {
+    it('registers NVIDIA Build with its OpenAI-compatible route and console key page', () => {
+      expect(isOfficialVendorId('nvidia')).toBe(true)
+
+      expect(resolveVendorApiEndpoints('nvidia')).toEqual(['openai'])
+      expect(resolveVendorOpenAiBaseUrl('nvidia')).toBe('https://integrate.api.nvidia.com/v1')
+      expect(getOfficialVendor('nvidia')?.apiKeyUrl).toBe('https://build.nvidia.com/')
+      expect(getOfficialVendor('nvidia')?.modelsListUrl).toBe(
+        'https://integrate.api.nvidia.com/v1/models'
+      )
+      // The API documents no effort vocabulary — effort stays hidden, like the other gateways.
+      expect(getOfficialVendor('nvidia')?.reasoningEffort).toBe('unsupported')
+    })
+
+    it('keeps the whole NVIDIA catalog on Chat Completions (no Responses protocol)', () => {
+      expect(isVendorModelResponsesSupported('nvidia', 'nemotron-3.5-lightning')).toBe(false)
+      expect(isVendorModelResponsesSupported('nvidia', 'kimi-k3')).toBe(false)
+      expect(isVendorModelResponsesSupported('nvidia', 'deepseek-v4-flash')).toBe(false)
+    })
+
+    it('defaults to the Nemotron 3.5 Lightning flagship and carries the served open families', () => {
+      const vendor = getOfficialVendor('nvidia')
+      expect(vendor).toBeDefined()
+      // First catalog entry is the auto-selection when the provider is first added.
+      expect(defaultVendorModel('nvidia')).toBe('nemotron-3.5-lightning')
+      expect(vendor?.models.map((model) => model.id)).toEqual([
+        'nemotron-3.5-lightning',
+        'kimi-k3',
+        'deepseek-v4-flash',
+        'qwen3.8-flash',
+        'glm-5.3-flash',
+        'hy3'
+      ])
+      expect(resolveModelContextWindow('nvidia', 'nemotron-3.5-lightning')).toBe(128_000)
+      expect(resolveModelContextWindow('nvidia', 'kimi-k3')).toBe(1_000_000)
+      expect(resolveModelContextWindow('nvidia', 'glm-5.3-flash')).toBe(200_000)
+      // No model on this endpoint is documented as image-capable.
+      expect(vendor?.multimodal).toBeUndefined()
+    })
+  })
 })

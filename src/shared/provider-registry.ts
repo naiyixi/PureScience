@@ -35,6 +35,7 @@ export type OfficialVendorId =
   | 'opencodezen'
   | 'opencodego'
   | 'tokenhub'
+  | 'nvidia'
 
 // A selectable endpoint for vendors that publish more than one host — e.g. a Global vs. China region
 // (MiniMax) or a separate overseas/domestic console (GLM's Z.AI vs. BigModel). Each carries its own
@@ -940,6 +941,29 @@ export const OFFICIAL_VENDORS: OfficialVendor[] = [
     responsesModels: ['hy3', 'hy3-preview', 'deepseek-v4-pro', 'deepseek-v4-flash'],
     // Only the GLM vision variant is documented as image-capable on this endpoint.
     multimodal: { multimodalModels: ['glm-5v-turbo'] }
+  },
+  {
+    id: 'nvidia',
+    label: 'NVIDIA Build',
+    // NVIDIA's hosted open-model gateway (build.nvidia.com): OpenAI-compatible Chat Completions
+    // under /v1, keys minted on the Build console. The API documents no effort vocabulary, so
+    // effort stays hidden across the board (same posture as the other gateway vendors).
+    reasoningEffort: 'unsupported',
+    apiEndpoints: ['openai'],
+    baseUrl: 'https://integrate.api.nvidia.com',
+    openaiBaseUrl: 'https://integrate.api.nvidia.com/v1',
+    apiKeyUrl: 'https://build.nvidia.com/',
+    modelsListUrl: 'https://integrate.api.nvidia.com/v1/models',
+    // Curated catalog of open models NVIDIA hosts on Build — the latency-first Nemotron flagship
+    // first (auto-selected when the provider is added), then the other served families.
+    models: [
+      { id: 'nemotron-3.5-lightning', contextWindow: 128_000 },
+      { id: 'kimi-k3', contextWindow: 1_000_000 },
+      { id: 'deepseek-v4-flash', contextWindow: 1_000_000 },
+      { id: 'qwen3.8-flash', contextWindow: 1_000_000 },
+      { id: 'glm-5.3-flash', contextWindow: 200_000 },
+      { id: 'hy3', contextWindow: 1_000_000 }
+    ]
   }
 ]
 
