@@ -1171,6 +1171,10 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.egressDescription':
     'Steuert, auf welche Internet-Domains Notebook-Prozesse (Python, R, REPL und Bash) zugreifen dürfen. Alles andere wird von einem lokalen Filter-Proxy blockiert.',
   'settings.egressEnabled': 'Netzwerkzugriff von Prozessen einschränken',
+  'settings.egressStatusActive': 'Der Netzwerkschutz für Notebooks ist aktiv',
+  'settings.egressStatusOff':
+    'Der Netzwerkschutz ist deaktiviert — Notebook-Prozesse können jede Website erreichen',
+  'settings.egressStatusOpen': 'Netzwerkeinstellungen öffnen',
   'settings.egressEnabledHint':
     'Ein = Unterprozesse werden über einen lokalen Proxy geleitet, der nur die aktivierten Domain-Gruppen und Ihre benutzerdefinierten Domains zulässt.',
   'settings.egressGroupBioinformatics': 'Bioinformatik-Tools und -Datenbanken',
@@ -2555,7 +2559,8 @@ export const de: Partial<Record<ZhKey, string>> = {
   'artifactEdit.editAction': 'Artefaktinhalt bearbeiten',
   'artifactEdit.title': 'Artefakt bearbeiten',
   'artifactEdit.contentAria': 'Bearbeitbarer Artefaktinhalt',
-  'artifactEdit.publishHint': 'Speichern erstellt eine neue Version. v{version} bleibt unverändert.',
+  'artifactEdit.publishHint':
+    'Speichern erstellt eine neue Version. v{version} bleibt unverändert.',
   'artifactEdit.loadFailed': 'Artefaktinhalt konnte nicht zum Bearbeiten geladen werden.',
   'artifactEdit.tooLarge': 'Dieses Artefakt ist zu groß zum Bearbeiten in der Vorschau.',
   'artifactEdit.saveFailed': 'Die bearbeitete Version konnte nicht gespeichert werden.',

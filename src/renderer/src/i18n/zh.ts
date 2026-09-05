@@ -480,6 +480,9 @@ export const zh = {
   'settings.egressDescription':
     '控制笔记本中的 Python、R、REPL 与 Bash 进程可以访问哪些互联网域名，其余地址一律由本地过滤代理拦截。',
   'settings.egressEnabled': '限制子进程网络访问',
+  'settings.egressStatusActive': '笔记本网络防护已开启',
+  'settings.egressStatusOff': '网络防护未开启 — 笔记本进程可访问任意网站',
+  'settings.egressStatusOpen': '打开网络设置',
   'settings.egressEnabledHint': '开启 = 子进程经本地代理转发，仅放行已启用的域名分组与自定义域名。',
   'settings.egressGroupLiterature': '文献与仓储',
   'settings.egressGroupGenomics': '基因组与变异数据库',

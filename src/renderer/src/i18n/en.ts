@@ -500,6 +500,10 @@ export const en: Record<ZhKey, string> = {
   'settings.egressDescription':
     'Controls which internet domains notebook Python, R, REPL and Bash processes can access. Everything else is blocked by a local filtering proxy.',
   'settings.egressEnabled': 'Restrict process network access',
+  'settings.egressStatusActive': 'Notebook network protection is on',
+  'settings.egressStatusOff':
+    'Network protection is off — notebook processes can reach any website',
+  'settings.egressStatusOpen': 'Open Network settings',
   'settings.egressEnabledHint':
     'On = child processes are routed through a local proxy that only allows the enabled domain groups and your custom domains.',
   'settings.egressGroupLiterature': 'Literature & repositories',
