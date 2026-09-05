@@ -2,6 +2,7 @@ import { createHmac, randomBytes } from 'node:crypto'
 
 import { ParserEngine } from './engine'
 import { ALL_CONNECTOR_IDS, getDescriptor } from './registry'
+import { delegationRegistry } from './delegation-registry'
 import { isCustomMcpServerRouteSafe, toCustomMcpConfig } from './custom-mcp-bootstrap'
 import type { CustomMcpServerConfig } from './mcp-client-manager'
 import type { ConnectorCredentials, ToolContext, ToolDescriptor } from './types'
@@ -201,6 +202,7 @@ export class ConnectorService {
   ): Promise<unknown> {
     const descriptor = getDescriptor(connector, method)
     await this.enforceLicenseGate(connector, descriptor)
+    this.enforceDelegationGate(descriptor, context)
     const isBundled = descriptor !== undefined || ALL_CONNECTOR_IDS.includes(connector)
     if (isBundled) {
       const access = await this.resolveAccess(connector, context)
@@ -236,6 +238,19 @@ export class ConnectorService {
       throw new ConnectorGateError(
         'license_restricted',
         `"${connector}/${descriptor.id}" is restricted to non-commercial use. Switch Settings → General → Use intent to non-commercial to enable it.`
+      )
+    }
+  }
+
+  // Delegation gate (fail-closed): delegate_tasks is disabled per-session via the composer's
+  // agent controls. The registry is populated from the persisted session flag on every save
+  // (session-persistence rebase), so disabling takes effect for subsequent tool calls.
+  private enforceDelegationGate(descriptor: ToolDescriptor | undefined, context: ConnectorCallContext): void {
+    if (descriptor?.id !== 'delegate_tasks' || !context.sessionId) return
+    if (!delegationRegistry.isEnabled(context.sessionId)) {
+      throw new ConnectorGateError(
+        'delegation_disabled',
+        'delegate_tasks is disabled for this session. Turn Delegation back on in the session agent controls to delegate work.'
       )
     }
   }

@@ -36,6 +36,7 @@ import {
   OrphanLegacyUploadAuthorityMissingError,
   UnsafeLegacyUploadResidualError
 } from '../uploads/repository'
+import { delegationRegistry } from '../connectors/delegation-registry'
 
 type ProjectSessionDeletionResult =
   { status: 'completed' } | { status: 'orphan-retained'; reason: 'missing-upload-authority' }
@@ -245,6 +246,10 @@ const rebaseSafeSessionFields = (
         break
       case 'autoReviewEnabled':
         rebased.autoReviewEnabled = submitted.autoReviewEnabled
+        break
+      case 'delegationEnabled':
+        rebased.delegationEnabled = submitted.delegationEnabled !== false
+        delegationRegistry.setEnabled(authoritative.id, submitted.delegationEnabled !== false)
         break
       case 'enabledComputeHosts':
         rebased.enabledComputeHosts = submitted.enabledComputeHosts
