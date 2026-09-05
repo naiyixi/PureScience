@@ -56,7 +56,7 @@ describe('renderer contract catalog', () => {
     ).toHaveLength(69)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.remoteWeb === 'rejecting-stub')
-    ).toHaveLength(93)
+    ).toHaveLength(94)
     expect(
       paths(({ eventDeliverability }) =>
         Object.values(eventDeliverability).includes('installed-undelivered')

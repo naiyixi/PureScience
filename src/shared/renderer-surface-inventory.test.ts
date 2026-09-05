@@ -139,7 +139,7 @@ const WEB_UNAVAILABLE_CHANNELS = [
 ] as const
 
 const REMOTE_LOCAL_ONLY_CHANNELS: GroupedInventory = {
-  artifacts: ['open-file'],
+  artifacts: ['open-file', 'write-user-edited-version'],
   cli: ['install', 'uninstall'],
   compute: ['download', 'reveal-in-folder'],
   'local-fs': ['get-roots', 'list-dir', 'open-path', 'read-preview', 'reveal'],
@@ -291,7 +291,7 @@ describe('renderer surface inventory', () => {
     const expectedRemoteLocalOnly = expand(REMOTE_LOCAL_ONLY_CHANNELS, ':')
 
     expectSameSet(REMOTE_LOCAL_ONLY_RPC_CHANNELS, expectedRemoteLocalOnly)
-    expect(expectedRemoteLocalOnly).toHaveLength(93)
+    expect(expectedRemoteLocalOnly).toHaveLength(94)
     expect(
       expectedRemoteLocalOnly.every((channel) => WEB_RPC_ALLOWED_CHANNELS.includes(channel))
     ).toBe(true)
