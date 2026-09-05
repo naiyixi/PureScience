@@ -5,6 +5,7 @@
 [![Download](https://img.shields.io/badge/Download-Latest%20Release-2f9e44?style=for-the-badge&logo=github)](https://github.com/naiyixi/PureScience/releases/latest)
 [![Version](https://img.shields.io/github/v/release/naiyixi/PureScience?label=Version&style=for-the-badge&color=4dabf7)](https://github.com/naiyixi/PureScience/releases/latest)
 [![License](https://img.shields.io/badge/License-Apache--2.0-4dabf7?style=for-the-badge)](LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-macOS%20(Apple%20Silicon)-2f9e44?style=for-the-badge)](https://github.com/naiyixi/PureScience/releases/latest)
 
 **PureScience is an open-source, local-first, model-agnostic, self-hosted AI research workbench for reproducible scientific discovery.** Built for researchers, it runs on your own computer — currently shipped for **macOS (Apple Silicon)**, with Windows and Linux releases in progress. Create a project, describe a task in plain language, and let the AI agent read files, run Python and R code, search the web, call scientific data connectors, and return reproducible reports, tables, and figures linked to an inspectable activity history in one workspace.
 
@@ -297,6 +298,8 @@ PureScience is available as a released desktop application and is actively devel
 
 Deterministic reconstruction, portable environment restoration, and full-fidelity session replay remain on the roadmap.
 
+Independent acceptance runs and re-verification notes are summarized in the [benchmark notes](docs/BENCHMARK.md).
+
 For version-specific features, provider and catalog changes, platform packaging, and recent fixes, use the [latest release notes](https://github.com/naiyixi/PureScience/releases/latest) and the installed app. For a maintained shipped/partial/planned breakdown, see the [Capability Map](ROADMAP.md#capability-map).
 
 PureScience assists execution and record-keeping; researchers remain responsible for methods, interpretation, privacy, and scientific validity.
@@ -379,6 +382,7 @@ a downstream derivative of any other product.
 - Website: [purescience.work](https://purescience.work)
 - Changelog (release code names): [CHANGELOG.md](CHANGELOG.md)
 - GitHub: [naiyixi/PureScience](https://github.com/naiyixi/PureScience)
+- Cite / archive with a DOI: [Zenodo archiving runbook](docs/ZENODO-ARCHIVE.md)
 
 ## Roadmap
 
