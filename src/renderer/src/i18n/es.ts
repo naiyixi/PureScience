@@ -2035,7 +2035,7 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.updateCheckFailed': 'Falló la comprobación de actualizaciones',
   'settings.autoApplyUpdate': 'Reiniciar automáticamente para completar la actualización',
   'settings.autoApplyUpdateHint':
-    'Cuando una actualización termine de descargarse, PureScience se reinicia solo para instalarla. Se aplica a las actualizaciones in situ (Windows/Linux); en macOS se abre el instalador para que lo ejecutes.',
+    'Cuando una actualización termine de descargarse, PureScience se reinicia solo para instalarla. Windows, Linux y las compilaciones estables de macOS firmadas se actualizan in situ; las compilaciones locales, nocturnas o sin firmar (y el método manual de reinstalación) abren el instalador descargado para que lo ejecutes.',
   'settings.updateDownloaded': 'Actualización descargada: abre el instalador para terminar',
   'settings.updateReady': 'Actualización lista',
   'settings.updatedToday': 'Actualizado hoy',

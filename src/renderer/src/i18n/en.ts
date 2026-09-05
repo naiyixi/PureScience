@@ -2497,7 +2497,7 @@ export const en: Record<ZhKey, string> = {
   'settings.askForApproval': 'Ask for approval',
   'settings.autoApplyUpdate': 'Restart automatically to finish updates',
   'settings.autoApplyUpdateHint':
-    'When an update has finished downloading, PureScience restarts itself to install it. Applies to in-place updates (Windows/Linux); the macOS build still opens the installer for you to run.',
+    'When an update has finished downloading, PureScience restarts itself to install it — Windows, Linux, and signed stable macOS builds all update in place. Local, nightly, and unsigned builds (and the manual-reinstall fallback) open the downloaded installer for you to run.',
   'settings.updateDownloaded': 'Update downloaded — open the installer to finish',
   'settings.fileOperationsHint': 'Approved reads, writes, moves, and deletions',
   'settings.shared': 'Shared',

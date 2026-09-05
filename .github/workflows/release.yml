@@ -245,6 +245,13 @@ jobs:
             cat SHA256SUMS.txt
           fi
 
+      # The client manifest the in-app UpdateService polls (releases/latest/download/version.json).
+      # Without it every manifest-flow client (mac local/nightly/unsigned + fallback) sees
+      # "Manifest fetch failed: 404" on check-for-updates; stable in-place clients use the
+      # electron-updater feeds uploaded below instead.
+      - name: Generate version.json client manifest
+        run: node scripts/generate-version-manifest.mjs artifacts
+
       # Sign a SLSA build-provenance attestation for the exact installer bytes about to be published,
       # so users can prove each download was built by this workflow from this commit (verify with
       # `gh attestation verify <file> --repo <owner>/<repo>`). SHA256SUMS.txt is excluded — it's a
@@ -281,6 +288,7 @@ jobs:
             artifacts/*.deb
             artifacts/SHA256SUMS.txt
             artifacts/RELEASE-CERTIFICATION.json
+            artifacts/version.json
             artifacts/latest.yml
             artifacts/latest-linux.yml
             artifacts/*-mac.yml
