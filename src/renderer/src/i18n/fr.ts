@@ -2031,6 +2031,9 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.unknownError': 'Erreur inconnue',
   'settings.untitledSpecialist': 'Spécialiste sans titre',
   'settings.updateCheckFailed': 'Échec de la vérification de mise à jour',
+  'settings.autoApplyUpdate': 'Redémarrer automatiquement pour terminer les mises à jour',
+  'settings.autoApplyUpdateHint':
+    'Lorsqu’une mise à jour est téléchargée, PureScience redémarre automatiquement pour l’installer. S’applique aux mises à jour sur place (Windows/Linux) ; la version macOS ouvre toujours le programme d’installation.',
   'settings.updateDownloaded': 'Mise à jour téléchargée — ouvrez l’installateur pour terminer',
   'settings.updateReady': 'Mise à jour prête',
   'settings.updatedToday': 'Mis à jour aujourd’hui',

@@ -214,6 +214,9 @@ export type StoredSettings = {
   // Outbound proxy for child processes (notebook/repl/shell): 'system' (default) or a
   // manual proxy. Absent means follow the system settings.
   proxy?: ProxySettings
+  // Opt-in auto-apply: when an in-place (restart-kind) update finishes downloading, restart the
+  // app automatically to install it. Absent/false = manual (user clicks to apply).
+  autoApplyUpdate?: boolean
   // External compute endpoints (Modal serverless GPU, NVIDIA NIM inference). Absent means none.
   externalComputeEndpoints?: ExternalComputeEndpoint[]
   // Absolute path of the relocatable data root (artifacts/notebooks/runtime/uploads). Absent means

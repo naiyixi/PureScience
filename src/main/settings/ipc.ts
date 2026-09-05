@@ -303,6 +303,10 @@ const registerSettingsIpcHandlers = ({
   ipcMainHandle('settings:set-egress', (_event, egress: EgressSettings) =>
     service.setEgress(egress)
   )
+  ipcMainHandle('settings:get-auto-apply', () => service.getAutoApply())
+  ipcMainHandle('settings:set-auto-apply', (_event, enabled: boolean) =>
+    service.setAutoApply(enabled)
+  )
   ipcMainHandle('settings:get-proxy', () => service.getProxy())
   ipcMainHandle('settings:set-proxy', (_event, proxy: ProxySettings) => service.setProxy(proxy))
 

@@ -526,6 +526,8 @@ export interface PureScienceAPI {
     testCredential(request: TestCredentialRequest): Promise<CredentialTestResult>
     getEgress(): Promise<EgressSettings | undefined>
     setEgress(egress: EgressSettings): Promise<EgressSettings>
+    getAutoApply(): Promise<boolean>
+    setAutoApply(enabled: boolean): Promise<boolean>
     getProxy(): Promise<ProxySettings | undefined>
     setProxy(proxy: ProxySettings): Promise<ProxySettings | undefined>
     getExternalComputeEndpoints(): Promise<ExternalComputeEndpoint[]>

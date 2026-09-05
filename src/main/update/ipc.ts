@@ -14,18 +14,44 @@ type UpdateCommandOwner = Readonly<{
   apply: () => Promise<UpdateStatus>
 }>
 
-const createUpdateCommandOwner = (strategy: UpdateStrategy): UpdateCommandOwner => ({
-  getAppInfo: (): AppInfo => ({
-    name: APP.name,
-    version: strategy.getStatus().current,
-    copyright: APP.copyright
-  }),
-  getStatus: () => strategy.getStatus(),
-  check: () => strategy.check(),
-  download: () => strategy.download(),
-  cancel: () => strategy.cancel(),
-  apply: () => strategy.apply()
-})
+export type UpdateCommandOptions = {
+  // When an in-place (restart-kind) download completes and this resolves true, apply the update
+  // automatically instead of waiting for the user's click — the Settings → General auto-apply
+  // opt-in (absent = never auto-apply). The installer (mac manual) kind is never auto-applied.
+  isAutoApplyEnabled?: () => Promise<boolean>
+}
+
+const createUpdateCommandOwner = (
+  strategy: UpdateStrategy,
+  options: UpdateCommandOptions = {}
+): UpdateCommandOwner => {
+  const applyIfAutoRequested = async (next: UpdateStatus): Promise<UpdateStatus> => {
+    if (
+      next.state === 'ready' &&
+      next.applyKind === 'restart' &&
+      options.isAutoApplyEnabled &&
+      (await options.isAutoApplyEnabled())
+    ) {
+      return strategy.apply()
+    }
+    return next
+  }
+
+  return {
+    getAppInfo: (): AppInfo => ({
+      name: APP.name,
+      version: strategy.getStatus().current,
+      copyright: APP.copyright
+    }),
+    getStatus: () => strategy.getStatus(),
+    check: () => strategy.check(),
+    // A finished download is where the opt-in auto-restart hooks in: with the flag on, "ready" is
+    // only a momentary broadcast before apply() takes over and the app restarts to install.
+    download: () => strategy.download().then(applyIfAutoRequested),
+    cancel: () => strategy.cancel(),
+    apply: () => strategy.apply()
+  }
+}
 
 // Registers the renderer-callable update commands. Returns the strategy so the scheduler can drive it.
 export const registerUpdateIpcHandlers = (
@@ -41,5 +67,5 @@ export const registerUpdateIpcHandlers = (
   return strategy
 }
 
-export type { UpdateCommandOwner }
 export { createUpdateCommandOwner }
+export type { UpdateCommandOwner }

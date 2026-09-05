@@ -2485,6 +2485,9 @@ export const en: Record<ZhKey, string> = {
   'settings.skillIdFolderHint':
     'Used as the folder name — lowercase a–z, 0–9, hyphens. Locked after creation.',
   'settings.askForApproval': 'Ask for approval',
+  'settings.autoApplyUpdate': 'Restart automatically to finish updates',
+  'settings.autoApplyUpdateHint':
+    'When an update has finished downloading, PureScience restarts itself to install it. Applies to in-place updates (Windows/Linux); the macOS build still opens the installer for you to run.',
   'settings.updateDownloaded': 'Update downloaded — open the installer to finish',
   'settings.fileOperationsHint': 'Approved reads, writes, moves, and deletions',
   'settings.shared': 'Shared',

@@ -1997,6 +1997,9 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.unknownError': 'Неизвестная ошибка',
   'settings.untitledSpecialist': 'Специалист без названия',
   'settings.updateCheckFailed': 'Проверка обновления не удалась',
+  'settings.autoApplyUpdate': 'Автоматически перезапускать для завершения обновления',
+  'settings.autoApplyUpdateHint':
+    'Когда обновление завершит загрузку, PureScience автоматически перезапустится для установки. Действует для обновлений на месте (Windows/Linux); в macOS по-прежнему открывается установщик для ручного запуска.',
   'settings.updateDownloaded': 'Обновление скачано — откройте установщик, чтобы завершить',
   'settings.updateReady': 'Обновление готово',
   'settings.updatedToday': 'Обновлено сегодня',

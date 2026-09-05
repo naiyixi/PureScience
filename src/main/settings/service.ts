@@ -609,6 +609,18 @@ class SettingsService {
     return this.getSettingsView()
   }
 
+  // Reads the persisted update auto-apply opt-in (absent = false = the user applies manually).
+  async getAutoApply(): Promise<boolean> {
+    return (await this.repository.getSettings()).autoApplyUpdate === true
+  }
+
+  // Persists the update auto-apply opt-in and returns the effective boolean. Called from the
+  // Settings → General toggle; the update flow re-reads it before deciding to auto-restart.
+  async setAutoApply(enabled: boolean): Promise<boolean> {
+    await this.repository.setAutoApplyUpdate(enabled)
+    return enabled
+  }
+
   // Persists the network egress allowlist and applies it to the child-process proxy runtime, so a
   // settings change takes effect for subsequently spawned kernels/shells immediately.
   async setEgress(egress: EgressSettings): Promise<EgressSettings> {

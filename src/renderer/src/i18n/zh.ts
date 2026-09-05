@@ -2340,6 +2340,9 @@ export const zh = {
   'settings.somethingWentWrong': '出错了。请关闭后重试。',
   'settings.skillIdFolderHint': '用作文件夹名称——小写 a–z、0–9、连字符。创建后锁定。',
   'settings.askForApproval': '请求批准',
+  'settings.autoApplyUpdate': '下载完成后自动重启应用',
+  'settings.autoApplyUpdateHint':
+    '更新下载完成后，PureScience 自动重启以完成安装。适用于就地更新（Windows/Linux）；macOS 版仍会打开安装包由你手动运行。',
   'settings.updateDownloaded': '更新已下载——打开安装程序以完成',
   'settings.fileOperationsHint': '已批准的读取、写入、移动和删除',
   'settings.shared': '共享',
