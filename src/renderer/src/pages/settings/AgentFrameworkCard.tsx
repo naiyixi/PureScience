@@ -263,7 +263,7 @@ const AgentFrameworkCard = ({
               ) : (
                 <AgentInstallSourceMenu
                   name={name}
-                  label={repair ? 'Repair' : 'Install'}
+                  label={repair ? t('repair.repairAria') : t('settings.install')}
                   sources={installSources}
                   installing={installing}
                   disabled={installLocked}

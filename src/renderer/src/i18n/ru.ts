@@ -562,6 +562,7 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'previewSurface.thisComputer': 'Этот компьютер',
   'providerForm.apiFormat': 'Формат API',
   'providerForm.apiKey': 'Ключ API',
+  'providerForm.getApiKey': 'Получить ключ API',
   'providerForm.claudeAuthentication': 'Аутентификация Claude',
   'providerForm.codexAuthentication': 'Аутентификация Codex',
   'providerForm.imageInput': 'Ввод изображений',

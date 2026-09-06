@@ -560,6 +560,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'previewSurface.thisComputer': 'このコンピュータ',
   'providerForm.apiFormat': 'API 形式',
   'providerForm.apiKey': 'API キー',
+  'providerForm.getApiKey': 'API キーを取得',
   'providerForm.claudeAuthentication': 'Claude 認証',
   'providerForm.codexAuthentication': 'Codex 認証',
   'providerForm.imageInput': '画像入力',

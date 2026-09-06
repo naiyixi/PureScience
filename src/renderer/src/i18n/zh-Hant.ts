@@ -528,6 +528,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'previewSurface.thisComputer': '此電腦',
   'providerForm.apiFormat': 'API 格式',
   'providerForm.apiKey': 'API 金鑰',
+  'providerForm.getApiKey': '取得 API 金鑰',
   'providerForm.claudeAuthentication': 'Claude 驗證',
   'providerForm.codexAuthentication': 'Codex 驗證',
   'providerForm.imageInput': '影像輸入',

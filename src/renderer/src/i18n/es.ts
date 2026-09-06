@@ -569,6 +569,7 @@ export const es: Partial<Record<ZhKey, string>> = {
   'previewSurface.thisComputer': 'Esta computadora',
   'providerForm.apiFormat': 'Formato de API',
   'providerForm.apiKey': 'Clave de API',
+  'providerForm.getApiKey': 'Obtener una clave de API',
   'providerForm.claudeAuthentication': 'Autenticación de Claude',
   'providerForm.codexAuthentication': 'Autenticación de Codex',
   'providerForm.imageInput': 'Entrada de imágenes',

@@ -1705,6 +1705,7 @@ export const en: Record<ZhKey, string> = {
   'fileBrowser.directoryPath': 'Directory path',
   'fileBrowser.refreshDirectory': 'Refresh directory',
   'providerForm.apiKey': 'API key',
+  'providerForm.getApiKey': 'Get an API key',
   'providerForm.providerType': 'Provider type',
   'providerForm.codexAuthentication': 'Codex authentication',
   'providerForm.claudeAuthentication': 'Claude authentication',

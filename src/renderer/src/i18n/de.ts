@@ -577,6 +577,7 @@ export const de: Partial<Record<ZhKey, string>> = {
   'previewSurface.thisComputer': 'Dieser Computer',
   'providerForm.apiFormat': 'API-Format',
   'providerForm.apiKey': 'API-Schlüssel',
+  'providerForm.getApiKey': 'API-Schlüssel abrufen',
   'providerForm.claudeAuthentication': 'Claude-Authentifizierung',
   'providerForm.codexAuthentication': 'Codex-Authentifizierung',
   'providerForm.imageInput': 'Bildeingabe',

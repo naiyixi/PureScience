@@ -13,7 +13,7 @@ import type { ClaudeInstallSource, ClaudeInstallSourceInfo } from '../../../../s
 
 type AgentInstallSourceMenuProps = {
   name: string
-  label: 'Install' | 'Repair'
+  label: string
   sources: ClaudeInstallSourceInfo[]
   installing: boolean
   disabled: boolean

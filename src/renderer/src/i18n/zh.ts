@@ -1611,6 +1611,7 @@ export const zh = {
   'fileBrowser.directoryPath': '目录路径',
   'fileBrowser.refreshDirectory': '刷新目录',
   'providerForm.apiKey': 'API 密钥',
+  'providerForm.getApiKey': '获取 API 密钥',
   'providerForm.providerType': '提供商类型',
   'providerForm.codexAuthentication': 'Codex 认证',
   'providerForm.claudeAuthentication': 'Claude 认证',

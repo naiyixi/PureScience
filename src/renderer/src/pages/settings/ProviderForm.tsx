@@ -165,7 +165,7 @@ const ProviderForm = ({
         </div>
         {apiKeyUrl ? (
           <ExternalTextLink href={apiKeyUrl} className="text-xs">
-            Get an {t('providerForm.apiKey')}
+            {t('providerForm.getApiKey')}
           </ExternalTextLink>
         ) : null}
       </div>
@@ -249,7 +249,7 @@ const ProviderForm = ({
       {!isCodexSubscription && !isClaudeSubscription ? (
         <div className="space-y-1.5">
           <label className={fieldLabelClassName} htmlFor="provider-name">
-            Name
+            {t('common.name')}
           </label>
           <Input
             id="provider-name"

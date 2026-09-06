@@ -554,6 +554,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'previewSurface.thisComputer': '이 컴퓨터',
   'providerForm.apiFormat': 'API 형식',
   'providerForm.apiKey': 'API 키',
+  'providerForm.getApiKey': 'API 키 가져오기',
   'providerForm.claudeAuthentication': 'Claude 인증',
   'providerForm.codexAuthentication': 'Codex 인증',
   'providerForm.imageInput': '이미지 입력',
