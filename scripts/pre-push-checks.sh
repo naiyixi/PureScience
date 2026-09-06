@@ -92,6 +92,16 @@ else
   warn "gh 未安装，跳过发布状态检查"
 fi
 
+# ---------- 5. README bilingual sync anchors (hard fail) ----------
+say "README 双语同步核对"
+if node scripts/check-readme-sync.mjs >/tmp/readme-sync.log 2>&1; then
+  ok "README 头部锚点双语一致"
+else
+  cat /tmp/readme-sync.log | sed 's/^/      /'
+  bad "README 双语头部不一致（徽章/引言/横幅/DOI 需逐字同步）"
+  FAIL=1
+fi
+
 # ---------- summary ----------
 echo
 if [[ $FAIL -eq 1 ]]; then
