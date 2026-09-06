@@ -93,21 +93,24 @@ const LanguageProvider = ({ children }: { children: ReactNode }): React.JSX.Elem
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>
 }
 
+const FALLBACK_LANGUAGE_VALUE: LanguageContextValue = {
+  lang: 'en',
+  preference: 'en',
+  setLang: () => {},
+  t: (key) => dictionaries.en[key] ?? key
+}
+
 const useLanguage = (): LanguageContextValue => {
   // 某些测试/渲染环境 (如 react 双实例或非 jsdom 渲染) 会让 useContext 抛错; 容错回退英文,
-  // 真实 app 始终有 LanguageProvider。
+  // 真实 app 始终有 LanguageProvider。回退值是模块级单例：t 在渲染间引用稳定，hooks 的依赖
+  // 数组可以安全地包含它（若每渲染新建 t，任何以 t 为依赖的 effect/callback 都会每渲染重跑）。
   try {
     const ctx = useContext(LanguageContext)
     if (ctx) return ctx
   } catch {
     // fall through to the English default
   }
-  return {
-    lang: 'en',
-    preference: 'en',
-    setLang: () => {},
-    t: (key) => dictionaries.en[key] ?? key
-  }
+  return FALLBACK_LANGUAGE_VALUE
 }
 
 // LanguageProvider is a context provider (JSX, must live in a .tsx); useLanguage is its public
