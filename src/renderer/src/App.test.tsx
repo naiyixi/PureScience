@@ -570,7 +570,7 @@ describe('App startup routing', () => {
     )
     expect(logo).not.toBeNull()
     expect(logo?.getAttribute('aria-hidden')).toBe('true')
-    expect(container.textContent).toContain('Loading settings')
+    expect(container.textContent).toContain('Starting PureScience')
     expect(mocks.syncWindowFindAppearance).toHaveBeenCalledTimes(1)
   })
 
