@@ -114,12 +114,18 @@ const TagsPanel = ({ onOpenResource }: TagsPanelProps): React.JSX.Element => {
                     className={cn(
                       'group flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-2 text-left text-sm transition-colors',
                       isActive
-                        ? 'bg-muted font-medium text-foreground'
+                        ? 'bg-primary/10 font-medium text-foreground'
                         : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                     )}
                     onClick={() => setSelectedTag(summary.name)}
                   >
-                    <TagIcon className="size-3.5 shrink-0" aria-hidden="true" />
+                    <TagIcon
+                      className={cn(
+                        'size-3.5 shrink-0',
+                        isActive ? 'text-primary' : 'text-muted-foreground'
+                      )}
+                      aria-hidden="true"
+                    />
                     <span className="min-w-0 flex-1 truncate">{summary.name}</span>
                     <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
                       {summary.resourceCount}

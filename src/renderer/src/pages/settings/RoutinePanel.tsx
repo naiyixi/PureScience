@@ -120,7 +120,12 @@ export const RoutinePanel = (): React.JSX.Element => {
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">{t('settings.routineDesc')}</p>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={() => void load()} aria-label={t('settings.routineRefresh')}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => void load()}
+            aria-label={t('settings.routineRefresh')}
+          >
             <RefreshCw className="h-4 w-4" />
           </Button>
           <Button size="sm" onClick={() => setShowForm((open) => !open)}>
@@ -199,57 +204,63 @@ export const RoutinePanel = (): React.JSX.Element => {
           <p className="mt-1 text-xs text-muted-foreground">{t('settings.routineEmptyHint')}</p>
         </div>
       ) : (
-        <ul className="space-y-2">
-          {schedules.map((schedule) => (
-            <li key={schedule.id} className="flex items-start justify-between gap-3 rounded-lg border p-3">
-              <div className="min-w-0 space-y-1">
-                <div className="flex items-center gap-2">
-                  <span
-                    className={cn(
-                      'h-2 w-2 shrink-0 rounded-full',
-                      schedule.enabled ? 'bg-emerald-500' : 'bg-muted-foreground/40'
-                    )}
-                  />
-                  <span className="truncate text-sm font-medium">
-                    {schedule.label ?? schedule.instruction}
-                  </span>
-                  {schedule.pausedReason === 'stuck' ? (
-                    <span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-xs text-amber-600">
-                      {t('settings.routineStuck')}
+        <div className="overflow-hidden rounded-xl border border-border bg-bg-10">
+          <ul className="divide-y divide-border">
+            {schedules.map((schedule) => (
+              <li key={schedule.id} className="flex items-start justify-between gap-3 px-3 py-2.5">
+                <div className="min-w-0 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={cn(
+                        'h-2 w-2 shrink-0 rounded-full',
+                        schedule.enabled ? 'bg-success-000' : 'bg-muted-foreground/30'
+                      )}
+                    />
+                    <span className="truncate text-sm font-medium">
+                      {schedule.label ?? schedule.instruction}
                     </span>
-                  ) : null}
+                    {schedule.pausedReason === 'stuck' ? (
+                      <span className="rounded bg-accent/40 px-1.5 py-0.5 text-xs text-accent-foreground">
+                        {t('settings.routineStuck')}
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="truncate text-xs text-muted-foreground">{schedule.instruction}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {t('settings.routineEvery')} {schedule.everyMinutes}{' '}
+                    {t('settings.routineMinutes')} · {formatNextDue(schedule)} ·{' '}
+                    {t('settings.routineTicks')}: {schedule.tickCount}
+                    {schedule.missedTicks > 0 ? ` (${schedule.missedTicks} ✕)` : ''}
+                  </p>
                 </div>
-                <p className="truncate text-xs text-muted-foreground">
-                  {schedule.instruction}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {t('settings.routineEvery')} {schedule.everyMinutes}{' '}
-                  {t('settings.routineMinutes')} · {formatNextDue(schedule)} ·{' '}
-                  {t('settings.routineTicks')}: {schedule.tickCount}
-                  {schedule.missedTicks > 0 ? ` (${schedule.missedTicks} ✕)` : ''}
-                </p>
-              </div>
-              <div className="flex shrink-0 items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label={schedule.enabled ? t('settings.routinePause') : t('settings.routineResume')}
-                  onClick={() => void toggle(schedule)}
-                >
-                  {schedule.enabled ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label={t('settings.routineDelete')}
-                  onClick={() => void remove(schedule)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </li>
-          ))}
-        </ul>
+                <div className="flex shrink-0 items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={
+                      schedule.enabled ? t('settings.routinePause') : t('settings.routineResume')
+                    }
+                    onClick={() => void toggle(schedule)}
+                  >
+                    {schedule.enabled ? (
+                      <Pause className="h-4 w-4" />
+                    ) : (
+                      <Play className="h-4 w-4" />
+                    )}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={t('settings.routineDelete')}
+                    onClick={() => void remove(schedule)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   )

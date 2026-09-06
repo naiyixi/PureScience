@@ -49,7 +49,12 @@ export const EndpointPanel = (): React.JSX.Element => {
 
   const nameValid = /^[a-z0-9-]{1,64}$/.test(name.trim())
   const urlValid = /^http:\/\/127\.0\.0\.1:\d{1,5}(\/.*)?$/.test(url.trim())
-  const formValid = nameValid && urlValid && skillName.trim().length > 0 && startScript.trim().length > 0 && stopScript.trim().length > 0
+  const formValid =
+    nameValid &&
+    urlValid &&
+    skillName.trim().length > 0 &&
+    startScript.trim().length > 0 &&
+    stopScript.trim().length > 0
 
   const register = useCallback(async (): Promise<void> => {
     if (!formValid || saving) return
@@ -81,7 +86,18 @@ export const EndpointPanel = (): React.JSX.Element => {
     } finally {
       setSaving(false)
     }
-  }, [formValid, saving, name, url, skillName, startScript, stopScript, livePath, credentialName, load])
+  }, [
+    formValid,
+    saving,
+    name,
+    url,
+    skillName,
+    startScript,
+    stopScript,
+    livePath,
+    credentialName,
+    load
+  ])
 
   const toggle = useCallback(
     async (endpoint: ManagedEndpoint): Promise<void> => {
@@ -137,7 +153,12 @@ export const EndpointPanel = (): React.JSX.Element => {
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">{t('settings.endpointsDesc')}</p>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={() => void load()} aria-label={t('settings.endpointsRefresh')}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => void load()}
+            aria-label={t('settings.endpointsRefresh')}
+          >
             <RefreshCw className="h-4 w-4" />
           </Button>
           <Button size="sm" onClick={() => setShowForm((open) => !open)}>
@@ -260,67 +281,72 @@ export const EndpointPanel = (): React.JSX.Element => {
           <p className="mt-1 text-xs text-muted-foreground">{t('settings.endpointsEmptyHint')}</p>
         </div>
       ) : (
-        <ul className="space-y-2">
-          {endpoints.map((endpoint) => (
-            <li key={endpoint.name} className="flex items-start justify-between gap-3 rounded-lg border p-3">
-              <div className="min-w-0 space-y-1">
-                <div className="flex items-center gap-2">
-                  <span
-                    className={cn(
-                      'h-2 w-2 shrink-0 rounded-full',
-                      endpoint.state === 'live'
-                        ? 'bg-emerald-500'
-                        : endpoint.state === 'starting'
-                          ? 'bg-amber-500 animate-pulse'
-                          : endpoint.state === 'failed'
-                            ? 'bg-red-500'
-                            : 'bg-muted-foreground/40'
-                    )}
-                  />
-                  <span className="truncate text-sm font-medium">{endpoint.name}</span>
-                  <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
-                    {stateLabel(endpoint)}
-                  </span>
+        <div className="overflow-hidden rounded-xl border border-border bg-bg-10">
+          <ul className="divide-y divide-border">
+            {endpoints.map((endpoint) => (
+              <li
+                key={endpoint.name}
+                className="flex items-start justify-between gap-3 px-3 py-2.5"
+              >
+                <div className="min-w-0 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={cn(
+                        'h-2 w-2 shrink-0 rounded-full',
+                        endpoint.state === 'live'
+                          ? 'bg-success-000'
+                          : endpoint.state === 'starting'
+                            ? 'bg-accent animate-pulse'
+                            : endpoint.state === 'failed'
+                              ? 'bg-danger-000'
+                              : 'bg-muted-foreground/30'
+                      )}
+                    />
+                    <span className="truncate text-sm font-medium">{endpoint.name}</span>
+                    <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                      {stateLabel(endpoint)}
+                    </span>
+                  </div>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {endpoint.url}
+                    {endpoint.livePath} · {t('settings.endpointsSkill')}: {endpoint.skillName}
+                  </p>
+                  {endpoint.lastError ? (
+                    <p className="truncate text-xs text-destructive">{endpoint.lastError}</p>
+                  ) : null}
                 </div>
-                <p className="truncate text-xs text-muted-foreground">
-                  {endpoint.url}
-                  {endpoint.livePath} · {t('settings.endpointsSkill')}: {endpoint.skillName}
-                </p>
-                {endpoint.lastError ? (
-                  <p className="truncate text-xs text-destructive">{endpoint.lastError}</p>
-                ) : null}
-              </div>
-              <div className="flex shrink-0 items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  disabled={busyName === endpoint.name}
-                  aria-label={
-                    endpoint.state === 'live' || endpoint.state === 'starting'
-                      ? t('settings.endpointsStop')
-                      : t('settings.endpointsStart')
-                  }
-                  onClick={() => void toggle(endpoint)}
-                >
-                  {endpoint.state === 'live' || endpoint.state === 'starting' ? (
-                    <Pause className="h-4 w-4" />
-                  ) : (
-                    <Play className="h-4 w-4" />
-                  )}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  disabled={busyName === endpoint.name}
-                  aria-label={t('settings.endpointsDelete')}
-                  onClick={() => void remove(endpoint)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </li>
-          ))}
-        </ul>
+                <div className="flex shrink-0 items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    disabled={busyName === endpoint.name}
+                    aria-label={
+                      endpoint.state === 'live' || endpoint.state === 'starting'
+                        ? t('settings.endpointsStop')
+                        : t('settings.endpointsStart')
+                    }
+                    onClick={() => void toggle(endpoint)}
+                  >
+                    {endpoint.state === 'live' || endpoint.state === 'starting' ? (
+                      <Pause className="h-4 w-4" />
+                    ) : (
+                      <Play className="h-4 w-4" />
+                    )}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    disabled={busyName === endpoint.name}
+                    aria-label={t('settings.endpointsDelete')}
+                    onClick={() => void remove(endpoint)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   )
