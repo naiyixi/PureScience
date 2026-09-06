@@ -368,6 +368,14 @@ export const fr: Partial<Record<ZhKey, string>> = {
     'Impossible de déterminer l’exécution du producteur pour cette version.',
   'artifact.partialCaptureDetails': 'Détails de capture partielle',
   'closeConfirm.minimizeToTray': 'Réduire dans la barre d’état',
+  'closeConfirm.quitTitle': 'Quitter PureScience ?',
+  'closeConfirm.quitDescription':
+    'Un travail est encore en cours et sera interrompu si vous quittez.',
+  'closeConfirm.minimizeTitle': 'Réduire ou quitter ?',
+  'closeConfirm.minimizeDescription':
+    'L’application peut rester dans la barre d’état, ou vous pouvez quitter.',
+  'closeConfirm.dontAskAgain': 'Ne plus demander',
+  'closeConfirm.quit': 'Quitter',
   'connectorApproval.thisProject': 'Ce projet',
   'connectorApproval.thisSession': 'Cette session',
   'connectorExport.configDiagnostics': 'Diagnostics de configuration',

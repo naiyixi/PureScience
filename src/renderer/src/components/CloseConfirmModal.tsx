@@ -63,10 +63,10 @@ export const CloseConfirmModal = ({
 
   const isQuitVariant = dialogRequest.variant === 'quit'
   const hasSessions = dialogRequest.sessions.length > 0
-  const title = isQuitVariant ? 'Quit PureScience?' : 'Minimize or quit?'
+  const title = isQuitVariant ? t('closeConfirm.quitTitle') : t('closeConfirm.minimizeTitle')
   const description = isQuitVariant
-    ? 'Work is still running and will be interrupted if you quit.'
-    : 'This app can keep running in the tray, or you can quit.'
+    ? t('closeConfirm.quitDescription')
+    : t('closeConfirm.minimizeDescription')
 
   return (
     <AlertDialog.Root
@@ -125,14 +125,14 @@ export const CloseConfirmModal = ({
                 onChange={(event) => setRemember(event.target.checked)}
                 className="size-4 shrink-0 accent-primary"
               />
-              <span>Don&apos;t ask again</span>
+              <span>{t('closeConfirm.dontAskAgain')}</span>
             </label>
           ) : null}
           <div className="mt-4 flex justify-end gap-2">
             {isQuitVariant ? (
               <AlertDialog.Cancel asChild>
                 <Button type="button" variant="ghost">
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
               </AlertDialog.Cancel>
             ) : (
@@ -141,7 +141,7 @@ export const CloseConfirmModal = ({
               </Button>
             )}
             <Button type="button" onClick={() => reply('quit')}>
-              Quit
+              {t('closeConfirm.quit')}
             </Button>
           </div>
         </AlertDialog.Content>

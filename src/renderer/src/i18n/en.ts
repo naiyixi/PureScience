@@ -1497,6 +1497,12 @@ export const en: Record<ZhKey, string> = {
   'modelPicker.bridgeUnsupportedReason':
     '{model} is not supported over the Codex Chat Completions bridge.',
   'closeConfirm.minimizeToTray': 'Minimize to tray',
+  'closeConfirm.quitTitle': 'Quit PureScience?',
+  'closeConfirm.quitDescription': 'Work is still running and will be interrupted if you quit.',
+  'closeConfirm.minimizeTitle': 'Minimize or quit?',
+  'closeConfirm.minimizeDescription': 'This app can keep running in the tray, or you can quit.',
+  'closeConfirm.dontAskAgain': 'Don’t ask again',
+  'closeConfirm.quit': 'Quit',
   'ui.theagentreadsthesefindingsan':
     'The agent reads these findings and self-corrects in its next message.',
   'lifecycleToast.sessionCreatedExternally': 'Session created externally',
