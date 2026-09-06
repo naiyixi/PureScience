@@ -431,25 +431,27 @@ export const CredentialsPanel = (): React.JSX.Element => {
         {entries.length === 0 ? (
           <>
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 text-[13px] text-text-100">
+              <div className="flex items-center gap-2 text-sm text-foreground">
                 <span className="truncate font-medium">{serviceLabel(t, serviceId)}</span>
                 <span className="rounded-full bg-bg-200 px-2 py-0.5 text-[11px] text-text-300">
                   {t('settings.credentialsNotConfigured')}
                 </span>
               </div>
-              <div className="mt-0.5 text-[12px] text-text-300">
+              <div className="mt-0.5 text-xs text-text-200">
                 {t('settings.credentialsEmpty')}
               </div>
             </div>
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               data-slot="credential-add"
-              className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[12px] text-text-200 outline-none hover:bg-bg-200 hover:text-text-100 focus-visible:ring-2 focus-visible:ring-ring/50"
+              className="h-7 shrink-0 gap-1 border-primary/40 px-2.5 text-xs text-primary hover:bg-primary/5 hover:text-primary"
               onClick={() => setEditing({ kind: 'new', serviceId })}
             >
               <Plus className="size-3.5" aria-hidden="true" />
               {t('settings.credentialsEdit')}
-            </button>
+            </Button>
           </>
         ) : (
           <div className="min-w-0 flex-1 space-y-1">

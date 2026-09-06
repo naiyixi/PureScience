@@ -244,7 +244,7 @@ const MemoryCategoryList = ({
       <div className="border-t border-border p-2">
         <button
           type="button"
-          className="flex w-full items-center gap-1 rounded-md px-2 py-1.5 text-[12px] text-text-200 outline-none hover:bg-bg-100 hover:text-text-100 focus-visible:ring-2 focus-visible:ring-ring/50"
+          className="flex w-full items-center gap-1 rounded-md px-2 py-1.5 text-[12px] font-medium text-text-100 outline-none hover:bg-bg-100 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
           onClick={onAddCategory}
         >
           <Plus className="size-3.5" aria-hidden="true" />
