@@ -17,11 +17,10 @@ PureScience 是一款面向科学研究的开源 AI 工作台：多智能体协�
 | 天工 | 天工开物——工具与工程体系的未来篇章 | （规划） |
 | 北斗 | 指路星辰——导航与检索体系的未来篇章 | （规划） |
 
-## v1.43.0 — 2026-09-06（生态收口批：英文文档 · 每周快照 · GitHub 可见性）
+## v1.43.0 — 2026-09-06（生态收口批：英文文档 · GitHub 可见性）
 
 - **英文 README（O2）**：新增 `README.en.md` 纯英文镜像（零中文残留）——对比表 Takeaway 列、诚实边界、快速回顾、平台行等全部译尽，横幅为英文摘要；与主 README 双向链接，双文档同步维护
-- **每周参照快照 cron（O3）**：每周五自动对照参照产品 release notes 生成滚动差距清单（品牌零痕迹，产出仅入内部跟踪目录），从源头防止版本功能积压
-- **GitHub 可见性（O5）**：平台徽章（macOS｜Windows｜Linux）、内部验收 **benchmark 页**（13 项验收 L1–L7 + EGFR T790M 情报复验 + 分子动力学等，全部纯实测数据、版本钉定、附复验指引）、**Zenodo DOI 归档流程**文档（每正式版归档）
+- **GitHub 可见性（O5）**：平台徽章（macOS｜Windows｜Linux）、内部验收 **benchmark 页**（13 项验收 L1–L7 + EGFR T790M 情报复验 + 分子动力学等，全部纯实测数据、版本钉定、附复验指引）、**Zenodo DOI 归档**（PureScience v1.43.0 已归档：10.5281/zenodo.22441075）
 - **figure_review 修复**：figure RPC 网关契约对齐——review 请求按网关要求嵌套注入（sessionId/projectId/request），此前 figure_review 每次调用都报参数缺失
 - **更新检查修复**：每版 Release 发布 `version.json` 客户端清单（manifest 更新流此前固定 404）；macOS 自动更新说明如实化（正式签名版与 Windows/Linux 同为就地自动重启，手动安装包仅限本地/夜间/未签名等回退场景），九语言同步
 - **平台陈述纠偏**：README 与英文镜像按 Release 实况改写——macOS、Windows、Linux 三平台安装包随每版发布（此前文案停留在仅 macOS 的早期阶段）

@@ -1980,6 +1980,7 @@ export const en: Record<ZhKey, string> = {
   'boot.retrying': 'Retrying…',
   'boot.retry': 'Retry',
   'boot.loadingSaved': 'Loading saved conversations…',
+  'ui.sessionInterrupted': 'Session was interrupted before the app closed.',
   'toolActivity.webSearch': 'Web Search',
   'toolActivity.query': 'query',
   'remoteError.approvalCancelled':

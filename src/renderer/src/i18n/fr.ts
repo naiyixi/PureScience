@@ -235,6 +235,7 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'boot.retrying': 'Nouvelle tentative…',
   'boot.retry': 'Réessayer',
   'boot.loadingSaved': 'Chargement des conversations enregistrées…',
+  'ui.sessionInterrupted': 'La session a été interrompue avant la fermeture de l’application.',
   'toolActivity.webSearch': 'Recherche Web',
   'toolActivity.query': 'requête',
   'remoteError.approvalCancelled':

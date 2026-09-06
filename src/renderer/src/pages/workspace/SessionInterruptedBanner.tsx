@@ -2,6 +2,7 @@ import { Loader2, Play } from 'lucide-react'
 
 import { useLanguage } from '@/i18n'
 import { Button } from '@/components/ui/button'
+import { INTERRUPTED_SESSION_ERROR } from '../../../../shared/session-persistence'
 
 type SessionInterruptedBannerProps = {
   message: string
@@ -22,9 +23,13 @@ const SessionInterruptedBanner = ({
   onResume
 }: SessionInterruptedBannerProps): React.JSX.Element => {
   const { t } = useLanguage()
+  // The canonical interrupted-session error is a shared English constant; show it localized so a
+  // zh interface never surfaces an English paragraph.
+  const displayMessage =
+    message === INTERRUPTED_SESSION_ERROR ? t('ui.sessionInterrupted') : message
   return (
     <div className="mb-2 flex items-center gap-3 rounded-lg border border-border-200 bg-bg-200 px-3 py-2">
-      <p className="min-w-0 flex-1 text-[12px] leading-5 text-text-100">{message}</p>
+      <p className="min-w-0 flex-1 text-[12px] leading-5 text-text-100">{displayMessage}</p>
       <Button
         type="button"
         variant="ghost"
