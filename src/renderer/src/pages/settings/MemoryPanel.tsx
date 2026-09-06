@@ -685,34 +685,34 @@ export const MemoryPanel = (): React.JSX.Element => {
       className="flex h-full min-h-0 flex-col overflow-hidden"
       data-memory-enabled={normalized.enabled ? 'true' : 'false'}
     >
-      <div className="flex items-start gap-2 px-4 pt-4">
+      <div className="flex items-start gap-2 px-5 pt-5">
         <BookOpenText className="mt-0.5 size-4 shrink-0 text-text-300" aria-hidden="true" />
         <div>
-          <h2 className="text-[13px] font-medium text-text-100">{t('settings.memoryTitle')}</h2>
-          <p className="mt-0.5 max-w-xl text-[12px] leading-5 text-text-300">
+          <h2 className="text-base font-medium text-foreground">{t('settings.memoryTitle')}</h2>
+          <p className="mt-0.5 max-w-2xl text-sm leading-5 text-muted-foreground">
             {t('settings.memoryDescription')}
           </p>
         </div>
       </div>
 
       {!normalized.enabled ? (
-        <div className="mx-4 mt-3 rounded-lg border border-border bg-bg-00 px-3 py-2.5 text-[12px] leading-5 text-text-300">
+        <div className="mx-5 mt-4 rounded-lg border border-border bg-bg-00 px-3 py-2.5 text-[12px] leading-5 text-text-300">
           <Pencil className="mr-1.5 inline size-3.5 text-text-300" aria-hidden="true" />
           {t('settings.memoryDisabledHint')}
         </div>
       ) : null}
 
       {isLoading && !memory ? (
-        <div className="mx-4 mt-3 rounded-lg border border-border bg-bg-00 px-3 py-2.5 text-[12px] leading-5 text-text-300">
+        <div className="mx-5 mt-4 rounded-lg border border-border bg-bg-00 px-3 py-2.5 text-[12px] leading-5 text-text-300">
           {t('settings.memoryLoading')}
         </div>
       ) : null}
 
-      <div className="mt-3 pr-1">
+      <div className="mt-4 px-5">
         <MemoryHeader memory={normalized} onChange={persist} />
       </div>
 
-      <div className="flex min-h-0 flex-1 overflow-hidden rounded-lg border border-border bg-bg-10">
+      <div className="mx-5 mb-5 flex min-h-0 flex-1 overflow-hidden rounded-lg border border-border bg-bg-10">
         <MemoryCategoryList
           memory={normalized}
           selectedCategoryId={selectedCategoryId}

@@ -133,7 +133,7 @@ export const EndpointPanel = (): React.JSX.Element => {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5 p-5">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">{t('settings.endpointsDesc')}</p>
         <div className="flex items-center gap-2">

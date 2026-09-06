@@ -116,7 +116,7 @@ export const RoutinePanel = (): React.JSX.Element => {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5 p-5">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">{t('settings.routineDesc')}</p>
         <div className="flex items-center gap-2">

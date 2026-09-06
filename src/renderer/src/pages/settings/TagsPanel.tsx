@@ -78,9 +78,9 @@ const TagsPanel = ({ onOpenResource }: TagsPanelProps): React.JSX.Element => {
   }
 
   return (
-    <div className="grid h-full min-h-0 grid-cols-[220px_minmax(0,1fr)]">
+    <div className="grid h-full min-h-0 grid-cols-[220px_minmax(0,1fr)] p-5 pl-0">
       {/* Left: tag list */}
-      <div className="min-h-0 overflow-y-auto border-r border-border p-3">
+      <div className="min-h-0 overflow-y-auto border-r border-border p-3 pl-5">
         <SettingsSection
           title={t('settings.tags')}
           description={t('settings.tagsManagerDescription')}

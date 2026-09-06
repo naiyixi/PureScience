@@ -247,7 +247,7 @@ const CredentialEditor = ({
   return (
     <div data-slot="credential-editor" className="flex min-w-0 flex-1 flex-col">
       <div className="border-b border-border px-4 py-2.5">
-        <span className="text-[13px] font-medium text-text-100">
+        <span className="text-sm font-semibold text-foreground">
           {isCustom && name.trim() ? name.trim() : serviceLabel(t, serviceId)}
         </span>
       </div>
@@ -478,23 +478,23 @@ export const CredentialsPanel = (): React.JSX.Element => {
 
   return (
     <div data-slot="credentials-panel" className="flex h-full min-h-0 flex-col overflow-hidden">
-      <div className="flex items-start gap-2 px-4 pt-4">
+      <div className="flex items-start gap-2 px-5 pt-5">
         <KeyRound className="mt-0.5 size-4 shrink-0 text-text-300" aria-hidden="true" />
         <div>
-          <h2 className="text-[13px] font-medium text-text-100">{t('settings.credentials')}</h2>
-          <p className="mt-0.5 max-w-xl text-[12px] leading-5 text-text-300">
+          <h2 className="text-base font-medium text-foreground">{t('settings.credentials')}</h2>
+          <p className="mt-0.5 max-w-2xl text-sm leading-5 text-muted-foreground">
             {t('settings.credentialsDescription')}
           </p>
         </div>
       </div>
 
-      <div className="mt-4 min-h-0 flex-1 px-4 pb-4">
+      <div className="mt-5 min-h-0 flex-1 px-5 pb-5">
         {store.isLoading && store.credentials.length === 0 ? (
           <div className="flex h-full items-center justify-center text-[12px] text-text-300">
             {t('settings.memoryLoading')}
           </div>
         ) : editing && editingServiceId ? (
-          <div className="mx-auto h-full w-full max-w-3xl overflow-hidden rounded-lg border border-border bg-bg-10">
+          <div className="h-full overflow-hidden rounded-lg border border-border bg-bg-10">
             <CredentialEditor
               credential={editingView}
               serviceId={editingServiceId}
@@ -504,11 +504,11 @@ export const CredentialsPanel = (): React.JSX.Element => {
             />
           </div>
         ) : (
-          <div className="mx-auto h-full w-full max-w-3xl space-y-7 overflow-y-auto pr-0.5">
+          <div className="h-full space-y-6 overflow-y-auto pr-0.5">
             {/* Section ① 服务 — one manage row per built-in scientific service. */}
             {/* i18n note: heading copy ('Services') to be keyed by the parent — i18n files are frozen for this task. */}
             <section aria-label={t('settings.credentialsServicesHeading')}>
-              <h3 className="text-[13px] font-medium text-text-100">
+              <h3 className="text-sm font-semibold text-foreground">
                 {t('settings.credentialsServicesHeading')}
               </h3>
               <div className="mt-2 divide-y divide-border overflow-hidden rounded-xl border border-border bg-bg-10">
@@ -520,7 +520,7 @@ export const CredentialsPanel = (): React.JSX.Element => {
                 endpoints can reference; empty state + new-credential action. */}
             <section aria-label={t('settings.credentialsConnectorHeading')}>
               <div className="flex items-center justify-between gap-2">
-                <h3 className="text-[13px] font-medium text-text-100">
+                <h3 className="text-sm font-semibold text-foreground">
                   {t('settings.credentialsConnectorHeading')}
                 </h3>
                 <button
@@ -568,7 +568,7 @@ export const CredentialsPanel = (): React.JSX.Element => {
                 their credentials in their own configuration (managed on their own settings
                 panels), so nothing is duplicated here. */}
             <section aria-label={t('settings.credentialsServiceCustom')}>
-              <h3 className="text-[13px] font-medium text-text-100">
+              <h3 className="text-sm font-semibold text-foreground">
                 {t('settings.credentialsServiceCustom')}
               </h3>
               <p className="mt-1 text-[12px] leading-5 text-text-300">
