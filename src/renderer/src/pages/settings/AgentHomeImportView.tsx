@@ -166,10 +166,12 @@ const AgentHomeImportView = ({ onImported }: AgentHomeImportViewProps): React.JS
       if (useSettingsStore.getState().agentFrameworkId !== frameworkId) return
 
       if (failures.length === 0) {
-        setMessage(`Imported ${importedCount} skill${importedCount === 1 ? '' : 's'}.`)
+        setMessage(t('agentHome.importedSummary').replace('{n}', String(importedCount)))
       } else {
         setMessage(
-          `Imported ${importedCount}; ${failures.length} failed. ${failures[0]?.error ?? ''}`.trim()
+          `${t('agentHome.importedWithFailures')
+            .replace('{n}', String(importedCount))
+            .replace('{failed}', String(failures.length))} ${failures[0]?.error ?? ''}`.trim()
         )
       }
       await runScan(frameworkId, { preserveMessage: true })

@@ -177,7 +177,7 @@ function DetailPanel({
       setActionStatus({
         kind: 'success',
         action: 'download',
-        message: `Saved to Downloads: ${result.name}`,
+        message: t('fileBrowser.savedToDownloads').replace('{name}', result.name),
         filePath: result.path
       })
     } catch (err) {

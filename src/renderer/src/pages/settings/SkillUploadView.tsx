@@ -133,7 +133,12 @@ const SkillUploadView = ({
       ? SKILL_IMPORT_LIMITS.maxBundleBytes
       : SKILL_IMPORT_LIMITS.maxFileBytes
     if (file.size > sizeLimit) {
-      return { candidates: [], error: `${file.name}: file is too large (limit ${mb(sizeLimit)}).` }
+      return {
+        candidates: [],
+        error: t('skillUpload.tooLargeFile')
+          .replace('{file}', file.name)
+          .replace('{limit}', mb(sizeLimit))
+      }
     }
 
     if (isBundle) {
@@ -146,7 +151,10 @@ const SkillUploadView = ({
           reason: entry.reason
         }))
         if (previews.length === 0 && skipped.length === 0) {
-          return { candidates: [], error: `${file.name}: no skills found in the bundle.` }
+          return {
+            candidates: [],
+            error: t('skillUpload.noSkillsInBundle').replace('{file}', file.name)
+          }
         }
         return {
           candidates: previews.map((preview) => ({
@@ -174,7 +182,10 @@ const SkillUploadView = ({
     if (name.endsWith('.md') || name.endsWith('.markdown')) {
       const parsed = parseSkillDocument(await file.text())
       if (!parsed.name) {
-        return { candidates: [], error: `${file.name}: needs a name in its YAML frontmatter.` }
+        return {
+          candidates: [],
+          error: t('skillUpload.needsName').replace('{file}', file.name)
+        }
       }
       return {
         candidates: [
@@ -188,7 +199,9 @@ const SkillUploadView = ({
             body: parsed.body,
             previewError:
               file.size > SKILL_IMPORT_LIMITS.maxPreviewContentBytes
-                ? `${file.name}: preview exceeds the ${mb(SKILL_IMPORT_LIMITS.maxPreviewContentBytes)} limit. You can still import it.`
+                ? t('skillUpload.previewTooLarge')
+                    .replace('{file}', file.name)
+                    .replace('{limit}', mb(SKILL_IMPORT_LIMITS.maxPreviewContentBytes))
                 : undefined
           }
         ]
@@ -197,7 +210,7 @@ const SkillUploadView = ({
 
     return {
       candidates: [],
-      error: `${file.name}: unsupported file — upload a .md file or a .zip / .skill bundle.`
+      error: t('skillUpload.unsupportedFile').replace('{file}', file.name)
     }
   }
 
@@ -213,7 +226,9 @@ const SkillUploadView = ({
       if (totalSize > SKILL_IMPORT_LIMITS.maxBundleBytes) {
         setCandidates([])
         setErrors([
-          `Selection is too large (${mb(totalSize)}); upload at most ${mb(SKILL_IMPORT_LIMITS.maxBundleBytes)} at a time.`
+          t('skillUpload.selectionTooLarge')
+            .replace('{size}', mb(totalSize))
+            .replace('{limit}', mb(SKILL_IMPORT_LIMITS.maxBundleBytes))
         ])
         setSkipped([])
         setSelected(new Set())
@@ -287,7 +302,12 @@ const SkillUploadView = ({
       }
     }
 
-    setSummary(`Imported ${imported} · skipped ${skipped} · failed ${failed}`)
+    setSummary(
+      t('skillUpload.summary')
+        .replace('{imported}', String(imported))
+        .replace('{skipped}', String(skipped))
+        .replace('{failed}', String(failed))
+    )
     setBusy(false)
     if (imported > 0) onUploaded()
   }
@@ -499,9 +519,7 @@ const SkillUploadView = ({
         <span className="text-sm font-medium text-foreground">
           {busy ? t('skillUpload.reading') : t('settings.dragDropOrClickToUpload')}
         </span>
-        <span className="max-w-sm text-xs text-muted-foreground">
-          {t('skillUpload.mdHint')}
-        </span>
+        <span className="max-w-sm text-xs text-muted-foreground">{t('skillUpload.mdHint')}</span>
       </label>
 
       {errors.map((error) => (

@@ -125,14 +125,20 @@ const SkillImportView = ({ onImported }: SkillImportViewProps): React.JSX.Elemen
         await importSkill(url)
         done += 1
       }
-      setMessage({ kind: 'status', text: `Imported ${done} skill${done === 1 ? '' : 's'}.` })
+      setMessage({
+        kind: 'status',
+        text: t('skillImport.importedDone').replace('{n}', String(done))
+      })
       setScanned(null)
       setScannedRepo(null)
       onImported()
     } catch (error) {
       setMessage({
         kind: 'error',
-        text: error instanceof Error ? error.message : `Imported ${done}, then failed.`
+        text:
+          error instanceof Error
+            ? error.message
+            : t('skillImport.importedThenFailed').replace('{n}', String(done))
       })
     } finally {
       setOperation(null)

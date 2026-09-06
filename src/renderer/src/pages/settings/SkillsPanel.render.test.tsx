@@ -1129,7 +1129,7 @@ describe('SkillsPanel (sub-views)', () => {
       await pendingImport
       await Promise.resolve()
     })
-    expect(document.body.textContent).toContain('Imported 1 skill.')
+    expect(document.body.textContent).toContain('Imported 1 skill(s).')
   })
 
   it('opens and closes a GitHub candidate preview without changing its selection', async () => {
