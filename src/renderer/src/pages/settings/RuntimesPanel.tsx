@@ -246,7 +246,7 @@ const RuntimesPanel = ({
     return () => {
       cancelled = true
     }
-  }, [packagesEnv, packagesRetryNonce])
+  }, [packagesEnv, packagesRetryNonce, t])
 
   // Recheck refreshes both halves of the runtime registry together for the same reason as initial
   // loading: cards and their permissions must describe one coherent backend snapshot. Counts are

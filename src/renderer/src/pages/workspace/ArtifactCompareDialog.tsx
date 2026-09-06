@@ -99,7 +99,7 @@ const ArtifactCompareDialog = ({
     setBaseVersionId(base.versionId)
 
     setTargetVersionId(target.versionId)
-  }, [initialBaseVersionId, initialTargetVersionId, open])
+  }, [initialBaseVersionId, initialTargetVersionId, open, versions])
 
   useEffect(() => {
     if (!open || !baseVersionId || !targetVersionId) return

@@ -256,7 +256,7 @@ export const GlobalSearchDialog = ({
             projectName: projectNames.get(session.projectId) ?? t('home.unknownProject')
           }))
         : [],
-    [isProjectScope, primaryProject, projectNames, sessions]
+    [isProjectScope, primaryProject, projectNames, sessions, t]
   )
 
   const reloadArtifacts = useCallback(
@@ -312,7 +312,8 @@ export const GlobalSearchDialog = ({
       isSearchMode,
       otherProjectIds,
       primaryProject,
-      trimmedQuery
+      trimmedQuery,
+      t
     ]
   )
 
@@ -516,7 +517,8 @@ export const GlobalSearchDialog = ({
       primaryProject,
       reloadArtifacts,
       requestProjectCreation,
-      sessions
+      sessions,
+      t
     ]
   )
 

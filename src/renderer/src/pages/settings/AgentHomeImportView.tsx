@@ -90,7 +90,7 @@ const AgentHomeImportView = ({ onImported }: AgentHomeImportViewProps): React.JS
         if (isCurrent()) setScanning(false)
       }
     },
-    [applyScan, invalidateCandidatePreview, listAgentHomeSkills]
+    [applyScan, invalidateCandidatePreview, listAgentHomeSkills, t]
   )
 
   // Discovery is local and bounded to one directory per visible source, so load eagerly. Including

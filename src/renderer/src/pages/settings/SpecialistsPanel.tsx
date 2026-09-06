@@ -1,5 +1,5 @@
 import { useLanguage, type TranslationKey } from '@/i18n'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   AlertTriangle,
   CheckCircle2,
@@ -193,7 +193,7 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
     return () => {
       active = false
     }
-  }, [previewExport, view])
+  }, [previewExport, view]) // eslint-disable-line react-hooks/exhaustive-deps -- t is a stable module-level singleton; effect intentionally re-runs only on [previewExport, view]
 
   // Direct export from the list action menu: silently preview with the approved default selection
   // (builtin + owned Skills), then open the native save dialog. The chooser page is skipped unless
@@ -232,15 +232,18 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
   // under Built-in. Only runnable builtins enter the Session picker.
   const reviewerItems = items.filter((i) => i.kind === 'reviewer')
   // Shared catalog tags/favorites predicate used by both specialist lists.
-  const matchesCatalogFilter = (resourceId: string): boolean => {
-    const entry = catalogEntries[resourceId]
-    if (showFavorites && !entry?.favorite) return false
-    if (activeTags.length > 0) {
-      const tags = entry?.tags ?? []
-      if (!activeTags.every((tag) => tags.includes(tag))) return false
-    }
-    return true
-  }
+  const matchesCatalogFilter = useCallback(
+    (resourceId: string): boolean => {
+      const entry = catalogEntries[resourceId]
+      if (showFavorites && !entry?.favorite) return false
+      if (activeTags.length > 0) {
+        const tags = entry?.tags ?? []
+        if (!activeTags.every((tag) => tags.includes(tag))) return false
+      }
+      return true
+    },
+    [activeTags, catalogEntries, showFavorites]
+  )
 
   const visibleBuiltinItems = useMemo(() => {
     if (filter === 'custom' || filter === 'marketplace') return []
@@ -254,7 +257,7 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
         item.description.toLowerCase().includes(term)
       )
     })
-  }, [builtinItems, filter, query, catalogEntries, showFavorites, activeTags])
+  }, [builtinItems, filter, query, matchesCatalogFilter])
   const visibleCustomItems = useMemo(() => {
     const term = query.trim().toLowerCase()
     if (filter === 'builtin') return []
@@ -271,13 +274,13 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
         item.description.toLowerCase().includes(term)
       )
     })
-  }, [customItems, filter, query, catalogEntries, showFavorites, activeTags])
+  }, [customItems, filter, query, matchesCatalogFilter])
   const visibleReviewerItems = useMemo(() => {
     if (filter === 'custom') return []
     const term = query.trim().toLowerCase()
     if (!term || t('settings.reviewerUsedByAutoReview').includes(term)) return reviewerItems
     return []
-  }, [filter, query, reviewerItems])
+  }, [filter, query, reviewerItems, t])
 
   // Built-in Skills are app-managed and never participate in Specialist deletion. Keep this
   // renderer-side filter as a defensive boundary even though the main-side preview omits them.

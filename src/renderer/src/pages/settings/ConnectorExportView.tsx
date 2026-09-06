@@ -37,7 +37,7 @@ export function ConnectorExportView({ id, onDone }: ConnectorExportViewProps): R
     return () => {
       active = false
     }
-  }, [id])
+  }, [id, t])
 
   const save = async (): Promise<void> => {
     if (!preview?.ready || !preview.digest) return

@@ -150,7 +150,7 @@ export function ConnectorAddForm({
       return t('settings.idAlreadyExists')
     }
     return null
-  }, [connectors, currentSlug, customServers, editServer?.id])
+  }, [connectors, currentSlug, customServers, editServer?.id, t])
   const [description, setDescription] = useState(
     editServer?.description ?? initialTemplate?.description ?? ''
   )

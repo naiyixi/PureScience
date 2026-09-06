@@ -938,7 +938,8 @@ const WorkspacePage = ({
       setHistoryBrowsingKey,
       setHistorySkillCatalogReady,
       setHistoryStatus,
-      specialistCatalogLoaded
+      specialistCatalogLoaded,
+      t
     ]
   )
 
@@ -1004,7 +1005,8 @@ const WorkspacePage = ({
     composerHistoryEntries,
     currentDraftKey,
     historyBrowsingKey,
-    markComposerDraftChanged
+    markComposerDraftChanged,
+    t
   ])
   useEffect(() => {
     const getPlanProjection = window.api.acp?.getPlanProjection
@@ -1551,7 +1553,7 @@ const WorkspacePage = ({
     return () => {
       cancelled = true
     }
-  }, [activeSessionId, activeSessionCwd, activeSessionProjectId])
+  }, [activeSessionId, activeSessionCwd, activeSessionProjectId, t])
 
   // Sync the active session's enabled compute hosts to the main-process registry when switching
   // sessions. The registry is the runtime source for list_compute RPC ops; the session JSON is the
@@ -1566,7 +1568,7 @@ const WorkspacePage = ({
         console.warn(t('ws.syncComputeHostsFailed'), err)
       })
     // Only re-run when the active session changes (session switch). Toggle handler syncs directly.
-  }, [activeSessionId])
+  }, [activeSessionId, t])
 
   // Deletes staged files when the user abandons the current composer draft.
   const deleteAttachmentFiles = (items: UploadedAttachment[]): void => {
@@ -1853,7 +1855,7 @@ const WorkspacePage = ({
       })
       if (!result) throw new Error(t('ws.unableToRespondToPlan'))
     },
-    [activeSessionId, sendMessage]
+    [activeSessionId, sendMessage, t]
   )
 
   // Sends the current draft only after hydration so restored selection cannot overwrite intent.

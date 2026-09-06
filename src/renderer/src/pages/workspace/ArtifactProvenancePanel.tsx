@@ -345,7 +345,7 @@ const ProvenanceMessagesTimeline = ({
       updatedAt: snapshot.items.at(-1)?.createdAt ?? 0
     }
     return groupConversationItems(createConversationItems(session), snapshot.activityGroups)
-  }, [projectId, sessionId, snapshot])
+  }, [projectId, sessionId, snapshot, t])
 
   return (
     <MessageScrollerProvider

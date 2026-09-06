@@ -55,13 +55,17 @@ export const NotebookPreviewRenderer = ({ item }: PreviewFileRendererProps): Rea
     maxBytes: 1_000_000
   })
 
+  // The ready-state preview text, hoisted out of the dependency array so the memo dep is a plain
+  // value (complex-expression-in-deps) and the parse re-runs whenever the text actually changes.
+  const previewContent = load.status === 'ready' ? load.preview.content : ''
+
   const notebook = useMemo<{
     cells: NotebookCell[]
     error?: string
   }>(() => {
     if (load.status !== 'ready') return { cells: [] }
     try {
-      const parsed = JSON.parse(load.preview.content) as {
+      const parsed = JSON.parse(previewContent) as {
         nbformat?: number
         cells?: NotebookCell[]
       }
@@ -72,7 +76,7 @@ export const NotebookPreviewRenderer = ({ item }: PreviewFileRendererProps): Rea
     } catch (error) {
       return { cells: [], error: error instanceof Error ? error.message : String(error) }
     }
-  }, [load.status, load.status === 'ready' ? load.preview.content : ''])
+  }, [load.status, previewContent])
 
   if (load.status === 'loading') {
     return <div className="p-6 text-sm text-muted-foreground">{t('common.loading')}</div>

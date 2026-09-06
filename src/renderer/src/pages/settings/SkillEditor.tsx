@@ -86,7 +86,7 @@ const SkillEditor = ({ initial, onCancel, onSave }: SkillEditorProps): React.JSX
       return t('settings.skillIdExists')
     }
     return null
-  }, [isCreate, currentSlug, skills])
+  }, [isCreate, currentSlug, skills, t])
 
   const importedContent = frontmatterImportMode ? parseSkillDocument(body) : undefined
   const persistedBody = importedContent?.hasFrontmatter ? importedContent.body : body

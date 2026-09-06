@@ -34,7 +34,7 @@ const AppIconSection = (): React.JSX.Element => {
     return () => {
       active = false
     }
-  }, [])
+  }, [t])
 
   return (
     <SettingsSection

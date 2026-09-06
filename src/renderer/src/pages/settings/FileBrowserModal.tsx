@@ -409,7 +409,7 @@ export function FileBrowserModal({
         }
       }
     },
-    [host, cwd, probeHost]
+    [host, cwd, probeHost, t]
   )
 
   // Adjust state during render on the open edge (React's "adjust state when a prop changes" pattern
@@ -456,7 +456,7 @@ export function FileBrowserModal({
       setBookmarks(bms)
       bookmarksLoaded.current = true
     })
-  }, [open, host?.providerId])
+  }, [open, host])
 
   const handleBack = (): void => {
     const prev = history[history.length - 1]

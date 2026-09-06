@@ -1370,7 +1370,8 @@ const ProjectFilesViewContent = ({
     filterGroupItems,
     archivedSessionIdSet,
     isVisibleArtifactGroup,
-    selectedSessionFallback
+    selectedSessionFallback,
+    t
   ])
   const selectedSessionId = selectedFilterId.startsWith('session:')
     ? selectedFilterId.slice('session:'.length)
