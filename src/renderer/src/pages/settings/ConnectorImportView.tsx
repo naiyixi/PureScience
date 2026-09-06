@@ -67,9 +67,7 @@ export function ConnectorImportView({
       return
     }
     if (file.size > CONNECTOR_TEMPLATE_MAX_BYTES) {
-      setError(
-        `Connector configuration files must be ${kb(CONNECTOR_TEMPLATE_MAX_BYTES)} or smaller.`
-      )
+      setError(t('settings.connectorTooLarge').replace('{limit}', kb(CONNECTOR_TEMPLATE_MAX_BYTES)))
       return
     }
     await applySelection({ fileName: file.name, contents: await file.text() })
@@ -95,8 +93,7 @@ export function ConnectorImportView({
             {t('settings.importConnectorConfig')}
           </h2>
           <p className="mt-0.5 text-[13px] leading-5 text-muted-foreground">
-            Add one credential-free Connector configuration from your computer. You will review the
-            {t('settings.importConnectorHint')}
+            {t('settings.connectorBlurb')}
           </p>
         </div>
 
@@ -117,8 +114,7 @@ export function ConnectorImportView({
             {selecting ? t('settings.validating') : t('settings.dragDropOrClick')}
           </span>
           <span className="max-w-sm text-xs text-muted-foreground">
-            Choose one .json file up to {kb(CONNECTOR_TEMPLATE_MAX_BYTES)}. Credentials are never
-            imported from the file.
+            {t('settings.connectorChooseJson').replace('{limit}', kb(CONNECTOR_TEMPLATE_MAX_BYTES))}
           </span>
         </button>
 
@@ -171,7 +167,7 @@ export function ConnectorImportView({
                   {definition.oauth
                     ? t('settings.oauthAfterAdding')
                     : secretNames.length
-                      ? `Enter locally: ${secretNames.join(', ')}`
+                      ? t('settings.connectorEnterLocally').replace('{names}', secretNames.join(', '))
                       : t('settings.noneDeclared')}
                 </dd>
               </div>
@@ -195,7 +191,7 @@ export function ConnectorImportView({
 
         <div className={selection ? 'flex items-center justify-end gap-2' : 'text-center'}>
           <Button type="button" variant="ghost" onClick={onCancel}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           {selection ? (
             <Button

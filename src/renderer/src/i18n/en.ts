@@ -992,6 +992,13 @@ export const en: Record<ZhKey, string> = {
   'settings.exportReviewHint':
     'Review the portable configuration before saving it. Secret values, OAuth tokens, local permissions, and trust state are excluded.',
   'settings.importConnectorConfig': 'Import Connector configuration',
+  'settings.connectorBlurb':
+    'Add one credential-free Connector configuration from your computer. You will review the config, then enter any required credentials before adding it.',
+  'settings.connectorTooLarge':
+    'Connector configuration files must be {limit} or smaller.',
+  'settings.connectorChooseJson':
+    'Choose one .json file up to {limit}. Credentials are never imported from the file.',
+  'settings.connectorEnterLocally': 'Enter locally: {names}',
   'settings.importConnectorHint': 'settings and enter any required credentials before it is added.',
   'settings.agentHomeCopyHint':
     'on this computer. Check skills to copy into PureScience; the originals stay in place.',
@@ -1569,6 +1576,12 @@ export const en: Record<ZhKey, string> = {
   'skillImport.invertSelection': 'Invert selection',
   'skillImport.importedSkills': 'Imported skills',
   'skillImport.repoResults': 'Repository results',
+  'skillImport.importTitle': 'Import from GitHub',
+  'skillImport.importIntro':
+    'Search repositories by keyword, or scan a GitHub repository for Skill folders to import.',
+  'skillImport.repoPlaceholder':
+    'keyword, owner/repo, owner/repo@ref, or github.com URL',
+  'skillImport.repositoriesCount': 'Repositories ({n})',
   'skillImportApproval.updatesExisting': 'Updates existing',
   'skillImportApproval.notImportable': 'Not importable',
   'skillImportApproval.selectAll': 'Select all',
@@ -1698,6 +1711,16 @@ export const en: Record<ZhKey, string> = {
   'skillUpload.nameExists': 'Name exists',
   'skillUpload.chooseDifferentFiles': 'Choose different files',
   'skillUpload.uploadSkills': 'Upload skills',
+  'skillUpload.uploadIntro':
+    'Add skills from SKILL.md files or .zip / .skill bundles on your computer. You can select several files at once, and a single archive may contain multiple skills.',
+  'skillUpload.confirmIntro':
+    'Pick the skills you want to add. Nothing is written until you import.',
+  'skillUpload.foundCount': 'Found {n} skills',
+  'skillUpload.invert': 'Invert',
+  'skillUpload.skippedCount': 'Skipped {n} skill(s)',
+  'skillUpload.mdHint':
+    '.md files need a name and description in YAML frontmatter. .zip or .skill bundles must contain a SKILL.md. You’ll confirm before anything is added.',
+  'skillUpload.reading': 'Reading…',
   'skillUpload.writeFromScratchInstead': 'Write from scratch instead',
   'skillUpload.selectAll': 'Select all',
   'fileBrowser.emptyFolder': 'Empty folder',

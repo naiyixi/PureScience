@@ -630,6 +630,11 @@ export const es: Partial<Record<ZhKey, string>> = {
   'skillImport.importedSkills': 'Habilidades importadas',
   'skillImport.invertSelection': 'Invertir selección',
   'skillImport.repoResults': 'Resultados del repositorio',
+  'skillImport.importTitle': 'Importar desde GitHub',
+  'skillImport.importIntro':
+    'Busca repositorios por palabra clave o escanea un repositorio de GitHub para importar carpetas de habilidades.',
+  'skillImport.repoPlaceholder': 'palabra clave, owner/repo, owner/repo@ref o URL de github.com',
+  'skillImport.repositoriesCount': 'Repositorios ({n})',
   'skillImportApproval.notImportable': 'No importable',
   'skillImportApproval.selectAll': 'Seleccionar todo',
   'skillImportApproval.updatesExisting': 'Actualiza los existentes',
@@ -639,6 +644,15 @@ export const es: Partial<Record<ZhKey, string>> = {
   'skillUpload.nameExists': 'El nombre ya existe',
   'skillUpload.selectAll': 'Seleccionar todo',
   'skillUpload.uploadSkills': 'Subir habilidades',
+  'skillUpload.uploadIntro':
+    'Añade habilidades desde archivos SKILL.md o paquetes .zip / .skill de tu ordenador. Puedes seleccionar varios archivos a la vez, y un solo archivo puede contener varias habilidades.',
+  'skillUpload.confirmIntro': 'Marca las habilidades que quieras añadir. No se escribe nada hasta que importes.',
+  'skillUpload.foundCount': 'Encontradas {n} habilidades',
+  'skillUpload.invert': 'Invertir',
+  'skillUpload.skippedCount': '{n} habilidad(es) omitida(s)',
+  'skillUpload.mdHint':
+    'Los archivos .md necesitan un nombre y una descripción en el frontmatter YAML. Los paquetes .zip / .skill deben contener un SKILL.md. Confirmarás antes de añadir nada.',
+  'skillUpload.reading': 'Leyendo…',
   'skillUpload.writeFromScratchInstead': 'Escribir desde cero en su lugar',
   'sourcePreview.nextPage': 'Siguiente página de vista previa',
   'sourcePreview.prevPage': 'Página anterior de vista previa',
@@ -1390,6 +1404,11 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.importConfig': 'Importar configuración',
   'settings.importConfiguration': 'Importar configuración',
   'settings.importConnectorConfig': 'Importar configuración del conector',
+  'settings.connectorBlurb':
+    'Añade una configuración de conector sin credenciales desde tu ordenador. Revisa la configuración y, a continuación, introduce las credenciales necesarias antes de añadirla.',
+  'settings.connectorTooLarge': 'Los archivos de configuración del conector deben ser de {limit} o menos.',
+  'settings.connectorChooseJson': 'Elige un único archivo .json de hasta {limit}. Las credenciales nunca se importan del archivo.',
+  'settings.connectorEnterLocally': 'Introducir localmente: {names}',
   'settings.importConnectorHint':
     'la configuración e introduce las credenciales necesarias antes de añadirlo.',
   'settings.importExistingCodex': 'Importar el inicio de sesión de Codex existente',

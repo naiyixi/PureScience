@@ -632,6 +632,11 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'skillImport.importedSkills': 'Compétences importées',
   'skillImport.invertSelection': 'Inverser la sélection',
   'skillImport.repoResults': 'Résultats du dépôt',
+  'skillImport.importTitle': 'Importer depuis GitHub',
+  'skillImport.importIntro':
+    'Recherchez des dépôts par mot-clé ou analysez un dépôt GitHub pour importer des dossiers de compétences.',
+  'skillImport.repoPlaceholder': 'mot-clé, owner/repo, owner/repo@ref ou URL github.com',
+  'skillImport.repositoriesCount': 'Dépôts ({n})',
   'skillImportApproval.notImportable': 'Non importable',
   'skillImportApproval.selectAll': 'Tout sélectionner',
   'skillImportApproval.updatesExisting': 'Met à jour l’existant',
@@ -641,6 +646,15 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'skillUpload.nameExists': 'Le nom existe déjà',
   'skillUpload.selectAll': 'Tout sélectionner',
   'skillUpload.uploadSkills': 'Téléverser des compétences',
+  'skillUpload.uploadIntro':
+    'Ajoutez des compétences depuis des fichiers SKILL.md ou des archives .zip / .skill de votre ordinateur. Vous pouvez sélectionner plusieurs fichiers à la fois et une seule archive peut contenir plusieurs compétences.',
+  'skillUpload.confirmIntro': 'Cochez les compétences à ajouter. Rien n’est écrit tant que vous n’importez pas.',
+  'skillUpload.foundCount': '{n} compétences trouvées',
+  'skillUpload.invert': 'Inverser la sélection',
+  'skillUpload.skippedCount': '{n} compétence(s) ignorée(s)',
+  'skillUpload.mdHint':
+    'Les fichiers .md doivent avoir un nom et une description dans le frontmatter YAML. Les archives .zip / .skill doivent contenir un SKILL.md. Vous confirmerez avant tout ajout.',
+  'skillUpload.reading': 'Lecture…',
   'skillUpload.writeFromScratchInstead': 'Écrire plutôt à partir de zéro',
   'sourcePreview.nextPage': 'Page suivante de l’aperçu',
   'sourcePreview.prevPage': 'Page précédente de l’aperçu',
@@ -1394,6 +1408,11 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.importConfig': 'Importer la configuration',
   'settings.importConfiguration': 'Importer la configuration',
   'settings.importConnectorConfig': 'Importer la configuration du connecteur',
+  'settings.connectorBlurb':
+    'Ajoutez une configuration de connecteur sans informations d’identification depuis votre ordinateur. Examinez la configuration, puis saisissez les informations requises avant de l’ajouter.',
+  'settings.connectorTooLarge': 'Les fichiers de configuration du connecteur doivent faire {limit} ou moins.',
+  'settings.connectorChooseJson': 'Choisissez un seul fichier .json de {limit} maximum. Les informations d’identification ne sont jamais importées depuis le fichier.',
+  'settings.connectorEnterLocally': 'Saisir localement : {names}',
   'settings.importConnectorHint':
     'les paramètres et saisissez les identifiants requis avant qu’il ne soit ajouté.',
   'settings.importExistingCodex': 'Importer la connexion Codex existante',

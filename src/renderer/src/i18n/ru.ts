@@ -622,6 +622,11 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'skillImport.importedSkills': 'Импортированные навыки',
   'skillImport.invertSelection': 'Инвертировать выбор',
   'skillImport.repoResults': 'Результаты по репозиториям',
+  'skillImport.importTitle': 'Импорт из GitHub',
+  'skillImport.importIntro':
+    'Ищите репозитории по ключевым словам или сканируйте репозиторий GitHub, чтобы импортировать папки навыков.',
+  'skillImport.repoPlaceholder': 'ключевое слово, owner/repo, owner/repo@ref или URL github.com',
+  'skillImport.repositoriesCount': 'Репозиториев: {n}',
   'skillImportApproval.notImportable': 'Нельзя импортировать',
   'skillImportApproval.selectAll': 'Выбрать все',
   'skillImportApproval.updatesExisting': 'Обновляет существующие',
@@ -631,6 +636,15 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'skillUpload.nameExists': 'Имя уже существует',
   'skillUpload.selectAll': 'Выбрать все',
   'skillUpload.uploadSkills': 'Загрузить навыки',
+  'skillUpload.uploadIntro':
+    'Добавляйте навыки из файлов SKILL.md или архивов .zip / .skill на вашем компьютере. Можно выбрать сразу несколько файлов, а один архив может содержать несколько навыков.',
+  'skillUpload.confirmIntro': 'Отметьте навыки, которые нужно добавить. Ничего не записывается до импорта.',
+  'skillUpload.foundCount': 'Найдено навыков: {n}',
+  'skillUpload.invert': 'Инвертировать',
+  'skillUpload.skippedCount': 'Пропущено навыков: {n}',
+  'skillUpload.mdHint':
+    'Файлам .md нужны имя и описание в YAML-frontmatter. Архивы .zip / .skill должны содержать SKILL.md. Перед добавлением потребуется подтверждение.',
+  'skillUpload.reading': 'Чтение…',
   'skillUpload.writeFromScratchInstead': 'Вместо этого написать с нуля',
   'sourcePreview.nextPage': 'Следующая страница предпросмотра',
   'sourcePreview.prevPage': 'Предыдущая страница предпросмотра',
@@ -1370,6 +1384,11 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.importConfig': 'Импорт конфигурации',
   'settings.importConfiguration': 'Импорт конфигурации',
   'settings.importConnectorConfig': 'Импорт конфигурации коннектора',
+  'settings.connectorBlurb':
+    'Добавьте конфигурацию коннектора без учётных данных с вашего компьютера. Проверьте конфигурацию, затем введите необходимые учётные данные перед добавлением.',
+  'settings.connectorTooLarge': 'Файлы конфигурации коннектора должны быть не больше {limit}.',
+  'settings.connectorChooseJson': 'Выберите один файл .json размером до {limit}. Учётные данные никогда не импортируются из файла.',
+  'settings.connectorEnterLocally': 'Ввести локально: {names}',
   'settings.importConnectorHint':
     'его настройки и введите все обязательные учётные данные до его добавления.',
   'settings.importExistingCodex': 'Импортировать существующий вход в Codex',

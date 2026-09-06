@@ -638,6 +638,11 @@ export const de: Partial<Record<ZhKey, string>> = {
   'skillImport.importedSkills': 'Importierte Fähigkeiten',
   'skillImport.invertSelection': 'Auswahl umkehren',
   'skillImport.repoResults': 'Repository-Ergebnisse',
+  'skillImport.importTitle': 'Von GitHub importieren',
+  'skillImport.importIntro':
+    'Suchen Sie Repositories per Stichwort oder scannen Sie ein GitHub-Repository, um Fähigkeitsordner zu importieren.',
+  'skillImport.repoPlaceholder': 'Stichwort, owner/repo, owner/repo@ref oder github.com-URL',
+  'skillImport.repositoriesCount': 'Repositorys ({n})',
   'skillImportApproval.notImportable': 'Nicht importierbar',
   'skillImportApproval.selectAll': 'Alle auswählen',
   'skillImportApproval.updatesExisting': 'Aktualisiert vorhandene',
@@ -647,6 +652,15 @@ export const de: Partial<Record<ZhKey, string>> = {
   'skillUpload.nameExists': 'Name existiert bereits',
   'skillUpload.selectAll': 'Alle auswählen',
   'skillUpload.uploadSkills': 'Fähigkeiten hochladen',
+  'skillUpload.uploadIntro':
+    'Fügen Sie Fähigkeiten aus SKILL.md-Dateien oder .zip-/ .skill-Bündeln auf Ihrem Computer hinzu. Sie können mehrere Dateien gleichzeitig auswählen; ein einzelnes Archiv kann mehrere Fähigkeiten enthalten.',
+  'skillUpload.confirmIntro': 'Wählen Sie die Fähigkeiten aus, die Sie hinzufügen möchten. Bis zum Import wird nichts geschrieben.',
+  'skillUpload.foundCount': '{n} Fähigkeiten gefunden',
+  'skillUpload.invert': 'Auswahl umkehren',
+  'skillUpload.skippedCount': '{n} Fähigkeit(en) übersprungen',
+  'skillUpload.mdHint':
+    '.md-Dateien benötigen einen Namen und eine Beschreibung im YAML-Frontmatter. .zip-/.skill-Bündel müssen eine SKILL.md enthalten. Sie bestätigen, bevor etwas hinzugefügt wird.',
+  'skillUpload.reading': 'Wird gelesen…',
   'skillUpload.writeFromScratchInstead': 'Stattdessen von Grund auf schreiben',
   'sourcePreview.nextPage': 'Nächste Vorschauseite',
   'sourcePreview.prevPage': 'Vorherige Vorschauseite',
@@ -1409,6 +1423,11 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.importConfig': 'Konfiguration importieren',
   'settings.importConfiguration': 'Konfiguration importieren',
   'settings.importConnectorConfig': 'Konnektor-Konfiguration importieren',
+  'settings.connectorBlurb':
+    'Fügen Sie eine anmeldedatenfreie Konnektor-Konfiguration von Ihrem Computer hinzu. Prüfen Sie die Konfiguration und geben Sie vor dem Hinzufügen erforderliche Anmeldedaten ein.',
+  'settings.connectorTooLarge': 'Konnektor-Konfigurationsdateien müssen {limit} oder kleiner sein.',
+  'settings.connectorChooseJson': 'Wählen Sie eine .json-Datei bis {limit}. Anmeldedaten werden nie aus der Datei importiert.',
+  'settings.connectorEnterLocally': 'Lokal eingeben: {names}',
   'settings.importConnectorHint':
     'Einstellungen prüfen und alle erforderlichen Anmeldedaten eingeben, bevor er hinzugefügt wird.',
   'settings.importExistingCodex': 'Vorhandene Codex-Anmeldung importieren',

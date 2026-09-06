@@ -941,6 +941,11 @@ export const zh = {
   'settings.exportReviewHint':
     '保存前请检查便携配置。密钥值、OAuth 令牌、本地权限和信任状态会被排除。',
   'settings.importConnectorConfig': '导入连接器配置',
+  'settings.connectorBlurb':
+    '从你的电脑添加一个无需凭据的连接器配置文件。添加前请检查配置并输入任何必需的凭据。',
+  'settings.connectorTooLarge': '连接器配置文件必须不超过 {limit}。',
+  'settings.connectorChooseJson': '选择不超过 {limit} 的单个 .json 文件。凭据绝不会从文件导入。',
+  'settings.connectorEnterLocally': '在本机输入：{names}',
   'settings.importConnectorHint': '添加前请检查配置并输入任何必需的凭据。',
   'settings.agentHomeCopyHint':
     '在这台计算机上。勾选要复制到 PureScience 的技能；原始文件保持在原位。',
@@ -1476,6 +1481,10 @@ export const zh = {
   'skillImport.invertSelection': '反选',
   'skillImport.importedSkills': '已导入的技能',
   'skillImport.repoResults': '仓库结果',
+  'skillImport.importTitle': '从 GitHub 导入',
+  'skillImport.importIntro': '按关键词搜索仓库，或扫描 GitHub 仓库中的技能目录进行导入。',
+  'skillImport.repoPlaceholder': '关键词、owner/repo、owner/repo@ref 或 github.com URL',
+  'skillImport.repositoriesCount': '仓库（{n}）',
   'skillImportApproval.updatesExisting': '更新现有',
   'skillImportApproval.notImportable': '无法导入',
   'skillImportApproval.selectAll': '全选',
@@ -1604,6 +1613,15 @@ export const zh = {
   'skillUpload.nameExists': '名称已存在',
   'skillUpload.chooseDifferentFiles': '选择其他文件',
   'skillUpload.uploadSkills': '上传技能',
+  'skillUpload.uploadIntro':
+    '从电脑上的 SKILL.md 文件或 .zip / .skill 压缩包添加技能。你可以一次选择多个文件，单个压缩包也可包含多个技能。',
+  'skillUpload.confirmIntro': '勾选要添加的技能。未导入前不会写入任何内容。',
+  'skillUpload.foundCount': '找到 {n} 个技能',
+  'skillUpload.invert': '反选',
+  'skillUpload.skippedCount': '跳过了 {n} 个技能',
+  'skillUpload.mdHint':
+    '.md 文件需要在 YAML frontmatter 中声明名称与描述；.zip / .skill 压缩包必须包含 SKILL.md。确认前不会添加任何内容。',
+  'skillUpload.reading': '正在读取…',
   'skillUpload.writeFromScratchInstead': '改为从零编写',
   'skillUpload.selectAll': '全选',
   'fileBrowser.emptyFolder': '空文件夹',

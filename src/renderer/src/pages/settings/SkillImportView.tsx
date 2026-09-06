@@ -165,9 +165,9 @@ const SkillImportView = ({ onImported }: SkillImportViewProps): React.JSX.Elemen
 
   return (
     <div className="p-5">
-      <h2 className="text-base font-semibold text-foreground">Import from GitHub</h2>
+      <h2 className="text-base font-semibold text-foreground">{t('skillImport.importTitle')}</h2>
       <p className="mt-0.5 text-[13px] leading-5 text-muted-foreground">
-        Search repositories by keyword, or scan a GitHub repository for Skill folders to import.
+        {t('skillImport.importIntro')}
       </p>
 
       <div className="mt-4">
@@ -186,7 +186,7 @@ const SkillImportView = ({ onImported }: SkillImportViewProps): React.JSX.Elemen
                 message.text === GITHUB_REPOSITORY_SEARCH_TOO_LONG_MESSAGE) ||
               undefined
             }
-            placeholder="关键词、owner/repo、owner/repo@ref 或 github.com URL"
+            placeholder={t('skillImport.repoPlaceholder')}
             className="[@media(pointer:coarse)]:min-h-11"
             value={input}
             onChange={(event) => updateInput(event.target.value)}
@@ -233,7 +233,7 @@ const SkillImportView = ({ onImported }: SkillImportViewProps): React.JSX.Elemen
           >
             <div className="flex items-center justify-between gap-3">
               <h3 className="text-sm font-semibold text-foreground">
-                Repositories ({repositories.length})
+                {t('skillImport.repositoriesCount').replace('{n}', String(repositories.length))}
               </h3>
               {repositories.length > 0 ? (
                 <Button

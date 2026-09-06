@@ -621,6 +621,11 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'skillImport.importedSkills': 'インポート済みスキル',
   'skillImport.invertSelection': '選択を反転',
   'skillImport.repoResults': 'リポジトリの結果',
+  'skillImport.importTitle': 'GitHub からインポート',
+  'skillImport.importIntro':
+    'キーワードでリポジトリを検索するか、GitHub リポジトリをスキャンしてスキルフォルダーをインポートします。',
+  'skillImport.repoPlaceholder': 'キーワード、owner/repo、owner/repo@ref、または github.com の URL',
+  'skillImport.repositoriesCount': 'リポジトリ（{n}）',
   'skillImportApproval.notImportable': 'インポート不可',
   'skillImportApproval.selectAll': 'すべて選択',
   'skillImportApproval.updatesExisting': '既存を更新',
@@ -630,6 +635,15 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'skillUpload.nameExists': '同名が存在します',
   'skillUpload.selectAll': 'すべて選択',
   'skillUpload.uploadSkills': 'スキルをアップロード',
+  'skillUpload.uploadIntro':
+    'コンピューター上の SKILL.md ファイルや .zip / .skill バンドルからスキルを追加します。複数のファイルを一度に選択でき、1 つのアーカイブに複数のスキルを含めることもできます。',
+  'skillUpload.confirmIntro': '追加するスキルを選択してください。インポートするまで何も書き込まれません。',
+  'skillUpload.foundCount': '{n} 個のスキルが見つかりました',
+  'skillUpload.invert': '反転',
+  'skillUpload.skippedCount': '{n} 個のスキルをスキップしました',
+  'skillUpload.mdHint':
+    '.md ファイルには YAML frontmatter で名前と説明が必要です。.zip / .skill バンドルには SKILL.md が含まれている必要があります。追加前に確認が行われます。',
+  'skillUpload.reading': '読み込み中…',
   'skillUpload.writeFromScratchInstead': '代わりにゼロから作成',
   'sourcePreview.nextPage': '次のプレビューページ',
   'sourcePreview.prevPage': '前のプレビューページ',
@@ -1369,6 +1383,12 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.importConfig': '設定をインポート',
   'settings.importConfiguration': '設定をインポート',
   'settings.importConnectorConfig': 'コネクタ設定をインポート',
+  'settings.connectorBlurb':
+    'コンピューターから、資格情報不要のコネクタ設定を 1 つ追加します。追加前に設定を確認し、必要な資格情報を入力してください。',
+  'settings.connectorTooLarge': 'コネクタ設定ファイルは {limit} 以下である必要があります。',
+  'settings.connectorChooseJson':
+    '{limit} までの .json ファイルを 1 つ選択してください。ファイルから資格情報がインポートされることはありません。',
+  'settings.connectorEnterLocally': 'ローカルで入力：{names}',
   'settings.importConnectorHint': '設定を確認し、追加前に必要な認証情報を入力してください。',
   'settings.importExistingCodex': '既存の Codex サインインをインポート',
   'settings.importExistingCodexSignIn': '既存の Codex サインインをインポート',

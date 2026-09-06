@@ -24,20 +24,23 @@ const ErrorBanner = ({ message }: { message: string }): React.JSX.Element => (
 
 // A muted note listing skills the bundle contained but couldn't import (too large, no SKILL.md, ...),
 // so a partial import tells the user exactly what was left out instead of failing silently.
-const SkippedNote = ({ items }: { items: SkippedEntry[] }): React.JSX.Element => (
-  <div className="mt-3 rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-    <p className="font-medium text-foreground">
-      Skipped {items.length} skill{items.length === 1 ? '' : 's'}
-    </p>
-    <ul className="mt-1 flex flex-col gap-0.5">
-      {items.map((item) => (
-        <li key={`${item.fileName}:${item.source}`} className="truncate">
-          {item.source} — {item.reason}
-        </li>
-      ))}
-    </ul>
-  </div>
-)
+const SkippedNote = ({ items }: { items: SkippedEntry[] }): React.JSX.Element => {
+  const { t } = useLanguage()
+  return (
+    <div className="mt-3 rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+      <p className="font-medium text-foreground">
+        {t('skillUpload.skippedCount').replace('{n}', String(items.length))}
+      </p>
+      <ul className="mt-1 flex flex-col gap-0.5">
+        {items.map((item) => (
+          <li key={`${item.fileName}:${item.source}`} className="truncate">
+            {item.source} — {item.reason}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
 
 type SkillUploadViewProps = {
   onUploaded: () => void
@@ -337,14 +340,14 @@ const SkillUploadView = ({
           {t('skillUpload.confirmImport')}
         </h2>
         <p className="mt-0.5 text-[13px] leading-5 text-muted-foreground">
-          Pick the skills you want to add. Nothing is written until you import.
+          {t('skillUpload.confirmIntro')}
         </p>
 
         <div className="mt-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <h3 className="text-sm font-semibold text-foreground">
-                Found {candidates.length} skill{candidates.length === 1 ? '' : 's'}
+                {t('skillUpload.foundCount').replace('{n}', String(candidates.length))}
               </h3>
               <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <input
@@ -364,7 +367,7 @@ const SkillUploadView = ({
                 onClick={invertSelection}
                 disabled={busy}
               >
-                Invert
+                {t('skillUpload.invert')}
               </Button>
             </div>
             <Button
@@ -474,8 +477,7 @@ const SkillUploadView = ({
     <div className="p-5">
       <h2 className="text-base font-semibold text-foreground">{t('skillUpload.uploadSkills')}</h2>
       <p className="mt-0.5 text-[13px] leading-5 text-muted-foreground">
-        Add skills from SKILL.md files or .zip / .skill bundles on your computer. You can select
-        several files at once, and a single archive may contain multiple skills.
+        {t('skillUpload.uploadIntro')}
       </p>
 
       <label
@@ -495,11 +497,10 @@ const SkillUploadView = ({
           <Upload className="size-5" aria-hidden="true" />
         </span>
         <span className="text-sm font-medium text-foreground">
-          {busy ? 'Reading…' : t('settings.dragDropOrClickToUpload')}
+          {busy ? t('skillUpload.reading') : t('settings.dragDropOrClickToUpload')}
         </span>
         <span className="max-w-sm text-xs text-muted-foreground">
-          .md files need a name and description in YAML frontmatter. .zip or .skill bundles must
-          contain a SKILL.md. You&apos;ll confirm before anything is added.
+          {t('skillUpload.mdHint')}
         </span>
       </label>
 
