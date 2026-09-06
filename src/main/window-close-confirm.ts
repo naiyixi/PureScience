@@ -1,4 +1,4 @@
-import { BrowserWindow, dialog, ipcMain } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain } from 'electron'
 import { randomUUID } from 'node:crypto'
 
 import type { ActiveSessionInfo } from '../shared/storage'
@@ -170,30 +170,170 @@ export const createCloseConfirm = (
 // work running (an empty quit list fast-paths to 'quit'), so both variants still ASK: quit offers
 // Quit/Cancel, close-to-tray offers Minimize/Quit. A destroyed window can't parent a dialog, so fall
 // back to a windowless one.
+//
+// The strings follow the renderer modal's locale. The renderer stores its preference in
+// localStorage ('system' default), so main approximates it the same way menus/tray do: resolve
+// Electron's OS locale against the same 9-language set; an explicit in-app override that diverges
+// from the OS is a deliberately rare path and the renderer modal (which always wins when alive)
+// still honors it exactly.
+type NativeQuitStrings = {
+  cancel: string
+  quit: string
+  minimize: string
+  quitMessage: string
+  quitDetail: string
+  minimizeMessage: string
+  minimizeDetail: string
+  dontAskAgain: string
+}
+
+const NATIVE_QUIT_STRINGS: Record<string, NativeQuitStrings> = {
+  en: {
+    cancel: 'Cancel',
+    quit: 'Quit',
+    minimize: 'Minimize to tray',
+    quitMessage: 'Quit PureScience?',
+    quitDetail: 'Work is still running and will be interrupted if you quit.',
+    minimizeMessage: 'Minimize to tray or quit?',
+    minimizeDetail: 'Background work may still be running.',
+    dontAskAgain: "Don't ask again"
+  },
+  zh: {
+    cancel: '取消',
+    quit: '退出',
+    minimize: '最小化到托盘',
+    quitMessage: '退出 PureScience？',
+    quitDetail: '仍有工作正在运行，退出将中断它们。',
+    minimizeMessage: '最小化还是退出？',
+    minimizeDetail: '后台可能仍有工作正在运行。',
+    dontAskAgain: '不再询问'
+  },
+  'zh-Hant': {
+    cancel: '取消',
+    quit: '退出',
+    minimize: '最小化到系統匣',
+    quitMessage: '退出 PureScience？',
+    quitDetail: '仍有工作正在執行，退出將中斷它們。',
+    minimizeMessage: '最小化還是退出？',
+    minimizeDetail: '背景可能仍有工作正在執行。',
+    dontAskAgain: '不再詢問'
+  },
+  ja: {
+    cancel: 'キャンセル',
+    quit: '終了',
+    minimize: 'トレイに最小化',
+    quitMessage: 'PureScience を終了しますか？',
+    quitDetail: '作業がまだ実行中です。終了すると中断されます。',
+    minimizeMessage: '最小化しますか、それとも終了しますか？',
+    minimizeDetail: 'バックグラウンド作業が実行中の場合があります。',
+    dontAskAgain: '今後表示しない'
+  },
+  ko: {
+    cancel: '취소',
+    quit: '종료',
+    minimize: '트레이로 최소화',
+    quitMessage: 'PureScience를 종료할까요?',
+    quitDetail: '실행 중인 작업이 있습니다. 종료하면 중단됩니다.',
+    minimizeMessage: '최소화할까요, 아니면 종료할까요?',
+    minimizeDetail: '백그라운드 작업이 실행 중일 수 있습니다.',
+    dontAskAgain: '다시 묻지 않기'
+  },
+  es: {
+    cancel: 'Cancelar',
+    quit: 'Salir',
+    minimize: 'Minimizar a la bandeja',
+    quitMessage: '¿Salir de PureScience?',
+    quitDetail: 'Todavía hay trabajo en ejecución y se interrumpirá si sales.',
+    minimizeMessage: '¿Minimizar o salir?',
+    minimizeDetail: 'Puede haber trabajo en segundo plano en ejecución.',
+    dontAskAgain: 'No volver a preguntar'
+  },
+  de: {
+    cancel: 'Abbrechen',
+    quit: 'Beenden',
+    minimize: 'In den Tray minimieren',
+    quitMessage: 'PureScience beenden?',
+    quitDetail: 'Es läuft noch Arbeit; sie wird beim Beenden unterbrochen.',
+    minimizeMessage: 'Minimieren oder beenden?',
+    minimizeDetail: 'Im Hintergrund läuft möglicherweise noch Arbeit.',
+    dontAskAgain: 'Nicht erneut fragen'
+  },
+  fr: {
+    cancel: 'Annuler',
+    quit: 'Quitter',
+    minimize: 'Réduire dans la barre d’état',
+    quitMessage: 'Quitter PureScience ?',
+    quitDetail: 'Un travail est encore en cours et sera interrompu si vous quittez.',
+    minimizeMessage: 'Réduire ou quitter ?',
+    minimizeDetail: 'Un travail en arrière-plan est peut-être en cours.',
+    dontAskAgain: 'Ne plus demander'
+  },
+  ru: {
+    cancel: 'Отмена',
+    quit: 'Выйти',
+    minimize: 'Свернуть в трей',
+    quitMessage: 'Выйти из PureScience?',
+    quitDetail: 'Работа ещё выполняется и будет прервана при выходе.',
+    minimizeMessage: 'Свернуть или выйти?',
+    minimizeDetail: 'В фоне может выполняться работа.',
+    dontAskAgain: 'Больше не спрашивать'
+  }
+}
+
+const nativeStringsForLocale = (): NativeQuitStrings => {
+  // app may be absent under unit tests that mock only dialog/BrowserWindow; the interop getter for a
+  // missing named export throws on access, so fall back to English there.
+  let locale = 'en'
+  try {
+    locale = app.getLocale().toLowerCase()
+  } catch {
+    // unit-test electron mock without an `app` export
+  }
+  const code = locale.startsWith('zh')
+    ? locale.startsWith('zh-hant') || locale.startsWith('zh-tw') || locale.startsWith('zh-hk')
+      ? 'zh-Hant'
+      : 'zh'
+    : locale.startsWith('ja')
+      ? 'ja'
+      : locale.startsWith('ko')
+        ? 'ko'
+        : locale.startsWith('es')
+          ? 'es'
+          : locale.startsWith('de')
+            ? 'de'
+            : locale.startsWith('fr')
+              ? 'fr'
+              : locale.startsWith('ru')
+                ? 'ru'
+                : 'en'
+  return NATIVE_QUIT_STRINGS[code]
+}
+
 const nativeFallback = async (
   getWindow: () => BrowserWindow | undefined,
   variant: CloseConfirmVariant
 ): Promise<NativeCloseConfirmResult> => {
+  const s = nativeStringsForLocale()
   const options =
     variant === 'quit'
       ? {
           type: 'question' as const,
-          buttons: ['Cancel', 'Quit'],
+          buttons: [s.cancel, s.quit],
           defaultId: 0,
           cancelId: 0,
           title: 'PureScience',
-          message: 'Quit PureScience?',
-          detail: 'Work is still running and will be interrupted if you quit.'
+          message: s.quitMessage,
+          detail: s.quitDetail
         }
       : {
           type: 'question' as const,
-          buttons: ['Minimize to tray', 'Quit'],
+          buttons: [s.minimize, s.quit],
           defaultId: 0,
           cancelId: 0,
           title: 'PureScience',
-          message: 'Minimize to tray or quit?',
-          detail: 'Background work may still be running.',
-          checkboxLabel: "Don't ask again",
+          message: s.minimizeMessage,
+          detail: s.minimizeDetail,
+          checkboxLabel: s.dontAskAgain,
           checkboxChecked: true
         }
   const window = getWindow()
