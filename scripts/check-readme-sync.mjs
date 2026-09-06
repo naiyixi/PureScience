@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // README.md ↔ README.en.md bilingual sync gate.
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
 //
 // The two files deliberately diverge later (the zh file carries Chinese notes, the en mirror is pure
 // English), but the header block — badges, the two intro paragraphs, the release banner — and the
