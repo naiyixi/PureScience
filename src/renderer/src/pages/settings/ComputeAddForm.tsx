@@ -177,16 +177,15 @@ export function ComputeAddForm({ onCreated, onCancel }: ComputeAddFormProps): Re
               }`}
               aria-hidden="true"
             />
-            Advanced (override ~/.ssh/config)
+            {t('computeAdd.advancedOverride')}
           </button>
 
           {advancedOpen ? (
             <div className="flex flex-col gap-4 border-t border-border px-3 py-3">
               <p className="text-xs text-muted-foreground">
-                By default PureScience resolves connection details via{' '}
-                <code className="font-mono">ssh -G &lt;alias&gt;</code> from your{' '}
-                <code className="font-mono">~/.ssh/config</code>. Set these only if you need to
-                override that.
+                {t('computeAdd.advancedExplain')
+                  .replace('{cmd}', 'ssh -G <alias>')
+                  .replace('{cfg}', '~/.ssh/config')}
               </p>
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="compute-user" className="text-sm font-medium text-foreground">
@@ -260,7 +259,7 @@ export function ComputeAddForm({ onCreated, onCancel }: ComputeAddFormProps): Re
 
         <div className="flex justify-end gap-2">
           <Button type="button" variant="ghost" onClick={onCancel} disabled={isSubmitting}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button type="button" onClick={() => void handleSubmit()} disabled={!canSubmit}>
             {isSubmitting ? t('settings.addingHost') : t('settings.add')}

@@ -1886,6 +1886,9 @@ export const en: Record<ZhKey, string> = {
   'computeAdd.fromSshLabel': 'From ~/.ssh/config',
   'computeAdd.pickHostAria': 'Pick a host from ~/.ssh/config',
   'computeAdd.orTypeAlias': 'Or type a host alias',
+  'computeAdd.advancedOverride': 'Advanced (override ~/.ssh/config)',
+  'computeAdd.advancedExplain':
+    'By default PureScience resolves connection details via {cmd} from your {cfg}. Set these only if you need to override that.',
   'signIn.oauthHintA': 'Use a long-lived OAuth token from',
   'signIn.oauthHintB': '.',
   'providerList.modelCount': '{n} models',

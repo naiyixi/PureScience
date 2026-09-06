@@ -129,6 +129,9 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'computeAdd.fromSshLabel': 'Из ~/.ssh/config',
   'computeAdd.pickHostAria': 'Выбрать хост из ~/.ssh/config',
   'computeAdd.orTypeAlias': 'Или введите псевдоним хоста',
+  'computeAdd.advancedOverride': 'Дополнительно (переопределить ~/.ssh/config)',
+  'computeAdd.advancedExplain':
+    'По умолчанию PureScience получает данные подключения через {cmd} из вашего {cfg}. Задавайте их, только если нужно переопределить поведение.',
   'signIn.oauthHintA': 'Используйте долгоживущий OAuth-токен от',
   'signIn.oauthHintB': '.',
   'providerList.modelCount': 'Моделей: {n}',

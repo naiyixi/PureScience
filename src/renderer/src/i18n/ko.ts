@@ -130,6 +130,9 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'computeAdd.fromSshLabel': '~/.ssh/config에서',
   'computeAdd.pickHostAria': '~/.ssh/config에서 호스트 선택',
   'computeAdd.orTypeAlias': '또는 호스트 별칭 입력',
+  'computeAdd.advancedOverride': '고급 설정(~/.ssh/config 덮어쓰기)',
+  'computeAdd.advancedExplain':
+    '기본적으로 PureScience는 {cfg}의 {cmd}를 통해 연결 정보를 확인합니다. 재정의가 필요한 경우에만 설정하세요.',
   'signIn.oauthHintA': '다음에서 발급한 장기 OAuth 토큰 사용',
   'signIn.oauthHintB': '.',
   'providerList.modelCount': '모델 {n}개',

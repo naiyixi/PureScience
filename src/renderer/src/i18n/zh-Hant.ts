@@ -126,6 +126,9 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'computeAdd.fromSshLabel': '來自 ~/.ssh/config',
   'computeAdd.pickHostAria': '從 ~/.ssh/config 選擇主機',
   'computeAdd.orTypeAlias': '或輸入主機別名',
+  'computeAdd.advancedOverride': '進階設定（覆寫 ~/.ssh/config）',
+  'computeAdd.advancedExplain':
+    '預設情況下，PureScience 透過 {cmd} 從你的 {cfg} 解析連線資訊。僅在你需要覆寫時再設定。',
   'signIn.oauthHintA': '使用',
   'signIn.oauthHintB': ' 產生的長期 OAuth 權杖。',
   'providerList.modelCount': '{n} 個模型',

@@ -131,6 +131,9 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'computeAdd.fromSshLabel': '~/.ssh/config から',
   'computeAdd.pickHostAria': '~/.ssh/config からホストを選択',
   'computeAdd.orTypeAlias': 'またはホストエイリアスを入力',
+  'computeAdd.advancedOverride': '詳細設定（~/.ssh/config を上書き）',
+  'computeAdd.advancedExplain':
+    '既定では、PureScience は {cmd} によって {cfg} から接続情報を解決します。上書きが必要な場合のみ設定してください。',
   'signIn.oauthHintA': '以下の発行による長期有効な OAuth トークンを使用',
   'signIn.oauthHintB': '。',
   'providerList.modelCount': '{n} モデル',

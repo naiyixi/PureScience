@@ -1780,6 +1780,9 @@ export const zh = {
   'computeAdd.fromSshLabel': '来自 ~/.ssh/config',
   'computeAdd.pickHostAria': '从 ~/.ssh/config 选择主机',
   'computeAdd.orTypeAlias': '或输入主机别名',
+  'computeAdd.advancedOverride': '高级设置（覆盖 ~/.ssh/config）',
+  'computeAdd.advancedExplain':
+    '默认情况下，PureScience 通过 {cmd} 从你的 {cfg} 解析连接信息。仅在你需要覆盖默认行为时再设置。',
   'signIn.oauthHintA': '使用',
   'signIn.oauthHintB': ' 生成的长期 OAuth 令牌。',
   'providerList.modelCount': '{n} 个模型',
