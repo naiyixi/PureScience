@@ -65,6 +65,7 @@ type PreloadApi = {
     detectCodebuddy: () => unknown
     detectCodex: () => unknown
     installOpencode: (request: unknown) => unknown
+    installCodebuddy: (request: unknown) => unknown
     installCodex: (request: unknown) => unknown
     setAgentFramework: (request: unknown) => unknown
     setVisionModel: (request: unknown) => unknown
