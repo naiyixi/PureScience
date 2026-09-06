@@ -139,6 +139,12 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'providerForm.endpointAria': '端點',
   'specialist.chooseZipHint': '選擇一個 ZIP，其中恰好包含一個專才。',
   'specialist.chooseZip': '選擇 ZIP',
+  'settings.zipLimits': '限制：壓縮後 50 MB · 解壓後 200 MB · 2,000 個檔案 · 每個檔案 25 MB',
+  'specialist.editorDescription': '描述',
+  'specialist.editorInstructions': '說明',
+  'specialist.builtin': '內建',
+  'specialist.startNormalChat': '直接開始一般對話；智慧體會一步步引導你',
+
   'specialist.downloadJson': '下載 JSON',
   'specialist.readOnly': '唯讀',
   'specialist.shipsWithApp': '此專才隨應用程式內建，無法變更。',
@@ -2335,6 +2341,8 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
     '當任務完成、失敗，或在你離開應用程式期間等待核准時，傳送桌面通知。',
   'settings.pasteTokenAfterSave':
     '儲存後，請在設定卡片中貼上權杖——精靈的「測試並繼續」流程會為你登入。',
+  'specialist.editorInstructionsHint':
+    '附加到應用程式的基本提示——不會取代安全規則或工具說明。此項可選。',
   'settings.promptAppendedHint': '附加到應用程式的基本提示——不會取代安全規則或工具',
   'settings.remoteWhoCanReach':
     '選擇誰可以存取這台電腦的 PureScience 工作區。所有專案、智能體、檔案與筆記本執行環境都會繼續在這台電腦上執行。啟用存取前，請先安裝並登入 Remote.It 桌面應用程式。',

@@ -144,6 +144,12 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'providerForm.endpointAria': 'エンドポイント',
   'specialist.chooseZipHint': 'スペシャリストをちょうど 1 つ含む ZIP を選択してください。',
   'specialist.chooseZip': 'ZIP を選択',
+  'settings.zipLimits': '制限：圧縮時 50 MB · 解凍時 200 MB · 2,000 ファイル · 1 ファイル 25 MB',
+  'specialist.editorDescription': '説明',
+  'specialist.editorInstructions': '手順書',
+  'specialist.builtin': '内蔵',
+  'specialist.startNormalChat': '通常の会話を開始します。エージェントが段階的に案内します',
+
   'specialist.downloadJson': 'JSON をダウンロード',
   'specialist.readOnly': '読み取り専用',
   'specialist.shipsWithApp': 'このスペシャリストはアプリに同梱されており、変更できません。',
@@ -2512,6 +2518,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
     'タスクが完了したとき、失敗したとき、またはアプリから離れている間に承認を待つとき、デスクトップ通知を送信します。',
   'settings.pasteTokenAfterSave':
     '保存後、設定カードにトークンを貼り付けてください — ウィザードの「テストして続行」フローでサインインできます。',
+  'specialist.editorInstructionsHint':
+    'アプリの基本プロンプトに追加されます。セーフティルールやツールの説明を置き換えるものではありません。省略可能です。',
   'settings.promptAppendedHint':
     'アプリのベースプロンプトに追記されます — 安全ルールやツールは置き換えません',
   'settings.remoteWhoCanReach':

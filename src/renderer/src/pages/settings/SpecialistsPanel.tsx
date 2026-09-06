@@ -596,7 +596,7 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
             </p>
           </div>
           <Button type="button" variant="outline" onClick={() => onNavigate({ kind: 'list' })}>
-            Back
+            {t('common.back')}
           </Button>
         </div>
 
@@ -608,11 +608,10 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
               {t('settings.packageParsedBeforeSave')}
             </p>
             <p className="mt-4 text-xs text-muted-foreground">
-              Limits: 50 MB compressed · 200 MB uncompressed · 2,000 files · 25 MB per file
+              {t('settings.zipLimits')}
             </p>
             <p className="mx-auto mt-2 max-w-xl text-xs text-muted-foreground">
               {t('settings.zipContainsHint')}
-              guide. Skills placed in the skills folder are discovered automatically.
             </p>
             <div className="mt-5 flex justify-center gap-2">
               <Button
@@ -1156,7 +1155,7 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
               <span className="flex flex-col">
                 <span>{t('settings.chatWithAgent')}</span>
                 <span className="text-xs text-muted-foreground">
-                  Start a normal conversation; the agent guides you step by step
+                  {t('specialist.startNormalChat')}
                 </span>
               </span>
             </DropdownMenuItem>
@@ -1368,7 +1367,8 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                                   )
                               }}
                             >
-                              <Trash2 className="size-3.5" aria-hidden="true" /> Delete
+                              <Trash2 className="size-3.5" aria-hidden="true" />{' '}
+                              {t('common.delete')}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -1388,7 +1388,9 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
           {visibleBuiltinItems.length > 0 || visibleReviewerItems.length > 0 ? (
             <div>
               <div className="mb-1 flex flex-col gap-0.5">
-                <span className="text-sm font-semibold text-foreground">Built-in</span>
+                <span className="text-sm font-semibold text-foreground">
+                  {t('specialist.builtin')}
+                </span>
                 <span className="text-xs text-muted-foreground">
                   {t('settings.builtinShippedWithApp')}
                 </span>

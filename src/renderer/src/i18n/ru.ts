@@ -142,6 +142,12 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'providerForm.endpointAria': 'Конечная точка',
   'specialist.chooseZipHint': 'Выберите ZIP, содержащий ровно одного специалиста.',
   'specialist.chooseZip': 'Выбрать ZIP',
+  'settings.zipLimits': 'Ограничения: 50 МБ сжато · 200 МБ без сжатия · 2 000 файлов · 25 МБ на файл',
+  'specialist.editorDescription': 'Описание',
+  'specialist.editorInstructions': 'Инструкции',
+  'specialist.builtin': 'Встроенные',
+  'specialist.startNormalChat': 'Начните обычный разговор; агент проведёт вас по шагам',
+
   'specialist.downloadJson': 'Скачать JSON',
   'specialist.readOnly': 'Только чтение',
   'specialist.shipsWithApp': 'Этот специалист входит в состав приложения и не может быть изменён.',
@@ -2513,6 +2519,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
     'Вы будете получать уведомления на рабочем столе, когда задача завершится, завершится с ошибкой или будет ожидать вашего одобрения, пока вы не в приложении.',
   'settings.pasteTokenAfterSave':
     'После сохранения вставьте токен в карточку «Настройки» — мастер войдёт в систему через поток «Проверить и продолжить».',
+  'specialist.editorInstructionsHint':
+    'Добавляется к базовому промпту приложения — не заменяет правила безопасности и инструкции инструментов. Необязательно.',
   'settings.promptAppendedHint':
     'Добавляется к базовому промпту приложения — не заменяет правила безопасности и инструкции для инструментов.',
   'settings.remoteWhoCanReach':

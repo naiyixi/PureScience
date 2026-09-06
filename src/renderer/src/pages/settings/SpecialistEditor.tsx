@@ -703,7 +703,8 @@ const SpecialistEditor = ({
               className="mb-1.5 flex items-baseline justify-between text-xs"
             >
               <span>
-                Description <span className="text-muted-foreground">(optional)</span>
+                {t('specialist.editorDescription')}{' '}
+                <span className="text-muted-foreground">{t('common.optional')}</span>
               </span>
               <span className="text-[11px] tabular-nums text-muted-foreground">
                 {form.description.length} / {SPECIALIST_DESCRIPTION_MAX_LENGTH}
@@ -771,14 +772,15 @@ const SpecialistEditor = ({
 
         {/* Instructions section */}
         <section className="mb-6 border-t border-border pt-5">
-          <h3 className="mb-1 text-base font-semibold text-foreground">Instructions</h3>
+          <h3 className="mb-1 text-base font-semibold text-foreground">
+            {t('specialist.editorInstructions')}
+          </h3>
           <p className="mb-4 text-[13px] leading-5 text-muted-foreground">
-            {t('settings.promptAppendedHint')}
-            instructions. Optional.
+            {t('specialist.editorInstructionsHint')}
           </p>
           <div className="relative">
             <label htmlFor="sp-system-prompt" className="sr-only">
-              Instructions
+              {t('specialist.editorInstructions')}
             </label>
             <Textarea
               id="sp-system-prompt"

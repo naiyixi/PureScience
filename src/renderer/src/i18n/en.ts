@@ -1014,6 +1014,8 @@ export const en: Record<ZhKey, string> = {
   'settings.browserOauthDidntOpen':
     "Opening your browser to sign in… Didn't open? Cancel and use a setup token.",
   'settings.setupTokenSuffix': '',
+  'specialist.editorInstructionsHint':
+    "Appended to the app's base prompt — does not replace safety rules or tool instructions. Optional.",
   'settings.promptAppendedHint':
     "Appended to the app's base prompt — does not replace safety rules or tool",
   'settings.specialistCapabilitiesHint':
@@ -1923,6 +1925,12 @@ export const en: Record<ZhKey, string> = {
   'providerForm.endpointAria': 'Endpoint',
   'specialist.chooseZipHint': 'Choose one ZIP containing exactly one Specialist.',
   'specialist.chooseZip': 'Choose ZIP',
+  'settings.zipLimits': 'Limits: 50 MB compressed · 200 MB uncompressed · 2,000 files · 25 MB per file',
+  'specialist.editorDescription': 'Description',
+  'specialist.editorInstructions': 'Instructions',
+  'specialist.builtin': 'Built-in',
+  'specialist.startNormalChat': 'Start a normal conversation; the agent guides you step by step',
+
   'specialist.downloadJson': 'Download JSON',
   'specialist.readOnly': 'Read-only',
   'specialist.shipsWithApp': 'This Specialist ships with the app and cannot be changed.',

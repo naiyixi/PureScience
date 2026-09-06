@@ -960,6 +960,8 @@ export const zh = {
   'settings.noProvidersYet': '还没有提供商。添加一个以选择你的模型来源。',
   'settings.browserOauthDidntOpen': '正在打开浏览器登录…没有打开？取消并使用设置令牌。',
   'settings.setupTokenSuffix': '',
+  'specialist.editorInstructionsHint':
+    '附加到应用的基础提示——不会替换安全规则或工具说明。此项可选。',
   'settings.promptAppendedHint': '附加到应用的基础提示——不会替换安全规则或工具',
   'settings.specialistCapabilitiesHint':
     '此专才可使用的技能和连接器。未在此处选择的任何内容都保持不可见',
@@ -1812,6 +1814,12 @@ export const zh = {
   'providerForm.endpointAria': '端点',
   'specialist.chooseZipHint': '选择一个 ZIP，其中恰好包含一个专才。',
   'specialist.chooseZip': '选择 ZIP',
+  'settings.zipLimits': '限制：压缩后 50 MB · 解压后 200 MB · 2,000 个文件 · 每个文件 25 MB',
+  'specialist.editorDescription': '描述',
+  'specialist.editorInstructions': '说明',
+  'specialist.builtin': '内置',
+  'specialist.startNormalChat': '直接开始普通对话；智能体会一步步引导你',
+
   'specialist.downloadJson': '下载 JSON',
   'specialist.readOnly': '只读',
   'specialist.shipsWithApp': '此专才随应用内置，无法更改。',

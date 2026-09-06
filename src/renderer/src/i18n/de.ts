@@ -143,6 +143,12 @@ export const de: Partial<Record<ZhKey, string>> = {
   'providerForm.endpointAria': 'Endpunkt',
   'specialist.chooseZipHint': 'Wählen Sie ein ZIP mit genau einem Spezialisten.',
   'specialist.chooseZip': 'ZIP wählen',
+  'settings.zipLimits': 'Grenzen: 50 MB komprimiert · 200 MB unkomprimiert · 2.000 Dateien · 25 MB pro Datei',
+  'specialist.editorDescription': 'Beschreibung',
+  'specialist.editorInstructions': 'Anweisungen',
+  'specialist.builtin': 'Integriert',
+  'specialist.startNormalChat': 'Starten Sie ein normales Gespräch; der Agent führt Sie Schritt für Schritt',
+
   'specialist.downloadJson': 'JSON herunterladen',
   'specialist.readOnly': 'Nur lesen',
   'specialist.shipsWithApp':
@@ -2567,6 +2573,8 @@ export const de: Partial<Record<ZhKey, string>> = {
     'Sie erhalten eine Desktop-Benachrichtigung, wenn eine Aufgabe abgeschlossen wird, fehlschlägt oder auf Ihre Genehmigung wartet, während Sie nicht in der App sind.',
   'settings.pasteTokenAfterSave':
     'Fügen Sie das Token nach dem Speichern in die Karte „Einstellungen“ ein — der Ablauf „Testen und fortfahren“ des Assistenten meldet Sie an.',
+  'specialist.editorInstructionsHint':
+    'Wird dem Basis-Prompt der App angehängt — ersetzt keine Sicherheitsregeln oder Tool-Anweisungen. Optional.',
   'settings.promptAppendedHint':
     'Wird an den Basis-Prompt der App angehängt — ersetzt weder Sicherheitsregeln noch Tool-Anweisungen.',
   'settings.remoteWhoCanReach':

@@ -143,6 +143,12 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'providerForm.endpointAria': '엔드포인트',
   'specialist.chooseZipHint': '스페셜리스트가 정확히 하나 들어 있는 ZIP을 선택하세요.',
   'specialist.chooseZip': 'ZIP 선택',
+  'settings.zipLimits': '제한: 압축 50 MB · 해제 200 MB · 2,000개 파일 · 파일당 25 MB',
+  'specialist.editorDescription': '설명',
+  'specialist.editorInstructions': '지침',
+  'specialist.builtin': '내장',
+  'specialist.startNormalChat': '일반 대화를 시작하세요. 에이전트가 단계별로 안내합니다',
+
   'specialist.downloadJson': 'JSON 다운로드',
   'specialist.readOnly': '읽기 전용',
   'specialist.shipsWithApp': '이 스페셜리스트는 앱에 포함되어 있어 변경할 수 없습니다.',
@@ -2459,6 +2465,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
     '작업이 완료, 실패하거나 앱을 떠나 있는 동안 승인을 기다릴 때 데스크톱 알림을 받습니다.',
   'settings.pasteTokenAfterSave':
     '저장 후 설정 카드에 토큰을 붙여넣으세요 — 마법사의 테스트 및 계속 흐름이 로그인을 진행합니다.',
+  'specialist.editorInstructionsHint':
+    '앱 기본 프롬프트에 추가됩니다. 안전 규칙이나 도구 지침을 대체하지 않습니다. 선택 항목입니다.',
   'settings.promptAppendedHint':
     '앱의 기본 프롬프트에 추가됩니다 — 안전 규칙이나 도구를 대체하지 않습니다',
   'settings.remoteWhoCanReach':
