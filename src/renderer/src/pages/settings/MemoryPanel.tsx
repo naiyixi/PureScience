@@ -93,7 +93,7 @@ const MemoryHeader = ({
         aria-label={t('settings.memoryEnabled')}
         className={cn(
           'relative h-5 w-9 rounded-full transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
-          memory.enabled ? 'bg-accent' : 'bg-bg-200'
+          memory.enabled ? 'bg-primary' : 'bg-bg-200'
         )}
         onClick={toggleEnabled}
       >
@@ -401,7 +401,7 @@ const MemoryCategoryForm = ({
             data-slot="memory-category-auto-recall"
             className={cn(
               'relative h-5 w-9 shrink-0 rounded-full transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
-              autoRecall ? 'bg-accent' : 'bg-bg-200'
+              autoRecall ? 'bg-primary' : 'bg-bg-200'
             )}
             onClick={() => setAutoRecall((value) => !value)}
           >
@@ -431,7 +431,7 @@ const MemoryCategoryForm = ({
             type="button"
             data-slot="memory-category-create"
             disabled={!canCreate}
-            className="rounded-md bg-accent px-3 py-1.5 text-[12px] text-white outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-40"
+            className="rounded-md bg-primary px-3 py-1.5 text-[12px] text-primary-foreground outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-40"
             onClick={create}
           >
             {t('settings.memoryCreate')}

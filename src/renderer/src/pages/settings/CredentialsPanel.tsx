@@ -525,23 +525,26 @@ export const CredentialsPanel = (): React.JSX.Element => {
                 <h3 className="text-sm font-semibold text-foreground">
                   {t('settings.credentialsConnectorHeading')}
                 </h3>
-                <button
+                <Button
                   type="button"
+                  variant="outline"
+                  size="sm"
                   data-slot="credential-add-custom"
-                  className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[12px] text-text-200 outline-none hover:bg-bg-200 hover:text-text-100 focus-visible:ring-2 focus-visible:ring-ring/50"
+                  className="h-7 shrink-0 gap-1 border-primary/40 px-2.5 text-xs text-primary hover:bg-primary/5 hover:text-primary"
                   onClick={() => setEditing({ kind: 'new', serviceId: 'custom' })}
                 >
                   <Plus className="size-3.5" aria-hidden="true" />
                   {t('settings.credentialsAddCustom')}
-                </button>
+                </Button>
               </div>
               <p className="mt-0.5 text-[12px] leading-5 text-text-300">
                 {t('settings.credentialsConnectorDescription')}
               </p>
               <div className="mt-2 divide-y divide-border overflow-hidden rounded-xl border border-border bg-bg-10">
                 {customEntries.length === 0 ? (
-                  <div className="px-3 py-3 text-[12px] text-text-300">
-                    {t('settings.credentialsConnectorEmpty')}
+                  <div className="flex items-center gap-3 px-3 py-4 text-[12px] leading-5 text-text-200">
+                    <KeyRound className="size-4 shrink-0 text-text-300" aria-hidden="true" />
+                    <span>{t('settings.credentialsConnectorEmpty')}</span>
                   </div>
                 ) : (
                   customEntries.map((credential) => (
@@ -568,14 +571,17 @@ export const CredentialsPanel = (): React.JSX.Element => {
 
             {/* Section ③ 自定义 — the note that Custom MCP Connectors and model providers keep
                 their credentials in their own configuration (managed on their own settings
-                panels), so nothing is duplicated here. */}
+                panels), so nothing is duplicated here. Rendered as a callout card so it never reads
+                as an empty section. */}
             <section aria-label={t('settings.credentialsServiceCustom')}>
-              <h3 className="text-sm font-semibold text-foreground">
-                {t('settings.credentialsServiceCustom')}
-              </h3>
-              <p className="mt-1 text-[12px] leading-5 text-text-300">
-                {t('settings.credentialsCustomDescription')}
-              </p>
+              <div className="rounded-xl border border-border bg-muted/40 px-3 py-2.5">
+                <h3 className="text-sm font-semibold text-foreground">
+                  {t('settings.credentialsServiceCustom')}
+                </h3>
+                <p className="mt-0.5 text-xs leading-5 text-text-200">
+                  {t('settings.credentialsCustomDescription')}
+                </p>
+              </div>
             </section>
           </div>
         )}

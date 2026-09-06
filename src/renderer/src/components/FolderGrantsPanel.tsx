@@ -175,7 +175,7 @@ const FolderGrantsPanel = ({
           type="button"
           disabled={!currentPath || granting}
           onClick={() => void grantCurrent()}
-          className="mt-2 w-full rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white transition-opacity disabled:opacity-40"
+          className="mt-2 w-full rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-opacity disabled:opacity-40"
         >
           {granting ? t('ws.folderGrantsGranting') : t('ws.folderGrantsGrant')}
         </button>
