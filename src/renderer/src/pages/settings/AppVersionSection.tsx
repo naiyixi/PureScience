@@ -85,7 +85,6 @@ const AppVersionSection = (): React.JSX.Element => {
               <p className="mt-0.5 text-xs font-normal text-muted-foreground">
                 {APP.releaseCodeMeaning} · {APP.copyright}
               </p>
-              <p className="mt-0.5 text-xs font-normal text-muted-foreground">{APP.mission}</p>
             </div>
           </div>
         }

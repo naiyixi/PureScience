@@ -37,7 +37,7 @@ import { getEnvironmentRepairPanel } from '../settings/settings-navigation'
 import { DeleteProjectDialog } from './DeleteProjectDialog'
 import { ProjectFormDialog } from './ProjectFormDialog'
 
-const RECENT_SESSION_LIMIT = 5
+const RECENT_SESSION_LIMIT = 10
 
 // Cap for the distinct file-type chips shown per project row (MD / DOCX / CSV …).
 const PROJECT_FILE_KIND_LIMIT = 4
@@ -77,6 +77,10 @@ const sectionHeadingClassName =
   'mb-3 flex items-center gap-2 text-[17px] font-medium leading-6 text-text-000'
 
 const listCardClassName = 'rounded-2xl border border-border-200/70 bg-bg-000 p-1.5 shadow-card'
+
+// A tall project/session list scrolls inside its card instead of pushing content off an unscrollable
+// page: the app shell fixes the viewport, so overflow must live on the list itself.
+const scrollableListClassName = 'max-h-[55vh] overflow-y-auto overscroll-contain'
 
 const rowClassName =
   'group flex w-full items-center gap-2 rounded-xl px-2.5 py-2.5 text-left transition-colors duration-150 ease-out hover:bg-bg-300 sm:px-3'
@@ -430,8 +434,8 @@ const HomePage = ({
                 <CircleAlert className="size-3.5" strokeWidth={2} aria-hidden="true" />
                 <span className="hidden sm:inline">
                   {requiredEnvironmentFailures.length === 1
-                    ? `${requiredEnvironmentFailures[0].label} needs attention`
-                    : `${requiredEnvironmentFailures.length} environment items need attention`}
+                    ? t('home.envAttentionOne').replace('{label}', requiredEnvironmentFailures[0].label)
+                    : t('home.envAttentionMany').replace('{n}', String(requiredEnvironmentFailures.length))}
                 </span>
                 <span className="sm:hidden">{t('home.environment')}</span>
               </button>
@@ -482,14 +486,14 @@ const HomePage = ({
                 className="rounded-2xl border border-danger-000/30 px-4 py-6 text-center text-sm text-danger-000"
                 role="alert"
               >
-                Could not load projects: {loadError}
+                {t('home.loadProjectsFailed').replace('{error}', loadError)}
               </div>
             ) : projectSummaries.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-border-200/70 px-4 py-10 text-center text-sm text-muted-foreground">
                 {t('home.noProjects')}
               </div>
             ) : (
-              <div className={listCardClassName}>
+              <div className={cn(listCardClassName, scrollableListClassName)}>
                 {projectSummaries.map(({ project, sessionCount, lastActivityAt }) => (
                   <div
                     key={project.id}
@@ -553,7 +557,7 @@ const HomePage = ({
                             onSelect={() => openEditDialog(project)}
                           >
                             <Pencil className="size-4" strokeWidth={2} aria-hidden="true" />
-                            Rename…
+                            {t('workspace.rename')}
                           </DropdownMenu.Item>
                           <DropdownMenu.Item
                             className={menuItemClassName}
@@ -574,7 +578,7 @@ const HomePage = ({
                             onSelect={() => openDeleteDialog(project)}
                           >
                             <Trash2 className="size-4" strokeWidth={2} aria-hidden="true" />
-                            Delete
+                            {t('common.delete')}
                           </DropdownMenu.Item>
                         </DropdownMenu.Content>
                       </DropdownMenu.Portal>
@@ -595,7 +599,7 @@ const HomePage = ({
                 {t('home.sessionsPlaceholder')}
               </div>
             ) : (
-              <div className={listCardClassName}>
+              <div className={cn(listCardClassName, scrollableListClassName)}>
                 {recentSessions.map((session) => {
                   const preview = getSessionPreview(session)
 

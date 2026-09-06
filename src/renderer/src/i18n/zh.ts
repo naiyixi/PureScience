@@ -193,6 +193,9 @@ export const zh = {
   'home.noProjects': '暂无项目。创建一个开始使用。',
   'home.sessionsPlaceholder': '你启动的会话将显示在这里。',
   'home.projects': '项目',
+  'home.envAttentionOne': '{label} 需要处理',
+  'home.envAttentionMany': '{n} 项环境问题需要处理',
+  'home.loadProjectsFailed': '无法加载项目：{error}',
 
   // workspace
   'workspace.nav': '工作区导航',
@@ -1913,7 +1916,7 @@ export const zh = {
   'skillDetail.detailsTitle': '详情',
   'skillDetail.author': '作者',
   'skillDetail.license': '许可证',
-  'boot.loadingSettings': '正在加载设置…',
+  'boot.loadingSettings': '正在启动 PureScience…',
   'boot.retrying': '正在重试…',
   'boot.retry': '重试',
   'boot.loadingSaved': '正在加载已保存的会话…',

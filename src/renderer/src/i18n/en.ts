@@ -202,6 +202,9 @@ export const en: Record<ZhKey, string> = {
   'home.noProjects': 'No projects yet. Create one to get started.',
   'home.sessionsPlaceholder': 'Sessions you start will appear here.',
   'home.projects': 'Projects',
+  'home.envAttentionOne': '{label} needs attention',
+  'home.envAttentionMany': '{n} environment items need attention',
+  'home.loadProjectsFailed': 'Could not load projects: {error}',
 
   'workspace.nav': 'Workspace navigation',
   'workspace.sessions': 'Sessions',
@@ -2029,7 +2032,7 @@ export const en: Record<ZhKey, string> = {
   'skillDetail.detailsTitle': 'Details',
   'skillDetail.author': 'Author',
   'skillDetail.license': 'License',
-  'boot.loadingSettings': 'Loading settings…',
+  'boot.loadingSettings': 'Starting PureScience…',
   'boot.retrying': 'Retrying…',
   'boot.retry': 'Retry',
   'boot.loadingSaved': 'Loading saved conversations…',

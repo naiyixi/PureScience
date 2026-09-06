@@ -23,7 +23,6 @@ export const APP = {
     x: 'https://x.com/zerolink_ai'
   },
   copyright: '© 2026 ZEROLINK. All rights reserved.',
-  mission: '独立开源的科研 AI 工作台 · 以开源之力，造福全人类',
   update: {
     // Fixed URL: GitHub rewrites /releases/latest/download/<asset> to the newest release's asset,
     // so the client always polls the latest manifest without a per-version config change.

@@ -241,7 +241,7 @@ export const de: Partial<Record<ZhKey, string>> = {
   'skillDetail.detailsTitle': 'Einzelheiten',
   'skillDetail.author': 'Autor',
   'skillDetail.license': 'Lizenz',
-  'boot.loadingSettings': 'Einstellungen werden geladen…',
+  'boot.loadingSettings': 'PureScience wird gestartet…',
   'boot.retrying': 'Erneut versuchen…',
   'boot.retry': 'Erneut versuchen',
   'boot.loadingSaved': 'Gespeicherte Gespräche werden geladen…',
@@ -464,6 +464,9 @@ export const de: Partial<Record<ZhKey, string>> = {
   'home.projectActions': 'Projektaktionen',
   'home.projectDescription': 'Beschreibung',
   'home.projects': 'Projekte',
+  'home.envAttentionOne': '{label} erfordert Aufmerksamkeit',
+  'home.envAttentionMany': '{n} Umgebungselemente erfordern Aufmerksamkeit',
+  'home.loadProjectsFailed': 'Projekte konnten nicht geladen werden: {error}',
   'home.recentArtifacts': 'Letzte Artefakte',
   'home.recentSessions': 'Letzte Sitzungen',
   'home.renameProjectHint':
