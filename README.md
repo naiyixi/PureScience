@@ -382,6 +382,7 @@ a downstream derivative of any other product.
 - 更新日记（含版本代号）/ Changelog: [CHANGELOG.md](CHANGELOG.md)
 - GitHub: [naiyixi/PureScience](https://github.com/naiyixi/PureScience)
 - Cite / archive with a DOI: [Zenodo archiving runbook](docs/ZENODO-ARCHIVE.md)
+- **Cite PureScience v1.43.0:** [DOI 10.5281/zenodo.22441075](https://doi.org/10.5281/zenodo.22441075)
 
 ## Roadmap
 
