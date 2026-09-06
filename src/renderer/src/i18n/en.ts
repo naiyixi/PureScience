@@ -678,7 +678,7 @@ export const en: Record<ZhKey, string> = {
   'settings.validateSharedConnectorFile': 'Validate a shared Connector file',
   'settings.noConnectorsMatchSearch': 'No connectors match your search.',
   'settings.researchConnectorsFromAnthropic': 'Research connectors from Anthropic',
-  'settings.syncsWithClaudeConnectorsDirectory': 'Syncs with the Claude Connectors Directory',
+  'settings.syncsWithConnectorDirectory': 'Syncs with the connector directory',
   'settings.exportConnectorAction': 'Export {name}',
   'settings.editConnectorAction': 'Edit {name}',
   'settings.removeConnectorAction': 'Remove {name}',

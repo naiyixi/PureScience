@@ -647,7 +647,7 @@ export const zh = {
   'settings.validateSharedConnectorFile': '验证共享的连接器文件',
   'settings.noConnectorsMatchSearch': '没有连接器匹配你的搜索。',
   'settings.researchConnectorsFromAnthropic': '来自 Anthropic 的研究连接器',
-  'settings.syncsWithClaudeConnectorsDirectory': '与 Claude 连接器目录同步',
+  'settings.syncsWithConnectorDirectory': '与连接器目录同步',
   'settings.exportConnectorAction': '导出 {name}',
   'settings.editConnectorAction': '编辑 {name}',
   'settings.removeConnectorAction': '移除 {name}',

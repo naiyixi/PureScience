@@ -2033,8 +2033,8 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.switchStartsFreshSession':
     'Agent-Sitzung. Geöffnete Konversationen behalten ihre vorhandenen Nachrichten, und ihr Verlauf wird übernommen). Neue Konversationen sind nicht betroffen.',
   'settings.switching': 'Wird gewechselt…',
-  'settings.syncsWithClaudeConnectorsDirectory':
-    'Synchronisiert mit dem Claude-Connectors-Verzeichnis',
+  'settings.syncsWithConnectorDirectory':
+    'Synchronisiert mit dem Connector-Verzeichnis',
   'settings.system': 'System',
   'settings.systemRequirementsNotMet': 'Systemanforderungen nicht erfüllt',
   'settings.tagsManagerDescription':

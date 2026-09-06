@@ -595,7 +595,7 @@ export function ConnectorsPanel({ onNavigate }: ConnectorsPanelProps): React.JSX
           ? connectorGroup(
               'directory',
               t('settings.directory'),
-              t('settings.syncsWithClaudeConnectorsDirectory'),
+              t('settings.syncsWithConnectorDirectory'),
               directoryConnectors
             )
           : null}

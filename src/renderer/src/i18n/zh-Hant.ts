@@ -1856,7 +1856,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.switchStartsFreshSession':
     '智能體對話。開啟中的對話會保留原有訊息，其記錄會帶入新後端（新對話不受影響）。',
   'settings.switching': '切換中…',
-  'settings.syncsWithClaudeConnectorsDirectory': '與 Claude Connectors 目錄同步',
+  'settings.syncsWithConnectorDirectory': '與連接器目錄同步',
   'settings.system': '系統',
   'settings.systemRequirementsNotMet': '未滿足系統需求',
   'settings.taskNotifications': '任務通知',

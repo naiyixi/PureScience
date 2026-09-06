@@ -1952,7 +1952,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.switchStartsFreshSession':
     '에이전트 세션. 열려 있는 대화는 기존 메시지를 유지하며, 대화 내용은 새 백엔드로 재생됩니다(새 대화는 영향을 받지 않습니다).',
   'settings.switching': '전환하는 중…',
-  'settings.syncsWithClaudeConnectorsDirectory': 'Claude Connectors 디렉터리와 동기화',
+  'settings.syncsWithConnectorDirectory': '커넥터 디렉터리와 동기화',
   'settings.system': '시스템',
   'settings.systemRequirementsNotMet': '시스템 요구 사항 미충족',
   'settings.tagsManagerDescription': '스킬, 커넥터, 전문가에 걸쳐 태그를 관리합니다.',

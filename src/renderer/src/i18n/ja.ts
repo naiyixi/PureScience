@@ -1988,7 +1988,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.switchStartsFreshSession':
     'エージェントセッションが新しく開始されます。開いている会話は既存のメッセージを保持し、その記録は新しいバックエンドに引き継がれて再生されます（ツールの状態は引き継がれず、新しい会話には影響しません）。',
   'settings.switching': '切り替え中…',
-  'settings.syncsWithClaudeConnectorsDirectory': 'Claude Connectors Directory と同期',
+  'settings.syncsWithConnectorDirectory': 'Connector 目录と同期',
   'settings.system': 'システム',
   'settings.systemRequirementsNotMet': 'システム要件を満たしていません',
   'settings.tagsManagerDescription':

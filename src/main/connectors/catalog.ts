@@ -15,8 +15,8 @@ export type ConnectorMeta = {
   // License gate: when true, calls fail closed unless the user declared non-commercial use
   // (Settings → General → Use intent). Mark sources whose terms restrict commercial use.
   noncommercialOnly?: boolean
-  // Settings-list section. Absent = "featured" (Anthropic research connectors); "directory" connectors
-  // mirror entries in the Claude Connectors Directory.
+  // Settings-list section. Absent = "featured" (built-in research connectors);
+  // "directory" connectors mirror the in-app connector directory catalog.
   group?: ConnectorGroup
 }
 

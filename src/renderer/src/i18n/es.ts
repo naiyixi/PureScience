@@ -2013,8 +2013,8 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.switchStartsFreshSession':
     'sesión de agente. Las conversaciones abiertas conservan sus mensajes existentes y su transcripción se traslada al nuevo backend (las conversaciones nuevas no se ven afectadas).',
   'settings.switching': 'Cambiando…',
-  'settings.syncsWithClaudeConnectorsDirectory':
-    'Se sincroniza con el directorio de conectores de Claude',
+  'settings.syncsWithConnectorDirectory':
+    'Se sincroniza con el directorio de conectores',
   'settings.system': 'Sistema',
   'settings.systemRequirementsNotMet': 'No se cumplen los requisitos del sistema',
   'settings.tagsManagerDescription':

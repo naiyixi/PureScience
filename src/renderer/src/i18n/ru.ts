@@ -1990,7 +1990,7 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.switchStartsFreshSession':
     'сессия агента. Открытые диалоги сохраняют существующие сообщения, а их запись переносится). Новые диалоги не затрагиваются.',
   'settings.switching': 'Переключение…',
-  'settings.syncsWithClaudeConnectorsDirectory': 'Синхронизируется с каталогом коннекторов Claude',
+  'settings.syncsWithConnectorDirectory': 'Синхронизируется с каталогом коннекторов',
   'settings.system': 'Система',
   'settings.systemRequirementsNotMet': 'Системные требования не выполнены',
   'settings.tagsManagerDescription': 'Управляйте тегами навыков, коннекторов и специалистов.',
