@@ -230,6 +230,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'boot.retrying': '다시 시도하는 중…',
   'boot.retry': '다시 시도',
   'boot.loadingSaved': '저장된 대화를 불러오는 중…',
+  'ui.sessionInterrupted': '앱이 종료되기 전에 세션이 중단되었습니다.',
   'toolActivity.webSearch': '웹 검색',
   'toolActivity.query': '쿼리',
   'remoteError.approvalCancelled':
