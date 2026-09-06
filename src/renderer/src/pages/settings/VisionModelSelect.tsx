@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/select'
 import { useSettingsStore } from '@/stores/settings-store'
 import {
+  getOfficialVendorModelIds,
   isOfficialVendorId,
   isVendorModelMultimodal
 } from '../../../../shared/provider-registry'
@@ -38,10 +39,21 @@ const VisionModelSelect = (): React.JSX.Element | null => {
       ? isVendorModelMultimodal(provider.vendorId, model)
       : provider.supportsImageInput === true
 
-  const options = providers.flatMap((provider) => {
-    const models =
+  // Candidate models for one provider. For an official vendor, derive from the bundled vendor
+  // catalog (which always carries the multimodal ids) rather than the persisted provider.models —
+  // that list is often pruned to the active model, so a text main model would hide the vision
+  // variant. Stored models still merge in, in case a refreshed vendor catalog surfaced a new id.
+  const modelsFor = (provider: (typeof providers)[number]): string[] => {
+    const listed =
       provider.models.length > 0 ? provider.models : provider.model ? [provider.model] : []
-    return models
+    if (provider.vendorId !== undefined && isOfficialVendorId(provider.vendorId)) {
+      return [...new Set([...getOfficialVendorModelIds(provider.vendorId), ...listed])]
+    }
+    return listed
+  }
+
+  const options = providers.flatMap((provider) => {
+    return modelsFor(provider)
       .filter((model) => isVisionCandidate(provider, model))
       .map((model) => ({ provider, model }))
   })
