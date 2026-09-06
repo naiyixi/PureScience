@@ -83,7 +83,8 @@ describe('AgentStep', () => {
       preflight: {
         claudeReady: true,
         opencodeReady: false,
-        codebuddyReady: false, codexReady: false,
+        codebuddyReady: false,
+        codexReady: false,
         agentFrameworkId: 'claude-code',
         agentReady: true,
         activeProviderReady: false
@@ -117,7 +118,8 @@ describe('AgentStep', () => {
       preflight: {
         claudeReady: false,
         opencodeReady: false,
-        codebuddyReady: false, codexReady: false,
+        codebuddyReady: false,
+        codexReady: false,
         agentFrameworkId: 'claude-code',
         agentReady: false,
         activeProviderReady: false
@@ -141,7 +143,8 @@ describe('AgentStep', () => {
       preflight: {
         claudeReady: false,
         opencodeReady: false,
-        codebuddyReady: false, codexReady: false,
+        codebuddyReady: false,
+        codexReady: false,
         agentFrameworkId: 'claude-code',
         agentReady: false,
         activeProviderReady: false
@@ -167,7 +170,8 @@ describe('AgentStep', () => {
       preflight: {
         claudeReady: true,
         opencodeReady: false,
-        codebuddyReady: false, codexReady: false,
+        codebuddyReady: false,
+        codexReady: false,
         agentFrameworkId: 'claude-code',
         agentReady: true,
         activeProviderReady: false
@@ -197,7 +201,8 @@ describe('AgentStep', () => {
       preflight: {
         claudeReady: true,
         opencodeReady: false,
-        codebuddyReady: false, codexReady: false,
+        codebuddyReady: false,
+        codexReady: false,
         agentFrameworkId: 'claude-code',
         agentReady: true,
         activeProviderReady: false
@@ -238,7 +243,8 @@ describe('AgentStep', () => {
       preflight: {
         claudeReady: true,
         opencodeReady: true,
-        codebuddyReady: false, codexReady: true,
+        codebuddyReady: false,
+        codexReady: true,
         agentFrameworkId: 'claude-code',
         agentReady: true,
         activeProviderReady: false
@@ -269,7 +275,8 @@ describe('AgentStep', () => {
       preflight: {
         claudeReady: true,
         opencodeReady: false,
-        codebuddyReady: false, codexReady: true,
+        codebuddyReady: false,
+        codexReady: true,
         agentFrameworkId: 'claude-code',
         agentReady: true,
         activeProviderReady: false
@@ -300,7 +307,8 @@ describe('AgentStep', () => {
       preflight: {
         claudeReady: true,
         opencodeReady: false,
-        codebuddyReady: false, codexReady: false,
+        codebuddyReady: false,
+        codexReady: false,
         agentFrameworkId: 'claude-code',
         agentReady: true,
         activeProviderReady: false
@@ -325,7 +333,8 @@ describe('AgentStep', () => {
       preflight: {
         claudeReady: true,
         opencodeReady: true,
-        codebuddyReady: false, codexReady: false,
+        codebuddyReady: false,
+        codexReady: false,
         agentFrameworkId: 'opencode',
         agentReady: true,
         activeProviderReady: false
@@ -344,7 +353,8 @@ describe('AgentStep', () => {
       preflight: {
         claudeReady: false,
         opencodeReady: false,
-        codebuddyReady: false, codexReady: false,
+        codebuddyReady: false,
+        codexReady: false,
         agentFrameworkId: 'claude-code',
         agentReady: false,
         activeProviderReady: false
@@ -383,7 +393,8 @@ describe('AgentStep', () => {
       preflight: {
         claudeReady: false,
         opencodeReady: true,
-        codebuddyReady: false, codexReady: false,
+        codebuddyReady: false,
+        codexReady: false,
         agentFrameworkId: 'claude-code',
         agentReady: false,
         activeProviderReady: false
@@ -407,7 +418,8 @@ describe('AgentStep', () => {
       preflight: {
         claudeReady: false,
         opencodeReady: false,
-        codebuddyReady: false, codexReady: true,
+        codebuddyReady: false,
+        codexReady: true,
         agentFrameworkId: 'claude-code',
         agentReady: false,
         activeProviderReady: false
@@ -437,7 +449,8 @@ describe('AgentStep', () => {
       preflight: {
         claudeReady: false,
         opencodeReady: true,
-        codebuddyReady: false, codexReady: true,
+        codebuddyReady: false,
+        codexReady: true,
         agentFrameworkId: 'claude-code',
         agentReady: false,
         activeProviderReady: false
@@ -479,7 +492,8 @@ describe('AgentStep', () => {
       preflight: {
         claudeReady: true,
         opencodeReady: false,
-        codebuddyReady: false, codexReady: true,
+        codebuddyReady: false,
+        codexReady: true,
         agentFrameworkId: 'claude-code',
         agentReady: true,
         activeProviderReady: false
@@ -505,7 +519,8 @@ describe('AgentStep', () => {
       preflight: {
         claudeReady: true,
         opencodeReady: true,
-        codebuddyReady: false, codexReady: false,
+        codebuddyReady: false,
+        codexReady: false,
         agentFrameworkId: 'claude-code',
         agentReady: true,
         activeProviderReady: false
@@ -531,7 +546,8 @@ describe('AgentStep', () => {
       preflight: {
         claudeReady: true,
         opencodeReady: true,
-        codebuddyReady: false, codexReady: true,
+        codebuddyReady: false,
+        codexReady: true,
         agentFrameworkId: 'claude-code',
         agentReady: true,
         activeProviderReady: false
@@ -562,7 +578,8 @@ describe('AgentStep', () => {
       preflight: {
         claudeReady: false,
         opencodeReady: false,
-        codebuddyReady: false, codexReady: false,
+        codebuddyReady: false,
+        codexReady: false,
         agentFrameworkId: 'claude-code',
         agentReady: false,
         activeProviderReady: false
@@ -589,7 +606,8 @@ describe('AgentStep', () => {
       preflight: {
         claudeReady: false,
         opencodeReady: false,
-        codebuddyReady: false, codexReady: false,
+        codebuddyReady: false,
+        codexReady: false,
         agentFrameworkId: 'claude-code',
         agentReady: false,
         activeProviderReady: false
@@ -616,7 +634,8 @@ describe('AgentStep', () => {
       preflight: {
         claudeReady: false,
         opencodeReady: false,
-        codebuddyReady: false, codexReady: false,
+        codebuddyReady: false,
+        codexReady: false,
         agentFrameworkId: 'claude-code',
         agentReady: false,
         activeProviderReady: false
@@ -648,7 +667,8 @@ describe('AgentStep', () => {
       preflight: {
         claudeReady: false,
         opencodeReady: false,
-        codebuddyReady: false, codexReady: false,
+        codebuddyReady: false,
+        codexReady: false,
         agentFrameworkId: 'claude-code',
         agentReady: false,
         activeProviderReady: false
@@ -761,7 +781,8 @@ describe('AgentStep', () => {
       preflight: {
         claudeReady: false,
         opencodeReady: false,
-        codebuddyReady: false, codexReady: false,
+        codebuddyReady: false,
+        codexReady: false,
         agentFrameworkId: 'claude-code',
         agentReady: false,
         activeProviderReady: false

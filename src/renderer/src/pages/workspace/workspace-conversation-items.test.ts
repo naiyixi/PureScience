@@ -469,9 +469,7 @@ describe('workspace conversation items', () => {
     }
     // The divider sits between the two turns in timeline order.
     const order = items.map((item) => item.id)
-    expect(order.indexOf('config-change-message-3')).toBeGreaterThan(
-      order.indexOf('message-2')
-    )
+    expect(order.indexOf('config-change-message-3')).toBeGreaterThan(order.indexOf('message-2'))
   })
 
   it('skips the divider when the configuration is unchanged between turns', () => {

@@ -29,9 +29,7 @@ const EgressApprovalCard = ({
           <Globe className="size-4" aria-hidden="true" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-foreground">
-            {t('ws.egressApprovalTitle')}
-          </p>
+          <p className="text-sm font-medium text-foreground">{t('ws.egressApprovalTitle')}</p>
           <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
             {t('ws.egressApprovalDescription', {
               method: request.method,

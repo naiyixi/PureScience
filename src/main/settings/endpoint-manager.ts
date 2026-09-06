@@ -36,7 +36,10 @@ export type EndpointManagerDeps = {
   // start script env only). Return undefined for "no credential".
   resolveCredential: (name: string) => Promise<string | undefined>
   // Runs an approved start script. Injectable for tests; default spawns bash.
-  runScript?: (script: string, env: Record<string, string>) => Promise<{ ok: boolean; error?: string }>
+  runScript?: (
+    script: string,
+    env: Record<string, string>
+  ) => Promise<{ ok: boolean; error?: string }>
   // Probes a URL for readiness. Injectable for tests; default fetch.
   probe?: (url: string) => Promise<boolean>
   // Socket-liveness probe for free_port. Injectable for tests; default fetch-based.
@@ -66,7 +69,8 @@ export class EndpointManager {
     // Random draws with a hard cap so a full range never loops forever.
     for (let attempt = 0; attempt < range; attempt++) {
       const port =
-        ENDPOINT_PORT_RANGE_START + Math.floor(Math.random() * (ENDPOINT_PORT_RANGE_END - ENDPOINT_PORT_RANGE_START + 1))
+        ENDPOINT_PORT_RANGE_START +
+        Math.floor(Math.random() * (ENDPOINT_PORT_RANGE_END - ENDPOINT_PORT_RANGE_START + 1))
       if (!(await bound(port))) return { port }
     }
     throw new Error('No free port in the managed range 20000-29999.')
@@ -233,7 +237,9 @@ const defaultRunScript = (
     })
     child.on('error', (error) => resolvePromise({ ok: false, error: error.message }))
     child.on('close', (code) => {
-      resolvePromise(code === 0 ? { ok: true } : { ok: false, error: stderr.trim() || `exit ${code}` })
+      resolvePromise(
+        code === 0 ? { ok: true } : { ok: false, error: stderr.trim() || `exit ${code}` }
+      )
     })
   })
 
@@ -246,6 +252,7 @@ const defaultProbe = async (url: string): Promise<boolean> => {
   }
 }
 
-const sleep = (ms: number): Promise<void> => new Promise((resolvePromise) => setTimeout(resolvePromise, ms))
+const sleep = (ms: number): Promise<void> =>
+  new Promise((resolvePromise) => setTimeout(resolvePromise, ms))
 
 const iso = (epochMs: number): string => new Date(epochMs).toISOString()

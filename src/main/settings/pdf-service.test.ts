@@ -29,15 +29,20 @@ beforeEach(() => {
 const fakeParser = (pages: string[], outline: unknown[] = []) => {
   const outlineEntries = outline.map((entry) => ({
     title: String((entry as { title?: string }).title ?? ''),
-    page: (entry as { dest?: { num?: number } }).dest?.num !== undefined
-      ? ((entry as { dest: { num: number } }).dest.num + 1)
-      : 1,
+    page:
+      (entry as { dest?: { num?: number } }).dest?.num !== undefined
+        ? (entry as { dest: { num: number } }).dest.num + 1
+        : 1,
     level: 1
   }))
   return async (filePath: string) => ({
     pages,
     outline: outlineEntries,
-    title: filePath.split('/').pop()?.replace(/\.pdf$/i, '') ?? 'doc'
+    title:
+      filePath
+        .split('/')
+        .pop()
+        ?.replace(/\.pdf$/i, '') ?? 'doc'
   })
 }
 

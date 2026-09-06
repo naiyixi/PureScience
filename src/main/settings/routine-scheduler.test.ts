@@ -29,12 +29,14 @@ const makeSchedule = (overrides: Partial<RoutineSchedule> = {}): RoutineSchedule
   }
 }
 
-const makeScheduler = (options: {
-  schedules?: RoutineSchedule[]
-  dispatch?: (schedule: RoutineSchedule) => Promise<RoutineTickOutcome>
-  now?: () => number
-  intervalMs?: number
-} = {}): {
+const makeScheduler = (
+  options: {
+    schedules?: RoutineSchedule[]
+    dispatch?: (schedule: RoutineSchedule) => Promise<RoutineTickOutcome>
+    now?: () => number
+    intervalMs?: number
+  } = {}
+): {
   scheduler: RoutineScheduler
   recordTick: ReturnType<typeof vi.fn>
   setEnabled: ReturnType<typeof vi.fn>

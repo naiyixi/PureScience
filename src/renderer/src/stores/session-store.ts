@@ -60,8 +60,8 @@ type SessionStore = SessionStoreData &
     setPermissionProfile: (sessionId: string, profile: PermissionProfileId) => void
     // Persists the per-session auto-review toggle. true = on; false = off (default).
     // Delegation switch (per-session): when off, delegate_tasks is refused fail-closed.
-  setDelegationEnabled: (sessionId: string, enabled: boolean) => void
-  setAutoReviewEnabled: (sessionId: string, enabled: boolean) => void
+    setDelegationEnabled: (sessionId: string, enabled: boolean) => void
+    setAutoReviewEnabled: (sessionId: string, enabled: boolean) => void
     // Sets the per-session enabled compute hosts (single-select, stored as array for extensibility).
     setEnabledComputeHosts: (sessionId: string, providerIds: string[]) => void
     // Updates the persisted specialist UUID for an existing session after reconfigure succeeds.

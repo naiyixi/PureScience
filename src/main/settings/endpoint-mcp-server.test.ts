@@ -98,7 +98,9 @@ describe('endpoint MCP server contract', () => {
     const tools = (server as unknown as { _registeredTools: Record<string, unknown> })
       ._registeredTools
     const registerTool = tools[ENDPOINT_REGISTER_TOOL_NAME] as {
-      handler: (input: Record<string, unknown>) => Promise<{ content: { type: string; text: string }[] }>
+      handler: (
+        input: Record<string, unknown>
+      ) => Promise<{ content: { type: string; text: string }[] }>
     }
     const result = await registerTool.handler({
       name: 'esm-fold',

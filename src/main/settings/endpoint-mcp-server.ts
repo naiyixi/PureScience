@@ -53,13 +53,19 @@ const endpointRegisterToolSchema = {
     .describe(
       'Local loopback URL: http://127.0.0.1:<port>[/path]. Use endpoint_free_port to allocate the port.'
     ),
-  skill_name: z
+  skill_name: z.string().min(1).describe('Name of the runbook skill documenting the model API.'),
+  start: z
     .string()
     .min(1)
-    .describe('Name of the runbook skill documenting the model API.'),
-  start: z.string().min(1).describe('Opaque idempotent bash; receives HOST_PORT, SERVICE_DIR, CREDENTIAL_VALUE in env.'),
-  stop: z.string().min(1).describe('Opaque bash; must exit 0 only when the service is fully stopped.'),
-  live: z.string().min(1).describe('Readiness route on the endpoint URL, e.g. /health/ready or /v1/models.'),
+    .describe('Opaque idempotent bash; receives HOST_PORT, SERVICE_DIR, CREDENTIAL_VALUE in env.'),
+  stop: z
+    .string()
+    .min(1)
+    .describe('Opaque bash; must exit 0 only when the service is fully stopped.'),
+  live: z
+    .string()
+    .min(1)
+    .describe('Readiness route on the endpoint URL, e.g. /health/ready or /v1/models.'),
   credential_name: z
     .string()
     .min(1)
@@ -165,27 +171,35 @@ const createEndpointMcpServer = (handler: EndpointMcpHandler): ModelContextProto
     version: '1.0.0'
   })
 
-  server.registerTool(ENDPOINT_REGISTER_TOOL_NAME, endpointRegisterToolDefinition, async (input) => {
-    const result = await handler.register({
-      name: input.name,
-      url: input.url,
-      skillName: input.skill_name,
-      startScript: input.start,
-      stopScript: input.stop,
-      livePath: input.live,
-      credentialName: input.credential_name
-    })
-    return {
-      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+  server.registerTool(
+    ENDPOINT_REGISTER_TOOL_NAME,
+    endpointRegisterToolDefinition,
+    async (input) => {
+      const result = await handler.register({
+        name: input.name,
+        url: input.url,
+        skillName: input.skill_name,
+        startScript: input.start,
+        stopScript: input.stop,
+        livePath: input.live,
+        credentialName: input.credential_name
+      })
+      return {
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+      }
     }
-  })
+  )
 
-  server.registerTool(ENDPOINT_UNREGISTER_TOOL_NAME, endpointUnregisterToolDefinition, async (input) => {
-    const result = await handler.unregister(input.name)
-    return {
-      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+  server.registerTool(
+    ENDPOINT_UNREGISTER_TOOL_NAME,
+    endpointUnregisterToolDefinition,
+    async (input) => {
+      const result = await handler.unregister(input.name)
+      return {
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+      }
     }
-  })
+  )
 
   server.registerTool(ENDPOINT_START_TOOL_NAME, endpointStartToolDefinition, async (input) => {
     const result = await handler.start(input.name)
@@ -239,9 +253,7 @@ const createEndpointMcpServerConfig = ({
   env: [
     { name: 'ELECTRON_RUN_AS_NODE', value: '1' },
     { name: 'PURESCIENCE_ENDPOINT_RPC_ENDPOINT', value: endpoint },
-    ...(socketPath
-      ? [{ name: 'PURESCIENCE_ENDPOINT_RPC_SOCKET_PATH', value: socketPath }]
-      : []),
+    ...(socketPath ? [{ name: 'PURESCIENCE_ENDPOINT_RPC_SOCKET_PATH', value: socketPath }] : []),
     { name: 'PURESCIENCE_ENDPOINT_RPC_TOKEN', value: token },
     { name: 'PURESCIENCE_ENDPOINT_SESSION_ID', value: sessionId }
   ]
@@ -295,9 +307,13 @@ const runEndpointMcpServer = async (
 ): Promise<void> => {
   const server = createEndpointMcpServer({
     register: (request) =>
-      callEndpointRpc(environment, 'endpointRegister', { ...request }) as Promise<EndpointRegisterResult>,
+      callEndpointRpc(environment, 'endpointRegister', {
+        ...request
+      }) as Promise<EndpointRegisterResult>,
     unregister: (name) =>
-      callEndpointRpc(environment, 'endpointUnregister', { name }) as Promise<EndpointUnregisterResult>,
+      callEndpointRpc(environment, 'endpointUnregister', {
+        name
+      }) as Promise<EndpointUnregisterResult>,
     start: (name) =>
       callEndpointRpc(environment, 'endpointStart', { name }) as Promise<EndpointStartResult>,
     stop: (name) =>

@@ -1361,7 +1361,12 @@ describe('ConnectorService specialist capability gate', () => {
     })
     // CADD tools are marked noncommercialOnly; the variant connector itself is not.
     await expect(
-      svc.call('variants', 'cadd_score_variant', { chrom: '7', pos: 1, ref: 'C', alt: 'T' }, internal)
+      svc.call(
+        'variants',
+        'cadd_score_variant',
+        { chrom: '7', pos: 1, ref: 'C', alt: 'T' },
+        internal
+      )
     ).rejects.toThrow(/restricted to non-commercial use/)
   })
 
@@ -1374,7 +1379,12 @@ describe('ConnectorService specialist capability gate', () => {
       getUseIntent: async () => 'non-commercial'
     })
     await expect(
-      svc.call('variants', 'cadd_score_variant', { chrom: '7', pos: 1, ref: 'C', alt: 'T' }, internal)
+      svc.call(
+        'variants',
+        'cadd_score_variant',
+        { chrom: '7', pos: 1, ref: 'C', alt: 'T' },
+        internal
+      )
     ).resolves.toBeDefined()
   })
 

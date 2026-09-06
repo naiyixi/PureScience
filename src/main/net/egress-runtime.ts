@@ -30,7 +30,10 @@ let proxy: EgressProxy | undefined
 let currentAllowlist: string[] | undefined
 let currentEnabled = false
 // Pending approval decisions keyed by requestId; `decide` settles the suspended request.
-const pendingDecisions = new Map<string, { host: string; decide: (d: EgressApprovalDecision) => void }>()
+const pendingDecisions = new Map<
+  string,
+  { host: string; decide: (d: EgressApprovalDecision) => void }
+>()
 let runtimeOptions: EgressRuntimeOptions | undefined
 
 const approvalHandler: EgressApprovalHandler = (request, decide) => {

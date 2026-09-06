@@ -8,11 +8,7 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 
-import type {
-  AnnotationLabel,
-  AnnotationSetRequest,
-  FileAnnotation
-} from '../../shared/annotation'
+import type { AnnotationLabel, AnnotationSetRequest, FileAnnotation } from '../../shared/annotation'
 import { ANNOTATION_LABELS, ANNOTATION_TARGET_FILE } from '../../shared/annotation'
 
 const ANNOTATIONS_DIR = '.annotations'

@@ -31,7 +31,8 @@ export const ROUTINE_CANCEL_TOOL_DESCRIPTION =
 export const ROUTINE_PAUSE_REASON_USER = 'user'
 export const ROUTINE_PAUSE_REASON_STUCK = 'stuck'
 
-export type RoutinePauseReason = typeof ROUTINE_PAUSE_REASON_USER | typeof ROUTINE_PAUSE_REASON_STUCK
+export type RoutinePauseReason =
+  typeof ROUTINE_PAUSE_REASON_USER | typeof ROUTINE_PAUSE_REASON_STUCK
 
 // Hard bounds mirrored from the reference scheduler: 5-minute floor keeps the tick loop cheap;
 // 1440-minute ceiling keeps a schedule from becoming a de-facto one-shot.

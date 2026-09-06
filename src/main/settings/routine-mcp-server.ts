@@ -33,12 +33,7 @@ const routineConfigureToolSchema = {
     .min(1)
     .optional()
     .describe('Existing routine id to update; omit to create a new schedule.'),
-  every_minutes: z
-    .number()
-    .int()
-    .min(5)
-    .max(1440)
-    .describe('Tick interval in minutes (5–1440).'),
+  every_minutes: z.number().int().min(5).max(1440).describe('Tick interval in minutes (5–1440).'),
   instruction: z
     .string()
     .min(1)
@@ -108,17 +103,21 @@ const createRoutineMcpServer = (handler: RoutineMcpHandler): ModelContextProtoco
     version: '1.0.0'
   })
 
-  server.registerTool(ROUTINE_CONFIGURE_TOOL_NAME, routineConfigureToolDefinition, async (input) => {
-    const result = await handler.configure({
-      routineId: input.routine_id,
-      everyMinutes: input.every_minutes,
-      instruction: input.instruction,
-      label: input.label
-    })
-    return {
-      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+  server.registerTool(
+    ROUTINE_CONFIGURE_TOOL_NAME,
+    routineConfigureToolDefinition,
+    async (input) => {
+      const result = await handler.configure({
+        routineId: input.routine_id,
+        everyMinutes: input.every_minutes,
+        instruction: input.instruction,
+        label: input.label
+      })
+      return {
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+      }
     }
-  })
+  )
 
   server.registerTool(ROUTINE_STATUS_TOOL_NAME, routineStatusToolDefinition, async () => {
     const result = await handler.status()
@@ -151,9 +150,7 @@ const createRoutineMcpServerConfig = ({
   env: [
     { name: 'ELECTRON_RUN_AS_NODE', value: '1' },
     { name: 'PURESCIENCE_ROUTINE_RPC_ENDPOINT', value: endpoint },
-    ...(socketPath
-      ? [{ name: 'PURESCIENCE_ROUTINE_RPC_SOCKET_PATH', value: socketPath }]
-      : []),
+    ...(socketPath ? [{ name: 'PURESCIENCE_ROUTINE_RPC_SOCKET_PATH', value: socketPath }] : []),
     { name: 'PURESCIENCE_ROUTINE_RPC_TOKEN', value: token },
     { name: 'PURESCIENCE_ROUTINE_SESSION_ID', value: sessionId }
   ]
@@ -211,8 +208,7 @@ const runRoutineMcpServer = async (
         ...request,
         everyMinutes: request.everyMinutes
       }) as Promise<RoutineConfigureResult>,
-    status: () =>
-      callRoutineRpc(environment, 'routineStatus', {}) as Promise<RoutineStatusResult>,
+    status: () => callRoutineRpc(environment, 'routineStatus', {}) as Promise<RoutineStatusResult>,
     cancel: (routineId) =>
       callRoutineRpc(environment, 'routineCancel', { routineId }) as Promise<RoutineCancelResult>
   })

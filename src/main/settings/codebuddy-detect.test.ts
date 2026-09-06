@@ -54,7 +54,8 @@ describe('detectCodeBuddy', () => {
     const found = await detectCodeBuddy(
       makeDeps({
         // Only the homebrew dir is executable; the PATH candidates are not.
-        isExecutable: async (candidate) => candidate === posix.join('/opt/homebrew/bin', 'codebuddy'),
+        isExecutable: async (candidate) =>
+          candidate === posix.join('/opt/homebrew/bin', 'codebuddy'),
         getVersion: async () => '2.2.0'
       })
     )

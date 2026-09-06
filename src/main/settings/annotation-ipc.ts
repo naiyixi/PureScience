@@ -38,10 +38,8 @@ export const registerAnnotationIpcHandlers = (
     (_event, request: { projectId: string; request: AnnotationSetRequest }) =>
       owner.set(request.projectId, request.request)
   )
-  ipcMainHandle(
-    ANNOTATION_IPC.LIST,
-    (_event, request: { projectId: string; target?: string }) =>
-      owner.list(request.projectId, request.target)
+  ipcMainHandle(ANNOTATION_IPC.LIST, (_event, request: { projectId: string; target?: string }) =>
+    owner.list(request.projectId, request.target)
   )
   ipcMainHandle(
     ANNOTATION_IPC.REMOVE,

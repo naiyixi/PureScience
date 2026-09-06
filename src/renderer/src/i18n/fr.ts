@@ -143,7 +143,8 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'providerForm.endpointAria': 'Point d’accès',
   'specialist.chooseZipHint': 'Choisissez un ZIP contenant exactement un spécialiste.',
   'specialist.chooseZip': 'Choisir le ZIP',
-  'settings.zipLimits': 'Limites : 50 Mo compressé · 200 Mo décompressé · 2 000 fichiers · 25 Mo par fichier',
+  'settings.zipLimits':
+    'Limites : 50 Mo compressé · 200 Mo décompressé · 2 000 fichiers · 25 Mo par fichier',
   'specialist.editorDescription': 'Descriptif',
   'specialist.editorInstructions': 'Consignes',
   'specialist.builtin': 'Intégré',
@@ -659,7 +660,8 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'skillUpload.uploadSkills': 'Téléverser des compétences',
   'skillUpload.uploadIntro':
     'Ajoutez des compétences depuis des fichiers SKILL.md ou des archives .zip / .skill de votre ordinateur. Vous pouvez sélectionner plusieurs fichiers à la fois et une seule archive peut contenir plusieurs compétences.',
-  'skillUpload.confirmIntro': 'Cochez les compétences à ajouter. Rien n’est écrit tant que vous n’importez pas.',
+  'skillUpload.confirmIntro':
+    'Cochez les compétences à ajouter. Rien n’est écrit tant que vous n’importez pas.',
   'skillUpload.foundCount': '{n} compétences trouvées',
   'skillUpload.invert': 'Inverser la sélection',
   'skillUpload.skippedCount': '{n} compétence(s) ignorée(s)',
@@ -669,9 +671,12 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'skillUpload.tooLargeFile': '{file} : fichier trop volumineux (limite {limit}).',
   'skillUpload.noSkillsInBundle': '{file} : aucune compétence trouvée dans l’archive.',
   'skillUpload.needsName': '{file} : un nom est requis dans le frontmatter YAML.',
-  'skillUpload.previewTooLarge': '{file} : l’aperçu dépasse la limite de {limit}. Vous pouvez tout de même l’importer.',
-  'skillUpload.unsupportedFile': '{file} : fichier non pris en charge — téléversez un fichier .md ou une archive .zip / .skill.',
-  'skillUpload.selectionTooLarge': 'La sélection est trop volumineuse ({size}) ; téléversez au plus {limit} à la fois.',
+  'skillUpload.previewTooLarge':
+    '{file} : l’aperçu dépasse la limite de {limit}. Vous pouvez tout de même l’importer.',
+  'skillUpload.unsupportedFile':
+    '{file} : fichier non pris en charge — téléversez un fichier .md ou une archive .zip / .skill.',
+  'skillUpload.selectionTooLarge':
+    'La sélection est trop volumineuse ({size}) ; téléversez au plus {limit} à la fois.',
   'skillUpload.summary': 'Importées {imported} · ignorées {skipped} · échouées {failed}',
   'fileBrowser.savedToDownloads': 'Enregistré dans Téléchargements : {name}',
   'agentHome.importedSummary': '{n} compétence(s) importée(s).',
@@ -749,7 +754,8 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'update.readyRestartHint': 'Téléchargée — redémarrez PureScience pour terminer l’installation.',
   'update.readyInstallerHint':
     'Téléchargée — exécutez le programme d’installation pour terminer la mise à jour.',
-  'update.quitBeforeInstall': 'Quittez PureScience avant l’installation — une application en cours d’exécution ne peut pas être remplacée.',
+  'update.quitBeforeInstall':
+    'Quittez PureScience avant l’installation — une application en cours d’exécution ne peut pas être remplacée.',
   'update.downloadManually': 'Télécharger manuellement',
   'update.openInstaller': 'Ouvrir l’installateur',
   'update.restartToUpdate': 'Redémarrer pour mettre à jour',
@@ -1432,8 +1438,10 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.importConnectorConfig': 'Importer la configuration du connecteur',
   'settings.connectorBlurb':
     'Ajoutez une configuration de connecteur sans informations d’identification depuis votre ordinateur. Examinez la configuration, puis saisissez les informations requises avant de l’ajouter.',
-  'settings.connectorTooLarge': 'Les fichiers de configuration du connecteur doivent faire {limit} ou moins.',
-  'settings.connectorChooseJson': 'Choisissez un seul fichier .json de {limit} maximum. Les informations d’identification ne sont jamais importées depuis le fichier.',
+  'settings.connectorTooLarge':
+    'Les fichiers de configuration du connecteur doivent faire {limit} ou moins.',
+  'settings.connectorChooseJson':
+    'Choisissez un seul fichier .json de {limit} maximum. Les informations d’identification ne sont jamais importées depuis le fichier.',
   'settings.connectorEnterLocally': 'Saisir localement : {names}',
   'settings.importConnectorHint':
     'les paramètres et saisissez les identifiants requis avant qu’il ne soit ajouté.',

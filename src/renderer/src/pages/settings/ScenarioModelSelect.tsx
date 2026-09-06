@@ -46,7 +46,10 @@ const EffortSegments = ({
   const control = resolveReasoningEffortControl(value, profile)
   const options = [
     { value: 'default' as const, label: followLabel },
-    ...control.options.map((option) => ({ value: option.intent as ReasoningEffort, label: option.label }))
+    ...control.options.map((option) => ({
+      value: option.intent as ReasoningEffort,
+      label: option.label
+    }))
   ]
 
   return (

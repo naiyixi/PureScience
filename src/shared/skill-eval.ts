@@ -22,7 +22,7 @@ export const SKILL_LIST_TOOL_DESCRIPTION =
   'check whether one already covers the procedure — reuse and extend beats duplicating.'
 
 export const SKILL_READ_TOOL_DESCRIPTION =
-  'Reads one installed skill\'s full content (frontmatter + instructions). Use it to ' +
+  "Reads one installed skill's full content (frontmatter + instructions). Use it to " +
   'understand an existing skill before extending it, or to verify what create_skill actually ' +
   'persisted.'
 

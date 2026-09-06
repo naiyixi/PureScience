@@ -210,10 +210,7 @@ export const codeBuddyFramework: AgentFramework = {
   },
 
   buildSessionSetup(ctx: SessionSetupContext): SessionSetup {
-    const promptPrefix = [
-      ...ctx.systemPromptAppends,
-      ...(ctx.turnPromptReminders ?? [])
-    ]
+    const promptPrefix = [...ctx.systemPromptAppends, ...(ctx.turnPromptReminders ?? [])]
       .map((append) => renderAppMcpToolReferences('codebuddy', append))
       .filter(Boolean)
       .join('\n\n')

@@ -631,7 +631,7 @@ describe('WorkspaceSidebar accessible render', () => {
         name: 'Current project',
         description: '',
         createdAt: 1,
-          isExample: false,
+        isExample: false,
         updatedAt: 10
       },
       ...Array.from({ length: 7 }, (_, index) => ({
@@ -639,7 +639,7 @@ describe('WorkspaceSidebar accessible render', () => {
         name: `Project ${index}`,
         description: '',
         createdAt: 1,
-          isExample: false,
+        isExample: false,
         updatedAt: 9 - index
       }))
     ]

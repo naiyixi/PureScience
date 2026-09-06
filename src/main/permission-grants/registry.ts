@@ -49,7 +49,9 @@ type PermissionGrantRegistry = {
     context: PermissionGrantContext
   ): Promise<PermissionGrantMatch | undefined>
   remember(command: RememberPermissionGrant): Promise<PermissionGrantRecord>
-  restoreDefaults(capabilities: readonly PermissionCapability[]): Promise<PermissionGrantMutationResult>
+  restoreDefaults(
+    capabilities: readonly PermissionCapability[]
+  ): Promise<PermissionGrantMutationResult>
   list(): Promise<PermissionGrantRecord[]>
   listCached(): PermissionGrantRecord[]
   revoke(command: RevokePermissionGrants): Promise<PermissionGrantMutationResult>

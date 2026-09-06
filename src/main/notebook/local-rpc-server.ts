@@ -144,10 +144,7 @@ type NotebookLocalRpcServerOptions = {
   }
   // Managed local model services (endpoint_* MCP): main-process-owned lifecycle.
   endpoints?: {
-    register(
-      sessionId: string,
-      request: EndpointRegisterRequest
-    ): Promise<unknown>
+    register(sessionId: string, request: EndpointRegisterRequest): Promise<unknown>
     unregister(sessionId: string, name: string): Promise<unknown>
     start(sessionId: string, name: string): Promise<unknown>
     stop(sessionId: string, name: string): Promise<unknown>
@@ -172,7 +169,13 @@ type NotebookLocalRpcServerOptions = {
   // Layered PDF reading (pdf_* MCP): main-process-owned parsing + persistence.
   pdf?: {
     open(sessionId: string, projectId: string, path: string): Promise<unknown>
-    pages(sessionId: string, projectId: string, docId: string, start: number, end?: number): Promise<unknown>
+    pages(
+      sessionId: string,
+      projectId: string,
+      docId: string,
+      start: number,
+      end?: number
+    ): Promise<unknown>
     outline(sessionId: string, projectId: string, docId: string): Promise<unknown>
     scan(sessionId: string, projectId: string, docId: string, query: string): Promise<unknown>
   }
@@ -776,10 +779,7 @@ class NotebookLocalRpcServer {
     }
   }
 
-  async issuePdfConnection(
-    sessionId: string,
-    projectId: string
-  ): Promise<NotebookRpcConnection> {
+  async issuePdfConnection(sessionId: string, projectId: string): Promise<NotebookRpcConnection> {
     const connection = await this.ensureStarted()
     this.revokePdfSessionCapabilities(sessionId)
 
@@ -1268,7 +1268,11 @@ class NotebookLocalRpcServer {
 
     if (method === 'endpointRegister') {
       if (!this.endpoints) throw new Error('Endpoint handler is not configured.')
-      if (typeof params.sessionId !== 'string' || typeof params.request !== 'object' || params.request === null) {
+      if (
+        typeof params.sessionId !== 'string' ||
+        typeof params.request !== 'object' ||
+        params.request === null
+      ) {
         throw new Error('Endpoint register RPC params must include sessionId and request.')
       }
       return this.endpoints.register(params.sessionId, params.request as EndpointRegisterRequest)
@@ -1361,7 +1365,11 @@ class NotebookLocalRpcServer {
 
     if (method === 'hostQuery') {
       if (!this.hostQuery) throw new Error('Host-query handler is not configured.')
-      if (typeof params.sessionId !== 'string' || typeof params.projectId !== 'string' || typeof params.sql !== 'string') {
+      if (
+        typeof params.sessionId !== 'string' ||
+        typeof params.projectId !== 'string' ||
+        typeof params.sql !== 'string'
+      ) {
         throw new Error('Host-query RPC params must include sessionId, projectId, and sql.')
       }
       return this.hostQuery.query(params.sessionId, params.projectId, params.sql)
@@ -1369,7 +1377,12 @@ class NotebookLocalRpcServer {
 
     if (method === 'figureReview') {
       if (!this.figure) throw new Error('Figure handler is not configured.')
-      if (typeof params.sessionId !== 'string' || typeof params.projectId !== 'string' || typeof params.request !== 'object' || params.request === null) {
+      if (
+        typeof params.sessionId !== 'string' ||
+        typeof params.projectId !== 'string' ||
+        typeof params.request !== 'object' ||
+        params.request === null
+      ) {
         throw new Error('Figure review RPC params must include sessionId, projectId, and request.')
       }
       return this.figure.review(params.sessionId, params.projectId, params.request)
@@ -1377,7 +1390,11 @@ class NotebookLocalRpcServer {
 
     if (method === 'pdfOpen') {
       if (!this.pdf) throw new Error('PDF handler is not configured.')
-      if (typeof params.sessionId !== 'string' || typeof params.projectId !== 'string' || typeof params.path !== 'string') {
+      if (
+        typeof params.sessionId !== 'string' ||
+        typeof params.projectId !== 'string' ||
+        typeof params.path !== 'string'
+      ) {
         throw new Error('PDF open RPC params must include sessionId, projectId, and path.')
       }
       return this.pdf.open(params.sessionId, params.projectId, params.path)
@@ -1404,7 +1421,11 @@ class NotebookLocalRpcServer {
 
     if (method === 'pdfOutline') {
       if (!this.pdf) throw new Error('PDF handler is not configured.')
-      if (typeof params.sessionId !== 'string' || typeof params.projectId !== 'string' || typeof params.docId !== 'string') {
+      if (
+        typeof params.sessionId !== 'string' ||
+        typeof params.projectId !== 'string' ||
+        typeof params.docId !== 'string'
+      ) {
         throw new Error('PDF outline RPC params must include sessionId, projectId, and docId.')
       }
       return this.pdf.outline(params.sessionId, params.projectId, params.docId)
@@ -1412,7 +1433,12 @@ class NotebookLocalRpcServer {
 
     if (method === 'pdfScan') {
       if (!this.pdf) throw new Error('PDF handler is not configured.')
-      if (typeof params.sessionId !== 'string' || typeof params.projectId !== 'string' || typeof params.docId !== 'string' || typeof params.query !== 'string') {
+      if (
+        typeof params.sessionId !== 'string' ||
+        typeof params.projectId !== 'string' ||
+        typeof params.docId !== 'string' ||
+        typeof params.query !== 'string'
+      ) {
         throw new Error('PDF scan RPC params must include sessionId, projectId, docId, and query.')
       }
       return this.pdf.scan(params.sessionId, params.projectId, params.docId, params.query)

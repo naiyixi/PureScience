@@ -437,9 +437,7 @@ export const CredentialsPanel = (): React.JSX.Element => {
                   {t('settings.credentialsNotConfigured')}
                 </span>
               </div>
-              <div className="mt-0.5 text-xs text-text-200">
-                {t('settings.credentialsEmpty')}
-              </div>
+              <div className="mt-0.5 text-xs text-text-200">{t('settings.credentialsEmpty')}</div>
             </div>
             <Button
               type="button"

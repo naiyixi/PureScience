@@ -807,10 +807,8 @@ export interface PureScienceAPI {
     ): Promise<ArtifactCodeReconstructionState>
     resolveVersionDescriptors(
       request: ResolveArtifactVersionDescriptorsRequest
-    ): Promise<ArtifactVersionDescriptor[]>,
-    writeUserEditedVersion(
-      request: WriteUserEditedVersionRequest
-    ): Promise<ArtifactFile>
+    ): Promise<ArtifactVersionDescriptor[]>
+    writeUserEditedVersion(request: WriteUserEditedVersionRequest): Promise<ArtifactFile>
   }
   uploads: {
     // Desktop-only path fast path; omitted by the Web capability map.

@@ -30,7 +30,9 @@ export type ScenarioBackendInput = {
   globalReasoningEffort: ReasoningEffort
 }
 
-export const resolveScenarioBackend = (input: ScenarioBackendInput): ResolvedScenarioBackend | null => {
+export const resolveScenarioBackend = (
+  input: ScenarioBackendInput
+): ResolvedScenarioBackend | null => {
   const override = input.scenarioModels?.[input.scenario]
 
   const providerId = override?.providerId ?? input.activeProviderId

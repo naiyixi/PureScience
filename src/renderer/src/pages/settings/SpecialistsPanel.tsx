@@ -607,9 +607,7 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
             <p className="mt-1 text-xs text-muted-foreground">
               {t('settings.packageParsedBeforeSave')}
             </p>
-            <p className="mt-4 text-xs text-muted-foreground">
-              {t('settings.zipLimits')}
-            </p>
+            <p className="mt-4 text-xs text-muted-foreground">{t('settings.zipLimits')}</p>
             <p className="mx-auto mt-2 max-w-xl text-xs text-muted-foreground">
               {t('settings.zipContainsHint')}
             </p>

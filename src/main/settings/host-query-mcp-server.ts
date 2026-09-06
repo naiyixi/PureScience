@@ -88,9 +88,7 @@ const createHostQueryMcpServerConfig = ({
   env: [
     { name: 'ELECTRON_RUN_AS_NODE', value: '1' },
     { name: 'PURESCIENCE_HOST_QUERY_RPC_ENDPOINT', value: endpoint },
-    ...(socketPath
-      ? [{ name: 'PURESCIENCE_HOST_QUERY_RPC_SOCKET_PATH', value: socketPath }]
-      : []),
+    ...(socketPath ? [{ name: 'PURESCIENCE_HOST_QUERY_RPC_SOCKET_PATH', value: socketPath }] : []),
     { name: 'PURESCIENCE_HOST_QUERY_RPC_TOKEN', value: token },
     { name: 'PURESCIENCE_HOST_QUERY_SESSION_ID', value: sessionId },
     { name: 'PURESCIENCE_HOST_QUERY_PROJECT_ID', value: projectId }

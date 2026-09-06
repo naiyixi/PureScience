@@ -21,7 +21,7 @@ export const ANNOTATION_SET_TOOL_DESCRIPTION =
   'annotated — a later reader can detect drift. Labels: todo, question, important, note, review.'
 
 export const ANNOTATION_LIST_TOOL_DESCRIPTION =
-  'Lists annotations for the current project. With target, lists only that file\'s ' +
+  "Lists annotations for the current project. With target, lists only that file's " +
   'annotations; without, lists all annotations in the project. Each entry carries the label, ' +
   'note, content checksum (if anchored), author, and timestamps. Use it to find open todos, ' +
   'review notes, or anything flagged important before continuing work.'

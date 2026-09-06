@@ -645,7 +645,9 @@ describe('host.read_turn_history — bounded earlier-window record', () => {
 
 describe('host.fetch_source — injected external-source verification', () => {
   it('delegates to the injected fetcher and surfaces its result', async () => {
-    const fetchSource = async (url: string): Promise<{
+    const fetchSource = async (
+      url: string
+    ): Promise<{
       url: string
       finalUrl: string
       title: string

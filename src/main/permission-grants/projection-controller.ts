@@ -33,9 +33,7 @@ type PermissionGrantProjection = Readonly<{
     request: PermissionGrantUndoExtendRequest
   ): Promise<PermissionGrantUndoReceipt | undefined>
   restore(request: PermissionGrantRestoreRequest): Promise<PermissionGrantMutationView>
-  restoreDefaults(
-    request: RestoreDefaultsPermissionGrants
-  ): Promise<PermissionGrantMutationView>
+  restoreDefaults(request: RestoreDefaultsPermissionGrants): Promise<PermissionGrantMutationView>
 }>
 
 type PermissionGrantProjectionController = PermissionGrantProjection & {

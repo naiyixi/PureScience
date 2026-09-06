@@ -144,7 +144,10 @@ const createDependencies = (): HostApplicationCommandDependencies => ({
   endpoint: {
     listAll: vi.fn(async () => []),
     register: vi.fn(
-      async (_sessionId: string, request: EndpointRegisterRequest): Promise<{
+      async (
+        _sessionId: string,
+        request: EndpointRegisterRequest
+      ): Promise<{
         endpoint: ManagedEndpoint
         newlyApproved: boolean
       }> => ({
@@ -168,47 +171,46 @@ const createDependencies = (): HostApplicationCommandDependencies => ({
       })
     ),
     approve: vi.fn(async () => true),
-    start: vi.fn(
-      async (): Promise<ManagedEndpoint> => ({
-        name: 'esm',
-        url: 'http://127.0.0.1:20001',
-        port: 20001,
-        skillName: 's',
-        startScript: 's',
-        stopScript: 's',
-        livePath: '/health',
-        approvedScriptHash: 'hash',
-        state: 'live',
-        stateChangedAt: Date.now(),
-        lastError: null,
-        transcript: null,
-        createdAt: Date.now(),
-        updatedAt: Date.now()
-      })
-    ),
-    stop: vi.fn(
-      async (): Promise<ManagedEndpoint> => ({
-        name: 'esm',
-        url: 'http://127.0.0.1:20001',
-        port: 20001,
-        skillName: 's',
-        startScript: 's',
-        stopScript: 's',
-        livePath: '/health',
-        approvedScriptHash: 'hash',
-        state: 'stopped',
-        stateChangedAt: Date.now(),
-        lastError: null,
-        transcript: null,
-        createdAt: Date.now(),
-        updatedAt: Date.now()
-      })
-    ),
+    start: vi.fn(async (): Promise<ManagedEndpoint> => ({
+      name: 'esm',
+      url: 'http://127.0.0.1:20001',
+      port: 20001,
+      skillName: 's',
+      startScript: 's',
+      stopScript: 's',
+      livePath: '/health',
+      approvedScriptHash: 'hash',
+      state: 'live',
+      stateChangedAt: Date.now(),
+      lastError: null,
+      transcript: null,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    })),
+    stop: vi.fn(async (): Promise<ManagedEndpoint> => ({
+      name: 'esm',
+      url: 'http://127.0.0.1:20001',
+      port: 20001,
+      skillName: 's',
+      startScript: 's',
+      stopScript: 's',
+      livePath: '/health',
+      approvedScriptHash: 'hash',
+      state: 'stopped',
+      stateChangedAt: Date.now(),
+      lastError: null,
+      transcript: null,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    })),
     remove: vi.fn(async () => true)
   },
   annotation: {
     set: vi.fn(
-      async (_projectId: string, request: AnnotationSetRequest): Promise<{
+      async (
+        _projectId: string,
+        request: AnnotationSetRequest
+      ): Promise<{
         annotation: FileAnnotation
         replaced: boolean
       }> => ({
@@ -255,11 +257,13 @@ const createDependencies = (): HostApplicationCommandDependencies => ({
     }))
   },
   figure: {
-    review: vi.fn(async (_projectId: string, request: FigureReviewRequest): Promise<FigureReviewResult> => ({
-      panels: request.panels.length,
-      violations: [],
-      clean: true
-    }))
+    review: vi.fn(
+      async (_projectId: string, request: FigureReviewRequest): Promise<FigureReviewResult> => ({
+        panels: request.panels.length,
+        violations: [],
+        clean: true
+      })
+    )
   },
   query: {
     run: vi.fn(async (_projectId: string, _sql: string): Promise<HostQueryResult> => ({
@@ -488,10 +492,7 @@ describe('Host application commands', () => {
       hostApplicationCommands.endpoint.register,
       invocation([{ sessionId: 'session-1', request: endpointRegisterRequest }])
     )
-    await router.dispatcher.invoke(
-      hostApplicationCommands.endpoint.approve,
-      invocation(['esm'])
-    )
+    await router.dispatcher.invoke(hostApplicationCommands.endpoint.approve, invocation(['esm']))
     await router.dispatcher.invoke(hostApplicationCommands.endpoint.start, invocation(['esm']))
     await router.dispatcher.invoke(hostApplicationCommands.endpoint.stop, invocation(['esm']))
     await router.dispatcher.invoke(hostApplicationCommands.endpoint.remove, invocation(['esm']))
@@ -605,7 +606,10 @@ describe('Host application commands', () => {
     expect(dependencies.routine.remove).toHaveBeenCalledWith('session-1', 'routine-1')
     expect(dependencies.routine.setEnabled).toHaveBeenCalledWith('session-1', 'routine-1', false)
     expect(dependencies.endpoint.listAll).toHaveBeenCalledWith()
-    expect(dependencies.endpoint.register).toHaveBeenCalledWith('session-1', endpointRegisterRequest)
+    expect(dependencies.endpoint.register).toHaveBeenCalledWith(
+      'session-1',
+      endpointRegisterRequest
+    )
     expect(dependencies.endpoint.approve).toHaveBeenCalledWith('esm')
     expect(dependencies.endpoint.start).toHaveBeenCalledWith('esm')
     expect(dependencies.endpoint.stop).toHaveBeenCalledWith('esm')
@@ -652,7 +656,19 @@ describe('Host application commands', () => {
       'storage:set-data-root-and-relaunch': [{ ...parent, markOnboarding: true }],
       'storage:validate-data-root': [parent],
       'endpoint:approve': ['esm'],
-      'endpoint:register': [{ sessionId: 'session-1', request: { name: 'esm', url: 'http://127.0.0.1:20001', skillName: 'esm-runbook', startScript: 's', stopScript: 's', livePath: '/v1/models' } }],
+      'endpoint:register': [
+        {
+          sessionId: 'session-1',
+          request: {
+            name: 'esm',
+            url: 'http://127.0.0.1:20001',
+            skillName: 'esm-runbook',
+            startScript: 's',
+            stopScript: 's',
+            livePath: '/v1/models'
+          }
+        }
+      ],
       'endpoint:start': ['esm'],
       'endpoint:stop': ['esm'],
       'endpoint:remove': ['esm'],
@@ -664,7 +680,9 @@ describe('Host application commands', () => {
       'pdf:pages': [{ projectId: 'project-1', docId: 'doc-1', start: 1 }],
       'pdf:outline': [{ projectId: 'project-1', docId: 'doc-1' }],
       'pdf:scan': [{ projectId: 'project-1', docId: 'doc-1', query: 'x' }],
-      'figure:review': [{ projectId: 'project-1', request: { panels: [{ id: 'A', chartType: 'bar' }] } }],
+      'figure:review': [
+        { projectId: 'project-1', request: { panels: [{ id: 'A', chartType: 'bar' }] } }
+      ],
       'query:run': [{ projectId: 'project-1', sql: 'SELECT 1' }]
     }
     const localOnlyChannels = RENDERER_CONTRACT_GROUPS.filter(({ capability }) =>

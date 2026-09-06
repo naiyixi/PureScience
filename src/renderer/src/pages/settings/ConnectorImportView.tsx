@@ -167,7 +167,10 @@ export function ConnectorImportView({
                   {definition.oauth
                     ? t('settings.oauthAfterAdding')
                     : secretNames.length
-                      ? t('settings.connectorEnterLocally').replace('{names}', secretNames.join(', '))
+                      ? t('settings.connectorEnterLocally').replace(
+                          '{names}',
+                          secretNames.join(', ')
+                        )
                       : t('settings.noneDeclared')}
                 </dd>
               </div>

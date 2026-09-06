@@ -29,7 +29,11 @@ describe('Skill import MCP server', () => {
     const server = createSkillImportMcpServer({
       requestImport,
       requestGitHubImport,
-      createSkill: vi.fn(async () => ({ created: true, skillName: 'probe', path: '/skills/probe' })),
+      createSkill: vi.fn(async () => ({
+        created: true,
+        skillName: 'probe',
+        path: '/skills/probe'
+      })),
       evalDescription: vi.fn(async () => ({
         score: 8,
         checks: [{ id: 'length', passed: true, message: 'ok' }],

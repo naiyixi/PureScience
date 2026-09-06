@@ -1487,175 +1487,176 @@ class ArtifactProvenanceRepository {
       })
     )
 
-    const version = await this.compatibilityRepository.withPendingFileTransaction<ArtifactVersionFile>(
-      {
-        projectName: projectId,
-        sessionId: artifactStorageSessionId,
-        runId: source.artifactRunId,
-        filename: source.filename,
-        mimeType: request.contentType,
-        kind: 'plan',
-        source: { kind: 'inline', content: request.content, encoding: 'utf8' }
-      },
-      {},
-      async (pendingFile, _sourceFileObservation, bindVersionRouting) => {
-        const versionId = this.createId()
-        const createdAt = this.now()
-        const stagingStorageKey = storageKey(
-          'artifacts',
-          projectId,
-          appSessionId,
-          '.provenance',
-          '.staging',
-          'versions',
-          versionId
-        )
-        const stagingDirectory = join(this.options.storageRoot, ...stagingStorageKey.split('/'))
-        const stagingContentPath = join(stagingDirectory, 'content')
-        await mkdir(stagingDirectory, { recursive: true })
-        await copyFile(pendingFile.path, stagingContentPath)
-        await this.durability.syncFile(stagingContentPath)
-
-        const latest = await client.artifactVersion.aggregate({
-          where: { artifactId: lineageId },
-          _max: { versionNumber: true }
-        })
-        const versionNumber = (latest._max.versionNumber ?? 0) + 1
-        const contentStorageKey = storageKey(
-          'artifacts',
-          projectId,
-          appSessionId,
-          '.provenance',
-          lineageId,
-          'versions',
-          versionId,
-          'content'
-        )
-        const evidenceStorageKey = storageKey(
-          'artifacts',
-          projectId,
-          appSessionId,
-          '.provenance',
-          lineageId,
-          'versions',
-          versionId,
-          'evidence.json'
-        )
-        const evidence: ArtifactVersionEvidence = {
-          app_session_id: appSessionId,
-          artifact_id: lineageId,
-          checksum: contentChecksum,
-          ...(request.contentType ? { content_type: request.contentType } : {}),
-          conversation: {
-            agent_frame_id: source.agentFrameId,
-            message_branch_id: source.messageBranchId,
-            prompt_message_id: source.promptMessageId,
-            root_frame_id: source.rootFrameId,
-            runtime_segment_id: source.runtimeSegmentId
-          },
-          created_at: createdAt.toISOString(),
-          environment_status: { reason: 'user-edit', state: 'unavailable' },
-          execution_status: { reason: 'user-edit', state: 'unavailable' },
+    const version =
+      await this.compatibilityRepository.withPendingFileTransaction<ArtifactVersionFile>(
+        {
+          projectName: projectId,
+          sessionId: artifactStorageSessionId,
+          runId: source.artifactRunId,
           filename: source.filename,
-          inputs: [],
-          is_user_upload: false,
-          producer: { reason: 'user-edit', state: 'unavailable' },
-          project_id: projectId,
-          schema_version: 1,
-          size_bytes: Buffer.byteLength(request.content, 'utf8'),
-          version_id: versionId,
-          version_number: versionNumber
-        }
-        const evidenceJson = canonicalJson(evidence as unknown as CanonicalJson)
+          mimeType: request.contentType,
+          kind: 'plan',
+          source: { kind: 'inline', content: request.content, encoding: 'utf8' }
+        },
+        {},
+        async (pendingFile, _sourceFileObservation, bindVersionRouting) => {
+          const versionId = this.createId()
+          const createdAt = this.now()
+          const stagingStorageKey = storageKey(
+            'artifacts',
+            projectId,
+            appSessionId,
+            '.provenance',
+            '.staging',
+            'versions',
+            versionId
+          )
+          const stagingDirectory = join(this.options.storageRoot, ...stagingStorageKey.split('/'))
+          const stagingContentPath = join(stagingDirectory, 'content')
+          await mkdir(stagingDirectory, { recursive: true })
+          await copyFile(pendingFile.path, stagingContentPath)
+          await this.durability.syncFile(stagingContentPath)
 
-        const persisted = await withVersionAllocationRetry(() =>
-          client.$transaction(async (transaction) => {
-            const origin = await transaction.fileOriginSession.upsert({
-              where: { projectId_sessionId: { projectId, sessionId: appSessionId } },
-              create: { projectId, sessionId: appSessionId },
-              update: {}
-            })
-            if (origin.state !== 'active') {
-              throw new Error(
-                'Artifact origin Session is being deleted and cannot accept a Version.'
-              )
-            }
-            return transaction.artifactVersion.create({
-              data: {
-                id: versionId,
-                artifactId: lineageId,
-                versionNumber,
-                filename: source.filename,
-                artifactRunId: source.artifactRunId,
-                writeOperationId,
-                writeRequestChecksum,
-                rootFrameId: source.rootFrameId,
-                agentFrameId: source.agentFrameId,
-                messageBranchId: source.messageBranchId,
-                runtimeSegmentId: source.runtimeSegmentId,
-                promptMessageId: source.promptMessageId,
-                state: 'staging',
-                contentStorageKey,
-                evidenceStorageKey,
-                contentType: request.contentType ?? source.contentType ?? undefined,
-                sizeBytes: BigInt(Buffer.byteLength(request.content, 'utf8')),
-                checksum: contentChecksum,
-                evidenceJson,
-                evidenceChecksum: sha256(evidenceJson),
-                createdAt
+          const latest = await client.artifactVersion.aggregate({
+            where: { artifactId: lineageId },
+            _max: { versionNumber: true }
+          })
+          const versionNumber = (latest._max.versionNumber ?? 0) + 1
+          const contentStorageKey = storageKey(
+            'artifacts',
+            projectId,
+            appSessionId,
+            '.provenance',
+            lineageId,
+            'versions',
+            versionId,
+            'content'
+          )
+          const evidenceStorageKey = storageKey(
+            'artifacts',
+            projectId,
+            appSessionId,
+            '.provenance',
+            lineageId,
+            'versions',
+            versionId,
+            'evidence.json'
+          )
+          const evidence: ArtifactVersionEvidence = {
+            app_session_id: appSessionId,
+            artifact_id: lineageId,
+            checksum: contentChecksum,
+            ...(request.contentType ? { content_type: request.contentType } : {}),
+            conversation: {
+              agent_frame_id: source.agentFrameId,
+              message_branch_id: source.messageBranchId,
+              prompt_message_id: source.promptMessageId,
+              root_frame_id: source.rootFrameId,
+              runtime_segment_id: source.runtimeSegmentId
+            },
+            created_at: createdAt.toISOString(),
+            environment_status: { reason: 'user-edit', state: 'unavailable' },
+            execution_status: { reason: 'user-edit', state: 'unavailable' },
+            filename: source.filename,
+            inputs: [],
+            is_user_upload: false,
+            producer: { reason: 'user-edit', state: 'unavailable' },
+            project_id: projectId,
+            schema_version: 1,
+            size_bytes: Buffer.byteLength(request.content, 'utf8'),
+            version_id: versionId,
+            version_number: versionNumber
+          }
+          const evidenceJson = canonicalJson(evidence as unknown as CanonicalJson)
+
+          const persisted = await withVersionAllocationRetry(() =>
+            client.$transaction(async (transaction) => {
+              const origin = await transaction.fileOriginSession.upsert({
+                where: { projectId_sessionId: { projectId, sessionId: appSessionId } },
+                create: { projectId, sessionId: appSessionId },
+                update: {}
+              })
+              if (origin.state !== 'active') {
+                throw new Error(
+                  'Artifact origin Session is being deleted and cannot accept a Version.'
+                )
               }
+              return transaction.artifactVersion.create({
+                data: {
+                  id: versionId,
+                  artifactId: lineageId,
+                  versionNumber,
+                  filename: source.filename,
+                  artifactRunId: source.artifactRunId,
+                  writeOperationId,
+                  writeRequestChecksum,
+                  rootFrameId: source.rootFrameId,
+                  agentFrameId: source.agentFrameId,
+                  messageBranchId: source.messageBranchId,
+                  runtimeSegmentId: source.runtimeSegmentId,
+                  promptMessageId: source.promptMessageId,
+                  state: 'staging',
+                  contentStorageKey,
+                  evidenceStorageKey,
+                  contentType: request.contentType ?? source.contentType ?? undefined,
+                  sizeBytes: BigInt(Buffer.byteLength(request.content, 'utf8')),
+                  checksum: contentChecksum,
+                  evidenceJson,
+                  evidenceChecksum: sha256(evidenceJson),
+                  createdAt
+                }
+              })
+            })
+          )
+
+          const evidencePath = join(stagingDirectory, 'evidence.json')
+          await writeFile(evidencePath, persisted.evidenceJson, 'utf8')
+          await this.syncAndVerifyFile(
+            evidencePath,
+            persisted.evidenceChecksum,
+            `Artifact Version evidence mirror is corrupt: ${persisted.id}`
+          )
+          const finalContentPath = join(
+            this.options.storageRoot,
+            ...persisted.contentStorageKey.split('/')
+          )
+          await mkdir(dirname(dirname(finalContentPath)), { recursive: true })
+          await this.durability.syncDirectory(stagingDirectory)
+          const finalDirectory = dirname(finalContentPath)
+          await rename(stagingDirectory, finalDirectory)
+          await this.durability.syncDirectory(dirname(finalDirectory))
+
+          await bindVersionRouting(
+            {
+              artifactId: persisted.artifactId,
+              versionId: persisted.id,
+              versionNumber: persisted.versionNumber,
+              artifactRunId: persisted.artifactRunId,
+              checksum: persisted.checksum,
+              mimeType: persisted.contentType ?? undefined
+            },
+            resolveStorageKey(this.options.storageRoot, persisted.contentStorageKey)
+          )
+
+          // User edits are finalized immediately: no agent run will ever finalize them.
+          const finalized = await client.$transaction(async (transaction) => {
+            await transaction.artifactLineage.update({
+              where: { id: persisted.artifactId },
+              data: { filename: source.filename }
+            })
+            return transaction.artifactVersion.update({
+              where: { id: persisted.id },
+              data: { state: 'finalized' }
             })
           })
-        )
-
-        const evidencePath = join(stagingDirectory, 'evidence.json')
-        await writeFile(evidencePath, persisted.evidenceJson, 'utf8')
-        await this.syncAndVerifyFile(
-          evidencePath,
-          persisted.evidenceChecksum,
-          `Artifact Version evidence mirror is corrupt: ${persisted.id}`
-        )
-        const finalContentPath = join(
-          this.options.storageRoot,
-          ...persisted.contentStorageKey.split('/')
-        )
-        await mkdir(dirname(dirname(finalContentPath)), { recursive: true })
-        await this.durability.syncDirectory(stagingDirectory)
-        const finalDirectory = dirname(finalContentPath)
-        await rename(stagingDirectory, finalDirectory)
-        await this.durability.syncDirectory(dirname(finalDirectory))
-
-        await bindVersionRouting(
-          {
-            artifactId: persisted.artifactId,
-            versionId: persisted.id,
-            versionNumber: persisted.versionNumber,
-            artifactRunId: persisted.artifactRunId,
-            checksum: persisted.checksum,
-            mimeType: persisted.contentType ?? undefined
-          },
-          resolveStorageKey(this.options.storageRoot, persisted.contentStorageKey)
-        )
-
-        // User edits are finalized immediately: no agent run will ever finalize them.
-        const finalized = await client.$transaction(async (transaction) => {
-          await transaction.artifactLineage.update({
-            where: { id: persisted.artifactId },
-            data: { filename: source.filename }
-          })
-          return transaction.artifactVersion.update({
-            where: { id: persisted.id },
-            data: { state: 'finalized' }
-          })
-        })
-        // No agent run will ever finalize this write, so remove the pending staging file ourselves
-        // (mirroring finalizeRunArtifacts' cleanup); the run directory is pruned only when empty so
-        // unrelated pending files of a still-active run are never touched.
-        await rm(pendingFile.path, { force: true }).catch(() => undefined)
-        await rm(dirname(pendingFile.path), { force: true }).catch(() => undefined)
-        return this.toArtifactVersionFile(finalized, projectId, appSessionId)
-      }
-    )
+          // No agent run will ever finalize this write, so remove the pending staging file ourselves
+          // (mirroring finalizeRunArtifacts' cleanup); the run directory is pruned only when empty so
+          // unrelated pending files of a still-active run are never touched.
+          await rm(pendingFile.path, { force: true }).catch(() => undefined)
+          await rm(dirname(pendingFile.path), { force: true }).catch(() => undefined)
+          return this.toArtifactVersionFile(finalized, projectId, appSessionId)
+        }
+      )
     return version
   }
 

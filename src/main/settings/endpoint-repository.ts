@@ -11,11 +11,7 @@ import { createHash } from 'node:crypto'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 
-import type {
-  EndpointRegisterRequest,
-  EndpointState,
-  ManagedEndpoint
-} from '../../shared/endpoint'
+import type { EndpointRegisterRequest, EndpointState, ManagedEndpoint } from '../../shared/endpoint'
 import {
   ENDPOINT_PORT_RANGE_END,
   ENDPOINT_PORT_RANGE_START,
@@ -132,9 +128,7 @@ export class EndpointRepository {
     const now = this.now()
 
     const endpoints = await this.readEndpoints()
-    const portTaken = endpoints.some(
-      (endpoint) => endpoint.port === port && endpoint.name !== name
-    )
+    const portTaken = endpoints.some((endpoint) => endpoint.port === port && endpoint.name !== name)
     if (portTaken) {
       throw new EndpointValidationError('port_taken', `Port ${port} is owned by another endpoint.`)
     }
@@ -209,9 +203,7 @@ export class EndpointRepository {
       lastError: extra.error !== undefined ? extra.error : previous.lastError,
       // Transcript carries the rolling tail of lifecycle events.
       transcript:
-        extra.transcript !== undefined
-          ? trimTranscript(extra.transcript)
-          : previous.transcript,
+        extra.transcript !== undefined ? trimTranscript(extra.transcript) : previous.transcript,
       updatedAt: now
     }
     endpoints[index] = updated
@@ -240,9 +232,7 @@ export class EndpointRepository {
       stateChangedAt: now,
       lastError: extra.error !== undefined ? extra.error : previous.lastError,
       transcript:
-        extra.transcript !== undefined
-          ? trimTranscript(extra.transcript)
-          : previous.transcript,
+        extra.transcript !== undefined ? trimTranscript(extra.transcript) : previous.transcript,
       updatedAt: now
     }
     endpoints[index] = updated
@@ -309,7 +299,11 @@ const validateUrl = (url: string): string => {
 const parsePort = (url: string): number => {
   const match = URL_PATTERN.exec(url.trim())
   const port = match ? Number(match[1]) : NaN
-  if (!Number.isInteger(port) || port < ENDPOINT_PORT_RANGE_START || port > ENDPOINT_PORT_RANGE_END) {
+  if (
+    !Number.isInteger(port) ||
+    port < ENDPOINT_PORT_RANGE_START ||
+    port > ENDPOINT_PORT_RANGE_END
+  ) {
     throw new EndpointValidationError(
       'port_out_of_range',
       `port must be an integer in ${ENDPOINT_PORT_RANGE_START}-${ENDPOINT_PORT_RANGE_END}.`

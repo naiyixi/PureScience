@@ -44,7 +44,9 @@ export type PdfServiceOptions = {
   // paths resolve against storageRoot.
   resolvePath?: (path: string) => Promise<string | undefined>
   // Injectable PDF parser (tests); defaults to the pdfjs implementation.
-  parsePdf?: (filePath: string) => Promise<{ pages: string[]; outline: PdfOutlineEntry[]; title: string }>
+  parsePdf?: (
+    filePath: string
+  ) => Promise<{ pages: string[]; outline: PdfOutlineEntry[]; title: string }>
   now?: () => number
 }
 
@@ -125,7 +127,10 @@ export class PdfService {
     const clampedStart = Math.max(1, start)
     const clampedEnd = Math.min(doc.pageCount, end ?? clampedStart)
     if (clampedStart > doc.pageCount) {
-      throw new PdfValidationError('not_found', `Page ${start} is out of range (1-${doc.pageCount}).`)
+      throw new PdfValidationError(
+        'not_found',
+        `Page ${start} is out of range (1-${doc.pageCount}).`
+      )
     }
     const result: PdfPagesResult = {
       docId,
@@ -293,9 +298,42 @@ const tokenize = (text: string): string[] =>
     .filter((token) => token.length > 1)
 
 const STOPWORDS = new Set([
-  'the', 'and', 'for', 'with', 'from', 'that', 'this', 'are', 'was', 'were', 'have', 'has',
-  'had', 'not', 'but', 'its', 'their', 'them', 'they', 'you', 'our', 'all', 'can', 'will',
-  'into', 'over', 'than', 'then', 'such', 'also', 'using', 'used', 'use', 'per', 'via', 'etc'
+  'the',
+  'and',
+  'for',
+  'with',
+  'from',
+  'that',
+  'this',
+  'are',
+  'was',
+  'were',
+  'have',
+  'has',
+  'had',
+  'not',
+  'but',
+  'its',
+  'their',
+  'them',
+  'they',
+  'you',
+  'our',
+  'all',
+  'can',
+  'will',
+  'into',
+  'over',
+  'than',
+  'then',
+  'such',
+  'also',
+  'using',
+  'used',
+  'use',
+  'per',
+  'via',
+  'etc'
 ])
 
 const bestSnippet = (page: string, terms: string[]): string => {

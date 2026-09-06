@@ -40,14 +40,16 @@ type CreateOwnerResult = {
   runner: { run: ReturnType<typeof vi.fn> }
   evidenceRepository: {
     find: ReturnType<typeof vi.fn>
-    save: { save: (input: never) => Promise<void>; mock: { calls: Array<[Record<string, unknown>]> } }
+    save: {
+      save: (input: never) => Promise<void>
+      mock: { calls: Array<[Record<string, unknown>]> }
+    }
   }
   captureTarget: ReturnType<typeof vi.fn>
 }
 
-const createOwner = (
-  overrides: Record<string, unknown> = {}
-): CreateOwnerResult => createOwnerInner(overrides)
+const createOwner = (overrides: Record<string, unknown> = {}): CreateOwnerResult =>
+  createOwnerInner(overrides)
 
 function createOwnerInner(overrides: Record<string, unknown> = {}): CreateOwnerResult {
   const runner = {

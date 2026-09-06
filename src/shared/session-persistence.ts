@@ -333,7 +333,7 @@ export type SessionConflictRebaseField =
   | 'title'
   | 'permissionProfile'
   | 'autoReviewEnabled'
-| 'delegationEnabled'
+  | 'delegationEnabled'
   | 'enabledComputeHosts'
   | 'pinned'
   | 'specialistId'
@@ -1580,7 +1580,7 @@ const sanitizeSession = (
     // Auto-review defaults off: a missing or non-boolean value restores as disabled, and only an
     // explicit true turns it on.
     autoReviewEnabled: session.autoReviewEnabled === true ? true : false,
-      delegationEnabled: session.delegationEnabled !== false,
+    delegationEnabled: session.delegationEnabled !== false,
     messages: Array.isArray(session.messages)
       ? session.messages
           .map((message) => sanitizeMessage(message, options))

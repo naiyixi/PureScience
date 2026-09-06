@@ -28,11 +28,11 @@ describe('AcpContextUsagePolicy', () => {
         memory: false,
         contextSummary: false,
         routine: false,
-      endpoint: false,
-      annotation: false,
-      pdf: false,
-      figure: false,
-      query: false
+        endpoint: false,
+        annotation: false,
+        pdf: false,
+        figure: false,
+        query: false
       })
     })
 
@@ -68,11 +68,11 @@ describe('AcpContextUsagePolicy', () => {
         memory: false,
         contextSummary: false,
         routine: false,
-      endpoint: false,
-      annotation: false,
-      pdf: false,
-      figure: false,
-      query: false
+        endpoint: false,
+        annotation: false,
+        pdf: false,
+        figure: false,
+        query: false
       })
     })
 

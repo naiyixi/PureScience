@@ -343,10 +343,7 @@ type AcpRuntimeAnnotationOptions = {
 type AcpRuntimePdfOptions = {
   mcpEntryPath: string
   mcpCommand?: string
-  getRpcConnection: (binding: {
-    sessionId: string
-    projectId: string
-  }) => Promise<PdfRpcConnection>
+  getRpcConnection: (binding: { sessionId: string; projectId: string }) => Promise<PdfRpcConnection>
   registerSessionAlias?: (aliasSessionId: string, sessionId: string) => void
 }
 

@@ -143,11 +143,13 @@ export const de: Partial<Record<ZhKey, string>> = {
   'providerForm.endpointAria': 'Endpunkt',
   'specialist.chooseZipHint': 'Wählen Sie ein ZIP mit genau einem Spezialisten.',
   'specialist.chooseZip': 'ZIP wählen',
-  'settings.zipLimits': 'Grenzen: 50 MB komprimiert · 200 MB unkomprimiert · 2.000 Dateien · 25 MB pro Datei',
+  'settings.zipLimits':
+    'Grenzen: 50 MB komprimiert · 200 MB unkomprimiert · 2.000 Dateien · 25 MB pro Datei',
   'specialist.editorDescription': 'Beschreibung',
   'specialist.editorInstructions': 'Anweisungen',
   'specialist.builtin': 'Integriert',
-  'specialist.startNormalChat': 'Starten Sie ein normales Gespräch; der Agent führt Sie Schritt für Schritt',
+  'specialist.startNormalChat':
+    'Starten Sie ein normales Gespräch; der Agent führt Sie Schritt für Schritt',
 
   'specialist.downloadJson': 'JSON herunterladen',
   'specialist.readOnly': 'Nur lesen',
@@ -665,7 +667,8 @@ export const de: Partial<Record<ZhKey, string>> = {
   'skillUpload.uploadSkills': 'Fähigkeiten hochladen',
   'skillUpload.uploadIntro':
     'Fügen Sie Fähigkeiten aus SKILL.md-Dateien oder .zip-/ .skill-Bündeln auf Ihrem Computer hinzu. Sie können mehrere Dateien gleichzeitig auswählen; ein einzelnes Archiv kann mehrere Fähigkeiten enthalten.',
-  'skillUpload.confirmIntro': 'Wählen Sie die Fähigkeiten aus, die Sie hinzufügen möchten. Bis zum Import wird nichts geschrieben.',
+  'skillUpload.confirmIntro':
+    'Wählen Sie die Fähigkeiten aus, die Sie hinzufügen möchten. Bis zum Import wird nichts geschrieben.',
   'skillUpload.foundCount': '{n} Fähigkeiten gefunden',
   'skillUpload.invert': 'Auswahl umkehren',
   'skillUpload.skippedCount': '{n} Fähigkeit(en) übersprungen',
@@ -675,9 +678,12 @@ export const de: Partial<Record<ZhKey, string>> = {
   'skillUpload.tooLargeFile': '{file}: Datei ist zu groß (Limit {limit}).',
   'skillUpload.noSkillsInBundle': '{file}: Keine Fähigkeiten im Bündel gefunden.',
   'skillUpload.needsName': '{file}: benötigt einen Namen im YAML-Frontmatter.',
-  'skillUpload.previewTooLarge': '{file}: Vorschau überschreitet das Limit von {limit}. Sie können sie trotzdem importieren.',
-  'skillUpload.unsupportedFile': '{file}: Nicht unterstützte Datei — laden Sie eine .md-Datei oder ein .zip-/.skill-Bündel hoch.',
-  'skillUpload.selectionTooLarge': 'Die Auswahl ist zu groß ({size}); laden Sie höchstens {limit} auf einmal hoch.',
+  'skillUpload.previewTooLarge':
+    '{file}: Vorschau überschreitet das Limit von {limit}. Sie können sie trotzdem importieren.',
+  'skillUpload.unsupportedFile':
+    '{file}: Nicht unterstützte Datei — laden Sie eine .md-Datei oder ein .zip-/.skill-Bündel hoch.',
+  'skillUpload.selectionTooLarge':
+    'Die Auswahl ist zu groß ({size}); laden Sie höchstens {limit} auf einmal hoch.',
   'skillUpload.summary': 'Importiert {imported} · übersprungen {skipped} · fehlgeschlagen {failed}',
   'fileBrowser.savedToDownloads': 'In Downloads gespeichert: {name}',
   'agentHome.importedSummary': '{n} Fähigkeit(en) importiert.',
@@ -756,7 +762,8 @@ export const de: Partial<Record<ZhKey, string>> = {
     'Heruntergeladen — starten Sie PureScience neu, um die Installation abzuschließen.',
   'update.readyInstallerHint':
     'Heruntergeladen — führen Sie das Installationsprogramm aus, um das Update abzuschließen.',
-  'update.quitBeforeInstall': 'Beenden Sie PureScience vor der Installation — eine laufende App kann nicht ersetzt werden.',
+  'update.quitBeforeInstall':
+    'Beenden Sie PureScience vor der Installation — eine laufende App kann nicht ersetzt werden.',
   'update.downloadManually': 'Manuell herunterladen',
   'update.openInstaller': 'Installer öffnen',
   'update.restartToUpdate': 'Zum Aktualisieren neu starten',
@@ -1448,7 +1455,8 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.connectorBlurb':
     'Fügen Sie eine anmeldedatenfreie Konnektor-Konfiguration von Ihrem Computer hinzu. Prüfen Sie die Konfiguration und geben Sie vor dem Hinzufügen erforderliche Anmeldedaten ein.',
   'settings.connectorTooLarge': 'Konnektor-Konfigurationsdateien müssen {limit} oder kleiner sein.',
-  'settings.connectorChooseJson': 'Wählen Sie eine .json-Datei bis {limit}. Anmeldedaten werden nie aus der Datei importiert.',
+  'settings.connectorChooseJson':
+    'Wählen Sie eine .json-Datei bis {limit}. Anmeldedaten werden nie aus der Datei importiert.',
   'settings.connectorEnterLocally': 'Lokal eingeben: {names}',
   'settings.importConnectorHint':
     'Einstellungen prüfen und alle erforderlichen Anmeldedaten eingeben, bevor er hinzugefügt wird.',

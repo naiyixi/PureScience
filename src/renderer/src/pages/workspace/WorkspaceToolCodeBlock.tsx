@@ -71,7 +71,11 @@ const WorkspaceToolCodeBlock = ({
     }
     // The highlighter loads languages/themes asynchronously; cached hits return immediately instead.
     const immediate = streamdownCode.highlight(
-      { code: source, language: language as StreamdownLanguage, themes: streamdownCode.getThemes() },
+      {
+        code: source,
+        language: language as StreamdownLanguage,
+        themes: streamdownCode.getThemes()
+      },
       apply
     )
 

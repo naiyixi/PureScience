@@ -26,7 +26,10 @@ const makeRepository = async (): Promise<{
 }
 
 const loadOnDisk = async (root: string, sessionId: string): Promise<RoutineSchedule[]> => {
-  const raw = await readFile(join(root, 'artifacts', sessionId, '.routines', 'routines.json'), 'utf8')
+  const raw = await readFile(
+    join(root, 'artifacts', sessionId, '.routines', 'routines.json'),
+    'utf8'
+  )
   return JSON.parse(raw) as RoutineSchedule[]
 }
 

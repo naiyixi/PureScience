@@ -3,11 +3,7 @@
 // data fidelity (excluded rows must not leak into summary statistics), label economy, colour
 // threading, chart-by-data-shape, and render-then-verify. Deterministic and fully testable.
 
-import type {
-  FigurePanel,
-  FigureReviewResult,
-  FigureViolation
-} from '../../shared/figure'
+import type { FigurePanel, FigureReviewResult, FigureViolation } from '../../shared/figure'
 import {
   FIGURE_MAX_LABELS_PER_AXIS,
   FIGURE_MAX_SERIES_COLORS,
@@ -46,7 +42,11 @@ const checkDataFidelity = (panel: FigurePanel): FigureViolation[] => {
       message: `Panel ${panel.id}: ${excluded} excluded row(s) were still included in the summary statistics — excluded data must never feed means/counts/percentages.`
     })
   }
-  if (excluded > 0 && panel.summaryUsedExcluded === undefined && panel.note?.toLowerCase().includes('summary')) {
+  if (
+    excluded > 0 &&
+    panel.summaryUsedExcluded === undefined &&
+    panel.note?.toLowerCase().includes('summary')
+  ) {
     violations.push({
       rule: FIGURE_RULE_DATA_FIDELITY,
       panelId: panel.id,
@@ -92,7 +92,12 @@ const checkColorThreading = (panel: FigurePanel): FigureViolation[] => {
       message: `Panel ${panel.id}: ${series} series exceeds ${FIGURE_MAX_SERIES_COLORS} — distinct hues above ~8 are indistinguishable; group or facet instead.`
     })
   }
-  if (series > 1 && panel.chartType === 'line' && panel.dataShape.timeSeries && panel.note?.toLowerCase().includes('same colour')) {
+  if (
+    series > 1 &&
+    panel.chartType === 'line' &&
+    panel.dataShape.timeSeries &&
+    panel.note?.toLowerCase().includes('same colour')
+  ) {
     violations.push({
       rule: FIGURE_RULE_COLOR_THREADING,
       panelId: panel.id,

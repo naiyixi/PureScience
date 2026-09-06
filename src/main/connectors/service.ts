@@ -245,7 +245,10 @@ export class ConnectorService {
   // Delegation gate (fail-closed): delegate_tasks is disabled per-session via the composer's
   // agent controls. The registry is populated from the persisted session flag on every save
   // (session-persistence rebase), so disabling takes effect for subsequent tool calls.
-  private enforceDelegationGate(descriptor: ToolDescriptor | undefined, context: ConnectorCallContext): void {
+  private enforceDelegationGate(
+    descriptor: ToolDescriptor | undefined,
+    context: ConnectorCallContext
+  ): void {
     if (descriptor?.id !== 'delegate_tasks' || !context.sessionId) return
     if (!delegationRegistry.isEnabled(context.sessionId)) {
       throw new ConnectorGateError(

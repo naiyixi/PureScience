@@ -14,9 +14,7 @@ const makeProvider = (
   overrides: Record<string, unknown> = {}
 ): ReturnType<typeof makeProviderInner> => makeProviderInner(overrides)
 
-function makeProviderInner(
-  overrides: Record<string, unknown> = {}
-): {
+function makeProviderInner(overrides: Record<string, unknown> = {}): {
   id: string
   type: string
   name: string
@@ -42,9 +40,7 @@ const makeRuntimeTarget = (
   overrides: Record<string, unknown> = {}
 ): ReturnType<typeof makeRuntimeTargetInner> => makeRuntimeTargetInner(overrides)
 
-function makeRuntimeTargetInner(
-  overrides: Record<string, unknown> = {}
-): {
+function makeRuntimeTargetInner(overrides: Record<string, unknown> = {}): {
   providerId: string
   providerType: string
   effectiveModel: string
@@ -72,9 +68,7 @@ const makeSettings = (
   overrides: Record<string, unknown> = {}
 ): ReturnType<typeof makeSettingsInner> => makeSettingsInner(overrides)
 
-function makeSettingsInner(
-  overrides: Record<string, unknown> = {}
-): {
+function makeSettingsInner(overrides: Record<string, unknown> = {}): {
   version: number
   providers: ReturnType<typeof makeProvider>[]
   [key: string]: unknown

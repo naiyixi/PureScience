@@ -81,7 +81,9 @@ describe('PDF MCP server contract', () => {
     const tools = (server as unknown as { _registeredTools: Record<string, unknown> })
       ._registeredTools
     const openTool = tools[PDF_OPEN_TOOL_NAME] as {
-      handler: (input: Record<string, unknown>) => Promise<{ content: { type: string; text: string }[] }>
+      handler: (
+        input: Record<string, unknown>
+      ) => Promise<{ content: { type: string; text: string }[] }>
     }
     const result = await openTool.handler({ path: '/data/paper.pdf' })
     expect(handler.open).toHaveBeenCalledWith('/data/paper.pdf')

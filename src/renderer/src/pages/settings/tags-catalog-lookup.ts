@@ -14,9 +14,7 @@ const RESOURCE_KIND_PATTERN = /^(skill|connector|specialist):(.+)$/u
 
 // Resolves every resource carrying the selected tag across the skills / connectors /
 // specialists catalogs. Used by the Tags settings surface (master-detail).
-export const useCatalogTagsCounts = (
-  tag: string | undefined
-): CatalogTagResource[] => {
+export const useCatalogTagsCounts = (tag: string | undefined): CatalogTagResource[] => {
   const entries = useCatalogTagsStore((state) => state.entries)
   const skills = useSettingsStore((state) => state.skills)
   const connectors = useSettingsStore((state) => state.connectors)
@@ -41,14 +39,14 @@ export const useCatalogTagsCounts = (
             : specialists.some((specialist) => specialist.id === id)
       if (exists) resources.push({ kind, id })
     }
-    return resources.sort((left, right) => left.kind.localeCompare(right.kind) || left.id.localeCompare(right.id))
+    return resources.sort(
+      (left, right) => left.kind.localeCompare(right.kind) || left.id.localeCompare(right.id)
+    )
   }, [connectors, entries, skills, specialists, tag])
 }
 
 // Resolves a display name for a resource from its catalog (falls back to the raw id).
-export const resolveCatalogResourceName = (
-  resource: CatalogTagResource
-): string => {
+export const resolveCatalogResourceName = (resource: CatalogTagResource): string => {
   const skills = useSettingsStore.getState().skills
   const connectors = useSettingsStore.getState().connectors
   const specialists = useSpecialistStore.getState().items
@@ -56,7 +54,9 @@ export const resolveCatalogResourceName = (
     case 'skill':
       return skills.find((skill) => skill.id === resource.id)?.name ?? resource.id
     case 'connector':
-      return connectors.find((connector) => connector.id === resource.id)?.displayName ?? resource.id
+      return (
+        connectors.find((connector) => connector.id === resource.id)?.displayName ?? resource.id
+      )
     case 'specialist': {
       const item = specialists.find((specialist) => specialist.id === resource.id)
       if (!item) return resource.id

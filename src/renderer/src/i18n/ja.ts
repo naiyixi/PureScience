@@ -648,7 +648,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'skillUpload.uploadSkills': 'スキルをアップロード',
   'skillUpload.uploadIntro':
     'コンピューター上の SKILL.md ファイルや .zip / .skill バンドルからスキルを追加します。複数のファイルを一度に選択でき、1 つのアーカイブに複数のスキルを含めることもできます。',
-  'skillUpload.confirmIntro': '追加するスキルを選択してください。インポートするまで何も書き込まれません。',
+  'skillUpload.confirmIntro':
+    '追加するスキルを選択してください。インポートするまで何も書き込まれません。',
   'skillUpload.foundCount': '{n} 個のスキルが見つかりました',
   'skillUpload.invert': '反転',
   'skillUpload.skippedCount': '{n} 個のスキルをスキップしました',
@@ -658,9 +659,12 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'skillUpload.tooLargeFile': '{file}: ファイルが大きすぎます（上限 {limit}）。',
   'skillUpload.noSkillsInBundle': '{file}: バンドルにスキルが見つかりません。',
   'skillUpload.needsName': '{file}: YAML frontmatter に名前が必要です。',
-  'skillUpload.previewTooLarge': '{file}: プレビューが上限（{limit}）を超えています。インポート自体は可能です。',
-  'skillUpload.unsupportedFile': '{file}: サポートされていないファイルです。.md ファイルまたは .zip / .skill バンドルをアップロードしてください。',
-  'skillUpload.selectionTooLarge': '選択が大きすぎます（{size}）。一度にアップロードできるのは最大 {limit} です。',
+  'skillUpload.previewTooLarge':
+    '{file}: プレビューが上限（{limit}）を超えています。インポート自体は可能です。',
+  'skillUpload.unsupportedFile':
+    '{file}: サポートされていないファイルです。.md ファイルまたは .zip / .skill バンドルをアップロードしてください。',
+  'skillUpload.selectionTooLarge':
+    '選択が大きすぎます（{size}）。一度にアップロードできるのは最大 {limit} です。',
   'skillUpload.summary': 'インポート {imported} · スキップ {skipped} · 失敗 {failed}',
   'fileBrowser.savedToDownloads': 'ダウンロードに保存しました：{name}',
   'agentHome.importedSummary': '{n} 個のスキルをインポートしました。',
@@ -738,7 +742,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'update.readyRestartHint':
     'ダウンロード完了 — PureScience を再起動するとインストールが完了します。',
   'update.readyInstallerHint': 'ダウンロード完了 — インストーラーを実行して更新を完了します。',
-  'update.quitBeforeInstall': 'インストール前に PureScience を終了してください——実行中のアプリは置き換えられません。',
+  'update.quitBeforeInstall':
+    'インストール前に PureScience を終了してください——実行中のアプリは置き換えられません。',
   'update.downloadManually': '手動でダウンロード',
   'update.openInstaller': 'インストーラーを開く',
   'update.restartToUpdate': '再起動して更新',

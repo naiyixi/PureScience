@@ -142,7 +142,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'providerForm.endpointAria': 'Конечная точка',
   'specialist.chooseZipHint': 'Выберите ZIP, содержащий ровно одного специалиста.',
   'specialist.chooseZip': 'Выбрать ZIP',
-  'settings.zipLimits': 'Ограничения: 50 МБ сжато · 200 МБ без сжатия · 2 000 файлов · 25 МБ на файл',
+  'settings.zipLimits':
+    'Ограничения: 50 МБ сжато · 200 МБ без сжатия · 2 000 файлов · 25 МБ на файл',
   'specialist.editorDescription': 'Описание',
   'specialist.editorInstructions': 'Инструкции',
   'specialist.builtin': 'Встроенные',
@@ -649,7 +650,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'skillUpload.uploadSkills': 'Загрузить навыки',
   'skillUpload.uploadIntro':
     'Добавляйте навыки из файлов SKILL.md или архивов .zip / .skill на вашем компьютере. Можно выбрать сразу несколько файлов, а один архив может содержать несколько навыков.',
-  'skillUpload.confirmIntro': 'Отметьте навыки, которые нужно добавить. Ничего не записывается до импорта.',
+  'skillUpload.confirmIntro':
+    'Отметьте навыки, которые нужно добавить. Ничего не записывается до импорта.',
   'skillUpload.foundCount': 'Найдено навыков: {n}',
   'skillUpload.invert': 'Инвертировать',
   'skillUpload.skippedCount': 'Пропущено навыков: {n}',
@@ -659,9 +661,12 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'skillUpload.tooLargeFile': '{file}: файл слишком большой (лимит {limit}).',
   'skillUpload.noSkillsInBundle': '{file}: в архиве не найдено навыков.',
   'skillUpload.needsName': '{file}: требуется имя в YAML-frontmatter.',
-  'skillUpload.previewTooLarge': '{file}: предпросмотр превышает лимит {limit}. Импорт по-прежнему возможен.',
-  'skillUpload.unsupportedFile': '{file}: неподдерживаемый файл — загрузите .md-файл или архив .zip / .skill.',
-  'skillUpload.selectionTooLarge': 'Выбор слишком большой ({size}); загружайте не более {limit} за раз.',
+  'skillUpload.previewTooLarge':
+    '{file}: предпросмотр превышает лимит {limit}. Импорт по-прежнему возможен.',
+  'skillUpload.unsupportedFile':
+    '{file}: неподдерживаемый файл — загрузите .md-файл или архив .zip / .skill.',
+  'skillUpload.selectionTooLarge':
+    'Выбор слишком большой ({size}); загружайте не более {limit} за раз.',
   'skillUpload.summary': 'Импортировано {imported} · пропущено {skipped} · ошибок {failed}',
   'fileBrowser.savedToDownloads': 'Сохранено в «Загрузки»: {name}',
   'agentHome.importedSummary': 'Импортировано навыков: {n}.',
@@ -738,7 +743,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
     'PureScience останавливает фоновые задачи и закроется, чтобы завершить установку. Это может занять некоторое время; не открывайте приложение повторно на этом шаге. После завершения приложение откроется автоматически.',
   'update.readyRestartHint': 'Загружено — перезапустите PureScience, чтобы завершить установку.',
   'update.readyInstallerHint': 'Загружено — запустите установщик, чтобы завершить обновление.',
-  'update.quitBeforeInstall': 'Перед установкой выйдите из PureScience — работающее приложение нельзя заменить.',
+  'update.quitBeforeInstall':
+    'Перед установкой выйдите из PureScience — работающее приложение нельзя заменить.',
   'update.downloadManually': 'Скачать вручную',
   'update.openInstaller': 'Открыть установщик',
   'update.restartToUpdate': 'Перезапустить для обновления',
@@ -1409,7 +1415,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.connectorBlurb':
     'Добавьте конфигурацию коннектора без учётных данных с вашего компьютера. Проверьте конфигурацию, затем введите необходимые учётные данные перед добавлением.',
   'settings.connectorTooLarge': 'Файлы конфигурации коннектора должны быть не больше {limit}.',
-  'settings.connectorChooseJson': 'Выберите один файл .json размером до {limit}. Учётные данные никогда не импортируются из файла.',
+  'settings.connectorChooseJson':
+    'Выберите один файл .json размером до {limit}. Учётные данные никогда не импортируются из файла.',
   'settings.connectorEnterLocally': 'Ввести локально: {names}',
   'settings.importConnectorHint':
     'его настройки и введите все обязательные учётные данные до его добавления.',

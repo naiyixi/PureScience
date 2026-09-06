@@ -20,7 +20,12 @@ describe('host-query MCP server contract', () => {
 
   it('registers the tool with its handler wiring', () => {
     const handler = {
-      query: vi.fn(async () => ({ rows: [], truncated: false, elapsedMs: 1, scopedToProject: true }))
+      query: vi.fn(async () => ({
+        rows: [],
+        truncated: false,
+        elapsedMs: 1,
+        scopedToProject: true
+      }))
     }
     const server = createHostQueryMcpServer(handler)
     const tools = (server as unknown as { _registeredTools: Record<string, unknown> })
@@ -58,7 +63,9 @@ describe('host-query MCP server contract', () => {
     const tools = (server as unknown as { _registeredTools: Record<string, unknown> })
       ._registeredTools
     const queryTool = tools[HOST_QUERY_TOOL_NAME] as {
-      handler: (input: Record<string, unknown>) => Promise<{ content: { type: string; text: string }[] }>
+      handler: (
+        input: Record<string, unknown>
+      ) => Promise<{ content: { type: string; text: string }[] }>
     }
     const result = await queryTool.handler({ sql: 'SELECT id FROM Review LIMIT 1' })
     expect(handler.query).toHaveBeenCalledWith('SELECT id FROM Review LIMIT 1')

@@ -357,7 +357,10 @@ async function startElectronApp(mainEntryPath: string): Promise<void> {
           const { installLocalizedApplicationMenu } = await import('./app-menu')
           installLocalizedApplicationMenu()
         } catch (error) {
-          createLogger('app-menu').error('failed to install localized application menu; keeping default', error)
+          createLogger('app-menu').error(
+            'failed to install localized application menu; keeping default',
+            error
+          )
         }
       }
 

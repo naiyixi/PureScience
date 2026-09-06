@@ -16,7 +16,8 @@ import {
 } from '../../shared/host-query'
 
 export class HostQueryValidationError extends Error {
-  readonly code: 'not_select' | 'too_long' | 'disallowed_table' | 'multi_statement' | 'cross_database'
+  readonly code:
+    'not_select' | 'too_long' | 'disallowed_table' | 'multi_statement' | 'cross_database'
 
   constructor(code: HostQueryValidationError['code'], message: string) {
     super(message)
@@ -29,7 +30,10 @@ export class HostQueryValidationError extends Error {
 export const validateHostQuerySql = (sql: string): string[] => {
   const trimmed = sql.trim()
   if (trimmed.length > HOST_QUERY_MAX_SQL_LENGTH) {
-    throw new HostQueryValidationError('too_long', `SQL exceeds ${HOST_QUERY_MAX_SQL_LENGTH} chars.`)
+    throw new HostQueryValidationError(
+      'too_long',
+      `SQL exceeds ${HOST_QUERY_MAX_SQL_LENGTH} chars.`
+    )
   }
   if (!/^select\b/i.test(trimmed)) {
     throw new HostQueryValidationError('not_select', 'Only SELECT statements are allowed.')
@@ -49,7 +53,11 @@ export const validateHostQuerySql = (sql: string): string[] => {
       'Cross-database references (main.table) are not allowed.'
     )
   }
-  if (/\b(insert|update|delete|drop|alter|create|replace|attach|pragma|vacuum|reindex)\b/i.test(trimmed)) {
+  if (
+    /\b(insert|update|delete|drop|alter|create|replace|attach|pragma|vacuum|reindex)\b/i.test(
+      trimmed
+    )
+  ) {
     throw new HostQueryValidationError('not_select', 'Only SELECT statements are allowed.')
   }
 
@@ -96,9 +104,7 @@ export class HostQueryService {
     try {
       rows = (await client.$queryRawUnsafe(sql)) as unknown[]
     } catch (error) {
-      throw new Error(
-        `Query failed: ${error instanceof Error ? error.message : String(error)}`
-      )
+      throw new Error(`Query failed: ${error instanceof Error ? error.message : String(error)}`)
     }
     const elapsedMs = Math.round(performance.now() - startedAt)
 
@@ -131,7 +137,12 @@ const normalizeRow = (row: Record<string, unknown>): HostQueryRow => {
   for (const [key, value] of Object.entries(row)) {
     if (typeof value === 'bigint') {
       out[key] = value.toString()
-    } else if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' || value === null) {
+    } else if (
+      typeof value === 'string' ||
+      typeof value === 'number' ||
+      typeof value === 'boolean' ||
+      value === null
+    ) {
       out[key] = value
     } else if (value instanceof Date) {
       out[key] = value.toISOString()

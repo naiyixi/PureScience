@@ -38,9 +38,7 @@ describe('skill description evaluator', () => {
   })
 
   it('flags filler-only wording without a concrete subject', () => {
-    const result = evaluateSkillDescription(
-      'A useful skill to help with some helpful stuff.'
-    )
+    const result = evaluateSkillDescription('A useful skill to help with some helpful stuff.')
     const concrete = result.checks.find((c) => c.id === 'concrete_subject')
     expect(concrete?.passed).toBe(false)
   })

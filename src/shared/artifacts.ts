@@ -113,7 +113,6 @@ export type WriteUserEditedVersionRequest = {
   contentType?: string
 }
 
-
 // Renderer request for a bounded text preview of one managed artifact.
 export type ReadArtifactPreviewRequest = {
   path: string

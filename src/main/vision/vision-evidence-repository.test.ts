@@ -33,9 +33,7 @@ describe('VisionEvidenceRepository (SQLite-backed)', () => {
     overrides: Record<string, string | number> = {}
   ): Promise<ReturnType<typeof makeInputInner>> => makeInputInner(overrides)
 
-  async function makeInputInner(
-    overrides: Record<string, string | number> = {}
-  ): Promise<{
+  async function makeInputInner(overrides: Record<string, string | number> = {}): Promise<{
     identityKey: string
     imageChecksum: string
     extractorFingerprint: string

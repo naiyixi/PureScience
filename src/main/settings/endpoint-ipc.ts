@@ -54,9 +54,7 @@ export const createEndpointCommandOwner = (
   remove: (name) => manager.unregister(name)
 })
 
-export const registerEndpointIpcHandlers = (
-  owner: EndpointCommandOwner
-): EndpointCommandOwner => {
+export const registerEndpointIpcHandlers = (owner: EndpointCommandOwner): EndpointCommandOwner => {
   ipcMainHandle(ENDPOINT_IPC.LIST_ALL, () => owner.listAll())
   ipcMainHandle(
     ENDPOINT_IPC.REGISTER,

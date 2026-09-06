@@ -16,7 +16,8 @@ const register = {
   name: 'esm-fold',
   url: 'http://127.0.0.1:20001',
   skillName: 'esm-runbook',
-  startScript: 'docker inspect esm-fold && docker start esm-fold || docker run -d --name esm-fold -p $HOST_PORT:80 esm:latest',
+  startScript:
+    'docker inspect esm-fold && docker start esm-fold || docker run -d --name esm-fold -p $HOST_PORT:80 esm:latest',
   stopScript: 'docker stop esm-fold',
   livePath: '/health/ready'
 }
@@ -54,15 +55,15 @@ describe('EndpointRepository', () => {
   })
 
   it('rejects localhost URLs (must be literal 127.0.0.1)', async () => {
-    await expect(
-      repository.upsert({ ...register, url: 'http://localhost:20001' })
-    ).rejects.toThrow(/127\.0\.0\.1/)
+    await expect(repository.upsert({ ...register, url: 'http://localhost:20001' })).rejects.toThrow(
+      /127\.0\.0\.1/
+    )
   })
 
   it('rejects ports outside the managed range', async () => {
-    await expect(
-      repository.upsert({ ...register, url: 'http://127.0.0.1:8080' })
-    ).rejects.toThrow(/20000-29999/)
+    await expect(repository.upsert({ ...register, url: 'http://127.0.0.1:8080' })).rejects.toThrow(
+      /20000-29999/
+    )
   })
 
   it('rejects a second endpoint owning the same port', async () => {
@@ -143,7 +144,9 @@ describe('EndpointRepository', () => {
     const endpoints = await reloaded.list()
     expect(endpoints).toHaveLength(1)
     expect(endpoints[0]?.name).toBe('esm-fold')
-    const raw = JSON.parse(readFileSync(join(root, '.endpoints', 'endpoints.json'), 'utf8')) as unknown
+    const raw = JSON.parse(
+      readFileSync(join(root, '.endpoints', 'endpoints.json'), 'utf8')
+    ) as unknown
     expect(Array.isArray(raw)).toBe(true)
   })
 })

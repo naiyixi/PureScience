@@ -17,11 +17,11 @@ export const createHostQueryCommandOwner = (service: HostQueryService): HostQuer
   run: (projectId, sql) => service.query(sql, projectId)
 })
 
-export const registerHostQueryIpcHandlers = (owner: HostQueryCommandOwner): HostQueryCommandOwner => {
-  ipcMainHandle(
-    HOST_QUERY_IPC.RUN,
-    (_event, request: { projectId: string; sql: string }) =>
-      owner.run(request.projectId, request.sql)
+export const registerHostQueryIpcHandlers = (
+  owner: HostQueryCommandOwner
+): HostQueryCommandOwner => {
+  ipcMainHandle(HOST_QUERY_IPC.RUN, (_event, request: { projectId: string; sql: string }) =>
+    owner.run(request.projectId, request.sql)
   )
   return owner
 }

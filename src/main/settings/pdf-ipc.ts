@@ -33,20 +33,16 @@ export const createPdfCommandOwner = (service: PdfService): PdfCommandOwner => (
 })
 
 export const registerPdfIpcHandlers = (owner: PdfCommandOwner): PdfCommandOwner => {
-  ipcMainHandle(
-    PDF_IPC.OPEN,
-    (_event, request: { projectId: string; path: string }) =>
-      owner.open(request.projectId, request.path)
+  ipcMainHandle(PDF_IPC.OPEN, (_event, request: { projectId: string; path: string }) =>
+    owner.open(request.projectId, request.path)
   )
   ipcMainHandle(
     PDF_IPC.PAGES,
     (_event, request: { projectId: string; docId: string; start: number; end?: number }) =>
       owner.pages(request.projectId, request.docId, request.start, request.end)
   )
-  ipcMainHandle(
-    PDF_IPC.OUTLINE,
-    (_event, request: { projectId: string; docId: string }) =>
-      owner.outline(request.projectId, request.docId)
+  ipcMainHandle(PDF_IPC.OUTLINE, (_event, request: { projectId: string; docId: string }) =>
+    owner.outline(request.projectId, request.docId)
   )
   ipcMainHandle(
     PDF_IPC.SCAN,

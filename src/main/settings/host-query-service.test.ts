@@ -39,9 +39,7 @@ describe('validateHostQuerySql', () => {
   })
 
   it('accepts quoted identifiers and JOINs on allowed tables', () => {
-    const tables = validateHostQuerySql(
-      'SELECT * FROM "Review" JOIN "Finding" ON 1=1 LIMIT 1'
-    )
+    const tables = validateHostQuerySql('SELECT * FROM "Review" JOIN "Finding" ON 1=1 LIMIT 1')
     expect(tables.sort()).toEqual(['Finding', 'Review'])
   })
 
@@ -92,9 +90,7 @@ describe('HostQueryService', () => {
   it('validates before touching the client', async () => {
     const getClient = vi.fn()
     const service = new HostQueryService({ getClient: getClient as never })
-    await expect(service.query('DROP TABLE Review', 'p1')).rejects.toThrow(
-      HostQueryValidationError
-    )
+    await expect(service.query('DROP TABLE Review', 'p1')).rejects.toThrow(HostQueryValidationError)
     expect(getClient).not.toHaveBeenCalled()
   })
 
@@ -105,8 +101,6 @@ describe('HostQueryService', () => {
       })
     }))
     const service = new HostQueryService({ getClient: getClient as never })
-    await expect(service.query('SELECT * FROM Review', undefined)).rejects.toThrow(
-      /no such table/
-    )
+    await expect(service.query('SELECT * FROM Review', undefined)).rejects.toThrow(/no such table/)
   })
 })

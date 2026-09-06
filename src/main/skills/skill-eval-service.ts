@@ -8,17 +8,64 @@ import type { SkillEvalCheck, SkillEvalResult } from '../../shared/skill-eval'
 
 // Words that make a description actionable ("use when", "creates", "troubleshoots" …).
 const ACTION_WORDS = [
-  'use when', 'use to', 'create', 'create ', 'edit', 'troubleshoot', 'debug', 'fix',
-  'build', 'generate', 'convert', 'search', 'summarize', 'analyze', 'extract', 'monitor',
-  'track', 'manage', 'install', 'deploy', 'write', 'read', 'parse', 'transform', 'merge',
-  'review', 'verify', 'test', 'run', 'plan', 'write ', 'fetch', 'download', 'upload',
-  'schedule', 'annotate', 'parse ', 'host', 'scrape', 'translate', 'convert '
+  'use when',
+  'use to',
+  'create',
+  'create ',
+  'edit',
+  'troubleshoot',
+  'debug',
+  'fix',
+  'build',
+  'generate',
+  'convert',
+  'search',
+  'summarize',
+  'analyze',
+  'extract',
+  'monitor',
+  'track',
+  'manage',
+  'install',
+  'deploy',
+  'write',
+  'read',
+  'parse',
+  'transform',
+  'merge',
+  'review',
+  'verify',
+  'test',
+  'run',
+  'plan',
+  'write ',
+  'fetch',
+  'download',
+  'upload',
+  'schedule',
+  'annotate',
+  'parse ',
+  'host',
+  'scrape',
+  'translate',
+  'convert '
 ]
 
 // Words that indicate a vague, non-triggering description.
 const FILLER_WORDS = [
-  'help', 'assist', 'nice', 'useful', 'some', 'stuff', 'things', 'various', 'related',
-  'general', 'misc', 'todo', 'miscellaneous'
+  'help',
+  'assist',
+  'nice',
+  'useful',
+  'some',
+  'stuff',
+  'things',
+  'various',
+  'related',
+  'general',
+  'misc',
+  'todo',
+  'miscellaneous'
 ]
 
 // Weak openers that push the real content past the first sentence.
@@ -85,7 +132,9 @@ export const evaluateSkillDescription = (description: string): SkillEvalResult =
         : 'No action or scenario vocabulary — describe what the skill DOES or when to USE it.'
   })
   if (actionHits.length === 0) {
-    suggestions.push('Add a "use when …" clause or a verb (creates, troubleshoots, converts…) so the loader can match it.')
+    suggestions.push(
+      'Add a "use when …" clause or a verb (creates, troubleshoots, converts…) so the loader can match it.'
+    )
   }
 
   // Check 4: concrete subject (a domain/technology noun, not pure filler).
@@ -99,7 +148,9 @@ export const evaluateSkillDescription = (description: string): SkillEvalResult =
       : `Description leans on vague wording (${fillerHits.slice(0, 2).join(', ')}) — name the actual tool/domain/data.`
   })
   if (!concrete) {
-    suggestions.push('Replace vague words with the concrete subject: the tool, the data type, or the domain it operates on.')
+    suggestions.push(
+      'Replace vague words with the concrete subject: the tool, the data type, or the domain it operates on.'
+    )
   }
 
   // Check 5: keyword density — at least one substantive 6+ char word beyond the opener.
@@ -115,7 +166,9 @@ export const evaluateSkillDescription = (description: string): SkillEvalResult =
       : 'No substantive keyword — a loader cannot distinguish this skill from any other.'
   })
   if (!hasKeyword) {
-    suggestions.push('Name the specific thing this skill works with (e.g. "AlphaFold", "PDF", "GitHub PRs") so matching is unambiguous.')
+    suggestions.push(
+      'Name the specific thing this skill works with (e.g. "AlphaFold", "PDF", "GitHub PRs") so matching is unambiguous.'
+    )
   }
 
   const passedCount = checks.filter((check) => check.passed).length

@@ -205,8 +205,7 @@ class AgentMcpHttpHost {
       requestGitHubImport: (githubUrl) =>
         callGitHubSkillImportRpc(skillImportEnvironment, githubUrl),
       createSkill: (input) => callSkillCreateRpc(skillImportEnvironment, input),
-      evalDescription: async (description) =>
-        evaluateSkillDescription(description),
+      evalDescription: async (description) => evaluateSkillDescription(description),
       listSkills: async () => ({ skills: [] }),
       readSkill: async (name) => {
         throw new Error(`Skill library reads are unavailable over the HTTP transport: ${name}`)

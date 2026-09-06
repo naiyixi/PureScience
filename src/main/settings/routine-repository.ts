@@ -14,10 +14,7 @@ import type {
   RoutineSchedule,
   RoutineTickResult
 } from '../../shared/routine'
-import {
-  ROUTINE_MAX_EVERY_MINUTES,
-  ROUTINE_MIN_EVERY_MINUTES
-} from '../../shared/routine'
+import { ROUTINE_MAX_EVERY_MINUTES, ROUTINE_MIN_EVERY_MINUTES } from '../../shared/routine'
 
 const ROUTINES_DIR = '.routines'
 const ROUTINES_FILE = 'routines.json'
@@ -127,10 +124,7 @@ export class RoutineRepository {
 
   // Creates or updates a schedule. Passing a routineId that exists updates it in place (label,
   // instruction, interval, and re-enable); an unknown routineId is an error.
-  async upsert(
-    sessionId: string,
-    request: RoutineConfigureRequest
-  ): Promise<RoutineSchedule> {
+  async upsert(sessionId: string, request: RoutineConfigureRequest): Promise<RoutineSchedule> {
     const everyMinutes = normalizeInterval(request.everyMinutes)
     const instruction = normalizeInstruction(request.instruction)
     const now = this.now()
@@ -239,9 +233,7 @@ export class RoutineRepository {
       ...previous,
       enabled,
       pausedReason: enabled ? null : (pausedReason ?? 'user'),
-      nextDue: enabled
-        ? now + previous.everyMinutes * 60_000
-        : null,
+      nextDue: enabled ? now + previous.everyMinutes * 60_000 : null,
       idleStreak: enabled ? 0 : previous.idleStreak,
       updatedAt: now
     }

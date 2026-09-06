@@ -74,7 +74,8 @@ const snapshot = (): SettingsSnapshot => ({
 const preflight = (): Preflight => ({
   claudeReady: false,
   opencodeReady: false,
-  codebuddyReady: false, codexReady: false,
+  codebuddyReady: false,
+  codexReady: false,
   agentFrameworkId: 'claude-code',
   agentReady: false,
   activeProviderReady: false

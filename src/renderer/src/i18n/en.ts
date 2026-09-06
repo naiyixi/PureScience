@@ -997,8 +997,7 @@ export const en: Record<ZhKey, string> = {
   'settings.importConnectorConfig': 'Import Connector configuration',
   'settings.connectorBlurb':
     'Add one credential-free Connector configuration from your computer. You will review the config, then enter any required credentials before adding it.',
-  'settings.connectorTooLarge':
-    'Connector configuration files must be {limit} or smaller.',
+  'settings.connectorTooLarge': 'Connector configuration files must be {limit} or smaller.',
   'settings.connectorChooseJson':
     'Choose one .json file up to {limit}. Credentials are never imported from the file.',
   'settings.connectorEnterLocally': 'Enter locally: {names}',
@@ -1584,8 +1583,7 @@ export const en: Record<ZhKey, string> = {
   'skillImport.importTitle': 'Import from GitHub',
   'skillImport.importIntro':
     'Search repositories by keyword, or scan a GitHub repository for Skill folders to import.',
-  'skillImport.repoPlaceholder':
-    'keyword, owner/repo, owner/repo@ref, or github.com URL',
+  'skillImport.repoPlaceholder': 'keyword, owner/repo, owner/repo@ref, or github.com URL',
   'skillImport.repositoriesCount': 'Repositories ({n})',
   'skillImport.importedDone': 'Imported {n} skill(s).',
   'skillImport.importedThenFailed': 'Imported {n}, then failed.',
@@ -1651,7 +1649,8 @@ export const en: Record<ZhKey, string> = {
     'PureScience is stopping background tasks and will close to finish installing. The update may take a moment; please don’t reopen the app during this step. The updated app will reopen automatically.',
   'update.readyRestartHint': 'Downloaded — restart PureScience to finish installing.',
   'update.readyInstallerHint': 'Downloaded — run the installer to finish updating.',
-  'update.quitBeforeInstall': 'Quit PureScience before installing — a running app cannot be replaced.',
+  'update.quitBeforeInstall':
+    'Quit PureScience before installing — a running app cannot be replaced.',
   'fileBrowser.close': 'Close file browser',
   'fileBrowser.directoryContents': 'Directory contents',
   'storage.dataRootPath': 'Data root path',
@@ -1732,9 +1731,12 @@ export const en: Record<ZhKey, string> = {
   'skillUpload.tooLargeFile': '{file}: file is too large (limit {limit}).',
   'skillUpload.noSkillsInBundle': '{file}: no skills found in the bundle.',
   'skillUpload.needsName': '{file}: needs a name in its YAML frontmatter.',
-  'skillUpload.previewTooLarge': '{file}: preview exceeds the {limit} limit. You can still import it.',
-  'skillUpload.unsupportedFile': '{file}: unsupported file — upload a .md file or a .zip / .skill bundle.',
-  'skillUpload.selectionTooLarge': 'Selection is too large ({size}); upload at most {limit} at a time.',
+  'skillUpload.previewTooLarge':
+    '{file}: preview exceeds the {limit} limit. You can still import it.',
+  'skillUpload.unsupportedFile':
+    '{file}: unsupported file — upload a .md file or a .zip / .skill bundle.',
+  'skillUpload.selectionTooLarge':
+    'Selection is too large ({size}); upload at most {limit} at a time.',
   'skillUpload.summary': 'Imported {imported} · skipped {skipped} · failed {failed}',
   'fileBrowser.savedToDownloads': 'Saved to Downloads: {name}',
   'agentHome.importedSummary': 'Imported {n} skill(s).',
@@ -1941,7 +1943,8 @@ export const en: Record<ZhKey, string> = {
   'providerForm.endpointAria': 'Endpoint',
   'specialist.chooseZipHint': 'Choose one ZIP containing exactly one Specialist.',
   'specialist.chooseZip': 'Choose ZIP',
-  'settings.zipLimits': 'Limits: 50 MB compressed · 200 MB uncompressed · 2,000 files · 25 MB per file',
+  'settings.zipLimits':
+    'Limits: 50 MB compressed · 200 MB uncompressed · 2,000 files · 25 MB per file',
   'specialist.editorDescription': 'Description',
   'specialist.editorInstructions': 'Instructions',
   'specialist.builtin': 'Built-in',

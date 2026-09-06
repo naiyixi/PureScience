@@ -75,7 +75,9 @@ describe('annotation MCP server contract', () => {
     const tools = (server as unknown as { _registeredTools: Record<string, unknown> })
       ._registeredTools
     const setTool = tools[ANNOTATION_SET_TOOL_NAME] as {
-      handler: (input: Record<string, unknown>) => Promise<{ content: { type: string; text: string }[] }>
+      handler: (
+        input: Record<string, unknown>
+      ) => Promise<{ content: { type: string; text: string }[] }>
     }
     const result = await setTool.handler({
       target: 'src/main.ts',

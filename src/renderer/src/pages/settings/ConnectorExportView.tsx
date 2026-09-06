@@ -67,7 +67,9 @@ export function ConnectorExportView({ id, onDone }: ConnectorExportViewProps): R
     <div className="p-5">
       <div className="flex w-full flex-col gap-5">
         <div>
-          <h3 className="text-sm font-semibold text-foreground">{t('connectorExport.exportTitle')}</h3>
+          <h3 className="text-sm font-semibold text-foreground">
+            {t('connectorExport.exportTitle')}
+          </h3>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
             {t('settings.exportReviewHint')}
           </p>

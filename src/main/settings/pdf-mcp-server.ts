@@ -159,9 +159,7 @@ const createPdfMcpServerConfig = ({
   env: [
     { name: 'ELECTRON_RUN_AS_NODE', value: '1' },
     { name: 'PURESCIENCE_PDF_RPC_ENDPOINT', value: endpoint },
-    ...(socketPath
-      ? [{ name: 'PURESCIENCE_PDF_RPC_SOCKET_PATH', value: socketPath }]
-      : []),
+    ...(socketPath ? [{ name: 'PURESCIENCE_PDF_RPC_SOCKET_PATH', value: socketPath }] : []),
     { name: 'PURESCIENCE_PDF_RPC_TOKEN', value: token },
     { name: 'PURESCIENCE_PDF_SESSION_ID', value: sessionId },
     { name: 'PURESCIENCE_PDF_PROJECT_ID', value: projectId }
@@ -220,8 +218,7 @@ const runPdfMcpServer = async (
   environment = createPdfMcpEnvironmentFromProcess()
 ): Promise<void> => {
   const server = createPdfMcpServer({
-    open: (path) =>
-      callPdfRpc(environment, 'pdfOpen', { path }) as Promise<PdfOpenResult>,
+    open: (path) => callPdfRpc(environment, 'pdfOpen', { path }) as Promise<PdfOpenResult>,
     pages: (docId, start, end) =>
       callPdfRpc(environment, 'pdfPages', {
         docId,

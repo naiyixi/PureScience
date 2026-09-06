@@ -287,11 +287,9 @@ const updateCommands = Object.freeze({
 })
 
 const routineCommands = Object.freeze({
-  listAll: defineApplicationCommand<
-    'routine:list-all',
-    readonly [],
-    RoutineSchedule[]
-  >('routine:list-all'),
+  listAll: defineApplicationCommand<'routine:list-all', readonly [], RoutineSchedule[]>(
+    'routine:list-all'
+  ),
   upsert: defineApplicationCommand<
     'routine:upsert',
     readonly [request: { sessionId: string; configure: RoutineConfigureRequest }],
@@ -310,36 +308,26 @@ const routineCommands = Object.freeze({
 })
 
 const endpointCommands = Object.freeze({
-  listAll: defineApplicationCommand<
-    'endpoint:list-all',
-    readonly [],
-    ManagedEndpoint[]
-  >('endpoint:list-all'),
+  listAll: defineApplicationCommand<'endpoint:list-all', readonly [], ManagedEndpoint[]>(
+    'endpoint:list-all'
+  ),
   register: defineApplicationCommand<
     'endpoint:register',
     readonly [request: { sessionId: string; request: EndpointRegisterRequest }],
     { endpoint: ManagedEndpoint; newlyApproved: boolean }
   >('endpoint:register'),
-  approve: defineApplicationCommand<
-    'endpoint:approve',
-    readonly [name: string],
-    boolean
-  >('endpoint:approve'),
-  start: defineApplicationCommand<
-    'endpoint:start',
-    readonly [name: string],
-    ManagedEndpoint
-  >('endpoint:start'),
-  stop: defineApplicationCommand<
-    'endpoint:stop',
-    readonly [name: string],
-    ManagedEndpoint
-  >('endpoint:stop'),
-  remove: defineApplicationCommand<
-    'endpoint:remove',
-    readonly [name: string],
-    boolean
-  >('endpoint:remove')
+  approve: defineApplicationCommand<'endpoint:approve', readonly [name: string], boolean>(
+    'endpoint:approve'
+  ),
+  start: defineApplicationCommand<'endpoint:start', readonly [name: string], ManagedEndpoint>(
+    'endpoint:start'
+  ),
+  stop: defineApplicationCommand<'endpoint:stop', readonly [name: string], ManagedEndpoint>(
+    'endpoint:stop'
+  ),
+  remove: defineApplicationCommand<'endpoint:remove', readonly [name: string], boolean>(
+    'endpoint:remove'
+  )
 })
 
 const annotationCommands = Object.freeze({
@@ -649,9 +637,7 @@ const registerHostApplicationCommands = (
       'endpoint:stop': ({ args, callerContext }) =>
         localCommand(callerContext, 'endpoint:stop', () => dependencies.endpoint.stop(args[0])),
       'endpoint:remove': ({ args, callerContext }) =>
-        localCommand(callerContext, 'endpoint:remove', () =>
-          dependencies.endpoint.remove(args[0])
-        )
+        localCommand(callerContext, 'endpoint:remove', () => dependencies.endpoint.remove(args[0]))
     })
     scope.registerGroup(hostApplicationCommandGroups[10], {
       'annotation:set': ({ args, callerContext }) =>

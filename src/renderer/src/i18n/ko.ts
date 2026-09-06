@@ -625,7 +625,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'skillImport.invertSelection': '선택 반전',
   'skillImport.repoResults': '저장소 결과',
   'skillImport.importTitle': 'GitHub에서 가져오기',
-  'skillImport.importIntro': '키워드로 저장소를 검색하거나 GitHub 저장소를 스캔해 스킬 폴더를 가져오세요.',
+  'skillImport.importIntro':
+    '키워드로 저장소를 검색하거나 GitHub 저장소를 스캔해 스킬 폴더를 가져오세요.',
   'skillImport.repoPlaceholder': '키워드, owner/repo, owner/repo@ref 또는 github.com URL',
   'skillImport.repositoriesCount': '저장소({n}개)',
   'skillImport.importedDone': '스킬 {n}개를 가져왔습니다.',
@@ -641,7 +642,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'skillUpload.uploadSkills': '스킬 업로드',
   'skillUpload.uploadIntro':
     '컴퓨터의 SKILL.md 파일 또는 .zip / .skill 번들에서 스킬을 추가하세요. 여러 파일을 한 번에 선택할 수 있으며, 단일 아카이브에 여러 스킬이 포함될 수 있습니다.',
-  'skillUpload.confirmIntro': '추가할 스킬을 선택하세요. 가져오기 전에는 아무것도 기록되지 않습니다.',
+  'skillUpload.confirmIntro':
+    '추가할 스킬을 선택하세요. 가져오기 전에는 아무것도 기록되지 않습니다.',
   'skillUpload.foundCount': '스킬 {n}개 발견',
   'skillUpload.invert': '선택 반전',
   'skillUpload.skippedCount': '스킬 {n}개 건너뜀',
@@ -651,9 +653,12 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'skillUpload.tooLargeFile': '{file}: 파일이 너무 큽니다(제한 {limit}).',
   'skillUpload.noSkillsInBundle': '{file}: 번들에서 스킬을 찾을 수 없습니다.',
   'skillUpload.needsName': '{file}: YAML frontmatter에 이름이 필요합니다.',
-  'skillUpload.previewTooLarge': '{file}: 미리보기가 제한({limit})을 초과합니다. 그래도 가져올 수 있습니다.',
-  'skillUpload.unsupportedFile': '{file}: 지원되지 않는 파일입니다. .md 파일 또는 .zip / .skill 번들을 업로드하세요.',
-  'skillUpload.selectionTooLarge': '선택 항목이 너무 큽니다({size}). 한 번에 최대 {limit}까지 업로드하세요.',
+  'skillUpload.previewTooLarge':
+    '{file}: 미리보기가 제한({limit})을 초과합니다. 그래도 가져올 수 있습니다.',
+  'skillUpload.unsupportedFile':
+    '{file}: 지원되지 않는 파일입니다. .md 파일 또는 .zip / .skill 번들을 업로드하세요.',
+  'skillUpload.selectionTooLarge':
+    '선택 항목이 너무 큽니다({size}). 한 번에 최대 {limit}까지 업로드하세요.',
   'skillUpload.summary': '가져옴 {imported} · 건너뜀 {skipped} · 실패 {failed}',
   'fileBrowser.savedToDownloads': '다운로드 폴더에 저장됨: {name}',
   'agentHome.importedSummary': '스킬 {n}개를 가져왔습니다.',
@@ -730,7 +735,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
     'PureScience가 백그라운드 작업을 중지하고 설치를 마치기 위해 종료됩니다. 잠시 걸릴 수 있습니다. 이 단계에서 앱을 다시 열지 마세요. 완료되면 자동으로 다시 시작됩니다.',
   'update.readyRestartHint': '다운로드 완료 — PureScience를 다시 시작하면 설치가 완료됩니다.',
   'update.readyInstallerHint': '다운로드 완료 — 설치 프로그램을 실행해 업데이트를 완료하세요.',
-  'update.quitBeforeInstall': '설치 전에 PureScience를 종료하세요. 실행 중인 앱은 교체할 수 없습니다.',
+  'update.quitBeforeInstall':
+    '설치 전에 PureScience를 종료하세요. 실행 중인 앱은 교체할 수 없습니다.',
   'update.downloadManually': '수동 다운로드',
   'update.openInstaller': '설치 프로그램 열기',
   'update.restartToUpdate': '업데이트하려면 다시 시작',
@@ -1385,7 +1391,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.connectorBlurb':
     '컴퓨터에서 자격 증명이 필요 없는 커넥터 구성 하나를 추가하세요. 추가하기 전에 구성을 검토한 다음 필요한 자격 증명을 입력합니다.',
   'settings.connectorTooLarge': '커넥터 구성 파일은 {limit} 이하여야 합니다.',
-  'settings.connectorChooseJson': '{limit} 이하의 .json 파일 하나를 선택하세요. 파일에서 자격 증명을 가져오지 않습니다.',
+  'settings.connectorChooseJson':
+    '{limit} 이하의 .json 파일 하나를 선택하세요. 파일에서 자격 증명을 가져오지 않습니다.',
   'settings.connectorEnterLocally': '로컬 입력: {names}',
   'settings.importConnectorHint': '설정을 검토하고 추가 전에 필요한 자격 증명을 입력하세요.',
   'settings.importExistingCodex': '기존 Codex 로그인 가져오기',

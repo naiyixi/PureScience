@@ -14,9 +14,7 @@ const TICK_INTERVAL_MS = 30_000
 
 // A routine that failed to dispatch (sync rejection / missing session) — as opposed to a
 // dispatched run that later fails on its own. Both count toward the stuck streak.
-export type RoutineTickOutcome =
-  | { kind: 'ok'; runId?: string }
-  | { kind: 'error'; message: string }
+export type RoutineTickOutcome = { kind: 'ok'; runId?: string } | { kind: 'error'; message: string }
 
 export type RoutineSchedulerOptions = {
   repository: {
@@ -78,10 +76,7 @@ export class RoutineScheduler {
       this.lastScanAt = now
       const schedules = await this.options.repository.listAllSchedules()
       const due = schedules.filter(
-        (schedule) =>
-          schedule.enabled &&
-          schedule.nextDue !== null &&
-          schedule.nextDue <= now
+        (schedule) => schedule.enabled && schedule.nextDue !== null && schedule.nextDue <= now
       )
       for (const schedule of due) {
         await this.fire(schedule)

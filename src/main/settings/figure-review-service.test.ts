@@ -24,9 +24,7 @@ describe('figure review rules engine', () => {
   })
 
   it('flags excluded rows leaking into summary statistics (data fidelity)', () => {
-    const result = reviewFigure([
-      cleanPanel({ excludedRows: 3, summaryUsedExcluded: true })
-    ])
+    const result = reviewFigure([cleanPanel({ excludedRows: 3, summaryUsedExcluded: true })])
     expect(result.clean).toBe(false)
     const fidelity = result.violations.find((v) => v.rule === 'data_fidelity')
     expect(fidelity?.severity).toBe('error')

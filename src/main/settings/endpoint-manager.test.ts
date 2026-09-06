@@ -24,7 +24,10 @@ const register = {
 }
 
 type ManagerOverrides = {
-  runScript?: (script: string, env: Record<string, string>) => Promise<{ ok: boolean; error?: string }>
+  runScript?: (
+    script: string,
+    env: Record<string, string>
+  ) => Promise<{ ok: boolean; error?: string }>
   probe?: (url: string) => Promise<boolean>
   isPortBound?: (port: number) => Promise<boolean>
   resolveCredential?: (name: string) => Promise<string | undefined>
@@ -160,7 +163,8 @@ describe('EndpointManager', () => {
     const probe = vi.fn(async () => true)
     manager = new EndpointManager({
       repository,
-      resolveCredential: async (name) => (name === 'NVIDIA_API_KEY' ? 'sk-secret-value' : undefined),
+      resolveCredential: async (name) =>
+        name === 'NVIDIA_API_KEY' ? 'sk-secret-value' : undefined,
       runScript,
       probe
     })

@@ -118,11 +118,11 @@ const setup = (): Fixture => {
         memory: false,
         contextSummary: false,
         routine: false,
-      endpoint: false,
-      annotation: false,
-      pdf: false,
-      figure: false,
-      query: false
+        endpoint: false,
+        annotation: false,
+        pdf: false,
+        figure: false,
+        query: false
       },
       specialistPrefix: 'Specialist identity.',
       projectId: 'project-1',

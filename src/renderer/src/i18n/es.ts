@@ -143,7 +143,8 @@ export const es: Partial<Record<ZhKey, string>> = {
   'providerForm.endpointAria': 'Extremo',
   'specialist.chooseZipHint': 'Elija un ZIP que contenga exactamente un especialista.',
   'specialist.chooseZip': 'Elegir ZIP',
-  'settings.zipLimits': 'Límites: 50 MB comprimido · 200 MB sin comprimir · 2.000 archivos · 25 MB por archivo',
+  'settings.zipLimits':
+    'Límites: 50 MB comprimido · 200 MB sin comprimir · 2.000 archivos · 25 MB por archivo',
   'specialist.editorDescription': 'Descripción',
   'specialist.editorInstructions': 'Instrucciones',
   'specialist.builtin': 'Integrado',
@@ -657,7 +658,8 @@ export const es: Partial<Record<ZhKey, string>> = {
   'skillUpload.uploadSkills': 'Subir habilidades',
   'skillUpload.uploadIntro':
     'Añade habilidades desde archivos SKILL.md o paquetes .zip / .skill de tu ordenador. Puedes seleccionar varios archivos a la vez, y un solo archivo puede contener varias habilidades.',
-  'skillUpload.confirmIntro': 'Marca las habilidades que quieras añadir. No se escribe nada hasta que importes.',
+  'skillUpload.confirmIntro':
+    'Marca las habilidades que quieras añadir. No se escribe nada hasta que importes.',
   'skillUpload.foundCount': 'Encontradas {n} habilidades',
   'skillUpload.invert': 'Invertir',
   'skillUpload.skippedCount': '{n} habilidad(es) omitida(s)',
@@ -667,9 +669,12 @@ export const es: Partial<Record<ZhKey, string>> = {
   'skillUpload.tooLargeFile': '{file}: el archivo es demasiado grande (límite {limit}).',
   'skillUpload.noSkillsInBundle': '{file}: no se encontraron habilidades en el paquete.',
   'skillUpload.needsName': '{file}: necesita un nombre en su frontmatter YAML.',
-  'skillUpload.previewTooLarge': '{file}: la vista previa supera el límite de {limit}. Aún puedes importarlo.',
-  'skillUpload.unsupportedFile': '{file}: archivo no compatible: sube un archivo .md o un paquete .zip / .skill.',
-  'skillUpload.selectionTooLarge': 'La selección es demasiado grande ({size}); sube como máximo {limit} a la vez.',
+  'skillUpload.previewTooLarge':
+    '{file}: la vista previa supera el límite de {limit}. Aún puedes importarlo.',
+  'skillUpload.unsupportedFile':
+    '{file}: archivo no compatible: sube un archivo .md o un paquete .zip / .skill.',
+  'skillUpload.selectionTooLarge':
+    'La selección es demasiado grande ({size}); sube como máximo {limit} a la vez.',
   'skillUpload.summary': 'Importadas {imported} · omitidas {skipped} · fallidas {failed}',
   'fileBrowser.savedToDownloads': 'Guardado en Descargas: {name}',
   'agentHome.importedSummary': 'Se importaron {n} habilidad(es).',
@@ -746,7 +751,8 @@ export const es: Partial<Record<ZhKey, string>> = {
     'PureScience está deteniendo las tareas en segundo plano y se cerrará para terminar la instalación. Puede tardar un momento; no vuelvas a abrir la aplicación durante este paso. La aplicación se reabrirá automáticamente.',
   'update.readyRestartHint': 'Descargada: reinicia PureScience para terminar de instalarla.',
   'update.readyInstallerHint': 'Descargada: ejecuta el instalador para completar la actualización.',
-  'update.quitBeforeInstall': 'Sal de PureScience antes de instalar: una app en ejecución no puede sustituirse.',
+  'update.quitBeforeInstall':
+    'Sal de PureScience antes de instalar: una app en ejecución no puede sustituirse.',
   'update.downloadManually': 'Descargar manualmente',
   'update.openInstaller': 'Abrir instalador',
   'update.restartToUpdate': 'Reiniciar para actualizar',
@@ -1428,8 +1434,10 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.importConnectorConfig': 'Importar configuración del conector',
   'settings.connectorBlurb':
     'Añade una configuración de conector sin credenciales desde tu ordenador. Revisa la configuración y, a continuación, introduce las credenciales necesarias antes de añadirla.',
-  'settings.connectorTooLarge': 'Los archivos de configuración del conector deben ser de {limit} o menos.',
-  'settings.connectorChooseJson': 'Elige un único archivo .json de hasta {limit}. Las credenciales nunca se importan del archivo.',
+  'settings.connectorTooLarge':
+    'Los archivos de configuración del conector deben ser de {limit} o menos.',
+  'settings.connectorChooseJson':
+    'Elige un único archivo .json de hasta {limit}. Las credenciales nunca se importan del archivo.',
   'settings.connectorEnterLocally': 'Introducir localmente: {names}',
   'settings.importConnectorHint':
     'la configuración e introduce las credenciales necesarias antes de añadirlo.',

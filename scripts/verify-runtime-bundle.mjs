@@ -5,7 +5,8 @@ import { pathToFileURL } from 'node:url'
 
 import { VERSIONS, packArchiveFile, packId, readDefaultEnvVersion } from './stage-default-envs.mjs'
 
-export const DEFAULT_CDN_BASE = 'https://github.com/naiyixi/PureScience/releases/download/runtime-v1'
+export const DEFAULT_CDN_BASE =
+  'https://github.com/naiyixi/PureScience/releases/download/runtime-v1'
 
 // GitHub Releases serve flat asset names; any other base keeps the hierarchical object-store layout.
 const isFlatReleaseAssetBase = (base) => /\/releases\/download\/[^/]+\/?$/.test(base)

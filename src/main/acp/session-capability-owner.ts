@@ -39,21 +39,36 @@ import {
   CONTEXT_SUMMARY_MCP_SERVER_NAME,
   createContextSummaryMcpServerConfig
 } from '../settings/context-summary-mcp-server'
-import type {
-  RoutineMcpEnvironment,
-  RoutineRpcConnection
+import type { RoutineMcpEnvironment, RoutineRpcConnection } from '../settings/routine-mcp-server'
+import {
+  ROUTINE_MCP_SERVER_NAME,
+  createRoutineMcpServerConfig
 } from '../settings/routine-mcp-server'
-import { ROUTINE_MCP_SERVER_NAME, createRoutineMcpServerConfig } from '../settings/routine-mcp-server'
 import type { EndpointMcpEnvironment, EndpointRpcConnection } from '../settings/endpoint-mcp-server'
-import type { AnnotationMcpEnvironment, AnnotationRpcConnection } from '../settings/annotation-mcp-server'
+import type {
+  AnnotationMcpEnvironment,
+  AnnotationRpcConnection
+} from '../settings/annotation-mcp-server'
 import type { PdfMcpEnvironment, PdfRpcConnection } from '../settings/pdf-mcp-server'
 import type { FigureMcpEnvironment, FigureRpcConnection } from '../settings/figure-mcp-server'
-import type { HostQueryMcpEnvironment, HostQueryRpcConnection } from '../settings/host-query-mcp-server'
-import { ENDPOINT_MCP_SERVER_NAME, createEndpointMcpServerConfig } from '../settings/endpoint-mcp-server'
-import { ANNOTATION_MCP_SERVER_NAME, createAnnotationMcpServerConfig } from '../settings/annotation-mcp-server'
+import type {
+  HostQueryMcpEnvironment,
+  HostQueryRpcConnection
+} from '../settings/host-query-mcp-server'
+import {
+  ENDPOINT_MCP_SERVER_NAME,
+  createEndpointMcpServerConfig
+} from '../settings/endpoint-mcp-server'
+import {
+  ANNOTATION_MCP_SERVER_NAME,
+  createAnnotationMcpServerConfig
+} from '../settings/annotation-mcp-server'
 import { PDF_MCP_SERVER_NAME, createPdfMcpServerConfig } from '../settings/pdf-mcp-server'
 import { FIGURE_MCP_SERVER_NAME, createFigureMcpServerConfig } from '../settings/figure-mcp-server'
-import { HOST_QUERY_MCP_SERVER_NAME, createHostQueryMcpServerConfig } from '../settings/host-query-mcp-server'
+import {
+  HOST_QUERY_MCP_SERVER_NAME,
+  createHostQueryMcpServerConfig
+} from '../settings/host-query-mcp-server'
 import type { AgentMcpHttpHost } from './mcp-http-host'
 
 const log = createLogger('acp')
@@ -216,10 +231,7 @@ export type SessionCapabilityPdfOptions = {
   mcpEntryPath: string
   mcpCommand?: string
   isEnabled?: () => Promise<boolean>
-  getRpcConnection: (binding: {
-    sessionId: string
-    projectId: string
-  }) => Promise<PdfRpcConnection>
+  getRpcConnection: (binding: { sessionId: string; projectId: string }) => Promise<PdfRpcConnection>
   registerSessionAlias?: (aliasSessionId: string, sessionId: string) => void
 }
 
@@ -679,15 +691,11 @@ export class AcpSessionCapabilityOwner {
       annotation: this.options.annotations
         ? `annotation-session-${timestamp}-${this.annotationSessionSequence}`
         : '',
-      pdf: this.options.pdf
-        ? `pdf-session-${timestamp}-${this.pdfSessionSequence}`
-        : '',
+      pdf: this.options.pdf ? `pdf-session-${timestamp}-${this.pdfSessionSequence}` : '',
       figure: this.options.figure
         ? `figure-session-${timestamp}-${this.figureSessionSequence}`
         : '',
-      query: this.options.query
-        ? `query-session-${timestamp}-${this.querySessionSequence}`
-        : ''
+      query: this.options.query ? `query-session-${timestamp}-${this.querySessionSequence}` : ''
     })
   }
 

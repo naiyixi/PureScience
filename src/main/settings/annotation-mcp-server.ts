@@ -46,7 +46,9 @@ const annotationSetToolSchema = {
     .string()
     .regex(/^[0-9a-f]{64}$/)
     .optional()
-    .describe('Optional sha256 of the annotated file content — anchors the note to that exact content.')
+    .describe(
+      'Optional sha256 of the annotated file content — anchors the note to that exact content.'
+    )
 }
 const annotationSetToolDefinition = {
   title: 'Annotate a file',
@@ -131,12 +133,16 @@ const createAnnotationMcpServer = (handler: AnnotationMcpHandler): ModelContextP
     }
   })
 
-  server.registerTool(ANNOTATION_REMOVE_TOOL_NAME, annotationRemoveToolDefinition, async (input) => {
-    const result = await handler.remove(input.annotation_id)
-    return {
-      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+  server.registerTool(
+    ANNOTATION_REMOVE_TOOL_NAME,
+    annotationRemoveToolDefinition,
+    async (input) => {
+      const result = await handler.remove(input.annotation_id)
+      return {
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+      }
     }
-  })
+  )
 
   return server
 }
@@ -156,9 +162,7 @@ const createAnnotationMcpServerConfig = ({
   env: [
     { name: 'ELECTRON_RUN_AS_NODE', value: '1' },
     { name: 'PURESCIENCE_ANNOTATION_RPC_ENDPOINT', value: endpoint },
-    ...(socketPath
-      ? [{ name: 'PURESCIENCE_ANNOTATION_RPC_SOCKET_PATH', value: socketPath }]
-      : []),
+    ...(socketPath ? [{ name: 'PURESCIENCE_ANNOTATION_RPC_SOCKET_PATH', value: socketPath }] : []),
     { name: 'PURESCIENCE_ANNOTATION_RPC_TOKEN', value: token },
     { name: 'PURESCIENCE_ANNOTATION_SESSION_ID', value: sessionId },
     { name: 'PURESCIENCE_ANNOTATION_PROJECT_ID', value: projectId }
@@ -208,7 +212,9 @@ const callAnnotationRpc = async (
   const payload = (await response.json()) as RpcResponse
 
   if (!response.ok || payload.error || !payload.result) {
-    throw new Error(payload.error ?? `Annotation ${method} RPC failed with status ${response.status}`)
+    throw new Error(
+      payload.error ?? `Annotation ${method} RPC failed with status ${response.status}`
+    )
   }
   return payload.result
 }
@@ -218,7 +224,9 @@ const runAnnotationMcpServer = async (
 ): Promise<void> => {
   const server = createAnnotationMcpServer({
     set: (request) =>
-      callAnnotationRpc(environment, 'annotationSet', { ...request }) as Promise<AnnotationSetResult>,
+      callAnnotationRpc(environment, 'annotationSet', {
+        ...request
+      }) as Promise<AnnotationSetResult>,
     list: (target) =>
       callAnnotationRpc(environment, 'annotationList', {
         target: target ?? null
