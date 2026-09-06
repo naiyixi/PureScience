@@ -17,6 +17,14 @@ PureScience 是一款面向科学研究的开源 AI 工作台：多智能体协�
 | 天工 | 天工开物——工具与工程体系的未来篇章 | （规划） |
 | 北斗 | 指路星辰——导航与检索体系的未来篇章 | （规划） |
 
+## v1.47.0 — 2026-09-06（质量与体验批：视觉模型独立选择修复 · 全库 lint 清零）
+
+- **视觉模型独立选择修复**：主模型为 DeepSeek 纯文本（如 deepseek-v4-flash）时，"视觉/图像理解"模型候选此前只从存储的模型列表取（常仅剩当前主模型）导致下拉只剩"禁用"；现官方厂商候选改由内置 vendor 目录派生（DeepSeek 的多模态 deepseek-v4-flash-vision-exp 恒可选），并合并存储中刷新出的新模型
+- **Hooks 依赖质量（25 处 / 14 文件）**：全库 react-hooks/exhaustive-deps 清零——依赖补齐前提是先修基建：无 LanguageProvider 时 useLanguage 回退 t 由"每渲染新建"改为模块级单例（此前任何以 t 为依赖的 effect 在测试环境都会每渲染重跑）；SpecialistsPanel 导出预览 effect 有意保持 [previewExport, view]（带注明 disable-line），NotebookPreview 以变量提取消除"复杂表达式依赖"告警
+- **全仓格式化归一**：eslint --fix 全量风格统一（引号/导入序/空白），零行为变更
+- **README 双语同步门禁**：pre-push 新增硬校验——README.md 与 README.en.md 的徽章/引言/发布横幅/DOI 引用必须逐字一致，防止双语文档静默分叉
+- **质量基线**：eslint 全树 0 问题、双配置 typecheck 干净、settings/workspace/global-search/home 全目录回归绿（188 文件/2129 用例）
+
 ## v1.46.0 — 2026-09-06（场景行独立推理强度）
 
 - **每行独立推理强度**：设置→模型→场景模型（会话详情/子智能体/审查）每行新增独立强度段控件——"与主模型相同"默认跟随主模型档位，也可按该行模型能力（None/低/中/高/Max…）独立钉档；无模型覆盖时选档自动以当前主模型物化，换主模型不影响已钉档位
