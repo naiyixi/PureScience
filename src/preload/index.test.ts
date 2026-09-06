@@ -465,6 +465,7 @@ describe('preload bridge — public surface inventory', () => {
       'settings.importSkillZip',
       'settings.importSkillZipBatch',
       'settings.installClaude',
+      'settings.installCodebuddy',
       'settings.installCodex',
       'settings.installOpencode',
       'settings.isEncryptionAvailable',
@@ -627,10 +628,10 @@ describe('preload bridge — Connector configuration files', () => {
 })
 
 describe('preload bridge — runtime renderer contract catalog', () => {
-  it('routes all 203 owned methods through their cataloged Electron channels', async () => {
+  it('routes all 204 owned methods through their cataloged Electron channels', async () => {
     const requestContracts = runtimeContracts.filter(({ kind }) => kind === 'method')
 
-    expect(runtimeContracts).toHaveLength(221)
+    expect(runtimeContracts).toHaveLength(222)
 
     for (const contract of requestContracts) {
       invokeMock.mockClear()
@@ -1111,6 +1112,12 @@ const cases: ForwardingCase[] = [
     invoke: (a) => a.settings.installOpencode(sampleInstall),
     channel: 'settings:install-opencode',
     args: [sampleInstall]
+  },
+  {
+    name: 'settings.installCodebuddy → settings:install-codebuddy',
+    invoke: (a) => a.settings.installCodebuddy({ source: 'npm' }),
+    channel: 'settings:install-codebuddy',
+    args: [{ source: 'npm' }]
   },
   {
     name: 'settings.detectCodex → settings:detect-codex (no args)',

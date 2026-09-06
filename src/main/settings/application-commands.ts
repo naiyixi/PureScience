@@ -2,6 +2,7 @@ import type {
   AppIconPreview,
   ClaudeInstallEvent,
   InstallClaudeRequest,
+  InstallCodebuddyRequest,
   InstallCodexRequest,
   InstallOpencodeRequest,
   PreviewAgentHomeSkillRequest,
@@ -63,6 +64,7 @@ type CoreSettingsCommandStore = Pick<
   | 'getSettingsView'
   | 'getSkillDetail'
   | 'installClaude'
+  | 'installCodebuddy'
   | 'installCodex'
   | 'installOpencode'
   | 'isEncryptionAvailable'
@@ -205,6 +207,11 @@ const settingsCoreApplicationCommands = Object.freeze({
     readonly [request: InstallClaudeRequest],
     StoreResult<'installClaude'>
   >('settings:install-claude'),
+  installCodebuddy: defineApplicationCommand<
+    'settings:install-codebuddy',
+    readonly [request: InstallCodebuddyRequest],
+    StoreResult<'installCodebuddy'>
+  >('settings:install-codebuddy'),
   installCodex: defineApplicationCommand<
     'settings:install-codex',
     readonly [request: InstallCodexRequest],
@@ -423,6 +430,7 @@ const settingsCoreApplicationCommandGroup = defineApplicationCommandGroup('setti
   settingsCoreApplicationCommands.getSettings,
   settingsCoreApplicationCommands.getSkillDetail,
   settingsCoreApplicationCommands.installClaude,
+  settingsCoreApplicationCommands.installCodebuddy,
   settingsCoreApplicationCommands.installCodex,
   settingsCoreApplicationCommands.installOpencode,
   settingsCoreApplicationCommands.isEncryptionAvailable,
@@ -513,6 +521,10 @@ const registerCoreSettingsApplicationCommands = (
       'settings:install-codex': ({ args, callerContext }) => {
         requireLocalCaller(callerContext, 'settings:install-codex')
         return dependencies.service.installCodex(args[0], dependencies.emitInstallEvent)
+      },
+      'settings:install-codebuddy': ({ args, callerContext }) => {
+        requireLocalCaller(callerContext, 'settings:install-codebuddy')
+        return dependencies.service.installCodebuddy(args[0], dependencies.emitInstallEvent)
       },
       'settings:install-opencode': ({ args, callerContext }) => {
         requireLocalCaller(callerContext, 'settings:install-opencode')

@@ -756,6 +756,7 @@ export const de: Partial<Record<ZhKey, string>> = {
     'Heruntergeladen — starten Sie PureScience neu, um die Installation abzuschließen.',
   'update.readyInstallerHint':
     'Heruntergeladen — führen Sie das Installationsprogramm aus, um das Update abzuschließen.',
+  'update.quitBeforeInstall': 'Beenden Sie PureScience vor der Installation — eine laufende App kann nicht ersetzt werden.',
   'update.downloadManually': 'Manuell herunterladen',
   'update.openInstaller': 'Installer öffnen',
   'update.restartToUpdate': 'Zum Aktualisieren neu starten',

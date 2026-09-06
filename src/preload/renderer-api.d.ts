@@ -193,6 +193,7 @@ import type {
   DeleteProviderRequest,
   EnvironmentCheckResult,
   InstallClaudeRequest,
+  InstallCodebuddyRequest,
   InstallCodexRequest,
   InstallOpencodeRequest,
   MemorySettings,
@@ -454,6 +455,7 @@ export interface PureScienceAPI {
     installClaude(request: InstallClaudeRequest): Promise<ClaudeInstallResult>
     installOpencode(request: InstallOpencodeRequest): Promise<ClaudeInstallResult>
     installCodex(request: InstallCodexRequest): Promise<ClaudeInstallResult>
+    installCodebuddy(request: InstallCodebuddyRequest): Promise<ClaudeInstallResult>
     uninstallClaude(): Promise<SettingsSnapshot>
     uninstallOpencode(): Promise<SettingsSnapshot>
     uninstallCodex(): Promise<SettingsSnapshot>

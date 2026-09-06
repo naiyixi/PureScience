@@ -21,6 +21,7 @@ import {
   type PreviewSkillZipRequest,
   type ScanRepoRequest,
   type InstallClaudeRequest,
+  type InstallCodebuddyRequest,
   type InstallCodexRequest,
   type InstallOpencodeRequest,
   type ClaudeInstallEvent,
@@ -132,6 +133,9 @@ const registerSettingsIpcHandlers = ({
   )
   ipcMainHandle('settings:install-codex', (_event, request: InstallCodexRequest) =>
     service.installCodex(request, broadcastInstallEvent)
+  )
+  ipcMainHandle('settings:install-codebuddy', (_event, request: InstallCodebuddyRequest) =>
+    service.installCodebuddy(request, broadcastInstallEvent)
   )
 
   ipcMainHandle('settings:install-claude', (_event, request: InstallClaudeRequest) =>

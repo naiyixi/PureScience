@@ -345,7 +345,7 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['getMemory', 'settings:get-memory', LOCAL], ['getPackageMirror', 'settings:get-package-mirror'], ['getPreflight', 'settings:get-preflight'], ['getSettings', 'settings:get-settings'],
     ['getCredentials', 'settings:list-credentials', LOCAL], ['getThirdPartyLicenses', 'settings:third-party-licenses', LOCAL], ['getSkillDetail', 'settings:get-skill-detail'], ['getEgress', 'settings:get-egress', LOCAL], ['getExternalComputeEndpoints', 'settings:list-external-compute-endpoints', LOCAL], ['getProxy', 'settings:get-proxy', LOCAL], ['importAgentHomeSkills', 'settings:import-agent-home-skills', MAPPED_ELECTRON],
     ['importSkill', 'settings:import-skill'], ['importSkillZip', 'settings:import-skill-zip'], ['importSkillZipBatch', 'settings:import-skill-zip-batch'],
-    ['installClaude', 'settings:install-claude', LOCAL], ['installCodex', 'settings:install-codex', LOCAL],
+    ['installClaude', 'settings:install-claude', LOCAL], ['installCodebuddy', 'settings:install-codebuddy', LOCAL], ['installCodex', 'settings:install-codex', LOCAL],
     ['installOpencode', 'settings:install-opencode', LOCAL], ['isEncryptionAvailable', 'settings:encryption-available'],
     ['isNpmAvailable', 'settings:npm-available'], ['listAgentHomeSkills', 'settings:list-agent-home-skills', MAPPED_ELECTRON],
     ['listAppIcons', 'settings:list-app-icons'], ['listConnectors', 'settings:list-connectors'], ['listSkills', 'settings:list-skills'],

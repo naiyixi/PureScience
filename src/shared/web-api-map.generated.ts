@@ -198,6 +198,7 @@ export const WEB_INVOKE_CHANNELS = {
   'settings.importSkillZip': 'settings:import-skill-zip',
   'settings.importSkillZipBatch': 'settings:import-skill-zip-batch',
   'settings.installClaude': 'settings:install-claude',
+  'settings.installCodebuddy': 'settings:install-codebuddy',
   'settings.installCodex': 'settings:install-codex',
   'settings.installOpencode': 'settings:install-opencode',
   'settings.isEncryptionAvailable': 'settings:encryption-available',

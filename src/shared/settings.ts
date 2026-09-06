@@ -795,6 +795,22 @@ export const getCodexInstallSources = (): ClaudeInstallSourceInfo[] => [
   }
 ]
 
+// CodeBuddy (Tencent AI coding CLI): official distribution is the npm-global package; there is no
+// app-managed bundle yet, so the source list offers npm only (managed exists for claude/opencode/codex).
+export type InstallCodebuddyRequest = {
+  source: 'npm'
+}
+
+export const getCodebuddyInstallSources = (): ClaudeInstallSourceInfo[] => [
+  {
+    id: 'npm',
+    label: 'npm (global install)',
+    displayCommand: 'npm i -g @tencent-ai/codebuddy-code',
+    requiresNpm: true,
+    description: 'Installs the official CodeBuddy CLI from the npm registry.'
+  }
+]
+
 // The ordered OpenCode install sources for a host platform, mirroring getClaudeInstallSources. The
 // app-managed native-binary download leads (works on every OS, including native Windows). npm follows
 // (`npm i -g opencode-ai`). The shell installer (`curl … | bash`) is offered only off Windows —

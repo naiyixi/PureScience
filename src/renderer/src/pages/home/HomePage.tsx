@@ -434,8 +434,14 @@ const HomePage = ({
                 <CircleAlert className="size-3.5" strokeWidth={2} aria-hidden="true" />
                 <span className="hidden sm:inline">
                   {requiredEnvironmentFailures.length === 1
-                    ? t('home.envAttentionOne').replace('{label}', requiredEnvironmentFailures[0].label)
-                    : t('home.envAttentionMany').replace('{n}', String(requiredEnvironmentFailures.length))}
+                    ? t('home.envAttentionOne').replace(
+                        '{label}',
+                        requiredEnvironmentFailures[0].label
+                      )
+                    : t('home.envAttentionMany').replace(
+                        '{n}',
+                        String(requiredEnvironmentFailures.length)
+                      )}
                 </span>
                 <span className="sm:hidden">{t('home.environment')}</span>
               </button>

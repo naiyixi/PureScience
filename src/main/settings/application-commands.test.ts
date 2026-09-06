@@ -37,6 +37,7 @@ const expectedChannels = [
   'settings:get-settings',
   'settings:get-skill-detail',
   'settings:install-claude',
+  'settings:install-codebuddy',
   'settings:install-codex',
   'settings:install-opencode',
   'settings:encryption-available',

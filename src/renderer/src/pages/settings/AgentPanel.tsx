@@ -12,6 +12,7 @@ import type {
 } from '../../../../shared/settings'
 import {
   getClaudeInstallSources,
+  getCodebuddyInstallSources,
   getCodexInstallSources,
   getOpencodeInstallSources
 } from '../../../../shared/settings'
@@ -65,6 +66,7 @@ const AgentPanel = ({
   const isDetectingCodex = useSettingsStore((state) => state.isDetectingCodex)
   const detectCodex = useSettingsStore((state) => state.detectCodex)
   const installCodex = useSettingsStore((state) => state.installCodex)
+  const installCodebuddy = useSettingsStore((state) => state.installCodebuddy)
   // Per-runtime install slices: each card renders only its own progress/logs/error (issue #278).
   const claudeInstall = useSettingsStore((state) => state.installStates['claude-code'])
   const opencodeInstall = useSettingsStore((state) => state.installStates.opencode)
@@ -420,9 +422,12 @@ const AgentPanel = ({
       notReadyHint: t('settings.agentCodeBuddyNotReady'),
       uninstallCommand: 'npm uninstall -g @tencent-ai/codebuddy-code',
       managed: codebuddyManaged,
-      installSources: [],
+      installSources: getCodebuddyInstallSources(),
       install: codebuddyInstall,
-      onInstall: () => Promise.resolve(undefined)
+      onInstall: (source) => {
+        if (source !== 'npm') return Promise.resolve(undefined)
+        return installCodebuddy()
+      }
     }
   ]
 

@@ -701,6 +701,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
     'PureScience 正在停止背景工作並將關閉以完成安裝。此過程可能需要片刻，期間請勿重新開啟應用程式；更新完成後會自動重新開啟。',
   'update.readyRestartHint': '下載完成 — 重新啟動 PureScience 即可完成安裝。',
   'update.readyInstallerHint': '下載完成 — 執行安裝程式以完成更新。',
+  'update.quitBeforeInstall': '安裝前請先退出 PureScience——應用程式正在執行時無法取代舊版本。',
   'update.downloadManually': '手動下載',
   'update.openInstaller': '開啟安裝程式',
   'update.restartToUpdate': '重新啟動以更新',

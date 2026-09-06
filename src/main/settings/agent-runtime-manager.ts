@@ -11,6 +11,7 @@ import type {
   ClaudeInstallResult,
   EnvironmentCheckResult,
   InstallClaudeRequest,
+  InstallCodebuddyRequest,
   InstallCodexRequest,
   InstallOpencodeRequest,
   Preflight,
@@ -93,6 +94,12 @@ const CLAUDE_PROBE_TIMEOUT_MS = 20_000
 const CODEX_INSTALL_TARGET: InstallTarget = {
   npmPackage: '@agentclientprotocol/codex-acp',
   // Codex exposes no supported shell installer; InstallCodexRequest cannot select this branch.
+  scriptUnix: ''
+}
+
+const CODEBUDDY_INSTALL_TARGET: InstallTarget = {
+  npmPackage: '@tencent-ai/codebuddy-code',
+  // CodeBuddy's official distribution is npm-global only; no shell installer is offered.
   scriptUnix: ''
 }
 
@@ -279,11 +286,13 @@ export class AgentRuntimeManager {
       extraDirs: [...(baseOpencodeDetectDeps.extraDirs ?? []), managedOpencodeDir(this.storageRoot)]
     }
 
-    const baseCodeBuddyDetectDeps =
-      options.codebuddyDetectDeps ?? createCodeBuddyDetectDeps()
+    const baseCodeBuddyDetectDeps = options.codebuddyDetectDeps ?? createCodeBuddyDetectDeps()
     this.codebuddyDetectDeps = {
       ...baseCodeBuddyDetectDeps,
-      extraDirs: [...(baseCodeBuddyDetectDeps.extraDirs ?? []), managedOpencodeDir(this.storageRoot)]
+      extraDirs: [
+        ...(baseCodeBuddyDetectDeps.extraDirs ?? []),
+        managedOpencodeDir(this.storageRoot)
+      ]
     }
 
     const managedAdapterPath = managedCodexAdapterEntry(this.storageRoot)
@@ -567,6 +576,22 @@ export class AgentRuntimeManager {
       installTarget: CODEX_INSTALL_TARGET
     })
     if (result.ok) await this.detectCodex()
+    return result
+  }
+
+  async installCodebuddy(
+    request: InstallCodebuddyRequest,
+    onEvent: (event: ClaudeInstallEvent) => void
+  ): Promise<ClaudeInstallResult> {
+    const installId = `install-codebuddy-${Date.now()}-${this.allocateSettingsIdSequence()}`
+
+    const result = await runInstallWithFallback({
+      source: request.source,
+      installId,
+      onEvent,
+      installTarget: CODEBUDDY_INSTALL_TARGET
+    })
+    if (result.ok) await this.detectCodebuddy()
     return result
   }
 

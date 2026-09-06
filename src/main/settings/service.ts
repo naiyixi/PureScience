@@ -22,6 +22,7 @@ import type {
   ImportAgentHomeSkillsRequest,
   ImportAgentHomeSkillsResult,
   InstallClaudeRequest,
+  InstallCodebuddyRequest,
   InstallCodexRequest,
   InstallOpencodeRequest,
   MemorySettings,
@@ -1060,6 +1061,13 @@ class SettingsService {
     onEvent: (event: ClaudeInstallEvent) => void
   ): Promise<ClaudeInstallResult> {
     return this.runtimeManager.installCodex(request, onEvent)
+  }
+
+  async installCodebuddy(
+    request: InstallCodebuddyRequest,
+    onEvent: (event: ClaudeInstallEvent) => void
+  ): Promise<ClaudeInstallResult> {
+    return this.runtimeManager.installCodebuddy(request, onEvent)
   }
 
   // Uninstalls the app-managed Claude runtime. Only an install we own (a binary inside the app's data

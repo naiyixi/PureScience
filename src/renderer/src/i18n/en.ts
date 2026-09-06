@@ -1651,6 +1651,7 @@ export const en: Record<ZhKey, string> = {
     'PureScience is stopping background tasks and will close to finish installing. The update may take a moment; please don’t reopen the app during this step. The updated app will reopen automatically.',
   'update.readyRestartHint': 'Downloaded — restart PureScience to finish installing.',
   'update.readyInstallerHint': 'Downloaded — run the installer to finish updating.',
+  'update.quitBeforeInstall': 'Quit PureScience before installing — a running app cannot be replaced.',
   'fileBrowser.close': 'Close file browser',
   'fileBrowser.directoryContents': 'Directory contents',
   'storage.dataRootPath': 'Data root path',

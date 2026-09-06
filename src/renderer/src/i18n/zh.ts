@@ -1554,6 +1554,7 @@ export const zh = {
     'PureScience 正在停止后台任务并将关闭以完成安装。此过程可能需要片刻，期间请勿重新打开应用；更新完成后会自动重新打开。',
   'update.readyRestartHint': '下载完成 — 重启 PureScience 即可完成安装。',
   'update.readyInstallerHint': '下载完成 — 运行安装包以完成更新。',
+  'update.quitBeforeInstall': '安装前请先退出 PureScience——应用正在运行时无法替换旧版本。',
   'fileBrowser.close': '关闭文件浏览器',
   'fileBrowser.directoryContents': '目录内容',
   'storage.dataRootPath': '数据根路径',

@@ -17,6 +17,7 @@ import type {
   ImportSkillRequest,
   ImportSkillZipBatchRequest,
   ImportSkillZipRequest,
+  InstallCodebuddyRequest,
   InstallCodexRequest,
   PreviewAgentHomeSkillRequest,
   PreviewGitHubSkillRequest,
@@ -204,6 +205,8 @@ const api: PureScienceAPI = {
       electronRendererContracts.invoke('settings.installOpencode', request),
     installCodex: (request: InstallCodexRequest) =>
       electronRendererContracts.invoke('settings.installCodex', request),
+    installCodebuddy: (request: InstallCodebuddyRequest) =>
+      electronRendererContracts.invoke('settings.installCodebuddy', request),
     uninstallClaude: () => electronRendererContracts.invoke('settings.uninstallClaude'),
     uninstallOpencode: () => electronRendererContracts.invoke('settings.uninstallOpencode'),
     uninstallCodex: () => electronRendererContracts.invoke('settings.uninstallCodex'),

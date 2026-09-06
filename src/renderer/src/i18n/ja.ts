@@ -738,6 +738,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'update.readyRestartHint':
     'ダウンロード完了 — PureScience を再起動するとインストールが完了します。',
   'update.readyInstallerHint': 'ダウンロード完了 — インストーラーを実行して更新を完了します。',
+  'update.quitBeforeInstall': 'インストール前に PureScience を終了してください——実行中のアプリは置き換えられません。',
   'update.downloadManually': '手動でダウンロード',
   'update.openInstaller': 'インストーラーを開く',
   'update.restartToUpdate': '再起動して更新',

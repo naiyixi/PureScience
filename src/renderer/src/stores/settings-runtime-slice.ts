@@ -48,6 +48,7 @@ export type RuntimeSetupActions = {
   ) => Promise<ClaudeInstallResult>
   installOpencode: (source?: ClaudeInstallSource) => Promise<ClaudeInstallResult>
   installCodex: (source?: CodexInstallSource) => Promise<ClaudeInstallResult>
+  installCodebuddy: () => Promise<ClaudeInstallResult>
   uninstallClaude: () => Promise<void>
   uninstallOpencode: () => Promise<void>
   uninstallCodex: () => Promise<void>
@@ -74,6 +75,7 @@ type RuntimeSetupCommands = Pick<
   | 'installClaude'
   | 'installOpencode'
   | 'installCodex'
+  | 'installCodebuddy'
   | 'uninstallClaude'
   | 'uninstallOpencode'
   | 'uninstallCodex'
@@ -364,6 +366,10 @@ export const createRuntimeSetupSlice = <Store extends RuntimeSetupHost>({
   installCodex: (source = 'managed') =>
     runRuntimeInstall(set, get, getCommands, reconcileSnapshot, 'codex', (commands) =>
       commands.installCodex({ source })
+    ),
+  installCodebuddy: () =>
+    runRuntimeInstall(set, get, getCommands, reconcileSnapshot, 'codebuddy', (commands) =>
+      commands.installCodebuddy({ source: 'npm' })
     ),
 
   uninstallClaude: async () => {

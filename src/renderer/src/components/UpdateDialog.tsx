@@ -125,11 +125,20 @@ const UpdateDialog = (): React.JSX.Element | null => {
             {isReady ? (
               // U1: say plainly what the user must do next — the old dialog only carried the
               // affordance button, so a "downloaded…" state read as silent.
-              <p className="mt-3 text-xs text-muted-foreground" data-testid="update-ready-hint">
-                {dialogStatus.applyKind === 'restart'
-                  ? t('update.readyRestartHint')
-                  : t('update.readyInstallerHint')}
-              </p>
+              <div data-testid="update-ready-hint">
+                <p className="mt-3 text-xs text-muted-foreground">
+                  {dialogStatus.applyKind === 'restart'
+                    ? t('update.readyRestartHint')
+                    : t('update.readyInstallerHint')}
+                </p>
+                {/* Manual-installer path (mac drag-to-Applications and friends): a running app can't be
+                  replaced, so say to quit first instead of surfacing an OS error mid-drag. */}
+                {dialogStatus.applyKind !== 'restart' ? (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {t('update.quitBeforeInstall')}
+                  </p>
+                ) : null}
+              </div>
             ) : null}
 
             {dialogStatus.state === 'error' ? (
