@@ -1,4 +1,5 @@
 import { useLanguage } from '@/i18n'
+import { cn } from '@/lib/utils'
 import {
   Select,
   SelectContent,
@@ -10,6 +11,10 @@ import {
 import { useSettingsStore } from '@/stores/settings-store'
 import type { ScenarioModelId, ScenarioModelOverride } from '../../../../shared/settings'
 import { SCENARIO_MODEL_IDS } from '../../../../shared/settings'
+import type { ReasoningEffort } from '../../../../shared/settings'
+import type { ReasoningEffortProfile } from '../../../../shared/reasoning-effort'
+import { resolveReasoningEffortControl } from '../../../../shared/reasoning-effort'
+import { resolveProviderReasoningEffortProfile } from '../../../../shared/provider-reasoning-effort'
 import { ProviderKindIcon } from './provider-icons'
 import { providerKindKey } from './provider-form-value'
 
@@ -23,6 +28,57 @@ type ScenarioModelRowProps = {
   label: string
 }
 
+// Compact segmented reasoning-strength picker for one scenario row (v1.46: independent per-scenario
+// effort). 'default' = follow the main model's strength; the remaining segments mirror the global
+// control's levels once a model is pinned to this scenario. Reuses the shared profile projection so
+// levels always match what the pinned model can actually deliver.
+const EffortSegments = ({
+  value,
+  profile,
+  followLabel,
+  onChange
+}: {
+  value: ReasoningEffort
+  profile: ReasoningEffortProfile
+  followLabel: string
+  onChange: (effort: ReasoningEffort) => void
+}): React.JSX.Element => {
+  const control = resolveReasoningEffortControl(value, profile)
+  const options = [
+    { value: 'default' as const, label: followLabel },
+    ...control.options.map((option) => ({ value: option.intent as ReasoningEffort, label: option.label }))
+  ]
+
+  return (
+    <div
+      role="radiogroup"
+      aria-label="reasoning effort"
+      className="flex w-fit flex-wrap items-center gap-0.5 rounded-lg bg-muted p-0.5"
+    >
+      {options.map((option) => {
+        const selected = option.value === value
+        return (
+          <button
+            key={option.value}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            onClick={() => onChange(option.value)}
+            className={cn(
+              'h-6 rounded-md px-2 text-xs font-medium transition-colors motion-reduce:transition-none',
+              selected
+                ? 'bg-card text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            {option.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 // One row of Settings > Model > Scenario models: a scenario (conversation details / sub-agents /
 // review) with its own default-model selector. Each scenario inherits the active model unless the
 // user pins an override; clearing the override returns to inheritance.
@@ -33,6 +89,32 @@ const ScenarioModelRow = ({ scenario, label }: ScenarioModelRowProps): React.JSX
   const setScenarioModel = useSettingsStore((state) => state.setScenarioModel)
 
   const override = scenarioModels?.[scenario]
+  const activeProviderId = useSettingsStore((state) => state.activeProviderId)
+  const activeModel = useSettingsStore((state) => state.activeModel)
+
+  // The provider/model this scenario effectively runs (its pinned override, or the active model).
+  const effectiveProvider = override
+    ? providers.find((provider) => provider.id === override.providerId)
+    : providers.find((provider) => provider.id === activeProviderId)
+  const effectiveModel = override?.model ?? activeModel
+  const effortProfile = resolveProviderReasoningEffortProfile(effectiveProvider, effectiveModel)
+  const scenarioEffort: ReasoningEffort = override?.reasoningEffort ?? 'default'
+
+  // Persists a strength level for this scenario: 'default' keeps following the main model's level
+  // (the pinned model above may still differ from the main one); any other level pins this scenario
+  // independently. Requires a concrete model — when the row inherits the active model and none
+  // exists yet there is nothing to pin, so only the follow-default segment stays enabled.
+  const changeEffort = (effort: ReasoningEffort): void => {
+    if (effort === scenarioEffort) return
+    if (!effectiveProvider || !effectiveModel) {
+      if (effort === 'default') void setScenarioModel(scenario, undefined).catch(() => undefined)
+      return
+    }
+    const configuration: ScenarioModelOverride = override
+      ? { ...override, reasoningEffort: effort }
+      : { providerId: effectiveProvider.id, model: effectiveModel, reasoningEffort: effort }
+    void setScenarioModel(scenario, configuration).catch(() => undefined)
+  }
 
   // All providers with an explicit model list can back a scenario (subscription pseudo-providers
   // carry no models and drop out naturally).
@@ -108,6 +190,12 @@ const ScenarioModelRow = ({ scenario, label }: ScenarioModelRowProps): React.JSX
           ))}
         </SelectContent>
       </Select>
+      <EffortSegments
+        value={scenarioEffort}
+        profile={effortProfile}
+        followLabel={t('settings.scenarioModelInherit')}
+        onChange={changeEffort}
+      />
     </div>
   )
 }
