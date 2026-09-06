@@ -8,6 +8,10 @@ import {
   SelectTrigger
 } from '@/components/ui/select'
 import { useSettingsStore } from '@/stores/settings-store'
+import {
+  isOfficialVendorId,
+  isVendorModelMultimodal
+} from '../../../../shared/provider-registry'
 import type { VisionModelConfiguration } from '../../../../shared/settings'
 import { ProviderKindIcon } from './provider-icons'
 import { providerKindKey } from './provider-form-value'
@@ -25,12 +29,21 @@ const VisionModelSelect = (): React.JSX.Element | null => {
   const visionModel = useSettingsStore((state) => state.visionModel)
   const setVisionModel = useSettingsStore((state) => state.setVisionModel)
 
-  // Only providers whose current model supports image input can act as the Vision model.
+  // A provider is a vision candidate at the *model* level, not the provider level: a DeepSeek
+  // account whose active (main) model is text-only still serves deepseek-v4-flash-vision-exp, so the
+  // picker must consult the vendor catalog rule per model. Providers without a known vendor keep the
+  // stored supportsImageInput flag (all their models were declared vision-capable when configured).
+  const isVisionCandidate = (provider: (typeof providers)[number], model: string): boolean =>
+    provider.vendorId !== undefined && isOfficialVendorId(provider.vendorId)
+      ? isVendorModelMultimodal(provider.vendorId, model)
+      : provider.supportsImageInput === true
+
   const options = providers.flatMap((provider) => {
-    if (provider.supportsImageInput !== true) return []
-    return (
+    const models =
       provider.models.length > 0 ? provider.models : provider.model ? [provider.model] : []
-    ).map((model) => ({ provider, model }))
+    return models
+      .filter((model) => isVisionCandidate(provider, model))
+      .map((model) => ({ provider, model }))
   })
 
   if (options.length === 0) {
