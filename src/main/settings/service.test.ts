@@ -581,6 +581,7 @@ describe('SettingsService: providers', () => {
           'gpt-5.6-sol',
           'gpt-5.6-terra',
           'gpt-5.6-luna',
+          'gpt-6-astra',
           'gpt-5.5',
           'gpt-5.4',
           'gpt-5.4-mini'
@@ -2223,7 +2224,19 @@ describe('SettingsService: preflight & spawn config', () => {
 
     const backend = await resolveActiveBackend(service)
 
-    expect(JSON.parse(backend.env.CODEX_CONFIG ?? '{}')).not.toHaveProperty('model_catalog_json')
+    // The app-managed native Codex catalog (0.144.6) is trusted for the models it bundles (gpt-5.4),
+    // so those are NOT re-injected. A flagship newer than the pinned native catalog (gpt-6-astra)
+    // IS injected as an extra catalog entry — absence would silently hide it from Codex sessions.
+    const codexConfig = JSON.parse(backend.env.CODEX_CONFIG ?? '{}') as {
+      model_catalog_json?: string
+    }
+    expect(codexConfig.model_catalog_json).toBeDefined()
+    const catalog = JSON.parse(
+      await readFile(codexConfig.model_catalog_json!, 'utf8')
+    ) as { models: Array<{ slug: string }> }
+    const slugs = catalog.models.map((entry) => entry.slug)
+    expect(slugs).toContain('gpt-6-astra')
+    expect(slugs).not.toContain('gpt-5.4')
   })
 
   it('ignores a stale trusted native version when the live probe is unrecognized', async () => {
