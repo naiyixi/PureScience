@@ -7,6 +7,7 @@ const createRow = (overrides: Record<string, unknown> = {}): Record<string, unkn
   providerId: 'ssh:biowulf',
   displayName: 'biowulf',
   shape: 'direct_ssh',
+  executionMode: 'direct_ssh',
   sshAlias: 'biowulf',
   sshOverrides: null,
   scratchRoot: null,
@@ -23,13 +24,16 @@ const createRow = (overrides: Record<string, unknown> = {}): Record<string, unkn
 
 // Builds a mock computeHost delegate; each method is a spy the tests can assert against.
 const createMockClient = (
-  methods: Partial<Record<'findMany' | 'findUnique' | 'create' | 'delete', unknown>>
+  methods: Partial<
+    Record<'findMany' | 'findUnique' | 'create' | 'delete' | 'update', unknown>
+  >
 ): { client: ComputeHostClient; computeHost: Record<string, ReturnType<typeof vi.fn>> } => {
   const computeHost = {
     findMany: vi.fn(methods.findMany as never),
     findUnique: vi.fn(methods.findUnique as never),
     create: vi.fn(methods.create as never),
-    delete: vi.fn(methods.delete as never)
+    delete: vi.fn(methods.delete as never),
+    update: vi.fn(methods.update as never)
   }
 
   return { client: { computeHost } as unknown as ComputeHostClient, computeHost }
@@ -48,6 +52,7 @@ describe('compute host repository', () => {
         providerId: 'ssh:biowulf',
         displayName: 'biowulf',
         shape: 'direct_ssh',
+        executionMode: 'direct_ssh',
         sshAlias: 'biowulf',
         sshOverrides: undefined,
         scratchRoot: undefined,
@@ -190,6 +195,53 @@ describe('compute host repository', () => {
       repository.create({ sshAlias: 'big', detailsDoc: 'x'.repeat(32769) })
     ).rejects.toThrow(/32768/)
     expect(computeHost.create).not.toHaveBeenCalled()
+  })
+
+  it('defaults execution mode to direct_ssh and passes an explicit mode through', async () => {
+    const { client, computeHost } = createMockClient({
+      findUnique: () => Promise.resolve(null),
+      create: () => Promise.resolve(createRow())
+    })
+    const repository = new ComputeHostRepository(() => Promise.resolve(client))
+
+    await repository.create({ sshAlias: 'biowulf' })
+    const defaultCall = computeHost.create.mock.calls[0]![0] as { data: Record<string, unknown> }
+    expect(defaultCall.data.executionMode).toBe('direct_ssh')
+
+    computeHost.create.mockClear()
+    await repository.create({ sshAlias: 'biowulf', executionMode: 'slurm' })
+    const slurmCall = computeHost.create.mock.calls[0]![0] as { data: Record<string, unknown> }
+    expect(slurmCall.data.executionMode).toBe('slurm')
+  })
+
+  it('maps a slurm execution mode row and falls back to direct_ssh for corrupt values', async () => {
+    const { client } = createMockClient({
+      findUnique: () => Promise.resolve(createRow({ executionMode: 'slurm' }))
+    })
+    const repository = new ComputeHostRepository(() => Promise.resolve(client))
+    await expect(repository.get('ssh:biowulf')).resolves.toMatchObject({ executionMode: 'slurm' })
+
+    const corrupt = createMockClient({
+      findUnique: () => Promise.resolve(createRow({ executionMode: 'quantum' }))
+    })
+    const corruptRepository = new ComputeHostRepository(() => Promise.resolve(corrupt.client))
+    await expect(corruptRepository.get('ssh:biowulf')).resolves.toMatchObject({
+      executionMode: 'direct_ssh'
+    })
+  })
+
+  it('updates execution mode', async () => {
+    const { client, computeHost } = createMockClient({
+      update: () => Promise.resolve(createRow({ executionMode: 'slurm' }))
+    })
+    const repository = new ComputeHostRepository(() => Promise.resolve(client))
+
+    await repository.updateExecutionMode('ssh:biowulf', 'slurm')
+
+    expect(computeHost.update).toHaveBeenCalledWith({
+      where: { providerId: 'ssh:biowulf' },
+      data: { executionMode: 'slurm' }
+    })
   })
 
   it('deletes a host by provider id', async () => {

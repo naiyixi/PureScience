@@ -9,6 +9,11 @@
 // Phase 1 never reads it for behavior.
 export type ComputeHostShape = 'direct_ssh' | 'scheduler_cluster' | 'bridge_runner'
 
+// How jobs are executed on a registered host. 'direct_ssh' runs the job command under a detached SSH
+// session (pid handle); 'slurm' submits the job through the host's scheduler (sbatch/squeue handle).
+// 'slurm' is selectable only when the probe detected a scheduler (detectedScheduler === 'slurm').
+export type ComputeHostExecutionMode = 'direct_ssh' | 'slurm'
+
 // Optional connection overrides layered on top of ~/.ssh/config (never credentials/keys). Stored as a
 // JSON string in the DB column; parsed to this shape at the repository boundary.
 export type SshOverrides = {
@@ -50,6 +55,7 @@ export type ComputeHost = {
   providerId: string
   displayName: string
   shape: ComputeHostShape
+  executionMode: ComputeHostExecutionMode
   sshAlias: string
   sshOverrides: SshOverrides | undefined
   scratchRoot: string | undefined
@@ -64,11 +70,13 @@ export type ComputeHost = {
 }
 
 // Add-form payload. displayName defaults to the alias; detailsDoc seeds the notes (author = user).
+// executionMode defaults to 'direct_ssh'; callers select 'slurm' only when a scheduler was detected.
 export type CreateComputeHostRequest = {
   sshAlias: string
   displayName?: string
   detailsDoc?: string
   sshOverrides?: SshOverrides
+  executionMode?: ComputeHostExecutionMode
 }
 
 export type DeleteComputeHostRequest = {

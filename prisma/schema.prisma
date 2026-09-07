@@ -431,6 +431,7 @@ model ComputeHost {
   providerId       String    @unique // "ssh:<alias>"
   displayName      String
   shape            String    @default("direct_ssh") // direct_ssh | scheduler_cluster | bridge_runner
+  executionMode    String    @default("direct_ssh") // direct_ssh | slurm — how jobs dispatch (slurm only meaningful when a scheduler was detected)
   sshAlias         String
   sshOverrides     String? // JSON: { user?, port?, identityFile? } — never credentials
   scratchRoot      String?

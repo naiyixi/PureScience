@@ -18,6 +18,7 @@ const sampleHost = (overrides: Partial<ComputeHost> = {}): ComputeHost => ({
   providerId: 'ssh:biowulf',
   displayName: 'biowulf',
   shape: 'scheduler_cluster',
+  executionMode: 'direct_ssh',
   sshAlias: 'biowulf',
   sshOverrides: undefined,
   scratchRoot: undefined,

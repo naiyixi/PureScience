@@ -135,6 +135,7 @@ const createHost = (overrides: Partial<ComputeHost> = {}): ComputeHost => ({
   providerId: 'ssh:cluster-1',
   displayName: 'cluster-1',
   shape: 'direct_ssh',
+  executionMode: 'direct_ssh',
   sshAlias: 'cluster-1',
   sshOverrides: undefined,
   scratchRoot: undefined,

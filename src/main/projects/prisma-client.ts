@@ -487,6 +487,7 @@ const COMPUTE_HOST_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "ComputeHost" (
     "providerId" TEXT NOT NULL,
     "displayName" TEXT NOT NULL,
     "shape" TEXT NOT NULL DEFAULT 'direct_ssh',
+    "executionMode" TEXT NOT NULL DEFAULT 'direct_ssh',
     "sshAlias" TEXT NOT NULL,
     "sshOverrides" TEXT,
     "scratchRoot" TEXT,
@@ -503,6 +504,10 @@ const COMPUTE_HOST_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "ComputeHost" (
 // The unique index Prisma expects for @unique providerId. Created separately (matching the migrate
 // output) and guarded with IF NOT EXISTS so re-running ensure is idempotent.
 const COMPUTE_HOST_PROVIDER_ID_INDEX_DDL = `CREATE UNIQUE INDEX IF NOT EXISTS "ComputeHost_providerId_key" ON "ComputeHost"("providerId")`
+
+// Migration guard: add executionMode (direct_ssh | slurm) to ComputeHost for DBs created before
+// the Slurm execution-mode work. NOT NULL DEFAULT backfills existing hosts as direct_ssh.
+const COMPUTE_HOST_ADD_EXECUTION_MODE_DDL = `ALTER TABLE "ComputeHost" ADD COLUMN "executionMode" TEXT NOT NULL DEFAULT 'direct_ssh'`
 
 // Compute jobs (Phase 3a, compute-jobs issue 01). Pure-additive table — references nothing and
 // nothing references it. Tracks the full job lifecycle from submitted through terminal states.
@@ -720,6 +725,14 @@ const ensureProjectSchema = async (client: PrismaClient): Promise<void> => {
   // are safe to (re)run on any existing DB without disturbing the reviewer/project tables above.
   await client.$executeRawUnsafe(COMPUTE_HOST_TABLE_DDL)
   await client.$executeRawUnsafe(COMPUTE_HOST_PROVIDER_ID_INDEX_DDL)
+
+  // Migration guard: add executionMode for DBs created before the Slurm execution-mode work.
+  await addColumnIfMissing(
+    client,
+    'ComputeHost',
+    'executionMode',
+    COMPUTE_HOST_ADD_EXECUTION_MODE_DDL
+  )
 
   // Compute jobs (compute-jobs issue 01, Phase 3a): pure-additive table + three indexes.
   // IF NOT EXISTS makes each statement safe to re-run on any pre-existing DB.

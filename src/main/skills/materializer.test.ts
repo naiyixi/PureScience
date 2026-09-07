@@ -192,6 +192,7 @@ describe('ClaudeCodeSkillMaterializer', () => {
         providerId: 'ssh:biowulf',
         displayName: 'biowulf',
         shape: 'direct_ssh',
+        executionMode: 'direct_ssh',
         sshAlias: 'biowulf',
         sshOverrides: undefined,
         scratchRoot: undefined,

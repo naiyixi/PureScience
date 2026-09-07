@@ -2,6 +2,7 @@ import type { ComputeHost as PrismaComputeHost, PrismaClient } from '@prisma/cli
 
 import type {
   ComputeHost,
+  ComputeHostExecutionMode,
   ComputeHostShape,
   CreateComputeHostRequest,
   DetailsAuthor,
@@ -37,6 +38,11 @@ const asShape = (value: string): ComputeHostShape =>
     ? value
     : 'direct_ssh'
 
+// Narrows the free-text executionMode column back to the domain union, defaulting unknown values to
+// 'direct_ssh' so a corrupt row still renders as a plain SSH host rather than crashing.
+const asExecutionMode = (value: string): ComputeHostExecutionMode =>
+  value === 'slurm' ? 'slurm' : 'direct_ssh'
+
 const asAuthor = (value: string | null): DetailsAuthor | undefined =>
   value === 'user' || value === 'agent' ? value : undefined
 
@@ -47,6 +53,7 @@ const toHost = (row: PrismaComputeHost): ComputeHost => ({
   providerId: row.providerId,
   displayName: row.displayName,
   shape: asShape(row.shape),
+  executionMode: asExecutionMode(row.executionMode),
   sshAlias: row.sshAlias,
   sshOverrides: parseJson<SshOverrides>(row.sshOverrides),
   scratchRoot: row.scratchRoot ?? undefined,
@@ -129,6 +136,7 @@ class ComputeHostRepository {
       data: {
         providerId,
         displayName,
+        executionMode: request.executionMode ?? 'direct_ssh',
         sshAlias: alias,
         sshOverrides: serializeOverrides(request.sshOverrides),
         detailsDoc,
@@ -213,6 +221,20 @@ class ComputeHostRepository {
     await client.computeHost.update({
       where: { providerId },
       data: { concurrencyLimit }
+    })
+  }
+
+  // Switches how jobs are dispatched on this host ('direct_ssh' vs 'slurm'). Callers gate on the
+  // probe: 'slurm' is only meaningful when a scheduler (sbatch) was detected on the host.
+  async updateExecutionMode(
+    providerId: string,
+    executionMode: ComputeHostExecutionMode
+  ): Promise<void> {
+    const client = await this.getClient()
+
+    await client.computeHost.update({
+      where: { providerId },
+      data: { executionMode }
     })
   }
 }
