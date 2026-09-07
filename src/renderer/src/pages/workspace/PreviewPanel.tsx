@@ -219,6 +219,84 @@ export const PreviewTabContextMenu = ({
   )
 }
 
+// Self-contained right-click menu for the preview CONTENT area (file panels). Mirrors the file
+// actions of PreviewTabContextMenu above without touching that tested component: copy path,
+// download, and save-as-artifact for path-backed file previews. A pointer-anchored fixed menu
+// avoids a dialog dependency; dismissal matches the tab-menu pattern (outside pointer / Escape).
+const previewContentMenuItemClassName =
+  'flex w-full cursor-pointer items-center gap-2 rounded px-2.5 py-1.5 text-left text-[13px] text-text-000 hover:bg-bg-300 focus-visible:outline-none'
+
+export const PreviewContentContextMenu = ({
+  x,
+  y,
+  item,
+  onDismiss
+}: {
+  x: number
+  y: number
+  item: PreviewItem
+  onDismiss: () => void
+}): React.JSX.Element | null => {
+  const { t } = useLanguage()
+  const activeProjectId = useNavigationStore((state) => state.activeProjectId)
+  const menuRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    const onPointerDown = (event: MouseEvent): void => {
+      if (!menuRef.current?.contains(event.target as Node)) onDismiss()
+    }
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') onDismiss()
+    }
+    window.addEventListener('mousedown', onPointerDown)
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      window.removeEventListener('mousedown', onPointerDown)
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [onDismiss])
+
+  if (item.type !== 'file' || !item.path) return null
+
+  const run = (action: () => void): void => {
+    onDismiss()
+    action()
+  }
+  const copyPath = (): void => {
+    void navigator.clipboard.writeText(item.path)
+  }
+  const download = (): void => {
+    void window.api.saveManagedFile({ source: 'local', path: item.path, suggestedName: item.name })
+  }
+  const saveAsArtifact = (): void => {
+    void window.api.uploads.stageLocalPath?.({
+      transferId: crypto.randomUUID(),
+      name: item.name,
+      sourcePath: item.path,
+      projectId: activeProjectId
+    })
+  }
+
+  return (
+    <div
+      ref={menuRef}
+      role="menu"
+      className="fixed z-[90] w-52 rounded-lg border border-border-200 bg-bg-000 p-1 shadow-card"
+      style={{ left: x, top: y }}
+    >
+      <button type="button" role="menuitem" className={previewContentMenuItemClassName} onClick={() => run(copyPath)}>
+        <ClipboardCopy className="size-3.5" aria-hidden="true" /> {t('ws.previewTabCopyPath')}
+      </button>
+      <button type="button" role="menuitem" className={previewContentMenuItemClassName} onClick={() => run(download)}>
+        <Download className="size-3.5" aria-hidden="true" /> {t('ws.previewTabDownload')}
+      </button>
+      <button type="button" role="menuitem" className={previewContentMenuItemClassName} onClick={() => run(saveAsArtifact)}>
+        <FileUp className="size-3.5" aria-hidden="true" /> {t('ws.previewTabSaveAsArtifact')}
+      </button>
+    </div>
+  )
+}
+
 // One tab owns activation/keyboard behavior while its sibling close button preserves quick removal.
 const PreviewTab = ({
   tab,
@@ -504,6 +582,7 @@ const PreviewFilePanel = ({
   onClose: (id: string) => void
 }): React.JSX.Element => {
   const [isFullScreenOpen, setIsFullScreenOpen] = useState(false)
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
   const surfaceRef = useRef<HTMLElement | null>(null)
 
   const closeFullScreen = useCallback((): void => {
@@ -534,6 +613,10 @@ const PreviewFilePanel = ({
       <section
         ref={surfaceRef}
         data-testid="preview-card"
+        onContextMenu={(event) => {
+          event.preventDefault()
+          setMenu({ x: event.clientX, y: event.clientY })
+        }}
         role={isFullScreenOpen ? 'dialog' : 'tabpanel'}
         aria-modal={isFullScreenOpen || undefined}
         aria-label={isFullScreenOpen ? `Preview ${item.title}` : undefined}
@@ -561,6 +644,14 @@ const PreviewFilePanel = ({
           provenanceEntry={isFullScreenOpen ? 'trailing' : 'menu'}
         />
       </section>
+      {menu ? (
+        <PreviewContentContextMenu
+          x={menu.x}
+          y={menu.y}
+          item={item}
+          onDismiss={() => setMenu(null)}
+        />
+      ) : null}
     </>
   )
 }

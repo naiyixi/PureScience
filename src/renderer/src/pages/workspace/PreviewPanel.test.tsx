@@ -702,4 +702,45 @@ describe('PreviewPanel', () => {
     await act(async () => usePreviewWorkbenchStore.getState().togglePanel())
     expect(container.querySelector('[data-testid="file-content"]')).not.toBeNull()
   })
+
+  it('opens the file-actions menu on right-click inside the preview content', async () => {
+    usePreviewWorkbenchStore.getState().upsertAndActivateItem(createFileItem({}))
+    await renderPanel()
+
+    const card = container.querySelector<HTMLElement>('[data-testid="preview-card"]')
+    expect(card).not.toBeNull()
+    await act(async () => {
+      card?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 120, clientY: 90 }))
+    })
+
+    const menu = container.querySelector<HTMLElement>('[role="menu"]')
+    expect(menu).not.toBeNull()
+    const labels = Array.from(menu?.querySelectorAll('[role="menuitem"]') ?? []).map(
+      (item) => item.textContent?.trim() ?? ''
+    )
+    expect(labels).toEqual(['Copy path', 'Download', 'Save as artifact'])
+  })
+
+  it('downloads the previewed file from the content context menu', async () => {
+    usePreviewWorkbenchStore.getState().upsertAndActivateItem(createFileItem({}))
+    await renderPanel()
+
+    const card = container.querySelector<HTMLElement>('[data-testid="preview-card"]')
+    await act(async () => {
+      card?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 120, clientY: 90 }))
+    })
+    const downloadItem = Array.from(
+      container.querySelectorAll<HTMLElement>('[role="menuitem"]')
+    ).find((item) => item.textContent?.trim() === 'Download')
+    expect(downloadItem).not.toBeUndefined()
+    await act(async () => {
+      downloadItem?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+
+    expect(window.api.saveManagedFile).toHaveBeenCalledWith({
+      source: 'local',
+      path: '/workspace/file-1.png',
+      suggestedName: 'file-1.png'
+    })
+  })
 })
