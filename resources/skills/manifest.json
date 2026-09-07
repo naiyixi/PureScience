@@ -8,114 +8,6 @@
       "updatedAt": "2026-07-14T00:00:00.000Z"
     },
     {
-      "id": "boltz",
-      "name": "Boltz",
-      "source": "featured",
-      "updatedAt": "2026-07-14T00:00:00.000Z"
-    },
-    {
-      "id": "borzoi",
-      "name": "Borzoi",
-      "source": "featured",
-      "updatedAt": "2026-07-14T00:00:00.000Z"
-    },
-    {
-      "id": "chai1",
-      "name": "Chai-1",
-      "source": "featured",
-      "updatedAt": "2026-07-14T00:00:00.000Z"
-    },
-    {
-      "id": "diffdock",
-      "name": "DiffDock",
-      "source": "featured",
-      "updatedAt": "2026-07-14T00:00:00.000Z"
-    },
-    {
-      "id": "esmfold2",
-      "name": "ESMFold2",
-      "source": "featured",
-      "updatedAt": "2026-07-14T00:00:00.000Z"
-    },
-    {
-      "id": "evo2",
-      "name": "Evo 2",
-      "source": "featured",
-      "updatedAt": "2026-07-14T00:00:00.000Z"
-    },
-    {
-      "id": "fair-esm2",
-      "name": "ESM-2",
-      "source": "featured",
-      "updatedAt": "2026-07-14T00:00:00.000Z"
-    },
-    {
-      "id": "ligandmpnn",
-      "name": "LigandMPNN",
-      "source": "featured",
-      "updatedAt": "2026-07-14T00:00:00.000Z"
-    },
-    {
-      "id": "openfold3",
-      "name": "OpenFold3",
-      "source": "featured",
-      "updatedAt": "2026-07-14T00:00:00.000Z"
-    },
-    {
-      "id": "proteinmpnn",
-      "name": "ProteinMPNN",
-      "source": "featured",
-      "updatedAt": "2026-07-14T00:00:00.000Z"
-    },
-    {
-      "id": "scgpt",
-      "name": "scGPT",
-      "source": "featured",
-      "updatedAt": "2026-07-14T00:00:00.000Z"
-    },
-    {
-      "id": "scvi-tools",
-      "name": "scvi-tools",
-      "source": "featured",
-      "updatedAt": "2026-07-14T00:00:00.000Z"
-    },
-    {
-      "id": "solublempnn",
-      "name": "SolubleMPNN",
-      "source": "featured",
-      "updatedAt": "2026-07-14T00:00:00.000Z"
-    },
-    {
-      "id": "indication-dossier",
-      "name": "Indication Dossier",
-      "source": "featured",
-      "updatedAt": "2026-07-14T00:00:00.000Z"
-    },
-    {
-      "id": "literature-review",
-      "name": "Literature Review",
-      "source": "featured",
-      "updatedAt": "2026-07-14T00:00:00.000Z"
-    },
-    {
-      "id": "env-management",
-      "name": "Environment & Packages",
-      "source": "featured",
-      "updatedAt": "2026-07-14T00:00:00.000Z"
-    },
-    {
-      "id": "remote-compute-ssh",
-      "name": "Remote Compute (SSH)",
-      "source": "featured",
-      "updatedAt": "2026-08-02T00:00:00.000Z"
-    },
-    {
-      "id": "customize",
-      "name": "Customize",
-      "source": "featured",
-      "updatedAt": "2026-07-31T00:00:00.000Z"
-    },
-    {
       "id": "bionexus-biologics-design",
       "name": "BioNexus Biologics Design",
       "source": "featured",
@@ -218,6 +110,102 @@
       "updatedAt": "2026-08-17T00:00:00.000Z"
     },
     {
+      "id": "boltz",
+      "name": "Boltz",
+      "source": "featured",
+      "updatedAt": "2026-07-14T00:00:00.000Z"
+    },
+    {
+      "id": "borzoi",
+      "name": "Borzoi",
+      "source": "featured",
+      "updatedAt": "2026-07-14T00:00:00.000Z"
+    },
+    {
+      "id": "chai1",
+      "name": "Chai-1",
+      "source": "featured",
+      "updatedAt": "2026-07-14T00:00:00.000Z"
+    },
+    {
+      "id": "citation-integrity",
+      "name": "引文核验",
+      "source": "featured",
+      "updatedAt": "2026-09-07T03:15:52.000Z"
+    },
+    {
+      "id": "customize",
+      "name": "Customize",
+      "source": "featured",
+      "updatedAt": "2026-07-31T00:00:00.000Z"
+    },
+    {
+      "id": "diffdock",
+      "name": "DiffDock",
+      "source": "featured",
+      "updatedAt": "2026-07-14T00:00:00.000Z"
+    },
+    {
+      "id": "env-management",
+      "name": "Environment & Packages",
+      "source": "featured",
+      "updatedAt": "2026-07-14T00:00:00.000Z"
+    },
+    {
+      "id": "esmfold2",
+      "name": "ESMFold2",
+      "source": "featured",
+      "updatedAt": "2026-07-14T00:00:00.000Z"
+    },
+    {
+      "id": "evidence-grading",
+      "name": "证据确定性分级",
+      "source": "featured",
+      "updatedAt": "2026-09-07T03:15:52.000Z"
+    },
+    {
+      "id": "evo2",
+      "name": "Evo 2",
+      "source": "featured",
+      "updatedAt": "2026-07-14T00:00:00.000Z"
+    },
+    {
+      "id": "fair-esm2",
+      "name": "ESM-2",
+      "source": "featured",
+      "updatedAt": "2026-07-14T00:00:00.000Z"
+    },
+    {
+      "id": "figure-style",
+      "name": "出版级图表正确性",
+      "source": "featured",
+      "updatedAt": "2026-09-01T00:00:00.000Z"
+    },
+    {
+      "id": "indication-dossier",
+      "name": "Indication Dossier",
+      "source": "featured",
+      "updatedAt": "2026-07-14T00:00:00.000Z"
+    },
+    {
+      "id": "ligandmpnn",
+      "name": "LigandMPNN",
+      "source": "featured",
+      "updatedAt": "2026-07-14T00:00:00.000Z"
+    },
+    {
+      "id": "literature-review",
+      "name": "Literature Review",
+      "source": "featured",
+      "updatedAt": "2026-07-14T00:00:00.000Z"
+    },
+    {
+      "id": "literature-search-strategy",
+      "name": "文献检索策略",
+      "source": "featured",
+      "updatedAt": "2026-09-07T03:15:52.000Z"
+    },
+    {
       "id": "llamacpp-local-server",
       "name": "llama.cpp 本地模型服务",
       "source": "featured",
@@ -230,16 +218,76 @@
       "updatedAt": "2026-09-01T00:00:00.000Z"
     },
     {
-      "id": "figure-style",
-      "name": "出版级图表正确性",
+      "id": "methods-writing-audit",
+      "name": "方法写作审计",
       "source": "featured",
-      "updatedAt": "2026-09-01T00:00:00.000Z"
+      "updatedAt": "2026-09-07T03:15:52.000Z"
+    },
+    {
+      "id": "openfold3",
+      "name": "OpenFold3",
+      "source": "featured",
+      "updatedAt": "2026-07-14T00:00:00.000Z"
+    },
+    {
+      "id": "proteinmpnn",
+      "name": "ProteinMPNN",
+      "source": "featured",
+      "updatedAt": "2026-07-14T00:00:00.000Z"
+    },
+    {
+      "id": "remote-compute-ssh",
+      "name": "Remote Compute (SSH)",
+      "source": "featured",
+      "updatedAt": "2026-08-02T00:00:00.000Z"
+    },
+    {
+      "id": "research-contract",
+      "name": "研究契约",
+      "source": "featured",
+      "updatedAt": "2026-09-07T03:15:52.000Z"
+    },
+    {
+      "id": "scgpt",
+      "name": "scGPT",
+      "source": "featured",
+      "updatedAt": "2026-07-14T00:00:00.000Z"
+    },
+    {
+      "id": "scientific-visualization",
+      "name": "科学可视化",
+      "source": "featured",
+      "updatedAt": "2026-09-07T03:15:52.000Z"
+    },
+    {
+      "id": "scvi-tools",
+      "name": "scvi-tools",
+      "source": "featured",
+      "updatedAt": "2026-07-14T00:00:00.000Z"
     },
     {
       "id": "self-awareness",
       "name": "Agent 自省",
       "source": "featured",
       "updatedAt": "2026-09-01T00:00:00.000Z"
+    },
+    {
+      "id": "solublempnn",
+      "name": "SolubleMPNN",
+      "source": "featured",
+      "updatedAt": "2026-07-14T00:00:00.000Z"
+    },
+    {
+      "id": "statistical-inference",
+      "name": "统计推断",
+      "source": "featured",
+      "updatedAt": "2026-09-07T03:15:52.000Z"
+    },
+    {
+      "id": "study-design",
+      "name": "研究设计",
+      "source": "featured",
+      "updatedAt": "2026-09-07T03:15:52.000Z"
     }
   ]
 }
