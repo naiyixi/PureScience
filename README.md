@@ -219,6 +219,8 @@ Sampled verdicts — each row is a direct summary of a real session's report:
 | CAR-T killing at low antigen density | Near-infinite affinity compensates sparse antigen | Below ~500 copies per cell the membrane cannot be pinned to exclude CD45 — signaling output stays ≈0 regardless of affinity |
 | Synthetic ecology (engineered bacteria) | A synchronized lysis circuit releases drug forever | Every lysis pulse amplifies non-lysis "cheater" mutants 20–50×; the clock stops within a few pulses (spatial structure delays, never prevents it) |
 
+Every one of the 30 runs has its own archived case folder with the full report, solver and figures — see the [case index](docs/extreme-tests-2026-09/cases/) and per-case one-line verdicts (EN + 中文) in the [gallery](docs/extreme-tests-2026-09/README.md).
+
 Every figure below is a real artifact produced by that session's own numerical solver (ODE / PDE / lattice Monte-Carlo) — not a stock graphic:
 
 <p align="center">
