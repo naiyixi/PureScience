@@ -47,6 +47,7 @@ export const WEB_INVOKE_CHANNELS = {
   'compute.download': 'compute:download',
   'compute.enabledHostsGet': 'compute:enabled-hosts:get',
   'compute.enabledHostsSet': 'compute:enabled-hosts:set',
+  'compute.executionModeSet': 'compute:execution-mode:set',
   'compute.get': 'compute:get',
   'compute.jobsList': 'compute:jobs:list',
   'compute.jobsMarkConsumed': 'compute:jobs:mark-consumed',

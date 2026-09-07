@@ -187,7 +187,7 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['onApprovalRequest', 'compute:approval-request', EVENT], ['onJobUpdated', 'compute:job-updated', EVENT], ['bookmarksGet', 'compute:bookmarks:get'],
     ['bookmarksSet', 'compute:bookmarks:set'], ['concurrencySet', 'compute:concurrency:set'], ['create', 'compute:create'], ['delete', 'compute:delete'],
     ['detailsGet', 'compute:details:get'], ['detailsSave', 'compute:details:save'], ['download', 'compute:download', LOCAL],
-    ['enabledHostsGet', 'compute:enabled-hosts:get'], ['enabledHostsSet', 'compute:enabled-hosts:set'], ['get', 'compute:get'],
+    ['enabledHostsGet', 'compute:enabled-hosts:get'], ['enabledHostsSet', 'compute:enabled-hosts:set'], ['executionModeSet', 'compute:execution-mode:set'], ['get', 'compute:get'],
     ['jobsList', 'compute:jobs:list'], ['jobsMarkConsumed', 'compute:jobs:mark-consumed'], ['jobsPendingNotification', 'compute:jobs:pending-notification'],
     ['list', 'compute:list'], ['listDir', 'compute:list-dir'], ['probe', 'compute:probe'], ['respondApproval', 'compute:approval-respond'],
     ['revealInFolder', 'compute:reveal-in-folder', LOCAL], ['scratchSet', 'compute:scratch:set'], ['sshConfigAliases', 'compute:ssh-config-aliases'],
