@@ -56,6 +56,7 @@ export function ComputeHostDetail({
   const saveDetails = useComputeStore((state) => state.saveDetails)
   const setScratch = useComputeStore((state) => state.setScratch)
   const setConcurrency = useComputeStore((state) => state.setConcurrency)
+  const setExecutionMode = useComputeStore((state) => state.setExecutionMode)
 
   const [probeError, setProbeError] = useState<string | undefined>(undefined)
 
@@ -79,6 +80,9 @@ export function ComputeHostDetail({
   const [concurrencyInput, setConcurrencyInput] = useState('')
   const [concurrencySaving, setConcurrencySaving] = useState(false)
   const [concurrencyError, setConcurrencyError] = useState<string | undefined>(undefined)
+
+  // Execution-mode switch error (server-side probe gate).
+  const [modeError, setModeError] = useState<string | undefined>(undefined)
 
   // Details expand/collapse state
   const [isDetailsExpanded, setIsDetailsExpanded] = useState(false)
@@ -659,6 +663,48 @@ export function ComputeHostDetail({
             </span>
           </div>
         )}
+      </div>
+
+      {/* Execution mode block — 'slurm' is selectable only when the probe detected a scheduler. */}
+      <div className="mt-7">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h4 className="text-sm font-medium text-foreground">{t('settings.executionMode')}</h4>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {t('settings.executionModeHint')}
+            </p>
+          </div>
+        </div>
+        <div className="mt-3 flex flex-col gap-2">
+          <select
+            aria-label={t('settings.executionMode')}
+            value={host.executionMode}
+            onChange={(event) => {
+              const mode =
+                event.target.value === 'slurm' ? ('slurm' as const) : ('direct_ssh' as const)
+              setModeError(undefined)
+              setExecutionMode(host.providerId, mode).catch((error: unknown) => {
+                setModeError(error instanceof Error ? error.message : String(error))
+              })
+            }}
+            className="w-56 rounded-md border border-input bg-background px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            <option value="direct_ssh">Direct SSH</option>
+            <option value="slurm" disabled={probed?.detectedScheduler !== 'slurm'}>
+              Slurm
+            </option>
+          </select>
+          {probed?.detectedScheduler === 'slurm' ? (
+            <p className="text-[11px] text-muted-foreground">
+              {t('settings.executionModeSchedulerDetected')}
+            </p>
+          ) : null}
+          {modeError ? (
+            <p role="alert" className="text-xs text-destructive">
+              {modeError}
+            </p>
+          ) : null}
+        </div>
       </div>
     </div>
   )

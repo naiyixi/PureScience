@@ -938,6 +938,9 @@ export const zh = {
   'settings.scratchRootHint': '远程作业的工作目录。固定的路径不会被重新探测覆盖。',
   'settings.concurrentJobLimitHint': '此主机上同时运行的最大作业数（1–500）。暂未强制执行。',
   'settings.openingBrowserToSignIn': '正在打开浏览器登录…在那里完成后此窗口将自动关闭。',
+  'settings.executionMode': '执行模式',
+  'settings.executionModeHint': '该主机上任务的执行方式。探测到调度器后，Slurm 调度执行才会可用。',
+  'settings.executionModeSchedulerDetected': '已探测到 Slurm 调度器——可切换调度执行。',
   'settings.remoteCommandsNotSandboxed':
     '远程命令以你的账户在主机上运行，且不受沙箱保护。仅在确认命令来源可信时批准。',
   'settings.connectorSendsExternal': '智能体想要调用一个向外部服务发送数据的连接器工具。',

@@ -737,6 +737,8 @@ export interface PureScienceAPI {
     scratchSet(providerId: string, path: string): Promise<void>
     // Concurrent job limit: store 1..500 (not enforced in Phase 1).
     concurrencySet(providerId: string, limit: number): Promise<void>
+    // Execution mode: 'direct_ssh' | 'slurm'. Setting 'slurm' requires a probe-detected scheduler.
+    executionModeSet(providerId: string, mode: 'direct_ssh' | 'slurm'): Promise<void>
     // Fires when a compute call needs user approval (runs before any SSH is made).
     onApprovalRequest(listener: (request: ComputeApprovalRequest) => void): () => void
     // Renderer sends back the user's decision (once / conversation / project / deny).

@@ -167,3 +167,18 @@ describe('compute store — concurrency limit', () => {
     expect(useComputeStore.getState().hosts[0].concurrencyLimit).toBe(20)
   })
 })
+
+describe('compute store — execution mode', () => {
+  it('setExecutionMode calls executionModeSet and re-fetches the host', async () => {
+    const updatedHost = createHost({ executionMode: 'slurm' })
+    const executionModeSet = vi.fn().mockResolvedValue(undefined)
+    const get = vi.fn().mockResolvedValue(updatedHost)
+    setComputeApi({ executionModeSet, get })
+    useComputeStore.setState({ hosts: [createHost()] })
+
+    await useComputeStore.getState().setExecutionMode('ssh:biowulf', 'slurm')
+
+    expect(executionModeSet).toHaveBeenCalledWith('ssh:biowulf', 'slurm')
+    expect(useComputeStore.getState().hosts[0].executionMode).toBe('slurm')
+  })
+})

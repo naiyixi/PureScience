@@ -1022,6 +1022,11 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.concurrentJobLimit': 'Limite de travaux simultanés',
   'settings.concurrentJobLimitHint':
     'Nombre maximal de travaux s’exécutant en même temps sur cet hôte (1–500). Pas encore appliqué.',
+  'settings.executionMode': "Mode d'exécution",
+  'settings.executionModeHint':
+    "Comment les tâches s'exécutent sur cet hôte. La soumission Slurm n'est disponible qu'après détection d'un ordonnanceur.",
+  'settings.executionModeSchedulerDetected':
+    'Ordonnanceur Slurm détecté — soumission par ordonnanceur disponible.',
   'settings.conda': 'Conda',
   'settings.condaChannelMirror': 'Miroir des canaux Conda',
   'settings.configure': 'Configurer',
@@ -2025,8 +2030,7 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.switchStartsFreshSession':
     'session d’agent. Les conversations ouvertes conservent leurs messages existants, et leur transcription est transférée). Les nouvelles conversations ne sont pas affectées.',
   'settings.switching': 'Basculement…',
-  'settings.syncsWithConnectorDirectory':
-    'Se synchronise avec le répertoire des connecteurs',
+  'settings.syncsWithConnectorDirectory': 'Se synchronise avec le répertoire des connecteurs',
   'settings.system': 'Système',
   'settings.systemRequirementsNotMet': 'Configuration système requise non satisfaite',
   'settings.tagsManagerDescription':

@@ -1008,6 +1008,11 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.concurrentJobLimit': 'Лимит одновременных заданий',
   'settings.concurrentJobLimitHint':
     'Максимум заданий, одновременно выполняемых на этом хосте (1–500). Пока не применяется принудительно.',
+  'settings.executionMode': 'Режим выполнения',
+  'settings.executionModeHint':
+    'Как задания выполняются на этом хосте. Отправка через Slurm доступна только после обнаружения планировщика.',
+  'settings.executionModeSchedulerDetected':
+    'Планировщик Slurm обнаружен — доступна отправка через планировщик.',
   'settings.conda': 'Conda',
   'settings.condaChannelMirror': 'Зеркало каналов Conda',
   'settings.configure': 'Настроить',

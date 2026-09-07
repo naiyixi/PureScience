@@ -60,12 +60,14 @@ const makeRepo = (
   updateDetails: ReturnType<typeof vi.fn>
   updateScratchPinned: ReturnType<typeof vi.fn>
   updateConcurrencyLimit: ReturnType<typeof vi.fn>
+  updateExecutionMode: ReturnType<typeof vi.fn>
 } => {
   const updateProbeResult = vi.fn(() => Promise.resolve())
   const updateScratchRoot = vi.fn(() => Promise.resolve())
   const updateDetails = vi.fn(() => Promise.resolve())
   const updateScratchPinned = vi.fn(() => Promise.resolve())
   const updateConcurrencyLimit = vi.fn(() => Promise.resolve())
+  const updateExecutionMode = vi.fn(() => Promise.resolve())
   const repo: ComputeHostRepository = {
     get: vi.fn(() => Promise.resolve(host)),
     list: vi.fn(() => Promise.resolve([])),
@@ -75,7 +77,8 @@ const makeRepo = (
     updateScratchRoot,
     updateDetails,
     updateScratchPinned,
-    updateConcurrencyLimit
+    updateConcurrencyLimit,
+    updateExecutionMode
   } as unknown as ComputeHostRepository
   return {
     repo,
@@ -83,7 +86,8 @@ const makeRepo = (
     updateScratchRoot,
     updateDetails,
     updateScratchPinned,
-    updateConcurrencyLimit
+    updateConcurrencyLimit,
+    updateExecutionMode
   }
 }
 
@@ -562,6 +566,58 @@ describe('ComputeService.setConcurrencyLimit', () => {
     const service = new ComputeService(fakeRunner, repo)
     await expect(service.setConcurrencyLimit('ssh:nonexistent', 10)).rejects.toThrow(
       /not found|no compute host/i
+    )
+  })
+})
+
+describe('ComputeService.setExecutionMode', () => {
+  const fakeRunner = makeFakeRunner({
+    exitCode: 0,
+    stdout: '',
+    stderr: '',
+    truncated: false,
+    timedOut: false
+  })
+
+  const slurmHost = (): ComputeHost => ({
+    ...sampleHost(),
+    probeResult: {
+      ok: true,
+      probedAt: '2026-09-07T00:00:00.000Z',
+      exitCode: 0,
+      errorTail: null,
+      detectedScheduler: 'slurm'
+    }
+  })
+
+  it('switches to slurm only when the probe detected a scheduler', async () => {
+    const { repo, updateExecutionMode } = makeRepo(slurmHost())
+    const service = new ComputeService(fakeRunner, repo)
+    await service.setExecutionMode('ssh:biowulf', 'slurm')
+    expect(updateExecutionMode).toHaveBeenCalledWith('ssh:biowulf', 'slurm')
+  })
+
+  it('rejects slurm on a host without a detected scheduler (fail-closed)', async () => {
+    const { repo, updateExecutionMode } = makeRepo() // sampleHost has no probeResult
+    const service = new ComputeService(fakeRunner, repo)
+    await expect(service.setExecutionMode('ssh:biowulf', 'slurm')).rejects.toThrow(
+      /no detected Slurm scheduler/i
+    )
+    expect(updateExecutionMode).not.toHaveBeenCalled()
+  })
+
+  it('always allows switching back to direct_ssh', async () => {
+    const { repo, updateExecutionMode } = makeRepo(slurmHost())
+    const service = new ComputeService(fakeRunner, repo)
+    await service.setExecutionMode('ssh:biowulf', 'direct_ssh')
+    expect(updateExecutionMode).toHaveBeenCalledWith('ssh:biowulf', 'direct_ssh')
+  })
+
+  it('rejects unknown modes', async () => {
+    const { repo } = makeRepo(slurmHost())
+    const service = new ComputeService(fakeRunner, repo)
+    await expect(service.setExecutionMode('ssh:biowulf', 'quantum' as never)).rejects.toThrow(
+      /direct_ssh or slurm/i
     )
   })
 })

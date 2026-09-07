@@ -548,6 +548,28 @@ export class ComputeService {
     await this.repository.updateConcurrencyLimit(providerId, limit)
   }
 
+  // Switches the execution mode between direct SSH and scheduler (slurm) dispatch. 'slurm' is only
+  // accepted when the probe detected a scheduler on the host — fail-closed, so a non-UI caller can
+  // never put a host without a scheduler into a mode its dispatcher cannot honor.
+  async setExecutionMode(providerId: string, mode: 'direct_ssh' | 'slurm'): Promise<void> {
+    const host = await this.repository.get(providerId)
+    if (!host) {
+      throw new Error(`No compute host found with provider id "${providerId}".`)
+    }
+
+    if (mode !== 'direct_ssh' && mode !== 'slurm') {
+      throw new Error(`Execution mode must be direct_ssh or slurm (got ${String(mode)}).`)
+    }
+
+    if (mode === 'slurm' && host.probeResult?.detectedScheduler !== 'slurm') {
+      throw new Error(
+        `Host "${host.displayName}" has no detected Slurm scheduler — keep execution mode on direct SSH.`
+      )
+    }
+
+    await this.repository.updateExecutionMode(providerId, mode)
+  }
+
   // Lists the contents of a remote directory using find -printf via the existing exec SshRunner.
   // A single SSH round-trip collects: realpath (resolves ..), echo $HOME, and find output.
   // Returns a DirListing with entries sorted directories-first then alphabetically, plus roots and

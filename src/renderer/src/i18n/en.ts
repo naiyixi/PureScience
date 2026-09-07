@@ -986,6 +986,11 @@ export const en: Record<ZhKey, string> = {
     'Working directory for remote jobs. Pinned paths are never overwritten by re-probe.',
   'settings.concurrentJobLimitHint':
     'Maximum jobs running at the same time on this host (1–500). Not yet enforced.',
+  'settings.executionMode': 'Execution mode',
+  'settings.executionModeHint':
+    'How jobs run on this host. Slurm scheduler dispatch becomes available after probing detects a scheduler.',
+  'settings.executionModeSchedulerDetected':
+    'Slurm scheduler detected — scheduler dispatch is available.',
   'settings.openingBrowserToSignIn':
     'Opening your browser to sign in… finish there and this closes automatically.',
   'settings.remoteCommandsNotSandboxed':

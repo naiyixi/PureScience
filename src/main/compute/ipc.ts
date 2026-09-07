@@ -165,6 +165,7 @@ type ComputeHandlers = {
   scratchSet: (providerId: string, path: string) => Promise<void>
   // Concurrent job limit: store 1..500 (not enforced in Phase 1).
   concurrencySet: (providerId: string, limit: number) => Promise<void>
+  executionModeSet: (providerId: string, mode: 'direct_ssh' | 'slurm') => Promise<void>
   // Session-level concurrency control (Phase 3c, issue 04).
   setSessionConcurrencyLimit: (sessionId: string, limit: number) => Promise<void>
   getSessionConcurrencyStatus: (sessionId: string) => Promise<{
@@ -372,6 +373,7 @@ const createComputeHandlers = (
       service.replaceDetails(providerId, { text, oldText, author }),
     scratchSet: (providerId, path) => service.setScratchRoot(providerId, path),
     concurrencySet: (providerId, limit) => service.setConcurrencyLimit(providerId, limit),
+    executionModeSet: (providerId, mode) => service.setExecutionMode(providerId, mode),
     setSessionConcurrencyLimit: (sessionId, limit) =>
       service.setSessionConcurrencyLimit(sessionId, limit),
     getSessionConcurrencyStatus: (sessionId) => service.getSessionConcurrencyStatus(sessionId),
@@ -553,6 +555,11 @@ const registerComputeIpcHandlerSet = ({
   )
   ipcMainHandle('compute:concurrency:set', (_event, providerId: string, limit: number) =>
     handlers.concurrencySet(providerId, limit)
+  )
+  ipcMainHandle(
+    'compute:execution-mode:set',
+    (_event, providerId: string, mode: 'direct_ssh' | 'slurm') =>
+      handlers.executionModeSet(providerId, mode)
   )
   // Session-level concurrency control (Phase 3c, issue 04).
   ipcMainHandle(

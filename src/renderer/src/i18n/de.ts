@@ -1035,6 +1035,11 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.concurrentJobLimit': 'Limit für parallele Aufträge',
   'settings.concurrentJobLimitHint':
     'Maximale Anzahl gleichzeitig auf diesem Host laufender Aufträge (1–500). Wird noch nicht erzwungen.',
+  'settings.executionMode': 'Ausführungsmodus',
+  'settings.executionModeHint':
+    'Legt fest, wie Aufträge auf diesem Host laufen. Slurm-Dispatch ist erst verfügbar, nachdem die Erkennung einen Scheduler gefunden hat.',
+  'settings.executionModeSchedulerDetected':
+    'Slurm-Scheduler erkannt — Scheduler-Dispatch verfügbar.',
   'settings.conda': 'Conda',
   'settings.condaChannelMirror': 'Conda-Kanal-Spiegel',
   'settings.configure': 'Konfigurieren',
@@ -2033,8 +2038,7 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.switchStartsFreshSession':
     'Agent-Sitzung. Geöffnete Konversationen behalten ihre vorhandenen Nachrichten, und ihr Verlauf wird übernommen). Neue Konversationen sind nicht betroffen.',
   'settings.switching': 'Wird gewechselt…',
-  'settings.syncsWithConnectorDirectory':
-    'Synchronisiert mit dem Connector-Verzeichnis',
+  'settings.syncsWithConnectorDirectory': 'Synchronisiert mit dem Connector-Verzeichnis',
   'settings.system': 'System',
   'settings.systemRequirementsNotMet': 'Systemanforderungen nicht erfüllt',
   'settings.tagsManagerDescription':

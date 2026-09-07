@@ -34,6 +34,8 @@ type ComputeStore = ComputeStoreData & {
   setScratch: (providerId: string, path: string) => Promise<void>
   // Sets the concurrent job limit (1..500). Phase 1 stores but does not enforce.
   setConcurrency: (providerId: string, limit: number) => Promise<void>
+  // Switches the execution mode (direct_ssh | slurm); slurm requires a probe-detected scheduler.
+  setExecutionMode: (providerId: string, mode: 'direct_ssh' | 'slurm') => Promise<void>
   // Queues an incoming approval request (from the main-process compute gate).
   enqueueApproval: (request: ComputeApprovalRequest) => void
   // Sends the user's approval decision back to main and removes the request from the queue.
@@ -163,6 +165,17 @@ export const useComputeStore = create<ComputeStore>((set) => ({
   // Stores the concurrent job limit. Merges the updated host into cache.
   setConcurrency: async (providerId, limit) => {
     await window.api.compute.concurrencySet(providerId, limit)
+    const updatedHost = await window.api.compute.get(providerId)
+    if (updatedHost) {
+      set((state) => ({
+        hosts: state.hosts.map((h) => (h.providerId === providerId ? updatedHost : h))
+      }))
+    }
+  },
+
+  // Switches the execution mode (direct SSH / slurm). Merges the updated host into cache.
+  setExecutionMode: async (providerId, mode) => {
+    await window.api.compute.executionModeSet(providerId, mode)
     const updatedHost = await window.api.compute.get(providerId)
     if (updatedHost) {
       set((state) => ({

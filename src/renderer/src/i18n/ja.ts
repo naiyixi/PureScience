@@ -1007,6 +1007,11 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.concurrentJobLimit': '同時ジョブ数上限',
   'settings.concurrentJobLimitHint':
     'このホストで同時に実行できる最大ジョブ数（1〜500）。現時点では適用されません。',
+  'settings.executionMode': '実行モード',
+  'settings.executionModeHint':
+    'このホストでジョブを実行する方式。スケジューラーを検出した後にのみ Slurm ディスパッチを利用できます。',
+  'settings.executionModeSchedulerDetected':
+    'Slurm スケジューラーを検出しました — ディスパッチを利用できます。',
   'settings.conda': 'Conda',
   'settings.condaChannelMirror': 'Conda チャネルミラー',
   'settings.configure': '設定',

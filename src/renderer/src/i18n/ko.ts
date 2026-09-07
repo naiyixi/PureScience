@@ -992,6 +992,11 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.concurrentJobLimit': '동시 작업 수 제한',
   'settings.concurrentJobLimitHint':
     '이 호스트에서 동시에 실행되는 최대 작업 수(1–500)입니다. 아직 강제 적용되지는 않습니다.',
+  'settings.executionMode': '실행 모드',
+  'settings.executionModeHint':
+    '이 호스트에서 작업이 실행되는 방식입니다. 스케줄러가 감지된 후에만 Slurm 디스패치를 사용할 수 있습니다.',
+  'settings.executionModeSchedulerDetected':
+    'Slurm 스케줄러가 감지되었습니다 — 디스패치를 사용할 수 있습니다.',
   'settings.conda': 'Conda',
   'settings.condaChannelMirror': 'Conda 채널 미러',
   'settings.configure': '구성',

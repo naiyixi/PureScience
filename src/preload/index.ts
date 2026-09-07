@@ -549,6 +549,8 @@ const api: PureScienceAPI = {
       electronRendererContracts.invoke('compute.scratchSet', providerId, path),
     concurrencySet: (providerId, limit) =>
       electronRendererContracts.invoke('compute.concurrencySet', providerId, limit),
+    executionModeSet: (providerId, mode) =>
+      electronRendererContracts.invoke('compute.executionModeSet', providerId, mode),
     download: (providerId, remotePath, dest) =>
       electronRendererContracts.invoke('compute.download', providerId, remotePath, dest),
     revealInFolder: (filePath) =>
