@@ -1194,6 +1194,7 @@ describe('installComputeIpcHandlers', () => {
       'compute:details:save',
       'compute:scratch:set',
       'compute:concurrency:set',
+      'compute:execution-mode:set',
       'compute:session:set-concurrency-limit',
       'compute:session:status',
       'compute:list-dir',

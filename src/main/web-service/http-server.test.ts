@@ -953,6 +953,7 @@ describe('startWebHttpServer', () => {
       'compute:download',
       'compute:enabled-hosts:get',
       'compute:enabled-hosts:set',
+      'compute:execution-mode:set',
       'compute:get',
       'compute:jobs:list',
       'compute:jobs:mark-consumed',
