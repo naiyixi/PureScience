@@ -23,6 +23,7 @@ Where PureScience differs: agents are built with self-awareness and skill-buildi
 - [Product Tour](#product-tour)
 - [Showcase](#showcase)
 - [Real Runs Behind the Claims](#real-runs-behind-the-claims-the-ai4s-dry-wet-loop-in-action)
+- [Extreme Adversarial Stress Tests](#extreme-adversarial-stress-tests-sep-2026)
 - [How PureScience Compares](#how-purescience-compares)
 - [Why PureScience](#why-purescience)
 - [Design Principles](#design-principles)
@@ -183,6 +184,36 @@ That is why PureScience is implemented as the **open, local-first, model-agnosti
 *SARS-CoV-2 Mpro (PDB 7VH8) + nirmatrelvir: 280 docking poses scored by interaction energy (best E_int −52.9 kcal/mol; 16/21 pocket contacts match the crystal), then explicit-solvent molecular dynamics with 82,563 atoms — protein Cα RMSD 0.93 Å, ligand RMSD 0.79 Å, key Glu166 hydrogen bond held in 62% of frames. The whole OpenMM pipeline ran on a laptop, and the report states its own limitations (charge model, non-covalent approximation, 1 ns scale, monomer).*
 
 > **中文速览**：PureScience 把 AI4S 干湿闭环跑成真实产物——以上截图均为 v1.37 本机实跑（13 项能力验收 + 蛋白设计 / 分子动力学 / 多库情报真实会话），每个截图对应的产物文件均可按会话路径复核；报告自带「已验证 / 无法核实」分离与局限声明。更多可复核的独立验证见 [demo verification report](docs/demo-verification/egfr-t790m-dossier-verification.md)。
+
+## Extreme Adversarial Stress Tests (Sep 2026)
+
+Between 2026-09-04 and 2026-09-07, PureScience was handed **30 consecutive adversarial research challenges** by external reviewers — no demo data, no curated inputs. Each challenge described a state-of-the-art but deeply flawed research claim (a kinase "selectivity" chemistry cannot support, an antibody whose affinity defeats its own brain delivery, a condensate drug that "dissolves" a transcription factory by gelling it, a CAR whose affinity can never compensate sparse antigen…) and demanded a mechanism-level verdict. Every run executed locally on one Apple M2 laptop with **8 GB of RAM**, and every run ended with a versioned deliverable set: a Chinese adjudication report (with its own Data-Gap list), the solver code, and publication-grade figures — visible in the project's Files panel and replayable from the conversation.
+
+![30 stress-test projects, each row showing its real artifact types](docs/extreme-tests-2026-09/stress-projects-home.png)
+*The projects page after the marathon — every row lists the actual file types its session produced (MD · PY · PNG · CSV · HTML).*
+
+![Adjudication session: conversation left, versioned Files panel right](docs/extreme-tests-2026-09/session-llps-files.png)
+*A condensate-targeting drug adjudication session: the conversation includes the agent reviewing its own figure and re-rendering it after a coordinate mismatch; the Files panel holds the versioned report, solver, figures, and data.*
+
+Sampled verdicts — each row is a direct summary of a real session's report:
+
+| Challenge area | The trap in the claim | What the run concluded |
+|---|---|---|
+| Kinase selectivity (TNIK vs its paralogs) | Hinge backbone H-bonds + a high docking score ⇒ "1,000× selective" | Contact residues are 100% conserved between paralogs; the thermodynamic upper bound (≤1.5 kcal/mol) cannot encode a 1,000× difference |
+| BBB transcytosis (TfR bispecific) | Higher affinity ⇒ more antibody reaches the brain | Off-rate half-life 9.6 h vs a ~3.3 min endosomal sorting window ⇒ ~92 % routed to lysosomal degradation; the working regime is 50–300 nM affinity with a pH-sensitive release |
+| Condensate-targeted drug (LLPS) | Partition ratio > 300 into the condensate ⇒ dissolution of the oncogenic network | High partitioning deepens the thermodynamic well first: percolation/gelation (θc ≈ 0.28) happens long before any dissolution threshold — a physical sequestration trap for p53 |
+| Single-cell trajectory (CD8 exhaustion) | Trajectory endpoint = true terminal state | Dissociation-stress cells are injected into the "terminal" branch (~48 % of it); gene-set filtering / regression restores terminal classification F1 from 0.52 to 0.96 |
+| CAR-T killing at low antigen density | Near-infinite affinity compensates sparse antigen | Below ~500 copies per cell the membrane cannot be pinned to exclude CD45 — signaling output stays ≈0 regardless of affinity |
+| Synthetic ecology (engineered bacteria) | A synchronized lysis circuit releases drug forever | Every lysis pulse amplifies non-lysis "cheater" mutants 20–50×; the clock stops within a few pulses (spatial structure delays, never prevents it) |
+
+Every figure below is a real artifact produced by that session's own numerical solver (ODE / PDE / lattice Monte-Carlo) — not a stock graphic:
+
+| | | |
+|---|---|---|
+| ![LLPS thermodynamics phase diagram + curing heatmaps](docs/extreme-tests-2026-09/fig-llps-thermo.png) | ![BBB affinity-brain-exposure 3D phase diagram](docs/extreme-tests-2026-09/fig-bbb-3d.png) | ![TNIK P-loop static conformational bias](docs/extreme-tests-2026-09/fig-tnik-ploop.png) |
+| ![ADC perivascular concentration contours at 168 h](docs/extreme-tests-2026-09/fig-adc-contour.png) | ![TPD degradation-efficiency heatmap over residence time x DUB activity](docs/extreme-tests-2026-09/fig-tpd-heatmap.png) | ![bNAb epistasis deviation heatmap over mutation pairs](docs/extreme-tests-2026-09/fig-bnab-epistasis.png) |
+
+> **中文速览（2026-09 极限压测）**：30 道研发委员会级对抗性压测（激酶同源选择性 → 血脑屏障转胞吞 → 相分离凝胶化 → 免疫突触 → 演化博弈…）于 09-04 → 09-07 在一台 Apple M2 8GB 笔记本上连续完成，每题交付「中文裁决研报 + 数值求解器 + 出版级图件」，全部保留在会话 Files 面板、可版本回放；报告延续「Data Gap 清单」与「已验证 / 无法核实」分离口径。压测中系统还多次驳回出题方的诱导性前提（如「强表达必致混沌」被数值结论直接否定）。整套实证介绍 PPT（含全部会话截图与产物图）随每次 Release 资产与演示素材提供。
 
 ## How PureScience Compares
 
