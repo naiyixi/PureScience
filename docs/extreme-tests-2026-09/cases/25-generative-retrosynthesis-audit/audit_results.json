@@ -1,0 +1,1325 @@
+[
+ {
+  "id": "R01",
+  "ok": true,
+  "canonical_smiles": "COc1cc2ncnc(Nc3ccc(Cl)cc3)c2cc1OC",
+  "phys": {
+   "MW": 315.8,
+   "cLogP": 4.04,
+   "HBD": 1,
+   "HBA": 5,
+   "TPSA": 56.3,
+   "RotB": 4,
+   "Fsp3": 0.12,
+   "ArRings": 3,
+   "StereoCenters": 0,
+   "QED": 0.787,
+   "Ro5_viol": 0
+  },
+  "alerts": {
+   "pains": [],
+   "brenk": [],
+   "nih": [],
+   "reos": []
+  },
+  "alerts_any": false,
+  "ring": {
+   "n_rings": 3,
+   "ring_sizes": [
+    6,
+    6,
+    6
+   ],
+   "size_counter": {
+    "6": 3
+   },
+   "n_ring_systems": 2,
+   "n_aromatic_rings": 3,
+   "n_spiro": 0,
+   "n_bridgehead": 0,
+   "medium_rings_7_9": [],
+   "small_rings_3_4": [],
+   "ring_strain_est_kcal": 0.0,
+   "complexity_index": 7.0
+  },
+  "retro": {
+   "sa_score": 1.88,
+   "n_candidate_cuts": 2,
+   "n_feasible_cuts": 2,
+   "route_score": 1.0,
+   "3step_synth_heuristic": true
+  },
+  "torsion": {
+   "Emin_kcal": 20.34,
+   "n_conformers": 6,
+   "torsion_bonds": [
+    {
+     "kind": "rot",
+     "barrier_raw_kcal": 6.17,
+     "barrier_kcal": 6.17,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 0.0
+    },
+    {
+     "kind": "pi",
+     "barrier_raw_kcal": 6.33,
+     "barrier_kcal": 6.33,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 2.48
+    },
+    {
+     "kind": "pi",
+     "barrier_raw_kcal": 6.68,
+     "barrier_kcal": 6.68,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 0.01
+    },
+    {
+     "kind": "rot",
+     "barrier_raw_kcal": 6.93,
+     "barrier_kcal": 6.93,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 0.0
+    }
+   ],
+   "planar_strain_kcal": 2.49,
+   "n_pi_axes": 2,
+   "n_blocked_rotors": 0
+  },
+  "dock_claimed": -9.2,
+  "dock_corrected": -6.71,
+  "planar_strain_kcal": 2.49,
+  "gate": false,
+  "gate_reasons": [],
+  "_class": "control",
+  "archetype": "6,7-二甲氧基喹唑啉 4-(4-氯苯胺) 经典 ATP 位铰链骨架"
+ },
+ {
+  "id": "R02",
+  "ok": true,
+  "canonical_smiles": "O=C(Nc1ccc(F)cc1)c1n[nH]c2ccccc12",
+  "phys": {
+   "MW": 255.3,
+   "cLogP": 2.95,
+   "HBD": 2,
+   "HBA": 2,
+   "TPSA": 57.8,
+   "RotB": 2,
+   "Fsp3": 0.0,
+   "ArRings": 3,
+   "StereoCenters": 0,
+   "QED": 0.739,
+   "Ro5_viol": 0
+  },
+  "alerts": {
+   "pains": [],
+   "brenk": [],
+   "nih": [],
+   "reos": []
+  },
+  "alerts_any": false,
+  "ring": {
+   "n_rings": 3,
+   "ring_sizes": [
+    6,
+    5,
+    6
+   ],
+   "size_counter": {
+    "5": 1,
+    "6": 2
+   },
+   "n_ring_systems": 2,
+   "n_aromatic_rings": 3,
+   "n_spiro": 0,
+   "n_bridgehead": 0,
+   "medium_rings_7_9": [],
+   "small_rings_3_4": [],
+   "ring_strain_est_kcal": 0.0,
+   "complexity_index": 7.0
+  },
+  "retro": {
+   "sa_score": 1.74,
+   "n_candidate_cuts": 2,
+   "n_feasible_cuts": 2,
+   "route_score": 1.0,
+   "3step_synth_heuristic": true
+  },
+  "torsion": {
+   "Emin_kcal": 67.62,
+   "n_conformers": 4,
+   "torsion_bonds": [
+    {
+     "kind": "pi",
+     "barrier_raw_kcal": 16.92,
+     "barrier_kcal": 16.92,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 0.0
+    },
+    {
+     "kind": "pi",
+     "barrier_raw_kcal": 18.87,
+     "barrier_kcal": 18.87,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 0.0
+    },
+    {
+     "kind": "pi",
+     "barrier_raw_kcal": 17.57,
+     "barrier_kcal": 17.57,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 0.0
+    }
+   ],
+   "planar_strain_kcal": 0.0,
+   "n_pi_axes": 3,
+   "n_blocked_rotors": 0
+  },
+  "dock_claimed": -8.9,
+  "dock_corrected": -8.9,
+  "planar_strain_kcal": 0.0,
+  "gate": false,
+  "gate_reasons": [],
+  "_class": "control",
+  "archetype": "1H-吲唑-3-甲酰胺 N-(4-氟苯基)"
+ },
+ {
+  "id": "R03",
+  "ok": true,
+  "canonical_smiles": "Nc1ncnc2cc(-c3cccc(F)c3)[nH]c12",
+  "phys": {
+   "MW": 228.2,
+   "cLogP": 2.35,
+   "HBD": 2,
+   "HBA": 3,
+   "TPSA": 67.6,
+   "RotB": 1,
+   "Fsp3": 0.0,
+   "ArRings": 3,
+   "StereoCenters": 0,
+   "QED": 0.671,
+   "Ro5_viol": 0
+  },
+  "alerts": {
+   "pains": [],
+   "brenk": [],
+   "nih": [],
+   "reos": []
+  },
+  "alerts_any": false,
+  "ring": {
+   "n_rings": 3,
+   "ring_sizes": [
+    6,
+    5,
+    6
+   ],
+   "size_counter": {
+    "5": 1,
+    "6": 2
+   },
+   "n_ring_systems": 2,
+   "n_aromatic_rings": 3,
+   "n_spiro": 0,
+   "n_bridgehead": 0,
+   "medium_rings_7_9": [],
+   "small_rings_3_4": [],
+   "ring_strain_est_kcal": 0.0,
+   "complexity_index": 7.0
+  },
+  "retro": {
+   "sa_score": 2.45,
+   "n_candidate_cuts": 1,
+   "n_feasible_cuts": 1,
+   "route_score": 1.0,
+   "3step_synth_heuristic": true
+  },
+  "torsion": {
+   "Emin_kcal": -53.74,
+   "n_conformers": 2,
+   "torsion_bonds": [
+    {
+     "kind": "pi",
+     "barrier_raw_kcal": 1.66,
+     "barrier_kcal": 1.66,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 0.49
+    }
+   ],
+   "planar_strain_kcal": 0.49,
+   "n_pi_axes": 1,
+   "n_blocked_rotors": 0
+  },
+  "dock_claimed": -8.6,
+  "dock_corrected": -8.11,
+  "planar_strain_kcal": 0.49,
+  "gate": false,
+  "gate_reasons": [],
+  "_class": "control",
+  "archetype": "4-氨基-5-(3-氟苯基)-7H-吡咯并[2,3-d]嘧啶"
+ },
+ {
+  "id": "R04",
+  "ok": true,
+  "canonical_smiles": "COc1cc2ncnc(Nc3ccc(OCCN4CCOCC4)cc3)c2cc1OC",
+  "phys": {
+   "MW": 410.5,
+   "cLogP": 3.1,
+   "HBD": 1,
+   "HBA": 8,
+   "TPSA": 78.0,
+   "RotB": 8,
+   "Fsp3": 0.36,
+   "ArRings": 3,
+   "StereoCenters": 0,
+   "QED": 0.607,
+   "Ro5_viol": 0
+  },
+  "alerts": {
+   "pains": [],
+   "brenk": [],
+   "nih": [],
+   "reos": []
+  },
+  "alerts_any": false,
+  "ring": {
+   "n_rings": 4,
+   "ring_sizes": [
+    6,
+    6,
+    6,
+    6
+   ],
+   "size_counter": {
+    "6": 4
+   },
+   "n_ring_systems": 3,
+   "n_aromatic_rings": 3,
+   "n_spiro": 0,
+   "n_bridgehead": 0,
+   "medium_rings_7_9": [],
+   "small_rings_3_4": [],
+   "ring_strain_est_kcal": 0.0,
+   "complexity_index": 9.0
+  },
+  "retro": {
+   "sa_score": 2.18,
+   "n_candidate_cuts": 2,
+   "n_feasible_cuts": 2,
+   "route_score": 1.0,
+   "3step_synth_heuristic": true
+  },
+  "torsion": {
+   "Emin_kcal": 110.2,
+   "n_conformers": 15,
+   "torsion_bonds": [
+    {
+     "kind": "rot",
+     "barrier_raw_kcal": 6.18,
+     "barrier_kcal": 6.18,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 0.0
+    },
+    {
+     "kind": "pi",
+     "barrier_raw_kcal": 6.22,
+     "barrier_kcal": 6.22,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 2.97
+    },
+    {
+     "kind": "pi",
+     "barrier_raw_kcal": 6.86,
+     "barrier_kcal": 6.86,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 0.3
+    },
+    {
+     "kind": "rot",
+     "barrier_raw_kcal": 8.3,
+     "barrier_kcal": 8.3,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 0.0
+    },
+    {
+     "kind": "rot",
+     "barrier_raw_kcal": 11.59,
+     "barrier_kcal": 11.59,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 0.0
+    },
+    {
+     "kind": "rot",
+     "barrier_raw_kcal": 11.32,
+     "barrier_kcal": 11.32,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 1.02
+    },
+    {
+     "kind": "rot",
+     "barrier_raw_kcal": 10.91,
+     "barrier_kcal": 10.91,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 1.56
+    },
+    {
+     "kind": "rot",
+     "barrier_raw_kcal": 6.93,
+     "barrier_kcal": 6.93,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 0.0
+    }
+   ],
+   "planar_strain_kcal": 3.27,
+   "n_pi_axes": 2,
+   "n_blocked_rotors": 0
+  },
+  "dock_claimed": -10.1,
+  "dock_corrected": -6.83,
+  "planar_strain_kcal": 3.27,
+  "gate": false,
+  "gate_reasons": [],
+  "_class": "control",
+  "archetype": "延展喹唑啉先导（吗啉乙氧基苯胺尾）"
+ },
+ {
+  "id": "G01",
+  "ok": true,
+  "canonical_smiles": "COc1cc2ncnc(Nc3c(C)cccc3C)c2cc1OC",
+  "phys": {
+   "MW": 309.4,
+   "cLogP": 4.01,
+   "HBD": 1,
+   "HBA": 5,
+   "TPSA": 56.3,
+   "RotB": 4,
+   "Fsp3": 0.22,
+   "ArRings": 3,
+   "StereoCenters": 0,
+   "QED": 0.789,
+   "Ro5_viol": 0
+  },
+  "alerts": {
+   "pains": [],
+   "brenk": [],
+   "nih": [],
+   "reos": []
+  },
+  "alerts_any": false,
+  "ring": {
+   "n_rings": 3,
+   "ring_sizes": [
+    6,
+    6,
+    6
+   ],
+   "size_counter": {
+    "6": 3
+   },
+   "n_ring_systems": 2,
+   "n_aromatic_rings": 3,
+   "n_spiro": 0,
+   "n_bridgehead": 0,
+   "medium_rings_7_9": [],
+   "small_rings_3_4": [],
+   "ring_strain_est_kcal": 0.0,
+   "complexity_index": 7.0
+  },
+  "retro": {
+   "sa_score": 2.03,
+   "n_candidate_cuts": 2,
+   "n_feasible_cuts": 2,
+   "route_score": 1.0,
+   "3step_synth_heuristic": true
+  },
+  "torsion": {
+   "Emin_kcal": 35.45,
+   "n_conformers": 4,
+   "torsion_bonds": [
+    {
+     "kind": "rot",
+     "barrier_raw_kcal": 6.44,
+     "barrier_kcal": 6.44,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 0.0
+    },
+    {
+     "kind": "pi",
+     "barrier_raw_kcal": 7.91,
+     "barrier_kcal": 7.91,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 3.88
+    },
+    {
+     "kind": "pi",
+     "barrier_raw_kcal": 6.09,
+     "barrier_kcal": 6.09,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 5.48
+    },
+    {
+     "kind": "rot",
+     "barrier_raw_kcal": 7.04,
+     "barrier_kcal": 7.04,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 0.0
+    }
+   ],
+   "planar_strain_kcal": 9.36,
+   "n_pi_axes": 2,
+   "n_blocked_rotors": 0
+  },
+  "dock_claimed": -11.4,
+  "dock_corrected": -2.04,
+  "planar_strain_kcal": 9.36,
+  "gate": false,
+  "gate_reasons": [],
+  "_class": "generated",
+  "archetype": "仿真·新颖骨架#1：在铰链苯胺上添加 2,6-二甲基→共平面性破坏"
+ },
+ {
+  "id": "G02",
+  "ok": true,
+  "canonical_smiles": "Cc1cccc(C)c1NC(=O)c1n[nH]c2ccccc12",
+  "phys": {
+   "MW": 265.3,
+   "cLogP": 3.43,
+   "HBD": 2,
+   "HBA": 2,
+   "TPSA": 57.8,
+   "RotB": 2,
+   "Fsp3": 0.12,
+   "ArRings": 3,
+   "StereoCenters": 0,
+   "QED": 0.745,
+   "Ro5_viol": 0
+  },
+  "alerts": {
+   "pains": [],
+   "brenk": [],
+   "nih": [],
+   "reos": []
+  },
+  "alerts_any": false,
+  "ring": {
+   "n_rings": 3,
+   "ring_sizes": [
+    6,
+    5,
+    6
+   ],
+   "size_counter": {
+    "5": 1,
+    "6": 2
+   },
+   "n_ring_systems": 2,
+   "n_aromatic_rings": 3,
+   "n_spiro": 0,
+   "n_bridgehead": 0,
+   "medium_rings_7_9": [],
+   "small_rings_3_4": [],
+   "ring_strain_est_kcal": 0.0,
+   "complexity_index": 7.0
+  },
+  "retro": {
+   "sa_score": 1.89,
+   "n_candidate_cuts": 2,
+   "n_feasible_cuts": 2,
+   "route_score": 1.0,
+   "3step_synth_heuristic": true
+  },
+  "torsion": {
+   "Emin_kcal": 74.99,
+   "n_conformers": 2,
+   "torsion_bonds": [
+    {
+     "kind": "pi",
+     "barrier_raw_kcal": 20.73,
+     "barrier_kcal": 20.73,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 0.0
+    },
+    {
+     "kind": "pi",
+     "barrier_raw_kcal": 10.53,
+     "barrier_kcal": 10.53,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 2.1
+    },
+    {
+     "kind": "pi",
+     "barrier_raw_kcal": 15.67,
+     "barrier_kcal": 15.67,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 0.0
+    }
+   ],
+   "planar_strain_kcal": 2.1,
+   "n_pi_axes": 3,
+   "n_blocked_rotors": 0
+  },
+  "dock_claimed": -11.8,
+  "dock_corrected": -9.7,
+  "planar_strain_kcal": 2.1,
+  "gate": false,
+  "gate_reasons": [],
+  "_class": "generated",
+  "archetype": "仿真·新颖骨架#2：吲唑酰胺 N-芳基邻位二甲基→酰胺扭转"
+ },
+ {
+  "id": "G03",
+  "ok": true,
+  "canonical_smiles": "Cc1cccc(C)c1-c1cc2ncnc(N)c2[nH]1",
+  "phys": {
+   "MW": 238.3,
+   "cLogP": 2.82,
+   "HBD": 2,
+   "HBA": 3,
+   "TPSA": 67.6,
+   "RotB": 1,
+   "Fsp3": 0.14,
+   "ArRings": 3,
+   "StereoCenters": 0,
+   "QED": 0.685,
+   "Ro5_viol": 0
+  },
+  "alerts": {
+   "pains": [],
+   "brenk": [],
+   "nih": [],
+   "reos": []
+  },
+  "alerts_any": false,
+  "ring": {
+   "n_rings": 3,
+   "ring_sizes": [
+    6,
+    5,
+    6
+   ],
+   "size_counter": {
+    "5": 1,
+    "6": 2
+   },
+   "n_ring_systems": 2,
+   "n_aromatic_rings": 3,
+   "n_spiro": 0,
+   "n_bridgehead": 0,
+   "medium_rings_7_9": [],
+   "small_rings_3_4": [],
+   "ring_strain_est_kcal": 0.0,
+   "complexity_index": 7.0
+  },
+  "retro": {
+   "sa_score": 2.6,
+   "n_candidate_cuts": 1,
+   "n_feasible_cuts": 1,
+   "route_score": 1.0,
+   "3step_synth_heuristic": true
+  },
+  "torsion": {
+   "Emin_kcal": -38.91,
+   "n_conformers": 2,
+   "torsion_bonds": [
+    {
+     "kind": "pi",
+     "barrier_raw_kcal": 14.64,
+     "barrier_kcal": 14.64,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 14.33
+    }
+   ],
+   "planar_strain_kcal": 14.33,
+   "n_pi_axes": 1,
+   "n_blocked_rotors": 0
+  },
+  "dock_claimed": -12.2,
+  "dock_corrected": 2.13,
+  "planar_strain_kcal": 14.33,
+  "gate": false,
+  "gate_reasons": [],
+  "_class": "generated",
+  "archetype": "仿真·新颖骨架#3：吡咯并嘧啶 5-(2,6-二甲苯基)→联芳基扭转"
+ },
+ {
+  "id": "G04",
+  "ok": true,
+  "canonical_smiles": "NC1c2ccccc2CCc2ccccc21",
+  "phys": {
+   "MW": 209.3,
+   "cLogP": 2.83,
+   "HBD": 1,
+   "HBA": 1,
+   "TPSA": 26.0,
+   "RotB": 0,
+   "Fsp3": 0.2,
+   "ArRings": 2,
+   "StereoCenters": 0,
+   "QED": 0.709,
+   "Ro5_viol": 0
+  },
+  "alerts": {
+   "pains": [],
+   "brenk": [],
+   "nih": [],
+   "reos": []
+  },
+  "alerts_any": false,
+  "ring": {
+   "n_rings": 3,
+   "ring_sizes": [
+    7,
+    6,
+    6
+   ],
+   "size_counter": {
+    "6": 2,
+    "7": 1
+   },
+   "n_ring_systems": 1,
+   "n_aromatic_rings": 2,
+   "n_spiro": 0,
+   "n_bridgehead": 0,
+   "medium_rings_7_9": [
+    7
+   ],
+   "small_rings_3_4": [],
+   "ring_strain_est_kcal": 2.66,
+   "complexity_index": 6.0
+  },
+  "retro": {
+   "sa_score": 2.01,
+   "n_candidate_cuts": 0,
+   "n_feasible_cuts": 0,
+   "route_score": 0.0,
+   "3step_synth_heuristic": false
+  },
+  "torsion": {
+   "Emin_kcal": 52.48,
+   "n_conformers": 5,
+   "torsion_bonds": [],
+   "planar_strain_kcal": 0.0,
+   "n_pi_axes": 0,
+   "n_blocked_rotors": 0
+  },
+  "dock_claimed": -12.7,
+  "dock_corrected": -12.7,
+  "planar_strain_kcal": 0.0,
+  "gate": false,
+  "gate_reasons": [],
+  "_class": "generated",
+  "archetype": "仿真·新颖骨架#4：二苯并[a,d][7]轮烯胺（7 元中环刚性亲脂体）"
+ },
+ {
+  "id": "G05",
+  "ok": true,
+  "canonical_smiles": "COc1cc2ncnc(N3CC(C)(C)C3=O)c2cc1OC",
+  "phys": {
+   "MW": 287.3,
+   "cLogP": 2.02,
+   "HBD": 0,
+   "HBA": 5,
+   "TPSA": 64.6,
+   "RotB": 3,
+   "Fsp3": 0.4,
+   "ArRings": 2,
+   "StereoCenters": 0,
+   "QED": 0.808,
+   "Ro5_viol": 0
+  },
+  "alerts": {
+   "pains": [],
+   "brenk": [],
+   "nih": [
+    "NIH:betalactam"
+   ],
+   "reos": []
+  },
+  "alerts_any": true,
+  "ring": {
+   "n_rings": 3,
+   "ring_sizes": [
+    4,
+    6,
+    6
+   ],
+   "size_counter": {
+    "4": 1,
+    "6": 2
+   },
+   "n_ring_systems": 2,
+   "n_aromatic_rings": 2,
+   "n_spiro": 0,
+   "n_bridgehead": 0,
+   "medium_rings_7_9": [],
+   "small_rings_3_4": [
+    4
+   ],
+   "ring_strain_est_kcal": 13.15,
+   "complexity_index": 7.5
+  },
+  "retro": {
+   "sa_score": 2.49,
+   "n_candidate_cuts": 1,
+   "n_feasible_cuts": 1,
+   "route_score": 1.0,
+   "3step_synth_heuristic": true
+  },
+  "torsion": {
+   "Emin_kcal": 7.24,
+   "n_conformers": 5,
+   "torsion_bonds": [
+    {
+     "kind": "pi",
+     "barrier_raw_kcal": 16.0,
+     "barrier_kcal": 16.0,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 0.54
+    },
+    {
+     "kind": "rot",
+     "barrier_raw_kcal": 6.75,
+     "barrier_kcal": 6.75,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 0.0
+    },
+    {
+     "kind": "rot",
+     "barrier_raw_kcal": 12.98,
+     "barrier_kcal": 12.98,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 0.12
+    }
+   ],
+   "planar_strain_kcal": 0.54,
+   "n_pi_axes": 1,
+   "n_blocked_rotors": 0
+  },
+  "dock_claimed": -13.1,
+  "dock_corrected": -12.56,
+  "planar_strain_kcal": 0.54,
+  "gate": true,
+  "gate_reasons": [
+   "ring_strain>=13.15"
+  ],
+  "_class": "generated",
+  "archetype": "仿真·新颖骨架#5：喹唑啉 4-位接入 β-内酰胺(4 元环)→小环张力/HBD 丢失"
+ },
+ {
+  "id": "G06",
+  "ok": true,
+  "canonical_smiles": "COc1cc2ncnc(Nc3ccc(O)c(O)c3)c2cc1OC",
+  "phys": {
+   "MW": 313.3,
+   "cLogP": 2.8,
+   "HBD": 3,
+   "HBA": 7,
+   "TPSA": 96.7,
+   "RotB": 4,
+   "Fsp3": 0.12,
+   "ArRings": 3,
+   "StereoCenters": 0,
+   "QED": 0.503,
+   "Ro5_viol": 0
+  },
+  "alerts": {
+   "pains": [
+    "PAINS_B:catechol_A(92)"
+   ],
+   "brenk": [
+    "Brenk:catechol",
+    "Brenk:hydroquinone"
+   ],
+   "nih": [],
+   "reos": []
+  },
+  "alerts_any": true,
+  "ring": {
+   "n_rings": 3,
+   "ring_sizes": [
+    6,
+    6,
+    6
+   ],
+   "size_counter": {
+    "6": 3
+   },
+   "n_ring_systems": 2,
+   "n_aromatic_rings": 3,
+   "n_spiro": 0,
+   "n_bridgehead": 0,
+   "medium_rings_7_9": [],
+   "small_rings_3_4": [],
+   "ring_strain_est_kcal": 0.0,
+   "complexity_index": 7.0
+  },
+  "retro": {
+   "sa_score": 2.12,
+   "n_candidate_cuts": 2,
+   "n_feasible_cuts": 2,
+   "route_score": 1.0,
+   "3step_synth_heuristic": true
+  },
+  "torsion": {
+   "Emin_kcal": 9.68,
+   "n_conformers": 8,
+   "torsion_bonds": [
+    {
+     "kind": "rot",
+     "barrier_raw_kcal": 6.49,
+     "barrier_kcal": 6.49,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 0.0
+    },
+    {
+     "kind": "pi",
+     "barrier_raw_kcal": 6.32,
+     "barrier_kcal": 6.32,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 2.01
+    },
+    {
+     "kind": "pi",
+     "barrier_raw_kcal": 8.03,
+     "barrier_kcal": 8.03,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 0.0
+    },
+    {
+     "kind": "rot",
+     "barrier_raw_kcal": 6.98,
+     "barrier_kcal": 6.98,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 0.0
+    }
+   ],
+   "planar_strain_kcal": 2.01,
+   "n_pi_axes": 2,
+   "n_blocked_rotors": 0
+  },
+  "dock_claimed": -12.0,
+  "dock_corrected": -9.99,
+  "planar_strain_kcal": 2.01,
+  "gate": true,
+  "gate_reasons": [
+   "PAINS",
+   "Brenk"
+  ],
+  "_class": "generated",
+  "archetype": "仿真·新颖骨架#6：苯胺上邻苯二酚→PAINS"
+ },
+ {
+  "id": "G07",
+  "ok": true,
+  "canonical_smiles": "CC(=O)/C=C/c1c[nH]c2ncnc(N)c12",
+  "phys": {
+   "MW": 202.2,
+   "cLogP": 1.14,
+   "HBD": 2,
+   "HBA": 4,
+   "TPSA": 84.7,
+   "RotB": 2,
+   "Fsp3": 0.1,
+   "ArRings": 2,
+   "StereoCenters": 0,
+   "QED": 0.715,
+   "Ro5_viol": 0
+  },
+  "alerts": {
+   "pains": [],
+   "brenk": [
+    "Brenk:Michael_acceptor_1"
+   ],
+   "nih": [],
+   "reos": [
+    "michael_acceptor_enone"
+   ]
+  },
+  "alerts_any": true,
+  "ring": {
+   "n_rings": 2,
+   "ring_sizes": [
+    5,
+    6
+   ],
+   "size_counter": {
+    "5": 1,
+    "6": 1
+   },
+   "n_ring_systems": 1,
+   "n_aromatic_rings": 2,
+   "n_spiro": 0,
+   "n_bridgehead": 0,
+   "medium_rings_7_9": [],
+   "small_rings_3_4": [],
+   "ring_strain_est_kcal": 0.0,
+   "complexity_index": 4.0
+  },
+  "retro": {
+   "sa_score": 2.86,
+   "n_candidate_cuts": 0,
+   "n_feasible_cuts": 0,
+   "route_score": 0.0,
+   "3step_synth_heuristic": false
+  },
+  "torsion": {
+   "Emin_kcal": -26.77,
+   "n_conformers": 4,
+   "torsion_bonds": [
+    {
+     "kind": "rot",
+     "barrier_raw_kcal": 5.86,
+     "barrier_kcal": 5.86,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 0.0
+    },
+    {
+     "kind": "rot",
+     "barrier_raw_kcal": 7.65,
+     "barrier_kcal": 7.65,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 0.31
+    }
+   ],
+   "planar_strain_kcal": 0.0,
+   "n_pi_axes": 0,
+   "n_blocked_rotors": 0
+  },
+  "dock_claimed": -11.6,
+  "dock_corrected": -11.6,
+  "planar_strain_kcal": 0.0,
+  "gate": true,
+  "gate_reasons": [
+   "REOS_reactive",
+   "Brenk"
+  ],
+  "_class": "generated",
+  "archetype": "仿真·新颖骨架#7：吡咯并嘧啶接烯酮 Michael 受体→PAINS"
+ },
+ {
+  "id": "G08",
+  "ok": true,
+  "canonical_smiles": "COc1cc2ncnc(Nc3ccc(NC(=O)CCl)cc3)c2cc1OC",
+  "phys": {
+   "MW": 372.8,
+   "cLogP": 3.57,
+   "HBD": 2,
+   "HBA": 6,
+   "TPSA": 85.4,
+   "RotB": 6,
+   "Fsp3": 0.17,
+   "ArRings": 3,
+   "StereoCenters": 0,
+   "QED": 0.643,
+   "Ro5_viol": 0
+  },
+  "alerts": {
+   "pains": [],
+   "brenk": [
+    "Brenk:alkyl_halide"
+   ],
+   "nih": [
+    "NIH:alpha_halo_carbonyl",
+    "NIH:primary_halide_sulfate"
+   ],
+   "reos": [
+    "alkyl_halide_reactive"
+   ]
+  },
+  "alerts_any": true,
+  "ring": {
+   "n_rings": 3,
+   "ring_sizes": [
+    6,
+    6,
+    6
+   ],
+   "size_counter": {
+    "6": 3
+   },
+   "n_ring_systems": 2,
+   "n_aromatic_rings": 3,
+   "n_spiro": 0,
+   "n_bridgehead": 0,
+   "medium_rings_7_9": [],
+   "small_rings_3_4": [],
+   "ring_strain_est_kcal": 0.0,
+   "complexity_index": 7.0
+  },
+  "retro": {
+   "sa_score": 2.08,
+   "n_candidate_cuts": 4,
+   "n_feasible_cuts": 3,
+   "route_score": 0.75,
+   "3step_synth_heuristic": true
+  },
+  "torsion": {
+   "Emin_kcal": 28.0,
+   "n_conformers": 15,
+   "torsion_bonds": [
+    {
+     "kind": "rot",
+     "barrier_raw_kcal": 6.36,
+     "barrier_kcal": 6.36,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 0.0
+    },
+    {
+     "kind": "pi",
+     "barrier_raw_kcal": 6.44,
+     "barrier_kcal": 6.44,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 2.47
+    },
+    {
+     "kind": "pi",
+     "barrier_raw_kcal": 7.34,
+     "barrier_kcal": 7.34,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 0.0
+    },
+    {
+     "kind": "pi",
+     "barrier_raw_kcal": 19.79,
+     "barrier_kcal": 19.79,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 0.0
+    },
+    {
+     "kind": "pi",
+     "barrier_raw_kcal": 19.21,
+     "barrier_kcal": 19.21,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 0.0
+    },
+    {
+     "kind": "rot",
+     "barrier_raw_kcal": 4.43,
+     "barrier_kcal": 4.43,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 0.45
+    },
+    {
+     "kind": "rot",
+     "barrier_raw_kcal": 6.97,
+     "barrier_kcal": 6.97,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 0.0
+    }
+   ],
+   "planar_strain_kcal": 2.47,
+   "n_pi_axes": 4,
+   "n_blocked_rotors": 0
+  },
+  "dock_claimed": -12.4,
+  "dock_corrected": -9.93,
+  "planar_strain_kcal": 2.47,
+  "gate": true,
+  "gate_reasons": [
+   "REOS_reactive",
+   "Brenk"
+  ],
+  "_class": "generated",
+  "archetype": "仿真·新颖骨架#8：氯代乙酰胺芳基→REOS 烷基化警示"
+ },
+ {
+  "id": "G09",
+  "ok": true,
+  "canonical_smiles": "O=C1CCCCCCN1c1ncnc2[nH]ccc12",
+  "phys": {
+   "MW": 244.3,
+   "cLogP": 2.25,
+   "HBD": 1,
+   "HBA": 3,
+   "TPSA": 61.9,
+   "RotB": 1,
+   "Fsp3": 0.46,
+   "ArRings": 2,
+   "StereoCenters": 0,
+   "QED": 0.837,
+   "Ro5_viol": 0
+  },
+  "alerts": {
+   "pains": [],
+   "brenk": [],
+   "nih": [],
+   "reos": []
+  },
+  "alerts_any": false,
+  "ring": {
+   "n_rings": 3,
+   "ring_sizes": [
+    8,
+    6,
+    5
+   ],
+   "size_counter": {
+    "5": 1,
+    "6": 1,
+    "8": 1
+   },
+   "n_ring_systems": 2,
+   "n_aromatic_rings": 2,
+   "n_spiro": 0,
+   "n_bridgehead": 0,
+   "medium_rings_7_9": [
+    8
+   ],
+   "small_rings_3_4": [],
+   "ring_strain_est_kcal": 7.27,
+   "complexity_index": 8.0
+  },
+  "retro": {
+   "sa_score": 2.42,
+   "n_candidate_cuts": 1,
+   "n_feasible_cuts": 1,
+   "route_score": 1.0,
+   "3step_synth_heuristic": true
+  },
+  "torsion": {
+   "Emin_kcal": -5.11,
+   "n_conformers": 11,
+   "torsion_bonds": [
+    {
+     "kind": "pi",
+     "barrier_raw_kcal": 11.8,
+     "barrier_kcal": 11.8,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 1.03
+    }
+   ],
+   "planar_strain_kcal": 1.03,
+   "n_pi_axes": 1,
+   "n_blocked_rotors": 0
+  },
+  "dock_claimed": -12.6,
+  "dock_corrected": -11.57,
+  "planar_strain_kcal": 1.03,
+  "gate": true,
+  "gate_reasons": [
+   "ring_strain>=7.27"
+  ],
+  "_class": "generated",
+  "archetype": "仿真·新颖骨架#9：8 元环 N-芳基内酰胺(扭转酰胺)"
+ },
+ {
+  "id": "G10",
+  "ok": true,
+  "canonical_smiles": "Cc1cccc(C(=O)Nc2ccc(F)cc2)c1-c1c(C)cccc1C(=O)Nc1ccc(F)cc1",
+  "phys": {
+   "MW": 456.5,
+   "cLogP": 6.75,
+   "HBD": 2,
+   "HBA": 2,
+   "TPSA": 58.2,
+   "RotB": 5,
+   "Fsp3": 0.07,
+   "ArRings": 4,
+   "StereoCenters": 0,
+   "QED": 0.349,
+   "Ro5_viol": 1
+  },
+  "alerts": {
+   "pains": [],
+   "brenk": [],
+   "nih": [],
+   "reos": []
+  },
+  "alerts_any": false,
+  "ring": {
+   "n_rings": 4,
+   "ring_sizes": [
+    6,
+    6,
+    6,
+    6
+   ],
+   "size_counter": {
+    "6": 4
+   },
+   "n_ring_systems": 4,
+   "n_aromatic_rings": 4,
+   "n_spiro": 0,
+   "n_bridgehead": 0,
+   "medium_rings_7_9": [],
+   "small_rings_3_4": [],
+   "ring_strain_est_kcal": 0.0,
+   "complexity_index": 12.0
+  },
+  "retro": {
+   "sa_score": 2.04,
+   "n_candidate_cuts": 5,
+   "n_feasible_cuts": 5,
+   "route_score": 1.0,
+   "3step_synth_heuristic": true
+  },
+  "torsion": {
+   "Emin_kcal": 69.78,
+   "n_conformers": 16,
+   "torsion_bonds": [
+    {
+     "kind": "pi",
+     "barrier_raw_kcal": 11.98,
+     "barrier_kcal": 11.98,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 8.37
+    },
+    {
+     "kind": "pi",
+     "barrier_raw_kcal": 21.07,
+     "barrier_kcal": 21.07,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 0.0
+    },
+    {
+     "kind": "pi",
+     "barrier_raw_kcal": 19.68,
+     "barrier_kcal": 19.68,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 0.0
+    },
+    {
+     "kind": "pi",
+     "barrier_raw_kcal": 1136.47,
+     "barrier_kcal": 35.0,
+     "rotor_blocked": true,
+     "planarity_penalty_kcal": 49.53
+    },
+    {
+     "kind": "pi",
+     "barrier_raw_kcal": 18.38,
+     "barrier_kcal": 18.38,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 12.0
+    },
+    {
+     "kind": "pi",
+     "barrier_raw_kcal": 30.27,
+     "barrier_kcal": 30.27,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 0.0
+    },
+    {
+     "kind": "pi",
+     "barrier_raw_kcal": 20.47,
+     "barrier_kcal": 20.47,
+     "rotor_blocked": false,
+     "planarity_penalty_kcal": 0.0
+    }
+   ],
+   "planar_strain_kcal": 69.9,
+   "n_pi_axes": 7,
+   "n_blocked_rotors": 1
+  },
+  "dock_claimed": -14.3,
+  "dock_corrected": 55.6,
+  "planar_strain_kcal": 69.9,
+  "gate": true,
+  "gate_reasons": [
+   "cLogP>5.5",
+   "QED<0.45"
+  ],
+  "_class": "generated",
+  "archetype": "仿真·新颖骨架#10：2,2',6,6'-受阻双酰胺联芳基(类阻转异构)"
+ }
+]

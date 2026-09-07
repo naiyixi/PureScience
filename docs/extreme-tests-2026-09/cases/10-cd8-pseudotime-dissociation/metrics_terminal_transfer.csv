@@ -1,0 +1,6 @@
+metric,RAW,FILTER,REGRESS
+"Spearman(pseudotime, spatial depth)",0.661,0.994,0.994
+terminal precision,0.52,0.963,0.959
+terminal F1,0.52,0.963,0.959
+spurious cells within inferred terminal (%),47.97,3.72,4.05
+spurious cells as % of all cells,11.83,0.92,1.0

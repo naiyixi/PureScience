@@ -189,11 +189,24 @@ That is why PureScience is implemented as the **open, local-first, model-agnosti
 
 Between 2026-09-04 and 2026-09-07, PureScience was handed **30 consecutive adversarial research challenges** by external reviewers — no demo data, no curated inputs. Each challenge described a state-of-the-art but deeply flawed research claim (a kinase "selectivity" chemistry cannot support, an antibody whose affinity defeats its own brain delivery, a condensate drug that "dissolves" a transcription factory by gelling it, a CAR whose affinity can never compensate sparse antigen…) and demanded a mechanism-level verdict. Every run executed locally on one Apple M2 laptop with **8 GB of RAM**, and every run ended with a versioned deliverable set: a Chinese adjudication report (with its own Data-Gap list), the solver code, and publication-grade figures — visible in the project's Files panel and replayable from the conversation.
 
+The complete evidence is archived case-by-case: **all 30 reports, solvers, and figures live under [`docs/extreme-tests-2026-09/cases/`](docs/extreme-tests-2026-09/cases/)**, with an in-app session screenshot per flagship case in the [full evidence gallery](docs/extreme-tests-2026-09/README.md). Below is a condensed tour.
+
 ![30 stress-test projects, each row showing its real artifact types](docs/extreme-tests-2026-09/stress-projects-home.png)
 *The projects page after the marathon — every row lists the actual file types its session produced (MD · PY · PNG · CSV · HTML).*
 
-![Adjudication session: conversation left, versioned Files panel right](docs/extreme-tests-2026-09/session-llps-files.png)
-*A condensate-targeting drug adjudication session: the conversation includes the agent reviewing its own figure and re-rendering it after a coordinate mismatch; the Files panel holds the versioned report, solver, figures, and data.*
+<p align="center">
+  <img src="docs/extreme-tests-2026-09/session-llps-files.png" alt="LLPS adjudication session: conversation left, versioned Files panel right" width="860" />
+</p>
+*LLPS condensate-drug session — the conversation (left) includes the agent catching a coordinate mismatch in its own figure and re-rendering it; the Files panel (right) holds the versioned report, solver, figures and data.*
+
+More sessions, same pattern — each with its own solver outputs in the Files panel:
+
+<p align="center">
+  <img src="docs/extreme-tests-2026-09/shots/42-bbb-session.png" alt="BBB transcytosis session" width="640" />
+  <img src="docs/extreme-tests-2026-09/shots/46-cd8-session.png" alt="CD8 pseudotime session" width="640" />
+  <img src="docs/extreme-tests-2026-09/shots/48-tpd-session.png" alt="TPD futile-cycle session" width="640" />
+  <img src="docs/extreme-tests-2026-09/shots/16-adc-session.png" alt="ADC multiscale session" width="640" />
+</p>
 
 Sampled verdicts — each row is a direct summary of a real session's report:
 
@@ -208,12 +221,39 @@ Sampled verdicts — each row is a direct summary of a real session's report:
 
 Every figure below is a real artifact produced by that session's own numerical solver (ODE / PDE / lattice Monte-Carlo) — not a stock graphic:
 
-| | | |
-|---|---|---|
-| ![LLPS thermodynamics phase diagram + curing heatmaps](docs/extreme-tests-2026-09/fig-llps-thermo.png) | ![BBB affinity-brain-exposure 3D phase diagram](docs/extreme-tests-2026-09/fig-bbb-3d.png) | ![TNIK P-loop static conformational bias](docs/extreme-tests-2026-09/fig-tnik-ploop.png) |
-| ![ADC perivascular concentration contours at 168 h](docs/extreme-tests-2026-09/fig-adc-contour.png) | ![TPD degradation-efficiency heatmap over residence time x DUB activity](docs/extreme-tests-2026-09/fig-tpd-heatmap.png) | ![bNAb epistasis deviation heatmap over mutation pairs](docs/extreme-tests-2026-09/fig-bnab-epistasis.png) |
+<p align="center">
+  <img src="docs/extreme-tests-2026-09/fig-llps-thermo.png" alt="LLPS thermodynamics phase diagram + curing heatmaps" width="860" />
+</p>
+*LLPS condensate drug: Flory-Huggins phase diagram, curing heatmaps — Cahn–Hilliard phase-field solver.*
 
-> **中文速览（2026-09 极限压测）**：30 道研发委员会级对抗性压测（激酶同源选择性 → 血脑屏障转胞吞 → 相分离凝胶化 → 免疫突触 → 演化博弈…）于 09-04 → 09-07 在一台 Apple M2 8GB 笔记本上连续完成，每题交付「中文裁决研报 + 数值求解器 + 出版级图件」，全部保留在会话 Files 面板、可版本回放；报告延续「Data Gap 清单」与「已验证 / 无法核实」分离口径。压测中系统还多次驳回出题方的诱导性前提（如「强表达必致混沌」被数值结论直接否定）。整套实证介绍 PPT（含全部会话截图与产物图）随每次 Release 资产与演示素材提供。
+<p align="center">
+  <img src="docs/extreme-tests-2026-09/fig-bbb-3d.png" alt="BBB affinity–brain-exposure 3D phase diagram" width="860" />
+</p>
+*BBB/TfR transcytosis: affinity × dose × brain-exposure phase diagram — the high-affinity plateau where delivery collapses.*
+
+<p align="center">
+  <img src="docs/extreme-tests-2026-09/fig-adc-contour.png" alt="ADC perivascular concentration contours at 168 h" width="860" />
+</p>
+*ADC multiscale barrier: radial concentration contours around a vessel at 168 h — high-affinity arm pinned within 1–2 cell diameters.*
+
+<p align="center">
+  <img src="docs/extreme-tests-2026-09/fig-tnik-ploop.png" alt="TNIK P-loop static conformational bias" width="860" />
+</p>
+*TNIK vs paralog selectivity audit: P-loop conformational snapshots across crystal forms — the "1,000× selectivity" has no physical basis.*
+
+<p align="center">
+  <img src="docs/extreme-tests-2026-09/fig-tpd-heatmap.png" alt="TPD degradation-efficiency heatmap" width="860" />
+</p>
+*TPD futile-cycle model: degradation efficiency over ternary-complex lifetime × DUB activity — too-tight binding burns ATP and degrades nothing.*
+
+<p align="center">
+  <img src="docs/extreme-tests-2026-09/fig-bnab-epistasis.png" alt="bNAb epistasis deviation heatmap" width="860" />
+</p>
+*bNAb directed evolution: pairwise epistasis deviations — greedy mutation stacking loses ~10× affinity to negative epistasis.*
+
+…and **24 more challenge figures** (RNA polyelectrolyte entropy, lyophilization water-percolation, CAR-T synapse phase diagrams, engineered-bacteria cheater sweeps, antibody ΔCₚ cold reversal, …) are archived with their reports and solver code in the [full evidence gallery](docs/extreme-tests-2026-09/README.md).
+
+> **中文速览（2026-09 极限压测）**：30 道研发委员会级对抗性压测（激酶同源选择性 → 血脑屏障转胞吞 → 相分离凝胶化 → 免疫突触 → 演化博弈…）于 09-04 → 09-07 在一台 Apple M2 8GB 笔记本上连续完成，每题交付「中文裁决研报 + 数值求解器 + 出版级图件」，全部保留在会话 Files 面板、可版本回放；报告延续「Data Gap 清单」与「已验证 / 无法核实」分离口径。压测中系统还多次驳回出题方的诱导性前提（如「强表达必致混沌」被数值结论直接否定）。**全量证据已入库**：30 个案例文件夹（研报/代码/图件）见 [`docs/extreme-tests-2026-09/cases/`](docs/extreme-tests-2026-09/cases/)，带会话截图的完整图库见 [`docs/extreme-tests-2026-09/README.md`](docs/extreme-tests-2026-09/README.md)；实证介绍 PPT（含会话截图与产物图）随 Release 资产与演示素材提供。
 
 ## How PureScience Compares
 

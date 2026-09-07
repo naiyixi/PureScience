@@ -1,0 +1,54 @@
+{
+ "collapse": {
+  "end_island": 0.0,
+  "end_tsg": 0.0,
+  "end_bulkA": 0.0,
+  "end_tadB": 0.0,
+  "t_tsg": null,
+  "t_tadB": null,
+  "island_first_below_half": 2
+ },
+ "insulate": {
+  "end_island": 0.8448,
+  "end_tsg": 0.8448,
+  "end_bulkA": 0.8445,
+  "end_tadB": 0.0001,
+  "t_tsg": 2,
+  "t_tadB": null,
+  "island_first_below_half": null,
+  "tadA_bulk_fill": 7
+ },
+ "breach": {
+  "end_island": 0.8448,
+  "end_tsg": 0.8448,
+  "end_bulkA": 0.8447,
+  "end_tadB": 0.8446,
+  "t_tsg": 2,
+  "t_tadB": 17,
+  "island_first_below_half": null,
+  "tadB_fill": 33
+ },
+ "contrast": {
+  "loop_t_tsg": 2,
+  "noloop_t_tsg": 18
+ },
+ "critical_width": {
+  "0.3": 3,
+  "0.55": 5,
+  "0.8": 6,
+  "1.05": null
+ },
+ "beta_star": 0.6964102564102564,
+ "collapse_isl_traj_every2": [
+  0.95,
+  0.449,
+  0.379,
+  0.318,
+  0.222,
+  0.076,
+  0.013,
+  0.002,
+  0.0,
+  0.0
+ ]
+}

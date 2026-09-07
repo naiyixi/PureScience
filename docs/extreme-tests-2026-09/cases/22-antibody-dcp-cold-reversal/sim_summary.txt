@@ -1,0 +1,47 @@
+=== mAb-01 anchor @25C: Kd=5.00e-12 M -> dG=-15.416 kcal/mol; dH=-35.000; dS=-65.69 cal/(mol*K) ===
+
+L1 two-state non-zero DeltaCp:
+  dCp=   -300 cal/(mol*K): T_H=-91.67 C  T_S=-33.63 C | Kd@0C=4.070e-14  Kd@4C=8.592e-14  Kd@25C=5.000e-12  Kd@37C=5.522e-11
+  dCp=   -500 cal/(mol*K): T_H=-45.00 C  T_S=-11.70 C | Kd@0C=6.057e-14  Kd@4C=1.131e-13  Kd@25C=5.000e-12  Kd@37C=5.966e-11
+  dCp=   -800 cal/(mol*K): T_H=-18.75 C  T_S=  1.50 C | Kd@0C=1.099e-13  Kd@4C=1.709e-13  Kd@25C=5.000e-12  Kd@37C=6.700e-11
+  dCp=  -1500 cal/(mol*K): T_H=  1.67 C  T_S= 12.23 C | Kd@0C=4.420e-13  Kd@4C=4.477e-13  Kd@25C=5.000e-12  Kd@37C=8.782e-11
+  dCp=  -2300 cal/(mol*K): T_H=  9.78 C  T_S= 16.61 C | Kd@0C=2.167e-12  Kd@4C=1.346e-12  Kd@25C=5.000e-12  Kd@37C=1.197e-10
+
+L2 naive constant-dH Van't Hoff vs real (log10 Kd_real/Kd_naive):
+  dCp=  -300: dlog10Kd( 0 C) = +0.259
+  dCp=  -300: dlog10Kd( 4 C) = +0.179
+  dCp=  -300: dlog10Kd(25 C) = -0.000
+  dCp=  -300: dlog10Kd(37 C) = +0.050
+  dCp=  -500: dlog10Kd( 0 C) = +0.432
+  dCp=  -500: dlog10Kd( 4 C) = +0.299
+  dCp=  -500: dlog10Kd(25 C) = -0.000
+  dCp=  -500: dlog10Kd(37 C) = +0.084
+  dCp=  -800: dlog10Kd( 0 C) = +0.691
+  dCp=  -800: dlog10Kd( 4 C) = +0.478
+  dCp=  -800: dlog10Kd(25 C) = -0.000
+  dCp=  -800: dlog10Kd(37 C) = +0.134
+  dCp= -1500: dlog10Kd( 0 C) = +1.295
+  dCp= -1500: dlog10Kd( 4 C) = +0.896
+  dCp= -1500: dlog10Kd(25 C) = -0.000
+  dCp= -1500: dlog10Kd(37 C) = +0.252
+  dCp= -2300: dlog10Kd( 0 C) = +1.985
+  dCp= -2300: dlog10Kd( 4 C) = +1.374
+  dCp= -2300: dlog10Kd(25 C) = -0.000
+  dCp= -2300: dlog10Kd(37 C) = +0.386
+
+L3 effective cold reversal (dCp=CANON, water-fragility amp sweep, cold gate on):
+  amp=    0 cal: Kd_eff@0C=5.241e-13  @4C=3.416e-13  @10C=4.493e-13  @25C=5.073e-12  @37C=6.751e-11
+  amp= 2500 cal: Kd_eff@0C=4.476e-11  @4C=1.862e-11  @10C=4.144e-12  @25C=5.219e-12  @37C=6.755e-11
+  amp= 5000 cal: Kd_eff@0C=3.824e-09  @4C=1.015e-09  @10C=3.822e-11  @25C=5.368e-12  @37C=6.758e-11
+  amp= 9000 cal: Kd_eff@0C=4.709e-06  @4C=6.096e-07  @10C=1.337e-09  @25C=5.616e-12  @37C=6.763e-11
+
+L5 kinetics: k_off_int(4/25/37 C) = 1.27e-06 / 8.64e-06 / 2.30e-05 s-1
+   phi_cold(4 C)=0.769   k_off_app(4 C)=4.901e-05 s-1   tau_app=5.67 h
+   phi_cold(25 C)=0.001   k_off_app(25 C)=8.951e-06 s-1   tau_app=31.03 h
+   phi_cold(37 C)=0.000   k_off_app(37 C)=2.301e-05 s-1   tau_app=12.07 h
+
+ASA-based DeltaCp estimate for buried nonpolar/polar area:
+  Anp=  600 A2, Apol=  400 A2 -> dCp in [-0.280, -0.072] kcal/(mol*K)
+  Anp=  900 A2, Apol=  600 A2 -> dCp in [-0.420, -0.108] kcal/(mol*K)
+  Anp= 1200 A2, Apol=  800 A2 -> dCp in [-0.560, -0.144] kcal/(mol*K)
+  Anp= 1600 A2, Apol= 1000 A2 -> dCp in [-0.750, -0.212] kcal/(mol*K)

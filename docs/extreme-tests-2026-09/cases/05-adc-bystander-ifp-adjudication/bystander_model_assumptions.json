@@ -1,0 +1,18 @@
+{
+ "DEFAULT": {
+  "r0_um": 6.0,
+  "D_cm2s": 3e-07,
+  "ratio": 100.0,
+  "ER": 4.0
+ },
+ "compartments": {
+  "k_reuptake_trap": 0.00385,
+  "k_metab": 0.00058,
+  "k_washout": 0.00019
+ },
+ "k_total_per_s": 0.00462,
+ "t_half_total_min": 2.5005309544009573,
+ "lambda_um": 80.58229640253803,
+ "kill_radius_um_base": 129.53249158651673,
+ "kill_radius_um_ER4": 68.80386147607942
+}

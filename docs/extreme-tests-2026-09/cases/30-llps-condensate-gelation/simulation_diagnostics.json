@@ -1,0 +1,17 @@
+{
+  "gel_point_occupancy_theta_c": 0.28,
+  "free_drug_gel_threshold_c_gel": 0.624,
+  "dissolution_occupancy_eta0.45": null,
+  "dissolution_occupancy_eta0.9": 0.575,
+  "condensate_retention_at_mid_dose": 0.9885,
+  "glass_volume_at_mid_dose": 0.0,
+  "glass_volume_at_high_dose": 0.118,
+  "oncogene_output_model_at_mid_dose": 1.446,
+  "oncogene_output_pipeline_claim_at_mid_dose": 0.097,
+  "TS_active_at_mid_dose": 0.072,
+  "survival_invertedU_peak_dose": 1.4,
+  "survival_invertedU_peak_value": 0.958,
+  "survival_at_zero_dose": 0.383,
+  "survival_at_max_dose": 0.28,
+  "note": "CPD-X 为虚构化合物；本模拟为物理动机明确的唯象 toy model, 用于论证非平衡凝胶化陷阱的非平凡后果，不构成对任何真实药物的疗效预测。"
+}

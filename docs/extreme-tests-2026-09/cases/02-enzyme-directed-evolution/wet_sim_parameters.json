@@ -1,0 +1,19 @@
+{
+  "sim_model": "mu(t) = background + slope*t;  RFU = mu*(1+N(0,0.05)), rounded to int",
+  "slope_rfu_per_min": {
+    "parent": 2.0,
+    "S65T": 2.6,
+    "S65A": 1.0
+  },
+  "activity_fold_vs_parent": {
+    "parent": 1.0,
+    "S65T": 1.3,
+    "S65A": 0.5
+  },
+  "noise_sigma_relative": 0.05,
+  "n_injected_outliers": 2,
+  "seed_plate_rng": 2024,
+  "outlier_factor_direction": "outlier1=spike(2-3x), outlier2=drop(0.25-0.45x)",
+  "plate_layout_source": "wet_handoff/96_well_plate_layout.json",
+  "output": "wet_data_raw.csv"
+}

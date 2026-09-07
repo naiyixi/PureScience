@@ -1,0 +1,15 @@
+Feature,Thalidomide,Lenalidomide,Pomalidomide
+Molecular formula,C13H10N2O4,C13H13N3O3,C13H11N3O4
+Molecular weight (g/mol),258.23,259.26,273.25
+"Stereogenic centres (marketed racemate, C3′ methine; 0 specified)",1,1,1
+H-bond donors,1,2,2
+H-bond acceptors,4,4,5
+Aromatic rings,1,1,1
+Aliphatic rings,2,2,2
+Rotatable bonds,1,1,1
+TPSA (Å²),83.6,92.5,109.6
+cLogP (Crippen),0.09,0.03,-0.33
+Hydrolysis-labile acyl C–N (imide/lactam) bonds,4,3,4
+SMILES (registered racemate),C1CC(=O)NC(=O)C1N2C(=O)C3=CC=CC=C3C2=O,C1CC(=O)NC(=O)C1N2CC3=C(C2=O)C=CC=C3N,C1CC(=O)NC(=O)C1N2C(=O)C3=C(C2=O)C(=CC=C3)N
+"SMILES ((S)-enantiomer, CRBN co-crystal pose)",O=C1c2ccccc2C(=O)N1[C@H]3CCC(=O)NC3=O,c1cc2c(c(c1)N)CN(C2=O)[C@H]3CCC(=O)NC3=O,c1cc2c(c(c1)N)C(=O)N(C2=O)[C@H]3CCC(=O)NC3=O
+InChIKey,UEJJHQNACJXSKW-UHFFFAOYSA-N,GOTYRUGSSMKFNF-UHFFFAOYSA-N,UVSMNLNDYGZFPF-UHFFFAOYSA-N
