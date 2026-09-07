@@ -286,6 +286,10 @@ export const resolveInputs = async (
 // Maximum timeout seconds allowed for a job (7 days). Commands above this are rejected.
 const JOB_MAX_TIMEOUT_SECONDS = 7 * 24 * 3600
 
+// Scheduler (slurm) hosts lift the ceiling to 30 days: wall-clock limits are enforced by the
+// scheduler via --time, so the app-side detached-SSH timeout no longer bounds the job.
+const JOB_SLURM_MAX_TIMEOUT_SECONDS = 30 * 24 * 3600
+
 // Default timeout when not specified (24 hours).
 const JOB_DEFAULT_TIMEOUT_SECONDS = 24 * 3600
 
@@ -1182,13 +1186,16 @@ export class ComputeService {
         }
         throw err
       }
-      if (rawTimeout > JOB_MAX_TIMEOUT_SECONDS) {
+      const maxTimeoutSeconds =
+        host.executionMode === 'slurm' ? JOB_SLURM_MAX_TIMEOUT_SECONDS : JOB_MAX_TIMEOUT_SECONDS
+      const ceilingLabel = host.executionMode === 'slurm' ? '30-day' : '7-day'
+      if (rawTimeout > maxTimeoutSeconds) {
         const err = new Error(
-          `timeout_seconds ${rawTimeout} exceeds the 7-day maximum. Use a scheduler driver for multi-day jobs.`
+          `timeout_seconds ${rawTimeout} exceeds the ${ceilingLabel} maximum for this host.`
         ) as Error & { computeCallError: ComputeCallError }
         err.computeCallError = {
           error_code: 'timeout',
-          message: `timeout_seconds exceeds the 7-day (${JOB_MAX_TIMEOUT_SECONDS}s) maximum.`,
+          message: `timeout_seconds exceeds the ${ceilingLabel} (${maxTimeoutSeconds}s) maximum for this host.`,
           retry_after_user_action: false
         }
         throw err

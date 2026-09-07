@@ -336,7 +336,9 @@ export class JobPoller {
 
       parts.push(
         `echo "${nonce}JOB_START:${job.job_id}"`,
-        `kill -0 ${handle.pid} 2>/dev/null && echo "${nonce}alive:1" || echo "${nonce}alive:0"`,
+        handle.kind === 'slurm' && handle.slurm_job_id
+          ? `[ -n "$(squeue -h -j ${handle.slurm_job_id} -o %T 2>/dev/null)" ] && echo "${nonce}alive:1" || echo "${nonce}alive:0"`
+          : `kill -0 ${handle.pid ?? ''} 2>/dev/null && echo "${nonce}alive:1" || echo "${nonce}alive:0"`,
         `if [ -f ${quoteRemotePath(handle.exit_code_path)} ]; then cat ${quoteRemotePath(handle.exit_code_path)}; else echo ""; fi`,
         `tail -c ${TAIL_MAX_BYTES} ${quoteRemotePath(handle.stdout_path)} 2>/dev/null || true`,
         `echo "${nonce}STDOUT_END:${job.job_id}"`,
@@ -556,17 +558,18 @@ export class JobPoller {
       if (elapsedSecs >= timeoutSecs + POLLER_KILL_GRACE_SECONDS) {
         const handle = this._parseHandle(job.remote_handle)
         if (handle) {
-          // Best-effort kill; ignore errors (process may have already exited).
+          // Best-effort kill; ignore errors (process/job may have already exited). Slurm jobs are
+          // cancelled through the scheduler (scancel) — the scheduler owns the process tree.
+          const killCmd =
+            handle.kind === 'slurm' && handle.slurm_job_id
+              ? `scancel ${handle.slurm_job_id} 2>/dev/null; true`
+              : `kill ${handle.pid ?? ''} 2>/dev/null; kill -9 ${handle.pid ?? ''} 2>/dev/null; true`
           try {
-            await this.deps.runner.run(
-              target,
-              `kill ${handle.pid} 2>/dev/null; kill -9 ${handle.pid} 2>/dev/null; true`,
-              {
-                timeoutMs: 10_000,
-                loginShell: false,
-                maxOutputBytes: 64
-              }
-            )
+            await this.deps.runner.run(target, killCmd, {
+              timeoutMs: 10_000,
+              loginShell: false,
+              maxOutputBytes: 64
+            })
           } catch {
             // Ignore kill errors — the job is marked terminal regardless.
           }

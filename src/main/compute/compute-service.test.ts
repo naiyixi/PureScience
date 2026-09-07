@@ -1897,6 +1897,79 @@ describe('ComputeService.submitJob', () => {
     expect(err.computeCallError?.error_code).toBe('timeout')
   })
 
+  it('allows multi-day timeouts on slurm hosts (30-day scheduler ceiling)', async () => {
+    const runner = makeFakeRunner({
+      exitCode: 0,
+      stdout: '',
+      stderr: '',
+      truncated: false,
+      timedOut: false
+    })
+    const { repo: jobRepo } = makeJobRepo()
+    const { repo } = makeRepo({
+      ...sampleHost(),
+      shape: 'scheduler_cluster',
+      executionMode: 'slurm'
+    })
+    const requestWithContext = vi.fn(() => Promise.resolve('once' as const))
+    const broker = {
+      request: vi.fn(),
+      requestWithContext,
+      respond: vi.fn()
+    } as unknown as ComputeApprovalBroker
+
+    const service = new ComputeService(runner, repo, broker, undefined, undefined, jobRepo)
+
+    // 10 days is beyond the direct-SSH 7-day cap but inside the scheduler ceiling — must pass
+    // validation and reach the approval gate.
+    const result = await service.submitJob(
+      'ssh:biowulf',
+      'test',
+      'echo hi',
+      { timeoutSeconds: 10 * 24 * 3600 },
+      { sessionId: 's1', projectId: 'p1' }
+    )
+    expect(result.status).toBe('submitted')
+    expect(requestWithContext).toHaveBeenCalled()
+  })
+
+  it('rejects timeout_seconds beyond the 30-day scheduler ceiling even on slurm hosts', async () => {
+    const runner = makeFakeRunner({
+      exitCode: 0,
+      stdout: '',
+      stderr: '',
+      truncated: false,
+      timedOut: false
+    })
+    const { repo: jobRepo } = makeJobRepo()
+    const { repo } = makeRepo({
+      ...sampleHost(),
+      shape: 'scheduler_cluster',
+      executionMode: 'slurm'
+    })
+    const requestWithContext = vi.fn(() => Promise.resolve('once' as const))
+    const broker = {
+      request: vi.fn(),
+      requestWithContext,
+      respond: vi.fn()
+    } as unknown as ComputeApprovalBroker
+
+    const service = new ComputeService(runner, repo, broker, undefined, undefined, jobRepo)
+
+    const err = await service
+      .submitJob(
+        'ssh:biowulf',
+        'test',
+        'echo hi',
+        { timeoutSeconds: 31 * 24 * 3600 },
+        { sessionId: 's1', projectId: 'p1' }
+      )
+      .catch((e) => e)
+
+    expect(err.computeCallError?.error_code).toBe('timeout')
+    expect(requestWithContext).not.toHaveBeenCalled()
+  })
+
   it('approval fires before any DB row is created (security contract)', async () => {
     const runner = makeFakeRunner({
       exitCode: 0,

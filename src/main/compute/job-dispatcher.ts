@@ -21,8 +21,14 @@ const DISPATCH_MAX_OUTPUT_BYTES = 4 * 1024
 const DISPATCH_TIMEOUT_MS = 120_000
 
 // Remote handle stored in the DB once the job is launched.
+// kind defaults to 'pid' (direct SSH launch). Slurm-submitted jobs carry kind 'slurm' plus the
+// scheduler's job id; the poller switches its liveness probe and cancel command on this field.
 export type RemoteHandle = {
-  pid: number
+  kind?: 'pid' | 'slurm'
+  // Direct-SSH launch pid (kind 'pid' / absent). Absent for scheduler-submitted jobs.
+  pid?: number
+  // Scheduler job id (kind 'slurm').
+  slurm_job_id?: number
   exit_code_path: string
   stdout_path: string
   stderr_path: string
@@ -42,6 +48,61 @@ export const buildLauncherScript = (timeoutSeconds: number): string => {
     `timeout -s TERM -k 30s ${timeoutSeconds} bash -l -c 'if [ -r ~/.bashrc ]; then . ~/.bashrc || exit $?; fi; exec bash command.sh' > stdout 2> stderr\n` +
     'echo $? > exit_code.tmp && mv exit_code.tmp exit_code\n'
   )
+}
+
+// Slurm job script: identical workload semantics to the direct-SSH launcher minus the local
+// timeout(1) wrapper — wall-clock limits are enforced by the scheduler (#SBATCH --time). stdout /
+// stderr / exit_code paths match the direct-SSH layout so the poller's terminal detection and tail
+// capture are shared between both execution modes.
+export const buildSlurmJobScript = (): string => {
+  return (
+    '#!/usr/bin/env bash\n' +
+    "bash -l -c 'if [ -r ~/.bashrc ]; then . ~/.bashrc || exit $?; fi; exec bash command.sh' > stdout 2> stderr\n" +
+    'echo $? > exit_code.tmp && mv exit_code.tmp exit_code\n'
+  )
+}
+
+// Formats a seconds-based wall-clock limit as a Slurm --time value. Slurm accepts M, M:S, H:M:S and
+// D-HH:MM:SS; values under a minute are clamped to 1 minute and the 7-day direct-SSH ceiling is
+// replaced by a 30-day scheduler ceiling (multi-day jobs are the reason to use a scheduler driver).
+export const formatSlurmTime = (seconds: number): string => {
+  const clamped = Math.min(Math.max(Math.floor(seconds), 60), 30 * 86400)
+  const days = Math.floor(clamped / 86400)
+  const hours = Math.floor((clamped % 86400) / 3600)
+  const minutes = Math.floor((clamped % 3600) / 60)
+  const hms = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`
+  return days > 0 ? `${String(days).padStart(2, '0')}-${hms}` : hms
+}
+
+// Parses the free-text resource_request string into sbatch CLI arguments. Tolerates unknown keys
+// (ignored) so a request written for the direct-SSH mode degrades gracefully instead of failing the
+// submit; every directive is quoted for injection safety.
+export const buildSlurmDirectiveArgs = (
+  resourceRequest: string | undefined,
+  jobId: string
+): string[] => {
+  const args = ['--parsable', '--job-name', `PureScience-${jobId.slice(0, 8)}`]
+  if (!resourceRequest?.trim()) return args
+
+  const directiveMap: Record<string, string> = {
+    partition: '--partition',
+    cpus: '--cpus-per-task',
+    'cpus-per-task': '--cpus-per-task',
+    mem: '--mem',
+    gpus: '--gpus',
+    qos: '--qos',
+    account: '--account'
+  }
+  for (const token of resourceRequest.trim().split(/\s+/)) {
+    const [rawKey, ...rest] = token.split('=')
+    const key = rawKey?.trim().toLowerCase()
+    const value = rest.join('=').trim()
+    const flag = key ? directiveMap[key] : undefined
+    if (flag && value) {
+      args.push(flag, value)
+    }
+  }
+  return args
 }
 
 // Encodes a string to base64 for safe transfer via a single SSH command (avoids heredoc/quoting).
@@ -206,6 +267,123 @@ async function dispatchExternalJob(job: ComputeJob, deps: DispatcherDeps): Promi
   onJobUpdated?.(updated)
 }
 
+// Submits a job through the host's Slurm scheduler. Inputs are already staged by the caller (same
+// path as direct SSH). One SSH round-trip writes command.sh + slurm-job.sh and runs sbatch with the
+// resource_request mapped to directives and the wall clock capped via --time. stdout carries
+// markers so the job id and sbatch's own exit code parse independently of scheduler chatter.
+async function dispatchSlurmLaunch(
+  jobId: string,
+  deps: {
+    runner: SshRunner
+    job: import('../../shared/compute').ComputeJob
+    workdir: string
+    timeoutSecs: number
+    target: import('./ssh-runner').ResolvedSshTarget
+    jobRepository: ComputeJobRepository
+    onJobUpdated?: (job: import('../../shared/compute').ComputeJob) => void
+  }
+): Promise<void> {
+  const { runner, job, workdir, timeoutSecs, target, jobRepository, onJobUpdated } = deps
+  const fail = async (
+    errorCode: 'dispatch_failed' | 'host_unreachable',
+    stderrTail: string
+  ): Promise<void> => {
+    const updated = await jobRepository.update(jobId, {
+      status: 'error',
+      errorCode,
+      stderrTail,
+      finishedAt: new Date()
+    })
+    onJobUpdated?.(updated)
+  }
+
+  const commandScript = job.command
+  const slurmScript = buildSlurmJobScript()
+  const commandB64 = toBase64(commandScript)
+  const scriptB64 = toBase64(slurmScript)
+
+  const quotedWorkdir = quoteRemotePath(workdir)
+  const directiveArgs = buildSlurmDirectiveArgs(job.resource_request ?? undefined, jobId)
+  const sbatchArgs = [...directiveArgs, '--time', formatSlurmTime(timeoutSecs)]
+    .map((arg) => shellSingleQuote(arg))
+    .join(' ')
+  const dispatchCmd = [
+    `mkdir -p ${quotedWorkdir}`,
+    `cd ${quotedWorkdir}`,
+    `printf '%s' ${JSON.stringify(commandB64)} | base64 -d > command.sh`,
+    `printf '%s' ${JSON.stringify(scriptB64)} | base64 -d > slurm-job.sh`,
+    `chmod +x command.sh slurm-job.sh`,
+    `sbatch ${sbatchArgs} slurm-job.sh > sbatch.out 2> sbatch.err`,
+    `echo "SBATCH_EXIT=$?"`,
+    `echo "SBATCH_ERR_START"`,
+    `cat sbatch.err`
+  ].join('\n')
+
+  const runResult = await runner.run(target, dispatchCmd, {
+    timeoutMs: DISPATCH_TIMEOUT_MS,
+    loginShell: false,
+    maxOutputBytes: DISPATCH_MAX_OUTPUT_BYTES
+  })
+
+  // Connection-level failure.
+  if (runResult.timedOut || runResult.exitCode === 255) {
+    await fail('host_unreachable', runResult.stderr || 'SSH connection failed')
+    return
+  }
+
+  // Non-connection failure (mkdir, base64, …).
+  if (runResult.exitCode !== 0) {
+    await fail('dispatch_failed', runResult.stderr || `exit code ${runResult.exitCode ?? 'null'}`)
+    return
+  }
+
+  const lines = runResult.stdout.split('\n')
+  const exitIdx = lines.findIndex((line) => line.startsWith('SBATCH_EXIT='))
+  const errIdx = lines.findIndex((line) => line === 'SBATCH_ERR_START')
+  const sbatchExit =
+    exitIdx >= 0 ? Number.parseInt(lines[exitIdx]?.slice('SBATCH_EXIT='.length) ?? '', 10) : NaN
+  const errorTail =
+    errIdx >= 0
+      ? lines
+          .slice(errIdx + 1)
+          .join('\n')
+          .trim()
+      : ''
+
+  if (!Number.isFinite(sbatchExit) || sbatchExit !== 0) {
+    await fail('dispatch_failed', errorTail || `sbatch exited with ${sbatchExit}`)
+    return
+  }
+
+  // With --parsable, sbatch stdout is the numeric job id on the first non-empty line.
+  const slurmJobId = Number.parseInt(
+    lines.slice(0, exitIdx >= 0 ? exitIdx : undefined).find((line) => line.trim() !== '') ?? '',
+    10
+  )
+  if (!Number.isFinite(slurmJobId) || slurmJobId <= 0) {
+    await fail(
+      'dispatch_failed',
+      `Could not read the scheduler job id from: ${JSON.stringify(runResult.stdout)}`
+    )
+    return
+  }
+
+  const handle: RemoteHandle = {
+    kind: 'slurm',
+    slurm_job_id: slurmJobId,
+    exit_code_path: `${workdir}/exit_code`,
+    stdout_path: `${workdir}/stdout`,
+    stderr_path: `${workdir}/stderr`,
+    workdir
+  }
+  const updated = await jobRepository.update(jobId, {
+    status: 'running',
+    remoteHandle: JSON.stringify(handle),
+    startedAt: new Date()
+  })
+  onJobUpdated?.(updated)
+}
+
 async function dispatchJobInner(jobId: string, deps: DispatcherDeps): Promise<void> {
   const { runner, hostRepository, jobRepository, onJobUpdated } = deps
   const scpRunner = deps.scpRunner ?? new SystemScpRunner()
@@ -296,6 +474,21 @@ async function dispatchJobInner(jobId: string, deps: DispatcherDeps): Promise<vo
       onJobUpdated?.(updated)
       return
     }
+  }
+
+  // Slurm execution mode: the scheduler owns the process lifecycle, so dispatch ends at sbatch
+  // submission. Exit-code/tail capture then runs through the shared poller, which probes squeue.
+  if (host.executionMode === 'slurm') {
+    await dispatchSlurmLaunch(jobId, {
+      runner,
+      job,
+      workdir,
+      timeoutSecs,
+      target,
+      jobRepository,
+      onJobUpdated
+    })
+    return
   }
 
   // Build scripts.

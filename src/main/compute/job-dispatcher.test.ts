@@ -14,6 +14,9 @@ import type { ScpRunner } from './scp-runner'
 import {
   dispatchJob,
   buildLauncherScript,
+  buildSlurmJobScript,
+  buildSlurmDirectiveArgs,
+  formatSlurmTime,
   stageInputs,
   toBase64,
   hashCommand,
@@ -477,6 +480,157 @@ describe('dispatchJob', () => {
 // ---------------------------------------------------------------------------
 // stageInputs
 // ---------------------------------------------------------------------------
+
+describe('formatSlurmTime', () => {
+  it('formats hour/day limits as Slurm --time values and clamps to the 1-minute floor / 30-day cap', () => {
+    expect(formatSlurmTime(3600)).toBe('01:00:00')
+    expect(formatSlurmTime(172800)).toBe('02-00:00:00')
+    expect(formatSlurmTime(30)).toBe('00:01:00')
+    expect(formatSlurmTime(30 * 86400)).toBe('30-00:00:00')
+    expect(formatSlurmTime(90 * 86400)).toBe('30-00:00:00')
+  })
+})
+
+describe('buildSlurmDirectiveArgs', () => {
+  it('maps known resource keys to sbatch flags and names the job after the app job id', () => {
+    const args = buildSlurmDirectiveArgs(
+      'partition=gpu cpus=8 mem=64G gpus=2 qos=high',
+      'job-abcdefgh'
+    )
+    expect(args).toEqual([
+      '--parsable',
+      '--job-name',
+      'PureScience-job-abcd',
+      '--partition',
+      'gpu',
+      '--cpus-per-task',
+      '8',
+      '--mem',
+      '64G',
+      '--gpus',
+      '2',
+      '--qos',
+      'high'
+    ])
+  })
+
+  it('ignores unknown keys and returns just the base args for an empty request', () => {
+    expect(buildSlurmDirectiveArgs('walltime=24h', 'job-1')).toEqual([
+      '--parsable',
+      '--job-name',
+      'PureScience-job-1'
+    ])
+    expect(buildSlurmDirectiveArgs(undefined, 'job-1')).toEqual([
+      '--parsable',
+      '--job-name',
+      'PureScience-job-1'
+    ])
+  })
+})
+
+describe('buildSlurmJobScript', () => {
+  it('writes exit_code atomically and redirects stdout/stderr like the direct-SSH launcher', () => {
+    const script = buildSlurmJobScript()
+    expect(script).not.toContain('timeout -s TERM')
+    expect(script).toContain("exec bash command.sh' > stdout 2> stderr")
+    expect(script).toContain('echo $? > exit_code.tmp && mv exit_code.tmp exit_code')
+  })
+})
+
+describe('dispatchJob — slurm execution mode', () => {
+  const slurmHost = (): import('../../shared/compute').ComputeHost => ({
+    ...sampleHost(),
+    shape: 'scheduler_cluster',
+    executionMode: 'slurm'
+  })
+
+  it('submits via sbatch and records a slurm job-id handle on success', async () => {
+    const job = makeJob({ resource_request: 'partition=gpu gpus=1' })
+    const runner = makeSshRunner({
+      exitCode: 0,
+      stdout: '442233\nSBATCH_EXIT=0\nSBATCH_ERR_START\n',
+      stderr: '',
+      truncated: false,
+      timedOut: false
+    })
+    const { repo, update } = makeJobRepo(job)
+    const onJobUpdated = vi.fn()
+
+    await dispatchJob(job.job_id, {
+      runner,
+      hostRepository: makeHostRepo(slurmHost()) as unknown as ComputeHostRepository,
+      jobRepository: repo as unknown as ComputeJobRepository,
+      onJobUpdated
+    })
+
+    const dispatchCmd = (runner.run as ReturnType<typeof vi.fn>).mock.calls[0]![1] as string
+    // sbatch submission path with directives, scheduler wall clock, and the slurm job script.
+    expect(dispatchCmd).toContain('sbatch ')
+    expect(dispatchCmd).toContain("'--parsable' '--job-name' 'PureScience-job-1'")
+    expect(dispatchCmd).toContain("'--partition' 'gpu'")
+    expect(dispatchCmd).toContain("'--gpus' '1'")
+    expect(dispatchCmd).toContain("'--time' '01:00:00'")
+    expect(dispatchCmd).toContain('slurm-job.sh')
+    // The direct-SSH detached launcher must not be used for scheduler hosts.
+    expect(dispatchCmd).not.toContain('nohup setsid')
+    expect(dispatchCmd).not.toContain('launcher.sh')
+
+    expect(update).toHaveBeenCalledWith('job-1', expect.objectContaining({ status: 'running' }))
+    const handle = JSON.parse(update.mock.calls[0]![1].remoteHandle as string)
+    expect(handle.kind).toBe('slurm')
+    expect(handle.slurm_job_id).toBe(442233)
+    expect(handle.exit_code_path).toContain('exit_code')
+    expect(onJobUpdated).toHaveBeenCalled()
+  })
+
+  it('transitions to error with dispatch_failed when sbatch itself fails', async () => {
+    const job = makeJob()
+    const runner = makeSshRunner({
+      exitCode: 0,
+      stdout: 'SBATCH_EXIT=1\nSBATCH_ERR_START\nsbatch: error: invalid partition\n',
+      stderr: '',
+      truncated: false,
+      timedOut: false
+    })
+    const { repo, update } = makeJobRepo(job)
+
+    await dispatchJob(job.job_id, {
+      runner,
+      hostRepository: makeHostRepo(slurmHost()) as unknown as ComputeHostRepository,
+      jobRepository: repo as unknown as ComputeJobRepository
+    })
+
+    expect(update).toHaveBeenCalledWith(
+      'job-1',
+      expect.objectContaining({ status: 'error', errorCode: 'dispatch_failed' })
+    )
+    const updateCall = update.mock.calls[0]![1]
+    expect(updateCall.stderrTail).toContain('invalid partition')
+  })
+
+  it('transitions to error when no scheduler job id comes back', async () => {
+    const job = makeJob()
+    const runner = makeSshRunner({
+      exitCode: 0,
+      stdout: 'SBATCH_EXIT=0\nSBATCH_ERR_START\n',
+      stderr: '',
+      truncated: false,
+      timedOut: false
+    })
+    const { repo, update } = makeJobRepo(job)
+
+    await dispatchJob(job.job_id, {
+      runner,
+      hostRepository: makeHostRepo(slurmHost()) as unknown as ComputeHostRepository,
+      jobRepository: repo as unknown as ComputeJobRepository
+    })
+
+    expect(update).toHaveBeenCalledWith(
+      'job-1',
+      expect.objectContaining({ status: 'error', errorCode: 'dispatch_failed' })
+    )
+  })
+})
 
 describe('stageInputs', () => {
   const fakeTarget: ResolvedSshTarget = {

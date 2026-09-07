@@ -150,6 +150,61 @@ describe('JobPoller', () => {
     expect(onJobUpdated).toHaveBeenCalled()
   })
 
+  it('probes slurm jobs through squeue instead of kill -0', async () => {
+    // A job submitted through a scheduler host carries a slurm-kind handle (scheduler job id).
+    const job = makeJob({
+      remote_handle: JSON.stringify({
+        kind: 'slurm',
+        slurm_job_id: 442233,
+        exit_code_path: '~/.purescience/jobs/job-1/exit_code',
+        stdout_path: '~/.purescience/jobs/job-1/stdout',
+        stderr_path: '~/.purescience/jobs/job-1/stderr',
+        workdir: '~/.purescience/jobs/job-1'
+      })
+    })
+    const update = vi.fn((_id: string, u: unknown) => Promise.resolve({ ...job, ...(u as object) }))
+    const jobRepo = {
+      findNonTerminal: vi.fn(() => Promise.resolve([job])),
+      get: vi.fn(() => Promise.resolve(job)),
+      update
+    } as unknown as ComputeJobRepository
+    const hostRepo = {
+      get: vi.fn(() => Promise.resolve(sampleHost()))
+    } as unknown as ComputeHostRepository
+
+    // Scheduler still reports the job (state R) and no exit_code file yet → stays running.
+    const pollOutput = withNonce([
+      'JOB_START:job-1',
+      'alive:1',
+      '',
+      'still on the queue\n',
+      'STDOUT_END:job-1',
+      '',
+      'STDERR_END:job-1'
+    ])
+    const runner = makeSshRunner({
+      exitCode: 0,
+      stdout: pollOutput,
+      stderr: '',
+      truncated: false,
+      timedOut: false
+    })
+
+    const poller = new JobPoller({
+      runner,
+      hostRepository: hostRepo,
+      jobRepository: jobRepo,
+      makeNonce: () => NONCE
+    })
+
+    await poller.tick()
+
+    const pollCmd = (runner.run as ReturnType<typeof vi.fn>).mock.calls[0]![1] as string
+    expect(pollCmd).toContain('squeue -h -j 442233 -o %T')
+    expect(pollCmd).not.toContain('kill -0')
+    expect(update).toHaveBeenCalledWith('job-1', expect.objectContaining({ lastPollError: null }))
+  })
+
   it('clears a stale lastPollError on a successful poll of a still-running job', async () => {
     // A running job that previously recorded a transient SSH error must have that error cleared once
     // a poll succeeds again (schema.prisma: "Cleared on the next successful poll"). Regression for
