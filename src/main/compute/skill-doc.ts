@@ -21,7 +21,9 @@ const renderHostProjection = (hosts: readonly ComputeHost[]): string =>
     : hosts
         .map(
           (host) =>
-            `  - ${host.displayName} (provider_id: \`${host.providerId}\`, shape: ${host.shape}, status: ${statusLabel(host)})`
+            `  - ${host.displayName} (provider_id: \`${host.providerId}\`, shape: ${host.shape}, execution: ${
+              host.executionMode === 'slurm' ? 'slurm (sbatch)' : 'direct-ssh'
+            }, status: ${statusLabel(host)})`
         )
         .join('\n')
 
