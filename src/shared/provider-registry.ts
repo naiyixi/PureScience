@@ -136,6 +136,12 @@ export const OFFICIAL_VENDORS: OfficialVendor[] = [
         reasoningEffort: 'low-medium-high-xhigh-ultra'
       },
       { id: 'gpt-5.6-luna', contextWindow: 1_050_000, reasoningEffort: 'standard-5' },
+      // GPT-6 Astra: latest flagship (1.05M context), same effort ladder as the GPT-5.6 flagships.
+      {
+        id: 'gpt-6-astra',
+        contextWindow: 1_050_000,
+        reasoningEffort: 'low-medium-high-xhigh-ultra'
+      },
       // GPT-5.5 documents none as its latency-first, no-reasoning mode.
       {
         id: 'gpt-5.5',
@@ -161,6 +167,7 @@ export const OFFICIAL_VENDORS: OfficialVendor[] = [
       { id: 'claude-opus-4-8', contextWindow: 1_000_000 },
       { id: 'claude-opus-4-8[1m]', contextWindow: 1_000_000 },
       { id: 'claude-sonnet-5', contextWindow: 1_000_000 },
+      { id: 'claude-fable-5.1', contextWindow: 1_000_000 },
       {
         id: 'claude-haiku-4-5-20251001',
         contextWindow: 200_000,
