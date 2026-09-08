@@ -9,7 +9,6 @@ import type {
   ReferenceCollection,
   ReferenceProvenance
 } from '../../shared/references'
-
 // Only the delegates this repository needs; typing to the subset keeps it unit-testable with a
 // lightweight mock instead of a real (engine-backed) PrismaClient.
 export type ReferenceClient = Pick<
@@ -174,9 +173,7 @@ export class ReferenceRepository {
   // Creates a record. Callers generate the citationKey (service handles collision suffixes and
   // duplicate identity checks before calling). Duplicate key / identity surfaces as the raw
   // unique-constraint error from the engine — callers map it to a readable message.
-  async createReference(
-    input: CreateReferenceInput & { citationKey: string }
-  ): Promise<Reference> {
+  async createReference(input: CreateReferenceInput & { citationKey: string }): Promise<Reference> {
     const client = await this.getClient()
     const row = await client.reference.create({
       data: {
@@ -235,7 +232,11 @@ export class ReferenceRepository {
     await client.referenceCollection.delete({ where: { id } })
   }
 
-  async addToCollection(collectionId: string, referenceId: string, note?: string): Promise<CollectionItem> {
+  async addToCollection(
+    collectionId: string,
+    referenceId: string,
+    note?: string
+  ): Promise<CollectionItem> {
     const client = await this.getClient()
     const existing = await client.collectionItem.findUnique({
       where: { collectionId_referenceId: { collectionId, referenceId } }
@@ -259,6 +260,35 @@ export class ReferenceRepository {
   async removeFromCollection(collectionId: string, referenceId: string): Promise<void> {
     const client = await this.getClient()
     await client.collectionItem.deleteMany({ where: { collectionId, referenceId } })
+  }
+
+  // Enumerates the memberships of one reference across collections (merge support).
+  async listMemberships(
+    referenceId: string
+  ): Promise<Array<{ collectionId: string; note: string | undefined }>> {
+    const client = await this.getClient()
+    const rows = await client.collectionItem.findMany({
+      where: { referenceId },
+      orderBy: { sortIndex: 'asc' }
+    })
+    return rows.map((row) => ({ collectionId: row.collectionId, note: row.note ?? undefined }))
+  }
+
+  // Updates notes and/or provenance on a record (merge support). Undefined values are left intact.
+  async updateReference(
+    id: string,
+    changes: { notes?: string; provenance?: ReferenceProvenance }
+  ): Promise<void> {
+    const client = await this.getClient()
+    await client.reference.update({
+      where: { id },
+      data: {
+        ...(changes.notes !== undefined ? { notes: changes.notes } : {}),
+        ...(changes.provenance !== undefined
+          ? { provenanceJson: JSON.stringify(changes.provenance) }
+          : {})
+      }
+    })
   }
 }
 
