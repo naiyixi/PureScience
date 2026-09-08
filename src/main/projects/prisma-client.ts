@@ -594,6 +594,61 @@ const VISION_EVIDENCE_INDEX_DDLS = [
   `CREATE INDEX IF NOT EXISTS "VisionEvidence_uploadVersionId_idx" ON "VisionEvidence"("uploadVersionId")`
 ]
 
+// Reference library (v1.51): three pure-additive tables with no relations to pre-existing tables.
+// CREATE TABLE IF NOT EXISTS keeps re-runs idempotent and older DBs byte-compatible with the
+// generated client (same runtime-DDL approach as every table above).
+const REFERENCE_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "Reference" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "projectId" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "authorsJson" TEXT NOT NULL DEFAULT '[]',
+    "venue" TEXT,
+    "year" INTEGER,
+    "doi" TEXT,
+    "pmid" TEXT,
+    "pmcid" TEXT,
+    "arxivId" TEXT,
+    "url" TEXT,
+    "abstractSnippet" TEXT,
+    "sourceConnector" TEXT NOT NULL DEFAULT 'manual',
+    "sourceRecordId" TEXT,
+    "citationKey" TEXT NOT NULL,
+    "provenanceJson" TEXT,
+    "pdfManagedFileId" TEXT,
+    "notes" TEXT,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL
+)`
+const REFERENCE_UNIQUE_PROJECT_CITATION_KEY_DDL = `CREATE UNIQUE INDEX IF NOT EXISTS "Reference_projectId_citationKey_key" ON "Reference"("projectId", "citationKey")`
+const REFERENCE_INDEX_DDLS = [
+  `CREATE INDEX IF NOT EXISTS "Reference_projectId_idx" ON "Reference"("projectId")`,
+  `CREATE INDEX IF NOT EXISTS "Reference_doi_idx" ON "Reference"("doi")`,
+  `CREATE INDEX IF NOT EXISTS "Reference_pmid_idx" ON "Reference"("pmid")`,
+  `CREATE INDEX IF NOT EXISTS "Reference_arxivId_idx" ON "Reference"("arxivId")`
+]
+
+const REFERENCE_COLLECTION_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "ReferenceCollection" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "projectId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "description" TEXT,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL
+)`
+const REFERENCE_COLLECTION_UNIQUE_PROJECT_NAME_DDL = `CREATE UNIQUE INDEX IF NOT EXISTS "ReferenceCollection_projectId_name_key" ON "ReferenceCollection"("projectId", "name")`
+const REFERENCE_COLLECTION_PROJECT_INDEX_DDL = `CREATE INDEX IF NOT EXISTS "ReferenceCollection_projectId_idx" ON "ReferenceCollection"("projectId")`
+
+const COLLECTION_ITEM_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "CollectionItem" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "collectionId" TEXT NOT NULL,
+    "referenceId" TEXT NOT NULL,
+    "note" TEXT,
+    "sortIndex" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+)`
+const COLLECTION_ITEM_UNIQUE_COLLECTION_REFERENCE_DDL = `CREATE UNIQUE INDEX IF NOT EXISTS "CollectionItem_collectionId_referenceId_key" ON "CollectionItem"("collectionId", "referenceId")`
+const COLLECTION_ITEM_REFERENCE_INDEX_DDL = `CREATE INDEX IF NOT EXISTS "CollectionItem_referenceId_idx" ON "CollectionItem"("referenceId")`
+
 // Indexes for ComputeJob: by providerId (per-host poller queries), sessionId (UI list), status
 // (finding non-terminal jobs on restart). IF NOT EXISTS makes re-runs idempotent.
 const COMPUTE_JOB_PROVIDER_INDEX_DDL = `CREATE INDEX IF NOT EXISTS "ComputeJob_providerId_idx" ON "ComputeJob"("providerId")`
@@ -767,6 +822,19 @@ const ensureProjectSchema = async (client: PrismaClient): Promise<void> => {
   for (const ddl of VISION_EVIDENCE_INDEX_DDLS) {
     await client.$executeRawUnsafe(ddl)
   }
+
+  // Reference library (v1.51): three pure-additive tables + their unique/index DDL.
+  await client.$executeRawUnsafe(REFERENCE_TABLE_DDL)
+  await client.$executeRawUnsafe(REFERENCE_UNIQUE_PROJECT_CITATION_KEY_DDL)
+  for (const ddl of REFERENCE_INDEX_DDLS) {
+    await client.$executeRawUnsafe(ddl)
+  }
+  await client.$executeRawUnsafe(REFERENCE_COLLECTION_TABLE_DDL)
+  await client.$executeRawUnsafe(REFERENCE_COLLECTION_UNIQUE_PROJECT_NAME_DDL)
+  await client.$executeRawUnsafe(REFERENCE_COLLECTION_PROJECT_INDEX_DDL)
+  await client.$executeRawUnsafe(COLLECTION_ITEM_TABLE_DDL)
+  await client.$executeRawUnsafe(COLLECTION_ITEM_UNIQUE_COLLECTION_REFERENCE_DDL)
+  await client.$executeRawUnsafe(COLLECTION_ITEM_REFERENCE_INDEX_DDL)
 }
 
 let clientPromise: Promise<PrismaClient> | undefined

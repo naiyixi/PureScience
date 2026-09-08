@@ -445,6 +445,62 @@ model ComputeHost {
   updatedAt        DateTime  @updatedAt
 }
 
+// Project-scoped reference library (v1.51): one row per bibliographic record a user saved into the
+// library. Pure-additive — nothing references these tables, so the runtime DDL stays byte-compatible
+// with any pre-existing DB. Security: no credentials; provenanceJson may hold public snapshot data.
+model Reference {
+  id               String    @id @default(cuid())
+  projectId        String
+  title            String
+  authorsJson      String    @default("[]") // JSON [{ name, orcid? }]
+  venue            String?
+  year             Int?
+  doi              String?
+  pmid             String?
+  pmcid            String?
+  arxivId          String?
+  url              String?
+  abstractSnippet  String?
+  sourceConnector  String    @default("manual") // openalex | pubmed | arxiv | europepmc | manual
+  sourceRecordId   String? // connector-native record id, for provenance re-fetch
+  citationKey      String // e.g. "Zhang2024"; unique within the project
+  provenanceJson   String? // snapshot payload + fetchedAt + connector + source url
+  pdfManagedFileId String? // references ManagedFile.id (no FK; storage layer stays decoupled)
+  notes            String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@unique([projectId, citationKey])
+  @@index([projectId])
+  @@index([doi])
+  @@index([pmid])
+  @@index([arxivId])
+}
+
+model ReferenceCollection {
+  id          String   @id @default(cuid())
+  projectId   String
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([projectId])
+  @@unique([projectId, name])
+}
+
+model CollectionItem {
+  id           String   @id @default(cuid())
+  collectionId String
+  referenceId  String
+  note         String?
+  sortIndex    Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  @@unique([collectionId, referenceId])
+  @@index([referenceId])
+}
+
 // Backend-owned message center shared by desktop and Web clients (v0.12 notification center).
 model NotificationInboxItem {
   sequence    Int       @id @default(autoincrement())
