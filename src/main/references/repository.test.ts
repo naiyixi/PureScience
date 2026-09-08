@@ -60,6 +60,7 @@ const createMockClient = (): {
     referenceCreate: vi.fn(),
     referenceDelete: vi.fn(() => Promise.resolve()),
     referenceDeleteMany: vi.fn(() => Promise.resolve({ count: 0 })),
+    referenceUpdate: vi.fn(() => Promise.resolve(null)),
     collectionFindMany: vi.fn(() => Promise.resolve([])),
     collectionCreate: vi.fn(),
     collectionDelete: vi.fn(() => Promise.resolve()),
@@ -75,7 +76,8 @@ const createMockClient = (): {
       findUnique: m.referenceFindUnique,
       create: m.referenceCreate,
       delete: m.referenceDelete,
-      deleteMany: m.referenceDeleteMany
+      deleteMany: m.referenceDeleteMany,
+      update: m.referenceUpdate
     },
     referenceCollection: {
       findMany: m.collectionFindMany,
@@ -207,6 +209,31 @@ describe('ReferenceRepository', () => {
 
     expect(m.itemDeleteMany).toHaveBeenCalledWith({
       where: { collectionId: 'col-1', referenceId: 'ref-1' }
+    })
+  })
+
+  it('attaches and detaches the page-annotation PDF backing a reference', async () => {
+    const { client, m } = createMockClient()
+    const repository = new ReferenceRepository(() => Promise.resolve(client))
+
+    m.referenceUpdate.mockResolvedValue(rowFixture({ pdfManagedFileId: 'file-pdf-1' }))
+    await expect(repository.attachPdf('ref-1', 'file-pdf-1')).resolves.toMatchObject({
+      id: 'ref-1',
+      pdfManagedFileId: 'file-pdf-1'
+    })
+    expect(m.referenceUpdate).toHaveBeenCalledWith({
+      where: { id: 'ref-1' },
+      data: { pdfManagedFileId: 'file-pdf-1' }
+    })
+
+    m.referenceUpdate.mockResolvedValue(rowFixture({ pdfManagedFileId: null }))
+    await expect(repository.attachPdf('ref-1', null)).resolves.toMatchObject({
+      id: 'ref-1',
+      pdfManagedFileId: undefined
+    })
+    expect(m.referenceUpdate).toHaveBeenLastCalledWith({
+      where: { id: 'ref-1' },
+      data: { pdfManagedFileId: null }
     })
   })
 })

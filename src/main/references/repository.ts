@@ -221,6 +221,17 @@ export class ReferenceRepository {
     await client.reference.delete({ where: { id } })
   }
 
+  // Attaches (or detaches, with null) the project-managed PDF that backs page-level annotations
+  // for this reference. The managed file itself is validated by the caller against project scope.
+  async attachPdf(referenceId: string, pdfManagedFileId: string | null): Promise<Reference | null> {
+    const client = await this.getClient()
+    const row = await client.reference.update({
+      where: { id: referenceId },
+      data: { pdfManagedFileId }
+    })
+    return row ? mapReference(row) : null
+  }
+
   async listCollections(projectId: string): Promise<ReferenceCollection[]> {
     const client = await this.getClient()
     const rows = await client.referenceCollection.findMany({
