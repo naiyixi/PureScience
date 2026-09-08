@@ -60,6 +60,11 @@ const makeRepo = (existing: Reference[] = []): ReferenceRepository & Record<stri
         return Promise.resolve()
       }
     ),
+    attachPdf: vi.fn((id: string, pdfManagedFileId: string | null) => {
+      const record = rows.find((r) => r.id === id)
+      if (record) record.pdfManagedFileId = pdfManagedFileId ?? undefined
+      return Promise.resolve(record ?? null)
+    }),
     listMemberships: vi.fn(() => Promise.resolve([])),
     addToCollection: vi.fn((collectionId: string, referenceId: string, note?: string) =>
       Promise.resolve({
@@ -232,5 +237,36 @@ describe('fetchReferenceByIdentifier', () => {
     expect(result?.title).toBe('NCBI Paper')
     expect(result?.year).toBe(2023)
     expect(result?.pmid).toBe('42')
+  })
+})
+
+describe('ReferenceService PDF attachment', () => {
+  it('attaches a managed PDF id and reports the updated reference', async () => {
+    const existing = refFixture({ id: 'ref-1', title: 'Paper' })
+    const repo = makeRepo([existing])
+    const service = new ReferenceService(repo as unknown as ReferenceRepository)
+
+    const updated = await service.attachPdf('ref-1', 'file-pdf-9')
+    expect(updated.id).toBe('ref-1')
+    expect(updated.pdfManagedFileId).toBe('file-pdf-9')
+    expect(repo.getReference).toHaveBeenCalledWith('ref-1')
+    expect(repo.attachPdf).toHaveBeenCalledWith('ref-1', 'file-pdf-9')
+  })
+
+  it('detaches by writing null through the repository', async () => {
+    const existing = refFixture({ id: 'ref-1', title: 'Paper', pdfManagedFileId: 'file-pdf-9' })
+    const repo = makeRepo([existing])
+    const service = new ReferenceService(repo as unknown as ReferenceRepository)
+
+    const updated = await service.detachPdf('ref-1')
+    expect(updated.pdfManagedFileId).toBeUndefined()
+    expect(repo.attachPdf).toHaveBeenCalledWith('ref-1', null)
+  })
+
+  it('rejects attaching when the reference does not exist', async () => {
+    const repo = makeRepo([])
+    const service = new ReferenceService(repo as unknown as ReferenceRepository)
+    await expect(service.attachPdf('missing', 'file-pdf-9')).rejects.toThrow('Reference not found.')
+    expect(repo.attachPdf).not.toHaveBeenCalled()
   })
 })
