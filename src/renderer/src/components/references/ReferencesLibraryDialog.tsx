@@ -97,6 +97,10 @@ export function ReferencesLibraryDialog({
   const [manualDoi, setManualDoi] = useState('')
   const [manualYear, setManualYear] = useState('')
   const [manualAuthors, setManualAuthors] = useState('')
+  // PDF attachment picker state (project-managed PDFs back page-level annotations).
+  const [attachTargetId, setAttachTargetId] = useState<string | null>(null)
+  const [pdfCandidates, setPdfCandidates] = useState<{ id: string; name: string }[]>([])
+  const [pdfLoading, setPdfLoading] = useState(false)
 
   const refresh = useCallback(async (): Promise<void> => {
     if (!projectId) return
@@ -227,6 +231,50 @@ export function ReferencesLibraryDialog({
   ): Promise<void> => {
     try {
       await window.api.references.addToCollection(collectionId, referenceId)
+      setNotice(t('references.addedToCollection'))
+      await refresh()
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause))
+    }
+  }
+
+  const loadPdfCandidates = async (projectId: string): Promise<void> => {
+    setPdfLoading(true)
+    try {
+      const page = await window.api.projectFiles.listFiles({
+        projectId,
+        collection: { kind: 'all' },
+        limit: 500
+      })
+      const pdfs = page.items.filter(
+        (item) =>
+          item.name.toLowerCase().endsWith('.pdf') ||
+          item.mimeType?.toLowerCase() === 'application/pdf'
+      )
+      setPdfCandidates(pdfs.map((item) => ({ id: item.id, name: item.name })))
+      if (pdfs.length === 0) setError(t('references.notFound'))
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause))
+    } finally {
+      setPdfLoading(false)
+    }
+  }
+
+  const handleAttachPdf = async (referenceId: string, fileId: string): Promise<void> => {
+    try {
+      await window.api.references.attachPdf(referenceId, fileId)
+      setAttachTargetId(null)
+      setPdfCandidates([])
+      setNotice(t('references.addedToCollection'))
+      await refresh()
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause))
+    }
+  }
+
+  const handleDetachPdf = async (referenceId: string): Promise<void> => {
+    try {
+      await window.api.references.detachPdf(referenceId)
       setNotice(t('references.addedToCollection'))
       await refresh()
     } catch (cause) {
@@ -482,6 +530,69 @@ export function ReferencesLibraryDialog({
                           </p>
                         </div>
                         <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                          {attachTargetId === reference.id ? (
+                            <div className="flex items-center gap-1">
+                              {pdfLoading ? (
+                                <span className="text-[10px] text-[var(--muted-foreground)]">
+                                  …
+                                </span>
+                              ) : (
+                                <select
+                                  className="max-w-36 rounded border border-[var(--border)] bg-transparent px-1 py-0.5 text-[10px]"
+                                  aria-label="PDF"
+                                  defaultValue=""
+                                  onChange={(event) => {
+                                    if (event.target.value) {
+                                      void handleAttachPdf(reference.id, event.target.value)
+                                    }
+                                  }}
+                                >
+                                  <option value="" disabled>
+                                    PDF…
+                                  </option>
+                                  {pdfCandidates.map((candidate) => (
+                                    <option key={candidate.id} value={candidate.id}>
+                                      {candidate.name}
+                                    </option>
+                                  ))}
+                                </select>
+                              )}
+                              <button
+                                type="button"
+                                className={ghostClass}
+                                title="取消"
+                                onClick={() => {
+                                  setAttachTargetId(null)
+                                  setPdfCandidates([])
+                                }}
+                              >
+                                <X className="size-3" aria-hidden="true" />
+                              </button>
+                            </div>
+                          ) : reference.pdfManagedFileId ? (
+                            <span className="flex items-center gap-1 rounded border border-[var(--border)] px-1.5 py-0.5 text-[10px] text-[var(--muted-foreground)]">
+                              PDF · {reference.pdfManagedFileId.slice(-8)}
+                              <button
+                                type="button"
+                                title="解除 PDF"
+                                onClick={() => void handleDetachPdf(reference.id)}
+                              >
+                                <X className="size-3" aria-hidden="true" />
+                              </button>
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              className={ghostClass}
+                              title="挂载 PDF（项目内 PDF 将可在文件面板中打开并做页码级标注）"
+                              onClick={() => {
+                                setAttachTargetId(reference.id)
+                                if (projectId) void loadPdfCandidates(projectId)
+                              }}
+                            >
+                              PDF
+                            </button>
+                          )}
                           <button
                             type="button"
                             className={ghostClass}
