@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { BookMarked, Library, Plus, RefreshCw, X } from 'lucide-react'
 
+import { useLanguage } from '@/i18n'
 import type {
   AddReferenceResult,
   CreateReferenceInput,
@@ -72,6 +73,7 @@ export function ReferencesLibraryDialog({
   onClose: () => void
   projectId: string | undefined
 }): React.JSX.Element | null {
+  const { t } = useLanguage()
   const [references, setReferences] = useState<Reference[]>([])
   const [collections, setCollections] = useState<ReferenceCollection[]>([])
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null)
@@ -142,7 +144,7 @@ export function ReferencesLibraryDialog({
     try {
       const result = await addReference(projectId ?? '', input)
       if (result.status === 'created') {
-        setNotice(`已加入：${result.reference.citationKey}`)
+        setNotice(t('references.addedNotice', { key: result.reference.citationKey }))
         setFetched(null)
         setManualTitle('')
         setManualDoi('')
@@ -150,9 +152,7 @@ export function ReferencesLibraryDialog({
         setManualAuthors('')
         await refresh()
       } else {
-        setError(
-          `检测到重复（共 ${result.duplicateOf.length} 条）——未重复加入。可在「查重合并」里合并。`
-        )
+        setError(t('references.duplicateNotice', { n: result.duplicateOf.length }))
       }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause))
@@ -166,7 +166,7 @@ export function ReferencesLibraryDialog({
     try {
       const found = await window.api.references.fetchByIdentifier(kind, identifier.trim())
       if (!found) {
-        setError('未找到该标识符对应的文献（检查编号或网络）。')
+        setError(t('references.notFound'))
         setFetched(null)
       } else {
         setFetched(found)
@@ -181,7 +181,7 @@ export function ReferencesLibraryDialog({
   const handleMergeDuplicates = async (): Promise<void> => {
     const groups = groupDuplicates(references)
     if (groups.length === 0) {
-      setNotice('未发现重复条目。')
+      setNotice(t('references.noDuplicates'))
       return
     }
     for (const group of groups) {
@@ -195,7 +195,7 @@ export function ReferencesLibraryDialog({
         setError(cause instanceof Error ? cause.message : String(cause))
       }
     }
-    setNotice(`已合并 ${groups.length} 组重复条目。`)
+    setNotice(t('references.merged', { n: groups.length }))
     await refresh()
   }
 
@@ -205,7 +205,7 @@ export function ReferencesLibraryDialog({
   ): Promise<void> => {
     try {
       await window.api.references.addToCollection(collectionId, referenceId)
-      setNotice('已加入收藏夹。')
+      setNotice(t('references.addedToCollection'))
       await refresh()
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause))
@@ -221,7 +221,7 @@ export function ReferencesLibraryDialog({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="文献库"
+      aria-label={t('references.title')}
       className="fixed inset-0 z-[95] flex items-center justify-center"
     >
       <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden="true" />
@@ -229,9 +229,14 @@ export function ReferencesLibraryDialog({
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-2.5">
           <div className="flex items-center gap-2 text-sm font-semibold text-[var(--foreground)]">
-            <Library className="size-4" aria-hidden="true" /> 文献库
+            <Library className="size-4" aria-hidden="true" /> {t('references.title')}
           </div>
-          <button type="button" aria-label="关闭" className={ghostClass} onClick={onClose}>
+          <button
+            type="button"
+            aria-label={t('references.close')}
+            className={ghostClass}
+            onClick={onClose}
+          >
             <X className="size-4" aria-hidden="true" />
           </button>
         </div>
@@ -242,7 +247,7 @@ export function ReferencesLibraryDialog({
             value={kind}
             onChange={(event) => setKind(event.target.value as IdentifierKind)}
             className="rounded-md border border-[var(--border)] bg-transparent px-2 py-1 text-xs"
-            aria-label="标识符类型"
+            aria-label="DOI / PMID / PMCID / arXiv"
           >
             {IDENTIFIER_KINDS.map((value) => (
               <option key={value} value={value}>
@@ -256,7 +261,7 @@ export function ReferencesLibraryDialog({
             onKeyDown={(event) => {
               if (event.key === 'Enter') void handleFetch()
             }}
-            placeholder="输入 DOI / PMID / arXiv ID…"
+            placeholder={t('references.identifierPlaceholder')}
             className="w-72 rounded-md border border-[var(--border)] bg-transparent px-2 py-1 text-xs outline-none focus:border-[var(--accent)]"
           />
           <button
@@ -266,10 +271,10 @@ export function ReferencesLibraryDialog({
             onClick={() => void handleFetch()}
           >
             <RefreshCw className={`size-3 ${fetching ? 'animate-spin' : ''}`} aria-hidden="true" />
-            抓取元数据
+            {fetching ? t('references.fetching') : t('references.fetch')}
           </button>
           <button type="button" className={ghostClass} onClick={() => setShowManual((v) => !v)}>
-            <Plus className="size-3.5" aria-hidden="true" /> 手动添加
+            <Plus className="size-3.5" aria-hidden="true" /> {t('references.manualAdd')}
           </button>
         </div>
 
@@ -286,7 +291,7 @@ export function ReferencesLibraryDialog({
               </p>
             </div>
             <button type="button" className={buttonClass} onClick={() => void runAdd(fetched)}>
-              <BookMarked className="size-3" aria-hidden="true" /> 加入文献库
+              <BookMarked className="size-3" aria-hidden="true" /> {t('references.addToLibrary')}
             </button>
           </div>
         ) : null}
@@ -296,25 +301,25 @@ export function ReferencesLibraryDialog({
             <input
               value={manualTitle}
               onChange={(event) => setManualTitle(event.target.value)}
-              placeholder="标题（必填）"
+              placeholder={t('references.manualTitlePlaceholder')}
               className="w-80 rounded-md border border-[var(--border)] bg-transparent px-2 py-1 text-xs"
             />
             <input
               value={manualAuthors}
               onChange={(event) => setManualAuthors(event.target.value)}
-              placeholder="作者（逗号分隔，可选）"
+              placeholder={t('references.manualAuthorsPlaceholder')}
               className="w-64 rounded-md border border-[var(--border)] bg-transparent px-2 py-1 text-xs"
             />
             <input
               value={manualDoi}
               onChange={(event) => setManualDoi(event.target.value)}
-              placeholder="DOI（可选）"
+              placeholder={t('references.manualDoiPlaceholder')}
               className="w-48 rounded-md border border-[var(--border)] bg-transparent px-2 py-1 text-xs"
             />
             <input
               value={manualYear}
               onChange={(event) => setManualYear(event.target.value)}
-              placeholder="年份"
+              placeholder={t('references.manualYearPlaceholder')}
               className="w-20 rounded-md border border-[var(--border)] bg-transparent px-2 py-1 text-xs"
             />
             <button
@@ -335,7 +340,7 @@ export function ReferencesLibraryDialog({
               }}
               disabled={!manualTitle.trim()}
             >
-              添加
+              {t('references.add')}
             </button>
           </div>
         ) : null}
@@ -367,7 +372,7 @@ export function ReferencesLibraryDialog({
                   : 'text-[var(--muted-foreground)] hover:bg-[var(--border)]'
               }`}
             >
-              全部条目（{references.length}）
+              {t('references.allItems', { n: references.length })}
             </button>
             {collections.map((collection) => (
               <button
@@ -387,7 +392,7 @@ export function ReferencesLibraryDialog({
               <input
                 value={newCollectionName}
                 onChange={(event) => setNewCollectionName(event.target.value)}
-                placeholder="新收藏夹…"
+                placeholder={t('references.collectionNewPlaceholder')}
                 className="min-w-0 flex-1 rounded-md border border-[var(--border)] bg-transparent px-2 py-1 text-xs"
                 onKeyDown={(event) => {
                   if (event.key !== 'Enter' || !newCollectionName.trim() || !projectId) return
@@ -407,7 +412,7 @@ export function ReferencesLibraryDialog({
             <div className="flex items-center justify-between border-b border-[var(--border)] px-3 py-1.5">
               <span className="text-xs font-medium text-[var(--foreground)]">
                 {selectedCollectionId === null
-                  ? '全部条目'
+                  ? t('references.allItems', { n: shownReferences.length })
                   : (collections.find((c) => c.id === selectedCollectionId)?.name ?? '')}
               </span>
               <button
@@ -415,13 +420,13 @@ export function ReferencesLibraryDialog({
                 className={ghostClass}
                 onClick={() => void handleMergeDuplicates()}
               >
-                <RefreshCw className="size-3" aria-hidden="true" /> 查重合并
+                <RefreshCw className="size-3" aria-hidden="true" /> {t('references.dedupe')}
               </button>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto p-2">
               {shownReferences.length === 0 ? (
                 <p className="py-10 text-center text-xs text-[var(--muted-foreground)]">
-                  用上方标识符导入，或手动添加第一条文献。
+                  {t('references.empty')}
                 </p>
               ) : (
                 <ul className="flex flex-col gap-1.5">
@@ -444,25 +449,25 @@ export function ReferencesLibraryDialog({
                             {reference.year ? ` · ${reference.year}` : ''}
                             {reference.venue ? ` · ${reference.venue}` : ''}
                             {reference.doi ? ` · ${reference.doi}` : ''}
-                            {reference.provenance ? ' · 已带溯源快照' : ''}
+                            {reference.provenance ? ` · ${t('references.provenanceBadge')}` : ''}
                           </p>
                         </div>
                         <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                           <button
                             type="button"
                             className={ghostClass}
-                            title="复制引文"
+                            title={t('references.copyCitation')}
                             onClick={() => {
                               void navigator.clipboard.writeText(citationText(reference))
-                              setNotice('引文已复制。')
+                              setNotice(t('references.citationCopied'))
                             }}
                           >
-                            引文
+                            {t('references.copyCitation')}
                           </button>
                           {collections.length > 0 ? (
                             <select
                               className="max-w-24 rounded border border-[var(--border)] bg-transparent px-1 py-0.5 text-[10px]"
-                              aria-label="加入收藏夹"
+                              aria-label={t('references.manualAdd')}
                               defaultValue=""
                               onChange={(event) => {
                                 if (event.target.value) {
@@ -471,7 +476,7 @@ export function ReferencesLibraryDialog({
                               }}
                             >
                               <option value="" disabled>
-                                收藏夹…
+                                {t('references.collectionNewPlaceholder')}
                               </option>
                               {collections.map((collection) => (
                                 <option key={collection.id} value={collection.id}>

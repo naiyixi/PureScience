@@ -2487,7 +2487,34 @@ export const zh = {
   'conversation.referenceSession': '引用一个会话',
   'sessionPlan.downloadPlan': '下载计划',
   'writeAudit.filterKind': '按变更类型筛选',
-  'tiffPreview.decoding': '正在解码 TIFF 图像'
+  'tiffPreview.decoding': '正在解码 TIFF 图像',
+
+  // references
+  'references.title': '文献库',
+  'references.close': '关闭',
+  'references.identifierPlaceholder': '输入 DOI / PMID / arXiv ID…',
+  'references.fetch': '抓取元数据',
+  'references.fetching': '抓取中…',
+  'references.manualAdd': '手动添加',
+  'references.add': '添加',
+  'references.addToLibrary': '加入文献库',
+  'references.collectionNewPlaceholder': '新收藏夹…',
+  'references.allItems': '全部条目（{n}）',
+  'references.empty': '用上方标识符导入，或手动添加第一条文献。',
+  'references.duplicateNotice': '检测到重复（共 {n} 条）——未重复加入。可在「查重合并」里合并。',
+  'references.merged': '已合并 {n} 组重复条目。',
+  'references.noDuplicates': '未发现重复条目。',
+  'references.dedupe': '查重合并',
+  'references.copyCitation': '引文',
+  'references.citationCopied': '引文已复制。',
+  'references.addedToCollection': '已加入收藏夹。',
+  'references.notFound': '未找到该标识符对应的文献（检查编号或网络）。',
+  'references.provenanceBadge': '已带溯源快照',
+  'references.manualTitlePlaceholder': '标题（必填）',
+  'references.manualAuthorsPlaceholder': '作者（逗号分隔，可选）',
+  'references.manualDoiPlaceholder': 'DOI（可选）',
+  'references.manualYearPlaceholder': '年份',
+  'references.addedNotice': '已加入：{key}',
 }
 
 export type ZhKey = keyof typeof zh
