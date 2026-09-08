@@ -40,6 +40,8 @@ export type Reference = {
   provenance: ReferenceProvenance | undefined
   pdfManagedFileId: string | undefined
   notes: string | undefined
+  // Collection memberships of this record, populated by list-style reads (undefined on single reads).
+  collectionIds?: string[]
   createdAt: number
   updatedAt: number
 }

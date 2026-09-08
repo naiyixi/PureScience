@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useLanguage } from '@/i18n'
 import { animate } from 'motion'
-import { MessagesSquare, PanelLeft, PanelRight } from 'lucide-react'
+import { Library, MessagesSquare, PanelLeft, PanelRight } from 'lucide-react'
 import type { PanelImperativeHandle, PanelSize } from 'react-resizable-panels'
 
 import type { NotebookSessionReference } from '../../../../shared/notebook'
@@ -26,6 +26,7 @@ import { useWorkspaceAgentRuntime } from '@/lib/acp/useWorkspaceAgentRuntime'
 import { usePreviewPersistence } from '@/lib/preview-persistence/preview-persistence'
 import { useNavigationStore } from '@/stores/navigation-store'
 import { useArchiveUndoStore } from '@/stores/archive-undo-store'
+import { ReferencesLibraryDialog } from '../../components/references/ReferencesLibraryDialog'
 import { useProjectStore } from '@/stores/project-store'
 import { useSettingsStore } from '@/stores/settings-store'
 import {
@@ -425,6 +426,32 @@ const SideChatToggleButton = ({
   )
 }
 
+// Floating toggle that opens the project reference library (v1.51).
+const ReferencesLibraryToggleButton = ({
+  isOpen,
+  onToggle
+}: {
+  isOpen: boolean
+  onToggle: () => void
+}): React.JSX.Element => {
+  return (
+    <button
+      type="button"
+      data-testid="workspace-references-toggle"
+      className={`absolute right-20 top-0 z-40 flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-lg ${
+        isOpen
+          ? 'bg-primary/20 shadow-card backdrop-blur text-action-panel-toggle'
+          : 'bg-transparent shadow-none text-action-panel-toggle hover:bg-surface-control-hover'
+      }`}
+      aria-label="文献库"
+      title="文献库"
+      onClick={onToggle}
+    >
+      <Library className="size-4" strokeWidth={2} fill="none" aria-hidden="true" />
+    </button>
+  )
+}
+
 // Provides stable names for pasted images, which often arrive without a useful filename.
 const getUploadFilename = (file: File, index: number): string => {
   const fileName = file.name.trim()
@@ -442,6 +469,7 @@ const WorkspacePage = ({
   const [sidebarPanelState, setSidebarPanelState] = useState<'open' | 'collapsed'>('open')
   const sidebarToggleRef = useRef<HTMLButtonElement | null>(null)
   const previewToggleRef = useRef<HTMLButtonElement | null>(null)
+  const [isLibraryOpen, setIsLibraryOpen] = useState(false)
   const syncSidebarTogglePosition = useCallback((panelWidth: number): void => {
     const toggle = sidebarToggleRef.current
     if (!toggle) return
@@ -2944,6 +2972,12 @@ const WorkspacePage = ({
           />
         ) : null}
         {!isMobile ? (
+          <ReferencesLibraryToggleButton
+            isOpen={isLibraryOpen}
+            onToggle={() => setIsLibraryOpen((open) => !open)}
+          />
+        ) : null}
+        {!isMobile ? (
           <SideChatToggleButton
             isOpen={isSideChatOpen}
             onToggle={() => setIsSideChatOpen((open) => !open)}
@@ -2955,6 +2989,13 @@ const WorkspacePage = ({
             isCollapsed={sidebarPanelState === 'collapsed'}
             left={`calc(${SIDEBAR_PANEL_DEFAULT_SIZE_CSS} - ${SIDEBAR_TOGGLE_RIGHT_INSET}px)`}
             onToggle={toggleSidebarPanel}
+          />
+        ) : null}
+        {activeProjectId ? (
+          <ReferencesLibraryDialog
+            open={isLibraryOpen}
+            onClose={() => setIsLibraryOpen(false)}
+            projectId={activeProjectId}
           />
         ) : null}
         {isSideChatOpen ? (

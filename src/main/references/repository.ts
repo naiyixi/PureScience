@@ -144,7 +144,23 @@ export class ReferenceRepository {
       where: { projectId },
       orderBy: { createdAt: 'desc' }
     })
-    return rows.map(mapReference)
+    const references = rows.map(mapReference)
+    if (references.length === 0) return references
+    // Attach collection memberships in one extra query so the renderer can filter by collection
+    // without an extra IPC surface.
+    const items = await client.collectionItem.findMany({
+      where: { referenceId: { in: references.map((reference) => reference.id) } }
+    })
+    const byReference = new Map<string, string[]>()
+    for (const item of items) {
+      const list = byReference.get(item.referenceId) ?? []
+      list.push(item.collectionId)
+      byReference.set(item.referenceId, list)
+    }
+    return references.map((reference) => {
+      const collectionIds = byReference.get(reference.id)
+      return collectionIds === undefined ? reference : { ...reference, collectionIds }
+    })
   }
 
   async listReferencesByCollection(collectionId: string): Promise<Reference[]> {
