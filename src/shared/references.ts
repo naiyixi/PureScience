@@ -120,3 +120,90 @@ export const citationKeyFrom = (input: CreateReferenceInput): string => {
   const base = latin || 'Ref'
   return input.year ? `${base}${input.year}` : base
 }
+
+// ---- GB/T 7714-2015 (顺序编码制) citation formatting ----
+// Practice style used by Chinese journals: CJK author names verbatim (姓前名后), Western names
+// rendered surname-first with dotted initials; >3 authors abbreviated with 等 / "et al." keyed to
+// the first author's script; journal records tagged [J], identifier-only records [EB/OL] with a
+// retrieval date and resolvable locator, and DOI appended at the record end when present.
+const CJK_SCRIPT_RE = /[\u3400-\u9fff]/
+const hasCjk = (value: string): boolean => CJK_SCRIPT_RE.test(value)
+
+export const gbt7714AuthorName = (raw: string): string => {
+  const name = raw.trim()
+  if (!name || hasCjk(name)) return name
+  const comma = name
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean)
+  let surname: string
+  let given: string
+  if (comma.length >= 2) {
+    surname = comma[0]
+    given = comma.slice(1).join(' ')
+  } else {
+    const words = name.split(/\s+/).filter(Boolean)
+    if (words.length === 1) return name
+    surname = words[words.length - 1]
+    given = words.slice(0, -1).join(' ')
+  }
+  const initials = given
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => `${word[0]}.`)
+    .join(' ')
+  return initials ? `${surname} ${initials}` : surname
+}
+
+export const gbt7714Authors = (authors: readonly { name: string }[]): string => {
+  if (authors.length === 0) return ''
+  const names = authors.map((author) => gbt7714AuthorName(author.name))
+  const first = names.slice(0, 3)
+  if (authors.length <= 3) {
+    // The call site appends ". " after the author list; drop the dotted-initial trailing dot.
+    return first.join(', ').replace(/\.$/, '')
+  }
+  const ellipsis = hasCjk(names[0]) ? ', 等' : ' et al.'
+  return `${first.join(', ')}${ellipsis}`
+}
+
+export const gbt7714Locator = (
+  reference: Pick<Reference, 'doi' | 'arxivId' | 'pmid' | 'pmcid'>
+): string => {
+  if (reference.doi?.trim()) return `https://doi.org/${reference.doi.trim()}`
+  if (reference.arxivId?.trim()) return `https://arxiv.org/abs/${reference.arxivId.trim()}`
+  if (reference.pmid?.trim()) return `https://pubmed.ncbi.nlm.nih.gov/${reference.pmid.trim()}/`
+  if (reference.pmcid?.trim())
+    return `https://www.ncbi.nlm.nih.gov/pmc/articles/${reference.pmcid.trim()}/`
+  return ''
+}
+
+export const formatGbt7714 = (
+  reference: Pick<
+    Reference,
+    'title' | 'authors' | 'venue' | 'year' | 'doi' | 'arxivId' | 'pmid' | 'pmcid'
+  >,
+  options: { retrievedAt?: string } = {}
+): string => {
+  const authors = gbt7714Authors(reference.authors)
+  const title = reference.title.trim()
+  const venue = reference.venue?.trim()
+  if (venue) {
+    const suffix = [venue, reference.year ? String(reference.year) : ''].filter(Boolean).join(', ')
+    const doi = reference.doi?.trim() ? ` ${reference.doi.trim()}` : ''
+    return `${authors}. ${title}[J]. ${suffix}.${doi}`
+  }
+  const year = reference.year ? ` ${reference.year}.` : ''
+  const retrieved = options.retrievedAt ? ` [${options.retrievedAt}].` : '.'
+  const locator = gbt7714Locator(reference)
+  const location = locator ? ` ${locator}` : ''
+  return `${authors}. ${title}[EB/OL].${year}${retrieved}${location}`
+}
+
+export const formatGbt7714List = (
+  references: Parameters<typeof formatGbt7714>[0][],
+  options: { retrievedAt?: string } = {}
+): string =>
+  references
+    .map((reference, index) => `[${index + 1}] ${formatGbt7714(reference, options)}`)
+    .join('\n')

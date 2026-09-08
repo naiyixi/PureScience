@@ -2610,6 +2610,9 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'tiffPreview.decoding': 'TIFF 画像をデコード中…',
 
   // references
+  'references.exportGbt': 'GB/T 7714 引用をエクスポート',
+  'references.gbtCopied': 'GB/T 7714 引用をコピーしました。',
+  'references.gbtExported': '{n} 件の GB/T 7714 引用をエクスポートしました。',
   'references.title': '文献ライブラリ',
   'references.close': '閉じる',
   'references.identifierPlaceholder': 'DOI / PMID / arXiv ID を入力…',

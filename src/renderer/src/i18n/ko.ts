@@ -2559,6 +2559,9 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'tiffPreview.decoding': 'TIFF 이미지를 디코딩하는 중…',
 
   // references
+  'references.exportGbt': 'GB/T 7714 인용 내보내기',
+  'references.gbtCopied': 'GB/T 7714 인용이 복사되었습니다.',
+  'references.gbtExported': 'GB/T 7714 인용 {n}건을 내보냈습니다.',
   'references.title': '문헌 라이브러리',
   'references.close': '닫기',
   'references.identifierPlaceholder': 'DOI / PMID / arXiv ID 입력…',

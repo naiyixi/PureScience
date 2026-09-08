@@ -2614,6 +2614,9 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'tiffPreview.decoding': 'Декодирование изображения TIFF…',
 
   // references
+  'references.exportGbt': 'Экспорт цитат GB/T 7714',
+  'references.gbtCopied': 'Цитата GB/T 7714 скопирована.',
+  'references.gbtExported': 'Экспортировано {n} цитат GB/T 7714.',
   'references.title': 'Библиотека литературы',
   'references.close': 'Закрыть',
   'references.identifierPlaceholder': 'Введите DOI / PMID / arXiv ID…',

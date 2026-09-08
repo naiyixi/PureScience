@@ -8,7 +8,11 @@ import type {
   Reference,
   ReferenceCollection
 } from '../../../../shared/references'
-import { normalizeTitleForDedupe } from '../../../../shared/references'
+import {
+  formatGbt7714,
+  formatGbt7714List,
+  normalizeTitleForDedupe
+} from '../../../../shared/references'
 
 const IDENTIFIER_KINDS = ['doi', 'pmid', 'pmcid', 'arxivId'] as const
 type IdentifierKind = (typeof IDENTIFIER_KINDS)[number]
@@ -139,6 +143,24 @@ export function ReferencesLibraryDialog({
   }, [references, selectedCollectionId])
 
   if (!open) return null
+
+  const todayIso = (): string => new Date().toISOString().slice(0, 10)
+
+  const handleExportGbt7714 = async (): Promise<void> => {
+    if (shownReferences.length === 0) {
+      setNotice(t('references.noDuplicates'))
+      return
+    }
+    const text = formatGbt7714List(shownReferences, { retrievedAt: todayIso() })
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `references-gbt7714-${todayIso()}.txt`
+    link.click()
+    URL.revokeObjectURL(url)
+    setNotice(t('references.gbtExported', { n: shownReferences.length }))
+  }
 
   const runAdd = async (input: Omit<CreateReferenceInput, 'projectId'>): Promise<void> => {
     try {
@@ -422,6 +444,13 @@ export function ReferencesLibraryDialog({
               >
                 <RefreshCw className="size-3" aria-hidden="true" /> {t('references.dedupe')}
               </button>
+              <button
+                type="button"
+                className={ghostClass}
+                onClick={() => void handleExportGbt7714()}
+              >
+                <BookMarked className="size-3" aria-hidden="true" /> {t('references.exportGbt')}
+              </button>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto p-2">
               {shownReferences.length === 0 ? (
@@ -463,6 +492,19 @@ export function ReferencesLibraryDialog({
                             }}
                           >
                             {t('references.copyCitation')}
+                          </button>
+                          <button
+                            type="button"
+                            className={ghostClass}
+                            title={t('references.exportGbt')}
+                            onClick={() => {
+                              void navigator.clipboard.writeText(
+                                formatGbt7714(reference, { retrievedAt: todayIso() })
+                              )
+                              setNotice(t('references.gbtCopied'))
+                            }}
+                          >
+                            GB/T 7714
                           </button>
                           {collections.length > 0 ? (
                             <select

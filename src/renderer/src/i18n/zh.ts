@@ -2490,6 +2490,9 @@ export const zh = {
   'tiffPreview.decoding': '正在解码 TIFF 图像',
 
   // references
+  'references.exportGbt': '导出 GB/T 7714 引文',
+  'references.gbtCopied': 'GB/T 7714 引文已复制。',
+  'references.gbtExported': '已导出 {n} 条 GB/T 7714 引文。',
   'references.title': '文献库',
   'references.close': '关闭',
   'references.identifierPlaceholder': '输入 DOI / PMID / arXiv ID…',

@@ -2647,6 +2647,9 @@ export const en: Record<ZhKey, string> = {
   'tiffPreview.decoding': 'Decoding TIFF image',
 
   // references
+  'references.exportGbt': 'Export GB/T 7714 citations',
+  'references.gbtCopied': 'GB/T 7714 citation copied.',
+  'references.gbtExported': 'Exported {n} GB/T 7714 citations.',
   'references.title': 'Reference library',
   'references.close': 'Close',
   'references.identifierPlaceholder': 'Enter DOI / PMID / arXiv ID…',
