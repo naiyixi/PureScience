@@ -789,6 +789,8 @@ export interface PureScienceAPI {
       kind: IdentifierKind,
       identifier: string
     ): Promise<CreateReferenceInput | null>
+    attachPdf(referenceId: string, pdfManagedFileId: string | null): Promise<Reference>
+    detachPdf(referenceId: string): Promise<Reference>
   }
   preview: {
     load(request: LoadPreviewStateRequest): Promise<PersistedPreviewState | null>

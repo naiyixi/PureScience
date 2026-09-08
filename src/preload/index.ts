@@ -605,7 +605,11 @@ const api: PureScienceAPI = {
     merge: (keeperId, duplicateIds) =>
       electronRendererContracts.invoke('references.merge', keeperId, duplicateIds),
     fetchByIdentifier: (kind, identifier) =>
-      electronRendererContracts.invoke('references.fetchByIdentifier', kind, identifier)
+      electronRendererContracts.invoke('references.fetchByIdentifier', kind, identifier),
+    attachPdf: (referenceId, pdfManagedFileId) =>
+      electronRendererContracts.invoke('references.attachPdf', referenceId, pdfManagedFileId),
+    detachPdf: (referenceId) =>
+      electronRendererContracts.invoke('references.detachPdf', referenceId)
   },
   preview: {
     // Per-project preview panel state, persisted alongside projects in SQLite.

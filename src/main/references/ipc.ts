@@ -30,6 +30,8 @@ export type ReferencesHandlers = {
   removeFromCollection(collectionId: string, referenceId: string): Promise<void>
   merge(keeperId: string, duplicateIds: readonly string[]): Promise<Reference>
   fetchByIdentifier(kind: IdentifierKind, identifier: string): Promise<CreateReferenceInput | null>
+  attachPdf(referenceId: string, pdfManagedFileId: string | null): Promise<Reference>
+  detachPdf(referenceId: string): Promise<Reference>
 }
 
 export type ReferencesIpcModule = {
@@ -57,7 +59,9 @@ export const createReferencesIpcModule = (
     removeFromCollection: (collectionId, referenceId) =>
       service.removeFromCollection(collectionId, referenceId),
     merge: (keeperId, duplicateIds) => service.mergeReferences(keeperId, duplicateIds),
-    fetchByIdentifier: (kind, identifier) => fetchReferenceByIdentifier(kind, identifier)
+    fetchByIdentifier: (kind, identifier) => fetchReferenceByIdentifier(kind, identifier),
+    attachPdf: (referenceId, pdfManagedFileId) => service.attachPdf(referenceId, pdfManagedFileId),
+    detachPdf: (referenceId) => service.detachPdf(referenceId)
   }
   return { handlers, service }
 }
@@ -98,6 +102,14 @@ export const installReferencesIpcHandlers = (
       'references:fetch-by-identifier',
       (_event, kind: IdentifierKind, identifier: string) =>
         handlers.fetchByIdentifier(kind, identifier)
+    )
+    ipcMainHandle(
+      'references:attach-pdf',
+      (_event, referenceId: string, pdfManagedFileId: string | null) =>
+        handlers.attachPdf(referenceId, pdfManagedFileId)
+    )
+    ipcMainHandle('references:detach-pdf', (_event, referenceId: string) =>
+      handlers.detachPdf(referenceId)
     )
     return scope.complete()
   } catch (error) {

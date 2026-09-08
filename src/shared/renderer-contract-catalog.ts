@@ -266,8 +266,9 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['delete', 'projects:delete'], ['get', 'projects:get'], ['list', 'projects:list'], ['updateArchive', 'projects:update-archive'], ['update', 'projects:update'],
   ]),
   group('references', 'references', [
-    ['add', 'references:add'], ['addToCollection', 'references:add-to-collection'], ['createCollection', 'references:create-collection'],
-    ['deleteCollection', 'references:delete-collection'], ['fetchByIdentifier', 'references:fetch-by-identifier'], ['list', 'references:list'],
+    ['add', 'references:add'], ['addToCollection', 'references:add-to-collection'], ['attachPdf', 'references:attach-pdf'],
+    ['createCollection', 'references:create-collection'], ['deleteCollection', 'references:delete-collection'], ['detachPdf', 'references:detach-pdf'],
+    ['fetchByIdentifier', 'references:fetch-by-identifier'], ['list', 'references:list'],
     ['listCollections', 'references:list-collections'], ['merge', 'references:merge'], ['remove', 'references:remove'],
     ['removeFromCollection', 'references:remove-from-collection'],
   ]),
