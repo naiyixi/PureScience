@@ -87,6 +87,10 @@ export type CreateReferenceCollectionInput = {
   description?: string
 }
 
+// Result of an add attempt: either a fresh record or a duplicate-detection hit (nothing written).
+export type AddReferenceResult =
+  { status: 'created'; reference: Reference } | { status: 'duplicate'; duplicateOf: Reference[] }
+
 // Normalizes a title for duplicate detection: case-fold, strip punctuation/whitespace runs and
 // common lead-ins ("The", "A", "An"), and drop trailing periods.
 export const normalizeTitleForDedupe = (title: string): string =>

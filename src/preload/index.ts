@@ -584,6 +584,29 @@ const api: PureScienceAPI = {
     enabledHostsSet: (sessionId, providerIds) =>
       electronRendererContracts.invoke('compute.enabledHostsSet', sessionId, providerIds)
   },
+  // Project reference library (v1.51). Methods mirror the references:* renderer channels.
+  references: {
+    list: (projectId) => electronRendererContracts.invoke('references.list', projectId),
+    add: (input) => electronRendererContracts.invoke('references.add', input),
+    remove: (id) => electronRendererContracts.invoke('references.remove', id),
+    listCollections: (projectId) =>
+      electronRendererContracts.invoke('references.listCollections', projectId),
+    createCollection: (input) =>
+      electronRendererContracts.invoke('references.createCollection', input),
+    deleteCollection: (id) => electronRendererContracts.invoke('references.deleteCollection', id),
+    addToCollection: (collectionId, referenceId) =>
+      electronRendererContracts.invoke('references.addToCollection', collectionId, referenceId),
+    removeFromCollection: (collectionId, referenceId) =>
+      electronRendererContracts.invoke(
+        'references.removeFromCollection',
+        collectionId,
+        referenceId
+      ),
+    merge: (keeperId, duplicateIds) =>
+      electronRendererContracts.invoke('references.merge', keeperId, duplicateIds),
+    fetchByIdentifier: (kind, identifier) =>
+      electronRendererContracts.invoke('references.fetchByIdentifier', kind, identifier)
+  },
   preview: {
     // Per-project preview panel state, persisted alongside projects in SQLite.
     load: (request) => electronRendererContracts.invoke('preview.load', request),

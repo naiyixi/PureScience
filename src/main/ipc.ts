@@ -47,6 +47,7 @@ import { ArtifactProvenanceRepository } from './artifacts/provenance-repository'
 import { ProvenanceMessageSnapshotRepository } from './artifacts/provenance-message-snapshot'
 import { ArtifactRunRegistry } from './artifacts/run-registry'
 import { createComputeIpcModule } from './compute/ipc'
+import { createReferencesIpcModule, installReferencesIpcHandlers } from './references/ipc'
 import { attachEnabledComputeHosts } from './compute/enabled-hosts-registry'
 import { createComputeJobRuntime } from './compute/job-runtime'
 import { waitForInitialConnectorRefresh } from './connector-reload'
@@ -1041,6 +1042,9 @@ const createApplicationModules = async (
     taskNotifications,
     permissionGrantRegistry
   )
+  // Project reference library (v1.51): register its renderer surface alongside compute.
+  const referencesIpcModule = createReferencesIpcModule()
+  installReferencesIpcHandlers(referencesIpcModule)
   surfaceAdapters = beforeAcpAdapters
   const {
     computeService,
@@ -2133,6 +2137,7 @@ const createApplicationModules = async (
       enabledHosts: hostsRegistry
     },
     permissionGrants: permissionGrantProjection,
+    references: { references: referencesIpcModule.handlers },
     dataContent: {
       artifacts: artifactHandlers,
       electron: {

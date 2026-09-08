@@ -46,6 +46,7 @@ const dependencies = (): ApplicationCommandCompositionDependencies =>
     settingsRuntime: EMPTY_OWNER,
     compute: EMPTY_OWNER,
     permissionGrants: EMPTY_OWNER,
+    references: EMPTY_OWNER,
     dataContent: EMPTY_OWNER,
     host: EMPTY_OWNER
   }) as ApplicationCommandCompositionDependencies
@@ -169,7 +170,7 @@ describe('application command composition', () => {
     const composition = createApplicationCommandComposition(dependencies())
 
     expect(composition.localWeb.commandNames()).toEqual(expectedLocalWebCommands())
-    expect(composition.localWeb.commandNames()).toHaveLength(284)
+    expect(composition.localWeb.commandNames()).toHaveLength(294)
   })
 
   it('partitions remote Web dispatch from fail-closed pre-dispatch rejections', async () => {
@@ -184,7 +185,7 @@ describe('application command composition', () => {
     )
 
     expect(composition.remoteWeb.commandNames()).toEqual(expectedRemoteCommands())
-    expect(composition.remoteWeb.commandNames()).toHaveLength(187)
+    expect(composition.remoteWeb.commandNames()).toHaveLength(197)
     expect(composition.remoteWeb.rejectedCommandNames()).toEqual(expectedRemoteRejections())
     expect(composition.remoteWeb.rejectedCommandNames()).toHaveLength(97)
     await expect(
@@ -276,6 +277,7 @@ describe('application command composition', () => {
       'settingsRuntime',
       'compute',
       'permissionGrants',
+      'references',
       'dataContent',
       'host'
     ] as const satisfies readonly (keyof ApplicationCommandCompositionDependencies)[]
@@ -298,7 +300,8 @@ describe('application command composition', () => {
     expect(reads).toEqual(orderedNames)
     expect(normalEvents).toEqual(orderedNames.map((_, index) => `install:${index}`))
     composition.dispose()
-    expect(normalEvents.slice(11)).toEqual([
+    expect(normalEvents.slice(12)).toEqual([
+      'uninstall:11',
       'uninstall:10',
       'uninstall:9',
       'uninstall:8',
@@ -388,7 +391,8 @@ describe('application command composition', () => {
     expect(
       (disposalFailure as AggregateError).errors.map((error) => (error as Error).message)
     ).toEqual(['uninstall failed:10', 'uninstall failed:3', 'router dispose failed'])
-    expect(disposeFailureEvents.slice(11)).toEqual([
+    expect(disposeFailureEvents.slice(12)).toEqual([
+      'uninstall:11',
       'uninstall:10',
       'uninstall:9',
       'uninstall:8',
@@ -411,7 +415,7 @@ describe('application command composition', () => {
       ((invocation: ApplicationInvocation<readonly unknown[]>) => unknown) | undefined
     const slotFailureEvents: string[] = []
     installInstrumentedRouterFactory(slotFailureEvents, {
-      failCompleteAt: 10,
+      failCompleteAt: 11,
       failRouterDispose: true,
       onRegisterGroup: (groupName, handlers) => {
         if (groupName !== 'remote-access') return
@@ -432,8 +436,9 @@ describe('application command composition', () => {
     expect(slotConstructionFailure).toBeInstanceOf(AggregateError)
     expect(
       (slotConstructionFailure as AggregateError).errors.map((error) => (error as Error).message)
-    ).toEqual(['complete failed:10', 'router dispose failed'])
-    expect(slotFailureEvents.slice(11)).toEqual([
+    ).toEqual(['complete failed:11', 'router dispose failed'])
+    expect(slotFailureEvents.slice(12)).toEqual([
+      'uninstall:10',
       'uninstall:9',
       'uninstall:8',
       'uninstall:7',

@@ -45,6 +45,11 @@ import {
   registerPermissionGrantApplicationCommands
 } from './permission-grants/application-commands'
 import {
+  referencesApplicationCommandGroup,
+  registerReferencesApplicationCommands,
+  type ReferencesApplicationCommandDependencies
+} from './references/application-commands'
+import {
   registerCoreSettingsApplicationCommands,
   settingsCoreApplicationCommandGroup,
   type CoreSettingsApplicationCommandDependencies
@@ -90,6 +95,7 @@ type ApplicationCommandCompositionDependencies = Readonly<{
   settingsRuntime: RuntimeSettingsApplicationCommandDependencies
   compute: ComputeApplicationCommandDependencies
   permissionGrants: PermissionGrantDependencies
+  references: ReferencesApplicationCommandDependencies
   dataContent: DataContentApplicationCommandDependencies
   host: Omit<HostApplicationCommandDependencies, 'remoteAccess'>
 }>
@@ -102,10 +108,10 @@ type ApplicationCommandComposition = Readonly<{
   dispose: () => void
 }>
 
-const GROUP_COUNT = 35
-const INTERNAL_COMMAND_COUNT = 286
-const LOCAL_WEB_COMMAND_COUNT = 284
-const REMOTE_WEB_COMMAND_COUNT = 187
+const GROUP_COUNT = 36
+const INTERNAL_COMMAND_COUNT = 296
+const LOCAL_WEB_COMMAND_COUNT = 294
+const REMOTE_WEB_COMMAND_COUNT = 197
 const REMOTE_REJECTED_COMMAND_COUNT = 97
 const TASK_COMMAND_COUNT = 7
 
@@ -136,6 +142,7 @@ const APPLICATION_COMMAND_GROUPS = Object.freeze([
   settingsRuntimeApplicationCommandGroup,
   computeApplicationCommandGroup,
   permissionGrantApplicationCommandGroup,
+  referencesApplicationCommandGroup,
   ...dataContentApplicationCommandGroups,
   ...hostApplicationCommandGroups
 ])
@@ -280,6 +287,7 @@ const createApplicationCommandComposition = (
     () => registerComputeApplicationCommands(router.registrar, dependencies.compute),
     () =>
       registerPermissionGrantApplicationCommands(router.registrar, dependencies.permissionGrants),
+    () => registerReferencesApplicationCommands(router.registrar, dependencies.references),
     () => registerDataContentApplicationCommands(router.registrar, dependencies.dataContent),
     () =>
       registerHostApplicationCommands(router.registrar, {

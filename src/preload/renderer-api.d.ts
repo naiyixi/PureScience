@@ -16,6 +16,15 @@ import type {
 } from '../shared/acp'
 import type { ElicitationRequestView, ElicitationRespondRequest } from '../shared/elicitation'
 import type {
+  AddReferenceResult,
+  CollectionItem,
+  CreateReferenceCollectionInput,
+  CreateReferenceInput,
+  Reference,
+  ReferenceCollection
+} from '../shared/references'
+import type { IdentifierKind } from '../main/references/service'
+import type {
   FolderGrant,
   FolderGrantRequest,
   FolderGrantRevokeRequest,
@@ -764,6 +773,22 @@ export interface PureScienceAPI {
     // the main-process registry is the runtime cache for list_compute RPC ops.
     enabledHostsGet(sessionId: string): Promise<string[]>
     enabledHostsSet(sessionId: string, providerIds: string[]): Promise<void>
+  }
+  // Project reference library (v1.51): project-scoped bibliographic records and collections.
+  references: {
+    list(projectId: string): Promise<Reference[]>
+    add(input: CreateReferenceInput): Promise<AddReferenceResult>
+    remove(id: string): Promise<void>
+    listCollections(projectId: string): Promise<ReferenceCollection[]>
+    createCollection(input: CreateReferenceCollectionInput): Promise<ReferenceCollection>
+    deleteCollection(id: string): Promise<void>
+    addToCollection(collectionId: string, referenceId: string): Promise<CollectionItem>
+    removeFromCollection(collectionId: string, referenceId: string): Promise<void>
+    merge(keeperId: string, duplicateIds: readonly string[]): Promise<Reference>
+    fetchByIdentifier(
+      kind: IdentifierKind,
+      identifier: string
+    ): Promise<CreateReferenceInput | null>
   }
   preview: {
     load(request: LoadPreviewStateRequest): Promise<PersistedPreviewState | null>

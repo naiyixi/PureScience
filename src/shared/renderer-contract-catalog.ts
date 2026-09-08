@@ -265,6 +265,12 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['onCreated', 'project:created', EVENT], ['onDeleted', 'project:deleted', EVENT], ['onUpdated', 'project:updated', EVENT], ['create', 'projects:create'],
     ['delete', 'projects:delete'], ['get', 'projects:get'], ['list', 'projects:list'], ['updateArchive', 'projects:update-archive'], ['update', 'projects:update'],
   ]),
+  group('references', 'references', [
+    ['add', 'references:add'], ['addToCollection', 'references:add-to-collection'], ['createCollection', 'references:create-collection'],
+    ['deleteCollection', 'references:delete-collection'], ['fetchByIdentifier', 'references:fetch-by-identifier'], ['list', 'references:list'],
+    ['listCollections', 'references:list-collections'], ['merge', 'references:merge'], ['remove', 'references:remove'],
+    ['removeFromCollection', 'references:remove-from-collection'],
+  ]),
   group('remote-access', 'remoteAccess', [
     ['onChanged', 'remote-access:changed', EVENT], ['approve', 'remote-access:approve'], ['detect', 'remote-access:detect'],
     ['disable', 'remote-access:disable'], ['getSnapshot', 'remote-access:get-snapshot'], ['reject', 'remote-access:reject'],

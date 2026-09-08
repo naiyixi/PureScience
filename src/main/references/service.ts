@@ -1,5 +1,6 @@
 import type { ReferenceRepository } from './repository'
 import type {
+  AddReferenceResult,
   CollectionItem,
   CreateReferenceCollectionInput,
   CreateReferenceInput,
@@ -17,7 +18,8 @@ const MAX_SNAPSHOT_CHARS = 64_000
 const MAX_ABSTRACT_CHARS = 8_000
 const MAX_TITLE_CHARS = 2_000
 
-type IdentifierKind = 'doi' | 'pmid' | 'pmcid' | 'arxivId'
+// Identifier kinds resolvable through public bibliographic APIs (library add-by-identifier).
+export type IdentifierKind = 'doi' | 'pmid' | 'pmcid' | 'arxivId'
 
 export type FetchByIdentifierDeps = {
   fetchImpl?: typeof fetch
@@ -185,9 +187,6 @@ export const findDuplicateCandidates = (
     return titleKey.length > 0 && normalizeTitleForDedupe(candidate.title) === titleKey
   })
 }
-
-export type AddReferenceResult =
-  { status: 'created'; reference: Reference } | { status: 'duplicate'; duplicateOf: Reference[] }
 
 // Domain service over ReferenceRepository: identifier validation, dedupe, citation-key collision
 // suffixes, and collection operations.
