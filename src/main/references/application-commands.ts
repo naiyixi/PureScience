@@ -32,6 +32,8 @@ type ReferencesCommandOwner = Pick<
   | 'removeFromCollection'
   | 'merge'
   | 'fetchByIdentifier'
+  | 'attachPdf'
+  | 'detachPdf'
 >
 
 const referencesApplicationCommands = Object.freeze({
@@ -84,7 +86,17 @@ const referencesApplicationCommands = Object.freeze({
     'references:fetch-by-identifier',
     OwnerArgs<ReferencesCommandOwner, 'fetchByIdentifier'>,
     OwnerResult<ReferencesCommandOwner, 'fetchByIdentifier'>
-  >('references:fetch-by-identifier')
+  >('references:fetch-by-identifier'),
+  attachPdf: defineApplicationCommand<
+    'references:attach-pdf',
+    OwnerArgs<ReferencesCommandOwner, 'attachPdf'>,
+    OwnerResult<ReferencesCommandOwner, 'attachPdf'>
+  >('references:attach-pdf'),
+  detachPdf: defineApplicationCommand<
+    'references:detach-pdf',
+    OwnerArgs<ReferencesCommandOwner, 'detachPdf'>,
+    OwnerResult<ReferencesCommandOwner, 'detachPdf'>
+  >('references:detach-pdf')
 })
 
 const referencesApplicationCommandGroup = defineApplicationCommandGroup('references', [
@@ -97,7 +109,9 @@ const referencesApplicationCommandGroup = defineApplicationCommandGroup('referen
   referencesApplicationCommands.listCollections,
   referencesApplicationCommands.merge,
   referencesApplicationCommands.remove,
-  referencesApplicationCommands.removeFromCollection
+  referencesApplicationCommands.removeFromCollection,
+  referencesApplicationCommands.attachPdf,
+  referencesApplicationCommands.detachPdf
 ] as const)
 
 // Registers the library channels as application commands delegating to the references owner.
@@ -122,7 +136,9 @@ const registerReferencesApplicationCommands = (
         dependencies.references.removeFromCollection(args[0], args[1]),
       'references:merge': ({ args }) => dependencies.references.merge(args[0], args[1]),
       'references:fetch-by-identifier': ({ args }) =>
-        dependencies.references.fetchByIdentifier(args[0], args[1])
+        dependencies.references.fetchByIdentifier(args[0], args[1]),
+      'references:attach-pdf': ({ args }) => dependencies.references.attachPdf(args[0], args[1]),
+      'references:detach-pdf': ({ args }) => dependencies.references.detachPdf(args[0])
     })
     return scope.complete()
   } catch (error) {
