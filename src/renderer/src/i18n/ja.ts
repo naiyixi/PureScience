@@ -2624,7 +2624,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'references.collectionNewPlaceholder': '新しいコレクション…',
   'references.allItems': '全エントリ（{n}）',
   'references.empty': '上の識別子でインポートするか、手動で最初の文献を追加してください。',
-  'references.duplicateNotice': '重複を検出（{n} 件）——追加しませんでした。「重複マージ」で統合できます。',
+  'references.duplicateNotice':
+    '重複を検出（{n} 件）——追加しませんでした。「重複マージ」で統合できます。',
   'references.merged': '{n} 組の重複エントリを統合しました。',
   'references.noDuplicates': '重複エントリは見つかりませんでした。',
   'references.dedupe': '重複マージ',
@@ -2637,5 +2638,5 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'references.manualAuthorsPlaceholder': '著者（カンマ区切り、任意）',
   'references.manualDoiPlaceholder': 'DOI（任意）',
   'references.manualYearPlaceholder': '年',
-  'references.addedNotice': '追加しました：{key}',
+  'references.addedNotice': '追加しました：{key}'
 }

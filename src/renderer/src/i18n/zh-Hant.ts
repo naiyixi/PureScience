@@ -2451,5 +2451,5 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'references.manualAuthorsPlaceholder': '作者（逗號分隔，可選）',
   'references.manualDoiPlaceholder': 'DOI（可選）',
   'references.manualYearPlaceholder': '年份',
-  'references.addedNotice': '已加入：{key}',
+  'references.addedNotice': '已加入：{key}'
 }

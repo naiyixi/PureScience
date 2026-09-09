@@ -2661,18 +2661,20 @@ export const en: Record<ZhKey, string> = {
   'references.collectionNewPlaceholder': 'New collection…',
   'references.allItems': 'All items ({n})',
   'references.empty': 'Import via an identifier above, or add your first reference manually.',
-  'references.duplicateNotice': 'Duplicate detected ({n}) — not added. Merge them via “Find duplicates”.',
+  'references.duplicateNotice':
+    'Duplicate detected ({n}) — not added. Merge them via “Find duplicates”.',
   'references.merged': 'Merged {n} duplicate groups.',
   'references.noDuplicates': 'No duplicate entries found.',
   'references.dedupe': 'Find & merge duplicates',
   'references.copyCitation': 'Citation',
   'references.citationCopied': 'Citation copied.',
   'references.addedToCollection': 'Added to collection.',
-  'references.notFound': 'No reference found for this identifier (check the number or your network).',
+  'references.notFound':
+    'No reference found for this identifier (check the number or your network).',
   'references.provenanceBadge': 'Provenance snapshot attached',
   'references.manualTitlePlaceholder': 'Title (required)',
   'references.manualAuthorsPlaceholder': 'Authors (comma-separated, optional)',
   'references.manualDoiPlaceholder': 'DOI (optional)',
   'references.manualYearPlaceholder': 'Year',
-  'references.addedNotice': 'Added: {key}',
+  'references.addedNotice': 'Added: {key}'
 }

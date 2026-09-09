@@ -2673,19 +2673,22 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'references.addToLibrary': 'Ajouter à la bibliothèque',
   'references.collectionNewPlaceholder': 'Nouvelle collection…',
   'references.allItems': 'Tous les éléments（{n}）',
-  'references.empty': 'Importez via un identifiant ci-dessus ou ajoutez manuellement la première référence.',
-  'references.duplicateNotice': 'Doublon détecté（{n}）— non ajouté. Fusionnez via « Rechercher les doublons ».',
+  'references.empty':
+    'Importez via un identifiant ci-dessus ou ajoutez manuellement la première référence.',
+  'references.duplicateNotice':
+    'Doublon détecté（{n}）— non ajouté. Fusionnez via « Rechercher les doublons ».',
   'references.merged': '{n} groupes de doublons fusionnés.',
   'references.noDuplicates': 'Aucun doublon trouvé.',
   'references.dedupe': 'Fusionner les doublons',
   'references.copyCitation': 'Citer',
   'references.citationCopied': 'Citation copiée.',
   'references.addedToCollection': 'Ajouté à la collection.',
-  'references.notFound': 'Aucune référence trouvée pour cet identifiant（vérifiez le numéro ou le réseau）.',
+  'references.notFound':
+    'Aucune référence trouvée pour cet identifiant（vérifiez le numéro ou le réseau）.',
   'references.provenanceBadge': 'Avec instantané de provenance',
   'references.manualTitlePlaceholder': 'Titre（obligatoire）',
   'references.manualAuthorsPlaceholder': 'Auteurs（séparés par des virgules, facultatif）',
   'references.manualDoiPlaceholder': 'DOI（facultatif）',
   'references.manualYearPlaceholder': 'Année',
-  'references.addedNotice': 'Ajouté：{key}',
+  'references.addedNotice': 'Ajouté：{key}'
 }

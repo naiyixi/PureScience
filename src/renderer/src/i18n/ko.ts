@@ -2573,7 +2573,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'references.collectionNewPlaceholder': '새 컬렉션…',
   'references.allItems': '전체 항목（{n}）',
   'references.empty': '위의 식별자로 가져오거나 수동으로 첫 번째 문헌을 추가하세요.',
-  'references.duplicateNotice': '중복 감지（{n}건）——추가하지 않았습니다. 「중복 병합」에서 병합하세요.',
+  'references.duplicateNotice':
+    '중복 감지（{n}건）——추가하지 않았습니다. 「중복 병합」에서 병합하세요.',
   'references.merged': '중복 {n}그룹을 병합했습니다.',
   'references.noDuplicates': '중복 항목이 없습니다.',
   'references.dedupe': '중복 병합',
@@ -2586,5 +2587,5 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'references.manualAuthorsPlaceholder': '저자（쉼표 구분, 선택）',
   'references.manualDoiPlaceholder': 'DOI（선택）',
   'references.manualYearPlaceholder': '연도',
-  'references.addedNotice': '추가됨：{key}',
+  'references.addedNotice': '추가됨：{key}'
 }

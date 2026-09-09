@@ -2656,19 +2656,22 @@ export const es: Partial<Record<ZhKey, string>> = {
   'references.addToLibrary': 'Añadir a la biblioteca',
   'references.collectionNewPlaceholder': 'Nueva colección…',
   'references.allItems': 'Todos los elementos（{n}）',
-  'references.empty': 'Importa mediante un identificador o añade manualmente la primera referencia.',
-  'references.duplicateNotice': 'Duplicado detectado（{n}）— no añadido. Combínalos en «Deduplicar».',
+  'references.empty':
+    'Importa mediante un identificador o añade manualmente la primera referencia.',
+  'references.duplicateNotice':
+    'Duplicado detectado（{n}）— no añadido. Combínalos en «Deduplicar».',
   'references.merged': '{n} grupos de duplicados combinados.',
   'references.noDuplicates': 'No se encontraron duplicados.',
   'references.dedupe': 'Deduplicar',
   'references.copyCitation': 'Cita',
   'references.citationCopied': 'Cita copiada.',
   'references.addedToCollection': 'Añadido a la colección.',
-  'references.notFound': 'No se encontró ninguna referencia para este identificador（revisa el número o la red）.',
+  'references.notFound':
+    'No se encontró ninguna referencia para este identificador（revisa el número o la red）.',
   'references.provenanceBadge': 'Con instantánea de procedencia',
   'references.manualTitlePlaceholder': 'Título（obligatorio）',
   'references.manualAuthorsPlaceholder': 'Autores（separados por comas, opcional）',
   'references.manualDoiPlaceholder': 'DOI（opcional）',
   'references.manualYearPlaceholder': 'Año',
-  'references.addedNotice': 'Añadido：{key}',
+  'references.addedNotice': 'Añadido：{key}'
 }

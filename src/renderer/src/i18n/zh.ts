@@ -2517,7 +2517,7 @@ export const zh = {
   'references.manualAuthorsPlaceholder': '作者（逗号分隔，可选）',
   'references.manualDoiPlaceholder': 'DOI（可选）',
   'references.manualYearPlaceholder': '年份',
-  'references.addedNotice': '已加入：{key}',
+  'references.addedNotice': '已加入：{key}'
 }
 
 export type ZhKey = keyof typeof zh

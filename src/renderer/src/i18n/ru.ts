@@ -2628,7 +2628,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'references.collectionNewPlaceholder': 'Новая коллекция…',
   'references.allItems': 'Все записи（{n}）',
   'references.empty': 'Импортируйте по идентификатору выше или добавьте первую запись вручную.',
-  'references.duplicateNotice': 'Найдены дубликаты（{n}）— не добавлено. Можно объединить в «Поиске дублей».',
+  'references.duplicateNotice':
+    'Найдены дубликаты（{n}）— не добавлено. Можно объединить в «Поиске дублей».',
   'references.merged': 'Объединено {n} групп дублей.',
   'references.noDuplicates': 'Дубликаты не найдены.',
   'references.dedupe': 'Поиск дублей',
@@ -2641,5 +2642,5 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'references.manualAuthorsPlaceholder': 'Авторы（через запятую, необязательно）',
   'references.manualDoiPlaceholder': 'DOI（необязательно）',
   'references.manualYearPlaceholder': 'Год',
-  'references.addedNotice': 'Добавлено：{key}',
+  'references.addedNotice': 'Добавлено：{key}'
 }

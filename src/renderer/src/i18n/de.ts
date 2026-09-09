@@ -2682,19 +2682,22 @@ export const de: Partial<Record<ZhKey, string>> = {
   'references.addToLibrary': 'Zur Bibliothek hinzufügen',
   'references.collectionNewPlaceholder': 'Neue Sammlung…',
   'references.allItems': 'Alle Einträge（{n}）',
-  'references.empty': 'Importieren Sie über eine Kennung oben oder fügen Sie den ersten Eintrag manuell hinzu.',
-  'references.duplicateNotice': 'Duplikat erkannt（{n}）— nicht hinzugefügt. Über „Duplikate zusammenführen“ vereinigen.',
+  'references.empty':
+    'Importieren Sie über eine Kennung oben oder fügen Sie den ersten Eintrag manuell hinzu.',
+  'references.duplicateNotice':
+    'Duplikat erkannt（{n}）— nicht hinzugefügt. Über „Duplikate zusammenführen“ vereinigen.',
   'references.merged': '{n} Duplikatgruppen zusammengeführt.',
   'references.noDuplicates': 'Keine Duplikate gefunden.',
   'references.dedupe': 'Duplikate zusammenführen',
   'references.copyCitation': 'Zitat',
   'references.citationCopied': 'Zitat kopiert.',
   'references.addedToCollection': 'Zur Sammlung hinzugefügt.',
-  'references.notFound': 'Keine Literatur zu dieser Kennung gefunden（Nummer oder Netzwerk prüfen）.',
+  'references.notFound':
+    'Keine Literatur zu dieser Kennung gefunden（Nummer oder Netzwerk prüfen）.',
   'references.provenanceBadge': 'Mit Herkunfts-Snapshot',
   'references.manualTitlePlaceholder': 'Titel（Pflichtfeld）',
   'references.manualAuthorsPlaceholder': 'Autor:innen（kommagetrennt, optional）',
   'references.manualDoiPlaceholder': 'DOI（optional）',
   'references.manualYearPlaceholder': 'Jahr',
-  'references.addedNotice': 'Hinzugefügt：{key}',
+  'references.addedNotice': 'Hinzugefügt：{key}'
 }
