@@ -191,7 +191,14 @@ export const findDuplicateCandidates = (
 // Domain service over ReferenceRepository: identifier validation, dedupe, citation-key collision
 // suffixes, and collection operations.
 export class ReferenceService {
-  constructor(private readonly repository: ReferenceRepository) {}
+  constructor(
+    private readonly repository: ReferenceRepository,
+    // Optional provenance hook: when present, attaching a PDF records its content fingerprint so a
+    // swapped file can be detected later (G2). Absent in lightweight tests/mocks.
+    private readonly options: {
+      resolvePdfFingerprint?: (projectId: string, managedFileId: string) => Promise<string | null>
+    } = {}
+  ) {}
 
   async listReferences(projectId: string): Promise<Reference[]> {
     return this.repository.listReferences(projectId)
@@ -239,7 +246,16 @@ export class ReferenceService {
   ): Promise<Reference> {
     const existing = await this.repository.getReference(referenceId)
     if (!existing) throw new Error('Reference not found.')
-    const updated = await this.repository.attachPdf(referenceId, pdfManagedFileId, pdfContentHash)
+    let fingerprint = pdfContentHash
+    if (pdfManagedFileId && fingerprint == null && this.options.resolvePdfFingerprint) {
+      try {
+        fingerprint = await this.options.resolvePdfFingerprint(existing.projectId, pdfManagedFileId)
+      } catch {
+        // Fingerprinting is provenance sugar: a failure must never block attaching the file.
+        fingerprint = null
+      }
+    }
+    const updated = await this.repository.attachPdf(referenceId, pdfManagedFileId, fingerprint)
     if (!updated) throw new Error('Reference not found.')
     return updated
   }

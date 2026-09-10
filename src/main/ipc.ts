@@ -48,6 +48,7 @@ import { ProvenanceMessageSnapshotRepository } from './artifacts/provenance-mess
 import { ArtifactRunRegistry } from './artifacts/run-registry'
 import { createComputeIpcModule } from './compute/ipc'
 import { createReferencesIpcModule, installReferencesIpcHandlers } from './references/ipc'
+import { fingerprintPdfFile } from './settings/pdf-fingerprint'
 import { attachEnabledComputeHosts } from './compute/enabled-hosts-registry'
 import { createComputeJobRuntime } from './compute/job-runtime'
 import { waitForInitialConnectorRefresh } from './connector-reload'
@@ -1045,7 +1046,39 @@ const createApplicationModules = async (
     permissionGrantRegistry
   )
   // Project reference library (v1.51): register its renderer surface alongside compute.
-  const referencesIpcModule = createReferencesIpcModule()
+  // Fingerprint an attached PDF's content (head hash + exact size) so a swapped file is
+  // detectable behind a reference. Fail-soft: provenance sugar never blocks the attach itself.
+  const fingerprintManagedPdf = async (
+    projectId: string,
+    managedFileId: string
+  ): Promise<string | null> => {
+    try {
+      const client = await getProjectDbClient(configRoot)
+      const separator = managedFileId.indexOf(':')
+      const row =
+        separator > 0
+          ? await client.managedFile.findFirst({
+              where: {
+                projectId,
+                source: managedFileId.slice(0, separator),
+                sourceFileId: managedFileId.slice(separator + 1)
+              },
+              orderBy: { seq: 'desc' }
+            })
+          : await client.managedFile.findFirst({
+              where: { projectId, sourceFileId: managedFileId },
+              orderBy: { seq: 'desc' }
+            })
+      if (!row?.storageKey) return null
+      const path = join(resolveDataRoot(), ...row.storageKey.split('/'))
+      return await fingerprintPdfFile(path)
+    } catch {
+      return null
+    }
+  }
+  const referencesIpcModule = createReferencesIpcModule(undefined, {
+    resolvePdfFingerprint: fingerprintManagedPdf
+  })
   installReferencesIpcHandlers(referencesIpcModule)
   surfaceAdapters = beforeAcpAdapters
   const {

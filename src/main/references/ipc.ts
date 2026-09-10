@@ -44,9 +44,12 @@ const createDefaultReferenceRepository = (): ReferenceRepository =>
 
 // Constructs the references module without installing an Electron transport (same seam as compute).
 export const createReferencesIpcModule = (
-  repository: ReferenceRepository = createDefaultReferenceRepository()
+  repository: ReferenceRepository = createDefaultReferenceRepository(),
+  options: {
+    resolvePdfFingerprint?: (projectId: string, managedFileId: string) => Promise<string | null>
+  } = {}
 ): ReferencesIpcModule => {
-  const service = new ReferenceService(repository)
+  const service = new ReferenceService(repository, options)
   const handlers: ReferencesHandlers = {
     list: (projectId) => service.listReferences(projectId),
     add: (input) => service.addReference(input),

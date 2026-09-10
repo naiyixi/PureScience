@@ -275,4 +275,31 @@ describe('ReferenceService PDF attachment', () => {
     await expect(service.attachPdf('missing', 'file-pdf-9')).rejects.toThrow('Reference not found.')
     expect(repo.attachPdf).not.toHaveBeenCalled()
   })
+
+  it('records a content fingerprint resolved from the managed file (G2 provenance)', async () => {
+    const existing = refFixture({ id: 'ref-1', title: 'Paper' })
+    const repo = makeRepo([existing])
+    const resolvePdfFingerprint = vi.fn(async () => 'sha256:deadbeef:512')
+    const service = new ReferenceService(repo as unknown as ReferenceRepository, {
+      resolvePdfFingerprint
+    })
+
+    const updated = await service.attachPdf('ref-1', 'file-pdf-9')
+    expect(resolvePdfFingerprint).toHaveBeenCalledWith('proj-1', 'file-pdf-9')
+    expect(updated.pdfContentHash).toBe('sha256:deadbeef:512')
+    expect(repo.attachPdf).toHaveBeenCalledWith('ref-1', 'file-pdf-9', 'sha256:deadbeef:512')
+  })
+
+  it('still attaches when fingerprinting fails (provenance never blocks the file)', async () => {
+    const existing = refFixture({ id: 'ref-1', title: 'Paper' })
+    const repo = makeRepo([existing])
+    const service = new ReferenceService(repo as unknown as ReferenceRepository, {
+      resolvePdfFingerprint: vi.fn(async () => {
+        throw new Error('unreadable file')
+      })
+    })
+
+    await service.attachPdf('ref-1', 'file-pdf-9')
+    expect(repo.attachPdf).toHaveBeenCalledWith('ref-1', 'file-pdf-9', null)
+  })
 })
