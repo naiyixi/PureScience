@@ -149,6 +149,8 @@ import {
   createHostQueryCommandOwner,
   registerHostQueryIpcHandlers
 } from './settings/host-query-ipc'
+import { TaskCheckpointStore } from './settings/task-checkpoint-store'
+import { evaluateCheckpointFreshness, type TaskCheckpointPatch } from '../shared/task-checkpoint'
 import { HostQueryService } from './settings/host-query-service'
 import type { FigureReviewRequest } from '../shared/figure'
 import {
@@ -1173,6 +1175,9 @@ const createApplicationModules = async (
   const hostQueryService = new HostQueryService({
     getClient: () => getProjectDbClient(resolveStorageRoot())
   })
+  const taskCheckpointStore = new TaskCheckpointStore((projectId) =>
+    join(resolveStorageRoot(), 'checkpoints', projectId)
+  )
   const notebookRpcServer = await modules.add(
     new NotebookLocalRpcServer(notebookLocalRpc, {
       onSessionReleased: (sessionId) => completionGateCoordinator.releaseSession(sessionId),
@@ -1183,6 +1188,18 @@ const createApplicationModules = async (
       memoryWriter: {
         saveNote: (categoryName, text, evidence) =>
           settingsService.saveMemoryNote(categoryName, text, evidence)
+      },
+      taskCheckpoint: {
+        save: (projectId, patch) =>
+          taskCheckpointStore.apply(projectId, patch as TaskCheckpointPatch),
+        load: async (projectId, currentFingerprint) => {
+          const checkpoint = await taskCheckpointStore.read(projectId)
+          if (!checkpoint) return { checkpoint: null, freshness: { status: 'missing' } }
+          return {
+            checkpoint,
+            freshness: evaluateCheckpointFreshness(checkpoint, currentFingerprint)
+          }
+        }
       },
       contextSummary: {
         queryChunk: (sessionId, summaryId, question) =>

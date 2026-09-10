@@ -3,7 +3,12 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import { MEMORY_MCP_SERVER_ARG } from '../mcp-server-args'
-import { MEMORY_MCP_SERVER_NAME, MEMORY_SAVE_NOTE_TOOL_NAME } from '../../shared/memory-mcp'
+import {
+  CHECKPOINT_LOAD_TOOL_NAME,
+  CHECKPOINT_SAVE_TOOL_NAME,
+  MEMORY_MCP_SERVER_NAME,
+  MEMORY_SAVE_NOTE_TOOL_NAME
+} from '../../shared/memory-mcp'
 import { createMemoryMcpServer, createMemoryMcpServerConfig } from './memory-mcp-server'
 
 describe('createMemoryMcpServerConfig', () => {
@@ -34,12 +39,18 @@ describe('createMemoryMcpServerConfig', () => {
 describe('createMemoryMcpServer', () => {
   it('registers the memory_save_note tool name on the server', () => {
     const saveNote = vi.fn(async () => ({ saved: true }))
-    const server = createMemoryMcpServer({ saveNote })
+    const checkpointSave = vi.fn(async () => ({ saved: true }))
+    const checkpointLoad = vi.fn(async () => ({ checkpoint: null }))
+    const server = createMemoryMcpServer({ saveNote, checkpointSave, checkpointLoad })
 
     // The MCP SDK exposes registered tools via the server; verify the contract surface exists
     // without invoking the transport.
     expect(server).toBeDefined()
     expect(MEMORY_SAVE_NOTE_TOOL_NAME).toBe('memory_save_note')
+    expect(CHECKPOINT_SAVE_TOOL_NAME).toBe('checkpoint_save')
+    expect(CHECKPOINT_LOAD_TOOL_NAME).toBe('checkpoint_load')
     expect(saveNote).not.toHaveBeenCalled()
+    expect(checkpointSave).not.toHaveBeenCalled()
+    expect(checkpointLoad).not.toHaveBeenCalled()
   })
 })

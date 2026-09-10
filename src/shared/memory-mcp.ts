@@ -14,6 +14,25 @@ export const MEMORY_SAVE_NOTE_TOOL_DESCRIPTION =
   'Include `evidence` (a short source note, e.g. which artifact/session the fact came from) when ' +
   'available, so the memory has provenance.'
 
+export const CHECKPOINT_SAVE_TOOL_NAME = 'checkpoint_save'
+
+export const CHECKPOINT_SAVE_TOOL_DESCRIPTION =
+  'Records durable task progress into the project checkpoint: verified facts (e.g. a resolved ' +
+  'UniProt/Ensembl identifier and where it came from), installed packages, and computed outputs, ' +
+  'each with source metadata. Call it after a step produces something you do not want to redo — ' +
+  'the checkpoint is re-read on resume instead of re-discovering the same facts. Pass the exact ' +
+  'inputs the work depended on (dataset path, tool/model version) as input_fingerprint_inputs so ' +
+  'a changed input can invalidate the record instead of silently reusing stale results.'
+
+export const CHECKPOINT_LOAD_TOOL_NAME = 'checkpoint_load'
+
+export const CHECKPOINT_LOAD_TOOL_DESCRIPTION =
+  'Loads the project task checkpoint before starting or resuming multi-step work. Returns the ' +
+  'recorded facts/packages/outputs plus a freshness verdict: when the verdict is "fresh" the ' +
+  'recorded work may be reused as-is (skip re-verification and re-downloads); when it is "stale" ' +
+  'the inputs changed and those results must be re-verified before reuse. Pass the same inputs ' +
+  'you would give checkpoint_save so freshness can be judged.'
+
 // Rendered into the session prompt when the memory MCP is available: tells the agent WHEN to save
 // (the category guidance lives in the recall block) and how (the tool, never direct file writes).
 export const MEMORY_MCP_SYSTEM_PROMPT_APPEND = [
@@ -25,5 +44,9 @@ export const MEMORY_MCP_SYSTEM_PROMPT_APPEND = [
     'save one-off task details or information already captured in project files.',
   'Never write memory files yourself. The application owns memory persistence; memory_save_note ' +
     'is the only way to add a note.',
+  'For long multi-step tasks also use the project task checkpoint: checkpoint_load before ' +
+    'starting or resuming (reuse fresh recorded work instead of re-running it; re-verify when the ' +
+    'verdict is stale), and checkpoint_save after each durable step so a restart resumes from ' +
+    'verified results rather than re-discovering them.',
   '</purescience_memory_instructions>'
 ].join('\n')

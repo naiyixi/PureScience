@@ -9,6 +9,10 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod'
 
 import {
+  CHECKPOINT_LOAD_TOOL_DESCRIPTION,
+  CHECKPOINT_LOAD_TOOL_NAME,
+  CHECKPOINT_SAVE_TOOL_DESCRIPTION,
+  CHECKPOINT_SAVE_TOOL_NAME,
   MEMORY_MCP_SERVER_NAME,
   MEMORY_SAVE_NOTE_TOOL_DESCRIPTION,
   MEMORY_SAVE_NOTE_TOOL_NAME
@@ -48,6 +52,67 @@ type MemorySaveNoteResult = {
   reason?: string
 }
 
+const checkpointSaveToolSchema = {
+  project_id: z.string().min(1).max(200).describe('Project id the checkpoint belongs to.'),
+  active_step: z.string().max(200).optional().describe('What step is in progress right now.'),
+  input_fingerprint_inputs: z
+    .array(z.string().max(500))
+    .max(50)
+    .optional()
+    .describe('Exact inputs this work depends on (dataset paths, tool/model versions).'),
+  verified_facts: z
+    .array(
+      z.object({
+        key: z.string().min(1).max(200),
+        value: z.string().min(1).max(2000),
+        source: z.string().max(200)
+      })
+    )
+    .max(50)
+    .optional()
+    .describe('Facts that must not be re-derived, e.g. a resolved identifier and its source.'),
+  installed_packages: z
+    .array(
+      z.object({
+        name: z.string().min(1).max(200),
+        version: z.string().max(100).optional(),
+        manager: z.enum(['python', 'r', 'other'])
+      })
+    )
+    .max(50)
+    .optional(),
+  computed_outputs: z
+    .array(
+      z.object({
+        label: z.string().min(1).max(300),
+        path: z.string().max(1000).optional(),
+        summary: z.string().max(1000).optional()
+      })
+    )
+    .max(50)
+    .optional(),
+  notes: z.array(z.string().max(2000)).max(20).optional()
+}
+const checkpointSaveToolDefinition = {
+  title: 'Save task checkpoint',
+  description: CHECKPOINT_SAVE_TOOL_DESCRIPTION,
+  inputSchema: checkpointSaveToolSchema
+}
+
+const checkpointLoadToolSchema = {
+  project_id: z.string().min(1).max(200).describe('Project id whose checkpoint to load.'),
+  input_fingerprint_inputs: z
+    .array(z.string().max(500))
+    .max(50)
+    .optional()
+    .describe('The inputs the upcoming work depends on, so freshness can be judged.')
+}
+const checkpointLoadToolDefinition = {
+  title: 'Load task checkpoint',
+  description: CHECKPOINT_LOAD_TOOL_DESCRIPTION,
+  inputSchema: checkpointLoadToolSchema
+}
+
 export type MemoryRpcConnection = LocalRpcTransport & {
   token: string
   release?: () => void
@@ -57,8 +122,25 @@ type MemoryMcpEnvironment = MemoryRpcConnection & {
   sessionId: string
 }
 
+type CheckpointSaveRequest = {
+  projectId: string
+  activeStep?: string
+  fingerprintInputs?: string[]
+  verifiedFacts?: { key: string; value: string; source: string }[]
+  installedPackages?: { name: string; version?: string; manager: 'python' | 'r' | 'other' }[]
+  computedOutputs?: { label: string; path?: string; summary?: string }[]
+  notes?: string[]
+}
+
+type CheckpointLoadRequest = {
+  projectId: string
+  fingerprintInputs?: string[]
+}
+
 type MemoryMcpHandler = {
   saveNote: (categoryName: string, text: string, evidence?: string) => Promise<MemorySaveNoteResult>
+  checkpointSave: (request: CheckpointSaveRequest) => Promise<unknown>
+  checkpointLoad: (request: CheckpointLoadRequest) => Promise<unknown>
 }
 
 type MemoryMcpServerConfigRequest = MemoryMcpEnvironment & {
@@ -87,6 +169,27 @@ const createMemoryMcpServer = (handler: MemoryMcpHandler): ModelContextProtocolS
     return {
       content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
     }
+  })
+
+  server.registerTool(CHECKPOINT_SAVE_TOOL_NAME, checkpointSaveToolDefinition, async (input) => {
+    const result = await handler.checkpointSave({
+      projectId: input.project_id.trim(),
+      activeStep: input.active_step?.trim() || undefined,
+      fingerprintInputs: input.input_fingerprint_inputs,
+      verifiedFacts: input.verified_facts,
+      installedPackages: input.installed_packages,
+      computedOutputs: input.computed_outputs,
+      notes: input.notes
+    })
+    return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] }
+  })
+
+  server.registerTool(CHECKPOINT_LOAD_TOOL_NAME, checkpointLoadToolDefinition, async (input) => {
+    const result = await handler.checkpointLoad({
+      projectId: input.project_id.trim(),
+      fingerprintInputs: input.input_fingerprint_inputs
+    })
+    return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] }
   })
 
   return server
@@ -156,12 +259,54 @@ const callMemorySaveNoteRpc = async (
   return payload.result
 }
 
+const callCheckpointRpc = async (
+  environment: MemoryMcpEnvironment,
+  method: 'taskCheckpointSave' | 'taskCheckpointLoad',
+  params: Record<string, unknown>
+): Promise<unknown> => {
+  const response = await fetchLocalRpc(
+    environment,
+    {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${environment.token}`,
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        method,
+        params: { sessionId: environment.sessionId, ...params }
+      })
+    },
+    method === 'taskCheckpointSave' ? 'Task checkpoint save RPC' : 'Task checkpoint load RPC'
+  )
+  const payload = (await response.json()) as { result?: unknown; error?: string }
+  if (!response.ok || payload.error || payload.result === undefined) {
+    throw new Error(payload.error ?? `${method} RPC failed with status ${response.status}`)
+  }
+  return payload.result
+}
+
 const runMemoryMcpServer = async (
   environment = createMemoryMcpEnvironmentFromProcess()
 ): Promise<void> => {
   const server = createMemoryMcpServer({
     saveNote: (categoryName, text, evidence) =>
-      callMemorySaveNoteRpc(environment, categoryName, text, evidence)
+      callMemorySaveNoteRpc(environment, categoryName, text, evidence),
+    checkpointSave: (request) =>
+      callCheckpointRpc(environment, 'taskCheckpointSave', {
+        projectId: request.projectId,
+        activeStep: request.activeStep,
+        fingerprintInputs: request.fingerprintInputs,
+        verifiedFacts: request.verifiedFacts,
+        installedPackages: request.installedPackages,
+        computedOutputs: request.computedOutputs,
+        notes: request.notes
+      }),
+    checkpointLoad: (request) =>
+      callCheckpointRpc(environment, 'taskCheckpointLoad', {
+        projectId: request.projectId,
+        fingerprintInputs: request.fingerprintInputs
+      })
   })
   await server.connect(new StdioServerTransport())
 }
@@ -170,6 +315,10 @@ export {
   MEMORY_MCP_SERVER_ARG,
   MEMORY_MCP_SERVER_NAME,
   MEMORY_SAVE_NOTE_TOOL_NAME,
+  CHECKPOINT_LOAD_TOOL_NAME,
+  CHECKPOINT_SAVE_TOOL_NAME,
+  checkpointLoadToolDefinition,
+  checkpointSaveToolDefinition,
   createMemoryMcpEnvironmentFromProcess,
   createMemoryMcpServer,
   createMemoryMcpServerConfig,
@@ -177,4 +326,10 @@ export {
   memorySaveNoteToolSchema,
   runMemoryMcpServer
 }
-export type { MemoryMcpEnvironment, MemoryMcpHandler, MemorySaveNoteResult }
+export type {
+  CheckpointLoadRequest,
+  CheckpointSaveRequest,
+  MemoryMcpEnvironment,
+  MemoryMcpHandler,
+  MemorySaveNoteResult
+}

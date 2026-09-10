@@ -119,6 +119,10 @@ type NotebookLocalRpcServerOptions = {
   // routes createSkill calls back here so validation + filesystem writes stay in the main process.
   skillCreator?: Pick<SkillCreator, 'create'>
   // Agent memory writes (memory_save_note MCP): main-process-owned persistence.
+  taskCheckpoint?: {
+    save: (projectId: string, patch: Record<string, unknown>) => Promise<unknown>
+    load: (projectId: string, currentFingerprint: string) => Promise<unknown>
+  }
   memoryWriter?: {
     saveNote(
       categoryName: string,
@@ -243,7 +247,9 @@ const DEFAULT_ARTIFACT_RPC_CAPABILITY_TTL_MS = 2 * 60 * 60 * 1_000
 const CONTROL_RPC_METHODS = new Set(['mcpCall', 'computeCall', 'agentsCall'])
 const SKILL_IMPORT_RPC_METHODS = new Set(['skillImport'])
 const PLAN_RPC_METHODS = new Set(['planCall'])
-const MEMORY_RPC_METHODS = new Set(['memorySaveNote'])
+import { fingerprintInputs } from '../../shared/task-checkpoint'
+
+const MEMORY_RPC_METHODS = new Set(['memorySaveNote', 'taskCheckpointSave', 'taskCheckpointLoad'])
 const CONTEXT_SUMMARY_RPC_METHODS = new Set(['summaryQueryChunk', 'recordBoundary'])
 const ROUTINE_RPC_METHODS = new Set(['routineConfigure', 'routineStatus', 'routineCancel'])
 const ANNOTATION_RPC_METHODS = new Set(['annotationSet', 'annotationList', 'annotationRemove'])
@@ -297,6 +303,7 @@ class NotebookLocalRpcServer {
   private readonly skillImporter: NotebookLocalRpcServerOptions['skillImporter']
   private readonly skillCreator: NotebookLocalRpcServerOptions['skillCreator']
   private readonly memoryWriter: NotebookLocalRpcServerOptions['memoryWriter']
+  private readonly taskCheckpoint: NotebookLocalRpcServerOptions['taskCheckpoint']
   private readonly planService: NotebookLocalRpcServerOptions['planService']
   private readonly artifactProvenance: NotebookLocalRpcServerOptions['artifactProvenance']
   private readonly inputRegistry: NotebookLocalRpcServerOptions['inputRegistry']
@@ -348,6 +355,7 @@ class NotebookLocalRpcServer {
     this.skillImporter = options.skillImporter
     this.skillCreator = options.skillCreator
     this.memoryWriter = options.memoryWriter
+    this.taskCheckpoint = options.taskCheckpoint
     this.contextSummary = options.contextSummary
     this.routine = options.routine
     this.endpoints = options.endpoints
@@ -1203,6 +1211,38 @@ class NotebookLocalRpcServer {
       }
       const evidence = typeof params.evidence === 'string' ? params.evidence : undefined
       return this.memoryWriter.saveNote(params.categoryName, params.text, evidence)
+    }
+
+    if (method === 'taskCheckpointSave') {
+      if (!this.taskCheckpoint) throw new Error('Task checkpoint handler is not configured.')
+      const projectId = typeof params.projectId === 'string' ? params.projectId.trim() : ''
+      if (!projectId) {
+        throw new Error('Task checkpoint save RPC params must include sessionId and projectId.')
+      }
+      return this.taskCheckpoint.save(projectId, {
+        activeStep: typeof params.activeStep === 'string' ? params.activeStep : undefined,
+        fingerprintInputs: Array.isArray(params.fingerprintInputs)
+          ? params.fingerprintInputs
+          : undefined,
+        verifiedFacts: Array.isArray(params.verifiedFacts) ? params.verifiedFacts : undefined,
+        installedPackages: Array.isArray(params.installedPackages)
+          ? params.installedPackages
+          : undefined,
+        computedOutputs: Array.isArray(params.computedOutputs) ? params.computedOutputs : undefined,
+        notes: Array.isArray(params.notes) ? params.notes : undefined
+      })
+    }
+
+    if (method === 'taskCheckpointLoad') {
+      if (!this.taskCheckpoint) throw new Error('Task checkpoint handler is not configured.')
+      const projectId = typeof params.projectId === 'string' ? params.projectId.trim() : ''
+      if (!projectId) {
+        throw new Error('Task checkpoint load RPC params must include sessionId and projectId.')
+      }
+      const inputs = Array.isArray(params.fingerprintInputs)
+        ? (params.fingerprintInputs as string[])
+        : []
+      return this.taskCheckpoint.load(projectId, fingerprintInputs(inputs))
     }
 
     if (method === 'summaryQueryChunk') {
