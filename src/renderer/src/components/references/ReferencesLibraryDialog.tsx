@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { BookMarked, Library, Plus, RefreshCw, X } from 'lucide-react'
 
 import { useLanguage } from '@/i18n'
@@ -97,10 +97,16 @@ export function ReferencesLibraryDialog({
   const [manualDoi, setManualDoi] = useState('')
   const [manualYear, setManualYear] = useState('')
   const [manualAuthors, setManualAuthors] = useState('')
-  // PDF attachment picker state (project-managed PDFs back page-level annotations).
-  const [attachTargetId, setAttachTargetId] = useState<string | null>(null)
+  // PDF batch-import state: many project PDFs become library records (one record per file,
+  // title from the filename, provenance recorded as a manual file import), each with its PDF
+  // attached so it opens in the page-level annotation flow.
   const [pdfCandidates, setPdfCandidates] = useState<{ id: string; name: string }[]>([])
   const [pdfLoading, setPdfLoading] = useState(false)
+  const [showPdfPicker, setShowPdfPicker] = useState(false)
+  const [selectedPdfIds, setSelectedPdfIds] = useState<string[]>([])
+  const [importProgress, setImportProgress] = useState<{ done: number; total: number } | null>(null)
+  const cancelImportRef = useRef(false)
+  const [attachToReferenceId, setAttachToReferenceId] = useState<string | null>(null)
 
   const refresh = useCallback(async (): Promise<void> => {
     if (!projectId) return
@@ -260,16 +266,85 @@ export function ReferencesLibraryDialog({
     }
   }
 
-  const handleAttachPdf = async (referenceId: string, fileId: string): Promise<void> => {
-    try {
-      await window.api.references.attachPdf(referenceId, fileId)
-      setAttachTargetId(null)
-      setPdfCandidates([])
-      setNotice(t('references.addedToCollection'))
-      await refresh()
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause))
+  const openPdfPicker = (projectId: string, targetReferenceId: string | null): void => {
+    setAttachToReferenceId(targetReferenceId)
+    setSelectedPdfIds([])
+    setShowPdfPicker(true)
+    void loadPdfCandidates(projectId)
+  }
+
+  const handleAttachSelectedToRecord = async (referenceId: string): Promise<void> => {
+    const selected = pdfCandidates.filter((candidate) => selectedPdfIds.includes(candidate.id))
+    if (selected.length === 0) return
+    cancelImportRef.current = false
+    setImportProgress({ done: 0, total: selected.length })
+    let done = 0
+    for (const candidate of selected) {
+      if (cancelImportRef.current) break
+      try {
+        await window.api.references.attachPdf(referenceId, candidate.id)
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : String(cause))
+      }
+      done += 1
+      setImportProgress({ done, total: selected.length })
     }
+    setImportProgress(null)
+    setShowPdfPicker(false)
+    setAttachToReferenceId(null)
+    setSelectedPdfIds([])
+    setPdfCandidates([])
+    setNotice(t('references.addedToCollection'))
+    await refresh()
+  }
+
+  const handleImportSelectedPdfs = async (projectId: string): Promise<void> => {
+    const selected = pdfCandidates.filter((candidate) => selectedPdfIds.includes(candidate.id))
+    if (selected.length === 0) return
+    cancelImportRef.current = false
+    setImportProgress({ done: 0, total: selected.length })
+    let imported = 0
+    let failed = 0
+    for (const candidate of selected) {
+      if (cancelImportRef.current) break
+      try {
+        const title = candidate.name
+          .replace(/\.pdf$/i, '')
+          .replace(/[_-]+/g, ' ')
+          .trim()
+        const added = await window.api.references.add({
+          projectId,
+          title: title || candidate.name,
+          authors: [],
+          sourceConnector: 'manual',
+          notes: `Imported from project file: ${candidate.name}`
+        })
+        if (added.status === 'created') {
+          await window.api.references.attachPdf(added.reference.id, candidate.id)
+          imported += 1
+        } else {
+          // A record with this title/identity already exists: attach the PDF to it instead of
+          // creating a duplicate entry.
+          const existing = added.duplicateOf[0]
+          if (existing && !existing.pdfManagedFileId) {
+            await window.api.references.attachPdf(existing.id, candidate.id)
+          }
+          imported += 1
+        }
+      } catch {
+        failed += 1
+      }
+      setImportProgress({ done: imported + failed, total: selected.length })
+    }
+    const stopped = cancelImportRef.current
+    setImportProgress(null)
+    setShowPdfPicker(false)
+    setSelectedPdfIds([])
+    setPdfCandidates([])
+    setNotice(
+      `${stopped ? '已停止 · ' : ''}已导入 ${imported} 个 PDF${failed > 0 ? `，${failed} 个失败` : ''}。`
+    )
+    await refresh()
   }
 
   const handleDetachPdf = async (referenceId: string): Promise<void> => {
@@ -347,6 +422,97 @@ export function ReferencesLibraryDialog({
             <Plus className="size-3.5" aria-hidden="true" /> {t('references.manualAdd')}
           </button>
         </div>
+
+        {showPdfPicker ? (
+          <div className="mx-4 mt-2 rounded-lg border border-[var(--border)] px-3 py-2">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-medium text-[var(--foreground)]">
+                {attachToReferenceId
+                  ? '选择要挂到该条目的 PDF'
+                  : `从项目 PDF 批量入册（已选 ${selectedPdfIds.length}）`}
+              </p>
+              {importProgress ? (
+                <span className="flex items-center gap-2 text-[11px] text-[var(--muted-foreground)]">
+                  {importProgress.done}/{importProgress.total}
+                  <button
+                    type="button"
+                    className={ghostClass}
+                    onClick={() => {
+                      cancelImportRef.current = true
+                    }}
+                  >
+                    停止
+                  </button>
+                </span>
+              ) : null}
+            </div>
+            <div className="mt-2 max-h-40 overflow-y-auto rounded border border-[var(--border)] p-1">
+              {pdfLoading ? (
+                <p className="px-2 py-3 text-[11px] text-[var(--muted-foreground)]">…</p>
+              ) : pdfCandidates.length === 0 ? (
+                <p className="px-2 py-3 text-[11px] text-[var(--muted-foreground)]">
+                  项目内没有 PDF 文件。
+                </p>
+              ) : (
+                pdfCandidates.map((candidate) => (
+                  <label
+                    key={candidate.id}
+                    className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-[11px] text-[var(--foreground)] hover:bg-[var(--border)]"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedPdfIds.includes(candidate.id)}
+                      onChange={(event) => {
+                        setSelectedPdfIds((current) =>
+                          event.target.checked
+                            ? [...current, candidate.id]
+                            : current.filter((id) => id !== candidate.id)
+                        )
+                      }}
+                    />
+                    {candidate.name}
+                  </label>
+                ))
+              )}
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+              {attachToReferenceId ? (
+                <button
+                  type="button"
+                  className={buttonClass}
+                  disabled={selectedPdfIds.length === 0 || importProgress !== null}
+                  onClick={() => void handleAttachSelectedToRecord(attachToReferenceId)}
+                >
+                  挂到该条目（{selectedPdfIds.length}）
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className={buttonClass}
+                  disabled={selectedPdfIds.length === 0 || importProgress !== null || !projectId}
+                  onClick={() => {
+                    if (projectId) void handleImportSelectedPdfs(projectId)
+                  }}
+                >
+                  入册为新记录（{selectedPdfIds.length}）
+                </button>
+              )}
+              <button
+                type="button"
+                className={ghostClass}
+                disabled={importProgress !== null}
+                onClick={() => {
+                  setShowPdfPicker(false)
+                  setAttachToReferenceId(null)
+                  setSelectedPdfIds([])
+                  setPdfCandidates([])
+                }}
+              >
+                取消
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         {fetched ? (
           <div className="mx-4 mt-2 flex items-center justify-between gap-3 rounded-lg border border-[var(--border)] bg-[var(--muted)] px-3 py-2">
@@ -499,6 +665,15 @@ export function ReferencesLibraryDialog({
               >
                 <BookMarked className="size-3" aria-hidden="true" /> {t('references.exportGbt')}
               </button>
+              <button
+                type="button"
+                className={ghostClass}
+                onClick={() => {
+                  if (projectId) openPdfPicker(projectId, null)
+                }}
+              >
+                <BookMarked className="size-3" aria-hidden="true" /> PDF 入册
+              </button>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto p-2">
               {shownReferences.length === 0 ? (
@@ -530,46 +705,7 @@ export function ReferencesLibraryDialog({
                           </p>
                         </div>
                         <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                          {attachTargetId === reference.id ? (
-                            <div className="flex items-center gap-1">
-                              {pdfLoading ? (
-                                <span className="text-[10px] text-[var(--muted-foreground)]">
-                                  …
-                                </span>
-                              ) : (
-                                <select
-                                  className="max-w-36 rounded border border-[var(--border)] bg-transparent px-1 py-0.5 text-[10px]"
-                                  aria-label="PDF"
-                                  defaultValue=""
-                                  onChange={(event) => {
-                                    if (event.target.value) {
-                                      void handleAttachPdf(reference.id, event.target.value)
-                                    }
-                                  }}
-                                >
-                                  <option value="" disabled>
-                                    PDF…
-                                  </option>
-                                  {pdfCandidates.map((candidate) => (
-                                    <option key={candidate.id} value={candidate.id}>
-                                      {candidate.name}
-                                    </option>
-                                  ))}
-                                </select>
-                              )}
-                              <button
-                                type="button"
-                                className={ghostClass}
-                                title="取消"
-                                onClick={() => {
-                                  setAttachTargetId(null)
-                                  setPdfCandidates([])
-                                }}
-                              >
-                                <X className="size-3" aria-hidden="true" />
-                              </button>
-                            </div>
-                          ) : reference.pdfManagedFileId ? (
+                          {reference.pdfManagedFileId ? (
                             <span className="flex items-center gap-1 rounded border border-[var(--border)] px-1.5 py-0.5 text-[10px] text-[var(--muted-foreground)]">
                               PDF · {reference.pdfManagedFileId.slice(-8)}
                               <button
@@ -584,10 +720,9 @@ export function ReferencesLibraryDialog({
                             <button
                               type="button"
                               className={ghostClass}
-                              title="挂载 PDF（项目内 PDF 将可在文件面板中打开并做页码级标注）"
+                              title="挂载 PDF"
                               onClick={() => {
-                                setAttachTargetId(reference.id)
-                                if (projectId) void loadPdfCandidates(projectId)
+                                if (projectId) openPdfPicker(projectId, reference.id)
                               }}
                             >
                               PDF
