@@ -685,15 +685,25 @@ const hasTableColumn = async (
   return columns.some((column) => column.name === columnName)
 }
 
+const hasTable = async (client: PrismaClient, tableName: string): Promise<boolean> => {
+  const tables = await client.$queryRawUnsafe<{ name: string }[]>(
+    `SELECT name FROM sqlite_master WHERE type = 'table' AND name = ${quoteSqliteIdentifier(tableName)}`
+  )
+  return tables.length > 0
+}
+
 // SQLite does not support ALTER TABLE ... ADD COLUMN IF NOT EXISTS. Prove the desired postcondition
 // instead of interpreting an engine-specific error string: a failed ALTER is ignored only when a
-// second schema read confirms that another initializer added the exact column concurrently.
+// second schema read confirms that another initializer added the exact column concurrently. A
+// missing table is skipped entirely — degraded/minimal databases (older stores, partial test
+// fixtures) simply do not have this table yet, and their schema is created by the DDL above.
 const addColumnIfMissing = async (
   client: PrismaClient,
   tableName: string,
   columnName: string,
   ddl: string
 ): Promise<void> => {
+  if (!(await hasTable(client, tableName))) return
   if (await hasTableColumn(client, tableName, columnName)) return
 
   try {

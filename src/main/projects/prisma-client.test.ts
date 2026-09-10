@@ -577,7 +577,9 @@ describe('project prisma client (integration)', () => {
         }
         return 0
       }),
-      $queryRawUnsafe: vi.fn(async () => [])
+      $queryRawUnsafe: vi.fn(async (sql: string) =>
+        sql.includes('sqlite_master') ? [{ name: 'Finding' }] : []
+      )
     } as unknown as PrismaClient
 
     await expect(ensureProjectSchema(client)).rejects.toBe(migrationFailure)
