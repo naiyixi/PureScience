@@ -49,6 +49,7 @@ const mapReference = (row: {
   citationKey: string
   provenanceJson: string | null
   pdfManagedFileId: string | null
+  pdfContentHash: string | null
   notes: string | null
   createdAt: Date
   updatedAt: Date
@@ -70,6 +71,7 @@ const mapReference = (row: {
   citationKey: row.citationKey,
   provenance: parseJson<ReferenceProvenance>(row.provenanceJson),
   pdfManagedFileId: row.pdfManagedFileId ?? undefined,
+  pdfContentHash: row.pdfContentHash ?? undefined,
   notes: row.notes ?? undefined,
   createdAt: row.createdAt.getTime(),
   updatedAt: row.updatedAt.getTime()
@@ -223,11 +225,16 @@ export class ReferenceRepository {
 
   // Attaches (or detaches, with null) the project-managed PDF that backs page-level annotations
   // for this reference. The managed file itself is validated by the caller against project scope.
-  async attachPdf(referenceId: string, pdfManagedFileId: string | null): Promise<Reference | null> {
+  async attachPdf(
+    referenceId: string,
+    pdfManagedFileId: string | null,
+    pdfContentHash: string | null = null
+  ): Promise<Reference | null> {
     const client = await this.getClient()
     const row = await client.reference.update({
       where: { id: referenceId },
-      data: { pdfManagedFileId }
+      // Detaching clears the fingerprint too: a stale hash must never describe no file.
+      data: { pdfManagedFileId, pdfContentHash: pdfManagedFileId ? pdfContentHash : null }
     })
     return row ? mapReference(row) : null
   }

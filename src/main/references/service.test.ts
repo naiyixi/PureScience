@@ -22,6 +22,7 @@ const refFixture = (overrides: Partial<Reference> = {}): Reference => ({
   citationKey: 'Vaswani2017',
   provenance: undefined,
   pdfManagedFileId: undefined,
+  pdfContentHash: undefined,
   notes: undefined,
   createdAt: 1,
   updatedAt: 1,
@@ -60,11 +61,16 @@ const makeRepo = (existing: Reference[] = []): ReferenceRepository & Record<stri
         return Promise.resolve()
       }
     ),
-    attachPdf: vi.fn((id: string, pdfManagedFileId: string | null) => {
-      const record = rows.find((r) => r.id === id)
-      if (record) record.pdfManagedFileId = pdfManagedFileId ?? undefined
-      return Promise.resolve(record ?? null)
-    }),
+    attachPdf: vi.fn(
+      (id: string, pdfManagedFileId: string | null, pdfContentHash: string | null = null) => {
+        const record = rows.find((r) => r.id === id)
+        if (record) {
+          record.pdfManagedFileId = pdfManagedFileId ?? undefined
+          record.pdfContentHash = pdfManagedFileId ? (pdfContentHash ?? undefined) : undefined
+        }
+        return Promise.resolve(record ?? null)
+      }
+    ),
     listMemberships: vi.fn(() => Promise.resolve([])),
     addToCollection: vi.fn((collectionId: string, referenceId: string, note?: string) =>
       Promise.resolve({
@@ -250,7 +256,7 @@ describe('ReferenceService PDF attachment', () => {
     expect(updated.id).toBe('ref-1')
     expect(updated.pdfManagedFileId).toBe('file-pdf-9')
     expect(repo.getReference).toHaveBeenCalledWith('ref-1')
-    expect(repo.attachPdf).toHaveBeenCalledWith('ref-1', 'file-pdf-9')
+    expect(repo.attachPdf).toHaveBeenCalledWith('ref-1', 'file-pdf-9', null)
   })
 
   it('detaches by writing null through the repository', async () => {
@@ -260,7 +266,7 @@ describe('ReferenceService PDF attachment', () => {
 
     const updated = await service.detachPdf('ref-1')
     expect(updated.pdfManagedFileId).toBeUndefined()
-    expect(repo.attachPdf).toHaveBeenCalledWith('ref-1', null)
+    expect(repo.attachPdf).toHaveBeenCalledWith('ref-1', null, null)
   })
 
   it('rejects attaching when the reference does not exist', async () => {

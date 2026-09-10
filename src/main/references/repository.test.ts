@@ -22,6 +22,7 @@ const rowFixture = (overrides: Record<string, unknown> = {}): Record<string, unk
   citationKey: 'Vaswani2017',
   provenanceJson: null,
   pdfManagedFileId: null,
+  pdfContentHash: null,
   notes: null,
   createdAt: new Date(1710000000000),
   updatedAt: new Date(1710000000100),
@@ -223,7 +224,7 @@ describe('ReferenceRepository', () => {
     })
     expect(m.referenceUpdate).toHaveBeenCalledWith({
       where: { id: 'ref-1' },
-      data: { pdfManagedFileId: 'file-pdf-1' }
+      data: { pdfManagedFileId: 'file-pdf-1', pdfContentHash: null }
     })
 
     m.referenceUpdate.mockResolvedValue(rowFixture({ pdfManagedFileId: null }))
@@ -233,7 +234,7 @@ describe('ReferenceRepository', () => {
     })
     expect(m.referenceUpdate).toHaveBeenLastCalledWith({
       where: { id: 'ref-1' },
-      data: { pdfManagedFileId: null }
+      data: { pdfManagedFileId: null, pdfContentHash: null }
     })
   })
 })

@@ -466,6 +466,7 @@ model Reference {
   citationKey      String // e.g. "Zhang2024"; unique within the project
   provenanceJson   String? // snapshot payload + fetchedAt + connector + source url
   pdfManagedFileId String? // references ManagedFile.id (no FK; storage layer stays decoupled)
+  pdfContentHash   String? // content fingerprint of the attached PDF (sha256 head + size)
   notes            String?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt

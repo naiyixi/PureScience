@@ -232,10 +232,14 @@ export class ReferenceService {
   // Attaches the project-managed PDF that backs page-level annotations for a reference. The
   // renderer only offers files that belong to the active project; existence of the reference is
   // enforced here so a stale id can never silently write into a missing record.
-  async attachPdf(referenceId: string, pdfManagedFileId: string | null): Promise<Reference> {
+  async attachPdf(
+    referenceId: string,
+    pdfManagedFileId: string | null,
+    pdfContentHash: string | null = null
+  ): Promise<Reference> {
     const existing = await this.repository.getReference(referenceId)
     if (!existing) throw new Error('Reference not found.')
-    const updated = await this.repository.attachPdf(referenceId, pdfManagedFileId)
+    const updated = await this.repository.attachPdf(referenceId, pdfManagedFileId, pdfContentHash)
     if (!updated) throw new Error('Reference not found.')
     return updated
   }

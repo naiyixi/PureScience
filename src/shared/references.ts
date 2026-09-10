@@ -40,6 +40,9 @@ export type Reference = {
   provenance: ReferenceProvenance | undefined
   pdfManagedFileId: string | undefined
   notes: string | undefined
+  // Content fingerprint of the attached PDF (see formatPdfContentFingerprint). Detects a file
+  // being replaced behind a reference: the recorded hash stops matching the file on disk.
+  pdfContentHash?: string
   // Collection memberships of this record, populated by list-style reads (undefined on single reads).
   collectionIds?: string[]
   createdAt: number
@@ -207,3 +210,12 @@ export const formatGbt7714List = (
   references
     .map((reference, index) => `[${index + 1}] ${formatGbt7714(reference, options)}`)
     .join('\n')
+
+// Content fingerprint for an attached PDF: cheap to compute (hash the head, pair it with the exact
+// size) and strong enough to notice a swapped or re-exported file behind a reference.
+export const PDF_CONTENT_FINGERPRINT_HEAD_BYTES = 4 * 1024 * 1024
+
+export const formatPdfContentFingerprint = (input: {
+  sizeBytes: number
+  headSha256Hex: string
+}): string => `sha256:${input.headSha256Hex.toLowerCase()}:${input.sizeBytes}`

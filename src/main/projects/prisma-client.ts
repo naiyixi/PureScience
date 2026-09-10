@@ -615,10 +615,12 @@ const REFERENCE_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "Reference" (
     "citationKey" TEXT NOT NULL,
     "provenanceJson" TEXT,
     "pdfManagedFileId" TEXT,
+    "pdfContentHash" TEXT,
     "notes" TEXT,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL
 )`
+const REFERENCE_ADD_PDF_CONTENT_HASH_DDL = `ALTER TABLE "Reference" ADD COLUMN "pdfContentHash" TEXT`
 const REFERENCE_UNIQUE_PROJECT_CITATION_KEY_DDL = `CREATE UNIQUE INDEX IF NOT EXISTS "Reference_projectId_citationKey_key" ON "Reference"("projectId", "citationKey")`
 const REFERENCE_INDEX_DDLS = [
   `CREATE INDEX IF NOT EXISTS "Reference_projectId_idx" ON "Reference"("projectId")`,
@@ -809,6 +811,12 @@ const ensureProjectSchema = async (client: PrismaClient): Promise<void> => {
   await addColumnIfMissing(client, 'ComputeJob', 'harvestError', COMPUTE_JOB_ADD_HARVEST_ERROR_DDL)
   await addColumnIfMissing(client, 'ComputeJob', 'leftOnRemote', COMPUTE_JOB_ADD_LEFT_ON_REMOTE_DDL)
   await addColumnIfMissing(client, 'ComputeJob', 'notifiedAt', COMPUTE_JOB_ADD_NOTIFIED_AT_DDL)
+  await addColumnIfMissing(
+    client,
+    'Reference',
+    'pdfContentHash',
+    REFERENCE_ADD_PDF_CONTENT_HASH_DDL
+  )
   await addColumnIfMissing(
     client,
     'ComputeJob',
