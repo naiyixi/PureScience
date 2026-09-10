@@ -20,6 +20,14 @@ the sandbox workspace); calling it from a python/r cell will fail with `host.com
 Run `await host.compute.list()` to see all registered hosts.
 <!-- purescience:compute-hosts:end -->
 
+## Compute readiness and the quantitative-result ladder
+
+<!-- purescience:compute-readiness:start -->
+
+Run `await host.compute.list()` and follow the ladder below before answering any request that
+needs a computed number.
+<!-- purescience:compute-readiness:end -->
+
 Each host entry shows:
 
 - Display name

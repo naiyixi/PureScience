@@ -54,6 +54,12 @@ const writeCanonicalDocument = async (skillsDir: string): Promise<void> => {
       'Run `await host.compute.list()` to see all registered hosts.',
       '<!-- purescience:compute-hosts:end -->',
       '',
+      '## Compute readiness',
+      '',
+      '<!-- purescience:compute-readiness:start -->',
+      'Follow the ladder before answering a quantitative request.',
+      '<!-- purescience:compute-readiness:end -->',
+      '',
       '## API reference',
       '',
       'Use `host.compute.create()` to bind a host.'
@@ -91,5 +97,52 @@ describe('syncComputeSkillDoc', () => {
     const doc = await readFile(join(skillsDir, COMPUTE_SKILL_DIRECTORY, 'SKILL.md'), 'utf8')
     expect(doc).toContain('no hosts registered yet')
     expect(doc).not.toContain('ssh:biowulf')
+  })
+
+  it('projects the readiness ladder and never-compute guidance into the skill document', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'compute-skill-doc-'))
+    roots.push(root)
+    const skillsDir = join(root, 'skills')
+    await writeCanonicalDocument(skillsDir)
+
+    await syncComputeSkillDoc(skillsDir, [sampleHost()])
+
+    const doc = await readFile(join(skillsDir, COMPUTE_SKILL_DIRECTORY, 'SKILL.md'), 'utf8')
+    expect(doc).toContain('Quantitative-result ladder')
+    expect(doc).toContain('never invent a number')
+    expect(doc).toContain('not computed: <what>')
+    expect(doc).toContain('never submit silently')
+    expect(doc).toContain('AlphaFold DB')
+    expect(doc).toContain('Report provenance for every number')
+    expect(doc).not.toContain('Follow the ladder before answering a quantitative request.')
+  })
+
+  it('lists GPUs reported by probes and flags when none are available', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'compute-skill-doc-'))
+    roots.push(root)
+    const skillsDir = join(root, 'skills')
+    await writeCanonicalDocument(skillsDir)
+
+    const gpuHost = sampleHost({
+      providerId: 'ssh:gpu-box',
+      displayName: 'gpu-box',
+      executionMode: 'slurm',
+      probeResult: {
+        ok: true,
+        probedAt: '2026-08-01T00:00:00.000Z',
+        exitCode: 0,
+        errorTail: null,
+        gpus: [{ type: 'NVIDIA A100-SXM4-80GB', count: 4 }],
+        detectedScheduler: 'slurm'
+      }
+    })
+    await syncComputeSkillDoc(skillsDir, [gpuHost])
+    const withGpu = await readFile(join(skillsDir, COMPUTE_SKILL_DIRECTORY, 'SKILL.md'), 'utf8')
+    expect(withGpu).toContain('gpu-box: NVIDIA A100-SXM4-80GB ×4')
+    expect(withGpu).toContain('scheduler dispatch (slurm/sbatch): gpu-box')
+
+    await syncComputeSkillDoc(skillsDir, [sampleHost()])
+    const noGpu = await readFile(join(skillsDir, COMPUTE_SKILL_DIRECTORY, 'SKILL.md'), 'utf8')
+    expect(noGpu).toContain('none of the registered hosts reported GPUs at probe time')
   })
 })

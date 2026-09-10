@@ -7,6 +7,8 @@ const COMPUTE_SKILL_ID = 'remote-compute-ssh'
 const COMPUTE_SKILL_DIRECTORY = `os-${COMPUTE_SKILL_ID}`
 const HOST_PROJECTION_START = '<!-- purescience:compute-hosts:start -->'
 const HOST_PROJECTION_END = '<!-- purescience:compute-hosts:end -->'
+const READINESS_START = '<!-- purescience:compute-readiness:start -->'
+const READINESS_END = '<!-- purescience:compute-readiness:end -->'
 
 const statusLabel = (host: ComputeHost): string =>
   host.probeResult === undefined
@@ -54,11 +56,65 @@ const extractHostProjection = (document: string): string | undefined => {
   return match[0].slice(HOST_PROJECTION_START.length, -HOST_PROJECTION_END.length).trim()
 }
 
+const readinessPattern = new RegExp(`${READINESS_START}\\n[\\s\\S]*?${READINESS_END}`, 'm')
+
+const withReadinessProjection = (document: string, projection: string): string => {
+  const marked = `${READINESS_START}\n${projection}\n${READINESS_END}`
+  if (readinessPattern.test(document)) return document.replace(readinessPattern, marked)
+  return document
+}
+
+const extractReadinessProjection = (document: string): string | undefined => {
+  const match = readinessPattern.exec(document)
+  if (!match) return undefined
+  return match[0].slice(READINESS_START.length, -READINESS_END.length).trim()
+}
+
+const acceleratorLines = (hosts: readonly ComputeHost[]): string[] => {
+  const withGpus = hosts.filter((host) => (host.probeResult?.gpus?.length ?? 0) > 0)
+  if (withGpus.length === 0) {
+    return ['  - none of the registered hosts reported GPUs at probe time']
+  }
+  return withGpus.map((host) => {
+    const detail = (host.probeResult?.gpus ?? [])
+      .map((gpu) => `${gpu.type} ×${gpu.count}`)
+      .join(', ')
+    return `  - ${host.displayName}: ${detail}`
+  })
+}
+
+// Recommendation-only compute ladder. It tells the agent what is actually available and how to
+// report honestly when nothing is — the agent never auto-submits jobs, never installs engines, and
+// never substitutes a qualitative description for a requested number.
+const renderComputeReadiness = (hosts: readonly ComputeHost[]): string => {
+  const schedulers = hosts.filter((host) => host.executionMode === 'slurm')
+  const connected = hosts.filter((host) => host.probeResult?.ok === true)
+  return [
+    'Accelerators reported by registered hosts:',
+    ...acceleratorLines(hosts),
+    '',
+    'Hosts ready for jobs:',
+    `  - connected: ${connected.length === 0 ? 'none' : connected.map((host) => host.displayName).join(', ')}`,
+    `  - scheduler dispatch (slurm/sbatch): ${
+      schedulers.length === 0 ? 'none' : schedulers.map((host) => host.displayName).join(', ')
+    }`,
+    '',
+    'Quantitative-result ladder — follow in order, and never invent a number:',
+    '  1. If a registered host above fits the job, propose it and wait for the user to approve the job (never submit silently).',
+    '  2. If the question concerns a known molecule or structure, a database/connector answer (e.g. AlphaFold DB, PDB) may be used — label it a database prediction, not a computed result.',
+    '  3. If no available engine can produce the requested quantity (for example ΔΔG or MD on a laptop without a GPU), state plainly "not computed: <what> — requires <engine or host>" with setup guidance.',
+    '  4. Never replace a requested number with a qualitative description (an ASCII sketch, "roughly X Å away") and never fabricate a value.',
+    '  5. Report provenance for every number: engine, engine version, parameters, and input identifiers.'
+  ].join('\n')
+}
+
 // Applies the dynamic host data from an earlier canonical document to a freshly copied bundled one.
 // Generic Skill materialization therefore refreshes shipped guidance without erasing runtime state.
 const preserveComputeHostProjection = (document: string, priorDocument: string): string => {
-  const projection = extractHostProjection(priorDocument)
-  return projection === undefined ? document : withHostProjection(document, projection)
+  const hosts = extractHostProjection(priorDocument)
+  const readiness = extractReadinessProjection(priorDocument)
+  const withHosts = hosts === undefined ? document : withHostProjection(document, hosts)
+  return readiness === undefined ? withHosts : withReadinessProjection(withHosts, readiness)
 }
 
 // Updates the application-managed canonical Skill in place. The generic materializer owns creation of
@@ -77,7 +133,10 @@ const syncComputeSkillDoc = async (
     return
   }
 
-  const updated = withHostProjection(document, renderHostProjection(hosts))
+  const updated = withReadinessProjection(
+    withHostProjection(document, renderHostProjection(hosts)),
+    renderComputeReadiness(hosts)
+  )
   if (updated === document) return
 
   // Materialized Skills are normally read-only. Temporarily restore only this application-owned
@@ -110,5 +169,6 @@ export {
   COMPUTE_SKILL_ID,
   hasCanonicalComputeSkillDoc,
   preserveComputeHostProjection,
+  renderComputeReadiness,
   syncComputeSkillDoc
 }
