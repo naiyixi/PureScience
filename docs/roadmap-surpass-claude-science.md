@@ -263,7 +263,7 @@ session_concurrency 表（max_concurrent）
 
 ### 里程碑 N5「绘」— 出版级图表流水线 figure-style（2026-08-31 二轮深挖新增）
 - 目标：科学图表正确性规则化——数据保真/label/色彩/选图/渲染五查，纯规则无审美
-- 交付：figure_review MCP 工具（五条规则引擎，结构化面板输入 → 违规清单）+ figure-style 内置技能（完整规则文档 + 数据形态选图表）；figure-composer fan-out 与 paper-narrative 故事线审查分版推进
+- 交付：figure_review MCP 工具（七条规则引擎：数据保真/标签经济/配色贯穿/图表形态/渲染自检/对数轴刻度 sanity/源文件双产物与字号下限，结构化面板输入 → 违规清单）+ figure-style 内置技能（完整规则文档 + 数据形态选图表）；figure-composer fan-out 与 paper-narrative 故事线审查分版推进
 - 版本：v1.35.0
 
 ### 里程碑 N6「创」— 技能自举 skill bootstrap（2026-08-31 二轮深挖新增）

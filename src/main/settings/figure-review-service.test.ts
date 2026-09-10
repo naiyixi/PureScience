@@ -1,4 +1,4 @@
-// Figure correctness rules engine tests: each of the five rules fires on the right input and
+// Figure correctness rules engine tests: each of the seven rules fires on the right input and
 // stays silent on clean panels.
 
 import { describe, expect, it } from 'vitest'
@@ -13,6 +13,8 @@ const cleanPanel = (overrides: Partial<FigurePanel> = {}): FigurePanel => ({
   seriesCount: 3,
   labelCount: 6,
   rendered: true,
+  renderedImagePath: 'figs/panel-a.png',
+  sourceScriptPath: 'scripts/panel-a.py',
   ...overrides
 })
 
@@ -91,5 +93,80 @@ describe('figure review rules engine', () => {
     const result = reviewFigure([cleanPanel({ chartType: 'heatmap', labelCount: 0 })])
     const label = result.violations.find((v) => v.rule === 'label_economy')
     expect(label).toBeUndefined()
+  })
+
+  it('flags a log axis carrying a non-positive or unparsable tick label', () => {
+    const result = reviewFigure([
+      cleanPanel({
+        chartType: 'scatter',
+        dataShape: { relationship: true },
+        axisTicks: [{ axis: 'y', scale: 'log', labels: ['0.05', '0', '0.2'] }]
+      })
+    ])
+    const sanity = result.violations.find((v) => v.rule === 'log_axis_sanity')
+    expect(sanity?.severity).toBe('warning')
+    expect(sanity?.message).toContain('"0"')
+  })
+
+  it('flags log tick labels that are not strictly increasing (the shifted-decade mislabel)', () => {
+    const result = reviewFigure([
+      cleanPanel({
+        chartType: 'line',
+        dataShape: { timeSeries: true },
+        seriesCount: 1,
+        axisTicks: [{ axis: 'y', scale: 'log', labels: ['0.4', '0.05', '4'] }]
+      })
+    ])
+    const sanity = result.violations.find((v) => v.rule === 'log_axis_sanity')
+    expect(sanity?.severity).toBe('warning')
+    expect(sanity?.message).toContain('strictly increasing')
+  })
+
+  it('accepts a properly ordered log axis', () => {
+    const result = reviewFigure([
+      cleanPanel({
+        chartType: 'line',
+        dataShape: { timeSeries: true },
+        seriesCount: 1,
+        axisTicks: [{ axis: 'y', scale: 'log', labels: ['0.05', '0.5', '5'] }]
+      })
+    ])
+    expect(result.violations.find((v) => v.rule === 'log_axis_sanity')).toBeUndefined()
+  })
+
+  it('ignores linear axes entirely for the log sanity rule', () => {
+    const result = reviewFigure([
+      cleanPanel({
+        axisTicks: [{ axis: 'x', scale: 'linear', labels: ['0', '-1', '2'] }]
+      })
+    ])
+    expect(result.violations.find((v) => v.rule === 'log_axis_sanity')).toBeUndefined()
+  })
+
+  it('warns when a figure ships without its .png or .py companion artifact', () => {
+    const result = reviewFigure([
+      cleanPanel({ renderedImagePath: undefined, sourceScriptPath: 'scripts/panel-a.py' })
+    ])
+    const artifact = result.violations.find((v) => v.rule === 'source_artifact')
+    expect(artifact?.severity).toBe('warning')
+    expect(artifact?.message).toContain('.png')
+  })
+
+  it('warns when the smallest font falls below the readability floor', () => {
+    const result = reviewFigure([cleanPanel({ fontPt: 4 })])
+    const artifact = result.violations.find((v) => v.rule === 'source_artifact')
+    expect(artifact?.severity).toBe('warning')
+    expect(artifact?.message).toContain('readability floor')
+  })
+
+  it('does not demand companion artifacts for non-data panels', () => {
+    const result = reviewFigure([
+      cleanPanel({
+        chartType: 'other',
+        renderedImagePath: undefined,
+        sourceScriptPath: undefined
+      })
+    ])
+    expect(result.violations.find((v) => v.rule === 'source_artifact')).toBeUndefined()
   })
 })
