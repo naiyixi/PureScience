@@ -2231,9 +2231,9 @@ describe('SettingsService: preflight & spawn config', () => {
       model_catalog_json?: string
     }
     expect(codexConfig.model_catalog_json).toBeDefined()
-    const catalog = JSON.parse(
-      await readFile(codexConfig.model_catalog_json!, 'utf8')
-    ) as { models: Array<{ slug: string }> }
+    const catalog = JSON.parse(await readFile(codexConfig.model_catalog_json!, 'utf8')) as {
+      models: Array<{ slug: string }>
+    }
     const slugs = catalog.models.map((entry) => entry.slug)
     expect(slugs).toContain('gpt-6-astra')
     expect(slugs).not.toContain('gpt-5.4')

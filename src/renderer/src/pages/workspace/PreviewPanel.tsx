@@ -284,13 +284,28 @@ export const PreviewContentContextMenu = ({
       className="fixed z-[90] w-52 rounded-lg border border-border-200 bg-bg-000 p-1 shadow-card"
       style={{ left: x, top: y }}
     >
-      <button type="button" role="menuitem" className={previewContentMenuItemClassName} onClick={() => run(copyPath)}>
+      <button
+        type="button"
+        role="menuitem"
+        className={previewContentMenuItemClassName}
+        onClick={() => run(copyPath)}
+      >
         <ClipboardCopy className="size-3.5" aria-hidden="true" /> {t('ws.previewTabCopyPath')}
       </button>
-      <button type="button" role="menuitem" className={previewContentMenuItemClassName} onClick={() => run(download)}>
+      <button
+        type="button"
+        role="menuitem"
+        className={previewContentMenuItemClassName}
+        onClick={() => run(download)}
+      >
         <Download className="size-3.5" aria-hidden="true" /> {t('ws.previewTabDownload')}
       </button>
-      <button type="button" role="menuitem" className={previewContentMenuItemClassName} onClick={() => run(saveAsArtifact)}>
+      <button
+        type="button"
+        role="menuitem"
+        className={previewContentMenuItemClassName}
+        onClick={() => run(saveAsArtifact)}
+      >
         <FileUp className="size-3.5" aria-hidden="true" /> {t('ws.previewTabSaveAsArtifact')}
       </button>
     </div>

@@ -710,7 +710,9 @@ describe('PreviewPanel', () => {
     const card = container.querySelector<HTMLElement>('[data-testid="preview-card"]')
     expect(card).not.toBeNull()
     await act(async () => {
-      card?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 120, clientY: 90 }))
+      card?.dispatchEvent(
+        new MouseEvent('contextmenu', { bubbles: true, clientX: 120, clientY: 90 })
+      )
     })
 
     const menu = container.querySelector<HTMLElement>('[role="menu"]')
@@ -727,7 +729,9 @@ describe('PreviewPanel', () => {
 
     const card = container.querySelector<HTMLElement>('[data-testid="preview-card"]')
     await act(async () => {
-      card?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 120, clientY: 90 }))
+      card?.dispatchEvent(
+        new MouseEvent('contextmenu', { bubbles: true, clientX: 120, clientY: 90 })
+      )
     })
     const downloadItem = Array.from(
       container.querySelectorAll<HTMLElement>('[role="menuitem"]')

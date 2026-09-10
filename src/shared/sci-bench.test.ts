@@ -5,10 +5,11 @@ import {
   SCI_BENCH_RULES,
   evaluateSciBenchTrace,
   summarizeSciBench,
+  type SciBenchCase,
   type SciBenchTrace
 } from './sci-bench'
 
-const benchCase = (id: string) => {
+const benchCase = (id: string): SciBenchCase => {
   const found = SCI_BENCH_CASES.find((entry) => entry.id === id)
   if (!found) throw new Error(`missing case ${id}`)
   return found
