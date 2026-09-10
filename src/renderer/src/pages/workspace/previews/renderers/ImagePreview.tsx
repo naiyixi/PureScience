@@ -18,7 +18,7 @@ const ZoomableImage = ({
   onError: () => void
 }): React.JSX.Element => {
   return (
-    <ZoomablePreview>
+    <ZoomablePreview resetKey={url}>
       <img
         src={url}
         alt={name}

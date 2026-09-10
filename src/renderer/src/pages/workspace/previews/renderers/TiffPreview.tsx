@@ -303,7 +303,7 @@ const TiffPreviewContent = ({
 
   return (
     <div className="relative size-full overflow-hidden p-4">
-      <ZoomablePreview>
+      <ZoomablePreview resetKey={`${name}#${result.page.pageIndex}`}>
         <TiffCanvas page={result.page} name={name} onError={handleDrawError} />
       </ZoomablePreview>
       {result.page.pageCount > 1 ? (
