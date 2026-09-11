@@ -20,6 +20,17 @@ export type ReferenceProvenance = {
   snapshotJson?: string // raw connector payload (bounded)
 }
 
+// One historical PDF attachment of a reference. The newest attachment is also the reference's
+// current pdfManagedFileId; earlier ones survive here so replacing a file never erases what was
+// reviewed before (v1.54 attachment history).
+export type ReferenceAttachmentVersion = {
+  id: string
+  managedFileId: string
+  contentHash?: string
+  attachedAt: number
+  replacedAt?: number
+}
+
 export type Reference = {
   id: string
   projectId: string
@@ -43,6 +54,8 @@ export type Reference = {
   // Content fingerprint of the attached PDF (see formatPdfContentFingerprint). Detects a file
   // being replaced behind a reference: the recorded hash stops matching the file on disk.
   pdfContentHash?: string
+  // Attachment history newest-first, populated by list-style reads (undefined elsewhere).
+  pdfVersions?: ReferenceAttachmentVersion[]
   // Collection memberships of this record, populated by list-style reads (undefined on single reads).
   collectionIds?: string[]
   createdAt: number

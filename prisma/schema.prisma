@@ -478,6 +478,18 @@ model Reference {
   @@index([arxivId])
 }
 
+model ReferenceAttachmentVersion {
+  id            String    @id @default(cuid())
+  referenceId   String
+  managedFileId String
+  contentHash   String?
+  attachedAt    DateTime  @default(now())
+  // Set when a later attachment replaced this version; the newest version keeps it null.
+  replacedAt    DateTime?
+
+  @@index([referenceId])
+}
+
 model ReferenceCollection {
   id          String   @id @default(cuid())
   projectId   String

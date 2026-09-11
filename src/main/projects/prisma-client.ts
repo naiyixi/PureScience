@@ -629,6 +629,18 @@ const REFERENCE_INDEX_DDLS = [
   `CREATE INDEX IF NOT EXISTS "Reference_arxivId_idx" ON "Reference"("arxivId")`
 ]
 
+const REFERENCE_ATTACHMENT_VERSION_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "ReferenceAttachmentVersion" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "referenceId" TEXT NOT NULL,
+    "managedFileId" TEXT NOT NULL,
+    "contentHash" TEXT,
+    "attachedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "replacedAt" DATETIME
+)`
+const REFERENCE_ATTACHMENT_VERSION_INDEX_DDLS = [
+  `CREATE INDEX IF NOT EXISTS "ReferenceAttachmentVersion_referenceId_idx" ON "ReferenceAttachmentVersion"("referenceId")`
+]
+
 const REFERENCE_COLLECTION_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "ReferenceCollection" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "projectId" TEXT NOT NULL,
@@ -848,6 +860,10 @@ const ensureProjectSchema = async (client: PrismaClient): Promise<void> => {
     await client.$executeRawUnsafe(ddl)
   }
   await client.$executeRawUnsafe(REFERENCE_COLLECTION_TABLE_DDL)
+  await client.$executeRawUnsafe(REFERENCE_ATTACHMENT_VERSION_TABLE_DDL)
+  for (const ddl of REFERENCE_ATTACHMENT_VERSION_INDEX_DDLS) {
+    await client.$executeRawUnsafe(ddl)
+  }
   await client.$executeRawUnsafe(REFERENCE_COLLECTION_UNIQUE_PROJECT_NAME_DDL)
   await client.$executeRawUnsafe(REFERENCE_COLLECTION_PROJECT_INDEX_DDL)
   await client.$executeRawUnsafe(COLLECTION_ITEM_TABLE_DDL)

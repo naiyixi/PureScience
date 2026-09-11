@@ -4,6 +4,7 @@ import type {
   CollectionItem,
   CreateReferenceCollectionInput,
   CreateReferenceInput,
+  ReferenceAttachmentVersion,
   Reference,
   ReferenceAuthor,
   ReferenceCollection,
@@ -13,7 +14,7 @@ import type {
 // lightweight mock instead of a real (engine-backed) PrismaClient.
 export type ReferenceClient = Pick<
   PrismaClient,
-  'reference' | 'referenceCollection' | 'collectionItem'
+  'reference' | 'referenceCollection' | 'collectionItem' | 'referenceAttachmentVersion'
 >
 type ReferenceClientProvider = () => Promise<ReferenceClient>
 
@@ -159,9 +160,34 @@ export class ReferenceRepository {
       list.push(item.collectionId)
       byReference.set(item.referenceId, list)
     }
+    // Attachment history travels with the list read (same idea as collection memberships):
+    // newest first, capped so a long-lived record cannot bloat the projection.
+    const versions = await client.referenceAttachmentVersion.findMany({
+      where: { referenceId: { in: references.map((reference) => reference.id) } },
+      orderBy: { attachedAt: 'desc' }
+    })
+    const versionsByReference = new Map<string, ReferenceAttachmentVersion[]>()
+    for (const version of versions) {
+      const list = versionsByReference.get(version.referenceId) ?? []
+      if (list.length >= 20) continue
+      list.push({
+        id: version.id,
+        managedFileId: version.managedFileId,
+        contentHash: version.contentHash ?? undefined,
+        attachedAt: version.attachedAt.getTime(),
+        replacedAt: version.replacedAt?.getTime()
+      })
+      versionsByReference.set(version.referenceId, list)
+    }
     return references.map((reference) => {
       const collectionIds = byReference.get(reference.id)
-      return collectionIds === undefined ? reference : { ...reference, collectionIds }
+      const pdfVersions = versionsByReference.get(reference.id)
+      if (collectionIds === undefined && pdfVersions === undefined) return reference
+      return {
+        ...reference,
+        ...(collectionIds === undefined ? {} : { collectionIds }),
+        ...(pdfVersions === undefined ? {} : { pdfVersions })
+      }
     })
   }
 
@@ -223,6 +249,23 @@ export class ReferenceRepository {
     await client.reference.delete({ where: { id } })
   }
 
+  // Attachment history: replacing or detaching a PDF records the outgoing file before it is
+  // superseded, so a review made against the earlier file stays explainable (v1.54).
+  async listAttachmentVersions(referenceId: string): Promise<ReferenceAttachmentVersion[]> {
+    const client = await this.getClient()
+    const rows = await client.referenceAttachmentVersion.findMany({
+      where: { referenceId },
+      orderBy: { attachedAt: 'desc' }
+    })
+    return rows.map((row) => ({
+      id: row.id,
+      managedFileId: row.managedFileId,
+      contentHash: row.contentHash ?? undefined,
+      attachedAt: row.attachedAt.getTime(),
+      replacedAt: row.replacedAt?.getTime()
+    }))
+  }
+
   // Attaches (or detaches, with null) the project-managed PDF that backs page-level annotations
   // for this reference. The managed file itself is validated by the caller against project scope.
   async attachPdf(
@@ -231,6 +274,20 @@ export class ReferenceRepository {
     pdfContentHash: string | null = null
   ): Promise<Reference | null> {
     const client = await this.getClient()
+    const previous = await client.reference.findUnique({ where: { id: referenceId } })
+    const outgoingFileId = previous?.pdfManagedFileId ?? null
+    const outgoingHash = previous?.pdfContentHash ?? null
+    // Record the file being superseded (replace or detach) before it is no longer current.
+    if (outgoingFileId !== null && outgoingFileId !== pdfManagedFileId) {
+      await client.referenceAttachmentVersion.create({
+        data: {
+          referenceId,
+          managedFileId: outgoingFileId,
+          contentHash: outgoingHash,
+          replacedAt: new Date()
+        }
+      })
+    }
     const row = await client.reference.update({
       where: { id: referenceId },
       // Detaching clears the fingerprint too: a stale hash must never describe no file.

@@ -69,7 +69,9 @@ const createMockClient = (): {
     itemFindUnique: vi.fn(() => Promise.resolve(null)),
     itemFindFirst: vi.fn(() => Promise.resolve(null)),
     itemCreate: vi.fn(),
-    itemDeleteMany: vi.fn(() => Promise.resolve({ count: 0 }))
+    itemDeleteMany: vi.fn(() => Promise.resolve({ count: 0 })),
+    versionCreate: vi.fn(() => Promise.resolve({ id: 'ver-1' })),
+    versionFindMany: vi.fn(() => Promise.resolve([]))
   }
   const client = {
     reference: {
@@ -84,6 +86,10 @@ const createMockClient = (): {
       findMany: m.collectionFindMany,
       create: m.collectionCreate,
       delete: m.collectionDelete
+    },
+    referenceAttachmentVersion: {
+      create: m.versionCreate,
+      findMany: m.versionFindMany
     },
     collectionItem: {
       findMany: m.itemFindMany,
@@ -236,5 +242,70 @@ describe('ReferenceRepository', () => {
       where: { id: 'ref-1' },
       data: { pdfManagedFileId: null, pdfContentHash: null }
     })
+  })
+})
+
+describe('ReferenceRepository attachment history', () => {
+  it('records the superseded PDF (with its hash) when a different file is attached', async () => {
+    const { client, m } = createMockClient()
+    m.referenceFindUnique.mockResolvedValue(
+      rowFixture({ pdfManagedFileId: 'file-old', pdfContentHash: 'sha256:aaaa:10' })
+    )
+    m.referenceUpdate.mockResolvedValue(
+      rowFixture({ pdfManagedFileId: 'file-new', pdfContentHash: 'sha256:bbbb:20' })
+    )
+    const repository = new ReferenceRepository(() => Promise.resolve(client))
+
+    await repository.attachPdf('ref-1', 'file-new', 'sha256:bbbb:20')
+
+    expect(m.versionCreate).toHaveBeenCalledTimes(1)
+    const created = m.versionCreate.mock.calls[0][0] as { data: Record<string, unknown> }
+    expect(created.data.referenceId).toBe('ref-1')
+    expect(created.data.managedFileId).toBe('file-old')
+    expect(created.data.contentHash).toBe('sha256:aaaa:10')
+    expect(created.data.replacedAt).toBeInstanceOf(Date)
+  })
+
+  it('records the file when a reference is detached, and not on a first attach', async () => {
+    const { client, m } = createMockClient()
+    m.referenceFindUnique.mockResolvedValue(rowFixture({ pdfManagedFileId: null }))
+    m.referenceUpdate.mockResolvedValue(rowFixture({ pdfManagedFileId: 'file-new' }))
+    const repository = new ReferenceRepository(() => Promise.resolve(client))
+    await repository.attachPdf('ref-1', 'file-new', null)
+    expect(m.versionCreate).not.toHaveBeenCalled()
+
+    m.referenceFindUnique.mockResolvedValue(rowFixture({ pdfManagedFileId: 'file-new' }))
+    m.referenceUpdate.mockResolvedValue(rowFixture({ pdfManagedFileId: null }))
+    await repository.attachPdf('ref-1', null)
+    expect(m.versionCreate).toHaveBeenCalledTimes(1)
+    const created = m.versionCreate.mock.calls[0][0] as { data: Record<string, unknown> }
+    expect(created.data.managedFileId).toBe('file-new')
+  })
+
+  it('projects attachment versions with the list read', async () => {
+    const { client, m } = createMockClient()
+    m.referenceFindMany.mockResolvedValue([rowFixture()])
+    m.versionFindMany.mockResolvedValue([
+      {
+        id: 'ver-1',
+        referenceId: 'ref-1',
+        managedFileId: 'file-old',
+        contentHash: 'sha256:aaaa:10',
+        attachedAt: new Date(1710000000000),
+        replacedAt: new Date(1710000005000)
+      }
+    ])
+    const repository = new ReferenceRepository(() => Promise.resolve(client))
+
+    const [reference] = await repository.listReferences('proj-1')
+    expect(reference.pdfVersions).toEqual([
+      {
+        id: 'ver-1',
+        managedFileId: 'file-old',
+        contentHash: 'sha256:aaaa:10',
+        attachedAt: 1710000000000,
+        replacedAt: 1710000005000
+      }
+    ])
   })
 })
