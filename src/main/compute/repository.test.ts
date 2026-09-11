@@ -24,9 +24,7 @@ const createRow = (overrides: Record<string, unknown> = {}): Record<string, unkn
 
 // Builds a mock computeHost delegate; each method is a spy the tests can assert against.
 const createMockClient = (
-  methods: Partial<
-    Record<'findMany' | 'findUnique' | 'create' | 'delete' | 'update', unknown>
-  >
+  methods: Partial<Record<'findMany' | 'findUnique' | 'create' | 'delete' | 'update', unknown>>
 ): { client: ComputeHostClient; computeHost: Record<string, ReturnType<typeof vi.fn>> } => {
   const computeHost = {
     findMany: vi.fn(methods.findMany as never),
