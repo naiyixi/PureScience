@@ -41,16 +41,24 @@ describe('skill license classification', () => {
 
   it('fails closed on missing or unrecognised licenses', () => {
     expect(classifySkillLicense({})).toBe('needs-review')
-    expect(classifySkillLicense({ license: 'Proprietary Academic Use Only v3' })).toBe('needs-review')
+    expect(classifySkillLicense({ license: 'Proprietary Academic Use Only v3' })).toBe(
+      'needs-review'
+    )
     expect(requiresCommercialConfirmation('needs-review')).toBe(true)
     expect(requiresCommercialConfirmation('restricted')).toBe(true)
     expect(requiresCommercialConfirmation('allowed')).toBe(false)
   })
 
   it('honours an explicit declaration but surfaces conflicts with the text', () => {
-    expect(classifySkillLicense({ license: 'Custom-1.0', commercialUse: 'allowed' })).toBe('allowed')
-    expect(classifySkillLicense({ license: 'Custom-1.0', commercialUse: 'restricted' })).toBe('restricted')
-    expect(classifySkillLicense({ license: 'CC-BY-NC-4.0', commercialUse: 'allowed' })).toBe('needs-review')
+    expect(classifySkillLicense({ license: 'Custom-1.0', commercialUse: 'allowed' })).toBe(
+      'allowed'
+    )
+    expect(classifySkillLicense({ license: 'Custom-1.0', commercialUse: 'restricted' })).toBe(
+      'restricted'
+    )
+    expect(classifySkillLicense({ license: 'CC-BY-NC-4.0', commercialUse: 'allowed' })).toBe(
+      'needs-review'
+    )
   })
 
   it('recognises permissiveness conservatively', () => {
