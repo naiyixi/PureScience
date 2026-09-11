@@ -316,6 +316,52 @@ describe('conversation export service', () => {
     expect(written).not.toContain('# Question')
     expect(written).toContain('Second answer.')
   })
+
+  it('writes the trace report instead of the transcript when a trace payload is present', async () => {
+    showSaveDialog.mockResolvedValue({ canceled: false, filePath: '/downloads/trace.md' })
+    const result = await createService().exportConversation({
+      projectId: 'project-1',
+      sessionId: 'session-1',
+      format: 'markdown',
+      trace: {
+        title: 'SHANK2 trace',
+        project: 'project-1',
+        steps: [
+          { label: '解析 UniProt', status: 'done', evidence: 'uniprot:Q9UPX8' },
+          { label: 'ΔΔG 计算', status: 'skipped', detail: '无可用算力' }
+        ],
+        scopes: ['基于 2000/20000 降采样（头部截取）'],
+        caveats: ['ΔΔG 未计算：需要 GPU 主机或引擎']
+      }
+    })
+
+    expect(result.saved).toBe(true)
+    const written = String(writeExportFile.mock.calls[0][1])
+    expect(written).toContain('# SHANK2 trace')
+    expect(written).toContain('[跳过] ΔΔG 计算')
+    expect(written).toContain('基于 2000/20000 降采样')
+    expect(written).toContain('## 诚实性说明')
+    expect(written).not.toContain('Hello')
+  })
+
+  it('prints the escaped trace HTML for a pdf trace export', async () => {
+    showSaveDialog.mockResolvedValue({ canceled: false, filePath: '/downloads/trace.pdf' })
+    await createService().exportConversation({
+      projectId: 'project-1',
+      sessionId: 'session-1',
+      format: 'pdf',
+      trace: {
+        title: '<script>alert(1)</script>',
+        steps: [{ label: 'step', status: 'done' }]
+      }
+    })
+
+    expect(printToPDF).toHaveBeenCalled()
+    const html = String(writeExportFile.mock.calls[0][1])
+    expect(html).not.toContain('<script>')
+    expect(html).toContain('&lt;script&gt;')
+    expect(html).toContain('trace-report')
+  })
 })
 
 describe('conversation export IPC handler', () => {

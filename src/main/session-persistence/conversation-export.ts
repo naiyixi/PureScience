@@ -12,6 +12,7 @@ import {
   type ExportConversationRequest,
   type ExportConversationResult
 } from '../../shared/conversation-export'
+import { buildTraceReportHtml, buildTraceReportMarkdown } from '../../shared/trace-report'
 import type { PersistedChatSession } from '../../shared/session-persistence'
 
 type ConversationExportPrintWindow = {
@@ -131,6 +132,20 @@ const createConversationExportService = (
 
       const document = createConversationExportDocument(session, deps.now(), request.rounds)
       const extension = request.format === 'markdown' ? 'md' : 'pdf'
+      // A trace export replaces the transcript with the auditable execution report.
+      const traceDocument = request.trace
+        ? {
+            title: request.trace.title,
+            project: request.trace.project,
+            generatedAt: request.trace.generatedAt ?? new Date(deps.now()).toISOString(),
+            goal: request.trace.goal,
+            steps: request.trace.steps,
+            artifacts: request.trace.artifacts,
+            checkpoint: request.trace.checkpoint,
+            scopes: request.trace.scopes,
+            caveats: request.trace.caveats
+          }
+        : undefined
       const defaultPath = join(
         deps.getDownloadsPath(),
         `${sanitizeExportFilename(document.title)}.${extension}`
@@ -148,7 +163,12 @@ const createConversationExportService = (
       if (dialogResult.canceled || !dialogResult.filePath) return { saved: false }
 
       if (request.format === 'markdown') {
-        await deps.writeFile(dialogResult.filePath, renderConversationMarkdown(document))
+        await deps.writeFile(
+          dialogResult.filePath,
+          traceDocument
+            ? buildTraceReportMarkdown(traceDocument)
+            : renderConversationMarkdown(document)
+        )
         return { saved: true, filePath: dialogResult.filePath }
       }
 
@@ -156,7 +176,9 @@ const createConversationExportService = (
         join(deps.getTempPath(), 'purescience-conversation-export-')
       )
       try {
-        const html = renderConversationHtml(document)
+        const html = traceDocument
+          ? buildTraceReportHtml(traceDocument)
+          : renderConversationHtml(document)
         const htmlPath = join(tempDirectory, 'conversation.html')
         await deps.writeFile(htmlPath, html)
 

@@ -7,6 +7,8 @@ import type {
   PersistedMessageImage
 } from './session-persistence'
 
+import type { TraceReportInput } from './trace-report'
+
 export type ConversationExportFormat = 'markdown' | 'pdf'
 
 // 1-based inclusive round range over user turns. A "round" starts at a user message and runs
@@ -16,11 +18,20 @@ export type ConversationRoundSelection = {
   to: number
 }
 
+// An execution-trace document exported instead of (or alongside) the conversation: the steps that
+// ran, the artifacts produced, the checkpoint facts reused, the scope labels that must travel with
+// the numbers, and the honesty caveats. `generatedAt` is filled by the exporter.
+export type ConversationExportTrace = Omit<TraceReportInput, 'generatedAt'> & {
+  generatedAt?: string
+}
+
 export type ExportConversationRequest = {
   projectId: string
   sessionId: string
   format: ConversationExportFormat
   rounds?: ConversationRoundSelection
+  /** When present, the export writes the trace report rather than the chat transcript. */
+  trace?: ConversationExportTrace
 }
 
 export type ExportConversationResult = {
