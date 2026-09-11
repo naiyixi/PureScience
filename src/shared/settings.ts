@@ -935,6 +935,8 @@ export type EnvironmentCheckResult = {
 export type SkillSource = 'featured' | 'imported' | 'personal'
 
 // Renderer-safe view of one bundled skill (no file contents).
+import type { SkillLicenseStatus } from './skill-license'
+
 export type SkillView = {
   id: string
   name: string
@@ -945,6 +947,9 @@ export type SkillView = {
   // From the SKILL.md frontmatter; shown in the detail view's "Details" section when present.
   author?: string
   license?: string
+  // Commercial classification of the license: 'allowed' (clear permissive), 'restricted'
+  // (non-commercial terms), 'needs-review' (missing/unrecognised — ask before commercial use).
+  licenseStatus?: SkillLicenseStatus
   thirdParty?: string
 }
 

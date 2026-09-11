@@ -4,13 +4,14 @@ import { join } from 'node:path'
 
 import type { SkillSource } from '../../shared/settings'
 import { createLogger } from '../logger'
+import { classifySkillLicense, type SkillLicenseStatus } from '../../shared/skill-license'
 import { parseFrontmatter } from './frontmatter'
 import { resolveBundledSkillsRoot } from './resource-path'
 
 const log = createLogger('skills')
 
 // One bundled skill resolved from manifest + its SKILL.md. `sourceDir` is the absolute directory the
-// materializer copies from; author/license/thirdParty/category/requirements come from the SKILL.md
+// materializer copies from; author/license/licenseStatus/thirdParty/category/requirements come from the SKILL.md
 // frontmatter (may be absent). `category`/`requirements` let the materializer flag skills whose model
 // tooling needs a compute backend this app does not provide.
 export type BundledSkill = {
@@ -23,6 +24,8 @@ export type BundledSkill = {
   compatibility?: string
   author?: string
   license?: string
+  // Fail-closed commercial classification of the license (see shared/skill-license).
+  licenseStatus?: SkillLicenseStatus
   thirdParty?: string
   category?: string
   requirements?: string
@@ -118,6 +121,10 @@ class SkillRegistry {
           compatibility: await bundledSkillCompatibility(sourceDir),
           author: fields.author,
           license: fields.license,
+          licenseStatus: classifySkillLicense({
+            license: fields.license,
+            commercialUse: fields['commercial-use'] ?? fields.commercial_use
+          }),
           // The "Third-party software, content, terms, and information" row; several key spellings.
           thirdParty: fields['third-party'] ?? fields['third_party'] ?? fields.thirdparty,
           category: fields.category,
