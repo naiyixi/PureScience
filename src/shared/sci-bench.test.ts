@@ -24,6 +24,7 @@ describe('SciBench-Local v0 benchmark definition', () => {
       'citation-export',
       'compute-ladder',
       'figure-discipline',
+      'large-data',
       'literature-import'
     ])
   })
@@ -159,5 +160,31 @@ describe('SciBench trace evaluation', () => {
     expect(summary.total).toBe(2)
     expect(summary.passed).toBe(1)
     expect(summary.failures).toHaveLength(1)
+  })
+
+  it('requires a subset label from a downsampled omics read (G6)', () => {
+    const bench = benchCase('omics-large-file-preview')
+    const bad = evaluateSciBenchTrace(bench, {
+      transcript: 'Ran the downsampled analysis and reported the top markers.'
+    })
+    expect(bad.findings.find((entry) => entry.rule === 'subset-scope-labelled')?.passed).toBe(false)
+
+    const good = evaluateSciBenchTrace(bench, {
+      transcript:
+        '降采样预览：基于 2000/20000 降采样（头部截取）。全量提案：需人工批准，结果标注 引擎与版本、关键参数、数据范围：全量（20000）。'
+    })
+    expect(good.findings.find((entry) => entry.rule === 'subset-scope-labelled')?.passed).toBe(true)
+    expect(
+      good.findings.find((entry) => entry.rule === 'full-run-proposal-requires-approval')?.passed
+    ).toBe(true)
+  })
+
+  it('fails the full-run rule when the trace claims the job already ran', () => {
+    const result = evaluateSciBenchTrace(benchCase('omics-large-file-preview'), {
+      transcript: '基于 2000/20000 降采样（头部截取）。全量作业已提交并运行完毕，引擎与版本见附表。'
+    })
+    expect(
+      result.findings.find((entry) => entry.rule === 'full-run-proposal-requires-approval')?.passed
+    ).toBe(false)
   })
 })

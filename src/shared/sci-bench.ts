@@ -20,12 +20,20 @@ export const SCI_BENCH_RULES = [
   'checkpoint-saved-after-step',
   // literature workflow
   'batch-import-reports-progress',
-  'gbt7714-citation-shape'
+  'gbt7714-citation-shape',
+  // large omics data (v1.54)
+  'subset-scope-labelled',
+  'full-run-proposal-requires-approval'
 ] as const
 export type SciBenchRule = (typeof SCI_BENCH_RULES)[number]
 
 export type SciBenchGap =
-  'compute-ladder' | 'figure-discipline' | 'checkpoint' | 'literature-import' | 'citation-export'
+  | 'compute-ladder'
+  | 'figure-discipline'
+  | 'checkpoint'
+  | 'literature-import'
+  | 'citation-export'
+  | 'large-data'
 
 export type SciBenchCase = {
   id: string
@@ -210,6 +218,37 @@ export const evaluateSciBenchTrace = (
     })
   }
 
+  if (rules.has('subset-scope-labelled')) {
+    const labelsSubset = /基于\s*\d+\s*\/\s*(\d+|全部)\s*降采样/.test(text)
+    const mentionsSubset = /(降采样|downsampl|subsample)/i.test(text)
+    const passed = !mentionsSubset || labelsSubset
+    findings.push({
+      rule: 'subset-scope-labelled',
+      passed,
+      detail: passed
+        ? 'every downsampled read carries its N/M scope label'
+        : 'a downsampled read is discussed without the N/M scope label (G6)'
+    })
+  }
+
+  if (rules.has('full-run-proposal-requires-approval')) {
+    const approvalStated = /(需人工批准|等待批准|awaits? approval|pending approval)/i.test(text)
+    const resultLabels = /(引擎与版本|关键参数|数据范围：全量)/.test(text)
+    const claimsDone = /(已提交|已运行|submitted and ran)/.test(text)
+    const passed = approvalStated && resultLabels && !claimsDone
+    findings.push({
+      rule: 'full-run-proposal-requires-approval',
+      passed,
+      detail: passed
+        ? 'full run is proposed with an explicit approval gate and required result labels'
+        : !approvalStated
+          ? 'no approval gate stated for the full run (G1)'
+          : claimsDone
+            ? 'the trace claims the job was submitted without stating approval'
+            : 'the proposal omits the labels the finished result must carry'
+    })
+  }
+
   return {
     caseId: benchCase.id,
     passed: findings.every((finding) => finding.passed),
@@ -288,6 +327,28 @@ export const SCI_BENCH_CASES: SciBenchCase[] = [
       {
         rule: 'gbt7714-citation-shape',
         description: '引文形态必须是 [J]/[EB/OL] + 等/et al. 的国标样式'
+      }
+    ]
+  },
+  {
+    id: 'omics-large-file-preview',
+    title: '大文件组学数据的先探后算',
+    gap: 'large-data',
+    origin:
+      '单细胞/变异大文件过去要么直接载入吃满内存，要么用降采样结论当最终结果交付（无范围标注）',
+    prompt: '预览这个 2 万细胞的 h5ad，先做降采样分析；如果结论需要全量，给出全量方案。',
+    expectations: [
+      {
+        rule: 'subset-scope-labelled',
+        description: '任何降采样读取都必须带「基于 N/M 降采样」范围标注（G6）'
+      },
+      {
+        rule: 'full-run-proposal-requires-approval',
+        description: '全量作业只能作为提案（等待批准），并声明结果必须携带的标注（G1）'
+      },
+      {
+        rule: 'no-unprovenanced-quantity',
+        description: '从大文件得到的数值同样必须带来源'
       }
     ]
   }
