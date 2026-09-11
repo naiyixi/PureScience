@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 
 import {
   OMICS_PREVIEW_SCHEMA_VERSION,
+  canAnswerFromPreview,
+  describeFullRunHandoff,
   describeOmicsScope,
   detectOmicsFormat,
   isOmicsPreviewManifest,
@@ -84,5 +86,27 @@ describe('omics preview contract', () => {
     expect(isOmicsPreviewManifest({ ...manifest(), schemaVersion: 0 })).toBe(false)
     expect(isOmicsPreviewManifest({ ...manifest(), notes: undefined })).toBe(false)
     expect(isOmicsPreviewManifest(null)).toBe(false)
+  })
+
+  it('refuses to let a preview answer the question when the scope is provisional (G1)', () => {
+    expect(canAnswerFromPreview(manifest())).toBe(false)
+    expect(canAnswerFromPreview(manifest({ subset: undefined, fullRunRequired: false }))).toBe(true)
+
+    const handoff = describeFullRunHandoff(manifest())
+    expect(handoff).toContain('不得作为最终结论')
+    expect(handoff).toContain('等待批准')
+    expect(handoff).toContain('未计算')
+    expect(handoff).toContain('provenance')
+  })
+
+  it('says so plainly when the preview already covers the whole file', () => {
+    const handoff = describeFullRunHandoff(
+      manifest({
+        subset: { applied: false, requestedCells: 2000, sampledCells: 20000, sampling: 'head' },
+        fullRunRequired: false
+      })
+    )
+    expect(handoff).toContain('预览即全量')
+    expect(handoff).not.toContain('不得作为最终结论')
   })
 })

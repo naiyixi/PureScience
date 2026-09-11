@@ -23,7 +23,9 @@ backend: "anndata/h5py (h5ad, optional) · Python 标准库 (VCF)"
 1. **子集必须标注（G6）**：任何降采样结果都必须携带 `subset` 信息（请求/实际/抽样方式），
    应用层据此生成“基于 N/M 降采样”的标签。**全量跑完之前，子集结论不得进入交付物**。
 2. **全量走算力决策链（G1）**：需要完整数据的结果，必须按计算环境的就绪阶梯提议作业并等待批准，
-   或明说“未计算：缺什么”，不得用预览结论冒充。
+   或明说“未计算：缺什么”，不得用预览结论冒充。应用层可直接取用
+   `describeFullRunHandoff(manifest)` / `canAnswerFromPreview(manifest)`（`src/shared/omics-preview.ts`）
+   生成的交接指令，不要自行措辞。
 3. **不猜数值**：结构未知（依赖缺失、格式未识别）时如实写入 `notes`，并把 `fullRunRequired` 置为真，
    不要给出看似精确的估算。
 4. **不修改输入**：预览路径始终以只读方式打开文件。

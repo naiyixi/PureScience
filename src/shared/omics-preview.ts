@@ -87,3 +87,23 @@ export const summarizeOmicsPreview = (manifest: OmicsPreviewManifest): string =>
   }
   return parts.join(' · ')
 }
+
+// G1: whether the preview alone may answer the user's question. A provisional scope may be used to
+// plan and to sanity-check, but the answer itself has to come from the full run.
+export const canAnswerFromPreview = (manifest: OmicsPreviewManifest): boolean =>
+  !isProvisionalScope(manifest)
+
+// G1: what the agent must do next when the preview is not enough — stated as an instruction so it
+// cannot be skipped silently, and always without promising a number that no engine has produced.
+export const describeFullRunHandoff = (manifest: OmicsPreviewManifest): string => {
+  if (canAnswerFromPreview(manifest)) {
+    return `预览即全量（${describeOmicsScope(manifest)}），可直接用于结论；仍需标注数据来源与版本。`
+  }
+  const scope = describeOmicsScope(manifest)
+  return [
+    `预览范围：${scope} —— 不得作为最终结论。`,
+    '下一步必须走算力决策链：① 提议全量作业（指定主机/调度器与资源）并等待批准；',
+    '② 若无法取得算力，明说「未计算：<缺什么>，需要<引擎或主机>」，不得用定性描述或预览数值替代；',
+    '③ 全量返回后按 provenance（引擎/版本/参数/输入）标注结果。'
+  ].join('')
+}
