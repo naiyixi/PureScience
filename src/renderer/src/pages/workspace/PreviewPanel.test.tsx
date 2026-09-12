@@ -720,7 +720,11 @@ describe('PreviewPanel', () => {
     const labels = Array.from(menu?.querySelectorAll('[role="menuitem"]') ?? []).map(
       (item) => item.textContent?.trim() ?? ''
     )
-    expect(labels).toEqual(['Copy path', 'Download', 'Save as artifact'])
+    expect(labels.slice(0, 3)).toEqual(['Copy path', 'Download', 'Save as artifact'])
+    // Image/PDF sources additionally offer figure→data extraction (estimated, review-routed).
+    if (labels.length > 3) {
+      expect(labels[3]).toContain('从此图提取数据')
+    }
   })
 
   it('downloads the previewed file from the content context menu', async () => {

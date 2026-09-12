@@ -7,7 +7,8 @@ import {
   FolderOpen,
   Globe2,
   Layers,
-  X
+  X,
+  Crosshair
 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { PanelImperativeHandle, PanelSize } from 'react-resizable-panels'
@@ -26,6 +27,7 @@ import { useNavigationStore } from '@/stores/navigation-store'
 import { usePreviewWorkbenchStore } from '@/stores/preview-workbench-store'
 
 import { ExtensionPreservingFileName } from './ExtensionPreservingFileName'
+import { FigureDigitizePanel } from '@/components/figure/FigureDigitizePanel'
 import { PreviewFileSurface } from './PreviewFileSurface'
 import { WebPreviewSurface } from './previews/renderers/WebPreview'
 import { PreviewFileContent } from './previews/PreviewFileContent'
@@ -226,16 +228,21 @@ export const PreviewTabContextMenu = ({
 const previewContentMenuItemClassName =
   'flex w-full cursor-pointer items-center gap-2 rounded px-2.5 py-1.5 text-left text-[13px] text-text-000 hover:bg-bg-300 focus-visible:outline-none'
 
+const DIGITIZABLE_MEDIA = /\.(png|jpe?g|webp|tiff?|pdf)$/i
+
 export const PreviewContentContextMenu = ({
   x,
   y,
   item,
-  onDismiss
+  onDismiss,
+  onStartDigitization
 }: {
   x: number
   y: number
   item: PreviewItem
   onDismiss: () => void
+  /** Opens the figure→data picking panel for image/PDF sources (estimated output, routed to review). */
+  onStartDigitization?: (item: PreviewItem) => void
 }): React.JSX.Element | null => {
   const { t } = useLanguage()
   const activeProjectId = useNavigationStore((state) => state.activeProjectId)
@@ -308,6 +315,17 @@ export const PreviewContentContextMenu = ({
       >
         <FileUp className="size-3.5" aria-hidden="true" /> {t('ws.previewTabSaveAsArtifact')}
       </button>
+      {onStartDigitization && DIGITIZABLE_MEDIA.test(item.name) ? (
+        <button
+          type="button"
+          role="menuitem"
+          data-testid="preview-digitize-figure"
+          className={previewContentMenuItemClassName}
+          onClick={() => run(() => onStartDigitization(item))}
+        >
+          <Crosshair className="size-3.5" aria-hidden="true" /> 从此图提取数据（estimated）
+        </button>
+      ) : null}
     </div>
   )
 }
@@ -598,6 +616,8 @@ const PreviewFilePanel = ({
 }): React.JSX.Element => {
   const [isFullScreenOpen, setIsFullScreenOpen] = useState(false)
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
+  // Figure→data picking target: set when the user asks to extract numbers from a figure.
+  const [digitizeItem, setDigitizeItem] = useState<PreviewItem | null>(null)
   const surfaceRef = useRef<HTMLElement | null>(null)
 
   const closeFullScreen = useCallback((): void => {
@@ -665,7 +685,21 @@ const PreviewFilePanel = ({
           y={menu.y}
           item={item}
           onDismiss={() => setMenu(null)}
+          onStartDigitization={(target) => setDigitizeItem(target)}
         />
+      ) : null}
+      {digitizeItem && digitizeItem.type === 'file' ? (
+        <div className="absolute inset-x-3 bottom-3 z-[80] max-h-[70%] overflow-y-auto rounded-lg bg-bg-000 shadow-card">
+          <FigureDigitizePanel
+            sourcePath={digitizeItem.path ?? digitizeItem.title}
+            defaultFigureRef={digitizeItem.title}
+            requiresPageEntry={/\.pdf$/i.test(digitizeItem.title)}
+            onExport={(csv) => {
+              void navigator.clipboard.writeText(csv)
+            }}
+            onClose={() => setDigitizeItem(null)}
+          />
+        </div>
       ) : null}
     </>
   )
