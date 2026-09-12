@@ -52,7 +52,9 @@ DEV 一周的实跑暴露的不是"缺功能"，而是**已建成的护栏在真
 | **修复前**行为的实机证据 | ✅ 已取得 | 一次真实调用（agent 主动声明 `axis_ticks`（含 log 轴上的 `"0"`）与 `font_pt: 4`）返回中**没有 `log_axis_sanity`、没有字号告警**，只有 `source_artifact`；agent 自己在回复里指出「两个 `axis_ticks` / `font_pt` 字段不在该工具的公开 schema 中，但未被拒绝」。证据会话 JSON 存档 `/tmp/fig-evidence/` |
 | **修复后**端到端复验（agent 回合） | ⛔ **未完成**（阻塞，非未做） | 已重建 DEV 服务（新构建 `figure-mcp-server-CFjigjw5.js` 确认含 `axis_ticks`/`renderedImagePath`/`fontPt`）。RPC 派发用"先发 prompt → 再 `resume-session`"变体重跑 **4 个会话，4/4 失败**（prompt 秒停 `end_turn`、零 agent 消息、用户消息也不落盘）⇒ 先前那次成功是**偶发不可复现**，RPC 通路不能作为验收手段 |
 | **修复后**规则引擎实机验证 | ✅ **已通过**（绕开 agent，直击被测对象） | 对运行中的应用调它自己的 `figure:review` 通道：探针面板 → `clean:false` + 命中 **`log_axis_sanity`**（`"0"` 出现在 log 轴）与 **`source_artifact` ×2**（缺 .png/.py、字号 4pt < 6pt 线）；合规面板（带 .png/.py、9pt）→ **`clean:true`** 零违规。即"违规判 fail / 合规判 clean"两条判据均实测成立 |
-| 真实 agent 回合的端到端 | ⛔ 待 UI 侧确认 | 缺口已从"规则在 agent 通路不可达"缩小为"RPC 不能派发 agent 回合"（D10）。契约层由单测钉住（schema 暴露 4 字段 + schema→mapper→引擎往返），引擎层由上一行实测钉住；剩 agent 真调一次这一步建议在 UI 里点一下完成 |
+| 真实 agent 回合的端到端 | ✅ **已通过**（2026-09-12 22:0x，真实 UI + 真实 agent） | Playwright 驱动 Web UI：新建沙盒项目 `verify-fig6-2200` → composer 输入探针（853 字符与原文逐字一致）→ Send → agent 真调 `figure_review` 两次。**调用 1 原始返回**：`clean:false`，命中 **`log_axis_sanity`**（`Panel B: y-axis is log-scale but tick label(s) "0" are not positive numbers`）+ **`source_artifact` ×2**（`missing .png image path (rendered_image_path) and .py source path (source_script_path)`、`smallest font 4pt is below the ~6pt readability floor`）；**调用 2**：`violations: []`、**`clean: true`**。agent 自报汇总行：`call1_rules=log_axis_sanity,source_artifact call2_rules=none`。证据存档 `/tmp/fig-evidence/`（`ui-agent-reply.txt` + 会话 JSON） |
+
+**A1 收口结论**：三层验证（契约单测 / 应用 RPC 直击引擎 / 真实 UI+agent 回合）**全部通过**，规则 6/7 从"永不可达"变为可申报、可触发、可用于放行（合规面板给出 `clean:true`）。沙盒项目与探针会话已全部删除（`projects:delete` 用 `{id}`），目录无残留。
 
 **D10 的根因与已探明的可用配方**（供后续自动化验收复用）：
 
