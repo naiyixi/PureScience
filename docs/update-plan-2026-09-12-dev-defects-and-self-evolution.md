@@ -49,7 +49,9 @@ DEV 一周的实跑暴露的不是"缺功能"，而是**已建成的护栏在真
 | 代码修复 + 回归测试 | ✅ 已推送 | `fd77b26`；本地 `vitest` 7 项通过、`eslint` 干净、`typecheck` 双配置绿 |
 | CI | ✅ 全绿 | Nightly `34690206639` + Windows Full Test `34690206492`，均 `completed success`（用 `gh api .../actions/runs/<id>` 判定；注意 `?head_sha=` 需**完整 40 位 SHA**，短 SHA 会返回 `total_count: 0` 造成"没触发"的误判） |
 | **修复前**行为的实机证据 | ✅ 已取得 | 一次真实调用（agent 主动声明 `axis_ticks`（含 log 轴上的 `"0"`）与 `font_pt: 4`）返回中**没有 `log_axis_sanity`、没有字号告警**，只有 `source_artifact`；agent 自己在回复里指出「两个 `axis_ticks` / `font_pt` 字段不在该工具的公开 schema 中，但未被拒绝」。证据会话 JSON 存档 `/tmp/fig-evidence/` |
-| **修复后**端到端复验 | ⛔ **未完成**（阻塞，非未做） | 已重建 DEV 服务（新构建 `figure-mcp-server-CFjigjw5.js` 20:04 确认含 `axis_ticks`/`renderedImagePath`/`fontPt`），但 RPC 派发的 prompt 反复"秒停 end_turn、零输出、消息不落盘"；仅有一次在"先发 prompt → 再 `acp:resume-session`"的时序下真正执行。**结论：本构建下 RPC 直连驱动会话不可靠，端到端复验需要走 UI（需人工点击）或先修 D10** |
+| **修复后**端到端复验（agent 回合） | ⛔ **未完成**（阻塞，非未做） | 已重建 DEV 服务（新构建 `figure-mcp-server-CFjigjw5.js` 确认含 `axis_ticks`/`renderedImagePath`/`fontPt`）。RPC 派发用"先发 prompt → 再 `resume-session`"变体重跑 **4 个会话，4/4 失败**（prompt 秒停 `end_turn`、零 agent 消息、用户消息也不落盘）⇒ 先前那次成功是**偶发不可复现**，RPC 通路不能作为验收手段 |
+| **修复后**规则引擎实机验证 | ✅ **已通过**（绕开 agent，直击被测对象） | 对运行中的应用调它自己的 `figure:review` 通道：探针面板 → `clean:false` + 命中 **`log_axis_sanity`**（`"0"` 出现在 log 轴）与 **`source_artifact` ×2**（缺 .png/.py、字号 4pt < 6pt 线）；合规面板（带 .png/.py、9pt）→ **`clean:true`** 零违规。即"违规判 fail / 合规判 clean"两条判据均实测成立 |
+| 真实 agent 回合的端到端 | ⛔ 待 UI 侧确认 | 缺口已从"规则在 agent 通路不可达"缩小为"RPC 不能派发 agent 回合"（D10）。契约层由单测钉住（schema 暴露 4 字段 + schema→mapper→引擎往返），引擎层由上一行实测钉住；剩 agent 真调一次这一步建议在 UI 里点一下完成 |
 
 **D10 的根因与已探明的可用配方**（供后续自动化验收复用）：
 
