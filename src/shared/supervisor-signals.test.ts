@@ -186,6 +186,43 @@ describe('supervisor wake-up policy', () => {
     })
   })
 
+  it('does not treat heartbeat refreshes of one failing call as a failure run', () => {
+    // Measured on a real session: one failing notebook_execute refreshed by heartbeats produced a
+    // wake-up, because three snapshots of the SAME call looked like three consecutive failures.
+    const plan = planSupervisorWakes(
+      supervisorEventsFromActivities([
+        { id: 'call_00_x-heartbeat-0', status: 'failed', providerToolName: 'notebook_execute' },
+        { id: 'call_00_x-heartbeat-1', status: 'failed', providerToolName: 'notebook_execute' },
+        { id: 'call_00_x-heartbeat-2', status: 'failed', providerToolName: 'notebook_execute' }
+      ])
+    )
+    expect(plan.wakes).toEqual([])
+
+    // Three DIFFERENT calls failing in a row still wake it, and the handle names the last one.
+    const real = planSupervisorWakes(
+      supervisorEventsFromActivities([
+        { id: 'call_01_a', status: 'failed', providerToolName: 'notebook_execute' },
+        { id: 'call_02_b', status: 'failed', providerToolName: 'notebook_execute' },
+        { id: 'call_03_c', status: 'failed', providerToolName: 'notebook_execute' }
+      ])
+    )
+    expect(real.wakes).toHaveLength(1)
+    expect(real.wakes[0]).toMatchObject({
+      kind: 'repeated-tool-failure',
+      evidenceHandle: 'activity:call_03_c'
+    })
+
+    // A heartbeat that succeeds after a failure refreshes the call's status rather than adding a call.
+    const recovered = planSupervisorWakes(
+      supervisorEventsFromActivities([
+        { id: 'call_01_a', status: 'failed', providerToolName: 'notebook_execute' },
+        { id: 'call_02_b', status: 'failed', providerToolName: 'notebook_execute' },
+        { id: 'call_02_b-heartbeat-1', status: 'completed', providerToolName: 'notebook_execute' }
+      ])
+    )
+    expect(recovered.wakes).toEqual([])
+  })
+
   it('builds no prompt section when the supervisor has nothing to say', () => {
     expect(buildSupervisorNotice(undefined)).toBe('')
     expect(buildSupervisorNotice({ wakes: [] })).toBe('')

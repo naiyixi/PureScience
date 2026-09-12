@@ -188,21 +188,43 @@ export type SupervisorActivityLike = {
   title?: string
 }
 
+// A long-running call is refreshed by heartbeat events that reuse the call id with a '-heartbeat-N'
+// suffix. Counting those as separate calls turns ONE slow failure into a "three failures in a row"
+// wake-up — measured on real sessions before this was added, so the dedupe is not theoretical.
+const baseToolCallId = (id: string): string => id.replace(/-heartbeat-\d+$/, '')
+
 /**
- * Maps a turn's tool activities onto the policy's event stream. Only an explicit `failed` counts as a
- * failure: an activity still in progress has not failed yet, and treating it as one would wake the
- * supervisor on a slow call.
+ * Maps a turn's tool activities onto the policy's event stream, one event per underlying call. Only an
+ * explicit `failed` counts as a failure: an activity still in progress has not failed yet, and treating
+ * it as one would wake the supervisor on a slow call. Heartbeat snapshots collapse into the call they
+ * refresh, keeping the freshest status and the original position in the order.
  */
 export const supervisorEventsFromActivities = (
   activities: readonly SupervisorActivityLike[]
-): SupervisorEvent[] =>
-  activities.map((activity, index) => ({
-    turn: index,
-    type: 'tool-call' as const,
-    tool: activity.providerToolName ?? activity.title ?? 'unknown',
-    ok: activity.status !== 'failed',
-    evidenceHandle: `activity:${activity.id}`
-  }))
+): SupervisorEvent[] => {
+  const events: SupervisorEvent[] = []
+  const positionByCall = new Map<string, number>()
+
+  activities.forEach((activity, index) => {
+    const callId = baseToolCallId(activity.id)
+    const event: SupervisorEvent = {
+      turn: index,
+      type: 'tool-call',
+      tool: activity.providerToolName ?? activity.title ?? 'unknown',
+      ok: activity.status !== 'failed',
+      evidenceHandle: `activity:${activity.id}`
+    }
+    const existing = positionByCall.get(callId)
+    if (existing === undefined) {
+      positionByCall.set(callId, events.length)
+      events.push(event)
+      return
+    }
+    events[existing] = { ...event, turn: events[existing]?.turn ?? event.turn }
+  })
+
+  return events
+}
 
 export const SUPERVISOR_PROMPT_TAG = 'supervisor_signals'
 
