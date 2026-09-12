@@ -4,7 +4,12 @@
 // writes skill files itself. Bounds keep a hostile draft from overflowing or escaping the skills
 // directory.
 
-import type { SkillProvenance, SkillVerification } from './skill-provenance'
+import {
+  SKILL_KNOWLEDGE_KINDS,
+  type SkillKnowledgeKind,
+  type SkillProvenance,
+  type SkillVerification
+} from './skill-provenance'
 
 export const SKILL_CREATE_TOOL_NAME = 'create_skill'
 
@@ -26,6 +31,10 @@ export const SKILL_CREATE_SYSTEM_PROMPT_APPEND = [
     'only way to add a skill.',
   'A skill you save starts UNVERIFIED: nothing has checked that the procedure works yet. Tell the ' +
     'user it is unverified (Settings → Skills shows the state) instead of implying it is proven.',
+  'When what you learnt is a dead end (a command that cannot work on this machine, a package that ' +
+    'will not build), save it as kind "failure-mode" with evidence: the exact command and the error ' +
+    'text. A reproducible failure is worth keeping even if the run it came from failed; a failure ' +
+    'with no reproduction is a rumour and will be refused.',
   '</purescience_skill_create_instructions>'
 ].join('\n')
 
@@ -35,6 +44,8 @@ export const SKILL_CREATE_MAX_DESCRIPTION_LENGTH = 200
 export const SKILL_CREATE_MAX_INSTRUCTIONS_LENGTH = 20_000
 export const SKILL_CREATE_MAX_REFERENCES = 4
 export const SKILL_CREATE_MAX_REFERENCE_LENGTH = 400
+export const SKILL_CREATE_MAX_EVIDENCE = 6
+export const SKILL_CREATE_MAX_EVIDENCE_LENGTH = 400
 
 // Agent-facing tool input schema (snake_case on the wire, zod-validated at the server).
 export const skillCreateToolSchema = {
@@ -60,6 +71,19 @@ export const skillCreateToolSchema = {
     items: { type: 'string' },
     maxItems: SKILL_CREATE_MAX_REFERENCES,
     description: 'Optional reference URLs or file paths the skill depends on.'
+  },
+  kind: {
+    type: 'string',
+    enum: [...SKILL_KNOWLEDGE_KINDS],
+    description:
+      "'procedure' = how to do something that worked. 'failure-mode' = an approach that does not work; worth keeping when the failure is reproducible, even from a run that failed as a whole."
+  },
+  evidence: {
+    type: 'array',
+    items: { type: 'string' },
+    maxItems: SKILL_CREATE_MAX_EVIDENCE,
+    description:
+      'Concrete evidence for the claim: the command and the error text, the measurement, the file path. Required for failure-mode knowledge — without a reproduction it is a rumour, not knowledge.'
   }
 }
 
@@ -84,6 +108,10 @@ export type SkillCreateInput = {
   description: string
   instructions: string
   references?: string[]
+  // What kind of knowledge this is. A failure mode is kept for its evidence, so the creator refuses one
+  // that arrives without any (see shared/skill-provenance.requiresEvidence).
+  kind?: SkillKnowledgeKind
+  evidence?: string[]
   // Trust state of the knowledge being saved. Absent = a fresh agent draft, which is stamped
   // `unverified` + `procedure` (see shared/skill-provenance): only a verified entry may be reused
   // without review, so the state is recorded at creation time rather than inferred later.

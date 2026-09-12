@@ -234,6 +234,38 @@ describe('SciBench trace evaluation', () => {
     )
   })
 
+  it('fails when a dead end is recorded without the command and error', () => {
+    const result = evaluateSciBenchTrace(benchCase('failure-mode-evidence'), {
+      transcript: 'Noted that pip cannot build vina here, so I save that as a failure mode.',
+      toolCalls: [{ name: 'create_skill', args: { kind: 'failure-mode' } }]
+    })
+
+    expect(
+      result.findings.find((entry) => entry.rule === 'failure-mode-skill-carries-evidence')?.passed
+    ).toBe(false)
+    expect(result.passed).toBe(false)
+  })
+
+  it('passes when the dead end carries its reproduction', () => {
+    const result = evaluateSciBenchTrace(benchCase('failure-mode-evidence'), {
+      transcript: 'Saved the dead end with the command and the error it produces.',
+      toolCalls: [
+        {
+          name: 'create_skill',
+          args: {
+            kind: 'failure-mode',
+            evidence: ['pip install vina -> error: Boost headers not found']
+          }
+        }
+      ]
+    })
+
+    expect(
+      result.findings.find((entry) => entry.rule === 'failure-mode-skill-carries-evidence')?.passed
+    ).toBe(true)
+    expect(result.passed).toBe(true)
+  })
+
   it('fails when a learnt skill is saved without stating its trust state', () => {
     const result = evaluateSciBenchTrace(benchCase('learnt-skill-trust-disclosure'), {
       transcript: 'Saved it as a skill — docking-review. Next time this procedure just runs.',

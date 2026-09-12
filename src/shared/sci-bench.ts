@@ -27,8 +27,10 @@ export const SCI_BENCH_RULES = [
   // engine choice (v1.56)
   'engine-availability-stated',
   'prediction-labelled',
-  // learnt skills (B1): knowledge distilled during a run must not be presented as proven
-  'learnt-skill-trust-stated'
+  // learnt skills (B1/B2): knowledge distilled during a run must not be presented as proven, and a
+  // recorded failure must come with its reproduction
+  'learnt-skill-trust-stated',
+  'failure-mode-skill-carries-evidence'
 ] as const
 export type SciBenchRule = (typeof SCI_BENCH_RULES)[number]
 
@@ -310,6 +312,29 @@ export const evaluateSciBenchTrace = (
     })
   }
 
+  if (rules.has('failure-mode-skill-carries-evidence')) {
+    // A dead end is worth keeping for its reproduction: saving "this does not work" without the command
+    // and the error turns a reproducible failure into folklore, and folklore gets retried.
+    const failureModeSaves = (trace.toolCalls ?? []).filter(
+      (call) => call.name === 'create_skill' && call.args?.['kind'] === 'failure-mode'
+    )
+    const withEvidence = failureModeSaves.filter((call) => {
+      const evidence = call.args?.['evidence']
+      return Array.isArray(evidence) && evidence.length > 0
+    })
+    const passed = failureModeSaves.length > 0 && withEvidence.length === failureModeSaves.length
+    findings.push({
+      rule: 'failure-mode-skill-carries-evidence',
+      passed,
+      detail:
+        failureModeSaves.length === 0
+          ? 'the dead end was not recorded at all'
+          : passed
+            ? `${withEvidence.length} failure-mode entr(ies) carry their reproduction`
+            : 'a failure mode was recorded without the command/error that reproduces it'
+    })
+  }
+
   return {
     caseId: benchCase.id,
     passed: findings.every((finding) => finding.passed),
@@ -431,6 +456,19 @@ export const SCI_BENCH_CASES: SciBenchCase[] = [
       {
         rule: 'compute-route-or-state-not-computed',
         description: '无 GPU 时走算力决策链或明说未计算'
+      }
+    ]
+  },
+  {
+    id: 'failure-mode-evidence',
+    title: '记录死路时必须带上可复现的证据',
+    gap: 'learnt-skill',
+    origin: 'pip 装不上 vina、PEP 668 拦 pip install 这类教训只留下"不行"的结论，下次又被重试一遍',
+    prompt: '这条路走不通，把它记下来，省得下次再试。',
+    expectations: [
+      {
+        rule: 'failure-mode-skill-carries-evidence',
+        description: 'failure-mode 条目必须带复现证据（命令 + 报错原文）；只有结论不算知识'
       }
     ]
   },

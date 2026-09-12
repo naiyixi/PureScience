@@ -759,6 +759,20 @@ const sanitizeSettings = (value: unknown): StoredSettings => {
     settings.disabledSkillIds = disabledSkillIds
   }
 
+  const trustedSkillIds = Array.isArray(value.trustedSkillIds)
+    ? [
+        ...new Set(
+          value.trustedSkillIds.filter(
+            (entry): entry is string => typeof entry === 'string' && entry !== ''
+          )
+        )
+      ]
+    : []
+
+  if (trustedSkillIds.length > 0) {
+    settings.trustedSkillIds = trustedSkillIds
+  }
+
   const connectors = sanitizeConnectors(value.connectors)
 
   if (connectors) settings.connectors = connectors
@@ -1521,18 +1535,30 @@ class SettingsRepository {
   }
 
   // Adds or removes a skill id from the disabled set (default-on model), returning the new document.
-  async setSkillEnabled(id: string, enabled: boolean): Promise<StoredSettings> {
+  // `trusted` records an explicit allow for a learnt skill that nothing has verified: such skills are
+  // withheld from sessions by the verification gate, so "enabled" alone would be a lie.
+  async setSkillEnabled(id: string, enabled: boolean, trusted = false): Promise<StoredSettings> {
     return this.mutate((settings) => {
       const current = new Set(settings.disabledSkillIds ?? [])
+      const allowed = new Set(settings.trustedSkillIds ?? [])
 
-      if (enabled) current.delete(id)
-      else current.add(id)
+      if (enabled) {
+        current.delete(id)
+        if (trusted) allowed.add(id)
+        else allowed.delete(id)
+      } else {
+        current.add(id)
+        allowed.delete(id)
+      }
 
       const disabledSkillIds = [...current]
+      const trustedSkillIds = [...allowed]
 
-      return disabledSkillIds.length > 0
-        ? { ...settings, disabledSkillIds }
-        : { ...settings, disabledSkillIds: undefined }
+      return {
+        ...settings,
+        disabledSkillIds: disabledSkillIds.length > 0 ? disabledSkillIds : undefined,
+        trustedSkillIds: trustedSkillIds.length > 0 ? trustedSkillIds : undefined
+      }
     })
   }
 

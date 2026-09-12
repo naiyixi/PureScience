@@ -198,6 +198,10 @@ export type StoredSettings = {
   // Ids of bundled skills the user turned OFF. Absent/empty means every bundled skill is enabled
   // (default-on), so new bundled skills are enabled automatically.
   disabledSkillIds?: string[]
+  // Ids of learnt skills (provenance recorded, not verified yet) the user explicitly allowed. Such
+  // skills are withheld from sessions by default, so turning one on records the decision here instead
+  // of relying on "not disabled". Absent means nothing has been allowed yet.
+  trustedSkillIds?: string[]
   connectors?: StoredConnectors
   // Non-secret package-mirror overrides (conda/pypi/cran). Absent means public hosts.
   packageMirror?: PackageMirror

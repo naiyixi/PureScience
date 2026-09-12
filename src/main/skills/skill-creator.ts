@@ -7,6 +7,8 @@ import { join } from 'node:path'
 
 import {
   SKILL_CREATE_MAX_DESCRIPTION_LENGTH,
+  SKILL_CREATE_MAX_EVIDENCE,
+  SKILL_CREATE_MAX_EVIDENCE_LENGTH,
   SKILL_CREATE_MAX_INSTRUCTIONS_LENGTH,
   SKILL_CREATE_MAX_NAME_LENGTH,
   SKILL_CREATE_MAX_REFERENCE_LENGTH,
@@ -15,7 +17,13 @@ import {
   type SkillCreateInput,
   type SkillCreateResult
 } from '../../shared/skill-create'
-import { DEFAULT_SKILL_PROVENANCE, skillProvenanceFields } from '../../shared/skill-provenance'
+import {
+  DEFAULT_SKILL_PROVENANCE,
+  requiresEvidence,
+  SKILL_KNOWLEDGE_KINDS,
+  skillProvenanceFields,
+  type SkillProvenance
+} from '../../shared/skill-provenance'
 
 const yamlQuote = (value: string): string => `"${value.replace(/"/g, '\\"')}"`
 
@@ -84,6 +92,36 @@ export class SkillCreator {
       return { created: false, reason: 'A skill reference is too long.' }
     }
 
+    // An explicit field wins; a caller that passes a full provenance object still gets it honoured.
+    const kind = input.kind ?? input.provenance?.kind ?? 'procedure'
+    if (!SKILL_KNOWLEDGE_KINDS.includes(kind)) {
+      return { created: false, reason: `Unknown knowledge kind "${String(input.kind)}".` }
+    }
+    const evidence = (input.evidence ?? input.provenance?.evidence ?? [])
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0)
+    if (evidence.length > SKILL_CREATE_MAX_EVIDENCE) {
+      return { created: false, reason: 'Too many evidence items.' }
+    }
+    if (evidence.some((item) => item.length > SKILL_CREATE_MAX_EVIDENCE_LENGTH)) {
+      return { created: false, reason: 'An evidence item is too long.' }
+    }
+    // A failure-mode entry is worth keeping for its reproduction, not its conclusion: refused here so
+    // "this does not work" can never be recorded as knowledge on its own.
+    if (requiresEvidence(kind) && evidence.length === 0) {
+      return {
+        created: false,
+        reason:
+          'Failure-mode knowledge needs evidence: give the command that fails and the error it produces.'
+      }
+    }
+
+    const provenance: SkillProvenance = {
+      ...(input.provenance ?? DEFAULT_SKILL_PROVENANCE),
+      kind,
+      evidence
+    }
+
     const skillDir = join(this.configDir, 'skills', name)
     const document = buildSkillDocument({
       name,
@@ -92,7 +130,7 @@ export class SkillCreator {
       references,
       // Forward the declared trust state: rebuilding the input without it silently stamped every
       // skill as a fresh, unverified draft.
-      ...(input.provenance ? { provenance: input.provenance } : {})
+      provenance
     })
 
     try {
@@ -109,7 +147,7 @@ export class SkillCreator {
       created: true,
       skillName: name,
       path: skillDir,
-      verification: (input.provenance ?? DEFAULT_SKILL_PROVENANCE).verification
+      verification: provenance.verification
     }
   }
 }

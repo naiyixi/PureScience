@@ -54,6 +54,37 @@ describe('SkillCreator', () => {
     expect(isReusableWithoutReview(parseSkillProvenance(fields))).toBe(false)
   })
 
+  it('refuses a failure mode recorded without evidence', async () => {
+    const result = await creator.create({
+      name: 'vina-pip',
+      description: 'pip cannot build vina here',
+      instructions: 'Do not try pip install vina.',
+      kind: 'failure-mode'
+    })
+
+    expect(result.created).toBe(false)
+    expect(result.reason).toContain('evidence')
+  })
+
+  it('keeps the reproduction when a failure mode does carry evidence', async () => {
+    const result = await creator.create({
+      name: 'vina-pip',
+      description: 'pip cannot build vina here',
+      instructions: 'Use the conda package instead.',
+      kind: 'failure-mode',
+      evidence: ['pip install vina -> error: Boost headers not found']
+    })
+
+    expect(result.created).toBe(true)
+    const doc = await readFile(join(dir, 'skills', 'vina-pip', 'SKILL.md'), 'utf8')
+    const provenance = parseSkillProvenance(trustFields(doc))
+
+    expect(provenance.kind).toBe('failure-mode')
+    expect(provenance.evidence).toEqual(['pip install vina -> error: Boost headers not found'])
+    // Still unverified: knowing that something failed does not make the replacement procedure proven.
+    expect(provenance.verification).toBe('unverified')
+  })
+
   it('keeps declared provenance (kind, origin, evidence) in the document', async () => {
     await creator.create({
       name: 'vina-install',

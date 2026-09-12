@@ -43,7 +43,67 @@ const createCatalog = async (): Promise<SkillCatalogModule> => {
   })
 }
 
+const createCatalogWithLearntSkill = async (): Promise<SkillCatalogModule> => {
+  const catalog = await createCatalog()
+  const bundleRoot = roots[1]
+  await mkdir(join(bundleRoot, 'learnt-review'), { recursive: true })
+  await writeFile(
+    join(bundleRoot, 'learnt-review', 'SKILL.md'),
+    '---\nname: learnt-review\ndescription: Learnt during a run.\ntrust: "unverified"\ntrust_kind: "procedure"\n---\n\nlearnt body\n'
+  )
+  const manifest = JSON.parse(await readFile(join(bundleRoot, 'manifest.json'), 'utf8')) as {
+    skills: { id: string; name: string; source: string; updatedAt: string }[]
+  }
+  manifest.skills.push({
+    id: 'learnt-review',
+    name: 'Learnt review',
+    source: 'featured',
+    updatedAt: '2026-01-02T00:00:00.000Z'
+  })
+  await writeFile(join(bundleRoot, 'manifest.json'), JSON.stringify(manifest))
+  return catalog
+}
+
 describe('SkillCatalogModule', () => {
+  it('withholds a learnt-but-unverified skill until the user allows it explicitly', async () => {
+    const catalog = await createCatalogWithLearntSkill()
+
+    const learnt = (await catalog.listSkills()).find((skill) => skill.id === 'learnt-review')
+    // Nothing has verified it, so it must not read as available to sessions...
+    expect(learnt?.enabled).toBe(false)
+    expect(learnt?.trust).toEqual({
+      verification: 'unverified',
+      kind: 'procedure',
+      summary: expect.stringContaining('has not been checked')
+    })
+
+    // ...and the materializer must actually leave it out of the agent's skills directory.
+    const configRoot = await mkdtemp(join(tmpdir(), 'settings-skill-materialize-'))
+    roots.push(configRoot)
+    await catalog.materializeSkills(configRoot, [], new Set())
+    await expect(
+      readFile(join(configRoot, 'skills', 'os-learnt-review', 'SKILL.md'), 'utf8')
+    ).rejects.toThrow()
+
+    // Explicitly allowing it (what Settings does when the user turns it on) provisions it.
+    const rows = await catalog.setSkillEnabled({ id: 'learnt-review', enabled: true })
+    expect(rows.find((skill) => skill.id === 'learnt-review')?.enabled).toBe(true)
+
+    const allowedRoot = await mkdtemp(join(tmpdir(), 'settings-skill-materialize-'))
+    roots.push(allowedRoot)
+    await catalog.materializeSkills(allowedRoot, [], new Set(), ['learnt-review'])
+    expect(
+      await readFile(join(allowedRoot, 'skills', 'os-learnt-review', 'SKILL.md'), 'utf8')
+    ).toContain('trust: "unverified"')
+
+    // The materializer locks what it writes; unlock so teardown can remove the temp roots.
+    for (const root of [configRoot, allowedRoot]) {
+      for (const id of ['os-demo', 'os-learnt-review']) {
+        await chmod(join(root, 'skills', id), 0o755).catch(() => undefined)
+      }
+    }
+  })
+
   it('exposes the stable compatibility identity for builtin Specialist dependencies', async () => {
     const catalog = await createCatalog()
 

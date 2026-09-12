@@ -42,7 +42,11 @@ import type { FetchLike } from '../skills/github-import'
 import { netFetch } from '../skills/net-fetch'
 import { tryDecryptKey } from './crypto'
 import { SkillRegistry, type BundledSkill } from '../skills/registry'
-import { describeSkillTrust } from '../../shared/skill-provenance'
+import {
+  describeSkillTrust,
+  isProvisionableSkill,
+  isReusableWithoutReview
+} from '../../shared/skill-provenance'
 import { readSkillFile } from '../skills/skill-files'
 import { buildSkillExportArchive, type SkillExportArchive } from '../skills/export'
 import { SAFE_SLUG, UserSkillRepository } from '../skills/user-skill-repository'
@@ -117,7 +121,8 @@ class SkillCatalogModule {
       this.options.repository.getSettings()
     ])
     const disabled = new Set(settings.disabledSkillIds ?? [])
-    return skills.map((skill) => this.toSkillView(skill, disabled))
+    const allowed = settings.trustedSkillIds ?? []
+    return skills.map((skill) => this.toSkillView(skill, disabled, allowed))
   }
 
   async listSpecialistSkillCatalog(): Promise<
@@ -136,12 +141,14 @@ class SkillCatalogModule {
       this.options.repository.getSettings()
     ])
     const disabled = new Set(settings.disabledSkillIds ?? [])
+    const allowed = settings.trustedSkillIds ?? []
     return skills.map((skill) => ({
       id: skill.id,
       frameworkName: skill.source === 'featured' ? skill.id : skill.name,
       displayName: skill.name,
       source: skill.source,
-      mainEnabled: !disabled.has(skill.id),
+      mainEnabled:
+        !disabled.has(skill.id) && isProvisionableSkill(skill.provenance, skill.id, allowed),
       // Catalog entries are installed skills, so they resolve to a present entry at dispatch time.
       available: true,
       ...(skill.compatibility ? { compatibility: skill.compatibility } : {})
@@ -149,8 +156,18 @@ class SkillCatalogModule {
   }
 
   async skillsNeedingForceLoad(ids: string[]): Promise<string[]> {
-    const disabled = new Set((await this.options.repository.getSettings()).disabledSkillIds ?? [])
-    return ids.filter((id) => disabled.has(id))
+    const [skills, settings] = await Promise.all([
+      this.catalog(),
+      this.options.repository.getSettings()
+    ])
+    const disabled = new Set(settings.disabledSkillIds ?? [])
+    const allowed = settings.trustedSkillIds ?? []
+    const byId = new Map(skills.map((skill) => [skill.id, skill]))
+    // A withheld learnt skill counts as needing a forced load too: the specialist flow asks for it by
+    // id, and the verification gate would otherwise silently drop it.
+    return ids.filter(
+      (id) => disabled.has(id) || !isProvisionableSkill(byId.get(id)?.provenance, id, allowed)
+    )
   }
 
   async skillNudgeNamesForIds(ids: string[]): Promise<string[]> {
@@ -245,7 +262,11 @@ class SkillCatalogModule {
     if (!skill) throw new Error(`Unknown skill: ${id}`)
     const { fields, body } = await readSkillFile(skill.sourceDir)
     return {
-      ...this.toSkillView(skill, new Set(settings.disabledSkillIds ?? [])),
+      ...this.toSkillView(
+        skill,
+        new Set(settings.disabledSkillIds ?? []),
+        settings.trustedSkillIds ?? []
+      ),
       body,
       metadata: Object.fromEntries(
         Object.entries(fields).filter(([key]) => key !== 'name' && key !== 'description')
@@ -264,7 +285,15 @@ class SkillCatalogModule {
   }
 
   async setSkillEnabled(request: SetSkillEnabledRequest): Promise<SkillView[]> {
-    await this.options.repository.setSkillEnabled(request.id, request.enabled)
+    // Turning on a learnt-but-unverified skill has to mean "I allow this one": the verification gate
+    // keeps such skills out of sessions, so "not disabled" alone would leave it invisible while the
+    // catalog claimed it was on.
+    const skill = (await this.catalog()).find((entry) => entry.id === request.id)
+    const trusted =
+      request.enabled === true &&
+      skill?.provenance !== undefined &&
+      !isReusableWithoutReview(skill.provenance)
+    await this.options.repository.setSkillEnabled(request.id, request.enabled, trusted)
     return this.listSkills()
   }
 
@@ -675,12 +704,23 @@ class SkillCatalogModule {
     return undefined
   }
 
+  // Ids withheld by the verification gate: learnt skills nothing has verified and the user has not
+  // allowed explicitly. One place computes this so listing, materialization and provisioning cannot
+  // drift apart (a gate that only one path honours is worse than none).
+  private async withheldSkillIds(allowedIds: readonly string[]): Promise<string[]> {
+    return (await this.catalog())
+      .filter((skill) => !isProvisionableSkill(skill.provenance, skill.id, allowedIds))
+      .map((skill) => skill.id)
+  }
+
   async materializeSkills(
     configRoot: string,
     disabledIds: readonly string[],
-    forcedIds: ReadonlySet<string> = new Set()
+    forcedIds: ReadonlySet<string> = new Set(),
+    allowedIds: readonly string[] = []
   ): Promise<void> {
-    const disabled = new Set(disabledIds.filter((id) => !forcedIds.has(id)))
+    const blocked = new Set([...disabledIds, ...(await this.withheldSkillIds(allowedIds))])
+    const disabled = new Set([...blocked].filter((id) => !forcedIds.has(id)))
     await new ClaudeCodeSkillMaterializer().sync(
       configRoot,
       (await this.catalog()).filter((skill) => !disabled.has(skill.id))
@@ -690,11 +730,15 @@ class SkillCatalogModule {
   async provisionClaudeConfig(
     configDir: string,
     disabledSkillIds: string[],
-    modelConfig?: ClaudeRuntimeModelConfig | null
+    modelConfig?: ClaudeRuntimeModelConfig | null,
+    allowedIds: readonly string[] = [],
+    forcedIds: ReadonlySet<string> = new Set()
   ): Promise<void> {
+    const blocked = new Set([...disabledSkillIds, ...(await this.withheldSkillIds(allowedIds))])
+    const disabled = [...blocked].filter((id) => !forcedIds.has(id))
     await provisionAppClaudeConfigDir(configDir, {
       skills: await this.catalog(),
-      disabledSkillIds,
+      disabledSkillIds: disabled,
       ...(modelConfig === undefined ? {} : { modelConfig })
     })
   }
@@ -719,14 +763,18 @@ class SkillCatalogModule {
     }
   }
 
-  private toSkillView(skill: BundledSkill, disabled: Set<string>): SkillView {
+  private toSkillView(
+    skill: BundledSkill,
+    disabled: Set<string>,
+    allowed: readonly string[] = []
+  ): SkillView {
     return {
       id: skill.id,
       name: skill.name,
       description: skill.description,
       source: skill.source,
       updatedAt: skill.updatedAt,
-      enabled: !disabled.has(skill.id),
+      enabled: !disabled.has(skill.id) && isProvisionableSkill(skill.provenance, skill.id, allowed),
       author: skill.author,
       license: skill.license,
       thirdParty: skill.thirdParty,

@@ -23,6 +23,8 @@ import {
 } from '../../shared/skill-eval'
 import {
   SKILL_CREATE_MAX_DESCRIPTION_LENGTH,
+  SKILL_CREATE_MAX_EVIDENCE,
+  SKILL_CREATE_MAX_EVIDENCE_LENGTH,
   SKILL_CREATE_MAX_INSTRUCTIONS_LENGTH,
   SKILL_CREATE_MAX_NAME_LENGTH,
   SKILL_CREATE_MAX_REFERENCE_LENGTH,
@@ -202,7 +204,20 @@ const createSkillImportMcpServer = (handler: SkillImportMcpHandler): ModelContex
           .array(z.string().max(SKILL_CREATE_MAX_REFERENCE_LENGTH))
           .max(SKILL_CREATE_MAX_REFERENCES)
           .optional()
-          .describe('Optional reference URLs or file paths the skill depends on.')
+          .describe('Optional reference URLs or file paths the skill depends on.'),
+        kind: z
+          .enum(['procedure', 'failure-mode'])
+          .optional()
+          .describe(
+            'Knowledge kind: a procedure that worked, or a failure mode that does not work on this machine.'
+          ),
+        evidence: z
+          .array(z.string().max(SKILL_CREATE_MAX_EVIDENCE_LENGTH))
+          .max(SKILL_CREATE_MAX_EVIDENCE)
+          .optional()
+          .describe(
+            'Evidence for the claim (the command and its error, a measurement, a path). Required for failure-mode knowledge.'
+          )
       }
     },
     async (input: SkillCreateInput) => {

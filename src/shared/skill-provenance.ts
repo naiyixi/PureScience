@@ -19,6 +19,13 @@ export const SKILL_TRUST_ORIGIN_KEY = 'trust_origin'
 // its value is the reproducible evidence, not the outcome.
 export type SkillKnowledgeKind = 'procedure' | 'failure-mode'
 
+export const SKILL_KNOWLEDGE_KINDS: readonly SkillKnowledgeKind[] = ['procedure', 'failure-mode']
+
+// A failure-mode entry is only worth keeping for its evidence: the command that fails and the error it
+// produces. An entry that says "this does not work" without a reproduction is a rumour, so the creator
+// refuses to record one (see SkillCreator.create).
+export const requiresEvidence = (kind: SkillKnowledgeKind): boolean => kind === 'failure-mode'
+
 export type SkillVerification = 'unverified' | 'verified' | 'rejected'
 
 // Who/what verified it. `sci-bench` = the mechanical acceptance rules, `checkpoint` = a passing input
@@ -46,6 +53,17 @@ export const DEFAULT_SKILL_PROVENANCE: SkillProvenance = {
 // (skill_list / Settings) but must not be auto-loaded or treated as an established procedure.
 export const isReusableWithoutReview = (provenance: SkillProvenance): boolean =>
   provenance.verification === 'verified'
+
+// May this entry reach a session without the user asking for it? Curated skills have no provenance at
+// all (they are not learnt from a run), verified knowledge is reusable, and a learnt-but-unverified
+// entry needs its id on the explicit allow-list: a half-finished run must not become an established
+// habit just because nobody turned it off.
+export const isProvisionableSkill = (
+  provenance: SkillProvenance | undefined,
+  id: string,
+  allowedIds: readonly string[] = []
+): boolean =>
+  provenance === undefined || isReusableWithoutReview(provenance) || allowedIds.includes(id)
 
 // One sentence for the Settings badge and for the agent when it reads the entry.
 export const describeSkillTrust = (provenance: SkillProvenance): string => {

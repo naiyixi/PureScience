@@ -976,6 +976,20 @@ describe('settings repository: v2 official providers & activeModel migration', (
     await repository.setSkillEnabled('citation-formatter', false)
     expect((await repository.getSettings()).disabledSkillIds).toEqual(['citation-formatter'])
 
+    // An explicit allow for a learnt-but-unverified skill is recorded separately from "not disabled",
+    // because the verification gate withholds such skills regardless of the disabled list.
+    await repository.setSkillEnabled('learnt-review', true, true)
+    expect((await repository.getSettings()).trustedSkillIds).toEqual(['learnt-review'])
+
+    // Turning it back off clears the allow as well, so the decision does not outlive the toggle.
+    await repository.setSkillEnabled('learnt-review', false)
+    expect((await repository.getSettings()).trustedSkillIds).toBeUndefined()
+
+    // Re-enabling without the allow must not silently re-trust it, and must leave the disabled list
+    // as clean as it found it (the assertions below depend on that).
+    await repository.setSkillEnabled('learnt-review', true)
+    expect((await repository.getSettings()).trustedSkillIds).toBeUndefined()
+
     // Re-enabling removes the id (and drops the field when the set becomes empty).
     await repository.setSkillEnabled('citation-formatter', true)
     expect((await repository.getSettings()).disabledSkillIds).toBeUndefined()

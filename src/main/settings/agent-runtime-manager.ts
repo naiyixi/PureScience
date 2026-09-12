@@ -665,7 +665,12 @@ export class AgentRuntimeManager {
     configRoot: string,
     forcedSkillIds: ReadonlySet<string>
   ): Promise<void> {
-    await this.skills.materializeSkills(configRoot, settings.disabledSkillIds ?? [], forcedSkillIds)
+    await this.skills.materializeSkills(
+      configRoot,
+      settings.disabledSkillIds ?? [],
+      forcedSkillIds,
+      settings.trustedSkillIds ?? []
+    )
     const connectors = await this.connectors.getConnectors()
     await syncConnectorSkillDocs(
       join(configRoot, 'skills'),
@@ -684,10 +689,15 @@ export class AgentRuntimeManager {
     modelConfig?: ClaudeRuntimeModelConfig | null
   ): Promise<string> {
     const configDir = getAppClaudeConfigDir(this.storageRoot)
-    const disabledSkillIds = (settings.disabledSkillIds ?? []).filter(
-      (id) => !forcedSkillIds.has(id)
+    // The verification gate lives inside provisionClaudeConfig, so it applies here too; forced ids
+    // (specialist flows that ask for a skill by id) still win over it.
+    await this.skills.provisionClaudeConfig(
+      configDir,
+      settings.disabledSkillIds ?? [],
+      modelConfig,
+      settings.trustedSkillIds ?? [],
+      forcedSkillIds
     )
-    await this.skills.provisionClaudeConfig(configDir, disabledSkillIds, modelConfig)
     const connectors = await this.connectors.getConnectors()
     await syncConnectorSkillDocs(
       join(configDir, 'skills'),

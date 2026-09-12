@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_SKILL_PROVENANCE,
   describeSkillTrust,
+  isProvisionableSkill,
   isReusableWithoutReview,
   parseSkillProvenance,
   skillProvenanceFields,
@@ -81,6 +82,37 @@ describe('skill provenance', () => {
 
     expect(parsed.verifiedBy).toBeUndefined()
     expect(parsed.evidence).toEqual(['first', 'second', 'third'])
+  })
+
+  it('fails closed for a learnt entry that nothing verified', () => {
+    // Curated skills carry no provenance at all; they are never gated.
+    expect(isProvisionableSkill(undefined, 'demo', [])).toBe(true)
+    expect(
+      isProvisionableSkill({ kind: 'procedure', verification: 'verified', evidence: [] }, 'a', [])
+    ).toBe(true)
+    // Recorded during a run, never checked -> withheld until the user allows that exact id.
+    expect(
+      isProvisionableSkill({ kind: 'procedure', verification: 'unverified', evidence: [] }, 'b', [])
+    ).toBe(false)
+    expect(
+      isProvisionableSkill({ kind: 'procedure', verification: 'unverified', evidence: [] }, 'b', [
+        'b'
+      ])
+    ).toBe(true)
+    // An explicit allow for one id must not leak to another.
+    expect(
+      isProvisionableSkill({ kind: 'procedure', verification: 'unverified', evidence: [] }, 'c', [
+        'b'
+      ])
+    ).toBe(false)
+    // A rejected entry stays out: it failed its check, so it is not knowledge to reuse.
+    expect(
+      isProvisionableSkill(
+        { kind: 'failure-mode', verification: 'rejected', evidence: [] },
+        'd',
+        []
+      )
+    ).toBe(false)
   })
 
   it('says plainly what the trust state means', () => {
