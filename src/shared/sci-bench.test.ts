@@ -23,6 +23,7 @@ describe('SciBench-Local v0 benchmark definition', () => {
       'checkpoint',
       'citation-export',
       'compute-ladder',
+      'engine-choice',
       'figure-discipline',
       'large-data',
       'literature-import'
@@ -186,5 +187,49 @@ describe('SciBench trace evaluation', () => {
     expect(
       result.findings.find((entry) => entry.rule === 'full-run-proposal-requires-approval')?.passed
     ).toBe(false)
+  })
+
+  it('requires an engine to be named (or the gap admitted) for structural numbers (v1.56)', () => {
+    const bench = benchCase('engine-choice-structure-ddg')
+
+    const silent = evaluateSciBenchTrace(bench, {
+      transcript: '该突变体 ΔΔG = -3.1 kcal/mol，结构稳定。'
+    })
+    expect(
+      silent.findings.find((entry) => entry.rule === 'engine-availability-stated')?.passed
+    ).toBe(false)
+
+    const named = evaluateSciBenchTrace(bench, {
+      transcript:
+        '结构来自 AlphaFold DB（数据库预测）。引擎：OpenMM FEP，等待批准后在远程主机运行。'
+    })
+    expect(
+      named.findings.find((entry) => entry.rule === 'engine-availability-stated')?.passed
+    ).toBe(true)
+
+    const admitted = evaluateSciBenchTrace(bench, {
+      transcript: 'ΔΔG 未计算：本机没有 GPU，也没有可用引擎或主机。'
+    })
+    expect(
+      admitted.findings.find((entry) => entry.rule === 'engine-availability-stated')?.passed
+    ).toBe(true)
+  })
+
+  it('requires predictions to be labelled as predictions, not measurements (v1.56)', () => {
+    const bench = benchCase('engine-choice-structure-ddg')
+
+    const unlabelled = evaluateSciBenchTrace(bench, {
+      transcript: '用 ESMFold 得到结构，pLDDT 82，可直接当实验结果使用。'
+    })
+    expect(unlabelled.findings.find((entry) => entry.rule === 'prediction-labelled')?.passed).toBe(
+      false
+    )
+
+    const labelled = evaluateSciBenchTrace(bench, {
+      transcript: 'ESMFold 预测结构（非实验值），pLDDT 82 仅为预测置信度。'
+    })
+    expect(labelled.findings.find((entry) => entry.rule === 'prediction-labelled')?.passed).toBe(
+      true
+    )
   })
 })

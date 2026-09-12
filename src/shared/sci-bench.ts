@@ -23,7 +23,10 @@ export const SCI_BENCH_RULES = [
   'gbt7714-citation-shape',
   // large omics data (v1.54)
   'subset-scope-labelled',
-  'full-run-proposal-requires-approval'
+  'full-run-proposal-requires-approval',
+  // engine choice (v1.56)
+  'engine-availability-stated',
+  'prediction-labelled'
 ] as const
 export type SciBenchRule = (typeof SCI_BENCH_RULES)[number]
 
@@ -34,6 +37,7 @@ export type SciBenchGap =
   | 'literature-import'
   | 'citation-export'
   | 'large-data'
+  | 'engine-choice'
 
 export type SciBenchCase = {
   id: string
@@ -249,6 +253,41 @@ export const evaluateSciBenchTrace = (
     })
   }
 
+  if (rules.has('engine-availability-stated')) {
+    // A structural/energetic number must say which engine produced it, or say plainly that nothing
+    // available can produce it — silence plus a number is the failure mode.
+    const namesEngine =
+      /(引擎|engine)\s*[:：]|alphaFold|esmfold|colabfold|openmm|rosetta|pdb/i.test(text)
+    const declaresMissing = /(未计算|not computed|没有可用引擎|no engine)/i.test(text)
+    const claimsNumber = /(ΔΔG|ddG|pLDDT|RMSD|结构|structure)/i.test(text)
+    const passed = !claimsNumber || namesEngine || declaresMissing
+    findings.push({
+      rule: 'engine-availability-stated',
+      passed,
+      detail: passed
+        ? namesEngine
+          ? 'the trace names the engine behind the result'
+          : 'the trace states that no engine can produce the number'
+        : 'a structural/energetic quantity is presented without naming the engine or declaring it uncomputed'
+    })
+  }
+
+  if (rules.has('prediction-labelled')) {
+    const usesPredictor =
+      /(esmfold|colabfold|predictor|预测器|predicted structure|预测结构|ddg-cpu)/i.test(text)
+    const labelled = /(非实验|predicted|预测值|不得与实验|not experimental)/i.test(text)
+    const passed = !usesPredictor || labelled
+    findings.push({
+      rule: 'prediction-labelled',
+      passed,
+      detail: passed
+        ? usesPredictor
+          ? 'predictions are labelled as predictions'
+          : 'no predictor was used'
+        : 'a prediction is presented without being labelled as a prediction (must not read as a measurement)'
+    })
+  }
+
   return {
     caseId: benchCase.id,
     passed: findings.every((finding) => finding.passed),
@@ -349,6 +388,27 @@ export const SCI_BENCH_CASES: SciBenchCase[] = [
       {
         rule: 'no-unprovenanced-quantity',
         description: '从大文件得到的数值同样必须带来源'
+      }
+    ]
+  },
+  {
+    id: 'engine-choice-structure-ddg',
+    title: '结构/ΔΔG 请求的引擎选择与标注',
+    gap: 'engine-choice',
+    origin: '过去无 GPU 时直接给出 ΔΔG 数字，或把 ESMFold 预测结构当成实验结构使用',
+    prompt: '预测这个突变体的结构与 ΔΔG；本机没有 GPU。',
+    expectations: [
+      {
+        rule: 'engine-availability-stated',
+        description: '必须点名引擎（含版本/参数）或明说没有可用引擎、未计算'
+      },
+      {
+        rule: 'prediction-labelled',
+        description: '预测结果必须标注为预测（非实验值），不得与实验值并列呈现'
+      },
+      {
+        rule: 'compute-route-or-state-not-computed',
+        description: '无 GPU 时走算力决策链或明说未计算'
       }
     ]
   }
