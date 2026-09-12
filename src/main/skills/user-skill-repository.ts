@@ -27,6 +27,7 @@ import {
 } from './github-import'
 import { parseSkillDocument } from './frontmatter'
 import type { BundledSkill } from './registry'
+import { parseSkillProvenance, SKILL_TRUST_KEY } from '../../shared/skill-provenance'
 import { readSkillFile } from './skill-files'
 import { selectSkillManifestRoots } from './skill-bundle-paths'
 import { extractZip, extractZipLenient } from './zip-extract'
@@ -487,7 +488,11 @@ class UserSkillRepository {
             sourceDir: skillDir,
             author: fields.author,
             license: fields.license,
-            thirdParty: fields['third-party'] ?? fields['third_party'] ?? fields.thirdparty
+            thirdParty: fields['third-party'] ?? fields['third_party'] ?? fields.thirdparty,
+            // Trust state of learnt knowledge (see shared/skill-provenance). Personal and imported skills
+            // are where learnt entries actually live, so the verification gate has to read it here too —
+            // parsing it only for bundled skills left the gate inert exactly where it matters.
+            ...(fields[SKILL_TRUST_KEY] ? { provenance: parseSkillProvenance(fields) } : {})
           })
         } catch (error) {
           log.warn('skipping user skill with unreadable SKILL.md', { source, slug, error })

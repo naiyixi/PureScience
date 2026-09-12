@@ -349,6 +349,37 @@ describe('UserSkillRepository', () => {
     await expect(readFile(join(dir, 'drop.py'), 'utf8')).rejects.toThrow()
   })
 
+  it('reads the trust state of a learnt personal skill', async () => {
+    // Learnt entries land in the personal/imported sources, so the verification gate depends on this
+    // path parsing the frontmatter — reading it only for bundled skills left the gate inert exactly
+    // where learnt knowledge lives.
+    const storage = await makeStorage()
+    const dir = join(storage, 'skills', 'personal', 'csv-encoding-check')
+    await mkdir(dir, { recursive: true })
+    await writeFile(
+      join(dir, 'SKILL.md'),
+      [
+        '---',
+        'name: csv-encoding-check',
+        'description: Check the encoding before reading a CSV.',
+        'trust: "unverified"',
+        'trust_kind: "failure-mode"',
+        'trust_evidence: "pip install vina -> error: Boost headers not found"',
+        '---',
+        'body'
+      ].join('\n'),
+      'utf8'
+    )
+
+    const listed = await new UserSkillRepository(storage).list()
+    expect(listed).toHaveLength(1)
+    expect(listed[0]?.provenance).toEqual({
+      kind: 'failure-mode',
+      verification: 'unverified',
+      evidence: ['pip install vina -> error: Boost headers not found']
+    })
+  })
+
   it('lists imported skills with their frontmatter metadata', async () => {
     const storage = await makeStorage()
     const dir = join(storage, 'skills', 'imported', 'foo')

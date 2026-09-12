@@ -195,3 +195,49 @@ A4 ─┘
 - **待复现（未定位根因）**：D1 的两个候选根因、D4 的前端指纹具体代码路径、D2 中 external 配置未被优先采用的具体分支 —— 三个都要求动手前先实机复现，复现结论写回本文件。
 - **未做**：本文件不含代码改动；未做 DEV 实机回归（不排除审计期间有别的会话同时改动）。
 - **排除项**：08-19 的 main 进程 OOM 属历史问题，不在本次一周窗口内，单独立项评估。
+
+---
+
+## 6. 2026-09-13 新增缺陷与验收记录
+
+### D13（P1，未解）删除个人技能被拒：报"仍被 5 位专家引用"
+
+**复现**（对运行中的应用，`settings:delete-skill`）：
+
+1. `settings:create-skill` 建一个全新个人技能（名字随机，如 `err-probe-35133`）
+2. 立刻 `settings:delete-skill {id}` → **ok:false**：
+
+```
+Skill personal-err-probe-35133 is still referenced by clinical-study-designer,
+evidence-synthesis-specialist, omics-biomarker-specialist, pkpd-dose-designer, rwe-research-specialist.
+```
+
+刚创建的技能不可能被任何专家引用，故该守卫判定错误。
+
+**已排查**：`git grep "still referenced by" HEAD` 在本仓当前树**无命中**（仅一个无关测试）；
+`git log -S` 显示该串由专家市场那次提交引入；`out/main`、`node_modules`、store 目录均未命中。
+也就是说：**运行中的应用返回了一条当前源码树里不存在的消息** —— 需要专项排查（嫌疑：内存中仍驻留旧构建的
+Electron 实例 / 树外打包的专家市场模块 / 远端市场校验）。**在查清前不要把它当作 UI 文案问题**。
+
+**影响**：用户无法删除新建的个人技能（我们的验收探针也因此无法自行清理，见下）。
+
+### 验收记录：学习型技能验证门控（B1）
+
+`docs/evidence/2026-09-13-skill-trust-gate-probe.py`（对**运行中应用**跑，不经 agent、不经 UI，
+11 项断言）——逐条 PASS：
+
+- 新建个人技能（无 provenance）→ 目录报 `enabled: true`（出厂/策展语义未受影响）
+- 盖上 `trust: "unverified"` → 目录报 `enabled: false` + 摘要
+  `Unverified — recorded during a run that has not been checked yet; do not reuse without review.`
+- **真实运行时同步后，agent 技能目录仍无该技能**（门控实质生效，不只是一个布尔值）
+- `settings:set-skill-enabled {enabled:true}` → `trustedSkillIds` 记下显式放行 + 物化出 `os-<id>`
+
+探针末尾的两条清理断言失败，根因是 **D13**（删除被拒 → 随后的清空调用把技能又记成"放行"），
+不是门控缺陷；清理改用「显式关闭 → 删除 → 清空」顺序 + 独立脚本已完成，基线已复原。
+
+**诚实性口径**：`trust` frontmatter 由探针写入（agent 的 `create_skill` 通道未在 Web 面暴露），
+该写入本身由 creator 单测钉住；本条证据覆盖**引擎层**，真实 agent 回合未作为证据使用。
+
+**同批修掉的产品缺陷**：门控最初只接在 bundled 技能那条路上——**学习型技能（个人/导入）才是它的落点**，
+而那条路根本不解析 `trust`，导致门控在真正需要它的地方空转。由上述实机探针发现并修复
+（`user-skill-repository.ts` + 单测钉住）。
