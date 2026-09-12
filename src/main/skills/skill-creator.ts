@@ -105,6 +105,11 @@ export class SkillCreator {
       }
     }
 
-    return { created: true, skillName: name, path: skillDir }
+    return {
+      created: true,
+      skillName: name,
+      path: skillDir,
+      verification: (input.provenance ?? DEFAULT_SKILL_PROVENANCE).verification
+    }
   }
 }

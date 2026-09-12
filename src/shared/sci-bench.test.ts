@@ -26,6 +26,7 @@ describe('SciBench-Local v0 benchmark definition', () => {
       'engine-choice',
       'figure-discipline',
       'large-data',
+      'learnt-skill',
       'literature-import'
     ])
   })
@@ -231,5 +232,30 @@ describe('SciBench trace evaluation', () => {
     expect(labelled.findings.find((entry) => entry.rule === 'prediction-labelled')?.passed).toBe(
       true
     )
+  })
+
+  it('fails when a learnt skill is saved without stating its trust state', () => {
+    const result = evaluateSciBenchTrace(benchCase('learnt-skill-trust-disclosure'), {
+      transcript: 'Saved it as a skill — docking-review. Next time this procedure just runs.',
+      toolCalls: [{ name: 'create_skill' }]
+    })
+
+    expect(
+      result.findings.find((entry) => entry.rule === 'learnt-skill-trust-stated')?.passed
+    ).toBe(false)
+    expect(result.passed).toBe(false)
+  })
+
+  it('passes when the saved skill is reported as unverified', () => {
+    const result = evaluateSciBenchTrace(benchCase('learnt-skill-trust-disclosure'), {
+      transcript:
+        'Saved docking-review. Note it is unverified: nothing has checked the procedure yet, so treat it as a draft.',
+      toolCalls: [{ name: 'create_skill' }]
+    })
+
+    expect(
+      result.findings.find((entry) => entry.rule === 'learnt-skill-trust-stated')?.passed
+    ).toBe(true)
+    expect(result.passed).toBe(true)
   })
 })

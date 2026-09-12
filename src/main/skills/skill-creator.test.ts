@@ -35,6 +35,8 @@ describe('SkillCreator', () => {
     expect(doc).toContain('name: "docking-review"')
     expect(doc).toContain('description: "Reviews molecular docking poses"')
     expect(doc).toContain('2. Score interactions')
+    // The result states the trust state so a caller can say it out loud (see the session prompt).
+    expect(result.verification).toBe('unverified')
   })
 
   it('stamps a fresh draft as unverified so it is not reused without review', async () => {

@@ -4,7 +4,7 @@
 // writes skill files itself. Bounds keep a hostile draft from overflowing or escaping the skills
 // directory.
 
-import type { SkillProvenance } from './skill-provenance'
+import type { SkillProvenance, SkillVerification } from './skill-provenance'
 
 export const SKILL_CREATE_TOOL_NAME = 'create_skill'
 
@@ -12,7 +12,9 @@ export const SKILL_CREATE_TOOL_DESCRIPTION =
   'Creates a new reusable skill from a natural-language description. ' +
   'Use it when the user asks you to build, save, or remember a reusable procedure as a skill. ' +
   'Provide a concise name, a one-line description, and step-by-step instructions. ' +
-  'The application owns skill persistence; never write skill files yourself.'
+  'The application owns skill persistence; never write skill files yourself. ' +
+  'The result reports the trust state: a fresh draft is "unverified" (nothing has checked it yet), ' +
+  'so say that plainly instead of presenting the new skill as an established procedure.'
 
 // Rendered into the session prompt when the skill MCP is available.
 export const SKILL_CREATE_SYSTEM_PROMPT_APPEND = [
@@ -22,6 +24,8 @@ export const SKILL_CREATE_SYSTEM_PROMPT_APPEND = [
     'a one-line description, and clear step-by-step instructions in markdown.',
   'Do not write skill files yourself. The application owns skill persistence; create_skill is the ' +
     'only way to add a skill.',
+  'A skill you save starts UNVERIFIED: nothing has checked that the procedure works yet. Tell the ' +
+    'user it is unverified (Settings → Skills shows the state) instead of implying it is proven.',
   '</purescience_skill_create_instructions>'
 ].join('\n')
 
@@ -70,6 +74,9 @@ export type SkillCreateResult = {
   skillName?: string
   path?: string
   reason?: string
+  // Trust state written into the new document. A fresh draft is 'unverified' — surfaced here so the
+  // caller (and the session transcript) can state it instead of implying the skill is proven.
+  verification?: SkillVerification
 }
 
 export type SkillCreateInput = {
