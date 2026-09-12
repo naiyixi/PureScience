@@ -59,6 +59,10 @@ type AcpPromptPreparationOwnerOptions = Readonly<{
   // image input, prepared image blocks are translated into text evidence by the configured Vision
   // model instead of being sent inline. Absent keeps legacy behavior (images inline or dropped).
   imageInputCompatibility?: Pick<ImageInputCompatibilityOwner, 'prepare'>
+  // The input pre-check notice (D5): returns '' when nothing the turn references is missing. It is
+  // injected into the content the model receives and never into request.text, because that text is what
+  // the user's own message is recorded from — this is application context, not the user's words.
+  inputNotice?: (request: AcpPromptRequest) => string
   emitState: () => void
 }>
 type AcpPromptPreparationInput = Readonly<{
@@ -239,6 +243,15 @@ class AcpPromptPreparationOwner {
       // images (replay) degrade to omission markers when the relay is unavailable; current images
       // surface the configuration error instead of silently dropping user input.
       let preparedContent = prepared.content
+      // Input pre-check (D5): tell the model which named inputs are not there, before it plans. In the
+      // content, not in request.text — see the option's comment.
+      const inputNotice = this.options.inputNotice?.(input.request) ?? ''
+      if (inputNotice.length > 0) {
+        preparedContent =
+          typeof preparedContent === 'string'
+            ? `${inputNotice}\n\n${preparedContent}`
+            : [{ type: 'text' as const, text: inputNotice }, ...preparedContent]
+      }
       if (this.options.imageInputCompatibility && !input.backend.context.supportsImageInput) {
         const historyImageCount = input.request.historyImages?.length ?? 0
         const imageSources = [

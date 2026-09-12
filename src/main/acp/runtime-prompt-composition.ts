@@ -1,6 +1,7 @@
 import type { AcpPromptRequest } from '../../shared/acp'
 import type { ArtifactTurnHandle } from './artifact-turn-owner'
 import { AcpContextCompactionWorkflow } from './context-compaction-workflow'
+import { createInputNoticeResolver } from './input-notice'
 import { createLogger, errorLogFields } from '../logger'
 import { AcpPromptPreparationOwner } from './prompt-preparation-owner'
 import {
@@ -66,6 +67,10 @@ const composeAcpRuntimePromptOwners = (
   const currentFramework = () => base.backendGeneration.current.framework
   const projectName = (sessionId: string): string =>
     session.sessionEnvironment.projectName(sessionId)
+  // The session's working directory, which is what a relative input path in the task is resolved against.
+  const sessionCwd = (sessionId: string): string | undefined =>
+    session.sessionRegistry.lookup(sessionId)?.aggregate.snapshot().cwd
+  const inputNoticeResolver = createInputNoticeResolver()
   const emitState = (): void => session.publication.emitState()
   const diagnosticContext = () => ({
     framework: currentFramework().id,
@@ -139,6 +144,8 @@ const composeAcpRuntimePromptOwners = (
       (await base.connectionResources.selectBridgeSkills(text, catalog, signal)) ?? [],
     authorizeReferencedUploads: options.skillImport?.authorizeReferencedUploads,
     imageInputCompatibility: options.imageInputCompatibility,
+    inputNotice: (request) =>
+      inputNoticeResolver.forTurn(request.text ?? '', sessionCwd(request.sessionId)),
     ...(options.notebook
       ? {
           notebook: {

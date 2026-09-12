@@ -39,7 +39,7 @@ const contextTurn = (): TestContextTurn => {
   return handle
 }
 
-const setup = (): Fixture => {
+const setup = (inputNotice?: (request: AcpPromptRequest) => string): Fixture => {
   const turn = contextTurn()
   const promptContent = {
     prepare: vi.fn(async () => ({
@@ -66,6 +66,7 @@ const setup = (): Fixture => {
     contextUsage,
     selectBridgeSkills: vi.fn(async () => []),
     authorizeReferencedUploads,
+    ...(inputNotice ? { inputNotice } : {}),
     notebook: {
       peekHandoffContext: vi.fn(() => ({
         executionCount: 1,
@@ -250,5 +251,32 @@ describe('AcpPromptPreparationOwner', () => {
     expect(fixture.turn.fail).toHaveBeenCalledTimes(1)
     expect(fixture.turn.supersede).toHaveBeenCalledTimes(1)
     expect(fixture.releaseGrant).toHaveBeenCalledTimes(1)
+  })
+
+  it('puts the missing-input notice in the provider content, not in the user text', async () => {
+    const seen: string[] = []
+    const fixture = setup((request) => {
+      seen.push(request.text)
+      return '<missing_inputs>\nsim_a.csv does not exist.\n</missing_inputs>'
+    })
+
+    const handle = await fixture.prepare()
+
+    expect(handle.status).toBe('ready')
+    if (handle.status !== 'ready') throw new Error('expected a ready prompt')
+    // The model is told; the user's own message text is untouched, because that is what the transcript
+    // records the user as having said.
+    expect(JSON.stringify(handle.content)).toContain('<missing_inputs>')
+    expect(seen).toEqual(['Analyze the result.'])
+  })
+
+  it('leaves the provider content alone when nothing is missing', async () => {
+    const fixture = setup(() => '')
+
+    const handle = await fixture.prepare()
+
+    expect(handle.status).toBe('ready')
+    if (handle.status !== 'ready') throw new Error('expected a ready prompt')
+    expect(handle.content).toBe('provider-content')
   })
 })
