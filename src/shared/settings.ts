@@ -12,6 +12,7 @@ import type {
 } from './reasoning-effort'
 import type { PackageMirror } from './mirror'
 import type { CloseActionPreference } from './window-controls'
+import type { SkillProvenance } from './skill-provenance'
 
 // Settings file schema version; bumped when the on-disk shape changes. v2 adds official-vendor
 // providers (vendorId/region) and a per-selection activeModel alongside activeProviderId.
@@ -951,6 +952,13 @@ export type SkillView = {
   // (non-commercial terms), 'needs-review' (missing/unrecognised — ask before commercial use).
   licenseStatus?: SkillLicenseStatus
   thirdParty?: string
+  // Trust state of learnt knowledge (see shared/skill-provenance). Absent for skills that ship with the
+  // app — those are curated, not distilled from a run.
+  trust?: {
+    verification: SkillProvenance['verification']
+    kind: SkillProvenance['kind']
+    summary: string
+  }
 }
 
 // A skill view plus its SKILL.md body (frontmatter stripped) and the names of any files under its

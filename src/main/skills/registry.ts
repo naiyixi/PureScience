@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import type { SkillSource } from '../../shared/settings'
 import { createLogger } from '../logger'
 import { classifySkillLicense, type SkillLicenseStatus } from '../../shared/skill-license'
+import { parseSkillProvenance, SKILL_TRUST_KEY, type SkillProvenance } from '../../shared/skill-provenance'
 import { parseFrontmatter } from './frontmatter'
 import { resolveBundledSkillsRoot } from './resource-path'
 
@@ -29,6 +30,9 @@ export type BundledSkill = {
   thirdParty?: string
   category?: string
   requirements?: string
+  // Trust state of learnt knowledge, read from the SKILL.md frontmatter (see shared/skill-provenance).
+  // Absent for skills that ship with the app: those are curated, not learnt from a run.
+  provenance?: SkillProvenance
 }
 
 type ManifestEntry = { id: string; name: string; source: SkillSource; updatedAt: string }
@@ -128,7 +132,12 @@ class SkillRegistry {
           // The "Third-party software, content, terms, and information" row; several key spellings.
           thirdParty: fields['third-party'] ?? fields['third_party'] ?? fields.thirdparty,
           category: fields.category,
-          requirements: fields.requirements
+          requirements: fields.requirements,
+          // Only present when the entry declares a trust state. Bundled/curated skills have none, which
+          // is different from an agent draft that has not been verified yet.
+          ...(fields[SKILL_TRUST_KEY]
+            ? { provenance: parseSkillProvenance(fields) }
+            : {})
         })
       } catch (error) {
         log.warn('skipping bundled skill with unreadable SKILL.md', { id: entry.id, error })

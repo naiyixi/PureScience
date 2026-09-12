@@ -42,6 +42,7 @@ import type { FetchLike } from '../skills/github-import'
 import { netFetch } from '../skills/net-fetch'
 import { tryDecryptKey } from './crypto'
 import { SkillRegistry, type BundledSkill } from '../skills/registry'
+import { describeSkillTrust } from '../../shared/skill-provenance'
 import { readSkillFile } from '../skills/skill-files'
 import { buildSkillExportArchive, type SkillExportArchive } from '../skills/export'
 import { SAFE_SLUG, UserSkillRepository } from '../skills/user-skill-repository'
@@ -728,7 +729,18 @@ class SkillCatalogModule {
       enabled: !disabled.has(skill.id),
       author: skill.author,
       license: skill.license,
-      thirdParty: skill.thirdParty
+      thirdParty: skill.thirdParty,
+      // Surface the trust state so Settings can badge unverified learnt skills, and so the gate below
+      // has one place to ask "may this be reused without review?".
+      ...(skill.provenance
+        ? {
+            trust: {
+              verification: skill.provenance.verification,
+              kind: skill.provenance.kind,
+              summary: describeSkillTrust(skill.provenance)
+            }
+          }
+        : {})
     }
   }
 }
