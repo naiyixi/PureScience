@@ -7,12 +7,32 @@ export const MEMORY_MCP_SERVER_NAME = 'purescience-memory'
 
 export const MEMORY_SAVE_NOTE_TOOL_NAME = 'memory_save_note'
 
+// Refusal reason returned when the user's memory master switch is off. Memory is opt-in, so this is a
+// user choice rather than an error — the agent's job is to surface the fact once, not to hide or
+// retry it.
+export const MEMORY_DISABLED_REASON = 'memory-disabled'
+
+// The agent-facing result of a save attempt. `suggest`/`userAction` are set when the refusal is
+// something the user can act on, so the model can offer the fix in one short line instead of letting
+// a durable fact disappear silently (the previous behaviour: saved:false with no signal at all).
+export type MemoryNoteSaveResult = {
+  saved: boolean
+  categoryId?: string
+  noteId?: string
+  reason?: string
+  suggest?: 'enable-memory' | 'name-a-category'
+  // Guidance the agent relays in the user's own language — kept here so every session phrases the
+  // offer the same way.
+  userAction?: string
+}
+
 export const MEMORY_SAVE_NOTE_TOOL_DESCRIPTION =
   "Saves a note into the user's persistent memory, grouped under an existing category. " +
   'Use it when the user states a durable preference, fact, or lesson about themselves or their ' +
   'work that should be remembered across sessions. Do not use it for transient task details. ' +
   'Include `evidence` (a short source note, e.g. which artifact/session the fact came from) when ' +
-  'available, so the memory has provenance.'
+  'available, so the memory has provenance. If the save is refused because memory is turned off, ' +
+  'relay that to the user in one short line — do not retry, and do not store the fact elsewhere.'
 
 export const CHECKPOINT_SAVE_TOOL_NAME = 'checkpoint_save'
 
@@ -44,6 +64,11 @@ export const MEMORY_MCP_SYSTEM_PROMPT_APPEND = [
     'save one-off task details or information already captured in project files.',
   'Never write memory files yourself. The application owns memory persistence; memory_save_note ' +
     'is the only way to add a note.',
+  "Memory is the user's choice and can be off. If memory_save_note answers that memory is " +
+    'disabled, do NOT retry and do NOT write the fact anywhere else — say one short line to the ' +
+    'user that this looks worth remembering and that memory is off (Settings \u2192 Memory), so they ' +
+    'can decide. Same for a category that does not exist: offer to create it instead of dropping ' +
+    'the fact.',
   'For long multi-step tasks also use the project task checkpoint: checkpoint_load before ' +
     'starting or resuming (reuse fresh recorded work instead of re-running it; re-verify when the ' +
     'verdict is stale), and checkpoint_save after each durable step so a restart resumes from ' +

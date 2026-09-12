@@ -6816,7 +6816,12 @@ describe('SettingsService: agent memory save-note', () => {
     await service.setMemory({ enabled: false, categories: [], notes: [] })
 
     const result = await service.saveMemoryNote('About you', 'ignored')
-    expect(result).toEqual({ saved: false, reason: 'memory-disabled' })
+    expect(result).toEqual({
+      saved: false,
+      reason: 'memory-disabled',
+      suggest: 'enable-memory',
+      userAction: expect.stringContaining('Settings \u2192 Memory')
+    })
   })
 
   it('rejects saves into a category that does not exist', async () => {
@@ -6828,7 +6833,12 @@ describe('SettingsService: agent memory save-note', () => {
     })
 
     const result = await service.saveMemoryNote('Nope', 'ignored')
-    expect(result).toEqual({ saved: false, reason: 'category-not-found' })
+    expect(result).toEqual({
+      saved: false,
+      reason: 'category-not-found',
+      suggest: 'name-a-category',
+      userAction: expect.stringContaining('Nope')
+    })
   })
 
   it('matches category names case-insensitively', async () => {

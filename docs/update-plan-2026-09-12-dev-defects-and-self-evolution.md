@@ -112,7 +112,14 @@ DEV 一周的实跑暴露的不是"缺功能"，而是**已建成的护栏在真
 
 **A3-② 守门技能（2026-09-12 已执行，用户拍板"重新启用"）**：经应用自己的设置通道 `settings:set-skill-enabled` 在 DEV 里重新启用四支守门技能 —— **citation-integrity / evidence-grading / literature-search-strategy / methods-writing-audit**。三重核对：① 设置通道四次均 HTTP 200；② `settings.json` 的 `disabledSkillIds` 由 **17 → 13**，四支均不在其中；③ `settings:list-skills` 回读四支 `enabled: true`（DEV 技能目录共 65 支）。其余 13 支（pkpd-modeling、research-contract、statistical-inference、uncertainty-units-audit、protocol-authoring、study-design、evidence-quality-assessment、meta-analysis-methods、rwe-database-research、differential-expression、enrichment-analysis、expression-data-prep、signature-and-validation）**保持用户原样**，不擅自改动。agent 侧物化在**下一次会话 spawn** 时同步（`claude/skills/` 目录）。
 
-**A3-③ 待做**：memory 默认开启的可行性评估与提示。
+**A3-③ memory（2026-09-12 用户拍板：邀约模式）**：不改默认开关，把"关着"从**静默失败**改成**显式邀约**：
+
+- 契约（`shared/memory-mcp.ts`）：新增 `MEMORY_DISABLED_REASON` 与 `MemoryNoteSaveResult`（`suggest: 'enable-memory' | 'name-a-category'` + `userAction` 一句可直接转述的话）。
+- 设置层（`settings/service.ts`）：记忆关闭时不再只回 `{saved:false, reason:'memory-disabled'}`，而是带上 `suggest:'enable-memory'` 与指向 Settings → Memory 的 `userAction`；分类不存在时同理给 `name-a-category`。
+- 指令面：`MEMORY_MCP_SYSTEM_PROMPT_APPEND` 与工具描述明确"被拒时**不要重试、不要把事实写到别处**，用一句话告诉用户这条值得记、记忆在设置里可开"。
+- 测试：`memory-mcp-server.test.ts` 新增 2 条（被拒结果带 suggest/userAction 透传；提示词含"do NOT retry"与入口路径）；`service.test.ts` 两条断言按新契约更新（memory-disabled / category-not-found）。全部通过、lint 干净、typecheck 双绿。
+
+**为什么不做默认开**：记忆是模型自撰的用户画像（写错会跨会话放大）、且每条笔记进每个会话系统提示（本机上下文 tools 已 ~569k）；DEV 里 `notes` 为空说明需求未显性化。邀约模式同时拿到"不漏记"与"用户主权"。**核查更正**：曾怀疑关记忆会连坐 `checkpoint_save/load`——**不成立**（memory 能力在 `runtime-composition.ts:295` 无条件接线；开关只被 `memory-recall.ts:30` 与 `service.ts` 的保存路径读取）。
 
 ### 2.3 A4 根因与实现（notebook RPC 超时）
 

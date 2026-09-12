@@ -69,6 +69,7 @@ import type {
   CreateExternalComputeEndpointRequest
 } from '../../shared/compute'
 import { externalComputeProviderId } from '../../shared/compute'
+import { MEMORY_DISABLED_REASON, type MemoryNoteSaveResult } from '../../shared/memory-mcp'
 import type { PackageMirror } from '../../shared/mirror'
 import type { NotebookLanguage } from '../../shared/notebook'
 import type { RuntimeEnablement, RuntimeSelection } from '../../shared/notebook-runtime'
@@ -429,22 +430,33 @@ class SettingsService {
     categoryName: string,
     text: string,
     evidence?: string
-  ): Promise<{
-    saved: boolean
-    categoryId?: string
-    noteId?: string
-    reason?: string
-  }> {
+  ): Promise<MemoryNoteSaveResult> {
     const settings = await this.repository.getSettings()
     const memory = settings.memory
     if (!memory?.enabled) {
-      return { saved: false, reason: 'memory-disabled' }
+      // Memory is opt-in. Refuse, but hand the agent what it needs to OFFER the fix in one line —
+      // a bare {saved:false} used to make a durable fact vanish without the user ever hearing it.
+      return {
+        saved: false,
+        reason: MEMORY_DISABLED_REASON,
+        suggest: 'enable-memory',
+        userAction:
+          'Memory is off, so nothing was saved. Tell the user this looks worth remembering and that ' +
+          'memory can be turned on in Settings \u2192 Memory.'
+      }
     }
     const category = memory.categories.find(
       (candidate) => candidate.name.toLowerCase() === categoryName.toLowerCase()
     )
     if (!category) {
-      return { saved: false, reason: 'category-not-found' }
+      return {
+        saved: false,
+        reason: 'category-not-found',
+        suggest: 'name-a-category',
+        userAction:
+          `No memory category is called "${categoryName}". Offer to create it in Settings \u2192 ` +
+          'Memory (or name an existing category) instead of dropping the fact.'
+      }
     }
     const now = Date.now()
     const note: MemoryNote = {
