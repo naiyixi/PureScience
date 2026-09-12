@@ -120,7 +120,9 @@ DEV 一周的实跑暴露的不是"缺功能"，而是**已建成的护栏在真
 
 **修法（已实现，待随 CI 绿推送）**：把 node:http shim 推广到 loopback TCP（`fetchOverNodeHttp` + `fetchOverLoopbackHttp`），**App 本地 RPC 一律不经 undici**，因此不存在隐式 300 s 判定；产品级超时（单元 `timeoutMs`、用户取消）仍是唯一权威，不引入新的"永不超时"。回归测试把 `globalThis.fetch` 替换成抛错函数后断言 loopback TCP 调用仍成功 —— 机械钉住"本地 RPC 永不使用全局 fetch"，防止回退。
 
-**仍待做（A4b）**：中断后的**产物保全与可诊断**——目前超时后留下半成品目录、没有"中断点 + 如何续跑"的提示。下一步做：中断即写一份可诊断摘要（已完成的步骤、未完成项、可续跑的入口），而不是让用户对着空目录猜。
+**A4b（2026-09-12 勘踏后按"审计归档零代码"收口）**：原假设"run 文档没有中断态标记"**不成立**——`NotebookRunStatus` 本就含 `'interrupted' | 'cancelled'`，且 `src/main/notebook/repository.ts:270-283` 在应用被强杀后的恢复路径上**确实写入** `status:'interrupted'` 并带 `interruptionReason:'app-terminated'`（原注释即写明"NOT failed —— 代码本身可能是对的"）；运行时被停用导致的取消也在 `execution-owner.ts:115` 记为 `cancelled`。因此 DEV 那次的"看起来毫无交代的失败"**不是**缺中断态，而是 **agent 侧收到的是传输层假失败（undici 300s 掐断），app 侧其实另有一套真实终态**——两者视角分叉，根因正是 A4 已修的那条。
+
+结论：**不新增中断态机制**（已有覆盖，造新壳无意义）。可选后续（未做，价值中等）：在工具调用因传输错误失败时，让返回信息带上"app 侧该 run 的真实终态，请先查 run 列表再决定是否重跑"，避免 agent 仅凭一次传输抖动就重跑或宣称失败。此条留在 Observed 区，不进入本批 P0。
 
 **A4 收口（2026-09-12，含 CI 反复后的完整处置）**：换掉 undici 后，**全仓有 3 个 MCP 子进程测试用 `stubGlobal('fetch')` 拦本地 RPC**（notebook / session-plan / artifacts），stub 不再生效 → 真连假端点 → `ECONNREFUSED`。处置分两种：① `notebook/mcp-server.test.ts` 的 4 处改写为**真实 loopback 服务器**（`listen(0)` 临时端口 + 捕 body，断言强度不变，最贴近生产路径）；② 其余 4 处（plan 1 处、artifacts 3 处，其中 artifacts 需要**有状态**的逐次响应：第 2 次调用返回 409、按 method 变结果）改用显式**测试注入口** `setLocalRpcFetchForTesting(impl)`（生产行为不变，与仓库既有的 print/PDF 可注入 seam 同风格）。注入口形参用 `never` 形以兼容窄签名 mock（`(url: string, init: RequestInit)` 不满足 `typeof fetch` 的逆变检查）。**教训**：改共享客户端/传输前，先 `grep -rn "stubGlobal('fetch'\|globalThis.fetch =" src` 找出所有"靠拦它做断言"的测试——本次因只 grep 了 notebook 目录而多红一轮 CI。
 
