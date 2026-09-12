@@ -1,7 +1,7 @@
 import { realpathSync } from 'node:fs'
 
 import type { NotebookCell, NotebookLanguage } from '../../shared/notebook'
-import type { RuntimeEnablement } from '../../shared/notebook-runtime'
+import type { RuntimeEnablement, RuntimeSelection } from '../../shared/notebook-runtime'
 import { NotebookEnvironmentOperations } from './environment-operations'
 import { detectManagedRuntimeMutation } from './managed-runtime-guard'
 import { NotebookRecoveryCoordinator } from './recovery-coordinator'
@@ -45,6 +45,19 @@ type NotebookDataExecutionAdmissionOwnerOptions = {
   >
   ensureRecovered: () => Promise<void>
   resolveRuntimeEnablement: (language: NotebookLanguage) => Promise<RuntimeEnablement | undefined>
+  // The runtime the user persisted in Settings (managed vs their own interpreter). Consulted only
+  // when the session has no binding: without this, a chosen external interpreter was readable by
+  // Settings but never resolved at run time, so execution silently fell back to the managed default
+  // (and to its bundle download) no matter what the user had selected.
+  resolveRuntimeSelection?: (language: NotebookLanguage) => Promise<RuntimeSelection | undefined>
+  // Binds the selected runtime to the session so the admission can resolve its interpreter. Returns
+  // undefined when the selection cannot be bound (not found / not runnable / write failure) — the
+  // caller then keeps the managed-default behavior and explains why.
+  adoptRuntimeSelection?: (
+    session: NotebookSessionAggregate,
+    language: NotebookLanguage,
+    selection: RuntimeSelection
+  ) => Promise<NotebookSessionRuntimeBinding | undefined>
   repairPolicy: Pick<NotebookRuntimeRepairPolicy, 'blockKey' | 'requirement'>
 }
 
@@ -77,10 +90,19 @@ class NotebookDataExecutionAdmissionOwner {
     session: NotebookSessionAggregate,
     cell: Readonly<NotebookCell>
   ): Promise<NotebookDataExecutionAdmission> {
-    const route = this.route(session, cell.language)
     const runtimeRoot = this.options.runtimeRoot
     await this.options.ensureRecovered()
-    const binding = session.runtimeBinding(cell.language)
+    // Honour the persisted Settings selection before falling back to the managed default: a session
+    // with no binding must run in the runtime the user chose (equivalent to having bound it), instead
+    // of silently provisioning/downloading the managed env.
+    let binding = session.runtimeBinding(cell.language)
+    let adoptionNote: string | undefined
+    if (!binding) {
+      const adopted = await this.adoptSelectedRuntime(session, cell.language)
+      if (adopted.binding) binding = adopted.binding
+      else adoptionNote = adopted.note
+    }
+    const route = this.route(session, cell.language)
     const repair = this.options.repairPolicy.requirement(cell.language, route.environment, binding)
     let resolvedInterpreter: NotebookSessionResolvedInterpreter | undefined
     let rejection: unknown
@@ -140,7 +162,32 @@ class NotebookDataExecutionAdmissionOwner {
     if (blockedMutation && rejection === undefined) {
       rejection = new Error(`MANAGED_RUNTIME_MUTATION_BLOCKED: ${blockedMutation.message}`)
     }
+    if (rejection instanceof Error && adoptionNote) {
+      rejection = new Error(`${rejection.message} ${adoptionNote}`)
+    }
     return { language: cell.language, route, binding, resolvedInterpreter, rejection }
+  }
+
+  // Resolves the persisted Settings selection into a live binding for a session that has none. Kept
+  // optional-injected so the admission stays testable and so a runtime that never configured a
+  // selection keeps today's managed-default path byte-for-byte.
+  private async adoptSelectedRuntime(
+    session: NotebookSessionAggregate,
+    language: NotebookLanguage
+  ): Promise<{ binding?: NotebookSessionRuntimeBinding; note?: string }> {
+    const resolve = this.options.resolveRuntimeSelection
+    const adopt = this.options.adoptRuntimeSelection
+    if (!resolve || !adopt) return {}
+    const selection = await resolve(language).catch(() => undefined)
+    if (selection?.source !== 'external') return {}
+    const binding = await adopt(session, language, selection)
+    if (binding) return { binding }
+    return {
+      note:
+        `The ${language} runtime selected in Settings (${selection.interpreterPath}) could not be ` +
+        'bound, so the app-managed default was used instead. Enable it in Settings \u2192 Runtimes, or ' +
+        'call list_notebook_runtimes then notebook_bind_runtime to pick another runtime.'
+    }
   }
 
   runShared<Result>(

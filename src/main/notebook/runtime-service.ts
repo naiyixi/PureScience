@@ -66,6 +66,7 @@ import type {
   NotebookRuntimeBindings,
   NotebookRuntimeListing,
   RuntimeEnablement,
+  RuntimeSelection,
   RuntimeUsage
 } from '../../shared/notebook-runtime'
 import type { NotebookRuntimeSettings } from '../settings/capabilities'
@@ -319,6 +320,10 @@ class NotebookRuntimeService {
     ((binding: McpRpcConnectionBinding) => Promise<McpRpcConnection>) | undefined
   private readonly runtimeEnablementResolver:
     ((language: NotebookLanguage) => Promise<RuntimeEnablement | undefined>) | undefined
+  // The persisted per-language runtime choice (managed vs the user's own interpreter). Fed to the
+  // data-execution admission so a chosen external runtime is actually resolved at run time.
+  private readonly runtimeSelectionResolver:
+    ((language: NotebookLanguage) => Promise<RuntimeSelection | undefined>) | undefined
   private readonly runtimeBindingOwner: NotebookRuntimeBindingOwner
   // Owns startup-recovery promises, journal reconciliation, fail-closed block decisions, Reset
   // allowlisting, and same-process live-unconfirmed tracking. The service retains its public recovery
@@ -356,6 +361,8 @@ class NotebookRuntimeService {
     const runtimeSettings = options.notebookRuntimeSettings ?? EMPTY_NOTEBOOK_RUNTIME_SETTINGS
     this.runtimeEnablementResolver = async (language) =>
       (await runtimeSettings.getSnapshot(language)).runtimeEnablement
+    this.runtimeSelectionResolver = async (language) =>
+      (await runtimeSettings.getSnapshot(language)).runtimeSelection
     this.runtimeBindingOwner = new NotebookRuntimeBindingOwner({
       dataRoot: options.dataRoot,
       repository: this.repository,
@@ -447,6 +454,9 @@ class NotebookRuntimeService {
       recovery: this.recoveryCoordinator,
       ensureRecovered: () => this.ensureRecovered(),
       resolveRuntimeEnablement: (language) => this.resolveRuntimeEnablement(language),
+      resolveRuntimeSelection: (language) => this.resolveRuntimeSelection(language),
+      adoptRuntimeSelection: (session, language, selection) =>
+        this.adoptSelectedRuntime(session, language, selection),
       repairPolicy: this.repairPolicy
     })
     this.runTerminalization = new NotebookRunTerminalizationOwner({
@@ -477,6 +487,46 @@ class NotebookRuntimeService {
     if (!resolver) return undefined
     try {
       return await resolver(language)
+    } catch {
+      return undefined
+    }
+  }
+
+  // The persisted Settings runtime choice, read fresh on every execution. Failure is non-fatal: an
+  // unreadable selection simply means "not chosen", which keeps the managed default.
+  private async resolveRuntimeSelection(
+    language: NotebookLanguage
+  ): Promise<RuntimeSelection | undefined> {
+    const resolver = this.runtimeSelectionResolver
+    if (!resolver) return undefined
+    try {
+      return await resolver(language)
+    } catch {
+      return undefined
+    }
+  }
+
+  // Materializes a persisted external selection into an actual session binding, so the admission
+  // resolves the chosen interpreter instead of the managed env. Returns undefined (never throws) when
+  // the selected runtime is gone, not enabled, or not runnable — the admission then explains the
+  // fallback instead of silently switching runtimes.
+  private async adoptSelectedRuntime(
+    session: NotebookSessionAggregate,
+    language: NotebookLanguage,
+    selection: RuntimeSelection
+  ): Promise<NotebookSessionRuntimeBinding | undefined> {
+    if (selection.source !== 'external') return undefined
+    try {
+      const { runtimes } = await this.runtimeBindingOwner.list(session)
+      const match = runtimes.find(
+        (runtime) =>
+          runtime.language === language &&
+          runtime.runnable &&
+          runtime.interpreterPath === selection.interpreterPath
+      )
+      if (!match) return undefined
+      await this.runtimeBindingOwner.bind(session, language, match.runtimeId)
+      return session.runtimeBinding(language)
     } catch {
       return undefined
     }

@@ -93,6 +93,8 @@ DEV 一周的实跑暴露的不是"缺功能"，而是**已建成的护栏在真
 
 **验收**：单测四组通过；实机复现"设置选 external → 新会话首次执行不再触发托管包下载、直接用所选解释器"；断网（禁用镜像）场景下失败信息给出可执行的下一步而非堆栈。
 
+**实施状态（2026-09-12）**：✅ 代码已落地并推送（`runtime-service` 注入 selection resolver + `data-execution-admission` 先采用已选 external、不可采用时保留托管默认并在拒绝信息里说明原因；未选择/选 managed/已有绑定三种情形行为不变）。测试 `data-execution-admission.selection.test.ts` **5 组**（采用 external 且**不调用** `ensureDefaultEnvironmentReady`、未选择、选 managed、已有绑定不重复绑、不可采用时拒绝信息含可执行指引）；本地 202 项相关簇回归全绿、lint 干净、typecheck 双绿。实机验收（"新会话首次执行不再触发托管下载"）待做——它是本单元最后一道闸。
+
 ### P1 — 把失败经验变成资产（PILOT 借鉴的主体）
 
 | 单元 | 交付 | 验收 |
