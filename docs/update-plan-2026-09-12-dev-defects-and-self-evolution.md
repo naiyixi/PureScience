@@ -76,6 +76,20 @@ DEV 一周的实跑暴露的不是"缺功能"，而是**已建成的护栏在真
 | **A3** 让守门与自进化通路默认开 | ① 自动审计（Reviewer）默认策略改为"新会话默认开启、可关"，并在 UI 明示状态；② 技能禁用清单复核：**引文诚信/证据分级/文献检索策略/方法学审计默认不得禁用**（与引文诚实性红线一致）；③ 记忆（memory）默认开启的可行性评估与显式提示 | 新会话元数据 `autoReviewEnabled=true`；被禁用的守门技能清零并在 UI 可见；实机跑一轮出现 Review 记录（`Review` 表非空） |
 | **A4** notebook RPC 超时与产物保全 | 长脚本超时可续跑/分段；RPC 中断必须留下**可诊断产物**（而非空目录）；前端错误不外溢为 unhandled rejection | 复现一次长任务超时：无空 `deliverables/`、无 renderer 挂起、报告标注中断点与续跑方式 |
 
+### 2.1 A2 归因与实施设计（2026-09-12 勘踏，根因已证实）
+
+**根因：per-language 运行时选择在执行路径上是死配置。** `notebookRuntimes.<lang>`（`{source:'external', interpreterPath, appOwnedOverlay, packageInstallAuthorized}`）的读取方只有两处——设置面板快照（`src/main/ipc.ts:650`）与设置工作流（`runtime-selection-workflows.ts:123` 的 `buildSurvey`）。**执行/准入路径没有任何消费者**：`data-execution-admission.ts` 的 `route()` 只认 `binding`，无绑定时一律落到 `defaultEnvironment(language)`（托管默认 env）；`setRuntimeBinding` 只被绑定 owner 的 bind/switch/revoke/reload 调用，即只响应显式的 `notebook_bind_runtime` / `notebook_switch_runtime` / 设置页切换。而共享类型注释写的是"`selection` undefined => nothing chosen yet (resolves to the managed default at run time)"——**选了却不解析**，文档行为与实现不符，属缺陷而非待设计项。
+
+**后果**（DEV 一周实证）：用户配了 external `md-venv`，未绑定绑定的会话仍去打托管包；国内下载 GitHub 资源失败 → agent 只能自行摸索 3–4 轮改绑 `molsim`/`md-venv`。
+
+**实施设计**（无新 IPC ⇒ 零契约计数涟漪）：
+
+1. `data-execution-admission.ts`：新增两个**可选注入**端口——`resolveRuntimeSelection(language)` 与 `autoBindSelection(session, language, selection)`；在"无 binding"分支先尝试自动采用已选 external（可运行才绑），失败则**保持今天的行为**（托管默认）并在拒绝信息里说明原因（honest failure，不静默换轨）。
+2. `ipc.ts` 构造 admission owner 处接线：`resolveRuntimeSelection` → `settingsService.getRuntimeSelection`；`autoBindSelection` → `NotebookRuntimeBindingOwner.list(session)` 里按 `interpreterPath` 找到对应 `runtimeId`，再 `bind(session, language, runtimeId)`（复用既有 API，不新造路径）。
+3. 测试四组：①选中 external 且可运行 + 无绑定 → 走 external；②选中 managed → 行为不变；③未选择 → 保持托管默认；④选中 external 但不可运行 → 回退托管默认且给出可见原因、不崩。
+
+**验收**：单测四组通过；实机复现"设置选 external → 新会话首次执行不再触发托管包下载、直接用所选解释器"；断网（禁用镜像）场景下失败信息给出可执行的下一步而非堆栈。
+
 ### P1 — 把失败经验变成资产（PILOT 借鉴的主体）
 
 | 单元 | 交付 | 验收 |
