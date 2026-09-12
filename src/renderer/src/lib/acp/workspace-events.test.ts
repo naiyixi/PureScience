@@ -14,6 +14,7 @@ import {
   toPersistedSession,
   useSessionStore
 } from '../../stores/session-store'
+import { resetSupervisorSignalLog } from './supervisor-signal-log'
 import { saveSessionInOrder } from '../session-persistence/session-persistence'
 import {
   applyWorkspaceRuntimeEvent,
@@ -2213,6 +2214,53 @@ describe('workspace runtime events', () => {
       expect(request?.supervisor).toEqual({ wakes: [] })
 
       vi.unstubAllGlobals()
+    })
+
+    it('wakes the supervisor on a finished compaction, and consumes it', async () => {
+      resetSupervisorSignalLog()
+      const reviewerRun = vi.fn().mockResolvedValue(undefined)
+
+      vi.stubGlobal('window', { api: { reviewer: { run: reviewerRun } } })
+
+      useSessionStore.getState().setAutoReviewEnabled('transport-session-1', true)
+
+      useSessionStore.getState().appendAgentMessageChunk({
+        sessionId: 'transport-session-1',
+        streamId: 'stream-1',
+        eventId: 'event-agent-1',
+        content: 'Analysis complete'
+      })
+
+      // Compaction is a runtime event: nothing about it survives in the session record, so it has to be
+      // recorded as it happens.
+      await applyWorkspaceRuntimeEvent(
+        createEvent({
+          id: 'compaction-1',
+          kind: 'compaction',
+          status: 'completed',
+          compactionReason: 'automatic'
+        })
+      )
+
+      await applyWorkspaceRuntimeEvent(createEvent({ id: 'stop-1', kind: 'stop' }))
+      await vi.runAllTimersAsync()
+
+      const first = reviewerRun.mock.calls[0]?.[0] as {
+        supervisor?: { wakes: { kind: string; detail?: string }[] }
+      }
+      expect(first?.supervisor?.wakes).toHaveLength(1)
+      expect(first?.supervisor?.wakes[0]).toMatchObject({ kind: 'context-compaction' })
+      expect(first?.supervisor?.wakes[0]?.detail).toContain('automatic')
+
+      // The ledger is consumed with that review, so the next turn is not woken by the same compaction.
+      await applyWorkspaceRuntimeEvent(createEvent({ id: 'stop-2', kind: 'stop' }))
+      await vi.runAllTimersAsync()
+
+      const second = reviewerRun.mock.calls.at(-1)?.[0] as { supervisor?: { wakes: unknown[] } }
+      expect(second?.supervisor).toEqual({ wakes: [] })
+
+      vi.unstubAllGlobals()
+      resetSupervisorSignalLog()
     })
 
     it('does not trigger a review when autoReviewEnabled is false', async () => {

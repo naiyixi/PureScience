@@ -14,6 +14,11 @@ import {
   planSupervisorWakes,
   supervisorEventsFromActivities
 } from '../../../../shared/supervisor-signals'
+import {
+  clearSupervisorEvents,
+  recordSupervisorEvent,
+  supervisorEventsFor
+} from './supervisor-signal-log'
 import { createPreviewFileItemFromArtifact } from '../../pages/workspace/preview-file-item'
 import { getPreviewFormatForFile } from '../../pages/workspace/preview-support'
 import { usePreviewWorkbenchStore } from '../../stores/preview-workbench-store'
@@ -405,14 +410,19 @@ const triggerAutoReview = async (sessionId: string): Promise<void> => {
 
     if (!assembled) return
 
-    // Supervisor wake-ups for this turn, derived from the session's own tool activities: the reviewer
-    // verifies what was already flagged (each wake carries an evidence handle) instead of re-deriving
-    // it, and a run whose supervision degraded says so. Deriving here keeps the policy in shared and
-    // costs no extra model call — the reviewer is woken by evidence, not by a permanent observer.
-    const request: ReviewRunRequest = {
-      ...assembled,
-      supervisor: planSupervisorWakes(supervisorEventsFromActivities(session.activities ?? []))
-    }
+    // Supervisor wake-ups for this turn: the runtime-only signals recorded as they happened (a
+    // compaction, a rule warning) followed by the ones derived from the session's own tool activities.
+    // The reviewer verifies what was already flagged (each wake carries an evidence handle) instead of
+    // re-deriving it, and a run whose supervision degraded says so. Deriving here keeps the policy in
+    // shared and costs no extra model call — the reviewer is woken by evidence, not by a permanent
+    // observer. The recorded events are consumed, so one compaction cannot wake every later turn.
+    const supervisor = planSupervisorWakes([
+      ...supervisorEventsFor(sessionId),
+      ...supervisorEventsFromActivities(session.activities ?? [])
+    ])
+    const request: ReviewRunRequest = { ...assembled, supervisor }
+
+    if (supervisor.wakes.length > 0 || supervisor.degraded) clearSupervisorEvents(sessionId)
 
     // Retry a started:false a bounded number of times, but ONLY for reasons a persistence race can
     // produce (the session may not be flushed to disk yet). Every other reason is terminal for the auto
@@ -670,6 +680,16 @@ const applyWorkspaceRuntimeEvent = async (
       return true
     } else if (event.status === 'completed' || event.status === 'cancelled') {
       store.finishCompaction(event.sessionId)
+      // A finished compaction is exactly when earlier evidence left the window, so the supervisor is
+      // told about it. Recorded as a runtime signal: nothing about it survives in the session record.
+      recordSupervisorEvent(
+        event.sessionId,
+        {
+          type: 'compaction',
+          detail: `context compacted (${event.compactionReason ?? 'unknown reason'})`
+        },
+        store.sessions.find((candidate) => candidate.id === event.sessionId)?.messages.length ?? 0
+      )
     } else if (event.status === 'failed') {
       store.failCompaction(event.sessionId, getEventErrorText(event))
     }
