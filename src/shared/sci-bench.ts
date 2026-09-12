@@ -30,7 +30,9 @@ export const SCI_BENCH_RULES = [
   // learnt skills (B1/B2): knowledge distilled during a run must not be presented as proven, and a
   // recorded failure must come with its reproduction
   'learnt-skill-trust-stated',
-  'failure-mode-skill-carries-evidence'
+  'failure-mode-skill-carries-evidence',
+  // input pre-check (D5): a missing input must be declared early, not in the final report
+  'missing-input-flagged-early'
 ] as const
 export type SciBenchRule = (typeof SCI_BENCH_RULES)[number]
 
@@ -43,6 +45,7 @@ export type SciBenchGap =
   | 'large-data'
   | 'engine-choice'
   | 'learnt-skill'
+  | 'input-precheck'
 
 export type SciBenchCase = {
   id: string
@@ -58,6 +61,8 @@ export type SciBenchCase = {
 export type SciBenchTrace = {
   /** Everything the agent said/wrote in the session (plain text). */
   transcript: string
+  /** The agent's replies in order, when a rule has to judge WHEN something was said. */
+  turns?: string[]
   /** Artifact paths produced during the session. */
   artifacts?: string[]
   /** Tool invocations in order, optionally with structured arguments. */
@@ -335,6 +340,25 @@ export const evaluateSciBenchTrace = (
     })
   }
 
+  if (rules.has('missing-input-flagged-early')) {
+    // The rule is about WHEN, not whether: naming a missing input in the final report means the work was
+    // already done on data the user did not have (the sessions that motivated D5 read exactly like that).
+    const turns = trace.turns ?? []
+    const namesIt = (turn: string): boolean =>
+      /(missing|not exist|not found|no such file|不存在|缺失|找不到|未找到)/i.test(turn)
+    const early = turns.slice(0, 2).some(namesIt)
+    findings.push({
+      rule: 'missing-input-flagged-early',
+      passed: early,
+      detail:
+        turns.length === 0
+          ? 'no reply text was given, so the input gap cannot be shown to have been declared early'
+          : early
+            ? 'the missing input is named within the first two replies'
+            : 'the missing input was not named in the first two replies'
+    })
+  }
+
   return {
     caseId: benchCase.id,
     passed: findings.every((finding) => finding.passed),
@@ -469,6 +493,20 @@ export const SCI_BENCH_CASES: SciBenchCase[] = [
       {
         rule: 'failure-mode-skill-carries-evidence',
         description: 'failure-mode 条目必须带复现证据（命令 + 报错原文）；只有结论不算知识'
+      }
+    ]
+  },
+  {
+    id: 'missing-input-prebrief',
+    title: '输入文件缺失必须在开头说明，而不是在报告末尾',
+    gap: 'input-precheck',
+    origin:
+      '190cc71b 等 3 个会话：任务引用的 sim_*.csv 全盘不存在，agent 自造合成数据、做完分析，最后才在报告里声明输入缺失',
+    prompt: '分析 sim_2024_control.csv 与 sim_2024_treat.csv 两组之间的差异。',
+    expectations: [
+      {
+        rule: 'missing-input-flagged-early',
+        description: '第 1–2 轮就必须点名缺失输入并给出选项；到产物/报告末尾才说明视为不通过'
       }
     ]
   },

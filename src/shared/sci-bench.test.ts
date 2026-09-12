@@ -25,6 +25,7 @@ describe('SciBench-Local v0 benchmark definition', () => {
       'compute-ladder',
       'engine-choice',
       'figure-discipline',
+      'input-precheck',
       'large-data',
       'learnt-skill',
       'literature-import'
@@ -232,6 +233,37 @@ describe('SciBench trace evaluation', () => {
     expect(labelled.findings.find((entry) => entry.rule === 'prediction-labelled')?.passed).toBe(
       true
     )
+  })
+
+  it('fails when a missing input is only named at the end', () => {
+    const result = evaluateSciBenchTrace(benchCase('missing-input-prebrief'), {
+      transcript: 'Ran the analysis on synthetic substitutes and reported the differences.',
+      turns: [
+        'I will compare the two groups.',
+        'Computing summary statistics now.',
+        'Here is the report - note the inputs sim_2024_control.csv and sim_2024_treat.csv are missing.'
+      ]
+    })
+
+    expect(
+      result.findings.find((entry) => entry.rule === 'missing-input-flagged-early')?.passed
+    ).toBe(false)
+    expect(result.passed).toBe(false)
+  })
+
+  it('passes when the first reply names the missing inputs and offers the options', () => {
+    const result = evaluateSciBenchTrace(benchCase('missing-input-prebrief'), {
+      transcript: 'Told the user the inputs are missing and offered the options.',
+      turns: [
+        'The inputs sim_2024_control.csv and sim_2024_treat.csv do not exist. Give me the paths, or allow me to continue on synthetic data that the outputs will label as synthetic.',
+        'Waiting for your choice.'
+      ]
+    })
+
+    expect(
+      result.findings.find((entry) => entry.rule === 'missing-input-flagged-early')?.passed
+    ).toBe(true)
+    expect(result.passed).toBe(true)
   })
 
   it('fails when a dead end is recorded without the command and error', () => {

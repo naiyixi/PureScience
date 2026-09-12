@@ -15,6 +15,9 @@ type AcpSessionEnvironmentPolicyOptions = Readonly<{
   registry: Pick<AcpSessionRegistry, 'lookup'>
   defaultProjectName?: string
   planSystemPromptAppend?: string
+  // The input pre-check instruction (shared/input-precheck): every session is told to verify that the
+  // inputs it was given exist before planning, so a missing file is not discovered in the final report.
+  inputPrecheckSystemPromptAppend?: string
 }>
 
 // Derives current Session environment facts directly from their owners; no framework, tooling, or
@@ -35,7 +38,10 @@ class AcpSessionEnvironmentPolicy {
   applicationSystemPromptAppends(): readonly string[] {
     return Object.freeze([
       ...this.options.presentation.applicationSystemPromptAppends(this.toolingAvailability()),
-      ...(this.options.planSystemPromptAppend ? [this.options.planSystemPromptAppend] : [])
+      ...(this.options.planSystemPromptAppend ? [this.options.planSystemPromptAppend] : []),
+      ...(this.options.inputPrecheckSystemPromptAppend
+        ? [this.options.inputPrecheckSystemPromptAppend]
+        : [])
     ])
   }
 

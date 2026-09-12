@@ -1,5 +1,6 @@
 import type { SessionPermissionProfileState } from '../../shared/permission-profiles'
 import { SESSION_PLAN_SYSTEM_PROMPT_APPEND } from '../session-plan/guidance'
+import { INPUT_PRECHECK_SYSTEM_PROMPT_APPEND } from '../../shared/input-precheck'
 import { createLogger } from '../logger'
 import { AcpContextUsagePolicy } from './context-usage-policy'
 import { AcpPermissionContext } from './permission-context'
@@ -90,7 +91,9 @@ const composeAcpRuntimeSessionOwners = (options: AcpRuntimeOptions, base: AcpRun
     presentation: base.sessionPresentationPolicy,
     registry: sessionRegistry,
     defaultProjectName: options.artifacts?.projectName,
-    ...(base.planService ? { planSystemPromptAppend: SESSION_PLAN_SYSTEM_PROMPT_APPEND } : {})
+    ...(base.planService ? { planSystemPromptAppend: SESSION_PLAN_SYSTEM_PROMPT_APPEND } : {}),
+    // Not conditional: a session that never plans still must not discover a missing input at the end.
+    inputPrecheckSystemPromptAppend: INPUT_PRECHECK_SYSTEM_PROMPT_APPEND
   })
   const contextUsagePolicy = new AcpContextUsagePolicy({
     backend: () => base.backendGeneration.current,
