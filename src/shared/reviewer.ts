@@ -267,6 +267,10 @@ export type ReviewRunRequest = {
   // runs from concurrent entry points. 'manual' (Request review / stale/error Re-run) intentionally
   // bypasses that check so the user can force a fresh review. Defaults to 'manual' when omitted.
   origin?: ReviewRunOrigin
+  // Wake-ups the supervisor earned for this turn (see shared/supervisor-signals), each with an evidence
+  // handle. Carried so the reviewer verifies what was already flagged instead of re-deriving it, and so
+  // a degraded (over-budget) run cannot read as a supervised one. Absent = nothing to report.
+  supervisor?: SupervisorPlan
 }
 
 // Distinguishes an automatic post-turn review from a user-initiated one — see ReviewRunRequest.origin.
@@ -388,6 +392,8 @@ export type ContextSummaryChunkView = {
 }
 
 export type ContextSummaryChunkListRequest = ReviewSessionRequest
+
+import type { SupervisorPlan } from './supervisor-signals'
 
 export const REVIEWER_IPC = {
   // Renderer → main: trigger a review run.

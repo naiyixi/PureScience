@@ -2140,6 +2140,81 @@ describe('workspace runtime events', () => {
       vi.unstubAllGlobals()
     })
 
+    it('carries supervisor wake-ups, with evidence handles, into the review request', async () => {
+      const reviewerRun = vi.fn().mockResolvedValue(undefined)
+
+      vi.stubGlobal('window', { api: { reviewer: { run: reviewerRun } } })
+
+      useSessionStore.getState().setAutoReviewEnabled('transport-session-1', true)
+
+      useSessionStore.getState().appendAgentMessageChunk({
+        sessionId: 'transport-session-1',
+        streamId: 'stream-1',
+        eventId: 'event-agent-1',
+        content: 'Analysis complete'
+      })
+
+      // The same tool failing three times in a row is what earns a wake-up.
+      for (const index of [1, 2, 3]) {
+        await applyWorkspaceRuntimeEvent(
+          createEvent({
+            id: `fail-event-${index}`,
+            kind: 'tool',
+            toolCallId: `fail-call-${index}`,
+            providerToolName: 'run_python',
+            status: 'failed'
+          })
+        )
+      }
+
+      await applyWorkspaceRuntimeEvent(createEvent({ id: 'stop-1', kind: 'stop' }))
+      await vi.runAllTimersAsync()
+
+      const request = reviewerRun.mock.calls[0]?.[0] as {
+        supervisor?: { wakes: { kind: string; evidenceHandle: string }[] }
+      }
+      expect(request?.supervisor?.wakes).toHaveLength(1)
+      expect(request?.supervisor?.wakes[0]).toMatchObject({
+        kind: 'repeated-tool-failure',
+        evidenceHandle: expect.stringMatching(/^activity:/)
+      })
+
+      vi.unstubAllGlobals()
+    })
+
+    it('carries no wake-up for a turn whose tools all succeeded', async () => {
+      const reviewerRun = vi.fn().mockResolvedValue(undefined)
+
+      vi.stubGlobal('window', { api: { reviewer: { run: reviewerRun } } })
+
+      useSessionStore.getState().setAutoReviewEnabled('transport-session-1', true)
+
+      useSessionStore.getState().appendAgentMessageChunk({
+        sessionId: 'transport-session-1',
+        streamId: 'stream-1',
+        eventId: 'event-agent-1',
+        content: 'Analysis complete'
+      })
+
+      await applyWorkspaceRuntimeEvent(
+        createEvent({
+          id: 'ok-event-1',
+          kind: 'tool',
+          toolCallId: 'ok-call-1',
+          providerToolName: 'run_python',
+          status: 'completed'
+        })
+      )
+
+      await applyWorkspaceRuntimeEvent(createEvent({ id: 'stop-1', kind: 'stop' }))
+      await vi.runAllTimersAsync()
+
+      const request = reviewerRun.mock.calls[0]?.[0] as { supervisor?: { wakes: unknown[] } }
+      expect(request?.supervisor).toEqual({ wakes: [] })
+
+      vi.unstubAllGlobals()
+    })
+
     it('does not trigger a review when autoReviewEnabled is false', async () => {
       const reviewerRun = vi.fn().mockResolvedValue(undefined)
 

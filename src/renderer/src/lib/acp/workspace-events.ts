@@ -10,6 +10,10 @@ import {
 } from '../../../../shared/artifacts'
 import type { ReviewRunNotStartedReason, ReviewRunRequest } from '../../../../shared/reviewer'
 import type { PersistedChatSession } from '../../../../shared/session-persistence'
+import {
+  planSupervisorWakes,
+  supervisorEventsFromActivities
+} from '../../../../shared/supervisor-signals'
 import { createPreviewFileItemFromArtifact } from '../../pages/workspace/preview-file-item'
 import { getPreviewFormatForFile } from '../../pages/workspace/preview-support'
 import { usePreviewWorkbenchStore } from '../../stores/preview-workbench-store'
@@ -397,9 +401,18 @@ const triggerAutoReview = async (sessionId: string): Promise<void> => {
     // Auto-review is on unless the switch was explicitly turned off.
     if (session.autoReviewEnabled === false) return
 
-    const request = assembleReviewRunRequest(sessionId)
+    const assembled = assembleReviewRunRequest(sessionId)
 
-    if (!request) return
+    if (!assembled) return
+
+    // Supervisor wake-ups for this turn, derived from the session's own tool activities: the reviewer
+    // verifies what was already flagged (each wake carries an evidence handle) instead of re-deriving
+    // it, and a run whose supervision degraded says so. Deriving here keeps the policy in shared and
+    // costs no extra model call — the reviewer is woken by evidence, not by a permanent observer.
+    const request: ReviewRunRequest = {
+      ...assembled,
+      supervisor: planSupervisorWakes(supervisorEventsFromActivities(session.activities ?? []))
+    }
 
     // Retry a started:false a bounded number of times, but ONLY for reasons a persistence race can
     // produce (the session may not be flushed to disk yet). Every other reason is terminal for the auto

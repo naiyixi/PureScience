@@ -4,9 +4,12 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  planSupervisorWakes,
+  buildSupervisorNotice,
   describeSupervisorPlan,
+  planSupervisorWakes,
   SUPERVISOR_DEFAULT_WAKE_BUDGET,
+  SUPERVISOR_PROMPT_TAG,
+  supervisorEventsFromActivities,
   type SupervisorEvent
 } from './supervisor-signals'
 
@@ -153,5 +156,59 @@ describe('supervisor wake-up policy', () => {
     const plan = planSupervisorWakes(events)
     expect(plan.wakes).toHaveLength(SUPERVISOR_DEFAULT_WAKE_BUDGET)
     expect(plan.degraded?.skipped).toEqual(['context-compaction'])
+  })
+
+  it('maps tool activities onto the stream, counting only explicit failures as failures', () => {
+    const events = supervisorEventsFromActivities([
+      { id: 'a1', status: 'completed', providerToolName: 'run_python' },
+      { id: 'a2', status: 'failed', providerToolName: 'run_python' },
+      { id: 'a3', status: 'in_progress', title: 'Fetching something' },
+      { id: 'a4', status: 'failed' }
+    ])
+
+    expect(events.map((event) => event.ok)).toEqual([true, false, true, false])
+    expect(events[1]).toMatchObject({ tool: 'run_python', evidenceHandle: 'activity:a2' })
+    // A title stands in when the provider name is absent; a nameless failure stays addressable.
+    expect(events[2]).toMatchObject({ tool: 'Fetching something' })
+    expect(events[3]).toMatchObject({ tool: 'unknown', evidenceHandle: 'activity:a4' })
+
+    // Three explicit failures of one tool really do wake the supervisor through this mapping.
+    const plan = planSupervisorWakes(
+      supervisorEventsFromActivities([
+        { id: 'f1', status: 'failed', providerToolName: 'run_python' },
+        { id: 'f2', status: 'failed', providerToolName: 'run_python' },
+        { id: 'f3', status: 'failed', providerToolName: 'run_python' }
+      ])
+    )
+    expect(plan.wakes[0]).toMatchObject({
+      kind: 'repeated-tool-failure',
+      evidenceHandle: 'activity:f3'
+    })
+  })
+
+  it('builds no prompt section when the supervisor has nothing to say', () => {
+    expect(buildSupervisorNotice(undefined)).toBe('')
+    expect(buildSupervisorNotice({ wakes: [] })).toBe('')
+  })
+
+  it('tells the reviewer to verify the leads and to report a degraded run', () => {
+    const plan = planSupervisorWakes(
+      [
+        { turn: 1, type: 'compaction' },
+        { turn: 2, type: 'rule', severity: 'warn', evidenceHandle: 'rule:a' },
+        { turn: 3, type: 'checkpoint', fingerprintMatches: false, evidenceHandle: 'checkpoint:b' }
+      ],
+      2
+    )
+    const notice = buildSupervisorNotice(plan)
+
+    expect(notice.startsWith(`<${SUPERVISOR_PROMPT_TAG}>`)).toBe(true)
+    expect(notice).toContain('rule-warning (turn 2, rule:a)')
+    expect(notice).toContain('leads, not conclusions')
+    expect(notice).toContain('Supervision degraded for this run')
+    // Without degradation the honesty sentence is absent, so an ordinary run reads normally.
+    const clean = buildSupervisorNotice({ wakes: plan.wakes })
+    expect(clean).toContain('leads, not conclusions')
+    expect(clean).not.toContain('degraded')
   })
 })

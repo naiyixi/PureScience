@@ -178,3 +178,51 @@ export const describeSupervisorPlan = (plan: SupervisorPlan): string => {
   }
   return lines.join(' ')
 }
+
+// Structural input so the policy stays decoupled from session-persistence: any entry list carrying a
+// tool name and a status can feed it. `status` follows the persisted activity vocabulary.
+export type SupervisorActivityLike = {
+  id: string
+  status: string
+  providerToolName?: string
+  title?: string
+}
+
+/**
+ * Maps a turn's tool activities onto the policy's event stream. Only an explicit `failed` counts as a
+ * failure: an activity still in progress has not failed yet, and treating it as one would wake the
+ * supervisor on a slow call.
+ */
+export const supervisorEventsFromActivities = (
+  activities: readonly SupervisorActivityLike[]
+): SupervisorEvent[] =>
+  activities.map((activity, index) => ({
+    turn: index,
+    type: 'tool-call' as const,
+    tool: activity.providerToolName ?? activity.title ?? 'unknown',
+    ok: activity.status !== 'failed',
+    evidenceHandle: `activity:${activity.id}`
+  }))
+
+export const SUPERVISOR_PROMPT_TAG = 'supervisor_signals'
+
+/**
+ * The section appended to the reviewer's instructions when a run earned wake-ups. Empty when the
+ * supervisor has nothing to say, so an ordinary turn's prompt is unchanged.
+ */
+export const buildSupervisorNotice = (plan: SupervisorPlan | undefined): string => {
+  if (!plan || (plan.wakes.length === 0 && !plan.degraded)) return ''
+  return [
+    `<${SUPERVISOR_PROMPT_TAG}>`,
+    describeSupervisorPlan(plan),
+    'These are leads, not conclusions: verify each one against the turn evidence (the handle says where',
+    'to look) and report what you find.',
+    ...(plan.degraded
+      ? [
+          'Supervision degraded for this run: state that in your report so a skipped check cannot read as',
+          'a passed one.'
+        ]
+      : []),
+    `</${SUPERVISOR_PROMPT_TAG}>`
+  ].join('\n')
+}

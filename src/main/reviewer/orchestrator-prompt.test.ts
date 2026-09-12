@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { buildReviewerPrompt } from './orchestrator'
+import { appendSupervisorNotice, buildReviewerPrompt } from './orchestrator'
 import type { ReviewCheck, TurnScope } from '../../shared/reviewer'
 
 const scope: TurnScope = {
@@ -52,5 +52,42 @@ describe('buildReviewerPrompt — isolated evidence access', () => {
 
     expect(prompt).toContain('at least one explicit pass check')
     expect(prompt).toContain('an empty array is invalid')
+  })
+})
+
+describe('appendSupervisorNotice — the reviewer is told only what the supervisor actually saw', () => {
+  const base = 'REVIEWER RUBRIC'
+
+  it("leaves an ordinary turn's instructions byte-identical", () => {
+    expect(appendSupervisorNotice(base, undefined)).toBe(base)
+    expect(appendSupervisorNotice(base, { wakes: [] })).toBe(base)
+  })
+
+  it('appends the leads, each with its evidence handle, when the supervisor woke', () => {
+    const composed = appendSupervisorNotice(base, {
+      wakes: [
+        {
+          kind: 'repeated-tool-failure',
+          atTurn: 2,
+          evidenceHandle: 'activity:abc',
+          detail: 'run_python failed 3 times in a row'
+        }
+      ]
+    })
+
+    expect(composed.startsWith(base)).toBe(true)
+    expect(composed).toContain('supervisor_signals')
+    expect(composed).toContain('activity:abc')
+    expect(composed).toContain('leads, not conclusions')
+  })
+
+  it('tells the reviewer to report a degraded run, not to pass it off as supervised', () => {
+    const composed = appendSupervisorNotice(base, {
+      wakes: [],
+      degraded: { reason: 'supervision budget (0) exceeded', skipped: ['context-compaction'] }
+    })
+
+    expect(composed).toContain('Supervision degraded for this run')
+    expect(composed).toContain('context-compaction')
   })
 })

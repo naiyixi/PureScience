@@ -34,6 +34,7 @@ import { ReviewerHostServer, type ArtifactVersionContentResolver } from './host-
 import { createExternalSourceFetcher } from './external-source-fetch'
 import { buildReviewScopeSnapshot } from './scope-snapshot'
 import { REVIEWER_RUBRIC_SYSTEM_PROMPT_APPEND } from './rubric'
+import { buildSupervisorNotice, type SupervisorPlan } from '../../shared/supervisor-signals'
 import { injectAuditorMessage } from './correction'
 import { buildHistoryPreamble } from '../../shared/history-preamble'
 import { getActiveConversationContext } from '../../shared/conversation-graph'
@@ -53,6 +54,10 @@ const runReviewMutation = <Result>(
 
 export type RunReviewOptions = {
   sessionId: string
+  // Supervisor wake-ups for this turn, carried from the renderer's request (shared/supervisor-signals).
+  // Injected into the reviewer's instructions so the flags are verified rather than re-derived, and so a
+  // degraded run is reported as degraded.
+  supervisor?: SupervisorPlan
   // The turn to review: the agent message id (or user message id) for that turn. This is also the
   // grouping id stored on the Review row.
   turnMessageId: string
@@ -451,6 +456,9 @@ type FixLoopOptions = {
   reviewerMaxUpdates: number
   maxRounds: number
   sessionRefreshTimeoutMs: number
+  // Carried into each round's scoped re-review so a correction round is audited with the same
+  // supervisor leads the original review saw (see shared/supervisor-signals).
+  supervisor?: SupervisorPlan
   // Optional abort signal: when aborted, the loop exits at the next round boundary.
   abortSignal?: AbortSignal
 }
@@ -695,7 +703,8 @@ const runFixLoop = async (options: FixLoopOptions): Promise<void> => {
       reviewerTimeoutMs,
       reviewerMaxUpdates,
       trackedChecks: openChecks,
-      sessionSnapshot: correctionState.session
+      sessionSnapshot: correctionState.session,
+      supervisor: options.supervisor
     })
     const reReviewResult = scopedResult.review
 
@@ -814,6 +823,7 @@ const runScopedReview = async (options: {
   reviewerMaxUpdates: number
   trackedChecks: ReviewCheck[]
   sessionSnapshot?: PersistedChatSession
+  supervisor?: SupervisorPlan
 }): Promise<{ review: ReviewWithChecks; submittedChecks: NewCheck[] }> => {
   const {
     sessionId,
@@ -917,7 +927,10 @@ const runScopedReview = async (options: {
     await mcpServer.start()
 
     const reviewerPrompt = buildReviewerPrompt(scope, trackedChecks)
-    const systemPromptAppend = REVIEWER_RUBRIC_SYSTEM_PROMPT_APPEND
+    const systemPromptAppend = appendSupervisorNotice(
+      REVIEWER_RUBRIC_SYSTEM_PROMPT_APPEND,
+      options.supervisor
+    )
     const cwd = session.cwd || homedir()
 
     const built = await acpRuntime.buildReviewerSession({
@@ -1168,7 +1181,10 @@ const runReviewWithSession = async (
 
     const reviewerPrompt = buildReviewerPrompt(scope)
 
-    const systemPromptAppend = REVIEWER_RUBRIC_SYSTEM_PROMPT_APPEND
+    const systemPromptAppend = appendSupervisorNotice(
+      REVIEWER_RUBRIC_SYSTEM_PROMPT_APPEND,
+      options.supervisor
+    )
 
     // Spawn the reviewer ACP session (clean context, reviewer-only tools).
     const cwd = session.cwd || homedir()
@@ -1326,6 +1342,7 @@ const runReviewWithSession = async (
       await runFixLoop({
         sessionId,
         originalTurnMessageId: turnMessageId,
+        supervisor: options.supervisor,
         openChecks: finalReview.checks.filter((c) => c.status === 'warn' || c.status === 'fail'),
         projectId,
         mainSessionId,
@@ -1417,6 +1434,13 @@ export const runReview = async (options: RunReviewOptions): Promise<ReviewWithCh
     },
     (scopedRuntime) => runReviewWithSession({ ...options, acpRuntime: scopedRuntime }, session)
   )
+}
+
+// Keeps the base rubric first and appends the supervisor section only when there is one, so an ordinary
+// turn's instructions stay byte-identical to before.
+export const appendSupervisorNotice = (base: string, supervisor?: SupervisorPlan): string => {
+  const notice = buildSupervisorNotice(supervisor)
+  return notice ? `${base}\n\n${notice}` : base
 }
 
 // Builds the prompt sent to the isolated reviewer session. All evidence is available only through the
