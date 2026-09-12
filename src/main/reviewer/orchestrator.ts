@@ -927,6 +927,7 @@ const runScopedReview = async (options: {
     await mcpServer.start()
 
     const reviewerPrompt = buildReviewerPrompt(scope, trackedChecks)
+    logSupervisorLedger(sessionId, options.supervisor)
     const systemPromptAppend = appendSupervisorNotice(
       REVIEWER_RUBRIC_SYSTEM_PROMPT_APPEND,
       options.supervisor
@@ -1441,6 +1442,19 @@ export const runReview = async (options: RunReviewOptions): Promise<ReviewWithCh
 export const appendSupervisorNotice = (base: string, supervisor?: SupervisorPlan): string => {
   const notice = buildSupervisorNotice(supervisor)
   return notice ? `${base}\n\n${notice}` : base
+}
+
+// The ledger reaches the reviewer's instructions, but an instruction leaves no trace of its own: log
+// it so a run's supervision is auditable after the fact (and so an acceptance check has something to
+// read). No wake-ups and no degradation is the common case and stays silent.
+const logSupervisorLedger = (sessionId: string, supervisor?: SupervisorPlan): void => {
+  if (!supervisor || (supervisor.wakes.length === 0 && !supervisor.degraded)) return
+  log.info('reviewer: supervisor ledger attached', {
+    sessionId,
+    wakes: supervisor.wakes.map((wake) => `${wake.kind}@turn:${wake.atTurn}`),
+    handles: supervisor.wakes.map((wake) => wake.evidenceHandle),
+    degraded: supervisor.degraded?.reason
+  })
 }
 
 // Builds the prompt sent to the isolated reviewer session. All evidence is available only through the
