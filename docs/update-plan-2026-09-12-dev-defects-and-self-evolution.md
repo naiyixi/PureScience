@@ -57,7 +57,7 @@ DEV 一周的实跑暴露的不是"缺功能"，而是**已建成的护栏在真
 - 部分可绕开：`projects:create` → `acp:create-session` → **`sessions:save-session`**（该通道在 web RPC 面可用）→ `acp:resume-session` → `acp:send-prompt`。此路径**成功过一次**（agent 真调用 figure_review 并返回 JSON），但**不可重复**：后续同样序列均秒停。
 - 对**用户 GUI 建的、未挂载的会话**发 prompt 会报 `ACP session not found`（HTTP 500）——需要先 `acp:resume-session`。
 
-**遗留清理**：验证沙盒项目 `验证-figure-review`（`cmtyabfdw0000wfxpuhqyd0w8`、`cmtyc8tsn0000wfoq7b5ts34s`）未删净——`projects:delete` 返回 500（会话已删、目录仍在），列为 A1 收尾项。
+**遗留清理**：✅ 已完成——`projects:delete` 的正确参数键是 **`{id}`**（`{projectId}` 会触发 Prisma `findUnique` 报错 → HTTP 500），两个沙盒项目已删除、会话目录一并清除。
 
 ---
 
