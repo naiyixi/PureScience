@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import type { ComputeHost } from '../../shared/compute'
-import { COMPUTE_SKILL_DIRECTORY, syncComputeSkillDoc } from './skill-doc'
+import { COMPUTE_SKILL_DIRECTORY, syncComputeSkillDoc, renderEngineAvailability } from './skill-doc'
 
 const roots: string[] = []
 
@@ -144,5 +144,41 @@ describe('syncComputeSkillDoc', () => {
     await syncComputeSkillDoc(skillsDir, [sampleHost()])
     const noGpu = await readFile(join(skillsDir, COMPUTE_SKILL_DIRECTORY, 'SKILL.md'), 'utf8')
     expect(noGpu).toContain('none of the registered hosts reported GPUs at probe time')
+  })
+})
+
+describe('engine availability projection', () => {
+  it('lists every catalog engine with its output kind and why it is blocked', () => {
+    const block = renderEngineAvailability([])
+    expect(block).toContain('Engines available for this project')
+    expect(block).toContain('alphafold-db')
+    expect(block).toContain('database lookup')
+    // A prediction must never be presented as a measurement.
+    expect(block).toContain('esmfold')
+    expect(block).toContain('PREDICTED (must be labelled, never presented as a measurement)')
+    expect(block).toContain('needs user consent')
+    expect(block).toContain('not')
+    expect(block).toContain('computed: <what> — requires <engine or host>')
+  })
+
+  it('only claims a GPU when a probed host actually reported one', () => {
+    const withoutGpu = renderEngineAvailability([
+      { id: 'h1', displayName: 'host-1', executionMode: 'direct_ssh', probeResult: { ok: true } }
+    ] as never)
+    // No probed accelerator ⇒ the folding engine is not advertised as available; it needs a
+    // consented weight download (or a GPU host).
+    expect(withoutGpu).toContain('esmfold')
+    expect(withoutGpu).not.toMatch(/esmfold[^\n]*—\s*available/)
+    expect(withoutGpu).toContain('needs user consent')
+
+    const withGpu = renderEngineAvailability([
+      {
+        id: 'h2',
+        displayName: 'host-2',
+        executionMode: 'slurm',
+        probeResult: { ok: true, gpus: [{ type: 'A100', count: 2 }] }
+      }
+    ] as never)
+    expect(withGpu).toContain('available')
   })
 })

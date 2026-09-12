@@ -1,6 +1,7 @@
 import { chmod, readFile, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
+import { ENGINE_CATALOG, evaluateEngineAvailability } from '../../shared/engine-catalog'
 import type { ComputeHost } from '../../shared/compute'
 
 const COMPUTE_SKILL_ID = 'remote-compute-ssh'
@@ -83,6 +84,48 @@ const acceleratorLines = (hosts: readonly ComputeHost[]): string[] => {
   })
 }
 
+// Engine availability projection (v1.56): the readiness ladder above tells the agent *whether* a
+// host exists; this block tells it *which engines* can serve a request here, derived from the same
+// catalog the UI uses. Blocked engines are listed with their reason, so "no engine" is a fact the
+// agent can quote rather than a guess — and predicted engines are marked as predictions.
+export const renderEngineAvailability = (hosts: readonly ComputeHost[]): string => {
+  const hasComputeHost = hosts.some((host) => host.probeResult?.ok === true)
+  const hostGpus = hosts.flatMap((host) => host.probeResult?.gpus ?? [])
+  const context = {
+    // A GPU is only claimed when a probed host actually reported one; the local machine never
+    // advertises a GPU it has not proven.
+    hasGpu: hostGpus.length > 0,
+    allowOnDemandDownload: false,
+    hasComputeHost
+  }
+  const lines: string[] = ['Engines available for this project (from the engine catalog):']
+  for (const engine of ENGINE_CATALOG) {
+    const availability = evaluateEngineAvailability(engine, context)
+    const output =
+      engine.outputKind === 'measured'
+        ? 'measured'
+        : engine.outputKind === 'lookup'
+          ? 'database lookup'
+          : 'PREDICTED (must be labelled, never presented as a measurement)'
+    const status =
+      availability.status === 'ready'
+        ? 'available'
+        : availability.status === 'needs-consent'
+          ? `needs user consent: ${availability.reason}`
+          : availability.status === 'needs-host'
+            ? `needs a compute host: ${availability.reason}`
+            : `unavailable: ${availability.reason}`
+    lines.push(`  - ${engine.id} (${engine.label}) — ${output} — ${status}`)
+  }
+  lines.push(
+    '',
+    'Engine rules: never start a weight download or a job without the user approving it; a PREDICTED',
+    'output must say so wherever it appears; if nothing above can produce the number, say "not',
+    'computed: <what> — requires <engine or host>" instead of describing the number qualitatively.'
+  )
+  return lines.join('\n')
+}
+
 // Recommendation-only compute ladder. It tells the agent what is actually available and how to
 // report honestly when nothing is — the agent never auto-submits jobs, never installs engines, and
 // never substitutes a qualitative description for a requested number.
@@ -104,7 +147,9 @@ const renderComputeReadiness = (hosts: readonly ComputeHost[]): string => {
     '  2. If the question concerns a known molecule or structure, a database/connector answer (e.g. AlphaFold DB, PDB) may be used — label it a database prediction, not a computed result.',
     '  3. If no available engine can produce the requested quantity (for example ΔΔG or MD on a laptop without a GPU), state plainly "not computed: <what> — requires <engine or host>" with setup guidance.',
     '  4. Never replace a requested number with a qualitative description (an ASCII sketch, "roughly X Å away") and never fabricate a value.',
-    '  5. Report provenance for every number: engine, engine version, parameters, and input identifiers.'
+    '  5. Report provenance for every number: engine, engine version, parameters, and input identifiers.',
+    '',
+    renderEngineAvailability(hosts)
   ].join('\n')
 }
 
