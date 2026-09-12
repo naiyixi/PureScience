@@ -17,6 +17,39 @@ afterEach(async () => {
 })
 
 describe('local RPC transport', () => {
+  it('uses node:http (not the global fetch) for loopback TCP', async () => {
+    // Regression: the TCP path called the global fetch, i.e. undici, whose default headersTimeout of
+    // 300 s aborted any app-local call that legitimately ran longer. A long notebook cell surfaced as
+    // "Notebook RPC transport failed: UND_ERR_HEADERS_TIMEOUT" and left half-written artifacts. The
+    // global fetch must therefore never be used for app-local RPC — stub it to explode.
+    const server = createServer((_request, response) => {
+      setTimeout(() => {
+        response.writeHead(200, { 'content-type': 'application/json' })
+        response.end(JSON.stringify({ ok: true }))
+      }, 30)
+    })
+    servers.push(server)
+    const connection = await listenForLocalRpc(server, { name: 'transport-tcp-test' })
+    expect(connection.endpoint).toMatch(/^http:\/\/127\.0\.0\.1:\d+$/)
+
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = (() => {
+      throw new Error('global fetch (undici) must not serve app-local RPC')
+    }) as typeof fetch
+    try {
+      const response = await fetchLocalRpc(
+        { endpoint: `${connection.endpoint}/rpc` },
+        { method: 'POST', body: JSON.stringify({ protocolVersion: 1 }) },
+        'Notebook RPC'
+      )
+
+      expect(response.status).toBe(200)
+      await expect(response.json()).resolves.toEqual({ ok: true })
+    } finally {
+      globalThis.fetch = originalFetch
+    }
+  })
+
   it('posts JSON through a local socket without loopback TCP', async () => {
     const server = createServer((request, response) => {
       response.writeHead(200, { 'content-type': 'application/json' })

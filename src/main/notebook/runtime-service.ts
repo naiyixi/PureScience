@@ -456,7 +456,7 @@ class NotebookRuntimeService {
       resolveRuntimeEnablement: (language) => this.resolveRuntimeEnablement(language),
       resolveRuntimeSelection: (language) => this.resolveRuntimeSelection(language),
       adoptRuntimeSelection: (session, language, selection) =>
-        this.adoptSelectedRuntime(session, language, selection),
+        this.runtimeBindingOwner.adoptSelection(session, language, selection),
       repairPolicy: this.repairPolicy
     })
     this.runTerminalization = new NotebookRunTerminalizationOwner({
@@ -501,32 +501,6 @@ class NotebookRuntimeService {
     if (!resolver) return undefined
     try {
       return await resolver(language)
-    } catch {
-      return undefined
-    }
-  }
-
-  // Materializes a persisted external selection into an actual session binding, so the admission
-  // resolves the chosen interpreter instead of the managed env. Returns undefined (never throws) when
-  // the selected runtime is gone, not enabled, or not runnable — the admission then explains the
-  // fallback instead of silently switching runtimes.
-  private async adoptSelectedRuntime(
-    session: NotebookSessionAggregate,
-    language: NotebookLanguage,
-    selection: RuntimeSelection
-  ): Promise<NotebookSessionRuntimeBinding | undefined> {
-    if (selection.source !== 'external') return undefined
-    try {
-      const { runtimes } = await this.runtimeBindingOwner.list(session)
-      const match = runtimes.find(
-        (runtime) =>
-          runtime.language === language &&
-          runtime.runnable &&
-          runtime.interpreterPath === selection.interpreterPath
-      )
-      if (!match) return undefined
-      await this.runtimeBindingOwner.bind(session, language, match.runtimeId)
-      return session.runtimeBinding(language)
     } catch {
       return undefined
     }

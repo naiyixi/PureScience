@@ -1,3 +1,5 @@
+import { createServer } from 'node:http'
+
 import { describe, expect, it } from 'vitest'
 import { Tiktoken } from 'js-tiktoken/lite'
 import cl100kBase from 'js-tiktoken/ranks/cl100k_base'
@@ -30,6 +32,32 @@ import {
 } from './mcp-server'
 
 const tokenizer = new Tiktoken(cl100kBase)
+
+// The app-local RPC client goes through node:http, not the global fetch — that undici headers
+// deadline (300 s) used to abort long notebook calls, so a fetch stub would intercept nothing. These
+// forwarding tests therefore capture the wire body with a real loopback server.
+const startRpcCapture = async (
+  responseBody: unknown
+): Promise<{ endpoint: string; calls: Array<{ body: string }>; close: () => Promise<void> }> => {
+  const calls: Array<{ body: string }> = []
+  const server = createServer((request, response) => {
+    const chunks: Buffer[] = []
+    request.on('data', (chunk) => chunks.push(Buffer.from(chunk)))
+    request.on('end', () => {
+      calls.push({ body: Buffer.concat(chunks).toString('utf8') })
+      response.writeHead(200, { 'content-type': 'application/json' })
+      response.end(JSON.stringify(responseBody))
+    })
+  })
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', () => resolve()))
+  const address = server.address()
+  const port = typeof address === 'object' && address ? address.port : 0
+  return {
+    endpoint: `http://127.0.0.1:${port}`,
+    calls,
+    close: () => new Promise<void>((resolve) => server.close(() => resolve()))
+  }
+}
 
 describe('notebook MCP server config', () => {
   it('builds an ACP stdio MCP server config scoped to the notebook runtime RPC endpoint', () => {
@@ -183,24 +211,16 @@ describe('notebook_execute tool', () => {
   })
 
   it('forwards the selected language straight through to the execute RPC call', async () => {
+    const rpc = await startRpcCapture({ result: { ok: true } })
+    // The MCP tool handler passes schema-validated input straight to callNotebookRpc as the
+    // RPC params, so asserting the call helper forwards `language` covers the handler wiring.
     const environment = {
-      endpoint: 'http://127.0.0.1:4567',
+      endpoint: rpc.endpoint,
       token: 'secret-token',
       projectName: 'default-project',
       sessionId: 'session-1',
       workspaceCwd: '/workspace'
     }
-    // The MCP tool handler passes schema-validated input straight to callNotebookRpc as the
-    // RPC params, so asserting the call helper forwards `language` covers the handler wiring.
-    const fetchCalls: Array<{ body: string }> = []
-    const originalFetch = globalThis.fetch
-    globalThis.fetch = (async (_url: unknown, init?: RequestInit) => {
-      fetchCalls.push({ body: String(init?.body ?? '') })
-      return {
-        ok: true,
-        json: async () => ({ result: { ok: true } })
-      } as Response
-    }) as typeof fetch
 
     try {
       const result = await callNotebookRpc(environment, 'execute', {
@@ -209,11 +229,11 @@ describe('notebook_execute tool', () => {
       })
 
       expect(result).toEqual({ ok: true })
-      expect(fetchCalls).toHaveLength(1)
-      const sentBody = JSON.parse(fetchCalls[0].body) as { params: { language?: string } }
+      expect(rpc.calls).toHaveLength(1)
+      const sentBody = JSON.parse(rpc.calls[0].body) as { params: { language?: string } }
       expect(sentBody.params.language).toBe('r')
     } finally {
-      globalThis.fetch = originalFetch
+      await rpc.close()
     }
   })
 })
@@ -248,35 +268,27 @@ describe('repl_execute tool', () => {
   })
 
   it('forwards repl_execute input to the executeControl RPC method', async () => {
+    const rpc = await startRpcCapture({ result: { status: 'completed' } })
     const environment = {
-      endpoint: 'http://127.0.0.1:4567',
+      endpoint: rpc.endpoint,
       token: 'secret-token',
       projectName: 'default-project',
       sessionId: 'session-1',
       workspaceCwd: '/workspace'
     }
-    const fetchCalls: Array<{ body: string }> = []
-    const originalFetch = globalThis.fetch
-    globalThis.fetch = (async (_url: unknown, init?: RequestInit) => {
-      fetchCalls.push({ body: String(init?.body ?? '') })
-      return {
-        ok: true,
-        json: async () => ({ result: { status: 'completed' } })
-      } as Response
-    }) as typeof fetch
 
     try {
       await callNotebookRpc(environment, tool?.method ?? '', { code: 'return 2' })
 
-      expect(fetchCalls).toHaveLength(1)
-      const body = JSON.parse(fetchCalls[0].body) as {
+      expect(rpc.calls).toHaveLength(1)
+      const body = JSON.parse(rpc.calls[0].body) as {
         method: string
         params: { code?: string }
       }
       expect(body.method).toBe('executeControl')
       expect(body.params.code).toBe('return 2')
     } finally {
-      globalThis.fetch = originalFetch
+      await rpc.close()
     }
   })
 })
@@ -326,35 +338,27 @@ describe('bash_execute tool', () => {
   })
 
   it('forwards bash_execute input to the executeShell RPC method', async () => {
+    const rpc = await startRpcCapture({ result: { stdout: 'hi\n', stderr: '', exitCode: 0 } })
     const environment = {
-      endpoint: 'http://127.0.0.1:4567',
+      endpoint: rpc.endpoint,
       token: 'secret-token',
       projectName: 'default-project',
       sessionId: 'session-1',
       workspaceCwd: '/workspace'
     }
-    const fetchCalls: Array<{ body: string }> = []
-    const originalFetch = globalThis.fetch
-    globalThis.fetch = (async (_url: unknown, init?: RequestInit) => {
-      fetchCalls.push({ body: String(init?.body ?? '') })
-      return {
-        ok: true,
-        json: async () => ({ result: { stdout: 'hi\n', stderr: '', exitCode: 0 } })
-      } as Response
-    }) as typeof fetch
 
     try {
       await callNotebookRpc(environment, tool?.method ?? '', { command: 'echo hi' })
 
-      expect(fetchCalls).toHaveLength(1)
-      const body = JSON.parse(fetchCalls[0].body) as {
+      expect(rpc.calls).toHaveLength(1)
+      const body = JSON.parse(rpc.calls[0].body) as {
         method: string
         params: { command?: string }
       }
       expect(body.method).toBe('executeShell')
       expect(body.params.command).toBe('echo hi')
     } finally {
-      globalThis.fetch = originalFetch
+      await rpc.close()
     }
   })
 })
@@ -691,32 +695,24 @@ describe('manage_environments tool', () => {
   })
 
   it('forwards manage_environments input to the manageEnvironments RPC method', async () => {
+    const rpc = await startRpcCapture({ result: { environments: [] } })
     const environment = {
-      endpoint: 'http://127.0.0.1:4567',
+      endpoint: rpc.endpoint,
       token: 'secret-token',
       projectName: 'default-project',
       sessionId: 'session-1',
       workspaceCwd: '/workspace'
     }
-    const fetchCalls: Array<{ body: string }> = []
-    const originalFetch = globalThis.fetch
-    globalThis.fetch = (async (_url: unknown, init?: RequestInit) => {
-      fetchCalls.push({ body: String(init?.body ?? '') })
-      return {
-        ok: true,
-        json: async () => ({ result: { environments: [] } })
-      } as Response
-    }) as typeof fetch
 
     try {
       await callNotebookRpc(environment, tool?.method ?? '', { action: 'list' })
 
-      expect(fetchCalls).toHaveLength(1)
-      const body = JSON.parse(fetchCalls[0].body) as { method: string; params: { action?: string } }
+      expect(rpc.calls).toHaveLength(1)
+      const body = JSON.parse(rpc.calls[0].body) as { method: string; params: { action?: string } }
       expect(body.method).toBe('manageEnvironments')
       expect(body.params.action).toBe('list')
     } finally {
-      globalThis.fetch = originalFetch
+      await rpc.close()
     }
   })
 

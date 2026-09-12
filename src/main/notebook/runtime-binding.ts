@@ -5,7 +5,8 @@ import {
   type NotebookRuntimeBinding,
   type NotebookRuntimeBindings,
   type NotebookRuntimeListing,
-  type RuntimeBindingUnavailableReason
+  type RuntimeBindingUnavailableReason,
+  type RuntimeSelection
 } from '../../shared/notebook-runtime'
 import type { NotebookRuntimeSettings } from '../settings/capabilities'
 import {
@@ -175,6 +176,32 @@ export class NotebookRuntimeBindingOwner {
       }
     }
     return { runtimes, bindings: this.snapshot(session) }
+  }
+
+  // Materializes a persisted Settings selection (source 'external') into a real binding for a session
+  // that has none, so execution resolves the chosen interpreter instead of the managed default.
+  // Returns undefined — never throws — when the selection is not external, its runtime is gone, not
+  // enabled, or not runnable; callers then keep the managed default and explain the fallback.
+  async adoptSelection(
+    session: RuntimeBindingSession,
+    language: NotebookLanguage,
+    selection: RuntimeSelection
+  ): Promise<NotebookSessionRuntimeBinding | undefined> {
+    if (selection.source !== 'external') return undefined
+    try {
+      const { runtimes } = await this.list(session)
+      const match = runtimes.find(
+        (runtime) =>
+          runtime.language === language &&
+          runtime.runnable &&
+          runtime.interpreterPath === selection.interpreterPath
+      )
+      if (!match) return undefined
+      await this.bind(session, language, match.runtimeId)
+      return session.runtimeBinding(language)
+    } catch {
+      return undefined
+    }
   }
 
   async bind(

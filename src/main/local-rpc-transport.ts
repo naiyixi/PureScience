@@ -91,7 +91,14 @@ const requestBody = (
 
 // Implements the small Fetch surface used by MCP Streamable HTTP and the app-local JSON RPC calls.
 // Keeping it Fetch-compatible lets the existing MCP client own protocol/session behavior unchanged.
-const fetchOverSocket = (socketPath: string): typeof fetch => {
+// node:http is used for BOTH transports (named pipe and loopback TCP): the global fetch is undici,
+// whose default headersTimeout (300 s) aborts any app-local call that legitimately runs longer — a
+// notebook cell taking minutes surfaced as "Notebook RPC transport failed:
+// UND_ERR_HEADERS_TIMEOUT" and left half-written artifacts. Product-level timeouts (cell timeoutMs,
+// cancel) stay the authority for how long work may run.
+type NodeHttpTarget = { socketPath: string } | { host: string; port: number }
+
+const fetchOverNodeHttp = (target: NodeHttpTarget): typeof fetch => {
   const socketFetch = async (
     input: string | URL | Request,
     init: RequestInit = {}
@@ -101,9 +108,13 @@ const fetchOverSocket = (socketPath: string): typeof fetch => {
     const body = requestBody(init.body)
 
     return new Promise<Response>((resolve, reject) => {
+      const targetOptions =
+        'socketPath' in target
+          ? { socketPath: target.socketPath }
+          : { host: target.host, port: target.port }
       const request = httpRequest(
         {
-          socketPath,
+          ...targetOptions,
           path: `${url.pathname}${url.search}`,
           method: init.method ?? 'GET',
           headers: Object.fromEntries(headers.entries())
@@ -140,6 +151,20 @@ const fetchOverSocket = (socketPath: string): typeof fetch => {
   return socketFetch as typeof fetch
 }
 
+const fetchOverSocket = (socketPath: string): typeof fetch => fetchOverNodeHttp({ socketPath })
+
+// Loopback TCP endpoint → the same node:http shim. Returns undefined when the endpoint is not a plain
+// http:// URL, so the caller can fall back instead of guessing.
+const fetchOverLoopbackHttp = (endpoint: string): typeof fetch | undefined => {
+  try {
+    const url = new URL(endpoint)
+    if (url.protocol !== 'http:') return undefined
+    return fetchOverNodeHttp({ host: url.hostname, port: url.port ? Number(url.port) : 80 })
+  } catch {
+    return undefined
+  }
+}
+
 const errorDetail = (error: unknown): string => {
   const root = error as { message?: unknown; code?: unknown; cause?: unknown }
   const cause = root?.cause as { message?: unknown; code?: unknown } | undefined
@@ -164,7 +189,9 @@ const fetchLocalRpc = async (
   label: string
 ): Promise<Response> => {
   try {
-    const request = transport.socketPath ? fetchOverSocket(transport.socketPath) : fetch
+    const request = transport.socketPath
+      ? fetchOverSocket(transport.socketPath)
+      : (fetchOverLoopbackHttp(transport.endpoint) ?? fetch)
     return await request(transport.endpoint, init)
   } catch (error) {
     throw new Error(`${label} transport failed: ${errorDetail(error)}`, { cause: error })

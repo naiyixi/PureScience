@@ -97,6 +97,8 @@ DEV 一周的实跑暴露的不是"缺功能"，而是**已建成的护栏在真
 
 **实机验收（2026-09-12 22:13，新构建已含改动）**：UI 新建项目 `verify-a2-2213` → 让 agent 跑一个 Python 单元并回报解释器 → agent 原始 stdout：**`PYEXEC=/Users/totota/.cache/purescience/md-venv/bin/python`**（= 设置里选的 external 解释器，与 `notebookRuntimes.python.interpreterPath` 逐字一致）；主日志该会话**无任何 `runtimeSource:'managed'` / 供给相关行** ⇒ 修复前必现的"托管包下载"没有发生。沙盒项目与会话已删除、目录无残留。
 
+**A2 后继修正（CI 架构门禁红，2026-09-12）**：`54dca02` 的 Nightly 在 **Test** 步红——`src/main/notebook/runtime-service.architecture.test.ts` 钉住 facade 的字段表与方法表，并单列一条"facade 里只许放**无状态**策略 helper"，而我把会做 IO 的采用逻辑写在了 facade 里（`adoptSelectedRuntime` + 新增 `runtimeSelectionResolver` 字段）。修法：把 IO 逻辑**移入它本来该在的 owner** —— `NotebookRuntimeBindingOwner.adoptSelection()`（该类已拥有 `list`/`bind`），facade 只保留一个委托箭头；`runtimeSelectionResolver` 作为与既有 `runtimeEnablementResolver` 同形的无状态委托器加入钉住的字段表并注明理由。本地该架构文件 6 项 + notebook 相关簇全绿。**教训已入 skill**：动 facade 前先跑该文件的架构测试；会 IO 的方法一律不进 facade。
+
 ### 2.2 A3 进度（自动审计默认开 = opt-out）
 
 **已落地（2026-09-12）**：把自动审计从"默认关"改为**默认开、仅显式关闭才关**（opt-out）：
@@ -107,6 +109,18 @@ DEV 一周的实跑暴露的不是"缺功能"，而是**已建成的护栏在真
 - 测试：`session-persistence.test.ts` 里原"legacy/corrupt → false"的两条断言按新语义改为 `true`（并注明这就是"审计从不运行"的根因）；`workspace-events.test.ts` 的"未设置时不触发"反转为"未设置时**触发**"。两文件 37 + 74 项全绿，lint 干净、typecheck 双绿。
 
 **未做（仍在 A3 内）**：② 守门技能默认禁用清单的复核——代码里**没有出厂默认禁用清单**（`disabledSkillIds` 只来自用户设置），DEV 那 17 项是用户侧配置，因此正确做法是**在设置/会话里显式提示"守门技能已关闭"**而不是偷偷改用户配置；③ memory 默认开启的可行性评估与提示。
+
+**A3-② 守门技能（2026-09-12 已执行，用户拍板"重新启用"）**：经应用自己的设置通道 `settings:set-skill-enabled` 在 DEV 里重新启用四支守门技能 —— **citation-integrity / evidence-grading / literature-search-strategy / methods-writing-audit**。三重核对：① 设置通道四次均 HTTP 200；② `settings.json` 的 `disabledSkillIds` 由 **17 → 13**，四支均不在其中；③ `settings:list-skills` 回读四支 `enabled: true`（DEV 技能目录共 65 支）。其余 13 支（pkpd-modeling、research-contract、statistical-inference、uncertainty-units-audit、protocol-authoring、study-design、evidence-quality-assessment、meta-analysis-methods、rwe-database-research、differential-expression、enrichment-analysis、expression-data-prep、signature-and-validation）**保持用户原样**，不擅自改动。agent 侧物化在**下一次会话 spawn** 时同步（`claude/skills/` 目录）。
+
+**A3-③ 待做**：memory 默认开启的可行性评估与提示。
+
+### 2.3 A4 根因与实现（notebook RPC 超时）
+
+**根因（已定位到一行）**：`src/main/local-rpc-transport.ts` 里本地 RPC 的两条传输路径不一致——命名管道走 node:http，**loopback TCP 走全局 `fetch`（undici）**，而 undici 默认 `headersTimeout` 是 **300 秒**。于是任何真正跑得久的 notebook 调用（一个跑几分钟的单元）都会被**客户端**在 300 s 掐断。DEV 日志 4 次实证：`Notebook RPC transport failed: UND_ERR_HEADERS_TIMEOUT`（L21335 / L260177 / L260228）与 `Session Plan RPC transport failed: UND_ERR_HEADERS_TIMEOUT`（L285041）；症状正是"`deliverables/` 空目录 = 脚本被 RPC 超时中断的痕迹"与前端未处理 rejection + renderer 挂起 37 s / 121 s。
+
+**修法（已实现，待随 CI 绿推送）**：把 node:http shim 推广到 loopback TCP（`fetchOverNodeHttp` + `fetchOverLoopbackHttp`），**App 本地 RPC 一律不经 undici**，因此不存在隐式 300 s 判定；产品级超时（单元 `timeoutMs`、用户取消）仍是唯一权威，不引入新的"永不超时"。回归测试把 `globalThis.fetch` 替换成抛错函数后断言 loopback TCP 调用仍成功 —— 机械钉住"本地 RPC 永不使用全局 fetch"，防止回退。
+
+**仍待做（A4b）**：中断后的**产物保全与可诊断**——目前超时后留下半成品目录、没有"中断点 + 如何续跑"的提示。下一步做：中断即写一份可诊断摘要（已完成的步骤、未完成项、可续跑的入口），而不是让用户对着空目录猜。
 
 ### P1 — 把失败经验变成资产（PILOT 借鉴的主体）
 

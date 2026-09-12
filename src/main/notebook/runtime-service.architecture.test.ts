@@ -184,6 +184,9 @@ describe('Notebook runtime facade architecture', () => {
         'runTerminalization',
         'runtimeBindingOwner',
         'runtimeEnablementResolver',
+        // Persisted per-language runtime choice, read fresh for the execution admission (same shape as
+        // the enablement resolver above: a delegating pointer, no state of its own).
+        'runtimeSelectionResolver',
         'runtimeLogger',
         'runtimeRepair',
         'sessionLifecycle',
@@ -274,6 +277,9 @@ describe('Notebook runtime facade architecture', () => {
         'isDefaultEnvDisabled',
         'resolveRunEnv',
         'resolveRuntimeEnablement',
+        // Same stateless shape as resolveRuntimeEnablement: reads the persisted selection through the
+        // injected resolver, holds nothing, and performs no IO of its own.
+        'resolveRuntimeSelection',
         'tearDownLanguageBinding'
       ].sort()
     )
