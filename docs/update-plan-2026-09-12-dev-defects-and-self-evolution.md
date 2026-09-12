@@ -121,6 +121,12 @@ DEV 一周的实跑暴露的不是"缺功能"，而是**已建成的护栏在真
 
 **为什么不做默认开**：记忆是模型自撰的用户画像（写错会跨会话放大）、且每条笔记进每个会话系统提示（本机上下文 tools 已 ~569k）；DEV 里 `notes` 为空说明需求未显性化。邀约模式同时拿到"不漏记"与"用户主权"。**核查更正**：曾怀疑关记忆会连坐 `checkpoint_save/load`——**不成立**（memory 能力在 `runtime-composition.ts:295` 无条件接线；开关只被 `memory-recall.ts:30` 与 `service.ts` 的保存路径读取）。
 
+**实机验收（2026-09-12，DEV 记忆处于关闭状态）**：UI 新建沙盒项目 `verify-memory-0045` → 对 agent 说一句耐久偏好（"结论先行"）→ agent 真实回复：
+
+> Not saved — the PureScience memory tool reports memory is off (Settings → Memory to turn it on), and **writing elsewhere was denied**, so this preference lives only in this conversation.
+
+三条都满足：① 明说**没有保存**（不谎称成功）；② 给出开启路径（Settings → Memory）；③ **尝试写到别处也被拦**（护栏生效）。对照修复前：同一情形只会得到静默 `{saved:false}`，用户永远不知道这条值得记。沙盒项目与会话已删除。（附注：验收脚本里"是否给出开启路径"的正则写反了导致误报 false——文本里动词在名词之后，产品行为正确。）
+
 ### 2.3 A4 根因与实现（notebook RPC 超时）
 
 **根因（已定位到一行）**：`src/main/local-rpc-transport.ts` 里本地 RPC 的两条传输路径不一致——命名管道走 node:http，**loopback TCP 走全局 `fetch`（undici）**，而 undici 默认 `headersTimeout` 是 **300 秒**。于是任何真正跑得久的 notebook 调用（一个跑几分钟的单元）都会被**客户端**在 300 s 掐断。DEV 日志 4 次实证：`Notebook RPC transport failed: UND_ERR_HEADERS_TIMEOUT`（L21335 / L260177 / L260228）与 `Session Plan RPC transport failed: UND_ERR_HEADERS_TIMEOUT`（L285041）；症状正是"`deliverables/` 空目录 = 脚本被 RPC 超时中断的痕迹"与前端未处理 rejection + renderer 挂起 37 s / 121 s。
