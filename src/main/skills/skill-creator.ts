@@ -15,14 +15,22 @@ import {
   type SkillCreateInput,
   type SkillCreateResult
 } from '../../shared/skill-create'
+import { DEFAULT_SKILL_PROVENANCE, skillProvenanceFields } from '../../shared/skill-provenance'
 
 const yamlQuote = (value: string): string => `"${value.replace(/"/g, '\\"')}"`
 
 const buildSkillDocument = (input: SkillCreateInput): string => {
+  // An agent-drafted skill starts UNVERIFIED unless the caller declares otherwise: nothing has checked
+  // that the procedure works (see shared/skill-provenance). Only a verified entry is reusable without
+  // review, so the state has to be written down at creation time.
+  const provenance = input.provenance ?? DEFAULT_SKILL_PROVENANCE
   const frontmatter = [
     '---',
     `name: ${yamlQuote(input.name.trim())}`,
     `description: ${yamlQuote(input.description.trim())}`,
+    ...Object.entries(skillProvenanceFields(provenance)).map(
+      ([key, value]) => `${key}: ${yamlQuote(value)}`
+    ),
     ...(input.references && input.references.length > 0
       ? [`references:\n${input.references.map((ref) => `  - ${yamlQuote(ref)}`).join('\n')}`]
       : []),
@@ -77,7 +85,15 @@ export class SkillCreator {
     }
 
     const skillDir = join(this.configDir, 'skills', name)
-    const document = buildSkillDocument({ name, description, instructions, references })
+    const document = buildSkillDocument({
+      name,
+      description,
+      instructions,
+      references,
+      // Forward the declared trust state: rebuilding the input without it silently stamped every
+      // skill as a fresh, unverified draft.
+      ...(input.provenance ? { provenance: input.provenance } : {})
+    })
 
     try {
       await mkdir(skillDir, { recursive: true })

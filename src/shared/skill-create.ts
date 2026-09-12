@@ -4,6 +4,8 @@
 // writes skill files itself. Bounds keep a hostile draft from overflowing or escaping the skills
 // directory.
 
+import type { SkillProvenance } from './skill-provenance'
+
 export const SKILL_CREATE_TOOL_NAME = 'create_skill'
 
 export const SKILL_CREATE_TOOL_DESCRIPTION =
@@ -75,6 +77,10 @@ export type SkillCreateInput = {
   description: string
   instructions: string
   references?: string[]
+  // Trust state of the knowledge being saved. Absent = a fresh agent draft, which is stamped
+  // `unverified` + `procedure` (see shared/skill-provenance): only a verified entry may be reused
+  // without review, so the state is recorded at creation time rather than inferred later.
+  provenance?: SkillProvenance
 }
 
 // Validates a candidate skill name against the wire pattern. Pure so the creator and tests share it.

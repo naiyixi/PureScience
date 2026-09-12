@@ -4,6 +4,10 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { SkillCreator } from './skill-creator'
+import { parseSkillDocument } from '../../shared/skill-frontmatter'
+import { isReusableWithoutReview, parseSkillProvenance } from '../../shared/skill-provenance'
+
+const trustFields = (doc: string): Record<string, string> => parseSkillDocument(doc).metadata
 
 let dir: string
 let creator: SkillCreator
@@ -31,6 +35,45 @@ describe('SkillCreator', () => {
     expect(doc).toContain('name: "docking-review"')
     expect(doc).toContain('description: "Reviews molecular docking poses"')
     expect(doc).toContain('2. Score interactions')
+  })
+
+  it('stamps a fresh draft as unverified so it is not reused without review', async () => {
+    await creator.create({
+      name: 'docking-review',
+      description: 'Reviews molecular docking poses',
+      instructions: '1. Load the pose file'
+    })
+
+    const doc = await readFile(join(dir, 'skills', 'docking-review', 'SKILL.md'), 'utf8')
+    const fields = trustFields(doc)
+
+    expect(fields.trust).toBe('unverified')
+    expect(fields.trust_kind).toBe('procedure')
+    expect(isReusableWithoutReview(parseSkillProvenance(fields))).toBe(false)
+  })
+
+  it('keeps declared provenance (kind, origin, evidence) in the document', async () => {
+    await creator.create({
+      name: 'vina-install',
+      description: 'How to get a working Vina binary',
+      instructions: 'Use the conda-forge package.',
+      provenance: {
+        kind: 'failure-mode',
+        verification: 'verified',
+        verifiedBy: 'user',
+        originRunId: 'run-17',
+        evidence: ['pip install vina -> needs Boost (fails)']
+      }
+    })
+
+    const doc = await readFile(join(dir, 'skills', 'vina-install', 'SKILL.md'), 'utf8')
+    const provenance = parseSkillProvenance(trustFields(doc))
+
+    expect(provenance.kind).toBe('failure-mode')
+    expect(provenance.verifiedBy).toBe('user')
+    expect(provenance.originRunId).toBe('run-17')
+    expect(provenance.evidence).toEqual(['pip install vina -> needs Boost (fails)'])
+    expect(isReusableWithoutReview(provenance)).toBe(true)
   })
 
   it('rejects invalid names without touching the filesystem', async () => {
