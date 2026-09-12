@@ -29,7 +29,9 @@ describe('local RPC transport', () => {
       }, 30)
     })
     servers.push(server)
-    const connection = await listenForLocalRpc(server, { name: 'transport-tcp-test' })
+    // Force the loopback TCP transport: the default is a named pipe on Windows, where the endpoint
+    // is the pipe shim's `http://localhost` and this test's whole point is the TCP path.
+    const connection = await listenForLocalRpc(server, { name: 'transport-tcp-test', transport: 'tcp' })
     expect(connection.endpoint).toMatch(/^http:\/\/127\.0\.0\.1:\d+$/)
 
     const originalFetch = globalThis.fetch
