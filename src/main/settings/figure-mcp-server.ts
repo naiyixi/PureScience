@@ -43,6 +43,31 @@ const figurePanelSchema = z.object({
     .optional()
     .describe('True when summary stats still included the excluded rows.'),
   rendered: z.boolean().optional().describe('True once rendered and visually inspected.'),
+  // Rule 6 (log axis sanity) reads these; without the field on the wire the rule can never fire
+  // from the agent path no matter what the agent declares in prose.
+  axis_ticks: z
+    .array(
+      z.object({
+        axis: z.enum(['x', 'y']).describe('Which axis the ticks belong to.'),
+        scale: z.enum(['linear', 'log']).describe('Declared axis scale.'),
+        labels: z.array(z.string()).describe('Tick labels as shown on the axis.')
+      })
+    )
+    .optional()
+    .describe('Declared axis tick labels (rule 6) so a mislabeled log scale is caught.'),
+  // Rule 7 (source artifact) reads these.
+  rendered_image_path: z
+    .string()
+    .optional()
+    .describe('Path of the shipped .png for this panel (rule 7).'),
+  source_script_path: z
+    .string()
+    .optional()
+    .describe('Path of the .py script that produced this panel (rule 7).'),
+  font_pt: z
+    .number()
+    .optional()
+    .describe('Smallest font size used in the figure, in points (rule 7 legibility floor).'),
   note: z.string().optional().describe('Free-form note (log scale, n per group, …).')
 })
 
@@ -114,6 +139,14 @@ const createFigureMcpServer = (handler: FigureMcpHandler): ModelContextProtocolS
             ? panel.summary_used_excluded
             : undefined,
         rendered: typeof panel.rendered === 'boolean' ? panel.rendered : undefined,
+        axisTicks: Array.isArray(panel.axis_ticks)
+          ? (panel.axis_ticks as FigurePanel['axisTicks'])
+          : undefined,
+        renderedImagePath:
+          typeof panel.rendered_image_path === 'string' ? panel.rendered_image_path : undefined,
+        sourceScriptPath:
+          typeof panel.source_script_path === 'string' ? panel.source_script_path : undefined,
+        fontPt: typeof panel.font_pt === 'number' ? panel.font_pt : undefined,
         note: typeof panel.note === 'string' ? panel.note : undefined
       }
     })

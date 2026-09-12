@@ -25,7 +25,11 @@ export const FIGURE_REVIEW_TOOL_DESCRIPTION =
   'log-scale tick labels must be positive numbers in strict order (a decade axis annotated ' +
   '"0.05" where the value is "0.4" fails here); (7) SOURCE ARTIFACT — every shipped figure keeps ' +
   'both its image (.png) and the script (.py) that produced it, and text no smaller than ~6pt. ' +
-  'Run this before finalizing any figure; fix the violations and re-run.'
+  'Run this before finalizing any figure; fix the violations and re-run. ' +
+  'Pass the evidence for checks 6 and 7 IN THE ARGUMENTS — the engine only sees what you ' +
+  'send: `axis_ticks` (per-axis declared tick labels) for check 6, and `rendered_image_path` + ' +
+  '`source_script_path` + `font_pt` for check 7. Describing them only in prose does not reach ' +
+  'the engine.'
 
 // The seven correctness rules (stable ids for structured results).
 export const FIGURE_RULE_DATA_FIDELITY = 'data_fidelity'
@@ -133,11 +137,13 @@ export const FIGURE_MCP_SYSTEM_PROMPT_APPEND = [
     'distribution → histogram/box, relationship → scatter); (5) render and visually inspect ' +
     'each panel.',
   'Two further checks apply to every shipped figure: (6) LOG AXIS SANITY — declare the tick ' +
-    'labels of any log-scale axis; they must be positive numbers in strict order, so a ' +
-    'mislabeled decade (annotating 0.4 as 0.05) is caught before publication; (7) SOURCE ' +
-    'ARTIFACT — keep both the rendered image (.png) and the plotting script (.py) for every ' +
-    'figure and pass their paths, and keep the smallest font at ~6pt or larger so the figure ' +
-    'stays readable at column width.',
+    'labels of any log-scale axis via the `axis_ticks` argument (per axis: scale, labels); they ' +
+    'must be positive numbers in strict order, so a mislabeled decade (annotating 0.4 as 0.05) ' +
+    'is caught before publication; (7) SOURCE ARTIFACT — keep both the rendered image (.png) ' +
+    'and the plotting script (.py) for every figure and pass their paths as ' +
+    '`rendered_image_path` and `source_script_path`, plus `font_pt` for the smallest font used, ' +
+    'which must stay at ~6pt or larger so the figure stays readable at column width. Declaring ' +
+    'these in prose does not reach the rule engine — only the arguments do.',
   'Fix every error-severity violation and re-run figure_review before declaring a figure ' +
     'done; warnings are judgment calls but should be resolved deliberately.',
   '</purescience_figure_instructions>'

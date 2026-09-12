@@ -23,10 +23,24 @@ DEV 一周的实跑暴露的不是"缺功能"，而是**已建成的护栏在真
 | D5 | **输入文件预检缺失 → 空跑**：任务引用的 `sim_*.csv` 全盘不存在，agent 只能自造"合成替代数据"并写大量诚实声明；产出报告描述的是模拟数据而非真实数据 | 会话 190cc71b（4 个文件均缺失，报告 §最重要的事先说）、92145499（自造两份模拟数据）、de70d881（"输入文件本会话缺失，全部数值基于合成替代数据"） | 3 会话 | **P1** |
 | D6 | **外部抓取逐条授权摩擦**：专利/PMC/UniProt 抓取每次弹 `authorization.required` | `NotificationInboxItem` 中 `authorization.required` 40+ 条（近 8 天），如 USP28 会话连续 10+ 条专利站点授权 | 40+ | **P1** |
 | D7 | **昂贵的失败教训无沉淀**：`pip build vina` 失败（09-08）、PEP 668、坐标系统不一致等教训，一周内技能库 **0 新增**、`memory.enabled=false` → 每次都重新踩 | 主日志 L283842 `Failed to build 'vina' …`；`~/.purescience-project/skills/` 仅 2 项（auto_fix_convergence 09-04、personal）；settings `memory.enabled:false` | 结构性 | **P1** |
+| D11 | **`create_skill` 的长度校验以原始 MCP 报错砸回 agent**：唯一一次真实"想沉淀技能"的调用被拒（`MCP error -32602 … Too big: expected string to have <=200 characters at description`），因为 `SKILL_CREATE_TOOL_DESCRIPTION` 从未告知 200 字符上限；agent 只能自己猜着重试（09-04 23:03 被拒 → 23:09 才成功落盘 `auto_fix_convergence`） | 主日志 L246201-246207；`src/shared/skill-create.ts:28,44`（schema 有 maxLength，描述无） | 1 次硬失败 | **P1** |
 | D8 | **守门与自进化通路在真实使用中未启用**：① `autoReviewEnabled` 38/38 会话为 False（代码默认 `=== true ? true : false`，`session-persistence.ts:1582`）；② `memory.enabled=false`；③ `disabledSkillIds` 17 项里含 **citation-integrity、evidence-grading、evidence-quality-assessment、literature-search-strategy、methods-writing-audit、research-contract、statistical-inference** —— 与外宣的质量护栏直接矛盾 | settings.json + 38 份会话元数据；`src/shared/session-persistence.ts:1582` | 全量 | **P0** |
 | D9 | 上下文结构失衡：真实会话 `contextUsage.breakdown` 显示 tools≈569 k tokens、mcp≈109 k，而 messages≈5.5 k（同一会话 190cc71b） → 上下文预算主要被工具/MCP 定义吃掉 | 会话 190cc71b `contextUsage.breakdown`（estimated；used 276,492/1,000,000） | 结构性 | **P2** |
+| D10 | **RPC 创建的会话不落盘、首轮秒停**（dev:headless 实测，v1.57.0）：`acp:create-session` 返回 connected，`acp:send-prompt` 后立即 `prompt stopped end_turn`、**零工具调用、零 agent 消息**，日志报 `Session Plan terminal projection failed: Cannot read runtime context for a missing Session`，会话文件始终未生成（带/不带显式 `cwd`、新旧项目均复现） | 实测 4 个会话：`bd43ec9e`、`9d29870e`、`5ef16831`、`f1550bb4`、`d386c136`；`logs/headless.out.log` L290595-290710 | 4/4 失败 | **P0**（阻塞一切自动化验收；也是 Web 远程控制的通路） |
 
 > 说明：主日志中 **09-05 ~ 09-12 窗口内没有 main 进程 OOM**（18 次 OOM 全部发生在 08-19）；两周前的 OOM 历史不纳入本计划，避免与本次审计混为一谈。
+
+### 1.1 A1 复盘：实机核验后的修正（2026-09-12）
+
+动手复现后，原 D1 的结论需要分两半看，**其中一半已经修好、另一半仍在**：
+
+| 项 | 结论 | 证据 |
+| --- | --- | --- |
+| figure_review 的 RPC 参数契约 bug | ✅ **已于 09-05 修好**：`f42f353`（2026-09-05 23:43）把 review 请求按网关契约嵌进 `request`，并加了回归测试；日志里最后一次该错误发生在 09-05 22:26（**修复提交之前**），此后不再出现 | `git show f42f353`；日志失败时间线 09-04 10 次 / 09-05 起逐次减少至 22:26 结束 |
+| **规则 6/7 在 agent 通路不可达**（新发现，v1.57.0 仍在） | ❌ **仍在**：`figurePanelSchema` 只有 id/title/chart_type/data_shape/series_count/label_count/excluded_rows/summary_used_excluded/rendered/note —— 缺 `axis_ticks`、`rendered_image_path`、`source_script_path`、`font_pt`，而引擎的 `checkLogAxisSanity` / `checkSourceArtifact` 只读这四个字段；zod 丢弃未知键 ⇒ 工具描述与会话提示词告诉 agent"申报 log 刻度、附上 .png/.py 路径"，agent 却**无法申报**，两条规则形同不存在 | `src/main/settings/figure-mcp-server.ts:20-47`（schema）vs `src/main/settings/figure-review-service.ts:176-215`（规则）；`src/shared/figure.ts:124-146`（提示词 append 明确要求"pass their paths"） |
+| 端到端实机验证 | ⛔ **被 D10 阻塞**：会话不落盘、prompt 秒停，无法让 agent 真正调用一次 figure_review | 见 D10 |
+
+**已落地的修复（本次）**：补齐 `axis_ticks` / `rendered_image_path` / `source_script_path` / `font_pt` 四个入参字段 + 映射到 `FigurePanel`，工具描述与会话提示词点名这四个参数名，并加两条回归测试（schema 必须暴露这四个字段；一次调用经 schema→mapper→真实规则引擎必须产出 `log_axis_sanity` 与 `source_artifact` 违规）。
 
 ---
 
