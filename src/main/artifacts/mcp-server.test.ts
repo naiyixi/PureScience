@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { setLocalRpcFetchForTesting } from '../local-rpc-transport'
 import { createPngBytes, createPngInlineSource } from './artifact-test-fixtures'
 import { ArtifactRepository } from './repository'
 import {
@@ -40,6 +41,7 @@ const createEnvironment = async (
 afterEach(async () => {
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
+  setLocalRpcFetchForTesting(undefined)
   if (storageRoot) {
     await rm(storageRoot, { recursive: true, force: true })
     storageRoot = undefined
@@ -480,8 +482,7 @@ describe('artifact MCP server', () => {
       mtimeMs: 1
     }
     const calls: Array<{ url: string; init: RequestInit }> = []
-    vi.stubGlobal(
-      'fetch',
+    setLocalRpcFetchForTesting(
       vi.fn(async (url: string, init: RequestInit) => {
         calls.push({ url, init })
         return new Response(JSON.stringify({ result: persisted }), {
@@ -610,8 +611,7 @@ describe('artifact MCP server', () => {
       'sin.png'
     )
     let callCount = 0
-    vi.stubGlobal(
-      'fetch',
+    setLocalRpcFetchForTesting(
       vi.fn(async () => {
         callCount += 1
         if (callCount === 2) {
@@ -705,8 +705,7 @@ describe('artifact MCP server', () => {
     }
     const methods: string[] = []
     const requests: Array<{ method: string; params: Record<string, unknown> }> = []
-    vi.stubGlobal(
-      'fetch',
+    setLocalRpcFetchForTesting(
       vi.fn(async (_url: string, init: RequestInit) => {
         const body = JSON.parse(String(init.body)) as {
           method: string

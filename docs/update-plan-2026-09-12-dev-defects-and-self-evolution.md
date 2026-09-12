@@ -122,6 +122,8 @@ DEV 一周的实跑暴露的不是"缺功能"，而是**已建成的护栏在真
 
 **仍待做（A4b）**：中断后的**产物保全与可诊断**——目前超时后留下半成品目录、没有"中断点 + 如何续跑"的提示。下一步做：中断即写一份可诊断摘要（已完成的步骤、未完成项、可续跑的入口），而不是让用户对着空目录猜。
 
+**A4 收口（2026-09-12，含 CI 反复后的完整处置）**：换掉 undici 后，**全仓有 3 个 MCP 子进程测试用 `stubGlobal('fetch')` 拦本地 RPC**（notebook / session-plan / artifacts），stub 不再生效 → 真连假端点 → `ECONNREFUSED`。处置分两种：① `notebook/mcp-server.test.ts` 的 4 处改写为**真实 loopback 服务器**（`listen(0)` 临时端口 + 捕 body，断言强度不变，最贴近生产路径）；② 其余 4 处（plan 1 处、artifacts 3 处，其中 artifacts 需要**有状态**的逐次响应：第 2 次调用返回 409、按 method 变结果）改用显式**测试注入口** `setLocalRpcFetchForTesting(impl)`（生产行为不变，与仓库既有的 print/PDF 可注入 seam 同风格）。注入口形参用 `never` 形以兼容窄签名 mock（`(url: string, init: RequestInit)` 不满足 `typeof fetch` 的逆变检查）。**教训**：改共享客户端/传输前，先 `grep -rn "stubGlobal('fetch'\|globalThis.fetch =" src` 找出所有"靠拦它做断言"的测试——本次因只 grep 了 notebook 目录而多红一轮 CI。
+
 ### P1 — 把失败经验变成资产（PILOT 借鉴的主体）
 
 | 单元 | 交付 | 验收 |

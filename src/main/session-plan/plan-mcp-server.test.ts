@@ -3,6 +3,7 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { describe, expect, it, vi } from 'vitest'
 
 import { PlanCommandError } from '../../shared/session-plan/contract'
+import { setLocalRpcFetchForTesting } from '../local-rpc-transport'
 import { callPlanRpc, createPlanMcpServer } from './plan-mcp-server'
 
 describe('Session Plan MCP server', () => {
@@ -95,7 +96,7 @@ describe('Session Plan MCP server', () => {
         )
       )
     )
-    vi.stubGlobal('fetch', fetch)
+    setLocalRpcFetchForTesting(fetch)
 
     try {
       await expect(
@@ -126,6 +127,7 @@ describe('Session Plan MCP server', () => {
       )
     } finally {
       vi.unstubAllGlobals()
+      setLocalRpcFetchForTesting(undefined)
     }
   })
 

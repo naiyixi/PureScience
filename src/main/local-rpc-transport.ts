@@ -183,20 +183,44 @@ const errorDetail = (error: unknown): string => {
   return code && !message.includes(code) ? `${code}: ${message}` : message
 }
 
+// Test seam: the MCP-child suites assert exact wire bodies with stateful fakes. They install the fake
+// here instead of stubbing the global fetch, because the app-local client deliberately does not use
+// it (undici's 300 s headers deadline aborted long notebook calls). `undefined` restores the real
+// transport — see the injectable print/PDF seams for the same pattern.
+//
+// The parameter types are `never` so ANY fetch-shaped fake is assignable: mocks that accept only
+// `string` / a required `RequestInit` would otherwise fail the strict contravariance check against
+// `typeof fetch`. The override is cast back internally, which is fine because only tests install it.
+type LocalRpcFetchLike = (input: never, init: never) => Promise<Response>
+
+let testFetchOverride: typeof fetch | undefined
+
+const setLocalRpcFetchForTesting = (impl: LocalRpcFetchLike | undefined): void => {
+  testFetchOverride = impl as typeof fetch | undefined
+}
+
 const fetchLocalRpc = async (
   transport: LocalRpcTransport,
   init: RequestInit,
   label: string
 ): Promise<Response> => {
   try {
-    const request = transport.socketPath
-      ? fetchOverSocket(transport.socketPath)
-      : (fetchOverLoopbackHttp(transport.endpoint) ?? fetch)
+    const request =
+      testFetchOverride ??
+      (transport.socketPath
+        ? fetchOverSocket(transport.socketPath)
+        : (fetchOverLoopbackHttp(transport.endpoint) ?? fetch))
     return await request(transport.endpoint, init)
   } catch (error) {
     throw new Error(`${label} transport failed: ${errorDetail(error)}`, { cause: error })
   }
 }
 
-export { fetchLocalRpc, fetchOverSocket, listenForLocalRpc, localRpcServerLogFields }
+export {
+  fetchLocalRpc,
+  fetchOverSocket,
+  listenForLocalRpc,
+  localRpcServerLogFields,
+  setLocalRpcFetchForTesting
+}
 export type { LocalRpcListenOptions, LocalRpcServerLogFields, LocalRpcTransport }
