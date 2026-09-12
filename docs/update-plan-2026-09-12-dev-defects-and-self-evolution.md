@@ -261,6 +261,19 @@ Electron 实例 / 树外打包的专家市场模块 / 远端市场校验）。**
 即一次慢失败被刷新成了"失败循环"。修法：按**底层调用**去重（折叠 `-heartbeat-N`，保留最新状态与原位置）。
 复测：**12 次唤醒 / 12 个会话**（正好少掉那一例假阳性）；被复查的那个会话改为 **4 个不同 WebFetch 调用的真实失败循环**。
 
+**口径纠正（同批实测）**：这 12 次唤醒的驱动工具是 WebFetch 1、figure_review 4、notebook_execute 3、WebSearch 2、
+artifact 写入 1、repl 1 —— 其中 **4 次由 figure_review 的 RPC 参数报错驱动，那是已被 `f42f353` 修好的旧缺陷**，
+故 12 不能读作"今天的发生率"；记录侧同时显示 figure_review 活动的真裁决样本为 **0 条**。
+
+**生产者覆盖（据此停止继续补，避免空壳）**：
+
+- `repeated-tool-failure`：✅ 真实活动流（349 次失败样本可验）。
+- `context-compaction`：✅ 运行时事件当场记录（`supervisor-signal-log.ts`，有界 + 消费一次）。
+- `rule-warning`：⏸ **无可验样例**——录制数据里规则裁决从未真正回到 agent（工具在修复前一直报错），
+  任何解析器今天都无真实样本可对照。**待出现第一条真裁决再接**（届时用真实样例做 fixture）。
+- `checkpoint-fingerprint-mismatch`：⏸ **无生产者可接**——录制数据中 checkpoint 活动 **0 条**（该功能实际未被使用）。
+  待检查点被真实使用后按同样方式接入。
+
 **未达成（如实记录，不以下层证据冒充）**：
 
 - **真实 agent 回合层**未取证：UI 路径两次都没把 prompt 送进会话（无会话落盘）、RPC 路径（create→save→resume→prompt）
