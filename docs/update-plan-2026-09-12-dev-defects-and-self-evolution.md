@@ -93,7 +93,20 @@ DEV 一周的实跑暴露的不是"缺功能"，而是**已建成的护栏在真
 
 **验收**：单测四组通过；实机复现"设置选 external → 新会话首次执行不再触发托管包下载、直接用所选解释器"；断网（禁用镜像）场景下失败信息给出可执行的下一步而非堆栈。
 
-**实施状态（2026-09-12）**：✅ 代码已落地并推送（`runtime-service` 注入 selection resolver + `data-execution-admission` 先采用已选 external、不可采用时保留托管默认并在拒绝信息里说明原因；未选择/选 managed/已有绑定三种情形行为不变）。测试 `data-execution-admission.selection.test.ts` **5 组**（采用 external 且**不调用** `ensureDefaultEnvironmentReady`、未选择、选 managed、已有绑定不重复绑、不可采用时拒绝信息含可执行指引）；本地 202 项相关簇回归全绿、lint 干净、typecheck 双绿。实机验收（"新会话首次执行不再触发托管下载"）待做——它是本单元最后一道闸。
+**实施状态（2026-09-12）**：✅ **单元完成（代码 + 单测 + 实机验收）**。代码：`runtime-service` 注入 selection resolver + `data-execution-admission` 先采用已选 external、不可采用时保留托管默认并在拒绝信息里说明原因；未选择/选 managed/已有绑定三种情形行为不变。测试 `data-execution-admission.selection.test.ts` **5 组**（采用 external 且**不调用** `ensureDefaultEnvironmentReady`、未选择、选 managed、已有绑定不重复绑、不可采用时拒绝信息含可执行指引）；本地 202 项相关簇回归全绿、lint 干净、typecheck 双绿。提交 `54dca02`（CI 双 workflow 已触发）。
+
+**实机验收（2026-09-12 22:13，新构建已含改动）**：UI 新建项目 `verify-a2-2213` → 让 agent 跑一个 Python 单元并回报解释器 → agent 原始 stdout：**`PYEXEC=/Users/totota/.cache/purescience/md-venv/bin/python`**（= 设置里选的 external 解释器，与 `notebookRuntimes.python.interpreterPath` 逐字一致）；主日志该会话**无任何 `runtimeSource:'managed'` / 供给相关行** ⇒ 修复前必现的"托管包下载"没有发生。沙盒项目与会话已删除、目录无残留。
+
+### 2.2 A3 进度（自动审计默认开 = opt-out）
+
+**已落地（2026-09-12）**：把自动审计从"默认关"改为**默认开、仅显式关闭才关**（opt-out）：
+
+- `shared/session-persistence.ts` 归一化：`autoReviewEnabled: session.autoReviewEnabled !== false`（旧文件无该字段 → 现恢复为**开**；非布尔脏值不视为显式关闭）。
+- `renderer/src/lib/acp/workspace-events.ts` 触发点：`if (session.autoReviewEnabled === false) return`。
+- `renderer/src/pages/workspace/WorkspacePage.tsx`：会话级状态 `!== false`，新会话草稿 toggle 初值 `true`（连同三处注释一起改写）。
+- 测试：`session-persistence.test.ts` 里原"legacy/corrupt → false"的两条断言按新语义改为 `true`（并注明这就是"审计从不运行"的根因）；`workspace-events.test.ts` 的"未设置时不触发"反转为"未设置时**触发**"。两文件 37 + 74 项全绿，lint 干净、typecheck 双绿。
+
+**未做（仍在 A3 内）**：② 守门技能默认禁用清单的复核——代码里**没有出厂默认禁用清单**（`disabledSkillIds` 只来自用户设置），DEV 那 17 项是用户侧配置，因此正确做法是**在设置/会话里显式提示"守门技能已关闭"**而不是偷偷改用户配置；③ memory 默认开启的可行性评估与提示。
 
 ### P1 — 把失败经验变成资产（PILOT 借鉴的主体）
 

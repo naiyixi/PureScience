@@ -1577,9 +1577,10 @@ const sanitizeSession = (
       session.permissionProfile === undefined
         ? DEFAULT_PERMISSION_PROFILE
         : normalizePermissionProfile(session.permissionProfile),
-    // Auto-review defaults off: a missing or non-boolean value restores as disabled, and only an
-    // explicit true turns it on.
-    autoReviewEnabled: session.autoReviewEnabled === true ? true : false,
+    // Auto-review defaults ON: a missing value restores as enabled, and only an explicit false turns
+    // it off. The guard had been off-by-default in practice, so the app's own reviewer never ran in
+    // real sessions (measured: 38/38 sessions with the audit disabled).
+    autoReviewEnabled: session.autoReviewEnabled !== false,
     delegationEnabled: session.delegationEnabled !== false,
     messages: Array.isArray(session.messages)
       ? session.messages

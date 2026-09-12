@@ -973,12 +973,13 @@ describe('normalizeSessionFile with activities', () => {
       activities: undefined,
       autoReviewEnabled: true
     })
-    // A session file written before the reviewer feature has no field at all.
+    // A session file written before the reviewer feature has no field at all — the audit is opt-out,
+    // so it restores as ENABLED (this default used to be off, which is why the reviewer never ran).
     const legacy = normalizeSessionFile({
       ...createSessionWithActivity(undefined),
       activities: undefined
     })
-    // A corrupt non-boolean value is treated as the safe default (disabled), not preserved.
+    // A corrupt non-boolean value is not an explicit opt-out, so the safe default (enabled) applies.
     const corrupt = normalizeSessionFile({
       ...createSessionWithActivity(undefined),
       activities: undefined,
@@ -987,8 +988,8 @@ describe('normalizeSessionFile with activities', () => {
 
     expect(disabled?.autoReviewEnabled).toBe(false)
     expect(enabled?.autoReviewEnabled).toBe(true)
-    expect(legacy?.autoReviewEnabled).toBe(false)
-    expect(corrupt?.autoReviewEnabled).toBe(false)
+    expect(legacy?.autoReviewEnabled).toBe(true)
+    expect(corrupt?.autoReviewEnabled).toBe(true)
   })
 
   it('round-trips enabledComputeHosts and filters out invalid values', () => {

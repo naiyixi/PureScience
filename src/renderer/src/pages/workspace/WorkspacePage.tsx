@@ -635,10 +635,10 @@ const WorkspacePage = ({
   )
   const [newConversationPermissionProfile, setNewConversationPermissionProfile] =
     useState<PermissionProfileId>(defaultPermissionProfile)
-  // Draft auto-review state for a not-yet-created conversation. Auto-review defaults off, so a new
-  // conversation starts disabled; the user can toggle it on before sending. On send it is stamped
-  // onto the created session (see sendCurrentMessage).
-  const [newConversationAutoReviewEnabled, setNewConversationAutoReviewEnabled] = useState(false)
+  // Draft auto-review state for a not-yet-created conversation. Auto-review defaults ON, so a new
+  // conversation starts with the audit enabled; the user can toggle it off before sending. On send it
+  // is stamped onto the created session (see sendCurrentMessage).
+  const [newConversationAutoReviewEnabled, setNewConversationAutoReviewEnabled] = useState(true)
   // Delegation defaults ON for new conversations; the user can switch it off before sending.
   const [newConversationDelegationEnabled, setNewConversationDelegationEnabled] = useState(true)
   // Draft compute hosts for a not-yet-created conversation. Cleared when a new conversation draft
@@ -1205,10 +1205,10 @@ const WorkspacePage = ({
   const activeSessionSupportsNativeCompaction = activeSession
     ? nativeContextCompactionSessionIds?.includes(activeSession.id) === true
     : false
-  // Auto-review defaults off: an existing session is enabled only when explicitly turned on; a new
-  // conversation uses the draft toggle (which also starts off).
+  // Auto-review is on by default: an existing session is disabled only when explicitly turned off;
+  // a new conversation starts from the draft toggle, which also starts on.
   const activeAutoReviewEnabled = activeSession
-    ? activeSession.autoReviewEnabled === true
+    ? activeSession.autoReviewEnabled !== false
     : newConversationAutoReviewEnabled
   const activeDelegationEnabled = activeSession
     ? activeSession.delegationEnabled !== false

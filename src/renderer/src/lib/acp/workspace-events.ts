@@ -394,8 +394,8 @@ const triggerAutoReview = async (sessionId: string): Promise<void> => {
 
     if (!session) return
 
-    // Auto-review defaults to disabled: run only when the switch was explicitly turned on.
-    if (session.autoReviewEnabled !== true) return
+    // Auto-review is on unless the switch was explicitly turned off.
+    if (session.autoReviewEnabled === false) return
 
     const request = assembleReviewRunRequest(sessionId)
 

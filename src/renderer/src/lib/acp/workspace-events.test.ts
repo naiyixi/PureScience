@@ -2164,12 +2164,12 @@ describe('workspace runtime events', () => {
       vi.unstubAllGlobals()
     })
 
-    it('does not trigger a review by default when autoReviewEnabled was never set', async () => {
+    it('triggers a review by default when autoReviewEnabled was never set', async () => {
       const reviewerRun = vi.fn().mockResolvedValue(undefined)
 
       vi.stubGlobal('window', { api: { reviewer: { run: reviewerRun } } })
 
-      // No setAutoReviewEnabled call: the session keeps its default (off).
+      // No setAutoReviewEnabled call: the session keeps its default (on — the audit is opt-out).
       useSessionStore.getState().appendAgentMessageChunk({
         sessionId: 'transport-session-1',
         streamId: 'stream-1',
@@ -2181,7 +2181,7 @@ describe('workspace runtime events', () => {
 
       await vi.runAllTimersAsync()
 
-      expect(reviewerRun).not.toHaveBeenCalled()
+      expect(reviewerRun).toHaveBeenCalled()
 
       vi.unstubAllGlobals()
     })
