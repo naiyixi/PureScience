@@ -42,6 +42,23 @@ DEV 一周的实跑暴露的不是"缺功能"，而是**已建成的护栏在真
 
 **已落地的修复（本次）**：补齐 `axis_ticks` / `rendered_image_path` / `source_script_path` / `font_pt` 四个入参字段 + 映射到 `FigurePanel`，工具描述与会话提示词点名这四个参数名，并加两条回归测试（schema 必须暴露这四个字段；一次调用经 schema→mapper→真实规则引擎必须产出 `log_axis_sanity` 与 `source_artifact` 违规）。
 
+### 1.2 A1 修复后的实机验证状态（诚实版）
+
+| 项 | 状态 | 证据 |
+| --- | --- | --- |
+| 代码修复 + 回归测试 | ✅ 已推送 | `fd77b26`；本地 `vitest` 7 项通过、`eslint` 干净、`typecheck` 双配置绿 |
+| CI | ✅ 全绿 | Nightly `34690206639` + Windows Full Test `34690206492`，均 `completed success`（用 `gh api .../actions/runs/<id>` 判定；注意 `?head_sha=` 需**完整 40 位 SHA**，短 SHA 会返回 `total_count: 0` 造成"没触发"的误判） |
+| **修复前**行为的实机证据 | ✅ 已取得 | 一次真实调用（agent 主动声明 `axis_ticks`（含 log 轴上的 `"0"`）与 `font_pt: 4`）返回中**没有 `log_axis_sanity`、没有字号告警**，只有 `source_artifact`；agent 自己在回复里指出「两个 `axis_ticks` / `font_pt` 字段不在该工具的公开 schema 中，但未被拒绝」。证据会话 JSON 存档 `/tmp/fig-evidence/` |
+| **修复后**端到端复验 | ⛔ **未完成**（阻塞，非未做） | 已重建 DEV 服务（新构建 `figure-mcp-server-CFjigjw5.js` 20:04 确认含 `axis_ticks`/`renderedImagePath`/`fontPt`），但 RPC 派发的 prompt 反复"秒停 end_turn、零输出、消息不落盘"；仅有一次在"先发 prompt → 再 `acp:resume-session`"的时序下真正执行。**结论：本构建下 RPC 直连驱动会话不可靠，端到端复验需要走 UI（需人工点击）或先修 D10** |
+
+**D10 的根因与已探明的可用配方**（供后续自动化验收复用）：
+
+- 会话落盘权在**渲染端 store**（渲染器调 `api.sessions.saveSession`）；裸 RPC 只建 ACP 会话，不产生 App 侧会话记录 → `send-prompt` 时报 `Cannot read runtime context for a missing Session`，或直接静默 `end_turn`。
+- 部分可绕开：`projects:create` → `acp:create-session` → **`sessions:save-session`**（该通道在 web RPC 面可用）→ `acp:resume-session` → `acp:send-prompt`。此路径**成功过一次**（agent 真调用 figure_review 并返回 JSON），但**不可重复**：后续同样序列均秒停。
+- 对**用户 GUI 建的、未挂载的会话**发 prompt 会报 `ACP session not found`（HTTP 500）——需要先 `acp:resume-session`。
+
+**遗留清理**：验证沙盒项目 `验证-figure-review`（`cmtyabfdw0000wfxpuhqyd0w8`、`cmtyc8tsn0000wfoq7b5ts34s`）未删净——`projects:delete` 返回 500（会话已删、目录仍在），列为 A1 收尾项。
+
 ---
 
 ## 2. 合并后的单元排期
