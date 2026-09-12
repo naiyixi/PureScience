@@ -8,7 +8,8 @@ import {
   Globe2,
   Layers,
   X,
-  Crosshair
+  Crosshair,
+  Dna
 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { PanelImperativeHandle, PanelSize } from 'react-resizable-panels'
@@ -28,6 +29,7 @@ import { usePreviewWorkbenchStore } from '@/stores/preview-workbench-store'
 
 import { ExtensionPreservingFileName } from './ExtensionPreservingFileName'
 import { FigureDigitizePanel } from '@/components/figure/FigureDigitizePanel'
+import { OmicsPreviewLauncher } from '@/components/omics/OmicsPreviewLauncher'
 import { PreviewFileSurface } from './PreviewFileSurface'
 import { WebPreviewSurface } from './previews/renderers/WebPreview'
 import { PreviewFileContent } from './previews/PreviewFileContent'
@@ -229,13 +231,16 @@ const previewContentMenuItemClassName =
   'flex w-full cursor-pointer items-center gap-2 rounded px-2.5 py-1.5 text-left text-[13px] text-text-000 hover:bg-bg-300 focus-visible:outline-none'
 
 const DIGITIZABLE_MEDIA = /\.(png|jpe?g|webp|tiff?|pdf)$/i
+// Large omics files: the preview never invents counts, it loads a manifest produced read-only.
+const OMICS_DATA_MEDIA = /\.(h5ad|vcf|vcf\.gz|vcf\.bgz)$/i
 
 export const PreviewContentContextMenu = ({
   x,
   y,
   item,
   onDismiss,
-  onStartDigitization
+  onStartDigitization,
+  onStartOmicsPreview
 }: {
   x: number
   y: number
@@ -243,6 +248,7 @@ export const PreviewContentContextMenu = ({
   onDismiss: () => void
   /** Opens the figure→data picking panel for image/PDF sources (estimated output, routed to review). */
   onStartDigitization?: (item: PreviewItem) => void
+  onStartOmicsPreview?: (item: PreviewItem) => void
 }): React.JSX.Element | null => {
   const { t } = useLanguage()
   const activeProjectId = useNavigationStore((state) => state.activeProjectId)
@@ -324,6 +330,17 @@ export const PreviewContentContextMenu = ({
           onClick={() => run(() => onStartDigitization(item))}
         >
           <Crosshair className="size-3.5" aria-hidden="true" /> 从此图提取数据（estimated）
+        </button>
+      ) : null}
+      {onStartOmicsPreview && OMICS_DATA_MEDIA.test(item.name) ? (
+        <button
+          type="button"
+          role="menuitem"
+          data-testid="preview-omics-preview"
+          className={previewContentMenuItemClassName}
+          onClick={() => run(() => onStartOmicsPreview(item))}
+        >
+          <Dna className="size-3.5" aria-hidden="true" /> 组学大文件预览（先探后算）
         </button>
       ) : null}
     </div>
@@ -618,6 +635,7 @@ const PreviewFilePanel = ({
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
   // Figure→data picking target: set when the user asks to extract numbers from a figure.
   const [digitizeItem, setDigitizeItem] = useState<PreviewItem | null>(null)
+  const [omicsItem, setOmicsItem] = useState<PreviewItem | null>(null)
   const surfaceRef = useRef<HTMLElement | null>(null)
 
   const closeFullScreen = useCallback((): void => {
@@ -686,6 +704,7 @@ const PreviewFilePanel = ({
           item={item}
           onDismiss={() => setMenu(null)}
           onStartDigitization={(target) => setDigitizeItem(target)}
+          onStartOmicsPreview={(target) => setOmicsItem(target)}
         />
       ) : null}
       {digitizeItem && digitizeItem.type === 'file' ? (
@@ -699,6 +718,11 @@ const PreviewFilePanel = ({
             }}
             onClose={() => setDigitizeItem(null)}
           />
+        </div>
+      ) : null}
+      {omicsItem && omicsItem.type === 'file' ? (
+        <div className="absolute inset-x-3 bottom-3 z-[80] max-h-[70%] overflow-y-auto rounded-lg bg-bg-000 shadow-card">
+          <OmicsPreviewLauncher sourceName={omicsItem.title} onClose={() => setOmicsItem(null)} />
         </div>
       ) : null}
     </>
