@@ -161,6 +161,7 @@
         "src/main/settings/preferences.ts",
         "src/main/settings/process-tree.ts",
         "src/main/settings/skill-catalog.ts",
+        "src/main/settings/skill-usage-hook.ts",
         "src/main/storage-root.ts",
         "src/main/storage/**",
         "src/main/tray.ts",
