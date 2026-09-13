@@ -47,6 +47,11 @@ import { ArtifactProvenanceRepository } from './artifacts/provenance-repository'
 import { createArtifactReproducibilityService } from './artifacts/reproducibility-service'
 import { createReproductionFileObserver } from './artifacts/reproduction-file-observer'
 import { runSealedRecipeReplay } from './artifacts/reproducibility-replay-runner'
+import {
+  replayEnvironmentName,
+  resolveReplayInterpreter,
+  resolveStoredInputPath
+} from './artifacts/reproduction-runtime-scope'
 import { ProvenanceMessageSnapshotRepository } from './artifacts/provenance-message-snapshot'
 import { ArtifactRunRegistry } from './artifacts/run-registry'
 import { createComputeIpcModule } from './compute/ipc'
@@ -124,7 +129,7 @@ import { NotebookInputRegistry } from './notebook/input-registry'
 import { effectiveMirrorAsync } from './notebook/mirror-probe'
 import { createProductionProvisioner, type RuntimeProvisioner } from './notebook/provisioner'
 import { createRuntimeSelectionWorkflows } from './notebook/runtime-selection-workflows'
-import { envPrefix, pythonBin, rBin, resolveEnvName, runtimeRoot } from './notebook/runtime-paths'
+import { runtimeRoot } from './notebook/runtime-paths'
 import type { NotebookEnvironmentManager } from './notebook/runtime-service'
 import { parseArtifactVersionLocator } from '../shared/artifact-provenance'
 import { DEFAULT_ARTIFACT_PROJECT_NAME } from '../shared/artifacts'
@@ -1302,14 +1307,6 @@ const createApplicationModules = async (
           ),
         checkReproduction: (request) => {
           const dataRoot = resolveDataRoot()
-          // Recorded inputs live under the data root by storage key; a key that tries to escape it is
-          // passed through unresolved so the runner refuses it instead of reading another location.
-          const resolveStoredInput = (storageKey: string): string => {
-            const segments = storageKey.split('/').filter((segment) => segment.length > 0)
-            if (segments.includes('..')) return storageKey
-
-            return join(dataRoot, ...segments)
-          }
 
           return createArtifactReproducibilityService({
             getVersionProvenance: (query) =>
@@ -1319,11 +1316,15 @@ const createApplicationModules = async (
               relativeBaseDirs: request.relativeBaseDirs ?? []
             }),
             runReplay: async ({ plan, inputs }) => {
-              const envName = resolveEnvName(plan.kernelKind, plan.environmentName)
-              const interpreter =
-                plan.kernelKind === 'r'
-                  ? rBin(envPrefix(runtimeRoot(dataRoot), envName))
-                  : pythonBin(envPrefix(runtimeRoot(dataRoot), envName))
+              const envName = replayEnvironmentName({
+                kernelKind: plan.kernelKind,
+                environmentName: plan.environmentName
+              })
+              const interpreter = resolveReplayInterpreter({
+                dataRoot,
+                kernelKind: plan.kernelKind,
+                environmentName: plan.environmentName
+              })
               try {
                 if (!(await stat(interpreter)).isFile()) throw new Error('not a file')
               } catch {
@@ -1345,7 +1346,10 @@ const createApplicationModules = async (
                 scripts: plan.scripts,
                 interpreterPath: interpreter,
                 expectedOutputFilenames: plan.expectedOutputs.map((output) => output.filename),
-                inputs: inputs.map((input) => ({ ...input, path: resolveStoredInput(input.path) }))
+                inputs: inputs.map((input) => ({
+                  ...input,
+                  path: resolveStoredInputPath({ dataRoot, storageKey: input.path })
+                }))
               })
             }
           }).check(request)
