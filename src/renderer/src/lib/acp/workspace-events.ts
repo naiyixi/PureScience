@@ -342,6 +342,11 @@ const openMoleculePreviews = (sessionId: string, artifacts: ArtifactFile[]): voi
 // Returns undefined when no agent turn exists (caller should skip the review).
 // Shared between the auto path (triggerAutoReview) and the manual "Request review" path,
 // so the two can never drift in turn selection or request field construction.
+//
+// The supervisor ledger belongs here rather than to one entry point: the wake-ups are a property of the
+// session's own evidence, so every review of that session must carry them. Attaching it only in the auto
+// path meant a manual review ran blind, and a skipped auto attempt lost the plan entirely - measured on a
+// real session where the policy fired and 12 reviews ran with zero ledgers attached.
 const assembleReviewRunRequest = (sessionId: string): ReviewRunRequest | undefined => {
   const sessionState = useSessionStore.getState()
   const session = sessionState.sessions.find((s) => s.id === sessionId)
@@ -353,12 +358,22 @@ const assembleReviewRunRequest = (sessionId: string): ReviewRunRequest | undefin
 
   if (!lastAgentMessage) return undefined
 
+  // Runtime-only signals (a compaction, a rule warning) are consumed on delivery; the ones derived from
+  // the session's activities are recomputed every time from evidence that stays in the session, so a review that
+  // never started loses nothing. Clearing is deferred to a STARTED run for the same reason.
+
+  const supervisor = planSupervisorWakes([
+    ...supervisorEventsFor(sessionId),
+    ...supervisorEventsFromActivities(session.activities ?? [])
+  ])
+
   return {
     sessionId,
     turnMessageId: lastAgentMessage.id,
     projectId: session.projectId ?? '',
     mainSessionId: sessionId,
-    model: useSettingsStore.getState().activeModel
+    model: useSettingsStore.getState().activeModel,
+    supervisor
   }
 }
 
@@ -416,13 +431,10 @@ const triggerAutoReview = async (sessionId: string): Promise<void> => {
     // re-deriving it, and a run whose supervision degraded says so. Deriving here keeps the policy in
     // shared and costs no extra model call — the reviewer is woken by evidence, not by a permanent
     // observer. The recorded events are consumed, so one compaction cannot wake every later turn.
-    const supervisor = planSupervisorWakes([
-      ...supervisorEventsFor(sessionId),
-      ...supervisorEventsFromActivities(session.activities ?? [])
-    ])
-    const request: ReviewRunRequest = { ...assembled, supervisor }
-
-    if (supervisor.wakes.length > 0 || supervisor.degraded) clearSupervisorEvents(sessionId)
+    // The assembly already carries the ledger, so this path cannot attach a different one.
+    const request: ReviewRunRequest = assembled
+    const hadSupervisor =
+      (assembled.supervisor?.wakes.length ?? 0) > 0 || Boolean(assembled.supervisor?.degraded)
 
     // Retry a started:false a bounded number of times, but ONLY for reasons a persistence race can
     // produce (the session may not be flushed to disk yet). Every other reason is terminal for the auto
@@ -437,7 +449,12 @@ const triggerAutoReview = async (sessionId: string): Promise<void> => {
     for (let attempt = 0; attempt < AUTO_REVIEW_START_ATTEMPTS; attempt++) {
       if (autoReviewsSuppressedForQuit) return
       const result = await window.api.reviewer.run({ ...request, origin: 'auto' })
-      if (result?.started !== false) return
+      if (result?.started !== false) {
+        // Consume the runtime-recorded signals only now: a run that never started must leave them for the
+        // next attempt instead of dropping the evidence on the floor.
+        if (hadSupervisor) clearSupervisorEvents(sessionId)
+        return
+      }
       if (!result.reason || !RETRYABLE_START_FAILURE_REASONS.has(result.reason)) return
       if (attempt < AUTO_REVIEW_START_ATTEMPTS - 1) await delay(AUTO_REVIEW_RETRY_DELAY_MS)
     }

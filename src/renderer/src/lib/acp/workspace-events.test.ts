@@ -2824,4 +2824,35 @@ describe('assembleReviewRunRequest — shared turn selection', () => {
 
     expect(result!.turnMessageId).toBe(lastAgent!.id)
   })
+
+  it('carries the supervisor ledger on the request itself, so no entry point can run blind', async () => {
+    useSessionStore.getState().appendAgentMessageChunk({
+      sessionId: 'transport-session-1',
+      streamId: 'stream-1',
+      eventId: 'event-agent-1',
+      content: 'Analysis complete'
+    })
+    // The same tool failing three times in a row is what earns a wake-up.
+    for (const index of [1, 2, 3]) {
+      await applyWorkspaceRuntimeEvent(
+        createEvent({
+          id: `blind-fail-${index}`,
+          kind: 'tool',
+          toolCallId: `blind-call-${index}`,
+          providerToolName: 'run_python',
+          status: 'failed'
+        })
+      )
+    }
+
+    const result = assembleReviewRunRequest('transport-session-1')
+
+    // Measured on a real session: the auto path attached this and the manual path did not, so a user's
+    // "Request review" after a failing loop reached the reviewer with no leads at all.
+    expect(result?.supervisor?.wakes).toHaveLength(1)
+    expect(result?.supervisor?.wakes[0]).toMatchObject({
+      kind: 'repeated-tool-failure',
+      evidenceHandle: expect.stringMatching(/^activity:/)
+    })
+  })
 })
