@@ -327,6 +327,35 @@ Error occurred in handler for 'acp:get-plan-projection': Error: Cannot read runt
 （写进 `contextUsage.breakdown` 或等价处），从而得到真实排行；拿到排行再决定裁谁、裁多少——与 C1 同一纪律：
 **先量，别先切**。
 
+### C4 上下文构成基线（2026-09-13 实算；瘦身方向有据，但**逐工具明细量不出**）
+
+**使用侧实测（57 个有活动的会话，应用自有 MCP 调用）——这一侧可信**：
+
+| server | 调用数 | 出现会话数 | 判读 |
+|---|---|---|---|
+| notebook | 1873 | 55 / 57 | 核心 |
+| artifacts | 409 | 44 | 核心 |
+| figure | 99 | 36 | 常用 |
+| context-summary | 26 | 25 | 常用 |
+| host-query | 10 | 7 | 低频 |
+| **plan** | 45 | **1** | **候选（懒注册）** |
+| **pdf** | 14 | **3** | **候选** |
+| **skills** | 6 | **3** | **候选** |
+| **endpoints** | 3 | **3** | **候选** |
+| **memory** | 2 | **2** | **候选** |
+| **annotations** | 1 | **1** | **候选** |
+
+（低频≠无用：`memory`/`skills`/`annotations` 属"偶尔但必要"型能力，是否延迟注册需结合定义成本与产品意图，不能只按调用数裁。）
+
+**成本侧：仍量不出，且两个替代品都被我否掉**：
+
+- `registerTool(` 源码计数**不可靠**：`notebook`/`artifacts` 是循环/分段注册（源码只数到 1 个，实际有 execute / repl / bash / state / inspect / manage / bind / list 等）；
+- "仓库长字符串字节数"近似同样不可用（把错误消息、类型、通道映射一并算入）。
+- 根因同一：**应用不记录自己交给提供方的工具定义载荷**，提供方也只按 `tools` 一个合计上报。
+
+**下一步（唯一有据的前置）**：在会话组装工具面时，按 server 记录**自身定义载荷的尺寸**（可写进 `contextUsage.breakdown` 的
+`categories`，与既有 `tools/mcp/system/messages/skills` 并列）。拿到"成本 × 使用"两列，才谈裁谁、裁多少。
+
 ### C2 自进化 KPI 基线（2026-09-13 实算，供发版说明引用）
 
 **口径与定义（先写定义，再给数字）**：
