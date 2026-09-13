@@ -292,6 +292,7 @@ const api: PureScienceAPI = {
     deleteExternalComputeEndpoint: (providerId: string) =>
       electronRendererContracts.invoke('settings.deleteExternalComputeEndpoint', providerId),
     listSkills: () => electronRendererContracts.invoke('settings.listSkills'),
+    skillReuse: () => electronRendererContracts.invoke('settings.skillReuse'),
     getSkillDetail: (id: string) => electronRendererContracts.invoke('settings.getSkillDetail', id),
     exportSkill: (request: ExportSkillRequest) =>
       electronRendererContracts.invoke('settings.exportSkill', request),

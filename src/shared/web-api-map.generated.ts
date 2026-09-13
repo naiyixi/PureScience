@@ -261,6 +261,7 @@ export const WEB_INVOKE_CHANNELS = {
   'settings.setToolPermission': 'settings:set-tool-permission',
   'settings.setUseIntent': 'settings:set-use-intent',
   'settings.setVisionModel': 'settings:set-vision-model',
+  'settings.skillReuse': 'settings:skill-reuse',
   'settings.testCredential': 'settings:test-credential',
   'settings.uninstallClaude': 'settings:uninstall-claude',
   'settings.uninstallCodex': 'settings:uninstall-codex',

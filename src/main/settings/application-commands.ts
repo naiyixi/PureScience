@@ -71,6 +71,7 @@ type CoreSettingsCommandStore = Pick<
   | 'isNpmAvailable'
   | 'listConnectors'
   | 'listSkills'
+  | 'skillReuse'
   | 'markOnboardingComplete'
   | 'previewAgentHomeSkill'
   | 'previewGitHubSkill'
@@ -245,6 +246,11 @@ const settingsCoreApplicationCommands = Object.freeze({
     readonly [],
     StoreResult<'listSkills'>
   >('settings:list-skills'),
+  skillReuse: defineApplicationCommand<
+    'settings:skill-reuse',
+    readonly [],
+    StoreResult<'skillReuse'>
+  >('settings:skill-reuse'),
   markOnboardingComplete: defineApplicationCommand<
     'settings:mark-onboarding-complete',
     readonly [],

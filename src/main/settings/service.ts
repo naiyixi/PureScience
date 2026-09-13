@@ -101,7 +101,7 @@ import {
 import { applyProxySettings } from '../net/proxy-runtime'
 import type { ProxySettings } from '../../shared/proxy'
 import type { ScenarioModels, SetScenarioModelRequest } from '../../shared/settings'
-import { getUserClaudeConfigDir } from './provider-env'
+import { getAppClaudeConfigDir, getUserClaudeConfigDir } from './provider-env'
 import { SettingsRepository } from './repository'
 import { SettingsPreferencesModule, toSettingsPreferencesSnapshot } from './preferences'
 import { NotebookRuntimeSettingsModule } from './notebook-runtime-settings'
@@ -119,6 +119,8 @@ import {
 } from './backend-resolver'
 import { CONNECTOR_CATALOG } from '../connectors/catalog'
 import { SkillRegistry } from '../skills/registry'
+import { readSkillUsageLedger } from './skill-usage-hook'
+import type { SkillPayoff } from '../../shared/skill-usage'
 import { UserSkillRepository } from '../skills/user-skill-repository'
 import type { SkillExportArchive } from '../skills/export'
 import type { StoredConnectors, StoredCustomMcpOAuthState, StoredSettings } from './types'
@@ -860,6 +862,14 @@ class SettingsService {
   // Compatibility facade: Skill state and filesystem rules live in SkillCatalogModule.
   async listSkills(): Promise<SkillView[]> {
     return this.skills.listSkills()
+  }
+
+  // Reuse ranking for the Skill panel. Reads only what the app itself captured (the PostToolUse hook in
+  // the app-owned claude config dir), so a provider that reports no skill names cannot make this empty by
+  // accident - it is empty only when nothing has been loaded yet. Captures start with the version that
+  // installed the hook; sessions before it carry no names and are reported as such by the panel.
+  async skillReuse(): Promise<SkillPayoff[]> {
+    return readSkillUsageLedger(getAppClaudeConfigDir(this.storageRoot))
   }
 
   async buildSkillExport(id: string): Promise<SkillExportArchive> {

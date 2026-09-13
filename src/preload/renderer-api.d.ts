@@ -232,6 +232,7 @@ import type {
   SettingsSnapshot,
   AppIconPreview,
   SkillDetailView,
+  SkillPayoff,
   SkillView,
   CreateSkillRequest,
   UpdateSkillRequest,
@@ -547,6 +548,7 @@ export interface PureScienceAPI {
     ): Promise<ExternalComputeEndpoint[]>
     deleteExternalComputeEndpoint(providerId: string): Promise<ExternalComputeEndpoint[]>
     listSkills(): Promise<SkillView[]>
+    skillReuse(): Promise<SkillPayoff[]>
     getSkillDetail(id: string): Promise<SkillDetailView>
     exportSkill(request: ExportSkillRequest): Promise<ExportSkillResult>
     setSkillEnabled(request: SetSkillEnabledRequest): Promise<SkillView[]>
