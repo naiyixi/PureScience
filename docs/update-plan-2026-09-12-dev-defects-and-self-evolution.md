@@ -348,6 +348,10 @@ Error occurred in handler for 'acp:get-plan-projection': Error: Cannot read runt
   而这两侧的载荷**应用测不到**（见上条）。→ 记录结论：**本项到此为止，不再为它造仪表化**。
 - 验收测试：`context-usage-tracker.test.ts`（静态节逐项列出、会话型节不得混入）、`src/shared/acp.test.ts`（`sections` 往返/缺省/损坏降级/上限 64）；
   本地 `src/main/acp` + `src/renderer/src/lib/acp` + `src/shared/acp.test.ts` 共 **89 文件 / 1608 项通过**，typecheck 双绿、lint 干净。
+- **预算守卫（选项 B）已有但仅部分覆盖**：`context-usage-static-context.test.ts` 把 **notebook schema + 其系统引导**
+  钉在 `≤ 3,200` cl100k tokens（注释记录了去重前约 5.2k 的基线）。
+  即**只有最重的那个 server 有增长守卫**（恰是 58% 的那一个）；其余 server 与 `system:persistent` 无守卫。
+  → 结论按纪律标注：**部分覆盖，不得宣称"静态定义成本已全面受控"**。
 
 ### C4 上下文构成基线（2026-09-13 实算；瘦身方向有据，但**逐工具明细量不出**）
 
