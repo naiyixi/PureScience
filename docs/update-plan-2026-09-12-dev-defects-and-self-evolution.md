@@ -307,10 +307,17 @@ Error occurred in handler for 'acp:get-plan-projection': Error: Cannot read runt
 
 - 合成发射器路径（`emitSkillActivities` → `Loaded skill: <name>` 活动）**0 条记录**——该路径在本机
   （提供方原生技能）从未触发；
-- 提供方原生 `Skill` 活动 **81 条**，但 `title` 恒为 `"Tool activity"`、`rawInput` 为 `None`
-  → **持久化数据里没有技能名**。
+- 提供方原生 `Skill` 活动 **81 条**，但 `title` 恒为 `"Tool activity"`、`rawInput` 为 `None`、`toolLocations` 为空、`toolKind: 'other'`
+  → **持久化数据里没有技能名**；
+- **对照判据（关键）**：其他工具的活动**都带** rawInput 与有效 title（`Bash` 195、`Read` 192、`WebSearch` 190、
+  `Edit` 312、`notebook_execute` 1001…），**唯有 `Skill` 两者皆无** → 这不是投影全局丢弃，而是**提供方原生 Skill 调用
+  在源头就不带名字/输入**。
+- **框架差异**：codex 侧有专门的 `CodexSkillActivityProjector`——它按"指向 `<skillsRoot>/<name>/SKILL.md` 的单次 read"
+  识别技能读取，并改写成 `Loaded skill: <name>` / `Loading skill: <name>`（且**故意删除** rawInput 等），
+  即 codex 会话**有**名字；claude-code（本机会话所用）**没有等价投影**，且其 Skill 事件连 `toolLocations` 都没有，
+  投影器的检测前件亦不成立。
 
-**结论**：应用记录了"某一轮调用了技能"，却**没有记录是哪一个技能**。因此"从既有事件派生技能↔run"目前
+**结论**：应用记录了"某一轮调用了技能"，却**没有记录是哪一个技能**（claude 路径）。因此"从既有事件派生技能↔run"目前
 **无数据可派生**，C1 的收益榜若照原计划直接做，会是一个空面板——按验收口径（允许审计归档零代码收口、
 禁空壳造功能）**不建该面板**。
 
@@ -318,9 +325,10 @@ Error occurred in handler for 'acp:get-plan-projection': Error: Cannot read runt
 
 **三种解法（择一，需拍板）**：
 
-1. **让活动带上技能名**（最小改动、真解）：在活动投影处保留提供方技能调用的名称（`title` 或 `rawInput`）；
-   已按发射器真实线形写好纯派生器 `shared/skill-usage.ts`（`skillUsagesFromActivities` / `summarizeSkillUsage`，
-   单测 4 条通过），拿到名字即可直接产出排行。**需先勘明名称在哪一步被丢弃**（投影 vs 事件本身）。
+1. **让"被挂载的技能"在 main 侧落账**（推荐，且已确认 main 本来就掌握）：main 在组装 prompt 时知道本轮注入了哪些
+   技能文档（`replacePromptSkillDocuments` / `appendPromptContent`），把这些名字作为活动或轮次元数据记下即可——
+   这是"知道却没记"，不是"不知道"；也已按发射器真实线形写好纯派生器 `shared/skill-usage.ts`
+   （`skillUsagesFromActivities` / `summarizeSkillUsage`，单测 4 条通过），拿到名字即可直接产出排行。
 2. 从 **reviewer 作用域快照**（`ReviewScopeSnapshot` 的 blocks）派生——数据更全但只覆盖被审的轮次。
 3. 明确**放弃** C1 排行部分，只保留信任侧（C1 降级为"技能信任台账"）。
 
