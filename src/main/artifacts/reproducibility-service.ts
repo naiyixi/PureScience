@@ -14,6 +14,10 @@ import {
   type ReproducibilityRecipeFile,
   type SealedReproducibilityRecipe
 } from '../../shared/reproducibility'
+import {
+  planRecipeReexecution,
+  summarizeReexecutionPlan
+} from '../../shared/reproducibility-reexecution'
 
 // Reproduction verification service (main process).
 //
@@ -85,6 +89,16 @@ export const createArtifactReproducibilityService = (
       }
 
       const recipe = buildSealedReproducibilityRecipe(provenance)
+      // The recorded scripts come from the persisted execution snapshot (main process only); the plan
+      // decides whether the app could replay them, and says what is missing when it could not.
+      const replayPlan = planRecipeReexecution({
+        recipe,
+        runs: (provenance.execution?.runs ?? []).map((run) => ({
+          script: run.script,
+          ...(run.scriptTruncated ? { truncated: true as const } : {})
+        }))
+      })
+      const replay = summarizeReexecutionPlan(replayPlan)
       const comparisons: ReproducibilityFileComparison[] = []
       for (const path of request.reproducedFiles) {
         const observed = await options.observeFile(path)
@@ -112,7 +126,8 @@ export const createArtifactReproducibilityService = (
         evidenceKind: evaluation.evidenceKind,
         counts: evaluation.counts,
         reasons: evaluation.reasons,
-        requiredLabels: evaluation.requiredLabels
+        requiredLabels: evaluation.requiredLabels,
+        replay
       }
     }
   }

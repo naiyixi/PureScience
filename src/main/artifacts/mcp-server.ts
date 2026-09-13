@@ -662,6 +662,7 @@ const createArtifactMcpServer = (
                   runs: report.recipe.execution?.runs ?? []
                 },
                 comparisons: report.comparisons,
+                replay: report.replay,
                 checked_at: report.checkedAt
               },
               null,

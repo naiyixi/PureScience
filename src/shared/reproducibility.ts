@@ -172,6 +172,19 @@ export type ArtifactReproducibilityReport = {
   counts: ReproducibilityEvaluation['counts']
   reasons: ReproducibilityGapReason[]
   requiredLabels: string[]
+  // Whether the app could replay this recipe, and what is missing when it could not. Producing a plan
+  // is not executing it: a runnable plan still yields no `reproduced` verdict until the isolated
+  // re-execution runner is wired, and the summary says so.
+  replay: ReproducibilityReplaySummary | null
+}
+
+export type ReproducibilityReplaySummary = {
+  runnable: boolean
+  refusals: string[]
+  notes: string[]
+  kernelKind?: string
+  stagedInputCount: number
+  expectedOutputCount: number
 }
 
 const uniqueReasons = (reasons: ReproducibilityGapReason[]): ReproducibilityGapReason[] => [

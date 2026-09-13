@@ -212,6 +212,37 @@ describe('createArtifactReproducibilityService', () => {
     expect(report.checkedAt).toBe('2026-09-13T00:00:00.000Z')
   })
 
+  it('reports whether the app could replay the recipe, without ever claiming it did', async () => {
+    const { service } = harness()
+    const report = await service.check(request())
+
+    expect(report.replay).toEqual({
+      runnable: true,
+      refusals: [],
+      notes: [
+        'Replay runs the recorded cells in order inside one fresh interpreter session in an isolated working directory.',
+        'Only the sealed Version file is graded; other outputs of the replay have no recorded counterpart and are reported as not-compared.'
+      ],
+      kernelKind: 'python',
+      stagedInputCount: 1,
+      expectedOutputCount: 1
+    })
+    // A runnable plan is still not an execution: the verdict stays a byte comparison.
+    expect(report.verdict).toBe('bytes-match')
+  })
+
+  it('says what the replay is missing when the recipe is not sealed', async () => {
+    const value = provenance()
+    const { service } = harness({
+      getVersionProvenance: async () => ({ ...value, execution: undefined })
+    })
+    const report = await service.check(request())
+
+    expect(report.replay).toMatchObject({ runnable: false })
+    expect(report.replay?.refusals).toContain('recipe-not-sealed')
+    expect(report.replay?.refusals).toContain('execution-evidence-missing')
+  })
+
   it('reports reproduction only when the app re-executed the sealed recipe', async () => {
     const { service } = harness()
     const report = await service.check(request({ reexecuted: true }))
