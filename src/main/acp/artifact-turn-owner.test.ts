@@ -8,6 +8,7 @@ import type { ArtifactFile } from '../../shared/artifacts'
 import { ArtifactRepository, getArtifactCurrentRunFilePath } from '../artifacts/repository'
 import { ArtifactRunRegistry } from '../artifacts/run-registry'
 import { ArtifactTurnOwner } from './artifact-turn-owner'
+import { ARTIFACT_RPC_METHODS } from '../artifacts/rpc-methods'
 
 const roots: string[] = []
 
@@ -95,7 +96,7 @@ describe('ArtifactTurnOwner', () => {
         artifactStorageSessionId: 'artifact-session-1',
         artifactRunId: 'artifact-run-123-1',
         notebookSessionId: 'session-1',
-        allowedMethods: ['artifactCreateVersion', 'artifactReplayVersion']
+        allowedMethods: [...ARTIFACT_RPC_METHODS]
       })
     ])
     expect(notebookContexts).toEqual([

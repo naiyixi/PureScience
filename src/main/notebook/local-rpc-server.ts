@@ -31,6 +31,7 @@ import type {
   ArtifactReproducibilityCheckRequest,
   ArtifactReproducibilityReport
 } from '../../shared/reproducibility'
+import { ARTIFACT_RPC_METHODS } from '../artifacts/rpc-methods'
 import {
   stripAgentsReservedParams,
   type TrustedCallingSession,
@@ -243,12 +244,6 @@ class RpcHttpError extends Error {
   }
 }
 
-const ARTIFACT_RPC_METHODS = new Set<ArtifactRpcMethod>([
-  'artifactCreateVersion',
-  'artifactReplayVersion',
-  'artifactCheckReproduction'
-])
-
 // Capabilities are revoked when the turn ends. This upper bound only limits abandoned tokens, so
 // it must comfortably exceed long notebook executions that remain inside one active turn.
 const DEFAULT_ARTIFACT_RPC_CAPABILITY_TTL_MS = 2 * 60 * 60 * 1_000
@@ -391,9 +386,7 @@ class NotebookLocalRpcServer {
         ? [...binding.messageBranchAncestry]
         : undefined,
       messageAncestry: binding.messageAncestry ? [...binding.messageAncestry] : undefined,
-      allowedMethods: new Set(
-        binding.allowedMethods ?? ['artifactCreateVersion', 'artifactReplayVersion']
-      ),
+      allowedMethods: new Set(binding.allowedMethods ?? ARTIFACT_RPC_METHODS),
       expiresAt: this.now() + ttlMs,
       inFlightRequests: 0,
       drainWaiters: new Set()

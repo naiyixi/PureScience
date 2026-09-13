@@ -8,6 +8,7 @@ import { getNotebookDataRoot, getNotebookSessionRoot } from '../notebook/reposit
 import type { ArtifactRunContext } from '../artifacts/mcp-server'
 import { ArtifactRepository, getArtifactCurrentRunFilePath } from '../artifacts/repository'
 import { ArtifactRunRegistry } from '../artifacts/run-registry'
+import { ARTIFACT_RPC_METHODS } from '../artifacts/rpc-methods'
 
 const artifactTurnHandleKey = Symbol('artifact-turn-handle')
 
@@ -165,7 +166,10 @@ class ArtifactTurnOwner {
         promptMessageId: turn.promptMessageId,
         agentName: turn.agentName,
         ...(this.options.notebook ? { notebookSessionId: turn.appSessionId } : {}),
-        allowedMethods: ['artifactCreateVersion', 'artifactReplayVersion']
+        // No `allowedMethods` here on purpose: the capability inherits the canonical artifact method
+        // set. A literal array at this site is how a newly added method ends up permanently denied
+        // while every suite stays green (verified live 2026-09-13).
+        allowedMethods: [...ARTIFACT_RPC_METHODS]
       })
       if (turn.rpcCapabilityToken) runContext.rpcCapabilityToken = turn.rpcCapabilityToken
 

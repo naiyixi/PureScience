@@ -16,6 +16,7 @@ import { PassThrough, Readable, Writable } from 'node:stream'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { AcpRuntime } from './runtime.test-utils'
+import { ARTIFACT_RPC_METHODS } from '../artifacts/rpc-methods'
 import type { AcpAgentConnectionAdapter } from './agent-connection-adapter'
 import type { AcpConnectionCloseWorkflow } from './connection-close-workflow'
 import { composeAcpRuntimePlanWorkflow } from './runtime-plan-composition'
@@ -5137,7 +5138,7 @@ describe('ACP runtime session management', () => {
         appSessionId: session.sessionId,
         artifactRunId: capturedContext?.artifactRunId,
         rootFrameId: 'root-frame-1',
-        allowedMethods: ['artifactCreateVersion', 'artifactReplayVersion']
+        allowedMethods: [...ARTIFACT_RPC_METHODS]
       })
     ])
     expect(revokedTokens).toEqual(['run-capability-1'])
