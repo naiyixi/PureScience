@@ -122,6 +122,17 @@ export type AcpContextUsageCategory = {
   estimated: boolean
 }
 
+// App-owned static context sections sized individually. Categories aggregate them (every MCP schema
+// section lands in `mcp`), which is enough to reconcile against the Agent total but hides per-server
+// definition cost - the number needed to decide what to trim. Diagnostic detail only: it never
+// participates in reconciliation, so a malformed entry drops the field rather than the breakdown.
+export type AcpContextUsageSection = {
+  // Namespaced source of the cost, e.g. `mcp-schema:purescience-notebook` or `system:persistent`.
+  sectionId: string
+  category: AcpContextUsageCategoryKey
+  tokens: number
+}
+
 export type AcpContextUsageBreakdown = {
   source: 'estimated' | 'native'
   // Stable tokenizer/profile id for diagnostics. Native framework reports have no local tokenizer.
@@ -134,6 +145,9 @@ export type AcpContextUsageBreakdown = {
   difference: number
   status: 'preflight' | 'reconciled'
   categories: AcpContextUsageCategory[]
+  // Present only for locally attributable static sections. Omitted when the Agent's own report is
+  // the source, since nothing locally sized exists to attribute.
+  sections?: AcpContextUsageSection[]
 }
 
 // Current agent-context usage projected onto its logical app session. `used` remains the latest Agent
@@ -166,6 +180,10 @@ const ACP_CONTEXT_USAGE_TOKENIZERS = new Set<NonNullable<AcpContextUsageBreakdow
   'o200k_base',
   'cl100k_base'
 ])
+// Section detail is diagnostic and grows with every MCP server the app exposes, so both the count and
+// the id length stay bounded: it is persisted inside Session JSON alongside the reconciled breakdown.
+const ACP_CONTEXT_USAGE_MAX_SECTIONS = 64
+const ACP_CONTEXT_USAGE_MAX_SECTION_ID_CHARS = 200
 
 // Re-validates the last known context snapshot before restoring it from Session JSON.
 export const sanitizeAcpContextUsage = (value: unknown): AcpContextUsage | undefined => {
@@ -219,6 +237,30 @@ export const sanitizeAcpContextUsage = (value: unknown): AcpContextUsage | undef
 
   const tokenizer = breakdown.tokenizer as AcpContextUsageBreakdown['tokenizer']
   const model = typeof breakdown.model === 'string' && breakdown.model ? breakdown.model : undefined
+  // Diagnostic detail, so a malformed entry is dropped with the field instead of discarding the
+  // reconciled breakdown the categories already carry.
+  const sections: AcpContextUsageSection[] = []
+  if (Array.isArray(breakdown.sections)) {
+    for (const value of breakdown.sections) {
+      if (sections.length >= ACP_CONTEXT_USAGE_MAX_SECTIONS) break
+      if (typeof value !== 'object' || value === null || Array.isArray(value)) break
+      const section = value as Record<string, unknown>
+      const sectionId = section.sectionId
+      const tokens = asTokenCount(section.tokens)
+      const category = section.category as AcpContextUsageCategoryKey
+      if (
+        typeof sectionId !== 'string' ||
+        !sectionId ||
+        sectionId.length > ACP_CONTEXT_USAGE_MAX_SECTION_ID_CHARS ||
+        !ACP_CONTEXT_USAGE_CATEGORY_KEYS.has(category) ||
+        tokens === undefined
+      ) {
+        sections.length = 0
+        break
+      }
+      sections.push({ sectionId, category, tokens })
+    }
+  }
   sanitized.breakdown = {
     source,
     ...(tokenizer && ACP_CONTEXT_USAGE_TOKENIZERS.has(tokenizer) ? { tokenizer } : {}),
@@ -226,7 +268,8 @@ export const sanitizeAcpContextUsage = (value: unknown): AcpContextUsage | undef
     estimatedTokens,
     difference,
     status,
-    categories
+    categories,
+    ...(sections.length > 0 ? { sections } : {})
   }
   return sanitized
 }

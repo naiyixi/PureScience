@@ -9,7 +9,8 @@ import type {
   AcpContextUsage,
   AcpContextUsageBreakdown,
   AcpContextUsageCategory,
-  AcpContextUsageCategoryKey
+  AcpContextUsageCategoryKey,
+  AcpContextUsageSection
 } from '../../shared/acp'
 import type { AgentFrameworkId } from '../../shared/settings'
 import { isNativeSkillToolUpdate } from './runtime-events'
@@ -26,6 +27,10 @@ type SessionEstimate = {
   model?: string
   totals: Record<EstimatedCategoryKey, number>
   keyedSections: Map<string, { category: EstimatedCategoryKey; tokens: number }>
+  // Static, creation-scoped section ids (persistent system prompt + MCP schemas). Session-shaped
+  // sections (tool payloads, skill documents) are excluded from the published per-section detail so
+  // the field keeps meaning "app-owned static context", not "whatever grew this turn".
+  staticSectionIds: Set<string>
   toolObservations: Map<string, SessionUpdateObservation>
   skillSectionsByToolOccurrence: Map<string, string>
   canonicalRawOutputSections: Set<string>
@@ -90,6 +95,10 @@ const ESTIMATED_CATEGORY_KEYS: EstimatedCategoryKey[] = [
 const MAX_TOOL_ESTIMATE_CHARS = 64 * 1024
 const MAX_TOOL_ESTIMATE_NODES = 2_048
 
+// Keep the published section detail bounded to match the sanitizer's accepted shape, so a session with
+// an unusually large static surface cannot write more detail than a restored session would keep.
+const MAX_PUBLISHED_SECTIONS = 64
+
 const emptyTotals = (): Record<EstimatedCategoryKey, number> => ({
   system: 0,
   tools: 0,
@@ -103,6 +112,7 @@ const cloneSessionEstimate = (state: SessionEstimate): SessionEstimate => ({
   ...(state.model ? { model: state.model } : {}),
   totals: { ...state.totals },
   keyedSections: new Map(state.keyedSections),
+  staticSectionIds: new Set(state.staticSectionIds),
   toolObservations: new Map(state.toolObservations),
   skillSectionsByToolOccurrence: new Map(state.skillSectionsByToolOccurrence),
   canonicalRawOutputSections: new Set(state.canonicalRawOutputSections),
@@ -417,6 +427,7 @@ class ContextUsageTracker {
       ...(input.model ? { model: input.model } : {}),
       totals: emptyTotals(),
       keyedSections: new Map(),
+      staticSectionIds: new Set(['system:persistent']),
       toolObservations: new Map(),
       skillSectionsByToolOccurrence: new Map(),
       canonicalRawOutputSections: new Set(),
@@ -433,6 +444,7 @@ class ContextUsageTracker {
       (input.persistentSystemPrompt ?? []).join('\n\n')
     )
     for (const section of input.persistentSections ?? []) {
+      state.staticSectionIds.add(`persistent:${section.sectionId}`)
       this.replaceText(sessionId, `persistent:${section.sectionId}`, section.category, section.text)
     }
   }
@@ -784,7 +796,7 @@ class ContextUsageTracker {
     const local = this.localBreakdown(sessionId)
     if (!local) return undefined
 
-    const { state, categories: localCategories, estimatedTokens } = local
+    const { state, categories: localCategories, sections, estimatedTokens } = local
     const difference = Math.round(authoritativeTokens - estimatedTokens)
     const categories =
       difference > 0
@@ -798,7 +810,8 @@ class ContextUsageTracker {
       estimatedTokens,
       difference,
       status,
-      categories
+      categories,
+      ...(sections.length > 0 ? { sections } : {})
     }
   }
 
@@ -806,7 +819,7 @@ class ContextUsageTracker {
     const local = this.localBreakdown(sessionId)
     if (!local) return undefined
 
-    const { state, categories, estimatedTokens } = local
+    const { state, categories, sections, estimatedTokens } = local
     return {
       source: 'estimated',
       tokenizer: state.profile,
@@ -814,7 +827,8 @@ class ContextUsageTracker {
       estimatedTokens,
       difference: 0,
       status: 'preflight',
-      categories
+      categories,
+      ...(sections.length > 0 ? { sections } : {})
     }
   }
 
@@ -822,6 +836,7 @@ class ContextUsageTracker {
     | {
         state: SessionEstimate
         categories: AcpContextUsageCategory[]
+        sections: AcpContextUsageSection[]
         estimatedTokens: number
       }
     | undefined {
@@ -832,9 +847,24 @@ class ContextUsageTracker {
       const tokens = Math.max(0, Math.round(state.totals[key]))
       return tokens > 0 ? [{ key, tokens, estimated: true }] : []
     })
+    // Largest first, so a caller that truncates the detail keeps the costliest contributors. Empty
+    // sections are omitted: a zero-token entry is noise, not a cost the reader can act on.
+    const sections: AcpContextUsageSection[] = Array.from(state.keyedSections)
+      .filter(([sectionId]) => state.staticSectionIds.has(sectionId))
+      .map(([sectionId, section]) => ({
+        sectionId: sectionId.startsWith('persistent:')
+          ? sectionId.slice('persistent:'.length)
+          : sectionId,
+        category: section.category,
+        tokens: Math.max(0, Math.round(section.tokens))
+      }))
+      .filter((section) => section.tokens > 0)
+      .sort((left, right) => right.tokens - left.tokens)
+      .slice(0, MAX_PUBLISHED_SECTIONS)
     return {
       state,
       categories,
+      sections,
       estimatedTokens: categories.reduce((sum, category) => sum + category.tokens, 0)
     }
   }

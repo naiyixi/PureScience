@@ -316,16 +316,38 @@ Error occurred in handler for 'acp:get-plan-projection': Error: Cannot read runt
 
 → **D9 的"工具定义吃掉上下文预算"成立且被量化**：中位约六成、最大 818k。瘦身（懒注册/按需加载）**方向有据**。
 
-**量不出的部分（如实标注，不拿替代品冒充）**：
+**量不出的部分（如实标注，不拿替代品冒充）**
 
-- **逐工具/逐 MCP server 的占比**：`breakdown` 只有 `tools` 一个合计值（提供方按聚合上报），应用**没有记录**交给提供方的工具定义载荷，
-  因此"哪个工具最贵"**今天无法测量**。
+- ~~逐 MCP server 的占比~~ → **2026-09-13 已实现仪表化，见下节**（应用自有 MCP 定义侧已可逐 server 计量）。
+- **仍量不出的**：**提供方/framework 自带工具**与其余 wrapper 的成本——提供方只按 `tools` 一个合计上报，应用侧没有对应载荷可测。
+  即：本节的仪表化覆盖"应用自有静态定义"，**不覆盖 framework/提供方工具面**，不得据此宣称"工具成本已量清"。
 - 我曾尝试用"仓库内长字符串字节数"近似——**该近似不可用**（它把错误消息、类型定义、通道映射一并算入，
   榜首落在 `session-persistence.ts` 这类与工具定义无关的文件），**不作为证据**。
 
-**前置动作（下次开工的最小一步）**：在会话开始组装工具面时，把**自身 MCP server 的工具定义载荷**按 server 记下尺寸
-（写进 `contextUsage.breakdown` 或等价处），从而得到真实排行；拿到排行再决定裁谁、裁多少——与 C1 同一纪律：
-**先量，别先切**。
+**C4-A 仪表化落地（2026-09-13；实机验证）**
+
+- 实现：`ContextUsageTracker` 记录**静态节**（`system:persistent` + 各 `persistent:mcp-schema:<server>`），
+  在 `AcpContextUsageBreakdown` 新增可选 `sections: [{sectionId, category, tokens}]`（按 tokens 降序、上限 64、零值不计），
+  随 `estimate()`/`compare()` 一起发布并在会话 JSON 中持久化（`sanitizeAcpContextUsage` 收口；明细损坏只丢明细、不丢已对账的 breakdown）。
+- **实机证据（真实 UI 会话 `4fe38e37-4efd-456f-8834-4e8aa7cfe279`，改动后构建）**：
+  聚合 `mcp = 3865`，明细 6 节合计 = **2253+626+354+349+283 = 3865（精确吻合）**。
+
+| section（per-server） | tokens | 占 mcp |
+|---|---|---|
+| mcp-schema:purescience-notebook | 2253 | 58% |
+| mcp-schema:purescience-artifacts | 626 | 16% |
+| mcp-schema:purescience-context-summary | 354 | 9% |
+| mcp-schema:purescience-skills | 349 | 9% |
+| mcp-schema:purescience-memory | 283 | 7% |
+| system:persistent（另列 system 类） | 4583 | — |
+
+- **改造前后对比**：改动前创建的会话（`d811e611`、`a3acf34c`）只有聚合值、无 `sections`；改动后（`4fe38e37`）逐 server 可见。
+- **对"裁谁"的判读（与使用侧并列后）**：应用自有 MCP 定义**总共只 3865**，其中 notebook 占 2253（58%）；
+  同会话 `other = 30,945`、`system = 4,583` → **大头不在应用自有 MCP 定义面**，
+  故"裁 MCP 定义"收益有限；真要瘦身应针对 `other`（framework/提供方侧）与 system prompt，
+  而这两侧的载荷**应用测不到**（见上条）。→ 记录结论：**本项到此为止，不再为它造仪表化**。
+- 验收测试：`context-usage-tracker.test.ts`（静态节逐项列出、会话型节不得混入）、`src/shared/acp.test.ts`（`sections` 往返/缺省/损坏降级/上限 64）；
+  本地 `src/main/acp` + `src/renderer/src/lib/acp` + `src/shared/acp.test.ts` 共 **89 文件 / 1608 项通过**，typecheck 双绿、lint 干净。
 
 ### C4 上下文构成基线（2026-09-13 实算；瘦身方向有据，但**逐工具明细量不出**）
 

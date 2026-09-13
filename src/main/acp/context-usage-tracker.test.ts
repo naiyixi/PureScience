@@ -55,8 +55,44 @@ describe('ContextUsageTracker', () => {
         { key: 'messages', tokens: 3, estimated: true },
         { key: 'skills', tokens: 3, estimated: true },
         { key: 'other', tokens: 3, estimated: false }
+      ],
+      // The persistent system prompt is app-owned static context, so it is also attributable
+      // individually. The categories above remain the reconciled view; this is extra detail.
+      sections: [{ sectionId: 'system:persistent', category: 'system', tokens: 3 }]
+    })
+  })
+
+  it('attributes each static section individually without mixing in session-shaped sections', () => {
+    const tracker = new ContextUsageTracker(wordCounter)
+    tracker.beginSession('s1', {
+      frameworkId: 'claude-code',
+      model: 'deepseek-v4-flash',
+      persistentSystemPrompt: ['system rules here'],
+      persistentSections: [
+        { sectionId: 'mcp-schema:purescience-notebook', category: 'mcp', text: 'one two three' },
+        { sectionId: 'mcp-schema:purescience-artifacts', category: 'mcp', text: 'one two' }
       ]
     })
+    // Session-shaped growth: a tool payload and a skill document. Neither is static context, so the
+    // per-section detail must not turn into a transcript of whatever the turn happened to load.
+    tracker.replaceText('s1', 'tool:call-1:output', 'tools', 'one two three four five')
+    tracker.replaceText('s1', 'skill-file:/tmp/demo/SKILL.md', 'skills', 'one two three four')
+
+    const breakdown = tracker.estimate('s1')
+
+    // Largest first, so trimming the detail keeps the costliest contributors.
+    expect(breakdown?.sections).toEqual([
+      { sectionId: 'system:persistent', category: 'system', tokens: 3 },
+      { sectionId: 'mcp-schema:purescience-notebook', category: 'mcp', tokens: 3 },
+      { sectionId: 'mcp-schema:purescience-artifacts', category: 'mcp', tokens: 2 }
+    ])
+    // The categories still aggregate everything, including the sections excluded above.
+    expect(breakdown?.categories).toEqual([
+      { key: 'system', tokens: 3, estimated: true },
+      { key: 'tools', tokens: 5, estimated: true },
+      { key: 'mcp', tokens: 5, estimated: true },
+      { key: 'skills', tokens: 4, estimated: true }
+    ])
   })
 
   it('exposes a local-only estimate before the Agent reports authoritative usage', () => {
