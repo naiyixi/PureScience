@@ -1182,6 +1182,12 @@ const runReviewWithSession = async (
 
     const reviewerPrompt = buildReviewerPrompt(scope)
 
+    // Audit trail for the FIRST review of a turn, which is the common case. The same call exists on the
+    // scoped re-review path; without this one the ledger reached the reviewer's instructions but left no
+    // trace anywhere, so a run's supervision could not be checked after the fact - and an acceptance probe
+    // waiting for a line like this waits forever (measured: zero lines across 12 started reviews).
+    logSupervisorLedger(sessionId, options.supervisor)
+
     const systemPromptAppend = appendSupervisorNotice(
       REVIEWER_RUBRIC_SYSTEM_PROMPT_APPEND,
       options.supervisor
