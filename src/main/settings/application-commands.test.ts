@@ -45,6 +45,7 @@ const expectedChannels = [
   'settings:list-app-icons',
   'settings:list-connectors',
   'settings:list-skills',
+  'settings:skill-reuse',
   'settings:mark-onboarding-complete',
   'settings:preview-agent-home-skill',
   'settings:preview-github-skill',
@@ -137,7 +138,7 @@ const createDependencies = (): Readonly<{
 }
 
 describe('Settings core application commands', () => {
-  it('installs the exact 46-command inventory and dispatches a remote-safe preflight query', async () => {
+  it('installs the exact 47-command inventory and dispatches a remote-safe preflight query', async () => {
     const { dependencies, serviceMethod } = createDependencies()
     const preflight = { agentReady: true }
     serviceMethod('getPreflight').mockResolvedValue(preflight)

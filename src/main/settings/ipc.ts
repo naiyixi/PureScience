@@ -327,6 +327,7 @@ const registerSettingsIpcHandlers = ({
   )
 
   ipcMainHandle('settings:list-skills', () => service.listSkills())
+  ipcMainHandle('settings:skill-reuse', () => service.skillReuse())
   ipcMainHandle('settings:get-skill-detail', (_event, id: string) => service.getSkillDetail(id))
   ipcMainHandle('settings:export-skill', async (event, request: ExportSkillRequest) => {
     if (!skillExportFiles) throw new Error('Skill export is unavailable')

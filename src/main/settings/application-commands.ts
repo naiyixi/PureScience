@@ -444,6 +444,7 @@ const settingsCoreApplicationCommandGroup = defineApplicationCommandGroup('setti
   settingsCoreApplicationCommands.listAppIcons,
   settingsCoreApplicationCommands.listConnectors,
   settingsCoreApplicationCommands.listSkills,
+  settingsCoreApplicationCommands.skillReuse,
   settingsCoreApplicationCommands.markOnboardingComplete,
   settingsCoreApplicationCommands.previewAgentHomeSkill,
   settingsCoreApplicationCommands.previewGitHubSkill,
@@ -541,6 +542,7 @@ const registerCoreSettingsApplicationCommands = (
       'settings:list-app-icons': () => dependencies.listAppIconPreviews?.() ?? [],
       'settings:list-connectors': () => dependencies.service.listConnectors(),
       'settings:list-skills': () => dependencies.service.listSkills(),
+      'settings:skill-reuse': () => dependencies.service.skillReuse(),
       'settings:mark-onboarding-complete': () => dependencies.service.markOnboardingComplete(),
       'settings:preview-agent-home-skill': ({ args }) =>
         dependencies.service.previewAgentHomeSkill(args[0]),
