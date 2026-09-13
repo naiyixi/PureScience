@@ -1900,6 +1900,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.skillReuseBadge': '重複使用 {uses} 次 · 失敗 {failures}',
   'settings.skillReuseNone': '尚無技能重複使用紀錄',
   'settings.skillReuseHistoryNote': '本版之前的對話沒有記錄技能名稱，因此不會顯示在這裡。',
+  'settings.skillReuseUnattached': '這些載入來自本清單之外的技能（連接器提供，或已被移除）：',
   'settings.skillTrustEvidence': '證據',
   'settings.toggleTaskNotifications': '切換任務通知',
   'settings.tokenTotalsAvailable': '此期間共有 {reported} 次執行（共 {count} 次）可提供詞元總計。',

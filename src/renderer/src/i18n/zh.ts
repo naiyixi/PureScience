@@ -636,6 +636,7 @@ export const zh = {
   'settings.skillReuseBadge': '复用 {uses} 次 · 失败 {failures}',
   'settings.skillReuseNone': '尚无技能复用记录',
   'settings.skillReuseHistoryNote': '本版之前的会话没有记录技能名，因此不会出现在这里。',
+  'settings.skillReuseUnattached': '这些加载来自本列表之外的技能（连接器提供，或已被移除）：',
   'settings.skillTrustEvidence': '证据',
 
   // settings — connectors panel

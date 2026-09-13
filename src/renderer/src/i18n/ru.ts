@@ -2042,6 +2042,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.skillTrustFailureMode': 'Режим отказа',
   'settings.skillReuseBadge': 'Использован {uses}× · ошибок {failures}',
   'settings.skillReuseNone': 'Повторное использование навыков пока не зафиксировано',
+  'settings.skillReuseUnattached':
+    'Загружено из навыков вне этого списка (предоставлены коннектором или удалены):',
   'settings.skillReuseHistoryNote':
     'Сессии до этой версии не записывали имена навыков, поэтому их загрузки здесь не появятся.',
   'settings.skillTrustEvidence': 'Подтверждение',

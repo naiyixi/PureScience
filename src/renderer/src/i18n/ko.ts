@@ -2003,6 +2003,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.skillTrustFailureMode': '실패 모드',
   'settings.skillReuseBadge': '{uses}회 사용 · 실패 {failures}',
   'settings.skillReuseNone': '아직 기록된 스킬 재사용이 없습니다',
+  'settings.skillReuseUnattached': '이 목록에 없는 스킬에서 로드됨(커넥터 제공 또는 이후 삭제됨):',
   'settings.skillReuseHistoryNote':
     '이 버전 이전의 세션은 스킬 이름을 기록하지 않았으므로 여기에 표시될 수 없습니다.',
   'settings.skillTrustEvidence': '근거',

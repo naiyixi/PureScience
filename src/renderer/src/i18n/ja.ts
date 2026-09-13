@@ -2043,6 +2043,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.skillTrustFailureMode': '失敗モード',
   'settings.skillReuseBadge': '{uses} 回使用 · 失敗 {failures}',
   'settings.skillReuseNone': 'スキルの再利用記録はまだありません',
+  'settings.skillReuseUnattached':
+    'この一覧にないスキルからの読み込み（コネクタ提供、または削除済み）：',
   'settings.skillReuseHistoryNote':
     'このバージョンより前のセッションはスキル名を記録していないため、ここには表示されません。',
   'settings.skillTrustEvidence': '根拠',

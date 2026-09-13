@@ -2079,6 +2079,8 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.skillTrustFailureMode': "Mode d'échec",
   'settings.skillReuseBadge': 'Utilisé {uses}× · {failures} échecs',
   'settings.skillReuseNone': 'Aucune réutilisation de skill enregistrée',
+  'settings.skillReuseUnattached':
+    'Chargés depuis des skills hors de cette liste (fournis par un connecteur ou supprimés depuis) :',
   'settings.skillReuseHistoryNote':
     "Les sessions antérieures à cette version n'ont pas enregistré de nom de skill ; leurs chargements ne peuvent pas apparaître ici.",
   'settings.skillTrustEvidence': 'Preuve',

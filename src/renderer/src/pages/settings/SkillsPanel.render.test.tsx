@@ -283,6 +283,26 @@ describe('SkillsPanel (list view)', () => {
     expect(document.body.textContent).toContain('No skill reuse recorded yet')
   })
 
+  it('lists reuse for skills the panel does not carry, instead of dropping it silently', () => {
+    act(() => {
+      // A connector-materialised skill the agent loaded (real, verified against the running app): it has no
+      // catalog row, so without this section its reuse would be recorded and then invisible.
+      useSettingsStore.setState({
+        skills: seedSkills,
+        skillReuse: [{ skillName: 'mcp-genes', uses: 1, failures: 0 }]
+      })
+    })
+
+    act(() => {
+      root.render(<SkillsPanel view={{ kind: 'list' }} onNavigate={vi.fn()} />)
+    })
+
+    const section = document.body.querySelector('[data-testid="skill-reuse-unattached"]')
+    expect(section).not.toBeNull()
+    expect(section?.textContent).toContain('mcp-genes')
+    expect(section?.textContent).toContain('1')
+  })
+
   it('shows the default-on conversation import preference and lets the user disable it', () => {
     act(() => {
       root.render(<SkillsPanel view={{ kind: 'list' }} onNavigate={vi.fn()} />)

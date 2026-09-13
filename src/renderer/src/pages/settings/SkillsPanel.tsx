@@ -164,6 +164,18 @@ const SkillsPanel = ({
     }
     return index
   }, [skillReuse])
+  // Loads the agent performed on skills this panel does not list: connector-materialised skills, or ones
+  // deleted since. They are still real reuse, so they are shown under their own heading instead of quietly
+  // failing to attach to a row.
+  const unattachedReuse = useMemo(() => {
+    const known = new Set<string>()
+    for (const skill of skills) {
+      known.add(skill.id)
+      known.add(skill.name)
+    }
+    return skillReuse.filter((payoff) => !known.has(payoff.skillName))
+  }, [skills, skillReuse])
+
   const specialistNamesBySkillId = useMemo(() => {
     const index = new Map<string, string[]>()
     for (const item of specialistItems) {
@@ -785,6 +797,30 @@ const SkillsPanel = ({
             )
           })}
         </div>
+
+        {unattachedReuse.length > 0 ? (
+          <div data-testid="skill-reuse-unattached" className="flex flex-col gap-2">
+            <p className="text-xs text-muted-foreground">{t('settings.skillReuseUnattached')}</p>
+            <ul className="flex flex-col divide-y divide-border">
+              {unattachedReuse.map((payoff) => (
+                <li
+                  key={payoff.skillName}
+                  className="flex min-h-10 items-center gap-2 py-2 text-sm text-foreground"
+                >
+                  <span className="truncate">{payoff.skillName}</span>
+                  <span
+                    data-testid="skill-reuse-badge"
+                    className="shrink-0 rounded-full border border-border-200 bg-bg-100 px-2 py-0.5 text-[11px] text-muted-foreground"
+                  >
+                    {t('settings.skillReuseBadge')
+                      .replace('{uses}', String(payoff.uses))
+                      .replace('{failures}', String(payoff.failures))}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
       </div>
 
       <AlertDialog.Root

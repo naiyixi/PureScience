@@ -666,6 +666,8 @@ export const en: Record<ZhKey, string> = {
   'settings.skillTrustFailureMode': 'Failure mode',
   'settings.skillReuseBadge': 'Used {uses}× · {failures} failed',
   'settings.skillReuseNone': 'No skill reuse recorded yet',
+  'settings.skillReuseUnattached':
+    'Loaded from skills outside this list (connector-provided, or removed since):',
   'settings.skillReuseHistoryNote':
     'Sessions from before this version recorded no skill names, so their loads cannot appear here.',
   'settings.skillTrustEvidence': 'Evidence',
