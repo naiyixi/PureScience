@@ -301,6 +301,31 @@ Error occurred in handler for 'acp:get-plan-projection': Error: Cannot read runt
 （例如按 D10 的方式用 RPC 建会话、不落盘）→ 点批准/驳回：修复前应在 devtools 见到 unhandledrejection；
 修复后同操作不再产生。
 
+### C1 复用链台账：被数据缺口卡住（2026-09-13 实测，结论入档、不建空面板）
+
+**发现（119 个真实会话文件）**：
+
+- 合成发射器路径（`emitSkillActivities` → `Loaded skill: <name>` 活动）**0 条记录**——该路径在本机
+  （提供方原生技能）从未触发；
+- 提供方原生 `Skill` 活动 **81 条**，但 `title` 恒为 `"Tool activity"`、`rawInput` 为 `None`
+  → **持久化数据里没有技能名**。
+
+**结论**：应用记录了"某一轮调用了技能"，却**没有记录是哪一个技能**。因此"从既有事件派生技能↔run"目前
+**无数据可派生**，C1 的收益榜若照原计划直接做，会是一个空面板——按验收口径（允许审计归档零代码收口、
+禁空壳造功能）**不建该面板**。
+
+**已落地的一半**：信任侧（验证状态 / 来源 run / 复现证据）已在技能面板可见（见 B1 小节），有真数据。
+
+**三种解法（择一，需拍板）**：
+
+1. **让活动带上技能名**（最小改动、真解）：在活动投影处保留提供方技能调用的名称（`title` 或 `rawInput`）；
+   已按发射器真实线形写好纯派生器 `shared/skill-usage.ts`（`skillUsagesFromActivities` / `summarizeSkillUsage`，
+   单测 4 条通过），拿到名字即可直接产出排行。**需先勘明名称在哪一步被丢弃**（投影 vs 事件本身）。
+2. 从 **reviewer 作用域快照**（`ReviewScopeSnapshot` 的 blocks）派生——数据更全但只覆盖被审的轮次。
+3. 明确**放弃** C1 排行部分，只保留信任侧（C1 降级为"技能信任台账"）。
+
+**建议 1**：它把"调用了技能"补成"调用了哪个技能"，对排查与度量都有用，且不需要新 IPC 通道。
+
 ### 验收记录：学习型技能验证门控（B1）
 
 `docs/evidence/2026-09-13-skill-trust-gate-probe.py`（对**运行中应用**跑，不经 agent、不经 UI，
