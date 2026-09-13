@@ -75,10 +75,21 @@
 **验收**：fixture 事件流确定性测试 + 实机长任务出现**带证据句柄**的 steer 且进追溯报告。
 **禁止**：引入常驻第三个模型会话（PILOT 教训：只在难任务给信号，Easy 上受助 0.0%）。
 
-**⚠️ 前置阻塞（必须先解决）**：本项与 C1 的"实机"验收都需要**能稳定驱动一个真实 agent 回合**。
-本轮实测：UI 路径两次未把 prompt 送进会话、裸 RPC 序列（create→save→resume→prompt）未产出回合
-（与 `references/web-rpc-api.md` 记录的"该管道不可稳定复用"一致）。
-**先解决这条通道**（或改写为"经由用户手动执行的手工验收清单"），否则 C3 会重演"只能拿到引擎层证据"。
+**⚠️ 前置：实机验收通道——已勘明，且我先前的结论是错的（2026-09-13 更正）**
+
+- **裸 RPC 通道实际可用**：`create-session → save-session → resume-session → send-prompt` **真的会跑一个真实 agent 回合**。
+  证据：本轮探针的 prompt（要求"同一工具失败三次"）在日志里产生了
+  `prompt start { textLength: 114 }` → **三次** `tool call failed { tool: 'purescience-notebook/notebook_bind_runtime' }` → `prompt stopped { end_turn }`。
+- **我此前判定"未产出回合"是验证方法错误**：我按**会话文件**（`sessions/<pid>/<sid>.json`）找 agent 消息，
+  而 **headless RPC 会话不经渲染端 store，故不落盘**（D10 的机制）。**正确证据源是主日志**（`~/purescience/logs/headless.out.log`）。
+  教训：**"没找到"不等于"没发生"**——先确认证据源是否覆盖那条通路。
+- **UI 通道也可用**，结构摸清如下（此前失败是我在错误的阶段找输入框）：
+  ① 主页 `新项目` 按钮 → 弹出**对话框**（`input[type=text]`，placeholder「例如：复现已发表的研究」）+ 确认按钮（`创建`）；
+  ② **composer 不是 textarea**，而是 `div[role="textbox"][contenteditable="true"]`（`aria-label="询问任何内容"`）；
+  ③ 向其键入后按 `Enter` 即可发送（已实测键入成功）。
+- **仍然缺的**：`renderer-派生`链路的实机证据（B3 的"活动 → 台账 → 审计请求 → 审计员收到 `<supervisor_signals>`"）
+  需要**UI 会话**（活动由渲染端派生）。见本轮 `ui_drive_wake.cjs` 探针：同会话内让 agent 连续三次失败 → 期望日志出现
+  `reviewer: supervisor ledger attached`。
 
 ## 4. 现状锚点（开工前先核对）
 
