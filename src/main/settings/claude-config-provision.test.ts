@@ -13,6 +13,7 @@ import {
   configDenyRules,
   provisionAppClaudeConfigDir
 } from './claude-config-provision'
+import { CAPTURE_FILENAME, captureScriptPath, isSkillUsageHookEntry } from './skill-usage-hook'
 
 // The default (no-registry) call path builds a SkillRegistry() that resolves the bundled-skills root via
 // electron's app; point it at a nonexistent dir so the registry lists nothing instead of touching a real
@@ -163,6 +164,59 @@ describe('provisionAppClaudeConfigDir', () => {
     for (const rule of configDenyRules(configDir)) {
       expect(settings.permissions.deny).toContain(rule)
     }
+  })
+
+  it('provisions the Skill capture hook and the script it invokes', async () => {
+    root = await mkdtemp(join(tmpdir(), 'os-claude-config-'))
+    const configDir = join(root, 'claude')
+
+    await provisionAppClaudeConfigDir(configDir)
+
+    const settings = JSON.parse(await readFile(join(configDir, 'settings.json'), 'utf8'))
+    const [entry] = settings.hooks.PostToolUse
+    expect(entry.matcher).toBe('Skill')
+    expect(entry.hooks[0].type).toBe('command')
+    expect(entry.hooks[0].command).toContain(captureScriptPath(configDir))
+    // The referenced script must exist, or every matched tool call would invoke a missing file.
+    expect((await stat(captureScriptPath(configDir))).isFile()).toBe(true)
+  })
+
+  it('replaces its own hook on re-provision instead of stacking, and keeps third-party hooks', async () => {
+    root = await mkdtemp(join(tmpdir(), 'os-claude-config-'))
+    const configDir = join(root, 'claude')
+    await mkdir(configDir, { recursive: true })
+    await writeFile(
+      join(configDir, 'settings.json'),
+      JSON.stringify({
+        hooks: {
+          PostToolUse: [
+            { matcher: 'Write', hooks: [{ type: 'command', command: 'echo third-party' }] },
+            // A previous version of this module wrote the entry below.
+            {
+              matcher: 'Skill',
+              hooks: [{ type: 'command', command: `node "old/${CAPTURE_FILENAME}" || true` }]
+            }
+          ],
+          SessionStart: [{ hooks: [{ type: 'command', command: 'echo keep-me' }] }]
+        }
+      }),
+      'utf8'
+    )
+
+    await provisionAppClaudeConfigDir(configDir)
+    await provisionAppClaudeConfigDir(configDir)
+
+    const settings = JSON.parse(await readFile(join(configDir, 'settings.json'), 'utf8'))
+    const postToolUse = settings.hooks.PostToolUse as Array<{ matcher: string }>
+    // Exactly one module-owned entry survives, alongside the untouched third-party one.
+    expect(postToolUse.filter((entry) => isSkillUsageHookEntry(entry))).toHaveLength(1)
+    expect(postToolUse).toHaveLength(2)
+    expect(JSON.stringify(settings.hooks.PostToolUse)).toContain('echo third-party')
+    expect(JSON.stringify(settings.hooks.PostToolUse)).not.toContain(`old/${CAPTURE_FILENAME}`)
+    // Other hook events are not this module's business.
+    expect(settings.hooks.SessionStart).toEqual([
+      { hooks: [{ type: 'command', command: 'echo keep-me' }] }
+    ])
   })
 
   it('projects and explicitly clears the app-owned model catalog', async () => {

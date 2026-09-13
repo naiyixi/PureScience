@@ -64,7 +64,25 @@
 
 **实现选项**
 
-- **A ✅ 勘察完成（2026-09-13）：接缝存在且是受支持路径，不需要改适配器**
+- **A ✅ spike 通过（2026-09-13，真实会话实测）——结论：走 A**
+
+  **实测结果（会话 `e055db44-5247-4fcb-9e2a-195c94ac883e`，改动后构建）**：
+  1. provisioning 落地：`settings.json` 出现 `hooks.PostToolUse = [{matcher:"Skill", hooks:[{type:"command",
+     command:'node "…/claude/hooks/skill-usage-capture.cjs" || true'}]}]`；
+  2. agent 真加载了技能（界面 `Loaded skill: mcp-genes`，296ms）；
+  3. **采集到名字**：`{"toolName":"Skill","toolInput":{"skill":"mcp-genes"},"sessionId":"e055db44-…","cwd":"…/workspaces/ad6619d2-…"}`。
+  4. **归属键现成**：`sessionId` = 应用会话 id（与持久化会话 `id` 一致），`cwd` 亦一致 → 不需要猜。
+  5. **风险缓解被真机验证**：该回合正常完成，钩子运行未阻断工具调用。
+
+  **另一处复核（重要）**：持久化的活动**仍然无名**（`providerToolName: 'Skill'`、`title: 'Tool activity'`，无 rawInput）——
+  界面上的 `Loaded skill: mcp-genes` 不来自持久化活动。所以**采集文件是唯一名字来源**，C1 的消费端必须读它。
+
+  **已落地（本片）**：`src/main/settings/skill-usage-hook.ts`（采集脚本由源码生成、写入 `<configDir>/hooks/`；
+  settings 条目按"模块自有先剪除再重加"管理；命令带平台化成功守卫 `|| true` / `|| exit /b 0`）+
+  `claude-config-provision.ts` 接线 + 测试（17 项：含**真实 node 执行**脚本，验证正常输入记一行、**垃圾输入仍 exit 0**）。
+
+  **下一片（消费端，尚未落地——不得当成已完成）**：读采集 JSONL（需**有界**：按 sessionId 归属、按时间落轮次、上限/轮转）→
+  产出排行数据 → 接既有台账/面板；历史 119 会话仍无名，必须显式标注。
 
   | 事实 | 出处 |
   |---|---|

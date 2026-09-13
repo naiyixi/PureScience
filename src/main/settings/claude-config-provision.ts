@@ -3,6 +3,11 @@ import { join } from 'node:path'
 
 import { ClaudeCodeSkillMaterializer, type SkillMaterializer } from '../skills/materializer'
 import { SkillRegistry, type BundledSkill } from '../skills/registry'
+import {
+  isSkillUsageHookEntry,
+  skillUsageHookSettings,
+  writeSkillUsageCapture
+} from './skill-usage-hook'
 
 // The app owns `<storageRoot>/claude` and provisions its settings and skills there. Isolated/API-key
 // providers use it as CLAUDE_CONFIG_DIR; shared auth keeps CLAUDE_CONFIG_DIR=~/.claude and loads this
@@ -88,6 +93,24 @@ const writeAppSettings = async (
 
   settings.permissions = { ...permissions, deny }
   settings.disableBundledSkills = true
+  // Module-owned hook, managed exactly like the deny rules: prune whatever this module wrote in an earlier
+  // version, then add the current command, leaving every third-party hook in the file untouched. Without the
+  // prune an older command would linger next to the new one and run twice.
+  const existingHooks =
+    typeof settings.hooks === 'object' && settings.hooks !== null
+      ? (settings.hooks as Record<string, unknown>)
+      : {}
+  const existingPostToolUse = Array.isArray(existingHooks.PostToolUse)
+    ? (existingHooks.PostToolUse as unknown[])
+    : []
+  const managedHooks = skillUsageHookSettings(configDir, process.platform)
+  settings.hooks = {
+    ...existingHooks,
+    PostToolUse: [
+      ...existingPostToolUse.filter((entry) => !isSkillUsageHookEntry(entry)),
+      ...(managedHooks.PostToolUse as unknown[])
+    ]
+  }
   if (modelConfig !== undefined) {
     if (modelConfig) {
       settings.availableModels = [...modelConfig.availableModels]
@@ -130,6 +153,9 @@ const provisionAppClaudeConfigDir = async (
   )
 
   await writeAppSettings(configDir, options.modelConfig)
+  // The capture the managed hook invokes lives beside the settings that reference it, so both are written
+  // from the same source of truth on every provision.
+  await writeSkillUsageCapture(configDir)
 
   const materializer = options.materializer ?? new ClaudeCodeSkillMaterializer()
   const skills = options.skills ?? (await new SkillRegistry().list())
