@@ -263,6 +263,44 @@ evidence-synthesis-specialist, omics-biomarker-specialist, pkpd-dose-designer, r
 - **未取证**：真实 agent 回合里"同会话 5 次 pmc 抓取只问 1 次"未取得（live 通路不可靠，见上文 B3 记录）；
   不以下层证据冒充该层。
 
+### B6 前端指纹 `d22073f8` 定位（2026-09-13）
+
+**指纹是什么**（`src/renderer/src/renderer-diagnostics.ts`）：失败报告只记类别 + 指纹——指纹是 **FNV-1a 32 位**，
+输入为**错误栈第 1–4 行的归一化文本**（URL→`[url]`、路径→`[path]`、数字→`#`，截断 512），
+非 Error 或无栈时退化为**类别字符串**本身。实测：`d22073f8` 不等于任何短类别串（`error/unknown/type…` 逐一算过），
+故它来自真实调用栈；而栈不入日志（隐私设计）→ **无法用哈希反推**，只能从调用路径与现场旁证定位。
+
+**现场证据**：指纹出现 2 次（L252512 09-05 workspace `unhandled-rejection`；L261335 09-06 settings `window-error`）。
+第一处**紧邻**日志：
+
+```
+[ipc] ipc handler rejected { errorCategory: 'error' }
+Error occurred in handler for 'acp:get-plan-projection': Error: Cannot read runtime context for a missing Session.
+[renderer] renderer javascript failure { source: 'unhandled-rejection', surface: 'workspace', fingerprint: 'd22073f8' }
+```
+
+第二处（09-06 settings）前后是 `renderer became unresponsive { 15402ms }` → `121011ms`，与 D4 记的"挂起 37s/121s"吻合。
+（另注：日志里大量 `renderer process gone … exitCode 15` 是 SIGTERM，即**我重启 DEV** 造成，不是崩溃。）
+
+**定位到的真缺陷并已修**：`session-plan/respond-to-session-plan.ts` —— 该函数**错误路径**给恢复性 hydrate 包了 try/catch，
+**成功路径**却在 try 之外 `await refreshSessionPlanProjection(target)`；而其中的 `getPlanProjection` 正是会抛
+"Cannot read runtime context for a missing Session" 的 IPC 调用，两个调用方（`ConversationPanel`、`PreviewToolContent`）
+都在 workspace surface 里 await 它 → **一次已经成功的 plan 响应会以 unhandled rejection 收场**。修法：把 hydrate 变为
+**永不抛的尽力而为**（失败仅跳过，投影由下一次状态推送补上），并顺手清掉随之冗余的嵌套 try。
+
+**测试**：新增两条——①投影刷新失败时 `respondToSessionPlan` **仍 resolve**（响应已成功，仅跳过 hydrate）；
+②响应本身失败时**仍抛出原错误**（不因刷新失败而改变权威结果）。相关簇 4 文件 / 93 项全绿。
+
+**诚实边界**：①指纹**无法用哈希复算**证明同源——"同一 IPC 调用 + 同一 surface + 紧邻日志行"是**路径一致**的证据，不是哈希相等；
+②`window-error`/15s/121s **挂起未复现**（dev 下伴随 HMR），此半条**不宣称已修**，留复现清单见下；
+③审计：扫描出 renderer 中 **34 处** `void window.api.*(...)` 启动 Promise 且无 `.catch` 的调用点（面板取数类为主，
+清单位于本轮记录），这些点一旦 IPC handler 抛错即产生同类 unhandled rejection。**不批量补 `.catch(() => undefined)`**——
+那会把错误静默吞掉、损失可诊断性；正确模式是"记录 + 给出可见失败态"（如 `setError`/骨架屏转错误态），逐面板按需改。
+
+**复现清单（手工）**：在 workspace 打开一个 plan 待批会话 → 让主进程侧丢失该 session 的运行时上下文
+（例如按 D10 的方式用 RPC 建会话、不落盘）→ 点批准/驳回：修复前应在 devtools 见到 unhandledrejection；
+修复后同操作不再产生。
+
 ### 验收记录：学习型技能验证门控（B1）
 
 `docs/evidence/2026-09-13-skill-trust-gate-probe.py`（对**运行中应用**跑，不经 agent、不经 UI，

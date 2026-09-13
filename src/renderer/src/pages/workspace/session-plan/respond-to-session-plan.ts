@@ -33,12 +33,20 @@ const projectReturnedFeedbackMessage = (sessionId: string, result: unknown): boo
   return true
 }
 
+// Best-effort hydration after the plan response. The response itself is the authoritative outcome, so a
+// failed refresh must not escape as a rejection: `getPlanProjection` throws for a session main has no
+// runtime context for, and the callers in the workspace await this — which is how a plan response that
+// actually succeeded surfaced as an unhandled rejection in the renderer failure report.
 const refreshSessionPlanProjection = async ({
   projectId,
   sessionId
 }: Pick<SessionPlanResponseTarget, 'projectId' | 'sessionId'>): Promise<void> => {
-  const current = await window.api.acp.getPlanProjection(projectId, sessionId)
-  if (current) useSessionStore.getState().setActivePlanProjection(sessionId, current)
+  try {
+    const current = await window.api.acp.getPlanProjection(projectId, sessionId)
+    if (current) useSessionStore.getState().setActivePlanProjection(sessionId, current)
+  } catch {
+    // The projection re-hydrates from the next state push; nothing to recover here.
+  }
 }
 
 export const respondToSessionPlan = async (
@@ -71,11 +79,8 @@ export const respondToSessionPlan = async (
     }
     if ('feedback' in payload) return
   } catch (error) {
-    try {
-      await refreshSessionPlanProjection(target)
-    } catch {
-      // Preserve the authoritative response error when recovery hydration also fails.
-    }
+    // Re-hydrate before surfacing the response error; the refresh itself never throws.
+    await refreshSessionPlanProjection(target)
     throw error
   }
   await refreshSessionPlanProjection(target)

@@ -71,6 +71,41 @@ describe('respondToSessionPlan', () => {
     expect(useSessionStore.getState().sessions[0].activePlanProjection).toBe(approvedProjection)
   })
 
+  it('resolves even when the projection refresh fails, because the response already succeeded', async () => {
+    // `getPlanProjection` throws for a session main has no runtime context for. That must not escape as a
+    // rejection: the callers in the workspace await this, and an unhandled rejection there is what the
+    // renderer failure report recorded (fingerprint with surface 'workspace').
+    getPlanProjection.mockRejectedValue(
+      new Error('Cannot read runtime context for a missing Session.')
+    )
+
+    await expect(
+      respondToSessionPlan(
+        { projectId: 'project-1', sessionId: 'session-1', projection },
+        'approved'
+      )
+    ).resolves.toBeUndefined()
+
+    // The response itself was still applied; only the best-effort hydration was skipped.
+    expect(respondPlan).toHaveBeenCalledOnce()
+    expect(getPlanProjection).toHaveBeenCalledOnce()
+  })
+
+  it('still surfaces the response error when the refresh also fails', async () => {
+    const failure = new Error('Plan response failed')
+    respondPlan.mockRejectedValue(failure)
+    getPlanProjection.mockRejectedValue(
+      new Error('Cannot read runtime context for a missing Session.')
+    )
+
+    await expect(
+      respondToSessionPlan(
+        { projectId: 'project-1', sessionId: 'session-1', projection },
+        'approved'
+      )
+    ).rejects.toBe(failure)
+  })
+
   it('projects returned feedback immediately as a standard user Message', async () => {
     respondPlan.mockResolvedValue({
       kind: 'feedback',
