@@ -152,10 +152,12 @@ export type ArtifactReproducibilityCheckRequest = {
   appSessionId: string
   artifactId: string
   versionId: string
-  // True only when the application itself re-ran the sealed recipe. Until that half is wired a
-  // caller-supplied byte match is reported as `bytes-match` and can never earn `reproduced`.
-  reexecuted: boolean
-  // Paths of the files a reproduction produced, resolved by the app against the roots below.
+  // Ask the app to re-run the sealed recipe itself, in an isolated directory, and grade that run's
+  // own output. This is a request, not a claim: the verdict only becomes `reproduced` when the app
+  // really executed the replay, and a replay that cannot run is reported with its refusal.
+  reexecute?: boolean
+  // Paths of the files a reproduction produced, compared when the app did not re-run the recipe
+  // itself. Ignored for a re-execution: the app grades what it produced, not what it was handed.
   reproducedFiles: string[]
   // Roots the app authorized for this turn (artifact MCP environment). A path outside them becomes a
   // `not-compared` outcome instead of a silent read.
@@ -185,6 +187,15 @@ export type ReproducibilityReplaySummary = {
   kernelKind?: string
   stagedInputCount: number
   expectedOutputCount: number
+  // Filled in when the app actually ran the replay: what came back, in the same vocabulary the
+  // isolated runner uses. Absent means nothing was executed.
+  execution?: {
+    state: 'completed' | 'failed' | 'timed-out' | 'refused'
+    refusal?: string
+    detail: string
+    producedOutputCount: number
+    missingOutputCount: number
+  }
 }
 
 const uniqueReasons = (reasons: ReproducibilityGapReason[]): ReproducibilityGapReason[] => [

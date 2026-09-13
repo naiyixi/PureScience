@@ -502,22 +502,22 @@ const verifyArtifactReproductionToolSchema = {
     ),
   reproduced_paths: z
     .array(z.string().min(1))
-    .min(1)
+    .default([])
     .describe(
-      'Paths of the files a reproduction produced — a re-run of the recipe, or a copied reproduction. Bare names and paths relative to the notebook data dir or session workspace work; the app resolves and reads them.'
+      'Paths of the files a reproduction produced — a re-run of the recipe you did yourself, or a copied reproduction. Bare names and paths relative to the notebook data dir or session workspace work; the app resolves and reads them. Ignored when `reexecute` is true: the app then grades what its own replay produced.'
     ),
-  reexecuted: z
+  reexecute: z
     .boolean()
     .default(false)
     .describe(
-      'Set true ONLY when you re-ran the sealed recipe this turn and these files are that run\u2019s output. The app does not re-execute recipes for you, so without it the result is a byte comparison against the sealed Version and is never reported as a verified reproduction.'
+      'Ask the app to re-run the sealed recipe itself: the recorded cells run in order in a fresh interpreter session inside an isolated working directory, with the recorded inputs staged checksum-verified, and only the sealed Version file is graded. This is the only route to a "reproduced" verdict. A recipe the app cannot replay faithfully is refused by name (missing evidence, unsupported kernel, inputs gone, environment not installed) instead of being approximated.'
     )
 }
 
 const verifyArtifactReproductionToolDefinition = {
   title: 'Verify artifact reproduction',
   description:
-    'Check whether a reproduced artifact matches the sealed recipe recorded for a Version: the recorded inputs, execution scripts, environment lock and lineage are compared file by file with the files you produced. Returns per-file outcomes (identical / size-mismatch / content-mismatch / not-compared with a reason), a verdict, and required labels. A partial or unsealed recipe, a file past the comparison bound, or a comparison with no counterpart is reported as such — never as a pass. Reproduce the recipe before calling this, and report the verdict together with its required labels.',
+    'Check whether a reproduced artifact matches the sealed recipe recorded for a Version: the recorded inputs, execution scripts, environment lock and lineage are compared file by file with the files you produced. Pass `reexecute: true` to have the app re-run the sealed recipe in isolation and grade that run itself; otherwise pass the paths of files you reproduced. Returns per-file outcomes (identical / size-mismatch / content-mismatch / not-compared with a reason), a verdict, the replay decision, and required labels. A partial or unsealed recipe, a file past the comparison bound, a comparison with no counterpart, or a replay that could not run is reported as such — never as a pass. Report the verdict together with its required labels, and never describe a byte comparison as a verified reproduction.',
   inputSchema: verifyArtifactReproductionToolSchema
 }
 
@@ -563,8 +563,8 @@ const verifyArtifactReproductionForCurrentRun = async (
   input: {
     artifact_id: string
     version_id: string
-    reproduced_paths: string[]
-    reexecuted?: boolean
+    reproduced_paths?: string[]
+    reexecute?: boolean
   }
 ): Promise<ArtifactReproducibilityReport> => {
   const context = await readCurrentRunContext(environment.currentRunFile)
@@ -580,8 +580,8 @@ const verifyArtifactReproductionForCurrentRun = async (
     appSessionId: context.appSessionId,
     artifactId: input.artifact_id,
     versionId: input.version_id,
-    reexecuted: input.reexecuted ?? false,
-    reproducedFiles: input.reproduced_paths,
+    reexecute: input.reexecute ?? false,
+    reproducedFiles: input.reproduced_paths ?? [],
     // The kernel's final session root is authoritative for notebook turns; fold it in once (the
     // static env may already carry the same path) so the resolver never sees duplicate roots.
     allowedImportRoots: [

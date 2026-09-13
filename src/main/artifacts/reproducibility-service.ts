@@ -16,8 +16,10 @@ import {
 } from '../../shared/reproducibility'
 import {
   planRecipeReexecution,
-  summarizeReexecutionPlan
+  summarizeReexecutionPlan,
+  type ReproducibilityReexecutionPlan
 } from '../../shared/reproducibility-reexecution'
+import type { ReplayInputSource, ReplayRunResult } from './reproducibility-replay-runner'
 
 // Reproduction verification service (main process).
 //
@@ -36,8 +38,23 @@ export type ArtifactReproducibilityServiceOptions = {
   // Resolves the path (allow-root checked) and returns its size + SHA-256. Never throws for a
   // rejected path: an unreadable file must become a `not-compared` outcome, not a failed check.
   observeFile: (path: string) => Promise<ReproducedFileObservation>
+  // Runs a sealed recipe in isolation. Absent in contexts that may not spawn processes (the check
+  // then reports that re-execution is unavailable instead of pretending it happened).
+  runReplay?: RecipeReplayPort
   now?: () => Date
 }
+
+export type RunnableRecipeReexecutionPlan = Extract<
+  ReproducibilityReexecutionPlan,
+  { runnable: true }
+>
+
+export type RecipeReplayRequest = {
+  plan: RunnableRecipeReexecutionPlan
+  inputs: ReplayInputSource[]
+}
+
+export type RecipeReplayPort = (request: RecipeReplayRequest) => Promise<ReplayRunResult>
 
 export type ArtifactReproducibilityService = {
   check(request: ArtifactReproducibilityCheckRequest): Promise<ArtifactReproducibilityReport>
@@ -98,23 +115,86 @@ export const createArtifactReproducibilityService = (
           ...(run.scriptTruncated ? { truncated: true as const } : {})
         }))
       })
-      const replay = summarizeReexecutionPlan(replayPlan)
+      let replay = summarizeReexecutionPlan(replayPlan)
       const comparisons: ReproducibilityFileComparison[] = []
-      for (const path of request.reproducedFiles) {
-        const observed = await options.observeFile(path)
-        const filename = observed.filename || baseName(path)
-        comparisons.push(
-          compareReproducedFile({
-            observed: { ...observed, filename },
-            counterpart: findCounterpart(recipe, filename),
-            alreadyCompared: comparisons.length
-          })
-        )
+      let reexecuted = false
+
+      if (request.reexecute === true && replayPlan.runnable) {
+        // The app re-runs the recipe and grades its OWN output: caller-supplied paths are ignored here
+        // on purpose, otherwise a caller could hand back the sealed file and claim a reproduction.
+        const run: ReplayRunResult = options.runReplay
+          ? await options.runReplay({
+              plan: replayPlan,
+              inputs: provenance.evidence.inputs.map((input) => ({
+                filename: input.filename,
+                sha256: input.checksum,
+                sizeBytes: input.size_bytes,
+                path: input.storage_key
+              }))
+            })
+          : {
+              state: 'refused',
+              refusal: 'replay-not-configured',
+              detail: 'Re-execution is not available in this context.',
+              outputs: [],
+              missingOutputs: [],
+              stdoutTail: '',
+              stderrTail: ''
+            }
+        replay = {
+          ...replay,
+          execution: {
+            state: run.state,
+            ...(run.refusal ? { refusal: run.refusal } : {}),
+            detail: run.detail,
+            producedOutputCount: run.outputs.length,
+            missingOutputCount: run.missingOutputs.length
+          }
+        }
+
+        if (run.state !== 'refused') {
+          reexecuted = true
+          for (const expected of replayPlan.expectedOutputs) {
+            const produced = run.outputs.find((output) => output.filename === expected.filename)
+            comparisons.push(
+              compareReproducedFile({
+                observed: produced
+                  ? {
+                      state: 'observed',
+                      path: produced.filename,
+                      filename: produced.filename,
+                      sizeBytes: produced.sizeBytes,
+                      sha256: produced.sha256
+                    }
+                  : {
+                      state: 'unreadable',
+                      path: expected.filename,
+                      filename: expected.filename,
+                      reason: 'not-found'
+                    },
+                counterpart: expected,
+                alreadyCompared: comparisons.length
+              })
+            )
+          }
+        }
+      } else if (request.reexecute !== true) {
+        for (const path of request.reproducedFiles) {
+          const observed = await options.observeFile(path)
+          const filename = observed.filename || baseName(path)
+          comparisons.push(
+            compareReproducedFile({
+              observed: { ...observed, filename },
+              counterpart: findCounterpart(recipe, filename),
+              alreadyCompared: comparisons.length
+            })
+          )
+        }
       }
 
       const evaluation = evaluateArtifactReproduction({
         recipe,
-        reexecuted: request.reexecuted,
+        reexecuted,
         comparisons
       })
 

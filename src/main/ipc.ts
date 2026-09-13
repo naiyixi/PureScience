@@ -46,6 +46,7 @@ import {
 import { ArtifactProvenanceRepository } from './artifacts/provenance-repository'
 import { createArtifactReproducibilityService } from './artifacts/reproducibility-service'
 import { createReproductionFileObserver } from './artifacts/reproduction-file-observer'
+import { runSealedRecipeReplay } from './artifacts/reproducibility-replay-runner'
 import { ProvenanceMessageSnapshotRepository } from './artifacts/provenance-message-snapshot'
 import { ArtifactRunRegistry } from './artifacts/run-registry'
 import { createComputeIpcModule } from './compute/ipc'
@@ -123,7 +124,7 @@ import { NotebookInputRegistry } from './notebook/input-registry'
 import { effectiveMirrorAsync } from './notebook/mirror-probe'
 import { createProductionProvisioner, type RuntimeProvisioner } from './notebook/provisioner'
 import { createRuntimeSelectionWorkflows } from './notebook/runtime-selection-workflows'
-import { runtimeRoot } from './notebook/runtime-paths'
+import { envPrefix, pythonBin, rBin, resolveEnvName, runtimeRoot } from './notebook/runtime-paths'
 import type { NotebookEnvironmentManager } from './notebook/runtime-service'
 import { parseArtifactVersionLocator } from '../shared/artifact-provenance'
 import { DEFAULT_ARTIFACT_PROJECT_NAME } from '../shared/artifacts'
@@ -1299,15 +1300,56 @@ const createApplicationModules = async (
             request.appSessionId,
             () => artifactProvenanceRepository.replayVersion(request)
           ),
-        checkReproduction: (request) =>
-          createArtifactReproducibilityService({
+        checkReproduction: (request) => {
+          const dataRoot = resolveDataRoot()
+          // Recorded inputs live under the data root by storage key; a key that tries to escape it is
+          // passed through unresolved so the runner refuses it instead of reading another location.
+          const resolveStoredInput = (storageKey: string): string => {
+            const segments = storageKey.split('/').filter((segment) => segment.length > 0)
+            if (segments.includes('..')) return storageKey
+
+            return join(dataRoot, ...segments)
+          }
+
+          return createArtifactReproducibilityService({
             getVersionProvenance: (query) =>
               artifactProvenanceRepository.getVersionProvenance(query),
             observeFile: createReproductionFileObserver({
               allowedImportRoots: request.allowedImportRoots,
               relativeBaseDirs: request.relativeBaseDirs ?? []
-            })
+            }),
+            runReplay: async ({ plan, inputs }) => {
+              const envName = resolveEnvName(plan.kernelKind, plan.environmentName)
+              const interpreter =
+                plan.kernelKind === 'r'
+                  ? rBin(envPrefix(runtimeRoot(dataRoot), envName))
+                  : pythonBin(envPrefix(runtimeRoot(dataRoot), envName))
+              try {
+                if (!(await stat(interpreter)).isFile()) throw new Error('not a file')
+              } catch {
+                return {
+                  state: 'refused' as const,
+                  refusal: 'interpreter-missing' as const,
+                  detail:
+                    `The recorded environment "${envName}" is not installed in this app, so the ` +
+                    'recipe was not re-executed. Install or enable that runtime, then check again.',
+                  outputs: [],
+                  missingOutputs: [],
+                  stdoutTail: '',
+                  stderrTail: ''
+                }
+              }
+
+              return runSealedRecipeReplay({
+                kernelKind: plan.kernelKind,
+                scripts: plan.scripts,
+                interpreterPath: interpreter,
+                expectedOutputFilenames: plan.expectedOutputs.map((output) => output.filename),
+                inputs: inputs.map((input) => ({ ...input, path: resolveStoredInput(input.path) }))
+              })
+            }
           }).check(request)
+        }
       },
       inputRegistry: notebookInputRegistry,
       agentsService

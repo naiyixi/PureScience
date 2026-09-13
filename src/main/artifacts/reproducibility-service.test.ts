@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi, type Mock } from 'vitest'
 
 import type { ArtifactVersionProvenance } from '../../shared/artifact-provenance'
 import {
@@ -7,7 +7,9 @@ import {
 } from '../../shared/reproducibility'
 import {
   createArtifactReproducibilityService,
-  type ArtifactReproducibilityServiceOptions
+  type ArtifactReproducibilityServiceOptions,
+  type RecipeReplayPort,
+  type RecipeReplayRequest
 } from './reproducibility-service'
 
 const VERSION_SHA = 'a'.repeat(64)
@@ -163,11 +165,40 @@ const request = (
   appSessionId: 'session-1',
   artifactId: 'artifact-1',
   versionId: 'version-1',
-  reexecuted: false,
+  reexecute: false,
   reproducedFiles: ['/workspace/rerun/cos.png'],
   allowedImportRoots: ['/workspace'],
   ...overrides
 })
+
+// The app's own replay: by default it reproduces the sealed Version byte for byte.
+const replayProducing = (sha256 = VERSION_SHA): Mock<RecipeReplayPort> =>
+  vi.fn(async ({ plan }: RecipeReplayRequest) => ({
+    state: 'completed' as const,
+    exitCode: 0,
+    detail: 'The replay exited with code 0.',
+    outputs: plan.expectedOutputs.map((output) => ({
+      filename: output.filename,
+      sizeBytes: output.sizeBytes,
+      sha256
+    })),
+    missingOutputs: [],
+    stdoutTail: '',
+    stderrTail: ''
+  }))
+
+const refusedReplay = (
+  refusal: 'interpreter-missing' = 'interpreter-missing'
+): Mock<RecipeReplayPort> =>
+  vi.fn(async () => ({
+    state: 'refused' as const,
+    refusal,
+    detail: 'The recorded environment "python" is not installed in this app.',
+    outputs: [],
+    missingOutputs: [],
+    stdoutTail: '',
+    stderrTail: ''
+  }))
 
 const compareTwoFiles = vi.fn(async (path: string) => ({
   state: 'observed' as const,
@@ -182,6 +213,7 @@ const harness = (
 ): {
   service: ReturnType<typeof createArtifactReproducibilityService>
   observeFile: ArtifactReproducibilityServiceOptions['observeFile']
+  runReplay: Mock<RecipeReplayPort>
 } => {
   const defaultObserveFile = vi.fn(async (path: string) => ({
     state: 'observed' as const,
@@ -190,14 +222,20 @@ const harness = (
     sizeBytes: 8,
     sha256: VERSION_SHA
   }))
+  const defaultRunReplay = replayProducing()
   const service = createArtifactReproducibilityService({
     getVersionProvenance: async () => provenance(),
     observeFile: defaultObserveFile,
+    runReplay: defaultRunReplay,
     now: () => new Date('2026-09-13T00:00:00.000Z'),
     ...overrides
   })
 
-  return { service, observeFile: overrides.observeFile ?? defaultObserveFile }
+  return {
+    service,
+    observeFile: overrides.observeFile ?? defaultObserveFile,
+    runReplay: (overrides.runReplay ?? defaultRunReplay) as Mock<RecipeReplayPort>
+  }
 }
 
 describe('createArtifactReproducibilityService', () => {
@@ -210,6 +248,7 @@ describe('createArtifactReproducibilityService', () => {
     expect(report.requiredLabels).toContain('external-bytes-no-reexecution')
     expect(report.counts).toEqual({ compared: 1, identical: 1, mismatched: 0, notCompared: 0 })
     expect(report.checkedAt).toBe('2026-09-13T00:00:00.000Z')
+    expect(report.replay?.execution).toBeUndefined()
   })
 
   it('reports whether the app could replay the recipe, without ever claiming it did', async () => {
@@ -243,46 +282,85 @@ describe('createArtifactReproducibilityService', () => {
     expect(report.replay?.refusals).toContain('execution-evidence-missing')
   })
 
-  it('reports reproduction only when the app re-executed the sealed recipe', async () => {
-    const { service } = harness()
-    const report = await service.check(request({ reexecuted: true }))
+  it('reports reproduction only when the app itself re-ran the recipe', async () => {
+    const { service, runReplay } = harness()
+    const report = await service.check(request({ reexecute: true }))
 
+    expect(runReplay).toHaveBeenCalledTimes(1)
     expect(report.verdict).toBe('reproduced')
     expect(report.evidenceKind).toBe('app-reexecution')
     expect(report.requiredLabels).not.toContain('external-bytes-no-reexecution')
+    expect(report.replay?.execution).toEqual({
+      state: 'completed',
+      detail: 'The replay exited with code 0.',
+      producedOutputCount: 1,
+      missingOutputCount: 0
+    })
   })
 
-  it('compares declared recipe inputs as well as the Version file', async () => {
+  it('hands the app the recorded inputs to stage, not caller-supplied paths', async () => {
+    const { service, observeFile, runReplay } = harness()
+    await service.check(request({ reexecute: true, reproducedFiles: ['/workspace/rerun/cos.png'] }))
+
+    expect(observeFile).not.toHaveBeenCalled()
+    expect(runReplay.mock.calls[0][0].inputs).toEqual([
+      {
+        filename: 'groups.csv',
+        sha256: INPUT_SHA,
+        sizeBytes: 20,
+        path: 'uploads/project-1/groups.csv'
+      }
+    ])
+  })
+
+  it('fails the check when the app replay produced different bytes', async () => {
+    const { service } = harness({ runReplay: replayProducing('e'.repeat(64)) })
+    const report = await service.check(request({ reexecute: true }))
+
+    expect(report.verdict).toBe('not-reproduced')
+    expect(report.counts.mismatched).toBe(1)
+    expect(report.evidenceKind).toBe('app-reexecution')
+  })
+
+  it('refuses to grade a replay whose environment is missing, and says why', async () => {
+    const { service, runReplay } = harness({ runReplay: refusedReplay() })
+    const report = await service.check(request({ reexecute: true }))
+
+    expect(runReplay).toHaveBeenCalledTimes(1)
+    expect(report.verdict).toBe('not-checkable')
+    expect(report.verdict).not.toBe('reproduced')
+    expect(report.replay?.execution).toMatchObject({
+      state: 'refused',
+      refusal: 'interpreter-missing',
+      producedOutputCount: 0
+    })
+  })
+
+  it('never claims a reproduction when no replay runner is configured', async () => {
+    const { service } = harness({ runReplay: undefined })
+    const report = await service.check(request({ reexecute: true }))
+
+    expect(report.verdict).toBe('not-checkable')
+    expect(report.replay?.execution).toMatchObject({
+      state: 'refused',
+      refusal: 'replay-not-configured'
+    })
+  })
+
+  it('compares declared recipe inputs as well as the Version file when handed paths', async () => {
     const { service, observeFile } = harness({ observeFile: compareTwoFiles })
     const report = await service.check(
       request({
-        reexecuted: true,
         reproducedFiles: ['/workspace/rerun/cos.png', '/workspace/rerun/groups.csv']
       })
     )
 
     expect(observeFile).toHaveBeenCalledTimes(2)
-    expect(report.verdict).toBe('reproduced')
+    expect(report.verdict).toBe('bytes-match')
     expect(report.comparisons.map((comparison) => comparison.outcome)).toEqual([
       'identical',
       'identical'
     ])
-  })
-
-  it('fails the check on a content mismatch', async () => {
-    const { service } = harness({
-      observeFile: vi.fn(async (path: string) => ({
-        state: 'observed' as const,
-        path,
-        filename: 'cos.png',
-        sizeBytes: 8,
-        sha256: 'e'.repeat(64)
-      }))
-    })
-    const report = await service.check(request({ reexecuted: true }))
-
-    expect(report.verdict).toBe('not-reproduced')
-    expect(report.counts.mismatched).toBe(1)
   })
 
   it('turns an unreadable reproduction into a per-file not-compared outcome', async () => {
@@ -294,7 +372,7 @@ describe('createArtifactReproducibilityService', () => {
         reason: 'not-found' as const
       }))
     })
-    const report = await service.check(request({ reexecuted: true }))
+    const report = await service.check(request())
 
     expect(report.comparisons[0].outcome).toBe('not-compared')
     expect(report.comparisons[0].reason).toBe('reproduction-file-missing')
@@ -311,7 +389,7 @@ describe('createArtifactReproducibilityService', () => {
         sha256: VERSION_SHA
       }))
     })
-    const report = await service.check(request({ reexecuted: true }))
+    const report = await service.check(request())
 
     expect(report.comparisons[0].reason).toBe('no-counterpart-in-recipe')
     expect(report.verdict).toBe('inconclusive')
@@ -327,7 +405,7 @@ describe('createArtifactReproducibilityService', () => {
         sha256: VERSION_SHA
       }))
     })
-    const report = await service.check(request({ reexecuted: true }))
+    const report = await service.check(request())
 
     expect(report.verdict).toBe('inconclusive')
     expect(report.requiredLabels).toContain('partial-comparison')
@@ -336,14 +414,16 @@ describe('createArtifactReproducibilityService', () => {
 
   it('refuses to grade a check when the recipe is not sealed', async () => {
     const value = provenance()
-    const { service } = harness({
+    const { service, runReplay } = harness({
       getVersionProvenance: async () => ({ ...value, execution: undefined })
     })
-    const report = await service.check(request({ reexecuted: true }))
+    const report = await service.check(request({ reexecute: true }))
 
     expect(report.recipe.sealed).toBe(false)
     expect(report.verdict).toBe('not-checkable')
     expect(report.requiredLabels).toContain('recipe-not-sealed')
+    // A recipe that cannot be replayed faithfully is not replayed at all.
+    expect(runReplay).not.toHaveBeenCalled()
   })
 
   it('reports no reproduced files instead of inventing a pass', async () => {
@@ -368,7 +448,7 @@ describe('createArtifactReproducibilityService', () => {
 
     await expect(
       service.check(
-        request({ reproducedFiles: Array.from({ length: 201 }, (_, i) => `/w/f${i}.png`) })
+        request({ reproducedFiles: Array.from({ length: 201 }, (_, index) => `/w/f${index}.png`) })
       )
     ).rejects.toThrow('At most 200 reproduced files may be compared in one check.')
   })

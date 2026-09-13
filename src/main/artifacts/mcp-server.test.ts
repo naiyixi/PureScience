@@ -761,7 +761,7 @@ describe('artifact MCP server', () => {
     // from the agent surface while every other test stayed green.
     expect(Object.keys(verifyArtifactReproductionToolSchema).sort()).toEqual([
       'artifact_id',
-      'reexecuted',
+      'reexecute',
       'reproduced_paths',
       'version_id'
     ])
@@ -771,7 +771,15 @@ describe('artifact MCP server', () => {
       version_id: 'version-1',
       reproduced_paths: ['rerun/cos.png']
     })
-    expect(parsed.reexecuted).toBe(false)
+    expect(parsed.reexecute).toBe(false)
+
+    // Re-execution needs no caller-supplied paths: the request may carry neither.
+    const reexecuteOnly = z.object(verifyArtifactReproductionToolSchema).parse({
+      artifact_id: 'artifact-1',
+      version_id: 'version-1',
+      reexecute: true
+    })
+    expect(reexecuteOnly.reproduced_paths).toEqual([])
   })
 
   it('sends the reproduction check through the Provenance RPC with turn-scoped roots', async () => {
@@ -839,7 +847,7 @@ describe('artifact MCP server', () => {
         appSessionId: 'session-1',
         artifactId: 'artifact-1',
         versionId: 'version-1',
-        reexecuted: false,
+        reexecute: false,
         reproducedFiles: ['rerun/cos.png'],
         allowedImportRoots: [sessionRoot],
         relativeBaseDirs: [dataDir, sessionRoot]
