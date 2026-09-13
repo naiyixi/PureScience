@@ -785,7 +785,13 @@ class SkillCatalogModule {
             trust: {
               verification: skill.provenance.verification,
               kind: skill.provenance.kind,
-              summary: describeSkillTrust(skill.provenance)
+              summary: describeSkillTrust(skill.provenance),
+              ...(skill.provenance.originRunId
+                ? { originRunId: skill.provenance.originRunId }
+                : {}),
+              ...(skill.provenance.evidence.length > 0
+                ? { evidence: [...skill.provenance.evidence] }
+                : {})
             }
           }
         : {})

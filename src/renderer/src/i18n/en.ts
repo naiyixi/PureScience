@@ -660,6 +660,11 @@ export const en: Record<ZhKey, string> = {
   'settings.editSkillAction': 'Edit {name}',
   'settings.deleteSkillAction': 'Delete {name}',
   'settings.toggleSkill': 'Toggle {name}',
+  'settings.skillTrustUnverified': 'Unverified',
+  'settings.skillTrustVerified': 'Verified',
+  'settings.skillTrustRejected': 'Rejected',
+  'settings.skillTrustFailureMode': 'Failure mode',
+  'settings.skillTrustEvidence': 'Evidence',
 
   // settings — connectors panel
   'settings.contactEmail': 'Contact email',

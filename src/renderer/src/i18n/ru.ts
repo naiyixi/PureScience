@@ -2036,6 +2036,11 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.timeRange': 'Диапазон времени',
   'settings.toggleConversationSkillImports': 'Включить/выключить импорт навыков в диалогах',
   'settings.toggleSkill': 'Переключить {name}',
+  'settings.skillTrustUnverified': 'Не проверено',
+  'settings.skillTrustVerified': 'Проверено',
+  'settings.skillTrustRejected': 'Отклонено',
+  'settings.skillTrustFailureMode': 'Режим отказа',
+  'settings.skillTrustEvidence': 'Подтверждение',
   'settings.toggleTaskNotifications': 'Включить/выключить уведомления о задачах',
   'settings.tokenTotalsAvailable':
     'Суммарные токены доступны для {reported} из {count} запусков за этот период.',

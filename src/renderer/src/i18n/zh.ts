@@ -629,6 +629,11 @@ export const zh = {
   'settings.editSkillAction': '编辑 {name}',
   'settings.deleteSkillAction': '删除 {name}',
   'settings.toggleSkill': '切换 {name}',
+  'settings.skillTrustUnverified': '未验证',
+  'settings.skillTrustVerified': '已验证',
+  'settings.skillTrustRejected': '已否决',
+  'settings.skillTrustFailureMode': '失败模式',
+  'settings.skillTrustEvidence': '证据',
 
   // settings — connectors panel
   'settings.contactEmail': '联系邮箱',

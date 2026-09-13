@@ -1997,6 +1997,11 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.timeRange': '시간 범위',
   'settings.toggleConversationSkillImports': '대화 스킬 가져오기 전환',
   'settings.toggleSkill': '{name} 전환',
+  'settings.skillTrustUnverified': '미검증',
+  'settings.skillTrustVerified': '검증됨',
+  'settings.skillTrustRejected': '거부됨',
+  'settings.skillTrustFailureMode': '실패 모드',
+  'settings.skillTrustEvidence': '근거',
   'settings.toggleTaskNotifications': '작업 알림 전환',
   'settings.tokenTotalsAvailable':
     '이 기간의 실행 {count}개 중 {reported}개에 토큰 합계가 있습니다.',

@@ -2037,6 +2037,11 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.timeRange': '時間範囲',
   'settings.toggleConversationSkillImports': '会話のスキルインポートを切り替え',
   'settings.toggleSkill': '{name} を切り替え',
+  'settings.skillTrustUnverified': '未検証',
+  'settings.skillTrustVerified': '検証済み',
+  'settings.skillTrustRejected': '却下済み',
+  'settings.skillTrustFailureMode': '失敗モード',
+  'settings.skillTrustEvidence': '根拠',
   'settings.toggleTaskNotifications': 'タスク通知を切り替え',
   'settings.tokenTotalsAvailable':
     'この期間の {count} 回の実行のうち、{reported} 回でトークン合計を確認できます。',

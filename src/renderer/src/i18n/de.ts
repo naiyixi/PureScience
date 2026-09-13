@@ -2083,6 +2083,11 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.timeRange': 'Zeitraum',
   'settings.toggleConversationSkillImports': 'Konversations-Fähigkeitsimporte umschalten',
   'settings.toggleSkill': '{name} umschalten',
+  'settings.skillTrustUnverified': 'Nicht verifiziert',
+  'settings.skillTrustVerified': 'Verifiziert',
+  'settings.skillTrustRejected': 'Abgelehnt',
+  'settings.skillTrustFailureMode': 'Fehlermodus',
+  'settings.skillTrustEvidence': 'Belege',
   'settings.toggleTaskNotifications': 'Aufgabenbenachrichtigungen umschalten',
   'settings.tokenTotalsAvailable':
     'Token-Gesamtwerte sind für {reported} von {count} Läufen in diesem Zeitraum verfügbar.',

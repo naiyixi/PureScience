@@ -201,6 +201,43 @@ describe('SkillsPanel (list view)', () => {
     expect(alphaSwitch?.className).toContain('motion-reduce:transition-none')
   })
 
+  it('shows the trust state of a learnt skill, and nothing for a curated one', () => {
+    act(() => {
+      useSettingsStore.setState({
+        skills: [
+          ...seedSkills,
+          {
+            id: 'personal-learnt',
+            name: 'Learnt',
+            description: 'Recorded during a run',
+            source: 'personal' as const,
+            updatedAt: '2026-07-08T00:00:00.000Z',
+            enabled: false,
+            trust: {
+              verification: 'unverified' as const,
+              kind: 'failure-mode' as const,
+              summary: 'Unverified - recorded during a run that has not been checked yet.',
+              originRunId: 'run-17',
+              evidence: ['pip install vina -> error: Boost headers not found']
+            }
+          }
+        ]
+      })
+    })
+
+    act(() => {
+      root.render(<SkillsPanel view={{ kind: 'list' }} onNavigate={vi.fn()} />)
+    })
+
+    const badges = document.body.querySelectorAll('[data-testid="skill-trust-badge"]')
+    // Only the learnt skill carries one; the curated skills stay unlabelled.
+    expect(badges).toHaveLength(1)
+    expect(badges[0]?.textContent).toContain('Unverified')
+    expect(badges[0]?.textContent).toContain('Failure mode')
+    // The reproduction is recorded data, so the badge exposes it verbatim.
+    expect(badges[0]?.getAttribute('title')).toContain('Boost headers not found')
+  })
+
   it('shows the default-on conversation import preference and lets the user disable it', () => {
     act(() => {
       root.render(<SkillsPanel view={{ kind: 'list' }} onNavigate={vi.fn()} />)

@@ -28,6 +28,7 @@ import { useSettingsStore } from '@/stores/settings-store'
 import { useSpecialistStore } from '@/stores/specialist-store'
 import { useCatalogTagsStore } from '@/stores/catalog-tags-store'
 import { isRestrictedLicense } from '../../../../shared/skill-license'
+
 import { CatalogFavoriteButton } from '@/components/catalog/CatalogFavoriteButton'
 import { CatalogTagEditor } from '@/components/catalog/CatalogTagEditor'
 import { CatalogFilterChips } from '@/components/catalog/CatalogFilterChips'
@@ -38,6 +39,14 @@ import { SkillImportView } from './SkillImportView'
 import { SkillUploadView } from './SkillUploadView'
 import { AgentHomeImportView } from './AgentHomeImportView'
 import { SettingsIconAction, SettingsRow, SettingsSection, SettingsToggle } from './SettingsLayout'
+// Learnt skills carry a trust state; the panel shows it as a badge so a recorded-but-unchecked
+// procedure is not mistaken for an established one. Labels come from the language catalogs — the
+// summary sentence and the evidence are recorded data and stay as they are.
+const TRUST_LABEL_KEYS = {
+  unverified: 'settings.skillTrustUnverified',
+  verified: 'settings.skillTrustVerified',
+  rejected: 'settings.skillTrustRejected'
+} as const
 
 // The skills panel sub-view, driven by the settings navigation history so each is a breadcrumb page.
 export type SkillsView =
@@ -621,6 +630,22 @@ const SkillsPanel = ({
                                 </span>
                               </button>
                               <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                                {skill.trust ? (
+                                  <span
+                                    data-testid="skill-trust-badge"
+                                    title={
+                                      skill.trust.evidence?.length
+                                        ? skill.trust.evidence.join('\n')
+                                        : undefined
+                                    }
+                                    className="shrink-0 rounded-full border border-border-200 bg-bg-100 px-2 py-0.5 text-[11px] text-muted-foreground"
+                                  >
+                                    {t(TRUST_LABEL_KEYS[skill.trust.verification])}
+                                    {skill.trust.kind === 'failure-mode'
+                                      ? ` · ${t('settings.skillTrustFailureMode')}`
+                                      : ''}
+                                  </span>
+                                ) : null}
                                 {ownerNames.length > 0 ? (
                                   <span
                                     data-testid="skill-owner-badge"

@@ -958,6 +958,10 @@ export type SkillView = {
     verification: SkillProvenance['verification']
     kind: SkillProvenance['kind']
     summary: string
+    // Where the knowledge came from and what backs it. Both are recorded data (a run id, a command and
+    // its error), not prose, so the panel can show the evidence without translating it.
+    originRunId?: string
+    evidence?: string[]
   }
 }
 

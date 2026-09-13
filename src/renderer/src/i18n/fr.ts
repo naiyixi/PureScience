@@ -2073,6 +2073,11 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.toggleConversationSkillImports':
     'Activer/désactiver les imports de compétences de conversation',
   'settings.toggleSkill': 'Activer/désactiver {name}',
+  'settings.skillTrustUnverified': 'Non vérifié',
+  'settings.skillTrustVerified': 'Vérifié',
+  'settings.skillTrustRejected': 'Rejeté',
+  'settings.skillTrustFailureMode': 'Mode d\'échec',
+  'settings.skillTrustEvidence': 'Preuve',
   'settings.toggleTaskNotifications': 'Activer/désactiver les notifications de tâches',
   'settings.tokenTotalsAvailable':
     'Les totaux de tokens sont disponibles pour {reported} des {count} exécutions de cette période.',

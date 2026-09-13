@@ -2062,6 +2062,11 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.toggleConversationSkillImports':
     'Alternar importaciones de habilidades de conversación',
   'settings.toggleSkill': 'Alternar {name}',
+  'settings.skillTrustUnverified': 'Sin verificar',
+  'settings.skillTrustVerified': 'Verificado',
+  'settings.skillTrustRejected': 'Rechazado',
+  'settings.skillTrustFailureMode': 'Modo de fallo',
+  'settings.skillTrustEvidence': 'Evidencia',
   'settings.toggleTaskNotifications': 'Alternar notificaciones de tareas',
   'settings.tokenTotalsAvailable':
     'Hay totales de tokens disponibles en {reported} de {count} ejecuciones de este período.',
