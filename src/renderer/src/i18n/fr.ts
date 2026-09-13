@@ -2076,7 +2076,11 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.skillTrustUnverified': 'Non vérifié',
   'settings.skillTrustVerified': 'Vérifié',
   'settings.skillTrustRejected': 'Rejeté',
-  'settings.skillTrustFailureMode': 'Mode d\'échec',
+  'settings.skillTrustFailureMode': "Mode d'échec",
+  'settings.skillReuseBadge': 'Utilisé {uses}× · {failures} échecs',
+  'settings.skillReuseNone': 'Aucune réutilisation de skill enregistrée',
+  'settings.skillReuseHistoryNote':
+    "Les sessions antérieures à cette version n'ont pas enregistré de nom de skill ; leurs chargements ne peuvent pas apparaître ici.",
   'settings.skillTrustEvidence': 'Preuve',
   'settings.toggleTaskNotifications': 'Activer/désactiver les notifications de tâches',
   'settings.tokenTotalsAvailable':

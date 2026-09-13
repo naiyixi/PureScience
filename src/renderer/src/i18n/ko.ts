@@ -2001,6 +2001,10 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.skillTrustVerified': '검증됨',
   'settings.skillTrustRejected': '거부됨',
   'settings.skillTrustFailureMode': '실패 모드',
+  'settings.skillReuseBadge': '{uses}회 사용 · 실패 {failures}',
+  'settings.skillReuseNone': '아직 기록된 스킬 재사용이 없습니다',
+  'settings.skillReuseHistoryNote':
+    '이 버전 이전의 세션은 스킬 이름을 기록하지 않았으므로 여기에 표시될 수 없습니다.',
   'settings.skillTrustEvidence': '근거',
   'settings.toggleTaskNotifications': '작업 알림 전환',
   'settings.tokenTotalsAvailable':

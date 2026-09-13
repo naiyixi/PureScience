@@ -1,3 +1,4 @@
+import type { SkillPayoff } from '../../../shared/skill-usage'
 import type {
   AgentHomeSkillRef,
   AgentHomeSkillView,
@@ -12,7 +13,12 @@ import type {
   UpdateSkillRequest
 } from '../../../shared/settings'
 
-export type SettingsSkillsState = { skills: SkillView[] }
+export type SettingsSkillsState = {
+  skills: SkillView[]
+  // Reuse ranking derived from the app's own skill-load captures. Empty means nothing has been recorded,
+  // which the panel must say plainly rather than showing an empty table as if it were a ranking.
+  skillReuse: SkillPayoff[]
+}
 
 export type SettingsSkillsActions = {
   loadSkills: () => Promise<void>
@@ -40,6 +46,7 @@ export type SettingsSkillsActions = {
 type SettingsSkillsCommands = Pick<
   Window['api']['settings'],
   | 'listSkills'
+  | 'skillReuse'
   | 'setSkillEnabled'
   | 'createSkill'
   | 'updateSkill'
@@ -61,7 +68,10 @@ type SettingsSkillsSliceOptions = {
   getCommands: () => SettingsSkillsCommands
 }
 
-export const createInitialSettingsSkillsState = (): SettingsSkillsState => ({ skills: [] })
+export const createInitialSettingsSkillsState = (): SettingsSkillsState => ({
+  skills: [],
+  skillReuse: []
+})
 
 // Owns the renderer Skill catalog projection and its command settlement. Preview-only commands keep
 // their detail state with callers, while catalog-returning imports reconcile this single projection.
@@ -83,7 +93,21 @@ export const createSettingsSkillsSlice = ({
   }
 
   return {
-    loadSkills: () => reconcileCatalog(() => getCommands().listSkills()),
+    // The catalog and the reuse ranking are loaded together: a skill list without the reuse it earned is
+    // the same panel the user already had, and two independent loads could disagree mid-render. The
+    // ranking load is non-fatal on purpose - a bridge an older preload does not expose, or a transient
+    // read error, must not take the skill list down with it, and main already reports "nothing captured"
+    // as an empty ranking rather than as an error.
+    loadSkills: async () => {
+      const skills = await getCommands().listSkills()
+      let skillReuse: SkillPayoff[] = []
+      try {
+        skillReuse = await getCommands().skillReuse()
+      } catch {
+        skillReuse = []
+      }
+      setState({ skills, skillReuse })
+    },
     setSkillEnabled: async (id, enabled) => {
       setState({
         skills: getState().skills.map((skill) => (skill.id === id ? { ...skill, enabled } : skill))

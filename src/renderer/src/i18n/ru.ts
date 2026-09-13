@@ -2040,6 +2040,10 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.skillTrustVerified': 'Проверено',
   'settings.skillTrustRejected': 'Отклонено',
   'settings.skillTrustFailureMode': 'Режим отказа',
+  'settings.skillReuseBadge': 'Использован {uses}× · ошибок {failures}',
+  'settings.skillReuseNone': 'Повторное использование навыков пока не зафиксировано',
+  'settings.skillReuseHistoryNote':
+    'Сессии до этой версии не записывали имена навыков, поэтому их загрузки здесь не появятся.',
   'settings.skillTrustEvidence': 'Подтверждение',
   'settings.toggleTaskNotifications': 'Включить/выключить уведомления о задачах',
   'settings.tokenTotalsAvailable':

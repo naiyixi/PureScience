@@ -108,6 +108,7 @@ const SkillsPanel = ({
 }: SkillsPanelProps): React.JSX.Element => {
   const { t } = useLanguage()
   const skills = useSettingsStore((state) => state.skills)
+  const skillReuse = useSettingsStore((state) => state.skillReuse)
   const loadSkills = useSettingsStore((state) => state.loadSkills)
   const setSkillEnabled = useSettingsStore((state) => state.setSkillEnabled)
   const useIntent = useSettingsStore((state) => state.useIntent)
@@ -154,6 +155,15 @@ const SkillsPanel = ({
     () => skills.map((skill) => ({ id: skill.id, frameworkName: skill.name })),
     [skills]
   )
+  // Reuse is keyed by the name the agent passed to the Skill tool, which is the skill's id (its directory
+  // name); the display name is accepted as a fallback so a renamed skill does not lose its history.
+  const reuseByName = useMemo(() => {
+    const index = new Map<string, { uses: number; failures: number }>()
+    for (const payoff of skillReuse) {
+      index.set(payoff.skillName, { uses: payoff.uses, failures: payoff.failures })
+    }
+    return index
+  }, [skillReuse])
   const specialistNamesBySkillId = useMemo(() => {
     const index = new Map<string, string[]>()
     for (const item of specialistItems) {
@@ -565,6 +575,18 @@ const SkillsPanel = ({
           </p>
         ) : null}
 
+        {/* Reuse is only ever what the app captured itself. Say which of the two honest states applies:
+            nothing recorded yet, or a ranking whose gaps come from sessions that predate the capture. */}
+        {skillReuse.length === 0 ? (
+          <p data-testid="skill-reuse-empty" className="text-xs text-muted-foreground">
+            {t('settings.skillReuseNone')}
+          </p>
+        ) : (
+          <p data-testid="skill-reuse-note" className="text-xs text-muted-foreground">
+            {t('settings.skillReuseHistoryNote')}
+          </p>
+        )}
+
         <div className="flex flex-col gap-4">
           {groups.map((group) => {
             const rows = visible.filter((skill) => skill.source === group.source)
@@ -597,6 +619,7 @@ const SkillsPanel = ({
                     <ul className="mt-2 flex flex-col divide-y divide-border">
                       {rows.map((skill) => {
                         const ownerNames = specialistNamesBySkillId.get(skill.id) ?? []
+                        const reuse = reuseByName.get(skill.id) ?? reuseByName.get(skill.name)
                         return (
                           <li
                             key={skill.id}
@@ -644,6 +667,16 @@ const SkillsPanel = ({
                                     {skill.trust.kind === 'failure-mode'
                                       ? ` · ${t('settings.skillTrustFailureMode')}`
                                       : ''}
+                                  </span>
+                                ) : null}
+                                {reuse ? (
+                                  <span
+                                    data-testid="skill-reuse-badge"
+                                    className="shrink-0 rounded-full border border-border-200 bg-bg-100 px-2 py-0.5 text-[11px] text-muted-foreground"
+                                  >
+                                    {t('settings.skillReuseBadge')
+                                      .replace('{uses}', String(reuse.uses))
+                                      .replace('{failures}', String(reuse.failures))}
                                   </span>
                                 ) : null}
                                 {ownerNames.length > 0 ? (

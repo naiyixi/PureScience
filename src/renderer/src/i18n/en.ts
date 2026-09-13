@@ -664,6 +664,10 @@ export const en: Record<ZhKey, string> = {
   'settings.skillTrustVerified': 'Verified',
   'settings.skillTrustRejected': 'Rejected',
   'settings.skillTrustFailureMode': 'Failure mode',
+  'settings.skillReuseBadge': 'Used {uses}× · {failures} failed',
+  'settings.skillReuseNone': 'No skill reuse recorded yet',
+  'settings.skillReuseHistoryNote':
+    'Sessions from before this version recorded no skill names, so their loads cannot appear here.',
   'settings.skillTrustEvidence': 'Evidence',
 
   // settings — connectors panel

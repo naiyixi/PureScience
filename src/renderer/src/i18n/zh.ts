@@ -633,6 +633,9 @@ export const zh = {
   'settings.skillTrustVerified': '已验证',
   'settings.skillTrustRejected': '已否决',
   'settings.skillTrustFailureMode': '失败模式',
+  'settings.skillReuseBadge': '复用 {uses} 次 · 失败 {failures}',
+  'settings.skillReuseNone': '尚无技能复用记录',
+  'settings.skillReuseHistoryNote': '本版之前的会话没有记录技能名，因此不会出现在这里。',
   'settings.skillTrustEvidence': '证据',
 
   // settings — connectors panel

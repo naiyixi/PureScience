@@ -238,6 +238,51 @@ describe('SkillsPanel (list view)', () => {
     expect(badges[0]?.getAttribute('title')).toContain('Boost headers not found')
   })
 
+  it('shows how often a skill was reused, and says when nothing has been recorded', () => {
+    act(() => {
+      useSettingsStore.setState({
+        skills: [
+          ...seedSkills,
+          {
+            id: 'mcp-genes',
+            name: 'Genes',
+            description: 'Gene lookups',
+            source: 'featured' as const,
+            updatedAt: '2026-07-08T00:00:00.000Z',
+            enabled: true
+          }
+        ],
+        skillReuse: [{ skillName: 'mcp-genes', uses: 3, failures: 1 }]
+      })
+    })
+
+    act(() => {
+      root.render(<SkillsPanel view={{ kind: 'list' }} onNavigate={vi.fn()} />)
+    })
+
+    const badges = document.body.querySelectorAll('[data-testid="skill-reuse-badge"]')
+    // One badge, on the skill the capture named -- matched by id, so a renamed display name still counts.
+    expect(badges).toHaveLength(1)
+    expect(badges[0]?.textContent).toContain('3')
+    expect(badges[0]?.textContent).toContain('1')
+    // With a ranking on screen, the note explains why other skills show no count.
+    expect(document.body.querySelector('[data-testid="skill-reuse-note"]')).not.toBeNull()
+    expect(document.body.querySelector('[data-testid="skill-reuse-empty"]')).toBeNull()
+  })
+
+  it('reports an empty reuse state rather than an empty ranking', () => {
+    act(() => {
+      useSettingsStore.setState({ skills: seedSkills, skillReuse: [] })
+    })
+
+    act(() => {
+      root.render(<SkillsPanel view={{ kind: 'list' }} onNavigate={vi.fn()} />)
+    })
+
+    expect(document.body.querySelectorAll('[data-testid="skill-reuse-badge"]')).toHaveLength(0)
+    expect(document.body.textContent).toContain('No skill reuse recorded yet')
+  })
+
   it('shows the default-on conversation import preference and lets the user disable it', () => {
     act(() => {
       root.render(<SkillsPanel view={{ kind: 'list' }} onNavigate={vi.fn()} />)

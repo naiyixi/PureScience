@@ -2041,6 +2041,10 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.skillTrustVerified': '検証済み',
   'settings.skillTrustRejected': '却下済み',
   'settings.skillTrustFailureMode': '失敗モード',
+  'settings.skillReuseBadge': '{uses} 回使用 · 失敗 {failures}',
+  'settings.skillReuseNone': 'スキルの再利用記録はまだありません',
+  'settings.skillReuseHistoryNote':
+    'このバージョンより前のセッションはスキル名を記録していないため、ここには表示されません。',
   'settings.skillTrustEvidence': '根拠',
   'settings.toggleTaskNotifications': 'タスク通知を切り替え',
   'settings.tokenTotalsAvailable':

@@ -46,6 +46,7 @@ const preview: SkillImportPreviewContent = {
 
 const createCommands = (): SkillCommands => ({
   listSkills: vi.fn(async () => []),
+  skillReuse: vi.fn(async () => []),
   setSkillEnabled: vi.fn(async () => []),
   createSkill: vi.fn(async () => []),
   updateSkill: vi.fn(async () => []),
@@ -107,6 +108,31 @@ describe('settings Skills slice', () => {
     await store.getState().loadSkills()
 
     expect(store.getState().skills).toEqual([skill('loaded')])
+  })
+
+  it('loads the reuse ranking with the catalog, so counts never lag the list they annotate', async () => {
+    vi.mocked(commands.listSkills).mockResolvedValue([skill('mcp-genes')])
+    vi.mocked(commands.skillReuse).mockResolvedValue([
+      { skillName: 'mcp-genes', uses: 2, failures: 0 }
+    ])
+
+    await store.getState().loadSkills()
+
+    expect(commands.skillReuse).toHaveBeenCalledTimes(1)
+    expect(store.getState().skillReuse).toEqual([{ skillName: 'mcp-genes', uses: 2, failures: 0 }])
+    // Nothing recorded yet is the honest empty state, not a zero-use ranking.
+    expect(createInitialSettingsSkillsState().skillReuse).toEqual([])
+  })
+
+  it('still loads the catalog when the reuse ranking cannot be read', async () => {
+    vi.mocked(commands.listSkills).mockResolvedValue([skill('loaded')])
+    // A preload that predates the reuse bridge, or a transient read error: the list must survive it.
+    vi.mocked(commands.skillReuse).mockRejectedValue(new Error('no bridge'))
+
+    await store.getState().loadSkills()
+
+    expect(store.getState().skills).toEqual([skill('loaded')])
+    expect(store.getState().skillReuse).toEqual([])
   })
 
   it('optimistically toggles a Skill before reconciling the authoritative catalog', async () => {
