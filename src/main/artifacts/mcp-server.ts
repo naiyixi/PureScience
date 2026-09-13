@@ -19,6 +19,14 @@ import type {
   ArtifactReproducibilityCheckRequest,
   ArtifactReproducibilityReport
 } from '../../shared/reproducibility'
+import {
+  formatReproducibilityScorecard,
+  REPRODUCIBILITY_MAX_BATCH_VERSIONS,
+  summarizeReproducibilityBatch,
+  toReproducibilityBatchEntry,
+  type ReproducibilityBatchEntry,
+  type ReproducibilityBatchSummary
+} from '../../shared/reproducibility-report'
 import { ARTIFACT_MCP_SERVER_ARG } from '../mcp-server-args'
 import { fetchLocalRpc } from '../local-rpc-transport'
 import { ArtifactRepository } from './repository'
@@ -521,6 +529,39 @@ const verifyArtifactReproductionToolDefinition = {
   inputSchema: verifyArtifactReproductionToolSchema
 }
 
+const verifyArtifactReproductionBatchToolSchema = {
+  versions: z
+    .array(
+      z.object({
+        artifact_id: z.string().min(1),
+        version_id: z.string().min(1),
+        label: z.string().min(1).optional(),
+        reproduced_paths: z
+          .array(z.string().min(1))
+          .optional()
+          .describe('Ignored when `reexecute` is true for the batch.')
+      })
+    )
+    .min(1)
+    .max(REPRODUCIBILITY_MAX_BATCH_VERSIONS)
+    .describe(
+      `Versions to check in one batch (at most ${REPRODUCIBILITY_MAX_BATCH_VERSIONS}). Each is checked with the same rules as a single check.`
+    ),
+  reexecute: z
+    .boolean()
+    .default(false)
+    .describe(
+      'Ask the app to re-run each recipe in isolation and grade those runs. Inside one batch the recording is sequential, one Version at a time.'
+    )
+}
+
+const verifyArtifactReproductionBatchToolDefinition = {
+  title: 'Verify artifact reproduction (batch)',
+  description:
+    'Check several Artifact Versions in one call and get a reproduction scorecard: per-Version verdicts plus an aggregate that is `verified` only when EVERY Version was reproduced by the app\u2019s own re-execution. One unreproduced Version fails the batch, and an unjudged Version keeps it partial — the aggregation never averages a failure away. A Version whose check could not run stays visible as not-checkable with its reason. Report the scorecard status and the required labels; never summarize a partial batch as verified.',
+  inputSchema: verifyArtifactReproductionBatchToolSchema
+}
+
 const callArtifactReproductionRpc = async (
   environment: ArtifactMcpEnvironment,
   capabilityToken: string,
@@ -558,6 +599,48 @@ const callArtifactReproductionRpc = async (
 // Runs one reproduction check against the Version the agent names. Roots and relative bases come from
 // the trusted per-turn handoff, exactly like artifact writes: the model supplies paths, never the
 // boundaries they are resolved inside.
+// The kernel's final session root is authoritative for notebook turns; fold it in once (the static env
+// may already carry the same path) so the resolver never sees duplicate roots.
+const reproductionScope = (
+  environment: ArtifactMcpEnvironment,
+  context: ArtifactRunContext
+): { allowedImportRoots: string[]; relativeBaseDirs: string[] } => ({
+  allowedImportRoots: [
+    ...new Set(
+      context.notebookSessionRoot
+        ? [...environment.allowedImportRoots, context.notebookSessionRoot]
+        : environment.allowedImportRoots
+    )
+  ],
+  relativeBaseDirs: [
+    ...new Set(
+      context.notebookDataDir
+        ? [
+            context.notebookDataDir,
+            ...(context.notebookSessionRoot ? [context.notebookSessionRoot] : [])
+          ]
+        : environment.allowedImportRoots.slice(0, 1)
+    )
+  ]
+})
+
+const requireReproductionContext = async (
+  environment: ArtifactMcpEnvironment
+): Promise<{ context: ArtifactRunContext; capabilityToken: string; appSessionId: string }> => {
+  const context = await readCurrentRunContext(environment.currentRunFile)
+  if (!context.rpcCapabilityToken || !context.appSessionId) {
+    throw new Error(
+      'verify_artifact_reproduction needs the current run context (capability token and session). Ask the user to retry from a fresh turn.'
+    )
+  }
+
+  return {
+    context,
+    capabilityToken: context.rpcCapabilityToken,
+    appSessionId: context.appSessionId
+  }
+}
+
 const verifyArtifactReproductionForCurrentRun = async (
   environment: ArtifactMcpEnvironment,
   input: {
@@ -567,41 +650,91 @@ const verifyArtifactReproductionForCurrentRun = async (
     reexecute?: boolean
   }
 ): Promise<ArtifactReproducibilityReport> => {
-  const context = await readCurrentRunContext(environment.currentRunFile)
-  const capabilityToken = context.rpcCapabilityToken
-  if (!capabilityToken || !context.appSessionId) {
-    throw new Error(
-      'verify_artifact_reproduction needs the current run context (capability token and session). Ask the user to retry from a fresh turn.'
-    )
-  }
+  const { context, capabilityToken, appSessionId } = await requireReproductionContext(environment)
 
   return callArtifactReproductionRpc(environment, capabilityToken, {
     projectId: environment.projectName,
-    appSessionId: context.appSessionId,
+    appSessionId,
     artifactId: input.artifact_id,
     versionId: input.version_id,
     reexecute: input.reexecute ?? false,
     reproducedFiles: input.reproduced_paths ?? [],
-    // The kernel's final session root is authoritative for notebook turns; fold it in once (the
-    // static env may already carry the same path) so the resolver never sees duplicate roots.
-    allowedImportRoots: [
-      ...new Set(
-        context.notebookSessionRoot
-          ? [...environment.allowedImportRoots, context.notebookSessionRoot]
-          : environment.allowedImportRoots
-      )
-    ],
-    relativeBaseDirs: [
-      ...new Set(
-        context.notebookDataDir
-          ? [
-              context.notebookDataDir,
-              ...(context.notebookSessionRoot ? [context.notebookSessionRoot] : [])
-            ]
-          : environment.allowedImportRoots.slice(0, 1)
-      )
-    ]
+    ...reproductionScope(environment, context)
   })
+}
+
+// Batch checks reuse the single-Version RPC: no second channel, one Version at a time, and a Version
+// whose check could not run stays in the batch as not-checkable instead of being dropped.
+const verifyArtifactReproductionBatchForCurrentRun = async (
+  environment: ArtifactMcpEnvironment,
+  input: {
+    versions: Array<{
+      artifact_id: string
+      version_id: string
+      label?: string
+      reproduced_paths?: string[]
+    }>
+    reexecute?: boolean
+  }
+): Promise<{
+  entries: ReproducibilityBatchEntry[]
+  scorecard: string
+  summary: ReproducibilityBatchSummary
+}> => {
+  if (input.versions.length > REPRODUCIBILITY_MAX_BATCH_VERSIONS) {
+    throw new Error(
+      `At most ${REPRODUCIBILITY_MAX_BATCH_VERSIONS} Versions may be checked in one batch.`
+    )
+  }
+
+  const { context, capabilityToken, appSessionId } = await requireReproductionContext(environment)
+  const scope = reproductionScope(environment, context)
+  const entries: ReproducibilityBatchEntry[] = []
+
+  for (const version of input.versions) {
+    const label = version.label ?? version.version_id
+    try {
+      const report = await callArtifactReproductionRpc(environment, capabilityToken, {
+        projectId: environment.projectName,
+        appSessionId,
+        artifactId: version.artifact_id,
+        versionId: version.version_id,
+        reexecute: input.reexecute ?? false,
+        reproducedFiles: version.reproduced_paths ?? [],
+        ...scope
+      })
+      entries.push(
+        toReproducibilityBatchEntry({
+          label,
+          artifactId: version.artifact_id,
+          versionId: version.version_id,
+          report
+        })
+      )
+    } catch (error) {
+      entries.push({
+        label,
+        artifactId: version.artifact_id,
+        versionId: version.version_id,
+        verdict: 'not-checkable',
+        evidenceKind: 'none',
+        counts: { compared: 0, identical: 0, mismatched: 0, notCompared: 0 },
+        requiredLabels: ['check-failed'],
+        detail: error instanceof Error ? error.message : String(error)
+      })
+    }
+  }
+
+  const summary = summarizeReproducibilityBatch(entries)
+
+  return {
+    entries,
+    summary,
+    scorecard: formatReproducibilityScorecard(entries, {
+      sessionId: appSessionId,
+      generatedAt: new Date().toISOString()
+    })
+  }
 }
 
 // Builds the stdio MCP server exposed to the agent for managed artifact writes.
@@ -664,6 +797,33 @@ const createArtifactMcpServer = (
                 comparisons: report.comparisons,
                 replay: report.replay,
                 checked_at: report.checkedAt
+              },
+              null,
+              2
+            )
+          }
+        ]
+      }
+    }
+  )
+
+  server.registerTool(
+    'verify_artifact_reproduction_batch',
+    verifyArtifactReproductionBatchToolDefinition,
+    async (input) => {
+      const result = await verifyArtifactReproductionBatchForCurrentRun(environment, input)
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                status: result.summary.status,
+                required_labels: result.summary.requiredLabels,
+                summary: result.summary,
+                scorecard: result.scorecard,
+                entries: result.entries
               },
               null,
               2
@@ -758,6 +918,9 @@ export {
   runArtifactMcpServer,
   callArtifactRpc,
   toWriteArtifactToolResult,
+  verifyArtifactReproductionBatchForCurrentRun,
+  verifyArtifactReproductionBatchToolDefinition,
+  verifyArtifactReproductionBatchToolSchema,
   verifyArtifactReproductionForCurrentRun,
   verifyArtifactReproductionToolDefinition,
   verifyArtifactReproductionToolSchema,

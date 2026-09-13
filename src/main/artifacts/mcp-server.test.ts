@@ -5,12 +5,15 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 
 import { setLocalRpcFetchForTesting } from '../local-rpc-transport'
+import { REPRODUCIBILITY_MAX_BATCH_VERSIONS } from '../../shared/reproducibility-report'
 import { createPngBytes, createPngInlineSource } from './artifact-test-fixtures'
 import { ArtifactRepository } from './repository'
 import {
   createArtifactMcpEnvironmentFromProcess,
   createArtifactMcpServerConfig,
   toWriteArtifactToolResult,
+  verifyArtifactReproductionBatchForCurrentRun,
+  verifyArtifactReproductionBatchToolSchema,
   verifyArtifactReproductionForCurrentRun,
   verifyArtifactReproductionToolSchema,
   writeArtifactFileForCurrentRun,
@@ -871,5 +874,144 @@ describe('artifact MCP server', () => {
         reproduced_paths: ['rerun/cos.png']
       })
     ).rejects.toThrow('verify_artifact_reproduction needs the current run context')
+  })
+
+  it('bounds the batch tool schema and defaults reexecute to false', () => {
+    expect(Object.keys(verifyArtifactReproductionBatchToolSchema).sort()).toEqual([
+      'reexecute',
+      'versions'
+    ])
+
+    const parsed = z.object(verifyArtifactReproductionBatchToolSchema).parse({
+      versions: [{ artifact_id: 'artifact-1', version_id: 'version-1' }]
+    })
+    expect(parsed.reexecute).toBe(false)
+
+    expect(() =>
+      z.object(verifyArtifactReproductionBatchToolSchema).parse({
+        versions: Array.from({ length: REPRODUCIBILITY_MAX_BATCH_VERSIONS + 1 }, (_, index) => ({
+          artifact_id: `artifact-${index}`,
+          version_id: `version-${index}`
+        }))
+      })
+    ).toThrow()
+  })
+
+  it('checks a batch one Version at a time and scorecards the verdicts', async () => {
+    const root = await createStorageRoot()
+    const environment = {
+      ...(await createEnvironment(root, {
+        artifactRunId: 'artifact-run-1',
+        appSessionId: 'session-1',
+        rpcCapabilityToken: 'run-capability'
+      })),
+      rpcEndpoint: 'http://127.0.0.1:9000'
+    }
+    const requested: string[] = []
+    setLocalRpcFetchForTesting(
+      vi.fn(async (_url: string, init: RequestInit) => {
+        const body = JSON.parse(String(init.body)) as {
+          params: { versionId: string }
+        }
+        requested.push(body.params.versionId)
+        const reproduced = body.params.versionId === 'version-1'
+
+        return new Response(
+          JSON.stringify({
+            result: {
+              checkedAt: '2026-09-13T00:00:00.000Z',
+              recipe: {
+                schemaVersion: 1,
+                identity: {
+                  artifactId: 'artifact-1',
+                  versionId: body.params.versionId,
+                  versionNumber: 1,
+                  filename: 'cos.png'
+                },
+                expected: { sha256: 'a'.repeat(64), sizeBytes: 8 },
+                execution: null,
+                environment: null,
+                inputs: [],
+                sealed: true,
+                unsealedReasons: []
+              },
+              comparisons: [],
+              verdict: reproduced ? 'reproduced' : 'not-reproduced',
+              evidenceKind: 'app-reexecution',
+              counts: {
+                compared: 1,
+                identical: reproduced ? 1 : 0,
+                mismatched: reproduced ? 0 : 1,
+                notCompared: 0
+              },
+              reasons: [],
+              requiredLabels: [],
+              replay: null
+            }
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        )
+      })
+    )
+
+    const result = await verifyArtifactReproductionBatchForCurrentRun(environment, {
+      versions: [
+        { artifact_id: 'artifact-1', version_id: 'version-1', label: 'cos.png v1' },
+        { artifact_id: 'artifact-1', version_id: 'version-2', label: 'cos.png v2' }
+      ],
+      reexecute: true
+    })
+
+    expect(requested).toEqual(['version-1', 'version-2'])
+    expect(result.entries.map((entry) => entry.verdict)).toEqual(['reproduced', 'not-reproduced'])
+    // One failure fails the batch — the scorecard cannot read as verified.
+    expect(result.scorecard).toContain('❌ 存在未复现的产物')
+    expect(result.scorecard).not.toContain('✅ 全部由应用重跑复现')
+    expect(result.scorecard).toContain('| cos.png v2 | ❌ 未复现 |')
+  })
+
+  it('keeps a Version whose check failed visible instead of shipping a smaller batch', async () => {
+    const root = await createStorageRoot()
+    const environment = {
+      ...(await createEnvironment(root, {
+        artifactRunId: 'artifact-run-1',
+        appSessionId: 'session-1',
+        rpcCapabilityToken: 'run-capability'
+      })),
+      rpcEndpoint: 'http://127.0.0.1:9000'
+    }
+    let call = 0
+    setLocalRpcFetchForTesting(
+      vi.fn(async (_url: string, _init: RequestInit) => {
+        call += 1
+        if (call === 2) {
+          return new Response(JSON.stringify({ error: 'Artifact Version not found.' }), {
+            status: 404,
+            headers: { 'content-type': 'application/json' }
+          })
+        }
+
+        return new Response(JSON.stringify({ result: null, error: 'unexpected' }), {
+          status: 500,
+          headers: { 'content-type': 'application/json' }
+        })
+      })
+    )
+
+    const result = await verifyArtifactReproductionBatchForCurrentRun(environment, {
+      versions: [
+        { artifact_id: 'artifact-1', version_id: 'version-1', label: 'cos.png v1' },
+        { artifact_id: 'artifact-1', version_id: 'version-2', label: 'cos.png v2' }
+      ]
+    })
+
+    expect(result.entries).toHaveLength(2)
+    expect(result.entries[1]).toMatchObject({
+      verdict: 'not-checkable',
+      requiredLabels: ['check-failed'],
+      detail: 'Artifact Version not found.'
+    })
+    expect(result.scorecard).toContain('## 检查未完成的产物')
+    expect(result.scorecard).toContain('cos.png v2：Artifact Version not found.')
   })
 })
