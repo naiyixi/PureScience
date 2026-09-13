@@ -850,6 +850,8 @@ describe('artifact MCP server', () => {
         appSessionId: 'session-1',
         artifactId: 'artifact-1',
         versionId: 'version-1',
+        artifactStorageSessionId: 'session-1',
+        artifactRunId: 'artifact-run-1',
         reexecute: false,
         reproducedFiles: ['rerun/cos.png'],
         allowedImportRoots: [sessionRoot],

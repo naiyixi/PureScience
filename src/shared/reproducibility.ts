@@ -152,6 +152,11 @@ export type ArtifactReproducibilityCheckRequest = {
   appSessionId: string
   artifactId: string
   versionId: string
+  // Runtime-owned capability envelope fields. The artifact RPC rejects a request whose envelope does
+  // not match the turn's capability, so these are filled from the trusted per-turn handoff — never from
+  // the model — exactly like an artifact write.
+  artifactStorageSessionId: string
+  artifactRunId: string
   // Ask the app to re-run the sealed recipe itself, in an isolated directory, and grade that run's
   // own output. This is a request, not a claim: the verdict only becomes `reproduced` when the app
   // really executed the replay, and a replay that cannot run is reported with its refusal.

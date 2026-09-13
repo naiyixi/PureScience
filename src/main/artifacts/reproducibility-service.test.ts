@@ -165,6 +165,8 @@ const request = (
   appSessionId: 'session-1',
   artifactId: 'artifact-1',
   versionId: 'version-1',
+  artifactStorageSessionId: 'session-1',
+  artifactRunId: 'artifact-run-1',
   reexecute: false,
   reproducedFiles: ['/workspace/rerun/cos.png'],
   allowedImportRoots: ['/workspace'],

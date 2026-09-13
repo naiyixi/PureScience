@@ -655,6 +655,8 @@ const verifyArtifactReproductionForCurrentRun = async (
   return callArtifactReproductionRpc(environment, capabilityToken, {
     projectId: environment.projectName,
     appSessionId,
+    artifactStorageSessionId: environment.sessionId,
+    artifactRunId: context.artifactRunId,
     artifactId: input.artifact_id,
     versionId: input.version_id,
     reexecute: input.reexecute ?? false,
@@ -697,6 +699,8 @@ const verifyArtifactReproductionBatchForCurrentRun = async (
       const report = await callArtifactReproductionRpc(environment, capabilityToken, {
         projectId: environment.projectName,
         appSessionId,
+        artifactStorageSessionId: environment.sessionId,
+        artifactRunId: context.artifactRunId,
         artifactId: version.artifact_id,
         versionId: version.version_id,
         reexecute: input.reexecute ?? false,
