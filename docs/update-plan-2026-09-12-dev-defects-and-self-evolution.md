@@ -325,14 +325,17 @@ Error occurred in handler for 'acp:get-plan-projection': Error: Cannot read runt
 
 **三种解法（择一，需拍板）**：
 
-1. **让"被挂载的技能"在 main 侧落账**（推荐，且已确认 main 本来就掌握）：main 在组装 prompt 时知道本轮注入了哪些
-   技能文档（`replacePromptSkillDocuments` / `appendPromptContent`），把这些名字作为活动或轮次元数据记下即可——
-   这是"知道却没记"，不是"不知道"；也已按发射器真实线形写好纯派生器 `shared/skill-usage.ts`
-   （`skillUsagesFromActivities` / `summarizeSkillUsage`，单测 4 条通过），拿到名字即可直接产出排行。
-2. 从 **reviewer 作用域快照**（`ReviewScopeSnapshot` 的 blocks）派生——数据更全但只覆盖被审的轮次。
-3. 明确**放弃** C1 排行部分，只保留信任侧（C1 降级为"技能信任台账"）。
+1. ~~让"被挂载的技能"在 main 侧落账（main 本来就掌握）~~ —— **此路已查否（2026-09-13 复核）**：该说法只对 **codex 桥路径**成立
+   （桥会选技能并把文档读进来）。**claude 路径下技能由提供方自行从 `claude/skills/` 加载，应用不知道模型实际用了哪一个**；
+   应用侧能看到的唯一信号就是那条**无名的 `Skill` 活动**。因此真正的前置是**提供方上报**：需要适配器（或 Claude Code 的
+   PostToolUse 钩子）把 Skill 调用的输入/名字转发出来。属"源头缺数据"，不是"我们没记"。
+2. 从 **reviewer 作用域快照**（`ReviewScopeSnapshot` 的 blocks）派生——但 reviewer 看到的也是同一批活动，
+   `Skill` 同样无名，**故同样受阻**（除非提供方上报）。
+3. **放弃 C1 排行部分，只保留信任侧**（C1 降级为"技能信任台账"）——**当前建议**：信任侧已交付且有真数据；
+   排行需要先做提供方上报（适配器/钩子），价值中等、成本不确定。
 
-**建议 1**：它把"调用了技能"补成"调用了哪个技能"，对排查与度量都有用，且不需要新 IPC 通道。
+**复查提醒**：本节第一版曾断言"main 本来就掌握注入的技能"，**该断言未经验证即写入，已由复查推翻**；
+结论只认"实测 + 对照判据"。
 
 ### 验收记录：学习型技能验证门控（B1）
 
