@@ -135,7 +135,35 @@
 
 **禁止**：建空面板；用"调用过技能"的次数冒充"用了哪个技能"；把函数型钩子塞进 JSON 边界。
 
-## 3. C3（第三）：完整监督通道
+## 3. C3（第三）：完整监督通道 —— ✅ 三处缺陷已修，活体证据已取得（2026-09-13）
+
+**背景（B3 交付时的自述与实测不符）**：B3 声称"台账进审计请求 + 注入审计员 + 主日志留痕"。实测**否证**了后半段：
+真实会话 `68b9adc4` 的活动流喂给策略**确实触发唤醒**（`repeated-tool-failure@turn:3`，无降级），
+但该会话 **12 次审计启动、0 条台账日志**。逐层查下去是**三处独立缺陷**：
+
+| # | 缺陷 | 位置 | 修法 | 证据 |
+|---|---|---|---|---|
+| 1 | **渲染端算出的 plan 在 main 边界被丢弃** | `main/reviewer/ipc.ts` 的 `triggerReview` 用**显式解构**组 options，没有 `supervisor` | 透传 `supervisor: request.supervisor` | 边界测试（抽掉该行→红）`ed3d700` |
+| 2 | **只有自动路径带 plan；跳过即丢；手动"请求评审"盲审** | 台账挂在 `triggerAutoReview` 内；`WorkspacePage.requestManualReview` 走同一装配却不带 plan | 台账**并入 `assembleReviewRunRequest`**（两路共用）；运行时信号改为**审计真正启动后**才消费 | 渲染端测试（抽掉装配→红）`3beb231` |
+| 3 | **首审不留痕（可审计性）** | `logSupervisorLedger` 只写在 `runScopedReview`（修正轮重审路径），**首审路径没有** | 首审路径同样留痕 | **活体**：`c370c41` 重建后同一条 RPC 首次产出日志行 |
+
+**活体验证（确定性，不经 UI，跑在运行中的实例上）**：`POST /rpc/reviewer:run` 携带 plan →
+`{"started": true}` → 日志首次出现
+
+```
+[reviewer:orchestrator] reviewer: supervisor ledger attached {
+  sessionId: '68b9adc4-9660-4149-aa3e-63fdd0007cf1',
+  wakes: [ 'repeated-tool-failure@turn:3' ],
+  handles: [ 'activity:probe-verification' ]
+}
+```
+
+**仍未直接观测到的一跳（如实标注）**：**浏览器会话里渲染端→main 的实机传递**（UI 自动化在本轮次多次失败，
+原因已逐条记录并写进技能：日志时序/标题截断/双会话文件/输入未登记/启动水合 25s/菜单项不可点）。该跳由
+渲染端单测 + main 边界单测 + 上面的 main 侧活体验证**三面覆盖**，但**不是**同一次真实 UI 运行中的单条端到端证据。
+
+**教训（本轮最贵的一条）**：那行日志的位置比功能本身更隐蔽——**功能在工作（计划确实注入了审计员提示），
+但首审不留痕**，导致"验收探针永远等不到它"。**别让可观测性只挂在一条分支上**。
 
 **已有（B3 交付）**：策略内核 `shared/supervisor-signals.ts`（4 类信号 / 每类一次 / 超预算降级）、
 台账进审计请求（`ReviewRunRequest.supervisor`）、审计员系统提示注入 `<supervisor_signals>`、修正轮继承、主日志留痕
