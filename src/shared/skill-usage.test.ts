@@ -4,7 +4,12 @@ import { describe, expect, it } from 'vitest'
 import { skillUsagesFromActivities, summarizeSkillUsage } from './skill-usage'
 
 // The shape the app emits: title 'Loaded skill: <name>', call id 'purescience-skill-<turn>-<index>'.
-const loaded = (name: string, turn: number, index: number, status = 'completed') => ({
+const loaded = (
+  name: string,
+  turn: number,
+  index: number,
+  status = 'completed'
+): { id: string; providerToolName: string; title: string; status: string } => ({
   id: `purescience-skill-${turn}-${index}`,
   providerToolName: 'skill',
   title: `Loaded skill: ${name}`,
