@@ -64,13 +64,26 @@
 
 **实现选项**
 
-- **A（推荐先勘察）**：在**提供方侧上报** Skill 调用的输入/名字——适配器转发，或用 Claude Code 的 `PostToolUse` 钩子把名字写成活动/轮次元数据。
-- **B（若 A 不可行）**：明确放弃 C1 排行，只保留信任侧（C1 降级为"技能信任台账"）——已在排期文档登记为可接受收口方式。
+- **A ✅ 勘察完成（2026-09-13）：接缝存在且是受支持路径，不需要改适配器**
+
+  | 事实 | 出处 |
+  |---|---|
+  | 适配器把调用方 `options.hooks` 合并进 SDK 钩子 | `node_modules/@agentclientprotocol/claude-agent-acp/dist/acp-agent.js:4040`（`...userProvidedOptions?.hooks`，`PostToolUse` 数组拼接） |
+  | 适配器**官方文档**把 `hooks` 列为受支持透传项 | 同包 `dist/acp-agent.d.ts:409-426`：`hooks (merged with ACP's hooks)` |
+  | 应用已持有该 options 通道 | `src/main/agent-framework/claude-code.ts:67-79`（`meta.claudeCode.options` ← `ctx.sessionOptions`） |
+  | 应用还自持一份 Claude `settings.json` 路径 | `src/main/settings/backend-resolver.ts:886`（`settings: join(appConfigDir,'settings.json')`），目录来自 `agent-runtime-manager.ts:691` `getAppClaudeConfigDir(storageRoot)` |
+  | 钩子事件与 JSON 形态在 SDK 类型中存在 | `@anthropic-ai/claude-agent-sdk/sdk.d.ts:809`（`HookCallbackMatcher`）、`:816`（`PostToolUse`）、`:4919+`（`{type:'command'}`）；`HookCallback.hooks` 本体是**进程内函数**，故**跨 ACP JSON 边界应走 `type:'command'` 的命令钩子或 settings.json**，不要试图传函数 |
+
+  **拟实现（下一步）**：在应用自有的 claude 配置里加 `PostToolUse` matcher（目标工具 `Skill`），命令钩子把 stdin 的 `{tool_name, tool_input}` 追加写入项目侧 JSONL；
+  应用读取该 JSONL，把 `tool_input` 里的技能名写进活动/轮次元数据 → `skillUsagesFromActivities`（`src/shared/skill-usage.ts`，已就绪）立即产出排行。
+  **未知项（必须先验的最小步）**：命令钩子是否真的收到 `Skill` 的 `tool_input`（`Skill` 调用的输入里是否含名字）——**用一个 spike 验，不先写完整链路**。
+- **B（兜底，仍保留）**：若 spike 证明 `Skill` 的钩子输入里没有名字，则放弃 C1 排行，只保留信任侧（已在排期文档登记为可接受收口方式）。
 
 **验收**：新会话出现带名的技能记录（如 `Loaded skill: <name>`）→ 用 `skillUsagesFromActivities` 派生非空 → 面板可点开看证据；
-**历史 119 个会话仍无名，必须显式标注**（不得把新数据说成回溯覆盖）。
+**历史 119 个会话仍无名，必须显式标注**（不得把新数据说成回溯覆盖）。本轮已复核：87 条原生 `Skill` 活动里 81 条确实无 `rawInput`/`title`，
+另 6 条带载荷的是**应用自有 MCP 工具**（`mcp__purescience-skills__skill_list/skill_eval/create_skill`），**不是**原生 `Skill`，不改变结论。
 
-**禁止**：建空面板；用"调用过技能"的次数冒充"用了哪个技能"。
+**禁止**：建空面板；用"调用过技能"的次数冒充"用了哪个技能"；把函数型钩子塞进 JSON 边界。
 
 ## 3. C3（第三）：完整监督通道
 
