@@ -84,6 +84,18 @@
   **下一片（消费端，尚未落地——不得当成已完成）**：读采集 JSONL（需**有界**：按 sessionId 归属、按时间落轮次、上限/轮转）→
   产出排行数据 → 接既有台账/面板；历史 119 会话仍无名，必须显式标注。
 
+  **消费端进度（2026-09-13）**：
+  - ✅ **数据层已落地并有测试**：`shared/skill-usage.ts` 新增 `skillLoadsFromCapture` / `skillUsagesFromCapture`
+    （只认 `toolName === 'Skill'` 且技能名非空，其余一律丢弃——错名会变成排行里的假复用；**不编造轮次**，钩子看不到轮次）；
+    `main/settings/skill-usage-hook.ts` 新增 `readSkillUsageCapture` / `readSkillUsageLedger`
+    （**有界**：4MB 上限、超限只保留尾部并丢弃首行残句；坏行/撕裂行/`null`/裸字符串一律跳过，不抛错）。
+    真实文件已验证可归因：`mcp-genes @ e055db44`。
+  - ❗ **本轮发现（重要，比缺数据源更根本）**：`skillUsagesFromActivities` / `summarizeSkillUsage` **此前只有自己的测试在调用**
+    → 台账引擎**没有生产消费者**，即那一片是**空壳**（违反"没有生产调用者的组件不算完成"）。
+    并且全库持久化会话中 `Loaded skill:` 活动 **0 条** → 该引擎期望的来源从未产出数据。
+  - ⏳ **仍缺（下一步）**：IPC（`settings:` 通道）+ 技能面板显示（含 i18n 九语）+ 「历史会话无名」的显式标注。
+    **在 UI 落地前，C1 一律不得标记为完成。**
+
   | 事实 | 出处 |
   |---|---|
   | 适配器把调用方 `options.hooks` 合并进 SDK 钩子 | `node_modules/@agentclientprotocol/claude-agent-acp/dist/acp-agent.js:4040`（`...userProvidedOptions?.hooks`，`PostToolUse` 数组拼接） |

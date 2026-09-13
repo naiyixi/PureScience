@@ -76,6 +76,64 @@ export type SkillPayoff = {
 }
 
 /**
+ * One line of the app-owned Skill capture (written by the PostToolUse hook in the agent config dir).
+ * The provider's own Skill activity carries no name, so this is the only record of WHICH skill a turn
+ * loaded; it is deliberately minimal and only ever describes the matched tool call.
+ */
+export type SkillCaptureRecord = {
+  toolName?: unknown
+  toolInput?: unknown
+  sessionId?: unknown
+  capturedAt?: unknown
+}
+
+export type SkillCaptureUsage = {
+  skillName: string
+  sessionId?: string
+  capturedAt?: string
+}
+
+/**
+ * The skill loads a capture file describes, oldest first. A record is used only when it names the Skill
+ * tool and carries a non-empty skill name; anything else is dropped rather than guessed, because a wrong
+ * name would show up as a real reuse in the ranking. The timestamp is optional metadata: the name is what
+ * the ranking needs, so a record without one is still a load.
+ */
+export const skillLoadsFromCapture = (
+  records: readonly SkillCaptureRecord[]
+): SkillCaptureUsage[] =>
+  records.flatMap((record) => {
+    if (record.toolName !== 'Skill') return []
+    const input = record.toolInput
+    if (typeof input !== 'object' || input === null) return []
+    const skillName = (input as Record<string, unknown>).skill
+    if (typeof skillName !== 'string' || skillName.trim().length === 0) return []
+    return [
+      {
+        skillName: skillName.trim(),
+        ...(typeof record.sessionId === 'string' && record.sessionId
+          ? { sessionId: record.sessionId }
+          : {}),
+        ...(typeof record.capturedAt === 'string' && record.capturedAt
+          ? { capturedAt: record.capturedAt }
+          : {})
+      }
+    ]
+  })
+
+/**
+ * Folds captured loads into the same shape the activity-derived ledger produces, so one ranking serves
+ * both sources instead of two parallel ones. `turn` stays undefined: a hook sees the tool call, not the
+ * turn it belonged to, and inventing one would make "recent use" a lie.
+ */
+export const skillUsagesFromCapture = (records: readonly SkillCaptureRecord[]): SkillUsage[] =>
+  skillLoadsFromCapture(records).map((load) => ({
+    skillName: load.skillName,
+    status: 'completed' as const,
+    activityId: [load.sessionId ?? 'unknown-session', load.capturedAt ?? 'unknown-time'].join(':')
+  }))
+
+/**
  * Per-skill use counts, most used first. A skill with zero uses simply cannot appear here — that is the
  * honest reading, and a panel must say "no reuse recorded" rather than invent a ranking.
  */

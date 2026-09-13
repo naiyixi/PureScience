@@ -1,5 +1,8 @@
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
+
+import type { SkillCaptureRecord, SkillPayoff } from '../../shared/skill-usage'
+import { skillUsagesFromCapture, summarizeSkillUsage } from '../../shared/skill-usage'
 
 // Captures the native Skill tool's input so the app can tell WHICH skill a turn used. The provider's Skill
 // activity carries no title, no rawInput and no locations (measured over 81 activities in real sessions), so
@@ -93,14 +96,56 @@ const writeSkillUsageCapture = async (configDir: string): Promise<void> => {
   await writeFile(captureScriptPath(configDir), captureScript(captureLogPath(configDir)), 'utf8')
 }
 
+// The capture is append-only for the life of the install, so reading it must stay bounded: anything past
+// this budget is dropped rather than growing memory with the file. Losing the oldest lines is acceptable -
+// the ranking is about which skills get reused, not about keeping an unbounded audit trail in memory.
+const MAX_CAPTURE_BYTES = 4 * 1024 * 1024
+
+const readSkillUsageCapture = async (configDir: string): Promise<SkillCaptureRecord[]> => {
+  let raw: string
+  try {
+    raw = await readFile(captureLogPath(configDir), 'utf8')
+  } catch {
+    // No file yet is the normal state before the first skill load, not an error.
+    return []
+  }
+  if (raw.length > MAX_CAPTURE_BYTES) {
+    // Cutting mid-file can land inside a line, so the first (partial) line is discarded with it.
+    raw = raw.slice(raw.length - MAX_CAPTURE_BYTES)
+    const firstBreak = raw.indexOf('\n')
+    raw = firstBreak === -1 ? '' : raw.slice(firstBreak + 1)
+  }
+
+  const records: SkillCaptureRecord[] = []
+  for (const line of raw.split('\n')) {
+    if (!line.trim()) continue
+    try {
+      const parsed = JSON.parse(line) as unknown
+      // Only object lines are records; a stray scalar would otherwise be treated as an unnamed load.
+      if (typeof parsed === 'object' && parsed !== null) records.push(parsed as SkillCaptureRecord)
+    } catch {
+      // A torn line (killed mid-write) is skipped: the next line is still valid.
+    }
+  }
+  return records
+}
+
+const readSkillUsageLedger = async (configDir: string): Promise<SkillPayoff[]> => {
+  const records = await readSkillUsageCapture(configDir)
+  return summarizeSkillUsage(skillUsagesFromCapture(records))
+}
+
 export {
   CAPTURED_TOOL_MATCHER,
   CAPTURE_FILENAME,
   CAPTURE_MARKER,
   HOOK_SUBDIR,
+  MAX_CAPTURE_BYTES,
   captureLogPath,
   captureScriptPath,
   isSkillUsageHookEntry,
+  readSkillUsageCapture,
+  readSkillUsageLedger,
   skillUsageHookCommand,
   skillUsageHookSettings,
   writeSkillUsageCapture

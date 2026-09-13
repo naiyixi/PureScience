@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -9,6 +9,8 @@ import {
   captureLogPath,
   captureScriptPath,
   isSkillUsageHookEntry,
+  readSkillUsageCapture,
+  readSkillUsageLedger,
   skillUsageHookCommand,
   skillUsageHookSettings,
   writeSkillUsageCapture
@@ -113,5 +115,36 @@ describe('skill usage capture hook', () => {
     ).toBe(false)
     expect(isSkillUsageHookEntry({ matcher: 'Write', hooks: [] })).toBe(false)
     expect(isSkillUsageHookEntry(null)).toBe(false)
+  })
+
+  it('reads the capture back, skipping torn and non-object lines instead of failing', async () => {
+    const configDir = await makeRoot()
+    await writeSkillUsageCapture(configDir)
+    const lines = [
+      JSON.stringify({ toolName: 'Skill', toolInput: { skill: 'mcp-genes' }, sessionId: 's1' }),
+      '{"toolName":"Skill","toolInput":{"skill":"evidence-gra', // torn write
+      'null',
+      '"just a string"',
+      '',
+      JSON.stringify({ toolName: 'Bash', toolInput: { command: 'ls' }, sessionId: 's1' }),
+      JSON.stringify({ toolName: 'Skill', toolInput: { skill: 'mcp-artifacts' }, sessionId: 's2' })
+    ]
+    await writeFile(captureLogPath(configDir), `${lines.join('\n')}\n`, 'utf8')
+
+    // Three object lines survive: two Skill records and the Bash one. `null`, a bare string, a torn
+    // write and a blank line are all dropped -- only object lines are records.
+    expect(await readSkillUsageCapture(configDir)).toHaveLength(3)
+    expect(await readSkillUsageLedger(configDir)).toEqual([
+      // Equal use counts fall back to name order, so the ranking is stable rather than incidental.
+      { skillName: 'mcp-artifacts', uses: 1, failures: 0 },
+      { skillName: 'mcp-genes', uses: 1, failures: 0 }
+    ])
+  })
+
+  it('reports no reuse at all when nothing has been captured yet', async () => {
+    const configDir = await makeRoot()
+    // No capture file exists before the first skill load: that is "nothing recorded", not an error.
+    expect(await readSkillUsageCapture(configDir)).toEqual([])
+    expect(await readSkillUsageLedger(configDir)).toEqual([])
   })
 })

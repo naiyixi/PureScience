@@ -1,7 +1,12 @@
 // Skill reuse ledger: attachments found in the activity stream, and the honest per-skill summary.
 import { describe, expect, it } from 'vitest'
 
-import { skillUsagesFromActivities, summarizeSkillUsage } from './skill-usage'
+import {
+  skillLoadsFromCapture,
+  skillUsagesFromActivities,
+  skillUsagesFromCapture,
+  summarizeSkillUsage
+} from './skill-usage'
 
 // The shape the app emits: title 'Loaded skill: <name>', call id 'purescience-skill-<turn>-<index>'.
 const loaded = (
@@ -99,5 +104,51 @@ describe('skill reuse ledger', () => {
         skillUsagesFromActivities([{ id: 'call_1', status: 'completed', title: 'Run tests' }])
       )
     ).toEqual([])
+  })
+})
+
+describe('skill loads captured from the provider Skill tool', () => {
+  const capture = (overrides: Record<string, unknown>): Record<string, unknown> => ({
+    toolName: 'Skill',
+    toolInput: { skill: 'mcp-genes' },
+    sessionId: 'session-1',
+    capturedAt: '2026-09-13T07:42:54.406Z',
+    ...overrides
+  })
+
+  it('reads the skill name out of the captured tool input', () => {
+    expect(skillLoadsFromCapture([capture({})])).toEqual([
+      { skillName: 'mcp-genes', sessionId: 'session-1', capturedAt: '2026-09-13T07:42:54.406Z' }
+    ])
+  })
+
+  it('drops anything that would put a wrong name in the ranking', () => {
+    expect(
+      skillLoadsFromCapture([
+        capture({ toolName: 'Bash' }),
+        capture({ toolInput: { command: 'ls' } }),
+        capture({ toolInput: { skill: '   ' } }),
+        capture({ toolInput: 'mcp-genes' }),
+        capture({ toolInput: null }),
+        { toolName: 'Skill', toolInput: { skill: 'mcp-genes' } }
+      ])
+    ).toEqual([{ skillName: 'mcp-genes' }])
+  })
+
+  it('folds into the same ledger shape the activity stream produces', () => {
+    expect(
+      summarizeSkillUsage(
+        skillUsagesFromCapture([
+          capture({}),
+          capture({ capturedAt: '2026-09-13T08:00:00.000Z' }),
+          capture({ toolInput: { skill: 'evidence-grading' } })
+        ])
+      )
+    ).toEqual([
+      { skillName: 'mcp-genes', uses: 2, failures: 0 },
+      { skillName: 'evidence-grading', uses: 1, failures: 0 }
+    ])
+    // No turn is claimed: the hook sees a tool call, not the turn it belonged to.
+    expect(skillUsagesFromCapture([capture({})])[0]?.turn).toBeUndefined()
   })
 })
