@@ -27,6 +27,10 @@ import type {
   CreateArtifactVersionRequest,
   ReplayArtifactVersionRequest
 } from '../../shared/artifact-provenance'
+import type {
+  ArtifactReproducibilityCheckRequest,
+  ArtifactReproducibilityReport
+} from '../../shared/reproducibility'
 import {
   stripAgentsReservedParams,
   type TrustedCallingSession,
@@ -194,6 +198,9 @@ type NotebookLocalRpcServerOptions = {
   artifactProvenance?: {
     createVersion(request: CreateArtifactVersionRequest): Promise<ArtifactVersionFile>
     replayVersion?(request: ReplayArtifactVersionRequest): Promise<ArtifactVersionFile | undefined>
+    checkReproduction?(
+      request: ArtifactReproducibilityCheckRequest
+    ): Promise<ArtifactReproducibilityReport>
   }
   inputRegistry?: Pick<NotebookInputRegistry, 'registerTurn' | 'getTurnInputs' | 'clearSession'> &
     Partial<Pick<NotebookInputRegistry, 'openRun'>>
@@ -238,7 +245,8 @@ class RpcHttpError extends Error {
 
 const ARTIFACT_RPC_METHODS = new Set<ArtifactRpcMethod>([
   'artifactCreateVersion',
-  'artifactReplayVersion'
+  'artifactReplayVersion',
+  'artifactCheckReproduction'
 ])
 
 // Capabilities are revoked when the turn ends. This upper bound only limits abandoned tokens, so
@@ -1142,6 +1150,15 @@ class NotebookLocalRpcServer {
       }
 
       return this.artifactProvenance.replayVersion(params as ReplayArtifactVersionRequest)
+    }
+    if (method === 'artifactCheckReproduction') {
+      if (!this.artifactProvenance?.checkReproduction) {
+        throw new Error('Artifact reproduction verification is not configured.')
+      }
+
+      return this.artifactProvenance.checkReproduction(
+        params as ArtifactReproducibilityCheckRequest
+      )
     }
 
     if (method === 'skillImport') {

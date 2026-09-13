@@ -44,6 +44,8 @@ import {
   registerArtifactIpcHandlers
 } from './artifacts/ipc'
 import { ArtifactProvenanceRepository } from './artifacts/provenance-repository'
+import { createArtifactReproducibilityService } from './artifacts/reproducibility-service'
+import { createReproductionFileObserver } from './artifacts/reproduction-file-observer'
 import { ProvenanceMessageSnapshotRepository } from './artifacts/provenance-message-snapshot'
 import { ArtifactRunRegistry } from './artifacts/run-registry'
 import { createComputeIpcModule } from './compute/ipc'
@@ -1296,7 +1298,16 @@ const createApplicationModules = async (
             request.projectId,
             request.appSessionId,
             () => artifactProvenanceRepository.replayVersion(request)
-          )
+          ),
+        checkReproduction: (request) =>
+          createArtifactReproducibilityService({
+            getVersionProvenance: (query) =>
+              artifactProvenanceRepository.getVersionProvenance(query),
+            observeFile: createReproductionFileObserver({
+              allowedImportRoots: request.allowedImportRoots,
+              relativeBaseDirs: request.relativeBaseDirs ?? []
+            })
+          }).check(request)
       },
       inputRegistry: notebookInputRegistry,
       agentsService

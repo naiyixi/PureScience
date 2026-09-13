@@ -2,6 +2,7 @@ import { mkdir, mkdtemp, readFile, realpath, rm, stat, writeFile } from 'node:fs
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { z } from 'zod'
 
 import { setLocalRpcFetchForTesting } from '../local-rpc-transport'
 import { createPngBytes, createPngInlineSource } from './artifact-test-fixtures'
@@ -10,6 +11,8 @@ import {
   createArtifactMcpEnvironmentFromProcess,
   createArtifactMcpServerConfig,
   toWriteArtifactToolResult,
+  verifyArtifactReproductionForCurrentRun,
+  verifyArtifactReproductionToolSchema,
   writeArtifactFileForCurrentRun,
   type ArtifactMcpEnvironment
 } from './mcp-server'
@@ -751,5 +754,114 @@ describe('artifact MCP server', () => {
       mtimeMs: sourceStat.mtimeMs
     })
     expect(requests[1]?.params.sourceKind).toBe('localPath')
+  })
+
+  it('exposes every field of the reproduction check to the model, defaults included', () => {
+    // zod silently drops unknown keys, so a missing field here would make the capability unreachable
+    // from the agent surface while every other test stayed green.
+    expect(Object.keys(verifyArtifactReproductionToolSchema).sort()).toEqual([
+      'artifact_id',
+      'reexecuted',
+      'reproduced_paths',
+      'version_id'
+    ])
+
+    const parsed = z.object(verifyArtifactReproductionToolSchema).parse({
+      artifact_id: 'artifact-1',
+      version_id: 'version-1',
+      reproduced_paths: ['rerun/cos.png']
+    })
+    expect(parsed.reexecuted).toBe(false)
+  })
+
+  it('sends the reproduction check through the Provenance RPC with turn-scoped roots', async () => {
+    const root = await createStorageRoot()
+    const dataDir = join(root, 'data')
+    const sessionRoot = join(root, 'session')
+    await mkdir(dataDir, { recursive: true })
+    await mkdir(sessionRoot, { recursive: true })
+    const environment = {
+      ...(await createEnvironment(root, {
+        artifactRunId: 'artifact-run-1',
+        appSessionId: 'session-1',
+        rpcCapabilityToken: 'run-capability',
+        notebookDataDir: dataDir,
+        notebookSessionRoot: sessionRoot
+      })),
+      rpcEndpoint: 'http://127.0.0.1:9000',
+      allowedImportRoots: [sessionRoot]
+    }
+    const calls: Array<{ url: string; init: RequestInit }> = []
+    const report = {
+      checkedAt: '2026-09-13T00:00:00.000Z',
+      recipe: {
+        schemaVersion: 1,
+        identity: {
+          artifactId: 'artifact-1',
+          versionId: 'version-1',
+          versionNumber: 1,
+          filename: 'cos.png'
+        },
+        expected: { sha256: 'a'.repeat(64), sizeBytes: 8 },
+        execution: null,
+        environment: null,
+        inputs: [],
+        sealed: true,
+        unsealedReasons: []
+      },
+      comparisons: [{ path: 'rerun/cos.png', filename: 'cos.png', outcome: 'identical' as const }],
+      verdict: 'reproduced' as const,
+      evidenceKind: 'app-reexecution' as const,
+      counts: { compared: 1, identical: 1, mismatched: 0, notCompared: 0 },
+      reasons: [],
+      requiredLabels: ['per-file-outcomes']
+    }
+    setLocalRpcFetchForTesting(
+      vi.fn(async (url: string, init: RequestInit) => {
+        calls.push({ url, init })
+        return new Response(JSON.stringify({ result: report }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        })
+      })
+    )
+
+    const result = await verifyArtifactReproductionForCurrentRun(environment, {
+      artifact_id: 'artifact-1',
+      version_id: 'version-1',
+      reproduced_paths: ['rerun/cos.png']
+    })
+
+    expect(JSON.parse(String(calls[0]?.init.body))).toEqual({
+      method: 'artifactCheckReproduction',
+      params: {
+        projectId: 'default-project',
+        appSessionId: 'session-1',
+        artifactId: 'artifact-1',
+        versionId: 'version-1',
+        reexecuted: false,
+        reproducedFiles: ['rerun/cos.png'],
+        allowedImportRoots: [sessionRoot],
+        relativeBaseDirs: [dataDir, sessionRoot]
+      }
+    })
+    // The verdict is the main process's; the tool must not upgrade it on the way out.
+    expect(result).toEqual(report)
+  })
+
+  it('refuses a reproduction check without the turn capability instead of guessing a scope', async () => {
+    const root = await createStorageRoot()
+    const environment = {
+      ...(await createEnvironment(root, { artifactRunId: 'artifact-run-1' })),
+      rpcEndpoint: 'http://127.0.0.1:9000'
+    }
+
+    await expect(
+      verifyArtifactReproductionForCurrentRun(environment, {
+        artifact_id: 'artifact-1',
+        version_id: 'version-1',
+        reproduced_paths: ['rerun/cos.png']
+      })
+    ).rejects.toThrow('verify_artifact_reproduction needs the current run context')
   })
 })

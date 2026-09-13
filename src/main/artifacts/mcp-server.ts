@@ -15,6 +15,10 @@ import type {
   CreateArtifactVersionRequest,
   ReplayArtifactVersionRequest
 } from '../../shared/artifact-provenance'
+import type {
+  ArtifactReproducibilityCheckRequest,
+  ArtifactReproducibilityReport
+} from '../../shared/reproducibility'
 import { ARTIFACT_MCP_SERVER_ARG } from '../mcp-server-args'
 import { fetchLocalRpc } from '../local-rpc-transport'
 import { ArtifactRepository } from './repository'
@@ -191,7 +195,7 @@ const readCurrentRunContext = async (currentRunFile: string): Promise<ArtifactRu
   }
 }
 
-type ArtifactRpcResponse = { result?: ArtifactVersionFile | null; error?: string }
+type ArtifactRpcResponse<T = ArtifactVersionFile> = { result?: T | null; error?: string }
 
 const callArtifactRpc = async (
   environment: ArtifactMcpEnvironment,
@@ -485,6 +489,121 @@ const toWriteArtifactToolResult = (
   }
 }
 
+const verifyArtifactReproductionToolSchema = {
+  artifact_id: z
+    .string()
+    .min(1)
+    .describe('Artifact id returned by write_artifact_file for the Version you want to verify.'),
+  version_id: z
+    .string()
+    .min(1)
+    .describe(
+      'Version id returned by write_artifact_file. This is the sealed Version the comparison grades against.'
+    ),
+  reproduced_paths: z
+    .array(z.string().min(1))
+    .min(1)
+    .describe(
+      'Paths of the files a reproduction produced — a re-run of the recipe, or a copied reproduction. Bare names and paths relative to the notebook data dir or session workspace work; the app resolves and reads them.'
+    ),
+  reexecuted: z
+    .boolean()
+    .default(false)
+    .describe(
+      'Set true ONLY when you re-ran the sealed recipe this turn and these files are that run\u2019s output. The app does not re-execute recipes for you, so without it the result is a byte comparison against the sealed Version and is never reported as a verified reproduction.'
+    )
+}
+
+const verifyArtifactReproductionToolDefinition = {
+  title: 'Verify artifact reproduction',
+  description:
+    'Check whether a reproduced artifact matches the sealed recipe recorded for a Version: the recorded inputs, execution scripts, environment lock and lineage are compared file by file with the files you produced. Returns per-file outcomes (identical / size-mismatch / content-mismatch / not-compared with a reason), a verdict, and required labels. A partial or unsealed recipe, a file past the comparison bound, or a comparison with no counterpart is reported as such — never as a pass. Reproduce the recipe before calling this, and report the verdict together with its required labels.',
+  inputSchema: verifyArtifactReproductionToolSchema
+}
+
+const callArtifactReproductionRpc = async (
+  environment: ArtifactMcpEnvironment,
+  capabilityToken: string,
+  request: ArtifactReproducibilityCheckRequest
+): Promise<ArtifactReproducibilityReport> => {
+  if (!environment.rpcEndpoint) {
+    throw new Error('Artifact Provenance RPC connection is not configured.')
+  }
+
+  const response = await fetchLocalRpc(
+    {
+      endpoint: environment.rpcEndpoint,
+      socketPath: environment.rpcSocketPath
+    },
+    {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${capabilityToken}`,
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({ method: 'artifactCheckReproduction', params: request })
+    },
+    'Artifact Reproduction RPC'
+  )
+  const payload = (await response.json()) as ArtifactRpcResponse<ArtifactReproducibilityReport>
+  if (!response.ok || payload.error || !payload.result) {
+    throw new Error(
+      payload.error ?? `Artifact Reproduction RPC failed with status ${response.status}`
+    )
+  }
+
+  return payload.result
+}
+
+// Runs one reproduction check against the Version the agent names. Roots and relative bases come from
+// the trusted per-turn handoff, exactly like artifact writes: the model supplies paths, never the
+// boundaries they are resolved inside.
+const verifyArtifactReproductionForCurrentRun = async (
+  environment: ArtifactMcpEnvironment,
+  input: {
+    artifact_id: string
+    version_id: string
+    reproduced_paths: string[]
+    reexecuted?: boolean
+  }
+): Promise<ArtifactReproducibilityReport> => {
+  const context = await readCurrentRunContext(environment.currentRunFile)
+  const capabilityToken = context.rpcCapabilityToken
+  if (!capabilityToken || !context.appSessionId) {
+    throw new Error(
+      'verify_artifact_reproduction needs the current run context (capability token and session). Ask the user to retry from a fresh turn.'
+    )
+  }
+
+  return callArtifactReproductionRpc(environment, capabilityToken, {
+    projectId: environment.projectName,
+    appSessionId: context.appSessionId,
+    artifactId: input.artifact_id,
+    versionId: input.version_id,
+    reexecuted: input.reexecuted ?? false,
+    reproducedFiles: input.reproduced_paths,
+    // The kernel's final session root is authoritative for notebook turns; fold it in once (the
+    // static env may already carry the same path) so the resolver never sees duplicate roots.
+    allowedImportRoots: [
+      ...new Set(
+        context.notebookSessionRoot
+          ? [...environment.allowedImportRoots, context.notebookSessionRoot]
+          : environment.allowedImportRoots
+      )
+    ],
+    relativeBaseDirs: [
+      ...new Set(
+        context.notebookDataDir
+          ? [
+              context.notebookDataDir,
+              ...(context.notebookSessionRoot ? [context.notebookSessionRoot] : [])
+            ]
+          : environment.allowedImportRoots.slice(0, 1)
+      )
+    ]
+  })
+}
+
 // Builds the stdio MCP server exposed to the agent for managed artifact writes.
 const createArtifactMcpServer = (
   repository: ArtifactRepository,
@@ -509,6 +628,45 @@ const createArtifactMcpServer = (
           {
             type: 'text',
             text: JSON.stringify(toWriteArtifactToolResult(artifact), null, 2)
+          }
+        ]
+      }
+    }
+  )
+
+  server.registerTool(
+    'verify_artifact_reproduction',
+    verifyArtifactReproductionToolDefinition,
+    async (input) => {
+      const report = await verifyArtifactReproductionForCurrentRun(environment, input)
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                verdict: report.verdict,
+                evidence_kind: report.evidenceKind,
+                required_labels: report.requiredLabels,
+                counts: report.counts,
+                reasons: report.reasons,
+                recipe: {
+                  sealed: report.recipe.sealed,
+                  unsealed_reasons: report.recipe.unsealedReasons,
+                  filename: report.recipe.identity.filename,
+                  version_number: report.recipe.identity.versionNumber,
+                  expected_sha256: report.recipe.expected.sha256,
+                  inputs: report.recipe.inputs,
+                  environment: report.recipe.environment,
+                  runs: report.recipe.execution?.runs ?? []
+                },
+                comparisons: report.comparisons,
+                checked_at: report.checkedAt
+              },
+              null,
+              2
+            )
           }
         ]
       }
@@ -599,6 +757,9 @@ export {
   runArtifactMcpServer,
   callArtifactRpc,
   toWriteArtifactToolResult,
+  verifyArtifactReproductionForCurrentRun,
+  verifyArtifactReproductionToolDefinition,
+  verifyArtifactReproductionToolSchema,
   writeArtifactFileToolDefinition,
   writeArtifactFileToolSchema,
   writeArtifactFileForCurrentRun

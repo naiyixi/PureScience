@@ -54,7 +54,8 @@ export type ReplayArtifactVersionRequest = {
   producerRunId?: string
 }
 
-export type ArtifactRpcMethod = 'artifactCreateVersion' | 'artifactReplayVersion'
+export type ArtifactRpcMethod =
+  'artifactCreateVersion' | 'artifactReplayVersion' | 'artifactCheckReproduction'
 
 // App-issued capability scope for one active assistant turn. These fields are runtime-owned and
 // must match every durable Artifact RPC call; the model and MCP process cannot widen the scope.
