@@ -200,24 +200,30 @@ A4 ─┘
 
 ## 6. 2026-09-13 新增缺陷与验收记录
 
-### D13（P1，未解）删除个人技能被拒：报"仍被 5 位专家引用"
+### D13（P1，**已修** 2026-09-13）删除个人技能被拒：报"仍被 5 位专家引用"
 
-**复现**（对运行中的应用，`settings:delete-skill`）：
-
-1. `settings:create-skill` 建一个全新个人技能（名字随机，如 `err-probe-35133`）
-2. 立刻 `settings:delete-skill {id}` → **ok:false**：
+**症状**（对运行中的应用，`settings:delete-skill`）：新建一个全新个人技能后立刻删除 → **ok:false**：
 
 ```
 Skill personal-err-probe-35133 is still referenced by clinical-study-designer,
 evidence-synthesis-specialist, omics-biomarker-specialist, pkpd-dose-designer, rwe-research-specialist.
 ```
 
-刚创建的技能不可能被任何专家引用，故该守卫判定错误。
+**根因（已定位到行）**：拒绝来自 `ipc.ts:789` 注入的删除守卫 `specialistPackageService.assertSkillDeletionAllowed`；
+其中"被引用"的判定是 `referencedSkillIds(specialist, catalogSkillIds)`，而它对 **`capabilityMode === 'full'`** 的专家返回
+**目录里所有未被排除的技能** —— 于是任何**新建**的个人技能都落在 5 个全权专家的"引用"里，**导致任意个人技能无法删除**。
 
-**已排查**：`git grep "still referenced by" HEAD` 在本仓当前树**无命中**（仅一个无关测试）；
-`git log -S` 显示该串由专家市场那次提交引入；`out/main`、`node_modules`、store 目录均未命中。
-也就是说：**运行中的应用返回了一条当前源码树里不存在的消息** —— 需要专项排查（嫌疑：内存中仍驻留旧构建的
-Electron 实例 / 树外打包的专家市场模块 / 远端市场校验）。**在查清前不要把它当作 UI 文案问题**。
+**语义判断**：全权 = "该专家可以使用整套目录"（**能力**），不是"它依赖这个技能"（**依赖**）。修法：
+只有**显式声明**（`capabilityMode === 'selected'`）的专家才阻止删除；`builtin` / `owned` 保护不变。
+
+**修正我此前的错误结论**：上一版记录写"报错文案不存在于本仓源码树"——**是搜索假象**。文案是
+`` `Skill ${skillId} is still ${reason} by ${ids}.` `` **插值**出来的（`reason='referenced'`），
+按渲染后的整句 grep 必然无命中；`git log -S` 命中的也只是无关测试串。教训：查这类错误要搜**模板片段**（如 `is still ${`）。
+
+**验证**：
+
+- 单测：改写钉住旧语义的用例（现只报声明方），**新增"装了全权专家时用户仍能删自己的技能"**；专家簇 16 文件 / 257 项全绿。
+- 实机（DEV 重建后）：新建个人技能 → `settings:delete-skill` **ok:true**、目录中消失、设置基线完好（探针 id 未残留）。
 
 **影响**：用户无法删除新建的个人技能（我们的验收探针也因此无法自行清理，见下）。
 

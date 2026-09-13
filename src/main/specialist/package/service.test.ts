@@ -1695,7 +1695,7 @@ describe('SpecialistPackageService', () => {
     ])
   })
 
-  it('guards direct Skill deletion from live selected and full-access Specialist references', async () => {
+  it('guards direct Skill deletion only from a Specialist that declares the Skill', async () => {
     const repository = new SpecialistRepository(storageDir)
     for (const specialist of [
       {
@@ -1740,8 +1740,40 @@ describe('SpecialistPackageService', () => {
     await expect(service.assertSkillDeletionAllowed('referenced-tool')).rejects.toMatchObject({
       code: 'protected-skill',
       skillId: 'referenced-tool',
-      specialistIds: ['full-specialist', 'selected-specialist']
+      // Only the Specialist that DECLARES the skill blocks it. The full-access one may use the whole
+      // catalog, which is a capability rather than a dependency — counting it refused every personal
+      // deletion (the user-visible defect this guard had to be fixed for).
+      specialistIds: ['selected-specialist']
     })
+  })
+
+  it('lets the user delete their own Skill while a full-access Specialist is installed', async () => {
+    const repository = new SpecialistRepository(storageDir)
+    await repository.insert({
+      id: 'full-specialist',
+      name: 'Full Specialist',
+      description: '',
+      systemPrompt: '',
+      enabled: true,
+      capabilityMode: 'full' as const,
+      fullAccess: { excludedSkillIds: [], excludedConnectorIds: [], connectorTools: [] },
+      selectedCapabilities: { skillIds: [], connectorIds: [], connectorTools: [] },
+      revision: 1,
+      packageVersion: '0.1.0',
+      origin: 'local',
+      ownedSkillIds: []
+    })
+    const service = new SpecialistPackageService({
+      storageDir,
+      repository,
+      catalog: async () => ({
+        ...catalog,
+        // A skill the user created after installing the Specialist: the Specialist never declared it.
+        skills: [{ id: 'personal-thing', builtin: false, standalone: true, ownerIds: [] }]
+      })
+    })
+
+    await expect(service.assertSkillDeletionAllowed('personal-thing')).resolves.toBeUndefined()
   })
 
   it('rejects a dangerous selected deletion when a concurrent Specialist adds a reference', async () => {

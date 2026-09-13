@@ -264,7 +264,13 @@ export class SpecialistPackageService {
       throw new SpecialistSkillDeletionProtectedError(skillId, owners, 'owned')
     }
     const catalogSkillIds = catalog.skills.map((candidate) => candidate.id)
+    // Only an explicit declaration pins a Skill. Full access means "this Specialist may use the whole
+    // catalog" — a capability, not a dependency — so it must not block deleting a Skill the user later
+    // created: with one full-access Specialist installed, that reading refused EVERY personal deletion
+    // (the user-visible defect this guard had to be fixed for). A selected-mode Specialist that names
+    // the Skill still blocks it, and builtin/owned skills are protected above.
     const references = document.specialists
+      .filter((specialist) => specialist.capabilityMode === 'selected')
       .filter((specialist) => referencedSkillIds(specialist, catalogSkillIds).includes(skillId))
       .map((specialist) => specialist.id)
       .sort()
