@@ -610,9 +610,14 @@ describe('ACP permission broker with durable grants', () => {
     expect(emitted).toHaveLength(1)
   })
 
-  it.each(['WebFetch', 'WebSearch'] as const)(
-    'keeps provider-native %s Once-only and prompts again on the next call',
-    async (toolName) => {
+  // A fetch may be granted per host for the session (and, with the durable registry, for the project or
+  // globally); a search reaches a service rather than a site, so it stays one-shot.
+  it.each([
+    ['WebFetch', ['once', 'session', 'project', 'global']],
+    ['WebSearch', ['once']]
+  ] as const)(
+    'offers the scopes %s can be granted, and prompts again when the user approved Once',
+    async (toolName, expectedScopes) => {
       storageRoot = await mkdtemp(join(tmpdir(), 'purescience-broker-built-in-'))
       client = createProjectDbClient(storageRoot)
       await ensureProjectSchema(client)
@@ -632,7 +637,9 @@ describe('ACP permission broker with durable grants', () => {
       )
       await new Promise<void>((resolve) => setImmediate(resolve))
 
-      expect(emitted[0].options.map((option) => option.scope).filter(Boolean)).toEqual(['once'])
+      expect(emitted[0].options.map((option) => option.scope).filter(Boolean)).toEqual([
+        ...expectedScopes
+      ])
       await broker.respond({
         requestId: emitted[0].requestId,
         optionId: 'provider-allow-once'

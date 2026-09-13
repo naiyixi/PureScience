@@ -1,6 +1,10 @@
 import { createHash } from 'node:crypto'
 
 import type { PermissionCapability } from '../../shared/permission-grants'
+import {
+  FETCH_HOST_KEY_PREFIX,
+  FETCH_PERMISSION_CAPABILITY_KEY
+} from '../../shared/fetch-authorization'
 import { isPreRegisteredPermissionIdentity } from './identity-catalog'
 
 const NOTEBOOK_RUNTIME_QUALIFIERS = new Set(['python', 'r', 'javascript', 'bash'])
@@ -186,6 +190,21 @@ const capabilityFromLegacyCategory = (categoryKey: string): PermissionCapability
 
   if (categoryKey === 'skill') {
     return { kind: 'skill_operation', key: 'skill:invoke' }
+  }
+
+  // A fetch restricted to one host (see shared/fetch-authorization). The host is the qualifier, so the
+  // grant is legible in the composer ("Fetch domain · pmc.ncbi.nlm.nih.gov") and revocable per host.
+  // Anything that is not a normalized host fails here, which leaves that request one-shot.
+  if (categoryKey.startsWith(FETCH_HOST_KEY_PREFIX)) {
+    const host = categoryKey.slice(FETCH_HOST_KEY_PREFIX.length)
+    if (!host || host !== host.toLowerCase() || /\s/.test(host) || !host.includes('.')) {
+      return undefined
+    }
+    return {
+      kind: 'builtin_tool',
+      key: FETCH_PERMISSION_CAPABILITY_KEY,
+      qualifier: { mode: 'category', value: host }
+    }
   }
 
   if (categoryKey.startsWith('file:')) {

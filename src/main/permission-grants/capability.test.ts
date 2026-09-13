@@ -127,6 +127,23 @@ describe('capabilityFromLegacyCategory', () => {
     }
   )
 
+  it('persists a fetch restricted to one host, and refuses anything that is not a host', () => {
+    expect(capabilityFromLegacyCategory('fetch-host:pmc.ncbi.nlm.nih.gov')).toEqual({
+      kind: 'builtin_tool',
+      key: 'builtin/webfetch',
+      qualifier: { mode: 'category', value: 'pmc.ncbi.nlm.nih.gov' }
+    })
+
+    for (const key of [
+      'fetch-host:',
+      'fetch-host:PMC.NCBI.nlm.nih.gov',
+      'fetch-host:intranet',
+      'fetch-host:has space.example.com'
+    ]) {
+      expect(capabilityFromLegacyCategory(key)).toBeUndefined()
+    }
+  })
+
   it.each([
     'curl -H "Authorization: Bearer abc" https://example.com',
     'TOKEN=abc python upload.py',

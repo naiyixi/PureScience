@@ -227,9 +227,9 @@ evidence-synthesis-specialist, omics-biomarker-specialist, pkpd-dose-designer, r
 
 **影响**：用户无法删除新建的个人技能（我们的验收探针也因此无法自行清理，见下）。
 
-### B5 设计（2026-09-13 勘定，**未实现**，下次可直接开工）
+### B5 抓取授权批量化（2026-09-13 **已实现**）
 
-**实测证据（DB `NotificationInboxItem`，kind=`authorization.required`，共 27 条）**：`summary` 形如 `Fetch <URL>`；
+**症状与实测证据（DB `NotificationInboxItem`，kind=`authorization.required`，共 27 条）**：`summary` 形如 `Fetch <URL>`；
 重复集中在少数站点——`pmc.ncbi.nlm.nih.gov` 5、`www.freepatentsonline.com` 5、`patents.google.com` 4，且**同会话内同域反复问**。
 **归一决策（有量化依据）**：按**精确域**折叠 → 27 次降为 **19**（省 8）；按**父域**只再多省 1 次（→18）——
 **不值得为省那 1 次放宽授权范围**，故取精确域 + `www.` 前缀归一。
@@ -241,16 +241,27 @@ evidence-synthesis-specialist, omics-biomarker-specialist, pkpd-dose-designer, r
 - 用户选它 → `rememberSessionGrant` 记住；之后再遇到同类别 → `resolveAutoAllowOptionId` **自动放行**；
 - `AcpStateSnapshot.permissionGrants` + `revokeGrant` 已把授权清单暴露给 UI（**"可查看可撤销"已具备数据通道与文案投影** `describeGrant`）。
 
-**因此 B5 的核心改动 = 给 URL 抓取请求分配一个 `fetch-host:<host>` 类别键**，剩下全是复用：
+**实现（提交见下）**：
 
-1. `permission-grants/capability.ts`：为 `fetch-host:` 前缀加 capability 映射（形如 `{kind, key:'fetch', qualifier:{mode:'exact', value:host}}`）。
-2. 请求分类处（broker）：识别 URL 抓取（`title`/`rawInput` 带 URL）→ 计算 host → 分配类别键。
-3. `describeGrant` 增一支 → 标签如 `Fetch domain: pmc.ncbi.nlm.nih.gov`（UI 清单里即可见、可撤销）。
-4. 测试：键推导（`www.` 归一、精确域、兄弟子域仍问）、describe、以及"已记住后自动放行"（复用既有通用路径，端到端断言）。
-5. DEV 实机：同会话 5 次 `pmc.ncbi.nlm.nih.gov` 抓取 → **只问 1 次**（对着 D6 的原始摩擦验收）。
+1. `shared/fetch-authorization.ts`（新）：`fetchHostFromUrl`（小写、去 `www.`、非 http(s)/裸标签/localhost 之外一律拒绝）、
+   `fetchHostCategoryKey` / `fetchHostFromCategoryKey`、**`fetchHostFromTrustedInput`**、`describeFetchHostGrant`。
+2. `resolveCategoryKey`（broker）：`WebFetch` 请求 → 由**结构化输入**推导 host → 类别键 `fetch-host:<host>`；
+   **`WebSearch` 保持一次性**（搜索面向服务而非站点，域授权对用户没有意义）；host 读不出→无键→保持一次性（fail closed）。
+3. `capabilityFromLegacyCategory`：`fetch-host:<host>` → `{kind:'builtin_tool', key:'builtin/webfetch', qualifier:{mode:'category', value:host}}`
+   —— 这正是 `capability.ts` 末尾注释所说"待显式注册"的那步注册，且限定到单个 host；非规范 host 一律拒绝。
+4. `catalog.ts` 标签 → "Fetch domain"；`describeGrant` → `Fetch domain: <host>`（composer 里可见、可撤销）。
 
-**为什么这次没动代码**：它触及**权限授予的持久模型**（`PermissionGrantRecord` 带 project/global scope 落到 DB）——
-这是安全敏感面，在长会话尾部半懂着改的风险高于收益；证据与接缝已备齐，下次一轮做完整片。
+**安全判定（重要）**：域**只从结构化 `rawInput` 推导，绝不从 title 兜底**。本仓既有注释明确"title 是显示文本、某些 ACP 桥下可被模型控制"，
+若授权键可源自 title，模型就能同时控制"被授予的键"与"后续请求匹配的键"——**提权路径**。故仅 title 的抓取请求保持一次性（原有测试继续通过）。
+
+**验证层级（如实标注）**：
+
+- **引擎层（已取证）**：`permission-broker.test.ts` 新增行为测试——首次抓取仍弹窗并给"The session"选项；用户选会话项后
+  `listGrants` 出现 `Fetch domain: pmc.ncbi.nlm.nih.gov`；**同域第二次抓取不再到达 UI 即被放行（`emitted` 仍为 1）**；换域仍弹；
+  `WebSearch` 无任何会话级 scope。连同 capability 映射与共享助手的失败关闭用例，相关簇 **13 文件 / 406 项**全绿。
+- **实机**：DEV 重启冒烟（应用照常起、`settings:list-skills` 与 `acp:get-state` 通道照常应答）+ 构建产物含新键。
+- **未取证**：真实 agent 回合里"同会话 5 次 pmc 抓取只问 1 次"未取得（live 通路不可靠，见上文 B3 记录）；
+  不以下层证据冒充该层。
 
 ### 验收记录：学习型技能验证门控（B1）
 

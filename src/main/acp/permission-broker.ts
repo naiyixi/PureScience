@@ -32,6 +32,12 @@ import {
   containsSecretBearingMaterial
 } from '../permission-grants/capability'
 import { projectPermissionGrantSnapshot } from '../permission-grants/catalog'
+import {
+  describeFetchHostGrant,
+  fetchHostCategoryKey,
+  fetchHostFromCategoryKey,
+  fetchHostFromTrustedInput
+} from '../../shared/fetch-authorization'
 import type { PermissionGrantRegistry } from '../permission-grants/registry'
 
 type PendingPermission = {
@@ -539,8 +545,15 @@ const resolveCategoryKey = (
 
   if (isSkillPermission(params, allowLegacyReportedMcp)) return 'skill'
 
-  // V1 provider-native web tools are always one-shot, including the legacy in-memory broker path.
-  if (providerToolName === 'WebFetch' || providerToolName === 'WebSearch') return undefined
+  // A provider-native fetch targets one host, so it can be granted per host for the session — the same
+  // host asked five times inside one recorded session, which is the friction this removes. A search
+  // reaches a service rather than a site, so it stays one-shot, as does a fetch whose host cannot be
+  // read (fail closed: no key, no grant).
+  if (providerToolName === 'WebFetch' || providerToolName === 'WebSearch') {
+    if (providerToolName !== 'WebFetch') return undefined
+    const host = fetchHostFromTrustedInput(toolCall.rawInput)
+    return host ? fetchHostCategoryKey(host) : undefined
+  }
 
   if (providerToolName === 'Bash' || toolCall.kind === 'execute') {
     const command = resolveShellCommand(params)
@@ -629,6 +642,12 @@ const describeGrant = (categoryKey: string): AcpPermissionGrant => {
 
   if (categoryKey.startsWith('tool:')) {
     return { categoryKey, kind: 'tool', label: categoryKey.slice('tool:'.length), scope: 'session' }
+  }
+
+  // A fetch granted for one host for this session: legible and revocable in the composer.
+  const fetchHost = fetchHostFromCategoryKey(categoryKey)
+  if (fetchHost) {
+    return { categoryKey, kind: 'tool', label: describeFetchHostGrant(fetchHost), scope: 'session' }
   }
 
   return { categoryKey, kind: 'tool', label: categoryKey, scope: 'session' }

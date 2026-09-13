@@ -7,6 +7,7 @@ import type {
   PermissionGrantView
 } from '../../shared/permission-grants'
 import { customConnectorSlug } from '../../shared/custom-connector'
+import { FETCH_PERMISSION_CAPABILITY_KEY } from '../../shared/fetch-authorization'
 
 type PermissionGrantNames = {
   projects?: ReadonlyMap<string, string>
@@ -74,6 +75,9 @@ const familyFor = (record: PermissionGrantRecord): PermissionGrantFamily => {
 const capabilityLabelFor = (record: PermissionGrantRecord): string => {
   if (record.capability.kind === 'customize_mutation') {
     return CUSTOMIZE_LABELS[record.capability.key] ?? titleFromKey(record.capability.key)
+  }
+  if (record.capability.key === FETCH_PERMISSION_CAPABILITY_KEY) {
+    return 'Fetch domain'
   }
   return titleFromKey(record.capability.key)
 }

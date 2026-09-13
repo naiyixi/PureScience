@@ -395,6 +395,60 @@ describe('ACP permission broker', () => {
     expect(emitted).toHaveLength(1)
   })
 
+  it('grants a fetch per host for the session, and auto-allows the same host afterwards', async () => {
+    const emitted: EmittedPermissionRequest[] = []
+    const broker = new AcpPermissionBroker((request) => emitted.push(request))
+    const fetch = (url: string, title = `Fetch ${url}`): RequestPermissionRequest =>
+      createToolPermissionRequest({
+        title,
+        providerToolName: 'WebFetch',
+        rawInput: { url }
+      })
+
+    const first = broker.requestPermission(
+      fetch('https://pmc.ncbi.nlm.nih.gov/articles/PMC7549104/')
+    )
+    const sessionOption = emitted[0].options.find((option) => option.scope === 'session')
+
+    // The first fetch still asks, with a session-scope option the user can decline.
+    expect(sessionOption).toMatchObject({ name: 'This session' })
+    broker.respond({ requestId: emitted[0].requestId, optionId: sessionOption?.optionId })
+    await expect(first).resolves.toEqual({
+      outcome: { outcome: 'selected', optionId: 'allow-once' }
+    })
+    // The grant is per host and legible, so the composer can show and revoke it.
+    expect(broker.listGrants('session-1')).toEqual([
+      expect.objectContaining({ label: 'Fetch domain: pmc.ncbi.nlm.nih.gov', scope: 'session' })
+    ])
+
+    // A second fetch of the same host is released without reaching the UI again — the recorded friction
+    // was this host asking five times in one session.
+    const second = broker.requestPermission(
+      fetch('https://pmc.ncbi.nlm.nih.gov/articles/PMC10398712/')
+    )
+    await expect(second).resolves.toEqual({
+      outcome: { outcome: 'selected', optionId: 'allow-once' }
+    })
+    expect(emitted).toHaveLength(1)
+
+    // Another host, and the www-equivalent of a different site, still ask.
+    void broker.requestPermission(fetch('https://patents.google.com/patent/US1/en'))
+    expect(emitted).toHaveLength(2)
+    broker.cancelAllPending()
+
+    // A search reaches a service rather than a site, so it keeps no session scope at all.
+    emitted.length = 0
+    void broker.requestPermission(
+      createToolPermissionRequest({
+        title: 'Search single-cell atlas',
+        providerToolName: 'WebSearch',
+        rawInput: { query: 'single-cell atlas' }
+      })
+    )
+    expect(emitted[0].options.map((option) => option.scope).filter(Boolean)).toEqual(['once'])
+    broker.cancelAllPending()
+  })
+
   it('offers no session scope when the permission category is not stable', () => {
     const emitted: EmittedPermissionRequest[] = []
     const broker = new AcpPermissionBroker((request) => emitted.push(request))
@@ -1499,7 +1553,7 @@ describe('ACP permission broker', () => {
     expect(emittedRequests).toHaveLength(2)
   })
 
-  it('keeps WebFetch Once-only across Agent sessions', async () => {
+  it('offers a session scope for a web fetch per host, and asks again in a new session', async () => {
     const emitted: EmittedPermissionRequest[] = []
     const broker = new AcpPermissionBroker((request) => emitted.push(request))
 
@@ -1510,7 +1564,12 @@ describe('ACP permission broker', () => {
         rawInput: { url: 'https://www.ncbi.nlm.nih.gov/' }
       })
     )
-    expect(emitted[0].options.map((option) => option.scope).filter(Boolean)).toEqual(['once'])
+    // The host can be read from provider metadata, so the user may grant it for this session — approving
+    // the provider's one-shot option instead leaves nothing remembered (asserted by the prompt below).
+    expect(emitted[0].options.map((option) => option.scope).filter(Boolean)).toEqual([
+      'once',
+      'session'
+    ])
     broker.respond({ requestId: emitted[0].requestId, optionId: 'allow-once' })
     await firstFetch
 
