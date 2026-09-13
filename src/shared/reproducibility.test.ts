@@ -187,6 +187,7 @@ describe('buildSealedReproducibilityRecipe', () => {
 
     expect(recipe.sealed).toBe(true)
     expect(recipe.unsealedReasons).toEqual([])
+    expect(recipe.caveats).toEqual([])
     expect(recipe.expected).toEqual({ sha256: 'a'.repeat(64), sizeBytes: 8 })
     expect(recipe.identity.filename).toBe('cos.png')
     expect(recipe.inputs).toEqual([
@@ -221,7 +222,7 @@ describe('buildSealedReproducibilityRecipe', () => {
     expect(recipe.unsealedReasons).toContain('execution-script-truncated')
   })
 
-  it('refuses to seal a partial environment capture', () => {
+  it('seals a best-effort environment inventory but discloses it as a caveat', () => {
     const value = provenance()
     const evidence = value.evidence
     if (!evidence.environment) throw new Error('fixture must carry environment evidence')
@@ -229,13 +230,26 @@ describe('buildSealedReproducibilityRecipe', () => {
       ...value,
       evidence: {
         ...evidence,
-        environment: { ...evidence.environment, capture_status: 'partial', complete: false },
+        environment: {
+          ...evidence.environment,
+          capture_status: 'partial',
+          complete: false,
+          installed_inventory: {
+            ...evidence.environment.installed_inventory,
+            source: 'cache-reused',
+            validation: 'best-effort'
+          }
+        },
         environment_status: { state: 'partial' }
       }
     })
 
-    expect(recipe.sealed).toBe(false)
-    expect(recipe.unsealedReasons).toContain('environment-evidence-incomplete')
+    // The replay reuses this environment by name; an incomplete inventory cannot make a byte
+    // comparison lie, so it is disclosed instead of blocking the check.
+    expect(recipe.sealed).toBe(true)
+    expect(recipe.unsealedReasons).toEqual([])
+    expect(recipe.caveats).toContain('environment-inventory-best-effort')
+    expect(recipe.caveats).toContain('environment-inventory-cache-reused')
   })
 
   it('refuses to seal when the Version content is unavailable', () => {
@@ -452,6 +466,39 @@ describe('evaluateArtifactReproduction', () => {
 
     expect(evaluation.verdict).toBe('not-checkable')
     expect(evaluation.reasons).toContain('no-reproduced-files')
+  })
+
+  it('carries the recipe caveats into every verdict it grades', () => {
+    const value = provenance()
+    const evidence = value.evidence
+    if (!evidence.environment) throw new Error('fixture must carry environment evidence')
+    const recipe = buildSealedReproducibilityRecipe({
+      ...value,
+      evidence: {
+        ...evidence,
+        environment: {
+          ...evidence.environment,
+          capture_status: 'partial',
+          complete: false,
+          installed_inventory: {
+            ...evidence.environment.installed_inventory,
+            source: 'cache-reused',
+            validation: 'best-effort'
+          }
+        },
+        environment_status: { state: 'partial' }
+      }
+    })
+    const evaluation = evaluateArtifactReproduction({
+      recipe,
+      reexecuted: true,
+      comparisons: [identicalComparison()]
+    })
+
+    // A verdict that could be reproduced from a best-effort inventory must still disclose it.
+    expect(evaluation.verdict).toBe('reproduced')
+    expect(evaluation.requiredLabels).toContain('environment-inventory-best-effort')
+    expect(evaluation.requiredLabels).toContain('environment-inventory-cache-reused')
   })
 
   it('is deterministic for the same inputs', () => {

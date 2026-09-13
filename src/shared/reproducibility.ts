@@ -33,6 +33,12 @@ export type ReproducibilityGapReason =
   | 'reproduction-file-unreadable'
   | 'reproduction-file-missing'
 
+// Caveats do not block a verdict, but every surface must disclose them. They exist for the parts of a
+// recipe that are recorded "best effort" — a cached, partially validated package inventory, for example —
+// where refusing to check would make the feature useless while silence would overstate the evidence.
+export type ReproducibilityCaveat =
+  'environment-inventory-best-effort' | 'environment-inventory-cache-reused'
+
 export type ReproducibilityRecipeFile = {
   filename: string
   sha256: string
@@ -83,6 +89,8 @@ export type SealedReproducibilityRecipe = {
   inputs: ReproducibilityRecipeInput[]
   sealed: boolean
   unsealedReasons: ReproducibilityGapReason[]
+  // Non-blocking disclosures that must travel with every verdict (see ReproducibilityCaveat).
+  caveats: ReproducibilityCaveat[]
 }
 
 export type ReproducedFileObservation =
@@ -245,15 +253,25 @@ export const buildSealedReproducibilityRecipe = (
   }
 
   const environmentEvidence = evidence.environment
+  const caveats: ReproducibilityCaveat[] = []
   let recipeEnvironment: ReproducibilityRecipeEnvironment | null = null
   if (!environmentEvidence || evidence.environment_status.state === 'unavailable') {
     unsealedReasons.push('environment-evidence-missing')
   } else {
+    // A best-effort (cached, partially validated) inventory does NOT unseal the recipe: the replay
+    // reuses the same managed environment by name instead of recreating it, so an incomplete inventory
+    // cannot make the byte comparison lie — a drifted environment shows up as a mismatch, never as a
+    // pass. It is disclosed as a caveat instead. Claims about the environment (which packages, which
+    // versions) still require a complete capture, which is why the caveat travels with the verdict.
     if (
-      evidence.environment_status.state === 'partial' ||
-      environmentEvidence.capture_status !== 'complete'
+      environmentEvidence.installed_inventory.validation !== 'full-scan' ||
+      environmentEvidence.capture_status !== 'complete' ||
+      !environmentEvidence.complete
     ) {
-      unsealedReasons.push('environment-evidence-incomplete')
+      caveats.push('environment-inventory-best-effort')
+    }
+    if (environmentEvidence.installed_inventory.source === 'cache-reused') {
+      caveats.push('environment-inventory-cache-reused')
     }
     recipeEnvironment = {
       name: environmentEvidence.environment_name,
@@ -309,7 +327,8 @@ export const buildSealedReproducibilityRecipe = (
     environment: recipeEnvironment,
     inputs,
     sealed: sealedReasons.length === 0,
-    unsealedReasons: sealedReasons
+    unsealedReasons: sealedReasons,
+    caveats: [...new Set(caveats)]
   }
 }
 
@@ -403,7 +422,11 @@ export const evaluateArtifactReproduction = ({
     mismatched: counted('content-mismatch') + counted('size-mismatch'),
     notCompared: counted('not-compared')
   }
-  const requiredLabels: string[] = []
+  const requiredLabels: string[] = [
+    // Caveats travel with every verdict, including a refusal, so no surface can quote the outcome
+    // without the disclosure that came with it.
+    ...recipe.caveats
+  ]
   const reasons = comparisons
     .map((comparison) => comparison.reason)
     .filter((reason): reason is ReproducibilityGapReason => reason !== undefined)

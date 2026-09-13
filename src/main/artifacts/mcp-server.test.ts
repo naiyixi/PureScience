@@ -818,7 +818,8 @@ describe('artifact MCP server', () => {
         environment: null,
         inputs: [],
         sealed: true,
-        unsealedReasons: []
+        unsealedReasons: [],
+        caveats: []
       },
       comparisons: [{ path: 'rerun/cos.png', filename: 'cos.png', outcome: 'identical' as const }],
       verdict: 'reproduced' as const,
@@ -935,7 +936,8 @@ describe('artifact MCP server', () => {
                 environment: null,
                 inputs: [],
                 sealed: true,
-                unsealedReasons: []
+                unsealedReasons: [],
+                caveats: []
               },
               comparisons: [],
               verdict: reproduced ? 'reproduced' : 'not-reproduced',

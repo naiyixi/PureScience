@@ -43,6 +43,7 @@ const recipe = (
   ],
   sealed: true,
   unsealedReasons: [],
+  caveats: [],
   ...overrides
 })
 

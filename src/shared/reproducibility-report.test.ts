@@ -99,7 +99,8 @@ describe('toReproducibilityBatchEntry', () => {
           environment: null,
           inputs: [],
           sealed: true,
-          unsealedReasons: []
+          unsealedReasons: [],
+          caveats: []
         },
         comparisons: [],
         verdict: 'bytes-match',
