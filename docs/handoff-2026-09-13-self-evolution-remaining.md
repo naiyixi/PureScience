@@ -76,7 +76,19 @@
 
   **拟实现（下一步）**：在应用自有的 claude 配置里加 `PostToolUse` matcher（目标工具 `Skill`），命令钩子把 stdin 的 `{tool_name, tool_input}` 追加写入项目侧 JSONL；
   应用读取该 JSONL，把 `tool_input` 里的技能名写进活动/轮次元数据 → `skillUsagesFromActivities`（`src/shared/skill-usage.ts`，已就绪）立即产出排行。
-  **未知项（必须先验的最小步）**：命令钩子是否真的收到 `Skill` 的 `tool_input`（`Skill` 调用的输入里是否含名字）——**用一个 spike 验，不先写完整链路**。
+
+  **落点（已读代码确认）**：`src/main/settings/claude-config-provision.ts:62-101` 的 `writeAppSettings`——它**读取并合并**现有 `<configDir>/settings.json`
+  （当前键：permissions/disableBundledSkills/availableModels/modelOverrides），并按"模块自有条目先剪除再重加"的方式管理 `permissions.deny`
+  （`MANAGED_BUILTIN_TOOLS`）。新增 hooks 应**照抄这个模式**：模块自有、可剪除、不影响第三方条目。
+  （该文件第 18 行注释提到"notebook audit hook"，但**仓库里没有对应实现或 spec**——`grep` 无命中，即**无先例可抄，这是第一处钩子**。）
+
+  **spike 的现实约束（2026-09-13 实测）**：**裸 CLI 路线不可用**——`claude -p` 独立运行时未被登录（`Not logged in · Please run /login`），
+  应用是在 spawn 时用 env 注入 provider 凭据（`buildProviderEnv`）。`executeClaudeProbe` 虽用应用凭据跑 claude，但参数在 manager 内写死（`['-p','ok']`），
+  **不经 IPC 暴露自定义参数**，无法借它跑自定义 prompt。→ **验证只能走应用自身的 provisioning 路径（改代码 + 重建 DEV + 跑一次真实会话）**。
+
+  **风险（必须在实现时处理）**：`PostToolUse` 钩子**失败会阻断工具调用**。因此采集脚本必须**任何情况下都 exit 0**、stdout 输出 `{}`，
+  且**不得抛异常**（采集不到就静默放弃）；否则会把用户的正常工具调用弄坏。这也是本项需要拍板后再动的原因：**它落在 agent 的工具调用路径上**。
+
 - **B（兜底，仍保留）**：若 spike 证明 `Skill` 的钩子输入里没有名字，则放弃 C1 排行，只保留信任侧（已在排期文档登记为可接受收口方式）。
 
 **验收**：新会话出现带名的技能记录（如 `Loaded skill: <name>`）→ 用 `skillUsagesFromActivities` 派生非空 → 面板可点开看证据；
