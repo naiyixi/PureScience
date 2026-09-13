@@ -165,6 +165,39 @@ describe('reviewer IPC handlers', () => {
     expect(passed.artifactStorageRoot).not.toBe(CONFIG_ROOT)
   })
 
+  it('carries the renderer supervisor plan into the run instead of dropping it at this boundary', async () => {
+    registerReviewerIpcHandlers({ acpRuntime })
+
+    const supervisor = {
+      wakes: [
+        {
+          kind: 'repeated-tool-failure' as const,
+          atTurn: 3,
+          evidenceHandle: 'activity:call_1',
+          detail: 'notebook_bind_runtime failed 3 times in a row'
+        }
+      ]
+    }
+    handlers.get(REVIEWER_IPC.RUN)?.({}, { ...createRequest(), supervisor })
+
+    await vi.waitFor(() => expect(runReview).toHaveBeenCalledTimes(1))
+
+    // Measured on a real session before this test existed: the policy fired on the recorded activities and
+    // 12 reviews started, yet no ledger was ever attached - the plan died in the option list assembled here.
+    expect((runReview.mock.calls[0][0] as { supervisor?: unknown }).supervisor).toEqual(supervisor)
+  })
+
+  it('leaves the run without a supervisor plan when the turn earned no wake-up', async () => {
+    registerReviewerIpcHandlers({ acpRuntime })
+
+    handlers.get(REVIEWER_IPC.RUN)?.({}, createRequest())
+
+    await vi.waitFor(() => expect(runReview).toHaveBeenCalledTimes(1))
+
+    // An ordinary turn must stay byte-identical: no empty ledger object, no stray key.
+    expect((runReview.mock.calls[0][0] as { supervisor?: unknown }).supervisor).toBeUndefined()
+  })
+
   it('lets injected options override the config/data split independently', async () => {
     runReview.mockClear()
     // Reset the captured-roots recorders so this test only observes its own wiring.

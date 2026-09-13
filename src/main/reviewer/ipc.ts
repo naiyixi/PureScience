@@ -308,6 +308,11 @@ const createReviewerCommandOwner = (options: ReviewerIpcOptions): ReviewerComman
         projectId,
         mainSessionId,
         model: model ?? '',
+        supervisor: request.supervisor,
+        // The renderer derives the supervisor wake-ups from the session's own activities and sends them
+        // with the request; without this line the ledger dies at this boundary and the reviewer silently
+        // never sees it (measured: 12 reviews started, 0 ledgers attached, while the policy did fire on
+        // the same recorded activities).
         // Reload on every orchestrator request. In particular, the post-correction read must observe
         // the newly persisted [Auditor] and agent messages instead of the review-start snapshot.
         getSession: loadCurrentSession,
