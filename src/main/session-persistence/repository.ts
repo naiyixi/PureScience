@@ -16,6 +16,7 @@ import {
   type SessionSummaryFile
 } from '../../shared/session-persistence'
 import { decodeSessionDataPaths, encodeSessionDataPaths } from './session-data-paths'
+import { bumpSessionRevision } from './session-revision'
 
 const SESSIONS_DIR = 'sessions'
 const DELETED_SESSIONS_DIR = 'deleted-sessions'
@@ -247,7 +248,11 @@ class SessionRepository {
 
   // Writes one session file (serialized through the save queue to preserve write order).
   async saveSession(session: PersistedChatSession): Promise<void> {
-    return this.enqueue(() => this.writeSession(session))
+    return this.enqueue(async () => {
+      await this.writeSession(session)
+      // Readers that keep a view of every session (search) learn about the write here, not by re-reading.
+      bumpSessionRevision()
+    })
   }
 
   async saveCommittedProjectSession(session: PersistedChatSession): Promise<void> {
@@ -256,6 +261,7 @@ class SessionRepository {
         throw new Error('Cannot save a Session outside committed Project deletion authority.')
       }
       await this.writeSessionToDirectory(session, this.deletedProjectDir(session.projectId))
+      bumpSessionRevision()
     })
   }
 
@@ -287,6 +293,7 @@ class SessionRepository {
         force: true,
         recursive: false
       })
+      bumpSessionRevision()
     })
   }
 

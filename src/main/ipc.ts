@@ -176,6 +176,8 @@ import {
 } from './session-persistence/conversation-export'
 import { createProjectFilesHandlers, registerProjectFilesIpcHandlers } from './project-files/ipc'
 import { createSearchIpcHandlers, registerSearchIpcHandlers } from './search/ipc'
+import { createSessionIndex } from './search/session-index'
+import { getSessionRevision } from './session-persistence/session-revision'
 import { createSearchEvidenceService } from './search/search-evidence'
 import { createSearchFileTextReader, type SearchFileTextItem } from './search/file-text-reader'
 import type { ReadArtifactPreviewRequest, ArtifactPreviewResult } from '../shared/artifacts'
@@ -1114,8 +1116,16 @@ const createApplicationModules = async (
     throw new Error('Artifact preview reader is not wired yet.')
   }
 
+  // Search reads every session; without this it did so per query, which cost over a second on a real
+  // corpus. The durable repository bumps the revision on every write, so the view is only re-read when
+  // something actually changed.
+  const searchSessionIndex = createSessionIndex({
+    loadAll: async () => (await sessionPersistenceBackend.loadAll()).sessions,
+    revision: getSessionRevision
+  })
+
   const searchHandlers = createSearchIpcHandlers({
-    loadSessions: async () => (await sessionPersistenceBackend.loadAll()).sessions,
+    loadSessions: () => searchSessionIndex.getSessions(),
     readFileText: searchFileText,
     listFiles: async ({ projectId }) => {
       // The flat `all` collection is the cross-session read model; the limit keeps one query bounded.

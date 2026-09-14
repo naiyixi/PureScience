@@ -11,6 +11,7 @@ vi.mock('electron', () => ({
 
 import type { PersistedChatSession } from '../../shared/session-persistence'
 import { DEV_SESSION_DIR_NAME, SessionRepository, getSessionPersistenceDir } from './repository'
+import { getSessionRevision } from './session-revision'
 
 let storageRoot: string | undefined
 
@@ -972,5 +973,19 @@ describe('session persistence repository (per-session files)', () => {
     expect(getSessionPersistenceDir('/Users/example', DEV_SESSION_DIR_NAME)).toBe(
       join('/Users/example', '.purescience-project')
     )
+  })
+
+  it('signals every write, so a reader keeping a view of all sessions knows to refresh', async () => {
+    const repository = new SessionRepository(await createStorageRoot())
+    const before = getSessionRevision()
+
+    await repository.saveSession(createSession())
+    const afterSave = getSessionRevision()
+    expect(afterSave).toBeGreaterThan(before)
+
+    await repository.deleteSession('project-a', 'session-1')
+    // Deletion changes the corpus too, and in the same direction: a reader that missed it would keep
+    // answering from a session that is gone.
+    expect(getSessionRevision()).toBeGreaterThan(afterSave)
   })
 })
