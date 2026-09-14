@@ -100,6 +100,9 @@ export type GlobalSearchNote =
   // Files are matched by name and path only: no file text is read during a search, and saying so keeps
   // "no hit" from reading as "the text is not in that file".
   | 'files-matched-by-name-and-path'
+  // A content scan stopped at its budget: more files exist than were read, and the rest were matched by
+  // name and path only.
+  | 'file-content-scan-bounded'
 
 export type GlobalSearchResponse = {
   schemaVersion: typeof GLOBAL_SEARCH_SCHEMA_VERSION

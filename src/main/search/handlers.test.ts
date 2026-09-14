@@ -53,6 +53,51 @@ const harness = (
 }
 
 describe('createSearchHandlers', () => {
+  it('reads file text through the port so content matches are found', async () => {
+    const readFileText = vi.fn(async () => 'the sin(x) series was computed here')
+    const { query } = harness({
+      // A file whose name and path say nothing about the query: only its content can match.
+      listFiles: vi.fn(async () => [{ id: 'file-9', title: 'notes.md', relativePath: 'notes.md' }]),
+      readFileText
+    })
+
+    const response = await query({ query: 'sin', scopes: ['files'], projectId: 'project-1' })
+
+    expect(readFileText).toHaveBeenCalledWith('file-9')
+    expect(response.hits).toHaveLength(1)
+    expect(response.hits[0].matches[0].field).toBe('content')
+    // A content provider exists, so the name-and-path-only note must not appear.
+    expect(response.notes).not.toContain('files-matched-by-name-and-path')
+  })
+
+  it('stops at the content budget and says so instead of implying every file was read', async () => {
+    const fileCount = 45
+    const readFileText = vi.fn(async () => 'nothing relevant here')
+    const { query } = harness({
+      listFiles: vi.fn(async () =>
+        Array.from({ length: fileCount }, (_, index) => ({
+          id: `file-${index}`,
+          title: `note-${index}.md`,
+          relativePath: `note-${index}.md`
+        }))
+      ),
+      readFileText
+    })
+
+    const response = await query({ query: 'sin', scopes: ['files'], projectId: 'project-1' })
+
+    expect(readFileText).toHaveBeenCalledTimes(40)
+    expect(response.notes).toContain('file-content-scan-bounded')
+  })
+
+  it('does not claim a bounded content scan when no provider is wired', async () => {
+    const { query } = harness()
+
+    const response = await query({ query: 'sin', scopes: ['files'], projectId: 'project-1' })
+
+    expect(response.notes).not.toContain('file-content-scan-bounded')
+    expect(response.notes).toContain('files-matched-by-name-and-path')
+  })
   it('maps persisted sessions and messages into the search contract', async () => {
     const { query } = harness()
     const response = await query({ query: 'sin', scopes: ['sessions', 'messages'] })

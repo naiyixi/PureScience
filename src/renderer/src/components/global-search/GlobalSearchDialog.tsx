@@ -1111,6 +1111,14 @@ export const GlobalSearchDialog = ({
                           {t('gs.contentFilesNameOnly')}
                         </p>
                       ) : null}
+                      {contentResponse?.notes.includes('file-content-scan-bounded') ? (
+                        <p
+                          data-testid="global-search-files-content-budget"
+                          className="px-4 py-1.5 text-xs text-muted-foreground"
+                        >
+                          {t('gs.contentFilesBudgetReached')}
+                        </p>
+                      ) : null}
                       {contentHits.map((hit) => renderContentRow(hit, nextIndex()))}
                     </section>
                   ) : null}

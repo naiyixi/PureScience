@@ -346,6 +346,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'gs.contentScanBounded': '直近 {n} 件のセッションのみ検索しました',
   'gs.contentNoProjectScope': 'ファイルと文献を検索するにはプロジェクトを開いてください',
   'gs.contentFilesNameOnly': 'ファイルは名前とパスのみで照合します（本文は検索しません）',
+  'gs.contentFilesBudgetReached':
+    '一部のファイルは名前とパスのみで照合しました（本文スキャンの上限に達しました）',
   'gs.contentFailed': 'コンテンツ検索に失敗しました',
   'remoteControl.open': '開く',
   'remoteControl.loadingRemote': 'リモートアクセスを読み込み中…',

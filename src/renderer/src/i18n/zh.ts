@@ -2024,6 +2024,7 @@ export const zh = {
   'gs.contentScanBounded': '仅搜索了最近 {n} 个会话',
   'gs.contentNoProjectScope': '打开项目后可搜索文件与文献',
   'gs.contentFilesNameOnly': '文件仅按名称与路径匹配——不检索文件正文',
+  'gs.contentFilesBudgetReached': '部分文件仅按名称与路径匹配（正文扫描已达预算上限）',
   'gs.contentFailed': '内容搜索失败',
   'remoteControl.open': '打开',
   'remoteControl.loadingRemote': '正在加载远程访问…',

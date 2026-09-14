@@ -39,6 +39,38 @@ export type SearchHandlerPorts = {
       createdAt?: string
     }>
   >
+  // Optional: text of a project file, bounded by the caller. Absent means file hits are name-and-path
+  // matches only, which the response then says out loud.
+  readFileText?(fileId: string): Promise<string | undefined>
+}
+
+// How many files one query may read text from. Reading every file in a project would trade a fast
+// search for a complete one; the response says when the budget was reached instead of staying silent.
+export const GLOBAL_SEARCH_MAX_CONTENT_FILES = 40
+
+const withFileText = async (
+  files: SearchableFile[],
+  ports: SearchHandlerPorts
+): Promise<{ files: SearchableFile[]; contentScanBounded: boolean }> => {
+  const readFileText = ports.readFileText
+  if (!readFileText) return { files, contentScanBounded: false }
+
+  const enriched: SearchableFile[] = []
+  for (const [index, file] of files.entries()) {
+    if (index >= GLOBAL_SEARCH_MAX_CONTENT_FILES) {
+      enriched.push(file)
+      continue
+    }
+
+    const text = await readFileText(file.id).catch(() => undefined)
+    enriched.push(text ? { ...file, textPreview: text } : file)
+  }
+
+  return {
+    files: enriched,
+    // Only meaningful when there were files left unread.
+    contentScanBounded: files.length > GLOBAL_SEARCH_MAX_CONTENT_FILES
+  }
 }
 
 export type SearchHandlers = {
@@ -92,16 +124,20 @@ export const createSearchHandlers = (ports: SearchHandlerPorts): SearchHandlers 
       'files',
       'literature'
     ]
-    const files: SearchableFile[] =
+    const fileScan =
       projectId && scopes.includes('files')
-        ? (await ports.listFiles({ projectId })).map((file) => ({
-            id: file.id,
-            projectId,
-            title: file.title,
-            relativePath: file.relativePath,
-            ...(file.timestamp ? { timestamp: file.timestamp } : {})
-          }))
-        : []
+        ? await withFileText(
+            (await ports.listFiles({ projectId })).map((file) => ({
+              id: file.id,
+              projectId,
+              title: file.title,
+              relativePath: file.relativePath,
+              ...(file.timestamp ? { timestamp: file.timestamp } : {})
+            })),
+            ports
+          )
+        : { files: [] as SearchableFile[], contentScanBounded: false }
+    const files = fileScan.files
     const references: SearchableReference[] =
       projectId && scopes.includes('literature')
         ? (await ports.listReferences(projectId)).map((reference) => ({
@@ -131,9 +167,12 @@ export const createSearchHandlers = (ports: SearchHandlerPorts): SearchHandlers 
     // A project-less query cannot reach files or literature; say it instead of implying they were
     // searched and came back empty.
     const needsProject = !projectId && (scopes.includes('files') || scopes.includes('literature'))
-    return needsProject
-      ? { ...response, notes: [...new Set([...response.notes, 'no-project-scope' as const])] }
-      : response
+    const notes = [...response.notes]
+    if (needsProject) notes.push('no-project-scope')
+    // Say when the content budget, not the data, decided how many files were read.
+    if (fileScan.contentScanBounded) notes.push('file-content-scan-bounded')
+
+    return notes.length > 0 ? { ...response, notes: [...new Set(notes)] } : response
   },
 
   async evidence(request) {
