@@ -9,6 +9,7 @@ import { useLanguage, type TranslationKey } from '@/i18n'
 import { ArrowUpRight, AtSign, Hash, MessageCircle, Search, Zap } from 'lucide-react'
 import { Dialog } from 'radix-ui'
 
+import type { GlobalSearchHit } from '../../../../shared/global-search'
 import type { ProjectFileItem } from '../../../../shared/project-files'
 import { Button } from '@/components/ui/button'
 import { dialogOverlayClassName, dialogPanelClassName } from '@/components/ui/dialog-chrome'
@@ -25,6 +26,7 @@ import { useNavigationStore } from '@/stores/navigation-store'
 import { useProjectStore } from '@/stores/project-store'
 import { useSessionStore } from '@/stores/session-store'
 
+import { useContentSearch } from './use-content-search'
 import {
   getNextBatchCount,
   getRecentSessions,
@@ -54,6 +56,7 @@ type SelectableRow =
   | { kind: 'more-sessions' }
   | { kind: 'more-artifacts' }
   | { kind: 'retry-artifacts' }
+  | { kind: 'content'; hit: GlobalSearchHit }
   | { kind: 'new-session' }
   | { kind: 'new-project' }
 
@@ -380,6 +383,16 @@ export const GlobalSearchDialog = ({
       })
       .slice(0, OTHER_PROJECT_RESULT_LIMIT)
   }, [artifacts.other, isProjectScope, isSearchMode, sessionGroups?.other])
+  // Content search runs against the main-process command: messages, files and literature, with the
+  // provenance and the scan bounds the response reports.
+  const contentSearch = useContentSearch({
+    query,
+    ...(primaryProject ? { projectId: primaryProject.id } : {}),
+    enabled: isSearchMode
+  })
+  const contentResponse = contentSearch.state === 'ready' ? contentSearch.response : undefined
+  const contentHits = useMemo(() => contentResponse?.hits ?? [], [contentResponse])
+
   const selectableRows = useMemo<SelectableRow[]>(() => {
     const command = isProjectScope
       ? ({ kind: 'new-session' } as const)
@@ -394,6 +407,7 @@ export const GlobalSearchDialog = ({
     }
     return [
       ...displayedArtifacts.map((artifact) => ({ kind: 'artifact' as const, artifact })),
+      ...contentHits.map((hit) => ({ kind: 'content' as const, hit })),
       ...(artifactError ? [{ kind: 'retry-artifacts' as const }] : []),
       ...(canLoadMoreArtifacts ? [{ kind: 'more-artifacts' as const }] : []),
       ...(sessionGroups?.primary.map((session) => ({ kind: 'session' as const, session })) ?? []),
@@ -404,6 +418,7 @@ export const GlobalSearchDialog = ({
   }, [
     canLoadMoreArtifacts,
     artifactError,
+    contentHits,
     displayedArtifacts,
     isProjectScope,
     isSearchMode,
@@ -472,6 +487,16 @@ export const GlobalSearchDialog = ({
           return
         }
         openSession(row.session.projectId, row.session.id, 'user')
+        close()
+        return
+      }
+      if (row.kind === 'content') {
+        // A message hit is a place in a conversation; a file or reference hit is a place in a project.
+        if (row.hit.scope === 'messages' && row.hit.sessionId) {
+          openSession(row.hit.projectId, row.hit.sessionId, 'user')
+        } else {
+          openProject(row.hit.projectId, 'user')
+        }
         close()
         return
       }
@@ -593,6 +618,48 @@ export const GlobalSearchDialog = ({
             {t('home.session')}
           </span>
         )}
+      </div>
+    )
+  }
+
+  const renderContentRow = (hit: GlobalSearchHit, rowIndex: number): React.JSX.Element => {
+    const active = rowIndex === activeRowIndex
+    const scopeLabel =
+      hit.scope === 'messages'
+        ? t('gs.contentScopeMessage')
+        : hit.scope === 'files'
+          ? t('gs.contentScopeFile')
+          : t('gs.contentScopeLiterature')
+    const provenance = [
+      scopeLabel,
+      hit.projectName ?? projectNames.get(hit.projectId) ?? t('home.unknownProject'),
+      hit.role ? t(hit.role === 'user' ? 'gs.contentRoleUser' : 'gs.contentRoleAgent') : undefined,
+      hit.timestamp ? new Date(hit.timestamp).toLocaleDateString() : undefined
+    ]
+      .filter((part): part is string => typeof part === 'string' && part.length > 0)
+      .join(' · ')
+
+    return (
+      <div
+        id={`global-search-option-${rowIndex}`}
+        key={`content:${hit.scope}:${hit.id}`}
+        role="option"
+        tabIndex={-1}
+        aria-selected={active}
+        data-testid="global-search-content-row"
+        className={cn(rowClassName, active && 'bg-bg-200 before:opacity-100')}
+        onMouseEnter={() => setActiveIndex(rowIndex)}
+        onClick={() => activate({ kind: 'content', hit })}
+      >
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-medium text-foreground">{hit.title}</span>
+          <span className="block truncate text-xs text-muted-foreground">{provenance}</span>
+          {hit.matches[0] ? (
+            <span className="block truncate text-xs text-muted-foreground">
+              {hit.matches[0].snippet}
+            </span>
+          ) : null}
+        </span>
       </div>
     )
   }
@@ -847,6 +914,35 @@ export const GlobalSearchDialog = ({
                       ) : null}
                     </section>
                   ) : null}
+                  {contentHits.length > 0 ||
+                  contentSearch.state === 'searching' ||
+                  contentSearch.state === 'failed' ||
+                  contentResponse?.notes.length ? (
+                    <section role="group" aria-label={t('gs.regionContent')}>
+                      <h2 className={sectionTitleClassName}>{t('gs.regionContent')}</h2>
+                      {contentSearch.state === 'searching' && contentHits.length === 0 ? (
+                        <p className="px-4 py-3 text-sm text-muted-foreground">
+                          {t('gs.searchingContent')}
+                        </p>
+                      ) : null}
+                      {contentSearch.state === 'failed' ? (
+                        <p role="alert" className="px-4 py-3 text-sm text-destructive">
+                          {t('gs.contentFailed')}
+                        </p>
+                      ) : null}
+                      {contentResponse?.scan.bounded ? (
+                        <p className="px-4 py-1.5 text-xs text-muted-foreground">
+                          {t('gs.contentScanBounded', { n: contentResponse.scan.sessions })}
+                        </p>
+                      ) : null}
+                      {contentResponse?.notes.includes('no-project-scope') ? (
+                        <p className="px-4 py-1.5 text-xs text-muted-foreground">
+                          {t('gs.contentNoProjectScope')}
+                        </p>
+                      ) : null}
+                      {contentHits.map((hit) => renderContentRow(hit, nextIndex()))}
+                    </section>
+                  ) : null}
                   {otherRows.length > 0 ? (
                     <section role="group" aria-label={t('home.otherProjects')}>
                       <h2 className={sectionTitleClassName}>{t('home.otherProjects')}</h2>
@@ -860,6 +956,8 @@ export const GlobalSearchDialog = ({
                     </section>
                   ) : null}
                   {displayedArtifacts.length === 0 &&
+                  contentHits.length === 0 &&
+                  contentSearch.state !== 'searching' &&
                   !sessionGroups?.primary.length &&
                   otherRows.length === 0 &&
                   artifactStatus !== 'loading' &&

@@ -107,6 +107,19 @@ beforeEach(() => {
           isIndexComplete: true
         })
       },
+      search: {
+        query: vi.fn().mockResolvedValue({
+          schemaVersion: 1,
+          query: 'sin',
+          scopes: ['sessions', 'messages', 'files', 'literature'],
+          hits: [],
+          counts: { sessions: 0, messages: 0, files: 0, literature: 0 },
+          truncated: false,
+          scan: { sessions: 0, messages: 0, files: 0, references: 0, bounded: false },
+          appliedLimit: 100,
+          notes: []
+        })
+      },
       previewResources: {
         acquire: vi.fn().mockResolvedValue({
           id: 'preview-resource-1',
@@ -594,5 +607,80 @@ describe('GlobalSearchDialog', () => {
     expect(window.api.projectFiles.searchArtifacts).toHaveBeenCalledWith(
       expect.objectContaining({ excludedSessionIds: ['session-a'] })
     )
+  })
+
+  it('renders content hits with their provenance and opens the matched session', async () => {
+    const openSession = vi.spyOn(useNavigationStore.getState(), 'openSession')
+    vi.mocked(window.api.search.query).mockResolvedValue({
+      schemaVersion: 1,
+      query: 'sin',
+      scopes: ['sessions', 'messages', 'files', 'literature'],
+      hits: [
+        {
+          scope: 'messages',
+          id: 'message-2',
+          projectId: 'project-a',
+          title: 'Sine plot',
+          score: 9,
+          matches: [{ field: 'body', snippet: 'wrote sin(x) values', offset: 6 }],
+          sessionId: 'session-a',
+          role: 'agent',
+          timestamp: '2026-09-13T00:00:00.000Z'
+        },
+        {
+          scope: 'files',
+          id: 'file-1',
+          projectId: 'project-a',
+          title: 'sin_probe.csv',
+          score: 6,
+          matches: [{ field: 'name', snippet: 'sin_probe.csv', offset: 0 }],
+          relativePath: 'data/sin_probe.csv'
+        }
+      ],
+      counts: { sessions: 0, messages: 1, files: 1, literature: 0 },
+      truncated: false,
+      scan: { sessions: 1, messages: 2, files: 1, references: 0, bounded: false },
+      appliedLimit: 100,
+      notes: []
+    })
+    const onOpenChange = vi.fn()
+
+    await act(async () => {
+      root.render(<GlobalSearchDialog open onOpenChange={onOpenChange} isSessionPersistenceReady />)
+      await new Promise((resolve) => window.setTimeout(resolve, 20))
+    })
+
+    const input = document.body.querySelector<HTMLInputElement>('input[role="combobox"]')
+    const valueSetter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype,
+      'value'
+    )?.set
+    await act(async () => {
+      valueSetter?.call(input, 'sin')
+      input?.dispatchEvent(new Event('input', { bubbles: true }))
+      // Past the debounce, so the content query has actually been issued.
+      await new Promise((resolve) => window.setTimeout(resolve, 400))
+    })
+
+    expect(window.api.search.query).toHaveBeenCalledWith(expect.objectContaining({ query: 'sin' }))
+
+    const contentSection = [...document.body.querySelectorAll('[role="group"]')].find(
+      (section) => section.querySelector('[data-testid="global-search-content-row"]') !== null
+    )
+    const rows = [...document.body.querySelectorAll('[data-testid="global-search-content-row"]')]
+    expect(contentSection).toBeTruthy()
+    expect(rows).toHaveLength(2)
+    // Provenance, not just a snippet: scope, project/session and the message's role.
+    expect(rows[0].textContent).toContain('Message')
+    expect(rows[0].textContent).toContain('agent')
+    expect(rows[0].textContent).toContain('wrote sin(x) values')
+    expect(rows[1].textContent).toContain('File')
+
+    await act(async () => {
+      rows[0].dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+
+    expect(openSession).toHaveBeenCalledWith('project-a', 'session-a', 'user')
+    expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 })
