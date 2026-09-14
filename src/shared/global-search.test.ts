@@ -7,6 +7,8 @@ import {
   finalizeSearchResponse,
   GLOBAL_SEARCH_MAX_RESULTS_PER_SCOPE,
   GLOBAL_SEARCH_MAX_SCANNED_SESSIONS,
+  normalizeSearchText,
+  searchTitleRank,
   normalizeSearchQuery,
   resolveSearchScopes,
   scoreSearchHit,
@@ -116,6 +118,79 @@ describe('collectTermMatches', () => {
   })
 })
 
+describe('normalizeSearchText', () => {
+  it('folds fullwidth and compatibility forms so an IME entry still matches', () => {
+    expect(normalizeSearchText('ＳＩＮ（ｘ）')).toBe('sin(x)')
+    // NFKC expands the ligature, which is why offsets need mapping back.
+    expect(normalizeSearchText('oﬃce')).toBe('office')
+    expect(normalizeSearchText('Σ')).toBe('σ')
+    expect(normalizeSearchText('ς')).toBe('σ')
+  })
+})
+
+describe('grapheme-safe offsets', () => {
+  it('finds a fullwidth query in ASCII text and points the offset at the original', () => {
+    const matches = collectMatches({ text: 'sin(x) values', query: 'ＳＩＮ', field: 'body' })
+
+    expect(matches).toHaveLength(1)
+    expect(matches[0].offset).toBe(0)
+    expect(matches[0].snippet).toBe('sin(x) values')
+  })
+
+  it('points a ligature match back at the original text, not at the folded copy', () => {
+    const text = 'the oﬃce report'
+    const matches = collectMatches({ text, query: 'office', field: 'body' })
+
+    expect(matches).toHaveLength(1)
+    // Offset 4 is where 'oﬃce' starts in the ORIGINAL string; the snippet keeps the ligature.
+    expect(matches[0].offset).toBe(4)
+    expect(matches[0].snippet).toBe(text)
+    expect(text.slice(matches[0].offset)).toBe('oﬃce report')
+  })
+
+  it('keeps a combining-accent match aligned with its base character', () => {
+    const text = 'cafe\u0301 meeting'
+    const matches = collectMatches({ text, query: 'café', field: 'body' })
+
+    expect(matches).toHaveLength(1)
+    expect(matches[0].offset).toBe(0)
+    expect(text.slice(matches[0].offset, matches[0].offset + 5)).toBe('cafe\u0301')
+  })
+})
+
+describe('searchTitleRank', () => {
+  it('ranks an exact title above a prefix above a mere containment', () => {
+    expect(searchTitleRank('sin', ['sin'])).toBe(3)
+    expect(searchTitleRank('sin csv export', ['sin'])).toBe(2)
+    expect(searchTitleRank('export sin csv', ['sin'])).toBe(1)
+    expect(searchTitleRank('unrelated title', ['sin'])).toBe(0)
+  })
+
+  it('keeps the strongest match when a query has several terms', () => {
+    expect(searchTitleRank('csv export', ['sin', 'csv'])).toBe(2)
+  })
+
+  it('ranks nothing when there is no title or no term', () => {
+    expect(searchTitleRank('   ', ['sin'])).toBe(0)
+    expect(searchTitleRank('sin', [])).toBe(0)
+  })
+})
+
+describe('scoreSearchHit title weighting', () => {
+  it('orders hits by how closely the title matches, at equal match counts', () => {
+    const exact = scoreSearchHit({ matches: 1, titleRank: 3 })
+    const prefix = scoreSearchHit({ matches: 1, titleRank: 2 })
+    const contains = scoreSearchHit({ matches: 1, titleRank: 1 })
+    const none = scoreSearchHit({ matches: 1, titleRank: 0 })
+
+    expect(exact).toBeGreaterThan(prefix)
+    expect(prefix).toBeGreaterThan(contains)
+    expect(contains).toBeGreaterThan(none)
+    // A containment-only title is still worth what a boolean title match was worth before.
+    expect(contains - none).toBe(4)
+  })
+})
+
 describe('snippetAround', () => {
   it('marks the text it cut away', () => {
     const text = `${'a'.repeat(300)}needle${'b'.repeat(300)}`
@@ -135,12 +210,12 @@ describe('scoreSearchHit', () => {
   it('ranks a title match above a body-only match', () => {
     const titled = scoreSearchHit({
       matches: 1,
-      titleMatched: true,
+      titleRank: 3,
       timestamp: '2026-09-13T00:00:00.000Z'
     })
     const body = scoreSearchHit({
       matches: 1,
-      titleMatched: false,
+      titleRank: 0,
       timestamp: '2026-09-13T00:00:00.000Z'
     })
 
@@ -148,8 +223,8 @@ describe('scoreSearchHit', () => {
   })
 
   it('is deterministic for identical inputs', () => {
-    const once = scoreSearchHit({ matches: 2, titleMatched: false, timestamp: undefined })
-    const twice = scoreSearchHit({ matches: 2, titleMatched: false, timestamp: undefined })
+    const once = scoreSearchHit({ matches: 2, titleRank: 0, timestamp: undefined })
+    const twice = scoreSearchHit({ matches: 2, titleRank: 0, timestamp: undefined })
 
     expect(twice).toBe(once)
   })

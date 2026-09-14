@@ -121,8 +121,37 @@ export const resolveSearchScopes = (
   return GLOBAL_SEARCH_SCOPES.filter((scope) => scopes.includes(scope))
 }
 
-// Finds literal, case-insensitive occurrences of the query and returns bounded snippets around each.
-// Overlapping matches are collapsed so one occurrence cannot inflate a hit's score.
+// NFKC folds fullwidth forms and compatibility characters (so a fullwidth query finds its ASCII text
+// and vice versa — a CJK-IME entry would otherwise miss silently); lowercasing plus the Greek
+// final-sigma fold keeps 'Σ'/'ς'/'σ' searching as one letter.
+export const normalizeSearchText = (value: string): string =>
+  value
+    .normalize('NFKC')
+    .toLowerCase()
+    .replace(/\u03c2/gu, '\u03c3')
+
+// Maps folded-text indices back to the original text, grapheme by grapheme, for the rare case where
+// normalization changed the length ('ﬁ' → 'fi', fullwidth → ASCII, combining accents). Without this the
+// offsets would point into the folded string and every snippet would be shifted.
+const graphemeIndexMap = (text: string): { starts: number[]; ends: number[] } => {
+  const starts: number[] = []
+  const ends: number[] = []
+  const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' })
+
+  for (const { segment, index } of segmenter.segment(text)) {
+    const folded = normalizeSearchText(segment)
+    for (let position = 0; position < folded.length; position += 1) {
+      starts.push(index)
+      ends.push(index + segment.length)
+    }
+  }
+
+  return { starts, ends }
+}
+
+// Finds literal occurrences of the query and returns bounded snippets around each. Matching happens on
+// NFKC-folded text; the offsets and snippets always refer to the ORIGINAL text. Overlapping matches are
+// collapsed so one occurrence cannot inflate a hit's score.
 export const collectMatches = ({
   text,
   query,
@@ -134,18 +163,25 @@ export const collectMatches = ({
   field: string
   maxMatches?: number
 }): GlobalSearchMatch[] => {
-  const needle = query.toLowerCase()
+  const needle = normalizeSearchText(query)
   if (needle.length === 0) return []
 
-  const haystack = text.toLowerCase()
+  const folded = normalizeSearchText(text)
+  const unchanged = folded.length === text.length
+  const map = unchanged ? undefined : graphemeIndexMap(text)
+
   const matches: GlobalSearchMatch[] = []
   let from = 0
   while (matches.length < maxMatches) {
-    const offset = haystack.indexOf(needle, from)
-    if (offset === -1) break
+    const index = folded.indexOf(needle, from)
+    if (index === -1) break
 
-    matches.push({ field, snippet: snippetAround(text, offset, query.length), offset })
-    from = offset + query.length
+    const end = index + needle.length
+    const offset = map ? (map.starts[index] ?? 0) : index
+    const matchLength = map ? (map.ends[end - 1] ?? offset) - offset : needle.length
+
+    matches.push({ field, snippet: snippetAround(text, offset, matchLength), offset })
+    from = end
   }
 
   return matches
@@ -203,19 +239,51 @@ export const snippetAround = (
   return `${start > 0 ? '…' : ''}${slice}${end < text.length ? '…' : ''}`
 }
 
-// Ranking is deterministic and explainable: more matches rank higher, a title match outranks a body
-// match, and newer hits break ties. No hidden model score.
+// How strongly a term matches a title, strongest first: the whole title is the term (3), the title
+// starts with it (2), the title contains it somewhere (1), not at all (0). Deterministic and
+// explainable — no hidden model score.
+export type TitleMatchRank = 0 | 1 | 2 | 3
+
+export const searchTitleRank = (title: string, terms: readonly string[]): TitleMatchRank => {
+  const foldedTitle = normalizeSearchText(title).trim()
+  if (foldedTitle.length === 0 || terms.length === 0) return 0
+
+  let best: TitleMatchRank = 0
+  for (const term of terms) {
+    const foldedTerm = normalizeSearchText(term)
+    if (foldedTerm.length === 0) continue
+
+    const rank: TitleMatchRank =
+      foldedTitle === foldedTerm
+        ? 3
+        : foldedTitle.startsWith(foldedTerm)
+          ? 2
+          : foldedTitle.includes(foldedTerm)
+            ? 1
+            : 0
+    if (rank > best) best = rank
+  }
+
+  return best
+}
+
+// Ranking is deterministic and explainable: more matches rank higher, a closer title match outranks a
+// farther one, and newer hits break ties. No hidden model score.
+// A title that IS the term is worth four body matches; containing it is worth the old single point of
+// credit, so today's ordering survives for the common case.
+const TITLE_RANK_BONUS: Record<TitleMatchRank, number> = { 0: 0, 1: 4, 2: 6, 3: 8 }
+
 export const scoreSearchHit = ({
   matches,
-  titleMatched,
+  titleRank,
   timestamp
 }: {
   matches: number
-  titleMatched: boolean
+  titleRank: TitleMatchRank
   timestamp?: string
 }): number => {
   const matchScore = Math.min(matches, GLOBAL_SEARCH_MAX_MATCHES_PER_HIT) * 2
-  const titleBonus = titleMatched ? 4 : 0
+  const titleBonus = TITLE_RANK_BONUS[titleRank]
   const recency = timestamp ? Math.min(Date.parse(timestamp) / 1e13, 1) : 0
 
   return matchScore + titleBonus + recency

@@ -3,6 +3,7 @@ import {
   collectTermMatches,
   splitSearchTerms,
   finalizeSearchResponse,
+  searchTitleRank,
   GLOBAL_SEARCH_MAX_MESSAGE_CHARS,
   GLOBAL_SEARCH_MAX_SCANNED_SESSIONS,
   GLOBAL_SEARCH_MIN_QUERY_CHARS,
@@ -139,7 +140,7 @@ export const createGlobalSearchService = (ports: GlobalSearchPorts): GlobalSearc
               title: session.title,
               score: scoreSearchHit({
                 matches: matches.length,
-                titleMatched: true,
+                titleRank: searchTitleRank(session.title, terms),
                 timestamp: session.updatedAt
               }),
               matches,
@@ -171,7 +172,8 @@ export const createGlobalSearchService = (ports: GlobalSearchPorts): GlobalSearc
             title: session.title,
             score: scoreSearchHit({
               matches: matches.length,
-              titleMatched: false,
+              // A message hit is scored on the body; the session title is context, not the match.
+              titleRank: 0,
               timestamp: message.timestamp ?? session.updatedAt
             }),
             matches,
@@ -211,7 +213,7 @@ export const createGlobalSearchService = (ports: GlobalSearchPorts): GlobalSearc
           title: file.title,
           score: scoreSearchHit({
             matches: nameMatches.length + previewMatches.length,
-            titleMatched: nameMatches.length > 0,
+            titleRank: searchTitleRank(file.title, terms),
             timestamp: file.timestamp
           }),
           matches: [...nameMatches, ...previewMatches],
@@ -253,7 +255,7 @@ export const createGlobalSearchService = (ports: GlobalSearchPorts): GlobalSearc
           title: reference.title,
           score: scoreSearchHit({
             matches: matches.length,
-            titleMatched: titleMatches.length > 0,
+            titleRank: searchTitleRank(reference.title, terms),
             timestamp: reference.timestamp
           }),
           matches,
