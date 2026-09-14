@@ -125,6 +125,36 @@ const REVIEW_EVIDENCE_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "ReviewEvidence" (
 
 const REVIEW_EVIDENCE_REVIEW_ID_INDEX_DDL = `CREATE INDEX IF NOT EXISTS "ReviewEvidence_reviewId_idx" ON "ReviewEvidence"("reviewId")`
 
+// Background result deliveries: the ledger that returns a finished job's result to its session even
+// when no window is alive to notice it. `claimToken` + `claimExpiresAt` are the crash-safety pair: a
+// delivery is only moved by the holder of a live lease, so a worker that dies mid-delivery can be
+// taken over instead of stranding the result. Same runtime-DDL approach as the tables above.
+const BACKGROUND_DELIVERY_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "BackgroundDelivery" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "projectId" TEXT NOT NULL,
+    "sessionId" TEXT NOT NULL,
+    "jobId" TEXT NOT NULL,
+    "sourceKind" TEXT NOT NULL DEFAULT 'compute',
+    "state" TEXT NOT NULL DEFAULT 'waiting-result',
+    "outputFiles" TEXT NOT NULL DEFAULT '[]',
+    "fingerprint" TEXT,
+    "claimToken" TEXT,
+    "claimExpiresAt" DATETIME,
+    "continuationMessageId" TEXT,
+    "reason" TEXT,
+    "consumedAt" DATETIME,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL
+);`
+
+const BACKGROUND_DELIVERY_INDEX_DDLS = [
+  `CREATE INDEX IF NOT EXISTS "BackgroundDelivery_sessionId_idx" ON "BackgroundDelivery"("sessionId")`,
+  // One delivery per job, enforced by the database rather than by every caller remembering to check.
+  `CREATE UNIQUE INDEX IF NOT EXISTS "BackgroundDelivery_jobId_key" ON "BackgroundDelivery"("jobId")`,
+  // The claim scan reads by state and lease expiry: that is how an expired claim is found and taken over.
+  `CREATE INDEX IF NOT EXISTS "BackgroundDelivery_state_claimExpiresAt_idx" ON "BackgroundDelivery"("state", "claimExpiresAt")`
+]
+
 const REVIEW_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "Review" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "projectId" TEXT NOT NULL,
@@ -813,6 +843,10 @@ const ensureProjectSchema = async (client: PrismaClient): Promise<void> => {
   await client.$executeRawUnsafe(REVIEW_SCOPE_SNAPSHOT_TABLE_DDL)
   await client.$executeRawUnsafe(REVIEW_EVIDENCE_TABLE_DDL)
   await client.$executeRawUnsafe(REVIEW_EVIDENCE_REVIEW_ID_INDEX_DDL)
+  await client.$executeRawUnsafe(BACKGROUND_DELIVERY_TABLE_DDL)
+  for (const ddl of BACKGROUND_DELIVERY_INDEX_DDLS) {
+    await client.$executeRawUnsafe(ddl)
+  }
 
   await ensureSqliteCheckConstraints(client, PROVENANCE_CHECK_CONSTRAINT_MIGRATIONS)
 

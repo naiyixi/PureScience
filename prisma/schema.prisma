@@ -585,3 +585,31 @@ model VisionEvidence {
   @@index([sessionId])
   @@index([uploadVersionId])
 }
+
+// A background result on its way back into a session. The renderer already turns a finished job into an
+// analysis prompt, but that only happens while a window is alive to notice it; this row is the ledger
+// that makes the delivery the main process's job, with a claim that expires so a crash cannot strand it.
+model BackgroundDelivery {
+  id                    String    @id
+  projectId             String
+  sessionId             String
+  jobId                 String    @unique
+  sourceKind            String    @default("compute")
+  state                 String    @default("waiting-result")
+  // JSON array of workspace-relative paths produced by the job.
+  outputFiles           String    @default("[]")
+  // sha256 of the produced result, per the published recipe; null while there is nothing to hash.
+  fingerprint           String?
+  claimToken            String?
+  claimExpiresAt        DateTime?
+  continuationMessageId String?
+  // Named reason when state is 'needs-attention'.
+  reason                String?
+  consumedAt            DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([sessionId])
+  @@index([jobId])
+  @@index([state, claimExpiresAt])
+}
