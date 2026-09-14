@@ -1,6 +1,7 @@
 import {
   clampSearchLimit,
-  collectMatches,
+  collectTermMatches,
+  splitSearchTerms,
   finalizeSearchResponse,
   GLOBAL_SEARCH_MAX_MESSAGE_CHARS,
   GLOBAL_SEARCH_MAX_SCANNED_SESSIONS,
@@ -95,6 +96,8 @@ export const createGlobalSearchService = (ports: GlobalSearchPorts): GlobalSearc
       ...(request.since ? { since: request.since } : {}),
       ...(request.until ? { until: request.until } : {})
     }
+    // A multi-term query requires every term: terms narrow a search, they never widen it.
+    const terms = splitSearchTerms(query)
 
     // Too short to search is reported as such: an empty list with no explanation is the failure mode
     // this contract exists to prevent.
@@ -123,7 +126,7 @@ export const createGlobalSearchService = (ports: GlobalSearchPorts): GlobalSearc
 
       for (const session of scoped.slice(0, GLOBAL_SEARCH_MAX_SCANNED_SESSIONS)) {
         if (scopes.includes('sessions') && searchHitsInTimestampRange(session.updatedAt, range)) {
-          const matches = collectMatches({ text: session.title, query, field: 'title' })
+          const matches = collectTermMatches({ text: session.title, terms, field: 'title' })
           if (matches.length > 0) {
             hits.push({
               scope: 'sessions',
@@ -154,7 +157,7 @@ export const createGlobalSearchService = (ports: GlobalSearchPorts): GlobalSearc
           }
           if (!searchHitsInTimestampRange(message.timestamp ?? session.updatedAt, range)) continue
 
-          const matches = collectMatches({ text, query, field: 'body' })
+          const matches = collectTermMatches({ text, terms, field: 'body' })
           if (matches.length === 0) continue
 
           hits.push({
@@ -185,13 +188,13 @@ export const createGlobalSearchService = (ports: GlobalSearchPorts): GlobalSearc
         if (!searchHitsInTimestampRange(file.timestamp, range)) continue
 
         const nameMatches = [
-          ...collectMatches({ text: file.title, query, field: 'name' }),
-          ...collectMatches({ text: file.relativePath, query, field: 'path' })
+          ...collectTermMatches({ text: file.title, terms, field: 'name' }),
+          ...collectTermMatches({ text: file.relativePath, terms, field: 'path' })
         ]
         const previewMatches = file.textPreview
-          ? collectMatches({
+          ? collectTermMatches({
               text: file.textPreview.slice(0, GLOBAL_SEARCH_MAX_MESSAGE_CHARS),
-              query,
+              terms,
               field: 'content'
             })
           : []
@@ -220,21 +223,21 @@ export const createGlobalSearchService = (ports: GlobalSearchPorts): GlobalSearc
         scan.references += 1
         if (!searchHitsInTimestampRange(reference.timestamp, range)) continue
 
-        const titleMatches = collectMatches({ text: reference.title, query, field: 'title' })
+        const titleMatches = collectTermMatches({ text: reference.title, terms, field: 'title' })
         const abstractMatches = reference.abstract
-          ? collectMatches({
+          ? collectTermMatches({
               text: reference.abstract.slice(0, GLOBAL_SEARCH_MAX_MESSAGE_CHARS),
-              query,
+              terms,
               field: 'abstract'
             })
           : []
         const authorMatches = reference.authors
           ? reference.authors.flatMap((author) =>
-              collectMatches({ text: author, query, field: 'authors' })
+              collectTermMatches({ text: author, terms, field: 'authors' })
             )
           : []
         const doiMatches = reference.doi
-          ? collectMatches({ text: reference.doi, query, field: 'doi' })
+          ? collectTermMatches({ text: reference.doi, terms, field: 'doi' })
           : []
         const matches = [...titleMatches, ...abstractMatches, ...authorMatches, ...doiMatches]
         if (matches.length === 0) continue

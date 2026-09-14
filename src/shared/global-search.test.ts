@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   clampSearchLimit,
   collectMatches,
+  collectTermMatches,
   finalizeSearchResponse,
   GLOBAL_SEARCH_MAX_RESULTS_PER_SCOPE,
   GLOBAL_SEARCH_MAX_SCANNED_SESSIONS,
@@ -11,6 +12,7 @@ import {
   scoreSearchHit,
   searchHitsInTimestampRange,
   snippetAround,
+  splitSearchTerms,
   type GlobalSearchHit
 } from './global-search'
 
@@ -74,6 +76,43 @@ describe('collectMatches', () => {
 
   it('returns nothing for an empty query', () => {
     expect(collectMatches({ text: 'anything', query: '', field: 'body' })).toEqual([])
+  })
+})
+
+describe('splitSearchTerms', () => {
+  it('splits on the separators people actually type', () => {
+    expect(splitSearchTerms('sin 值')).toEqual(['sin', '值'])
+    expect(splitSearchTerms('sin,值;csv')).toEqual(['sin', '值', 'csv'])
+    expect(splitSearchTerms('  重复、性  ')).toEqual(['重复', '性'])
+  })
+
+  it('keeps a CJK phrase without separators as one literal term', () => {
+    // No guessing at word boundaries: a single term either appears in the text or it does not.
+    expect(splitSearchTerms('重复性')).toEqual(['重复性'])
+  })
+})
+
+describe('collectTermMatches', () => {
+  it('requires every term, so a second term narrows rather than widens', () => {
+    const text = 'wrote sin(x) values to replay_probe.csv'
+
+    expect(collectTermMatches({ text, terms: ['sin'], field: 'body' })).toHaveLength(1)
+    expect(collectTermMatches({ text, terms: ['sin', 'csv'], field: 'body' })).toHaveLength(2)
+    expect(collectTermMatches({ text, terms: ['sin', 'absent'], field: 'body' })).toEqual([])
+  })
+
+  it('names the term behind each match', () => {
+    const matches = collectTermMatches({
+      text: 'sin and csv',
+      terms: ['sin', 'csv'],
+      field: 'body'
+    })
+
+    expect(matches.map((match) => match.term).sort()).toEqual(['csv', 'sin'])
+  })
+
+  it('returns nothing for an empty term list', () => {
+    expect(collectTermMatches({ text: 'anything', terms: [], field: 'body' })).toEqual([])
   })
 })
 

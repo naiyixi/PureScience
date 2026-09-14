@@ -220,6 +220,18 @@ describe('createGlobalSearchService', () => {
     expect(response.notes).toContain('message-body-truncated')
   })
 
+  it('requires every term of a multi-term query', async () => {
+    const { service } = harness()
+    const both = await service.query(request({ scopes: ['messages'], query: 'sin replay_probe' }))
+    const missing = await service.query(request({ scopes: ['messages'], query: 'sin absent-term' }))
+
+    expect(both.hits).toHaveLength(1)
+    expect(both.hits[0].matches.map((match) => match.term).sort()).toEqual(['replay_probe', 'sin'])
+    // A missing term means no hit at all — the response's counts still say what was scanned.
+    expect(missing.hits).toEqual([])
+    expect(missing.scan.messages).toBe(1)
+  })
+
   it('caps each scope and reports the truncation', async () => {
     const many = Array.from({ length: 4 }, (_, index) =>
       session({ sessionId: `session-${index}`, title: `Sine plot ${index}` })

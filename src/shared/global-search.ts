@@ -48,6 +48,8 @@ export type GlobalSearchMatch = {
   snippet: string
   // Character offset of the match inside the searchable text (not inside the snippet).
   offset: number
+  // Which term of the query matched, when the query carried more than one.
+  term?: string
 }
 
 export type GlobalSearchHit = {
@@ -134,6 +136,44 @@ export const collectMatches = ({
   }
 
   return matches
+}
+
+// Terms a query is made of. Whitespace and the punctuation people actually type between keywords
+// split them; nothing else does — so a CJK phrase with no separator stays one literal term rather than
+// being guessed apart, which keeps every match explainable (it either contains the term or it does not).
+const TERM_SEPARATOR = /[\s,，、;；/|]+/u
+
+export const splitSearchTerms = (query: string): string[] =>
+  normalizeSearchQuery(query)
+    .split(TERM_SEPARATOR)
+    .map((term) => term.trim())
+    .filter((term) => term.length > 0)
+
+// Every term must appear for a document to match: a two-term query narrows, it never widens. Each
+// returned match names the term that produced it and an empty result means one or more terms were
+// missing — which is what makes "no hits" a statement about all the terms, not about the last one.
+export const collectTermMatches = ({
+  text,
+  terms,
+  field,
+  maxMatchesPerTerm = GLOBAL_SEARCH_MAX_MATCHES_PER_HIT
+}: {
+  text: string
+  terms: readonly string[]
+  field: string
+  maxMatchesPerTerm?: number
+}): GlobalSearchMatch[] => {
+  if (terms.length === 0) return []
+
+  const collected: GlobalSearchMatch[] = []
+  for (const term of terms) {
+    const matches = collectMatches({ text, query: term, field, maxMatches: maxMatchesPerTerm })
+    if (matches.length === 0) return []
+
+    collected.push(...matches.map((match) => ({ ...match, term })))
+  }
+
+  return collected.slice(0, GLOBAL_SEARCH_MAX_MATCHES_PER_HIT)
 }
 
 export const snippetAround = (
