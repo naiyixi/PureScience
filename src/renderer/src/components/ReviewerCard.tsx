@@ -15,6 +15,7 @@ import { ChevronDown, ChevronRight, ShieldCheck, AlertTriangle, Loader } from 'l
 import { useLanguage } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { PureScienceThinkingIndicator } from '@/components/PureScienceThinkingIndicator'
+import { HumanEvidenceSection } from '@/components/HumanEvidenceSection'
 
 import type { ReviewWithChecks, ReviewCheck, GoToTranscriptIntent } from '../../../shared/reviewer'
 
@@ -374,6 +375,9 @@ export const ReviewerCard = ({
               onGoToTranscript={onGoToTranscript}
             />
           ))}
+
+          {/* Human-pinned evidence: rows a person pinned, kept apart from the model's checks above. */}
+          <HumanEvidenceSection reviewId={review.id} />
 
           {/* Self-correct footer note — shown only for warn/fail (flagged) expansions. */}
           {isFlagged && (

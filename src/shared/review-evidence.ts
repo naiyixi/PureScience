@@ -17,6 +17,9 @@ export type ReviewEvidenceAttachment = {
   projectId: string
   sessionId: string
   messageId: string
+  // Whose block this is — the reader of an audit trail needs to know whether the pinned sentence was
+  // said by the agent or by the person.
+  role: 'user' | 'agent'
   fingerprint: string
   query: string
   terms: string[]

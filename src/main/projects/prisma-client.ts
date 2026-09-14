@@ -113,6 +113,7 @@ const REVIEW_EVIDENCE_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "ReviewEvidence" (
     "projectId" TEXT NOT NULL,
     "sessionId" TEXT NOT NULL,
     "messageId" TEXT NOT NULL,
+    "role" TEXT NOT NULL DEFAULT 'agent',
     "fingerprint" TEXT NOT NULL,
     "query" TEXT NOT NULL DEFAULT '',
     "terms" TEXT NOT NULL DEFAULT '[]',

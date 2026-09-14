@@ -26,6 +26,7 @@ export type ReviewEvidencePolicy = {
     projectId: string
     sessionId: string
     messageId: string
+    role: 'user' | 'agent'
     fingerprint: string
     query: string
     terms: readonly string[]
@@ -73,6 +74,7 @@ export const createReviewEvidenceService = (deps: {
       projectId: line.projectId,
       sessionId: line.sessionId,
       messageId: line.messageId,
+      role: line.role,
       fingerprint: line.fingerprint,
       query: line.query,
       terms: line.terms,

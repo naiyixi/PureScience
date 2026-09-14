@@ -956,6 +956,7 @@ class ReviewRepository {
     projectId: string
     sessionId: string
     messageId: string
+    role: 'user' | 'agent'
     fingerprint: string
     query: string
     terms: readonly string[]
@@ -970,6 +971,7 @@ class ReviewRepository {
         projectId: input.projectId,
         sessionId: input.sessionId,
         messageId: input.messageId,
+        role: input.role,
         fingerprint: input.fingerprint,
         query: input.query,
         terms: JSON.stringify([...input.terms]),
@@ -1020,6 +1022,7 @@ const toReviewEvidence = (row: PrismaReviewEvidence): ReviewEvidenceAttachment =
   projectId: row.projectId,
   sessionId: row.sessionId,
   messageId: row.messageId,
+  role: row.role === 'user' ? 'user' : 'agent',
   fingerprint: row.fingerprint,
   query: row.query,
   terms: parseJson<string[]>(row.terms, []),

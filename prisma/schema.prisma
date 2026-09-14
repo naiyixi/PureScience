@@ -101,6 +101,7 @@ model ReviewEvidence {
   projectId   String
   sessionId   String
   messageId   String
+  role        String   @default("agent")
   fingerprint String
   query       String   @default("")
   terms       String   @default("[]")
