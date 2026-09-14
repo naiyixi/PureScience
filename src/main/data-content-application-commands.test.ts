@@ -102,6 +102,9 @@ const createDependencies = () => {
     release: vi.fn()
   }
   const preview = { load: vi.fn(), save: vi.fn(), delete: vi.fn() }
+  const search = {
+    query: vi.fn()
+  }
   const projectFiles = {
     getOverview: vi.fn(),
     listArtifactGroups: vi.fn(),
@@ -175,6 +178,7 @@ const createDependencies = () => {
     preview,
     projectFiles,
     projects,
+    search,
     sessions,
     uploads,
     withDataRootWrite
@@ -189,6 +193,7 @@ const createDependencies = () => {
     preview,
     project,
     projectFiles,
+    search,
     projects,
     session,
     sessions,
@@ -236,7 +241,7 @@ const dispatchCommand = (
 }
 
 describe('Data and content application commands', () => {
-  it('owns exactly the 47 current data and content invoke channels', () => {
+  it('owns exactly the 48 current data and content invoke channels', () => {
     expect(registeredCommands()).toEqual(
       [
         'artifacts:finalize-run',
@@ -265,6 +270,7 @@ describe('Data and content application commands', () => {
         'project-files:list-files',
         'project-files:repair-index',
         'project-files:search-artifacts',
+        'search:query',
         'projects:create',
         'projects:update-archive',
         'projects:delete',
@@ -424,6 +430,7 @@ describe('Data and content application commands', () => {
         args: [request('project-files-search')],
         owner: deps.projectFiles.searchArtifacts
       },
+      { key: 'searchQuery', args: [request('search')], owner: deps.search.query },
       { key: 'projectGet', args: ['project-1'], owner: deps.projects.get },
       { key: 'projectList', args: [], owner: deps.projects.list },
       {

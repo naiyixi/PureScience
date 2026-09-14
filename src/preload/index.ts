@@ -525,6 +525,11 @@ const api: PureScienceAPI = {
     repairIndex: (request) => electronRendererContracts.invoke('projectFiles.repairIndex', request),
     onChanged: (listener) => electronRendererContracts.subscribe('projectFiles.onChanged', listener)
   },
+  search: {
+    // One query across sessions, message bodies, project files and the literature library. The
+    // response always reports what it scanned, so an empty result is never presented as absence.
+    query: (request) => electronRendererContracts.invoke('search.query', request)
+  },
   compute: {
     // SSH compute host record CRUD, backed by the same SQLite/Prisma layer as projects.
     list: () => electronRendererContracts.invoke('compute.list'),

@@ -9,6 +9,7 @@ import type { ApplicationEventMap, ApplicationEventPublisher } from './applicati
 import type { ArtifactHandlers } from './artifacts/ipc'
 import { ArtifactOwnershipPersistenceRaceError } from './artifacts/provenance-repository'
 import type { ProjectFilesHandlers } from './project-files/ipc'
+import type { SearchHandlers } from './search/handlers'
 import type { ProjectHandlers } from './projects/ipc'
 import type { SessionPersistenceHandlers } from './session-persistence/ipc'
 import type { ManagedPreviewOwnerRegistry } from './managed-preview-ipc'
@@ -19,6 +20,7 @@ import { LIFECYCLE_CHANNELS } from '../shared/lifecycle-events'
 import type * as PreviewResources from '../shared/preview-resources'
 import type * as PreviewState from '../shared/preview-state'
 import type * as Projects from '../shared/projects'
+import type * as Search from '../shared/global-search'
 import type * as SessionPersistence from '../shared/session-persistence'
 import * as Uploads from '../shared/uploads'
 
@@ -118,6 +120,7 @@ type DataRootWrite = <Result>(operation: () => Promise<Result>) => Promise<Resul
 
 type DataContentApplicationCommandDependencies = Readonly<{
   artifacts: ArtifactHandlers
+  search: SearchHandlers
   electron: ElectronDataContentApplicationCommandAdapter
   events: ApplicationEventPublisher
   managedPreview: ManagedPreviewApplicationCommandOwner
@@ -212,6 +215,11 @@ const dataContentApplicationCommands = Object.freeze({
     'project-files:search-artifacts',
     'searchArtifacts'
   ),
+  searchQuery: defineApplicationCommand<
+    'search:query',
+    readonly [request: Search.GlobalSearchRequest],
+    Search.GlobalSearchResponse
+  >('search:query'),
   projectCreate: projectCommand('projects:create', 'create'),
   projectUpdateArchive: projectCommand('projects:update-archive', 'updateArchive'),
   projectDelete: defineApplicationCommand<
@@ -286,7 +294,8 @@ const dataContentApplicationCommandGroups = Object.freeze([
     dataContentApplicationCommands.projectFilesListArtifactGroups,
     dataContentApplicationCommands.projectFilesListFiles,
     dataContentApplicationCommands.projectFilesRepairIndex,
-    dataContentApplicationCommands.projectFilesSearchArtifacts
+    dataContentApplicationCommands.projectFilesSearchArtifacts,
+    dataContentApplicationCommands.searchQuery
   ] as const),
   defineApplicationCommandGroup('projects', [
     dataContentApplicationCommands.projectCreate,
@@ -426,7 +435,8 @@ const registerDataContentApplicationCommands = (
       'project-files:list-files': ({ args }) => dependencies.projectFiles.listFiles(args[0]),
       'project-files:repair-index': ({ args }) => dependencies.projectFiles.repairIndex(args[0]),
       'project-files:search-artifacts': ({ args }) =>
-        dependencies.projectFiles.searchArtifacts(args[0])
+        dependencies.projectFiles.searchArtifacts(args[0]),
+      'search:query': ({ args }) => dependencies.search.query(args[0])
     })
     scope.registerGroup(dataContentApplicationCommandGroups[5], {
       'projects:create': async ({ args }) => {

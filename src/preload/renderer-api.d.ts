@@ -726,6 +726,9 @@ export interface PureScienceAPI {
     repairIndex(request: { projectId: string }): Promise<void>
     onChanged(listener: AcpListener<ProjectFilesChangedEvent>): RemoveListener
   }
+  search: {
+    query(request: GlobalSearchRequest): Promise<GlobalSearchResponse>
+  }
   compute: {
     // SSH compute host record CRUD (Compute settings tab). No credentials cross this boundary.
     list(): Promise<ComputeHost[]>

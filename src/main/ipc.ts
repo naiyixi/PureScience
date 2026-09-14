@@ -175,6 +175,7 @@ import {
   registerConversationExportIpcHandler
 } from './session-persistence/conversation-export'
 import { createProjectFilesHandlers, registerProjectFilesIpcHandlers } from './project-files/ipc'
+import { createSearchIpcHandlers, registerSearchIpcHandlers } from './search/ipc'
 import { createManagedFileIndexRepository } from './project-files/repository'
 import { ProjectDeletionCoordinator } from './projects/deletion-coordinator'
 import { getProjectDbClient } from './projects/prisma-client'
@@ -1088,6 +1089,46 @@ const createApplicationModules = async (
     resolvePdfFingerprint: fingerprintManagedPdf
   })
   installReferencesIpcHandlers(referencesIpcModule)
+
+  // Global search reads the stores the app already keeps: sessions from the persistence backend, files
+  // from the project-files index, literature from the references module. A project-less query cannot
+  // reach files or literature, and the response says so instead of reporting an empty search.
+  const searchHandlers = createSearchIpcHandlers({
+    loadSessions: async () => (await sessionPersistenceBackend.loadAll()).sessions,
+    listFiles: async ({ projectId }) => {
+      // The flat `all` collection is the cross-session read model; the limit keeps one query bounded.
+      const page = await projectFilesHandlers.listFiles({
+        projectId,
+        collection: { kind: 'all' },
+        limit: 500
+      })
+
+      return page.items.map((item) => ({
+        id: item.id,
+        title: item.name,
+        relativePath: item.path,
+        ...(item.mtimeMs ? { timestamp: new Date(item.mtimeMs).toISOString() } : {})
+      }))
+    },
+    listReferences: async (projectId) => {
+      const references = await referencesIpcModule.handlers.list(projectId)
+
+      return references.map((reference) => ({
+        id: reference.id,
+        title: reference.title,
+        ...(reference.abstractSnippet ? { abstract: reference.abstractSnippet } : {}),
+        ...(reference.authors && reference.authors.length > 0
+          ? {
+              authors: reference.authors
+                .map((author) => (typeof author === 'string' ? author : author.name))
+                .filter((name): name is string => typeof name === 'string' && name.length > 0)
+            }
+          : {}),
+        ...(reference.venue ? { venue: reference.venue } : {}),
+        ...(reference.doi ? { doi: reference.doi } : {})
+      }))
+    }
+  })
   surfaceAdapters = beforeAcpAdapters
   const {
     computeService,
@@ -2123,6 +2164,7 @@ const createApplicationModules = async (
   declareElectronAdapter('permission-grants', () =>
     registerPermissionGrantIpcAdapter(permissionGrantProjection)
   )
+  declareElectronAdapter('search', () => registerSearchIpcHandlers(searchHandlers))
   declareElectronAdapter('project-files', () =>
     registerProjectFilesIpcHandlers(
       projectFilesRepository,
@@ -2271,6 +2313,7 @@ const createApplicationModules = async (
       },
       projectFiles: projectFilesHandlers,
       projects: projectHandlers,
+      search: searchHandlers,
       sessions: sessionPersistenceHandlers,
       uploads: uploadCommandOwner,
       withDataRootWrite
