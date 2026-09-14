@@ -280,6 +280,8 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'gs.regionSessions': '會話',
   'gs.regionCommands': '命令',
   'gs.regionContent': '內容',
+  'gs.copyCitation': '複製引文',
+  'gs.citationCopied': '已複製引文',
   'gs.searchingContent': '正在搜尋內容…',
   'gs.contentScopeMessage': '訊息',
   'gs.contentScopeFile': '檔案',

@@ -1983,6 +1983,8 @@ export const zh = {
   'gs.regionSessions': '会话',
   'gs.regionCommands': '命令',
   'gs.regionContent': '内容',
+  'gs.copyCitation': '复制引文',
+  'gs.citationCopied': '已复制引文',
   'gs.searchingContent': '正在搜索内容…',
   'gs.contentScopeMessage': '消息',
   'gs.contentScopeFile': '文件',

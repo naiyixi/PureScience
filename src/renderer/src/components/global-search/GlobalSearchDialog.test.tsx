@@ -689,4 +689,113 @@ describe('GlobalSearchDialog', () => {
       messageId: 'message-2'
     })
   })
+
+  it('copies a GB/T 7714 citation for a literature hit that carries citation data', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
+    vi.mocked(window.api.search.query).mockResolvedValue({
+      schemaVersion: 1,
+      query: 'sin',
+      scopes: ['sessions', 'messages', 'files', 'literature'],
+      hits: [
+        {
+          scope: 'literature',
+          id: 'reference-1',
+          projectId: 'project-a',
+          title: 'Reproducible sine tables',
+          score: 9,
+          matches: [{ field: 'title', snippet: 'sine', offset: 14 }],
+          projectName: 'Nature Methods',
+          citation: {
+            authors: ['Zhang San', 'Li Si'],
+            year: 2024,
+            venue: 'Nature Methods',
+            doi: '10.1000/xyz'
+          }
+        }
+      ],
+      counts: { sessions: 0, messages: 0, files: 0, literature: 1 },
+      truncated: false,
+      scan: { sessions: 0, messages: 0, files: 0, references: 1, bounded: false },
+      appliedLimit: 100,
+      notes: []
+    })
+
+    await act(async () => {
+      root.render(<GlobalSearchDialog open onOpenChange={vi.fn()} isSessionPersistenceReady />)
+      await new Promise((resolve) => window.setTimeout(resolve, 20))
+    })
+
+    const input = document.body.querySelector<HTMLInputElement>('input[role="combobox"]')
+    const valueSetter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype,
+      'value'
+    )?.set
+    await act(async () => {
+      valueSetter?.call(input, 'sin')
+      input?.dispatchEvent(new Event('input', { bubbles: true }))
+      await new Promise((resolve) => window.setTimeout(resolve, 400))
+    })
+
+    const button = document.body.querySelector<HTMLButtonElement>(
+      '[data-testid="global-search-copy-citation"]'
+    )
+    expect(button).toBeTruthy()
+
+    await act(async () => {
+      button?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      await new Promise((resolve) => window.setTimeout(resolve, 20))
+    })
+
+    // The citation comes from the record the search returned, in GB/T 7714 form.
+    expect(writeText).toHaveBeenCalledTimes(1)
+    const citation = writeText.mock.calls[0][0] as string
+    expect(citation).toContain('San Z., Si L.')
+    expect(citation).toContain('Reproducible sine tables')
+    expect(citation).toContain('Nature Methods')
+    expect(citation).toContain('2024')
+  })
+
+  it('shows no citation action for a literature hit that carries none', async () => {
+    vi.mocked(window.api.search.query).mockResolvedValue({
+      schemaVersion: 1,
+      query: 'sin',
+      scopes: ['sessions', 'messages', 'files', 'literature'],
+      hits: [
+        {
+          scope: 'literature',
+          id: 'reference-2',
+          projectId: 'project-a',
+          title: 'Untitled draft',
+          score: 5,
+          matches: [{ field: 'title', snippet: 'Untitled', offset: 0 }]
+        }
+      ],
+      counts: { sessions: 0, messages: 0, files: 0, literature: 1 },
+      truncated: false,
+      scan: { sessions: 0, messages: 0, files: 0, references: 1, bounded: false },
+      appliedLimit: 100,
+      notes: []
+    })
+
+    await act(async () => {
+      root.render(<GlobalSearchDialog open onOpenChange={vi.fn()} isSessionPersistenceReady />)
+      await new Promise((resolve) => window.setTimeout(resolve, 20))
+    })
+
+    const input = document.body.querySelector<HTMLInputElement>('input[role="combobox"]')
+    const valueSetter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype,
+      'value'
+    )?.set
+    await act(async () => {
+      valueSetter?.call(input, 'sin')
+      input?.dispatchEvent(new Event('input', { bubbles: true }))
+      await new Promise((resolve) => window.setTimeout(resolve, 400))
+    })
+
+    expect(document.body.querySelector('[data-testid="global-search-content-row"]')).toBeTruthy()
+    // No citation data means no button — rather than a button that copies an empty reference.
+    expect(document.body.querySelector('[data-testid="global-search-copy-citation"]')).toBeNull()
+  })
 })

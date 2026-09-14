@@ -314,6 +314,8 @@ export const de: Partial<Record<ZhKey, string>> = {
   'gs.regionSessions': 'Sitzungen',
   'gs.regionCommands': 'Befehle',
   'gs.regionContent': 'Inhalt',
+  'gs.copyCitation': 'Zitat kopieren',
+  'gs.citationCopied': 'Zitat kopiert',
   'gs.searchingContent': 'Inhalte werden durchsucht…',
   'gs.contentScopeMessage': 'Nachricht',
   'gs.contentScopeFile': 'Datei',

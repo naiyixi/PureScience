@@ -64,6 +64,34 @@ describe('GB/T 7714-2015 formatting', () => {
     )
   })
 
+  it('does not double the period when an [EB/OL] record has no retrieval date', () => {
+    // GB/T 7714 ends the year with its own period; emitting the bare separator as well read "2023..".
+    expect(
+      formatGbt7714({
+        title: 'On重复性',
+        authors: [{ name: 'Zhang San' }],
+        venue: undefined,
+        year: 2023,
+        doi: undefined,
+        arxivId: undefined,
+        pmid: undefined,
+        pmcid: undefined
+      })
+    ).toBe('San Z. On重复性[EB/OL]. 2023.')
+    expect(
+      formatGbt7714({
+        title: 'Protein Data Bank',
+        authors: [{ name: 'RCSB' }],
+        venue: undefined,
+        year: undefined,
+        doi: undefined,
+        arxivId: undefined,
+        pmid: '12345678',
+        pmcid: undefined
+      })
+    ).toBe('RCSB. Protein Data Bank[EB/OL]. https://pubmed.ncbi.nlm.nih.gov/12345678/')
+  })
+
   it('orders a numbered list for sequential (顺序编码制) in-text citation', () => {
     const list = formatGbt7714List([sample, { ...sample, title: 'BERT' }])
     expect(list.split('\n')).toHaveLength(2)

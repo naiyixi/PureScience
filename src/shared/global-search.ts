@@ -52,6 +52,16 @@ export type GlobalSearchMatch = {
   term?: string
 }
 
+export type GlobalSearchCitation = {
+  authors: string[]
+  year?: number
+  venue?: string
+  doi?: string
+  arxivId?: string
+  pmid?: string
+  pmcid?: string
+}
+
 export type GlobalSearchHit = {
   scope: GlobalSearchScope
   id: string
@@ -67,6 +77,9 @@ export type GlobalSearchHit = {
   role?: 'user' | 'agent'
   timestamp?: string
   relativePath?: string
+  // Present on literature hits: everything a GB/T 7714 citation needs, carried with the hit so a
+  // citation is built from the record the search actually found rather than re-fetched later.
+  citation?: GlobalSearchCitation
 }
 
 export type GlobalSearchScanReport = {

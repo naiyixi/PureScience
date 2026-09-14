@@ -30,6 +30,10 @@ export type SearchHandlerPorts = {
       authors?: string[]
       venue?: string
       doi?: string
+      year?: number
+      arxivId?: string
+      pmid?: string
+      pmcid?: string
       createdAt?: string
     }>
   >
@@ -105,6 +109,10 @@ export const createSearchHandlers = (ports: SearchHandlerPorts): SearchHandlers 
             ...(reference.authors ? { authors: reference.authors } : {}),
             ...(reference.venue ? { venue: reference.venue } : {}),
             ...(reference.doi ? { doi: reference.doi } : {}),
+            ...(reference.year !== undefined ? { year: reference.year } : {}),
+            ...(reference.arxivId ? { arxivId: reference.arxivId } : {}),
+            ...(reference.pmid ? { pmid: reference.pmid } : {}),
+            ...(reference.pmcid ? { pmcid: reference.pmcid } : {}),
             ...(reference.createdAt ? { timestamp: reference.createdAt } : {})
           }))
         : []

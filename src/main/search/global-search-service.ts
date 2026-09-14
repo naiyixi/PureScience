@@ -61,6 +61,10 @@ export type SearchableReference = {
   authors?: string[]
   venue?: string
   doi?: string
+  year?: number
+  arxivId?: string
+  pmid?: string
+  pmcid?: string
 }
 
 export type GlobalSearchPorts = {
@@ -254,7 +258,17 @@ export const createGlobalSearchService = (ports: GlobalSearchPorts): GlobalSearc
           }),
           matches,
           ...(reference.venue ? { projectName: reference.venue } : {}),
-          ...(reference.timestamp ? { timestamp: reference.timestamp } : {})
+          ...(reference.timestamp ? { timestamp: reference.timestamp } : {}),
+          // Carried with the hit so a citation is built from what was found, never re-fetched.
+          citation: {
+            authors: reference.authors ?? [],
+            ...(reference.year !== undefined ? { year: reference.year } : {}),
+            ...(reference.venue ? { venue: reference.venue } : {}),
+            ...(reference.doi ? { doi: reference.doi } : {}),
+            ...(reference.arxivId ? { arxivId: reference.arxivId } : {}),
+            ...(reference.pmid ? { pmid: reference.pmid } : {}),
+            ...(reference.pmcid ? { pmcid: reference.pmcid } : {})
+          }
         })
       }
     }

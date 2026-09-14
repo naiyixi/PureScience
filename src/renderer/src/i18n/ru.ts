@@ -305,6 +305,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'gs.regionSessions': 'Сеансы',
   'gs.regionCommands': 'Команды',
   'gs.regionContent': 'Содержимое',
+  'gs.copyCitation': 'Скопировать ссылку',
+  'gs.citationCopied': 'Ссылка скопирована',
   'gs.searchingContent': 'Поиск по содержимому…',
   'gs.contentScopeMessage': 'Сообщение',
   'gs.contentScopeFile': 'Файл',

@@ -303,6 +303,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'gs.regionSessions': '세션',
   'gs.regionCommands': '명령',
   'gs.regionContent': '콘텐츠',
+  'gs.copyCitation': '인용 복사',
+  'gs.citationCopied': '인용을 복사했습니다',
   'gs.searchingContent': '콘텐츠 검색 중…',
   'gs.contentScopeMessage': '메시지',
   'gs.contentScopeFile': '파일',

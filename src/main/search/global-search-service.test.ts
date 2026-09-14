@@ -232,6 +232,33 @@ describe('createGlobalSearchService', () => {
     expect(missing.scan.messages).toBe(1)
   })
 
+  it('carries citation data on literature hits', async () => {
+    const { service } = harness({
+      listReferences: vi.fn(async () => [
+        {
+          id: 'reference-1',
+          projectId: 'project-a',
+          title: 'Sine tables',
+          authors: ['Zhang San'],
+          venue: 'Nature Methods',
+          year: 2024,
+          doi: '10.1000/xyz',
+          timestamp: '2026-08-01T00:00:00.000Z'
+        }
+      ])
+    })
+
+    const response = await service.query(request({ scopes: ['literature'], query: 'sine tables' }))
+
+    expect(response.hits).toHaveLength(1)
+    expect(response.hits[0].citation).toEqual({
+      authors: ['Zhang San'],
+      year: 2024,
+      venue: 'Nature Methods',
+      doi: '10.1000/xyz'
+    })
+  })
+
   it('caps each scope and reports the truncation', async () => {
     const many = Array.from({ length: 4 }, (_, index) =>
       session({ sessionId: `session-${index}`, title: `Sine plot ${index}` })

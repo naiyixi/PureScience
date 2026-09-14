@@ -10,6 +10,7 @@ import { ArrowUpRight, AtSign, Hash, MessageCircle, Search, Zap } from 'lucide-r
 import { Dialog } from 'radix-ui'
 
 import type { GlobalSearchHit } from '../../../../shared/global-search'
+import { buildGlobalSearchHitCitation } from '../../../../shared/global-search-citation'
 import type { ProjectFileItem } from '../../../../shared/project-files'
 import { Button } from '@/components/ui/button'
 import { dialogOverlayClassName, dialogPanelClassName } from '@/components/ui/dialog-chrome'
@@ -139,6 +140,8 @@ export const GlobalSearchDialog = ({
   const [failedArtifactCursor, setFailedArtifactCursor] = useState<string | undefined>()
   const [actionError, setActionError] = useState<string | undefined>()
   const [activeIndex, setActiveIndex] = useState(0)
+  // Which literature hit just had its citation copied, so the row can say so briefly.
+  const [copiedCitationKey, setCopiedCitationKey] = useState<string | undefined>()
 
   const allProjects = useProjectStore((state) => state.projects)
   const allSessions = useSessionStore((state) => state.sessions)
@@ -630,6 +633,24 @@ export const GlobalSearchDialog = ({
     )
   }
 
+  // Copies a GB/T 7714 citation built from the record this search returned. A hit without citation
+  // data has no button at all, so this never copies a stub or falls back to a refetch.
+  const copyCitation = useCallback((hit: GlobalSearchHit): void => {
+    const citation = buildGlobalSearchHitCitation(hit, {
+      retrievedAt: new Date().toISOString().slice(0, 10)
+    })
+    if (!citation) return
+
+    const key = `${hit.scope}:${hit.id}`
+    void Promise.resolve(navigator.clipboard?.writeText(citation)).then(() => {
+      setCopiedCitationKey(key)
+      setTimeout(
+        () => setCopiedCitationKey((current) => (current === key ? undefined : current)),
+        2000
+      )
+    })
+  }, [])
+
   const renderContentRow = (hit: GlobalSearchHit, rowIndex: number): React.JSX.Element => {
     const active = rowIndex === activeRowIndex
     const scopeLabel =
@@ -668,6 +689,24 @@ export const GlobalSearchDialog = ({
             </span>
           ) : null}
         </span>
+        {hit.scope === 'literature' && hit.citation ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            aria-label={t('gs.copyCitation')}
+            data-testid="global-search-copy-citation"
+            className="h-7 shrink-0 px-2 text-xs"
+            onClick={(event) => {
+              event.stopPropagation()
+              copyCitation(hit)
+            }}
+          >
+            {copiedCitationKey === `${hit.scope}:${hit.id}`
+              ? t('gs.citationCopied')
+              : t('gs.copyCitation')}
+          </Button>
+        ) : null}
       </div>
     )
   }

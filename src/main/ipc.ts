@@ -1125,7 +1125,11 @@ const createApplicationModules = async (
             }
           : {}),
         ...(reference.venue ? { venue: reference.venue } : {}),
-        ...(reference.doi ? { doi: reference.doi } : {})
+        ...(reference.doi ? { doi: reference.doi } : {}),
+        ...(reference.year !== undefined ? { year: reference.year } : {}),
+        ...(reference.arxivId ? { arxivId: reference.arxivId } : {}),
+        ...(reference.pmid ? { pmid: reference.pmid } : {}),
+        ...(reference.pmcid ? { pmcid: reference.pmcid } : {})
       }))
     }
   })

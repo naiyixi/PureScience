@@ -2120,6 +2120,8 @@ export const en: Record<ZhKey, string> = {
   'gs.regionSessions': 'Sessions',
   'gs.regionCommands': 'Commands',
   'gs.regionContent': 'Content',
+  'gs.copyCitation': 'Copy citation',
+  'gs.citationCopied': 'Citation copied',
   'gs.searchingContent': 'Searching content…',
   'gs.contentScopeMessage': 'Message',
   'gs.contentScopeFile': 'File',

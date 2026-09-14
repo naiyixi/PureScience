@@ -305,6 +305,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'gs.regionSessions': 'セッション',
   'gs.regionCommands': 'コマンド',
   'gs.regionContent': 'コンテンツ',
+  'gs.copyCitation': '引用をコピー',
+  'gs.citationCopied': '引用をコピーしました',
   'gs.searchingContent': 'コンテンツを検索中…',
   'gs.contentScopeMessage': 'メッセージ',
   'gs.contentScopeFile': 'ファイル',

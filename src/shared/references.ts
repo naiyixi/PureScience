@@ -209,11 +209,19 @@ export const formatGbt7714 = (
     const doi = reference.doi?.trim() ? ` ${reference.doi.trim()}` : ''
     return `${authors}. ${title}[J]. ${suffix}.${doi}`
   }
-  const year = reference.year ? ` ${reference.year}.` : ''
-  const retrieved = options.retrievedAt ? ` [${options.retrievedAt}].` : '.'
+  // GB/T 7714 closes the block with one period: 出版年[引用日期]. 获取路径.
+  // The year carries no period of its own (that produced "2023.."), and the retrieval date follows the
+  // year directly when both are present — the space appears only when it opens the block.
+  const year = reference.year ? ` ${reference.year}` : ''
+  const retrieved = options.retrievedAt
+    ? `${reference.year ? '' : ' '}[${options.retrievedAt}]`
+    : ''
   const locator = gbt7714Locator(reference)
   const location = locator ? ` ${locator}` : ''
-  return `${authors}. ${title}[EB/OL].${year}${retrieved}${location}`
+  // Only a block that actually carries a year or a retrieval date needs its own closing period; the
+  // period after [EB/OL] already ends the sentence when there is neither.
+  const closing = reference.year || options.retrievedAt ? '.' : ''
+  return `${authors}. ${title}[EB/OL].${year}${retrieved}${closing}${location}`
 }
 
 export const formatGbt7714List = (
