@@ -50,6 +50,8 @@ export type BackgroundDeliveryReason =
   | 'job-not-found'
   // The job belongs to a different session than the delivery names.
   | 'session-mismatch'
+  // The session the result belongs to could not be read, so there is nowhere to put it.
+  | 'session-unavailable'
   // The delivery is already consumed, or has no result yet.
   | 'not-consumable'
   // Another worker holds a live claim.
@@ -102,6 +104,48 @@ export type BackgroundDeliveryConsumeResult =
   | { status: 'consumed'; delivery: BackgroundDelivery }
   | { status: 'rejected'; reason: BackgroundDeliveryReason }
 
+// The delivered result, as it is recorded on the message that carries it into the session. Structured
+// rather than prose so the UI renders its own wording in its own language, and so a delivery can be
+// recognised after a restart — which is what keeps a worker that died mid-delivery from writing twice.
+export type BackgroundDeliveryRef = {
+  deliveryId: string
+  jobId: string
+  sourceKind: BackgroundDeliverySourceKind
+  outputFiles: readonly string[]
+  fingerprint: string | undefined
+  reason: BackgroundDeliveryReason | undefined
+}
+
+// Main has no UI language, so the text it writes into the session carries neutral wording; the UI renders
+// its own localized prose from the structured ref above. Callers may pass their own labels instead of
+// this set — this one exists so the fallback is explicit rather than accidental.
+export const NEUTRAL_BACKGROUND_DELIVERY_LABELS: BackgroundDeliveryLabels = {
+  header: 'Background result delivery',
+  state: 'State',
+  stateNames: {
+    'waiting-result': 'waiting for the result',
+    pending: 'ready to deliver',
+    claimed: 'being delivered',
+    dispatching: 'being delivered',
+    consumed: 'delivered',
+    'needs-attention': 'needs attention'
+  },
+  job: 'Job',
+  files: 'Files',
+  fingerprint: 'Fingerprint',
+  reason: 'Reason',
+  reasonNames: {
+    'job-not-found': 'no such job',
+    'session-mismatch': 'the job belongs to another session',
+    'session-unavailable': 'the session could not be read',
+    'not-consumable': 'there is nothing to deliver yet',
+    'claim-held': 'another worker is delivering it',
+    'result-unreadable': 'the result could not be read'
+  },
+  continuation: 'A background job has finished. Its recorded result is attached to this turn.',
+  noResult: 'No result was produced'
+}
+
 export type BackgroundDeliveryLabels = {
   header: string
   state: string
@@ -131,12 +175,15 @@ export const formatBackgroundDeliveryLine = (
 
 // The turn the session receives when results land. Results that could not be read are stated as such:
 // the honest outcome is "no result, here is why", never an analysis of something we never saw.
+//
+// Which of the two a delivery is comes from its reason, not its state: the state tracks delivery
+// progress, and a claimed delivery is still a delivery that has no result to show.
 export const buildBackgroundDeliveryContinuation = (
   deliveries: readonly BackgroundDelivery[],
   labels: BackgroundDeliveryLabels
 ): string => {
-  const deliverable = deliveries.filter((delivery) => delivery.state !== 'needs-attention')
-  const blocked = deliveries.filter((delivery) => delivery.state === 'needs-attention')
+  const deliverable = deliveries.filter((delivery) => delivery.reason === undefined)
+  const blocked = deliveries.filter((delivery) => delivery.reason !== undefined)
 
   const blocks = deliverable.map((delivery) => {
     const lines = [

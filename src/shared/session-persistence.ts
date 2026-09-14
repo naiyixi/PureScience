@@ -1,4 +1,5 @@
 import type { PersistedUploadedAttachment } from './uploads'
+import type { BackgroundDeliveryRef } from './background-delivery'
 import {
   ANNOTATION_MAX_SOURCE_LENGTH,
   ANNOTATION_MAX_TEXT_LENGTH,
@@ -145,6 +146,10 @@ export type PersistedChatMessage = {
   streamId?: string
   responseToMessageId?: string
   eventIds: string[]
+  // Set on the turn a background result was delivered into. The result itself is structured here rather
+  // than only described in `content`, so the UI can word it in its own language, and so a delivery that
+  // was written but not yet marked consumed can be recognised after a restart instead of written twice.
+  backgroundDelivery?: BackgroundDeliveryRef
   // Links a message to session-level artifact metadata without duplicating file records per message.
   artifactIds?: string[]
   uploads?: PersistedUploadedAttachment[]

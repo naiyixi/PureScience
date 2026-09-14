@@ -4,6 +4,7 @@ import {
   BACKGROUND_DELIVERY_HASH_RECIPE,
   BACKGROUND_DELIVERY_SCHEMA_VERSION,
   BACKGROUND_DELIVERY_STATES,
+  NEUTRAL_BACKGROUND_DELIVERY_LABELS,
   buildBackgroundDeliveryContinuation,
   formatBackgroundDeliveryLine,
   isBackgroundDeliveryClaimLive,
@@ -17,6 +18,7 @@ import {
 const REASONS: readonly BackgroundDeliveryReason[] = [
   'job-not-found',
   'session-mismatch',
+  'session-unavailable',
   'not-consumable',
   'claim-held',
   'result-unreadable'
@@ -63,6 +65,23 @@ const delivery = (overrides: Partial<BackgroundDelivery> = {}): BackgroundDelive
 describe('background delivery contract', () => {
   it('publishes a recipe name for recomputing a delivery fingerprint', () => {
     expect(BACKGROUND_DELIVERY_HASH_RECIPE).toBe('purescience-background-delivery-v1')
+  })
+
+  it('ships a complete neutral label set, so main never writes a half-worded line', () => {
+    // Main has no UI language; the fallback it writes into a session must still name every state and
+    // every reason, or the session would record a delivery that cannot be described.
+    expect(Object.keys(NEUTRAL_BACKGROUND_DELIVERY_LABELS.stateNames).sort()).toEqual(
+      [...BACKGROUND_DELIVERY_STATES].sort()
+    )
+    expect(Object.keys(NEUTRAL_BACKGROUND_DELIVERY_LABELS.reasonNames).sort()).toEqual(
+      [...REASONS].sort()
+    )
+    for (const names of [
+      Object.values(NEUTRAL_BACKGROUND_DELIVERY_LABELS.stateNames),
+      Object.values(NEUTRAL_BACKGROUND_DELIVERY_LABELS.reasonNames)
+    ]) {
+      expect(names.every((name) => name.trim().length > 0)).toBe(true)
+    }
   })
 
   it('names every state, so the ledger cannot hold an unnamed one', () => {

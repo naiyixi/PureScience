@@ -150,7 +150,8 @@ describe('background delivery ledger against a real database', () => {
 
     const consumed = (await repo.findById(delivery.id))!
     expect(consumed.state).toBe('consumed')
-    expect(consumed.reason).toBeUndefined()
+    // The reason survives delivery: the ledger records what happened, not only what is outstanding.
+    expect(consumed.reason).toBe('result-unreadable')
   })
 
   it('does not reset a delivery in flight when the job is scanned again', async () => {

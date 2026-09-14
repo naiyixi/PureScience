@@ -89,6 +89,9 @@ export type ClaimBackgroundDeliveryOptions = {
   leaseMs?: number
   // Deterministic in tests; generated when omitted.
   claimToken?: string
+  // Deliveries this pass has already handled. A blocked delivery stays consumable so a later pass can try
+  // again, which means the pass itself has to leave it alone instead of claiming it in a loop.
+  exclude?: readonly string[]
 }
 
 export class BackgroundDeliveryRepository {
@@ -206,11 +209,13 @@ export class BackgroundDeliveryRepository {
     options: ClaimBackgroundDeliveryOptions
   ): Promise<BackgroundDeliveryClaimResult | undefined> {
     const client = await this.client()
+    const excluded = new Set(options.exclude ?? [])
     const candidates = await client.backgroundDelivery.findMany({
       where: { sessionId },
       orderBy: { createdAt: 'asc' }
     })
     for (const candidate of candidates) {
+      if (excluded.has(candidate.id)) continue
       const delivery = toBackgroundDelivery(candidate)
       if (!(BACKGROUND_DELIVERY_CONSUMABLE_STATES as readonly string[]).includes(delivery.state)) {
         continue
@@ -248,13 +253,14 @@ export class BackgroundDeliveryRepository {
     continuationMessageId: string,
     now: number
   ): Promise<boolean> {
+    // The reason is kept: "the result could not be read" stays true after the session has been told, and
+    // the ledger is the record of what happened, not only of what is still outstanding.
     return this.writeAsHolder(id, claimToken, now, {
       state: 'consumed',
       continuationMessageId,
       consumedAt: new Date(now),
       claimToken: null,
-      claimExpiresAt: null,
-      reason: null
+      claimExpiresAt: null
     })
   }
 
