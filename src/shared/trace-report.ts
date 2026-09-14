@@ -27,6 +27,25 @@ export type TraceReportCheckpointRef = {
   freshness?: 'fresh' | 'stale' | 'missing'
 }
 
+/** A claim the reviewer model made. Kept apart from a human pin, and labelled as model-authored. */
+export type TraceReportFinding = {
+  claim: string
+  /** pass / warn / fail as the reviewer recorded it. */
+  status: string
+  evidence?: string
+}
+
+/** A block a person pinned. Carries the fingerprint, so the reader can check it independently. */
+export type TraceReportHumanEvidence = {
+  snippet: string
+  fingerprint: string
+  query?: string
+  terms?: string[]
+  /** Who said the pinned block — the agent or the person. */
+  role?: 'user' | 'agent'
+  capturedAt?: string
+}
+
 export type TraceReportInput = {
   title: string
   project?: string
@@ -36,6 +55,10 @@ export type TraceReportInput = {
   steps: TraceReportStep[]
   artifacts?: TraceReportArtifact[]
   checkpoint?: TraceReportCheckpointRef
+  /** What the reviewer model claimed. Rendered under its own heading, never as human evidence. */
+  findings?: TraceReportFinding[]
+  /** What a person pinned, with fingerprints. Rendered under its own heading, never merged. */
+  humanEvidence?: TraceReportHumanEvidence[]
   /** Scope labels that must accompany the numbers (e.g. '基于 2000/20000 降采样'). */
   scopes?: string[]
   /** Honest limitations: what was NOT computed, what needs a full run, what is unverified. */
@@ -115,6 +138,36 @@ export const buildTraceReportMarkdown = (input: TraceReportInput): string => {
         checkpoint.outputs,
         (output) => `- 产物 ${output.label}${output.path ? ` → ${output.path}` : ''}`
       )
+    )
+    lines.push('')
+  }
+
+  if (input.findings && input.findings.length > 0) {
+    lines.push('## 模型发现（审查模型提出，非人工确认）', '')
+    lines.push(
+      ...orderedRows(input.findings, (finding) => {
+        const parts = [`- [${finding.status}] ${finding.claim}`]
+        if (finding.evidence) parts.push(` — 依据：${finding.evidence}`)
+        return parts.join('')
+      })
+    )
+    lines.push('')
+  }
+
+  if (input.humanEvidence && input.humanEvidence.length > 0) {
+    lines.push('## 人工附证（由人钉入，指纹可独立重算）', '')
+    lines.push(
+      ...orderedRows(input.humanEvidence, (pin) => {
+        const parts = [`- ${pin.snippet}`]
+        if (pin.role) parts.push(`（${pin.role === 'user' ? '用户' : '助手'}所述）`)
+        if (pin.query) {
+          const terms = pin.terms && pin.terms.length > 0 ? `（${pin.terms.join('、')}）` : ''
+          parts.push(` — 检索命中：${pin.query}${terms}`)
+        }
+        if (pin.capturedAt) parts.push(`；捕获于 ${pin.capturedAt}`)
+        parts.push(`；指纹 ${pin.fingerprint}`)
+        return parts.join('')
+      })
     )
     lines.push('')
   }

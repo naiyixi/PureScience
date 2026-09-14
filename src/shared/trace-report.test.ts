@@ -91,4 +91,81 @@ describe('trace report document', () => {
   it('escapes the five HTML-significant characters', () => {
     expect(escapeTraceHtml(`&<>"'`)).toBe('&amp;&lt;&gt;&quot;&#39;')
   })
+
+  it('keeps model findings and human evidence in separate sections', () => {
+    const report = buildTraceReportMarkdown(
+      input({
+        findings: [{ claim: '声称测试通过', status: 'fail', evidence: '执行日志无测试活动' }],
+        humanEvidence: [
+          {
+            snippet: 'wrote sin(x) values to replay_probe.csv',
+            fingerprint: `sha256:${'a'.repeat(64)}`,
+            query: 'sin csv',
+            terms: ['sin', 'csv'],
+            role: 'agent',
+            capturedAt: '2026-09-14T10:00:00.000Z'
+          }
+        ]
+      })
+    )
+
+    const findingsStart = report.indexOf('## 模型发现')
+    const evidenceStart = report.indexOf('## 人工附证')
+    expect(findingsStart).toBeGreaterThan(-1)
+    expect(evidenceStart).toBeGreaterThan(findingsStart)
+
+    const findingsSection = report.slice(findingsStart, evidenceStart)
+    const evidenceSection = report.slice(evidenceStart)
+    // The model's claim stays on the model side, the pinned block on the human side — never both.
+    expect(findingsSection).toContain('声称测试通过')
+    expect(findingsSection).not.toContain('replay_probe.csv')
+    expect(evidenceSection).toContain('replay_probe.csv')
+    expect(evidenceSection).not.toContain('声称测试通过')
+  })
+
+  it('prints a pinned block with what makes it checkable', () => {
+    const report = buildTraceReportMarkdown(
+      input({
+        humanEvidence: [
+          {
+            snippet: 'wrote sin(x) values',
+            fingerprint: `sha256:${'b'.repeat(64)}`,
+            query: 'sin csv',
+            terms: ['sin', 'csv'],
+            role: 'user',
+            capturedAt: '2026-09-14T10:00:00.000Z'
+          }
+        ]
+      })
+    )
+
+    expect(report).toContain('## 人工附证（由人钉入，指纹可独立重算）')
+    expect(report).toContain('用户所述')
+    expect(report).toContain('检索命中：sin csv（sin、csv）')
+    expect(report).toContain('捕获于 2026-09-14T10:00:00.000Z')
+    expect(report).toContain(`指纹 sha256:${'b'.repeat(64)}`)
+  })
+
+  it('omits both sections when there is nothing of that kind', () => {
+    const report = buildTraceReportMarkdown(input())
+
+    expect(report).not.toContain('## 模型发现')
+    expect(report).not.toContain('## 人工附证')
+  })
+
+  it('escapes a pinned snippet in the HTML export', () => {
+    const html = buildTraceReportHtml(
+      input({
+        humanEvidence: [
+          {
+            snippet: '<script>alert(1)</script>',
+            fingerprint: `sha256:${'c'.repeat(64)}`
+          }
+        ]
+      })
+    )
+
+    expect(html).not.toContain('<script>alert(1)</script>')
+    expect(html).toContain('&lt;script&gt;')
+  })
 })
