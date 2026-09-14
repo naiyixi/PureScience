@@ -91,6 +91,67 @@ export type GlobalSearchScanReport = {
   bounded: boolean
 }
 
+export const GLOBAL_SEARCH_MAX_FILE_TEXT_BYTES = 256 * 1024
+
+// Which files are worth reading during a search. A binary file read as text would produce matches that
+// are not text at all, so anything not on this list is matched by name and path only.
+const SEARCHABLE_TEXT_EXTENSIONS = new Set([
+  'txt',
+  'md',
+  'markdown',
+  'rst',
+  'csv',
+  'tsv',
+  'json',
+  'jsonl',
+  'yaml',
+  'yml',
+  'toml',
+  'ini',
+  'cfg',
+  'conf',
+  'log',
+  'tex',
+  'bib',
+  'html',
+  'htm',
+  'xml',
+  'css',
+  'js',
+  'jsx',
+  'ts',
+  'tsx',
+  'py',
+  'r',
+  'rmd',
+  'qmd',
+  'ipynb',
+  'sh',
+  'bash',
+  'zsh',
+  'sql',
+  'c',
+  'h',
+  'cpp',
+  'hpp',
+  'java',
+  'go',
+  'rs',
+  'rb',
+  'php',
+  'swift',
+  'kt',
+  'm',
+  'jl'
+])
+
+export const isSearchableTextFile = (name: string): boolean => {
+  const dot = name.lastIndexOf('.')
+  if (dot <= 0 || dot === name.length - 1) return false
+
+  return SEARCHABLE_TEXT_EXTENSIONS.has(name.slice(dot + 1).toLowerCase())
+}
+
 export type GlobalSearchNote =
   | 'query-too-short'
   | 'scan-bounded-by-session-limit'

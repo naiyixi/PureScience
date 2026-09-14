@@ -177,6 +177,8 @@ import {
 import { createProjectFilesHandlers, registerProjectFilesIpcHandlers } from './project-files/ipc'
 import { createSearchIpcHandlers, registerSearchIpcHandlers } from './search/ipc'
 import { createSearchEvidenceService } from './search/search-evidence'
+import { createSearchFileTextReader, type SearchFileTextItem } from './search/file-text-reader'
+import type { ReadArtifactPreviewRequest, ArtifactPreviewResult } from '../shared/artifacts'
 import { toSearchableMessages } from './search/handlers'
 import { createManagedFileIndexRepository } from './project-files/repository'
 import { ProjectDeletionCoordinator } from './projects/deletion-coordinator'
@@ -1095,8 +1097,26 @@ const createApplicationModules = async (
   // Global search reads the stores the app already keeps: sessions from the persistence backend, files
   // from the project-files index, literature from the references module. A project-less query cannot
   // reach files or literature, and the response says so instead of reporting an empty search.
+  // The page the files port just read, so a content read can find the file it is about. Filled on each
+  // query and read back by `readFileText` — a project file is only addressable through that page.
+  const searchableFileItems = new Map<string, SearchFileTextItem>()
+  const searchFileText = createSearchFileTextReader({
+    findItem: (fileId) => searchableFileItems.get(fileId),
+    readArtifactPreview: (request) => artifactPreviewForSearch(request),
+    readUploadPreview: (request) => uploadRepository.readManagedUploadPreview(request)
+  })
+
+  // Assigned once the artifact handlers exist (they are constructed later in this scope); the search
+  // only asks for a preview while serving a query, long after startup.
+  let artifactPreviewForSearch: (
+    request: ReadArtifactPreviewRequest
+  ) => Promise<ArtifactPreviewResult> = async () => {
+    throw new Error('Artifact preview reader is not wired yet.')
+  }
+
   const searchHandlers = createSearchIpcHandlers({
     loadSessions: async () => (await sessionPersistenceBackend.loadAll()).sessions,
+    readFileText: searchFileText,
     listFiles: async ({ projectId }) => {
       // The flat `all` collection is the cross-session read model; the limit keeps one query bounded.
       const page = await projectFilesHandlers.listFiles({
@@ -1104,6 +1124,16 @@ const createApplicationModules = async (
         collection: { kind: 'all' },
         limit: 500
       })
+      searchableFileItems.clear()
+      for (const item of page.items) {
+        searchableFileItems.set(item.id, {
+          projectId: item.projectId,
+          sessionId: item.sessionId,
+          name: item.name,
+          path: item.path,
+          source: item.source
+        })
+      }
 
       return page.items.map((item) => ({
         id: item.id,
@@ -2118,6 +2148,8 @@ const createApplicationModules = async (
     withSessionMutation: (projectId, sessionId, mutation) =>
       sessionPersistenceCoordinator.runSessionMutation(projectId, sessionId, mutation)
   })
+  // Now that the artifact surface exists, the search can read artifact file text through it.
+  artifactPreviewForSearch = (request) => artifactHandlers.readPreview(request)
   declareElectronAdapter('artifacts', () =>
     registerArtifactIpcHandlers(
       artifactRepository,
