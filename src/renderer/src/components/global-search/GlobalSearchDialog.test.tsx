@@ -986,4 +986,197 @@ describe('GlobalSearchDialog', () => {
       document.body.querySelector('[data-testid="global-search-evidence-status"]')?.textContent
     ).toBe('Evidence changed')
   })
+
+  it('pins a captured line to the session\u2019s only review and says so', async () => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: vi.fn().mockResolvedValue(undefined) }
+    })
+    const line = {
+      schemaVersion: 1 as const,
+      projectId: 'project-a',
+      sessionId: 'session-a',
+      messageId: 'message-2',
+      role: 'agent' as const,
+      capturedAt: '2026-09-14T10:00:00.000Z',
+      query: 'sin',
+      terms: ['sin'],
+      snippet: 'wrote sin(x) values',
+      fingerprint: `sha256:${'b'.repeat(64)}`
+    }
+    const attach = vi.fn(async () => ({ status: 'attached', evidence: { id: 'pin-1' } }))
+    Object.defineProperty(window.api.search, 'evidence', {
+      configurable: true,
+      value: vi.fn(async (request: { action: string }) =>
+        request.action === 'capture' ? { status: 'captured', line } : { status: 'verified' }
+      )
+    })
+    Object.defineProperty(window.api, 'reviewer', {
+      configurable: true,
+      value: {
+        getForSession: vi.fn(async () => [
+          { id: 'review-1', createdAt: 1710000000000, turnMessageId: 'turn-1' }
+        ]),
+        evidence: attach
+      }
+    })
+    vi.mocked(window.api.search.query).mockResolvedValue({
+      schemaVersion: 1,
+      query: 'sin',
+      scopes: ['messages'],
+      hits: [
+        {
+          scope: 'messages',
+          id: 'message-2',
+          projectId: 'project-a',
+          title: 'Sine plot',
+          score: 9,
+          matches: [{ field: 'body', snippet: 'wrote sin(x) values', offset: 6 }],
+          sessionId: 'session-a',
+          role: 'agent'
+        }
+      ],
+      counts: { sessions: 0, messages: 1, files: 0, literature: 0 },
+      truncated: false,
+      scan: { sessions: 1, messages: 1, files: 0, references: 0, bounded: false },
+      appliedLimit: 100,
+      notes: []
+    })
+
+    await act(async () => {
+      root.render(<GlobalSearchDialog open onOpenChange={vi.fn()} isSessionPersistenceReady />)
+      await new Promise((resolve) => window.setTimeout(resolve, 20))
+    })
+
+    const input = document.body.querySelector<HTMLInputElement>('input[role="combobox"]')
+    const valueSetter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype,
+      'value'
+    )?.set
+    await act(async () => {
+      valueSetter?.call(input, 'sin')
+      input?.dispatchEvent(new Event('input', { bubbles: true }))
+      await new Promise((resolve) => window.setTimeout(resolve, 400))
+    })
+    await act(async () => {
+      document.body
+        .querySelector<HTMLButtonElement>('[data-testid="global-search-capture-evidence"]')
+        ?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      await new Promise((resolve) => window.setTimeout(resolve, 20))
+    })
+    await act(async () => {
+      document.body
+        .querySelector<HTMLButtonElement>('[data-testid="global-search-pin-review"]')
+        ?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      await new Promise((resolve) => window.setTimeout(resolve, 20))
+    })
+
+    // Reviews are read from the block's own session, then the line is filed into the only review.
+    expect(window.api.reviewer.getForSession).toHaveBeenCalledWith({
+      projectId: 'project-a',
+      appSessionId: 'session-a'
+    })
+    expect(attach).toHaveBeenCalledWith({ action: 'attach', reviewId: 'review-1', line })
+    expect(
+      document.body.querySelector('[data-testid="global-search-pin-status"]')?.textContent
+    ).toBe('Pinned to the review')
+  })
+
+  it('offers the session\u2019s reviews when there is more than one to choose from', async () => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: vi.fn().mockResolvedValue(undefined) }
+    })
+    const line = {
+      schemaVersion: 1 as const,
+      projectId: 'project-a',
+      sessionId: 'session-a',
+      messageId: 'message-2',
+      role: 'agent' as const,
+      capturedAt: '2026-09-14T10:00:00.000Z',
+      query: 'sin',
+      terms: ['sin'],
+      snippet: 'wrote sin(x) values',
+      fingerprint: `sha256:${'b'.repeat(64)}`
+    }
+    const attach = vi.fn(async () => ({ status: 'attached', evidence: { id: 'pin-1' } }))
+    Object.defineProperty(window.api.search, 'evidence', {
+      configurable: true,
+      value: vi.fn(async (request: { action: string }) =>
+        request.action === 'capture' ? { status: 'captured', line } : { status: 'verified' }
+      )
+    })
+    Object.defineProperty(window.api, 'reviewer', {
+      configurable: true,
+      value: {
+        getForSession: vi.fn(async () => [
+          { id: 'review-1', createdAt: 1710000000000, turnMessageId: 'turn-1' },
+          { id: 'review-2', createdAt: 1710003600000, turnMessageId: 'turn-2' }
+        ]),
+        evidence: attach
+      }
+    })
+    vi.mocked(window.api.search.query).mockResolvedValue({
+      schemaVersion: 1,
+      query: 'sin',
+      scopes: ['messages'],
+      hits: [
+        {
+          scope: 'messages',
+          id: 'message-2',
+          projectId: 'project-a',
+          title: 'Sine plot',
+          score: 9,
+          matches: [{ field: 'body', snippet: 'wrote sin(x) values', offset: 6 }],
+          sessionId: 'session-a',
+          role: 'agent'
+        }
+      ],
+      counts: { sessions: 0, messages: 1, files: 0, literature: 0 },
+      truncated: false,
+      scan: { sessions: 1, messages: 1, files: 0, references: 0, bounded: false },
+      appliedLimit: 100,
+      notes: []
+    })
+
+    await act(async () => {
+      root.render(<GlobalSearchDialog open onOpenChange={vi.fn()} isSessionPersistenceReady />)
+      await new Promise((resolve) => window.setTimeout(resolve, 20))
+    })
+
+    const input = document.body.querySelector<HTMLInputElement>('input[role="combobox"]')
+    const valueSetter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype,
+      'value'
+    )?.set
+    await act(async () => {
+      valueSetter?.call(input, 'sin')
+      input?.dispatchEvent(new Event('input', { bubbles: true }))
+      await new Promise((resolve) => window.setTimeout(resolve, 400))
+    })
+    await act(async () => {
+      document.body
+        .querySelector<HTMLButtonElement>('[data-testid="global-search-capture-evidence"]')
+        ?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      await new Promise((resolve) => window.setTimeout(resolve, 20))
+    })
+    await act(async () => {
+      document.body
+        .querySelector<HTMLButtonElement>('[data-testid="global-search-pin-review"]')
+        ?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      await new Promise((resolve) => window.setTimeout(resolve, 20))
+    })
+
+    // Nothing is filed until a review is chosen.
+    expect(attach).not.toHaveBeenCalled()
+    const choices = document.body.querySelectorAll('[data-testid="global-search-pin-choice"]')
+    expect(choices).toHaveLength(2)
+
+    await act(async () => {
+      choices[1]?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      await new Promise((resolve) => window.setTimeout(resolve, 20))
+    })
+
+    expect(attach).toHaveBeenCalledWith({ action: 'attach', reviewId: 'review-2', line })
+  })
 })

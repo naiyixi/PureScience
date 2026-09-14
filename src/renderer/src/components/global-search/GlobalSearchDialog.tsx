@@ -29,7 +29,7 @@ import { useSessionStore } from '@/stores/session-store'
 
 import { useContentSearch } from './use-content-search'
 import { useSearchEvidence } from './use-search-evidence'
-import { evidenceReasonLabelKey } from './search-evidence-labels'
+import { evidenceReasonLabelKey, pinRejectionLabelKey } from './search-evidence-labels'
 import {
   getNextBatchCount,
   getRecentSessions,
@@ -656,6 +656,15 @@ export const GlobalSearchDialog = ({
 
   const renderContentRow = (hit: GlobalSearchHit, rowIndex: number): React.JSX.Element => {
     const active = rowIndex === activeRowIndex
+    // The pin status belongs to the row whose block is being filed, not to the palette at large.
+    const pinStatus = evidence.pinStatus
+    const pinMessageId =
+      'line' in pinStatus
+        ? pinStatus.line.messageId
+        : 'messageId' in pinStatus
+          ? pinStatus.messageId
+          : undefined
+    const pinStateForHit = pinMessageId === hit.id ? pinStatus : undefined
     const scopeLabel =
       hit.scope === 'messages'
         ? t('gs.contentScopeMessage')
@@ -726,6 +735,60 @@ export const GlobalSearchDialog = ({
                 {t('gs.verifyEvidence')}
               </Button>
             ) : null}
+            {evidence.status.state === 'captured' &&
+            evidence.status.hitKey === `${hit.scope}:${hit.id}` ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                aria-label={t('gs.pinToReview')}
+                data-testid="global-search-pin-review"
+                className="h-7 shrink-0 px-2 text-xs"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  if (evidence.status.state === 'captured')
+                    void evidence.beginPin(evidence.status.line)
+                }}
+              >
+                {t('gs.pinToReview')}
+              </Button>
+            ) : null}
+            {pinStateForHit ? (
+              <span
+                data-testid="global-search-pin-status"
+                className="shrink-0 text-xs text-muted-foreground"
+              >
+                {pinStateForHit.state === 'choosing'
+                  ? `${t('gs.pinChooseReview')}:`
+                  : pinStateForHit.state === 'no-reviews'
+                    ? t('gs.pinNoReviews')
+                    : pinStateForHit.state === 'pinned'
+                      ? t('gs.pinned')
+                      : pinStateForHit.state === 'rejected'
+                        ? t(pinRejectionLabelKey(pinStateForHit.reason))
+                        : pinStateForHit.state === 'failed'
+                          ? t('gs.pinFailed')
+                          : ''}
+              </span>
+            ) : null}
+            {pinStateForHit?.state === 'choosing'
+              ? pinStateForHit.reviews.map((review) => (
+                  <Button
+                    key={review.id}
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    data-testid="global-search-pin-choice"
+                    className="h-7 shrink-0 px-2 text-xs"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      void evidence.pin(review.id)
+                    }}
+                  >
+                    {new Date(review.createdAt).toLocaleDateString()}
+                  </Button>
+                ))
+              : null}
             {evidence.status.state !== 'idle' &&
             evidence.status.state !== 'busy' &&
             evidence.status.hitKey === `${hit.scope}:${hit.id}` ? (
