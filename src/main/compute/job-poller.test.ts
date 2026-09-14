@@ -1235,8 +1235,14 @@ describe('compute_done notification on dispatch_failed (error) jobs', () => {
     })
 
     await poller.tick()
-    // Wait for the async notification to settle
-    await new Promise((resolve) => setTimeout(resolve, 10))
+    // Wait for the async notification to settle. A fixed delay is a guess that a loaded machine beats:
+    // wait for the write itself, so the assertions below do not depend on how busy the host is.
+    await vi.waitFor(() =>
+      expect(update).toHaveBeenCalledWith(
+        'job-1',
+        expect.objectContaining({ notifiedAt: expect.any(Date) })
+      )
+    )
 
     // Status update was called with error/dispatch_failed
     expect(update).toHaveBeenCalledWith(
