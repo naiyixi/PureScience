@@ -362,6 +362,42 @@ describe('conversation export service', () => {
     expect(html).toContain('&lt;script&gt;')
     expect(html).toContain('trace-report')
   })
+
+  it('writes model findings and human evidence as separate sections in a trace export', async () => {
+    showSaveDialog.mockResolvedValue({ canceled: false, filePath: '/downloads/trace-split.md' })
+    await createService().exportConversation({
+      projectId: 'project-1',
+      sessionId: 'session-1',
+      format: 'markdown',
+      trace: {
+        title: 'SHANK2 trace',
+        steps: [{ label: 'Run notebook cell', status: 'done', evidence: 'out/deg.csv:3' }],
+        findings: [{ claim: '声称已跑全量', status: 'warn', evidence: '日志只有降采样' }],
+        humanEvidence: [
+          {
+            snippet: 'wrote sin(x) values',
+            fingerprint: `sha256:${'a'.repeat(64)}`,
+            role: 'agent',
+            query: 'sin csv',
+            terms: ['sin', 'csv'],
+            capturedAt: '2026-09-14T10:00:00.000Z'
+          }
+        ]
+      }
+    })
+
+    // The two voices travel through the real export path as separate sections, each item on its own
+    // side — never merged into one list of "evidence".
+    const written = String(writeExportFile.mock.calls[0][1])
+    const findingsAt = written.indexOf('## 模型发现')
+    const evidenceAt = written.indexOf('## 人工附证')
+    expect(findingsAt).toBeGreaterThan(-1)
+    expect(evidenceAt).toBeGreaterThan(findingsAt)
+    expect(written.slice(findingsAt, evidenceAt)).toContain('声称已跑全量')
+    expect(written.slice(findingsAt, evidenceAt)).not.toContain('wrote sin(x) values')
+    expect(written.slice(evidenceAt)).toContain('wrote sin(x) values')
+    expect(written.slice(evidenceAt)).toContain(`指纹 sha256:${'a'.repeat(64)}`)
+  })
 })
 
 describe('conversation export IPC handler', () => {

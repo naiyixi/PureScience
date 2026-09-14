@@ -142,6 +142,10 @@ const createConversationExportService = (
             steps: request.trace.steps,
             artifacts: request.trace.artifacts,
             checkpoint: request.trace.checkpoint,
+            // Two separate voices: what the reviewer model claimed, and what a person pinned. Both
+            // travel through untouched — rebuilding this document must not drop them.
+            findings: request.trace.findings,
+            humanEvidence: request.trace.humanEvidence,
             scopes: request.trace.scopes,
             caveats: request.trace.caveats
           }
