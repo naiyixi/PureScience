@@ -93,6 +93,14 @@ const { createReviewerCommandOwner, registerReviewerIpcHandlers } = await import
 const { beginMigration, clearMigrationPending } = await import('../storage/migration-state')
 
 const acpRuntime = {} as AcpRuntime
+// Evidence verification is required by the reviewer owner; these tests exercise other paths, so the
+// stub answers the way a missing block would, which is the honest answer when nothing is pinned.
+const searchEvidence = {
+  verify: vi.fn(async () => ({
+    status: 'unavailable' as const,
+    reason: 'message-not-found' as const
+  }))
+}
 
 const createRequest = (): ReviewRunRequest => ({
   sessionId: 'session-1',
@@ -134,7 +142,7 @@ describe('reviewer IPC handlers', () => {
       })
       return backgroundRun
     })
-    const options = { acpRuntime }
+    const options = { acpRuntime, searchEvidence }
     const owner = createReviewerCommandOwner(options)
     registerReviewerIpcHandlers(options, owner)
 
@@ -150,7 +158,7 @@ describe('reviewer IPC handlers', () => {
   })
 
   it('runs reviews with artifacts rooted at the data root, not the config root', async () => {
-    registerReviewerIpcHandlers({ acpRuntime })
+    registerReviewerIpcHandlers({ acpRuntime, searchEvidence })
 
     const runHandler = handlers.get(REVIEWER_IPC.RUN)
     expect(runHandler).toBeDefined()
@@ -166,7 +174,7 @@ describe('reviewer IPC handlers', () => {
   })
 
   it('carries the renderer supervisor plan into the run instead of dropping it at this boundary', async () => {
-    registerReviewerIpcHandlers({ acpRuntime })
+    registerReviewerIpcHandlers({ acpRuntime, searchEvidence })
 
     const supervisor = {
       wakes: [
@@ -188,7 +196,7 @@ describe('reviewer IPC handlers', () => {
   })
 
   it('leaves the run without a supervisor plan when the turn earned no wake-up', async () => {
-    registerReviewerIpcHandlers({ acpRuntime })
+    registerReviewerIpcHandlers({ acpRuntime, searchEvidence })
 
     handlers.get(REVIEWER_IPC.RUN)?.({}, createRequest())
 
@@ -206,6 +214,7 @@ describe('reviewer IPC handlers', () => {
     getProjectDbClient.mockReset()
     registerReviewerIpcHandlers({
       acpRuntime,
+      searchEvidence,
       storageRoot: '/tmp/injected-config',
       dataRoot: '/tmp/injected-data'
     })
@@ -230,7 +239,7 @@ describe('reviewer IPC handlers', () => {
 
   it('forwards scopeTurnMessageId so a re-run audits the scope turn, grouped under turnMessageId', async () => {
     runReview.mockClear()
-    registerReviewerIpcHandlers({ acpRuntime })
+    registerReviewerIpcHandlers({ acpRuntime, searchEvidence })
 
     const runHandler = handlers.get(REVIEWER_IPC.RUN)
     // Re-running a fix-loop review: grouped under the original turn, but audit the correction turn.
@@ -253,7 +262,7 @@ describe('reviewer IPC handlers', () => {
     sessionLoadOne
       .mockResolvedValueOnce({ id: 'session-1', messages: [{ id: 'original-turn' }] })
       .mockResolvedValueOnce({ id: 'session-1', messages: [{ id: 'correction-turn' }] })
-    registerReviewerIpcHandlers({ acpRuntime })
+    registerReviewerIpcHandlers({ acpRuntime, searchEvidence })
 
     const runHandler = handlers.get(REVIEWER_IPC.RUN)
     await runHandler?.({}, createRequest())
@@ -280,7 +289,7 @@ describe('reviewer IPC handlers', () => {
           resolveRun = () => resolve()
         })
     )
-    registerReviewerIpcHandlers({ acpRuntime })
+    registerReviewerIpcHandlers({ acpRuntime, searchEvidence })
 
     const runHandler = handlers.get(REVIEWER_IPC.RUN)
     runHandler?.({}, createRequest())
@@ -298,7 +307,7 @@ describe('reviewer IPC handlers', () => {
   it('returns started:false without a review row or broadcast when the session load fails', async () => {
     // The pre-runReview session load throws (e.g. DB/FS unavailable).
     sessionLoadOne.mockRejectedValueOnce(new Error('session store unavailable'))
-    registerReviewerIpcHandlers({ acpRuntime })
+    registerReviewerIpcHandlers({ acpRuntime, searchEvidence })
 
     const runHandler = handlers.get(REVIEWER_IPC.RUN)
     const result = await runHandler?.({}, { ...createRequest(), turnMessageId: 'message-1' })
@@ -314,7 +323,7 @@ describe('reviewer IPC handlers', () => {
     // through to runReview would create a non-retriable error card that replaces the stale card the
     // user was re-running; instead we bail with started:false so the existing card + Re-run survive.
     sessionLoadOne.mockResolvedValueOnce(undefined)
-    registerReviewerIpcHandlers({ acpRuntime })
+    registerReviewerIpcHandlers({ acpRuntime, searchEvidence })
 
     const runHandler = handlers.get(REVIEWER_IPC.RUN)
     const result = await runHandler?.({}, createRequest())
@@ -330,7 +339,7 @@ describe('reviewer IPC handlers', () => {
     // lock would drop the retry as "already in flight").
     sessionLoadOne.mockReset()
     sessionLoadOne.mockResolvedValueOnce(undefined).mockResolvedValue({ id: 'session-1' })
-    registerReviewerIpcHandlers({ acpRuntime })
+    registerReviewerIpcHandlers({ acpRuntime, searchEvidence })
 
     const runHandler = handlers.get(REVIEWER_IPC.RUN)
 
@@ -347,7 +356,7 @@ describe('reviewer IPC handlers', () => {
     // e.g. scope resolution or the createReview insert throws before the running row is pushed.
     runReview.mockReset()
     runReview.mockRejectedValueOnce(new Error('createReview failed'))
-    registerReviewerIpcHandlers({ acpRuntime })
+    registerReviewerIpcHandlers({ acpRuntime, searchEvidence })
 
     const runHandler = handlers.get(REVIEWER_IPC.RUN)
     const result = await runHandler?.({}, createRequest())
@@ -358,7 +367,7 @@ describe('reviewer IPC handlers', () => {
 
   it('returns started:true when a review begins', async () => {
     runReview.mockClear()
-    registerReviewerIpcHandlers({ acpRuntime })
+    registerReviewerIpcHandlers({ acpRuntime, searchEvidence })
 
     const runHandler = handlers.get(REVIEWER_IPC.RUN)
     const result = await runHandler?.({}, createRequest())
@@ -368,7 +377,7 @@ describe('reviewer IPC handlers', () => {
   })
 
   it('does not start a Review sidecar writer while data-root migration is pending', async () => {
-    registerReviewerIpcHandlers({ acpRuntime })
+    registerReviewerIpcHandlers({ acpRuntime, searchEvidence })
     beginMigration()
 
     const result = await handlers.get(REVIEWER_IPC.RUN)?.({}, createRequest())
@@ -381,7 +390,7 @@ describe('reviewer IPC handlers', () => {
     // The cross-renderer TOCTOU: even if the caller's local store looked empty, main is the single
     // serialization point — a review already exists for this turn, so an auto request is a duplicate.
     getReviewsForSession.mockResolvedValue([{ turnMessageId: 'message-1' }])
-    registerReviewerIpcHandlers({ acpRuntime })
+    registerReviewerIpcHandlers({ acpRuntime, searchEvidence })
 
     const runHandler = handlers.get(REVIEWER_IPC.RUN)
     const result = await runHandler?.({}, { ...createRequest(), origin: 'auto' })
@@ -392,7 +401,7 @@ describe('reviewer IPC handlers', () => {
 
   it('runs an auto review when no review exists yet for the turn', async () => {
     getReviewsForSession.mockResolvedValue([{ turnMessageId: 'a-different-turn' }])
-    registerReviewerIpcHandlers({ acpRuntime })
+    registerReviewerIpcHandlers({ acpRuntime, searchEvidence })
 
     const runHandler = handlers.get(REVIEWER_IPC.RUN)
     const result = await runHandler?.({}, { ...createRequest(), origin: 'auto' })
@@ -404,7 +413,7 @@ describe('reviewer IPC handlers', () => {
   it('fails closed when the idempotency lookup throws: no run, lock released, retryable', async () => {
     // The lookup can't confirm the turn is un-reviewed — proceeding risks a duplicate, so refuse.
     getReviewsForSession.mockRejectedValueOnce(new Error('db read failed'))
-    registerReviewerIpcHandlers({ acpRuntime })
+    registerReviewerIpcHandlers({ acpRuntime, searchEvidence })
 
     const runHandler = handlers.get(REVIEWER_IPC.RUN)
     const result = await runHandler?.({}, { ...createRequest(), origin: 'auto' })
@@ -422,7 +431,7 @@ describe('reviewer IPC handlers', () => {
   it('lets a manual re-run bypass idempotency even when the turn already has a review', async () => {
     // Manual stale/error Re-run must force a fresh review — it never consults the auto-idempotency check.
     getReviewsForSession.mockResolvedValue([{ turnMessageId: 'message-1' }])
-    registerReviewerIpcHandlers({ acpRuntime })
+    registerReviewerIpcHandlers({ acpRuntime, searchEvidence })
 
     const runHandler = handlers.get(REVIEWER_IPC.RUN)
     const result = await runHandler?.({}, { ...createRequest(), origin: 'manual' })
@@ -445,7 +454,7 @@ describe('reviewer IPC handlers', () => {
       getReviewsForSession.mockResolvedValue(reviews)
       // The default sessionLoadAll mock returns [{ id: 'session-1' }], which matches the request.
       flagStaleReviews.mockResolvedValue(flagged as never)
-      registerReviewerIpcHandlers({ acpRuntime })
+      registerReviewerIpcHandlers({ acpRuntime, searchEvidence })
 
       const getHandler = handlers.get(REVIEWER_IPC.GET_FOR_SESSION)
       expect(getHandler).toBeDefined()
@@ -472,7 +481,7 @@ describe('reviewer IPC handlers', () => {
       const reviews = [{ id: 'review-1', turnMessageId: 'message-1' }]
       getReviewsForSession.mockResolvedValue(reviews)
       // sessionLoadAll returns [{ id: 'session-1' }] by default; look up a different session id.
-      registerReviewerIpcHandlers({ acpRuntime })
+      registerReviewerIpcHandlers({ acpRuntime, searchEvidence })
 
       const getHandler = handlers.get(REVIEWER_IPC.GET_FOR_SESSION)
       sessionLoadOne.mockResolvedValueOnce(undefined)
@@ -500,7 +509,7 @@ describe('reviewer IPC handlers', () => {
       const reviews = [{ id: 'review-1', turnMessageId: 'message-1' }]
       getReviewsForSession.mockResolvedValue(reviews)
       sessionLoadOne.mockRejectedValueOnce(new Error('session store unavailable'))
-      registerReviewerIpcHandlers({ acpRuntime })
+      registerReviewerIpcHandlers({ acpRuntime, searchEvidence })
 
       const getHandler = handlers.get(REVIEWER_IPC.GET_FOR_SESSION)
       const result = await getHandler?.(
@@ -519,7 +528,7 @@ describe('reviewer IPC handlers', () => {
 
   describe('reviewer:abort-fix-loop handler', () => {
     it('is registered and a no-op (with a warn log) when no fix loop is active for the session', () => {
-      registerReviewerIpcHandlers({ acpRuntime })
+      registerReviewerIpcHandlers({ acpRuntime, searchEvidence })
 
       const abortHandler = handlers.get(REVIEWER_IPC.ABORT_FIX_LOOP)
       expect(abortHandler).toBeDefined()
@@ -545,7 +554,7 @@ describe('reviewer IPC handlers', () => {
         return Promise.resolve(undefined)
       })
 
-      registerReviewerIpcHandlers({ acpRuntime })
+      registerReviewerIpcHandlers({ acpRuntime, searchEvidence })
 
       // Trigger a review so the orchestrator options are captured.
       const runHandler = handlers.get(REVIEWER_IPC.RUN)
@@ -595,7 +604,7 @@ describe('reviewer IPC handlers', () => {
         opts?.onStarted?.()
         return Promise.resolve(undefined)
       })
-      registerReviewerIpcHandlers({ acpRuntime })
+      registerReviewerIpcHandlers({ acpRuntime, searchEvidence })
       const runHandler = handlers.get(REVIEWER_IPC.RUN)
       // Fire-and-forget the triggerReview call so vi.waitFor can flush the microtask queue. The
       // synchronous call path resolves either with started:true (no in-flight lock) or one of the
@@ -756,7 +765,7 @@ describe('reviewer IPC handlers', () => {
       sessionLoadOne.mockClear()
 
       runReview.mockClear()
-      registerReviewerIpcHandlers({ acpRuntime })
+      registerReviewerIpcHandlers({ acpRuntime, searchEvidence })
 
       const runHandler = handlers.get(REVIEWER_IPC.RUN)
       const result = await runHandler?.({}, { sessionId: 'session-1', turnMessageId: 'message-1' })

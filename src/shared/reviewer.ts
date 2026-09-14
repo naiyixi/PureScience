@@ -417,5 +417,7 @@ export const REVIEWER_IPC = {
   // Renderer → main: mark a checklist claim addressed (or back to open).
   MUTATE_CHECKLIST: 'reviewer:mutate-checklist',
   // Renderer → main: load the session's folded-context chunks (fold timeline).
-  GET_CHUNKS: 'reviewer:get-chunks'
+  GET_CHUNKS: 'reviewer:get-chunks',
+  // Renderer → main: pin a verified search-hit line to a review, or list what is pinned.
+  EVIDENCE: 'reviewer:evidence'
 } as const

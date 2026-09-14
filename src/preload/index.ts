@@ -67,6 +67,7 @@ import type {
   VerificationChecklistMutationRequest,
   ContextSummaryChunkView
 } from '../shared/reviewer'
+import type { ReviewEvidenceRequest } from '../shared/review-evidence'
 import type { RoutineConfigureRequest } from '../shared/routine'
 import type { EndpointRegisterRequest } from '../shared/endpoint'
 import type { AnnotationSetRequest } from '../shared/annotation'
@@ -816,6 +817,9 @@ const api: PureScienceAPI = {
   },
   reviewer: {
     run: (request: ReviewRunRequest) => electronRendererContracts.invoke('reviewer.run', request),
+    // Pins a verified search-hit line to a review, or loads what is pinned to it.
+    evidence: (request: ReviewEvidenceRequest) =>
+      electronRendererContracts.invoke('reviewer.evidence', request),
     // Loads the session's aggregated verification checklist.
     getChecklist: (request: ReviewSessionRequest) =>
       electronRendererContracts.invoke('reviewer.getChecklist', request),

@@ -176,6 +176,8 @@ import {
 } from './session-persistence/conversation-export'
 import { createProjectFilesHandlers, registerProjectFilesIpcHandlers } from './project-files/ipc'
 import { createSearchIpcHandlers, registerSearchIpcHandlers } from './search/ipc'
+import { createSearchEvidenceService } from './search/search-evidence'
+import { toSearchableMessages } from './search/handlers'
 import { createManagedFileIndexRepository } from './project-files/repository'
 import { ProjectDeletionCoordinator } from './projects/deletion-coordinator'
 import { getProjectDbClient } from './projects/prisma-client'
@@ -2197,6 +2199,18 @@ const createApplicationModules = async (
   const reviewerOptions = {
     acpRuntime: runtime,
     mcpEntryPath: mainEntryPath,
+    // Pins are verified against the same loaded sessions the search reads, so a pin and a palette
+    // hit can never disagree about what the transcript says.
+    searchEvidence: {
+      verify: (line) =>
+        createSearchEvidenceService({
+          readSessionMessages: async (sessionId) => {
+            const { sessions } = await sessionPersistenceBackend.loadAll()
+            const session = sessions.find((candidate) => candidate.id === sessionId)
+            return session ? toSearchableMessages(session) : []
+          }
+        }).verify(line)
+    },
     artifactProvenanceRepository,
     withSessionMutation: <Result>(
       projectId: string,

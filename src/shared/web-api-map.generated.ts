@@ -146,6 +146,7 @@ export const WEB_INVOKE_CHANNELS = {
   'remoteAccess.revokeBrowser': 'remote-access:revoke-browser',
   'remoteAccess.setMode': 'remote-access:set-mode',
   'reviewer.abortFixLoop': 'reviewer:abort-fix-loop',
+  'reviewer.evidence': 'reviewer:evidence',
   'reviewer.getChecklist': 'reviewer:get-checklist',
   'reviewer.getChunks': 'reviewer:get-chunks',
   'reviewer.getForSession': 'reviewer:get-for-session',

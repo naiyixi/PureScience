@@ -89,6 +89,27 @@ model Review {
   findings      Finding[]
   causedDispositions ReviewFindingDisposition[]
   scopeSnapshot       ReviewScopeSnapshot?
+  evidence            ReviewEvidence[]
+}
+
+// Evidence a person pinned to a review from a verified search hit. Deliberately kept apart from
+// Finding.evidence, which is what the reviewer model itself claimed: a reader must be able to tell a
+// model's assertion from a human's pinned, fingerprint-checkable block.
+model ReviewEvidence {
+  id          String   @id @default(cuid())
+  reviewId    String
+  projectId   String
+  sessionId   String
+  messageId   String
+  fingerprint String
+  query       String   @default("")
+  terms       String   @default("[]")
+  snippet     String   @default("")
+  capturedAt  DateTime
+  createdAt   DateTime @default(now())
+  review      Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@index([reviewId])
 }
 
 // A unified check row — replaces both the old warn/fail-only Finding and the pass-only ReviewCheck

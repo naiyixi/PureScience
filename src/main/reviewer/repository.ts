@@ -2,7 +2,12 @@ import { createHash, randomUUID } from 'node:crypto'
 import { mkdir, rename, rm, writeFile } from 'node:fs/promises'
 import { dirname, relative, resolve, sep } from 'node:path'
 
-import type { Finding as PrismaFinding, PrismaClient, Review as PrismaReview } from '@prisma/client'
+import type {
+  Finding as PrismaFinding,
+  PrismaClient,
+  Review as PrismaReview,
+  ReviewEvidence as PrismaReviewEvidence
+} from '@prisma/client'
 
 import type {
   CheckStatus,
@@ -24,6 +29,8 @@ import type {
   VerificationChecklist,
   VerificationChecklistItem
 } from '../../shared/reviewer'
+import type { ReviewEvidenceAttachment } from '../../shared/review-evidence'
+import { REVIEW_EVIDENCE_SCHEMA_VERSION } from '../../shared/review-evidence'
 
 // Legacy alias for callers still using FindingSeverity (now CheckStatus).
 type FindingSeverity = CheckStatus
@@ -37,6 +44,7 @@ type ReviewClient = Pick<
   | 'finding'
   | 'reviewFindingDisposition'
   | 'reviewScopeSnapshot'
+  | 'reviewEvidence'
   | '$executeRaw'
   | '$transaction'
 >
@@ -572,7 +580,6 @@ class ReviewRepository {
   async deleteReviewsForSession(sessionId: string): Promise<void> {
     await this.deleteReviewsWhere({ sessionId })
   }
-
   // Removes every review (and its checks) belonging to a project.
   async deleteReviewsForProject(projectId: string): Promise<void> {
     await this.deleteReviewsWhere({ projectId })
@@ -934,6 +941,58 @@ class ReviewRepository {
     return client.finding.count()
   }
 
+  // ---- Human-pinned evidence ---------------------------------------------------------------
+  // Its own table, so nothing here can be mistaken for the model-written checks above.
+
+  async findReviewById(reviewId: string): Promise<Review | undefined> {
+    const client = await this.getClient()
+    const row = await client.review.findUnique({ where: { id: reviewId } })
+
+    return row ? toReview(row) : undefined
+  }
+
+  async appendReviewEvidence(input: {
+    reviewId: string
+    projectId: string
+    sessionId: string
+    messageId: string
+    fingerprint: string
+    query: string
+    terms: readonly string[]
+    snippet: string
+    capturedAt: Date
+  }): Promise<ReviewEvidenceAttachment> {
+    const client = await this.getClient()
+    const row = await client.reviewEvidence.create({
+      data: {
+        id: (this.options.createId ?? randomUUID)(),
+        reviewId: input.reviewId,
+        projectId: input.projectId,
+        sessionId: input.sessionId,
+        messageId: input.messageId,
+        fingerprint: input.fingerprint,
+        query: input.query,
+        terms: JSON.stringify([...input.terms]),
+        snippet: input.snippet,
+        capturedAt: input.capturedAt
+      }
+    })
+
+    return toReviewEvidence(row)
+  }
+
+  async listReviewEvidence(reviewIds: readonly string[]): Promise<ReviewEvidenceAttachment[]> {
+    if (reviewIds.length === 0) return []
+
+    const client = await this.getClient()
+    const rows = await client.reviewEvidence.findMany({
+      where: { reviewId: { in: [...reviewIds] } },
+      orderBy: { createdAt: 'asc' }
+    })
+
+    return rows.map(toReviewEvidence)
+  }
+
   // Shared delete path: gather the matching review ids, drop their checks, then drop the reviews.
   private async deleteReviewsWhere(where: {
     sessionId?: string
@@ -947,11 +1006,28 @@ class ReviewRepository {
     const reviewIds = reviews.map((review) => review.id)
 
     await client.finding.deleteMany({ where: { reviewId: { in: reviewIds } } })
+    await client.reviewEvidence.deleteMany({ where: { reviewId: { in: reviewIds } } })
     await client.review.deleteMany({ where: { id: { in: reviewIds } } })
   }
 }
 
-export { ReviewRepository, toCheck, toReview }
+// Maps a Prisma ReviewEvidence row to the domain pin. The schema version is stamped here, so a stored
+// pin always states which contract wrote it.
+const toReviewEvidence = (row: PrismaReviewEvidence): ReviewEvidenceAttachment => ({
+  schemaVersion: REVIEW_EVIDENCE_SCHEMA_VERSION,
+  id: row.id,
+  reviewId: row.reviewId,
+  projectId: row.projectId,
+  sessionId: row.sessionId,
+  messageId: row.messageId,
+  fingerprint: row.fingerprint,
+  query: row.query,
+  terms: parseJson<string[]>(row.terms, []),
+  snippet: row.snippet,
+  capturedAt: row.capturedAt.toISOString()
+})
+
+export { ReviewRepository, toCheck, toReview, toReviewEvidence }
 export type { ReviewClient, ReviewClientProvider, ReviewRepositoryOptions, FindingSeverity }
 
 // Legacy exports kept for callers that still reference toFinding.

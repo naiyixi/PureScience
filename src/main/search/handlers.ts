@@ -66,7 +66,7 @@ const toSearchableSession = (session: PersistedChatSession): SearchableSession =
 
 // A persisted message has no timestamp of its own: it is dated by its session, which is what a caller
 // implicitly assumes when filtering by date. The fallback is deliberate, not an accident.
-const toSearchableMessages = (session: PersistedChatSession): SearchableSessionMessage[] => {
+export const toSearchableMessages = (session: PersistedChatSession): SearchableSessionMessage[] => {
   const timestamp = toIso(session.updatedAt ?? session.createdAt)
 
   return (session.messages ?? []).map((message) => ({

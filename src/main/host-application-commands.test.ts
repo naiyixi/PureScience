@@ -116,7 +116,8 @@ const createDependencies = (): HostApplicationCommandDependencies => ({
     abortFixLoop: vi.fn(() => undefined),
     getChecklist: vi.fn(async () => ({ projectId: 'p', sessionId: 's', items: [] })),
     mutateChecklist: vi.fn(async () => undefined),
-    getChunks: vi.fn(async () => [])
+    getChunks: vi.fn(async () => []),
+    evidence: vi.fn(async () => ({ attachments: [] }))
   },
   routine: {
     listAll: vi.fn(async () => []),
@@ -347,7 +348,7 @@ describe('Host application commands', () => {
         .filter((channel): channel is string => channel !== null)
     }))
 
-    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(67)
+    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(68)
     const actualGroups = hostApplicationCommandGroups
       .map(({ name, commands }) => ({
         capability: name,
@@ -365,7 +366,7 @@ describe('Host application commands', () => {
       {} as HostApplicationCommandDependencies
     )
 
-    expect(router.dispatcher.commandNames()).toHaveLength(67)
+    expect(router.dispatcher.commandNames()).toHaveLength(68)
     installation.uninstall()
     expect(router.dispatcher.commandNames()).toEqual([])
   })
@@ -474,6 +475,10 @@ describe('Host application commands', () => {
       invocation([reviewSession])
     )
     await router.dispatcher.invoke(hostApplicationCommands.reviewer.run, invocation([reviewRun]))
+    await router.dispatcher.invoke(
+      hostApplicationCommands.reviewer.evidence,
+      invocation([{ action: 'list' as const, reviewIds: ['review-1'] }])
+    )
     await router.dispatcher.invoke(hostApplicationCommands.routine.listAll, invocation([]))
     await router.dispatcher.invoke(
       hostApplicationCommands.routine.upsert,
@@ -601,6 +606,10 @@ describe('Host application commands', () => {
       resolution: 'resolved'
     })
     expect(dependencies.reviewer.getChunks).toHaveBeenCalledWith(reviewSession)
+    expect(dependencies.reviewer.evidence).toHaveBeenCalledWith({
+      action: 'list',
+      reviewIds: ['review-1']
+    })
     expect(dependencies.routine.listAll).toHaveBeenCalledWith()
     expect(dependencies.routine.upsert).toHaveBeenCalledWith('session-1', routineConfigure)
     expect(dependencies.routine.remove).toHaveBeenCalledWith('session-1', 'routine-1')

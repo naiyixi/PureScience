@@ -286,6 +286,7 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['abortFixLoop', 'reviewer:abort-fix-loop'], ['getChecklist', 'reviewer:get-checklist'],
     ['getForSession', 'reviewer:get-for-session'], ['mutateChecklist', 'reviewer:mutate-checklist'],
     ['getChunks', 'reviewer:get-chunks'], ['run', 'reviewer:run'],
+    ['evidence', 'reviewer:evidence'],
   ]),
   group('routine', 'routine', [
     ['listAll', 'routine:list-all', LOCAL], ['upsert', 'routine:upsert', LOCAL],

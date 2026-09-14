@@ -107,6 +107,23 @@ const NOTIFICATION_INBOX_ITEM_INDEX_DDLS = [
 // v3 (issue 13): reasoning replaced by reviewerLog (captured action stream JSON array).
 // Same runtime-DDL approach — applied as CREATE TABLE IF NOT EXISTS so a packaged app stays
 // byte-compatible with the generated client.
+const REVIEW_EVIDENCE_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "ReviewEvidence" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "reviewId" TEXT NOT NULL,
+    "projectId" TEXT NOT NULL,
+    "sessionId" TEXT NOT NULL,
+    "messageId" TEXT NOT NULL,
+    "fingerprint" TEXT NOT NULL,
+    "query" TEXT NOT NULL DEFAULT '',
+    "terms" TEXT NOT NULL DEFAULT '[]',
+    "snippet" TEXT NOT NULL DEFAULT '',
+    "capturedAt" DATETIME NOT NULL,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "ReviewEvidence_reviewId_fkey" FOREIGN KEY ("reviewId") REFERENCES "Review" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);`
+
+const REVIEW_EVIDENCE_REVIEW_ID_INDEX_DDL = `CREATE INDEX IF NOT EXISTS "ReviewEvidence_reviewId_idx" ON "ReviewEvidence"("reviewId")`
+
 const REVIEW_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "Review" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "projectId" TEXT NOT NULL,
@@ -793,6 +810,8 @@ const ensureProjectSchema = async (client: PrismaClient): Promise<void> => {
   await client.$executeRawUnsafe(ARTIFACT_VERSION_INPUT_TABLE_DDL)
   await client.$executeRawUnsafe(REVIEW_FINDING_DISPOSITION_TABLE_DDL)
   await client.$executeRawUnsafe(REVIEW_SCOPE_SNAPSHOT_TABLE_DDL)
+  await client.$executeRawUnsafe(REVIEW_EVIDENCE_TABLE_DDL)
+  await client.$executeRawUnsafe(REVIEW_EVIDENCE_REVIEW_ID_INDEX_DDL)
 
   await ensureSqliteCheckConstraints(client, PROVENANCE_CHECK_CONSTRAINT_MIGRATIONS)
 

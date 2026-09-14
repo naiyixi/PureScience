@@ -14,6 +14,7 @@ import type {
   AcpSetPermissionProfileRequest,
   AcpStateSnapshot
 } from '../shared/acp'
+import type { ReviewEvidenceRequest, ReviewEvidenceResponse } from '../shared/review-evidence'
 import type { ElicitationRequestView, ElicitationRespondRequest } from '../shared/elicitation'
 import type {
   AddReferenceResult,
@@ -1008,6 +1009,8 @@ export interface PureScienceAPI {
     mutateChecklist(request: VerificationChecklistMutationRequest): Promise<void>
     // Loads the session's folded-context chunks (fold timeline).
     getChunks(request: ReviewSessionRequest): Promise<ContextSummaryChunkView[]>
+    // Pins a verified search-hit line to a review (attach), or loads what is pinned (list).
+    evidence(request: ReviewEvidenceRequest): Promise<ReviewEvidenceResponse>
   }
   routine: {
     // Lists every scheduled task across sessions (settings panel).

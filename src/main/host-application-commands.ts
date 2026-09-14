@@ -67,6 +67,7 @@ import {
 } from './remote-access/ipc'
 import type { RemoteAccessService } from './remote-access/service'
 import type { ReviewerCommandOwner } from './reviewer/ipc'
+import type { ReviewEvidenceRequest, ReviewEvidenceResponse } from '../shared/review-evidence'
 import type { UpdateCommandOwner } from './update/ipc'
 
 type StorageParentRequest = Readonly<{ parent: string }>
@@ -213,7 +214,12 @@ const reviewerCommands = Object.freeze({
     'reviewer:run',
     readonly [request: ReviewRunRequest],
     ReviewRunResult
-  >('reviewer:run')
+  >('reviewer:run'),
+  evidence: defineApplicationCommand<
+    'reviewer:evidence',
+    readonly [request: ReviewEvidenceRequest],
+    ReviewEvidenceResponse
+  >('reviewer:evidence')
 })
 
 const storageCommands = Object.freeze({
@@ -444,7 +450,13 @@ type HostApplicationCommandDependencies = Readonly<{
   >
   reviewer: Pick<
     ReviewerCommandOwner,
-    'run' | 'getForSession' | 'abortFixLoop' | 'getChecklist' | 'mutateChecklist' | 'getChunks'
+    | 'run'
+    | 'getForSession'
+    | 'abortFixLoop'
+    | 'getChecklist'
+    | 'mutateChecklist'
+    | 'getChunks'
+    | 'evidence'
   >
   routine: Readonly<{
     listAll: () => Promise<RoutineSchedule[]>
@@ -603,7 +615,8 @@ const registerHostApplicationCommands = (
       'reviewer:get-for-session': ({ args }) => dependencies.reviewer.getForSession(args[0]),
       'reviewer:mutate-checklist': ({ args }) => dependencies.reviewer.mutateChecklist(args[0]),
       'reviewer:get-chunks': ({ args }) => dependencies.reviewer.getChunks(args[0]),
-      'reviewer:run': ({ args }) => dependencies.reviewer.run(args[0])
+      'reviewer:run': ({ args }) => dependencies.reviewer.run(args[0]),
+      'reviewer:evidence': ({ args }) => dependencies.reviewer.evidence(args[0])
     })
     scope.registerGroup(hostApplicationCommandGroups[8], {
       'routine:list-all': ({ callerContext }) =>

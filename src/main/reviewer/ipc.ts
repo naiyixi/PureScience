@@ -17,6 +17,9 @@ import type {
 } from '../../shared/reviewer'
 import type { PersistedChatSession } from '../../shared/session-persistence'
 import { REVIEWER_IPC } from '../../shared/reviewer'
+import type { ReviewEvidenceRequest, ReviewEvidenceResponse } from '../../shared/review-evidence'
+import type { SearchEvidenceService } from '../search/search-evidence'
+import { createReviewEvidenceService } from './review-evidence-service'
 import { createLogger } from '../logger'
 import { runReview } from './orchestrator'
 import { flagStaleReviews } from './stale-reviews'
@@ -92,6 +95,9 @@ type ReviewerIpcOptions = {
   // Optional loader for the session's folded-context chunks (fold timeline UI). Absent ⇒ the
   // reviewer command returns an empty list (feature not wired).
   contextSummaryChunks?: (sessionId: string) => Promise<ContextSummaryChunkView[]>
+  // Verifies a pinned block against the transcript. Required: without it a pin could not be checked,
+  // and an unchecked pin would be worse than none.
+  searchEvidence: Pick<SearchEvidenceService, 'verify'>
 }
 
 type ReviewerCommandOwner = Readonly<{
@@ -102,6 +108,8 @@ type ReviewerCommandOwner = Readonly<{
   getChecklist: (request: ReviewSessionRequest) => Promise<VerificationChecklist>
   mutateChecklist: (request: VerificationChecklistMutationRequest) => Promise<void>
   getChunks: (request: ReviewSessionRequest) => Promise<ContextSummaryChunkView[]>
+  // Pins a verified search-hit line to a review, or lists what is pinned.
+  evidence: (request: ReviewEvidenceRequest) => Promise<ReviewEvidenceResponse>
 }>
 
 // Owns reviewer arbitration and fix-loop cancellation independently from any command transport.
@@ -110,6 +118,16 @@ const createReviewerCommandOwner = (options: ReviewerIpcOptions): ReviewerComman
   const storageRoot = options.storageRoot ?? resolveStorageRoot()
   const dataRoot = options.dataRoot ?? resolveDataRoot()
   const reviewRepository = createDefaultReviewRepository(storageRoot, dataRoot)
+  // Human-pinned evidence lives in its own table, verified against the transcript through the same
+  // check the palette offers — a stored pin always describes a block that matched when it was pinned.
+  const reviewEvidence = createReviewEvidenceService({
+    reviews: {
+      findReviewById: (reviewId) => reviewRepository.findReviewById(reviewId),
+      listReviewEvidence: (reviewIds) => reviewRepository.listReviewEvidence(reviewIds),
+      appendReviewEvidence: (input) => reviewRepository.appendReviewEvidence(input)
+    },
+    searchEvidence: options.searchEvidence
+  })
   const sessionRepository = new SessionRepository(storageRoot)
   const artifactProvenanceRepository =
     options.artifactProvenanceRepository ??
@@ -381,7 +399,8 @@ const createReviewerCommandOwner = (options: ReviewerIpcOptions): ReviewerComman
     abortFixLoop,
     getChecklist,
     mutateChecklist,
-    getChunks
+    getChunks,
+    evidence: reviewEvidence.handle
   }
 }
 
@@ -407,6 +426,9 @@ const registerReviewerIpcHandlers = (
   )
   ipcMainHandle(REVIEWER_IPC.GET_CHUNKS, (_event, request: ReviewSessionRequest) =>
     owner.getChunks(request)
+  )
+  ipcMainHandle(REVIEWER_IPC.EVIDENCE, (_event, request: ReviewEvidenceRequest) =>
+    owner.evidence(request)
   )
   return owner
 }
