@@ -21,9 +21,12 @@ export type SearchHandlerPorts = {
   // Every persisted session with its messages, as the startup path already loaded them. Bounded by the
   // caller (session scan limit), never re-read per query file by file.
   loadSessions(): Promise<PersistedChatSession[]>
-  listFiles(request: {
-    projectId: string
-  }): Promise<Array<{ id: string; title: string; relativePath: string; timestamp?: string }>>
+  listFiles(request: { projectId: string }): Promise<{
+    files: Array<{ id: string; title: string; relativePath: string; timestamp?: string }>
+    // True when the listing stopped at its own bound and the project holds more files than were
+    // listed. Without it a truncated list would read as the whole project.
+    listBounded?: boolean
+  }>
   listReferences(projectId: string): Promise<
     Array<{
       id: string
@@ -47,6 +50,10 @@ export type SearchHandlerPorts = {
 // How many files one query may read text from. Reading every file in a project would trade a fast
 // search for a complete one; the response says when the budget was reached instead of staying silent.
 export const GLOBAL_SEARCH_MAX_CONTENT_FILES = 40
+
+// How many pages of the project file listing one query may walk. The project files contract caps a page
+// at 100, so this is the listing bound; past it the response says the list was bounded.
+export const GLOBAL_SEARCH_FILE_LIST_MAX_PAGES = 5
 
 const withFileText = async (
   files: SearchableFile[],
@@ -124,10 +131,22 @@ export const createSearchHandlers = (ports: SearchHandlerPorts): SearchHandlers 
       'files',
       'literature'
     ]
+    const listed =
+      projectId && scopes.includes('files')
+        ? await ports.listFiles({ projectId })
+        : {
+            files: [] as Array<{
+              id: string
+              title: string
+              relativePath: string
+              timestamp?: string
+            }>,
+            listBounded: false
+          }
     const fileScan =
       projectId && scopes.includes('files')
         ? await withFileText(
-            (await ports.listFiles({ projectId })).map((file) => ({
+            listed.files.map((file) => ({
               id: file.id,
               projectId,
               title: file.title,
@@ -137,6 +156,7 @@ export const createSearchHandlers = (ports: SearchHandlerPorts): SearchHandlers 
             ports
           )
         : { files: [] as SearchableFile[], contentScanBounded: false }
+    const fileListBounded = listed.listBounded === true
     const files = fileScan.files
     const references: SearchableReference[] =
       projectId && scopes.includes('literature')
@@ -171,6 +191,8 @@ export const createSearchHandlers = (ports: SearchHandlerPorts): SearchHandlers 
     if (needsProject) notes.push('no-project-scope')
     // Say when the content budget, not the data, decided how many files were read.
     if (fileScan.contentScanBounded) notes.push('file-content-scan-bounded')
+    // And when the listing itself stopped early, so "no hit" cannot be read as "not in the project".
+    if (fileListBounded) notes.push('file-list-bounded')
 
     return notes.length > 0 ? { ...response, notes: [...new Set(notes)] } : response
   },

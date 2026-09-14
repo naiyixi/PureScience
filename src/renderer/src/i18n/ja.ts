@@ -348,6 +348,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'gs.contentFilesNameOnly': 'ファイルは名前とパスのみで照合します（本文は検索しません）',
   'gs.contentFilesBudgetReached':
     '一部のファイルは名前とパスのみで照合しました（本文スキャンの上限に達しました）',
+  'gs.fileListBounded':
+    'ファイル一覧は上限で打ち切られました。一覧にないファイルは照合されていません。',
   'gs.contentFailed': 'コンテンツ検索に失敗しました',
   'remoteControl.open': '開く',
   'remoteControl.loadingRemote': 'リモートアクセスを読み込み中…',

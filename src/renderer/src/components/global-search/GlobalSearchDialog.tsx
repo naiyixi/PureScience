@@ -1119,6 +1119,14 @@ export const GlobalSearchDialog = ({
                           {t('gs.contentFilesBudgetReached')}
                         </p>
                       ) : null}
+                      {contentResponse?.notes.includes('file-list-bounded') ? (
+                        <p
+                          data-testid="global-search-files-list-bounded"
+                          className="px-4 py-1.5 text-xs text-muted-foreground"
+                        >
+                          {t('gs.fileListBounded')}
+                        </p>
+                      ) : null}
                       {contentHits.map((hit) => renderContentRow(hit, nextIndex()))}
                     </section>
                   ) : null}

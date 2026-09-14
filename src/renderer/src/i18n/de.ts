@@ -358,6 +358,8 @@ export const de: Partial<Record<ZhKey, string>> = {
     'Dateien werden nur nach Name und Pfad gefunden - Dateiinhalte werden nicht durchsucht',
   'gs.contentFilesBudgetReached':
     'Einige Dateien wurden nur nach Name und Pfad gefunden (Budget der Inhaltssuche erreicht)',
+  'gs.fileListBounded':
+    'Die Dateiliste wurde begrenzt: Einige Dateien sind nicht aufgeführt und wurden nicht verglichen.',
   'gs.contentFailed': 'Inhaltssuche fehlgeschlagen',
   'remoteControl.open': 'Öffnen',
   'remoteControl.loadingRemote': 'Remote-Zugriff wird geladen…',

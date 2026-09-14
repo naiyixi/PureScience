@@ -322,6 +322,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'gs.contentNoProjectScope': '開啟專案後可搜尋檔案與文獻',
   'gs.contentFilesNameOnly': '檔案僅按名稱與路徑比對——不檢索檔案內文',
   'gs.contentFilesBudgetReached': '部分檔案僅按名稱與路徑比對（內文掃描已達預算上限）',
+  'gs.fileListBounded': '檔案清單已截斷：部分檔案未列出，未列出的檔案不參與比對。',
   'gs.contentFailed': '內容搜尋失敗',
   'remoteControl.open': '開啟',
   'remoteControl.loadingRemote': '正在載入遠端存取…',

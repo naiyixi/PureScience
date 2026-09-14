@@ -164,6 +164,9 @@ export type GlobalSearchNote =
   // A content scan stopped at its budget: more files exist than were read, and the rest were matched by
   // name and path only.
   | 'file-content-scan-bounded'
+  // The file listing itself stopped at its own bound: the project holds more files than were listed, so
+  // a miss here does not mean the file is absent from the project.
+  | 'file-list-bounded'
 
 export type GlobalSearchResponse = {
   schemaVersion: typeof GLOBAL_SEARCH_SCHEMA_VERSION

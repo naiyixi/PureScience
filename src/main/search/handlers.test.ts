@@ -36,9 +36,9 @@ const harness = (
   listFiles: ReturnType<typeof vi.fn>
   listReferences: ReturnType<typeof vi.fn>
 } => {
-  const listFiles = vi.fn(async () => [
-    { id: 'file-1', title: 'sin_probe.csv', relativePath: 'data/sin_probe.csv' }
-  ])
+  const listFiles = vi.fn(async () => ({
+    files: [{ id: 'file-1', title: 'sin_probe.csv', relativePath: 'data/sin_probe.csv' }]
+  }))
   const listReferences = vi.fn(async () => [
     { id: 'ref-1', title: 'A study of sin', abstract: 'sin everywhere' }
   ])
@@ -53,11 +53,26 @@ const harness = (
 }
 
 describe('createSearchHandlers', () => {
+  it('says the file list was bounded, so a miss cannot read as absence', async () => {
+    const { query } = harness({
+      listFiles: vi.fn(async () => ({
+        files: [{ id: 'file-1', title: 'notes.md', relativePath: 'notes.md' }],
+        listBounded: true
+      }))
+    })
+
+    const response = await query({ query: 'sin', scopes: ['files'], projectId: 'project-1' })
+
+    expect(response.notes).toContain('file-list-bounded')
+  })
+
   it('reads file text through the port so content matches are found', async () => {
     const readFileText = vi.fn(async () => 'the sin(x) series was computed here')
     const { query } = harness({
       // A file whose name and path say nothing about the query: only its content can match.
-      listFiles: vi.fn(async () => [{ id: 'file-9', title: 'notes.md', relativePath: 'notes.md' }]),
+      listFiles: vi.fn(async () => ({
+        files: [{ id: 'file-9', title: 'notes.md', relativePath: 'notes.md' }]
+      })),
       readFileText
     })
 
@@ -74,13 +89,13 @@ describe('createSearchHandlers', () => {
     const fileCount = 45
     const readFileText = vi.fn(async () => 'nothing relevant here')
     const { query } = harness({
-      listFiles: vi.fn(async () =>
-        Array.from({ length: fileCount }, (_, index) => ({
+      listFiles: vi.fn(async () => ({
+        files: Array.from({ length: fileCount }, (_, index) => ({
           id: `file-${index}`,
           title: `note-${index}.md`,
           relativePath: `note-${index}.md`
         }))
-      ),
+      })),
       readFileText
     })
 

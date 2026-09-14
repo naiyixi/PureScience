@@ -353,6 +353,8 @@ export const es: Partial<Record<ZhKey, string>> = {
     'Los archivos se buscan solo por nombre y ruta: no se busca el contenido',
   'gs.contentFilesBudgetReached':
     'Algunos archivos se buscaron solo por nombre y ruta (límite de contenido alcanzado)',
+  'gs.fileListBounded':
+    'La lista de archivos se limitó: algunos archivos no se listan y no se compararon.',
   'gs.contentFailed': 'La búsqueda de contenido falló',
   'remoteControl.open': 'Abrir',
   'remoteControl.loadingRemote': 'Cargando acceso remoto…',

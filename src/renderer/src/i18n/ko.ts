@@ -345,6 +345,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'gs.contentNoProjectScope': '파일과 문헌을 검색하려면 프로젝트를 여세요',
   'gs.contentFilesNameOnly': '파일은 이름과 경로로만 검색하며 본문은 검색하지 않습니다',
   'gs.contentFilesBudgetReached': '일부 파일은 이름과 경로로만 검색했습니다(본문 검색 예산 도달)',
+  'gs.fileListBounded': '파일 목록이 상한에서 잘렸습니다. 목록에 없는 파일은 대조되지 않았습니다.',
   'gs.contentFailed': '콘텐츠 검색에 실패했습니다',
   'remoteControl.open': '열기',
   'remoteControl.loadingRemote': '원격 액세스 불러오는 중…',

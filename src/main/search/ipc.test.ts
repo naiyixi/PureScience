@@ -10,7 +10,7 @@ import { createSearchIpcHandlers, registerSearchIpcHandlers } from './ipc'
 
 const ports = (): Parameters<typeof createSearchIpcHandlers>[0] => ({
   loadSessions: async () => [],
-  listFiles: async () => [],
+  listFiles: async () => ({ files: [] }),
   listReferences: async () => []
 })
 

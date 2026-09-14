@@ -13,7 +13,9 @@ import type {
 import { createUploadVersionReference } from '../../shared/uploads'
 import type { ProjectFilesClient } from './mutation-projection'
 
-const MAX_PAGE_LIMIT = 100
+// The largest page the project files contract accepts. Exported so a caller that pages through the
+// collection uses the same bound instead of guessing one and being rejected at runtime.
+export const MAX_PAGE_LIMIT = 100
 
 type FileCursor = {
   version: 2

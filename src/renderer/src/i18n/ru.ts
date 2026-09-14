@@ -348,6 +348,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'gs.contentFilesNameOnly': 'Файлы ищутся только по имени и пути - содержимое не ищется',
   'gs.contentFilesBudgetReached':
     'Часть файлов найдена только по имени и пути (достигнут лимит сканирования)',
+  'gs.fileListBounded':
+    'Список файлов ограничен: часть файлов не показана и не участвовала в поиске.',
   'gs.contentFailed': 'Не удалось выполнить поиск по содержимому',
   'remoteControl.open': 'Открыть',
   'remoteControl.loadingRemote': 'Загрузка удалённого доступа…',

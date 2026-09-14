@@ -176,6 +176,8 @@ import {
 } from './session-persistence/conversation-export'
 import { createProjectFilesHandlers, registerProjectFilesIpcHandlers } from './project-files/ipc'
 import { createSearchIpcHandlers, registerSearchIpcHandlers } from './search/ipc'
+import { GLOBAL_SEARCH_FILE_LIST_MAX_PAGES } from './search/handlers'
+import { MAX_PAGE_LIMIT as MAX_PROJECT_FILES_PAGE_LIMIT } from './project-files/query-support'
 import { createSessionIndex } from './search/session-index'
 import { getSessionRevision } from './session-persistence/session-revision'
 import { createSearchEvidenceService } from './search/search-evidence'
@@ -1128,29 +1130,44 @@ const createApplicationModules = async (
     loadSessions: () => searchSessionIndex.getSessions(),
     readFileText: searchFileText,
     listFiles: async ({ projectId }) => {
-      // The flat `all` collection is the cross-session read model; the limit keeps one query bounded.
-      const page = await projectFilesHandlers.listFiles({
-        projectId,
-        collection: { kind: 'all' },
-        limit: 500
-      })
+      // The flat `all` collection is the cross-session read model. It is paged at the size the project
+      // files contract allows — asking for more than that is rejected outright, which is exactly how this
+      // seam broke once — up to a bounded number of pages.
       searchableFileItems.clear()
-      for (const item of page.items) {
-        searchableFileItems.set(item.id, {
-          projectId: item.projectId,
-          sessionId: item.sessionId,
-          name: item.name,
-          path: item.path,
-          source: item.source
-        })
-      }
+      const files: Array<{ id: string; title: string; relativePath: string; timestamp?: string }> =
+        []
+      let cursor: string | undefined
+      let listBounded = false
 
-      return page.items.map((item) => ({
-        id: item.id,
-        title: item.name,
-        relativePath: item.path,
-        ...(item.mtimeMs ? { timestamp: new Date(item.mtimeMs).toISOString() } : {})
-      }))
+      for (let page = 0; page < GLOBAL_SEARCH_FILE_LIST_MAX_PAGES; page += 1) {
+        const result = await projectFilesHandlers.listFiles({
+          projectId,
+          collection: { kind: 'all' },
+          limit: MAX_PROJECT_FILES_PAGE_LIMIT,
+          ...(cursor ? { cursor } : {})
+        })
+        for (const item of result.items) {
+          searchableFileItems.set(item.id, {
+            projectId: item.projectId,
+            sessionId: item.sessionId,
+            name: item.name,
+            path: item.path,
+            source: item.source
+          })
+          files.push({
+            id: item.id,
+            title: item.name,
+            relativePath: item.path,
+            ...(item.mtimeMs ? { timestamp: new Date(item.mtimeMs).toISOString() } : {})
+          })
+        }
+        if (!result.nextCursor) return { files, listBounded }
+        cursor = result.nextCursor
+        // The last allowed page still had a cursor: more files exist than we listed, and the response
+        // says so rather than reading as the whole project.
+        listBounded = true
+      }
+      return { files, listBounded }
     },
     listReferences: async (projectId) => {
       const references = await referencesIpcModule.handlers.list(projectId)
