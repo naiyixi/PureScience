@@ -39,7 +39,11 @@ const harness = (
     verify?: Awaited<ReturnType<SearchEvidenceService['verify']>>
     existing?: ReviewEvidenceAttachment[]
   } = {}
-) => {
+): {
+  service: ReturnType<typeof createReviewEvidenceService>
+  reviews: ReviewEvidencePolicy
+  searchEvidence: { verify: ReturnType<typeof vi.fn> }
+} => {
   const reviewRow =
     overrides.review === undefined
       ? { id: 'review-1', projectId: 'project-a', sessionId: 'session-a' }
