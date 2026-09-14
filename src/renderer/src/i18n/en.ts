@@ -2160,6 +2160,7 @@ export const en: Record<ZhKey, string> = {
   'gs.contentRoleAgent': 'agent',
   'gs.contentScanBounded': 'Searched the {n} most recent sessions only',
   'gs.contentNoProjectScope': 'Open a project to search files and literature',
+  'gs.contentFilesNameOnly': 'Files are matched by name and path only - file text is not searched',
   'gs.contentFailed': 'Content search failed',
   'remoteControl.open': 'Open',
   'remoteControl.loadingRemote': 'Loading remote access…',

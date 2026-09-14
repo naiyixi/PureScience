@@ -320,6 +320,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'gs.contentRoleAgent': '智慧代理',
   'gs.contentScanBounded': '僅搜尋了最近 {n} 個工作階段',
   'gs.contentNoProjectScope': '開啟專案後可搜尋檔案與文獻',
+  'gs.contentFilesNameOnly': '檔案僅按名稱與路徑比對——不檢索檔案內文',
   'gs.contentFailed': '內容搜尋失敗',
   'remoteControl.open': '開啟',
   'remoteControl.loadingRemote': '正在載入遠端存取…',

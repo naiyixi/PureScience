@@ -343,6 +343,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'gs.contentRoleAgent': '에이전트',
   'gs.contentScanBounded': '최근 {n}개 세션만 검색했습니다',
   'gs.contentNoProjectScope': '파일과 문헌을 검색하려면 프로젝트를 여세요',
+  'gs.contentFilesNameOnly': '파일은 이름과 경로로만 검색하며 본문은 검색하지 않습니다',
   'gs.contentFailed': '콘텐츠 검색에 실패했습니다',
   'remoteControl.open': '열기',
   'remoteControl.loadingRemote': '원격 액세스 불러오는 중…',

@@ -354,6 +354,8 @@ export const de: Partial<Record<ZhKey, string>> = {
   'gs.contentRoleAgent': 'Agent',
   'gs.contentScanBounded': 'Nur die {n} neuesten Sitzungen durchsucht',
   'gs.contentNoProjectScope': 'Öffne ein Projekt, um Dateien und Literatur zu durchsuchen',
+  'gs.contentFilesNameOnly':
+    'Dateien werden nur nach Name und Pfad gefunden - Dateiinhalte werden nicht durchsucht',
   'gs.contentFailed': 'Inhaltssuche fehlgeschlagen',
   'remoteControl.open': 'Öffnen',
   'remoteControl.loadingRemote': 'Remote-Zugriff wird geladen…',

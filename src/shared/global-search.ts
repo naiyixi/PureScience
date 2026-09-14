@@ -97,6 +97,9 @@ export type GlobalSearchNote =
   | 'message-body-truncated'
   | 'results-truncated-per-scope'
   | 'no-project-scope'
+  // Files are matched by name and path only: no file text is read during a search, and saying so keeps
+  // "no hit" from reading as "the text is not in that file".
+  | 'files-matched-by-name-and-path'
 
 export type GlobalSearchResponse = {
   schemaVersion: typeof GLOBAL_SEARCH_SCHEMA_VERSION

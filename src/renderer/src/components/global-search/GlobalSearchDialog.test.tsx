@@ -987,6 +987,42 @@ describe('GlobalSearchDialog', () => {
     ).toBe('Evidence changed')
   })
 
+  it('says files are matched by name and path when the response carries that note', async () => {
+    vi.mocked(window.api.search.query).mockResolvedValue({
+      schemaVersion: 1,
+      query: 'sin',
+      scopes: ['files'],
+      hits: [],
+      counts: { sessions: 0, messages: 0, files: 0, literature: 0 },
+      truncated: false,
+      scan: { sessions: 0, messages: 0, files: 3, references: 0, bounded: false },
+      appliedLimit: 100,
+      notes: ['files-matched-by-name-and-path']
+    })
+
+    await act(async () => {
+      root.render(<GlobalSearchDialog open onOpenChange={vi.fn()} isSessionPersistenceReady />)
+      await new Promise((resolve) => window.setTimeout(resolve, 20))
+    })
+
+    const input = document.body.querySelector<HTMLInputElement>('input[role="combobox"]')
+    const valueSetter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype,
+      'value'
+    )?.set
+    await act(async () => {
+      valueSetter?.call(input, 'sin')
+      input?.dispatchEvent(new Event('input', { bubbles: true }))
+      await new Promise((resolve) => window.setTimeout(resolve, 400))
+    })
+
+    // The palette repeats the response's own limit instead of letting an empty file list read as
+    // "that text is not in any file".
+    expect(
+      document.body.querySelector('[data-testid="global-search-files-name-only"]')?.textContent
+    ).toBe('Files are matched by name and path only - file text is not searched')
+  })
+
   it('pins a captured line to the session\u2019s only review and says so', async () => {
     Object.defineProperty(navigator, 'clipboard', {
       configurable: true,

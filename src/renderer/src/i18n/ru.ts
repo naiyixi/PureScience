@@ -345,6 +345,7 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'gs.contentRoleAgent': 'агент',
   'gs.contentScanBounded': 'Проверены только последние {n} сеансов',
   'gs.contentNoProjectScope': 'Откройте проект, чтобы искать файлы и литературу',
+  'gs.contentFilesNameOnly': 'Файлы ищутся только по имени и пути - содержимое не ищется',
   'gs.contentFailed': 'Не удалось выполнить поиск по содержимому',
   'remoteControl.open': 'Открыть',
   'remoteControl.loadingRemote': 'Загрузка удалённого доступа…',

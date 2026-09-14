@@ -1103,6 +1103,14 @@ export const GlobalSearchDialog = ({
                           {t('gs.contentNoProjectScope')}
                         </p>
                       ) : null}
+                      {contentResponse?.notes.includes('files-matched-by-name-and-path') ? (
+                        <p
+                          data-testid="global-search-files-name-only"
+                          className="px-4 py-1.5 text-xs text-muted-foreground"
+                        >
+                          {t('gs.contentFilesNameOnly')}
+                        </p>
+                      ) : null}
                       {contentHits.map((hit) => renderContentRow(hit, nextIndex()))}
                     </section>
                   ) : null}

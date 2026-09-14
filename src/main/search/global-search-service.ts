@@ -189,10 +189,14 @@ export const createGlobalSearchService = (ports: GlobalSearchPorts): GlobalSearc
 
     if (scopes.includes('files')) {
       const files = await ports.listFiles(request.projectId)
+      // Whether any file carried searchable text. When none does, file hits are name-and-path matches
+      // only, and the response says so instead of letting "no hit" read as "that text is not there".
+      let sawFileText = false
       for (const file of files.filter((entry) => inProject(entry.projectId))) {
         scan.files += 1
         if (!searchHitsInTimestampRange(file.timestamp, range)) continue
 
+        if (file.textPreview) sawFileText = true
         const nameMatches = [
           ...collectTermMatches({ text: file.title, terms, field: 'name' }),
           ...collectTermMatches({ text: file.relativePath, terms, field: 'path' })
@@ -221,6 +225,9 @@ export const createGlobalSearchService = (ports: GlobalSearchPorts): GlobalSearc
           ...(file.timestamp ? { timestamp: file.timestamp } : {})
         })
       }
+
+      // Self-healing honesty: once a content provider supplies file text, this note stops appearing.
+      if (!sawFileText && files.length > 0) notes.push('files-matched-by-name-and-path')
     }
 
     if (scopes.includes('literature')) {

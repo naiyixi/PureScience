@@ -232,6 +232,43 @@ describe('createGlobalSearchService', () => {
     expect(missing.scan.messages).toBe(1)
   })
 
+  it('says files are matched by name and path when no file text is available', async () => {
+    const { service } = harness({
+      listFiles: vi.fn(async () => [
+        { id: 'file-1', projectId: 'project-1', title: 'deg.csv', relativePath: 'out/deg.csv' }
+      ])
+    })
+
+    const response = await service.query(
+      request({ scopes: ['files'], projectId: 'project-1', query: 'sin' })
+    )
+
+    // No content provider: the response says so, rather than letting "no hit" read as "not in the file".
+    expect(response.notes).toContain('files-matched-by-name-and-path')
+  })
+
+  it('searches file content once a provider supplies the text, and drops that note', async () => {
+    const { service } = harness({
+      listFiles: vi.fn(async () => [
+        {
+          id: 'file-2',
+          projectId: 'project-1',
+          title: 'notes.md',
+          relativePath: 'notes.md',
+          textPreview: 'the sin(x) series was computed here'
+        }
+      ])
+    })
+
+    const response = await service.query(
+      request({ scopes: ['files'], projectId: 'project-1', query: 'sin' })
+    )
+
+    expect(response.notes).not.toContain('files-matched-by-name-and-path')
+    expect(response.hits).toHaveLength(1)
+    expect(response.hits[0].matches[0].field).toBe('content')
+  })
+
   it('carries citation data on literature hits', async () => {
     const { service } = harness({
       listReferences: vi.fn(async () => [
