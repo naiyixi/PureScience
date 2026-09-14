@@ -13,7 +13,11 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { NEUTRAL_BACKGROUND_DELIVERY_LABELS } from '../../shared/background-delivery'
 import type { PersistedChatSession } from '../../shared/session-persistence'
 import { disconnectProjectDbClient, getProjectDbClient } from '../projects/prisma-client'
-import { BackgroundDeliveryOwner, findDeliveredMessage } from './owner'
+import {
+  BackgroundDeliveryOwner,
+  findDeliveredMessage,
+  type BackgroundDeliveryOwnerDeps
+} from './owner'
 import { BackgroundDeliveryRepository } from './repository'
 
 let root: string
@@ -59,7 +63,11 @@ const seedSession = (
 })
 
 const owner = (
-  overrides: { now?: () => number; leaseMs?: number } = {}
+  overrides: {
+    now?: () => number
+    leaseMs?: number
+    startTurn?: BackgroundDeliveryOwnerDeps['startTurn']
+  } = {}
 ): BackgroundDeliveryOwner => {
   const repo = new BackgroundDeliveryRepository(() => getProjectDbClient(root))
   return new BackgroundDeliveryOwner({
@@ -77,6 +85,7 @@ const owner = (
       }
     },
     labels: NEUTRAL_BACKGROUND_DELIVERY_LABELS,
+    startTurn: overrides.startTurn,
     now: overrides.now ?? (() => 1_000),
     leaseMs: overrides.leaseMs,
     newClaimToken: () => 'claim-token',
@@ -262,5 +271,68 @@ describe('background delivery owner against a real database and session file', (
     // Immediately claimable again, with no wait for the lease to run out.
     const reclaimed = await repo.claim(delivery.id, { now: 50_001, claimToken: 'next' })
     expect(reclaimed.status).toBe('claimed')
+  })
+
+  it('starts one turn for the delivered results, and never a second one', async () => {
+    const sessionId = 'session-turn'
+    await writeSession(sessionId, seedSession(sessionId))
+    const started: { sessionId: string; deliveryIds: readonly string[]; prompt: string }[] = []
+    const app = owner({ now: () => 60_000, startTurn: async (input) => void started.push(input) })
+
+    await app.registerJobResult({
+      jobId: 'job-turn-1',
+      projectId: 'project-a',
+      sessionId,
+      outputFiles: ['hpc/a.csv'],
+      fingerprint: 'sha256:a'
+    })
+    await app.registerJobResult({
+      jobId: 'job-turn-2',
+      projectId: 'project-a',
+      sessionId,
+      outputFiles: ['hpc/b.csv'],
+      fingerprint: 'sha256:b'
+    })
+
+    const run = await app.deliverSession(sessionId)
+    expect(run.delivered).toHaveLength(2)
+    expect(run.startedTurn).toBe(true)
+    // Two results that arrived together are one piece of work, so they are one turn.
+    expect(started).toHaveLength(1)
+    expect(started[0].deliveryIds).toHaveLength(2)
+    expect(started[0].prompt).toContain('job-turn-1')
+    expect(started[0].prompt).toContain('job-turn-2')
+
+    // Nothing left to deliver means nothing to start.
+    const second = await app.deliverSession(sessionId)
+    expect(second.startedTurn).toBe(false)
+    expect(started).toHaveLength(1)
+    expect((await readSession(sessionId)).messages).toHaveLength(2)
+  })
+
+  it('never starts a turn for a result that could not be read', async () => {
+    const sessionId = 'session-turn-blocked'
+    await writeSession(sessionId, seedSession(sessionId))
+    const repo = new BackgroundDeliveryRepository(() => getProjectDbClient(root))
+    const started: unknown[] = []
+    const app = owner({ now: () => 70_000, startTurn: async (input) => void started.push(input) })
+
+    await app.registerJobResult({
+      jobId: 'job-turn-blocked',
+      projectId: 'project-a',
+      sessionId,
+      outputFiles: ['hpc/out.csv'],
+      fingerprint: 'sha256:blocked'
+    })
+    const delivery = (await repo.findByJobId('job-turn-blocked'))!
+    await repo.claim(delivery.id, { now: 70_000, claimToken: 'flagging' })
+    await repo.markNeedsAttention(delivery.id, 'result-unreadable', 70_000)
+
+    const run = await app.deliverSession(sessionId)
+    // The session is told there is no result; the agent is not asked to analyse one it never saw.
+    expect(run.delivered).toHaveLength(1)
+    expect(run.startedTurn).toBe(false)
+    expect(started).toHaveLength(0)
+    expect((await readSession(sessionId)).messages[0].content).toContain('No result was produced')
   })
 })

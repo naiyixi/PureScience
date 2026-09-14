@@ -29,6 +29,14 @@ export type BackgroundDeliveryOwnerDeps = {
   // Wording for the text written into the session. Defaults to the neutral set, because main has no UI
   // language; the UI renders its own localized prose from the structured reference.
   labels: BackgroundDeliveryLabels
+  // When present, a pass that delivered something starts the next turn so the agent can work on the
+  // result. Never called for a delivery that has no result: there would be nothing to work on.
+  startTurn?: (input: {
+    sessionId: string
+    projectId: string
+    deliveryIds: readonly string[]
+    prompt: string
+  }) => Promise<void>
   now?: () => number
   leaseMs?: number
   newClaimToken?: () => string
@@ -42,6 +50,8 @@ export type BackgroundDeliveryRun = {
   blocked: readonly { delivery: BackgroundDelivery; reason: BackgroundDeliveryReason }[]
   // True when there was nothing left to claim.
   drained: boolean
+  // True when this pass also started the turn that works on the delivered results.
+  startedTurn: boolean
 }
 
 export const backgroundDeliveryRef = (delivery: BackgroundDelivery): BackgroundDeliveryRef => ({
@@ -110,7 +120,8 @@ export class BackgroundDeliveryOwner {
         exclude: handled
       })
       if (!claimed || claimed.status !== 'claimed') {
-        return { delivered, blocked, drained: true }
+        const started = await this.startTurnForRun(sessionId, delivered)
+        return { delivered, blocked, drained: true, startedTurn: started }
       }
       handled.push(claimed.delivery.id)
 
@@ -118,6 +129,31 @@ export class BackgroundDeliveryOwner {
       if (outcome.status === 'delivered') delivered.push(outcome.delivery)
       else blocked.push({ delivery: outcome.delivery, reason: outcome.reason })
     }
+  }
+
+  // The turn that works on delivered results, started only when there is one. One turn per pass, however
+  // many results arrived: they are the same piece of work. A blocked delivery never triggers it — there is
+  // nothing to analyse, and inventing an analysis of a result that was never read is the one thing this
+  // ledger exists to prevent.
+  private async startTurnForRun(
+    sessionId: string,
+    delivered: readonly BackgroundDelivery[]
+  ): Promise<boolean> {
+    const deliverable = delivered.filter((delivery) => delivery.reason === undefined)
+    if (!this.deps.startTurn || deliverable.length === 0) return false
+
+    const session = await this.deps.sessions
+      .loadSession(deliverable[0].projectId, sessionId)
+      .catch(() => undefined)
+    if (!session) return false
+
+    await this.deps.startTurn({
+      sessionId,
+      projectId: deliverable[0].projectId,
+      deliveryIds: deliverable.map((delivery) => delivery.id),
+      prompt: buildBackgroundDeliveryContinuation(deliverable, this.deps.labels)
+    })
+    return true
   }
 
   private async deliverClaimed(
