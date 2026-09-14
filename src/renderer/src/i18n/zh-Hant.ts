@@ -2157,6 +2157,8 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'ws.exportDialogSessionRounds': '共 {n} 輪',
   'ws.exportDialogSingleRound': '僅單一輪次',
   'ws.exportDialogTitle': '匯出對話',
+  'ws.exportTraceReport': '追溯報告',
+  'ws.exportTraceReportHint': '步驟、模型發現與人工附證分列顯示',
   'ws.exportDialogTo': '結束輪次',
   'ws.externalService': '外部服務',
   'ws.externalServiceInput': '外部服務輸入',

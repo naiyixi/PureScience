@@ -2369,6 +2369,9 @@ export const de: Partial<Record<ZhKey, string>> = {
   'ws.exportDialogSessionRounds': '{n} Runden gesamt',
   'ws.exportDialogSingleRound': 'Nur einzelne Runde',
   'ws.exportDialogTitle': 'Konversation exportieren',
+  'ws.exportTraceReport': 'Ausführungsbericht',
+  'ws.exportTraceReportHint':
+    'Schritte, Modellbefunde und fixierte Belege in getrennten Abschnitten',
   'ws.exportDialogTo': 'Bis Runde',
   'ws.externalService': 'Externer Dienst',
   'ws.externalServiceInput': 'Eingabe für externen Dienst',

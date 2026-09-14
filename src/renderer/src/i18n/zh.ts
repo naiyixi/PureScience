@@ -2287,6 +2287,8 @@ export const zh = {
   'ws.runMarkJump': '跳到第 {turn} 轮',
   'ws.runMarksLabel': '轮次导航',
   'ws.exportDialogTitle': '导出会话',
+  'ws.exportTraceReport': '追溯报告',
+  'ws.exportTraceReportHint': '步骤、模型发现与人工附证分列展示',
   'ws.exportDialogFormat': '格式',
   'ws.exportDialogRounds': '导出轮次',
   'ws.exportDialogSessionRounds': '共 {n} 轮',

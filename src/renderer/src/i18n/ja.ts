@@ -2317,6 +2317,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'ws.exportDialogSessionRounds': '合計 {n} ターン',
   'ws.exportDialogSingleRound': '単一ラウンド',
   'ws.exportDialogTitle': '会話をエクスポート',
+  'ws.exportTraceReport': '実行トレースレポート',
+  'ws.exportTraceReportHint': '手順・モデルの指摘・人が固定した証拠を別々の節に表示',
   'ws.exportDialogTo': '終了ラウンド',
   'ws.externalService': '外部サービス',
   'ws.externalServiceInput': '外部サービス入力',

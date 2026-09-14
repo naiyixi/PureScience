@@ -2272,6 +2272,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'ws.exportDialogSessionRounds': '총 {n}턴',
   'ws.exportDialogSingleRound': '단일 라운드',
   'ws.exportDialogTitle': '대화 내보내기',
+  'ws.exportTraceReport': '실행 추적 보고서',
+  'ws.exportTraceReportHint': '단계, 모델 지적, 사람이 고정한 증거를 각각의 절로 표시',
   'ws.exportDialogTo': '종료 라운드',
   'ws.externalService': '외부 서비스',
   'ws.externalServiceInput': '외부 서비스 입력',

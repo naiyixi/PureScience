@@ -19,6 +19,8 @@ import type {
 export type ExportConversationOptions = {
   format: ConversationExportFormat
   rounds?: ConversationRoundSelection
+  /** Export the execution-trace report instead of the transcript. */
+  trace?: boolean
 }
 
 type ExportConversationDialogProps = {
@@ -46,6 +48,7 @@ const ExportConversationDialog = ({
   const [fromValue, setFromValue] = useState('1')
   const [toValue, setToValue] = useState('')
   const [singleValue, setSingleValue] = useState('1')
+  const [trace, setTrace] = useState(false)
 
   const totalRounds = useMemo(
     () =>
@@ -73,7 +76,7 @@ const ExportConversationDialog = ({
         : roundMode === 'single'
           ? { from: single, to: single }
           : undefined
-    onExport({ format, rounds })
+    onExport({ format, rounds, ...(trace ? { trace: true } : {}) })
   }
 
   return (
@@ -210,6 +213,22 @@ const ExportConversationDialog = ({
               <p className="mt-1.5 text-xs text-destructive">{t('ws.exportDialogInvalidRange')}</p>
             ) : null}
           </fieldset>
+
+          {/* The trace report is a different document, not a format: it lists steps, and keeps the
+              model's claims apart from what a person pinned. */}
+          <label className="flex cursor-pointer items-start gap-2 text-xs text-foreground">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={trace}
+              data-testid="export-trace-checkbox"
+              onChange={(event) => setTrace(event.target.checked)}
+            />
+            <span>
+              <span className="block font-medium">{t('ws.exportTraceReport')}</span>
+              <span className="block text-muted-foreground">{t('ws.exportTraceReportHint')}</span>
+            </span>
+          </label>
         </div>
 
         <div className="mt-5 flex justify-end gap-2">

@@ -39,6 +39,8 @@ import type { ChatSession } from '@/stores/session-store'
 import { useSessionStore } from '@/stores/session-store'
 import { useSpecialistStore } from '@/stores/specialist-store'
 import { selectProjectSessionReviews, useReviewStore } from '@/stores/review-store'
+import { buildTraceExportFromSession } from './trace-export-document'
+import type { ConversationExportTrace } from '../../../../shared/conversation-export'
 import {
   assembleReviewRunRequest,
   suppressNextAutoReview,
@@ -2176,14 +2178,41 @@ const WorkspacePage = ({
   // Main reloads the durable session and owns both normalization and the native Save As operation.
   const exportConversation = (session: ChatSession, options: ExportConversationOptions): void => {
     setExportError(null)
-    void window.api.sessions
-      .exportConversation({
+    void (async () => {
+      // The trace report is assembled from what the app recorded: the session's activities become the
+      // steps, the reviewer's checks become the model findings, and the pins become the human evidence.
+      // Reviews come from the store and pins from main, so the document never claims anything the app
+      // cannot back.
+      const trace = options.trace
+        ? await (async (): Promise<ConversationExportTrace> => {
+            const reviews = selectProjectSessionReviews(
+              useReviewStore.getState().reviewsBySession,
+              session.projectId,
+              session.id
+            )
+            const reviewIds = reviews.map((review) => review.id)
+            const pins =
+              reviewIds.length > 0
+                ? await window.api.reviewer.evidence({ action: 'list', reviewIds })
+                : { attachments: [] }
+
+            return buildTraceExportFromSession({
+              session,
+              reviews,
+              pins: 'attachments' in pins ? pins.attachments : [],
+              generatedAt: new Date().toISOString()
+            })
+          })()
+        : undefined
+
+      return window.api.sessions.exportConversation({
         projectId: session.projectId,
         sessionId: session.id,
         format: options.format,
-        ...(options.rounds ? { rounds: options.rounds } : {})
+        ...(options.rounds ? { rounds: options.rounds } : {}),
+        ...(trace ? { trace } : {})
       })
-      .catch((error: unknown) => setExportError(getErrorMessage(error)))
+    })().catch((error: unknown) => setExportError(getErrorMessage(error)))
   }
 
   const openSessionWithoutExportError = (sessionId: string): void => {

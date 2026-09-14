@@ -2437,6 +2437,8 @@ export const en: Record<ZhKey, string> = {
   'ws.runMarkJump': 'Jump to turn {turn}',
   'ws.runMarksLabel': 'Turn navigation',
   'ws.exportDialogTitle': 'Export conversation',
+  'ws.exportTraceReport': 'Execution trace report',
+  'ws.exportTraceReportHint': 'Steps, model findings and pinned evidence in separate sections',
   'ws.exportDialogFormat': 'Format',
   'ws.exportDialogRounds': 'Rounds to export',
   'ws.exportDialogSessionRounds': '{n} turns total',
