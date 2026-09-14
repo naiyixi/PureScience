@@ -36,6 +36,7 @@ import { extractJobIdFromActivity } from '@/components/job-binding-utils'
 import { MessageScrollerItem } from '@/components/ui/message-scroller'
 import { ReviewerCard } from '@/components/ReviewerCard'
 import { RunMarksRail } from './RunMarksRail'
+import { MessageFocusConsumer } from './MessageFocusConsumer'
 import { WorkspaceActivityGroup } from './WorkspaceActivityGroup'
 import { WorkspacePlanActivityRecord } from './WorkspacePlanActivityRecord'
 import { WorkspaceAgentLoadingRow } from './WorkspaceAgentLoadingRow'
@@ -1027,6 +1028,9 @@ const WorkspaceMessageScrollerImpl = ({
 
           {/* Run-marks rail: one dot per user turn; click to jump. Hidden below the turn threshold. */}
           <RunMarksRail userMessageIds={runMarkUserMessageIds} />
+
+          {/* Lands on the message a palette content hit pointed at, once this session is mounted. */}
+          {activeSession ? <MessageFocusConsumer sessionId={activeSession.id} /> : null}
 
           {/* Transient warning shown when a mention target no longer resolves to a file or skill. */}
           {mentionNotice ? (

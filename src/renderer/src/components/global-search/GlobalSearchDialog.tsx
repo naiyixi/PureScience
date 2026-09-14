@@ -167,6 +167,7 @@ export const GlobalSearchDialog = ({
   const view = useNavigationStore((state) => state.view)
   const openProject = useNavigationStore((state) => state.openProject)
   const openSession = useNavigationStore((state) => state.openSession)
+  const requestMessageFocus = useNavigationStore((state) => state.requestMessageFocus)
   const requestArtifactMention = useNavigationStore((state) => state.requestArtifactMention)
   const requestProjectCreation = useNavigationStore((state) => state.requestProjectCreation)
   const artifactMentionAvailability = useNavigationStore(
@@ -494,6 +495,12 @@ export const GlobalSearchDialog = ({
         // A message hit is a place in a conversation; a file or reference hit is a place in a project.
         if (row.hit.scope === 'messages' && row.hit.sessionId) {
           openSession(row.hit.projectId, row.hit.sessionId, 'user')
+          // Hand the workspace the exact message, so the session opens at the hit instead of the top.
+          requestMessageFocus({
+            projectId: row.hit.projectId,
+            sessionId: row.hit.sessionId,
+            messageId: row.hit.id
+          })
         } else {
           openProject(row.hit.projectId, 'user')
         }
@@ -538,6 +545,7 @@ export const GlobalSearchDialog = ({
       mentionArtifact,
       openProject,
       openSession,
+      requestMessageFocus,
       previewArtifact,
       primaryProject,
       reloadArtifacts,

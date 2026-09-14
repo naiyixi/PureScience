@@ -682,5 +682,11 @@ describe('GlobalSearchDialog', () => {
 
     expect(openSession).toHaveBeenCalledWith('project-a', 'session-a', 'user')
     expect(onOpenChange).toHaveBeenCalledWith(false)
+    // The workspace is handed the exact message, not just the session.
+    expect(useNavigationStore.getState().pendingMessageFocus).toEqual({
+      projectId: 'project-a',
+      sessionId: 'session-a',
+      messageId: 'message-2'
+    })
   })
 })

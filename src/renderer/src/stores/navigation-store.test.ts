@@ -282,4 +282,25 @@ describe('navigation store global Artifact actions', () => {
     useNavigationStore.getState().requestArtifactMention({ ...file, projectId: 'project-b' })
     expect(useNavigationStore.getState().pendingArtifactMention).toBeUndefined()
   })
+
+  it('consumes a message focus only in the session it targets', () => {
+    useNavigationStore.getState().requestMessageFocus({
+      projectId: 'project-a',
+      sessionId: 'session-1',
+      messageId: 'message-2'
+    })
+    expect(useNavigationStore.getState().pendingMessageFocus).toMatchObject({
+      sessionId: 'session-1',
+      messageId: 'message-2'
+    })
+
+    // A consumer in another session must not be able to clear (and thereby lose) the intent.
+    expect(useNavigationStore.getState().consumeMessageFocus('session-other')).toBeUndefined()
+    expect(useNavigationStore.getState().pendingMessageFocus).toBeDefined()
+
+    expect(useNavigationStore.getState().consumeMessageFocus('session-1')).toMatchObject({
+      messageId: 'message-2'
+    })
+    expect(useNavigationStore.getState().pendingMessageFocus).toBeUndefined()
+  })
 })

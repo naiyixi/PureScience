@@ -11,6 +11,12 @@ export type NavigationOrigin = 'user' | 'notification' | 'automatic'
 
 // Workspace owns the mutable composer draft. It projects only the capability Global Search needs,
 // avoiding a second draft model or cross-Project mention handoff.
+export type PendingMessageFocus = {
+  projectId: string
+  sessionId: string
+  messageId: string
+}
+
 export type ArtifactMentionAvailability = {
   projectId: string
   canMention: boolean
@@ -33,6 +39,8 @@ type NavigationStore = {
   // A same-Project Artifact selected from global search. WorkspacePage consumes it once and appends
   // its immutable Version reference to the currently active composer draft.
   pendingArtifactMention: ProjectFileItem | undefined
+  // Where the workspace should land after a palette content hit: one session, one message.
+  pendingMessageFocus: PendingMessageFocus | undefined
   // The active Workspace composer publishes whether it can currently accept one more Artifact.
   artifactMentionAvailability: ArtifactMentionAvailability | undefined
   recordUserNavigation: () => void
@@ -51,6 +59,9 @@ type NavigationStore = {
   consumeProjectCreation: () => void
   requestArtifactMention: (file: ProjectFileItem) => void
   consumeArtifactMention: () => ProjectFileItem | undefined
+  // Consumed only by the session the intent targets; undefined for any other consumer.
+  requestMessageFocus: (focus: PendingMessageFocus) => void
+  consumeMessageFocus: (sessionId: string) => PendingMessageFocus | undefined
   setArtifactMentionAvailability: (availability: ArtifactMentionAvailability | undefined) => void
 }
 
@@ -109,6 +120,7 @@ export const useNavigationStore = create<NavigationStore>((set) => ({
   pendingCustomizePrefill: undefined,
   pendingProjectCreation: false,
   pendingArtifactMention: undefined,
+  pendingMessageFocus: undefined,
   artifactMentionAvailability: undefined,
 
   // Records user-owned navigation that changes another store (for example, opening the local New
@@ -203,6 +215,18 @@ export const useNavigationStore = create<NavigationStore>((set) => ({
     const file = useNavigationStore.getState().pendingArtifactMention
     set({ pendingArtifactMention: undefined })
     return file
+  },
+
+  // A palette message hit hands the workspace a place to land. The intent is scoped to one session so a
+  // consumer in a different session can never consume (and silently drop) it, and it is cleared by the
+  // consumer that actually scrolled — never left pending after a failed attempt.
+  requestMessageFocus: (focus) => set({ pendingMessageFocus: focus }),
+
+  consumeMessageFocus: (sessionId) => {
+    const focus = useNavigationStore.getState().pendingMessageFocus
+    if (!focus || focus.sessionId !== sessionId) return undefined
+    set({ pendingMessageFocus: undefined })
+    return focus
   },
 
   setArtifactMentionAvailability: (availability) =>
