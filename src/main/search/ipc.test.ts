@@ -19,11 +19,13 @@ beforeEach(() => {
 })
 
 describe('search IPC surface', () => {
-  it('registers the query channel on the desktop surface', () => {
+  it('registers the query and evidence channels on the desktop surface', () => {
     registerSearchIpcHandlers(createSearchIpcHandlers(ports()))
 
-    expect(ipcMainHandle).toHaveBeenCalledTimes(1)
-    expect(ipcMainHandle.mock.calls[0][0]).toBe('search:query')
+    expect(ipcMainHandle.mock.calls.map((call) => call[0])).toEqual([
+      'search:query',
+      'search:evidence'
+    ])
   })
 
   it('routes an invocation to the handler with the caller request', async () => {

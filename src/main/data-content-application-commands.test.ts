@@ -103,7 +103,8 @@ const createDependencies = () => {
   }
   const preview = { load: vi.fn(), save: vi.fn(), delete: vi.fn() }
   const search = {
-    query: vi.fn()
+    query: vi.fn(),
+    evidence: vi.fn()
   }
   const projectFiles = {
     getOverview: vi.fn(),
@@ -271,6 +272,7 @@ describe('Data and content application commands', () => {
         'project-files:repair-index',
         'project-files:search-artifacts',
         'search:query',
+        'search:evidence',
         'projects:create',
         'projects:update-archive',
         'projects:delete',
@@ -431,6 +433,7 @@ describe('Data and content application commands', () => {
         owner: deps.projectFiles.searchArtifacts
       },
       { key: 'searchQuery', args: [request('search')], owner: deps.search.query },
+      { key: 'searchEvidence', args: [request('search')], owner: deps.search.evidence },
       { key: 'projectGet', args: ['project-1'], owner: deps.projects.get },
       { key: 'projectList', args: [], owner: deps.projects.list },
       {

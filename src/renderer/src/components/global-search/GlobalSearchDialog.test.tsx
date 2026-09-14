@@ -798,4 +798,192 @@ describe('GlobalSearchDialog', () => {
     // No citation data means no button — rather than a button that copies an empty reference.
     expect(document.body.querySelector('[data-testid="global-search-copy-citation"]')).toBeNull()
   })
+
+  it('copies a fingerprintable evidence line for a message hit and rechecks it', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
+    const evidenceCalls: unknown[] = []
+    const line = {
+      schemaVersion: 1 as const,
+      projectId: 'project-a',
+      sessionId: 'session-a',
+      messageId: 'message-2',
+      role: 'agent' as const,
+      capturedAt: '2026-09-14T10:00:00.000Z',
+      query: 'sin csv',
+      terms: ['sin', 'csv'],
+      snippet: 'wrote sin(x) values',
+      fingerprint: `sha256:${'b'.repeat(64)}`
+    }
+    const evidence = vi.fn().mockImplementation(async (request: { action: string }) => {
+      evidenceCalls.push(request)
+      return request.action === 'capture'
+        ? { status: 'captured', line }
+        : { status: 'verified', fingerprint: line.fingerprint }
+    })
+    Object.defineProperty(window.api.search, 'evidence', { configurable: true, value: evidence })
+    vi.mocked(window.api.search.query).mockResolvedValue({
+      schemaVersion: 1,
+      query: 'sin csv',
+      scopes: ['sessions', 'messages', 'files', 'literature'],
+      hits: [
+        {
+          scope: 'messages',
+          id: 'message-2',
+          projectId: 'project-a',
+          title: 'Sine plot',
+          score: 9,
+          matches: [{ field: 'body', snippet: 'wrote sin(x) values', offset: 6 }],
+          sessionId: 'session-a',
+          role: 'agent'
+        }
+      ],
+      counts: { sessions: 0, messages: 1, files: 0, literature: 0 },
+      truncated: false,
+      scan: { sessions: 1, messages: 1, files: 0, references: 0, bounded: false },
+      appliedLimit: 100,
+      notes: []
+    })
+
+    await act(async () => {
+      root.render(<GlobalSearchDialog open onOpenChange={vi.fn()} isSessionPersistenceReady />)
+      await new Promise((resolve) => window.setTimeout(resolve, 20))
+    })
+
+    const input = document.body.querySelector<HTMLInputElement>('input[role="combobox"]')
+    const valueSetter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype,
+      'value'
+    )?.set
+    await act(async () => {
+      valueSetter?.call(input, 'sin csv')
+      input?.dispatchEvent(new Event('input', { bubbles: true }))
+      await new Promise((resolve) => window.setTimeout(resolve, 400))
+    })
+
+    const capture = document.body.querySelector<HTMLButtonElement>(
+      '[data-testid="global-search-capture-evidence"]'
+    )
+    expect(capture).toBeTruthy()
+
+    await act(async () => {
+      capture?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      await new Promise((resolve) => window.setTimeout(resolve, 20))
+    })
+
+    // The capture asks main for the line; the query travels with it as the terms that found the block.
+    expect(evidenceCalls[0]).toEqual({
+      action: 'capture',
+      projectId: 'project-a',
+      sessionId: 'session-a',
+      messageId: 'message-2',
+      query: 'sin csv',
+      terms: ['sin', 'csv'],
+      snippet: 'wrote sin(x) values'
+    })
+    expect(writeText).toHaveBeenCalledTimes(1)
+    const copied = writeText.mock.calls[0][0] as string
+    expect(copied).toContain('Evidence: project-a / session-a / message-2 (agent)')
+    expect(copied).toContain('Query: sin csv')
+    expect(copied).toContain(`Fingerprint: sha256:${'b'.repeat(64)}`)
+
+    const verify = document.body.querySelector<HTMLButtonElement>(
+      '[data-testid="global-search-verify-evidence"]'
+    )
+    expect(verify).toBeTruthy()
+
+    await act(async () => {
+      verify?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      await new Promise((resolve) => window.setTimeout(resolve, 20))
+    })
+
+    expect(evidenceCalls[1]).toEqual({ action: 'verify', line })
+    expect(
+      document.body.querySelector('[data-testid="global-search-evidence-status"]')?.textContent
+    ).toBe('Evidence verified')
+  })
+
+  it('says the evidence changed instead of implying it still holds', async () => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: vi.fn().mockResolvedValue(undefined) }
+    })
+    const line = {
+      schemaVersion: 1 as const,
+      projectId: 'project-a',
+      sessionId: 'session-a',
+      messageId: 'message-2',
+      role: 'agent' as const,
+      capturedAt: '2026-09-14T10:00:00.000Z',
+      query: 'sin',
+      terms: ['sin'],
+      snippet: 'wrote sin(x) values',
+      fingerprint: `sha256:${'b'.repeat(64)}`
+    }
+    const evidence = vi.fn().mockImplementation(async (request: { action: string }) =>
+      request.action === 'capture'
+        ? { status: 'captured', line }
+        : {
+            status: 'unavailable',
+            reason: 'fingerprint-mismatch',
+            fingerprintNow: `sha256:${'c'.repeat(64)}`
+          }
+    )
+    Object.defineProperty(window.api.search, 'evidence', { configurable: true, value: evidence })
+    vi.mocked(window.api.search.query).mockResolvedValue({
+      schemaVersion: 1,
+      query: 'sin',
+      scopes: ['messages'],
+      hits: [
+        {
+          scope: 'messages',
+          id: 'message-2',
+          projectId: 'project-a',
+          title: 'Sine plot',
+          score: 9,
+          matches: [{ field: 'body', snippet: 'wrote sin(x) values', offset: 6 }],
+          sessionId: 'session-a',
+          role: 'agent'
+        }
+      ],
+      counts: { sessions: 0, messages: 1, files: 0, literature: 0 },
+      truncated: false,
+      scan: { sessions: 1, messages: 1, files: 0, references: 0, bounded: false },
+      appliedLimit: 100,
+      notes: []
+    })
+
+    await act(async () => {
+      root.render(<GlobalSearchDialog open onOpenChange={vi.fn()} isSessionPersistenceReady />)
+      await new Promise((resolve) => window.setTimeout(resolve, 20))
+    })
+
+    const input = document.body.querySelector<HTMLInputElement>('input[role="combobox"]')
+    const valueSetter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype,
+      'value'
+    )?.set
+    await act(async () => {
+      valueSetter?.call(input, 'sin')
+      input?.dispatchEvent(new Event('input', { bubbles: true }))
+      await new Promise((resolve) => window.setTimeout(resolve, 400))
+    })
+
+    await act(async () => {
+      document.body
+        .querySelector<HTMLButtonElement>('[data-testid="global-search-capture-evidence"]')
+        ?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      await new Promise((resolve) => window.setTimeout(resolve, 20))
+    })
+    await act(async () => {
+      document.body
+        .querySelector<HTMLButtonElement>('[data-testid="global-search-verify-evidence"]')
+        ?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      await new Promise((resolve) => window.setTimeout(resolve, 20))
+    })
+
+    expect(
+      document.body.querySelector('[data-testid="global-search-evidence-status"]')?.textContent
+    ).toBe('Evidence changed')
+  })
 })

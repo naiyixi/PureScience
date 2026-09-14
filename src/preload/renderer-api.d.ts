@@ -728,6 +728,7 @@ export interface PureScienceAPI {
   }
   search: {
     query(request: GlobalSearchRequest): Promise<GlobalSearchResponse>
+    evidence(request: SearchEvidenceRequest): Promise<SearchEvidenceResponse>
   }
   compute: {
     // SSH compute host record CRUD (Compute settings tab). No credentials cross this boundary.

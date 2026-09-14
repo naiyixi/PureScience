@@ -1,0 +1,94 @@
+// A search hit used as evidence.
+//
+// The competitor's palette stops at "jump to the hit". A hit is only usable as evidence if someone else
+// can check it later, so a captured line carries a fingerprint computed from the block as it is stored,
+// and the recipe is published here: anyone holding the block can recompute it.
+//
+// Nothing here touches node:crypto — this module is shared with the renderer, which never hashes.
+
+export const SEARCH_EVIDENCE_SCHEMA_VERSION = 1
+
+// Published so a fingerprint can be recomputed outside the app: sha256 over these lines, in this order,
+// each terminated by "\n" (the last one included).
+export const SEARCH_EVIDENCE_HASH_RECIPE = 'purescience-search-evidence-v1'
+
+export const SEARCH_EVIDENCE_MAX_SNIPPET = 240
+
+// Why a line could not be produced, or no longer holds. Always named — never a bare boolean.
+export type SearchEvidenceReason =
+  // The block is not in the session as it stands now.
+  | 'message-not-found'
+  // The session could not be read at all.
+  | 'session-unavailable'
+  // The stored text exceeded the searchable budget. Hashing it would fingerprint a truncation rather
+  // than the block, so no line is offered instead of a fingerprint that cannot hold.
+  | 'text-truncated'
+  // The block is there but its text is no longer what was captured.
+  | 'fingerprint-mismatch'
+
+export type SearchEvidenceLine = {
+  schemaVersion: typeof SEARCH_EVIDENCE_SCHEMA_VERSION
+  projectId: string
+  sessionId: string
+  messageId: string
+  role: 'user' | 'agent'
+  capturedAt: string
+  // The query and the terms it was searched as, so the line says how this block was found.
+  query: string
+  terms: string[]
+  snippet: string
+  fingerprint: string
+}
+
+export type SearchEvidenceCaptureResult =
+  | { status: 'captured'; line: SearchEvidenceLine }
+  | { status: 'unavailable'; reason: SearchEvidenceReason }
+
+export type SearchEvidenceVerificationResult =
+  | { status: 'verified'; fingerprint: string }
+  | {
+      status: 'unavailable'
+      reason: SearchEvidenceReason
+      // Present for `fingerprint-mismatch`: what the block hashes to now.
+      fingerprintNow?: string
+    }
+
+export type SearchEvidenceRequest =
+  | {
+      action: 'capture'
+      projectId: string
+      sessionId: string
+      messageId: string
+      query: string
+      terms?: string[]
+      snippet?: string
+      capturedAt?: string
+    }
+  | { action: 'verify'; line: SearchEvidenceLine }
+
+export type SearchEvidenceResponse = SearchEvidenceCaptureResult | SearchEvidenceVerificationResult
+
+export type SearchEvidenceLabels = {
+  header: string
+  query: string
+  terms: string
+  snippet: string
+  fingerprint: string
+}
+
+// One pasteable block. Labels come from the UI language; the fingerprint and the identifiers do not
+// translate, because the point of the line is that someone else can check it.
+export const formatSearchEvidenceLine = (
+  line: SearchEvidenceLine,
+  labels: SearchEvidenceLabels
+): string =>
+  [
+    `${labels.header}: ${line.projectId} / ${line.sessionId} / ${line.messageId} (${line.role}) ${line.capturedAt}`,
+    `${labels.query}: ${line.query}`,
+    `${labels.terms}: ${line.terms.join(', ')}`,
+    `${labels.snippet}: ${line.snippet}`,
+    `${labels.fingerprint}: ${line.fingerprint}`
+  ].join('\n')
+
+export const searchEvidenceSnippet = (text: string, limit = SEARCH_EVIDENCE_MAX_SNIPPET): string =>
+  text.length <= limit ? text : `${text.slice(0, limit)}…`

@@ -21,6 +21,7 @@ import type * as PreviewResources from '../shared/preview-resources'
 import type * as PreviewState from '../shared/preview-state'
 import type * as Projects from '../shared/projects'
 import type * as Search from '../shared/global-search'
+import type * as SearchEvidence from '../shared/search-evidence'
 import type * as SessionPersistence from '../shared/session-persistence'
 import * as Uploads from '../shared/uploads'
 
@@ -220,6 +221,11 @@ const dataContentApplicationCommands = Object.freeze({
     readonly [request: Search.GlobalSearchRequest],
     Search.GlobalSearchResponse
   >('search:query'),
+  searchEvidence: defineApplicationCommand<
+    'search:evidence',
+    readonly [request: SearchEvidence.SearchEvidenceRequest],
+    SearchEvidence.SearchEvidenceResponse
+  >('search:evidence'),
   projectCreate: projectCommand('projects:create', 'create'),
   projectUpdateArchive: projectCommand('projects:update-archive', 'updateArchive'),
   projectDelete: defineApplicationCommand<
@@ -295,7 +301,8 @@ const dataContentApplicationCommandGroups = Object.freeze([
     dataContentApplicationCommands.projectFilesListFiles,
     dataContentApplicationCommands.projectFilesRepairIndex,
     dataContentApplicationCommands.projectFilesSearchArtifacts,
-    dataContentApplicationCommands.searchQuery
+    dataContentApplicationCommands.searchQuery,
+    dataContentApplicationCommands.searchEvidence
   ] as const),
   defineApplicationCommandGroup('projects', [
     dataContentApplicationCommands.projectCreate,
@@ -436,7 +443,8 @@ const registerDataContentApplicationCommands = (
       'project-files:repair-index': ({ args }) => dependencies.projectFiles.repairIndex(args[0]),
       'project-files:search-artifacts': ({ args }) =>
         dependencies.projectFiles.searchArtifacts(args[0]),
-      'search:query': ({ args }) => dependencies.search.query(args[0])
+      'search:query': ({ args }) => dependencies.search.query(args[0]),
+      'search:evidence': ({ args }) => dependencies.search.evidence(args[0])
     })
     scope.registerGroup(dataContentApplicationCommandGroups[5], {
       'projects:create': async ({ args }) => {

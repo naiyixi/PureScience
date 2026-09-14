@@ -28,6 +28,8 @@ import { useProjectStore } from '@/stores/project-store'
 import { useSessionStore } from '@/stores/session-store'
 
 import { useContentSearch } from './use-content-search'
+import { useSearchEvidence } from './use-search-evidence'
+import { evidenceReasonLabelKey } from './search-evidence-labels'
 import {
   getNextBatchCount,
   getRecentSessions,
@@ -142,6 +144,7 @@ export const GlobalSearchDialog = ({
   const [activeIndex, setActiveIndex] = useState(0)
   // Which literature hit just had its citation copied, so the row can say so briefly.
   const [copiedCitationKey, setCopiedCitationKey] = useState<string | undefined>()
+  const evidence = useSearchEvidence(t)
 
   const allProjects = useProjectStore((state) => state.projects)
   const allSessions = useSessionStore((state) => state.sessions)
@@ -689,6 +692,56 @@ export const GlobalSearchDialog = ({
             </span>
           ) : null}
         </span>
+        {hit.scope === 'messages' && hit.sessionId ? (
+          <span className="flex shrink-0 items-center gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              aria-label={t('gs.captureEvidence')}
+              data-testid="global-search-capture-evidence"
+              className="h-7 shrink-0 px-2 text-xs"
+              onClick={(event) => {
+                event.stopPropagation()
+                void evidence.capture(hit, query)
+              }}
+            >
+              {t('gs.captureEvidence')}
+            </Button>
+            {evidence.status.state === 'captured' &&
+            evidence.status.hitKey === `${hit.scope}:${hit.id}` ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                aria-label={t('gs.verifyEvidence')}
+                data-testid="global-search-verify-evidence"
+                className="h-7 shrink-0 px-2 text-xs"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  if (evidence.status.state === 'captured')
+                    void evidence.verify(evidence.status.line)
+                }}
+              >
+                {t('gs.verifyEvidence')}
+              </Button>
+            ) : null}
+            {evidence.status.state !== 'idle' &&
+            evidence.status.state !== 'busy' &&
+            evidence.status.hitKey === `${hit.scope}:${hit.id}` ? (
+              <span
+                data-testid="global-search-evidence-status"
+                className="shrink-0 text-xs text-muted-foreground"
+              >
+                {evidence.status.state === 'captured'
+                  ? t('ws.copied')
+                  : evidence.status.state === 'verified'
+                    ? t('gs.evidenceVerified')
+                    : t(evidenceReasonLabelKey(evidence.status.reason))}
+              </span>
+            ) : null}
+          </span>
+        ) : null}
         {hit.scope === 'literature' && hit.citation ? (
           <Button
             type="button"

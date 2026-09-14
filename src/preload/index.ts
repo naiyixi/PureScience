@@ -528,7 +528,9 @@ const api: PureScienceAPI = {
   search: {
     // One query across sessions, message bodies, project files and the literature library. The
     // response always reports what it scanned, so an empty result is never presented as absence.
-    query: (request) => electronRendererContracts.invoke('search.query', request)
+    query: (request) => electronRendererContracts.invoke('search.query', request),
+    // Captures a hit as a fingerprintable evidence line, or rechecks one that was captured earlier.
+    evidence: (request) => electronRendererContracts.invoke('search.evidence', request)
   },
   compute: {
     // SSH compute host record CRUD, backed by the same SQLite/Prisma layer as projects.

@@ -4,6 +4,7 @@ import type {
   GlobalSearchScope
 } from '../../shared/global-search'
 import type { PersistedChatSession } from '../../shared/session-persistence'
+import type { SearchEvidenceRequest, SearchEvidenceResponse } from '../../shared/search-evidence'
 import {
   createGlobalSearchService,
   type SearchableFile,
@@ -11,6 +12,7 @@ import {
   type SearchableSession,
   type SearchableSessionMessage
 } from './global-search-service'
+import { createSearchEvidenceService } from './search-evidence'
 
 // Wiring for the global search command: the search service itself is pure plan/matching logic, and these
 // ports are the only place that touches the app's own stores.
@@ -41,6 +43,7 @@ export type SearchHandlerPorts = {
 
 export type SearchHandlers = {
   query(request: GlobalSearchRequest): Promise<GlobalSearchResponse>
+  evidence(request: SearchEvidenceRequest): Promise<SearchEvidenceResponse>
 }
 
 // Persisted sessions carry epoch-millisecond timestamps; the search contract speaks ISO-8601.
@@ -131,5 +134,19 @@ export const createSearchHandlers = (ports: SearchHandlerPorts): SearchHandlers 
     return needsProject
       ? { ...response, notes: [...new Set([...response.notes, 'no-project-scope' as const])] }
       : response
+  },
+
+  async evidence(request) {
+    // The evidence service reads the block from the same loaded sessions the search reads, so a
+    // fingerprint always describes what is stored right now rather than a stale search-side copy.
+    const sessions = await ports.loadSessions()
+    const messagesBySession = new Map(
+      sessions.map((session) => [session.id, toSearchableMessages(session)] as const)
+    )
+    const service = createSearchEvidenceService({
+      readSessionMessages: async (sessionId) => messagesBySession.get(sessionId) ?? []
+    })
+
+    return service.handle(request)
   }
 })
