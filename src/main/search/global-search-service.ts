@@ -39,7 +39,6 @@ export type SearchableSession = {
   projectName?: string
   title: string
   updatedAt: string
-  filePath: string
 }
 
 export type SearchableFile = {
@@ -65,7 +64,9 @@ export type SearchableReference = {
 
 export type GlobalSearchPorts = {
   listSessions(): Promise<SearchableSession[]>
-  readSessionMessages(filePath: string): Promise<SearchableSessionMessage[]>
+  // Keyed by session id: the real implementation already holds the loaded sessions, so the search never
+  // re-reads a session file that startup just parsed.
+  readSessionMessages(sessionId: string): Promise<SearchableSessionMessage[]>
   listFiles(projectId?: string): Promise<SearchableFile[]>
   listReferences(projectId?: string): Promise<SearchableReference[]>
 }
@@ -144,7 +145,7 @@ export const createGlobalSearchService = (ports: GlobalSearchPorts): GlobalSearc
 
         if (!scopes.includes('messages')) continue
 
-        const messages = await ports.readSessionMessages(session.filePath)
+        const messages = await ports.readSessionMessages(session.sessionId)
         for (const [index, message] of messages.entries()) {
           scan.messages += 1
           const text = message.text.slice(0, GLOBAL_SEARCH_MAX_MESSAGE_CHARS)

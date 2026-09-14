@@ -19,7 +19,6 @@ const session = (overrides: Partial<SearchableSession> = {}): SearchableSession 
   projectName: 'proj',
   title: 'Sine plot',
   updatedAt: '2026-09-13T00:00:00.000Z',
-  filePath: '/sessions/project-1/session-1.json',
   ...overrides
 })
 
