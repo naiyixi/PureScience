@@ -86,6 +86,7 @@ import {
 import type { ClaudeDetectDeps } from './claude-detect'
 import type { OpencodeDetectDeps } from './opencode-detect'
 import type { CodexDetectDeps } from './codex-detect'
+import type { CodeBuddyDetectDeps } from './codebuddy-detect'
 import type { InstallManagedOpencodeOptions } from './managed-opencode'
 import type { InstallManagedCodexOptions, ManagedCodexInstallOutcome } from './managed-codex'
 import type { InstallManagedClaudeOptions, ManagedInstallOutcome } from './managed-claude'
@@ -145,6 +146,9 @@ export type SettingsServiceOptions = {
   storageRoot?: string
   detectDeps?: ClaudeDetectDeps
   opencodeDetectDeps?: OpencodeDetectDeps
+  // Injectable like the other runtime seams: without it, CodeBuddy detection probes the real machine,
+  // so any developer with CodeBuddy installed gets a different status than the tests expect.
+  codebuddyDetectDeps?: CodeBuddyDetectDeps
   // Reserves the authenticated loopback HTTP port exposed by `opencode acp`. Injectable so settings
   // tests do not bind real sockets.
   allocateOpenCodeUsagePort?: () => Promise<number>
@@ -236,6 +240,7 @@ class SettingsService {
       detectDeps: options.detectDeps,
       opencodeDetectDeps: options.opencodeDetectDeps,
       codexDetectDeps: options.codexDetectDeps,
+      codebuddyDetectDeps: options.codebuddyDetectDeps,
       allocateOpenCodeUsagePort: options.allocateOpenCodeUsagePort,
       executeClaudeProbe: options.executeClaudeProbe,
       installManagedClaudeImpl: options.installManagedClaudeImpl,

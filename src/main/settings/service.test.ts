@@ -172,6 +172,17 @@ const createService = (
     userClaudeDir: options.userClaudeDir ?? join(storageRoot, 'no-user-claude'),
     userCodexDir: options.userCodexDir ?? join(storageRoot, 'no-user-codex'),
     userAgentsDir: options.userAgentsDir ?? join(storageRoot, 'no-user-agents'),
+    // CodeBuddy is probed on the real machine unless a seam is supplied; pin it to "not installed" so a
+    // developer who has CodeBuddy installed does not see a different status than the tests assert.
+    codebuddyDetectDeps: {
+      env: {},
+      homePath: join(storageRoot, 'no-home'),
+      platform: 'linux',
+      isExecutable: () => Promise.resolve(false),
+      getVersion: () => Promise.resolve(undefined),
+      resolveNpmBinDirs: () => Promise.resolve([]),
+      extraDirs: []
+    },
     executeClaudeProbe: options.executeClaudeProbe,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     installManagedClaudeImpl: options.installManagedClaudeImpl as any,
