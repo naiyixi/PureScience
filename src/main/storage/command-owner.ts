@@ -37,6 +37,7 @@ import {
   type ValidateResult
 } from './migration-service'
 import { availableBytes, computeStorageUsage } from './usage'
+import { createStorageUsageCache } from './usage-cache'
 import { broadcastToRenderers } from '../renderer-broadcast'
 import { RELOCATABLE_DATA_DIRS } from './data-directories'
 import { createLogger, diagnosticErrorFields, type Logger } from '../logger'
@@ -115,6 +116,10 @@ const createStorageCommandOwner = (deps: StorageCommandOwnerDeps) => {
     error: (message, data) => emitSafely('error', message, data)
   }
 
+  // The Storage panel asks for disk usage every time it opens, and a walk of a multi-gigabyte root
+  // takes ~15s; serve the last reading and refresh it behind the user's back.
+  const usageCache = createStorageUsageCache({ compute: computeStorageUsage })
+
   const getInfo = async (): Promise<StorageInfo> => {
     const dataRoot = resolveDataRoot()
     let available = 0
@@ -155,7 +160,7 @@ const createStorageCommandOwner = (deps: StorageCommandOwnerDeps) => {
       defaultParent: defaultDataParent(),
       dataRootMissing,
       legacyDataMovePrompt,
-      usage: await computeStorageUsage(dataRoot),
+      usage: await usageCache.read(dataRoot),
       availableBytes: available
     }
   }
@@ -483,6 +488,14 @@ const createStorageCommandOwner = (deps: StorageCommandOwnerDeps) => {
       logger.error('data root selection boundary failed', diagnosticErrorFields(err))
       return { ok: false, error: err instanceof Error ? err.message : String(err) }
     }
+  }
+
+  // Warm the reading once at startup so the first panel open is already served from cache instead of
+  // staring at "Loading…" for the length of a disk walk.
+  try {
+    usageCache.warm(resolveDataRoot())
+  } catch (err) {
+    logger.warn('storage usage warm-up failed', diagnosticErrorFields(err))
   }
 
   return Object.freeze({
