@@ -635,6 +635,9 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'providerForm.imageInput': 'Entrée d’images',
   'providerForm.imageInputHint':
     'N’activez que si cette passerelle et ce modèle acceptent les images.',
+  'providerForm.allowInsecureEndpoint': 'Point de terminaison en clair',
+  'providerForm.allowInsecureEndpointHint':
+    'Autoriser ce fournisseur à utiliser un point de terminaison http en clair. La clé d’API et tous les messages circuleraient sans chiffrement — à activer uniquement pour une passerelle que vous contrôlez.',
   'providerForm.providerType': 'Type de fournisseur',
   'providerForm.reasoningEffort': 'Effort de raisonnement',
   'providerForm.requestFormat': 'Format de requête',
@@ -2104,6 +2107,7 @@ export const fr: Partial<Record<ZhKey, string>> = {
     'La clé stockée n’a pas pu être déchiffrée. Saisissez-la à nouveau pour continuer.',
   'settings.streamableHttp': 'HTTP streamable',
   'settings.supportsImageInput': 'Prend en charge les images en entrée',
+  'settings.allowInsecureEndpoint': 'Autoriser le point de terminaison en clair',
   'settings.supportsReasoningEffort': 'Prend en charge l’effort de raisonnement',
   'settings.switchStartsFreshSession':
     'session d’agent. Les conversations ouvertes conservent leurs messages existants, et leur transcription est transférée). Les nouvelles conversations ne sont pas affectées.',

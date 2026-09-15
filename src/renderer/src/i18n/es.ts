@@ -634,6 +634,9 @@ export const es: Partial<Record<ZhKey, string>> = {
   'providerForm.imageInput': 'Entrada de imágenes',
   'providerForm.imageInputHint':
     'Actívalo solo cuando esta gateway y el modelo acepten contenido de imagen.',
+  'providerForm.allowInsecureEndpoint': 'Punto de conexión en claro',
+  'providerForm.allowInsecureEndpointHint':
+    'Permitir que este proveedor use un punto de conexión http en claro. La clave de API y todos los mensajes viajarían sin cifrar; actívalo solo para una puerta de enlace que controles.',
   'providerForm.providerType': 'Tipo de proveedor',
   'providerForm.reasoningEffort': 'Esfuerzo de razonamiento',
   'providerForm.requestFormat': 'Formato de solicitud',
@@ -2092,6 +2095,7 @@ export const es: Partial<Record<ZhKey, string>> = {
     'No se pudo descifrar la clave almacenada. Introdúcela de nuevo para continuar.',
   'settings.streamableHttp': 'HTTP transferible (streamable)',
   'settings.supportsImageInput': 'Admite entrada de imágenes',
+  'settings.allowInsecureEndpoint': 'Permitir punto de conexión en claro',
   'settings.supportsReasoningEffort': 'Admite esfuerzo de razonamiento',
   'settings.switchStartsFreshSession':
     'sesión de agente. Las conversaciones abiertas conservan sus mensajes existentes y su transcripción se traslada al nuevo backend (las conversaciones nuevas no se ven afectadas).',

@@ -849,6 +849,7 @@ export const en: Record<ZhKey, string> = {
   'settings.baseUrl': 'Base URL',
   'settings.apiFormat': 'API format',
   'settings.supportsImageInput': 'Supports image input',
+  'settings.allowInsecureEndpoint': 'Allow plaintext endpoint',
   'settings.supportsReasoningEffort': 'Supports reasoning effort',
   'settings.reasoningEffortLevels': 'Reasoning effort levels',
   'settings.reasoningEffortRequestFormat': 'Reasoning effort request format',
@@ -1798,6 +1799,9 @@ export const en: Record<ZhKey, string> = {
   'providerForm.apiFormat': 'API format',
   'providerForm.imageInput': 'Image input',
   'providerForm.imageInputHint': 'Enable only when this gateway and model accept image content.',
+  'providerForm.allowInsecureEndpoint': 'Plaintext endpoint',
+  'providerForm.allowInsecureEndpointHint':
+    'Allow this provider to use a plaintext http endpoint. The API key and every message would travel unencrypted — turn this on only for a gateway you control.',
   'providerForm.reasoningEffort': 'Reasoning effort',
   'providerForm.requestFormat': 'Request format',
   'providerForm.supportedModels': 'Supported models',

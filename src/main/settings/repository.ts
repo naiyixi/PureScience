@@ -227,6 +227,9 @@ const sanitizeProvider = (value: unknown): StoredProvider | undefined => {
       ? rawContextWindow
       : undefined
   const supportsImageInput = asBoolean(value.supportsImageInput)
+  // Recorded permission for a plaintext endpoint. Absent (and false) both mean "not allowed": only an
+  // explicit true is consent, so the gate cannot be opened by a missing field.
+  const allowInsecureEndpoint = asBoolean(value.allowInsecureEndpoint)
   const reasoningEffortPreset = isReasoningEffortPresetSetting(value.reasoningEffortPreset)
     ? value.reasoningEffortPreset
     : undefined
@@ -271,6 +274,7 @@ const sanitizeProvider = (value: unknown): StoredProvider | undefined => {
   if (model) provider.model = model
   if (contextWindow !== undefined) provider.contextWindow = contextWindow
   if (supportsImageInput !== undefined) provider.supportsImageInput = supportsImageInput
+  if (allowInsecureEndpoint !== undefined) provider.allowInsecureEndpoint = allowInsecureEndpoint
   if (reasoningEffortPreset !== undefined && type === 'custom') {
     provider.reasoningEffortPreset = reasoningEffortPreset
   }

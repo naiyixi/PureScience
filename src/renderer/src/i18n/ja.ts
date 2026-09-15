@@ -623,6 +623,9 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'providerForm.imageInput': '画像入力',
   'providerForm.imageInputHint':
     'このゲートウェイとモデルが画像コンテンツを受け付ける場合にのみ有効にしてください。',
+  'providerForm.allowInsecureEndpoint': '平文エンドポイント',
+  'providerForm.allowInsecureEndpointHint':
+    'このプロバイダーに平文 http エンドポイントの使用を許可します。API キーとすべてのメッセージが暗号化されずに送信されます。自分で管理するゲートウェイにのみ有効にしてください。',
   'providerForm.providerType': 'プロバイダータイプ',
   'providerForm.reasoningEffort': '推論強度',
   'providerForm.requestFormat': 'リクエスト形式',
@@ -2069,6 +2072,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
     '保存されたキーを復号できませんでした。続行するには再入力してください。',
   'settings.streamableHttp': 'Streamable HTTP',
   'settings.supportsImageInput': '画像入力をサポート',
+  'settings.allowInsecureEndpoint': '平文エンドポイントを許可',
   'settings.supportsReasoningEffort': '推論強度をサポート',
   'settings.switchStartsFreshSession':
     'エージェントセッションが新しく開始されます。開いている会話は既存のメッセージを保持し、その記録は新しいバックエンドに引き継がれて再生されます（ツールの状態は引き継がれず、新しい会話には影響しません）。',

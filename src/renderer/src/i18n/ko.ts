@@ -615,6 +615,9 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'providerForm.imageInput': '이미지 입력',
   'providerForm.imageInputHint':
     '이 게이트웨이와 모델이 이미지 콘텐츠를 받아들일 때만 사용하도록 설정하세요.',
+  'providerForm.allowInsecureEndpoint': '평문 엔드포인트',
+  'providerForm.allowInsecureEndpointHint':
+    '이 공급자가 평문 http 엔드포인트를 사용하도록 허용합니다. API 키와 모든 메시지가 암호화되지 않은 채 전송됩니다. 직접 관리하는 게이트웨이에만 켜세요.',
   'providerForm.providerType': '공급자 유형',
   'providerForm.reasoningEffort': '추론 강도',
   'providerForm.requestFormat': '요청 형식',
@@ -2028,6 +2031,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
     '저장된 키를 복호화할 수 없습니다. 계속하려면 다시 입력하세요.',
   'settings.streamableHttp': 'Streamable HTTP',
   'settings.supportsImageInput': '이미지 입력 지원',
+  'settings.allowInsecureEndpoint': '평문 엔드포인트 허용',
   'settings.supportsReasoningEffort': '추론 강도 지원',
   'settings.switchStartsFreshSession':
     '에이전트 세션. 열려 있는 대화는 기존 메시지를 유지하며, 대화 내용은 새 백엔드로 재생됩니다(새 대화는 영향을 받지 않습니다).',

@@ -52,6 +52,9 @@ export type StoredProvider = {
   // `apiType` on disk; the repository migrates it to this field on read.
   apiEndpoints?: ChatApiEndpoint[]
   baseUrl?: string
+  // A plaintext (non-loopback http) endpoint is refused unless this provider opts in explicitly: the
+  // API key and every message would go out unencrypted. Absent = not allowed.
+  allowInsecureEndpoint?: boolean
   model?: string
   // Optional custom-model override. Absence is meaningful and resolves to the shared 200k default.
   contextWindow?: number

@@ -9,6 +9,8 @@ import {
   openAiChatCompletionsUrl,
   openAiCompletionsBase
 } from './base-url'
+import { ENDPOINT_INSECURE_REASON } from '../../shared/endpoint-transport'
+import { assertEndpointTransportAllowed } from '../../shared/endpoint-transport'
 import type { ResolvedProvider } from './provider-env'
 import { ResponsesBridge, responsesToChatRequest } from './responses-bridge'
 import { NativeResponsesCompatibilityProxy } from './native-responses-compatibility'
@@ -105,6 +107,13 @@ const buildValidationRequest = (
   if (!provider.baseUrl) {
     throw new Error('Missing base URL.')
   }
+
+  // A probe carries the real credential, so a plaintext endpoint that was never opted into is refused
+  // before a byte goes out — the same decision the spawn path makes, made as early as possible.
+  assertEndpointTransportAllowed({
+    url: provider.baseUrl,
+    allowInsecureEndpoint: provider.allowInsecureEndpoint
+  })
 
   const endpoint = preferredEndpoint(provider.apiEndpoints ?? ['anthropic'], frameworkEndpoints)
 
@@ -260,6 +269,7 @@ const classifyStatus = (status: number): ValidationCategory => {
 const classifyFetchError = (error: unknown): ValidationCategory => {
   const message = error instanceof Error ? error.message : String(error)
 
+  if (/plaintext endpoint/i.test(message)) return ENDPOINT_INSECURE_REASON
   if (/invalid base url|missing base url/i.test(message)) return 'bad-url'
   if (error instanceof Error && error.name === 'AbortError') return 'timeout'
   if (/timed out|timeout/i.test(message)) return 'timeout'

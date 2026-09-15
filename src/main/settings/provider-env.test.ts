@@ -29,6 +29,29 @@ describe('provider-env', () => {
     expect(env.ANTHROPIC_API_KEY).toBeUndefined()
   })
 
+  it('refuses to hand a credential to a plaintext endpoint, and obeys an explicit opt-in', () => {
+    const provider = {
+      type: 'custom' as const,
+      baseUrl: 'http://gateway.internal:8080',
+      model: 'lab-model',
+      key: 'test-token'
+    }
+
+    // The key would travel in the clear: the spawn stops instead of leaking it.
+    expect(() => buildProviderEnv(provider, options)).toThrow(/plaintext endpoint/i)
+
+    // The provider's own opt-in is what makes it usable, and it is recorded per provider.
+    const env = buildProviderEnv({ ...provider, allowInsecureEndpoint: true }, options)
+    expect(env.ANTHROPIC_BASE_URL).toBe('http://gateway.internal:8080')
+    expect(env.ANTHROPIC_AUTH_TOKEN).toBe('test-token')
+
+    // Loopback needs no opt-in: that traffic never leaves the machine.
+    expect(
+      buildProviderEnv({ ...provider, baseUrl: 'http://127.0.0.1:11434' }, options)
+        .ANTHROPIC_BASE_URL
+    ).toBe('http://127.0.0.1:11434')
+  })
+
   it('normalizes a base URL that already carries /v1 so the client does not double it', () => {
     const env = buildProviderEnv(
       {

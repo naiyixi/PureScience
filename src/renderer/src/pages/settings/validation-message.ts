@@ -8,6 +8,10 @@ const CATEGORY_MESSAGES: Record<ValidationCategory, string> = {
   auth: 'Authentication failed. Check the API key.',
   'model-not-found': 'The model was rejected. Check the model name for this gateway.',
   'bad-url': 'The base URL is invalid. Enter a full URL like https://gateway.example/v1.',
+  // Refused before anything was sent: the credential would have travelled in the clear. The escape hatch
+  // is that provider's own "allow plaintext endpoint" switch, which records the decision.
+  'insecure-endpoint':
+    'This endpoint is plaintext http, so the API key would travel unencrypted. Use https, or allow a plaintext endpoint for this provider deliberately.',
   timeout: 'The request timed out and was stopped.',
   incompatible: "This provider isn't compatible with the active agent framework.",
   'server-error': 'The gateway or source service is temporarily unavailable. Try again later.',

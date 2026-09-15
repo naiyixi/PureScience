@@ -429,6 +429,24 @@ const ProviderForm = ({
             />
           </div>
 
+          <div className="flex items-center justify-between gap-4 border-t border-border-200 pt-3">
+            <label className="space-y-0.5" htmlFor="provider-allow-insecure-endpoint">
+              <span className="block text-xs font-medium">
+                {t('providerForm.allowInsecureEndpoint')}
+              </span>
+              <span className="block text-xs text-muted-foreground">
+                {t('providerForm.allowInsecureEndpointHint')}
+              </span>
+            </label>
+            <Switch
+              id="provider-allow-insecure-endpoint"
+              aria-label={t('settings.allowInsecureEndpoint')}
+              checked={value.allowInsecureEndpoint}
+              disabled={disabled}
+              onCheckedChange={(allowInsecureEndpoint) => onChange({ allowInsecureEndpoint })}
+            />
+          </div>
+
           <div className="space-y-3 border-t border-border-200 pt-3">
             <div className="flex items-center justify-between gap-4">
               <label className="space-y-0.5" htmlFor="provider-reasoning-effort">

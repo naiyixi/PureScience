@@ -135,6 +135,46 @@ describe('ProviderAccountsModule', () => {
     expect((await repository.getSettings()).providers).toEqual([])
   })
 
+  it('refuses a plaintext endpoint unless the provider opts in, and remembers the opt-in', async () => {
+    const draft = {
+      type: 'custom' as const,
+      name: 'Plaintext gateway',
+      baseUrl: 'http://gateway.internal:8080/v1',
+      model: 'lab-model',
+      key: 'secret-key'
+    }
+
+    await expect(module.upsertProvider(draft)).rejects.toThrow(/plaintext endpoint/i)
+
+    await module.upsertProvider({ ...draft, allowInsecureEndpoint: true })
+    const stored = (await repository.getSettings()).providers[0]
+    expect(stored.allowInsecureEndpoint).toBe(true)
+    // The projection says so, so the form can show which provider is the opted-in exception.
+    expect(module.toProviderView(stored)).toMatchObject({ allowInsecureEndpoint: true })
+    expect(module.resolveProvider(stored)).toMatchObject({
+      baseUrl: 'http://gateway.internal:8080/v1',
+      allowInsecureEndpoint: true
+    })
+
+    // Withdrawing the opt-in while the endpoint stays plaintext is refused too: the permission exists for
+    // this endpoint, and it cannot be revoked into a state that would leak on the next spawn.
+    await expect(
+      module.upsertProvider({ ...draft, id: stored.id, allowInsecureEndpoint: false })
+    ).rejects.toThrow(/plaintext endpoint/i)
+
+    // Loopback needs no permission, so it can be withdrawn there — and the record says so.
+    await module.upsertProvider({
+      ...draft,
+      id: stored.id,
+      baseUrl: 'http://127.0.0.1:8080/v1',
+      allowInsecureEndpoint: false
+    })
+    expect(
+      (await repository.getSettings()).providers.find((entry) => entry.id === stored.id)
+        ?.allowInsecureEndpoint
+    ).toBe(false)
+  })
+
   it('projects an ephemeral runtime target without changing the stored provider selection', async () => {
     await module.upsertProvider({
       type: 'custom',

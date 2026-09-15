@@ -55,6 +55,21 @@ const render = (
 }
 
 describe('ProviderForm field switching', () => {
+  it('offers the plaintext-endpoint permission as an explicit, described switch', () => {
+    const onChange = vi.fn()
+    render(createEmptyProviderFormValue({ type: 'custom' }), { onChange })
+
+    const toggle = container.querySelector<HTMLButtonElement>(
+      '[aria-label="Allow plaintext endpoint"]'
+    )
+    expect(toggle).not.toBeNull()
+    // Off by default: the permission has to be granted, never assumed.
+    expect(toggle?.getAttribute('data-state')).toBe('unchecked')
+    act(() => toggle?.click())
+
+    expect(onChange).toHaveBeenCalledWith({ allowInsecureEndpoint: true })
+  })
+
   it('shows gateway/key/model fields for a custom provider and no auth-style control', () => {
     render(createEmptyProviderFormValue({ type: 'custom' }))
 

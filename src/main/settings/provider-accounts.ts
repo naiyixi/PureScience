@@ -43,6 +43,7 @@ import {
   resolveProviderReasoningEffortProfile
 } from '../../shared/provider-reasoning-effort'
 import type { ReasoningEffortProfile } from '../../shared/reasoning-effort'
+import { assertEndpointTransportAllowed } from '../../shared/endpoint-transport'
 import { isModelBridgeSupported } from '../../shared/provider-registry'
 import {
   DEFAULT_AGENT_FRAMEWORK_ID,
@@ -370,6 +371,11 @@ class ProviderAccountsModule {
           : (request.maxOutputTokens ?? existing?.maxOutputTokens)
       if (!baseUrl) throw new Error('Base URL is required for a custom provider.')
       if (!model) throw new Error('Model is required for a custom provider.')
+      const allowInsecureEndpoint =
+        request.allowInsecureEndpoint ?? existing?.allowInsecureEndpoint ?? false
+      // Refused here, where the endpoint is configured: the credential would otherwise leave in the clear,
+      // and catching it only at spawn time would put the failure somewhere the form cannot explain.
+      assertEndpointTransportAllowed({ url: baseUrl, allowInsecureEndpoint })
       if (!carryKey()) throw new Error('API key is required for a custom provider.')
       if (
         contextWindow !== undefined &&
@@ -389,11 +395,13 @@ class ProviderAccountsModule {
       provider.reasoningEffortTransport =
         request.reasoningEffortTransport ?? existing?.reasoningEffortTransport ?? 'reasoning-effort'
       provider.apiEndpoints = request.apiEndpoints ?? existing?.apiEndpoints ?? ['anthropic']
+      provider.allowInsecureEndpoint = allowInsecureEndpoint
       credentialsChanged =
         Boolean(request.key) ||
         provider.baseUrl !== existing?.baseUrl ||
         provider.model !== existing?.model ||
-        provider.apiEndpoints.join(',') !== (existing?.apiEndpoints ?? []).join(',')
+        provider.apiEndpoints.join(',') !== (existing?.apiEndpoints ?? []).join(',') ||
+        provider.allowInsecureEndpoint !== existing?.allowInsecureEndpoint
     }
 
     if (existing?.lastValidatedAt !== undefined && !credentialsChanged) {
@@ -1046,6 +1054,7 @@ class ProviderAccountsModule {
       model: provider.model,
       contextWindow: provider.contextWindow,
       supportsImageInput: this.providerSupportsImageInput(provider, activeModel),
+      ...(provider.allowInsecureEndpoint === true ? { allowInsecureEndpoint: true } : {}),
       reasoningEffortPreset:
         provider.type === 'custom' ? provider.reasoningEffortPreset : undefined,
       reasoningEffortTransport:
@@ -1260,6 +1269,7 @@ class ProviderAccountsModule {
     return {
       type: provider.type,
       ...(provider.codexAuthMode === undefined ? {} : { codexAuthMode: provider.codexAuthMode }),
+      ...(provider.allowInsecureEndpoint === true ? { allowInsecureEndpoint: true } : {}),
       baseUrl: provider.baseUrl,
       model,
       ...(contextWindow === undefined ? {} : { contextWindow }),
@@ -1295,6 +1305,7 @@ class ProviderAccountsModule {
     return {
       type: draft.type,
       baseUrl: draft.baseUrl,
+      ...(draft.allowInsecureEndpoint === true ? { allowInsecureEndpoint: true } : {}),
       model: draft.model,
       ...(draft.type === 'custom'
         ? { contextWindow: resolveCustomModelContextWindow(draft.contextWindow ?? undefined) }

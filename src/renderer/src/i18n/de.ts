@@ -643,6 +643,9 @@ export const de: Partial<Record<ZhKey, string>> = {
   'providerForm.imageInput': 'Bildeingabe',
   'providerForm.imageInputHint':
     'Nur aktivieren, wenn dieses Gateway und Modell Bildinhalte akzeptieren.',
+  'providerForm.allowInsecureEndpoint': 'Klartext-Endpunkt',
+  'providerForm.allowInsecureEndpointHint':
+    'Diesem Anbieter einen unverschlüsselten http-Endpunkt erlauben. Der API-Schlüssel und alle Nachrichten würden unverschlüsselt übertragen – nur für ein Gateway aktivieren, das Sie selbst betreiben.',
   'providerForm.providerType': 'Anbietertyp',
   'providerForm.reasoningEffort': 'Denkaufwand',
   'providerForm.requestFormat': 'Anfrageformat',
@@ -2114,6 +2117,7 @@ export const de: Partial<Record<ZhKey, string>> = {
     'Der gespeicherte Schlüssel konnte nicht entschlüsselt werden. Geben Sie ihn erneut ein, um fortzufahren.',
   'settings.streamableHttp': 'Streamable HTTP',
   'settings.supportsImageInput': 'Unterstützt Bildeingabe',
+  'settings.allowInsecureEndpoint': 'Klartext-Endpunkt erlauben',
   'settings.supportsReasoningEffort': 'Unterstützt Denkaufwand',
   'settings.switchStartsFreshSession':
     'Agent-Sitzung. Geöffnete Konversationen behalten ihre vorhandenen Nachrichten, und ihr Verlauf wird übernommen). Neue Konversationen sind nicht betroffen.',

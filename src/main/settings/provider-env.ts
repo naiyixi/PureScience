@@ -8,6 +8,7 @@ import type {
 } from '../../shared/settings'
 import type { OfficialVendorId } from '../../shared/provider-registry'
 import type { CustomReasoningEffortTransport } from '../../shared/reasoning-effort'
+import { assertEndpointTransportAllowed } from '../../shared/endpoint-transport'
 import { normalizeAnthropicBaseUrl } from './base-url'
 
 // Resolves an active provider into the environment overrides that the ACP agent (and the claude
@@ -25,6 +26,8 @@ export type ResolvedProvider = {
   vendorId?: OfficialVendorId
   // Anthropic /v1/messages base (also the sole base for a custom provider). Claude always uses this.
   baseUrl?: string
+  // True when the provider explicitly allows a plaintext (non-loopback http) endpoint.
+  allowInsecureEndpoint?: boolean
   // Distinct OpenAI /v1/chat/completions base for a dual-endpoint vendor (e.g. DeepSeek). Used only
   // when the chosen endpoint is openai; falls back to baseUrl when absent.
   openaiBaseUrl?: string
@@ -87,6 +90,12 @@ const buildProviderEnv = (
   if (provider.model) env.ANTHROPIC_MODEL = provider.model
 
   if (provider.type === 'custom') {
+    // Last line of defence: the key below travels to whatever this URL names, so a plaintext endpoint
+    // that was never opted into stops the spawn instead of leaking the credential.
+    assertEndpointTransportAllowed({
+      url: provider.baseUrl,
+      allowInsecureEndpoint: provider.allowInsecureEndpoint
+    })
     // The base URL is normalized so a user-supplied trailing `/v1` isn't doubled by the client's own
     // `/v1/messages` suffix (which would 404). Custom gateways authenticate with a bearer token.
     if (provider.baseUrl) {

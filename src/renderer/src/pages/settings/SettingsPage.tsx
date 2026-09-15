@@ -115,6 +115,7 @@ const toFormValue = (provider: ProviderView): ProviderFormValue =>
     maxOutputTokens: provider.maxOutputTokens?.toString() ?? '',
     apiEndpoint: provider.apiEndpoints?.[0] ?? 'anthropic',
     supportsImageInput: provider.supportsImageInput,
+    allowInsecureEndpoint: provider.allowInsecureEndpoint === true,
     reasoningEffortPreset: provider.reasoningEffortPreset ?? 'standard-5',
     reasoningEffortTransport: provider.reasoningEffortTransport ?? 'reasoning-effort',
     vendorId: provider.vendorId,
@@ -150,6 +151,8 @@ const toUpsertRequest = (
       : undefined,
   apiEndpoints: providerFormApiEndpoints(value),
   supportsImageInput: value.supportsImageInput,
+  // Sent explicitly (never inferred) so the stored permission follows the switch, including turning it off.
+  allowInsecureEndpoint: value.allowInsecureEndpoint,
   reasoningEffortPreset: value.type === 'custom' ? value.reasoningEffortPreset : undefined,
   reasoningEffortTransport: value.type === 'custom' ? value.reasoningEffortTransport : undefined,
   vendorId: value.vendorId,

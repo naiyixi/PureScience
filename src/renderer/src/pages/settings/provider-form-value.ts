@@ -36,6 +36,9 @@ export type ProviderFormValue = {
   // framework changes. It is intentionally omitted from the persisted provider request.
   providerFormTouched: boolean
   supportsImageInput: boolean
+  // Permission for a plaintext (non-loopback http) endpoint. The user grants it knowingly per provider;
+  // main refuses the endpoint until then, at save, at probe, and at spawn.
+  allowInsecureEndpoint: boolean
   // Optional at rest for backwards compatibility; the form always materializes the five-level default.
   reasoningEffortPreset: ReasoningEffortPresetSetting
   // The request-body shape used by the custom gateway for model effort.
@@ -62,6 +65,7 @@ export const createEmptyProviderFormValue = (
   apiEndpoint: 'anthropic',
   providerFormTouched: false,
   supportsImageInput: false,
+  allowInsecureEndpoint: false,
   reasoningEffortPreset: 'standard-5',
   reasoningEffortTransport: 'reasoning-effort',
   key: '',

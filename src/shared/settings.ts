@@ -275,6 +275,8 @@ export type ProviderView = {
   // Optional output-cap for a custom model (max completion tokens). Omitted means no explicit cap.
   maxOutputTokens?: number
   supportsImageInput: boolean
+  // True when this provider is allowed to use a plaintext (non-loopback http) endpoint. Absence = false.
+  allowInsecureEndpoint?: boolean
   // Custom-model effort declaration. Absence intentionally means the standard five-level preset.
   reasoningEffortPreset?: ReasoningEffortPresetSetting
   // Request-body shape used to deliver the selected effort to a custom model endpoint. Absence uses
@@ -596,6 +598,9 @@ export type ProviderDraft = {
   // Optional custom-model output cap (max completion tokens). `null` clears an override; omitted leaves it unchanged.
   maxOutputTokens?: number | null
   supportsImageInput?: boolean
+  // Opt-in for a plaintext (non-loopback http) endpoint. Omitted keeps the stored value; the refusal in
+  // main names the endpoint and the reason.
+  allowInsecureEndpoint?: boolean
   // Optional custom-model effort declaration. Absence defaults to the standard five-level preset.
   reasoningEffortPreset?: ReasoningEffortPresetSetting
   // Optional custom-gateway request shape. Absence defaults to the literal `reasoning_effort` field.
@@ -645,6 +650,8 @@ export type ValidationCategory =
   | 'auth'
   | 'model-not-found'
   | 'bad-url'
+  // Refused before any byte went out: a plaintext endpoint this provider never opted into.
+  | 'insecure-endpoint'
   | 'timeout'
   | 'incompatible'
   | 'server-error'

@@ -625,6 +625,9 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'providerForm.codexAuthentication': 'Аутентификация Codex',
   'providerForm.imageInput': 'Ввод изображений',
   'providerForm.imageInputHint': 'Включайте, только если этот шлюз и модель принимают изображения.',
+  'providerForm.allowInsecureEndpoint': 'Незашифрованная конечная точка',
+  'providerForm.allowInsecureEndpointHint':
+    'Разрешить этому провайдеру использовать незашифрованную http-конечную точку. Ключ API и все сообщения будут передаваться без шифрования — включайте только для собственного шлюза.',
   'providerForm.providerType': 'Тип провайдера',
   'providerForm.reasoningEffort': 'Уровень рассуждения',
   'providerForm.requestFormat': 'Формат запроса',
@@ -2066,6 +2069,7 @@ export const ru: Partial<Record<ZhKey, string>> = {
     'Не удалось расшифровать сохранённый ключ. Введите его заново, чтобы продолжить.',
   'settings.streamableHttp': 'Streamable HTTP',
   'settings.supportsImageInput': 'Поддерживает ввод изображений',
+  'settings.allowInsecureEndpoint': 'Разрешить незашифрованную конечную точку',
   'settings.supportsReasoningEffort': 'Поддерживает уровень рассуждения',
   'settings.switchStartsFreshSession':
     'сессия агента. Открытые диалоги сохраняют существующие сообщения, а их запись переносится). Новые диалоги не затрагиваются.',

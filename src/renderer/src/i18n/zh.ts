@@ -806,6 +806,7 @@ export const zh = {
   'settings.baseUrl': '基础 URL',
   'settings.apiFormat': 'API 格式',
   'settings.supportsImageInput': '支持图像输入',
+  'settings.allowInsecureEndpoint': '允许明文端点',
   'settings.supportsReasoningEffort': '支持推理强度',
   'settings.reasoningEffortLevels': '推理强度级别',
   'settings.reasoningEffortRequestFormat': '推理强度请求格式',
@@ -1688,6 +1689,9 @@ export const zh = {
   'providerForm.apiFormat': 'API 格式',
   'providerForm.imageInput': '图片输入',
   'providerForm.imageInputHint': '仅当该网关与模型支持图片内容时启用。',
+  'providerForm.allowInsecureEndpoint': '明文端点',
+  'providerForm.allowInsecureEndpointHint':
+    '允许此提供商使用明文 http 端点。API 密钥与所有消息将以未加密方式传输——仅对你自控的网关开启。',
   'providerForm.reasoningEffort': '推理强度',
   'providerForm.requestFormat': '请求格式',
   'providerForm.supportedModels': '支持的模型',

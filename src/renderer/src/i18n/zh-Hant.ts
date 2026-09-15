@@ -587,6 +587,9 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'providerForm.codexAuthentication': 'Codex 驗證',
   'providerForm.imageInput': '影像輸入',
   'providerForm.imageInputHint': '僅在該閘道與模型接受影像內容時啟用。',
+  'providerForm.allowInsecureEndpoint': '明文端點',
+  'providerForm.allowInsecureEndpointHint':
+    '允許此外掛供應商使用明文 http 端點。API 金鑰與所有訊息將以未加密方式傳輸——僅對你自控的閘道開啟。',
   'providerForm.providerType': '提供者類型',
   'providerForm.reasoningEffort': '推理強度',
   'providerForm.requestFormat': '請求格式',
@@ -1923,6 +1926,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.storedKeyUndecryptable': '無法解密已儲存的金鑰。請重新輸入以繼續。',
   'settings.streamableHttp': 'Streamable HTTP',
   'settings.supportsImageInput': '支援影像輸入',
+  'settings.allowInsecureEndpoint': '允許明文端點',
   'settings.supportsReasoningEffort': '支援推理強度',
   'settings.switchStartsFreshSession':
     '智能體對話。開啟中的對話會保留原有訊息，其記錄會帶入新後端（新對話不受影響）。',
