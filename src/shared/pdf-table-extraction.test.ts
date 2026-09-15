@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   auditPdfTableCandidateForUse,
   extractPdfTableCandidates,
+  extractPdfTableCandidatesFromText,
   PDF_TABLE_MANDATORY_LABELS,
   toHtmlTable,
   toMarkdownTable,
@@ -139,6 +140,57 @@ describe('PDF table extraction', () => {
 
     expect(html).not.toContain('<script>')
     expect(html).toContain('&lt;script&gt;')
+  })
+
+  it('reads a rigid text-layer grid as a candidate, and names the weaker method', () => {
+    const text = [
+      'Sample    Value    sd',
+      'control   12.4     1.1',
+      'treated   31.8     2.4',
+      'vehicle    9.7     0.8'
+    ].join('\n')
+
+    const [candidate] = extractPdfTableCandidatesFromText(5, text)
+
+    expect(candidate).toBeDefined()
+    expect(candidate.method).toBe('text-layer-whitespace-clustering')
+    expect(candidate.page).toBe(5)
+    expect(candidate.columnCount).toBe(3)
+    expect(candidate.rows[1]).toEqual(['control', '12.4', '1.1'])
+    expect(candidate.confidence).toBe('high')
+  })
+
+  it('does not call prose a table just because it has wide spacing', () => {
+    // Sentence-final double spaces are not a column grid: the line shapes differ, and one line of a
+    // two-column shape is not a table either.
+    const prose = [
+      'The treated group responded better.  It also recovered faster.',
+      'Controls were unchanged.  No adverse events were recorded.',
+      'We conclude the effect is real.'
+    ].join('\n')
+
+    expect(extractPdfTableCandidatesFromText(1, prose)).toEqual([])
+    expect(extractPdfTableCandidatesFromText(1, 'Header   Value\nonly one row')).toEqual([])
+    expect(extractPdfTableCandidatesFromText(1, 'alpha\nbeta\ngamma')).toEqual([])
+  })
+
+  it('stops a text-layer run at the line that breaks the grid, and keeps what came before', () => {
+    const text = [
+      'Sample    Value',
+      'control   12.4',
+      'treated   31.8',
+      'Discussion',
+      'The two arms differed.'
+    ].join('\n')
+
+    const candidates = extractPdfTableCandidatesFromText(2, text, { minRows: 3 })
+
+    expect(candidates).toHaveLength(1)
+    expect(candidates[0].rows).toEqual([
+      ['Sample', 'Value'],
+      ['control', '12.4'],
+      ['treated', '31.8']
+    ])
   })
 
   it('reports nothing when the geometry is one column wide', () => {

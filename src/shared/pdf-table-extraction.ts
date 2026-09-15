@@ -20,11 +20,18 @@ export type PdfTextItem = {
 
 export type PdfTableConfidence = 'low' | 'medium' | 'high'
 
+export type PdfTableMethod =
+  // Geometry: rows by baseline, columns by x gaps (needs positioned items).
+  | 'text-layer-row-column-clustering'
+  // Gaps the text layer already encodes: columns separated by runs of two or more spaces. A weaker claim
+  // than coordinates — the stored page text has no x positions — and the method name says exactly that.
+  | 'text-layer-whitespace-clustering'
+
 export type PdfTableCandidate = {
   page: number
   /** Always 'candidate': nothing here is a verified transcription of the page. */
   status: 'candidate'
-  method: 'text-layer-row-column-clustering'
+  method: PdfTableMethod
   rows: readonly (readonly string[])[]
   columnCount: number
   confidence: PdfTableConfidence
@@ -190,6 +197,111 @@ export const extractPdfTableCandidates = (
       evidence: { itemCount: usable.length, rowCount: rows.length, columnGapPoints }
     }
   ]
+}
+
+export type PdfTextTableOptions = {
+  minRows?: number
+  minColumns?: number
+  /** How many consecutive spaces separate two columns in this producer's output. */
+  minGapSpaces?: number
+}
+
+type LineShape = { cells: string[]; gaps: number[] }
+
+// Splits one line on runs of spaces and remembers WHERE each gap starts. The positions are what make a
+// column a column: a table's separators line up down the block, while prose that happens to carry double
+// spacing puts them wherever the sentence ended.
+const shapeOf = (line: string, minGapSpaces: number): LineShape => {
+  const cells: string[] = []
+  const gaps: number[] = []
+  const pattern = new RegExp(String.raw`\s{${minGapSpaces},}`, 'g')
+  let cursor = 0
+  for (const match of line.matchAll(pattern)) {
+    const start = match.index ?? 0
+    // Padding before the first cell is indentation, not a column boundary.
+    if (line.slice(cursor, start).trim() === '') {
+      cursor = start + match[0].length
+      continue
+    }
+    cells.push(line.slice(cursor, start).trim())
+    gaps.push(start)
+    cursor = start + match[0].length
+  }
+  const tail = line.slice(cursor).trim()
+  if (tail !== '') cells.push(tail)
+  return { cells, gaps }
+}
+
+// Characters the separators may drift by and still count as the same column (proportional text layers
+// shift a column by a character or two; prose shifts it by whole words).
+const COLUMN_ALIGNMENT_TOLERANCE = 2
+
+const alignedWith = (shape: LineShape, reference: LineShape): boolean =>
+  shape.cells.length === reference.cells.length &&
+  shape.gaps.length === reference.gaps.length &&
+  shape.gaps.every(
+    (gap, index) => Math.abs(gap - reference.gaps[index]) <= COLUMN_ALIGNMENT_TOLERANCE
+  )
+
+/**
+ * Text-layer mode: many producers separate table columns with runs of two or more spaces, and a stored page
+ * string is all that is available (no coordinates). A candidate here is a rigid grid — consecutive lines
+ * that all split into the SAME number of cells, at least 2x2 — because that is what distinguishes a table
+ * from prose that merely contains double spacing after a sentence. Anything weaker is not reported: a
+ * fabricated table would be worse than none.
+ */
+export const extractPdfTableCandidatesFromText = (
+  page: number,
+  text: string,
+  options: PdfTextTableOptions = {}
+): PdfTableCandidate[] => {
+  const minRows = options.minRows ?? DEFAULTS.minRows
+  const minColumns = options.minColumns ?? DEFAULTS.minColumns
+  const minGapSpaces = options.minGapSpaces ?? 2
+
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trimEnd())
+    .filter((line) => line.trim() !== '')
+  if (lines.length < minRows) return []
+
+  const candidates: PdfTableCandidate[] = []
+  let run: { shapes: LineShape[]; columns: number } | undefined
+
+  const flush = (): void => {
+    if (!run || run.shapes.length < minRows || run.columns < minColumns) {
+      run = undefined
+      return
+    }
+    const rows = run.shapes.map((shape) => shape.cells)
+    candidates.push({
+      page,
+      status: 'candidate',
+      method: 'text-layer-whitespace-clustering',
+      rows,
+      columnCount: run.columns,
+      confidence: confidenceFor(rows),
+      evidence: {
+        itemCount: rows.reduce((total, row) => total + row.length, 0),
+        rowCount: rows.length,
+        columnGapPoints: minGapSpaces
+      }
+    })
+    run = undefined
+  }
+
+  for (const line of lines) {
+    const shape = shapeOf(line, minGapSpaces)
+    if (run && alignedWith(shape, run.shapes[0])) {
+      run.shapes.push(shape)
+      continue
+    }
+    flush()
+    if (shape.cells.length >= minColumns) run = { shapes: [shape], columns: shape.cells.length }
+  }
+  flush()
+
+  return candidates
 }
 
 /** Mandatory on every export: nothing downstream may treat the extraction as a transcription. */
