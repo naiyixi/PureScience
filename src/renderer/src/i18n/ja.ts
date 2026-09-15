@@ -925,6 +925,26 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'sessions.packageImport.confirm': '読み込む',
   'sessions.packageImport.cancel': 'キャンセル',
   'sessions.packageImport.refused': 'このパッケージは読み込めません：{reason}',
+  'sessions.packageImport.refusal.not-a-package':
+    'このファイルはセッションパッケージではありません。',
+  'sessions.packageImport.refusal.manifest-invalid':
+    'パッケージ内のマニフェストが壊れていて読めません。',
+  'sessions.packageImport.refusal.unsupported-format-version':
+    'このパッケージは新しい版で書かれており、現在の版では読めません。',
+  'sessions.packageImport.refusal.required-evidence-missing':
+    '必要な証拠（会話・引用・レビュー指摘・検証記録）が欠けています。',
+  'sessions.packageImport.refusal.entry-path-unsafe':
+    'パッケージ内に安全でないパスがあるため拒否しました。',
+  'sessions.packageImport.refusal.entry-count-exceeded':
+    'パッケージ内の項目数が上限を超えています。',
+  'sessions.packageImport.refusal.entry-too-large':
+    'パッケージ内のファイルがサイズ上限を超えています。',
+  'sessions.packageImport.refusal.package-too-large': 'パッケージがサイズ上限を超えています。',
+  'sessions.packageImport.refusal.not-confirmed': '読み込みがまだ確認されていません。',
+  'sessions.packageImport.refusal.no-target-project':
+    '読み込み先のプロジェクトが選ばれていません。',
+  'sessions.packageImport.refusal.write-failed':
+    '書き込みに失敗しました。ディスク容量か書き込み権限をご確認ください。',
   'settings.appearanceDesc':
     'アプリの外観を選択します。「システム」はデバイスの設定に従い、「ライト」「ダーク」は固定されます。選択内容はこのデバイスに記憶されます。',
   'settings.applicationStorage': 'アプリケーションストレージ',

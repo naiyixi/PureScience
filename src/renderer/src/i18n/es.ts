@@ -935,6 +935,23 @@ export const es: Partial<Record<ZhKey, string>> = {
   'sessions.packageImport.confirm': 'Importar',
   'sessions.packageImport.cancel': 'Cancelar',
   'sessions.packageImport.refused': 'Este paquete no se puede importar: {reason}',
+  'sessions.packageImport.refusal.not-a-package': 'Este archivo no es un paquete de sesión.',
+  'sessions.packageImport.refusal.manifest-invalid':
+    'El manifiesto del paquete está dañado y no se puede leer.',
+  'sessions.packageImport.refusal.unsupported-format-version':
+    'Este paquete lo escribió una versión más nueva; esta versión no puede leerlo.',
+  'sessions.packageImport.refusal.required-evidence-missing':
+    'Al paquete le faltan evidencias obligatorias (conversación, citas, hallazgos de revisión o registros de verificación).',
+  'sessions.packageImport.refusal.entry-path-unsafe':
+    'El paquete contiene una ruta insegura y se rechazó.',
+  'sessions.packageImport.refusal.entry-count-exceeded': 'El paquete contiene demasiadas entradas.',
+  'sessions.packageImport.refusal.entry-too-large':
+    'Un archivo del paquete supera el límite de tamaño.',
+  'sessions.packageImport.refusal.package-too-large': 'El paquete supera el límite de tamaño.',
+  'sessions.packageImport.refusal.not-confirmed': 'La importación no se confirmó.',
+  'sessions.packageImport.refusal.no-target-project': 'No se eligió ningún proyecto de destino.',
+  'sessions.packageImport.refusal.write-failed':
+    'Falló la escritura: puede que el disco esté lleno o la carpeta no sea escribible.',
   'settings.appearanceDesc':
     'Elige el aspecto de la aplicación. La opción Sistema sigue a tu dispositivo; claro y oscuro permanecen fijos. Tu elección se recuerda en este dispositivo.',
   'settings.applicationStorage': 'Almacenamiento de la aplicación',

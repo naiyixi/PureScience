@@ -928,6 +928,21 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'sessions.packageImport.confirm': 'Импортировать',
   'sessions.packageImport.cancel': 'Отмена',
   'sessions.packageImport.refused': 'Этот пакет нельзя импортировать: {reason}',
+  'sessions.packageImport.refusal.not-a-package': 'Этот файл не является пакетом сессии.',
+  'sessions.packageImport.refusal.manifest-invalid': 'Манифест пакета повреждён и не читается.',
+  'sessions.packageImport.refusal.unsupported-format-version':
+    'Пакет создан более новой версией; текущая версия его не читает.',
+  'sessions.packageImport.refusal.required-evidence-missing':
+    'В пакете нет обязательных свидетельств (переписка, цитаты, замечания ревью или записи проверок).',
+  'sessions.packageImport.refusal.entry-path-unsafe':
+    'В пакете есть небезопасный путь — импорт отклонён.',
+  'sessions.packageImport.refusal.entry-count-exceeded': 'В пакете слишком много элементов.',
+  'sessions.packageImport.refusal.entry-too-large': 'Файл внутри пакета превышает предел размера.',
+  'sessions.packageImport.refusal.package-too-large': 'Пакет превышает предел размера.',
+  'sessions.packageImport.refusal.not-confirmed': 'Импорт не подтверждён.',
+  'sessions.packageImport.refusal.no-target-project': 'Не выбран проект для импорта.',
+  'sessions.packageImport.refusal.write-failed':
+    'Запись не удалась: возможно, диск заполнен или папка недоступна для записи.',
   'settings.appearanceDesc':
     'Выберите внешний вид приложения. «Системная» следует за устройством; «Светлая» и «Тёмная» зафиксированы. Ваш выбор запоминается на этом устройстве.',
   'settings.applicationStorage': 'Хранилище приложения',

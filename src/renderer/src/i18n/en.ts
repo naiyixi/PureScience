@@ -1242,6 +1242,23 @@ export const en: Record<ZhKey, string> = {
   'sessions.packageImport.confirm': 'Import',
   'sessions.packageImport.cancel': 'Cancel',
   'sessions.packageImport.refused': 'This package cannot be imported: {reason}',
+  'sessions.packageImport.refusal.not-a-package': 'That file is not a session package.',
+  'sessions.packageImport.refusal.manifest-invalid':
+    'The package manifest is damaged and cannot be read.',
+  'sessions.packageImport.refusal.unsupported-format-version':
+    'This package was written by a newer version than this app can read.',
+  'sessions.packageImport.refusal.required-evidence-missing':
+    'The package is missing evidence it must carry (conversation, citations, review findings or verifications).',
+  'sessions.packageImport.refusal.entry-path-unsafe':
+    'The package contains an unsafe path and was refused.',
+  'sessions.packageImport.refusal.entry-count-exceeded': 'The package contains too many entries.',
+  'sessions.packageImport.refusal.entry-too-large':
+    'A file inside the package exceeds the size limit.',
+  'sessions.packageImport.refusal.package-too-large': 'The package exceeds the size limit.',
+  'sessions.packageImport.refusal.not-confirmed': 'The import was not confirmed.',
+  'sessions.packageImport.refusal.no-target-project': 'No project was chosen to import into.',
+  'sessions.packageImport.refusal.write-failed':
+    'Writing failed. The disk may be full, or the folder may not be writable.',
   'settings.maxInputTokens': 'Max input tokens',
   'settings.maxOutputTokens': 'Max output tokens',
   'settings.leaveEmptyForDefault': 'Leave empty for default',

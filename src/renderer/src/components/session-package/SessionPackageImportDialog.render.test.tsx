@@ -124,7 +124,8 @@ describe('session package import dialog', () => {
     render()
 
     await click('Choose a package')
-    expect(container.textContent).toContain('required-evidence-missing')
+    const alertText = container.querySelector('[role="alert"]')?.textContent ?? ''
+    expect(alertText).toMatch(/missing evidence|必需证据/)
     expect(button('Import').disabled).toBe(true)
     await click('Import')
     expect(importPackage).not.toHaveBeenCalled()
@@ -147,7 +148,8 @@ describe('session package import dialog', () => {
 
     await click('Choose a package')
     await click('Import')
-    expect(container.textContent).toContain('write-failed')
+    const alertText = container.querySelector('[role="alert"]')?.textContent ?? ''
+    expect(alertText).toMatch(/Writing failed|写入失败|write-failed/)
     expect(onImported).not.toHaveBeenCalled()
   })
 })

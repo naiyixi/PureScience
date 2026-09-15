@@ -913,6 +913,23 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'sessions.packageImport.confirm': '가져오기',
   'sessions.packageImport.cancel': '취소',
   'sessions.packageImport.refused': '이 패키지는 가져올 수 없습니다: {reason}',
+  'sessions.packageImport.refusal.not-a-package': '이 파일은 세션 패키지가 아닙니다.',
+  'sessions.packageImport.refusal.manifest-invalid':
+    '패키지 안의 매니페스트가 손상되어 읽을 수 없습니다.',
+  'sessions.packageImport.refusal.unsupported-format-version':
+    '이 패키지는 더 새로운 버전에서 작성되어 현재 버전에서는 읽을 수 없습니다.',
+  'sessions.packageImport.refusal.required-evidence-missing':
+    '필수 근거(대화, 인용, 검토 지적, 검증 기록)가 빠져 있습니다.',
+  'sessions.packageImport.refusal.entry-path-unsafe':
+    '패키지 안에 안전하지 않은 경로가 있어 거부했습니다.',
+  'sessions.packageImport.refusal.entry-count-exceeded': '패키지 항목 수가 상한을 넘었습니다.',
+  'sessions.packageImport.refusal.entry-too-large': '패키지 안의 파일이 크기 상한을 넘었습니다.',
+  'sessions.packageImport.refusal.package-too-large': '패키지가 크기 상한을 넘었습니다.',
+  'sessions.packageImport.refusal.not-confirmed': '아직 가져오기를 확인하지 않았습니다.',
+  'sessions.packageImport.refusal.no-target-project':
+    '어느 프로젝트로 가져올지 선택되지 않았습니다.',
+  'sessions.packageImport.refusal.write-failed':
+    '쓰기에 실패했습니다. 디스크가 가득 찼거나 폴더에 쓸 수 없습니다.',
   'settings.appearanceDesc':
     '앱의 모양을 선택합니다. 시스템은 기기 설정을 따르고, 라이트/다크는 고정됩니다. 선택한 값은 이 기기에 저장됩니다.',
   'settings.applicationStorage': '애플리케이션 저장소',

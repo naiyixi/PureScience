@@ -949,6 +949,25 @@ export const de: Partial<Record<ZhKey, string>> = {
   'sessions.packageImport.confirm': 'Importieren',
   'sessions.packageImport.cancel': 'Abbrechen',
   'sessions.packageImport.refused': 'Dieses Paket lässt sich nicht importieren: {reason}',
+  'sessions.packageImport.refusal.not-a-package': 'Diese Datei ist kein Sitzungspaket.',
+  'sessions.packageImport.refusal.manifest-invalid':
+    'Das Manifest im Paket ist beschädigt und nicht lesbar.',
+  'sessions.packageImport.refusal.unsupported-format-version':
+    'Dieses Paket stammt aus einer neueren Version; die aktuelle kann es nicht lesen.',
+  'sessions.packageImport.refusal.required-evidence-missing':
+    'Im Paket fehlen erforderliche Belege (Verlauf, Zitate, Review-Befunde oder Prüfprotokolle).',
+  'sessions.packageImport.refusal.entry-path-unsafe':
+    'Das Paket enthält einen unsicheren Pfad und wurde abgelehnt.',
+  'sessions.packageImport.refusal.entry-count-exceeded': 'Das Paket enthält zu viele Einträge.',
+  'sessions.packageImport.refusal.entry-too-large':
+    'Eine Datei im Paket überschreitet die Größenbegrenzung.',
+  'sessions.packageImport.refusal.package-too-large':
+    'Das Paket überschreitet die Größenbegrenzung.',
+  'sessions.packageImport.refusal.not-confirmed': 'Der Import wurde nicht bestätigt.',
+  'sessions.packageImport.refusal.no-target-project':
+    'Es wurde kein Projekt für den Import gewählt.',
+  'sessions.packageImport.refusal.write-failed':
+    'Schreiben fehlgeschlagen: Die Platte ist womöglich voll oder der Ordner nicht beschreibbar.',
   'settings.appearanceDesc':
     'Wählen Sie das Erscheinungsbild der App. „System folgen“ richtet sich nach Ihrem Gerät; Hell und Dunkel bleiben fest. Ihre Wahl wird auf diesem Gerät gespeichert.',
   'settings.applicationStorage': 'Anwendungsspeicher',

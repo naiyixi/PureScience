@@ -5,6 +5,22 @@ import { Button } from '@/components/ui/button'
 import { useLanguage } from '@/i18n'
 import type { SessionPackageImportPreview } from '../../../../shared/session-package-import'
 
+// Every refusal has a sentence in the reader's language; an unknown code is shown as itself rather than
+// swallowed into a generic apology.
+const REFUSAL_KEYS = {
+  'not-a-package': 'sessions.packageImport.refusal.not-a-package',
+  'manifest-invalid': 'sessions.packageImport.refusal.manifest-invalid',
+  'unsupported-format-version': 'sessions.packageImport.refusal.unsupported-format-version',
+  'required-evidence-missing': 'sessions.packageImport.refusal.required-evidence-missing',
+  'entry-path-unsafe': 'sessions.packageImport.refusal.entry-path-unsafe',
+  'entry-count-exceeded': 'sessions.packageImport.refusal.entry-count-exceeded',
+  'entry-too-large': 'sessions.packageImport.refusal.entry-too-large',
+  'package-too-large': 'sessions.packageImport.refusal.package-too-large',
+  'not-confirmed': 'sessions.packageImport.refusal.not-confirmed',
+  'no-target-project': 'sessions.packageImport.refusal.no-target-project',
+  'write-failed': 'sessions.packageImport.refusal.write-failed'
+} as const
+
 type SessionPackageImportDialogProps = {
   open: boolean
   /**
@@ -64,6 +80,11 @@ const SessionPackageImportDialog = ({
     onImported?.(result.sessionId)
   }
 
+  const refusalLabel = (reason: string): string => {
+    const key = REFUSAL_KEYS[reason as keyof typeof REFUSAL_KEYS]
+    return key ? t(key) : reason
+  }
+
   const described = preview?.accepted ? preview.described : undefined
 
   return (
@@ -110,7 +131,7 @@ const SessionPackageImportDialog = ({
 
         {refusal ? (
           <p className="mt-3 text-xs" role="alert">
-            {t('sessions.packageImport.refused').replace('{reason}', refusal)}
+            {t('sessions.packageImport.refused').replace('{reason}', refusalLabel(refusal))}
           </p>
         ) : null}
 
