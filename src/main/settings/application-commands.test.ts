@@ -53,6 +53,7 @@ const expectedChannels = [
   'settings:refresh-provider-models',
   'settings:scan-repo-skills',
   'settings:set-app-icon-variant',
+  'settings:set-ui-language',
   'settings:set-close-preference',
   'settings:set-default-permission-profile',
   'settings:set-memory',
@@ -138,7 +139,7 @@ const createDependencies = (): Readonly<{
 }
 
 describe('Settings core application commands', () => {
-  it('installs the exact 47-command inventory and dispatches a remote-safe preflight query', async () => {
+  it('installs the exact 48-command inventory and dispatches a remote-safe preflight query', async () => {
     const { dependencies, serviceMethod } = createDependencies()
     const preflight = { agentReady: true }
     serviceMethod('getPreflight').mockResolvedValue(preflight)

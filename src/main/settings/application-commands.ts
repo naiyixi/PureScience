@@ -11,6 +11,7 @@ import type {
   RefreshProviderModelsRequest,
   ScanRepoRequest,
   SetAppIconVariantRequest,
+  SetUiLanguageRequest,
   SetClosePreferenceRequest,
   SetDefaultPermissionProfileRequest,
   SetNotificationsEnabledRequest,
@@ -34,6 +35,7 @@ import type { CallerContext } from '../caller-context'
 import type { SettingsService } from './service'
 import {
   readAppIconVariant,
+  readUiLanguage,
   readClosePreference,
   readDefaultPermissionProfile,
   readNotificationsEnabled
@@ -286,6 +288,13 @@ const settingsCoreApplicationCommands = Object.freeze({
     readonly [request: SetAppIconVariantRequest],
     AppearanceResult
   >('settings:set-app-icon-variant'),
+  // The interface language the window is showing. Recorded so main-process prose (a background
+  // delivery's continuation turn) can speak it even with no window open to ask.
+  setUiLanguage: defineApplicationCommand<
+    'settings:set-ui-language',
+    readonly [request: SetUiLanguageRequest],
+    StoreResult<'setUiLanguage'>
+  >('settings:set-ui-language'),
   setClosePreference: defineApplicationCommand<
     'settings:set-close-preference',
     readonly [request: SetClosePreferenceRequest],
@@ -454,6 +463,7 @@ const settingsCoreApplicationCommandGroup = defineApplicationCommandGroup('setti
   settingsCoreApplicationCommands.refreshProviderModels,
   settingsCoreApplicationCommands.scanRepoSkills,
   settingsCoreApplicationCommands.setAppIconVariant,
+  settingsCoreApplicationCommands.setUiLanguage,
   settingsCoreApplicationCommands.setClosePreference,
   settingsCoreApplicationCommands.setDefaultPermissionProfile,
   settingsCoreApplicationCommands.setMemory,
@@ -557,6 +567,12 @@ const registerCoreSettingsApplicationCommands = (
       'settings:set-app-icon-variant': ({ args, callerContext }) => {
         requireLocalCaller(callerContext, 'settings:set-app-icon-variant')
         return dependencies.appearance.setAppIconVariant(readAppIconVariant(args[0]))
+      },
+      'settings:set-ui-language': ({ args }) => {
+        const language = readUiLanguage(args[0])
+        // The command path takes no "clear the language" case: an empty report is ignored, not applied.
+        if (language === undefined) throw new Error('A language tag is required.')
+        return dependencies.service.setUiLanguage(language)
       },
       'settings:set-close-preference': ({ args, callerContext }) => {
         requireLocalCaller(callerContext, 'settings:set-close-preference')

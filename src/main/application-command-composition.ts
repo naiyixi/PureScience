@@ -109,10 +109,13 @@ type ApplicationCommandComposition = Readonly<{
 }>
 
 const GROUP_COUNT = 36
-const INTERNAL_COMMAND_COUNT = 302
-const LOCAL_WEB_COMMAND_COUNT = 300
-const REMOTE_WEB_COMMAND_COUNT = 201
-const REMOTE_REJECTED_COMMAND_COUNT = 99
+// Counts are certified at startup: a new command without a matching increment fails the boot rather
+// than shipping an uncertified surface. +1 internal / +2 local Web / +1 remote Web / +1 remote rejection
+// is compute:deliveries:list (available on both Web surfaces) plus settings:set-ui-language (local only).
+const INTERNAL_COMMAND_COUNT = 304
+const LOCAL_WEB_COMMAND_COUNT = 302
+const REMOTE_WEB_COMMAND_COUNT = 202
+const REMOTE_REJECTED_COMMAND_COUNT = 100
 const TASK_COMMAND_COUNT = 7
 
 const ELECTRON_NATIVE_COMMAND_NAMES = Object.freeze([
