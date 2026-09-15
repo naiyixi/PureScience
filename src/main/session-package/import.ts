@@ -5,6 +5,7 @@ import {
   SESSION_PACKAGE_MANIFEST_PATH,
   type SessionPackageManifest
 } from '../../shared/session-package'
+import { readZipDirectory } from './zip-directory'
 import {
   SESSION_PACKAGE_LIMITS,
   type SessionPackageImportPreview,
@@ -34,14 +35,30 @@ const isSafeEntryPath = (name: string): boolean =>
 /**
  * Read a package far enough to say whether it may be imported, and what it holds.
  *
- * KNOWN LIMITATION (deliberate, not hidden): entries are decompressed with `unzipSync` before the
- * per-entry ceiling is applied, so `maxEntryBytes` catches an oversized entry *after* it was expanded.
- * The total-bytes ceiling is therefore enforced on what was actually produced, which bounds disk writes
- * but not peak memory. A streaming reader (`fflate.Unzip`) that refuses an entry the moment its declared
- * size exceeds the ceiling is the next step; until then this is a preview for packages the user chose,
- * not a hardened parser for hostile input.
+ * The ceilings are applied to what the archive DECLARES before anything is expanded: the central
+ * directory is read first, and an oversized member, an unsafe path or an over-long entry list is refused
+ * without decompressing a byte. Zip64 members (whose sizes hide in an extra field this reader does not
+ * interpret) are refused by name rather than expanded unbounded — our exporter never writes them.
  */
 export const inspectSessionPackage = (archiveBytes: Uint8Array): SessionPackageImportPreview => {
+  // 1. What the archive CLAIMS, read from its directory without expanding anything.
+  const directory = readZipDirectory(archiveBytes)
+  if (!directory.ok) {
+    return refusal(directory.reason === 'zip64-not-admitted' ? 'entry-too-large' : 'not-a-package')
+  }
+  if (directory.entries.length > SESSION_PACKAGE_LIMITS.maxEntries) {
+    return refusal('entry-count-exceeded')
+  }
+  let declaredTotal = 0
+  for (const entry of directory.entries) {
+    if (!isSafeEntryPath(entry.name)) return refusal('entry-path-unsafe')
+    if (entry.declaredBytes > SESSION_PACKAGE_LIMITS.maxEntryBytes)
+      return refusal('entry-too-large')
+    declaredTotal += entry.declaredBytes
+    if (declaredTotal > SESSION_PACKAGE_LIMITS.maxTotalBytes) return refusal('package-too-large')
+  }
+
+  // 2. Only then expand, under the same ceilings.
   let entries: Record<string, Uint8Array>
   try {
     entries = unzipSync(archiveBytes)
