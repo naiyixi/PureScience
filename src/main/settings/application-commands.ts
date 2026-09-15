@@ -48,6 +48,7 @@ type CoreSettingsCommandStore = Pick<
   | 'cancelCodexLogin'
   | 'cancelClaudeIsolatedLogin'
   | 'checkEnvironment'
+  | 'setUiLanguage'
   | 'detectClaude'
   | 'detectCodebuddy'
   | 'detectCodex'

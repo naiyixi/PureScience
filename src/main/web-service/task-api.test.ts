@@ -96,7 +96,8 @@ describe('HeadlessTaskApi adapter', () => {
       'runtime:list-environments',
       'settings:list-connectors'
     ])
-    for (const [, callerContext, args] of invoke.mock.calls) {
+    const calls = invoke.mock.calls as unknown as [string, CallerContext, unknown[]][]
+    for (const [, callerContext, args] of calls) {
       expect(callerContext).toEqual(taskCallerContext())
       expect(args).toEqual([])
     }

@@ -686,6 +686,9 @@ describe('startWebHttpServer', () => {
         artifacts: []
       })),
       getRun: vi.fn(),
+      readiness: vi.fn().mockResolvedValue({ checks: [] }),
+      runtimes: vi.fn().mockResolvedValue({ python: [] }),
+      connectors: vi.fn().mockResolvedValue({ connectors: [] }),
       listArtifacts: vi.fn(),
       acquireArtifact: vi.fn(),
       releaseArtifact: vi.fn()
@@ -1246,6 +1249,9 @@ describe('startWebHttpServer', () => {
         output: 'Done',
         artifacts: []
       }),
+      readiness: vi.fn().mockResolvedValue({ checks: [] }),
+      runtimes: vi.fn().mockResolvedValue({ python: [] }),
+      connectors: vi.fn().mockResolvedValue({ connectors: [] }),
       listArtifacts: vi.fn().mockResolvedValue([{ id: 'artifact/1', name: 'report.md' }]),
       acquireArtifact: vi.fn(),
       releaseArtifact: vi.fn(),
@@ -1408,6 +1414,9 @@ describe('startWebHttpServer', () => {
       getSession: vi.fn(),
       startRun: vi.fn(),
       getRun: vi.fn(),
+      readiness: vi.fn().mockResolvedValue({ checks: [] }),
+      runtimes: vi.fn().mockResolvedValue({ python: [] }),
+      connectors: vi.fn().mockResolvedValue({ connectors: [] }),
       listArtifacts: vi.fn(),
       acquireArtifact: vi.fn().mockResolvedValue({
         resourceId: 'resource-1',
@@ -1474,6 +1483,9 @@ describe('startWebHttpServer', () => {
       getSession: vi.fn(),
       startRun: vi.fn(),
       getRun: vi.fn(),
+      readiness: vi.fn().mockResolvedValue({ checks: [] }),
+      runtimes: vi.fn().mockResolvedValue({ python: [] }),
+      connectors: vi.fn().mockResolvedValue({ connectors: [] }),
       listArtifacts: vi.fn(),
       acquireArtifact: vi.fn().mockResolvedValue({
         resourceId: 'resource-disconnect',
