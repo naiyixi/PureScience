@@ -5,6 +5,7 @@ import {
   webRpcResponseSchema
 } from '../../shared/web-rpc-contract'
 import { installWebRendererContracts } from './api-installer'
+import { rewritePreviewUrls } from './rewrite-preview-urls'
 import { applyTheme, resolveInitialTheme } from '@/lib/theme'
 import purescienceLogoSvg from '../../main/remote-access/purescience-logo.svg?raw'
 
@@ -170,20 +171,6 @@ const invoke = async (channel: string, args: unknown[]): Promise<unknown> => {
   }
   if (!payload.ok) throw new Error(payload.error.message)
   return rewritePreviewUrls(payload.result)
-}
-
-const rewritePreviewUrls = (value: unknown): unknown => {
-  if (Array.isArray(value)) return value.map(rewritePreviewUrls)
-  if (value && typeof value === 'object') {
-    const result: Record<string, unknown> = {}
-    for (const [key, child] of Object.entries(value)) result[key] = rewritePreviewUrls(child)
-    return result
-  }
-  if (typeof value === 'string' && value.startsWith('purescience-preview://')) {
-    const url = new URL(value)
-    return `/preview/${encodeURIComponent(url.hostname)}${url.pathname}`
-  }
-  return value
 }
 
 let eventReconnectAttempt = 0
