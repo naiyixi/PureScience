@@ -48,6 +48,9 @@ export type SessionPackageImportPreview = {
     formatVersion: number
     mode: SessionPackageMode
     session: { id: string; title: string; projectId: string }
+    /** Who exported it and when — provenance an import must keep, not invent. */
+    appVersion: string
+    exportedAt: string
     counts: SessionPackageCounts
     assertion: SessionPackageAssertion
     notes: readonly SessionPackageNoteCode[]
@@ -70,4 +73,29 @@ export type SessionPackageImportResult =
       posture: typeof SESSION_PACKAGE_IMPORT_POSTURE
       notes: readonly SessionPackageNoteCode[]
     }
-  | { ok: false; reason: SessionPackageRejectionReason | 'not-confirmed' | 'write-failed' }
+  | {
+      ok: false
+      reason: SessionPackageRejectionReason | 'not-confirmed' | 'no-target-project' | 'write-failed'
+    }
+
+/**
+ * What travels alongside an imported session, so the read-only posture and the sender's own claim about
+ * provenance survive a restart instead of living only in the process that did the import.
+ */
+export type SessionPackageImportRecord = {
+  importedAt: string
+  /** The identity the package carried. The imported session gets a NEW id; this is where it came from. */
+  importedFrom: {
+    sessionId: string
+    projectId: string
+    appVersion: string
+    exportedAt: string
+  }
+  posture: typeof SESSION_PACKAGE_IMPORT_POSTURE
+  /** The sender's provenance claim, verbatim. Never rewritten into this machine's voice. */
+  assertion: SessionPackageAssertion
+  notes: readonly SessionPackageNoteCode[]
+}
+
+/** Suffix for the sidecar file that carries the record above next to an imported session. */
+export const SESSION_PACKAGE_IMPORT_RECORD_SUFFIX = '.import.json'

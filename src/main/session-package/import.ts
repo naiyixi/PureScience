@@ -101,6 +101,8 @@ export const inspectSessionPackage = (archiveBytes: Uint8Array): SessionPackageI
         title: manifest.session.title,
         projectId: manifest.session.projectId
       },
+      appVersion: manifest.app?.version ?? '',
+      exportedAt: manifest.exportedAt ?? '',
       counts: manifest.counts,
       // Carried through verbatim: the reader must be able to show that these are the sender's claims.
       assertion: manifest.assertion,
