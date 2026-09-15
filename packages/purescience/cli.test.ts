@@ -187,6 +187,37 @@ describe('task CLI', () => {
     expect(() => parseCliArgs(['status', '--yes'])).toThrow('--yes requires rollback-to-0.7.3.')
   })
 
+  // P3-8: the three machine-readable state commands. They must reach the app (not compute anything
+  // locally) and print whatever it decided.
+  it('dispatches readiness, runtime and connector listings through the SDK', async () => {
+    const readiness = { ready: false, checks: [{ id: 'storage', ok: false }] }
+    const runtimes = [{ language: 'python', source: 'external', path: '/opt/python' }]
+    const connectors = [{ id: 'bio-tools', enabled: false }]
+    const client = {
+      getReadiness: vi.fn().mockResolvedValue(readiness),
+      listRuntimes: vi.fn().mockResolvedValue(runtimes),
+      listConnectors: vi.fn().mockResolvedValue(connectors)
+    }
+    const log = vi.fn()
+    const deps = { connect: vi.fn().mockResolvedValue(client), log }
+
+    await runTaskCommand({ command: 'ready', options: { json: true, jsonl: false } }, deps)
+    await runTaskCommand(
+      { command: 'runtime', subcommand: 'list', options: { json: true, jsonl: false } },
+      deps
+    )
+    await runTaskCommand(
+      { command: 'connectors', subcommand: 'list', options: { json: true, jsonl: false } },
+      deps
+    )
+
+    expect(client.getReadiness).toHaveBeenCalledTimes(1)
+    expect(client.listRuntimes).toHaveBeenCalledTimes(1)
+    expect(client.listConnectors).toHaveBeenCalledTimes(1)
+    const printed = log.mock.calls.map(([line]) => JSON.parse(line))
+    expect(printed).toEqual([readiness, runtimes, connectors])
+  })
+
   it('dispatches project, session, and artifact commands through the SDK', async () => {
     const client = {
       listProjects: vi.fn().mockResolvedValue([{ id: 'project-1', name: 'Research' }]),

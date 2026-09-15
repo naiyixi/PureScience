@@ -163,6 +163,21 @@ class HeadlessTaskApi {
     return this.runner.releaseArtifact(resourceId)
   }
 
+  // Read-only projections of judgements that already exist, for the command line (P3-8). Each one calls
+  // the same application command the window calls, so the CLI cannot drift from what the UI shows —
+  // a second implementation of "is this machine ready" is exactly what this must not become.
+  readiness(): Promise<unknown> {
+    return this.invoke('settings:check-environment')
+  }
+
+  runtimes(): Promise<unknown> {
+    return this.invoke('runtime:list-environments')
+  }
+
+  connectors(): Promise<unknown> {
+    return this.invoke('settings:list-connectors')
+  }
+
   private invoke(channel: string, ...args: unknown[]): Promise<unknown> {
     return this.commandClient.invoke(
       this.ports.commands,

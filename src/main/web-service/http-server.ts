@@ -77,6 +77,9 @@ type WebServerOptions = {
   tasks?: Pick<
     HeadlessTaskApi,
     | 'listProjects'
+    | 'readiness'
+    | 'runtimes'
+    | 'connectors'
     | 'createProject'
     | 'listSessions'
     | 'getSession'
@@ -330,6 +333,24 @@ const handleTaskApiRequest = async (
         json(response, 200, {
           data: await tasks.listSessions(url.searchParams.get('project') ?? undefined)
         })
+        return true
+      }
+      // Machine-readable state for the command line (P3-8): the same readiness judgement, runtime
+      // survey and connector list the settings window shows, projected for `purescience ready`,
+      // `purescience runtime list` and `purescience connectors list`.
+      if (url.pathname === '/api/v1/readiness' && request.method === 'GET') {
+        assertExternalAuthorizationCurrent(externalAuthorization)
+        json(response, 200, { data: await tasks.readiness() })
+        return true
+      }
+      if (url.pathname === '/api/v1/runtimes' && request.method === 'GET') {
+        assertExternalAuthorizationCurrent(externalAuthorization)
+        json(response, 200, { data: await tasks.runtimes() })
+        return true
+      }
+      if (url.pathname === '/api/v1/connectors' && request.method === 'GET') {
+        assertExternalAuthorizationCurrent(externalAuthorization)
+        json(response, 200, { data: await tasks.connectors() })
         return true
       }
       if (url.pathname === '/api/v1/runs' && request.method === 'POST') {

@@ -33,6 +33,9 @@ Commands:
   session status <session-id>
   artifacts list <session-id>
   artifacts download <artifact-id> --output <path>
+  ready                  Print the environment readiness judgement as it stands
+  runtime list           List the Python/R runtimes the app can see
+  connectors list        List connectors and whether each is enabled
   rollback-to-0.7.3 --yes [--output <path>]
 
 Options:
@@ -73,8 +76,17 @@ const VALUE_OPTIONS = {
   '--output': 'output'
 }
 
-const TASK_COMMANDS = new Set(['project', 'run', 'session', 'artifacts'])
-const GROUP_COMMANDS = new Set(['project', 'session', 'artifacts'])
+const TASK_COMMANDS = new Set([
+  'project',
+  'run',
+  'session',
+  'artifacts',
+  // Read-only machine-readable state (P3-8). Each projects what the settings window already shows.
+  'ready',
+  'runtime',
+  'connectors'
+])
+const GROUP_COMMANDS = new Set(['project', 'session', 'artifacts', 'runtime', 'connectors'])
 
 export class CliUsageError extends Error {
   constructor(message) {
@@ -680,6 +692,21 @@ export const runTaskCommand = async (parsed, dependencies = {}) => {
     const runId = positionals[0]
     if (!runId) throw new CliUsageError('Run id is required.')
     outputValue(await client.getRun(runId), options, deps)
+    return
+  }
+  // P3-8: the same readiness judgement, runtime survey and connector list the settings window renders.
+  // Nothing is re-decided here — a second implementation of "is this machine ready" is the failure mode
+  // this command exists to avoid, so it prints exactly what the app decided.
+  if (command === 'ready') {
+    outputValue(await client.getReadiness(), options, deps)
+    return
+  }
+  if (command === 'runtime' && subcommand === 'list') {
+    outputValue(await client.listRuntimes(), options, deps)
+    return
+  }
+  if (command === 'connectors' && subcommand === 'list') {
+    outputValue(await client.listConnectors(), options, deps)
     return
   }
   if (command === 'run') {

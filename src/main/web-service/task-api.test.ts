@@ -74,6 +74,34 @@ describe('HeadlessTaskApi adapter', () => {
     )
   })
 
+  // P3-8: the command line reads the same judgements the window shows. Each projection must be a
+  // pass-through of the existing application command — no second readiness rule, no second survey.
+  it('projects readiness, runtimes and connectors through their existing application commands', async () => {
+    const readiness = { ready: true, checks: [{ id: 'storage', ok: true }] }
+    const runtimes = [{ language: 'python', source: 'managed' }]
+    const connectors = [{ id: 'bio-tools', enabled: true }]
+    const invoke = vi.fn(async (channel: string) => {
+      if (channel === 'settings:check-environment') return readiness
+      if (channel === 'runtime:list-environments') return runtimes
+      if (channel === 'settings:list-connectors') return connectors
+      throw new Error(`unexpected channel: ${channel}`)
+    })
+    const api = new HeadlessTaskApi({ commands: commandsFrom(invoke), agent: createAgent() })
+
+    await expect(api.readiness()).resolves.toEqual(readiness)
+    await expect(api.runtimes()).resolves.toEqual(runtimes)
+    await expect(api.connectors()).resolves.toEqual(connectors)
+    expect(invoke.mock.calls.map(([channel]) => channel)).toEqual([
+      'settings:check-environment',
+      'runtime:list-environments',
+      'settings:list-connectors'
+    ])
+    for (const [, callerContext, args] of invoke.mock.calls) {
+      expect(callerContext).toEqual(taskCallerContext())
+      expect(args).toEqual([])
+    }
+  })
+
   it('maps public query and artifact commands to the compatibility façade', async () => {
     const session: PersistedChatSession = {
       id: 'session-query',

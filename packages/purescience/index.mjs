@@ -42,6 +42,20 @@ export class PureScienceClient {
     return this.request('/api/v1/projects')
   }
 
+  // Readiness, runtimes and connectors for the command line (P3-8). Each projects the judgement the
+  // settings window already shows; nothing is decided here.
+  getReadiness() {
+    return this.request('/api/v1/readiness')
+  }
+
+  listRuntimes() {
+    return this.request('/api/v1/runtimes')
+  }
+
+  listConnectors() {
+    return this.request('/api/v1/connectors')
+  }
+
   createProject({ name, description }) {
     return this.request('/api/v1/projects', {
       method: 'POST',
