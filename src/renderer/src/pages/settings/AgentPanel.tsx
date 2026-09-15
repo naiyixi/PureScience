@@ -322,6 +322,9 @@ const AgentPanel = ({
     description: string
     ready: boolean
     version?: string
+    // Two-piece runtimes (Codex) report both halves; single-binary runtimes leave these unset.
+    nativeVersion?: string
+    nativeVersionLabel?: string
     path?: string
     sourceLabel: string
     sourceUrl: string
@@ -391,7 +394,11 @@ const AgentPanel = ({
       icon: <AgentFrameworkIcon frameworkId="codex" size={24} />,
       description: t('settings.agentCodexDesc'),
       ready: preflight.codexReady,
+      // Both halves of the Codex runtime, side by side: the adapter the app launches and the native
+      // CLI it drives (P3-9 / 3.2 — the probe already reported the pair, only the adapter was shown).
       version: codex.version,
+      nativeVersion: codex.nativeVersion,
+      nativeVersionLabel: t('settings.agentCodexNativeCli'),
       path: codex.resolvedPath,
       sourceLabel: 'agentclientprotocol/codex-acp',
       sourceUrl: 'https://github.com/agentclientprotocol/codex-acp',
@@ -525,6 +532,8 @@ const AgentPanel = ({
       ready={card.ready}
       needsRepair={cardNeedsRepair(card)}
       version={card.version}
+      nativeVersion={card.nativeVersion}
+      nativeVersionLabel={card.nativeVersionLabel}
       path={card.path}
       sourceLabel={card.sourceLabel}
       sourceUrl={card.sourceUrl}

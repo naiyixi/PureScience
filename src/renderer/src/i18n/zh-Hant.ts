@@ -373,6 +373,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.agentClaudeName': 'Claude 智能體',
   'settings.agentOpencodeName': 'OpenCode',
   'settings.agentCodexName': 'Codex',
+  'settings.agentCodexNativeCli': 'Codex 命令列',
   'settings.agentCodeBuddyName': 'CodeBuddy',
   'settings.agentOpencodeDesc': '開放原始碼的終端編碼智能體。',
   'settings.agentClaudeDesc': 'Anthropic 的終端編碼智能體。',

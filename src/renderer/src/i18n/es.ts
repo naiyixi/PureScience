@@ -400,6 +400,7 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.agentClaudeName': 'Agente Claude',
   'settings.agentOpencodeName': 'OpenCode',
   'settings.agentCodexName': 'Codex',
+  'settings.agentCodexNativeCli': 'CLI de Codex',
   'settings.agentCodeBuddyName': 'CodeBuddy',
   'settings.agentOpencodeDesc': 'Agente de código abierto para terminal.',
   'settings.agentClaudeDesc': 'La herramienta de codificación agéntica de Anthropic para terminal.',

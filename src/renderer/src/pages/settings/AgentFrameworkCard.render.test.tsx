@@ -62,6 +62,30 @@ const openInstallMenu = (): void => {
 }
 
 describe('AgentFrameworkCard', () => {
+  // P3-9 / 3.2: the Codex runtime is two pieces. Showing only the adapter version hid which half was
+  // stale, so both are rendered side by side when the probe reported both.
+  it('renders the paired native CLI version next to the adapter version', () => {
+    renderCard({
+      ready: true,
+      path: '/bin/codex-acp',
+      version: '0.9.4',
+      nativeVersion: '0.48.0',
+      nativeVersionLabel: 'Codex CLI'
+    })
+
+    expect(container.textContent).toContain('v0.9.4')
+    expect(container.querySelector('[data-testid="agent-native-version"]')?.textContent).toBe(
+      'Codex CLI v0.48.0'
+    )
+  })
+
+  it('renders no native version for a single-binary runtime', () => {
+    renderCard({ ready: true, path: '/bin/claude', version: '2.1.0' })
+
+    expect(container.textContent).toContain('v2.1.0')
+    expect(container.querySelector('[data-testid="agent-native-version"]')).toBeNull()
+  })
+
   it('marks the active card with a solid Active badge and a checked radio', () => {
     renderCard({ ready: true, path: '/bin/claude', version: '2.1.0', active: true })
 

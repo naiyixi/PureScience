@@ -1405,6 +1405,7 @@ export const zh = {
   'settings.its': '其',
   'settings.their': '其',
   'settings.agentCodexName': 'Codex',
+  'settings.agentCodexNativeCli': 'Codex 命令行',
   'settings.agentCodexDesc': 'OpenAI 的编码智能体，通过 Codex ACP 适配器连接。',
   'settings.agentCodexNotReady': '此框架需要 Codex ACP。在下方安装它，或手动安装后重新检测。',
   'settings.agentCodeBuddyName': 'CodeBuddy',

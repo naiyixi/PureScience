@@ -27,6 +27,11 @@ type AgentFrameworkCardProps = {
   needsRepair: boolean
   // Detected version, rendered as a muted `vX.Y.Z` right after the name.
   version?: string
+  // A runtime that ships as two pieces (the Codex ACP adapter plus the native Codex CLI it launches)
+  // reports both: showing one number would hide which half is stale. Absent for single-binary runtimes.
+  nativeVersion?: string
+  // Label for the native half, shown as `… CLI vX.Y.Z` (localized; the adapter is the unlabelled one).
+  nativeVersionLabel?: string
   // Resolved runtime/adapter path; its presence also gates the Uninstall control.
   path?: string
   // Repository/docs link shown under the path (e.g. the ACP adapter repo for ACP-based runtimes).
@@ -80,6 +85,8 @@ const AgentFrameworkCard = ({
   ready,
   needsRepair,
   version,
+  nativeVersion,
+  nativeVersionLabel,
   path,
   sourceLabel,
   sourceUrl,
@@ -200,6 +207,14 @@ const AgentFrameworkCard = ({
               <span className="truncate text-sm font-medium text-foreground">{name}</span>
               {version ? (
                 <span className="shrink-0 text-xs text-muted-foreground">v{version}</span>
+              ) : null}
+              {nativeVersion ? (
+                <span
+                  data-testid="agent-native-version"
+                  className="shrink-0 text-xs text-muted-foreground"
+                >
+                  {nativeVersionLabel} v{nativeVersion}
+                </span>
               ) : null}
               {ready ? (
                 active ? (

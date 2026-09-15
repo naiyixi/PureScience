@@ -1497,6 +1497,7 @@ export const en: Record<ZhKey, string> = {
   'settings.its': 'Its',
   'settings.their': 'Their',
   'settings.agentCodexName': 'Codex',
+  'settings.agentCodexNativeCli': 'Codex CLI',
   'settings.agentCodexDesc': "OpenAI's coding agent, connected through the Codex ACP adapter.",
   'settings.agentCodexNotReady':
     'Codex ACP is required for this framework. Install it below, or install it manually and re-detect.',
