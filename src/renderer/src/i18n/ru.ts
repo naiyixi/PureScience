@@ -467,7 +467,6 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'home.archive': 'Архивировать',
   'home.archiving': 'Архивация…',
   'home.artifacts': 'Артефакты',
-  'home.beta': 'Бета',
   'home.commandPalette': 'Палитра команд',
   'home.commands': 'Команды',
   'home.copyLink': 'Копировать ссылку',

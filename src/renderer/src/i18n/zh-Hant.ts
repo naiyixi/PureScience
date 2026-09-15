@@ -443,7 +443,6 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'home.archive': '封存',
   'home.archiving': '正在封存…',
   'home.artifacts': '產物',
-  'home.beta': 'Beta',
   'home.commandPalette': '指令面板',
   'home.commands': '指令',
   'home.copyLink': '複製連結',

@@ -466,7 +466,6 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'home.archive': 'アーカイブ',
   'home.archiving': 'アーカイブ中…',
   'home.artifacts': '成果物',
-  'home.beta': 'Beta',
   'home.commandPalette': 'コマンドパレット',
   'home.commands': 'コマンド',
   'home.copyLink': 'リンクをコピー',

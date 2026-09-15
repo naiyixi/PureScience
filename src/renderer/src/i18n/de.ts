@@ -479,7 +479,6 @@ export const de: Partial<Record<ZhKey, string>> = {
   'home.archive': 'Archivieren',
   'home.archiving': 'Wird archiviert…',
   'home.artifacts': 'Artefakte',
-  'home.beta': 'Beta',
   'home.commandPalette': 'Befehlspalette',
   'home.commands': 'Befehle',
   'home.copyLink': 'Link kopieren',

@@ -473,7 +473,6 @@ export const es: Partial<Record<ZhKey, string>> = {
   'home.archive': 'Archivar',
   'home.archiving': 'Archivando…',
   'home.artifacts': 'Artefactos',
-  'home.beta': 'Beta',
   'home.commandPalette': 'Paleta de comandos',
   'home.commands': 'Comandos',
   'home.copyLink': 'Copiar enlace',

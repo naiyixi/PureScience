@@ -461,7 +461,6 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'home.archive': '보관',
   'home.archiving': '보관하는 중…',
   'home.artifacts': '산출물',
-  'home.beta': '베타',
   'home.commandPalette': '명령 팔레트',
   'home.commands': '명령',
   'home.copyLink': '링크 복사',

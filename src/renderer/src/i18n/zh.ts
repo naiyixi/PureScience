@@ -186,7 +186,6 @@ export const zh = {
   'onboarding.credentialStorage': '安全凭据存储',
 
   // home
-  'home.beta': 'Beta',
   'home.environment': '环境',
   'home.deleteProjectConfirm': '这将永久删除"{name}"。此操作无法撤销。',
   'home.editProject': '编辑项目',

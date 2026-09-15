@@ -193,8 +193,6 @@ export const en: Record<ZhKey, string> = {
     'A quick host check confirms if the computer is ready, allowing you to connect the model you want to use and choose where your data will be stored.',
   'onboarding.storagePermission': 'App storage permission',
   'onboarding.credentialStorage': 'Secure credential storage',
-
-  'home.beta': 'Beta',
   'home.environment': 'Environment',
   'home.deleteProjectConfirm':
     'This will permanently delete "{name}". This action cannot be undone.',
