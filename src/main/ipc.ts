@@ -268,7 +268,11 @@ import {
   type RespondApprovalRequest
 } from '../shared/settings'
 import { registerStorageIpcHandlers } from './storage/ipc'
-import { registerSessionPackageIpcHandlers } from './session-package/ipc'
+import {
+  registerSessionPackageImportIpcHandlers,
+  registerSessionPackageIpcHandlers
+} from './session-package/ipc'
+import { createSessionPackageImportOwner } from './session-package/import-owner'
 import { createSessionPackageFileLister } from './session-package/files'
 import { DEFAULT_SESSION_PACKAGE_MAX_FILE_BYTES } from './session-package/export'
 import { createStorageCommandOwner } from './storage/command-owner'
@@ -2321,6 +2325,27 @@ const createApplicationModules = async (
         return { countFiles: lister.countFiles, listFiles: lister.listFiles }
       })(),
       appVersion: app.getVersion()
+    })
+  )
+  declareElectronAdapter('session-package-import', () =>
+    registerSessionPackageImportIpcHandlers({
+      owner: createSessionPackageImportOwner({
+        configRoot: resolveConfigRoot(),
+        saveSession: (session: PersistedChatSession) => sessionRepository.saveSession(session),
+        workspaceFor: (sessionId: string) => join(resolveDataRoot(), 'workspaces', sessionId)
+      }),
+      // The picker lives at the edge, like the export's save dialog: only the adapter knows the window.
+      showOpenDialog: async (window?: BrowserWindow) => {
+        const options = {
+          title: 'Import session package',
+          filters: [{ name: 'PureScience session package', extensions: ['science'] }],
+          properties: ['openFile' as const]
+        }
+        const result = window
+          ? await dialog.showOpenDialog(window, options)
+          : await dialog.showOpenDialog(options)
+        return result.canceled || !result.filePaths[0] ? null : result.filePaths[0]
+      }
     })
   )
   declareElectronAdapter('routine', () => {
