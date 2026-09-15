@@ -14,6 +14,24 @@ describe('rewritePreviewUrls', () => {
     expect(rewritten.list[1]).toBe('plain')
   })
 
+  it('normalizes a URL whose host was lost, so the resource id is the first segment', () => {
+    // Observed live: a rebuilt URL arrived as `purescience-preview:////<id>/content`, which rewrote to
+    // `/preview///<id>/content` — an empty first segment, and the route answers that with 404.
+    expect(rewritePreviewUrls('purescience-preview:////resource-3/content')).toBe(
+      '/preview/resource-3/content'
+    )
+    expect(rewritePreviewUrls('purescience-preview:///resource-4/content')).toBe(
+      '/preview/resource-4/content'
+    )
+    expect(rewritePreviewUrls('purescience-preview://')).toBe('purescience-preview://')
+  })
+
+  it('does not double-encode an id that arrived encoded', () => {
+    expect(rewritePreviewUrls('purescience-preview://resource%2D5/content')).toBe(
+      '/preview/resource-5/content'
+    )
+  })
+
   it('leaves a byte array a byte array', () => {
     // The walk rebuilds every object it meets, and a Uint8Array is an object: rebuilding it turned PDF
     // range reads into a map of indices ({0: 37, 1: 80, …}) and the preview failed on every chunk.

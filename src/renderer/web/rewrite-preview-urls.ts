@@ -19,7 +19,18 @@ export const rewritePreviewUrls = (value: unknown): unknown => {
   }
   if (typeof value === 'string' && value.startsWith(PREVIEW_URL_SCHEME)) {
     const url = new URL(value)
-    return `/preview/${encodeURIComponent(url.hostname)}${url.pathname}`
+    // The id can arrive in the host (`scheme://id/name`) or at the start of the path
+    // (`scheme:////id/content`), the latter when a URL is rebuilt from an already slash-prefixed path and
+    // loses its host. The route takes the first path segment as the resource id and answers 404 for an
+    // empty one, so normalize both shapes to `/preview/<id><suffix>`.
+    const segments = `${url.hostname}${url.pathname}`
+      .split('/')
+      .filter((segment) => segment.length > 0)
+    const [id, ...rest] = segments
+    if (!id) return value
+    return `/preview/${encodeURIComponent(decodeURIComponent(id))}${
+      rest.length > 0 ? `/${rest.join('/')}` : ''
+    }`
   }
   return value
 }
