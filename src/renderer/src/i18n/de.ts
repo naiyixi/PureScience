@@ -505,6 +505,8 @@ export const de: Partial<Record<ZhKey, string>> = {
   'home.mentionUnavailable':
     'Erwähnungen sind nicht verfügbar, solange der Editor kein weiteres Artefakt annehmen kann.',
   'home.mermaidNotRendered': 'Mermaid-Syntax konnte nicht gerendert werden',
+  'streamdown.loadRemoteImage': 'Remote-Bild laden',
+  'streamdown.remoteImageHeld': 'Remote-Bild von {host} – wird erst nach Ihrem Klick geladen.',
   'home.modelSettings': 'Modelleinstellungen',
   'home.newProject': 'Neues Projekt',
   'home.newSession': 'Neue Sitzung',

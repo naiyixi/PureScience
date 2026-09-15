@@ -31,6 +31,7 @@ vi.mock('streamdown', () => ({
 }))
 
 const { AgentMarkdown, SessionMessageLink } = await import('./AgentMarkdown')
+const { RemoteMediaImage } = await import('./RemoteMediaImage')
 const { usePreviewWorkbenchStore } = await import('@/stores/preview-workbench-store')
 const { useSessionStore } = await import('@/stores/session-store')
 
@@ -102,13 +103,25 @@ describe('AgentMarkdown renderer recovery', () => {
     )
   })
 
+  it('routes every rendered image through the remote-media hold, for default callers too', async () => {
+    streamdownHarness.shouldThrow = false
+
+    await act(async () => {
+      root.render(<AgentMarkdown content="![figure](https://evil.example/track.png)" />)
+    })
+
+    expect(streamdownHarness.components?.img).toBe(RemoteMediaImage)
+  })
+
   it('opts into the session link renderer without changing default AgentMarkdown callers', async () => {
     streamdownHarness.shouldThrow = false
 
     await act(async () => {
       root.render(<AgentMarkdown content="Plain shared markdown" />)
     })
-    expect(streamdownHarness.components).toBeUndefined()
+    // Default callers get no session-link renderer — only the image hold every surface shares.
+    expect(streamdownHarness.components?.a).toBeUndefined()
+    expect(streamdownHarness.components?.img).toBe(RemoteMediaImage)
 
     await act(async () => {
       root.render(<AgentMarkdown content="Session markdown" sessionLinks />)

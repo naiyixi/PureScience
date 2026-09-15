@@ -463,6 +463,8 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'home.markdownFallback': '無法渲染 Rich Markdown；改以純文字顯示。',
   'home.mentionUnavailable': '當編輯器無法再接受另一個產物時，提及功能無法使用。',
   'home.mermaidNotRendered': '無法渲染 Mermaid 語法',
+  'streamdown.loadRemoteImage': '載入遠端圖片',
+  'streamdown.remoteImageHeld': '來自 {host} 的遠端圖片——在你點擊前不會載入。',
   'home.modelSettings': '模型設定',
   'home.newProject': '新專案',
   'home.newSession': '新對話',

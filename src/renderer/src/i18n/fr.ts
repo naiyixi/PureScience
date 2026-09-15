@@ -500,6 +500,8 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'home.mentionUnavailable':
     'La mention est indisponible tant que le compositeur ne peut pas accepter un autre artefact.',
   'home.mermaidNotRendered': 'La syntaxe Mermaid n’a pas pu être rendue',
+  'streamdown.loadRemoteImage': 'Charger l’image distante',
+  'streamdown.remoteImageHeld': 'Image distante sur {host} — non chargée avant votre demande.',
   'home.modelSettings': 'Paramètres du modèle',
   'home.newProject': 'Nouveau projet',
   'home.newSession': 'Nouvelle session',

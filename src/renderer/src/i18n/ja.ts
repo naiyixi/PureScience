@@ -490,6 +490,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'home.mentionUnavailable':
     'コンポーザーが別の成果物を受け付けられない間は、メンションを使用できません。',
   'home.mermaidNotRendered': 'Mermaid 構文をレンダリングできませんでした',
+  'streamdown.loadRemoteImage': 'リモート画像を読み込む',
+  'streamdown.remoteImageHeld': '{host} のリモート画像 — クリックするまで読み込まれません。',
   'home.modelSettings': 'モデル設定',
   'home.newProject': '新しいプロジェクト',
   'home.newSession': '新しいセッション',

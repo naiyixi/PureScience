@@ -161,6 +161,8 @@ export const zh = {
   'home.newProject': '新项目',
   'home.someArtifactsMissing': '某些产物结果可能缺失。',
   'home.mermaidNotRendered': '无法渲染 Mermaid 语法',
+  'streamdown.loadRemoteImage': '加载远程图片',
+  'streamdown.remoteImageHeld': '来自 {host} 的远程图片——在你点击前不会加载。',
   'home.viewSource': '查看源码',
   'home.markdownFallback': '渲染富 Markdown 失败；显示纯文本回退。',
   'home.externalSiteWarning': '你即将访问一个外部网站。',

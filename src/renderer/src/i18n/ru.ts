@@ -490,6 +490,9 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'home.mentionUnavailable':
     'Упоминание недоступно, пока редактор не может принять ещё один артефакт.',
   'home.mermaidNotRendered': 'Не удалось отрисовать синтаксис Mermaid',
+  'streamdown.loadRemoteImage': 'Загрузить удалённое изображение',
+  'streamdown.remoteImageHeld':
+    'Удалённое изображение на {host} — не загружается до вашего запроса.',
   'home.modelSettings': 'Настройки модели',
   'home.newProject': 'Новый проект',
   'home.newSession': 'Новая сессия',

@@ -482,6 +482,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'home.markdownFallback': '리치 Markdown 렌더링에 실패하여 일반 텍스트로 표시합니다.',
   'home.mentionUnavailable': '작성기에 다른 산출물을 추가할 수 없으면 멘션이 불가능합니다.',
   'home.mermaidNotRendered': 'Mermaid 구문을 렌더링할 수 없습니다',
+  'streamdown.loadRemoteImage': '원격 이미지 불러오기',
+  'streamdown.remoteImageHeld': '{host}의 원격 이미지 — 클릭하기 전에는 불러오지 않습니다.',
   'home.modelSettings': '모델 설정',
   'home.newProject': '새 프로젝트',
   'home.newSession': '새 세션',

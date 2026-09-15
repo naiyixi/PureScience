@@ -10,6 +10,7 @@ import 'katex/dist/katex.min.css'
 
 import { AGENT_ALLOWED_TAGS, AGENT_CONTROLS } from './streamdown-config'
 import { LinkSafetyModal } from './LinkSafetyModal'
+import { RemoteMediaImage } from './RemoteMediaImage'
 import { SourceLink } from './SourceLink'
 import { normalizeAgentMarkdown } from './normalize-agent-markdown'
 import { cn } from '@/lib/utils'
@@ -25,7 +26,11 @@ type AgentMarkdownProps = {
 // implementation is the source-link renderer (in-app preview for HTTPS, safety modal otherwise).
 const SessionMessageLink = SourceLink
 
-const sessionLinkComponents = { a: SourceLink } satisfies Components
+// Every agent-rendered image goes through the hold-and-ask renderer: a remote source must not disclose
+// the reader to a third-party host just because a message mentioned it. Session links add the source
+// renderer on top, which is what the default-callers test below pins.
+const agentMediaComponents = { img: RemoteMediaImage } satisfies Components
+const sessionLinkComponents = { a: SourceLink, img: RemoteMediaImage } satisfies Components
 
 // Import previews render untrusted Markdown. Removing every element that can initiate a media fetch
 // prevents opening a candidate from disclosing viewer activity to an external host. `use` is
@@ -169,7 +174,7 @@ const RichAgentMarkdown = memo(
           plugins={plugins}
           controls={AGENT_CONTROLS}
           linkSafety={agentLinkSafety}
-          components={sessionLinks ? sessionLinkComponents : undefined}
+          components={sessionLinks ? sessionLinkComponents : agentMediaComponents}
           dir="auto"
           mode={isAnimating ? 'streaming' : 'static'}
           isAnimating={isAnimating}

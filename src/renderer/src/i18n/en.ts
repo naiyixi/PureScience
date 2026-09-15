@@ -169,6 +169,8 @@ export const en: Record<ZhKey, string> = {
   'home.newProject': 'New project',
   'home.someArtifactsMissing': 'Some artifact results may be missing.',
   'home.mermaidNotRendered': 'Mermaid syntax could not be rendered',
+  'streamdown.loadRemoteImage': 'Load remote image',
+  'streamdown.remoteImageHeld': 'Remote image from {host} — not loaded until you ask.',
   'home.viewSource': 'View source',
   'home.markdownFallback': 'Failed to render rich Markdown; showing plain text fallback.',
   'home.externalSiteWarning': 'You are about to visit an external website.',
