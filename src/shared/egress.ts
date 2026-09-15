@@ -145,6 +145,17 @@ export type EgressApprovalRespondRequest = {
 // would only break local tooling while protecting nothing.
 export const EGRESS_ALWAYS_ALLOWED_HOSTS: readonly string[] = ['localhost', '127.0.0.1', '::1']
 
+// Model provider endpoints of the built-in agent framework. These are the destinations the app itself is
+// configured to talk to on the user's behalf, not agent-initiated browsing, and the agent CLI may contact
+// its vendor's canonical host even when a custom base URL is set. Suspending them cost a 60-second stall
+// per request before the denial — observed live — with the conversation appearing to hang for no reason.
+export const EGRESS_PROVIDER_ENDPOINT_HOSTS: readonly string[] = [
+  'api.anthropic.com',
+  'api.openai.com',
+  'api.x.ai',
+  'generativelanguage.googleapis.com'
+]
+
 // Renders the effective allowlist from settings: enabled groups' domains + custom domains + the
 // always-allowed localhost hosts. Returns undefined when the mechanism is off (callers keep current
 // behavior).
@@ -160,11 +171,12 @@ export const resolveEgressAllowlist = (
   }
   return [
     ...new Set(
-      [...domains, ...EGRESS_ALWAYS_ALLOWED_HOSTS].map((domain) =>
-        domain
-          .toLowerCase()
-          .replace(/^https?:\/\//, '')
-          .replace(/\/.*$/, '')
+      [...domains, ...EGRESS_ALWAYS_ALLOWED_HOSTS, ...EGRESS_PROVIDER_ENDPOINT_HOSTS].map(
+        (domain) =>
+          domain
+            .toLowerCase()
+            .replace(/^https?:\/\//, '')
+            .replace(/\/.*$/, '')
       )
     )
   ]

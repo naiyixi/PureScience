@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   EGRESS_ALWAYS_ALLOWED_HOSTS,
   EGRESS_DOMAIN_GROUPS,
+  EGRESS_PROVIDER_ENDPOINT_HOSTS,
   DEFAULT_EGRESS_SETTINGS,
   isHostAllowed,
   isHostDenied,
@@ -33,6 +34,18 @@ describe('egress allowlist helpers', () => {
     // Loopback is not egress: gating it would break local tooling while protecting nothing.
     expect(allowlist).toContain('localhost')
     expect(allowlist).toContain('127.0.0.1')
+  })
+
+  it('leaves the model provider endpoints open, and still gates everything else', () => {
+    const allowlist = resolveEgressAllowlist({ enabled: true, groups: {}, customDomains: [] }) ?? []
+
+    // Suspending these cost a 60s stall per request before the denial, observed live: the agent CLI
+    // contacts its vendor's canonical host even when a custom base URL is configured.
+    for (const host of EGRESS_PROVIDER_ENDPOINT_HOSTS) {
+      expect(isHostAllowed(host, allowlist)).toBe(true)
+    }
+    expect(isHostAllowed('example.com', allowlist)).toBe(false)
+    expect(isHostAllowed('api.evil.example', allowlist)).toBe(false)
   })
 
   it('exposes 6 scientific domain groups', () => {

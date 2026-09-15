@@ -166,6 +166,22 @@ describe('Settings core application commands', () => {
     expect(serviceMethod('getPreflight')).toHaveBeenCalledOnce()
   })
 
+  it('applies an egress decision that arrives as one request object', async () => {
+    const { dependencies, serviceMethod } = createDependencies()
+    const router = createApplicationCommandRouter()
+    registerCoreSettingsApplicationCommands(router.registrar, dependencies)
+
+    await router.dispatcher.invoke(
+      settingsCoreApplicationCommands.respondApproval,
+      invocation([{ requestId: 'egress-9', decision: 'allow_once' }] as const)
+    )
+
+    // The web surface sends one request object, exactly as the preload bridge does. Reading two positional
+    // arguments here made the lookup key that whole object, so the decision was dropped and the suspended
+    // request ran to its timeout while the card stayed on screen.
+    expect(serviceMethod('respondEgressApproval')).toHaveBeenCalledWith('egress-9', 'allow_once')
+  })
+
   it('delegates canonical requests for every direct remote-safe owner command', async () => {
     const { dependencies, serviceMethod } = createDependencies()
     const router = createApplicationCommandRouter()

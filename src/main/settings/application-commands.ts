@@ -23,7 +23,7 @@ import type {
   CreateExternalComputeEndpointRequest,
   ValidateProviderRequest
 } from '../../shared/settings'
-import type { EgressApprovalDecision } from '../net/egress-runtime'
+import type { EgressApprovalRespondRequest } from '../../shared/egress'
 import {
   defineApplicationCommand,
   defineApplicationCommandGroup,
@@ -333,7 +333,9 @@ const settingsCoreApplicationCommands = Object.freeze({
   >('settings:set-auto-apply'),
   respondApproval: defineApplicationCommand<
     'egress:respond-approval',
-    readonly [requestId: string, decision: EgressApprovalDecision],
+    // One request object, matching what the preload bridge and the web bridge actually send. Declaring
+    // two positional arguments here is what let the web path pass the object as the requestId.
+    readonly [request: EgressApprovalRespondRequest],
     StoreResult<'respondEgressApproval'>
   >('egress:respond-approval'),
   setExternalComputeEndpoint: defineApplicationCommand<
@@ -628,7 +630,11 @@ const registerCoreSettingsApplicationCommands = (
       },
       'egress:respond-approval': ({ args, callerContext }) => {
         requireLocalCaller(callerContext, 'egress:respond-approval')
-        return dependencies.service.respondEgressApproval(args[0], args[1])
+        // One request object, the same shape the preload bridge passes. Reading two positional arguments
+        // here made the lookup key the whole object, so every decision was dropped: the suspended request
+        // ran to its timeout while the card stayed on screen.
+        const request = args[0]
+        return dependencies.service.respondEgressApproval(request.requestId, request.decision)
       },
       'settings:list-external-compute-endpoints': ({ callerContext }) => {
         requireLocalCaller(callerContext, 'settings:list-external-compute-endpoints')

@@ -40,13 +40,22 @@ let runtimeOptions: EgressRuntimeOptions | undefined
 
 const approvalHandler: EgressApprovalHandler = (request, decide) => {
   pendingDecisions.set(request.requestId, { host: request.host, decide })
+  const hasRenderer = Boolean(runtimeOptions?.onApprovalRequest)
   log.info('egress approval requested', {
     requestId: request.requestId,
     host: request.host,
     method: request.method,
     pending: pendingDecisions.size,
-    hasRenderer: Boolean(runtimeOptions?.onApprovalRequest)
+    hasRenderer
   })
+  if (!hasRenderer) {
+    // Nobody can answer (no renderer attached): refusing now beats leaving the request suspended until
+    // the timeout, which shows up as a silent minute-long hang in whatever the agent was doing.
+    pendingDecisions.delete(request.requestId)
+    log.warn('egress approval auto-denied', { requestId: request.requestId, host: request.host })
+    decide('deny')
+    return
+  }
   runtimeOptions?.onApprovalRequest?.(request)
 }
 
