@@ -66,6 +66,8 @@ export type JobPollerDeps = {
   // Injectable harvest function (design §3). When omitted, harvest is disabled (no-op).
   // In production, wire this to harvestJob from harvest-engine.ts.
   harvestFn?: HarvestFn
+  // Handed to the notification emitter so a finished job also reaches the background-delivery ledger.
+  onJobResult?: (job: ComputeJob) => Promise<void>
   /**
    * Broadcast hook for compute_done notification (issue 06).
    * Used when emitting the notification for execution-error jobs (dispatch_failed).
@@ -167,7 +169,8 @@ export class JobPoller {
           jobRepository: this.deps.jobRepository,
           hostRepository: this.deps.hostRepository,
           storageRoot,
-          broadcast
+          broadcast,
+          ...(this.deps.onJobResult ? { onJobResult: this.deps.onJobResult } : {})
         })
           .catch(() => {
             // Non-fatal: job status is already persisted; retry on the next tick.
@@ -277,7 +280,8 @@ export class JobPoller {
           jobRepository: this.deps.jobRepository,
           hostRepository: this.deps.hostRepository,
           storageRoot: this.deps.storageRoot,
-          broadcast: this.deps.broadcast
+          broadcast: this.deps.broadcast,
+          ...(this.deps.onJobResult ? { onJobResult: this.deps.onJobResult } : {})
         }).catch(() => {
           // Non-fatal: job status is already persisted.
         })

@@ -94,7 +94,6 @@ import { SessionNotebookDialog } from './SessionNotebookDialog'
 import { JobDetailModal } from '@/components/JobDetailModal'
 import { getVisiblePermissionRequests } from './session-permissions'
 import { WorkspaceSidebar } from './WorkspaceSidebar'
-import { useJobAnalysisEffect } from '@/lib/compute/useJobAnalysisEffect'
 import { selectActiveBranchPlan } from './session-plan/active-branch-plan'
 
 type WorkspacePageProps = {
@@ -608,8 +607,6 @@ const WorkspacePage = ({
     revokePermissionGrant
   } = useWorkspaceAgentRuntime()
 
-  // Auto-trigger an analysis turn when a remote job finishes (design §11).
-  useJobAnalysisEffect({ enabled: isSessionPersistenceReady, sendMessage })
   const [draftDoc, setDraftDoc] = useState<ComposerDoc>(emptyDoc)
   const draftDocRef = useRef<ComposerDoc>(emptyDoc)
   useEffect(() => {

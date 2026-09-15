@@ -2615,7 +2615,6 @@ describe('session store public contract', () => {
       'src/renderer/src/lib/acp/useWorkspaceAgentRuntime.ts',
       'src/renderer/src/lib/acp/workspace-events.ts',
       'src/renderer/src/lib/active-session-display.ts',
-      'src/renderer/src/lib/compute/useJobAnalysisEffect.ts',
       'src/renderer/src/lib/deep-link.ts',
       'src/renderer/src/lib/preview-persistence/preview-persistence.ts',
       'src/renderer/src/lib/session-persistence/session-persistence.ts',

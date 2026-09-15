@@ -1,6 +1,7 @@
 import { broadcastJobUpdated } from './ipc'
 import { harvestJob } from './harvest-engine'
 import { JobPoller, type JobPollerDeps } from './job-poller'
+import type { ComputeJob } from '../../shared/compute'
 import type { ComputeJobRepository } from './job-repository'
 import type { ComputeHostRepository } from './repository'
 import type { ComputeService } from './compute-service'
@@ -14,6 +15,9 @@ type ComputeJobRuntimeDeps = {
   hostRepository: ComputeHostRepository
   jobRepository: ComputeJobRepository
   storageRoot: string
+  // Registration hook for the background-delivery ledger, forwarded to every notification the poller
+  // emits (harvest outcome and dispatch-failure alike).
+  onJobResult?: (job: ComputeJob) => Promise<void>
 }
 
 type ComputeJobRuntimeAdapters = {
@@ -42,6 +46,7 @@ export const createComputeJobRuntime = (
     onJobUpdated: deps.computeService.handleJobUpdated,
     broadcast,
     storageRoot: deps.storageRoot,
+    ...(deps.onJobResult ? { onJobResult: deps.onJobResult } : {}),
     harvestFn: (job) =>
       harvest(job, {
         sshRunner: runner,

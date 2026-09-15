@@ -26,6 +26,7 @@ import { readdir } from 'node:fs/promises'
 import { join } from 'node:path'
 
 import type { ComputeJob, JobSummary } from '../../shared/compute'
+import { createLogger, errorLogFields } from '../logger'
 import type { ComputeJobRepository } from './job-repository'
 import type { ComputeHostRepository } from './repository'
 import { getJobHarvestDir } from './harvest-engine'
@@ -42,7 +43,13 @@ export type JobNotifierDeps = {
   // Injectable broadcast function; defaults to the production broadcastJobUpdated.
   // Injected in tests to capture the emitted summary without touching Electron IPC.
   broadcast: (summary: JobSummary) => void
+  // A finished job is registered with the background-delivery ledger here, so the result reaches its
+  // session even with no window open. Optional: the emitter stays usable on its own, and the startup
+  // scan re-registers anything a failed call missed.
+  onJobResult?: (job: ComputeJob) => Promise<void>
 }
+
+const log = createLogger('compute')
 
 // The compute_done payload fields embedded into the JobSummary broadcast (spec §11.3).
 export type ComputeDonePayload = {
@@ -190,4 +197,16 @@ export const emitJobNotification = async (
   }
 
   broadcast(summary)
+
+  if (deps.onJobResult) {
+    // The inbox notification has already landed: a ledger failure must not take it back, but it must be
+    // visible (never silently swallowed) and recoverable — the startup scan registers every notified job
+    // again, so a result stranded here is picked up rather than lost.
+    await deps.onJobResult(updatedJob).catch((error) => {
+      log.error('background delivery registration failed', {
+        jobId: updatedJob.job_id,
+        ...errorLogFields(error)
+      })
+    })
+  }
 }

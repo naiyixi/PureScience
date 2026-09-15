@@ -249,6 +249,21 @@ export class ComputeJobRepository {
     return rows.map(toJob)
   }
 
+  // Every job that already reached the inbox (notifiedAt set) and is in a resting state. The
+  // background-delivery ledger re-registers from here at startup: a job that finished while the ledger
+  // could not be written — or before that ledger existed — would otherwise sit in the inbox unread.
+  async findNotifiedJobs(): Promise<ComputeJob[]> {
+    const client = await this.getClient()
+    const rows = await client.computeJob.findMany({
+      where: {
+        notifiedAt: { not: null },
+        status: { in: ['success', 'failed', 'timeout', 'error'] }
+      },
+      orderBy: { createdAt: 'asc' }
+    })
+    return rows.map(toJob)
+  }
+
   // Marks a batch of jobs as notification-consumed by setting notificationConsumedAt to now.
   // Idempotent — already-consumed jobs are unaffected by the where clause.
   async markNotificationsConsumed(jobIds: string[]): Promise<void> {

@@ -60,6 +60,11 @@ import { createReferencesIpcModule, installReferencesIpcHandlers } from './refer
 import { fingerprintPdfFile } from './settings/pdf-fingerprint'
 import { attachEnabledComputeHosts } from './compute/enabled-hosts-registry'
 import { createComputeJobRuntime } from './compute/job-runtime'
+import { BackgroundDeliveryOwner } from './background-delivery/owner'
+import { BackgroundDeliveryRepository } from './background-delivery/repository'
+import { deliverComputeResult, recoverComputeResults } from './background-delivery/compute-source'
+import { NEUTRAL_BACKGROUND_DELIVERY_LABELS } from '../shared/background-delivery'
+import type { ComputeJob } from '../shared/compute'
 import { waitForInitialConnectorRefresh } from './connector-reload'
 import { ApprovalBroker } from './connectors/approval-broker'
 import { McpClientManager } from './connectors/mcp-client-manager'
@@ -305,6 +310,9 @@ import type { ConversationSkillImportApprovalResponse } from '../shared/settings
 import type { TaskAgentPort } from './tasks/task-runner'
 
 const permissionGrantsLog = createLogger('permission-grants')
+// How long a delivery turn waits for a session that is already running a turn, and how often it looks.
+const BACKGROUND_DELIVERY_TURN_WAIT_MS = 15 * 60 * 1000
+const BACKGROUND_DELIVERY_TURN_POLL_MS = 500
 
 type IpcRegistrationOptions = {
   mainEntryPath: string
@@ -1213,15 +1221,119 @@ const createApplicationModules = async (
   // (inside ComputeService) uses the same hook, so submitted→running/error transitions broadcast too.
   // Phase 3b: harvestFn drives automatic harvest on terminal transitions; broadcast + storageRoot
   // wire the compute_done notification emitter for all three terminal outcomes (issue 06).
+  // Background result delivery: a finished job's result is written into its session by the MAIN process,
+  // so closing the window — or a job that finishes while the app is closed and is restarted later — no
+  // longer strands the result in an inbox nobody reads.
+  const backgroundDeliveries = new BackgroundDeliveryRepository(() =>
+    getProjectDbClient(resolveStorageRoot())
+  )
+  const backgroundDeliveryOwner = new BackgroundDeliveryOwner({
+    deliveries: backgroundDeliveries,
+    labels: NEUTRAL_BACKGROUND_DELIVERY_LABELS,
+    sessions: {
+      loadSession: (projectId, sessionId) => sessionRepository.loadSession(projectId, sessionId),
+      saveSession: async (session) => {
+        await sessionPersistenceBackend.saveSession(session)
+      }
+    },
+    // A delivery turn has no window behind it, so it must attach the session itself: resume when the
+    // runtime does not hold it, then send the continuation the ledger already wrote into the session.
+    // That text is app-owned and already persisted, so it must not be stored as a user message twice.
+    startTurn: async ({ sessionId, projectId, prompt }) => {
+      const runtime = runtimeRef.current
+      if (!runtime) throw new Error('Agent runtime is unavailable.')
+      const session = await sessionRepository.loadSession(projectId, sessionId)
+      if (!session) throw new Error(`Unknown session: ${sessionId}`)
+      // One session runs one turn at a time. If the person is mid-turn there, wait for it to finish
+      // rather than racing it; a runtime that never frees up gives up loudly after the bound (the message
+      // is already in the session, so the result itself is not lost).
+      const deadline = Date.now() + BACKGROUND_DELIVERY_TURN_WAIT_MS
+      while (runtime.getActivePromptSessions().some((entry) => entry.sessionId === sessionId)) {
+        if (Date.now() > deadline) throw new Error(`Session is still busy: ${sessionId}`)
+        await new Promise((resolve) => setTimeout(resolve, BACKGROUND_DELIVERY_TURN_POLL_MS))
+      }
+      if (!runtime.getSnapshot().sessionIds.includes(sessionId)) {
+        await runtime.resumeSession({
+          sessionId,
+          cwd: session.cwd,
+          ...(session.permissionProfile ? { permissionProfile: session.permissionProfile } : {}),
+          // The framework/backend the session was last run against, so a restored session is never
+          // resumed onto an incompatible store (same fields the renderer passes on restore).
+          ...(session.agentFrameworkId ? { previousFrameworkId: session.agentFrameworkId } : {}),
+          ...(session.agentBackendId ? { previousBackendId: session.agentBackendId } : {}),
+          ...(session.specialistId ? { specialistId: session.specialistId } : {})
+        })
+      }
+      await runtime.sendPrompt({ sessionId, text: prompt, suppressUserMessage: true })
+    }
+  })
+  const deliveryLog = createLogger('background-delivery')
+  // Sessions this process delivered into, so a clean stop can hand its leases back immediately instead of
+  // making the next run wait the lease out.
+  const deliveredSessions = new Set<string>()
+  const reportDeliveryFailure = (
+    error: unknown,
+    ids: { jobId?: string; sessionId?: string }
+  ): void =>
+    deliveryLog.warn('background result delivery failed', {
+      ...(ids.jobId ? { jobId: ids.jobId } : {}),
+      ...(ids.sessionId ? { sessionId: ids.sessionId } : {}),
+      ...errorLogFields(error)
+    })
+
   await modules.add(
-    { computeService, hostRepository, jobRepository, storageRoot: dataRoot },
+    {
+      computeService,
+      hostRepository,
+      jobRepository,
+      storageRoot: dataRoot,
+      onJobResult: async (job: ComputeJob): Promise<void> => {
+        await deliverComputeResult(
+          { job_id: job.job_id, project_id: job.project_id, session_id: job.session_id },
+          { owner: backgroundDeliveryOwner, onError: reportDeliveryFailure }
+        )
+        deliveredSessions.add(job.session_id)
+        // The result is in the session now, so the inbox entry is handled: leaving it unconsumed would
+        // keep announcing something the reader has already been given.
+        await jobRepository
+          .markNotificationsConsumed([job.job_id])
+          .catch((error) => reportDeliveryFailure(error, { jobId: job.job_id }))
+      }
+    },
     (dependencies) => {
       const jobPoller = createComputeJobRuntime(dependencies)
       return {
         name: 'compute-job-runtime',
         capability: undefined,
-        start: () => jobPoller.start(),
-        dispose: () => jobPoller.stop()
+        start: async () => {
+          jobPoller.start()
+          // Recovery pass: every job already in the inbox is registered again (idempotent by job id) and
+          // its session drained, so a result that finished while this ledger was unavailable — or before
+          // it existed — still reaches its session instead of sitting unread.
+          try {
+            const jobs = await jobRepository.findNotifiedJobs()
+            const outcome = await recoverComputeResults(
+              jobs.map((job) => ({
+                job_id: job.job_id,
+                project_id: job.project_id,
+                session_id: job.session_id
+              })),
+              { owner: backgroundDeliveryOwner, onError: reportDeliveryFailure }
+            )
+            if (outcome.failed > 0 || outcome.sessions > 0) {
+              deliveryLog.info('background delivery recovery pass', outcome)
+            }
+          } catch (error) {
+            reportDeliveryFailure(error, {})
+          }
+        },
+        dispose: async () => {
+          jobPoller.stop()
+          for (const sessionId of deliveredSessions) {
+            await backgroundDeliveryOwner.releaseSession(sessionId)
+          }
+          deliveredSessions.clear()
+        }
       }
     }
   )
