@@ -54,6 +54,7 @@ const computePaths = [
   'compute.concurrencySet',
   'compute.create',
   'compute.delete',
+  'compute.deliveriesList',
   'compute.detailsGet',
   'compute.detailsSave',
   'compute.download',

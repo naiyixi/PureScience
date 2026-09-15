@@ -84,6 +84,7 @@ import type {
   JobSummary,
   ProbeResult
 } from '../shared/compute'
+import type { BackgroundDelivery } from '../shared/background-delivery'
 import type { DirListing, DownloadDest, LocalFile } from '../shared/remote-fs'
 import type { LocalDirListing, LocalRoots } from '../shared/local-fs'
 import type { RendererFailureReport } from '../shared/diagnostics'
@@ -235,6 +236,7 @@ import type {
   SetClosePreferenceRequest,
   SetDefaultPermissionProfileRequest,
   SetAppIconVariantRequest,
+  SetUiLanguageRequest,
   SetReasoningEffortRequest,
   SetVisionModelRequest,
   SetScenarioModelRequest,
@@ -530,6 +532,8 @@ export interface PureScienceAPI {
       request: SetDefaultPermissionProfileRequest
     ): Promise<SettingsSnapshot>
     setAppIconVariant(request: SetAppIconVariantRequest): Promise<SettingsSnapshot>
+    // Reports the interface language the window is showing (main-process prose follows it).
+    setUiLanguage(request: SetUiLanguageRequest): Promise<SettingsSnapshot | undefined>
     listAppIcons(): Promise<AppIconPreview[]>
     validateProvider(request: ValidateProviderRequest): Promise<ValidateProviderResult>
     cancelCodexLogin(): Promise<void>
@@ -789,6 +793,8 @@ export interface PureScienceAPI {
     bookmarksSet(providerId: string, folders: string[]): Promise<void>
     // Returns all jobs for a session as JobSummary[], optionally filtered by status (Phase 3d).
     jobsList(filter: { sessionId: string; status?: string[] }): Promise<JobSummary[]>
+    // Background-delivery ledger for a session: state, fingerprint and trigger of each delivered result.
+    deliveriesList(sessionId: string): Promise<BackgroundDelivery[]>
     // Returns jobs with notifiedAt set and notificationConsumedAt null (issue 05 restart recovery).
     jobsPendingNotification(sessionId: string): Promise<JobSummary[]>
     // Marks job ids as notification-consumed after a successful analysis turn (issue 05).

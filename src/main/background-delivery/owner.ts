@@ -26,9 +26,11 @@ export type BackgroundDeliveryOwnerDeps = {
     loadSession: (projectId: string, sessionId: string) => Promise<PersistedChatSession | undefined>
     saveSession: (session: PersistedChatSession) => Promise<void>
   }
-  // Wording for the text written into the session. Defaults to the neutral set, because main has no UI
-  // language; the UI renders its own localized prose from the structured reference.
-  labels: BackgroundDeliveryLabels
+  // Wording for the text written into the session. A function is accepted so the language can follow
+  // the interface at delivery time rather than at construction time: a delivery may land hours after
+  // the reader last changed it. Without a resolver the neutral (English) set is used.
+  labels:
+    BackgroundDeliveryLabels | (() => BackgroundDeliveryLabels | Promise<BackgroundDeliveryLabels>)
   // When present, a pass that delivered something starts the next turn so the agent can work on the
   // result. Never called for a delivery that has no result: there would be nothing to work on.
   startTurn?: (input: {
@@ -131,6 +133,13 @@ export class BackgroundDeliveryOwner {
     }
   }
 
+  // Wording is resolved per write rather than per construction: a delivery can land hours after the
+  // owner was built, and the reader may have switched the interface language in between.
+  private async labels(): Promise<BackgroundDeliveryLabels> {
+    const { labels } = this.deps
+    return typeof labels === 'function' ? await labels() : labels
+  }
+
   // The turn that works on delivered results, started only when there is one. One turn per pass, however
   // many results arrived: they are the same piece of work. A blocked delivery never triggers it — there is
   // nothing to analyse, and inventing an analysis of a result that was never read is the one thing this
@@ -151,7 +160,7 @@ export class BackgroundDeliveryOwner {
       sessionId,
       projectId: deliverable[0].projectId,
       deliveryIds: deliverable.map((delivery) => delivery.id),
-      prompt: buildBackgroundDeliveryContinuation(deliverable, this.deps.labels)
+      prompt: buildBackgroundDeliveryContinuation(deliverable, await this.labels())
     })
     return true
   }
@@ -195,7 +204,7 @@ export class BackgroundDeliveryOwner {
     const message: PersistedChatMessage = {
       id: this.newMessageId(),
       role: 'user',
-      content: buildBackgroundDeliveryContinuation([delivery], this.deps.labels),
+      content: buildBackgroundDeliveryContinuation([delivery], await this.labels()),
       status: 'complete',
       eventIds: [],
       createdAt: now,

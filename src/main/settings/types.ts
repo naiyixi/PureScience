@@ -177,6 +177,10 @@ export type StoredSettings = {
   closePreference?: CloseActionPreference
   // Selected built-in app-icon look. Absent means the default ('light').
   appIconVariant?: AppIconVariant
+  // The interface language the renderer is actually showing ('system' is resolved before it is
+  // reported). Recorded so a background delivery that lands while no window is open still writes its
+  // continuation in the reader's language instead of falling back to English.
+  uiLanguage?: string
   // Default approval profile for new conversations. Absent means the safe 'ask' default.
   defaultPermissionProfile?: PermissionProfileId
   // Detected opencode executable path + reported version (for the status card). Absent = detect on PATH.

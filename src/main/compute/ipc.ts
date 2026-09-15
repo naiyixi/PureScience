@@ -22,6 +22,7 @@ import type {
   ProbeResult
 } from '../../shared/compute'
 import { computeProviderId } from '../../shared/compute'
+import type { BackgroundDelivery } from '../../shared/background-delivery'
 import type {
   DirListing,
   DownloadDest,
@@ -58,6 +59,8 @@ import { hasCanonicalComputeSkillDoc, syncComputeSkillDoc } from './skill-doc'
 
 // IPC channel names for the renderer job feed (Phase 3d, issue 05).
 export const COMPUTE_JOBS_LIST_CHANNEL = 'compute:jobs:list'
+// The ledger of background results written into sessions; read-only, surfaced by the job detail panel.
+export const COMPUTE_DELIVERIES_LIST_CHANNEL = 'compute:deliveries:list'
 export const COMPUTE_JOB_UPDATED_CHANNEL = 'compute:job-updated'
 
 const log = createLogger('compute')
@@ -191,6 +194,9 @@ type ComputeHandlers = {
   jobsPendingNotification: (sessionId: string) => Promise<JobSummary[]>
   // Marks the given job ids as notification-consumed. Idempotent (issue 05).
   jobsMarkConsumed: (sessionId: string, jobIds: string[]) => Promise<void>
+  // The background-delivery ledger for a session (state, fingerprint, trigger), for the UI to show
+  // where a delivered result came from. Read-only: delivery itself happens in the main process.
+  deliveriesList: (sessionId: string) => Promise<BackgroundDelivery[]>
 }
 
 // Adapts a repository into thin handlers.
@@ -206,7 +212,10 @@ const createComputeHandlers = (
   storageRoot?: string,
   taskNotifications?: Pick<TaskNotificationService, 'handleComputeApproval'>,
   permissionGrantRegistry?: PermissionGrantRegistry,
-  syncComputeSkillDocument?: () => Promise<void>
+  syncComputeSkillDocument?: () => Promise<void>,
+  // Reads the background-delivery ledger for the read-only panel. Supplied by the composition root,
+  // which owns the delivery repository: this module never writes to the ledger.
+  listDeliveries?: (sessionId: string) => Promise<BackgroundDelivery[]>
 ): ComputeHandlers => {
   const permissionGrants = permissionGrantRegistry
     ? createComputePermissionGrantAdapter(permissionGrantRegistry, settingsRepository)
@@ -406,6 +415,10 @@ const createComputeHandlers = (
         )
       )
     },
+    // The ledger is owned by the background-delivery module; this only reads it. Without a reader the
+    // panel honestly shows an empty ledger rather than inventing entries.
+    deliveriesList: async (sessionId) =>
+      listDeliveries === undefined ? [] : listDeliveries(sessionId),
     jobsMarkConsumed: async (_sessionId, jobIds) => {
       if (!jobRepository) return
       await jobRepository.markNotificationsConsumed(jobIds)
@@ -490,7 +503,8 @@ const createComputeIpcModule = (
   // `compute:list-dir` / `compute:download` be exercised end-to-end against a fake service.
   injectedService?: ComputeService,
   taskNotifications?: Pick<TaskNotificationService, 'handleComputeApproval'>,
-  permissionGrantRegistry?: PermissionGrantRegistry
+  permissionGrantRegistry?: PermissionGrantRegistry,
+  listDeliveries?: (sessionId: string) => Promise<BackgroundDelivery[]>
 ): ComputeIpcModule => {
   const storageRoot = resolveStorageRoot()
   const dataRoot = resolveDataRoot()
@@ -514,7 +528,8 @@ const createComputeIpcModule = (
     dataRoot,
     taskNotifications,
     permissionGrantRegistry,
-    () => syncCurrentComputeSkillDocuments(storageRoot, repository)
+    () => syncCurrentComputeSkillDocuments(storageRoot, repository),
+    listDeliveries
   )
 
   return {
@@ -621,6 +636,11 @@ const registerComputeIpcHandlerSet = ({
   // Marks job ids as notification-consumed (analysis turn done — issue 05).
   ipcMainHandle('compute:jobs:mark-consumed', (_event, sessionId: string, jobIds: string[]) =>
     handlers.jobsMarkConsumed(sessionId, jobIds)
+  )
+  // Reads the background-delivery ledger for a session: state, fingerprint, trigger, timestamps
+  // (P2-d-2). Read-only — delivery happens in the main process, not through this channel.
+  ipcMainHandle(COMPUTE_DELIVERIES_LIST_CHANNEL, (_event, sessionId: string) =>
+    handlers.deliveriesList(sessionId)
   )
 
   // Per-session enabled compute hosts (issue 06). The renderer owns the durable state (session

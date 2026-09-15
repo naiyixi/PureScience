@@ -251,6 +251,8 @@ const api: PureScienceAPI = {
       electronRendererContracts.invoke('settings.setDefaultPermissionProfile', request),
     setAppIconVariant: (request) =>
       electronRendererContracts.invoke('settings.setAppIconVariant', request),
+    // Reports the interface language the window is showing, so main-process prose can match it.
+    setUiLanguage: (request) => electronRendererContracts.invoke('settings.setUiLanguage', request),
     listAppIcons: () => electronRendererContracts.invoke('settings.listAppIcons'),
     validateProvider: (request) =>
       electronRendererContracts.invoke('settings.validateProvider', request),
@@ -586,6 +588,9 @@ const api: PureScienceAPI = {
     // Returns all jobs for a session as JobSummary[], optionally filtered by status (Phase 3d).
     jobsList: (filter: { sessionId: string; status?: string[] }) =>
       electronRendererContracts.invoke('compute.jobsList', filter),
+    // The background-delivery ledger for a session (read-only): where each delivered result came from.
+    deliveriesList: (sessionId) =>
+      electronRendererContracts.invoke('compute.deliveriesList', sessionId),
     // Returns jobs pending analysis turn (notifiedAt set, notificationConsumedAt null).
     jobsPendingNotification: (sessionId) =>
       electronRendererContracts.invoke('compute.jobsPendingNotification', sessionId),

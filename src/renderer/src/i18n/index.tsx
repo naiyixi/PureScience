@@ -72,6 +72,12 @@ const LanguageProvider = ({ children }: { children: ReactNode }): React.JSX.Elem
     // Dense relative labels ("2周" vs "2w") follow the same concrete language.
     setRelativeTimeLanguage(lang)
     setUiLocale(LOCALE_TAG[lang])
+    // Main-process prose (a background delivery's continuation turn, which is written even when no
+    // window is open) has to speak this language too, so the resolved language is reported rather than
+    // the preference: 'system' means nothing to a process with no window to read it from.
+    void window.api?.settings?.setUiLanguage?.({ language: LOCALE_TAG[lang] })?.catch(() => {
+      // Reporting the language is best-effort: a failure must not break rendering.
+    })
   }, [lang])
 
   const value = useMemo<LanguageContextValue>(

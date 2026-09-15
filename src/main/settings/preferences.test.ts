@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
@@ -11,11 +11,15 @@ const roots: string[] = []
 
 const createModule = async (
   now = 1_000
-): Promise<{ preferences: SettingsPreferencesModule; repository: SettingsRepository }> => {
+): Promise<{
+  preferences: SettingsPreferencesModule
+  repository: SettingsRepository
+  root: string
+}> => {
   const root = await mkdtemp(join(tmpdir(), 'settings-preferences-'))
   roots.push(root)
   const repository = new SettingsRepository(root)
-  return { preferences: new SettingsPreferencesModule(repository, () => now), repository }
+  return { preferences: new SettingsPreferencesModule(repository, () => now), repository, root }
 }
 
 afterEach(async () => {
@@ -77,5 +81,24 @@ describe('SettingsPreferencesModule', () => {
       defaultPermissionProfile: 'auto'
     })
     expect((await repository.getSettings()).closePreference).toBeUndefined()
+  })
+
+  it('records the interface language the renderer reported, and drops a junk value', async () => {
+    const { preferences, repository, root } = await createModule()
+
+    // Absent until the renderer reports one: nothing invents a language on the app's behalf.
+    await expect(preferences.getSnapshot()).resolves.not.toHaveProperty('uiLanguage')
+
+    await preferences.setUiLanguage('zh-Hant')
+    await expect(preferences.getSnapshot()).resolves.toMatchObject({ uiLanguage: 'zh-Hant' })
+    await expect(repository.getSettings()).resolves.toMatchObject({ uiLanguage: 'zh-Hant' })
+
+    // A bounded language tag, not prose: an over-long value is not a language and is dropped on load.
+    const settingsPath = join(root, 'settings.json')
+    const onDisk = JSON.parse(await readFile(settingsPath, 'utf8')) as Record<string, unknown>
+    onDisk.uiLanguage = 'x'.repeat(40)
+    await writeFile(settingsPath, JSON.stringify(onDisk))
+    const reloaded = new SettingsPreferencesModule(new SettingsRepository(root))
+    await expect(reloaded.getSnapshot()).resolves.not.toHaveProperty('uiLanguage')
   })
 })

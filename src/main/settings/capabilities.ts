@@ -21,6 +21,7 @@ export type SettingsPreferencesSnapshot = {
   conversationSkillImportEnabled: boolean
   closePreference?: CloseActionPreference
   appIconVariant: AppIconVariant
+  uiLanguage?: string
   defaultPermissionProfile: PermissionProfileId
 }
 
@@ -37,6 +38,7 @@ export interface SettingsPreferences {
     preference: CloseActionPreference | undefined
   ): Promise<SettingsPreferencesSnapshot>
   setAppIconVariant(variant: AppIconVariant): Promise<SettingsPreferencesSnapshot>
+  setUiLanguage(language: string): Promise<SettingsPreferencesSnapshot>
   setDefaultPermissionProfile(profile: PermissionProfileId): Promise<SettingsPreferencesSnapshot>
 }
 

@@ -63,7 +63,8 @@ import { createComputeJobRuntime } from './compute/job-runtime'
 import { BackgroundDeliveryOwner } from './background-delivery/owner'
 import { BackgroundDeliveryRepository } from './background-delivery/repository'
 import { deliverComputeResult, recoverComputeResults } from './background-delivery/compute-source'
-import { NEUTRAL_BACKGROUND_DELIVERY_LABELS } from '../shared/background-delivery'
+import { backgroundDeliveryLabelsFor } from '../shared/background-delivery-labels'
+import type { BackgroundDelivery } from '../shared/background-delivery'
 import type { ComputeJob } from '../shared/compute'
 import { waitForInitialConnectorRefresh } from './connector-reload'
 import { ApprovalBroker } from './connectors/approval-broker'
@@ -1070,13 +1071,18 @@ const createApplicationModules = async (
   const computeArtifactResolver = {
     resolveArtifactPath: (path: string) => artifactRepository.resolveManagedFilePath({ path })
   }
+  // The delivery ledger needs the project database and is created further down; the compute module only
+  // reads it (the job-detail panel's provenance), so it gets a late-bound reader instead of forcing the
+  // creation order. Before it is bound, the reader honestly reports an empty ledger.
+  const deliveryLedgerReader: { list?: (sessionId: string) => Promise<BackgroundDelivery[]> } = {}
   const computeIpcModule = createComputeIpcModule(
     undefined,
     undefined,
     computeArtifactResolver,
     undefined,
     taskNotifications,
-    permissionGrantRegistry
+    permissionGrantRegistry,
+    async (sessionId) => (await deliveryLedgerReader.list?.(sessionId)) ?? []
   )
   // Project reference library (v1.51): register its renderer surface alongside compute.
   // Fingerprint an attached PDF's content (head hash + exact size) so a swapped file is
@@ -1227,9 +1233,12 @@ const createApplicationModules = async (
   const backgroundDeliveries = new BackgroundDeliveryRepository(() =>
     getProjectDbClient(resolveStorageRoot())
   )
+  deliveryLedgerReader.list = (sessionId) => backgroundDeliveries.listForSession(sessionId)
   const backgroundDeliveryOwner = new BackgroundDeliveryOwner({
     deliveries: backgroundDeliveries,
-    labels: NEUTRAL_BACKGROUND_DELIVERY_LABELS,
+    // Read per delivery: the continuation turn must speak the language the window was last showing,
+    // which can differ from the language in force when this owner was constructed.
+    labels: async () => backgroundDeliveryLabelsFor(await settingsService.getUiLanguage()),
     sessions: {
       loadSession: (projectId, sessionId) => sessionRepository.loadSession(projectId, sessionId),
       saveSession: async (session) => {

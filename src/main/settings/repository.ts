@@ -886,6 +886,13 @@ const sanitizeSettings = (value: unknown): StoredSettings => {
     settings.appIconVariant = appIconVariant
   }
 
+  // Interface language the renderer reported. Free-form but bounded: a language tag, not prose.
+  const uiLanguage = asString(value.uiLanguage)?.trim()
+
+  if (uiLanguage !== undefined && uiLanguage.length > 0 && uiLanguage.length <= 35) {
+    settings.uiLanguage = uiLanguage
+  }
+
   // New-conversation approval default; only known profiles survive hand-edited settings.json.
   const defaultPermissionProfile = value.defaultPermissionProfile
 
@@ -1347,6 +1354,12 @@ class SettingsRepository {
   // Persists the selected app-icon look; applied live to the window and dock/taskbar by the caller.
   async setAppIconVariant(variant: AppIconVariant): Promise<StoredSettings> {
     return this.mutate((settings) => ({ ...settings, appIconVariant: variant }))
+  }
+
+  // Persists the interface language the renderer is showing, so main-process prose (a background
+  // delivery's continuation turn) can speak the same language even with no window open.
+  async setUiLanguage(language: string): Promise<StoredSettings> {
+    return this.mutate((settings) => ({ ...settings, uiLanguage: language }))
   }
 
   // Persists the approval profile applied to conversations created after this preference changes.

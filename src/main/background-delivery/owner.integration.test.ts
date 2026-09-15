@@ -10,7 +10,11 @@ import { join } from 'node:path'
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
-import { NEUTRAL_BACKGROUND_DELIVERY_LABELS } from '../../shared/background-delivery'
+import {
+  NEUTRAL_BACKGROUND_DELIVERY_LABELS,
+  type BackgroundDeliveryLabels
+} from '../../shared/background-delivery'
+import { backgroundDeliveryLabelsFor } from '../../shared/background-delivery-labels'
 import type { PersistedChatSession } from '../../shared/session-persistence'
 import { disconnectProjectDbClient, getProjectDbClient } from '../projects/prisma-client'
 import {
@@ -67,6 +71,7 @@ const owner = (
     now?: () => number
     leaseMs?: number
     startTurn?: BackgroundDeliveryOwnerDeps['startTurn']
+    labels?: BackgroundDeliveryOwnerDeps['labels']
   } = {}
 ): BackgroundDeliveryOwner => {
   const repo = new BackgroundDeliveryRepository(() => getProjectDbClient(root))
@@ -84,7 +89,7 @@ const owner = (
         await writeSession(session.id, session)
       }
     },
-    labels: NEUTRAL_BACKGROUND_DELIVERY_LABELS,
+    labels: overrides.labels ?? NEUTRAL_BACKGROUND_DELIVERY_LABELS,
     startTurn: overrides.startTurn,
     now: overrides.now ?? (() => 1_000),
     leaseMs: overrides.leaseMs,
@@ -334,5 +339,49 @@ describe('background delivery owner against a real database and session file', (
     expect(run.startedTurn).toBe(false)
     expect(started).toHaveLength(0)
     expect((await readSession(sessionId)).messages[0].content).toContain('No result was produced')
+  })
+
+  // The continuation is read long after it is written, in whatever language the window was showing at
+  // the time — so the wording is resolved when the turn is written, not when the owner was built.
+  it('writes the continuation in the language in force at delivery time', async () => {
+    const repo = new BackgroundDeliveryRepository(() => getProjectDbClient(root))
+    let labels: BackgroundDeliveryLabels = NEUTRAL_BACKGROUND_DELIVERY_LABELS
+    const app = new BackgroundDeliveryOwner({
+      deliveries: repo,
+      sessions: {
+        loadSession: async (_projectId, sessionId) => {
+          try {
+            return await readSession(sessionId)
+          } catch {
+            return undefined
+          }
+        },
+        saveSession: async (session) => {
+          await writeSession(session.id, session)
+        }
+      },
+      labels: () => labels,
+      now: () => 80_000,
+      newClaimToken: () => 'claim-token-language',
+      newMessageId: () => 'message-language'
+    })
+
+    const sessionId = 'session-language'
+    await writeSession(sessionId, seedSession(sessionId))
+    await repo.ensureForJob({
+      projectId: 'project-a',
+      sessionId,
+      jobId: 'job-language',
+      outputFiles: ['hpc/out.csv'],
+      fingerprint: 'sha256:language',
+      now: 79_000
+    })
+    // The reader switches the interface language between the owner being built and the result landing.
+    labels = backgroundDeliveryLabelsFor('zh')
+    await app.deliverSession(sessionId)
+
+    const content = (await readSession(sessionId)).messages[0].content
+    expect(content).toContain('后台作业已完成')
+    expect(content).not.toContain('A background job has finished')
   })
 })

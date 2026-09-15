@@ -558,6 +558,12 @@ export type SetAppIconVariantRequest = {
   variant: AppIconVariant
 }
 
+// The interface language the renderer is showing. Not a free-text field: a bounded language tag, so a
+// hand-edited value cannot put prose into main-process messages.
+export type SetUiLanguageRequest = {
+  language?: string
+}
+
 export type SetDefaultPermissionProfileRequest = {
   profile: PermissionProfileId
 }

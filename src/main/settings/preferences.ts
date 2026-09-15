@@ -35,6 +35,7 @@ const toSettingsPreferencesSnapshot = (settings: StoredSettings): SettingsPrefer
     settings.conversationSkillImportEnabled ?? DEFAULT_CONVERSATION_SKILL_IMPORT_ENABLED,
   ...(settings.closePreference === undefined ? {} : { closePreference: settings.closePreference }),
   appIconVariant: settings.appIconVariant ?? DEFAULT_APP_ICON_VARIANT,
+  ...(settings.uiLanguage === undefined ? {} : { uiLanguage: settings.uiLanguage }),
   defaultPermissionProfile: getDefaultPermissionProfile(settings)
 })
 
@@ -88,6 +89,11 @@ class SettingsPreferencesModule implements SettingsPreferences {
 
   async setAppIconVariant(variant: AppIconVariant): Promise<SettingsPreferencesSnapshot> {
     return toSettingsPreferencesSnapshot(await this.repository.setAppIconVariant(variant))
+  }
+
+  // Records the language the renderer is showing, so main-process prose can match it later.
+  async setUiLanguage(language: string): Promise<SettingsPreferencesSnapshot> {
+    return toSettingsPreferencesSnapshot(await this.repository.setUiLanguage(language))
   }
 
   async setDefaultPermissionProfile(

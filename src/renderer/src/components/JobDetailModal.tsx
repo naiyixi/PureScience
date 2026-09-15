@@ -8,6 +8,7 @@ import { useSessionJobStore } from '@/stores/session-job-store'
 import { Button } from '@/components/ui/button'
 import { dialogOverlayClassName, dialogPanelClassName } from '@/components/ui/dialog-chrome'
 import { cn } from '@/lib/utils'
+import { JobDeliveryLedger } from './JobDeliveryLedger'
 import { JobStatusBadge } from './JobStatusBadge'
 import { JobTerminalOutput } from './JobTerminalOutput'
 import { formatDuration, jobElapsedMs } from './remote-job-badge-utils'
@@ -200,6 +201,9 @@ function JobDetailView({ job, onBack, onOpenFileBrowser }: JobDetailViewProps): 
           </span>
         </div>
       </div>
+
+      {/* Where this result came from: the main process's delivery ledger for this job (P2-d-2). */}
+      <JobDeliveryLedger sessionId={latestJob.session_id} jobId={latestJob.job_id} />
 
       {/* 3b placeholder: featured outputs / left-on-remote — hidden until harvest data exists */}
       {/* <FeaturedOutputs job={latestJob} /> */}

@@ -841,6 +841,19 @@ class SettingsService {
     return this.getSettingsView()
   }
 
+  // The interface language the renderer last reported, read fresh so a delivery written with no window
+  // open still speaks the reader's language.
+  async getUiLanguage(): Promise<string | undefined> {
+    return (await this.preferences.getSnapshot()).uiLanguage
+  }
+
+  // Persists the reported interface language; the renderer keeps showing it (this only records it).
+  async setUiLanguage(language: string): Promise<SettingsSnapshot> {
+    await this.preferences.setUiLanguage(language)
+
+    return this.getSettingsView()
+  }
+
   async setDefaultPermissionProfile(profile: PermissionProfileId): Promise<SettingsSnapshot> {
     await this.preferences.setDefaultPermissionProfile(profile)
 

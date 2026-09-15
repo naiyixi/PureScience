@@ -7,6 +7,7 @@ import type { ProxySettings } from '../../shared/proxy'
 import {
   type AppIconPreview,
   type SetAppIconVariantRequest,
+  type SetUiLanguageRequest,
   type CreateSkillRequest,
   type DeleteProviderRequest,
   type DeleteSkillRequest,
@@ -71,7 +72,8 @@ import {
   readConversationSkillImportEnabled,
   readIsolatedClaudeToken,
   readNotificationsEnabled,
-  readReasoningEffort
+  readReasoningEffort,
+  readUiLanguage
 } from './transport-validation'
 
 const log = createLogger('settings-ipc')
@@ -255,6 +257,14 @@ const registerSettingsIpcHandlers = ({
       return workflows.appearance.setAppIconVariant(variant)
     }
   )
+  // The interface language the renderer is showing. Recorded so main-process prose written while no
+  // window is open (a background delivery's continuation turn) speaks the same language.
+  ipcMainHandle('settings:set-ui-language', async (_event, request: SetUiLanguageRequest) => {
+    const language = readUiLanguage(request)
+    if (language === undefined) return undefined
+    log.info('set ui language requested', { language })
+    return service.setUiLanguage(language)
+  })
   ipcMainHandle('settings:validate-provider', (_event, request: ValidateProviderRequest) =>
     service.validateProvider(request)
   )

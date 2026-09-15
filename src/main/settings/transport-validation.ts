@@ -52,6 +52,23 @@ const readAppIconVariant = (request: unknown): AppIconVariant => {
   return variant
 }
 
+// A language tag, not prose: letters/digits/separators only, bounded to the longest BCP-47 tag. An
+// empty report is ignored (the stored language is kept) rather than clearing it.
+const UI_LANGUAGE_PATTERN = /^[A-Za-z]{2,8}(-[A-Za-z0-9]{1,8})*$/
+const readUiLanguage = (request: unknown): string | undefined => {
+  const language = readField(request, 'language')
+  if (language === undefined || language === null) return undefined
+  if (typeof language !== 'string') {
+    throw new Error(`Invalid interface language: ${String(language)}`)
+  }
+  const trimmed = language.trim()
+  if (trimmed.length === 0) return undefined
+  if (!UI_LANGUAGE_PATTERN.test(trimmed)) {
+    throw new Error(`Invalid interface language: ${trimmed}`)
+  }
+  return trimmed
+}
+
 const readDefaultPermissionProfile = (request: unknown): PermissionProfileId => {
   const profile = readField(request, 'profile')
   if (!isPermissionProfileId(profile)) {
@@ -74,5 +91,6 @@ export {
   readDefaultPermissionProfile,
   readIsolatedClaudeToken,
   readNotificationsEnabled,
-  readReasoningEffort
+  readReasoningEffort,
+  readUiLanguage
 }

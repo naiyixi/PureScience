@@ -29,6 +29,7 @@ type ComputeCommandOwner = Pick<
   | 'jobsList'
   | 'jobsPendingNotification'
   | 'jobsMarkConsumed'
+  | 'deliveriesList'
 >
 
 type ComputeBookmarksOwner = Readonly<{
@@ -144,6 +145,11 @@ const computeApplicationCommands = Object.freeze({
     OwnerArgs<ComputeCommandOwner, 'jobsMarkConsumed'>,
     OwnerResult<ComputeCommandOwner, 'jobsMarkConsumed'>
   >('compute:jobs:mark-consumed'),
+  deliveriesList: defineApplicationCommand<
+    'compute:deliveries:list',
+    OwnerArgs<ComputeCommandOwner, 'deliveriesList'>,
+    OwnerResult<ComputeCommandOwner, 'deliveriesList'>
+  >('compute:deliveries:list'),
   enabledHostsGet: defineApplicationCommand<
     'compute:enabled-hosts:get',
     OwnerArgs<ComputeEnabledHostsOwner, 'get'>,
@@ -182,6 +188,7 @@ const computeApplicationCommandGroup = defineApplicationCommandGroup('compute', 
   computeApplicationCommands.jobsList,
   computeApplicationCommands.jobsMarkConsumed,
   computeApplicationCommands.jobsPendingNotification,
+  computeApplicationCommands.deliveriesList,
   computeApplicationCommands.list,
   computeApplicationCommands.listDir,
   computeApplicationCommands.probe,
@@ -261,6 +268,7 @@ const registerComputeApplicationCommands = (
         dependencies.compute.jobsPendingNotification(args[0]),
       'compute:jobs:mark-consumed': ({ args }) =>
         dependencies.compute.jobsMarkConsumed(args[0], args[1]),
+      'compute:deliveries:list': ({ args }) => dependencies.compute.deliveriesList(args[0]),
       'compute:enabled-hosts:get': ({ args }) => dependencies.enabledHosts.get(args[0]),
       'compute:enabled-hosts:set': ({ args }) => dependencies.enabledHosts.set(args[0], args[1]),
       'compute:bookmarks:get': ({ args }) => dependencies.bookmarks.get(args[0]),

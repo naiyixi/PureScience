@@ -63,6 +63,7 @@ describe('Web RPC contract', () => {
       'compute.concurrencySet',
       'compute.create',
       'compute.delete',
+      'compute.deliveriesList',
       'compute.detailsGet',
       'compute.detailsSave',
       'compute.download',
