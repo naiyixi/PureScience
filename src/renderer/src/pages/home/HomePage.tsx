@@ -158,7 +158,8 @@ const HomePage = ({
   // Importing needs the desktop channels. Where they are absent (the web surface), the entry is not
   // painted at all rather than painted dead.
   const canImportPackages =
-    typeof (window.api.sessions as { previewPackage?: unknown }).previewPackage === 'function'
+    typeof (window.api?.sessions as { previewPackage?: unknown } | undefined)?.previewPackage ===
+    'function'
   const [isDeletingProject, setIsDeletingProject] = useState(false)
   const [deleteProjectError, setDeleteProjectError] = useState<string | undefined>(undefined)
   const [archivingProjectIds, setArchivingProjectIds] = useState<Set<string>>(() => new Set())
