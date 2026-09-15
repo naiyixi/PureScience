@@ -28,6 +28,7 @@ import {
   type ApplicationCommandCompositionDependencies
 } from './application-command-composition'
 import type { ApplicationInvocation } from './application-command-router'
+import type { PersistedChatSession } from '../shared/session-persistence'
 import { createApplicationEventModule, type ApplicationEventSource } from './application-events'
 import { projectTaskRuntimeEvent } from './web-service/application-event-projections'
 
