@@ -19,7 +19,7 @@ const input = (): SessionPackageInput => ({
 const packageBytes = (
   overrides: Partial<SessionPackageInput> = {},
   mode: 'essential' | 'full' = 'essential'
-) => createSessionPackage({ ...input(), ...overrides }, mode).archive
+): Uint8Array => createSessionPackage({ ...input(), ...overrides }, mode).archive
 
 describe('session package inspection', () => {
   it('accepts a package the exporter wrote, and describes it without claiming its verification', () => {
