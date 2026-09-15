@@ -215,6 +215,9 @@ describe('startWebHttpServer', () => {
     await writeFile(join(staticRoot, 'index.html'), '<!doctype html><title>Web test</title>')
     const largeScript = `window.__compressed = "${'a'.repeat(5_000)}"`
     await writeFile(join(staticRoot, 'app.js'), largeScript)
+    // A module script beside the classic one: served as octet-stream it is refused by the browser under
+    // nosniff, which is how the PDF worker silently failed to load.
+    await writeFile(join(staticRoot, 'pdf.worker.mjs'), largeScript)
     const rpc = {
       channels: () => [
         'projects:list',
@@ -271,6 +274,19 @@ describe('startWebHttpServer', () => {
     expect(compressedStatic.headers.get('vary')).toBe('Accept-Encoding')
     expect(Number(compressedStatic.headers.get('content-length'))).toBeLessThan(largeScript.length)
     expect(await compressedStatic.text()).toBe(largeScript)
+
+    // A module script must arrive as JavaScript, and be compressed like any other script.
+    const moduleScript = await fetch(`${base}/pdf.worker.mjs`, {
+      headers: { cookie, 'accept-encoding': 'gzip' }
+    })
+    expect(moduleScript.headers.get('content-type')).toBe('text/javascript; charset=utf-8')
+    expect(moduleScript.headers.get('content-encoding')).toBe('gzip')
+    expect(await moduleScript.text()).toBe(largeScript)
+
+    // Fonts are not scripts, but octet-stream is not an answer either.
+    await writeFile(join(staticRoot, 'body.woff2'), 'font-bytes')
+    const font = await fetch(`${base}/body.woff2`, { headers: { cookie } })
+    expect(font.headers.get('content-type')).toBe('font/woff2')
 
     const rpcResponse = await fetch(`${base}/rpc/projects%3Alist`, {
       method: 'POST',
