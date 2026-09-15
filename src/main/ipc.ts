@@ -268,6 +268,7 @@ import {
   type RespondApprovalRequest
 } from '../shared/settings'
 import { registerStorageIpcHandlers } from './storage/ipc'
+import { registerSessionPackageIpcHandlers } from './session-package/ipc'
 import { createStorageCommandOwner } from './storage/command-owner'
 import { withDataRootWrite } from './storage/migration-state'
 import { normalizeLegacyDataPaths } from './storage/normalize-legacy-paths'
@@ -2295,6 +2296,22 @@ const createApplicationModules = async (
   declareElectronAdapter('reviewer', () => {
     registerReviewerIpcHandlers(reviewerOptions, reviewerCommandOwner)
   })
+  declareElectronAdapter('session-package', () =>
+    registerSessionPackageIpcHandlers({
+      loadSession: (projectId, sessionId) =>
+        sessionRepository.loadSessionWithDiagnostics(projectId, sessionId),
+      listReviews: (sessionId) => reviewRepository.getReviewsForSession(sessionId),
+      // The evidence store answers by request; an attach-only answer is not evidence, so it is dropped
+      // rather than passed off as a list.
+      listEvidence: async (reviewIds) => {
+        const result = await reviewerCommandOwner.evidence({ action: 'list', reviewIds })
+        return 'attachments' in result ? result.attachments : []
+      },
+      listReferences: (projectId) => referencesIpcModule.handlers.list(projectId),
+      readArtifact: (request) => artifactHandlers.readPreview(request),
+      appVersion: app.getVersion()
+    })
+  )
   declareElectronAdapter('routine', () => {
     registerRoutineIpcHandlers(createRoutineCommandOwner(routineRepository))
   })

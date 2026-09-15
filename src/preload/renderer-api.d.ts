@@ -197,6 +197,10 @@ import type {
   ExportConversationResult
 } from '../shared/conversation-export'
 import type {
+  ExportSessionPackageRequest,
+  ExportSessionPackageResult
+} from '../shared/session-package'
+import type {
   ClaudeDetectResult,
   ClaudeInstallEvent,
   ClaudeInstallResult,
@@ -447,6 +451,12 @@ export interface PureScienceAPI {
     deleteSession(request: DeleteSessionRequest): Promise<void>
     saveManifest(request: SaveSessionManifestRequest): Promise<void>
     exportConversation(request: ExportConversationRequest): Promise<ExportConversationResult>
+    /**
+     * Writes a portable `.science` session package next to a path the user picks in a native save
+     * dialog. Desktop only: the package needs a real destination and the dialog is the only honest way
+     * to obtain one. A refusal is named (cancelled / session-not-found / no-destination / write-failed).
+     */
+    exportPackage(request: ExportSessionPackageRequest): Promise<ExportSessionPackageResult>
     onFlushRequest?(listener: AcpListener<SessionPersistenceFlushRequest>): RemoveListener
     sendFlushResponse?(response: SessionPersistenceFlushResponse): void
     onCreated(listener: AcpListener<SessionUpsertEvent>): RemoveListener

@@ -182,6 +182,8 @@ const api: PureScienceAPI = {
     // Exports the authoritative persisted active branch through a main-owned Save As flow.
     exportConversation: (request) =>
       electronRendererContracts.invoke('sessions.exportConversation', request),
+    // Writes a portable .science session package through the same main-owned Save As flow.
+    exportPackage: (request) => electronRendererContracts.invoke('sessions.exportPackage', request),
     onFlushRequest: (listener) =>
       electronRendererContracts.subscribe('sessions.onFlushRequest', listener),
     sendFlushResponse: (response) =>

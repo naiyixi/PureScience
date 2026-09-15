@@ -74,3 +74,20 @@ export const SESSION_PACKAGE_ASSERTION: SessionPackageAssertion = Object.freeze(
   origin: 'source-party',
   locallyVerified: false
 })
+
+/** What a renderer asks for. The destination comes from the desktop save dialog. */
+export type ExportSessionPackageRequest = {
+  projectId: string
+  sessionId: string
+  mode: SessionPackageMode
+  destinationPath?: string
+}
+
+// Named refusals, never prose. `cancelled` and `no-destination` are the desktop dialog's two ways of
+// not producing a file; the rest say what could not be written.
+export type ExportSessionPackageFailure =
+  'cancelled' | 'session-not-found' | 'session-unreadable' | 'no-destination' | 'write-failed'
+
+export type ExportSessionPackageResult =
+  | { ok: true; path: string; bytes: number; notes: readonly SessionPackageNoteCode[] }
+  | { ok: false; error: ExportSessionPackageFailure }

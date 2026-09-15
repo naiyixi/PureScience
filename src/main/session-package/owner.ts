@@ -2,7 +2,11 @@ import { basename } from 'node:path'
 
 import type { ArtifactPreviewResult } from '../../shared/artifacts'
 import type { PersistedChatSession } from '../../shared/session-persistence'
-import { SESSION_PACKAGE_EXTENSION, type SessionPackageMode } from '../../shared/session-package'
+import {
+  SESSION_PACKAGE_EXTENSION,
+  type ExportSessionPackageRequest,
+  type ExportSessionPackageResult
+} from '../../shared/session-package'
 import { DEFAULT_SESSION_PACKAGE_MAX_FILE_BYTES, type SessionPackageFile } from './export'
 import { exportSessionPackage, type SessionPackagePorts } from './service'
 
@@ -36,19 +40,7 @@ export type SessionPackageOwnerDeps = {
   maxFileBytes?: number
 }
 
-export type ExportPackageRequest = {
-  projectId: string
-  sessionId: string
-  mode: SessionPackageMode
-  destinationPath?: string
-}
-
-export type ExportPackageFailure =
-  'cancelled' | 'session-not-found' | 'session-unreadable' | 'no-destination' | 'write-failed'
-
-export type ExportPackageResult =
-  | { ok: true; path: string; bytes: number; notes: readonly string[] }
-  | { ok: false; error: ExportPackageFailure }
+// The request and result shapes are the wire contract, so they live in shared/session-package.ts.
 
 // Titles come from prompts and can hold anything a path cannot; the package name must not decide
 // whether the export works.
@@ -68,8 +60,18 @@ const toBytes = (preview: ArtifactPreviewResult): Uint8Array =>
 
 export const createSessionPackageOwner = (
   deps: SessionPackageOwnerDeps
-): { exportPackage: (request: ExportPackageRequest) => Promise<ExportPackageResult> } => {
-  const exportPackage = async (request: ExportPackageRequest): Promise<ExportPackageResult> => {
+): {
+  exportPackage: (
+    request: ExportSessionPackageRequest,
+    // A per-call dialog: the desktop adapter knows which window invoked it, and that window owns the
+    // sheet. Falls back to the one on the deps, then to a named refusal.
+    options?: { showSaveDialog?: (suggestedFileName: string) => Promise<string | null> }
+  ) => Promise<ExportSessionPackageResult>
+} => {
+  const exportPackage = async (
+    request: ExportSessionPackageRequest,
+    options?: { showSaveDialog?: (suggestedFileName: string) => Promise<string | null> }
+  ): Promise<ExportSessionPackageResult> => {
     const loaded = await deps.loadSession(request.projectId, request.sessionId)
     if (loaded.status !== 'found') {
       return {
@@ -83,8 +85,9 @@ export const createSessionPackageOwner = (
 
     let destination = request.destinationPath
     if (!destination) {
-      if (!deps.showSaveDialog) return { ok: false, error: 'no-destination' }
-      destination = (await deps.showSaveDialog(packageFileName(loaded.session.title))) ?? undefined
+      const showSaveDialog = options?.showSaveDialog ?? deps.showSaveDialog
+      if (!showSaveDialog) return { ok: false, error: 'no-destination' }
+      destination = (await showSaveDialog(packageFileName(loaded.session.title))) ?? undefined
       if (!destination) return { ok: false, error: 'cancelled' }
     }
 
