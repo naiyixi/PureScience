@@ -116,7 +116,7 @@ const INTERNAL_COMMAND_COUNT = 304
 const LOCAL_WEB_COMMAND_COUNT = 302
 const REMOTE_WEB_COMMAND_COUNT = 202
 const REMOTE_REJECTED_COMMAND_COUNT = 100
-const TASK_COMMAND_COUNT = 7
+const TASK_COMMAND_COUNT = 10
 
 const ELECTRON_NATIVE_COMMAND_NAMES = Object.freeze([
   'sessions:export-conversation',
@@ -130,7 +130,12 @@ const TASK_COMMAND_NAMES = Object.freeze([
   'sessions:save-session',
   'artifacts:finalize-run',
   'preview-resources:acquire',
-  'preview-resources:release'
+  'preview-resources:release',
+  // P3-8: the command line reads the app's own judgements through the same narrow Task view rather
+  // than deciding anything for itself.
+  'settings:check-environment',
+  'runtime:list-environments',
+  'settings:list-connectors'
 ])
 
 const APPLICATION_COMMAND_GROUPS = Object.freeze([

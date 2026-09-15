@@ -168,6 +168,21 @@ purescience artifacts download <artifact-id> --output ./report.md --json
 
 Artifact output paths are resolved relative to the current working directory.
 
+## Machine state
+
+Read what the application already decided about this machine — the same readiness judgement, runtime
+survey and connector list the settings window shows, with nothing re-computed on the command line:
+
+```bash
+purescience ready --json
+purescience runtime list --json
+purescience connectors list --json
+```
+
+`ready` prints the environment check (platform support, app storage, credential vault, installation
+network, Python for notebooks), each entry with its status and the sentence that explains it. Use it
+to tell a failed install from a working one before opening the app.
+
 ## Rollback to 0.7.3
 
 The current Session and file formats contain fields that PureScience 0.7.3 cannot safely write.
