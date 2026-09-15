@@ -1231,6 +1231,17 @@ export const en: Record<ZhKey, string> = {
   'settings.onLatestVersion': 'You are on the latest version',
   'settings.updateCheckFailed': 'Update check failed',
   'settings.appVersion': 'App version',
+  'sessions.packageImport.title': 'Import session package',
+  'sessions.packageImport.pickFile': 'Choose a package…',
+  'sessions.packageImport.contains':
+    'Messages {messages} · citations {citations} · review findings {findings} · verification records {verifications} · files {files}',
+  'sessions.packageImport.sourceParty':
+    'Every conclusion in this package is the sender’s assertion. This machine has not verified it.',
+  'sessions.packageImport.readOnly':
+    'Imported sessions are read-only: you can read and cite them, never run or continue them.',
+  'sessions.packageImport.confirm': 'Import',
+  'sessions.packageImport.cancel': 'Cancel',
+  'sessions.packageImport.refused': 'This package cannot be imported: {reason}',
   'settings.maxInputTokens': 'Max input tokens',
   'settings.maxOutputTokens': 'Max output tokens',
   'settings.leaveEmptyForDefault': 'Leave empty for default',

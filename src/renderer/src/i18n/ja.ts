@@ -914,6 +914,17 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.appStorageWriteAccessHint':
     'PureScience がプライベート設定ディレクトリへの書き込みアクセスを必要としています。',
   'settings.appVersion': 'アプリバージョン',
+  'sessions.packageImport.title': 'セッションパッケージを読み込む',
+  'sessions.packageImport.pickFile': 'パッケージを選択…',
+  'sessions.packageImport.contains':
+    'メッセージ {messages} 件 · 引用 {citations} · レビュー指摘 {findings} · 検証記録 {verifications} · ファイル {files}',
+  'sessions.packageImport.sourceParty':
+    'パッケージ内の結論はすべて送信側の主張で、この端末では検証していません。',
+  'sessions.packageImport.readOnly':
+    '読み込んだセッションは読み取り専用です。閲覧と引用はできますが、実行や続行はできません。',
+  'sessions.packageImport.confirm': '読み込む',
+  'sessions.packageImport.cancel': 'キャンセル',
+  'sessions.packageImport.refused': 'このパッケージは読み込めません：{reason}',
   'settings.appearanceDesc':
     'アプリの外観を選択します。「システム」はデバイスの設定に従い、「ライト」「ダーク」は固定されます。選択内容はこのデバイスに記憶されます。',
   'settings.applicationStorage': 'アプリケーションストレージ',

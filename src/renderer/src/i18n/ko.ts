@@ -902,6 +902,17 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.appStorageWriteAccessHint':
     'PureScience는 자체 전용 구성 디렉터리에 대한 쓰기 권한이 필요합니다.',
   'settings.appVersion': '앱 버전',
+  'sessions.packageImport.title': '세션 패키지 가져오기',
+  'sessions.packageImport.pickFile': '패키지 선택…',
+  'sessions.packageImport.contains':
+    '메시지 {messages}개 · 인용 {citations} · 검토 지적 {findings} · 검증 기록 {verifications} · 파일 {files}',
+  'sessions.packageImport.sourceParty':
+    '패키지 안의 결론은 모두 보낸 쪽의 주장이며, 이 기기에서는 검증하지 않았습니다.',
+  'sessions.packageImport.readOnly':
+    '가져온 세션은 읽기 전용입니다. 열람과 인용은 되지만 실행이나 이어가기는 안 됩니다.',
+  'sessions.packageImport.confirm': '가져오기',
+  'sessions.packageImport.cancel': '취소',
+  'sessions.packageImport.refused': '이 패키지는 가져올 수 없습니다: {reason}',
   'settings.appearanceDesc':
     '앱의 모양을 선택합니다. 시스템은 기기 설정을 따르고, 라이트/다크는 고정됩니다. 선택한 값은 이 기기에 저장됩니다.',
   'settings.applicationStorage': '애플리케이션 저장소',

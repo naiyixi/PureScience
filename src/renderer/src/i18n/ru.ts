@@ -917,6 +917,17 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.appStorageWriteAccessHint':
     'PureScience требуется доступ на запись к своему приватному каталогу конфигурации.',
   'settings.appVersion': 'Версия приложения',
+  'sessions.packageImport.title': 'Импорт пакета сессии',
+  'sessions.packageImport.pickFile': 'Выбрать пакет…',
+  'sessions.packageImport.contains':
+    'Сообщения {messages} · цитаты {citations} · замечания ревью {findings} · записи проверок {verifications} · файлы {files}',
+  'sessions.packageImport.sourceParty':
+    'Все выводы в пакете — утверждения отправителя; на этой машине они не проверялись.',
+  'sessions.packageImport.readOnly':
+    'Импортированные сессии доступны только для чтения: их можно читать и цитировать, но нельзя запускать или продолжать.',
+  'sessions.packageImport.confirm': 'Импортировать',
+  'sessions.packageImport.cancel': 'Отмена',
+  'sessions.packageImport.refused': 'Этот пакет нельзя импортировать: {reason}',
   'settings.appearanceDesc':
     'Выберите внешний вид приложения. «Системная» следует за устройством; «Светлая» и «Тёмная» зафиксированы. Ваш выбор запоминается на этом устройстве.',
   'settings.applicationStorage': 'Хранилище приложения',

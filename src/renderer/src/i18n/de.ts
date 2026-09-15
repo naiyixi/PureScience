@@ -938,6 +938,17 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.appStorageWriteAccessHint':
     'PureScience benötigt Schreibzugriff auf sein privates Konfigurationsverzeichnis.',
   'settings.appVersion': 'App-Version',
+  'sessions.packageImport.title': 'Sitzungspaket importieren',
+  'sessions.packageImport.pickFile': 'Paket auswählen…',
+  'sessions.packageImport.contains':
+    'Nachrichten {messages} · Zitate {citations} · Review-Befunde {findings} · Prüfprotokolle {verifications} · Dateien {files}',
+  'sessions.packageImport.sourceParty':
+    'Alle Schlussfolgerungen im Paket sind Behauptungen des Absenders; auf diesem Rechner wurden sie nicht geprüft.',
+  'sessions.packageImport.readOnly':
+    'Importierte Sitzungen sind schreibgeschützt: lesen und zitieren ja, ausführen oder fortsetzen nein.',
+  'sessions.packageImport.confirm': 'Importieren',
+  'sessions.packageImport.cancel': 'Abbrechen',
+  'sessions.packageImport.refused': 'Dieses Paket lässt sich nicht importieren: {reason}',
   'settings.appearanceDesc':
     'Wählen Sie das Erscheinungsbild der App. „System folgen“ richtet sich nach Ihrem Gerät; Hell und Dunkel bleiben fest. Ihre Wahl wird auf diesem Gerät gespeichert.',
   'settings.applicationStorage': 'Anwendungsspeicher',

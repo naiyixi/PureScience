@@ -929,6 +929,17 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.appStorageWriteAccessHint':
     'PureScience a besoin d’un accès en écriture à son répertoire de configuration privé.',
   'settings.appVersion': 'Version de l’application',
+  'sessions.packageImport.title': 'Importer un paquet de session',
+  'sessions.packageImport.pickFile': 'Choisir un paquet…',
+  'sessions.packageImport.contains':
+    'Messages {messages} · citations {citations} · constats de revue {findings} · enregistrements de vérification {verifications} · fichiers {files}',
+  'sessions.packageImport.sourceParty':
+    'Toutes les conclusions du paquet sont des affirmations de l’expéditeur ; cette machine ne les a pas vérifiées.',
+  'sessions.packageImport.readOnly':
+    'Les sessions importées sont en lecture seule : consultation et citation oui, exécution ou reprise non.',
+  'sessions.packageImport.confirm': 'Importer',
+  'sessions.packageImport.cancel': 'Annuler',
+  'sessions.packageImport.refused': 'Ce paquet ne peut pas être importé : {reason}',
   'settings.appearanceDesc':
     'Choisissez l’apparence de l’application. « Système » suit votre appareil ; « Clair » et « Sombre » restent fixes. Votre choix est mémorisé sur cet appareil.',
   'settings.applicationStorage': 'Stockage de l’application',
