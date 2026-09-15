@@ -113,6 +113,36 @@ describe('buildImageContentData', () => {
     expect(createFromPath).not.toHaveBeenCalled()
   })
 
+  it('strips identifying metadata from a small image before it is inlined', async () => {
+    const filePath = join(root, 'tagged.jpg')
+    const jfif = [0xff, 0xe0, 0x00, 0x07, 0x4a, 0x46, 0x49, 0x46, 0x00]
+    const exif = [0xff, 0xe1, 0x00, 0x08, 0x45, 0x78, 0x69, 0x66, 0x00, 0xde]
+    const bytes = Buffer.from([
+      0xff,
+      0xd8,
+      ...jfif,
+      ...exif,
+      0xff,
+      0xda,
+      0x00,
+      0x02,
+      0x11,
+      0x22,
+      0xff,
+      0xd9
+    ])
+    await writeFile(filePath, bytes)
+
+    const result = await buildImageContentData(filePath, 'image/jpeg', bytes.byteLength)
+    const decoded = Buffer.from(result.data, 'base64')
+
+    // The EXIF segment (and the bytes it carried) is gone; the JFIF header and the scan data are not.
+    expect(decoded.includes(Buffer.from([0xff, 0xe1]))).toBe(false)
+    expect(decoded.includes(Buffer.from([0xff, 0xe0]))).toBe(true)
+    expect(decoded.byteLength).toBe(bytes.byteLength - exif.length)
+    expect(result.mimeType).toBe('image/jpeg')
+  })
+
   it('downscales large images to the long-edge cap and re-encodes to JPEG', async () => {
     const filePath = join(root, 'large.jpg')
     await writeFile(filePath, Buffer.from('ignored-because-nativeimage-is-mocked'))

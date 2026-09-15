@@ -1,5 +1,7 @@
 import { createRequire } from 'node:module'
 import { readFile, stat } from 'node:fs/promises'
+import { stripImageMetadata } from '../../shared/image-metadata'
+import { createLogger } from '../logger'
 import { dirname, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
@@ -129,6 +131,8 @@ export const consumeInlineImageBudget = (
 // Builds the base64 payload for an image content block, downscaling oversized images first.
 // Small images pass through unchanged. Oversized images must be decoded and reduced below the hard
 // payload limit; returning their original bytes would allow a 50MB upload to escape this boundary.
+const log = createLogger('uploads')
+
 export const buildImageContentData = async (
   filePath: string,
   mimeType: string | undefined,
@@ -145,7 +149,21 @@ export const buildImageContentData = async (
   }
 
   if (size <= MAX_INLINE_IMAGE_BYTES) {
-    return { data: (await readFile(filePath)).toString('base64'), mimeType: fallbackMimeType }
+    // The provider gets the pixels, not the provenance: EXIF/GPS and text chunks are dropped before the
+    // file is inlined. Pixels are untouched (whole segments are removed, nothing is re-encoded).
+    const raw = await readFile(filePath)
+    const stripped = stripImageMetadata(raw)
+    if (stripped.removed.length > 0) {
+      log.info('stripped image metadata before inlining', {
+        file: filePath,
+        removed: stripped.removed.join(','),
+        droppedBytes: raw.byteLength - stripped.bytes.byteLength
+      })
+    }
+    return {
+      data: Buffer.from(stripped.bytes).toString('base64'),
+      mimeType: fallbackMimeType
+    }
   }
 
   let nativeImage: (typeof import('electron'))['nativeImage']
