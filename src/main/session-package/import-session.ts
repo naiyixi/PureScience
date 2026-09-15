@@ -1,14 +1,16 @@
 import { randomUUID } from 'node:crypto'
 
-import { strFromU8, unzipSync } from 'fflate'
+import { strFromU8 } from 'fflate'
 
 import {
   SESSION_PACKAGE_IMPORT_POSTURE,
+  SESSION_PACKAGE_LIMITS,
   type SessionPackageImportRecord,
   type SessionPackageImportRequest,
   type SessionPackageImportResult
 } from '../../shared/session-package-import'
 import { inspectSessionPackage } from './import'
+import { readZipEntries } from './zip-reader'
 
 // A draft, not a PersistedChatSession: the app owns how a session document is shaped, and an imported
 // one must not smuggle in fields the importer invented.
@@ -55,8 +57,12 @@ export const importSessionPackage = async (
   }
 
   const described = preview.described
-  // The archive was inspected above (safe paths, bounded sizes, required evidence present).
-  const conversationEntry = unzipSync(bytes)['conversation.json']
+  // The archive was inspected above (safe paths, bounded sizes, required evidence present). Only the one
+  // member that is needed is expanded, under the same ceilings — never the whole package at once.
+  const read = readZipEntries(bytes, SESSION_PACKAGE_LIMITS, { only: ['conversation.json'] })
+  if (!read.ok) return { ok: false, reason: 'not-a-package' }
+  const conversationEntry = read.entries.get('conversation.json')
+  if (!conversationEntry) return { ok: false, reason: 'required-evidence-missing' }
   let conversation: unknown
   try {
     conversation = JSON.parse(strFromU8(conversationEntry))

@@ -10,6 +10,10 @@ export type ZipEntryDeclaration = {
   name: string
   /** The size the archive claims the member will expand to. */
   declaredBytes: number
+  /** Where the member's local header sits, its compression method, and its stored (compressed) size. */
+  localHeaderOffset: number
+  method: number
+  compressedBytes: number
 }
 
 export type ZipDirectoryRead =
@@ -50,6 +54,8 @@ export const readZipDirectory = (bytes: Uint8Array): ZipDirectoryRead => {
 
     const compressedBytes = view.getUint32(offset + 20, true)
     const declaredBytes = view.getUint32(offset + 24, true)
+    const localHeaderOffset = view.getUint32(offset + 42, true)
+    const method = view.getUint16(offset + 10, true)
     const nameLength = view.getUint16(offset + 28, true)
     const extraLength = view.getUint16(offset + 30, true)
     const commentLength = view.getUint16(offset + 32, true)
@@ -61,7 +67,7 @@ export const readZipDirectory = (bytes: Uint8Array): ZipDirectoryRead => {
     const nameStart = offset + 46
     if (nameStart + nameLength > view.byteLength) return { ok: false, reason: 'not-a-package' }
     const name = decoder.decode(bytes.subarray(nameStart, nameStart + nameLength))
-    entries.push({ name, declaredBytes })
+    entries.push({ name, declaredBytes, localHeaderOffset, method, compressedBytes })
     offset = nameStart + nameLength + extraLength + commentLength
   }
 

@@ -1,4 +1,4 @@
-import { strFromU8, unzipSync } from 'fflate'
+import { strFromU8 } from 'fflate'
 
 import {
   SESSION_PACKAGE_FORMAT_VERSION,
@@ -6,6 +6,7 @@ import {
   type SessionPackageManifest
 } from '../../shared/session-package'
 import { readZipDirectory } from './zip-directory'
+import { readZipEntries } from './zip-reader'
 import {
   SESSION_PACKAGE_LIMITS,
   type SessionPackageImportPreview,
@@ -58,27 +59,26 @@ export const inspectSessionPackage = (archiveBytes: Uint8Array): SessionPackageI
     if (declaredTotal > SESSION_PACKAGE_LIMITS.maxTotalBytes) return refusal('package-too-large')
   }
 
-  // 2. Only then expand, under the same ceilings.
-  let entries: Record<string, Uint8Array>
-  try {
-    entries = unzipSync(archiveBytes)
-  } catch {
-    return refusal('not-a-package')
+  // 2. Only then expand — one member at a time, under the same ceilings, and with the size a member
+  // ACTUALLY inflates to checked as it grows (a declaration can understate it).
+  const expanded = readZipEntries(archiveBytes, SESSION_PACKAGE_LIMITS)
+  if (!expanded.ok) {
+    return refusal(expanded.reason === 'zip64-not-admitted' ? 'entry-too-large' : expanded.reason)
   }
-
-  const names = Object.keys(entries)
+  const entries = expanded.entries
+  const names = [...entries.keys()]
   if (names.length > SESSION_PACKAGE_LIMITS.maxEntries) return refusal('entry-count-exceeded')
 
   let totalBytes = 0
   for (const name of names) {
     if (!isSafeEntryPath(name)) return refusal('entry-path-unsafe')
-    const bytes = entries[name]
+    const bytes = entries.get(name) as Uint8Array
     if (bytes.byteLength > SESSION_PACKAGE_LIMITS.maxEntryBytes) return refusal('entry-too-large')
     totalBytes += bytes.byteLength
     if (totalBytes > SESSION_PACKAGE_LIMITS.maxTotalBytes) return refusal('package-too-large')
   }
 
-  const manifestBytes = entries[SESSION_PACKAGE_MANIFEST_PATH]
+  const manifestBytes = entries.get(SESSION_PACKAGE_MANIFEST_PATH)
   if (!manifestBytes) return refusal('not-a-package')
 
   let manifest: SessionPackageManifest
@@ -105,7 +105,7 @@ export const inspectSessionPackage = (archiveBytes: Uint8Array): SessionPackageI
   }
 
   for (const required of REQUIRED_PACKAGE_EVIDENCE) {
-    if (!entries[required]) return refusal('required-evidence-missing')
+    if (!entries.has(required)) return refusal('required-evidence-missing')
   }
 
   return {
