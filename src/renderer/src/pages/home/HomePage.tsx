@@ -7,7 +7,8 @@ import {
   Plus,
   Search,
   Settings,
-  Trash2
+  Trash2,
+  FileUp
 } from 'lucide-react'
 import { DropdownMenu } from 'radix-ui'
 import { useEffect, useMemo, useState } from 'react'
@@ -16,6 +17,7 @@ import { formatRelativeTime } from '@/lib/format-relative-time'
 import { cn } from '@/lib/utils'
 import { useLanguage } from '@/i18n'
 import { Button } from '@/components/ui/button'
+import { SessionPackageImportDialog } from '@/components/session-package/SessionPackageImportDialog'
 import { useNavigationStore } from '@/stores/navigation-store'
 import type { ChatSession } from '@/stores/session-store'
 import { useSessionStore } from '@/stores/session-store'
@@ -151,6 +153,8 @@ const HomePage = ({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | undefined>(undefined)
   const [projectToDelete, setProjectToDelete] = useState<Project | undefined>(undefined)
+  // The package import dialog is opened per project: a package never picks its own destination.
+  const [importTarget, setImportTarget] = useState<Project | undefined>(undefined)
   const [isDeletingProject, setIsDeletingProject] = useState(false)
   const [deleteProjectError, setDeleteProjectError] = useState<string | undefined>(undefined)
   const [archivingProjectIds, setArchivingProjectIds] = useState<Set<string>>(() => new Set())
@@ -577,6 +581,13 @@ const HomePage = ({
                               ? t('home.archiving')
                               : t('home.archive')}
                           </DropdownMenu.Item>
+                          <DropdownMenu.Item
+                            className={menuItemClassName}
+                            onSelect={() => setImportTarget(project)}
+                          >
+                            <FileUp className="size-4" strokeWidth={2} aria-hidden="true" />
+                            {t('sessions.packageImport.title')}
+                          </DropdownMenu.Item>
                           <DropdownMenu.Separator className="mx-1 my-1 h-px bg-border-300" />
                           <DropdownMenu.Item
                             className={menuDangerItemClassName}
@@ -594,6 +605,14 @@ const HomePage = ({
               </div>
             )}
           </section>
+
+          {importTarget ? (
+            <SessionPackageImportDialog
+              open
+              targetProjectId={importTarget.id}
+              onClose={() => setImportTarget(undefined)}
+            />
+          ) : null}
 
           <section className="min-w-0" aria-label={t('ui.recentsessions')}>
             <h2 className={sectionHeadingClassName}>
