@@ -43,6 +43,11 @@ export type SessionPackageRejectionReason =
 
 export type SessionPackageImportPreview = {
   accepted: boolean
+  /**
+   * The file this preview described, when one was resolved. The confirm step names the same file, so the
+   * reader cannot preview one package and import another by accident.
+   */
+  packagePath?: string
   /** Present only when the package was read far enough to describe it. */
   described?: {
     formatVersion: number
