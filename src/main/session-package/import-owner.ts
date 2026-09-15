@@ -49,7 +49,12 @@ const messagesOf = (conversation: unknown): PersistedChatMessage[] => {
  * that makes it readable-but-not-runnable. The record is written SECOND on purpose — a session without
  * its record is a normal session, whereas a record without its session would point at nothing.
  */
-export const createSessionPackageImportOwner = (deps: SessionPackageImportOwnerDeps) => {
+export const createSessionPackageImportOwner = (
+  deps: SessionPackageImportOwnerDeps
+): {
+  saveImportedSession: (draft: ImportedSessionDraft) => Promise<void>
+  ports: (readPackage: (path: string) => Promise<Uint8Array>) => SessionPackageImportDeps
+} => {
   const saveImportedSession = async (draft: ImportedSessionDraft): Promise<void> => {
     const session: PersistedChatSession = {
       id: draft.sessionId,
