@@ -1,5 +1,6 @@
 import type { PersistedUploadedAttachment } from './uploads'
 import type { BackgroundDeliveryRef } from './background-delivery'
+import { sanitizeSessionRetention, type SessionRetention } from './session-retention'
 import {
   ANNOTATION_MAX_SOURCE_LENGTH,
   ANNOTATION_MAX_TEXT_LENGTH,
@@ -278,6 +279,10 @@ export type PersistedChatSession = {
   // Model selected when the latest run started. Kept with the session so a later settings change
   // cannot misattribute a failed run's diagnostic report.
   agentModel?: string
+  // What the retained history no longer contains, set when a write had to bound a long conversation:
+  // how many of the oldest messages are gone and the time the record resumes from. Absent means the
+  // document holds every message it ever did, so nothing is ever trimmed silently.
+  retention?: SessionRetention
   // Per-conversation approval posture. Older session files omit it and safely restore to Ask.
   permissionProfile?: PermissionProfileId
   // Per-conversation auto-review toggle. Absent (older files) or non-true is treated as disabled;
@@ -1578,6 +1583,11 @@ const sanitizeSession = (
     title: asString(session.title) ?? id,
     cwd: asString(session.cwd) ?? '',
     status: asSessionStatus(session.status),
+    // Present only when this document actually lost messages; a malformed record is dropped rather
+    // than trusted (see shared/session-retention).
+    ...(sanitizeSessionRetention(session.retention) === undefined
+      ? {}
+      : { retention: sanitizeSessionRetention(session.retention) as SessionRetention }),
     permissionProfile:
       session.permissionProfile === undefined
         ? DEFAULT_PERMISSION_PROFILE

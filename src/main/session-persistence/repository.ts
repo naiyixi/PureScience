@@ -15,6 +15,11 @@ import {
   type SessionLoadWarning,
   type SessionSummaryFile
 } from '../../shared/session-persistence'
+import {
+  MAX_RETAINED_SESSION_MESSAGES,
+  trimSessionHistory,
+  type SessionRetention
+} from '../../shared/session-retention'
 import { decodeSessionDataPaths, encodeSessionDataPaths } from './session-data-paths'
 import { bumpSessionRevision } from './session-revision'
 
@@ -78,6 +83,41 @@ const DEFAULT_DEPENDENCIES: SessionRepositoryDependencies = {
   writeSummaryFile: (path, content) => writeFile(path, content, 'utf8'),
   renameFile: (source, destination) => rename(source, destination),
   wait: (delayMs) => new Promise((resolve) => setTimeout(resolve, delayMs))
+}
+
+// Applies the retention bound to both message collections a session carries — the conversation list and
+// the conversation graph — and records the drop on the document. A session under the limit is returned
+// untouched (the very same object), so an ordinary write cannot start rewriting documents.
+const trimRetainedSessionHistory = (session: PersistedChatSession): PersistedChatSession => {
+  const limited = trimSessionHistory(session.messages, MAX_RETAINED_SESSION_MESSAGES)
+  const graphMessages = session.conversationGraph?.messages
+  const trimmedGraph =
+    graphMessages === undefined
+      ? undefined
+      : trimSessionHistory(graphMessages, MAX_RETAINED_SESSION_MESSAGES)
+  const dropped =
+    (limited.retention?.droppedMessages ?? 0) + (trimmedGraph?.retention?.droppedMessages ?? 0)
+  if (dropped === 0) return session
+
+  // The recorded gap is datable from the oldest message that is no longer there, whichever collection
+  // it came from.
+  const boundaries = [
+    limited.retention?.droppedBefore,
+    trimmedGraph?.retention?.droppedBefore
+  ].filter((value): value is number => value !== undefined)
+  const retention: SessionRetention = {
+    droppedMessages: dropped,
+    droppedBefore: Math.min(...boundaries)
+  }
+
+  return {
+    ...session,
+    messages: limited.messages,
+    ...(trimmedGraph === undefined || session.conversationGraph === undefined
+      ? {}
+      : { conversationGraph: { ...session.conversationGraph, messages: trimmedGraph.messages } }),
+    retention
+  }
 }
 
 const isRetryableFileReplacementError = (error: unknown): boolean =>
@@ -449,7 +489,11 @@ class SessionRepository {
       )
     }
     const filePath = join(projectDirectory, `${assertSafeSegment(session.id)}.json`)
-    const sanitizedSession = sanitizeSessionUploadedAttachments(session)
+    // Bound the retained history here, at the one place every session write passes through: a
+    // conversation that runs for months must not make its own document unloadable. Oldest first, and
+    // the drop is recorded on the document (shared/session-retention) so a reader sees where the
+    // record resumes rather than believing the conversation began there.
+    const sanitizedSession = sanitizeSessionUploadedAttachments(trimRetainedSessionHistory(session))
 
     await mkdir(projectDirectory, { recursive: true })
     await this.atomicWrite(filePath, createSessionFile(encodeSessionDataPaths(sanitizedSession)))

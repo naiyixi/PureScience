@@ -9,6 +9,7 @@ vi.mock('electron', () => ({
   app: { getPath: () => '/home/user', isPackaged: true }
 }))
 
+import { MAX_RETAINED_SESSION_MESSAGES } from '../../shared/session-retention'
 import type { PersistedChatSession } from '../../shared/session-persistence'
 import { DEV_SESSION_DIR_NAME, SessionRepository, getSessionPersistenceDir } from './repository'
 import { getSessionRevision } from './session-revision'
@@ -50,6 +51,42 @@ afterEach(async () => {
 })
 
 describe('session persistence repository (per-session files)', () => {
+  // P3-9 / 3.7: a conversation that runs for months must not make its own document unloadable, and a
+  // history that lost its oldest messages must say so rather than looking complete.
+  it('bounds a very long conversation and records what it dropped', async () => {
+    const repository = new SessionRepository(await createStorageRoot())
+    const messages = Array.from({ length: MAX_RETAINED_SESSION_MESSAGES + 3 }, (_, index) => ({
+      id: `message-${index + 1}`,
+      role: 'user' as const,
+      content: `turn ${index + 1}`,
+      status: 'complete' as const,
+      eventIds: [],
+      createdAt: 1_710_000_000_000 + index,
+      updatedAt: 1_710_000_000_000 + index
+    }))
+
+    await repository.saveSession(createSession({ messages }))
+
+    const loaded = await repository.loadSession('project-a', 'session-1')
+    expect(loaded?.messages).toHaveLength(MAX_RETAINED_SESSION_MESSAGES)
+    // The newest turns survive: the conversation continues where the reader left off.
+    expect(loaded?.messages[loaded.messages.length - 1].id).toBe(
+      `message-${MAX_RETAINED_SESSION_MESSAGES + 3}`
+    )
+    // The recorded boundary is where the record resumes (the oldest message still present), so a
+    // reader can tell that everything before it is gone.
+    expect(loaded?.retention).toEqual({ droppedMessages: 3, droppedBefore: 1_710_000_000_003 })
+  })
+
+  it('leaves a conversation under the limit untouched, with no retention marker', async () => {
+    const repository = new SessionRepository(await createStorageRoot())
+
+    await repository.saveSession(createSession())
+
+    const loaded = await repository.loadSession('project-a', 'session-1')
+    expect(loaded?.messages).toHaveLength(1)
+    expect(loaded?.retention).toBeUndefined()
+  })
   it('saves each session to sessions/<projectId>/<id>.json and loads it back', async () => {
     const repository = new SessionRepository(await createStorageRoot())
     const session = createSession()
