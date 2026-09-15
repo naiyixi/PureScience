@@ -28,6 +28,7 @@ export const SESSION_PACKAGE_ALWAYS_INCLUDED: readonly SessionPackageEvidenceKin
 // interface language is the receiver's business.
 export type SessionPackageNoteCode =
   | `file-omitted-too-large:${string}`
+  | `artifact-unreadable:${string}`
   | `files-not-requested:${number}`
   | `environment-lock-unavailable`
   | `reproduction-outputs-unavailable`

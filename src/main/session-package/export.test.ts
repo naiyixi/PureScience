@@ -133,6 +133,19 @@ describe('session package export', () => {
     expect(manifest.notes).toContain('reproduction-outputs-unavailable')
   })
 
+  it('names a file it could not read, and invents no hash for it', () => {
+    const { archive, manifest } = createSessionPackage(
+      input({ files: [], unreadableFiles: ['files/figures/ghost.png'] }),
+      'full'
+    )
+    const entries = unzip(archive)
+
+    expect(entries['files/figures/ghost.png']).toBeUndefined()
+    const named = manifest.entries.find((entry) => entry.path === 'files/figures/ghost.png')
+    expect(named).toMatchObject({ omitted: true, bytes: 0, sha256: '' })
+    expect(manifest.notes).toContain('artifact-unreadable:files/figures/ghost.png')
+  })
+
   it('refuses an entry path that would escape the archive', () => {
     expect(() =>
       createSessionPackage(

@@ -22,11 +22,12 @@ export type SessionPackagePorts = {
   listEvidence: (sessionId: string) => Promise<readonly unknown[]>
   /** Citations captured for the session (GB/T text travels inside them). */
   listCitations: (sessionId: string) => Promise<readonly unknown[]>
-  /** The session's files, already read into bytes, under `files/…` package paths. */
+  /** The session's files, already read into bytes, under `files/…` package paths — plus the ones that
+   * could not be read, named so the package can say which file it lost. */
   listFiles: (request: {
     projectId: string
     sessionId: string
-  }) => Promise<readonly SessionPackageFile[]>
+  }) => Promise<{ files: readonly SessionPackageFile[]; unreadable: readonly string[] }>
   /**
    * How many files the session has, without reading them. An essential package omits the files but must
    * still tell its reader how many stayed behind.
@@ -74,9 +75,11 @@ export const exportSessionPackage = async (
   ])
 
   const full = request.mode === 'full'
-  const files = full
+  const readFiles = full
     ? await ports.listFiles({ projectId: request.projectId, sessionId: request.sessionId })
-    : []
+    : { files: [], unreadable: [] }
+  const files = readFiles.files
+  const unreadableFiles = readFiles.unreadable
   const filesNotRequested = full
     ? undefined
     : await ports.countFiles?.({ projectId: request.projectId, sessionId: request.sessionId })
@@ -108,6 +111,7 @@ export const exportSessionPackage = async (
       verificationRecords: evidence,
       files,
       filesNotRequested,
+      unreadableFiles,
       environment,
       reproductionOutputs,
       maxFileBytes: request.maxFileBytes

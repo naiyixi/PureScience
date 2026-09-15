@@ -31,9 +31,10 @@ const ports = (overrides: Partial<SessionPackagePorts> = {}): SessionPackagePort
   listReviews: async () => [{ id: 'review-1', outcome: 'pass', checks: [{ id: 'check-1' }] }],
   listEvidence: async () => [{ id: 'evidence-1', role: 'agent', fingerprint: 'sha256:abc' }],
   listCitations: async () => [{ id: 'cite-1', gbt: '张某. 文献题名[J]. 期刊, 2024.' }],
-  listFiles: async () => [
-    { path: 'files/figures/figA.png', contents: new TextEncoder().encode('PNG-A') }
-  ],
+  listFiles: async () => ({
+    files: [{ path: 'files/figures/figA.png', contents: new TextEncoder().encode('PNG-A') }],
+    unreadable: []
+  }),
   countFiles: async () => 1,
   readEnvironment: async () => ({ python: '3.11.15' }),
   readReproductionOutputs: async () => [
@@ -161,7 +162,7 @@ describe('exportSessionPackage', () => {
   })
 
   it('asks the stores once per export and never for a mode that does not need them', async () => {
-    const listFiles = vi.fn(async () => [])
+    const listFiles = vi.fn(async () => ({ files: [], unreadable: [] }))
     await exportSessionPackage(ports({ listFiles }), {
       projectId: 'project-1',
       sessionId: 'session-1',

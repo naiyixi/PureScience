@@ -37,6 +37,9 @@ export type SessionPackageInput = {
   // How many files the session had that this mode deliberately leaves behind. Named by the CALLER,
   // because an essential package never reads the files and must still tell its reader they exist.
   filesNotRequested?: number
+  // Files the session had that could not be read at all. They are named, never silently dropped: a
+  // package that loses a file must say which one.
+  unreadableFiles?: readonly string[]
   environment?: unknown
   reproductionOutputs?: readonly SessionPackageFile[]
   maxFileBytes?: number
@@ -85,6 +88,14 @@ export const createSessionPackage = (
   let fileCount = 0
 
   if (mode === 'full') {
+    for (const path of input.unreadableFiles ?? []) {
+      const normalized = normalizeEntryPath(path)
+      const note: SessionPackageNoteCode = `artifact-unreadable:${normalized}`
+      notes.push(note)
+      // No hash: the bytes were never read, and a made-up one would be worse than none.
+      entries.push({ path: normalized, bytes: 0, sha256: '', omitted: true, note })
+    }
+
     for (const file of candidateFiles) {
       const normalized = normalizeEntryPath(file.path)
       if (file.contents.byteLength > maxFileBytes) {
