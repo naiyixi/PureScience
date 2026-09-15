@@ -130,6 +130,11 @@ const computeApplicationCommands = Object.freeze({
     readonly [{ id: string; decision: ComputeApprovalDecision }],
     OwnerResult<ComputeCommandOwner, 'approvalRespond'>
   >('compute:approval-respond'),
+  deliveriesList: defineApplicationCommand<
+    'compute:deliveries:list',
+    OwnerArgs<ComputeCommandOwner, 'deliveriesList'>,
+    OwnerResult<ComputeCommandOwner, 'deliveriesList'>
+  >('compute:deliveries:list'),
   jobsList: defineApplicationCommand<
     'compute:jobs:list',
     OwnerArgs<ComputeCommandOwner, 'jobsList'>,
@@ -145,11 +150,6 @@ const computeApplicationCommands = Object.freeze({
     OwnerArgs<ComputeCommandOwner, 'jobsMarkConsumed'>,
     OwnerResult<ComputeCommandOwner, 'jobsMarkConsumed'>
   >('compute:jobs:mark-consumed'),
-  deliveriesList: defineApplicationCommand<
-    'compute:deliveries:list',
-    OwnerArgs<ComputeCommandOwner, 'deliveriesList'>,
-    OwnerResult<ComputeCommandOwner, 'deliveriesList'>
-  >('compute:deliveries:list'),
   enabledHostsGet: defineApplicationCommand<
     'compute:enabled-hosts:get',
     OwnerArgs<ComputeEnabledHostsOwner, 'get'>,
@@ -185,10 +185,10 @@ const computeApplicationCommandGroup = defineApplicationCommandGroup('compute', 
   computeApplicationCommands.enabledHostsSet,
   computeApplicationCommands.executionModeSet,
   computeApplicationCommands.get,
+  computeApplicationCommands.deliveriesList,
   computeApplicationCommands.jobsList,
   computeApplicationCommands.jobsMarkConsumed,
   computeApplicationCommands.jobsPendingNotification,
-  computeApplicationCommands.deliveriesList,
   computeApplicationCommands.list,
   computeApplicationCommands.listDir,
   computeApplicationCommands.probe,
