@@ -3617,6 +3617,7 @@ describe('SettingsService: skills', () => {
 
   it('lists skills with enabled reflecting disabledSkillIds and returns detail body', async () => {
     const service = await createSkillService()
+    await service.createSkill({ name: 'My Skill', description: 'Mine.', body: '# Mine' })
 
     let skills = await service.listSkills()
     expect(skills).toEqual([
@@ -3625,26 +3626,38 @@ describe('SettingsService: skills', () => {
         name: 'Demo',
         description: 'A demo skill.',
         enabled: true
-      })
+      }),
+      expect.objectContaining({ id: 'personal-my-skill', enabled: true })
     ])
 
-    skills = await service.setSkillEnabled({ id: 'demo', enabled: false })
-    expect(skills[0].enabled).toBe(false)
+    skills = await service.setSkillEnabled({ id: 'personal-my-skill', enabled: false })
+    expect(skills.find((skill) => skill.id === 'personal-my-skill')?.enabled).toBe(false)
+    expect(skills.find((skill) => skill.id === 'demo')?.enabled).toBe(true)
 
     const detail = await service.getSkillDetail('demo')
     expect(detail.body).toContain('demo body')
   })
 
-  it('keeps a Main-disabled installed Skill in the Specialist catalog', async () => {
+  it('refuses to switch a gatekeeper skill off and ignores a stored disable record naming one', async () => {
     const service = await createSkillService()
-    await service.setSkillEnabled({ id: 'demo', enabled: false })
 
+    await expect(service.setSkillEnabled({ id: 'demo', enabled: false })).rejects.toMatchObject({
+      reason: 'skill-always-on'
+    })
     expect(await service.listSkills()).toEqual([
-      expect.objectContaining({ id: 'demo', enabled: false })
+      expect.objectContaining({ id: 'demo', enabled: true })
+    ])
+
+    // A record that predates the policy — or was hand-edited into the settings file — is ignored rather
+    // than honoured, on every path that derives a disabled set from it.
+    await repository.setSkillEnabled('demo', false)
+    expect(await service.listSkills()).toEqual([
+      expect.objectContaining({ id: 'demo', enabled: true })
     ])
     expect(await service.listSpecialistSkillCatalog()).toEqual([
-      expect.objectContaining({ id: 'demo', frameworkName: 'demo' })
+      expect.objectContaining({ id: 'demo', frameworkName: 'demo', mainEnabled: true })
     ])
+    await expect(service.getSkillDetail('demo')).resolves.toMatchObject({ enabled: true })
   })
 
   it('creates, edits, and deletes a personal skill alongside featured skills', async () => {
@@ -3769,30 +3782,41 @@ describe('SettingsService: skills', () => {
       })
     ).providers[0]
     await service.setActiveProvider(created.id)
-    await service.setSkillEnabled({ id: 'demo', enabled: false })
+    await service.createSkill({ name: 'My Skill', description: 'Mine.', body: '# Mine' })
+    await service.setSkillEnabled({ id: 'personal-my-skill', enabled: false })
 
-    const skillDir = join(getAppClaudeConfigDir(storageRoot), 'skills', 'os-demo')
+    const gatekeeperDir = join(getAppClaudeConfigDir(storageRoot), 'skills', 'os-demo')
+    const personalDir = join(getAppClaudeConfigDir(storageRoot), 'skills', 'os-personal-my-skill')
     const exists = async (path: string): Promise<boolean> =>
       readFile(join(path, 'SKILL.md'), 'utf8').then(
         () => true,
         () => false
       )
 
-    // Disabled: the skill is not materialized on a normal spawn.
+    // Disabled: the skill is not materialized on a normal spawn, while the gatekeeper is always there.
     await resolveActiveBackend(service)
-    expect(await exists(skillDir)).toBe(false)
+    expect(await exists(personalDir)).toBe(false)
+    expect(await exists(gatekeeperDir)).toBe(true)
 
     // Turn-forced: the disabled skill is materialized for this spawn only.
-    await resolveActiveBackend(service, { forcedSkillIds: ['demo'] })
-    expect(await exists(skillDir)).toBe(true)
+    await resolveActiveBackend(service, { forcedSkillIds: ['personal-my-skill'] })
+    expect(await exists(personalDir)).toBe(true)
+    expect(await exists(gatekeeperDir)).toBe(true)
 
     // The stored disabled set is untouched, so the skill still lists as disabled.
     const skills = await service.listSkills()
-    expect(skills.find((skill) => skill.id === 'demo')?.enabled).toBe(false)
+    expect(skills.find((skill) => skill.id === 'personal-my-skill')?.enabled).toBe(false)
+    expect(skills.find((skill) => skill.id === 'demo')?.enabled).toBe(true)
 
     // Clearing the force set removes it again on the next spawn.
     await resolveActiveBackend(service)
-    expect(await exists(skillDir)).toBe(false)
+    expect(await exists(personalDir)).toBe(false)
+    expect(await exists(gatekeeperDir)).toBe(true)
+
+    // The materializer intentionally makes agent-visible skills read-only; restore permissions so the
+    // test temp root can be removed on every platform.
+    await chmod(join(gatekeeperDir, 'SKILL.md'), 0o644)
+    await chmod(gatekeeperDir, 0o755)
   })
 
   it('provisions PureScience assets into the shared Claude runtime directory', async () => {
@@ -3914,11 +3938,14 @@ describe('SettingsService: skills', () => {
       })
     ).providers[0]
     await service.setActiveProvider(provider.id)
+    await service.createSkill({ name: 'My Skill', description: 'Mine.', body: '# Mine' })
 
     await resolveActiveBackend(service)
 
     const materializedDir = join(storageRoot, 'codex', 'skills', 'os-demo')
     const materializedFile = join(materializedDir, 'SKILL.md')
+    const personalDir = join(storageRoot, 'codex', 'skills', 'os-personal-my-skill')
+    const personalFile = join(personalDir, 'SKILL.md')
     try {
       expect(await readFile(materializedFile, 'utf8')).toContain('demo body')
       await expect(
@@ -3937,19 +3964,35 @@ describe('SettingsService: skills', () => {
         ])
       )
 
-      await service.setSkillEnabled({ id: 'demo', enabled: false })
-      const catalogWithoutDemo = await service.codexSkillCatalog(join(storageRoot, 'codex'))
-      expect(catalogWithoutDemo.some(({ name }) => name === 'demo')).toBe(false)
-      expect(catalogWithoutDemo.some(({ name }) => name === 'mcp-pubmed')).toBe(true)
+      expect(await readFile(personalFile, 'utf8')).toContain('# Mine')
+      expect(selectorCatalog.some(({ name }) => name === 'My Skill')).toBe(true)
+
+      await service.setSkillEnabled({ id: 'personal-my-skill', enabled: false })
+      const catalogWithoutPersonal = await service.codexSkillCatalog(join(storageRoot, 'codex'))
+      expect(catalogWithoutPersonal.some(({ name }) => name === 'My Skill')).toBe(false)
+      expect(catalogWithoutPersonal.some(({ name }) => name === 'mcp-pubmed')).toBe(true)
+
+      // A gatekeeper stays in the agent-facing catalog even when a stale record names it, while the
+      // agent dir the materializer left behind is what the catalog resolves against.
+      await repository.setSkillEnabled('demo', false)
+      const catalogWithStaleRecord = await service.codexSkillCatalog(join(storageRoot, 'codex'))
+      expect(catalogWithStaleRecord).toEqual(
+        expect.arrayContaining([
+          { name: 'demo', description: 'A demo skill.', path: materializedFile }
+        ])
+      )
 
       await service.setConnectorEnabled({ id: 'pubmed', enabled: false })
       const catalogWithoutPubmed = await service.codexSkillCatalog(join(storageRoot, 'codex'))
       expect(catalogWithoutPubmed.some(({ name }) => name === 'mcp-pubmed')).toBe(false)
+      expect(catalogWithoutPubmed.some(({ name }) => name === 'demo')).toBe(true)
     } finally {
       // The materializer intentionally makes agent-visible skills read-only; restore permissions so
       // the test temp root can be removed on every platform.
       await chmod(materializedFile, 0o644)
       await chmod(materializedDir, 0o755)
+      await chmod(personalFile, 0o644).catch(() => undefined)
+      await chmod(personalDir, 0o755).catch(() => undefined)
     }
   })
 
@@ -4046,11 +4089,14 @@ describe('SettingsService: skills', () => {
     const service = await createSkillService()
 
     await service.createSkill({ name: 'My Skill', description: 'Mine.', body: '# Mine' })
-    await service.setSkillEnabled({ id: 'demo', enabled: false })
+    await service.setSkillEnabled({ id: 'personal-my-skill', enabled: false })
 
-    // Only the disabled pick (demo) needs a respawn; the enabled personal skill does not.
-    expect(await service.skillsNeedingForceLoad(['demo', 'personal-my-skill'])).toEqual(['demo'])
-    expect(await service.skillsNeedingForceLoad(['personal-my-skill'])).toEqual([])
+    // Only the disabled pick needs a respawn; a gatekeeper skill never does, however the stored set
+    // names it.
+    expect(await service.skillsNeedingForceLoad(['personal-my-skill', 'demo'])).toEqual([
+      'personal-my-skill'
+    ])
+    expect(await service.skillsNeedingForceLoad(['demo'])).toEqual([])
 
     // Featured ids are the agent-facing frontmatter names, but user-skill ids carry an app prefix.
     expect(await service.skillNudgeNamesForIds(['demo', 'personal-my-skill', 'nope'])).toEqual([

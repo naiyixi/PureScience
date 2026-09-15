@@ -118,42 +118,66 @@ describe('SkillCatalogModule', () => {
     expect(await catalog.listSkills()).toEqual([
       expect.objectContaining({ id: 'demo', description: 'A demo skill.', enabled: true })
     ])
-    expect((await catalog.setSkillEnabled({ id: 'demo', enabled: false }))[0].enabled).toBe(false)
+    // The gatekeeper skill refuses the off direction; the personal skill obeys it.
+    await expect(catalog.setSkillEnabled({ id: 'demo', enabled: false })).rejects.toMatchObject({
+      reason: 'skill-always-on'
+    })
+    // A refused toggle leaves the projection alone, and the Specialist catalog keeps the skill too.
     expect(await catalog.listSpecialistSkillCatalog()).toEqual([
       {
         id: 'demo',
         frameworkName: 'demo',
         displayName: 'Demo',
         source: 'featured',
-        mainEnabled: false,
+        mainEnabled: true,
         available: true,
         compatibility: expect.stringMatching(/^sha256:[a-f0-9]{64}$/)
       }
     ])
+    expect(await catalog.getSkillDetail('demo')).toMatchObject({ enabled: true })
     expect((await catalog.getSkillDetail('demo')).body).toContain('demo body')
 
-    const runtimeRoot = await mkdtemp(join(tmpdir(), 'settings-skill-runtime-'))
-    roots.push(runtimeRoot)
-    await catalog.materializeSkills(runtimeRoot, ['demo'])
-    await expect(
-      readFile(join(runtimeRoot, 'skills', 'os-demo', 'SKILL.md'), 'utf8')
-    ).rejects.toThrow()
-    await catalog.materializeSkills(runtimeRoot, ['demo'], new Set(['demo']))
-    await expect(
-      readFile(join(runtimeRoot, 'skills', 'os-demo', 'SKILL.md'), 'utf8')
-    ).resolves.toContain('demo body')
-    expect((await catalog.listSkills())[0].enabled).toBe(false)
-    await chmod(join(runtimeRoot, 'skills', 'os-demo'), 0o755)
-    await expect(
-      catalog.codexSkillCatalog(join(tmpdir(), 'untrusted-codex-home'), async () => {
-        throw new Error('untrusted homes must not resolve catalog extensions')
-      })
-    ).resolves.toEqual([])
     expect(
       (await catalog.createSkill({ name: 'My Skill', description: 'Mine.', body: '# Mine' })).map(
         (skill) => skill.id
       )
     ).toEqual(['demo', 'personal-my-skill'])
+    expect(
+      (await catalog.setSkillEnabled({ id: 'personal-my-skill', enabled: false })).find(
+        (skill) => skill.id === 'personal-my-skill'
+      )?.enabled
+    ).toBe(false)
+
+    const runtimeRoot = await mkdtemp(join(tmpdir(), 'settings-skill-runtime-'))
+    roots.push(runtimeRoot)
+    // A stale record naming the gatekeeper is ignored: it is materialized while the disabled personal
+    // skill is withheld.
+    await catalog.materializeSkills(runtimeRoot, ['demo', 'personal-my-skill'])
+    await expect(
+      readFile(join(runtimeRoot, 'skills', 'os-demo', 'SKILL.md'), 'utf8')
+    ).resolves.toContain('demo body')
+    await expect(
+      readFile(join(runtimeRoot, 'skills', 'os-personal-my-skill', 'SKILL.md'), 'utf8')
+    ).rejects.toThrow()
+    // A forced id still wins over the switch for this spawn only.
+    await catalog.materializeSkills(
+      runtimeRoot,
+      ['personal-my-skill'],
+      new Set(['personal-my-skill'])
+    )
+    await expect(
+      readFile(join(runtimeRoot, 'skills', 'os-personal-my-skill', 'SKILL.md'), 'utf8')
+    ).resolves.toContain('# Mine')
+    expect(
+      (await catalog.listSkills()).find((skill) => skill.id === 'personal-my-skill')?.enabled
+    ).toBe(false)
+    await chmod(join(runtimeRoot, 'skills', 'os-demo'), 0o755)
+    await chmod(join(runtimeRoot, 'skills', 'os-personal-my-skill'), 0o755)
+    await expect(
+      catalog.codexSkillCatalog(join(tmpdir(), 'untrusted-codex-home'), async () => {
+        throw new Error('untrusted homes must not resolve catalog extensions')
+      })
+    ).resolves.toEqual([])
     expect(
       (
         await catalog.updateSkill({

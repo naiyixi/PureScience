@@ -47,6 +47,7 @@ import {
   isProvisionableSkill,
   isReusableWithoutReview
 } from '../../shared/skill-provenance'
+import { isSkillAlwaysOn, SkillAlwaysOnRefusal } from '../../shared/skill-activation'
 import { readSkillFile } from '../skills/skill-files'
 import { buildSkillExportArchive, type SkillExportArchive } from '../skills/export'
 import { SAFE_SLUG, UserSkillRepository } from '../skills/user-skill-repository'
@@ -120,7 +121,7 @@ class SkillCatalogModule {
       this.catalog(),
       this.options.repository.getSettings()
     ])
-    const disabled = new Set(settings.disabledSkillIds ?? [])
+    const disabled = this.withoutAlwaysOnSkillIds(settings.disabledSkillIds ?? [], skills)
     const allowed = settings.trustedSkillIds ?? []
     return skills.map((skill) => this.toSkillView(skill, disabled, allowed))
   }
@@ -140,7 +141,7 @@ class SkillCatalogModule {
       this.catalog(),
       this.options.repository.getSettings()
     ])
-    const disabled = new Set(settings.disabledSkillIds ?? [])
+    const disabled = this.withoutAlwaysOnSkillIds(settings.disabledSkillIds ?? [], skills)
     const allowed = settings.trustedSkillIds ?? []
     return skills.map((skill) => ({
       id: skill.id,
@@ -160,7 +161,7 @@ class SkillCatalogModule {
       this.catalog(),
       this.options.repository.getSettings()
     ])
-    const disabled = new Set(settings.disabledSkillIds ?? [])
+    const disabled = this.withoutAlwaysOnSkillIds(settings.disabledSkillIds ?? [], skills)
     const allowed = settings.trustedSkillIds ?? []
     const byId = new Map(skills.map((skill) => [skill.id, skill]))
     // A withheld learnt skill counts as needing a forced load too: the specialist flow asks for it by
@@ -224,7 +225,7 @@ class SkillCatalogModule {
       typeof additionalEntries === 'function'
         ? await additionalEntries(settings)
         : additionalEntries
-    const disabled = new Set(settings.disabledSkillIds ?? [])
+    const disabled = this.withoutAlwaysOnSkillIds(settings.disabledSkillIds ?? [], skills)
     const enabled: AdditionalSkillCatalogEntry[] = [
       ...skills
         .filter((skill) => !disabled.has(skill.id))
@@ -264,7 +265,7 @@ class SkillCatalogModule {
     return {
       ...this.toSkillView(
         skill,
-        new Set(settings.disabledSkillIds ?? []),
+        this.withoutAlwaysOnSkillIds(settings.disabledSkillIds ?? [], skills),
         settings.trustedSkillIds ?? []
       ),
       body,
@@ -285,10 +286,16 @@ class SkillCatalogModule {
   }
 
   async setSkillEnabled(request: SetSkillEnabledRequest): Promise<SkillView[]> {
+    const skill = (await this.catalog()).find((entry) => entry.id === request.id)
+    // A gatekeeper skill carries guarantees the rest of the workflow leans on, so it cannot be switched
+    // off at all. Refusing the disable direction keeps the stored set honest instead of writing a record
+    // that every reader then has to work around.
+    if (request.enabled === false && skill && isSkillAlwaysOn(skill.source)) {
+      throw new SkillAlwaysOnRefusal(request.id)
+    }
     // Turning on a learnt-but-unverified skill has to mean "I allow this one": the verification gate
     // keeps such skills out of sessions, so "not disabled" alone would leave it invisible while the
     // catalog claimed it was on.
-    const skill = (await this.catalog()).find((entry) => entry.id === request.id)
     const trusted =
       request.enabled === true &&
       skill?.provenance !== undefined &&
@@ -704,6 +711,20 @@ class SkillCatalogModule {
     return undefined
   }
 
+  // The gatekeeper skills the app ships with cannot be switched off, so a disable record naming one is
+  // ignored wherever a disabled set is derived. The record can be stale (written before this policy
+  // existed) or hand-edited into the settings file, and a gate only one path honours is worse than none:
+  // listing, materialization and the agent-facing catalogs all ask here.
+  private withoutAlwaysOnSkillIds(
+    disabledIds: readonly string[],
+    skills: readonly BundledSkill[]
+  ): Set<string> {
+    const alwaysOn = new Set(
+      skills.filter((skill) => isSkillAlwaysOn(skill.source)).map((skill) => skill.id)
+    )
+    return new Set(disabledIds.filter((id) => !alwaysOn.has(id)))
+  }
+
   // Ids withheld by the verification gate: learnt skills nothing has verified and the user has not
   // allowed explicitly. One place computes this so listing, materialization and provisioning cannot
   // drift apart (a gate that only one path honours is worse than none).
@@ -719,11 +740,15 @@ class SkillCatalogModule {
     forcedIds: ReadonlySet<string> = new Set(),
     allowedIds: readonly string[] = []
   ): Promise<void> {
-    const blocked = new Set([...disabledIds, ...(await this.withheldSkillIds(allowedIds))])
+    const skills = await this.catalog()
+    const blocked = new Set([
+      ...this.withoutAlwaysOnSkillIds(disabledIds, skills),
+      ...(await this.withheldSkillIds(allowedIds))
+    ])
     const disabled = new Set([...blocked].filter((id) => !forcedIds.has(id)))
     await new ClaudeCodeSkillMaterializer().sync(
       configRoot,
-      (await this.catalog()).filter((skill) => !disabled.has(skill.id))
+      skills.filter((skill) => !disabled.has(skill.id))
     )
   }
 
@@ -734,10 +759,14 @@ class SkillCatalogModule {
     allowedIds: readonly string[] = [],
     forcedIds: ReadonlySet<string> = new Set()
   ): Promise<void> {
-    const blocked = new Set([...disabledSkillIds, ...(await this.withheldSkillIds(allowedIds))])
+    const skills = await this.catalog()
+    const blocked = new Set([
+      ...this.withoutAlwaysOnSkillIds(disabledSkillIds, skills),
+      ...(await this.withheldSkillIds(allowedIds))
+    ])
     const disabled = [...blocked].filter((id) => !forcedIds.has(id))
     await provisionAppClaudeConfigDir(configDir, {
-      skills: await this.catalog(),
+      skills,
       disabledSkillIds: disabled,
       ...(modelConfig === undefined ? {} : { modelConfig })
     })
