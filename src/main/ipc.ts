@@ -269,6 +269,8 @@ import {
 } from '../shared/settings'
 import { registerStorageIpcHandlers } from './storage/ipc'
 import { registerSessionPackageIpcHandlers } from './session-package/ipc'
+import { createSessionPackageFileLister } from './session-package/files'
+import { DEFAULT_SESSION_PACKAGE_MAX_FILE_BYTES } from './session-package/export'
 import { createStorageCommandOwner } from './storage/command-owner'
 import { withDataRootWrite } from './storage/migration-state'
 import { normalizeLegacyDataPaths } from './storage/normalize-legacy-paths'
@@ -2308,7 +2310,16 @@ const createApplicationModules = async (
         return 'attachments' in result ? result.attachments : []
       },
       listReferences: (projectId) => referencesIpcModule.handlers.list(projectId),
-      readArtifact: (request) => artifactHandlers.readPreview(request),
+      files: (() => {
+        // A session's files live in the project's file catalog, tagged with the session they belong to —
+        // NOT in the session document, which carries none.
+        const lister = createSessionPackageFileLister({
+          listProjectFiles: (request) => artifactHandlers.listProjectFiles(request),
+          readPreview: (request) => artifactHandlers.readPreview(request),
+          maxFileBytes: DEFAULT_SESSION_PACKAGE_MAX_FILE_BYTES
+        })
+        return { countFiles: lister.countFiles, listFiles: lister.listFiles }
+      })(),
       appVersion: app.getVersion()
     })
   )

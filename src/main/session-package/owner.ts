@@ -1,6 +1,3 @@
-import { basename } from 'node:path'
-
-import type { ArtifactPreviewResult } from '../../shared/artifacts'
 import type { PersistedChatSession } from '../../shared/session-persistence'
 import {
   SESSION_PACKAGE_EXTENSION,
@@ -26,13 +23,18 @@ export type SessionPackageOwnerDeps = {
   listEvidence: (reviewIds: readonly string[]) => Promise<readonly unknown[]>
   /** The project's reference library — the citations a session cites travel inside it. */
   listReferences: (projectId: string) => Promise<readonly unknown[]>
-  /** Bounded read of one artifact. A truncated preview is refused by the caller, never shipped. */
-  readArtifact: (request: {
-    path: string
-    projectId: string
-    sessionId: string
-    maxBytes: number
-  }) => Promise<ArtifactPreviewResult>
+  /**
+   * Where this session's files come from. The app records them in a catalog keyed by session (NOT in the
+   * session document — reading the document finds nothing), so the caller that owns that catalog
+   * supplies both the count and the bytes.
+   */
+  files: {
+    countFiles: (request: { projectId: string; sessionId: string }) => Promise<number>
+    listFiles: (request: {
+      projectId: string
+      sessionId: string
+    }) => Promise<{ files: readonly SessionPackageFile[]; unreadable: readonly string[] }>
+  }
   appVersion: string
   /** Native save dialog (desktop only). Absent where no dialog can exist, which refuses the export. */
   showSaveDialog?: (suggestedFileName: string) => Promise<string | null>
@@ -52,11 +54,6 @@ const packageFileName = (title: string): string => {
     .slice(0, 80)
   return `${stem || 'session'}${SESSION_PACKAGE_EXTENSION}`
 }
-
-const toBytes = (preview: ArtifactPreviewResult): Uint8Array =>
-  preview.encoding === 'base64'
-    ? new Uint8Array(Buffer.from(preview.content, 'base64'))
-    : new TextEncoder().encode(preview.content)
 
 export const createSessionPackageOwner = (
   deps: SessionPackageOwnerDeps
@@ -80,7 +77,6 @@ export const createSessionPackageOwner = (
       }
     }
 
-    const artifacts = loaded.session.artifacts ?? []
     const maxFileBytes = deps.maxFileBytes ?? DEFAULT_SESSION_PACKAGE_MAX_FILE_BYTES
 
     let destination = request.destinationPath
@@ -91,6 +87,7 @@ export const createSessionPackageOwner = (
       if (!destination) return { ok: false, error: 'cancelled' }
     }
 
+    const fileRequest = { projectId: request.projectId, sessionId: request.sessionId }
     const ports: SessionPackagePorts = {
       loadSession: deps.loadSession,
       listReviews: (sessionId) => deps.listReviews(sessionId),
@@ -100,32 +97,8 @@ export const createSessionPackageOwner = (
       },
       listCitations: () => deps.listReferences(request.projectId),
       // Counting is free; reading is not. Essential packages name how many files they left behind.
-      countFiles: async () => artifacts.length,
-      listFiles: async () => {
-        const files: SessionPackageFile[] = []
-        const unreadable: string[] = []
-        for (const artifact of artifacts) {
-          const packagePath = `files/${artifact.name ?? basename(artifact.path)}`
-          try {
-            const preview = await deps.readArtifact({
-              path: artifact.path,
-              projectId: request.projectId,
-              sessionId: request.sessionId,
-              maxBytes: maxFileBytes
-            })
-            if (preview.truncated) {
-              // A bounded preview is not the file. Shipping the head as the whole artifact would be a
-              // quiet lie, so the file is named as unread instead.
-              unreadable.push(packagePath)
-              continue
-            }
-            files.push({ path: packagePath, contents: toBytes(preview) })
-          } catch {
-            unreadable.push(packagePath)
-          }
-        }
-        return { files, unreadable }
-      },
+      countFiles: () => deps.files.countFiles(fileRequest),
+      listFiles: () => deps.files.listFiles(fileRequest),
       appVersion: deps.appVersion,
       now: deps.now
     }
