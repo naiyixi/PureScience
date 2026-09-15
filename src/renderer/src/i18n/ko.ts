@@ -347,6 +347,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'gs.contentFilesBudgetReached': '일부 파일은 이름과 경로로만 검색했습니다(본문 검색 예산 도달)',
   'gs.fileListBounded': '파일 목록이 상한에서 잘렸습니다. 목록에 없는 파일은 대조되지 않았습니다.',
   'gs.contentFailed': '콘텐츠 검색에 실패했습니다',
+  'gs.contentNoHits':
+    '일치하는 내용이 없습니다. 세션 {sessions}개, 메시지 {messages}개를 검색했습니다.',
   'remoteControl.open': '열기',
   'remoteControl.loadingRemote': '원격 액세스 불러오는 중…',
   'remoteControl.lastUsed': '마지막 사용 {time}',

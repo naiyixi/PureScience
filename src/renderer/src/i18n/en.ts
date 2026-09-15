@@ -2165,6 +2165,7 @@ export const en: Record<ZhKey, string> = {
     'Some files were matched by name and path only (content scan budget reached)',
   'gs.fileListBounded': 'The file list was bounded: some files were not listed.',
   'gs.contentFailed': 'Content search failed',
+  'gs.contentNoHits': 'No content matches. Searched {sessions} sessions and {messages} messages.',
   'remoteControl.open': 'Open',
   'remoteControl.loadingRemote': 'Loading remote access…',
   'remoteControl.lastUsed': 'Last used {time}',

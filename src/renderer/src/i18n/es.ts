@@ -356,6 +356,8 @@ export const es: Partial<Record<ZhKey, string>> = {
   'gs.fileListBounded':
     'La lista de archivos se limitó: algunos archivos no se listan y no se compararon.',
   'gs.contentFailed': 'La búsqueda de contenido falló',
+  'gs.contentNoHits':
+    'Sin coincidencias de contenido. Se buscó en {sessions} sesiones y {messages} mensajes.',
   'remoteControl.open': 'Abrir',
   'remoteControl.loadingRemote': 'Cargando acceso remoto…',
   'remoteControl.lastUsed': 'Usado por última vez {time}',

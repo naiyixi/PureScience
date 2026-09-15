@@ -2027,6 +2027,7 @@ export const zh = {
   'gs.contentFilesBudgetReached': '部分文件仅按名称与路径匹配（正文扫描已达预算上限）',
   'gs.fileListBounded': '文件清单已截断：部分文件未列出，未列出的文件不参与匹配。',
   'gs.contentFailed': '内容搜索失败',
+  'gs.contentNoHits': '没有匹配内容。已检索 {sessions} 个会话、{messages} 条消息。',
   'remoteControl.open': '打开',
   'remoteControl.loadingRemote': '正在加载远程访问…',
   'remoteControl.lastUsed': '上次使用 {time}',

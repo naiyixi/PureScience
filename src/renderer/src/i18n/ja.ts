@@ -351,6 +351,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'gs.fileListBounded':
     'ファイル一覧は上限で打ち切られました。一覧にないファイルは照合されていません。',
   'gs.contentFailed': 'コンテンツ検索に失敗しました',
+  'gs.contentNoHits':
+    '一致する内容はありませんでした。{sessions} 件のセッション、{messages} 件のメッセージを検索しました。',
   'remoteControl.open': '開く',
   'remoteControl.loadingRemote': 'リモートアクセスを読み込み中…',
   'remoteControl.lastUsed': '最終使用 {time}',

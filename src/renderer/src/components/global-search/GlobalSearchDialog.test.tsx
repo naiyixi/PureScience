@@ -3,6 +3,7 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { LanguageProvider } from '@/i18n'
 import type { ChatSession } from '@/stores/session-store'
 import {
   createInitialPreviewWorkbenchState,
@@ -607,6 +608,49 @@ describe('GlobalSearchDialog', () => {
     expect(window.api.projectFiles.searchArtifacts).toHaveBeenCalledWith(
       expect.objectContaining({ excludedSessionIds: ['session-a'] })
     )
+  })
+
+  it('says what was searched when a finished content search finds nothing', async () => {
+    vi.mocked(window.api.search.query).mockResolvedValue({
+      schemaVersion: 1,
+      query: 'nohit',
+      scopes: ['sessions', 'messages', 'files', 'literature'],
+      hits: [],
+      counts: { sessions: 0, messages: 0, files: 0, literature: 0 },
+      truncated: false,
+      scan: { sessions: 74, messages: 1951, files: 0, references: 0, bounded: false },
+      appliedLimit: 100,
+      notes: []
+    })
+
+    await act(async () => {
+      // The real provider, not the English fallback: the fallback does not interpolate, so a test that
+      // skips the provider cannot see whether the placeholders in the line are actually filled in.
+      root.render(
+        <LanguageProvider>
+          <GlobalSearchDialog open onOpenChange={vi.fn()} isSessionPersistenceReady />
+        </LanguageProvider>
+      )
+      await new Promise((resolve) => window.setTimeout(resolve, 20))
+    })
+
+    const input = document.body.querySelector<HTMLInputElement>('input[role="combobox"]')
+    const valueSetter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype,
+      'value'
+    )?.set
+    await act(async () => {
+      valueSetter?.call(input, 'nohit')
+      input?.dispatchEvent(new Event('input', { bubbles: true }))
+      await new Promise((resolve) => window.setTimeout(resolve, 400))
+    })
+
+    const empty = document.body.querySelector('[data-testid="global-search-content-empty"]')
+    expect(empty).toBeTruthy()
+    // The line reports the real scope, so an empty result cannot read as "nothing was searched".
+    expect(empty?.textContent).toContain('74')
+    expect(empty?.textContent).toContain('1951')
+    expect(document.body.textContent).not.toContain('Content search failed')
   })
 
   it('renders content hits with their provenance and opens the matched session', async () => {

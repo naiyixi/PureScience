@@ -1080,6 +1080,7 @@ export const GlobalSearchDialog = ({
                   {contentHits.length > 0 ||
                   contentSearch.state === 'searching' ||
                   contentSearch.state === 'failed' ||
+                  contentSearch.state === 'ready' ||
                   contentResponse?.notes.length ? (
                     <section role="group" aria-label={t('gs.regionContent')}>
                       <h2 className={sectionTitleClassName}>{t('gs.regionContent')}</h2>
@@ -1091,6 +1092,20 @@ export const GlobalSearchDialog = ({
                       {contentSearch.state === 'failed' ? (
                         <p role="alert" className="px-4 py-3 text-sm text-destructive">
                           {t('gs.contentFailed')}
+                        </p>
+                      ) : null}
+                      {/* A finished search that found nothing used to leave no trace at all, so an empty
+                          group could not be told apart from a scope that was never searched. Say what was
+                          searched instead of disappearing. */}
+                      {contentSearch.state === 'ready' && contentHits.length === 0 ? (
+                        <p
+                          data-testid="global-search-content-empty"
+                          className="px-4 py-3 text-sm text-muted-foreground"
+                        >
+                          {t('gs.contentNoHits', {
+                            sessions: contentResponse?.scan.sessions ?? 0,
+                            messages: contentResponse?.scan.messages ?? 0
+                          })}
                         </p>
                       ) : null}
                       {contentResponse?.scan.bounded ? (

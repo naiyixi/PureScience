@@ -361,6 +361,8 @@ export const de: Partial<Record<ZhKey, string>> = {
   'gs.fileListBounded':
     'Die Dateiliste wurde begrenzt: Einige Dateien sind nicht aufgeführt und wurden nicht verglichen.',
   'gs.contentFailed': 'Inhaltssuche fehlgeschlagen',
+  'gs.contentNoHits':
+    'Keine inhaltlichen Treffer. {sessions} Sitzungen und {messages} Nachrichten durchsucht.',
   'remoteControl.open': 'Öffnen',
   'remoteControl.loadingRemote': 'Remote-Zugriff wird geladen…',
   'remoteControl.lastUsed': 'Zuletzt verwendet {time}',

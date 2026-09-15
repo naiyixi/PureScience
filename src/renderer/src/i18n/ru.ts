@@ -351,6 +351,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'gs.fileListBounded':
     'Список файлов ограничен: часть файлов не показана и не участвовала в поиске.',
   'gs.contentFailed': 'Не удалось выполнить поиск по содержимому',
+  'gs.contentNoHits':
+    'Совпадений по содержимому нет. Просмотрено сессий: {sessions}, сообщений: {messages}.',
   'remoteControl.open': 'Открыть',
   'remoteControl.loadingRemote': 'Загрузка удалённого доступа…',
   'remoteControl.lastUsed': 'Последнее использование {time}',
