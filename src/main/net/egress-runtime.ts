@@ -81,7 +81,9 @@ export const applyEgressSettings = async (
   }
 
   proxy ??= new EgressProxy()
-  proxy.setAllowlist(allowlist)
+  // Implicit hosts (the app's own configured endpoints) ride along with the settings allowlist, so a
+  // settings change never drops them.
+  proxy.setAllowlist(mergedAllowlist())
   proxy.setApprovalHandler(approvalHandler)
   const port = await proxy.start()
   return {
@@ -99,10 +101,59 @@ export const egressProxyEnv = (): NodeJS.ProcessEnv | undefined => {
   return {
     HTTP_PROXY: `http://127.0.0.1:${proxy.port}`,
     HTTPS_PROXY: `http://127.0.0.1:${proxy.port}`,
+    // The proxy decides, per request; nothing is bypassed by name here.
     NO_PROXY: '',
     no_proxy: ''
   }
 }
+
+// The proxy env merged into a child process's environment. Kept as one function so every spawn path that
+// is supposed to be governed routes the same way — the ACP agent was left out of this once, and its shell
+// traffic reached the network with the allowlist not applying at all.
+export const applyEgressToChildEnv = (env: NodeJS.ProcessEnv): NodeJS.ProcessEnv => {
+  const proxyEnv = egressProxyEnv()
+  return proxyEnv ? { ...env, ...proxyEnv } : env
+}
+
+const implicitHosts = new Set<string>()
+
+// Adds an app-configured destination to the allowlist for as long as the app is running. Idempotent;
+// removing happens through the returned function so a caller can undo exactly what it added.
+export const allowImplicitEgressHost = (value: string | undefined): (() => void) => {
+  const host = normalizeImplicitHost(value)
+  if (!host) return () => undefined
+  implicitHosts.add(host)
+  void pushAllowlistToProxy()
+  return () => {
+    implicitHosts.delete(host)
+    void pushAllowlistToProxy()
+  }
+}
+
+// Extracts a bare hostname from a configured endpoint URL. Returns undefined for anything unusable, so a
+// malformed setting cannot silently widen the allowlist.
+export const normalizeImplicitHost = (value: string | undefined): string | undefined => {
+  if (!value || typeof value !== 'string') return undefined
+  try {
+    const url = new URL(value.includes('://') ? value : `https://${value}`)
+    const host = url.hostname.toLowerCase()
+    return host.length > 0 ? host : undefined
+  } catch {
+    return undefined
+  }
+}
+
+export const implicitEgressHostsForTest = (): string[] => [...implicitHosts]
+
+// Recomputes what the proxy enforces: the settings allowlist plus the implicit hosts. Called both when
+// settings change and when an implicit host is added or removed.
+const pushAllowlistToProxy = async (): Promise<void> => {
+  if (!proxy || !currentEnabled) return
+  proxy.setAllowlist(mergedAllowlist())
+}
+
+const mergedAllowlist = (): string[] | undefined =>
+  currentAllowlist === undefined ? undefined : [...new Set([...currentAllowlist, ...implicitHosts])]
 
 // Whether egress restrictions are currently active (for diagnostics/tests).
 export const isEgressActive = (): boolean => currentEnabled
@@ -110,4 +161,5 @@ export const egressAllowlistForTest = (): string[] | undefined => currentAllowli
 export const pendingEgressApprovalsForTest = (): number => pendingDecisions.size
 export const resetEgressRuntimeForTest = (): void => {
   pendingDecisions.clear()
+  implicitHosts.clear()
 }

@@ -6,6 +6,7 @@ import { connect as tcpConnect } from 'node:net'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import {
+  EGRESS_ALWAYS_ALLOWED_HOSTS,
   EGRESS_DOMAIN_GROUPS,
   DEFAULT_EGRESS_SETTINGS,
   isHostAllowed,
@@ -13,8 +14,27 @@ import {
   resolveEgressAllowlist
 } from '../../shared/egress'
 import { EgressProxy } from './egress-proxy'
+import {
+  allowImplicitEgressHost,
+  applyEgressSettings,
+  applyEgressToChildEnv,
+  egressProxyEnv,
+  implicitEgressHostsForTest,
+  normalizeImplicitHost,
+  resetEgressRuntimeForTest
+} from './egress-runtime'
 
 describe('egress allowlist helpers', () => {
+  it('never gates the local machine', () => {
+    const allowlist = resolveEgressAllowlist({ enabled: true, groups: {}, customDomains: [] }) ?? []
+    for (const host of EGRESS_ALWAYS_ALLOWED_HOSTS) {
+      expect(isHostAllowed(host, allowlist)).toBe(true)
+    }
+    // Loopback is not egress: gating it would break local tooling while protecting nothing.
+    expect(allowlist).toContain('localhost')
+    expect(allowlist).toContain('127.0.0.1')
+  })
+
   it('exposes 6 scientific domain groups', () => {
     expect(EGRESS_DOMAIN_GROUPS).toHaveLength(6)
     expect(EGRESS_DOMAIN_GROUPS.map((group) => group.id)).toEqual([
@@ -340,5 +360,51 @@ describe('EgressProxy', () => {
     // The deny list wins before approval is consulted; the handler never fires.
     expect(seen).toEqual([])
     expect(status).toBe(403)
+  })
+
+  describe('child process routing', () => {
+    afterEach(async () => {
+      resetEgressRuntimeForTest()
+      // Stops the proxy, so one test's listener cannot leak into the next.
+      await applyEgressSettings(undefined)
+    })
+
+    it('leaves a child env untouched while egress is off', () => {
+      const env = { PATH: '/usr/bin' }
+      expect(applyEgressToChildEnv(env)).toEqual(env)
+      expect(egressProxyEnv()).toBeUndefined()
+    })
+
+    it('routes a child process through the proxy once egress is on', async () => {
+      await applyEgressSettings({ enabled: true, groups: {}, customDomains: ['example.org'] })
+
+      const childEnv = applyEgressToChildEnv({
+        PATH: '/usr/bin',
+        ANTHROPIC_BASE_URL: 'https://api.provider.test/v1'
+      })
+
+      // This is what the ACP agent spawn now receives; before, its shell reached the network directly.
+      expect(childEnv.HTTP_PROXY).toMatch(/^http:\/\/127\.0\.0\.1:\d+$/)
+      expect(childEnv.HTTPS_PROXY).toBe(childEnv.HTTP_PROXY)
+      // Nothing is bypassed by name: the proxy itself decides, per request.
+      expect(childEnv.NO_PROXY).toBe('')
+      expect(childEnv.PATH).toBe('/usr/bin')
+    })
+
+    it('allows the endpoint the app itself is configured to use, without a prompt', async () => {
+      await applyEgressSettings({ enabled: true, groups: {}, customDomains: [] })
+
+      const release = allowImplicitEgressHost('https://api.provider.test/v1')
+      expect(implicitEgressHostsForTest()).toEqual(['api.provider.test'])
+
+      // A configured endpoint is a user-set destination, not agent-initiated browsing: suspending it
+      // would put a card in front of every turn.
+      expect(normalizeImplicitHost('api.provider.test/v1')).toBe('api.provider.test')
+      expect(normalizeImplicitHost('')).toBeUndefined()
+      expect(normalizeImplicitHost('not a url')).toBeUndefined()
+
+      release()
+      expect(implicitEgressHostsForTest()).toEqual([])
+    })
   })
 })

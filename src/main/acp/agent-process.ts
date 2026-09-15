@@ -3,6 +3,7 @@ import { spawn } from 'node:child_process'
 import { createRequire } from 'node:module'
 
 import { createLogger } from '../logger'
+import { allowImplicitEgressHost, applyEgressToChildEnv } from '../net/egress-runtime'
 import { augmentedPathEnv } from '../settings/shell-path'
 import { resolveClaudeExecutableForSpawn } from './claude-executable'
 
@@ -118,6 +119,15 @@ const spawnClaudeAgentAcp = ({
     env.DEBUG_CLAUDE_AGENT_SDK = '1'
   }
 
+  // The agent's own network traffic now goes through the app's egress proxy: without this the allowlist
+  // and the in-conversation approval card never saw the agent's shell/tool requests at all. The provider
+  // endpoint is registered as an implicit allowed host first, because suspending the request that runs
+  // the turn behind an approval card would stall every conversation.
+  for (const key of ['ANTHROPIC_BASE_URL', 'OPENAI_BASE_URL', 'XAI_BASE_URL', 'GEMINI_BASE_URL']) {
+    allowImplicitEgressHost(env[key])
+  }
+  const childEnv = applyEgressToChildEnv(env)
+
   log.info('spawning ACP agent', {
     executablePath: resolvedExecutablePath,
     rawExecutablePath: executablePath,
@@ -125,24 +135,24 @@ const spawnClaudeAgentAcp = ({
     isolated: 'CLAUDE_CONFIG_DIR' in envOverrides,
     debug: debugAgent,
     // Endpoint/model are not secret and pinpoint routing bugs; the token is never logged.
-    baseUrl: env.ANTHROPIC_BASE_URL,
-    model: env.ANTHROPIC_MODEL,
-    configDir: env.CLAUDE_CONFIG_DIR,
+    baseUrl: childEnv.ANTHROPIC_BASE_URL,
+    model: childEnv.ANTHROPIC_MODEL,
+    configDir: childEnv.CLAUDE_CONFIG_DIR,
     // Proxy presence only (never the values): a Finder-launched packaged app inherits no login shell,
     // so no proxy being set is the usual cause of in-app network failures while the terminal works.
     // Collapsed to one flag to keep the line readable; PATH stays out of the routine line.
     proxied: Boolean(
-      env.http_proxy ||
-      env.HTTP_PROXY ||
-      env.https_proxy ||
-      env.HTTPS_PROXY ||
-      env.all_proxy ||
-      env.ALL_PROXY
+      childEnv.http_proxy ||
+      childEnv.HTTP_PROXY ||
+      childEnv.https_proxy ||
+      childEnv.HTTPS_PROXY ||
+      childEnv.all_proxy ||
+      childEnv.ALL_PROXY
     )
   })
 
   const child = spawn(process.execPath, [entryPath], {
-    env,
+    env: childEnv,
     stdio: 'pipe',
     windowsHide: true
   })

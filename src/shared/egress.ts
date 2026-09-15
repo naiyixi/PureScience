@@ -141,8 +141,13 @@ export type EgressApprovalRespondRequest = {
   decision: EgressApprovalDecision
 }
 
-// Renders the effective allowlist from settings: enabled groups' domains + custom domains.
-// Returns undefined when the mechanism is off (callers keep current behavior).
+// Hosts that are never gated: the local machine. A loopback destination is not egress, so gating it
+// would only break local tooling while protecting nothing.
+export const EGRESS_ALWAYS_ALLOWED_HOSTS: readonly string[] = ['localhost', '127.0.0.1', '::1']
+
+// Renders the effective allowlist from settings: enabled groups' domains + custom domains + the
+// always-allowed localhost hosts. Returns undefined when the mechanism is off (callers keep current
+// behavior).
 export const resolveEgressAllowlist = (
   settings: EgressSettings | undefined
 ): string[] | undefined => {
@@ -155,7 +160,7 @@ export const resolveEgressAllowlist = (
   }
   return [
     ...new Set(
-      domains.map((domain) =>
+      [...domains, ...EGRESS_ALWAYS_ALLOWED_HOSTS].map((domain) =>
         domain
           .toLowerCase()
           .replace(/^https?:\/\//, '')
@@ -165,9 +170,18 @@ export const resolveEgressAllowlist = (
   ]
 }
 
+// Strips a port from a host without eating an IPv6 address: `::1` must not become `:`.
+const stripPort = (host: string): string => {
+  const bracketed = /^\[([^\]]+)\](?::\d+)?$/.exec(host)
+  if (bracketed) return bracketed[1]
+  const colons = (host.match(/:/g) ?? []).length
+  // One colon is host:port; more than one is an IPv6 literal and carries no port here.
+  return colons > 1 ? host : host.replace(/:\d+$/, '')
+}
+
 // Matches a host against the allowlist (suffix match on domain labels).
 export const isHostAllowed = (host: string, allowlist: string[]): boolean => {
-  const normalized = host.toLowerCase().replace(/:\d+$/, '')
+  const normalized = stripPort(host.toLowerCase())
   return allowlist.some((allowed) => normalized === allowed || normalized.endsWith(`.${allowed}`))
 }
 
