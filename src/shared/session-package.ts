@@ -61,7 +61,7 @@ export type SessionPackageManifest = {
   mode: SessionPackageMode
   exportedAt: string
   app: { version: string }
-  session: { id: string; title: string; projectName: string }
+  session: { id: string; title: string; projectId: string; projectName?: string }
   counts: SessionPackageCounts
   entries: SessionPackageEntry[]
   assertion: SessionPackageAssertion

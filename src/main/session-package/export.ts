@@ -25,7 +25,7 @@ export type SessionPackageFile = {
 }
 
 export type SessionPackageInput = {
-  session: { id: string; title: string; projectName: string }
+  session: { id: string; title: string; projectId: string; projectName?: string }
   appVersion: string
   exportedAt?: string
   /** Required evidence — always written, in both modes. */
@@ -34,6 +34,9 @@ export type SessionPackageInput = {
   reviewFindings: readonly unknown[]
   verificationRecords: readonly unknown[]
   files?: readonly SessionPackageFile[]
+  // How many files the session had that this mode deliberately leaves behind. Named by the CALLER,
+  // because an essential package never reads the files and must still tell its reader they exist.
+  filesNotRequested?: number
   environment?: unknown
   reproductionOutputs?: readonly SessionPackageFile[]
   maxFileBytes?: number
@@ -124,9 +127,9 @@ export const createSessionPackage = (
         })
       }
     }
-  } else if (candidateFiles.length > 0) {
+  } else if (input.filesNotRequested !== undefined && input.filesNotRequested > 0) {
     // Essential packages carry the conversation and the evidence, not the files — say so by name.
-    notes.push(`files-not-requested:${candidateFiles.length}`)
+    notes.push(`files-not-requested:${input.filesNotRequested}`)
   }
 
   const counts: SessionPackageCounts = {

@@ -16,7 +16,7 @@ const sha256 = (contents: Uint8Array): string => createHash('sha256').update(con
 const bytes = (text: string): Uint8Array => new TextEncoder().encode(text)
 
 const input = (overrides: Partial<SessionPackageInput> = {}): SessionPackageInput => ({
-  session: { id: 'session-1', title: 'Mpro 模拟', projectName: 'PRX' },
+  session: { id: 'session-1', title: 'Mpro 模拟', projectId: 'project-1', projectName: 'PRX' },
   appVersion: '1.59.0',
   exportedAt: '2026-09-15T00:00:00.000Z',
   conversation: {
@@ -41,7 +41,9 @@ const unzip = (archive: Uint8Array): Record<string, Uint8Array> => unzipSync(arc
 
 describe('session package export', () => {
   it('carries every required evidence kind in essential mode too', () => {
-    const { archive, manifest } = createSessionPackage(input(), 'essential')
+    // The caller names how many files it left behind: an essential package never reads them, but a
+    // reader must not conclude the session had none.
+    const { archive, manifest } = createSessionPackage(input({ filesNotRequested: 2 }), 'essential')
     const entries = unzip(archive)
 
     for (const path of [
