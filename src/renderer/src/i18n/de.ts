@@ -2496,6 +2496,15 @@ export const de: Partial<Record<ZhKey, string>> = {
   'ws.marketplaceInstalling': 'Wird installiert…',
   'ws.marketplaceKeyFingerprint': 'Fingerabdruck des Signaturschlüssels: {fingerprint}',
   'ws.marketplaceLibrary': 'Spezialistenbibliothek',
+  'ws.marketplaceBatchSelect': 'für die Stapelinstallation auswählen',
+  'ws.marketplaceBatchSelected': '{count} ausgewählt',
+  'ws.marketplaceBatchInstall': 'Auswahl installieren',
+  'ws.marketplaceBatchClear': 'Auswahl aufheben',
+  'ws.marketplaceBatchRunning': 'Wird installiert…',
+  'ws.marketplaceBatchSummary':
+    '{installed} installiert · {skipped} übersprungen · {failed} fehlgeschlagen',
+  'ws.marketplaceBatchSkipped': 'erfordert Prüfung — bitte einzeln installieren',
+  'ws.marketplaceBatchFailed': 'fehlgeschlagen',
   'ws.marketplaceLoading': 'Wird geladen…',
   'ws.marketplaceLoadingMarketplace': 'Marketplace wird geladen…',
   'ws.marketplaceLocalChangesReplaced':

@@ -28,6 +28,7 @@ import type {
 } from '../../../../shared/specialist-marketplace'
 import { ConnectorsNavIcon } from './connector-icons'
 import { sortMarketplaceListings, type MarketplaceSortKind } from './specialist-marketplace-sort'
+import { runMarketplaceBatch, type MarketplaceBatchSummary } from './specialist-marketplace-batch'
 
 export type SpecialistMarketplaceView =
   | { kind: 'marketplace' }
@@ -228,6 +229,10 @@ const SpecialistMarketplace = ({ view, onNavigate }: Props): React.JSX.Element =
   const [connectorsExpanded, setConnectorsExpanded] = useState(false)
   const [installBusy, setInstallBusy] = useState(false)
   const [installPreview, setInstallPreview] = useState<MarketplaceInstallPreview>()
+  // Batch install (P3-9 / 3.3): which listings the reader has ticked, and what the last run did.
+  const [batchSelection, setBatchSelection] = useState<ReadonlySet<string>>(new Set())
+  const [batchBusy, setBatchBusy] = useState(false)
+  const [batchSummary, setBatchSummary] = useState<MarketplaceBatchSummary>()
   const [installError, setInstallError] = useState<string>()
   const [installRecoveryPending, setInstallRecoveryPending] = useState(false)
   const [downloadProgress, setDownloadProgress] = useState<MarketplaceDownloadProgress>()
@@ -409,6 +414,59 @@ const SpecialistMarketplace = ({ view, onNavigate }: Props): React.JSX.Element =
     setInstallPreview(undefined)
     setDownloadProgress(undefined)
     setInstallError(undefined)
+  }
+
+  // Installs every ticked listing through the same prepare/install calls the single-item flow uses:
+  // items that cannot be installed (validation errors, local modifications) are skipped and named, and
+  // one failure never abandons the rest.
+  const installSelected = async (): Promise<void> => {
+    const selected = visibleListings.filter((item) => batchSelection.has(item.id))
+    if (selected.length === 0) return
+    setBatchBusy(true)
+    setBatchSummary(undefined)
+    try {
+      const summary = await runMarketplaceBatch(
+        selected.map((item) => ({ specialistId: item.id, name: item.displayName })),
+        {
+          prepare: async (target) => {
+            const listing = selected.find((item) => item.id === target.specialistId)!
+            // A batch has no per-package chooser, so a package is asked for as it comes. Anything that
+            // needs an explicit choice is reported by name in the summary instead of being guessed at.
+            return window.api.specialist.marketplacePrepareInstall({
+              sourceId: listing.sourceId,
+              specialistId: listing.id,
+              version: listing.version,
+              selectedSkillIds: [],
+              selectedConnectorIds: []
+            })
+          },
+          readiness: (preview) => {
+            if (!preview.package.installable) return { ready: false, reason: 'not-installable' }
+            if (preview.package.overwrite?.modifiedSinceImport === true) {
+              return { ready: false, reason: 'modified-since-import' }
+            }
+            return { ready: true }
+          },
+          isUpdate: (preview) => preview.package.overwrite !== undefined,
+          install: async (preview) => {
+            const result = await window.api.specialist.marketplaceInstall({
+              candidateToken: preview.package.candidateToken,
+              ...(preview.package.overwrite ? { confirmOverwrite: true } : {})
+            })
+            if (result.status !== 'installed') throw new Error(result.status)
+          }
+        }
+      )
+      setBatchSummary(summary)
+      // Anything that went in changes both the installed list and the skill catalogue.
+      await Promise.allSettled([
+        useSpecialistStore.getState().load(),
+        useSettingsStore.getState().loadSkills()
+      ])
+      setBatchSelection(new Set())
+    } finally {
+      setBatchBusy(false)
+    }
   }
 
   const install = async (): Promise<void> => {
@@ -1094,6 +1152,61 @@ const SpecialistMarketplace = ({ view, onNavigate }: Props): React.JSX.Element =
           </Button>
         </div>
       ) : null}
+      {batchSelection.size > 0 ? (
+        <div
+          data-testid="marketplace-batch-bar"
+          role="status"
+          className="mb-3 flex flex-wrap items-center gap-3 rounded-xl border border-border bg-muted/40 p-3"
+        >
+          <span className="text-sm text-foreground">
+            {t('ws.marketplaceBatchSelected').replace('{count}', String(batchSelection.size))}
+          </span>
+          <div className="ms-auto flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={batchBusy}
+              onClick={() => setBatchSelection(new Set())}
+            >
+              {t('ws.marketplaceBatchClear')}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={batchBusy}
+              onClick={() => void installSelected()}
+            >
+              {batchBusy ? <Loader2 className="animate-spin" aria-hidden="true" /> : null}
+              {batchBusy ? t('ws.marketplaceBatchRunning') : t('ws.marketplaceBatchInstall')}
+            </Button>
+          </div>
+        </div>
+      ) : null}
+      {batchSummary ? (
+        <div
+          data-testid="marketplace-batch-summary"
+          role="status"
+          className="mb-3 space-y-1 rounded-xl border border-border p-3 text-xs"
+        >
+          <p className="text-foreground">
+            {t('ws.marketplaceBatchSummary')
+              .replace('{installed}', String(batchSummary.installed + batchSummary.updated))
+              .replace('{skipped}', String(batchSummary.skipped))
+              .replace('{failed}', String(batchSummary.failed))}
+          </p>
+          {batchSummary.outcomes
+            .filter((outcome) => outcome.status === 'skipped' || outcome.status === 'failed')
+            .map((outcome) => (
+              <p key={outcome.specialistId} className="text-muted-foreground">
+                {outcome.name}:{' '}
+                {outcome.status === 'skipped'
+                  ? t('ws.marketplaceBatchSkipped')
+                  : t('ws.marketplaceBatchFailed')}
+              </p>
+            ))}
+        </div>
+      ) : null}
       {!loading && visibleListings.length ? (
         <ul className="space-y-2">
           {visibleListings.map((item) => {
@@ -1129,6 +1242,24 @@ const SpecialistMarketplace = ({ view, onNavigate }: Props): React.JSX.Element =
                 key={`${item.sourceId}:${item.id}`}
                 className="group flex cursor-pointer items-center gap-3 rounded-xl border border-border bg-background p-3 transition-[border-color,box-shadow] hover:border-foreground/20 hover:shadow-sm motion-reduce:transition-none"
               >
+                {opensDetails ? (
+                  <input
+                    type="checkbox"
+                    data-testid={`marketplace-select-${item.id}`}
+                    aria-label={`${item.displayName} — ${t('ws.marketplaceBatchSelect')}`}
+                    className="size-4 shrink-0"
+                    checked={batchSelection.has(item.id)}
+                    onChange={(event) => {
+                      const checked = event.target.checked
+                      setBatchSelection((current) => {
+                        const next = new Set(current)
+                        if (checked) next.add(item.id)
+                        else next.delete(item.id)
+                        return next
+                      })
+                    }}
+                  />
+                ) : null}
                 <button
                   type="button"
                   className="flex min-w-0 flex-1 cursor-pointer items-start gap-3 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
