@@ -67,6 +67,8 @@ export const en: Record<ZhKey, string> = {
   'common.searchConnectors': 'Search connectors…',
   'common.dismiss': 'Dismiss',
   'ws.allProjects': 'All projects',
+  'ws.historyTrimmed': '{count} earlier messages are no longer stored in this conversation.',
+  'ws.historyTrimmedResumes': 'The record resumes at {time}.',
   'ws.switchProject': 'Switch project',
   'ws.moreProjects': '{count} more projects…',
   'ws.egressApprovalTitle': 'Network access blocked',

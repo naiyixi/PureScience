@@ -387,6 +387,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'ws.egressAllowAlways': 'Всегда разрешать',
   'ws.egressConnectNote': 'Это применяется только к этой попытке подключения.',
   'ws.allProjects': 'Все проекты',
+  'ws.historyTrimmed': '{count} более старых сообщений больше не хранятся в этом диалоге.',
+  'ws.historyTrimmedResumes': 'Запись продолжается с {time}.',
   'ws.switchProject': 'Переключить проект',
   'ws.moreProjects': 'Ещё {count} проектов…',
   'ws.sessionNotebook': 'Блокнот сеанса',

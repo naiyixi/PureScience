@@ -398,6 +398,9 @@ export const de: Partial<Record<ZhKey, string>> = {
   'ws.egressAllowAlways': 'Immer erlauben',
   'ws.egressConnectNote': 'Dies gilt nur für diesen Verbindungsversuch.',
   'ws.allProjects': 'Alle Projekte',
+  'ws.historyTrimmed':
+    '{count} ältere Nachrichten werden in diesem Gespräch nicht mehr gespeichert.',
+  'ws.historyTrimmedResumes': 'Die Aufzeichnung setzt um {time} wieder ein.',
   'ws.switchProject': 'Projekt wechseln',
   'ws.moreProjects': '{count} weitere Projekte…',
   'ws.sessionNotebook': 'Sitzungs-Notebook',

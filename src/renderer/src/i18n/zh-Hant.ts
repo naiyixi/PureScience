@@ -365,6 +365,8 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'ws.egressAllowAlways': '一律允許',
   'ws.egressConnectNote': '此設定僅適用於本次連線嘗試。',
   'ws.allProjects': '所有專案',
+  'ws.historyTrimmed': '本工作階段較早的 {count} 則訊息已不再保留。',
+  'ws.historyTrimmedResumes': '紀錄從 {time} 起繼續。',
   'ws.switchProject': '切換專案',
   'ws.moreProjects': '還有 {count} 個專案…',
   'ws.sessionNotebook': '工作階段筆記本',

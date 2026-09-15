@@ -66,6 +66,8 @@ export const zh = {
   'common.searchConnectors': '搜索连接器…',
   'common.dismiss': '关闭',
   'ws.allProjects': '全部项目',
+  'ws.historyTrimmed': '本会话较早的 {count} 条消息已不再保留。',
+  'ws.historyTrimmedResumes': '记录从 {time} 起继续。',
   'ws.switchProject': '切换项目',
   'ws.moreProjects': '其余 {count} 个项目…',
   'ws.egressApprovalTitle': '网络访问被拦截',

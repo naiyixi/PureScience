@@ -383,6 +383,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'ws.egressAllowAlways': '항상 허용',
   'ws.egressConnectNote': '이번 연결 시도에만 적용됩니다.',
   'ws.allProjects': '모든 프로젝트',
+  'ws.historyTrimmed': '이 대화의 이전 메시지 {count}개는 더 이상 저장되지 않습니다.',
+  'ws.historyTrimmedResumes': '기록은 {time}부터 이어집니다.',
   'ws.switchProject': '프로젝트 전환',
   'ws.moreProjects': '프로젝트 {count}개 더…',
   'ws.sessionNotebook': '세션 노트북',

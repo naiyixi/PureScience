@@ -387,6 +387,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'ws.egressAllowAlways': '常に許可',
   'ws.egressConnectNote': 'これはこの接続試行にのみ適用されます。',
   'ws.allProjects': 'すべてのプロジェクト',
+  'ws.historyTrimmed': 'この会話の古いメッセージ {count} 件は保存されていません。',
+  'ws.historyTrimmedResumes': '記録は {time} から再開します。',
   'ws.switchProject': 'プロジェクトを切り替え',
   'ws.moreProjects': '他 {count} 件のプロジェクト…',
   'ws.sessionNotebook': 'セッションノートブック',

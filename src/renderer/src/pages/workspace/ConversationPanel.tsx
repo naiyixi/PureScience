@@ -80,6 +80,7 @@ import { normalizeRunFailureError } from './error-report'
 import { ReportErrorDialog } from './ReportErrorDialog'
 import { SessionInterruptedBanner } from './SessionInterruptedBanner'
 import { ExtensionPreservingFileName } from './ExtensionPreservingFileName'
+import { TrimmedHistoryNotice } from './TrimmedHistoryNotice'
 import { WorkspaceMessageScroller } from './WorkspaceMessageScroller'
 import { PlanProgressChip, WorkspacePlanCard } from './session-plan/SessionPlanSurfaces'
 import { selectActiveBranchPlan } from './session-plan/active-branch-plan'
@@ -532,6 +533,9 @@ const ConversationPanel = ({
               <PanelRight className="size-4" strokeWidth={2} fill="none" aria-hidden="true" />
             </button>
           </header>
+
+          {/* A bounded history is stated before the transcript, never silently implied (P3-9 / 3.7). */}
+          <TrimmedHistoryNotice retention={activeSession?.retention} />
 
           <WorkspaceMessageEditStateProvider canEditMessage={canEditMessage}>
             <WorkspaceMessageScroller
