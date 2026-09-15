@@ -395,7 +395,7 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.agentClaudeName': 'Агент Claude',
   'settings.agentOpencodeName': 'OpenCode',
   'settings.agentCodexName': 'Codex',
-  'settings.agentCodexNativeCli': 'Codex CLI',
+  'settings.agentCodexNativeCli': 'командная строка Codex',
   'settings.agentCodeBuddyName': 'CodeBuddy',
   'settings.agentOpencodeDesc': 'Агент кодирования с открытым исходным кодом для терминала.',
   'settings.agentClaudeDesc': 'Агентный инструмент кодирования Anthropic для терминала.',

@@ -395,7 +395,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.agentClaudeName': 'Claude エージェント',
   'settings.agentOpencodeName': 'OpenCode',
   'settings.agentCodexName': 'Codex',
-  'settings.agentCodexNativeCli': 'Codex CLI',
+  'settings.agentCodexNativeCli': 'Codex コマンドライン',
   'settings.agentCodeBuddyName': 'CodeBuddy',
   'settings.agentOpencodeDesc': 'ターミナル向けオープンソースのコーディングエージェント。',
   'settings.agentClaudeDesc': 'Anthropic のターミナル向けコーディングツール。',
