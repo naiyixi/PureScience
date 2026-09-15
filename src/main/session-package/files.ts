@@ -44,7 +44,23 @@ export const uniquePackagePath = (usedNames: Set<string>, name: string): string 
   return unique
 }
 
-export const createSessionPackageFileLister = (deps: SessionPackageFilesDeps) => {
+export type SessionPackageFileListerApi = {
+  countFiles: (request: { projectId: string; sessionId: string }) => Promise<number>
+  listFiles: (request: {
+    projectId: string
+    sessionId: string
+  }) => Promise<{ files: SessionPackageFile[]; unreadable: string[] }>
+  describe: (request: { projectId: string; sessionId: string }) => Promise<{
+    status: 'found' | 'unreadable'
+    files: SessionPackageFile[]
+    unreadable: string[]
+    total: number
+  }>
+}
+
+export const createSessionPackageFileLister = (
+  deps: SessionPackageFilesDeps
+): SessionPackageFileListerApi => {
   const collect = async (
     projectId: string,
     sessionId: string
