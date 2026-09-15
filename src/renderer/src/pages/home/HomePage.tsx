@@ -155,6 +155,10 @@ const HomePage = ({
   const [projectToDelete, setProjectToDelete] = useState<Project | undefined>(undefined)
   // The package import dialog is opened per project: a package never picks its own destination.
   const [importTarget, setImportTarget] = useState<Project | undefined>(undefined)
+  // Importing needs the desktop channels. Where they are absent (the web surface), the entry is not
+  // painted at all rather than painted dead.
+  const canImportPackages =
+    typeof (window.api.sessions as { previewPackage?: unknown }).previewPackage === 'function'
   const [isDeletingProject, setIsDeletingProject] = useState(false)
   const [deleteProjectError, setDeleteProjectError] = useState<string | undefined>(undefined)
   const [archivingProjectIds, setArchivingProjectIds] = useState<Set<string>>(() => new Set())
@@ -581,13 +585,15 @@ const HomePage = ({
                               ? t('home.archiving')
                               : t('home.archive')}
                           </DropdownMenu.Item>
-                          <DropdownMenu.Item
-                            className={menuItemClassName}
-                            onSelect={() => setImportTarget(project)}
-                          >
-                            <FileUp className="size-4" strokeWidth={2} aria-hidden="true" />
-                            {t('sessions.packageImport.title')}
-                          </DropdownMenu.Item>
+                          {canImportPackages ? (
+                            <DropdownMenu.Item
+                              className={menuItemClassName}
+                              onSelect={() => setImportTarget(project)}
+                            >
+                              <FileUp className="size-4" strokeWidth={2} aria-hidden="true" />
+                              {t('sessions.packageImport.title')}
+                            </DropdownMenu.Item>
+                          ) : null}
                           <DropdownMenu.Separator className="mx-1 my-1 h-px bg-border-300" />
                           <DropdownMenu.Item
                             className={menuDangerItemClassName}
