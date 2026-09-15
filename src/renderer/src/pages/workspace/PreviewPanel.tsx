@@ -9,7 +9,8 @@ import {
   Layers,
   X,
   Crosshair,
-  Dna
+  Dna,
+  Table
 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { PanelImperativeHandle, PanelSize } from 'react-resizable-panels'
@@ -17,6 +18,7 @@ import type { PanelImperativeHandle, PanelSize } from 'react-resizable-panels'
 import { dialogOverlayClassName, dialogPanelClassName } from '@/components/ui/dialog-chrome'
 import { ResizablePanel } from '@/components/ui/resizable'
 import { cn } from '@/lib/utils'
+import { PdfTablePanel } from '@/components/pdf/PdfTablePanel'
 import type {
   PreviewFileItem,
   PreviewItem,
@@ -233,6 +235,8 @@ const previewContentMenuItemClassName =
 const DIGITIZABLE_MEDIA = /\.(png|jpe?g|webp|tiff?|pdf)$/i
 // Large omics files: the preview never invents counts, it loads a manifest produced read-only.
 const OMICS_DATA_MEDIA = /\.(h5ad|vcf|vcf\.gz|vcf\.bgz)$/i
+// Table candidates come from the PDF's own text layer, so any PDF the app can register qualifies.
+const PDF_TABLE_MEDIA = /\.pdf$/i
 
 export const PreviewContentContextMenu = ({
   x,
@@ -240,7 +244,8 @@ export const PreviewContentContextMenu = ({
   item,
   onDismiss,
   onStartDigitization,
-  onStartOmicsPreview
+  onStartOmicsPreview,
+  onStartTableExtraction
 }: {
   x: number
   y: number
@@ -249,6 +254,7 @@ export const PreviewContentContextMenu = ({
   /** Opens the figure→data picking panel for image/PDF sources (estimated output, routed to review). */
   onStartDigitization?: (item: PreviewItem) => void
   onStartOmicsPreview?: (item: PreviewItem) => void
+  onStartTableExtraction?: (item: PreviewItem) => void
 }): React.JSX.Element | null => {
   const { t } = useLanguage()
   const activeProjectId = useNavigationStore((state) => state.activeProjectId)
@@ -341,6 +347,17 @@ export const PreviewContentContextMenu = ({
           onClick={() => run(() => onStartOmicsPreview(item))}
         >
           <Dna className="size-3.5" aria-hidden="true" /> 组学大文件预览（先探后算）
+        </button>
+      ) : null}
+      {onStartTableExtraction && PDF_TABLE_MEDIA.test(item.name) ? (
+        <button
+          type="button"
+          role="menuitem"
+          data-testid="preview-pdf-tables"
+          className={previewContentMenuItemClassName}
+          onClick={() => run(() => onStartTableExtraction(item))}
+        >
+          <Table className="size-3.5" aria-hidden="true" /> {t('pdf.table.menu')}
         </button>
       ) : null}
     </div>
@@ -636,6 +653,8 @@ const PreviewFilePanel = ({
   // Figure→data picking target: set when the user asks to extract numbers from a figure.
   const [digitizeItem, setDigitizeItem] = useState<PreviewItem | null>(null)
   const [omicsItem, setOmicsItem] = useState<PreviewItem | null>(null)
+  const [tableItem, setTableItem] = useState<PreviewItem | null>(null)
+  const activeProjectId = useNavigationStore((state) => state.activeProjectId)
   const surfaceRef = useRef<HTMLElement | null>(null)
 
   const closeFullScreen = useCallback((): void => {
@@ -705,6 +724,9 @@ const PreviewFilePanel = ({
           onDismiss={() => setMenu(null)}
           onStartDigitization={(target) => setDigitizeItem(target)}
           onStartOmicsPreview={(target) => setOmicsItem(target)}
+          {...(activeProjectId && typeof window.api?.pdf?.pages === 'function'
+            ? { onStartTableExtraction: (target: PreviewItem) => setTableItem(target) }
+            : {})}
         />
       ) : null}
       {digitizeItem && digitizeItem.type === 'file' ? (
@@ -717,6 +739,15 @@ const PreviewFilePanel = ({
               void navigator.clipboard.writeText(csv)
             }}
             onClose={() => setDigitizeItem(null)}
+          />
+        </div>
+      ) : null}
+      {tableItem && tableItem.type === 'file' && activeProjectId ? (
+        <div className="absolute inset-x-3 bottom-3 z-[80] max-h-[70%] overflow-y-auto rounded-lg bg-bg-000 shadow-card">
+          <PdfTablePanel
+            projectId={activeProjectId}
+            sourcePath={tableItem.path ?? tableItem.title}
+            onClose={() => setTableItem(null)}
           />
         </div>
       ) : null}
