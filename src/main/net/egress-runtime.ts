@@ -9,6 +9,7 @@
 // the user answers. `allow_always` additionally persists the host into the egress customDomains via
 // the persistence hook so future requests bypass approval.
 
+import { createLogger } from '../logger'
 import { resolveEgressAllowlist, type EgressSettings } from '../../shared/egress'
 import {
   EgressProxy,
@@ -29,6 +30,7 @@ type EgressRuntimeOptions = {
 let proxy: EgressProxy | undefined
 let currentAllowlist: string[] | undefined
 let currentEnabled = false
+const log = createLogger('egress')
 // Pending approval decisions keyed by requestId; `decide` settles the suspended request.
 const pendingDecisions = new Map<
   string,
@@ -38,6 +40,13 @@ let runtimeOptions: EgressRuntimeOptions | undefined
 
 const approvalHandler: EgressApprovalHandler = (request, decide) => {
   pendingDecisions.set(request.requestId, { host: request.host, decide })
+  log.info('egress approval requested', {
+    requestId: request.requestId,
+    host: request.host,
+    method: request.method,
+    pending: pendingDecisions.size,
+    hasRenderer: Boolean(runtimeOptions?.onApprovalRequest)
+  })
   runtimeOptions?.onApprovalRequest?.(request)
 }
 
@@ -48,8 +57,12 @@ export const respondToEgressApproval = async (
   decision: EgressApprovalDecision
 ): Promise<boolean> => {
   const pending = pendingDecisions.get(requestId)
-  if (!pending) return false
+  if (!pending) {
+    log.info('egress decision ignored', { requestId, decision, reason: 'no pending request' })
+    return false
+  }
   pendingDecisions.delete(requestId)
+  log.info('egress decision applied', { requestId, decision, host: pending.host })
   pending.decide(decision)
   if (decision === 'allow_always' && runtimeOptions?.persistCustomDomain) {
     // Persist the host so future requests bypass approval; the caller re-applies settings

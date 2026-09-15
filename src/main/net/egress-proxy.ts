@@ -16,6 +16,9 @@ import { connect as tcpConnect } from 'node:net'
 import type { Duplex } from 'node:stream'
 
 import { isHostAllowed, isHostDenied } from '../../shared/egress'
+import { createLogger } from '../logger'
+
+const log = createLogger('egress-proxy')
 
 export type EgressProxyState = {
   // Current allowlist; undefined means unrestricted (proxy refuses to start or is idle).
@@ -117,17 +120,28 @@ export class EgressProxy {
     }
     const requestId = `egress-${++approvalSequence}`
     let settled = false
+    log.info('egress approval suspending', { requestId, host, method, path })
     const timeout = setTimeout(() => {
       if (settled) return
       settled = true
+      log.warn('egress approval timed out', { requestId, host })
       onDenied()
     }, APPROVAL_TIMEOUT_MS)
     this.approvalHandler(
       { requestId, host, method, path, expiresInSec: APPROVAL_TIMEOUT_MS / 1000 },
       (decision) => {
-        if (settled) return
+        if (settled) {
+          log.info('egress decision arrived late', {
+            requestId,
+            host,
+            decision,
+            outcome: 'ignored'
+          })
+          return
+        }
         settled = true
         clearTimeout(timeout)
+        log.info('egress approval decided', { requestId, host, decision })
         if (decision === 'deny') {
           onDenied()
           return
@@ -215,9 +229,14 @@ export class EgressProxy {
     const host = req.url?.split(':')[0] ?? ''
     const open = (): void => {
       const port = Number(req.url?.split(':')[1] ?? 443)
+      log.info('egress tunnel opening', { host, port })
       const targetConn = tcpConnect({ host, port })
-      targetConn.on('error', () => socket.destroy())
+      targetConn.on('error', (error: Error) => {
+        log.warn('egress tunnel target failed', { host, port, error: error.message })
+        socket.destroy()
+      })
       targetConn.on('connect', () => {
+        log.info('egress tunnel established', { host, port })
         socket.write('HTTP/1.1 200 Connection Established\r\n\r\n')
         if (head.length > 0) targetConn.write(head)
         socket.pipe(targetConn)
