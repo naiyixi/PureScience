@@ -13,7 +13,7 @@ const restrictedSkill = {
   id: 'nc-skill',
   name: 'NC Skill',
   description: 'Restricted',
-  source: 'featured' as const,
+  source: 'imported' as const,
   updatedAt: '2026-07-08T00:00:00.000Z',
   enabled: false,
   license: 'CC-BY-NC-4.0'
@@ -23,7 +23,7 @@ const openSkill = {
   id: 'mit-skill',
   name: 'MIT Skill',
   description: 'Open',
-  source: 'featured' as const,
+  source: 'imported' as const,
   updatedAt: '2026-07-08T00:00:00.000Z',
   enabled: false,
   license: 'MIT'

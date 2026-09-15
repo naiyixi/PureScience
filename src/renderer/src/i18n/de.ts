@@ -1005,6 +1005,7 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.baseUrl': 'Base URL',
   'settings.batchDelete': 'Löschen',
   'settings.batchDisable': 'Deaktivieren',
+  'settings.skillAlwaysOn': 'Wird mit der App geliefert und bleibt immer aktiviert.',
   'settings.batchEnable': 'Aktivieren',
   'settings.batchError':
     'Einige Sammelaktionen sind fehlgeschlagen. Bitte versuchen Sie es erneut.',

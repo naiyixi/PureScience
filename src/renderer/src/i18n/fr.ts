@@ -994,6 +994,7 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.baseUrl': 'Base URL',
   'settings.batchDelete': 'Supprimer',
   'settings.batchDisable': 'Désactiver',
+  'settings.skillAlwaysOn': 'Fourni avec l’application et toujours activé.',
   'settings.batchEnable': 'Activer',
   'settings.batchError': 'Certaines actions groupées ont échoué, veuillez réessayer',
   'settings.batchMode': 'Actions groupées',

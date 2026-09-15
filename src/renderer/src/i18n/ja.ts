@@ -981,6 +981,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.baseUrl': 'Base URL',
   'settings.batchDelete': '削除',
   'settings.batchDisable': '無効にする',
+  'settings.skillAlwaysOn': 'アプリに同梱されており、常にオンのままです。',
   'settings.batchEnable': '有効にする',
   'settings.batchError': '一部の一括操作が失敗しました。もう一度お試しください',
   'settings.batchMode': '一括操作',

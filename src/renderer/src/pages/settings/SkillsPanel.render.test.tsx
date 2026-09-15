@@ -334,6 +334,15 @@ describe('SkillsPanel (list view)', () => {
 
   it('toggles a skill and navigates to its detail on row click', () => {
     const onNavigate = vi.fn()
+    // Gatekeeper skills offer no switch, so this row carries a switchable source.
+    useSettingsStore.setState({
+      skills: useSettingsStore
+        .getState()
+        .skills.map((skill) =>
+          skill.id === 'a' ? { ...skill, source: 'personal' as const } : skill
+        ),
+      setSkillEnabled: vi.fn().mockResolvedValue(undefined)
+    })
     act(() => {
       root.render(<SkillsPanel view={{ kind: 'list' }} onNavigate={onNavigate} />)
     })

@@ -911,6 +911,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.baseUrl': 'Base URL',
   'settings.batchDelete': '刪除',
   'settings.batchDisable': '停用',
+  'settings.skillAlwaysOn': '隨應用內建，始終保持開啟。',
   'settings.batchEnable': '啟用',
   'settings.batchError': '部分批次操作失敗，請重試',
   'settings.batchMode': '批次操作',

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useLanguage, type TranslationKey } from '@/i18n'
 
 import type { SkillDetailView as SkillDetail } from '../../../../shared/settings'
+import { isSkillAlwaysOn } from '../../../../shared/skill-activation'
 import { AgentMarkdown } from '@/components/streamdown/AgentMarkdown'
 import { useSettingsStore } from '@/stores/settings-store'
 import { SettingsToggle } from './SettingsLayout'
@@ -67,6 +68,9 @@ const SkillDetailView = ({ skillId }: SkillDetailViewProps): React.JSX.Element =
   const source = skill?.source ?? detail?.source
   const sourceLabel =
     source === 'imported' ? 'Imported' : source === 'personal' ? 'Personal' : 'Featured'
+  // The skills that ship with the app are its gatekeepers: they cannot be switched off, so the header
+  // offers no working switch for them and says why instead of failing silently.
+  const alwaysOn = source !== undefined && isSkillAlwaysOn(source)
   const genericMetadata = Object.entries(detail?.metadata ?? {}).filter(
     ([key]) => !DEDICATED_METADATA_KEYS.has(key.toLowerCase())
   )
@@ -87,6 +91,8 @@ const SkillDetailView = ({ skillId }: SkillDetailViewProps): React.JSX.Element =
         <SettingsToggle
           enabled={enabled}
           aria-label={`Toggle ${name}`}
+          disabled={alwaysOn}
+          title={alwaysOn ? t('settings.skillAlwaysOn') : undefined}
           onToggle={() => void setSkillEnabled(skillId, !enabled)}
         />
       </div>
@@ -94,6 +100,9 @@ const SkillDetailView = ({ skillId }: SkillDetailViewProps): React.JSX.Element =
       {updated ? <p className="mt-1 text-xs text-muted-foreground">{updated}</p> : null}
       {description ? (
         <p className="mt-2 text-sm text-muted-foreground [text-wrap:pretty]">{description}</p>
+      ) : null}
+      {alwaysOn ? (
+        <p className="mt-2 text-xs text-muted-foreground">{t('settings.skillAlwaysOn')}</p>
       ) : null}
 
       {/* Files: the rendered SKILL.md body. */}

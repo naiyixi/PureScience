@@ -156,12 +156,45 @@ describe('SkillDetailView', () => {
     }
   })
 
-  it('toggles the skill from the detail header switch', async () => {
+  it('offers no switch for a gatekeeper skill and states the policy instead', async () => {
     await act(async () => {
       root.render(<SkillDetailView skillId="a" />)
     })
 
     const toggle = document.body.querySelector<HTMLButtonElement>('[role="switch"]')
+    expect(toggle?.disabled).toBe(true)
+    act(() => toggle?.click())
+
+    expect(useSettingsStore.getState().setSkillEnabled).not.toHaveBeenCalled()
+    expect(container.textContent).toContain('Ships with the app and always stays on.')
+  })
+
+  it('toggles a personal skill from the detail header switch', async () => {
+    ;(window as unknown as { api: unknown }).api = {
+      settings: {
+        getSkillDetail: vi.fn().mockResolvedValue({ ...detail, source: 'personal' })
+      }
+    }
+    useSettingsStore.setState({
+      ...createInitialSettingsState(),
+      skills: [
+        {
+          id: 'a',
+          name: 'Alpha',
+          description: 'First skill description.',
+          source: 'personal',
+          updatedAt: '2026-07-08T00:00:00.000Z',
+          enabled: true
+        }
+      ],
+      setSkillEnabled: vi.fn().mockResolvedValue(undefined)
+    })
+    await act(async () => {
+      root.render(<SkillDetailView skillId="a" />)
+    })
+
+    const toggle = document.body.querySelector<HTMLButtonElement>('[role="switch"]')
+    expect(toggle?.disabled).toBe(false)
     act(() => toggle?.click())
 
     expect(useSettingsStore.getState().setSkillEnabled).toHaveBeenCalledWith('a', false)

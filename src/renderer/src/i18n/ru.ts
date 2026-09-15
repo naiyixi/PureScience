@@ -980,6 +980,7 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.baseUrl': 'Базовый URL',
   'settings.batchDelete': 'Удалить',
   'settings.batchDisable': 'Отключить',
+  'settings.skillAlwaysOn': 'Поставляется вместе с приложением и всегда остаётся включённым.',
   'settings.batchEnable': 'Включить',
   'settings.batchError': 'Часть пакетных операций не выполнена — повторите попытку',
   'settings.batchMode': 'Пакетные операции',

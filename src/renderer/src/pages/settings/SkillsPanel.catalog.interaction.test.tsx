@@ -213,7 +213,19 @@ describe('SkillsPanel catalog tags and favorites', () => {
 })
 
 describe('SkillsPanel batch actions', () => {
-  it('bulk disables every selected enabled skill and clears the selection', async () => {
+  it('offers no switch for a gatekeeper skill and says why', () => {
+    renderPanel()
+
+    const gatekeeperSwitch = skillRow('Alpha').querySelector<HTMLButtonElement>('[role="switch"]')
+    expect(gatekeeperSwitch?.disabled).toBe(true)
+    act(() => gatekeeperSwitch?.click())
+    expect(setSkillEnabled).not.toHaveBeenCalled()
+
+    const personalSwitch = skillRow('Mine').querySelector<HTMLButtonElement>('[role="switch"]')
+    expect(personalSwitch?.disabled).toBe(false)
+  })
+
+  it('bulk disables the switchable skills, steps over gatekeepers, and clears the selection', async () => {
     renderPanel()
 
     clickButtonByText('Batch actions')
@@ -223,8 +235,8 @@ describe('SkillsPanel batch actions', () => {
     expect(container.textContent).toContain('3 selected')
 
     clickButtonByText('Disable')
-    expect(setSkillEnabled).toHaveBeenCalledWith('a', false)
     expect(setSkillEnabled).toHaveBeenCalledWith('personal-mine', false)
+    expect(setSkillEnabled).not.toHaveBeenCalledWith('a', false)
     expect(setSkillEnabled).not.toHaveBeenCalledWith('b', false)
 
     await act(async () => {
@@ -232,6 +244,7 @@ describe('SkillsPanel batch actions', () => {
       await Promise.resolve()
     })
     expect(container.textContent).toContain('0 selected')
+    expect(container.textContent).toContain('Skipped 2 built-in skills')
   })
 
   it('bulk enable turns disabled skills back on', () => {

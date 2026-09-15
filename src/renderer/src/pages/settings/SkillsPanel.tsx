@@ -28,6 +28,7 @@ import { useSettingsStore } from '@/stores/settings-store'
 import { useSpecialistStore } from '@/stores/specialist-store'
 import { useCatalogTagsStore } from '@/stores/catalog-tags-store'
 import { isRestrictedLicense } from '../../../../shared/skill-license'
+import { isSkillAlwaysOn } from '../../../../shared/skill-activation'
 
 import { CatalogFavoriteButton } from '@/components/catalog/CatalogFavoriteButton'
 import { CatalogTagEditor } from '@/components/catalog/CatalogTagEditor'
@@ -272,8 +273,18 @@ const SkillsPanel = ({
   }
 
   const batchDisable = (): void => {
+    const skippedAlwaysOn = [...selectedIds].filter((id) =>
+      skills.some((skill) => skill.id === id && isSkillAlwaysOn(skill.source))
+    ).length
     void runBatch(async (skill) => {
+      // Gatekeeper skills cannot be switched off, so the batch steps over them rather than turning the
+      // whole selection into an error.
+      if (isSkillAlwaysOn(skill.source)) return
       if (skill.enabled) await setSkillEnabled(skill.id, false)
+    }).then(() => {
+      if (skippedAlwaysOn > 0) {
+        setBatchNotice(t('settings.batchSkippedProtected').replace('{n}', String(skippedAlwaysOn)))
+      }
     })
   }
 
@@ -764,6 +775,12 @@ const SkillsPanel = ({
                             <SettingsToggle
                               enabled={skill.enabled}
                               aria-label={t('settings.toggleSkill').replace('{name}', skill.name)}
+                              disabled={isSkillAlwaysOn(skill.source)}
+                              title={
+                                isSkillAlwaysOn(skill.source)
+                                  ? t('settings.skillAlwaysOn')
+                                  : undefined
+                              }
                               onToggle={() => {
                                 if (skill.enabled) {
                                   void setSkillEnabled(skill.id, false)

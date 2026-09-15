@@ -304,6 +304,7 @@ export const zh = {
   'settings.batchSelectAll': '全选',
   'settings.batchEnable': '启用',
   'settings.batchDisable': '禁用',
+  'settings.skillAlwaysOn': '随应用内置，始终保持开启。',
   'settings.batchDelete': '删除',
   'settings.selectedCount': '已选 {n} 项',
   'settings.batchSkippedProtected': '跳过 {n} 个内置技能',

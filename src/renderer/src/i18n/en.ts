@@ -313,6 +313,7 @@ export const en: Record<ZhKey, string> = {
   'settings.batchSelectAll': 'Select all',
   'settings.batchEnable': 'Enable',
   'settings.batchDisable': 'Disable',
+  'settings.skillAlwaysOn': 'Ships with the app and always stays on.',
   'settings.batchDelete': 'Delete',
   'settings.selectedCount': '{n} selected',
   'settings.batchSkippedProtected': 'Skipped {n} built-in skills',

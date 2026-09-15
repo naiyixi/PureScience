@@ -964,6 +964,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.baseUrl': 'Base URL',
   'settings.batchDelete': '삭제',
   'settings.batchDisable': '비활성화',
+  'settings.skillAlwaysOn': '앱에 기본 포함되어 항상 켜져 있습니다.',
   'settings.batchEnable': '활성화',
   'settings.batchError': '일부 일괄 작업이 실패했습니다. 다시 시도하세요.',
   'settings.batchMode': '일괄 작업',
