@@ -184,6 +184,11 @@ const api: PureScienceAPI = {
       electronRendererContracts.invoke('sessions.exportConversation', request),
     // Writes a portable .science session package through the same main-owned Save As flow.
     exportPackage: (request) => electronRendererContracts.invoke('sessions.exportPackage', request),
+    // Reads a package and reports what it holds, without writing anything.
+    previewPackage: (request) =>
+      electronRendererContracts.invoke('sessions.previewPackage', request),
+    // Lands a previewed package as a new read-only session.
+    importPackage: (request) => electronRendererContracts.invoke('sessions.importPackage', request),
     onFlushRequest: (listener) =>
       electronRendererContracts.subscribe('sessions.onFlushRequest', listener),
     sendFlushResponse: (response) =>

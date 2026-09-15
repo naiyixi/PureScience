@@ -201,6 +201,11 @@ import type {
   ExportSessionPackageResult
 } from '../shared/session-package'
 import type {
+  SessionPackageImportPreview,
+  SessionPackageImportRequest,
+  SessionPackageImportResult
+} from '../shared/session-package-import'
+import type {
   ClaudeDetectResult,
   ClaudeInstallEvent,
   ClaudeInstallResult,
@@ -457,6 +462,10 @@ export interface PureScienceAPI {
      * to obtain one. A refusal is named (cancelled / session-not-found / no-destination / write-failed).
      */
     exportPackage(request: ExportSessionPackageRequest): Promise<ExportSessionPackageResult>
+    /** Reads a package and reports what it holds; `null` means the picker was closed. Never writes. */
+    previewPackage(request?: { packagePath?: string }): Promise<SessionPackageImportPreview | null>
+    /** Lands a previewed package as a new, read-only session. Needs an explicit confirmation. */
+    importPackage(request: SessionPackageImportRequest): Promise<SessionPackageImportResult>
     onFlushRequest?(listener: AcpListener<SessionPersistenceFlushRequest>): RemoveListener
     sendFlushResponse?(response: SessionPersistenceFlushResponse): void
     onCreated(listener: AcpListener<SessionUpsertEvent>): RemoveListener
