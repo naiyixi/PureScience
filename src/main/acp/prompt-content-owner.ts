@@ -7,6 +7,7 @@ import type { ConversationAnnotation } from '../../shared/annotations'
 import { formatAnnotationPromptBlock } from '../../shared/annotations'
 import type { FileReference } from '../../shared/artifacts'
 import { estimateHistoryTokens, truncateTextToEstimatedTokens } from '../../shared/history-preamble'
+import { stripImageMetadata } from '../../shared/image-metadata'
 import {
   imageAttachmentMimeType,
   PENDING_UPLOAD_SESSION_ID,
@@ -151,7 +152,15 @@ class AcpPromptContentOwner {
       }
 
       for (const image of input.historyImages) {
-        appendBlock({ type: 'image', data: image.data, mimeType: image.mimeType })
+        // History images are re-sent from stored bytes, so they need the same treatment as a fresh
+        // attachment: without this, a photo's EXIF/GPS would ride along on every later turn even though
+        // the first send was stripped. The budget is charged with the bytes actually sent.
+        const stripped = stripImageMetadata(Buffer.from(image.data, 'base64'))
+        appendBlock({
+          type: 'image',
+          data: Buffer.from(stripped.bytes).toString('base64'),
+          mimeType: image.mimeType
+        })
       }
       if (input.historyImages.length > 0) {
         this.sessionInlineImageBytes.set(input.appSessionId, imageBudget.base64Bytes)

@@ -28,7 +28,61 @@ afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })))
 })
 
+// A JPEG carrying an EXIF/GPS segment, so the strip has something real to remove.
+const EXIF_PAYLOAD = Buffer.from('Exif\u0000\u0000GPSLAT=31.2304', 'latin1')
+// marker (2) + length (2) + payload
+const EXIF_SEGMENT_BYTES = 4 + EXIF_PAYLOAD.length
+
+const taggedJpeg = (): Buffer => {
+  const payload = EXIF_PAYLOAD
+  const segment = Buffer.concat([
+    Buffer.from([0xff, 0xe1, ((payload.length + 2) >> 8) & 0xff, (payload.length + 2) & 0xff]),
+    payload
+  ])
+  return Buffer.concat([
+    Buffer.from([0xff, 0xd8]),
+    segment,
+    Buffer.from([0xff, 0xda, 0x00, 0x02, 0x11, 0xff, 0xd9])
+  ])
+}
+
 describe('AcpPromptContentOwner', () => {
+  it('strips identifying metadata from a history image before it is re-sent', async () => {
+    const owner = new AcpPromptContentOwner({
+      fileReferenceResolver: createManagedFileReferenceResolver({}),
+      inlineImageBudgetBytes: 10 * 1024 * 1024
+    })
+    const tagged = taggedJpeg()
+
+    const prepared = await owner.prepare({
+      appSessionId: 'session-history',
+      projectId: 'default-project',
+      text: 'look at this again',
+      historyImages: [
+        { data: tagged.toString('base64'), mimeType: 'image/jpeg', byteLength: tagged.byteLength }
+      ],
+      historyUploads: [],
+      currentUploads: [],
+      references: [],
+      annotations: [],
+      codexSkillInputs: [],
+      skillImportEnabled: false,
+      skillImportTurnToken: undefined,
+      onSkillImportAttachmentEligible: vi.fn()
+    })
+
+    const image = contentBlocks(prepared.content).find((block) => block.type === 'image')
+    expect(image).toBeDefined()
+    const sent = Buffer.from((image as { data: string }).data, 'base64')
+    // History images come from bytes already on disk: without this strip the photo's provenance would ride
+    // along on every later turn even though the first send was cleaned.
+    expect(sent.includes(Buffer.from('Exif\u0000\u0000', 'latin1'))).toBe(false)
+    expect(sent.includes(Buffer.from('GPSLAT=31.2304', 'latin1'))).toBe(false)
+    expect(sent.slice(0, 2)).toEqual(Buffer.from([0xff, 0xd8]))
+    // Exactly the EXIF segment is gone; the image bytes around it are untouched.
+    expect(sent.byteLength).toBe(tagged.byteLength - EXIF_SEGMENT_BYTES)
+  })
+
   it('keeps the text fast path isolated from ambient resolvers and defensively owns Codex metadata', async () => {
     const resolver = createManagedFileReferenceResolver({})
     const resolveReference = vi.spyOn(resolver, 'resolve')
