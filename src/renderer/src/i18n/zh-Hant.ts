@@ -885,6 +885,9 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.appVersion': '應用程式版本',
   'sessions.packageImport.title': '匯入會話包',
   'sessions.packageImport.pickFile': '選擇會話包…',
+  'sessions.packageImport.integrityIntact': '包內 {files} 個檔案與匯出紀錄一致',
+  'sessions.packageImport.integrityChanged': '包內檔案與匯出紀錄不符：{reasons}',
+  'sessions.packageImport.integrityUnchecked': '包內部分內容無法核對：{reasons}',
   'sessions.packageImport.contains':
     '訊息 {messages} 則 · 引文 {citations} · 審查發現 {findings} · 核驗記錄 {verifications} · 檔案 {files}',
   'sessions.packageImport.sourceParty': '包內結論都是傳送方的斷言，本機沒有核驗過。',

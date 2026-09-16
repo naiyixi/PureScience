@@ -955,6 +955,12 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.appVersion': 'Version de l’application',
   'sessions.packageImport.title': 'Importer un paquet de session',
   'sessions.packageImport.pickFile': 'Choisir un paquet…',
+  'sessions.packageImport.integrityIntact':
+    'Les {files} fichier(s) du paquet correspondent à l’enregistrement d’export',
+  'sessions.packageImport.integrityChanged':
+    'Le paquet ne correspond pas à son enregistrement d’export : {reasons}',
+  'sessions.packageImport.integrityUnchecked':
+    'Une partie de ce paquet n’a pas pu être vérifiée : {reasons}',
   'sessions.packageImport.contains':
     'Messages {messages} · citations {citations} · constats de revue {findings} · enregistrements de vérification {verifications} · fichiers {files}',
   'sessions.packageImport.sourceParty':

@@ -1180,6 +1180,9 @@ export const zh = {
   'settings.appVersion': '应用版本',
   'sessions.packageImport.title': '导入会话包',
   'sessions.packageImport.pickFile': '选择会话包…',
+  'sessions.packageImport.integrityIntact': '包内 {files} 个文件与导出记录一致',
+  'sessions.packageImport.integrityChanged': '包内文件与导出记录不符：{reasons}',
+  'sessions.packageImport.integrityUnchecked': '包内部分内容无法核对：{reasons}',
   'sessions.packageImport.contains':
     '消息 {messages} 条 · 引文 {citations} · 审查发现 {findings} · 核验记录 {verifications} · 文件 {files}',
   'sessions.packageImport.sourceParty': '包内结论都是发送方的断言，本机没有核验过。',

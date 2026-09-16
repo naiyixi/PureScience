@@ -942,6 +942,10 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.appVersion': 'Версия приложения',
   'sessions.packageImport.title': 'Импорт пакета сессии',
   'sessions.packageImport.pickFile': 'Выбрать пакет…',
+  'sessions.packageImport.integrityIntact':
+    'Все файлы пакета ({files}) совпадают с записью экспорта',
+  'sessions.packageImport.integrityChanged': 'Пакет не соответствует записи экспорта: {reasons}',
+  'sessions.packageImport.integrityUnchecked': 'Часть этого пакета проверить не удалось: {reasons}',
   'sessions.packageImport.contains':
     'Сообщения {messages} · цитаты {citations} · замечания ревью {findings} · записи проверок {verifications} · файлы {files}',
   'sessions.packageImport.sourceParty':

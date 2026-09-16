@@ -7,6 +7,8 @@ import {
 } from '../../shared/session-package'
 import { readZipDirectory } from './zip-directory'
 import { readZipEntries } from './zip-reader'
+
+import { verifySessionPackageIntegrity } from './integrity'
 import {
   SESSION_PACKAGE_LIMITS,
   type SessionPackageImportPreview,
@@ -110,6 +112,9 @@ export const inspectSessionPackage = (archiveBytes: Uint8Array): SessionPackageI
 
   return {
     accepted: true,
+    // The record is checked against the bytes here, where both are in hand: an accepted package is one
+    // an importer has looked at, not one it has taken on faith.
+    integrity: verifySessionPackageIntegrity(manifest, entries),
     described: {
       formatVersion: manifest.formatVersion,
       mode: manifest.mode,

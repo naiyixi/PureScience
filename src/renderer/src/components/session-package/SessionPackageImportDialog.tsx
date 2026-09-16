@@ -35,6 +35,25 @@ type SessionPackageImportDialogProps = {
 // Two steps on purpose: a preview reads the package and shows what it holds (counts, the sender's own
 // provenance claim, the reasons anything was left out), and only an explicit second action writes it.
 // The read-only posture is stated before the user commits, not discovered afterwards.
+/**
+ * One line for the record-vs-bytes verdict. `intact` is stated as a match; `changed` and `unverifiable`
+ * each name what went wrong rather than degrading to a generic failure — the reader has to know which of
+ * the two it is before deciding whether to import anyway.
+ */
+type Translate = ReturnType<typeof useLanguage>['t']
+
+const integrityLabel = (report: SessionPackageImportPreview['integrity'], t: Translate): string => {
+  const files = String(report?.files.length ?? 0)
+  const reasons = (report?.reasons ?? []).join('; ')
+  if (report?.verdict === 'intact') {
+    return t('sessions.packageImport.integrityIntact').replace('{files}', files)
+  }
+  if (report?.verdict === 'changed') {
+    return t('sessions.packageImport.integrityChanged').replace('{reasons}', reasons)
+  }
+  return t('sessions.packageImport.integrityUnchecked').replace('{reasons}', reasons)
+}
+
 const SessionPackageImportDialog = ({
   open,
   targetProjectId,
@@ -125,6 +144,22 @@ const SessionPackageImportDialog = ({
                   <li key={note}>{note}</li>
                 ))}
               </ul>
+            ) : null}
+
+            {/* The package's own record, checked against the bytes it arrived with. Shown because an
+                import that quietly took a patched package would be worse than one that refused it. */}
+            {preview?.integrity ? (
+              <p
+                role="status"
+                data-testid="package-integrity"
+                className={
+                  preview.integrity.verdict === 'intact'
+                    ? 'mt-2 text-xs text-muted-foreground'
+                    : 'mt-2 text-xs font-medium text-destructive'
+                }
+              >
+                {integrityLabel(preview.integrity, t)}
+              </p>
             ) : null}
           </div>
         ) : null}

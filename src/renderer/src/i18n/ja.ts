@@ -938,6 +938,12 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.appVersion': 'アプリバージョン',
   'sessions.packageImport.title': 'セッションパッケージを読み込む',
   'sessions.packageImport.pickFile': 'パッケージを選択…',
+  'sessions.packageImport.integrityIntact':
+    'パッケージ内の {files} 件のファイルは書き出し時の記録と一致しています',
+  'sessions.packageImport.integrityChanged':
+    'パッケージが書き出し時の記録と一致しません：{reasons}',
+  'sessions.packageImport.integrityUnchecked':
+    'このパッケージの一部は確認できませんでした：{reasons}',
   'sessions.packageImport.contains':
     'メッセージ {messages} 件 · 引用 {citations} · レビュー指摘 {findings} · 検証記録 {verifications} · ファイル {files}',
   'sessions.packageImport.sourceParty':

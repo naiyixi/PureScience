@@ -964,6 +964,12 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.appVersion': 'App-Version',
   'sessions.packageImport.title': 'Sitzungspaket importieren',
   'sessions.packageImport.pickFile': 'Paket auswählen…',
+  'sessions.packageImport.integrityIntact':
+    'Alle {files} Datei(en) im Paket stimmen mit dem Exportprotokoll überein',
+  'sessions.packageImport.integrityChanged':
+    'Das Paket stimmt nicht mit seinem Exportprotokoll überein: {reasons}',
+  'sessions.packageImport.integrityUnchecked':
+    'Ein Teil dieses Pakets konnte nicht geprüft werden: {reasons}',
   'sessions.packageImport.contains':
     'Nachrichten {messages} · Zitate {citations} · Review-Befunde {findings} · Prüfprotokolle {verifications} · Dateien {files}',
   'sessions.packageImport.sourceParty':

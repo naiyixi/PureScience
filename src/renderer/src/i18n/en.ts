@@ -1254,6 +1254,12 @@ export const en: Record<ZhKey, string> = {
   'settings.appVersion': 'App version',
   'sessions.packageImport.title': 'Import session package',
   'sessions.packageImport.pickFile': 'Choose a package…',
+  'sessions.packageImport.integrityIntact':
+    'All {files} packaged file(s) still match the export record',
+  'sessions.packageImport.integrityChanged':
+    'The package does not match its export record: {reasons}',
+  'sessions.packageImport.integrityUnchecked':
+    'Part of this package could not be checked: {reasons}',
   'sessions.packageImport.contains':
     'Messages {messages} · citations {citations} · review findings {findings} · verification records {verifications} · files {files}',
   'sessions.packageImport.sourceParty':

@@ -927,6 +927,10 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.appVersion': '앱 버전',
   'sessions.packageImport.title': '세션 패키지 가져오기',
   'sessions.packageImport.pickFile': '패키지 선택…',
+  'sessions.packageImport.integrityIntact': '패키지의 파일 {files}개가 내보내기 기록과 일치합니다',
+  'sessions.packageImport.integrityChanged':
+    '패키지가 내보내기 기록과 일치하지 않습니다: {reasons}',
+  'sessions.packageImport.integrityUnchecked': '이 패키지의 일부는 확인할 수 없습니다: {reasons}',
   'sessions.packageImport.contains':
     '메시지 {messages}개 · 인용 {citations} · 검토 지적 {findings} · 검증 기록 {verifications} · 파일 {files}',
   'sessions.packageImport.sourceParty':

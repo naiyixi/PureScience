@@ -12,6 +12,7 @@ import type {
   SessionPackageMode,
   SessionPackageNoteCode
 } from './session-package'
+import type { ReplayReport } from './replay-verification'
 
 // Hard ceilings for reading a package. Named here so the reader and any UI can state the same numbers.
 export const SESSION_PACKAGE_LIMITS = Object.freeze({
@@ -43,6 +44,12 @@ export type SessionPackageRejectionReason =
 
 export type SessionPackageImportPreview = {
   accepted: boolean
+  /**
+   * The record-vs-bytes check on the package itself: whether every packaged member still hashes to the
+   * digest the exporter wrote for it. `record-integrity` vocabulary — an intact package was not
+   * re-run, it was read back, and the two must not be reported as the same thing.
+   */
+  integrity?: ReplayReport
   /**
    * The file this preview described, when one was resolved. The confirm step names the same file, so the
    * reader cannot preview one package and import another by accident.
