@@ -1,25 +1,24 @@
 import { createHash } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 
-import { SESSION_PACKAGE_MANIFEST_PATH } from '../../shared/session-package'
+import {
+  SESSION_PACKAGE_MANIFEST_PATH,
+  type SessionPackageEntry,
+  type SessionPackageManifest
+} from '../../shared/session-package'
 
 import { verifySessionPackageIntegrity } from './integrity'
 
 const sha256 = (value: string): string =>
   createHash('sha256').update(Buffer.from(value)).digest('hex')
 
-type PackageEntry = {
-  path: string
-  bytes: number
-  sha256: string
-  omitted?: boolean
-}
-
+// The fixture mirrors `SessionPackageEntry` exactly, so a change to the real manifest shape breaks these
+// tests instead of passing silently.
 const entry = (
   path: string,
   contents: string,
-  overrides: Record<string, unknown> = {}
-): PackageEntry & Record<string, unknown> => ({
+  overrides: Partial<SessionPackageEntry> = {}
+): SessionPackageEntry => ({
   path,
   bytes: Buffer.byteLength(contents),
   sha256: sha256(contents),
@@ -27,8 +26,8 @@ const entry = (
 })
 
 const manifest = (
-  entries: PackageEntry[]
-): { app: { version: string }; entries: PackageEntry[] } => ({
+  entries: SessionPackageEntry[]
+): Pick<SessionPackageManifest, 'entries' | 'app'> => ({
   app: { version: '1.61.0' },
   entries
 })
