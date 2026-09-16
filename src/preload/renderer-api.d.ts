@@ -822,6 +822,22 @@ export interface PureScienceAPI {
       identifier: string
     ): Promise<CreateReferenceInput | null>
     attachPdf(referenceId: string, pdfManagedFileId: string | null): Promise<Reference>
+    // Imports the references a PDF cites, by reading the DOIs off its pages (3.4).
+    importDoisFromPdf(
+      projectId: string,
+      pdfPath: string,
+      limit?: number
+    ): Promise<{
+      outcomes: readonly (
+        | { doi: string; status: 'created'; referenceId: string }
+        | { doi: string; status: 'duplicate'; referenceId: string }
+        | { doi: string; status: 'failed'; reason: string }
+      )[]
+      created: number
+      duplicates: number
+      failed: number
+      truncated: number
+    }>
     detachPdf(referenceId: string): Promise<Reference>
   }
   preview: {

@@ -1446,6 +1446,25 @@ const createApplicationModules = async (
     storageRoot: resolveDataRoot(),
     resolvePath: async (path) => (path.startsWith('/') ? path : join(resolveDataRoot(), path))
   })
+  // One reader for both surfaces: the PDF preview/annotation commands and the references module's
+  // PDF → DOI import (3.4) use the same PdfService, so a document is registered once and read the same
+  // way. Bound unconditionally (not inside an Electron-only adapter) so the web/CLI command surface
+  // can import references too.
+  referencesIpcModule.bindPdfPorts({
+    open: async (path, projectId) => {
+      const opened = await pdfService.open(path, projectId)
+      return { docId: opened.doc.docId, pageCount: opened.doc.pageCount }
+    },
+    // Pages arrive as objects with their number; the import only needs the text, in page order.
+    pages: async (docId, start, end) => {
+      const read = await pdfService.pages(docId, start, end)
+      return read.pages
+        .slice()
+        .sort((left, right) => left.page - right.page)
+        .map((page) => page.text)
+        .join('\n')
+    }
+  })
   const hostQueryService = new HostQueryService({
     getClient: () => getProjectDbClient(resolveStorageRoot())
   })

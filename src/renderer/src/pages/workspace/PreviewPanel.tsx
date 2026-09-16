@@ -10,6 +10,7 @@ import {
   X,
   Crosshair,
   Dna,
+  BookMarked,
   Table
 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -19,6 +20,7 @@ import { dialogOverlayClassName, dialogPanelClassName } from '@/components/ui/di
 import { ResizablePanel } from '@/components/ui/resizable'
 import { cn } from '@/lib/utils'
 import { PdfTablePanel } from '@/components/pdf/PdfTablePanel'
+import { ReferenceImportPanel } from '@/components/pdf/ReferenceImportPanel'
 import type {
   PreviewFileItem,
   PreviewItem,
@@ -245,7 +247,8 @@ export const PreviewContentContextMenu = ({
   onDismiss,
   onStartDigitization,
   onStartOmicsPreview,
-  onStartTableExtraction
+  onStartTableExtraction,
+  onStartReferenceImport
 }: {
   x: number
   y: number
@@ -255,6 +258,8 @@ export const PreviewContentContextMenu = ({
   onStartDigitization?: (item: PreviewItem) => void
   onStartOmicsPreview?: (item: PreviewItem) => void
   onStartTableExtraction?: (item: PreviewItem) => void
+  /** Imports the references a PDF cites, by reading the identifiers off its pages (3.4). */
+  onStartReferenceImport?: (item: PreviewItem) => void
 }): React.JSX.Element | null => {
   const { t } = useLanguage()
   const activeProjectId = useNavigationStore((state) => state.activeProjectId)
@@ -347,6 +352,18 @@ export const PreviewContentContextMenu = ({
           onClick={() => run(() => onStartOmicsPreview(item))}
         >
           <Dna className="size-3.5" aria-hidden="true" /> 组学大文件预览（先探后算）
+        </button>
+      ) : null}
+      {onStartReferenceImport && PDF_TABLE_MEDIA.test(item.name) ? (
+        <button
+          type="button"
+          role="menuitem"
+          data-testid="preview-pdf-reference-import"
+          className={previewContentMenuItemClassName}
+          onClick={() => run(() => onStartReferenceImport(item))}
+        >
+          <BookMarked className="size-3.5" aria-hidden="true" />{' '}
+          {t('references.importFromPdf.menu')}
         </button>
       ) : null}
       {onStartTableExtraction && PDF_TABLE_MEDIA.test(item.name) ? (
@@ -654,6 +671,7 @@ const PreviewFilePanel = ({
   const [digitizeItem, setDigitizeItem] = useState<PreviewItem | null>(null)
   const [omicsItem, setOmicsItem] = useState<PreviewItem | null>(null)
   const [tableItem, setTableItem] = useState<PreviewItem | null>(null)
+  const [referenceImportItem, setReferenceImportItem] = useState<PreviewItem | null>(null)
   const activeProjectId = useNavigationStore((state) => state.activeProjectId)
   const surfaceRef = useRef<HTMLElement | null>(null)
 
@@ -727,6 +745,9 @@ const PreviewFilePanel = ({
           {...(activeProjectId && typeof window.api?.pdf?.pages === 'function'
             ? { onStartTableExtraction: (target: PreviewItem) => setTableItem(target) }
             : {})}
+          {...(activeProjectId && typeof window.api?.references?.importDoisFromPdf === 'function'
+            ? { onStartReferenceImport: (target: PreviewItem) => setReferenceImportItem(target) }
+            : {})}
         />
       ) : null}
       {digitizeItem && digitizeItem.type === 'file' ? (
@@ -748,6 +769,15 @@ const PreviewFilePanel = ({
             projectId={activeProjectId}
             sourcePath={tableItem.path ?? tableItem.title}
             onClose={() => setTableItem(null)}
+          />
+        </div>
+      ) : null}
+      {referenceImportItem && referenceImportItem.type === 'file' && activeProjectId ? (
+        <div className="absolute inset-x-3 bottom-3 z-[80] max-h-[70%] overflow-y-auto rounded-lg bg-bg-000 shadow-card">
+          <ReferenceImportPanel
+            projectId={activeProjectId}
+            sourcePath={referenceImportItem.path ?? referenceImportItem.title}
+            onClose={() => setReferenceImportItem(null)}
           />
         </div>
       ) : null}

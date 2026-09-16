@@ -271,7 +271,7 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
   group('references', 'references', [
     ['add', 'references:add'], ['addToCollection', 'references:add-to-collection'], ['attachPdf', 'references:attach-pdf'],
     ['createCollection', 'references:create-collection'], ['deleteCollection', 'references:delete-collection'], ['detachPdf', 'references:detach-pdf'],
-    ['fetchByIdentifier', 'references:fetch-by-identifier'], ['list', 'references:list'],
+    ['fetchByIdentifier', 'references:fetch-by-identifier'], ['importDoisFromPdf', 'references:import-dois-from-pdf'], ['list', 'references:list'],
     ['listCollections', 'references:list-collections'], ['merge', 'references:merge'], ['remove', 'references:remove'],
     ['removeFromCollection', 'references:remove-from-collection'],
   ]),

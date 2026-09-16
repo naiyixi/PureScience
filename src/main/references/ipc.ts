@@ -15,6 +15,8 @@ import type {
   ReferenceCollection
 } from '../../shared/references'
 import { fetchReferenceByIdentifier, type IdentifierKind } from './service'
+import { createPdfDoiImportOwner, type PdfDocumentPorts } from './pdf-doi-owner'
+import type { PdfDoiImportResult } from './pdf-doi-import'
 import { ReferenceRepository } from './repository'
 import { ReferenceService } from './service'
 
@@ -30,6 +32,8 @@ export type ReferencesHandlers = {
   removeFromCollection(collectionId: string, referenceId: string): Promise<void>
   merge(keeperId: string, duplicateIds: readonly string[]): Promise<Reference>
   fetchByIdentifier(kind: IdentifierKind, identifier: string): Promise<CreateReferenceInput | null>
+  // Imports the references a PDF cites, by reading the DOIs off its pages (3.4).
+  importDoisFromPdf(projectId: string, pdfPath: string, limit?: number): Promise<PdfDoiImportResult>
   attachPdf(referenceId: string, pdfManagedFileId: string | null): Promise<Reference>
   detachPdf(referenceId: string): Promise<Reference>
 }
@@ -37,6 +41,8 @@ export type ReferencesHandlers = {
 export type ReferencesIpcModule = {
   handlers: ReferencesHandlers
   service: ReferenceService
+  // Bound by the composition root once the PDF reader exists (see createReferencesIpcModule).
+  bindPdfPorts: (ports: PdfDocumentPorts) => void
 }
 
 const createDefaultReferenceRepository = (): ReferenceRepository =>
@@ -50,6 +56,36 @@ export const createReferencesIpcModule = (
   } = {}
 ): ReferencesIpcModule => {
   const service = new ReferenceService(repository, options)
+  // The PDF reader lives in the settings/pdf module and is created later in the composition root, so it
+  // arrives through a holder rather than forcing the creation order. Until it is bound, the import
+  // reports a named failure instead of pretending a document was read.
+  const pdfHolder: { ports?: PdfDocumentPorts } = {}
+  const pdfDoi = createPdfDoiImportOwner({
+    pdf: {
+      open: async (path, projectId) => {
+        if (!pdfHolder.ports) throw new Error('The PDF reader is not available yet.')
+        return pdfHolder.ports.open(path, projectId)
+      },
+      pages: async (docId, start, end) => {
+        if (!pdfHolder.ports) throw new Error('The PDF reader is not available yet.')
+        return pdfHolder.ports.pages(docId, start, end)
+      }
+    },
+    references: {
+      resolveByIdentifier: async (kind, identifier, projectId) => {
+        const draft = await fetchReferenceByIdentifier(kind, identifier)
+        return draft ? { ...draft, projectId } : undefined
+      },
+      // The library's add call reports the created record or the records it collided with; the import
+      // only needs to know which of the two happened and which reference it maps to.
+      addReference: async (input) => {
+        const result = await service.addReference(input)
+        return result.status === 'created'
+          ? { status: 'created' as const, referenceId: result.reference.id }
+          : { status: 'duplicate' as const, referenceId: result.duplicateOf[0]?.id ?? '' }
+      }
+    }
+  })
   const handlers: ReferencesHandlers = {
     list: (projectId) => service.listReferences(projectId),
     add: (input) => service.addReference(input),
@@ -63,10 +99,18 @@ export const createReferencesIpcModule = (
       service.removeFromCollection(collectionId, referenceId),
     merge: (keeperId, duplicateIds) => service.mergeReferences(keeperId, duplicateIds),
     fetchByIdentifier: (kind, identifier) => fetchReferenceByIdentifier(kind, identifier),
+    importDoisFromPdf: (projectId, pdfPath, limit) =>
+      pdfDoi.importFromPdf(projectId, pdfPath, limit === undefined ? {} : { limit }),
     attachPdf: (referenceId, pdfManagedFileId) => service.attachPdf(referenceId, pdfManagedFileId),
     detachPdf: (referenceId) => service.detachPdf(referenceId)
   }
-  return { handlers, service }
+  return {
+    handlers,
+    service,
+    bindPdfPorts: (ports) => {
+      pdfHolder.ports = ports
+    }
+  }
 }
 
 // Installs the renderer-callable Electron adapter over a references module.
@@ -92,6 +136,11 @@ export const installReferencesIpcHandlers = (
       'references:add-to-collection',
       (_event, collectionId: string, referenceId: string) =>
         handlers.addToCollection(collectionId, referenceId)
+    )
+    ipcMainHandle(
+      'references:import-dois-from-pdf',
+      (_event, projectId: string, pdfPath: string, limit?: number) =>
+        handlers.importDoisFromPdf(projectId, pdfPath, limit)
     )
     ipcMainHandle(
       'references:remove-from-collection',

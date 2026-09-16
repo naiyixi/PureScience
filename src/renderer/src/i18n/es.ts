@@ -2779,6 +2779,19 @@ export const es: Partial<Record<ZhKey, string>> = {
   'references.gbtExported': '{n} citas GB/T 7714 exportadas.',
   'references.title': 'Biblioteca de referencias',
   'references.close': 'Cerrar',
+  'references.importFromPdf.menu': 'Importar las referencias citadas en este PDF',
+  'references.importFromPdf.title': 'Referencias encontradas en este PDF',
+  'references.importFromPdf.running': 'Leyendo el documento…',
+  'references.importFromPdf.summary':
+    '{created} añadidas · {duplicates} ya presentes · {failed} con error',
+  'references.importFromPdf.truncated':
+    '{count} identificadores más quedan para una importación posterior',
+  'references.importFromPdf.failedItem': 'no se pudo importar {doi}: {reason}',
+  'references.importFromPdf.empty': 'No se encontró ningún DOI en este documento.',
+  'references.importFromPdf.failed': 'No se pudo ejecutar la importación',
+  'references.importFromPdf.unavailable':
+    'la importación de referencias no está disponible en esta ventana',
+  'references.importFromPdf.close': 'Cerrar',
   'references.identifierPlaceholder': 'Introduce DOI / PMID / arXiv ID…',
   'references.fetch': 'Obtener metadatos',
   'references.fetching': 'Obteniendo…',

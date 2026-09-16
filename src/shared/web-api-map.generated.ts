@@ -134,6 +134,7 @@ export const WEB_INVOKE_CHANNELS = {
   'references.deleteCollection': 'references:delete-collection',
   'references.detachPdf': 'references:detach-pdf',
   'references.fetchByIdentifier': 'references:fetch-by-identifier',
+  'references.importDoisFromPdf': 'references:import-dois-from-pdf',
   'references.list': 'references:list',
   'references.listCollections': 'references:list-collections',
   'references.merge': 'references:merge',

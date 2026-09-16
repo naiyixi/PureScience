@@ -2747,6 +2747,18 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'references.gbtExported': 'Экспортировано {n} цитат GB/T 7714.',
   'references.title': 'Библиотека литературы',
   'references.close': 'Закрыть',
+  'references.importFromPdf.menu': 'Импортировать ссылки из этого PDF',
+  'references.importFromPdf.title': 'Ссылки, найденные в PDF',
+  'references.importFromPdf.running': 'Чтение документа…',
+  'references.importFromPdf.summary':
+    'добавлено {created} · уже есть {duplicates} · ошибок {failed}',
+  'references.importFromPdf.truncated':
+    'ещё {count} идентификаторов оставлено для следующего импорта',
+  'references.importFromPdf.failedItem': 'не удалось импортировать {doi}: {reason}',
+  'references.importFromPdf.empty': 'В этом документе не найдено ни одного DOI.',
+  'references.importFromPdf.failed': 'Не удалось выполнить импорт',
+  'references.importFromPdf.unavailable': 'импорт ссылок недоступен в этом окне',
+  'references.importFromPdf.close': 'Закрыть',
   'references.identifierPlaceholder': 'Введите DOI / PMID / arXiv ID…',
   'references.fetch': 'Получить метаданные',
   'references.fetching': 'Получение…',

@@ -34,6 +34,7 @@ type ReferencesCommandOwner = Pick<
   | 'fetchByIdentifier'
   | 'attachPdf'
   | 'detachPdf'
+  | 'importDoisFromPdf'
 >
 
 const referencesApplicationCommands = Object.freeze({
@@ -87,6 +88,11 @@ const referencesApplicationCommands = Object.freeze({
     OwnerArgs<ReferencesCommandOwner, 'fetchByIdentifier'>,
     OwnerResult<ReferencesCommandOwner, 'fetchByIdentifier'>
   >('references:fetch-by-identifier'),
+  importDoisFromPdf: defineApplicationCommand<
+    'references:import-dois-from-pdf',
+    OwnerArgs<ReferencesCommandOwner, 'importDoisFromPdf'>,
+    OwnerResult<ReferencesCommandOwner, 'importDoisFromPdf'>
+  >('references:import-dois-from-pdf'),
   attachPdf: defineApplicationCommand<
     'references:attach-pdf',
     OwnerArgs<ReferencesCommandOwner, 'attachPdf'>,
@@ -110,6 +116,7 @@ const referencesApplicationCommandGroup = defineApplicationCommandGroup('referen
   referencesApplicationCommands.merge,
   referencesApplicationCommands.remove,
   referencesApplicationCommands.removeFromCollection,
+  referencesApplicationCommands.importDoisFromPdf,
   referencesApplicationCommands.attachPdf,
   referencesApplicationCommands.detachPdf
 ] as const)
@@ -137,6 +144,8 @@ const registerReferencesApplicationCommands = (
       'references:merge': ({ args }) => dependencies.references.merge(args[0], args[1]),
       'references:fetch-by-identifier': ({ args }) =>
         dependencies.references.fetchByIdentifier(args[0], args[1]),
+      'references:import-dois-from-pdf': ({ args }) =>
+        dependencies.references.importDoisFromPdf(args[0], args[1], args[2]),
       'references:attach-pdf': ({ args }) => dependencies.references.attachPdf(args[0], args[1]),
       'references:detach-pdf': ({ args }) => dependencies.references.detachPdf(args[0])
     })

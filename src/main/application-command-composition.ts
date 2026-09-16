@@ -112,9 +112,9 @@ const GROUP_COUNT = 36
 // Counts are certified at startup: a new command without a matching increment fails the boot rather
 // than shipping an uncertified surface. +1 internal / +2 local Web / +1 remote Web / +1 remote rejection
 // is compute:deliveries:list (available on both Web surfaces) plus settings:set-ui-language (local only).
-const INTERNAL_COMMAND_COUNT = 304
-const LOCAL_WEB_COMMAND_COUNT = 302
-const REMOTE_WEB_COMMAND_COUNT = 202
+const INTERNAL_COMMAND_COUNT = 305
+const LOCAL_WEB_COMMAND_COUNT = 303
+const REMOTE_WEB_COMMAND_COUNT = 203
 const REMOTE_REJECTED_COMMAND_COUNT = 100
 const TASK_COMMAND_COUNT = 10
 
