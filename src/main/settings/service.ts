@@ -93,6 +93,7 @@ import type { InstallManagedClaudeOptions, ManagedInstallOutcome } from './manag
 import { encryptKey, isEncryptionAvailable, maskKey, tryDecryptKey } from './crypto'
 import { collectThirdPartyLicenses, type ThirdPartyLicenseEntry } from '../third-party-licenses'
 import { CREDENTIAL_SERVICE_LABELS, testCredentialSecret, toCredentialView } from './credentials'
+import { mirrorEgressHosts } from '../../shared/egress'
 import {
   applyEgressSettings,
   respondToEgressApproval,
@@ -592,7 +593,11 @@ class SettingsService {
   // the next settings edit re-applies and surfaces it.
   async hydrateChildProxyRuntime(stored: StoredSettings): Promise<void> {
     try {
-      await applyEgressSettings(stored.egress, this.egressRuntimeOptions())
+      await applyEgressSettings(
+        stored.egress,
+        this.egressRuntimeOptions(),
+        mirrorEgressHosts(stored.packageMirror)
+      )
     } catch {
       // Ignore: startup continues; the egress runtime is re-applied on the next edit.
     }
@@ -645,7 +650,11 @@ class SettingsService {
   // settings change takes effect for subsequently spawned kernels/shells immediately.
   async setEgress(egress: EgressSettings): Promise<EgressSettings> {
     const persisted = await this.repository.setEgress(egress)
-    await applyEgressSettings(persisted.egress, this.egressRuntimeOptions())
+    await applyEgressSettings(
+      persisted.egress,
+      this.egressRuntimeOptions(),
+      mirrorEgressHosts(persisted.packageMirror)
+    )
     return persisted.egress ?? { enabled: false, groups: {}, customDomains: [] }
   }
 

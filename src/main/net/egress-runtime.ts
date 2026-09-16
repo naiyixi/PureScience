@@ -85,10 +85,12 @@ export const respondToEgressApproval = async (
 // (undefined when egress is off). `options` wires conversation approval; pass once at startup.
 export const applyEgressSettings = async (
   settings: EgressSettings | undefined,
-  options?: EgressRuntimeOptions
+  options?: EgressRuntimeOptions,
+  // Hosts of the user's own package mirror: configuration, not a new grant (P3-9 / 3.5).
+  mirrorHosts: readonly string[] = []
 ): Promise<NodeJS.ProcessEnv | undefined> => {
   if (options) runtimeOptions = options
-  const allowlist = resolveEgressAllowlist(settings)
+  const allowlist = resolveEgressAllowlist(settings, mirrorHosts)
   currentEnabled = allowlist !== undefined
   currentAllowlist = allowlist
 

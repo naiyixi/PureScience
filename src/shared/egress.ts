@@ -6,6 +6,8 @@
 // The 6 built-in scientific domain groups, keyed by stable id. Each group carries the concrete
 // domains (host or subdomain suffix) that belong to it; matching is suffix-based so a group like
 // genomics also covers eutils.ncbi.nlm.nih.gov when included.
+import type { PackageMirror } from './mirror'
+
 export const EGRESS_DOMAIN_GROUPS = [
   {
     id: 'literature',
@@ -159,11 +161,35 @@ export const EGRESS_PROVIDER_ENDPOINT_HOSTS: readonly string[] = [
 // Renders the effective allowlist from settings: enabled groups' domains + custom domains + the
 // always-allowed localhost hosts. Returns undefined when the mechanism is off (callers keep current
 // behavior).
+/**
+ * Hosts a user's own package mirror points at. A mirror is configuration the user typed: with egress
+ * enabled, installs through it must not be refused (or prompted for) as if it were an unknown host —
+ * while the built-in exfiltration deny list still wins over everything below.
+ *
+ * Unparseable entries are ignored rather than guessed at, and `caBundle` is a local path, not a host.
+ */
+export const mirrorEgressHosts = (mirror: PackageMirror | undefined): string[] => {
+  if (!mirror) return []
+  const hosts: string[] = []
+  for (const candidate of [mirror.pypiIndex, mirror.cranMirror, mirror.condaChannel]) {
+    const trimmed = candidate?.trim()
+    if (!trimmed) continue
+    try {
+      const host = new URL(trimmed).hostname.trim().toLowerCase()
+      if (host) hosts.push(host)
+    } catch {
+      // Not a URL: a bare conda channel name is not a host we can authorize, so it is left alone.
+    }
+  }
+  return [...new Set(hosts)]
+}
+
 export const resolveEgressAllowlist = (
-  settings: EgressSettings | undefined
+  settings: EgressSettings | undefined,
+  mirrorHosts: readonly string[] = []
 ): string[] | undefined => {
   if (!settings?.enabled) return undefined
-  const domains: string[] = [...settings.customDomains]
+  const domains: string[] = [...settings.customDomains, ...mirrorHosts]
   for (const group of EGRESS_DOMAIN_GROUPS) {
     if (settings.groups[group.id] !== false) {
       domains.push(...group.domains)

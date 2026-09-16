@@ -5,6 +5,8 @@ import { request as httpRequest, createServer, type Server } from 'node:http'
 import { connect as tcpConnect } from 'node:net'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { mirrorEgressHosts } from '../../shared/egress'
+
 import {
   EGRESS_ALWAYS_ALLOWED_HOSTS,
   EGRESS_DOMAIN_GROUPS,
@@ -24,6 +26,49 @@ import {
   normalizeImplicitHost,
   resetEgressRuntimeForTest
 } from './egress-runtime'
+
+// P3-9 / 3.5: a mirror the user configured is configuration, not an unknown host. With egress on,
+// installs through their own mirror were refused (or prompted for) as if it were anything else,
+// because only the public package hosts were on the allowlist.
+describe('package mirror egress hosts', () => {
+  it('authorizes the host of each configured mirror URL', () => {
+    expect(
+      mirrorEgressHosts({
+        pypiIndex: 'https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple',
+        cranMirror: 'https://mirrors.ustc.edu.cn/CRAN/',
+        condaChannel: 'https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/'
+      })
+    ).toEqual(['mirrors.tuna.tsinghua.edu.cn', 'mirrors.ustc.edu.cn'])
+  })
+
+  it('reads the host out of the URL, never the whole string or a path', () => {
+    const hosts = mirrorEgressHosts({ pypiIndex: 'https://pypi.example.org/simple' })
+
+    expect(hosts).toEqual(['pypi.example.org'])
+    expect(hosts.join(' ')).not.toContain('/simple')
+  })
+
+  // A bare conda channel name is not a host, and a local CA bundle is not a destination: neither
+  // should widen the allowlist.
+  it('ignores entries that are not URLs, and the CA bundle', () => {
+    expect(
+      mirrorEgressHosts({
+        condaChannel: 'conda-forge',
+        caBundle: '/etc/ssl/certs/ca.pem',
+        pypiIndex: 'not a url'
+      })
+    ).toEqual([])
+    expect(mirrorEgressHosts(undefined)).toEqual([])
+  })
+
+  it('adds them to the resolved allowlist only when egress is actually on', () => {
+    const settings = { enabled: true, groups: {}, customDomains: [] }
+    const hosts = ['mirrors.tuna.tsinghua.edu.cn']
+
+    expect(resolveEgressAllowlist(settings, hosts)).toContain('mirrors.tuna.tsinghua.edu.cn')
+    expect(resolveEgressAllowlist({ ...settings, enabled: false }, hosts)).toBeUndefined()
+  })
+})
 
 describe('egress allowlist helpers', () => {
   it('never gates the local machine', () => {
