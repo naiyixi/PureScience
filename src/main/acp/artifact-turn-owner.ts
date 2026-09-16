@@ -337,8 +337,12 @@ class ArtifactTurnOwner {
       messageBranchId,
       messageBranchAncestry,
       messageAncestry,
+      // A headless turn has no renderer to supply a context, so the fallback has to agree with what the
+      // Session writer will persist: a Session without a graph materializes into the linear projection,
+      // whose Segment id is derived from the Session id. Naming the runtime instance here instead made
+      // the claim and the durable graph disagree forever, so finalization could never succeed.
       runtimeSegmentId:
-        request.provenanceContext?.runtimeSegmentId ?? `runtime-segment-${this.runtimeInstanceId}`,
+        request.provenanceContext?.runtimeSegmentId ?? `runtime-segment-${request.appSessionId}`,
       promptMessageId,
       agentName: request.agentName,
       phase: 'open',

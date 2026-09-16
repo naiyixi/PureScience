@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ArtifactFile } from '../../shared/artifacts'
 import { ArtifactRepository, getArtifactCurrentRunFilePath } from '../artifacts/repository'
 import { ArtifactRunRegistry } from '../artifacts/run-registry'
+import { createLinearConversationGraph } from '../../shared/conversation-graph'
 import { ArtifactTurnOwner } from './artifact-turn-owner'
 import { ARTIFACT_RPC_METHODS } from '../artifacts/rpc-methods'
 
@@ -52,6 +53,42 @@ afterEach(async () => {
 })
 
 describe('ArtifactTurnOwner', () => {
+  it('names the durable linear Segment when no renderer supplies a context', async () => {
+    const dataRoot = await createRoot()
+    const notebookContexts: unknown[] = []
+    const owner = new ArtifactTurnOwner({
+      dataRoot,
+      repository: new ArtifactRepository(dataRoot),
+      runRegistry: new ArtifactRunRegistry(),
+      runtimeInstanceId: 'runtime-1',
+      now: () => 123,
+      issueRpcCapability: () => 'secret-capability',
+      notebook: {
+        setArtifactProvenanceContext: (_sessionId, context) => notebookContexts.push(context)
+      }
+    })
+
+    await owner.open({
+      appSessionId: 'session-1',
+      artifactStorageSessionId: 'artifact-session-1',
+      projectId: 'project-1',
+      agentName: 'Claude Code'
+    })
+
+    // Without a renderer there is no supplied context, and the Session a writer persists is the linear
+    // projection. Deriving the Segment the same way is what keeps the claim's ownership provable.
+    const linearSegmentId = createLinearConversationGraph({
+      sessionId: 'session-1',
+      messages: [],
+      createdAt: 0,
+      updatedAt: 0
+    }).runtimeSegments[0].id
+    expect(linearSegmentId).toBe('runtime-segment-session-1')
+    expect(notebookContexts).toEqual([
+      expect.objectContaining({ runtimeSegmentId: linearSegmentId })
+    ])
+  })
+
   it('opens a turn-scoped handoff without exposing its capability or local path in snapshots', async () => {
     const dataRoot = await createRoot()
     const issuedBindings: unknown[] = []
