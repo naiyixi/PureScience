@@ -37,6 +37,7 @@ describe('PureScienceClient', () => {
         'getReadiness',
         'listRuntimes',
         'listConnectors',
+        'replayVersion',
         'events',
         'request',
         'throwResponseError'
@@ -46,7 +47,7 @@ describe('PureScienceClient', () => {
 
   // P3-8: the CLI reads readiness/runtimes/connectors from the app rather than deciding anything for
   // itself, so the client side of that must be pinned to those exact versioned paths.
-  it('reads readiness, runtimes and connectors from the versioned API', async () => {
+  it('reads readiness, runtimes, a re-run verdict and connectors from the versioned API', async () => {
     const fetch = vi.fn().mockImplementation(
       async (url: string) =>
         new Response(JSON.stringify({ data: { url } }), {
@@ -66,13 +67,23 @@ describe('PureScienceClient', () => {
     await expect(client.listRuntimes()).resolves.toEqual({
       url: 'http://127.0.0.1:44100/api/v1/runtimes'
     })
+    await expect(
+      client.replayVersion({
+        projectId: 'project-1',
+        appSessionId: 'session-1',
+        artifactId: 'artifact-1',
+        versionId: 'version-1'
+      })
+    ).resolves.toEqual({ url: 'http://127.0.0.1:44100/api/v1/artifacts/replay' })
+
     await expect(client.listConnectors()).resolves.toEqual({
       url: 'http://127.0.0.1:44100/api/v1/connectors'
     })
-    expect(fetch).toHaveBeenCalledTimes(3)
+    expect(fetch).toHaveBeenCalledTimes(4)
     expect(fetch.mock.calls.map(([url]) => url)).toEqual([
       'http://127.0.0.1:44100/api/v1/readiness',
       'http://127.0.0.1:44100/api/v1/runtimes',
+      'http://127.0.0.1:44100/api/v1/artifacts/replay',
       'http://127.0.0.1:44100/api/v1/connectors'
     ])
   })

@@ -56,6 +56,15 @@ export class PureScienceClient {
     return this.request('/api/v1/connectors')
   }
 
+  /**
+   * Re-run a recorded artifact version and compare the result with what it recorded producing. The
+   * verdict, the origin the recipe came from and whether the environment lock came back are reported
+   * separately: a summary that merges them cannot be audited.
+   */
+  replayVersion(request) {
+    return this.request('/api/v1/artifacts/replay', { method: 'POST', body: request })
+  }
+
   createProject({ name, description }) {
     return this.request('/api/v1/projects', {
       method: 'POST',

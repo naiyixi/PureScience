@@ -198,7 +198,7 @@ describe('application command composition', () => {
     expect(listProjects).toHaveBeenCalledOnce()
   })
 
-  it('exposes only the ten Task commands and no transport-wide capability', async () => {
+  it('exposes only the eleven Task commands and no transport-wide capability', async () => {
     const composition = createApplicationCommandComposition(dependencies())
 
     expect(composition.task.commandNames()).toEqual([
@@ -211,7 +211,8 @@ describe('application command composition', () => {
       'preview-resources:release',
       'settings:check-environment',
       'runtime:list-environments',
-      'settings:list-connectors'
+      'settings:list-connectors',
+      'artifacts:replay-version'
     ])
     await expect(
       composition.localWeb.invoke('sessions:export-conversation', invocation())

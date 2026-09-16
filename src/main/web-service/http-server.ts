@@ -17,6 +17,7 @@ import {
   type CallerContext
 } from '../caller-context'
 import { createApplicationCommandClient } from '../application-command-client'
+import type { ReplayVersionRequest } from '../../shared/artifact-replay'
 import type { ApplicationCommandComposition } from '../application-command-composition'
 import type { ApplicationEventSource } from '../application-events'
 import {
@@ -80,6 +81,7 @@ type WebServerOptions = {
     | 'readiness'
     | 'runtimes'
     | 'connectors'
+    | 'replayArtifactVersion'
     | 'createProject'
     | 'listSessions'
     | 'getSession'
@@ -351,6 +353,12 @@ const handleTaskApiRequest = async (
       if (url.pathname === '/api/v1/connectors' && request.method === 'GET') {
         assertExternalAuthorizationCurrent(externalAuthorization)
         json(response, 200, { data: await tasks.connectors() })
+        return true
+      }
+      if (url.pathname === '/api/v1/artifacts/replay' && request.method === 'POST') {
+        const body = (await readJsonBody(request)) as ReplayVersionRequest
+        assertExternalAuthorizationCurrent(externalAuthorization)
+        json(response, 200, { data: await tasks.replayArtifactVersion(body) })
         return true
       }
       if (url.pathname === '/api/v1/runs' && request.method === 'POST') {

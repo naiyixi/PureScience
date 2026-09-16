@@ -6,6 +6,7 @@ import type {
   FinalizeRunArtifactsRequest,
   FinalizeRunArtifactsResult
 } from '../../shared/artifacts'
+import type { ReplayVersionRequest } from '../../shared/artifact-replay'
 import type { Project } from '../../shared/projects'
 import type { PersistedArtifact, PersistedChatSession } from '../../shared/session-persistence'
 import type {
@@ -176,6 +177,15 @@ class HeadlessTaskApi {
 
   connectors(): Promise<unknown> {
     return this.invoke('settings:list-connectors')
+  }
+
+  /**
+   * Re-runs a recorded artifact version and reports whether the result came back the same, for
+   * `purescience replay`. It calls the same command the window calls: a second replay implementation is
+   * exactly what would let the command line and the app disagree about what "reproduced" means.
+   */
+  replayArtifactVersion(request: ReplayVersionRequest): Promise<unknown> {
+    return this.invoke('artifacts:replay-version', request)
   }
 
   private invoke(channel: string, ...args: unknown[]): Promise<unknown> {

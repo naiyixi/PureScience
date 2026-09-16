@@ -116,7 +116,7 @@ const INTERNAL_COMMAND_COUNT = 306
 const LOCAL_WEB_COMMAND_COUNT = 304
 const REMOTE_WEB_COMMAND_COUNT = 204
 const REMOTE_REJECTED_COMMAND_COUNT = 100
-const TASK_COMMAND_COUNT = 10
+const TASK_COMMAND_COUNT = 11
 
 const ELECTRON_NATIVE_COMMAND_NAMES = Object.freeze([
   'sessions:export-conversation',
@@ -135,7 +135,10 @@ const TASK_COMMAND_NAMES = Object.freeze([
   // than deciding anything for itself.
   'settings:check-environment',
   'runtime:list-environments',
-  'settings:list-connectors'
+  'settings:list-connectors',
+  // 2.1: re-running a recorded version is a read-and-report operation, so the command line reaches it
+  // through the same narrow view as the other machine-readable state.
+  'artifacts:replay-version'
 ])
 
 const APPLICATION_COMMAND_GROUPS = Object.freeze([

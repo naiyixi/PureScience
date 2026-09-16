@@ -183,6 +183,30 @@ purescience connectors list --json
 network, Python for notebooks), each entry with its status and the sentence that explains it. Use it
 to tell a failed install from a working one before opening the app.
 
+## Re-running a recorded artifact
+
+Every artifact version records the code that produced it, the inputs it read and a digest of what came
+out. `replay` runs that code again — through the same notebook execution the original run used, in a
+throwaway directory with the recorded inputs copied in — and compares the result with the recording:
+
+```bash
+purescience replay <versionId> --project <projectId> --session <appSessionId> --artifact <artifactId> --json
+```
+
+The output keeps three facts apart, and they must stay apart:
+
+- **verdict** — `reproduced` only when every comparable output is byte-identical; `differs` when they are
+  not; `unverifiable` when nothing could be concluded (a failed run, a timeout, a missing runtime, or a
+  version whose steps came from a model reconstruction rather than from an execution record);
+- **origin** — `executed` when the recorded steps come from a real run, `reconstructed` when they were
+  inferred by a model. A reconstructed recipe is never executed: running inferred code produces a file
+  that looks like evidence and is not;
+- **env lock** — `applied` only when the re-run's own environment manifest came back and matches the
+  recorded one. `not-applied` means the same code ran without rebuilding the packages: strong evidence,
+  and not the same claim.
+
+A version with no recorded code is refused with that reason instead of being re-run from something else.
+
 ## Rollback to 0.7.3
 
 The current Session and file formats contain fields that PureScience 0.7.3 cannot safely write.

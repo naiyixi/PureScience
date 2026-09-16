@@ -34,6 +34,8 @@ Commands:
   artifacts list <session-id>
   artifacts download <artifact-id> --output <path>
   ready                  Print the environment readiness judgement as it stands
+  replay <versionId>     Re-run a recorded artifact version and compare what comes back
+                         (needs --project, --session and --artifact)
   runtime list           List the Python/R runtimes the app can see
   connectors list        List connectors and whether each is enabled
   rollback-to-0.7.3 --yes [--output <path>]
@@ -71,6 +73,7 @@ const VALUE_OPTIONS = {
   '--prompt': 'prompt',
   '--prompt-file': 'promptFile',
   '--approval-profile': 'approvalProfile',
+  '--artifact': 'artifactId',
   '--timeout-ms': 'timeoutMs',
   '--description': 'description',
   '--output': 'output'
@@ -84,7 +87,9 @@ const TASK_COMMANDS = new Set([
   // Read-only machine-readable state (P3-8). Each projects what the settings window already shows.
   'ready',
   'runtime',
-  'connectors'
+  'connectors',
+  // Re-running a recorded artifact version and comparing what comes back (2.1).
+  'replay'
 ])
 const GROUP_COMMANDS = new Set(['project', 'session', 'artifacts', 'runtime', 'connectors'])
 
@@ -557,6 +562,31 @@ const TASK_DEPS = {
   }
 }
 
+// The re-run verdict, as three separate facts plus the reasons. Merging them into one sentence is how a
+// reader ends up believing a re-run reproduced a result in an environment that was never rebuilt.
+const describeReplayResult = (result) => {
+  const report = result?.report
+  if (!report) return 'No verdict was returned.'
+  const lines = [
+    `verdict:    ${report.verdict}`,
+    `mode:       ${report.mode}`,
+    `origin:     ${report.origin}`,
+    `env lock:   ${result.environmentLock ?? 'unknown'}`
+  ]
+  if (result.stopped) lines.push(`stopped:    ${result.stopped}`)
+  if (result.execution && 'via' in result.execution) {
+    lines.push(
+      `ran:        ${result.execution.via} in ${result.execution.durationMs}ms (exit ${String(result.execution.exitCode)})`
+    )
+  }
+  for (const file of report.files ?? []) {
+    const offset = file.status === 'differs' ? ` at byte ${file.firstDifferingByte}` : ''
+    lines.push(`file:       ${file.path} ${file.status}${offset}`)
+  }
+  for (const reason of report.reasons ?? []) lines.push(`reason:     ${reason}`)
+  return lines.join('\n')
+}
+
 const outputValue = (value, options, deps) => {
   if (options.json || options.jsonl) deps.log(JSON.stringify(value))
   else if (Array.isArray(value)) {
@@ -707,6 +737,26 @@ export const runTaskCommand = async (parsed, dependencies = {}) => {
   }
   if (command === 'connectors' && subcommand === 'list') {
     outputValue(await client.listConnectors(), options, deps)
+    return
+  }
+  // Re-running a recorded artifact version. The verdict, where the recipe came from and whether the
+  // environment came back are printed as three separate facts: a summary that merges them cannot be
+  // audited, and this is the surface where someone checks whether a result still reproduces.
+  if (command === 'replay') {
+    const versionId = positionals[0]
+    if (!versionId) throw new CliUsageError('Version id is required.')
+    if (!options.project) throw new CliUsageError('--project is required.')
+    if (!options.session) throw new CliUsageError('--session is required.')
+    if (!options.artifactId) throw new CliUsageError('--artifact is required.')
+    const result = await client.replayVersion({
+      projectId: options.project,
+      appSessionId: options.session,
+      artifactId: options.artifactId,
+      versionId,
+      ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs })
+    })
+    if (options.json) outputValue(result, options, deps)
+    else deps.log(describeReplayResult(result))
     return
   }
   if (command === 'run') {
