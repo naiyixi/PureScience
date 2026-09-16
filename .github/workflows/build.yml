@@ -113,6 +113,11 @@ jobs:
     # minimum even though the native builders run on macOS 26.
     env:
       MACOSX_DEPLOYMENT_TARGET: ${{ matrix.platform == 'mac' && '12.0' || '' }}
+      # The packaging step bundles a very large renderer; with Node's default heap the arm64 macOS
+      # runner dies with "Reached heap limit Allocation failed - JavaScript heap out of memory" and
+      # the whole publish is then skipped, so a headroom value is set explicitly (reproduced locally,
+      # where the same bound fixes it).
+      NODE_OPTIONS: --max-old-space-size=6144
 
     steps:
       - name: Checkout
