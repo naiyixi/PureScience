@@ -2216,6 +2216,135 @@ describe('artifact provenance repository', () => {
     })
   })
 
+  it('retries a Runtime Segment the writer has not delivered, and still refuses one owned by another Frame', async () => {
+    storageRoot = await mkdtemp(join(tmpdir(), 'purescience-artifact-finalize-segment-race-'))
+    const client = createProjectDbClient(storageRoot)
+    disconnect = () => client.$disconnect()
+    await ensureProjectSchema(client)
+
+    const prompt = {
+      id: 'prompt-1',
+      role: 'user' as const,
+      content: 'draw',
+      status: 'complete' as const,
+      eventIds: [],
+      createdAt: 1,
+      updatedAt: 1
+    }
+    const assistant = {
+      id: 'message-1',
+      role: 'agent' as const,
+      content: 'done',
+      status: 'complete' as const,
+      eventIds: [],
+      createdAt: 2,
+      updatedAt: 2
+    }
+    const conversationGraph = createLinearConversationGraph({
+      sessionId: 'session-1',
+      messages: [prompt, assistant],
+      frameworkId: 'codex',
+      createdAt: 1,
+      updatedAt: 2
+    })
+    const session: PersistedChatSession = {
+      id: 'session-1',
+      projectId: 'project-1',
+      title: 'Ownership',
+      cwd: '/workspace',
+      status: 'idle',
+      messages: [prompt, assistant],
+      conversationGraph,
+      createdAt: 1,
+      updatedAt: 2
+    }
+    const compatibilityRepository = new ArtifactRepository(storageRoot)
+    const repository = new ArtifactProvenanceRepository({
+      storageRoot,
+      getClient: () => Promise.resolve(client),
+      compatibilityRepository,
+      loadSession: async () => session
+    })
+    const branch = conversationGraph.branches[0]
+    const context = {
+      rootFrameId: conversationGraph.rootFrameId,
+      agentFrameId: conversationGraph.activeFrameId,
+      messageBranchId: branch.id,
+      runtimeSegmentId: conversationGraph.runtimeSegments[0].id,
+      promptMessageId: prompt.id
+    }
+    await compatibilityRepository.writePendingFile({
+      projectName: 'project-1',
+      sessionId: 'artifact-session-1',
+      runId: 'artifact-run-1',
+      filename: 'sin.png',
+      source: createPngInlineSource('plot bytes')
+    })
+    const version = await repository.createVersion({
+      projectId: 'project-1',
+      appSessionId: 'session-1',
+      artifactStorageSessionId: 'artifact-session-1',
+      artifactRunId: 'artifact-run-1',
+      writeOperationId: 'write-1',
+      writeRequestChecksum: 'a'.repeat(64),
+      ...context,
+      filename: 'sin.png'
+    })
+    const finalize = (): Promise<unknown> =>
+      repository.finalizeRun({
+        projectId: 'project-1',
+        appSessionId: 'session-1',
+        artifactRunId: 'artifact-run-1',
+        artifactVersionIds: [version.versionId],
+        ...context,
+        messageId: assistant.id
+      })
+
+    // The runtime mints the turn's Segment and the renderer's projection reaches disk asynchronously.
+    // A durable graph that predates the adoption carries the Messages without Segment attribution and
+    // no Segment row at all — that is the race the caller re-persists its way out of — and it must not
+    // be reported as a proof no retry could ever repair.
+    const [durableSegment] = conversationGraph.runtimeSegments.splice(
+      0,
+      conversationGraph.runtimeSegments.length
+    )
+    for (const message of conversationGraph.messages) {
+      delete (message as { runtimeSegmentId?: string }).runtimeSegmentId
+    }
+    await expect(finalize()).rejects.toBeInstanceOf(ArtifactOwnershipPersistenceRaceError)
+    await expect(finalize()).rejects.toMatchObject({
+      name: 'ArtifactOwnershipPersistenceRaceError',
+      message: expect.stringContaining('Runtime Segment is not durable yet')
+    })
+
+    // A Segment that is durable but belongs to a different Agent Frame is a structural mismatch:
+    // retrying it never becomes right, so it stays terminal. A second Frame makes that graph valid.
+    conversationGraph.frames.push({
+      id: 'reviewer-frame',
+      parentFrameId: conversationGraph.rootFrameId,
+      originMessageId: prompt.id,
+      originBindingState: 'validated',
+      kind: 'reviewer',
+      status: 'completed',
+      activeBranchId: 'reviewer-branch',
+      createdAt: 3
+    })
+    conversationGraph.branches.push({
+      id: 'reviewer-branch',
+      agentFrameId: 'reviewer-frame',
+      createdAt: 3,
+      updatedAt: 3
+    })
+    conversationGraph.runtimeSegments.push({
+      ...durableSegment!,
+      agentFrameId: 'reviewer-frame'
+    })
+    await expect(finalize()).rejects.toMatchObject({
+      name: 'ArtifactFinalizationProofError',
+      message: expect.stringContaining('belongs to another Agent Frame')
+    })
+  })
+
   it('rejects a renderer-supplied message that the durable Conversation Graph does not own', async () => {
     storageRoot = await mkdtemp(join(tmpdir(), 'purescience-artifact-finalize-ownership-'))
     const client = createProjectDbClient(storageRoot)

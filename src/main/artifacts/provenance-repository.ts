@@ -281,13 +281,23 @@ const validateDurableMessageOwnership = (
       'Artifact finalization Branch does not belong to the declared Agent Frame.'
     )
   }
+  // The runtime mints a turn's Segment and the renderer learns about it through adoption; that
+  // projection reaches disk asynchronously. A Segment that is absent *entirely* is the same class of
+  // race as a Message that is not durable yet — the writer simply has not delivered it — so it is
+  // retried (the caller re-persists the Session and tries again) instead of being declared an invalid
+  // proof, which no retry could ever fix. A Segment that exists but belongs to a different Agent Frame
+  // is a structural mismatch and stays terminal: retrying a wrong identity never becomes right.
   const segment = graph.runtimeSegments.find(
-    (candidate) =>
-      candidate.id === context.runtimeSegmentId && candidate.agentFrameId === context.agentFrameId
+    (candidate) => candidate.id === context.runtimeSegmentId
   )
   if (!segment) {
+    throw new ArtifactOwnershipPersistenceRaceError(
+      'Artifact finalization Runtime Segment is not durable yet.'
+    )
+  }
+  if (segment.agentFrameId !== context.agentFrameId) {
     throw new ArtifactFinalizationProofError(
-      'Artifact finalization Runtime Segment is not durable.'
+      'Artifact finalization Runtime Segment belongs to another Agent Frame.'
     )
   }
   const path = resolveMessageBranchPath(graph, context.messageBranchId)

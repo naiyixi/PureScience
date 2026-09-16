@@ -162,6 +162,12 @@ const getErrorText = (error: unknown): string =>
 // A terminal message and its Branch projection are persisted by separate runtime events. Retry only
 // the main process's explicit persistence-race code; proof identity and publication failures remain
 // terminal regardless of their human-readable wording.
+//
+// The turn's Runtime Segment is minted by the runtime and reaches the durable graph only after the
+// renderer's projection is saved, so one attempt is not always enough — the adoption can still be in
+// flight. Bounded attempts keep a lost race recoverable without inventing an unbounded retry loop.
+const ARTIFACT_FINALIZATION_RACE_ATTEMPTS = 3
+
 const isArtifactOwnershipPersistenceRace = (error: unknown): boolean =>
   error instanceof Error &&
   (error as Error & { code?: unknown }).code === ARTIFACT_OWNERSHIP_PERSISTENCE_RACE
@@ -289,13 +295,27 @@ const finalizeArtifactEvent = async (
       claimId: event.artifactClaimId,
       messageId: attached.messageId
     }
+    // The runtime mints the turn's Runtime Segment and the renderer learns about it through adoption;
+    // the durable graph only carries that Segment once the projection has actually been saved. That
+    // makes the first finalize attempt a race the caller can lose, so re-persist and retry the
+    // persistence-race code a bounded number of times. A proof-identity failure is terminal
+    // immediately: no retry can turn a wrong identity into a right one.
     let finalizedArtifacts: ArtifactFile[]
-    try {
-      finalizedArtifacts = await finalize(finalizeRequest)
-    } catch (error) {
-      if (!isArtifactOwnershipPersistenceRace(error)) throw error
-      await persistLatestSession()
-      finalizedArtifacts = await finalize(finalizeRequest)
+    let attempt = 1
+    for (;;) {
+      try {
+        finalizedArtifacts = await finalize(finalizeRequest)
+        break
+      } catch (error) {
+        if (
+          !isArtifactOwnershipPersistenceRace(error) ||
+          attempt >= ARTIFACT_FINALIZATION_RACE_ATTEMPTS
+        ) {
+          throw error
+        }
+        await persistLatestSession()
+        attempt += 1
+      }
     }
 
     store.replaceMessageArtifacts({

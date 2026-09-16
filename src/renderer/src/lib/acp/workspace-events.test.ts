@@ -1879,7 +1879,7 @@ describe('workspace runtime events', () => {
     expect(saveSession).not.toHaveBeenCalled()
   })
 
-  it('re-saves the latest durable graph once when finalization observes an ownership race', async () => {
+  it('re-saves the latest durable graph and retries while finalization observes an ownership race', async () => {
     const promptMessageId = useSessionStore.getState().sessions[0].activeRun?.promptMessageId
     await applyWorkspaceRuntimeEvent(
       createEvent({
@@ -1934,6 +1934,48 @@ describe('workspace runtime events', () => {
     expect(useSessionStore.getState().sessions[0].error).toBeUndefined()
   })
 
+  it('stops after the bounded number of ownership-race attempts and surfaces the race', async () => {
+    const promptMessageId = useSessionStore.getState().sessions[0].activeRun?.promptMessageId
+    await applyWorkspaceRuntimeEvent(
+      createEvent({
+        id: 'assistant-event-race-exhausted',
+        role: 'assistant',
+        messageId: 'assistant-message-race-exhausted',
+        text: 'Saved the plot.'
+      })
+    )
+    const race = Object.assign(
+      new Error('Artifact finalization Runtime Segment is not durable yet.'),
+      { code: ARTIFACT_OWNERSHIP_PERSISTENCE_RACE }
+    )
+    const saveSession = vi.fn().mockResolvedValue(undefined)
+    const finalizeRunArtifacts = vi.fn().mockImplementation(async () => {
+      throw race
+    })
+
+    await applyWorkspaceRuntimeEvent(createEvent({ id: 'stop-before-race-exhausted', kind: 'stop' }))
+
+    await expect(
+      applyWorkspaceRuntimeEvent(
+        createEvent({
+          id: 'artifact-event-race-exhausted',
+          kind: 'artifact',
+          runId: 'artifact-run-race-exhausted',
+          promptMessageId,
+          artifactSessionId: 'artifact-session-1',
+          artifactClaimId: 'claim-race-exhausted',
+          artifacts: [createArtifactFile({ runId: 'artifact-run-race-exhausted' })]
+        }),
+        { finalizeRunArtifacts, saveSession }
+      )
+    ).rejects.toBe(race)
+
+    // Bounded: a race the writer never resolves must surface instead of looping forever, and each
+    // attempt re-persists the graph first so the writer has a chance to deliver.
+    expect(finalizeRunArtifacts).toHaveBeenCalledTimes(3)
+    expect(saveSession).toHaveBeenCalledTimes(3)
+  })
+
   it('keeps a proof failure terminal when only its human message resembles the old race text', async () => {
     await applyWorkspaceRuntimeEvent(
       createEvent({
@@ -1973,7 +2015,7 @@ describe('workspace runtime events', () => {
     expect(finalizeRunArtifacts).toHaveBeenCalledOnce()
   })
 
-  it('attempts the recoverable ownership persistence race at most twice', async () => {
+  it('attempts the recoverable ownership persistence race a bounded number of times', async () => {
     await applyWorkspaceRuntimeEvent(
       createEvent({
         id: 'assistant-event-repeated-race',
@@ -2003,8 +2045,8 @@ describe('workspace runtime events', () => {
       )
     ).rejects.toThrow('Durable ownership is still unavailable.')
 
-    expect(finalizeRunArtifacts).toHaveBeenCalledTimes(2)
-    expect(saveSession).toHaveBeenCalledTimes(2)
+    expect(finalizeRunArtifacts).toHaveBeenCalledTimes(3)
+    expect(saveSession).toHaveBeenCalledTimes(3)
   })
 
   it('auto-opens a generated molecule artifact in the preview panel', async () => {
