@@ -11,7 +11,11 @@ const render = async (): Promise<void> => {
   const { ReferenceImportPanel } = await import('./ReferenceImportPanel')
   act(() => {
     root.render(
-      <ReferenceImportPanel projectId="project-a" sourcePath="/papers/paper.pdf" onClose={vi.fn()} />
+      <ReferenceImportPanel
+        projectId="project-a"
+        sourcePath="/papers/paper.pdf"
+        onClose={vi.fn()}
+      />
     )
   })
   await act(async () => {
@@ -56,7 +60,9 @@ describe('ReferenceImportPanel', () => {
     expect(container.querySelector('[data-testid="reference-import-summary"]')?.textContent).toBe(
       'Added 1 · already present 0 · failed 1'
     )
-    expect(container.querySelector('[data-testid="reference-import-truncated"]')?.textContent).toContain('3')
+    expect(
+      container.querySelector('[data-testid="reference-import-truncated"]')?.textContent
+    ).toContain('3')
     const failures = container.querySelector('[data-testid="reference-import-failures"]')
     expect(failures?.textContent).toContain('10.1101/dead.2020.001')
     expect(failures?.textContent).toContain('no metadata found for this DOI')
@@ -76,7 +82,9 @@ describe('ReferenceImportPanel', () => {
       configurable: true,
       value: {
         references: {
-          importDoisFromPdf: vi.fn().mockRejectedValue(new Error('The PDF reader is not available yet.'))
+          importDoisFromPdf: vi
+            .fn()
+            .mockRejectedValue(new Error('The PDF reader is not available yet.'))
         }
       }
     })

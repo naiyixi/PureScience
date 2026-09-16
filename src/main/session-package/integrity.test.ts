@@ -8,14 +8,30 @@ import { verifySessionPackageIntegrity } from './integrity'
 const sha256 = (value: string): string =>
   createHash('sha256').update(Buffer.from(value)).digest('hex')
 
-const entry = (path: string, contents: string, overrides: Record<string, unknown> = {}) => ({
+type PackageEntry = {
+  path: string
+  bytes: number
+  sha256: string
+  omitted?: boolean
+}
+
+const entry = (
+  path: string,
+  contents: string,
+  overrides: Record<string, unknown> = {}
+): PackageEntry & Record<string, unknown> => ({
   path,
   bytes: Buffer.byteLength(contents),
   sha256: sha256(contents),
   ...overrides
 })
 
-const manifest = (entries: ReturnType<typeof entry>[]) => ({ app: { version: '1.61.0' }, entries })
+const manifest = (
+  entries: PackageEntry[]
+): { app: { version: string }; entries: PackageEntry[] } => ({
+  app: { version: '1.61.0' },
+  entries
+})
 
 const bytes = (values: Record<string, string>): Map<string, Uint8Array> =>
   new Map(Object.entries(values).map(([path, value]) => [path, Buffer.from(value)]))
