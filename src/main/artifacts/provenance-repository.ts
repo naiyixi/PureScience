@@ -220,6 +220,9 @@ type ArtifactProjectReconciliationState = {
 
 const artifactProjectReconciliationState = Symbol('artifactProjectReconciliationState')
 
+// A browse path, not an audit: listing every never-published Version of a Project stays bounded.
+const ARTIFACT_UNPUBLISHED_LIST_LIMIT = 200
+
 // Opaque outside this module: callers may route a Project-scoped snapshot but cannot inspect or
 // construct its publication state. This keeps compatibility layout knowledge inside Provenance.
 export type ArtifactProjectReconciliationSnapshot = {
@@ -2743,6 +2746,27 @@ class ArtifactProvenanceRepository {
 
     return Promise.all(
       versions.map((version) => this.toArtifactVersionFile(version, projectId, appSessionId))
+    )
+  }
+
+  // Versions whose run never published them, for the Project as a whole: what a reader needs to say
+  // "this file was produced but never became an artifact" instead of showing nothing at all.
+  async listUnpublishedProjectVersions(projectIdInput: string): Promise<ArtifactVersionFile[]> {
+    const projectId = assertSafeSegment(projectIdInput, 'project id')
+    const client = await this.options.getClient()
+    const versions = await client.artifactVersion.findMany({
+      where: {
+        state: ARTIFACT_VERSION_UNPUBLISHED,
+        artifact: { is: { projectId } }
+      },
+      include: { artifact: true },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      take: ARTIFACT_UNPUBLISHED_LIST_LIMIT
+    })
+    return Promise.all(
+      versions.map((version) =>
+        this.toArtifactVersionFile(version, version.artifact.projectId, version.artifact.sessionId)
+      )
     )
   }
 

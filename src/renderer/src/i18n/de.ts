@@ -2601,6 +2601,9 @@ export const de: Partial<Record<ZhKey, string>> = {
   'ws.networkAccess': 'Netzwerkzugriff',
   'ws.newConversation': 'Neue Konversation',
   'ws.nextArtifactVersion': 'Nächste Artefaktversion',
+  'ws.unpublishedArtifacts': 'Erzeugt, aber nicht veröffentlicht: {n}',
+  'ws.unpublishedArtifactsHint':
+    'Diese Dateien wurden von einem Agentenlauf erzeugt, aber dieser Lauf hat die Veröffentlichung nie abgeschlossen – sie sind daher keine Artefakte. Der Inhalt liegt weiterhin auf der Festplatte.',
   'ws.noFilesYet': 'Noch keine Dateien',
   'ws.noReviewForVersion': 'Keine Überprüfung für diese Version',
   'ws.none': 'Keine',

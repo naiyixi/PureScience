@@ -104,6 +104,7 @@ type ArtifactHandlerDependencies = {
     | 'getVersionReview'
     | 'resolveVersionDescriptors'
     | 'resolveVersionContent'
+    | 'listUnpublishedProjectVersions'
   >
   codeReconstruction?: {
     get(request: GetArtifactCodeReconstructionRequest): Promise<ArtifactCodeReconstructionState>
@@ -181,8 +182,20 @@ const createArtifactHandlers = (
             : finalize()
         })
       ),
-    listProjectFiles: (request) =>
-      repository.listProjectArtifacts(request.projectName, inFlightRunIds()),
+    listProjectFiles: async (request) => {
+      const files = await repository.listProjectArtifacts(request.projectName, inFlightRunIds())
+      // A produced-but-never-published Version is absent from the compatibility listing. Show it anyway,
+      // named for what it is, so "the run produced this file" and "this file became an artifact" cannot
+      // be mistaken for each other. Without a Provenance authority there is nothing extra to add.
+      if (!dependencies.provenance?.listUnpublishedProjectVersions) return files
+      const unpublished = await dependencies.provenance.listUnpublishedProjectVersions(
+        request.projectName
+      )
+      return [
+        ...files,
+        ...unpublished.map((version) => ({ ...version, publication: 'unpublished' as const }))
+      ]
+    },
     reconcilePendingArtifacts: (request) =>
       withDataRootWrite(() => repository.reconcilePendingArtifactPaths(request)),
     openFile: async (request) => {
@@ -406,6 +419,7 @@ const registerArtifactIpcHandlers = (
     | 'getVersionReview'
     | 'resolveVersionDescriptors'
     | 'resolveVersionContent'
+    | 'listUnpublishedProjectVersions'
   >,
   withSessionMutation?: ArtifactHandlerDependencies['withSessionMutation'],
   handlers: ArtifactHandlers = createArtifactHandlers(repository, runRegistry, {

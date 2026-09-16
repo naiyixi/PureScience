@@ -2360,6 +2360,9 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'ws.networkAccess': '網路存取',
   'ws.newConversation': '新對話',
   'ws.nextArtifactVersion': '下一個產物版本',
+  'ws.unpublishedArtifacts': '已產生但未發佈：{n}',
+  'ws.unpublishedArtifactsHint':
+    '這些檔案由智慧體產生，但該次執行沒有完成發佈，因此它們不是產物。內容仍在磁碟上。',
   'ws.noFilesYet': '還沒有檔案',
   'ws.noReviewForVersion': '此版本沒有審查',
   'ws.none': '無',

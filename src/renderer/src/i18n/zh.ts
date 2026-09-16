@@ -2193,6 +2193,9 @@ export const zh = {
   'ws.clearFileSearch': '清除文件搜索',
   'ws.someFilesNotIndexed': '部分文件尚无法索引。',
   'ws.retryIndexing': '重试索引项目文件',
+  'ws.unpublishedArtifacts': '已生成但未发布：{n}',
+  'ws.unpublishedArtifactsHint':
+    '这些文件由智能体生成，但该次运行没有完成发布，因此它们不是产物。内容仍在磁盘上。',
   'ws.noFilesYet': '还没有文件',
   'ws.loadMoreUploaded': '加载更多上传文件',
 

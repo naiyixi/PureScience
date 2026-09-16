@@ -21,6 +21,7 @@ import {
 import { ToggleGroup } from 'radix-ui'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLanguage } from '@/i18n'
+import { useProjectArtifactFiles } from './use-project-artifact-files'
 
 import {
   DropdownMenu,
@@ -1166,6 +1167,11 @@ const ProjectFilesViewContent = ({
   previewReader: ProjectFilePreviewReader
 }): React.JSX.Element => {
   const { t } = useLanguage()
+  // Files an agent run produced without ever publishing them. They are not artifacts, so they are shown
+  // separately: a reader must not have to guess why a file they can see is not in the library.
+  const unpublishedArtifacts = useProjectArtifactFiles(activeProjectId).filter(
+    (file) => file.publication === 'unpublished'
+  )
   const allSessions = useSessionStore((state) => state.sessions)
   const isFilesExpanded = usePreviewWorkbenchStore(
     (state) => state.expandedToolItemId === PROJECT_FILES_PREVIEW_ID
@@ -1852,6 +1858,25 @@ const ProjectFilesViewContent = ({
               >
                 {catalogIndex.isRepairing ? 'Retrying...' : 'Retry'}
               </Button>
+            </div>
+          ) : null}
+
+          {unpublishedArtifacts.length > 0 ? (
+            <div
+              data-testid="unpublished-artifacts-notice"
+              className="mx-4 mb-2 border-l-2 border-border px-3 py-2 text-[11px] text-text-200"
+            >
+              <div className="font-medium text-text-000">
+                {t('ws.unpublishedArtifacts').replace('{n}', String(unpublishedArtifacts.length))}
+              </div>
+              <p className="mt-1">{t('ws.unpublishedArtifactsHint')}</p>
+              <ul className="mt-1 list-disc pl-4">
+                {unpublishedArtifacts.slice(0, 5).map((file) => (
+                  <li key={file.id} className="truncate">
+                    {file.name}
+                  </li>
+                ))}
+              </ul>
             </div>
           ) : null}
 

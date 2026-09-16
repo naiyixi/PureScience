@@ -2542,6 +2542,9 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'ws.networkAccess': 'ネットワークアクセス',
   'ws.newConversation': '新しい会話',
   'ws.nextArtifactVersion': '次の成果物バージョン',
+  'ws.unpublishedArtifacts': '生成済み・未公開：{n}',
+  'ws.unpublishedArtifactsHint':
+    'これらのファイルはエージェントの実行が生成しましたが、その実行は公開を完了していないため、成果物ではありません。内容はディスク上に残っています。',
   'ws.noFilesYet': 'ファイルはまだありません',
   'ws.noReviewForVersion': 'このバージョンのレビューはありません',
   'ws.none': 'なし',

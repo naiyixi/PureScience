@@ -2346,6 +2346,9 @@ export const en: Record<ZhKey, string> = {
   'ws.clearFileSearch': 'Clear file search',
   'ws.someFilesNotIndexed': 'Some files could not be indexed yet.',
   'ws.retryIndexing': 'Retry indexing project files',
+  'ws.unpublishedArtifacts': 'Produced but not published: {n}',
+  'ws.unpublishedArtifactsHint':
+    'An agent run produced these files, but that run never finished publishing, so they are not artifacts. Their content is still on disk.',
   'ws.noFilesYet': 'No files yet',
   'ws.loadMoreUploaded': 'Load more uploaded files',
 

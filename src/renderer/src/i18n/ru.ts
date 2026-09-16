@@ -2539,6 +2539,9 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'ws.networkAccess': 'Доступ к сети',
   'ws.newConversation': 'Новый диалог',
   'ws.nextArtifactVersion': 'Следующая версия артефакта',
+  'ws.unpublishedArtifacts': 'Создано, но не опубликовано: {n}',
+  'ws.unpublishedArtifactsHint':
+    'Эти файлы создал запуск агента, но он так и не завершил публикацию, поэтому они не являются артефактами. Содержимое осталось на диске.',
   'ws.noFilesYet': 'Файлов пока нет',
   'ws.noReviewForVersion': 'Для этой версии нет проверки',
   'ws.none': 'Нет',

@@ -486,6 +486,38 @@ describe('ProjectFilesView', () => {
     expect(container.textContent).toContain('No files yet')
   })
 
+  it('names files a run produced but never published, without calling them artifacts', async () => {
+    await renderView([], false, () => {
+      vi.mocked(window.api.artifacts.listProjectFiles).mockResolvedValue([
+        {
+          id: 'version-unpublished-1',
+          projectName: 'default',
+          sessionId: 'session-1',
+          name: 'FINAL_REPORT.md',
+          path: '/artifacts/default/session-1/.provenance/FINAL_REPORT.md/content',
+          fileUrl: 'file:///artifacts/FINAL_REPORT.md',
+          size: 42,
+          mtimeMs: 1,
+          publication: 'unpublished'
+        }
+      ])
+    })
+
+    const notice = container.querySelector('[data-testid="unpublished-artifacts-notice"]')
+    expect(notice).not.toBeNull()
+    // The count is the point: the reader learns how many files exist in that state.
+    expect(notice?.textContent).toContain('Produced but not published: 1')
+    expect(notice?.textContent).toContain('FINAL_REPORT.md')
+    // And the wording must not present them as artifacts.
+    expect(notice?.textContent).toContain('they are not artifacts')
+  })
+
+  it('says nothing about unpublished files when every produced file was published', async () => {
+    await renderView([])
+
+    expect(container.querySelector('[data-testid="unpublished-artifacts-notice"]')).toBeNull()
+  })
+
   it('hides archived session artifacts and their filter option', async () => {
     await renderView([
       createSession({

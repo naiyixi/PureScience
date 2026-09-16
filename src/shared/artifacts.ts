@@ -19,6 +19,9 @@ export type ArtifactFile = {
   createdAt?: string
   producerRunId?: string
   environment?: string
+  // Present only when a produced Version was never published: its run closed without ever writing a
+  // publication intent, so the file exists on disk but is not an artifact. Absent on published files.
+  publication?: 'unpublished'
 }
 
 // A user-picked reference to an existing file (upload or generated output) inserted via the

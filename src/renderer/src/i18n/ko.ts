@@ -2489,6 +2489,9 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'ws.networkAccess': '네트워크 액세스',
   'ws.newConversation': '새 대화',
   'ws.nextArtifactVersion': '다음 산출물 버전',
+  'ws.unpublishedArtifacts': '생성되었지만 게시되지 않음: {n}',
+  'ws.unpublishedArtifactsHint':
+    '이 파일들은 에이전트 실행이 생성했지만 해당 실행이 게시를 완료하지 않아 산출물이 아닙니다. 내용은 디스크에 남아 있습니다.',
   'ws.noFilesYet': '아직 파일이 없습니다',
   'ws.noReviewForVersion': '이 버전에 대한 검토가 없습니다',
   'ws.none': '없음',
