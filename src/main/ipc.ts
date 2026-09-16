@@ -39,6 +39,7 @@ import { createAcpTaskAgentPort } from './acp/task-agent-port'
 import { ArtifactCodeReconstructionRunner } from './acp/artifact-code-reconstruction-runner'
 import { ArchiveCoordinator } from './archive/coordinator'
 import { ArtifactCodeReconstructionService } from './artifacts/code-reconstruction'
+import { createArtifactReplayAdapter } from './artifacts/replay-composition'
 import {
   createArtifactHandlers,
   createDefaultArtifactRepository,
@@ -2320,6 +2321,12 @@ const createApplicationModules = async (
       runtimeRef.current ? runtimeRef.current.getActiveArtifactRunIds() : [],
     provenance: artifactProvenanceRepository,
     codeReconstruction,
+    // Re-runs go through the same notebook execution the original run used, in a throwaway directory.
+    replay: createArtifactReplayAdapter({
+      provenance: artifactProvenanceRepository,
+      executeNotebook: (request) => notebookCommands.execute(request),
+      appVersion: () => app.getVersion()
+    }),
     withSessionMutation: (projectId, sessionId, mutation) =>
       sessionPersistenceCoordinator.runSessionMutation(projectId, sessionId, mutation)
   })

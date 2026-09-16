@@ -184,6 +184,8 @@ const dataContentApplicationCommands = Object.freeze({
     'artifacts:resolve-version-descriptors',
     'resolveVersionDescriptors'
   ),
+  // Re-runs a recorded version and compares the result with what it recorded producing.
+  artifactReplayVersion: artifactCommand('artifacts:replay-version', 'replayVersion'),
   lifecycleClientId: defineApplicationCommand<'lifecycle:client-id', readonly [], string>(
     'lifecycle:client-id'
   ),
@@ -279,6 +281,7 @@ const dataContentApplicationCommandGroups = Object.freeze([
     dataContentApplicationCommands.artifactOpenFile,
     dataContentApplicationCommands.artifactReadPreview,
     dataContentApplicationCommands.artifactReconcilePending,
+    dataContentApplicationCommands.artifactReplayVersion,
     dataContentApplicationCommands.artifactResolveVersionDescriptors,
     dataContentApplicationCommands.artifactWriteUserEditedVersion
   ] as const),
@@ -414,6 +417,7 @@ const registerDataContentApplicationCommands = (
       'artifacts:read-preview': ({ args }) => dependencies.artifacts.readPreview(args[0]),
       'artifacts:reconcile-pending': ({ args }) =>
         dependencies.artifacts.reconcilePendingArtifacts(args[0]),
+      'artifacts:replay-version': ({ args }) => dependencies.artifacts.replayVersion(args[0]),
       'artifacts:resolve-version-descriptors': ({ args }) =>
         dependencies.artifacts.resolveVersionDescriptors(args[0]),
       'artifacts:write-user-edited-version': ({ args }) =>

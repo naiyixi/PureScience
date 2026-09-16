@@ -207,6 +207,7 @@ type DataContentCommandKey = keyof typeof dataContentApplicationCommands
 const WRAPPED_COMMAND_KEYS = [
   'artifactFinalizeRun',
   'artifactOpenFile',
+  'artifactReplayVersion',
   'lifecycleClientId',
   'projectCreate',
   'projectDelete',
@@ -242,7 +243,7 @@ const dispatchCommand = (
 }
 
 describe('Data and content application commands', () => {
-  it('owns exactly the 48 current data and content invoke channels', () => {
+  it('owns exactly the 49 current data and content invoke channels', () => {
     expect(registeredCommands()).toEqual(
       [
         'artifacts:finalize-run',
@@ -257,6 +258,7 @@ describe('Data and content application commands', () => {
         'artifacts:open-file',
         'artifacts:read-preview',
         'artifacts:reconcile-pending',
+        'artifacts:replay-version',
         'artifacts:resolve-version-descriptors',
         'artifacts:write-user-edited-version',
         'lifecycle:client-id',

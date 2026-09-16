@@ -25,6 +25,7 @@ import type {
   ReferenceCollection
 } from '../shared/references'
 import type { IdentifierKind } from '../main/references/service'
+import type { ReplayVersionRequest, ReplayVersionResult } from '../shared/artifact-replay'
 import type {
   FolderGrant,
   FolderGrantRequest,
@@ -885,6 +886,8 @@ export interface PureScienceAPI {
     resolveVersionDescriptors(
       request: ResolveArtifactVersionDescriptorsRequest
     ): Promise<ArtifactVersionDescriptor[]>
+    /** Re-runs a recorded version and reports whether the result came back the same. */
+    replayVersion(request: ReplayVersionRequest): Promise<ReplayVersionResult>
     writeUserEditedVersion(request: WriteUserEditedVersionRequest): Promise<ArtifactFile>
   }
   uploads: {

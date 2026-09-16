@@ -85,6 +85,27 @@ export type ReplayReport = {
   reasons: readonly string[]
 }
 
+/** Whether the re-run rebuilt the recorded environment (`applied`) or only ran the same code. */
+export type ReplayExecutionEnvironment = 'applied' | 'not-applied'
+
+export type ReplayExecution = {
+  /** How the code was run — `notebook:python` is the app's own execution path. */
+  via: string
+  exitCode: number | null
+  timedOut: boolean
+  durationMs: number
+  /** Kept so a failed run can be read: the tail of stderr, never the whole buffer. */
+  stderrTail: string
+}
+
+export type ReplayRunOutcome = {
+  report: ReplayReport
+  environmentLock: ReplayExecutionEnvironment
+  execution: ReplayExecution | { skipped: 'reconstructed-recipe' }
+  /** The re-run's own environment manifest checksum, when the kernel reported one. */
+  environmentManifestChecksum?: string
+}
+
 /** Above this size the byte-level comparison would read more than a verification is worth. */
 export const MAX_BYTE_COMPARISON_BYTES = 64 * 1024 * 1024
 

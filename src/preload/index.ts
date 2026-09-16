@@ -685,7 +685,8 @@ const api: PureScienceAPI = {
     generateCodeReconstruction: (request) =>
       electronRendererContracts.invoke('artifacts.generateCodeReconstruction', request),
     resolveVersionDescriptors: (request) =>
-      electronRendererContracts.invoke('artifacts.resolveVersionDescriptors', request)
+      electronRendererContracts.invoke('artifacts.resolveVersionDescriptors', request),
+    replayVersion: (request) => electronRendererContracts.invoke('artifacts.replayVersion', request)
   },
   uploads: {
     // Upload IPC remains behind the preload bridge so renderer code never receives raw fs access.

@@ -25,6 +25,7 @@ import type {
   GetArtifactCodeReconstructionRequest
 } from '../../shared/artifact-code-reconstruction'
 import { parseArtifactVersionLocator } from '../../shared/artifact-provenance'
+import type { ReplayVersionRequest, ReplayVersionResult } from '../../shared/artifact-replay'
 import type {
   FinalizeRunArtifactsRequest,
   ListProjectArtifactsRequest,
@@ -48,6 +49,8 @@ import {
 const log = createLogger('artifacts:finalization')
 
 type ArtifactHandlers = {
+  /** Re-runs a recorded version and compares the result with what it recorded producing. */
+  replayVersion: (request: ReplayVersionRequest) => Promise<ReplayVersionResult>
   finalizeRunArtifacts: (request: FinalizeRunArtifactsRequest) => Promise<ArtifactFile[]>
   listProjectFiles: (request: ListProjectArtifactsRequest) => Promise<ArtifactFile[]>
   reconcilePendingArtifacts: (request: ReconcilePendingArtifactsRequest) => Promise<ArtifactFile[]>
@@ -107,6 +110,10 @@ type ArtifactHandlerDependencies = {
     generate(
       request: GenerateArtifactCodeReconstructionRequest
     ): Promise<ArtifactCodeReconstructionState>
+  }
+  /** Re-running a recorded version and comparing the result with what it recorded producing. */
+  replay?: {
+    replayVersion: (request: ReplayVersionRequest) => Promise<ReplayVersionResult>
   }
 }
 
@@ -246,6 +253,10 @@ const createArtifactHandlers = (
     resolveVersionDescriptors: (request) => {
       if (!dependencies.provenance) throw new Error('Artifact Provenance is not configured.')
       return dependencies.provenance.resolveVersionDescriptors(request)
+    },
+    replayVersion: (request) => {
+      if (!dependencies.replay) throw new Error('Artifact replay is not configured.')
+      return dependencies.replay.replayVersion(request)
     }
   }
 }
@@ -469,6 +480,9 @@ const registerArtifactIpcHandlers = (
     'artifacts:resolve-version-descriptors',
     (_event, request: ResolveArtifactVersionDescriptorsRequest) =>
       handlers.resolveVersionDescriptors(request)
+  )
+  ipcMainHandle('artifacts:replay-version', (_event, request: ReplayVersionRequest) =>
+    handlers.replayVersion(request)
   )
 }
 

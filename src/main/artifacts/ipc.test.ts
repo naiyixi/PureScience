@@ -844,6 +844,7 @@ describe('artifact IPC handler registration', () => {
       'artifacts:open-file',
       'artifacts:read-preview',
       'artifacts:reconcile-pending',
+      'artifacts:replay-version',
       'artifacts:resolve-version-descriptors',
       'artifacts:write-user-edited-version'
     ])
@@ -885,6 +886,7 @@ describe('artifact IPC handler registration', () => {
   it('preserves an injected handler identity when registration fails', async () => {
     const failure = new Error('registration failed')
     const injected: ArtifactHandlers = {
+      replayVersion: vi.fn(),
       finalizeRunArtifacts: vi.fn(),
       listProjectFiles: vi.fn().mockResolvedValue([]),
       reconcilePendingArtifacts: vi.fn(),
