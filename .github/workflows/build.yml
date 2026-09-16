@@ -268,13 +268,19 @@ jobs:
         run: |
           npm run build:e2e
           npm run build:web
-          # Nightly: override the packaged version with `<base>-nightly.<short-sha>` (valid semver
-          # prerelease). Every artifactName template uses ${version}, so this alone makes nightly
-          # filenames distinct from stable ones and ties each build to its commit.
+          # Nightly: override the packaged version with `<base>-nightly.g<short-sha>`. Every artifactName
+          # template uses ${version}, so this alone makes nightly filenames distinct from stable ones and
+          # ties each build to its commit.
+          #
+          # The `g` prefix is not decoration: a prerelease identifier made only of digits must not have a
+          # leading zero, so an all-digit short SHA (`1.61.0-nightly.0469190`) is NOT valid semver and
+          # electron-updater rejects the app version — the packaged nightly then fails to start its update
+          # strategy and the installer smoke times out waiting for the web service. Prefixing a letter keeps
+          # the identifier alphanumeric, which the spec allows unconditionally.
           eb_ver=()
           if [ "${{ inputs.nightly }}" = "true" ]; then
             base=$(node -p "require('./package.json').version")
-            eb_ver=(-c.extraMetadata.version="${base}-nightly.${GITHUB_SHA::7}")
+            eb_ver=(-c.extraMetadata.version="${base}-nightly.g${GITHUB_SHA::7}")
           fi
           if [ "${{ steps.mac_signing.outputs.enabled }}" = "true" ]; then
             # Stable build with a Developer ID cert -> SIGN ONLY (notarize:false). Notarization +

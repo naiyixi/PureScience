@@ -249,6 +249,23 @@ describe('post-merge Windows validation', () => {
     expect(commands.some((command) => command.startsWith('npm run typecheck'))).toBe(false)
   })
 
+  it('keeps the nightly version a valid semver prerelease', () => {
+    const workflow = readWorkflow('build.yml')
+    const build = findStep(workflow.jobs.build, 'Build & package')
+    const versionFlag =
+      build.run
+        ?.split('\n')
+        .map((line) => line.trim())
+        .find((line) => line.includes('extraMetadata.version')) ?? ''
+
+    // A prerelease identifier made only of digits must not carry a leading zero, so an all-digit short
+    // SHA (`1.61.0-nightly.0469190`) is not valid semver: electron-updater rejects the packaged app
+    // version and the installer smoke times out waiting for the web service. The letter prefix keeps the
+    // identifier alphanumeric, which the spec always allows.
+    expect(versionFlag).toContain('-nightly.g${GITHUB_SHA::7}')
+    expect(versionFlag).not.toMatch(/-nightly\.\$\{GITHUB_SHA/)
+  })
+
   it('records unsigned Windows update diagnostics without blocking publishing', () => {
     const release = readWorkflow('release.yml')
     const upgrade = release.jobs['windows-upgrade-smoke']
