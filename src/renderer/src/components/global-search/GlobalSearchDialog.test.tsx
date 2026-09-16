@@ -15,6 +15,11 @@ import { useNavigationStore } from '@/stores/navigation-store'
 
 import { GlobalSearchDialog } from './GlobalSearchDialog'
 
+// React's act() refuses to run unless the environment opts in, and jsdom has no scrollIntoView, which the
+// Select primitive calls when it opens.
+;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+Element.prototype.scrollIntoView = Element.prototype.scrollIntoView ?? ((): void => {})
+
 let container: HTMLDivElement
 let root: Root
 
@@ -210,6 +215,76 @@ describe('GlobalSearchDialog', () => {
       artifactId: 'artifact-1',
       projectId: 'project-a'
     })
+  })
+
+  // The interaction the filter bar exists for: choosing a sender has to reach the search as a filter.
+  it('sends the chosen sender filter with the search and offers to clear it', async () => {
+    const query = window.api.search.query as unknown as ReturnType<typeof vi.fn>
+    query.mockResolvedValue({
+      schemaVersion: 1,
+      query: '注意力',
+      scopes: ['sessions', 'messages', 'files', 'literature'],
+      hits: [
+        {
+          scope: 'messages',
+          id: 'message-1',
+          projectId: 'project-a',
+          title: '注意力机制研究',
+          score: 4,
+          matches: [{ field: 'body', snippet: '…注意力机制…', offset: 0 }],
+          sessionId: 'session-a',
+          messageId: 'message-1',
+          role: 'user'
+        }
+      ],
+      counts: { sessions: 0, messages: 1, files: 0, literature: 0 },
+      truncated: false,
+      scan: { sessions: 1, messages: 1, files: 0, references: 0, bounded: false },
+      appliedLimit: 100,
+      notes: []
+    })
+
+    await act(async () => {
+      root.render(<GlobalSearchDialog open onOpenChange={vi.fn()} isSessionPersistenceReady />)
+      await new Promise((resolve) => window.setTimeout(resolve, 20))
+    })
+
+    const input = document.body.querySelector<HTMLInputElement>('input[role="combobox"]')
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set
+    await act(async () => {
+      setter?.call(input, '注意力')
+      input?.dispatchEvent(new Event('input', { bubbles: true }))
+      await new Promise((resolve) => window.setTimeout(resolve, 500))
+    })
+    expect(query).toHaveBeenCalled()
+
+    const bar = document.body.querySelector('[data-testid="global-search-filters"]')
+    expect(bar).not.toBeNull()
+    const trigger = bar?.querySelector('button')
+    expect(trigger).not.toBeNull()
+
+    await act(async () => {
+      trigger?.dispatchEvent(
+        new MouseEvent('pointerdown', { bubbles: true, cancelable: true, button: 0 })
+      )
+      trigger?.click()
+      await new Promise((resolve) => window.setTimeout(resolve, 50))
+    })
+
+    const option = [...document.body.querySelectorAll('[role="option"], [role="menuitem"]')].find(
+      (node) => /^(助手|Agent)$/.test(node.textContent?.trim() ?? '')
+    )
+    expect(option).toBeDefined()
+
+    await act(async () => {
+      ;(option as HTMLElement).click()
+      await new Promise((resolve) => window.setTimeout(resolve, 500))
+    })
+
+    expect(query.mock.calls.at(-1)?.[0]).toMatchObject({ role: 'agent' })
+    expect(
+      document.body.querySelector('[data-testid="global-search-filters-clear"]')
+    ).not.toBeNull()
   })
 
   it('keeps the result list scrollable and the shortcut footer outside the scroll viewport', async () => {
