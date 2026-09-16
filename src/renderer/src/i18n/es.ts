@@ -3,6 +3,15 @@ import type { ZhKey } from './zh'
 
 export const es: Partial<Record<ZhKey, string>> = {
   'common.cancel': 'Cancelar',
+  'gs.showMore': '+{n} coincidencias más — mostrar más',
+  'gs.filterSender': 'Remitente',
+  'gs.filterFormat': 'Formato de archivo',
+  'gs.filterReferenceType': 'Tipo de referencia',
+  'gs.filterAny': 'Todos',
+  'gs.filterSenderUser': 'Yo',
+  'gs.filterSenderAgent': 'Agente',
+  'gs.filterClear': 'Borrar filtros',
+  'gs.loadingMore': 'Cargando más…',
   'common.retry': 'Reintentar',
   'common.saving': 'Guardando…',
   'common.creating': 'Creando…',

@@ -16,6 +16,13 @@ import { Button } from '@/components/ui/button'
 import { dialogOverlayClassName, dialogPanelClassName } from '@/components/ui/dialog-chrome'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { resolveCustomizeProjectId } from '@/lib/last-opened-project'
 import { cn } from '@/lib/utils'
@@ -58,6 +65,7 @@ type SelectableRow =
   | { kind: 'artifact'; artifact: ProjectFileItem }
   | { kind: 'more-sessions' }
   | { kind: 'more-artifacts' }
+  | { kind: 'more-content' }
   | { kind: 'retry-artifacts' }
   | { kind: 'content'; hit: GlobalSearchHit }
   | { kind: 'new-session' }
@@ -135,6 +143,13 @@ export const GlobalSearchDialog = ({
   const requestVersionRef = useRef(0)
   const listboxId = useId()
   const [query, setQuery] = useState('')
+  // Filters are state of the search, not of the results: changing one re-asks, and the pages that come
+  // back are pages of what was asked for.
+  const [contentFilters, setContentFilters] = useState<{
+    role?: 'user' | 'agent'
+    extension?: string
+    referenceType?: 'doi' | 'arxiv' | 'pmid' | 'pmcid'
+  }>({})
   const [visibleSessionCount, setVisibleSessionCount] = useState(GLOBAL_SEARCH_PAGE_SIZE)
   const [artifacts, setArtifacts] = useState<ArtifactState>(emptyArtifactState)
   const [artifactStatus, setArtifactStatus] = useState<'idle' | 'loading' | 'error'>('idle')
@@ -395,9 +410,21 @@ export const GlobalSearchDialog = ({
   const contentSearch = useContentSearch({
     query,
     ...(primaryProject ? { projectId: primaryProject.id } : {}),
-    enabled: isSearchMode
+    enabled: isSearchMode,
+    ...(contentFilters.role || contentFilters.extension || contentFilters.referenceType
+      ? {
+          filters: {
+            ...(contentFilters.role ? { role: contentFilters.role } : {}),
+            ...(contentFilters.extension ? { extensions: [contentFilters.extension] } : {}),
+            ...(contentFilters.referenceType
+              ? { referenceTypes: [contentFilters.referenceType] }
+              : {})
+          }
+        }
+      : {})
   })
-  const contentResponse = contentSearch.state === 'ready' ? contentSearch.response : undefined
+  const contentResponse =
+    contentSearch.state.state === 'ready' ? contentSearch.state.response : undefined
   const contentHits = useMemo(() => contentResponse?.hits ?? [], [contentResponse])
 
   const selectableRows = useMemo<SelectableRow[]>(() => {
@@ -417,6 +444,9 @@ export const GlobalSearchDialog = ({
       ...contentHits.map((hit) => ({ kind: 'content' as const, hit })),
       ...(artifactError ? [{ kind: 'retry-artifacts' as const }] : []),
       ...(canLoadMoreArtifacts ? [{ kind: 'more-artifacts' as const }] : []),
+      // The content search pages through the message/session/file/literature hits. Its cursor is offered
+      // by the search itself, so the row only appears when there is genuinely more of it.
+      ...(contentSearch.hasMore ? [{ kind: 'more-content' as const }] : []),
       ...(sessionGroups?.primary.map((session) => ({ kind: 'session' as const, session })) ?? []),
       ...(sessionMoreCount > 0 ? [{ kind: 'more-sessions' as const }] : []),
       ...otherRows,
@@ -426,6 +456,7 @@ export const GlobalSearchDialog = ({
     canLoadMoreArtifacts,
     artifactError,
     contentHits,
+    contentSearch.hasMore,
     displayedArtifacts,
     isProjectScope,
     isSearchMode,
@@ -523,6 +554,10 @@ export const GlobalSearchDialog = ({
         setVisibleSessionCount((count) => count + GLOBAL_SEARCH_PAGE_SIZE)
         return
       }
+      if (row.kind === 'more-content') {
+        contentSearch.loadMore()
+        return
+      }
       if (row.kind === 'more-artifacts' && artifacts.nextCursor) {
         void reloadArtifacts(artifacts.nextCursor)
         return
@@ -543,6 +578,7 @@ export const GlobalSearchDialog = ({
       }
     },
     [
+      contentSearch,
       artifacts.nextCursor,
       canMentionArtifact,
       close,
@@ -969,6 +1005,92 @@ export const GlobalSearchDialog = ({
               </span>
             ) : null}
           </div>
+          {isSearchMode ? (
+            <div
+              data-testid="global-search-filters"
+              className="mt-2 flex flex-wrap items-center gap-2 px-1"
+            >
+              <Select
+                value={contentFilters.role ?? 'any'}
+                onValueChange={(value) =>
+                  setContentFilters((current) => ({
+                    ...current,
+                    role: value === 'any' ? undefined : (value as 'user' | 'agent')
+                  }))
+                }
+              >
+                <SelectTrigger
+                  aria-label={t('gs.filterSender')}
+                  className="h-8 w-auto gap-2 text-xs"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="any">{t('gs.filterAny')}</SelectItem>
+                  <SelectItem value="user">{t('gs.filterSenderUser')}</SelectItem>
+                  <SelectItem value="agent">{t('gs.filterSenderAgent')}</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select
+                value={contentFilters.extension ?? 'any'}
+                onValueChange={(value) =>
+                  setContentFilters((current) => ({
+                    ...current,
+                    extension: value === 'any' ? undefined : value
+                  }))
+                }
+              >
+                <SelectTrigger
+                  aria-label={t('gs.filterFormat')}
+                  className="h-8 w-auto gap-2 text-xs"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="any">{t('gs.filterAny')}</SelectItem>
+                  {['csv', 'json', 'md', 'tsv', 'tex', 'bib'].map((extension) => (
+                    <SelectItem key={extension} value={extension}>
+                      .{extension}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={contentFilters.referenceType ?? 'any'}
+                onValueChange={(value) =>
+                  setContentFilters((current) => ({
+                    ...current,
+                    referenceType:
+                      value === 'any' ? undefined : (value as 'doi' | 'arxiv' | 'pmid' | 'pmcid')
+                  }))
+                }
+              >
+                <SelectTrigger
+                  aria-label={t('gs.filterReferenceType')}
+                  className="h-8 w-auto gap-2 text-xs"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="any">{t('gs.filterAny')}</SelectItem>
+                  <SelectItem value="doi">DOI</SelectItem>
+                  <SelectItem value="arxiv">arXiv</SelectItem>
+                  <SelectItem value="pmid">PubMed</SelectItem>
+                </SelectContent>
+              </Select>
+              {contentFilters.role || contentFilters.extension || contentFilters.referenceType ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-8 px-2 text-xs text-muted-foreground"
+                  data-testid="global-search-filters-clear"
+                  onClick={() => setContentFilters({})}
+                >
+                  {t('gs.filterClear')}
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
           <p className="sr-only" aria-live="polite">
             {t('gs.resultsCount').replace('{n}', String(resultCount))}
           </p>
@@ -1047,7 +1169,7 @@ export const GlobalSearchDialog = ({
                           onMouseEnter={() => setActiveIndex(rowIndex - 1)}
                           onClick={() => activate({ kind: 'more-artifacts' })}
                         >
-                          +{artifactMoreCount} more matches — show more
+                          {t('gs.showMore', { n: artifactMoreCount })}
                         </Button>
                       ) : null}
                     </section>
@@ -1072,24 +1194,24 @@ export const GlobalSearchDialog = ({
                           onMouseEnter={() => setActiveIndex(rowIndex - 1)}
                           onClick={() => activate({ kind: 'more-sessions' })}
                         >
-                          +{sessionMoreCount} more matches — show more
+                          {t('gs.showMore', { n: sessionMoreCount })}
                         </Button>
                       ) : null}
                     </section>
                   ) : null}
                   {contentHits.length > 0 ||
-                  contentSearch.state === 'searching' ||
-                  contentSearch.state === 'failed' ||
-                  contentSearch.state === 'ready' ||
+                  contentSearch.state.state === 'searching' ||
+                  contentSearch.state.state === 'failed' ||
+                  contentSearch.state.state === 'ready' ||
                   contentResponse?.notes.length ? (
                     <section role="group" aria-label={t('gs.regionContent')}>
                       <h2 className={sectionTitleClassName}>{t('gs.regionContent')}</h2>
-                      {contentSearch.state === 'searching' && contentHits.length === 0 ? (
+                      {contentSearch.state.state === 'searching' && contentHits.length === 0 ? (
                         <p className="px-4 py-3 text-sm text-muted-foreground">
                           {t('gs.searchingContent')}
                         </p>
                       ) : null}
-                      {contentSearch.state === 'failed' ? (
+                      {contentSearch.state.state === 'failed' ? (
                         <p role="alert" className="px-4 py-3 text-sm text-destructive">
                           {t('gs.contentFailed')}
                         </p>
@@ -1097,7 +1219,7 @@ export const GlobalSearchDialog = ({
                       {/* A finished search that found nothing used to leave no trace at all, so an empty
                           group could not be told apart from a scope that was never searched. Say what was
                           searched instead of disappearing. */}
-                      {contentSearch.state === 'ready' && contentHits.length === 0 ? (
+                      {contentSearch.state.state === 'ready' && contentHits.length === 0 ? (
                         <p
                           data-testid="global-search-content-empty"
                           className="px-4 py-3 text-sm text-muted-foreground"
@@ -1143,6 +1265,27 @@ export const GlobalSearchDialog = ({
                         </p>
                       ) : null}
                       {contentHits.map((hit) => renderContentRow(hit, nextIndex()))}
+                      {contentSearch.hasMore ? (
+                        <Button
+                          id={`global-search-option-${nextIndex()}`}
+                          type="button"
+                          role="option"
+                          aria-selected={activeRowIndex === rowIndex - 1}
+                          variant="ghost"
+                          disabled={contentSearch.loadingMore}
+                          data-testid="global-search-more-content"
+                          className={cn(
+                            'flex h-11 w-full cursor-pointer select-none items-center justify-start px-4 text-left text-sm font-medium text-primary outline-none disabled:cursor-not-allowed disabled:opacity-50',
+                            activeRowIndex === rowIndex - 1 && 'bg-bg-200'
+                          )}
+                          onMouseEnter={() => setActiveIndex(rowIndex - 1)}
+                          onClick={() => activate({ kind: 'more-content' })}
+                        >
+                          {contentSearch.loadingMore
+                            ? t('gs.loadingMore')
+                            : t('gs.showMore', { n: contentResponse?.counts.messages ?? 0 })}
+                        </Button>
+                      ) : null}
                     </section>
                   ) : null}
                   {otherRows.length > 0 ? (
@@ -1159,7 +1302,7 @@ export const GlobalSearchDialog = ({
                   ) : null}
                   {displayedArtifacts.length === 0 &&
                   contentHits.length === 0 &&
-                  contentSearch.state !== 'searching' &&
+                  contentSearch.state.state !== 'searching' &&
                   !sessionGroups?.primary.length &&
                   otherRows.length === 0 &&
                   artifactStatus !== 'loading' &&

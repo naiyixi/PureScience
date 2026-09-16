@@ -3,6 +3,15 @@ import type { ZhKey } from './zh'
 
 export const ja: Partial<Record<ZhKey, string>> = {
   'common.cancel': 'キャンセル',
+  'gs.showMore': 'さらに {n} 件の一致 — さらに表示',
+  'gs.filterSender': '送信者',
+  'gs.filterFormat': 'ファイル形式',
+  'gs.filterReferenceType': '文献タイプ',
+  'gs.filterAny': 'すべて',
+  'gs.filterSenderUser': '自分',
+  'gs.filterSenderAgent': 'エージェント',
+  'gs.filterClear': 'フィルタを解除',
+  'gs.loadingMore': 'さらに読み込み中…',
   'common.retry': '再試行',
   'common.saving': '保存中…',
   'common.creating': '作成中…',

@@ -3,6 +3,15 @@ import type { ZhKey } from './zh'
 
 export const ko: Partial<Record<ZhKey, string>> = {
   'common.cancel': '취소',
+  'gs.showMore': '{n}건 더 일치 — 더 보기',
+  'gs.filterSender': '보낸 사람',
+  'gs.filterFormat': '파일 형식',
+  'gs.filterReferenceType': '문헌 유형',
+  'gs.filterAny': '전체',
+  'gs.filterSenderUser': '나',
+  'gs.filterSenderAgent': '에이전트',
+  'gs.filterClear': '필터 지우기',
+  'gs.loadingMore': '더 불러오는 중…',
   'common.retry': '재시도',
   'common.saving': '저장 중…',
   'common.creating': '만드는 중…',
