@@ -1,28 +1,27 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { runMarketplaceBatch, type MarketplaceBatchItem } from './specialist-marketplace-batch'
+import {
+  runMarketplaceBatch,
+  type MarketplaceBatchItem,
+  type MarketplaceBatchPorts
+} from './specialist-marketplace-batch'
 
 type Prepared = { id: string; blocked?: string; update?: boolean; installFails?: boolean }
 
 const item = (id: string, name = id): MarketplaceBatchItem => ({ specialistId: id, name })
 
-const ports = (
-  prepared: Record<string, Prepared>
-): {
-  prepare: ReturnType<typeof vi.fn>
-  readiness: (value: Prepared) => { ready: boolean; reason?: string }
-  isUpdate: (value: Prepared) => boolean
-  install: ReturnType<typeof vi.fn>
-} => ({
-  prepare: vi.fn(async (target: MarketplaceBatchItem) => {
+// Spies that still satisfy the port types: `vi.fn<T>()` keeps the signature, so the fixture can be
+// passed straight to the orchestrator without a cast.
+const ports = (prepared: Record<string, Prepared>): MarketplaceBatchPorts<Prepared> => ({
+  prepare: vi.fn<(target: MarketplaceBatchItem) => Promise<Prepared>>(async (target) => {
     const value = prepared[target.specialistId]
     if (!value) throw new Error(`offline: ${target.specialistId}`)
     return value
   }),
-  readiness: (value: Prepared) =>
+  readiness: (value) =>
     value.blocked === undefined ? { ready: true } : { ready: false, reason: value.blocked },
-  isUpdate: (value: Prepared) => value.update === true,
-  install: vi.fn(async (value: Prepared) => {
+  isUpdate: (value) => value.update === true,
+  install: vi.fn<(value: Prepared) => Promise<void>>(async (value) => {
     if (value.installFails) throw new Error(`install failed: ${value.id}`)
   })
 })
