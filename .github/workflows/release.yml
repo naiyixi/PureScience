@@ -71,9 +71,11 @@ jobs:
   # install the latest published stable version, prove electron-updater uses a differential Range
   # download, upgrade over a live process, roll back, and restart current. Runs beside notarization.
   windows-upgrade-smoke:
-    # Also after publish: the drill upgrades to *this* release's version, and waiting for the Release to
-    # exist is what keeps it from timing out against a version nobody can download yet. Built installers
-    # come from the build job, the previous stable from the earlier Release, so both are needed.
+    # Also after publish: the drill upgrades to *this* release's version, so the Release has to exist
+    # before it starts (the built installers come from the build job, the previous stable from an earlier
+    # Release, so both are needed). This removes a race, not a failure: the drill's own timeout against the
+    # updated version is older than this change and failed the same way on the previous release, which the
+    # workflow already documents as timing-sensitive on hosted runners.
     needs: [build, publish]
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
     runs-on: windows-latest
