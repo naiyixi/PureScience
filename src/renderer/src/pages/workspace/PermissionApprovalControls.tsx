@@ -5,6 +5,10 @@ import { useLanguage, type TranslationKey } from '@/i18n'
 import type { AcpPermissionRequest } from '../../../../shared/acp'
 import type { NotebookSessionRequest } from '../../../../shared/notebook'
 import { isEnvEnabled } from '../../../../shared/notebook-runtime'
+import {
+  permissionSettlementOptions,
+  permissionSettlementSiblings
+} from '../../../../shared/permission-settlement'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { dialogTitleClassName } from '@/components/ui/dialog-chrome'
@@ -677,6 +681,55 @@ const PermissionApprovalControls = ({
     denyOptionId
   )
 
+  // The same decision, asked several times: requests that share a settlement identity (one MCP tool,
+  // one command group) are settled together instead of prompting once per tool call. Only options every
+  // member offers are offered for the batch — settling something a request never asked about is not ours
+  // to do (P3-9 / 3.6).
+  const settlementSiblings = permissionSettlementSiblings(request, requests)
+  const batchOptions = request.options.filter((option) =>
+    permissionSettlementOptions([request, ...settlementSiblings]).includes(option.optionId)
+  )
+  const batchAllowOptionId = getAllowOptionId(batchOptions, effectiveScope)
+  const batchDenyOptionId = getDenyOptionId(batchOptions)
+  const respondBatch = (optionId: string): void => {
+    if (submittingRequestIdRef.current !== undefined) return
+    for (const target of [request, ...settlementSiblings]) {
+      Promise.resolve(onRespond(target.requestId, optionId)).catch(() => undefined)
+    }
+  }
+
+  const batchRow =
+    settlementSiblings.length > 0 ? (
+      <div
+        data-testid="permission-settlement-batch"
+        className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
+      >
+        <span>
+          {t('ws.permissionBatchSiblings').replace('{count}', String(settlementSiblings.length))}
+        </span>
+        {batchAllowOptionId ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => respondBatch(batchAllowOptionId)}
+          >
+            {t('ws.permissionBatchAllowAll')}
+          </Button>
+        ) : null}
+        {batchDenyOptionId ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => respondBatch(batchDenyOptionId)}
+          >
+            {t('ws.permissionBatchDenyAll')}
+          </Button>
+        ) : null}
+      </div>
+    ) : null
+
   const isMcp = isMcpPermissionRequest(request)
   const isShell = !isMcp && (request.toolKind === 'execute' || request.providerToolName === 'Bash')
   // Specialist deletes render the primary action as a destructive Delete (prototype scene 8) — the
@@ -757,6 +810,9 @@ const PermissionApprovalControls = ({
       {showInlineDetail ? (
         <p className="break-all text-xs text-muted-foreground">{titleDetail}</p>
       ) : null}
+
+      {/* The same decision pending more than once: settle it once instead of once per tool call. */}
+      {batchRow}
 
       {request.commandPrefix?.length ? (
         <p className="break-all text-xs text-muted-foreground">

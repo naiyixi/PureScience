@@ -732,4 +732,59 @@ describe('PermissionApprovalControls', () => {
     )
     expect(html).toContain('/repo/config/prod.env')
   })
+
+  // P3-9 / 3.6: one credential, many prompts. Two calls against the same MCP tool are one decision, and
+  // the panel says so instead of making the reader answer the same thing twice.
+  it('offers to settle the same decision once when it is pending more than once', () => {
+    const html = renderToStaticMarkup(
+      <PermissionApprovalControls
+        requests={[
+          {
+            ...permissionRequest,
+            requestId: 'permission-a',
+            mcpIdentity: 'biomart/query',
+            isMcp: true
+          },
+          {
+            ...permissionRequest,
+            requestId: 'permission-b',
+            toolCallId: 'tool-2',
+            mcpIdentity: 'biomart/query',
+            isMcp: true
+          }
+        ]}
+        onRespond={() => undefined}
+      />
+    )
+
+    expect(html).toContain('permission-settlement-batch')
+    expect(html).toContain('1 more requests need the same decision')
+    expect(html).toContain('Allow all')
+    expect(html).toContain('Deny all')
+  })
+
+  it('stays quiet when the same decision is not pending twice', () => {
+    const html = renderToStaticMarkup(
+      <PermissionApprovalControls
+        requests={[
+          {
+            ...permissionRequest,
+            requestId: 'permission-a',
+            mcpIdentity: 'biomart/query',
+            isMcp: true
+          },
+          {
+            ...permissionRequest,
+            requestId: 'permission-c',
+            toolCallId: 'tool-3',
+            mcpIdentity: 'ensembl/lookup',
+            isMcp: true
+          }
+        ]}
+        onRespond={() => undefined}
+      />
+    )
+
+    expect(html).not.toContain('permission-settlement-batch')
+  })
 })
