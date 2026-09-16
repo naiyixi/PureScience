@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
 
@@ -88,7 +87,6 @@ type ArtifactTurnOwnerOptions = {
   dataRoot: string
   repository: ArtifactRepository
   runRegistry: ArtifactRunRegistry
-  runtimeInstanceId?: string
   now?: () => number
   issueRpcCapability?: (binding: ArtifactRpcCapabilityBinding) => string
   revokeRpcCapability?: (token: string) => Promise<void> | void
@@ -137,12 +135,10 @@ class ArtifactTurnOwner {
   private readonly activeTurnsBySession = new Map<string, ArtifactTurn>()
   private readonly sessionHandoffQueues = new Map<string, Promise<void>>()
   private readonly turnsByHandle = new WeakMap<ArtifactTurnHandle, ArtifactTurn>()
-  private readonly runtimeInstanceId: string
   private readonly now: () => number
   private sequence = 0
 
   constructor(private readonly options: ArtifactTurnOwnerOptions) {
-    this.runtimeInstanceId = options.runtimeInstanceId ?? randomUUID()
     this.now = options.now ?? Date.now
   }
 

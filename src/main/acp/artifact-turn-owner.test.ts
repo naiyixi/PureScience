@@ -60,7 +60,6 @@ describe('ArtifactTurnOwner', () => {
       dataRoot,
       repository: new ArtifactRepository(dataRoot),
       runRegistry: new ArtifactRunRegistry(),
-      runtimeInstanceId: 'runtime-1',
       now: () => 123,
       issueRpcCapability: () => 'secret-capability',
       notebook: {
@@ -97,7 +96,6 @@ describe('ArtifactTurnOwner', () => {
       dataRoot,
       repository: new ArtifactRepository(dataRoot),
       runRegistry: new ArtifactRunRegistry(),
-      runtimeInstanceId: 'runtime-1',
       now: () => 123,
       issueRpcCapability: (binding) => {
         issuedBindings.push(binding)
