@@ -9,7 +9,7 @@ let root: Root
 
 const render = async (
   retention: { droppedMessages: number; droppedBefore: number } | undefined
-) => {
+): Promise<void> => {
   const { TrimmedHistoryNotice } = await import('./TrimmedHistoryNotice')
   act(() => {
     root.render(<TrimmedHistoryNotice retention={retention} />)

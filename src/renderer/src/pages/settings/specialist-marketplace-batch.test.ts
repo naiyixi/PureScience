@@ -6,7 +6,14 @@ type Prepared = { id: string; blocked?: string; update?: boolean; installFails?:
 
 const item = (id: string, name = id): MarketplaceBatchItem => ({ specialistId: id, name })
 
-const ports = (prepared: Record<string, Prepared>) => ({
+const ports = (
+  prepared: Record<string, Prepared>
+): {
+  prepare: ReturnType<typeof vi.fn>
+  readiness: (value: Prepared) => { ready: boolean; reason?: string }
+  isUpdate: (value: Prepared) => boolean
+  install: ReturnType<typeof vi.fn>
+} => ({
   prepare: vi.fn(async (target: MarketplaceBatchItem) => {
     const value = prepared[target.specialistId]
     if (!value) throw new Error(`offline: ${target.specialistId}`)
