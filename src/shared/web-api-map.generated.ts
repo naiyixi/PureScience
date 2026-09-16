@@ -32,6 +32,7 @@ export const WEB_INVOKE_CHANNELS = {
   'artifacts.openFile': 'artifacts:open-file',
   'artifacts.readPreview': 'artifacts:read-preview',
   'artifacts.reconcilePendingArtifacts': 'artifacts:reconcile-pending',
+  'artifacts.replayVersion': 'artifacts:replay-version',
   'artifacts.resolveVersionDescriptors': 'artifacts:resolve-version-descriptors',
   'artifacts.writeUserEditedVersion': 'artifacts:write-user-edited-version',
   'cli.getStatus': 'cli:get-status',
