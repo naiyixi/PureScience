@@ -136,6 +136,9 @@ type ArtifactStorageReconciler = {
   ): Promise<
     | {
         recoveredMessageArtifacts: RecoveredMessageArtifacts[]
+        // Versions named `unpublished` during this pass: a run that closed without ever writing its
+        // publication intent. Optional because a reconciler that predates the field reports none.
+        unpublishedVersionIds?: string[]
       }
     | undefined
   >
@@ -583,6 +586,9 @@ class SessionPersistenceCoordinator {
       }
 
       let degradedReconciliationCount = 0
+      // Versions whose run never published them: named during startup reconciliation. Counted so the
+      // completion log says how many files a reader may find in that state, instead of leaving it silent.
+      let unpublishedArtifactVersionCount = 0
       operation.phase('reconcile-unread-sessions')
       try {
         await this.sessionDeletionHandlers?.reconcile(
@@ -685,6 +691,8 @@ class SessionPersistenceCoordinator {
             session,
             artifactRecovery?.recoveredMessageArtifacts ?? []
           )
+          // Optional on the port's shape: a reconciler that predates this field simply reports none.
+          unpublishedArtifactVersionCount += artifactRecovery?.unpublishedVersionIds?.length ?? 0
           const recoveredSession = repairHistoricalArtifactAliases(attachedSession, {
             // One reconciliation pass writes one JSON revision even when recovery and historical
             // alias repair both contribute to the same atomic Session update.
@@ -730,7 +738,8 @@ class SessionPersistenceCoordinator {
         status: degradedReconciliationCount > 0 ? 'degraded' : 'ready',
         sessionCount: sessions.length,
         warningCount: scan.warnings?.length ?? 0,
-        degradedReconciliationCount
+        degradedReconciliationCount,
+        unpublishedArtifactVersionCount
       })
       return result
     })
