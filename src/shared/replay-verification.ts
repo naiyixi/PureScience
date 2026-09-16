@@ -202,8 +202,10 @@ const verdictFor = (
   mode: ReplayMode
 ): ReplayVerdict => {
   // A reconstructed recipe describes what a model thinks ran. That can never be evidence of a re-run,
-  // however well the outputs line up — reported as unverifiable even when every file matches.
-  if (recipe.origin === 'reconstructed') return 'unverifiable'
+  // however well the outputs line up — reported as unverifiable even when every file matches. It says
+  // nothing about record integrity, though: whether bytes still match a stored digest does not depend
+  // on where the steps came from, so that mode is left to the file verdicts.
+  if (mode === 're-run' && recipe.origin === 'reconstructed') return 'unverifiable'
   if (files.some((file) => file.status === 'not-comparable')) return 'unverifiable'
   const weakest = files.some((file) => file.status !== 'match')
   if (mode === 'record-integrity') return weakest ? 'changed' : 'intact'

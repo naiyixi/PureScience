@@ -168,6 +168,18 @@ describe('replay verification', () => {
     expect(changed.verdict).toBe('changed')
   })
 
+  it('lets record integrity stand on its own, whatever the steps were inferred from', () => {
+    const report = compareReplayOutputs(
+      recipe({ origin: 'reconstructed' }),
+      { appVersion: '1.61.0', outputs: [digest('results/table.tsv', 'a\tb\n1\t2\n')] },
+      'record-integrity'
+    )
+
+    // The bytes match the recorded digest; where the recipe came from cannot change that answer.
+    expect(report.verdict).toBe('intact')
+    expect(report.origin).toBe('reconstructed')
+  })
+
   it('keeps an empty output set unverifiable rather than vacuously reproduced', () => {
     const sealed = recipe({ outputs: [] })
     const report = compareReplayOutputs(sealed, { appVersion: '1.61.0', outputs: [] })
