@@ -254,7 +254,11 @@ describe('post-merge Windows validation', () => {
     const upgrade = release.jobs['windows-upgrade-smoke']
 
     expect(upgrade['runs-on']).toBe('windows-latest')
-    expect(upgrade.needs).toBe('build')
+    // The drill upgrades to *this* release's version, so the Release has to exist before it starts:
+    // it waits for both the built installers and the publish job. The ordering removes a race — the
+    // drill's own timeout against the updated version predates it and is documented as
+    // timing-sensitive on hosted runners.
+    expect(upgrade.needs).toEqual(['build', 'publish'])
     expect(upgrade['continue-on-error']).toBe(true)
     expect(upgrade['timeout-minutes']).toBe(40)
     expect(findStep(upgrade, 'Setup Node')).toMatchObject({
