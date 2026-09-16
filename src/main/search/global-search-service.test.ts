@@ -55,6 +55,25 @@ const request = (overrides: Partial<GlobalSearchRequest> = {}): GlobalSearchRequ
 })
 
 describe('createGlobalSearchService', () => {
+  // Found by running the search against real Chinese text: a message whose characters merely all appear
+  // scored higher than one containing the phrase, because every part counts as a match. The phrase the
+  // reader typed must win.
+  it('ranks a phrase hit above one assembled from its parts', async () => {
+    const { service } = harness({
+      readSessionMessages: vi.fn(async () => [
+        message({ id: 'literal', role: 'user', text: '请解释注意力机制的实现' }),
+        message({ id: 'parts', role: 'user', text: '本页先讲注意力，再讲力机制' })
+      ])
+    })
+
+    const response = await service.query({ query: '注意力机制' })
+
+    const messages = response.hits.filter((hit) => hit.scope === 'messages')
+    expect(messages.map((hit) => hit.id)).toEqual(['literal', 'parts'])
+    expect(messages[0]?.matches.some((match) => match.matchKind === 'literal')).toBe(true)
+    expect(messages[1]?.matches.every((match) => match.matchKind === 'segmented')).toBe(true)
+  })
+
   it('refuses a query too short to search, and says why', async () => {
     const { service, listSessions } = harness()
     const response = await service.query(request({ query: 's' }))

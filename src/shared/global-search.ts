@@ -39,9 +39,20 @@ export type GlobalSearchRequest = {
   // Inclusive ISO-8601 bounds on the hit's own timestamp.
   since?: string
   until?: string
-  // Per-scope cap; clamped to GLOBAL_SEARCH_MAX_RESULTS_PER_SCOPE.
+  // Per-scope cap; clamped to GLOBAL_SEARCH_MAX_RESULTS_PER_SCOPE. It is also the page size when a
+  // cursor is supplied, so the two cannot disagree about how much was asked for.
   limitPerScope?: number
+  // Who said it. Applies to message hits; the other scopes carry no sender.
+  role?: 'user' | 'agent'
+  // File formats, lowercase and without the dot. Applies to file hits.
+  extensions?: string[]
+  // Literature record types the caller will accept.
+  referenceTypes?: ReferenceTypeFilter[]
+  // Opaque cursor from a previous response. Absent starts at the first page.
+  cursor?: string
 }
+
+export type ReferenceTypeFilter = 'doi' | 'arxiv' | 'pmid' | 'pmcid'
 
 export type GlobalSearchMatch = {
   field: string
@@ -50,6 +61,10 @@ export type GlobalSearchMatch = {
   offset: number
   // Which term of the query matched, when the query carried more than one.
   term?: string
+  // `literal` when the text contains the term as typed; `segmented` when a CJK term with no literal
+  // occurrence was resolved by its parts. The distinction is what keeps "the phrase is in there" and
+  // "the pieces are in there" from looking the same.
+  matchKind?: 'literal' | 'segmented'
 }
 
 export type GlobalSearchCitation = {
@@ -167,12 +182,20 @@ export type GlobalSearchNote =
   // The file listing itself stopped at its own bound: the project holds more files than were listed, so
   // a miss here does not mean the file is absent from the project.
   | 'file-list-bounded'
+  // A cursor that could not be read: the search started from the beginning and says so, rather than
+  // serving a first page as if it were a later one.
+  | 'cursor-invalid'
+  // A term with no literal occurrence was resolved by its parts (see collectTermMatches), so the hit is
+  // real but the reader should know the phrase itself is not in the text.
+  | 'matched-by-term-parts'
 
 export type GlobalSearchResponse = {
   schemaVersion: typeof GLOBAL_SEARCH_SCHEMA_VERSION
   query: string
   scopes: GlobalSearchScope[]
   hits: GlobalSearchHit[]
+  /** Present when more hits exist for at least one scope; hand it back to continue from here. */
+  nextCursor?: string
   // Hits per scope after filtering, before the per-scope cap.
   counts: Record<GlobalSearchScope, number>
   truncated: boolean
@@ -271,6 +294,19 @@ export const splitSearchTerms = (query: string): string[] =>
 // Every term must appear for a document to match: a two-term query narrows, it never widens. Each
 // returned match names the term that produced it and an empty result means one or more terms were
 // missing — which is what makes "no hits" a statement about all the terms, not about the last one.
+const CJK_ONLY = /^[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\u3040-\u30ff\uac00-\ud7af]+$/u
+
+/**
+ * A CJK term is written without spaces, so "the text contains this phrase" is the only rule literal
+ * matching can apply — and it misses every paraphrase that shares its terms. These two-character parts
+ * are the terms a Chinese reader would recognise inside the phrase; requiring all of them is what keeps
+ * this conjunctive (narrowing, explainable) instead of a fuzzy guess.
+ */
+export const cjkPartsOf = (term: string): string[] => {
+  if (term.length < 2 || !CJK_ONLY.test(term)) return []
+  return Array.from({ length: term.length - 1 }, (_, index) => term.slice(index, index + 2))
+}
+
 export const collectTermMatches = ({
   text,
   terms,
@@ -286,10 +322,25 @@ export const collectTermMatches = ({
 
   const collected: GlobalSearchMatch[] = []
   for (const term of terms) {
-    const matches = collectMatches({ text, query: term, field, maxMatches: maxMatchesPerTerm })
-    if (matches.length === 0) return []
+    const literal = collectMatches({ text, query: term, field, maxMatches: maxMatchesPerTerm })
+    if (literal.length > 0) {
+      collected.push(...literal.map((match) => ({ ...match, term, matchKind: 'literal' as const })))
+      continue
+    }
 
-    collected.push(...matches.map((match) => ({ ...match, term })))
+    // No literal occurrence: for a Chinese term, accept it when every one of its parts is present. Every
+    // part must be there — a single shared two-character overlap is not a match.
+    const parts = cjkPartsOf(term)
+    if (parts.length === 0) return []
+    const partMatches: GlobalSearchMatch[] = []
+    for (const part of parts) {
+      const matches = collectMatches({ text, query: part, field, maxMatches: 1 })
+      if (matches.length === 0) return []
+      partMatches.push(
+        ...matches.map((match) => ({ ...match, term, matchKind: 'segmented' as const }))
+      )
+    }
+    collected.push(...partMatches)
   }
 
   return collected.slice(0, GLOBAL_SEARCH_MAX_MATCHES_PER_HIT)
@@ -380,15 +431,109 @@ export const clampSearchLimit = (limit: number | undefined): number => {
   return Math.max(1, Math.min(Math.floor(limit), GLOBAL_SEARCH_MAX_RESULTS_PER_SCOPE))
 }
 
-// Sorts every scope together, then trims each scope to the applied limit and reports whether anything
-// was dropped, so a caller never mistakes a capped list for the whole corpus.
+const SEARCH_CURSOR_PREFIX = 'v1'
+
+/** Where each scope had got to. Compact and opaque: a caller holds it, never builds it. */
+export const encodeSearchCursor = (offsets: Partial<Record<GlobalSearchScope, number>>): string =>
+  `${SEARCH_CURSOR_PREFIX}:${GLOBAL_SEARCH_SCOPES.filter((scope) => (offsets[scope] ?? 0) > 0)
+    .map((scope) => `${scope}=${offsets[scope]}`)
+    .join(',')}`
+
+/** An unreadable cursor restarts at the first page and says so, rather than serving page one as page two. */
+export const decodeSearchCursor = (
+  cursor: string | undefined
+): { offsets: Record<GlobalSearchScope, number>; invalid: boolean } => {
+  const zero = { sessions: 0, messages: 0, files: 0, literature: 0 } as Record<
+    GlobalSearchScope,
+    number
+  >
+  if (!cursor) return { offsets: zero, invalid: false }
+
+  const separator = cursor.indexOf(':')
+  if (separator === -1 || cursor.slice(0, separator) !== SEARCH_CURSOR_PREFIX) {
+    return { offsets: zero, invalid: true }
+  }
+  const offsets = { ...zero }
+  const body = cursor.slice(separator + 1)
+  for (const part of body.split(',').filter((candidate) => candidate.length > 0)) {
+    const [scope, value] = part.split('=')
+    if (!GLOBAL_SEARCH_SCOPES.includes(scope as GlobalSearchScope)) {
+      return { offsets: zero, invalid: true }
+    }
+    const parsed = Number.parseInt(value ?? '', 10)
+    if (!Number.isFinite(parsed) || parsed < 0) return { offsets: zero, invalid: true }
+    offsets[scope as GlobalSearchScope] = parsed
+  }
+  return { offsets, invalid: false }
+}
+
+export type GlobalSearchHitFilters = {
+  role?: 'user' | 'agent'
+  extensions?: readonly string[]
+  referenceTypes?: readonly ReferenceTypeFilter[]
+}
+
+const extensionOf = (path: string): string => {
+  const dot = path.lastIndexOf('.')
+  const slash = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'))
+  return dot > slash + 1 ? path.slice(dot + 1).toLowerCase() : ''
+}
+
+const referenceTypesOf = (hit: GlobalSearchHit): ReferenceTypeFilter[] => {
+  const citation = hit.citation
+  if (!citation) return []
+  const types: ReferenceTypeFilter[] = []
+  if (citation.doi) types.push('doi')
+  if (citation.arxivId) types.push('arxiv')
+  if (citation.pmid) types.push('pmid')
+  if (citation.pmcid) types.push('pmcid')
+  return types
+}
+
+/**
+ * Filters are applied before anything is counted or paged. A count that included hits the caller asked
+ * not to see would be a count of something else, and a page of eight would arrive with two of them
+ * removed — which is how "no more results" ends up being wrong.
+ *
+ * A filter that names a property only one scope has (a sender, a format, a record type) also drops the
+ * scopes that cannot have it: asking for one person's messages is not a request for the file list.
+ */
+export const searchHitMatchesFilters = (
+  hit: GlobalSearchHit,
+  filters: GlobalSearchHitFilters
+): boolean => {
+  if (filters.role) {
+    if (hit.scope !== 'messages') return false
+    if (hit.role !== filters.role) return false
+  }
+  if (filters.extensions?.length) {
+    if (hit.scope !== 'files') return false
+    const extension = extensionOf(hit.relativePath ?? hit.title)
+    if (
+      !filters.extensions.map((value) => value.toLowerCase().replace(/^\./, '')).includes(extension)
+    ) {
+      return false
+    }
+  }
+  if (filters.referenceTypes?.length) {
+    if (hit.scope !== 'literature') return false
+    const types = referenceTypesOf(hit)
+    if (!types.some((type) => filters.referenceTypes!.includes(type))) return false
+  }
+  return true
+}
+
+// Sorts every scope together, then serves each scope its page and reports whether anything was left,
+// so a caller never mistakes a capped list for the whole corpus and never loses the rest of it either.
 export const finalizeSearchResponse = ({
   query,
   scopes,
   hits,
   scan,
   appliedLimit,
-  notes
+  notes,
+  cursor,
+  filters
 }: {
   query: string
   scopes: GlobalSearchScope[]
@@ -396,37 +541,74 @@ export const finalizeSearchResponse = ({
   scan: GlobalSearchScanReport
   appliedLimit: number
   notes: GlobalSearchNote[]
+  cursor?: string
+  filters?: GlobalSearchHitFilters
 }): GlobalSearchResponse => {
+  const { offsets, invalid } = decodeSearchCursor(cursor)
+  const filtered = filters ? hits.filter((hit) => searchHitMatchesFilters(hit, filters)) : hits
+
   const counts = GLOBAL_SEARCH_SCOPES.reduce(
     (accumulator, scope) => {
-      accumulator[scope] = hits.filter((hit) => hit.scope === scope).length
+      accumulator[scope] = filtered.filter((hit) => hit.scope === scope).length
 
       return accumulator
     },
     { sessions: 0, messages: 0, files: 0, literature: 0 } as Record<GlobalSearchScope, number>
   )
 
-  const sorted = [...hits].sort(
+  const sorted = [...filtered].sort(
     (left, right) => right.score - left.score || left.id.localeCompare(right.id)
   )
-  const perScope = new Map<GlobalSearchScope, number>()
-  const limited = sorted.filter((hit) => {
-    const seen = (perScope.get(hit.scope) ?? 0) + 1
-    perScope.set(hit.scope, seen)
+  const seenPerScope = new Map<GlobalSearchScope, number>()
+  const servedPerScope = new Map<GlobalSearchScope, number>()
+  const page: GlobalSearchHit[] = []
+  let moreBeyondPage = false
 
-    return seen <= appliedLimit
-  })
-  const truncated = limited.length < sorted.length
+  for (const hit of sorted) {
+    const seen = (seenPerScope.get(hit.scope) ?? 0) + 1
+    seenPerScope.set(hit.scope, seen)
+    if (seen <= (offsets[hit.scope] ?? 0)) continue
+
+    const served = (servedPerScope.get(hit.scope) ?? 0) + 1
+    if (served > appliedLimit) {
+      moreBeyondPage = true
+      continue
+    }
+    servedPerScope.set(hit.scope, served)
+    page.push(hit)
+  }
+
+  const nextCursor = moreBeyondPage
+    ? encodeSearchCursor(
+        GLOBAL_SEARCH_SCOPES.reduce<Partial<Record<GlobalSearchScope, number>>>(
+          (accumulator, scope) => {
+            const total = (offsets[scope] ?? 0) + (servedPerScope.get(scope) ?? 0)
+            if (total > 0) accumulator[scope] = total
+            return accumulator
+          },
+          {}
+        )
+      )
+    : undefined
+
+  const nextNotes: GlobalSearchNote[] = [...notes]
+  if (invalid) nextNotes.push('cursor-invalid')
+  if (moreBeyondPage) nextNotes.push('results-truncated-per-scope')
+  if (filtered.some((hit) => hit.matches.some((match) => match.matchKind === 'segmented'))) {
+    nextNotes.push('matched-by-term-parts')
+  }
 
   return {
     schemaVersion: GLOBAL_SEARCH_SCHEMA_VERSION,
     query,
     scopes,
-    hits: limited,
+    hits: page,
+    ...(nextCursor === undefined ? {} : { nextCursor }),
     counts,
-    truncated,
+    // "There is more than this page shows" — the one thing a reader must not have to infer.
+    truncated: moreBeyondPage,
     scan,
     appliedLimit,
-    notes: truncated ? [...new Set([...notes, 'results-truncated-per-scope' as const])] : notes
+    notes: [...new Set(nextNotes)]
   }
 }

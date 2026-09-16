@@ -12,6 +12,7 @@ import {
   scoreSearchHit,
   searchHitsInTimestampRange,
   type GlobalSearchHit,
+  type GlobalSearchHitFilters,
   type GlobalSearchNote,
   type GlobalSearchRequest,
   type GlobalSearchResponse,
@@ -89,6 +90,43 @@ const emptyScan = (): GlobalSearchScanReport => ({
   bounded: false
 })
 
+/**
+ * Counts matches for ranking, weighting the two kinds differently. A text that contains the phrase the
+ * reader typed is a stronger answer than one that merely contains all of its parts — without this, a
+ * parts-based match scores higher (every part matches) and a phrase hit sinks below a paraphrase.
+ */
+const LITERAL_WEIGHT = 1
+const SEGMENTED_WEIGHT = 0.5
+
+export const weightedMatchCount = (
+  matches: readonly { term?: string; matchKind?: 'literal' | 'segmented' }[]
+): number => {
+  // One credit per term, at the strength of its best kind. Counting occurrences instead would let a
+  // paraphrase win: a term resolved by three parts matches three times, and the phrase it stands in for
+  // matches once.
+  const bestKindPerTerm = new Map<string, 'literal' | 'segmented'>()
+  matches.forEach((match, index) => {
+    const key = match.term ?? `#${index}`
+    const kind = match.matchKind ?? 'literal'
+    if (kind === 'literal' || !bestKindPerTerm.has(key)) bestKindPerTerm.set(key, kind)
+  })
+
+  return [...bestKindPerTerm.values()].reduce(
+    (total, kind) => total + (kind === 'segmented' ? SEGMENTED_WEIGHT : LITERAL_WEIGHT),
+    0
+  )
+}
+
+const hitFiltersOf = (request: GlobalSearchRequest): GlobalSearchHitFilters | undefined => {
+  const { role, extensions, referenceTypes } = request
+  if (!role && !extensions?.length && !referenceTypes?.length) return undefined
+  return {
+    ...(role ? { role } : {}),
+    ...(extensions?.length ? { extensions } : {}),
+    ...(referenceTypes?.length ? { referenceTypes } : {})
+  }
+}
+
 export const createGlobalSearchService = (ports: GlobalSearchPorts): GlobalSearchService => ({
   async query(request) {
     const query = normalizeSearchQuery(request.query)
@@ -113,7 +151,11 @@ export const createGlobalSearchService = (ports: GlobalSearchPorts): GlobalSearc
         hits: [],
         scan,
         appliedLimit,
-        notes: ['query-too-short']
+        notes: ['query-too-short'],
+        // The cursor and the filters are still read, so the response can say a cursor was unreadable even
+        // when the query itself was too short to run.
+        ...(request.cursor === undefined ? {} : { cursor: request.cursor }),
+        filters: hitFiltersOf(request)
       })
     }
 
@@ -139,7 +181,7 @@ export const createGlobalSearchService = (ports: GlobalSearchPorts): GlobalSearc
               projectId: session.projectId,
               title: session.title,
               score: scoreSearchHit({
-                matches: matches.length,
+                matches: weightedMatchCount(matches),
                 titleRank: searchTitleRank(session.title, terms),
                 timestamp: session.updatedAt
               }),
@@ -171,7 +213,7 @@ export const createGlobalSearchService = (ports: GlobalSearchPorts): GlobalSearc
             projectId: session.projectId,
             title: session.title,
             score: scoreSearchHit({
-              matches: matches.length,
+              matches: weightedMatchCount(matches),
               // A message hit is scored on the body; the session title is context, not the match.
               titleRank: 0,
               timestamp: message.timestamp ?? session.updatedAt
@@ -282,7 +324,16 @@ export const createGlobalSearchService = (ports: GlobalSearchPorts): GlobalSearc
       }
     }
 
-    return finalizeSearchResponse({ query, scopes, hits, scan, appliedLimit, notes })
+    return finalizeSearchResponse({
+      query,
+      scopes,
+      hits,
+      scan,
+      appliedLimit,
+      notes,
+      ...(request.cursor === undefined ? {} : { cursor: request.cursor }),
+      filters: hitFiltersOf(request)
+    })
   }
 })
 
