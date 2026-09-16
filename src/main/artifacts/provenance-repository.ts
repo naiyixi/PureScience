@@ -37,6 +37,7 @@ import type {
   ReplayArtifactVersionRequest
 } from '../../shared/artifact-provenance'
 import {
+  ARTIFACT_VERSION_UNPUBLISHED,
   MAX_ARTIFACT_VERSION_DESCRIPTOR_IDS,
   type ResolveArtifactVersionDescriptorsRequest
 } from '../../shared/artifacts'
@@ -205,6 +206,11 @@ type ArtifactStorageReconciliationResult = {
   recoveredVersionIds: string[]
   quarantinedVersionIds: string[]
   recoveredMessageArtifacts: Array<{ messageId: string; artifacts: ArtifactVersionFile[] }>
+  // Runs whose turn closed without ever writing a publication intent. Nothing can mint that intent
+  // afterwards, so their Versions are named `unpublished` (bytes and rows kept) instead of being left
+  // pending forever. Reported so the caller can say how many and why.
+  unpublishedVersionIds: string[]
+  unpublishedRunIds: string[]
 }
 
 type ArtifactProjectReconciliationState = {
@@ -2761,6 +2767,10 @@ class ArtifactProvenanceRepository {
     durableSession?: PersistedChatSession,
     options?: {
       removeOrphanStaging?: boolean
+      // Startup only. A run whose turn closed without writing its publication intent can never be
+      // published, but inside a live process a marker can still arrive from a turn that is closing, so
+      // naming that outcome is reserved for the pass that runs before any turn of this process exists.
+      markUnpublishedRuns?: boolean
       projectReconciliation?: ArtifactProjectReconciliationSnapshot
     }
   ): Promise<ArtifactStorageReconciliationResult> {
@@ -2782,7 +2792,9 @@ class ArtifactProvenanceRepository {
     const result: ArtifactStorageReconciliationResult = {
       recoveredVersionIds: [],
       quarantinedVersionIds: [],
-      recoveredMessageArtifacts: []
+      recoveredMessageArtifacts: [],
+      unpublishedVersionIds: [],
+      unpublishedRunIds: []
     }
     const lineageEntries = await readdir(provenanceRoot, { withFileTypes: true }).catch(
       (error: unknown) => {
@@ -2926,6 +2938,7 @@ class ArtifactProvenanceRepository {
       const publicationByRunId = new Map(
         unfinishedCompatibilityPublications.map((publication) => [publication.runId, publication])
       )
+      const unpublishedRunIds: string[] = []
       const runIds = [
         ...new Set([
           ...candidateVersions.map((version) => version.artifactRunId),
@@ -2945,8 +2958,12 @@ class ArtifactProvenanceRepository {
               projectId,
               artifactRunId
             )
-        const markerContext = marker?.provenanceContext
-        if (!marker || marker.sessionId !== appSessionId || !markerContext) continue
+        if (!marker) {
+          if (options?.markUnpublishedRuns) unpublishedRunIds.push(artifactRunId)
+          continue
+        }
+        const markerContext = marker.provenanceContext
+        if (marker.sessionId !== appSessionId || !markerContext) continue
         // Exact-set proof covers the whole pending/finalized run, including Versions already linked
         // to Session JSON. The candidate subset decides whether recovery is needed, not what the run
         // owns; otherwise a partially linked run would look like it contained unexpected Versions.
@@ -3039,6 +3056,29 @@ class ArtifactProvenanceRepository {
             artifacts: finalized
           })
         }
+      }
+
+      // Runs with no publication intent are named here, not recovered: the intent is written exactly
+      // once, when the turn closes, so nothing can produce one afterwards. Naming it keeps the rows and
+      // their bytes — readers can then say "produced but never published" instead of showing a pending
+      // Version that silently never resolves.
+      if (unpublishedRunIds.length > 0) {
+        const unpublished = await client.artifactVersion.findMany({
+          where: {
+            artifactRunId: { in: unpublishedRunIds },
+            state: 'pending',
+            artifact: { is: { projectId, sessionId: appSessionId } }
+          },
+          select: { id: true }
+        })
+        if (unpublished.length > 0) {
+          await client.artifactVersion.updateMany({
+            where: { id: { in: unpublished.map((version) => version.id) } },
+            data: { state: ARTIFACT_VERSION_UNPUBLISHED }
+          })
+        }
+        result.unpublishedRunIds.push(...unpublishedRunIds)
+        result.unpublishedVersionIds.push(...unpublished.map((version) => version.id))
       }
     }
 

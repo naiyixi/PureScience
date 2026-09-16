@@ -176,7 +176,7 @@ describe('artifact finalization startup recovery', () => {
     ).resolves.toMatchObject({ state: 'pending', messageId: null })
   })
 
-  it('leaves an unmarked compatibility publication ownerless', async () => {
+  it('names an unmarked compatibility publication unpublished without publishing it', async () => {
     const compatibility = new ArtifactRepository(storageRoot)
     const { provenance, version } = await prepareRecovery(compatibility)
     await rm(
@@ -201,9 +201,12 @@ describe('artifact finalization startup recovery', () => {
         runId: RUN_ID
       })
     ).resolves.toEqual([expect.objectContaining({ name: 'result.png' })])
+    // Startup is the boundary where a run that never wrote its publication intent can be named: the
+    // intent is written exactly once, when the turn closes, so nothing can mint one later. The row and
+    // its bytes are kept — this names the outcome, it does not publish the Version.
     await expect(
       client.artifactVersion.findUniqueOrThrow({ where: { id: version.versionId } })
-    ).resolves.toMatchObject({ state: 'pending', messageId: null })
+    ).resolves.toMatchObject({ state: 'unpublished', messageId: null })
   })
 
   it('leaves a compatibility publication without DB authority ownerless', async () => {

@@ -91,6 +91,12 @@ export type FinalizeRunArtifactsRequest = {
 // remain rejected IPC calls so proof and compatibility errors cannot accidentally become retryable.
 export const ARTIFACT_OWNERSHIP_PERSISTENCE_RACE = 'ownership-persistence-race' as const
 
+// A run that closed its turn without ever writing its publication intent can never become published:
+// the intent is written exactly once, at turn end. Naming that outcome keeps the rows and their bytes
+// (so nothing is destroyed) while letting every reader say "produced but never published" instead of
+// showing a pending Version that silently never resolves.
+export const ARTIFACT_VERSION_UNPUBLISHED = 'unpublished' as const
+
 export type ArtifactFinalizationErrorCode = typeof ARTIFACT_OWNERSHIP_PERSISTENCE_RACE
 
 export type FinalizeRunArtifactsResult =

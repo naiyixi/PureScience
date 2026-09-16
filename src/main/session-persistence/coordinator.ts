@@ -130,6 +130,7 @@ type ArtifactStorageReconciler = {
     durableSession: PersistedChatSession,
     options?: {
       removeOrphanStaging?: boolean
+      markUnpublishedRuns?: boolean
       projectReconciliation?: ArtifactProjectReconciliationSnapshot
     }
   ): Promise<
@@ -674,6 +675,9 @@ class SessionPersistenceCoordinator {
               // Only the first process-level load is a startup boundary. Later renderer/task readers
               // may inspect recovery state but cannot destructively clean storage held by live clients.
               removeOrphanStaging: mayRunDestructiveStartupCleanup,
+              // Same boundary, same reason: naming a run unpublished is only safe before this process
+              // can have a turn that is still closing and about to write its publication intent.
+              markUnpublishedRuns: mayRunDestructiveStartupCleanup,
               projectReconciliation: projectReconciliations.get(session.projectId)!
             }
           )

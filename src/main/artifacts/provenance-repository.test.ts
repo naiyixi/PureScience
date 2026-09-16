@@ -140,7 +140,9 @@ describe('artifact provenance repository', () => {
     ).resolves.toEqual({
       recoveredVersionIds: [],
       quarantinedVersionIds: [],
-      recoveredMessageArtifacts: []
+      recoveredMessageArtifacts: [],
+      unpublishedVersionIds: [],
+      unpublishedRunIds: []
     })
     await expect(stat(stagingDirectory)).rejects.toMatchObject({ code: 'ENOENT' })
   })
@@ -1022,7 +1024,9 @@ describe('artifact provenance repository', () => {
     await expect(repository.reconcileSession('project-1', 'session-1')).resolves.toEqual({
       recoveredVersionIds: [versionId],
       quarantinedVersionIds: [corruptVersionId],
-      recoveredMessageArtifacts: []
+      recoveredMessageArtifacts: [],
+      unpublishedVersionIds: [],
+      unpublishedRunIds: []
     })
     await expect(
       readFile(join(storageRoot, ...contentStorageKey.split('/')), 'utf8')
@@ -3068,6 +3072,115 @@ describe('artifact provenance repository', () => {
     ).resolves.toMatchObject({ recoveredVersionIds: [], recoveredMessageArtifacts: [] })
   })
 
+  it('names a run whose publication intent was never written, and only at startup', async () => {
+    storageRoot = await mkdtemp(join(tmpdir(), 'purescience-artifact-unpublished-run-'))
+    const client = createProjectDbClient(storageRoot)
+    disconnect = () => client.$disconnect()
+    await ensureProjectSchema(client)
+    const compatibilityRepository = new ArtifactRepository(storageRoot)
+    const repository = new ArtifactProvenanceRepository({
+      storageRoot,
+      getClient: () => Promise.resolve(client),
+      compatibilityRepository
+    })
+    const prompt = {
+      id: 'prompt-1',
+      role: 'user' as const,
+      content: 'draw',
+      status: 'complete' as const,
+      eventIds: [],
+      createdAt: 1,
+      updatedAt: 1
+    }
+    const message = {
+      id: 'message-1',
+      role: 'agent' as const,
+      content: 'done',
+      status: 'complete' as const,
+      eventIds: [],
+      createdAt: 2,
+      updatedAt: 2
+    }
+    const conversationGraph = createLinearConversationGraph({
+      sessionId: 'session-1',
+      messages: [prompt, message],
+      frameworkId: 'codex',
+      createdAt: 1,
+      updatedAt: 2
+    })
+    const context = {
+      rootFrameId: conversationGraph.rootFrameId,
+      agentFrameId: conversationGraph.activeFrameId,
+      messageBranchId: conversationGraph.branches[0].id,
+      runtimeSegmentId: conversationGraph.runtimeSegments[0].id,
+      promptMessageId: prompt.id
+    }
+    const request = {
+      projectId: 'project-1',
+      appSessionId: 'session-1',
+      artifactStorageSessionId: 'artifact-session-1',
+      artifactRunId: 'artifact-run-never-prepared',
+      writeOperationId: 'write-never-prepared',
+      writeRequestChecksum: 'f'.repeat(64),
+      ...context,
+      filename: 'produced.png'
+    } as const
+    await compatibilityRepository.writePendingFile({
+      projectName: request.projectId,
+      sessionId: request.artifactStorageSessionId,
+      runId: request.artifactRunId,
+      filename: request.filename,
+      source: createPngInlineSource('produced but never published')
+    })
+    const version = await repository.createVersion(request)
+    const session: PersistedChatSession = {
+      id: request.appSessionId,
+      projectId: request.projectId,
+      title: 'Unpublished run',
+      cwd: '/workspace',
+      status: 'idle',
+      messages: [prompt, message],
+      conversationGraph,
+      createdAt: 1,
+      updatedAt: 2
+    }
+
+    // Inside a live process a closing turn can still write its intent, so nothing is named.
+    await expect(
+      repository.reconcileSession(request.projectId, request.appSessionId, session)
+    ).resolves.toMatchObject({ unpublishedVersionIds: [], recoveredVersionIds: [] })
+    await expect(
+      client.artifactVersion.findUniqueOrThrow({
+        where: { id: version.versionId },
+        select: { state: true }
+      })
+    ).resolves.toMatchObject({ state: 'pending' })
+
+    // At the startup boundary the run can never publish: name the outcome, keep the row and its bytes.
+    await expect(
+      repository.reconcileSession(request.projectId, request.appSessionId, session, {
+        markUnpublishedRuns: true
+      })
+    ).resolves.toMatchObject({
+      unpublishedVersionIds: [version.versionId],
+      unpublishedRunIds: [request.artifactRunId]
+    })
+    const named = await client.artifactVersion.findUniqueOrThrow({
+      where: { id: version.versionId }
+    })
+    expect(named).toMatchObject({ state: 'unpublished', messageId: null })
+    expect(await readFile(join(storageRoot, named.contentStorageKey))).toHaveLength(
+      Number(named.sizeBytes)
+    )
+
+    // Idempotent: a second startup pass finds nothing left to name.
+    await expect(
+      repository.reconcileSession(request.projectId, request.appSessionId, session, {
+        markUnpublishedRuns: true
+      })
+    ).resolves.toMatchObject({ unpublishedVersionIds: [] })
+  })
+
   it('withholds saved Review conclusions when an active source Session cannot be loaded', async () => {
     storageRoot = await mkdtemp(join(tmpdir(), 'purescience-active-review-unavailable-'))
     const client = createProjectDbClient(storageRoot)
@@ -3414,7 +3527,9 @@ describe('artifact provenance repository', () => {
     ).resolves.toEqual({
       recoveredVersionIds: [version.versionId],
       quarantinedVersionIds: [],
-      recoveredMessageArtifacts: []
+      recoveredMessageArtifacts: [],
+      unpublishedVersionIds: [],
+      unpublishedRunIds: []
     })
     await expect(
       client.artifactVersion.findUniqueOrThrow({ where: { id: version.versionId } })
@@ -3487,7 +3602,9 @@ describe('artifact provenance repository', () => {
     ).resolves.toEqual({
       recoveredVersionIds: [version.versionId],
       quarantinedVersionIds: [],
-      recoveredMessageArtifacts: []
+      recoveredMessageArtifacts: [],
+      unpublishedVersionIds: [],
+      unpublishedRunIds: []
     })
     await expect(
       client.artifactVersion.findUniqueOrThrow({ where: { id: version.versionId } })
@@ -3561,7 +3678,9 @@ describe('artifact provenance repository', () => {
     ).resolves.toEqual({
       recoveredVersionIds: [],
       quarantinedVersionIds: [],
-      recoveredMessageArtifacts: []
+      recoveredMessageArtifacts: [],
+      unpublishedVersionIds: [],
+      unpublishedRunIds: []
     })
     await expect(readFile(version.path)).resolves.toBeTruthy()
     await expect(
@@ -3574,7 +3693,9 @@ describe('artifact provenance repository', () => {
     ).resolves.toEqual({
       recoveredVersionIds: [version.versionId],
       quarantinedVersionIds: [],
-      recoveredMessageArtifacts: []
+      recoveredMessageArtifacts: [],
+      unpublishedVersionIds: [],
+      unpublishedRunIds: []
     })
   })
 
@@ -3670,7 +3791,9 @@ describe('artifact provenance repository', () => {
     ).resolves.toEqual({
       recoveredVersionIds: [],
       quarantinedVersionIds: [version.versionId],
-      recoveredMessageArtifacts: []
+      recoveredMessageArtifacts: [],
+      unpublishedVersionIds: [],
+      unpublishedRunIds: []
     })
     await expect(readFile(version.path)).rejects.toMatchObject({ code: 'ENOENT' })
     const quarantineRoot = join(

@@ -378,7 +378,7 @@ const ARTIFACT_VERSION_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "ArtifactVersion"
     "executionSnapshotSchemaVersion" INTEGER,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
-    CONSTRAINT "ArtifactVersion_state_check" CHECK ("state" IN ('staging', 'pending', 'finalized')),
+    CONSTRAINT "ArtifactVersion_state_check" CHECK ("state" IN ('staging', 'pending', 'finalized', 'unpublished')),
     CONSTRAINT "ArtifactVersion_filename_check" CHECK (length("filename") > 0),
     CONSTRAINT "ArtifactVersion_artifactId_fkey" FOREIGN KEY ("artifactId") REFERENCES "ArtifactLineage" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT "ArtifactVersion_messageSnapshotId_fkey" FOREIGN KEY ("messageSnapshotId") REFERENCES "ArtifactMessageSnapshot" ("id") ON DELETE SET NULL ON UPDATE CASCADE
@@ -473,7 +473,7 @@ const PROVENANCE_CHECK_CONSTRAINT_MIGRATIONS: readonly SqliteCheckConstraintMigr
     tableName: 'ArtifactVersion',
     columnName: 'state',
     constraintNames: ['ArtifactVersion_state_check', 'ArtifactVersion_filename_check'],
-    allowedValues: ['staging', 'pending', 'finalized'],
+    allowedValues: ['staging', 'pending', 'finalized', 'unpublished'],
     canonicalTableDdl: ARTIFACT_VERSION_TABLE_DDL
   },
   {

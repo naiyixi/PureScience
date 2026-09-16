@@ -1462,6 +1462,7 @@ describe('SessionPersistenceCoordinator', () => {
       session,
       {
         removeOrphanStaging: true,
+        markUnpublishedRuns: true,
         projectReconciliation
       }
     )
@@ -2064,7 +2065,7 @@ describe('SessionPersistenceCoordinator', () => {
       'project-1',
       'session-1',
       upgradedSession,
-      { removeOrphanStaging: false, projectReconciliation }
+      { removeOrphanStaging: false, markUnpublishedRuns: false, projectReconciliation }
     )
   })
 
@@ -2206,6 +2207,7 @@ describe('SessionPersistenceCoordinator', () => {
         session,
         {
           removeOrphanStaging: true,
+          markUnpublishedRuns: true,
           projectReconciliation: projectSnapshot
         }
       )
@@ -2251,6 +2253,7 @@ describe('SessionPersistenceCoordinator', () => {
         session,
         {
           removeOrphanStaging: true,
+          markUnpublishedRuns: true,
           projectReconciliation: snapshots.get(session.projectId)
         }
       )
