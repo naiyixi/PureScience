@@ -500,15 +500,24 @@ describe('task CLI', () => {
   })
 
   it('keeps capability management surfaces outside the CLI', async () => {
-    for (const command of [
-      'permission',
-      'specialist',
-      'compute',
-      'notebook',
-      'notebook-env',
-      'runtime'
-    ]) {
+    for (const command of ['permission', 'specialist', 'compute', 'notebook', 'notebook-env']) {
       await expect(runCli([command])).rejects.toThrow(`Unknown command: ${command}`)
+    }
+
+    // `runtime list` and `connectors list` are read-only projections of what the app already decided,
+    // so they belong in the CLI — but nothing that *manages* either capability does, and a bare name
+    // is not a command. Decided with an injected connect so the assertion holds with no backend running
+    // (the earlier version depended on the machine's daemon: green where one was up, red on CI).
+    for (const argv of [
+      ['runtime'],
+      ['connectors'],
+      ['runtime', 'provision'],
+      ['connectors', 'enable'],
+      ['compute', 'create']
+    ]) {
+      await expect(
+        runTaskCommand(parseCliArgs(argv), { connect: vi.fn().mockResolvedValue({}) })
+      ).rejects.toThrow(/Unknown command/)
     }
   })
 
