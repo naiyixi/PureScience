@@ -15,10 +15,15 @@ import { useNavigationStore } from '@/stores/navigation-store'
 
 import { GlobalSearchDialog } from './GlobalSearchDialog'
 
-// React's act() refuses to run unless the environment opts in, and jsdom has no scrollIntoView, which the
-// Select primitive calls when it opens.
+// React's act() refuses to run unless the environment opts in, and jsdom lacks the pointer and scroll
+// APIs the Select primitive reaches for when it opens — the same stubs the repo's other render tests use.
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 Element.prototype.scrollIntoView = Element.prototype.scrollIntoView ?? ((): void => {})
+if (!Element.prototype.hasPointerCapture) {
+  Element.prototype.hasPointerCapture = (): boolean => false
+  Element.prototype.setPointerCapture = (): void => undefined
+  Element.prototype.releasePointerCapture = (): void => undefined
+}
 
 let container: HTMLDivElement
 let root: Root
