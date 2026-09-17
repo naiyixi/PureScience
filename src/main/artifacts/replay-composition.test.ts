@@ -2,6 +2,7 @@ import { tmpdir } from 'node:os'
 import { describe, expect, it, vi } from 'vitest'
 
 import type { ArtifactVersionProvenance } from '../../shared/artifact-provenance'
+import type { ReplayVersionRequest, ReplayVersionResult } from '../../shared/artifact-replay'
 import type { NotebookRunSummary } from '../../shared/notebook'
 import { createArtifactReplayAdapter } from './replay-composition'
 
@@ -32,7 +33,11 @@ const request = {
   versionId: 'version-1'
 }
 
-const harness = (executeNotebook: ReturnType<typeof vi.fn>) =>
+type ReplayAdapter = {
+  replayVersion: (request: ReplayVersionRequest) => Promise<ReplayVersionResult>
+}
+
+const harness = (executeNotebook: ReturnType<typeof vi.fn>): ReplayAdapter =>
   createArtifactReplayAdapter({
     provenance: {
       getVersionCore: vi.fn().mockResolvedValue(provenanceOf()),
