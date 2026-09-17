@@ -881,15 +881,20 @@ class EnvironmentStateTracker {
         ...(warnings.length > 0 ? { warnings } : {})
       }
       const serialized = `${JSON.stringify(manifest, null, 2)}\n`
-      // The stored document keeps its timestamps; the digest is over the environment it describes.
-      const checksum = environmentManifestDigest(manifest)
-      const storagePath = join(this.manifestDirectory(), `${checksum}.json`)
+      // Two digests on purpose. The storage path stays keyed by the WHOLE document, because that path is
+      // what immutability is enforced against: two captures of one environment share their canonical
+      // digest but not their bytes, and a path keyed by the canonical digest would collide on the second
+      // capture and refuse the write (measured: that is exactly how this change first broke every run's
+      // environment capture). The value published for comparison is the canonical digest, which is over
+      // the environment and not the moment it was captured.
+      const storageChecksum = sha256(serialized)
+      const storagePath = join(this.manifestDirectory(), `${storageChecksum}.json`)
       try {
         await this.writeImmutable(storagePath, serialized)
       } catch (error) {
         throw new EnvironmentManifestPublicationError(error)
       }
-      return { manifest, checksum, storagePath }
+      return { manifest, checksum: environmentManifestDigest(manifest), storagePath }
     })
   }
 
