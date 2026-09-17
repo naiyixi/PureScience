@@ -350,7 +350,10 @@ const parsePdf = async (
     return {
       pages,
       outline,
-      title: basename(filePath).replace(/\.pdf$/i, '')
+      title: basename(filePath).replace(/\.pdf$/i, ''),
+      // The positioned items travel with the page texts: the table extraction needs coordinates, and the
+      // text path that other readers use is unaffected by carrying them.
+      items: itemsPerPage
     }
   } finally {
     await document.destroy().catch(() => undefined)
