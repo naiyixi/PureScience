@@ -3049,6 +3049,10 @@ class ArtifactProvenanceRepository {
         }
         if (!proof) {
           skipFinalization('ambiguous-turn-message')
+          // This refusal is permanent by design: the intent never named a terminal message and the turn it
+          // belongs to will not change, so no later pass can make it unique. A startup pass may therefore
+          // name the outcome instead of leaving a Version that can never resolve.
+          if (options?.markUnpublishedRuns) unpublishedRunIds.push(artifactRunId)
           continue
         }
 

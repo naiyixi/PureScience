@@ -3079,6 +3079,135 @@ describe('artifact provenance repository', () => {
     ).resolves.toMatchObject({ recoveredVersionIds: [], recoveredMessageArtifacts: [] })
   })
 
+  it('names a run whose durable turn message is ambiguous, once a startup pass owns the decision', async () => {
+    storageRoot = await mkdtemp(join(tmpdir(), 'purescience-artifact-ambiguous-naming-'))
+    const client = createProjectDbClient(storageRoot)
+    disconnect = () => client.$disconnect()
+    await ensureProjectSchema(client)
+    const compatibilityRepository = new ArtifactRepository(storageRoot)
+    const repository = new ArtifactProvenanceRepository({
+      storageRoot,
+      getClient: () => Promise.resolve(client),
+      compatibilityRepository
+    })
+    const prompt = {
+      id: 'prompt-1',
+      role: 'user' as const,
+      content: 'draw',
+      status: 'complete' as const,
+      eventIds: [],
+      createdAt: 1,
+      updatedAt: 1
+    }
+    const message = {
+      id: 'message-1',
+      role: 'agent' as const,
+      content: 'done',
+      status: 'complete' as const,
+      eventIds: [],
+      createdAt: 2,
+      updatedAt: 2
+    }
+    const ambiguousMessage = {
+      ...message,
+      id: 'message-ambiguous',
+      content: 'later agent output',
+      createdAt: 3,
+      updatedAt: 3
+    }
+    const conversationGraph = createLinearConversationGraph({
+      sessionId: 'session-1',
+      messages: [prompt, message],
+      frameworkId: 'codex',
+      createdAt: 1,
+      updatedAt: 2
+    })
+    const context = {
+      rootFrameId: conversationGraph.rootFrameId,
+      agentFrameId: conversationGraph.activeFrameId,
+      messageBranchId: conversationGraph.branches[0].id,
+      runtimeSegmentId: conversationGraph.runtimeSegments[0].id,
+      promptMessageId: prompt.id
+    }
+    const request = {
+      projectId: 'project-1',
+      appSessionId: 'session-1',
+      artifactStorageSessionId: 'artifact-session-1',
+      artifactRunId: 'artifact-run-ambiguous',
+      writeOperationId: 'write-ambiguous',
+      writeRequestChecksum: 'a'.repeat(64),
+      ...context,
+      filename: 'ambiguous.png'
+    } as const
+    await compatibilityRepository.writePendingFile({
+      projectName: request.projectId,
+      sessionId: request.artifactStorageSessionId,
+      runId: request.artifactRunId,
+      filename: request.filename,
+      source: createPngInlineSource('ambiguous turn bytes')
+    })
+    const version = await repository.createVersion(request)
+    // The runtime durably prepared the handoff, but without a terminal message: the intent cannot name one.
+    await compatibilityRepository.prepareRunFinalization({
+      projectName: request.projectId,
+      sourceSessionId: request.artifactStorageSessionId,
+      sessionId: request.appSessionId,
+      runId: request.artifactRunId,
+      provenanceContext: context
+    })
+    const session: PersistedChatSession = {
+      id: request.appSessionId,
+      projectId: request.projectId,
+      title: 'Ambiguous turn',
+      cwd: '/workspace',
+      status: 'idle',
+      messages: [prompt, message, ambiguousMessage],
+      conversationGraph: {
+        ...conversationGraph,
+        branches: conversationGraph.branches.map((branch) => ({
+          ...branch,
+          headMessageId: ambiguousMessage.id,
+          updatedAt: 3
+        })),
+        messages: [
+          ...conversationGraph.messages,
+          {
+            ...ambiguousMessage,
+            agentFrameId: context.agentFrameId,
+            introducedOnBranchId: context.messageBranchId,
+            parentMessageId: message.id,
+            runtimeSegmentId: context.runtimeSegmentId
+          }
+        ]
+      },
+      createdAt: 1,
+      updatedAt: 3
+    }
+
+    // A live process only reports the refusal: guessing which of the two agent messages owns the run is
+    // exactly what the proof refuses to do.
+    await expect(
+      repository.reconcileSession(request.projectId, request.appSessionId, session)
+    ).resolves.toMatchObject({
+      finalizationSkipCounts: { 'ambiguous-turn-message': 1 },
+      unpublishedVersionIds: []
+    })
+
+    // Startup owns the naming, because nothing later can change that verdict. The row and its bytes stay.
+    await expect(
+      repository.reconcileSession(request.projectId, request.appSessionId, session, {
+        markUnpublishedRuns: true
+      })
+    ).resolves.toMatchObject({ unpublishedVersionIds: [version.versionId] })
+    const named = await client.artifactVersion.findUniqueOrThrow({
+      where: { id: version.versionId }
+    })
+    expect(named).toMatchObject({ state: 'unpublished', messageId: null })
+    expect(await readFile(join(storageRoot, named.contentStorageKey))).toHaveLength(
+      Number(named.sizeBytes)
+    )
+  })
+
   it('names a run whose publication intent was never written, and only at startup', async () => {
     storageRoot = await mkdtemp(join(tmpdir(), 'purescience-artifact-unpublished-run-'))
     const client = createProjectDbClient(storageRoot)
