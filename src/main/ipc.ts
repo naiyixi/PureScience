@@ -2330,6 +2330,18 @@ const createApplicationModules = async (
       // notebook session directory. Claiming one and grading it is what makes the verdict comparable.
       notebookDataRoot: (projectName, sessionId) =>
         getNotebookDataRoot(resolveDataRoot(), projectName, sessionId),
+      // A re-run starts in the environment the recorded run used, read from that session's own record; if
+      // the record is gone it runs under the default and the verdict keeps saying the lock was not applied.
+      readNotebookBindings: async ({ projectName, sessionId }) => {
+        // Straight from the session's own record: no live session has to exist for a re-run to know which
+        // interpreter the recorded run used.
+        const document = await new NotebookRunRepository(resolveDataRoot()).findExisting(
+          projectName,
+          sessionId
+        )
+        return document?.runtimeBindings
+      },
+      bindNotebookRuntime: (request) => notebookService.bindRuntime(request),
       shutdownNotebookSession: (request) => notebookCommands.shutdown(request)
     }),
     withSessionMutation: (projectId, sessionId, mutation) =>

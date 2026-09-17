@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path'
 
 import type { ArtifactVersionProvenance } from '../../shared/artifact-provenance'
 import type { NotebookLanguage, NotebookRunSummary } from '../../shared/notebook'
+import type { NotebookRuntimeBindings } from '../../shared/notebook-runtime'
 import type { ReplayVersionRequest, ReplayVersionResult } from '../../shared/artifact-replay'
 import {
   createArtifactReplayOwner,
@@ -47,6 +48,22 @@ export type ReplayCompositionDeps = {
    * directory being graded has to BE a session directory, not a temp folder the kernel never enters.
    */
   notebookDataRoot: (projectName: string, sessionId: string) => string
+  /**
+   * The runtime bindings the recorded session was using, so a re-run can start in the same environment
+   * rather than whatever the default happens to be. Absent when that session's record is gone.
+   */
+  readNotebookBindings?: (request: {
+    projectName: string
+    sessionId: string
+  }) => Promise<NotebookRuntimeBindings | undefined>
+  /** Binds a runtime to the re-run's own session, before its first cell runs. */
+  bindNotebookRuntime?: (request: {
+    projectName: string
+    sessionId: string
+    workspaceCwd: string
+    language: NotebookLanguage
+    runtimeId: string
+  }) => Promise<unknown>
   /** Best-effort teardown of a re-run's own session once its verdict is built. */
   shutdownNotebookSession?: (request: {
     projectName: string
@@ -67,7 +84,10 @@ export const createArtifactReplayAdapter = (
   // Keyed by the working directory: one entry per re-run in flight, so concurrent re-runs cannot borrow
   // each other's session. Absent for a workspace this adapter did not create (tests, and callers that
   // supply their own directory) — those keep the request's own session, as before.
-  const replaySessions = new Map<string, { projectName: string; sessionId: string }>()
+  const replaySessions = new Map<
+    string,
+    { projectName: string; sessionId: string; bound: boolean }
+  >()
   const owner = createArtifactReplayOwner({
     readVersion: async (request): Promise<ReplayableVersion | undefined> => {
       const provenance = await deps.provenance.getVersionCore(request).catch(() => undefined)
@@ -124,7 +144,7 @@ export const createArtifactReplayAdapter = (
       const sessionId = `replay-${randomBytes(8).toString('hex')}`
       const dataRoot = deps.notebookDataRoot(projectName, sessionId)
       await mkdir(dataRoot, { recursive: true })
-      replaySessions.set(dataRoot, { projectName, sessionId })
+      replaySessions.set(dataRoot, { projectName, sessionId, bound: false })
       return dataRoot
     },
     removeWorkspace: async (workspace) => {
@@ -152,6 +172,30 @@ export const createArtifactReplayAdapter = (
     // built from, so a timeout, a failure and a completed run stay distinguishable all the way up.
     executeNotebook: async (request) => {
       const session = replaySessions.get(request.workspaceCwd)
+      if (session && !session.bound) {
+        session.bound = true
+        const recorded = await deps
+          .readNotebookBindings?.({
+            projectName: session.projectName,
+            sessionId: request.sessionId
+          })
+          .catch(() => undefined)
+        const language = request.language === 'r' ? 'r' : 'python'
+        const binding = recorded?.[language]
+        if (binding?.runtimeId) {
+          // Same runtime as the run being checked, when its record is still readable; a re-run under a
+          // different interpreter would be evidence about a different environment.
+          await deps
+            .bindNotebookRuntime?.({
+              projectName: session.projectName,
+              sessionId: session.sessionId,
+              workspaceCwd: request.workspaceCwd,
+              language,
+              runtimeId: binding.runtimeId
+            })
+            .catch(() => undefined)
+        }
+      }
       const summary = await deps.executeNotebook({
         projectName: request.projectName,
         sessionId: session?.sessionId ?? request.sessionId,

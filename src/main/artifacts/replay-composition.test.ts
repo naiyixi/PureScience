@@ -50,12 +50,18 @@ const notebookSessionFactory = async (): Promise<
 
 const harness = async (
   executeNotebook: ReturnType<typeof vi.fn>,
-  notebookDataRoot: (projectName: string, sessionId: string) => string
+  notebookDataRoot: (projectName: string, sessionId: string) => string,
+  extra: {
+    readNotebookBindings?: ReturnType<typeof vi.fn>
+    bindNotebookRuntime?: ReturnType<typeof vi.fn>
+  } = {}
 ): Promise<{
   adapter: ReplayAdapter
   shutdownNotebookSession: ReturnType<typeof vi.fn>
+  bindNotebookRuntime: ReturnType<typeof vi.fn>
 }> => {
   const shutdownNotebookSession = vi.fn().mockResolvedValue(undefined)
+  const bindNotebookRuntime = extra.bindNotebookRuntime ?? vi.fn().mockResolvedValue(undefined)
   const adapter = createArtifactReplayAdapter({
     provenance: {
       getVersionCore: vi.fn().mockResolvedValue(provenanceOf()),
@@ -64,9 +70,11 @@ const harness = async (
     executeNotebook: executeNotebook as unknown as (input: unknown) => Promise<NotebookRunSummary>,
     appVersion: () => '1.62.0',
     notebookDataRoot,
-    shutdownNotebookSession
+    shutdownNotebookSession,
+    bindNotebookRuntime,
+    readNotebookBindings: extra.readNotebookBindings
   })
-  return { adapter, shutdownNotebookSession }
+  return { adapter, shutdownNotebookSession, bindNotebookRuntime }
 }
 
 // A notebook that runs where it was asked to: the run's own directory comes back unchanged.
@@ -117,6 +125,58 @@ describe('artifact replay composition', () => {
       })
     )
     expect(existsSync(called.workspaceCwd)).toBe(false)
+  })
+
+  it('starts the re-run in the runtime the recorded session used', async () => {
+    const notebookDataRoot = await notebookSessionFactory()
+    const executeNotebook = executingInPlace()
+    const readNotebookBindings = vi.fn().mockResolvedValue({
+      python: {
+        language: 'python',
+        runtimeId: '/data/runtime/envs/default-python/bin/python3.12',
+        source: 'managed',
+        label: 'conda: default-python'
+      }
+    })
+    const { adapter, bindNotebookRuntime } = await harness(executeNotebook, notebookDataRoot, {
+      readNotebookBindings
+    })
+
+    await adapter.replayVersion(request)
+
+    const called = executeNotebook.mock.calls[0]?.[0] as { sessionId: string; workspaceCwd: string }
+    expect(bindNotebookRuntime).toHaveBeenCalledWith({
+      projectName: request.projectId,
+      sessionId: called.sessionId,
+      workspaceCwd: called.workspaceCwd,
+      language: 'python',
+      runtimeId: '/data/runtime/envs/default-python/bin/python3.12'
+    })
+    // The binding has to be in place before the first cell runs, or the kernel is already the wrong one.
+    expect(bindNotebookRuntime.mock.invocationCallOrder[0]).toBeLessThan(
+      executeNotebook.mock.invocationCallOrder[0]!
+    )
+    // It is read from the RECORDED session, not from the re-run's own.
+    expect(readNotebookBindings).toHaveBeenCalledWith({
+      projectName: request.projectId,
+      sessionId: request.appSessionId
+    })
+  })
+
+  it('still runs, unbound, when the recorded session left no bindings behind', async () => {
+    const notebookDataRoot = await notebookSessionFactory()
+    const executeNotebook = executingInPlace()
+    const readNotebookBindings = vi.fn().mockResolvedValue(undefined)
+    const { adapter, bindNotebookRuntime } = await harness(executeNotebook, notebookDataRoot, {
+      readNotebookBindings
+    })
+
+    const outcome = await adapter.replayVersion(request)
+
+    expect(bindNotebookRuntime).not.toHaveBeenCalled()
+    expect(executeNotebook).toHaveBeenCalledTimes(1)
+    // And the verdict must not claim an environment it never pinned.
+    expect(outcome.environmentLock).toBe('not-applied')
   })
 
   it('carries the directory the run happened in through to the verdict', async () => {
