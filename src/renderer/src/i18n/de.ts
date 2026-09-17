@@ -2602,6 +2602,10 @@ export const de: Partial<Record<ZhKey, string>> = {
   'ws.newConversation': 'Neue Konversation',
   'ws.nextArtifactVersion': 'Nächste Artefaktversion',
   'ws.unpublishedArtifacts': 'Erzeugt, aber nicht veröffentlicht: {n}',
+  'ws.unpublishedReasonNoIntent':
+    'der Lauf endete, ohne eine Veröffentlichungsabsicht zu hinterlegen',
+  'ws.unpublishedReasonAmbiguousTurn':
+    'der Turn lässt sich keiner einzelnen Antwort zuordnen, daher rät die Veröffentlichung nicht',
   'ws.unpublishedArtifactsHint':
     'Diese Dateien wurden von einem Agentenlauf erzeugt, aber sie wurden nie zu Artefakten: Entweder hat der Lauf die Veröffentlichung nicht abgeschlossen, oder sie lassen sich keiner einzelnen Antwort zuordnen. Der Inhalt liegt weiterhin auf der Festplatte.',
   'ws.noFilesYet': 'Noch keine Dateien',

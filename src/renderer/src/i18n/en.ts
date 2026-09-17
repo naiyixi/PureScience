@@ -2347,6 +2347,9 @@ export const en: Record<ZhKey, string> = {
   'ws.someFilesNotIndexed': 'Some files could not be indexed yet.',
   'ws.retryIndexing': 'Retry indexing project files',
   'ws.unpublishedArtifacts': 'Produced but not published: {n}',
+  'ws.unpublishedReasonNoIntent': 'its run closed without recording a publication intent',
+  'ws.unpublishedReasonAmbiguousTurn':
+    'its turn cannot be attributed to a single reply, so publishing refused to guess',
   'ws.unpublishedArtifactsHint':
     'An agent run produced these files, but they never became artifacts: either that run did not finish publishing them, or it cannot be attributed to a single reply. Their content is still on disk.',
   'ws.noFilesYet': 'No files yet',

@@ -38,7 +38,10 @@ import type {
 } from '../../shared/artifact-provenance'
 import {
   ARTIFACT_VERSION_UNPUBLISHED,
+  ARTIFACT_VERSION_UNPUBLISHED_AMBIGUOUS_TURN,
+  ARTIFACT_VERSION_UNPUBLISHED_NO_INTENT,
   MAX_ARTIFACT_VERSION_DESCRIPTOR_IDS,
+  type ArtifactVersionStateReason,
   type ResolveArtifactVersionDescriptorsRequest
 } from '../../shared/artifacts'
 import {
@@ -156,6 +159,8 @@ export type WriteAppGeneratedArtifactVersionRequest = Omit<
 }
 
 type PersistedVersionFileRecord = {
+  /** Set only on Versions a startup pass named as never-publishable; names which reason applies. */
+  stateReason?: string | null
   id: string
   artifactId: string
   versionNumber: number
@@ -2975,7 +2980,9 @@ class ArtifactProvenanceRepository {
       const publicationByRunId = new Map(
         unfinishedCompatibilityPublications.map((publication) => [publication.runId, publication])
       )
-      const unpublishedRunIds: string[] = []
+      // Run id → why it can never become published. The two reasons are different to the user, so they are
+      // carried separately instead of collapsing into one "not published".
+      const unpublishedRuns = new Map<string, ArtifactVersionStateReason>()
       const finalizationSkipCounts: Record<string, number> = {}
       const skipFinalization = (reason: string): void => {
         finalizationSkipCounts[reason] = (finalizationSkipCounts[reason] ?? 0) + 1
@@ -3000,8 +3007,9 @@ class ArtifactProvenanceRepository {
               artifactRunId
             )
         if (!marker) {
-          if (options?.markUnpublishedRuns) unpublishedRunIds.push(artifactRunId)
-          else skipFinalization('no-publication-intent')
+          if (options?.markUnpublishedRuns) {
+            unpublishedRuns.set(artifactRunId, ARTIFACT_VERSION_UNPUBLISHED_NO_INTENT)
+          } else skipFinalization('no-publication-intent')
           continue
         }
         const markerContext = marker.provenanceContext
@@ -3060,7 +3068,9 @@ class ArtifactProvenanceRepository {
           // This refusal is permanent by design: the intent never named a terminal message and the turn it
           // belongs to will not change, so no later pass can make it unique. A startup pass may therefore
           // name the outcome instead of leaving a Version that can never resolve.
-          if (options?.markUnpublishedRuns) unpublishedRunIds.push(artifactRunId)
+          if (options?.markUnpublishedRuns) {
+            unpublishedRuns.set(artifactRunId, ARTIFACT_VERSION_UNPUBLISHED_AMBIGUOUS_TURN)
+          }
           continue
         }
 
@@ -3123,22 +3133,30 @@ class ArtifactProvenanceRepository {
       // once, when the turn closes, so nothing can produce one afterwards. Naming it keeps the rows and
       // their bytes — readers can then say "produced but never published" instead of showing a pending
       // Version that silently never resolves.
-      if (unpublishedRunIds.length > 0) {
+      if (unpublishedRuns.size > 0) {
         const unpublished = await client.artifactVersion.findMany({
           where: {
-            artifactRunId: { in: unpublishedRunIds },
+            artifactRunId: { in: [...unpublishedRuns.keys()] },
             state: 'pending',
             artifact: { is: { projectId, sessionId: appSessionId } }
           },
-          select: { id: true }
+          select: { id: true, artifactRunId: true }
         })
-        if (unpublished.length > 0) {
+        // Grouped by reason so each Version carries the one that applies to its run.
+        for (const reason of [
+          ARTIFACT_VERSION_UNPUBLISHED_NO_INTENT,
+          ARTIFACT_VERSION_UNPUBLISHED_AMBIGUOUS_TURN
+        ]) {
+          const ids = unpublished
+            .filter((version) => unpublishedRuns.get(version.artifactRunId) === reason)
+            .map((version) => version.id)
+          if (ids.length === 0) continue
           await client.artifactVersion.updateMany({
-            where: { id: { in: unpublished.map((version) => version.id) } },
-            data: { state: ARTIFACT_VERSION_UNPUBLISHED }
+            where: { id: { in: ids } },
+            data: { state: ARTIFACT_VERSION_UNPUBLISHED, stateReason: reason }
           })
         }
-        result.unpublishedRunIds.push(...unpublishedRunIds)
+        result.unpublishedRunIds.push(...unpublishedRuns.keys())
         result.unpublishedVersionIds.push(...unpublished.map((version) => version.id))
       }
       result.finalizationSkipCounts = finalizationSkipCounts
@@ -4193,6 +4211,11 @@ class ArtifactProvenanceRepository {
       createdAt: version.createdAt.toISOString(),
       producerRunId: version.producerRunId ?? undefined,
       environment,
+      // Why a produced Version was left unpublished, so the file view can name the reason per file rather
+      // than explaining both at once.
+      ...(version.stateReason
+        ? { publicationReason: version.stateReason as ArtifactVersionStateReason }
+        : {}),
       projectName: projectId,
       sessionId: appSessionId,
       runId: version.artifactRunId,

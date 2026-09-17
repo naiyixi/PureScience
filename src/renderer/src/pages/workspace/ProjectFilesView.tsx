@@ -1874,6 +1874,16 @@ const ProjectFilesViewContent = ({
                 {unpublishedArtifacts.slice(0, 5).map((file) => (
                   <li key={file.id} className="truncate">
                     {file.name}
+                    {file.publicationReason ? (
+                      <span className="ml-1 text-text-300">
+                        {'— '}
+                        {t(
+                          file.publicationReason === 'no-publication-intent'
+                            ? 'ws.unpublishedReasonNoIntent'
+                            : 'ws.unpublishedReasonAmbiguousTurn'
+                        )}
+                      </span>
+                    ) : null}
                   </li>
                 ))}
               </ul>

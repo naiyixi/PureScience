@@ -240,6 +240,9 @@ const MANAGED_FILE_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "ManagedFile" (
 
 const MANAGED_FILE_ADD_SOURCE_VERSION_ID_DDL = `ALTER TABLE "ManagedFile" ADD COLUMN "sourceVersionId" TEXT`
 const MANAGED_FILE_ADD_CHECKSUM_DDL = `ALTER TABLE "ManagedFile" ADD COLUMN "checksum" TEXT`
+// Why a produced Version was left unpublished, named so the file view can say which: absent on published
+// Versions and on rows written before this column existed.
+const ARTIFACT_VERSION_ADD_STATE_REASON_DDL = `ALTER TABLE "ArtifactVersion" ADD COLUMN "stateReason" TEXT`
 
 // One ledger row per session provides the filesRevision fast path, materialized source counts, and the
 // independent ordering key used by artifact-group pagination.
@@ -376,6 +379,7 @@ const ARTIFACT_VERSION_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "ArtifactVersion"
     "executionSnapshotChecksum" TEXT,
     "executionSnapshotStorageKey" TEXT,
     "executionSnapshotSchemaVersion" INTEGER,
+    "stateReason" TEXT,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
     CONSTRAINT "ArtifactVersion_state_check" CHECK ("state" IN ('staging', 'pending', 'finalized', 'unpublished')),
@@ -816,6 +820,12 @@ const ensureProjectSchema = async (client: PrismaClient): Promise<void> => {
     MANAGED_FILE_ADD_SOURCE_VERSION_ID_DDL
   )
   await addColumnIfMissing(client, 'ManagedFile', 'checksum', MANAGED_FILE_ADD_CHECKSUM_DDL)
+  await addColumnIfMissing(
+    client,
+    'ArtifactVersion',
+    'stateReason',
+    ARTIFACT_VERSION_ADD_STATE_REASON_DDL
+  )
   await client.$executeRawUnsafe(MANAGED_FILE_SESSION_SYNC_TABLE_DDL)
 
   for (const ddl of MANAGED_FILE_INDEX_DDLS) {

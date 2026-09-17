@@ -498,7 +498,8 @@ describe('ProjectFilesView', () => {
           fileUrl: 'file:///artifacts/FINAL_REPORT.md',
           size: 42,
           mtimeMs: 1,
-          publication: 'unpublished'
+          publication: 'unpublished',
+          publicationReason: 'ambiguous-turn-message'
         }
       ])
     })
@@ -511,6 +512,35 @@ describe('ProjectFilesView', () => {
     // And the wording must not present them as artifacts, for either named reason.
     expect(notice?.textContent).toContain('never became artifacts')
     expect(notice?.textContent).toContain('cannot be attributed to a single reply')
+    // The reason is named PER FILE: "not published" alone would make the two causes read alike, and they
+    // call for different things from the reader.
+    expect(notice?.textContent).toContain(
+      'cannot be attributed to a single reply, so publishing refused to guess'
+    )
+  })
+
+  it('names the other reason when the run recorded no publication intent', async () => {
+    await renderView([], false, () => {
+      vi.mocked(window.api.artifacts.listProjectFiles).mockResolvedValue([
+        {
+          id: 'version-unpublished-2',
+          projectName: 'default',
+          sessionId: 'session-1',
+          name: 'RESULTS.csv',
+          path: '/artifacts/default/session-1/.provenance/RESULTS.csv/content',
+          fileUrl: 'file:///artifacts/RESULTS.csv',
+          size: 12,
+          mtimeMs: 1,
+          publication: 'unpublished',
+          publicationReason: 'no-publication-intent'
+        }
+      ])
+    })
+
+    const notice = container.querySelector('[data-testid="unpublished-artifacts-notice"]')
+    expect(notice?.textContent).toContain('RESULTS.csv')
+    expect(notice?.textContent).toContain('closed without recording a publication intent')
+    expect(notice?.textContent).not.toContain('refused to guess')
   })
 
   it('says nothing about unpublished files when every produced file was published', async () => {

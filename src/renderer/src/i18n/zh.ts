@@ -2194,6 +2194,8 @@ export const zh = {
   'ws.someFilesNotIndexed': '部分文件尚无法索引。',
   'ws.retryIndexing': '重试索引项目文件',
   'ws.unpublishedArtifacts': '已生成但未发布：{n}',
+  'ws.unpublishedReasonNoIntent': '该次运行结束时没有写下发布意图',
+  'ws.unpublishedReasonAmbiguousTurn': '那个回合无法归属到单独一条回复，发布环节拒绝猜',
   'ws.unpublishedArtifactsHint':
     '这些文件由智能体生成，但从未成为产物：要么该次运行没有完成发布，要么无法确定它属于哪一次回复。内容仍在磁盘上。',
   'ws.noFilesYet': '还没有文件',

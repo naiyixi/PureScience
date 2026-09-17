@@ -295,6 +295,7 @@ model ArtifactVersion {
   messageId                      String?
   messageSnapshotId              String?
   state                          String          @default("staging")
+  stateReason                    String?
   contentStorageKey              String
   evidenceStorageKey             String
   contentType                    String?

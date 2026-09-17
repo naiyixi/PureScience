@@ -22,6 +22,8 @@ export type ArtifactFile = {
   // Present only when a produced Version was never published: its run closed without ever writing a
   // publication intent, so the file exists on disk but is not an artifact. Absent on published files.
   publication?: 'unpublished'
+  /** Which named reason left it unpublished, when the producer recorded one. */
+  publicationReason?: ArtifactVersionStateReason
 }
 
 // A user-picked reference to an existing file (upload or generated output) inserted via the
@@ -98,6 +100,13 @@ export const ARTIFACT_OWNERSHIP_PERSISTENCE_RACE = 'ownership-persistence-race' 
 // the intent is written exactly once, at turn end. Naming that outcome keeps the rows and their bytes
 // (so nothing is destroyed) while letting every reader say "produced but never published" instead of
 // showing a pending Version that silently never resolves.
+/** The two reasons a produced Version can never become an artifact, named for the user. */
+export const ARTIFACT_VERSION_UNPUBLISHED_NO_INTENT = 'no-publication-intent'
+export const ARTIFACT_VERSION_UNPUBLISHED_AMBIGUOUS_TURN = 'ambiguous-turn-message'
+export type ArtifactVersionStateReason =
+  | typeof ARTIFACT_VERSION_UNPUBLISHED_NO_INTENT
+  | typeof ARTIFACT_VERSION_UNPUBLISHED_AMBIGUOUS_TURN
+
 export const ARTIFACT_VERSION_UNPUBLISHED = 'unpublished' as const
 
 export type ArtifactFinalizationErrorCode = typeof ARTIFACT_OWNERSHIP_PERSISTENCE_RACE

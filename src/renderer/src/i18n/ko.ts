@@ -2490,6 +2490,9 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'ws.newConversation': '새 대화',
   'ws.nextArtifactVersion': '다음 산출물 버전',
   'ws.unpublishedArtifacts': '생성되었지만 게시되지 않음: {n}',
+  'ws.unpublishedReasonNoIntent': '해당 실행은 게시 의도를 기록하지 않고 종료되었습니다',
+  'ws.unpublishedReasonAmbiguousTurn':
+    '해당 턴은 단일 응답에 귀속될 수 없어 게시가 추측을 거부했습니다',
   'ws.unpublishedArtifactsHint':
     '이 파일들은 에이전트 실행이 생성했지만 산출물이 되지 않았습니다. 해당 실행이 게시를 완료하지 않았거나, 어느 응답에 속하는지 특정할 수 없기 때문입니다. 내용은 디스크에 남아 있습니다.',
   'ws.noFilesYet': '아직 파일이 없습니다',

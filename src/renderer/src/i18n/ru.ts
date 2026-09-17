@@ -2540,6 +2540,9 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'ws.newConversation': 'Новый диалог',
   'ws.nextArtifactVersion': 'Следующая версия артефакта',
   'ws.unpublishedArtifacts': 'Создано, но не опубликовано: {n}',
+  'ws.unpublishedReasonNoIntent': 'запуск завершился, не записав намерение публикации',
+  'ws.unpublishedReasonAmbiguousTurn':
+    'ход нельзя отнести к одному ответу, поэтому публикация не угадывает',
   'ws.unpublishedArtifactsHint':
     'Эти файлы создал запуск агента, но они так и не стали артефактами: либо запуск не завершил публикацию, либо их нельзя отнести к одному ответу. Содержимое осталось на диске.',
   'ws.noFilesYet': 'Файлов пока нет',

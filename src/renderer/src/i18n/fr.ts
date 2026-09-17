@@ -2590,6 +2590,10 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'ws.newConversation': 'Nouvelle conversation',
   'ws.nextArtifactVersion': 'Version d’artefact suivante',
   'ws.unpublishedArtifacts': 'Produits mais non publiés : {n}',
+  'ws.unpublishedReasonNoIntent':
+    "son exécution s'est terminée sans enregistrer d'intention de publication",
+  'ws.unpublishedReasonAmbiguousTurn':
+    'son tour ne peut pas être attribué à une seule réponse, la publication refuse donc de deviner',
   'ws.unpublishedArtifactsHint':
     "Ces fichiers ont été produits par une exécution d'agent, mais ils ne sont jamais devenus des artefacts : soit cette exécution n'a pas terminé la publication, soit ils ne peuvent pas être attribués à une seule réponse. Leur contenu reste sur le disque.",
   'ws.noFilesYet': 'Aucun fichier pour l’instant',

@@ -2361,6 +2361,8 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'ws.newConversation': '新對話',
   'ws.nextArtifactVersion': '下一個產物版本',
   'ws.unpublishedArtifacts': '已產生但未發佈：{n}',
+  'ws.unpublishedReasonNoIntent': '該次執行結束時沒有寫下發佈意圖',
+  'ws.unpublishedReasonAmbiguousTurn': '那個回合無法歸屬到單獨一條回覆，發佈環節拒絕猜',
   'ws.unpublishedArtifactsHint':
     '這些檔案由智慧體產生，但從未成為產物：要麼該次執行沒有完成發佈，要麼無法確定它屬於哪一次回覆。內容仍在磁碟上。',
   'ws.noFilesYet': '還沒有檔案',
