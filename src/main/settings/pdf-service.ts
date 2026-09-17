@@ -9,6 +9,15 @@ import { createHash } from 'node:crypto'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
 
+import {
+  auditPdfTableCandidateForUse,
+  extractPdfTableCandidates,
+  extractPdfTableCandidatesFromText,
+  toMarkdownTable,
+  toTsv,
+  type PdfTableCandidate,
+  type PdfTextItem
+} from '../../shared/pdf-table-extraction'
 import type {
   PdfOpenResult,
   PdfOutlineEntry,
@@ -16,6 +25,8 @@ import type {
   PdfPageScanHit,
   PdfPagesResult,
   PdfScanResult,
+  PdfTableCandidateForAgent,
+  PdfTablesResult,
   RegisteredPdf
 } from '../../shared/pdf'
 import {
@@ -23,7 +34,8 @@ import {
   PDF_MAX_PAGES,
   PDF_MAX_TOTAL_CHARS,
   PDF_SCAN_RESULT_LIMIT,
-  PDF_SCAN_SNIPPET_CHARS
+  PDF_SCAN_SNIPPET_CHARS,
+  PDF_TABLES_MAX_CANDIDATES
 } from '../../shared/pdf'
 
 const PDFS_DIR = '.pdfs'
@@ -44,9 +56,17 @@ export type PdfServiceOptions = {
   // paths resolve against storageRoot.
   resolvePath?: (path: string) => Promise<string | undefined>
   // Injectable PDF parser (tests); defaults to the pdfjs implementation.
-  parsePdf?: (
-    filePath: string
-  ) => Promise<{ pages: string[]; outline: PdfOutlineEntry[]; title: string }>
+  parsePdf?: (filePath: string) => Promise<{
+    pages: string[]
+    outline: PdfOutlineEntry[]
+    title: string
+    /**
+     * Positioned items per page, when the parser can produce them. Optional on purpose: the text table
+     * extraction is a strictly weaker method, and a parser that cannot position items must not pretend it
+     * can (see the method named on each candidate).
+     */
+    items?: PdfTextItem[][]
+  }>
   now?: () => number
 }
 
@@ -149,6 +169,52 @@ export class PdfService {
     return { docId, title: doc.title, pageCount: doc.pageCount, outline: doc.outline }
   }
 
+  // Table candidates from the PDF's own text layer. Nothing here is a verified transcription, so every
+  // candidate says which method produced it, how confident that method is, and what a reader must still do
+  // before using it. Geometry (row/column clustering) is used when the parser can position items; the
+  // whitespace method is named as the weaker claim it is.
+  async tables(docId: string, page?: number): Promise<PdfTablesResult> {
+    const doc = await this.requireDoc(docId)
+    if (page !== undefined && (page < 1 || page > doc.pageCount)) {
+      throw new PdfValidationError('not_found', `Page ${String(page)} is outside this document.`)
+    }
+    const sourcePath = await this.resolveSourcePath(doc.sourcePath)
+    if (!sourcePath) throw new PdfValidationError('not_found', `Source file is unavailable: ${doc.sourcePath}`)
+    const parse = this.options.parsePdf ?? parsePdf
+    const parsed = await parse(sourcePath)
+    const first = page ?? 1
+    const last = page ?? parsed.pages.length
+    const candidates: PdfTableCandidateForAgent[] = []
+    let scannedPages = 0
+    for (let pageNumber = first; pageNumber <= last; pageNumber += 1) {
+      if (candidates.length >= PDF_TABLES_MAX_CANDIDATES) break
+      scannedPages += 1
+      const items = parsed.items?.[pageNumber - 1]
+      const pageText = parsed.pages[pageNumber - 1] ?? ''
+      const found: PdfTableCandidate[] =
+        items && items.length > 0
+          ? extractPdfTableCandidates(pageNumber, items)
+          : pageText.trim() === ''
+            ? []
+            : extractPdfTableCandidatesFromText(pageNumber, pageText)
+      for (const candidate of found) {
+        if (candidates.length >= PDF_TABLES_MAX_CANDIDATES) break
+        candidates.push({
+          page: candidate.page,
+          status: candidate.status,
+          method: candidate.method,
+          rows: candidate.rows,
+          columnCount: candidate.columnCount,
+          confidence: candidate.confidence,
+          markdown: toMarkdownTable(candidate),
+          tsv: toTsv(candidate),
+          warnings: auditPdfTableCandidateForUse(candidate)
+        })
+      }
+    }
+    return { docId, ...(page === undefined ? {} : { page }), scannedPages, candidates }
+  }
+
   async scan(docId: string, query: string): Promise<PdfScanResult> {
     const doc = await this.requireDoc(docId)
     const terms = tokenize(query)
@@ -202,7 +268,13 @@ export class PdfService {
 // Parses a PDF with pdfjs: per-page text + bookmark outline + title.
 const parsePdf = async (
   filePath: string
-): Promise<{ pages: string[]; outline: PdfOutlineEntry[]; title: string }> => {
+): Promise<{
+  pages: string[]
+  outline: PdfOutlineEntry[]
+  title: string
+  /** Absent on the paths that stop before the text layer could be read. */
+  items?: PdfTextItem[][]
+}> => {
   const { createRequire } = await import('node:module')
   const { pathToFileURL } = await import('node:url')
   const { readFile } = await import('node:fs/promises')
@@ -227,10 +299,24 @@ const parsePdf = async (
 
   try {
     const pages: string[] = []
+    const itemsPerPage: PdfTextItem[][] = []
     for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
       const page = await document.getPage(pageNumber)
       const content = await page.getTextContent()
       page.cleanup()
+      const positioned: PdfTextItem[] = []
+      for (const item of content.items) {
+        if (!('str' in item) || item.str.trim() === '') continue
+        const transform = Array.isArray(item.transform) ? item.transform : []
+        positioned.push({
+          text: item.str,
+          x: typeof transform[4] === 'number' ? transform[4] : 0,
+          y: typeof transform[5] === 'number' ? transform[5] : 0,
+          width: typeof item.width === 'number' ? item.width : 0,
+          height: typeof item.height === 'number' ? item.height : 0
+        })
+      }
+      itemsPerPage.push(positioned)
       const pageText = content.items
         .map((item) => ('str' in item ? item.str : ''))
         .join('')

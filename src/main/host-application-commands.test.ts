@@ -4,7 +4,9 @@ import type { RemoteAccessSnapshot } from '../shared/remote-access'
 import type { RoutineConfigureRequest } from '../shared/routine'
 import type { EndpointRegisterRequest, ManagedEndpoint } from '../shared/endpoint'
 import type { AnnotationSetRequest, FileAnnotation } from '../shared/annotation'
-import type { PdfOpenResult, PdfOutlineResult, PdfPagesResult, PdfScanResult } from '../shared/pdf'
+import type { PdfOpenResult, PdfOutlineResult, PdfPagesResult, PdfScanResult ,
+  PdfTablesResult
+} from '../shared/pdf'
 import type { FigureReviewRequest, FigureReviewResult } from '../shared/figure'
 import type { HostQueryResult } from '../shared/host-query'
 import { RENDERER_CONTRACT_GROUPS } from '../shared/renderer-contract-catalog'
@@ -255,6 +257,11 @@ const createDependencies = (): HostApplicationCommandDependencies => ({
       docId: 'doc-1',
       query: 'query',
       hits: [{ page: 2, score: 1, snippet: 'hit' }]
+    })),
+    tables: vi.fn(async (): Promise<PdfTablesResult> => ({
+      docId: 'doc-1',
+      scannedPages: 1,
+      candidates: []
     }))
   },
   figure: {
@@ -334,7 +341,7 @@ const commandByName = (name: string): ApplicationCommand<string, readonly unknow
 }
 
 describe('Host application commands', () => {
-  it('defines the exact 46 request channels in their existing capability groups', () => {
+  it('defines the exact request channels in their existing capability groups', () => {
     const expected = RENDERER_CONTRACT_GROUPS.filter(({ capability }) =>
       HOST_CAPABILITIES.includes(capability as (typeof HOST_CAPABILITIES)[number])
     ).map(({ capability, contracts }) => ({
@@ -348,7 +355,7 @@ describe('Host application commands', () => {
         .filter((channel): channel is string => channel !== null)
     }))
 
-    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(68)
+    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(69)
     const actualGroups = hostApplicationCommandGroups
       .map(({ name, commands }) => ({
         capability: name,
@@ -366,7 +373,7 @@ describe('Host application commands', () => {
       {} as HostApplicationCommandDependencies
     )
 
-    expect(router.dispatcher.commandNames()).toHaveLength(68)
+    expect(router.dispatcher.commandNames()).toHaveLength(69)
     installation.uninstall()
     expect(router.dispatcher.commandNames()).toEqual([])
   })
@@ -530,6 +537,10 @@ describe('Host application commands', () => {
       invocation([{ projectId: 'project-1', docId: 'doc-1', query: 'attention' }])
     )
     await router.dispatcher.invoke(
+      hostApplicationCommands.pdf.tables,
+      invocation([{ projectId: 'project-1', docId: 'doc-1', page: 2 }])
+    )
+    await router.dispatcher.invoke(
       hostApplicationCommands.figure.review,
       invocation([{ projectId: 'project-1', request: figureRequest }])
     )
@@ -630,6 +641,7 @@ describe('Host application commands', () => {
     expect(dependencies.pdf.pages).toHaveBeenCalledWith('project-1', 'doc-1', 1, 2)
     expect(dependencies.pdf.outline).toHaveBeenCalledWith('project-1', 'doc-1')
     expect(dependencies.pdf.scan).toHaveBeenCalledWith('project-1', 'doc-1', 'attention')
+    expect(dependencies.pdf.tables).toHaveBeenCalledWith('project-1', 'doc-1', 2)
     expect(dependencies.figure.review).toHaveBeenCalledWith('project-1', figureRequest)
     expect(dependencies.query.run).toHaveBeenCalledWith('project-1', querySql)
     expect(dependencies.storage.commitAndRelaunch).toHaveBeenCalledWith(parent)
@@ -689,6 +701,7 @@ describe('Host application commands', () => {
       'pdf:pages': [{ projectId: 'project-1', docId: 'doc-1', start: 1 }],
       'pdf:outline': [{ projectId: 'project-1', docId: 'doc-1' }],
       'pdf:scan': [{ projectId: 'project-1', docId: 'doc-1', query: 'x' }],
+      'pdf:tables': [{ projectId: 'project-1', docId: 'doc-1', page: 2 }],
       'figure:review': [
         { projectId: 'project-1', request: { panels: [{ id: 'A', chartType: 'bar' }] } }
       ],
@@ -707,7 +720,7 @@ describe('Host application commands', () => {
         .filter((channel): channel is string => channel !== null)
     )
 
-    expect(localOnlyChannels).toHaveLength(40)
+    expect(localOnlyChannels).toHaveLength(41)
     for (const channel of localOnlyChannels) {
       await expect(
         router.dispatcher.invoke(

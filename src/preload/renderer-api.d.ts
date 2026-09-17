@@ -329,7 +329,13 @@ import type {
 import type { RoutineConfigureRequest, RoutineSchedule } from '../shared/routine'
 import type { EndpointRegisterRequest, ManagedEndpoint } from '../shared/endpoint'
 import type { AnnotationSetRequest, FileAnnotation } from '../shared/annotation'
-import type { PdfOpenResult, PdfOutlineResult, PdfPagesResult, PdfScanResult } from '../shared/pdf'
+import type {
+  PdfOpenResult,
+  PdfOutlineResult,
+  PdfPagesResult,
+  PdfScanResult,
+  PdfTablesResult
+} from '../shared/pdf'
 import type { FigureReviewRequest, FigureReviewResult } from '../shared/figure'
 import type { HostQueryResult } from '../shared/host-query'
 import type {
@@ -1103,6 +1109,7 @@ export interface PureScienceAPI {
   }
   pdf: {
     // Registers a PDF for layered reading (parses + persists page text).
+    tables(request: { projectId: string; docId: string; page?: number }): Promise<PdfTablesResult>
     open(request: { projectId: string; path: string }): Promise<PdfOpenResult>
     // Reads a page range as text.
     pages(request: {

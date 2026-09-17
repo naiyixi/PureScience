@@ -37,11 +37,16 @@ const makeHandler = (): PdfMcpHandler => ({
     docId: 'doc-1',
     query: 'query',
     hits: [{ page: 2, score: 1, snippet: 'hit' }]
+  })),
+  tables: vi.fn(async () => ({
+    docId: 'doc-1',
+    scannedPages: 1,
+    candidates: []
   }))
 })
 
 describe('PDF MCP server contract', () => {
-  it('names the server and the four tools', () => {
+  it('names the server and its tools', () => {
     expect(PDF_MCP_SERVER_NAME).toBe('purescience-pdf')
     expect(PDF_MCP_SERVER_ARG).toBe('--purescience-pdf-mcp')
     expect(PDF_OPEN_TOOL_NAME).toBe('pdf_open')
@@ -55,7 +60,7 @@ describe('PDF MCP server contract', () => {
     const server = createPdfMcpServer(handler)
     const tools = (server as unknown as { _registeredTools: Record<string, unknown> })
       ._registeredTools
-    expect(Object.keys(tools)).toHaveLength(4)
+    expect(Object.keys(tools)).toHaveLength(5)
     expect(handler.open).not.toHaveBeenCalled()
   })
 

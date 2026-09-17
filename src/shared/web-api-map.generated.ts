@@ -105,6 +105,7 @@ export const WEB_INVOKE_CHANNELS = {
   'pdf.outline': 'pdf:outline',
   'pdf.pages': 'pdf:pages',
   'pdf.scan': 'pdf:scan',
+  'pdf.tables': 'pdf:tables',
   'permissions.extendUndo': 'permissions:extend-undo',
   'permissions.list': 'permissions:list',
   'permissions.restore': 'permissions:restore',

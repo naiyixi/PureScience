@@ -41,7 +41,13 @@ import type { EndpointRegisterRequest } from '../shared/endpoint'
 import type { EndpointCommandOwner } from './settings/endpoint-ipc'
 import type { FileAnnotation, AnnotationSetRequest } from '../shared/annotation'
 import type { AnnotationCommandOwner } from './settings/annotation-ipc'
-import type { PdfOpenResult, PdfPagesResult, PdfOutlineResult, PdfScanResult } from '../shared/pdf'
+import type {
+  PdfOpenResult,
+  PdfPagesResult,
+  PdfOutlineResult,
+  PdfScanResult,
+  PdfTablesResult
+} from '../shared/pdf'
 import type { PdfCommandOwner } from './settings/pdf-ipc'
 import type { FigureReviewResult, FigureReviewRequest } from '../shared/figure'
 import type { FigureCommandOwner } from './settings/figure-ipc'
@@ -374,7 +380,12 @@ const pdfCommands = Object.freeze({
     'pdf:scan',
     readonly [request: { projectId: string; docId: string; query: string }],
     PdfScanResult
-  >('pdf:scan')
+  >('pdf:scan'),
+  tables: defineApplicationCommand<
+    'pdf:tables',
+    readonly [request: { projectId: string; docId: string; page?: number }],
+    PdfTablesResult
+  >('pdf:tables')
 })
 
 const figureCommands = Object.freeze({
@@ -682,6 +693,10 @@ const registerHostApplicationCommands = (
       'pdf:scan': ({ args, callerContext }) =>
         localCommand(callerContext, 'pdf:scan', () =>
           dependencies.pdf.scan(args[0].projectId, args[0].docId, args[0].query)
+        ),
+      'pdf:tables': ({ args, callerContext }) =>
+        localCommand(callerContext, 'pdf:tables', () =>
+          dependencies.pdf.tables(args[0].projectId, args[0].docId, args[0].page)
         )
     })
     scope.registerGroup(hostApplicationCommandGroups[12], {

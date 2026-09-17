@@ -14,6 +14,7 @@ export const PDF_OPEN_TOOL_NAME = 'pdf_open'
 export const PDF_PAGES_TOOL_NAME = 'pdf_pages'
 export const PDF_OUTLINE_TOOL_NAME = 'pdf_outline'
 export const PDF_SCAN_TOOL_NAME = 'pdf_scan'
+export const PDF_TABLES_TOOL_NAME = 'pdf_tables'
 
 export const PDF_OPEN_TOOL_DESCRIPTION =
   'Registers a PDF for layered reading: parses the file, extracts selectable text, persists ' +
@@ -98,6 +99,32 @@ export type PdfOutlineResult = {
   title: string
   pageCount: number
   outline: PdfOutlineEntry[]
+}
+
+// How many table candidates one call may return: enough to reach a paper's results tables, bounded so a
+// call cannot pour a whole PDF into the context.
+export const PDF_TABLES_MAX_CANDIDATES = 8
+
+export type PdfTableCandidateForAgent = {
+  page: number
+  /** Always 'candidate': nothing here is a verified transcription of the page. */
+  status: 'candidate'
+  method: string
+  rows: readonly (readonly string[])[]
+  columnCount: number
+  confidence: string
+  markdown: string
+  tsv: string
+  /** What a reader has to do before using it, from the extraction's own audit. */
+  warnings: readonly string[]
+}
+
+export type PdfTablesResult = {
+  docId: string
+  /** Set when the caller asked for one page; absent means every page that carried a candidate. */
+  page?: number
+  scannedPages: number
+  candidates: PdfTableCandidateForAgent[]
 }
 
 export type PdfScanResult = {

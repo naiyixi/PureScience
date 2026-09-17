@@ -18,7 +18,9 @@ import {
   PDF_PAGES_TOOL_DESCRIPTION,
   PDF_PAGES_TOOL_NAME,
   PDF_SCAN_TOOL_DESCRIPTION,
-  PDF_SCAN_TOOL_NAME
+  PDF_SCAN_TOOL_NAME,
+  PDF_TABLES_TOOL_NAME,
+  type PdfTablesResult
 } from '../../shared/pdf'
 import type {
   PdfOpenResult,
@@ -67,6 +69,26 @@ const pdfOutlineToolDefinition = {
   inputSchema: pdfOutlineToolSchema
 }
 
+const pdfTablesToolSchema = {
+  doc_id: z.string().describe('The document id returned by pdf_open.'),
+  page: z
+    .number()
+    .int()
+    .positive()
+    .optional()
+    .describe('One-based page to extract from. Omit to scan every page that carries a candidate.')
+}
+
+const pdfTablesToolDefinition = {
+  title: 'Extract table candidates from a PDF page',
+  description:
+    'Extract tables from the PDF text layer. Candidates only: each one names the method that produced it ' +
+    '(row/column geometry, or the weaker whitespace method when the page has no positions), its confidence, ' +
+    'and what you must still check against the source before using it. Nothing is transcribed for you and ' +
+    'an empty result means no table was detected, not that the page has none.',
+  inputSchema: pdfTablesToolSchema
+}
+
 const pdfScanToolSchema = {
   doc_id: z.string().min(1).describe('Document id from pdf_open.'),
   query: z.string().min(1).max(200).describe('What to find — a dataset name, metric, or term.')
@@ -95,6 +117,7 @@ type PdfMcpHandler = {
   pages: (docId: string, start: number, end?: number) => Promise<PdfPagesResult>
   outline: (docId: string) => Promise<PdfOutlineResult>
   scan: (docId: string, query: string) => Promise<PdfScanResult>
+  tables: (docId: string, page?: number) => Promise<PdfTablesResult>
 }
 
 type PdfMcpServerConfigRequest = PdfMcpEnvironment & {
@@ -103,7 +126,7 @@ type PdfMcpServerConfigRequest = PdfMcpEnvironment & {
 }
 
 type RpcResponse = {
-  result?: PdfOpenResult | PdfPagesResult | PdfOutlineResult | PdfScanResult
+  result?: PdfOpenResult | PdfPagesResult | PdfOutlineResult | PdfScanResult | PdfTablesResult
   error?: string
 }
 
@@ -129,6 +152,13 @@ const createPdfMcpServer = (handler: PdfMcpHandler): ModelContextProtocolServer 
 
   server.registerTool(PDF_OUTLINE_TOOL_NAME, pdfOutlineToolDefinition, async (input) => {
     const result = await handler.outline(input.doc_id)
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+    }
+  })
+
+  server.registerTool(PDF_TABLES_TOOL_NAME, pdfTablesToolDefinition, async (input) => {
+    const result = await handler.tables(input.doc_id, input.page)
     return {
       content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
     }
@@ -228,7 +258,12 @@ const runPdfMcpServer = async (
     outline: (docId) =>
       callPdfRpc(environment, 'pdfOutline', { docId }) as Promise<PdfOutlineResult>,
     scan: (docId, query) =>
-      callPdfRpc(environment, 'pdfScan', { docId, query }) as Promise<PdfScanResult>
+      callPdfRpc(environment, 'pdfScan', { docId, query }) as Promise<PdfScanResult>,
+    tables: (docId, page) =>
+      callPdfRpc(environment, 'pdfTables', {
+        docId,
+        ...(page !== undefined ? { page } : {})
+      }) as Promise<PdfTablesResult>
   })
   await server.connect(new StdioServerTransport())
 }
@@ -240,6 +275,8 @@ export {
   PDF_PAGES_TOOL_NAME,
   PDF_OUTLINE_TOOL_NAME,
   PDF_SCAN_TOOL_NAME,
+  PDF_TABLES_TOOL_NAME,
+  pdfTablesToolDefinition,
   pdfOpenToolDefinition,
   pdfPagesToolDefinition,
   pdfOutlineToolDefinition,

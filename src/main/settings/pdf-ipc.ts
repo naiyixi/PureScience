@@ -8,14 +8,16 @@ import type {
   PdfOpenResult,
   PdfOutlineResult,
   PdfPagesResult,
-  PdfScanResult
+  PdfScanResult,
+  PdfTablesResult
 } from '../../shared/pdf'
 
 export const PDF_IPC = {
   OPEN: 'pdf:open',
   PAGES: 'pdf:pages',
   OUTLINE: 'pdf:outline',
-  SCAN: 'pdf:scan'
+  SCAN: 'pdf:scan',
+  TABLES: 'pdf:tables'
 } as const
 
 export type PdfCommandOwner = {
@@ -23,13 +25,15 @@ export type PdfCommandOwner = {
   pages: (projectId: string, docId: string, start: number, end?: number) => Promise<PdfPagesResult>
   outline: (projectId: string, docId: string) => Promise<PdfOutlineResult>
   scan: (projectId: string, docId: string, query: string) => Promise<PdfScanResult>
+  tables: (projectId: string, docId: string, page?: number) => Promise<PdfTablesResult>
 }
 
 export const createPdfCommandOwner = (service: PdfService): PdfCommandOwner => ({
   open: (projectId, path) => service.open(path, projectId),
   pages: (_projectId, docId, start, end) => service.pages(docId, start, end),
   outline: (_projectId, docId) => service.outline(docId),
-  scan: (_projectId, docId, query) => service.scan(docId, query)
+  scan: (_projectId, docId, query) => service.scan(docId, query),
+  tables: (_projectId, docId, page) => service.tables(docId, page)
 })
 
 export const registerPdfIpcHandlers = (owner: PdfCommandOwner): PdfCommandOwner => {
@@ -49,7 +53,12 @@ export const registerPdfIpcHandlers = (owner: PdfCommandOwner): PdfCommandOwner 
     (_event, request: { projectId: string; docId: string; query: string }) =>
       owner.scan(request.projectId, request.docId, request.query)
   )
+  ipcMainHandle(
+    PDF_IPC.TABLES,
+    (_event, request: { projectId: string; docId: string; page?: number }) =>
+      owner.tables(request.projectId, request.docId, request.page)
+  )
   return owner
 }
 
-export type { PdfOpenResult, PdfOutlineResult, PdfPagesResult, PdfScanResult }
+export type { PdfOpenResult, PdfOutlineResult, PdfPagesResult, PdfScanResult, PdfTablesResult }

@@ -187,6 +187,12 @@ type NotebookLocalRpcServerOptions = {
     ): Promise<unknown>
     outline(sessionId: string, projectId: string, docId: string): Promise<unknown>
     scan(sessionId: string, projectId: string, docId: string, query: string): Promise<unknown>
+    tables(
+      sessionId: string,
+      projectId: string,
+      docId: string,
+      page?: number
+    ): Promise<unknown>
   }
   planService?: {
     call(input: {
@@ -256,7 +262,7 @@ const MEMORY_RPC_METHODS = new Set(['memorySaveNote', 'taskCheckpointSave', 'tas
 const CONTEXT_SUMMARY_RPC_METHODS = new Set(['summaryQueryChunk', 'recordBoundary'])
 const ROUTINE_RPC_METHODS = new Set(['routineConfigure', 'routineStatus', 'routineCancel'])
 const ANNOTATION_RPC_METHODS = new Set(['annotationSet', 'annotationList', 'annotationRemove'])
-const PDF_RPC_METHODS = new Set(['pdfOpen', 'pdfPages', 'pdfOutline', 'pdfScan'])
+const PDF_RPC_METHODS = new Set(['pdfOpen', 'pdfPages', 'pdfOutline', 'pdfScan', 'pdfTables'])
 const FIGURE_RPC_METHODS = new Set(['figureReview'])
 const HOST_QUERY_RPC_METHODS = new Set(['hostQuery'])
 const ENDPOINT_RPC_METHODS = new Set([
@@ -1492,6 +1498,19 @@ class NotebookLocalRpcServer {
         throw new Error('PDF scan RPC params must include sessionId, projectId, docId, and query.')
       }
       return this.pdf.scan(params.sessionId, params.projectId, params.docId, params.query)
+    }
+
+    if (method === 'pdfTables') {
+      if (!this.pdf) throw new Error('PDF handler is not configured.')
+      if (
+        typeof params.sessionId !== 'string' ||
+        typeof params.projectId !== 'string' ||
+        typeof params.docId !== 'string'
+      ) {
+        throw new Error('PDF tables RPC params must include sessionId, projectId, and docId.')
+      }
+      const page = typeof params.page === 'number' ? params.page : undefined
+      return this.pdf.tables(params.sessionId, params.projectId, params.docId, page)
     }
 
     if (method === 'planCall') {
