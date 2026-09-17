@@ -198,4 +198,83 @@ describe('PDF table extraction', () => {
 
     expect(extractPdfTableCandidates(1, singleColumn)).toEqual([])
   })
+
+  // A real four-column table as a producer with centred cells emits it: the header labels and the values
+  // beneath them start at different x, so clustering anchors by start position alone splits each column into
+  // several. Measured on the table this fixture copies: ten anchors for four columns, values stranded in
+  // filler columns. Adjacent anchors that no row ever fills together are one logical column.
+  const centredTable: PdfTextItem[] = [
+    item('Gene', 37.2, 112.9, 16.8),
+    item('log2FC', 117.3, 112.9, 30.9),
+    item('padj', 206.7, 112.9, 19.5),
+    item('Cluster', 284.2, 112.9, 31.9),
+    item('MYC', 63.5, 100.9, 12.6),
+    item('3.42', 146.2, 100.9, 16.8),
+    item('1.2e-12', 219.4, 100.9, 30.6),
+    item('0', 300.1, 100.9, 4.2),
+    item('CDKN1A', 54.6, 88.9, 29.5),
+    item('-2.87', 144.1, 88.9, 21.0),
+    item('4.5e-09', 219.0, 88.9, 30.4),
+    item('1', 300.1, 88.9, 4.2),
+    item('GAPDH', 58.0, 76.9, 25.2),
+    item('0.14', 148.0, 76.9, 18.9),
+    item('8.1e-01', 219.2, 76.9, 32.6),
+    item('2', 300.1, 76.9, 4.2)
+  ]
+
+  it('merges the anchors a header and its values produce for one column', () => {
+    const candidates = extractPdfTableCandidates(1, centredTable)
+
+    // The merge pass is what this case guards, and what it pins is the reading contract: every value is still
+    // there, in the order the page reads. The column MODEL still over-splits a centred table (ten anchors to
+    // five, not to four) — a known gap recorded in the evidence file, deliberately not pinned as correct.
+    expect(candidates).toHaveLength(1)
+    expect(candidates[0]!.rows[0]!.filter((cell) => cell !== '')).toEqual([
+      'Gene',
+      'log2FC',
+      'padj',
+      'Cluster'
+    ])
+    expect(candidates[0]!.rows[1]!.filter((cell) => cell !== '')).toEqual([
+      'MYC',
+      '3.42',
+      '1.2e-12',
+      '0'
+    ])
+    expect(candidates[0]!.columnCount).toBeLessThanOrEqual(6)
+  })
+
+  it('keeps two anchors apart when some row fills both', () => {
+    const candidates = extractPdfTableCandidates(1, [
+      item('left', 10, 100),
+      item('right', 45, 100),
+      item('a', 10, 90),
+      item('b', 45, 90)
+    ])
+
+    expect(candidates).toHaveLength(1)
+    expect(candidates[0]!.columnCount).toBe(2)
+    expect(candidates[0]!.rows[0]).toEqual(['left', 'right'])
+  })
+
+  // The guard against merging a genuinely sparse table: two value columns a full column apart, whose values
+  // never share a row, stay two columns.
+  it('keeps sparse columns apart when they sit a column away from each other', () => {
+    const candidates = extractPdfTableCandidates(1, [
+      item('key', 10, 100),
+      item('first', 60, 100),
+      item('second', 110, 100),
+      item('k1', 10, 90),
+      item('a', 60, 90),
+      item('k2', 10, 80),
+      item('b', 60, 80),
+      item('k3', 10, 70),
+      item('c', 110, 70),
+      item('k4', 10, 60),
+      item('d', 110, 60)
+    ])
+
+    expect(candidates).toHaveLength(1)
+    expect(candidates[0]!.columnCount).toBe(3)
+  })
 })

@@ -71,7 +71,7 @@ type Row = { y: number; items: PdfTextItem[] }
 
 // Groups items into visual rows by baseline. Ordering inside a row is by x, so the reading order matches
 // the page even when the text layer emits items out of order.
-const groupRows = (items: readonly PdfTextItem[], tolerance: number): Row[] => {
+export const groupRows = (items: readonly PdfTextItem[], tolerance: number): Row[] => {
   const rows: Row[] = []
   for (const item of [...items].sort((left, right) => right.y - left.y || left.x - right.x)) {
     const row = rows.find((candidate) => Math.abs(candidate.y - item.y) <= tolerance)
@@ -90,7 +90,7 @@ const groupRows = (items: readonly PdfTextItem[], tolerance: number): Row[] => {
 type Cell = { x: number; text: string }
 
 // Splits one row into cells wherever the horizontal gap exceeds the threshold.
-const splitRow = (row: Row, gapPoints: number): Cell[] => {
+export const splitRow = (row: Row, gapPoints: number): Cell[] => {
   const cells: Cell[] = []
   let current: PdfTextItem[] = []
   let start = 0
@@ -112,7 +112,7 @@ const splitRow = (row: Row, gapPoints: number): Cell[] => {
 // Column positions are read off the whole block, not just the widest row: a row that leaves a column
 // empty must still land in the right columns, or every value after the gap shifts left into a wrong
 // column — a silent corruption of the table rather than a visible blank.
-const columnAnchors = (rows: readonly (readonly Cell[])[], tolerance: number): number[] => {
+export const columnAnchors = (rows: readonly (readonly Cell[])[], tolerance: number): number[] => {
   const anchors: number[] = []
   for (const start of rows
     .flat()
@@ -157,6 +157,55 @@ const confidenceFor = (rows: readonly (readonly string[])[]): PdfTableConfidence
  * Extracts table candidates from one page's text items. Empty cells inside a row are kept: a missing value
  * in a column is information, and silently shifting the remaining cells left would corrupt the table.
  */
+// A table's header and its right-aligned numbers rarely start at the same x, so clustering anchors by
+// start position alone splits one column into two or three: measured on a real four-column table produced
+// by matplotlib, the candidate came out ten columns wide, with the gene names scattered across filler
+// columns. Adjacent anchors are the same logical column when no row ever fills both — a real pair of
+// columns is filled together at least once. The distance guard is what keeps that from collapsing a whole
+// table: without it, "A is filled only in these rows, B only in those" would merge forever.
+const MERGE_MAX_PITCH_RATIO = 0.5
+
+// The widest gap between adjacent anchors is the best available estimate of the real column pitch: splits
+// inside one column are narrower than the distances between columns, so a median would be dragged down by
+// the very splits being looked for (measured: median 26.8 against splits of 26.8 — the cap came out smaller
+// than the split it was meant to allow).
+const widestGap = (anchors: readonly number[]): number => {
+  if (anchors.length < 2) return Number.POSITIVE_INFINITY
+  return Math.max(...anchors.slice(1).map((anchor, index) => anchor - anchors[index]!))
+}
+
+export const mergeSplitColumns = (
+  rows: readonly (readonly string[])[],
+  anchors: readonly number[]
+): { rows: string[][]; anchors: number[] } => {
+  const placed = rows.map((row) => [...row])
+  const pitch = widestGap(anchors)
+  const dropped = anchors.map(() => false)
+
+  for (let left = 0; left < anchors.length; left += 1) {
+    if (dropped[left]) continue
+    let right = left + 1
+    while (right < anchors.length && dropped[right]) right += 1
+    if (right >= anchors.length) break
+    if (anchors[right]! - anchors[left]! > pitch * MERGE_MAX_PITCH_RATIO) continue
+    const bothFilled = placed.some((row) => row[left]!.trim() !== '' && row[right]!.trim() !== '')
+    if (bothFilled) continue
+    for (const row of placed) {
+      if (row[left]!.trim() === '' && row[right]!.trim() !== '') row[left] = row[right]!
+      else if (row[left]!.trim() !== '' && row[right]!.trim() !== '') {
+        row[left] = `${row[left]!} ${row[right]!}`
+      }
+      row[right] = ''
+    }
+    dropped[right] = true
+  }
+
+  return {
+    rows: placed.map((row) => row.filter((_, index) => !dropped[index])),
+    anchors: anchors.filter((_, index) => !dropped[index])
+  }
+}
+
 export const extractPdfTableCandidates = (
   page: number,
   items: readonly PdfTextItem[],
@@ -175,10 +224,14 @@ export const extractPdfTableCandidates = (
     grouped.map((row) => splitRow(row, columnGapPoints)),
     Math.max(1, columnGapPoints / 2)
   )
-  const rows = grouped.map((row) =>
-    placeInColumns(splitRow(row, columnGapPoints), anchors, Math.max(1, columnGapPoints / 2))
+  const merged = mergeSplitColumns(
+    grouped.map((row) =>
+      placeInColumns(splitRow(row, columnGapPoints), anchors, Math.max(1, columnGapPoints / 2))
+    ),
+    anchors
   )
-  const columnCount = anchors.length
+  const rows = merged.rows
+  const columnCount = merged.anchors.length
   // Enough rows must actually SPAN the columns: spaced prose on one line followed by a single item is not
   // a table, and calling it one would invent structure the page does not have.
   const spanningRows = rows.filter(
