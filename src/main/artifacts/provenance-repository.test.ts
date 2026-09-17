@@ -142,7 +142,8 @@ describe('artifact provenance repository', () => {
       quarantinedVersionIds: [],
       recoveredMessageArtifacts: [],
       unpublishedVersionIds: [],
-      unpublishedRunIds: []
+      unpublishedRunIds: [],
+      finalizationSkipCounts: {}
     })
     await expect(stat(stagingDirectory)).rejects.toMatchObject({ code: 'ENOENT' })
   })
@@ -1026,7 +1027,8 @@ describe('artifact provenance repository', () => {
       quarantinedVersionIds: [corruptVersionId],
       recoveredMessageArtifacts: [],
       unpublishedVersionIds: [],
-      unpublishedRunIds: []
+      unpublishedRunIds: [],
+      finalizationSkipCounts: {}
     })
     await expect(
       readFile(join(storageRoot, ...contentStorageKey.split('/')), 'utf8')
@@ -2979,7 +2981,12 @@ describe('artifact provenance repository', () => {
     }
     await expect(
       repository.reconcileSession(request.projectId, request.appSessionId, ambiguousSession)
-    ).resolves.toMatchObject({ recoveredVersionIds: [], recoveredMessageArtifacts: [] })
+    ).resolves.toMatchObject({
+      recoveredVersionIds: [],
+      recoveredMessageArtifacts: [],
+      // The refusal is named: an ambiguous turn must be readable as a decision, not as silence.
+      finalizationSkipCounts: { 'ambiguous-turn-message': 1 }
+    })
     await expect(
       client.artifactVersion.findUniqueOrThrow({ where: { id: version.versionId } })
     ).resolves.toMatchObject({ state: 'pending', messageId: null })
@@ -3529,7 +3536,8 @@ describe('artifact provenance repository', () => {
       quarantinedVersionIds: [],
       recoveredMessageArtifacts: [],
       unpublishedVersionIds: [],
-      unpublishedRunIds: []
+      unpublishedRunIds: [],
+      finalizationSkipCounts: {}
     })
     await expect(
       client.artifactVersion.findUniqueOrThrow({ where: { id: version.versionId } })
@@ -3604,7 +3612,8 @@ describe('artifact provenance repository', () => {
       quarantinedVersionIds: [],
       recoveredMessageArtifacts: [],
       unpublishedVersionIds: [],
-      unpublishedRunIds: []
+      unpublishedRunIds: [],
+      finalizationSkipCounts: {}
     })
     await expect(
       client.artifactVersion.findUniqueOrThrow({ where: { id: version.versionId } })
@@ -3680,7 +3689,8 @@ describe('artifact provenance repository', () => {
       quarantinedVersionIds: [],
       recoveredMessageArtifacts: [],
       unpublishedVersionIds: [],
-      unpublishedRunIds: []
+      unpublishedRunIds: [],
+      finalizationSkipCounts: {}
     })
     await expect(readFile(version.path)).resolves.toBeTruthy()
     await expect(
@@ -3695,7 +3705,8 @@ describe('artifact provenance repository', () => {
       quarantinedVersionIds: [],
       recoveredMessageArtifacts: [],
       unpublishedVersionIds: [],
-      unpublishedRunIds: []
+      unpublishedRunIds: [],
+      finalizationSkipCounts: {}
     })
   })
 
@@ -3793,7 +3804,8 @@ describe('artifact provenance repository', () => {
       quarantinedVersionIds: [version.versionId],
       recoveredMessageArtifacts: [],
       unpublishedVersionIds: [],
-      unpublishedRunIds: []
+      unpublishedRunIds: [],
+      finalizationSkipCounts: {}
     })
     await expect(readFile(version.path)).rejects.toMatchObject({ code: 'ENOENT' })
     const quarantineRoot = join(

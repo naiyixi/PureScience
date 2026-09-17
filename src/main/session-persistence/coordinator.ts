@@ -139,6 +139,9 @@ type ArtifactStorageReconciler = {
         // Versions named `unpublished` during this pass: a run that closed without ever writing its
         // publication intent. Optional because a reconciler that predates the field reports none.
         unpublishedVersionIds?: string[]
+        // Why candidate runs were left alone, by named reason. Reported so a refusal can be read instead
+        // of being indistinguishable from "nothing to do".
+        finalizationSkipCounts?: Record<string, number>
       }
     | undefined
   >
@@ -589,6 +592,7 @@ class SessionPersistenceCoordinator {
       // Versions whose run never published them: named during startup reconciliation. Counted so the
       // completion log says how many files a reader may find in that state, instead of leaving it silent.
       let unpublishedArtifactVersionCount = 0
+      const finalizationSkipCounts: Record<string, number> = {}
       operation.phase('reconcile-unread-sessions')
       try {
         await this.sessionDeletionHandlers?.reconcile(
@@ -693,6 +697,11 @@ class SessionPersistenceCoordinator {
           )
           // Optional on the port's shape: a reconciler that predates this field simply reports none.
           unpublishedArtifactVersionCount += artifactRecovery?.unpublishedVersionIds?.length ?? 0
+          for (const [reason, count] of Object.entries(
+            artifactRecovery?.finalizationSkipCounts ?? {}
+          )) {
+            finalizationSkipCounts[reason] = (finalizationSkipCounts[reason] ?? 0) + count
+          }
           const recoveredSession = repairHistoricalArtifactAliases(attachedSession, {
             // One reconciliation pass writes one JSON revision even when recovery and historical
             // alias repair both contribute to the same atomic Session update.
@@ -739,7 +748,17 @@ class SessionPersistenceCoordinator {
         sessionCount: sessions.length,
         warningCount: scan.warnings?.length ?? 0,
         degradedReconciliationCount,
-        unpublishedArtifactVersionCount
+        unpublishedArtifactVersionCount,
+        // Diagnostics take primitives: report the reasons as one readable line, in a stable order, and
+        // only when something was actually refused.
+        ...(Object.keys(finalizationSkipCounts).length > 0
+          ? {
+              finalizationSkips: Object.entries(finalizationSkipCounts)
+                .sort(([left], [right]) => left.localeCompare(right))
+                .map(([reason, count]) => `${reason}=${count}`)
+                .join(',')
+            }
+          : {})
       })
       return result
     })

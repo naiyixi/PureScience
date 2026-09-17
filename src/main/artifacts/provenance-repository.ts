@@ -211,6 +211,10 @@ type ArtifactStorageReconciliationResult = {
   // pending forever. Reported so the caller can say how many and why.
   unpublishedVersionIds: string[]
   unpublishedRunIds: string[]
+  // Why each candidate run was left alone, by named reason. The recovery loop refuses more often than
+  // it accepts, and a refusal with no name is indistinguishable from "there was nothing to do" — which
+  // is exactly how 26 stalled Versions stayed invisible for weeks.
+  finalizationSkipCounts: Record<string, number>
 }
 
 type ArtifactProjectReconciliationState = {
@@ -2818,7 +2822,8 @@ class ArtifactProvenanceRepository {
       quarantinedVersionIds: [],
       recoveredMessageArtifacts: [],
       unpublishedVersionIds: [],
-      unpublishedRunIds: []
+      unpublishedRunIds: [],
+      finalizationSkipCounts: {}
     }
     const lineageEntries = await readdir(provenanceRoot, { withFileTypes: true }).catch(
       (error: unknown) => {
@@ -2963,6 +2968,10 @@ class ArtifactProvenanceRepository {
         unfinishedCompatibilityPublications.map((publication) => [publication.runId, publication])
       )
       const unpublishedRunIds: string[] = []
+      const finalizationSkipCounts: Record<string, number> = {}
+      const skipFinalization = (reason: string): void => {
+        finalizationSkipCounts[reason] = (finalizationSkipCounts[reason] ?? 0) + 1
+      }
       const runIds = [
         ...new Set([
           ...candidateVersions.map((version) => version.artifactRunId),
@@ -2984,10 +2993,18 @@ class ArtifactProvenanceRepository {
             )
         if (!marker) {
           if (options?.markUnpublishedRuns) unpublishedRunIds.push(artifactRunId)
+          else skipFinalization('no-publication-intent')
           continue
         }
         const markerContext = marker.provenanceContext
-        if (marker.sessionId !== appSessionId || !markerContext) continue
+        if (marker.sessionId !== appSessionId) {
+          skipFinalization('marker-owned-by-another-session')
+          continue
+        }
+        if (!markerContext) {
+          skipFinalization('marker-context-missing')
+          continue
+        }
         // Exact-set proof covers the whole pending/finalized run, including Versions already linked
         // to Session JSON. The candidate subset decides whether recovery is needed, not what the run
         // owns; otherwise a partially linked run would look like it contained unexpected Versions.
@@ -3005,6 +3022,7 @@ class ArtifactProvenanceRepository {
               version.promptMessageId !== markerContext.promptMessageId
           )
         ) {
+          skipFinalization('version-context-mismatch')
           continue
         }
         let proof:
@@ -3027,8 +3045,12 @@ class ArtifactProvenanceRepository {
           }
         } catch {
           // Leave the pending Version visible and retryable; an unproven marker is never guessed.
+          skipFinalization('ownership-unproven')
         }
-        if (!proof) continue
+        if (!proof) {
+          skipFinalization('ambiguous-turn-message')
+          continue
+        }
 
         const pendingVersionIds = new Set(
           runVersions.filter((version) => version.state === 'pending').map((version) => version.id)
@@ -3054,7 +3076,10 @@ class ArtifactProvenanceRepository {
           // candidate selector above deliberately retries on the next startup.
           finalized = await this.finalizeVerifiedRun(finalizationRequest)
         } catch (error) {
-          if (error instanceof ArtifactFinalizationProofError) continue
+          if (error instanceof ArtifactFinalizationProofError) {
+            skipFinalization('finalization-proof-rejected')
+            continue
+          }
           throw error
         }
         // Replay unconditionally after the durable Version commit: a bound marker may have survived a
@@ -3104,6 +3129,7 @@ class ArtifactProvenanceRepository {
         result.unpublishedRunIds.push(...unpublishedRunIds)
         result.unpublishedVersionIds.push(...unpublished.map((version) => version.id))
       }
+      result.finalizationSkipCounts = finalizationSkipCounts
     }
 
     for (const lineageEntry of lineageEntries) {
