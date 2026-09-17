@@ -129,6 +129,7 @@ type StoredInventory = InstalledEnvironmentInventory & {
 type EnvironmentCaptureResult = {
   manifest: NotebookEnvironmentManifest
   checksum: string
+  environmentDigest: string
   storagePath: string
 }
 
@@ -894,7 +895,14 @@ class EnvironmentStateTracker {
       } catch (error) {
         throw new EnvironmentManifestPublicationError(error)
       }
-      return { manifest, checksum: environmentManifestDigest(manifest), storagePath }
+      // Two values, two jobs: `checksum` addresses the stored document and is what readers re-hash to prove
+      // it is unaltered; `fingerprint` names the ENVIRONMENT and is what two runs may legitimately share.
+      return {
+        manifest,
+        checksum: storageChecksum,
+        environmentDigest: environmentManifestDigest(manifest),
+        storagePath
+      }
     })
   }
 

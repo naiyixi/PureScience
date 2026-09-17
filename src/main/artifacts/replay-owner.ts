@@ -47,6 +47,11 @@ export type ReplayableVersion = {
   origin: 'executed' | 'reconstructed'
   inputs: readonly ReplayableInput[]
   environmentManifestChecksum?: string
+  /**
+   * The environment-defining digest recorded for this run. Compared instead of the checksum above, which
+   * hashes a stored document and therefore differs between two runs of one environment.
+   */
+  environmentFingerprint?: string
   language: string
 }
 
@@ -83,6 +88,7 @@ export type ArtifactReplayOwnerPorts = {
         stdout: string
         stderr: string
         environmentManifestChecksum?: string
+        environmentFingerprint?: string
         cwdBefore?: string
         cwdAfter?: string
       }
@@ -172,6 +178,7 @@ export const createArtifactReplayOwner = (
     }
 
     let environmentManifestChecksum: string | undefined
+    let environmentFingerprint: string | undefined
     const runnerPorts: ReplayRunnerPorts = {
       createWorkspace: () => ports.createWorkspace(version.projectId),
       // The recorded inputs, not a guess: the adapter resolves each one through the app's own content
@@ -209,6 +216,7 @@ export const createArtifactReplayOwner = (
           }
         }
         environmentManifestChecksum = result.environmentManifestChecksum
+        environmentFingerprint = result.environmentFingerprint
         return {
           status: 'ran',
           stdout: result.stdout,
@@ -238,10 +246,12 @@ export const createArtifactReplayOwner = (
       timeoutMs: request.timeoutMs
     })
 
+    // Both sides must actually HAVE an environment digest, and it has to be the same digest: an absent one
+    // is "we could not compare", which is not the same claim as "the environments matched".
     const lockMatched =
-      version.environmentManifestChecksum !== undefined &&
-      environmentManifestChecksum !== undefined &&
-      version.environmentManifestChecksum === environmentManifestChecksum
+      version.environmentFingerprint !== undefined &&
+      environmentFingerprint !== undefined &&
+      version.environmentFingerprint === environmentFingerprint
 
     return {
       ...outcome,

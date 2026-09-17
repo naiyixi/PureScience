@@ -162,6 +162,8 @@ export type NotebookRunEnvironmentCapture =
   | {
       state: 'available' | 'partial'
       manifestChecksum: string
+      /** The environment-defining digest; equal across runs of one environment. */
+      manifestFingerprint?: string
       warnings?: string[]
     }
   | {
@@ -340,6 +342,9 @@ export type NotebookRunRecord = {
   environmentCapture?: NotebookRunEnvironmentCapture
   environmentManifest?: NotebookEnvironmentManifest
   environmentManifestChecksum?: string
+  // The digest of the environment itself, so two runs in one environment can be compared at all: the
+  // checksum above hashes the stored document, which carries capture timestamps and therefore never matches.
+  environmentManifestFingerprint?: string
   // Trusted turn/Branch attribution injected by the main-process RPC bridge. Legacy and user-run
   // records may omit it; a supplied Artifact producer must match all five fields.
   rootFrameId?: string

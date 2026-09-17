@@ -27,6 +27,7 @@ const version = (overrides: Partial<ReplayableVersion> = {}): ReplayableVersion 
     }
   ],
   environmentManifestChecksum: 'env-abc',
+  environmentFingerprint: 'fingerprint-abc',
   language: 'python',
   ...overrides
 })
@@ -44,7 +45,8 @@ const harness = (
     status: 'completed',
     stdout: '',
     stderr: '',
-    environmentManifestChecksum: 'env-abc'
+    environmentManifestChecksum: 'env-abc',
+    environmentFingerprint: 'fingerprint-abc'
   })
   const materializeInputs = vi.fn().mockResolvedValue(undefined)
   const ports: ArtifactReplayOwnerPorts = {
@@ -99,7 +101,10 @@ describe('artifact replay owner', () => {
 
   // The environment claim is the one most easily overstated: it is only "applied" when the re-run's own
   // manifest matches the recorded one, and never when either side is missing or different.
-  it('reports the environment lock only when the re-run’s manifest matches the recorded one', async () => {
+  // The lock is a claim about the ENVIRONMENT, so it is decided on the environment digest — the recorded
+  // manifest checksum addresses a stored document and carries its capture timestamps, which is why it can
+  // never match between two runs and why this check used to be unable to succeed at all.
+  it('reports the environment lock only when the two environments digest alike', async () => {
     const matching = await harness().owner.replayVersion(request)
     expect(matching.environmentLock).toBe('applied')
 
@@ -108,16 +113,37 @@ describe('artifact replay owner', () => {
         status: 'completed',
         stdout: '',
         stderr: '',
-        environmentManifestChecksum: 'env-other'
+        environmentManifestChecksum: 'env-other',
+        environmentFingerprint: 'fingerprint-other'
       })
     }).owner.replayVersion(request)
     expect(differing.environmentLock).toBe('not-applied')
     expect(differing.report.verdict).toBe('reproduced')
 
+    // A matching stored checksum is not a matching environment, and it must not be read as one.
+    const checksumOnly = await harness({
+      executeNotebook: vi.fn().mockResolvedValue({
+        status: 'completed',
+        stdout: '',
+        stderr: '',
+        environmentManifestChecksum: 'env-abc'
+      })
+    }).owner.replayVersion(request)
+    expect(checksumOnly.environmentLock).toBe('not-applied')
+
     const missing = await harness({
       executeNotebook: vi.fn().mockResolvedValue({ status: 'completed', stdout: '', stderr: '' })
     }).owner.replayVersion(request)
     expect(missing.environmentLock).toBe('not-applied')
+  })
+
+  // An absent digest on either side is "could not compare", kept apart from "the environments differed".
+  it('says it could not compare environments when the record carries no digest', async () => {
+    const { owner } = harness({}, version({ environmentFingerprint: undefined }))
+    const outcome = await owner.replayVersion(request)
+
+    expect(outcome.environmentLock).toBe('not-applied')
+    expect(outcome.report.verdict).toBe('reproduced')
   })
 
   // No recorded code is not "reproduction failed": it is "there is nothing to run", and it is said so.

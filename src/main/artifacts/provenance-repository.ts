@@ -2005,7 +2005,15 @@ class ArtifactProvenanceRepository {
                     ...(producer.environmentCapture.state !== 'unavailable'
                       ? {
                           environment_manifest_checksum:
-                            producer.environmentCapture.manifestChecksum
+                            producer.environmentCapture.manifestChecksum,
+                          // The comparable value: the checksum above addresses a stored document and carries
+                          // its capture timestamps, so it can never match another run.
+                          ...(producer.environmentCapture.manifestFingerprint
+                            ? {
+                                environment_fingerprint:
+                                  producer.environmentCapture.manifestFingerprint
+                              }
+                            : {})
                         }
                       : {}),
                     state: 'available'

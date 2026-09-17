@@ -119,6 +119,10 @@ export const createArtifactReplayAdapter = (
           evidence.producer.state === 'available'
             ? evidence.producer.environment_manifest_checksum
             : undefined,
+        environmentFingerprint:
+          evidence.producer.state === 'available'
+            ? evidence.producer.environment_fingerprint
+            : undefined,
         language: languageOf(provenance)
       }
     },
@@ -215,6 +219,7 @@ export const createArtifactReplayAdapter = (
           stdout,
           stderr,
           environmentManifestChecksum: summary.environmentManifestChecksum,
+          environmentFingerprint: summary.environmentManifestFingerprint,
           // Where the run started and ended: the runner needs it to say whether the code executed in the
           // workspace it is grading, and dropping it here is what made that impossible to tell.
           cwdBefore: summary.cwdBefore,

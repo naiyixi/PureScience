@@ -28,6 +28,7 @@ type NotebookRunTerminalResult = {
   workingFiles?: NotebookWorkingFile[]
   environmentManifest?: NotebookEnvironmentManifest
   environmentManifestChecksum?: string
+  environmentManifestFingerprint?: string
   environmentCapture?: NotebookRunEnvironmentCapture
 }
 
@@ -101,6 +102,9 @@ class NotebookRunTerminalizationOwner {
         : {}),
       ...(environmentCapture.state !== 'unavailable' && result.environmentManifestChecksum
         ? { environmentManifestChecksum: result.environmentManifestChecksum }
+        : {}),
+      ...(environmentCapture.state !== 'unavailable' && result.environmentManifestFingerprint
+        ? { environmentManifestFingerprint: result.environmentManifestFingerprint }
         : {})
     }
     const document = await this.options.repository.updateRun({

@@ -242,12 +242,14 @@ class NotebookExecutionOwner {
               environmentCapture: {
                 state: capture.manifest.captureStatus === 'complete' ? 'available' : 'partial',
                 manifestChecksum: capture.checksum,
+                manifestFingerprint: capture.environmentDigest,
                 ...(capture.manifest.warnings?.length
                   ? { warnings: [...capture.manifest.warnings] }
                   : {})
               },
               environmentManifest: capture.manifest,
-              environmentManifestChecksum: capture.checksum
+              environmentManifestChecksum: capture.checksum,
+              environmentManifestFingerprint: capture.environmentDigest
             }
           } catch (error) {
             return {

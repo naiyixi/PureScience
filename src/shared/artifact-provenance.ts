@@ -326,6 +326,8 @@ export type ArtifactVersionEvidence = {
         association_method:
           'agent-declared-and-session-validated' | 'server-inferred-file-observation'
         environment_manifest_checksum?: string
+        /** Environment-defining digest; equal across runs of one environment. */
+        environment_fingerprint?: string
       }
     | { state: 'unavailable'; reason: ArtifactProducerUnavailableReason }
   environment?: ArtifactVersionEnvironmentEvidence
