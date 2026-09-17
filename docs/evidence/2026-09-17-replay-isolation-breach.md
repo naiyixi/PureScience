@@ -64,3 +64,49 @@ reason:     Not verifiable: the re-run finished without producing replay_probe.c
 - 证据是**一次真跑**（jest 之外的真实 CLI + 真实 notebook + 真实文件系统），探针项目跑完即删；未改任何真实项目的数据。
 - 修法 (A)/(B)/(C) 的取舍是**读实现的推论**（kernel 长驻、dataRoot 派生规则都已在实现里读到），**尚未用实验证实**；实施时要用测试把它们钉死。
 - 探针项目 `cmu52bmb60000wf89xnbbec3f` 已删除（`REMAINING_PROBES` 复验为空）。
+
+## 六、修了一半：结论不再骗人（`f6effce` + 投影修复，同日现场复验）
+
+**先说清"修了什么、没修什么"**：这一轮修的是**结论的诚实性**（重跑不再把"写到了别处"说成"没有产出"），**隔离本身依旧被击穿**——那属于执行层（kernel 的 cwd 是 spawn 时定的进程属性），另行立案。
+
+### 6.1 侦破过程（一路实测，不靠推断）
+
+第一次实现后现场跑，文案**仍是旧的**，于是逐层排查：
+
+1. `out/main/ipc-*.js` 里确实有我的新分支与新文案 ⇒ 跑的不是旧代码；
+2. 加一次性调试日志（用完即删），量到适配器实际收到的对象只有四个键：
+
+```
+[replay-debug] {"keys":["status","stdout","stderr","environmentManifestChecksum"],"status":"completed"}
+```
+
+3. ⇒ 真凶在 `replay-composition.ts`：它把 notebook 的运行摘要**投影**成四个字段时，把 `cwdBefore`/`cwdAfter`（也就是"代码实际跑在哪个目录"）**丢掉了**。摘要里有，投影没带。
+
+### 6.2 修法
+
+- `replay-composition.ts`：投影带上 `cwdBefore`/`cwdAfter`（completed 与 failed 两条都带）；
+- `replay-owner.ts`：把运行目录作为 `ranIn` 交给 runner，并提供 `producedOutsideWorkspace`（去那个目录看文件在不在）；
+- `replay-runner.ts`：产物不在评分目录时，**按实测的目录如实说明**，不再一律说"没有产出"；适配器报不出目录时保留旧句（不臆断）；
+- 用例：`replay-runner.test.ts` 新增两条（命名真实目录 + 文件确在那边 / 目录已知但文件不在那边），旧句用例保留作"无信息时不臆断"的守卫。
+
+### 6.3 现场复验（同一台机、真实 DB、真实 kernel）
+
+```
+$ purescience replay a5036dbe… --project cmu52jzcp… --session 5fb7fe6d… --artifact 0372f564…
+verdict:    unverifiable
+mode:       re-run
+origin:     executed
+env lock:   not-applied
+ran:        notebook:python in 822ms (exit 0)
+reason:     Not verifiable: the re-run executed in
+            /Users/totota/PureScience-DEV/notebooks/default-project/5fb7fe6d-…/data
+            instead of the isolated workspace /var/folders/…/T/ps-replay-zwRi5f,
+            and wrote replay_probe.csv there — the directory being graded never received it
+```
+
+从此再看到 `unverifiable`，能一眼分清是"真没产出"还是"写到了评分目录之外"——这正是 12.2 当初卡住的原因。
+
+### 6.4 仍未解决 / 未覆盖（不许含糊）
+
+- **隔离仍不成立**：重跑依旧在原会话数据根里执行（本次复验同样如此，文案已如实说出）。修法需在执行层给"按次工作目录"，而 kernel 的 cwd 是 **spawn 时**定的进程属性（`kernel-executor.ts:512/543`），既有 kernel 无法在不重启的前提下换目录 ⇒ 要先定"重跑用独立会话 + 环境绑定从哪来"（记录里的 `env lock: not-applied` 也指向同一处设计）。
+- **覆盖缺口**：`replay-composition.ts` 至今**没有单元测试**（要造一份假的 provenance 才能测），本轮改动是靠**现场端到端复验**兜住的；补这个夹具是独立小任务，已立案。

@@ -132,14 +132,20 @@ export const createArtifactReplayAdapter = (
           status: 'completed' as const,
           stdout,
           stderr,
-          environmentManifestChecksum: summary.environmentManifestChecksum
+          environmentManifestChecksum: summary.environmentManifestChecksum,
+          // Where the run started and ended: the runner needs it to say whether the code executed in the
+          // workspace it is grading, and dropping it here is what made that impossible to tell.
+          cwdBefore: summary.cwdBefore,
+          cwdAfter: summary.cwdAfter
         }
       }
       return {
         status: 'failed' as const,
         stdout,
         stderr,
-        traceback: summary.text?.traceback ?? ''
+        traceback: summary.text?.traceback ?? '',
+        cwdBefore: summary.cwdBefore,
+        cwdAfter: summary.cwdAfter
       }
     },
     appVersion: deps.appVersion
