@@ -1,0 +1,55 @@
+# PDF 表格抽取：从"建好未接线"到真机跑通（2026-09-17）
+
+## 一、接线的起点（一个被忽略的事实）
+
+`src/shared/pdf-table-extraction.ts` **早已存在**：几何法（`text-layer-row-column-clustering`）与纯文本法（`text-layer-whitespace-clustering`）、`confidence`、`toMarkdownTable`/`toTsv`、审计标签 `candidate-extraction` / `verify-against-source`、12 个测试。**但生产调用者为 0** —— 按本仓"没有生产调用者的组件不算完成"的规矩，它不算做完。本单元把它接到真入口，而不是重写。
+
+## 二、接线内容
+
+| 环节 | 改动 |
+|---|---|
+| 解析层 | 采集每页**带坐标的条目**（`x/y/width/height`），随 `pages` 一起返回；**纯文本路径一字未改**（参考文献导入不受影响） |
+| 服务层 | `PdfService.tables(docId, page?)`：几何优先、无坐标时退到纯文本法，每条候选带 method/confidence/markdown/tsv/warnings，上限 8 条 |
+| 契约 | `PDF_TABLES_TOOL_NAME='pdf_tables'`、`PdfTablesResult`/`PdfTableCandidateForAgent` |
+| agent 入口 | MCP 工具 `pdf_tables`（schema + definition + registerTool + RPC） |
+| 全链 | `pdf:tables` 通道 → 应用命令 → host 处理器 → local RPC 分支 → ipc 适配器 → **preload 方法 + 类型** |
+| 契约级联 | 目录条目 + `npm run gen:web-api-map` + 各处 count pin（catalog/surface-inventory/preload/命令清单/参数形态） |
+
+## 三、真机过程中抓到的两个缺陷
+
+### 3.1 "跑通了却什么也没抽到"（已修，`5914e77`）
+
+真机第一次（两份 app 自产 PDF）与第二次（matplotlib 生成的**真表格 PDF**）都是 `candidates = []`。**用测量代替猜测**：
+
+- 临时诊断（跑完即删）直接喂解析出的条目给抽取器 ⇒ **1 条 high 置信候选**；
+- 同一份文件走生产路径 `PdfService.tables()` ⇒ **0 条**。
+
+⇒ 差异在我的接线：`parsePdf` 的 `return` 里**没有带上 `items`**（我先前那次文本替换打到了另一处同名 return），于是服务退回到**弱方法**，而 pdfjs 的文本层永远不满足"两空格分列"。**条目被采集后又丢在了下一行。**
+
+修好后 in-process 复验：`direct 1 / service 1`，`method=text-layer-row-column-clustering`、`confidence=high`、`rows=7`、warnings 两条齐全。
+
+### 3.2 列聚类切太碎（**未修，立案**）
+
+真机第三次（agent 真调用工具）返回 **1 条候选**，但 mardown 形态是：
+
+```
+| Gene |  |  |  | log2FC |  | padj |  | Cluster |  |
+|  |  |  | MYC |  | 3.42 |  | 1.2e-12 |  | 0 |
+|  | CDKN1A |  |  |  | -2.87 |  | 4.5e-09 |  | 1 |
+```
+
+**表是 4 列，候选是 10 列** —— 因为表头的 x 位置与右对齐数字的 x 位置不同，被当成不同列。agent **原样回报、拒绝自行重组**（符合"候选不是转写"的定位），但这说明聚类需要一遍**合并**：相邻列若**从不在同一行同时有内容**，它们多半是同一个逻辑列被切开的。
+
+⇒ 立案为下一单元（带用例：真表格 PDF 应得 4 列；同时要防"稀疏表的合法空列被误合并"）。**在修好之前，我不会把这条 capability 说成"可用"** —— 它现在能出候选，但列切分对本机生成的真表格是错的。
+
+## 四、真机证据链
+
+1. 两份 app 自产 PDF（`final_verdict.pdf`、`scrnaseq_session_report.pdf`）⇒ **0 候选**，agent 如实说"没有检测到表格"、未编造、未擅自换方法用 `pdf_pages` 替代；
+2. matplotlib 生成的**带表格 PDF** ⇒ 修前 0、修后 **1 条 high 置信候选**；
+3. agent 经真工具链（MCP → RPC → 服务 → 抽取器）拿到候选并把 markdown 原样贴出 ⇒ **端到端成立**。
+
+探针项目与临时诊断文件已删；`REMAINING_PROBES` 空。
+
+## 五、提交
+
+`1f82838`（接线 + 契约级联）· `5914e77`（解析层交出条目：真凶）· `7d24e73`（格式）。
