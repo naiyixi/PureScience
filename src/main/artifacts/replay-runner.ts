@@ -6,6 +6,7 @@ import {
   type SealedFileDigest,
   type SealedRecipe
 } from '../../shared/replay-verification'
+import { resolve } from 'node:path'
 
 // Re-running a recorded artifact in a fresh directory and comparing what comes out with what was
 // recorded. This is the half of reproducibility that a digest comparison cannot reach: it executes the
@@ -31,7 +32,15 @@ export type {
 
 /** What the execution port can report. Named outcomes, not a sentinel exit code. */
 export type ReplayExecuteOutcome =
-  | { status: 'ran'; stdout: string; stderr: string; exitCode: number; durationMs: number }
+  | {
+      status: 'ran'
+      stdout: string
+      stderr: string
+      exitCode: number
+      durationMs: number
+      /** The directory the code actually ran in, when the adapter can report it. */
+      ranIn?: string
+    }
   | { status: 'timeout'; durationMs: number; stderr: string }
   | { status: 'no-runtime'; language: string }
   | { status: 'spawn-failed'; message: string }
@@ -53,6 +62,11 @@ export type ReplayRunnerPorts = {
   }) => Promise<ReplayExecuteOutcome>
   /** The produced file as base64, or undefined when the run did not produce it. */
   readProduced: (workspace: string, path: string) => Promise<string | undefined>
+  /**
+   * True when the recorded output exists in the directory the code actually ran in. The adapter owns the
+   * filesystem read; the runner only needs to know whether the file was produced somewhere else.
+   */
+  producedOutsideWorkspace?: (dir: string, path: string) => Promise<boolean>
   digest: (base64: string) => string
   removeWorkspace: (workspace: string) => Promise<void>
   appVersion: () => string
@@ -184,18 +198,27 @@ export const createArtifactReplayRunner = (ports: ReplayRunnerPorts): ReplayRunn
 
       const produced = await ports.readProduced(workspace, input.outputPath)
       if (produced === undefined) {
-        // The code ran and the recorded file is not where the recipe says it should be. That is either a
-        // failed reproduction or a re-run that wrote somewhere else, and nothing here can tell them
-        // apart — so it is reported as neither.
+        // The code ran and the recorded file is not where the recipe says it should be. When the adapter can
+        // say which directory the code actually ran in, that directory is the difference between "the
+        // reproduction failed" and "the run wrote outside the directory being graded" — so say which.
+        const ranIn = 'ranIn' in outcome ? outcome.ranIn : undefined
+        const outsideWorkspace = ranIn !== undefined && resolve(ranIn) !== resolve(workspace)
+        const producedOverThere =
+          outsideWorkspace && ranIn !== undefined && ports.producedOutsideWorkspace
+            ? await ports.producedOutsideWorkspace(ranIn, input.outputPath)
+            : false
+        const reason = outsideWorkspace
+          ? producedOverThere
+            ? `Not verifiable: the re-run executed in ${String(ranIn)} instead of the isolated workspace ${workspace}, and wrote ${input.outputPath} there — the directory being graded never received it`
+            : `Not verifiable: the re-run executed in ${String(ranIn)} instead of the isolated workspace ${workspace}, so ${input.outputPath} was written outside the directory being graded`
+          : `Not verifiable: the re-run finished without producing ${input.outputPath}, so there is nothing to compare`
         return {
           report: {
             mode: 're-run',
             verdict: 'unverifiable',
             origin: recipe.origin,
             files: [],
-            reasons: [
-              `Not verifiable: the re-run finished without producing ${input.outputPath}, so there is nothing to compare`
-            ]
+            reasons: [reason]
           },
           environmentLock,
           execution

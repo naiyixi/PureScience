@@ -78,8 +78,22 @@ export type ArtifactReplayOwnerPorts = {
     language: string
     timeoutMs?: number
   }) => Promise<
-    | { status: 'completed'; stdout: string; stderr: string; environmentManifestChecksum?: string }
-    | { status: 'failed'; stdout: string; stderr: string; traceback: string }
+    | {
+        status: 'completed'
+        stdout: string
+        stderr: string
+        environmentManifestChecksum?: string
+        cwdBefore?: string
+        cwdAfter?: string
+      }
+    | {
+        status: 'failed'
+        stdout: string
+        stderr: string
+        traceback: string
+        cwdBefore?: string
+        cwdAfter?: string
+      }
     | { status: 'timeout'; stdout: string; stderr: string }
     | { status: 'unavailable'; reason: string }
   >
@@ -189,6 +203,7 @@ export const createArtifactReplayOwner = (
             status: 'ran',
             stdout: result.stdout,
             stderr: `${result.stderr}\n${result.traceback}`.trim(),
+            ranIn: result.cwdAfter ?? result.cwdBefore,
             exitCode: 1,
             durationMs
           }
@@ -198,11 +213,14 @@ export const createArtifactReplayOwner = (
           status: 'ran',
           stdout: result.stdout,
           stderr: result.stderr,
+          ranIn: result.cwdAfter ?? result.cwdBefore,
           exitCode: 0,
           durationMs
         }
       },
       readProduced: (workspace, path) => ports.readFileBase64(joinPath(workspace, path)),
+      producedOutsideWorkspace: async (dir, path) =>
+        (await ports.readFileBase64(joinPath(dir, path))) !== undefined,
       digest: ports.digest,
       removeWorkspace: ports.removeWorkspace,
       appVersion: ports.appVersion

@@ -28,6 +28,7 @@ const harness = (
   owner: ReturnType<typeof createArtifactReplayRunner>
   ports: ReplayRunnerPorts
   execute: ReturnType<typeof vi.fn>
+  producedOutsideWorkspace: ReturnType<typeof vi.fn>
   removeWorkspace: ReturnType<typeof vi.fn>
 } => {
   const execute = vi.fn(async (): Promise<ReplayExecuteOutcome> => ({
@@ -38,11 +39,13 @@ const harness = (
     durationMs: 42
   }))
   const removeWorkspace = vi.fn().mockResolvedValue(undefined)
+  const producedOutsideWorkspace = vi.fn().mockResolvedValue(false)
   const ports: ReplayRunnerPorts = {
     createWorkspace: vi.fn().mockResolvedValue('/tmp/replay-scratch'),
     materializeInputs: vi.fn().mockResolvedValue(undefined),
     execute,
     readProduced: vi.fn().mockResolvedValue(Buffer.from(OUTPUT).toString('base64')),
+    producedOutsideWorkspace,
     digest,
     removeWorkspace,
     appVersion: () => '1.61.0',
@@ -54,6 +57,7 @@ const harness = (
     owner: createArtifactReplayRunner(ports),
     ports,
     execute: ports.execute as ReturnType<typeof vi.fn>,
+    producedOutsideWorkspace: ports.producedOutsideWorkspace as ReturnType<typeof vi.fn>,
     removeWorkspace: ports.removeWorkspace as ReturnType<typeof vi.fn>
   }
 }
@@ -133,6 +137,54 @@ describe('artifact replay runner', () => {
 
     expect(outcome.report.verdict).toBe('unverifiable')
     expect(outcome.report.reasons[0]).toContain('nothing to compare')
+  })
+
+  // The measured shape of a re-run that executes outside the directory being graded: the code ran, in the
+  // original session's data root, and the recorded file is there rather than in the workspace.
+  it('names the directory the re-run actually used instead of claiming nothing was produced', async () => {
+    const { owner, producedOutsideWorkspace } = harness({
+      execute: vi.fn(async (): Promise<ReplayExecuteOutcome> => ({
+        status: 'ran',
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+        durationMs: 134,
+        ranIn: '/data/notebooks/project/session/data'
+      })),
+      readProduced: vi.fn().mockResolvedValue(undefined),
+      producedOutsideWorkspace: vi.fn().mockResolvedValue(true)
+    })
+    const outcome = await run(owner)
+
+    expect(outcome.report.verdict).toBe('unverifiable')
+    expect(outcome.report.reasons[0]).toContain(
+      'executed in /data/notebooks/project/session/data instead of the isolated workspace'
+    )
+    expect(outcome.report.reasons[0]).toContain('wrote results/out.tsv there')
+    expect(outcome.report.reasons[0]).not.toContain('nothing to compare')
+    expect(producedOutsideWorkspace).toHaveBeenCalledWith(
+      '/data/notebooks/project/session/data',
+      'results/out.tsv'
+    )
+  })
+
+  it('still says the output is outside the graded directory when it is not there either', async () => {
+    const { owner } = harness({
+      execute: vi.fn(async (): Promise<ReplayExecuteOutcome> => ({
+        status: 'ran',
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+        durationMs: 12,
+        ranIn: '/elsewhere'
+      })),
+      readProduced: vi.fn().mockResolvedValue(undefined),
+      producedOutsideWorkspace: vi.fn().mockResolvedValue(false)
+    })
+    const outcome = await run(owner)
+
+    expect(outcome.report.reasons[0]).toContain('executed in /elsewhere')
+    expect(outcome.report.reasons[0]).toContain('written outside the directory being graded')
   })
 
   // The structural rule: inferred code is never executed to certify anything.
