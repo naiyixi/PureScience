@@ -568,6 +568,88 @@ describe('project prisma client (integration)', () => {
     ).rejects.toThrow()
   })
 
+  it('rebuilds a state constraint that predates a newly allowed value', async () => {
+    storageRoot = await mkdtemp(join(tmpdir(), 'purescience-artifact-state-migration-'))
+
+    const client = createProjectDbClient(storageRoot)
+    disconnect = () => client.$disconnect()
+
+    await ensureProjectSchema(client)
+    await client.fileOriginSession.create({
+      data: { projectId: 'project-1', sessionId: 'session-1' }
+    })
+    await client.artifactLineage.create({
+      data: {
+        id: 'artifact-1',
+        projectId: 'project-1',
+        sessionId: 'session-1',
+        normalizedFilename: 'result.png',
+        filename: 'result.png'
+      }
+    })
+    await client.artifactVersion.create({
+      data: {
+        id: 'artifact-version-1',
+        artifactId: 'artifact-1',
+        versionNumber: 1,
+        filename: 'result.png',
+        artifactRunId: 'artifact-run-1',
+        rootFrameId: 'root-1',
+        agentFrameId: 'agent-1',
+        messageBranchId: 'branch-1',
+        runtimeSegmentId: 'runtime-1',
+        promptMessageId: 'prompt-1',
+        state: 'pending',
+        contentStorageKey: 'artifacts/result.png',
+        evidenceStorageKey: 'artifacts/evidence.json',
+        sizeBytes: 3n,
+        checksum: 'a'.repeat(64),
+        evidenceJson: '{}',
+        evidenceChecksum: 'b'.repeat(64)
+      }
+    })
+
+    // The live shape of this drift: the named constraint is present, so nothing rebuilt the table when a
+    // new state was added, and a database written before that addition keeps rejecting the new value.
+    const tableSql = (
+      await client.$queryRawUnsafe<Array<{ sql: string | null }>>(
+        `SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'ArtifactVersion'`
+      )
+    )[0]?.sql
+    expect(tableSql).toContain(`'unpublished'`)
+    const legacySql = tableSql!
+      .replace(
+        `'staging', 'pending', 'finalized', 'unpublished'`,
+        `'staging', 'pending', 'finalized'`
+      )
+      .replace(`CREATE TABLE "ArtifactVersion"`, `CREATE TABLE "ArtifactVersionLegacy"`)
+    await client.$executeRawUnsafe('PRAGMA foreign_keys = OFF')
+    await client.$executeRawUnsafe(legacySql)
+    await client.$executeRawUnsafe(
+      `INSERT INTO "ArtifactVersionLegacy" SELECT * FROM "ArtifactVersion"`
+    )
+    await client.$executeRawUnsafe('DROP TABLE "ArtifactVersion"')
+    await client.$executeRawUnsafe(
+      'ALTER TABLE "ArtifactVersionLegacy" RENAME TO "ArtifactVersion"'
+    )
+    await client.$executeRawUnsafe('PRAGMA foreign_keys = ON')
+    await expect(
+      client.artifactVersion.update({
+        where: { id: 'artifact-version-1' },
+        data: { state: 'unpublished' }
+      })
+    ).rejects.toThrow()
+
+    await ensureProjectSchema(client)
+
+    await expect(
+      client.artifactVersion.update({
+        where: { id: 'artifact-version-1' },
+        data: { state: 'unpublished' }
+      })
+    ).resolves.toMatchObject({ state: 'unpublished' })
+  })
+
   it('does not hide additive migration failures when the requested column remains absent', async () => {
     const migrationFailure = new Error('simulated SQLite disk I/O failure')
     const client = {

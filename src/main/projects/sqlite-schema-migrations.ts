@@ -126,6 +126,37 @@ const readForeignKeyState = async (client: SqliteExecutor): Promise<number> => {
   return Number(rows[0]?.foreign_keys ?? 0)
 }
 
+const readConstraintLiterals = (tableSql: string, constraintName: string): string[] | undefined => {
+  const marker = `CONSTRAINT "${constraintName}"`
+  const markerAt = tableSql.indexOf(marker)
+  if (markerAt < 0) return undefined
+  const checkAt = tableSql.indexOf('CHECK', markerAt)
+  if (checkAt < 0) return undefined
+  const openAt = tableSql.indexOf('(', checkAt)
+  if (openAt < 0) return undefined
+  let depth = 0
+  let endAt = -1
+  for (let index = openAt; index < tableSql.length; index += 1) {
+    const character = tableSql[index]
+    if (character === '(') depth += 1
+    else if (character === ')') {
+      depth -= 1
+      if (depth === 0) {
+        endAt = index
+        break
+      }
+    }
+  }
+  if (endAt < 0) return undefined
+  const body = tableSql.slice(openAt, endAt + 1)
+  // Only equality-style constraints describe a value set. A check such as length("filename") > 0 has no
+  // allowed values to compare, and rebuilding it on every open would be pure churn.
+  if (!body.includes('IN (')) return []
+  return (body.match(/'([^']|'')*'/g) ?? []).map((literal) =>
+    literal.slice(1, -1).replaceAll("''", "'")
+  )
+}
+
 const ensureSqliteCheckConstraints = async (
   client: PrismaClient,
   migrations: readonly SqliteCheckConstraintMigration[]
@@ -134,11 +165,17 @@ const ensureSqliteCheckConstraints = async (
   for (const migration of migrations) {
     const tableSql = await readTableSql(client, migration.tableName)
     if (!tableSql) throw new Error(`SQLite table is unavailable: ${migration.tableName}.`)
-    if (
-      migration.constraintNames.some(
-        (constraintName) => !tableSql.includes(`CONSTRAINT "${constraintName}"`)
-      )
-    ) {
+    const hasMissingConstraint = migration.constraintNames.some(
+      (constraintName) => !tableSql.includes(`CONSTRAINT "${constraintName}"`)
+    )
+    // A constraint that exists but no longer allows every declared value is just as stale as a missing
+    // one: the table keeps rejecting the new value forever, and nothing at runtime can see why.
+    const hasStaleValues = migration.constraintNames.some((constraintName) => {
+      const literals = readConstraintLiterals(tableSql, constraintName)
+      if (literals === undefined || literals.length === 0) return false
+      return !migration.allowedValues.every((value) => literals.includes(value))
+    })
+    if (hasMissingConstraint || hasStaleValues) {
       pending.push(migration)
     }
   }
