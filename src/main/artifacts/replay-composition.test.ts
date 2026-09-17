@@ -1,4 +1,7 @@
+import { existsSync } from 'node:fs'
+import { mkdtemp } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 
 import type { ArtifactVersionProvenance } from '../../shared/artifact-provenance'
@@ -7,8 +10,9 @@ import type { NotebookRunSummary } from '../../shared/notebook'
 import { createArtifactReplayAdapter } from './replay-composition'
 
 // The composition is the one place where the app's own notebook run record is projected onto the named
-// outcomes the verdict is built from. What it drops there, the verdict can never say — which is exactly
-// how a re-run that executed outside the graded workspace came to read "the file was never produced".
+// outcomes the verdict is built from, and where the directory a re-run may execute in is chosen. What it
+// drops, or borrows from the recorded session, the verdict can never recover — which is exactly how a
+// re-run that executed in that session's own directory came to read "the file was never produced".
 
 const provenanceOf = (): ArtifactVersionProvenance =>
   ({
@@ -37,35 +41,98 @@ type ReplayAdapter = {
   replayVersion: (request: ReplayVersionRequest) => Promise<ReplayVersionResult>
 }
 
-const harness = (executeNotebook: ReturnType<typeof vi.fn>): ReplayAdapter =>
-  createArtifactReplayAdapter({
+const notebookSessionFactory = async (): Promise<
+  (projectName: string, sessionId: string) => string
+> => {
+  const root = await mkdtemp(join(tmpdir(), 'ps-composition-test-'))
+  return (projectName, sessionId) => join(root, projectName, sessionId, 'data')
+}
+
+const harness = async (
+  executeNotebook: ReturnType<typeof vi.fn>,
+  notebookDataRoot: (projectName: string, sessionId: string) => string
+): Promise<{
+  adapter: ReplayAdapter
+  shutdownNotebookSession: ReturnType<typeof vi.fn>
+}> => {
+  const shutdownNotebookSession = vi.fn().mockResolvedValue(undefined)
+  const adapter = createArtifactReplayAdapter({
     provenance: {
       getVersionCore: vi.fn().mockResolvedValue(provenanceOf()),
       resolveVersionContent: vi.fn().mockResolvedValue({ path: '/tmp/absent', filename: 'out.csv' })
     },
     executeNotebook: executeNotebook as unknown as (input: unknown) => Promise<NotebookRunSummary>,
     appVersion: () => '1.62.0',
-    tempRoot: tmpdir()
+    notebookDataRoot,
+    shutdownNotebookSession
   })
+  return { adapter, shutdownNotebookSession }
+}
+
+// A notebook that runs where it was asked to: the run's own directory comes back unchanged.
+const executingInPlace = (): ReturnType<typeof vi.fn> =>
+  vi.fn().mockImplementation(async (input: { workspaceCwd: string }) => ({
+    status: 'completed',
+    text: { stdout: '', stderr: '', traceback: '' },
+    cwdBefore: input.workspaceCwd,
+    cwdAfter: input.workspaceCwd
+  }))
 
 describe('artifact replay composition', () => {
+  it('runs the re-run in its own session, in the directory it is graded in', async () => {
+    const notebookDataRoot = await notebookSessionFactory()
+    const executeNotebook = executingInPlace()
+    const { adapter } = await harness(executeNotebook, notebookDataRoot)
+
+    await adapter.replayVersion(request)
+
+    const called = executeNotebook.mock.calls[0]?.[0] as {
+      sessionId: string
+      workspaceCwd: string
+      projectName: string
+    }
+    // The recorded session is never the one that executes: a re-run must not write into the directory the
+    // user's own session is still working in.
+    expect(called.sessionId).not.toBe(request.appSessionId)
+    expect(called.sessionId).toMatch(/^replay-[0-9a-f]{16}$/)
+    expect(called.projectName).toBe(request.projectId)
+    // And it executes in the very directory it is graded in. It has to be a session directory, because the
+    // app's kernel is spawned into that directory and cannot be told to run in a temp folder instead.
+    expect(called.workspaceCwd).toBe(notebookDataRoot(request.projectId, called.sessionId))
+  })
+
+  it('shuts that session down and removes its directory once the verdict is built', async () => {
+    const notebookDataRoot = await notebookSessionFactory()
+    const executeNotebook = executingInPlace()
+    const { adapter, shutdownNotebookSession } = await harness(executeNotebook, notebookDataRoot)
+
+    await adapter.replayVersion(request)
+
+    const called = executeNotebook.mock.calls[0]?.[0] as { sessionId: string; workspaceCwd: string }
+    expect(shutdownNotebookSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        projectName: request.projectId,
+        sessionId: called.sessionId,
+        workspaceCwd: called.workspaceCwd
+      })
+    )
+    expect(existsSync(called.workspaceCwd)).toBe(false)
+  })
+
   it('carries the directory the run happened in through to the verdict', async () => {
+    const notebookDataRoot = await notebookSessionFactory()
+    // A notebook that ignores the directory it was asked for is what the app did until this change, so the
+    // verdict must still be able to say where the code really ran.
     const executeNotebook = vi.fn().mockResolvedValue({
       status: 'completed',
       text: { stdout: '', stderr: '', traceback: '' },
       cwdBefore: '/data/notebooks/project/session/data',
       cwdAfter: '/data/notebooks/project/session/data'
     } as unknown as NotebookRunSummary)
+    const { adapter } = await harness(executeNotebook, notebookDataRoot)
 
-    const outcome = await harness(executeNotebook).replayVersion(request)
+    const outcome = await adapter.replayVersion(request)
 
-    // The run asks for an isolated workspace. Whether the notebook honors it is a separate question,
-    // but the request itself must not quietly become the session's own directory.
-    const called = executeNotebook.mock.calls[0]?.[0] as { workspaceCwd: string }
-    expect(called.workspaceCwd).toMatch(/ps-replay-/)
-
-    // And the directory the run actually happened in must survive the projection: without it the verdict
-    // can only say the file was never produced, which is the one thing that was not true.
     expect(outcome.report.verdict).toBe('unverifiable')
     expect(outcome.report.reasons[0]).toContain('/data/notebooks/project/session/data')
     expect(outcome.report.reasons[0]).toContain('instead of the isolated workspace')
@@ -73,12 +140,14 @@ describe('artifact replay composition', () => {
   })
 
   it('keeps the unqualified sentence when the run reports no directory', async () => {
+    const notebookDataRoot = await notebookSessionFactory()
     const executeNotebook = vi.fn().mockResolvedValue({
       status: 'completed',
       text: { stdout: '', stderr: '', traceback: '' }
     } as unknown as NotebookRunSummary)
+    const { adapter } = await harness(executeNotebook, notebookDataRoot)
 
-    const outcome = await harness(executeNotebook).replayVersion(request)
+    const outcome = await adapter.replayVersion(request)
 
     expect(outcome.report.verdict).toBe('unverifiable')
     expect(outcome.report.reasons[0]).toContain('nothing to compare')

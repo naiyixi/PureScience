@@ -111,3 +111,43 @@ reason:     Not verifiable: the re-run executed in
 - **隔离仍不成立**：重跑依旧在原会话数据根里执行（本次复验同样如此，文案已如实说出）。修法需在执行层给"按次工作目录"，而 kernel 的 cwd 是 **spawn 时**定的进程属性（`kernel-executor.ts:512/543`），既有 kernel 无法在不重启的前提下换目录 ⇒ 要先定"重跑用独立会话 + 环境绑定从哪来"（记录里的 `env lock: not-applied` 也指向同一处设计）。
 - **覆盖缺口（已补）**：`replay-composition.ts` 原本没有单元测试，那个投影缺陷因此无人拦截。已新增 `replay-composition.test.ts` 两条用例（目录必须进结论 / 报不出目录时保留旧句），并**实测过守卫会咬人**：撤掉投影修复 → 第一条失败，恢复 → 2/2 绿。提交 `d6fde32`。
 - **隔离真修的设计（本轮定案，实施为下一单元）**：现有事实已足够定案——kernel 的 cwd = `session.cwd` = `document.dataRoot` = `<存储根>/notebooks/<项目>/<会话>/data`（`session-lifecycle.ts:86` 定会话 cwd；`kernel-executor.ts:512/543` 用它 `spawn`），而 `workspaceCwd` 只是文档里的一个字段、**不参与** spawn。因此"按次工作目录"在既有 kernel 上不可行（要么 chdir 留在长驻 kernel 里，要么重启 kernel 丢掉用户会话状态）。**定案做法**：重跑改用**独立的重跑会话**（`replay-<versionId>`），把**评分目录直接设成该会话的 dataRoot**（而不是 `/tmp` 的 mkdtemp 目录），运行时绑定从原会话文档移植（`bindRuntime`/`switchRuntime` 这条既有能力），跑完关掉 kernel 并清理该会话与目录。这样"代码跑在哪"与"评分读哪"天然一致，也不再碰原会话的工作文件。要知道的信息都有了（绑定可移植、dataRoot 可预测、清理路径明确）；实施时按序：先跑 notebook 模块既有测试 → 改执行路径 → 加"产物落在本会话 dataRoot 且评分通过"的用例 → 现场复验一次。
+
+## 七、隔离真修落地：重跑给出真结论 `reproduced`（同日）
+
+### 7.1 先更正我先前一处**说过头**的话
+
+我在 §三 写过"重跑会**写进原会话的工作目录**（本次覆盖了同名文件）"。现场复核后，这句**不准确**：
+
+```
+原会话目录 : …/notebooks/cmu52jzcp…/5fb7fe6d…/data/replay_probe.csv   mtime 13:08（原跑）
+重跑写的   : …/notebooks/default-project/5fb7fe6d…/data/replay_probe.csv  mtime 13:10（重跑）
+```
+
+真实情况是：重跑**没有**碰原会话的文件；它把会话落到了 **`default-project`**（因为 `replay-owner` 里传的是 `version.projectName`，而 `ReplayableVersion` 根本没有这个字段 ⇒ `undefined` ⇒ notebook 用默认项目），于是每次重跑都在 `default-project/<原会话 id>/data` 里干活。真问题是三条：① 执行目录 ≠ 评分目录（结论不可信）；② 会话落错项目，且**同一会话的多次重跑共用同一目录**（互相覆盖）；③ 项目名丢失。三条本轮一并修掉。
+
+### 7.2 修法（独立重跑会话 + 评分目录=执行目录）
+
+- `replay-owner.ts`：项目名改用 `version.projectId`（真实的项目 id），并把项目名显式传给建工作目录的端口；
+- `replay-composition.ts`：工作目录不再用 `/tmp` 的 `mkdtemp`，改为**声明一个独立重跑会话** `replay-<16hex>`，工作目录 = 该会话的 dataRoot（`getNotebookDataRoot(存储根, 项目, 会话)`，由 ipc 注入）；执行时把"原会话 id"换成**该重跑会话 id**（键=工作目录，天然并发安全）；跑完**关掉该会话的 kernel 并删除其整个会话目录**；
+- `ipc.ts`：注入 `notebookDataRoot` 与 `shutdownNotebookSession`（都取自应用自己的 notebook 模块）。
+
+### 7.3 现场复验（同一台机、真实 DB、真实 kernel）
+
+```
+$ purescience replay 744ac5f8… --project cmu54cq0l… --session 6540e01f… --artifact f77b1e50…
+verdict:    reproduced          ← 以前是 unverifiable
+mode:       re-run
+origin:     executed
+env lock:   not-applied
+ran:        notebook:python in 1567ms (exit 0)
+file:       replay_probe.csv match
+```
+
+复核：重跑会话目录**跑完即清**（`ls | grep -c '^replay-'` = 0）；原会话的 `replay_probe.csv` **完好**（mtime 仍是原跑的 13:59，268 B）；版本仍是 `finalized`。⇒ 12.2 从"跑完不产文件"变成**字节级复现通过**。
+
+**诚实边界**：`env lock: not-applied` 依旧——本次复现是在**默认运行时**下取得的（重跑会话没有从记录里移植环境绑定），所以这条 `reproduced` 的准确含义是"在默认环境下字节一致"，**不等于**"环境已复现"。把环境绑定从记录移植过来是下一个独立单元。
+
+### 7.4 本轮新提交
+
+`d6fde32`（composition 夹具测试）· `d5576ab`（补 lint）· `c7a303f`（证据）· 本轮隔离真修（见提交信息）。
+

@@ -65,7 +65,7 @@ export type ArtifactReplayOwnerPorts = {
   }) => Promise<ReplayableVersion | undefined>
   /** Writes the recorded inputs into the workspace at their recorded relative paths. */
   materializeInputs: (workspace: string, inputs: readonly ReplayableInput[]) => Promise<void>
-  createWorkspace: () => Promise<string>
+  createWorkspace: (projectName: string) => Promise<string>
   removeWorkspace: (workspace: string) => Promise<void>
   readFileBase64: (path: string) => Promise<string | undefined>
   digest: (base64: string) => string
@@ -173,7 +173,7 @@ export const createArtifactReplayOwner = (
 
     let environmentManifestChecksum: string | undefined
     const runnerPorts: ReplayRunnerPorts = {
-      createWorkspace: ports.createWorkspace,
+      createWorkspace: () => ports.createWorkspace(version.projectId),
       // The recorded inputs, not a guess: the adapter resolves each one through the app's own content
       // resolution and writes it where the recording says it was. The runner speaks in digests, so the
       // recorded entries are matched back by path before handing them over.
@@ -186,7 +186,7 @@ export const createArtifactReplayOwner = (
       execute: async ({ code, language, cwd, timeoutMs }) => {
         const startedAt = Date.now()
         const result = await ports.executeNotebook({
-          projectName: version.projectName,
+          projectName: version.projectId,
           sessionId: version.appSessionId,
           workspaceCwd: cwd,
           code,

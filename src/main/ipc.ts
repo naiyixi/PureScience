@@ -131,7 +131,7 @@ import {
 import { OfficePreviewSupervisor } from './office-preview/office-preview-supervisor'
 import { registerNotebookIpcHandlers } from './notebook/ipc'
 import { registerRuntimeIpcHandlers } from './notebook/runtime-ipc'
-import { NotebookRunRepository, getRuntimeRoot } from './notebook/repository'
+import { NotebookRunRepository, getNotebookDataRoot, getRuntimeRoot } from './notebook/repository'
 import { NotebookLocalRpcServer } from './notebook/local-rpc-server'
 import { NotebookInputRegistry } from './notebook/input-registry'
 import { effectiveMirrorAsync } from './notebook/mirror-probe'
@@ -2325,7 +2325,12 @@ const createApplicationModules = async (
     replay: createArtifactReplayAdapter({
       provenance: artifactProvenanceRepository,
       executeNotebook: (request) => notebookCommands.execute(request),
-      appVersion: () => app.getVersion()
+      appVersion: () => app.getVersion(),
+      // A re-run executes through this app's own notebook, so the directory it can actually run in is a
+      // notebook session directory. Claiming one and grading it is what makes the verdict comparable.
+      notebookDataRoot: (projectName, sessionId) =>
+        getNotebookDataRoot(resolveDataRoot(), projectName, sessionId),
+      shutdownNotebookSession: (request) => notebookCommands.shutdown(request)
     }),
     withSessionMutation: (projectId, sessionId, mutation) =>
       sessionPersistenceCoordinator.runSessionMutation(projectId, sessionId, mutation)

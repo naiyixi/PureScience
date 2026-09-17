@@ -1,6 +1,5 @@
-import { createHash } from 'node:crypto'
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { createHash, randomBytes } from 'node:crypto'
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 
 import type { ArtifactVersionProvenance } from '../../shared/artifact-provenance'
@@ -42,8 +41,18 @@ export type ReplayCompositionDeps = {
     timeoutMs?: number
   }) => Promise<NotebookRunSummary>
   appVersion: () => string
-  /** Where re-runs build their throwaway working directory. */
-  tempRoot?: string
+  /**
+   * The directory a notebook session runs its code in. A re-run executes the code through the app's own
+   * kernel, and that kernel is spawned with the session's own directory as its working directory — so the
+   * directory being graded has to BE a session directory, not a temp folder the kernel never enters.
+   */
+  notebookDataRoot: (projectName: string, sessionId: string) => string
+  /** Best-effort teardown of a re-run's own session once its verdict is built. */
+  shutdownNotebookSession?: (request: {
+    projectName: string
+    sessionId: string
+    workspaceCwd: string
+  }) => Promise<unknown>
 }
 
 const languageOf = (provenance: ArtifactVersionProvenance): string => {
@@ -55,6 +64,10 @@ const languageOf = (provenance: ArtifactVersionProvenance): string => {
 export const createArtifactReplayAdapter = (
   deps: ReplayCompositionDeps
 ): { replayVersion: (request: ReplayVersionRequest) => Promise<ReplayVersionResult> } => {
+  // Keyed by the working directory: one entry per re-run in flight, so concurrent re-runs cannot borrow
+  // each other's session. Absent for a workspace this adapter did not create (tests, and callers that
+  // supply their own directory) — those keep the request's own session, as before.
+  const replaySessions = new Map<string, { projectName: string; sessionId: string }>()
   const owner = createArtifactReplayOwner({
     readVersion: async (request): Promise<ReplayableVersion | undefined> => {
       const provenance = await deps.provenance.getVersionCore(request).catch(() => undefined)
@@ -104,8 +117,32 @@ export const createArtifactReplayAdapter = (
         await writeFile(destination, await readFile(source.path))
       }
     },
-    createWorkspace: () => mkdtemp(join(deps.tempRoot ?? tmpdir(), 'ps-replay-')),
-    removeWorkspace: (workspace) => rm(workspace, { recursive: true, force: true }),
+    // A re-run claims its own notebook session, and grades the directory that session runs in: the kernel
+    // cannot be told to run elsewhere (its working directory is fixed when it is spawned), so the only way
+    // to grade what actually ran is to run it where it is graded. The recorded session is left untouched.
+    createWorkspace: async (projectName) => {
+      const sessionId = `replay-${randomBytes(8).toString('hex')}`
+      const dataRoot = deps.notebookDataRoot(projectName, sessionId)
+      await mkdir(dataRoot, { recursive: true })
+      replaySessions.set(dataRoot, { projectName, sessionId })
+      return dataRoot
+    },
+    removeWorkspace: async (workspace) => {
+      const session = replaySessions.get(workspace)
+      replaySessions.delete(workspace)
+      if (session) {
+        // Shut the kernel down before its directory disappears, so nothing keeps running against a path
+        // that is about to stop existing.
+        await deps
+          .shutdownNotebookSession?.({
+            projectName: session.projectName,
+            sessionId: session.sessionId,
+            workspaceCwd: workspace
+          })
+          .catch(() => undefined)
+      }
+      await rm(session ? dirname(workspace) : workspace, { recursive: true, force: true })
+    },
     readFileBase64: (path) =>
       readFile(path)
         .then((bytes) => bytes.toString('base64'))
@@ -114,9 +151,10 @@ export const createArtifactReplayAdapter = (
     // The owner asks for a run; this maps the app's run record onto the named outcomes the verdict is
     // built from, so a timeout, a failure and a completed run stay distinguishable all the way up.
     executeNotebook: async (request) => {
+      const session = replaySessions.get(request.workspaceCwd)
       const summary = await deps.executeNotebook({
         projectName: request.projectName,
-        sessionId: request.sessionId,
+        sessionId: session?.sessionId ?? request.sessionId,
         workspaceCwd: request.workspaceCwd,
         code: request.code,
         language: request.language === 'r' ? 'r' : 'python',
