@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { ArtifactVersionProvenance } from '../../shared/artifact-provenance'
 import type { ReplayVersionRequest, ReplayVersionResult } from '../../shared/artifact-replay'
 import type { NotebookRunSummary } from '../../shared/notebook'
-import { createArtifactReplayAdapter } from './replay-composition'
+import { createArtifactReplayAdapter, type ReplayCompositionDeps } from './replay-composition'
 
 // The composition is the one place where the app's own notebook run record is projected onto the named
 // outcomes the verdict is built from, and where the directory a re-run may execute in is chosen. What it
@@ -71,8 +71,10 @@ const harness = async (
     appVersion: () => '1.62.0',
     notebookDataRoot,
     shutdownNotebookSession,
-    bindNotebookRuntime,
-    readNotebookBindings: extra.readNotebookBindings
+    bindNotebookRuntime:
+      bindNotebookRuntime as unknown as ReplayCompositionDeps['bindNotebookRuntime'],
+    readNotebookBindings:
+      extra.readNotebookBindings as unknown as ReplayCompositionDeps['readNotebookBindings']
   })
   return { adapter, shutdownNotebookSession, bindNotebookRuntime }
 }

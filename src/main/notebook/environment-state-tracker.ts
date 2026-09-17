@@ -179,6 +179,49 @@ class EnvironmentManifestPublicationError extends Error {
   }
 }
 
+/**
+ * The digest of an environment manifest, taken over the fields that DESCRIBE the environment.
+ *
+ * The manifest itself carries capture timestamps (`capturedAt`, `installedInventory.capturedAt`) that change
+ * on every run, so hashing the whole document made two runs in the SAME environment digest differently —
+ * measured, not assumed: two runs in one session, minutes apart, on one interpreter, produced different
+ * digests. A comparison that can never match is not a check, and the replay's environment lock is exactly
+ * such a comparison. The manifest keeps its timestamps for the record; only the digest is canonical.
+ */
+export const environmentManifestDigest = (manifest: NotebookEnvironmentManifest): string => {
+  const packages = manifest.packages
+    .map((pkg) => ({
+      ecosystem: pkg.ecosystem,
+      name: pkg.name,
+      version: pkg.version ?? 'unavailable'
+    }))
+    // Order is a property of how the inventory was walked, not of the environment.
+    .sort((left, right) =>
+      `${left.ecosystem}:${left.name}:${left.version}`.localeCompare(
+        `${right.ecosystem}:${right.name}:${right.version}`
+      )
+    )
+  return sha256(
+    `${JSON.stringify(
+      {
+        schemaVersion: manifest.schemaVersion,
+        kernelKind: manifest.kernelKind,
+        environmentName: manifest.environmentName,
+        runtimeSource: manifest.runtimeSource,
+        runtimeVersion: manifest.runtimeVersion ?? null,
+        platform: manifest.platform ?? null,
+        architecture: manifest.architecture ?? null,
+        // `complete`/`captureStatus` describe the CAPTURE, not the environment: an incomplete scan shows up
+        // here as a shorter package list, which is the difference that matters. Folding the flags in would
+        // only stop two identical environments from ever matching.
+        packages
+      },
+      null,
+      2
+    )}\n`
+  )
+}
+
 const sha256 = (value: string): string => createHash('sha256').update(value).digest('hex')
 
 const describeError = (error: unknown): string =>
@@ -838,7 +881,8 @@ class EnvironmentStateTracker {
         ...(warnings.length > 0 ? { warnings } : {})
       }
       const serialized = `${JSON.stringify(manifest, null, 2)}\n`
-      const checksum = sha256(serialized)
+      // The stored document keeps its timestamps; the digest is over the environment it describes.
+      const checksum = environmentManifestDigest(manifest)
       const storagePath = join(this.manifestDirectory(), `${checksum}.json`)
       try {
         await this.writeImmutable(storagePath, serialized)
