@@ -2603,7 +2603,7 @@ export const de: Partial<Record<ZhKey, string>> = {
   'ws.nextArtifactVersion': 'Nächste Artefaktversion',
   'ws.unpublishedArtifacts': 'Erzeugt, aber nicht veröffentlicht: {n}',
   'ws.unpublishedArtifactsHint':
-    'Diese Dateien wurden von einem Agentenlauf erzeugt, aber dieser Lauf hat die Veröffentlichung nie abgeschlossen – sie sind daher keine Artefakte. Der Inhalt liegt weiterhin auf der Festplatte.',
+    'Diese Dateien wurden von einem Agentenlauf erzeugt, aber sie wurden nie zu Artefakten: Entweder hat der Lauf die Veröffentlichung nicht abgeschlossen, oder sie lassen sich keiner einzelnen Antwort zuordnen. Der Inhalt liegt weiterhin auf der Festplatte.',
   'ws.noFilesYet': 'Noch keine Dateien',
   'ws.noReviewForVersion': 'Keine Überprüfung für diese Version',
   'ws.none': 'Keine',

@@ -508,8 +508,9 @@ describe('ProjectFilesView', () => {
     // The count is the point: the reader learns how many files exist in that state.
     expect(notice?.textContent).toContain('Produced but not published: 1')
     expect(notice?.textContent).toContain('FINAL_REPORT.md')
-    // And the wording must not present them as artifacts.
-    expect(notice?.textContent).toContain('they are not artifacts')
+    // And the wording must not present them as artifacts, for either named reason.
+    expect(notice?.textContent).toContain('never became artifacts')
+    expect(notice?.textContent).toContain('cannot be attributed to a single reply')
   })
 
   it('says nothing about unpublished files when every produced file was published', async () => {

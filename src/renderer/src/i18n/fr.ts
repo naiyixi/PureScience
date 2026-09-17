@@ -2591,7 +2591,7 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'ws.nextArtifactVersion': 'Version d’artefact suivante',
   'ws.unpublishedArtifacts': 'Produits mais non publiés : {n}',
   'ws.unpublishedArtifactsHint':
-    "Ces fichiers ont été produits par une exécution d'agent, mais cette exécution n'a jamais terminé la publication : ce ne sont donc pas des artefacts. Leur contenu reste sur le disque.",
+    "Ces fichiers ont été produits par une exécution d'agent, mais ils ne sont jamais devenus des artefacts : soit cette exécution n'a pas terminé la publication, soit ils ne peuvent pas être attribués à une seule réponse. Leur contenu reste sur le disque.",
   'ws.noFilesYet': 'Aucun fichier pour l’instant',
   'ws.noReviewForVersion': 'Aucune revue pour cette version',
   'ws.none': 'Aucun',
