@@ -3079,6 +3079,125 @@ describe('artifact provenance repository', () => {
     ).resolves.toMatchObject({ recoveredVersionIds: [], recoveredMessageArtifacts: [] })
   })
 
+  it('fills in the reason for a Version named before the reason was recorded', async () => {
+    storageRoot = await mkdtemp(join(tmpdir(), 'purescience-artifact-reason-backfill-'))
+    const client = createProjectDbClient(storageRoot)
+    disconnect = () => client.$disconnect()
+    await ensureProjectSchema(client)
+    const compatibilityRepository = new ArtifactRepository(storageRoot)
+    const repository = new ArtifactProvenanceRepository({
+      storageRoot,
+      getClient: () => Promise.resolve(client),
+      compatibilityRepository
+    })
+    await client.fileOriginSession.create({
+      data: { projectId: 'project-1', sessionId: 'session-1' }
+    })
+    await client.artifactLineage.create({
+      data: {
+        id: 'artifact-1',
+        projectId: 'project-1',
+        sessionId: 'session-1',
+        normalizedFilename: 'out.txt',
+        filename: 'out.txt'
+      }
+    })
+    // Two Versions named `unpublished` back when there was nowhere to record why: one run left a
+    // publication intent behind, the other never wrote one.
+    for (const [index, [id, runId]] of (
+      [
+        ['version-with-intent', 'artifact-run-with-intent'],
+        ['version-no-intent', 'artifact-run-no-intent']
+      ] as const
+    ).entries()) {
+      await client.artifactVersion.create({
+        data: {
+          id,
+          artifactId: 'artifact-1',
+          versionNumber: index + 1,
+          filename: 'out.txt',
+          artifactRunId: runId,
+          rootFrameId: 'root-1',
+          agentFrameId: 'agent-1',
+          messageBranchId: 'branch-1',
+          runtimeSegmentId: 'runtime-1',
+          promptMessageId: 'prompt-1',
+          state: 'unpublished',
+          contentStorageKey: `artifacts/${id}/content`,
+          evidenceStorageKey: `artifacts/${id}/evidence.json`,
+          sizeBytes: 3n,
+          checksum: 'a'.repeat(64),
+          evidenceJson: '{}',
+          evidenceChecksum: 'b'.repeat(64)
+        }
+      })
+    }
+    const prompt = {
+      id: 'prompt-1',
+      role: 'user' as const,
+      content: 'draw',
+      status: 'complete' as const,
+      eventIds: [],
+      createdAt: 1,
+      updatedAt: 1
+    }
+    const conversationGraph = createLinearConversationGraph({
+      sessionId: 'session-1',
+      messages: [prompt],
+      frameworkId: 'codex',
+      createdAt: 1,
+      updatedAt: 1
+    })
+    const context = {
+      rootFrameId: conversationGraph.rootFrameId,
+      agentFrameId: conversationGraph.activeFrameId,
+      messageBranchId: conversationGraph.branches[0]!.id,
+      runtimeSegmentId: conversationGraph.runtimeSegments[0]!.id,
+      promptMessageId: prompt.id
+    }
+    await compatibilityRepository.writePendingFile({
+      projectName: 'project-1',
+      sessionId: 'artifact-session-1',
+      runId: 'artifact-run-with-intent',
+      filename: 'out.txt',
+      source: createPngInlineSource('intent, but no unique turn message')
+    })
+    await compatibilityRepository.prepareRunFinalization({
+      projectName: 'project-1',
+      sourceSessionId: 'artifact-session-1',
+      sessionId: 'session-1',
+      runId: 'artifact-run-with-intent',
+      provenanceContext: context
+    })
+    const session = {
+      id: 'session-1',
+      projectId: 'project-1',
+      title: 'Backfill',
+      cwd: '/workspace',
+      status: 'idle',
+      messages: [prompt],
+      conversationGraph,
+      createdAt: 1,
+      updatedAt: 1
+    } as unknown as PersistedChatSession
+
+    // A live process does not touch it, and the startup pass fills it from the evidence, not a guess.
+    await repository.reconcileSession('project-1', 'session-1', session)
+    await expect(
+      client.artifactVersion.findUniqueOrThrow({ where: { id: 'version-with-intent' } })
+    ).resolves.toMatchObject({ stateReason: null })
+
+    await repository.reconcileSession('project-1', 'session-1', session, {
+      markUnpublishedRuns: true
+    })
+    await expect(
+      client.artifactVersion.findUniqueOrThrow({ where: { id: 'version-with-intent' } })
+    ).resolves.toMatchObject({ stateReason: 'ambiguous-turn-message' })
+    await expect(
+      client.artifactVersion.findUniqueOrThrow({ where: { id: 'version-no-intent' } })
+    ).resolves.toMatchObject({ stateReason: 'no-publication-intent' })
+  })
+
   it('names a run whose durable turn message is ambiguous, once a startup pass owns the decision', async () => {
     storageRoot = await mkdtemp(join(tmpdir(), 'purescience-artifact-ambiguous-naming-'))
     const client = createProjectDbClient(storageRoot)

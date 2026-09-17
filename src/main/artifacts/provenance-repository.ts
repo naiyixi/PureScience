@@ -3159,6 +3159,33 @@ class ArtifactProvenanceRepository {
         result.unpublishedRunIds.push(...unpublishedRuns.keys())
         result.unpublishedVersionIds.push(...unpublished.map((version) => version.id))
       }
+
+      // Rows named before the reason column existed carry none. They are filled from the same evidence the
+      // naming decision itself uses: a publication intent that exists but could not name its turn is the
+      // ambiguity, and no intent at all is its absence. Anything else would be a guess about a past run.
+      if (options?.markUnpublishedRuns) {
+        const unnamed = await client.artifactVersion.findMany({
+          where: {
+            state: ARTIFACT_VERSION_UNPUBLISHED,
+            stateReason: null,
+            artifact: { is: { projectId, sessionId: appSessionId } }
+          },
+          select: { id: true, artifactRunId: true }
+        })
+        for (const version of unnamed) {
+          const marker = await this.options.compatibilityRepository
+            .findRunFinalizationMarker(projectId, version.artifactRunId)
+            .catch(() => undefined)
+          await client.artifactVersion.update({
+            where: { id: version.id },
+            data: {
+              stateReason: marker
+                ? ARTIFACT_VERSION_UNPUBLISHED_AMBIGUOUS_TURN
+                : ARTIFACT_VERSION_UNPUBLISHED_NO_INTENT
+            }
+          })
+        }
+      }
       result.finalizationSkipCounts = finalizationSkipCounts
     }
 
