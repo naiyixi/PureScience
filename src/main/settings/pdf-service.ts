@@ -179,7 +179,8 @@ export class PdfService {
       throw new PdfValidationError('not_found', `Page ${String(page)} is outside this document.`)
     }
     const sourcePath = await this.resolveSourcePath(doc.sourcePath)
-    if (!sourcePath) throw new PdfValidationError('not_found', `Source file is unavailable: ${doc.sourcePath}`)
+    if (!sourcePath)
+      throw new PdfValidationError('not_found', `Source file is unavailable: ${doc.sourcePath}`)
     const parse = this.options.parsePdf ?? parsePdf
     const parsed = await parse(sourcePath)
     const first = page ?? 1
