@@ -241,7 +241,9 @@ describe('PDF table extraction', () => {
       '1.2e-12',
       '0'
     ])
-    expect(candidates[0]!.columnCount).toBeLessThanOrEqual(6)
+    expect(candidates[0]!.columnCount).toBe(4)
+    expect(candidates[0]!.rows[0]).toEqual(['Gene', 'log2FC', 'padj', 'Cluster'])
+    expect(candidates[0]!.rows[1]).toEqual(['MYC', '3.42', '1.2e-12', '0'])
   })
 
   it('keeps two anchors apart when some row fills both', () => {

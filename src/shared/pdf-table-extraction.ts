@@ -182,14 +182,24 @@ export const mergeSplitColumns = (
   const pitch = widestGap(anchors)
   const dropped = anchors.map(() => false)
 
-  for (let left = 0; left < anchors.length; left += 1) {
-    if (dropped[left]) continue
+  // A column split into three anchors needs two merges, so a merge RETRIES the same left column against its
+  // new neighbour instead of moving on: advancing after the first merge is what left a real table at five
+  // columns when the values were spread over three anchors in the same column.
+  let left = 0
+  while (left < anchors.length) {
+    if (dropped[left]) {
+      left += 1
+      continue
+    }
     let right = left + 1
     while (right < anchors.length && dropped[right]) right += 1
     if (right >= anchors.length) break
-    if (anchors[right]! - anchors[left]! > pitch * MERGE_MAX_PITCH_RATIO) continue
+    const tooFarApart = anchors[right]! - anchors[left]! > pitch * MERGE_MAX_PITCH_RATIO
     const bothFilled = placed.some((row) => row[left]!.trim() !== '' && row[right]!.trim() !== '')
-    if (bothFilled) continue
+    if (tooFarApart || bothFilled) {
+      left += 1
+      continue
+    }
     for (const row of placed) {
       if (row[left]!.trim() === '' && row[right]!.trim() !== '') row[left] = row[right]!
       else if (row[left]!.trim() !== '' && row[right]!.trim() !== '') {
