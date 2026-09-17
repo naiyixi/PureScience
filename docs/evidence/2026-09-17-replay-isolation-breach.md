@@ -109,4 +109,5 @@ reason:     Not verifiable: the re-run executed in
 ### 6.4 仍未解决 / 未覆盖（不许含糊）
 
 - **隔离仍不成立**：重跑依旧在原会话数据根里执行（本次复验同样如此，文案已如实说出）。修法需在执行层给"按次工作目录"，而 kernel 的 cwd 是 **spawn 时**定的进程属性（`kernel-executor.ts:512/543`），既有 kernel 无法在不重启的前提下换目录 ⇒ 要先定"重跑用独立会话 + 环境绑定从哪来"（记录里的 `env lock: not-applied` 也指向同一处设计）。
-- **覆盖缺口**：`replay-composition.ts` 至今**没有单元测试**（要造一份假的 provenance 才能测），本轮改动是靠**现场端到端复验**兜住的；补这个夹具是独立小任务，已立案。
+- **覆盖缺口（已补）**：`replay-composition.ts` 原本没有单元测试，那个投影缺陷因此无人拦截。已新增 `replay-composition.test.ts` 两条用例（目录必须进结论 / 报不出目录时保留旧句），并**实测过守卫会咬人**：撤掉投影修复 → 第一条失败，恢复 → 2/2 绿。提交 `d6fde32`。
+- **隔离真修的设计（本轮定案，实施为下一单元）**：现有事实已足够定案——kernel 的 cwd = `session.cwd` = `document.dataRoot` = `<存储根>/notebooks/<项目>/<会话>/data`（`session-lifecycle.ts:86` 定会话 cwd；`kernel-executor.ts:512/543` 用它 `spawn`），而 `workspaceCwd` 只是文档里的一个字段、**不参与** spawn。因此"按次工作目录"在既有 kernel 上不可行（要么 chdir 留在长驻 kernel 里，要么重启 kernel 丢掉用户会话状态）。**定案做法**：重跑改用**独立的重跑会话**（`replay-<versionId>`），把**评分目录直接设成该会话的 dataRoot**（而不是 `/tmp` 的 mkdtemp 目录），运行时绑定从原会话文档移植（`bindRuntime`/`switchRuntime` 这条既有能力），跑完关掉 kernel 并清理该会话与目录。这样"代码跑在哪"与"评分读哪"天然一致，也不再碰原会话的工作文件。要知道的信息都有了（绑定可移植、dataRoot 可预测、清理路径明确）；实施时按序：先跑 notebook 模块既有测试 → 改执行路径 → 加"产物落在本会话 dataRoot 且评分通过"的用例 → 现场复验一次。
