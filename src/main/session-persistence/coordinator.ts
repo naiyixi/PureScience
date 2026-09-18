@@ -16,7 +16,8 @@ import type {
   SessionRuntimeContext,
   SessionRuntimeContextPatch,
   SessionLoadFailure,
-  SessionLoadWarning
+  SessionLoadWarning,
+  LoadAllSessionsOptions
 } from '../../shared/session-persistence'
 import type { ManagedFileSoftDeleteToken } from '../project-files/repository'
 import type { ProjectSessionDeletionState } from './repository'
@@ -416,8 +417,19 @@ const attachRecoveredMessageArtifacts = (
 
 // Serializes authoritative session JSON and derived file-index mutations through one queue. This is
 // the consistency boundary that prevents a late save from racing or reviving a durable deletion.
+// The full load is expensive: on a real data root it moves ~55 MB and takes ~1.4 s, and the task API asks
+// for it on every request. Callers that tolerate a catalog up to this old may opt in and be served from
+// memory; the hydration path never opts in, because it is the one that decides what the user sees.
+//
+// Opt-in rather than automatic on purpose: the catalog also depends on things this coordinator does not own
+// (artifact recovery, upload storage, the file index), so no invalidation hook here can be complete — the
+// startup-recovery test proved that by recovering a Version through a path that listed neither. A caller
+// that cannot afford staleness must not be given a cached answer, and now cannot be.
+const CATALOG_CACHE_TTL_MS = 1000
+
 class SessionPersistenceCoordinator {
   private queue: Promise<unknown> = Promise.resolve()
+  private catalogCache: { at: number; result: LoadAllSessionsResult } | undefined
   private readonly deletedSessions = new Set<string>()
   private readonly deletedProjects = new Set<string>()
   private readonly validatedBindingTopologies = new Map<string, string>()
@@ -544,8 +556,16 @@ class SessionPersistenceCoordinator {
    * Loads durable sessions, reconciles Upload storage, and backfills the file projection only after a
    * complete scan has restored active ownership. Chat hydration remains available on any failure.
    */
-  loadAll(): Promise<LoadAllSessionsResult> {
+  loadAll(options: LoadAllSessionsOptions = {}): Promise<LoadAllSessionsResult> {
     return this.enqueue(async () => {
+      const cached = this.catalogCache
+      if (
+        options.allowCachedCatalog === true &&
+        cached &&
+        Date.now() - cached.at < CATALOG_CACHE_TTL_MS
+      ) {
+        return cached.result
+      }
       this.validatedBindingTopologies.clear()
       // Public loadAll can be called by multiple renderers/tasks. Only the first invocation in this
       // process is a startup boundary; consume it before any await so failures and partial scans cannot
@@ -760,6 +780,8 @@ class SessionPersistenceCoordinator {
             }
           : {})
       })
+      // Only a complete, healthy scan is worth serving again; a degraded one is retryable and short-lived.
+      this.catalogCache = { at: Date.now(), result }
       return result
     })
   }

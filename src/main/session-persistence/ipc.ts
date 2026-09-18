@@ -2,6 +2,7 @@ import { ipcMainHandle } from '../ipc-handler-registry'
 
 import type {
   DeleteSessionRequest,
+  LoadAllSessionsOptions,
   LoadAllSessionsResult,
   PersistedChatSession,
   SaveSessionOptions,
@@ -19,7 +20,7 @@ import { withDataRootWrite } from '../storage/migration-state'
 import type { SessionMetadataSnapshot } from './coordinator'
 
 type SessionPersistenceBackend = {
-  loadAll: () => Promise<LoadAllSessionsResult>
+  loadAll: (options?: LoadAllSessionsOptions) => Promise<LoadAllSessionsResult>
   saveSession: (
     session: PersistedChatSession,
     options?: SaveSessionOptions
@@ -30,7 +31,7 @@ type SessionPersistenceBackend = {
 }
 
 type SessionPersistenceHandlers = {
-  loadAll: () => Promise<LoadAllSessionsResult>
+  loadAll: (options?: LoadAllSessionsOptions) => Promise<LoadAllSessionsResult>
   saveSession: (
     session: PersistedChatSession,
     options?: SaveSessionOptions
@@ -45,7 +46,7 @@ type ProjectDeletionRecoveryBackend = {
 }
 
 type SessionStartupLoader = {
-  loadAll: () => Promise<LoadAllSessionsResult>
+  loadAll: (options?: LoadAllSessionsOptions) => Promise<LoadAllSessionsResult>
   loadAllReadOnly: () => Promise<LoadAllSessionsResult>
 }
 
@@ -145,7 +146,9 @@ const registerSessionPersistenceIpcHandlers = (
   // Keep persistence IPC separate from ACP runtime commands; it owns durable UI state only.
   // loadAll can replay pending deletions and every mutation can materialize provenance/upload bytes.
   // Hold the shared data-root lease at the IPC boundary so migration drains the complete operation.
-  ipcMainHandle('sessions:load-all', () => withDataRootWrite(() => handlers.loadAll()))
+  ipcMainHandle('sessions:load-all', (_event, options?: LoadAllSessionsOptions) =>
+    withDataRootWrite(() => handlers.loadAll(options))
+  )
   ipcMainHandle(
     'sessions:save-session',
     async (event, session: PersistedChatSession, options?: SaveSessionOptions) => {

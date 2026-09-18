@@ -488,8 +488,8 @@ const registerDataContentApplicationCommands = (
         )
         return dependencies.electron.exportConversationFromInvokingWindow(invocation)
       },
-      'sessions:load-all': () =>
-        dependencies.withDataRootWrite(() => dependencies.sessions.loadAll()),
+      'sessions:load-all': ({ args }) =>
+        dependencies.withDataRootWrite(() => dependencies.sessions.loadAll(args[0])),
       'sessions:save-manifest': ({ args }) =>
         dependencies.withDataRootWrite(() => dependencies.sessions.saveManifest(args[0])),
       'sessions:update-archive': (invocation) => {

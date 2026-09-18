@@ -59,7 +59,11 @@ class HeadlessTaskApi {
       },
       sessions: {
         list: async () => {
-          const result = (await this.invoke('sessions:load-all')) as {
+          // This caller lists sessions for a task and does not decide what the user sees, so it may take a
+          // catalog served from memory (the full read is ~55 MB and ~1.4 s on a real data root).
+          const result = (await this.invoke('sessions:load-all', {
+            allowCachedCatalog: true
+          })) as {
             sessions: PersistedChatSession[]
           }
           return result.sessions

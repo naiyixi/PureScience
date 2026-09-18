@@ -1772,6 +1772,14 @@ export type SessionLoadDiagnostics = {
 }
 
 // IPC payloads for the per-session persistence surface.
+/**
+ * Opt-in for callers that may be served a catalog up to a second old. The hydration path never opts in: it
+ * decides what the user sees, and the catalog also depends on parts of storage the coordinator does not own.
+ */
+export type LoadAllSessionsOptions = {
+  allowCachedCatalog?: boolean
+}
+
 export type LoadAllSessionsResult = {
   sessions: PersistedChatSession[]
   manifest: PersistedSessionManifest

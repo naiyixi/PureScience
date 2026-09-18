@@ -640,6 +640,70 @@ describe('SessionPersistenceCoordinator', () => {
     ).rejects.toThrow(/project.*deleted/i)
   })
 
+  // The catalog is ~55 MB and ~1.4 s on a real data root, and the task API asks for it on every request.
+  // Only a caller that does not decide what the user sees may be served from memory; the hydration path
+  // never is, because the catalog also depends on things this coordinator does not own.
+  it('serves an unchanged catalog from memory to a caller that opted in', async () => {
+    const session = createSession({ title: 'Cached catalog' })
+    const loadAllWithDiagnostics = vi.fn().mockResolvedValue({
+      result: { sessions: [session], manifest: { version: 1 as const } },
+      isComplete: true
+    })
+    const coordinator = new SessionPersistenceCoordinator(
+      createSessionRepository({ loadAllWithDiagnostics }),
+      createFileIndex()
+    )
+
+    const first = await coordinator.loadAll({ allowCachedCatalog: true })
+    const second = await coordinator.loadAll({ allowCachedCatalog: true })
+
+    expect(loadAllWithDiagnostics).toHaveBeenCalledOnce()
+    expect(second).toBe(first)
+  })
+
+  it('never serves a cached catalog to a caller that did not opt in', async () => {
+    const session = createSession({ title: 'Authoritative catalog' })
+    const loadAllWithDiagnostics = vi.fn().mockResolvedValue({
+      result: { sessions: [session], manifest: { version: 1 as const } },
+      isComplete: true
+    })
+    const coordinator = new SessionPersistenceCoordinator(
+      createSessionRepository({ loadAllWithDiagnostics }),
+      createFileIndex()
+    )
+
+    await coordinator.loadAll({ allowCachedCatalog: true })
+    const authoritative = await coordinator.loadAll()
+
+    // A stale answer must not be handed to the path that decides what the user sees — not even inside the
+    // window, and not even though the cache is warm.
+    expect(loadAllWithDiagnostics).toHaveBeenCalledTimes(2)
+    expect(authoritative.sessions).toHaveLength(1)
+  })
+
+  it('stops serving the cached catalog once the window has passed', async () => {
+    vi.useFakeTimers()
+    try {
+      const session = createSession({ title: 'Expiring catalog' })
+      const loadAllWithDiagnostics = vi.fn().mockResolvedValue({
+        result: { sessions: [session], manifest: { version: 1 as const } },
+        isComplete: true
+      })
+      const coordinator = new SessionPersistenceCoordinator(
+        createSessionRepository({ loadAllWithDiagnostics }),
+        createFileIndex()
+      )
+
+      await coordinator.loadAll({ allowCachedCatalog: true })
+      vi.advanceTimersByTime(1500)
+      await coordinator.loadAll({ allowCachedCatalog: true })
+
+      expect(loadAllWithDiagnostics).toHaveBeenCalledTimes(2)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('exposes Session metadata from the latest complete load without reading storage again', async () => {
     const session = createSession({ title: 'Cached session' })
     const loadAllWithDiagnostics = vi.fn().mockResolvedValue({
