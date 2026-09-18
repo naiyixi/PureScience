@@ -104,8 +104,7 @@ export const ARTIFACT_OWNERSHIP_PERSISTENCE_RACE = 'ownership-persistence-race' 
 export const ARTIFACT_VERSION_UNPUBLISHED_NO_INTENT = 'no-publication-intent'
 export const ARTIFACT_VERSION_UNPUBLISHED_AMBIGUOUS_TURN = 'ambiguous-turn-message'
 export type ArtifactVersionStateReason =
-  | typeof ARTIFACT_VERSION_UNPUBLISHED_NO_INTENT
-  | typeof ARTIFACT_VERSION_UNPUBLISHED_AMBIGUOUS_TURN
+  typeof ARTIFACT_VERSION_UNPUBLISHED_NO_INTENT | typeof ARTIFACT_VERSION_UNPUBLISHED_AMBIGUOUS_TURN
 
 export const ARTIFACT_VERSION_UNPUBLISHED = 'unpublished' as const
 
