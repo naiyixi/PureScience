@@ -16,6 +16,14 @@
 
 ### ⏳ 待做（剩下的接线，一次做完并实测）
 
+> **一次未完成尝试的实测记录（2026-09-19，已回退、未提交）**：接线做到一半时被三处守卫拦下，这些**具体位置与数字**下次直接照用，别再摸索：
+> 1. **Web 面也要注册这条命令** —— `src/main/application-command-composition.test.ts` 有 7 个用例失败，它们按生成表核对**本地 Web 视图**实际安装的命令集合。结论：`project-files:*` 不只走 Electron IPC，还必须是 Web 安装的命令（与 `project-files:list-files` 同样处理），**光加 `ipcMainHandle` 不够**。
+> 2. **契约计数（全部 +1）**：`renderer-contract-catalog.test.ts` 的 `RENDERER_CONTRACT_CATALOG` 417→**418**、`projection.invoke` 315→**316**、另一个 345→**346**；`renderer-surface-inventory.test.ts` 的 `electronPaths` 417→**418** 与 `).toHaveLength(315)`→**316**；`preload/index.test.ts` 的 `coreContracts` 191→**192**、`requestContracts` 153→**154**、边界集合 `{requests:153,…}`→**154**，并在"pins every callable path"清单里 `'projectFiles.listFiles',` 之后加 `'projectFiles.listKinds',`。
+> 3. **主进程两个端口与 facade 的公开方法清单**：`ProjectFilesQueryRepository`、`ProjectFilesHandlers` 都要加 `listKinds`；`repository.architecture.test.ts` 的"keeps the established public repository interface"清单（11→12）与"one query owner"清单（4→5）都要加；`ipc.test.ts` 里 **8 处**假 repository/handlers 字面量需要 `listKinds: vi.fn(async () => []),`（按行插容易重复/遗漏，建议直接改成工厂函数）。
+> 4. `npm run gen:web-api-map` 会在目录加好后自动生成 `'projectFiles.listKinds': 'project-files:list-kinds'`（不要手改生成文件）。
+> 5. 渲染层用例：`HomePage.render.test.tsx` 的 chip 用例要改成 mock `listKinds` 并断言 `{ projectIds: ['proj-file-kinds'] }`。
+
+
 ### 1. 共享类型（`src/shared/project-files.ts`）
 ```ts
 export type ListProjectFileKindsRequest = { projectIds: string[] }
