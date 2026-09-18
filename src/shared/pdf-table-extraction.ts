@@ -87,7 +87,7 @@ export const groupRows = (items: readonly PdfTextItem[], tolerance: number): Row
   }))
 }
 
-type Cell = { x: number; text: string }
+export type Cell = { x: number; end: number; text: string }
 
 // Splits one row into cells wherever the horizontal gap exceeds the threshold.
 export const splitRow = (row: Row, gapPoints: number): Cell[] => {
@@ -98,14 +98,15 @@ export const splitRow = (row: Row, gapPoints: number): Cell[] => {
 
   for (const item of row.items) {
     if (previousEnd !== undefined && item.x - previousEnd > gapPoints) {
-      cells.push({ x: start, text: cellText(current) })
+      cells.push({ x: start, end: previousEnd, text: cellText(current) })
       current = []
     }
     if (current.length === 0) start = item.x
     current.push(item)
     previousEnd = item.x + item.width
   }
-  if (current.length > 0) cells.push({ x: start, text: cellText(current) })
+  if (current.length > 0)
+    cells.push({ x: start, end: previousEnd ?? start, text: cellText(current) })
   return cells
 }
 
@@ -122,6 +123,14 @@ export const columnAnchors = (rows: readonly (readonly Cell[])[], tolerance: num
     if (last === undefined || start - last > tolerance) anchors.push(start)
   }
   return anchors
+}
+
+const nearestAnchor = (anchors: readonly number[], x: number): number => {
+  let best = anchors[0] ?? 0
+  for (const anchor of anchors) {
+    if (Math.abs(anchor - x) < Math.abs(best - x)) best = anchor
+  }
+  return best
 }
 
 const placeInColumns = (
@@ -157,34 +166,37 @@ const confidenceFor = (rows: readonly (readonly string[])[]): PdfTableConfidence
  * Extracts table candidates from one page's text items. Empty cells inside a row are kept: a missing value
  * in a column is information, and silently shifting the remaining cells left would corrupt the table.
  */
-// A table's header and its right-aligned numbers rarely start at the same x, so clustering anchors by
-// start position alone splits one column into two or three: measured on a real four-column table produced
-// by matplotlib, the candidate came out ten columns wide, with the gene names scattered across filler
-// columns. Adjacent anchors are the same logical column when no row ever fills both — a real pair of
-// columns is filled together at least once. The distance guard is what keeps that from collapsing a whole
-// table: without it, "A is filled only in these rows, B only in those" would merge forever.
-const MERGE_MAX_PITCH_RATIO = 0.5
-
-// The widest gap between adjacent anchors is the best available estimate of the real column pitch: splits
-// inside one column are narrower than the distances between columns, so a median would be dragged down by
-// the very splits being looked for (measured: median 26.8 against splits of 26.8 — the cap came out smaller
-// than the split it was meant to allow).
-const widestGap = (anchors: readonly number[]): number => {
-  if (anchors.length < 2) return Number.POSITIVE_INFINITY
-  return Math.max(...anchors.slice(1).map((anchor, index) => anchor - anchors[index]!))
-}
+// The extents a set of cells occupies per anchor: what the merge guard measures between two columns.
+export const columnExtents = (
+  rows: readonly (readonly Cell[])[],
+  anchors: readonly number[],
+  tolerance: number
+): { start: number; end: number }[] =>
+  anchors.map((anchor) => {
+    let start = Number.POSITIVE_INFINITY
+    let end = Number.NEGATIVE_INFINITY
+    for (const cell of rows.flat()) {
+      if (Math.abs(nearestAnchor(anchors, cell.x) - anchor) > tolerance) continue
+      if (nearestAnchor(anchors, cell.x) !== anchor) continue
+      start = Math.min(start, cell.x)
+      end = Math.max(end, cell.end)
+    }
+    return Number.isFinite(start) ? { start, end } : { start: anchor, end: anchor }
+  })
 
 export const mergeSplitColumns = (
   rows: readonly (readonly string[])[],
-  anchors: readonly number[]
+  anchors: readonly number[],
+  extents: readonly { start: number; end: number }[],
+  gapPoints: number
 ): { rows: string[][]; anchors: number[] } => {
   const placed = rows.map((row) => [...row])
-  const pitch = widestGap(anchors)
+  const spans = extents.map((extent) => ({ ...extent }))
   const dropped = anchors.map(() => false)
 
-  // A column split into three anchors needs two merges, so a merge RETRIES the same left column against its
-  // new neighbour instead of moving on: advancing after the first merge is what left a real table at five
-  // columns when the values were spread over three anchors in the same column.
+  // A column split into several anchors needs several merges, so a merge RETRIES the same column against
+  // its new neighbour instead of moving on: advancing after one merge is what left a real table short of a
+  // column when its values were spread over more than two anchors.
   let left = 0
   while (left < anchors.length) {
     if (dropped[left]) {
@@ -194,18 +206,27 @@ export const mergeSplitColumns = (
     let right = left + 1
     while (right < anchors.length && dropped[right]) right += 1
     if (right >= anchors.length) break
-    const tooFarApart = anchors[right]! - anchors[left]! > pitch * MERGE_MAX_PITCH_RATIO
+
+    // Two signals, both required. The columns have to be close enough that they cannot be two columns
+    // (same threshold the splitter uses), and no row may ever fill both — a real pair of columns is filled
+    // together at least once, so a pair that never is, is one column that was split.
+    const tooFarApart = spans[right]!.start - spans[left]!.end > gapPoints
     const bothFilled = placed.some((row) => row[left]!.trim() !== '' && row[right]!.trim() !== '')
     if (tooFarApart || bothFilled) {
       left += 1
       continue
     }
+
     for (const row of placed) {
       if (row[left]!.trim() === '' && row[right]!.trim() !== '') row[left] = row[right]!
       else if (row[left]!.trim() !== '' && row[right]!.trim() !== '') {
         row[left] = `${row[left]!} ${row[right]!}`
       }
       row[right] = ''
+    }
+    spans[left] = {
+      start: Math.min(spans[left]!.start, spans[right]!.start),
+      end: Math.max(spans[left]!.end, spans[right]!.end)
     }
     dropped[right] = true
   }
@@ -234,11 +255,13 @@ export const extractPdfTableCandidates = (
     grouped.map((row) => splitRow(row, columnGapPoints)),
     Math.max(1, columnGapPoints / 2)
   )
+  const cellsByRow = grouped.map((row) => splitRow(row, columnGapPoints))
+  const columnTolerance = Math.max(1, columnGapPoints / 2)
   const merged = mergeSplitColumns(
-    grouped.map((row) =>
-      placeInColumns(splitRow(row, columnGapPoints), anchors, Math.max(1, columnGapPoints / 2))
-    ),
-    anchors
+    cellsByRow.map((cells) => placeInColumns(cells, anchors, columnTolerance)),
+    anchors,
+    columnExtents(cellsByRow, anchors, columnTolerance),
+    columnGapPoints
   )
   const rows = merged.rows
   const columnCount = merged.anchors.length

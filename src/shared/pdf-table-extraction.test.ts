@@ -203,27 +203,39 @@ describe('PDF table extraction', () => {
   // beneath them start at different x, so clustering anchors by start position alone splits each column into
   // several. Measured on the table this fixture copies: ten anchors for four columns, values stranded in
   // filler columns. Adjacent anchors that no row ever fills together are one logical column.
-  const centredTable: PdfTextItem[] = [
-    item('Gene', 37.2, 112.9, 16.8),
-    item('log2FC', 117.3, 112.9, 30.9),
-    item('padj', 206.7, 112.9, 19.5),
-    item('Cluster', 284.2, 112.9, 31.9),
-    item('MYC', 63.5, 100.9, 12.6),
-    item('3.42', 146.2, 100.9, 16.8),
-    item('1.2e-12', 219.4, 100.9, 30.6),
-    item('0', 300.1, 100.9, 4.2),
-    item('CDKN1A', 54.6, 88.9, 29.5),
-    item('-2.87', 144.1, 88.9, 21.0),
-    item('4.5e-09', 219.0, 88.9, 30.4),
-    item('1', 300.1, 88.9, 4.2),
-    item('GAPDH', 58.0, 76.9, 25.2),
-    item('0.14', 148.0, 76.9, 18.9),
-    item('8.1e-01', 219.2, 76.9, 32.6),
-    item('2', 300.1, 76.9, 4.2)
+  const liveCentredTable: PdfTextItem[] = [
+    item('Gene', 37.1828125, 112.934109375, 23.7),
+    item('log2FC', 117.3046875, 112.9311796875, 30.9),
+    item('padj', 206.7234375, 112.9311796875, 19.5),
+    item('Cluster', 284.18125, 112.9311796875, 31.9),
+    item('MYC', 63.4675, 100.934109375, 19.1),
+    item('3.42', 146.214375, 100.934109375, 20.0),
+    item('1.2e-12', 215.414375, 100.934109375, 34.5),
+    item('0', 327.91125, 100.934109375, 5.7),
+    item('CDKN1A', 44.795625, 88.934109375, 37.7),
+    item('-2.87', 142.964375, 88.934109375, 23.3),
+    item('4.5e-09', 215.414375, 88.934109375, 34.5),
+    item('1', 327.91125, 88.934109375, 5.7),
+    item('GAPDH', 50.28, 76.934109375, 32.3),
+    item('0.14', 146.214375, 76.934109375, 20.0),
+    item('8.1e-01', 215.414375, 76.934109375, 34.5),
+    item('2', 327.91125, 76.934109375, 5.7),
+    item('ACTB', 58.576875, 64.934109375, 24.0),
+    item('-0.09', 142.964375, 64.934109375, 23.3),
+    item('9.4e-01', 215.414375, 64.934109375, 34.5),
+    item('3', 327.91125, 64.934109375, 5.7),
+    item('TP53', 60.170625, 52.934109375, 22.4),
+    item('1.75', 146.214375, 52.934109375, 20.0),
+    item('2.2e-05', 215.414375, 52.934109375, 34.5),
+    item('0', 327.91125, 52.934109375, 5.7),
+    item('MDM2', 54.3425, 40.934109375, 28.2),
+    item('2.11', 146.214375, 40.934109375, 20.0),
+    item('6.7e-07', 215.414375, 40.934109375, 34.5),
+    item('1', 327.91125, 40.934109375, 5.7)
   ]
 
   it('merges the anchors a header and its values produce for one column', () => {
-    const candidates = extractPdfTableCandidates(1, centredTable)
+    const candidates = extractPdfTableCandidates(1, liveCentredTable)
 
     // The merge pass is what this case guards, and what it pins is the reading contract: every value is still
     // there, in the order the page reads. The column MODEL still over-splits a centred table (ten anchors to
