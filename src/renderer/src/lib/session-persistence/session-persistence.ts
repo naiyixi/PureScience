@@ -579,6 +579,16 @@ const useSessionPersistence = (): SessionPersistenceState => {
     }).catch(reportPersistenceError)
   }, [])
 
+  // Switching to another session reads its document. Sessions arrive from the list tier without their content,
+  // so without this the conversation just selected would look empty — and the guard, correctly, would refuse to
+  // write it. One effect covers every way a selection can change (sidebar, deep link, restore) rather than one
+  // call site at a time.
+  const selectedSessionId = useSessionStore((state) => state.selectedSessionId)
+  useEffect(() => {
+    if (!selectedSessionId) return
+    void createSessionDocumentLoader(window.api.sessions).load(selectedSessionId)
+  }, [selectedSessionId])
+
   useEffect(() => {
     let isMounted = true
     let unsubscribe: (() => void) | undefined
