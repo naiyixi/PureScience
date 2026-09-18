@@ -7,12 +7,14 @@
 // The time-to-live is a floor under correctness rather than a cache policy: the signal covers writes made
 // by this process, and a session written by another process on the same data root is picked up within it.
 
-import type { PersistedChatSession } from '../../shared/session-persistence'
+import type { LoadAllSessionsOptions, PersistedChatSession } from '../../shared/session-persistence'
 
 export const SESSION_INDEX_DEFAULT_TTL_MS = 30_000
 
 export type SessionIndexDeps = {
-  loadAll: () => Promise<PersistedChatSession[]>
+  // The index asks for a catalog that may be up to a second old: thirty seconds is what this index already
+  // tolerates by design, so a second of staleness stays far inside its contract.
+  loadAll: (options?: LoadAllSessionsOptions) => Promise<PersistedChatSession[]>
   // Bumped by the durable repository on every session write.
   revision: () => number
   now?: () => number
@@ -51,7 +53,7 @@ export const createSessionIndex = (deps: SessionIndexDeps): SessionIndex => {
     if (!inFlight) {
       reads += 1
       inFlight = deps
-        .loadAll()
+        .loadAll({ allowCachedCatalog: true })
         .then((sessions) => {
           cached = sessions
           cachedRevision = deps.revision()

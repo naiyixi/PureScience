@@ -1151,7 +1151,9 @@ const createApplicationModules = async (
   // corpus. The durable repository bumps the revision on every write, so the view is only re-read when
   // something actually changed.
   const searchSessionIndex = createSessionIndex({
-    loadAll: async () => (await sessionPersistenceBackend.loadAll()).sessions,
+    // The staleness budget lives with the index, which asks for a possibly-cached catalog; this seam only
+    // forwards the request.
+    loadAll: async (options) => (await sessionPersistenceBackend.loadAll(options)).sessions,
     revision: getSessionRevision
   })
 

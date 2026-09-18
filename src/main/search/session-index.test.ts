@@ -99,4 +99,17 @@ describe('session index', () => {
     expect(loadAll).toHaveBeenCalledTimes(2)
     expect(index.stats()).toEqual({ reads: 2, hits: 0, sessions: 1 })
   })
+
+  it('asks for a possibly-cached catalog, and only ever asks for one', async () => {
+    // The index tolerates thirty seconds of staleness by design; one second is nothing next to that, and
+    // the request is what keeps the first search of a cold index off the full read. Asserting the exact
+    // options object keeps the request from quietly regressing to a bare call.
+    const loadAll = vi.fn(async () => [session('session-1')])
+    const index = createSessionIndex({ loadAll, revision: () => 0, now: () => 1_000 })
+
+    await index.getSessions()
+
+    expect(loadAll).toHaveBeenCalledTimes(1)
+    expect(loadAll).toHaveBeenCalledWith({ allowCachedCatalog: true })
+  })
 })
