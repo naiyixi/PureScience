@@ -50,6 +50,7 @@ import {
   type PendingArtifactRunPublication
 } from './repository'
 import { defaultArtifactDurability, type ArtifactDurability } from './durability'
+import { readEventLoopLatency, resetEventLoopLatency } from '../diagnostics/event-loop-latency'
 import { createLogger } from '../logger'
 import { NotebookRunRepository } from '../notebook/repository'
 import type {
@@ -4146,6 +4147,10 @@ class ArtifactProvenanceRepository {
     const startedAt = Date.now()
     const client = await this.options.getClient()
     const clientMs = Date.now() - startedAt
+    // Event loop delay per segment, not just per call: six of nine slow acquires ran with a healthy loop
+    // (so they were awaiting) while three had main blocked for 212 ms of a 220 ms call. Only a per-segment
+    // reading can say which segment blocks and which merely waits.
+    resetEventLoopLatency()
     const version = await client.artifactVersion.findFirst({
       where: {
         id: versionId,
@@ -4155,21 +4160,26 @@ class ArtifactProvenanceRepository {
       },
       include: { artifact: true }
     })
+    const queryEventLoopMaxMs = readEventLoopLatency().maxMs
     const queryMs = Date.now() - startedAt - clientMs
     if (!version) throw new Error(`Artifact Version not found: ${versionId}`)
 
     const path = resolveStorageKey(this.options.storageRoot, version.contentStorageKey)
+    resetEventLoopLatency()
     const bytes = await readFile(path)
     if (sha256(bytes) !== version.checksum) {
       throw new Error(`Artifact Version content checksum mismatch: ${versionId}`)
     }
+    const readEventLoopMaxMs = readEventLoopLatency().maxMs
     const readMs = Date.now() - startedAt - clientMs - queryMs
     if (clientMs + queryMs + readMs >= SLOW_VERSION_RESOLVE_THRESHOLD_MS) {
       try {
         versionResolveLog.warn('artifact version resolve was slow', {
           clientMs,
           queryMs,
+          queryEventLoopMaxMs,
           readMs,
+          readEventLoopMaxMs,
           bytes: bytes.byteLength
         })
       } catch {
