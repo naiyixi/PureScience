@@ -50,6 +50,7 @@ import {
   type PendingArtifactRunPublication
 } from './repository'
 import { defaultArtifactDurability, type ArtifactDurability } from './durability'
+import { createLogger } from '../logger'
 import { NotebookRunRepository } from '../notebook/repository'
 import type {
   NotebookEnvironmentManifest,
@@ -60,6 +61,12 @@ import type {
   NotebookRunRecord
 } from '../../shared/notebook'
 import { toCheck, toReview } from '../reviewer/repository'
+
+// Resolving a Version for preview is one query plus a whole-file read and SHA-256. The bytes measured cheap
+// (5.4 ms for the corpus's largest artifact) while the call measured 163 ms, so the split has to come from
+// here rather than from reasoning about it. Reported only when slow; carries counts and bytes, never paths.
+const SLOW_VERSION_RESOLVE_THRESHOLD_MS = 50
+const versionResolveLog = createLogger('artifact-provenance')
 import { selectReviewChainForArtifactVersion } from '../reviewer/artifact-version-review'
 import { flagStaleReviews } from '../reviewer/stale-reviews'
 import type {
@@ -4136,7 +4143,9 @@ class ArtifactProvenanceRepository {
     const artifactId = request.artifactId
       ? assertSafeSegment(request.artifactId, 'artifact id')
       : undefined
+    const startedAt = Date.now()
     const client = await this.options.getClient()
+    const clientMs = Date.now() - startedAt
     const version = await client.artifactVersion.findFirst({
       where: {
         id: versionId,
@@ -4146,12 +4155,26 @@ class ArtifactProvenanceRepository {
       },
       include: { artifact: true }
     })
+    const queryMs = Date.now() - startedAt - clientMs
     if (!version) throw new Error(`Artifact Version not found: ${versionId}`)
 
     const path = resolveStorageKey(this.options.storageRoot, version.contentStorageKey)
     const bytes = await readFile(path)
     if (sha256(bytes) !== version.checksum) {
       throw new Error(`Artifact Version content checksum mismatch: ${versionId}`)
+    }
+    const readMs = Date.now() - startedAt - clientMs - queryMs
+    if (clientMs + queryMs + readMs >= SLOW_VERSION_RESOLVE_THRESHOLD_MS) {
+      try {
+        versionResolveLog.warn('artifact version resolve was slow', {
+          clientMs,
+          queryMs,
+          readMs,
+          bytes: bytes.byteLength
+        })
+      } catch {
+        // Best-effort: a diagnostic must never replace the resolve result.
+      }
     }
     return {
       path,
