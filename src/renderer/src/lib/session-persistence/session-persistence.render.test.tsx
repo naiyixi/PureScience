@@ -8,7 +8,11 @@ import {
   type LoadAllSessionsResult,
   type PersistedChatSession
 } from '../../../../shared/session-persistence'
-import { createInitialSessionState, useSessionStore } from '../../stores/session-store'
+import {
+  createInitialSessionState,
+  isSummaryOnlySession,
+  useSessionStore
+} from '../../stores/session-store'
 import { useSessionPersistence, type SessionPersistenceState } from './session-persistence'
 
 const emptyLoadResult = (): LoadAllSessionsResult => ({
@@ -104,6 +108,54 @@ describe('session persistence startup', () => {
       </div>
     )
   }
+
+  it('reads a document when the selection changes, and only for the list tier', async () => {
+    const listCatalog = vi.fn().mockResolvedValue({
+      sessions: [
+        createPersistedSession({ id: 'session-1' }),
+        createPersistedSession({ id: 'session-2' })
+      ],
+      manifest: { version: SESSION_MANIFEST_VERSION, lastSessionId: 'session-1' }
+    })
+    const readDocument = vi.fn(async ({ sessionId }: { sessionId: string }) =>
+      createPersistedSession({ id: sessionId })
+    )
+    window.api = {
+      sessions: {
+        listCatalog,
+        readDocument,
+        loadAll,
+        saveSession,
+        deleteSession: vi.fn().mockResolvedValue(undefined),
+        saveManifest
+      },
+      artifacts: {
+        reconcilePendingArtifacts: reconcilePendingArtifactsApi
+      }
+    } as unknown as Window['api']
+
+    await act(async () => root.render(<Probe />))
+
+    // Opening the app reads exactly the session it is opening, and the other one is left as a summary — with
+    // its mark, so the guard still covers it.
+    expect(readDocument.mock.calls.map(([request]) => request.sessionId)).toEqual(['session-1'])
+    const untouched = useSessionStore
+      .getState()
+      .sessions.find((session) => session.id === 'session-2')
+    expect(untouched !== undefined && isSummaryOnlySession(untouched)).toBe(true)
+
+    // Switching to it is what reads it, and reading it is the only thing that clears the mark.
+    await act(async () => useSessionStore.getState().selectSession('session-2'))
+
+    expect(readDocument.mock.calls.map(([request]) => request.sessionId)).toEqual([
+      'session-1',
+      'session-2'
+    ])
+    const selected = useSessionStore
+      .getState()
+      .sessions.find((session) => session.id === 'session-2')
+    expect(selected !== undefined && isSummaryOnlySession(selected)).toBe(false)
+  })
 
   it('keeps session actions blocked after a load failure and recovers on retry', async () => {
     await act(async () => root.render(<Probe />))

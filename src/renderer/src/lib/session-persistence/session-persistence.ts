@@ -310,7 +310,7 @@ const loadPersistedSessions = async (
   }
   const selection = preferredSelection?.sessionId ?? useSessionStore.getState().selectedSessionId
   const toLoad = useSessionStore.getState().sessions.find((session) => session.id === selection)
-  if (toLoad) await createSessionDocumentLoader(api).load(toLoad.id)
+  if (toLoad) await sessionDocumentLoaderFor(api).load(toLoad.id)
 
   return {
     sessions: loaded.sessions,
@@ -328,6 +328,19 @@ export type SessionDocumentLoadOutcome = 'loaded' | 'not-a-summary' | 'unknown-s
 
 export type SessionDocumentLoader = {
   load: (sessionId: string) => Promise<SessionDocumentLoadOutcome>
+}
+
+// One loader per bridge. Hydration and the selection effect both ask; if each built its own loader, their
+// in-flight de-duplication would not see each other and the same document would be read twice at startup —
+// which is exactly what the render-level case caught.
+const loaders = new WeakMap<object, SessionDocumentLoader>()
+
+const sessionDocumentLoaderFor = (api: SessionPersistenceApi): SessionDocumentLoader => {
+  const existing = loaders.get(api)
+  if (existing) return existing
+  const created = createSessionDocumentLoader(api)
+  loaders.set(api, created)
+  return created
 }
 
 const createSessionDocumentLoader = (api: SessionPersistenceApi): SessionDocumentLoader => {
@@ -586,7 +599,7 @@ const useSessionPersistence = (): SessionPersistenceState => {
   const selectedSessionId = useSessionStore((state) => state.selectedSessionId)
   useEffect(() => {
     if (!selectedSessionId) return
-    void createSessionDocumentLoader(window.api.sessions).load(selectedSessionId)
+    void sessionDocumentLoaderFor(window.api.sessions).load(selectedSessionId)
   }, [selectedSessionId])
 
   useEffect(() => {
