@@ -4,6 +4,7 @@ import { open, stat } from 'node:fs/promises'
 import type { FileHandle } from 'node:fs/promises'
 import { basename, extname } from 'node:path'
 
+import { createLogger } from './logger'
 import type { OfficePreviewAdmissionError } from '../shared/office-preview'
 import type {
   AcquireManagedPreviewRequest,
@@ -13,6 +14,12 @@ import type {
   ReadManagedPreviewRangeRequest,
   ReleaseManagedPreviewRequest
 } from '../shared/preview-resources'
+
+// The packaged build's worst interaction frame (432 ms, Files panel) lined up with this channel at ~370 ms
+// per call, and main can only say that after the fact. acquire is resolvePath + stat, so this says which of
+// the two, per source, and only when a call is slow.
+const SLOW_ACQUIRE_THRESHOLD_MS = 50
+const previewLog = createLogger('preview-resources')
 
 const MAX_PREVIEW_RANGE_BYTES = 1024 * 1024
 const MAX_RELEASED_RESOURCE_TOMBSTONES = 1024
@@ -166,8 +173,23 @@ class ManagedPreviewResources {
     options?: AcquireManagedPreviewOptions
   ): Promise<ManagedPreviewResource> {
     // Resolve through the managed repository before minting an owner-scoped capability URL.
+    const startedAt = Date.now()
     const filePath = await this.options.resolvePath(request.source, request)
+    const resolveMs = Date.now() - startedAt
     const fileStat = await stat(filePath, { bigint: true })
+    const statMs = Date.now() - startedAt - resolveMs
+    if (resolveMs + statMs >= SLOW_ACQUIRE_THRESHOLD_MS) {
+      try {
+        // The path itself is user data; only its segment costs and the source are reported.
+        previewLog.warn('managed preview acquire was slow', {
+          source: request.source,
+          resolveMs,
+          statMs
+        })
+      } catch {
+        // Best-effort: a diagnostic must never replace the acquire result.
+      }
+    }
 
     if (!fileStat.isFile()) {
       throw new Error('Managed preview path is not a file.')
