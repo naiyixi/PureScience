@@ -106,6 +106,11 @@ export type SessionPersistenceActions = {
   ) => void
   upsertPersistedSession: (session: PersistedChatSession) => void
   applyDurableSessionProjection: (input: ApplyDurableSessionProjectionInput) => void
+  // Replaces one session with the document that was read back for it (the document tier of the list/document
+  // split). It goes through the same conversion hydration uses, so a fetched document satisfies the same
+  // invariants as a hydrated one, and the replacement object is unmarked: the session becomes writable again
+  // exactly when its content is actually in hand.
+  applySessionDocument: (session: PersistedChatSession) => void
 }
 
 const externallyHydratedSessions = new WeakSet<ChatSession>()
@@ -350,6 +355,21 @@ export const createSessionPersistenceOwner = <State extends SessionStoreData>(
         : hydrated[0]?.id
 
     set({ sessions: hydrated, selectedSessionId } as Partial<State>)
+  },
+
+  applySessionDocument: (session) => {
+    const document = hydrateSession(session)
+    set((state) => {
+      const existing = state.sessions.find((candidate) => candidate.id === session.id)
+      // A document that arrives for a session the store no longer holds (deleted meanwhile) is dropped
+      // rather than resurrected: deletion is authoritative and the fetch is only a read.
+      if (!existing) return {}
+      return {
+        sessions: state.sessions.map((candidate) =>
+          candidate.id === session.id ? document : candidate
+        )
+      } as Partial<State>
+    })
   },
 
   upsertPersistedSession: (session) => {

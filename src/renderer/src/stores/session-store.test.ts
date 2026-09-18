@@ -2550,6 +2550,7 @@ describe('session store public contract', () => {
         'appendRoutedUserMessage',
         'appendUserMessage',
         'applyDurableSessionProjection',
+        'applySessionDocument',
         'attachContextWindowSample',
         'attachRunArtifacts',
         'beginActivityGroup',

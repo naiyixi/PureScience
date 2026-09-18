@@ -5,6 +5,7 @@ import type {
   DeleteSessionRequest,
   LoadAllSessionsResult,
   PersistedChatSession,
+  ReadSessionDocumentRequest,
   SaveSessionOptions,
   SessionConflictRebaseField,
   SaveSessionManifestRequest
@@ -20,6 +21,9 @@ import type { ChatSession, SessionHydrationSelection } from '../../stores/sessio
 
 type SessionPersistenceApi = {
   loadAll: () => Promise<LoadAllSessionsResult>
+  // The document tier. Present on the real bridge; a caller that needs one session's content asks for it by
+  // name instead of holding every session's content in memory.
+  readDocument: (request: ReadSessionDocumentRequest) => Promise<PersistedChatSession | undefined>
   saveSession: (
     session: PersistedChatSession,
     options?: SaveSessionOptions
@@ -280,6 +284,56 @@ const loadPersistedSessions = async (
   // hydration applies the sessions and selection atomically for all Zustand subscribers.
   useSessionStore.getState().hydrateSessions(result.sessions, result.manifest, preferredSelection)
   return result
+}
+
+// Reads one session's document on demand and puts it into the store, replacing the summary it was holding.
+//
+// This is the other half of the list/document split: the list arrives as summaries for every session, and a
+// reader that needs the content asks for the one session it is looking at. Two things make it safe rather than
+// merely convenient — a read that returns nothing is treated as a failure, never as an empty conversation, and
+// a failed read leaves the session marked as a summary so the guard keeps refusing to write it.
+export type SessionDocumentLoadOutcome = 'loaded' | 'not-a-summary' | 'unknown-session' | 'failed'
+
+export type SessionDocumentLoader = {
+  load: (sessionId: string) => Promise<SessionDocumentLoadOutcome>
+}
+
+const createSessionDocumentLoader = (api: SessionPersistenceApi): SessionDocumentLoader => {
+  // A session can be asked for twice before the first read lands (selection plus an explicit request). One
+  // read serves both instead of two racing each other into the store.
+  const inFlight = new Map<string, Promise<SessionDocumentLoadOutcome>>()
+
+  const load = (sessionId: string): Promise<SessionDocumentLoadOutcome> => {
+    const existing = inFlight.get(sessionId)
+    if (existing) return existing
+
+    const task = (async (): Promise<SessionDocumentLoadOutcome> => {
+      const summary = useSessionStore
+        .getState()
+        .sessions.find((session) => session.id === sessionId)
+      if (!summary) return 'unknown-session'
+      if (!isSummaryOnlySession(summary)) return 'not-a-summary'
+      if (!summary.projectId) return 'unknown-session'
+
+      try {
+        const document = await api.readDocument({
+          projectId: summary.projectId,
+          sessionId
+        })
+        if (!document) return 'failed'
+        useSessionStore.getState().applySessionDocument(document)
+        return 'loaded'
+      } catch {
+        return 'failed'
+      }
+    })()
+
+    inFlight.set(sessionId, task)
+    void task.finally(() => inFlight.delete(sessionId))
+    return task
+  }
+
+  return { load }
 }
 
 // Indexes sessions by id for reference-equality diffing between store snapshots.
@@ -685,6 +739,7 @@ const useSessionPersistence = (): SessionPersistenceState => {
 
 export {
   createOrderedSessionPersistence,
+  createSessionDocumentLoader,
   createStoreSaver,
   flushSessionPersistence,
   loadPersistedSessions,

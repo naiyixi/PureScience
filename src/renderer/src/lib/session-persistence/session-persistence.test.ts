@@ -10,6 +10,7 @@ import { toRuntimeUploadedAttachment } from '../../../../shared/uploads'
 import {
   createInitialSessionState,
   isExternallyHydratedSession,
+  isSummaryOnlySession,
   markSessionDocumentLoaded,
   markSummaryOnlySession,
   toPersistedSession,
@@ -17,6 +18,7 @@ import {
 } from '../../stores/session-store'
 import {
   createOrderedSessionPersistence,
+  createSessionDocumentLoader,
   createStoreSaver,
   loadPersistedSessions,
   reconcilePendingArtifacts,
@@ -47,6 +49,7 @@ const createLoadResult = (
 
 const createApi = (overrides: Partial<SessionPersistenceApi> = {}): SessionPersistenceApi => ({
   loadAll: vi.fn().mockResolvedValue(createLoadResult()),
+  readDocument: vi.fn().mockResolvedValue(undefined),
   saveSession: vi.fn(async (session: PersistedChatSession) => session),
   deleteSession: vi.fn().mockResolvedValue(undefined),
   saveManifest: vi.fn().mockResolvedValue(undefined),
@@ -388,6 +391,82 @@ describe('renderer session persistence bridge', () => {
     await save(useSessionStore.getState(), { forceTargets: new Set(['session:session-1']) })
 
     expect(api.saveSession).toHaveBeenCalled()
+  })
+
+  it('reads the document on demand and makes the session writable again through that read', async () => {
+    // The two halves wired together: the list path left a summary in the store, the guard refuses to write it,
+    // and the document read is what lifts the guard — the only path that should.
+    const document = createPersistedSession({
+      id: 'session-1',
+      projectId: 'project-a',
+      messages: [
+        { id: 'm1', role: 'user', content: 'hello' },
+        { id: 'm2', role: 'agent', content: 'the answer' }
+      ] as never
+    })
+    const api = createApi({ readDocument: vi.fn().mockResolvedValue(document) })
+    useSessionStore.getState().hydrateSessions([createPersistedSession({ projectId: 'project-a' })])
+    const save = createStoreSaver(api, useSessionStore.getState())
+
+    replaceWithSummary('session-1')
+    await save(useSessionStore.getState())
+    expect(api.saveSession).not.toHaveBeenCalled()
+
+    const loader = createSessionDocumentLoader(api)
+    await expect(loader.load('session-1')).resolves.toBe('loaded')
+
+    expect(api.readDocument).toHaveBeenCalledWith({
+      projectId: 'project-a',
+      sessionId: 'session-1'
+    })
+    const afterRead = useSessionStore
+      .getState()
+      .sessions.find((session) => session.id === 'session-1')
+    expect(afterRead?.messages.map((message) => message.content)).toEqual(['hello', 'the answer'])
+
+    await save(useSessionStore.getState(), { forceTargets: new Set(['session:session-1']) })
+    expect(api.saveSession).toHaveBeenCalled()
+  })
+
+  it('treats a read that returns nothing as a failure, leaving the session guarded', async () => {
+    // An empty read is not an empty conversation. If this replaced the summary, the next save would write the
+    // emptiness over the real conversation — the truncation the guard exists to prevent.
+    const api = createApi({ readDocument: vi.fn().mockResolvedValue(undefined) })
+    useSessionStore.getState().hydrateSessions([createPersistedSession({ projectId: 'project-a' })])
+    replaceWithSummary('session-1')
+
+    const loader = createSessionDocumentLoader(api)
+    await expect(loader.load('session-1')).resolves.toBe('failed')
+
+    const guarded = useSessionStore
+      .getState()
+      .sessions.find((session) => session.id === 'session-1')
+    if (!guarded) throw new Error('session-1 missing')
+    expect(isSummaryOnlySession(guarded)).toBe(true)
+  })
+
+  it('does not read a document for a session the store already holds in full', async () => {
+    const api = createApi()
+    useSessionStore.getState().hydrateSessions([createPersistedSession({ projectId: 'project-a' })])
+
+    const loader = createSessionDocumentLoader(api)
+
+    await expect(loader.load('session-1')).resolves.toBe('not-a-summary')
+    await expect(loader.load('missing')).resolves.toBe('unknown-session')
+    expect(api.readDocument).not.toHaveBeenCalled()
+  })
+
+  it('serves two concurrent requests for the same session with one read', async () => {
+    const document = createPersistedSession({ id: 'session-1', projectId: 'project-a' })
+    const api = createApi({ readDocument: vi.fn().mockResolvedValue(document) })
+    useSessionStore.getState().hydrateSessions([createPersistedSession({ projectId: 'project-a' })])
+    replaceWithSummary('session-1')
+
+    const loader = createSessionDocumentLoader(api)
+    const [first, second] = await Promise.all([loader.load('session-1'), loader.load('session-1')])
+
+    expect([first, second]).toEqual(['loaded', 'loaded'])
+    expect(api.readDocument).toHaveBeenCalledTimes(1)
   })
 
   it('does not overwrite the last durable graph after terminal graph synchronization fails', async () => {
