@@ -8,6 +8,14 @@
 
 新增通道 **`project-files:list-kinds`**：一次调用返回**多个项目各自的文件类型**。
 
+### ✅ 已完成（`4aef17b`，测试全绿，无行为变化）
+1. **共享类型与规则**：`ListProjectFileKindsRequest` / `ProjectFileKindsSummary` 已加入 `src/shared/project-files.ts`；`src/shared/project-file-kinds.ts` 提供 `PROJECT_FILE_KIND_LIMIT` + `deriveProjectFileKinds`（**单一实现**，`HomePage` 已改为引用它，本地副本已删），并有自己的用例（最新优先、去重、上限 4、无法识别的扩展名）。
+2. **主进程批量读**：`ProjectFilesQueryOwner.listProjectFileKinds` —— **一次往返**，窗口函数 `ROW_NUMBER() OVER (PARTITION BY projectId ORDER BY sortAtMs DESC, seq DESC)` 取每项目最新 **30** 条（`$queryRawUnsafe` + `?` 占位，**不拼字符串**；`≤100` 项目、空数组早返回、非字符串入参过滤、逐个 `requireIdentifier`），kinds 用共享规则推导，≥50 ms 记 `project file kinds read was slow`。
+   - `ProjectFilesClient` 已补 `$queryRawUnsafe`；架构测试（钉住查询 owner 公开方法清单）已更新并写明该方法存在的理由。
+3. 用例：`query-owner.kinds.test.ts`（一次查询 + 每项目推导 / 空项目集不发查询 / 去重、空标识符、超上限三例）。
+
+### ⏳ 待做（剩下的接线，一次做完并实测）
+
 ### 1. 共享类型（`src/shared/project-files.ts`）
 ```ts
 export type ListProjectFileKindsRequest = { projectIds: string[] }
