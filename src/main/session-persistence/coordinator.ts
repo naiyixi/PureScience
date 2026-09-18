@@ -621,9 +621,16 @@ class SessionPersistenceCoordinator {
         }
       })
       operation.phase('load-authority')
+      // Timed, because this is the half of the startup pass that had no number: the phases report their own
+      // durations, and the scan ran before the first one. Without it, "the startup pass takes 2.5 s" cannot
+      // be split into scanning documents and reconciling derived state — which is the difference between a
+      // watermark increment being worth writing and not.
+      const authorityStartedAt = Date.now()
+      let scanDurationMs = 0
       let scan: Awaited<ReturnType<SessionMutationRepository['loadAllWithDiagnostics']>>
       try {
         scan = await this.repository.loadAllWithDiagnostics()
+        scanDurationMs = Date.now() - authorityStartedAt
       } catch (error) {
         operation.fail(error, { status: 'failed', hydrationAvailable: false })
         throw error
@@ -644,7 +651,8 @@ class SessionPersistenceCoordinator {
         operation.complete({
           status: 'partial',
           sessionCount: sessions.length,
-          warningCount: scan.warnings?.length ?? 0
+          warningCount: scan.warnings?.length ?? 0,
+          scanDurationMs
         })
         return result
       }
@@ -793,7 +801,8 @@ class SessionPersistenceCoordinator {
           hydrationAvailable: true,
           sessionCount: sessions.length,
           warningCount: scan.warnings?.length ?? 0,
-          degradedReconciliationCount
+          degradedReconciliationCount,
+          scanDurationMs
         })
         // Keep chat hydration available while Files remains explicitly incomplete and retryable.
         result.diagnostics = {
@@ -810,6 +819,8 @@ class SessionPersistenceCoordinator {
         warningCount: scan.warnings?.length ?? 0,
         degradedReconciliationCount,
         unpublishedArtifactVersionCount,
+        // The half of this pass that is scanning rather than reconciling — see the timer above.
+        scanDurationMs,
         // Diagnostics take primitives: report the reasons as one readable line, in a stable order, and
         // only when something was actually refused.
         ...(Object.keys(finalizationSkipCounts).length > 0
