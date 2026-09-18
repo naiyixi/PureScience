@@ -51,9 +51,11 @@ describe('invokeWithIpcRejectionDiagnostics', () => {
       now: syncNow
     })
     expect(syncResult).toBe('sync-value')
-    expect(warn).toHaveBeenCalledWith('ipc handler was slow', expect.objectContaining({ durationMs: 400 }))
+    expect(warn).toHaveBeenCalledWith(
+      'ipc handler was slow',
+      expect.objectContaining({ durationMs: 400 })
+    )
   })
-
 
   it('records only allowlisted caller metadata for a rejection and rethrows the same value', async () => {
     const warn = vi.fn()

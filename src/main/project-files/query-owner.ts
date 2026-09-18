@@ -1,5 +1,6 @@
 import { Prisma, type ManagedFile } from '@prisma/client'
 
+import { readEventLoopLatency, resetEventLoopLatency } from '../diagnostics/event-loop-latency'
 import { createLogger } from '../logger'
 
 import type {
@@ -94,6 +95,7 @@ class ProjectFilesQueryOwner {
     }
     const normalizedRequest = { ...request, collection: normalizedCollection }
     const startedAt = Date.now()
+    resetEventLoopLatency()
     const client = await this.getClient()
     const clientMs = Date.now() - startedAt
     const limit = normalizeLimit(request.limit)
@@ -165,6 +167,7 @@ class ProjectFilesQueryOwner {
       try {
         queryLog.warn('listFiles segments were slow', {
           rows: pageRows.length,
+          ...readEventLoopLatency(),
           totalMs,
           clientMs,
           rowsMs: rowsMs - clientMs,

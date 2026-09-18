@@ -4,6 +4,7 @@ import { open, stat } from 'node:fs/promises'
 import type { FileHandle } from 'node:fs/promises'
 import { basename, extname } from 'node:path'
 
+import { readEventLoopLatency, resetEventLoopLatency } from './diagnostics/event-loop-latency'
 import { createLogger } from './logger'
 import type { OfficePreviewAdmissionError } from '../shared/office-preview'
 import type {
@@ -174,6 +175,7 @@ class ManagedPreviewResources {
   ): Promise<ManagedPreviewResource> {
     // Resolve through the managed repository before minting an owner-scoped capability URL.
     const startedAt = Date.now()
+    resetEventLoopLatency()
     const filePath = await this.options.resolvePath(request.source, request)
     const resolveMs = Date.now() - startedAt
     const fileStat = await stat(filePath, { bigint: true })
@@ -184,7 +186,8 @@ class ManagedPreviewResources {
         previewLog.warn('managed preview acquire was slow', {
           source: request.source,
           resolveMs,
-          statMs
+          statMs,
+          ...readEventLoopLatency()
         })
       } catch {
         // Best-effort: a diagnostic must never replace the acquire result.
