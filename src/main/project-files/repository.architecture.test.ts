@@ -181,8 +181,17 @@ describe('Project Files repository architecture', () => {
       'isReconciliationIncomplete'
     ])
     expect(fields(queryOwner)).toEqual(['dataRoot', 'getClient', 'readIndexComplete'])
+    // listProjectFileKinds is a read for many projects at once: the Home page's chips asked one project at a
+    // time and that fan-out is what queues behind the shared engine, so this method exists to replace it —
+    // not as a second way to read the same shape one project at a time.
     expect(publicMethods(queryOwner)).toEqual(
-      ['getOverview', 'listArtifactGroups', 'listFiles', 'searchArtifacts'].sort()
+      [
+        'getOverview',
+        'listArtifactGroups',
+        'listFiles',
+        'listProjectFileKinds',
+        'searchArtifacts'
+      ].sort()
     )
   })
 

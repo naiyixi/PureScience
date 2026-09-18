@@ -5,6 +5,8 @@ import { createLogger } from '../logger'
 
 import type {
   ArtifactGroupPage,
+  ListProjectFileKindsRequest,
+  ProjectFileKindsSummary,
   GetProjectFilesOverviewRequest,
   ListArtifactGroupsRequest,
   ListProjectFilesRequest,
@@ -14,6 +16,7 @@ import type {
   SearchArtifactsRequest,
   SearchArtifactsResult
 } from '../../shared/project-files'
+import { deriveProjectFileKinds } from '../../shared/project-file-kinds'
 import type { ProjectFilesClientProvider } from './mutation-projection'
 import {
   countMatchingArtifacts,
@@ -41,6 +44,10 @@ type ProjectFilesIndexCompletenessReader = (projectId: string) => boolean
 // is 0 ms, and sqlite3 runs the same query in 0-20 ms on the real 463-row table. So the cost is inside this
 // method, and this reports which segment it is — measured only when a read is slow.
 const SLOW_LIST_SEGMENT_THRESHOLD_MS = 50
+// Bounds for the batched kinds read: enough for any Home screen, and a per-project row cap small enough that
+// the chips still come from a project's newest files rather than from an arbitrary slice.
+const MAX_PROJECT_FILE_KINDS_PROJECTS = 100
+const MAX_PROJECT_FILE_KINDS_ROWS_PER_PROJECT = 30
 const queryLog = createLogger('project-files-query')
 
 // Owns the read-model orchestration while completeness remains authoritative in the mutation owner.
@@ -77,6 +84,65 @@ class ProjectFilesQueryOwner {
       artifactGroupCount,
       isIndexComplete: this.readIndexComplete(projectId)
     }
+  }
+
+  // One round-trip answers for many projects. The chips on the Home page need a project's newest file kinds,
+  // and asking per project put one read per visible project into the same engine queue the list reads wait in.
+  // A window function keeps the per-project semantics exact (newest 30 per project) inside a single query
+  // instead of truncating globally by row count, which would starve whichever project sorts last.
+  async listProjectFileKinds(
+    request: ListProjectFileKindsRequest
+  ): Promise<ProjectFileKindsSummary[]> {
+    if (!Array.isArray(request?.projectIds)) return []
+    const projectIds = [
+      ...new Set(request.projectIds.filter((id): id is string => typeof id === 'string'))
+    ]
+    for (const projectId of projectIds) requireIdentifier(projectId, 'projectId')
+    if (projectIds.length === 0) return []
+    if (projectIds.length > MAX_PROJECT_FILE_KINDS_PROJECTS) {
+      throw new Error(
+        `Project file kinds accepts at most ${MAX_PROJECT_FILE_KINDS_PROJECTS} projects per read.`
+      )
+    }
+    const client = await this.getClient()
+    const startedAt = Date.now()
+    const placeholders = projectIds.map(() => '?').join(', ')
+    const rows = await client.$queryRawUnsafe<
+      Array<{ projectId: string; displayName: string; sortAtMs: bigint | number | string }>
+    >(
+      `SELECT projectId, displayName, sortAtMs FROM (
+         SELECT projectId, displayName, sortAtMs,
+                ROW_NUMBER() OVER (PARTITION BY projectId ORDER BY sortAtMs DESC, seq DESC) AS rowNumber
+         FROM "ManagedFile"
+         WHERE projectId IN (${placeholders}) AND deletedAt IS NULL
+       ) WHERE rowNumber <= ?
+       ORDER BY projectId ASC`,
+      ...projectIds,
+      MAX_PROJECT_FILE_KINDS_ROWS_PER_PROJECT
+    )
+    const itemsByProject = new Map<string, Array<{ name: string; sortAtMs: number }>>()
+    for (const row of rows) {
+      const bucket = itemsByProject.get(row.projectId) ?? []
+      bucket.push({ name: row.displayName, sortAtMs: Number(row.sortAtMs) })
+      itemsByProject.set(row.projectId, bucket)
+    }
+    const summaries = projectIds.map((projectId) => ({
+      projectId,
+      kinds: deriveProjectFileKinds(itemsByProject.get(projectId) ?? [])
+    }))
+    const totalMs = Date.now() - startedAt
+    if (totalMs >= SLOW_LIST_SEGMENT_THRESHOLD_MS) {
+      try {
+        queryLog.warn('project file kinds read was slow', {
+          projects: projectIds.length,
+          rows: rows.length,
+          totalMs
+        })
+      } catch {
+        // Best-effort: a diagnostic must never replace the read result.
+      }
+    }
+    return summaries
   }
 
   async listFiles(request: ListProjectFilesRequest): Promise<ProjectFilesPage> {

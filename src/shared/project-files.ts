@@ -56,6 +56,18 @@ export type ListProjectFilesRequest = {
   omitOrigins?: boolean
 }
 
+// One round-trip for many projects: the Home page needs a file-type chip per project, and one read per project
+// put that many queries in front of everything else in the same engine queue. Kinds are derived in main from
+// the newest files of each project, using the same rule the renderer used (shared/project-file-kinds).
+export type ListProjectFileKindsRequest = {
+  projectIds: string[]
+}
+
+export type ProjectFileKindsSummary = {
+  projectId: string
+  kinds: string[]
+}
+
 export type ProjectFilesPage = {
   items: ProjectFileItem[]
   nextCursor?: string

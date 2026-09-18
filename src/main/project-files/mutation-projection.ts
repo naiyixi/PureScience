@@ -23,6 +23,9 @@ type ProjectFilesClient = Pick<
   | 'artifactLineage'
   | 'uploadFile'
   | '$queryRaw'
+  // The batched kinds read needs a window function to keep per-project limits exact in one round-trip; the
+  // identifiers and values are passed as placeholders, never interpolated.
+  | '$queryRawUnsafe'
   | '$transaction'
 >
 type ProjectFilesClientProvider = () => Promise<ProjectFilesClient>
