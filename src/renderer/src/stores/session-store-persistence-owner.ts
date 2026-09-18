@@ -116,19 +116,32 @@ export type SessionPersistenceActions = {
 const externallyHydratedSessions = new WeakSet<ChatSession>()
 
 // Sessions the store holds as list-tier summaries: identity and metadata, but not the active Branch's
-// content (messages, conversationGraph, activities). They are marked here, by object identity, for the same
-// reason the externally-hydrated set is: the store saver decides what to write by comparing references, and a
-// summary differs from its durable document, so a save would happily write the summary over the real one —
-// silently truncating a conversation. The mark is dropped only when that session's document has actually been
-// read back into the store.
-const summaryOnlySessions = new WeakSet<ChatSession>()
+// content (messages, conversationGraph, activities). A summary differs from its durable document, so a save
+// would happily write the summary over the real one — silently truncating a conversation — which is why the
+// saver refuses to write a marked session (forced flushes included).
+//
+// The mark is keyed by session id, NOT by object identity. It used to be a WeakSet of session objects, and
+// that was a real data-loss bug rather than a theoretical one: every store update replaces the object
+// (`togglePinned` maps to `{ ...session, pinned: !session.pinned }`), so the first immutable edit produced an
+// unmarked object and the saver wrote a document with no messages over the durable one. Measured on a real
+// run of the app: pinning a session that had never been opened truncated its transcript to its metadata
+// (9 messages -> 0, both the flat list and the conversation graph). The mark is dropped only when that
+// session's document has actually been read back into the store (id-keyed, so it also survives the
+// replacement).
+const summaryOnlySessionIds = new Set<string>()
 
 // Builds the empty in-memory state used by the app and isolated tests.
-export const createInitialSessionState = (): SessionStoreData => ({
-  sessions: [],
-  selectedSessionId: undefined,
-  lastReadAtBySession: loadLastReadTimestamps()
-})
+export const createInitialSessionState = (): SessionStoreData => {
+  // A store that starts empty cannot be holding a summary, so the marks are cleared with it. They are keyed
+  // by session id now, which means a reset no longer drops them implicitly — and an id left behind would
+  // silently refuse the writes of a session that a later hydration (or an imported package) created fresh.
+  summaryOnlySessionIds.clear()
+  return {
+    sessions: [],
+    selectedSessionId: undefined,
+    lastReadAtBySession: loadLastReadTimestamps()
+  }
+}
 
 const LAST_READ_STORAGE_KEY = 'purescience.session-last-read.v1'
 
@@ -359,6 +372,10 @@ export const createSessionPersistenceOwner = <State extends SessionStoreData>(
 
   applySessionDocument: (session) => {
     const document = hydrateSession(session)
+    // The document is in hand, so this session may be written again. With the mark keyed by id, the
+    // replacement object does not drop it by construction: it has to be cleared explicitly, or the summary
+    // would keep refusing saves for a session whose content is right there in the store.
+    markSessionDocumentLoaded(document)
     set((state) => {
       const existing = state.sessions.find((candidate) => candidate.id === session.id)
       // A document that arrives for a session the store no longer holds (deleted meanwhile) is dropped
@@ -455,6 +472,10 @@ export const createSessionPersistenceOwner = <State extends SessionStoreData>(
   },
 
   applyDurableSessionProjection: ({ source, session, mode = 'merge-upload-identities' }) => {
+    // A projection that carries messages is a document, so the session is no longer summary-only and must
+    // stop being refused. A projection with none is left alone: it cannot be told apart from a summary, and
+    // refusing a write is the safe side of that ambiguity.
+    if ((session.messages?.length ?? 0) > 0) markSessionDocumentLoaded(session)
     set((state) => {
       const current = state.sessions.find((candidate) => candidate.id === session.id)
       if (!current) return state
@@ -518,15 +539,17 @@ export const createSessionPersistenceOwner = <State extends SessionStoreData>(
 export const isExternallyHydratedSession = (session: ChatSession): boolean =>
   externallyHydratedSessions.has(session)
 
-export const markSummaryOnlySession = (session: ChatSession): void => {
-  summaryOnlySessions.add(session)
+// The mark is about a session's identity, so these take the id and nothing else — which is also what makes
+// them survive an update that replaces the object.
+export const markSummaryOnlySession = (session: Pick<ChatSession, 'id'>): void => {
+  summaryOnlySessionIds.add(session.id)
 }
 
-// Called when a session's full document has replaced its summary. The replacement is normally a new object,
-// which is unmarked by construction; this also clears the mark when a caller reuses the object identity.
-export const markSessionDocumentLoaded = (session: ChatSession): void => {
-  summaryOnlySessions.delete(session)
+// Called when a session's full document has replaced its summary. Keyed by id, this has to be explicit —
+// the replacement object is unmarked by construction, but the id it carries must stop being refused.
+export const markSessionDocumentLoaded = (session: Pick<ChatSession, 'id'>): void => {
+  summaryOnlySessionIds.delete(session.id)
 }
 
-export const isSummaryOnlySession = (session: ChatSession): boolean =>
-  summaryOnlySessions.has(session)
+export const isSummaryOnlySession = (session: Pick<ChatSession, 'id'>): boolean =>
+  summaryOnlySessionIds.has(session.id)

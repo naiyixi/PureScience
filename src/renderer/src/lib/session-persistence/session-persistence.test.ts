@@ -371,6 +371,44 @@ describe('renderer session persistence bridge', () => {
     expect(api.saveSession).not.toHaveBeenCalled()
   })
 
+  it('keeps the guard through an edit that replaces the summary object', async () => {
+    // The regression this guard actually shipped with. Every store update replaces the session object
+    // (`togglePinned` maps to `{ ...session, pinned: !session.pinned }`), so while the mark was kept in a
+    // WeakSet keyed by object identity the first edit dropped it — and the very next save wrote a document
+    // with no messages over the durable conversation. Found on a real run of the app: pinning a session that
+    // had never been opened truncated its transcript (9 messages -> 0, flat list and conversation graph).
+    const api = createApi()
+    useSessionStore.getState().hydrateSessions([createPersistedSession({ projectId: 'project-a' })])
+    const save = createStoreSaver(api, useSessionStore.getState())
+
+    replaceWithSummary('session-1')
+    useSessionStore.getState().togglePinned('session-1')
+
+    await save(useSessionStore.getState())
+
+    expect(api.saveSession).not.toHaveBeenCalled()
+  })
+
+  it('lifts the guard when the document arrives, so the same edit then persists', async () => {
+    const api = createApi()
+    const session = createPersistedSession({ projectId: 'project-a' })
+    useSessionStore.getState().hydrateSessions([session])
+    const save = createStoreSaver(api, useSessionStore.getState())
+
+    replaceWithSummary('session-1')
+    useSessionStore.getState().togglePinned('session-1')
+    await save(useSessionStore.getState())
+    expect(api.saveSession).not.toHaveBeenCalled()
+
+    // The read that clears the mark is the document read itself, not a manual unmark: a summary stays
+    // refused until its content is actually in the store, and stops being refused immediately after.
+    useSessionStore.getState().applySessionDocument(session)
+
+    await save(useSessionStore.getState(), { forceTargets: new Set(['session:session-1']) })
+
+    expect(api.saveSession).toHaveBeenCalled()
+  })
+
   it('persists the session again once its document has been read back', async () => {
     const api = createApi()
     useSessionStore.getState().hydrateSessions([createPersistedSession({ projectId: 'project-a' })])
