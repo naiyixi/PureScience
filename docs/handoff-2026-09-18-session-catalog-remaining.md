@@ -23,7 +23,14 @@ v1.64.0 已发布（`477b1a9`，tag `v1.64.0`，Release 19 资产）。这份档
 - **为什么没做**：它们共用同一个 saver 拒写条件，机理已被 2 条回归用例钉住；但"共用条件"是推理，不是取证 —— 按本仓规矩，推理不记为已完成。
 - **证据位置**：`docs/evidence/2026-09-18-lazy-guard-live-verification.md` 第四节第 4 条。
 
-## 4. 无需动作，仅备忘
+## 4. 两条"扫全树"的用例在并行下会假红（测试基建脆弱，已量）
+
+- **症状**：`session-store.test.ts > keeps production consumers on the public store facade` 与 `settings-store.architecture.test.ts > keeps owner imports private and consumers on the documented public store surface` 偶发 **`Test timed out in 15000ms`**（实测 19.8 s / 20.4 s），**不是断言失败**——报告里打印的 `violations…` 只是超时报告的源码上下文。
+- **量法**：同一份代码（`d7374f2`，工作树干净）连跑 3 次同一 scope（28 文件）：**2 次失败 / 1 次通过**；单跑该文件 **5/5 通过、约 1 s**。
+- **影响面**：它们都遍历 `src/renderer/src` 全树并逐个读文件；`--maxWorkers=4` 的全量门禁与 CI 的 `Verify (lint + typecheck + test + package)` 都是绿的 ⇒ 只是并行度下的耗时越界。
+- **建议**（未做，独立单元）：给这两条用例单独设 `testTimeout`（或改成一次构建好的文件清单缓存），让它不再随并行度抖动 —— 它现在会让"全量门禁"这类结论在默认并行度下不可信。
+
+## 5. 无需动作，仅备忘
 
 - 索引格式 v1 → v2 的升级成本 = **一次全量回退读**（真机 503.5 ms / 59 解析），之后恢复零解析；已写入 CHANGELOG。
 - `windows-upgrade-smoke` 在 workflow 里是**非阻塞**的历史演练，本次红而 Release run 结论为 `success`（已在发版汇报里如实标注）。
