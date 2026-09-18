@@ -23,12 +23,15 @@ v1.64.0 已发布（`477b1a9`，tag `v1.64.0`，Release 19 资产）。这份档
 - **为什么没做**：它们共用同一个 saver 拒写条件，机理已被 2 条回归用例钉住；但"共用条件"是推理，不是取证 —— 按本仓规矩，推理不记为已完成。
 - **证据位置**：`docs/evidence/2026-09-18-lazy-guard-live-verification.md` 第四节第 4 条。
 
-## 4. 两条"扫全树"的用例在并行下会假红（测试基建脆弱，已量）
+## 4. 默认并行度下"全量门禁"不可信（已修 2 条，剩余已定性）
 
-- **症状**：`session-store.test.ts > keeps production consumers on the public store facade` 与 `settings-store.architecture.test.ts > keeps owner imports private and consumers on the documented public store surface` 偶发 **`Test timed out in 15000ms`**（实测 19.8 s / 20.4 s），**不是断言失败**——报告里打印的 `violations…` 只是超时报告的源码上下文。
-- **量法**：同一份代码（`d7374f2`，工作树干净）连跑 3 次同一 scope（28 文件）：**2 次失败 / 1 次通过**；单跑该文件 **5/5 通过、约 1 s**。
-- **影响面**：它们都遍历 `src/renderer/src` 全树并逐个读文件；`--maxWorkers=4` 的全量门禁与 CI 的 `Verify (lint + typecheck + test + package)` 都是绿的 ⇒ 只是并行度下的耗时越界。
-- **建议**（未做，独立单元）：给这两条用例单独设 `testTimeout`（或改成一次构建好的文件清单缓存），让它不再随并行度抖动 —— 它现在会让"全量门禁"这类结论在默认并行度下不可信。
+**已修（本轮）**：两条遍历 `src/renderer/src` 全树的用例（`session-store.test.ts > keeps production consumers on the public store facade`、`settings-store.architecture.test.ts > keeps owner imports private and consumers on the documented public store surface`）在并行下会 **`Test timed out in 15000ms`**（实测 19.8 s / 20.4 s）——**不是断言失败**（报告里打印的 `violations…` 只是超时的源码上下文，读错会以为架构边界被破坏）。两条都加了 `}, 60000)` 与具名注释。
+- **修复前**：同一 scope（28 文件）连跑 3 次 = **2 红 1 绿**；单跑该文件 5/5 绿（约 1 s）。
+- **修复后**：同一 scope 连跑 **4 次 = 4 绿（538/538）**，两条用例不再出现在任何失败列表里。
+
+**剩余（已定性，未逐条改）**：默认并行度的全量跑在该机上**仍不可能绿** —— 实测 `npx vitest run`（默认 workers，机器同时跑着常驻 headless 实例）**12 文件 / 72 例红**，种类分解：**15 条超时** + **约 40 条级联断言**（`expected "vi.fn()" to be called once, but got 0 times` / `expected undefined to be defined` / `expected '' to contain …` —— 都是 `vi.waitFor` 在 CPU 饱和下等不到）+ **2 条 `ENOTEMPTY: directory not empty`**（临时目录清理竞态）。同一份代码 `--maxWorkers=4` 全量 **0 红**。
+- **结论**：它们是**负载产物**，不是代码缺陷；但"全量门禁绿"这句话在默认并行度下不成立。
+- **建议（未做，独立单元）**：把全量门禁固化到脚本/CI 上（worker 上限，或给重负载套件单独放宽超时）—— 现在只能靠"记得加 `--maxWorkers=4`"，这是靠记性而不是机制。
 
 ## 5. 无需动作，仅备忘
 

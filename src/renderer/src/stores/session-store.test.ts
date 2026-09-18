@@ -2667,7 +2667,10 @@ describe('session store public contract', () => {
       'src/renderer/src/stores/archive-undo-store.ts',
       'src/renderer/src/stores/navigation-store.ts'
     ])
-  })
+    // Walks and reads the whole renderer tree. With every test file running in parallel that costs about
+    // 20 s here, which is past the 15 s default — the result was a timeout that read like a broken
+    // architecture boundary. Measured: 2 of 3 runs of one scope red, 5 of 5 green on its own.
+  }, 60000)
 
   it('hydrates newest-first while preserving manifest and explicit selection semantics', () => {
     const older: PersistedChatSession = {

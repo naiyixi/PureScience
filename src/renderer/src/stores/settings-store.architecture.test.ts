@@ -535,7 +535,9 @@ describe('settings store architecture', () => {
   it('keeps owner imports private and consumers on the documented public store surface', () => {
     const violations = productionSources().flatMap((path) => importBoundaryViolations(path))
     expect(violations).toEqual([])
-  })
+    // Walks and reads the whole renderer tree: about 20 s under full parallel load, past the 15 s default,
+    // which is what made this look like a boundary violation instead of a timeout.
+  }, 60000)
 })
 
 describe('settings store architecture guard regressions', () => {
