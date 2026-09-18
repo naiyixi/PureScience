@@ -1,7 +1,7 @@
 import { ipcMainHandle } from '../ipc-handler-registry'
 
 import { summarizeSessionCatalog } from '../../shared/session-catalog-summary'
-import type { SessionCatalogSummary } from '../../shared/session-catalog-summary'
+import type { SessionCatalogResult } from '../../shared/session-catalog-summary'
 import type {
   DeleteSessionRequest,
   LoadAllSessionsOptions,
@@ -35,8 +35,8 @@ type SessionPersistenceBackend = {
 
 type SessionPersistenceHandlers = {
   loadAll: (options?: LoadAllSessionsOptions) => Promise<LoadAllSessionsResult>
-  // The list tier: identity and metadata only, no active-Branch content.
-  listCatalog: () => Promise<SessionCatalogSummary[]>
+  // The list tier: identity and metadata only, no active-Branch content, plus the last-open pointer.
+  listCatalog: () => Promise<SessionCatalogResult>
   // The document tier: one session, straight from its own file, for a reader that needs its content.
   readDocument: (projectId: string, sessionId: string) => Promise<PersistedChatSession | undefined>
   saveSession: (
@@ -145,7 +145,12 @@ const createSessionPersistenceHandlers = (
     saveManifest: (request) => repository.saveManifest(request),
     // No cache opt-in here: this is the path that decides what the user sees, and it must not serve a
     // catalog that is even a second old. The saving is in the payload, not in skipping the read.
-    listCatalog: async () => summarizeSessionCatalog((await repository.loadAll()).sessions),
+    listCatalog: async () => {
+      const result = await repository.loadAll()
+      // The last-open pointer travels with the summaries: hydration needs it to decide which session to open,
+      // and without it that decision would need a second full read.
+      return { sessions: summarizeSessionCatalog(result.sessions), manifest: result.manifest }
+    },
     readDocument: (projectId, sessionId) => documents.loadSession(projectId, sessionId)
   }
 }

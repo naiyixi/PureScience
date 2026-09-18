@@ -469,6 +469,37 @@ describe('renderer session persistence bridge', () => {
     expect(api.readDocument).toHaveBeenCalledTimes(1)
   })
 
+  it('hydrates the list tier as summaries and reads only the selected session', async () => {
+    // The payload win, and the boundary that makes it safe: every session arrives without its content, all of
+    // them are marked as summaries so the guard covers them, and exactly one session — the one being opened —
+    // is read back in full.
+    const summary = { ...createPersistedSession({ id: 'session-2', projectId: 'project-a' }) }
+    const document = createPersistedSession({
+      id: 'session-2',
+      projectId: 'project-a',
+      messages: [{ id: 'm1', role: 'agent', content: 'the answer' }] as never
+    })
+    const listCatalog = vi.fn().mockResolvedValue({
+      sessions: [summary],
+      manifest: { version: SESSION_MANIFEST_VERSION, lastSessionId: 'session-2' }
+    })
+    const readDocument = vi.fn().mockResolvedValue(document)
+    const api = createApi({ listCatalog, readDocument } as never)
+
+    const result = await loadPersistedSessions(api)
+
+    expect(listCatalog).toHaveBeenCalledTimes(1)
+    // The full read is not used at all on this path.
+    expect(api.loadAll).not.toHaveBeenCalled()
+    expect(readDocument).toHaveBeenCalledWith({ projectId: 'project-a', sessionId: 'session-2' })
+    expect(useSessionStore.getState().selectedSessionId).toBe('session-2')
+    expect(result?.manifest?.lastSessionId).toBe('session-2')
+
+    const opened = useSessionStore.getState().sessions.find((session) => session.id === 'session-2')
+    expect(opened?.messages.map((message) => message.content)).toEqual(['the answer'])
+    expect(opened && isSummaryOnlySession(opened)).toBe(false)
+  })
+
   it('does not overwrite the last durable graph after terminal graph synchronization fails', async () => {
     const api = createApi()
     useSessionStore

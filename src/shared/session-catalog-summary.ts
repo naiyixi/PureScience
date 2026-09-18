@@ -5,7 +5,11 @@
 // only ever read for the session a reader is actually looking at, so the list can carry everything else
 // and defer them. `Omit` (rather than a hand-written shape) is deliberate: a field added later is carried
 // by default, and only the four heavy ones have to be opted out of explicitly.
-import type { PersistedChatMessage, PersistedChatSession } from './session-persistence'
+import type {
+  PersistedChatMessage,
+  PersistedChatSession,
+  PersistedSessionManifest
+} from './session-persistence'
 
 // The projected fields. `messages`/`conversationGraph`/`activities`/`activityGroups` are dropped: they are
 // the active Branch's content, not the session's identity, and they are what makes the payload large.
@@ -47,3 +51,10 @@ export const summarizeSessionCatalogEntry = (
 export const summarizeSessionCatalog = (
   sessions: readonly PersistedChatSession[]
 ): SessionCatalogSummary[] => sessions.map(summarizeSessionCatalogEntry)
+
+// The list tier's payload: the summaries plus the last-open pointer. The pointer is small and hydration needs
+// it to decide which session to open, so leaving it behind would force a second full read to find it.
+export type SessionCatalogResult = {
+  sessions: SessionCatalogSummary[]
+  manifest?: PersistedSessionManifest
+}

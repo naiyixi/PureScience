@@ -553,13 +553,16 @@ describe('session persistence IPC handlers', () => {
     )
 
     const catalog = await handlers.listCatalog()
-    expect(catalog).toHaveLength(1)
-    expect(catalog[0].id).toBe(session.id)
-    expect(catalog[0].messageCount).toBe(2)
-    expect(catalog[0].lastAgentMessage).toBe('the answer')
-    expect('messages' in catalog[0]).toBe(false)
-    expect('conversationGraph' in catalog[0]).toBe(false)
-    expect('activities' in catalog[0]).toBe(false)
+    expect(catalog.sessions).toHaveLength(1)
+    expect(catalog.sessions[0].id).toBe(session.id)
+    expect(catalog.sessions[0].messageCount).toBe(2)
+    expect(catalog.sessions[0].lastAgentMessage).toBe('the answer')
+    expect('messages' in catalog.sessions[0]).toBe(false)
+    expect('conversationGraph' in catalog.sessions[0]).toBe(false)
+    expect('activities' in catalog.sessions[0]).toBe(false)
+    // The last-open pointer travels with the summaries: hydration needs it to pick which session to open, and
+    // without it that choice would cost a second full read.
+    expect(catalog.manifest).toEqual({ version: 1 })
 
     await expect(handlers.readDocument('project-1', 'session-1')).resolves.toBe(session)
     expect(documents.loadSession).toHaveBeenCalledWith('project-1', 'session-1')

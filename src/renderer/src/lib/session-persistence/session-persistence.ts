@@ -10,10 +10,13 @@ import type {
   SessionConflictRebaseField,
   SaveSessionManifestRequest
 } from '../../../../shared/session-persistence'
+import { SESSION_MANIFEST_VERSION } from '../../../../shared/session-persistence'
 import { PENDING_UPLOAD_SESSION_ID } from '../../../../shared/uploads'
+import type { SessionCatalogResult } from '../../../../shared/session-catalog-summary'
 import {
   isExternallyHydratedSession,
   isSummaryOnlySession,
+  markSummaryOnlySession,
   toPersistedSession,
   useSessionStore
 } from '../../stores/session-store'
@@ -21,6 +24,9 @@ import type { ChatSession, SessionHydrationSelection } from '../../stores/sessio
 
 type SessionPersistenceApi = {
   loadAll: () => Promise<LoadAllSessionsResult>
+  // The list tier. Optional so a bridge without it keeps the old behaviour instead of failing outright; the
+  // app's own bridge provides it.
+  listCatalog?: () => Promise<SessionCatalogResult>
   // The document tier. Present on the real bridge; a caller that needs one session's content asks for it by
   // name instead of holding every session's content in memory.
   readDocument: (request: ReadSessionDocumentRequest) => Promise<PersistedChatSession | undefined>
@@ -275,15 +281,41 @@ const loadPersistedSessions = async (
   shouldHydrate: () => boolean = () => true,
   preferredSelection?: SessionHydrationSelection
 ): Promise<LoadAllSessionsResult | undefined> => {
-  const result = await api.loadAll()
+  // The list tier: every session's identity and metadata, none of the active Branch's content. The document
+  // for the session the user is actually looking at is read straight after, so nothing but that one session's
+  // content is ever in the store — this is what takes the hydration payload from 55 MB to its metadata.
+  const catalog = api.listCatalog ? await api.listCatalog() : undefined
+  const loaded = catalog
+    ? {
+        sessions: catalog.sessions.map(
+          (summary) => ({ ...summary, messages: [] }) as PersistedChatSession
+        ),
+        manifest: catalog.manifest
+      }
+    : await api.loadAll()
   if (!shouldHydrate()) return undefined
 
   // Retry captures live navigation as an explicit tri-state. If the user had no selection, or the
   // selected Session disappeared before recovery completed, do not replay a stale disk manifest or
   // fall through to the globally newest Session from another Project. Passing the selection into
   // hydration applies the sessions and selection atomically for all Zustand subscribers.
-  useSessionStore.getState().hydrateSessions(result.sessions, result.manifest, preferredSelection)
-  return result
+  useSessionStore.getState().hydrateSessions(loaded.sessions, loaded.manifest, preferredSelection)
+
+  if (!catalog) return loaded as LoadAllSessionsResult
+
+  // Mark what the store is holding as summaries, then fetch the one session whose content the reader needs.
+  // Marking is what makes the guard apply: without it a later save would write a summary over its document.
+  for (const session of useSessionStore.getState().sessions) {
+    markSummaryOnlySession(session)
+  }
+  const selection = preferredSelection?.sessionId ?? useSessionStore.getState().selectedSessionId
+  const toLoad = useSessionStore.getState().sessions.find((session) => session.id === selection)
+  if (toLoad) await createSessionDocumentLoader(api).load(toLoad.id)
+
+  return {
+    sessions: loaded.sessions,
+    manifest: loaded.manifest ?? { version: SESSION_MANIFEST_VERSION }
+  } as LoadAllSessionsResult
 }
 
 // Reads one session's document on demand and puts it into the store, replacing the summary it was holding.
