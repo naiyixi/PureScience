@@ -89,6 +89,22 @@
 
 **因此**：以 dev 构建的数字去评测"用户是否感到卡"，**方法上就是错的**。用户感受到的是**打包版**。第七节的 308 ms、第九节的 245/355 ms **一律降级为"dev 构建参考值"**，不得用于宣称，也不得作为优化目标数字。
 
-## 十二、下一步：改用生产构建实测
+## 十三、生产构建这条路：发现一个**真缺陷**（已立案），改测打包版
 
-`npm run build` → `npx electron out/main/index.js --remote-debugging-port=9333`（不经 vite dev server）→ 在**同一真实数据根**上重采"空闲对照 + 开搜索面板 + CPU 剖析"。生产数字才是用户实际体验的代理；届时若仍有数百毫秒冻结，再按剖析指名的主因去改（而不是先做两级目录）。
+**非打包运行生产产物会硬失败**：`npx electron --remote-debugging-port=9333 out/main/index.js` 起得来、CDP 也应答（**开关必须放在脚本路径之前**，放在后面端点不应答），但 `/json/list` 六轮全是 `[ ]` —— **窗口从未创建**。日志给出真因：
+
+```
+at async Object.prepare (out/main/index.js:1462:11)
+at async orchestrateAppStartup (out/main/app-startup-*.js:27:21)
+at async startElectronApp (out/main/index.js:1358:3) {
+  diagnostics: [ { severity: 'error', code: 'builtin.registry-manifest-invalid',
+                   message: 'The builtin Specialist registry manifest is invalid.', path: 'manifest.json' } ]
+```
+
+`src/main/specialist/builtin-registry.ts:50` 读 `resolveBundledSpecialistsRoot()/manifest.json`，该根走 `process.resourcesPath` ⇒ 直接跑 `out/main/index.js` 时指向 Electron 自带 resources，找不到内置 manifest ⇒ **启动流程抛出并中止**，窗口不创建。
+
+**立案（独立缺陷，不在性能主线里顺手改）**：内置专家 registry 缺失时，启动**整体中止**是过强反应 —— 至少应降级（带诊断启动）或让内置根在"从构建产物运行"时回退到仓库资源目录。修它需要按"改恢复/降级语义前先跑该模块既有测试"的规矩来。
+
+**因此改测打包版**（`/Applications/PureScience.app`，版本 **1.63.0**，就是用户实际体验的那个构建）：为**不碰真实数据**，把 hydration 真正需要的两块**复制**到临时根（会话文档 **60 MB** + `purescience.db` **88 MB**；整根 7.1 GB 不复制），并让打包版通过 `PURESCIENCE_E2E_STORAGE_ROOT` 指向副本；同时用 RPC 核对语料确实加载，并拿到**打包版**的 `load-all` 服务端耗时。
+
+打包版数字才是用户实际体验的代理；届时若仍有数百毫秒冻结，再按剖析指名的主因去改（而不是先做两级目录）。
