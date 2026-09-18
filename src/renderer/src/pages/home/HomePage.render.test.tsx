@@ -293,10 +293,13 @@ describe('HomePage project file-type chips', () => {
       await Promise.resolve()
     })
 
+    // omitOrigins is part of the contract of this call: the chips derive an extension from the name, and the
+    // origin query would be a second engine round-trip per visible project.
     expect(listFiles).toHaveBeenCalledWith({
       projectId: 'proj-file-kinds',
       collection: { kind: 'all' },
-      limit: 30
+      limit: 30,
+      omitOrigins: true
     })
     expect(container.textContent).toContain('MD')
     expect(container.textContent).toContain('DOCX')

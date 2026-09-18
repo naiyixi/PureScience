@@ -150,12 +150,16 @@ class ProjectFilesQueryOwner {
     const rowsMs = Date.now() - startedAt
     const pageRows = rows.slice(0, limit)
     const lastRow = pageRows.at(-1)
-    const origins = await client.fileOriginSession.findMany({
-      where: {
-        projectId: request.projectId,
-        sessionId: { in: [...new Set(pageRows.map((row) => row.sessionId))] }
-      }
-    })
+    // Origin data is a second engine round-trip; callers that only derive file kinds skip it (see the request
+    // type). Read paths that render Session attribution keep it.
+    const origins = request.omitOrigins
+      ? []
+      : await client.fileOriginSession.findMany({
+          where: {
+            projectId: request.projectId,
+            sessionId: { in: [...new Set(pageRows.map((row) => row.sessionId))] }
+          }
+        })
     const originsBySession = new Map(origins.map((origin) => [origin.sessionId, origin]))
     const originsMs = Date.now() - startedAt
 

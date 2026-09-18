@@ -49,6 +49,11 @@ export type ListProjectFilesRequest = {
   search?: ProjectFilesSearch
   cursor?: string
   limit: number
+  // The Files page renders a file's origin (which Session produced it); the Home page's per-project chips
+  // derive an extension from the name and nothing else. Those chips read every visible project at once, and
+  // each read cost two engine round-trips — the page query and the origin query — so the fan-out paid for
+  // origin data nobody rendered. Skipping it halves the queries that queue in front of everything else.
+  omitOrigins?: boolean
 }
 
 export type ProjectFilesPage = {

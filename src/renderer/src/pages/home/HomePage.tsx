@@ -250,7 +250,10 @@ const HomePage = ({
         const page = await listFiles({
           projectId: project.id,
           collection: { kind: 'all' },
-          limit: 30
+          limit: 30,
+          // Only the name is used below (to derive an extension), so main skips the origin query: this effect
+          // asks every visible project at once, and each read costs two engine round-trips.
+          omitOrigins: true
         })
         return [project.id, deriveProjectFileKinds(page.items)] as const
       })
