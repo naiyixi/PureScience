@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest'
 
+import { summarizeSessionCatalog } from '../../shared/session-catalog-summary'
 import type { PersistedChatSession } from '../../shared/session-persistence'
 import type { Logger } from '../logger'
 import type { ReviewRepository } from '../reviewer/repository'
@@ -194,6 +195,7 @@ describe('session persistence IPC handlers', () => {
     const loadResult = { sessions: [session], manifest: { version: 1 as const } }
     const repository = {
       loadAll: vi.fn().mockResolvedValue(loadResult),
+      loadCatalog: vi.fn().mockResolvedValue({ sessions: [], manifest: { version: 1 as const } }),
       saveSession: vi.fn().mockResolvedValue({ created: false, session }),
       deleteSession: vi.fn().mockResolvedValue(undefined),
       saveManifest: vi.fn().mockResolvedValue(undefined)
@@ -229,6 +231,7 @@ describe('session persistence IPC handlers', () => {
   it('does not report a successful session deletion when the repository fails', async () => {
     const repository = {
       loadAll: vi.fn().mockResolvedValue({ sessions: [], manifest: { version: 1 as const } }),
+      loadCatalog: vi.fn().mockResolvedValue({ sessions: [], manifest: { version: 1 as const } }),
       saveSession: vi.fn().mockResolvedValue({ created: false, session: createSession() }),
       deleteSession: vi.fn().mockRejectedValueOnce(new Error('repository failed')),
       saveManifest: vi.fn().mockResolvedValue(undefined)
@@ -251,6 +254,7 @@ describe('session persistence IPC handlers', () => {
     const order: string[] = []
     const repository = {
       loadAll: vi.fn().mockResolvedValue({ sessions: [], manifest: { version: 1 as const } }),
+      loadCatalog: vi.fn().mockResolvedValue({ sessions: [], manifest: { version: 1 as const } }),
       saveSession: vi.fn().mockResolvedValue({ created: false, session: createSession() }),
       deleteSession: vi.fn(async () => {
         order.push('session')
@@ -302,6 +306,7 @@ describe('session persistence IPC handlers', () => {
     const loadResult = { sessions: [session], manifest: { version: 1 as const } }
     const repository: SessionPersistenceBackend = {
       loadAll: vi.fn().mockResolvedValue(loadResult),
+      loadCatalog: vi.fn().mockResolvedValue({ sessions: [], manifest: { version: 1 as const } }),
       saveSession: vi
         .fn()
         .mockResolvedValueOnce({ created: true, session: durableSession })
@@ -368,6 +373,7 @@ describe('session persistence IPC handlers', () => {
     const loadResult = { sessions: [createSession()], manifest: { version: 1 as const } }
     const repository: SessionPersistenceBackend = {
       loadAll: vi.fn(),
+      loadCatalog: vi.fn().mockResolvedValue({ sessions: [], manifest: { version: 1 as const } }),
       saveSession: vi.fn(),
       deleteSession: vi.fn(),
       saveManifest: vi.fn()
@@ -398,6 +404,7 @@ describe('session persistence IPC handlers', () => {
     const failure = new Error('registration failed')
     const repository: SessionPersistenceBackend = {
       loadAll: vi.fn(),
+      loadCatalog: vi.fn().mockResolvedValue({ sessions: [], manifest: { version: 1 as const } }),
       saveSession: vi.fn(),
       deleteSession: vi.fn(),
       saveManifest: vi.fn()
@@ -438,6 +445,7 @@ describe('session persistence IPC handlers', () => {
   it('rejects session persistence while a data-root migration is pending', async () => {
     const repository: SessionPersistenceBackend = {
       loadAll: vi.fn().mockResolvedValue({ sessions: [], manifest: { version: 1 as const } }),
+      loadCatalog: vi.fn().mockResolvedValue({ sessions: [], manifest: { version: 1 as const } }),
       saveSession: vi.fn().mockResolvedValue({ created: false, session: createSession() }),
       deleteSession: vi.fn().mockResolvedValue(undefined),
       saveManifest: vi.fn().mockResolvedValue(undefined)
@@ -460,6 +468,7 @@ describe('session persistence IPC handlers', () => {
     const failure = new Error('durable projection unavailable')
     const repository: SessionPersistenceBackend = {
       loadAll: vi.fn().mockResolvedValue({ sessions: [], manifest: { version: 1 as const } }),
+      loadCatalog: vi.fn().mockResolvedValue({ sessions: [], manifest: { version: 1 as const } }),
       saveSession: vi.fn().mockRejectedValue(failure),
       deleteSession: vi.fn().mockResolvedValue(undefined),
       saveManifest: vi.fn().mockResolvedValue(undefined)
@@ -482,6 +491,7 @@ describe('session persistence IPC handlers', () => {
     })
     const repository: SessionPersistenceBackend = {
       loadAll: vi.fn().mockResolvedValue({ sessions: [], manifest: { version: 1 as const } }),
+      loadCatalog: vi.fn().mockResolvedValue({ sessions: [], manifest: { version: 1 as const } }),
       saveSession: vi.fn(async () => {
         await savePending
         return { created: false, session }
@@ -506,6 +516,7 @@ describe('session persistence IPC handlers', () => {
     let durableReadable = false
     const repository: SessionPersistenceBackend = {
       loadAll: vi.fn().mockResolvedValue({ sessions: [], manifest: { version: 1 as const } }),
+      loadCatalog: vi.fn().mockResolvedValue({ sessions: [], manifest: { version: 1 as const } }),
       saveSession: vi.fn(async () => {
         durableReadable = true
         return { created: true, session }
@@ -537,10 +548,17 @@ describe('session persistence IPC handlers', () => {
         { id: 'm2', role: 'agent', content: 'the answer' }
       ] as never
     }
+    const catalogResult = {
+      // The catalog is the repository's projection now — the handler pass-through is what this case
+      // pins, and the projection itself is exercised where it lives (shared/session-catalog-summary).
+      sessions: summarizeSessionCatalog([session]),
+      manifest: { version: 1 as const }
+    }
     const repository = {
       loadAll: vi
         .fn()
         .mockResolvedValue({ sessions: [session], manifest: { version: 1 as const } }),
+      loadCatalog: vi.fn().mockResolvedValue(catalogResult),
       saveSession: vi.fn(),
       deleteSession: vi.fn(),
       saveManifest: vi.fn()
@@ -553,6 +571,10 @@ describe('session persistence IPC handlers', () => {
     )
 
     const catalog = await handlers.listCatalog()
+    // Pass-through, not a local projection: the list tier's scan is the repository's, and this call
+    // must not drag the whole corpus through loadAll to answer it.
+    expect(repository.loadCatalog).toHaveBeenCalledOnce()
+    expect(repository.loadAll).not.toHaveBeenCalled()
     expect(catalog.sessions).toHaveLength(1)
     expect(catalog.sessions[0].id).toBe(session.id)
     expect(catalog.sessions[0].messageCount).toBe(2)
@@ -581,6 +603,7 @@ describe('session persistence IPC handlers', () => {
     }
     const repository: SessionPersistenceBackend = {
       loadAll: vi.fn(),
+      loadCatalog: vi.fn().mockResolvedValue({ sessions: [], manifest: { version: 1 as const } }),
       saveSession: vi.fn(),
       deleteSession: vi.fn(),
       saveManifest: vi.fn()

@@ -20,6 +20,11 @@ import {
   trimSessionHistory,
   type SessionRetention
 } from '../../shared/session-retention'
+import {
+  summarizeSessionCatalogEntry,
+  type SessionCatalogResult,
+  type SessionCatalogSummary
+} from '../../shared/session-catalog-summary'
 import { decodeSessionDataPaths, encodeSessionDataPaths } from './session-data-paths'
 import { bumpSessionRevision } from './session-revision'
 
@@ -27,6 +32,9 @@ const SESSIONS_DIR = 'sessions'
 const DELETED_SESSIONS_DIR = 'deleted-sessions'
 const PROJECT_DELETION_COMMIT_MARKER = '.project-deletion-committed'
 const MANIFEST_FILE = 'manifest.json'
+// The index format this build writes and accepts. An entry written by another version is treated as
+// absent rather than migrated: its replacement is one parse of that session's document.
+const SUMMARY_FILE_VERSION = 2
 const FILE_REPLACEMENT_RETRY_DELAYS_MS = [25, 50, 100, 200, 400] as const
 
 type SessionLoadDiagnostics = {
@@ -36,6 +44,16 @@ type SessionLoadDiagnostics = {
   isComplete: boolean
   warnings: SessionLoadWarning[]
   failure?: SessionLoadFailure
+}
+
+type SessionCatalogDiagnostics = {
+  result: SessionCatalogResult
+  isComplete: boolean
+  warnings: SessionLoadWarning[]
+  // How the scan was answered, per entry: `hits` came from the on-disk index without reading the
+  // document, `parsedDocuments` had to be read (and rewrote its index entry). Reported so the
+  // acceptance can be checked against a real run instead of against the intent.
+  index: { hits: number; parsedDocuments: number }
 }
 
 type SessionScanOptions = {
@@ -136,6 +154,16 @@ const getSessionPersistenceDir = (
   homePath: string,
   dirName: string = PROD_SESSION_DIR_NAME
 ): string => join(homePath, dirName)
+
+// Rebuilds the metadata slice a `useSummary` reader used to receive from the list projection: the
+// two list-only fields are dropped and the document's content stays behind, exactly as before.
+const sessionSliceFromCatalog = (
+  catalog: SessionCatalogSummary,
+  projectId: string
+): PersistedChatSession => {
+  const { messageCount: _messageCount, lastAgentMessage: _lastAgentMessage, ...session } = catalog
+  return { ...session, projectId, messages: [] }
+}
 
 // Rejects path segments that could escape the sessions tree. Real session/project ids are id-like, so
 // this only guards against corrupt or malicious values before they become file paths.
@@ -262,6 +290,52 @@ class SessionRepository {
       // scan read-only; a later selection write will retry persistence through the normal saver.
       isComplete,
       warnings: manifestRead.warning ? [...warnings, manifestRead.warning] : warnings
+    }
+  }
+
+  /**
+   * The list tier's own scan: identity and metadata for every Session.
+   *
+   * It walks the same tree the full scan walks — which is what makes an externally created or
+   * deleted Session show up immediately, since the file list comes from the directory and never
+   * from the index — but it parses a document only when the on-disk index cannot answer for it:
+   *
+   *   - index entry present and its fingerprint (size + mtime) matches the file  -> serve it, no read
+   *   - entry missing, stale, an older format, or unreadable                     -> parse that one file
+   *
+   * The last case is the fallback the acceptance asks for: with no index at all (first run after an
+   * upgrade, or the index removed), every entry takes it, which rebuilds the whole index in one pass
+   * and leaves the next scan parsing nothing. Cost is bounded by the entries that actually changed.
+   *
+   * Deliberately not a repair scan: a corrupt document is reported as a warning and left in place for
+   * the reconciliation pass to quarantine, because a list read must not move a user's file.
+   */
+  async loadCatalogWithDiagnostics(): Promise<SessionCatalogDiagnostics> {
+    const projectDirectories = await this.listDirectoryNames(this.sessionsDir)
+    const sessions: SessionCatalogSummary[] = []
+    const warnings: SessionLoadWarning[] = []
+    let isComplete = projectDirectories.isComplete
+    let indexHits = 0
+    let parsedDocuments = 0
+
+    for (const projectId of projectDirectories.names) {
+      const project = await this.readProjectCatalog(projectId, {
+        missingDirectoryIsIncomplete: true,
+        warnings
+      })
+      sessions.push(...project.sessions)
+      isComplete &&= project.isComplete
+      indexHits += project.indexHits
+      parsedDocuments += project.parsedDocuments
+    }
+
+    const manifestRead = await this.readManifest({ quarantineInvalidFiles: false })
+
+    return {
+      result: { sessions, manifest: manifestRead.manifest },
+      isComplete,
+      warnings: manifestRead.warning ? [...warnings, manifestRead.warning] : warnings,
+      index: { hits: indexHits, parsedDocuments }
     }
   }
 
@@ -678,13 +752,68 @@ class SessionRepository {
     return { sessions, isComplete }
   }
 
+  // The catalog tier's per-project walk. Same file list, same completeness rules as the full scan —
+  // only the per-file read differs (index first, document only when the index cannot answer).
+  private async readProjectCatalog(
+    projectIdValue: string,
+    options: {
+      missingDirectoryIsIncomplete?: boolean
+      warnings?: SessionLoadWarning[]
+    } = {}
+  ): Promise<{
+    sessions: SessionCatalogSummary[]
+    isComplete: boolean
+    indexHits: number
+    parsedDocuments: number
+  }> {
+    const projectId = assertSafeSegment(projectIdValue)
+    const projectDir = join(this.sessionsDir, projectId)
+    const sessionFiles = await this.listSessionFileNames(projectDir, {
+      missingIsIncomplete: options.missingDirectoryIsIncomplete
+    })
+    const sessions: SessionCatalogSummary[] = []
+    let isComplete = sessionFiles.isComplete
+    let indexHits = 0
+    let parsedDocuments = 0
+
+    for (const fileName of sessionFiles.names) {
+      const filePath = join(projectDir, fileName)
+      const cached = await this.tryReadSessionSummary(filePath)
+      if (cached) {
+        // Served from the index: this document is never opened. The directory owns the project id, as
+        // it does on the full scan, so the entry travels with the authoritative one.
+        indexHits += 1
+        sessions.push({ ...cached, projectId })
+        continue
+      }
+
+      // No usable entry: read this one document and let the read rewrite the index for it. Quarantine
+      // is switched OFF explicitly — a list read must not move a user's file, and the default here is
+      // the repair path.
+      parsedDocuments += 1
+      const read = await this.readSessionFile(filePath, projectId, {
+        missingIsIncomplete: true,
+        quarantineInvalidFiles: false
+      })
+      isComplete &&= read.isComplete
+      if (read.warning) options.warnings?.push(read.warning)
+      if (read.session) sessions.push(summarizeSessionCatalogEntry(read.session))
+    }
+
+    return { sessions, isComplete, indexHits, parsedDocuments }
+  }
+
   // Summary path for a session file: <session-file>.summary.json in the same directory.
   private summaryPathFor(filePath: string): string {
     return `${filePath}.summary.json`
   }
 
-  // Reads the cached summary if its fingerprint still matches the session file on disk.
-  private async tryReadSessionSummary(filePath: string): Promise<PersistedChatSession | undefined> {
+  // The index entry for one session file, or undefined when the index cannot answer for it: absent,
+  // unreadable, written by an older format, or describing a different version of the file than the
+  // one on disk now (which is how an external edit invalidates it).
+  private async tryReadSessionSummary(
+    filePath: string
+  ): Promise<SessionCatalogSummary | undefined> {
     try {
       const [fingerprint, rawSummary] = await Promise.all([
         this.dependencies.statFile(filePath),
@@ -693,20 +822,20 @@ class SessionRepository {
       if (!rawSummary) return undefined
       const summary = JSON.parse(rawSummary) as SessionSummaryFile
       if (
-        summary.version !== 1 ||
+        summary.version !== SUMMARY_FILE_VERSION ||
         summary.fingerprint.size !== fingerprint.size ||
         summary.fingerprint.mtimeMs !== fingerprint.mtimeMs
       ) {
         return undefined
       }
-      return summary.session
+      return summary.catalog
     } catch {
       return undefined
     }
   }
 
-  // Writes a lightweight metadata cache next to the session file. Best-effort: a failed summary
-  // write never fails the session save/load.
+  // Writes the list-tier index entry next to the session file. Best-effort: a failed summary write
+  // never fails the session save/load.
   private async writeSessionSummary(
     filePath: string,
     session: PersistedChatSession
@@ -714,19 +843,13 @@ class SessionRepository {
     try {
       const fingerprint = await this.dependencies.statFile(filePath)
       const summary: SessionSummaryFile = {
-        version: 1,
+        version: SUMMARY_FILE_VERSION,
         sessionId: session.id,
         projectId: session.projectId,
         fingerprint,
-        session: {
-          ...session,
-          // The summary is a metadata slice for the session list; heavy fields stay in the file.
-          messages: [],
-          artifacts: undefined,
-          conversationGraph: undefined,
-          activities: undefined,
-          activityGroups: undefined
-        }
+        // The projection, not the document: messages/conversationGraph/activities are dropped here, and
+        // the count and last agent message are the parts a list cannot recompute without them.
+        catalog: summarizeSessionCatalogEntry(session)
       }
       await this.dependencies.writeSummaryFile(
         this.summaryPathFor(filePath),
@@ -756,7 +879,7 @@ class SessionRepository {
     if (options.useSummary) {
       const cached = await this.tryReadSessionSummary(filePath)
       if (cached) {
-        return { session: { ...cached, projectId }, isComplete: true }
+        return { session: sessionSliceFromCatalog(cached, projectId), isComplete: true }
       }
     }
 
@@ -921,4 +1044,4 @@ const isMissingFileError = (error: unknown): boolean =>
 
 export { SessionRepository, getSessionPersistenceDir }
 export type { ProjectSessionDeletionState, ProjectSessionLoadDiagnostics, SessionLoadDiagnostic }
-export type { SessionLoadDiagnostics }
+export type { SessionLoadDiagnostics, SessionCatalogDiagnostics }

@@ -3766,6 +3766,12 @@ const createSessionRepository = (
     result: { sessions: [], manifest: { version: 1 } },
     isComplete: true
   }),
+  loadCatalogWithDiagnostics: vi.fn().mockResolvedValue({
+    result: { sessions: [], manifest: { version: 1 } },
+    isComplete: true,
+    warnings: [],
+    index: { hits: 0, parsedDocuments: 0 }
+  }),
   loadProjectWithDiagnostics: vi.fn().mockResolvedValue({ sessions: [], isComplete: true }),
   loadCommittedProjectWithDiagnostics: vi.fn().mockResolvedValue({
     sessions: [],

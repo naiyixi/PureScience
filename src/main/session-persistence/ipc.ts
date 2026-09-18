@@ -1,6 +1,5 @@
 import { ipcMainHandle } from '../ipc-handler-registry'
 
-import { summarizeSessionCatalog } from '../../shared/session-catalog-summary'
 import type { SessionCatalogResult } from '../../shared/session-catalog-summary'
 import type {
   DeleteSessionRequest,
@@ -24,6 +23,8 @@ import type { SessionMetadataSnapshot } from './coordinator'
 
 type SessionPersistenceBackend = {
   loadAll: (options?: LoadAllSessionsOptions) => Promise<LoadAllSessionsResult>
+  // The list tier: identity and metadata for every session, answered from the on-disk index.
+  loadCatalog: () => Promise<SessionCatalogResult>
   saveSession: (
     session: PersistedChatSession,
     options?: SaveSessionOptions
@@ -59,6 +60,10 @@ type SessionStartupLoader = {
 
 type SessionMetadataLoader = {
   sessionMetadataSnapshot: () => Promise<SessionMetadataSnapshot>
+}
+
+type SessionCatalogLoader = {
+  loadCatalog: () => Promise<SessionCatalogResult>
 }
 
 // One session, read straight from its own file. The list tier deliberately does not carry the active
@@ -119,6 +124,33 @@ const loadSessionsAfterProjectRecovery = async (
   return withProjectDeletionRecoveryStatus(await sessionLoader.loadAll(options), true)
 }
 
+// The list tier's counterpart. Project deletion recovery is the same prerequisite (a Session list must
+// not present rows whose owning Project is mid-deletion), but the read itself is the catalog scan, so
+// the fallback when recovery fails is that same scan rather than a parse-everything load: it still
+// reports the Sessions it can see, and it never mutates authority.
+const loadCatalogAfterProjectRecovery = async (
+  projectRecovery: ProjectDeletionRecoveryBackend,
+  sessionLoader: SessionCatalogLoader,
+  log: Pick<Logger, 'warn'> = createLogger('session-persistence')
+): Promise<SessionCatalogResult> => {
+  try {
+    await projectRecovery.recoverPendingDeletions()
+  } catch (error) {
+    try {
+      log.warn('project deletion recovery failed', {
+        operation: 'session-catalog',
+        phase: 'recover-project-deletions',
+        outcome: 'degraded',
+        ...diagnosticErrorFields(error)
+      })
+    } catch {
+      // Diagnostics must never prevent the catalog read.
+    }
+  }
+
+  return sessionLoader.loadCatalog()
+}
+
 // Adapts the coordinator into small handlers that are easy to unit test.
 const createSessionPersistenceHandlers = (
   repository: SessionPersistenceBackend,
@@ -144,13 +176,11 @@ const createSessionPersistenceHandlers = (
     deleteSession: (request) => repository.deleteSession(request.projectId, request.sessionId),
     saveManifest: (request) => repository.saveManifest(request),
     // No cache opt-in here: this is the path that decides what the user sees, and it must not serve a
-    // catalog that is even a second old. The saving is in the payload, not in skipping the read.
-    listCatalog: async () => {
-      const result = await repository.loadAll()
-      // The last-open pointer travels with the summaries: hydration needs it to decide which session to open,
-      // and without it that decision would need a second full read.
-      return { sessions: summarizeSessionCatalog(result.sessions), manifest: result.manifest }
-    },
+    // catalog that is even a second old. It is cheap without a cache because the scan is answered from
+    // the on-disk index: it walks the tree and parses only the sessions that actually changed.
+    // The projection is the repository's, so nothing here has to rebuild it from messages the list
+    // deliberately does not carry.
+    listCatalog: () => repository.loadCatalog(),
     readDocument: (projectId, sessionId) => documents.loadSession(projectId, sessionId)
   }
 }
@@ -233,6 +263,7 @@ export {
   createDefaultReviewRepository,
   createDefaultSessionRepository,
   createSessionPersistenceHandlers,
+  loadCatalogAfterProjectRecovery,
   loadSessionMetadataAfterProjectRecovery,
   loadSessionsAfterProjectRecovery,
   registerSessionPersistenceIpcHandlers

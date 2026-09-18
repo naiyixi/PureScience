@@ -62,10 +62,13 @@ describe('SessionRepository summary-first loading', () => {
       }
     }
     const summary = JSON.parse(await readFile(summaryPath, 'utf8'))
-    expect(summary.version).toBe(1)
-    expect(summary.session.title).toBe('Summary-first session')
-    // Heavy fields are omitted from the cache.
-    expect(summary.session.messages).toEqual([])
+    expect(summary.version).toBe(2)
+    expect(summary.catalog.title).toBe('Summary-first session')
+    // The cache holds the list projection: the heavy fields stay in the document, and the two
+    // projection-only fields are stored because a slice without messages cannot recompute them.
+    expect('messages' in summary.catalog).toBe(false)
+    expect('conversationGraph' in summary.catalog).toBe(false)
+    expect(summary.catalog.messageCount).toBe(0)
 
     // A subsequent read-only list read serves from the summary cache.
     const result = await repo.loadAllWithDiagnostics({ mode: 'read-only' })

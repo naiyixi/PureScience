@@ -1,5 +1,6 @@
 import type { PersistedUploadedAttachment } from './uploads'
 import type { BackgroundDeliveryRef } from './background-delivery'
+import type { SessionCatalogSummary } from './session-catalog-summary'
 import { sanitizeSessionRetention, type SessionRetention } from './session-retention'
 import {
   ANNOTATION_MAX_SOURCE_LENGTH,
@@ -253,13 +254,18 @@ export type PersistedActivityGroup = {
 // Summary-first session cache. The session list reads these lightweight files instead of parsing
 // every full session JSON at startup; the fingerprint (size + mtime of the session file at summary
 // time) invalidates the cache the moment the real file changes, falling back to a full parse.
+//
+// Version 2 carries the list-tier projection itself rather than only a metadata slice. The slice
+// holds no messages, so the two list fields that are *derived* from messages — the count and the
+// last agent message — cannot be recomputed from it: a list built that way would report every
+// session as empty. Storing the projection is what lets a cold start build the session list from
+// these files alone, without parsing a single document.
 export type SessionSummaryFile = {
-  version: 1
+  version: 2
   sessionId: string
   projectId: string
   fingerprint: { size: number; mtimeMs: number }
-  // Lightweight metadata slice: messages/artifacts/conversationGraph are intentionally omitted.
-  session: PersistedChatSession
+  catalog: SessionCatalogSummary
 }
 
 // A reader asking for one session's document, by the pair that identifies it on disk.

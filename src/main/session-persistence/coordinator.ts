@@ -20,6 +20,7 @@ import type {
   LoadAllSessionsOptions
 } from '../../shared/session-persistence'
 import type { ManagedFileSoftDeleteToken } from '../project-files/repository'
+import type { SessionCatalogResult } from '../../shared/session-catalog-summary'
 import type { ProjectSessionDeletionState } from './repository'
 import {
   materializeSessionConversationGraph,
@@ -55,6 +56,12 @@ type SessionMutationRepository = {
     isComplete: boolean
     warnings?: SessionLoadWarning[]
     failure?: SessionLoadFailure
+  }>
+  loadCatalogWithDiagnostics(): Promise<{
+    result: SessionCatalogResult
+    isComplete: boolean
+    warnings: SessionLoadWarning[]
+    index: { hits: number; parsedDocuments: number }
   }>
   loadProjectWithDiagnostics(projectId: string): Promise<{
     sessions: PersistedChatSession[]
@@ -549,6 +556,40 @@ class SessionPersistenceCoordinator {
           failure: 'startup-reconciliation-failed'
         }
       }
+    })
+  }
+
+  /**
+   * The list tier's read: every Session's identity and metadata, plus the last-open pointer.
+   *
+   * Answered from the repository's on-disk index, so a cold start constructs the session list without
+   * parsing documents. Two things it deliberately does NOT do, both of which the list used to pay for
+   * on every read:
+   *
+   *   - no derived-state reconciliation (Uploads upgrade, artifact recovery, the file projection,
+   *     permission-grant cleanup). That pass reads every document in full, so it cannot be part of a
+   *     metadata read; it runs once per process on its own, at startup, off this path.
+   *   - no queue entry. Holding the coordinator's mutation queue for the app's most frequent read would
+   *     serialize it behind a save; the scan only stats and reads files, and every write it can race is
+   *     atomic, so the worst case is one extra parse on a fingerprint mismatch.
+   *
+   * Nor does it publish metadata completeness: `sessionMetadataSnapshot` stays owned by the
+   * reconciliation pass, which is the only thing that has seen every session.
+   */
+  loadCatalog(): Promise<SessionCatalogResult> {
+    return this.repository.loadCatalogWithDiagnostics().then((scan) => {
+      // One line per read, with the two counters that say how it was answered — an entry count that
+      // claims "index only" is worth nothing without them.
+      this.log.debug('session catalog read', {
+        operation: 'session-catalog',
+        phase: 'read-index',
+        outcome: scan.isComplete ? 'ready' : 'partial',
+        sessionCount: scan.result.sessions.length,
+        indexHits: scan.index.hits,
+        parsedDocuments: scan.index.parsedDocuments,
+        warningCount: scan.warnings.length
+      })
+      return scan.result
     })
   }
 

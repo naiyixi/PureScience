@@ -174,6 +174,7 @@ import {
   createDefaultReviewRepository,
   createDefaultSessionRepository,
   createSessionPersistenceHandlers,
+  loadCatalogAfterProjectRecovery,
   loadSessionMetadataAfterProjectRecovery,
   loadSessionsAfterProjectRecovery,
   registerSessionPersistenceIpcHandlers
@@ -651,6 +652,10 @@ const createApplicationModules = async (
         sessionPersistenceCoordinator,
         options
       ),
+    // The list tier: metadata for every session, from the on-disk index. Same Project-deletion
+    // prerequisite as loadAll, none of its derived-state work (see the startup pass below).
+    loadCatalog: () =>
+      loadCatalogAfterProjectRecovery(projectDeletionCoordinator, sessionPersistenceCoordinator),
     saveSession: async (session, options) => {
       await projectDeletionCoordinator.recoverPendingDeletions()
       const created =
@@ -2392,14 +2397,30 @@ const createApplicationModules = async (
       notebookInputRegistry.readPreview(request)
     )
   })
-  declareElectronAdapter('session-persistence', () =>
+  declareElectronAdapter('session-persistence', () => {
     registerSessionPersistenceIpcHandlers(
       sessionPersistenceBackend,
       reviewRepository,
       sessionDocumentLoader,
       sessionPersistenceHandlers
     )
-  )
+    // The reconciliation pass is no longer a side effect of reading the session list: the list tier
+    // answers from the on-disk index and parses nothing, so it cannot be what upgrades legacy Uploads,
+    // recovers artifacts, backfills the file projection or reaps stale permission grants. Kick the
+    // full pass once per process here instead — the same work the first catalog read used to run,
+    // still on the startup boundary (this is the first loadAll of the process), just not on the user's
+    // critical path. Fire-and-forget: a failure is reported and retried on the next startup, and it
+    // must not hold up adapter installation.
+    void loadSessionsAfterProjectRecovery(
+      projectDeletionCoordinator,
+      sessionPersistenceCoordinator
+    ).catch((error: unknown) => {
+      createLogger('session-persistence').error(
+        'startup session reconciliation failed',
+        errorLogFields(error)
+      )
+    })
+  })
   const conversationExportService = createConversationExportService({
     loadSession: (projectId, sessionId) => sessionRepository.loadSession(projectId, sessionId),
     isSessionActive: (projectId, sessionId) =>
