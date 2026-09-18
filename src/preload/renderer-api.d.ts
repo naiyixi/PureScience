@@ -14,6 +14,7 @@ import type {
   AcpSetPermissionProfileRequest,
   AcpStateSnapshot
 } from '../shared/acp'
+import type { SessionCatalogSummary } from '../shared/session-catalog-summary'
 import type { ReviewEvidenceRequest, ReviewEvidenceResponse } from '../shared/review-evidence'
 import type { ElicitationRequestView, ElicitationRespondRequest } from '../shared/elicitation'
 import type {
@@ -186,6 +187,7 @@ import type {
   DeleteSessionRequest,
   LoadAllSessionsResult,
   PersistedChatSession,
+  ReadSessionDocumentRequest,
   SaveSessionOptions,
   SaveSessionManifestRequest,
   UpdateSessionArchiveRequest
@@ -456,7 +458,15 @@ export interface PureScienceAPI {
     revoke(request: FolderGrantRevokeRequest): Promise<boolean>
   }
   sessions: {
+    /**
+     * The list tier. Carries each session's identity and metadata but not the active Branch's content,
+     * because that content is what makes the full catalog 55 MB; a reader that needs it asks for the one
+     * session it is looking at.
+     */
+    listCatalog(): Promise<SessionCatalogSummary[]>
     loadAll(): Promise<LoadAllSessionsResult>
+    /** The document tier: one session's full content, read from its own file rather than by scanning. */
+    readDocument(request: ReadSessionDocumentRequest): Promise<PersistedChatSession | undefined>
     saveSession(
       session: PersistedChatSession,
       options?: SaveSessionOptions

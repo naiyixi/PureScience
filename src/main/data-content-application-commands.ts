@@ -243,7 +243,9 @@ const dataContentApplicationCommands = Object.freeze({
     'sessions:export-conversation',
     'exportConversationFromInvokingWindow'
   ),
+  sessionListCatalog: sessionCommand('sessions:list-catalog', 'listCatalog'),
   sessionLoadAll: sessionCommand('sessions:load-all', 'loadAll'),
+  sessionReadDocument: sessionCommand('sessions:read-document', 'readDocument'),
   sessionSaveManifest: sessionCommand('sessions:save-manifest', 'saveManifest'),
   sessionUpdateArchive: sessionCommand('sessions:update-archive', 'updateArchive'),
   sessionSave: defineApplicationCommand<
@@ -318,7 +320,9 @@ const dataContentApplicationCommandGroups = Object.freeze([
   defineApplicationCommandGroup('sessions', [
     dataContentApplicationCommands.sessionDelete,
     dataContentApplicationCommands.sessionExportConversation,
+    dataContentApplicationCommands.sessionListCatalog,
     dataContentApplicationCommands.sessionLoadAll,
+    dataContentApplicationCommands.sessionReadDocument,
     dataContentApplicationCommands.sessionSaveManifest,
     dataContentApplicationCommands.sessionUpdateArchive,
     dataContentApplicationCommands.sessionSave
@@ -488,8 +492,14 @@ const registerDataContentApplicationCommands = (
         )
         return dependencies.electron.exportConversationFromInvokingWindow(invocation)
       },
+      'sessions:list-catalog': () =>
+        dependencies.withDataRootWrite(() => dependencies.sessions.listCatalog()),
       'sessions:load-all': ({ args }) =>
         dependencies.withDataRootWrite(() => dependencies.sessions.loadAll(args[0])),
+      'sessions:read-document': ({ args }) =>
+        dependencies.withDataRootWrite(() =>
+          dependencies.sessions.readDocument(args[0].projectId, args[0].sessionId)
+        ),
       'sessions:save-manifest': ({ args }) =>
         dependencies.withDataRootWrite(() => dependencies.sessions.saveManifest(args[0])),
       'sessions:update-archive': (invocation) => {

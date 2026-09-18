@@ -345,7 +345,7 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
   group('sessions', 'sessions', [
     ['exportConversation', 'sessions:export-conversation', MAPPED_ELECTRON], ['exportPackage', 'sessions:export-package', ELECTRON], ['previewPackage', 'sessions:preview-package', ELECTRON], ['importPackage', 'sessions:import-package', ELECTRON], ['onCreated', 'session:created', EVENT], ['onDeleted', 'session:deleted', EVENT],
     ['onFlushRequest', 'sessions:flush-request', ELECTRON_EVENT], ['onUpdated', 'session:updated', EVENT], ['deleteSession', 'sessions:delete-session'],
-    ['loadAll', 'sessions:load-all'], ['saveManifest', 'sessions:save-manifest'],
+    ['listCatalog', 'sessions:list-catalog'], ['loadAll', 'sessions:load-all'], ['readDocument', 'sessions:read-document'], ['saveManifest', 'sessions:save-manifest'],
     ['saveSession', 'sessions:save-session', WEB, SESSION_SAVE, SESSION_SAVE_JSON], ['updateArchive', 'sessions:update-archive'], ['sendFlushResponse', 'sessions:flush-response', SEND],
   ]),
   group('settings', 'settings', [

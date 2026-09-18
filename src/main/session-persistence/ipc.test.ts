@@ -35,6 +35,7 @@ import {
   loadSessionMetadataAfterProjectRecovery,
   loadSessionsAfterProjectRecovery,
   registerSessionPersistenceIpcHandlers,
+  type SessionDocumentLoader,
   type SessionPersistenceBackend,
   type SessionPersistenceHandlers
 } from './ipc'
@@ -174,11 +175,18 @@ describe('session persistence IPC handlers', () => {
   })
 
   it('does not accept a physical managed-file cleanup hook', () => {
-    // Session persistence owns authoritative JSON and index visibility only. Keeping the factory at
-    // two parameters prevents deletion flows from acquiring a dependency that can remove file bytes.
+    // Session persistence owns authoritative JSON and index visibility only. The factory gained the
+    // list/document split, so the guard now names three parameters — and the third one is asserted to be
+    // read-only: it may load a session and nothing else, so deletion flows still cannot reach a
+    // dependency that removes file bytes.
     expectTypeOf<Parameters<typeof createSessionPersistenceHandlers>>().toEqualTypeOf<
-      [repository: SessionPersistenceBackend, reviewRepository: ReviewRepository]
+      [
+        repository: SessionPersistenceBackend,
+        reviewRepository: ReviewRepository,
+        documents: SessionDocumentLoader
+      ]
     >()
+    expectTypeOf<keyof SessionDocumentLoader>().toEqualTypeOf<'loadSession'>()
   })
 
   it('routes each command to the repository', async () => {
@@ -191,7 +199,9 @@ describe('session persistence IPC handlers', () => {
       saveManifest: vi.fn().mockResolvedValue(undefined)
     }
     const reviewRepository = createMockReviewRepository()
-    const handlers = createSessionPersistenceHandlers(repository, reviewRepository)
+    const handlers = createSessionPersistenceHandlers(repository, reviewRepository, {
+      loadSession: vi.fn()
+    })
 
     expect(handlers).not.toHaveProperty('deleteProjectSessions')
 
@@ -223,7 +233,9 @@ describe('session persistence IPC handlers', () => {
       deleteSession: vi.fn().mockRejectedValueOnce(new Error('repository failed')),
       saveManifest: vi.fn().mockResolvedValue(undefined)
     }
-    const handlers = createSessionPersistenceHandlers(repository, createMockReviewRepository())
+    const handlers = createSessionPersistenceHandlers(repository, createMockReviewRepository(), {
+      loadSession: vi.fn()
+    })
 
     await expect(
       handlers.deleteSession({ projectId: 'project-a', sessionId: 'session-1' })
@@ -249,7 +261,9 @@ describe('session persistence IPC handlers', () => {
     vi.mocked(reviewRepository.deleteReviewsForSession).mockImplementation(async () => {
       order.push('reviews')
     })
-    const handlers = createSessionPersistenceHandlers(repository, reviewRepository)
+    const handlers = createSessionPersistenceHandlers(repository, reviewRepository, {
+      loadSession: vi.fn()
+    })
 
     await handlers.deleteSession({ projectId: 'project-a', sessionId: 'session-1' })
 
@@ -297,14 +311,18 @@ describe('session persistence IPC handlers', () => {
       saveManifest: vi.fn().mockResolvedValue(undefined)
     }
     const reviewRepository = createMockReviewRepository()
-    registerSessionPersistenceIpcHandlers(repository, reviewRepository)
+    registerSessionPersistenceIpcHandlers(repository, reviewRepository, { loadSession: vi.fn() })
 
     expect([...ipcHandlers.keys()]).toEqual([
       'sessions:load-all',
       'sessions:save-session',
       'sessions:update-archive',
       'sessions:delete-session',
-      'sessions:save-manifest'
+      'sessions:save-manifest',
+      // The list/document split: the list no longer carries the active Branch's content, so a reader
+      // that needs it asks for one session by name.
+      'sessions:list-catalog',
+      'sessions:read-document'
     ])
 
     const deleteRequest = { projectId: 'project-a', sessionId: 'session-1' }
@@ -359,10 +377,17 @@ describe('session persistence IPC handlers', () => {
       saveSession: vi.fn(),
       updateArchive: vi.fn(),
       deleteSession: vi.fn(),
-      saveManifest: vi.fn()
+      saveManifest: vi.fn(),
+      listCatalog: vi.fn(),
+      readDocument: vi.fn()
     }
 
-    registerSessionPersistenceIpcHandlers(repository, createMockReviewRepository(), injected)
+    registerSessionPersistenceIpcHandlers(
+      repository,
+      createMockReviewRepository(),
+      { loadSession: vi.fn() },
+      injected
+    )
 
     await expect(ipcHandlers.get('sessions:load-all')?.()).resolves.toBe(loadResult)
     expect(injected.loadAll).toHaveBeenCalledOnce()
@@ -382,18 +407,30 @@ describe('session persistence IPC handlers', () => {
       saveSession: vi.fn(),
       updateArchive: vi.fn(),
       deleteSession: vi.fn(),
-      saveManifest: vi.fn()
+      saveManifest: vi.fn(),
+      listCatalog: vi.fn(),
+      readDocument: vi.fn()
     }
     registrationFailure.channel = 'sessions:load-all'
     registrationFailure.error = failure
 
     expect(() =>
-      registerSessionPersistenceIpcHandlers(repository, createMockReviewRepository(), injected)
+      registerSessionPersistenceIpcHandlers(
+        repository,
+        createMockReviewRepository(),
+        { loadSession: vi.fn() },
+        injected
+      )
     ).toThrow(failure)
 
     registrationFailure.channel = undefined
     registrationFailure.error = undefined
-    registerSessionPersistenceIpcHandlers(repository, createMockReviewRepository(), injected)
+    registerSessionPersistenceIpcHandlers(
+      repository,
+      createMockReviewRepository(),
+      { loadSession: vi.fn() },
+      injected
+    )
     await ipcHandlers.get('sessions:load-all')?.()
     expect(injected.loadAll).toHaveBeenCalledOnce()
   })
@@ -405,7 +442,9 @@ describe('session persistence IPC handlers', () => {
       deleteSession: vi.fn().mockResolvedValue(undefined),
       saveManifest: vi.fn().mockResolvedValue(undefined)
     }
-    registerSessionPersistenceIpcHandlers(repository, createMockReviewRepository())
+    registerSessionPersistenceIpcHandlers(repository, createMockReviewRepository(), {
+      loadSession: vi.fn()
+    })
     beginMigration()
 
     await expect(
@@ -425,7 +464,9 @@ describe('session persistence IPC handlers', () => {
       deleteSession: vi.fn().mockResolvedValue(undefined),
       saveManifest: vi.fn().mockResolvedValue(undefined)
     }
-    registerSessionPersistenceIpcHandlers(repository, createMockReviewRepository())
+    registerSessionPersistenceIpcHandlers(repository, createMockReviewRepository(), {
+      loadSession: vi.fn()
+    })
 
     await expect(
       ipcHandlers.get('sessions:save-session')?.({ sender: { id: 1 } }, createSession())
@@ -448,7 +489,9 @@ describe('session persistence IPC handlers', () => {
       deleteSession: vi.fn().mockResolvedValue(undefined),
       saveManifest: vi.fn().mockResolvedValue(undefined)
     }
-    registerSessionPersistenceIpcHandlers(repository, createMockReviewRepository())
+    registerSessionPersistenceIpcHandlers(repository, createMockReviewRepository(), {
+      loadSession: vi.fn()
+    })
 
     const save = ipcHandlers.get('sessions:save-session')?.({ sender: { id: 1 } }, session)
 
@@ -473,11 +516,86 @@ describe('session persistence IPC handlers', () => {
     broadcastLifecycleEvent.mockImplementationOnce(() => {
       expect(durableReadable).toBe(true)
     })
-    registerSessionPersistenceIpcHandlers(repository, createMockReviewRepository())
+    registerSessionPersistenceIpcHandlers(repository, createMockReviewRepository(), {
+      loadSession: vi.fn()
+    })
 
     await ipcHandlers.get('sessions:save-session')?.({ sender: { id: 1 } }, session)
 
     expect(repository.saveSession).toHaveBeenCalledOnce()
     expect(broadcastLifecycleEvent).toHaveBeenCalledOnce()
+  })
+
+  it('lists the catalog without the active Branch content, and reads one document on demand', async () => {
+    // The two halves of the split. The list must not carry messages/graph/activities — carrying them is
+    // what makes the hydration payload 55 MB — and the document read must go after exactly the session it
+    // was asked for, not scan the corpus.
+    const session: PersistedChatSession = {
+      ...createSession(),
+      messages: [
+        { id: 'm1', role: 'user', content: 'hello' },
+        { id: 'm2', role: 'agent', content: 'the answer' }
+      ] as never
+    }
+    const repository = {
+      loadAll: vi
+        .fn()
+        .mockResolvedValue({ sessions: [session], manifest: { version: 1 as const } }),
+      saveSession: vi.fn(),
+      deleteSession: vi.fn(),
+      saveManifest: vi.fn()
+    }
+    const documents = { loadSession: vi.fn().mockResolvedValue(session) }
+    const handlers = createSessionPersistenceHandlers(
+      repository,
+      createMockReviewRepository(),
+      documents
+    )
+
+    const catalog = await handlers.listCatalog()
+    expect(catalog).toHaveLength(1)
+    expect(catalog[0].id).toBe(session.id)
+    expect(catalog[0].messageCount).toBe(2)
+    expect(catalog[0].lastAgentMessage).toBe('the answer')
+    expect('messages' in catalog[0]).toBe(false)
+    expect('conversationGraph' in catalog[0]).toBe(false)
+    expect('activities' in catalog[0]).toBe(false)
+
+    await expect(handlers.readDocument('project-1', 'session-1')).resolves.toBe(session)
+    expect(documents.loadSession).toHaveBeenCalledWith('project-1', 'session-1')
+  })
+
+  it('registers the list/document channels and routes them through the handlers', async () => {
+    const catalog = [{ id: 'session-1' }]
+    const handlers: SessionPersistenceHandlers = {
+      loadAll: vi.fn(),
+      saveSession: vi.fn(),
+      updateArchive: vi.fn(),
+      deleteSession: vi.fn(),
+      saveManifest: vi.fn(),
+      listCatalog: vi.fn().mockResolvedValue(catalog),
+      readDocument: vi.fn().mockResolvedValue({ id: 'session-1' })
+    }
+    const repository: SessionPersistenceBackend = {
+      loadAll: vi.fn(),
+      saveSession: vi.fn(),
+      deleteSession: vi.fn(),
+      saveManifest: vi.fn()
+    }
+
+    registerSessionPersistenceIpcHandlers(
+      repository,
+      createMockReviewRepository(),
+      { loadSession: vi.fn() },
+      handlers
+    )
+
+    await expect(ipcHandlers.get('sessions:list-catalog')?.()).resolves.toBe(catalog)
+    await expect(
+      ipcHandlers.get('sessions:read-document')?.(undefined, { projectId: 'p', sessionId: 's' })
+    ).resolves.toEqual({ id: 'session-1' })
+    expect(handlers.readDocument).toHaveBeenCalledWith('p', 's')
+    // Neither channel may fall back to a corpus scan for a single document.
+    expect(repository.loadAll).not.toHaveBeenCalled()
   })
 })

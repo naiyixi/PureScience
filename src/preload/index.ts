@@ -169,8 +169,12 @@ const api: PureScienceAPI = {
     revoke: (request) => electronRendererContracts.invoke('folderGrants.revoke', request)
   },
   sessions: {
+    // The list tier: identity and metadata for every session, without the active Branch's content.
+    listCatalog: () => electronRendererContracts.invoke('sessions.listCatalog'),
     // Loads every per-session file plus the last-open manifest from the main process.
     loadAll: () => electronRendererContracts.invoke('sessions.loadAll'),
+    // The document tier: one session's full content, read from its own file on demand.
+    readDocument: (request) => electronRendererContracts.invoke('sessions.readDocument', request),
     // Persists a single sanitized session file.
     saveSession: (session, options) =>
       electronRendererContracts.invoke('sessions.saveSession', session, options),

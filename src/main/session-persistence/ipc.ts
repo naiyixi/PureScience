@@ -1,11 +1,14 @@
 import { ipcMainHandle } from '../ipc-handler-registry'
 
+import { summarizeSessionCatalog } from '../../shared/session-catalog-summary'
+import type { SessionCatalogSummary } from '../../shared/session-catalog-summary'
 import type {
   DeleteSessionRequest,
   LoadAllSessionsOptions,
   LoadAllSessionsResult,
   PersistedChatSession,
   SaveSessionOptions,
+  ReadSessionDocumentRequest,
   SaveSessionManifestRequest,
   UpdateSessionArchiveRequest
 } from '../../shared/session-persistence'
@@ -32,6 +35,10 @@ type SessionPersistenceBackend = {
 
 type SessionPersistenceHandlers = {
   loadAll: (options?: LoadAllSessionsOptions) => Promise<LoadAllSessionsResult>
+  // The list tier: identity and metadata only, no active-Branch content.
+  listCatalog: () => Promise<SessionCatalogSummary[]>
+  // The document tier: one session, straight from its own file, for a reader that needs its content.
+  readDocument: (projectId: string, sessionId: string) => Promise<PersistedChatSession | undefined>
   saveSession: (
     session: PersistedChatSession,
     options?: SaveSessionOptions
@@ -52,6 +59,13 @@ type SessionStartupLoader = {
 
 type SessionMetadataLoader = {
   sessionMetadataSnapshot: () => Promise<SessionMetadataSnapshot>
+}
+
+// One session, read straight from its own file. The list tier deliberately does not carry the active
+// Branch's content, so a reader that needs it asks for exactly the session it is looking at instead of
+// every session in the corpus.
+type SessionDocumentLoader = {
+  loadSession: (projectId: string, sessionId: string) => Promise<PersistedChatSession | undefined>
 }
 
 const withProjectDeletionRecoveryStatus = (
@@ -108,7 +122,8 @@ const loadSessionsAfterProjectRecovery = async (
 // Adapts the coordinator into small handlers that are easy to unit test.
 const createSessionPersistenceHandlers = (
   repository: SessionPersistenceBackend,
-  reviewRepository: ReviewRepository
+  reviewRepository: ReviewRepository,
+  documents: SessionDocumentLoader
 ): SessionPersistenceHandlers => {
   // Kept as an injected boundary for project-level cleanup compatibility; session deletion must not
   // call it because Reviews belong to retained provenance.
@@ -127,13 +142,25 @@ const createSessionPersistenceHandlers = (
     // A session delete tombstones its origin graph but deliberately retains Review rows, findings and
     // scope snapshots. Provenance remains readable from Files; project deletion owns final cleanup.
     deleteSession: (request) => repository.deleteSession(request.projectId, request.sessionId),
-    saveManifest: (request) => repository.saveManifest(request)
+    saveManifest: (request) => repository.saveManifest(request),
+    // No cache opt-in here: this is the path that decides what the user sees, and it must not serve a
+    // catalog that is even a second old. The saving is in the payload, not in skipping the read.
+    listCatalog: async () => summarizeSessionCatalog((await repository.loadAll()).sessions),
+    readDocument: (projectId, sessionId) => documents.loadSession(projectId, sessionId)
   }
 }
 
 // Creates the production repository rooted at the (dev-aware) storage root.
 const createDefaultSessionRepository = (): SessionRepository =>
   new SessionRepository(resolveStorageRoot())
+
+// The document tier's default source: the same repository, read one session at a time.
+const createDefaultSessionDocumentLoader = (): SessionDocumentLoader => {
+  const repository = createDefaultSessionRepository()
+  return {
+    loadSession: (projectId, sessionId) => repository.loadSession(projectId, sessionId)
+  }
+}
 
 const createDefaultReviewRepository = (): ReviewRepository =>
   new ReviewRepository(() => getProjectDbClient(resolveStorageRoot()))
@@ -142,9 +169,11 @@ const createDefaultReviewRepository = (): ReviewRepository =>
 const registerSessionPersistenceIpcHandlers = (
   repository: SessionPersistenceBackend,
   reviewRepository = createDefaultReviewRepository(),
+  documents: SessionDocumentLoader = createDefaultSessionDocumentLoader(),
   handlers: SessionPersistenceHandlers = createSessionPersistenceHandlers(
     repository,
-    reviewRepository
+    reviewRepository,
+    documents
   )
 ): void => {
   // Keep persistence IPC separate from ACP runtime commands; it owns durable UI state only.
@@ -187,6 +216,12 @@ const registerSessionPersistenceIpcHandlers = (
   ipcMainHandle('sessions:save-manifest', (_event, request: SaveSessionManifestRequest) =>
     withDataRootWrite(() => handlers.saveManifest(request))
   )
+  // Read-only additions for the list/document split. Both hold the shared data-root lease for the same
+  // reason the other reads do: a read must not race a migration moving the root underneath it.
+  ipcMainHandle('sessions:list-catalog', () => withDataRootWrite(() => handlers.listCatalog()))
+  ipcMainHandle('sessions:read-document', (_event, request: ReadSessionDocumentRequest) =>
+    withDataRootWrite(() => handlers.readDocument(request.projectId, request.sessionId))
+  )
 }
 
 export {
@@ -197,4 +232,4 @@ export {
   loadSessionsAfterProjectRecovery,
   registerSessionPersistenceIpcHandlers
 }
-export type { SessionPersistenceBackend, SessionPersistenceHandlers }
+export type { SessionDocumentLoader, SessionPersistenceBackend, SessionPersistenceHandlers }

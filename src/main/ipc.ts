@@ -2070,9 +2070,14 @@ const createApplicationModules = async (
     await originalDeleteSession(projectId, sessionId)
     sessionBindingService.clearSession(sessionId)
   }
+  const sessionDocumentLoader = {
+    loadSession: (projectId: string, sessionId: string) =>
+      sessionRepository.loadSession(projectId, sessionId)
+  }
   const sessionPersistenceHandlers = createSessionPersistenceHandlers(
     sessionPersistenceBackend,
-    reviewRepository
+    reviewRepository,
+    sessionDocumentLoader
   )
   const specialistPersistLog = createLogger('specialist:persist')
   declareElectronAdapter('specialist', () =>
@@ -2391,6 +2396,7 @@ const createApplicationModules = async (
     registerSessionPersistenceIpcHandlers(
       sessionPersistenceBackend,
       reviewRepository,
+      sessionDocumentLoader,
       sessionPersistenceHandlers
     )
   )

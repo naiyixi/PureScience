@@ -262,6 +262,12 @@ export type SessionSummaryFile = {
   session: PersistedChatSession
 }
 
+// A reader asking for one session's document, by the pair that identifies it on disk.
+export type ReadSessionDocumentRequest = {
+  projectId: string
+  sessionId: string
+}
+
 export type PersistedChatSession = {
   id: string
   // Owning project. On load this is authoritative from the file's directory (sessions/<projectId>/).
