@@ -50,6 +50,7 @@ import {
   type PendingArtifactRunPublication
 } from './repository'
 import { defaultArtifactDurability, type ArtifactDurability } from './durability'
+import { startDbCanary } from '../diagnostics/db-queue-probe'
 import { readEventLoopLatency, resetEventLoopLatency } from '../diagnostics/event-loop-latency'
 import { createLogger } from '../logger'
 import { NotebookRunRepository } from '../notebook/repository'
@@ -4151,6 +4152,9 @@ class ArtifactProvenanceRepository {
     // (so they were awaiting) while three had main blocked for 212 ms of a 220 ms call. Only a per-segment
     // reading can say which segment blocks and which merely waits.
     resetEventLoopLatency()
+    // Started before the query and awaited after it: if this trivial query is also slow, the engine was busy
+    // with someone else's work; if it is fast, the engine is clear and the cost is in this query.
+    const dbCanary = startDbCanary(() => client.$queryRawUnsafe('SELECT 1'))
     const version = await client.artifactVersion.findFirst({
       where: {
         id: versionId,
@@ -4178,6 +4182,7 @@ class ArtifactProvenanceRepository {
           clientMs,
           queryMs,
           queryEventLoopMaxMs,
+          dbCanaryMs: await dbCanary,
           readMs,
           readEventLoopMaxMs,
           bytes: bytes.byteLength
