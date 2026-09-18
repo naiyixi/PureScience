@@ -1,4 +1,5 @@
 import { ipcMainHandle } from '../ipc-handler-registry'
+import { createLogger } from '../logger'
 
 import type {
   ArtifactGroupPage,
@@ -26,6 +27,48 @@ type ProjectFilesRecoveryBackend = {
   recoverPendingDeletions(): Promise<void>
 }
 
+// Every Files read waits on the project-deletion recovery gate before touching the index, so the cost of a
+// Files interaction is (gate + query) and nothing said which half it was. The UI showed it plainly: the
+// Home page asks each project for its files, ~50 of them, and each call measured ~120 ms in main. Reported
+// only when a read is slow, and carrying no request contents.
+const SLOW_FILES_READ_THRESHOLD_MS = 50
+const filesLog = createLogger('project-files')
+
+const timedRead = async <Result>(
+  operation: string,
+  recovery: ProjectFilesRecoveryBackend,
+  read: () => Promise<Result>
+): Promise<Result> => {
+  const startedAt = Date.now()
+  try {
+    await recovery.recoverPendingDeletions()
+  } catch (error) {
+    // Failing closed here is the existing contract; the diagnostic must not change it.
+    filesLog.warn('project files read could not pass the recovery gate', {
+      operation,
+      durationMs: Date.now() - startedAt,
+      outcome: 'rejected'
+    })
+    throw error
+  }
+  const recoveryMs = Date.now() - startedAt
+  const result = await read()
+  const totalMs = Date.now() - startedAt
+  if (totalMs >= SLOW_FILES_READ_THRESHOLD_MS) {
+    try {
+      filesLog.warn('project files read was slow', {
+        operation,
+        totalMs,
+        recoveryMs,
+        queryMs: totalMs - recoveryMs
+      })
+    } catch {
+      // Best-effort only: a diagnostic must never replace the read result.
+    }
+  }
+  return result
+}
+
 type ProjectFilesHandlers = {
   getOverview(request: GetProjectFilesOverviewRequest): Promise<ProjectFilesOverview>
   listFiles(request: ListProjectFilesRequest): Promise<ProjectFilesPage>
@@ -41,22 +84,14 @@ const createProjectFilesHandlers = (
   repairBackend: ProjectFilesRepairBackend,
   recoveryBackend: ProjectFilesRecoveryBackend
 ): ProjectFilesHandlers => ({
-  getOverview: async (request) => {
-    await recoveryBackend.recoverPendingDeletions()
-    return repository.getOverview(request)
-  },
-  listFiles: async (request) => {
-    await recoveryBackend.recoverPendingDeletions()
-    return repository.listFiles(request)
-  },
-  listArtifactGroups: async (request) => {
-    await recoveryBackend.recoverPendingDeletions()
-    return repository.listArtifactGroups(request)
-  },
-  searchArtifacts: async (request) => {
-    await recoveryBackend.recoverPendingDeletions()
-    return repository.searchArtifacts(request)
-  },
+  getOverview: (request) =>
+    timedRead('getOverview', recoveryBackend, () => repository.getOverview(request)),
+  listFiles: (request) =>
+    timedRead('listFiles', recoveryBackend, () => repository.listFiles(request)),
+  listArtifactGroups: (request) =>
+    timedRead('listArtifactGroups', recoveryBackend, () => repository.listArtifactGroups(request)),
+  searchArtifacts: (request) =>
+    timedRead('searchArtifacts', recoveryBackend, () => repository.searchArtifacts(request)),
   repairIndex: async ({ projectId }) => {
     await recoveryBackend.recoverPendingDeletions()
     return repairBackend.repairProjectFiles(projectId)

@@ -18,6 +18,12 @@ const { handlers, registrationFailure } = vi.hoisted(() => ({
   }
 }))
 
+// The read instrument logs through this module's logger; capture the slow-read lines.
+const { warnSpy } = vi.hoisted(() => ({ warnSpy: vi.fn() }))
+vi.mock('../logger', () => ({
+  createLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: warnSpy, error: vi.fn() })
+}))
+
 vi.mock('electron', () => ({
   ipcMain: {
     handle: (channel: string, handler: (event: unknown, payload: unknown) => unknown) => {
@@ -29,6 +35,45 @@ vi.mock('electron', () => ({
 
 const invoke = (channel: string, payload: unknown): unknown =>
   handlers.get(channel)!(undefined, payload)
+
+describe('project files read timing', () => {
+  it('splits a slow read into the recovery gate and the query, and stays quiet when a read is fast', async () => {
+    // The Files panel's cost is (gate + query); nothing said which half, and the Home page asks every
+    // project for its files, so one slow half is multiplied by the project count.
+    const listFiles = vi.fn(async () => ({ items: [], nextCursor: undefined, totalCount: 0 }))
+    const recoverPendingDeletions = vi.fn(async () => undefined)
+    const handlersWithTiming = createProjectFilesHandlers(
+      {
+        getOverview: vi.fn(),
+        listFiles,
+        listArtifactGroups: vi.fn(),
+        searchArtifacts: vi.fn()
+      } as never,
+      { repairProjectFiles: vi.fn() } as never,
+      { recoverPendingDeletions } as never
+    )
+
+    const clock = vi.spyOn(Date, 'now')
+    warnSpy.mockClear()
+
+    // fast: no line
+    clock.mockReturnValueOnce(1_000).mockReturnValueOnce(1_010).mockReturnValueOnce(1_020)
+    await handlersWithTiming.listFiles({ projectId: 'project-1' } as never)
+    expect(warnSpy).not.toHaveBeenCalled()
+
+    // slow: one line, with the split (gate 80 ms, query 120 ms, total 200 ms)
+    clock.mockReturnValueOnce(2_000).mockReturnValueOnce(2_080).mockReturnValueOnce(2_200)
+    await handlersWithTiming.listFiles({ projectId: 'project-1' } as never)
+    expect(warnSpy).toHaveBeenCalledWith('project files read was slow', {
+      operation: 'listFiles',
+      totalMs: 200,
+      recoveryMs: 80,
+      queryMs: 120
+    })
+
+    clock.mockRestore()
+  })
+})
 
 describe('project files IPC handlers', () => {
   it('routes overview and layered page requests through one repository', async () => {
