@@ -5,6 +5,12 @@ import type { FileHandle } from 'node:fs/promises'
 import { basename, extname } from 'node:path'
 
 import { readEventLoopLatency, resetEventLoopLatency } from './diagnostics/event-loop-latency'
+import {
+  beginFsOperation,
+  endFsOperation,
+  inFlightFsOperationCount,
+  startCanaryRead
+} from './diagnostics/fs-queue-probe'
 import { createLogger } from './logger'
 import type { OfficePreviewAdmissionError } from '../shared/office-preview'
 import type {
@@ -176,17 +182,23 @@ class ManagedPreviewResources {
     // Resolve through the managed repository before minting an owner-scoped capability URL.
     const startedAt = Date.now()
     resetEventLoopLatency()
+    // Started alongside the work and awaited after it, so the canary covers the same window as the acquire.
+    const canary = startCanaryRead()
+    beginFsOperation()
     const filePath = await this.options.resolvePath(request.source, request)
     const resolveMs = Date.now() - startedAt
     const fileStat = await stat(filePath, { bigint: true })
+    endFsOperation()
     const statMs = Date.now() - startedAt - resolveMs
     if (resolveMs + statMs >= SLOW_ACQUIRE_THRESHOLD_MS) {
       try {
-        // The path itself is user data; only its segment costs and the source are reported.
+        // The path itself is user data; only its segment costs, the source and the queue readings are reported.
         previewLog.warn('managed preview acquire was slow', {
           source: request.source,
           resolveMs,
           statMs,
+          canaryMs: await canary,
+          inFlightFsOperations: inFlightFsOperationCount(),
           ...readEventLoopLatency()
         })
       } catch {
