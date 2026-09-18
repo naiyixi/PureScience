@@ -1,5 +1,7 @@
 import { Prisma, type ManagedFile } from '@prisma/client'
 
+import { createLogger } from '../logger'
+
 import type {
   ArtifactGroupPage,
   GetProjectFilesOverviewRequest,
@@ -32,6 +34,13 @@ import {
 } from './query-support'
 
 type ProjectFilesIndexCompletenessReader = (projectId: string) => boolean
+
+// "listFiles takes 211 ms" survived four explanations (missing index, per-call client, the recovery gate,
+// raw SQL) and none of them held: the index exists and the plan is a SEARCH, the client is cached, the gate
+// is 0 ms, and sqlite3 runs the same query in 0-20 ms on the real 463-row table. So the cost is inside this
+// method, and this reports which segment it is — measured only when a read is slow.
+const SLOW_LIST_SEGMENT_THRESHOLD_MS = 50
+const queryLog = createLogger('project-files-query')
 
 // Owns the read-model orchestration while completeness remains authoritative in the mutation owner.
 class ProjectFilesQueryOwner {
@@ -84,7 +93,9 @@ class ProjectFilesQueryOwner {
       throw new Error('Project files collection is invalid.')
     }
     const normalizedRequest = { ...request, collection: normalizedCollection }
+    const startedAt = Date.now()
     const client = await this.getClient()
+    const clientMs = Date.now() - startedAt
     const limit = normalizeLimit(request.limit)
     const search = normalizeSearch(request.search)
     const source =
@@ -134,6 +145,7 @@ class ProjectFilesQueryOwner {
             }
           })
         ])
+    const rowsMs = Date.now() - startedAt
     const pageRows = rows.slice(0, limit)
     const lastRow = pageRows.at(-1)
     const origins = await client.fileOriginSession.findMany({
@@ -143,11 +155,29 @@ class ProjectFilesQueryOwner {
       }
     })
     const originsBySession = new Map(origins.map((origin) => [origin.sessionId, origin]))
+    const originsMs = Date.now() - startedAt
+
+    const items = pageRows.map((row) =>
+      toProjectFileItem(row, this.dataRoot, originsBySession.get(row.sessionId))
+    )
+    const totalMs = Date.now() - startedAt
+    if (totalMs >= SLOW_LIST_SEGMENT_THRESHOLD_MS) {
+      try {
+        queryLog.warn('listFiles segments were slow', {
+          rows: pageRows.length,
+          totalMs,
+          clientMs,
+          rowsMs: rowsMs - clientMs,
+          originsMs: originsMs - rowsMs,
+          mapMs: totalMs - originsMs
+        })
+      } catch {
+        // Best-effort: a diagnostic must never replace the read result.
+      }
+    }
 
     return {
-      items: pageRows.map((row) =>
-        toProjectFileItem(row, this.dataRoot, originsBySession.get(row.sessionId))
-      ),
+      items,
       totalCount,
       nextCursor:
         rows.length > limit && lastRow
