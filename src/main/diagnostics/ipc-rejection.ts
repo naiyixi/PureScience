@@ -3,6 +3,11 @@ import { diagnosticErrorFields, type Logger } from '../logger'
 
 type IpcRejectionLogger = Pick<Logger, 'warn'>
 
+// Above this, a successful IPC handler is worth a log line. The renderer's session/file calls do NOT go
+// through the application-command router (they are Electron IPC), so this is the only place a first-open
+// cost can be attributed in main. Chosen below the 130-430 ms first-open hitches and above ordinary reads.
+const SLOW_IPC_HANDLER_THRESHOLD_MS = 50
+
 type IpcRejectionDiagnosticInput<T> = {
   channel: string
   callerContext: Pick<CallerContext, 'surface' | 'location' | 'principalKind' | 'actionOrigin'>
@@ -48,11 +53,30 @@ export const invokeWithIpcRejectionDiagnostics = <T>(
     }
   }
 
+  // Best-effort, and deliberately carries no request arguments or result: this adapter never sees them.
+  const recordSlowSuccess = (): void => {
+    try {
+      const durationMs = Math.max(0, safeNow(now) - startedAt)
+      if (durationMs < SLOW_IPC_HANDLER_THRESHOLD_MS) return
+      input.log.warn('ipc handler was slow', {
+        channel: input.channel,
+        surface: input.callerContext.surface,
+        location: input.callerContext.location,
+        durationMs
+      })
+    } catch {
+      // Diagnostic failures must never replace the handler's authoritative result.
+    }
+  }
+
   try {
     const result = input.invoke()
     if (result !== null && (typeof result === 'object' || typeof result === 'function')) {
       const then = (result as { then?: unknown }).then
-      if (typeof then !== 'function') return result
+      if (typeof then !== 'function') {
+        recordSlowSuccess()
+        return result
+      }
 
       // Promise.resolve(result) would read a thenable's `then` getter a second time. Assimilate the
       // cached function on a microtask instead, matching native timing while preserving one-shot or
@@ -60,7 +84,15 @@ export const invokeWithIpcRejectionDiagnostics = <T>(
       const assimilated = new Promise<T>((resolve, reject) => {
         queueMicrotask(() => {
           try {
-            Reflect.apply(then, result, [resolve, reject])
+            // Log on the way in rather than by chaining another .then: no extra microtask hop, and the
+            // value the caller receives is unchanged.
+            Reflect.apply(then, result, [
+              (value: T) => {
+                recordSlowSuccess()
+                resolve(value)
+              },
+              reject
+            ])
           } catch (error) {
             reject(error)
           }
@@ -71,6 +103,9 @@ export const invokeWithIpcRejectionDiagnostics = <T>(
         throw error
       })
     }
+    // Anything that is not an object or function (a string, a number, a boolean, null) lands here, so the
+    // timing has to be reported on this path too — the sync case fell through it untimed before this test.
+    recordSlowSuccess()
     return result
   } catch (error) {
     recordRejection(error)

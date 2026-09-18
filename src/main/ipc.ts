@@ -2686,7 +2686,24 @@ const createApplicationModules = async (
   const applicationCommandComposition = await modules.add(
     applicationCommandDependencies,
     (dependencies) => {
-      const composition = createApplicationCommandComposition(dependencies)
+      // Router diagnostics had no sink in production, so a slow handler was invisible: this is where the
+      // first-open hitches had to be answerable from. Slow handlers are logged with their duration; the
+      // rejection codes stay at debug (they already surface to the caller as errors).
+      const applicationCommandLog = createLogger('application-commands')
+      const composition = createApplicationCommandComposition(dependencies, (diagnostic) => {
+        const fields = {
+          commandName: diagnostic.commandName,
+          ...(diagnostic.durationMs === undefined ? {} : { durationMs: diagnostic.durationMs })
+        }
+        if (diagnostic.code === 'slow-handler') {
+          applicationCommandLog.warn('application command handler was slow', {
+            ...fields,
+            operation: 'application-command'
+          })
+          return
+        }
+        applicationCommandLog.debug('application command diagnostic', { ...fields, code: diagnostic.code })
+      })
       return {
         name: 'application-command-composition',
         capability: composition,

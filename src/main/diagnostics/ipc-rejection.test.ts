@@ -4,6 +4,57 @@ import { createWebCallerContext } from '../caller-context'
 import { invokeWithIpcRejectionDiagnostics } from './ipc-rejection'
 
 describe('invokeWithIpcRejectionDiagnostics', () => {
+  it('reports a slow successful handler with its duration, and says nothing about a fast one', async () => {
+    // This adapter is the only place an Electron IPC cost can be seen in main: the renderer's session and
+    // file calls never reach the application-command router. It still carries no arguments or results.
+    const warn = vi.fn()
+    const callerContext = createWebCallerContext('client-1', {
+      location: 'local',
+      principalKind: 'human',
+      actionOrigin: 'human'
+    })
+
+    const fastNow = vi.fn().mockReturnValueOnce(1_000).mockReturnValueOnce(1_005)
+    await invokeWithIpcRejectionDiagnostics({
+      channel: 'sessions:list-catalog',
+      callerContext,
+      invoke: async () => 'ok',
+      log: { warn },
+      now: fastNow
+    })
+    expect(warn).not.toHaveBeenCalled()
+
+    const slowNow = vi.fn().mockReturnValueOnce(2_000).mockReturnValueOnce(2_180)
+    await invokeWithIpcRejectionDiagnostics({
+      channel: 'sessions:read-document',
+      callerContext,
+      invoke: async () => 'document',
+      log: { warn },
+      now: slowNow
+    })
+    expect(warn).toHaveBeenCalledOnce()
+    expect(warn).toHaveBeenCalledWith('ipc handler was slow', {
+      channel: 'sessions:read-document',
+      surface: 'web',
+      location: 'local',
+      durationMs: 180
+    })
+
+    // A synchronous handler is measured the same way.
+    warn.mockClear()
+    const syncNow = vi.fn().mockReturnValueOnce(3_000).mockReturnValueOnce(3_400)
+    const syncResult = invokeWithIpcRejectionDiagnostics({
+      channel: 'preview:load',
+      callerContext,
+      invoke: () => 'sync-value',
+      log: { warn },
+      now: syncNow
+    })
+    expect(syncResult).toBe('sync-value')
+    expect(warn).toHaveBeenCalledWith('ipc handler was slow', expect.objectContaining({ durationMs: 400 }))
+  })
+
+
   it('records only allowlisted caller metadata for a rejection and rethrows the same value', async () => {
     const warn = vi.fn()
     const secretError = Object.assign(new Error('secret provider failure'), {

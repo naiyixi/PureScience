@@ -352,4 +352,34 @@ describe('application command router', () => {
     expect(JSON.stringify(diagnostics)).not.toContain('lease-1')
     expect(JSON.stringify(diagnostics)).not.toContain('private handler detail')
   })
+
+  it('reports a handler that took too long, and stays quiet when one does not', async () => {
+    // The instrument the packaged build's first-open hitches needed: nothing in main could say what the UI
+    // had waited for. Slow handlers carry their own duration; ordinary ones stay out of the log.
+    const diagnostics: Array<{ code: string; commandName: string; durationMs?: number }> = []
+    const router = createApplicationCommandRouter((diagnostic) => {
+      diagnostics.push(diagnostic as { code: string; commandName: string; durationMs?: number })
+    })
+    const scope = router.registrar.createScope()
+    const clock = vi.spyOn(Date, 'now')
+    scope.registerGroup(defineApplicationCommandGroup('read', [readValue] as const), {
+      'sample.read': () => Promise.resolve('ok')
+    })
+
+    // fast: no diagnostic at all
+    clock.mockReturnValueOnce(1_000).mockReturnValueOnce(1_010)
+    await expect(
+      router.dispatcher.invoke(readValue, invocation(['id-1'] as const))
+    ).resolves.toBe('ok')
+    expect(diagnostics).toEqual([])
+
+    // slow: one diagnostic, carrying the measured duration
+    clock.mockReturnValueOnce(2_000).mockReturnValueOnce(2_240)
+    await expect(
+      router.dispatcher.invoke(readValue, invocation(['id-1'] as const))
+    ).resolves.toBe('ok')
+    expect(diagnostics).toEqual([{ code: 'slow-handler', commandName: 'sample.read', durationMs: 240 }])
+
+    clock.mockRestore()
+  })
 })

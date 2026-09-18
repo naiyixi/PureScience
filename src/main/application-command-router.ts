@@ -88,11 +88,22 @@ export type ApplicationCommandDiagnosticCode =
   | 'lease-stale'
   | 'handler-rejected'
   | 'router-disposed'
+  // A handler that took longer than SLOW_HANDLER_THRESHOLD_MS. Reported (rather than every call) so the
+  // log stays readable while still answering "what did the UI wait for" — the question that the packaged
+  // build's first-open hitches raised and that nothing in main could answer before.
+  | 'slow-handler'
 
 export type ApplicationCommandDiagnostic = Readonly<{
   code: ApplicationCommandDiagnosticCode
   commandName: string
+  // Present on 'slow-handler' only: how long the handler itself took, in milliseconds.
+  durationMs?: number
 }>
+
+// Above this, a command's own handler time is worth a log line. Chosen below the 130-430 ms hitches this
+// exists to explain (so a first-open cost cannot hide) and above ordinary reads (list-catalog steady is
+// ~20 ms), so the log stays quiet when nothing is slow.
+const SLOW_HANDLER_THRESHOLD_MS = 50
 
 export type ApplicationCommandRouter = Readonly<{
   registrar: ApplicationCommandRegistrar
@@ -143,9 +154,15 @@ export const createApplicationCommandRouter = (
   const scopes: ScopeState[] = []
   let disposed = false
 
-  const report = (code: ApplicationCommandDiagnosticCode, commandName: string): void => {
+  const report = (
+    code: ApplicationCommandDiagnosticCode,
+    commandName: string,
+    durationMs?: number
+  ): void => {
     try {
-      onDiagnostic?.(Object.freeze({ code, commandName }))
+      onDiagnostic?.(
+        Object.freeze(durationMs === undefined ? { code, commandName } : { code, commandName, durationMs })
+      )
     } catch {
       // Diagnostics must never mask or replace the command result.
     }
@@ -249,8 +266,12 @@ export const createApplicationCommandRouter = (
       throw new Error('Caller lease is no longer current.')
     }
 
+    const startedAt = Date.now()
     try {
-      return (await registered.handler(invocation)) as CommandResult<typeof command>
+      const result = (await registered.handler(invocation)) as CommandResult<typeof command>
+      const durationMs = Date.now() - startedAt
+      if (durationMs >= SLOW_HANDLER_THRESHOLD_MS) report('slow-handler', command.name, durationMs)
+      return result
     } catch (error) {
       report('handler-rejected', command.name)
       throw error
