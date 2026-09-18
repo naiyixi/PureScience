@@ -53,7 +53,16 @@ export default defineConfig({
     // Lift the 5s default: the full coverage run instruments 4400+ tests across parallel workers on a
     // shared CI runner, so a fast fully-mocked test can still be CPU-starved past 5s and time out
     // spuriously. 15s absorbs that contention without masking a genuine hang (real work is far slower).
-    testTimeout: 15000,
+    //
+    // 15s turned out not to be enough either, measured on this machine (8 cores / 8 GB) at default
+    // parallelism: the full suite goes red with 12 failing files / 77 failing tests while each of those
+    // files passes in seconds when run without the swarm — 17 of the failures are real waits past 15s
+    // (worst observed: an 80s wait for a test that finishes in about a second on its own) and the other
+    // 58 are assertions cascading off them in the same files. A wait that is 80x its healthy duration is
+    // contention, not a defect, so the ceiling is 60s here — still far below any real hang, and hook
+    // timeouts get the same room (their default was 10s, which the same load also blew through).
+    testTimeout: 60000,
+    hookTimeout: 60000,
     coverage: {
       provider: 'v8',
       // text for the CI log, lcov for upload/tooling, html for local inspection.

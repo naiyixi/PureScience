@@ -35,16 +35,13 @@ v1.64.0 已发布（`477b1a9`，tag `v1.64.0`，Release 19 资产）。这份档
   - ⇒ "该拒的拒、该过的过"，**没有静默截断**。
 - **仍未覆盖**：菜单里其余项（下载产物 / 导出会话 / 删除）未逐条驱动；dev 侧未复跑这两条（pin 那条两侧都有）。
 
-## 4. 默认并行度下"全量门禁"不可信（已修 2 条，剩余已定性）
+## 4. 默认并行度下的"全量门禁" —— **已修完（2026-09-18，本批）**
 
-**已修（本轮）**：两条遍历 `src/renderer/src` 全树的用例（`session-store.test.ts > keeps production consumers on the public store facade`、`settings-store.architecture.test.ts > keeps owner imports private and consumers on the documented public store surface`）在并行下会 **`Test timed out in 15000ms`**（实测 19.8 s / 20.4 s）——**不是断言失败**（报告里打印的 `violations…` 只是超时的源码上下文，读错会以为架构边界被破坏）。两条都加了 `}, 60000)` 与具名注释。
-- **修复前**：同一 scope（28 文件）连跑 3 次 = **2 红 1 绿**；单跑该文件 5/5 绿（约 1 s）。
-- **修复后**：同一 scope 连跑 **4 次 = 4 绿（538/538）**，两条用例不再出现在任何失败列表里。
-
-**剩余（已定性，未逐条改）**：默认并行度的全量跑在该机上**仍不可能绿** —— 实测 `npx vitest run`（默认 workers，机器同时跑着常驻 headless 实例）**12 文件 / 72 例红**，种类分解：**15 条超时** + **约 40 条级联断言**（`expected "vi.fn()" to be called once, but got 0 times` / `expected undefined to be defined` / `expected '' to contain …` —— 都是 `vi.waitFor` 在 CPU 饱和下等不到）+ **2 条 `ENOTEMPTY: directory not empty`**（临时目录清理竞态）。同一份代码 `--maxWorkers=4` 全量 **0 红**。
-- **结论**：它们是**负载产物**，不是代码缺陷；但"全量门禁绿"这句话在默认并行度下不成立。
-- **机制（已加）**：`npm run test:gate` = `vitest run --maxWorkers=4`（本机 8 核 8 GB，实测 0 红 / 约 400 s）。本机全量门禁一律用它，别再靠"记得加参数"。**CI 不受影响**（CI runner 的 `Verify` 一直是绿的）。
-- **仍可做（未做，独立单元）**：给重负载套件（`WorkspaceMessageScroller.*`、`PreviewFileContent`、`runtime-service` 等）单独放宽超时，或把 worker 上限直接写进 CI 的重负载 job —— 现在这一步只覆盖"本地怎么跑"，不覆盖"CI 上换 runner 后会不会再抖"。
+- **处置前的拆解**：默认并行度全量 = **12 文件 / 77 例红**；拆开种类后只有 **17 条是真等到超时**（`Test timed out in 15000ms` ×15 + `Hook timed out in 10000ms` ×2，分布在 11 个文件），另外 **58 条是它们同文件内的级联断言**。判据：那 11 个文件各自单跑都绿；其中 5 个最重的文件**一起**跑 402 例 **11.2 s 全绿**；最极端一条在拥塞下等了 **80,028 ms** 而健康时约 **1 s**。
+- **机制（已改）**：`vitest.config.ts` 的 `testTimeout: 15000 → 60000`，并显式设 `hookTimeout: 60000`（原本 10 s 默认同样被顶穿），配置注释里带着上面的实测依据。本机门禁口径仍是 **`npm run test:gate`**（`--maxWorkers=4`）。
+- **处置后复测（同一命令/机器/代码）**：默认并行度全量 **1028 文件 / 13,870 通过 / 0 红 / EXIT=0** ⇒ 那 17 条超时是全部根因，没有残留独立缺陷。
+- **仍未做**：CI 侧重负载 job 的 worker 上限（本地这一层已覆盖"怎么跑"，CI 换 runner 后的抖动仍未覆盖）。
+- **证据位置**：`docs/evidence/2026-09-18-default-parallelism-timeouts.md`。
 
 ## 5. 无需动作，仅备忘
 
