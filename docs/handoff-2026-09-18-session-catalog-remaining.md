@@ -31,7 +31,8 @@ v1.64.0 已发布（`477b1a9`，tag `v1.64.0`，Release 19 资产）。这份档
 
 **剩余（已定性，未逐条改）**：默认并行度的全量跑在该机上**仍不可能绿** —— 实测 `npx vitest run`（默认 workers，机器同时跑着常驻 headless 实例）**12 文件 / 72 例红**，种类分解：**15 条超时** + **约 40 条级联断言**（`expected "vi.fn()" to be called once, but got 0 times` / `expected undefined to be defined` / `expected '' to contain …` —— 都是 `vi.waitFor` 在 CPU 饱和下等不到）+ **2 条 `ENOTEMPTY: directory not empty`**（临时目录清理竞态）。同一份代码 `--maxWorkers=4` 全量 **0 红**。
 - **结论**：它们是**负载产物**，不是代码缺陷；但"全量门禁绿"这句话在默认并行度下不成立。
-- **建议（未做，独立单元）**：把全量门禁固化到脚本/CI 上（worker 上限，或给重负载套件单独放宽超时）—— 现在只能靠"记得加 `--maxWorkers=4`"，这是靠记性而不是机制。
+- **机制（已加）**：`npm run test:gate` = `vitest run --maxWorkers=4`（本机 8 核 8 GB，实测 0 红 / 约 400 s）。本机全量门禁一律用它，别再靠"记得加参数"。**CI 不受影响**（CI runner 的 `Verify` 一直是绿的）。
+- **仍可做（未做，独立单元）**：给重负载套件（`WorkspaceMessageScroller.*`、`PreviewFileContent`、`runtime-service` 等）单独放宽超时，或把 worker 上限直接写进 CI 的重负载 job —— 现在这一步只覆盖"本地怎么跑"，不覆盖"CI 上换 runner 后会不会再抖"。
 
 ## 5. 无需动作，仅备忘
 
