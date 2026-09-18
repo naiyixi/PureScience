@@ -126,7 +126,7 @@ describe('session persistence IPC handlers', () => {
     }
 
     await expect(
-      loadSessionsAfterProjectRecovery(projectRecovery, sessionLoader, { warn })
+      loadSessionsAfterProjectRecovery(projectRecovery, sessionLoader, {}, { warn })
     ).resolves.toEqual({
       ...degraded,
       diagnostics: {

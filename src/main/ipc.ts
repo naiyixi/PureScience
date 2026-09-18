@@ -643,8 +643,14 @@ const createApplicationModules = async (
   // the next message. Shared by persistSessionSpecialist (stash) and saveSession (flush).
   const pendingSpecialistBindings = new PendingSessionSpecialistBindings()
   const sessionPersistenceBackend: SessionPersistenceBackend = {
-    loadAll: () =>
-      loadSessionsAfterProjectRecovery(projectDeletionCoordinator, sessionPersistenceCoordinator),
+    // Options are forwarded here too: this wrapper and the handler above are the two places the caller's
+    // opt-in to a cached catalog was being dropped on the way to the coordinator.
+    loadAll: (options) =>
+      loadSessionsAfterProjectRecovery(
+        projectDeletionCoordinator,
+        sessionPersistenceCoordinator,
+        options
+      ),
     saveSession: async (session, options) => {
       await projectDeletionCoordinator.recoverPendingDeletions()
       const created =

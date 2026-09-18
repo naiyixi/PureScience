@@ -83,6 +83,7 @@ const loadSessionMetadataAfterProjectRecovery = async (
 const loadSessionsAfterProjectRecovery = async (
   projectRecovery: ProjectDeletionRecoveryBackend,
   sessionLoader: SessionStartupLoader,
+  options: LoadAllSessionsOptions = {},
   log: Pick<Logger, 'warn'> = createLogger('session-persistence')
 ): Promise<LoadAllSessionsResult> => {
   try {
@@ -101,7 +102,7 @@ const loadSessionsAfterProjectRecovery = async (
     return withProjectDeletionRecoveryStatus(await sessionLoader.loadAllReadOnly(), false)
   }
 
-  return withProjectDeletionRecoveryStatus(await sessionLoader.loadAll(), true)
+  return withProjectDeletionRecoveryStatus(await sessionLoader.loadAll(options), true)
 }
 
 // Adapts the coordinator into small handlers that are easy to unit test.
@@ -113,7 +114,10 @@ const createSessionPersistenceHandlers = (
   // call it because Reviews belong to retained provenance.
   void reviewRepository
   return {
-    loadAll: () => repository.loadAll(),
+    // The options are forwarded, not dropped: this wrapper is where the caller's explicit opt-in to a
+    // cached catalog used to disappear (measured on the live instance — the coordinator saw `flag=undefined`
+    // while the cache was warm, so every request still paid the full load).
+    loadAll: (options) => repository.loadAll(options),
     saveSession: (session, options) =>
       options ? repository.saveSession(session, options) : repository.saveSession(session),
     updateArchive: (request) => {
