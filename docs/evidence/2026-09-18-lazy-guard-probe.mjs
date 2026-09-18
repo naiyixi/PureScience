@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/explicit-function-return-type -- a reproduction probe, driven by
+   hand from a CDP session; it is evidence, not product code, and its shapes are deliberately loose. */
 import { createRequire } from 'node:module'
 import { createHash } from 'node:crypto'
 import { readFileSync, statSync } from 'node:fs'
@@ -45,7 +47,9 @@ const main = async () => {
   await page.waitForTimeout(9000)
   steps.push({
     label: 'after reload',
-    view: await page.evaluate(() => (document.body.innerText || '').replace(/\s+/g, ' ').slice(0, 100))
+    view: await page.evaluate(() =>
+      (document.body.innerText || '').replace(/\s+/g, ' ').slice(0, 100)
+    )
   })
 
   // 1. Open session A from the Home row.
@@ -57,7 +61,11 @@ const main = async () => {
         )
         if (!row) return { missing: true }
         const rect = row.getBoundingClientRect()
-        return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2, text: (row.innerText || '').slice(0, 50) }
+        return {
+          x: rect.x + rect.width / 2,
+          y: rect.y + rect.height / 2,
+          text: (row.innerText || '').slice(0, 50)
+        }
       },
       'open A from a Home row',
       A_MATCH
@@ -72,7 +80,9 @@ const main = async () => {
     ),
     navRows: await page.evaluate(() =>
       Array.from(document.querySelectorAll('nav[aria-label="Sessions"] button')).map((button) =>
-        (button.getAttribute('aria-label') || button.innerText || '').replace(/\s+/g, ' ').slice(0, 46)
+        (button.getAttribute('aria-label') || button.innerText || '')
+          .replace(/\s+/g, ' ')
+          .slice(0, 46)
       )
     )
   })
@@ -94,7 +104,7 @@ const main = async () => {
     }
     return { finder, arg: wanted }
   }
-  const clickPinItem = (extra) => {
+  const clickPinItem = () => {
     const item = Array.from(document.querySelectorAll('[role="menuitem"]')).find((candidate) =>
       /pin|置顶|固定/i.test(candidate.innerText || '')
     )
@@ -107,7 +117,11 @@ const main = async () => {
       }
     }
     const rect = item.getBoundingClientRect()
-    return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2, text: (item.innerText || '').trim() }
+    return {
+      x: rect.x + rect.width / 2,
+      y: rect.y + rect.height / 2,
+      text: (item.innerText || '').trim()
+    }
   }
 
   // 2. Pin B while the store holds it as a summary.
@@ -134,7 +148,11 @@ const main = async () => {
         )
         if (!row) return { missing: true }
         const rect = row.getBoundingClientRect()
-        return { x: rect.x + Math.min(70, rect.width / 2), y: rect.y + rect.height / 2, text: (row.innerText || '').slice(0, 40) }
+        return {
+          x: rect.x + Math.min(70, rect.width / 2),
+          y: rect.y + rect.height / 2,
+          text: (row.innerText || '').slice(0, 40)
+        }
       },
       'open B from the sidebar',
       B_MATCH
