@@ -44,7 +44,6 @@ import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { cn } from '@/lib/utils'
 import { useComputeStore } from '@/stores/compute-store'
 import { useProjectStore } from '@/stores/project-store'
-import { useSessionStore } from '@/stores/session-store'
 import { selectFrameworkApiEndpoints, useSettingsStore } from '@/stores/settings-store'
 import type { SettingsPanelId } from './settings-navigation'
 import { useSpecialistStore } from '@/stores/specialist-store'
@@ -73,7 +72,7 @@ import { RoutinePanel } from './RoutinePanel'
 import { EndpointPanel } from './EndpointPanel'
 import { CredentialsPanel } from './CredentialsPanel'
 import { ArchivedPanel, type ArchivedView } from './ArchivedPanel'
-import { TokenUsagePanel } from './TokenUsagePanel'
+import { TokenUsagePanelContainer } from './TokenUsagePanelContainer'
 import { resolveVendorModelsUrl } from '../../../../shared/provider-registry'
 import { ProviderForm } from './ProviderForm'
 import {
@@ -324,7 +323,8 @@ const SettingsPage = forwardRef<SettingsPageHandle, SettingsPageProps>(function 
   const customServers = useSettingsStore((state) => state.customServers)
   const computeHosts = useComputeStore((state) => state.hosts)
   const projects = useProjectStore((state) => state.projects)
-  const sessions = useSessionStore((state) => state.sessions)
+  // The usage panel no longer reads the store's sessions: it fetches the full catalog when opened (see
+  // TokenUsagePanelContainer), so the store no longer needs to be subscribed to here.
   const specialistItems = useSpecialistStore((state) => state.items)
   const [formValue, setFormValue] = useState<ProviderFormValue>(() =>
     createEmptyProviderFormValue()
@@ -1203,7 +1203,9 @@ const SettingsPage = forwardRef<SettingsPageHandle, SettingsPageProps>(function 
                 ) : activePanel === 'network' ? (
                   <NetworkPanel view={networkView} onNavigate={navigateNetwork} />
                 ) : activePanel === 'usage' ? (
-                  <TokenUsagePanel sessions={sessions} projects={projects} />
+                  // The usage view reads every session's content, which the list tier does not carry, so it
+                  // fetches the full catalog when it is opened rather than aggregating from summaries.
+                  <TokenUsagePanelContainer projects={projects} />
                 ) : activePanel === 'general' ? (
                   <GeneralPanel />
                 ) : activePanel === 'remote-control' ? (
