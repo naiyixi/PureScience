@@ -214,7 +214,12 @@ const WRAPPED_COMMAND_KEYS = [
   'projectUpdate',
   'sessionDelete',
   'sessionExportConversation',
+  // Registered inside the sessions group with the rest of the durable surface, but not through the
+  // pass-through cases above: the list catalog and the single-document read are the two-tier split's
+  // own channels, and each one takes the write lease instead of forwarding its arguments.
+  'sessionListCatalog',
   'sessionLoadAll',
+  'sessionReadDocument',
   'sessionSaveManifest',
   'sessionSave',
   'uploadStageLocalFile',
@@ -243,7 +248,7 @@ const dispatchCommand = (
 }
 
 describe('Data and content application commands', () => {
-  it('owns exactly the 49 current data and content invoke channels', () => {
+  it('owns exactly the 51 current data and content invoke channels', () => {
     expect(registeredCommands()).toEqual(
       [
         'artifacts:finalize-run',
@@ -283,7 +288,9 @@ describe('Data and content application commands', () => {
         'projects:update',
         'sessions:delete-session',
         'sessions:export-conversation',
+        'sessions:list-catalog',
         'sessions:load-all',
+        'sessions:read-document',
         'sessions:save-manifest',
         'sessions:update-archive',
         'sessions:save-session',

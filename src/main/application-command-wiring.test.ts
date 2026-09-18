@@ -60,7 +60,9 @@ describe('production application command wiring', () => {
       ],
       [
         'sessionPersistenceHandlers',
-        'reviewRepository, sessionPersistenceHandlers )',
+        // The document loader sits between the review repository and the handlers: the list/document
+        // split added it, and the handlers still travel with the adapter.
+        'sessionDocumentLoader, sessionPersistenceHandlers )',
         'sessions: sessionPersistenceHandlers'
       ],
       ['artifactHandlers', 'artifactHandlers )', 'artifacts: artifactHandlers'],

@@ -170,7 +170,10 @@ describe('application command composition', () => {
     const composition = createApplicationCommandComposition(dependencies())
 
     expect(composition.localWeb.commandNames()).toEqual(expectedLocalWebCommands())
-    expect(composition.localWeb.commandNames()).toHaveLength(305)
+    // Two more than before the list/document split: sessions:list-catalog and sessions:read-document are
+    // local-Web channels, so the total moves with them. The task surface is untouched (neither channel
+    // carries a task registration); the remote Web surface moves too — see the pin below.
+    expect(composition.localWeb.commandNames()).toHaveLength(307)
   })
 
   it('partitions remote Web dispatch from fail-closed pre-dispatch rejections', async () => {
@@ -185,7 +188,10 @@ describe('application command composition', () => {
     )
 
     expect(composition.remoteWeb.commandNames()).toEqual(expectedRemoteCommands())
-    expect(composition.remoteWeb.commandNames()).toHaveLength(204)
+    // Two more as well: the same two channels install on the remote Web surface (their catalog profile is
+    // the plain Web request profile, which is mapped on both Web surfaces), so remote dispatch grows with
+    // local. The fail-closed rejection set is unchanged — neither channel is a rejection stub.
+    expect(composition.remoteWeb.commandNames()).toHaveLength(206)
     expect(composition.remoteWeb.rejectedCommandNames()).toEqual(expectedRemoteRejections())
     expect(composition.remoteWeb.rejectedCommandNames()).toHaveLength(101)
     await expect(
