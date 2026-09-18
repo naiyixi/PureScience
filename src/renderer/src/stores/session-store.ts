@@ -24,6 +24,9 @@ import {
 export {
   createInitialSessionState,
   isExternallyHydratedSession,
+  isSummaryOnlySession,
+  markSessionDocumentLoaded,
+  markSummaryOnlySession,
   toPersistedSession,
   type ActiveRun,
   type ChatMessage,

@@ -110,6 +110,14 @@ export type SessionPersistenceActions = {
 
 const externallyHydratedSessions = new WeakSet<ChatSession>()
 
+// Sessions the store holds as list-tier summaries: identity and metadata, but not the active Branch's
+// content (messages, conversationGraph, activities). They are marked here, by object identity, for the same
+// reason the externally-hydrated set is: the store saver decides what to write by comparing references, and a
+// summary differs from its durable document, so a save would happily write the summary over the real one —
+// silently truncating a conversation. The mark is dropped only when that session's document has actually been
+// read back into the store.
+const summaryOnlySessions = new WeakSet<ChatSession>()
+
 // Builds the empty in-memory state used by the app and isolated tests.
 export const createInitialSessionState = (): SessionStoreData => ({
   sessions: [],
@@ -489,3 +497,16 @@ export const createSessionPersistenceOwner = <State extends SessionStoreData>(
 
 export const isExternallyHydratedSession = (session: ChatSession): boolean =>
   externallyHydratedSessions.has(session)
+
+export const markSummaryOnlySession = (session: ChatSession): void => {
+  summaryOnlySessions.add(session)
+}
+
+// Called when a session's full document has replaced its summary. The replacement is normally a new object,
+// which is unmarked by construction; this also clears the mark when a caller reuses the object identity.
+export const markSessionDocumentLoaded = (session: ChatSession): void => {
+  summaryOnlySessions.delete(session)
+}
+
+export const isSummaryOnlySession = (session: ChatSession): boolean =>
+  summaryOnlySessions.has(session)

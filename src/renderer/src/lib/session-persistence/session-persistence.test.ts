@@ -10,6 +10,8 @@ import { toRuntimeUploadedAttachment } from '../../../../shared/uploads'
 import {
   createInitialSessionState,
   isExternallyHydratedSession,
+  markSessionDocumentLoaded,
+  markSummaryOnlySession,
   toPersistedSession,
   useSessionStore
 } from '../../stores/session-store'
@@ -317,6 +319,75 @@ describe('renderer session persistence bridge', () => {
     await save(useSessionStore.getState())
 
     expect(api.saveSession).not.toHaveBeenCalled()
+  })
+
+  // The list tier holds a summary in the store: identity and metadata, none of the active Branch's content.
+  // The saver decides what to write by comparing object references, and the summary is a different object
+  // from the document that was hydrated, so without this guard the summary would be written over the real
+  // conversation — a silent truncation. It is the reason the guard and the list-tier payload land together.
+  const replaceWithSummary = (id: string): void => {
+    useSessionStore.setState((state) => ({
+      sessions: state.sessions.map((session) => {
+        if (session.id !== id) return session
+        const summary = {
+          ...session,
+          messages: [],
+          conversationGraph: undefined,
+          activities: [],
+          activityGroups: []
+        }
+        markSummaryOnlySession(summary)
+        return summary
+      })
+    }))
+  }
+
+  it('never persists a session the store holds only as a summary', async () => {
+    const api = createApi()
+    useSessionStore.getState().hydrateSessions([createPersistedSession({ projectId: 'project-a' })])
+    const save = createStoreSaver(api, useSessionStore.getState())
+
+    replaceWithSummary('session-1')
+
+    await save(useSessionStore.getState())
+
+    expect(api.saveSession).not.toHaveBeenCalled()
+  })
+
+  it('does not let a forced flush write a summary either', async () => {
+    // Forcing exists so a targeted flush can override the "not hydrated here" rule. A summary is not that
+    // case: it has no content to write, so forcing it is precisely how a truncated session would land.
+    const api = createApi()
+    useSessionStore.getState().hydrateSessions([createPersistedSession({ projectId: 'project-a' })])
+    const save = createStoreSaver(api, useSessionStore.getState())
+
+    replaceWithSummary('session-1')
+
+    await save(useSessionStore.getState(), { forceTargets: new Set(['session:session-1']) })
+
+    expect(api.saveSession).not.toHaveBeenCalled()
+  })
+
+  it('persists the session again once its document has been read back', async () => {
+    const api = createApi()
+    useSessionStore.getState().hydrateSessions([createPersistedSession({ projectId: 'project-a' })])
+    const save = createStoreSaver(api, useSessionStore.getState())
+
+    replaceWithSummary('session-1')
+    await save(useSessionStore.getState())
+    expect(api.saveSession).not.toHaveBeenCalled()
+
+    // The document arrived: the mark is lifted and the session is writable again. Without this the guard
+    // would be a permanent mute rather than a boundary.
+    const restored = useSessionStore
+      .getState()
+      .sessions.find((session) => session.id === 'session-1')
+    if (!restored) throw new Error('session-1 missing')
+    markSessionDocumentLoaded(restored)
+
+    await save(useSessionStore.getState(), { forceTargets: new Set(['session:session-1']) })
+
+    expect(api.saveSession).toHaveBeenCalled()
   })
 
   it('does not overwrite the last durable graph after terminal graph synchronization fails', async () => {

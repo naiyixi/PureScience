@@ -12,6 +12,7 @@ import type {
 import { PENDING_UPLOAD_SESSION_ID } from '../../../../shared/uploads'
 import {
   isExternallyHydratedSession,
+  isSummaryOnlySession,
   toPersistedSession,
   useSessionStore
 } from '../../stores/session-store'
@@ -328,6 +329,11 @@ const createStoreSaver = (
       if (
         (previousById.get(session.id) !== session || isForced) &&
         (isForced || !isExternallyHydratedSession(session)) &&
+        // Never write a session the store holds only as a summary: a summary carries no messages, graph or
+        // activities, so persisting it would truncate the durable conversation down to its metadata. Unlike
+        // the externally-hydrated case this is deliberately not bypassable by a forced flush — a forced
+        // flush is exactly the path by which a summary would reach the disk.
+        !isSummaryOnlySession(session) &&
         !hasStagedUploads(session) &&
         // A terminal graph-integrity failure keeps the renderer responsive, but the flat projection
         // is no longer proven to match the immutable Branch graph. Preserve the last durable copy.
