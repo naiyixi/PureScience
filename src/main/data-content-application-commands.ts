@@ -172,6 +172,12 @@ const dataContentApplicationCommands = Object.freeze({
   artifactListProjectFiles: artifactCommand('artifacts:list-project-files', 'listProjectFiles'),
   artifactOpenFile: artifactCommand('artifacts:open-file', 'openFile'),
   artifactReadPreview: artifactCommand('artifacts:read-preview', 'readPreview'),
+  // Availability for many paths in one round-trip: a transcript card asked this question one file at a time,
+  // and each ask resolved (and checksummed) the whole file to answer yes/no.
+  artifactProbeAvailability: artifactCommand(
+    'artifacts:probe-availability',
+    'probeAvailability'
+  ),
   artifactReconcilePending: artifactCommand(
     'artifacts:reconcile-pending',
     'reconcilePendingArtifacts'
@@ -284,6 +290,7 @@ const dataContentApplicationCommandGroups = Object.freeze([
     dataContentApplicationCommands.artifactGetVersionReview,
     dataContentApplicationCommands.artifactListProjectFiles,
     dataContentApplicationCommands.artifactOpenFile,
+    dataContentApplicationCommands.artifactProbeAvailability,
     dataContentApplicationCommands.artifactReadPreview,
     dataContentApplicationCommands.artifactReconcilePending,
     dataContentApplicationCommands.artifactReplayVersion,
@@ -423,6 +430,8 @@ const registerDataContentApplicationCommands = (
         return dependencies.artifacts.openFile(invocation.args[0])
       },
       'artifacts:read-preview': ({ args }) => dependencies.artifacts.readPreview(args[0]),
+      'artifacts:probe-availability': ({ args }) =>
+        dependencies.artifacts.probeAvailability(args[0]),
       'artifacts:reconcile-pending': ({ args }) =>
         dependencies.artifacts.reconcilePendingArtifacts(args[0]),
       'artifacts:replay-version': ({ args }) => dependencies.artifacts.replayVersion(args[0]),

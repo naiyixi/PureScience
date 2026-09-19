@@ -149,6 +149,28 @@ export type ArtifactPreviewResult = {
   nextOffset?: number
 }
 
+// One question, asked for many files at once: "is this still on disk?" Every artifact card in a transcript
+// used to ask it one file at a time, and each ask paid for a full content resolve (a query, the whole file
+// read, and its checksum) to answer a yes/no. Batched per session, the ids resolve in one query and only a
+// stat per file remains — and the caller gets the answer per path it asked about.
+export type ProbeArtifactAvailabilityItem = {
+  path: string
+  source: 'artifact' | 'upload' | 'notebook-input'
+  projectId?: string
+  sessionId?: string
+}
+
+export type ProbeArtifactAvailabilityRequest = {
+  items: ProbeArtifactAvailabilityItem[]
+}
+
+export type ProbeArtifactAvailabilityResult = {
+  /** The requested paths that could not be resolved to a file that is present. */
+  unavailable: string[]
+}
+
+export const MAX_ARTIFACT_AVAILABILITY_PATHS = 200
+
 // Repository request that moves pending run files into a durable message directory.
 export type MovePendingRunArtifactsRequest = {
   projectName: string

@@ -4038,6 +4038,46 @@ class ArtifactProvenanceRepository {
     })
   }
 
+  // Where many versions live, answered in one query. `resolveVersionContent` is the wrong tool for an
+  // availability question: it reads the whole file and verifies its checksum, so a transcript asking "is this
+  // card's file still there?" paid for the content of every card to answer a yes/no. This returns the resolved
+  // path per version id and reads nothing; the caller stats the paths, so the file system carries that part
+  // and the engine sees one query for the whole batch.
+  async resolveVersionPaths(request: {
+    projectId: string
+    versionIds: readonly string[]
+  }): Promise<Map<string, string>> {
+    if (!Array.isArray(request?.versionIds)) {
+      throw new Error('Artifact Version ids must be an array.')
+    }
+    const projectId = assertSafeSegment(request.projectId, 'project id')
+    const versionIds = [
+      ...new Set(request.versionIds.map((versionId) => assertSafeSegment(versionId, 'version id')))
+    ]
+    if (versionIds.length === 0) return new Map()
+    if (versionIds.length > MAX_ARTIFACT_VERSION_DESCRIPTOR_IDS) {
+      throw new Error(
+        `At most ${MAX_ARTIFACT_VERSION_DESCRIPTOR_IDS} Artifact Version ids may be resolved at once.`
+      )
+    }
+
+    const client = await this.options.getClient()
+    const versions = await client.artifactVersion.findMany({
+      where: {
+        id: { in: versionIds },
+        state: { in: ['pending', 'finalized'] },
+        artifact: { is: { projectId } }
+      },
+      select: { id: true, contentStorageKey: true }
+    })
+    return new Map(
+      versions.map((version) => [
+        version.id,
+        resolveStorageKey(this.options.storageRoot, version.contentStorageKey)
+      ])
+    )
+  }
+
   async getVersionExecution(
     request: GetArtifactVersionProvenanceRequest
   ): Promise<Pick<ArtifactVersionProvenance, 'execution'>> {

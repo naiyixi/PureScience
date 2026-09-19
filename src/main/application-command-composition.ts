@@ -117,11 +117,11 @@ const GROUP_COUNT = 36
 // task surface are untouched because neither channel carries a remote flag. project-files:list-kinds
 // moved internal / local Web / remote dispatch by one each (it carries no surface flag, like the
 // per-project read it replaces).
-const INTERNAL_COMMAND_COUNT = 310
-const LOCAL_WEB_COMMAND_COUNT = 308
+const INTERNAL_COMMAND_COUNT = 311
+const LOCAL_WEB_COMMAND_COUNT = 309
 // Two more as well: the same two channels are mapped, so they count on both the local and the remote Web
 // surfaces. The rejected (fail-closed) and task counts are untouched.
-const REMOTE_WEB_COMMAND_COUNT = 207
+const REMOTE_WEB_COMMAND_COUNT = 208
 const REMOTE_REJECTED_COMMAND_COUNT = 101
 const TASK_COMMAND_COUNT = 11
 

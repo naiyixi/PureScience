@@ -42,6 +42,8 @@ import type {
   ListProjectArtifactsRequest,
   OpenArtifactFileRequest,
   ReadArtifactPreviewRequest,
+  ProbeArtifactAvailabilityRequest,
+  ProbeArtifactAvailabilityResult,
   ReconcilePendingArtifactsRequest,
   ResolveArtifactVersionDescriptorsRequest,
   WriteUserEditedVersionRequest
@@ -883,6 +885,9 @@ export interface PureScienceAPI {
     reconcilePendingArtifacts(request: ReconcilePendingArtifactsRequest): Promise<ArtifactFile[]>
     openFile(request: OpenArtifactFileRequest): Promise<void>
     readPreview(request: ReadArtifactPreviewRequest): Promise<ArtifactPreviewResult>
+    probeAvailability(
+      request: ProbeArtifactAvailabilityRequest
+    ): Promise<ProbeArtifactAvailabilityResult>
     getLineage(request: GetArtifactLineageRequest): Promise<ArtifactLineageProvenance | undefined>
     getVersionProvenance(
       request: GetArtifactVersionProvenanceRequest

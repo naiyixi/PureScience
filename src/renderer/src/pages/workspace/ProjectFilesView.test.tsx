@@ -2799,6 +2799,10 @@ describe('ProjectFilesView', () => {
       code: 'ENOENT'
     })
     ;(window.api.artifacts.readPreview as ReturnType<typeof vi.fn>).mockRejectedValue(enoent)
+    // The panel tile asks the batched availability endpoint now; this is the answer it is given.
+    ;(window.api.artifacts as unknown as { probeAvailability: unknown }).probeAvailability = vi
+      .fn()
+      .mockResolvedValue({ unavailable: ['/workspace/gone.png'] })
 
     // Rendered under StrictMode: the existence probe must survive the dev double-invoke (its first
     // effect pass is canceled), which a synchronous path-claim would break.
@@ -2825,6 +2829,9 @@ describe('ProjectFilesView', () => {
     await act(async () => {
       await Promise.resolve()
       await Promise.resolve()
+      await Promise.resolve()
+      // The availability answer is batched per tick, so it arrives on a timer turn.
+      await new Promise((resolve) => setTimeout(resolve, 0))
       await Promise.resolve()
     })
 
@@ -2857,6 +2864,10 @@ describe('ProjectFilesView', () => {
         truncated: false
       })
     })
+    // Availability is asked once for the whole rendered set rather than once per row.
+    const probeAvailability = vi.fn().mockResolvedValue({ unavailable: [] })
+    ;(window.api.artifacts as unknown as { probeAvailability: unknown }).probeAvailability =
+      probeAvailability
     vi.mocked(window.api.projectFiles.getOverview).mockResolvedValue({
       totalCount: uploads.length,
       uploadCount: uploads.length,
@@ -2889,7 +2900,13 @@ describe('ProjectFilesView', () => {
       await new Promise((resolve) => setTimeout(resolve, 20))
     })
 
-    expect(window.api.uploads.readPreview).toHaveBeenCalledTimes(uploads.length)
+    const probedPaths = probeAvailability.mock.calls.flatMap(
+      (call) =>
+        (call[0] as { items: Array<{ path: string }> }).items.map((item) => (item.path)) as string[]
+    )
+    // The set is asked for in batches (one per render tick), never once per row — that is the change.
+    expect(probeAvailability.mock.calls.length).toBeLessThanOrEqual(2)
+    expect(new Set(probedPaths)).toEqual(new Set(uploads.map((upload) => upload.path)))
     expect(container.querySelectorAll('img[alt^="Preview of upload-"]')).toHaveLength(
       uploads.length
     )

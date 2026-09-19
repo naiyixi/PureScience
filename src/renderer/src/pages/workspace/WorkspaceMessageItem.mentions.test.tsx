@@ -272,7 +272,11 @@ describe('WorkspaceMessageItem missing artifact badge', () => {
         acquire: vi.fn().mockRejectedValue(enoent),
         release: vi.fn().mockResolvedValue(undefined)
       },
-      artifacts: { readPreview: vi.fn().mockRejectedValue(enoent) }
+      artifacts: {
+        readPreview: vi.fn().mockRejectedValue(enoent),
+        // The badge now comes from the batched availability answer, not from a per-card preview read.
+        probeAvailability: vi.fn().mockResolvedValue({ unavailable: ['/p/gone.png'] })
+      }
     }
 
     const message = createMessage({ id: 'm-assistant', role: 'agent', content: 'Done' })
@@ -307,6 +311,9 @@ describe('WorkspaceMessageItem missing artifact badge', () => {
     await act(async () => {
       await Promise.resolve()
       await Promise.resolve()
+      await Promise.resolve()
+      // The availability answer is batched per tick, so it arrives on a timer turn.
+      await new Promise((resolve) => setTimeout(resolve, 0))
       await Promise.resolve()
     })
 

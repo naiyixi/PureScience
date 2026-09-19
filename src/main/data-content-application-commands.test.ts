@@ -73,6 +73,7 @@ const createDependencies = () => {
     reconcilePendingArtifacts: vi.fn(async () => []),
     openFile: vi.fn(async () => undefined),
     readPreview: vi.fn(async () => ({ content: '', encoding: 'utf8', size: 0, truncated: false })),
+    probeAvailability: vi.fn(async () => ({ unavailable: [] })),
     getLineage: vi.fn(async () => undefined),
     getVersionProvenance: vi.fn(),
     getVersionExecution: vi.fn(),
@@ -249,7 +250,7 @@ const dispatchCommand = (
 }
 
 describe('Data and content application commands', () => {
-  it('owns exactly the 52 current data and content invoke channels', () => {
+  it('owns exactly the 53 current data and content invoke channels', () => {
     expect(registeredCommands()).toEqual(
       [
         'artifacts:finalize-run',
@@ -262,6 +263,7 @@ describe('Data and content application commands', () => {
         'artifacts:get-version-review',
         'artifacts:list-project-files',
         'artifacts:open-file',
+        'artifacts:probe-availability',
         'artifacts:read-preview',
         'artifacts:reconcile-pending',
         'artifacts:replay-version',
@@ -376,6 +378,11 @@ describe('Data and content application commands', () => {
         key: 'artifactListProjectFiles',
         args: [request('artifact-list')],
         owner: deps.artifacts.listProjectFiles
+      },
+      {
+        key: 'artifactProbeAvailability',
+        args: [request('artifact-availability')],
+        owner: deps.artifacts.probeAvailability
       },
       {
         key: 'artifactReadPreview',

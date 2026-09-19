@@ -4,11 +4,15 @@ import { ipcMainHandle } from '../ipc-handler-registry'
 
 import {
   ARTIFACT_OWNERSHIP_PERSISTENCE_RACE,
+  MAX_ARTIFACT_AVAILABILITY_PATHS,
   type ArtifactFile,
   type ArtifactPreviewResult,
   type FinalizeRunArtifactsResult,
+  type ProbeArtifactAvailabilityRequest,
+  type ProbeArtifactAvailabilityResult,
   type ResolveArtifactVersionDescriptorsRequest
 } from '../../shared/artifacts'
+import { stat } from 'node:fs/promises'
 import type {
   ArtifactLineageProvenance,
   ArtifactVersionDescriptor,
@@ -56,6 +60,9 @@ type ArtifactHandlers = {
   reconcilePendingArtifacts: (request: ReconcilePendingArtifactsRequest) => Promise<ArtifactFile[]>
   openFile: (request: OpenArtifactFileRequest) => Promise<void>
   readPreview: (request: ReadArtifactPreviewRequest) => Promise<ArtifactPreviewResult>
+  probeAvailability: (
+    request: ProbeArtifactAvailabilityRequest
+  ) => Promise<ProbeArtifactAvailabilityResult>
   getLineage: (request: GetArtifactLineageRequest) => Promise<ArtifactLineageProvenance | undefined>
   writeUserEditedVersion: (request: WriteUserEditedVersionRequest) => Promise<ArtifactFile>
   getVersionProvenance: (
@@ -104,6 +111,7 @@ type ArtifactHandlerDependencies = {
     | 'getVersionReview'
     | 'resolveVersionDescriptors'
     | 'resolveVersionContent'
+    | 'resolveVersionPaths'
     | 'listUnpublishedProjectVersions'
   >
   codeReconstruction?: {
@@ -219,6 +227,75 @@ const createArtifactHandlers = (
       if (!dependencies.provenance) throw new Error('Artifact Provenance is not configured.')
       const { path } = await dependencies.provenance.resolveVersionContent(versionIdentity)
       return readBoundedManagedFilePreview(path, request, 'Invalid artifact preview encoding.')
+    },
+    probeAvailability: async (request) => {
+      const items = Array.isArray(request?.items) ? request.items : []
+      // Valid entries first, then dedupe by path: a malformed duplicate must not evict a good one.
+      const managedSources = new Set(['artifact', 'upload', 'notebook-input'])
+      const valid = items.filter(
+        (item): item is (typeof items)[number] =>
+          typeof item?.path === 'string' &&
+          item.path.length > 0 &&
+          managedSources.has(item.source)
+      )
+      const unique = [...new Map(valid.map((item) => [item.path, item])).values()]
+      if (unique.length > MAX_ARTIFACT_AVAILABILITY_PATHS) {
+        throw new Error(`At most ${MAX_ARTIFACT_AVAILABILITY_PATHS} paths may be probed at once.`)
+      }
+      if (unique.length === 0) return { unavailable: [] }
+
+      // File-system path per request path. Locators (what a transcript card carries) resolve for the whole
+      // batch in one query and read nothing; managed paths are resolved by the existing path check, which
+      // touches no database at all.
+      const resolved = new Map<string, string>()
+      const locatorsByProject = new Map<string, Array<{ path: string; versionId: string }>>()
+      for (const item of unique) {
+        const identity = parseArtifactVersionLocator(item.path)
+        if (!identity) {
+          try {
+            resolved.set(item.path, await repository.resolveManagedFilePath({ path: item.path }))
+          } catch {
+            // Unresolvable is an answer, not an error: the caller is asking whether it exists.
+          }
+          continue
+        }
+        const bucket = locatorsByProject.get(identity.projectId) ?? []
+        bucket.push({ path: item.path, versionId: identity.versionId })
+        locatorsByProject.set(identity.projectId, bucket)
+      }
+      if (locatorsByProject.size > 0) {
+        if (!dependencies.provenance?.resolveVersionPaths) {
+          throw new Error('Artifact Provenance is not configured.')
+        }
+        for (const [projectId, entries] of locatorsByProject) {
+          const paths = await dependencies.provenance.resolveVersionPaths({
+            projectId,
+            // Many cards can point at the same version; the id travels once.
+            versionIds: [...new Set(entries.map((entry) => entry.versionId))]
+          })
+          for (const entry of entries) {
+            const filePath = paths.get(entry.versionId)
+            if (filePath) resolved.set(entry.path, filePath)
+          }
+        }
+      }
+
+      const missing = new Set<string>()
+      await Promise.all(
+        unique.map(async (item) => {
+          const filePath = resolved.get(item.path)
+          if (!filePath) {
+            missing.add(item.path)
+            return
+          }
+          const present = await stat(filePath)
+            .then((stats) => stats.isFile())
+            .catch(() => false)
+          if (!present) missing.add(item.path)
+        })
+      )
+      // Answered in the order they were asked, so a caller can map the result back position by position.
+      return { unavailable: unique.map((item) => item.path).filter((path) => missing.has(path)) }
     },
     getLineage: (request) => {
       if (!dependencies.provenance) throw new Error('Artifact Provenance is not configured.')
@@ -419,6 +496,7 @@ const registerArtifactIpcHandlers = (
     | 'getVersionReview'
     | 'resolveVersionDescriptors'
     | 'resolveVersionContent'
+    | 'resolveVersionPaths'
     | 'listUnpublishedProjectVersions'
   >,
   withSessionMutation?: ArtifactHandlerDependencies['withSessionMutation'],
@@ -460,6 +538,10 @@ const registerArtifactIpcHandlers = (
   )
   ipcMainHandle('artifacts:read-preview', (_event, request: ReadArtifactPreviewRequest) =>
     handlers.readPreview(request)
+  )
+  ipcMainHandle(
+    'artifacts:probe-availability',
+    (_event, request: ProbeArtifactAvailabilityRequest) => handlers.probeAvailability(request)
   )
   ipcMainHandle('artifacts:get-lineage', (_event, request: GetArtifactLineageRequest) =>
     handlers.getLineage(request)
