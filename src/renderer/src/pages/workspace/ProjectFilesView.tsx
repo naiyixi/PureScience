@@ -36,7 +36,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { formatRelativeTime } from '@/lib/format-relative-time'
-import { createRequestLimiter, type RequestLimiter } from '@/lib/request-limiter'
 import { cn, formatByteSize } from '@/lib/utils'
 import { useNavigationStore } from '@/stores/navigation-store'
 import { AnnotationDialog } from './AnnotationDialog'
@@ -316,10 +315,6 @@ const useProjectFilePreviews = (
 ): ProjectFilePreviewState => {
   const [filePreviews, setFilePreviews] = useState<ProjectFilePreviewState>({})
   const attemptedCacheKeyByIdRef = useRef(new Map<string, string>())
-  // Opening a folder with many files asks for every missing preview at once; each read is an engine query plus
-  // a file read in main, and that engine queues rather than parallelises, so the batch is bounded like the
-  // Files page requests are.
-  const previewLimiterRef = useRef<RequestLimiter>(createRequestLimiter(4))
 
   useEffect(() => {
     const activeCacheKeys = new Map(
@@ -356,9 +351,10 @@ const useProjectFilePreviews = (
       attemptedCacheKeys.set(target.id, target.cacheKey)
     }
 
-    void Promise.all(
-      missingTargets.map((target) => previewLimiterRef.current(() => previewReader(target)))
-    ).then((previews) => {
+    // Every missing preview goes through the keyed reader above, which already caps how many of these reads
+    // are in flight (PREVIEW_READ_CONCURRENCY) — measured on a 31-artifact project: peak 4 in flight with and
+    // without a second limiter here, so a second one only adds coupling.
+    void Promise.all(missingTargets.map(previewReader)).then((previews) => {
       completed = true
       if (canceled) return
       setFilePreviews((current) => mergeProjectFilePreviews(current, previews, protectedIds))

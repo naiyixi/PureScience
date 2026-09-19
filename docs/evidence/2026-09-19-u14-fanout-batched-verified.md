@@ -156,7 +156,7 @@ CDP 读真实 DOM（`[class*="rounded-[5px]"]`）：
 
 **顺带修掉一个真缺陷**：门禁暴露出 `createRequestLimiter` 在任务**同步抛错或返回非 promise** 时**永不归还槽位**（四次之后饿死后续所有读）。已修（`try { started = Promise.resolve(task()) } catch { 释放槽位 }`）并补用例。这个缺陷在 `request-limiter` 里一直存在，只是以前只在文件面板的批读路径上、没被触发。
 
-**§八 里那两把闸的最终处置**：`ProjectFilesView` 的预览批次闸**保留**（它是"一次 Promise.all 一批"的批读，耦合可接受，且 `fc83649` 全量门禁已绿）；`artifact-file-icon` 的缩略图闸**撤回** —— 它同样是"每行各自一个读"，有同样的耦合风险，而且实测在这条驱动里**从未被走到**（`mb=262144` 计数为 0），留着只是没有证据的复杂度。
+**§八 里那两把闸的最终处置**：`artifact-file-icon` 的缩略图闸**撤回**（"每行各自一个读"，有耦合风险，且实测在这条驱动里**从未被走到**，`mb=262144` 计数为 0）；`ProjectFilesView` 的预览批次闸**于 2026-09-19 一并撤除** —— 按调用者指纹拆分的 A/B 显示**有闸/无闸峰值逐项相同**，而面板的瓦片是走 `preview-resources:acquire`（各 10 次、峰值 4），根因是它的预览读取器**一直有上限**（`createProjectFilePreviewReader(…, PREVIEW_READ_CONCURRENCY=4)` → `createKeyedRequestReader`）。也就是说这两处扇出**都不是未加闸的**，`lib/request-limiter` 只保留在真正无闸的调用点（文件索引 hook）。详见 `docs/handoff-2026-09-19-fanout-remaining.md` §三。
 
 ### 9.4 仍未取到的数字
 

@@ -16,11 +16,14 @@
 - **现状**：✅ 已复测。产物 `dist/mac-arm64/PureScience.app`（1.64.1 / 源码 `433a015`）+ **打包布局语料** + 沙箱根，结果：存储首读 **1 ms（pending）→ 20 s 后 7.36 GB / 5 类**、chip **177/16**、四个慢读仪器**全 0**；隔离由"窗口内真实根零写入"证明。
 - **仍存在的分层**：IPC **调用计数**（52→1、40→0）依赖临时追踪仪，**打包版拿不到**；这部分结论仍以 dev 构建为准，已在该档 §三写明。
 
-## 三、`ProjectFilesView` 预览批次闸：保留但未取得收益证据
+## 三、`ProjectFilesView` 预览批次闸：**已撤除（多余）**，有实测为证
 
-- **现状**：`Promise.all(missingTargets.map(previewReader))` 已接共享限流器（`lib/request-limiter`，上限 4），但真机 A/B（有闸/无闸）**逐项相同**（`read-preview` 84 次、峰值 19）—— 说明该驱动没有让它成为瓶颈。
-- **保留理由**：它在代码上确实是"一次发起 N 个读"，按机制迟早撞深队列；且有用例覆盖、只改发出顺序。
-- **要闭合需要**：造出"一次打开几十个文件的大文件夹"的驱动（本轮的驱动只点开 3 行），拿到有闸/无闸的峰值差；若无差则按"审计归档"撤掉，别留着当装饰。
+- **原判断（错）**：审计认为 `Promise.all(missingTargets.map(previewReader))` 是"未加闸的扇出"，于是在 `fc83649` 给它加了一层共享限流器。
+- **实测（2026-09-19，按调用者指纹拆分的并发探针）**：在产物最密集的项目（31 产物、grid 视图、全部展开）上打开文件面板，**有闸与无闸的峰值并发逐项相同**；而且面板的瓦片**根本不走 `read-preview`**（它走 `preview-resources:acquire`，两次各 10 次、峰值 4）。
+- **根因**：面板的预览读取器本来就是**键控限流队列**——`createProjectFilePreviewReader(read, maxConcurrency = PREVIEW_READ_CONCURRENCY /* = 4 */)` → `createKeyedRequestReader`（`project-file-preview-queue.ts`）。也就是说这条扇出**一直有上限**，我加的第二层只带来耦合（一条悬挂读会占住槽位）。
+- **处置**：撤除该层（`ProjectFilesView` 恢复 `Promise.all(missingTargets.map(previewReader))`，并在原处留注释写明"键控读取器已经有上限 + 实测峰值 4"）。`lib/request-limiter` 与其 5 条用例**保留**（文件索引 hook 仍在用它，且它此前零用例）。
+- **教训（写进技能）**：给"扇出"加闸之前先确认**它是不是已经有闸**（找读取器/队列层），否则会加出纯耦合的第二层。
+
 
 ## 四、面板 `pending` 的其余消费者（已核对，无遗留）
 
