@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
+import { createRequestLimiter } from '@/lib/request-limiter'
 
 import { getFileExtension, getImageMimeTypeForExtension } from '../preview-support'
 
@@ -24,6 +25,13 @@ type ArtifactFileIconProps = {
 
 // Keep the per-row thumbnail read tiny; the popup only needs a small preview image.
 const THUMBNAIL_MAX_BYTES = 256 * 1024
+
+// Every row with an image renders one thumbnail read, and a list is rendered all at once: measured with the
+// per-channel concurrency trace, opening the Files panel on the project with the most artifacts put 19
+// read-preview calls in flight at the same time, all of them landing in the same main-process engine queue
+// (which waits rather than parallelises). The bound is process-wide on purpose — it is about main, not about
+// one list.
+const thumbnailReadLimiter = createRequestLimiter(4)
 
 // Mirrors isImageArtifact: an image/* mime type or a known image extension.
 const isImageFile = (name: string, mimeType?: string): boolean =>
@@ -80,7 +88,9 @@ const ArtifactThumbnail = ({
     const readPreview =
       source === 'upload' ? window.api.uploads.readPreview : window.api.artifacts.readPreview
 
-    void readPreview({ path, maxBytes: THUMBNAIL_MAX_BYTES, encoding: 'base64' })
+    void thumbnailReadLimiter(() =>
+      readPreview({ path, maxBytes: THUMBNAIL_MAX_BYTES, encoding: 'base64' })
+    )
       .then((preview) => {
         if (canceled) return
         const mime = mimeType || getImageMimeTypeForExtension(getFileExtension(name)) || 'image/png'
