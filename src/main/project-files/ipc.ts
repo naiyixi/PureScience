@@ -5,7 +5,9 @@ import type {
   ArtifactGroupPage,
   GetProjectFilesOverviewRequest,
   ListArtifactGroupsRequest,
+  ListProjectFileKindsRequest,
   ListProjectFilesRequest,
+  ProjectFileKindsSummary,
   ProjectFilesOverview,
   ProjectFilesPage,
   SearchArtifactsRequest,
@@ -15,6 +17,7 @@ import type {
 type ProjectFilesQueryRepository = {
   getOverview(request: GetProjectFilesOverviewRequest): Promise<ProjectFilesOverview>
   listFiles(request: ListProjectFilesRequest): Promise<ProjectFilesPage>
+  listKinds(request: ListProjectFileKindsRequest): Promise<ProjectFileKindsSummary[]>
   listArtifactGroups(request: ListArtifactGroupsRequest): Promise<ArtifactGroupPage>
   searchArtifacts(request: SearchArtifactsRequest): Promise<SearchArtifactsResult>
 }
@@ -72,6 +75,7 @@ const timedRead = async <Result>(
 type ProjectFilesHandlers = {
   getOverview(request: GetProjectFilesOverviewRequest): Promise<ProjectFilesOverview>
   listFiles(request: ListProjectFilesRequest): Promise<ProjectFilesPage>
+  listKinds(request: ListProjectFileKindsRequest): Promise<ProjectFileKindsSummary[]>
   listArtifactGroups(request: ListArtifactGroupsRequest): Promise<ArtifactGroupPage>
   searchArtifacts(request: SearchArtifactsRequest): Promise<SearchArtifactsResult>
   repairIndex(request: { projectId: string }): Promise<void>
@@ -88,6 +92,10 @@ const createProjectFilesHandlers = (
     timedRead('getOverview', recoveryBackend, () => repository.getOverview(request)),
   listFiles: (request) =>
     timedRead('listFiles', recoveryBackend, () => repository.listFiles(request)),
+  // The Home page reads one kind list per project; batching it is what keeps that fan-out off the shared
+  // engine queue, so this read goes through the same recovery gate and the same slow-read instrument.
+  listKinds: (request) =>
+    timedRead('listKinds', recoveryBackend, () => repository.listKinds(request)),
   listArtifactGroups: (request) =>
     timedRead('listArtifactGroups', recoveryBackend, () => repository.listArtifactGroups(request)),
   searchArtifacts: (request) =>
@@ -115,6 +123,9 @@ const registerProjectFilesIpcHandlers = (
   )
   ipcMainHandle('project-files:list-files', (_event, request: ListProjectFilesRequest) =>
     handlers.listFiles(request)
+  )
+  ipcMainHandle('project-files:list-kinds', (_event, request: ListProjectFileKindsRequest) =>
+    handlers.listKinds(request)
   )
   ipcMainHandle(
     'project-files:list-artifact-groups',

@@ -33,6 +33,29 @@ vi.mock('electron', () => ({
   }
 }))
 
+// Both ports are stubbed from one place: a new repository method is then one edit here, instead of one per
+// literal below (the count of literals is what made the earlier attempt insert a duplicate and miss a case).
+const createRepository = (
+  overrides: Partial<ProjectFilesQueryRepository> = {}
+): ProjectFilesQueryRepository => ({
+  getOverview: vi.fn(),
+  listFiles: vi.fn(),
+  listKinds: vi.fn(),
+  listArtifactGroups: vi.fn(),
+  searchArtifacts: vi.fn(),
+  ...overrides
+})
+
+const createHandlers = (overrides: Partial<ProjectFilesHandlers> = {}): ProjectFilesHandlers => ({
+  getOverview: vi.fn(),
+  listFiles: vi.fn(),
+  listKinds: vi.fn(),
+  listArtifactGroups: vi.fn(),
+  searchArtifacts: vi.fn(),
+  repairIndex: vi.fn(),
+  ...overrides
+})
+
 const invoke = (channel: string, payload: unknown): unknown =>
   handlers.get(channel)!(undefined, payload)
 
@@ -43,12 +66,7 @@ describe('project files read timing', () => {
     const listFiles = vi.fn(async () => ({ items: [], nextCursor: undefined, totalCount: 0 }))
     const recoverPendingDeletions = vi.fn(async () => undefined)
     const handlersWithTiming = createProjectFilesHandlers(
-      {
-        getOverview: vi.fn(),
-        listFiles,
-        listArtifactGroups: vi.fn(),
-        searchArtifacts: vi.fn()
-      } as never,
+      createRepository({ listFiles } as never),
       { repairProjectFiles: vi.fn() } as never,
       { recoverPendingDeletions } as never
     )
@@ -76,7 +94,7 @@ describe('project files read timing', () => {
 })
 
 describe('project files IPC handlers', () => {
-  it('routes overview and layered page requests through one repository', async () => {
+  it('routes overview, layered page and batched kind requests through one repository', async () => {
     const overview = {
       totalCount: 3,
       uploadCount: 1,
@@ -86,17 +104,19 @@ describe('project files IPC handlers', () => {
     }
     const filePage = { items: [], totalCount: 1 }
     const groupPage = { items: [], totalCount: 1 }
+    const kindSummaries = [{ projectId: 'project-1', kinds: ['MD'] }]
     const artifactSearch = {
       primary: { items: [], totalCount: 0 },
       other: [],
       isIndexComplete: true
     }
-    const repository = {
+    const repository = createRepository({
       getOverview: vi.fn().mockResolvedValue(overview),
       listFiles: vi.fn().mockResolvedValue(filePage),
+      listKinds: vi.fn().mockResolvedValue(kindSummaries),
       listArtifactGroups: vi.fn().mockResolvedValue(groupPage),
       searchArtifacts: vi.fn().mockResolvedValue(artifactSearch)
-    }
+    })
     const handlers = createProjectFilesHandlers(
       repository,
       {
@@ -111,6 +131,7 @@ describe('project files IPC handlers', () => {
       collection: { kind: 'uploads' as const },
       limit: 24
     }
+    const kindsRequest = { projectIds: ['project-1', 'project-2'] }
     const groupsRequest = { projectId: 'project-1', limit: 10 }
     const artifactSearchRequest = {
       primaryProjectId: 'project-1',
@@ -126,21 +147,18 @@ describe('project files IPC handlers', () => {
     }
     await expect(handlers.getOverview(overviewRequest)).resolves.toBe(overview)
     await expect(handlers.listFiles(filesRequest)).resolves.toBe(filePage)
+    await expect(handlers.listKinds(kindsRequest)).resolves.toBe(kindSummaries)
     await expect(handlers.listArtifactGroups(groupsRequest)).resolves.toBe(groupPage)
     await expect(handlers.searchArtifacts(artifactSearchRequest)).resolves.toBe(artifactSearch)
     expect(repository.listFiles).toHaveBeenCalledWith(filesRequest)
+    expect(repository.listKinds).toHaveBeenCalledWith(kindsRequest)
     expect(repository.listArtifactGroups).toHaveBeenCalledWith(groupsRequest)
     expect(repository.getOverview).toHaveBeenCalledWith(overviewRequest)
     expect(repository.searchArtifacts).toHaveBeenCalledWith(artifactSearchRequest)
   })
 
   it('routes an explicit index repair through the session coordinator', async () => {
-    const repository = {
-      getOverview: vi.fn(),
-      listFiles: vi.fn(),
-      listArtifactGroups: vi.fn(),
-      searchArtifacts: vi.fn()
-    }
+    const repository = createRepository()
     const repair = { repairProjectFiles: vi.fn().mockResolvedValue(undefined) }
     const handlers = createProjectFilesHandlers(repository, repair, {
       recoverPendingDeletions: vi.fn().mockResolvedValue(undefined)
@@ -153,7 +171,7 @@ describe('project files IPC handlers', () => {
 
   it('waits for deletion recovery before every files query or repair', async () => {
     const order: string[] = []
-    const repository = {
+    const repository = createRepository({
       getOverview: vi.fn(async () => {
         order.push('overview')
         return {
@@ -168,6 +186,10 @@ describe('project files IPC handlers', () => {
         order.push('files')
         return { items: [], totalCount: 0 }
       }),
+      listKinds: vi.fn(async () => {
+        order.push('kinds')
+        return []
+      }),
       listArtifactGroups: vi.fn(async () => {
         order.push('groups')
         return { items: [], totalCount: 0 }
@@ -176,7 +198,7 @@ describe('project files IPC handlers', () => {
         order.push('search')
         return { primary: { items: [], totalCount: 0 }, other: [], isIndexComplete: true }
       })
-    }
+    })
     const repair = {
       repairProjectFiles: vi.fn(async () => {
         order.push('repair')
@@ -195,6 +217,7 @@ describe('project files IPC handlers', () => {
       collection: { kind: 'uploads' },
       limit: 20
     })
+    await handlers.listKinds({ projectIds: ['project-1'] })
     await handlers.listArtifactGroups({ projectId: 'project-1', limit: 10 })
     await handlers.searchArtifacts({
       primaryProjectId: 'project-1',
@@ -209,6 +232,8 @@ describe('project files IPC handlers', () => {
       'overview',
       'recover',
       'files',
+      'recover',
+      'kinds',
       'recover',
       'groups',
       'recover',
@@ -228,7 +253,7 @@ describe('registerProjectFilesIpcHandlers', () => {
     handlers.clear()
     registrationFailure.channel = undefined
     registrationFailure.error = undefined
-    repository = {
+    repository = createRepository({
       getOverview: vi.fn().mockResolvedValue({
         totalCount: 0,
         uploadCount: 0,
@@ -237,13 +262,14 @@ describe('registerProjectFilesIpcHandlers', () => {
         isIndexComplete: true
       }),
       listFiles: vi.fn().mockResolvedValue({ items: [], totalCount: 0 }),
+      listKinds: vi.fn().mockResolvedValue([]),
       listArtifactGroups: vi.fn().mockResolvedValue({ items: [], totalCount: 0 }),
       searchArtifacts: vi.fn().mockResolvedValue({
         primary: { items: [], totalCount: 0 },
         other: [],
         isIndexComplete: true
       })
-    }
+    })
     repairBackend = { repairProjectFiles: vi.fn().mockResolvedValue(undefined) }
     recoveryBackend = { recoverPendingDeletions: vi.fn().mockResolvedValue(undefined) }
   })
@@ -253,6 +279,7 @@ describe('registerProjectFilesIpcHandlers', () => {
 
     expect(handlers.has('project-files:get-overview')).toBe(true)
     expect(handlers.has('project-files:list-files')).toBe(true)
+    expect(handlers.has('project-files:list-kinds')).toBe(true)
     expect(handlers.has('project-files:list-artifact-groups')).toBe(true)
     expect(handlers.has('project-files:search-artifacts')).toBe(true)
     expect(handlers.has('project-files:repair-index')).toBe(true)
@@ -266,13 +293,7 @@ describe('registerProjectFilesIpcHandlers', () => {
       artifactGroupCount: 0,
       isIndexComplete: true
     }
-    const injected: ProjectFilesHandlers = {
-      getOverview: vi.fn().mockResolvedValue(overview),
-      listFiles: vi.fn(),
-      listArtifactGroups: vi.fn(),
-      searchArtifacts: vi.fn(),
-      repairIndex: vi.fn()
-    }
+    const injected = createHandlers({ getOverview: vi.fn().mockResolvedValue(overview) })
 
     registerProjectFilesIpcHandlers(repository, repairBackend, recoveryBackend, injected)
 
@@ -286,19 +307,15 @@ describe('registerProjectFilesIpcHandlers', () => {
 
   it('preserves an injected handler identity when registration fails', async () => {
     const failure = new Error('registration failed')
-    const injected: ProjectFilesHandlers = {
+    const injected = createHandlers({
       getOverview: vi.fn().mockResolvedValue({
         totalCount: 0,
         uploadCount: 0,
         artifactCount: 0,
         artifactGroupCount: 0,
         isIndexComplete: true
-      }),
-      listFiles: vi.fn(),
-      listArtifactGroups: vi.fn(),
-      searchArtifacts: vi.fn(),
-      repairIndex: vi.fn()
-    }
+      })
+    })
     registrationFailure.channel = 'project-files:get-overview'
     registrationFailure.error = failure
 
@@ -315,7 +332,7 @@ describe('registerProjectFilesIpcHandlers', () => {
 
   it('get-overview handler waits for deletion recovery before reading the overview', async () => {
     const order: string[] = []
-    const localRepository: ProjectFilesQueryRepository = {
+    const localRepository = createRepository({
       getOverview: vi.fn(async () => {
         order.push('overview')
         return {
@@ -325,11 +342,8 @@ describe('registerProjectFilesIpcHandlers', () => {
           artifactGroupCount: 0,
           isIndexComplete: true
         }
-      }),
-      listFiles: vi.fn(),
-      listArtifactGroups: vi.fn(),
-      searchArtifacts: vi.fn()
-    }
+      })
+    })
     const localRepair: ProjectFilesRepairBackend = {
       repairProjectFiles: vi.fn()
     }
@@ -348,15 +362,12 @@ describe('registerProjectFilesIpcHandlers', () => {
 
   it('list-files handler waits for deletion recovery before listing files', async () => {
     const order: string[] = []
-    const localRepository: ProjectFilesQueryRepository = {
-      getOverview: vi.fn(),
+    const localRepository = createRepository({
       listFiles: vi.fn(async () => {
         order.push('files')
         return { items: [], totalCount: 0 }
-      }),
-      listArtifactGroups: vi.fn(),
-      searchArtifacts: vi.fn()
-    }
+      })
+    })
     const localRepair: ProjectFilesRepairBackend = {
       repairProjectFiles: vi.fn()
     }
@@ -378,17 +389,40 @@ describe('registerProjectFilesIpcHandlers', () => {
     expect(localRepository.listFiles).toHaveBeenCalledWith(filesRequest)
   })
 
+  it('list-kinds handler waits for deletion recovery before deriving kinds', async () => {
+    const order: string[] = []
+    const summaries = [{ projectId: 'project-1', kinds: ['MD', 'CSV'] }]
+    const localRepository = createRepository({
+      listKinds: vi.fn(async () => {
+        order.push('kinds')
+        return summaries
+      })
+    })
+    const localRepair: ProjectFilesRepairBackend = {
+      repairProjectFiles: vi.fn()
+    }
+    const localRecovery: ProjectFilesRecoveryBackend = {
+      recoverPendingDeletions: vi.fn(async () => {
+        order.push('recover')
+      })
+    }
+    registerProjectFilesIpcHandlers(localRepository, localRepair, localRecovery)
+
+    const kindsRequest = { projectIds: ['project-1'] }
+    await expect(invoke('project-files:list-kinds', kindsRequest)).resolves.toBe(summaries)
+
+    expect(order).toEqual(['recover', 'kinds'])
+    expect(localRepository.listKinds).toHaveBeenCalledWith(kindsRequest)
+  })
+
   it('list-artifact-groups handler waits for deletion recovery before listing groups', async () => {
     const order: string[] = []
-    const localRepository: ProjectFilesQueryRepository = {
-      getOverview: vi.fn(),
-      listFiles: vi.fn(),
+    const localRepository = createRepository({
       listArtifactGroups: vi.fn(async () => {
         order.push('groups')
         return { items: [], totalCount: 0 }
-      }),
-      searchArtifacts: vi.fn()
-    }
+      })
+    })
     const localRepair: ProjectFilesRepairBackend = {
       repairProjectFiles: vi.fn()
     }
@@ -408,12 +442,7 @@ describe('registerProjectFilesIpcHandlers', () => {
 
   it('repair-index handler waits for deletion recovery before repairing the index', async () => {
     const order: string[] = []
-    const localRepository: ProjectFilesQueryRepository = {
-      getOverview: vi.fn(),
-      listFiles: vi.fn(),
-      listArtifactGroups: vi.fn(),
-      searchArtifacts: vi.fn()
-    }
+    const localRepository = createRepository()
     const localRepair: ProjectFilesRepairBackend = {
       repairProjectFiles: vi.fn(async () => {
         order.push('repair')
@@ -444,10 +473,11 @@ describe('registerProjectFilesIpcHandlers', () => {
       collection: { kind: 'uploads' },
       limit: 1
     })
+    await invoke('project-files:list-kinds', { projectIds: ['p1'] })
     await invoke('project-files:list-artifact-groups', { projectId: 'p1', limit: 1 })
     await invoke('project-files:repair-index', { projectId: 'p1' })
 
-    expect(recoveryBackend.recoverPendingDeletions).toHaveBeenCalledTimes(4)
+    expect(recoveryBackend.recoverPendingDeletions).toHaveBeenCalledTimes(5)
   })
 })
 

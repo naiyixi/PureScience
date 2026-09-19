@@ -176,7 +176,9 @@ import type {
   ArtifactGroupPage,
   GetProjectFilesOverviewRequest,
   ListArtifactGroupsRequest,
+  ListProjectFileKindsRequest,
   ListProjectFilesRequest,
+  ProjectFileKindsSummary,
   ProjectFilesChangedEvent,
   ProjectFilesOverview,
   ProjectFilesPage,
@@ -762,6 +764,7 @@ export interface PureScienceAPI {
   projectFiles: {
     getOverview(request: GetProjectFilesOverviewRequest): Promise<ProjectFilesOverview>
     listFiles(request: ListProjectFilesRequest): Promise<ProjectFilesPage>
+    listKinds(request: ListProjectFileKindsRequest): Promise<ProjectFileKindsSummary[]>
     listArtifactGroups(request: ListArtifactGroupsRequest): Promise<ArtifactGroupPage>
     searchArtifacts(request: SearchArtifactsRequest): Promise<SearchArtifactsResult>
     repairIndex(request: { projectId: string }): Promise<void>

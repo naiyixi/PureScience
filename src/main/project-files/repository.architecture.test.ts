@@ -136,6 +136,7 @@ describe('Project Files repository architecture', () => {
         'getOverview',
         'listArtifactGroups',
         'listFiles',
+        'listKinds',
         'markReconciliationIncomplete',
         'reconcileActiveSessions',
         'restoreProject',

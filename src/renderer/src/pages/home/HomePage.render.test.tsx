@@ -271,20 +271,12 @@ describe('HomePage project file-type chips', () => {
     delete (window as unknown as { api?: unknown }).api
   })
 
-  it('renders distinct file-type chips from the project Files catalog', async () => {
-    const listFiles = vi.fn(async () => ({
-      items: [
-        { name: 'draft.md', sortAtMs: 40 },
-        { name: 'notes.docx', sortAtMs: 30 },
-        { name: 'figure.PNG', sortAtMs: 20 },
-        { name: 'table.csv', sortAtMs: 10 },
-        { name: 'old.txt', sortAtMs: 1 }
-      ],
-      nextCursor: undefined,
-      totalCount: 5
-    }))
+  it('renders distinct file-type chips from one batched kinds read', async () => {
+    const listKinds = vi.fn(async () => [
+      { projectId: 'proj-file-kinds', kinds: ['MD', 'DOCX', 'PNG', 'CSV'] }
+    ])
     ;(window as unknown as { api: unknown }).api = {
-      projectFiles: { listFiles }
+      projectFiles: { listKinds }
     }
 
     await act(async () => root.render(<HomePage canDeleteProjects hasCompleteSessionCatalog />))
@@ -293,25 +285,21 @@ describe('HomePage project file-type chips', () => {
       await Promise.resolve()
     })
 
-    // omitOrigins is part of the contract of this call: the chips derive an extension from the name, and the
-    // origin query would be a second engine round-trip per visible project.
-    expect(listFiles).toHaveBeenCalledWith({
-      projectId: 'proj-file-kinds',
-      collection: { kind: 'all' },
-      limit: 30,
-      omitOrigins: true
-    })
+    // One call for every visible project is the whole point of the channel: the chips used to cost one
+    // Files read per project, and each of those queued behind the shared engine.
+    expect(listKinds).toHaveBeenCalledTimes(1)
+    expect(listKinds).toHaveBeenCalledWith({ projectIds: ['proj-file-kinds'] })
     expect(container.textContent).toContain('MD')
     expect(container.textContent).toContain('DOCX')
     expect(container.textContent).toContain('PNG')
-    // Newest-first distinct kinds; 'TXT' falls outside the 4-chip cap.
+    // Kinds arrive already derived and capped in main; the page renders them as given.
     expect(container.textContent).not.toContain('TXT')
   })
 
-  it('renders no chips when the catalog is empty or the bridge is absent', async () => {
+  it('renders no chips when the kinds read is empty or the bridge is absent', async () => {
     ;(window as unknown as { api: unknown }).api = {
       projectFiles: {
-        listFiles: vi.fn(async () => ({ items: [], nextCursor: undefined, totalCount: 0 }))
+        listKinds: vi.fn(async () => [{ projectId: 'proj-file-kinds', kinds: [] }])
       }
     }
 

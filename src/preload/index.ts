@@ -532,6 +532,9 @@ const api: PureScienceAPI = {
   projectFiles: {
     getOverview: (request) => electronRendererContracts.invoke('projectFiles.getOverview', request),
     listFiles: (request) => electronRendererContracts.invoke('projectFiles.listFiles', request),
+    // One batched read for the Home chips: a project's file-type list is derived in main, so the renderer
+    // never has to ask once per project.
+    listKinds: (request) => electronRendererContracts.invoke('projectFiles.listKinds', request),
     listArtifactGroups: (request) =>
       electronRendererContracts.invoke('projectFiles.listArtifactGroups', request),
     searchArtifacts: (request) =>

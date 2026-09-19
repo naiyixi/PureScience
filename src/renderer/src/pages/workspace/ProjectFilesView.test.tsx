@@ -409,6 +409,9 @@ describe('ProjectFilesView', () => {
 
     window.api.projectFiles = {
       searchArtifacts: vi.fn(),
+      // The batched kind read belongs to the Home chips; this view never calls it, but the bridge is typed
+      // as the whole group, so the fake has to carry it.
+      listKinds: vi.fn(async () => []),
       getOverview: vi.fn(async (request) => {
         const library = getLibrary()
         const query = request.search

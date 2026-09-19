@@ -3,7 +3,9 @@ import type {
   ArtifactGroupPage,
   GetProjectFilesOverviewRequest,
   ListArtifactGroupsRequest,
+  ListProjectFileKindsRequest,
   ListProjectFilesRequest,
+  ProjectFileKindsSummary,
   ProjectFilesOverview,
   ProjectFilesPage,
   ProjectFileSource,
@@ -78,6 +80,10 @@ class ManagedFileIndexRepository {
 
   async listFiles(request: ListProjectFilesRequest): Promise<ProjectFilesPage> {
     return this.queryOwner.listFiles(request)
+  }
+
+  async listKinds(request: ListProjectFileKindsRequest): Promise<ProjectFileKindsSummary[]> {
+    return this.queryOwner.listProjectFileKinds(request)
   }
 
   async searchArtifacts(request: SearchArtifactsRequest): Promise<SearchArtifactsResult> {

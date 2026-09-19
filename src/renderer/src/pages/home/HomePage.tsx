@@ -38,7 +38,6 @@ import { getEnvironmentRepairPanel } from '../settings/settings-navigation'
 
 import { DeleteProjectDialog } from './DeleteProjectDialog'
 import { ProjectFormDialog } from './ProjectFormDialog'
-import { deriveProjectFileKinds } from '../../../../shared/project-file-kinds'
 
 const RECENT_SESSION_LIMIT = 10
 
@@ -223,34 +222,24 @@ const HomePage = ({
     })
   }, [consumeProjectCreation, pendingProjectCreation])
 
-  // Per-project file-type chips: one lightweight read of the Files catalog per visible project.
+  // Per-project file-type chips: one batched read of the Files catalog for every visible project.
   // Absent (web build without the preload bridge, or a project with no files) renders no chips.
   useEffect(() => {
-    const listFiles = window.api?.projectFiles?.listFiles
-    if (!listFiles || activeProjects.length === 0) return
+    const listKinds = window.api?.projectFiles?.listKinds
+    if (!listKinds || activeProjects.length === 0) return
     let cancelled = false
-    void Promise.allSettled(
-      activeProjects.map(async (project) => {
-        const page = await listFiles({
-          projectId: project.id,
-          collection: { kind: 'all' },
-          limit: 30,
-          // Only the name is used below (to derive an extension), so main skips the origin query: this effect
-          // asks every visible project at once, and each read costs two engine round-trips.
-          omitOrigins: true
-        })
-        return [project.id, deriveProjectFileKinds(page.items)] as const
-      })
-    ).then((results) => {
-      if (cancelled) return
-      const next: Record<string, string[]> = {}
-      for (const result of results) {
-        if (result.status === 'fulfilled' && result.value[1].length > 0) {
-          next[result.value[0]] = result.value[1]
+    void Promise.resolve(listKinds({ projectIds: activeProjects.map((project) => project.id) }))
+      .then((summaries) => {
+        if (cancelled) return
+        const next: Record<string, string[]> = {}
+        for (const summary of summaries) {
+          if (summary.kinds.length > 0) next[summary.projectId] = summary.kinds
         }
-      }
-      setProjectFileKinds(next)
-    })
+        setProjectFileKinds(next)
+      })
+      .catch(() => {
+        // Chips are decoration: a failed read leaves the previous set rather than failing the page.
+      })
     return () => {
       cancelled = true
     }

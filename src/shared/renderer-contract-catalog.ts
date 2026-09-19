@@ -260,7 +260,7 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
   ]),
   group('project-files', 'projectFiles', [
     ['onChanged', 'project-files:changed', EVENT], ['getOverview', 'project-files:get-overview'], ['listArtifactGroups', 'project-files:list-artifact-groups'],
-    ['listFiles', 'project-files:list-files'], ['repairIndex', 'project-files:repair-index'], ['searchArtifacts', 'project-files:search-artifacts'],
+    ['listFiles', 'project-files:list-files'], ['listKinds', 'project-files:list-kinds'], ['repairIndex', 'project-files:repair-index'], ['searchArtifacts', 'project-files:search-artifacts'],
   ]),
   group('search', 'search', [
     ['query', 'search:query', LOCAL], ['evidence', 'search:evidence', LOCAL]

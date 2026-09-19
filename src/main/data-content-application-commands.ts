@@ -213,6 +213,9 @@ const dataContentApplicationCommands = Object.freeze({
     'listArtifactGroups'
   ),
   projectFilesListFiles: projectFilesCommand('project-files:list-files', 'listFiles'),
+  // One read for many projects: the Home page asked for each project's kinds separately, and that fan-out is
+  // what made the chips pay N engine round-trips at startup.
+  projectFilesListKinds: projectFilesCommand('project-files:list-kinds', 'listKinds'),
   projectFilesRepairIndex: projectFilesCommand('project-files:repair-index', 'repairIndex'),
   projectFilesSearchArtifacts: projectFilesCommand(
     'project-files:search-artifacts',
@@ -304,6 +307,7 @@ const dataContentApplicationCommandGroups = Object.freeze([
     dataContentApplicationCommands.projectFilesGetOverview,
     dataContentApplicationCommands.projectFilesListArtifactGroups,
     dataContentApplicationCommands.projectFilesListFiles,
+    dataContentApplicationCommands.projectFilesListKinds,
     dataContentApplicationCommands.projectFilesRepairIndex,
     dataContentApplicationCommands.projectFilesSearchArtifacts,
     dataContentApplicationCommands.searchQuery,
@@ -448,6 +452,7 @@ const registerDataContentApplicationCommands = (
       'project-files:list-artifact-groups': ({ args }) =>
         dependencies.projectFiles.listArtifactGroups(args[0]),
       'project-files:list-files': ({ args }) => dependencies.projectFiles.listFiles(args[0]),
+      'project-files:list-kinds': ({ args }) => dependencies.projectFiles.listKinds(args[0]),
       'project-files:repair-index': ({ args }) => dependencies.projectFiles.repairIndex(args[0]),
       'project-files:search-artifacts': ({ args }) =>
         dependencies.projectFiles.searchArtifacts(args[0]),
