@@ -76,6 +76,19 @@ describe('createRequestLimiter', () => {
     expect(() => createRequestLimiter(Number.NaN)).toThrow(/positive integer/)
   })
 
+  it('releases the slot when a task throws synchronously or returns a non-promise', async () => {
+    // Four stranded slots would starve every later read for the life of the process, and the shared preview
+    // limiter is exactly where that would be invisible until previews stopped appearing.
+    const limit = createRequestLimiter(1)
+    await expect(
+      limit(() => {
+        throw new Error('synchronous failure')
+      })
+    ).rejects.toThrow('synchronous failure')
+    await expect(limit((() => 'not a promise') as never)).resolves.toBe('not a promise')
+    await expect(limit(async () => 'after')).resolves.toBe('after')
+  })
+
   it('holds the cap when a running task queues more work without awaiting it', async () => {
     // The shape that matters in the app: a batch of reads whose completion stages the next batch. (A task that
     // awaits another task of the same limiter could exhaust the slots by construction, so callers do not do

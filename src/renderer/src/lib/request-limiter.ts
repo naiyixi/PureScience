@@ -26,8 +26,19 @@ export const createRequestLimiter = (maxConcurrency: number): RequestLimiter => 
   return <Result>(task: () => Promise<Result>): Promise<Result> =>
     new Promise<Result>((resolve, reject) => {
       pending.push(() => {
-        // Both outcomes release the slot: a rejected read must not hold the fan-out open.
-        void task()
+        // The slot must be released on every path. A caller whose task throws synchronously (or returns
+        // something that is not a promise) would otherwise strand its slot, and four of those starve every
+        // later read for the life of the process — the shared preview limiter made that failure real.
+        let started: Promise<Result>
+        try {
+          started = Promise.resolve(task())
+        } catch (error) {
+          activeCount -= 1
+          pump()
+          reject(error)
+          return
+        }
+        void started
           .then(resolve, reject)
           .finally(() => {
             activeCount -= 1
