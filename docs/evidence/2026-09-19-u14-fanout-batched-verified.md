@@ -192,6 +192,12 @@ CDP 读真实 DOM（`[class*="rounded-[5px]"]`）：
 
 40 次 × 22 ms（并发 15）→ **2 次 × 2 ms（并发 1）**；队列里不再塞满探测之后，**卡片预览本身也从 11 ms 降到 4 ms**（同一次驱动、同一份语料）。这是本单元唯一一条"改完有真机数字"的性能改动。
 
+### 10.4 门禁与 CI（`f15a6c3`）
+
+- `npm run typecheck` **TC:0**；全量 `npm run test:gate` **1038 文件通过 / 14 skipped，13903 用例通过 / 190 skipped，EXIT 0**；eslint 0；prettier 0（均在**回退测量探针之后**的干净树上跑）
+- CI：`Windows Full Test`（run 35432216561）与 `Nightly`（run 35432216656）在 `f15a6c3` 上均 **completed / success**
+
+
 
 
 
