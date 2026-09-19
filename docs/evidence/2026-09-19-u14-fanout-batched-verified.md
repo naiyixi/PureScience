@@ -63,7 +63,7 @@ CDP 读真实 DOM（`[class*="rounded-[5px]"]`）：
 - 全量门禁 `npm run test:gate`（`--maxWorkers=4`）：**1034 文件通过 / 14 skipped，13887 用例通过 / 190 skipped，EXIT 0**
 - `npm run typecheck`（node + web）干净；`eslint --no-cache` 干净；`prettier --check` 干净
 - 契约计数随通道各 +1：catalog 417→418、invoke 315→316、local-Web 安装 345→346、Electron 路径 417→418、coreContracts 191→192、requests 153→154、composition internal 309→310 / local Web 307→308 / remote 206→207、data-content 51→52
-- CI：`Windows Full Test` 与 `Nightly` 在 `6720299` 上运行中（结论以 `gh api … --jq .conclusion` 为准，不用 `gh run watch`）
+- CI：`Windows Full Test`（run 35421103048）与 `Nightly`（run 35421103273）在 `6720299` 上均 **completed / success**（用 `gh api … --jq .conclusion` 判定，不用 `gh run watch`）
 
 ## 七、诚实边界
 
