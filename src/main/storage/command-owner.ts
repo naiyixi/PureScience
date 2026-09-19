@@ -37,7 +37,7 @@ import {
   type ValidateResult
 } from './migration-service'
 import { availableBytes, computeStorageUsage } from './usage'
-import { createStorageUsageCache } from './usage-cache'
+import { createStorageUsageCache, type StorageUsageCache } from './usage-cache'
 import { broadcastToRenderers } from '../renderer-broadcast'
 import { RELOCATABLE_DATA_DIRS } from './data-directories'
 import { createLogger, diagnosticErrorFields, type Logger } from '../logger'
@@ -45,6 +45,9 @@ import { startDiagnosticOperation } from '../diagnostics/operation'
 import { markApplicationShutdownTrigger } from '../application-shutdown-trigger'
 
 type SessionSource = { projectName: string; sessionId: string }
+
+// Same threshold the Files reads use: below this a storage info call is not worth a log line.
+const SLOW_STORAGE_INFO_THRESHOLD_MS = 50
 
 type StorageCommandOwnerDeps = {
   // disconnect/shutdownAll drive the reusable migration session-interrupt; shutdownForQuit/dispose are
@@ -80,6 +83,9 @@ type StorageCommandOwnerDeps = {
   broadcastProgress?: (progress: MigrationProgress) => void
   cleanupRuntimeCache?: (runtimeRoot: string) => void
   logger?: Logger
+  // Injectable so the disk-usage read (a full walk of the root, seconds on a real one) can be controlled in
+  // tests instead of depending on how much is on disk.
+  usageCache?: StorageUsageCache
 }
 
 type StorageParentRequest = Readonly<{ parent: string }>
@@ -115,19 +121,21 @@ const createStorageCommandOwner = (deps: StorageCommandOwnerDeps) => {
     warn: (message, data) => emitSafely('warn', message, data),
     error: (message, data) => emitSafely('error', message, data)
   }
-
   // The Storage panel asks for disk usage every time it opens, and a walk of a multi-gigabyte root
   // takes ~15s; serve the last reading and refresh it behind the user's back.
-  const usageCache = createStorageUsageCache({ compute: computeStorageUsage })
+  const usageCache = deps.usageCache ?? createStorageUsageCache({ compute: computeStorageUsage })
 
   const getInfo = async (): Promise<StorageInfo> => {
+    const startedAt = Date.now()
     const dataRoot = resolveDataRoot()
+    const dataRootMs = Date.now() - startedAt
     let available = 0
     try {
       available = await availableBytes(dataRoot)
     } catch (err) {
       logger.warn('available storage lookup failed', diagnosticErrorFields(err))
     }
+    const availableMs = Date.now() - startedAt - dataRootMs
 
     // Only an explicitly-configured-but-now-gone root counts as "missing"; a fresh install's unset
     // dataRoot (default `~/PureScience` not created yet) is normal and must never nag the user.
@@ -152,6 +160,24 @@ const createStorageCommandOwner = (deps: StorageCommandOwnerDeps) => {
     } catch (err) {
       logger.warn('data root status detection failed', diagnosticErrorFields(err))
     }
+    const settingsMs = Date.now() - startedAt - dataRootMs - availableMs
+
+    // A cold cache has nothing to hand back, so this read waits for a full walk of the root — measured at
+    // ~13 s on a real 7 GB root, which is exactly the panel stall the cache exists to prevent. Reported with
+    // the split so the next reader of this log knows which segment the open cost is in (no request contents).
+    const usage = await usageCache.read(dataRoot)
+    const usageMs = Date.now() - startedAt - dataRootMs - availableMs - settingsMs
+    const totalMs = Date.now() - startedAt
+    if (totalMs >= SLOW_STORAGE_INFO_THRESHOLD_MS) {
+      emitSafely('warn', 'storage info was slow', {
+        totalMs,
+        dataRootMs,
+        availableMs,
+        settingsMs,
+        usageMs,
+        usageCategories: usage.categories.length
+      })
+    }
 
     return {
       dataRoot,
@@ -160,7 +186,7 @@ const createStorageCommandOwner = (deps: StorageCommandOwnerDeps) => {
       defaultParent: defaultDataParent(),
       dataRootMissing,
       legacyDataMovePrompt,
-      usage: await usageCache.read(dataRoot),
+      usage,
       availableBytes: available
     }
   }

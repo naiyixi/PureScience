@@ -263,6 +263,32 @@ CDP 读真实 DOM（`[class*="rounded-[5px]"]`）：
 
 **尚未定位到具体是哪个依赖**：该 handler 体只有 `availableBytes(dataRoot)`（statfs）、`deps.settingsService.getStoredSettings()`、`isDataRootMissing`、`existsSync` 四段。要指名需要给它加**段级仪器**（本单元为 `listFiles` 建过的那种），属**下个单元**；我不猜。
 
+### 11.6 段级仪器建好并指名了它：`usageCache.read` 的磁盘 walk（占 99%）
+
+`storage:get-info` 现在带段级仪器（同一套阈值 50 ms，只记数字、不记内容）：
+
+```
+storage info was slow { totalMs, dataRootMs, availableMs, settingsMs, usageMs, usageCategories }
+```
+
+真实语料副本启动期实测（同一驱动）：
+
+| 样本 | totalMs | dataRootMs | availableMs | settingsMs | **usageMs** | usageCategories |
+|---|---|---|---|---|---|---|
+| 1 | 13,863 | 0 | 172 | 22 | **13,669** | 5 |
+| 2 | 13,695 | 0 | 3 | 22 | **13,670** | 5 |
+| 3 | 13,671 | 0 | 1 | 0 | **13,670** | 5 |
+
+**根因**（由数字指名，非注释推断）：`usage-cache.ts` 的冷读路径 `await refresh(dataRoot)` 会把**整趟数据根磁盘 walk 等完**（`computeStorageUsage`），而启动时 `usageCache.warm(resolveDataRoot())` 又把同一趟 walk 起在同一窗口 —— 于是启动期第一个调用者正好撞进去等 13.7 s。第二次调用起为 **1 ms**（缓存已热）。
+
+### 11.7 为什么不改：它是**刻意契约**，且代价落在一个不挡 UI 的调用者上
+
+- `usage-cache.test.ts` 有一条用例**明确钉住**这个行为（"waits for the scan only when there is nothing to show"）—— 也就是说换回"先给占位"是一次**契约变更**，不是修 bug。
+- 调用方只有一处：`App.tsx` 的 `void window.api.storage.getInfo().then(...)`，**fire-and-forget**（只用于判断根目录缺失/旧数据迁移提示），**不阻塞渲染**。
+- 启动时的 `warm()` 已把读数预热，用户稍后打开「设置 → 存储」读的是**已热缓存**（实测第二次起 1 ms）。即**用户可见代价仅剩**："启动后十几秒内立刻打开存储面板"会看到 Loading —— 窄场景。
+- 因此本单元**只补仪器、不动契约**（属于用户拍板的"审计归档零代码收口"口径）。若要动，正确做法是一次**契约变更**：冷读立即返回占位并新增 `pending` 标记（面板据此显示"测量中"而不是假的 `0 B`），并把那条用例改成新契约 —— 取舍由用户定，方案已写下但**未实施**。
+
+
 
 
 

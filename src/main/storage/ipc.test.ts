@@ -141,6 +141,62 @@ afterEach(async () => {
   await rm(targetParent, { recursive: true, force: true })
 })
 
+describe('storage:get-info segment instrument', () => {
+  const slowStorageInfo = (logger: Logger): Array<Record<string, unknown>> =>
+    (logger.warn as unknown as Mock).mock.calls
+      .filter(([message]) => message === 'storage info was slow')
+      .map((call) => call[1] as Record<string, unknown>)
+
+  const usageCacheReading = (
+    read: () => Promise<{ categories: Array<{ key: string; bytes: number }>; totalBytes: number }>
+  ): FakeDeps['usageCache'] =>
+    ({
+      read: vi.fn(read),
+      warm: vi.fn(),
+      clear: vi.fn()
+    }) as never
+
+  it('names the usage read when the call is slow, and says nothing when it is served from cache', async () => {
+    // Seen on a real 7 GB root: storage:get-info took 13.7 s while three other IPC calls answered in 2-5 ms.
+    // The split is what makes that reading self-explaining — the disk walk behind the usage read, not the root
+    // resolution, the available-space probe or the settings read.
+    initDataRoot(dataRoot)
+    const slowLogger = fakeDiagnosticLogger()
+    const slowOwner = createStorageCommandOwner(
+      fakeDeps({
+        logger: slowLogger,
+        usageCache: usageCacheReading(async () => {
+          await tick(80)
+          return { categories: [{ key: 'artifacts', bytes: 2048 }], totalBytes: 2048 }
+        })
+      })
+    )
+
+    const info = await slowOwner.getInfo()
+
+    expect(info.usage.totalBytes).toBe(2048)
+    const [record] = slowStorageInfo(slowLogger)
+    expect(record).toBeDefined()
+    expect(Number(record.usageMs)).toBeGreaterThanOrEqual(70)
+    expect(record.usageCategories).toBe(1)
+    // What the split has to say: the walk is the segment, the other three are noise beside it.
+    const overhead =
+      Number(record.dataRootMs) + Number(record.availableMs) + Number(record.settingsMs)
+    expect(overhead).toBeLessThan(Number(record.usageMs))
+    expect(overhead).toBeLessThanOrEqual(Number(record.totalMs))
+
+    const fastLogger = fakeDiagnosticLogger()
+    const fastOwner = createStorageCommandOwner(
+      fakeDeps({
+        logger: fastLogger,
+        usageCache: usageCacheReading(async () => ({ categories: [], totalBytes: 0 }))
+      })
+    )
+    await fastOwner.getInfo()
+    expect(slowStorageInfo(fastLogger)).toEqual([])
+  })
+})
+
 describe('storage IPC handlers', () => {
   it('shares migration state between legacy IPC and direct owner calls', async () => {
     initDataRoot(dataRoot)
