@@ -1,5 +1,6 @@
 import { Prisma, type ManagedFile } from '@prisma/client'
 
+import { startDbCanary } from '../diagnostics/db-queue-probe'
 import { readEventLoopLatency, resetEventLoopLatency } from '../diagnostics/event-loop-latency'
 import { createLogger } from '../logger'
 
@@ -49,6 +50,20 @@ const SLOW_LIST_SEGMENT_THRESHOLD_MS = 50
 const MAX_PROJECT_FILE_KINDS_PROJECTS = 100
 const MAX_PROJECT_FILE_KINDS_ROWS_PER_PROJECT = 30
 const queryLog = createLogger('project-files-query')
+
+// U11 showed that a slow read here can be waiting on the shared Prisma engine rather than on its own query:
+// a trivial `SELECT 1` started at the same moment was just as slow. That canary is the only way to tell
+// "this read queued" from "this read was expensive", so both reads this file owns can carry it — but it is a
+// second trip into the very queue being measured, so it is opt-in for measurement runs
+// (PURESCIENCE_DB_CANARY=1) and off by default. While it is on, every read reports rather than only the slow
+// tail, so a run has a distribution to compare instead of one threshold crossing.
+const dbCanaryEnabled = (): boolean => process.env.PURESCIENCE_DB_CANARY === '1'
+
+const withDbCanary = (
+  client: { $queryRawUnsafe: <Result>(query: string, ...values: unknown[]) => Promise<Result> },
+  enabled: boolean
+): Promise<number> | undefined =>
+  enabled ? startDbCanary(() => client.$queryRawUnsafe('SELECT 1')) : undefined
 
 // Owns the read-model orchestration while completeness remains authoritative in the mutation owner.
 class ProjectFilesQueryOwner {
@@ -106,6 +121,7 @@ class ProjectFilesQueryOwner {
     }
     const client = await this.getClient()
     const startedAt = Date.now()
+    const dbCanary = withDbCanary(client, dbCanaryEnabled())
     const placeholders = projectIds.map(() => '?').join(', ')
     const rows = await client.$queryRawUnsafe<
       Array<{ projectId: string; displayName: string; sortAtMs: bigint | number | string }>
@@ -131,12 +147,14 @@ class ProjectFilesQueryOwner {
       kinds: deriveProjectFileKinds(itemsByProject.get(projectId) ?? [])
     }))
     const totalMs = Date.now() - startedAt
-    if (totalMs >= SLOW_LIST_SEGMENT_THRESHOLD_MS) {
+    const reportThreshold = dbCanary ? 0 : SLOW_LIST_SEGMENT_THRESHOLD_MS
+    if (totalMs >= reportThreshold) {
       try {
         queryLog.warn('project file kinds read was slow', {
           projects: projectIds.length,
           rows: rows.length,
-          totalMs
+          totalMs,
+          dbCanaryMs: dbCanary ? await dbCanary : undefined
         })
       } catch {
         // Best-effort: a diagnostic must never replace the read result.
@@ -164,6 +182,7 @@ class ProjectFilesQueryOwner {
     resetEventLoopLatency()
     const client = await this.getClient()
     const clientMs = Date.now() - startedAt
+    const dbCanary = withDbCanary(client, dbCanaryEnabled())
     const limit = normalizeLimit(request.limit)
     const search = normalizeSearch(request.search)
     const source =
@@ -233,7 +252,8 @@ class ProjectFilesQueryOwner {
       toProjectFileItem(row, this.dataRoot, originsBySession.get(row.sessionId))
     )
     const totalMs = Date.now() - startedAt
-    if (totalMs >= SLOW_LIST_SEGMENT_THRESHOLD_MS) {
+    const reportThreshold = dbCanary ? 0 : SLOW_LIST_SEGMENT_THRESHOLD_MS
+    if (totalMs >= reportThreshold) {
       try {
         queryLog.warn('listFiles segments were slow', {
           rows: pageRows.length,
@@ -242,7 +262,8 @@ class ProjectFilesQueryOwner {
           clientMs,
           rowsMs: rowsMs - clientMs,
           originsMs: originsMs - rowsMs,
-          mapMs: totalMs - originsMs
+          mapMs: totalMs - originsMs,
+          dbCanaryMs: dbCanary ? await dbCanary : undefined
         })
       } catch {
         // Best-effort: a diagnostic must never replace the read result.

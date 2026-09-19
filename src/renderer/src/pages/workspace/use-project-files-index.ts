@@ -15,6 +15,7 @@ import type {
   ProjectFilesOverview,
   ProjectFilesSearch
 } from '../../../../shared/project-files'
+import { createRequestLimiter, type RequestLimiter } from '../../lib/request-limiter'
 
 const FILE_PAGE_SIZE = 20
 const GROUP_PAGE_SIZE = 10
@@ -92,37 +93,6 @@ const withProjectFilesSearch = (
         }
       }
     : {}
-
-type RequestLimiter = <Result>(task: () => Promise<Result>) => Promise<Result>
-
-// Bounds aggregate Files IPC pressure when several expanded session groups request pages together.
-// Tasks remain FIFO, and completion immediately pumps the next queued request.
-const createRequestLimiter = (maxConcurrency: number): RequestLimiter => {
-  let activeCount = 0
-  const pending: Array<() => void> = []
-
-  const pump = (): void => {
-    while (activeCount < maxConcurrency) {
-      const run = pending.shift()
-      if (!run) return
-      activeCount += 1
-      run()
-    }
-  }
-
-  return <Result>(task: () => Promise<Result>): Promise<Result> =>
-    new Promise<Result>((resolve, reject) => {
-      pending.push(() => {
-        void task()
-          .then(resolve, reject)
-          .finally(() => {
-            activeCount -= 1
-            pump()
-          })
-      })
-      pump()
-    })
-}
 
 const appendUnique = <Item>(
   current: Item[],

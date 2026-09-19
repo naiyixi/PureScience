@@ -85,3 +85,5 @@ const summaries = await listKinds({ projectIds: activeProjects.map((p) => p.id) 
 ## 四、之后（同一机制的第二个候选）
 
 **并发闸**：给仍在扇出的读（文件面板、产物列表）设并发上限，用 `dbCanaryMs` 验证"排队高位消失"。U11 已证并发在引擎队列下**只能产生等待、不产生吞吐**，所以这条有理论依据，但仍需前后实测。
+
+> **已做完（本次）**：审计发现文件面板的读**本来就有**一把闸（`use-project-files-index.ts` 内联 `createRequestLimiter(4)`，无用例），而**预览扇出没有** —— 已把闸抽成 `src/renderer/src/lib/request-limiter.ts`（补 4 条用例）、两处复用，并把引擎金丝雀接到 `listFiles`/`listKinds` 上（`PURESCIENCE_DB_CANARY=1`，默认关闭）。实测：无闸 52 并行时 canary 与读耗时中位同为 12 ms，限流到 4 后掉到 2 ms。**但 `>100 ms` 高位三个模式里一个都没出现**（最深 20 ms），"高位消失"仍未被复现 —— 数字与边界见 `docs/evidence/2026-09-19-u14-fanout-batched-verified.md` §八。
