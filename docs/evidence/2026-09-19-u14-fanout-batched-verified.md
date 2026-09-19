@@ -248,6 +248,22 @@ CDP 读真实 DOM（`[class*="rounded-[5px]"]`）：
 
 **仍未定性的部分**：这段时间是"**main 事件循环被阻塞**"还是"**启动期工作被串行排队**"。两者都需要一个并行对照实验（在启动期同时发一个平凡 IPC，看它是否也慢）—— 本单元**没有做**，立案留给下个单元，不在此臆断。
 
+### 11.5 并行对照做完了：**事件循环没有被阻塞**，等待在这个 handler 自己的 await 里
+
+启动期同一刻、同一进程**并行**发出五个调用（CDP 直调）：
+
+| 并行调用 | 耗时 |
+|---|---|
+| `storage.getInfo` | **12,870 ms** |
+| `projects.list` | **2 ms** |
+| `projectFiles.listFiles` | **3 ms** |
+| `projectFiles.listKinds` | **5 ms** |
+
+**结论**：在 `storage.getInfo` 等 12.9 s 的同一段时间里，另外三个走同一个 main 的 IPC 只要 2–5 ms ⇒ **事件循环没有被阻塞、也没有全局排队**；等待发生在**这个 handler 内部的 await 链**上（启动期同一窗口里连一条 `listFiles segments were slow` 都没有，DB 读全部 3–5 ms）。结合 §11.4（紧随其后同一调用 1 ms），这是**首次调用撞上某个启动期仍在初始化的依赖**的典型形态，而不是它的单次成本。
+
+**尚未定位到具体是哪个依赖**：该 handler 体只有 `availableBytes(dataRoot)`（statfs）、`deps.settingsService.getStoredSettings()`、`isDataRootMissing`、`existsSync` 四段。要指名需要给它加**段级仪器**（本单元为 `listFiles` 建过的那种），属**下个单元**；我不猜。
+
+
 
 
 
