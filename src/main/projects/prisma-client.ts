@@ -656,6 +656,11 @@ const REFERENCE_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "Reference" (
     "authorsJson" TEXT NOT NULL DEFAULT '[]',
     "venue" TEXT,
     "year" INTEGER,
+    "volume" TEXT,
+    "issue" TEXT,
+    "pages" TEXT,
+    "publisher" TEXT,
+    "itemType" TEXT,
     "doi" TEXT,
     "pmid" TEXT,
     "pmcid" TEXT,
@@ -673,6 +678,12 @@ const REFERENCE_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "Reference" (
     "updatedAt" DATETIME NOT NULL
 )`
 const REFERENCE_ADD_PDF_CONTENT_HASH_DDL = `ALTER TABLE "Reference" ADD COLUMN "pdfContentHash" TEXT`
+// Citation-style layer (v1.65): additive columns on Reference, added to existing databases too.
+const REFERENCE_ADD_VOLUME_DDL = `ALTER TABLE "Reference" ADD COLUMN "volume" TEXT`
+const REFERENCE_ADD_ISSUE_DDL = `ALTER TABLE "Reference" ADD COLUMN "issue" TEXT`
+const REFERENCE_ADD_PAGES_DDL = `ALTER TABLE "Reference" ADD COLUMN "pages" TEXT`
+const REFERENCE_ADD_PUBLISHER_DDL = `ALTER TABLE "Reference" ADD COLUMN "publisher" TEXT`
+const REFERENCE_ADD_ITEM_TYPE_DDL = `ALTER TABLE "Reference" ADD COLUMN "itemType" TEXT`
 const REFERENCE_UNIQUE_PROJECT_CITATION_KEY_DDL = `CREATE UNIQUE INDEX IF NOT EXISTS "Reference_projectId_citationKey_key" ON "Reference"("projectId", "citationKey")`
 const REFERENCE_INDEX_DDLS = [
   `CREATE INDEX IF NOT EXISTS "Reference_projectId_idx" ON "Reference"("projectId")`,
@@ -692,6 +703,25 @@ const REFERENCE_ATTACHMENT_VERSION_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "Refe
 const REFERENCE_ATTACHMENT_VERSION_INDEX_DDLS = [
   `CREATE INDEX IF NOT EXISTS "ReferenceAttachmentVersion_referenceId_idx" ON "ReferenceAttachmentVersion"("referenceId")`
 ]
+
+// Imported citation styles (v1.65): a formatting asset, so it is application-wide rather than
+// project-scoped, and it stores the whole compiled program plus the provenance of the document.
+const CITATION_STYLE_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "CitationStyle" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "styleId" TEXT NOT NULL,
+    "label" TEXT NOT NULL,
+    "license" TEXT NOT NULL,
+    "sourceUrl" TEXT,
+    "styleUpdatedAt" TEXT,
+    "defaultLocale" TEXT,
+    "contentHash" TEXT NOT NULL,
+    "fileName" TEXT NOT NULL,
+    "unsupportedJson" TEXT NOT NULL DEFAULT '[]',
+    "programJson" TEXT NOT NULL,
+    "importedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+)`
+const CITATION_STYLE_UNIQUE_STYLE_ID_DDL = `CREATE UNIQUE INDEX IF NOT EXISTS "CitationStyle_styleId_key" ON "CitationStyle"("styleId")`
+const CITATION_STYLE_IMPORTED_AT_INDEX_DDL = `CREATE INDEX IF NOT EXISTS "CitationStyle_importedAt_idx" ON "CitationStyle"("importedAt")`
 
 const REFERENCE_COLLECTION_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "ReferenceCollection" (
     "id" TEXT NOT NULL PRIMARY KEY,
@@ -919,6 +949,15 @@ const ensureProjectSchema = async (client: PrismaClient): Promise<void> => {
 
   // Reference library (v1.51): three pure-additive tables + their unique/index DDL.
   await client.$executeRawUnsafe(REFERENCE_TABLE_DDL)
+  // Citation-style layer (v1.65): bibliographic columns on Reference for existing databases.
+  await addColumnIfMissing(client, 'Reference', 'volume', REFERENCE_ADD_VOLUME_DDL)
+  await addColumnIfMissing(client, 'Reference', 'issue', REFERENCE_ADD_ISSUE_DDL)
+  await addColumnIfMissing(client, 'Reference', 'pages', REFERENCE_ADD_PAGES_DDL)
+  await addColumnIfMissing(client, 'Reference', 'publisher', REFERENCE_ADD_PUBLISHER_DDL)
+  await addColumnIfMissing(client, 'Reference', 'itemType', REFERENCE_ADD_ITEM_TYPE_DDL)
+  await client.$executeRawUnsafe(CITATION_STYLE_TABLE_DDL)
+  await client.$executeRawUnsafe(CITATION_STYLE_UNIQUE_STYLE_ID_DDL)
+  await client.$executeRawUnsafe(CITATION_STYLE_IMPORTED_AT_INDEX_DDL)
   await client.$executeRawUnsafe(REFERENCE_UNIQUE_PROJECT_CITATION_KEY_DDL)
   for (const ddl of REFERENCE_INDEX_DDLS) {
     await client.$executeRawUnsafe(ddl)

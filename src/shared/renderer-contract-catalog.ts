@@ -272,9 +272,9 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
   group('references', 'references', [
     ['add', 'references:add'], ['addToCollection', 'references:add-to-collection'], ['attachPdf', 'references:attach-pdf'],
     ['createCollection', 'references:create-collection'], ['deleteCollection', 'references:delete-collection'], ['detachPdf', 'references:detach-pdf'],
-    ['fetchByIdentifier', 'references:fetch-by-identifier'], ['importDoisFromPdf', 'references:import-dois-from-pdf'], ['list', 'references:list'],
-    ['listCollections', 'references:list-collections'], ['merge', 'references:merge'], ['remove', 'references:remove'],
-    ['removeFromCollection', 'references:remove-from-collection'],
+    ['fetchByIdentifier', 'references:fetch-by-identifier'], ['importDoisFromPdf', 'references:import-dois-from-pdf'], ['importCitationStyle', 'references:import-citation-style'], ['list', 'references:list'],
+    ['listCitationStyles', 'references:list-citation-styles'], ['listCollections', 'references:list-collections'], ['merge', 'references:merge'], ['remove', 'references:remove'],
+    ['removeCitationStyle', 'references:remove-citation-style'], ['removeFromCollection', 'references:remove-from-collection'],
   ]),
   group('remote-access', 'remoteAccess', [
     ['onChanged', 'remote-access:changed', EVENT], ['approve', 'remote-access:approve'], ['detect', 'remote-access:detect'],

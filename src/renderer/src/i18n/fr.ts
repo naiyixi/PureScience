@@ -2857,5 +2857,45 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'references.manualAuthorsPlaceholder': 'Auteurs（séparés par des virgules, facultatif）',
   'references.manualDoiPlaceholder': 'DOI（facultatif）',
   'references.manualYearPlaceholder': 'Année',
-  'references.addedNotice': 'Ajouté：{key}'
+  'references.addedNotice': 'Ajouté：{key}',
+
+  // 引文样式层（v1.65）
+  'references.citationStyle': 'Style de citation',
+  'references.builtinStyles': 'Styles intégrés',
+  'references.importedStyles': 'Styles importés',
+  'references.importedStylesHint':
+    'Les styles importés proviennent de vos propres documents CSL ; la licence et les éléments non pris en charge sont conservés.',
+  'references.styleLicense': 'Licence : {license}',
+  'references.styleUnsupported': 'Non pris en charge : {names}',
+  'references.removeStyle': 'Retirer',
+  'references.exportWithStyle': 'Exporter avec le style choisi',
+  'references.exportedWithStyle': '{n} citations exportées en {style}.',
+  'references.importCsl': 'Importer un style CSL',
+  'references.styleImported': 'Style importé : {label} (licence {license})',
+  'references.styleReplaced': 'Style mis à jour : {label}',
+  'references.styleRemoved': 'Style retiré.',
+  'references.copiedInStyle': 'Copié ({style})',
+  'references.copyInStyle': 'Copier la citation ({style})',
+  'references.compareStyles': 'Comparer les styles',
+  'references.compareStylesTitle': 'Une notice, plusieurs styles',
+  'references.compareStylesHint':
+    "Les champs manquants restent vides et sont nommés ; les éléments CSL non pris en charge le sont aussi. Rien n'est complété à votre place.",
+  'references.compareEmpty': "(ce style n'a rien produit pour cette notice)",
+  'references.compareMissingFields': 'Champs manquants : {fields}',
+  'references.citationWarning.missingField': "Cette notice n'a pas de {field}",
+  'references.citationWarning.unsupported': 'Élément CSL non pris en charge : {name}',
+  'references.citationWarning.unknownStyle': "Style inconnu — rien n'a été produit",
+  'references.citationWarning.noLocator':
+    "Cette notice n'a pas de lien résoluble ; le chemin d'accès reste vide",
+  'references.citationWarning.emptyRender': "Ce style n'a rien produit pour cette notice",
+  'references.styleRejection.xmlParseFailed': "Le XML n'a pas pu être analysé",
+  'references.styleRejection.notAStyle': "L'élément racine n'est pas <style>",
+  'references.styleRejection.missingInfo': 'Les métadonnées <info> sont absentes',
+  'references.styleRejection.missingTitle': "Le style n'a pas de titre",
+  'references.styleRejection.missingLicense':
+    "Aucune licence déclarée — un style non attribuable n'est pas installé",
+  'references.styleRejection.missingBibliography': 'La mise en page <bibliography> est absente',
+  'references.styleRejection.idCollision': "L'id du style entre en conflit avec un style intégré",
+  'references.styleRejection.tooLarge': 'Le fichier dépasse la limite de 2 Mo',
+  'references.styleRejection.unknown': "L'import n'a pas passé la validation"
 }

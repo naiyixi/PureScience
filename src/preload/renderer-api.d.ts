@@ -861,6 +861,13 @@ export interface PureScienceAPI {
       truncated: number
     }>
     detachPdf(referenceId: string): Promise<Reference>
+    // Citation-style layer (v1.65): imported CSL styles, validated and stored with their licence.
+    listCitationStyles(): Promise<import('../shared/citation/csl').ImportedCitationStyle[]>
+    importCitationStyle(input: {
+      fileName: string
+      xml: string
+    }): Promise<import('../main/references/citation-style-service').CitationStyleImportResult>
+    removeCitationStyle(styleId: string): Promise<void>
   }
   preview: {
     load(request: LoadPreviewStateRequest): Promise<PersistedPreviewState | null>

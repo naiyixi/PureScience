@@ -2834,5 +2834,45 @@ export const en: Record<ZhKey, string> = {
   'references.manualAuthorsPlaceholder': 'Authors (comma-separated, optional)',
   'references.manualDoiPlaceholder': 'DOI (optional)',
   'references.manualYearPlaceholder': 'Year',
-  'references.addedNotice': 'Added: {key}'
+  'references.addedNotice': 'Added: {key}',
+
+  // 引文样式层（v1.65）
+  'references.citationStyle': 'Citation style',
+  'references.builtinStyles': 'Built-in styles',
+  'references.importedStyles': 'Imported styles',
+  'references.importedStylesHint':
+    'Imported styles come from your own CSL documents; licence and unsupported constructs are recorded with each one.',
+  'references.styleLicense': 'Licence: {license}',
+  'references.styleUnsupported': 'Unsupported: {names}',
+  'references.removeStyle': 'Remove',
+  'references.exportWithStyle': 'Export in the selected style',
+  'references.exportedWithStyle': 'Exported {n} citations in {style}.',
+  'references.importCsl': 'Import CSL style',
+  'references.styleImported': 'Imported style: {label} (licence {license})',
+  'references.styleReplaced': 'Updated style: {label}',
+  'references.styleRemoved': 'Style removed.',
+  'references.copiedInStyle': 'Copied ({style})',
+  'references.copyInStyle': 'Copy citation ({style})',
+  'references.compareStyles': 'Compare styles',
+  'references.compareStylesTitle': 'Same record, several styles',
+  'references.compareStylesHint':
+    'Missing fields stay empty and are named; unsupported CSL constructs are named too. Nothing is filled in for you.',
+  'references.compareEmpty': '(this style rendered nothing for this record)',
+  'references.compareMissingFields': 'Missing fields: {fields}',
+  'references.citationWarning.missingField': 'This record has no {field}',
+  'references.citationWarning.unsupported': 'Unsupported CSL construct: {name}',
+  'references.citationWarning.unknownStyle': 'Unknown style — nothing was rendered',
+  'references.citationWarning.noLocator':
+    'This record has no resolvable link; the access path is left empty',
+  'references.citationWarning.emptyRender': 'This style rendered nothing for this record',
+  'references.styleRejection.xmlParseFailed': 'The XML could not be parsed',
+  'references.styleRejection.notAStyle': 'The root element is not <style>',
+  'references.styleRejection.missingInfo': 'The <info> metadata is missing',
+  'references.styleRejection.missingTitle': 'The style has no title',
+  'references.styleRejection.missingLicense':
+    'No licence declared — a style we cannot attribute is not installed',
+  'references.styleRejection.missingBibliography': 'The <bibliography> layout is missing',
+  'references.styleRejection.idCollision': 'The style id collides with a built-in style',
+  'references.styleRejection.tooLarge': 'The file exceeds the 2 MB limit',
+  'references.styleRejection.unknown': 'The import did not pass validation'
 }

@@ -66,6 +66,7 @@ export const fetchReferenceByIdentifier = async (
             ? (hit.primary_location as { source: { display_name: string } }).source.display_name
             : undefined,
         year: typeof hit.publication_year === 'number' ? hit.publication_year : undefined,
+        ...openAlexBibliographicDetail(hit),
         doi:
           typeof hit.doi === 'string' ? hit.doi.replace(/^https?:\/\/doi\.org\//i, '') : undefined,
         url: typeof hit.doi === 'string' ? hit.doi : undefined,
@@ -111,6 +112,7 @@ export const fetchReferenceByIdentifier = async (
         authors,
         venue: typeof record.fulljournalname === 'string' ? record.fulljournalname : undefined,
         year: Number.isFinite(iso) ? iso : undefined,
+        ...pubmedBibliographicDetail(record),
         pmid: kind === 'pmid' ? value : undefined,
         pmcid: kind === 'pmcid' ? value : undefined,
         url: kind === 'pmid' ? `https://pubmed.ncbi.nlm.nih.gov/${value}/` : undefined,
@@ -145,6 +147,8 @@ export const fetchReferenceByIdentifier = async (
       year: yearMatch ? Number.parseInt(yearMatch[1], 10) : undefined,
       arxivId: value,
       url: `https://arxiv.org/abs/${value}`,
+      // arXiv is a preprint server: the record says so rather than being presented as a journal article.
+      itemType: 'preprint',
       abstractSnippet: summaryMatch?.[1].replace(/\s+/g, ' ').trim().slice(0, MAX_ABSTRACT_CHARS),
       sourceConnector: 'arxiv',
       sourceRecordId: value,
@@ -160,6 +164,93 @@ export const fetchReferenceByIdentifier = async (
     return null
   } finally {
     clearTimeout(timer)
+  }
+}
+
+// ---- bibliographic detail from identity responses -------------------------------------------
+// The citation-style layer can only print what the record carries, so the identity lookups keep the
+// volume/issue/pages/publisher/type they are already being handed. Every field is optional: an
+// absent one stays absent (no placeholder), which is what the styles report as `field:*` warnings.
+
+type BibliographicDetail = {
+  volume?: string
+  issue?: string
+  pages?: string
+  publisher?: string
+  itemType?:
+    | 'journal-article'
+    | 'conference-paper'
+    | 'preprint'
+    | 'book'
+    | 'chapter'
+    | 'report'
+    | 'dataset'
+    | 'thesis'
+    | 'web'
+}
+
+const trimmedOrUndefined = (value: unknown): string | undefined => {
+  if (typeof value !== 'string') return undefined
+  const trimmed = value.trim()
+  return trimmed ? trimmed : undefined
+}
+
+const openAlexItemType = (work: Record<string, unknown>): BibliographicDetail['itemType'] => {
+  const workType = trimmedOrUndefined(work.type)
+  const sourceType = trimmedOrUndefined(
+    (work.primary_location as { source?: { type?: unknown } } | undefined)?.source?.type
+  )
+  if (workType === 'preprint') return 'preprint'
+  if (workType === 'book-chapter') return 'chapter'
+  if (workType === 'book') return 'book'
+  if (workType === 'dataset') return 'dataset'
+  if (workType === 'dissertation') return 'thesis'
+  if (workType === 'report') return 'report'
+  if (sourceType === 'conference') return 'conference-paper'
+  if (workType === 'article' || workType === 'review') return 'journal-article'
+  return undefined
+}
+
+export const openAlexBibliographicDetail = (work: Record<string, unknown>): BibliographicDetail => {
+  const biblio = (work.biblio ?? {}) as Record<string, unknown>
+  const firstPage = trimmedOrUndefined(biblio.first_page)
+  const lastPage = trimmedOrUndefined(biblio.last_page)
+  const pages =
+    firstPage && lastPage && firstPage !== lastPage
+      ? `${firstPage}-${lastPage}`
+      : (firstPage ?? lastPage)
+  const source = (work.primary_location as { source?: Record<string, unknown> } | undefined)?.source
+  return {
+    volume: trimmedOrUndefined(biblio.volume),
+    issue: trimmedOrUndefined(biblio.issue),
+    pages,
+    publisher: trimmedOrUndefined(source?.host_organization_name),
+    itemType: openAlexItemType(work)
+  }
+}
+
+// PubMed's esummary carries the journal citation block directly; its publication types are the
+// signal for what kind of record this is.
+export const pubmedBibliographicDetail = (record: Record<string, unknown>): BibliographicDetail => {
+  const pubtypes = Array.isArray(record.pubtype)
+    ? (record.pubtype as unknown[]).map((entry) => String(entry).toLowerCase())
+    : []
+  const itemType: BibliographicDetail['itemType'] = pubtypes.some((type) =>
+    type.includes('journal article')
+  )
+    ? 'journal-article'
+    : pubtypes.some((type) => type.includes('book'))
+      ? 'book'
+      : pubtypes.some((type) => type.includes('preprint'))
+        ? 'preprint'
+        : pubtypes.some((type) => type.includes('dataset'))
+          ? 'dataset'
+          : undefined
+  return {
+    volume: trimmedOrUndefined(record.volume),
+    issue: trimmedOrUndefined(record.issue),
+    pages: trimmedOrUndefined(record.pages),
+    itemType
   }
 }
 

@@ -39,6 +39,11 @@ const mapReference = (row: {
   authorsJson: string
   venue: string | null
   year: number | null
+  volume: string | null
+  issue: string | null
+  pages: string | null
+  publisher: string | null
+  itemType: string | null
   doi: string | null
   pmid: string | null
   pmcid: string | null
@@ -61,6 +66,11 @@ const mapReference = (row: {
   authors: asAuthors(row.authorsJson),
   venue: row.venue ?? undefined,
   year: row.year ?? undefined,
+  volume: row.volume ?? undefined,
+  issue: row.issue ?? undefined,
+  pages: row.pages ?? undefined,
+  publisher: row.publisher ?? undefined,
+  itemType: (row.itemType as Reference['itemType']) ?? undefined,
   doi: row.doi ?? undefined,
   pmid: row.pmid ?? undefined,
   pmcid: row.pmcid ?? undefined,
@@ -120,6 +130,11 @@ export const referenceColumns = {
   authorsJson: true,
   venue: true,
   year: true,
+  volume: true,
+  issue: true,
+  pages: true,
+  publisher: true,
+  itemType: true,
   doi: true,
   pmid: true,
   pmcid: true,
@@ -226,6 +241,11 @@ export class ReferenceRepository {
         authorsJson: serializeAuthors(input.authors),
         venue: input.venue?.trim() || null,
         year: input.year ?? null,
+        volume: input.volume?.trim() || null,
+        issue: input.issue?.trim() || null,
+        pages: input.pages?.trim() || null,
+        publisher: input.publisher?.trim() || null,
+        itemType: input.itemType ?? null,
         doi: input.doi?.trim() || null,
         pmid: input.pmid?.trim() || null,
         pmcid: input.pmcid?.trim() || null,

@@ -35,6 +35,9 @@ type ReferencesCommandOwner = Pick<
   | 'attachPdf'
   | 'detachPdf'
   | 'importDoisFromPdf'
+  | 'listCitationStyles'
+  | 'importCitationStyle'
+  | 'removeCitationStyle'
 >
 
 const referencesApplicationCommands = Object.freeze({
@@ -102,7 +105,22 @@ const referencesApplicationCommands = Object.freeze({
     'references:detach-pdf',
     OwnerArgs<ReferencesCommandOwner, 'detachPdf'>,
     OwnerResult<ReferencesCommandOwner, 'detachPdf'>
-  >('references:detach-pdf')
+  >('references:detach-pdf'),
+  listCitationStyles: defineApplicationCommand<
+    'references:list-citation-styles',
+    OwnerArgs<ReferencesCommandOwner, 'listCitationStyles'>,
+    OwnerResult<ReferencesCommandOwner, 'listCitationStyles'>
+  >('references:list-citation-styles'),
+  importCitationStyle: defineApplicationCommand<
+    'references:import-citation-style',
+    OwnerArgs<ReferencesCommandOwner, 'importCitationStyle'>,
+    OwnerResult<ReferencesCommandOwner, 'importCitationStyle'>
+  >('references:import-citation-style'),
+  removeCitationStyle: defineApplicationCommand<
+    'references:remove-citation-style',
+    OwnerArgs<ReferencesCommandOwner, 'removeCitationStyle'>,
+    OwnerResult<ReferencesCommandOwner, 'removeCitationStyle'>
+  >('references:remove-citation-style')
 })
 
 const referencesApplicationCommandGroup = defineApplicationCommandGroup('references', [
@@ -118,7 +136,10 @@ const referencesApplicationCommandGroup = defineApplicationCommandGroup('referen
   referencesApplicationCommands.removeFromCollection,
   referencesApplicationCommands.importDoisFromPdf,
   referencesApplicationCommands.attachPdf,
-  referencesApplicationCommands.detachPdf
+  referencesApplicationCommands.detachPdf,
+  referencesApplicationCommands.listCitationStyles,
+  referencesApplicationCommands.importCitationStyle,
+  referencesApplicationCommands.removeCitationStyle
 ] as const)
 
 // Registers the library channels as application commands delegating to the references owner.
@@ -147,7 +168,12 @@ const registerReferencesApplicationCommands = (
       'references:import-dois-from-pdf': ({ args }) =>
         dependencies.references.importDoisFromPdf(args[0], args[1], args[2]),
       'references:attach-pdf': ({ args }) => dependencies.references.attachPdf(args[0], args[1]),
-      'references:detach-pdf': ({ args }) => dependencies.references.detachPdf(args[0])
+      'references:detach-pdf': ({ args }) => dependencies.references.detachPdf(args[0]),
+      'references:list-citation-styles': () => dependencies.references.listCitationStyles(),
+      'references:import-citation-style': ({ args }) =>
+        dependencies.references.importCitationStyle(args[0]),
+      'references:remove-citation-style': ({ args }) =>
+        dependencies.references.removeCitationStyle(args[0])
     })
     return scope.complete()
   } catch (error) {

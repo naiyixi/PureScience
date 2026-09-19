@@ -2869,5 +2869,45 @@ export const de: Partial<Record<ZhKey, string>> = {
   'references.manualAuthorsPlaceholder': 'Autor:innen（kommagetrennt, optional）',
   'references.manualDoiPlaceholder': 'DOI（optional）',
   'references.manualYearPlaceholder': 'Jahr',
-  'references.addedNotice': 'Hinzugefügt：{key}'
+  'references.addedNotice': 'Hinzugefügt：{key}',
+
+  // 引文样式层（v1.65）
+  'references.citationStyle': 'Zitierstil',
+  'references.builtinStyles': 'Mitgelieferte Stile',
+  'references.importedStyles': 'Importierte Stile',
+  'references.importedStylesHint':
+    'Importierte Stile stammen aus Ihren eigenen CSL-Dokumenten; Lizenz und nicht unterstützte Konstrukte werden mitgeführt.',
+  'references.styleLicense': 'Lizenz: {license}',
+  'references.styleUnsupported': 'Nicht unterstützt: {names}',
+  'references.removeStyle': 'Entfernen',
+  'references.exportWithStyle': 'Im gewählten Stil exportieren',
+  'references.exportedWithStyle': '{n} Zitate im Stil {style} exportiert.',
+  'references.importCsl': 'CSL-Stil importieren',
+  'references.styleImported': 'Stil importiert: {label} (Lizenz {license})',
+  'references.styleReplaced': 'Stil aktualisiert: {label}',
+  'references.styleRemoved': 'Stil entfernt.',
+  'references.copiedInStyle': 'Kopiert ({style})',
+  'references.copyInStyle': 'Zitat kopieren ({style})',
+  'references.compareStyles': 'Stile vergleichen',
+  'references.compareStylesTitle': 'Ein Eintrag, mehrere Stile',
+  'references.compareStylesHint':
+    'Fehlende Felder bleiben leer und werden benannt; nicht unterstützte CSL-Konstrukte ebenfalls. Es wird nichts ergänzt.',
+  'references.compareEmpty': '(dieser Stil hat für diesen Eintrag nichts ausgegeben)',
+  'references.compareMissingFields': 'Fehlende Felder: {fields}',
+  'references.citationWarning.missingField': 'Diesem Eintrag fehlt: {field}',
+  'references.citationWarning.unsupported': 'Nicht unterstütztes CSL-Konstrukt: {name}',
+  'references.citationWarning.unknownStyle': 'Unbekannter Stil – nichts ausgegeben',
+  'references.citationWarning.noLocator':
+    'Dieser Eintrag hat keinen auflösbaren Link; der Zugriffspfad bleibt leer',
+  'references.citationWarning.emptyRender': 'Dieser Stil hat für diesen Eintrag nichts ausgegeben',
+  'references.styleRejection.xmlParseFailed': 'Das XML ließ sich nicht lesen',
+  'references.styleRejection.notAStyle': 'Das Wurzelelement ist kein <style>',
+  'references.styleRejection.missingInfo': 'Die <info>-Metadaten fehlen',
+  'references.styleRejection.missingTitle': 'Der Stil hat keinen Titel',
+  'references.styleRejection.missingLicense':
+    'Keine Lizenz angegeben – ein nicht zuordenbarer Stil wird nicht installiert',
+  'references.styleRejection.missingBibliography': 'Das <bibliography>-Layout fehlt',
+  'references.styleRejection.idCollision': 'Die Stil-ID kollidiert mit einem mitgelieferten Stil',
+  'references.styleRejection.tooLarge': 'Die Datei überschreitet 2 MB',
+  'references.styleRejection.unknown': 'Der Import hat die Prüfung nicht bestanden'
 }

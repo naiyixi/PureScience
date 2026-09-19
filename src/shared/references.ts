@@ -5,6 +5,19 @@
 
 export type ReferenceSourceConnector = 'openalex' | 'pubmed' | 'arxiv' | 'europepmc' | 'manual'
 
+// What kind of record this is; drives the GB/T type tag and the CSL type mapping. Optional: a record
+// without one is presented by the style's own fallback rather than by our guess (see citation/format).
+export type ReferenceItemType =
+  | 'journal-article'
+  | 'conference-paper'
+  | 'preprint'
+  | 'book'
+  | 'chapter'
+  | 'report'
+  | 'dataset'
+  | 'thesis'
+  | 'web'
+
 export type ReferenceAuthor = {
   name: string
   orcid?: string
@@ -38,6 +51,14 @@ export type Reference = {
   authors: ReferenceAuthor[]
   venue: string | undefined
   year: number | undefined
+  // Bibliographic detail added for the citation-style layer (v1.65): a style can only print what the
+  // record carries, so the fields submission systems ask for live on the record itself. Optional keys
+  // so records written before this layer (and their fixtures) stay valid unchanged.
+  volume?: string | undefined
+  issue?: string | undefined
+  pages?: string | undefined
+  publisher?: string | undefined
+  itemType?: ReferenceItemType | undefined
   doi: string | undefined
   pmid: string | undefined
   pmcid: string | undefined
@@ -87,6 +108,11 @@ export type CreateReferenceInput = {
   authors?: ReferenceAuthor[]
   venue?: string
   year?: number
+  volume?: string
+  issue?: string
+  pages?: string
+  publisher?: string
+  itemType?: ReferenceItemType
   doi?: string
   pmid?: string
   pmcid?: string

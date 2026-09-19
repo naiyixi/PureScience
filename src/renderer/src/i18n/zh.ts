@@ -2662,7 +2662,44 @@ export const zh = {
   'references.manualAuthorsPlaceholder': '作者（逗号分隔，可选）',
   'references.manualDoiPlaceholder': 'DOI（可选）',
   'references.manualYearPlaceholder': '年份',
-  'references.addedNotice': '已加入：{key}'
+  'references.addedNotice': '已加入：{key}',
+
+  // 引文样式层（v1.65）
+  'references.citationStyle': '引文样式',
+  'references.builtinStyles': '内置样式',
+  'references.importedStyles': '已导入样式',
+  'references.importedStylesHint': '导入的样式来自你自己的 CSL 文档；许可与未支持要素都记录在案。',
+  'references.styleLicense': '许可：{license}',
+  'references.styleUnsupported': '未支持要素：{names}',
+  'references.removeStyle': '移除',
+  'references.exportWithStyle': '按所选样式导出',
+  'references.exportedWithStyle': '已按 {style} 导出 {n} 条引文。',
+  'references.importCsl': '导入 CSL 样式',
+  'references.styleImported': '已导入样式：{label}（许可 {license}）',
+  'references.styleReplaced': '已更新样式：{label}',
+  'references.styleRemoved': '已移除样式。',
+  'references.copiedInStyle': '已复制（{style}）',
+  'references.copyInStyle': '复制引文（{style}）',
+  'references.compareStyles': '并排对照',
+  'references.compareStylesTitle': '多种样式对照',
+  'references.compareStylesHint':
+    '缺字段一律留空并逐条标出，未支持的 CSL 要素也逐条具名——不代填、不冒充。',
+  'references.compareEmpty': '（该样式在此记录上没有渲染出内容）',
+  'references.compareMissingFields': '缺少字段：{fields}',
+  'references.citationWarning.missingField': '该记录缺字段：{field}',
+  'references.citationWarning.unsupported': '未支持的 CSL 要素：{name}',
+  'references.citationWarning.unknownStyle': '未知样式，未渲染',
+  'references.citationWarning.noLocator': '该记录没有可解引用链接，访问路径留空',
+  'references.citationWarning.emptyRender': '该样式在此记录上没有渲染出内容',
+  'references.styleRejection.xmlParseFailed': 'XML 无法解析',
+  'references.styleRejection.notAStyle': '根元素不是 <style>',
+  'references.styleRejection.missingInfo': '缺少 <info> 元数据',
+  'references.styleRejection.missingTitle': '缺少样式标题',
+  'references.styleRejection.missingLicense': '缺少许可声明（不可归属的样式不安装）',
+  'references.styleRejection.missingBibliography': '缺少 <bibliography> 布局',
+  'references.styleRejection.idCollision': '样式 id 与内置样式冲突',
+  'references.styleRejection.tooLarge': '文件超过 2 MB 上限',
+  'references.styleRejection.unknown': '导入未通过'
 }
 
 export type ZhKey = keyof typeof zh

@@ -2801,5 +2801,45 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'references.manualAuthorsPlaceholder': 'Авторы（через запятую, необязательно）',
   'references.manualDoiPlaceholder': 'DOI（необязательно）',
   'references.manualYearPlaceholder': 'Год',
-  'references.addedNotice': 'Добавлено：{key}'
+  'references.addedNotice': 'Добавлено：{key}',
+
+  // 引文样式层（v1.65）
+  'references.citationStyle': 'Стиль цитирования',
+  'references.builtinStyles': 'Встроенные стили',
+  'references.importedStyles': 'Импортированные стили',
+  'references.importedStylesHint':
+    'Импортированные стили взяты из ваших документов CSL; лицензия и неподдерживаемые конструкции сохраняются.',
+  'references.styleLicense': 'Лицензия: {license}',
+  'references.styleUnsupported': 'Не поддерживается: {names}',
+  'references.removeStyle': 'Удалить',
+  'references.exportWithStyle': 'Экспорт в выбранном стиле',
+  'references.exportedWithStyle': 'Экспортировано {n} ссылок в стиле {style}.',
+  'references.importCsl': 'Импортировать стиль CSL',
+  'references.styleImported': 'Стиль импортирован: {label} (лицензия {license})',
+  'references.styleReplaced': 'Стиль обновлён: {label}',
+  'references.styleRemoved': 'Стиль удалён.',
+  'references.copiedInStyle': 'Скопировано ({style})',
+  'references.copyInStyle': 'Копировать ссылку ({style})',
+  'references.compareStyles': 'Сравнить стили',
+  'references.compareStylesTitle': 'Одна запись — несколько стилей',
+  'references.compareStylesHint':
+    'Отсутствующие поля остаются пустыми и называются; неподдерживаемые конструкции CSL тоже. Ничего не подставляется.',
+  'references.compareEmpty': '(этот стиль ничего не вывел для данной записи)',
+  'references.compareMissingFields': 'Нет полей: {fields}',
+  'references.citationWarning.missingField': 'В записи нет поля: {field}',
+  'references.citationWarning.unsupported': 'Неподдерживаемая конструкция CSL: {name}',
+  'references.citationWarning.unknownStyle': 'Неизвестный стиль — ничего не выведено',
+  'references.citationWarning.noLocator':
+    'У записи нет разрешаемой ссылки; путь доступа оставлен пустым',
+  'references.citationWarning.emptyRender': 'Этот стиль ничего не вывел для данной записи',
+  'references.styleRejection.xmlParseFailed': 'XML не удалось разобрать',
+  'references.styleRejection.notAStyle': 'Корневой элемент не <style>',
+  'references.styleRejection.missingInfo': 'Нет метаданных <info>',
+  'references.styleRejection.missingTitle': 'У стиля нет названия',
+  'references.styleRejection.missingLicense':
+    'Лицензия не указана — стиль без атрибуции не устанавливается',
+  'references.styleRejection.missingBibliography': 'Нет разметки <bibliography>',
+  'references.styleRejection.idCollision': 'Идентификатор стиля конфликтует со встроенным',
+  'references.styleRejection.tooLarge': 'Файл превышает предел 2 МБ',
+  'references.styleRejection.unknown': 'Импорт не прошёл проверку'
 }

@@ -2800,5 +2800,44 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'references.manualAuthorsPlaceholder': '著者（カンマ区切り、任意）',
   'references.manualDoiPlaceholder': 'DOI（任意）',
   'references.manualYearPlaceholder': '年',
-  'references.addedNotice': '追加しました：{key}'
+  'references.addedNotice': '追加しました：{key}',
+
+  // 引文样式层（v1.65）
+  'references.citationStyle': '引用スタイル',
+  'references.builtinStyles': '内蔵スタイル',
+  'references.importedStyles': 'インポートしたスタイル',
+  'references.importedStylesHint':
+    'インポートしたスタイルはお使いの CSL 文書に由来します。ライセンスと未対応要素も記録されます。',
+  'references.styleLicense': 'ライセンス：{license}',
+  'references.styleUnsupported': '未対応：{names}',
+  'references.removeStyle': '削除',
+  'references.exportWithStyle': '選択したスタイルで書き出す',
+  'references.exportedWithStyle': '{style} で {n} 件の引用を書き出しました。',
+  'references.importCsl': 'CSL スタイルをインポート',
+  'references.styleImported': 'スタイルを追加：{label}（ライセンス {license}）',
+  'references.styleReplaced': 'スタイルを更新：{label}',
+  'references.styleRemoved': 'スタイルを削除しました。',
+  'references.copiedInStyle': 'コピーしました（{style}）',
+  'references.copyInStyle': '引用をコピー（{style}）',
+  'references.compareStyles': 'スタイルを並べて比較',
+  'references.compareStylesTitle': '同じ文献を複数スタイルで',
+  'references.compareStylesHint':
+    '欠けている項目は空のまま個別に示し、未対応の CSL 要素も名前を挙げます。勝手に補完はしません。',
+  'references.compareEmpty': '（この記録に対してこのスタイルは何も出力しませんでした）',
+  'references.compareMissingFields': '欠けている項目：{fields}',
+  'references.citationWarning.missingField': 'この記録に {field} がありません',
+  'references.citationWarning.unsupported': '未対応の CSL 要素：{name}',
+  'references.citationWarning.unknownStyle': '不明なスタイルのため何も出力していません',
+  'references.citationWarning.noLocator': '解決可能なリンクがないためアクセス経路は空のままです',
+  'references.citationWarning.emptyRender': 'この記録に対してこのスタイルは何も出力しませんでした',
+  'references.styleRejection.xmlParseFailed': 'XML を解析できませんでした',
+  'references.styleRejection.notAStyle': 'ルート要素が <style> ではありません',
+  'references.styleRejection.missingInfo': '<info> メタデータがありません',
+  'references.styleRejection.missingTitle': 'スタイルにタイトルがありません',
+  'references.styleRejection.missingLicense':
+    'ライセンス表記がありません（帰属不明のスタイルは導入しません）',
+  'references.styleRejection.missingBibliography': '<bibliography> レイアウトがありません',
+  'references.styleRejection.idCollision': 'スタイル id が内蔵スタイルと衝突します',
+  'references.styleRejection.tooLarge': 'ファイルが 2 MB の上限を超えています',
+  'references.styleRejection.unknown': 'インポートが検証を通りませんでした'
 }

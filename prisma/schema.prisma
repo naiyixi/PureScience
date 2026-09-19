@@ -478,6 +478,12 @@ model Reference {
   authorsJson      String    @default("[]") // JSON [{ name, orcid? }]
   venue            String?
   year             Int?
+  // Citation-style layer (v1.65): the bibliographic detail multi-style rendering needs.
+  volume           String?
+  issue            String?
+  pages            String?
+  publisher        String?
+  itemType         String? // journal-article | conference-paper | preprint | book | chapter | report | dataset | thesis | web
   doi              String?
   pmid             String?
   pmcid            String?
@@ -499,6 +505,26 @@ model Reference {
   @@index([doi])
   @@index([pmid])
   @@index([arxivId])
+}
+
+model CitationStyle {
+  id              String   @id @default(cuid())
+  // The style's own identity, e.g. "csl-import:test-journal". Unique: re-importing the same document
+  // updates the stored copy instead of stacking duplicates.
+  styleId         String   @unique
+  label           String
+  license         String
+  sourceUrl       String?
+  styleUpdatedAt  String?
+  defaultLocale   String?
+  // Hash of the imported document: proves which bytes produced a formatted list.
+  contentHash     String
+  fileName        String
+  unsupportedJson String   @default("[]")
+  programJson     String
+  importedAt      DateTime @default(now())
+
+  @@index([importedAt])
 }
 
 model ReferenceAttachmentVersion {

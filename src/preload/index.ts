@@ -640,7 +640,14 @@ const api: PureScienceAPI = {
     importDoisFromPdf: (projectId, pdfPath, limit) =>
       electronRendererContracts.invoke('references.importDoisFromPdf', projectId, pdfPath, limit),
     detachPdf: (referenceId) =>
-      electronRendererContracts.invoke('references.detachPdf', referenceId)
+      electronRendererContracts.invoke('references.detachPdf', referenceId),
+    // Citation-style layer (v1.65): imported CSL styles are application-wide, so they carry no
+    // project id; the renderer merges them with the built-in styles and formats locally.
+    listCitationStyles: () => electronRendererContracts.invoke('references.listCitationStyles'),
+    importCitationStyle: (input) =>
+      electronRendererContracts.invoke('references.importCitationStyle', input),
+    removeCitationStyle: (styleId) =>
+      electronRendererContracts.invoke('references.removeCitationStyle', styleId)
   },
   preview: {
     // Per-project preview panel state, persisted alongside projects in SQLite.

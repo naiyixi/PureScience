@@ -2838,5 +2838,45 @@ export const es: Partial<Record<ZhKey, string>> = {
   'references.manualAuthorsPlaceholder': 'Autores（separados por comas, opcional）',
   'references.manualDoiPlaceholder': 'DOI（opcional）',
   'references.manualYearPlaceholder': 'Año',
-  'references.addedNotice': 'Añadido：{key}'
+  'references.addedNotice': 'Añadido：{key}',
+
+  // 引文样式层（v1.65）
+  'references.citationStyle': 'Estilo de cita',
+  'references.builtinStyles': 'Estilos incluidos',
+  'references.importedStyles': 'Estilos importados',
+  'references.importedStylesHint':
+    'Los estilos importados provienen de sus propios documentos CSL; la licencia y los elementos no admitidos quedan registrados.',
+  'references.styleLicense': 'Licencia: {license}',
+  'references.styleUnsupported': 'No admitido: {names}',
+  'references.removeStyle': 'Quitar',
+  'references.exportWithStyle': 'Exportar con el estilo elegido',
+  'references.exportedWithStyle': 'Se exportaron {n} citas en {style}.',
+  'references.importCsl': 'Importar estilo CSL',
+  'references.styleImported': 'Estilo importado: {label} (licencia {license})',
+  'references.styleReplaced': 'Estilo actualizado: {label}',
+  'references.styleRemoved': 'Estilo eliminado.',
+  'references.copiedInStyle': 'Copiado ({style})',
+  'references.copyInStyle': 'Copiar cita ({style})',
+  'references.compareStyles': 'Comparar estilos',
+  'references.compareStylesTitle': 'Un registro, varios estilos',
+  'references.compareStylesHint':
+    'Los campos ausentes quedan vacíos y se nombran; los elementos CSL no admitidos también. No se rellena nada por usted.',
+  'references.compareEmpty': '(este estilo no generó nada para este registro)',
+  'references.compareMissingFields': 'Campos ausentes: {fields}',
+  'references.citationWarning.missingField': 'A este registro le falta: {field}',
+  'references.citationWarning.unsupported': 'Elemento CSL no admitido: {name}',
+  'references.citationWarning.unknownStyle': 'Estilo desconocido: no se generó nada',
+  'references.citationWarning.noLocator':
+    'Este registro no tiene enlace resoluble; la ruta de acceso queda vacía',
+  'references.citationWarning.emptyRender': 'Este estilo no generó nada para este registro',
+  'references.styleRejection.xmlParseFailed': 'No se pudo analizar el XML',
+  'references.styleRejection.notAStyle': 'El elemento raíz no es <style>',
+  'references.styleRejection.missingInfo': 'Faltan los metadatos <info>',
+  'references.styleRejection.missingTitle': 'El estilo no tiene título',
+  'references.styleRejection.missingLicense':
+    'Sin licencia declarada: un estilo que no podemos atribuir no se instala',
+  'references.styleRejection.missingBibliography': 'Falta el diseño <bibliography>',
+  'references.styleRejection.idCollision': 'El id del estilo choca con un estilo incluido',
+  'references.styleRejection.tooLarge': 'El archivo supera el límite de 2 MB',
+  'references.styleRejection.unknown': 'La importación no superó la validación'
 }

@@ -14,11 +14,14 @@ import type {
   Reference,
   ReferenceCollection
 } from '../../shared/references'
+import type { ImportedCitationStyle } from '../../shared/citation/csl'
 import { fetchReferenceByIdentifier, type IdentifierKind } from './service'
 import { createPdfDoiImportOwner, type PdfDocumentPorts } from './pdf-doi-owner'
 import type { PdfDoiImportResult } from './pdf-doi-import'
 import { ReferenceRepository } from './repository'
 import { ReferenceService } from './service'
+import { CitationStyleRepository, type CitationStyleClient } from './citation-style-repository'
+import { CitationStyleService, type CitationStyleImportResult } from './citation-style-service'
 
 // Renderer-callable surface of the project reference library (v1.51).
 export type ReferencesHandlers = {
@@ -36,6 +39,11 @@ export type ReferencesHandlers = {
   importDoisFromPdf(projectId: string, pdfPath: string, limit?: number): Promise<PdfDoiImportResult>
   attachPdf(referenceId: string, pdfManagedFileId: string | null): Promise<Reference>
   detachPdf(referenceId: string): Promise<Reference>
+  // Citation-style layer (v1.65): imported CSL styles live application-wide; the renderer merges
+  // them with the built-in styles and formats locally.
+  listCitationStyles(): Promise<ImportedCitationStyle[]>
+  importCitationStyle(input: { fileName: string; xml: string }): Promise<CitationStyleImportResult>
+  removeCitationStyle(styleId: string): Promise<void>
 }
 
 export type ReferencesIpcModule = {
@@ -48,14 +56,23 @@ export type ReferencesIpcModule = {
 const createDefaultReferenceRepository = (): ReferenceRepository =>
   new ReferenceRepository(() => getProjectDbClient(resolveStorageRoot()))
 
+// Same lazy-client seam for the citation-style store: it lives in the project database, so a
+// schema-ensure failure can recover exactly like the reference library does.
+const createDefaultCitationStyleRepository = (): CitationStyleRepository =>
+  new CitationStyleRepository(
+    async () => (await getProjectDbClient(resolveStorageRoot())) as unknown as CitationStyleClient
+  )
+
 // Constructs the references module without installing an Electron transport (same seam as compute).
 export const createReferencesIpcModule = (
   repository: ReferenceRepository = createDefaultReferenceRepository(),
   options: {
     resolvePdfFingerprint?: (projectId: string, managedFileId: string) => Promise<string | null>
-  } = {}
+  } = {},
+  citationStyleRepository: CitationStyleRepository = createDefaultCitationStyleRepository()
 ): ReferencesIpcModule => {
   const service = new ReferenceService(repository, options)
+  const citationStyles = new CitationStyleService(citationStyleRepository)
   // The PDF reader lives in the settings/pdf module and is created later in the composition root, so it
   // arrives through a holder rather than forcing the creation order. Until it is bound, the import
   // reports a named failure instead of pretending a document was read.
@@ -102,7 +119,10 @@ export const createReferencesIpcModule = (
     importDoisFromPdf: (projectId, pdfPath, limit) =>
       pdfDoi.importFromPdf(projectId, pdfPath, limit === undefined ? {} : { limit }),
     attachPdf: (referenceId, pdfManagedFileId) => service.attachPdf(referenceId, pdfManagedFileId),
-    detachPdf: (referenceId) => service.detachPdf(referenceId)
+    detachPdf: (referenceId) => service.detachPdf(referenceId),
+    listCitationStyles: () => citationStyles.listStyles(),
+    importCitationStyle: (input) => citationStyles.importStyle(input),
+    removeCitationStyle: (styleId) => citationStyles.removeStyle(styleId)
   }
   return {
     handlers,
@@ -162,6 +182,14 @@ export const installReferencesIpcHandlers = (
     )
     ipcMainHandle('references:detach-pdf', (_event, referenceId: string) =>
       handlers.detachPdf(referenceId)
+    )
+    ipcMainHandle('references:list-citation-styles', () => handlers.listCitationStyles())
+    ipcMainHandle(
+      'references:import-citation-style',
+      (_event, input: { fileName: string; xml: string }) => handlers.importCitationStyle(input)
+    )
+    ipcMainHandle('references:remove-citation-style', (_event, styleId: string) =>
+      handlers.removeCitationStyle(styleId)
     )
     return scope.complete()
   } catch (error) {

@@ -1,18 +1,27 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { BookMarked, Library, Plus, RefreshCw, X } from 'lucide-react'
 
-import { useLanguage } from '@/i18n'
+import { useLanguage, type TranslationKey } from '@/i18n'
 import type {
   AddReferenceResult,
   CreateReferenceInput,
   Reference,
   ReferenceCollection
 } from '../../../../shared/references'
+import { normalizeTitleForDedupe } from '../../../../shared/references'
 import {
-  formatGbt7714,
-  formatGbt7714List,
-  normalizeTitleForDedupe
-} from '../../../../shared/references'
+  citationItemFromReference,
+  compareCitationStyles,
+  formatCitation,
+  formatCitationList,
+  missingFieldsFromWarnings,
+  resolveCitationStyles
+} from '../../../../shared/citation/format'
+import {
+  citationStyleFromImport,
+  type ImportedCitationStyle
+} from '../../../../shared/citation/csl'
+import type { CitationStyleDefinition } from '../../../../shared/citation/types'
 
 const IDENTIFIER_KINDS = ['doi', 'pmid', 'pmcid', 'arxivId'] as const
 type IdentifierKind = (typeof IDENTIFIER_KINDS)[number]
@@ -55,17 +64,55 @@ const groupDuplicates = (references: Reference[]): Reference[][] => {
   return groups
 }
 
-const citationText = (reference: Reference): string => {
-  const authors =
-    reference.authors.length > 0
-      ? reference.authors
-          .slice(0, 3)
-          .map((author) => author.name)
-          .join(', ') + (reference.authors.length > 3 ? ' et al.' : '')
-      : ''
-  const venueYear = [reference.venue, reference.year].filter(Boolean).join(', ')
-  const doi = reference.doi ? `. ${reference.doi}` : ''
-  return `${authors}. ${reference.title}. ${venueYear}${doi}`
+// Citation-style warning tokens are machine-readable (`field:volume`, `unsupported:sort`,
+// `style:unknown`). Each one is shown as a sentence; an unknown token is surfaced verbatim rather
+// than dropped, so a new token can never go unnoticed.
+const CITATION_FIELD_LABELS: Record<string, string> = {
+  authors: 'authors',
+  containerTitle: 'containerTitle',
+  year: 'year',
+  volume: 'volume',
+  issue: 'issue',
+  pages: 'pages',
+  publisher: 'publisher',
+  doi: 'doi'
+}
+
+type TranslateFn = (key: TranslationKey, vars?: Record<string, string | number>) => string
+
+const describeCitationWarning = (warning: string, t: TranslateFn): string => {
+  if (warning.startsWith('field:')) {
+    const field = warning.slice('field:'.length)
+    return t('references.citationWarning.missingField', {
+      field: CITATION_FIELD_LABELS[field] ?? field
+    })
+  }
+  if (warning.startsWith('unsupported:')) {
+    return t('references.citationWarning.unsupported', {
+      name: warning.slice('unsupported:'.length)
+    })
+  }
+  switch (warning) {
+    case 'style:unknown':
+      return t('references.citationWarning.unknownStyle')
+    case 'style:no-locator':
+      return t('references.citationWarning.noLocator')
+    case 'style:empty-render':
+      return t('references.citationWarning.emptyRender')
+    default:
+      return warning
+  }
+}
+
+const STYLE_REJECTION_KEYS: Record<string, TranslationKey> = {
+  'xml-parse-failed': 'references.styleRejection.xmlParseFailed',
+  'not-a-style': 'references.styleRejection.notAStyle',
+  'missing-info': 'references.styleRejection.missingInfo',
+  'missing-title': 'references.styleRejection.missingTitle',
+  'missing-license': 'references.styleRejection.missingLicense',
+  'missing-bibliography': 'references.styleRejection.missingBibliography',
+  'builtin-id-collision': 'references.styleRejection.idCollision',
+  'too-large': 'references.styleRejection.tooLarge'
 }
 
 export function ReferencesLibraryDialog({
@@ -108,6 +155,75 @@ export function ReferencesLibraryDialog({
   const cancelImportRef = useRef(false)
   const [attachToReferenceId, setAttachToReferenceId] = useState<string | null>(null)
 
+  // Citation-style layer (v1.65): built-ins come from the shared catalogue, imported styles from the
+  // store; both are merged here so one picker drives export, copy and the side-by-side comparison.
+  const [importedStyles, setImportedStyles] = useState<ImportedCitationStyle[]>([])
+  const [selectedStyleId, setSelectedStyleId] = useState<string>('gbt7714-2015')
+  const [compareTarget, setCompareTarget] = useState<Reference | null>(null)
+  const [styleBusy, setStyleBusy] = useState(false)
+  const styleFileInputRef = useRef<HTMLInputElement | null>(null)
+
+  const citationStyles = useMemo<readonly CitationStyleDefinition[]>(
+    () => resolveCitationStyles(importedStyles.map((style) => citationStyleFromImport(style))),
+    [importedStyles]
+  )
+  const selectedStyle = useMemo(
+    () => citationStyles.find((style) => style.id === selectedStyleId) ?? citationStyles[0],
+    [citationStyles, selectedStyleId]
+  )
+
+  const loadCitationStyles = useCallback(async (): Promise<void> => {
+    try {
+      setImportedStyles(await window.api.references.listCitationStyles())
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause))
+    }
+  }, [])
+
+  const handleImportCitationStyle = async (file: File): Promise<void> => {
+    setStyleBusy(true)
+    setError(undefined)
+    try {
+      const xml = await file.text()
+      const outcome = await window.api.references.importCitationStyle({
+        fileName: file.name,
+        xml
+      })
+      if (outcome.status === 'imported') {
+        await loadCitationStyles()
+        setSelectedStyleId(outcome.style.id)
+        setNotice(
+          outcome.replacedExisting
+            ? t('references.styleReplaced', { label: outcome.style.label })
+            : t('references.styleImported', {
+                label: outcome.style.label,
+                license: outcome.style.license
+              })
+        )
+      } else {
+        setError(
+          t(STYLE_REJECTION_KEYS[outcome.reason] ?? 'references.styleRejection.unknown') +
+            (outcome.detail ? ` (${outcome.detail})` : '')
+        )
+      }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause))
+    } finally {
+      setStyleBusy(false)
+    }
+  }
+
+  const handleRemoveCitationStyle = async (styleId: string): Promise<void> => {
+    try {
+      await window.api.references.removeCitationStyle(styleId)
+      if (selectedStyleId === styleId) setSelectedStyleId('gbt7714-2015')
+      await loadCitationStyles()
+      setNotice(t('references.styleRemoved'))
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause))
+    }
+  }
+
   const refresh = useCallback(async (): Promise<void> => {
     if (!projectId) return
     try {
@@ -128,12 +244,14 @@ export function ReferencesLibraryDialog({
     let alive = true
     void Promise.all([
       window.api.references.list(projectId),
-      window.api.references.listCollections(projectId)
+      window.api.references.listCollections(projectId),
+      window.api.references.listCitationStyles()
     ])
-      .then(([items, folders]) => {
+      .then(([items, folders, styles]) => {
         if (!alive) return
         setReferences(items)
         setCollections(folders)
+        setImportedStyles(styles)
         setError(undefined)
       })
       .catch((cause: unknown) => {
@@ -156,20 +274,44 @@ export function ReferencesLibraryDialog({
 
   const todayIso = (): string => new Date().toISOString().slice(0, 10)
 
-  const handleExportGbt7714 = async (): Promise<void> => {
+  // Exports in whichever style is selected. The file name carries the style id so a saved list can be
+  // traced back to the convention (and, for imports, to the exact imported style) that produced it.
+  const handleExportWithStyle = async (): Promise<void> => {
     if (shownReferences.length === 0) {
       setNotice(t('references.noDuplicates'))
       return
     }
-    const text = formatGbt7714List(shownReferences, { retrievedAt: todayIso() })
+    const items = shownReferences.map((reference) => citationItemFromReference(reference))
+    const text = formatCitationList(
+      items,
+      selectedStyleId,
+      { retrievedAt: todayIso() },
+      citationStyles
+    )
     const blob = new Blob([text], { type: 'text/plain;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `references-gbt7714-${todayIso()}.txt`
+    link.download = `references-${selectedStyleId.replace(/[^a-z0-9-]+/gi, '-')}-${todayIso()}.txt`
     link.click()
     URL.revokeObjectURL(url)
-    setNotice(t('references.gbtExported', { n: shownReferences.length }))
+    setNotice(
+      t('references.exportedWithStyle', {
+        n: shownReferences.length,
+        style: selectedStyle?.label ?? selectedStyleId
+      })
+    )
+  }
+
+  const handleCopyInStyle = async (reference: Reference): Promise<void> => {
+    const formatted = formatCitation(
+      citationItemFromReference(reference),
+      selectedStyleId,
+      { retrievedAt: todayIso() },
+      citationStyles
+    )
+    await navigator.clipboard.writeText(formatted.text)
+    setNotice(t('references.copiedInStyle', { style: formatted.styleLabel }))
   }
 
   const runAdd = async (input: Omit<CreateReferenceInput, 'projectId'>): Promise<void> => {
@@ -658,12 +800,70 @@ export function ReferencesLibraryDialog({
               >
                 <RefreshCw className="size-3" aria-hidden="true" /> {t('references.dedupe')}
               </button>
+              <select
+                className="ml-2 max-w-56 rounded border border-[var(--border)] bg-transparent px-1 py-0.5 text-[10px]"
+                aria-label={t('references.citationStyle')}
+                value={selectedStyleId}
+                onChange={(event) => setSelectedStyleId(event.target.value)}
+              >
+                <optgroup label={t('references.builtinStyles')}>
+                  {citationStyles
+                    .filter((style) => style.source === 'builtin')
+                    .map((style) => (
+                      <option key={style.id} value={style.id}>
+                        {style.labelZh}
+                      </option>
+                    ))}
+                </optgroup>
+                {importedStyles.length > 0 ? (
+                  <optgroup label={t('references.importedStyles')}>
+                    {citationStyles
+                      .filter((style) => style.source === 'imported')
+                      .map((style) => (
+                        <option key={style.id} value={style.id}>
+                          {style.label}
+                        </option>
+                      ))}
+                  </optgroup>
+                ) : null}
+              </select>
               <button
                 type="button"
                 className={ghostClass}
-                onClick={() => void handleExportGbt7714()}
+                onClick={() => void handleExportWithStyle()}
               >
-                <BookMarked className="size-3" aria-hidden="true" /> {t('references.exportGbt')}
+                <BookMarked className="size-3" aria-hidden="true" />{' '}
+                {t('references.exportWithStyle')}
+              </button>
+              <button
+                type="button"
+                className={ghostClass}
+                disabled={styleBusy}
+                onClick={() => styleFileInputRef.current?.click()}
+              >
+                <Plus className="size-3" aria-hidden="true" /> {t('references.importCsl')}
+              </button>
+              <input
+                ref={styleFileInputRef}
+                type="file"
+                accept=".csl,.xml,application/xml,text/xml"
+                className="hidden"
+                aria-label={t('references.importCsl')}
+                onChange={(event) => {
+                  const file = event.target.files?.[0]
+                  event.target.value = ''
+                  if (file) void handleImportCitationStyle(file)
+                }}
+              />
+              <button
+                type="button"
+                className={ghostClass}
+                onClick={() =>
+                  setCompareTarget((current) => (current ? null : (shownReferences[0] ?? null)))
+                }
+                disabled={shownReferences.length === 0}
+              >
+                {t('references.compareStyles')}
               </button>
               <button
                 type="button"
@@ -675,6 +875,87 @@ export function ReferencesLibraryDialog({
                 <BookMarked className="size-3" aria-hidden="true" /> PDF 入册
               </button>
             </div>
+            {importedStyles.length > 0 ? (
+              <div className="border-b border-[var(--border)] px-3 py-1">
+                <p className="text-[10px] text-[var(--muted-foreground)]">
+                  {t('references.importedStylesHint')}
+                </p>
+                <ul className="mt-1 flex flex-col gap-0.5">
+                  {importedStyles.map((style) => (
+                    <li key={style.id} className="flex items-center gap-2 text-[10px]">
+                      <span className="font-medium text-[var(--foreground)]">{style.label}</span>
+                      <span className="text-[var(--muted-foreground)]">
+                        {t('references.styleLicense', { license: style.license })}
+                      </span>
+                      {style.unsupported.length > 0 ? (
+                        <span className="text-amber-400">
+                          {t('references.styleUnsupported', {
+                            names: style.unsupported.join(', ')
+                          })}
+                        </span>
+                      ) : null}
+                      <button
+                        type="button"
+                        className={ghostClass}
+                        onClick={() => void handleRemoveCitationStyle(style.id)}
+                      >
+                        {t('references.removeStyle')}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {compareTarget ? (
+              <div className="border-b border-[var(--border)] bg-[var(--accent)]/5 px-3 py-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-[var(--foreground)]">
+                    {t('references.compareStylesTitle')} · {compareTarget.title}
+                  </span>
+                  <button
+                    type="button"
+                    className={ghostClass}
+                    onClick={() => setCompareTarget(null)}
+                  >
+                    {t('references.close')}
+                  </button>
+                </div>
+                <p className="mt-0.5 text-[10px] text-[var(--muted-foreground)]">
+                  {t('references.compareStylesHint')}
+                </p>
+                <ul className="mt-1 flex max-h-48 flex-col gap-1 overflow-y-auto">
+                  {compareCitationStyles(
+                    citationItemFromReference(compareTarget),
+                    citationStyles.map((style) => style.id),
+                    { retrievedAt: todayIso() },
+                    citationStyles
+                  ).map((entry) => (
+                    <li key={entry.styleId} className="text-[11px]">
+                      <span className="font-medium text-[var(--foreground)]">
+                        {entry.styleLabel}
+                      </span>
+                      <p className="whitespace-pre-wrap text-[var(--muted-foreground)]">
+                        {entry.text || t('references.compareEmpty')}
+                      </p>
+                      {entry.warnings.length > 0 ? (
+                        <p className="text-[10px] text-amber-400">
+                          {entry.warnings
+                            .map((warning) => describeCitationWarning(warning, t))
+                            .join('；')}
+                        </p>
+                      ) : null}
+                      {missingFieldsFromWarnings(entry.warnings).length > 0 ? (
+                        <p className="text-[10px] text-[var(--muted-foreground)]">
+                          {t('references.compareMissingFields', {
+                            fields: missingFieldsFromWarnings(entry.warnings).join(', ')
+                          })}
+                        </p>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
             <div className="min-h-0 flex-1 overflow-y-auto p-2">
               {shownReferences.length === 0 ? (
                 <p className="py-10 text-center text-xs text-[var(--muted-foreground)]">
@@ -731,26 +1012,24 @@ export function ReferencesLibraryDialog({
                           <button
                             type="button"
                             className={ghostClass}
-                            title={t('references.copyCitation')}
-                            onClick={() => {
-                              void navigator.clipboard.writeText(citationText(reference))
-                              setNotice(t('references.citationCopied'))
-                            }}
+                            title={t('references.copyInStyle', {
+                              style: selectedStyle?.label ?? ''
+                            })}
+                            onClick={() => void handleCopyInStyle(reference)}
                           >
                             {t('references.copyCitation')}
                           </button>
                           <button
                             type="button"
                             className={ghostClass}
-                            title={t('references.exportGbt')}
-                            onClick={() => {
-                              void navigator.clipboard.writeText(
-                                formatGbt7714(reference, { retrievedAt: todayIso() })
+                            title={t('references.compareStyles')}
+                            onClick={() =>
+                              setCompareTarget((current) =>
+                                current?.id === reference.id ? null : reference
                               )
-                              setNotice(t('references.gbtCopied'))
-                            }}
+                            }
                           >
-                            GB/T 7714
+                            {t('references.compareStyles')}
                           </button>
                           {collections.length > 0 ? (
                             <select

@@ -2743,5 +2743,45 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'references.manualAuthorsPlaceholder': '저자（쉼표 구분, 선택）',
   'references.manualDoiPlaceholder': 'DOI（선택）',
   'references.manualYearPlaceholder': '연도',
-  'references.addedNotice': '추가됨：{key}'
+  'references.addedNotice': '추가됨：{key}',
+
+  // 引文样式层（v1.65）
+  'references.citationStyle': '인용 스타일',
+  'references.builtinStyles': '내장 스타일',
+  'references.importedStyles': '가져온 스타일',
+  'references.importedStylesHint':
+    '가져온 스타일은 사용자의 CSL 문서에서 옵니다. 라이선스와 미지원 요소도 함께 기록됩니다.',
+  'references.styleLicense': '라이선스: {license}',
+  'references.styleUnsupported': '미지원: {names}',
+  'references.removeStyle': '제거',
+  'references.exportWithStyle': '선택한 스타일로 내보내기',
+  'references.exportedWithStyle': '{style} 스타일로 인용 {n}건을 내보냈습니다.',
+  'references.importCsl': 'CSL 스타일 가져오기',
+  'references.styleImported': '스타일 추가됨: {label} (라이선스 {license})',
+  'references.styleReplaced': '스타일 갱신됨: {label}',
+  'references.styleRemoved': '스타일을 제거했습니다.',
+  'references.copiedInStyle': '복사됨 ({style})',
+  'references.copyInStyle': '인용 복사 ({style})',
+  'references.compareStyles': '스타일 나란히 비교',
+  'references.compareStylesTitle': '한 문헌, 여러 스타일',
+  'references.compareStylesHint':
+    '없는 항목은 비워 두고 하나씩 알려 드리며, 미지원 CSL 요소도 이름을 밝힙니다. 임의로 채우지 않습니다.',
+  'references.compareEmpty': '(이 기록에 대해 이 스타일은 아무것도 출력하지 않았습니다)',
+  'references.compareMissingFields': '없는 항목: {fields}',
+  'references.citationWarning.missingField': '이 기록에 {field}이(가) 없습니다',
+  'references.citationWarning.unsupported': '미지원 CSL 요소: {name}',
+  'references.citationWarning.unknownStyle': '알 수 없는 스타일이라 아무것도 출력하지 않았습니다',
+  'references.citationWarning.noLocator': '해석 가능한 링크가 없어 접근 경로를 비워 둡니다',
+  'references.citationWarning.emptyRender':
+    '이 기록에 대해 이 스타일은 아무것도 출력하지 않았습니다',
+  'references.styleRejection.xmlParseFailed': 'XML을 해석할 수 없습니다',
+  'references.styleRejection.notAStyle': '루트 요소가 <style>이 아닙니다',
+  'references.styleRejection.missingInfo': '<info> 메타데이터가 없습니다',
+  'references.styleRejection.missingTitle': '스타일에 제목이 없습니다',
+  'references.styleRejection.missingLicense':
+    '라이선스 표기가 없습니다 (귀속을 알 수 없는 스타일은 설치하지 않습니다)',
+  'references.styleRejection.missingBibliography': '<bibliography> 레이아웃이 없습니다',
+  'references.styleRejection.idCollision': '스타일 id가 내장 스타일과 충돌합니다',
+  'references.styleRejection.tooLarge': '파일이 2 MB 한도를 넘습니다',
+  'references.styleRejection.unknown': '가져오기가 검증을 통과하지 못했습니다'
 }
