@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest'
 
 import { BUILTIN_CITATION_STYLES } from '../../shared/citation/builtin-styles'
 import { citationStyleDocumentHash, CitationStyleService } from './citation-style-service'
-import { CitationStyleRepository, type StoredCitationStyleRow } from './citation-style-repository'
+import {
+  CitationStyleRepository,
+  type CitationStyleClient,
+  type StoredCitationStyleRow
+} from './citation-style-repository'
 
 const styleXml = (options: { id?: string; title?: string; rights?: string } = {}): string =>
   `<style xmlns="http://purl.org/net/xbiblio/csl" version="1.0">
@@ -22,11 +26,12 @@ const styleXml = (options: { id?: string; title?: string; rights?: string } = {}
   </bibliography>
 </style>`
 
-// In-memory stand-in for the Prisma delegate: proves the repository's SQL contract (upsert by
-// styleId, ordered list, deleteMany) without an engine.
+// In-memory stand-in for the Prisma delegate: proves the repository's storage contract (upsert by
+// styleId, ordered list, deleteMany) without an engine. The delegate surface is cast because the
+// repository only ever calls these three methods.
 const createMemoryClient = (): {
   rows: Map<string, StoredCitationStyleRow>
-  client: never
+  client: CitationStyleClient
 } => {
   const rows = new Map<string, StoredCitationStyleRow>()
   let seq = 0
@@ -58,7 +63,7 @@ const createMemoryClient = (): {
           return { count: had ? 1 : 0 }
         }
       }
-    }
+    } as unknown as CitationStyleClient
   }
 }
 
