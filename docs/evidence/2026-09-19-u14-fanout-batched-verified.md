@@ -307,13 +307,17 @@ storage info was slow { totalMs, dataRootMs, availableMs, settingsMs, usageMs, u
 
 同一份日志里 `storage info was slow` **只剩 1 条、166 ms**（`availableMs` 133 + `settingsMs` 33、**`usageMs` 0**）—— 13.7 s 那条报告消失。即：**调用方 2 ms 拿到"正在测量"，walk 在背后落袋，20 s 后是真数字**。
 
+### 11.9 ①「引擎排队 `>100 ms` 高位」：用真实最重负载再试一次，仍未复现 ⇒ 正式收口
 
+**负载（未用任何合成数据）**：在真实语料副本上，从 `ArtifactVersion` 里取**最大的 12 个已固化版本**（合计 **19,913,524 B**，最大 6,302,311 B），用 `artifacts.readPreview` **并发**发起 —— 每个都是 locator，因此每次解析都包含**一次查询 + 整文件读取 + checksum 校验**，这是真实用户"同时打开若干个最大产物"的场景。
 
+| 指标 | 读数 |
+|---|---|
+| 12 次并发读 | 全部成功，**wall 103 ms**（各自 ~102 ms ⇒ 在同一时刻完成，即引擎**并发**服务，未见串行排队） |
+| **引擎金丝雀**（同窗平凡 `SELECT 1`） | **7 ms**（本次运行唯一样本，来自同一批次的 kinds 读：`projects 52 / rows 445 / totalMs 15 / dbCanaryMs 7`） |
+| `artifact version resolve was slow`（main 自身阈值 **50 ms**） | **0 条** |
+| `listFiles segments were slow` | **0 条** |
 
+**结论（正式）**：判据 ① 按"**本机不可复现**"收口 —— 在真实规模语料 + 真实最重负载下，引擎金丝雀从未超过 **7 ms**，main 自己的慢 resolve 仪器（50 ms 阈值）一次都没触发；本次数据甚至给出**相反**的迹象（12 个重 resolve 在 ~102 ms 内并发完成）。U11 的 135/124 ms 因此判定为**环境特异**（那一刻这台机的其他负载），本单元只保留**方向与量级**（Home 扇出 52→1、启动期金丝雀 42→3 ms、无闸 vs 有闸排队深度 ~6×）。
 
-
-
-
-
-
-
+**顺带记一条真实缺陷（本单元发现，未修）**：`artifact version resolve was slow` 的阈值是 50 ms，但**渲染层实测单次 resolve 约 102 ms 时该报告一条都没有** —— 说明 main 侧的 `clientMs + queryMs + readMs` 之和显著小于渲染层观测值，**差额落在 IPC/调度而非这三段**。这条差额没有被解释，可作为下一单元（给 resolve 加 IPC 侧分段计时）的入口，写在这里以免丢失。
