@@ -29,32 +29,32 @@
 - `App.tsx`：`storage.getInfo()` 是 fire-and-forget，只读 `dataRootMissing` / `legacyDataMovePrompt`，与 usage 无关 ⇒ 无需改。
 - 其它 `getInfo` 调用方（`DataRootMissingDialog` / `NetworkPanel` / `OnboardingWizard`）：均不渲染 `usage`。
 
-## 五、运行隔离事故与规程（2026-09-19，打包版复测时发生，必须记住）
+## 五、打包版复测的运行隔离：结论与规程（2026-09-19，含一次自我更正）
 
-**事实（有 mtime 证据）**：我启动的打包版实例（`dist/mac-arm64/PureScience.app`，`CFBundleShortVersionString 1.64.1`）运行窗口内，**真实配置根 `~/.purescience-project` 被写入**：
+**先更正一个错误结论**：我在事故排查中一度判定"打包版读到了真实数据根"，该判断**被后续证据推翻**。证据如下：
 
-| 文件 | mtime | 归因 |
-|---|---|---|
-| `settings.json` | 19:22:03 | **我那个打包实例**（常驻实例此时已 unload） |
-| `claude/skills/mcp-*/SKILL.md`（一批） | 19:22:03 | 同上（启动期技能同步） |
-| `web-service.json` | 19:22:04 | 同上（内容仍是常驻实例的 port 44100 / pid 911） |
-| `purescience.db` | **17:45:57**（早于事故 1.5 h） | **未被写** |
-| `sessions/**`（文档与索引） | 无窗口内 mtime | **未被写** |
+| 证据 | 读数 |
+|---|---|
+| 第一次打包运行日志里出现真实配置根 `/Users/totota/.purescience-project` | **0 次** |
+| 同日志里出现沙箱语料根 `/tmp/ps-corpus-pkg/...` | **12 次** |
+| 第二次（假 HOME）日志里真实配置根 | **0 次**；沙箱 `/tmp/ps-home-pkg` **12 次** |
+| 常驻实例进程树启动时刻 | **19:21:57 / 19:22:00**（在我的运行窗口内） |
+| `web-service.json` 内容 | **port 44100 / pid 911**（= 该新常驻进程），不是我的 44106 |
 
-**影响**：无数据丢失（库与会话未动；常驻实例 44100 正常、HTTP 401、62 个会话文档在）。被写的三个文件都是**应用自行维护**的（设置、从安装包同步的技能、web 服务登记），不是用户产物。
+**结论**：`PURESCIENCE_E2E_STORAGE_ROOT` 对打包版**同样生效**，两次打包运行都只在沙箱内读写（日志路径可证）。`[storage] data root resolved { location: 'default' }` 是**解析规则标签**，不是路径，不能当作"命中真实根"的证据 —— 这是我先前误判的根源。
 
-**机制（已定位到代码行）**：`src/main/storage-root.ts`
+**真正的坑（这次踩到，值得记住）**：`launchctl unload` **不会杀掉已在运行的常驻实例**，launchd 的 **KeepAlive 会在随后把它重新拉起**（19:21:57 拉起、19:22:03 写出 `settings.json` / `claude/skills/*` / `web-service.json`）—— 于是：
 
-- `resolveE2eStorageRoot()`（`PURESCIENCE_E2E_STORAGE_ROOT`）→ 若无则 `PURESCIENCE_STORAGE_ROOT`（**仅 dev**）→ 再无则 `app.getPath('home')/.purescience-project`（固定、注释明写 "Never relocated"）。
-- 但我**实测到 env 之外的写**：即便带了 `PURESCIENCE_E2E_STORAGE_ROOT`（并伪造 `HOME`），真实根仍被写。**尚未定位是哪条路径绕过了沙箱**（候选：技能/设置写入方用的是真实 home 而不是配置根）。要闭合需要给"配置根解析"与"技能同步"各加一条来源日志，属下一单元。
+- 测量窗口内真实配置根**确实被写**，但写方是**用户自己的实例**，不是被测实例；
+- 更糟的是它会在测量进行中复活，**抢端口、加负载，污染测量**。
 
-**规程（在定位之前，强制）**：
+**规程（强制）**：
 
-1. **不要再在本机跑打包版实例** —— 没有任何 env / `--user-data-dir` 组合能保证配置根不被写；需要打包版验证时，先在隔离用户或容器里跑。
-2. dev 实例（`electron-vite dev` + `PURESCIENCE_E2E_STORAGE_ROOT`）同样会把**配置根**写在真实 home 下（这是本仓设计），所以"真实根零接触"这句话对**数据根**成立、对**配置根**不成立，以后汇报要分开说。
-3. 事故后必须做窗口归因：用 `find <真实根> -newermt '<实例启动>' -not -newermt '<实例退出>'` 列出窗口内被写的文件，与常驻实例自身启动写区分开。
+1. 起测量实例前 `launchctl unload` **之后必须确认 44100 已无监听**；测量**进行中**也要抽查一次（本次第二次运行漏了这步）。
+2. 用 **日志路径法**证明隔离，而不是靠"数据根解析标签"：`grep -c '<真实根路径>' <实例日志>` 必须为 **0**，且 `grep -c '<沙箱路径>'` > 0。
+3. 事故/异常后的归因必须用**窗口 + 进程起始时刻**：`ps -o lstart= -p <pid>` 先确定谁在窗口内活着，再谈是谁写的。
+4. 打包版要复测**存储用量**，语料必须按打包布局构造：打包版找 `<root>/PureScience/{artifacts,notebooks,…}`，而我的构建脚本给的是 dev 布局 `<root>/PureScience-DEV/…` ⇒ 五个类别目录存在但计 0 字节（这也是打包版 store 读数为何是 0）。
 
-**已取得但仍成立的打包版观测**（在事故窗口内，读行为有效）：打包版渲染 chip **177 元素 / 16 种**（与 dev 逐项一致）；其自身日志里 `listFiles segments were slow`、`project file kinds read was slow`、`project files read was slow`、`artifact version resolve was slow` **全部为 0**。
+**打包版已取得的有效观测**：chip **177 元素 / 16 种**（与 dev 逐项一致）；其自身日志里 `listFiles segments were slow`、`project file kinds read was slow`、`project files read was slow`、`artifact version resolve was slow` **全部为 0**。
 
-**打包版存储读数为何是 0**：我给的语料是 **dev 布局**（`PureScience-DEV/{artifacts,notebooks,…}`），而打包版找的是 `PureScience/`（`dataFolderName()` 按 `app.isPackaged` 切换）⇒ 五个类别目录存在但计 0 字节。要用打包版复测存储，语料必须按打包布局构造（把 dev 树放进 `<root>/PureScience/`）。
 
