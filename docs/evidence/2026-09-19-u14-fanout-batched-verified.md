@@ -1,0 +1,73 @@
+# U14：扇出批量化实测 —— 同一启动路径上 52 次 project-files 读降到 **1 次**
+
+- 日期：2026-09-19 / 提交 `6720299`（接线）与基线 `eb1a720`（未接线）
+- 机位：macOS 26.6；两次运行**同一台机器、同一份语料快照**（`~/.purescience-project` 的 sessions/db/settings/token + 硬链产物树 → `/tmp/ps-bench-{before,after}`，62 个会话文档、**52 个 project**），dev 带窗口构建，各自独立端口与 `--user-data-dir`。
+  - before：`/tmp/ps-before`（`eb1a720` worktree，软链 node_modules）→ 44104 + CDP 9335
+  - after：主干工作树（`6720299`）→ 44105 + CDP 9336
+- 真实数据根只读拷贝，未指向、未修改；常驻实例 `com.totota.purescience` 已 `launchctl unload` 让位、收尾 `load` 复原（44100 已确认在听）。
+
+## 一、仪器（两侧完全相同，临时、未提交）
+
+`application-command-router` 看不到这条通道（它是 Electron IPC），所以计数用一份**临时探针**：在 `ipc-handler-registry.ts` 的 `invoke` 里把每次通道调用写成一行 `<epochMs> <channel>`（`PS_IPC_TRACE`）。同一 patch 应用到两棵树，跑完 `git apply -R` 回退，工作树干净。慢读数字则来自**已在库的仪器**（`[ipc] ipc handler was slow` / `listFiles segments were slow` / `project file kinds read was slow` / `artifact version resolve was slow`），两侧同一套阈值（50 ms）。
+
+## 二、判据 1：引擎往返 52 → 1 ✅
+
+同一驱动同一窗口（CDP `Page.reload` 起 90 s，两次都用 `probe.mjs`）：
+
+| 指标 | before | after |
+|---|---|---|
+| 启动窗内 `project-files:list-files` | **52** | **0** |
+| 启动窗内 `project-files:list-kinds` | 0 | **1** |
+| 启动窗内全部被追踪调用 | 102 | 51 |
+| 全程 `project-files:list-files` | 215（≈4 次 Home 挂载 × 52 + 面板） | **7**（全为面板自身） |
+| 全程 `project-files:list-kinds` | 0 | 5（每次 Home 挂载 1 次） |
+
+**每次 Home 挂载的扇出 = 52 → 1**，与项目数解耦（52 次读换成 1 次读，一次往返、窗口函数取每项目最新 30 条）。
+
+**文件面板自身的读保留** ✅：两次驱动都走「项目行 → 等 URL 含 `?project=` → 点「文件」」，面板正常挂载；after 全程仍有 **7 次 `project-files:list-files`**（面板打开 + 产物浏览），且 with 面板渲染的预览元素由 3 → 7（before 1 → 7）。
+
+## 三、判据 1（续）：chip 相关 `listFiles` 慢读条目归零 ✅
+
+| 慢读条目（同一仪器，50 ms 阈值） | before | after |
+|---|---|---|
+| `listFiles segments were slow` | 1（rowsMs 50 / originsMs **0**） | **0** |
+| `project file kinds read was slow` | 0 | **0**（<50 ms，未触发） |
+| `project files read was slow` | 3（1× list-files 50.9 ms + 2× searchArtifacts） | **0** |
+
+## 四、判据 2：`dbCanaryMs` 高位 —— 本轮**无高位可消**（空结果，如实记）
+
+| | before | after |
+|---|---|---|
+| `artifact version resolve was slow` 报告数 | 2 | 0 |
+| `dbCanaryMs` | 6 / 6 ms | 无样本 |
+| **>100 ms 的个数** | **0** | **0** |
+
+U11 里出现的 135/124 ms 金丝雀，在本轮的**两次运行里都没有复现**：这台的引擎在我这次的启动窗里根本没排队（对照：before 的 `listFiles segments were slow` 只有 1 条，而 U12 记录的同类慢读是 48 条）。所以判据 2 **既未改善也未恶化 —— 它是一个空结果**：高位不是被消掉了，而是本轮压根没出现。要把判据 2 变成有意义的证据，需要在一个真能压出排队的负载下重跑（例如与并发写盘/大量产物读同时启动），这条留给下一个单元。
+
+## 五、判据 3：真机 Home 仍渲染同样的 chip ✅（但数字与档案的 18 不同）
+
+CDP 读真实 DOM（`[class*="rounded-[5px]"]`）：
+
+| | before | after |
+|---|---|---|
+| chip 元素 | **177** | **177** |
+| 去重种类 | **16** | **16** |
+| 种类清单 | CSV, GZ, HTML, IPYNB, JSON, LOG, MD, NPZ, PDB, PDF, PNG, PY, SDF, SVG, TXT, XLSX | 同上，逐项一致 |
+
+**与档案的差异要说清**：交接档案写的基线是「18 种」。本轮两次实测都是 **16 种**（`MD/JSON/PY/PNG/CSV/PDF/SDF/GZ/XLSX/NPZ/HTML` 全部在内，另加 IPYNB/LOG/PDB/SVG/TXT = 16，即少 2 种）。chip 由「每项目最新 30 条」推导，随语料移动；档案的 18 来自更早一次运行的语料快照，不能直接比。**能站住的结论是 A/B 本身：同语料同仪器下，接线前后逐项一致（177/16）**，不是「等于档案里的 18」。
+
+（`chipsAtMs`：before 2706 ms / after 5755 ms —— 单样本、1 s 轮询粒度，**不作为改善证据**，只记着。）
+
+## 六、判据 4：不回归 ✅
+
+- 全量门禁 `npm run test:gate`（`--maxWorkers=4`）：**1034 文件通过 / 14 skipped，13887 用例通过 / 190 skipped，EXIT 0**
+- `npm run typecheck`（node + web）干净；`eslint --no-cache` 干净；`prettier --check` 干净
+- 契约计数随通道各 +1：catalog 417→418、invoke 315→316、local-Web 安装 345→346、Electron 路径 417→418、coreContracts 191→192、requests 153→154、composition internal 309→310 / local Web 307→308 / remote 206→207、data-content 51→52
+- CI：`Windows Full Test` 与 `Nightly` 在 `6720299` 上运行中（结论以 `gh api … --jq .conclusion` 为准，不用 `gh run watch`）
+
+## 七、诚实边界
+
+1. 单机、单次、dev 构建；两轮的运行时长与驱动脚本相同，但**不是**统计意义上的重复实验。
+2. 计数依赖临时探针（每次调用一行同步 append，~µs 级），两侧同样付出，不影响 52 → 1 的量级判断。
+3. 判据 2 是空结果（见 §四），**不要**把它读成「排队被消除」。
+4. chip 种类数与档案的 18 不一致，已在 §五 明说；A/B 一致是结论，绝对值不是。

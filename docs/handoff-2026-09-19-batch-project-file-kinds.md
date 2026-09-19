@@ -16,6 +16,8 @@
 
 ### ⏳ 待做（剩下的接线，一次做完并实测）
 
+> **已做完（`6720299`）+ 实测见 `docs/evidence/2026-09-19-u14-fanout-batched-verified.md`**：五处接线全落，真机 A/B（同语料、同驱动、同仪器）证得**每次 Home 挂载的扇出 52 → 1**（启动窗内 `list-files` 52→0、`list-kinds` 0→1）、chip 相关慢读条目归零、chip 逐项一致（177 元素 / 16 种）；`dbCanaryMs` 判据是**空结果**（本轮无 >100 ms 样本，不是「消掉了」）。
+
 > **一次未完成尝试的实测记录（2026-09-19，已回退、未提交）**：接线做到一半时被三处守卫拦下，这些**具体位置与数字**下次直接照用，别再摸索：
 > 1. **Web 面也要注册这条命令** —— `src/main/application-command-composition.test.ts` 有 7 个用例失败，它们按生成表核对**本地 Web 视图**实际安装的命令集合。结论：`project-files:*` 不只走 Electron IPC，还必须是 Web 安装的命令（与 `project-files:list-files` 同样处理），**光加 `ipcMainHandle` 不够**。
 > 2. **契约计数（全部 +1）**：`renderer-contract-catalog.test.ts` 的 `RENDERER_CONTRACT_CATALOG` 417→**418**、`projection.invoke` 315→**316**、另一个 345→**346**；`renderer-surface-inventory.test.ts` 的 `electronPaths` 417→**418** 与 `).toHaveLength(315)`→**316**；`preload/index.test.ts` 的 `coreContracts` 191→**192**、`requestContracts` 153→**154**、边界集合 `{requests:153,…}`→**154**，并在"pins every callable path"清单里 `'projectFiles.listFiles',` 之后加 `'projectFiles.listKinds',`。
