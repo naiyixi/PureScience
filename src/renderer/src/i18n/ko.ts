@@ -2783,5 +2783,9 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'references.styleRejection.missingBibliography': '<bibliography> 레이아웃이 없습니다',
   'references.styleRejection.idCollision': '스타일 id가 내장 스타일과 충돌합니다',
   'references.styleRejection.tooLarge': '파일이 2 MB 한도를 넘습니다',
-  'references.styleRejection.unknown': '가져오기가 검증을 통과하지 못했습니다'
+  'references.styleRejection.unknown': '가져오기가 검증을 통과하지 못했습니다',
+  'references.styleFidelity': '충실도: {fidelity}',
+  'references.citationWarning.fidelityPartial':
+    '이 스타일은 충실도 검사를 통과하지 못했습니다. 출력은 초안으로 취급합니다',
+  'references.citationWarning.fidelityMissing': '충실도 검사에서 재현하지 못한 항목: {field}'
 }

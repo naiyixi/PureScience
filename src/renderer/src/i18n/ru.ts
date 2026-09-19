@@ -2841,5 +2841,9 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'references.styleRejection.missingBibliography': 'Нет разметки <bibliography>',
   'references.styleRejection.idCollision': 'Идентификатор стиля конфликтует со встроенным',
   'references.styleRejection.tooLarge': 'Файл превышает предел 2 МБ',
-  'references.styleRejection.unknown': 'Импорт не прошёл проверку'
+  'references.styleRejection.unknown': 'Импорт не прошёл проверку',
+  'references.styleFidelity': 'Точность: {fidelity}',
+  'references.citationWarning.fidelityPartial':
+    'Этот стиль не прошёл проверку точности; вывод считается черновиком',
+  'references.citationWarning.fidelityMissing': 'Проверка точности не воспроизвела: {field}'
 }

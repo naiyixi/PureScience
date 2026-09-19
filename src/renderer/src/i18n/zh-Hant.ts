@@ -2633,5 +2633,8 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'references.styleRejection.missingBibliography': '缺少 <bibliography> 版面',
   'references.styleRejection.idCollision': '樣式 id 與內建樣式衝突',
   'references.styleRejection.tooLarge': '檔案超過 2 MB 上限',
-  'references.styleRejection.unknown': '匯入未通過'
+  'references.styleRejection.unknown': '匯入未通過',
+  'references.styleFidelity': '保真度：{fidelity}',
+  'references.citationWarning.fidelityPartial': '該樣式未通過保真探針，輸出視為草稿',
+  'references.citationWarning.fidelityMissing': '保真探針未能還原：{field}'
 }

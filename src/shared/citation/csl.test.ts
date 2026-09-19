@@ -187,6 +187,48 @@ describe('importing a CSL style', () => {
   })
 })
 
+describe('fidelity probe', () => {
+  it('marks a style that reproduces the probe record as verified', () => {
+    const outcome = importCslStyle(styleDocument({}), 'ok.csl', { hash: hasher })
+    if (outcome.status !== 'imported') throw new Error('import expected')
+    expect(outcome.style.fidelity).toBe('verified')
+    expect(outcome.style.fidelityNotes).toEqual([])
+  })
+
+  it('marks a style that cannot reproduce the probe record as a draft, naming what is missing', () => {
+    const xml = styleDocument({
+      bibliography: `<bibliography>
+    <layout suffix=".">
+      <text variable="container-title"/>
+    </layout>
+  </bibliography>`
+    })
+    const outcome = importCslStyle(xml, 'thin.csl', { hash: hasher })
+    if (outcome.status !== 'imported') throw new Error('import expected')
+    expect(outcome.style.fidelity).toBe('partial')
+    expect(outcome.style.fidelityNotes).toEqual([
+      'missing:title',
+      'missing:authors',
+      'missing:year',
+      'missing:pages'
+    ])
+    // The verdict travels with every render of that style, not only with the import.
+    const style = citationStyleFromImport(outcome.style)
+    const formatted = formatCitation(item(), style.id, {}, [style])
+    expect(formatted.warnings).toContain('fidelity:partial')
+    expect(formatted.warnings).toContain('fidelity:missing:title')
+  })
+
+  it('reports an empty render as the first thing that went wrong', () => {
+    const xml = styleDocument({
+      bibliography: '<bibliography><layout/></bibliography>'
+    })
+    const outcome = importCslStyle(xml, 'empty.csl', { hash: hasher })
+    if (outcome.status !== 'imported') throw new Error('import expected')
+    expect(outcome.style.fidelityNotes).toEqual(['render-empty'])
+  })
+})
+
 describe('rendering an imported style', () => {
   it('formats a record through the imported bibliography layout', () => {
     const outcome = importCslStyle(styleDocument({}), 'test-journal.csl', { hash: hasher })

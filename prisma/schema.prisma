@@ -521,6 +521,10 @@ model CitationStyle {
   contentHash     String
   fileName        String
   unsupportedJson String   @default("[]")
+  // Mechanical fidelity verdict from the probe record: 'verified' reproduces title/authors/year/pages,
+  // 'partial' does not and is presented as a draft.
+  fidelity        String   @default("verified")
+  fidelityNotesJson String @default("[]")
   programJson     String
   importedAt      DateTime @default(now())
 

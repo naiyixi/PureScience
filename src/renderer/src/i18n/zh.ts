@@ -2699,7 +2699,10 @@ export const zh = {
   'references.styleRejection.missingBibliography': '缺少 <bibliography> 布局',
   'references.styleRejection.idCollision': '样式 id 与内置样式冲突',
   'references.styleRejection.tooLarge': '文件超过 2 MB 上限',
-  'references.styleRejection.unknown': '导入未通过'
+  'references.styleRejection.unknown': '导入未通过',
+  'references.styleFidelity': '保真度：{fidelity}',
+  'references.citationWarning.fidelityPartial': '该样式未通过保真探针，输出按草稿看待',
+  'references.citationWarning.fidelityMissing': '保真探针未能还原：{field}'
 }
 
 export type ZhKey = keyof typeof zh

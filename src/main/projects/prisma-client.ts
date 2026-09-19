@@ -717,11 +717,17 @@ const CITATION_STYLE_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "CitationStyle" (
     "contentHash" TEXT NOT NULL,
     "fileName" TEXT NOT NULL,
     "unsupportedJson" TEXT NOT NULL DEFAULT '[]',
+    "fidelity" TEXT NOT NULL DEFAULT 'verified',
+    "fidelityNotesJson" TEXT NOT NULL DEFAULT '[]',
     "programJson" TEXT NOT NULL,
     "importedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 )`
 const CITATION_STYLE_UNIQUE_STYLE_ID_DDL = `CREATE UNIQUE INDEX IF NOT EXISTS "CitationStyle_styleId_key" ON "CitationStyle"("styleId")`
 const CITATION_STYLE_IMPORTED_AT_INDEX_DDL = `CREATE INDEX IF NOT EXISTS "CitationStyle_importedAt_idx" ON "CitationStyle"("importedAt")`
+// Added after the table's first release within the same version window: an existing store gets the
+// columns rather than being treated as current.
+const CITATION_STYLE_ADD_FIDELITY_DDL = `ALTER TABLE "CitationStyle" ADD COLUMN "fidelity" TEXT NOT NULL DEFAULT 'verified'`
+const CITATION_STYLE_ADD_FIDELITY_NOTES_DDL = `ALTER TABLE "CitationStyle" ADD COLUMN "fidelityNotesJson" TEXT NOT NULL DEFAULT '[]'`
 
 const REFERENCE_COLLECTION_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "ReferenceCollection" (
     "id" TEXT NOT NULL PRIMARY KEY,
@@ -956,6 +962,13 @@ const ensureProjectSchema = async (client: PrismaClient): Promise<void> => {
   await addColumnIfMissing(client, 'Reference', 'publisher', REFERENCE_ADD_PUBLISHER_DDL)
   await addColumnIfMissing(client, 'Reference', 'itemType', REFERENCE_ADD_ITEM_TYPE_DDL)
   await client.$executeRawUnsafe(CITATION_STYLE_TABLE_DDL)
+  await addColumnIfMissing(client, 'CitationStyle', 'fidelity', CITATION_STYLE_ADD_FIDELITY_DDL)
+  await addColumnIfMissing(
+    client,
+    'CitationStyle',
+    'fidelityNotesJson',
+    CITATION_STYLE_ADD_FIDELITY_NOTES_DDL
+  )
   await client.$executeRawUnsafe(CITATION_STYLE_UNIQUE_STYLE_ID_DDL)
   await client.$executeRawUnsafe(CITATION_STYLE_IMPORTED_AT_INDEX_DDL)
   await client.$executeRawUnsafe(REFERENCE_UNIQUE_PROJECT_CITATION_KEY_DDL)

@@ -166,8 +166,14 @@ export type ImportedCitationStyle = {
   fileName: string
   importedAt: number
   unsupported: readonly string[]
+  // Whether the compiled subset reproduced the canonical probe record's title/authors/year. A style
+  // that fails is still importable, but it is labelled as a draft rather than presented as faithful.
+  fidelity: CitationStyleFidelity
+  fidelityNotes: readonly string[]
   program: CslProgram
 }
+
+export type CitationStyleFidelity = 'verified' | 'partial'
 
 export type CslRejectReason =
   | 'xml-parse-failed'
@@ -239,10 +245,13 @@ type CompileContext = {
   macros: Map<string, XmlElement>
   unsupported: Set<string>
   defaultLocale: string
+  // A macro body is compiled once and reused: real styles reference the same macro from many
+  // branches, and expanding it per reference multiplies the tree until the depth guard truncates it
+  // (which showed up as duplicated author lists against the real documents).
+  macroCache: Map<string, CslNode[]>
+  // Names currently being compiled, so a cycle is reported by name instead of recursing forever.
+  expanding: Set<string>
 }
-
-const compileChildren = (element: XmlElement, context: CompileContext): CslNode[] =>
-  childElements(element).flatMap((child) => compileNode(child, context))
 
 // Records every construct the document uses that this engine does not render, so an imported style
 // never claims fidelity it does not have. Walks the whole style body, not just the paths we compile.
@@ -269,7 +278,51 @@ const compileCondition = (element: XmlElement): CslCondition => {
   }
 }
 
-const compileNode = (element: XmlElement, context: CompileContext): CslNode[] => {
+const MAX_MACRO_DEPTH = 12
+
+// Expands a macro's body inline. Real styles put macro calls inside groups and choose branches, not
+// only at the top level of a layout, so expansion has to happen wherever a text node names a macro.
+const expandMacroNodes = (context: CompileContext, macroName: string, depth: number): CslNode[] => {
+  const cached = context.macroCache.get(macroName)
+  if (cached) return cached
+  if (context.expanding.has(macroName)) {
+    // A style whose macros reference each other in a cycle: reported by name, never rendered twice.
+    context.unsupported.add(`macro-cycle:${macroName}`)
+    return []
+  }
+  const macro = context.macros.get(macroName)
+  if (!macro) {
+    // A style that calls a macro it does not define is reported by name; silently rendering nothing
+    // would look like an empty variable rather than a broken document.
+    context.unsupported.add(`macro-missing:${macroName}`)
+    return []
+  }
+  if (depth > MAX_MACRO_DEPTH) {
+    context.unsupported.add(`macro-depth:${macroName}`)
+    return []
+  }
+  context.expanding.add(macroName)
+  const nodes = childElements(macro).flatMap((child) => compileNode(child, context, depth + 1))
+  context.expanding.delete(macroName)
+  context.macroCache.set(macroName, nodes)
+  return nodes
+}
+
+// A macro call carries its own affixes; they wrap the expansion so its punctuation survives.
+const compileMacroCall = (call: XmlElement, context: CompileContext, depth = 0): CslNode[] => {
+  const expanded = expandMacroNodes(context, call.attributes.macro ?? '', depth)
+  if (expanded.length === 0) return []
+  const formatting = formattingOf(call)
+  const hasAffixes = Boolean(
+    formatting.prefix || formatting.suffix || formatting.delimiter || formatting.textCase
+  )
+  return hasAffixes ? [{ kind: 'group', children: expanded, ...formatting }] : expanded
+}
+
+const compileChildren = (element: XmlElement, context: CompileContext, depth = 0): CslNode[] =>
+  childElements(element).flatMap((child) => compileNode(child, context, depth))
+
+const compileNode = (element: XmlElement, context: CompileContext, depth = 0): CslNode[] => {
   if (!SUPPORTED_ELEMENTS.has(element.name)) {
     context.unsupported.add(element.name)
     return []
@@ -284,30 +337,45 @@ const compileNode = (element: XmlElement, context: CompileContext): CslNode[] =>
   if (element.name === 'names' && childElements(element, 'substitute').length > 0) {
     context.unsupported.add('names:substitute')
   }
+  if (element.name === 'names') {
+    const variable = element.attributes.variable ?? 'author'
+    // Name variables we hold no data for (editors, translators, collections) are named, because the
+    // style's output will be missing them.
+    for (const name of variable.split(/\s+/).filter(Boolean)) {
+      if (name !== 'author') context.unsupported.add(`names-variable:${name}`)
+    }
+  }
   if (element.name === 'date' && firstChild(element, 'date-part') === undefined) {
     context.unsupported.add('date:no-parts')
   }
 
   switch (element.name) {
     case 'text':
+      // A macro reference nested inside a group or branch expands here; only a plain variable or
+      // literal becomes a leaf.
+      if (element.attributes.macro) return compileMacroCall(element, context, depth + 1)
       return [{ kind: 'text', ...element.attributes, ...formattingOf(element) }]
     case 'group':
       return [
-        { kind: 'group', children: compileChildren(element, context), ...formattingOf(element) }
+        {
+          kind: 'group',
+          children: compileChildren(element, context, depth),
+          ...formattingOf(element)
+        }
       ]
     case 'choose': {
       const branches = childElements(element, 'if').map((branch) => ({
         condition: compileCondition(branch),
-        children: compileChildren(branch, context)
+        children: compileChildren(branch, context, depth)
       }))
       for (const branch of childElements(element, 'else-if')) {
         branches.push({
           condition: compileCondition(branch),
-          children: compileChildren(branch, context)
+          children: compileChildren(branch, context, depth)
         })
       }
       const otherwise = childElements(element, 'else').flatMap((branch) =>
-        compileChildren(branch, context)
+        compileChildren(branch, context, depth)
       )
       return [{ kind: 'choose', branches, otherwise: otherwise.length ? otherwise : undefined }]
     }
@@ -407,7 +475,9 @@ const renderVariables = (item: CitationItem, index?: number): Record<string, str
     DOI: item.doi ?? '',
     URL: item.url ?? '',
     publisher: item.publisher ?? '',
-    genre: item.itemType ?? '',
+    // `genre` stays empty: a record's item type is not a genre, and mapping one onto the other made
+    // real styles print "Journal-article" as if it were a genre string.
+    genre: '',
     type: CSL_TYPE_BY_ITEM_TYPE[item.itemType ?? 'unknown'] ?? 'article',
     'citation-number': index ? String(index) : '',
     'citation-label': item.title.slice(0, 12)
@@ -487,6 +557,10 @@ const renderName = (
 }
 
 const renderNames = (node: CslNameOptions, state: RenderState): string => {
+  // Only the record's own authors are ours to print. A style's editor/translator/collection-editor
+  // lists have no data behind them here, so they render empty and are named as unsupported at compile
+  // time — printing the authors in their place would be fabrication.
+  if (node.variable !== 'author') return ''
   const authors = state.item.authors
   if (authors.length === 0) return ''
   const delimiter = node.delimiter ?? ', '
@@ -597,6 +671,35 @@ const renderProgramNodes = (program: CslProgram, state: RenderState): string =>
     .replace(/([.,;:])\1+$/, '$1')
     .trim()
 
+// The record the fidelity probe renders. Its names are deliberately unlike any field label, so a
+// missing surname cannot be "found" inside a title.
+const FIDELITY_PROBE_ITEM: CitationItem = {
+  title: 'Citation style fidelity probe',
+  authors: [{ name: 'Zephyr Quillmark' }, { name: 'Nova Brightwell' }],
+  containerTitle: 'Journal of Probes',
+  year: 2026,
+  volume: '12',
+  issue: '3',
+  pages: '45-67',
+  doi: '10.0000/probe',
+  itemType: 'journal-article'
+}
+
+// Runs the compiled style against a record whose fields we know and reports what did not come back.
+// This is what lets an import be labelled a draft instead of being presented as the style's real
+// output: the checks are mechanical, and a style that fails them is named as failing them.
+export const probeCslStyleFidelity = (program: CslProgram): string[] => {
+  const text = renderProgram(program, FIDELITY_PROBE_ITEM, 1, '2026-09-20')
+  if (!text.trim()) return ['render-empty']
+  const lower = text.toLowerCase()
+  const notes: string[] = []
+  if (!lower.includes('fidelity probe')) notes.push('missing:title')
+  if (!lower.includes('quillmark')) notes.push('missing:authors')
+  if (!text.includes('2026')) notes.push('missing:year')
+  if (!text.includes('45-67') && !text.includes('45–67')) notes.push('missing:pages')
+  return notes
+}
+
 // Whether the style numbers its entries in text. Used to pick the list convention for an import.
 export const cslStyleIsNumeric = (program: CslProgram): boolean => {
   const stack: CslNode[] = [...(program.citationLayout ?? [])]
@@ -679,64 +782,23 @@ export const importCslStyle = (
   const context: CompileContext = {
     macros: new Map(childElements(style, 'macro').map((macro) => [macro.attributes.name, macro])),
     unsupported: new Set<string>(),
-    defaultLocale: style.attributes['default-locale'] ?? 'en-US'
+    defaultLocale: style.attributes['default-locale'] ?? 'en-US',
+    macroCache: new Map<string, CslNode[]>(),
+    expanding: new Set<string>()
   }
   // Anything in the document this engine cannot render is named before compiling, so the report is
   // about the style as written rather than only about the branches a layout happens to take.
   scanUnsupported(style, context)
-  // Macros expand inline; the call site's own affixes must survive the expansion, so an expanded
-  // macro is wrapped in a group that carries the call's prefix/suffix/delimiter.
-  const compileMacroCall = (call: XmlElement, depth = 0): CslNode[] => {
-    const macroName = call.attributes.macro ?? ''
-    const expanded = compileMacroChildren(macroName, depth)
-    if (expanded.length === 0) return []
-    const formatting = formattingOf(call)
-    const hasAffixes = Boolean(
-      formatting.prefix || formatting.suffix || formatting.delimiter || formatting.textCase
-    )
-    return hasAffixes ? [{ kind: 'group', children: expanded, ...formatting }] : expanded
-  }
-  const compileMacroChildren = (macroName: string, depth = 0): CslNode[] => {
-    if (depth > 8) {
-      context.unsupported.add('macro:recursion')
-      return []
-    }
-    const macro = context.macros.get(macroName)
-    if (!macro) return []
-    return macro.children.flatMap((child) => {
-      if (child.kind === 'text') return []
-      if (child.element.name === 'text' && child.element.attributes.macro) {
-        return compileMacroCall(child.element, depth + 1)
-      }
-      return compileNode(child.element, context)
-    })
-  }
 
-  const layoutNodes: CslNode[] = []
-  for (const child of layout.children) {
-    if (child.kind === 'text') continue
-    if (child.element.name === 'text' && child.element.attributes.macro) {
-      layoutNodes.push(...compileMacroCall(child.element))
-      continue
-    }
-    layoutNodes.push(...compileNode(child.element, context))
-  }
+  // Every layout body is compiled through compileNode, which expands macro references wherever they
+  // appear (top level, inside groups, inside branches) and records the call's affixes.
+  const layoutNodes: CslNode[] = compileChildren(layout, context)
 
   // The in-text layout is compiled for one purpose: deciding whether this convention numbers its
   // entries. We do not render in-text markers from an imported style (documented limitation).
   const citation = firstChild(style, 'citation')
   const citationLayout = citation ? firstChild(citation, 'layout') : undefined
-  const citationNodes: CslNode[] = []
-  if (citationLayout) {
-    for (const child of citationLayout.children) {
-      if (child.kind === 'text') continue
-      if (child.element.name === 'text' && child.element.attributes.macro) {
-        citationNodes.push(...compileMacroCall(child.element))
-        continue
-      }
-      citationNodes.push(...compileNode(child.element, context))
-    }
-  }
+  const citationNodes: CslNode[] = citationLayout ? compileChildren(citationLayout, context) : []
 
   // The layout's own affixes are part of the style: a trailing delimiter on <layout> is what closes
   // a bibliography entry, and dropping it silently would truncate every rendered entry. The children
@@ -762,6 +824,10 @@ export const importCslStyle = (
     locale: context.defaultLocale,
     citationLayout: citationNodes
   }
+  // Fidelity probe: the compiled subset is run against a record whose fields we control. A style that
+  // cannot reproduce its title, an author surname and its year is stored, but labelled a draft — the
+  // caller can then say so instead of presenting the output as the style's own result.
+  const fidelityNotes = probeCslStyleFidelity(program)
   const provenance: CitationStyleProvenance = {
     fileName,
     importedAt: options.importedAt ?? Date.now(),
@@ -786,6 +852,8 @@ export const importCslStyle = (
       fileName,
       importedAt: provenance.importedAt,
       unsupported: [...context.unsupported].sort(),
+      fidelity: fidelityNotes.length === 0 ? 'verified' : 'partial',
+      fidelityNotes,
       program
     }
   }
@@ -819,6 +887,11 @@ export const citationStyleFromImport = (
   format: (item, context): CitationFormatResult => {
     const text = renderProgram(imported.program, item, context.index, context.retrievedAt)
     const warnings = [...imported.unsupported.map((name) => `unsupported:${name}`)]
+    // A style whose own probe failed is presented as a draft on every render, not only at import.
+    if (imported.fidelity === 'partial') {
+      warnings.push('fidelity:partial')
+      for (const note of imported.fidelityNotes) warnings.push(`fidelity:${note}`)
+    }
     if (!text) warnings.push('style:empty-render')
     if (!item.year) warnings.push('field:year')
     if (!item.containerTitle) warnings.push('field:containerTitle')

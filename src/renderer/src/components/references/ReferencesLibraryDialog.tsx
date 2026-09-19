@@ -92,6 +92,13 @@ const describeCitationWarning = (warning: string, t: TranslateFn): string => {
       name: warning.slice('unsupported:'.length)
     })
   }
+  if (warning === 'fidelity:partial') return t('references.citationWarning.fidelityPartial')
+  if (warning.startsWith('fidelity:missing:')) {
+    return t('references.citationWarning.fidelityMissing', {
+      field: warning.slice('fidelity:missing:'.length)
+    })
+  }
+  if (warning === 'fidelity:render-empty') return t('references.citationWarning.emptyRender')
   switch (warning) {
     case 'style:unknown':
       return t('references.citationWarning.unknownStyle')
@@ -891,6 +898,16 @@ export function ReferencesLibraryDialog({
                         <span className="text-amber-400">
                           {t('references.styleUnsupported', {
                             names: style.unsupported.join(', ')
+                          })}
+                        </span>
+                      ) : null}
+                      {style.fidelity === 'partial' ? (
+                        <span
+                          className="text-amber-400"
+                          title={t('references.citationWarning.fidelityPartial')}
+                        >
+                          {t('references.styleFidelity', {
+                            fidelity: style.fidelityNotes.join(', ') || 'partial'
                           })}
                         </span>
                       ) : null}

@@ -2897,5 +2897,10 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'references.styleRejection.missingBibliography': 'La mise en page <bibliography> est absente',
   'references.styleRejection.idCollision': "L'id du style entre en conflit avec un style intégré",
   'references.styleRejection.tooLarge': 'Le fichier dépasse la limite de 2 Mo',
-  'references.styleRejection.unknown': "L'import n'a pas passé la validation"
+  'references.styleRejection.unknown': "L'import n'a pas passé la validation",
+  'references.styleFidelity': 'Fidélité : {fidelity}',
+  'references.citationWarning.fidelityPartial':
+    "Ce style n'a pas passé le test de fidélité ; sa sortie est traitée comme un brouillon",
+  'references.citationWarning.fidelityMissing':
+    "Le test de fidélité n'a pas pu reproduire : {field}"
 }

@@ -23,6 +23,8 @@ export type StoredCitationStyleRow = {
   contentHash: string
   fileName: string
   unsupportedJson: string
+  fidelity: string
+  fidelityNotesJson: string
   programJson: string
   importedAt: Date
 }
@@ -46,6 +48,8 @@ export const mapCitationStyle = (row: StoredCitationStyleRow): ImportedCitationS
   fileName: row.fileName,
   importedAt: row.importedAt.getTime(),
   unsupported: parseJson<string[]>(row.unsupportedJson) ?? [],
+  fidelity: row.fidelity === 'partial' ? 'partial' : 'verified',
+  fidelityNotes: parseJson<string[]>(row.fidelityNotesJson) ?? [],
   program: parseJson<CslProgram>(row.programJson) ?? { layout: [], locale: 'en-US' }
 })
 
@@ -73,6 +77,8 @@ export class CitationStyleRepository {
       contentHash: style.contentHash,
       fileName: style.fileName,
       unsupportedJson: JSON.stringify(style.unsupported),
+      fidelity: style.fidelity,
+      fidelityNotesJson: JSON.stringify(style.fidelityNotes),
       programJson: JSON.stringify(style.program),
       importedAt: new Date(style.importedAt)
     }

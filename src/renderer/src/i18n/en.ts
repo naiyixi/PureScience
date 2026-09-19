@@ -2874,5 +2874,9 @@ export const en: Record<ZhKey, string> = {
   'references.styleRejection.missingBibliography': 'The <bibliography> layout is missing',
   'references.styleRejection.idCollision': 'The style id collides with a built-in style',
   'references.styleRejection.tooLarge': 'The file exceeds the 2 MB limit',
-  'references.styleRejection.unknown': 'The import did not pass validation'
+  'references.styleRejection.unknown': 'The import did not pass validation',
+  'references.styleFidelity': 'Fidelity: {fidelity}',
+  'references.citationWarning.fidelityPartial':
+    'This style did not pass the fidelity probe; treat its output as a draft',
+  'references.citationWarning.fidelityMissing': 'The fidelity probe could not reproduce: {field}'
 }

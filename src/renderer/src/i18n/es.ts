@@ -2878,5 +2878,9 @@ export const es: Partial<Record<ZhKey, string>> = {
   'references.styleRejection.missingBibliography': 'Falta el diseño <bibliography>',
   'references.styleRejection.idCollision': 'El id del estilo choca con un estilo incluido',
   'references.styleRejection.tooLarge': 'El archivo supera el límite de 2 MB',
-  'references.styleRejection.unknown': 'La importación no superó la validación'
+  'references.styleRejection.unknown': 'La importación no superó la validación',
+  'references.styleFidelity': 'Fidelidad: {fidelity}',
+  'references.citationWarning.fidelityPartial':
+    'Este estilo no superó la prueba de fidelidad; su salida se trata como borrador',
+  'references.citationWarning.fidelityMissing': 'La prueba de fidelidad no pudo reproducir: {field}'
 }

@@ -2839,5 +2839,9 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'references.styleRejection.missingBibliography': '<bibliography> レイアウトがありません',
   'references.styleRejection.idCollision': 'スタイル id が内蔵スタイルと衝突します',
   'references.styleRejection.tooLarge': 'ファイルが 2 MB の上限を超えています',
-  'references.styleRejection.unknown': 'インポートが検証を通りませんでした'
+  'references.styleRejection.unknown': 'インポートが検証を通りませんでした',
+  'references.styleFidelity': '再現度：{fidelity}',
+  'references.citationWarning.fidelityPartial':
+    'このスタイルは再現度検査に合格していません。出力は下書きとして扱います',
+  'references.citationWarning.fidelityMissing': '再現度検査で再現できなかった項目：{field}'
 }

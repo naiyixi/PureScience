@@ -2909,5 +2909,9 @@ export const de: Partial<Record<ZhKey, string>> = {
   'references.styleRejection.missingBibliography': 'Das <bibliography>-Layout fehlt',
   'references.styleRejection.idCollision': 'Die Stil-ID kollidiert mit einem mitgelieferten Stil',
   'references.styleRejection.tooLarge': 'Die Datei überschreitet 2 MB',
-  'references.styleRejection.unknown': 'Der Import hat die Prüfung nicht bestanden'
+  'references.styleRejection.unknown': 'Der Import hat die Prüfung nicht bestanden',
+  'references.styleFidelity': 'Treue: {fidelity}',
+  'references.citationWarning.fidelityPartial':
+    'Dieser Stil hat die Treueprüfung nicht bestanden; die Ausgabe gilt als Entwurf',
+  'references.citationWarning.fidelityMissing': 'Die Treueprüfung konnte nicht wiedergeben: {field}'
 }
