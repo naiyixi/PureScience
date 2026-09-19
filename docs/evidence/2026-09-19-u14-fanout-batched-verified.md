@@ -288,6 +288,26 @@ storage info was slow { totalMs, dataRootMs, availableMs, settingsMs, usageMs, u
 - 启动时的 `warm()` 已把读数预热，用户稍后打开「设置 → 存储」读的是**已热缓存**（实测第二次起 1 ms）。即**用户可见代价仅剩**："启动后十几秒内立刻打开存储面板"会看到 Loading —— 窄场景。
 - 因此本单元**只补仪器、不动契约**（属于用户拍板的"审计归档零代码收口"口径）。若要动，正确做法是一次**契约变更**：冷读立即返回占位并新增 `pending` 标记（面板据此显示"测量中"而不是假的 `0 B`），并把那条用例改成新契约 —— 取舍由用户定，方案已写下但**未实施**。
 
+> **已实施（用户拍板后，见 §11.8）**：上面那份契约变更已落地并真机验证。
+
+### 11.8 契约变更落地：冷读不再等 walk，`pending` 贯穿到面板
+
+- **共享契约**：`StorageUsage` 新增 `pending?: boolean`（"这批数字是占位、首趟 walk 还在跑"）。同时修掉一处**重复定义**：main 的 `storage/usage.ts` 原本自带一份 `StorageUsage`，与 shared 各写各的 —— 所以 `pending` 一开始只在 shared 上编译通过、在 main 侧报 `does not exist`。现在 main 直接 `export type { StorageUsage } from '../../shared/storage'`，**一份定义**。
+- **缓存**：冷读改为 `void refresh(dataRoot)` + 立即返回 `PENDING_USAGE`（`{categories: [], totalBytes: 0, pending: true}`）；命中缓存的行为不变。原有用例（"waits for the scan only when there is nothing to show"）**按新契约重写**，并补"占位 → walk 落袋 → 下一次读到真实数字"。
+- **面板**（`StoragePanel.tsx`）：两处字节数（"on disk" 行、总计行）与用量条形区在 `pending` 时显示 `t('common.loading')` 并带 `aria-busy`，**不再把占位渲染成 `0 B`**（那会被读成"数据没了"）。
+- **用例**：缓存 6 条（含新契约）、面板渲染 +1 条（pending → 显示等待文案、不出现 "No data yet"、存在 `aria-busy`）、段级仪器 +1 条。
+
+**真机验证（同一份真实语料副本、同一驱动）**：
+
+| 读取 | 耗时 | `pending` | `totalBytes` |
+|---|---|---|---|
+| 启动后第 1 次 | **2 ms** | **true** | 0 |
+| 5 s 后 | 1 ms | true | 0 |
+| 20 s 后 | 4 ms | **false** | **7,363,622,681**（5 类） |
+
+同一份日志里 `storage info was slow` **只剩 1 条、166 ms**（`availableMs` 133 + `settingsMs` 33、**`usageMs` 0**）—— 13.7 s 那条报告消失。即：**调用方 2 ms 拿到"正在测量"，walk 在背后落袋，20 s 后是真数字**。
+
+
 
 
 

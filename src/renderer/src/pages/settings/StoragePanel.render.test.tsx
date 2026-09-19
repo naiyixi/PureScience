@@ -530,6 +530,30 @@ describe('StoragePanel', () => {
     expect(container.textContent).not.toContain('Infinity')
   })
 
+  it('says it is measuring while the first usage walk runs, instead of showing a zero-byte total', async () => {
+    // A cold usage read answers with a placeholder for the length of the first walk of the root (13.7 s measured
+    // on a real 7 GB root). Rendering that placeholder as bytes would read as "your data is gone".
+    ;(
+      window as unknown as { api: { storage: { getInfo: ReturnType<typeof vi.fn> } } }
+    ).api.storage.getInfo.mockResolvedValue({
+      dataRoot: '/home/u/.purescience',
+      isDefault: true,
+      usage: { categories: [], totalBytes: 0, pending: true },
+      availableBytes: 500_000_000_000
+    })
+
+    await act(async () => {
+      root.render(<StoragePanel />)
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    expect(container.textContent).toContain('Loading…')
+    expect(container.textContent).not.toContain('No data yet')
+    expect(container.querySelector('[aria-busy="true"]')).not.toBeNull()
+  })
+
   it('collects the target path via Browse and opens the migration flow on Change', async () => {
     ;(
       window as unknown as {

@@ -193,7 +193,11 @@ describe('storage:get-info segment instrument', () => {
       })
     )
     await fastOwner.getInfo()
-    expect(slowStorageInfo(fastLogger)).toEqual([])
+    // An instant cache read can never be the slow segment: whatever that call reported, it did not blame the
+    // usage read. (Asserting silence outright would depend on how loaded the machine is at the 50 ms threshold.)
+    for (const record of slowStorageInfo(fastLogger)) {
+      expect(Number(record.usageMs)).toBeLessThan(50)
+    }
   })
 })
 

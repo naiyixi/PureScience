@@ -230,6 +230,10 @@ const StoragePanel = ({ onContinueToAgent }: StoragePanelProps): React.JSX.Eleme
 
   const categories = info?.usage.categories ?? []
   const totalBytes = info?.usage.totalBytes ?? 0
+  // A cold usage read answers with a placeholder while the first walk of the root runs (measured 13.7 s on a
+  // real 7 GB root), so the panel says it is measuring instead of showing a zero-byte total it does not believe.
+  const usagePending = info?.usage.pending === true
+  const usageLabel = usagePending ? t('common.loading') : formatBytes(totalBytes)
   // What migration actually moves: everything except runtime/ (rebuilt on demand at the new root).
   const migratableBytes = categories
     .filter((category) => category.key !== 'runtime')
@@ -334,10 +338,10 @@ const StoragePanel = ({ onContinueToAgent }: StoragePanelProps): React.JSX.Eleme
             <pre className={cn('mt-1', PATH_PILL)} aria-label={t('storage.dataRootPath')}>
               {info.dataRoot}
             </pre>
-            <p className="mt-1.5 text-xs text-muted-foreground">
+            <p className="mt-1.5 text-xs text-muted-foreground" aria-busy={usagePending}>
               {info.isDefault
-                ? `${formatBytes(info.usage.totalBytes)} on disk · default location`
-                : `${formatBytes(info.usage.totalBytes)} on disk`}
+                ? `${usageLabel} on disk · default location`
+                : `${usageLabel} on disk`}
             </p>
 
             {isEditing ? (
@@ -463,7 +467,11 @@ const StoragePanel = ({ onContinueToAgent }: StoragePanelProps): React.JSX.Eleme
           aria-label={t('settings.diskUsage')}
           separated
         >
-          {totalBytes > 0 ? (
+          {usagePending ? (
+            <p className="text-xs text-muted-foreground" aria-busy="true">
+              {t('common.loading')}
+            </p>
+          ) : totalBytes > 0 ? (
             <div className="flex h-2 gap-0.5 overflow-hidden rounded bg-muted">
               {categories
                 .filter((category) => category.bytes > 0)
@@ -540,8 +548,8 @@ const StoragePanel = ({ onContinueToAgent }: StoragePanelProps): React.JSX.Eleme
 
             <div className="flex items-center justify-between border-t border-border pt-1.5 text-xs">
               <span className="font-medium text-foreground">{t('settings.total')}</span>
-              <span className="font-medium tabular-nums text-foreground">
-                {formatBytes(totalBytes)}
+              <span className="font-medium tabular-nums text-foreground" aria-busy={usagePending}>
+                {usageLabel}
               </span>
             </div>
             <div className="flex items-center justify-between text-xs text-muted-foreground">

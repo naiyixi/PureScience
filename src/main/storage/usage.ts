@@ -6,7 +6,10 @@ import { logicalEnvNameFromDirectory } from '../notebook/runtime-paths'
 export type UsageCategoryKey = 'artifacts' | 'uploads' | 'runtime' | 'notebooks' | 'workspaces'
 export type UsageChild = { name: string; bytes: number }
 export type UsageCategory = { key: UsageCategoryKey; bytes: number; children?: UsageChild[] }
-export type StorageUsage = { categories: UsageCategory[]; totalBytes: number }
+// One definition, shared with the renderer: the reading crosses IPC, so a `pending` flag added on one side only
+// would compile here and be dropped at the boundary.
+import type { StorageUsage } from '../../shared/storage'
+export type { StorageUsage }
 
 const CATEGORY_KEYS: UsageCategoryKey[] = [
   'artifacts',

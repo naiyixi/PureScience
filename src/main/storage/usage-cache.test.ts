@@ -8,6 +8,11 @@ const usage = (totalBytes: number): StorageUsage => ({
   totalBytes
 })
 
+// The answer a cold cache gives while the first walk runs: numbers the caller must render as "measuring".
+const pendingUsage: StorageUsage = { categories: [], totalBytes: 0, pending: true }
+
+const flush = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0))
+
 // A compute whose resolution the test controls, so "returns the stale numbers immediately" can be
 // asserted without waiting on a real walk.
 const deferred = (): { promise: Promise<StorageUsage>; resolve: (value: StorageUsage) => void } => {
@@ -19,14 +24,19 @@ const deferred = (): { promise: Promise<StorageUsage>; resolve: (value: StorageU
 }
 
 describe('storage usage cache', () => {
-  it('waits for the scan only when there is nothing to show', async () => {
-    const pending = deferred()
-    const compute = vi.fn(() => pending.promise)
+  it('answers a cold read with a pending placeholder while the scan runs, then serves the real numbers', async () => {
+    // Waiting for that first walk is what put a measured 13.7 s in front of the first caller on a real 7 GB
+    // root; the placeholder lets a panel say "measuring" instead of blocking — or showing a false zero.
+    const scan = deferred()
+    const compute = vi.fn(() => scan.promise)
     const cache = createStorageUsageCache({ compute })
 
-    const read = cache.read('/root')
-    pending.resolve(usage(10))
-    await expect(read).resolves.toEqual(usage(10))
+    await expect(cache.read('/root')).resolves.toEqual(pendingUsage)
+    expect(compute).toHaveBeenCalledTimes(1)
+
+    scan.resolve(usage(10))
+    await flush()
+    await expect(cache.read('/root')).resolves.toEqual(usage(10))
     expect(compute).toHaveBeenCalledTimes(1)
   })
 
@@ -36,6 +46,7 @@ describe('storage usage cache', () => {
     const cache = createStorageUsageCache({ compute, ttlMs: 60_000, now: () => clock })
 
     await cache.read('/root')
+    await flush()
     clock += 30_000
     await expect(cache.read('/root')).resolves.toEqual(usage(20))
     expect(compute).toHaveBeenCalledTimes(1)
@@ -48,6 +59,7 @@ describe('storage usage cache', () => {
     const cache = createStorageUsageCache({ compute, ttlMs: 1_000, now: () => clock })
 
     await cache.read('/root')
+    await flush()
     clock += 5_000
     total = 42
 
@@ -66,11 +78,14 @@ describe('storage usage cache', () => {
     cache.warm('/root')
     cache.warm('/root')
     cache.warm('/root')
+    // A cold read joins the running walk rather than starting another one.
+    await expect(cache.read('/root')).resolves.toEqual(pendingUsage)
     expect(compute).toHaveBeenCalledTimes(1)
     pending.resolve(usage(7))
     await Promise.resolve()
     await Promise.resolve()
     expect(compute).toHaveBeenCalledTimes(1)
+    await expect(cache.read('/root')).resolves.toEqual(usage(7))
   })
 
   it('keeps the previous numbers when a walk fails', async () => {
@@ -82,6 +97,7 @@ describe('storage usage cache', () => {
     let clock = 0
     const cache = createStorageUsageCache({ compute, ttlMs: 1_000, now: () => clock })
     await cache.read('/root')
+    await flush()
 
     fail = true
     clock += 5_000
@@ -94,7 +110,12 @@ describe('storage usage cache', () => {
     const compute = vi.fn(async (root: string) => usage(root === '/a' ? 1 : 2))
     const cache = createStorageUsageCache({ compute })
 
+    await expect(cache.read('/a')).resolves.toEqual(pendingUsage)
+    await flush()
     await expect(cache.read('/a')).resolves.toEqual(usage(1))
+    // The other root has nothing cached yet either: measuring first, then its own numbers.
+    await expect(cache.read('/b')).resolves.toEqual(pendingUsage)
+    await flush()
     await expect(cache.read('/b')).resolves.toEqual(usage(2))
     expect(compute).toHaveBeenCalledTimes(2)
   })
