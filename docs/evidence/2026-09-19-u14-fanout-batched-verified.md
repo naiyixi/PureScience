@@ -197,6 +197,43 @@ CDP 读真实 DOM（`[class*="rounded-[5px]"]`）：
 - `npm run typecheck` **TC:0**；全量 `npm run test:gate` **1038 文件通过 / 14 skipped，13903 用例通过 / 190 skipped，EXIT 0**；eslint 0；prettier 0（均在**回退测量探针之后**的干净树上跑）
 - CI：`Windows Full Test`（run 35432216561）与 `Nightly`（run 35432216656）在 `f15a6c3` 上均 **completed / success**
 
+## 十一、验收：在**真实语料的完整副本**上重跑（用户授权，只读拷贝，真实根零接触）
+
+按用户拍板的方式（三选一里的第一项）：把真实根补齐成忠实副本后再跑 —— 小状态**拷进** `/tmp`（sessions 123 个 / `purescience.db` 96 MB / settings / web-token / skills / 专家清单 / deleted-sessions / checkpoints / `PureScience-DEV` 的 workspaces、inputs、uploads），大只读树**硬链**（`runtime` 1.7 G + `claude` 225 M + `notebooks` 1.4 G + `runtime` 5.6 G + artifacts 2607 文件）。**真实根全程只读**，常驻实例未被触碰（测量窗内仅按红线执行 `launchctl unload`/`load`，收尾已确认 44100 在听）。
+
+### 11.1 判据 2（`>100 ms` 高位）：在真实规模语料上**仍未复现**，结论定案
+
+| 仪器（金丝雀开，同一驱动） | 真实语料副本 |
+|---|---|
+| `listFiles segments were slow` | 7 条，`totalMs` 中位 **6** / 最大 **16** ms，`dbCanaryMs` 中位 **2** / 最大 **4** ms，`>100 ms` **0** |
+| `project file kinds read was slow` | 2 条，`totalMs` 16 ms，`dbCanaryMs` **4** ms |
+| `artifact version resolve was slow` | **0 条**（连一条慢 resolve 都没触发） |
+| 真机 chip（CDP） | **177 元素 / 16 种**，与沙箱语料逐项一致 |
+
+**定案**：把语料从"沙箱小副本"升级到"真实规模完整副本"之后，**DB 引擎排队的高位依旧不存在**（最深 4 ms）。U11 的 135/124 ms 金丝雀**不是语料规模的函数**，最可能是**当时那一刻这台机的其他负载**造成的 —— 判据 2 正式按"**环境不可复现，仅保留方向与量级**（Home 扇出 52→1、启动期金丝雀 42→3 ms）"收口。
+
+### 11.2 但真实语料**暴露了另一个**启动期瓶颈（新线索，非本单元范围）
+
+同一份日志里，启动窗内 `>1000 ms` 的 IPC 通道有三个，**全部与数据库无关**：
+
+| 通道 | 最慢 | 次数 |
+|---|---|---|
+| `storage:get-info` | **13,606 / 13,476 ms** | 2 |
+| `settings:check-environment` | 2,499 / 2,287 ms | 2 |
+| `network:check-connectivity` | 2,043 / 1,074 ms | 2 |
+
+另有 `settings:get-preflight`（974 ms）、`settings:list-skills`、`settings:npm-available`、`sessions:list-catalog`（335 ms）等 `>100 ms`。这些是**启动期的存储/环境/技能探测**，在沙箱小副本上根本不会出现（缺 `skills`/`claude`/`runtime` 等目录）。
+
+**诚实边界**：我只测到"13.6 s 出现在这个 handler 上"，**没有**证明这 13.6 s 是它自己的工作量还是**排在某个被阻塞的事件循环后面**（本单元为 `listFiles` 建过段级仪器，这条通道还没有）。要下结论需要同样的段级仪器，属**另一个单元**，我这里只立案、不臆断。
+
+### 11.3 验收清单
+
+- 方式：完整只读副本（非指向真实根），真实根未写、常驻实例未受影响
+- 语料：123 会话 / 2607 产物文件 / 96 MB 库 / skills + 专家清单 + runtime + claude + notebooks 全部就位
+- 驱动：CDP `Page.reload` 启动窗 + 产物最密集项目（31 产物）+ 文件面板
+- 收尾：实例已杀、44100 已确认在听、`/tmp` 语料已删（只解链，不动真实 inode）
+
+
 
 
 
