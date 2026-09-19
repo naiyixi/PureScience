@@ -552,6 +552,8 @@ describe('StoragePanel', () => {
     expect(container.textContent).toContain('Loading…')
     expect(container.textContent).not.toContain('No data yet')
     expect(container.querySelector('[aria-busy="true"]')).not.toBeNull()
+    // The migration sentence borrows the same figure: a placeholder there would promise to move 0 B.
+    expect(container.textContent).not.toMatch(/0 B/)
   })
 
   it('collects the target path via Browse and opens the migration flow on Change', async () => {

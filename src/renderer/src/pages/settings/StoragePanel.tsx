@@ -409,9 +409,12 @@ const StoragePanel = ({ onContinueToAgent }: StoragePanelProps): React.JSX.Eleme
                   </p>
                 ) : (
                   <>
-                    <p className="mt-2 text-xs text-muted-foreground">
+                    <p className="mt-2 text-xs text-muted-foreground" aria-busy={usagePending}>
                       <strong className="font-semibold text-foreground">
-                        {t('storage.moveBold').replace('{size}', formatBytes(migratableBytes))}
+                        {t('storage.moveBold').replace(
+                          '{size}',
+                          usagePending ? t('common.loading') : formatBytes(migratableBytes)
+                        )}
                       </strong>{' '}
                       {t('storage.moveAfter')}
                     </p>
