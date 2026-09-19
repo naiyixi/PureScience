@@ -233,6 +233,22 @@ CDP 读真实 DOM（`[class*="rounded-[5px]"]`）：
 - 驱动：CDP `Page.reload` 启动窗 + 产物最密集项目（31 产物）+ 文件面板
 - 收尾：实例已杀、44100 已确认在听、`/tmp` 语料已删（只解链，不动真实 inode）
 
+### 11.4 跟进：`storage:get-info` 的 13.6 s 已定性 —— **不是它自己的工作**
+
+同一份真实语料副本上，把**同一个调用**在启动期与空闲期各测一次（驱动：CDP 直调 `window.api.storage.getInfo()`）：
+
+| 调用（同一进程、同一语料） | 耗时 |
+|---|---|
+| 启动期第 1 次 | **13,761 ms** |
+| 紧随其后的第 2 次 | **1 ms** |
+| 空闲后 3 次 | 10 / 2 / 1 ms |
+| 同一序列里的 `projects.list` | 2 ms |
+
+**结论**：13.6 s 是**首次调用在启动期的等待**，不是这个 handler 的工作量 —— 紧随其后同一调用 1 ms。同一份日志里启动期自身的 >1 s 探测为 `settings:check-environment`（2.5 s）、`network:check-connectivity`（2.0 s）、`settings:get-preflight`（0.97 s），另有 `settings:list-skills`/`settings:npm-available`/`sessions:list-catalog` 各数百 ms；它们与 `storage:get-info` 的等待是同一段时间。
+
+**仍未定性的部分**：这段时间是"**main 事件循环被阻塞**"还是"**启动期工作被串行排队**"。两者都需要一个并行对照实验（在启动期同时发一个平凡 IPC，看它是否也慢）—— 本单元**没有做**，立案留给下个单元，不在此臆断。
+
+
 
 
 
