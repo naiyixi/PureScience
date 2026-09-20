@@ -195,6 +195,14 @@ export const formatDoctor = (report) => {
   return lines.join('\n')
 }
 
+// Windows accepts a POSIX mode on mkdir and then ignores it, so a message claiming "mode 0700" would be
+// claiming something this platform does not do. The request is still made; only the claim is qualified.
+const POSIX_MODES_ENFORCED = process.platform !== 'win32'
+const describeMode = (mode) =>
+  POSIX_MODES_ENFORCED
+    ? `mode ${mode.toString(8).padStart(4, '0')}`
+    : `mode ${mode.toString(8).padStart(4, '0')} requested, not enforced on this platform`
+
 export const runInit = async ({ configRoot, appPath, env = process.env } = {}) => {
   const root = resolveConfigRoot({ override: configRoot, env })
   const before = await probe(root)
@@ -242,7 +250,9 @@ export const runInit = async ({ configRoot, appPath, env = process.env } = {}) =
 export const formatInit = (result) => {
   const lines = [
     `PureScience init — config root: ${result.configRoot}`,
-    result.created ? '  created (mode 0700)' : `  already present (mode ${String(result.mode)})`,
+    result.created
+      ? `  created (${describeMode(0o700)})`
+      : `  already present (${describeMode(Number(result.mode) || 0o700)})`,
     `  state file: ${result.contents.stateFile ? 'present' : 'absent'} · token file: ${result.contents.tokenFile ? 'present' : 'absent'}`,
     '',
     result.note

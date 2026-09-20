@@ -124,9 +124,15 @@ describe('purescience init', () => {
     expect(result.wroteSettings).toBe(false)
     const info = await stat(root)
     expect(info.isDirectory()).toBe(true)
-    expect(info.mode & 0o777).toBe(0o700)
+    // Windows accepts the mode on mkdir and ignores it, so the numeric assertion only holds where POSIX
+    // permissions are enforced; the request itself is made on every platform (asserted below).
+    if (process.platform !== 'win32') expect(info.mode & 0o777).toBe(0o700)
     expect(result.contents).toEqual({ stateFile: false, tokenFile: false })
-    expect(formatInit(result)).toContain('created (mode 0700)')
+    expect(formatInit(result)).toContain(
+      process.platform === 'win32'
+        ? 'created (mode 0700 requested, not enforced on this platform)'
+        : 'created (mode 0700)'
+    )
   })
 
   // An existing root is confirmed, not rebuilt: overwriting a state file could break a running service.
