@@ -15,6 +15,7 @@ export const PDF_PAGES_TOOL_NAME = 'pdf_pages'
 export const PDF_OUTLINE_TOOL_NAME = 'pdf_outline'
 export const PDF_SCAN_TOOL_NAME = 'pdf_scan'
 export const PDF_TABLES_TOOL_NAME = 'pdf_tables'
+export const PDF_FIGURES_TOOL_NAME = 'pdf_figures'
 
 export const PDF_OPEN_TOOL_DESCRIPTION =
   'Registers a PDF for layered reading: parses the file, extracts selectable text, persists ' +
@@ -45,6 +46,7 @@ export const PDF_SCAN_TOOL_DESCRIPTION =
 export const PDF_MAX_PAGE_TEXT_CHARS = 6000 // per page (pages beyond this are truncated)
 export const PDF_MAX_TOTAL_CHARS = 1_000_000 // whole-document cap (protects the repository)
 export const PDF_MAX_PAGES = 500
+export const PDF_FIGURES_MAX_FIGURES = 200
 export const PDF_SCAN_RESULT_LIMIT = 12
 export const PDF_SCAN_SNIPPET_CHARS = 160
 
@@ -104,6 +106,31 @@ export type PdfOutlineResult = {
 // How many table candidates one call may return: enough to reach a paper's results tables, bounded so a
 // call cannot pour a whole PDF into the context.
 export const PDF_TABLES_MAX_CANDIDATES = 8
+
+export type PdfFigureForAgent = {
+  page: number
+  /** 1-based within its page, top to bottom. */
+  index: number
+  /** PDF user-space box (origin bottom-left), as the page places it. */
+  bbox: { x: number; y: number; width: number; height: number }
+  /** The label the document put next to the picture, when it has one. Never invented. */
+  caption?: string
+  captionSource: 'below' | 'above' | 'none'
+  /** What a reader has to do before quoting this figure, from the extraction's own audit. */
+  warnings: readonly string[]
+}
+
+export type PdfFiguresResult = {
+  docId: string
+  /** Set when the caller asked for one page; absent means every page that carried a figure. */
+  page?: number
+  scannedPages: number
+  figures: PdfFigureForAgent[]
+  /** Placements too small to be figures (rules, logos); counted rather than silently dropped. */
+  skippedSmall: number
+  /** Figures the document left unlabelled, so an empty caption list is not read as "none exist". */
+  withoutCaption: number
+}
 
 export type PdfTableCandidateForAgent = {
   page: number

@@ -297,7 +297,14 @@ const createDependencies = (): HostApplicationCommandDependencies => ({
       docId: 'doc-1',
       scannedPages: 1,
       candidates: []
-    }))
+    })),
+    figures: vi.fn(async () => ({
+      docId: 'doc-1',
+      scannedPages: 0,
+      figures: [],
+      skippedSmall: 0,
+      withoutCaption: 0
+    })),
   },
   figure: {
     review: vi.fn(
@@ -390,7 +397,7 @@ describe('Host application commands', () => {
         .filter((channel): channel is string => channel !== null)
     }))
 
-    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(73)
+    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(74)
     const actualGroups = hostApplicationCommandGroups
       .map(({ name, commands }) => ({
         capability: name,
@@ -408,7 +415,7 @@ describe('Host application commands', () => {
       {} as HostApplicationCommandDependencies
     )
 
-    expect(router.dispatcher.commandNames()).toHaveLength(73)
+    expect(router.dispatcher.commandNames()).toHaveLength(74)
     installation.uninstall()
     expect(router.dispatcher.commandNames()).toEqual([])
   })
@@ -594,6 +601,10 @@ describe('Host application commands', () => {
       hostApplicationCommands.pdf.tables,
       invocation([{ projectId: 'project-1', docId: 'doc-1', page: 2 }])
     )
+await router.dispatcher.invoke(
+      hostApplicationCommands.pdf.figures,
+      invocation([{ projectId: 'project-1', docId: 'doc-1', page: 2 }])
+    )
     await router.dispatcher.invoke(
       hostApplicationCommands.figure.review,
       invocation([{ projectId: 'project-1', request: figureRequest }])
@@ -708,6 +719,7 @@ describe('Host application commands', () => {
     expect(dependencies.pdf.outline).toHaveBeenCalledWith('project-1', 'doc-1')
     expect(dependencies.pdf.scan).toHaveBeenCalledWith('project-1', 'doc-1', 'attention')
     expect(dependencies.pdf.tables).toHaveBeenCalledWith('project-1', 'doc-1', 2)
+    expect(dependencies.pdf.figures).toHaveBeenCalledWith('project-1', 'doc-1', 2)
     expect(dependencies.figure.review).toHaveBeenCalledWith('project-1', figureRequest)
     expect(dependencies.query.run).toHaveBeenCalledWith('project-1', querySql)
     expect(dependencies.storage.commitAndRelaunch).toHaveBeenCalledWith(parent)
@@ -778,6 +790,7 @@ describe('Host application commands', () => {
       'pdf:outline': [{ projectId: 'project-1', docId: 'doc-1' }],
       'pdf:scan': [{ projectId: 'project-1', docId: 'doc-1', query: 'x' }],
       'pdf:tables': [{ projectId: 'project-1', docId: 'doc-1', page: 2 }],
+      'pdf:figures': [{ projectId: 'project-1', docId: 'doc-1', page: 2 }],
       'figure:review': [
         { projectId: 'project-1', request: { panels: [{ id: 'A', chartType: 'bar' }] } }
       ],
@@ -796,7 +809,7 @@ describe('Host application commands', () => {
         .filter((channel): channel is string => channel !== null)
     )
 
-    expect(localOnlyChannels).toHaveLength(45)
+    expect(localOnlyChannels).toHaveLength(46)
     for (const channel of localOnlyChannels) {
       await expect(
         router.dispatcher.invoke(

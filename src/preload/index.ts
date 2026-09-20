@@ -924,7 +924,9 @@ const api: PureScienceAPI = {
     scan: (request: { projectId: string; docId: string; query: string }) =>
       electronRendererContracts.invoke('pdf.scan', request),
     tables: (request: { projectId: string; docId: string; page?: number }) =>
-      electronRendererContracts.invoke('pdf.tables', request)
+      electronRendererContracts.invoke('pdf.tables', request),
+    figures: (request: { projectId: string; docId: string; page?: number }) =>
+      electronRendererContracts.invoke('pdf.figures', request)
   },
   figure: {
     review: (request: { projectId: string; request: FigureReviewRequest }) =>

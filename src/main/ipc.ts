@@ -1548,7 +1548,8 @@ const createApplicationModules = async (
         pages: (_sessionId, _projectId, docId, start, end) => pdfService.pages(docId, start, end),
         outline: (_sessionId, _projectId, docId) => pdfService.outline(docId),
         scan: (_sessionId, _projectId, docId, query) => pdfService.scan(docId, query),
-        tables: (_sessionId, _projectId, docId, page) => pdfService.tables(docId, page)
+        tables: (_sessionId, _projectId, docId, page) => pdfService.tables(docId, page),
+        figures: (_sessionId, _projectId, docId, page) => pdfService.figures(docId, page)
       },
       figure: {
         review: (_sessionId, _projectId, request) => {

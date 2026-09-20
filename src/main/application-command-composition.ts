@@ -117,12 +117,12 @@ const GROUP_COUNT = 37
 // task surface are untouched because neither channel carries a remote flag. project-files:list-kinds
 // moved internal / local Web / remote dispatch by one each (it carries no surface flag, like the
 // per-project read it replaces).
-const INTERNAL_COMMAND_COUNT = 318
-const LOCAL_WEB_COMMAND_COUNT = 316
+const INTERNAL_COMMAND_COUNT = 319
+const LOCAL_WEB_COMMAND_COUNT = 317
 // Two more as well: the same two channels are mapped, so they count on both the local and the remote Web
 // surfaces. The rejected (fail-closed) and task counts are untouched.
 const REMOTE_WEB_COMMAND_COUNT = 211
-const REMOTE_REJECTED_COMMAND_COUNT = 105
+const REMOTE_REJECTED_COMMAND_COUNT = 106
 const TASK_COMMAND_COUNT = 11
 
 const ELECTRON_NATIVE_COMMAND_NAMES = Object.freeze([

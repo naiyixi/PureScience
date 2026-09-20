@@ -42,7 +42,14 @@ const makeHandler = (): PdfMcpHandler => ({
     docId: 'doc-1',
     scannedPages: 1,
     candidates: []
-  }))
+  })),
+  figures: vi.fn(async () => ({
+    docId: 'doc-1',
+    scannedPages: 0,
+    figures: [],
+    skippedSmall: 0,
+    withoutCaption: 0
+  })),
 })
 
 describe('PDF MCP server contract', () => {
@@ -60,7 +67,7 @@ describe('PDF MCP server contract', () => {
     const server = createPdfMcpServer(handler)
     const tools = (server as unknown as { _registeredTools: Record<string, unknown> })
       ._registeredTools
-    expect(Object.keys(tools)).toHaveLength(5)
+    expect(Object.keys(tools)).toHaveLength(6)
     expect(handler.open).not.toHaveBeenCalled()
   })
 

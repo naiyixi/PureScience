@@ -158,15 +158,23 @@ const createProvenanceArtifact = async (sessionId) => {
 
 // A one-page PDF, built by hand so the fixture depends on no generator: pdf.js needs a catalog, one page
 // with a font and a content stream, and an xref table whose offsets are correct — which is exactly what
-// computing the offsets here guarantees. The acceptance it exists for draws a region on this page.
+// computing the offsets here guarantees. The page carries a picture and a caption under it, so the figure
+// extraction has something real to find: a 2x2 image painted at 200x150 points and "Figure 1." below it.
 const minimalPdf = (text) => {
-  const stream = `BT /F1 18 Tf 40 320 Td (${text}) Tj ET`
+  // 2x2 RGB image samples, then the page content: paint the image, then write the caption under it.
+  const imageData = Buffer.from([255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0])
+  const imageBytes = [...imageData].map((byte) => String.fromCharCode(byte)).join('')
+  const content =
+    `q 200 0 0 150 100 500 cm /Im1 Do Q\n` +
+    `BT /F1 18 Tf 40 320 Td (${text}) Tj ET\n` +
+    'BT /F1 12 Tf 100 470 Td (Figure 1. Measured response) Tj ET'
   const objects = [
     '<</Type/Catalog/Pages 2 0 R>>',
     '<</Type/Pages/Kids[3 0 R]/Count 1>>',
-    '<</Type/Page/Parent 2 0 R/MediaBox[0 0 400 500]/Resources<</Font<</F1 4 0 R>>>>/Contents 5 0 R>>',
+    '<</Type/Page/Parent 2 0 R/MediaBox[0 0 400 600]/Resources<</Font<</F1 4 0 R>>/XObject<</Im1 6 0 R>>>>/Contents 5 0 R>>',
     '<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>',
-    `<</Length ${stream.length}>>stream\n${stream}\nendstream`
+    `<</Length ${content.length}>>stream\n${content}\nendstream`,
+    `<</Type/XObject/Subtype/Image/Width 2/Height 2/ColorSpace/DeviceRGB/BitsPerComponent 8/Length ${imageData.length}>>stream\n${imageBytes}\nendstream`
   ]
   let body = '%PDF-1.4\n'
   const offsets = []

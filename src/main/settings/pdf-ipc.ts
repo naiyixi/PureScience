@@ -5,6 +5,7 @@
 import { ipcMainHandle } from '../ipc-handler-registry'
 import type { PdfService } from './pdf-service'
 import type {
+  PdfFiguresResult,
   PdfOpenResult,
   PdfOutlineResult,
   PdfPagesResult,
@@ -17,7 +18,8 @@ export const PDF_IPC = {
   PAGES: 'pdf:pages',
   OUTLINE: 'pdf:outline',
   SCAN: 'pdf:scan',
-  TABLES: 'pdf:tables'
+  TABLES: 'pdf:tables',
+  FIGURES: 'pdf:figures'
 } as const
 
 export type PdfCommandOwner = {
@@ -26,6 +28,7 @@ export type PdfCommandOwner = {
   outline: (projectId: string, docId: string) => Promise<PdfOutlineResult>
   scan: (projectId: string, docId: string, query: string) => Promise<PdfScanResult>
   tables: (projectId: string, docId: string, page?: number) => Promise<PdfTablesResult>
+  figures: (projectId: string, docId: string, page?: number) => Promise<PdfFiguresResult>
 }
 
 export const createPdfCommandOwner = (service: PdfService): PdfCommandOwner => ({
@@ -33,7 +36,8 @@ export const createPdfCommandOwner = (service: PdfService): PdfCommandOwner => (
   pages: (_projectId, docId, start, end) => service.pages(docId, start, end),
   outline: (_projectId, docId) => service.outline(docId),
   scan: (_projectId, docId, query) => service.scan(docId, query),
-  tables: (_projectId, docId, page) => service.tables(docId, page)
+  tables: (_projectId, docId, page) => service.tables(docId, page),
+  figures: (_projectId, docId, page) => service.figures(docId, page)
 })
 
 export const registerPdfIpcHandlers = (owner: PdfCommandOwner): PdfCommandOwner => {
@@ -58,7 +62,19 @@ export const registerPdfIpcHandlers = (owner: PdfCommandOwner): PdfCommandOwner 
     (_event, request: { projectId: string; docId: string; page?: number }) =>
       owner.tables(request.projectId, request.docId, request.page)
   )
+  ipcMainHandle(
+    PDF_IPC.FIGURES,
+    (_event, request: { projectId: string; docId: string; page?: number }) =>
+      owner.figures(request.projectId, request.docId, request.page)
+  )
   return owner
 }
 
-export type { PdfOpenResult, PdfOutlineResult, PdfPagesResult, PdfScanResult, PdfTablesResult }
+export type {
+  PdfFiguresResult,
+  PdfOpenResult,
+  PdfOutlineResult,
+  PdfPagesResult,
+  PdfScanResult,
+  PdfTablesResult
+}

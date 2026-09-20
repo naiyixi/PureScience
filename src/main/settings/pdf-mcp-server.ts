@@ -19,7 +19,9 @@ import {
   PDF_PAGES_TOOL_NAME,
   PDF_SCAN_TOOL_DESCRIPTION,
   PDF_SCAN_TOOL_NAME,
+  PDF_FIGURES_TOOL_NAME,
   PDF_TABLES_TOOL_NAME,
+  type PdfFiguresResult,
   type PdfTablesResult
 } from '../../shared/pdf'
 import type {
@@ -89,6 +91,28 @@ const pdfTablesToolDefinition = {
   inputSchema: pdfTablesToolSchema
 }
 
+const pdfFiguresToolSchema = {
+  doc_id: z.string().min(1).describe('Document id from pdf_open.'),
+  page: z
+    .number()
+    .int()
+    .min(1)
+    .optional()
+    .describe('Optional 1-based page. Omit to walk the document.')
+}
+
+const pdfFiguresToolDefinition = {
+  title: 'Extract figures and their captions from a PDF',
+  description:
+    'Extract figures from a PDF: each one is an image placement with the box the page puts it in, plus ' +
+    'the caption the document wrote near it (Figure 3, Fig. 2, 图 3) when there is one. Captions are ' +
+    'associated by proximity, never invented: a figure the document left unlabelled comes back with ' +
+    'captionSource "none", and placements too small to be figures (rules, logos) are counted in ' +
+    'skippedSmall instead of being reported. An empty figure list means none was detected, not that the ' +
+    'page has none.',
+  inputSchema: pdfFiguresToolSchema
+}
+
 const pdfScanToolSchema = {
   doc_id: z.string().min(1).describe('Document id from pdf_open.'),
   query: z.string().min(1).max(200).describe('What to find — a dataset name, metric, or term.')
@@ -118,6 +142,7 @@ type PdfMcpHandler = {
   outline: (docId: string) => Promise<PdfOutlineResult>
   scan: (docId: string, query: string) => Promise<PdfScanResult>
   tables: (docId: string, page?: number) => Promise<PdfTablesResult>
+  figures: (docId: string, page?: number) => Promise<PdfFiguresResult>
 }
 
 type PdfMcpServerConfigRequest = PdfMcpEnvironment & {
@@ -159,6 +184,13 @@ const createPdfMcpServer = (handler: PdfMcpHandler): ModelContextProtocolServer 
 
   server.registerTool(PDF_TABLES_TOOL_NAME, pdfTablesToolDefinition, async (input) => {
     const result = await handler.tables(input.doc_id, input.page)
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+    }
+  })
+
+  server.registerTool(PDF_FIGURES_TOOL_NAME, pdfFiguresToolDefinition, async (input) => {
+    const result = await handler.figures(input.doc_id, input.page)
     return {
       content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
     }
@@ -263,7 +295,12 @@ const runPdfMcpServer = async (
       callPdfRpc(environment, 'pdfTables', {
         docId,
         ...(page !== undefined ? { page } : {})
-      }) as Promise<PdfTablesResult>
+      }) as Promise<PdfTablesResult>,
+    figures: (docId, page) =>
+      callPdfRpc(environment, 'pdfFigures', {
+        docId,
+        ...(page !== undefined ? { page } : {})
+      }) as unknown as Promise<PdfFiguresResult>
   })
   await server.connect(new StdioServerTransport())
 }
@@ -275,7 +312,9 @@ export {
   PDF_PAGES_TOOL_NAME,
   PDF_OUTLINE_TOOL_NAME,
   PDF_SCAN_TOOL_NAME,
+  PDF_FIGURES_TOOL_NAME,
   PDF_TABLES_TOOL_NAME,
+  pdfFiguresToolDefinition,
   pdfTablesToolDefinition,
   pdfOpenToolDefinition,
   pdfPagesToolDefinition,

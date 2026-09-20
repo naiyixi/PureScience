@@ -310,6 +310,7 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['open', 'pdf:open', LOCAL], ['pages', 'pdf:pages', LOCAL],
     ['outline', 'pdf:outline', LOCAL], ['scan', 'pdf:scan', LOCAL],
     ['tables', 'pdf:tables', LOCAL],
+    ['figures', 'pdf:figures', LOCAL],
   ]),
   group('figure', 'figure', [
     ['review', 'figure:review', LOCAL],

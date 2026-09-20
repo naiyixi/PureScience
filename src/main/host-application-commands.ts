@@ -48,6 +48,7 @@ import type {
   PdfPagesResult,
   PdfOutlineResult,
   PdfScanResult,
+  PdfFiguresResult,
   PdfTablesResult
 } from '../shared/pdf'
 import type { PdfCommandOwner } from './settings/pdf-ipc'
@@ -410,7 +411,12 @@ const pdfCommands = Object.freeze({
     'pdf:tables',
     readonly [request: { projectId: string; docId: string; page?: number }],
     PdfTablesResult
-  >('pdf:tables')
+  >('pdf:tables'),
+  figures: defineApplicationCommand<
+    'pdf:figures',
+    readonly [request: { projectId: string; docId: string; page?: number }],
+    PdfFiguresResult
+  >('pdf:figures')
 })
 
 const figureCommands = Object.freeze({
@@ -724,6 +730,10 @@ const registerHostApplicationCommands = (
       'pdf:scan': ({ args, callerContext }) =>
         localCommand(callerContext, 'pdf:scan', () =>
           dependencies.pdf.scan(args[0].projectId, args[0].docId, args[0].query)
+        ),
+      'pdf:figures': ({ args, callerContext }) =>
+        localCommand(callerContext, 'pdf:figures', () =>
+          dependencies.pdf.figures(args[0].projectId, args[0].docId, args[0].page)
         ),
       'pdf:tables': ({ args, callerContext }) =>
         localCommand(callerContext, 'pdf:tables', () =>

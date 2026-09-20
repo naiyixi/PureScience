@@ -106,6 +106,7 @@ export const WEB_INVOKE_CHANNELS = {
   'notebookEnv.repair': 'notebook-env:repair',
   'notifications.peekPendingOpenSession': 'notifications:peek-pending-open-session',
   'notifications.takePendingOpenSession': 'notifications:take-pending-open-session',
+  'pdf.figures': 'pdf:figures',
   'pdf.open': 'pdf:open',
   'pdf.outline': 'pdf:outline',
   'pdf.pages': 'pdf:pages',

@@ -16,8 +16,15 @@ import {
   toMarkdownTable,
   toTsv,
   type PdfTableCandidate,
-  type PdfTextItem
+  type PdfTextItem,
 } from '../../shared/pdf-table-extraction'
+import {
+  auditPdfFigureForUse,
+  extractPdfFigureCandidates,
+  pdfImagePlacementsFromOperations,
+  type PdfImagePlacement,
+  type PdfPaintOperation
+} from '../../shared/pdf-figure-extraction'
 import type {
   PdfOpenResult,
   PdfOutlineEntry,
@@ -29,6 +36,11 @@ import type {
   PdfTablesResult,
   RegisteredPdf
 } from '../../shared/pdf'
+import type {
+  PdfFigureForAgent,
+  PdfFiguresResult
+} from '../../shared/pdf'
+import { PDF_FIGURES_MAX_FIGURES } from '../../shared/pdf'
 import {
   PDF_MAX_PAGE_TEXT_CHARS,
   PDF_MAX_PAGES,
@@ -66,6 +78,7 @@ export type PdfServiceOptions = {
      * can (see the method named on each candidate).
      */
     items?: PdfTextItem[][]
+  images?: PdfImagePlacement[][]
   }>
   now?: () => number
 }
@@ -216,6 +229,59 @@ export class PdfService {
     return { docId, ...(page === undefined ? {} : { page }), scannedPages, candidates }
   }
 
+  async figures(docId: string, page?: number): Promise<PdfFiguresResult> {
+    const doc = await this.requireDoc(docId)
+    if (page !== undefined && (page < 1 || page > doc.pageCount)) {
+      throw new PdfValidationError('not_found', `Page ${String(page)} is outside this document.`)
+    }
+    const sourcePath = await this.resolveSourcePath(doc.sourcePath)
+    if (!sourcePath)
+      throw new PdfValidationError('not_found', `Source file is unavailable: ${doc.sourcePath}`)
+
+    const parse = this.options.parsePdf ?? parsePdf
+    const parsed = await parse(sourcePath)
+    const first = page ?? 1
+    const last = page ?? parsed.pages.length
+    const figures: PdfFigureForAgent[] = []
+    let skippedSmall = 0
+    let withoutCaption = 0
+    let scannedPages = 0
+
+    for (let pageNumber = first; pageNumber <= last; pageNumber += 1) {
+      if (figures.length >= PDF_FIGURES_MAX_FIGURES) break
+      scannedPages += 1
+      const images = parsed.images?.[pageNumber - 1] ?? []
+      if (images.length === 0) continue
+      const extraction = extractPdfFigureCandidates({
+        page: pageNumber,
+        images,
+        items: parsed.items?.[pageNumber - 1] ?? []
+      })
+      skippedSmall += extraction.skippedSmall
+      withoutCaption += extraction.withoutCaption
+      for (const figure of extraction.figures) {
+        if (figures.length >= PDF_FIGURES_MAX_FIGURES) break
+        figures.push({
+          page: figure.page,
+          index: figure.index,
+          bbox: { x: figure.x, y: figure.y, width: figure.width, height: figure.height },
+          ...(figure.caption === undefined ? {} : { caption: figure.caption }),
+          captionSource: figure.captionSource,
+          warnings: auditPdfFigureForUse(figure)
+        })
+      }
+    }
+
+    return {
+      docId,
+      ...(page === undefined ? {} : { page }),
+      scannedPages,
+      figures,
+      skippedSmall,
+      withoutCaption
+    }
+  }
+
   async scan(docId: string, query: string): Promise<PdfScanResult> {
     const doc = await this.requireDoc(docId)
     const terms = tokenize(query)
@@ -275,6 +341,7 @@ const parsePdf = async (
   title: string
   /** Absent on the paths that stop before the text layer could be read. */
   items?: PdfTextItem[][]
+  images?: PdfImagePlacement[][]
 }> => {
   const { createRequire } = await import('node:module')
   const { pathToFileURL } = await import('node:url')
@@ -301,6 +368,7 @@ const parsePdf = async (
   try {
     const pages: string[] = []
     const itemsPerPage: PdfTextItem[][] = []
+    const imagesPerPage: PdfImagePlacement[][] = []
     for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
       const page = await document.getPage(pageNumber)
       const content = await page.getTextContent()
@@ -318,6 +386,39 @@ const parsePdf = async (
         })
       }
       itemsPerPage.push(positioned)
+
+      // The same pass that reads the text reads the page's images: a figure is an image placement plus
+      // whatever label the document put near it, so the placements travel with the items.
+      const placements: PdfImagePlacement[] = []
+      try {
+        const operators = await page.getOperatorList()
+        const operations: PdfPaintOperation[] = []
+        for (let index = 0; index < operators.fnArray.length; index += 1) {
+          const fn = operators.fnArray[index]
+          const args = operators.argsArray[index]
+          if (fn === pdfjs.OPS.transform) {
+            const matrix = Array.isArray(args) ? args.map((value) => Number(value)) : []
+            if (matrix.length >= 6 && matrix.every((value) => Number.isFinite(value))) {
+              operations.push({
+                kind: 'transform',
+                matrix: [matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5]]
+              })
+            }
+            continue
+          }
+          if (
+            fn === pdfjs.OPS.paintImageXObject ||
+            fn === pdfjs.OPS.paintInlineImageXObject ||
+            fn === pdfjs.OPS.paintImageMaskXObject
+          ) {
+            operations.push({ kind: 'image' })
+          }
+        }
+        placements.push(...pdfImagePlacementsFromOperations(operations))
+      } catch {
+        // Images are best-effort: a page whose operators cannot be read still yields its text.
+      }
+      imagesPerPage.push(placements)
       const pageText = content.items
         .map((item) => ('str' in item ? item.str : ''))
         .join('')
@@ -354,7 +455,8 @@ const parsePdf = async (
       title: basename(filePath).replace(/\.pdf$/i, ''),
       // The positioned items travel with the page texts: the table extraction needs coordinates, and the
       // text path that other readers use is unaffected by carrying them.
-      items: itemsPerPage
+      items: itemsPerPage,
+      images: imagesPerPage
     }
   } finally {
     await document.destroy().catch(() => undefined)
