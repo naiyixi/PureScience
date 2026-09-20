@@ -610,6 +610,8 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'previewSurface.bookmarkSelection': '將選取文字存為書籤',
   'previewSurface.bookmarkNeedsSelection': '先在預覽中選取一段文字',
   'previewSurface.bookmarkSaved': '已存入書籤',
+  'pdfRegion.mode': '框選區域存為書籤',
+  'pdfRegion.saved': '已存為區域書籤',
   'previewSurface.thisComputer': '此電腦',
   'providerForm.apiFormat': 'API 格式',
   'providerForm.apiKey': 'API 金鑰',

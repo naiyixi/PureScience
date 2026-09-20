@@ -1596,6 +1596,8 @@ export const zh = {
   'previewSurface.bookmarkSelection': '把选中文字存为书签',
   'previewSurface.bookmarkNeedsSelection': '先在预览中选中一段文字',
   'previewSurface.bookmarkSaved': '已存入书签',
+  'pdfRegion.mode': '框选区域存为书签',
+  'pdfRegion.saved': '已存为区域书签',
   'conversation.chooseSpecialist': '选择其他专才',
   'conversation.switchingThisTurn': '本轮切换中',
   'conversation.planFirst': '先制定计划',

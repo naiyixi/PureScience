@@ -164,3 +164,36 @@ describe('preview bookmark pointers', () => {
     ).toBeUndefined()
   })
 })
+
+describe('pdf region bookmark pointers', () => {
+  const rect = { x: 0.1, y: 0.2, width: 0.3, height: 0.4 }
+
+  it('accepts a region with a locator that points somewhere', () => {
+    expect(
+      validateBookmarkInput({
+        sessionId: 'session-1',
+        anchor: {
+          kind: 'pdf-region',
+          page: 3,
+          rect,
+          locator: 'purescience-artifact-version://project/session/artifact/version'
+        }
+      })
+    ).toBeUndefined()
+  })
+
+  it('refuses a region whose locator points nowhere', () => {
+    expect(
+      validateBookmarkInput({
+        sessionId: 'session-1',
+        anchor: { kind: 'pdf-region', page: 3, rect, locator: '  ' }
+      })
+    ).toMatchObject({ code: 'invalid_locator' })
+  })
+
+  it('still refuses a region on a page that cannot exist', () => {
+    expect(
+      validateBookmarkInput({ sessionId: 'session-1', anchor: { kind: 'pdf-region', page: 0, rect } })
+    ).toMatchObject({ code: 'invalid_page' })
+  })
+})

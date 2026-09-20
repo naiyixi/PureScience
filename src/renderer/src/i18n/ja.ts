@@ -645,6 +645,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'previewSurface.bookmarkSelection': '選択した箇所をブックマークに保存',
   'previewSurface.bookmarkNeedsSelection': '先にプレビューで範囲を選択してください',
   'previewSurface.bookmarkSaved': 'ブックマークに保存しました',
+  'pdfRegion.mode': '範囲を選択してブックマークに保存',
+  'pdfRegion.saved': '範囲をブックマークに保存しました',
   'previewSurface.thisComputer': 'このコンピュータ',
   'providerForm.apiFormat': 'API 形式',
   'providerForm.apiKey': 'API キー',

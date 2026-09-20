@@ -657,6 +657,8 @@ export const es: Partial<Record<ZhKey, string>> = {
   'previewSurface.bookmarkSelection': 'Guardar el pasaje seleccionado como marcador',
   'previewSurface.bookmarkNeedsSelection': 'Selecciona antes un pasaje en la vista previa',
   'previewSurface.bookmarkSaved': 'Guardado en marcadores',
+  'pdfRegion.mode': 'Selecciona una región para guardarla como marcador',
+  'pdfRegion.saved': 'Región guardada en marcadores',
   'previewSurface.thisComputer': 'Esta computadora',
   'providerForm.apiFormat': 'Formato de API',
   'providerForm.apiKey': 'Clave de API',

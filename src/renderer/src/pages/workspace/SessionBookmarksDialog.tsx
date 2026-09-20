@@ -101,7 +101,8 @@ export function SessionBookmarksDialog({
       onClose()
       return
     }
-    if (anchor.kind === 'preview-text' && anchor.locator) {
+    // A region and a passage reopen the same way: the version they were taken from.
+    if ((anchor.kind === 'preview-text' || anchor.kind === 'pdf-region') && anchor.locator) {
       onOpenVersionPreview?.(anchor.locator)
       onClose()
     }
@@ -169,7 +170,12 @@ export function SessionBookmarksDialog({
                     </span>
                     <div className="flex items-center gap-1">
                       {bookmark.anchor.kind === 'message-text' ||
-                      (bookmark.anchor.kind === 'preview-text' && bookmark.anchor.locator) ? (
+                      anchorText(bookmark).length === 0 ||
+                      Boolean(
+                        (bookmark.anchor.kind === 'preview-text' ||
+                          bookmark.anchor.kind === 'pdf-region') &&
+                        bookmark.anchor.locator
+                      ) ? (
                         <button
                           type="button"
                           className="flex items-center gap-1 text-[10px] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"

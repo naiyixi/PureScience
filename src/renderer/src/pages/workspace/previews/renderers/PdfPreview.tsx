@@ -1,10 +1,13 @@
-import { Maximize2, ZoomIn, ZoomOut } from 'lucide-react'
+import { Maximize2, SquareDashed, ZoomIn, ZoomOut } from 'lucide-react'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { useLanguage } from '@/i18n'
 import { cn } from '@/lib/utils'
 import type { PreviewFileSource } from '@/stores/preview-workbench-store'
+import type { BookmarkRect } from '../../../../../../shared/bookmark'
+import { createArtifactVersionLocator } from '../../../../../../shared/artifact-provenance'
 
 import { PreviewErrorCard, PreviewLoadingContent } from '../PreviewFallback'
 import { createManagedPdfLoadingTask } from '../managed-pdf-document'
@@ -13,6 +16,7 @@ import { createPreviewResourceKey } from '../preview-resource-key'
 import { createPreviewRequestScope } from '../preview-file-reader'
 import type { PreviewFileRendererProps } from '../preview-types'
 import { useNearViewport } from '../useNearViewport'
+import { PdfRegionOverlay } from './PdfRegionOverlay'
 
 type PdfDocument = Awaited<ReturnType<typeof createManagedPdfLoadingTask>['promise']>
 type DocumentState =
@@ -108,13 +112,17 @@ const PdfPageCanvas = ({
   pageNumber,
   pageWidth,
   documentName,
-  registerDisposer
+  registerDisposer,
+  regionMode = false,
+  onRegion
 }: {
   document: PdfDocument
   pageNumber: number
   pageWidth: number
   documentName: string
   registerDisposer: (dispose: () => void) => () => void
+  regionMode?: boolean
+  onRegion?: (page: number, rect: BookmarkRect) => void
 }): React.JSX.Element => {
   const [setNearViewportRef, isNearViewport] = useNearViewport<HTMLDivElement>()
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -317,6 +325,11 @@ const PdfPageCanvas = ({
       {/* Selectable text layer: positioned exactly over the canvas so the annotator can select
           a passage as evidence. The wrapper ignores pointer events (scroll/wheel pass through to
           the scroller); each span opts back in so the text itself is selectable/copyable. */}
+      {/* Region picking sits above the text layer on purpose: while it is on, a drag draws a region
+          rather than selecting a passage, and the reader can see that from the crosshair. */}
+      {regionMode && onRegion && isNearViewport ? (
+        <PdfRegionOverlay onRegion={(rect) => onRegion(pageNumber, rect)} />
+      ) : null}
       {isNearViewport && textSpans ? (
         <div className="pointer-events-none absolute inset-0" aria-hidden="false">
           {textSpans.map((span, index) => (
@@ -346,6 +359,8 @@ export const PdfPreviewContent = ({
   source = 'artifact',
   projectId,
   sessionId,
+  artifactId,
+  selectedVersionId,
   mimeType,
   size,
   mtimeMs
@@ -355,10 +370,42 @@ export const PdfPreviewContent = ({
   source?: PreviewFileSource
   projectId?: string
   sessionId?: string
+  artifactId?: string
+  selectedVersionId?: string
   mimeType?: string
   size?: number
   mtimeMs?: number
 }): React.JSX.Element => {
+  const { t } = useLanguage()
+  // A region bookmark is traceable only if there is a session to file it under and a version to reopen
+  // it on; without both, the action is absent rather than storing an anchor that leads nowhere.
+  const canRegionBookmark = Boolean(sessionId && artifactId && selectedVersionId && projectId)
+  const [regionMode, setRegionMode] = useState(false)
+  const [regionStatus, setRegionStatus] = useState<string | undefined>(undefined)
+
+  const handleRegion = (page: number, rect: BookmarkRect): void => {
+    if (!sessionId || !artifactId || !selectedVersionId || !projectId) return
+    void window.api.bookmark
+      .set({
+        sessionId,
+        anchor: {
+          kind: 'pdf-region',
+          page,
+          rect,
+          artifactVersionId: selectedVersionId,
+          locator: createArtifactVersionLocator({
+            projectId,
+            appSessionId: sessionId,
+            artifactId,
+            versionId: selectedVersionId
+          })
+        }
+      })
+      .then(() => setRegionStatus(t('pdfRegion.saved')))
+      .catch((cause: unknown) =>
+        setRegionStatus(cause instanceof Error ? cause.message : String(cause))
+      )
+  }
   const requestKey = createPreviewResourceKey({
     projectId,
     sessionId,
@@ -566,11 +613,38 @@ export const PdfPreviewContent = ({
                 pageWidth={pageWidth}
                 documentName={name}
                 registerDisposer={registerPageDisposer}
+                regionMode={regionMode}
+                onRegion={handleRegion}
               />
             ))}
           </div>
         ) : null}
       </div>
+      {document && canRegionBookmark ? (
+        <div className="absolute bottom-3 left-3 z-10 flex items-center gap-1 rounded-md border border-border-300/50 bg-bg-000/90 p-1 shadow-sm backdrop-blur">
+          <TooltipProvider delayDuration={300}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  data-slot="pdf-region-toggle"
+                  aria-pressed={regionMode}
+                  aria-label={t('pdfRegion.mode')}
+                  onClick={() => {
+                    setRegionStatus(undefined)
+                    setRegionMode((on) => !on)
+                  }}
+                >
+                  <SquareDashed aria-hidden="true" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{t('pdfRegion.mode')}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      ) : null}
       {document ? (
         <PdfZoomControls
           zoom={zoom}
@@ -578,6 +652,14 @@ export const PdfPreviewContent = ({
           onZoomOut={() => zoomBy(-ZOOM_BUTTON_STEP)}
           onReset={() => setZoom(1)}
         />
+      ) : null}
+      {regionStatus ? (
+        <p
+          role="status"
+          className="absolute left-3 top-3 z-10 rounded border border-border-300/50 bg-bg-000/90 px-2 py-1 text-[11px] text-text-100 backdrop-blur"
+        >
+          {regionStatus}
+        </p>
       ) : null}
     </div>
   )
@@ -590,6 +672,8 @@ export const PdfPreviewRenderer = ({ item }: PreviewFileRendererProps): React.JS
     source={item.source}
     projectId={item.projectId}
     sessionId={item.sessionId}
+    artifactId={item.artifactId}
+    selectedVersionId={item.selectedVersionId}
     mimeType={item.mimeType}
     size={item.size}
     mtimeMs={item.mtimeMs}

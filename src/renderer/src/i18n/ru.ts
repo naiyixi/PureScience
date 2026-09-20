@@ -649,6 +649,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'previewSurface.bookmarkSelection': 'Добавить выделенный фрагмент в закладки',
   'previewSurface.bookmarkNeedsSelection': 'Сначала выделите фрагмент в предпросмотре',
   'previewSurface.bookmarkSaved': 'Добавлено в закладки',
+  'pdfRegion.mode': 'Выделите область, чтобы добавить в закладки',
+  'pdfRegion.saved': 'Область добавлена в закладки',
   'previewSurface.thisComputer': 'Этот компьютер',
   'providerForm.apiFormat': 'Формат API',
   'providerForm.apiKey': 'Ключ API',

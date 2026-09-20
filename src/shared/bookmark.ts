@@ -41,6 +41,9 @@ export type BookmarkAnchor =
       rect: BookmarkRect
       text?: string
       artifactVersionId?: string
+      // Same canonical pointer as a preview passage, for the same reason: a region drawn on version 2
+      // must reopen version 2, and a bare version id cannot be resolved later.
+      locator?: string
       managedFileId?: string
     }
 
@@ -125,6 +128,9 @@ export const validateBookmarkInput = (
   } else if (anchor.kind === 'pdf-region') {
     if (!Number.isInteger(anchor.page) || anchor.page < 1) {
       return { code: 'invalid_page', message: 'A PDF bookmark needs a 1-based page number.' }
+    }
+    if (anchor.locator !== undefined && anchor.locator.trim() === '') {
+      return { code: 'invalid_locator', message: 'A PDF bookmark locator must point somewhere.' }
     }
     if (!isBookmarkRect(anchor.rect)) {
       return {

@@ -659,6 +659,8 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'previewSurface.bookmarkSelection': 'Enregistrer le passage sélectionné comme signet',
   'previewSurface.bookmarkNeedsSelection': 'Sélectionnez d\'abord un passage dans l\'aperçu',
   'previewSurface.bookmarkSaved': 'Enregistré dans les signets',
+  'pdfRegion.mode': 'Sélectionner une zone à enregistrer comme signet',
+  'pdfRegion.saved': 'Zone enregistrée dans les signets',
   'previewSurface.thisComputer': 'Cet ordinateur',
   'providerForm.apiFormat': 'Format d’API',
   'providerForm.apiKey': 'Clé d’API',
