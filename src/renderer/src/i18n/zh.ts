@@ -2702,7 +2702,21 @@ export const zh = {
   'references.styleRejection.unknown': '导入未通过',
   'references.styleFidelity': '保真度：{fidelity}',
   'references.citationWarning.fidelityPartial': '该样式未通过保真探针，输出按草稿看待',
-  'references.citationWarning.fidelityMissing': '保真探针未能还原：{field}'
+  'references.citationWarning.fidelityMissing': '保真探针未能还原：{field}',
+  'bookmarks.title': '会话书签',
+  'bookmarks.privacy': '私有：书签只存在本机、只属于你，绝不会进入模型上下文。',
+  'bookmarks.empty': '还没有书签。在消息上点「存为书签」即可保留一段阅读痕迹。',
+  'bookmarks.kind.message': '消息',
+  'bookmarks.kind.preview': '预览片段',
+  'bookmarks.kind.pdfRegion': 'PDF 区域',
+  'bookmarks.jump': '跳回',
+  'bookmarks.remove': '删除',
+  'bookmarks.notePlaceholder': '备注（可选）',
+  'bookmarks.saveNote': '保存备注',
+  'bookmarks.toggle': '会话书签',
+  'bookmarks.save': '存为书签',
+  'bookmarks.saved': '已存为书签',
+  'bookmarks.saveFailed': '书签保存失败'
 }
 
 export type ZhKey = keyof typeof zh

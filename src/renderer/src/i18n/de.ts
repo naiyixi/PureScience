@@ -2913,5 +2913,22 @@ export const de: Partial<Record<ZhKey, string>> = {
   'references.styleFidelity': 'Treue: {fidelity}',
   'references.citationWarning.fidelityPartial':
     'Dieser Stil hat die Treueprüfung nicht bestanden; die Ausgabe gilt als Entwurf',
-  'references.citationWarning.fidelityMissing': 'Die Treueprüfung konnte nicht wiedergeben: {field}'
+  'references.citationWarning.fidelityMissing':
+    'Die Treueprüfung konnte nicht wiedergeben: {field}',
+  'bookmarks.title': 'Sitzungslesezeichen',
+  'bookmarks.privacy':
+    'Privat: Lesezeichen bleiben auf diesem Rechner und gehören nur Ihnen. Sie werden nie an das Modell gesendet.',
+  'bookmarks.empty':
+    'Noch keine Lesezeichen. Mit „Lesezeichen" an einer Nachricht halten Sie eine Passage fest.',
+  'bookmarks.kind.message': 'Nachricht',
+  'bookmarks.kind.preview': 'Vorschau-Abschnitt',
+  'bookmarks.kind.pdfRegion': 'PDF-Bereich',
+  'bookmarks.jump': 'Zurückspringen',
+  'bookmarks.remove': 'Entfernen',
+  'bookmarks.notePlaceholder': 'Notiz (optional)',
+  'bookmarks.saveNote': 'Notiz speichern',
+  'bookmarks.toggle': 'Sitzungslesezeichen',
+  'bookmarks.save': 'Lesezeichen',
+  'bookmarks.saved': 'Als Lesezeichen gespeichert',
+  'bookmarks.saveFailed': 'Lesezeichen konnte nicht gespeichert werden'
 }

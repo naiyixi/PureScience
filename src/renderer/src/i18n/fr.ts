@@ -2902,5 +2902,21 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'references.citationWarning.fidelityPartial':
     "Ce style n'a pas passé le test de fidélité ; sa sortie est traitée comme un brouillon",
   'references.citationWarning.fidelityMissing':
-    "Le test de fidélité n'a pas pu reproduire : {field}"
+    "Le test de fidélité n'a pas pu reproduire : {field}",
+  'bookmarks.title': 'Signets de session',
+  'bookmarks.privacy':
+    "Privé : les signets restent sur cette machine et ne vous appartiennent qu'à vous. Ils ne sont jamais envoyés au modèle.",
+  'bookmarks.empty':
+    "Aucun signet pour l'instant. Utilisez « Signet » sur un message pour garder un passage.",
+  'bookmarks.kind.message': 'Message cité',
+  'bookmarks.kind.preview': "Passage d'aperçu",
+  'bookmarks.kind.pdfRegion': 'Région du PDF',
+  'bookmarks.jump': 'Y revenir',
+  'bookmarks.remove': 'Retirer',
+  'bookmarks.notePlaceholder': 'Note (facultative)',
+  'bookmarks.saveNote': 'Enregistrer la note',
+  'bookmarks.toggle': 'Signets de session',
+  'bookmarks.save': 'Signet',
+  'bookmarks.saved': 'Marqué',
+  'bookmarks.saveFailed': "Impossible d'enregistrer le signet"
 }

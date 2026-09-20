@@ -2882,5 +2882,21 @@ export const es: Partial<Record<ZhKey, string>> = {
   'references.styleFidelity': 'Fidelidad: {fidelity}',
   'references.citationWarning.fidelityPartial':
     'Este estilo no superó la prueba de fidelidad; su salida se trata como borrador',
-  'references.citationWarning.fidelityMissing': 'La prueba de fidelidad no pudo reproducir: {field}'
+  'references.citationWarning.fidelityMissing':
+    'La prueba de fidelidad no pudo reproducir: {field}',
+  'bookmarks.title': 'Marcadores de la sesión',
+  'bookmarks.privacy':
+    'Privado: los marcadores permanecen en este equipo y son solo suyos. Nunca se envían al modelo.',
+  'bookmarks.empty': 'Aún no hay marcadores. Use «Marcar» en un mensaje para guardar un pasaje.',
+  'bookmarks.kind.message': 'Mensaje',
+  'bookmarks.kind.preview': 'Pasaje de vista previa',
+  'bookmarks.kind.pdfRegion': 'Región del PDF',
+  'bookmarks.jump': 'Volver',
+  'bookmarks.remove': 'Quitar',
+  'bookmarks.notePlaceholder': 'Nota (opcional)',
+  'bookmarks.saveNote': 'Guardar nota',
+  'bookmarks.toggle': 'Marcadores de la sesión',
+  'bookmarks.save': 'Marcar',
+  'bookmarks.saved': 'Marcado',
+  'bookmarks.saveFailed': 'No se pudo guardar el marcador'
 }

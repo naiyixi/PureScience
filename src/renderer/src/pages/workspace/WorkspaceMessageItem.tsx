@@ -8,10 +8,12 @@ import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn, formatByteSize } from '@/lib/utils'
 import { useSettingsStore } from '@/stores/settings-store'
+import { useSessionStore } from '@/stores/session-store'
 import type { ChatMessage, ChatSession } from '@/stores/session-store'
 import { Collapsible } from 'radix-ui'
 import {
   Bot,
+  Bookmark,
   Brain,
   Check,
   ChevronLeft,
@@ -867,6 +869,11 @@ const WorkspaceMessageItem = ({
   const showRevisionNavigation =
     showUserActions && revisionNavigation && revisionNavigation.total > 1
   const [copied, setCopied] = useState(false)
+  // Saving a bookmark is a local act: it writes to the private store and reports back, nothing
+  // leaves this machine and nothing enters the conversation.
+  const selectedSessionId = useSessionStore((state) => state.selectedSessionId)
+  const [bookmarked, setBookmarked] = useState(false)
+  const [bookmarkFailed, setBookmarkFailed] = useState(false)
   // Inline editing swaps the bubble for a multi-line editor; the doc starts from the message's
   // structured parts so mention chips survive the round-trip.
   const [isEditing, setIsEditing] = useState(false)
@@ -882,6 +889,22 @@ const WorkspaceMessageItem = ({
     },
     []
   )
+
+  // Keeps a passage for the reader: message text plus the message it came from, so the bookmark can
+  // jump back to this exact turn later.
+  const handleBookmarkMessage = (): void => {
+    if (!selectedSessionId) return
+    void window.api.bookmark
+      .set({
+        sessionId: selectedSessionId,
+        anchor: { kind: 'message-text', messageId: message.id, text: message.content }
+      })
+      .then(() => {
+        setBookmarkFailed(false)
+        setBookmarked(true)
+      })
+      .catch(() => setBookmarkFailed(true))
+  }
 
   // Copies the prompt text and briefly swaps the icon to confirm the clipboard write succeeded.
   const handleCopyMessage = (): void => {
@@ -1145,6 +1168,30 @@ const WorkspaceMessageItem = ({
                         ) : (
                           <Copy className="size-3.5" strokeWidth={2} aria-hidden="true" />
                         )}
+                      </button>
+                    </UserMessageActionTooltip>
+                    <UserMessageActionTooltip
+                      label={
+                        bookmarkFailed
+                          ? t('bookmarks.saveFailed')
+                          : bookmarked
+                            ? t('bookmarks.saved')
+                            : t('bookmarks.save')
+                      }
+                    >
+                      <button
+                        type="button"
+                        className={userMessageActionButtonClassName}
+                        aria-label={t('bookmarks.save')}
+                        data-slot="assistant-message-bookmark"
+                        onClick={handleBookmarkMessage}
+                      >
+                        <Bookmark
+                          className="size-3.5"
+                          strokeWidth={2}
+                          fill={bookmarked ? 'currentColor' : 'none'}
+                          aria-hidden="true"
+                        />
                       </button>
                     </UserMessageActionTooltip>
                     <UserMessageActionTooltip label={t('ws.branchInNewSession')}>

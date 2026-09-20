@@ -2787,5 +2787,20 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'references.styleFidelity': '충실도: {fidelity}',
   'references.citationWarning.fidelityPartial':
     '이 스타일은 충실도 검사를 통과하지 못했습니다. 출력은 초안으로 취급합니다',
-  'references.citationWarning.fidelityMissing': '충실도 검사에서 재현하지 못한 항목: {field}'
+  'references.citationWarning.fidelityMissing': '충실도 검사에서 재현하지 못한 항목: {field}',
+  'bookmarks.title': '세션 책갈피',
+  'bookmarks.privacy':
+    '비공개: 책갈피는 이 기기에만 남고 사용자에게만 속합니다. 모델로는 절대 전송되지 않습니다.',
+  'bookmarks.empty': '아직 책갈피가 없습니다. 메시지에서 "책갈피"를 눌러 읽은 구절을 남기세요.',
+  'bookmarks.kind.message': '메시지',
+  'bookmarks.kind.preview': '미리보기 구절',
+  'bookmarks.kind.pdfRegion': 'PDF 영역',
+  'bookmarks.jump': '돌아가기',
+  'bookmarks.remove': '삭제',
+  'bookmarks.notePlaceholder': '메모(선택)',
+  'bookmarks.saveNote': '메모 저장',
+  'bookmarks.toggle': '세션 책갈피',
+  'bookmarks.save': '책갈피',
+  'bookmarks.saved': '책갈피로 저장됨',
+  'bookmarks.saveFailed': '책갈피를 저장하지 못했습니다'
 }

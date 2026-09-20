@@ -2845,5 +2845,21 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'references.styleFidelity': 'Точность: {fidelity}',
   'references.citationWarning.fidelityPartial':
     'Этот стиль не прошёл проверку точности; вывод считается черновиком',
-  'references.citationWarning.fidelityMissing': 'Проверка точности не воспроизвела: {field}'
+  'references.citationWarning.fidelityMissing': 'Проверка точности не воспроизвела: {field}',
+  'bookmarks.title': 'Закладки сеанса',
+  'bookmarks.privacy':
+    'Приватно: закладки остаются на этом компьютере и принадлежат только вам. Они никогда не отправляются модели.',
+  'bookmarks.empty':
+    'Закладок пока нет. Нажмите «Закладка» на сообщении, чтобы сохранить прочитанный фрагмент.',
+  'bookmarks.kind.message': 'Сообщение',
+  'bookmarks.kind.preview': 'Фрагмент предпросмотра',
+  'bookmarks.kind.pdfRegion': 'Область PDF',
+  'bookmarks.jump': 'Вернуться',
+  'bookmarks.remove': 'Удалить',
+  'bookmarks.notePlaceholder': 'Заметка (необязательно)',
+  'bookmarks.saveNote': 'Сохранить заметку',
+  'bookmarks.toggle': 'Закладки сеанса',
+  'bookmarks.save': 'Закладка',
+  'bookmarks.saved': 'Сохранено в закладки',
+  'bookmarks.saveFailed': 'Не удалось сохранить закладку'
 }

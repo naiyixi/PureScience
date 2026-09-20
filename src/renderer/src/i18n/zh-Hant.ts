@@ -2636,5 +2636,19 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'references.styleRejection.unknown': '匯入未通過',
   'references.styleFidelity': '保真度：{fidelity}',
   'references.citationWarning.fidelityPartial': '該樣式未通過保真探針，輸出視為草稿',
-  'references.citationWarning.fidelityMissing': '保真探針未能還原：{field}'
+  'references.citationWarning.fidelityMissing': '保真探針未能還原：{field}',
+  'bookmarks.title': '工作階段書籤',
+  'bookmarks.privacy': '私有：書籤只存在本機、只屬於你，絕不會進入模型上下文。',
+  'bookmarks.empty': '還沒有書籤。在訊息上點「存為書籤」即可保留一段閱讀痕跡。',
+  'bookmarks.kind.message': '訊息',
+  'bookmarks.kind.preview': '預覽片段',
+  'bookmarks.kind.pdfRegion': 'PDF 區域',
+  'bookmarks.jump': '跳回',
+  'bookmarks.remove': '刪除',
+  'bookmarks.notePlaceholder': '備註（可選）',
+  'bookmarks.saveNote': '儲存備註',
+  'bookmarks.toggle': '工作階段書籤',
+  'bookmarks.save': '存為書籤',
+  'bookmarks.saved': '已存為書籤',
+  'bookmarks.saveFailed': '書籤儲存失敗'
 }

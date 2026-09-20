@@ -2843,5 +2843,20 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'references.styleFidelity': '再現度：{fidelity}',
   'references.citationWarning.fidelityPartial':
     'このスタイルは再現度検査に合格していません。出力は下書きとして扱います',
-  'references.citationWarning.fidelityMissing': '再現度検査で再現できなかった項目：{field}'
+  'references.citationWarning.fidelityMissing': '再現度検査で再現できなかった項目：{field}',
+  'bookmarks.title': 'セッションのしおり',
+  'bookmarks.privacy':
+    '非公開：しおりはこの端末にだけ残り、あなたのものです。モデルには一切送信されません。',
+  'bookmarks.empty': 'まだしおりはありません。メッセージの「しおり」で読んだ箇所を残せます。',
+  'bookmarks.kind.message': 'メッセージ',
+  'bookmarks.kind.preview': 'プレビューの一節',
+  'bookmarks.kind.pdfRegion': 'PDF の範囲',
+  'bookmarks.jump': '戻る',
+  'bookmarks.remove': '削除',
+  'bookmarks.notePlaceholder': 'メモ（任意）',
+  'bookmarks.saveNote': 'メモを保存',
+  'bookmarks.toggle': 'セッションのしおり',
+  'bookmarks.save': 'しおり',
+  'bookmarks.saved': 'しおりに保存しました',
+  'bookmarks.saveFailed': 'しおりを保存できませんでした'
 }

@@ -2878,5 +2878,20 @@ export const en: Record<ZhKey, string> = {
   'references.styleFidelity': 'Fidelity: {fidelity}',
   'references.citationWarning.fidelityPartial':
     'This style did not pass the fidelity probe; treat its output as a draft',
-  'references.citationWarning.fidelityMissing': 'The fidelity probe could not reproduce: {field}'
+  'references.citationWarning.fidelityMissing': 'The fidelity probe could not reproduce: {field}',
+  'bookmarks.title': 'Session bookmarks',
+  'bookmarks.privacy':
+    'Private: bookmarks stay on this machine and belong to you alone. They are never sent to the model.',
+  'bookmarks.empty': 'No bookmarks yet. Use "Bookmark" on a message to keep a passage you read.',
+  'bookmarks.kind.message': 'Message',
+  'bookmarks.kind.preview': 'Preview passage',
+  'bookmarks.kind.pdfRegion': 'PDF region',
+  'bookmarks.jump': 'Jump back',
+  'bookmarks.remove': 'Remove',
+  'bookmarks.notePlaceholder': 'Note (optional)',
+  'bookmarks.saveNote': 'Save note',
+  'bookmarks.toggle': 'Session bookmarks',
+  'bookmarks.save': 'Bookmark',
+  'bookmarks.saved': 'Bookmarked',
+  'bookmarks.saveFailed': 'Could not save the bookmark'
 }
