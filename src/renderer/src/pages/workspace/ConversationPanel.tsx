@@ -515,7 +515,7 @@ const ConversationPanel = ({
                 data-testid="conversation-title-button"
                 className="max-w-full truncate text-left hover:underline"
                 aria-expanded={isInfoCardOpen}
-                aria-label={t('sessionInfo.title')}
+                title={t('sessionInfo.title')}
                 onClick={() => setIsInfoCardOpen((open) => !open)}
               >
                 {activeSession?.title ?? t('ws.newConversation')}
