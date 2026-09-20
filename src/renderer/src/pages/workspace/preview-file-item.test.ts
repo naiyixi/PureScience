@@ -12,7 +12,6 @@ import {
   resolveArtifactVersionDescriptor
 } from './preview-file-item'
 import { createArtifactVersionLocator } from '../../../../shared/artifact-provenance'
-import { createArtifactVersionLocator } from '../../../../shared/artifact-provenance'
 
 type MessageArtifact = NonNullable<ChatSession['artifacts']>[number]
 type MessageUploadAttachment = NonNullable<ChatSession['messages'][number]['uploads']>[number]
