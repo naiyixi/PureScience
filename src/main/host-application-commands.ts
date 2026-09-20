@@ -40,7 +40,9 @@ import type { ManagedEndpoint } from '../shared/endpoint'
 import type { EndpointRegisterRequest } from '../shared/endpoint'
 import type { EndpointCommandOwner } from './settings/endpoint-ipc'
 import type { FileAnnotation, AnnotationSetRequest } from '../shared/annotation'
+import type { SessionBookmark, SessionBookmarkInput } from '../shared/bookmark'
 import type { AnnotationCommandOwner } from './settings/annotation-ipc'
+import type { BookmarkCommandOwner } from './settings/bookmark-ipc'
 import type {
   PdfOpenResult,
   PdfPagesResult,
@@ -360,6 +362,29 @@ const annotationCommands = Object.freeze({
   >('annotation:remove')
 })
 
+// Declared in the same order the contract catalogue lists them (alphabetical by channel): the
+// inventory test compares registration order with catalogue order, so the two must agree.
+const bookmarkCommands = Object.freeze({
+  list: defineApplicationCommand<'bookmark:list', readonly [sessionId: string], SessionBookmark[]>(
+    'bookmark:list'
+  ),
+  remove: defineApplicationCommand<
+    'bookmark:remove',
+    readonly [sessionId: string, bookmarkId: string],
+    boolean
+  >('bookmark:remove'),
+  set: defineApplicationCommand<
+    'bookmark:set',
+    readonly [input: SessionBookmarkInput],
+    SessionBookmark
+  >('bookmark:set'),
+  updateNote: defineApplicationCommand<
+    'bookmark:update-note',
+    readonly [sessionId: string, bookmarkId: string, note: string],
+    SessionBookmark | null
+  >('bookmark:update-note')
+})
+
 const pdfCommands = Object.freeze({
   open: defineApplicationCommand<
     'pdf:open',
@@ -416,6 +441,7 @@ const hostApplicationCommands = Object.freeze({
   routine: routineCommands,
   endpoint: endpointCommands,
   annotation: annotationCommands,
+  bookmark: bookmarkCommands,
   pdf: pdfCommands,
   figure: figureCommands,
   query: queryCommands,
@@ -439,7 +465,10 @@ const hostApplicationCommandGroups = Object.freeze([
   defineApplicationCommandGroup('figure', Object.values(figureCommands)),
   defineApplicationCommandGroup('query', Object.values(queryCommands)),
   defineApplicationCommandGroup('storage', Object.values(storageCommands)),
-  defineApplicationCommandGroup('update', Object.values(updateCommands))
+  defineApplicationCommandGroup('update', Object.values(updateCommands)),
+  // Appended last on purpose: group registration below addresses these by index, so a new group
+  // goes at the end rather than into the middle.
+  defineApplicationCommandGroup('bookmark', Object.values(bookmarkCommands))
 ] as const)
 
 type HostApplicationCommandDependencies = Readonly<{
@@ -481,6 +510,8 @@ type HostApplicationCommandDependencies = Readonly<{
   }>
   endpoint: EndpointCommandOwner
   annotation: AnnotationCommandOwner
+  // Session bookmarks: renderer-only, with no agent-facing owner beside it.
+  bookmark: BookmarkCommandOwner
   pdf: PdfCommandOwner
   figure: FigureCommandOwner
   query: HostQueryCommandOwner
@@ -760,6 +791,22 @@ const registerHostApplicationCommands = (
         localCommand(callerContext, 'update:download', () => dependencies.update.download()),
       'update:get-app-info': () => dependencies.update.getAppInfo(),
       'update:get-status': () => dependencies.update.getStatus()
+    })
+    // Session bookmarks (v1.65 unit 2): the renderer's own trail. Registered here so the surface has
+    // one transport-independent path, and deliberately nowhere near an agent-facing tool list.
+    scope.registerGroup(hostApplicationCommandGroups[16], {
+      'bookmark:set': ({ args, callerContext }) =>
+        localCommand(callerContext, 'bookmark:set', () => dependencies.bookmark.set(args[0])),
+      'bookmark:list': ({ args, callerContext }) =>
+        localCommand(callerContext, 'bookmark:list', () => dependencies.bookmark.list(args[0])),
+      'bookmark:remove': ({ args, callerContext }) =>
+        localCommand(callerContext, 'bookmark:remove', () =>
+          dependencies.bookmark.remove(args[0], args[1])
+        ),
+      'bookmark:update-note': ({ args, callerContext }) =>
+        localCommand(callerContext, 'bookmark:update-note', () =>
+          dependencies.bookmark.updateNote(args[0], args[1], args[2])
+        )
     })
     return scope.complete()
   } catch (error) {

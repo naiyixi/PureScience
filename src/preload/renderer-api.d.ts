@@ -335,6 +335,7 @@ import type {
 import type { RoutineConfigureRequest, RoutineSchedule } from '../shared/routine'
 import type { EndpointRegisterRequest, ManagedEndpoint } from '../shared/endpoint'
 import type { AnnotationSetRequest, FileAnnotation } from '../shared/annotation'
+import type { SessionBookmark, SessionBookmarkInput } from '../shared/bookmark'
 import type {
   PdfOpenResult,
   PdfOutlineResult,
@@ -1131,6 +1132,14 @@ export interface PureScienceAPI {
     list(request: { projectId: string; target?: string }): Promise<FileAnnotation[]>
     // Removes one annotation by id.
     remove(request: { projectId: string; annotationId: string }): Promise<boolean>
+  }
+  // Session bookmarks (v1.65): private notes on passages the reader chose to keep — a message
+  // passage, a previewed passage, or a PDF region. Never sent to the agent.
+  bookmark: {
+    set(input: SessionBookmarkInput): Promise<SessionBookmark>
+    list(sessionId: string): Promise<SessionBookmark[]>
+    remove(sessionId: string, bookmarkId: string): Promise<boolean>
+    updateNote(sessionId: string, bookmarkId: string, note: string): Promise<SessionBookmark | null>
   }
   pdf: {
     // Registers a PDF for layered reading (parses + persists page text).

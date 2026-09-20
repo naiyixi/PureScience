@@ -4,9 +4,14 @@ import type { RemoteAccessSnapshot } from '../shared/remote-access'
 import type { RoutineConfigureRequest } from '../shared/routine'
 import type { EndpointRegisterRequest, ManagedEndpoint } from '../shared/endpoint'
 import type { AnnotationSetRequest, FileAnnotation } from '../shared/annotation'
-import type { PdfOpenResult, PdfOutlineResult, PdfPagesResult, PdfScanResult ,
+import type {
+  PdfOpenResult,
+  PdfOutlineResult,
+  PdfPagesResult,
+  PdfScanResult,
   PdfTablesResult
 } from '../shared/pdf'
+import type { SessionBookmark, SessionBookmarkInput } from '../shared/bookmark'
 import type { FigureReviewRequest, FigureReviewResult } from '../shared/figure'
 import type { HostQueryResult } from '../shared/host-query'
 import { RENDERER_CONTRACT_GROUPS } from '../shared/renderer-contract-catalog'
@@ -41,6 +46,8 @@ const HOST_CAPABILITIES = [
   'routine',
   'endpoint',
   'annotation',
+  // Session bookmarks (v1.65): renderer-only host capability, last in the host group order.
+  'bookmark',
   'pdf',
   'figure',
   'query',
@@ -235,6 +242,34 @@ const createDependencies = (): HostApplicationCommandDependencies => ({
     list: vi.fn(async () => []),
     remove: vi.fn(async () => true)
   },
+  // Session bookmarks (v1.65): the stub mirrors the real owner — save, list, rename, delete — with
+  // no agent-facing counterpart.
+  bookmark: {
+    set: vi.fn(async (input: SessionBookmarkInput): Promise<SessionBookmark> => ({
+      id: 'bookmark-1',
+      sessionId: input.sessionId,
+      anchor: input.anchor,
+      note: input.note,
+      createdAt: 1,
+      updatedAt: 1
+    })),
+    list: vi.fn(async () => []),
+    remove: vi.fn(async () => true),
+    updateNote: vi.fn(
+      async (
+        sessionId: string,
+        bookmarkId: string,
+        note: string
+      ): Promise<SessionBookmark | null> => ({
+        id: bookmarkId,
+        sessionId,
+        anchor: { kind: 'preview-text', text: 'passage' },
+        note,
+        createdAt: 1,
+        updatedAt: 2
+      })
+    )
+  },
   pdf: {
     open: vi.fn(async (_projectId: string, path: string): Promise<PdfOpenResult> => ({
       doc: { docId: 'doc-1', title: path, pageCount: 3, outline: [] },
@@ -355,7 +390,7 @@ describe('Host application commands', () => {
         .filter((channel): channel is string => channel !== null)
     }))
 
-    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(69)
+    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(73)
     const actualGroups = hostApplicationCommandGroups
       .map(({ name, commands }) => ({
         capability: name,
@@ -373,7 +408,7 @@ describe('Host application commands', () => {
       {} as HostApplicationCommandDependencies
     )
 
-    expect(router.dispatcher.commandNames()).toHaveLength(69)
+    expect(router.dispatcher.commandNames()).toHaveLength(73)
     installation.uninstall()
     expect(router.dispatcher.commandNames()).toEqual([])
   })
@@ -521,6 +556,25 @@ describe('Host application commands', () => {
       invocation([{ projectId: 'project-1', annotationId: 'ann-1' }])
     )
     await router.dispatcher.invoke(
+      hostApplicationCommands.bookmark.set,
+      invocation([
+        {
+          sessionId: 'session-1',
+          anchor: { kind: 'message-text', messageId: 'message-1', text: 'a passage' },
+          note: 'why it matters'
+        }
+      ])
+    )
+    await router.dispatcher.invoke(hostApplicationCommands.bookmark.list, invocation(['session-1']))
+    await router.dispatcher.invoke(
+      hostApplicationCommands.bookmark.remove,
+      invocation(['session-1', 'bookmark-1'])
+    )
+    await router.dispatcher.invoke(
+      hostApplicationCommands.bookmark.updateNote,
+      invocation(['session-1', 'bookmark-1', 'a sharper note'])
+    )
+    await router.dispatcher.invoke(
       hostApplicationCommands.pdf.open,
       invocation([{ projectId: 'project-1', path: pdfPath }])
     )
@@ -637,6 +691,18 @@ describe('Host application commands', () => {
     expect(dependencies.annotation.set).toHaveBeenCalledWith('project-1', annotationRequest)
     expect(dependencies.annotation.list).toHaveBeenCalledWith('project-1', 'src/main.ts')
     expect(dependencies.annotation.remove).toHaveBeenCalledWith('project-1', 'ann-1')
+    expect(dependencies.bookmark.set).toHaveBeenCalledWith({
+      sessionId: 'session-1',
+      anchor: { kind: 'message-text', messageId: 'message-1', text: 'a passage' },
+      note: 'why it matters'
+    })
+    expect(dependencies.bookmark.list).toHaveBeenCalledWith('session-1')
+    expect(dependencies.bookmark.remove).toHaveBeenCalledWith('session-1', 'bookmark-1')
+    expect(dependencies.bookmark.updateNote).toHaveBeenCalledWith(
+      'session-1',
+      'bookmark-1',
+      'a sharper note'
+    )
     expect(dependencies.pdf.open).toHaveBeenCalledWith('project-1', pdfPath)
     expect(dependencies.pdf.pages).toHaveBeenCalledWith('project-1', 'doc-1', 1, 2)
     expect(dependencies.pdf.outline).toHaveBeenCalledWith('project-1', 'doc-1')
@@ -697,6 +763,16 @@ describe('Host application commands', () => {
       'annotation:set': [{ projectId: 'project-1', request: annotationRequest }],
       'annotation:list': [{ projectId: 'project-1', target: 'src/main.ts' }],
       'annotation:remove': [{ projectId: 'project-1', annotationId: 'ann-1' }],
+      'bookmark:set': [
+        {
+          sessionId: 'session-1',
+          anchor: { kind: 'message-text', messageId: 'message-1', text: 'a passage' },
+          note: 'why it matters'
+        }
+      ],
+      'bookmark:list': ['session-1'],
+      'bookmark:remove': ['session-1', 'bookmark-1'],
+      'bookmark:update-note': ['session-1', 'bookmark-1', 'a sharper note'],
       'pdf:open': [{ projectId: 'project-1', path: '/data/paper.pdf' }],
       'pdf:pages': [{ projectId: 'project-1', docId: 'doc-1', start: 1 }],
       'pdf:outline': [{ projectId: 'project-1', docId: 'doc-1' }],
@@ -720,7 +796,7 @@ describe('Host application commands', () => {
         .filter((channel): channel is string => channel !== null)
     )
 
-    expect(localOnlyChannels).toHaveLength(41)
+    expect(localOnlyChannels).toHaveLength(45)
     for (const channel of localOnlyChannels) {
       await expect(
         router.dispatcher.invoke(

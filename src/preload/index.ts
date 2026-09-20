@@ -71,6 +71,7 @@ import type { ReviewEvidenceRequest } from '../shared/review-evidence'
 import type { RoutineConfigureRequest } from '../shared/routine'
 import type { EndpointRegisterRequest } from '../shared/endpoint'
 import type { AnnotationSetRequest } from '../shared/annotation'
+import type { SessionBookmarkInput } from '../shared/bookmark'
 import type { FigureReviewRequest } from '../shared/figure'
 import type { HandoffEventsRequest, HandoffRetryRequest } from '../shared/handoff-lifecycle'
 import { announceWindowFindReady, subscribeCloseActivePane } from '../shared/window-controls'
@@ -902,6 +903,16 @@ const api: PureScienceAPI = {
       electronRendererContracts.invoke('annotation.list', request),
     remove: (request: { projectId: string; annotationId: string }) =>
       electronRendererContracts.invoke('annotation.remove', request)
+  },
+  // Session bookmarks (v1.65): the reader's own trail. Renderer-only by design — nothing here has
+  // an agent-facing counterpart, so a bookmark can never reach a model context.
+  bookmark: {
+    set: (input: SessionBookmarkInput) => electronRendererContracts.invoke('bookmark.set', input),
+    list: (sessionId: string) => electronRendererContracts.invoke('bookmark.list', sessionId),
+    remove: (sessionId: string, bookmarkId: string) =>
+      electronRendererContracts.invoke('bookmark.remove', sessionId, bookmarkId),
+    updateNote: (sessionId: string, bookmarkId: string, note: string) =>
+      electronRendererContracts.invoke('bookmark.updateNote', sessionId, bookmarkId, note)
   },
   pdf: {
     open: (request: { projectId: string; path: string }) =>

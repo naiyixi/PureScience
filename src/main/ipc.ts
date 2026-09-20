@@ -158,6 +158,8 @@ import {
   registerAnnotationIpcHandlers
 } from './settings/annotation-ipc'
 import { AnnotationRepository } from './settings/annotation-repository'
+import { BookmarkRepository } from './settings/bookmark-repository'
+import { createBookmarkCommandOwner, registerBookmarkIpcHandlers } from './settings/bookmark-ipc'
 import { createPdfCommandOwner, registerPdfIpcHandlers } from './settings/pdf-ipc'
 import { PdfService } from './settings/pdf-service'
 import { createFigureCommandOwner, registerFigureIpcHandlers } from './settings/figure-ipc'
@@ -1456,6 +1458,11 @@ const createApplicationModules = async (
   const annotationRepository = new AnnotationRepository({
     storageRoot: resolveDataRoot()
   })
+  // Session bookmarks (v1.65): private to the reader, so this store is wired for the renderer only —
+  // there is no agent-facing owner beside it.
+  const bookmarkRepository = new BookmarkRepository({
+    storageRoot: resolveDataRoot()
+  })
   const pdfService = new PdfService({
     storageRoot: resolveDataRoot(),
     resolvePath: async (path) => (path.startsWith('/') ? path : join(resolveDataRoot(), path))
@@ -2558,6 +2565,9 @@ const createApplicationModules = async (
   declareElectronAdapter('annotation', () => {
     registerAnnotationIpcHandlers(createAnnotationCommandOwner(annotationRepository))
   })
+  declareElectronAdapter('bookmark', () => {
+    registerBookmarkIpcHandlers(createBookmarkCommandOwner(bookmarkRepository))
+  })
   declareElectronAdapter('pdf', () => {
     registerPdfIpcHandlers(createPdfCommandOwner(pdfService))
   })
@@ -2664,6 +2674,7 @@ const createApplicationModules = async (
       routine: createRoutineCommandOwner(routineRepository),
       endpoint: createEndpointCommandOwner(endpointRepository, endpointManager),
       annotation: createAnnotationCommandOwner(annotationRepository),
+      bookmark: createBookmarkCommandOwner(bookmarkRepository),
       pdf: createPdfCommandOwner(pdfService),
       figure: createFigureCommandOwner((request) =>
         reviewFigure(request.panels, request.figureNote)
