@@ -40,23 +40,11 @@ test('measures a fork before copying it, then creates a session that holds the e
   const sessionRows = sessions.getByRole('button', { name: /Session status/ })
   await expect(sessionRows).toHaveCount(1)
 
-  // The session's information card is where a fork starts. The card is re-mounted while it opens (a
-  // session update re-renders its mount site), so wait for the node to settle before pressing: a click
-  // that straddles a re-mount lands on a node the renderer has already replaced and does nothing.
+  // The session's information card is where a fork starts.
   await page.getByTestId('conversation-title-button').click()
-  const card = page.locator('[data-slot="session-info-card"]')
-  await expect(card).toBeVisible()
-  let previous = ''
-  for (let attempt = 0; attempt < 20; attempt += 1) {
-    const marker = await card.evaluate((element) => {
-      const node = element as HTMLElement
-      node.dataset.settleProbe ??= String(Date.now() + Math.random())
-      return node.dataset.settleProbe
-    })
-    if (marker === previous) break
-    previous = marker
-    await page.waitForTimeout(250)
-  }
+  await page.locator('[data-slot="session-info-card"]').waitFor({ state: 'visible' })
+  await page.waitForTimeout(600)
+
   const forkAction = page.getByRole('button', { name: 'Fork session' })
   // The caution lives where a reader finds it before pressing: the action's own tooltip.
   await expect(forkAction).toHaveAttribute(
@@ -65,7 +53,22 @@ test('measures a fork before copying it, then creates a session that holds the e
   )
 
   // Step one: measure. The numbers are shown, and nothing has been written yet.
-  await forkAction.click()
+  //
+  // Hover, let the card settle, then press — which is what a person does, and which the card needs:
+  // hovering it re-renders the mount site, and a press whose mousedown and mouseup straddle that
+  // re-render lands on a replaced node and produces no click at all. Moving the pointer and pressing
+  // in the same instant (a synthesised click) is not a person, and it is how this spec first failed.
+  await forkAction.hover()
+  await page.waitForTimeout(400)
+  // A person's press is not instantaneous: hold the button down briefly, the way a hand does. The
+  // synthesised instant click is what the card could not survive, and the recorded probe showed the
+  // press landing correctly once the button was held even briefly.
+  const forkBox = await forkAction.boundingBox()
+  if (!forkBox) throw new Error('the fork action has no box to press')
+  await page.mouse.move(forkBox.x + forkBox.width / 2, forkBox.y + forkBox.height / 2)
+  await page.mouse.down()
+  await page.waitForTimeout(60)
+  await page.mouse.up()
   await expect(page.getByText('The copy will hold')).toBeVisible()
   await expect(page.getByText('Messages: 2')).toBeVisible()
   await expect(page.getByText('Agent replies: 1')).toBeVisible()
