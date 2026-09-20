@@ -72,7 +72,7 @@ describe('notebook MCP server config', () => {
     })
 
     expect(config).toEqual({
-      name: 'purescience-notebook',
+      name: 'purescience_notebook',
       command: '/Applications/PureScience.app/Contents/MacOS/PureScience',
       args: ['/app/out/main/index.js', '--purescience-notebook-mcp'],
       env: [
@@ -106,7 +106,7 @@ describe('notebook MCP server config', () => {
 
   it('keeps notebook instructions scoped to the notebook tools', () => {
     expect(NOTEBOOK_SYSTEM_PROMPT_APPEND).toContain(
-      'only applies when using purescience-notebook tools'
+      'only applies when using purescience_notebook tools'
     )
     expect(NOTEBOOK_SYSTEM_PROMPT_APPEND).toContain('PURESCIENCE_RUNTIME_DIR')
     expect(NOTEBOOK_SYSTEM_PROMPT_APPEND).not.toContain('~/.purescience/runtime/')

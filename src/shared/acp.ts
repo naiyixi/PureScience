@@ -127,7 +127,7 @@ export type AcpContextUsageCategory = {
 // definition cost - the number needed to decide what to trim. Diagnostic detail only: it never
 // participates in reconciliation, so a malformed entry drops the field rather than the breakdown.
 export type AcpContextUsageSection = {
-  // Namespaced source of the cost, e.g. `mcp-schema:purescience-notebook` or `system:persistent`.
+  // Namespaced source of the cost, e.g. `mcp-schema:purescience_notebook` or `system:persistent`.
   sectionId: string
   category: AcpContextUsageCategoryKey
   tokens: number

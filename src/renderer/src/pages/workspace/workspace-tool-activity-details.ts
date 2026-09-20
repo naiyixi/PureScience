@@ -565,7 +565,7 @@ const toNotebookKernelKind = (value: unknown): NotebookKernelKindLike | undefine
 
 // Detects any notebook kernel run (python/r cell, repl control-plane, or bash) so all three render
 // as code plus output rather than the raw run-summary JSON envelope.
-// Matches both server-name forms (Claude Code's hyphenated purescience-notebook and the
+// Matches both server-name forms (the canonical purescience_notebook and the older hyphenated
 // responses bridge's underscore-sanitized purescience_notebook) via the shared matcher, which
 // also requires the server segment to match exactly so lookalike server names are excluded.
 const getNotebookRunToolName = (activity: ToolActivity): string | undefined =>

@@ -98,7 +98,7 @@ describe('permission policy', () => {
     const servers = [
       'purescience-activity',
       'purescience-artifacts',
-      'purescience-notebook',
+      'purescience_notebook',
       'purescience-skills'
     ]
 
@@ -110,9 +110,9 @@ describe('permission policy', () => {
     expect(isMcpToolName('purescience_artifacts_write_artifact_file', servers)).toBe(true)
     expect(isMcpToolName('purescience_notebook_notebook_execute', servers)).toBe(true)
     expect(isMcpToolName('purescience_skills_request_skill_import', servers)).toBe(true)
-    expect(isMcpToolName('purescience-notebook', servers)).toBe(true)
+    expect(isMcpToolName('purescience_notebook', servers)).toBe(true)
     // Codex uses mcp.<server>.<tool> — the generic mcp. prefix is not trusted without a known server.
-    expect(isMcpToolName('mcp.purescience-notebook.notebook_execute', servers)).toBe(true)
+    expect(isMcpToolName('mcp.purescience_notebook.notebook_execute', servers)).toBe(true)
     expect(isMcpToolName('mcp.unconfigured-server.execute', servers)).toBe(false)
     expect(isMcpToolName('mcp.unconfigured-server.execute', [])).toBe(false)
     // Built-in framework tools never collide with a server name.
@@ -121,11 +121,11 @@ describe('permission policy', () => {
   })
 
   it('recognizes Codex ACP leaf names for app-owned MCP tools', () => {
-    expect(isMcpToolName('execute', ['purescience-notebook'])).toBe(true)
+    expect(isMcpToolName('execute', ['purescience_notebook'])).toBe(true)
     expect(isMcpToolName('write', ['purescience-artifacts'])).toBe(true)
     expect(isMcpToolName('execute', ['some-other-server'])).toBe(false)
-    expect(resolveMcpProviderLeafIdentity('execute', ['purescience-notebook'])).toBe(
-      'purescience-notebook/notebook_execute'
+    expect(resolveMcpProviderLeafIdentity('execute', ['purescience_notebook'])).toBe(
+      'purescience_notebook/notebook_execute'
     )
     expect(resolveMcpProviderLeafIdentity('write', ['purescience-artifacts'])).toBe(
       'purescience-artifacts/write_artifact_file'
@@ -142,7 +142,7 @@ describe('permission policy', () => {
           title: 'purescience-artifacts_write_artifact_file'
         }),
         '/workspace/project',
-        ['purescience-artifacts', 'purescience-notebook']
+        ['purescience-artifacts', 'purescience_notebook']
       )
     ).toBe(false)
   })
@@ -152,14 +152,14 @@ describe('permission policy', () => {
       canConservativelyAutoApprove(
         createPermissionRequest('edit', [{ path: 'results/output.csv' }], { title: 'Edit' }),
         '/workspace/project',
-        ['purescience-artifacts', 'purescience-notebook']
+        ['purescience-artifacts', 'purescience_notebook']
       )
     ).toBe(true)
   })
 
   it('routes opencode MCP tools to the UI under conservative Auto instead of auto-approving', () => {
     const request = createPermissionRequest('read', [{ path: 'data/input.csv' }], {
-      title: 'purescience-notebook_notebook_state'
+      title: 'purescience_notebook_notebook_state'
     })
 
     expect(
@@ -167,7 +167,7 @@ describe('permission policy', () => {
         profile: 'auto',
         autoReviewStrategy: 'conservative',
         cwd: '/workspace/project',
-        mcpServerNames: ['purescience-artifacts', 'purescience-notebook']
+        mcpServerNames: ['purescience-artifacts', 'purescience_notebook']
       })
     ).toBeUndefined()
   })

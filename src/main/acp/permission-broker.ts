@@ -98,7 +98,11 @@ const PROJECT_ALLOW_OPTION_ID_PREFIX = 'purescience:allow-project:'
 const GLOBAL_ALLOW_OPTION_ID_PREFIX = 'purescience:allow-global:'
 const FILE_TOOL_KINDS = new Set(['read', 'edit', 'delete', 'move'])
 const FILE_PROVIDER_TOOLS = new Set(['Read', 'Write', 'Edit', 'MultiEdit', 'NotebookEdit'])
-const NOTEBOOK_SERVER = 'purescience-notebook'
+const NOTEBOOK_SERVER = 'purescience_notebook'
+// The server has been spelled with a hyphen and with an underscore, and a framework may hand us either
+// (or its own escaped variant). Resolve through the one naming module rather than comparing literals.
+const isNotebookServerName = (name: string | undefined): boolean =>
+  canonicalAppMcpServerName(name ?? '') === NOTEBOOK_SERVER
 const NOTEBOOK_EXECUTION_TOOLS = new Set(['notebook_execute', 'repl_execute', 'bash_execute'])
 // Depends on the codex-acp option-ID contract: persistent exec/network policy amendments are the only
 // options whose IDs match this shape. If codex-acp renames them, projection silently stops — the
@@ -388,9 +392,9 @@ const resolveNotebookExecutionTool = (identity: string): string | undefined => {
   const separator = identity.indexOf('/')
   if (separator < 0) return undefined
 
-  const server = identity.slice(0, separator).replaceAll('_', '-').toLowerCase()
+  const server = identity.slice(0, separator)
   const tool = identity.slice(separator + 1).toLowerCase()
-  if (server !== NOTEBOOK_SERVER || !NOTEBOOK_EXECUTION_TOOLS.has(tool)) return undefined
+  if (!isNotebookServerName(server) || !NOTEBOOK_EXECUTION_TOOLS.has(tool)) return undefined
 
   return tool
 }
@@ -604,7 +608,7 @@ const describeGrant = (categoryKey: string): AcpPermissionGrant => {
               : undefined
     const [server, tool] = identity.split('/')
     const notebookToolLabel =
-      server?.replaceAll('_', '-').toLowerCase() === NOTEBOOK_SERVER
+      isNotebookServerName(server)
         ? tool === 'bash_execute'
           ? 'Notebook shell'
           : tool === 'notebook_execute' || tool === 'repl_execute'

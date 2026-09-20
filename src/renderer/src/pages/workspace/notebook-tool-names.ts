@@ -43,8 +43,18 @@ const matchNotebookTool = (
   if (segments.length >= 2) {
     const suffix = segments[segments.length - 1]
     if (suffixes.some((known) => known === suffix)) {
-      const server = segments[segments.length - 2].replace(/_/gu, '-')
+      const normalize = (value: string): string => value.replace(/_+/gu, '-')
+      const server = normalize(segments[segments.length - 2])
       if (server === NOTEBOOK_SERVER_SEGMENT) return suffix
+      // A framework can escape the hyphen inside the server name as its own separator, which splits the
+      // server across two segments (`purescience__notebook`). Joining the last two and comparing the whole
+      // still anchors on exact equality, so a lookalike server is rejected.
+      if (segments.length >= 3) {
+        const joined = normalize(
+          `${segments[segments.length - 3]}-${segments[segments.length - 2]}`
+        )
+        if (joined === NOTEBOOK_SERVER_SEGMENT) return suffix
+      }
     }
   }
 

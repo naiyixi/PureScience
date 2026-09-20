@@ -759,7 +759,7 @@ describe('ACP permission broker with durable grants', () => {
     const context = {
       profile: 'ask' as const,
       projectId: 'project-1',
-      mcpServerNames: ['purescience-notebook']
+      mcpServerNames: ['purescience_notebook']
     }
 
     const first = broker.requestPermission(
@@ -776,7 +776,7 @@ describe('ACP permission broker with durable grants', () => {
     })
 
     for (const [sessionId, reportedName] of [
-      ['session-codex', 'mcp.purescience-notebook.manage_packages'],
+      ['session-codex', 'mcp.purescience_notebook.manage_packages'],
       ['session-opencode', 'purescience_notebook_manage_packages']
     ] as const) {
       await expect(
@@ -788,7 +788,7 @@ describe('ACP permission broker with durable grants', () => {
       broker.requestPermission(
         withTrustedMcpToolIdentity(
           mcpRequest('session-sparse', 'manage_packages', 'Manage packages'),
-          'purescience-notebook/manage_packages'
+          'purescience_notebook/manage_packages'
         ),
         context
       )
@@ -799,7 +799,7 @@ describe('ACP permission broker with durable grants', () => {
       expect.objectContaining({
         capability: {
           kind: 'mcp_tool',
-          key: 'mcp:purescience-notebook/manage_packages'
+          key: 'mcp:purescience_notebook/manage_packages'
         },
         scope: { kind: 'global' }
       })

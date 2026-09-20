@@ -954,7 +954,7 @@ const waitForOpenCodeMcpToolInput = (
   ).waitForOpenCodeMcpToolInput(sessionId, toolCallId, {
     sessionId,
     framework: 'opencode',
-    mcpServerNames: ['purescience-notebook'],
+    mcpServerNames: ['purescience_notebook'],
     isCancelled: () => false
   })
 
@@ -1543,7 +1543,7 @@ describe('ACP runtime session management', () => {
 
       expect(
         fakeAgent.newSessions[0].mcpServers.map((server) => (server as { name: string }).name)
-      ).toEqual(['purescience-artifacts', 'purescience-notebook', 'purescience-skills'])
+      ).toEqual(['purescience-artifacts', 'purescience_notebook', 'purescience-skills'])
       expect(fakeAgent.newSessions[1].mcpServers).toEqual([reviewerServer])
       expect(reviewer.role).toBe('reviewer')
 
@@ -3974,7 +3974,7 @@ describe('ACP runtime session management', () => {
       update: {
         sessionUpdate: 'tool_call',
         toolCallId: 'reused-call-id',
-        title: 'purescience-notebook_notebook_execute',
+        title: 'purescience_notebook_notebook_execute',
         kind: 'other',
         status: 'pending',
         rawInput: { language: 'python', code: 'print(1)' }
@@ -4008,7 +4008,7 @@ describe('ACP runtime session management', () => {
       update: {
         sessionUpdate: 'tool_call',
         toolCallId: 'retitled-call',
-        title: 'purescience-notebook_notebook_status',
+        title: 'purescience_notebook_notebook_status',
         kind: 'other',
         status: 'pending',
         rawInput: { language: 'python', code: 'print(1)' }
@@ -4019,16 +4019,16 @@ describe('ACP runtime session management', () => {
       update: {
         sessionUpdate: 'tool_call_update',
         toolCallId: 'retitled-call',
-        title: 'purescience-notebook_notebook_execute',
+        title: 'purescience_notebook_notebook_execute',
         status: 'in_progress',
         rawInput: {}
       }
     })
 
     expect(opencodeMcpToolInputsMap(runtime).get(session.sessionId)?.get('retitled-call')).toEqual({
-      title: 'purescience-notebook_notebook_execute',
-      providerToolName: 'purescience-notebook_notebook_execute',
-      mcpIdentity: 'purescience-notebook/notebook_execute'
+      title: 'purescience_notebook_notebook_execute',
+      providerToolName: 'purescience_notebook_notebook_execute',
+      mcpIdentity: 'purescience_notebook/notebook_execute'
     })
   })
 
@@ -5256,9 +5256,9 @@ describe('ACP runtime session management', () => {
 
     // Only configured app-owned MCP tools are attached; arbitrary native MCP remains unsupported.
     const servers = fakeAgent.newSessions[0].mcpServers as Array<{ name?: string }>
-    expect(servers.map((server) => server.name)).toEqual(['purescience-notebook'])
+    expect(servers.map((server) => server.name)).toEqual(['purescience_notebook'])
     expect(fakeAgent.prompts[0].text).toContain(
-      'Notebook tool instructions (only applies when using purescience-notebook tools)'
+      'Notebook tool instructions (only applies when using purescience_notebook tools)'
     )
     expect(fakeAgent.prompts[0].text).not.toContain('<purescience_artifact_instructions>')
   })
@@ -6773,10 +6773,10 @@ describe('ACP runtime session management', () => {
               sessionUpdate: 'tool_call',
               toolCallId,
               kind: 'execute',
-              title: 'mcp.purescience-notebook.notebook_execute',
+              title: 'mcp.purescience_notebook.notebook_execute',
               status: 'pending',
               rawInput: {
-                server: 'purescience-notebook',
+                server: 'purescience_notebook',
                 tool: 'notebook_execute',
                 arguments: { code: 'print(1)', language: 'python' }
               },
@@ -6853,7 +6853,7 @@ describe('ACP runtime session management', () => {
 
     expect(permissionRequests).toHaveLength(1)
     expect(permissionRequests[0]).toMatchObject({
-      title: 'mcp.purescience-notebook.notebook_execute',
+      title: 'mcp.purescience_notebook.notebook_execute',
       providerToolName: 'notebook_execute',
       isMcp: true,
       rawInput: { code: 'print(1)', language: 'python' },
@@ -6869,7 +6869,7 @@ describe('ACP runtime session management', () => {
     ])
     expect(runtime.getSnapshot().permissionGrants[session.sessionId]).toEqual([
       {
-        categoryKey: 'mcp:purescience-notebook/notebook_execute:python',
+        categoryKey: 'mcp:purescience_notebook/notebook_execute:python',
         kind: 'mcp',
         label: 'Notebook REPL (Python)',
         scope: 'session'
@@ -7115,7 +7115,7 @@ describe('ACP runtime session management', () => {
       }
     })
     const session = await runtime.createSession({ cwd: '/workspace', permissionProfile: 'ask' })
-    expect(mcpServerNamesFor(runtime, session.sessionId)).toContain('purescience-notebook')
+    expect(mcpServerNamesFor(runtime, session.sessionId)).toContain('purescience_notebook')
 
     for (const toolInput of toolInputs) {
       await runtime.sendPrompt({ sessionId: session.sessionId, text: `run ${toolInput.language}` })
@@ -7131,13 +7131,13 @@ describe('ACP runtime session management', () => {
     )
     expect(runtime.getSnapshot().permissionGrants[session.sessionId]).toEqual([
       {
-        categoryKey: 'mcp:purescience-notebook/notebook_execute:python',
+        categoryKey: 'mcp:purescience_notebook/notebook_execute:python',
         kind: 'mcp',
         label: 'Notebook REPL (Python)',
         scope: 'session'
       },
       {
-        categoryKey: 'mcp:purescience-notebook/notebook_execute:r',
+        categoryKey: 'mcp:purescience_notebook/notebook_execute:r',
         kind: 'mcp',
         label: 'Notebook REPL (R)',
         scope: 'session'
@@ -7197,7 +7197,7 @@ describe('ACP runtime session management', () => {
     expect(permissionResponse).toEqual({ outcome: { outcome: 'selected', optionId: 'once' } })
     expect(runtime.getSnapshot().permissionGrants[session.sessionId]).toEqual([
       {
-        categoryKey: 'mcp:purescience-notebook/notebook_execute:python',
+        categoryKey: 'mcp:purescience_notebook/notebook_execute:python',
         kind: 'mcp',
         label: 'Notebook REPL (Python)',
         scope: 'session'
@@ -7482,7 +7482,7 @@ describe('ACP runtime session management', () => {
           update: {
             sessionUpdate: 'tool_call',
             toolCallId,
-            title: 'purescience-notebook_notebook_execute',
+            title: 'purescience_notebook_notebook_execute',
             kind: 'other',
             status: 'pending',
             rawInput: {}
@@ -7494,7 +7494,7 @@ describe('ACP runtime session management', () => {
             sessionId: ctx.params.sessionId,
             toolCall: {
               toolCallId,
-              title: 'purescience-notebook_notebook_execute',
+              title: 'purescience_notebook_notebook_execute',
               kind: 'other',
               status: 'pending',
               rawInput: {}
@@ -7562,7 +7562,7 @@ describe('ACP runtime session management', () => {
       if (readCount === 0) {
         readCount += 1
         toolInputs.set(toolCallId, {
-          title: 'purescience-notebook_notebook_execute',
+          title: 'purescience_notebook_notebook_execute',
           rawInput: { code: 'print(1)' }
         })
         return undefined
@@ -7599,7 +7599,7 @@ describe('ACP runtime session management', () => {
           update: {
             sessionUpdate: 'tool_call',
             toolCallId,
-            title: 'purescience-notebook_notebook_execute',
+            title: 'purescience_notebook_notebook_execute',
             kind: 'other',
             status: 'pending',
             rawInput: {}
@@ -7610,7 +7610,7 @@ describe('ACP runtime session management', () => {
             sessionId: ctx.params.sessionId,
             toolCall: {
               toolCallId,
-              title: 'purescience-notebook_notebook_execute',
+              title: 'purescience_notebook_notebook_execute',
               kind: 'other',
               status: 'pending',
               rawInput: {}
@@ -7681,7 +7681,7 @@ describe('ACP runtime session management', () => {
           update: {
             sessionUpdate: 'tool_call',
             toolCallId,
-            title: 'purescience-notebook_notebook_execute',
+            title: 'purescience_notebook_notebook_execute',
             kind: 'other',
             status: 'pending',
             rawInput: { language: 'python', code: 'print(1)' }
@@ -7692,7 +7692,7 @@ describe('ACP runtime session management', () => {
             sessionId: ctx.params.sessionId,
             toolCall: {
               toolCallId,
-              title: 'purescience-notebook_notebook_execute',
+              title: 'purescience_notebook_notebook_execute',
               kind: 'other',
               status: 'pending',
               rawInput: {}
@@ -7996,10 +7996,10 @@ describe('ACP runtime session management', () => {
           sessionUpdate: 'tool_call',
           toolCallId: `pending-mcp-${index}`,
           kind: 'execute',
-          title: 'mcp.purescience-notebook.notebook_execute',
+          title: 'mcp.purescience_notebook.notebook_execute',
           status: 'pending',
           rawInput: {
-            server: 'purescience-notebook',
+            server: 'purescience_notebook',
             tool: 'notebook_execute',
             arguments: { code: `print(${index})` }
           },
@@ -8072,7 +8072,7 @@ describe('ACP runtime session management', () => {
     })
     expect(runtime.getSnapshot().permissionGrants[session.sessionId]).toEqual([
       {
-        categoryKey: 'mcp:purescience-notebook/notebook_execute:python',
+        categoryKey: 'mcp:purescience_notebook/notebook_execute:python',
         kind: 'mcp',
         label: 'Notebook REPL (Python)',
         scope: 'session'
@@ -12500,7 +12500,7 @@ describe('ACP runtime session management', () => {
         sessionUpdate: 'tool_call',
         toolCallId: 'mcp-1',
         kind: 'other',
-        title: 'mcp__purescience-notebook__notebook_execute',
+        title: 'mcp__purescience_notebook__notebook_execute',
         status: 'in_progress',
         rawInput: 'run notebook cell'
       }
@@ -12530,7 +12530,7 @@ describe('ACP runtime session management', () => {
     startFakeAgent(process, ['s1'])
     const counter: TokenCounter = {
       count: (text) => {
-        if (text.includes('Call mcp__purescience-notebook__notebook_execute exactly')) return 101
+        if (text.includes('Call mcp__purescience_notebook__notebook_execute exactly')) return 101
         if (text.includes('Call notebook_execute exactly')) return 17
         return 0
       }
@@ -15161,7 +15161,7 @@ describe('ACP runtime session management', () => {
     expect(createdSession.sessionId).toBe('remote-session-1')
     expect(fakeAgent.newSessions[0].mcpServers).toHaveLength(1)
     expect(fakeAgent.newSessions[0].mcpServers[0]).toMatchObject({
-      name: 'purescience-notebook',
+      name: 'purescience_notebook',
       command: '/Applications/PureScience.app/Contents/MacOS/PureScience',
       args: ['/app/out/main/index.js', '--purescience-notebook-mcp']
     })
@@ -15200,7 +15200,7 @@ describe('ACP runtime session management', () => {
         type: 'preset',
         preset: 'claude_code',
         append: expect.stringContaining(
-          'Notebook tool instructions (only applies when using purescience-notebook tools)'
+          'Notebook tool instructions (only applies when using purescience_notebook tools)'
         )
       }
     })
@@ -15210,7 +15210,7 @@ describe('ACP runtime session management', () => {
       }
     })
     const createdSessionMeta = JSON.stringify(fakeAgent.newSessions[0]._meta)
-    expect(createdSessionMeta).toContain('mcp__purescience-notebook__notebook_execute')
+    expect(createdSessionMeta).toContain('mcp__purescience_notebook__notebook_execute')
     expect(createdSessionMeta).not.toContain('`notebook_execute`')
   })
 
@@ -15315,7 +15315,7 @@ describe('ACP runtime session management', () => {
           typeof server === 'object' && server !== null && 'name' in server && server.name === name
       )
     const artifactServer = byName('purescience-artifacts')
-    const notebookServer = byName('purescience-notebook')
+    const notebookServer = byName('purescience_notebook')
 
     if (!artifactServer || !notebookServer) {
       throw new Error('Expected artifact and notebook MCP servers')

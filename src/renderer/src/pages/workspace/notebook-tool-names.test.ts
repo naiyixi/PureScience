@@ -10,6 +10,10 @@ describe('isNotebookExecuteToolName', () => {
   it('matches the notebook server run tools in Claude Code mcp__ form', () => {
     expect(isNotebookExecuteToolName('mcp__purescience-notebook__notebook_execute')).toBe(true)
     expect(isNotebookExecuteToolName('mcp__purescience-notebook__repl_execute')).toBe(true)
+    // A framework can escape the server's hyphen as its own separator; the call still belongs to the
+    // notebook server, and a session that failed to attribute it is how the app lost this call.
+    expect(isNotebookExecuteToolName('mcp__purescience__notebook__notebook_execute')).toBe(true)
+    expect(isNotebookExecuteToolName('mcp__purescience_notebook__notebook_execute')).toBe(true)
     expect(isNotebookExecuteToolName('mcp__purescience-notebook__bash_execute')).toBe(true)
   })
 

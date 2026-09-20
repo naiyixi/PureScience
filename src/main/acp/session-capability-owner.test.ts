@@ -193,7 +193,7 @@ describe('ACP session capability owner', () => {
     provision.commit('app-session')
 
     expect(registerSessionAlias).toHaveBeenCalledWith('provider-session', 'app-session')
-    expect(owner.mcpServerNamesFor('app-session')).toEqual(['purescience-notebook'])
+    expect(owner.mcpServerNamesFor('app-session')).toEqual(['purescience_notebook'])
     expect(release).not.toHaveBeenCalled()
 
     owner.revokeSession('app-session')
@@ -600,7 +600,7 @@ describe('ACP session capability owner', () => {
     ])
     expect(primary.descriptor.canonicalMcpServerNames).toEqual([
       'purescience-artifacts',
-      'purescience-notebook',
+      'purescience_notebook',
       'purescience-skills'
     ])
     expect(primary.descriptor.controlRpcMethods).toEqual(['mcpCall', 'computeCall', 'agentsCall'])

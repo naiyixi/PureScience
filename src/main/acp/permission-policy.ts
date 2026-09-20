@@ -66,7 +66,7 @@ const trustedNativeToolIdentity = (params: RequestPermissionRequest): string | u
 const MCP_TOOL_PREFIX = 'mcp__'
 const CODEX_MCP_TOOL_PREFIX = 'mcp.'
 const MCP_PROVIDER_LEAF_ALIASES: Record<string, Readonly<Record<string, string>>> = {
-  'purescience-notebook': { execute: 'notebook_execute' },
+  'purescience_notebook': { execute: 'notebook_execute' },
   'purescience-artifacts': { write: 'write_artifact_file' },
   'purescience-activity': { begin_activity_group: 'begin_activity_group' }
 }

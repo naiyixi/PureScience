@@ -192,7 +192,7 @@ type PermissionCode = { code: string; language?: string }
 // another MCP server — e.g. a `notebook_execute` that takes a production target — on the generic
 // JSON path so all its arguments stay reviewable. Shared with the transcript renderer.
 // Resolves a request's notebook tool name from EITHER identity field. The broker can send a
-// namespaced title (mcp.purescience-notebook.notebook_execute) alongside a bare leaf
+// namespaced title (mcp.purescience_notebook.notebook_execute) alongside a bare leaf
 // providerToolName (notebook_execute); only the namespaced field carries the server segment the
 // identity check needs, so we return whichever field matches (or undefined for non-notebook tools).
 const resolveNotebookToolName = (request: AcpPermissionRequest): string | undefined =>

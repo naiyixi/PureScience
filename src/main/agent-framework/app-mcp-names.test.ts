@@ -75,12 +75,25 @@ describe('resolveCanonicalMcpToolIdentity', () => {
 
   it.each([
     'mcp__purescience-notebook__notebook_execute',
+    'mcp__purescience_notebook__notebook_execute',
+    'mcp__purescience__notebook__notebook_execute',
     'mcp.purescience-notebook.notebook_execute',
     'purescience_notebook_notebook_execute'
   ])('normalizes a configured framework alias %s', (reportedName) => {
+    // The configured name is the pre-rename spelling on purpose: a grant or config written before the
+    // rename still has to resolve to the same identity.
     expect(resolveCanonicalMcpToolIdentity(reportedName, ['purescience-notebook'])).toBe(
-      'purescience-notebook/notebook_execute'
+      'purescience_notebook/notebook_execute'
     )
+  })
+
+  it('resolves a call whose server name had its hyphen escaped as a separator', () => {
+    expect(
+      resolveCanonicalMcpToolIdentity(
+        'mcp__purescience__notebook__notebook_execute',
+        ['purescience_notebook']
+      )
+    ).toBe('purescience_notebook/notebook_execute')
   })
 
   it('does not turn an unregistered Claude MCP prefix into durable identity', () => {

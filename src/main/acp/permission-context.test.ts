@@ -127,11 +127,11 @@ describe('ACP permission context', () => {
       update: {
         sessionUpdate: 'tool_call',
         toolCallId: 'call-1',
-        title: 'mcp.purescience-notebook.notebook_execute',
+        title: 'mcp.purescience_notebook.notebook_execute',
         kind: 'execute',
         status: 'pending',
         rawInput: {
-          server: 'purescience-notebook',
+          server: 'purescience_notebook',
           tool: 'notebook_execute',
           arguments: { language: 'python', code: 'print(1)' }
         },
@@ -160,10 +160,10 @@ describe('ACP permission context', () => {
             sessionUpdate: 'tool_call',
             toolCallId: `call-${index}`,
             kind: 'execute',
-            title: 'mcp.purescience-notebook.notebook_execute',
+            title: 'mcp.purescience_notebook.notebook_execute',
             status: 'pending',
             rawInput: {
-              server: 'purescience-notebook',
+              server: 'purescience_notebook',
               tool: 'notebook_execute',
               arguments: { language: 'python', code: `print(${index})` }
             },
@@ -206,7 +206,7 @@ describe('ACP permission context', () => {
     )
 
     expect(restored?.toolCall).toMatchObject({
-      title: 'mcp.purescience-notebook.notebook_execute',
+      title: 'mcp.purescience_notebook.notebook_execute',
       rawInput: { language: 'python', code: 'print(39)' },
       _meta: { toolName: 'notebook_execute' }
     })

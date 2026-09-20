@@ -88,10 +88,10 @@ describe('claudeCodeFramework', () => {
     })
     const systemPrompt = setup.meta?.systemPrompt as { append: string }
 
-    expect(systemPrompt.append).toContain('`mcp__purescience-notebook__notebook_execute`')
-    expect(systemPrompt.append).toContain('`mcp__purescience-notebook__repl_execute`')
-    expect(systemPrompt.append).toContain('`mcp__purescience-notebook__inspect_packages`')
-    expect(systemPrompt.append).toContain('`mcp__purescience-notebook__manage_packages`')
+    expect(systemPrompt.append).toContain('`mcp__purescience_notebook__notebook_execute`')
+    expect(systemPrompt.append).toContain('`mcp__purescience_notebook__repl_execute`')
+    expect(systemPrompt.append).toContain('`mcp__purescience_notebook__inspect_packages`')
+    expect(systemPrompt.append).toContain('`mcp__purescience_notebook__manage_packages`')
     expect(systemPrompt.append).toContain('`mcp__purescience-artifacts__write_artifact_file`')
     expect(systemPrompt.append).not.toContain(
       'purescience-artifacts.mcp__purescience-artifacts__write_artifact_file'
@@ -113,7 +113,7 @@ describe('claudeCodeFramework', () => {
   })
 
   it('renders turn-only MCP tool references as OpenCode callable names', () => {
-    const append = 'Use `notebook_execute` from `purescience-notebook`, then `write_artifact_file`.'
+    const append = 'Use `notebook_execute` from `purescience_notebook`, then `write_artifact_file`.'
 
     expect(
       opencodeFramework.buildSessionSetup({
@@ -126,7 +126,7 @@ describe('claudeCodeFramework', () => {
   })
 
   it('keeps already-namespaced Claude MCP tool references unchanged', () => {
-    const callableName = 'mcp__purescience-notebook__notebook_execute'
+    const callableName = 'mcp__purescience_notebook__notebook_execute'
     const setup = claudeCodeFramework.buildSessionSetup({ systemPromptAppends: [callableName] })
     const systemPrompt = setup.meta?.systemPrompt as { append: string }
 

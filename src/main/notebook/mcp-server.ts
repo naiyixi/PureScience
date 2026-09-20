@@ -6,14 +6,17 @@ import { z } from 'zod'
 import { NOTEBOOK_MCP_SERVER_ARG } from '../mcp-server-args'
 import { fetchLocalRpc, type LocalRpcTransport } from '../local-rpc-transport'
 
-const NOTEBOOK_MCP_SERVER_NAME = 'purescience-notebook'
+// Hyphen-free on purpose: a framework namespaces this into the tool the model calls
+// (mcp__purescience_notebook__notebook_execute), and a hyphen would be escaped differently by different
+// frameworks — which is exactly how a callable name stops existing.
+const NOTEBOOK_MCP_SERVER_NAME = 'purescience_notebook'
 const MAX_RUNTIME_RESULTS = 40
 const MAX_ENVIRONMENT_RESULTS = 30
 
 // Scoped prompt addendum that only applies when the agent is given notebook tools.
 const NOTEBOOK_SYSTEM_PROMPT_APPEND = [
   '<purescience_notebook_instructions>',
-  'Notebook tool instructions (only applies when using purescience-notebook tools).',
+  'Notebook tool instructions (only applies when using purescience_notebook tools).',
   'Notebook preview is only for code and execution results; keep chat, explanation, and diagnosis in the chat area.',
   'Use `notebook_execute` for one persistent Python/R cell per call; reuse `cellId` to rerun a cell. Python/R data kernels cannot call connectors. Use `repl_execute` for `host.mcp`/`host.compute`. For large cross-kernel data, write under `process.env.PURESCIENCE_HANDOFF_DIR` in the REPL and read the same `PURESCIENCE_HANDOFF_DIR` path from Python/R.',
   'Each runtime is a separate persistent namespace. Create named runtimes with `manage_environments`, select them with the bind/switch tools, and use files to move data across runtimes. Memory is lost on restart or app reopen; run history and files survive.',

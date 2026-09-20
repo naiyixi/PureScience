@@ -4,6 +4,12 @@ type AppMcpServerDefinition = {
   canonicalName: string
   openCodeName: string
   tools: readonly string[]
+  // Names this server used to be registered under. Frameworks namespace a server name into the tool name
+  // they hand the model (mcp__<server>__<tool>) and each one escapes a hyphen its own way — some as one
+  // underscore, some as two — so a hyphen in the name means the callable name depends on who is rendering
+  // it. Hyphen-free canonical names are the fix; the old spellings stay here so a grant, a config or a
+  // reported tool name written before the rename still resolves to the same identity.
+  legacyNames?: readonly string[]
 }
 
 // App-owned MCP identity stays canonical inside PureScience. Framework-specific names are projected
@@ -20,8 +26,9 @@ const APP_MCP_SERVERS: readonly AppMcpServerDefinition[] = [
     tools: ['write_artifact_file']
   },
   {
-    canonicalName: 'purescience-notebook',
+    canonicalName: 'purescience_notebook',
     openCodeName: 'purescience_notebook',
+    legacyNames: ['purescience-notebook'],
     tools: [
       'notebook_execute',
       'repl_execute',
@@ -60,11 +67,18 @@ const APP_MCP_SERVER_BY_CANONICAL_NAME = new Map(
 const APP_MCP_SERVER_BY_OPENCODE_NAME = new Map(
   APP_MCP_SERVERS.map((definition) => [definition.openCodeName, definition])
 )
+const APP_MCP_SERVER_BY_LEGACY_NAME = new Map(
+  APP_MCP_SERVERS.flatMap((definition) =>
+    (definition.legacyNames ?? []).map((legacy) => [legacy, definition] as const)
+  )
+)
 
 const frameworkSafeMcpServerName = (name: string): string => name.replace(/[^a-zA-Z0-9_]/g, '_')
 
 const canonicalAppMcpServerName = (name: string): string =>
-  APP_MCP_SERVER_BY_OPENCODE_NAME.get(name)?.canonicalName ?? name
+  APP_MCP_SERVER_BY_OPENCODE_NAME.get(name)?.canonicalName ??
+  APP_MCP_SERVER_BY_LEGACY_NAME.get(name)?.canonicalName ??
+  name
 
 const modelFacingAppMcpServerName = (frameworkId: AgentFrameworkId, name: string): string => {
   const canonicalName = canonicalAppMcpServerName(name)
@@ -80,7 +94,7 @@ const appMcpServerAliases = (name: string): readonly string[] => {
   return [
     ...new Set(
       definition
-        ? [definition.canonicalName, definition.openCodeName]
+        ? [definition.canonicalName, definition.openCodeName, ...(definition.legacyNames ?? [])]
         : [canonicalName, frameworkSafeMcpServerName(canonicalName)]
     )
   ]
@@ -113,9 +127,17 @@ const resolveCanonicalMcpToolIdentity = (
     const [reportedServer, ...toolParts] = name.slice('mcp__'.length).split('__')
     if (!reportedServer || toolParts.length === 0) return undefined
     const server = configuredServerFor(reportedServer)
-    if (!server) return undefined
+    if (server) return `${server}/${toolParts.join('__')}`
 
-    return `${server}/${toolParts.join('__')}`
+    // A framework can escape the hyphen inside a server name as its own separator, which splits the
+    // server across two segments (`mcp__purescience__notebook__notebook_execute`). Join the first two
+    // segments with the hyphen the canonical name uses and look the whole thing up.
+    if (toolParts.length >= 2) {
+      const joined = configuredServerFor(`${reportedServer}-${toolParts[0]}`)
+      if (joined) return `${joined}/${toolParts.slice(1).join('__')}`
+    }
+
+    return undefined
   }
 
   const serverAliases = canonicalServers
@@ -154,9 +176,16 @@ const renderAppMcpToolReferences = (frameworkId: AgentFrameworkId, text: string)
   if (frameworkId === 'codex') return text
 
   let rendered = text
-  if (frameworkId === 'opencode') {
-    for (const definition of APP_MCP_SERVERS) {
-      rendered = rendered.replaceAll(definition.canonicalName, definition.openCodeName)
+  for (const definition of APP_MCP_SERVERS) {
+    const facingName = modelFacingAppMcpServerName(frameworkId, definition.canonicalName)
+    // Prose that names the server by what it used to be called has to come out naming it the way this
+    // framework sees it now, or the sentence hands the model a name it cannot call.
+    for (const spelling of [
+      definition.canonicalName,
+      definition.openCodeName,
+      ...(definition.legacyNames ?? [])
+    ]) {
+      if (spelling !== facingName) rendered = rendered.replaceAll(spelling, facingName)
     }
   }
 

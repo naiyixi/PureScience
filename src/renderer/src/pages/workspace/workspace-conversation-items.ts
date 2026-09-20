@@ -57,8 +57,11 @@ type ConversationItem =
 const KNOWN_TITLE_TOOL_NAMES = new Set(['ToolSearch'])
 
 // Claude Code namespaces MCP tools with `mcp__`; Codex records completed tools as dotted titles.
-// Both preserve the notebook server name, with Codex occasionally sanitizing its hyphens.
-const NOTEBOOK_PROVIDER_TOOL_PATTERN = /^(?:mcp__|mcp\.)?purescience[-_]notebook(?:__|\.)([^.]+)$/iu
+// Both preserve the notebook server name, with Codex occasionally sanitizing its hyphens — and some
+// frameworks escape the hyphen as a separator of its own (`purescience__notebook`), so one or two
+// separators are accepted here and the captured server still has to spell the notebook server exactly.
+const NOTEBOOK_PROVIDER_TOOL_PATTERN =
+  /^(?:mcp__|mcp\.)?purescience[-_]{1,2}notebook(?:__|\.)([^.]+)$/iu
 const PLAN_PROVIDER_TOOL_PATTERN =
   /^(?:(?:mcp__|mcp\.)?purescience[-_]plan(?:__|\.|_)|)(generate_plan|update_step_status)$/iu
 

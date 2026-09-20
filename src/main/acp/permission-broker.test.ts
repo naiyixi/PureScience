@@ -30,7 +30,7 @@ const createPermissionRequest = (sessionId = 'session-1'): RequestPermissionRequ
 // Builds a notebook tool permission request that also offers an "always allow" option.
 const createNotebookPermissionRequest = (
   sessionId = 'session-1',
-  title = 'mcp__purescience-notebook__notebook_execute',
+  title = 'mcp__purescience_notebook__notebook_execute',
   rawInput?: unknown
 ): RequestPermissionRequest => ({
   sessionId,
@@ -114,7 +114,7 @@ const createCodexMcpPermissionRequest = (sessionId = 'session-1'): RequestPermis
   sessionId,
   toolCall: {
     toolCallId: `tool-${Math.random()}`,
-    title: 'mcp.purescience-notebook.notebook_execute',
+    title: 'mcp.purescience_notebook.notebook_execute',
     status: 'pending',
     rawInput: { language: 'python' }
   },
@@ -543,8 +543,8 @@ describe('ACP permission broker', () => {
     const broker = new AcpPermissionBroker((request) => emitted.push(request))
 
     void broker.requestPermission(
-      createToolPermissionRequest({ title: 'purescience-notebook', kind: 'execute' }),
-      { profile: 'ask', mcpServerNames: ['purescience-notebook'] }
+      createToolPermissionRequest({ title: 'purescience_notebook', kind: 'execute' }),
+      { profile: 'ask', mcpServerNames: ['purescience_notebook'] }
     )
 
     expect(emitted[0]).toMatchObject({ isMcp: true })
@@ -884,7 +884,7 @@ describe('ACP permission broker', () => {
     void broker.requestPermission(createCodexMcpPermissionRequest(), {
       profile: 'ask',
       frameworkId: 'codex',
-      mcpServerNames: ['purescience-notebook']
+      mcpServerNames: ['purescience_notebook']
     })
 
     expect(emitted[0].options.map((option) => option.optionId)).toEqual([
@@ -913,7 +913,7 @@ describe('ACP permission broker', () => {
     void broker.requestPermission(request, {
       profile: 'ask',
       frameworkId: 'codex',
-      mcpServerNames: ['purescience-notebook']
+      mcpServerNames: ['purescience_notebook']
     })
 
     expect(emitted[0].options.map((option) => option.optionId)).toEqual([
@@ -936,7 +936,7 @@ describe('ACP permission broker', () => {
     void broker.requestPermission(request, {
       profile: 'ask',
       frameworkId: 'codex',
-      mcpServerNames: ['purescience-notebook']
+      mcpServerNames: ['purescience_notebook']
     })
 
     expect(emitted[0].options.map((option) => option.optionId)).toEqual([
@@ -1154,13 +1154,13 @@ describe('ACP permission broker', () => {
     const broker = new AcpPermissionBroker((request) => emitted.push(request))
     const context = {
       profile: 'ask' as const,
-      mcpServerNames: ['purescience-notebook']
+      mcpServerNames: ['purescience_notebook']
     }
 
     const firstResponse = broker.requestPermission(
       createToolPermissionRequest({
         title: 'Run MCP tool',
-        providerToolName: 'purescience-notebook_notebook_execute',
+        providerToolName: 'purescience_notebook_notebook_execute',
         kind: 'execute',
         rawInput: { language: 'python' }
       }),
@@ -1172,7 +1172,7 @@ describe('ACP permission broker', () => {
     void broker.requestPermission(
       createToolPermissionRequest({
         title: 'Run MCP tool',
-        providerToolName: 'purescience-notebook_notebook_state',
+        providerToolName: 'purescience_notebook_notebook_state',
         kind: 'execute'
       }),
       context
@@ -1245,7 +1245,7 @@ describe('ACP permission broker', () => {
   it('resolves an app-owned MCP leaf alias to its canonical conversation grant', async () => {
     const emitted: EmittedPermissionRequest[] = []
     const broker = new AcpPermissionBroker((request) => emitted.push(request))
-    const context = { profile: 'ask' as const, mcpServerNames: ['purescience-notebook'] }
+    const context = { profile: 'ask' as const, mcpServerNames: ['purescience_notebook'] }
     const leafRequest = createToolPermissionRequest({
       title: 'execute',
       kind: 'other',
@@ -1255,7 +1255,7 @@ describe('ACP permission broker', () => {
     const firstResponse = broker.requestPermission(leafRequest, context)
     expect(emitted[0]).toMatchObject({
       isMcp: true,
-      mcpIdentity: 'purescience-notebook/notebook_execute'
+      mcpIdentity: 'purescience_notebook/notebook_execute'
     })
     broker.respond({ requestId: emitted[0].requestId, optionId: getSessionOptionId(emitted[0]) })
     await firstResponse
@@ -1264,7 +1264,7 @@ describe('ACP permission broker', () => {
       broker.requestPermission(
         createNotebookPermissionRequest(
           'session-1',
-          'mcp__purescience-notebook__notebook_execute',
+          'mcp__purescience_notebook__notebook_execute',
           { code: 'print(2)', language: 'python' }
         ),
         context
@@ -1274,7 +1274,7 @@ describe('ACP permission broker', () => {
     expect(emitted).toHaveLength(1)
     expect(broker.listGrants('session-1')).toEqual([
       {
-        categoryKey: 'mcp:purescience-notebook/notebook_execute:python',
+        categoryKey: 'mcp:purescience_notebook/notebook_execute:python',
         kind: 'mcp',
         label: 'Notebook REPL (Python)',
         scope: 'session'
@@ -1317,7 +1317,7 @@ describe('ACP permission broker', () => {
     const broker = new AcpPermissionBroker((request) => emitted.push(request))
     const replRequest = createNotebookPermissionRequest(
       'session-1',
-      'mcp__purescience-notebook__repl_execute',
+      'mcp__purescience_notebook__repl_execute',
       { code: 'print(1)', language: 'python' }
     )
 
@@ -1327,7 +1327,7 @@ describe('ACP permission broker', () => {
 
     await expect(
       broker.requestPermission(
-        createNotebookPermissionRequest('session-1', 'mcp__purescience-notebook__repl_execute', {
+        createNotebookPermissionRequest('session-1', 'mcp__purescience_notebook__repl_execute', {
           code: 'x <- 1',
           language: 'r'
         })
@@ -1335,7 +1335,7 @@ describe('ACP permission broker', () => {
     ).resolves.toEqual({ outcome: { outcome: 'selected', optionId: 'allow-once' } })
 
     const firstBash = broker.requestPermission(
-      createNotebookPermissionRequest('session-1', 'mcp__purescience-notebook__bash_execute', {
+      createNotebookPermissionRequest('session-1', 'mcp__purescience_notebook__bash_execute', {
         command: 'pwd',
         language: 'python'
       })
@@ -1345,7 +1345,7 @@ describe('ACP permission broker', () => {
 
     await expect(
       broker.requestPermission(
-        createNotebookPermissionRequest('session-1', 'mcp__purescience-notebook__bash_execute', {
+        createNotebookPermissionRequest('session-1', 'mcp__purescience_notebook__bash_execute', {
           command: 'ls',
           language: 'r'
         })
@@ -1356,13 +1356,13 @@ describe('ACP permission broker', () => {
     expect(broker.listGrants('session-1')).toEqual(
       expect.arrayContaining([
         {
-          categoryKey: 'mcp:purescience-notebook/repl_execute:javascript',
+          categoryKey: 'mcp:purescience_notebook/repl_execute:javascript',
           kind: 'mcp',
           label: 'Notebook REPL (JavaScript)',
           scope: 'session'
         },
         {
-          categoryKey: 'mcp:purescience-notebook/bash_execute:bash',
+          categoryKey: 'mcp:purescience_notebook/bash_execute:bash',
           kind: 'mcp',
           label: 'Notebook shell (Bash)',
           scope: 'session'
@@ -1376,14 +1376,14 @@ describe('ACP permission broker', () => {
     const broker = new AcpPermissionBroker((request) => emitted.push(request))
 
     const firstResponse = broker.requestPermission(
-      createNotebookPermissionRequest('session-1', 'mcp__purescience-notebook__notebook_execute')
+      createNotebookPermissionRequest('session-1', 'mcp__purescience_notebook__notebook_execute')
     )
     broker.respond({ requestId: emitted[0].requestId, optionId: getSessionOptionId(emitted[0]) })
     await firstResponse
 
     // A different notebook sub-tool is a distinct category and still prompts.
     broker.requestPermission(
-      createNotebookPermissionRequest('session-1', 'mcp__purescience-notebook__notebook_edit')
+      createNotebookPermissionRequest('session-1', 'mcp__purescience_notebook__notebook_edit')
     )
     expect(emitted).toHaveLength(2)
   })
@@ -1443,7 +1443,7 @@ describe('ACP permission broker', () => {
   it('classifies an opencode-named MCP tool as MCP, not shell, even when it reports kind execute', async () => {
     const emitted: EmittedPermissionRequest[] = []
     const broker = new AcpPermissionBroker((request) => emitted.push(request))
-    const mcpServerNames = ['purescience-artifacts', 'purescience-notebook']
+    const mcpServerNames = ['purescience-artifacts', 'purescience_notebook']
 
     // opencode renames the MCP tool <server>_<tool> and may report kind:execute; without MCP-aware
     // classification it would be grouped under the shared Bash category and mislabeled as shell.
@@ -1485,15 +1485,15 @@ describe('ACP permission broker', () => {
 
     void broker.requestPermission(
       createToolPermissionRequest({
-        title: 'purescience-notebook_notebook_execute',
+        title: 'purescience_notebook_notebook_execute',
         kind: 'other',
         rawInput: {}
       }),
-      { profile: 'ask', frameworkId: 'opencode', mcpServerNames: ['purescience-notebook'] }
+      { profile: 'ask', frameworkId: 'opencode', mcpServerNames: ['purescience_notebook'] }
     )
 
     expect(emitted[0]).toMatchObject({
-      title: 'purescience-notebook_notebook_execute',
+      title: 'purescience_notebook_notebook_execute',
       isMcp: true,
       providerToolName: undefined,
       rawInput: {}
@@ -1509,10 +1509,10 @@ describe('ACP permission broker', () => {
     const broker = new AcpPermissionBroker((request) => emitted.push(request))
 
     void broker.requestPermission(
-      createNotebookPermissionRequest('session-1', 'purescience-notebook_notebook_execute', {
+      createNotebookPermissionRequest('session-1', 'purescience_notebook_notebook_execute', {
         code: 'x = 1\nprint(x)'
       }),
-      { profile: 'ask', frameworkId: 'opencode', mcpServerNames: ['purescience-notebook'] }
+      { profile: 'ask', frameworkId: 'opencode', mcpServerNames: ['purescience_notebook'] }
     )
 
     expect(emitted[0].options.map((option) => option.scope).filter(Boolean)).toEqual([
@@ -1687,7 +1687,7 @@ describe('ACP permission broker', () => {
     const secondEmitted: EmittedPermissionRequest[] = []
     const firstBroker = new AcpPermissionBroker((request) => firstEmitted.push(request), store)
     const secondBroker = new AcpPermissionBroker((request) => secondEmitted.push(request), store)
-    const context = { profile: 'ask' as const, mcpServerNames: ['purescience-notebook'] }
+    const context = { profile: 'ask' as const, mcpServerNames: ['purescience_notebook'] }
     const sanitizedRequest = createNotebookPermissionRequest(
       'shared-conversation',
       'mcp__purescience_notebook__notebook_execute',
@@ -1705,7 +1705,7 @@ describe('ACP permission broker', () => {
       secondBroker.requestPermission(
         createNotebookPermissionRequest(
           'shared-conversation',
-          'purescience-notebook_notebook_execute',
+          'purescience_notebook_notebook_execute',
           { language: 'python', code: 'print(2)' }
         ),
         context
@@ -1714,7 +1714,7 @@ describe('ACP permission broker', () => {
     expect(secondEmitted).toHaveLength(0)
     expect(secondBroker.listGrants('shared-conversation')).toEqual([
       expect.objectContaining({
-        categoryKey: 'mcp:purescience-notebook/notebook_execute:python',
+        categoryKey: 'mcp:purescience_notebook/notebook_execute:python',
         scope: 'session'
       })
     ])
@@ -1753,7 +1753,7 @@ describe('ACP permission broker', () => {
     await bash
 
     const notebook = broker.requestPermission(
-      createNotebookPermissionRequest('session-1', 'mcp__purescience-notebook__notebook_execute')
+      createNotebookPermissionRequest('session-1', 'mcp__purescience_notebook__notebook_execute')
     )
     broker.respond({
       requestId: emittedRequests[2].requestId,
@@ -1776,7 +1776,7 @@ describe('ACP permission broker', () => {
           scope: 'session'
         },
         {
-          categoryKey: 'mcp:purescience-notebook/notebook_execute:python',
+          categoryKey: 'mcp:purescience_notebook/notebook_execute:python',
           kind: 'mcp',
           label: 'Notebook REPL (Python)',
           scope: 'session'
@@ -1791,7 +1791,7 @@ describe('ACP permission broker', () => {
         .listGrants('session-1')
         .map((grant) => grant.categoryKey)
         .sort()
-    ).toEqual(['shell:python a.py', 'mcp:purescience-notebook/notebook_execute:python'].sort())
+    ).toEqual(['shell:python a.py', 'mcp:purescience_notebook/notebook_execute:python'].sort())
 
     const countBeforeWrite = emittedRequests.length
     broker.requestPermission(

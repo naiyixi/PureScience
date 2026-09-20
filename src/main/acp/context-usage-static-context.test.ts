@@ -37,7 +37,7 @@ describe('contextUsageMcpSections', () => {
     })
 
     const text = sections.map((section) => section.text).join('\n')
-    expect(text).toContain('mcp.purescience-notebook.notebook_execute')
+    expect(text).toContain('mcp.purescience_notebook.notebook_execute')
     expect(text).not.toContain('mcp__purescience_notebook__notebook_execute')
   })
 
@@ -69,7 +69,7 @@ describe('contextUsageMcpSections', () => {
 
     const text = sections.map((section) => section.text).join('\n')
     expect(text).toContain('mcp__purescience_notebook__notebook_execute')
-    expect(text).not.toContain('mcp.purescience-notebook.notebook_execute')
+    expect(text).not.toContain('mcp.purescience_notebook.notebook_execute')
   })
 
   it('serializes only the app-owned MCP schemas enabled for the session', () => {
@@ -83,7 +83,7 @@ describe('contextUsageMcpSections', () => {
 
     expect(sections.map(({ sectionId }) => sectionId)).toEqual([
       'mcp-schema:purescience-artifacts',
-      'mcp-schema:purescience-notebook'
+      'mcp-schema:purescience_notebook'
     ])
     expect(sections.map(({ text }) => text).join('\n')).toContain(
       'mcp__purescience_notebook__notebook_execute'
