@@ -2661,5 +2661,16 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'sessionInfo.pin': '釘住',
   'sessionInfo.unpin': '取消釘住',
   'sessionInfo.close': '關閉',
-  'sessionInfo.evidence': '查看證據'
+  'sessionInfo.evidence': '查看證據',
+  'sessionFork.action': '分叉工作階段',
+  'sessionFork.measureHint': '先量後複製：先看副本會包含什麼，再決定是否建立',
+  'sessionFork.willHold': '副本將包含',
+  'sessionFork.messages': '訊息',
+  'sessionFork.agentReplies': '智能體回覆',
+  'sessionFork.artifactRefs': '產物引用',
+  'sessionFork.uploads': '上傳附件',
+  'sessionFork.notCarried': '不攜帶：{names}',
+  'sessionFork.confirm': '建立副本',
+  'sessionFork.unreadable': '來源工作階段無法讀取',
+  'sessionFork.done': '副本已建立'
 }

@@ -2929,5 +2929,17 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'sessionInfo.pin': 'Épingler',
   'sessionInfo.unpin': 'Détacher',
   'sessionInfo.close': 'Fermer',
-  'sessionInfo.evidence': 'Ouvrir les preuves'
+  'sessionInfo.evidence': 'Ouvrir les preuves',
+  'sessionFork.action': 'Dériver la session',
+  'sessionFork.measureHint':
+    "Mesurer d'abord : voir ce que contiendrait la copie avant de la créer",
+  'sessionFork.willHold': 'La copie contiendra',
+  'sessionFork.messages': 'Messages',
+  'sessionFork.agentReplies': "Réponses de l'agent",
+  'sessionFork.artifactRefs': "Références d'artefacts",
+  'sessionFork.uploads': 'Téléversements',
+  'sessionFork.notCarried': 'Non repris : {names}',
+  'sessionFork.confirm': 'Créer la copie',
+  'sessionFork.unreadable': "La session source n'a pas pu être lue",
+  'sessionFork.done': 'La copie a été créée'
 }

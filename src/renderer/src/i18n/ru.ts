@@ -2872,5 +2872,16 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'sessionInfo.pin': 'Закрепить',
   'sessionInfo.unpin': 'Открепить',
   'sessionInfo.close': 'Закрыть',
-  'sessionInfo.evidence': 'Открыть доказательства'
+  'sessionInfo.evidence': 'Открыть доказательства',
+  'sessionFork.action': 'Ответвить сеанс',
+  'sessionFork.measureHint': 'Сначала измерение: посмотрите, что будет в копии, затем создавайте',
+  'sessionFork.willHold': 'Копия будет содержать',
+  'sessionFork.messages': 'Сообщения',
+  'sessionFork.agentReplies': 'Ответы агента',
+  'sessionFork.artifactRefs': 'Ссылки на артефакты',
+  'sessionFork.uploads': 'Загрузки',
+  'sessionFork.notCarried': 'Не переносится: {names}',
+  'sessionFork.confirm': 'Создать копию',
+  'sessionFork.unreadable': 'Исходный сеанс не удалось прочитать',
+  'sessionFork.done': 'Копия создана'
 }

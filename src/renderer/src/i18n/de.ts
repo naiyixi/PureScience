@@ -2941,5 +2941,16 @@ export const de: Partial<Record<ZhKey, string>> = {
   'sessionInfo.pin': 'Anheften',
   'sessionInfo.unpin': 'Loslösen',
   'sessionInfo.close': 'Schließen',
-  'sessionInfo.evidence': 'Belege öffnen'
+  'sessionInfo.evidence': 'Belege öffnen',
+  'sessionFork.action': 'Sitzung forken',
+  'sessionFork.measureHint': 'Erst messen: sehen, was die Kopie enthielte, dann erstellen',
+  'sessionFork.willHold': 'Die Kopie enthält',
+  'sessionFork.messages': 'Nachrichten',
+  'sessionFork.agentReplies': 'Agenten-Antworten',
+  'sessionFork.artifactRefs': 'Artefakt-Verweise',
+  'sessionFork.uploads': 'Hochgeladene Dateien',
+  'sessionFork.notCarried': 'Nicht übernommen: {names}',
+  'sessionFork.confirm': 'Kopie erstellen',
+  'sessionFork.unreadable': 'Die Quellsitzung war nicht lesbar',
+  'sessionFork.done': 'Die Kopie wurde erstellt'
 }

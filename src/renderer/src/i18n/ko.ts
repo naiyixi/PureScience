@@ -2813,5 +2813,16 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'sessionInfo.pin': '고정',
   'sessionInfo.unpin': '고정 해제',
   'sessionInfo.close': '닫기',
-  'sessionInfo.evidence': '근거 열기'
+  'sessionInfo.evidence': '근거 열기',
+  'sessionFork.action': '세션 분기',
+  'sessionFork.measureHint': '먼저 측정: 복사본에 무엇이 담기는지 확인한 뒤 생성',
+  'sessionFork.willHold': '복사본에 포함될 항목',
+  'sessionFork.messages': '메시지',
+  'sessionFork.agentReplies': '에이전트 응답',
+  'sessionFork.artifactRefs': '산출물 참조',
+  'sessionFork.uploads': '업로드',
+  'sessionFork.notCarried': '가져오지 않음: {names}',
+  'sessionFork.confirm': '복사본 만들기',
+  'sessionFork.unreadable': '원본 세션을 읽을 수 없습니다',
+  'sessionFork.done': '복사본을 만들었습니다'
 }

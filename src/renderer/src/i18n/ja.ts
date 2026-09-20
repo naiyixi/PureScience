@@ -2869,5 +2869,16 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'sessionInfo.pin': 'ピン留め',
   'sessionInfo.unpin': 'ピンを外す',
   'sessionInfo.close': '閉じる',
-  'sessionInfo.evidence': '根拠を開く'
+  'sessionInfo.evidence': '根拠を開く',
+  'sessionFork.action': 'セッションを分岐',
+  'sessionFork.measureHint': 'まず計測：コピーに何が含まれるかを確認してから作成',
+  'sessionFork.willHold': 'コピーに含まれるもの',
+  'sessionFork.messages': 'メッセージ',
+  'sessionFork.agentReplies': 'エージェントの応答',
+  'sessionFork.artifactRefs': '成果物の参照',
+  'sessionFork.uploads': 'アップロード',
+  'sessionFork.notCarried': '引き継がないもの：{names}',
+  'sessionFork.confirm': 'コピーを作成',
+  'sessionFork.unreadable': '元のセッションを読み込めませんでした',
+  'sessionFork.done': 'コピーを作成しました'
 }

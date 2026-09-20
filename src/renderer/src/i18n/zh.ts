@@ -2727,7 +2727,18 @@ export const zh = {
   'sessionInfo.pin': '钉住',
   'sessionInfo.unpin': '取消钉住',
   'sessionInfo.close': '关闭',
-  'sessionInfo.evidence': '查看证据'
+  'sessionInfo.evidence': '查看证据',
+  'sessionFork.action': '分叉会话',
+  'sessionFork.measureHint': '先量后复制：先看副本会包含什么，再决定是否创建',
+  'sessionFork.willHold': '副本将包含',
+  'sessionFork.messages': '消息',
+  'sessionFork.agentReplies': '智能体回复',
+  'sessionFork.artifactRefs': '产物引用',
+  'sessionFork.uploads': '上传附件',
+  'sessionFork.notCarried': '不携带：{names}',
+  'sessionFork.confirm': '创建副本',
+  'sessionFork.unreadable': '源会话无法读取',
+  'sessionFork.done': '副本已创建'
 }
 
 export type ZhKey = keyof typeof zh

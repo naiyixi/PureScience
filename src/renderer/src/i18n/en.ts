@@ -2904,5 +2904,16 @@ export const en: Record<ZhKey, string> = {
   'sessionInfo.pin': 'Pin',
   'sessionInfo.unpin': 'Unpin',
   'sessionInfo.close': 'Close',
-  'sessionInfo.evidence': 'Open evidence'
+  'sessionInfo.evidence': 'Open evidence',
+  'sessionFork.action': 'Fork session',
+  'sessionFork.measureHint': 'Measure first: see what the copy would hold before creating it',
+  'sessionFork.willHold': 'The copy will hold',
+  'sessionFork.messages': 'Messages',
+  'sessionFork.agentReplies': 'Agent replies',
+  'sessionFork.artifactRefs': 'Artifact references',
+  'sessionFork.uploads': 'Uploads',
+  'sessionFork.notCarried': 'Not carried: {names}',
+  'sessionFork.confirm': 'Create the copy',
+  'sessionFork.unreadable': 'The source session could not be read',
+  'sessionFork.done': 'The copy was created'
 }
