@@ -227,6 +227,39 @@ describe('fidelity probe', () => {
     if (outcome.status !== 'imported') throw new Error('import expected')
     expect(outcome.style.fidelityNotes).toEqual(['render-empty'])
   })
+
+  it('renders the year when a style leaves its date parts to the locale, and names that substitution', () => {
+    const xml = styleDocument({
+      bibliography: `<bibliography>
+    <layout suffix=".">
+      <text variable="title" suffix=". "/>
+      <date variable="issued" prefix="(" suffix=")"/>
+    </layout>
+  </bibliography>`
+    })
+    const outcome = importCslStyle(xml, 'locale-date.csl', { hash: hasher })
+    if (outcome.status !== 'imported') throw new Error('import expected')
+    const style = citationStyleFromImport(outcome.style)
+    const formatted = formatCitation(item(), style.id, { retrievedAt: '2026-09-20' }, [style])
+    expect(formatted.text).toContain('(2024)')
+    expect(outcome.style.unsupported).toContain('date:default-year')
+  })
+
+  it('names condition attributes it cannot evaluate', () => {
+    const xml = styleDocument({
+      bibliography: `<bibliography>
+    <layout>
+      <choose>
+        <if position="first"><text variable="title"/></if>
+        <else><text variable="title"/></else>
+      </choose>
+    </layout>
+  </bibliography>`
+    })
+    const outcome = importCslStyle(xml, 'position.csl', { hash: hasher })
+    if (outcome.status !== 'imported') throw new Error('import expected')
+    expect(outcome.style.unsupported).toContain('condition:position')
+  })
 })
 
 describe('rendering an imported style', () => {

@@ -267,8 +267,25 @@ const scanUnsupported = (element: XmlElement, context: CompileContext): void => 
   }
 }
 
-const compileCondition = (element: XmlElement): CslCondition => {
+// Condition attributes CSL defines but this engine cannot evaluate against our model. They are named
+// in the report rather than silently ignored, because ignoring one is what selects a wrong branch.
+const UNMODELED_CONDITION_ATTRIBUTES = new Set([
+  'position',
+  'locator',
+  'jurisdiction',
+  'subjurisdiction',
+  'context',
+  'disambiguate',
+  'is-uncertain-date'
+])
+
+const compileCondition = (element: XmlElement, context: CompileContext): CslCondition => {
   const { attributes } = element
+  for (const attribute of Object.keys(attributes)) {
+    if (UNMODELED_CONDITION_ATTRIBUTES.has(attribute)) {
+      context.unsupported.add(`condition:${attribute}`)
+    }
+  }
   return {
     variables: attributes.variable?.split(/\s+/).filter(Boolean),
     types: attributes.type?.split(/\s+/).filter(Boolean),
@@ -365,12 +382,12 @@ const compileNode = (element: XmlElement, context: CompileContext, depth = 0): C
       ]
     case 'choose': {
       const branches = childElements(element, 'if').map((branch) => ({
-        condition: compileCondition(branch),
+        condition: compileCondition(branch, context),
         children: compileChildren(branch, context, depth)
       }))
       for (const branch of childElements(element, 'else-if')) {
         branches.push({
-          condition: compileCondition(branch),
+          condition: compileCondition(branch, context),
           children: compileChildren(branch, context, depth)
         })
       }
@@ -409,18 +426,26 @@ const compileNode = (element: XmlElement, context: CompileContext, depth = 0): C
         }
       ]
     }
-    case 'date':
+    case 'date': {
+      const parts = childElements(element, 'date-part').map((part) => ({
+        name: part.attributes.name ?? 'year',
+        form: part.attributes.form
+      }))
+      if (parts.length === 0) {
+        // CSL lets a style leave the parts to the locale's default date form. We do not carry locale
+        // date forms, so the year is rendered — and the substitution is named, because it is our
+        // choice rather than the style's.
+        context.unsupported.add('date:default-year')
+      }
       return [
         {
           kind: 'date',
           variable: element.attributes.variable ?? 'issued',
-          parts: childElements(element, 'date-part').map((part) => ({
-            name: part.attributes.name ?? 'year',
-            form: part.attributes.form
-          })),
+          parts: parts.length > 0 ? parts : [{ name: 'year' }],
           ...formattingOf(element)
         }
       ]
+    }
     case 'number':
       return [
         { kind: 'number', variable: element.attributes.variable ?? '', ...formattingOf(element) }
@@ -463,7 +488,11 @@ type RenderState = {
   numeric: Set<string>
 }
 
-const renderVariables = (item: CitationItem, index?: number): Record<string, string> => {
+const renderVariables = (
+  item: CitationItem,
+  index?: number,
+  retrievedAt?: string
+): Record<string, string> => {
   const variables: Record<string, string> = {
     title: item.title,
     'container-title': item.containerTitle ?? '',
@@ -479,6 +508,15 @@ const renderVariables = (item: CitationItem, index?: number): Record<string, str
     // real styles print "Journal-article" as if it were a genre string.
     genre: '',
     type: CSL_TYPE_BY_ITEM_TYPE[item.itemType ?? 'unknown'] ?? 'article',
+    // Date variables exist as presence flags: real styles guard their date branches with
+    // `variable="issued"`, and without the flag the branch never matched — which is why years went
+    // missing from styles that otherwise rendered completely.
+    // Presence flags for the name variables too: styles guard their author/editor blocks with
+    // `variable="author"`, and a missing flag silently dropped the whole block.
+    author: item.authors.length > 0 ? item.authors.map((author) => author.name).join('; ') : '',
+    editor: '',
+    issued: item.year ? String(item.year) : '',
+    accessed: retrievedAt ? retrievedAt : '',
     'citation-number': index ? String(index) : '',
     'citation-label': item.title.slice(0, 12)
   }
@@ -652,7 +690,7 @@ const renderProgram = (
     item,
     index,
     retrievedAt,
-    variables: renderVariables(item, index),
+    variables: renderVariables(item, index, retrievedAt),
     numeric: new Set()
   }
   return renderProgramNodes(program, state)
