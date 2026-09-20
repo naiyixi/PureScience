@@ -7,6 +7,8 @@
 [![License](https://img.shields.io/badge/License-Apache--2.0-4dabf7?style=for-the-badge)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Linux-2f9e44?style=for-the-badge)](https://github.com/naiyixi/PureScience/releases/latest)
 
+> 中文 · [English](README.en.md) · [Deutsch](README.de.md) · [Español](README.es.md) · [Français](README.fr.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Русский](README.ru.md) · [繁體中文](README.zh-Hant.md)
+
 ![A potency chart the agent produced from a real run — EGFR T790M inhibitors, ranked](docs/demo-verification/egfr_t790m_ic50.png)
 
 *From a real run, not a mock-up: the code, parameters and environment fingerprint behind this chart are archived step by step under [`docs/demo-verification/`](docs/demo-verification/).*
