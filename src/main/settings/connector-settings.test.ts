@@ -61,6 +61,61 @@ describe('ConnectorSettingsModule', () => {
     expect(snapshot.connectors.find((c) => c.id === 'chemistry')?.enabled).toBe(true)
   })
 
+  it('applies a bulk change connector by connector and reports each outcome', async () => {
+    const result = await service.setConnectorsEnabled({
+      items: [
+        { id: 'chemistry', enabled: false },
+        { id: 'biomart', enabled: false },
+        { id: 'no-such-connector', enabled: false }
+      ]
+    })
+
+    expect(result.results).toEqual([
+      { connector: 'chemistry', enabled: false, changed: true },
+      { connector: 'biomart', enabled: false, changed: true },
+      {
+        connector: 'no-such-connector',
+        enabled: false,
+        changed: false,
+        error: 'unknown connector: no-such-connector'
+      }
+    ])
+    expect(result.changed).toBe(2)
+    expect(result.unchanged).toBe(0)
+    expect(result.failed).toBe(1)
+    // The two valid connectors really are off, and the unknown one left no setting behind.
+    expect(result.snapshot.connectors.find((c) => c.id === 'chemistry')?.enabled).toBe(false)
+    expect(result.snapshot.connectors.find((c) => c.id === 'biomart')?.enabled).toBe(false)
+    const persisted = await repository.getSettings()
+    expect(JSON.stringify(persisted)).not.toContain('no-such-connector')
+  })
+
+  it('reports a connector that was already in the requested state without rewriting it', async () => {
+    await service.setConnectorEnabled({ id: 'chemistry', enabled: false })
+
+    const result = await service.setConnectorsEnabled({
+      items: [{ id: 'chemistry', enabled: false }]
+    })
+
+    expect(result.results).toEqual([{ connector: 'chemistry', enabled: false, changed: false }])
+    expect(result.changed).toBe(0)
+    expect(result.unchanged).toBe(1)
+    expect(result.failed).toBe(0)
+  })
+
+  it('refuses a nameless connector id instead of writing one', async () => {
+    const result = await service.setConnectorsEnabled({
+      items: [{ id: '   ', enabled: false }]
+    })
+
+    expect(result.results).toEqual([
+      { connector: '   ', enabled: false, changed: false, error: 'empty connector id' }
+    ])
+    expect(result.failed).toBe(1)
+    const persisted = await repository.getSettings()
+    expect(JSON.stringify(persisted)).not.toContain('"   "')
+  })
+
   it('toggles connector auto-allow (skip approvals)', async () => {
     const snapshot = await service.setConnectorAutoAllow({ id: 'biomart', autoAllow: true })
     expect(snapshot.connectors.find((c) => c.id === 'biomart')?.autoAllow).toBe(true)

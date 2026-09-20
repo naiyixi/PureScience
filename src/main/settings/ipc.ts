@@ -40,6 +40,7 @@ import {
   type UpdateCustomServerRequest,
   type SetConnectorAutoAllowRequest,
   type SetConnectorEnabledRequest,
+  type SetConnectorsEnabledRequest,
   type SetNcbiCredentialsRequest,
   type SetPackageMirrorRequest,
   type SetClosePreferenceRequest,
@@ -446,6 +447,11 @@ const registerSettingsIpcHandlers = ({
   )
   ipcMainHandle('settings:set-connector-enabled', (_event, request: SetConnectorEnabledRequest) =>
     workflows.connectors.setConnectorEnabled(request)
+  )
+  // Bulk changes go through the same single-connector path, one item at a time, and come back with one
+  // outcome per requested connector.
+  ipcMainHandle('settings:set-connectors-enabled', (_event, request: SetConnectorsEnabledRequest) =>
+    workflows.connectors.setConnectorsEnabled(request)
   )
   ipcMainHandle(
     'settings:set-connector-auto-allow',

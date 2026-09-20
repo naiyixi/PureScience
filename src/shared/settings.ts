@@ -1386,6 +1386,31 @@ export type ConnectorsSnapshot = {
 }
 
 export type SetConnectorEnabledRequest = { id: string; enabled: boolean }
+
+// A bulk change is applied connector by connector and reported the same way: one outcome per requested
+// connector, so a batch is never a single opaque event and a partial failure says which items failed and
+// why rather than only that something did.
+export type SetConnectorsEnabledRequest = {
+  items: readonly { id: string; enabled: boolean }[]
+}
+
+export type SetConnectorsEnabledItemResult = {
+  connector: string
+  enabled: boolean
+  /** False when the connector was already in the requested state — the entry is still reported. */
+  changed: boolean
+  error?: string
+}
+
+export type SetConnectorsEnabledResult = {
+  results: readonly SetConnectorsEnabledItemResult[]
+  changed: number
+  unchanged: number
+  failed: number
+  /** When the batch was applied, so the per-item outcomes can be placed in time. */
+  appliedAt: string
+  snapshot: ConnectorsSnapshot
+}
 export type SetConnectorAutoAllowRequest = { id: string; autoAllow: boolean }
 export type SetToolPermissionRequest = { toolId: string; permission: ToolPermission }
 export type SetNcbiCredentialsRequest = { contactEmail?: string; apiKey?: string }

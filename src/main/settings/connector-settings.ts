@@ -13,6 +13,9 @@ import type {
   RemoveCustomServerRequest,
   SetConnectorAutoAllowRequest,
   SetConnectorEnabledRequest,
+  SetConnectorsEnabledItemResult,
+  SetConnectorsEnabledRequest,
+  SetConnectorsEnabledResult,
   SetCustomServerEnabledRequest,
   SetNcbiCredentialsRequest,
   SetToolPermissionRequest,
@@ -194,6 +197,48 @@ class ConnectorSettingsModule {
     await this.repository.setConnectorDisabled(request.id, !request.enabled)
 
     return this.connectorsSnapshot()
+  }
+
+  // Applies a bulk change one connector at a time and reports each outcome separately. An unknown id is
+  // named and skipped rather than written (a typo must not create a setting nobody will ever read), and an
+  // item that was already in the requested state is reported as unchanged rather than as a change — so the
+  // caller can tell "we applied this" from "this was already so".
+  async setConnectorsEnabled(
+    request: SetConnectorsEnabledRequest
+  ): Promise<SetConnectorsEnabledResult> {
+    const before = await this.connectorsSnapshot()
+    const known = new Map(before.connectors.map((connector) => [connector.id, connector]))
+    const results: SetConnectorsEnabledItemResult[] = []
+
+    for (const item of request.items) {
+      const id = item.id.trim()
+      if (id === '') {
+        results.push({ connector: item.id, enabled: item.enabled, changed: false, error: 'empty connector id' })
+        continue
+      }
+      const current = known.get(id)
+      if (!current) {
+        results.push({
+          connector: id,
+          enabled: item.enabled,
+          changed: false,
+          error: `unknown connector: ${id}`
+        })
+        continue
+      }
+      const already = current.enabled === item.enabled
+      if (!already) await this.repository.setConnectorDisabled(id, !item.enabled)
+      results.push({ connector: id, enabled: item.enabled, changed: !already })
+    }
+
+    return {
+      results,
+      changed: results.filter((entry) => entry.changed).length,
+      unchanged: results.filter((entry) => !entry.changed && entry.error === undefined).length,
+      failed: results.filter((entry) => entry.error !== undefined).length,
+      appliedAt: new Date().toISOString(),
+      snapshot: await this.connectorsSnapshot()
+    }
   }
 
   async setConnectorAutoAllow(request: SetConnectorAutoAllowRequest): Promise<ConnectorsSnapshot> {

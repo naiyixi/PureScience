@@ -59,6 +59,14 @@ const detail: ConnectorDetailView = {
 const createCommands = (): ConnectorCommands => ({
   listConnectors: vi.fn(async () => snapshot()),
   setConnectorEnabled: vi.fn(async () => snapshot()),
+  setConnectorsEnabled: vi.fn(async () => ({
+    results: [],
+    changed: 0,
+    unchanged: 0,
+    failed: 0,
+    appliedAt: '2026-09-20T00:00:00.000Z',
+    snapshot: snapshot()
+  })),
   setConnectorAutoAllow: vi.fn(async () => snapshot()),
   setToolPermission: vi.fn(async () => detail),
   setNcbiCredentials: vi.fn(async () => snapshot()),
@@ -300,6 +308,54 @@ describe('settings Connectors slice', () => {
 
     settle()
     await pending
+  })
+
+  it('sends one item per listed connector and hands back the per-connector outcomes', async () => {
+    vi.mocked(commands.setConnectorsEnabled).mockResolvedValueOnce({
+      results: [
+        { connector: 'pubmed', enabled: false, changed: true },
+        { connector: 'typo', enabled: false, changed: false, error: 'unknown connector: typo' }
+      ],
+      changed: 1,
+      unchanged: 0,
+      failed: 1,
+      appliedAt: '2026-09-20T00:00:00.000Z',
+      snapshot: snapshot()
+    })
+
+    const results = await store.getState().setConnectorsEnabled(['pubmed', 'typo'], false)
+
+    expect(commands.setConnectorsEnabled).toHaveBeenCalledWith({
+      items: [
+        { id: 'pubmed', enabled: false },
+        { id: 'typo', enabled: false }
+      ]
+    })
+    // The failure comes back to the caller instead of being folded into a batch-wide success.
+    expect(results).toHaveLength(2)
+    expect(results[1]).toEqual({
+      connector: 'typo',
+      enabled: false,
+      changed: false,
+      error: 'unknown connector: typo'
+    })
+  })
+
+  it('reconciles the connector list from the snapshot the app returns', async () => {
+    const before = connector('pubmed')
+    store.setState({ connectors: [{ ...before, enabled: true }] })
+    vi.mocked(commands.setConnectorsEnabled).mockResolvedValueOnce({
+      results: [{ connector: 'pubmed', enabled: false, changed: true }],
+      changed: 1,
+      unchanged: 0,
+      failed: 0,
+      appliedAt: '2026-09-20T00:00:00.000Z',
+      snapshot: snapshot([{ ...before, enabled: false }])
+    })
+
+    await store.getState().setConnectorsEnabled(['pubmed'], false)
+
+    expect(store.getState().connectors.map((entry) => entry.enabled)).toEqual([false])
   })
 
   it('retains immediate approval removal when main rejects the response', async () => {

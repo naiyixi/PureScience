@@ -263,6 +263,7 @@ export const WEB_INVOKE_CHANNELS = {
   'settings.setClosePreference': 'settings:set-close-preference',
   'settings.setConnectorAutoAllow': 'settings:set-connector-auto-allow',
   'settings.setConnectorEnabled': 'settings:set-connector-enabled',
+  'settings.setConnectorsEnabled': 'settings:set-connectors-enabled',
   'settings.setConversationSkillImportEnabled': 'settings:set-conversation-skill-import-enabled',
   'settings.setCredential': 'settings:set-credential',
   'settings.setCustomServerEnabled': 'settings:set-custom-server-enabled',

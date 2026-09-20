@@ -16,6 +16,7 @@ import { AlertDialog } from 'radix-ui'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import type { SpecialistListItem } from '../../../../shared/specialist'
+import type { SetConnectorsEnabledItemResult } from '../../../../shared/settings'
 import type {
   ConnectorTemplateDefinition,
   ConnectorView,
@@ -100,6 +101,7 @@ export function ConnectorsPanel({ onNavigate }: ConnectorsPanelProps): React.JSX
   const ncbi = useSettingsStore((state) => state.ncbi)
   const loadConnectors = useSettingsStore((state) => state.loadConnectors)
   const setConnectorEnabled = useSettingsStore((state) => state.setConnectorEnabled)
+  const setConnectorsEnabled = useSettingsStore((state) => state.setConnectorsEnabled)
   const setCustomServerEnabled = useSettingsStore((state) => state.setCustomServerEnabled)
   const removeCustomServer = useSettingsStore((state) => state.removeCustomServer)
   const authenticateCustomServer = useSettingsStore((state) => state.authenticateCustomServer)
@@ -108,6 +110,10 @@ export function ConnectorsPanel({ onNavigate }: ConnectorsPanelProps): React.JSX
   )
   const setNcbiCredentials = useSettingsStore((state) => state.setNcbiCredentials)
 
+  const [bulkOutcome, setBulkOutcome] = useState<{
+    readonly enabled: boolean
+    readonly results: readonly SetConnectorsEnabledItemResult[]
+  } | null>(null)
   const [filter, setFilter] = useState<GroupFilter>('all')
   const [query, setQuery] = useState('')
   const [showFavorites, setShowFavorites] = useState(false)
@@ -387,6 +393,19 @@ export function ConnectorsPanel({ onNavigate }: ConnectorsPanelProps): React.JSX
     )
   }
 
+  const [bulkRunning, setBulkRunning] = useState(false)
+  const runBulk = async (enabled: boolean): Promise<void> => {
+    const ids = visibleConnectors.map((connector) => connector.id)
+    if (ids.length === 0) return
+    setBulkRunning(true)
+    try {
+      const results = await setConnectorsEnabled(ids, enabled)
+      setBulkOutcome({ enabled, results })
+    } finally {
+      setBulkRunning(false)
+    }
+  }
+
   return (
     <div className="p-5">
       <SettingsSection
@@ -582,6 +601,64 @@ export function ConnectorsPanel({ onNavigate }: ConnectorsPanelProps): React.JSX
             <span>{authError}</span>
           </div>
         ) : null}
+        {/* A bulk change covers exactly the connectors on screen, and reports what happened to each of
+            them: a single "done" would hide the one that was not applied. */}
+        <div className="mt-4 rounded-md border border-border px-3 py-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-xs text-muted-foreground">
+              {t('settings.connectorsBulkScope', { count: visibleConnectors.length })}
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={visibleConnectors.length === 0 || bulkRunning}
+                onClick={() => void runBulk(true)}
+              >
+                {t('settings.connectorsBulkEnable', { count: visibleConnectors.length })}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={visibleConnectors.length === 0 || bulkRunning}
+                onClick={() => void runBulk(false)}
+              >
+                {t('settings.connectorsBulkDisable', { count: visibleConnectors.length })}
+              </Button>
+            </div>
+          </div>
+          {bulkOutcome ? (
+            <div className="mt-2 border-t border-border pt-2">
+              <p className="text-xs text-muted-foreground">
+                {t('settings.connectorsBulkSummary', {
+                  changed: bulkOutcome.results.filter((entry) => entry.changed).length,
+                  unchanged: bulkOutcome.results.filter(
+                    (entry) => !entry.changed && entry.error === undefined
+                  ).length,
+                  failed: bulkOutcome.results.filter((entry) => entry.error !== undefined).length
+                })}
+              </p>
+              <ul className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
+                {bulkOutcome.results.map((entry) => (
+                  <li key={entry.connector} className="text-xs text-muted-foreground">
+                    <span className="text-foreground">{entry.connector}</span>
+                    {' · '}
+                    {entry.error
+                      ? entry.error
+                      : t(
+                          entry.changed
+                            ? 'settings.connectorsBulkChanged'
+                            : 'settings.connectorsBulkUnchanged'
+                        )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </div>
+
         {showFeatured
           ? connectorGroup(
               'featured',

@@ -112,16 +112,19 @@ const GROUP_COUNT = 37
 // Counts are certified at startup: a new command without a matching increment fails the boot rather
 // than shipping an uncertified surface. +1 internal / +2 local Web / +1 remote Web / +1 remote rejection
 // is compute:deliveries:list (available on both Web surfaces) plus settings:set-ui-language (local only).
+// settings:set-connectors-enabled moved internal / local Web / remote Web / task by one each: it is a
+// settings write reachable from the window, the command line and both Web surfaces, so it dispatches
+// remotely rather than landing in the fail-closed rejection set.
 // Two more than before the list/document split: sessions:list-catalog and sessions:read-document are
 // web-surface channels, so the total and the local-Web count move together. Remote dispatch and the
 // task surface are untouched because neither channel carries a remote flag. project-files:list-kinds
 // moved internal / local Web / remote dispatch by one each (it carries no surface flag, like the
 // per-project read it replaces).
-const INTERNAL_COMMAND_COUNT = 319
-const LOCAL_WEB_COMMAND_COUNT = 317
+const INTERNAL_COMMAND_COUNT = 320
+const LOCAL_WEB_COMMAND_COUNT = 318
 // Two more as well: the same two channels are mapped, so they count on both the local and the remote Web
 // surfaces. The rejected (fail-closed) and task counts are untouched.
-const REMOTE_WEB_COMMAND_COUNT = 211
+const REMOTE_WEB_COMMAND_COUNT = 212
 const REMOTE_REJECTED_COMMAND_COUNT = 106
 const TASK_COMMAND_COUNT = 11
 

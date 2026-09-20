@@ -30,6 +30,7 @@ type SkillIntegrationWorkflows = Pick<
 type ConnectorIntegrationWorkflows = Pick<
   ConnectorSettingsWorkflows,
   | 'setConnectorEnabled'
+  | 'setConnectorsEnabled'
   | 'setConnectorAutoAllow'
   | 'setToolPermission'
   | 'setNcbiCredentials'
@@ -105,6 +106,11 @@ const settingsIntegrationApplicationCommands = Object.freeze({
     OwnerArgs<ConnectorIntegrationWorkflows, 'setConnectorEnabled'>,
     OwnerResult<ConnectorIntegrationWorkflows, 'setConnectorEnabled'>
   >('settings:set-connector-enabled'),
+  setConnectorsEnabled: defineApplicationCommand<
+    'settings:set-connectors-enabled',
+    OwnerArgs<ConnectorIntegrationWorkflows, 'setConnectorsEnabled'>,
+    OwnerResult<ConnectorIntegrationWorkflows, 'setConnectorsEnabled'>
+  >('settings:set-connectors-enabled'),
   setConnectorAutoAllow: defineApplicationCommand<
     'settings:set-connector-auto-allow',
     OwnerArgs<ConnectorIntegrationWorkflows, 'setConnectorAutoAllow'>,
@@ -182,6 +188,7 @@ const settingsConnectorApplicationCommandGroup = defineApplicationCommandGroup(
   'settings-connectors',
   [
     settingsIntegrationApplicationCommands.setConnectorEnabled,
+    settingsIntegrationApplicationCommands.setConnectorsEnabled,
     settingsIntegrationApplicationCommands.setConnectorAutoAllow,
     settingsIntegrationApplicationCommands.setToolPermission,
     settingsIntegrationApplicationCommands.setNcbiCredentials,
@@ -234,6 +241,8 @@ const registerIntegrationSettingsApplicationCommands = (
     scope.registerGroup(settingsConnectorApplicationCommandGroup, {
       'settings:set-connector-enabled': ({ args }) =>
         dependencies.connectors.setConnectorEnabled(args[0]),
+      'settings:set-connectors-enabled': ({ args }) =>
+        dependencies.connectors.setConnectorsEnabled(args[0]),
       'settings:set-connector-auto-allow': ({ args }) =>
         dependencies.connectors.setConnectorAutoAllow(args[0]),
       'settings:set-tool-permission': ({ args }) =>

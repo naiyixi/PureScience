@@ -174,7 +174,7 @@ describe('application command composition', () => {
     // local-Web channels, so the total moves with them. The task surface is untouched (neither channel
     // carries a task registration); the remote Web surface moves too — see the pin below. One more again
     // for project-files:list-kinds, which is a plain Web request profile like the read it replaces.
-    expect(composition.localWeb.commandNames()).toHaveLength(317)
+    expect(composition.localWeb.commandNames()).toHaveLength(318)
   })
 
   it('partitions remote Web dispatch from fail-closed pre-dispatch rejections', async () => {
@@ -193,7 +193,7 @@ describe('application command composition', () => {
     // the plain Web request profile, which is mapped on both Web surfaces), so remote dispatch grows with
     // local. The fail-closed rejection set is unchanged — neither channel is a rejection stub. Same +1 for
     // project-files:list-kinds, which carries no surface flag.
-    expect(composition.remoteWeb.commandNames()).toHaveLength(211)
+    expect(composition.remoteWeb.commandNames()).toHaveLength(212)
     expect(composition.remoteWeb.rejectedCommandNames()).toEqual(expectedRemoteRejections())
     expect(composition.remoteWeb.rejectedCommandNames()).toHaveLength(106)
     await expect(

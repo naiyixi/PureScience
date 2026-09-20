@@ -32,6 +32,8 @@ import type {
   RefreshProviderModelsResult,
   SetConnectorAutoAllowRequest,
   SetConnectorEnabledRequest,
+  SetConnectorsEnabledRequest,
+  SetConnectorsEnabledResult,
   SetNcbiCredentialsRequest,
   SetPackageMirrorRequest,
   SetSkillEnabledRequest,
@@ -1272,6 +1274,12 @@ class SettingsService {
   // Lists every bundled connector with enabled / auto-allow state, plus shared NCBI credential state.
   async listConnectors(): Promise<ConnectorsSnapshot> {
     return this.connectors.listConnectors()
+  }
+
+  async setConnectorsEnabled(
+    request: SetConnectorsEnabledRequest
+  ): Promise<SetConnectorsEnabledResult> {
+    return this.connectors.setConnectorsEnabled(request)
   }
 
   async previewCustomServerTemplateExport(id: string): Promise<ConnectorTemplateExportPreview> {

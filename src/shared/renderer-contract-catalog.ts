@@ -382,7 +382,7 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['setAppIconVariant', 'settings:set-app-icon-variant', LOCAL], ['setClosePreference', 'settings:set-close-preference', LOCAL],
     ['setUiLanguage', 'settings:set-ui-language', LOCAL],
     ['setDefaultPermissionProfile', 'settings:set-default-permission-profile', LOCAL],
-    ['setConnectorAutoAllow', 'settings:set-connector-auto-allow'], ['setConnectorEnabled', 'settings:set-connector-enabled'],
+    ['setConnectorAutoAllow', 'settings:set-connector-auto-allow'], ['setConnectorEnabled', 'settings:set-connector-enabled'], ['setConnectorsEnabled', 'settings:set-connectors-enabled'],
     ['setConversationSkillImportEnabled', 'settings:set-conversation-skill-import-enabled'], ['setCustomServerEnabled', 'settings:set-custom-server-enabled'],
     ['setNcbiCredentials', 'settings:set-ncbi-credentials'], ['setNotificationsEnabled', 'settings:set-notifications-enabled', LOCAL],
     ['setMemory', 'settings:set-memory', LOCAL], ['setUseIntent', 'settings:set-use-intent', LOCAL], ['setPackageMirror', 'settings:set-package-mirror', LOCAL], ['setProxy', 'settings:set-proxy', LOCAL], ['setReasoningEffort', 'settings:set-reasoning-effort'],

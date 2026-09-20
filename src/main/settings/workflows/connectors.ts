@@ -4,6 +4,7 @@ import type {
   RemoveCustomServerRequest,
   SetConnectorAutoAllowRequest,
   SetConnectorEnabledRequest,
+  SetConnectorsEnabledRequest,
   SetNcbiCredentialsRequest,
   SetToolPermissionRequest,
   UpdateCustomServerRequest
@@ -16,6 +17,7 @@ type ConnectorSettingsWorkflowStore = Pick<
   SettingsService,
   | 'getConnectors'
   | 'setConnectorEnabled'
+  | 'setConnectorsEnabled'
   | 'setConnectorAutoAllow'
   | 'setToolPermission'
   | 'setNcbiCredentials'
@@ -54,6 +56,13 @@ class ConnectorSettingsWorkflows {
     request: SetConnectorEnabledRequest
   ): WorkflowResult<'setConnectorEnabled'> {
     return this.afterConnectorsChanged(() => this.settings.setConnectorEnabled(request))
+  }
+
+  async setConnectorsEnabled(
+    request: SetConnectorsEnabledRequest
+  ): WorkflowResult<'setConnectorsEnabled'> {
+    // One refresh after the batch, not one per connector: the per-connector trail lives in the result.
+    return this.afterConnectorsChanged(() => this.settings.setConnectorsEnabled(request))
   }
 
   async setConnectorAutoAllow(

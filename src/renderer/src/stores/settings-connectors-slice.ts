@@ -4,6 +4,7 @@ import type {
   AuthenticateCustomServerRequest,
   ConnectorApprovalRequest,
   ConnectorDetailView,
+  SetConnectorsEnabledItemResult,
   ConnectorView,
   CustomServerView,
   NcbiCredentialsView,
@@ -25,6 +26,10 @@ export type SettingsConnectorsState = SettingsConnectorsProjection & {
 export type SettingsConnectorsActions = {
   loadConnectors: () => Promise<void>
   setConnectorEnabled: (id: string, enabled: boolean) => Promise<void>
+  setConnectorsEnabled: (
+    ids: readonly string[],
+    enabled: boolean
+  ) => Promise<readonly SetConnectorsEnabledItemResult[]>
   setConnectorAutoAllow: (id: string, autoAllow: boolean) => Promise<void>
   setToolPermission: (toolId: string, permission: ToolPermission) => Promise<ConnectorDetailView>
   setNcbiCredentials: (request: SetNcbiCredentialsRequest) => Promise<void>
@@ -42,6 +47,7 @@ type SettingsConnectorsCommands = Pick<
   Window['api']['settings'],
   | 'listConnectors'
   | 'setConnectorEnabled'
+  | 'setConnectorsEnabled'
   | 'setConnectorAutoAllow'
   | 'setToolPermission'
   | 'setNcbiCredentials'
@@ -89,6 +95,22 @@ export const createSettingsConnectorsSlice = ({
         )
       }))
       await reconcile(() => getCommands().setConnectorEnabled({ id, enabled }))
+    },
+    // A bulk change applies the same optimistic update to every listed connector, then reconciles against
+    // the projection the app returns and hands the per-connector outcomes back to the caller — so the panel
+    // can say which ones changed and which failed instead of reporting the batch as one success.
+    setConnectorsEnabled: async (ids, enabled) => {
+      const listed = new Set(ids)
+      setState((state) => ({
+        connectors: state.connectors.map((connector) =>
+          listed.has(connector.id) ? { ...connector, enabled } : connector
+        )
+      }))
+      const result = await getCommands().setConnectorsEnabled({
+        items: ids.map((id) => ({ id, enabled }))
+      })
+      setState(result.snapshot)
+      return result.results
     },
     setConnectorAutoAllow: async (id, autoAllow) => {
       setState((state) => ({

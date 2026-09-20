@@ -281,6 +281,8 @@ import type {
   ExportCustomServerTemplateRequest,
   ExportCustomServerTemplateResult,
   SetConnectorEnabledRequest,
+  SetConnectorsEnabledRequest,
+  SetConnectorsEnabledResult,
   SetConnectorAutoAllowRequest,
   SetToolPermissionRequest,
   SetNcbiCredentialsRequest,
@@ -622,6 +624,7 @@ export interface PureScienceAPI {
     ): Promise<ExportCustomServerTemplateResult>
     getConnectorDetail(id: string): Promise<ConnectorDetailView>
     setConnectorEnabled(request: SetConnectorEnabledRequest): Promise<ConnectorsSnapshot>
+    setConnectorsEnabled(request: SetConnectorsEnabledRequest): Promise<SetConnectorsEnabledResult>
     setConnectorAutoAllow(request: SetConnectorAutoAllowRequest): Promise<ConnectorsSnapshot>
     setToolPermission(request: SetToolPermissionRequest): Promise<ConnectorDetailView>
     setNcbiCredentials(request: SetNcbiCredentialsRequest): Promise<ConnectorsSnapshot>

@@ -28,6 +28,7 @@ import type {
   SelectCustomServerTemplateRequest,
   SetConnectorAutoAllowRequest,
   SetConnectorEnabledRequest,
+  SetConnectorsEnabledRequest,
   SetCustomServerEnabledRequest,
   SetNcbiCredentialsRequest,
   SetSkillEnabledRequest,
@@ -348,6 +349,8 @@ const api: PureScienceAPI = {
       electronRendererContracts.invoke('settings.getConnectorDetail', id),
     setConnectorEnabled: (request: SetConnectorEnabledRequest) =>
       electronRendererContracts.invoke('settings.setConnectorEnabled', request),
+    setConnectorsEnabled: (request: SetConnectorsEnabledRequest) =>
+      electronRendererContracts.invoke('settings.setConnectorsEnabled', request),
     setConnectorAutoAllow: (request: SetConnectorAutoAllowRequest) =>
       electronRendererContracts.invoke('settings.setConnectorAutoAllow', request),
     setToolPermission: (request: SetToolPermissionRequest) =>
