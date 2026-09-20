@@ -274,7 +274,19 @@ export type ReadSessionDocumentRequest = {
   sessionId: string
 }
 
+// Where a forked session came from. Recorded on the fork, never on the source: the source document
+// is not touched by a fork, so the only place this fact can live is the copy.
+export type SessionForkProvenance = {
+  sessionId: string
+  projectId: string
+  at: number
+  // The source turn the fork was taken at, when it was taken at one rather than at the end.
+  sourceMessageId?: string
+}
+
 export type PersistedChatSession = {
+  // Present only on a fork: the session this document was copied from.
+  forkedFrom?: SessionForkProvenance
   id: string
   // Owning project. On load this is authoritative from the file's directory (sessions/<projectId>/).
   projectId: string
@@ -1614,6 +1626,21 @@ const sanitizeSession = (
           .map((message) => sanitizeMessage(message, options))
           .filter((item): item is PersistedChatMessage => !!item)
       : [],
+    // A fork's provenance survives a save/load round-trip: dropping it would silently turn a copy
+    // into an unrelated session, which is exactly the link evidence needs.
+    ...(isRecord(session.forkedFrom) && typeof session.forkedFrom.sessionId === 'string'
+      ? {
+          forkedFrom: {
+            sessionId: session.forkedFrom.sessionId,
+            projectId:
+              typeof session.forkedFrom.projectId === 'string' ? session.forkedFrom.projectId : '',
+            at: asNumber(session.forkedFrom.at) ?? 0,
+            ...(typeof session.forkedFrom.sourceMessageId === 'string'
+              ? { sourceMessageId: session.forkedFrom.sourceMessageId }
+              : {})
+          }
+        }
+      : {}),
     createdAt: asNumber(session.createdAt) ?? 0,
     updatedAt: asNumber(session.updatedAt) ?? 0
   }
