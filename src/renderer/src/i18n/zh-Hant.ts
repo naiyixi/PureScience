@@ -612,6 +612,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'previewSurface.bookmarkSaved': '已存入書籤',
   'pdfRegion.mode': '框選區域存為書籤',
   'pdfRegion.saved': '已存為區域書籤',
+  'bookmark.versionUnresolved': '這個檔案還沒有可存為書籤的版本',
   'previewSurface.thisComputer': '此電腦',
   'providerForm.apiFormat': 'API 格式',
   'providerForm.apiKey': 'API 金鑰',

@@ -640,6 +640,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'previewSurface.bookmarkSaved': '북마크에 저장했습니다',
   'pdfRegion.mode': '영역을 선택해 북마크로 저장',
   'pdfRegion.saved': '영역을 북마크에 저장했습니다',
+  'bookmark.versionUnresolved': '이 파일에는 북마크할 버전이 아직 없습니다',
   'previewSurface.thisComputer': '이 컴퓨터',
   'providerForm.apiFormat': 'API 형식',
   'providerForm.apiKey': 'API 키',

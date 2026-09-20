@@ -7,7 +7,7 @@ import { useLanguage } from '@/i18n'
 import { cn } from '@/lib/utils'
 import type { PreviewFileSource } from '@/stores/preview-workbench-store'
 import type { BookmarkRect } from '../../../../../../shared/bookmark'
-import { createArtifactVersionLocator } from '../../../../../../shared/artifact-provenance'
+import { resolveBookmarkVersionIdentity } from '../../bookmark-version-identity'
 
 import { PreviewErrorCard, PreviewLoadingContent } from '../PreviewFallback'
 import { createManagedPdfLoadingTask } from '../managed-pdf-document'
@@ -385,26 +385,35 @@ export const PdfPreviewContent = ({
 
   const handleRegion = (page: number, rect: BookmarkRect): void => {
     if (!sessionId || !artifactId || !selectedVersionId || !projectId) return
-    void window.api.bookmark
-      .set({
+    void (async () => {
+      // The identity is confirmed before anything is written: a preview can carry a version pair the
+      // artifact store has never seen (measured on the packaged app), and a region pointing at that
+      // would open an empty preview for the reader with no error anywhere.
+      const identity = await resolveBookmarkVersionIdentity({
+        projectId,
+        sessionId,
+        artifactId,
+        versionId: selectedVersionId,
+        name
+      })
+      if (!identity) {
+        setRegionStatus(t('bookmark.versionUnresolved'))
+        return
+      }
+      await window.api.bookmark.set({
         sessionId,
         anchor: {
           kind: 'pdf-region',
           page,
           rect,
-          artifactVersionId: selectedVersionId,
-          locator: createArtifactVersionLocator({
-            projectId,
-            appSessionId: sessionId,
-            artifactId,
-            versionId: selectedVersionId
-          })
+          artifactVersionId: identity.versionId,
+          locator: identity.locator
         }
       })
-      .then(() => setRegionStatus(t('pdfRegion.saved')))
-      .catch((cause: unknown) =>
-        setRegionStatus(cause instanceof Error ? cause.message : String(cause))
-      )
+      setRegionStatus(t('pdfRegion.saved'))
+    })().catch((cause: unknown) =>
+      setRegionStatus(cause instanceof Error ? cause.message : String(cause))
+    )
   }
   const requestKey = createPreviewResourceKey({
     projectId,

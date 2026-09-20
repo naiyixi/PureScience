@@ -25,6 +25,7 @@ import type {
   ArtifactVersionFile
 } from '../../../../shared/artifact-provenance'
 import { createArtifactVersionLocator } from '../../../../shared/artifact-provenance'
+import { resolveBookmarkVersionIdentity } from './bookmark-version-identity'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -110,30 +111,38 @@ const PreviewBookmarkAction = ({
       setNotice(t('previewSurface.bookmarkNeedsSelection'))
       return
     }
-    void window.api.bookmark
-      .set({
+    const projectId = item.projectId
+    void (async () => {
+      // A passage from a managed file is anchored to its version, and that version is confirmed against
+      // the artifact store first; a file with no resolvable version is still worth keeping, it just
+      // carries no pointer — and when the preview offers one that does not resolve, nothing is written
+      // from it.
+      const identity =
+        item.source === 'artifact' && projectId
+          ? await resolveBookmarkVersionIdentity({
+              projectId,
+              sessionId: item.sessionId,
+              artifactId: item.artifactId,
+              versionId: item.selectedVersionId,
+              name: item.name
+            })
+          : undefined
+      if (item.source === 'artifact' && projectId && item.artifactId && !identity) {
+        setNotice(t('bookmark.versionUnresolved'))
+        return
+      }
+      await window.api.bookmark.set({
         sessionId: item.sessionId,
         anchor: {
           kind: 'preview-text',
           text,
-          ...(item.source === 'artifact' &&
-          item.selectedVersionId &&
-          item.artifactId &&
-          item.projectId
-            ? {
-                artifactVersionId: item.selectedVersionId,
-                locator: createArtifactVersionLocator({
-                  projectId: item.projectId,
-                  appSessionId: item.sessionId,
-                  artifactId: item.artifactId,
-                  versionId: item.selectedVersionId
-                })
-              }
-            : {})
+          ...(identity ? { artifactVersionId: identity.versionId, locator: identity.locator } : {})
         }
       })
-      .then(() => setNotice(t('previewSurface.bookmarkSaved')))
-      .catch((cause: unknown) => setNotice(cause instanceof Error ? cause.message : String(cause)))
+      setNotice(t('previewSurface.bookmarkSaved'))
+    })().catch((cause: unknown) =>
+      setNotice(cause instanceof Error ? cause.message : String(cause))
+    )
   }
 
   return (

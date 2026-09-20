@@ -669,6 +669,7 @@ export const de: Partial<Record<ZhKey, string>> = {
   'previewSurface.bookmarkSaved': 'Als Lesezeichen gespeichert',
   'pdfRegion.mode': 'Bereich auswählen und als Lesezeichen speichern',
   'pdfRegion.saved': 'Bereich als Lesezeichen gespeichert',
+  'bookmark.versionUnresolved': 'Für diese Datei gibt es noch keine Version zum Markieren',
   'previewSurface.thisComputer': 'Dieser Computer',
   'providerForm.apiFormat': 'API-Format',
   'providerForm.apiKey': 'API-Schlüssel',

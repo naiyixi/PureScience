@@ -1598,6 +1598,7 @@ export const zh = {
   'previewSurface.bookmarkSaved': '已存入书签',
   'pdfRegion.mode': '框选区域存为书签',
   'pdfRegion.saved': '已存为区域书签',
+  'bookmark.versionUnresolved': '这个文件还没有可存为书签的版本',
   'conversation.chooseSpecialist': '选择其他专才',
   'conversation.switchingThisTurn': '本轮切换中',
   'conversation.planFirst': '先制定计划',

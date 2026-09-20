@@ -10,6 +10,7 @@ const PERMISSION_PROMPT = 'Request fixture permission.'
 const PROVIDER_BRIDGE_PROMPT = 'Verify the provider bridge.'
 const NOTEBOOK_LIFECYCLE_PROMPT = 'Verify the notebook lifecycle.'
 const ARTIFACT_PROVENANCE_PROMPT = 'Create a provenance artifact.'
+const PDF_REGION_PROMPT = 'Create a region drawing PDF.'
 
 const sessionRoutes = new Map()
 
@@ -155,6 +156,51 @@ const createProvenanceArtifact = async (sessionId) => {
   return `Artifact provenance verified for session ${sessionId}, artifact ${stored.artifact.artifact_id}, version ${stored.artifact.version_id}.`
 }
 
+// A one-page PDF, built by hand so the fixture depends on no generator: pdf.js needs a catalog, one page
+// with a font and a content stream, and an xref table whose offsets are correct — which is exactly what
+// computing the offsets here guarantees. The acceptance it exists for draws a region on this page.
+const minimalPdf = (text) => {
+  const stream = `BT /F1 18 Tf 40 320 Td (${text}) Tj ET`
+  const objects = [
+    '<</Type/Catalog/Pages 2 0 R>>',
+    '<</Type/Pages/Kids[3 0 R]/Count 1>>',
+    '<</Type/Page/Parent 2 0 R/MediaBox[0 0 400 500]/Resources<</Font<</F1 4 0 R>>>>/Contents 5 0 R>>',
+    '<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>',
+    `<</Length ${stream.length}>>stream\n${stream}\nendstream`
+  ]
+  let body = '%PDF-1.4\n'
+  const offsets = []
+  objects.forEach((object, index) => {
+    offsets.push(body.length)
+    body += `${index + 1} 0 obj\n${object}\nendobj\n`
+  })
+  const xref = body.length
+  body += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`
+  for (const offset of offsets) body += `${String(offset).padStart(10, '0')} 00000 n \n`
+  body += `trailer\n<</Size ${objects.length + 1}/Root 1 0 R>>\nstartxref\n${xref}\n%%EOF\n`
+  return Buffer.from(body, 'latin1').toString('base64')
+}
+
+const createPdfRegionArtifact = async (sessionId) =>
+  withMcpClient(sessionId, 'purescience-artifacts', async (client) => {
+    const stored = toolResult(
+      'write_artifact_file',
+      await client.callTool({
+        name: 'write_artifact_file',
+        arguments: {
+          filename: 'region-evidence.pdf',
+          mimeType: 'application/pdf',
+          encoding: 'base64',
+          content: minimalPdf('Region evidence')
+        }
+      })
+    )
+    if (!stored.artifact?.artifact_id || !stored.artifact.version_id) {
+      throw new Error('The PDF artifact was not stored with a Version.')
+    }
+    return `Region PDF ready for session ${sessionId}, artifact ${stored.artifact.artifact_id}, version ${stored.artifact.version_id}.`
+  })
+
 if (process.argv.includes('--version')) {
   process.stdout.write(`${VERSION}\n`)
 } else {
@@ -200,6 +246,8 @@ if (process.argv.includes('--version')) {
           reply = await verifyNotebookLifecycle(context.params.sessionId)
         } else if (prompt.includes(ARTIFACT_PROVENANCE_PROMPT)) {
           reply = await createProvenanceArtifact(context.params.sessionId)
+        } else if (prompt.includes(PDF_REGION_PROMPT)) {
+          reply = await createPdfRegionArtifact(context.params.sessionId)
         } else if (prompt.includes(PERMISSION_PROMPT)) {
           const permission = await context.client.request(
             acp.methods.client.session.requestPermission,

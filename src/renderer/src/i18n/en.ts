@@ -1706,6 +1706,7 @@ export const en: Record<ZhKey, string> = {
   'previewSurface.bookmarkSaved': 'Saved to bookmarks',
   'pdfRegion.mode': 'Select a region to bookmark',
   'pdfRegion.saved': 'Region saved to bookmarks',
+  'bookmark.versionUnresolved': 'This file has no version to bookmark yet',
   'conversation.chooseSpecialist': 'Choose another specialist',
   'conversation.switchingThisTurn': 'Switching in this turn',
   'conversation.planFirst': 'Plan first',
