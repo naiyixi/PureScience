@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url'
 import { findServiceState, readWebToken, resolveConfigRoot, STATE_FILE } from './config-root.mjs'
 import { connectToPureScience } from './index.mjs'
 import { locateApp } from './locate-app.mjs'
+import { formatDoctor, formatInit, runDoctor, runInit } from './doctor.mjs'
 
 const DEFAULT_PORT = 44100
 const START_TIMEOUT_MS = 30_000
@@ -34,6 +35,9 @@ Commands:
   artifacts list <session-id>
   artifacts download <artifact-id> --output <path>
   ready                  Print the environment readiness judgement as it stands
+  doctor                 Report locally measured facts (paths, pid, permissions, versions).
+                         The readiness judgement itself comes from the ready command.
+  init                   Create or confirm the config root (writes no settings, overwrites nothing)
   replay <versionId>     Re-run a recorded artifact version and compare what comes back
                          (needs --project, --session and --artifact)
   runtime list           List the Python/R runtimes the app can see
@@ -837,6 +841,18 @@ export const reportCliError = (error, argv = process.argv.slice(2), dependencies
   return exitCode
 }
 
+const initCommand = async (options) => {
+  const result = await runInit({ configRoot: options.configRoot, appPath: options.appPath })
+  console.log(options.json ? JSON.stringify(result, null, 2) : formatInit(result))
+}
+
+const doctorCommand = async (options) => {
+  const report = await runDoctor({ configRoot: options.configRoot, appPath: options.appPath })
+  console.log(options.json ? JSON.stringify(report, null, 2) : formatDoctor(report))
+  // A failed check is a real failure (exit 1) so a script can branch on it; warnings are not.
+  if (report.summary.fail > 0) process.exitCode = 1
+}
+
 export const runCli = async (argv = process.argv.slice(2)) => {
   const parsed = parseCliArgs(argv)
   const { command, options } = parsed
@@ -844,7 +860,9 @@ export const runCli = async (argv = process.argv.slice(2)) => {
     console.log(usage)
     return
   }
-  if (command === 'start') await startCommand(options)
+  if (command === 'init') await initCommand(options)
+  else if (command === 'doctor') await doctorCommand(options)
+  else if (command === 'start') await startCommand(options)
   else if (command === 'stop') await stopCommand(options)
   else if (command === 'status') await statusCommand(options)
   else if (command === 'url') await urlCommand(options)

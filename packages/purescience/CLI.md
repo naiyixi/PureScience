@@ -33,6 +33,37 @@ Replace `purescience` in the examples below with:
 node packages/purescience/cli.mjs
 ```
 
+## Set up and check your machine
+
+Two commands cover the local side without deciding anything the application decides.
+
+### `purescience init`
+
+Creates the config root if it is missing (mode `0700`) and prints where the CLI keeps its state. It writes
+no settings and overwrites no file, so running it against an existing installation is safe.
+
+```bash
+purescience init
+purescience init --config-root /absolute/path --json
+```
+
+### `purescience doctor`
+
+Reports facts measured on this machine — the resolved config root (and whether it can actually be written),
+the service state file and whether the pid it records is still alive, whether a web token exists (reported
+by length, never by value), whether an installed application binary can be located, and whether the running
+Node satisfies the requirement the package itself declares. Every line carries the evidence it came from.
+
+It deliberately does **not** decide whether the machine is ready. That judgement has exactly one
+implementation — in the application — and `purescience ready` prints it; a doctor that re-decided would be a
+second implementation of the same question, and the two would drift. `doctor` exits `1` when one of its own
+checks failed, and `0` otherwise.
+
+```bash
+purescience doctor
+purescience doctor --json        # for scripts: every check carries {check, status, evidence}
+```
+
 ## Service lifecycle
 
 Start the service without opening a browser, check its status, or stop it:
