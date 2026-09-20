@@ -79,10 +79,10 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
     displayName: '基因与本体',
     aliases: ['MyGene', 'mygene.info', 'UniProt', 'gene information', 'gene annotation'],
     description:
-      '基因/蛋白质身份与本体术语——mygene.info、UniProt、OLS4 本体、GO 注释、Reactome 通路。',
+      '基因/蛋白质身份与本体术语，以及基因集富集——mygene.info、UniProt、OLS4 本体、GO 注释、Reactome 通路、g:Profiler 富集（本地可复算）。',
     useWhen:
-      'Use when you need to resolve gene symbols/identifiers (mygene.info), fetch UniProt protein records, look up or search ontology terms (EFO, GO, CL, ChEBI, MONDO via OLS4), retrieve GO annotations for a protein (QuickGO), or map genes to Reactome pathways.',
-    sources: ['MyGene', 'UniProt', 'OLS', 'QuickGO', 'Reactome'],
+      'Use when you need to resolve gene symbols/identifiers (mygene.info), fetch UniProt protein records, look up or search ontology terms (EFO, GO, CL, ChEBI, MONDO via OLS4), retrieve GO annotations for a protein (QuickGO), map genes to Reactome pathways, or ask what a gene list is enriched for (g:Profiler, with the p-values recomputed locally and the background and correction stated in the result).',
+    sources: ['MyGene', 'UniProt', 'OLS', 'QuickGO', 'Reactome', 'g:Profiler'],
     termsUrl: 'https://www.uniprot.org/help/license',
     requiresNcbi: false
   },
