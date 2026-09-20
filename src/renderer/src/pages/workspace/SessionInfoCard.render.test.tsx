@@ -112,4 +112,48 @@ describe('session information card', () => {
     expect(onOpenEvidence).toHaveBeenCalledTimes(1)
     expect(onClose).toHaveBeenCalledTimes(1)
   })
+
+  // The card is re-mounted while it is open (a session update re-renders the mount site), which the
+  // packaged app showed by losing a freshly measured fork plan. The numbers are the reader's work, so
+  // they are kept per session and a fresh instance must show them again.
+  it('keeps a measured fork plan across a re-mount of the card', async () => {
+    const forked = session({ id: 'session-remount' })
+    const saved: unknown[] = []
+    const api = {
+      sessions: {
+        readDocument: async (): Promise<unknown> => ({
+          ...forked,
+          title: 'Deep learning for protein design',
+          messages: forked.messages,
+          activities: [],
+          createdAt: 1,
+          updatedAt: 2
+        }),
+        saveSession: async (document: unknown): Promise<void> => {
+          saved.push(document)
+        }
+      }
+    }
+    const previous = (window as unknown as { api?: unknown }).api
+    ;(window as unknown as { api: unknown }).api = api
+    try {
+      const element = <SessionInfoCard session={forked} onClose={() => {}} />
+      const first = mount(element)
+      await act(async () => {
+        first
+          .querySelector('[data-slot="session-fork-measure"]')
+          ?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      })
+      await vi.waitFor(() => {
+        expect(first.textContent).toContain('The copy will hold')
+      })
+
+      // A second instance for the same session — what a re-mount produces.
+      const second = mount(element)
+      expect(second.textContent).toContain('The copy will hold')
+      expect(second.querySelector('[data-slot="session-fork-manifest"]')).not.toBeNull()
+    } finally {
+      ;(window as unknown as { api: unknown }).api = previous
+    }
+  })
 })

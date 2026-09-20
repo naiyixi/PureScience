@@ -19,6 +19,24 @@ import type { ChatSession } from '@/stores/session-store'
 
 const PIN_STORAGE_PREFIX = 'purescience.sessionInfoCard.pinned.'
 
+// The measured plan lives beside the pin, not in component state, for the same reason: the card is
+// re-mounted while it is open (a session update re-renders the mount site), and a reader who has just
+// measured a fork must not lose the numbers — or a notice they have not read yet — to a background
+// update. Keyed by session, read on mount, written through on every change.
+type SessionForkState = {
+  manifest?: SessionForkManifest
+  source?: PersistedChatSession
+  notice?: string
+}
+
+const forkStates = new Map<string, SessionForkState>()
+
+const readForkState = (sessionId: string): SessionForkState => forkStates.get(sessionId) ?? {}
+
+const writeForkState = (sessionId: string, next: SessionForkState): void => {
+  forkStates.set(sessionId, next)
+}
+
 const readPinned = (sessionId: string): boolean => {
   try {
     return window.localStorage.getItem(`${PIN_STORAGE_PREFIX}${sessionId}`) === 'true'
@@ -52,47 +70,49 @@ export function SessionInfoCard({
   // sessions remounts it rather than needing an effect to re-read the preference.
   const [pinned, setPinned] = useState(() => readPinned(session.id))
   // Forking is a two-step act on purpose: measure, show the numbers, then copy. Nothing is written
-  // until the reader has seen what the copy will hold and what it will leave behind.
-  const [forkManifest, setForkManifest] = useState<SessionForkManifest | undefined>(undefined)
-  const [forkSource, setForkSource] = useState<PersistedChatSession | undefined>(undefined)
-  const [forkNotice, setForkNotice] = useState<string | undefined>(undefined)
+  // until the reader has seen what the copy will hold and what it will leave behind. The measured
+  // state is kept per session (see `forkStates`) so it survives the card being re-mounted.
+  const [forkState, setForkState] = useState<SessionForkState>(() => readForkState(session.id))
   const [forkBusy, setForkBusy] = useState(false)
+  const updateForkState = (patch: Partial<SessionForkState>): void => {
+    const next = { ...readForkState(session.id), ...patch }
+    writeForkState(session.id, next)
+    setForkState(next)
+  }
 
   const handleMeasureFork = async (): Promise<void> => {
     setForkBusy(true)
-    setForkNotice(undefined)
+    updateForkState({ notice: undefined })
     try {
       const document = await window.api.sessions.readDocument({
         projectId: session.projectId,
         sessionId: session.id
       })
       if (!document) {
-        setForkNotice(t('sessionFork.unreadable'))
+        updateForkState({ notice: t('sessionFork.unreadable') })
         return
       }
-      setForkSource(document)
-      setForkManifest(planSessionFork(document))
+      updateForkState({ source: document, manifest: planSessionFork(document) })
     } catch (cause) {
-      setForkNotice(cause instanceof Error ? cause.message : String(cause))
+      updateForkState({ notice: cause instanceof Error ? cause.message : String(cause) })
     } finally {
       setForkBusy(false)
     }
   }
 
   const handleConfirmFork = async (): Promise<void> => {
-    if (!forkSource) return
+    const { source } = readForkState(session.id)
+    if (!source) return
     setForkBusy(true)
     try {
-      const { session: forked } = buildSessionFork(forkSource, {
+      const { session: forked } = buildSessionFork(source, {
         newId: () => crypto.randomUUID(),
         now: () => Date.now()
       })
       await window.api.sessions.saveSession(forked, undefined)
-      setForkNotice(t('sessionFork.done'))
-      setForkManifest(undefined)
-      setForkSource(undefined)
+      updateForkState({ manifest: undefined, source: undefined, notice: t('sessionFork.done') })
     } catch (cause) {
-      setForkNotice(cause instanceof Error ? cause.message : String(cause))
+      updateForkState({ notice: cause instanceof Error ? cause.message : String(cause) })
     } finally {
       setForkBusy(false)
     }
@@ -183,25 +203,25 @@ export function SessionInfoCard({
       ) : null}
       {/* Forking: the numbers come first, the copy second. */}
       <div className="mt-2 border-t border-border pt-2">
-        {forkManifest ? (
+        {forkState.manifest ? (
           <div data-slot="session-fork-manifest" className="text-[11px]">
             <p className="text-text-300">{t('sessionFork.willHold')}</p>
             <ul className="mt-1 grid grid-cols-2 gap-x-3 text-text-000 tabular-nums">
               <li>
-                {t('sessionFork.messages')}: {forkManifest.counts.messages}
+                {t('sessionFork.messages')}: {forkState.manifest.counts.messages}
               </li>
               <li>
-                {t('sessionFork.agentReplies')}: {forkManifest.counts.agentReplies}
+                {t('sessionFork.agentReplies')}: {forkState.manifest.counts.agentReplies}
               </li>
               <li>
-                {t('sessionFork.artifactRefs')}: {forkManifest.counts.artifactReferences}
+                {t('sessionFork.artifactRefs')}: {forkState.manifest.counts.artifactReferences}
               </li>
               <li>
-                {t('sessionFork.uploads')}: {forkManifest.counts.uploads}
+                {t('sessionFork.uploads')}: {forkState.manifest.counts.uploads}
               </li>
             </ul>
             <p className="mt-1 text-text-300">
-              {t('sessionFork.notCarried', { names: forkManifest.notCarried.join(', ') })}
+              {t('sessionFork.notCarried', { names: forkState.manifest.notCarried.join(', ') })}
             </p>
             <div className="mt-2 flex items-center gap-2">
               <button
@@ -217,8 +237,7 @@ export function SessionInfoCard({
                 type="button"
                 className="text-text-300 hover:text-text-000"
                 onClick={() => {
-                  setForkManifest(undefined)
-                  setForkSource(undefined)
+                  updateForkState({ manifest: undefined, source: undefined })
                 }}
               >
                 {t('sessionInfo.close')}
@@ -238,9 +257,9 @@ export function SessionInfoCard({
             {t('sessionFork.action')}
           </button>
         )}
-        {forkNotice ? (
+        {forkState.notice ? (
           <p className="mt-1 text-[10px] text-text-300" role="status">
-            {forkNotice}
+            {forkState.notice}
           </p>
         ) : null}
       </div>
