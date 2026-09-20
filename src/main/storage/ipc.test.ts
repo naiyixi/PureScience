@@ -160,13 +160,21 @@ describe('storage:get-info segment instrument', () => {
     // Seen on a real 7 GB root: storage:get-info took 13.7 s while three other IPC calls answered in 2-5 ms.
     // The split is what makes that reading self-explaining — the disk walk behind the usage read, not the root
     // resolution, the available-space probe or the settings read.
+    //
+    // The deliberate read below has to dominate the three real probes that run beside it. Those probes touch a
+    // real filesystem, so on a busy machine (a CI runner, or a laptop running the whole suite in parallel) they
+    // can add up to tens of milliseconds — which made a short tick fail as if the instrument had misattributed
+    // the cost, twice in one day, on commits that never touched storage. The tick is an order of magnitude above
+    // that noise instead of beside it, so the assertion still fails when a genuinely slow read is attributed to
+    // the wrong segment, and stops failing when the machine is merely busy.
+    const SLOW_USAGE_READ_MS = 400
     initDataRoot(dataRoot)
     const slowLogger = fakeDiagnosticLogger()
     const slowOwner = createStorageCommandOwner(
       fakeDeps({
         logger: slowLogger,
         usageCache: usageCacheReading(async () => {
-          await tick(80)
+          await tick(SLOW_USAGE_READ_MS)
           return { categories: [{ key: 'artifacts', bytes: 2048 }], totalBytes: 2048 }
         })
       })
@@ -177,7 +185,7 @@ describe('storage:get-info segment instrument', () => {
     expect(info.usage.totalBytes).toBe(2048)
     const [record] = slowStorageInfo(slowLogger)
     expect(record).toBeDefined()
-    expect(Number(record.usageMs)).toBeGreaterThanOrEqual(70)
+    expect(Number(record.usageMs)).toBeGreaterThanOrEqual(SLOW_USAGE_READ_MS * 0.875)
     expect(record.usageCategories).toBe(1)
     // What the split has to say: the walk is the segment, the other three are noise beside it.
     const overhead =
