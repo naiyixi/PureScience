@@ -11,7 +11,9 @@ import type { PdfTextItem } from './pdf-table-extraction'
 // put next to it, decoration is counted instead of reported, and a figure the document left unlabelled is
 // reported as unlabelled rather than given a caption it never had.
 
-const image = (overrides: Partial<{ x: number; y: number; width: number; height: number }> = {}) => ({
+const image = (
+  overrides: Partial<{ x: number; y: number; width: number; height: number }> = {}
+): { x: number; y: number; width: number; height: number } => ({
   x: 100,
   y: 400,
   width: 200,
@@ -80,7 +82,10 @@ describe('extractPdfFigureCandidates', () => {
       items: [text({ text: 'Figure 5. Above the picture', y: 565 })]
     })
 
-    expect(result.figures[0]).toMatchObject({ captionSource: 'above', caption: 'Figure 5. Above the picture' })
+    expect(result.figures[0]).toMatchObject({
+      captionSource: 'above',
+      caption: 'Figure 5. Above the picture'
+    })
   })
 
   // Close beats far: a second, unrelated label further down the page must not win.
