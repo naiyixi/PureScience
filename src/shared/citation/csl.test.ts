@@ -101,6 +101,81 @@ describe('importing a CSL style', () => {
     expect(outcome.style.defaultLocale).toBe('en-US')
   })
 
+  it('prints the authors through a substitute when the asked-for variable is empty', () => {
+    // APA's author macro asks for `composer` and falls back to `author`. Without the substitute a
+    // record with authors renders as if it had none — which is what the real style documents showed.
+    const xml = styleDocument({
+      bibliography: `<bibliography>
+    <layout>
+      <names variable="composer">
+        <name and="symbol" name-as-sort-order="all"/>
+        <substitute><names variable="author"/></substitute>
+      </names>
+    </layout>
+  </bibliography>`
+    })
+    const outcome = importCslStyle(xml, 'substituting.csl', { hash: hasher })
+    expect(outcome.status).toBe('imported')
+    if (outcome.status !== 'imported') return
+    const style = citationStyleFromImport(outcome.style)
+    const rendered = formatCitation(item(), style.id, { index: 1 }, [style])
+    expect(rendered.text).toContain('Zhang')
+    expect(rendered.text).toContain('Smith')
+  })
+
+  it('renders nothing when neither the variable nor its substitute has anything to say', () => {
+    const xml = styleDocument({
+      bibliography: `<bibliography>
+    <layout>
+      <names variable="composer">
+        <substitute><names variable="editor"/><text variable="title"/></substitute>
+      </names>
+    </layout>
+  </bibliography>`
+    })
+    const outcome = importCslStyle(xml, 'empty-substitute.csl', { hash: hasher })
+    expect(outcome.status).toBe('imported')
+    if (outcome.status !== 'imported') return
+    const style = citationStyleFromImport(outcome.style)
+    const rendered = formatCitation(item(), style.id, { index: 1 }, [style])
+    // The fallback reaches the title, which is data we have; the editors are still absent.
+    expect(rendered.text).toContain('Deep learning for protein design')
+  })
+
+  it('keeps a macro that a substitute expanded early from poisoning the main expansion', () => {
+    // The regression this pins: a substitute is expanded deeper than the layout is, and when it shares
+    // the main expansion's macro cache it stores a depth-truncated expansion of a macro the main path
+    // still needs. In the real APA document that made the title disappear the moment its authors began
+    // to render. The layout asks for the same macro twice — once from inside the substitute, once
+    // directly — and the direct call must still produce the title.
+    const chain = Array.from(
+      { length: 4 },
+      (_, position) =>
+        `<macro name="d${position}"><text macro="${position === 3 ? 'leaf' : `d${position + 1}`}"/></macro>`
+    ).join('\n')
+    const xml = styleDocument({
+      extra: `<macro name="mid"><names variable="composer"><substitute><text macro="deep"/></substitute></names></macro>
+  <macro name="deep"><text macro="d0"/></macro>
+  <macro name="leaf"><text variable="title"/></macro>
+  ${chain}`,
+      bibliography: `<bibliography>
+    <layout>
+      <group delimiter=". ">
+        <text macro="mid"/>
+        <text macro="deep"/>
+      </group>
+    </layout>
+  </bibliography>`
+    })
+    const outcome = importCslStyle(xml, 'deep-substitute.csl', { hash: hasher })
+    expect(outcome.status).toBe('imported')
+    if (outcome.status !== 'imported') return
+    const style = citationStyleFromImport(outcome.style)
+    const rendered = formatCitation(item(), style.id, { index: 1 }, [style])
+    // The substitute's own expansion may run out of budget; the layout's must not inherit that.
+    expect(rendered.text).toContain('Deep learning for protein design')
+  })
+
   it('names every construct it cannot render, including flattened formatting attributes', () => {
     const xml = styleDocument({
       extra:
@@ -119,7 +194,10 @@ describe('importing a CSL style', () => {
     expect(outcome.status).toBe('imported')
     if (outcome.status !== 'imported') return
     expect(outcome.style.unsupported).toContain('sort')
-    expect(outcome.style.unsupported).toContain('names:substitute')
+    // The substitute is honoured now; what stays named is the CSL rule we do not implement — that a
+    // variable consumed by substitution is suppressed from the rest of the rendering.
+    expect(outcome.style.unsupported).toContain('substitute:no-source-suppression')
+    expect(outcome.style.unsupported).not.toContain('names:substitute')
     expect(outcome.style.unsupported).toContain('attribute:font-style')
     // <locale>/<terms>/<term> are outside the renderer's subset and are named too.
     expect(outcome.style.unsupported.some((name) => name === 'locale' || name === 'terms')).toBe(

@@ -111,6 +111,9 @@ export type CslFormatting = {
 
 export type CslNameOptions = CslFormatting & {
   variable: string
+  // CSL's fallback list: when this variable holds no names, these children are tried in order and the
+  // first that produces output is used instead of the names element.
+  substitute?: CslNode[]
   initializeWith?: string
   nameAsSortOrder?: 'all' | 'first' | boolean
   and?: 'text' | 'symbol'
@@ -351,8 +354,11 @@ const compileNode = (element: XmlElement, context: CompileContext, depth = 0): C
     context.unsupported.add('variable:locator')
     return []
   }
-  if (element.name === 'names' && childElements(element, 'substitute').length > 0) {
-    context.unsupported.add('names:substitute')
+  if (element.name === 'names' && firstChild(element, 'substitute') !== undefined) {
+    // The substitute itself is honoured (see renderNames). What we do not implement is CSL's rule that a
+    // variable consumed by substitution is suppressed from the rest of the rendering, so the note names
+    // that specifically rather than claiming full support.
+    context.unsupported.add('substitute:no-source-suppression')
   }
   if (element.name === 'names') {
     const variable = element.attributes.variable ?? 'author'
@@ -419,6 +425,21 @@ const compileNode = (element: XmlElement, context: CompileContext, depth = 0): C
             ? Number(nameElement.attributes['et-al-use-first'])
             : undefined,
           etAlTerm: etAl?.attributes.term ?? 'et al.',
+          substitute: (() => {
+            const substitute = firstChild(element, 'substitute')
+            if (!substitute) return undefined
+            // Compiled in its own expansion state. A fallback is expanded deep inside another macro, and
+            // sharing the cache let it store a depth-truncated expansion of a macro the main path still
+            // needs — which is how APA's title disappeared while its authors came back. The substitute
+            // therefore gets a fresh cache and does not inherit anyone else's expansion; it does share
+            // the naming set, so anything it cannot compile is still reported.
+            const nested: CompileContext = {
+              ...context,
+              expanding: new Set(context.expanding),
+              macroCache: new Map()
+            }
+            return compileChildren(substitute, nested, depth)
+          })(),
           delimiter: nameElement?.attributes.delimiter,
           delimiterPrecedence:
             nameElement?.attributes['delimiter-precedence'] === 'after-inverted-name',
@@ -595,6 +616,20 @@ const renderName = (
 }
 
 const renderNames = (node: CslNameOptions, state: RenderState): string => {
+  const rendered = renderOwnNames(node, state)
+  if (rendered !== '') return rendered
+  // Nothing came of this variable, so the style's substitute applies: try its children in order and use
+  // the first that produces something. This is what makes a style like APA print its authors at all —
+  // its author macro asks for `composer` and falls back to `author`, and without the fallback a record
+  // with four authors renders as if it had none.
+  for (const child of node.substitute ?? []) {
+    const candidate = renderNode(child, state)
+    if (candidate !== '') return applyFormatting(candidate, node)
+  }
+  return ''
+}
+
+const renderOwnNames = (node: CslNameOptions, state: RenderState): string => {
   // Only the record's own authors are ours to print. A style's editor/translator/collection-editor
   // lists have no data behind them here, so they render empty and are named as unsupported at compile
   // time — printing the authors in their place would be fabrication.
