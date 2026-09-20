@@ -39,6 +39,16 @@ export const SESSION_FORK_NOT_CARRIED = [
   'artifact-versions'
 ] as const
 
+// An imported (`.science`) session is read-only by posture: its history is someone else's record. A
+// fork of one is a new, writable session, so it must not claim that posture for itself — otherwise the
+// copy would look like imported history and be treated as uneditable.
+const IMPORT_POSTURE_KEYS = ['importedFrom', 'importRecord', 'importPosture', 'readOnly'] as const
+
+const importPostureOn = (source: PersistedChatSession): string[] =>
+  IMPORT_POSTURE_KEYS.filter(
+    (key) => (source as unknown as Record<string, unknown>)[key] !== undefined
+  )
+
 const countUploads = (messages: readonly PersistedChatMessage[]): number =>
   messages.reduce((total, message) => total + (message.uploads?.length ?? 0), 0)
 
@@ -68,7 +78,11 @@ export const planSessionFork = (
     artifactReferences: countArtifactReferences(source.messages)
   },
   ...(bytes === undefined ? {} : { bytes }),
-  notCarried: SESSION_FORK_NOT_CARRIED
+  notCarried: [
+    ...SESSION_FORK_NOT_CARRIED,
+    // Named only when the source actually carries an import posture.
+    ...(importPostureOn(source).length > 0 ? (['import-posture'] as const) : [])
+  ]
 })
 
 export type SessionForkBuildOptions = {
@@ -89,6 +103,9 @@ export const buildSessionFork = (
     : source.messages.length - 1
   const kept = cutIndex >= 0 ? source.messages.slice(0, cutIndex + 1) : [...source.messages]
 
+  // The copy's own identity is minted first: a reader should be able to point at the new session id
+  // before any of its messages, and the order of allocation is visible to callers that inject `newId`.
+  const sessionId = options.newId()
   const idBySourceId = new Map<string, string>()
   for (const message of kept) idBySourceId.set(message.id, options.newId())
 
@@ -109,7 +126,7 @@ export const buildSessionFork = (
 
   const forked = {
     ...source,
-    id: options.newId(),
+    id: sessionId,
     // A copy has not run yet, whatever the source was doing.
     status: 'idle' as PersistedChatSession['status'],
     messages,
@@ -127,5 +144,10 @@ export const buildSessionFork = (
   const { activeRun: _activeRun, ...withoutActiveRun } = forked
   void _activeRun
 
-  return { session: withoutActiveRun as PersistedChatSession, manifest }
+  // The copy is writable by construction: an import posture on the source (read-only history landed
+  // from a `.science` package) is dropped, and `forkedFrom` is what records where the copy came from.
+  const stripped = { ...(withoutActiveRun as Record<string, unknown>) }
+  for (const key of importPostureOn(source)) delete stripped[key]
+
+  return { session: stripped as PersistedChatSession, manifest }
 }

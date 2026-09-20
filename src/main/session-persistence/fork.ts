@@ -9,10 +9,7 @@ import { planSessionFork, buildSessionFork } from '../../shared/session-fork'
 import type { SessionForkManifest } from '../../shared/session-fork'
 import type { PersistedChatSession } from '../../shared/session-persistence'
 
-export type {
-  SessionForkBuildOptions,
-  SessionForkManifest
-} from '../../shared/session-fork'
+export type { SessionForkBuildOptions, SessionForkManifest } from '../../shared/session-fork'
 
 export type SessionForkPorts = {
   load: (projectId: string, sessionId: string) => Promise<PersistedChatSession | undefined>
@@ -41,7 +38,9 @@ export class SessionForkService {
   async planFork(projectId: string, sessionId: string): Promise<SessionForkManifest | undefined> {
     const source = await this.ports.load(projectId, sessionId)
     if (!source) return undefined
-    const bytes = this.ports.sizeBytes ? await this.ports.sizeBytes(projectId, sessionId) : undefined
+    const bytes = this.ports.sizeBytes
+      ? await this.ports.sizeBytes(projectId, sessionId)
+      : undefined
     return planSessionFork(source, bytes)
   }
 
@@ -64,7 +63,9 @@ export class SessionForkService {
     await this.ports.save(built.session)
     // The manifest describes the whole source, even when the copy was cut at a turn: the caller has to
     // know what was left behind as well as what was kept.
-    const bytes = this.ports.sizeBytes ? await this.ports.sizeBytes(projectId, sessionId) : undefined
+    const bytes = this.ports.sizeBytes
+      ? await this.ports.sizeBytes(projectId, sessionId)
+      : undefined
     return { session: built.session, manifest: planSessionFork(source, bytes) }
   }
 }

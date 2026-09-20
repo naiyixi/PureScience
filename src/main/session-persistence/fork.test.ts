@@ -95,9 +95,10 @@ describe('forking inherits the evidence chain, never the identity', () => {
     const { session } = await service.forkSession('project-1', 'session-source')
 
     expect(session.id).not.toBe(original.id)
-    expect(session.messages.map((message) => message.id)).toEqual(['new-1', 'new-2', 'new-3'])
+    // The copy's own id is minted first, so its messages take the ids after it.
+    expect(session.messages.map((message) => message.id)).toEqual(['new-2', 'new-3', 'new-4'])
     // The reply link follows the copy's own ids instead of dangling at the source's.
-    expect(session.messages[1].responseToMessageId).toBe('new-1')
+    expect(session.messages[1].responseToMessageId).toBe('new-2')
     expect(session.messages[1].artifactIds).toEqual(['artifact-1', 'artifact-2'])
     expect(session.messages[2].artifactIds).toEqual(['artifact-2'])
     expect(session.messages[1].uploads?.map((upload) => upload.id)).toEqual(['upload-1'])
