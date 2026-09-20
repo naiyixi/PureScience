@@ -11,6 +11,16 @@
 
 Where PureScience differs: agents are built with self-awareness and skill-building — they can say what they actually did in a project, evaluate and author their own reusable skills, and check figures against publication-grade rules before you ever see them. Every notebook run is audited; every memory carries its source; nothing leaves your machine unless you allow it. Today that power is sharpest in bioinformatics, computational biology, genomics, structural biology, and computational drug discovery — 18 featured research skills and 24 built-in scientific connectors — with an extensible architecture ready for more disciplines.
 
+## Maturity and Known Limitations
+
+We label every capability the way we build it: ✅ shipped **and verified on a real machine**; 🚧 partly done, with the gap written next to it; 🗺️ planned. Each claim is traceable — a commit, a real-run log, or a record under `docs/evidence/`.
+
+- ✅ **Shipped and machine-verified**: multi-agent orchestration and delegated subagents · Python and R runtimes with audited notebook runs · artifact versions and lineage · **reproducibility verification** (isolated re-run + byte-exact per-file comparison + environment fingerprint) · the review-to-evidence loop · a nine-language interface · a signed specialist marketplace (24 Chinese-medical packages, 18 skill packs) · 24 scientific connectors (209 tools: gnomAD, Ensembl, UCSC, STRING, PubMed, OpenAlex, …) · global search · `.science` session packages · **a citation-style layer** (nine built-in styles plus CSL import) · **private session bookmarks** that never enter a model context.
+- 🚧 **Partly done**: CSL import runs a **fidelity probe** against each document — of eight real published styles, five pass and three are labelled drafts with the missing piece named (their author macros branch on record types we do not model yet). PDF **table** extraction is live end to end (`pdf_tables`, 7×4 on a real table); **figures and captions** are not wired yet. Distribution is not yet worked: the repository has no stars because we have been shipping rather than publishing.
+- 🗺️ **Planned**: session-level replay verification · PDF figures and captions with geometry handed to the agent · session forking and a session information card · a wider serverless GPU surface.
+
+**Rules we do not relax**: no model weight is downloaded without a published SHA256; an imported style or skill without a licence is not installed; a field the record does not carry stays empty and is named — never filled in on its own; code a model *reconstructed* is never certified as a reproduction; timing conclusions are only drawn from the same corpus, the same driver, measured before and after (a millisecond assertion that wobbles under load is reported as unstable rather than tuned until it passes).
+
 > 💡 **[PureScience v1.64.2 released](https://github.com/naiyixi/PureScience/releases/latest)** — The storage panel now says it is measuring instead of showing `0 B` while its first disk walk runs — a placeholder rendered as zero bytes reads as data loss. A cold read answers in **1 ms** carrying a pending flag, and the **7.36 GB across 5 categories** figure lands 20 s later. A second limiter on the Files panel's preview batch is gone, because that fan-out was already bounded by its own keyed reader at **4 in flight**: an A/B that can tell callers apart — the panel's requests carry a project and session, the transcript cards' do not — measured peak 4 with the limiter and 4 without it, so the extra bound only coupled reads to each other. The engine-queue criterion closes the honest way: the strongest real load available, **twelve of the largest artifacts read at the same moment, 19.9 MB together, each one a full resolve with a query, a whole-file read and a checksum**, finished in **103 ms of wall clock with the canary at 7 ms** and main's own slow-resolve instrument never firing — so the earlier **>100 ms** reading stands as environment-specific rather than as a function of data size, and the gap that run could not explain is written down rather than dropped: a resolve the renderer measures at ~102 ms produced no main-side slow report at all, which puts the difference in IPC and scheduling. Verified on the packaged build as well — chips **177 elements and 16 kinds**, all four slow-read instruments at zero. Quality baseline: dual typecheck, whole-tree lint, the full suite, and Nightly + Windows CI.
 
 <p align="center">
@@ -25,6 +35,7 @@ Where PureScience differs: agents are built with self-awareness and skill-buildi
 - [Real Runs Behind the Claims](#real-runs-behind-the-claims-the-ai4s-dry-wet-loop-in-action)
 - [Extreme Adversarial Stress Tests](#extreme-adversarial-stress-tests-sep-2026)
 - [How PureScience Compares](#how-purescience-compares)
+- [成熟度与已知限制](#成熟度与已知限制)
 - [Why PureScience](#why-purescience)
 - [Design Principles](#design-principles)
 - [Core Capabilities](#core-capabilities)
