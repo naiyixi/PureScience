@@ -2898,5 +2898,16 @@ export const es: Partial<Record<ZhKey, string>> = {
   'bookmarks.toggle': 'Marcadores de la sesión',
   'bookmarks.save': 'Marcar',
   'bookmarks.saved': 'Marcado',
-  'bookmarks.saveFailed': 'No se pudo guardar el marcador'
+  'bookmarks.saveFailed': 'No se pudo guardar el marcador',
+  'sessionInfo.title': 'Información de la sesión',
+  'sessionInfo.status': 'Estado',
+  'sessionInfo.messages': 'Mensajes',
+  'sessionInfo.assistantReplies': 'Respuestas del agente',
+  'sessionInfo.artifacts': 'Artefactos',
+  'sessionInfo.created': 'Creada',
+  'sessionInfo.updated': 'Actualizada',
+  'sessionInfo.pin': 'Fijar',
+  'sessionInfo.unpin': 'Soltar',
+  'sessionInfo.close': 'Cerrar',
+  'sessionInfo.evidence': 'Abrir evidencia'
 }

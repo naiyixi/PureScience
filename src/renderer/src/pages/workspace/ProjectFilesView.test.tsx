@@ -2902,7 +2902,7 @@ describe('ProjectFilesView', () => {
 
     const probedPaths = probeAvailability.mock.calls.flatMap(
       (call) =>
-        (call[0] as { items: Array<{ path: string }> }).items.map((item) => (item.path)) as string[]
+        (call[0] as { items: Array<{ path: string }> }).items.map((item) => item.path) as string[]
     )
     // The set is asked for in batches (one per render tick), never once per row — that is the change.
     expect(probeAvailability.mock.calls.length).toBeLessThanOrEqual(2)

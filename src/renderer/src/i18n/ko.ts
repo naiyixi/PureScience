@@ -2802,5 +2802,16 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'bookmarks.toggle': '세션 책갈피',
   'bookmarks.save': '책갈피',
   'bookmarks.saved': '책갈피로 저장됨',
-  'bookmarks.saveFailed': '책갈피를 저장하지 못했습니다'
+  'bookmarks.saveFailed': '책갈피를 저장하지 못했습니다',
+  'sessionInfo.title': '세션 정보',
+  'sessionInfo.status': '상태',
+  'sessionInfo.messages': '메시지',
+  'sessionInfo.assistantReplies': '에이전트 응답',
+  'sessionInfo.artifacts': '산출물',
+  'sessionInfo.created': '생성',
+  'sessionInfo.updated': '업데이트',
+  'sessionInfo.pin': '고정',
+  'sessionInfo.unpin': '고정 해제',
+  'sessionInfo.close': '닫기',
+  'sessionInfo.evidence': '근거 열기'
 }

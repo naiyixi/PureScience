@@ -2858,5 +2858,16 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'bookmarks.toggle': 'セッションのしおり',
   'bookmarks.save': 'しおり',
   'bookmarks.saved': 'しおりに保存しました',
-  'bookmarks.saveFailed': 'しおりを保存できませんでした'
+  'bookmarks.saveFailed': 'しおりを保存できませんでした',
+  'sessionInfo.title': 'セッション情報',
+  'sessionInfo.status': '状態',
+  'sessionInfo.messages': 'メッセージ',
+  'sessionInfo.assistantReplies': 'エージェントの応答',
+  'sessionInfo.artifacts': '成果物',
+  'sessionInfo.created': '作成',
+  'sessionInfo.updated': '更新',
+  'sessionInfo.pin': 'ピン留め',
+  'sessionInfo.unpin': 'ピンを外す',
+  'sessionInfo.close': '閉じる',
+  'sessionInfo.evidence': '根拠を開く'
 }

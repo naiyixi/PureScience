@@ -2716,7 +2716,18 @@ export const zh = {
   'bookmarks.toggle': '会话书签',
   'bookmarks.save': '存为书签',
   'bookmarks.saved': '已存为书签',
-  'bookmarks.saveFailed': '书签保存失败'
+  'bookmarks.saveFailed': '书签保存失败',
+  'sessionInfo.title': '会话信息',
+  'sessionInfo.status': '状态',
+  'sessionInfo.messages': '消息',
+  'sessionInfo.assistantReplies': '智能体回复',
+  'sessionInfo.artifacts': '产物',
+  'sessionInfo.created': '创建于',
+  'sessionInfo.updated': '更新于',
+  'sessionInfo.pin': '钉住',
+  'sessionInfo.unpin': '取消钉住',
+  'sessionInfo.close': '关闭',
+  'sessionInfo.evidence': '查看证据'
 }
 
 export type ZhKey = keyof typeof zh

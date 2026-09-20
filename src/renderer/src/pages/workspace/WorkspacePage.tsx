@@ -2858,6 +2858,7 @@ const WorkspacePage = ({
             onRemoveAnnotation={removeAnnotation}
             onAnnotateSelection={addAnnotation}
             onAnnotateImage={addImageAnnotation}
+            onOpenSessionEvidence={() => setIsBookmarksOpen(true)}
             onOpenFolderGrants={() => setFolderGrantsOpen(true)}
             permissionProfile={activePermissionProfile}
             permissionProfileState={activePermissionProfileState}

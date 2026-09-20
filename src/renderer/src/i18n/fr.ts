@@ -2918,5 +2918,16 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'bookmarks.toggle': 'Signets de session',
   'bookmarks.save': 'Signet',
   'bookmarks.saved': 'Marqué',
-  'bookmarks.saveFailed': "Impossible d'enregistrer le signet"
+  'bookmarks.saveFailed': "Impossible d'enregistrer le signet",
+  'sessionInfo.title': 'Informations de session',
+  'sessionInfo.status': 'État',
+  'sessionInfo.messages': 'Messages',
+  'sessionInfo.assistantReplies': "Réponses de l'agent",
+  'sessionInfo.artifacts': 'Artefacts',
+  'sessionInfo.created': 'Créée',
+  'sessionInfo.updated': 'Mise à jour',
+  'sessionInfo.pin': 'Épingler',
+  'sessionInfo.unpin': 'Détacher',
+  'sessionInfo.close': 'Fermer',
+  'sessionInfo.evidence': 'Ouvrir les preuves'
 }

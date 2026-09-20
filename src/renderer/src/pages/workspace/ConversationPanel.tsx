@@ -21,6 +21,7 @@ import {
 } from '../../../../shared/uploads'
 import { isReportableRunFailure } from '../../../../shared/run-error-classification'
 import { useLanguage } from '@/i18n'
+import { SessionInfoCard } from './SessionInfoCard'
 import {
   AlertTriangle,
   ArrowUp,
@@ -206,6 +207,8 @@ type ConversationPanelProps = {
   // Region annotations picked on agent-generated images stage an image annotation card.
   onAnnotateImage?: (image: AnnotationImageRef, region: AnnotationRegion) => void
   onOpenFolderGrants?: () => void
+  // Opens the session's evidence surface (its private bookmark trail) from the information card.
+  onOpenSessionEvidence?: () => void
   onPermissionProfileChange: (profile: PermissionProfileId) => void
   onRevokePermissionGrant: (categoryKey: string) => void
   onClearPermissionGrants: () => void
@@ -268,6 +271,7 @@ const ConversationPanel = ({
   onAnnotateSelection,
   onAnnotateImage,
   onOpenFolderGrants,
+  onOpenSessionEvidence,
   permissionProfile,
   permissionProfileState,
   permissionGrants,
@@ -322,6 +326,8 @@ const ConversationPanel = ({
   onReconfigureUseNone
 }: ConversationPanelProps): React.JSX.Element => {
   const { t } = useLanguage()
+  // The session information card is a header affordance: view state, owned here.
+  const [isInfoCardOpen, setIsInfoCardOpen] = useState(false)
   const specialistItems = useSpecialistStore((state) => state.items)
   const catalogSkills = useSettingsStore((state) => state.skills)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -493,7 +499,7 @@ const ConversationPanel = ({
         >
           <header
             data-testid="conversation-header"
-            className="flex shrink-0 items-center gap-2 px-4 pb-3 pt-2 max-md:px-2 max-md:pb-2 max-md:pt-[max(env(safe-area-inset-top),0.5rem)]"
+            className="relative flex shrink-0 items-center gap-2 px-4 pb-3 pt-2 max-md:px-2 max-md:pb-2 max-md:pt-[max(env(safe-area-inset-top),0.5rem)]"
           >
             <button
               type="button"
@@ -504,8 +510,25 @@ const ConversationPanel = ({
               <Menu className="size-5" strokeWidth={2} aria-hidden="true" />
             </button>
             <h1 className="min-w-0 flex-1 truncate text-[13px] font-semibold text-text-000">
-              {activeSession?.title ?? t('ws.newConversation')}
+              <button
+                type="button"
+                data-testid="conversation-title-button"
+                className="max-w-full truncate text-left hover:underline"
+                aria-expanded={isInfoCardOpen}
+                aria-label={t('sessionInfo.title')}
+                onClick={() => setIsInfoCardOpen((open) => !open)}
+              >
+                {activeSession?.title ?? t('ws.newConversation')}
+              </button>
             </h1>
+            {isInfoCardOpen && activeSession ? (
+              <SessionInfoCard
+                key={activeSession.id}
+                session={activeSession}
+                onOpenEvidence={onOpenSessionEvidence}
+                onClose={() => setIsInfoCardOpen(false)}
+              />
+            ) : null}
             {onOpenFolderGrants ? (
               <button
                 type="button"

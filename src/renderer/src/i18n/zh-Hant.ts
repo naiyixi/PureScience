@@ -2650,5 +2650,16 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'bookmarks.toggle': '工作階段書籤',
   'bookmarks.save': '存為書籤',
   'bookmarks.saved': '已存為書籤',
-  'bookmarks.saveFailed': '書籤儲存失敗'
+  'bookmarks.saveFailed': '書籤儲存失敗',
+  'sessionInfo.title': '工作階段資訊',
+  'sessionInfo.status': '狀態',
+  'sessionInfo.messages': '訊息',
+  'sessionInfo.assistantReplies': '智能體回覆',
+  'sessionInfo.artifacts': '產物',
+  'sessionInfo.created': '建立於',
+  'sessionInfo.updated': '更新於',
+  'sessionInfo.pin': '釘住',
+  'sessionInfo.unpin': '取消釘住',
+  'sessionInfo.close': '關閉',
+  'sessionInfo.evidence': '查看證據'
 }

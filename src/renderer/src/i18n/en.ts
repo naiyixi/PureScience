@@ -2893,5 +2893,16 @@ export const en: Record<ZhKey, string> = {
   'bookmarks.toggle': 'Session bookmarks',
   'bookmarks.save': 'Bookmark',
   'bookmarks.saved': 'Bookmarked',
-  'bookmarks.saveFailed': 'Could not save the bookmark'
+  'bookmarks.saveFailed': 'Could not save the bookmark',
+  'sessionInfo.title': 'Session information',
+  'sessionInfo.status': 'Status',
+  'sessionInfo.messages': 'Messages',
+  'sessionInfo.assistantReplies': 'Agent replies',
+  'sessionInfo.artifacts': 'Artifacts',
+  'sessionInfo.created': 'Created',
+  'sessionInfo.updated': 'Updated',
+  'sessionInfo.pin': 'Pin',
+  'sessionInfo.unpin': 'Unpin',
+  'sessionInfo.close': 'Close',
+  'sessionInfo.evidence': 'Open evidence'
 }

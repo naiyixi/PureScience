@@ -2861,5 +2861,16 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'bookmarks.toggle': 'Закладки сеанса',
   'bookmarks.save': 'Закладка',
   'bookmarks.saved': 'Сохранено в закладки',
-  'bookmarks.saveFailed': 'Не удалось сохранить закладку'
+  'bookmarks.saveFailed': 'Не удалось сохранить закладку',
+  'sessionInfo.title': 'Информация о сеансе',
+  'sessionInfo.status': 'Состояние',
+  'sessionInfo.messages': 'Сообщения',
+  'sessionInfo.assistantReplies': 'Ответы агента',
+  'sessionInfo.artifacts': 'Артефакты',
+  'sessionInfo.created': 'Создан',
+  'sessionInfo.updated': 'Обновлён',
+  'sessionInfo.pin': 'Закрепить',
+  'sessionInfo.unpin': 'Открепить',
+  'sessionInfo.close': 'Закрыть',
+  'sessionInfo.evidence': 'Открыть доказательства'
 }

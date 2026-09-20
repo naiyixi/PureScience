@@ -2930,5 +2930,16 @@ export const de: Partial<Record<ZhKey, string>> = {
   'bookmarks.toggle': 'Sitzungslesezeichen',
   'bookmarks.save': 'Lesezeichen',
   'bookmarks.saved': 'Als Lesezeichen gespeichert',
-  'bookmarks.saveFailed': 'Lesezeichen konnte nicht gespeichert werden'
+  'bookmarks.saveFailed': 'Lesezeichen konnte nicht gespeichert werden',
+  'sessionInfo.title': 'Sitzungsinformationen',
+  'sessionInfo.status': 'Zustand',
+  'sessionInfo.messages': 'Nachrichten',
+  'sessionInfo.assistantReplies': 'Agenten-Antworten',
+  'sessionInfo.artifacts': 'Artefakte',
+  'sessionInfo.created': 'Erstellt',
+  'sessionInfo.updated': 'Aktualisiert',
+  'sessionInfo.pin': 'Anheften',
+  'sessionInfo.unpin': 'Loslösen',
+  'sessionInfo.close': 'Schließen',
+  'sessionInfo.evidence': 'Belege öffnen'
 }
