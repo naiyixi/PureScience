@@ -7,6 +7,10 @@
 [![License](https://img.shields.io/badge/License-Apache--2.0-4dabf7?style=for-the-badge)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Linux-2f9e44?style=for-the-badge)](https://github.com/naiyixi/PureScience/releases/latest)
 
+![A potency chart the agent produced from a real run — EGFR T790M inhibitors, ranked](docs/demo-verification/egfr_t790m_ic50.png)
+
+*From a real run, not a mock-up: the code, parameters and environment fingerprint behind this chart are archived step by step under [`docs/demo-verification/`](docs/demo-verification/).*
+
 **PureScience is the research workbench that keeps every step of your science inspectable.** It runs locally-first on your own computer — **macOS, Windows, and Linux** installers ship with every release — works with any model provider you already have, and turns one plain-language task into an agent session that reads files, runs Python and R, searches the web, and calls scientific data connectors. What comes back is reproducible: reports, tables, and figures linked to the exact activity history that produced them.
 
 Where PureScience differs: agents are built with self-awareness and skill-building — they can say what they actually did in a project, evaluate and author their own reusable skills, and check figures against publication-grade rules before you ever see them. Every notebook run is audited; every memory carries its source; nothing leaves your machine unless you allow it. Today that power is sharpest in bioinformatics, computational biology, genomics, structural biology, and computational drug discovery — 18 featured research skills and 24 built-in scientific connectors — with an extensible architecture ready for more disciplines.
