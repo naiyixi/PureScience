@@ -6,10 +6,13 @@ import type { MessagePart } from '../../../../shared/session-persistence'
 import {
   createPreviewFileItem,
   createPreviewFileItemFromArtifact,
+  createPreviewFileItemFromBookmarkLocator,
   createPreviewFileItemFromMention,
   createPreviewFileItemFromUpload,
   resolveArtifactVersionDescriptor
 } from './preview-file-item'
+import { createArtifactVersionLocator } from '../../../../shared/artifact-provenance'
+import { createArtifactVersionLocator } from '../../../../shared/artifact-provenance'
 
 type MessageArtifact = NonNullable<ChatSession['artifacts']>[number]
 type MessageUploadAttachment = NonNullable<ChatSession['messages'][number]['uploads']>[number]
@@ -288,5 +291,64 @@ describe('preview file item helpers', () => {
       mimeType: 'application/pdf',
       format: 'pdf'
     })
+  })
+})
+
+describe('createPreviewFileItemFromBookmarkLocator', () => {
+  const lineage = {
+    artifactId: 'artifact-1',
+    filename: 'calibration.csv',
+    originSession: { sessionId: 'session-1', state: 'active' as const, title: 'Calibration' },
+    versions: [
+      {
+        id: 'version-1',
+        artifactId: 'artifact-1',
+        versionId: 'version-1',
+        versionNumber: 1,
+        checksum: 'checksum-1',
+        createdAt: '2026-07-27T20:00:00.000Z',
+        state: 'finalized' as const,
+        projectName: 'project-1',
+        sessionId: 'session-1',
+        runId: 'run-1',
+        name: 'calibration.csv',
+        size: 12,
+        mtimeMs: 1
+      }
+    ]
+  }
+
+  const locator = createArtifactVersionLocator({
+    projectId: 'project-1',
+    appSessionId: 'session-1',
+    artifactId: 'artifact-1',
+    versionId: 'version-1'
+  })
+
+  // The point of the locator: the passage opens the version it was read from.
+  it('reopens the exact version the passage came from', () => {
+    const item = createPreviewFileItemFromBookmarkLocator(locator, lineage)
+    expect(item).toMatchObject({
+      artifactId: 'artifact-1',
+      selectedVersionId: 'version-1',
+      versionNumber: 1,
+      name: 'calibration.csv',
+      projectId: 'project-1'
+    })
+  })
+
+  // A version that is gone must not be substituted by whatever has the file name now.
+  it('returns nothing when that version no longer exists', () => {
+    const stale = createArtifactVersionLocator({
+      projectId: 'project-1',
+      appSessionId: 'session-1',
+      artifactId: 'artifact-1',
+      versionId: 'version-removed'
+    })
+    expect(createPreviewFileItemFromBookmarkLocator(stale, lineage)).toBeUndefined()
+  })
+
+  it('returns nothing for a pointer that is not a locator', () => {
+    expect(createPreviewFileItemFromBookmarkLocator('not-a-locator', lineage)).toBeUndefined()
   })
 })

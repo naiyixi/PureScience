@@ -135,6 +135,35 @@ export const createPreviewFileItemForArtifactVersion = ({
   mtimeMs: version.mtimeMs
 })
 
+// Reopening a bookmarked passage: the locator names one exact Version, and the lineage decides whether
+// it still exists. A version that no longer resolves returns nothing — the caller shows it as
+// unavailable rather than substituting whatever carries the file name now.
+export const createPreviewFileItemFromBookmarkLocator = (
+  locator: string,
+  lineage: ArtifactLineageProvenance
+): PreviewFileItem | undefined => {
+  const identity = parseArtifactVersionLocator(locator)
+  if (!identity) return undefined
+  const version = resolveArtifactVersionDescriptor(lineage, identity.versionId)
+  if (!version) return undefined
+  return createPreviewFileItemForArtifactVersion({
+    item: createPreviewFileItem({
+      id: `artifact:${version.artifactId}`,
+      projectId: identity.projectId,
+      sessionId: identity.appSessionId,
+      path: locator,
+      name: version.name,
+      size: version.size,
+      mtimeMs: version.mtimeMs,
+      artifactId: version.artifactId,
+      selectedVersionId: version.versionId,
+      versionNumber: version.versionNumber
+    }),
+    version,
+    projectId: identity.projectId
+  })
+}
+
 // An omitted selection opens the newest finalized Version. An explicit selection is immutable
 // evidence: if it no longer resolves, callers must show it as unavailable rather than substitute bytes.
 export const resolveArtifactVersionDescriptor = (

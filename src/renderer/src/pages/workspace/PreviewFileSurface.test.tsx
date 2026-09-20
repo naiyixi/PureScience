@@ -555,3 +555,69 @@ describe('PreviewFileSurface local file header', () => {
     )
   })
 })
+
+describe('PreviewFileSurface bookmark entry', () => {
+  const withBookmarkApi = (set: ReturnType<typeof vi.fn>): void => {
+    Object.defineProperty(window, 'api', {
+      configurable: true,
+      value: {
+        artifacts: {
+          getLineage: vi.fn().mockResolvedValue({
+            artifactId: 'artifact-1',
+            filename: 'sin.png',
+            originSession: { sessionId: 'session-1', state: 'active', title: 'Sine' },
+            versions: [descriptor, secondDescriptor]
+          })
+        },
+        bookmark: { set }
+      }
+    })
+  }
+
+  const selectionOf = (text: string): void => {
+    vi.spyOn(window, 'getSelection').mockReturnValue({
+      toString: () => text
+    } as unknown as Selection)
+  }
+
+  // The entry the reader uses is the selection itself, and the anchor must name the version on screen:
+  // a passage read from version 1 has to open version 1 later, not whatever carries the file name then.
+  it('saves the selected passage together with the version on screen', async () => {
+    const set = vi.fn().mockResolvedValue({ ok: true })
+    withBookmarkApi(set)
+    selectionOf('  the measured passage  ')
+    await act(async () => {
+      root.render(<PreviewFileSurface item={item} onClose={vi.fn()} />)
+    })
+
+    await click(container.querySelector('[data-slot="preview-bookmark-action"]'))
+
+    expect(set).toHaveBeenCalledWith({
+      sessionId: 'session-1',
+      anchor: {
+        kind: 'preview-text',
+        text: 'the measured passage',
+        artifactVersionId: 'version-1',
+        // The canonical pointer a jump reopens; built from the ids of the managed version on screen.
+        locator: expect.stringContaining('version-1')
+      }
+    })
+    expect(container.textContent).toContain('Saved to bookmarks')
+  })
+
+  // An empty selection is not a bookmark: the reader is told what is missing rather than being handed a
+  // blank entry, and nothing is written.
+  it('refuses an empty selection and says so', async () => {
+    const set = vi.fn()
+    withBookmarkApi(set)
+    selectionOf('   ')
+    await act(async () => {
+      root.render(<PreviewFileSurface item={item} onClose={vi.fn()} />)
+    })
+
+    await click(container.querySelector('[data-slot="preview-bookmark-action"]'))
+
+    expect(set).not.toHaveBeenCalled()
+    expect(container.textContent).toContain('Select a passage in the preview first')
+  })
+})

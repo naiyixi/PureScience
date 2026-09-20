@@ -28,6 +28,8 @@ import { useNavigationStore } from '@/stores/navigation-store'
 import { useArchiveUndoStore } from '@/stores/archive-undo-store'
 import { ReferencesLibraryDialog } from '../../components/references/ReferencesLibraryDialog'
 import { SessionBookmarksDialog } from './SessionBookmarksDialog'
+import { createPreviewFileItemFromBookmarkLocator } from './preview-file-item'
+import { parseArtifactVersionLocator } from '../../../../shared/artifact-provenance'
 import { useProjectStore } from '@/stores/project-store'
 import { useSettingsStore } from '@/stores/settings-store'
 import {
@@ -594,6 +596,27 @@ const WorkspacePage = ({
   const activePreviewItemId = usePreviewWorkbenchStore((state) => state.activeItemId)
   const previewOpenRequestVersion = usePreviewWorkbenchStore((state) => state.openRequestVersion)
   const fileDialogItem = usePreviewWorkbenchStore((state) => state.fileDialogItem)
+  const openFileDialog = usePreviewWorkbenchStore((state) => state.openFileDialog)
+
+  // A bookmarked passage names one Artifact Version. Reopening asks the version's own lineage whether it
+  // still exists: a version that is gone opens nothing, because showing whatever carries the file name
+  // now would put different bytes behind the reader's saved passage.
+  const openBookmarkedVersion = async (locator: string): Promise<void> => {
+    const identity = parseArtifactVersionLocator(locator)
+    if (!identity) return
+    try {
+      const lineage = await window.api.artifacts.getLineage({
+        projectId: identity.projectId,
+        appSessionId: identity.appSessionId,
+        artifactId: identity.artifactId
+      })
+      const item = lineage ? createPreviewFileItemFromBookmarkLocator(locator, lineage) : undefined
+      if (item) openFileDialog(item)
+    } catch {
+      // An unresolvable pointer is not an error to shout about: the reader sees the preview simply not
+      // open, and the bookmark list still shows what they saved.
+    }
+  }
   const closeFileDialog = usePreviewWorkbenchStore((state) => state.closeFileDialog)
   const upsertPreviewItem = usePreviewWorkbenchStore((state) => state.upsertItem)
   const upsertAndActivatePreviewItem = usePreviewWorkbenchStore(
@@ -3059,6 +3082,7 @@ const WorkspacePage = ({
               open={isBookmarksOpen}
               onClose={() => setIsBookmarksOpen(false)}
               sessionId={selectedSessionId}
+              onOpenVersionPreview={(locator) => void openBookmarkedVersion(locator)}
             />
             <ReferencesLibraryDialog
               open={isLibraryOpen}

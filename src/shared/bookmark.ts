@@ -29,6 +29,10 @@ export type BookmarkAnchor =
       // The exact artifact version the passage was read from; jumping back opens that version rather
       // than "the latest file with the same name".
       artifactVersionId?: string
+      // The app's canonical pointer (project/session/artifact/version) to that same version, which is
+      // what a jump needs to reopen it. Written together with `artifactVersionId`; a passage taken from
+      // a source with no managed version behind it carries neither.
+      locator?: string
       managedFileId?: string
     }
   | {
@@ -63,6 +67,7 @@ export type BookmarkValidationFailure = {
     | 'invalid_message_id'
     | 'invalid_page'
     | 'invalid_rect'
+    | 'invalid_locator'
     | 'invalid_note'
   message: string
 }
@@ -108,6 +113,14 @@ export const validateBookmarkInput = (
   } else if (anchor.kind === 'preview-text') {
     if (!anchor.text?.trim()) {
       return { code: 'invalid_text', message: 'A preview bookmark needs the passage it points at.' }
+    }
+    // A half-written pointer is refused rather than stored: a jump that cannot resolve must not look
+    // like a jump that works.
+    if (anchor.locator !== undefined && anchor.locator.trim() === '') {
+      return {
+        code: 'invalid_locator',
+        message: 'A preview bookmark locator must point somewhere.'
+      }
     }
   } else if (anchor.kind === 'pdf-region') {
     if (!Number.isInteger(anchor.page) || anchor.page < 1) {

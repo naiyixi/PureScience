@@ -1,5 +1,6 @@
 import { useLanguage } from '@/i18n'
 import {
+  Bookmark,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -88,6 +89,84 @@ const PreviewProvenanceButton = ({
   </TooltipProvider>
 )
 
+// Puts the reader's own passage into the session's bookmarks. The anchor carries the exact Artifact
+// Version on screen, so jumping back opens the version the passage was read from rather than whatever
+// currently has that file name; a record without one is still a valid anchor, which is why the id is
+// optional rather than invented.
+const PreviewBookmarkAction = ({
+  item,
+  tooltipClassName
+}: {
+  item: PreviewFileItem
+  tooltipClassName?: string
+}): React.JSX.Element => {
+  const { t } = useLanguage()
+  const [notice, setNotice] = useState<string | undefined>(undefined)
+
+  const handleSave = (): void => {
+    // Read the selection at the moment of the press: a passage the reader highlighted in the preview.
+    const text = (window.getSelection()?.toString() ?? '').trim()
+    if (text === '') {
+      setNotice(t('previewSurface.bookmarkNeedsSelection'))
+      return
+    }
+    void window.api.bookmark
+      .set({
+        sessionId: item.sessionId,
+        anchor: {
+          kind: 'preview-text',
+          text,
+          ...(item.source === 'artifact' &&
+          item.selectedVersionId &&
+          item.artifactId &&
+          item.projectId
+            ? {
+                artifactVersionId: item.selectedVersionId,
+                locator: createArtifactVersionLocator({
+                  projectId: item.projectId,
+                  appSessionId: item.sessionId,
+                  artifactId: item.artifactId,
+                  versionId: item.selectedVersionId
+                })
+              }
+            : {})
+        }
+      })
+      .then(() => setNotice(t('previewSurface.bookmarkSaved')))
+      .catch((cause: unknown) => setNotice(cause instanceof Error ? cause.message : String(cause)))
+  }
+
+  return (
+    <>
+      <TooltipProvider delayDuration={300}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-xs"
+              className="text-text-100 hover:text-text-000"
+              data-slot="preview-bookmark-action"
+              aria-label={t('previewSurface.bookmarkSelection')}
+              onClick={handleSave}
+            >
+              <Bookmark aria-hidden="true" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent className={tooltipClassName}>
+            {t('previewSurface.bookmarkSelection')}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      {notice ? (
+        <span role="status" className="shrink-0 text-[10px] text-text-100">
+          {notice}
+        </span>
+      ) : null}
+    </>
+  )
+}
+
 // The optional callback makes the maximize action available only in the compact workbench panel;
 // the dialog reuses this header without exposing a nested full-screen action.
 const PreviewFileHeader = ({
@@ -165,6 +244,7 @@ const PreviewFileHeader = ({
               tooltipClassName={tooltipClassName}
             />
           ) : null}
+          <PreviewBookmarkAction item={item} tooltipClassName={tooltipClassName} />
           <ManagedFileDownloadButton
             source={item.source ?? 'artifact'}
             path={item.path}

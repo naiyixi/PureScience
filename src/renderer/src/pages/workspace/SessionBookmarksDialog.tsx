@@ -18,11 +18,15 @@ const excerpt = (text: string, limit = 160): string =>
 export function SessionBookmarksDialog({
   open,
   onClose,
-  sessionId
+  sessionId,
+  onOpenVersionPreview
 }: {
   open: boolean
   onClose: () => void
   sessionId: string | undefined
+  // A passage taken from a preview is reopened where it was read: the workspace owns previews, so the
+  // dialog hands the pointer over instead of trying to open one itself.
+  onOpenVersionPreview?: (locator: string) => void
 }): React.JSX.Element | null {
   const { t } = useLanguage()
   const requestMessageFocus = useNavigationStore((state) => state.requestMessageFocus)
@@ -90,9 +94,17 @@ export function SessionBookmarksDialog({
   // Jumping back asks the workspace for the focus, the same way a search hit does: this dialog lives
   // outside the message scroller, so it must not pretend to own the scroll.
   const handleJump = (bookmark: SessionBookmark): void => {
-    if (bookmark.anchor.kind !== 'message-text' || !sessionId) return
-    requestMessageFocus({ sessionId, messageId: bookmark.anchor.messageId })
-    onClose()
+    if (!sessionId) return
+    const anchor = bookmark.anchor
+    if (anchor.kind === 'message-text') {
+      requestMessageFocus({ sessionId, messageId: anchor.messageId })
+      onClose()
+      return
+    }
+    if (anchor.kind === 'preview-text' && anchor.locator) {
+      onOpenVersionPreview?.(anchor.locator)
+      onClose()
+    }
   }
 
   const handleSaveNote = async (bookmark: SessionBookmark): Promise<void> => {
@@ -156,7 +168,8 @@ export function SessionBookmarksDialog({
                       {kindLabel(bookmark)}
                     </span>
                     <div className="flex items-center gap-1">
-                      {bookmark.anchor.kind === 'message-text' ? (
+                      {bookmark.anchor.kind === 'message-text' ||
+                      (bookmark.anchor.kind === 'preview-text' && bookmark.anchor.locator) ? (
                         <button
                           type="button"
                           className="flex items-center gap-1 text-[10px] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"

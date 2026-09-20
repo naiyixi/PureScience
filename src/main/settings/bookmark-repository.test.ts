@@ -139,3 +139,28 @@ describe('session bookmark storage', () => {
     expect(await repository.list('never-used')).toEqual([])
   })
 })
+
+describe('preview bookmark pointers', () => {
+  // A pointer that cannot resolve must not look like one that works.
+  it('refuses a preview locator that points nowhere', () => {
+    expect(
+      validateBookmarkInput({
+        sessionId: 'session-1',
+        anchor: { kind: 'preview-text', text: 'a saved passage', locator: '   ' }
+      })
+    ).toMatchObject({ code: 'invalid_locator' })
+  })
+
+  it('accepts a preview passage with a real locator', () => {
+    expect(
+      validateBookmarkInput({
+        sessionId: 'session-1',
+        anchor: {
+          kind: 'preview-text',
+          text: 'a saved passage',
+          locator: 'purescience-artifact-version://project/session/artifact/version'
+        }
+      })
+    ).toBeUndefined()
+  })
+})
