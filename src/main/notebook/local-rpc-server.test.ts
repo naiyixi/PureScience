@@ -834,7 +834,7 @@ describe('notebook local RPC server', () => {
       const expiredRequest = await call()
       expect(expiredRequest.status).toBe(401)
       await expect(expiredRequest.json()).resolves.toEqual({
-        error: 'Artifact RPC capability expired.'
+        error: expect.stringContaining('cannot be admitted')
       })
 
       let drained = false
@@ -948,7 +948,9 @@ describe('notebook local RPC server', () => {
     try {
       const expired = await call(expiredToken)
       expect(expired.status).toBe(401)
-      await expect(expired.json()).resolves.toEqual({ error: 'Artifact RPC capability expired.' })
+      await expect(expired.json()).resolves.toEqual({
+        error: expect.stringContaining('a retry with it cannot be admitted')
+      })
 
       const replayOnlyToken = server.issueArtifactRunCapability({
         ...artifactCapabilityBinding,
@@ -964,7 +966,9 @@ describe('notebook local RPC server', () => {
       server.revokeArtifactRunCapability(revokedToken)
       const revoked = await call(revokedToken)
       expect(revoked.status).toBe(401)
-      await expect(revoked.json()).resolves.toEqual({ error: 'Invalid Artifact RPC capability.' })
+      await expect(revoked.json()).resolves.toEqual({
+        error: expect.stringContaining('Retrying with the same capability cannot succeed')
+      })
       expect(createVersion).not.toHaveBeenCalled()
     } finally {
       await server.close()

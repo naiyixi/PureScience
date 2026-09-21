@@ -976,12 +976,26 @@ class NotebookLocalRpcServer {
     params: Record<string, unknown>
   ): { params: Record<string, unknown>; release: () => void } {
     const capability = this.artifactRpcCapabilities.get(token)
-    if (!capability) throw new RpcHttpError(401, 'Invalid Artifact RPC capability.')
+    if (!capability) {
+      // Two ways to get here, and both of them are spend-once: the token belongs to an earlier turn, or it was
+      // already revoked on expiry. In either case a retry presents the same token and fails the same way, so
+      // the message has to say that instead of inviting another attempt. The files stay on disk in the
+      // workspace; what is missing is a capability the current turn never issued to this server.
+      throw new RpcHttpError(
+        401,
+        'Artifact RPC capability is not valid for this turn: it was issued for an earlier turn (or already spent). ' +
+          'Retrying with the same capability cannot succeed — the run must be retried from a new turn.'
+      )
+    }
     if (capability.expiresAt <= this.now()) {
       // Expiry closes admission just like an explicit runtime revoke. Keep the shared drain promise
       // reachable so a later turn teardown still waits for requests that acquired before expiry.
       void this.revokeArtifactRunCapability(token)
-      throw new RpcHttpError(401, 'Artifact RPC capability expired.')
+      throw new RpcHttpError(
+        401,
+        'Artifact RPC capability expired and was revoked; a retry with it cannot be admitted. ' +
+          'The write needs a capability issued by a new turn.'
+      )
     }
     if (!capability.allowedMethods.has(method)) {
       throw new RpcHttpError(403, `Artifact RPC capability does not allow ${method}.`)
