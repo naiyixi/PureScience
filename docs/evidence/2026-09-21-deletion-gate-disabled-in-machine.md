@@ -78,10 +78,29 @@ const loaded = catalog ? { sessions: …, manifest: … }   // ← 不含 diagno
 ### 修法（下一步实现）
 
 1. `SessionCatalogResult` 增加可选 `diagnostics?: SessionLoadDiagnostics`；
-2. main 的 `loadCatalogAfterProjectRecovery` 同样注入：恢复成功 → `true`，catch 里 → `false`（降级语义与 `loadAll` 一致）；
+2. main 的列表层注入诊断：恢复成功 → `true`，恢复失败 → `false`（降级语义与 `loadAll` 一致）；
 3. 渲染层 catalog 分支把 `catalog.diagnostics` 带进返回对象；
 4. 补测试（main 两侧注入 + 渲染层 catalog 路径下 `canDelete` 为 true）；
 5. 本地真机 E2E 验证删除入口可点（这是本条的验收口径）。
+
+### 变更进行中（本地工作区，未提交）
+
+已改：**1**（`shared/session-catalog-summary.ts`）、**3**（`session-persistence.ts` 的 catalog 分支带上 `diagnostics`）、以及 `ipc.ts` 的
+`loadCatalogAfterProjectRecovery` 注入 + helper 泛化为 `<Result extends { diagnostics?: SessionLoadDiagnostics }>`。
+
+**还差的正是让修复生效的那一步** ✓——实测指出 `sessions.listCatalog` 映射到通道 `sessions:list-catalog`
+（`shared/web-api-map.generated.ts:192`），而该通道在 `session-persistence/ipc.ts:256` 注册成
+`withDataRootWrite(() => handlers.listCatalog())`（handlers 直通 `repository.loadCatalog()` ✗）；`loadCatalogAfterProjectRecovery`
+**全仓没有任何 import** ✗（只是被 `export`，是重构留下的 dead code）✓。所以：
+
+1. `registerSessionPersistenceIpcHandlers` 增加可选参数（`ProjectDeletionRecoveryBackend`），在 `src/main/ipc.ts:2409` 的装配处传入（该文件已有实例，`loadSessionsAfterProjectRecovery` 就在 652/2422 行用它）；
+2. `sessions:list-catalog` 的注册改为经 `loadCatalogAfterProjectRecovery(...)`；
+3. 已在 `src/main/session-persistence/ipc.test.ts` 写好断言（当前**红**，正是缺陷仍在的证据）：`catalog.diagnostics` 应为 `{ isComplete: true, warnings: [] }`；
+4. 之后真机 E2E 复验删除入口可点。
+
+> 注：`sessions:load-all` 通道（`ipc.ts:222`）同样直通 handlers，但渲染层的 `loadAll` 走的是 application-command 装箱路径
+> （`src/main/ipc.ts:652/2422` 用 `loadSessionsAfterProjectRecovery` 包装 ✓），所以那条**有**诊断——这也解释了为什么探针
+> 直接调 `loadAll` 能看到 `true`，而界面走的 `listCatalog` 看不到。
 
 ## 影响面（同源字段）
 
