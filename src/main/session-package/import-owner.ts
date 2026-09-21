@@ -63,8 +63,13 @@ export const createSessionPackageImportOwner = (
       cwd: deps.workspaceFor(draft.sessionId),
       // An imported session is not running and must not appear to be.
       status: 'idle',
+      // Required on the document, not decoration: the conversation graph this session materializes
+      // takes its frame and branch timestamps from here, and a graph without them is dropped by the
+      // app's own validator — which quarantined every imported session as invalid.
+      createdAt: draft.createdAt,
+      updatedAt: draft.updatedAt,
       messages: messagesOf(draft.conversation)
-    } as PersistedChatSession
+    }
 
     await deps.saveSession(session)
 

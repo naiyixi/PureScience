@@ -1842,6 +1842,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.providerName': '공급자 이름',
   'settings.providerType': '공급자 유형',
   'settings.providersTitle': '공급자',
+  'settings.runtimeReconnecting': '공급자 변경 사항을 런타임에 반영하는 중…',
   'settings.publish': '게시',
   'settings.pythonPackageIndex': 'Python 패키지 인덱스(pip)',
   'settings.quit': '종료',
@@ -2555,6 +2556,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'ws.producerRunNoScript': '프로듀서 실행에 재구성할 스크립트가 남아 있지 않습니다.',
   'ws.producerRunNotIdentified': '캡처된 증거에서 프로듀서 실행을 식별할 수 없습니다.',
   'ws.provenanceMessages': '출처 메시지',
+  'recovery.providerUnreachable': '공급자 키를 확인하거나 다른 공급자로 바꾼 뒤 다시 시도하세요.',
   'ws.reconnectBeforeCompacting': '압축 전에 메시지를 보내 이 세션을 다시 연결하세요.',
   'ws.reconstructionNeedsExecutionLog':
     '이 버전을 재구성하려면 변경 불가능한 실행 로그가 필요합니다.',

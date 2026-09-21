@@ -85,6 +85,8 @@ import {
   providerKindPatch,
   type ProviderFormValue
 } from './provider-form-value'
+import { describeValidation } from './validation-message'
+import { runProviderSaveGate } from './provider-save-flow'
 
 type SettingsPageProps = {
   open: boolean
@@ -746,17 +748,23 @@ const SettingsPage = forwardRef<SettingsPageHandle, SettingsPageProps>(function 
     setStatusMessage(undefined)
 
     try {
-      // Persist first and return to the provider list immediately — don't hold the form open waiting
-      // for the connection test. The test then runs in the background and its result (green check or
-      // warning) lands on the provider's card.
-      const providerId = await persistProvider(toUpsertRequest(formValue, editingProvider?.id))
+      // The rule itself lives in runProviderSaveGate so it can be tested without a DOM: a provider being
+      // added is not saved until its connection test passes, while an edit keeps going.
+      const outcome = await runProviderSaveGate({
+        isNewProvider: editingProvider === undefined,
+        persist: () => persistProvider(toUpsertRequest(formValue, editingProvider?.id)),
+        validate: (providerId) => validateProvider({ providerId }),
+        onBusy: setBusyProviderId,
+        describeFailure: describeValidation
+      })
+
+      if (outcome.status === 'incomplete') {
+        setStatusOk(false)
+        setStatusMessage(outcome.message)
+        return
+      }
 
       navigate({ panel: 'model', skills: currentLocation.skills, model: { kind: 'list' } })
-
-      if (providerId) {
-        setBusyProviderId(providerId)
-        void validateProvider({ providerId }).finally(() => setBusyProviderId(undefined))
-      }
     } catch (error) {
       setStatusOk(false)
       setStatusMessage(error instanceof Error ? error.message : t('settings.couldNotSaveProvider'))

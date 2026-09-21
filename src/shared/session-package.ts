@@ -32,6 +32,11 @@ export type SessionPackageNoteCode =
   | `files-not-requested:${number}`
   | `environment-lock-unavailable`
   | `reproduction-outputs-unavailable`
+  // Reference-library PDFs follow the same three rules as session files: named when unreadable, named
+  // when too large, and counted when the essential mode leaves them behind.
+  | `reference-unreadable:${string}`
+  | `reference-omitted-too-large:${string}`
+  | `reference-pdfs-not-requested:${number}`
 
 export type SessionPackageAssertion = {
   /** Every claim in this package was produced by the exporting machine. */
@@ -46,6 +51,8 @@ export type SessionPackageCounts = {
   reviewFindings: number
   verificationRecords: number
   files: number
+  /** PDFs carried from the project's reference library. */
+  referenceFiles: number
 }
 
 export type SessionPackageEntry = {

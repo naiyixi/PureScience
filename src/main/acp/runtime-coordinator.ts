@@ -220,6 +220,7 @@ class AcpRuntimeCoordinator {
       contextUsageBySession,
       nativeContextCompactionSessionIds,
       promptInFlight: promptInFlightSessionIds.length > 0,
+      providerReconnectPending: this.activeRuntime?.providerReconnectPending ?? false,
       agentPromptInFlightSessionIds,
       promptInFlightSessionIds
     }

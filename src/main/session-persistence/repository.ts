@@ -20,6 +20,7 @@ import {
   trimSessionHistory,
   type SessionRetention
 } from '../../shared/session-retention'
+import { SESSION_PACKAGE_IMPORT_RECORD_SUFFIX } from '../../shared/session-package-import'
 import {
   summarizeSessionCatalogEntry,
   type SessionCatalogResult,
@@ -975,7 +976,12 @@ class SessionRepository {
               !entry.name.includes('.tmp') &&
               !entry.name.includes('.invalid-') &&
               // Summary caches (<session>.json.summary.json) are metadata, not session files.
-              !entry.name.endsWith('.summary.json')
+              !entry.name.endsWith('.summary.json') &&
+              // Import records (<session>.import.json) are the sidecar that keeps an imported session
+              // read-only. They are metadata beside a session, not a session: scanned as one they fail
+              // to normalize and get quarantined as corrupt, which silently destroys the posture the
+              // record exists to carry.
+              !entry.name.endsWith(SESSION_PACKAGE_IMPORT_RECORD_SUFFIX)
           )
           .map((entry) => entry.name),
         isComplete: true,

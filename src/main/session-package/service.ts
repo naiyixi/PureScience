@@ -33,6 +33,13 @@ export type SessionPackagePorts = {
    * still tell its reader how many stayed behind.
    */
   countFiles?: (request: { projectId: string; sessionId: string }) => Promise<number>
+  /** The project's reference-library PDFs, read into bytes under `references/…` paths. Optional: an app
+   * without a reference library exports exactly as before. */
+  listReferenceFiles?: (request: {
+    projectId: string
+  }) => Promise<{ files: readonly SessionPackageFile[]; unreadable: readonly string[] }>
+  /** How many reference PDFs the project has, without reading them (essential mode names the count). */
+  countReferenceFiles?: (request: { projectId: string }) => Promise<number>
   readEnvironment?: (request: {
     projectId: string
     sessionId: string
@@ -79,6 +86,15 @@ export const exportSessionPackage = async (
     ? await ports.listFiles({ projectId: request.projectId, sessionId: request.sessionId })
     : { files: [], unreadable: [] }
   const files = readFiles.files
+  const readReferenceFiles = full
+    ? await (ports.listReferenceFiles?.({ projectId: request.projectId }) ?? {
+        files: [],
+        unreadable: []
+      })
+    : { files: [], unreadable: [] }
+  const referenceFilesNotRequested = full
+    ? undefined
+    : await ports.countReferenceFiles?.({ projectId: request.projectId })
   const unreadableFiles = readFiles.unreadable
   const filesNotRequested = full
     ? undefined
@@ -104,7 +120,12 @@ export const exportSessionPackage = async (
       exportedAt: (ports.now?.() ?? new Date()).toISOString(),
       conversation: {
         messages: loaded.session.messages,
-        artifacts: loaded.session.artifacts ?? []
+        artifacts: loaded.session.artifacts ?? [],
+        // The receiver materializes a session document from this slice, and such a document needs its
+        // container timestamps: without them the graph it builds has frames the app's own validator
+        // drops, so the imported session was quarantined as invalid the moment anything read it back.
+        createdAt: loaded.session.createdAt,
+        updatedAt: loaded.session.updatedAt
       },
       citations,
       reviewFindings: reviews,
@@ -112,6 +133,9 @@ export const exportSessionPackage = async (
       files,
       filesNotRequested,
       unreadableFiles,
+      referenceFiles: readReferenceFiles.files,
+      referenceFilesNotRequested,
+      unreadableReferenceFiles: readReferenceFiles.unreadable,
       environment,
       reproductionOutputs,
       maxFileBytes: request.maxFileBytes

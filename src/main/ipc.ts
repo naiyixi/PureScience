@@ -288,8 +288,15 @@ import {
   registerSessionPackageImportIpcHandlers,
   registerSessionPackageIpcHandlers
 } from './session-package/ipc'
-import { createSessionPackageImportOwner } from './session-package/import-owner'
+import {
+  createSessionPackageImportOwner,
+  readSessionPackageImportRecord
+} from './session-package/import-owner'
 import { createSessionPackageFileLister } from './session-package/files'
+import {
+  createSessionPackageReferenceFileLister,
+  createSessionPackageReferenceLibrary
+} from './session-package/reference-files'
 import { DEFAULT_SESSION_PACKAGE_MAX_FILE_BYTES } from './session-package/export'
 import { createStorageCommandOwner } from './storage/command-owner'
 import { withDataRootWrite } from './storage/migration-state'
@@ -1134,6 +1141,37 @@ const createApplicationModules = async (
       return null
     }
   }
+
+  // The same resolution, for callers that need the bytes rather than a fingerprint. Null means "could
+  // not read", which the caller must report instead of treating it as "nothing was there".
+  const readManagedFileBytes = async (
+    projectId: string,
+    managedFileId: string
+  ): Promise<Uint8Array | null> => {
+    try {
+      const client = await getProjectDbClient(configRoot)
+      const separator = managedFileId.indexOf(':')
+      const row =
+        separator > 0
+          ? await client.managedFile.findFirst({
+              where: {
+                projectId,
+                source: managedFileId.slice(0, separator),
+                sourceFileId: managedFileId.slice(separator + 1)
+              },
+              orderBy: { seq: 'desc' }
+            })
+          : await client.managedFile.findFirst({
+              where: { projectId, sourceFileId: managedFileId },
+              orderBy: { seq: 'desc' }
+            })
+      if (!row?.storageKey) return null
+      const path = join(resolveDataRoot(), ...row.storageKey.split('/'))
+      return new Uint8Array(await readFile(path))
+    } catch {
+      return null
+    }
+  }
   const referencesIpcModule = createReferencesIpcModule(undefined, {
     resolvePdfFingerprint: fingerprintManagedPdf
   })
@@ -1823,7 +1861,14 @@ const createApplicationModules = async (
     createSessionWorkflow,
     taskNotifications,
     archiveCoordinator,
-    sessionRepository
+    sessionRepository,
+    {
+      // The record beside an imported session is what makes it read-only, so the guard reads exactly
+      // that — the same file the import wrote, not a second notion of "imported".
+      isReadOnly: async (projectId, sessionId) =>
+        (await readSessionPackageImportRecord(resolveConfigRoot(), projectId, sessionId)) !==
+        undefined
+    }
   )
   const taskAgent = createAcpTaskAgentPort(
     runtime,
@@ -2543,6 +2588,25 @@ const createApplicationModules = async (
           maxFileBytes: DEFAULT_SESSION_PACKAGE_MAX_FILE_BYTES
         })
         return { countFiles: lister.countFiles, listFiles: lister.listFiles }
+      })(),
+      referenceFiles: (() => {
+        // The library's records carry the PDF that is CURRENTLY attached (see currentReferencePdfId —
+        // the history table holds only superseded files). This module reads the records; the naming and
+        // the bound stay in session-package/reference-files, where a test can drive them.
+        const library = createSessionPackageReferenceLibrary({
+          listReferences: (projectId) => referencesIpcModule.handlers.list(projectId),
+          readManagedFileBytes,
+          maxFileBytes: DEFAULT_SESSION_PACKAGE_MAX_FILE_BYTES
+        })
+        const lister = createSessionPackageReferenceFileLister({
+          listReferenceAttachments: library.listReferenceAttachments,
+          countReferenceAttachments: library.countReferenceAttachments,
+          maxFileBytes: DEFAULT_SESSION_PACKAGE_MAX_FILE_BYTES
+        })
+        return {
+          countReferenceFiles: lister.countReferenceFiles,
+          listReferenceFiles: lister.listReferenceFiles
+        }
       })(),
       appVersion: app.getVersion()
     })

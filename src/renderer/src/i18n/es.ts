@@ -1899,6 +1899,7 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.providerName': 'Nombre del proveedor',
   'settings.providerType': 'Tipo de proveedor',
   'settings.providersTitle': 'Proveedores',
+  'settings.runtimeReconnecting': 'Aplicando el cambio de proveedor al entorno de ejecución…',
   'settings.publish': 'Publicar',
   'settings.pythonPackageIndex': 'Índice de paquetes de Python (pip)',
   'settings.quit': 'Salir',
@@ -2640,6 +2641,8 @@ export const es: Partial<Record<ZhKey, string>> = {
   'ws.producerRunNotIdentified':
     'No se pudo identificar la ejecución productora a partir de la evidencia capturada.',
   'ws.provenanceMessages': 'Mensajes de procedencia',
+  'recovery.providerUnreachable':
+    'Comprueba la clave del proveedor o cambia de proveedor, y vuelve a intentarlo.',
   'ws.reconnectBeforeCompacting':
     'Envía un mensaje para reconectar esta sesión antes de compactar.',
   'ws.reconstructionNeedsExecutionLog':

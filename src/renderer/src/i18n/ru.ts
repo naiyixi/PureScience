@@ -1872,6 +1872,7 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.providerName': 'Имя провайдера',
   'settings.providerType': 'Тип провайдера',
   'settings.providersTitle': 'Провайдеры',
+  'settings.runtimeReconnecting': 'Применяем изменение провайдера к среде выполнения…',
   'settings.publish': 'Опубликовать',
   'settings.pythonPackageIndex': 'Индекс пакетов Python (pip)',
   'settings.quit': 'Выйти',
@@ -2606,6 +2607,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'ws.producerRunNotIdentified':
     'Не удалось определить запуск-производитель по зафиксированным свидетельствам.',
   'ws.provenanceMessages': 'Сообщения о происхождении',
+  'recovery.providerUnreachable':
+    'Проверьте ключ провайдера или смените провайдера и попробуйте снова.',
   'ws.reconnectBeforeCompacting':
     'Отправьте сообщение, чтобы переподключить эту сессию перед сжатием.',
   'ws.reconstructionNeedsExecutionLog':

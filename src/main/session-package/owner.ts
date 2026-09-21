@@ -35,6 +35,16 @@ export type SessionPackageOwnerDeps = {
       sessionId: string
     }) => Promise<{ files: readonly SessionPackageFile[]; unreadable: readonly string[] }>
   }
+  /**
+   * The project's reference-library PDFs. Optional: without it the package carries the citations and
+   * says nothing about PDFs, which is the behaviour every existing caller already has.
+   */
+  referenceFiles?: {
+    countReferenceFiles: (request: { projectId: string }) => Promise<number>
+    listReferenceFiles: (request: {
+      projectId: string
+    }) => Promise<{ files: readonly SessionPackageFile[]; unreadable: readonly string[] }>
+  }
   appVersion: string
   /** Native save dialog (desktop only). Absent where no dialog can exist, which refuses the export. */
   showSaveDialog?: (suggestedFileName: string) => Promise<string | null>
@@ -99,6 +109,14 @@ export const createSessionPackageOwner = (
       // Counting is free; reading is not. Essential packages name how many files they left behind.
       countFiles: () => deps.files.countFiles(fileRequest),
       listFiles: () => deps.files.listFiles(fileRequest),
+      ...(deps.referenceFiles
+        ? {
+            countReferenceFiles: (request: { projectId: string }) =>
+              deps.referenceFiles!.countReferenceFiles(request),
+            listReferenceFiles: (request: { projectId: string }) =>
+              deps.referenceFiles!.listReferenceFiles(request)
+          }
+        : {}),
       appVersion: deps.appVersion,
       now: deps.now
     }

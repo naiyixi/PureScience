@@ -202,7 +202,10 @@ const applySnapshot = (snapshot: SettingsSnapshot): Partial<SettingsStoreData> =
   appIconVariant: snapshot.appIconVariant ?? DEFAULT_APP_ICON_VARIANT,
   defaultPermissionProfile: getDefaultPermissionProfile(snapshot),
   agentFrameworkId: snapshot.agentFrameworkId,
-  agentFrameworks: snapshot.agentFrameworks,
+  // Every other field here defends against a snapshot that does not carry it; this one did not, and a
+  // snapshot without it (a partial backend, an older shape, a test double) wrote undefined straight into
+  // the store — after which the settings page threw in selectFrameworkApiEndpoints and never rendered.
+  agentFrameworks: snapshot.agentFrameworks ?? [],
   opencode: snapshot.opencode,
   codebuddy: snapshot.codebuddy ?? {},
   codex: snapshot.codex ?? {},

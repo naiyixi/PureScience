@@ -1877,6 +1877,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.providerName': 'プロバイダー名',
   'settings.providerType': 'プロバイダータイプ',
   'settings.providersTitle': 'プロバイダー',
+  'settings.runtimeReconnecting': 'プロバイダーの変更をランタイムに反映しています…',
   'settings.publish': '公開',
   'settings.pythonPackageIndex': 'Python パッケージインデックス (pip)',
   'settings.quit': '終了',
@@ -2609,6 +2610,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'ws.producerRunNotIdentified':
     'キャプチャされた証拠からプロデューサー実行を特定できませんでした。',
   'ws.provenanceMessages': '来歴メッセージ',
+  'recovery.providerUnreachable':
+    'プロバイダーのキーを確認するか、別のプロバイダーに切り替えてから、もう一度お試しください。',
   'ws.reconnectBeforeCompacting':
     '圧縮する前に、メッセージを送信してこのセッションに再接続してください。',
   'ws.reconstructionNeedsExecutionLog': 'このバージョンの再構築には不変の実行ログが必要です。',

@@ -1924,6 +1924,7 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.providerName': 'Anbietername',
   'settings.providerType': 'Anbietertyp',
   'settings.providersTitle': 'Anbieter',
+  'settings.runtimeReconnecting': 'Anbieteränderung wird auf die Laufzeit angewendet …',
   'settings.publish': 'Veröffentlichen',
   'settings.pythonPackageIndex': 'Python-Paketindex (pip)',
   'settings.quit': 'Beenden',
@@ -2669,6 +2670,8 @@ export const de: Partial<Record<ZhKey, string>> = {
   'ws.producerRunNotIdentified':
     'Der Erzeugerlauf konnte anhand der erfassten Belege nicht identifiziert werden.',
   'ws.provenanceMessages': 'Herkunftsnachrichten',
+  'recovery.providerUnreachable':
+    'Prüfe den Anbieterschlüssel oder wechsle den Anbieter und versuche es erneut.',
   'ws.reconnectBeforeCompacting':
     'Senden Sie eine Nachricht, um diese Sitzung vor dem Komprimieren neu zu verbinden.',
   'ws.reconstructionNeedsExecutionLog':

@@ -12,6 +12,7 @@ import { ProviderList } from './ProviderList'
 import { ReasoningEffortSelect } from './ReasoningEffortSelect'
 import { SettingsSection } from './SettingsLayout'
 import { ClaudeIsolatedSignInModal } from './ClaudeIsolatedSignInModal'
+import { useProviderReconnectStatus } from './use-provider-reconnect-status'
 
 type ProvidersPanelProps = {
   // Navigation callbacks into the page-level history: the add/edit provider form is a breadcrumb
@@ -34,6 +35,9 @@ const ProvidersPanel = ({
   onBusyProviderChange
 }: ProvidersPanelProps): React.JSX.Element => {
   const { t } = useLanguage()
+  // A provider change is applied to the runtime after the write; without this the panel looks
+  // like nothing happened while the connection is being rebuilt.
+  const providerReconnectPending = useProviderReconnectStatus()
   const providers = useSettingsStore((state) => state.providers)
   const activeProviderId = useSettingsStore((state) => state.activeProviderId)
   const claudeSubscriptionProviderId = useSettingsStore(
@@ -406,6 +410,15 @@ const ProvidersPanel = ({
         aria-label={t('settings.providersTitle')}
         separated
       >
+        {providerReconnectPending ? (
+          <p
+            role="status"
+            data-testid="provider-reconnect-notice"
+            className="text-foreground mb-2 text-xs"
+          >
+            {t('settings.runtimeReconnecting')}
+          </p>
+        ) : null}
         <ProviderList
           providers={visibleProviders}
           activeProviderId={activeProviderId}

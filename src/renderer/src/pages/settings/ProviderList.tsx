@@ -352,6 +352,11 @@ const ProviderList = ({
                     {failure ? (
                       <div className="text-amber-600 dark:text-amber-500">
                         {describeValidationFailure(failure, t)}
+                        {/* Same sentence a failed turn shows, from the same key: a provider that cannot
+                            be reached has one recovery, wherever the user meets it. */}
+                        <div className="text-text-200 mt-0.5">
+                          {t('recovery.providerUnreachable')}
+                        </div>
                       </div>
                     ) : null}
                   </div>

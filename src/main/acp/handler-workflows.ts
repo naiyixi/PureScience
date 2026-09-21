@@ -10,6 +10,7 @@ import type {
 } from '../../shared/acp'
 import { createLogger, diagnosticErrorFields, errorLogFields } from '../logger'
 import type { TaskNotificationService } from '../notifications/task-notifications'
+import { SESSION_PACKAGE_IMPORT_READ_ONLY_MESSAGE } from '../../shared/session-package-import'
 import type { AcpCreateSessionWorkflow } from './create-session-workflow'
 import { continueInterruptedTurn } from './interrupted-turn-continuation'
 import type { PersistedChatSession } from '../../shared/session-persistence'
@@ -49,6 +50,14 @@ type SessionArchiveAvailability = {
     sessionId: string,
     operation: () => Promise<Result>
   ): Promise<Result>
+}
+
+/**
+ * Whether a session is one this machine imported from a package. Such a session is read-only by
+ * contract, and the check is injected so the guard below can be driven without touching disk.
+ */
+type ReadOnlySessionSource = {
+  isReadOnly(projectId: string, sessionId: string): Promise<boolean>
 }
 
 type AcpHandlerWorkflows = {
@@ -121,7 +130,8 @@ const createAcpHandlerWorkflows = (
   createSessionWorkflow: AcpCreateSessionWorkflow,
   taskNotifications?: PromptNotifications,
   archiveAvailability?: SessionArchiveAvailability,
-  interruptedTurnSessions?: InterruptedTurnSessionSource
+  interruptedTurnSessions?: InterruptedTurnSessionSource,
+  readOnlySessions?: ReadOnlySessionSource
 ): AcpHandlerWorkflows => ({
   async createSession(request): Promise<AcpCreateSessionResponse> {
     try {
@@ -146,6 +156,17 @@ const createAcpHandlerWorkflows = (
     logResumeDiagnostic('info', 'acp:resume-session started', context)
 
     try {
+      // An imported session is read-only by contract. It must be refused here, at the one door that
+      // makes a restored session runnable, because nothing downstream can tell it apart from a session
+      // this machine ran itself. A check that cannot answer (unreadable sidecar) is treated as "not
+      // imported": a corrupt record is already defined as no record, and a transient read failure must
+      // not lock a user out of their own session.
+      if (readOnlySessions && request.projectName) {
+        const readOnly = await readOnlySessions
+          .isReadOnly(request.projectName, request.sessionId)
+          .catch(() => false)
+        if (readOnly) throw new Error(SESSION_PACKAGE_IMPORT_READ_ONLY_MESSAGE)
+      }
       const resume = (): Promise<AcpCreateSessionResponse> => runtime.resumeSession(request)
       const result = archiveAvailability
         ? request.projectName

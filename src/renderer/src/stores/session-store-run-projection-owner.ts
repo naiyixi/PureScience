@@ -1,3 +1,4 @@
+import type { AcpRecoverableFailure } from '../../../shared/acp'
 import type { StoreApi } from 'zustand'
 
 import type { ActivePlanProjection } from '../../../shared/session-plan/contract'
@@ -54,7 +55,11 @@ export type SessionRunProjectionActions = {
     promptMessageId: string,
     sample: AcpContextWindowSample
   ) => void
-  failRun: (sessionId: string, error: string, opts?: { reportable?: boolean }) => void
+  failRun: (
+    sessionId: string,
+    error: string,
+    opts?: { reportable?: boolean; recovery?: AcpRecoverableFailure }
+  ) => void
   setAgentStatus: (sessionId: string, text: string) => void
   beginCompaction: (sessionId: string, options?: { supersedeActiveRun?: boolean }) => void
   finishCompaction: (sessionId: string) => void
@@ -229,7 +234,7 @@ export const createSessionRunProjectionOwner = <
       if (!message) return
       setSessionState((state) => ({
         sessions: projectSession(state.sessions, sessionId, (session) =>
-          projectFailedRun(session, message, opts?.reportable)
+          projectFailedRun(session, message, opts?.reportable, opts?.recovery)
         )
       }))
     },
