@@ -49,9 +49,7 @@ const waitForFiniteAnimations = async (page: Page): Promise<void> => {
 }
 
 test('has no blocking accessibility violations in startup and home surfaces', async ({ app }) => {
-  await expect(
-    app.page.getByRole('heading', { name: 'Set up your research workspace.' })
-  ).toBeVisible()
+  await expect(app.page.locator('#onboarding-introduction-title')).toBeVisible()
   await expectNoBlockingViolations(app.page, 'Onboarding')
 
   const page = await app.completeOnboarding()

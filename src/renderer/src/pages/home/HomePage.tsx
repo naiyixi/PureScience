@@ -404,7 +404,7 @@ const HomePage = ({
               <span className="min-w-0 flex-1 truncate text-left">
                 {t('home.searchSessionsAndArtifacts')}
               </span>
-              <kbd className="hidden shrink-0 items-center gap-0.5 rounded-md border border-border bg-bg-200 px-1.5 font-mono text-[10px] text-text-300 sm:inline-flex">
+              <kbd className="hidden shrink-0 items-center gap-0.5 rounded-md border border-border bg-bg-200 px-1.5 font-mono text-[10px] text-foreground sm:inline-flex">
                 ⌘K
               </kbd>
             </button>
