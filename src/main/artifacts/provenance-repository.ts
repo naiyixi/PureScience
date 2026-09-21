@@ -204,7 +204,12 @@ type ProducerCapture =
       notebookSessionId: string
       producerRunId: string
       producerRunIndex: number
-      associationMethod: 'agent-declared-and-session-validated' | 'server-inferred-file-observation'
+      associationMethod:
+        | 'agent-declared-and-session-validated'
+        | 'agent-declared-earlier-turn-validated'
+        | 'server-inferred-file-observation'
+      /** True when the producer run ran in an earlier turn of this branch; the recipe carries it. */
+      producerRunEarlierTurn?: boolean
       kernelKind: NotebookRunRecord['kernelKind']
       environmentName?: string
       reproductionCode: string
@@ -2377,12 +2382,23 @@ class ArtifactProvenanceRepository {
     if (!document || !producerRun || producerRunIndex < 0) {
       throw new Error(`Notebook producer run not found: ${producerRunId}`)
     }
+    // Not every identity in `expected` survives a turn. `promptMessageId` and `runtimeSegmentId` name the turn
+    // that ran the cell, so a figure produced in an earlier turn of the same branch can never match them —
+    // which is exactly the case where a file has a real producer run and still cannot be sealed. Those two are
+    // allowed to differ, and the difference is recorded rather than smoothed over: the frame and branch
+    // identities (rootFrameId, agentFrameId, messageBranchId) still have to match, so a run from another
+    // branch or frame stays an error.
+    const turnScopedFields = new Set(['promptMessageId', 'runtimeSegmentId'])
+    const differingTurnFields: string[] = []
     for (const [field, value] of Object.entries(expected)) {
-      if (producerRun[field as keyof typeof expected] !== value) {
-        throw new Error(
-          `Notebook producer run does not belong to the active Artifact ${field}: ${producerRunId}`
-        )
+      if (producerRun[field as keyof typeof expected] === value) continue
+      if (turnScopedFields.has(field)) {
+        differingTurnFields.push(field)
+        continue
       }
+      throw new Error(
+        `Notebook producer run does not belong to the active Artifact ${field}: ${producerRunId}`
+      )
     }
     if (request.producerRunId && sourceFileObservation) {
       const observedOwners = await this.findObservedWorkingFileRunIds(
@@ -2437,6 +2453,12 @@ class ArtifactProvenanceRepository {
         terminalPromptMessageId: request.promptMessageId,
         producerRunId,
         producerRunIndex,
+        // Sealed into the recipe, not smoothed over: a reader has to be able to see that the run which
+        // produced this artifact ran in an earlier turn, and which identities differed because of it.
+        producerRunEarlierTurn: differingTurnFields.length > 0,
+        ...(differingTurnFields.length === 0
+          ? {}
+          : { producerRunDifferingFields: [...differingTurnFields] }),
         createdAt: createdAt.toISOString()
       },
       eligibleRuns
@@ -2452,8 +2474,11 @@ class ArtifactProvenanceRepository {
       producerRunId,
       producerRunIndex,
       associationMethod: request.producerRunId
-        ? 'agent-declared-and-session-validated'
+        ? differingTurnFields.length === 0
+          ? 'agent-declared-and-session-validated'
+          : 'agent-declared-earlier-turn-validated'
         : 'server-inferred-file-observation',
+      producerRunEarlierTurn: differingTurnFields.length > 0,
       kernelKind: producerRun.kernelKind,
       environmentName: producerRun.environment,
       reproductionCode: producerRun.script,

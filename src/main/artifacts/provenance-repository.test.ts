@@ -1746,6 +1746,64 @@ describe('artifact provenance repository', () => {
         versionId: version.versionId
       })
     ).rejects.toThrow(/execution snapshot input metadata mismatch/i)
+    // A producer run from an earlier turn of the same branch: the turn identities differ, the frame and branch
+    // identities do not. It has to be admitted, and the crossing has to be visible in the sealed recipe
+    // instead of being inferred from a prompt id that does not match.
+    await notebookRepository.appendRun({
+      projectName: 'project-1',
+      sessionId: 'session-1',
+      run: {
+        ...baseRun,
+        runId: 'notebook-run-earlier-turn',
+        script: 'y = 2',
+        runtimeSegmentId: 'runtime-segment-earlier',
+        promptMessageId: 'prompt-earlier'
+      }
+    })
+    await compatibilityRepository.writePendingFile({
+      projectName: 'project-1',
+      sessionId: 'artifact-session-1',
+      runId: 'artifact-run-1',
+      filename: 'earlier-turn.png',
+      source: createPngInlineSource('earlier turn bytes')
+    })
+    const earlierTurn = await repository.createVersion({
+      projectId: 'project-1',
+      appSessionId: 'session-1',
+      artifactStorageSessionId: 'artifact-session-1',
+      artifactRunId: 'artifact-run-1',
+      writeOperationId: 'write-earlier-turn-producer',
+      writeRequestChecksum: 'e'.repeat(64),
+      ...graph,
+      notebookSessionId: 'session-1',
+      producerRunId: 'notebook-run-earlier-turn',
+      sourceKind: 'inline',
+      filename: 'earlier-turn.png',
+      contentType: 'image/png'
+    })
+    const earlierRow = await client.artifactVersion.findUniqueOrThrow({
+      where: { id: earlierTurn.versionId }
+    })
+    expect(earlierRow).toMatchObject({ producerRunId: 'notebook-run-earlier-turn' })
+    expect(JSON.parse(earlierRow.evidenceJson)).toMatchObject({
+      producer: {
+        state: 'available',
+        producer_run_id: 'notebook-run-earlier-turn',
+        association_method: 'agent-declared-earlier-turn-validated'
+      }
+    })
+    // The crossing is sealed into the recipe a verifier reads, with the identities that differed named.
+    const earlierExecution = await repository.getVersionExecution({
+      projectId: 'project-1',
+      appSessionId: 'session-1',
+      artifactId: earlierTurn.artifactId,
+      versionId: earlierTurn.versionId
+    })
+    const sealed = JSON.stringify(earlierExecution)
+    expect(sealed).toContain('"producerRunEarlierTurn":true')
+    expect(sealed).toContain('promptMessageId')
+    expect(sealed).toContain('runtimeSegmentId')
+
   })
 
   it('does not infer an omitted producer from source mtime alone', async () => {

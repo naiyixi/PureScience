@@ -324,7 +324,9 @@ export type ArtifactVersionEvidence = {
         run_index: number
         kernel_kind: NotebookKernelKind
         association_method:
-          'agent-declared-and-session-validated' | 'server-inferred-file-observation'
+          | 'agent-declared-and-session-validated'
+          | 'agent-declared-earlier-turn-validated'
+          | 'server-inferred-file-observation'
         environment_manifest_checksum?: string
         /** Environment-defining digest; equal across runs of one environment. */
         environment_fingerprint?: string
@@ -386,6 +388,11 @@ export type PersistedArtifactExecutionSnapshot = {
   terminalPromptMessageId: string
   producerRunId: string
   producerRunIndex: number
+  // True when the run that produced the artifact ran in an earlier turn of this branch. The recipe carries it
+  // so a reader sees the crossing instead of inferring it from a prompt id that does not match.
+  producerRunEarlierTurn?: boolean
+  /** Which identities differed because of that crossing (turn-scoped ones only). */
+  producerRunDifferingFields?: string[]
   createdAt: string
   inputFiles: NotebookRunInputFile[]
   runs: ProvenanceNotebookRun[]
