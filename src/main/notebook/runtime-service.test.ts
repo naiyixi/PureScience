@@ -1571,11 +1571,15 @@ describe('notebook runtime service', () => {
         runtimeRoot: getRuntimeRoot(root),
         timeoutMs: 321
       })
-      expect(result).toEqual({
+      // The public result now also carries the run identity the shell run was recorded under, which is what a
+      // file produced by that command needs in order to be sealed as an artifact.
+      expect(result).toMatchObject({
         stdout: 'partial output',
         stderr: 'command failed',
         exitCode: 9
       })
+      expect(typeof (result as { runId?: unknown }).runId).toBe('string')
+      expect(String((result as { runId?: string }).runId)).not.toBe('')
       const state = await service.state({ sessionId: 'session-1', workspaceCwd: root })
       expect(state.runs[0]).toMatchObject({
         status: 'failed',
@@ -1621,8 +1625,8 @@ describe('notebook runtime service', () => {
       releases.get('first')?.()
 
       await expect(Promise.all([first, second])).resolves.toEqual([
-        { stdout: 'first', stderr: '', exitCode: 0 },
-        { stdout: 'second', stderr: '', exitCode: 0 }
+        expect.objectContaining({ stdout: 'first', stderr: '', exitCode: 0 }),
+        expect.objectContaining({ stdout: 'second', stderr: '', exitCode: 0 })
       ])
       const state = await service.state({ sessionId: 'session-1', workspaceCwd: root })
       expect(state.runs).toHaveLength(2)

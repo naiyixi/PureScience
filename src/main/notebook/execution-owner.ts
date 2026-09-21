@@ -424,7 +424,7 @@ class NotebookExecutionOwner {
   async executeShell(
     session: NotebookSessionAggregate,
     request: ExecuteShellRequest
-  ): Promise<NotebookShellResult> {
+  ): Promise<NotebookShellResult & { runId: string }> {
     const { runId } = this.options.runTerminalization.allocateRunIdentity()
     const runningRun: NotebookRunRecord = {
       runId,
@@ -503,7 +503,10 @@ class NotebookExecutionOwner {
       }
     })
 
-    return { stdout: result.stdout, stderr: result.stderr, exitCode: result.exitCode }
+    // The run identity is allocated above and recorded in run.json; it comes back with the result because a
+    // shell run can produce the file a notebook cell could not, and sealing that file as an artifact needs the
+    // run it came from. Without it, a Bash-produced figure could never carry a producerRunId.
+    return { stdout: result.stdout, stderr: result.stderr, exitCode: result.exitCode, runId }
   }
 
   private async persistReplStatus(

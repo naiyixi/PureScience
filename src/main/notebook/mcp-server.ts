@@ -158,8 +158,8 @@ const buildShellExecuteDoc = (platform: NodeJS.Platform = process.platform): str
       : undefined
   const exitCodeContract =
     platform === 'win32'
-      ? 'Returns { stdout, stderr, exitCode }. PowerShell host/cmdlet text is normalized to UTF-8; native programs must emit UTF-8 themselves or their output may be garbled. A failed native program preserves its exit code, while an unhandled cmdlet failure returns exitCode 1; inspect exitCode instead of assuming success.'
-      : 'Returns { stdout, stderr, exitCode } and does not throw on a non-zero exit; inspect exitCode instead of assuming success.'
+      ? 'Returns { stdout, stderr, exitCode, runId }. The runId identifies this shell run in run.json and is what write_artifact_file wants as producerRunId when the command produced a file. PowerShell host/cmdlet text is normalized to UTF-8; native programs must emit UTF-8 themselves or their output may be garbled. A failed native program preserves its exit code, while an unhandled cmdlet failure returns exitCode 1; inspect exitCode instead of assuming success.'
+      : 'Returns { stdout, stderr, exitCode, runId } and does not throw on a non-zero exit; inspect exitCode instead of assuming success. Pass runId as producerRunId when this command produced a file you then save as an artifact.'
 
   return [
     shellDescription,
