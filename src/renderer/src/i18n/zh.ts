@@ -1225,6 +1225,7 @@ export const zh = {
   'ws.collapsePreviewPanel': '收起预览面板',
   'ws.draftRestored': '草稿已恢复',
   'ws.requestReview': '请求评审',
+  'ws.providerUnreachableRecovery': '请到设置里检查提供商密钥，或换一个提供商，然后重新发送。',
   'ws.reconnectBeforeCompacting': '发送消息重新连接此会话后再压缩。',
   'ws.resolveErrorBeforeCompacting': '先解决当前会话错误，然后再压缩。',
   'ws.waitForActivityBeforeCompacting': '等待当前智能体活动完成。',

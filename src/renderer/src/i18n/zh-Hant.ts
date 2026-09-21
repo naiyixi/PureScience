@@ -2425,6 +2425,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'ws.producerRunNoScript': '生產者執行未保留可重建的指令碼。',
   'ws.producerRunNotIdentified': '無法從擷取的證據中識別生產者執行。',
   'ws.provenanceMessages': '出處訊息',
+  'ws.providerUnreachableRecovery': '請到設定裡檢查提供者金鑰，或改用其他提供者，然後重新傳送。',
   'ws.reconnectBeforeCompacting': '請先傳送訊息以重新連線此對話，再進行壓縮。',
   'ws.reconstructionNeedsExecutionLog': '重建此版本需要不可變更的執行記錄。',
   'ws.rejectAlways': '一律拒絕',

@@ -211,12 +211,15 @@ export class AcpPromptOutcomeFinalizer {
       safeCleanup('skill activity cleanup failed', handles.failPendingSkillActivities)
       safeLog('error', 'prompt failed', errorLogFields(error))
       const text = describePromptError(error, { model: handles.model })
+      const providerRejected = isProviderPromptError(error)
       const recoverable =
         isMediaOverflowError(text) ||
         isMediaOverflowError(handles.errorMessage(error)) ||
         isMediaOverflowError(handles.errorKind(error))
           ? 'context-overflow'
-          : undefined
+          : providerRejected
+            ? 'provider-unreachable'
+            : undefined
       const terminal = interactions.settle(interaction, {})
       if (!terminal) throw error
       const terminalWindow = captureTerminalWindow({ kind: 'error' })
@@ -224,7 +227,7 @@ export class AcpPromptOutcomeFinalizer {
         kind: 'error',
         level: 'error',
         recoverable,
-        providerError: isProviderPromptError(error),
+        providerError: providerRejected,
         sessionId,
         ...eventIdentity,
         timestamp: terminal.timestamp,

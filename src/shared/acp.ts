@@ -109,7 +109,10 @@ export const ACP_PROMPT_FAILED_EVENT_TITLE = 'Prompt failed'
 // Marks a prompt failure the app can auto-recover from without user action. 'context-overflow' means
 // the conversation outgrew the provider's request-size limit; the renderer tries framework-native
 // compaction first, then falls back to a fresh context plus text replay. Absent on ordinary events.
-export type AcpRecoverableFailure = 'context-overflow'
+// A failure the user has something to do about. 'context-overflow' already drives the neutral compacting
+// note; 'provider-unreachable' says the turn died on the provider (bad key, no network to it, unknown
+// model), where the recovery is a settings change or another provider rather than a retry.
+export type AcpRecoverableFailure = 'context-overflow' | 'provider-unreachable'
 
 export type AcpContextUsageCategoryKey =
   'system' | 'tools' | 'messages' | 'mcp' | 'skills' | 'other'

@@ -294,7 +294,9 @@ describe('AcpPromptOutcomeFinalizer', () => {
     {
       name: 'provider error',
       error: Object.assign(new Error('Invalid API key'), { data: { errorName: 'APIError' } }),
-      recoverable: undefined,
+      // A rejected provider is something the user can act on - the key, or the provider itself - so the
+      // failure now carries the tag the panel turns into that sentence.
+      recoverable: 'provider-unreachable',
       providerError: true
     },
     {

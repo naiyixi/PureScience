@@ -367,6 +367,13 @@ const ConversationPanel = ({
   const isRunErrorReportable =
     activeSession?.errorReportable ?? isReportableRunFailure(activeSession?.error)
 
+  // A failure the user has something to do about says so. The tag travels from the ACP layer (which knows
+  // the provider rejected the turn) rather than being guessed from the text here.
+  const runRecoveryHint =
+    activeSession?.errorRecovery === 'provider-unreachable'
+      ? t('ws.providerUnreachableRecovery')
+      : undefined
+
   const activeSpecialist = specialistId
     ? specialistItems.find((item) => item.kind === 'custom' && item.id === specialistId)
     : undefined
@@ -610,6 +617,9 @@ const ConversationPanel = ({
                         so the run's report affordance is never suppressed by a transient error. */}
                       {actionError ? (
                         <span className="min-w-0 break-words">{actionError}</span>
+                      ) : null}
+                      {runRecoveryHint ? (
+                        <span className="min-w-0 break-words">{runRecoveryHint}</span>
                       ) : null}
                       {activeSession?.status === 'error' ? (
                         <div className="flex items-start gap-2">

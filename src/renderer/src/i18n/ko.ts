@@ -2556,6 +2556,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'ws.producerRunNoScript': '프로듀서 실행에 재구성할 스크립트가 남아 있지 않습니다.',
   'ws.producerRunNotIdentified': '캡처된 증거에서 프로듀서 실행을 식별할 수 없습니다.',
   'ws.provenanceMessages': '출처 메시지',
+  'ws.providerUnreachableRecovery':
+    '설정에서 공급자 키를 확인하거나 다른 공급자로 바꾼 뒤 다시 보내세요.',
   'ws.reconnectBeforeCompacting': '압축 전에 메시지를 보내 이 세션을 다시 연결하세요.',
   'ws.reconstructionNeedsExecutionLog':
     '이 버전을 재구성하려면 변경 불가능한 실행 로그가 필요합니다.',

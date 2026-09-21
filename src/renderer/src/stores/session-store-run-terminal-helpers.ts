@@ -1,3 +1,4 @@
+import type { AcpRecoverableFailure } from '../../../shared/acp'
 import type { AcpTurnTokenUsage, AcpContextWindowSample } from '../../../shared/acp'
 import { isReportableRunFailure } from '../../../shared/run-error-classification'
 import type {
@@ -205,7 +206,8 @@ export const projectAttachContextWindowSample = (
 export const projectFailedRun = (
   session: ChatSession,
   error: string,
-  reportable?: boolean
+  reportable?: boolean,
+  recovery?: AcpRecoverableFailure
 ): ChatSession => {
   const now = Date.now()
   const messages = failStreamingMessages(session.messages, now)
@@ -234,6 +236,7 @@ export const projectFailedRun = (
     status: 'error',
     error,
     errorReportable: reportable ?? isReportableRunFailure(error),
+    errorRecovery: recovery,
     messages,
     activities,
     activityGroups,

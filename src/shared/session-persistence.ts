@@ -1,3 +1,4 @@
+import type { AcpRecoverableFailure } from './acp'
 import type { PersistedUploadedAttachment } from './uploads'
 import type { BackgroundDeliveryRef } from './background-delivery'
 import type { SessionCatalogSummary } from './session-catalog-summary'
@@ -354,6 +355,9 @@ export type PersistedChatSession = {
   // unknown ACP-layer failure. Resolved once when the run fails and persisted so the "Report error"
   // gate survives a reload. Absent on older files — treated as reportable (the prior behavior).
   errorReportable?: boolean
+  // Why the run failed in a way the user can act on. Not persisted: the hint belongs to the failure the
+  // user is looking at, and a reloaded session should not claim a recovery it can no longer offer.
+  errorRecovery?: AcpRecoverableFailure
   artifacts?: PersistedArtifact[]
   // Incremented only when finalized file metadata changes; text streaming leaves it untouched.
   filesRevision?: number
