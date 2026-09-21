@@ -899,7 +899,7 @@ describe('notebook local RPC server', () => {
 
       expect(response.status).toBe(403)
       await expect(response.json()).resolves.toEqual({
-        error: 'Artifact RPC capability does not match artifactRunId.'
+        error: expect.stringContaining('the capability belongs to an earlier turn')
       })
       expect(createVersion).not.toHaveBeenCalled()
     } finally {

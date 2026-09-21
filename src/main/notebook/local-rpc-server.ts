@@ -1018,7 +1018,21 @@ class NotebookLocalRpcServer {
     for (const field of boundFields) {
       const expected = capability[field as keyof ArtifactRpcCapabilityBinding]
       if (params[field] !== expected) {
-        throw new RpcHttpError(403, `Artifact RPC capability does not match ${field}.`)
+        // A turn-scoped field can only disagree in one way that matters: the capability was issued for one of
+        // this session's turns, and the call carries the identities of another. That happens when the artifact
+        // server keeps the capability it was started with — the caller then sees a mismatch rather than a
+        // verdict, and no number of retries changes which turn the capability belongs to.
+        const turnScoped =
+          field === 'artifactRunId' ||
+          field === 'runtimeSegmentId' ||
+          field === 'promptMessageId' ||
+          field === 'messageBranchId'
+        throw new RpcHttpError(
+          403,
+          turnScoped
+            ? `Artifact RPC capability does not match ${field}: the capability belongs to an earlier turn while this call carries the current one. A retry sends the same mismatch — the artifact has to be written from a turn the capability was issued for.`
+            : `Artifact RPC capability does not match ${field}.`
+        )
       }
     }
 
