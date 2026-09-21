@@ -34,6 +34,13 @@ export type SessionPackageInput = {
   reviewFindings: readonly unknown[]
   verificationRecords: readonly unknown[]
   files?: readonly SessionPackageFile[]
+  // The reference library's PDFs travel under their own field rather than inside `files`, so a reader can
+  // still tell a session artifact from a paper the session cited.
+  referenceFiles?: readonly SessionPackageFile[]
+  // Counted by the caller, for the same reason `filesNotRequested` is: an essential package never reads
+  // them and must still tell its reader they are there.
+  referenceFilesNotRequested?: number
+  unreadableReferenceFiles?: readonly string[]
   // How many files the session had that this mode deliberately leaves behind. Named by the CALLER,
   // because an essential package never reads the files and must still tell its reader they exist.
   filesNotRequested?: number
@@ -86,6 +93,8 @@ export const createSessionPackage = (
 
   const candidateFiles: SessionPackageFile[] = [...(input.files ?? [])]
   let fileCount = 0
+  const candidateReferenceFiles: SessionPackageFile[] = [...(input.referenceFiles ?? [])]
+  let referenceFileCount = 0
 
   if (mode === 'full') {
     for (const path of input.unreadableFiles ?? []) {
@@ -119,6 +128,36 @@ export const createSessionPackage = (
       fileCount += 1
     }
 
+    for (const path of input.unreadableReferenceFiles ?? []) {
+      const normalized = normalizeEntryPath(path)
+      const note: SessionPackageNoteCode = `reference-unreadable:${normalized}`
+      notes.push(note)
+      entries.push({ path: normalized, bytes: 0, sha256: '', omitted: true, note })
+    }
+
+    for (const file of candidateReferenceFiles) {
+      const normalized = normalizeEntryPath(file.path)
+      if (file.contents.byteLength > maxFileBytes) {
+        const note: SessionPackageNoteCode = `reference-omitted-too-large:${normalized}`
+        notes.push(note)
+        entries.push({
+          path: normalized,
+          bytes: file.contents.byteLength,
+          sha256: sha256(file.contents),
+          omitted: true,
+          note
+        })
+        continue
+      }
+      write[normalized] = file.contents
+      entries.push({
+        path: normalized,
+        bytes: file.contents.byteLength,
+        sha256: sha256(file.contents)
+      })
+      referenceFileCount += 1
+    }
+
     if (input.environment === undefined) {
       notes.push('environment-lock-unavailable')
     } else {
@@ -143,6 +182,14 @@ export const createSessionPackage = (
     notes.push(`files-not-requested:${input.filesNotRequested}`)
   }
 
+  if (
+    mode === 'essential' &&
+    input.referenceFilesNotRequested !== undefined &&
+    input.referenceFilesNotRequested > 0
+  ) {
+    notes.push(`reference-pdfs-not-requested:${input.referenceFilesNotRequested}`)
+  }
+
   const counts: SessionPackageCounts = {
     messages: Array.isArray(input.conversation)
       ? input.conversation.length
@@ -150,7 +197,8 @@ export const createSessionPackage = (
     citations: input.citations.length,
     reviewFindings: input.reviewFindings.length,
     verificationRecords: input.verificationRecords.length,
-    files: fileCount
+    files: fileCount,
+    referenceFiles: referenceFileCount
   }
 
   const manifest: SessionPackageManifest = {

@@ -290,6 +290,12 @@ import {
 } from './session-package/ipc'
 import { createSessionPackageImportOwner } from './session-package/import-owner'
 import { createSessionPackageFileLister } from './session-package/files'
+import {
+  createSessionPackageReferenceFileLister,
+  REFERENCE_PACKAGE_DIR,
+  type SessionPackageReferenceAttachment
+} from './session-package/reference-files'
+import { ReferenceRepository } from './references/repository'
 import { DEFAULT_SESSION_PACKAGE_MAX_FILE_BYTES } from './session-package/export'
 import { createStorageCommandOwner } from './storage/command-owner'
 import { withDataRootWrite } from './storage/migration-state'
@@ -1130,6 +1136,37 @@ const createApplicationModules = async (
       if (!row?.storageKey) return null
       const path = join(resolveDataRoot(), ...row.storageKey.split('/'))
       return await fingerprintPdfFile(path)
+    } catch {
+      return null
+    }
+  }
+
+  // The same resolution, for callers that need the bytes rather than a fingerprint. Null means "could
+  // not read", which the caller must report instead of treating it as "nothing was there".
+  const readManagedFileBytes = async (
+    projectId: string,
+    managedFileId: string
+  ): Promise<Uint8Array | null> => {
+    try {
+      const client = await getProjectDbClient(configRoot)
+      const separator = managedFileId.indexOf(':')
+      const row =
+        separator > 0
+          ? await client.managedFile.findFirst({
+              where: {
+                projectId,
+                source: managedFileId.slice(0, separator),
+                sourceFileId: managedFileId.slice(separator + 1)
+              },
+              orderBy: { seq: 'desc' }
+            })
+          : await client.managedFile.findFirst({
+              where: { projectId, sourceFileId: managedFileId },
+              orderBy: { seq: 'desc' }
+            })
+      if (!row?.storageKey) return null
+      const path = join(resolveDataRoot(), ...row.storageKey.split('/'))
+      return new Uint8Array(await readFile(path))
     } catch {
       return null
     }
@@ -2543,6 +2580,52 @@ const createApplicationModules = async (
           maxFileBytes: DEFAULT_SESSION_PACKAGE_MAX_FILE_BYTES
         })
         return { countFiles: lister.countFiles, listFiles: lister.listFiles }
+      })(),
+      referenceFiles: (() => {
+        // The library's own repository: the renderer surface exposes the records, not their attachments.
+        const referenceRepository = new ReferenceRepository(() => getProjectDbClient(configRoot))
+        const currentAttachment = async (referenceId: string) => {
+          const versions = await referenceRepository.listAttachmentVersions(referenceId)
+          // A replaced version is history; the current one is the row without a replacedAt.
+          return versions.filter((version) => !version.replacedAt).at(-1)
+        }
+        const safeName = (title: string | undefined, id: string): string => {
+          const stem = (title?.trim() || id).replace(/[\\/:*?"<>|]/g, '_').slice(0, 80)
+          return stem || id
+        }
+        const lister = createSessionPackageReferenceFileLister({
+          listReferenceAttachments: async ({ projectId, maxBytes }) => {
+            const references = await referencesIpcModule.handlers.list(projectId)
+            const attachments: SessionPackageReferenceAttachment[] = []
+            const unreadable: string[] = []
+            for (const reference of references) {
+              const current = await currentAttachment(reference.id)
+              if (!current) continue
+              const fileName = `${safeName(reference.title, reference.id)}.pdf`
+              const bytes = await readManagedFileBytes(projectId, current.managedFileId)
+              if (!bytes || bytes.byteLength > maxBytes) {
+                // Named, never silently dropped, and never written half.
+                unreadable.push(`${REFERENCE_PACKAGE_DIR}/${fileName}`)
+                continue
+              }
+              attachments.push({ referenceId: reference.id, fileName, bytes })
+            }
+            return { attachments, unreadable }
+          },
+          countReferenceAttachments: async ({ projectId }) => {
+            const references = await referencesIpcModule.handlers.list(projectId)
+            let total = 0
+            for (const reference of references) {
+              if (await currentAttachment(reference.id)) total += 1
+            }
+            return total
+          },
+          maxFileBytes: DEFAULT_SESSION_PACKAGE_MAX_FILE_BYTES
+        })
+        return {
+          countReferenceFiles: lister.countReferenceFiles,
+          listReferenceFiles: lister.listReferenceFiles
+        }
       })(),
       appVersion: app.getVersion()
     })
