@@ -61,8 +61,10 @@ describe('production application command wiring', () => {
       [
         'sessionPersistenceHandlers',
         // The document loader sits between the review repository and the handlers: the list/document
-        // split added it, and the handlers still travel with the adapter.
-        'sessionDocumentLoader, sessionPersistenceHandlers )',
+        // split added it, and the handlers still travel with the adapter. The deletion coordinator
+        // follows them because the list tier reports the project-deletion prerequisite the renderer
+        // gates deleting on, and that channel is registered here.
+        'sessionDocumentLoader, sessionPersistenceHandlers, projectDeletionCoordinator )',
         'sessions: sessionPersistenceHandlers'
       ],
       ['artifactHandlers', 'artifactHandlers )', 'artifacts: artifactHandlers'],
