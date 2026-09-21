@@ -35,6 +35,21 @@ window.api.sessions.loadAll({})
 **那次写入走了别的分支/时序**（例如首次加载时恢复尚未完成、或 `setIsHydrated` 之前的提前 return ✗）。**这一步尚未
 定位**，是下一轮的第一件事。
 
+## 已排除的假设（都做了实测，避免继续推断）
+
+| 假设 | 实测 | 判定 |
+| --- | --- | --- |
+| 应用在 E2E 里启动卡住，删除门只是"还没就绪"的瞬时值 | 分时探针：`t0` 仍是 `Starting PureScience…`（23 字），**t+5s 已进入首页**（Projects / Recent sessions，178 字）并一路稳定到 t+30s | ✗ 排除；删除门是**稳定** false |
+| 加载失败但被静默吞掉 | 启动后页面文本里**没有** "storage recovery could not finish" / "could not be read" / "Retry"；截图里也没有错误横幅 | ✗ 排除（未走失败分支） |
+| `useSessionPersistence` 的 effect 因依赖变化重跑，把 true 覆盖成 false | effect 依赖只有 `[loadAttempt]`（启动不改它），且唯一调用点是 `App.tsx:54`，只调用一次 | ✗ 排除 |
+| React StrictMode 双挂载导致 `isMounted` 早退 | `main.tsx:45` 确实包了 `StrictMode`，但 E2E 跑的是 **production 构建**，StrictMode 不双跑 effect | ✗ 排除（E2E 场景） |
+
+> 顺带记一条 spec 侧隐患：`app.completeOnboarding()` **不等待应用就绪**（返回时还在 `Starting PureScience…`），
+> 现在靠 Playwright 的自动等待兜住。
+
+**下一件事**：在渲染层直接观测那次写入（在 `:631` 与 `:676` 各加一次性临时打印，或临时给 HomePage 加
+`data-can-delete-projects` 调试属性），跑一次真机 E2E 即可看出是"走 catch"还是"isMounted 早退"。**不要再靠读代码推断**。
+
 ## 影响面（同源字段）
 
 `canDeleteSessionsAndProjects` 同时喂两个 prop：
