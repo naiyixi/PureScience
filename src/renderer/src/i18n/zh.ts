@@ -954,6 +954,7 @@ export const zh = {
   'settings.thirdPartySoftware': '第三方软件、内容、条款和信息',
   'settings.uninstalling': '正在卸载…',
   'settings.providersTitle': '提供商',
+  'settings.runtimeReconnecting': '正在把提供商变更应用到运行时…',
   'settings.oauthAfterAdding': '添加后用浏览器完成 OAuth 登录',
   'settings.done': '完成',
   'settings.cliRunHint': '安装后，运行',

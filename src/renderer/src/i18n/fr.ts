@@ -1910,6 +1910,7 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.providerName': 'Nom du fournisseur',
   'settings.providerType': 'Type de fournisseur',
   'settings.providersTitle': 'Fournisseurs',
+  'settings.runtimeReconnecting': "Application du changement de fournisseur à l'exécution…",
   'settings.publish': 'Publier',
   'settings.pythonPackageIndex': 'Index des paquets Python (pip)',
   'settings.quit': 'Quitter',

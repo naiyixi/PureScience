@@ -1747,6 +1747,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.providerName': '提供者名稱',
   'settings.providerType': '提供者類型',
   'settings.providersTitle': '提供者',
+  'settings.runtimeReconnecting': '正在把提供者變更套用到執行階段…',
   'settings.publish': '發佈',
   'settings.pythonPackageIndex': 'Python 套件索引 (pip)',
   'settings.quit': '結束',

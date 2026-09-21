@@ -1842,6 +1842,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.providerName': '공급자 이름',
   'settings.providerType': '공급자 유형',
   'settings.providersTitle': '공급자',
+  'settings.runtimeReconnecting': '공급자 변경 사항을 런타임에 반영하는 중…',
   'settings.publish': '게시',
   'settings.pythonPackageIndex': 'Python 패키지 인덱스(pip)',
   'settings.quit': '종료',

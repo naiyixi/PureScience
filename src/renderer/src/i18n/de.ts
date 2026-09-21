@@ -1924,6 +1924,7 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.providerName': 'Anbietername',
   'settings.providerType': 'Anbietertyp',
   'settings.providersTitle': 'Anbieter',
+  'settings.runtimeReconnecting': 'Anbieteränderung wird auf die Laufzeit angewendet …',
   'settings.publish': 'Veröffentlichen',
   'settings.pythonPackageIndex': 'Python-Paketindex (pip)',
   'settings.quit': 'Beenden',

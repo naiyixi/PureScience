@@ -1877,6 +1877,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.providerName': 'プロバイダー名',
   'settings.providerType': 'プロバイダータイプ',
   'settings.providersTitle': 'プロバイダー',
+  'settings.runtimeReconnecting': 'プロバイダーの変更をランタイムに反映しています…',
   'settings.publish': '公開',
   'settings.pythonPackageIndex': 'Python パッケージインデックス (pip)',
   'settings.quit': '終了',

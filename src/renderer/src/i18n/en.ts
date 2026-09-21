@@ -1002,6 +1002,7 @@ export const en: Record<ZhKey, string> = {
   'settings.thirdPartySoftware': 'Third-party software, content, terms, and information',
   'settings.uninstalling': 'Uninstalling…',
   'settings.providersTitle': 'Providers',
+  'settings.runtimeReconnecting': 'Taking the provider change through to the runtime…',
   'settings.oauthAfterAdding': 'OAuth browser sign-in after adding',
   'settings.done': 'Done',
   'settings.cliRunHint': 'Once installed, run',
