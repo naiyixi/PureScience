@@ -20,13 +20,13 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select'
-import { cn } from '@/lib/utils'
 import {
   createArtifactVersionLocator,
   type ArtifactVersionDescriptor
 } from '../../../../shared/artifact-provenance'
 
-import { diffArtifactText, type ArtifactDiffRow } from './artifact-line-diff'
+import { diffArtifactText } from './artifact-line-diff'
+import { LineDiffView } from './LineDiffView'
 import {
   ArtifactContentTooLargeError,
   formatVersionTimestamp,
@@ -139,21 +139,6 @@ const ArtifactCompareDialog = ({
   const swap = (): void => {
     setBaseVersionId(targetVersionId)
     setTargetVersionId(baseVersionId)
-  }
-
-  const diffRowBackground = (kind: ArtifactDiffRow['kind']): string => {
-    if (kind === 'added') {
-      return 'bg-emerald-500/10 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
-    }
-    if (kind === 'removed') {
-      return 'bg-red-500/10 text-red-700 dark:bg-red-950/40 dark:text-red-300'
-    }
-    return 'text-text-100'
-  }
-  const diffRowNumber = (kind: ArtifactDiffRow['kind']): string => {
-    if (kind === 'added') return 'text-emerald-700 dark:text-emerald-300'
-    if (kind === 'removed') return 'text-red-700 dark:text-red-300'
-    return 'text-text-300'
   }
 
   const renderedDiff =
@@ -310,28 +295,14 @@ const ArtifactCompareDialog = ({
           ) : null}
 
           {state.status === 'ready' && (state.diff.additions > 0 || state.diff.deletions > 0) ? (
-            <div
-              data-testid="compare-diff"
-              className="mt-3 min-h-0 flex-1 overflow-auto rounded-lg border border-border-200 bg-bg-100 py-1 font-mono text-[11px] leading-[1.7]"
-            >
-              {renderedDiff.rows.map((row, index) => (
-                <div
-                  key={index}
-                  data-kind={row.kind}
-                  className={cn('flex whitespace-pre px-2', diffRowBackground(row.kind))}
-                >
-                  <span
-                    className={cn('w-7 shrink-0 select-none text-right', diffRowNumber(row.kind))}
-                  >
-                    {row.kind === 'added' ? row.afterLine : row.beforeLine}
-                  </span>
-                  <span className="w-4 shrink-0 select-none text-center">
-                    {row.kind === 'added' ? '+' : row.kind === 'removed' ? '−' : ''}
-                  </span>
-                  <span className="min-w-0 flex-1">{row.text === '' ? ' ' : row.text}</span>
-                </div>
-              ))}
-            </div>
+            <LineDiffView
+              rows={renderedDiff.rows}
+              // The comparison shows every line of both versions on purpose: the reader is looking for
+              // what moved, and folding would hide the movement they came for.
+              folded={false}
+              testId="compare-diff"
+              className="mt-3 min-h-0 flex-1 overflow-auto rounded-lg border border-border-200 bg-bg-100 py-1 text-[11px] leading-[1.7]"
+            />
           ) : null}
 
           <div className={dialogFooterClassName}>
