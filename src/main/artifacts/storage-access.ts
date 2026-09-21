@@ -130,11 +130,29 @@ const importRootsError = (filePath: string, allowedImportRoots: string[]): Error
   )
 }
 
+/**
+ * Where a local source path was resolved, and what else carries the same name.
+ *
+ * The relative-resolution rule is deliberate: during a Notebook turn a bare name resolves against the kernel
+ * directory, and the session root is only probed for a Notebook `data/...` path, because probing the wider
+ * workspace could silently import a stale same-named file from outside the session. What was missing is the
+ * signal: the caller could not tell which directory answered, nor that the same name existed elsewhere. A
+ * writer that saved its file into the workspace and passed the bare name got the kernel directory's file —
+ * or nothing — with no way to see why.
+ */
+export type ResolvedImportFilePath = {
+  path: string
+  /** The base directory a relative path was resolved against; absent for an absolute path. */
+  resolvedFrom?: string
+  /** Other probed roots that also hold a file of that name. Reported, never silently preferred. */
+  alsoPresentIn: string[]
+}
+
 const resolveAllowedImportFilePath = async (
   filePath: string,
   allowedImportRoots: string[],
   relativeBaseDirs: string[] = []
-): Promise<string> => {
+): Promise<ResolvedImportFilePath> => {
   if (allowedImportRoots.length === 0) throw importRootsError(filePath, allowedImportRoots)
   if (relativeBaseDirs.length === 0 && !isAbsolute(filePath)) {
     throw new Error(
@@ -142,20 +160,30 @@ const resolveAllowedImportFilePath = async (
     )
   }
   const candidates = isAbsolute(filePath)
-    ? [resolve(filePath)]
-    : relativeBaseDirs.map((baseDir) => resolve(baseDir, filePath))
+    ? [{ candidatePath: resolve(filePath), baseDir: undefined as string | undefined }]
+    : relativeBaseDirs.map((baseDir) => ({ candidatePath: resolve(baseDir, filePath), baseDir }))
   let resolvedFilePath: string | undefined
-  for (const candidate of candidates) {
+  let resolvedFrom: string | undefined
+  // Every candidate is probed, not just until the first hit, so the ones that also carry the name can be
+  // reported instead of staying invisible.
+  const alsoPresentIn: string[] = []
+  for (const { candidatePath, baseDir } of candidates) {
     try {
-      resolvedFilePath = await realpath(candidate)
-      break
+      const real = await realpath(candidatePath)
+      if (resolvedFilePath === undefined) {
+        resolvedFilePath = real
+        resolvedFrom = baseDir
+      } else {
+        alsoPresentIn.push(baseDir ?? candidatePath)
+      }
     } catch (error) {
       if (!isMissingFileError(error)) throw error
     }
   }
   if (!resolvedFilePath) {
+    const probed = candidates.map(({ baseDir }) => baseDir ?? filePath).join(', ')
     throw new Error(
-      `Artifact local source path does not exist: "${filePath}". Save the file to disk (inside the notebook session workspace) before calling write_artifact_file, pass an absolute path to an already-saved file, or use inline content instead.`
+      `Artifact local source path does not exist: "${filePath}". Looked in: ${probed || 'no base directory this turn'}. Save the file there, or pass an absolute path to the already-saved file, or use inline content instead.`
     )
   }
   const resolvedRoots = (
@@ -176,7 +204,11 @@ const resolveAllowedImportFilePath = async (
   if (!(await stat(resolvedFilePath)).isFile()) {
     throw new Error('Artifact local source path is not a file.')
   }
-  return resolvedFilePath
+  return {
+    path: resolvedFilePath,
+    ...(resolvedFrom === undefined ? {} : { resolvedFrom }),
+    alsoPresentIn
+  }
 }
 
 class ArtifactStorageAccess {

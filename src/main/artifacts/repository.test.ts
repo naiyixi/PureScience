@@ -345,7 +345,9 @@ describe('artifact repository', () => {
       { allowedImportRoots: [allowedRoot] }
     )
     await expect(attempt).rejects.toThrow(/does not exist/)
-    await expect(attempt).rejects.toThrow(/before calling write_artifact_file/)
+    // The message names the directories that were actually looked in, so a writer that saved somewhere else
+    // can tell what was probed instead of guessing.
+    await expect(attempt).rejects.toThrow(/Looked in: .*notebook-session/)
   })
 
   it('rejects path-like project, session, run, and filename segments', async () => {

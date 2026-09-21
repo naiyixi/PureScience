@@ -70,6 +70,12 @@ export type ArtifactSourceFileObservation = {
   path: string
   sizeBytes: number
   mtimeMs: number
+  // Which directory a relative source name resolved against, and the other probed roots that hold a file of
+  // the same name. Recorded because the relative rule is deliberate (during a Notebook turn a bare name
+  // resolves against the kernel directory) and a writer that saved elsewhere had no way to see which
+  // directory answered, or that its own file was sitting in an unprobed-looking place under the same name.
+  resolvedFrom?: string
+  alsoPresentIn?: string[]
 }
 
 // Default logical project bucket used until the app exposes user-selected project names.

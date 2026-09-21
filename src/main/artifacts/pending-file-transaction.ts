@@ -7,6 +7,7 @@ import type {
   ArtifactSourceFileObservation,
   WritePendingArtifactFileRequest
 } from '../../shared/artifacts'
+import type { ResolvedImportFilePath } from './storage-access'
 import { validateArtifactContentType } from './content-type'
 
 type PendingFileTransactionOptions = {
@@ -21,7 +22,7 @@ type PendingFileTransactionStorage = {
     path: string,
     allowedImportRoots: string[],
     relativeBaseDirs?: string[]
-  ) => Promise<string>
+  ) => Promise<ResolvedImportFilePath>
   readFilePrefix: (path: string) => Promise<Buffer>
   renameIfPresent: (sourcePath: string, targetPath: string) => Promise<boolean>
   writeArtifactMetadata: (
@@ -76,11 +77,12 @@ const runPendingFileTransaction = async <Result, Routing>(options: {
   await mkdir(directory, { recursive: true })
   try {
     if (request.source.kind === 'localPath') {
-      const sourcePath = await storage.resolveAllowedImportFilePath(
+      const resolution = await storage.resolveAllowedImportFilePath(
         request.source.path,
         options.writeOptions.allowedImportRoots ?? [],
         options.writeOptions.relativeBaseDirs
       )
+      const sourcePath = resolution.path
       const beforeCopy = await stat(sourcePath)
       if (!beforeCopy.isFile()) {
         throw new Error(`Artifact local source is not a regular file: "${sourcePath}".`)
@@ -95,7 +97,9 @@ const runPendingFileTransaction = async <Result, Routing>(options: {
       sourceFileObservation = {
         path: sourcePath,
         sizeBytes: afterCopy.size,
-        mtimeMs: afterCopy.mtimeMs
+        mtimeMs: afterCopy.mtimeMs,
+        ...(resolution.resolvedFrom === undefined ? {} : { resolvedFrom: resolution.resolvedFrom }),
+        ...(resolution.alsoPresentIn.length === 0 ? {} : { alsoPresentIn: resolution.alsoPresentIn })
       }
     } else {
       await writeFile(

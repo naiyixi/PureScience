@@ -49,13 +49,14 @@ export const createReproductionFileObserver = ({
 }): ((path: string) => Promise<ReproducedFileObservation>) => {
   return async (path) => {
     const filename = basename(path)
-    let resolved: string
+    let report: Awaited<ReturnType<typeof resolveAllowedImportFilePath>>
     try {
-      resolved = await resolveAllowedImportFilePath(path, allowedImportRoots, relativeBaseDirs)
+      report = await resolveAllowedImportFilePath(path, allowedImportRoots, relativeBaseDirs)
     } catch (error) {
       return { ...classifyResolutionError(error), path, filename }
     }
 
+    const resolved = report.path
     try {
       const info = await stat(resolved)
       if (info.size > REPRODUCIBILITY_MAX_COMPARE_BYTES) {
