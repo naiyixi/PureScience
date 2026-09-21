@@ -581,6 +581,27 @@ describe('session persistence repository (per-session files)', () => {
     ])
   })
 
+  it('does not read an import record as a session, and never quarantines it', async () => {
+    const root = await createStorageRoot()
+    const session = createSession()
+    const repository = new SessionRepository(root)
+    await repository.saveSession(session)
+    // The sidecar an import writes beside its session: metadata, and the only thing that says the
+    // session is read-only.
+    const recordPath = join(root, 'sessions', session.projectId, `${session.id}.import.json`)
+    const record = JSON.stringify({ posture: { readOnly: true } })
+    await writeFile(recordPath, record, 'utf8')
+
+    const scan = await repository.loadAllWithDiagnostics()
+
+    // Scanned as a session it failed to normalize, so it was backed up as corrupt — which silently
+    // destroyed the posture: the imported session became runnable again on the next scan.
+    expect(scan.result.sessions.map((entry) => entry.id)).toEqual([session.id])
+    expect(scan.warnings).toEqual([])
+    expect(scan.isComplete).toBe(true)
+    await expect(readFile(recordPath, 'utf8')).resolves.toBe(record)
+  })
+
   it('keeps the scan incomplete when an enumerated Project directory disappears', async () => {
     const root = await createStorageRoot()
     const session = createSession()
