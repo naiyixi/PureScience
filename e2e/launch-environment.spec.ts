@@ -26,13 +26,18 @@ test('isolates packaged certification storage without changing the process home'
 
 test('enables the basic password store only for Linux E2E profiles', () => {
   expect(electronLaunchTarget('profile-root', {}, 'linux')).toEqual({
-    args: ['--user-data-dir=profile-root', '--password-store=basic', expect.any(String)]
+    args: [
+      '--lang=en-US',
+      '--user-data-dir=profile-root',
+      '--password-store=basic',
+      expect.any(String)
+    ]
   })
   expect(electronLaunchTarget('profile-root', {}, 'darwin')).toEqual({
-    args: ['--user-data-dir=profile-root', expect.any(String)]
+    args: ['--lang=en-US', '--user-data-dir=profile-root', expect.any(String)]
   })
   expect(electronLaunchTarget('profile-root', {}, 'win32')).toEqual({
-    args: ['--user-data-dir=profile-root', expect.any(String)]
+    args: ['--lang=en-US', '--user-data-dir=profile-root', expect.any(String)]
   })
 })
 
@@ -46,10 +51,15 @@ test('launches packaged and source applications with the expected Linux argument
       'linux'
     )
   ).toEqual({
-    args: ['--user-data-dir=profile-root', '--password-store=basic'],
+    args: ['--lang=en-US', '--user-data-dir=profile-root', '--password-store=basic'],
     executablePath: '/artifacts/PureScience.app/Contents/MacOS/PureScience'
   })
   expect(electronLaunchTarget('profile-root', {}, 'linux')).toEqual({
-    args: ['--user-data-dir=profile-root', '--password-store=basic', expect.any(String)]
+    args: [
+      '--lang=en-US',
+      '--user-data-dir=profile-root',
+      '--password-store=basic',
+      expect.any(String)
+    ]
   })
 })
