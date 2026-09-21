@@ -9,7 +9,8 @@ import type {
   SaveSessionOptions,
   ReadSessionDocumentRequest,
   SaveSessionManifestRequest,
-  UpdateSessionArchiveRequest
+  UpdateSessionArchiveRequest,
+  SessionLoadDiagnostics
 } from '../../shared/session-persistence'
 import { LIFECYCLE_CHANNELS } from '../../shared/lifecycle-events'
 import { broadcastLifecycleEvent, getLifecycleClientId } from '../lifecycle-broadcast'
@@ -73,10 +74,10 @@ type SessionDocumentLoader = {
   loadSession: (projectId: string, sessionId: string) => Promise<PersistedChatSession | undefined>
 }
 
-const withProjectDeletionRecoveryStatus = (
-  result: LoadAllSessionsResult,
+const withProjectDeletionRecoveryStatus = <Result extends { diagnostics?: SessionLoadDiagnostics }>(
+  result: Result,
   isProjectDeletionRecoveryComplete: boolean
-): LoadAllSessionsResult => ({
+): Result => ({
   ...result,
   diagnostics: {
     isComplete: result.diagnostics?.isComplete ?? true,
@@ -133,9 +134,13 @@ const loadCatalogAfterProjectRecovery = async (
   sessionLoader: SessionCatalogLoader,
   log: Pick<Logger, 'warn'> = createLogger('session-persistence')
 ): Promise<SessionCatalogResult> => {
+  // The list tier reports the same prerequisite the full load reports: the renderer gates deleting a
+  // project or a session on it, so a recovery it cannot see is a capability the user loses silently.
+  let recoveryComplete = true
   try {
     await projectRecovery.recoverPendingDeletions()
   } catch (error) {
+    recoveryComplete = false
     try {
       log.warn('project deletion recovery failed', {
         operation: 'session-catalog',
@@ -148,7 +153,7 @@ const loadCatalogAfterProjectRecovery = async (
     }
   }
 
-  return sessionLoader.loadCatalog()
+  return withProjectDeletionRecoveryStatus(await sessionLoader.loadCatalog(), recoveryComplete)
 }
 
 // Adapts the coordinator into small handlers that are easy to unit test.
@@ -209,7 +214,10 @@ const registerSessionPersistenceIpcHandlers = (
     repository,
     reviewRepository,
     documents
-  )
+  ),
+  // The list tier has to report the same project-deletion prerequisite the full load reports: the renderer
+  // gates deleting a project or a session on it, and the catalog path is the one it actually reads.
+  projectRecovery?: ProjectDeletionRecoveryBackend
 ): void => {
   // Keep persistence IPC separate from ACP runtime commands; it owns durable UI state only.
   // loadAll can replay pending deletions and every mutation can materialize provenance/upload bytes.
@@ -253,7 +261,15 @@ const registerSessionPersistenceIpcHandlers = (
   )
   // Read-only additions for the list/document split. Both hold the shared data-root lease for the same
   // reason the other reads do: a read must not race a migration moving the root underneath it.
-  ipcMainHandle('sessions:list-catalog', () => withDataRootWrite(() => handlers.listCatalog()))
+  ipcMainHandle('sessions:list-catalog', () =>
+    withDataRootWrite(() =>
+      projectRecovery
+        ? loadCatalogAfterProjectRecovery(projectRecovery, {
+            loadCatalog: () => handlers.listCatalog()
+          })
+        : handlers.listCatalog()
+    )
+  )
   ipcMainHandle('sessions:read-document', (_event, request: ReadSessionDocumentRequest) =>
     withDataRootWrite(() => handlers.readDocument(request.projectId, request.sessionId))
   )

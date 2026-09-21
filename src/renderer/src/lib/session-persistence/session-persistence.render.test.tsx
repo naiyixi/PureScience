@@ -674,4 +674,35 @@ describe('session persistence startup', () => {
       'Conversation selection data was damaged and could not be moved aside'
     )
   })
+
+  it('offers deletion from the list tier once its diagnostics say recovery is complete', async () => {
+    const listCatalog = vi.fn().mockResolvedValue({
+      sessions: [createPersistedSession({ id: 'session-1' })],
+      manifest: { version: SESSION_MANIFEST_VERSION, lastSessionId: 'session-1' },
+      // The list tier reports the same prerequisite the full load reports. Without it here, the deletion
+      // gate read undefined on a real machine and stayed closed however healthy the store was.
+      diagnostics: { isComplete: true, warnings: [], isProjectDeletionRecoveryComplete: true }
+    })
+    loadAll.mockClear()
+    window.api = {
+      ...(window.api as unknown as Record<string, unknown>),
+      sessions: { ...(window.api.sessions as object), listCatalog }
+    } as unknown as Window['api']
+
+    await act(async () => {
+      root.render(<Probe />)
+      await new Promise((resolve) => window.setTimeout(resolve, 50))
+    })
+    // Hydration settles over a few turns; wait for the gate itself rather than guessing a delay.
+    for (let attempt = 0; attempt < 40; attempt += 1) {
+      if (document.body.querySelector('[data-deletion-ready="true"]')) break
+      await act(async () => {
+        await new Promise((resolve) => window.setTimeout(resolve, 25))
+      })
+    }
+
+    expect(listCatalog).toHaveBeenCalled()
+    expect(loadAll).not.toHaveBeenCalled()
+    expect(document.body.querySelector('[data-deletion-ready="true"]')).not.toBeNull()
+  })
 })

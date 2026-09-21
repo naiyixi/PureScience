@@ -8,7 +8,8 @@
 import type {
   PersistedChatMessage,
   PersistedChatSession,
-  PersistedSessionManifest
+  PersistedSessionManifest,
+  SessionLoadDiagnostics
 } from './session-persistence'
 
 // The projected fields. `messages`/`conversationGraph`/`activities`/`activityGroups` are dropped: they are
@@ -57,4 +58,8 @@ export const summarizeSessionCatalog = (
 export type SessionCatalogResult = {
   sessions: SessionCatalogSummary[]
   manifest?: PersistedSessionManifest
+  // The list tier carries the same load diagnostics the full load carries. It used to omit them, and
+  // everything the renderer gates on them — deleting a project or a session, "the catalog is complete" —
+  // then read undefined in the real app while the main process was reporting the truth.
+  diagnostics?: SessionLoadDiagnostics
 }
