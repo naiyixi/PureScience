@@ -50,6 +50,39 @@ window.api.sessions.loadAll({})
 **下一件事**：在渲染层直接观测那次写入（在 `:631` 与 `:676` 各加一次性临时打印，或临时给 HomePage 加
 `data-can-delete-projects` 调试属性），跑一次真机 E2E 即可看出是"走 catch"还是"isMounted 早退"。**不要再靠读代码推断**。
 
+## 根因（实测锁定）
+
+渲染层那次加载**没有走 catch**，只打出一条探针：
+
+```
+PROBE-CONSOLE: [probe] load outcome undefined
+```
+
+即 `result.diagnostics` 是 **undefined** ✗ ⇒ `undefined === true` 恒假 ⇒ 删除门恒为 false ✓。
+
+原因在**列表层**：`loadPersistedSessions`（`session-persistence.ts:287-304`）**优先走 `api.listCatalog()`**：
+
+```ts
+const catalog = api.listCatalog ? await api.listCatalog() : undefined
+const loaded = catalog ? { sessions: …, manifest: … }   // ← 不含 diagnostics ✗
+                       : await api.loadAll()            // ← 含 diagnostics ✓
+```
+
+而 main 侧只有 `loadAll` 那条注入诊断（`ipc.ts:124` 的 `withProjectDeletionRecoveryStatus(…, true)`），列表层
+（`ipc.ts:150`）**直接 `return sessionLoader.loadCatalog()`** ✗；且 `SessionCatalogResult`
+（`shared/session-catalog-summary.ts:57`）**本身没有 diagnostics 字段** ✗。
+
+⇒ 这是"目录读取从 55 MB 降到元数据"那次优化留下的缺口：列表层没把诊断带上，所有依赖诊断的能力门
+（`canDeleteSessionsAndProjects`、`hasCompleteSessionCatalog`）在真实运行时都读到 undefined ✓。
+
+### 修法（下一步实现）
+
+1. `SessionCatalogResult` 增加可选 `diagnostics?: SessionLoadDiagnostics`；
+2. main 的 `loadCatalogAfterProjectRecovery` 同样注入：恢复成功 → `true`，catch 里 → `false`（降级语义与 `loadAll` 一致）；
+3. 渲染层 catalog 分支把 `catalog.diagnostics` 带进返回对象；
+4. 补测试（main 两侧注入 + 渲染层 catalog 路径下 `canDelete` 为 true）；
+5. 本地真机 E2E 验证删除入口可点（这是本条的验收口径）。
+
 ## 影响面（同源字段）
 
 `canDeleteSessionsAndProjects` 同时喂两个 prop：
