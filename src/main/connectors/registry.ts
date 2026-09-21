@@ -9,6 +9,7 @@ import { CLINICAL_GENOMICS_TOOLS } from './descriptors/clinical-genomics'
 import { CLINICAL_TRIALS_TOOLS } from './descriptors/clinical-trials'
 import { DRUG_REGULATORY_TOOLS } from './descriptors/drug-regulatory'
 import { EXPRESSION_TOOLS } from './descriptors/expression'
+import { GENES_ENRICHR_TOOLS } from './descriptors/genes-enrichr'
 import { GENES_GPROFILER_TOOLS } from './descriptors/genes-gprofiler'
 import { GENES_TOOLS } from './descriptors/genes'
 import { GENOMES_NCBI_TOOLS } from './descriptors/genomes-ncbi'
@@ -41,6 +42,7 @@ const ALL_TOOLS: ToolDescriptor[] = [
   ...DRUG_REGULATORY_TOOLS,
   ...EXPRESSION_TOOLS,
   ...GENES_GPROFILER_TOOLS,
+  ...GENES_ENRICHR_TOOLS,
   ...GENES_TOOLS,
   ...GENOMES_NCBI_TOOLS,
   ...GENOMES_TOOLS,
