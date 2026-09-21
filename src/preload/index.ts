@@ -73,6 +73,7 @@ import type { RoutineConfigureRequest } from '../shared/routine'
 import type { EndpointRegisterRequest } from '../shared/endpoint'
 import type { AnnotationSetRequest } from '../shared/annotation'
 import type { SessionBookmarkInput } from '../shared/bookmark'
+import type { GlobalSearchPinFilters } from '../shared/global-search-pins'
 import type { FigureReviewRequest } from '../shared/figure'
 import type { HandoffEventsRequest, HandoffRetryRequest } from '../shared/handoff-lifecycle'
 import { announceWindowFindReady, subscribeCloseActivePane } from '../shared/window-controls'
@@ -916,6 +917,13 @@ const api: PureScienceAPI = {
       electronRendererContracts.invoke('bookmark.remove', sessionId, bookmarkId),
     updateNote: (sessionId: string, bookmarkId: string, note: string) =>
       electronRendererContracts.invoke('bookmark.updateNote', sessionId, bookmarkId, note)
+  },
+  // Saved search filter sets (v1.67): the researcher's own working state, renderer-only by design.
+  searchPins: {
+    list: () => electronRendererContracts.invoke('searchPins.list'),
+    save: (input: { id?: string; name: string; filters: GlobalSearchPinFilters }) =>
+      electronRendererContracts.invoke('searchPins.save', input),
+    remove: (id: string) => electronRendererContracts.invoke('searchPins.remove', id)
   },
   pdf: {
     open: (request: { projectId: string; path: string }) =>

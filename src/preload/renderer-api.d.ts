@@ -338,6 +338,7 @@ import type { RoutineConfigureRequest, RoutineSchedule } from '../shared/routine
 import type { EndpointRegisterRequest, ManagedEndpoint } from '../shared/endpoint'
 import type { AnnotationSetRequest, FileAnnotation } from '../shared/annotation'
 import type { SessionBookmark, SessionBookmarkInput } from '../shared/bookmark'
+import type { GlobalSearchPin, GlobalSearchPinFilters } from '../shared/global-search-pins'
 import type {
   PdfOpenResult,
   PdfOutlineResult,
@@ -1143,6 +1144,17 @@ export interface PureScienceAPI {
     list(sessionId: string): Promise<SessionBookmark[]>
     remove(sessionId: string, bookmarkId: string): Promise<boolean>
     updateNote(sessionId: string, bookmarkId: string, note: string): Promise<SessionBookmark | null>
+  }
+  // Saved search filter sets (v1.67): the name is what an evidence line carries, the filters are what the
+  // search request accepts.
+  searchPins: {
+    list(): Promise<GlobalSearchPin[]>
+    save(input: {
+      id?: string
+      name: string
+      filters: GlobalSearchPinFilters
+    }): Promise<GlobalSearchPin>
+    remove(id: string): Promise<boolean>
   }
   pdf: {
     // Registers a PDF for layered reading (parses + persists page text).

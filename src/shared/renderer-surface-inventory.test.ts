@@ -152,6 +152,7 @@ const REMOTE_LOCAL_ONLY_CHANNELS: GroupedInventory = {
   routine: ['list-all', 'remove', 'set-enabled', 'upsert'],
   endpoint: ['approve', 'list-all', 'register', 'remove', 'start', 'stop'],
   bookmark: ['list', 'remove', 'set', 'update-note'],
+  'search-pins': ['list', 'remove', 'save'],
   annotation: ['list', 'remove', 'set'],
   pdf: ['figures', 'open', 'outline', 'pages', 'scan', 'tables'],
   figure: ['review'],
@@ -259,12 +260,14 @@ describe('renderer surface inventory', () => {
       ...Object.keys(WEB_EVENT_CHANNELS)
     ])
 
-    expect(electronPaths).toHaveLength(428)
+    expect(electronPaths).toHaveLength(431)
     expectSameSet(
       electronPaths,
       RENDERER_CONTRACT_CATALOG.map(({ publicPath }) => publicPath)
     )
-    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(326)
+    // 329 since the saved-search-filter-set surface (v1.67 unit): searchPins.list / remove / save are
+    // local invoke channels, so the invoke map and the local-only set move together.
+    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(329)
     expect(Object.keys(WEB_EVENT_CHANNELS)).toHaveLength(34)
     expectSameSet(
       electronPaths.filter((path) => !generatedPaths.has(path)),
@@ -300,7 +303,7 @@ describe('renderer surface inventory', () => {
     const expectedRemoteLocalOnly = expand(REMOTE_LOCAL_ONLY_CHANNELS, ':')
 
     expectSameSet(REMOTE_LOCAL_ONLY_RPC_CHANNELS, expectedRemoteLocalOnly)
-    expect(expectedRemoteLocalOnly).toHaveLength(106)
+    expect(expectedRemoteLocalOnly).toHaveLength(109)
     expect(
       expectedRemoteLocalOnly.every((channel) => WEB_RPC_ALLOWED_CHANNELS.includes(channel))
     ).toBe(true)

@@ -43,6 +43,8 @@ import type { FileAnnotation, AnnotationSetRequest } from '../shared/annotation'
 import type { SessionBookmark, SessionBookmarkInput } from '../shared/bookmark'
 import type { AnnotationCommandOwner } from './settings/annotation-ipc'
 import type { BookmarkCommandOwner } from './settings/bookmark-ipc'
+import type { SearchPinCommandOwner } from './settings/search-pin-ipc'
+import type { GlobalSearchPin, GlobalSearchPinFilters } from '../shared/global-search-pins'
 import type {
   PdfOpenResult,
   PdfPagesResult,
@@ -363,6 +365,20 @@ const annotationCommands = Object.freeze({
   >('annotation:remove')
 })
 
+const searchPinCommands = Object.freeze({
+  list: defineApplicationCommand<'search-pins:list', readonly [], GlobalSearchPin[]>(
+    'search-pins:list'
+  ),
+  remove: defineApplicationCommand<'search-pins:remove', readonly [id: string], boolean>(
+    'search-pins:remove'
+  ),
+  save: defineApplicationCommand<
+    'search-pins:save',
+    readonly [{ id?: string; name: string; filters: GlobalSearchPinFilters }],
+    GlobalSearchPin
+  >('search-pins:save')
+})
+
 // Declared in the same order the contract catalogue lists them (alphabetical by channel): the
 // inventory test compares registration order with catalogue order, so the two must agree.
 const bookmarkCommands = Object.freeze({
@@ -448,6 +464,7 @@ const hostApplicationCommands = Object.freeze({
   endpoint: endpointCommands,
   annotation: annotationCommands,
   bookmark: bookmarkCommands,
+  searchPins: searchPinCommands,
   pdf: pdfCommands,
   figure: figureCommands,
   query: queryCommands,
@@ -474,7 +491,8 @@ const hostApplicationCommandGroups = Object.freeze([
   defineApplicationCommandGroup('update', Object.values(updateCommands)),
   // Appended last on purpose: group registration below addresses these by index, so a new group
   // goes at the end rather than into the middle.
-  defineApplicationCommandGroup('bookmark', Object.values(bookmarkCommands))
+  defineApplicationCommandGroup('bookmark', Object.values(bookmarkCommands)),
+  defineApplicationCommandGroup('searchPins', Object.values(searchPinCommands))
 ] as const)
 
 type HostApplicationCommandDependencies = Readonly<{
@@ -518,6 +536,7 @@ type HostApplicationCommandDependencies = Readonly<{
   annotation: AnnotationCommandOwner
   // Session bookmarks: renderer-only, with no agent-facing owner beside it.
   bookmark: BookmarkCommandOwner
+  searchPins: SearchPinCommandOwner
   pdf: PdfCommandOwner
   figure: FigureCommandOwner
   query: HostQueryCommandOwner
@@ -804,6 +823,18 @@ const registerHostApplicationCommands = (
     })
     // Session bookmarks (v1.65 unit 2): the renderer's own trail. Registered here so the surface has
     // one transport-independent path, and deliberately nowhere near an agent-facing tool list.
+    // Saved search filter sets: the same transport-independent path as the bookmarks beside them, and
+    // deliberately nowhere near an agent-facing tool list.
+    scope.registerGroup(hostApplicationCommandGroups[17], {
+      'search-pins:list': ({ callerContext }) =>
+        localCommand(callerContext, 'search-pins:list', () => dependencies.searchPins.list()),
+      'search-pins:remove': ({ args, callerContext }) =>
+        localCommand(callerContext, 'search-pins:remove', () =>
+          dependencies.searchPins.remove(args[0])
+        ),
+      'search-pins:save': ({ args, callerContext }) =>
+        localCommand(callerContext, 'search-pins:save', () => dependencies.searchPins.save(args[0]))
+    })
     scope.registerGroup(hostApplicationCommandGroups[16], {
       'bookmark:set': ({ args, callerContext }) =>
         localCommand(callerContext, 'bookmark:set', () => dependencies.bookmark.set(args[0])),

@@ -448,6 +448,9 @@ describe('preload bridge — public surface inventory', () => {
       'saveSessionArtifacts',
       'search.evidence',
       'search.query',
+      'searchPins.list',
+      'searchPins.remove',
+      'searchPins.save',
       'sessions.deleteSession',
       'sessions.exportConversation',
       'sessions.exportPackage',
@@ -736,7 +739,7 @@ describe('preload bridge — runtime renderer contract catalog', () => {
 })
 
 describe('preload bridge — core renderer contract catalog', () => {
-  it('pins the exact 30-group, 159-callable T1d complement', () => {
+  it('pins the exact 34-group, 204-contract T1d complement', () => {
     expect(coreContractGroups.map(({ capability }) => capability)).toEqual([
       'artifacts',
       'cli',
@@ -761,6 +764,9 @@ describe('preload bridge — core renderer contract catalog', () => {
       'reviewer',
       'routine',
       'endpoint',
+      // Saved search filter sets (v1.67 unit): beside the bookmarks, which it sits next to in the host
+      // group order as well.
+      'searchPins',
       'bookmark',
       'annotation',
       'pdf',
@@ -772,7 +778,7 @@ describe('preload bridge — core renderer contract catalog', () => {
       'uploads',
       'window'
     ])
-    expect(coreContracts).toHaveLength(201)
+    expect(coreContracts).toHaveLength(204)
     expect({
       requests: coreContracts.filter(
         ({ dispatchPolicy }) => dispatchPolicy.electron === 'electron-ipc-request'
@@ -784,7 +790,7 @@ describe('preload bridge — core renderer contract catalog', () => {
       surfaceNative: coreContracts.filter(
         ({ dispatchPolicy }) => dispatchPolicy.electron === 'surface-native'
       ).length
-    }).toEqual({ requests: 163, events: 27, sends: 10, surfaceNative: 1 })
+    }).toEqual({ requests: 166, events: 27, sends: 10, surfaceNative: 1 })
   })
 
   it('routes every core request method through its cataloged Electron channel', async () => {
@@ -793,7 +799,7 @@ describe('preload bridge — core renderer contract catalog', () => {
     )
     const localFile = { name: 'catalog.csv' } as File
 
-    expect(requestContracts).toHaveLength(163)
+    expect(requestContracts).toHaveLength(166)
 
     for (const contract of requestContracts) {
       invokeMock.mockClear()

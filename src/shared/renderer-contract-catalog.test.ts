@@ -12,18 +12,19 @@ describe('renderer contract catalog', () => {
   it('pins the complete capability-owned inventory and legacy map projection', () => {
     const projection = projectRendererContractMaps(RENDERER_CONTRACT_CATALOG)
 
-    expect(RENDERER_CONTRACT_GROUPS).toHaveLength(42)
-    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(428)
+    expect(RENDERER_CONTRACT_GROUPS).toHaveLength(43)
+    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(431)
     expect(projection.invoke).toEqual(WEB_INVOKE_CHANNELS)
     expect(projection.event).toEqual(WEB_EVENT_CHANNELS)
-    expect(Object.keys(projection.invoke)).toHaveLength(326)
+    // 329 with the saved-search-filter-set group (searchPins.list / remove / save).
+    expect(Object.keys(projection.invoke)).toHaveLength(329)
     expect(Object.keys(projection.event)).toHaveLength(34)
   })
 
   it('separates actual Web installation from the generated compatibility projection', () => {
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb !== 'unavailable')
-    ).toHaveLength(356)
+    ).toHaveLength(359)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb === 'browser-native')
     ).toEqual(['getRuntimeVersions', 'saveBlobFile', 'saveManagedFile', 'window.close'])
@@ -56,7 +57,7 @@ describe('renderer contract catalog', () => {
     ).toHaveLength(72)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.remoteWeb === 'rejecting-stub')
-    ).toHaveLength(106)
+    ).toHaveLength(109)
     expect(
       paths(({ eventDeliverability }) =>
         Object.values(eventDeliverability).includes('installed-undelivered')

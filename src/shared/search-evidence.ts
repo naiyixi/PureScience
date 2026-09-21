@@ -14,6 +14,41 @@ export const SEARCH_EVIDENCE_HASH_RECIPE = 'purescience-search-evidence-v1'
 
 export const SEARCH_EVIDENCE_MAX_SNIPPET = 240
 
+// The saved filter set a capture was made under. Recorded by name AND by what it accepts, because the
+// name alone cannot be checked by whoever reads the line later: the set may have been edited since, so
+// the line has to carry the filters the results were actually asked for.
+export const SEARCH_EVIDENCE_MAX_PIN_NAME_CHARS = 80
+
+export type SearchEvidencePinnedFilters = {
+  name: string
+  description: string
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+const trimmedText = (value: unknown, limit: number): string | undefined => {
+  if (typeof value !== 'string') return undefined
+  const text = value.trim()
+  if (text === '') return undefined
+  return text.length <= limit ? text : text.slice(0, limit)
+}
+
+/**
+ * Reads the optional pinned-filter attribution. A half-present or unreadable value is dropped rather than
+ * carried: a line that named a filter set without saying what it accepts would be worse than a line that
+ * does not mention one.
+ */
+export const sanitizeSearchEvidencePinnedFilters = (
+  value: unknown
+): SearchEvidencePinnedFilters | undefined => {
+  if (!isRecord(value)) return undefined
+  const name = trimmedText(value.name, SEARCH_EVIDENCE_MAX_PIN_NAME_CHARS)
+  const description = trimmedText(value.description, SEARCH_EVIDENCE_MAX_PIN_NAME_CHARS * 4)
+  if (!name || !description) return undefined
+  return { name, description }
+}
+
 // Why a line could not be produced, or no longer holds. Always named — never a bare boolean.
 export type SearchEvidenceReason =
   // The block is not in the session as it stands now.
@@ -38,6 +73,8 @@ export type SearchEvidenceLine = {
   terms: string[]
   snippet: string
   fingerprint: string
+  /** The saved filter set the capture was made under, when the user had one applied. */
+  pinnedFilters?: SearchEvidencePinnedFilters
 }
 
 export type SearchEvidenceCaptureResult =
@@ -63,6 +100,7 @@ export type SearchEvidenceRequest =
       terms?: string[]
       snippet?: string
       capturedAt?: string
+      pinnedFilters?: SearchEvidencePinnedFilters
     }
   | { action: 'verify'; line: SearchEvidenceLine }
 
@@ -74,6 +112,7 @@ export type SearchEvidenceLabels = {
   terms: string
   snippet: string
   fingerprint: string
+  pinned: string
 }
 
 // One pasteable block. Labels come from the UI language; the fingerprint and the identifiers do not
@@ -87,6 +126,11 @@ export const formatSearchEvidenceLine = (
     `${labels.query}: ${line.query}`,
     `${labels.terms}: ${line.terms.join(', ')}`,
     `${labels.snippet}: ${line.snippet}`,
+    // Only present when a saved filter set was applied, and it carries the filters themselves: the name on
+    // its own would not say what the results were asked for.
+    ...(line.pinnedFilters
+      ? [`${labels.pinned}: ${line.pinnedFilters.name} (${line.pinnedFilters.description})`]
+      : []),
     `${labels.fingerprint}: ${line.fingerprint}`
   ].join('\n')
 

@@ -108,7 +108,9 @@ type ApplicationCommandComposition = Readonly<{
   dispose: () => void
 }>
 
-const GROUP_COUNT = 37
+const GROUP_COUNT = 38
+// +1 group: the saved-search-filter-set group (searchPins.list / remove / save) sits beside the bookmarks
+// and is registered on the local Web view like theirs.
 // Counts are certified at startup: a new command without a matching increment fails the boot rather
 // than shipping an uncertified surface. +1 internal / +2 local Web / +1 remote Web / +1 remote rejection
 // is compute:deliveries:list (available on both Web surfaces) plus settings:set-ui-language (local only).
@@ -120,12 +122,14 @@ const GROUP_COUNT = 37
 // task surface are untouched because neither channel carries a remote flag. project-files:list-kinds
 // moved internal / local Web / remote dispatch by one each (it carries no surface flag, like the
 // per-project read it replaces).
-const INTERNAL_COMMAND_COUNT = 320
-const LOCAL_WEB_COMMAND_COUNT = 318
+const INTERNAL_COMMAND_COUNT = 323
+// +3 each on internal, local Web and the remote rejections: the saved-search-filter-set channels are
+// reachable from the window locally and are refused on the remote surface, which is where they are counted.
+const LOCAL_WEB_COMMAND_COUNT = 321
 // Two more as well: the same two channels are mapped, so they count on both the local and the remote Web
 // surfaces. The rejected (fail-closed) and task counts are untouched.
 const REMOTE_WEB_COMMAND_COUNT = 212
-const REMOTE_REJECTED_COMMAND_COUNT = 106
+const REMOTE_REJECTED_COMMAND_COUNT = 109
 const TASK_COMMAND_COUNT = 11
 
 const ELECTRON_NATIVE_COMMAND_NAMES = Object.freeze([

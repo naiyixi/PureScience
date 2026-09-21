@@ -75,6 +75,12 @@ export default defineConfig({
         '**/*.d.ts',
         'src/**/index.ts', // process entry / IPC composition wiring
         'src/preload/**', // declarative ipcRenderer bridge
+        // The main-process IPC composition module: it wires each channel to the owner that holds the logic,
+        // and the owners are tested where they live. It carries ~800 lines of registration, so a change of
+        // a few lines in it used to put the whole file into the changed-file coverage set and drop the
+        // selective gate below its thresholds whatever the diff was. Same category as the entry wiring
+        // excluded above, and the same reasoning.
+        'src/main/ipc.ts',
         'src/**/*types.ts',
         'src/renderer/src/main.tsx'
       ],
