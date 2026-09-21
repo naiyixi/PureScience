@@ -471,6 +471,20 @@ function parseNetworkTsv(text: string): Array<Record<string, string>> {
   })
 }
 
+// Every node the network response mentions, with the id STRING assigned it. The query genes come back from
+// get_string_ids, but with add_nodes above zero the response carries partners the query never named — those
+// have to be reported as partners, and this is where their ids come from.
+function networkNodes(
+  rows: Array<Record<string, string>>
+): Array<{ name: string; string_id: string }> {
+  const nodes = new Map<string, string>()
+  for (const row of rows) {
+    if (row.preferredName_A) nodes.set(row.preferredName_A, row.stringId_A)
+    if (row.preferredName_B) nodes.set(row.preferredName_B, row.stringId_B)
+  }
+  return [...nodes].map(([name, string_id]) => ({ name, string_id }))
+}
+
 // Deterministically oriented, de-duplicated, trimmed edges (port of core.canonical_edges).
 function canonicalEdges(rows: Array<Record<string, string>>): Array<Record<string, unknown>> {
   const tupleLt = (a: [string, string], b: [string, string]): boolean =>
@@ -523,17 +537,33 @@ function degreesByName(
 
 function nodeTable(
   mapped: StringMapped[],
-  edges: Array<Record<string, unknown>>
+  edges: Array<Record<string, unknown>>,
+  extras: Array<{ name: string; string_id: string }> = []
 ): Array<Record<string, unknown>> {
   const degree = degreesByName(mapped, edges)
-  return mapped
-    .map((m) => ({
-      query: m.query,
-      name: m.preferred_name,
-      string_id: m.string_id,
-      degree: degree.get(m.preferred_name) ?? 0
-    }))
-    .sort((a, b) => a.name.localeCompare(b.name) || a.string_id.localeCompare(b.string_id))
+  const queryNames = new Set(mapped.map((m) => m.preferred_name))
+  const rows: Array<Record<string, unknown>> = mapped.map((m) => ({
+    query: m.query,
+    name: m.preferred_name,
+    string_id: m.string_id,
+    degree: degree.get(m.preferred_name) ?? 0,
+    // Whether this node is one of the genes that was asked for, or a partner the service added.
+    is_query: true
+  }))
+  for (const extra of extras) {
+    if (queryNames.has(extra.name)) continue
+    rows.push({
+      query: null,
+      name: extra.name,
+      string_id: extra.string_id,
+      degree: degree.get(extra.name) ?? 0,
+      is_query: false
+    })
+  }
+  return rows.sort(
+    (a, b) => String(a.name).localeCompare(String(b.name)) ||
+      String(a.string_id).localeCompare(String(b.string_id))
+  )
 }
 
 function summarizeNetwork(
@@ -1106,6 +1136,12 @@ export const PROTEIN_ANNOTATION_TOOLS: ToolDescriptor[] = [
           type: 'integer',
           default: 700,
           description: 'Minimum combined score 0-1000 (400 medium, 700 high, 900 highest).'
+        },
+        add_nodes: {
+          type: 'integer',
+          default: 0,
+          description:
+            'How many interaction partners the service may add beyond the genes you asked for. 0 keeps the network to those genes, which is the behaviour every earlier version had. A value above 0 is an explicit request for partners, and those partners come back with is_query:false.'
         }
       },
       required: ['symbols']
@@ -1118,6 +1154,7 @@ export const PROTEIN_ANNOTATION_TOOLS: ToolDescriptor[] = [
     run: async (ctx, a) => {
       const species = Number(a.species ?? DEFAULT_SPECIES)
       const requiredScore = Number(a.required_score ?? 700)
+      const requestedAddNodes = Math.max(0, Math.floor(Number(a.add_nodes ?? 0)) || 0)
       const symbols = [
         ...new Set((a.symbols as string[]).map((s) => String(s).trim()).filter(Boolean))
       ]
@@ -1128,27 +1165,44 @@ export const PROTEIN_ANNOTATION_TOOLS: ToolDescriptor[] = [
       const m = await mapStringIds(ctx, symbols, species)
       requests.push(m.log)
       let edges: Array<Record<string, unknown>> = []
+      let networkNodeRows: Array<{ name: string; string_id: string }> = []
       const stringIds = m.mapped.map((x) => x.string_id)
       if (stringIds.length) {
         const url = `${STRING_BASE}/tsv/network${qs([
           ['identifiers', stringIds.join('\r')],
           ['species', species],
           ['required_score', requiredScore],
+          ['add_nodes', requestedAddNodes],
           ['caller_identity', STRING_CALLER]
         ])}`
         const text = await ctx.fetchText(url)
-        edges = canonicalEdges(parseNetworkTsv(text))
+        const rows = parseNetworkTsv(text)
+        networkNodeRows = networkNodes(rows)
+        edges = canonicalEdges(rows)
         requests.push({ endpoint: 'tsv/network', bytes: byteLen(text) })
       }
       return {
         tool: 'string-network',
         tool_version: '0.3.0',
-        query: { symbols, species, required_score: requiredScore },
+        query: {
+          symbols,
+          species,
+          required_score: requiredScore,
+          network_add_nodes_requested: requestedAddNodes
+        },
         string_version: ver.version,
-        nodes: nodeTable(m.mapped, edges),
+        nodes: nodeTable(m.mapped, edges, networkNodeRows),
         unmapped: m.unmapped,
         edges,
-        summary: summarizeNetwork(m.mapped, m.unmapped, edges),
+        summary: {
+          ...summarizeNetwork(m.mapped, m.unmapped, edges),
+          nodes_returned: {
+            query: m.mapped.length,
+            added: nodeTable(m.mapped, edges, networkNodeRows).filter(
+              (node) => node.is_query === false
+            ).length
+          }
+        },
         provenance: {
           api_base_url: STRING_BASE,
           caller_identity: STRING_CALLER,
@@ -1159,7 +1213,7 @@ export const PROTEIN_ANNOTATION_TOOLS: ToolDescriptor[] = [
             network_type: 'functional',
             'get_string_ids.limit': 1,
             'get_string_ids.echo_query': 1,
-            'network.add_nodes': 0
+            'network.add_nodes': requestedAddNodes
           },
           retrieved_at: new Date().toISOString(),
           n_http_requests: requests.length,

@@ -403,6 +403,78 @@ describe('protein_annotation / STRING', () => {
     expect(out.unmapped).toEqual([])
   })
 
+  it('get_string_network keeps the network to the query genes by default, with no partner added', async () => {
+    const header =
+      'stringId_A\tstringId_B\tpreferredName_A\tpreferredName_B\tncbiTaxonId\tscore\tnscore\tfscore\tpscore\tascore\tescore\tdscore\ttscore\n'
+    const tsv =
+      header + '9606.ENSP00000258149\t9606.ENSP00000269305\tMDM2\tTP53\t9606\t0.999\t0\t0\t0\t0\t0.9\t0\t0.5\n'
+    const fetchImpl = mockFetch({
+      '/json/version': { json: [{ string_version: '12.0', stable_address: 'x' }] },
+      '/json/get_string_ids': {
+        json: [
+          { queryIndex: 0, stringId: '9606.ENSP00000269305', preferredName: 'TP53', ncbiTaxonId: 9606 },
+          { queryIndex: 1, stringId: '9606.ENSP00000258149', preferredName: 'MDM2', ncbiTaxonId: 9606 }
+        ]
+      },
+      '/tsv/network': { text: tsv }
+    })
+    const out = (await engine(fetchImpl).call(
+      tool('get_string_network'),
+      { symbols: ['TP53', 'MDM2'], required_score: 700 },
+      {}
+    )) as {
+      query: { network_add_nodes_requested: number }
+      nodes: Array<{ name: string; is_query: boolean }>
+      summary: { nodes_returned: { query: number; added: number } }
+      provenance: { parameters: Record<string, number> }
+    }
+
+    // Omitting the parameter is the historical behaviour: nothing is added, and every node is a query gene.
+    expect(out.query.network_add_nodes_requested).toBe(0)
+    expect(out.summary.nodes_returned).toEqual({ query: 2, added: 0 })
+    expect(out.nodes.every((node) => node.is_query === true)).toBe(true)
+    expect(out.provenance.parameters['network.add_nodes']).toBe(0)
+  })
+
+  it('get_string_network reports an added partner as a partner, with the id the service gave it', async () => {
+    const header =
+      'stringId_A\tstringId_B\tpreferredName_A\tpreferredName_B\tncbiTaxonId\tscore\tnscore\tfscore\tpscore\tascore\tescore\tdscore\ttscore\n'
+    const tsv =
+      header +
+      '9606.ENSP00000258149\t9606.ENSP00000269305\tMDM2\tTP53\t9606\t0.999\t0\t0\t0\t0\t0.9\t0\t0.5\n' +
+      '9606.ENSP00000258149\t9606.ENSP00000999999\tMDM2\tPARTNER\t9606\t0.8\t0\t0\t0\t0\t0.7\t0\t0.4\n'
+    const fetchImpl = mockFetch({
+      '/json/version': { json: [{ string_version: '12.0', stable_address: 'x' }] },
+      '/json/get_string_ids': {
+        json: [
+          { queryIndex: 0, stringId: '9606.ENSP00000269305', preferredName: 'TP53', ncbiTaxonId: 9606 },
+          { queryIndex: 1, stringId: '9606.ENSP00000258149', preferredName: 'MDM2', ncbiTaxonId: 9606 }
+        ]
+      },
+      '/tsv/network': { text: tsv }
+    })
+    const out = (await engine(fetchImpl).call(
+      tool('get_string_network'),
+      { symbols: ['TP53', 'MDM2'], required_score: 700, add_nodes: 5 },
+      {}
+    )) as {
+      query: { network_add_nodes_requested: number }
+      nodes: Array<Record<string, unknown>>
+      summary: { nodes_returned: { query: number; added: number } }
+      provenance: { parameters: Record<string, number> }
+    }
+
+    // Asked explicitly, so the partner is reported as one — and it can never be mistaken for an input gene.
+    expect(out.query.network_add_nodes_requested).toBe(5)
+    expect(out.provenance.parameters['network.add_nodes']).toBe(5)
+    expect(out.summary.nodes_returned).toEqual({ query: 2, added: 1 })
+    expect(out.nodes.find((node) => node.name === 'PARTNER')).toMatchObject({
+      query: null,
+      string_id: '9606.ENSP00000999999',
+      is_query: false
+    })
+  })
+
   it('get_string_similarity_scores canonicalizes homology pairs (id_a <= id_b, self flagged)', async () => {
     const fetchImpl = mockFetch({
       '/json/version': { json: [{ string_version: '12.0' }] },
