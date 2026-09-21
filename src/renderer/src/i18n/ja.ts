@@ -2610,8 +2610,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'ws.producerRunNotIdentified':
     'キャプチャされた証拠からプロデューサー実行を特定できませんでした。',
   'ws.provenanceMessages': '来歴メッセージ',
-  'ws.providerUnreachableRecovery':
-    '設定でプロバイダーのキーを確認するか、別のプロバイダーに切り替えてから、もう一度送信してください。',
+  'recovery.providerUnreachable':
+    'プロバイダーのキーを確認するか、別のプロバイダーに切り替えてから、もう一度お試しください。',
   'ws.reconnectBeforeCompacting':
     '圧縮する前に、メッセージを送信してこのセッションに再接続してください。',
   'ws.reconstructionNeedsExecutionLog': 'このバージョンの再構築には不変の実行ログが必要です。',

@@ -2607,8 +2607,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'ws.producerRunNotIdentified':
     'Не удалось определить запуск-производитель по зафиксированным свидетельствам.',
   'ws.provenanceMessages': 'Сообщения о происхождении',
-  'ws.providerUnreachableRecovery':
-    'Проверьте ключ провайдера в настройках или смените провайдера и отправьте снова.',
+  'recovery.providerUnreachable':
+    'Проверьте ключ провайдера или смените провайдера и попробуйте снова.',
   'ws.reconnectBeforeCompacting':
     'Отправьте сообщение, чтобы переподключить эту сессию перед сжатием.',
   'ws.reconstructionNeedsExecutionLog':

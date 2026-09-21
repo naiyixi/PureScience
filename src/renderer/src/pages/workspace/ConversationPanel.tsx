@@ -371,7 +371,7 @@ const ConversationPanel = ({
   // the provider rejected the turn) rather than being guessed from the text here.
   const runRecoveryHint =
     activeSession?.errorRecovery === 'provider-unreachable'
-      ? t('ws.providerUnreachableRecovery')
+      ? t('recovery.providerUnreachable')
       : undefined
 
   const activeSpecialist = specialistId

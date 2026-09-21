@@ -2670,8 +2670,8 @@ export const de: Partial<Record<ZhKey, string>> = {
   'ws.producerRunNotIdentified':
     'Der Erzeugerlauf konnte anhand der erfassten Belege nicht identifiziert werden.',
   'ws.provenanceMessages': 'Herkunftsnachrichten',
-  'ws.providerUnreachableRecovery':
-    'Prüfe den Anbieterschlüssel in den Einstellungen oder wechsle den Anbieter und sende erneut.',
+  'recovery.providerUnreachable':
+    'Prüfe den Anbieterschlüssel oder wechsle den Anbieter und versuche es erneut.',
   'ws.reconnectBeforeCompacting':
     'Senden Sie eine Nachricht, um diese Sitzung vor dem Komprimieren neu zu verbinden.',
   'ws.reconstructionNeedsExecutionLog':

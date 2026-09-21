@@ -1308,8 +1308,8 @@ export const en: Record<ZhKey, string> = {
   'ws.collapsePreviewPanel': 'Collapse preview panel',
   'ws.draftRestored': 'Draft restored',
   'ws.requestReview': 'Request review',
-  'ws.providerUnreachableRecovery':
-    'Check the provider key in Settings, or switch to another provider, then send again.',
+  'recovery.providerUnreachable':
+    'Check the provider key, or switch to another provider, then try again.',
   'ws.reconnectBeforeCompacting': 'Send a message to reconnect this session before compacting.',
   'ws.resolveErrorBeforeCompacting': 'Resolve the current session error before compacting.',
   'ws.waitForActivityBeforeCompacting': 'Wait for the current agent activity to finish.',

@@ -2641,8 +2641,8 @@ export const es: Partial<Record<ZhKey, string>> = {
   'ws.producerRunNotIdentified':
     'No se pudo identificar la ejecución productora a partir de la evidencia capturada.',
   'ws.provenanceMessages': 'Mensajes de procedencia',
-  'ws.providerUnreachableRecovery':
-    'Comprueba la clave del proveedor en los ajustes, o cambia de proveedor, y vuelve a enviar.',
+  'recovery.providerUnreachable':
+    'Comprueba la clave del proveedor o cambia de proveedor, y vuelve a intentarlo.',
   'ws.reconnectBeforeCompacting':
     'Envía un mensaje para reconectar esta sesión antes de compactar.',
   'ws.reconstructionNeedsExecutionLog':
