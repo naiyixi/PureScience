@@ -261,6 +261,10 @@ const createAcpRuntime = ({
           provenance: provenanceRepository,
           getRpcConnection: () => notebookRpcServer.ensureStarted(),
           issueRpcCapability: (binding) => notebookRpcServer.issueArtifactRunCapability(binding),
+          extendRpcCapability: (token, scope) =>
+            notebookRpcServer.extendArtifactRunCapability(token, scope),
+          retireRpcCapabilityScope: (token, artifactRunId) =>
+            notebookRpcServer.retireArtifactRunCapabilityScope(token, artifactRunId),
           revokeRpcCapability: (token) => notebookRpcServer.revokeArtifactRunCapability(token)
         },
         uploads: { repository: uploadRepository },

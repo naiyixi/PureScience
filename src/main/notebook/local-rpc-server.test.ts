@@ -50,6 +50,9 @@ const registeredInput = {
   association: 'turn-attached' as const
 }
 
+// The Artifact RPC authorization scheme; kept in a constant so the header line carries one spelling.
+const ARTIFACT_AUTH_SCHEME = 'Bearer'
+
 const artifactCapabilityBinding = {
   projectId: 'project-1',
   appSessionId: 'session-1',
@@ -907,6 +910,128 @@ describe('notebook local RPC server', () => {
     }
   })
 
+  it('serves a second turn of the same Artifact session from the capability issued for the first', async () => {
+    const root = await createStorageRoot()
+    const service = new NotebookRuntimeService({
+      configRoot: root,
+      dataRoot: root,
+      projectName: 'default-project',
+      repository: new NotebookRunRepository(root)
+    })
+    const createVersion = vi.fn().mockResolvedValue({ versionId: 'version-2' })
+    const server = new NotebookLocalRpcServer(service, {
+      transport: 'tcp',
+      token: 'secret-token',
+      artifactProvenance: { createVersion }
+    })
+    const connection = await server.ensureStarted()
+    const token = server.issueArtifactRunCapability(artifactCapabilityBinding)
+    const secondTurn = {
+      artifactRunId: 'artifact-run-2',
+      rootFrameId: 'frame-root',
+      runtimeSegmentId: 'runtime-2',
+      promptMessageId: 'message-user-2',
+      messageBranchId: 'branch-2',
+      agentFrameId: 'frame-agent-2'
+    }
+    const write = (params: Record<string, unknown>): Promise<Response> =>
+      fetch(connection.endpoint, {
+        method: 'POST',
+        headers: {
+          authorization: `${ARTIFACT_AUTH_SCHEME} ${token}`,
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+          method: 'artifactCreateVersion',
+          params: {
+            ...artifactCapabilityBinding,
+            ...params,
+            writeOperationId: 'write-turn-2',
+            writeRequestChecksum: 'a'.repeat(64),
+            filename: 'sin.png'
+          }
+        })
+      })
+
+    try {
+      // The first turn seals: its authority is retired while the capability stays for the session.
+      await server.retireArtifactRunCapabilityScope(token, artifactCapabilityBinding.artifactRunId)
+      expect(
+        server.extendArtifactRunCapability(token, {
+          artifactRunId: secondTurn.artifactRunId,
+          rootFrameId: secondTurn.rootFrameId,
+          runtimeSegmentId: secondTurn.runtimeSegmentId,
+          promptMessageId: secondTurn.promptMessageId,
+          messageBranchId: secondTurn.messageBranchId,
+          agentFrameId: secondTurn.agentFrameId
+        })
+      ).toBe(true)
+
+      const response = await write(secondTurn)
+
+      expect(response.status).toBe(200)
+      // The write has to land under the turn that made it: taking the identities from the capability
+      // instead would attribute every later turn's bytes to the turn the capability was issued for.
+      expect(createVersion).toHaveBeenCalledWith(
+        expect.objectContaining({
+          artifactRunId: 'artifact-run-2',
+          promptMessageId: 'message-user-2',
+          runtimeSegmentId: 'runtime-2',
+          messageBranchId: 'branch-2',
+          agentFrameId: 'frame-agent-2'
+        })
+      )
+    } finally {
+      await server.close()
+    }
+  })
+
+  it('refuses a write that names a retired turn while the session capability stays valid', async () => {
+    const root = await createStorageRoot()
+    const service = new NotebookRuntimeService({
+      configRoot: root,
+      dataRoot: root,
+      projectName: 'default-project',
+      repository: new NotebookRunRepository(root)
+    })
+    const createVersion = vi.fn().mockResolvedValue({ versionId: 'version-1' })
+    const server = new NotebookLocalRpcServer(service, {
+      transport: 'tcp',
+      token: 'secret-token',
+      artifactProvenance: { createVersion }
+    })
+    const connection = await server.ensureStarted()
+    const token = server.issueArtifactRunCapability(artifactCapabilityBinding)
+
+    try {
+      await server.retireArtifactRunCapabilityScope(token, artifactCapabilityBinding.artifactRunId)
+      const response = await fetch(connection.endpoint, {
+        method: 'POST',
+        headers: {
+          authorization: `${ARTIFACT_AUTH_SCHEME} ${token}`,
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+          method: 'artifactCreateVersion',
+          params: {
+            ...artifactCapabilityBinding,
+            writeOperationId: 'write-retired-turn',
+            writeRequestChecksum: 'a'.repeat(64),
+            filename: 'sin.png'
+          }
+        })
+      })
+
+      expect(response.status).toBe(403)
+      await expect(response.json()).resolves.toEqual({
+        error: expect.stringContaining('the capability belongs to an earlier turn')
+      })
+      expect(createVersion).not.toHaveBeenCalled()
+    } finally {
+      await server.close()
+    }
+  })
+
   it('rejects expired and revoked Artifact run capabilities', async () => {
     const root = await createStorageRoot()
     let now = 1_000
@@ -1654,6 +1779,131 @@ describe('notebook local RPC server', () => {
         queued_count: 1,
         provider_ceilings: { 'ssh:cluster-a': 10 }
       })
+    } finally {
+      await server.close()
+    }
+  })
+
+  it('keeps its capability bookkeeping for tokens it does not hold', async () => {
+    const root = await createStorageRoot()
+    const service = new NotebookRuntimeService({
+      configRoot: root,
+      dataRoot: root,
+      projectName: 'default-project',
+      repository: new NotebookRunRepository(root)
+    })
+    const server = new NotebookLocalRpcServer(service, { transport: 'tcp', token: 'secret-token' })
+
+    // A retired or already-released token is a no-op here rather than an exception: every caller of these is
+    // a cleanup path, and a cleanup that threw would mask the failure it was cleaning up after.
+    expect(
+      server.extendArtifactRunCapability('capability-that-was-never-issued', {
+        artifactRunId: 'artifact-run-1',
+        rootFrameId: 'frame-root',
+        agentFrameId: 'frame-agent',
+        runtimeSegmentId: 'runtime-1',
+        promptMessageId: 'message-user-1',
+        messageBranchId: 'branch-1'
+      })
+    ).toBe(false)
+    await expect(
+      server.retireArtifactRunCapabilityScope('capability-that-was-never-issued', 'artifact-run-1')
+    ).resolves.toBeUndefined()
+    await expect(
+      server.revokeArtifactRunCapability('capability-that-was-never-issued')
+    ).resolves.toBeUndefined()
+  })
+
+  it('refuses a request that does not carry the identity the capability was issued for', async () => {
+    const root = await createStorageRoot()
+    const service = new NotebookRuntimeService({
+      configRoot: root,
+      dataRoot: root,
+      projectName: 'default-project',
+      repository: new NotebookRunRepository(root)
+    })
+    const createVersion = vi.fn()
+    const server = new NotebookLocalRpcServer(service, {
+      transport: 'tcp',
+      token: 'secret-token',
+      artifactProvenance: { createVersion }
+    })
+    const connection = await server.ensureStarted()
+    const token = server.issueArtifactRunCapability(artifactCapabilityBinding)
+
+    try {
+      const response = await fetch(connection.endpoint, {
+        method: 'POST',
+        headers: {
+          authorization: `${ARTIFACT_AUTH_SCHEME} ${token}`,
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+          method: 'artifactCreateVersion',
+          params: {
+            ...artifactCapabilityBinding,
+            projectId: 'another-project',
+            writeOperationId: 'write-other-project',
+            writeRequestChecksum: 'a'.repeat(64),
+            filename: 'sin.png'
+          }
+        })
+      })
+
+      // A field that outlives a turn is not softened by the turn-scoped matching: naming another project is
+      // refused, and it is refused as a plain mismatch rather than as "an earlier turn".
+      expect(response.status).toBe(403)
+      await expect(response.json()).resolves.toEqual({
+        error: 'Artifact RPC capability does not match projectId.'
+      })
+      expect(createVersion).not.toHaveBeenCalled()
+    } finally {
+      await server.close()
+    }
+  })
+
+  it('answers a request that is not a well-formed call without dispatching it', async () => {
+    const root = await createStorageRoot()
+    const service = new NotebookRuntimeService({
+      configRoot: root,
+      dataRoot: root,
+      projectName: 'default-project',
+      repository: new NotebookRunRepository(root)
+    })
+    const createVersion = vi.fn()
+    const server = new NotebookLocalRpcServer(service, {
+      transport: 'tcp',
+      token: 'secret-token',
+      artifactProvenance: { createVersion }
+    })
+    const connection = await server.ensureStarted()
+    const token = server.issueArtifactRunCapability(artifactCapabilityBinding)
+    const call = (init: { method: string; body?: string }): Promise<Response> =>
+      fetch(connection.endpoint, {
+        method: init.method,
+        headers: {
+          authorization: `${ARTIFACT_AUTH_SCHEME} ${token}`,
+          'content-type': 'application/json'
+        },
+        ...(init.body === undefined ? {} : { body: init.body })
+      })
+
+    try {
+      const notPost = await call({ method: 'GET' })
+      expect(notPost.status).toBe(405)
+
+      // A method that is not even a string, and params that are not an object: neither may reach a bridge.
+      const malformedMethod = await call({ method: 'POST', body: JSON.stringify({ method: 42 }) })
+      expect(malformedMethod.ok).toBe(false)
+      const malformedParams = await call({
+        method: 'POST',
+        body: JSON.stringify({
+          method: 'artifactCreateVersion',
+          params: 'not-an-object'
+        })
+      })
+      expect(malformedParams.status).toBe(403)
+      expect(createVersion).not.toHaveBeenCalled()
     } finally {
       await server.close()
     }

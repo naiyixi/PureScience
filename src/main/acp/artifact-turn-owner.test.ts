@@ -9,6 +9,7 @@ import { ArtifactRepository, getArtifactCurrentRunFilePath } from '../artifacts/
 import { ArtifactRunRegistry } from '../artifacts/run-registry'
 import { createLinearConversationGraph } from '../../shared/conversation-graph'
 import { ArtifactTurnOwner } from './artifact-turn-owner'
+import type { ArtifactTurnHandle } from './artifact-turn-owner'
 import { ARTIFACT_RPC_METHODS } from '../artifacts/rpc-methods'
 
 const roots: string[] = []
@@ -271,11 +272,57 @@ describe('ArtifactTurnOwner', () => {
       artifactClaimId: expect.stringMatching(/^artifact-claim-/),
       artifacts: [listedVersion]
     })
-    expect(revokeRpcCapability).toHaveBeenCalledOnce()
+    // Sealing one turn no longer revokes the capability: it belongs to the artifact storage session and the
+    // next turn still needs it. It is released once that session has no active turn left.
+    expect(revokeRpcCapability).not.toHaveBeenCalled()
     expect(listRunVersions).toHaveBeenCalledOnce()
     expect(prepareRunFinalization).toHaveBeenCalledOnce()
     expect(register).toHaveBeenCalledOnce()
     await expect(owner.finalize(turn)).resolves.toBe(publication)
+  })
+
+  it('keeps the seal waiting for the retirement it started, not merely starts it', async () => {
+    const dataRoot = await createRoot()
+    const repository = new ArtifactRepository(dataRoot)
+    const releaseRetire = createDeferred()
+    const retireStarted = createDeferred()
+    const listedVersion = artifactVersion()
+    const listRunVersions = vi.fn(async () => [listedVersion])
+    const owner = new ArtifactTurnOwner({
+      dataRoot,
+      repository,
+      runRegistry: new ArtifactRunRegistry(),
+      provenance: {
+        listRunVersions,
+        writeAppGeneratedVersion: async () => listedVersion
+      },
+      issueRpcCapability: () => 'capability-1',
+      // Retiring the turn's scope is the wait that keeps an already-admitted write ahead of the frozen claim.
+      // Its promise has to be awaited by the seal rather than merely started: dropping it let the version land
+      // after finalization had already listed nothing, and the run published no claim at all.
+      retireRpcCapabilityScope: vi.fn(async () => {
+        retireStarted.resolve()
+        await releaseRetire.promise
+      }),
+      now: () => 1_100
+    })
+    const turn = await owner.open({
+      appSessionId: 'session-1',
+      artifactStorageSessionId: 'artifact-session-1',
+      projectId: 'project-1',
+      agentName: 'Claude Code'
+    })
+
+    const finalization = owner.finalize(turn)
+    await retireStarted.promise
+    // No app-side write is outstanding in this case, so the retirement is the only thing the seal is waiting
+    // for. Give the pending chain more than a couple of microtasks to prove it is not listed early.
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    expect(listRunVersions).not.toHaveBeenCalled()
+
+    releaseRetire.resolve()
+    await finalization
+    expect(listRunVersions).toHaveBeenCalledOnce()
   })
 
   it('caches an empty terminal result without creating a claim', async () => {
@@ -322,6 +369,7 @@ describe('ArtifactTurnOwner', () => {
       runRegistry: new ArtifactRunRegistry(),
       now: () => now,
       issueRpcCapability: () => `capability-${++capabilitySequence}`,
+      extendRpcCapability: () => true,
       revokeRpcCapability: (token) => {
         revoked.push(token)
       },
@@ -355,7 +403,9 @@ describe('ArtifactTurnOwner', () => {
     await expect(readFile(currentRunFile, 'utf8')).resolves.toBe('{}\n')
     expect(owner.activeRunIds()).toEqual([])
     expect(notebookContexts.at(-1)).toEqual({ sessionId: 'session-1', context: undefined })
-    expect(revoked).toEqual(['capability-1', 'capability-2'])
+    // One capability for the session: the second turn extends the first turn's instead of taking a new one,
+    // and the session's capability is what gets revoked when the session goes idle.
+    expect(revoked).toEqual(['capability-1'])
   })
 
   it('serializes stale cleanup with a replacement opening the same handoff', async () => {
@@ -460,7 +510,9 @@ describe('ArtifactTurnOwner', () => {
 
     releaseWrite.resolve()
     await acceptedWrite
-    await expect(disposal).rejects.toThrow('revoke failed')
+    // The session capability is revoked when the session goes idle, and a revocation that fails is contained:
+    // the disposal still completes and ownership is still cleared, which is what this case is about.
+    await expect(disposal).resolves.toBeUndefined()
 
     expect(disposalSettled).toBe(true)
     expect(owner.activeRunIds()).toEqual([])
@@ -592,14 +644,21 @@ describe('ArtifactTurnOwner', () => {
     const dataRoot = await createRoot()
     const contexts: unknown[] = []
     const revoked: string[] = []
+    const retired: string[] = []
     const owner = new ArtifactTurnOwner({
       dataRoot,
       repository: new ArtifactRepository(dataRoot),
       runRegistry: new ArtifactRunRegistry(),
       issueRpcCapability: () => 'capability-1',
+      // A failed open retires this turn's scope inside the session capability. The retirement is the callback
+      // that has to be reached here, and it fails the same way revocation used to, so cleanup still has to
+      // reach every remaining stage.
+      retireRpcCapabilityScope: (_token, artifactRunId) => {
+        retired.push(artifactRunId)
+        throw new Error('cleanup retirement failed')
+      },
       revokeRpcCapability: (token) => {
         revoked.push(token)
-        throw new Error('cleanup revoke failed')
       },
       notebook: {
         setArtifactProvenanceContext: (_sessionId, context) => {
@@ -625,7 +684,10 @@ describe('ArtifactTurnOwner', () => {
 
     await expect(readFile(currentRunFile, 'utf8')).resolves.toBe('{}\n')
     expect(contexts.at(-1)).toBeUndefined()
-    expect(revoked).toEqual(['capability-1'])
+    // The session's capability is not revoked by a failed open any more: the turn's scope is retired instead,
+    // and the retirement is reached even though it throws.
+    expect(retired).toEqual([expect.stringMatching(/^artifact-run-/)])
+    expect(revoked).toEqual([])
     expect(owner.activeRunIds()).toEqual([])
   })
 
@@ -661,11 +723,12 @@ describe('ArtifactTurnOwner', () => {
     expect(owner.snapshot(turn).phase).toBe('disposed')
   })
 
-  it('revokes a capability and publishes no active state when opening the handoff fails', async () => {
+  it('retires the turn scope and publishes no active state when opening the handoff fails', async () => {
     const dataRoot = await createRoot()
     const blockedRoot = join(dataRoot, 'blocked')
     const repository = new ArtifactRepository(blockedRoot)
     const revoked: string[] = []
+    const retired: string[] = []
     await repository.writePendingFile({
       projectName: 'seed',
       sessionId: 'seed',
@@ -681,6 +744,9 @@ describe('ArtifactTurnOwner', () => {
       repository,
       runRegistry: new ArtifactRunRegistry(),
       issueRpcCapability: () => 'failed-open-capability',
+      retireRpcCapabilityScope: (_token, artifactRunId) => {
+        retired.push(artifactRunId)
+      },
       revokeRpcCapability: (token) => {
         revoked.push(token)
       }
@@ -695,6 +761,176 @@ describe('ArtifactTurnOwner', () => {
       })
     ).rejects.toThrow()
     expect(failingOwner.activeRunIds()).toEqual([])
-    expect(revoked).toEqual(['failed-open-capability'])
+    // The turn never opened, so nothing of it may stay authorized; the capability itself is the session's and
+    // is not the failed open's to take away.
+    expect(retired).toEqual([expect.stringMatching(/^artifact-run-/)])
+    expect(revoked).toEqual([])
+  })
+
+  it('revokes the capability it replaces when the session has to be issued a new one', async () => {
+    const dataRoot = await createRoot()
+    const revoked: string[] = []
+    let sequence = 0
+    const owner = new ArtifactTurnOwner({
+      dataRoot,
+      repository: new ArtifactRepository(dataRoot),
+      runRegistry: new ArtifactRunRegistry(),
+      issueRpcCapability: () => `capability-${++sequence}`,
+      // The stored capability cannot be extended, so this turn has to be issued its own. The one it replaces
+      // stays valid until it is revoked, and nothing else holds a reference to it.
+      extendRpcCapability: () => false,
+      revokeRpcCapability: (token) => {
+        revoked.push(token)
+      },
+      now: () => 1_200
+    })
+
+    await owner.open({
+      appSessionId: 'session-1',
+      artifactStorageSessionId: 'artifact-session-1',
+      projectId: 'project-1',
+      agentName: 'Claude Code'
+    })
+    // A replacement for the same artifact storage session — a fork or a restarted turn — takes a new
+    // capability, and the one it displaces must not stay live and unreachable.
+    await owner.open({
+      appSessionId: 'session-2',
+      artifactStorageSessionId: 'artifact-session-1',
+      projectId: 'project-1',
+      agentName: 'Claude Code'
+    })
+
+    await vi.waitFor(() => expect(revoked).toEqual(['capability-1']))
+  })
+
+  it('releases only the capability of the session that went idle', async () => {
+    const dataRoot = await createRoot()
+    const revoked: string[] = []
+    let sequence = 0
+    const owner = new ArtifactTurnOwner({
+      dataRoot,
+      repository: new ArtifactRepository(dataRoot),
+      runRegistry: new ArtifactRunRegistry(),
+      issueRpcCapability: () => `capability-${++sequence}`,
+      revokeRpcCapability: (token) => {
+        revoked.push(token)
+      },
+      now: () => 1_300
+    })
+    const first = await owner.open({
+      appSessionId: 'session-1',
+      artifactStorageSessionId: 'artifact-session-1',
+      projectId: 'project-1',
+      agentName: 'Claude Code'
+    })
+    const second = await owner.open({
+      appSessionId: 'session-2',
+      artifactStorageSessionId: 'artifact-session-2',
+      projectId: 'project-1',
+      agentName: 'Claude Code'
+    })
+
+    // The release walks the whole map, and a session going idle must not take another session's credential
+    // with it — the two are only related by living in the same map.
+    await owner.dispose(second)
+    await vi.waitFor(() => expect(revoked).toEqual(['capability-2']))
+
+    await owner.dispose(first)
+    await vi.waitFor(() => expect(revoked).toEqual(['capability-2', 'capability-1']))
+  })
+
+  it('defers the release while another turn of the session is still sealing', async () => {
+    const dataRoot = await createRoot()
+    const repository = new ArtifactRepository(dataRoot)
+    const retired: string[] = []
+    const revoked: string[] = []
+    const releaseRetire = createDeferred()
+    const owner = new ArtifactTurnOwner({
+      dataRoot,
+      repository,
+      runRegistry: new ArtifactRunRegistry(),
+      issueRpcCapability: () => 'capability-1',
+      extendRpcCapability: () => true,
+      retireRpcCapabilityScope: async (_token, artifactRunId) => {
+        retired.push(artifactRunId)
+        await releaseRetire.promise
+      },
+      revokeRpcCapability: (token) => {
+        revoked.push(token)
+      },
+      now: () => 1_400
+    })
+    const first = await owner.open({
+      appSessionId: 'session-1',
+      artifactStorageSessionId: 'artifact-session-1',
+      projectId: 'project-1',
+      agentName: 'Claude Code'
+    })
+    const second = await owner.open({
+      appSessionId: 'session-1',
+      artifactStorageSessionId: 'artifact-session-1',
+      projectId: 'project-1',
+      agentName: 'Claude Code'
+    })
+
+    const firstFinalization = owner.finalize(first)
+    const secondFinalization = owner.finalize(second)
+    await vi.waitFor(() => expect(retired).toHaveLength(2))
+
+    // Both turns are sealing, so a release that ran when one of them settled would take the credential away
+    // from the other's admitted writes.
+    releaseRetire.resolve()
+    await firstFinalization
+    await secondFinalization
+    expect(revoked).toEqual([])
+
+    await owner.dispose(first)
+    await owner.dispose(second)
+    await vi.waitFor(() => expect(revoked).toEqual(['capability-1']))
+  })
+
+  it('surfaces a seal whose retirement rejects, and still clears ownership', async () => {
+    const dataRoot = await createRoot()
+    const owner = new ArtifactTurnOwner({
+      dataRoot,
+      repository: new ArtifactRepository(dataRoot),
+      runRegistry: new ArtifactRunRegistry(),
+      issueRpcCapability: () => 'capability-1',
+      retireRpcCapabilityScope: () => {
+        throw new Error('retirement failed')
+      },
+      now: () => 1_500
+    })
+    const turn = await owner.open({
+      appSessionId: 'session-1',
+      artifactStorageSessionId: 'artifact-session-1',
+      projectId: 'project-1',
+      agentName: 'Claude Code'
+    })
+
+    // A failed retirement is not a settled seal: the caller has to see it rather than get a claim frozen on
+    // top of a wait that never happened.
+    await expect(owner.finalize(turn)).rejects.toThrow('retirement failed')
+
+    await expect(owner.dispose(turn)).rejects.toThrow('retirement failed')
+    expect(owner.activeRunIds()).toEqual([])
+    expect(owner.snapshot(turn).phase).toBe('disposed')
+  })
+
+  it('refuses a write that names no session, and a handle it never issued', async () => {
+    const dataRoot = await createRoot()
+    const owner = new ArtifactTurnOwner({
+      dataRoot,
+      repository: new ArtifactRepository(dataRoot),
+      runRegistry: new ArtifactRunRegistry(),
+      now: () => 1_600
+    })
+
+    // An empty session id is not a session: falling through to "no active turn" is what keeps a write from
+    // being attached to whichever turn happens to be in the map.
+    await expect(owner.writeForActiveTurn('', { filename: 'x.txt', content: 'x' })).rejects.toThrow(
+      /No active assistant turn/i
+    )
+    expect(() => owner.snapshot({} as ArtifactTurnHandle)).toThrow(/Unknown Artifact turn handle/u)
   })
 })

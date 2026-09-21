@@ -224,6 +224,19 @@ type AcpRuntimeArtifactOptions = {
   runRegistry?: ArtifactRunRegistry
   getRpcConnection?: () => Promise<NotebookRpcConnection>
   issueRpcCapability?: (binding: ArtifactRpcCapabilityBinding) => string
+  retireRpcCapabilityScope?: (token: string, artifactRunId: string) => Promise<void> | void
+  extendRpcCapability?: (
+    token: string,
+    scope: Pick<
+      ArtifactRpcCapabilityBinding,
+      | 'artifactRunId'
+      | 'rootFrameId'
+      | 'agentFrameId'
+      | 'runtimeSegmentId'
+      | 'promptMessageId'
+      | 'messageBranchId'
+    >
+  ) => boolean
   revokeRpcCapability?: (token: string) => Promise<void> | void
   provenance?: Pick<
     import('../artifacts/provenance-repository').ArtifactProvenanceRepository,

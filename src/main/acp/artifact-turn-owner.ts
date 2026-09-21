@@ -90,6 +90,21 @@ type ArtifactTurnOwnerOptions = {
   now?: () => number
   issueRpcCapability?: (binding: ArtifactRpcCapabilityBinding) => string
   revokeRpcCapability?: (token: string) => Promise<void> | void
+  /** Retires one turn's authority inside a session capability when that turn seals. */
+  retireRpcCapabilityScope?: (token: string, artifactRunId: string) => Promise<void> | void
+  /** Adds a turn to an existing capability instead of issuing one per turn. */
+  extendRpcCapability?: (
+    token: string,
+    scope: Pick<
+      ArtifactRpcCapabilityBinding,
+      | 'artifactRunId'
+      | 'rootFrameId'
+      | 'agentFrameId'
+      | 'runtimeSegmentId'
+      | 'promptMessageId'
+      | 'messageBranchId'
+    >
+  ) => boolean
   provenance?: ArtifactTurnProvenance
   writeHandoffFile?: (filePath: string, content: string) => Promise<void>
   notebook?: {
@@ -133,7 +148,19 @@ type ArtifactTurn = {
 
 class ArtifactTurnOwner {
   private readonly activeTurnsBySession = new Map<string, ArtifactTurn>()
+  // One capability per artifact storage session. A per-turn capability is spent the moment its turn ends,
+  // and the artifact server keeps whatever it was started with — which is how every write in a later turn
+  // ends up holding a dead token. The session's capability is extended with each turn's identities instead,
+  // and only revoked when the session has no active turn left.
+  private readonly rpcCapabilitiesBySession = new Map<
+    string,
+    { appSessionId: string; token: string }
+  >()
   private readonly sessionHandoffQueues = new Map<string, Promise<void>>()
+  // Seal drains that are still running. The session capability must not be released while one of them is
+  // outstanding: this turn's writes were admitted before the seal, and taking the credential away now would
+  // lose the versions they are still landing.
+  private readonly sealDrains = new Set<Promise<void>>()
   private readonly turnsByHandle = new WeakMap<ArtifactTurnHandle, ArtifactTurn>()
   private readonly now: () => number
   private sequence = 0
@@ -148,7 +175,22 @@ class ArtifactTurnOwner {
     return this.withSessionHandoffLock(turn.appSessionId, async () => {
       let handoffWritten = false
 
-      turn.rpcCapabilityToken = this.options.issueRpcCapability?.({
+      const existing = this.rpcCapabilitiesBySession.get(turn.artifactStorageSessionId)
+      const existingToken = existing?.token
+      if (
+        existingToken &&
+        this.options.extendRpcCapability?.(existingToken, {
+          artifactRunId: turn.runId,
+          rootFrameId: turn.rootFrameId,
+          agentFrameId: turn.agentFrameId,
+          runtimeSegmentId: turn.runtimeSegmentId,
+          promptMessageId: turn.promptMessageId,
+          messageBranchId: turn.messageBranchId
+        })
+      ) {
+        turn.rpcCapabilityToken = existingToken
+      }
+      turn.rpcCapabilityToken ??= this.options.issueRpcCapability?.({
         projectId: turn.projectId,
         appSessionId: turn.appSessionId,
         artifactStorageSessionId: turn.artifactStorageSessionId,
@@ -167,7 +209,21 @@ class ArtifactTurnOwner {
         // while every suite stays green (verified live 2026-09-13).
         allowedMethods: [...ARTIFACT_RPC_METHODS]
       })
-      if (turn.rpcCapabilityToken) runContext.rpcCapabilityToken = turn.rpcCapabilityToken
+      if (turn.rpcCapabilityToken) {
+        const previous = this.rpcCapabilitiesBySession.get(turn.artifactStorageSessionId)
+        if (previous && previous.token !== turn.rpcCapabilityToken) {
+          // Replacing a capability without revoking it would leave a token that is still valid and no longer
+          // reachable by the release path.
+          void Promise.resolve()
+            .then(() => this.options.revokeRpcCapability?.(previous.token))
+            .catch(() => undefined)
+        }
+        this.rpcCapabilitiesBySession.set(turn.artifactStorageSessionId, {
+          appSessionId: turn.appSessionId,
+          token: turn.rpcCapabilityToken
+        })
+        runContext.rpcCapabilityToken = turn.rpcCapabilityToken
+      }
 
       try {
         await mkdir(dirname(turn.currentRunFile), { recursive: true })
@@ -183,7 +239,11 @@ class ArtifactTurnOwner {
       } catch (error) {
         if (turn.rpcCapabilityToken) {
           try {
-            await this.options.revokeRpcCapability?.(turn.rpcCapabilityToken)
+            // A failed open retires this turn's authority instead of revoking the session's capability: the
+            // token belongs to the artifact storage session and may already serve another turn, so revoking it
+            // here would take the credential away from turns that still need it. Retiring also waits for
+            // whatever this turn had already had admitted before the failure.
+            await this.options.retireRpcCapabilityScope?.(turn.rpcCapabilityToken, turn.runId)
           } catch {
             // Preserve the activation failure while still attempting every remaining cleanup stage.
           }
@@ -377,13 +437,46 @@ class ArtifactTurnOwner {
       : base
   }
 
+  /**
+   * Releases the session's capability once no turn of that session is active any more. A session capability
+   * that outlived its session would be exactly the standing credential this design is meant to avoid.
+   */
+  private releaseSessionCapability(appSessionId: string): void {
+    const pendingDrains = [...this.sealDrains]
+    if (pendingDrains.length > 0) {
+      // A turn that is still sealing has writes in flight, and its capability has to outlive them.
+      void Promise.allSettled(pendingDrains).then(() => this.releaseSessionCapability(appSessionId))
+      return
+    }
+    const stillActive = [...this.activeTurnsBySession.values()].some(
+      (turn) => turn.appSessionId === appSessionId && turn.phase !== 'disposed'
+    )
+    if (stillActive) return
+    for (const [storageSessionId, entry] of this.rpcCapabilitiesBySession) {
+      if (entry.appSessionId !== appSessionId) continue
+      this.rpcCapabilitiesBySession.delete(storageSessionId)
+      // The capability is out of the map either way, so a revocation that fails must not become an unhandled
+      // rejection or a reason to keep standing authority alive.
+      void Promise.resolve()
+        .then(() => this.options.revokeRpcCapability?.(entry.token))
+        .catch(() => undefined)
+    }
+  }
+
   private closeWrites(turn: ArtifactTurn): Promise<void> {
     if (turn.writeDrainPromise) return turn.writeDrainPromise
 
     turn.phase = 'sealing'
+    // The capability belongs to the session now, so sealing one turn must not revoke it — but it must stop
+    // authorizing that turn, or authority would outlive the turn it was granted for. The turn's scope is
+    // retired instead; the capability itself is released when the session has no active turn left.
+    // The call has to be *awaited*, not merely made: retiring a scope is what waits for the writes that were
+    // admitted before the seal, and a fire-and-forget call would let the claim freeze while one of them is
+    // still landing. The previous revision had a concise arrow body, which returned the promise; the braces
+    // introduced here dropped it, and the version then arrived after finalization had already listed nothing.
     const rpcDrain = turn.rpcCapabilityToken
       ? Promise.resolve().then(() =>
-          this.options.revokeRpcCapability?.(turn.rpcCapabilityToken as string)
+          this.options.retireRpcCapabilityScope?.(turn.rpcCapabilityToken as string, turn.runId)
         )
       : Promise.resolve()
     turn.writeDrainPromise = (async () => {
@@ -393,7 +486,19 @@ class ArtifactTurnOwner {
       ])
       if (rpcResult.status === 'rejected') throw rpcResult.reason
     })()
-    return turn.writeDrainPromise
+    const drain = turn.writeDrainPromise
+    this.sealDrains.add(drain)
+    // The cleanup chain swallows the drain's own failure on purpose: the seal reports it to the caller
+    // through writeDrainPromise, and a rejection escaping from here would be an unhandled one — a failing
+    // retirement would show up as a crash rather than as the turn's error.
+    void drain
+      .catch(() => undefined)
+      .finally(() => {
+        this.sealDrains.delete(drain)
+        // Draining can be what makes the session empty, and a release attempted while it ran was deferred.
+        this.releaseSessionCapability(turn.appSessionId)
+      })
+    return drain
   }
 
   private async finalizeTurn(turn: ArtifactTurn): Promise<ArtifactTurnPublication | undefined> {
@@ -507,6 +612,7 @@ class ArtifactTurnOwner {
           this.activeTurnsBySession.delete(turn.appSessionId)
         }
         turn.phase = 'disposed'
+        this.releaseSessionCapability(turn.appSessionId)
       }
     })
     if (cleanupErrors.length > 0) throw cleanupErrors[0]
