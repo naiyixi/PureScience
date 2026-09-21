@@ -85,6 +85,7 @@ import {
   providerKindPatch,
   type ProviderFormValue
 } from './provider-form-value'
+import { describeValidation } from './validation-message'
 
 type SettingsPageProps = {
   open: boolean
@@ -746,17 +747,26 @@ const SettingsPage = forwardRef<SettingsPageHandle, SettingsPageProps>(function 
     setStatusMessage(undefined)
 
     try {
-      // Persist first and return to the provider list immediately — don't hold the form open waiting
-      // for the connection test. The test then runs in the background and its result (green check or
-      // warning) lands on the provider's card.
       const providerId = await persistProvider(toUpsertRequest(formValue, editingProvider?.id))
+      const isNewProvider = editingProvider === undefined
 
-      navigate({ panel: 'model', skills: currentLocation.skills, model: { kind: 'list' } })
-
+      // A provider being added has to be reachable before the form is considered finished, which is the
+      // rule onboarding already follows: an unreachable one used to be saved and reported as done, and
+      // its warning only turned up later on the card. Editing is left as it was — a rename or a changed
+      // model list is not a connection change, and the card already carries the test result.
       if (providerId) {
         setBusyProviderId(providerId)
-        void validateProvider({ providerId }).finally(() => setBusyProviderId(undefined))
+        const validation = await validateProvider({ providerId }).finally(() =>
+          setBusyProviderId(undefined)
+        )
+        if (isNewProvider && !validation.ok) {
+          setStatusOk(false)
+          setStatusMessage(describeValidation(validation))
+          return
+        }
       }
+
+      navigate({ panel: 'model', skills: currentLocation.skills, model: { kind: 'list' } })
     } catch (error) {
       setStatusOk(false)
       setStatusMessage(error instanceof Error ? error.message : t('settings.couldNotSaveProvider'))
