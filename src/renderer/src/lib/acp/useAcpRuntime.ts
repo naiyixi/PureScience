@@ -21,6 +21,7 @@ const emptyAcpState: AcpStateSnapshot = {
   permissionGrants: {},
   contextUsageBySession: {},
   promptInFlight: false,
+  providerReconnectPending: false,
   agentPromptInFlightSessionIds: [],
   promptInFlightSessionIds: []
 }

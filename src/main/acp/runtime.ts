@@ -895,6 +895,10 @@ class AcpRuntime {
   // at spawn, so a new provider needs a reconnect — but if a prompt is running we defer the reconnect
   // until the session goes idle. Because every provider shares one config dir, the reconnect resumes the
   // conversation on the new provider with full context. Called when the active provider changes.
+  get providerReconnectPending(): boolean {
+    return this.connectionTransitions.providerReconnectPending
+  }
+
   async requestProviderReconnect(): Promise<void> {
     await this.connectionClose.requestProviderReconnect()
   }

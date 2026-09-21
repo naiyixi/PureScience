@@ -603,6 +603,9 @@ export type AcpStateSnapshot = {
   // from an older main process during a rolling dev reload.
   nativeContextCompactionSessionIds?: string[]
   promptInFlight: boolean
+  // True while the runtime is taking a provider change through: its connection is being rebuilt, so the
+  // next prompt runs against the new provider. Optional so an older main process stays readable.
+  providerReconnectPending?: boolean
   // Prompt-only ownership for first-output UI. `promptInFlightSessionIds` remains the broader
   // interaction lock and also contains framework compaction control turns.
   agentPromptInFlightSessionIds?: string[]
