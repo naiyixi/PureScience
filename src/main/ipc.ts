@@ -288,14 +288,15 @@ import {
   registerSessionPackageImportIpcHandlers,
   registerSessionPackageIpcHandlers
 } from './session-package/ipc'
-import { createSessionPackageImportOwner } from './session-package/import-owner'
+import {
+  createSessionPackageImportOwner,
+  readSessionPackageImportRecord
+} from './session-package/import-owner'
 import { createSessionPackageFileLister } from './session-package/files'
 import {
   createSessionPackageReferenceFileLister,
-  REFERENCE_PACKAGE_DIR,
-  type SessionPackageReferenceAttachment
+  createSessionPackageReferenceLibrary
 } from './session-package/reference-files'
-import { ReferenceRepository } from './references/repository'
 import { DEFAULT_SESSION_PACKAGE_MAX_FILE_BYTES } from './session-package/export'
 import { createStorageCommandOwner } from './storage/command-owner'
 import { withDataRootWrite } from './storage/migration-state'
@@ -1860,7 +1861,14 @@ const createApplicationModules = async (
     createSessionWorkflow,
     taskNotifications,
     archiveCoordinator,
-    sessionRepository
+    sessionRepository,
+    {
+      // The record beside an imported session is what makes it read-only, so the guard reads exactly
+      // that — the same file the import wrote, not a second notion of "imported".
+      isReadOnly: async (projectId, sessionId) =>
+        (await readSessionPackageImportRecord(resolveConfigRoot(), projectId, sessionId)) !==
+        undefined
+    }
   )
   const taskAgent = createAcpTaskAgentPort(
     runtime,
@@ -2582,44 +2590,17 @@ const createApplicationModules = async (
         return { countFiles: lister.countFiles, listFiles: lister.listFiles }
       })(),
       referenceFiles: (() => {
-        // The library's own repository: the renderer surface exposes the records, not their attachments.
-        const referenceRepository = new ReferenceRepository(() => getProjectDbClient(configRoot))
-        const currentAttachment = async (referenceId: string) => {
-          const versions = await referenceRepository.listAttachmentVersions(referenceId)
-          // A replaced version is history; the current one is the row without a replacedAt.
-          return versions.filter((version) => !version.replacedAt).at(-1)
-        }
-        const safeName = (title: string | undefined, id: string): string => {
-          const stem = (title?.trim() || id).replace(/[\\/:*?"<>|]/g, '_').slice(0, 80)
-          return stem || id
-        }
+        // The library's records carry the PDF that is CURRENTLY attached (see currentReferencePdfId —
+        // the history table holds only superseded files). This module reads the records; the naming and
+        // the bound stay in session-package/reference-files, where a test can drive them.
+        const library = createSessionPackageReferenceLibrary({
+          listReferences: (projectId) => referencesIpcModule.handlers.list(projectId),
+          readManagedFileBytes,
+          maxFileBytes: DEFAULT_SESSION_PACKAGE_MAX_FILE_BYTES
+        })
         const lister = createSessionPackageReferenceFileLister({
-          listReferenceAttachments: async ({ projectId, maxBytes }) => {
-            const references = await referencesIpcModule.handlers.list(projectId)
-            const attachments: SessionPackageReferenceAttachment[] = []
-            const unreadable: string[] = []
-            for (const reference of references) {
-              const current = await currentAttachment(reference.id)
-              if (!current) continue
-              const fileName = `${safeName(reference.title, reference.id)}.pdf`
-              const bytes = await readManagedFileBytes(projectId, current.managedFileId)
-              if (!bytes || bytes.byteLength > maxBytes) {
-                // Named, never silently dropped, and never written half.
-                unreadable.push(`${REFERENCE_PACKAGE_DIR}/${fileName}`)
-                continue
-              }
-              attachments.push({ referenceId: reference.id, fileName, bytes })
-            }
-            return { attachments, unreadable }
-          },
-          countReferenceAttachments: async ({ projectId }) => {
-            const references = await referencesIpcModule.handlers.list(projectId)
-            let total = 0
-            for (const reference of references) {
-              if (await currentAttachment(reference.id)) total += 1
-            }
-            return total
-          },
+          listReferenceAttachments: library.listReferenceAttachments,
+          countReferenceAttachments: library.countReferenceAttachments,
           maxFileBytes: DEFAULT_SESSION_PACKAGE_MAX_FILE_BYTES
         })
         return {

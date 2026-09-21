@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import type { PersistedChatSession } from '../../shared/session-persistence'
+import { createSessionFile, normalizeSessionFile } from '../../shared/session-persistence'
 import { SESSION_PACKAGE_IMPORT_POSTURE } from '../../shared/session-package-import'
 import { createSessionPackage } from './export'
 import { importSessionPackage, type ImportedSessionDraft } from './import-session'
@@ -34,6 +35,8 @@ const draft: ImportedSessionDraft = {
   projectId: 'target-project',
   title: 'Mpro 模拟（导入）',
   conversation: { messages: [{ id: 'm1', role: 'user', text: '来自他机' }] },
+  createdAt: 1_790_000_000_000,
+  updatedAt: 1_790_000_000_500,
   record
 }
 
@@ -47,6 +50,70 @@ afterEach(async () => {
 })
 
 describe('session package import owner', () => {
+  // The app's own message shape (a package carries these verbatim), not a hand-made `{ id, text }`.
+  const appMessage = {
+    id: 'm1',
+    role: 'user' as const,
+    content: '来自他机',
+    status: 'complete' as const,
+    createdAt: 1_789_999_999_000,
+    updatedAt: 1_789_999_999_000
+  }
+  const realisticDraft: ImportedSessionDraft = {
+    ...draft,
+    conversation: { messages: [appMessage] }
+  }
+
+  it('writes a document the app can read back: it survives its own session-file validation', async () => {
+    // The defect this pins: the importer wrote a session with no container timestamps, the app
+    // materialized a conversation graph whose frames carried none, and the next read quarantined the
+    // whole session as corrupt (a `.invalid-<ts>` file beside the record) — so an import "succeeded"
+    // into a session nobody could open.
+    const saved: PersistedChatSession[] = []
+    const owner = createSessionPackageImportOwner({
+      configRoot: root,
+      saveSession: async (session: PersistedChatSession): Promise<void> => {
+        saved.push(session)
+      },
+      workspaceFor: (sessionId: string): string => `/data/workspaces/${sessionId}`
+    })
+
+    await owner.saveImportedSession(realisticDraft)
+
+    const written = saved[0]
+    expect(written).toBeDefined()
+    // Exactly what the repository does on the way to disk, then what every read does on the way back.
+    const onDisk = createSessionFile(written)
+    const restored = normalizeSessionFile(onDisk)
+    expect(restored).toBeDefined()
+    expect(restored?.id).toBe('imported-session')
+    expect(restored?.messages.map((message) => message.id)).toEqual(['m1'])
+    // The graph the app builds from it keeps its frame and branch, which is what the validator drops.
+    expect(restored?.conversationGraph?.frames).toHaveLength(1)
+    expect(restored?.conversationGraph?.branches).toHaveLength(1)
+    expect(restored?.createdAt).toBe(realisticDraft.createdAt)
+  })
+
+  it('shows the timestamps are load-bearing: without them the same document is refused', async () => {
+    const saved: PersistedChatSession[] = []
+    const owner = createSessionPackageImportOwner({
+      configRoot: root,
+      saveSession: async (session: PersistedChatSession): Promise<void> => {
+        saved.push(session)
+      },
+      workspaceFor: (sessionId: string): string => `/data/workspaces/${sessionId}`
+    })
+
+    // A caller that drops the container timestamps reproduces the quarantine the guard above prevents.
+    await owner.saveImportedSession({
+      ...realisticDraft,
+      createdAt: undefined as unknown as number,
+      updatedAt: undefined as unknown as number
+    })
+
+    expect(normalizeSessionFile(createSessionFile(saved[0]))).toBeUndefined()
+  })
+
   it('writes the session, then the record that keeps it read-only', async () => {
     const saved: PersistedChatSession[] = []
     const owner = createSessionPackageImportOwner({

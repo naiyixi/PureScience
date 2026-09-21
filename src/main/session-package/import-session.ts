@@ -20,9 +20,26 @@ export type ImportedSessionDraft = {
   title: string
   /** The package's conversation, verbatim. */
   conversation: unknown
+  /**
+   * Container timestamps for the document the app is about to write. Taken from the packaged
+   * conversation when it carries them (newer packages do), else stamped at import time: a session
+   * document with no timestamps materializes a conversation graph whose frames carry none, and the
+   * app's own session-file validator then drops those frames and quarantines the whole session.
+   */
+  createdAt: number
+  updatedAt: number
   /** The record that keeps the session readable but never runnable. */
   record: SessionPackageImportRecord
 }
+
+// A package's conversation slice is `{ messages, artifacts, createdAt?, updatedAt? }` today and was
+// `{ messages, artifacts }` for packages exported before the timestamps travelled — so both shapes are
+// accepted, and an older one is stamped at import time rather than given a made-up history.
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+const asTimestamp = (value: unknown): number | undefined =>
+  typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined
 
 export type SessionPackageImportDeps = {
   readPackage: (path: string) => Promise<Uint8Array>
@@ -71,8 +88,12 @@ export const importSessionPackage = async (
   }
 
   const sessionId = (deps.newId ?? randomUUID)()
+  const now = deps.now?.() ?? new Date()
+  const carried = isRecord(conversation) ? conversation : {}
+  const createdAt = asTimestamp(carried.createdAt) ?? now.getTime()
+  const updatedAt = asTimestamp(carried.updatedAt) ?? createdAt
   const record: SessionPackageImportRecord = {
-    importedAt: (deps.now?.() ?? new Date()).toISOString(),
+    importedAt: now.toISOString(),
     importedFrom: {
       sessionId: described.session.id,
       projectId: described.session.projectId,
@@ -90,6 +111,8 @@ export const importSessionPackage = async (
       projectId: targetProjectId,
       title: described.session.title,
       conversation,
+      createdAt,
+      updatedAt,
       record
     })
   } catch {

@@ -111,3 +111,11 @@ export type SessionPackageImportRecord = {
 
 /** Suffix for the sidecar file that carries the record above next to an imported session. */
 export const SESSION_PACKAGE_IMPORT_RECORD_SUFFIX = '.import.json'
+
+/**
+ * The refusal an imported session gives when something tries to run it. Its history can be read and
+ * cited, never executed or continued: this machine did not run that work, and the record beside the
+ * session is what says so.
+ */
+export const SESSION_PACKAGE_IMPORT_READ_ONLY_MESSAGE =
+  'This session was imported from a session package and is read-only: it can be read and cited, not run.'

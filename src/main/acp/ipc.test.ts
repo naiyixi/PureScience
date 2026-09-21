@@ -8,6 +8,7 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { AcpCompactSessionRequest, AcpResumeSessionRequest } from '../../shared/acp'
+import { SESSION_PACKAGE_IMPORT_READ_ONLY_MESSAGE } from '../../shared/session-package-import'
 import { WEB_EVENT_CHANNELS, WEB_INVOKE_CHANNELS } from '../../shared/web-api-map.generated'
 import {
   beginMigration,
@@ -141,6 +142,7 @@ const registerWithFakes = (overrides?: {
   specialistSkillCatalog?: Array<{ id: string; frameworkName: string; displayName: string }>
   provisionedConnectorSkillNames?: string[]
   archiveAvailability?: Parameters<typeof createAcpHandlerWorkflows>[3]
+  readOnlySessions?: Parameters<typeof createAcpHandlerWorkflows>[5]
 }): AcpTestOptions => {
   const taskNotifications =
     overrides?.taskNotifications ??
@@ -183,7 +185,9 @@ const registerWithFakes = (overrides?: {
       runtime,
       createSessionWorkflow,
       options.taskNotifications,
-      overrides?.archiveAvailability
+      overrides?.archiveAvailability,
+      undefined,
+      overrides?.readOnlySessions
     )
   )
   return options as AcpTestOptions
@@ -723,6 +727,58 @@ describe('installAcpIpcHandlers — reset-session-context bridge', () => {
 })
 
 describe('installAcpIpcHandlers — resume-session diagnostics', () => {
+  // An imported session is readable history, never runnable work. Resume is the one door that makes a
+  // restored session runnable, so the refusal belongs there — and it must happen before the runtime is
+  // touched, or the agent process starts and the session is live in everything but name.
+  it('refuses to resume a session imported from a package, before the runtime is touched', async () => {
+    const isReadOnly = vi.fn(async () => true)
+    registerWithFakes({ readOnlySessions: { isReadOnly } })
+    const request: AcpResumeSessionRequest = {
+      sessionId: 'imported-session',
+      cwd: '/workspace',
+      projectName: 'project-1'
+    }
+
+    await expect(handlers.get('acp:resume-session')?.({}, request)).rejects.toThrow(
+      SESSION_PACKAGE_IMPORT_READ_ONLY_MESSAGE
+    )
+
+    expect(isReadOnly).toHaveBeenCalledWith('project-1', 'imported-session')
+    expect(resumeSession).not.toHaveBeenCalled()
+  })
+
+  it('still resumes a session this machine ran itself', async () => {
+    registerWithFakes({ readOnlySessions: { isReadOnly: vi.fn(async () => false) } })
+    const request: AcpResumeSessionRequest = {
+      sessionId: 'own-session',
+      cwd: '/workspace',
+      projectName: 'project-1'
+    }
+
+    await handlers.get('acp:resume-session')?.({}, request)
+
+    expect(resumeSession).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not lock a session out when the read-only check cannot answer', async () => {
+    registerWithFakes({
+      readOnlySessions: {
+        isReadOnly: vi.fn(async () => {
+          throw new Error('sidecar unreadable')
+        })
+      }
+    })
+    const request: AcpResumeSessionRequest = {
+      sessionId: 'own-session',
+      cwd: '/workspace',
+      projectName: 'project-1'
+    }
+
+    await handlers.get('acp:resume-session')?.({}, request)
+
+    expect(resumeSession).toHaveBeenCalledTimes(1)
+  })
+
   it('holds archive admission until runtime resume completes', async () => {
     let admissionActive = false
     const admitted = vi.fn()

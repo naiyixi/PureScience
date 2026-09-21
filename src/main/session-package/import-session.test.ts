@@ -9,11 +9,11 @@ import { createSessionPackage, type SessionPackageInput } from './export'
 import { REQUIRED_PACKAGE_EVIDENCE } from './import'
 import { importSessionPackage, type ImportedSessionDraft } from './import-session'
 
-const source = (): SessionPackageInput => ({
+const source = (conversation?: Record<string, unknown>): SessionPackageInput => ({
   session: { id: 'source-session', title: 'Mpro 模拟', projectId: 'source-project' },
   appVersion: '1.59.0',
   exportedAt: '2026-09-15T00:00:00.000Z',
-  conversation: {
+  conversation: conversation ?? {
     messages: [
       { role: 'user', text: '模拟一下分子对接' },
       { role: 'agent', text: '完成' }
@@ -24,7 +24,8 @@ const source = (): SessionPackageInput => ({
   verificationRecords: [{ id: 'verify-1' }]
 })
 
-const packageBytes = (): Uint8Array => createSessionPackage(source(), 'essential').archive
+const packageBytes = (conversation?: Record<string, unknown>): Uint8Array =>
+  createSessionPackage(source(conversation), 'essential').archive
 
 const deps = (
   bytes: Uint8Array
@@ -160,5 +161,39 @@ describe('session package import', () => {
     expect(createHash('sha256').update('source-session').digest('hex')).not.toBe(
       harness.drafts[0].sessionId
     )
+  })
+
+  // The session document this draft becomes needs container timestamps: without them the app builds a
+  // conversation graph whose frames carry none, drops them, and quarantines the imported session as
+  // corrupt. A package exported by this build carries them; an older one is stamped at import time.
+  it('carries the container timestamps the package brought', async () => {
+    const harness = deps(
+      packageBytes({
+        messages: [{ id: 'm1', role: 'user', content: '模拟一下分子对接' }],
+        createdAt: 1_789_000_000_000,
+        updatedAt: 1_789_000_123_000
+      })
+    )
+
+    await importSessionPackage(harness.deps, {
+      packagePath: '/tmp/p.science',
+      confirm: { targetProjectId: 'target-project' }
+    })
+
+    expect(harness.drafts[0].createdAt).toBe(1_789_000_000_000)
+    expect(harness.drafts[0].updatedAt).toBe(1_789_000_123_000)
+  })
+
+  it('stamps an older package at import time instead of inventing a history', async () => {
+    const harness = deps(packageBytes())
+
+    await importSessionPackage(harness.deps, {
+      packagePath: '/tmp/p.science',
+      confirm: { targetProjectId: 'target-project' }
+    })
+
+    const importedAt = Date.parse('2026-09-16T09:00:00.000Z')
+    expect(harness.drafts[0].createdAt).toBe(importedAt)
+    expect(harness.drafts[0].updatedAt).toBe(importedAt)
   })
 })

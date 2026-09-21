@@ -120,7 +120,12 @@ export const exportSessionPackage = async (
       exportedAt: (ports.now?.() ?? new Date()).toISOString(),
       conversation: {
         messages: loaded.session.messages,
-        artifacts: loaded.session.artifacts ?? []
+        artifacts: loaded.session.artifacts ?? [],
+        // The receiver materializes a session document from this slice, and such a document needs its
+        // container timestamps: without them the graph it builds has frames the app's own validator
+        // drops, so the imported session was quarantined as invalid the moment anything read it back.
+        createdAt: loaded.session.createdAt,
+        updatedAt: loaded.session.updatedAt
       },
       citations,
       reviewFindings: reviews,
