@@ -314,7 +314,10 @@ const loadPersistedSessions = async (
 
   return {
     sessions: loaded.sessions,
-    manifest: loaded.manifest ?? { version: SESSION_MANIFEST_VERSION }
+    manifest: loaded.manifest ?? { version: SESSION_MANIFEST_VERSION },
+    // The list tier reports the load diagnostics too, and the deletion gate reads exactly this field:
+    // rebuilding the result without them is what kept Delete disabled however healthy the store was.
+    ...(catalog.diagnostics ? { diagnostics: catalog.diagnostics } : {})
   } as LoadAllSessionsResult
 }
 

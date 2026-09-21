@@ -38,7 +38,8 @@ import {
   registerSessionPersistenceIpcHandlers,
   type SessionDocumentLoader,
   type SessionPersistenceBackend,
-  type SessionPersistenceHandlers
+  type SessionPersistenceHandlers,
+  loadCatalogAfterProjectRecovery
 } from './ipc'
 import { beginMigration, clearMigrationPending } from '../storage/migration-state'
 
@@ -585,7 +586,6 @@ describe('session persistence IPC handlers', () => {
     // The last-open pointer travels with the summaries: hydration needs it to pick which session to open, and
     // without it that choice would cost a second full read.
     expect(catalog.manifest).toEqual({ version: 1 })
-
     await expect(handlers.readDocument('project-1', 'session-1')).resolves.toBe(session)
     expect(documents.loadSession).toHaveBeenCalledWith('project-1', 'session-1')
   })
@@ -623,5 +623,40 @@ describe('session persistence IPC handlers', () => {
     expect(handlers.readDocument).toHaveBeenCalledWith('p', 's')
     // Neither channel may fall back to a corpus scan for a single document.
     expect(repository.loadAll).not.toHaveBeenCalled()
+  })
+
+  describe('the list tier carries the load diagnostics', () => {
+    const catalogResult = { sessions: [], manifest: { version: 1 as const } }
+
+    it('reports the project-deletion prerequisite when recovery completes', async () => {
+      const projectRecovery = { recoverPendingDeletions: vi.fn(async () => undefined) }
+      const sessionLoader = { loadCatalog: vi.fn(async () => catalogResult) }
+
+      const catalog = await loadCatalogAfterProjectRecovery(projectRecovery, sessionLoader)
+
+      expect(projectRecovery.recoverPendingDeletions).toHaveBeenCalledOnce()
+      // The renderer reads exactly this field to decide whether Delete may be offered; without it the entry
+      // is disabled forever while the main process believes recovery is done.
+      expect(catalog.diagnostics).toMatchObject({
+        isComplete: true,
+        warnings: [],
+        isProjectDeletionRecoveryComplete: true
+      })
+    })
+
+    it('reports the prerequisite as unmet when recovery fails, and still answers the scan', async () => {
+      const projectRecovery = {
+        recoverPendingDeletions: vi.fn(async () => {
+          throw new Error('recovery failed')
+        })
+      }
+      const sessionLoader = { loadCatalog: vi.fn(async () => catalogResult) }
+
+      const catalog = await loadCatalogAfterProjectRecovery(projectRecovery, sessionLoader)
+
+      // Still the same scan — the fallback is what keeps the list readable — but deleting stays closed.
+      expect(sessionLoader.loadCatalog).toHaveBeenCalledOnce()
+      expect(catalog.diagnostics).toMatchObject({ isProjectDeletionRecoveryComplete: false })
+    })
   })
 })

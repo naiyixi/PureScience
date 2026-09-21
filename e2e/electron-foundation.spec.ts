@@ -22,9 +22,9 @@ const openProjectActions = async (page: Page, name: string): Promise<void> => {
 test('creates a project through the desktop stack and reloads it after relaunch', async ({
   app
 }) => {
-  await expect(
-    app.page.getByRole('heading', { name: 'Set up your research workspace.' })
-  ).toBeVisible()
+  // The single-page welcome this used to wait for is a wizard now, so the heading text it pinned is gone.
+  // Its introduction heading is the load-complete signal, and the id does not move with the language.
+  await expect(app.page.locator('#onboarding-introduction-title')).toBeVisible()
 
   // Seed only the external-provider-dependent prerequisite. The journey remains visible UI backed
   // by the production preload bridge, main process, and project database.

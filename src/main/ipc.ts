@@ -2410,7 +2410,8 @@ const createApplicationModules = async (
       sessionPersistenceBackend,
       reviewRepository,
       sessionDocumentLoader,
-      sessionPersistenceHandlers
+      sessionPersistenceHandlers,
+      projectDeletionCoordinator
     )
     // The reconciliation pass is no longer a side effect of reading the session list: the list tier
     // answers from the on-disk index and parses nothing, so it cannot be what upgrades legacy Uploads,
@@ -2714,7 +2715,10 @@ const createApplicationModules = async (
           })
           return
         }
-        applicationCommandLog.debug('application command diagnostic', { ...fields, code: diagnostic.code })
+        applicationCommandLog.debug('application command diagnostic', {
+          ...fields,
+          code: diagnostic.code
+        })
       })
       return {
         name: 'application-command-composition',
