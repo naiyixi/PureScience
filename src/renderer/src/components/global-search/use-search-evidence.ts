@@ -27,7 +27,11 @@ export type SearchEvidenceStatus =
 export type SearchEvidenceController = {
   status: SearchEvidenceStatus
   pinStatus: ReviewPinStatus
-  capture: (hit: GlobalSearchHit, query: string) => Promise<void>
+  capture: (
+    hit: GlobalSearchHit,
+    query: string,
+    pinnedFilters?: { name: string; description: string }
+  ) => Promise<void>
   verify: (line: SearchEvidenceLine) => Promise<void>
   beginPin: (line: SearchEvidenceLine) => Promise<void>
   pin: (reviewId: string) => Promise<void>
@@ -57,7 +61,11 @@ export const useSearchEvidence = (t: (key: TranslationKey) => string): SearchEvi
   const pinLineRef = useRef<SearchEvidenceLine | undefined>(undefined)
 
   const capture = useCallback(
-    async (hit: GlobalSearchHit, query: string): Promise<void> => {
+    async (
+      hit: GlobalSearchHit,
+      query: string,
+      pinnedFilters?: { name: string; description: string }
+    ): Promise<void> => {
       // Only a message hit is a block that can be fingerprinted; files and references have their own
       // fingerprints, so the action is not offered for them at all.
       if (hit.scope !== 'messages' || !hit.sessionId) return
@@ -71,7 +79,10 @@ export const useSearchEvidence = (t: (key: TranslationKey) => string): SearchEvi
         messageId: hit.id,
         query,
         terms: evidenceTermsForQuery(query),
-        ...(hit.matches[0] ? { snippet: hit.matches[0].snippet } : {})
+        ...(hit.matches[0] ? { snippet: hit.matches[0].snippet } : {}),
+        // Only when a saved filter set is in force: the line then says which set produced the result, so
+        // whoever reads it later can ask the same question.
+        ...(pinnedFilters ? { pinnedFilters } : {})
       })
 
       if (response.status !== 'captured') {

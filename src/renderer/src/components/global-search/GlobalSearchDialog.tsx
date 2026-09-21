@@ -36,7 +36,12 @@ import { useSessionStore } from '@/stores/session-store'
 
 import { useContentSearch } from './use-content-search'
 import { useSearchEvidence } from './use-search-evidence'
+import { searchPinFailureLabelKey, useSearchPins } from './use-search-pins'
 import { evidenceReasonLabelKey, pinRejectionLabelKey } from './search-evidence-labels'
+import {
+  GLOBAL_SEARCH_PIN_MAX_SETS,
+  describeGlobalSearchFilters
+} from '../../../../shared/global-search-pins'
 import {
   getNextBatchCount,
   getRecentSessions,
@@ -159,7 +164,11 @@ export const GlobalSearchDialog = ({
   const [activeIndex, setActiveIndex] = useState(0)
   // Which literature hit just had its citation copied, so the row can say so briefly.
   const [copiedCitationKey, setCopiedCitationKey] = useState<string | undefined>()
+  const [pinName, setPinName] = useState('')
   const evidence = useSearchEvidence(t)
+  // A saved filter set is named on the evidence line, so which one is "applied" is derived from the filters
+  // in force: changing a filter stops the name from describing the results, without anything to remember.
+  const pins = useSearchPins(contentFilters)
 
   const allProjects = useProjectStore((state) => state.projects)
   const allSessions = useSessionStore((state) => state.sessions)
@@ -748,7 +757,7 @@ export const GlobalSearchDialog = ({
               className="h-7 shrink-0 px-2 text-xs"
               onClick={(event) => {
                 event.stopPropagation()
-                void evidence.capture(hit, query)
+                void evidence.capture(hit, query, pins.attribution)
               }}
             >
               {t('gs.captureEvidence')}
@@ -1088,6 +1097,106 @@ export const GlobalSearchDialog = ({
                 >
                   {t('gs.filterClear')}
                 </Button>
+              ) : null}
+            </div>
+          ) : null}
+          {isSearchMode ? (
+            <div
+              data-testid="global-search-pins"
+              className="mt-2 flex flex-wrap items-center gap-2 border-t border-border px-1 pt-2"
+            >
+              <span className="text-xs font-medium text-muted-foreground">{t('gs.pinsTitle')}</span>
+              <span
+                className="text-xs text-muted-foreground"
+                data-testid="global-search-pins-count"
+              >
+                {t('gs.pinsCount')
+                  .replace('{n}', String(pins.pins.length))
+                  .replace('{max}', String(GLOBAL_SEARCH_PIN_MAX_SETS))}
+              </span>
+              {pins.pins.length === 0 ? (
+                <span className="text-xs text-muted-foreground">{t('gs.pinsEmpty')}</span>
+              ) : null}
+              {pins.pins.map((pin) => {
+                const isApplied = pins.applied?.id === pin.id
+                return (
+                  <span
+                    key={pin.id}
+                    className={cn(
+                      'flex items-center gap-1 rounded-lg px-2 py-1 text-xs',
+                      isApplied ? 'bg-accent text-foreground' : 'bg-bg-200 text-muted-foreground'
+                    )}
+                  >
+                    <button
+                      type="button"
+                      className="max-w-48 truncate"
+                      // The name is what the user recognizes; the filters are what it actually applies, so
+                      // the tooltip says them rather than repeating the name.
+                      title={describeGlobalSearchFilters(pin.filters)}
+                      data-testid={`global-search-pin-apply-${pin.id}`}
+                      onClick={() => setContentFilters(pins.apply(pin))}
+                    >
+                      {pin.name}
+                    </button>
+                    {isApplied ? (
+                      <span
+                        className="text-[10px] uppercase tracking-wide"
+                        data-testid={`global-search-pin-applied-${pin.id}`}
+                      >
+                        {t('gs.pinApplied')}
+                      </span>
+                    ) : null}
+                    <button
+                      type="button"
+                      aria-label={`${t('gs.pinRemove')}: ${pin.name}`}
+                      data-testid={`global-search-pin-remove-${pin.id}`}
+                      onClick={() => void pins.remove(pin.id)}
+                    >
+                      ×
+                    </button>
+                  </span>
+                )
+              })}
+              <Input
+                value={pinName}
+                onChange={(event) => setPinName(event.target.value)}
+                placeholder={t('gs.pinNamePlaceholder')}
+                aria-label={t('gs.pinNamePlaceholder')}
+                data-testid="global-search-pin-name"
+                className="h-8 w-44 text-xs"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-8 px-2 text-xs"
+                data-testid="global-search-pin-save"
+                disabled={pins.status.state === 'saving' || pinName.trim() === ''}
+                onClick={() =>
+                  void pins.save(pinName, contentFilters).then(() => {
+                    // Saved under the name it was given; keeping it in the box would invite saving the same
+                    // set twice, which the repository refuses by name.
+                    if (pinName.trim() !== '') setPinName('')
+                  })
+                }
+              >
+                {t('gs.pinSave')}
+              </Button>
+              {pins.status.state === 'saved' ? (
+                <span
+                  className="text-xs text-muted-foreground"
+                  data-testid="global-search-pin-status"
+                >
+                  {t('gs.pinSaved')}
+                </span>
+              ) : null}
+              {pins.status.state === 'failed' ? (
+                <span
+                  role="alert"
+                  className="text-xs text-destructive"
+                  data-testid="global-search-pin-status"
+                >
+                  {t(searchPinFailureLabelKey(pins.status.reason))}
+                </span>
               ) : null}
             </div>
           ) : null}

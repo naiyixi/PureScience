@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto'
 import {
   SEARCH_EVIDENCE_HASH_RECIPE,
   SEARCH_EVIDENCE_SCHEMA_VERSION,
+  sanitizeSearchEvidencePinnedFilters,
   searchEvidenceSnippet,
   type SearchEvidenceCaptureResult,
   type SearchEvidenceLine,
@@ -81,6 +82,9 @@ export const createSearchEvidenceService = (ports: SearchEvidencePorts): SearchE
     if (found.status === 'unavailable') return found
 
     const { message } = found
+    // Read tolerantly: an unreadable attribution is dropped rather than making the capture fail, because
+    // the block itself is what the line is for.
+    const pinnedFilters = sanitizeSearchEvidencePinnedFilters(request.pinnedFilters)
     const line: SearchEvidenceLine = {
       schemaVersion: SEARCH_EVIDENCE_SCHEMA_VERSION,
       projectId: request.projectId,
@@ -91,6 +95,7 @@ export const createSearchEvidenceService = (ports: SearchEvidencePorts): SearchE
       query: request.query,
       terms: request.terms ?? [],
       snippet: request.snippet ?? searchEvidenceSnippet(message.text),
+      ...(pinnedFilters ? { pinnedFilters } : {}),
       fingerprint: fingerprintFor({
         sessionId: request.sessionId,
         messageId: request.messageId,

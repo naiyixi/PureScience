@@ -52,7 +52,9 @@ const HOST_CAPABILITIES = [
   'figure',
   'query',
   'storage',
-  'update'
+  'update',
+  // Saved search filter sets (v1.67 unit): a renderer-only host capability beside the bookmarks.
+  'searchPins'
 ] as const
 
 const remoteSnapshot: RemoteAccessSnapshot = {
@@ -270,6 +272,11 @@ const createDependencies = (): HostApplicationCommandDependencies => ({
       })
     )
   },
+  searchPins: {
+    list: vi.fn(),
+    remove: vi.fn(),
+    save: vi.fn()
+  },
   pdf: {
     open: vi.fn(async (_projectId: string, path: string): Promise<PdfOpenResult> => ({
       doc: { docId: 'doc-1', title: path, pageCount: 3, outline: [] },
@@ -304,7 +311,7 @@ const createDependencies = (): HostApplicationCommandDependencies => ({
       figures: [],
       skippedSmall: 0,
       withoutCaption: 0
-    })),
+    }))
   },
   figure: {
     review: vi.fn(
@@ -397,7 +404,7 @@ describe('Host application commands', () => {
         .filter((channel): channel is string => channel !== null)
     }))
 
-    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(74)
+    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(77)
     const actualGroups = hostApplicationCommandGroups
       .map(({ name, commands }) => ({
         capability: name,
@@ -415,7 +422,7 @@ describe('Host application commands', () => {
       {} as HostApplicationCommandDependencies
     )
 
-    expect(router.dispatcher.commandNames()).toHaveLength(74)
+    expect(router.dispatcher.commandNames()).toHaveLength(77)
     installation.uninstall()
     expect(router.dispatcher.commandNames()).toEqual([])
   })
@@ -581,6 +588,12 @@ describe('Host application commands', () => {
       hostApplicationCommands.bookmark.updateNote,
       invocation(['session-1', 'bookmark-1', 'a sharper note'])
     )
+    await router.dispatcher.invoke(hostApplicationCommands.searchPins.list, invocation([]))
+    await router.dispatcher.invoke(hostApplicationCommands.searchPins.remove, invocation(['pin-1']))
+    await router.dispatcher.invoke(
+      hostApplicationCommands.searchPins.save,
+      invocation([{ name: 'Agent notes', filters: { role: 'agent' } }])
+    )
     await router.dispatcher.invoke(
       hostApplicationCommands.pdf.open,
       invocation([{ projectId: 'project-1', path: pdfPath }])
@@ -601,7 +614,7 @@ describe('Host application commands', () => {
       hostApplicationCommands.pdf.tables,
       invocation([{ projectId: 'project-1', docId: 'doc-1', page: 2 }])
     )
-await router.dispatcher.invoke(
+    await router.dispatcher.invoke(
       hostApplicationCommands.pdf.figures,
       invocation([{ projectId: 'project-1', docId: 'doc-1', page: 2 }])
     )
@@ -714,6 +727,12 @@ await router.dispatcher.invoke(
       'bookmark-1',
       'a sharper note'
     )
+    expect(dependencies.searchPins.list).toHaveBeenCalledWith()
+    expect(dependencies.searchPins.remove).toHaveBeenCalledWith('pin-1')
+    expect(dependencies.searchPins.save).toHaveBeenCalledWith({
+      name: 'Agent notes',
+      filters: { role: 'agent' }
+    })
     expect(dependencies.pdf.open).toHaveBeenCalledWith('project-1', pdfPath)
     expect(dependencies.pdf.pages).toHaveBeenCalledWith('project-1', 'doc-1', 1, 2)
     expect(dependencies.pdf.outline).toHaveBeenCalledWith('project-1', 'doc-1')
@@ -809,7 +828,8 @@ await router.dispatcher.invoke(
         .filter((channel): channel is string => channel !== null)
     )
 
-    expect(localOnlyChannels).toHaveLength(46)
+    // 49 with the saved-search-filter-set channels, which are local-only like the bookmarks beside them.
+    expect(localOnlyChannels).toHaveLength(49)
     for (const channel of localOnlyChannels) {
       await expect(
         router.dispatcher.invoke(

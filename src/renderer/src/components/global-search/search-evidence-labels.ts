@@ -36,5 +36,6 @@ export const evidenceLabels = (t: (key: TranslationKey) => string): SearchEviden
   query: t('gs.evidenceQuery'),
   terms: t('gs.evidenceTerms'),
   snippet: t('gs.evidenceSnippet'),
-  fingerprint: t('gs.evidenceFingerprint')
+  fingerprint: t('gs.evidenceFingerprint'),
+  pinned: t('gs.evidencePinned')
 })

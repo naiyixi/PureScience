@@ -298,6 +298,9 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['approve', 'endpoint:approve', LOCAL], ['start', 'endpoint:start', LOCAL],
     ['stop', 'endpoint:stop', LOCAL], ['remove', 'endpoint:remove', LOCAL],
   ]),
+  group('searchPins', 'searchPins', [
+    ['list', 'search-pins:list', LOCAL], ['remove', 'search-pins:remove', LOCAL], ['save', 'search-pins:save', LOCAL],
+  ]),
   group('bookmark', 'bookmark', [
     ['list', 'bookmark:list', LOCAL], ['remove', 'bookmark:remove', LOCAL], ['set', 'bookmark:set', LOCAL],
     ['updateNote', 'bookmark:update-note', LOCAL],

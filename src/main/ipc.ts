@@ -160,6 +160,11 @@ import {
 import { AnnotationRepository } from './settings/annotation-repository'
 import { BookmarkRepository } from './settings/bookmark-repository'
 import { createBookmarkCommandOwner, registerBookmarkIpcHandlers } from './settings/bookmark-ipc'
+import {
+  createSearchPinCommandOwner,
+  registerSearchPinIpcHandlers
+} from './settings/search-pin-ipc'
+import { SearchPinRepository } from './settings/search-pin-repository'
 import { createPdfCommandOwner, registerPdfIpcHandlers } from './settings/pdf-ipc'
 import { PdfService } from './settings/pdf-service'
 import { createFigureCommandOwner, registerFigureIpcHandlers } from './settings/figure-ipc'
@@ -1463,6 +1468,11 @@ const createApplicationModules = async (
   const bookmarkRepository = new BookmarkRepository({
     storageRoot: resolveDataRoot()
   })
+  // Saved search filter sets (v1.67): the researcher's own working state, wired for the renderer only —
+  // there is no agent-facing owner beside it.
+  const searchPinRepository = new SearchPinRepository({
+    storageRoot: resolveDataRoot()
+  })
   const pdfService = new PdfService({
     storageRoot: resolveDataRoot(),
     resolvePath: async (path) => (path.startsWith('/') ? path : join(resolveDataRoot(), path))
@@ -2570,6 +2580,9 @@ const createApplicationModules = async (
   declareElectronAdapter('bookmark', () => {
     registerBookmarkIpcHandlers(createBookmarkCommandOwner(bookmarkRepository))
   })
+  declareElectronAdapter('searchPins', () => {
+    registerSearchPinIpcHandlers(createSearchPinCommandOwner(searchPinRepository))
+  })
   declareElectronAdapter('pdf', () => {
     registerPdfIpcHandlers(createPdfCommandOwner(pdfService))
   })
@@ -2677,6 +2690,7 @@ const createApplicationModules = async (
       endpoint: createEndpointCommandOwner(endpointRepository, endpointManager),
       annotation: createAnnotationCommandOwner(annotationRepository),
       bookmark: createBookmarkCommandOwner(bookmarkRepository),
+      searchPins: createSearchPinCommandOwner(searchPinRepository),
       pdf: createPdfCommandOwner(pdfService),
       figure: createFigureCommandOwner((request) =>
         reviewFigure(request.panels, request.figureNote)

@@ -34,6 +34,67 @@ const expectedFingerprint = (sessionId: string, messageId: string, text: string)
     .update(`${SEARCH_EVIDENCE_HASH_RECIPE}\n${sessionId}\n${messageId}\n${text}`)
     .digest('hex')}`
 
+describe('the saved filter set a capture was made under', () => {
+  it('lands on the line together with the filters it stood for', async () => {
+    const { service } = harness()
+
+    const result = await service.capture({
+      action: 'capture',
+      projectId: 'project-a',
+      sessionId: 'session-a',
+      messageId: 'message-2',
+      query: 'sin csv',
+      pinnedFilters: { name: 'Human mtDNA only', description: 'extensions=csv role=agent' }
+    })
+
+    expect(result.status).toBe('captured')
+    if (result.status !== 'captured') return
+    expect(result.line.pinnedFilters).toEqual({
+      name: 'Human mtDNA only',
+      description: 'extensions=csv role=agent'
+    })
+  })
+
+  it('leaves the fingerprint alone: the recipe covers the block, not the filters it was found under', async () => {
+    const { service } = harness()
+    const request = {
+      action: 'capture' as const,
+      projectId: 'project-a',
+      sessionId: 'session-a',
+      messageId: 'message-2',
+      query: 'sin csv'
+    }
+
+    const plain = await service.capture(request)
+    const attributed = await service.capture({
+      ...request,
+      pinnedFilters: { name: 'Human mtDNA only', description: 'extensions=csv' }
+    })
+
+    expect(plain.status).toBe('captured')
+    expect(attributed.status).toBe('captured')
+    if (plain.status !== 'captured' || attributed.status !== 'captured') return
+    expect(attributed.line.fingerprint).toBe(plain.line.fingerprint)
+  })
+
+  it('drops an attribution that names a set without saying what it accepts', async () => {
+    const { service } = harness()
+
+    const result = await service.capture({
+      action: 'capture',
+      projectId: 'project-a',
+      sessionId: 'session-a',
+      messageId: 'message-2',
+      query: 'sin csv',
+      pinnedFilters: { name: 'only a name', description: '   ' }
+    })
+
+    expect(result.status).toBe('captured')
+    if (result.status !== 'captured') return
+    expect(result.line.pinnedFilters).toBeUndefined()
+  })
+})
+
 describe('search evidence capture', () => {
   it('fingerprints the block as stored, with the recipe published in the contract', async () => {
     const { service } = harness()
