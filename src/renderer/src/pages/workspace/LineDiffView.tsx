@@ -1,12 +1,10 @@
 import { cn } from '@/lib/utils'
 
-import type { ArtifactDiffRow } from './artifact-line-diff'
+import { foldDiffRows, type ArtifactDiffRow, type LineDiffRow } from './artifact-line-diff'
 
 // One diff viewer for the two places that show a file edit: the artifact version comparison and the tool
 // activity block. They had grown separate renderings of the same rows — one of them not a diff at all —
 // so the line shape, the line numbers, the fold marker and the colours live here and nowhere else.
-
-export type LineDiffRow = ArtifactDiffRow | { kind: 'gap'; lines: number }
 
 const rowBackground = (kind: ArtifactDiffRow['kind']): string => {
   if (kind === 'added') {
@@ -24,38 +22,6 @@ const rowNumberColor = (kind: ArtifactDiffRow['kind']): string => {
 
 const rowSign = (kind: ArtifactDiffRow['kind']): string =>
   kind === 'added' ? '+' : kind === 'removed' ? '−' : ''
-
-/**
- * The changed rows with their surrounding context, and a marker for every run that was left out.
- *
- * Pure, so the shape of what a reader sees is testable without a DOM.
- */
-export const foldDiffRows = (rows: readonly ArtifactDiffRow[], context: number): LineDiffRow[] => {
-  const keep = new Set<number>()
-  rows.forEach((row, index) => {
-    if (row.kind === 'same') return
-    for (let offset = -context; offset <= context; offset += 1) {
-      const target = index + offset
-      if (target >= 0 && target < rows.length) keep.add(target)
-    }
-  })
-
-  const visible: LineDiffRow[] = []
-  let skipped = 0
-  rows.forEach((row, index) => {
-    if (keep.has(index)) {
-      if (skipped > 0) {
-        visible.push({ kind: 'gap', lines: skipped })
-        skipped = 0
-      }
-      visible.push(row)
-      return
-    }
-    skipped += 1
-  })
-  if (skipped > 0) visible.push({ kind: 'gap', lines: skipped })
-  return visible
-}
 
 const gapLabel = (lines: number): string => `… ${lines} unchanged ${lines === 1 ? 'line' : 'lines'}`
 

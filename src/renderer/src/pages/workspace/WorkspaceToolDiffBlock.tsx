@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 
 import { diffArtifactText } from './artifact-line-diff'
-import { LineDiffView, foldDiffRows, type LineDiffRow } from './LineDiffView'
+import { LineDiffView } from './LineDiffView'
 import type { ToolDiffSection } from './workspace-tool-activity-details'
 
 type WorkspaceToolDiffBlockProps = {
@@ -11,12 +11,6 @@ type WorkspaceToolDiffBlockProps = {
 // Unchanged lines kept around a change. Longer runs collapse, so a one-line edit in a large file still
 // reads as a one-line edit instead of two full copies of the file.
 const CONTEXT_LINES = 2
-
-/** Kept as the block's own name for the shared folding; the viewer owns the behaviour. */
-export const toolDiffRows = (
-  rows: Parameters<typeof foldDiffRows>[0],
-  context = CONTEXT_LINES
-): LineDiffRow[] => foldDiffRows(rows, context)
 
 /**
  * Renders a file edit with the same diff viewer the artifact version comparison uses.

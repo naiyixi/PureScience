@@ -189,3 +189,35 @@ const diffMiddle = (
   reversed.reverse()
   return reversed
 }
+
+// Folding for the viewers: the changed rows plus their surrounding context, with a marker for every run
+// that was left out. It lives here rather than beside a component because a renderer file that exports a
+// component and a helper breaks the fast-refresh contract the renderer lints for.
+export type LineDiffRow = ArtifactDiffRow | { kind: 'gap'; lines: number }
+
+export const foldDiffRows = (rows: readonly ArtifactDiffRow[], context: number): LineDiffRow[] => {
+  const keep = new Set<number>()
+  rows.forEach((row, index) => {
+    if (row.kind === 'same') return
+    for (let offset = -context; offset <= context; offset += 1) {
+      const target = index + offset
+      if (target >= 0 && target < rows.length) keep.add(target)
+    }
+  })
+
+  const visible: LineDiffRow[] = []
+  let skipped = 0
+  rows.forEach((row, index) => {
+    if (keep.has(index)) {
+      if (skipped > 0) {
+        visible.push({ kind: 'gap', lines: skipped })
+        skipped = 0
+      }
+      visible.push(row)
+      return
+    }
+    skipped += 1
+  })
+  if (skipped > 0) visible.push({ kind: 'gap', lines: skipped })
+  return visible
+}

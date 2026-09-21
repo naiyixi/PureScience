@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { diffArtifactText } from './artifact-line-diff'
-import { toolDiffRows } from './WorkspaceToolDiffBlock'
+import { diffArtifactText, foldDiffRows } from './artifact-line-diff'
 
 // What the reader actually sees for a file edit. The block used to print every old line followed by
 // every new line, so these cases are about the shared line diff being real: a one-line edit reads as a
@@ -12,7 +11,8 @@ describe('toolDiffRows', () => {
     before: string,
     after: string,
     context?: number
-  ): ReturnType<typeof toolDiffRows> => toolDiffRows(diffArtifactText(before, after).rows, context)
+  ): ReturnType<typeof foldDiffRows> =>
+    foldDiffRows(diffArtifactText(before, after).rows, context ?? 2)
 
   it('shows a changed line with its surrounding context, and folds the rest', () => {
     const before = ['one', 'two', 'three', 'four', 'five', 'six', 'seven'].join('\n')
