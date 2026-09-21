@@ -83,20 +83,24 @@ const loaded = catalog ? { sessions: …, manifest: … }   // ← 不含 diagno
 4. 补测试（main 两侧注入 + 渲染层 catalog 路径下 `canDelete` 为 true）；
 5. 本地真机 E2E 验证删除入口可点（这是本条的验收口径）。
 
-### 变更进行中（本地工作区，未提交）
+### 已修复（真机验收通过）
 
 已改：**1**（`shared/session-catalog-summary.ts`）、**3**（`session-persistence.ts` 的 catalog 分支带上 `diagnostics`）、以及 `ipc.ts` 的
 `loadCatalogAfterProjectRecovery` 注入 + helper 泛化为 `<Result extends { diagnostics?: SessionLoadDiagnostics }>`。
 
-**还差的正是让修复生效的那一步** ✓——实测指出 `sessions.listCatalog` 映射到通道 `sessions:list-catalog`
+**让修复生效的那一步**（实测指出）是 `sessions.listCatalog` 映射到通道 `sessions:list-catalog`
 （`shared/web-api-map.generated.ts:192`），而该通道在 `session-persistence/ipc.ts:256` 注册成
 `withDataRootWrite(() => handlers.listCatalog())`（handlers 直通 `repository.loadCatalog()` ✗）；`loadCatalogAfterProjectRecovery`
 **全仓没有任何 import** ✗（只是被 `export`，是重构留下的 dead code）✓。所以：
 
 1. `registerSessionPersistenceIpcHandlers` 增加可选参数（`ProjectDeletionRecoveryBackend`），在 `src/main/ipc.ts:2409` 的装配处传入（该文件已有实例，`loadSessionsAfterProjectRecovery` 就在 652/2422 行用它）；
 2. `sessions:list-catalog` 的注册改为经 `loadCatalogAfterProjectRecovery(...)`；
-3. 已在 `src/main/session-persistence/ipc.test.ts` 写好断言（当前**红**，正是缺陷仍在的证据）：`catalog.diagnostics` 应为 `{ isComplete: true, warnings: [] }`；
-4. 之后真机 E2E 复验删除入口可点。
+3. 断言：`src/main/session-persistence/ipc.test.ts` 新增两条直测 `loadCatalogAfterProjectRecovery`（恢复完成 → `true`、恢复失败 → `false` 且仍返回扫描结果）；
+   `session-persistence.render.test.tsx` 新增一条证明 **catalog 路径**会把删除门打开（`data-deletion-ready="true"`，且 `loadAll` 未被调用）。
+
+**真机验收结果** ✓：`e2e/electron-foundation.spec.ts` 的删除旅程**首次通过**（Delete 可点 → 确认 → 重启后项目确实消失）；
+同批修复后 macOS 的两条 lane 在真机上全绿——功能旅程 **3 passed**、workspace 旅程（含 launch-environment）**8 passed**。
+单元侧 `typecheck` 0 错误、`session-persistence` 两套件 **284 passed**。
 
 > 注：`sessions:load-all` 通道（`ipc.ts:222`）同样直通 handlers，但渲染层的 `loadAll` 走的是 application-command 装箱路径
 > （`src/main/ipc.ts:652/2422` 用 `loadSessionsAfterProjectRecovery` 包装 ✓），所以那条**有**诊断——这也解释了为什么探针
