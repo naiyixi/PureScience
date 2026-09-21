@@ -15696,6 +15696,12 @@ describe('ACP runtime session management', () => {
           }
         },
         issueRpcCapability: () => 'run-capability-1',
+        // Sealing retires the turn's scope inside the session capability; the capability itself is no longer
+        // revoked per turn, so this is the callback that fires at seal time.
+        retireRpcCapabilityScope: () => {
+          closeStarted.resolve()
+          return Promise.resolve()
+        },
         revokeRpcCapability: async () => {
           closeStarted.resolve()
         }
@@ -15847,6 +15853,12 @@ describe('ACP runtime session management', () => {
         },
         getRpcConnection: () => Promise.resolve(rpcConnection),
         issueRpcCapability: (binding) => rpcServer.issueArtifactRunCapability(binding),
+        // Sealing retires this turn's scope inside the session capability; that is the drain the test gates on,
+        // and it is what keeps an authorized RPC write ahead of the frozen claim.
+        retireRpcCapabilityScope: (token, artifactRunId) => {
+          closeStarted.resolve()
+          return rpcServer.retireArtifactRunCapabilityScope(token, artifactRunId)
+        },
         revokeRpcCapability: async (token) => {
           closeStarted.resolve()
           await rpcServer.revokeArtifactRunCapability(token)
@@ -15885,7 +15897,10 @@ describe('ACP runtime session management', () => {
       await expect(rpcWrite!.then((response) => response.status)).resolves.toBe(200)
       await prompt
 
-      expect(artifactClaimId).toBeTruthy()
+      // The claim is published by a later async step than the prompt's own resolution, and under a full-suite
+      // load that step can land after this line. Wait for the condition instead of assuming the ordering — it
+      // still fails when the claim never appears.
+      await vi.waitFor(() => expect(artifactClaimId).toBeTruthy())
       const claim = resolveArtifactRunClaim(runtime, artifactClaimId!)
       const version = await client.artifactVersion.findFirstOrThrow({
         where: { artifactRunId: claim.runId }
@@ -16197,6 +16212,7 @@ describe('ACP runtime session management', () => {
     const process = new FakeAgentProcess()
     const events: Array<{ kind: string; text?: string }> = []
     const revokedTokens: string[] = []
+    const retiredRuns: string[] = []
     const runtime = new AcpRuntime({
       appVersion: '0.1.0',
       defaultCwd: '/workspace',
@@ -16209,6 +16225,12 @@ describe('ACP runtime session management', () => {
         mcpCommand: '/usr/bin/electron',
         getRpcConnection: async () => ({ endpoint: 'http://127.0.0.1:4567', token: 'global' }),
         issueRpcCapability: () => 'activation-capability',
+        // An activation failure retires the turn's scope instead of revoking the capability: the token is the
+        // artifact storage session's and may already serve another turn, so revoking it here would take the
+        // credential away from turns that still need it.
+        retireRpcCapabilityScope: (_token, artifactRunId) => {
+          retiredRuns.push(artifactRunId)
+        },
         revokeRpcCapability: (token) => {
           revokedTokens.push(token)
         }
@@ -16226,7 +16248,8 @@ describe('ACP runtime session management', () => {
     ).rejects.toThrow()
 
     expect(runtime.getSnapshot().promptInFlightSessionIds).toEqual([])
-    expect(revokedTokens).toEqual(['activation-capability'])
+    expect(retiredRuns).toEqual([expect.stringMatching(/^artifact-run-/)])
+    expect(revokedTokens).toEqual([])
     expect(events).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

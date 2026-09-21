@@ -146,6 +146,8 @@ const composeAcpRuntimeBaseOwners = (options: AcpRuntimeOptions) => {
           repository: artifactRepository,
           runRegistry: artifactRunRegistry,
           issueRpcCapability: options.artifacts.issueRpcCapability,
+          extendRpcCapability: options.artifacts.extendRpcCapability,
+          retireRpcCapabilityScope: options.artifacts.retireRpcCapabilityScope,
           revokeRpcCapability: options.artifacts.revokeRpcCapability,
           provenance: options.artifacts.provenance,
           ...(options.notebook

@@ -187,18 +187,8 @@ type NotebookLocalRpcServerOptions = {
     ): Promise<unknown>
     outline(sessionId: string, projectId: string, docId: string): Promise<unknown>
     scan(sessionId: string, projectId: string, docId: string, query: string): Promise<unknown>
-    tables(
-      sessionId: string,
-      projectId: string,
-      docId: string,
-      page?: number
-    ): Promise<unknown>
-    figures(
-      sessionId: string,
-      projectId: string,
-      docId: string,
-      page?: number
-    ): Promise<unknown>
+    tables(sessionId: string, projectId: string, docId: string, page?: number): Promise<unknown>
+    figures(sessionId: string, projectId: string, docId: string, page?: number): Promise<unknown>
   }
   planService?: {
     call(input: {
@@ -233,7 +223,20 @@ type NotebookRpcPayload = {
   params?: unknown
 }
 
+type ArtifactRpcCapabilityTurnScope = {
+  artifactRunId: string
+  /** Stable for the session, but recorded per turn so a scope is a complete identity. */
+  rootFrameId: string
+  /** The active Agent Frame, which changes with every turn of the session. */
+  agentFrameId: string
+  runtimeSegmentId: string
+  promptMessageId: string
+  messageBranchId: string
+}
+
 type ArtifactRpcCapability = Omit<ArtifactRpcCapabilityBinding, 'allowedMethods'> & {
+  /** Every turn this capability may write for; the first is the one it was issued for. */
+  turnScopes: ArtifactRpcCapabilityTurnScope[]
   allowedMethods: Set<ArtifactRpcMethod>
   expiresAt: number
   inFlightRequests: number
@@ -361,6 +364,9 @@ class NotebookLocalRpcServer {
   private readonly activeInputRunLeases = new Map<string, Set<NotebookInputRunLease>>()
   private readonly inputRunLeaseIds = new WeakMap<NotebookInputRunLease, string>()
   private readonly artifactRpcCapabilities = new Map<string, ArtifactRpcCapability>()
+  // One capability can now serve a whole session, so it carries the turn identities it was extended with
+  // instead of a single turn's. A request still has to belong to one of those turns: the capability says
+  // "this session", the recorded scopes say which of its turns may write.
   private readonly drainingArtifactRpcCapabilities = new Map<string, Promise<void>>()
 
   constructor(
@@ -406,11 +412,70 @@ class NotebookLocalRpcServer {
         : undefined,
       messageAncestry: binding.messageAncestry ? [...binding.messageAncestry] : undefined,
       allowedMethods: new Set(binding.allowedMethods ?? ARTIFACT_RPC_METHODS),
+      turnScopes: [
+        {
+          artifactRunId: binding.artifactRunId,
+          rootFrameId: binding.rootFrameId,
+          agentFrameId: binding.agentFrameId,
+          runtimeSegmentId: binding.runtimeSegmentId,
+          promptMessageId: binding.promptMessageId,
+          messageBranchId: binding.messageBranchId
+        }
+      ],
       expiresAt: this.now() + ttlMs,
       inFlightRequests: 0,
       drainWaiters: new Set()
     })
     return token
+  }
+
+  /**
+   * Adds one turn's identities to an existing capability and keeps it alive. A session-scoped capability is
+   * issued once and extended as turns open, so the artifact server never ends up holding a capability for a
+   * turn that has finished — which is what made every later write fail with a spent token.
+   */
+  extendArtifactRunCapability(
+    token: string,
+    scope: ArtifactRpcCapabilityTurnScope,
+    ttlMs = DEFAULT_ARTIFACT_RPC_CAPABILITY_TTL_MS
+  ): boolean {
+    const capability = this.artifactRpcCapabilities.get(token)
+    if (!capability) return false
+    if (!capability.turnScopes.some((existing) => existing.artifactRunId === scope.artifactRunId)) {
+      // The whole turn identity is recorded, not just its run: a later request carries the Agent Frame and
+      // prompt of the turn that made it, and admitting it against a partial scope is what refused the second
+      // turn of a session outright (measured: 403 on agentFrameId before this field was recorded).
+      capability.turnScopes.push({
+        artifactRunId: scope.artifactRunId,
+        rootFrameId: scope.rootFrameId,
+        agentFrameId: scope.agentFrameId,
+        runtimeSegmentId: scope.runtimeSegmentId,
+        promptMessageId: scope.promptMessageId,
+        messageBranchId: scope.messageBranchId
+      })
+    }
+    if (Number.isFinite(ttlMs) && ttlMs > 0) capability.expiresAt = this.now() + ttlMs
+    return true
+  }
+
+  /**
+   * Retires one turn's authority inside a session capability. The capability stays valid for the session (the
+   * next turn extends it again), but a write that names a sealed turn is refused exactly as it was when the
+   * capability was revoked per turn.
+   */
+  retireArtifactRunCapabilityScope(token: string, artifactRunId: string): Promise<void> {
+    const capability = this.artifactRpcCapabilities.get(token)
+    if (!capability) return Promise.resolve()
+    capability.turnScopes = capability.turnScopes.filter(
+      (scope) => scope.artifactRunId !== artifactRunId
+    )
+    // Closing admission is only half of it. Revocation also waited for the requests that were admitted before it
+    // closed, and that wait is what keeps an accepted write ahead of the frozen claim — without it the claim
+    // freezes while the write is still in flight, which is how the run ended up with no claim at all.
+    if (capability.inFlightRequests === 0) return Promise.resolve()
+    return new Promise<void>((resolve) => {
+      capability.drainWaiters.add(resolve)
+    })
   }
 
   revokeArtifactRunCapability(token: string): Promise<void> {
@@ -1015,24 +1080,41 @@ class NotebookLocalRpcServer {
             'promptMessageId'
           ]
         : ['projectId', 'appSessionId', 'artifactStorageSessionId', 'artifactRunId']
+    const boundTurnFields = boundFields.filter(
+      (field): field is keyof ArtifactRpcCapabilityTurnScope =>
+        field === 'artifactRunId' ||
+        field === 'rootFrameId' ||
+        field === 'agentFrameId' ||
+        field === 'runtimeSegmentId' ||
+        field === 'promptMessageId' ||
+        field === 'messageBranchId'
+    )
+    // The turn this call belongs to: exactly one recorded scope has to agree with every turn-scoped field the
+    // method's request carries. Checking the fields one at a time would let a call name one turn's run with
+    // another turn's prompt, and the trusted parameters below are taken from this same scope — a later turn's
+    // write would otherwise be attributed to the turn the capability was issued for.
+    const matchedTurnScope = capability.turnScopes.find((scope) =>
+      boundTurnFields.every((field) => params[field] === scope[field])
+    )
+    if (boundTurnFields.length > 0 && !matchedTurnScope) {
+      // A turn-scoped field can only disagree in one way that matters: the capability was issued for one of
+      // this session's turns, and the call carries the identities of another (or of a turn that has since
+      // sealed). That happens when the artifact server keeps the capability it was started with — the caller
+      // then sees a mismatch rather than a verdict, and no number of retries changes which turn it names.
+      const field =
+        boundTurnFields.find((candidate) => params[candidate] !== capability[candidate]) ??
+        boundTurnFields[0]
+      throw new RpcHttpError(
+        403,
+        `Artifact RPC capability does not match ${field}: the capability belongs to an earlier turn while this call carries the current one. A retry sends the same mismatch — the artifact has to be written from a turn the capability was issued for.`
+      )
+    }
+
     for (const field of boundFields) {
+      if (boundTurnFields.includes(field as keyof ArtifactRpcCapabilityTurnScope)) continue
       const expected = capability[field as keyof ArtifactRpcCapabilityBinding]
       if (params[field] !== expected) {
-        // A turn-scoped field can only disagree in one way that matters: the capability was issued for one of
-        // this session's turns, and the call carries the identities of another. That happens when the artifact
-        // server keeps the capability it was started with — the caller then sees a mismatch rather than a
-        // verdict, and no number of retries changes which turn the capability belongs to.
-        const turnScoped =
-          field === 'artifactRunId' ||
-          field === 'runtimeSegmentId' ||
-          field === 'promptMessageId' ||
-          field === 'messageBranchId'
-        throw new RpcHttpError(
-          403,
-          turnScoped
-            ? `Artifact RPC capability does not match ${field}: the capability belongs to an earlier turn while this call carries the current one. A retry sends the same mismatch — the artifact has to be written from a turn the capability was issued for.`
-            : `Artifact RPC capability does not match ${field}.`
-        )
+        throw new RpcHttpError(403, `Artifact RPC capability does not match ${field}.`)
       }
     }
 
@@ -1042,25 +1124,36 @@ class NotebookLocalRpcServer {
     delete sanitizedParams.agentName
     delete sanitizedParams.notebookSessionId
 
+    // The matched turn supplies the identities; the capability supplies everything that outlives a turn. For a
+    // method whose request names no turn, there is nothing to match and the capability's own binding stands.
+    const turnValues: ArtifactRpcCapabilityTurnScope = matchedTurnScope ?? {
+      artifactRunId: capability.artifactRunId,
+      rootFrameId: capability.rootFrameId,
+      agentFrameId: capability.agentFrameId,
+      messageBranchId: capability.messageBranchId,
+      runtimeSegmentId: capability.runtimeSegmentId,
+      promptMessageId: capability.promptMessageId
+    }
+
     const trustedParams = {
       ...sanitizedParams,
       projectId: capability.projectId,
       appSessionId: capability.appSessionId,
       artifactStorageSessionId: capability.artifactStorageSessionId,
-      artifactRunId: capability.artifactRunId,
+      artifactRunId: turnValues.artifactRunId,
       ...(method === 'artifactCreateVersion'
         ? {
-            rootFrameId: capability.rootFrameId,
-            agentFrameId: capability.agentFrameId,
-            messageBranchId: capability.messageBranchId,
+            rootFrameId: turnValues.rootFrameId,
+            agentFrameId: turnValues.agentFrameId,
+            messageBranchId: turnValues.messageBranchId,
             messageBranchAncestry: capability.messageBranchAncestry
               ? [...capability.messageBranchAncestry]
               : undefined,
             messageAncestry: capability.messageAncestry
               ? [...capability.messageAncestry]
               : undefined,
-            runtimeSegmentId: capability.runtimeSegmentId,
-            promptMessageId: capability.promptMessageId,
+            runtimeSegmentId: turnValues.runtimeSegmentId,
+            promptMessageId: turnValues.promptMessageId,
             agentName: capability.agentName,
             notebookSessionId: capability.notebookSessionId
           }
