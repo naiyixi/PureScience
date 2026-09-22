@@ -9,6 +9,8 @@
 
 > 中文 · [English](README.en.md) · [Deutsch](README.de.md) · [Español](README.es.md) · [Français](README.fr.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Русский](README.ru.md) · [繁體中文](README.zh-Hant.md)
 
+![The PureScience workspace as shipped in v1.68.0 — project cards naming the artifact types each holds, with the session list beside them](docs/screenshots/workspace-1.68.0.png)
+
 ![A potency chart the agent produced from a real run — EGFR T790M inhibitors, ranked](docs/demo-verification/egfr_t790m_ic50.png)
 
 *From a real run, not a mock-up: the code, parameters and environment fingerprint behind this chart are archived step by step under [`docs/demo-verification/`](docs/demo-verification/).*
@@ -103,6 +105,10 @@ PureScience organizes research into projects and sessions so that every result c
 Projects keep related sessions, uploads, generated files, and preview state together. The conversation records the agent's answer and the commands, file reads, edits, searches, and connector calls that produced it. Each generated artifact is stored as an immutable, checksummed version. Its **Provenance** view exposes the evidence PureScience could verify at creation time: producer code and execution history, referenced inputs, an observed environment inventory, the producing conversation branch, and any version-scoped reviewer findings. Missing evidence is shown as unavailable instead of being guessed.
 
 Generated reports, figures, and tables remain attached to the session and are also collected in the project file library. Preview tabs keep the active result visible as the panel changes size, and long names preserve their identifying suffix and extension. PureScience previews common scientific data, PDFs, Office documents (DOCX, XLSX, PPTX), images (with zoom and pan), source code with syntax highlighting, molecular structures and reactions, and Notebook history. Preview limits do not truncate the underlying file—the full artifact stays available to the agent and external tools. Use `Cmd/Ctrl+F` to search transcripts, Notebook output, and rendered pages across the workspace, or `Cmd/Ctrl+K` to open the project-scoped command palette. A dark mode rounds out the workspace: toggle the theme in **Settings → General** and the whole shell, transcript, and renderer palette switch without a flash.
+
+![A real session in v1.68.0 — the agent's answer, the commands and file reads behind it, the artifact versions in the project library, and the figure review it ran](docs/screenshots/session-1.68.0.png)
+
+*From the release build: this session's figure was produced by the agent, checked by the built-in reviewer, and stored together with the script and provenance record that produced it.*
 
 ### Branch a conversation without losing the original
 
