@@ -17,6 +17,26 @@ PureScience 是一款面向科学研究的开源 AI 工作台：多智能体协�
 | 天工 | 天工开物——工具与工程体系的未来篇章           | （规划） |
 | 北斗 | 指路星辰——导航与检索体系的未来篇章           | （规划） |
 
+## v1.68.1 — 2026-09-23（更新提示不再依赖尚未上线的镜像站；agent 的手脚被围栏在本机自己的目录里）
+
+**在装的 v1.68.0 用户从此能收到更新提示——这条修复补的正是它自己看不到的那个坑。**
+
+- 更新发现回退（`electron-updater-strategy`）：`electron-builder.yml` 的 `publish` 指向镜像站
+  `statics.zerolink.com`，站点还没部署时更新检查直接失败，用户永远等不到提示。配置保留不动，
+  检查失败即改用 GitHub Releases 再试一次；重试仍失败则报**第一次**的错误（它点名的才是本机实际配置
+  的 feed），未打包运行不重试。
+- 更新说明取真实内容（`scripts/generate-version-manifest.mjs`）：`version.json` 的 `notes` 一直写着
+  `See the release notes on GitHub.`（32 字符），应用里只能看到这句废话。生成器改为从该版 CHANGELOG
+  取正文，已发布的 v1.68.0 资产也就地刷新为 1,533 字符，`downloads`（url/size/sha256）逐字未动。
+- 路径范围收敛（新增 PreToolUse 路径门 `src/main/settings/path-guard-hook.ts`）：真机上 agent 为了
+  找一个项目文件跑 `find / -iname "…"`，扫过整台机器——包括**另一个安装**的数据目录，读到的内容还会
+  当成"项目文件"汇报。现在文件工具与 shell 调用里写出的绝对路径都要过判定：落在本机数据根/配置根之内
+  放行；之外拒绝；`/etc/passwd` 这类凭据读取照旧拒绝；`/usr`、`/bin`、TLS 材料等系统路径照常放行。
+  拒绝信息直接告诉 agent 项目文件在哪个目录、需要别的目录请让用户挂载——它据此自行收手并回来问，
+  而不是绕路。每次判定写入 `hooks/path-guard-decisions.jsonl`，可审计。
+  同一目录的两种拼写（macOS `/tmp` 与 `/private/tmp`）先解符号链接再判定：这条是实机跑出来的——
+  首轮验证时 agent 报告 `/private/tmp/...` 被拒而 `/tmp/...` 能写。
+
 ## v1.68.0 — 2026-09-22（文献 PDF 随包走，导入的会话真的只读；新加的提供商必须先连通才算保存）
 
 **`.science` 会话包开始携带文献库的 PDF——并且这一半是真机验证过才敢说的**
