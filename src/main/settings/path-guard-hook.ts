@@ -123,7 +123,12 @@ const realPath = (value) => {
 // folded, separator-normalized paths so the same directory is judged the same however it is spelled.
 const IS_WINDOWS = process.platform === 'win32'
 const fold = (value) => (IS_WINDOWS ? value.toLowerCase() : value)
-const normalize = (value) => fold(String(value).replace(/[\\/]+$/, ''))
+const stripTrailingSeparators = (value) => {
+  let end = value.length
+  while (end > 0 && (value.charAt(end - 1) === '/' || value.charCodeAt(end - 1) === 92)) end -= 1
+  return value.slice(0, end)
+}
+const normalize = (value) => fold(stripTrailingSeparators(String(value)))
 
 const inside = (target, roots) =>
   roots.some(
@@ -136,17 +141,24 @@ const underSystemPrefix = (target) =>
   )
 
 // A path a tool input spells out: a POSIX absolute path, a home-relative or parent-escaping one, a
-// Windows drive path, or a UNC share. On Windows a drive path that is not recognized here would never
-// be judged at all, which would leave the fence open.
-const DRIVE_PATH = /^[A-Za-z]:[\\/]/
-const UNC_PATH = /^\\\\[^\\/]+[\\/][^\\/]+/
+// Windows drive path, or a UNC share. On Windows a drive path that is not recognized here would never be
+// judged at all, which would leave the fence open. The backslash is built from its character code on
+// purpose: this script is generated from a template literal one level up, where a written backslash goes
+// through escape processing a second time and silently changes what the expression matches.
+const BACKSLASH = String.fromCharCode(92)
+const isDrivePath = (value) =>
+  /^[A-Za-z]$/.test(value.charAt(0)) &&
+  value.charAt(1) === ':' &&
+  (value.length === 2 || value.charAt(2) === '/' || value.charAt(2) === BACKSLASH)
+const isUncPath = (value) =>
+  value.startsWith(BACKSLASH + BACKSLASH) && value.indexOf(BACKSLASH, 2) > 2
 const looksLikePath = (value) =>
   value.startsWith('/') ||
   value.startsWith('./') ||
   value.startsWith('../') ||
   value.startsWith('~') ||
-  DRIVE_PATH.test(value) ||
-  UNC_PATH.test(value)
+  isDrivePath(value) ||
+  isUncPath(value)
 
 // Absolute, home-relative and parent-escaping tokens written anywhere in a shell command. Quoting and
 // KEY=value prefixes are stripped; a bare filename or a flag is not a path and stays out.

@@ -15,6 +15,20 @@ import {
   writePathGuard
 } from './path-guard-hook'
 
+// Makes a node process report win32 and hand out path.win32, so drive letters, backslashes and case
+// folding are exercised on any machine. The generated script is written from a template literal, where a
+// backslash typed in the source goes through escape processing a second time: a mistake that is
+// invisible in a POSIX run and turns the fence into decoration on Windows.
+const WIN_SIMULATION = `const Module = require('node:module')
+const path = require('node:path')
+const load = Module._load
+Module._load = function (request) {
+  if (request === 'node:path' || request === 'path') return path.win32
+  return load.apply(this, arguments)
+}
+Object.defineProperty(process, 'platform', { value: 'win32' })
+`
+
 let root: string | undefined
 
 const makeRoot = async (): Promise<string> => {
@@ -31,13 +45,19 @@ afterEach(async () => {
 
 // Runs the generated guard exactly as the hook would. stdout is the decision channel and a non-zero
 // exit would block the call on its own, so both are observable here: a guard that cannot parse its
-// input must neither refuse nor fail.
-const runGuard = (scriptPath: string, payload: unknown): { status: number; stdout: string } => {
+// input must neither refuse nor fail. `preload`/`env` let a test hand it another platform's semantics.
+const runGuard = (
+  scriptPath: string,
+  payload: unknown,
+  options: { preload?: string; env?: Record<string, string> } = {}
+): { status: number; stdout: string } => {
+  const args = options.preload ? ['--require', options.preload, scriptPath] : [scriptPath]
   try {
-    const stdout = execFileSync(process.execPath, [scriptPath], {
+    const stdout = execFileSync(process.execPath, args, {
       input: JSON.stringify(payload),
       timeout: 15_000,
-      encoding: 'utf8'
+      encoding: 'utf8',
+      env: options.env ? { ...process.env, ...options.env } : process.env
     })
     return { status: 0, stdout: stdout ?? '' }
   } catch (error) {
@@ -180,6 +200,54 @@ describe('agent path guard hook', () => {
       cwd: dataRoot
     })
     expect(JSON.parse(escaped.stdout).hookSpecificOutput.permissionDecision).toBe('deny')
+  })
+
+  it('judges Windows drive paths, which a POSIX run cannot see at all', async () => {
+    const configDir = await makeRoot()
+    const dataRoot = 'C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\ps\\data'
+    await writePathGuard(configDir, [dataRoot], dataRoot)
+    const script = pathGuardScriptPath(configDir)
+
+    const preload = join(configDir, 'win-sim.cjs')
+    await writeFile(preload, WIN_SIMULATION)
+    const env = { SystemRoot: 'C:\\Windows', ProgramFiles: 'C:\\Program Files' }
+    const run = (payload: unknown): { status: number; stdout: string } =>
+      runGuard(script, payload, { preload, env })
+    const read = (
+      filePath: string
+    ): {
+      hook_event_name: string
+      tool_name: string
+      tool_input: { file_path: string }
+      cwd: string
+    } => ({
+      hook_event_name: 'PreToolUse',
+      tool_name: 'Read',
+      tool_input: { file_path: filePath },
+      cwd: dataRoot
+    })
+
+    // A drive path is a path: unjudged, it would leave the fence decorative on Windows.
+    const outside = run(read('C:\\Users\\Public\\secret-notes.txt'))
+    expect(outside.status).toBe(0)
+    expect(JSON.parse(outside.stdout).hookSpecificOutput.permissionDecision).toBe('deny')
+
+    // Inside, including the spelling Windows itself may hand back (case-folded, short names).
+    expect(
+      run(read('C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\ps\\data\\notebooks\\a.csv')).stdout
+    ).toBe('')
+    expect(run(read('c:\\users\\runner~1\\appdata\\local\\temp\\ps\\DATA\\a.csv')).stdout).toBe('')
+
+    // A system directory passes here for the same reason /usr does on POSIX — and it is read from the
+    // environment, because the drive letter is whatever the machine uses.
+    expect(
+      run({
+        hook_event_name: 'PreToolUse',
+        tool_name: 'Bash',
+        tool_input: { command: 'dir C:\\Windows\\System32' },
+        cwd: dataRoot
+      }).stdout
+    ).toBe('')
   })
 
   it('refuses a file outside the roots on whichever platform it runs', async () => {

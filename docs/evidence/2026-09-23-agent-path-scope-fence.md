@@ -74,6 +74,22 @@ Isolated instance (`PURESCIENCE_STORAGE_ROOT=/tmp/ps-guard-root`, `settings.data
    Plus a real agent turn that created `guard-final.txt` in the project folder in 9s — in-scope work is
    untouched.
 
+## Windows: the fence had to be re-earned there too
+
+Windows CI had two things to say about the first version, and both were right.
+
+- System directories were listed as POSIX prefixes only, so a command naming the Windows directory was
+  refused; and the comparisons were case- and separator-sensitive, so one folder could be judged two ways.
+  System directories now come from the environment (their drive letter is whatever the machine uses), and
+  paths are folded and separator-normalized before they are compared.
+- Worse, a drive path was not recognized as a path at all, so nothing outside the roots was ever judged:
+  on Windows the fence was decorative. The cause is the same escaping trap this file already documents
+  above — the generated script is built from a template literal, where a written backslash goes through
+  escape processing a second time, so the Windows branch tested for a slash where a backslash was meant.
+  Drive paths and UNC shares are now recognized through a character code instead of a written backslash,
+  and a test runs the generated guard with node reporting win32 and handing out `path.win32`, so this
+  class of mistake is caught on a POSIX machine instead of on a Windows CI round trip.
+
 ## Tests
 
 `src/main/settings/path-guard-hook.test.ts` runs the generated script the way the CLI does (stdin payload,
