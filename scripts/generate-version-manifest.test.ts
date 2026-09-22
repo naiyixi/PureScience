@@ -4,7 +4,13 @@ import { join } from 'node:path'
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { buildManifest, extractHighlights, parseSha256Sums } from './generate-version-manifest.mjs'
+import {
+  buildManifest,
+  extractHighlights,
+  manifestNotes,
+  NOTES_FALLBACK,
+  parseSha256Sums
+} from './generate-version-manifest.mjs'
 
 const VERSION = '0.1.2'
 const CDN = 'https://cdn.example.com'
@@ -223,5 +229,52 @@ describe('buildManifest', () => {
     expect(warn).toHaveBeenCalledTimes(1)
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('mystery-artifact.bin'))
     warn.mockRestore()
+  })
+})
+
+describe('manifestNotes', () => {
+  const withTempChangelog = (body: string): string => {
+    const dir = mkdtempSync(join(tmpdir(), 'manifest-notes-'))
+    writeFileSync(join(dir, 'CHANGELOG.md'), body)
+    return join(dir, 'CHANGELOG.md')
+  }
+
+  it('carries the entry body for the version, without the entry heading', () => {
+    const path = withTempChangelog(
+      [
+        '## v1.2.3 — 2026-01-01（标题）',
+        '',
+        '**要点**',
+        '',
+        '- 细节',
+        '',
+        '## v1.2.2 — 2026-01-01（旧）',
+        '',
+        '旧正文',
+        ''
+      ].join('\n')
+    )
+
+    expect(manifestNotes('1.2.3', path)).toBe('**要点**\n\n- 细节')
+  })
+
+  it('falls back to the GitHub link when the changelog has no entry for the version', () => {
+    const path = withTempChangelog('## v1.0.0 — 2026-01-01（x）\n\n正文\n')
+    expect(manifestNotes('9.9.9', path)).toBe(NOTES_FALLBACK)
+  })
+
+  it('falls back when the changelog cannot be read', () => {
+    expect(manifestNotes('1.2.3', join(tmpdir(), 'absent-changelog-dir', 'CHANGELOG.md'))).toBe(
+      NOTES_FALLBACK
+    )
+  })
+
+  it('carries the shipped entry for a released version straight from the repository changelog', () => {
+    // Not a fixture: the manifest generated for a real release must carry the same entry the release
+    // page shows, so the two cannot disagree.
+    const notes = manifestNotes('1.68.0')
+    expect(notes).not.toBe(NOTES_FALLBACK)
+    expect(notes.startsWith('## v')).toBe(false)
+    expect(notes.length).toBeGreaterThan(200)
   })
 })

@@ -34,6 +34,9 @@ type FakeToken = { cancelled: boolean; cancel(): void }
 class FakeUpdater extends EventEmitter {
   autoDownload = true
   autoInstallOnAppQuit = true
+  // Only assigned by the tests that exercise the GitHub feed retry; electron-updater's real autoUpdater
+  // always exposes it.
+  setFeedURL?: (config: unknown) => void
   // The download body each call runs. Default: emit progress + downloaded and resolve. Tests override
   // it to hang, to inspect the token, or to count real starts.
   runDownload: (token?: FakeToken) => Promise<void> = async () => {
@@ -909,5 +912,118 @@ describe('ElectronUpdaterStrategy', () => {
     // The retry's progress event should report fresh transferred, not stale bytes.
     expect(retry.downloadedBytes).toBe(5500)
     await first
+  })
+
+  // The configured feed comes from app-update.yml and points at the CDN mirror, whose publish job is a
+  // manual dispatch. An undeployed mirror must not cost the installed base its update prompt.
+  it('retries the check on the GitHub feed when the configured feed cannot be reached', async () => {
+    const updater = new FakeUpdater()
+    const base = updater.checkForUpdates
+    let switched = false
+    updater.checkForUpdates = vi.fn(async () => {
+      if (!switched) throw new Error('getaddrinfo ENOTFOUND statics.zerolink.com')
+      await base()
+    })
+    const applyGithubFeed = vi.fn(() => {
+      switched = true
+    })
+    const log = createLogSpy()
+    const strategy = new ElectronUpdaterStrategy({
+      updater,
+      currentVersion: '0.2.0',
+      broadcast: vi.fn(),
+      fetchImpl: offlineFetch(),
+      applyGithubFeed,
+      log
+    })
+
+    const status = await strategy.check()
+
+    expect(applyGithubFeed).toHaveBeenCalledTimes(1)
+    expect(updater.checkForUpdates).toHaveBeenCalledTimes(2)
+    expect(status.state).toBe('available')
+    expect(status.latest).toBe('0.3.0')
+    expect(status.error).toBeUndefined()
+    expect(log.info).toHaveBeenCalledWith(expect.stringContaining('retried on the GitHub feed'))
+  })
+
+  it('points the updater at the GitHub provider when it falls back', async () => {
+    const updater = new FakeUpdater()
+    const setFeedURL = vi.fn()
+    updater.setFeedURL = setFeedURL
+    const base = updater.checkForUpdates
+    let switched = false
+    updater.checkForUpdates = vi.fn(async () => {
+      if (!switched) throw new Error('ENOTFOUND statics.zerolink.com')
+      await base()
+    })
+    const strategy = new ElectronUpdaterStrategy({
+      updater,
+      currentVersion: '0.2.0',
+      broadcast: vi.fn(),
+      fetchImpl: offlineFetch()
+    })
+    // The switch happens through the default seam; the fake starts failing until it is called.
+    setFeedURL.mockImplementation(() => {
+      switched = true
+    })
+
+    const status = await strategy.check()
+
+    expect(setFeedURL).toHaveBeenCalledWith({
+      provider: 'github',
+      owner: 'naiyixi',
+      repo: 'PureScience'
+    })
+    expect(status.state).toBe('available')
+  })
+
+  it('keeps the configured feed error when the GitHub retry fails too', async () => {
+    const updater = new FakeUpdater()
+    updater.checkForUpdates = vi.fn(async () => {
+      throw new Error('getaddrinfo ENOTFOUND statics.zerolink.com')
+    })
+    const applyGithubFeed = vi.fn()
+    const strategy = new ElectronUpdaterStrategy({
+      updater,
+      currentVersion: '0.2.0',
+      broadcast: vi.fn(),
+      fetchImpl: offlineFetch(),
+      applyGithubFeed
+    })
+
+    const status = await strategy.check()
+
+    expect(applyGithubFeed).toHaveBeenCalledTimes(1)
+    expect(updater.checkForUpdates).toHaveBeenCalledTimes(2)
+    expect(status.state).toBe('error')
+    // The first error names the feed this install is actually configured against.
+    expect(status.error).toContain('statics.zerolink.com')
+  })
+
+  it('does not retry on GitHub when the app has no update feed at all (dev build)', async () => {
+    const updater = new FakeUpdater()
+    updater.checkForUpdates = vi.fn(async () => {
+      throw new Error(
+        'Skip checkForUpdates because application is not packed and dev update config is not forced'
+      )
+    })
+    const applyGithubFeed = vi.fn()
+    const strategy = new ElectronUpdaterStrategy({
+      updater,
+      currentVersion: '0.2.0',
+      broadcast: vi.fn(),
+      fetchImpl: offlineFetch(),
+      applyGithubFeed
+    })
+
+    const status = await strategy.check()
+
+    // A build-configuration state, not an unreachable feed: retrying would spend a round-trip that
+    // cannot help and would replace an accurate error with a confusing one.
+    expect(applyGithubFeed).not.toHaveBeenCalled()
+    expect(updater.checkForUpdates).toHaveBeenCalledTimes(1)
+    expect(status.state).toBe('error')
+    expect(status.error).toContain('not packed')
   })
 })

@@ -39,6 +39,9 @@ export interface MinimalAutoUpdater {
   autoInstallOnAppQuit: boolean
   on(event: string, listener: (...args: unknown[]) => void): unknown
   checkForUpdates(): Promise<unknown>
+  // Set at runtime for the GitHub retry: the packaged app's feed comes from app-update.yml, which this
+  // replaces when that feed cannot be reached.
+  setFeedURL?(config: unknown): void
   downloadUpdate(cancellationToken?: MinimalCancellationToken): Promise<unknown>
   quitAndInstall(isSilent?: boolean, isForceRunAfter?: boolean): void
 }
@@ -62,6 +65,9 @@ export type ElectronUpdaterDeps = {
   log?: Logger
   // Marks the app lifecycle handoff immediately before quitAndInstall. Injectable for tests.
   markUpdateShutdown?: () => () => void
+  // Applies the GitHub Releases feed to the updater, used as a one-shot retry when the configured feed
+  // cannot be reached. Injectable so tests can drive the retry without electron-updater.
+  applyGithubFeed?: () => void | Promise<void>
   // True when an x64 process is running under Rosetta 2 on Apple Silicon; false when definitively not;
   // undefined when the probe could not determine it. Electron-updater detects this via
   // sysctl.proc_translated and selects the arm64 artifact, so we must match that to show the correct
@@ -161,6 +167,10 @@ const extractArtifactSize = (
   return undefined
 }
 
+// electron-updater refuses to check when the app is unpackaged and has no dev update config. That is a
+// build-configuration state, not an unreachable feed, so it must not trigger the GitHub retry.
+const NO_FEED_CONFIGURED = /not packed|dev update config|dev-app-update/i
+
 // In-place auto-update strategy: wraps electron-updater for true download + restart on win/linux and
 // on signed stable macOS (Squirrel.Mac). Emits the same UpdateStatus shape as UpdateService, always
 // stamped applyKind:'restart'. Opt-in: autoDownload and autoInstallOnAppQuit are disabled so nothing
@@ -195,6 +205,14 @@ export class ElectronUpdaterStrategy implements UpdateStrategy {
   // Pre-install backend-shutdown gate, owned immutably for the strategy lifetime.
   private readonly installGate?: InstallGate
   private readonly markUpdateShutdown: () => () => void
+  private readonly applyGithubFeed: () => void | Promise<void>
+  // Whether a GitHub retry is even possible: the real autoUpdater can switch feeds, while a test double
+  // or a stripped-down updater may not expose setFeedURL.
+  private readonly canSwitchFeed: boolean
+  // One retry per strategy lifetime is enough: the configured feed and the GitHub feed carry the same
+  // artifacts, so if both are unreachable the network (not the feed choice) is the problem and a
+  // repeated retry would only delay the error the user needs to see.
+  private feedFallbackUsed = false
 
   constructor(deps: ElectronUpdaterDeps = {}) {
     this.updater = deps.updater ?? (autoUpdater as unknown as MinimalAutoUpdater)
@@ -223,6 +241,16 @@ export class ElectronUpdaterStrategy implements UpdateStrategy {
     this.installGate = deps.installGate
     this.markUpdateShutdown =
       deps.markUpdateShutdown ?? (() => markApplicationShutdownTrigger('update'))
+    this.applyGithubFeed =
+      deps.applyGithubFeed ??
+      (() =>
+        this.updater.setFeedURL?.({
+          provider: 'github',
+          owner: APP.githubOwner,
+          repo: APP.githubRepo
+        }))
+    this.canSwitchFeed =
+      deps.applyGithubFeed !== undefined || typeof this.updater.setFeedURL === 'function'
     this.status = { state: 'idle', current: this.currentVersion, applyKind: 'restart' }
 
     this.updater.autoDownload = false
@@ -346,11 +374,17 @@ export class ElectronUpdaterStrategy implements UpdateStrategy {
     try {
       await this.updater.checkForUpdates()
     } catch (error) {
-      this.setStatus({
-        state: 'error',
-        error: error instanceof Error ? error.message : 'Update check failed'
-      })
-      operation.fail(error, { result: 'error' })
+      // The configured feed comes from app-update.yml and points at the CDN mirror, whose publish job is
+      // a manual dispatch. A missing mirror must not cost the installed base its update prompt: the same
+      // artifacts are published to GitHub Releases, so retry there once before reporting a failure.
+      const recovered = await this.retryOnGithubFeed(operation, error)
+      if (!recovered) {
+        this.setStatus({
+          state: 'error',
+          error: error instanceof Error ? error.message : 'Update check failed'
+        })
+        operation.fail(error, { result: 'error' })
+      }
     }
     // Wait for the notes fetch triggered by update-available so the returned status carries them.
     await this.notesHydration
@@ -360,6 +394,29 @@ export class ElectronUpdaterStrategy implements UpdateStrategy {
       operation.complete({ result: this.status.state })
     }
     return this.status
+  }
+
+  // Retries the check once against the GitHub Releases feed, returning true when that produced a status
+  // the user can act on. Skips the retry when electron-updater has no feed at all (an unpackaged build
+  // without a dev update config — a build-configuration state, not an unreachable feed) and keeps the
+  // FIRST error when the retry fails too: it names the feed this install is actually configured against.
+  private async retryOnGithubFeed(
+    operation: DiagnosticOperation,
+    error: unknown
+  ): Promise<boolean> {
+    if (this.feedFallbackUsed || !this.canSwitchFeed) return false
+    const message = error instanceof Error ? error.message : String(error)
+    if (NO_FEED_CONFIGURED.test(message)) return false
+    this.feedFallbackUsed = true
+    try {
+      await this.applyGithubFeed()
+      operation.phase('query-provider-github')
+      await this.updater.checkForUpdates()
+      this.log.info('update: configured feed unreachable, retried on the GitHub feed')
+      return true
+    } catch {
+      return false
+    }
   }
 
   async download(): Promise<UpdateStatus> {
