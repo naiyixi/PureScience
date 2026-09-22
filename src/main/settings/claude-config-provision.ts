@@ -4,6 +4,11 @@ import { join } from 'node:path'
 import { ClaudeCodeSkillMaterializer, type SkillMaterializer } from '../skills/materializer'
 import { SkillRegistry, type BundledSkill } from '../skills/registry'
 import {
+  isPathGuardHookEntry,
+  pathGuardHookSettings,
+  writePathGuard
+} from './path-guard-hook'
+import {
   isSkillUsageHookEntry,
   skillUsageHookSettings,
   writeSkillUsageCapture
@@ -104,8 +109,19 @@ const writeAppSettings = async (
     ? (existingHooks.PostToolUse as unknown[])
     : []
   const managedHooks = skillUsageHookSettings(configDir, process.platform)
+  // Same declarative treatment for the PreToolUse path guard: prune what this module wrote in an
+  // earlier version, then add the current entry.
+  const existingPreToolUse = Array.isArray(existingHooks.PreToolUse)
+    ? (existingHooks.PreToolUse as unknown[])
+    : []
+  const managedPreToolUse = pathGuardHookSettings(configDir, process.platform)
+    .PreToolUse as unknown[]
   settings.hooks = {
     ...existingHooks,
+    PreToolUse: [
+      ...existingPreToolUse.filter((entry) => !isPathGuardHookEntry(entry)),
+      ...managedPreToolUse
+    ],
     PostToolUse: [
       ...existingPostToolUse.filter((entry) => !isSkillUsageHookEntry(entry)),
       ...(managedHooks.PostToolUse as unknown[])
@@ -131,6 +147,12 @@ type ProvisionOptions = {
   // `undefined` preserves the existing projection (validation probes must not perturb a live
   // backend); `null` explicitly clears a catalog owned by a previously active provider.
   modelConfig?: ClaudeRuntimeModelConfig | null
+  // Folders the agent's tool calls may reach (data root, config root). The path-guard hook reads them
+  // from beside its script; empty means the guard only allows the system temp dir, so callers that
+  // know the install's roots must pass them.
+  allowedRoots?: readonly string[]
+  // Named in the refusal so the agent knows where this project's files actually are.
+  allowedRootsHint?: string
 }
 
 // Ensures the app config dir + asset subdirs exist, writes the file-tool deny rules, then materializes
@@ -156,6 +178,9 @@ const provisionAppClaudeConfigDir = async (
   // The capture the managed hook invokes lives beside the settings that reference it, so both are written
   // from the same source of truth on every provision.
   await writeSkillUsageCapture(configDir)
+  // Same for the path guard: the script and the roots it enforces are written together, so the fence
+  // always describes the install it belongs to.
+  await writePathGuard(configDir, options.allowedRoots ?? [], options.allowedRootsHint)
 
   const materializer = options.materializer ?? new ClaudeCodeSkillMaterializer()
   const skills = options.skills ?? (await new SkillRegistry().list())

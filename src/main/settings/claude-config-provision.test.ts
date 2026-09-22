@@ -14,6 +14,12 @@ import {
   provisionAppClaudeConfigDir
 } from './claude-config-provision'
 import { CAPTURE_FILENAME, captureScriptPath, isSkillUsageHookEntry } from './skill-usage-hook'
+import {
+  GUARD_FILENAME,
+  isPathGuardHookEntry,
+  pathGuardRootsPath,
+  pathGuardScriptPath
+} from './path-guard-hook'
 
 // The default (no-registry) call path builds a SkillRegistry() that resolves the bundled-skills root via
 // electron's app; point it at a nonexistent dir so the registry lists nothing instead of touching a real
@@ -273,5 +279,63 @@ describe('provisionAppClaudeConfigDir', () => {
     expect(
       (await readdir(join(configDir, 'skills'))).filter((name) => !name.startsWith('.'))
     ).toEqual([])
+  })
+
+  it('provisions the path guard hook, the script it runs, and the roots it enforces', async () => {
+    root = await mkdtemp(join(tmpdir(), 'os-claude-config-'))
+    const configDir = join(root, 'claude')
+    const dataRoot = join(root, 'data')
+
+    await provisionAppClaudeConfigDir(configDir, {
+      skills: [],
+      allowedRoots: [dataRoot, configDir],
+      allowedRootsHint: dataRoot
+    })
+
+    const settings = JSON.parse(await readFile(join(configDir, 'settings.json'), 'utf8')) as {
+      hooks: { PreToolUse: { matcher: string; hooks: { command: string }[] }[] }
+    }
+    const [entry] = settings.hooks.PreToolUse
+    expect(entry.hooks[0].command).toContain(GUARD_FILENAME)
+    expect(entry.matcher).toContain('Bash')
+    expect(isPathGuardHookEntry(entry)).toBe(true)
+    expect(await stat(pathGuardScriptPath(configDir))).toBeTruthy()
+    // The fence is only as good as the roots it is given: they are written beside the script.
+    const roots = JSON.parse(await readFile(pathGuardRootsPath(configDir), 'utf8')) as {
+      roots: string[]
+      hint: string
+    }
+    expect(roots).toEqual({ roots: [dataRoot, configDir], hint: dataRoot })
+  })
+
+  it('replaces its own path-guard hook on re-provision instead of stacking, keeping third-party ones', async () => {
+    root = await mkdtemp(join(tmpdir(), 'os-claude-config-'))
+    const configDir = join(root, 'claude')
+    await mkdir(configDir, { recursive: true })
+    await writeFile(
+      join(configDir, 'settings.json'),
+      JSON.stringify({
+        hooks: {
+          PreToolUse: [
+            { matcher: 'Write', hooks: [{ type: 'command', command: 'echo third-party' }] },
+            {
+              matcher: 'Bash',
+              hooks: [{ type: 'command', command: `node "old/${GUARD_FILENAME}" || true` }]
+            }
+          ]
+        }
+      })
+    )
+
+    await provisionAppClaudeConfigDir(configDir, { skills: [] })
+
+    const settings = JSON.parse(await readFile(join(configDir, 'settings.json'), 'utf8')) as {
+      hooks: { PreToolUse: { matcher: string; hooks: { command: string }[] }[] }
+    }
+    const commands = settings.hooks.PreToolUse.flatMap((entry) =>
+      entry.hooks.map((hook) => hook.command)
+    )
+    expect(commands.filter((command) => command.includes(GUARD_FILENAME))).toHaveLength(1)
+    expect(commands).toContain('echo third-party')
   })
 })

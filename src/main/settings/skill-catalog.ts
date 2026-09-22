@@ -757,7 +757,10 @@ class SkillCatalogModule {
     disabledSkillIds: string[],
     modelConfig?: ClaudeRuntimeModelConfig | null,
     allowedIds: readonly string[] = [],
-    forcedIds: ReadonlySet<string> = new Set()
+    forcedIds: ReadonlySet<string> = new Set(),
+    // Folders the agent's shell/file calls may reach, forwarded to the PreToolUse path guard. The
+    // caller knows the install's data + config roots; without them the guard only allows the temp dir.
+    pathScope?: { roots: readonly string[]; hint?: string }
   ): Promise<void> {
     const skills = await this.catalog()
     const blocked = new Set([
@@ -768,7 +771,8 @@ class SkillCatalogModule {
     await provisionAppClaudeConfigDir(configDir, {
       skills,
       disabledSkillIds: disabled,
-      ...(modelConfig === undefined ? {} : { modelConfig })
+      ...(modelConfig === undefined ? {} : { modelConfig }),
+      ...(pathScope ? { allowedRoots: pathScope.roots, allowedRootsHint: pathScope.hint } : {})
     })
   }
 

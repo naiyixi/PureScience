@@ -689,6 +689,10 @@ export class AgentRuntimeManager {
     modelConfig?: ClaudeRuntimeModelConfig | null
   ): Promise<string> {
     const configDir = getAppClaudeConfigDir(this.storageRoot)
+    // The agent's shell and file calls are fenced to this install's own folders: the data root (project
+    // files, artifacts, uploads, runtime) and the config root (skills, hooks). Without this the fence
+    // only allows the system temp dir, so both are passed on every provisioning pass.
+    const dataRoot = settings.dataRoot?.trim() ? settings.dataRoot : this.storageRoot
     // The verification gate lives inside provisionClaudeConfig, so it applies here too; forced ids
     // (specialist flows that ask for a skill by id) still win over it.
     await this.skills.provisionClaudeConfig(
@@ -696,7 +700,8 @@ export class AgentRuntimeManager {
       settings.disabledSkillIds ?? [],
       modelConfig,
       settings.trustedSkillIds ?? [],
-      forcedSkillIds
+      forcedSkillIds,
+      { roots: [dataRoot, this.storageRoot], hint: dataRoot }
     )
     const connectors = await this.connectors.getConnectors()
     await syncConnectorSkillDocs(
