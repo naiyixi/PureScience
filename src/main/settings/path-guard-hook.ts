@@ -59,14 +59,17 @@ const path = require('node:path')
 
 const ROOTS_FILE = ${JSON.stringify(rootsPath)}
 const DECISIONS_FILE = ${JSON.stringify(decisionsPath)}
-// Prefixes that running a tool needs: interpreters, libraries, devices, TLS material. Deliberately
-// narrow — a credential read such as /etc/passwd is still refused, and the system temp dir is NOT here
-// (it holds other processes' scratch files; a command that needs it works without spelling an absolute
-// path). macOS resolves /etc and /var to /private/…, so both spellings are listed.
+// Directories running a tool needs: interpreters, libraries, devices, TLS material. Deliberately narrow
+// — a credential read such as /etc/passwd is still refused, and the system temp dir is NOT here (it holds
+// other processes' scratch files; a command that needs it works without spelling an absolute path).
+// macOS resolves /etc and /var to /private/…, so both spellings are listed. Windows system directories are
+// read from the environment: their drive letter is whatever the machine happens to use.
 const SYSTEM_PREFIXES = [
-  '/usr/', '/bin/', '/sbin/', '/opt/', '/dev/', '/System/', '/Library/', '/Applications/',
-  '/etc/ssl/', '/private/etc/ssl/', '/etc/hosts', '/private/etc/hosts'
-]
+  '/usr', '/bin', '/sbin', '/opt', '/dev', '/System', '/Library', '/Applications',
+  '/etc/ssl', '/private/etc/ssl', '/etc/hosts', '/private/etc/hosts',
+  process.env.SystemRoot, process.env.windir, process.env.ProgramFiles,
+  process.env['ProgramFiles(x86)'], process.env.ProgramData
+].filter((prefix) => typeof prefix === 'string' && prefix.trim())
 
 const record = (entry) => {
   try {
@@ -116,19 +119,47 @@ const realPath = (value) => {
   return value
 }
 
-const inside = (target, roots) =>
-  roots.some((root) => target === root || target.startsWith(root.endsWith('/') ? root : root + '/'))
+// Windows paths are case-insensitive and separated by a backslash, POSIX ones by a slash: compare
+// folded, separator-normalized paths so the same directory is judged the same however it is spelled.
+const IS_WINDOWS = process.platform === 'win32'
+const fold = (value) => (IS_WINDOWS ? value.toLowerCase() : value)
+const normalize = (value) => fold(String(value).replace(/[\\/]+$/, ''))
 
+const inside = (target, roots) =>
+  roots.some(
+    (root) => normalize(target) === normalize(root) || normalize(target).startsWith(normalize(root) + path.sep)
+  )
+
+const underSystemPrefix = (target) =>
+  SYSTEM_PREFIXES.some(
+    (prefix) => normalize(target) === normalize(prefix) || normalize(target).startsWith(normalize(prefix) + path.sep)
+  )
+
+// A path a tool input spells out: a POSIX absolute path, a home-relative or parent-escaping one, a
+// Windows drive path, or a UNC share. On Windows a drive path that is not recognized here would never
+// be judged at all, which would leave the fence open.
+const DRIVE_PATH = /^[A-Za-z]:[\\/]/
+const UNC_PATH = /^\\\\[^\\/]+[\\/][^\\/]+/
 const looksLikePath = (value) =>
-  value.startsWith('/') || value.startsWith('./') || value.startsWith('../') || value.startsWith('~')
+  value.startsWith('/') ||
+  value.startsWith('./') ||
+  value.startsWith('../') ||
+  value.startsWith('~') ||
+  DRIVE_PATH.test(value) ||
+  UNC_PATH.test(value)
 
 // Absolute, home-relative and parent-escaping tokens written anywhere in a shell command. Quoting and
 // KEY=value prefixes are stripped; a bare filename or a flag is not a path and stays out.
 const commandPaths = (command) =>
   String(command)
     .split(/\\s+/)
-    .map((token) => token.replace(/^['"]+/, '').replace(/['"]+$/, '').replace(/^[A-Za-z_][A-Za-z0-9_]*=/, ''))
-    .filter((token) => token && looksLikePath(token))
+    .map((token) =>
+      token
+        .replace(/^['"]+/, '')
+        .replace(/['"]+$/, '')
+        .replace(/^[A-Za-z_][A-Za-z0-9_]*=/, '')
+    )
+    .filter((token) => token && (looksLikePath(token) || token.startsWith('..')))
 
 const targets = (input) => {
   const out = []
@@ -159,7 +190,7 @@ const main = () => {
     const expanded = target.replace(/^~(?=\\/|$)/, os.homedir())
     const absolute = realPath(path.resolve(cwd, expanded))
     if (inside(absolute, loaded.roots)) continue
-    if (SYSTEM_PREFIXES.some((prefix) => absolute.startsWith(prefix))) continue
+    if (underSystemPrefix(absolute)) continue
 
     const reason =
       'Refused: ' + absolute + ' is outside this project scope. Project files are read from the ' +

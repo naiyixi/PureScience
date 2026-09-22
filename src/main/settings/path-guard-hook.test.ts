@@ -85,7 +85,9 @@ describe('agent path guard hook', () => {
 
     const log = await decisions(configDir)
     expect(log).toHaveLength(1)
-    expect(log[0]).toMatchObject({ tool: 'Bash', decision: 'deny', resolved: '/' })
+    expect(log[0]).toMatchObject({ tool: 'Bash', decision: 'deny' })
+    // `/` is the POSIX root and the drive root on Windows: judge it the way the platform resolves it.
+    expect((log[0] as { resolved: string }).resolved).toMatch(/^(?:[A-Za-z]:[\\/]|\/)$/)
   })
 
   it('allows reading a project file inside the roots', async () => {
@@ -119,10 +121,15 @@ describe('agent path guard hook', () => {
     })
     expect(JSON.parse(credential.stdout).hookSpecificOutput.permissionDecision).toBe('deny')
 
+    // A command needs the platform's own system directories: /usr/bin here, the Windows directory there.
+    const systemPath =
+      process.platform === 'win32'
+        ? join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'drivers', 'etc', 'hosts')
+        : '/usr/bin'
     const systemRead = runGuard(script, {
       hook_event_name: 'PreToolUse',
       tool_name: 'Bash',
-      tool_input: { command: 'ls /usr/bin | head -3' },
+      tool_input: { command: `ls "${systemPath}" | head -3` },
       cwd: dataRoot
     })
     expect(systemRead.status).toBe(0)
@@ -138,12 +145,18 @@ describe('agent path guard hook', () => {
     expect(relative.stdout).toBe('')
   })
 
-  it('resolves symlinks so one spelling of a folder is not refused while another is allowed', async () => {
+  it('resolves symlinks so one spelling of a folder is not refused while another is allowed', async (context) => {
     const configDir = await makeRoot()
     const dataRoot = join(configDir, 'data')
     await mkdir(dataRoot, { recursive: true })
-    // Same directory, two spellings: the guard must judge where a path lands, not how it is typed.
-    await symlink(dataRoot, join(configDir, 'data-link'))
+    // Windows only creates links with developer mode or elevation; what the guard does on a machine that
+    // cannot make one is not what this test claims, so it steps aside rather than reporting a failure.
+    try {
+      await symlink(dataRoot, join(configDir, 'data-link'))
+    } catch {
+      context.skip()
+      return
+    }
     await writePathGuard(configDir, [dataRoot], dataRoot)
     const script = pathGuardScriptPath(configDir)
 
@@ -167,6 +180,28 @@ describe('agent path guard hook', () => {
       cwd: dataRoot
     })
     expect(JSON.parse(escaped.stdout).hookSpecificOutput.permissionDecision).toBe('deny')
+  })
+
+  it('refuses a file outside the roots on whichever platform it runs', async () => {
+    const configDir = await makeRoot()
+    const dataRoot = join(configDir, 'data')
+    await writePathGuard(configDir, [dataRoot], dataRoot)
+
+    // The Windows branch is the one that matters there: a drive path that is not recognized as a path
+    // would never be judged at all.
+    const outside =
+      process.platform === 'win32'
+        ? 'C:\\Users\\Public\\secret-notes.txt'
+        : '/Users/Shared/secret-notes.txt'
+    const { status, stdout } = runGuard(pathGuardScriptPath(configDir), {
+      hook_event_name: 'PreToolUse',
+      tool_name: 'Read',
+      tool_input: { file_path: outside },
+      cwd: dataRoot
+    })
+
+    expect(status).toBe(0)
+    expect(JSON.parse(stdout).hookSpecificOutput.permissionDecision).toBe('deny')
   })
 
   it('allows when it cannot read its roots, so an unreadable fence never breaks a turn', async () => {
