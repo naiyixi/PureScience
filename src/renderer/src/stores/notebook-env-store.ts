@@ -61,6 +61,23 @@ export const createInitialNotebookEnvState = (): NotebookEnvState => {
 
 const errorText = (e: unknown): string => (e instanceof Error ? e.message : String(e))
 
+// Writes here are identity-stable, and that is load-bearing. The progress handler re-reads the
+// authoritative status on every broadcast, so an update that changes nothing must not hand consumers a
+// new state object: useSyncExternalStore treats a fresh object as a real change, re-renders, and the
+// re-read writes again — a loop bounded only by how fast the bridge answers. On the packaged app the
+// bridge is fastest, which is where it trips React's update-depth guard (error #185).
+// One level is enough: the fields this store exposes are primitives (status) or flat view objects (ui).
+const sameShallow = (a: unknown, b: unknown): boolean => {
+  if (Object.is(a, b)) return true
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false
+  const left = a as Record<string, unknown>
+  const right = b as Record<string, unknown>
+  const keys = Object.keys(left)
+  return (
+    keys.length === Object.keys(right).length && keys.every((key) => Object.is(left[key], right[key]))
+  )
+}
+
 // The langError the Settings panel keys off to show "Reset runtime". Recovery blocks a prefix in the
 // main process WITHOUT touching the ready marker, so status may still report ready — this message,
 // derived from ProvisionStatus.*RecoveryBlocked, is what makes the Reset affordance reachable in the UI.
@@ -131,24 +148,36 @@ export const useNotebookEnvStore = create<NotebookEnvStore>((set, get) => {
   // Merges a partial update into state, then re-derives `ui` from the resulting status/scope/
   // progress/error so every consumer of `ui` (onboarding step, launch banner, notebook gate) sees a
   // view that always matches the latest mirrored state (reuses provisioning-view's pure reducer).
+  // A partial that changes nothing returns the current state untouched, so no consumer is notified.
   const applyUi = (partial: Partial<NotebookEnvState>): void =>
     set((s) => {
       const next = { ...s, ...partial }
+      const ui = deriveProvisionUi(next.status, next.scope, next.progress, next.error)
+      const unchanged =
+        Object.keys(partial).every((key) =>
+          sameShallow((s as Record<string, unknown>)[key], (partial as Record<string, unknown>)[key])
+        ) && sameShallow(s.ui, ui)
+      if (unchanged) return s
       return {
         ...partial,
-        ui: deriveProvisionUi(next.status, next.scope, next.progress, next.error)
+        ui
       }
     })
 
   // Merges a patch into ONE language's provisioning slot (see byLang), leaving the other language's
-  // slot untouched — the key to python and R showing independent progress in Settings.
+  // slot untouched — the key to python and R showing independent progress in Settings. Same
+  // identity-stable rule as applyUi: an unchanged slot must not re-render every listening card.
   const applyLang = (language: NotebookLanguage, patch: Partial<LangProvisionState>): void =>
-    set((s) => ({
-      byLang: {
-        ...s.byLang,
-        [language]: { preparing: false, ...s.byLang[language], ...patch }
+    set((s) => {
+      const slot = { preparing: false, ...s.byLang[language], ...patch }
+      if (sameShallow(s.byLang[language], slot)) return s
+      return {
+        byLang: {
+          ...s.byLang,
+          [language]: slot
+        }
       }
-    }))
+    })
 
   // Reflect the main-process recovery quarantine (ProvisionStatus.*RecoveryBlocked) into each language's
   // slot, so a blocked-but-ready env surfaces the Reset affordance. Only manages the recovery message:
@@ -160,17 +189,22 @@ export const useNotebookEnvStore = create<NotebookEnvStore>((set, get) => {
       r: status.rRecoveryBlocked ?? false
     }
     set((s) => {
+      let changed = false
       const byLang = { ...s.byLang }
       for (const language of ['python', 'r'] as const) {
         const cur = byLang[language] ?? { preparing: false }
         if (blocked[language]) {
           if (cur.preparing || cur.error === RECOVERY_BLOCKED_MESSAGE) continue // let a rebuild settle
           byLang[language] = { ...cur, preparing: false, error: RECOVERY_BLOCKED_MESSAGE }
+          changed = true
         } else if (cur.error === RECOVERY_BLOCKED_MESSAGE) {
           byLang[language] = { ...cur, error: undefined } // block cleared (e.g. after Reset/restart)
+          changed = true
         }
       }
-      return { byLang }
+      // This runs after every status re-read, so a no-op must not produce a new state object — see
+      // sameShallow: the re-read loop feeds on fresh identities.
+      return changed ? { byLang } : s
     })
   }
 

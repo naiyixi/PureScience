@@ -47,6 +47,46 @@ describe('notebook-env-store', () => {
     })
   })
 
+  it('treats a re-read of an unchanged status as a no-op (no notification, same state object)', async () => {
+    // The real bridge answers every re-read with a fresh object holding the same values, which is what
+    // a notification-triggered re-read loop feeds on. Nothing changed ⇒ nothing may be notified.
+    const { emit } = installApi({ getStatus: vi.fn(async () => ({ ...READY })) })
+    await useNotebookEnvStore.getState().init()
+    const progress: ProvisionProgress = { phase: 'download', message: 'Fetching', progress: 0.4 }
+    emit(progress)
+    await Promise.resolve()
+    await Promise.resolve()
+
+    const settled = useNotebookEnvStore.getState()
+    const notifications = vi.fn()
+    const unsubscribe = useNotebookEnvStore.subscribe(notifications)
+    // Replaying the very same broadcast must not produce a new state object for consumers.
+    emit(progress)
+    await Promise.resolve()
+    await Promise.resolve()
+    unsubscribe()
+
+    expect(useNotebookEnvStore.getState()).toBe(settled)
+    expect(notifications).not.toHaveBeenCalled()
+  })
+
+  it('still notifies when the re-read reports a different status', async () => {
+    const getStatus = vi.fn(async () => ({ ...READY }))
+    const { emit } = installApi({ getStatus })
+    await useNotebookEnvStore.getState().init()
+
+    const notifications = vi.fn()
+    const unsubscribe = useNotebookEnvStore.subscribe(notifications)
+    getStatus.mockResolvedValue({ ...READY, version: 4 })
+    emit({ phase: 'download', message: 'Fetching', progress: 0.5 })
+    await Promise.resolve()
+    await Promise.resolve()
+    unsubscribe()
+
+    expect(useNotebookEnvStore.getState().status.version).toBe(4)
+    expect(notifications).toHaveBeenCalled()
+  })
+
   it('init subscribes to progress and hydrates the status snapshot', async () => {
     const { api } = installApi()
     await useNotebookEnvStore.getState().init()
