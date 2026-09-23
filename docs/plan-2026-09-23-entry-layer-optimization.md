@@ -356,3 +356,16 @@
   即**第八次那条守卫拒绝与第十一次的静默丢弃都已解除，继续请求真正到达并驱动了 agent**。
 - **仍差最后一步（已缩到"回复呈现"）**：agent 按设计回了 `The interrupted turn continued from where it stopped.`（`fake-opencode.mjs:310` 与 spec 期待同文），但会话里看不到它 → 断言（spec:171）失败。日志里续答提示之后紧跟 `session.new -> e2e-session-1`，**疑似继续之后应用又接了一个 agent 会话**，回复落到了应用不再读的会话上。
 - **下一步（方法已定）**：给假 agent 的**回复**也加日志（现在只有请求日志，无法区分"agent 没答"与"答了没呈现"），据此锁定回复落在哪个会话；spec 保持 fixme 挂账。
+
+### U13：第十三次实测 —— **agent 确实作答（正确会话、正确文本），应用没把它呈现出来**
+- **诊断基建**：给假 agent 补上**回复日志**（`e2e/fixtures/fake-opencode.mjs`，回复以 `session/update` 通知发出后记一行）。此前只有请求日志，无法区分"agent 没答"与"答了没呈现"——补上后立刻分清了。
+- **实测（唯一一次运行的原始日志，无推测）**：
+  ```
+  pid=55369 session.resume e2e-session-1                       ← 界面点击触发的重挂
+  pid=55369 session.prompt e2e-session-1: Continue the interrupted turn from where it stopped. …
+  pid=55369 reply -> e2e-session-1 e2e-message-1: The interrupted turn continued from where it stopped.
+  pid=55369 session.new -> e2e-session-1                       ← 135ms 后应用又挂了一个同名 agent 会话
+  ```
+  结论：**请求已送达、已作答、会话与文本都对**；回复到达后 **135ms** 应用又为同一会话 id 建了一个新 agent 会话，回复落在那之前 → 会话里看不到 → spec:171 断言失败。
+- **性质判断**：这已**不是入口层问题**（入口、重挂、送达三步都实测通过），而是**主进程续答的投递/呈现**环节（`prompt-turn-workflow.ts:155-208` 的 `activeSession`/force-load 与续答的会话所有权次序）。
+- **下一步（已收窄到一处）**：查续答之后那条 `session/new` 由谁发起、以及续答的 `session/update` 在应用侧被丢弃的条件（很可能是应用在重挂/重载后会重新建会话，旧会话上的更新被忽略）。spec 保持 fixme 挂账。

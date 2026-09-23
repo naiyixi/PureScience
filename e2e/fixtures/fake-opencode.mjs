@@ -344,14 +344,20 @@ if (process.argv.includes('--version')) {
         reply = `E2E fixture failure: ${error instanceof Error ? error.message : String(error)}`
       }
 
+      const replyMessageId = `e2e-message-${nextMessageId++}`
       await context.client.notify(acp.methods.client.session.update, {
         sessionId: context.params.sessionId,
         update: {
           sessionUpdate: 'agent_message_chunk',
-          messageId: `e2e-message-${nextMessageId++}`,
+          messageId: replyMessageId,
           content: { type: 'text', text: reply }
         }
       })
+      // The request log says what the app asked for; this says what it was told back. Without it a reply the
+      // app failed to render looks identical to an agent that never answered.
+      agentLog(
+        `reply -> ${context.params.sessionId} ${replyMessageId}: ${reply.slice(0, 70).replaceAll('\n', ' ')}`
+      )
 
       return { stopReason: 'end_turn' }
     })

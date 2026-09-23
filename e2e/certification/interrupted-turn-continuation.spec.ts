@@ -31,6 +31,15 @@ const CONTINUED_REPLY = 'The interrupted turn continued from where it stopped.'
 //     Every run then died inside onboarding with 'Target page, context or browser has been closed', while
 //     a neighbouring spec that reassigns both passes in 13s. The helpers' return values are used below.
 //
+//   * Thirteenth measurement, with the fake agent logging its replies as well as its requests: the answer
+//     is real and it is addressed correctly —
+//       session.prompt e2e-session-1: Continue the interrupted turn from where it stopped. …
+//       reply -> e2e-session-1 e2e-message-1: The interrupted turn continued from where it stopped.
+//     — and the conversation still does not show it. 135ms after that reply the app attaches a further agent
+//     session under the same id ('session.new -> e2e-session-1'), so the reply is delivered before the
+//     session the app ends up reading from is put in place. The remaining work is therefore in main's
+//     delivery of the continued reply, not in the entry the user clicks: it is asked for, sent, answered on
+//     the right session, and dropped on the way back.
 //   * Twelfth measurement, after the recovery record was left standing while main reads it: the whole
 //     request now arrives. The fake agent's log shows the re-attach, then the continuation prompt itself
 //     ('interrupted prompt ... marker=true', then 'session.prompt e2e-session-1: Continue the interrupted
