@@ -36,7 +36,11 @@ test('digitises a figure with the keyboard alone and exports the CSV it produced
   await pageNumber.pressSequentially('1')
 
   /** Places one point at the caret after moving it, entirely from the keyboard. */
-  const place = async (key: 'ArrowRight' | 'ArrowDown', steps: number, tick?: string) => {
+  const place = async (
+    key: 'ArrowRight' | 'ArrowDown',
+    steps: number,
+    tick?: string
+  ): Promise<void> => {
     if (tick !== undefined) await tickValue.pressSequentially(tick)
     for (let index = 0; index < steps; index += 1) await surface.press(`Shift+${key}`)
     await surface.press('Enter')
