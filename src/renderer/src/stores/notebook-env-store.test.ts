@@ -15,7 +15,7 @@ const READY: ProvisionStatus = { pythonReady: true, rReady: false, version: 3, p
 
 const installApi = (
   over: Partial<Record<string, unknown>> = {}
-): { api: NotebookEnvBridgeMock; emit: (p: ProvisionProgress) => void } => {
+): { api: NotebookEnvBridgeMock; emit: (p: ProvisionProgress) => Promise<void> } => {
   const listeners: ProgressListener[] = []
   const api: NotebookEnvBridgeMock = {
     getStatus: vi.fn(async () => READY),
@@ -28,7 +28,15 @@ const installApi = (
     ...over
   }
   ;(globalThis as { window?: unknown }).window = { api: { notebookEnv: api } }
-  return { api, emit: (p: ProvisionProgress) => listeners.forEach((l) => l(p)) }
+  return {
+    api,
+    // Progress is applied on a microtask now (the store coalesces a broadcast burst into one write), so
+    // awaiting the emit is what makes an assertion see that broadcast rather than the previous frame.
+    emit: async (p: ProvisionProgress): Promise<void> => {
+      listeners.forEach((l) => l(p))
+      await Promise.resolve()
+    }
+  }
 }
 
 beforeEach(() => {
@@ -47,13 +55,40 @@ describe('notebook-env-store', () => {
     })
   })
 
+  it('coalesces a synchronous broadcast burst into one write, last frame winning', async () => {
+    // The provisioner can hand several broadcasts over in a single burst. Applying each one straight from
+    // the message listener writes the store while React is mid-render, which React counts as nested
+    // updates — the packaged build reports the overflow as error #185. One write per microtask keeps the
+    // newest frame and drops the cascade.
+    const { api } = installApi()
+    await useNotebookEnvStore.getState().init()
+    const listener = (api.onProgress as unknown as { mock: { calls: [ProgressListener][] } }).mock
+      .calls[0][0]
+    const notifications = vi.fn()
+    const unsubscribe = useNotebookEnvStore.subscribe(notifications)
+
+    listener({ phase: 'download', message: 'Fetching', progress: 0.1 })
+    listener({ phase: 'download', message: 'Fetching', progress: 0.6 })
+    listener({ phase: 'download', message: 'Fetching', progress: 0.9 })
+    await Promise.resolve()
+    unsubscribe()
+
+    expect(useNotebookEnvStore.getState().progress).toEqual({
+      phase: 'download',
+      message: 'Fetching',
+      progress: 0.9
+    })
+    expect(notifications).toHaveBeenCalledTimes(1)
+    expect(api.getStatus).toHaveBeenCalledTimes(1)
+  })
+
   it('treats a re-read of an unchanged status as a no-op (no notification, same state object)', async () => {
     // The real bridge answers every re-read with a fresh object holding the same values, which is what
     // a notification-triggered re-read loop feeds on. Nothing changed ⇒ nothing may be notified.
     const { emit } = installApi({ getStatus: vi.fn(async () => ({ ...READY })) })
     await useNotebookEnvStore.getState().init()
     const progress: ProvisionProgress = { phase: 'download', message: 'Fetching', progress: 0.4 }
-    emit(progress)
+    await emit(progress)
     await Promise.resolve()
     await Promise.resolve()
 
@@ -61,7 +96,7 @@ describe('notebook-env-store', () => {
     const notifications = vi.fn()
     const unsubscribe = useNotebookEnvStore.subscribe(notifications)
     // Replaying the very same broadcast must not produce a new state object for consumers.
-    emit(progress)
+    await emit(progress)
     await Promise.resolve()
     await Promise.resolve()
     unsubscribe()
@@ -78,7 +113,7 @@ describe('notebook-env-store', () => {
     const notifications = vi.fn()
     const unsubscribe = useNotebookEnvStore.subscribe(notifications)
     getStatus.mockResolvedValue({ ...READY, version: 4 })
-    emit({ phase: 'done', message: 'ok', progress: 1 })
+    await emit({ phase: 'done', message: 'ok', progress: 1 })
     await Promise.resolve()
     await Promise.resolve()
     unsubscribe()
@@ -96,13 +131,13 @@ describe('notebook-env-store', () => {
     await useNotebookEnvStore.getState().init()
     const hydrations = getStatus.mock.calls.length
 
-    emit({ phase: 'download', message: 'Fetching', progress: 0.2 })
-    emit({ phase: 'download', message: 'Fetching', progress: 0.4 })
+    await emit({ phase: 'download', message: 'Fetching', progress: 0.2 })
+    await emit({ phase: 'download', message: 'Fetching', progress: 0.4 })
     await Promise.resolve()
     await Promise.resolve()
     expect(getStatus.mock.calls.length).toBe(hydrations)
 
-    emit({ phase: 'done', message: 'ok', progress: 1, language: 'python' })
+    await emit({ phase: 'done', message: 'ok', progress: 1, language: 'python' })
     await Promise.resolve()
     await Promise.resolve()
     expect(getStatus.mock.calls.length).toBe(hydrations + 1)
@@ -140,7 +175,7 @@ describe('notebook-env-store', () => {
     )
     // A subsequent progress event re-reads status (now unblocked) and clears the recovery message.
     flag = false
-    emit({ phase: 'done', message: 'ok', progress: 1, language: 'python' })
+    await emit({ phase: 'done', message: 'ok', progress: 1, language: 'python' })
     await Promise.resolve()
     await Promise.resolve()
     expect(useNotebookEnvStore.getState().byLang.python?.error).toBeUndefined()
@@ -171,7 +206,7 @@ describe('notebook-env-store', () => {
     }
     const { api, emit } = installApi({ getStatus: vi.fn(async () => status) })
     await useNotebookEnvStore.getState().init()
-    emit({ phase: 'download', message: 'Fetching bundle…', progress: 0.25 })
+    await emit({ phase: 'download', message: 'Fetching bundle…', progress: 0.25 })
     expect(useNotebookEnvStore.getState().progress).toEqual({
       phase: 'download',
       message: 'Fetching bundle…',
@@ -180,7 +215,7 @@ describe('notebook-env-store', () => {
     // Status is re-hydrated when the run settles, not on every tick: a tick-per-frame re-read made
     // every consumer of this store re-render per frame (React #185 on the packaged build).
     expect(api.getStatus).toHaveBeenCalledTimes(1)
-    emit({ phase: 'done', message: 'ok', progress: 1 })
+    await emit({ phase: 'done', message: 'ok', progress: 1 })
     await Promise.resolve()
     expect(api.getStatus).toHaveBeenCalledTimes(2)
   })
@@ -189,10 +224,10 @@ describe('notebook-env-store', () => {
     const { emit } = installApi()
     await useNotebookEnvStore.getState().init()
 
-    emit({ phase: 'create-r', message: 'Preparing R', progress: 0.4, scope: 'r' })
+    await emit({ phase: 'create-r', message: 'Preparing R', progress: 0.4, scope: 'r' })
     expect(useNotebookEnvStore.getState().scope).toBe('r')
 
-    emit({ phase: 'upgrade', message: 'Updating runtimes', progress: 0.5, scope: 'upgrade' })
+    await emit({ phase: 'upgrade', message: 'Updating runtimes', progress: 0.5, scope: 'upgrade' })
     expect(useNotebookEnvStore.getState().scope).toBeUndefined()
   })
 
@@ -220,7 +255,7 @@ describe('notebook-env-store', () => {
     const { emit } = installApi()
     await useNotebookEnvStore.getState().init()
 
-    emit({ phase: 'error', message: 'Managed runtime download failed', progress: 0 })
+    await emit({ phase: 'error', message: 'Managed runtime download failed', progress: 0 })
 
     expect(useNotebookEnvStore.getState().error).toBe('Managed runtime download failed')
   })
@@ -241,7 +276,7 @@ describe('notebook-env-store', () => {
   it('routes a language-tagged progress event into that language byLang slot only', async () => {
     const { emit } = installApi()
     await useNotebookEnvStore.getState().init()
-    emit({ phase: 'create-r', message: 'Creating default-r…', progress: 0.5, language: 'r' })
+    await emit({ phase: 'create-r', message: 'Creating default-r…', progress: 0.5, language: 'r' })
     const { byLang } = useNotebookEnvStore.getState()
     expect(byLang.r).toMatchObject({ preparing: true, progress: { progress: 0.5, language: 'r' } })
     // Python's slot is untouched by an R event.
@@ -251,9 +286,14 @@ describe('notebook-env-store', () => {
   it('settles a language byLang slot on its done/error event', async () => {
     const { emit } = installApi()
     await useNotebookEnvStore.getState().init()
-    emit({ phase: 'create-python', message: 'Creating…', progress: 0.6, language: 'python' })
+    await emit({ phase: 'create-python', message: 'Creating…', progress: 0.6, language: 'python' })
     expect(useNotebookEnvStore.getState().byLang.python?.preparing).toBe(true)
-    emit({ phase: 'done', message: 'Python environment ready', progress: 1, language: 'python' })
+    await emit({
+      phase: 'done',
+      message: 'Python environment ready',
+      progress: 1,
+      language: 'python'
+    })
     expect(useNotebookEnvStore.getState().byLang.python?.preparing).toBe(false)
   })
 
@@ -270,7 +310,13 @@ describe('notebook-env-store', () => {
 
     const setup = useNotebookEnvStore.getState().provision('r')
     const operationId = api.provision.mock.calls[0]?.[1] as string
-    emit({ phase: 'done', message: 'R environment ready', progress: 1, language: 'r', operationId })
+    await emit({
+      phase: 'done',
+      message: 'R environment ready',
+      progress: 1,
+      language: 'r',
+      operationId
+    })
 
     expect(useNotebookEnvStore.getState().byLang.r?.preparing).toBe(true)
     resolveProvision?.()
@@ -291,7 +337,13 @@ describe('notebook-env-store', () => {
 
     const setup = useNotebookEnvStore.getState().provision('r')
     const operationId = api.provision.mock.calls[0]?.[1] as string
-    emit({ phase: 'error', message: 'R setup failed', progress: 0, language: 'r', operationId })
+    await emit({
+      phase: 'error',
+      message: 'R setup failed',
+      progress: 0,
+      language: 'r',
+      operationId
+    })
 
     expect(useNotebookEnvStore.getState().byLang.r?.preparing).toBe(true)
     rejectProvision?.(new Error('R setup failed'))
@@ -336,14 +388,19 @@ describe('notebook-env-store', () => {
 
     const explicit = useNotebookEnvStore.getState().provision('r')
     const operationId = api.provision.mock.calls[0]?.[1] as string
-    emit({
+    await emit({
       phase: 'done',
       message: 'Explicit R setup ready',
       progress: 1,
       language: 'r',
       operationId
     })
-    emit({ phase: 'create-r', message: 'Automatic R setup started', progress: 0.1, language: 'r' })
+    await emit({
+      phase: 'create-r',
+      message: 'Automatic R setup started',
+      progress: 0.1,
+      language: 'r'
+    })
     resolveProvision?.()
     await explicit
 
@@ -351,7 +408,7 @@ describe('notebook-env-store', () => {
       preparing: true,
       progress: { phase: 'create-r', message: 'Automatic R setup started' }
     })
-    emit({ phase: 'done', message: 'Automatic R setup ready', progress: 1, language: 'r' })
+    await emit({ phase: 'done', message: 'Automatic R setup ready', progress: 1, language: 'r' })
     expect(useNotebookEnvStore.getState().byLang.r?.preparing).toBe(false)
   })
 
@@ -368,14 +425,14 @@ describe('notebook-env-store', () => {
 
     const explicit = useNotebookEnvStore.getState().provision('r')
     const operationId = api.provision.mock.calls[0]?.[1] as string
-    emit({
+    await emit({
       phase: 'done',
       message: 'Explicit R setup ready',
       progress: 1,
       language: 'r',
       operationId
     })
-    emit({ phase: 'done', message: 'Automatic R setup ready', progress: 1, language: 'r' })
+    await emit({ phase: 'done', message: 'Automatic R setup ready', progress: 1, language: 'r' })
     resolveProvision?.()
     await explicit
 
@@ -398,14 +455,14 @@ describe('notebook-env-store', () => {
 
     const explicit = useNotebookEnvStore.getState().provision('r')
     const operationId = api.provision.mock.calls[0]?.[1] as string
-    emit({
+    await emit({
       phase: 'error',
       message: 'Explicit R setup failed',
       progress: 0,
       language: 'r',
       operationId
     })
-    emit({ phase: 'done', message: 'Automatic R setup ready', progress: 1, language: 'r' })
+    await emit({ phase: 'done', message: 'Automatic R setup ready', progress: 1, language: 'r' })
     rejectProvision?.(new Error('Explicit R setup failed'))
     await explicit
 
@@ -429,14 +486,14 @@ describe('notebook-env-store', () => {
 
     const explicit = useNotebookEnvStore.getState().provision('r')
     const operationId = api.provision.mock.calls[0]?.[1] as string
-    emit({
+    await emit({
       phase: 'error',
       message: 'Explicit R setup failed',
       progress: 0,
       language: 'r',
       operationId
     })
-    emit({ phase: 'error', message: 'Automatic R setup failed', progress: 0, language: 'r' })
+    await emit({ phase: 'error', message: 'Automatic R setup failed', progress: 0, language: 'r' })
     rejectProvision?.(new Error('Explicit R setup failed'))
     await explicit
 
@@ -457,18 +514,23 @@ describe('notebook-env-store', () => {
     const { api, emit } = installApi({ provision })
     await useNotebookEnvStore.getState().init()
 
-    emit({ phase: 'create-r', message: 'Automatic R setup started', progress: 0.1, language: 'r' })
+    await emit({
+      phase: 'create-r',
+      message: 'Automatic R setup started',
+      progress: 0.1,
+      language: 'r'
+    })
     const explicit = useNotebookEnvStore.getState().provision('r')
     const operationId = api.provision.mock.calls[0]?.[1] as string
-    emit({ phase: 'done', message: 'Automatic R setup ready', progress: 1, language: 'r' })
-    emit({
+    await emit({ phase: 'done', message: 'Automatic R setup ready', progress: 1, language: 'r' })
+    await emit({
       phase: 'create-r',
       message: 'Explicit R setup started',
       progress: 0.1,
       language: 'r',
       operationId
     })
-    emit({
+    await emit({
       phase: 'done',
       message: 'Explicit R setup ready',
       progress: 1,
@@ -492,11 +554,16 @@ describe('notebook-env-store', () => {
     const { api, emit } = installApi({ provision })
     await useNotebookEnvStore.getState().init()
 
-    emit({ phase: 'create-r', message: 'Automatic R setup started', progress: 0.1, language: 'r' })
+    await emit({
+      phase: 'create-r',
+      message: 'Automatic R setup started',
+      progress: 0.1,
+      language: 'r'
+    })
     const explicit = useNotebookEnvStore.getState().provision('r')
     const operationId = api.provision.mock.calls[0]?.[1] as string
-    emit({ phase: 'done', message: 'Automatic R setup ready', progress: 1, language: 'r' })
-    emit({
+    await emit({ phase: 'done', message: 'Automatic R setup ready', progress: 1, language: 'r' })
+    await emit({
       phase: 'error',
       message: 'Explicit R setup failed',
       progress: 0,
@@ -544,9 +611,14 @@ describe('notebook-env-store', () => {
     // the card stays stuck preparing. A tagged error settles that slot and records the message.
     const { emit } = installApi()
     await useNotebookEnvStore.getState().init()
-    emit({ phase: 'create-r', message: 'Creating…', progress: 0.5, language: 'r' })
+    await emit({ phase: 'create-r', message: 'Creating…', progress: 0.5, language: 'r' })
     expect(useNotebookEnvStore.getState().byLang.r?.preparing).toBe(true)
-    emit({ phase: 'error', message: 'Could not prepare default-r', progress: 0, language: 'r' })
+    await emit({
+      phase: 'error',
+      message: 'Could not prepare default-r',
+      progress: 0,
+      language: 'r'
+    })
     const { r } = useNotebookEnvStore.getState().byLang
     expect(r?.preparing).toBe(false)
     expect(r?.error).toBe('Could not prepare default-r')
@@ -557,9 +629,9 @@ describe('notebook-env-store', () => {
     // in-flight card, or a slot whose progress events were tagged would spin forever.
     const { emit } = installApi()
     await useNotebookEnvStore.getState().init()
-    emit({ phase: 'create-python', message: 'Creating…', progress: 0.5, language: 'python' })
-    emit({ phase: 'create-r', message: 'Creating…', progress: 0.5, language: 'r' })
-    emit({ phase: 'error', message: 'Environment preparation failed', progress: 0 }) // no language
+    await emit({ phase: 'create-python', message: 'Creating…', progress: 0.5, language: 'python' })
+    await emit({ phase: 'create-r', message: 'Creating…', progress: 0.5, language: 'r' })
+    await emit({ phase: 'error', message: 'Environment preparation failed', progress: 0 }) // no language
     const { byLang } = useNotebookEnvStore.getState()
     expect(byLang.python?.preparing).toBe(false)
     expect(byLang.r?.preparing).toBe(false)

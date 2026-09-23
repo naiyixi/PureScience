@@ -16,9 +16,6 @@ export default defineConfig({
     }
   },
   renderer: {
-    // TEMPORARY DIAGNOSTIC (#185): React's development build names the component that overflows its
-    // update-depth guard; the production build only prints the error number. Remove with the fix.
-    define: { 'process.env.NODE_ENV': JSON.stringify('development') },
     // Regenerate lazy optimized chunks so a persisted Electron page cannot request stale hashes.
     optimizeDeps: { force: true },
     resolve: {

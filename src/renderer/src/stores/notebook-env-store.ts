@@ -226,7 +226,11 @@ export const useNotebookEnvStore = create<NotebookEnvStore>((set, get) => {
       // so a re-mount picks up any state change that happened while unmounted.
       if (!subscribedBridges.has(bridge)) {
         subscribedBridges.add(bridge)
-        bridge.onProgress((progress) => {
+        // Applied on a microtask rather than straight from the message listener — see the coalescing
+        // note where the listener is installed below.
+        let pendingProgress: ProvisionProgress | undefined
+        let progressFlush: Promise<void> | undefined
+        const applyProgress = (progress: ProvisionProgress): void => {
           applyUi({
             progress,
             ...(progress.scope === 'python' || progress.scope === 'r'
@@ -275,6 +279,19 @@ export const useNotebookEnvStore = create<NotebookEnvStore>((set, get) => {
               applyRecoveryBlocks(status)
             })
           }
+        }
+        // Coalesce the main process's broadcast burst into one write per microtask. A write issued
+        // straight from the message listener lands while React is mid-render, and React counts updates
+        // scheduled during a render as nested ones — past its depth limit it throws, which the packaged
+        // build reports as error #185. Last broadcast wins, so the banner still advances every frame.
+        bridge.onProgress((progress) => {
+          pendingProgress = progress
+          progressFlush ??= Promise.resolve().then(() => {
+            progressFlush = undefined
+            const next = pendingProgress
+            pendingProgress = undefined
+            if (next) applyProgress(next)
+          })
         })
       }
       const status = await bridge.getStatus()
