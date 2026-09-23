@@ -21,7 +21,7 @@ import { SessionPackageImportDialog } from '@/components/session-package/Session
 import { useNavigationStore } from '@/stores/navigation-store'
 import type { ChatSession } from '@/stores/session-store'
 import { useSessionStore } from '@/stores/session-store'
-import { useProjectStore } from '@/stores/project-store'
+import { isProjectLoadErrorKey, useProjectStore } from '@/stores/project-store'
 import { useArchiveUndoStore } from '@/stores/archive-undo-store'
 import { useSettingsStore } from '@/stores/settings-store'
 import { useUpdateStore } from '@/stores/update-store'
@@ -110,6 +110,7 @@ const HomePage = ({
 }: HomePageProps): React.JSX.Element => {
   const { t } = useLanguage()
   const projects = useProjectStore((state) => state.projects)
+  const projectsLoaded = useProjectStore((state) => state.isLoaded)
   const loadError = useProjectStore((state) => state.loadError)
   const createProject = useProjectStore((state) => state.createProject)
   const updateProject = useProjectStore((state) => state.updateProject)
@@ -477,7 +478,19 @@ const HomePage = ({
                 className="rounded-2xl border border-danger-000/30 px-4 py-6 text-center text-sm text-danger-000"
                 role="alert"
               >
-                {t('home.loadProjectsFailed').replace('{error}', loadError)}
+                {t('home.loadProjectsFailed').replace(
+                  '{error}',
+                  isProjectLoadErrorKey(loadError) ? t('home.loadProjectsFailedUnknown') : loadError
+                )}
+              </div>
+            ) : !projectsLoaded ? (
+              // The list arrives one IPC round-trip after the first paint. Without this branch the
+              // first frame shows the empty state, so a user with projects is told they have none.
+              <div
+                className="rounded-2xl border border-dashed border-border-200/70 px-4 py-10 text-center text-sm text-muted-foreground"
+                data-testid="home-projects-loading"
+              >
+                {t('home.loadingProjects')}
               </div>
             ) : projectSummaries.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-border-200/70 px-4 py-10 text-center text-sm text-muted-foreground">

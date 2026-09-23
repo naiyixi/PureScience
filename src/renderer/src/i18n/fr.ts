@@ -2849,6 +2849,13 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'omics.noManifestSuffix':
     ' (structure seule, sous-échantillonnée dans un budget), puis chargez ici le manifeste JSON produit — cette vue n’inventera ni nombre de cellules ni conclusion de sous-échantillonnage.',
   'omics.loadManifest': 'Charger un manifeste d’aperçu (*.preview.json)',
+  'home.loadingProjects': 'Chargement des projets…',
+  'home.loadProjectsFailedUnknown': 'erreur inconnue',
+  'jobs.running': '{count} en cours · {elapsed}',
+  'jobs.all': '{count} tâches',
+  'jobs.runningAria': '{count} tâches distantes en cours',
+  'jobs.allAria': '{count} tâches distantes',
+  'jobs.tooltipHeader': 'À DISTANCE · {count}',
   'figure.phaseAnchorsX': "Calibrer l'axe x : cliquer dans l'ordre deux graduations connues",
   'figure.phaseAnchorsY': "Calibrer l'axe y : cliquer maintenant deux graduations connues",
   'figure.phasePicking': 'Commencer à cliquer les points de données',

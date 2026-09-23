@@ -3,6 +3,7 @@ import { Zap } from 'lucide-react'
 
 import type { JobSummary } from '../../../shared/compute'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { useLanguage } from '@/i18n'
 import { useSessionJobStore } from '@/stores/session-job-store'
 import { formatDuration, jobElapsedMs } from './remote-job-badge-utils'
 
@@ -20,8 +21,21 @@ export const RemoteJobBadge = ({
   sessionId,
   onOpenJobList
 }: RemoteJobBadgeProps): React.JSX.Element | null => {
+  const { t } = useLanguage()
   const allJobsForSession = useSessionJobStore((state) => state.allJobsForSession)
+  const hydratedSessionId = useSessionJobStore((state) => state.hydratedSessionId)
+  const hydrate = useSessionJobStore((state) => state.hydrate)
   const [now, setNow] = useState(() => Date.now())
+
+  // The store is fed by broadcasts and one initial fetch per session. Hydrating here too means the
+  // badge can never render "no badge" for a session whose jobs were never fetched: without it, the
+  // unknown state and the empty state were the same absence, so a session with running jobs looked
+  // exactly like a session with none.
+  useEffect(() => {
+    if (hydratedSessionId === sessionId) return
+    if (typeof window.api?.compute?.jobsList !== 'function') return
+    void hydrate(sessionId)
+  }, [hydrate, hydratedSessionId, sessionId])
 
   // Tick every second to keep elapsed times fresh.
   useEffect(() => {
@@ -34,7 +48,8 @@ export const RemoteJobBadge = ({
   // Count active jobs (running + submitted) for display
   const activeJobs = allJobs.filter((j) => j.status === 'running' || j.status === 'submitted')
 
-  // Hidden only when session has no jobs at all.
+  // Absence means "this session has no jobs": the effect above reads the feed as soon as the
+  // badge mounts, so the store can no longer stay un-hydrated while jobs exist elsewhere.
   if (allJobs.length === 0) return null
 
   const isActive = activeJobs.length > 0
@@ -69,18 +84,20 @@ export const RemoteJobBadge = ({
                 gap: '4px',
                 cursor: onOpenJobList ? 'pointer' : 'default'
               }}
-              aria-label={`${activeJobs.length} running remote job${activeJobs.length !== 1 ? 's' : ''}`}
+              aria-label={t('jobs.runningAria').replace('{count}', String(activeJobs.length))}
             >
               <Zap size={11} />
               <span>
-                {activeJobs.length} running · {elapsedStr}
+                {t('jobs.running')
+                  .replace('{count}', String(activeJobs.length))
+                  .replace('{elapsed}', elapsedStr)}
               </span>
             </button>
           </TooltipTrigger>
           <TooltipContent side="top" align="end" className="p-0 overflow-hidden max-w-sm">
             <div className="px-2 py-1.5">
               <p className="text-[10px] font-medium uppercase tracking-wider opacity-60 mb-1.5">
-                REMOTE · {activeJobs.length}
+                {t('jobs.tooltipHeader').replace('{count}', String(activeJobs.length))}
               </p>
               {activeJobs.map((job) => (
                 <div key={job.job_id} className="flex items-center gap-2 py-0.5">
@@ -116,10 +133,10 @@ export const RemoteJobBadge = ({
         gap: '4px',
         cursor: onOpenJobList ? 'pointer' : 'default'
       }}
-      aria-label={`${allJobs.length} remote job${allJobs.length !== 1 ? 's' : ''}`}
+      aria-label={t('jobs.allAria').replace('{count}', String(allJobs.length))}
     >
       <Zap size={11} />
-      <span>{allJobs.length} jobs</span>
+      <span>{t('jobs.all').replace('{count}', String(allJobs.length))}</span>
     </button>
   )
 }

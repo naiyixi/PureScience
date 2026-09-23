@@ -2581,6 +2581,13 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'omics.noManifestSuffix':
     ' 技能讀取該檔案（唯讀結構 + 按預算降採樣），再把產生的清單 JSON 載入這裡——本介面不會憑空給出細胞數或降採樣結論。',
   'omics.loadManifest': '載入預覽清單（*.preview.json）',
+  'home.loadingProjects': '正在載入專案…',
+  'home.loadProjectsFailedUnknown': '未知錯誤',
+  'jobs.running': '執行中 {count} · {elapsed}',
+  'jobs.all': '{count} 個作業',
+  'jobs.runningAria': '{count} 個執行中的遠端作業',
+  'jobs.allAria': '{count} 個遠端作業',
+  'jobs.tooltipHeader': '遠端 · {count}',
   'figure.phaseAnchorsX': '標定 x 軸：依序點擊兩個已知刻度的像素位置',
   'figure.phaseAnchorsY': '標定 y 軸：再點擊兩個已知刻度的像素位置',
   'figure.phasePicking': '開始點擊資料點',

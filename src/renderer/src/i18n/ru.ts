@@ -2794,6 +2794,13 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'omics.noManifestSuffix':
     ' (только структура, понижение в пределах бюджета), затем загрузите сюда полученный манифест JSON — этот экран не придумает ни число клеток, ни вывод о понижении.',
   'omics.loadManifest': 'Загрузить манифест предпросмотра (*.preview.json)',
+  'home.loadingProjects': 'Загрузка проектов…',
+  'home.loadProjectsFailedUnknown': 'неизвестная ошибка',
+  'jobs.running': 'выполняется {count} · {elapsed}',
+  'jobs.all': 'задач: {count}',
+  'jobs.runningAria': 'выполняющихся удалённых заданий: {count}',
+  'jobs.allAria': 'удалённых заданий: {count}',
+  'jobs.tooltipHeader': 'УДАЛЁННО · {count}',
   'figure.phaseAnchorsX': 'Калибровка оси x: по очереди нажмите две известные отметки',
   'figure.phaseAnchorsY': 'Калибровка оси y: теперь нажмите две известные отметки',
   'figure.phasePicking': 'Начните отмечать точки данных',

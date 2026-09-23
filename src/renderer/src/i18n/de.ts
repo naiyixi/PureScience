@@ -2864,6 +2864,13 @@ export const de: Partial<Record<ZhKey, string>> = {
   'omics.noManifestSuffix':
     ' Skill lesen (nur Struktur, innerhalb eines Budgets heruntergetastet) und laden Sie das erzeugte Manifest-JSON hier — diese Ansicht erfindet weder Zellzahl noch Downsampling-Ergebnis.',
   'omics.loadManifest': 'Vorschau-Manifest laden (*.preview.json)',
+  'home.loadingProjects': 'Projekte werden geladen…',
+  'home.loadProjectsFailedUnknown': 'unbekannter Fehler',
+  'jobs.running': '{count} laufend · {elapsed}',
+  'jobs.all': '{count} Jobs',
+  'jobs.runningAria': '{count} laufende entfernte Jobs',
+  'jobs.allAria': '{count} entfernte Jobs',
+  'jobs.tooltipHeader': 'RECHNERFERN · {count}',
   'figure.phaseAnchorsX':
     'x-Achse kalibrieren: zwei bekannte Skalenstriche der Reihe nach anklicken',
   'figure.phaseAnchorsY': 'y-Achse kalibrieren: jetzt zwei bekannte Skalenstriche anklicken',

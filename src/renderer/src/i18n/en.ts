@@ -328,6 +328,13 @@ export const en: Record<ZhKey, string> = {
   'omics.noManifestSuffix':
     ' skill (structure only, downsampled within a budget), then load the manifest JSON it generates here — this surface will not invent a cell count or a downsampling conclusion.',
   'omics.loadManifest': 'Load preview manifest (*.preview.json)',
+  'home.loadingProjects': 'Loading projects…',
+  'home.loadProjectsFailedUnknown': 'unknown error',
+  'jobs.running': '{count} running · {elapsed}',
+  'jobs.all': '{count} jobs',
+  'jobs.runningAria': '{count} running remote jobs',
+  'jobs.allAria': '{count} remote jobs',
+  'jobs.tooltipHeader': 'REMOTE · {count}',
   'figure.phaseAnchorsX': 'Calibrate the x axis: click two known tick marks in order',
   'figure.phaseAnchorsY': 'Calibrate the y axis: now click two known tick marks',
   'figure.phasePicking': 'Start clicking data points',

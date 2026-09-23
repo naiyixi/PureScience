@@ -134,6 +134,20 @@ describe('RemoteJobBadge — N running', () => {
     const btn = container.querySelector('button')
     expect(btn?.getAttribute('aria-label')).toContain('running remote job')
   })
+  it('reads the session job feed itself, so a missing badge cannot mean "unknown"', async () => {
+    // The feed is otherwise filled by one fetch per session plus broadcasts. Without this the badge
+    // rendered nothing both when a session had no jobs and when nobody had read the feed yet, so a
+    // session with running jobs looked exactly like one without.
+    const jobsList = vi.fn(async () => [makeJob()])
+    ;(window as unknown as { api: unknown }).api = { compute: { jobsList } }
+
+    await act(async () => {
+      root.render(<RemoteJobBadge sessionId="sess-test" />)
+    })
+
+    expect(jobsList).toHaveBeenCalledWith({ sessionId: 'sess-test' })
+    expect(container.querySelector('button')?.textContent).toContain('1 running')
+  })
 })
 
 describe('RemoteJobBadge — click interaction', () => {

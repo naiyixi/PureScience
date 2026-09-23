@@ -2792,6 +2792,13 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'omics.noManifestSuffix':
     ' スキルでこのファイルを読ませてください（構造のみ・予算内でダウンサンプリング）。生成されたマニフェスト JSON をここに読み込んでください——この画面が細胞数やダウンサンプリングの結論を勝手に出すことはありません。',
   'omics.loadManifest': 'プレビュー マニフェストを読み込む（*.preview.json）',
+  'home.loadingProjects': 'プロジェクトを読み込み中…',
+  'home.loadProjectsFailedUnknown': '不明なエラー',
+  'jobs.running': '実行中 {count} · {elapsed}',
+  'jobs.all': 'ジョブ {count} 件',
+  'jobs.runningAria': '実行中の遠隔ジョブ {count} 件',
+  'jobs.allAria': '遠隔ジョブ {count} 件',
+  'jobs.tooltipHeader': 'リモート · {count}',
   'figure.phaseAnchorsX': 'x 軸を校正：既知の目盛り 2 点のピクセル位置を順にクリック',
   'figure.phaseAnchorsY': 'y 軸を校正：続けて既知の目盛り 2 点をクリック',
   'figure.phasePicking': 'データ点のクリックを開始',

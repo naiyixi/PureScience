@@ -311,6 +311,13 @@ export const zh = {
   'omics.noManifestSuffix':
     ' 技能读取这个文件（只读结构 + 按预算降采样），再把生成的清单 JSON 载入这里——本界面不会凭空给出细胞数或降采样结论。',
   'omics.loadManifest': '载入预览清单（*.preview.json）',
+  'home.loadingProjects': '正在加载项目…',
+  'home.loadProjectsFailedUnknown': '未知错误',
+  'jobs.running': '运行中 {count} · {elapsed}',
+  'jobs.all': '{count} 个作业',
+  'jobs.runningAria': '{count} 个运行中的远程作业',
+  'jobs.allAria': '{count} 个远程作业',
+  'jobs.tooltipHeader': '远程 · {count}',
   'figure.phaseAnchorsX': '标定 x 轴：依次点击两个已知刻度的像素位置',
   'figure.phaseAnchorsY': '标定 y 轴：再点击两个已知刻度的像素位置',
   'figure.phasePicking': '开始点击数据点',

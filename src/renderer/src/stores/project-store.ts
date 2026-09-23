@@ -23,9 +23,19 @@ type ProjectStore = ProjectStoreData & {
   removeProject: (id: string) => void
 }
 
+// Load failures cross the store/react boundary as-is: a transport message from main is shown
+// verbatim, while a failure that carries no message gets a dictionary key the home screen
+// translates. The store layer has no i18n hook, so it must not write a sentence of its own.
+export const PROJECT_LOAD_UNKNOWN_ERROR_KEY = 'home.loadProjectsFailedUnknown'
+
+const PROJECT_LOAD_KEY_SET: ReadonlySet<string> = new Set([PROJECT_LOAD_UNKNOWN_ERROR_KEY])
+
+export const isProjectLoadErrorKey = (value: string | undefined): boolean =>
+  value !== undefined && PROJECT_LOAD_KEY_SET.has(value)
+
 // Surfaces DB/IPC failures as a short message instead of a silent empty list.
 const describeError = (error: unknown): string =>
-  error instanceof Error ? error.message : 'Unknown error'
+  error instanceof Error ? error.message : PROJECT_LOAD_UNKNOWN_ERROR_KEY
 
 // Keeps projects sorted most-recently-updated first, matching the repository's list ordering.
 const sortByUpdatedDesc = (projects: Project[]): Project[] =>

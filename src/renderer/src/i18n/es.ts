@@ -2830,6 +2830,13 @@ export const es: Partial<Record<ZhKey, string>> = {
   'omics.noManifestSuffix':
     ' (solo estructura, submuestreada dentro de un presupuesto) y luego carga aquí el manifiesto JSON generado: esta vista no inventará un recuento de células ni una conclusión de submuestreo.',
   'omics.loadManifest': 'Cargar manifiesto de vista previa (*.preview.json)',
+  'home.loadingProjects': 'Cargando proyectos…',
+  'home.loadProjectsFailedUnknown': 'error desconocido',
+  'jobs.running': '{count} en ejecución · {elapsed}',
+  'jobs.all': '{count} trabajos',
+  'jobs.runningAria': '{count} trabajos remotos en ejecución',
+  'jobs.allAria': '{count} trabajos remotos',
+  'jobs.tooltipHeader': 'REMOTO · {count}',
   'figure.phaseAnchorsX': 'Calibrar el eje x: haz clic en dos marcas conocidas, en orden',
   'figure.phaseAnchorsY': 'Calibrar el eje y: ahora haz clic en dos marcas conocidas',
   'figure.phasePicking': 'Empieza a hacer clic en los puntos de datos',

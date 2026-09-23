@@ -2732,6 +2732,13 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'omics.noManifestSuffix':
     ' 스킬로 이 파일을 읽게 하세요(구조만, 예산 내 다운샘플링). 그다음 생성된 매니페스트 JSON을 여기에 로드하세요——이 화면은 세포 수나 다운샘플링 결론을 임의로 제시하지 않습니다.',
   'omics.loadManifest': '미리보기 매니페스트 로드(*.preview.json)',
+  'home.loadingProjects': '프로젝트 불러오는 중…',
+  'home.loadProjectsFailedUnknown': '알 수 없는 오류',
+  'jobs.running': '실행 중 {count} · {elapsed}',
+  'jobs.all': '작업 {count}개',
+  'jobs.runningAria': '실행 중인 원격 작업 {count}개',
+  'jobs.allAria': '원격 작업 {count}개',
+  'jobs.tooltipHeader': '원격 · {count}',
   'figure.phaseAnchorsX': 'x축 보정: 알려진 눈금 두 곳의 픽셀 위치를 차례로 클릭하세요',
   'figure.phaseAnchorsY': 'y축 보정: 이어서 알려진 눈금 두 곳을 클릭하세요',
   'figure.phasePicking': '데이터 포인트 클릭을 시작하세요',

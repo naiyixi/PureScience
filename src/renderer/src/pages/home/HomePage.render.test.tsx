@@ -262,13 +262,34 @@ describe('HomePage project file-type chips', () => {
   }
 
   beforeEach(() => {
+    // These cases exercise the loaded list, so the store must not look like it is still loading:
+    // an unloaded store now renders the loading row instead of the empty state.
     useProjectStore.setState({
-      projects: [project as never]
+      ...createInitialProjectState(),
+      projects: [project as never],
+      isLoaded: true
     } as never)
   })
 
   afterEach(() => {
     delete (window as unknown as { api?: unknown }).api
+  })
+
+  it('shows a loading row on the first frame instead of claiming there are no projects', async () => {
+    // The project list arrives one IPC round-trip after the first paint. Rendering the empty state
+    // in that window told users with projects that they had none, so the two states must differ.
+    useProjectStore.setState({
+      ...createInitialProjectState(),
+      projects: [project as never],
+      isLoaded: false
+    } as never)
+
+    await act(async () => root.render(<HomePage canDeleteProjects hasCompleteSessionCatalog />))
+
+    expect(container.querySelector('[data-testid="home-projects-loading"]')?.textContent).toBe(
+      'Loading projects…'
+    )
+    expect(container.textContent).not.toContain('No projects yet')
   })
 
   it('renders distinct file-type chips from one batched kinds read', async () => {
