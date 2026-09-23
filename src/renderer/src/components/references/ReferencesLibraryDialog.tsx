@@ -1,7 +1,9 @@
+import { Dialog } from 'radix-ui'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { BookMarked, Library, Plus, RefreshCw, X } from 'lucide-react'
 
 import { useLanguage, type TranslationKey } from '@/i18n'
+import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 import type {
   AddReferenceResult,
   CreateReferenceInput,
@@ -132,6 +134,7 @@ export function ReferencesLibraryDialog({
   projectId: string | undefined
 }): React.JSX.Element | null {
   const { t } = useLanguage()
+  const focusRestore = useDialogFocusRestore(open)
   const [references, setReferences] = useState<Reference[]>([])
   const [collections, setCollections] = useState<ReferenceCollection[]>([])
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null)
@@ -512,583 +515,594 @@ export function ReferencesLibraryDialog({
     'inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-[var(--muted-foreground)] hover:bg-[var(--border)]'
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={t('references.title')}
-      className="fixed inset-0 z-[95] flex items-center justify-center"
+    <Dialog.Root
+      open
+      onOpenChange={(next) => {
+        if (!next) onClose()
+      }}
     >
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden="true" />
-      <div className="relative flex h-[82vh] w-[min(1080px,92vw)] flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-2xl">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-2.5">
-          <div className="flex items-center gap-2 text-sm font-semibold text-[var(--foreground)]">
-            <Library className="size-4" aria-hidden="true" /> {t('references.title')}
-          </div>
-          <button
-            type="button"
-            aria-label={t('references.close')}
-            className={ghostClass}
-            onClick={onClose}
-          >
-            <X className="size-4" aria-hidden="true" />
-          </button>
-        </div>
-
-        {/* Import strip */}
-        <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border)] px-4 py-2">
-          <select
-            value={kind}
-            onChange={(event) => setKind(event.target.value as IdentifierKind)}
-            className="rounded-md border border-[var(--border)] bg-transparent px-2 py-1 text-xs"
-            aria-label="DOI / PMID / PMCID / arXiv"
-          >
-            {IDENTIFIER_KINDS.map((value) => (
-              <option key={value} value={value}>
-                {value.toUpperCase()}
-              </option>
-            ))}
-          </select>
-          <input
-            value={identifier}
-            onChange={(event) => setIdentifier(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') void handleFetch()
-            }}
-            placeholder={t('references.identifierPlaceholder')}
-            className="w-72 rounded-md border border-[var(--border)] bg-transparent px-2 py-1 text-xs outline-none focus:border-[var(--accent)]"
-          />
-          <button
-            type="button"
-            className={buttonClass}
-            disabled={fetching}
-            onClick={() => void handleFetch()}
-          >
-            <RefreshCw className={`size-3 ${fetching ? 'animate-spin' : ''}`} aria-hidden="true" />
-            {fetching ? t('references.fetching') : t('references.fetch')}
-          </button>
-          <button type="button" className={ghostClass} onClick={() => setShowManual((v) => !v)}>
-            <Plus className="size-3.5" aria-hidden="true" /> {t('references.manualAdd')}
-          </button>
-        </div>
-
-        {showPdfPicker ? (
-          <div className="mx-4 mt-2 rounded-lg border border-[var(--border)] px-3 py-2">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-medium text-[var(--foreground)]">
-                {attachToReferenceId
-                  ? '选择要挂到该条目的 PDF'
-                  : `从项目 PDF 批量入册（已选 ${selectedPdfIds.length}）`}
-              </p>
-              {importProgress ? (
-                <span className="flex items-center gap-2 text-[11px] text-[var(--muted-foreground)]">
-                  {importProgress.done}/{importProgress.total}
-                  <button
-                    type="button"
-                    className={ghostClass}
-                    onClick={() => {
-                      cancelImportRef.current = true
-                    }}
-                  >
-                    停止
-                  </button>
-                </span>
-              ) : null}
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-[95] bg-black/40" />
+        <Dialog.Content
+          aria-label={t('references.title')}
+          aria-describedby={undefined}
+          onOpenAutoFocus={focusRestore.onOpenAutoFocus}
+          onCloseAutoFocus={focusRestore.onCloseAutoFocus}
+          className="fixed left-1/2 top-1/2 z-[95] flex h-[82vh] w-[min(1080px,92vw)] flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-2xl outline-none -translate-x-1/2 -translate-y-1/2"
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-2.5">
+            <div className="flex items-center gap-2 text-sm font-semibold text-[var(--foreground)]">
+              <Library className="size-4" aria-hidden="true" /> {t('references.title')}
             </div>
-            <div className="mt-2 max-h-40 overflow-y-auto rounded border border-[var(--border)] p-1">
-              {pdfLoading ? (
-                <p className="px-2 py-3 text-[11px] text-[var(--muted-foreground)]">…</p>
-              ) : pdfCandidates.length === 0 ? (
-                <p className="px-2 py-3 text-[11px] text-[var(--muted-foreground)]">
-                  项目内没有 PDF 文件。
-                </p>
-              ) : (
-                pdfCandidates.map((candidate) => (
-                  <label
-                    key={candidate.id}
-                    className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-[11px] text-[var(--foreground)] hover:bg-[var(--border)]"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedPdfIds.includes(candidate.id)}
-                      onChange={(event) => {
-                        setSelectedPdfIds((current) =>
-                          event.target.checked
-                            ? [...current, candidate.id]
-                            : current.filter((id) => id !== candidate.id)
-                        )
-                      }}
-                    />
-                    {candidate.name}
-                  </label>
-                ))
-              )}
-            </div>
-            <div className="mt-2 flex items-center gap-2">
-              {attachToReferenceId ? (
-                <button
-                  type="button"
-                  className={buttonClass}
-                  disabled={selectedPdfIds.length === 0 || importProgress !== null}
-                  onClick={() => void handleAttachSelectedToRecord(attachToReferenceId)}
-                >
-                  挂到该条目（{selectedPdfIds.length}）
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className={buttonClass}
-                  disabled={selectedPdfIds.length === 0 || importProgress !== null || !projectId}
-                  onClick={() => {
-                    if (projectId) void handleImportSelectedPdfs(projectId)
-                  }}
-                >
-                  入册为新记录（{selectedPdfIds.length}）
-                </button>
-              )}
-              <button
-                type="button"
-                className={ghostClass}
-                disabled={importProgress !== null}
-                onClick={() => {
-                  setShowPdfPicker(false)
-                  setAttachToReferenceId(null)
-                  setSelectedPdfIds([])
-                  setPdfCandidates([])
-                }}
-              >
-                取消
-              </button>
-            </div>
-          </div>
-        ) : null}
-
-        {fetched ? (
-          <div className="mx-4 mt-2 flex items-center justify-between gap-3 rounded-lg border border-[var(--border)] bg-[var(--muted)] px-3 py-2">
-            <div className="min-w-0">
-              <p className="truncate text-xs font-medium text-[var(--foreground)]">
-                {fetched.title}
-              </p>
-              <p className="truncate text-[11px] text-[var(--muted-foreground)]">
-                {(fetched.authors ?? []).map((author) => author.name).join(', ')}
-                {fetched.year ? ` · ${fetched.year}` : ''}
-                {fetched.venue ? ` · ${fetched.venue}` : ''}
-              </p>
-            </div>
-            <button type="button" className={buttonClass} onClick={() => void runAdd(fetched)}>
-              <BookMarked className="size-3" aria-hidden="true" /> {t('references.addToLibrary')}
+            <button
+              type="button"
+              aria-label={t('references.close')}
+              className={ghostClass}
+              onClick={onClose}
+            >
+              <X className="size-4" aria-hidden="true" />
             </button>
           </div>
-        ) : null}
 
-        {showManual ? (
-          <div className="mx-4 mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-[var(--border)] px-3 py-2">
+          {/* Import strip */}
+          <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border)] px-4 py-2">
+            <select
+              value={kind}
+              onChange={(event) => setKind(event.target.value as IdentifierKind)}
+              className="rounded-md border border-[var(--border)] bg-transparent px-2 py-1 text-xs"
+              aria-label="DOI / PMID / PMCID / arXiv"
+            >
+              {IDENTIFIER_KINDS.map((value) => (
+                <option key={value} value={value}>
+                  {value.toUpperCase()}
+                </option>
+              ))}
+            </select>
             <input
-              value={manualTitle}
-              onChange={(event) => setManualTitle(event.target.value)}
-              placeholder={t('references.manualTitlePlaceholder')}
-              className="w-80 rounded-md border border-[var(--border)] bg-transparent px-2 py-1 text-xs"
-            />
-            <input
-              value={manualAuthors}
-              onChange={(event) => setManualAuthors(event.target.value)}
-              placeholder={t('references.manualAuthorsPlaceholder')}
-              className="w-64 rounded-md border border-[var(--border)] bg-transparent px-2 py-1 text-xs"
-            />
-            <input
-              value={manualDoi}
-              onChange={(event) => setManualDoi(event.target.value)}
-              placeholder={t('references.manualDoiPlaceholder')}
-              className="w-48 rounded-md border border-[var(--border)] bg-transparent px-2 py-1 text-xs"
-            />
-            <input
-              value={manualYear}
-              onChange={(event) => setManualYear(event.target.value)}
-              placeholder={t('references.manualYearPlaceholder')}
-              className="w-20 rounded-md border border-[var(--border)] bg-transparent px-2 py-1 text-xs"
+              value={identifier}
+              onChange={(event) => setIdentifier(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') void handleFetch()
+              }}
+              placeholder={t('references.identifierPlaceholder')}
+              className="w-72 rounded-md border border-[var(--border)] bg-transparent px-2 py-1 text-xs outline-none focus:border-[var(--accent)]"
             />
             <button
               type="button"
               className={buttonClass}
-              onClick={() => {
-                const year = Number.parseInt(manualYear, 10)
-                void runAdd({
-                  title: manualTitle,
-                  authors: manualAuthors
-                    .split(',')
-                    .map((name) => name.trim())
-                    .filter(Boolean)
-                    .map((name) => ({ name })),
-                  doi: manualDoi.trim() || undefined,
-                  year: Number.isFinite(year) && manualYear.trim() !== '' ? year : undefined
-                })
-              }}
-              disabled={!manualTitle.trim()}
+              disabled={fetching}
+              onClick={() => void handleFetch()}
             >
-              {t('references.add')}
+              <RefreshCw
+                className={`size-3 ${fetching ? 'animate-spin' : ''}`}
+                aria-hidden="true"
+              />
+              {fetching ? t('references.fetching') : t('references.fetch')}
+            </button>
+            <button type="button" className={ghostClass} onClick={() => setShowManual((v) => !v)}>
+              <Plus className="size-3.5" aria-hidden="true" /> {t('references.manualAdd')}
             </button>
           </div>
-        ) : null}
 
-        {error ? (
-          <p
-            className="mx-4 mt-2 rounded bg-red-500/10 px-2 py-1 text-xs text-red-400"
-            role="alert"
-          >
-            {error}
-          </p>
-        ) : null}
-        {notice ? (
-          <p className="mx-4 mt-2 rounded bg-emerald-500/10 px-2 py-1 text-xs text-emerald-400">
-            {notice}
-          </p>
-        ) : null}
+          {showPdfPicker ? (
+            <div className="mx-4 mt-2 rounded-lg border border-[var(--border)] px-3 py-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium text-[var(--foreground)]">
+                  {attachToReferenceId
+                    ? '选择要挂到该条目的 PDF'
+                    : `从项目 PDF 批量入册（已选 ${selectedPdfIds.length}）`}
+                </p>
+                {importProgress ? (
+                  <span className="flex items-center gap-2 text-[11px] text-[var(--muted-foreground)]">
+                    {importProgress.done}/{importProgress.total}
+                    <button
+                      type="button"
+                      className={ghostClass}
+                      onClick={() => {
+                        cancelImportRef.current = true
+                      }}
+                    >
+                      停止
+                    </button>
+                  </span>
+                ) : null}
+              </div>
+              <div className="mt-2 max-h-40 overflow-y-auto rounded border border-[var(--border)] p-1">
+                {pdfLoading ? (
+                  <p className="px-2 py-3 text-[11px] text-[var(--muted-foreground)]">…</p>
+                ) : pdfCandidates.length === 0 ? (
+                  <p className="px-2 py-3 text-[11px] text-[var(--muted-foreground)]">
+                    项目内没有 PDF 文件。
+                  </p>
+                ) : (
+                  pdfCandidates.map((candidate) => (
+                    <label
+                      key={candidate.id}
+                      className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-[11px] text-[var(--foreground)] hover:bg-[var(--border)]"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedPdfIds.includes(candidate.id)}
+                        onChange={(event) => {
+                          setSelectedPdfIds((current) =>
+                            event.target.checked
+                              ? [...current, candidate.id]
+                              : current.filter((id) => id !== candidate.id)
+                          )
+                        }}
+                      />
+                      {candidate.name}
+                    </label>
+                  ))
+                )}
+              </div>
+              <div className="mt-2 flex items-center gap-2">
+                {attachToReferenceId ? (
+                  <button
+                    type="button"
+                    className={buttonClass}
+                    disabled={selectedPdfIds.length === 0 || importProgress !== null}
+                    onClick={() => void handleAttachSelectedToRecord(attachToReferenceId)}
+                  >
+                    挂到该条目（{selectedPdfIds.length}）
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className={buttonClass}
+                    disabled={selectedPdfIds.length === 0 || importProgress !== null || !projectId}
+                    onClick={() => {
+                      if (projectId) void handleImportSelectedPdfs(projectId)
+                    }}
+                  >
+                    入册为新记录（{selectedPdfIds.length}）
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className={ghostClass}
+                  disabled={importProgress !== null}
+                  onClick={() => {
+                    setShowPdfPicker(false)
+                    setAttachToReferenceId(null)
+                    setSelectedPdfIds([])
+                    setPdfCandidates([])
+                  }}
+                >
+                  取消
+                </button>
+              </div>
+            </div>
+          ) : null}
 
-        {/* Body */}
-        <div className="flex min-h-0 flex-1">
-          {/* Collections */}
-          <aside className="flex w-52 shrink-0 flex-col gap-1 overflow-y-auto border-r border-[var(--border)] p-2">
-            <button
-              type="button"
-              onClick={() => setSelectedCollectionId(null)}
-              className={`rounded-md px-2 py-1 text-left text-xs ${
-                selectedCollectionId === null
-                  ? 'bg-[var(--accent)]/15 font-medium text-[var(--accent)]'
-                  : 'text-[var(--muted-foreground)] hover:bg-[var(--border)]'
-              }`}
-            >
-              {t('references.allItems', { n: references.length })}
-            </button>
-            {collections.map((collection) => (
+          {fetched ? (
+            <div className="mx-4 mt-2 flex items-center justify-between gap-3 rounded-lg border border-[var(--border)] bg-[var(--muted)] px-3 py-2">
+              <div className="min-w-0">
+                <p className="truncate text-xs font-medium text-[var(--foreground)]">
+                  {fetched.title}
+                </p>
+                <p className="truncate text-[11px] text-[var(--muted-foreground)]">
+                  {(fetched.authors ?? []).map((author) => author.name).join(', ')}
+                  {fetched.year ? ` · ${fetched.year}` : ''}
+                  {fetched.venue ? ` · ${fetched.venue}` : ''}
+                </p>
+              </div>
+              <button type="button" className={buttonClass} onClick={() => void runAdd(fetched)}>
+                <BookMarked className="size-3" aria-hidden="true" /> {t('references.addToLibrary')}
+              </button>
+            </div>
+          ) : null}
+
+          {showManual ? (
+            <div className="mx-4 mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-[var(--border)] px-3 py-2">
+              <input
+                value={manualTitle}
+                onChange={(event) => setManualTitle(event.target.value)}
+                placeholder={t('references.manualTitlePlaceholder')}
+                className="w-80 rounded-md border border-[var(--border)] bg-transparent px-2 py-1 text-xs"
+              />
+              <input
+                value={manualAuthors}
+                onChange={(event) => setManualAuthors(event.target.value)}
+                placeholder={t('references.manualAuthorsPlaceholder')}
+                className="w-64 rounded-md border border-[var(--border)] bg-transparent px-2 py-1 text-xs"
+              />
+              <input
+                value={manualDoi}
+                onChange={(event) => setManualDoi(event.target.value)}
+                placeholder={t('references.manualDoiPlaceholder')}
+                className="w-48 rounded-md border border-[var(--border)] bg-transparent px-2 py-1 text-xs"
+              />
+              <input
+                value={manualYear}
+                onChange={(event) => setManualYear(event.target.value)}
+                placeholder={t('references.manualYearPlaceholder')}
+                className="w-20 rounded-md border border-[var(--border)] bg-transparent px-2 py-1 text-xs"
+              />
               <button
-                key={collection.id}
                 type="button"
-                onClick={() => setSelectedCollectionId(collection.id)}
+                className={buttonClass}
+                onClick={() => {
+                  const year = Number.parseInt(manualYear, 10)
+                  void runAdd({
+                    title: manualTitle,
+                    authors: manualAuthors
+                      .split(',')
+                      .map((name) => name.trim())
+                      .filter(Boolean)
+                      .map((name) => ({ name })),
+                    doi: manualDoi.trim() || undefined,
+                    year: Number.isFinite(year) && manualYear.trim() !== '' ? year : undefined
+                  })
+                }}
+                disabled={!manualTitle.trim()}
+              >
+                {t('references.add')}
+              </button>
+            </div>
+          ) : null}
+
+          {error ? (
+            <p
+              className="mx-4 mt-2 rounded bg-red-500/10 px-2 py-1 text-xs text-red-400"
+              role="alert"
+            >
+              {error}
+            </p>
+          ) : null}
+          {notice ? (
+            <p className="mx-4 mt-2 rounded bg-emerald-500/10 px-2 py-1 text-xs text-emerald-400">
+              {notice}
+            </p>
+          ) : null}
+
+          {/* Body */}
+          <div className="flex min-h-0 flex-1">
+            {/* Collections */}
+            <aside className="flex w-52 shrink-0 flex-col gap-1 overflow-y-auto border-r border-[var(--border)] p-2">
+              <button
+                type="button"
+                onClick={() => setSelectedCollectionId(null)}
                 className={`rounded-md px-2 py-1 text-left text-xs ${
-                  selectedCollectionId === collection.id
+                  selectedCollectionId === null
                     ? 'bg-[var(--accent)]/15 font-medium text-[var(--accent)]'
                     : 'text-[var(--muted-foreground)] hover:bg-[var(--border)]'
                 }`}
               >
-                {collection.name}
+                {t('references.allItems', { n: references.length })}
               </button>
-            ))}
-            <div className="mt-2 flex gap-1 border-t border-[var(--border)] pt-2">
-              <input
-                value={newCollectionName}
-                onChange={(event) => setNewCollectionName(event.target.value)}
-                placeholder={t('references.collectionNewPlaceholder')}
-                className="min-w-0 flex-1 rounded-md border border-[var(--border)] bg-transparent px-2 py-1 text-xs"
-                onKeyDown={(event) => {
-                  if (event.key !== 'Enter' || !newCollectionName.trim() || !projectId) return
-                  void window.api.references
-                    .createCollection({ projectId, name: newCollectionName.trim() })
-                    .then(() => {
-                      setNewCollectionName('')
-                      return refresh()
-                    })
-                }}
-              />
-            </div>
-          </aside>
+              {collections.map((collection) => (
+                <button
+                  key={collection.id}
+                  type="button"
+                  onClick={() => setSelectedCollectionId(collection.id)}
+                  className={`rounded-md px-2 py-1 text-left text-xs ${
+                    selectedCollectionId === collection.id
+                      ? 'bg-[var(--accent)]/15 font-medium text-[var(--accent)]'
+                      : 'text-[var(--muted-foreground)] hover:bg-[var(--border)]'
+                  }`}
+                >
+                  {collection.name}
+                </button>
+              ))}
+              <div className="mt-2 flex gap-1 border-t border-[var(--border)] pt-2">
+                <input
+                  value={newCollectionName}
+                  onChange={(event) => setNewCollectionName(event.target.value)}
+                  placeholder={t('references.collectionNewPlaceholder')}
+                  className="min-w-0 flex-1 rounded-md border border-[var(--border)] bg-transparent px-2 py-1 text-xs"
+                  onKeyDown={(event) => {
+                    if (event.key !== 'Enter' || !newCollectionName.trim() || !projectId) return
+                    void window.api.references
+                      .createCollection({ projectId, name: newCollectionName.trim() })
+                      .then(() => {
+                        setNewCollectionName('')
+                        return refresh()
+                      })
+                  }}
+                />
+              </div>
+            </aside>
 
-          {/* Items */}
-          <section className="flex min-w-0 flex-1 flex-col">
-            <div className="flex items-center justify-between border-b border-[var(--border)] px-3 py-1.5">
-              <span className="text-xs font-medium text-[var(--foreground)]">
-                {selectedCollectionId === null
-                  ? t('references.allItems', { n: shownReferences.length })
-                  : (collections.find((c) => c.id === selectedCollectionId)?.name ?? '')}
-              </span>
-              <button
-                type="button"
-                className={ghostClass}
-                onClick={() => void handleMergeDuplicates()}
-              >
-                <RefreshCw className="size-3" aria-hidden="true" /> {t('references.dedupe')}
-              </button>
-              <select
-                className="ml-2 max-w-56 rounded border border-[var(--border)] bg-transparent px-1 py-0.5 text-[10px]"
-                aria-label={t('references.citationStyle')}
-                value={selectedStyleId}
-                onChange={(event) => setSelectedStyleId(event.target.value)}
-              >
-                <optgroup label={t('references.builtinStyles')}>
-                  {citationStyles
-                    .filter((style) => style.source === 'builtin')
-                    .map((style) => (
-                      <option key={style.id} value={style.id}>
-                        {style.labelZh}
-                      </option>
-                    ))}
-                </optgroup>
-                {importedStyles.length > 0 ? (
-                  <optgroup label={t('references.importedStyles')}>
+            {/* Items */}
+            <section className="flex min-w-0 flex-1 flex-col">
+              <div className="flex items-center justify-between border-b border-[var(--border)] px-3 py-1.5">
+                <span className="text-xs font-medium text-[var(--foreground)]">
+                  {selectedCollectionId === null
+                    ? t('references.allItems', { n: shownReferences.length })
+                    : (collections.find((c) => c.id === selectedCollectionId)?.name ?? '')}
+                </span>
+                <button
+                  type="button"
+                  className={ghostClass}
+                  onClick={() => void handleMergeDuplicates()}
+                >
+                  <RefreshCw className="size-3" aria-hidden="true" /> {t('references.dedupe')}
+                </button>
+                <select
+                  className="ml-2 max-w-56 rounded border border-[var(--border)] bg-transparent px-1 py-0.5 text-[10px]"
+                  aria-label={t('references.citationStyle')}
+                  value={selectedStyleId}
+                  onChange={(event) => setSelectedStyleId(event.target.value)}
+                >
+                  <optgroup label={t('references.builtinStyles')}>
                     {citationStyles
-                      .filter((style) => style.source === 'imported')
+                      .filter((style) => style.source === 'builtin')
                       .map((style) => (
                         <option key={style.id} value={style.id}>
-                          {style.label}
+                          {style.labelZh}
                         </option>
                       ))}
                   </optgroup>
-                ) : null}
-              </select>
-              <button
-                type="button"
-                className={ghostClass}
-                onClick={() => void handleExportWithStyle()}
-              >
-                <BookMarked className="size-3" aria-hidden="true" />{' '}
-                {t('references.exportWithStyle')}
-              </button>
-              <button
-                type="button"
-                className={ghostClass}
-                disabled={styleBusy}
-                onClick={() => styleFileInputRef.current?.click()}
-              >
-                <Plus className="size-3" aria-hidden="true" /> {t('references.importCsl')}
-              </button>
-              <input
-                ref={styleFileInputRef}
-                type="file"
-                accept=".csl,.xml,application/xml,text/xml"
-                className="hidden"
-                aria-label={t('references.importCsl')}
-                onChange={(event) => {
-                  const file = event.target.files?.[0]
-                  event.target.value = ''
-                  if (file) void handleImportCitationStyle(file)
-                }}
-              />
-              <button
-                type="button"
-                className={ghostClass}
-                onClick={() =>
-                  setCompareTarget((current) => (current ? null : (shownReferences[0] ?? null)))
-                }
-                disabled={shownReferences.length === 0}
-              >
-                {t('references.compareStyles')}
-              </button>
-              <button
-                type="button"
-                className={ghostClass}
-                onClick={() => {
-                  if (projectId) openPdfPicker(projectId, null)
-                }}
-              >
-                <BookMarked className="size-3" aria-hidden="true" /> PDF 入册
-              </button>
-            </div>
-            {importedStyles.length > 0 ? (
-              <div className="border-b border-[var(--border)] px-3 py-1">
-                <p className="text-[10px] text-[var(--muted-foreground)]">
-                  {t('references.importedStylesHint')}
-                </p>
-                <ul className="mt-1 flex flex-col gap-0.5">
-                  {importedStyles.map((style) => (
-                    <li key={style.id} className="flex items-center gap-2 text-[10px]">
-                      <span className="font-medium text-[var(--foreground)]">{style.label}</span>
-                      <span className="text-[var(--muted-foreground)]">
-                        {t('references.styleLicense', { license: style.license })}
-                      </span>
-                      {style.unsupported.length > 0 ? (
-                        <span className="text-amber-400">
-                          {t('references.styleUnsupported', {
-                            names: style.unsupported.join(', ')
-                          })}
+                  {importedStyles.length > 0 ? (
+                    <optgroup label={t('references.importedStyles')}>
+                      {citationStyles
+                        .filter((style) => style.source === 'imported')
+                        .map((style) => (
+                          <option key={style.id} value={style.id}>
+                            {style.label}
+                          </option>
+                        ))}
+                    </optgroup>
+                  ) : null}
+                </select>
+                <button
+                  type="button"
+                  className={ghostClass}
+                  onClick={() => void handleExportWithStyle()}
+                >
+                  <BookMarked className="size-3" aria-hidden="true" />{' '}
+                  {t('references.exportWithStyle')}
+                </button>
+                <button
+                  type="button"
+                  className={ghostClass}
+                  disabled={styleBusy}
+                  onClick={() => styleFileInputRef.current?.click()}
+                >
+                  <Plus className="size-3" aria-hidden="true" /> {t('references.importCsl')}
+                </button>
+                <input
+                  ref={styleFileInputRef}
+                  type="file"
+                  accept=".csl,.xml,application/xml,text/xml"
+                  className="hidden"
+                  aria-label={t('references.importCsl')}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0]
+                    event.target.value = ''
+                    if (file) void handleImportCitationStyle(file)
+                  }}
+                />
+                <button
+                  type="button"
+                  className={ghostClass}
+                  onClick={() =>
+                    setCompareTarget((current) => (current ? null : (shownReferences[0] ?? null)))
+                  }
+                  disabled={shownReferences.length === 0}
+                >
+                  {t('references.compareStyles')}
+                </button>
+                <button
+                  type="button"
+                  className={ghostClass}
+                  onClick={() => {
+                    if (projectId) openPdfPicker(projectId, null)
+                  }}
+                >
+                  <BookMarked className="size-3" aria-hidden="true" /> PDF 入册
+                </button>
+              </div>
+              {importedStyles.length > 0 ? (
+                <div className="border-b border-[var(--border)] px-3 py-1">
+                  <p className="text-[10px] text-[var(--muted-foreground)]">
+                    {t('references.importedStylesHint')}
+                  </p>
+                  <ul className="mt-1 flex flex-col gap-0.5">
+                    {importedStyles.map((style) => (
+                      <li key={style.id} className="flex items-center gap-2 text-[10px]">
+                        <span className="font-medium text-[var(--foreground)]">{style.label}</span>
+                        <span className="text-[var(--muted-foreground)]">
+                          {t('references.styleLicense', { license: style.license })}
                         </span>
-                      ) : null}
-                      {style.fidelity === 'partial' ? (
-                        <span
-                          className="text-amber-400"
-                          title={t('references.citationWarning.fidelityPartial')}
+                        {style.unsupported.length > 0 ? (
+                          <span className="text-amber-400">
+                            {t('references.styleUnsupported', {
+                              names: style.unsupported.join(', ')
+                            })}
+                          </span>
+                        ) : null}
+                        {style.fidelity === 'partial' ? (
+                          <span
+                            className="text-amber-400"
+                            title={t('references.citationWarning.fidelityPartial')}
+                          >
+                            {t('references.styleFidelity', {
+                              fidelity: style.fidelityNotes.join(', ') || 'partial'
+                            })}
+                          </span>
+                        ) : null}
+                        <button
+                          type="button"
+                          className={ghostClass}
+                          onClick={() => void handleRemoveCitationStyle(style.id)}
                         >
-                          {t('references.styleFidelity', {
-                            fidelity: style.fidelityNotes.join(', ') || 'partial'
-                          })}
-                        </span>
-                      ) : null}
-                      <button
-                        type="button"
-                        className={ghostClass}
-                        onClick={() => void handleRemoveCitationStyle(style.id)}
-                      >
-                        {t('references.removeStyle')}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-            {compareTarget ? (
-              <div className="border-b border-[var(--border)] bg-[var(--accent)]/5 px-3 py-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-[var(--foreground)]">
-                    {t('references.compareStylesTitle')} · {compareTarget.title}
-                  </span>
-                  <button
-                    type="button"
-                    className={ghostClass}
-                    onClick={() => setCompareTarget(null)}
-                  >
-                    {t('references.close')}
-                  </button>
+                          {t('references.removeStyle')}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-                <p className="mt-0.5 text-[10px] text-[var(--muted-foreground)]">
-                  {t('references.compareStylesHint')}
-                </p>
-                <ul className="mt-1 flex max-h-48 flex-col gap-1 overflow-y-auto">
-                  {compareCitationStyles(
-                    citationItemFromReference(compareTarget),
-                    citationStyles.map((style) => style.id),
-                    { retrievedAt: todayIso() },
-                    citationStyles
-                  ).map((entry) => (
-                    <li key={entry.styleId} className="text-[11px]">
-                      <span className="font-medium text-[var(--foreground)]">
-                        {entry.styleLabel}
-                      </span>
-                      <p className="whitespace-pre-wrap text-[var(--muted-foreground)]">
-                        {entry.text || t('references.compareEmpty')}
-                      </p>
-                      {entry.warnings.length > 0 ? (
-                        <p className="text-[10px] text-amber-400">
-                          {entry.warnings
-                            .map((warning) => describeCitationWarning(warning, t))
-                            .join('；')}
-                        </p>
-                      ) : null}
-                      {missingFieldsFromWarnings(entry.warnings).length > 0 ? (
-                        <p className="text-[10px] text-[var(--muted-foreground)]">
-                          {t('references.compareMissingFields', {
-                            fields: missingFieldsFromWarnings(entry.warnings).join(', ')
-                          })}
-                        </p>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-            <div className="min-h-0 flex-1 overflow-y-auto p-2">
-              {shownReferences.length === 0 ? (
-                <p className="py-10 text-center text-xs text-[var(--muted-foreground)]">
-                  {t('references.empty')}
-                </p>
-              ) : (
-                <ul className="flex flex-col gap-1.5">
-                  {shownReferences.map((reference) => (
-                    <li
-                      key={reference.id}
-                      className="group rounded-lg border border-[var(--border)] px-3 py-2"
+              ) : null}
+              {compareTarget ? (
+                <div className="border-b border-[var(--border)] bg-[var(--accent)]/5 px-3 py-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-[var(--foreground)]">
+                      {t('references.compareStylesTitle')} · {compareTarget.title}
+                    </span>
+                    <button
+                      type="button"
+                      className={ghostClass}
+                      onClick={() => setCompareTarget(null)}
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-xs font-medium leading-snug text-[var(--foreground)]">
-                            {reference.title}
+                      {t('references.close')}
+                    </button>
+                  </div>
+                  <p className="mt-0.5 text-[10px] text-[var(--muted-foreground)]">
+                    {t('references.compareStylesHint')}
+                  </p>
+                  <ul className="mt-1 flex max-h-48 flex-col gap-1 overflow-y-auto">
+                    {compareCitationStyles(
+                      citationItemFromReference(compareTarget),
+                      citationStyles.map((style) => style.id),
+                      { retrievedAt: todayIso() },
+                      citationStyles
+                    ).map((entry) => (
+                      <li key={entry.styleId} className="text-[11px]">
+                        <span className="font-medium text-[var(--foreground)]">
+                          {entry.styleLabel}
+                        </span>
+                        <p className="whitespace-pre-wrap text-[var(--muted-foreground)]">
+                          {entry.text || t('references.compareEmpty')}
+                        </p>
+                        {entry.warnings.length > 0 ? (
+                          <p className="text-[10px] text-amber-400">
+                            {entry.warnings
+                              .map((warning) => describeCitationWarning(warning, t))
+                              .join('；')}
                           </p>
-                          <p className="mt-0.5 text-[11px] text-[var(--muted-foreground)]">
-                            {reference.authors
-                              .slice(0, 3)
-                              .map((author) => author.name)
-                              .join(', ')}
-                            {reference.authors.length > 3 ? ' et al.' : ''}
-                            {reference.year ? ` · ${reference.year}` : ''}
-                            {reference.venue ? ` · ${reference.venue}` : ''}
-                            {reference.doi ? ` · ${reference.doi}` : ''}
-                            {reference.provenance ? ` · ${t('references.provenanceBadge')}` : ''}
+                        ) : null}
+                        {missingFieldsFromWarnings(entry.warnings).length > 0 ? (
+                          <p className="text-[10px] text-[var(--muted-foreground)]">
+                            {t('references.compareMissingFields', {
+                              fields: missingFieldsFromWarnings(entry.warnings).join(', ')
+                            })}
                           </p>
-                        </div>
-                        <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                          {reference.pdfManagedFileId ? (
-                            <span className="flex items-center gap-1 rounded border border-[var(--border)] px-1.5 py-0.5 text-[10px] text-[var(--muted-foreground)]">
-                              PDF · {reference.pdfManagedFileId.slice(-8)}
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              <div className="min-h-0 flex-1 overflow-y-auto p-2">
+                {shownReferences.length === 0 ? (
+                  <p className="py-10 text-center text-xs text-[var(--muted-foreground)]">
+                    {t('references.empty')}
+                  </p>
+                ) : (
+                  <ul className="flex flex-col gap-1.5">
+                    {shownReferences.map((reference) => (
+                      <li
+                        key={reference.id}
+                        className="group rounded-lg border border-[var(--border)] px-3 py-2"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-xs font-medium leading-snug text-[var(--foreground)]">
+                              {reference.title}
+                            </p>
+                            <p className="mt-0.5 text-[11px] text-[var(--muted-foreground)]">
+                              {reference.authors
+                                .slice(0, 3)
+                                .map((author) => author.name)
+                                .join(', ')}
+                              {reference.authors.length > 3 ? ' et al.' : ''}
+                              {reference.year ? ` · ${reference.year}` : ''}
+                              {reference.venue ? ` · ${reference.venue}` : ''}
+                              {reference.doi ? ` · ${reference.doi}` : ''}
+                              {reference.provenance ? ` · ${t('references.provenanceBadge')}` : ''}
+                            </p>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                            {reference.pdfManagedFileId ? (
+                              <span className="flex items-center gap-1 rounded border border-[var(--border)] px-1.5 py-0.5 text-[10px] text-[var(--muted-foreground)]">
+                                PDF · {reference.pdfManagedFileId.slice(-8)}
+                                <button
+                                  type="button"
+                                  title="解除 PDF"
+                                  onClick={() => void handleDetachPdf(reference.id)}
+                                >
+                                  <X className="size-3" aria-hidden="true" />
+                                </button>
+                              </span>
+                            ) : (
                               <button
                                 type="button"
-                                title="解除 PDF"
-                                onClick={() => void handleDetachPdf(reference.id)}
+                                className={ghostClass}
+                                title="挂载 PDF"
+                                onClick={() => {
+                                  if (projectId) openPdfPicker(projectId, reference.id)
+                                }}
                               >
-                                <X className="size-3" aria-hidden="true" />
+                                PDF
                               </button>
-                            </span>
-                          ) : (
+                            )}
                             <button
                               type="button"
                               className={ghostClass}
-                              title="挂载 PDF"
-                              onClick={() => {
-                                if (projectId) openPdfPicker(projectId, reference.id)
-                              }}
+                              title={t('references.copyInStyle', {
+                                style: selectedStyle?.label ?? ''
+                              })}
+                              onClick={() => void handleCopyInStyle(reference)}
                             >
-                              PDF
+                              {t('references.copyCitation')}
                             </button>
-                          )}
-                          <button
-                            type="button"
-                            className={ghostClass}
-                            title={t('references.copyInStyle', {
-                              style: selectedStyle?.label ?? ''
-                            })}
-                            onClick={() => void handleCopyInStyle(reference)}
-                          >
-                            {t('references.copyCitation')}
-                          </button>
-                          <button
-                            type="button"
-                            className={ghostClass}
-                            title={t('references.compareStyles')}
-                            onClick={() =>
-                              setCompareTarget((current) =>
-                                current?.id === reference.id ? null : reference
-                              )
-                            }
-                          >
-                            {t('references.compareStyles')}
-                          </button>
-                          {collections.length > 0 ? (
-                            <select
-                              className="max-w-24 rounded border border-[var(--border)] bg-transparent px-1 py-0.5 text-[10px]"
-                              aria-label={t('references.manualAdd')}
-                              defaultValue=""
-                              onChange={(event) => {
-                                if (event.target.value) {
-                                  void handleAddToCollection(reference.id, event.target.value)
-                                }
+                            <button
+                              type="button"
+                              className={ghostClass}
+                              title={t('references.compareStyles')}
+                              onClick={() =>
+                                setCompareTarget((current) =>
+                                  current?.id === reference.id ? null : reference
+                                )
+                              }
+                            >
+                              {t('references.compareStyles')}
+                            </button>
+                            {collections.length > 0 ? (
+                              <select
+                                className="max-w-24 rounded border border-[var(--border)] bg-transparent px-1 py-0.5 text-[10px]"
+                                aria-label={t('references.manualAdd')}
+                                defaultValue=""
+                                onChange={(event) => {
+                                  if (event.target.value) {
+                                    void handleAddToCollection(reference.id, event.target.value)
+                                  }
+                                }}
+                              >
+                                <option value="" disabled>
+                                  {t('references.collectionNewPlaceholder')}
+                                </option>
+                                {collections.map((collection) => (
+                                  <option key={collection.id} value={collection.id}>
+                                    {collection.name}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : null}
+                            <button
+                              type="button"
+                              className={ghostClass}
+                              title="删除"
+                              onClick={() => {
+                                void window.api.references.remove(reference.id).then(refresh)
                               }}
                             >
-                              <option value="" disabled>
-                                {t('references.collectionNewPlaceholder')}
-                              </option>
-                              {collections.map((collection) => (
-                                <option key={collection.id} value={collection.id}>
-                                  {collection.name}
-                                </option>
-                              ))}
-                            </select>
-                          ) : null}
-                          <button
-                            type="button"
-                            className={ghostClass}
-                            title="删除"
-                            onClick={() => {
-                              void window.api.references.remove(reference.id).then(refresh)
-                            }}
-                          >
-                            <X className="size-3.5" aria-hidden="true" />
-                          </button>
+                              <X className="size-3.5" aria-hidden="true" />
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </section>
-        </div>
-      </div>
-    </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </section>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   )
 }

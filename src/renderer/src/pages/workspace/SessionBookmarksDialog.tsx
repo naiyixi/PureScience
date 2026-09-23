@@ -1,7 +1,9 @@
+import { Dialog } from 'radix-ui'
 import { useCallback, useEffect, useState } from 'react'
 import { Bookmark, ChevronRight, Trash2, X } from 'lucide-react'
 
 import { useLanguage } from '@/i18n'
+import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 import { useNavigationStore } from '@/stores/navigation-store'
 import type { SessionBookmark } from '../../../../shared/bookmark'
 
@@ -29,6 +31,7 @@ export function SessionBookmarksDialog({
   onOpenVersionPreview?: (locator: string) => void
 }): React.JSX.Element | null {
   const { t } = useLanguage()
+  const focusRestore = useDialogFocusRestore(open)
   const requestMessageFocus = useNavigationStore((state) => state.requestMessageFocus)
   const [bookmarks, setBookmarks] = useState<SessionBookmark[]>([])
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({})
@@ -129,101 +132,111 @@ export function SessionBookmarksDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div
-        role="dialog"
-        aria-label={t('bookmarks.title')}
-        data-slot="session-bookmarks-dialog"
-        className="flex max-h-[70vh] w-[min(640px,92vw)] flex-col rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-xl"
-      >
-        <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-2">
-          <span className="flex items-center gap-2 text-sm font-medium text-[var(--foreground)]">
-            <Bookmark className="size-4" aria-hidden="true" /> {t('bookmarks.title')}
-          </span>
-          <button type="button" aria-label={t('references.close')} onClick={onClose}>
-            <X className="size-4" aria-hidden="true" />
-          </button>
-        </div>
-        <p className="border-b border-[var(--border)] px-4 py-1.5 text-[10px] text-[var(--muted-foreground)]">
-          {t('bookmarks.privacy')}
-        </p>
-        {error ? (
-          <p className="px-4 py-2 text-xs text-red-400" role="alert">
-            {error}
+    <Dialog.Root
+      open
+      onOpenChange={(next) => {
+        if (!next) onClose()
+      }}
+    >
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40" />
+        <Dialog.Content
+          aria-label={t('bookmarks.title')}
+          aria-describedby={undefined}
+          data-slot="session-bookmarks-dialog"
+          onOpenAutoFocus={focusRestore.onOpenAutoFocus}
+          onCloseAutoFocus={focusRestore.onCloseAutoFocus}
+          className="fixed left-1/2 top-1/2 z-50 flex max-h-[70vh] w-[min(640px,92vw)] -translate-x-1/2 -translate-y-1/2 flex-col rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-xl outline-none"
+        >
+          <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-2">
+            <span className="flex items-center gap-2 text-sm font-medium text-[var(--foreground)]">
+              <Bookmark className="size-4" aria-hidden="true" /> {t('bookmarks.title')}
+            </span>
+            <button type="button" aria-label={t('references.close')} onClick={onClose}>
+              <X className="size-4" aria-hidden="true" />
+            </button>
+          </div>
+          <p className="border-b border-[var(--border)] px-4 py-1.5 text-[10px] text-[var(--muted-foreground)]">
+            {t('bookmarks.privacy')}
           </p>
-        ) : null}
-        <div className="min-h-0 flex-1 overflow-y-auto p-3">
-          {bookmarks.length === 0 ? (
-            <p className="py-8 text-center text-xs text-[var(--muted-foreground)]">
-              {t('bookmarks.empty')}
+          {error ? (
+            <p className="px-4 py-2 text-xs text-red-400" role="alert">
+              {error}
             </p>
-          ) : (
-            <ul className="flex flex-col gap-2">
-              {bookmarks.map((bookmark) => (
-                <li
-                  key={bookmark.id}
-                  className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="text-[10px] text-[var(--muted-foreground)]">
-                      {kindLabel(bookmark)}
-                    </span>
-                    <div className="flex items-center gap-1">
-                      {bookmark.anchor.kind === 'message-text' ||
-                      anchorText(bookmark).length === 0 ||
-                      Boolean(
-                        (bookmark.anchor.kind === 'preview-text' ||
-                          bookmark.anchor.kind === 'pdf-region') &&
-                        bookmark.anchor.locator
-                      ) ? (
+          ) : null}
+          <div className="min-h-0 flex-1 overflow-y-auto p-3">
+            {bookmarks.length === 0 ? (
+              <p className="py-8 text-center text-xs text-[var(--muted-foreground)]">
+                {t('bookmarks.empty')}
+              </p>
+            ) : (
+              <ul className="flex flex-col gap-2">
+                {bookmarks.map((bookmark) => (
+                  <li
+                    key={bookmark.id}
+                    className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-[10px] text-[var(--muted-foreground)]">
+                        {kindLabel(bookmark)}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        {bookmark.anchor.kind === 'message-text' ||
+                        anchorText(bookmark).length === 0 ||
+                        Boolean(
+                          (bookmark.anchor.kind === 'preview-text' ||
+                            bookmark.anchor.kind === 'pdf-region') &&
+                          bookmark.anchor.locator
+                        ) ? (
+                          <button
+                            type="button"
+                            className="flex items-center gap-1 text-[10px] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                            onClick={() => handleJump(bookmark)}
+                          >
+                            {t('bookmarks.jump')}
+                            <ChevronRight className="size-3" aria-hidden="true" />
+                          </button>
+                        ) : null}
                         <button
                           type="button"
-                          className="flex items-center gap-1 text-[10px] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-                          onClick={() => handleJump(bookmark)}
+                          aria-label={t('bookmarks.remove')}
+                          onClick={() => void handleRemove(bookmark)}
                         >
-                          {t('bookmarks.jump')}
-                          <ChevronRight className="size-3" aria-hidden="true" />
+                          <Trash2 className="size-3.5" aria-hidden="true" />
                         </button>
-                      ) : null}
+                      </div>
+                    </div>
+                    <p className="mt-1 whitespace-pre-wrap text-[var(--foreground)]">
+                      {excerpt(anchorText(bookmark))}
+                    </p>
+                    <div className="mt-2 flex items-center gap-2">
+                      <input
+                        className="min-w-0 flex-1 rounded border border-[var(--border)] bg-transparent px-2 py-1 text-[11px]"
+                        placeholder={t('bookmarks.notePlaceholder')}
+                        aria-label={t('bookmarks.notePlaceholder')}
+                        value={noteDrafts[bookmark.id] ?? ''}
+                        onChange={(event) =>
+                          setNoteDrafts((current) => ({
+                            ...current,
+                            [bookmark.id]: event.target.value
+                          }))
+                        }
+                      />
                       <button
                         type="button"
-                        aria-label={t('bookmarks.remove')}
-                        onClick={() => void handleRemove(bookmark)}
+                        className="rounded border border-[var(--border)] px-2 py-1 text-[10px]"
+                        onClick={() => void handleSaveNote(bookmark)}
                       >
-                        <Trash2 className="size-3.5" aria-hidden="true" />
+                        {t('bookmarks.saveNote')}
                       </button>
                     </div>
-                  </div>
-                  <p className="mt-1 whitespace-pre-wrap text-[var(--foreground)]">
-                    {excerpt(anchorText(bookmark))}
-                  </p>
-                  <div className="mt-2 flex items-center gap-2">
-                    <input
-                      className="min-w-0 flex-1 rounded border border-[var(--border)] bg-transparent px-2 py-1 text-[11px]"
-                      placeholder={t('bookmarks.notePlaceholder')}
-                      aria-label={t('bookmarks.notePlaceholder')}
-                      value={noteDrafts[bookmark.id] ?? ''}
-                      onChange={(event) =>
-                        setNoteDrafts((current) => ({
-                          ...current,
-                          [bookmark.id]: event.target.value
-                        }))
-                      }
-                    />
-                    <button
-                      type="button"
-                      className="rounded border border-[var(--border)] px-2 py-1 text-[10px]"
-                      onClick={() => void handleSaveNote(bookmark)}
-                    >
-                      {t('bookmarks.saveNote')}
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </div>
-    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   )
 }

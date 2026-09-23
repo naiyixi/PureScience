@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Bookmark, GitBranch, Pin, PinOff, X } from 'lucide-react'
 
 import { useLanguage } from '@/i18n'
@@ -74,6 +74,22 @@ export function SessionInfoCard({
   // state is kept per session (see `forkStates`) so it survives the card being re-mounted.
   const [forkState, setForkState] = useState<SessionForkState>(() => readForkState(session.id))
   const [forkBusy, setForkBusy] = useState(false)
+
+  // Escape closes the card while it is open, matching every other surface that can be dismissed.
+  // The card is a non-modal popover, so it does not trap focus (the conversation stays reachable
+  // behind it); it only claims the key when no dialog is stacked above, so Escape closes the
+  // topmost layer first.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key !== 'Escape' || event.defaultPrevented || event.isComposing) return
+      if (document.querySelector('[role="dialog"][data-state="open"], [role="alertdialog"]')) return
+      onClose()
+    }
+
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [onClose])
+
   const updateForkState = (patch: Partial<SessionForkState>): void => {
     const next = { ...readForkState(session.id), ...patch }
     writeForkState(session.id, next)
