@@ -26,11 +26,13 @@ test.setTimeout(180_000)
 // graceful restart came back with no session at all — sessions.loadAll() returned zero — so there was
 // nothing to continue on that path.)
 //
-// What blocks this spec is starting the app, not continuing a turn: every run of it ends on the splash
-// with 'Target page, context or browser has been closed'. A stray dev instance is holding the dev root
-// (an electron-vite process plus 'Electron .' survived two kill attempts during the runs), which is an
-// environment conflict on this machine rather than a finding about the feature. Until that is cleared the
-// end-to-end half stays unverified and is marked as such instead of being reported green.
+// What blocks this spec is starting the app, not continuing a turn. Two measurements so far: while the
+// dev daemon (the launchagent, which these runs reload) was up, the app never got past its splash; with
+// the daemon unloaded and its processes gone, the window is still closed from underneath the run during
+// onboarding ('Target page, context or browser has been closed' raised out of completeOnboarding, with a
+// second PureScience instance package-mounted from a disk image running on the machine). Which of those
+// is responsible is the next thing to establish; until then the end-to-end half stays unverified and is
+// marked as such instead of being reported green.
 test.fixme('a turn that was interrupted is continued, not sent again', async ({ app }) => {
   const page = await app.completeOnboarding()
   await app.configureFakeAgent()
