@@ -121,3 +121,13 @@
 - 仍待处理：其余「无 Trigger」的 Radix 对话框（`grep -rl "Dialog.Content" src/renderer/src --include=*.tsx` 减去 `Dialog.Trigger`，共 47 个文件，其中仅卸载式关闭的会真丢焦点）。**不并入本批次**：无逐条验证的批量改动属于半截工程，需作为独立单元逐个接线并补测试。
 
 **U4 的收口方式**：通知中心桌面端取焦/归还以 `e2e/accessibility.spec.ts` 的键盘闭环用例覆盖（真机 Electron，非 jsdom 断言）；预览菜单与文件列表另有 jsdom 用例 29 + 11 条。
+
+### 本批次实测发现的待办（归入 U17）
+
+- **搜索按钮上印着 `⌘K`，按键打不开面板**。真机 Electron 实测：配好 agent、进入 workspace、焦点在 composer 内按 `Meta+k`，面板不出现（`palette:false`，焦点停在 DIV）；同一状态下走可见按钮（聚焦 + Enter）正常打开。源码侧疑点在 `App.tsx:249-272` 的一串门控（`isSettingsLoaded` / `startupView === 'app'` / `isSessionPersistenceHydrated` / 各浮层开关 / 数据根缺失等），尚未定位到具体哪一条返回早。证据链：`npm run build:e2e` 后 `npx playwright test`（构建产物为 `out/`，改源码不重新构建等于测旧包）。
+- 归入 U17 的理由：U17 本来就要做「快捷键清单面 + 命令面」，改门控之前需要先决定快捷键在哪些状态下应当生效，避免把门的开关和清单面做成两套口径。
+
+### 方法学（写给后续单元）
+
+- **改完渲染层代码跑 e2e 前必须 `npm run build:e2e`**：Playwright 通过 `APP_ROOT` 加载 `out/main/index.js`，跑的是构建产物。本轮曾在未重建的情况下得出过三条错误结论（「⌘K 打不开」「焦点掉 body 且钩子无效」「预览菜单打不开」），重建后其中两条被推翻。凡是真机结论都要先确认 `out/` 是新的。
+- 真机 e2e 的选点：把断言打在 `e2e/accessibility.spec.ts` 的键盘闭环用例上（打开即取焦 / Escape 收起 / 焦点回 opener），失败时先读 `test-results/electron/<用例名>/error-context.md` 的可访问性树，比截图快。
