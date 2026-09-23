@@ -274,7 +274,7 @@ describe('SettingsPage layout', () => {
 
   it('shows and dismisses a settings write failure above the scrolling content', async () => {
     useSettingsStore.setState({
-      settingsWriteError: 'Could not save notification preference. Try again.'
+      settingsWriteError: 'settings.saveFailedNotifications'
     })
 
     act(() => {
@@ -284,7 +284,9 @@ describe('SettingsPage layout', () => {
     const alert = document.body.querySelector<HTMLElement>('[data-slot="settings-write-error"]')
     const scroll = document.body.querySelector<HTMLElement>('[data-slot="settings-content-scroll"]')
     expect(alert?.getAttribute('role')).toBe('alert')
+    // The store hands over a dictionary key; the banner is where it becomes a sentence.
     expect(alert?.textContent).toContain('Could not save notification preference. Try again.')
+    expect(alert?.textContent).not.toContain('settings.saveFailedNotifications')
     expect(alert?.className).toContain('border-danger-000/30')
     expect(alert?.className).toContain('bg-danger-000/10')
     expect(alert?.className).toContain('text-danger-000')
@@ -300,6 +302,19 @@ describe('SettingsPage layout', () => {
 
     expect(useSettingsStore.getState().settingsWriteError).toBeUndefined()
     expect(document.body.querySelector('[data-slot="settings-write-error"]')).toBeNull()
+  })
+
+  it('passes a transport failure through untranslated', async () => {
+    useSettingsStore.setState({
+      settingsWriteError: 'ENOENT: no such file or directory, open /Users/example/settings.json'
+    })
+
+    act(() => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+
+    // Only dictionary keys are translated; a raw IPC message keeps its own words.
+    expect(document.body.textContent).toContain('ENOENT: no such file or directory')
   })
 
   it('mounts the sidebar + content with grouped nav items and a close control', () => {

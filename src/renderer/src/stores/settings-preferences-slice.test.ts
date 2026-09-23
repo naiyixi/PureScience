@@ -175,7 +175,7 @@ describe('settings preferences slice', () => {
     await write
 
     expect(store.getState().reasoningEffort).toBe('default')
-    expect(store.getState().settingsWriteError).toBe('Could not save reasoning effort. Try again.')
+    expect(store.getState().settingsWriteError).toBe('settings.saveFailedReasoningEffort')
     expect(consoleError).toHaveBeenCalledWith('Failed to set reasoning effort', expect.any(Error))
   })
 
@@ -195,7 +195,7 @@ describe('settings preferences slice', () => {
 
     expect(commands.setReasoningEffort).toHaveBeenCalledTimes(2)
     expect(store.getState().reasoningEffort).toBe('high')
-    expect(store.getState().settingsWriteError).toBe('Could not save reasoning effort. Try again.')
+    expect(store.getState().settingsWriteError).toBe('settings.saveFailedReasoningEffort')
     expect(consoleError).toHaveBeenCalledOnce()
   })
 

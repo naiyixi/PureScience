@@ -1789,6 +1789,26 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.noDataYet': 'Aucune donnée pour l’instant.',
   'settings.noDataYetHint':
     'Le stockage se remplit à mesure que vous téléchargez des modèles, lancez des calculs et enregistrez des artefacts — chaque part apparaît ici.',
+  'settings.saveFailedReasoningEffort':
+    'Impossible d’enregistrer l’intensité de raisonnement. Réessayez.',
+  'settings.saveFailedNotifications':
+    'Impossible d’enregistrer la préférence de notification. Réessayez.',
+  'settings.saveFailedConversationSkillImport':
+    'Impossible d’enregistrer la préférence d’import de compétences. Réessayez.',
+  'settings.saveFailedClosePreference':
+    'Impossible d’enregistrer la préférence de fermeture de fenêtre. Réessayez.',
+  'settings.saveFailedUseIntent':
+    'Impossible d’enregistrer l’intention d’usage des compétences sous licence. Réessayez.',
+  'settings.saveFailedAppIcon':
+    'Impossible d’enregistrer la préférence d’icône de l’app. Réessayez.',
+  'settings.saveFailedDefaultPermissionProfile':
+    'Impossible d’enregistrer le mode d’autorisation par défaut. Réessayez.',
+  'settings.saveFailedProviderSwitch':
+    'Impossible de basculer le fournisseur ou le modèle actif. Réessayez.',
+  'settings.saveFailedAgentFrameworkSwitch':
+    'Impossible de basculer le framework d’agent. Réessayez.',
+  'settings.saveFailedVisionModel': 'Impossible d’enregistrer le modèle de vision. Réessayez.',
+  'settings.saveFailedScenarioModel': 'Impossible d’enregistrer le modèle de scénario. Réessayez.',
   'settings.noDescription': 'Aucune description',
   'settings.noDownloadableArtifacts': 'Aucun artefact téléchargeable dans cette session.',
   'settings.noHostsInSshConfig': 'Aucun hôte dans ~/.ssh/config',

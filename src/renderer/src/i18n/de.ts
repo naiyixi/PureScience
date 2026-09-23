@@ -1808,6 +1808,28 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.noDataYet': 'Noch keine Daten.',
   'settings.noDataYetHint':
     'Der Speicher füllt sich, wenn Sie Modelle laden, Rechenjobs ausführen und Artefakte speichern — jeder Anteil erscheint hier.',
+  'settings.saveFailedReasoningEffort':
+    'Die Denkintensität konnte nicht gespeichert werden. Bitte erneut versuchen.',
+  'settings.saveFailedNotifications':
+    'Die Benachrichtigungseinstellung konnte nicht gespeichert werden. Bitte erneut versuchen.',
+  'settings.saveFailedConversationSkillImport':
+    'Die Einstellung zum Skill-Import im Gespräch konnte nicht gespeichert werden. Bitte erneut versuchen.',
+  'settings.saveFailedClosePreference':
+    'Die Einstellung zum Schließen des Fensters konnte nicht gespeichert werden. Bitte erneut versuchen.',
+  'settings.saveFailedUseIntent':
+    'Die Nutzungsabsicht für lizenzierte Skills konnte nicht gespeichert werden. Bitte erneut versuchen.',
+  'settings.saveFailedAppIcon':
+    'Die App-Symbol-Einstellung konnte nicht gespeichert werden. Bitte erneut versuchen.',
+  'settings.saveFailedDefaultPermissionProfile':
+    'Der Standard-Berechtigungsmodus konnte nicht gespeichert werden. Bitte erneut versuchen.',
+  'settings.saveFailedProviderSwitch':
+    'Aktiver Anbieter oder Modell konnte nicht gewechselt werden. Bitte erneut versuchen.',
+  'settings.saveFailedAgentFrameworkSwitch':
+    'Das Agenten-Framework konnte nicht gewechselt werden. Bitte erneut versuchen.',
+  'settings.saveFailedVisionModel':
+    'Das Vision-Modell konnte nicht gespeichert werden. Bitte erneut versuchen.',
+  'settings.saveFailedScenarioModel':
+    'Das Szenario-Modell konnte nicht gespeichert werden. Bitte erneut versuchen.',
   'settings.noDescription': 'Keine Beschreibung',
   'settings.noDownloadableArtifacts': 'Keine herunterladbaren Artefakte in dieser Sitzung.',
   'settings.noHostsInSshConfig': 'Keine Hosts in ~/.ssh/config',

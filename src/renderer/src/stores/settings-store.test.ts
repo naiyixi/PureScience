@@ -899,7 +899,7 @@ describe('settings store: provider/model selection', () => {
 
     await useSettingsStore.getState().setReasoningEffort('high')
     expect(useSettingsStore.getState().settingsWriteError).toBe(
-      'Could not save reasoning effort. Try again.'
+      'settings.saveFailedReasoningEffort'
     )
 
     await useSettingsStore.getState().setActiveProvider('p1', 'glm-4.7')
@@ -916,9 +916,7 @@ describe('settings store: provider/model selection', () => {
       ipcError
     )
 
-    expect(useSettingsStore.getState().settingsWriteError).toBe(
-      'Could not switch active provider or model. Try again.'
-    )
+    expect(useSettingsStore.getState().settingsWriteError).toBe('settings.saveFailedProviderSwitch')
     expect(useSettingsStore.getState().settingsWriteError).not.toContain('/Users/example')
     expect(consoleError).toHaveBeenCalledWith('Failed to set active provider', ipcError)
   })
@@ -1534,7 +1532,7 @@ describe('settings store: setAgentFramework', () => {
 
     expect(useSettingsStore.getState().agentFrameworkId).toBe('claude-code')
     expect(useSettingsStore.getState().settingsWriteError).toBe(
-      'Could not switch agent framework. Try again.'
+      'settings.saveFailedAgentFrameworkSwitch'
     )
     expect(consoleError).toHaveBeenCalledWith('Failed to switch agent framework', expect.any(Error))
   })
@@ -1763,7 +1761,7 @@ describe('settings store: setReasoningEffort', () => {
     await olderWrite
 
     expect(useSettingsStore.getState().settingsWriteError).toBe(
-      'Could not save reasoning effort. Try again.'
+      'settings.saveFailedReasoningEffort'
     )
   })
 
@@ -1784,9 +1782,7 @@ describe('settings store: setReasoningEffort', () => {
     resolveReasoning({ ...snapshot([]), reasoningEffort: 'high' })
     await olderWrite
 
-    expect(useSettingsStore.getState().settingsWriteError).toBe(
-      'Could not save notification preference. Try again.'
-    )
+    expect(useSettingsStore.getState().settingsWriteError).toBe('settings.saveFailedNotifications')
   })
 
   it('retains failures from concurrent writes to different preferences', async () => {
@@ -1815,10 +1811,10 @@ describe('settings store: setReasoningEffort', () => {
     await reasoningWrite
 
     expect(useSettingsStore.getState().settingsWriteError).toContain(
-      'Could not save notification preference. Try again.'
+      'settings.saveFailedNotifications'
     )
     expect(useSettingsStore.getState().settingsWriteError).toContain(
-      'Could not save reasoning effort. Try again.'
+      'settings.saveFailedReasoningEffort'
     )
   })
 
@@ -1850,7 +1846,7 @@ describe('settings store: setReasoningEffort', () => {
 
     expect(useSettingsStore.getState().reasoningEffort).toBe('default')
     expect(useSettingsStore.getState().settingsWriteError).toBe(
-      'Could not save reasoning effort. Try again.'
+      'settings.saveFailedReasoningEffort'
     )
   })
 
@@ -1867,7 +1863,7 @@ describe('settings store: setReasoningEffort', () => {
 
     expect(useSettingsStore.getState().reasoningEffort).toBe('high')
     expect(useSettingsStore.getState().settingsWriteError).toBe(
-      'Could not save reasoning effort. Try again.'
+      'settings.saveFailedReasoningEffort'
     )
   })
 
@@ -1879,7 +1875,7 @@ describe('settings store: setReasoningEffort', () => {
 
     expect(useSettingsStore.getState().reasoningEffort).toBe('default')
     expect(useSettingsStore.getState().settingsWriteError).toBe(
-      'Could not save reasoning effort. Try again.'
+      'settings.saveFailedReasoningEffort'
     )
     expect(consoleError).toHaveBeenCalledWith('Failed to set reasoning effort', expect.any(Error))
   })
@@ -1908,9 +1904,7 @@ describe('settings store: setNotificationsEnabled', () => {
     await useSettingsStore.getState().setNotificationsEnabled(false)
 
     expect(useSettingsStore.getState().notificationsEnabled).toBe(true)
-    expect(useSettingsStore.getState().settingsWriteError).toBe(
-      'Could not save notification preference. Try again.'
-    )
+    expect(useSettingsStore.getState().settingsWriteError).toBe('settings.saveFailedNotifications')
     expect(consoleError).toHaveBeenCalledWith(
       'Failed to set notifications enabled',
       expect.any(Error)
@@ -1942,7 +1936,7 @@ describe('settings store: setConversationSkillImportEnabled', () => {
 
     expect(useSettingsStore.getState().conversationSkillImportEnabled).toBe(true)
     expect(useSettingsStore.getState().settingsWriteError).toBe(
-      'Could not save conversation Skill import preference. Try again.'
+      'settings.saveFailedConversationSkillImport'
     )
     expect(consoleError).toHaveBeenCalledWith(
       'Failed to set conversation Skill import enabled',
@@ -1982,7 +1976,7 @@ describe('settings store: setClosePreference', () => {
 
     expect(useSettingsStore.getState().closePreference).toBe('quit')
     expect(useSettingsStore.getState().settingsWriteError).toBe(
-      'Could not save window close preference. Try again.'
+      'settings.saveFailedClosePreference'
     )
     expect(consoleError).toHaveBeenCalledWith('Failed to set close preference', expect.any(Error))
   })
@@ -2012,9 +2006,7 @@ describe('settings store: setAppIconVariant', () => {
     await useSettingsStore.getState().setAppIconVariant('dark')
 
     expect(useSettingsStore.getState().appIconVariant).toBe('light')
-    expect(useSettingsStore.getState().settingsWriteError).toBe(
-      'Could not save app icon preference. Try again.'
-    )
+    expect(useSettingsStore.getState().settingsWriteError).toBe('settings.saveFailedAppIcon')
     expect(consoleError).toHaveBeenCalledWith('Failed to set app icon variant', expect.any(Error))
   })
 
@@ -2044,7 +2036,7 @@ describe('settings store: setDefaultPermissionProfile', () => {
 
     expect(useSettingsStore.getState().defaultPermissionProfile).toBe('ask')
     expect(useSettingsStore.getState().settingsWriteError).toBe(
-      'Could not save the default permission mode. Try again.'
+      'settings.saveFailedDefaultPermissionProfile'
     )
     expect(consoleError).toHaveBeenCalledWith(
       'Failed to set default permission profile',

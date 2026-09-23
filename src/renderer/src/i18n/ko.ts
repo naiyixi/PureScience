@@ -1726,6 +1726,21 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.noDataYet': '아직 데이터가 없습니다.',
   'settings.noDataYetHint':
     '모델을 내려받고 계산 작업을 돌리고 산출물을 저장하면 각각의 점유량이 여기에 표시됩니다.',
+  'settings.saveFailedReasoningEffort': '추론 강도를 저장하지 못했습니다. 다시 시도하세요.',
+  'settings.saveFailedNotifications': '알림 환경설정을 저장하지 못했습니다. 다시 시도하세요.',
+  'settings.saveFailedConversationSkillImport':
+    '대화 스킬 가져오기 환경설정을 저장하지 못했습니다. 다시 시도하세요.',
+  'settings.saveFailedClosePreference': '창 닫기 환경설정을 저장하지 못했습니다. 다시 시도하세요.',
+  'settings.saveFailedUseIntent': '라이선스 스킬 사용 의향을 저장하지 못했습니다. 다시 시도하세요.',
+  'settings.saveFailedAppIcon': '앱 아이콘 환경설정을 저장하지 못했습니다. 다시 시도하세요.',
+  'settings.saveFailedDefaultPermissionProfile':
+    '기본 권한 모드를 저장하지 못했습니다. 다시 시도하세요.',
+  'settings.saveFailedProviderSwitch':
+    '활성 공급자 또는 모델을 전환하지 못했습니다. 다시 시도하세요.',
+  'settings.saveFailedAgentFrameworkSwitch':
+    '에이전트 프레임워크를 전환하지 못했습니다. 다시 시도하세요.',
+  'settings.saveFailedVisionModel': '비전 모델을 저장하지 못했습니다. 다시 시도하세요.',
+  'settings.saveFailedScenarioModel': '시나리오 모델을 저장하지 못했습니다. 다시 시도하세요.',
   'settings.noDescription': '설명 없음',
   'settings.noDownloadableArtifacts': '이 세션에는 다운로드할 수 있는 산출물이 없습니다.',
   'settings.noHostsInSshConfig': '~/.ssh/config에 호스트가 없습니다',

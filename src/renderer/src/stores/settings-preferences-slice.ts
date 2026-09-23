@@ -3,6 +3,7 @@ import type { AppIconVariant, ReasoningEffort, SettingsSnapshot } from '../../..
 import type { CloseActionPreference } from '../../../shared/window-controls'
 import type { PermissionProfileId } from '../../../shared/permission-profiles'
 import { isMirrorConfigured } from '../pages/settings/mirror-view'
+import { SETTINGS_WRITE_ERROR_KEYS, type SettingsWriteErrorKey } from './settings-write-error-keys'
 import type {
   OptimisticSettingsWriteKey,
   SettingsWriteCoordinator
@@ -62,14 +63,14 @@ type SettingsPreferencesSliceOptions = {
   writeCoordinator: SettingsWriteCoordinator
 }
 
-const SETTINGS_WRITE_ERRORS: Record<OptimisticSettingsWriteKey, string> = {
-  reasoningEffort: 'Could not save reasoning effort. Try again.',
-  notifications: 'Could not save notification preference. Try again.',
-  conversationSkillImport: 'Could not save conversation Skill import preference. Try again.',
-  closePreference: 'Could not save window close preference. Try again.',
-  useIntent: 'Could not save the licensed-skill use intent. Try again.',
-  appIcon: 'Could not save app icon preference. Try again.',
-  defaultPermissionProfile: 'Could not save the default permission mode. Try again.'
+const SETTINGS_WRITE_ERRORS: Record<OptimisticSettingsWriteKey, SettingsWriteErrorKey> = {
+  reasoningEffort: SETTINGS_WRITE_ERROR_KEYS.reasoningEffort,
+  notifications: SETTINGS_WRITE_ERROR_KEYS.notifications,
+  conversationSkillImport: SETTINGS_WRITE_ERROR_KEYS.conversationSkillImport,
+  closePreference: SETTINGS_WRITE_ERROR_KEYS.closePreference,
+  useIntent: SETTINGS_WRITE_ERROR_KEYS.useIntent,
+  appIcon: SETTINGS_WRITE_ERROR_KEYS.appIcon,
+  defaultPermissionProfile: SETTINGS_WRITE_ERROR_KEYS.defaultPermissionProfile
 }
 
 // Owns renderer preference commands and their optimistic settlement. Core remains the sole owner of

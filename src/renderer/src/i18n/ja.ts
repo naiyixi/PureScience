@@ -1757,6 +1757,23 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.noDataYet': 'データはまだありません。',
   'settings.noDataYetHint':
     'モデルのダウンロード、計算ジョブの実行、成果物の保存が進むと、それぞれの占有量がここに表示されます。',
+  'settings.saveFailedReasoningEffort': '推論強度を保存できませんでした。再試行してください。',
+  'settings.saveFailedNotifications': '通知設定を保存できませんでした。再試行してください。',
+  'settings.saveFailedConversationSkillImport':
+    '会話スキル取り込み設定を保存できませんでした。再試行してください。',
+  'settings.saveFailedClosePreference':
+    'ウィンドウを閉じるときの設定を保存できませんでした。再試行してください。',
+  'settings.saveFailedUseIntent':
+    'ライセンススキルの利用意向を保存できませんでした。再試行してください。',
+  'settings.saveFailedAppIcon': 'アプリアイコン設定を保存できませんでした。再試行してください。',
+  'settings.saveFailedDefaultPermissionProfile':
+    '既定の権限モードを保存できませんでした。再試行してください。',
+  'settings.saveFailedProviderSwitch':
+    '使用中のプロバイダーまたはモデルを切り替えられませんでした。再試行してください。',
+  'settings.saveFailedAgentFrameworkSwitch':
+    'エージェントフレームワークを切り替えられませんでした。再試行してください。',
+  'settings.saveFailedVisionModel': 'ビジョンモデルを保存できませんでした。再試行してください。',
+  'settings.saveFailedScenarioModel': 'シナリオモデルを保存できませんでした。再試行してください。',
   'settings.noDescription': '説明なし',
   'settings.noDownloadableArtifacts': 'このセッションにはダウンロードできる成果物がありません。',
   'settings.noHostsInSshConfig': '~/.ssh/config にホストがありません',

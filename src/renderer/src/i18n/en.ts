@@ -571,6 +571,19 @@ export const en: Record<ZhKey, string> = {
   'settings.noDataYet': 'No data yet.',
   'settings.noDataYetHint':
     'Storage fills up as you download models, run compute jobs, and save artifacts — each shows its own share here.',
+  'settings.saveFailedReasoningEffort': 'Could not save reasoning effort. Try again.',
+  'settings.saveFailedNotifications': 'Could not save notification preference. Try again.',
+  'settings.saveFailedConversationSkillImport':
+    'Could not save conversation Skill import preference. Try again.',
+  'settings.saveFailedClosePreference': 'Could not save window close preference. Try again.',
+  'settings.saveFailedUseIntent': 'Could not save the licensed-skill use intent. Try again.',
+  'settings.saveFailedAppIcon': 'Could not save app icon preference. Try again.',
+  'settings.saveFailedDefaultPermissionProfile':
+    'Could not save the default permission mode. Try again.',
+  'settings.saveFailedProviderSwitch': 'Could not switch active provider or model. Try again.',
+  'settings.saveFailedAgentFrameworkSwitch': 'Could not switch agent framework. Try again.',
+  'settings.saveFailedVisionModel': 'Could not save the Vision model. Try again.',
+  'settings.saveFailedScenarioModel': 'Could not save the scenario model. Try again.',
   'settings.total': 'Total',
   'settings.availableOnDisk': 'Available on disk',
 

@@ -19,6 +19,7 @@ import type {
   VisionModelConfiguration
 } from '../../../shared/settings'
 import type { SettingsWriteCoordinator } from './settings-write-coordinator'
+import { SETTINGS_WRITE_ERROR_KEYS } from './settings-write-error-keys'
 
 export type SaveProviderResult = {
   providerId: string
@@ -237,7 +238,7 @@ export const createProviderAuthSlice = <Store extends ProviderAuthHost>({
         model: model || undefined
       })
     } catch (error) {
-      write.fail('Could not switch active provider or model. Try again.')
+      write.fail(SETTINGS_WRITE_ERROR_KEYS.providerSwitch)
       console.error('Failed to set active provider', error)
       throw error
     }
@@ -254,7 +255,7 @@ export const createProviderAuthSlice = <Store extends ProviderAuthHost>({
     try {
       snapshot = await getCommands().setAgentFramework({ id })
     } catch (error) {
-      write.fail('Could not switch agent framework. Try again.')
+      write.fail(SETTINGS_WRITE_ERROR_KEYS.agentFrameworkSwitch)
       console.error('Failed to switch agent framework', error)
       throw error
     }
@@ -276,7 +277,7 @@ export const createProviderAuthSlice = <Store extends ProviderAuthHost>({
     try {
       snapshot = await getCommands().setVisionModel({ configuration })
     } catch (error) {
-      write.fail('Could not save the Vision model. Try again.')
+      write.fail(SETTINGS_WRITE_ERROR_KEYS.visionModel)
       console.error('Failed to set vision model', error)
       throw error
     }
@@ -292,7 +293,7 @@ export const createProviderAuthSlice = <Store extends ProviderAuthHost>({
     try {
       snapshot = await getCommands().setScenarioModel({ scenario, configuration })
     } catch (error) {
-      write.fail('Could not save the scenario model. Try again.')
+      write.fail(SETTINGS_WRITE_ERROR_KEYS.scenarioModel)
       console.error('Failed to set scenario model', error)
       throw error
     }

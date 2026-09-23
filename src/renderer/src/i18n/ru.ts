@@ -1753,6 +1753,26 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.noDataYet': 'Данных пока нет.',
   'settings.noDataYetHint':
     'Хранилище заполняется по мере загрузки моделей, запуска вычислений и сохранения артефактов — доля каждого видна здесь.',
+  'settings.saveFailedReasoningEffort':
+    'Не удалось сохранить глубину рассуждений. Повторите попытку.',
+  'settings.saveFailedNotifications':
+    'Не удалось сохранить настройку уведомлений. Повторите попытку.',
+  'settings.saveFailedConversationSkillImport':
+    'Не удалось сохранить настройку импорта навыков в беседе. Повторите попытку.',
+  'settings.saveFailedClosePreference':
+    'Не удалось сохранить настройку закрытия окна. Повторите попытку.',
+  'settings.saveFailedUseIntent':
+    'Не удалось сохранить намерение использования лицензированных навыков. Повторите попытку.',
+  'settings.saveFailedAppIcon':
+    'Не удалось сохранить настройку значка приложения. Повторите попытку.',
+  'settings.saveFailedDefaultPermissionProfile':
+    'Не удалось сохранить режим разрешений по умолчанию. Повторите попытку.',
+  'settings.saveFailedProviderSwitch':
+    'Не удалось переключить активного провайдера или модель. Повторите попытку.',
+  'settings.saveFailedAgentFrameworkSwitch':
+    'Не удалось переключить фреймворк агента. Повторите попытку.',
+  'settings.saveFailedVisionModel': 'Не удалось сохранить модель зрения. Повторите попытку.',
+  'settings.saveFailedScenarioModel': 'Не удалось сохранить модель сценария. Повторите попытку.',
   'settings.noDescription': 'Нет описания',
   'settings.noDownloadableArtifacts': 'В этой сессии нет доступных для скачивания артефактов.',
   'settings.noHostsInSshConfig': 'В ~/.ssh/config нет хостов',

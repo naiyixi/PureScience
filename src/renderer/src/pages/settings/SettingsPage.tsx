@@ -45,6 +45,7 @@ import { cn } from '@/lib/utils'
 import { useComputeStore } from '@/stores/compute-store'
 import { useProjectStore } from '@/stores/project-store'
 import { selectFrameworkApiEndpoints, useSettingsStore } from '@/stores/settings-store'
+import { isSettingsWriteErrorKey } from '@/stores/settings-write-error-keys'
 import type { SettingsPanelId } from './settings-navigation'
 import { useSpecialistStore } from '@/stores/specialist-store'
 import { AgentPanel } from './AgentPanel'
@@ -1083,7 +1084,11 @@ const SettingsPage = forwardRef<SettingsPageHandle, SettingsPageProps>(function 
                   className="mx-3 mt-3 flex items-start gap-2 rounded-lg border border-danger-000/30 bg-danger-000/10 px-3 py-2 text-xs text-danger-000"
                 >
                   <AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-                  <p className="min-w-0 flex-1 break-words py-0.5">{settingsWriteError}</p>
+                  <p className="min-w-0 flex-1 break-words py-0.5">
+                    {isSettingsWriteErrorKey(settingsWriteError)
+                      ? t(settingsWriteError)
+                      : settingsWriteError}
+                  </p>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
