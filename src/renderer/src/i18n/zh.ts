@@ -2253,6 +2253,8 @@ export const zh = {
   'ws.unpublishedArtifactsHint':
     '这些文件由智能体生成，但从未成为产物：要么该次运行没有完成发布，要么无法确定它属于哪一次回复。内容仍在磁盘上。',
   'ws.noFilesYet': '还没有文件',
+  'ws.noFilesMatch': '没有文件匹配「{query}」。',
+  'ws.noFilesMatchHint': '清空搜索框即可看到这个项目的全部文件。',
   'ws.loadMoreUploaded': '加载更多上传文件',
 
   // ws — permission approval controls

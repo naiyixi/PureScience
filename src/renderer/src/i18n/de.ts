@@ -2673,6 +2673,8 @@ export const de: Partial<Record<ZhKey, string>> = {
   'ws.unpublishedArtifactsHint':
     'Diese Dateien wurden von einem Agentenlauf erzeugt, aber sie wurden nie zu Artefakten: Entweder hat der Lauf die Veröffentlichung nicht abgeschlossen, oder sie lassen sich keiner einzelnen Antwort zuordnen. Der Inhalt liegt weiterhin auf der Festplatte.',
   'ws.noFilesYet': 'Noch keine Dateien',
+  'ws.noFilesMatch': 'Keine Dateien passen zu „{query}“.',
+  'ws.noFilesMatchHint': 'Leeren Sie das Suchfeld, um alle Dateien dieses Projekts zu sehen.',
   'ws.noReviewForVersion': 'Keine Überprüfung für diese Version',
   'ws.none': 'Keine',
   'ws.notebookControl': 'Notebook-Steuerung',

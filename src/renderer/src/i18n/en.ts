@@ -2413,6 +2413,8 @@ export const en: Record<ZhKey, string> = {
   'ws.unpublishedArtifactsHint':
     'An agent run produced these files, but they never became artifacts: either that run did not finish publishing them, or it cannot be attributed to a single reply. Their content is still on disk.',
   'ws.noFilesYet': 'No files yet',
+  'ws.noFilesMatch': 'No files match “{query}”.',
+  'ws.noFilesMatchHint': 'Clear the search box to see every file in this project.',
   'ws.loadMoreUploaded': 'Load more uploaded files',
 
   // ws — permission approval controls

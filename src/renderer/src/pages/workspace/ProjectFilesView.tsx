@@ -526,7 +526,7 @@ const FilePageFooter = ({
         disabled={page.isLoading}
         onClick={onLoadMore}
       >
-        {page.isLoading ? 'Loading...' : t('ws.loadMore')}
+        {page.isLoading ? t('common.loading') : t('ws.loadMore')}
       </Button>
     </div>
   )
@@ -1905,8 +1905,15 @@ const ProjectFilesViewContent = ({
           catalogIndex.overview.isIndexComplete &&
           visibleFileCount === 0 &&
           !hasPageError ? (
-            <div className="flex h-full items-center justify-center px-6 text-center text-[12px] text-text-300">
-              {isSearchActive ? `No files match “${debouncedSearchQuery}”` : t('ws.noFilesYet')}
+            <div className="flex h-full flex-col items-center justify-center gap-1 px-6 text-center text-[12px] text-text-300">
+              {isSearchActive ? (
+                <>
+                  <p>{t('ws.noFilesMatch').replace('{query}', debouncedSearchQuery)}</p>
+                  <p>{t('ws.noFilesMatchHint')}</p>
+                </>
+              ) : (
+                <p>{t('ws.noFilesYet')}</p>
+              )}
             </div>
           ) : null}
 

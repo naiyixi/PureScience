@@ -2555,6 +2555,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'ws.unpublishedArtifactsHint':
     '이 파일들은 에이전트 실행이 생성했지만 산출물이 되지 않았습니다. 해당 실행이 게시를 완료하지 않았거나, 어느 응답에 속하는지 특정할 수 없기 때문입니다. 내용은 디스크에 남아 있습니다.',
   'ws.noFilesYet': '아직 파일이 없습니다',
+  'ws.noFilesMatch': '{query}와 일치하는 파일이 없습니다.',
+  'ws.noFilesMatchHint': '검색 상자를 비우면 이 프로젝트의 모든 파일이 표시됩니다.',
   'ws.noReviewForVersion': '이 버전에 대한 검토가 없습니다',
   'ws.none': '없음',
   'ws.notebookControl': '노트북 컨트롤',

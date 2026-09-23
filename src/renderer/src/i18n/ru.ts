@@ -2607,6 +2607,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'ws.unpublishedArtifactsHint':
     'Эти файлы создал запуск агента, но они так и не стали артефактами: либо запуск не завершил публикацию, либо их нельзя отнести к одному ответу. Содержимое осталось на диске.',
   'ws.noFilesYet': 'Файлов пока нет',
+  'ws.noFilesMatch': 'Нет файлов по запросу «{query}».',
+  'ws.noFilesMatchHint': 'Очистите поле поиска, чтобы увидеть все файлы проекта.',
   'ws.noReviewForVersion': 'Для этой версии нет проверки',
   'ws.none': 'Нет',
   'ws.notebookControl': 'Управление Notebook',

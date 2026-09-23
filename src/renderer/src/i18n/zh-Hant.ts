@@ -2420,6 +2420,8 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'ws.unpublishedArtifactsHint':
     '這些檔案由智慧體產生，但從未成為產物：要麼該次執行沒有完成發佈，要麼無法確定它屬於哪一次回覆。內容仍在磁碟上。',
   'ws.noFilesYet': '還沒有檔案',
+  'ws.noFilesMatch': '沒有檔案符合「{query}」。',
+  'ws.noFilesMatchHint': '清空搜尋框即可看到這個專案的全部檔案。',
   'ws.noReviewForVersion': '此版本沒有審查',
   'ws.none': '無',
   'ws.notebookControl': '筆記本控制項',

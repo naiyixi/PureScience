@@ -2641,6 +2641,8 @@ export const es: Partial<Record<ZhKey, string>> = {
   'ws.unpublishedArtifactsHint':
     'Un agente generó estos archivos, pero nunca llegaron a ser artefactos: o esa ejecución no terminó de publicarlos, o no pueden atribuirse a una sola respuesta. El contenido sigue en el disco.',
   'ws.noFilesYet': 'Aún no hay archivos',
+  'ws.noFilesMatch': 'Ningún archivo coincide con «{query}».',
+  'ws.noFilesMatchHint': 'Vacía el cuadro de búsqueda para ver todos los archivos del proyecto.',
   'ws.noReviewForVersion': 'No hay revisión para esta versión',
   'ws.none': 'Ninguno',
   'ws.notebookControl': 'Control del cuaderno',

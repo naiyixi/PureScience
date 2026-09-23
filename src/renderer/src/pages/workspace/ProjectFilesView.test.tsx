@@ -630,6 +630,8 @@ describe('ProjectFilesView', () => {
 
     expect(filterButton?.textContent).toContain('Session B')
     expect(container.textContent).toContain('No files match “timeline”')
+    // The dead end also says how to get back to the full list.
+    expect(container.textContent).toContain('Clear the search box to see every file')
     expect(window.api.projectFiles.listFiles).toHaveBeenCalledWith(
       expect.objectContaining({
         collection: { kind: 'sessionArtifacts', sessionId: 'session-b' },

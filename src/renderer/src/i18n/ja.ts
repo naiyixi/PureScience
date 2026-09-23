@@ -2608,6 +2608,9 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'ws.unpublishedArtifactsHint':
     'これらのファイルはエージェントの実行が生成しましたが、成果物にはなりませんでした。その実行が公開を完了していないか、どの返信に属するか特定できないためです。内容はディスク上に残っています。',
   'ws.noFilesYet': 'ファイルはまだありません',
+  'ws.noFilesMatch': '「{query}」に一致するファイルはありません。',
+  'ws.noFilesMatchHint':
+    '検索ボックスを空にすると、このプロジェクトのすべてのファイルが表示されます。',
   'ws.noReviewForVersion': 'このバージョンのレビューはありません',
   'ws.none': 'なし',
   'ws.notebookControl': 'Notebook コントロール',
