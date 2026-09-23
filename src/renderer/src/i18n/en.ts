@@ -275,6 +275,59 @@ export const en: Record<ZhKey, string> = {
     'will become unavailable and will not be switched to Main Agent automatically.',
   'specialist.boundNoticeChoose':
     'For each affected conversation you’ll explicitly choose a new specialist or Main Agent before it can send again.',
+  'omics.scopeDownsampled': 'Downsampled {shown}/{total} ({sampling})',
+  'omics.scopeFull': 'Full data ({total})',
+  'omics.scopeUnknown': 'Scope unknown (no complete count available)',
+  'omics.scopeAll': 'all',
+  'omics.samplingHead': 'head slice',
+  'omics.samplingRandom': 'random sample',
+  'omics.shapeCells': '{cells} cells × {vars} features',
+  'omics.formatUnknown': 'Format not recognised (byte-stream preview only)',
+  'omics.fullRunRequired':
+    'Full run required (go through the compute decision chain; do not finalise on preview numbers)',
+  'omics.missingHost': 'No compute host selected (register an SSH/Slurm host in Compute settings)',
+  'omics.noteSizeUnknown':
+    'Full-run size unknown: the preview could not read complete counts, so the job must report its own totals at runtime',
+  'omics.noteNoEngine':
+    'No engine specified: the job script must declare the engine and version, and results must be labelled with them',
+  'omics.targetAll': 'all {count} {unit}',
+  'omics.targetFullData': 'the full dataset',
+  'omics.unitCells': 'cells',
+  'omics.unitVariants': 'variants',
+  'omics.hostSlurm': '{host} (Slurm scheduler)',
+  'omics.hostSsh': '{host} (direct SSH)',
+  'omics.hostUnset': 'a host not chosen yet',
+  'omics.reason': 'The current answer can only rest on {scope}, while {question} needs {target}.',
+  'omics.deliverable':
+    'Run the full analysis on {host}: {engine}covering {target}, producing reproducible numeric results.',
+  'omics.labelScope': 'Data scope: full ({total})',
+  'omics.labelEngine': 'Engine and version',
+  'omics.labelParams': 'Key parameters',
+  'omics.labelInput': 'Input data identity (path + fingerprint/version)',
+  'omics.runtimeReported': 'reported at runtime',
+  'omics.provisionalWarning':
+    'This preview is a subset: it must not be delivered as a final conclusion; when a numeric answer is needed, go through the full-run proposal below.',
+  'omics.fullRunProposal': 'Full-run proposal (human approval before submission)',
+  'omics.computeHost': 'Compute host',
+  'omics.selectHost': 'Choose…',
+  'omics.missingLabel': 'Still missing:',
+  'omics.labelsLabel': 'Results must be labelled with:',
+  'omics.submitFullRun': 'Submit full run (pending approval)',
+  'omics.selectHostFirst':
+    'Choose a host first; if this machine cannot do it and no host is registered, say plainly "not computed" rather than substituting preview numbers',
+  'omics.answerable':
+    'The preview already covers the full data, so it may support conclusions (still label source and version).',
+  'omics.invalidManifest':
+    'That JSON is not a valid preview manifest (schemaVersion or fields do not match); regenerate it with the omics-data-preview skill.',
+  'omics.manifestReadFailed': 'Could not read the manifest: {message}',
+  'omics.manifestLoaded': 'Manifest loaded: {path}',
+  'omics.replaceManifest': 'Replace manifest',
+  'omics.largeFilePreview': 'Large-file preview (inspect first, compute second)',
+  'omics.noManifestPrefix':
+    '{name} has no preview manifest yet. Ask the assistant to read this file with the ',
+  'omics.noManifestSuffix':
+    ' skill (structure only, downsampled within a budget), then load the manifest JSON it generates here — this surface will not invent a cell count or a downsampling conclusion.',
+  'omics.loadManifest': 'Load preview manifest (*.preview.json)',
   'figure.phaseAnchorsX': 'Calibrate the x axis: click two known tick marks in order',
   'figure.phaseAnchorsY': 'Calibrate the y axis: now click two known tick marks',
   'figure.phasePicking': 'Start clicking data points',

@@ -37,16 +37,19 @@ export function OmicsPreviewLauncher({
     try {
       const parsed: unknown = JSON.parse(await file.text())
       if (!isOmicsPreviewManifest(parsed)) {
-        setError(
-          '该 JSON 不是有效的预览清单（schemaVersion/字段不符）；请用 omics-data-preview 技能重新生成。'
-        )
+        setError(t('omics.invalidManifest'))
         setManifest(null)
         return
       }
       setManifest(parsed)
       setError(undefined)
     } catch (cause) {
-      setError(`清单读取失败：${cause instanceof Error ? cause.message : String(cause)}`)
+      setError(
+        t('omics.manifestReadFailed').replace(
+          '{message}',
+          cause instanceof Error ? cause.message : String(cause)
+        )
+      )
       setManifest(null)
     }
   }
@@ -55,7 +58,9 @@ export function OmicsPreviewLauncher({
     return (
       <div className={`flex flex-col gap-2 ${className ?? ''}`}>
         <div className="flex items-center justify-between text-xs text-[var(--muted-foreground)]">
-          <span data-testid="omics-manifest-source">清单已载入：{manifest.path}</span>
+          <span data-testid="omics-manifest-source">
+            {t('omics.manifestLoaded').replace('{path}', manifest.path)}
+          </span>
           <button
             type="button"
             className="underline"
@@ -64,7 +69,7 @@ export function OmicsPreviewLauncher({
               setError(undefined)
             }}
           >
-            更换清单
+            {t('omics.replaceManifest')}
           </button>
         </div>
         <OmicsPreviewPanel
@@ -82,7 +87,7 @@ export function OmicsPreviewLauncher({
       className={`flex flex-col gap-2 rounded-lg border border-[var(--border)] p-3 ${className ?? ''}`}
     >
       <div className="flex items-center gap-2 text-sm font-medium text-[var(--foreground)]">
-        <FileJson className="size-4" aria-hidden="true" /> 大文件预览（先探后算）
+        <FileJson className="size-4" aria-hidden="true" /> {t('omics.largeFilePreview')}
         {onClose ? (
           <button
             type="button"
@@ -95,13 +100,13 @@ export function OmicsPreviewLauncher({
         ) : null}
       </div>
       <p className="text-xs text-[var(--muted-foreground)]" data-testid="omics-launcher-guidance">
-        {sourceName} 尚未生成预览清单。请先让助手用 <code>omics-data-preview</code> 技能读取该文件
-        （只读结构 + 按预算降采样），再把生成的清单 JSON
-        载入这里——本界面不会凭空给出细胞数或降采样结论。
+        {t('omics.noManifestPrefix').replace('{name}', sourceName)}
+        <code>omics-data-preview</code>
+        {t('omics.noManifestSuffix')}
       </p>
       <label className="flex items-center gap-2 text-xs">
         <Upload className="size-3.5" aria-hidden="true" />
-        <span>载入预览清单（*.preview.json）</span>
+        <span>{t('omics.loadManifest')}</span>
         <input
           type="file"
           accept=".json,application/json"

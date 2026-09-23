@@ -2808,6 +2808,62 @@ export const de: Partial<Record<ZhKey, string>> = {
     'wird nicht verfügbar und nicht automatisch auf den Main Agent umgestellt.',
   'specialist.boundNoticeChoose':
     'Für jede betroffene Konversation wählst du ausdrücklich einen neuen Spezialisten oder den Main Agent, bevor sie wieder senden kann.',
+  'omics.scopeDownsampled': 'Heruntergetastet {shown}/{total} ({sampling})',
+  'omics.scopeFull': 'Vollständige Daten ({total})',
+  'omics.scopeUnknown': 'Umfang unbekannt (keine vollständige Zählung erhalten)',
+  'omics.scopeAll': 'alle',
+  'omics.samplingHead': 'Kopfausschnitt',
+  'omics.samplingRandom': 'Zufallsstichprobe',
+  'omics.shapeCells': '{cells} Zellen × {vars} Merkmale',
+  'omics.formatUnknown': 'Format nicht erkannt (nur Byte-Stream-Vorschau)',
+  'omics.fullRunRequired':
+    'Vollständiger Lauf erforderlich (über die Rechen-Entscheidungskette; nicht mit Vorschauwerten abschließen)',
+  'omics.missingHost':
+    'Kein Rechenhost gewählt (SSH/Slurm-Host in den Compute-Einstellungen registrieren)',
+  'omics.noteSizeUnknown':
+    'Größe des vollständigen Laufs unbekannt: die Vorschau konnte keine vollständige Zählung lesen, der Job muss seine Summen zur Laufzeit melden',
+  'omics.noteNoEngine':
+    'Keine Engine genannt: das Job-Skript muss Engine und Version angeben, und Ergebnisse müssen damit gekennzeichnet werden',
+  'omics.targetAll': 'alle {count} {unit}',
+  'omics.targetFullData': 'der vollständige Datensatz',
+  'omics.unitCells': 'Zellen',
+  'omics.unitVariants': 'Varianten',
+  'omics.hostSlurm': '{host} (Slurm-Scheduler)',
+  'omics.hostSsh': '{host} (direktes SSH)',
+  'omics.hostUnset': 'ein noch nicht gewählter Host',
+  'omics.reason':
+    'Die aktuelle Antwort kann nur auf {scope} beruhen, während {question} {target} benötigt.',
+  'omics.deliverable':
+    'Die vollständige Analyse auf {host} ausführen: {engine}über {target}, mit reproduzierbaren numerischen Ergebnissen.',
+  'omics.labelScope': 'Datenumfang: vollständig ({total})',
+  'omics.labelEngine': 'Engine und Version',
+  'omics.labelParams': 'Wesentliche Parameter',
+  'omics.labelInput': 'Identität der Eingabedaten (Pfad + Inhaltsfingerabdruck/Version)',
+  'omics.runtimeReported': 'zur Laufzeit gemeldet',
+  'omics.provisionalWarning':
+    'Diese Vorschau ist eine Teilmenge: sie darf nicht als Endergebnis geliefert werden; wenn ein numerisches Ergebnis nötig ist, über den Vorschlag unten gehen.',
+  'omics.fullRunProposal':
+    'Vorschlag für den vollständigen Lauf (menschliche Freigabe vor der Übermittlung)',
+  'omics.computeHost': 'Rechenhost',
+  'omics.selectHost': 'Auswählen…',
+  'omics.missingLabel': 'Fehlt noch:',
+  'omics.labelsLabel': 'Ergebnisse müssen gekennzeichnet werden mit:',
+  'omics.submitFullRun': 'Vollständigen Lauf einreichen (Freigabe ausstehend)',
+  'omics.selectHostFirst':
+    'Zuerst einen Host wählen; wenn dieser Rechner es nicht kann und kein Host registriert ist, ehrlich „nicht berechnet“ sagen statt Vorschauwerte einzusetzen',
+  'omics.answerable':
+    'Die Vorschau deckt bereits die vollständigen Daten ab und kann Ergebnisse tragen (Quelle und Version weiterhin kennzeichnen).',
+  'omics.invalidManifest':
+    'Dieses JSON ist kein gültiges Vorschau-Manifest (schemaVersion oder Felder passen nicht); mit dem omics-data-preview-Skill neu erzeugen.',
+  'omics.manifestReadFailed': 'Manifest konnte nicht gelesen werden: {message}',
+  'omics.manifestLoaded': 'Manifest geladen: {path}',
+  'omics.replaceManifest': 'Manifest ersetzen',
+  'omics.largeFilePreview': 'Vorschau großer Dateien (erst prüfen, dann rechnen)',
+  'omics.noManifestPrefix':
+    '{name} hat noch kein Vorschau-Manifest. Lassen Sie den Assistenten diese Datei mit dem ',
+  'omics.noManifestSuffix':
+    ' Skill lesen (nur Struktur, innerhalb eines Budgets heruntergetastet) und laden Sie das erzeugte Manifest-JSON hier — diese Ansicht erfindet weder Zellzahl noch Downsampling-Ergebnis.',
+  'omics.loadManifest': 'Vorschau-Manifest laden (*.preview.json)',
   'figure.phaseAnchorsX':
     'x-Achse kalibrieren: zwei bekannte Skalenstriche der Reihe nach anklicken',
   'figure.phaseAnchorsY': 'y-Achse kalibrieren: jetzt zwei bekannte Skalenstriche anklicken',

@@ -7,7 +7,18 @@
 // The execution surface is the existing compute pipeline (hosts registered in Compute settings,
 // approval flow, completion notification) — no new transport is introduced here.
 
-import { describeOmicsScope, isProvisionalScope, type OmicsPreviewManifest } from './omics-preview'
+import {
+  describeOmicsScope,
+  isProvisionalScope,
+  type OmicsPreviewManifest,
+  type OmicsTranslate
+} from './omics-preview'
+
+const fill = (template: string, vars: Record<string, string | number>): string =>
+  Object.entries(vars).reduce(
+    (text, [name, value]) => text.split(`{${name}}`).join(String(value)),
+    template
+  )
 
 export type OmicsFullRunProposal = {
   /** Always true: the compute pipeline owns the approval gate. */
@@ -40,63 +51,79 @@ export type OmicsFullRunOptions = {
 // proposing one would quietly contradict the manifest it came from.
 export const proposeOmicsFullRun = (
   manifest: OmicsPreviewManifest,
-  options: OmicsFullRunOptions = {}
+  options: OmicsFullRunOptions = {},
+  t: OmicsTranslate
 ): OmicsFullRunProposal | null => {
   if (!isProvisionalScope(manifest)) return null
 
-  const scopeLabel = describeOmicsScope(manifest)
+  const scopeLabel = describeOmicsScope(manifest, t)
   const question = options.question?.trim() || 'answer the analysis question'
   const total = manifest.nObs ?? manifest.variantCount
   const missing: string[] = []
   const notes: string[] = []
 
   if (!options.hostName) {
-    missing.push('未选择计算主机（Compute 设置中注册的 SSH/Slurm 主机）')
+    missing.push(t('omics.missingHost'))
   }
   if (total === undefined) {
-    notes.push('全量规模未知：预览未能读到完整计数，作业需在运行时自行上报总量')
+    notes.push(t('omics.noteSizeUnknown'))
   }
   if (!options.engine) {
-    notes.push('未指定引擎：作业脚本需声明所用引擎与版本，结果必须标注')
+    notes.push(t('omics.noteNoEngine'))
   }
 
   const target =
     total !== undefined
-      ? `全部 ${total} 个${manifest.format === 'h5ad' ? '细胞' : '变异'}`
-      : '全量数据'
-  const host = options.hostName
-    ? `${options.hostName}${options.executionMode ? `（${options.executionMode === 'slurm' ? 'Slurm 调度' : '直连 SSH'}）` : ''}`
-    : '尚未选择的主机'
+      ? fill(t('omics.targetAll'), {
+          count: total,
+          unit: manifest.format === 'h5ad' ? t('omics.unitCells') : t('omics.unitVariants')
+        })
+      : t('omics.targetFullData')
+  const host = !options.hostName
+    ? t('omics.hostUnset')
+    : options.executionMode === 'slurm'
+      ? fill(t('omics.hostSlurm'), { host: options.hostName })
+      : options.executionMode === 'direct_ssh'
+        ? fill(t('omics.hostSsh'), { host: options.hostName })
+        : options.hostName
 
   return {
     requiresApproval: true,
-    reason: `当前结论只能基于 ${scopeLabel}，而 ${question} 需要 ${target}。`,
+    reason: fill(t('omics.reason'), { scope: scopeLabel, question, target }),
     scopeLabel,
-    deliverable: `在 ${host} 上运行全量分析：${options.engine ? `${options.engine} · ` : ''}覆盖 ${target}，产出可复现的数值结果。`,
+    deliverable: fill(t('omics.deliverable'), {
+      host,
+      engine: options.engine ? `${options.engine} · ` : '',
+      target
+    }),
     requiredResultLabels: [
-      `数据范围：全量（${total !== undefined ? total : '运行时上报'}）`,
-      '引擎与版本',
-      '关键参数',
-      '输入数据标识（路径 + 内容指纹/版本）'
+      fill(t('omics.labelScope'), {
+        total: total !== undefined ? total : t('omics.runtimeReported')
+      }),
+      t('omics.labelEngine'),
+      t('omics.labelParams'),
+      t('omics.labelInput')
     ],
     missing,
     notes
   }
 }
 
-// Rendered where the user decides; keeps the approval expectation explicit (G1).
+// The single-language rendering of a proposal, for callers that are not the panel (agent tools,
+// logs, handoffs). It is deliberately not localised: the same proposal must read the same wherever
+// it is quoted, and the panel renders the fields itself through the dictionary.
 export const describeFullRunProposal = (proposal: OmicsFullRunProposal): string => {
   const lines = [
-    `提案：${proposal.deliverable}`,
-    `原因：${proposal.reason}`,
-    `需人工批准：是（提交前必须由用户确认主机与资源）`,
-    `结果必须标注：${proposal.requiredResultLabels.join('、')}`
+    `Proposal: ${proposal.deliverable}`,
+    `Reason: ${proposal.reason}`,
+    'Human approval required: yes (the user confirms host and resources before submission)',
+    `Results must be labelled with: ${proposal.requiredResultLabels.join(', ')}`
   ]
   if (proposal.missing.length > 0) {
-    lines.push(`尚缺：${proposal.missing.join('；')}`)
+    lines.push(`Still missing: ${proposal.missing.join('; ')}`)
   }
   if (proposal.notes.length > 0) {
-    lines.push(`注意：${proposal.notes.join('；')}`)
+    lines.push(`Notes: ${proposal.notes.join('; ')}`)
   }
   return lines.join('\n')
 }

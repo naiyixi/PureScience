@@ -2774,6 +2774,62 @@ export const es: Partial<Record<ZhKey, string>> = {
     'dejará de estar disponible y no se cambiará automáticamente al agente principal.',
   'specialist.boundNoticeChoose':
     'En cada conversación afectada elegirás explícitamente un nuevo especialista o el agente principal antes de poder enviar de nuevo.',
+  'omics.scopeDownsampled': 'Submuestreado {shown}/{total} ({sampling})',
+  'omics.scopeFull': 'Datos completos ({total})',
+  'omics.scopeUnknown': 'Alcance desconocido (no se obtuvo el recuento completo)',
+  'omics.scopeAll': 'todo',
+  'omics.samplingHead': 'corte inicial',
+  'omics.samplingRandom': 'muestra aleatoria',
+  'omics.shapeCells': '{cells} células × {vars} variables',
+  'omics.formatUnknown': 'Formato no reconocido (solo vista previa del flujo de bytes)',
+  'omics.fullRunRequired':
+    'Se requiere cómputo completo (pasa por la cadena de decisión de cómputo; no cierres conclusiones con valores de vista previa)',
+  'omics.missingHost':
+    'No se ha elegido host de cómputo (registra un host SSH/Slurm en los ajustes de Compute)',
+  'omics.noteSizeUnknown':
+    'Tamaño del cómputo completo desconocido: la vista previa no pudo leer recuentos completos, el trabajo debe reportar sus totales al ejecutarse',
+  'omics.noteNoEngine':
+    'No se indicó motor: el script debe declarar el motor y su versión, y los resultados deben llevarlos',
+  'omics.targetAll': 'las {count} {unit}',
+  'omics.targetFullData': 'el conjunto de datos completo',
+  'omics.unitCells': 'células',
+  'omics.unitVariants': 'variantes',
+  'omics.hostSlurm': '{host} (planificador Slurm)',
+  'omics.hostSsh': '{host} (SSH directo)',
+  'omics.hostUnset': 'un host aún sin elegir',
+  'omics.reason':
+    'La respuesta actual solo puede apoyarse en {scope}, mientras que {question} necesita {target}.',
+  'omics.deliverable':
+    'Ejecutar el análisis completo en {host}: {engine}cubriendo {target}, con resultados numéricos reproducibles.',
+  'omics.labelScope': 'Alcance de datos: completo ({total})',
+  'omics.labelEngine': 'Motor y versión',
+  'omics.labelParams': 'Parámetros clave',
+  'omics.labelInput': 'Identidad de los datos de entrada (ruta + huella/versión)',
+  'omics.runtimeReported': 'reportado al ejecutarse',
+  'omics.provisionalWarning':
+    'Esta vista previa es un subconjunto: no debe entregarse como conclusión final; si necesitas una conclusión numérica, usa la propuesta de cómputo completo de abajo.',
+  'omics.fullRunProposal': 'Propuesta de cómputo completo (aprobación humana antes de enviar)',
+  'omics.computeHost': 'Host de cómputo',
+  'omics.selectHost': 'Elegir…',
+  'omics.missingLabel': 'Falta todavía:',
+  'omics.labelsLabel': 'Los resultados deben indicar:',
+  'omics.submitFullRun': 'Enviar el trabajo completo (pendiente de aprobación)',
+  'omics.selectHostFirst':
+    'Elige primero un host; si esta máquina no puede y no hay host registrado, di claramente «no calculado» en lugar de sustituirlo por valores de vista previa',
+  'omics.answerable':
+    'La vista previa ya cubre los datos completos, así que puede sostener conclusiones (aun así indica origen y versión).',
+  'omics.invalidManifest':
+    'Ese JSON no es un manifiesto de vista previa válido (schemaVersion o campos no coinciden); vuelve a generarlo con la habilidad omics-data-preview.',
+  'omics.manifestReadFailed': 'No se pudo leer el manifiesto: {message}',
+  'omics.manifestLoaded': 'Manifiesto cargado: {path}',
+  'omics.replaceManifest': 'Reemplazar manifiesto',
+  'omics.largeFilePreview':
+    'Vista previa de archivos grandes (inspeccionar primero, calcular después)',
+  'omics.noManifestPrefix':
+    '{name} aún no tiene manifiesto de vista previa. Pide al asistente que lea este archivo con la habilidad ',
+  'omics.noManifestSuffix':
+    ' (solo estructura, submuestreada dentro de un presupuesto) y luego carga aquí el manifiesto JSON generado: esta vista no inventará un recuento de células ni una conclusión de submuestreo.',
+  'omics.loadManifest': 'Cargar manifiesto de vista previa (*.preview.json)',
   'figure.phaseAnchorsX': 'Calibrar el eje x: haz clic en dos marcas conocidas, en orden',
   'figure.phaseAnchorsY': 'Calibrar el eje y: ahora haz clic en dos marcas conocidas',
   'figure.phasePicking': 'Empieza a hacer clic en los puntos de datos',

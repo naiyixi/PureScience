@@ -2794,6 +2794,61 @@ export const fr: Partial<Record<ZhKey, string>> = {
     'deviendra indisponible et ne sera pas basculé automatiquement vers l’agent principal.',
   'specialist.boundNoticeChoose':
     'Pour chaque conversation concernée, vous choisirez explicitement un nouveau spécialiste ou l’agent principal avant qu’elle puisse envoyer à nouveau.',
+  'omics.scopeDownsampled': 'Sous-échantillonné {shown}/{total} ({sampling})',
+  'omics.scopeFull': 'Données complètes ({total})',
+  'omics.scopeUnknown': 'Étendue inconnue (aucun décompte complet obtenu)',
+  'omics.scopeAll': 'tout',
+  'omics.samplingHead': 'troncature en tête',
+  'omics.samplingRandom': 'échantillon aléatoire',
+  'omics.shapeCells': '{cells} cellules × {vars} variables',
+  'omics.formatUnknown': 'Format non reconnu (aperçu du flux d’octets uniquement)',
+  'omics.fullRunRequired':
+    'Exécution complète requise (passer par la chaîne de décision de calcul ; ne pas conclure sur les valeurs d’aperçu)',
+  'omics.missingHost':
+    'Aucun hôte de calcul choisi (enregistrer un hôte SSH/Slurm dans les réglages Compute)',
+  'omics.noteSizeUnknown':
+    'Taille de l’exécution complète inconnue : l’aperçu n’a pas pu lire les décomptes complets, le job doit déclarer ses totaux à l’exécution',
+  'omics.noteNoEngine':
+    'Aucun moteur nommé : le script doit déclarer le moteur et sa version, et les résultats doivent les porter',
+  'omics.targetAll': 'les {count} {unit}',
+  'omics.targetFullData': 'le jeu de données complet',
+  'omics.unitCells': 'cellules',
+  'omics.unitVariants': 'variantes',
+  'omics.hostSlurm': '{host} (ordonnanceur Slurm)',
+  'omics.hostSsh': '{host} (SSH direct)',
+  'omics.hostUnset': 'un hôte pas encore choisi',
+  'omics.reason':
+    'La réponse actuelle ne peut reposer que sur {scope}, alors que {question} exige {target}.',
+  'omics.deliverable':
+    'Lancer l’analyse complète sur {host} : {engine}couvrant {target}, avec des résultats numériques reproductibles.',
+  'omics.labelScope': 'Étendue des données : complète ({total})',
+  'omics.labelEngine': 'Moteur et version',
+  'omics.labelParams': 'Paramètres clés',
+  'omics.labelInput': 'Identité des données d’entrée (chemin + empreinte/version)',
+  'omics.runtimeReported': 'déclaré à l’exécution',
+  'omics.provisionalWarning':
+    'Cet aperçu est un sous-ensemble : il ne doit pas être livré comme conclusion finale ; si un résultat chiffré est nécessaire, passer par la proposition d’exécution complète ci-dessous.',
+  'omics.fullRunProposal': 'Proposition d’exécution complète (approbation humaine avant envoi)',
+  'omics.computeHost': 'Hôte de calcul',
+  'omics.selectHost': 'Choisir…',
+  'omics.missingLabel': 'Manque encore :',
+  'omics.labelsLabel': 'Les résultats doivent porter :',
+  'omics.submitFullRun': 'Soumettre l’exécution complète (en attente d’approbation)',
+  'omics.selectHostFirst':
+    'Choisir d’abord un hôte ; si cette machine ne peut pas le faire et qu’aucun hôte n’est enregistré, dire clairement « non calculé » plutôt que de substituer des valeurs d’aperçu',
+  'omics.answerable':
+    'L’aperçu couvre déjà les données complètes : il peut porter des conclusions (indiquer tout de même la source et la version).',
+  'omics.invalidManifest':
+    'Ce JSON n’est pas un manifeste d’aperçu valide (schemaVersion ou champs non conformes) ; le régénérer avec la compétence omics-data-preview.',
+  'omics.manifestReadFailed': 'Lecture du manifeste impossible : {message}',
+  'omics.manifestLoaded': 'Manifeste chargé : {path}',
+  'omics.replaceManifest': 'Remplacer le manifeste',
+  'omics.largeFilePreview': 'Aperçu des fichiers volumineux (inspecter d’abord, calculer ensuite)',
+  'omics.noManifestPrefix':
+    '{name} n’a pas encore de manifeste d’aperçu. Demandez à l’assistant de lire ce fichier avec la compétence ',
+  'omics.noManifestSuffix':
+    ' (structure seule, sous-échantillonnée dans un budget), puis chargez ici le manifeste JSON produit — cette vue n’inventera ni nombre de cellules ni conclusion de sous-échantillonnage.',
+  'omics.loadManifest': 'Charger un manifeste d’aperçu (*.preview.json)',
   'figure.phaseAnchorsX': "Calibrer l'axe x : cliquer dans l'ordre deux graduations connues",
   'figure.phaseAnchorsY': "Calibrer l'axe y : cliquer maintenant deux graduations connues",
   'figure.phasePicking': 'Commencer à cliquer les points de données',

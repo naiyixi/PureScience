@@ -55,10 +55,12 @@ describe('OmicsPreviewPanel', () => {
     act(() => {
       root.render(<OmicsPreviewPanel manifest={manifest()} />)
     })
-    expect(text('omics-scope-label')).toBe('基于 2000/20000 降采样（头部截取）')
-    expect(text('omics-shape-summary')).toContain('20000 细胞 × 3000 特征')
-    expect(text('omics-shape-summary')).toContain('需全量计算')
-    expect(text('omics-provisional-warning')).toContain('不得作为最终结论')
+    expect(text('omics-scope-label')).toBe('Downsampled 2000/20000 (head slice)')
+    expect(text('omics-shape-summary')).toContain('20000 cells × 3000 features')
+    expect(text('omics-shape-summary')).toContain('Full run required')
+    expect(text('omics-provisional-warning')).toContain(
+      'must not be delivered as a final conclusion'
+    )
   })
 
   it('gates the full-run submission on choosing a host (G1)', () => {
@@ -75,12 +77,12 @@ describe('OmicsPreviewPanel', () => {
     })
 
     expect(button('omics-submit-full-run')?.disabled).toBe(true)
-    expect(text('omics-proposal-missing')).toContain('未选择计算主机')
+    expect(text('omics-proposal-missing')).toContain('No compute host selected')
 
     selectHost('gpu-a')
     expect(button('omics-submit-full-run')?.disabled).toBe(false)
-    expect(text('omics-proposal-deliverable')).toContain('gpu-a（Slurm 调度）')
-    expect(text('omics-proposal-reason')).toContain('基于 2000/20000 降采样')
+    expect(text('omics-proposal-deliverable')).toContain('gpu-a (Slurm scheduler)')
+    expect(text('omics-proposal-reason')).toContain('Downsampled 2000/20000')
 
     act(() => button('omics-submit-full-run')?.click())
     expect(onSubmitFullRun).toHaveBeenCalledTimes(1)
@@ -92,9 +94,9 @@ describe('OmicsPreviewPanel', () => {
     act(() => {
       root.render(<OmicsPreviewPanel manifest={manifest()} hosts={[]} />)
     })
-    expect(text('omics-proposal-missing')).toContain('未选择计算主机')
-    expect(container.textContent).toContain('未计算')
-    expect(container.textContent).not.toContain('已提交')
+    expect(text('omics-proposal-missing')).toContain('No compute host selected')
+    expect(container.textContent).toContain('not computed')
+    expect(container.textContent).not.toContain('submitted')
   })
 
   it('declares the preview answerable when it covered the whole file', () => {
@@ -108,8 +110,8 @@ describe('OmicsPreviewPanel', () => {
         />
       )
     })
-    expect(text('omics-answerable')).toContain('可直接用于结论')
+    expect(text('omics-answerable')).toContain('may support conclusions')
     expect(button('omics-submit-full-run')).toBeNull()
-    expect(text('omics-scope-label')).toBe('全量（20000）')
+    expect(text('omics-scope-label')).toBe('Full data (20000)')
   })
 })

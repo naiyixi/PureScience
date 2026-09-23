@@ -2680,6 +2680,58 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'specialist.boundNoticeUnavailable': '사용할 수 없게 되며 메인 Agent로 자동 전환되지 않습니다.',
   'specialist.boundNoticeChoose':
     '영향을 받는 각 세션에서는 다시 보내기 전에 새 전문가나 메인 Agent를 직접 선택해야 합니다.',
+  'omics.scopeDownsampled': '{shown}/{total} 다운샘플링({sampling})',
+  'omics.scopeFull': '전체 데이터({total})',
+  'omics.scopeUnknown': '범위 알 수 없음(전체 개수를 얻지 못함)',
+  'omics.scopeAll': '전체',
+  'omics.samplingHead': '앞부분 추출',
+  'omics.samplingRandom': '무작위 표본',
+  'omics.shapeCells': '{cells} 세포 × {vars} 특징',
+  'omics.formatUnknown': '형식을 인식할 수 없음(바이트 스트림 미리보기만)',
+  'omics.fullRunRequired':
+    '전체 실행 필요(컴퓨팅 의사결정 절차를 거치고, 미리보기 값으로 결론을 확정하지 마세요)',
+  'omics.missingHost': '컴퓨팅 호스트가 선택되지 않음(Compute 설정에서 SSH/Slurm 호스트 등록)',
+  'omics.noteSizeUnknown':
+    '전체 규모를 알 수 없음: 미리보기가 전체 개수를 읽지 못했으므로 작업이 실행 시 총량을 보고해야 합니다',
+  'omics.noteNoEngine':
+    '엔진이 지정되지 않음: 작업 스크립트가 엔진과 버전을 선언하고 결과에도 표기해야 합니다',
+  'omics.targetAll': '{unit} 전체 {count}개',
+  'omics.targetFullData': '전체 데이터',
+  'omics.unitCells': '세포',
+  'omics.unitVariants': '변이',
+  'omics.hostSlurm': '{host}(Slurm 스케줄러)',
+  'omics.hostSsh': '{host}(직접 SSH)',
+  'omics.hostUnset': '아직 선택하지 않은 호스트',
+  'omics.reason': '현재 결론은 {scope}에만 근거할 수 있지만, {question}에는 {target}이 필요합니다.',
+  'omics.deliverable':
+    '{host}에서 전체 분석 실행: {engine}{target}을 대상으로 하며 재현 가능한 수치 결과를 산출합니다.',
+  'omics.labelScope': '데이터 범위: 전체({total})',
+  'omics.labelEngine': '엔진과 버전',
+  'omics.labelParams': '핵심 파라미터',
+  'omics.labelInput': '입력 데이터 식별 정보(경로 + 내용 지문/버전)',
+  'omics.runtimeReported': '실행 시 보고',
+  'omics.provisionalWarning':
+    '이 미리보기는 부분집합입니다. 최종 결론으로 제출해서는 안 되며, 수치 결론이 필요하면 아래 전체 실행 제안을 거치세요.',
+  'omics.fullRunProposal': '전체 실행 제안(제출 전 사람의 승인 필요)',
+  'omics.computeHost': '컴퓨팅 호스트',
+  'omics.selectHost': '선택하세요…',
+  'omics.missingLabel': '아직 부족:',
+  'omics.labelsLabel': '결과에 반드시 표기:',
+  'omics.submitFullRun': '전체 작업 제출(승인 대기)',
+  'omics.selectHostFirst':
+    '먼저 호스트를 선택하세요. 이 컴퓨터로 할 수 없고 호스트도 없다면 "미계산"이라고 솔직히 밝히고 미리보기 값으로 대체하지 마세요',
+  'omics.answerable':
+    '미리보기가 전체 데이터를 포함하므로 결론에 사용할 수 있습니다(출처와 버전 표기는 필요).',
+  'omics.invalidManifest':
+    '이 JSON은 유효한 미리보기 매니페스트가 아닙니다(schemaVersion 또는 필드 불일치). omics-data-preview 스킬로 다시 생성하세요.',
+  'omics.manifestReadFailed': '매니페스트를 읽지 못했습니다: {message}',
+  'omics.manifestLoaded': '매니페스트 로드됨: {path}',
+  'omics.replaceManifest': '매니페스트 교체',
+  'omics.largeFilePreview': '대용량 파일 미리보기(먼저 살피고 그다음 계산)',
+  'omics.noManifestPrefix': '{name}에는 아직 미리보기 매니페스트가 없습니다. 먼저 어시스턴트가 ',
+  'omics.noManifestSuffix':
+    ' 스킬로 이 파일을 읽게 하세요(구조만, 예산 내 다운샘플링). 그다음 생성된 매니페스트 JSON을 여기에 로드하세요——이 화면은 세포 수나 다운샘플링 결론을 임의로 제시하지 않습니다.',
+  'omics.loadManifest': '미리보기 매니페스트 로드(*.preview.json)',
   'figure.phaseAnchorsX': 'x축 보정: 알려진 눈금 두 곳의 픽셀 위치를 차례로 클릭하세요',
   'figure.phaseAnchorsY': 'y축 보정: 이어서 알려진 눈금 두 곳을 클릭하세요',
   'figure.phasePicking': '데이터 포인트 클릭을 시작하세요',

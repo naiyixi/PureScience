@@ -50,7 +50,7 @@ describe('OmicsPreviewLauncher', () => {
     const guidance =
       container.querySelector('[data-testid="omics-launcher-guidance"]')?.textContent ?? ''
     expect(guidance).toContain('omics-data-preview')
-    expect(guidance).toContain('不会凭空给出细胞数')
+    expect(guidance).toContain('will not invent a cell count')
   })
 
   it('loads a valid manifest and hands it to the panel', async () => {
@@ -65,7 +65,7 @@ describe('OmicsPreviewLauncher', () => {
     act(() => root.render(<OmicsPreviewLauncher sourceName="pbmc.h5ad" />))
     await loadFile(JSON.stringify({ hello: 'world' }))
     const error = container.querySelector('[data-testid="omics-launcher-error"]')?.textContent ?? ''
-    expect(error).toContain('不是有效的预览清单')
+    expect(error).toContain('is not a valid preview manifest')
     expect(container.querySelector('[data-testid="omics-manifest-source"]')).toBeNull()
   })
 
@@ -73,6 +73,6 @@ describe('OmicsPreviewLauncher', () => {
     act(() => root.render(<OmicsPreviewLauncher sourceName="pbmc.h5ad" />))
     await loadFile('{not json')
     const error = container.querySelector('[data-testid="omics-launcher-error"]')?.textContent ?? ''
-    expect(error).toContain('清单读取失败')
+    expect(error).toContain('Could not read the manifest')
   })
 })

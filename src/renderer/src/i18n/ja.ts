@@ -2738,6 +2738,60 @@ export const ja: Partial<Record<ZhKey, string>> = {
     '利用できなくなり、メインの Agent に自動で切り替わることはありません。',
   'specialist.boundNoticeChoose':
     '影響を受ける各セッションでは、続けて送信する前に新しいスペシャリストかメインの Agent を明示的に選ぶ必要があります。',
+  'omics.scopeDownsampled': '{shown}/{total} にダウンサンプリング（{sampling}）',
+  'omics.scopeFull': '全量（{total}）',
+  'omics.scopeUnknown': '範囲不明（完全な件数を取得できませんでした）',
+  'omics.scopeAll': '全体',
+  'omics.samplingHead': '先頭切り出し',
+  'omics.samplingRandom': 'ランダム抽出',
+  'omics.shapeCells': '{cells} 細胞 × {vars} 特徴',
+  'omics.formatUnknown': '形式を判別できません（バイト列のみのプレビュー）',
+  'omics.fullRunRequired':
+    '全量計算が必要（計算の意思決定チェーンを通し、プレビュー値で結論を確定しない）',
+  'omics.missingHost': '計算ホストが未選択（Compute 設定で SSH/Slurm ホストを登録）',
+  'omics.noteSizeUnknown':
+    '全量の規模が不明：プレビューで完全な件数を読めなかったため、実行時に総量を自己申告する必要があります',
+  'omics.noteNoEngine':
+    'エンジン未指定：実行スクリプトで使用エンジンとバージョンを宣言し、結果にも表記する必要があります',
+  'omics.targetAll': '{unit} 全 {count} 個',
+  'omics.targetFullData': '全量データ',
+  'omics.unitCells': '細胞',
+  'omics.unitVariants': '変異',
+  'omics.hostSlurm': '{host}（Slurm スケジューラ）',
+  'omics.hostSsh': '{host}（直接 SSH）',
+  'omics.hostUnset': '未選択のホスト',
+  'omics.reason':
+    '現在の結論は {scope} にしか基づけませんが、{question} には {target} が必要です。',
+  'omics.deliverable':
+    '{host} で全量解析を実行：{engine}{target} を対象とし、再現可能な数値結果を生成します。',
+  'omics.labelScope': 'データ範囲：全量（{total}）',
+  'omics.labelEngine': 'エンジンとバージョン',
+  'omics.labelParams': '主要パラメータ',
+  'omics.labelInput': '入力データの識別情報（パス + 内容指紋/バージョン）',
+  'omics.runtimeReported': '実行時に申告',
+  'omics.provisionalWarning':
+    'プレビューは部分集合です。最終結論として提出しないでください。数値結論が必要な場合は下の全量提案へ進んでください。',
+  'omics.fullRunProposal': '全量計算の提案（提出前に人手による承認が必要）',
+  'omics.computeHost': '計算ホスト',
+  'omics.selectHost': '選択してください…',
+  'omics.missingLabel': '不足：',
+  'omics.labelsLabel': '結果に必ず表記：',
+  'omics.submitFullRun': '全量ジョブを提出（承認待ち）',
+  'omics.selectHostFirst':
+    '先にホストを選択してください。このマシンで実行できずホストもない場合は「未計算」と正直に述べ、プレビュー値で代替しないでください',
+  'omics.answerable':
+    'プレビューが全量を覆っているため結論に使えます（出典とバージョンの表記は必要）。',
+  'omics.invalidManifest':
+    'この JSON は有効なプレビュー マニフェストではありません（schemaVersion かフィールドが一致しません）。omics-data-preview スキルで再生成してください。',
+  'omics.manifestReadFailed': 'マニフェストを読み込めませんでした：{message}',
+  'omics.manifestLoaded': 'マニフェスト読み込み済み：{path}',
+  'omics.replaceManifest': 'マニフェストを差し替え',
+  'omics.largeFilePreview': '大容量ファイルのプレビュー（まず調査、次に計算）',
+  'omics.noManifestPrefix':
+    '{name} にはまだプレビュー マニフェストがありません。まずアシスタントに ',
+  'omics.noManifestSuffix':
+    ' スキルでこのファイルを読ませてください（構造のみ・予算内でダウンサンプリング）。生成されたマニフェスト JSON をここに読み込んでください——この画面が細胞数やダウンサンプリングの結論を勝手に出すことはありません。',
+  'omics.loadManifest': 'プレビュー マニフェストを読み込む（*.preview.json）',
   'figure.phaseAnchorsX': 'x 軸を校正：既知の目盛り 2 点のピクセル位置を順にクリック',
   'figure.phaseAnchorsY': 'y 軸を校正：続けて既知の目盛り 2 点をクリック',
   'figure.phasePicking': 'データ点のクリックを開始',

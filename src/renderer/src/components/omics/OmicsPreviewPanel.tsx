@@ -13,6 +13,8 @@ import {
   type OmicsFullRunOptions,
   type OmicsFullRunProposal
 } from '../../../../shared/omics-full-run'
+import { useLanguage } from '@/i18n'
+import { asOmicsTranslate } from './omics-translate'
 
 // Read-only view of a large-file preview plus the full-run entry point. Thin by design: every
 // number, label and gate comes from shared/omics-preview and shared/omics-full-run, so the panel
@@ -35,10 +37,12 @@ export function OmicsPreviewPanel({
   onSubmitFullRun,
   className
 }: OmicsPreviewPanelProps): React.JSX.Element {
+  const { t } = useLanguage()
+  const omicsT = asOmicsTranslate(t)
   const [hostName, setHostName] = useState<string>('')
 
-  const scopeLabel = describeOmicsScope(manifest)
-  const summary = summarizeOmicsPreview(manifest)
+  const scopeLabel = describeOmicsScope(manifest, omicsT)
+  const summary = summarizeOmicsPreview(manifest, omicsT)
   const answerable = canAnswerFromPreview(manifest)
 
   const proposal = useMemo(() => {
@@ -49,8 +53,8 @@ export function OmicsPreviewPanel({
       executionMode: host?.executionMode,
       engine
     }
-    return proposeOmicsFullRun(manifest, options)
-  }, [answerable, engine, hostName, hosts, manifest])
+    return proposeOmicsFullRun(manifest, options, omicsT)
+  }, [answerable, engine, hostName, hosts, manifest, omicsT])
 
   return (
     <div
@@ -70,7 +74,7 @@ export function OmicsPreviewPanel({
 
       {!answerable ? (
         <p className="text-xs text-amber-400" data-testid="omics-provisional-warning">
-          预览为子集：不得作为最终结论交付；需要数值结论时请走下面的全量提案。
+          {t('omics.provisionalWarning')}
         </p>
       ) : null}
 
@@ -85,19 +89,19 @@ export function OmicsPreviewPanel({
       {proposal ? (
         <div className="flex flex-col gap-2 rounded-md border border-[var(--border)] p-2">
           <div className="flex items-center gap-2 text-xs text-[var(--foreground)]">
-            <Cpu className="size-3.5" aria-hidden="true" /> 全量计算提案（提交前需人工批准）
+            <Cpu className="size-3.5" aria-hidden="true" /> {t('omics.fullRunProposal')}
           </div>
 
           <label className="flex items-center gap-2 text-xs">
-            <span className="text-[var(--muted-foreground)]">计算主机</span>
+            <span className="text-[var(--muted-foreground)]">{t('omics.computeHost')}</span>
             <select
-              aria-label="计算主机"
+              aria-label={t('omics.computeHost')}
               data-testid="omics-host-select"
               value={hostName}
               onChange={(event) => setHostName(event.target.value)}
               className="rounded-md border border-[var(--border)] bg-transparent px-2 py-1"
             >
-              <option value="">请选择…</option>
+              <option value="">{t('omics.selectHost')}</option>
               {hosts.map((host) => (
                 <option key={host.name} value={host.name}>
                   {host.name}
@@ -119,12 +123,12 @@ export function OmicsPreviewPanel({
 
           {proposal.missing.length > 0 ? (
             <p className="text-xs text-amber-400" data-testid="omics-proposal-missing">
-              尚缺：{proposal.missing.join('；')}
+              {t('omics.missingLabel')} {proposal.missing.join('; ')}
             </p>
           ) : null}
 
           <p className="text-xs text-[var(--muted-foreground)]">
-            结果必须标注：{proposal.requiredResultLabels.join('、')}
+            {t('omics.labelsLabel')} {proposal.requiredResultLabels.join('; ')}
           </p>
 
           <div className="flex items-center gap-2">
@@ -135,18 +139,18 @@ export function OmicsPreviewPanel({
               disabled={!hostName || proposal.missing.length > 0}
               onClick={() => onSubmitFullRun?.(proposal)}
             >
-              <PlayCircle className="size-3.5" aria-hidden="true" /> 提交全量作业（待批准）
+              <PlayCircle className="size-3.5" aria-hidden="true" /> {t('omics.submitFullRun')}
             </Button>
             {!hostName ? (
               <span className="text-xs text-[var(--muted-foreground)]">
-                需先选择主机；若本机不可用且无主机，请如实说明「未计算」，不要用预览数值替代
+                {t('omics.selectHostFirst')}
               </span>
             ) : null}
           </div>
         </div>
       ) : (
         <p className="text-xs text-emerald-400" data-testid="omics-answerable">
-          预览已覆盖全量，可直接用于结论（仍需标注来源与版本）。
+          {t('omics.answerable')}
         </p>
       )}
     </div>

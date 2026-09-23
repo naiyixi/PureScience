@@ -57,33 +57,70 @@ export const isOmicsPreviewManifest = (value: unknown): value is OmicsPreviewMan
 }
 
 // G6: how this preview must be described wherever its numbers are used.
-export const describeOmicsScope = (manifest: OmicsPreviewManifest): string => {
+
+/**
+ * Renderer-supplied translator. Shared code decides which key is needed and fills its own
+ * variables, so the same helper works whether the caller passes a real dictionary lookup or the
+ * non-interpolating English fallback some test harnesses use.
+ */
+export type OmicsTranslate = (key: string) => string
+
+const fill = (template: string, vars: Record<string, string | number>): string =>
+  Object.entries(vars).reduce(
+    (text, [name, value]) => text.split(`{${name}}`).join(String(value)),
+    template
+  )
+
+export const describeOmicsScope = (manifest: OmicsPreviewManifest, t: OmicsTranslate): string => {
   const total = manifest.nObs ?? manifest.variantCount
   const subset = manifest.subset
   if (subset?.applied) {
-    const denominator = total !== undefined ? String(total) : '全部'
-    return `基于 ${subset.sampledCells}/${denominator} 降采样（${subset.sampling === 'head' ? '头部截取' : '随机抽样'}）`
+    const denominator = total !== undefined ? String(total) : t('omics.scopeAll')
+    return fill(t('omics.scopeDownsampled'), {
+      shown: subset.sampledCells,
+      total: denominator,
+      sampling: subset.sampling === 'head' ? t('omics.samplingHead') : t('omics.samplingRandom')
+    })
   }
   if (total !== undefined) {
-    return `全量（${total}）`
+    return fill(t('omics.scopeFull'), { total })
   }
-  return '范围未知（未取得完整计数）'
+  return t('omics.scopeUnknown')
 }
 
 // True when a result built from this preview must be flagged as provisional before it is trusted.
+/**
+ * English wording of the scope, for the agent-facing instruction text: the instruction must read
+ * the same in every locale, so it cannot borrow the UI dictionary.
+ */
+const describeOmicsScopeEnglish = (manifest: OmicsPreviewManifest): string => {
+  const total = manifest.nObs ?? manifest.variantCount
+  const subset = manifest.subset
+  if (subset?.applied) {
+    const denominator = total !== undefined ? String(total) : 'all'
+    return `downsampled ${subset.sampledCells}/${denominator} (${
+      subset.sampling === 'head' ? 'head slice' : 'random sample'
+    })`
+  }
+  return total !== undefined ? `full data (${total})` : 'scope unknown (no complete count)'
+}
+
 export const isProvisionalScope = (manifest: OmicsPreviewManifest): boolean =>
   manifest.fullRunRequired || manifest.subset?.applied === true
 
-export const summarizeOmicsPreview = (manifest: OmicsPreviewManifest): string => {
-  const parts = [describeOmicsScope(manifest)]
+export const summarizeOmicsPreview = (
+  manifest: OmicsPreviewManifest,
+  t: OmicsTranslate
+): string => {
+  const parts = [describeOmicsScope(manifest, t)]
   if (manifest.format === 'h5ad' && manifest.nObs !== undefined && manifest.nVars !== undefined) {
-    parts.push(`${manifest.nObs} 细胞 × ${manifest.nVars} 特征`)
+    parts.push(fill(t('omics.shapeCells'), { cells: manifest.nObs, vars: manifest.nVars }))
   }
   if (manifest.format === 'unknown') {
-    parts.push('格式未识别（仅按字节流预览）')
+    parts.push(t('omics.formatUnknown'))
   }
   if (manifest.fullRunRequired) {
-    parts.push('需全量计算（走算力决策链，勿以预览结论定稿）')
+    parts.push(t('omics.fullRunRequired'))
   }
   return parts.join(' · ')
 }
@@ -95,15 +132,17 @@ export const canAnswerFromPreview = (manifest: OmicsPreviewManifest): boolean =>
 
 // G1: what the agent must do next when the preview is not enough — stated as an instruction so it
 // cannot be skipped silently, and always without promising a number that no engine has produced.
+// Agent-facing instruction, deliberately single-language: an instruction the agent reads must not
+// change with the user's UI language, or the same manifest would be acted on differently per locale.
 export const describeFullRunHandoff = (manifest: OmicsPreviewManifest): string => {
   if (canAnswerFromPreview(manifest)) {
-    return `预览即全量（${describeOmicsScope(manifest)}），可直接用于结论；仍需标注数据来源与版本。`
+    return `The preview is the full data (${describeOmicsScopeEnglish(manifest)}); it may support conclusions, but the data source and version must still be labelled.`
   }
-  const scope = describeOmicsScope(manifest)
+  const scope = describeOmicsScopeEnglish(manifest)
   return [
-    `预览范围：${scope} —— 不得作为最终结论。`,
-    '下一步必须走算力决策链：① 提议全量作业（指定主机/调度器与资源）并等待批准；',
-    '② 若无法取得算力，明说「未计算：<缺什么>，需要<引擎或主机>」，不得用定性描述或预览数值替代；',
-    '③ 全量返回后按 provenance（引擎/版本/参数/输入）标注结果。'
-  ].join('')
+    `Preview scope: ${scope} — do not deliver as a final conclusion.`,
+    'The next step must go through the compute decision chain: (1) propose a full run (naming the host/scheduler and resources) and wait for approval;',
+    '(2) if no compute is available, say plainly "not computed: <what is missing>, needs <engine or host>" — never substitute qualitative wording or preview numbers;',
+    '(3) once the full run returns, label the result with provenance (engine/version/parameters/inputs).'
+  ].join('\n')
 }

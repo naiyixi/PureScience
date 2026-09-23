@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
+import { en } from '../renderer/src/i18n/en'
+
 import {
   OMICS_PREVIEW_SCHEMA_VERSION,
   canAnswerFromPreview,
@@ -11,6 +13,9 @@ import {
   summarizeOmicsPreview,
   type OmicsPreviewManifest
 } from './omics-preview'
+
+// Same shape the panel passes in: the dictionary owns the words, shared code owns the key.
+const t = (key: string): string => (en as Record<string, string>)[key] ?? key
 
 const manifest = (overrides: Partial<OmicsPreviewManifest> = {}): OmicsPreviewManifest => ({
   schemaVersion: OMICS_PREVIEW_SCHEMA_VERSION,
@@ -35,16 +40,17 @@ describe('omics preview contract', () => {
   })
 
   it('labels a downsampled read with the subset fraction it actually used (G6)', () => {
-    expect(describeOmicsScope(manifest())).toBe('基于 2000/20000 降采样（头部截取）')
+    expect(describeOmicsScope(manifest(), t)).toBe('Downsampled 2000/20000 (head slice)')
     expect(
       describeOmicsScope(
         manifest({
           subset: { applied: true, requestedCells: 2000, sampledCells: 1500, sampling: 'random' }
-        })
+        }),
+        t
       )
-    ).toBe('基于 1500/20000 降采样（随机抽样）')
-    expect(describeOmicsScope(manifest({ subset: undefined, fullRunRequired: false }))).toBe(
-      '全量（20000）'
+    ).toBe('Downsampled 1500/20000 (random sample)')
+    expect(describeOmicsScope(manifest({ subset: undefined, fullRunRequired: false }), t)).toBe(
+      'Full data (20000)'
     )
   })
 
@@ -55,7 +61,7 @@ describe('omics preview contract', () => {
       format: 'vcf-gz',
       variantCount: undefined
     })
-    expect(describeOmicsScope(streaming)).toBe('基于 2000/全部 降采样（头部截取）')
+    expect(describeOmicsScope(streaming, t)).toBe('Downsampled 2000/all (head slice)')
   })
 
   it('treats subsets and full-run requirements as provisional scopes', () => {
@@ -72,13 +78,13 @@ describe('omics preview contract', () => {
   })
 
   it('summarizes scope, shape and the full-run caveat for display', () => {
-    const summary = summarizeOmicsPreview(manifest())
-    expect(summary).toContain('基于 2000/20000 降采样')
-    expect(summary).toContain('20000 细胞 × 3000 特征')
-    expect(summary).toContain('需全量计算')
+    const summary = summarizeOmicsPreview(manifest(), t)
+    expect(summary).toContain('Downsampled 2000/20000')
+    expect(summary).toContain('20000 cells × 3000 features')
+    expect(summary).toContain('Full run required')
     expect(
-      summarizeOmicsPreview(manifest({ format: 'unknown', nObs: undefined, nVars: undefined }))
-    ).toContain('格式未识别')
+      summarizeOmicsPreview(manifest({ format: 'unknown', nObs: undefined, nVars: undefined }), t)
+    ).toContain('Format not recognised')
   })
 
   it('validates the hand-off shape from the python skill', () => {
@@ -93,9 +99,9 @@ describe('omics preview contract', () => {
     expect(canAnswerFromPreview(manifest({ subset: undefined, fullRunRequired: false }))).toBe(true)
 
     const handoff = describeFullRunHandoff(manifest())
-    expect(handoff).toContain('不得作为最终结论')
-    expect(handoff).toContain('等待批准')
-    expect(handoff).toContain('未计算')
+    expect(handoff).toContain('do not deliver as a final conclusion')
+    expect(handoff).toContain('wait for approval')
+    expect(handoff).toContain('not computed')
     expect(handoff).toContain('provenance')
   })
 
@@ -106,7 +112,7 @@ describe('omics preview contract', () => {
         fullRunRequired: false
       })
     )
-    expect(handoff).toContain('预览即全量')
-    expect(handoff).not.toContain('不得作为最终结论')
+    expect(handoff).toContain('The preview is the full data')
+    expect(handoff).not.toContain('do not deliver as a final conclusion')
   })
 })
