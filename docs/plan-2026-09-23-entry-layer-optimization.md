@@ -130,7 +130,14 @@
 - **三个环境坑（都已实测）**：① 有实例在跑（launchagent 或残留）时打包版**秒退**——它占着 web 服务端口/单实例锁，跑前必须 `launchctl unload` 并确认 `pgrep -f PureScience` 为 0；② 夹具 `app` fixture 自带 **180s** 上限，`--timeout` 覆盖不了；③ **trace.zip 与 JSON reporter 都不含** pageerror 的栈（已在 `e2e/fixtures/renderer-failure-gate.ts` 临时加写文件打印，待回滚）。
 - **已排除的假设（各有证据）**：`useSyncExternalStore` 快照不缓存（全渲染层仅一处 `useHandoffLifecycleEvents.ts:31`，其 `getEvents()` 返回 Map 内缓存数组 `handoff-lifecycle-source.ts:82`；CI 日志亦无该警告）；渲染层 `isPackaged` 分支（`src/renderer|preload|shared` 零命中）；effect 调不稳定回调 prop / 依赖里含内联对象（静态扫描零命中）；**"只是跑得久"**（`out/` 版加 120 秒静置的探针用例 `1 passed (2.2m)` → 时间本身不触发）；主进程两处打包分支（`windows.ts:382` 只改 dev 标题后缀、`storage-root.ts:25-45` 打包态优先用 E2E root，均无害）；**更新源文件**（`--dir` 产物里根本没有 `app-update.yml`，而没有它时那次复现**通过**，故更新器目前既不能定罪也不能排除）。
 - **现象是间歇的**：同一打包产物有时抛 minified #185、有时渲染层**直接卡死到 180s 超时**（无 pageerror）、有时**通过（37.4s）**。CI 上"两次 retry 都失败"说明在更慢的 runner 上更容易越过 React 的更新深度门槛——与"异步自喂循环在慢环境里连成同步 burst"一致；**每次实验必须把"这次是否真的触发"作为读数，不能把一次通过当排除**。
-- 下一步：用 React 开发版打包（`electron.vite.debug.config.ts`：`process.env.NODE_ENV=development`）让 #185 **点名组件**，连跑直到触发；定位后按代码层根因修，普通构建 + 打包态双验，再清掉全部调试残留（`electron.vite.debug.config.ts`、闸门里的调试写文件、`dist/mac-arm64`、`out/` 调试产物、`.tmp-packaged-smoke/`）并提交。
+- **#185 结案（2026-09-24，CI 全绿核验）**：`build / Build macos-arm64` 在 `b8e4036` 上 **success**——Nightly run `35921904594` 全绿、四平台全 success、`publish` success；`v1.71.0` 重打 tag 后 Release run `35925237489` 成功，Release 页 `published 22:16`、资产全平台齐（mac arm64/x64 dmg+zip+blockmap、linux AppImage+deb、win setup.exe+zip、`SHA256SUMS.txt`、`RELEASE-CERTIFICATION.json`）。
+  根因是**三层叠加**，每一层都由 CI 单独证伪/证实：
+  1. **每次写入都造新对象** ⇒ 任何通知都触发全体消费者重渲染（`notebook-env-store` 的 `applyUi`/`applyLang`/`applyRecoveryBlocks`）→ 改为**引用稳定**：值不变则返回原 state，zustand 不通知（`97d351f`）。
+  2. **每收一帧 progress 就整读一次权威 status 并写回**（provisioner 每帧广播一次 tick）→ 改为**只在落定（done/error）时重读**，progress 本身已携带横幅所需信息（`2937bbc`）。
+  3. **flush 用微任务**：微任务会落进 React **恢复被挂起渲染**的中途（Suspense 以 promise 续体恢复），React 把"渲染期调度"计为**嵌套更新**，50 次即 #185 → flush 改**定时器（宏任务）**，宏任务无法与渲染交错（`b8e4036`）。
+  **定位工具链（可复用）**：性能线用「写风暴探针 + 闸门把 `error.stack` 带进失败消息」拿到渲染层原始栈（trace.zip 与 JSON reporter 都不含 pageerror 栈）；React 开发版构建（`define: {'process.env.NODE_ENV': '"development"'}`）确认了错误是**从 Electron IPC 消息监听器逃出**（`wrappedListener ← emit ← onMessage`），而 `#185` 是**提交期守卫**，因此不会有组件栈——不要再用"让 dev 版点名组件"这条路。
+  **排除项（各有证据）**：不稳定选择器（脚本扫描渲染层返回新对象/数组的选择器 **0 个**、`useShallow` **0 处**）、`useSyncExternalStore` 快照不缓存（渲染层仅 `useHandoffLifecycleEvents.ts:31`，其源返回缓存数组）、渲染层 `isPackaged` 分支（零命中）、主进程打包分支（无害）、更新器（渲染层零消费点）。
+  **纪律**：一次通过不算排除（间歇性）；失败栈必须带**完整同步链**才动手。
 
 ## 批次 4（v1.73.0）拍板项落地
 
