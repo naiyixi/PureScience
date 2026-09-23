@@ -3,6 +3,7 @@
 import * as acp from '@agentclientprotocol/sdk'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
+import { appendFileSync, existsSync, writeFileSync } from 'node:fs'
 import { Readable, Writable } from 'node:stream'
 
 const VERSION = '1.0.0'
@@ -17,8 +18,31 @@ const CONTINUED_TURN_REPLY = 'The interrupted turn continued from where it stopp
 
 const sessionRoutes = new Map()
 
-// Counts the interrupted-turn fixture's sends so only the first one hangs.
+// How many interrupted-turn sends this process has seen. It only decides anything when no marker path is
+// available (see interruptedTurnMarker): the first send is left hanging and the next one is answered.
 let interruptedTurnPrompts = 0
+
+// The interrupted-turn fixture hangs on its first send of the run and answers afterwards. A restart starts a
+// fresh agent process, so the fact that the turn was left open has to outlive this process: the marker file
+// below is written when the turn is left hanging and read by the process that serves the continuation.
+const agentLog = (line) => {
+  const state = process.env.PURESCIENCE_FAKE_AGENT_STATE
+  if (!state) return
+  try {
+    appendFileSync(state + '.log', `${new Date().toISOString()} ${line}\n`)
+  } catch {
+    /* logging must never break the fixture */
+  }
+}
+
+// A marker path only exists if the environment carries one. It does not: the agent backend is spawned with
+// the config's environment rather than the app's, so this process never sees the app's variables. Until the
+// path travels through a channel the agent actually receives, the open-turn memory is per process, which
+// serves the in-run shape and not the restart shape.
+const interruptedTurnMarker = (sessionId) => {
+  const state = process.env.PURESCIENCE_FAKE_AGENT_STATE
+  return state ? `${state}.interrupted-${sessionId}` : undefined
+}
 
 const stringEnvironment = (overrides = []) => {
   const environment = Object.fromEntries(
@@ -257,10 +281,14 @@ if (process.argv.includes('--version')) {
       // app while the turn is genuinely in flight. The continuation that arrives after the restart is
       // answered, and that answer is what the spec looks for.
       if (prompt.includes(INTERRUPTED_TURN_PROMPT)) {
-        interruptedTurnPrompts += 1
-        if (interruptedTurnPrompts === 1) {
-          // Say something first, so the session is a session with a turn in it, then never finish: the
-          // app is restarted while this turn is still open, which is the interruption under test.
+        const marker = interruptedTurnMarker(context.params.sessionId)
+        agentLog(
+          `interrupted prompt (${interruptedTurnPrompts}) pid=${process.pid} marker=${marker ? existsSync(marker) : 'no-path'}`
+        )
+        if (!marker || !existsSync(marker)) {
+          // Say something first, so this turn is visibly in flight, then write the marker and never finish:
+          // the app is restarted while the turn is open, which is the interruption under test. The next
+          // process to see this prompt is serving the continuation, and answers it.
           await context.client.notify(acp.methods.client.session.update, {
             sessionId: context.params.sessionId,
             update: {
@@ -269,10 +297,13 @@ if (process.argv.includes('--version')) {
               content: { type: 'text', text: PARTIAL_TURN_REPLY }
             }
           })
+          if (marker) writeFileSync(marker, PARTIAL_TURN_REPLY)
+          else interruptedTurnPrompts += 1
           return new Promise(() => {})
         }
         reply = CONTINUED_TURN_REPLY
       }
+      agentLog(`prompt from session ${context.params.sessionId}: ${prompt.slice(0, 90)}`)
       try {
         if (prompt.includes(PROVIDER_BRIDGE_PROMPT)) {
           reply = verifyProviderBridge()

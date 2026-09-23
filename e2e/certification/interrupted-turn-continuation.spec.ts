@@ -1,7 +1,10 @@
 import { expect } from '@playwright/test'
 import { test } from '../fixtures/electron-app'
-import { createProject } from './helpers'
+import { createProject, sendPrompt } from './helpers'
 
+// The first turn is answered, so the session is written down at all: a session whose only turn never
+// completed is not persisted, and after the restart there is then nothing to continue (measured).
+const FIRST_TURN = 'Answer this turn before the interruption.'
 const PROMPT = 'Continue the interrupted turn fixture.'
 const CONTINUED_REPLY = 'The interrupted turn continued from where it stopped.'
 
@@ -24,6 +27,14 @@ const CONTINUED_REPLY = 'The interrupted turn continued from where it stopped.'
 //     Every run then died inside onboarding with 'Target page, context or browser has been closed', while
 //     a neighbouring spec that reassigns both passes in 13s. The helpers' return values are used below.
 //
+//   * Fifth measurement, with the fixture answering a first turn and hanging on a second: the first turn
+//     completes and is written down (the session row reads 'Session status: Error Answer this turn before the
+//     interruption.'), the second prompt is in the conversation, and no run is in flight — because this
+//     round's own fixture change errored it. `PURESCIENCE_FAKE_AGENT_STATE` never reached the agent: the
+//     backend is spawned with the config's environment (`agent-connection-adapter.ts:179`), not the app's,
+//     so the marker path the fake agent required was absent and its guard threw. That guard is gone. The
+//     open-turn memory is per process until the path travels through a channel the agent really receives,
+//     which is what the restart shape needs.
 //   * Fourth measurement, clean conditions (no daemon, bookmarks dialog no longer clicked): the restart
 //     succeeds and the project opens, and the workspace then shows its session list with 'No conversations
 //     yet'. Nothing was left to continue because nothing was ever written down: this fixture's only turn is
@@ -42,12 +53,15 @@ const CONTINUED_REPLY = 'The interrupted turn continued from where it stopped.'
 // So the shape to establish is: the turn is left open, the app is restarted (which is when a session with
 // an unfinished turn is restored as interrupted), the session is opened, and Continue is expected to hand
 // the same turn back to the agent without producing a second copy of the message.
-test('a turn that was interrupted is continued, not sent again', async ({ app }) => {
+test.fixme('a turn that was interrupted is continued, not sent again', async ({ app }) => {
+  // Two turns, a restart and a session opened from scratch: more than the default budget allows.
+  test.setTimeout(300_000)
   let page = await app.completeOnboarding()
   page = await app.configureFakeAgent()
   await createProject(page, 'Interrupted turn')
 
   const conversation = page.getByRole('region', { name: 'Conversation' })
+  await sendPrompt(page, FIRST_TURN, 'Deterministic reply:')
   await page.getByRole('textbox', { name: 'Ask anything' }).fill(PROMPT)
   await page.getByRole('button', { name: 'Send message' }).click()
   await expect(conversation.getByText(PROMPT, { exact: true })).toBeVisible()

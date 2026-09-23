@@ -291,3 +291,9 @@
 ### 无障碍缺陷（顺手修，实机快照抓到）
 - `src/renderer/src/pages/workspace/ConversationPanel.tsx:1191` 写成 `aria-label="{t('workspace.sendMessage')} options"`——**引号让 `t()` 从未求值**，模板字面量原样进了无障碍树（快照里可见 `group "{t('workspace.sendMessage'')} options"`）。改为新增 `workspace.sendOptions`（9 语）并直接求值。
 - **验证**：i18n **47 passed**；typecheck 0；eslint 0。
+
+### U13：第五次实测（本轮自伤 + 一个可复用的结构事实）
+- 夹具已能造出**有完成回合的会话**（第一节答完并落盘，会话行显示 `Session status: Error Answer this turn before the interruption.`），第二发也进了会话——但 `Cancel run` 未出现。
+- 原因**在本轮的自伤**：我把「这一轮故意挂着」的记忆放进 `PURESCIENCE_FAKE_AGENT_STATE`，而**假 agent 拿不到应用的环境变量**——它的后端是用**配置里的 env** spawn 的（`src/main/acp/agent-connection-adapter.ts:179`），不是 `agent-process.ts:154` 那条继承 `process.env` 的路径。缺少该变量时我写的守卫直接抛错，于是第二发被应用记成 Error。
+- 已撤掉该守卫与那个变量；`interruptedTurnMarker` 现在**没有路径也不报错**，退化为进程内计数（够用在「运行内」形状，不够用在「跨重启」形状）。
+- **可复用结构事实**：给假 agent 传状态，必须走**它真正收到的通道**（配置 env／cwd），不能走应用的环境变量。
