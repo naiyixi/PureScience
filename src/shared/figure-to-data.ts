@@ -54,7 +54,19 @@ export type FigureDigitizationResult = {
   notes: string[]
 }
 
-export class FigureDigitizationError extends Error {}
+export class FigureDigitizationError extends Error {
+  /**
+   * i18n key for renderers. The message stays a developer-readable English fallback so non-UI
+   * callers (CLI, agent tools, tests) keep a stable string; the renderer prefers the key.
+   */
+  readonly messageKey?: string
+
+  constructor(message: string, messageKey?: string) {
+    super(message)
+    this.name = 'FigureDigitizationError'
+    this.messageKey = messageKey
+  }
+}
 
 const assertCalibration = (calibration: AxisCalibration, axis: 'x' | 'y'): void => {
   const { anchorA, anchorB, kind } = calibration

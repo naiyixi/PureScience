@@ -49,7 +49,7 @@ const clickSurface = (clientX: number, clientY: number): void => {
 }
 
 const typeValue = (value: string): void => {
-  const input = container.querySelector('input[aria-label="刻度数值"]') as HTMLInputElement
+  const input = container.querySelector('input[aria-label="Tick value"]') as HTMLInputElement
   act(() => {
     const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
     setter?.call(input, value)
@@ -60,12 +60,12 @@ const typeValue = (value: string): void => {
 describe('FigurePickOverlay', () => {
   it('refuses a click before the tick value is entered, and says why', () => {
     render()
-    expect(text('figure-pick-phase')).toContain('标定 x 轴')
+    expect(text('figure-pick-phase')).toContain('Calibrate the x axis')
     clickSurface(100, 120)
     expect(container.querySelector('[role="alert"]')?.textContent).toContain(
-      '先输入该刻度对应的数值'
+      'Type the value of this tick mark first'
     )
-    expect(text('figure-pick-progress')).toContain('x 锚点 0/2')
+    expect(text('figure-pick-progress')).toContain('x anchors 0/2')
   })
 
   it('collects x then y anchors and unlocks point picking', () => {
@@ -77,7 +77,7 @@ describe('FigurePickOverlay', () => {
       typeValue(value)
       clickSurface(x, y)
     }
-    expect(text('figure-pick-phase')).toContain('标定 y 轴')
+    expect(text('figure-pick-phase')).toContain('Calibrate the y axis')
 
     for (const [value, x, y] of [
       ['0', 0, 200],
@@ -86,17 +86,17 @@ describe('FigurePickOverlay', () => {
       typeValue(value)
       clickSurface(x, y)
     }
-    expect(text('figure-pick-phase')).toContain('开始点击数据点')
+    expect(text('figure-pick-phase')).toContain('Start clicking data points')
 
     clickSurface(200, 150)
-    expect(text('figure-pick-progress')).toContain('数据点 1')
+    expect(text('figure-pick-progress')).toContain('data points 1')
   })
 
   it('exports CSV only once ready, with provenance and estimated status', () => {
     const onExport = vi.fn()
     render(onExport)
 
-    expect(button('导出 CSV')?.disabled).toBe(true)
+    expect(button('Export CSV (estimated)')?.disabled).toBe(true)
 
     for (const [value, x, y] of [
       ['0', 100, 0],
@@ -109,7 +109,7 @@ describe('FigurePickOverlay', () => {
     }
     clickSurface(200, 150)
 
-    const exportButton = button('导出 CSV')
+    const exportButton = button('Export CSV (estimated)')
     expect(exportButton?.disabled).toBe(false)
     act(() => exportButton?.click())
 
@@ -133,13 +133,13 @@ describe('FigurePickOverlay', () => {
     }
     clickSurface(200, 150)
     clickSurface(220, 160)
-    expect(text('figure-pick-progress')).toContain('数据点 2')
+    expect(text('figure-pick-progress')).toContain('data points 2')
 
-    act(() => button('撤销上一个点')?.click())
-    expect(text('figure-pick-progress')).toContain('数据点 1')
+    act(() => button('Undo last point')?.click())
+    expect(text('figure-pick-progress')).toContain('data points 1')
 
-    act(() => button('重新开始')?.click())
-    expect(text('figure-pick-phase')).toContain('标定 x 轴')
-    expect(text('figure-pick-progress')).toBe('x 锚点 0/2 · y 锚点 0/2 · 数据点 0')
+    act(() => button('Start over')?.click())
+    expect(text('figure-pick-phase')).toContain('Calibrate the x axis')
+    expect(text('figure-pick-progress')).toBe('x anchors 0/2 · y anchors 0/2 · data points 0')
   })
 })

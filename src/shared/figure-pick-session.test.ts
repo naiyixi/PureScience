@@ -38,8 +38,10 @@ describe('figure pick session', () => {
     expect(canPickPoints(state)).toBe(false)
 
     state = addAnchor(state, 'x', { pixel: 100, value: 0 })
-    expect(() => addAnchor(state, 'y', { pixel: 400, value: 0 })).toThrow(/先完成 x 轴/)
-    expect(() => addPick(state, { x: 10, y: 10 })).toThrow(/标定未完成/)
+    expect(() => addAnchor(state, 'y', { pixel: 400, value: 0 })).toThrow(
+      /Calibrate both x-axis anchors first/
+    )
+    expect(() => addPick(state, { x: 10, y: 10 })).toThrow(/Calibration is incomplete/)
 
     state = addAnchor(state, 'x', { pixel: 500, value: 40 })
     state = addAnchor(state, 'y', { pixel: 400, value: 0 })
@@ -49,7 +51,7 @@ describe('figure pick session', () => {
 
   it('rejects duplicate anchors and malformed coordinates instead of guessing', () => {
     const state = addAnchor(startPickSession(), 'x', { pixel: 100, value: 0 })
-    expect(() => addAnchor(state, 'x', { pixel: 100, value: 5 })).toThrow(/重复/)
+    expect(() => addAnchor(state, 'x', { pixel: 100, value: 5 })).toThrow(/cannot share a pixel/)
     expect(() => addAnchor(state, 'x', { pixel: Number.NaN, value: 5 })).toThrow(
       FigureDigitizationError
     )
@@ -58,12 +60,12 @@ describe('figure pick session', () => {
         addAnchor(acc, axis as 'x' | 'y', { pixel: 100 + index * 100, value: index }),
       startPickSession()
     )
-    expect(() => addPick(picking, { x: Number.POSITIVE_INFINITY, y: 1 })).toThrow(/有限数/)
+    expect(() => addPick(picking, { x: Number.POSITIVE_INFINITY, y: 1 })).toThrow(/must be finite/)
   })
 
   it('refuses to digitise before both axes are calibrated', () => {
     const state = addAnchor(startPickSession(), 'x', { pixel: 100, value: 0 })
-    expect(() => buildDigitization(state, provenance)).toThrow(/标定未完成/)
+    expect(() => buildDigitization(state, provenance)).toThrow(/Calibration is incomplete/)
   })
 
   it('digitises picked points and supports undo', () => {

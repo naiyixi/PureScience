@@ -42,10 +42,16 @@ export const startPickSession = (
 
 const validateAnchor = (anchor: AxisAnchor, existing: AxisAnchor[], axis: 'x' | 'y'): void => {
   if (!Number.isFinite(anchor.pixel) || !Number.isFinite(anchor.value)) {
-    throw new FigureDigitizationError(`${axis} 轴锚点的像素与数值必须是有限数`)
+    throw new FigureDigitizationError(
+      `${axis}-axis anchor pixel and value must both be finite`,
+      'figure.errorFiniteAnchor'
+    )
   }
   if (existing.some((entry) => entry.pixel === anchor.pixel)) {
-    throw new FigureDigitizationError(`${axis} 轴锚点重复：同一像素只能标定一个刻度`)
+    throw new FigureDigitizationError(
+      `${axis}-axis anchors cannot share a pixel`,
+      'figure.errorDuplicateAnchor'
+    )
   }
 }
 
@@ -56,7 +62,10 @@ export const addAnchor = (
 ): PickSessionState => {
   if (axis === 'x') {
     if (state.phase !== 'anchors-x') {
-      throw new FigureDigitizationError('x 轴锚点已标定完成，不能再添加')
+      throw new FigureDigitizationError(
+        'The x axis already has both anchors',
+        'figure.errorAxisComplete'
+      )
     }
     validateAnchor(anchor, state.xAnchors, 'x')
     const xAnchors = [...state.xAnchors, anchor]
@@ -68,7 +77,10 @@ export const addAnchor = (
   }
 
   if (state.phase !== 'anchors-y') {
-    throw new FigureDigitizationError('请先完成 x 轴的两个锚点')
+    throw new FigureDigitizationError(
+      'Calibrate both x-axis anchors first',
+      'figure.errorNeedXAnchors'
+    )
   }
   validateAnchor(anchor, state.yAnchors, 'y')
   const yAnchors = [...state.yAnchors, anchor]
@@ -87,10 +99,16 @@ export const addPick = (
   point: { x: number; y: number }
 ): PickSessionState => {
   if (!canPickPoints(state)) {
-    throw new FigureDigitizationError('标定未完成：先标定 x/y 轴各两个锚点')
+    throw new FigureDigitizationError(
+      'Calibration is incomplete: two anchors per axis are required',
+      'figure.errorCalibrationIncomplete'
+    )
   }
   if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) {
-    throw new FigureDigitizationError('数据点的像素坐标必须是有限数')
+    throw new FigureDigitizationError(
+      'Data point coordinates must be finite',
+      'figure.errorPointFinite'
+    )
   }
   return { ...state, picks: [...state.picks, point], phase: 'ready' }
 }
@@ -106,7 +124,10 @@ export const buildDigitization = (
   provenance: DigitizationProvenance
 ): FigureDigitizationResult => {
   if (state.xAnchors.length < ANCHORS_PER_AXIS || state.yAnchors.length < ANCHORS_PER_AXIS) {
-    throw new FigureDigitizationError('标定未完成：需要 x/y 轴各两个锚点')
+    throw new FigureDigitizationError(
+      'Calibration is incomplete: x and y need two anchors each',
+      'figure.errorAnchorsRequired'
+    )
   }
   return digitizeSeries({
     provenance,

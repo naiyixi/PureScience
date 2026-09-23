@@ -2,6 +2,8 @@ import { useCallback, useMemo, useState } from 'react'
 import { Crosshair, MousePointerClick, RotateCcw, Trash2, Undo2 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { useLanguage, type Translate } from '@/i18n'
+import { isFigureErrorKey } from './figure-error-keys'
 import type {
   DigitizationProvenance,
   FigureDigitizationResult
@@ -27,11 +29,21 @@ export type FigurePickOverlayProps = {
   className?: string
 }
 
-const PHASE_LABEL: Record<PickSessionState['phase'], string> = {
-  'anchors-x': '标定 x 轴：依次点击两个已知刻度的像素位置',
-  'anchors-y': '标定 y 轴：再点击两个已知刻度的像素位置',
-  picking: '开始点击数据点',
-  ready: '可导出（继续点击可加点，或撤销）'
+const describePhase = (phase: PickSessionState['phase'], t: Translate): string =>
+  ({
+    'anchors-x': t('figure.phaseAnchorsX'),
+    'anchors-y': t('figure.phaseAnchorsY'),
+    picking: t('figure.phasePicking'),
+    ready: t('figure.phaseReady')
+  })[phase]
+
+/** Shared errors carry an i18n key; anything else is a transport-level message and stays as-is. */
+const describePickError = (cause: unknown, t: Translate): string => {
+  if (cause instanceof Error && 'messageKey' in cause) {
+    const key = (cause as { messageKey?: string }).messageKey
+    if (isFigureErrorKey(key)) return t(key)
+  }
+  return cause instanceof Error ? cause.message : String(cause)
 }
 
 export function FigurePickOverlay({
@@ -39,6 +51,7 @@ export function FigurePickOverlay({
   onExport,
   className
 }: FigurePickOverlayProps): React.JSX.Element {
+  const { t } = useLanguage()
   const [session, setSession] = useState<PickSessionState>(() => startPickSession())
   const [xValueDraft, setXValueDraft] = useState('')
   const [yValueDraft, setYValueDraft] = useState('')
@@ -63,7 +76,7 @@ export function FigurePickOverlay({
         }
         const value = Number.parseFloat(draft)
         if (!Number.isFinite(value)) {
-          setError('先输入该刻度对应的数值，再点击它的像素位置')
+          setError(t('figure.tickValueMissing'))
           return
         }
         setSession(
@@ -71,10 +84,10 @@ export function FigurePickOverlay({
         )
         setDraft('')
       } catch (cause) {
-        setError(cause instanceof Error ? cause.message : String(cause))
+        setError(describePickError(cause, t))
       }
     },
-    [draft, nextAxis, session, setDraft]
+    [draft, nextAxis, session, setDraft, t]
   )
 
   const handleReset = useCallback(() => {
@@ -87,12 +100,12 @@ export function FigurePickOverlay({
   const canExport = session.phase === 'ready'
   const progressLabel = useMemo(() => {
     const parts = [
-      `x 锚点 ${session.xAnchors.length}/2`,
-      `y 锚点 ${session.yAnchors.length}/2`,
-      `数据点 ${session.picks.length}`
+      t('figure.xAnchorProgress').replace('{count}', String(session.xAnchors.length)),
+      t('figure.yAnchorProgress').replace('{count}', String(session.yAnchors.length)),
+      t('figure.pickProgress').replace('{count}', String(session.picks.length))
     ]
     return parts.join(' · ')
-  }, [session])
+  }, [session, t])
 
   const handleExport = useCallback(() => {
     try {
@@ -100,15 +113,15 @@ export function FigurePickOverlay({
       onExport?.(toDigitizationCsv(result), result)
       setError(undefined)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause))
+      setError(describePickError(cause, t))
     }
-  }, [onExport, provenance, session])
+  }, [onExport, provenance, session, t])
 
   return (
     <div className={`flex flex-col gap-2 ${className ?? ''}`}>
       <div className="flex flex-wrap items-center gap-2 rounded-md border border-[var(--border)] px-2 py-1 text-xs">
         <Crosshair className="size-3.5" aria-hidden="true" />
-        <span data-testid="figure-pick-phase">{PHASE_LABEL[session.phase]}</span>
+        <span data-testid="figure-pick-phase">{describePhase(session.phase, t)}</span>
         <span className="text-[var(--muted-foreground)]" data-testid="figure-pick-progress">
           {progressLabel}
         </span>
@@ -116,13 +129,13 @@ export function FigurePickOverlay({
 
       {session.phase === 'anchors-x' || session.phase === 'anchors-y' ? (
         <label className="flex items-center gap-2 text-xs">
-          <span className="text-[var(--muted-foreground)]">该刻度数值</span>
+          <span className="text-[var(--muted-foreground)]">{t('figure.tickValueLabel')}</span>
           <input
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             inputMode="decimal"
-            placeholder="例如 0.5"
-            aria-label="刻度数值"
+            placeholder={t('figure.tickValuePlaceholder')}
+            aria-label={t('figure.tickValueLabel')}
             className="w-28 rounded-md border border-[var(--border)] bg-transparent px-2 py-1"
           />
         </label>
@@ -131,14 +144,14 @@ export function FigurePickOverlay({
       <div
         data-testid="figure-pick-surface"
         role="application"
-        aria-label="图形拾取区"
+        aria-label={t('figure.pickSurface')}
         onClick={handleSurfaceClick}
         className="relative min-h-40 cursor-crosshair rounded-md border border-dashed border-[var(--border)] bg-[var(--muted)]/20"
       >
         {session.xAnchors.map((anchor, index) => (
           <span
             key={`x-${index}`}
-            title={`x 锚点 ${anchor.value}`}
+            title={t('figure.xAnchorTitle').replace('{value}', String(anchor.value))}
             className="absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--accent)]"
             style={{ left: anchor.pixel, top: 8 }}
           />
@@ -146,7 +159,7 @@ export function FigurePickOverlay({
         {session.yAnchors.map((anchor, index) => (
           <span
             key={`y-${index}`}
-            title={`y 锚点 ${anchor.value}`}
+            title={t('figure.yAnchorTitle').replace('{value}', String(anchor.value))}
             className="absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--accent)]"
             style={{ left: 8, top: anchor.pixel }}
           />
@@ -168,13 +181,13 @@ export function FigurePickOverlay({
           disabled={session.picks.length === 0}
           onClick={() => setSession(undoPick(session))}
         >
-          <Undo2 className="size-3.5" aria-hidden="true" /> 撤销上一个点
+          <Undo2 className="size-3.5" aria-hidden="true" /> {t('figure.undoPoint')}
         </Button>
         <Button type="button" variant="ghost" size="sm" onClick={handleReset}>
-          <RotateCcw className="size-3.5" aria-hidden="true" /> 重新开始
+          <RotateCcw className="size-3.5" aria-hidden="true" /> {t('figure.restart')}
         </Button>
         <Button type="button" size="sm" disabled={!canExport} onClick={handleExport}>
-          <MousePointerClick className="size-3.5" aria-hidden="true" /> 导出 CSV（estimated）
+          <MousePointerClick className="size-3.5" aria-hidden="true" /> {t('figure.exportCsv')}
         </Button>
         <Button
           type="button"
@@ -183,7 +196,7 @@ export function FigurePickOverlay({
           onClick={() => setSession({ ...session, picks: [] })}
           disabled={session.picks.length === 0}
         >
-          <Trash2 className="size-3.5" aria-hidden="true" /> 清空数据点
+          <Trash2 className="size-3.5" aria-hidden="true" /> {t('figure.clearPoints')}
         </Button>
       </div>
 

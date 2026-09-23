@@ -69,7 +69,11 @@ const overlapsHorizontally = (figure: PdfImagePlacement, item: PdfTextItem): boo
 const isSmall = (placement: PdfImagePlacement, options: PdfFigureExtractionOptions): boolean =>
   placement.width < options.minWidth || placement.height < options.minHeight
 
-type CaptionCandidate = { text: string; source: Exclude<PdfFigureCaptionSource, 'none'>; distance: number }
+type CaptionCandidate = {
+  text: string
+  source: Exclude<PdfFigureCaptionSource, 'none'>
+  distance: number
+}
 
 // Items sharing a baseline belong to the same line, so a caption split across text items is read as one
 // string; the line is capped so a paragraph that happens to start with "Figure 2" cannot swallow the page.
@@ -97,10 +101,12 @@ const captionFor = (
     // A caption below the picture sits under it (smaller y in PDF space); one above sits over its top.
     if (item.y <= figure.y) {
       const distance = figure.y - item.y
-      if (distance <= options.captionMaxDistance) candidates.push({ text: line, source: 'below', distance })
+      if (distance <= options.captionMaxDistance)
+        candidates.push({ text: line, source: 'below', distance })
     } else if (item.y >= figure.y + figure.height) {
       const distance = item.y - (figure.y + figure.height)
-      if (distance <= options.captionMaxDistance) candidates.push({ text: line, source: 'above', distance })
+      if (distance <= options.captionMaxDistance)
+        candidates.push({ text: line, source: 'above', distance })
     }
   }
   return candidates.sort((left, right) => left.distance - right.distance)[0]

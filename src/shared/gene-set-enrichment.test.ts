@@ -90,9 +90,17 @@ describe('runGeneSetEnrichment', () => {
       alpha: 0.05
     })
 
-    expect(outcome.background).toMatchObject({ kind: 'declared-size', size: 20_000, source: 'declared' })
+    expect(outcome.background).toMatchObject({
+      kind: 'declared-size',
+      size: 20_000,
+      source: 'declared'
+    })
     expect(outcome.correction).toEqual({ method: 'benjamini-hochberg', alpha: 0.05, applied: true })
-    expect(outcome.recomputable).toEqual({ method: 'hypergeometric', tail: 'greater', where: 'local' })
+    expect(outcome.recomputable).toEqual({
+      method: 'hypergeometric',
+      tail: 'greater',
+      where: 'local'
+    })
     expect(outcome.results.every((row) => Number.isFinite(row.pValue))).toBe(true)
     expect(outcome.summary.zh).toContain('Benjamini–Hochberg')
     expect(outcome.summary.zh).toContain('α=0.05')
@@ -172,7 +180,11 @@ describe('runGeneSetEnrichment', () => {
     const outcome = runGeneSetEnrichment({
       genes: ['A', 'B', 'Z'],
       terms: terms(),
-      background: { kind: 'user', genes: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'], description: '面板基因' },
+      background: {
+        kind: 'user',
+        genes: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'],
+        description: '面板基因'
+      },
       correction: 'none',
       alpha: 0.05
     })

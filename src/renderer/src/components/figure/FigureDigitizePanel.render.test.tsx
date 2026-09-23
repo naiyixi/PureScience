@@ -47,7 +47,7 @@ describe('FigureDigitizePanel', () => {
     act(() => {
       root.render(<FigureDigitizePanel sourcePath="data/paper.pdf" requiresPageEntry />)
     })
-    expect(text('digitize-page-required')).toContain('请确认页码')
+    expect(text('digitize-page-required')).toContain('Confirm the page')
   })
 
   it('refuses to let an invalid page produce usable provenance', () => {
@@ -55,7 +55,9 @@ describe('FigureDigitizePanel', () => {
       root.render(<FigureDigitizePanel sourcePath="data/paper.pdf" />)
     })
     setInput('digitize-page', '0')
-    expect(container.querySelector('[role="alert"]')?.textContent).toContain('页码必须是 ≥1 的整数')
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain(
+      'The page must be an integer ≥ 1'
+    )
   })
 
   it('passes the confirmed page and figure reference into the exported CSV', () => {
@@ -76,7 +78,7 @@ describe('FigureDigitizePanel', () => {
       act(() => surface.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX, clientY })))
     }
     const typeTick = (value: string): void => {
-      const input = container.querySelector('input[aria-label="刻度数值"]') as HTMLInputElement
+      const input = container.querySelector('input[aria-label="Tick value"]') as HTMLInputElement
       act(() => {
         const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
         setter?.call(input, value)
@@ -96,7 +98,7 @@ describe('FigureDigitizePanel', () => {
     click(200, 150)
 
     const exportButton = Array.from(container.querySelectorAll('button')).find((candidate) =>
-      candidate.textContent?.includes('导出 CSV')
+      candidate.textContent?.includes('Export CSV (estimated)')
     )
     act(() => exportButton?.click())
 

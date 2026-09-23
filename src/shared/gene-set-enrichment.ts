@@ -115,7 +115,10 @@ export const hypergeometricUpperTail = (
   for (let hits = overlap; hits <= upper; hits += 1) {
     const term = logChoose(termSize, hits) + logChoose(backgroundSize - termSize, querySize - hits)
     if (!Number.isFinite(term)) continue
-    acc = acc === Number.NEGATIVE_INFINITY ? term : Math.max(acc, term) + Math.log1p(Math.exp(-Math.abs(acc - term)))
+    acc =
+      acc === Number.NEGATIVE_INFINITY
+        ? term
+        : Math.max(acc, term) + Math.log1p(Math.exp(-Math.abs(acc - term)))
   }
   const total = logChoose(backgroundSize, querySize)
   if (!Number.isFinite(acc) || !Number.isFinite(total)) return Number.NaN
@@ -128,7 +131,9 @@ const adjust = (pValues: readonly number[], method: EnrichmentCorrection): numbe
   if (method === 'bonferroni') return pValues.map((value) => Math.min(1, value * total))
   // Benjamini–Hochberg, enforced monotone from the largest p upwards so the adjusted values never
   // increase as the raw p-values decrease.
-  const order = pValues.map((value, index) => ({ value, index })).sort((left, right) => left.value - right.value)
+  const order = pValues
+    .map((value, index) => ({ value, index }))
+    .sort((left, right) => left.value - right.value)
   const adjusted = new Array<number>(total).fill(1)
   let running = 1
   for (let position = total - 1; position >= 0; position -= 1) {
@@ -184,7 +189,8 @@ export const runGeneSetEnrichment = (input: EnrichmentInput): EnrichmentOutcome 
     notes.push(`查询基因中有 ${outsideBackground} 个不在背景集内，它们不参与本次计算。`)
   }
   const duplicatesInQueryNote = duplicatesInQuery
-  if (duplicatesInQuery > 0) notes.push(`查询列表里有 ${duplicatesInQuery} 个重复基因，已按一次计。`)
+  if (duplicatesInQuery > 0)
+    notes.push(`查询列表里有 ${duplicatesInQuery} 个重复基因，已按一次计。`)
 
   const querySize = queryInBackground.length
   const tested: EnrichmentRow[] = []
@@ -200,7 +206,12 @@ export const runGeneSetEnrichment = (input: EnrichmentInput): EnrichmentOutcome 
       skippedBelowMinOverlap += 1
       continue
     }
-    const pValue = hypergeometricUpperTail(overlapGenes.length, backgroundSize, termSet.size, querySize)
+    const pValue = hypergeometricUpperTail(
+      overlapGenes.length,
+      backgroundSize,
+      termSet.size,
+      querySize
+    )
     const expected = backgroundSize > 0 ? (querySize * termSet.size) / backgroundSize : 0
     tested.push({
       term: term.term,
