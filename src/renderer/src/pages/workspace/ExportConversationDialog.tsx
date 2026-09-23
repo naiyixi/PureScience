@@ -81,7 +81,10 @@ const ExportConversationDialog = ({
 
   return (
     <Dialog.Root
-      open={Boolean(dialogSession)}
+      // Open-ness follows the live prop. The retained value exists so the panel keeps its content while
+      // the exit animation plays; driving `open` off it instead made the dialog impossible to close —
+      // Cancel, Escape and the close button all called onClose, and the panel stayed on screen.
+      open={Boolean(session)}
       onOpenChange={(open) => (open ? undefined : onClose())}
     >
       <Dialog.Overlay className={dialogOverlayClassName} />

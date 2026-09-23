@@ -216,4 +216,26 @@ describe('ExportConversationDialog', () => {
     })
     expect(onClose).toHaveBeenCalledTimes(2)
   })
+
+  it('actually leaves the screen when the session is cleared', () => {
+    // The bug this pins: onClose was wired to every affordance and each one called it, but `open` was
+    // derived from the retained session rather than the live prop, so the panel stayed on screen.
+    act(() => {
+      root.render(
+        <ExportConversationDialog session={session} onClose={() => undefined} onExport={vi.fn()} />
+      )
+    })
+    expect(document.body.querySelector('[role="dialog"]')).not.toBeNull()
+
+    act(() => {
+      root.render(
+        <ExportConversationDialog
+          session={undefined}
+          onClose={() => undefined}
+          onExport={vi.fn()}
+        />
+      )
+    })
+    expect(document.body.querySelector('[role="dialog"]')).toBeNull()
+  })
 })
