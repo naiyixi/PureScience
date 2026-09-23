@@ -276,6 +276,13 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'foldTimeline.title': 'Contexte replié',
   'foldTimeline.previewSummary': 'Aperçu du relevé replié',
   'foldTimeline.foldCount': '{n} repli{s} — texte d’origine conservé pour {tool}',
+  'ws.continueTurn': 'Poursuivre le tour',
+  'ws.continuing': 'Poursuite…',
+  'ws.continueTurnHint':
+    '« Poursuivre le tour » reprend là où il s’est arrêté : le même message et les mêmes fichiers, et rien n’est relancé si le tour est déjà en cours.',
+  'ws.resumeTurnHint': '« Reprendre » renvoie ce message comme un nouveau tour.',
+  'ws.continueTurnUnavailable': 'Aucun tour inachevé à poursuivre.',
+  'ws.continueTurnFailed': 'Le tour n’a pas pu être poursuivi : {detail}',
   'ws.replay': 'Rejeu',
   'ws.replay.run': 'Lancer le rejeu',
   'ws.replay.running': 'Rejeu en cours…',

@@ -272,6 +272,13 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'foldTimeline.title': 'Свёрнутый контекст',
   'foldTimeline.previewSummary': 'Предпросмотр свёрнутой стенограммы',
   'foldTimeline.foldCount': 'Свёрнуто {n} — исходный текст сохранён для {tool}',
+  'ws.continueTurn': 'Продолжить ход',
+  'ws.continuing': 'Продолжается…',
+  'ws.continueTurnHint':
+    '«Продолжить ход» подхватывает его с места остановки: то же сообщение и те же файлы, и повторно не запускается, если уже выполняется.',
+  'ws.resumeTurnHint': '«Возобновить» отправляет это сообщение заново, как новый ход.',
+  'ws.continueTurnUnavailable': 'Незавершённого хода для продолжения нет.',
+  'ws.continueTurnFailed': 'Не удалось продолжить ход: {detail}',
   'ws.replay': 'Повтор',
   'ws.replay.run': 'Запустить повтор',
   'ws.replay.running': 'Повтор выполняется…',

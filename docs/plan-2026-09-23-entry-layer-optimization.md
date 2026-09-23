@@ -48,7 +48,7 @@
 | U10  | 运行时扫描/选择/注销（`runtime:survey` `:20`、`set-selection` `:35`、`unregister-interpreter` `:83`）                                                                                                                                                                                    | **✅ 已收官**：面板可「用作笔记本运行时」（写 `setSelection`，返回的 survey 立即回填）＋「当前运行时」徽标 ＋ `survey` 载入 ＋ 注销；真机 `e2e/certification/runtime-selection.spec.ts` 1 passed                                |
 | U11  | ✅ **收官** 会话包导出（`sessions:export-package`）                                                                                                                                                                                                                                                  | 导出→本机导入回环成功，包内清单与界面一致                                                       |
 | U12  | ✅ **收官** GUI 版本重放（`artifacts:replay-version`）                                                                                                                                                                                                                                               | 逐字段一致（**真机 1 passed (14.5s)**）：基准＝远端任务 API 调用的同一条命令返回，窗内渲染的每个值（verdict／mode／origin／环境锁／执行行／逐文件字节偏移与字节数／reasons 原串）都被断言要出现；带环境锁与结果对比 |
-| U13  | 继续被打断的回合（`acp:continue-interrupted-turn`）                                                                                                                                                                                                                                      | 强制退出后重启，能续跑同一回合；与 Resume 的语义差别在界面上写清                                |
+| U13  | ⏳ **半落**：界面已接、单测已绿；真机未跑通（见落地记录）继续被打断的回合（`acp:continue-interrupted-turn`）                                                                                                                                                                                                                                      | 强制退出后重启，能续跑同一回合；与 Resume 的语义差别在界面上写清                                |
 
 ### U10 落地记录（真机带出的三件事）
 
@@ -71,6 +71,13 @@
 4. **真机验收怎么做的**：`e2e/certification/artifact-replay.spec.ts` —— 用伪造 agent 产出溯源产物，**先按远端路径调同一条命令取基准**，再让窗口从「产物卡片 → 预览 → 溯源入口 → Replay 页签 → 运行重放」走一遍，断言基准里的每个值都出现在渲染结果里（比对的是**值**，不是两本字典比长短）。真机实况：该产物的重放判定是 `unverifiable`、`mode: re-run`、`origin: executed`、`environmentLock: not-applied`、`execution: {via: 'notebook:python', exitCode: 1, durationMs: 560}`、stderr 里是真实的 `SyntaxError: invalid syntax`（记录的配方按 notebook python 重跑确实跑不通）——**如实显示跑不通**，而不是伪造一个「复现成功」。
 5. **真机带出的入口事实（写下来，免得下个单元重新踩）**：① 产物在答复里的卡片名是 `Preview generated file <name>`，与 Files 视图行同名；② 溯源入口**只有在全屏预览时**才是尾部按钮（`Open Provenance for <name>`），普通预览里是「File actions for <title>」菜单的第一项（`PreviewPanel.tsx:788` 按 `isFullScreenOpen` 分流）；③ 面板页签是 `role="tab"`，不是 button。
 6. **i18n**：`ws.replay.*` 35 key × 9 语；de 的页签名原与英文同字（`Replay`）→ 改为 `Wiederholung` 才过 en≠de 门禁。
+
+### U13 落地记录（继续被打断的回合：界面已接，真机卡在一个实测问题上）
+
+1. **补的是哪半截**：`acp:continue-interrupted-turn` 在 preload 已暴露、渲染层**零调用点**；中断横幅只给一个 Resume，而 Resume 是渲染层自己把那条消息**重新发一遍**（`useWorkspaceAgentRuntime` 里 remove + 重新提交），不是把同一个回合交给 agent 接着跑。
+2. **已接的界面**：`SessionInterruptedBanner` 新增「继续这一回合」，调 `window.api.acp.continueInterruptedTurn({projectId, sessionId, promptMessageId})`（`promptMessageId` 取自导出的 `findInterruptedUserTurn`，即「最后一条没有成功回复的用户消息」），成功后 `markResumed` 清中断态。**两个动作的差别写在横幅上**（`data-testid="session-interrupted-hints"`）：继续＝从那一步接着跑、消息与附件还是原来那条、已在跑不会起第二次；恢复＝把这条消息重新发一遍、算新回合。飞行中两个按钮互斥禁用；没有可续回合时继续按钮禁用并明说原因；续跑失败显示具名原因。i18n 6 key × 9 语；横幅套件 3 → **6 passed**；typecheck 0。
+3. **真机未通（实测，不是猜测）**：假 agent 新场景会**先流一段半成品再永不作答**（真·在飞回合），随后 `app.restart()`（走 Electron 自己的 close，属优雅退出）。重启后：`api.sessions.loadAll()` **返回 0 个会话**、首页 Recent sessions 为空、横幅自然也不出现——即这条路径上，「回合没写完就退出」**什么也没留下可续**。两种可能：① 关机时渲染层应答的那次 flush 没来得及落盘；② 从未完成的回合根本不写会话文档。**两者是不同性质的结论**（前者是夹具/时序，后者是产品行为），需要下一步定位后再定 U13 是否可达。spec 因此标为 `test.fixme` 并把这套实测证据写在文件头，不做假绿。
+4. **仍然成立的部分**：横幅本身、IPC 调用形状、main 侧 `continueInterruptedTurn` 的幂等（已在跑则原样返回快照）都由单测与 main 侧测试覆盖；缺的是端到端那一半。
 
 ## 批次 3（v1.72.0）体验真实差距 + 可发现性
 

@@ -73,6 +73,13 @@ export const zh = {
   'common.searchSkills': '搜索技能…',
   'common.searchConnectors': '搜索连接器…',
   'common.dismiss': '关闭',
+  'ws.continueTurn': '继续这一回合',
+  'ws.continuing': '正在继续…',
+  'ws.continueTurnHint':
+    '「继续这一回合」从那一步接着往下跑：消息与附件都还是原来那条，已经在跑就不会再起一次。',
+  'ws.resumeTurnHint': '「恢复」是把这条消息重新发一遍，算新的一回合。',
+  'ws.continueTurnUnavailable': '没有可以接着跑的未完成回合。',
+  'ws.continueTurnFailed': '这一回合没能接着跑：{detail}',
   'ws.replay': '重放',
   'ws.replay.run': '运行重放',
   'ws.replay.running': '正在重放…',

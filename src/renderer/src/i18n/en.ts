@@ -75,6 +75,13 @@ export const en: Record<ZhKey, string> = {
   'common.searchSkills': 'Search skills…',
   'common.searchConnectors': 'Search connectors…',
   'common.dismiss': 'Dismiss',
+  'ws.continueTurn': 'Continue turn',
+  'ws.continuing': 'Continuing…',
+  'ws.continueTurnHint':
+    'Continue picks the turn up where it stopped: the same message and files, and it will not start twice if it is already running.',
+  'ws.resumeTurnHint': 'Resume sends this message again as a new turn.',
+  'ws.continueTurnUnavailable': 'There is no unfinished turn to pick up.',
+  'ws.continueTurnFailed': 'The turn could not be continued: {detail}',
   'ws.replay': 'Replay',
   'ws.replay.run': 'Run replay',
   'ws.replay.running': 'Running the replay…',

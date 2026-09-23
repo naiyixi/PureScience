@@ -280,6 +280,13 @@ export const de: Partial<Record<ZhKey, string>> = {
   'foldTimeline.title': 'Eingeklappter Kontext',
   'foldTimeline.previewSummary': 'Vorschau des eingeklappten Transkripts',
   'foldTimeline.foldCount': '{n} Faltung{en} — Originaltext für {tool} aufbewahrt',
+  'ws.continueTurn': 'Zug fortsetzen',
+  'ws.continuing': 'Wird fortgesetzt…',
+  'ws.continueTurnHint':
+    '„Zug fortsetzen“ setzt dort an, wo der Zug stehen blieb: dieselbe Nachricht und dieselben Dateien, und läuft er bereits, wird er nicht ein zweites Mal gestartet.',
+  'ws.resumeTurnHint': '„Fortsetzen“ sendet diese Nachricht erneut, als neuen Zug.',
+  'ws.continueTurnUnavailable': 'Es gibt keinen unfertigen Zug zum Fortsetzen.',
+  'ws.continueTurnFailed': 'Der Zug konnte nicht fortgesetzt werden: {detail}',
   'ws.replay': 'Wiederholung',
   'ws.replay.run': 'Replay ausführen',
   'ws.replay.running': 'Replay läuft…',

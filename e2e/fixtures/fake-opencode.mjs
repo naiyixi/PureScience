@@ -11,8 +11,14 @@ const PROVIDER_BRIDGE_PROMPT = 'Verify the provider bridge.'
 const NOTEBOOK_LIFECYCLE_PROMPT = 'Verify the notebook lifecycle.'
 const ARTIFACT_PROVENANCE_PROMPT = 'Create a provenance artifact.'
 const PDF_REGION_PROMPT = 'Create a region drawing PDF.'
+const INTERRUPTED_TURN_PROMPT = 'Continue the interrupted turn fixture.'
+const PARTIAL_TURN_REPLY = 'Part of the answer arrived before the app went down.'
+const CONTINUED_TURN_REPLY = 'The interrupted turn continued from where it stopped.'
 
 const sessionRoutes = new Map()
+
+// Counts the interrupted-turn fixture's sends so only the first one hangs.
+let interruptedTurnPrompts = 0
 
 const stringEnvironment = (overrides = []) => {
   const environment = Object.fromEntries(
@@ -247,6 +253,26 @@ if (process.argv.includes('--version')) {
         .join('')
 
       let reply = 'Deterministic reply: Summarize the deterministic fixture.'
+      // The interrupted-turn fixture: the first send is never answered, so the spec can restart the
+      // app while the turn is genuinely in flight. The continuation that arrives after the restart is
+      // answered, and that answer is what the spec looks for.
+      if (prompt.includes(INTERRUPTED_TURN_PROMPT)) {
+        interruptedTurnPrompts += 1
+        if (interruptedTurnPrompts === 1) {
+          // Say something first, so the session is a session with a turn in it, then never finish: the
+          // app is restarted while this turn is still open, which is the interruption under test.
+          await context.client.notify(acp.methods.client.session.update, {
+            sessionId: context.params.sessionId,
+            update: {
+              sessionUpdate: 'agent_message_chunk',
+              messageId: 'e2e-interrupted-turn',
+              content: { type: 'text', text: PARTIAL_TURN_REPLY }
+            }
+          })
+          return new Promise(() => {})
+        }
+        reply = CONTINUED_TURN_REPLY
+      }
       try {
         if (prompt.includes(PROVIDER_BRIDGE_PROMPT)) {
           reply = verifyProviderBridge()

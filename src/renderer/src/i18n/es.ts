@@ -275,6 +275,13 @@ export const es: Partial<Record<ZhKey, string>> = {
   'foldTimeline.title': 'Contexto plegado',
   'foldTimeline.previewSummary': 'Vista previa del registro plegado',
   'foldTimeline.foldCount': '{n} pliegue{s} — el texto original se conserva para {tool}',
+  'ws.continueTurn': 'Continuar el turno',
+  'ws.continuing': 'Continuando…',
+  'ws.continueTurnHint':
+    '«Continuar el turno» retoma donde se detuvo: el mismo mensaje y los mismos archivos, y no se inicia dos veces si ya está en marcha.',
+  'ws.resumeTurnHint': '«Reanudar» vuelve a enviar este mensaje como un turno nuevo.',
+  'ws.continueTurnUnavailable': 'No hay ningún turno sin terminar que retomar.',
+  'ws.continueTurnFailed': 'El turno no se pudo continuar: {detail}',
   'ws.replay': 'Repetición',
   'ws.replay.run': 'Ejecutar repetición',
   'ws.replay.running': 'Ejecutando la repetición…',

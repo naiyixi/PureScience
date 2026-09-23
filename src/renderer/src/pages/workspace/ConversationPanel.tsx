@@ -41,7 +41,7 @@ import {
   Square,
   X
 } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { resolveEffectiveSpecialistSkills } from '../../../../shared/specialist'
 
 import { FileDropOverlay } from '@/components/FileDropOverlay'
@@ -79,6 +79,8 @@ import { AnnotationCards } from './AnnotationCards'
 import { SelectionAnnotator } from './SelectionAnnotator'
 import { normalizeRunFailureError } from './error-report'
 import { ReportErrorDialog } from './ReportErrorDialog'
+import { findInterruptedUserTurn } from '@/lib/acp/useWorkspaceAgentRuntime'
+import { useSessionStore } from '@/stores/session-store'
 import { SessionInterruptedBanner } from './SessionInterruptedBanner'
 import { ExtensionPreservingFileName } from './ExtensionPreservingFileName'
 import { TrimmedHistoryNotice } from './TrimmedHistoryNotice'
@@ -334,6 +336,8 @@ const ConversationPanel = ({
   const globalSearchShortcut = window.api?.platform === 'darwin' ? '⌘K' : 'Ctrl+K'
   // Local so the interrupted banner can show a spinner and block a double-resume until the request settles.
   const [isResuming, setIsResuming] = useState(false)
+  const [isContinuing, setIsContinuing] = useState(false)
+  const [continueError, setContinueError] = useState<string | undefined>(undefined)
   // Opens the reviewable, consent-gated error report dialog for a failed run.
   const [isReportOpen, setIsReportOpen] = useState(false)
   const [isContextWindowOpen, setIsContextWindowOpen] = useState(false)
@@ -401,6 +405,36 @@ const ConversationPanel = ({
       await onResumeSession()
     } finally {
       setIsResuming(false)
+    }
+  }
+
+  // The turn this banner is about, so Continue can name the very message that was interrupted.
+  const interruptedTurn = useMemo(
+    () =>
+      activeSession?.interrupted ? findInterruptedUserTurn(activeSession.messages) : undefined,
+    [activeSession]
+  )
+
+  // Hands the interrupted turn back to the agent. Unlike Resume this does not send a new message: the
+  // same prompt continues, and main leaves a continuation that is already in flight alone.
+  const handleContinue = async (): Promise<void> => {
+    if (!activeSession || !interruptedTurn || isContinuing || isResuming) return
+
+    setIsContinuing(true)
+    setContinueError(undefined)
+    try {
+      await window.api.acp.continueInterruptedTurn({
+        projectId: activeSession.projectId,
+        sessionId: activeSession.id,
+        promptMessageId: interruptedTurn.id
+      })
+      // The continuation is running, so the banner's reason to exist is gone.
+      useSessionStore.getState().markResumed(activeSession.id)
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error)
+      setContinueError(t('ws.continueTurnFailed').replace('{detail}', detail))
+    } finally {
+      setIsContinuing(false)
     }
   }
 
@@ -598,7 +632,11 @@ const ConversationPanel = ({
                       message={activeSession.error ?? t('ws.sessionInterrupted')}
                       isDisabled={!canResumeSession}
                       isResuming={isResuming}
+                      isContinuing={isContinuing}
+                      canContinue={Boolean(interruptedTurn)}
+                      continueError={continueError}
                       onResume={() => void handleResume()}
+                      onContinue={() => void handleContinue()}
                     />
                   ) : activeSession?.compacting ? (
                     // Auto-recovery after a request-size overflow: a neutral note, not the red error box,

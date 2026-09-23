@@ -272,6 +272,13 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'foldTimeline.title': '折りたたまれたコンテキスト',
   'foldTimeline.previewSummary': '折りたたまれたトランスクリプトのプレビュー',
   'foldTimeline.foldCount': '{n} 個の折りたたみ — 元のテキストは {tool} 用に保持',
+  'ws.continueTurn': 'このターンを続行',
+  'ws.continuing': '続行中…',
+  'ws.continueTurnHint':
+    '「このターンを続行」は止まったところから再開します。メッセージと添付はそのまま、すでに実行中なら二重には開始しません。',
+  'ws.resumeTurnHint': '「再開」はこのメッセージを新しいターンとして送り直します。',
+  'ws.continueTurnUnavailable': '続行できる未完了のターンがありません。',
+  'ws.continueTurnFailed': 'このターンを続行できませんでした：{detail}',
   'ws.replay': '再実行',
   'ws.replay.run': '再実行する',
   'ws.replay.running': '再実行中…',

@@ -1348,7 +1348,9 @@ const sendWorkspaceMessage = async (
 // has no successful assistant reply after it (a half-streamed reply is failed on disconnect, so it
 // does not count). Returns undefined when the last turn was already answered, so a redundant Resume
 // does not re-send it.
-const findInterruptedUserTurn = (messages: ChatMessage[]): ChatMessage | undefined => {
+// The turn the interrupted-session banner acts on: the newest user message with no successful
+// reply after it. Exported so the banner can name the same message this module re-sends.
+export const findInterruptedUserTurn = (messages: ChatMessage[]): ChatMessage | undefined => {
   for (let index = messages.length - 1; index >= 0; index -= 1) {
     const message = messages[index]
 

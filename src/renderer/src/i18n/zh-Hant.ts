@@ -228,6 +228,13 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'foldTimeline.title': '摺疊上下文',
   'foldTimeline.previewSummary': '摺疊對話紀錄預覽',
   'foldTimeline.foldCount': '{n} 個摺疊 — 原文保留供 {tool} 使用',
+  'ws.continueTurn': '繼續這一回合',
+  'ws.continuing': '正在繼續…',
+  'ws.continueTurnHint':
+    '「繼續這一回合」從那一步接著往下跑：訊息與附件都還是原來那條，已經在跑就不會再起一次。',
+  'ws.resumeTurnHint': '「恢復」是把這條訊息重新發一遍，算新的一回合。',
+  'ws.continueTurnUnavailable': '沒有可以接著跑的未完成回合。',
+  'ws.continueTurnFailed': '這一回合沒能接著跑：{detail}',
   'ws.replay': '重放',
   'ws.replay.run': '執行重放',
   'ws.replay.running': '正在重放…',

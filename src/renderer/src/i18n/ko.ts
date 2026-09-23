@@ -269,6 +269,13 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'foldTimeline.title': '접힌 컨텍스트',
   'foldTimeline.previewSummary': '접힌 대화 기록 미리보기',
   'foldTimeline.foldCount': '{n}개 접힘 — 원문은 {tool}을(를) 위해 유지됨',
+  'ws.continueTurn': '이 턴 계속',
+  'ws.continuing': '계속하는 중…',
+  'ws.continueTurnHint':
+    '"이 턴 계속"은 멈춘 지점부터 이어서 실행합니다. 메시지와 첨부는 그대로이며, 이미 실행 중이면 중복으로 시작하지 않습니다.',
+  'ws.resumeTurnHint': '"재개"는 이 메시지를 새 턴으로 다시 보냅니다.',
+  'ws.continueTurnUnavailable': '이어서 실행할 미완료 턴이 없습니다.',
+  'ws.continueTurnFailed': '이 턴을 계속할 수 없습니다: {detail}',
   'ws.replay': '재실행',
   'ws.replay.run': '재실행',
   'ws.replay.running': '재실행 중…',
