@@ -123,7 +123,9 @@ beforeEach(() => {
       setEnvironmentEnabled,
       setInstallAuthorized,
       registerInterpreter,
-      pickInterpreter
+      pickInterpreter,
+      // The panel now loads the persisted selection up front so it can mark the current runtime.
+      survey: vi.fn().mockResolvedValue([])
     },
     notebookEnv: {
       getStatus: vi.fn().mockResolvedValue(provisionStatus),
@@ -738,6 +740,133 @@ describe('RuntimesPanel network-protection status card', () => {
     const card = container.querySelector('[data-testid="runtimes-egress-card"]')
     expect(card?.textContent).toContain('Network protection is off')
     expect(card?.querySelector('button')).toBeNull()
+  })
+
+  it('marks the persisted selection as the current runtime', async () => {
+    window.api.runtime.survey = vi.fn().mockResolvedValue([
+      {
+        language: 'python',
+        selection: { source: 'external', interpreterPath: '/usr/bin/python3' },
+        managed: {
+          language: 'python',
+          source: 'managed',
+          detected: true,
+          selected: false,
+          runnable: true,
+          packageMutable: true
+        },
+        external: {
+          language: 'python',
+          source: 'external',
+          detected: true,
+          selected: true,
+          runnable: true,
+          packageMutable: false,
+          interpreterPath: '/usr/bin/python3'
+        }
+      }
+    ])
+    await render()
+
+    const pythonCards = container.querySelectorAll('[data-testid="runtime-card"]')
+    const userOwn = Array.from(pythonCards).find((card) =>
+      card.textContent?.includes('/usr/bin/python3')
+    )
+    // The selected interpreter is named as current, and the app-managed env keeps its own affordance
+    // instead of both reading as "current".
+    expect(userOwn?.querySelector('[data-testid="runtime-current"]')).not.toBeNull()
+    const managed = Array.from(pythonCards).find((card) =>
+      card.textContent?.includes('default-python-3.12')
+    )
+    expect(managed?.querySelector('[data-testid="runtime-current"]')).toBeNull()
+    expect(managed?.querySelector('[data-testid="runtime-use-for-notebooks"]')).not.toBeNull()
+  })
+
+  it('selects a registered interpreter as the notebook runtime with the flags the backend expects', async () => {
+    const setSelection = vi.fn().mockResolvedValue({
+      language: 'python',
+      selection: { source: 'external', interpreterPath: '/usr/bin/python3' },
+      managed: {
+        language: 'python',
+        source: 'managed',
+        detected: true,
+        selected: false,
+        runnable: true,
+        packageMutable: true
+      },
+      external: {
+        language: 'python',
+        source: 'external',
+        detected: true,
+        selected: true,
+        runnable: true,
+        packageMutable: false,
+        interpreterPath: '/usr/bin/python3'
+      }
+    })
+    window.api.runtime.setSelection = setSelection
+    await render()
+
+    const userOwn = Array.from(container.querySelectorAll('[data-testid="runtime-card"]')).find(
+      (card) => card.textContent?.includes('/usr/bin/python3')
+    )
+    // A user's own interpreter defaults to disabled, and only an enabled runtime may be promoted —
+    // the agent never sees a disabled one — so the toggle comes first, as it does for a real user.
+    await click(userOwn?.querySelector('[aria-label="Enable System Python"]') ?? null)
+    const enabled = Array.from(container.querySelectorAll('[data-testid="runtime-card"]')).find(
+      (card) => card.textContent?.includes('/usr/bin/python3')
+    )
+    await click(enabled?.querySelector('[data-testid="runtime-use-for-notebooks"]') ?? null)
+
+    expect(setSelection).toHaveBeenCalledWith('python', {
+      source: 'external',
+      interpreterPath: '/usr/bin/python3',
+      appOwnedOverlay: false,
+      packageInstallAuthorized: false
+    })
+    // The returned survey is applied, so the card now reads as current without a refetch.
+    const refreshed = Array.from(container.querySelectorAll('[data-testid="runtime-card"]')).find(
+      (card) => card.textContent?.includes('/usr/bin/python3')
+    )
+    expect(refreshed?.querySelector('[data-testid="runtime-current"]')).not.toBeNull()
+  })
+
+  it('offers unregister only for an interpreter the system scan cannot find again', async () => {
+    const catalogPython: DiscoveredInterpreter = {
+      language: 'python',
+      provenance: 'user-own',
+      registration: 'catalog',
+      envId: '/opt/conda/envs/bio/bin/python',
+      interpreterPath: '/opt/conda/envs/bio/bin/python',
+      label: 'conda: bio',
+      version: '3.11.9',
+      runnable: true,
+      condaEnv: 'bio'
+    }
+    const unregisterInterpreter = vi.fn().mockResolvedValue([])
+    window.api.runtime.unregisterInterpreter = unregisterInterpreter
+    listEnvironments
+      .mockResolvedValueOnce({ python: [...pythonEnvs, catalogPython], r: rEnvs })
+      .mockResolvedValueOnce({ python: pythonEnvs, r: rEnvs })
+    await render()
+
+    // A path the system scan finds on its own survives unregistering, so no control is offered that
+    // would silently do nothing.
+    const systemOwn = Array.from(container.querySelectorAll('[data-testid="runtime-card"]')).find(
+      (card) => card.textContent?.includes('/usr/bin/python3')
+    )
+    expect(systemOwn?.querySelector('[data-testid="runtime-unregister"]')).toBeNull()
+
+    const catalogCard = Array.from(container.querySelectorAll('[data-testid="runtime-card"]')).find(
+      (card) => card.textContent?.includes('/opt/conda/envs/bio/bin/python')
+    )
+    await click(catalogCard?.querySelector('[data-testid="runtime-unregister"]') ?? null)
+
+    expect(unregisterInterpreter).toHaveBeenCalledWith('python', '/opt/conda/envs/bio/bin/python')
+    const after = Array.from(container.querySelectorAll('[data-testid="runtime-card"]'))
+    expect(after.some((card) => card.textContent?.includes('/opt/conda/envs/bio/bin/python'))).toBe(
+      false
+    )
   })
 
   it('keeps the card hidden when window.api.settings is not exposed (guard)', async () => {

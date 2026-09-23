@@ -90,9 +90,17 @@ export type EnvProvenance = 'app-managed' | 'user-own' | 'agent-created'
 
 // One detected interpreter. `envId` (its real path) is the stable identity used to persist the
 // per-env enabled/disabled choice across re-detection.
+// Where a candidate interpreter was found. The manual catalog in Settings ('catalog') and the
+// system scan ('system') are merged into one candidate list, and only a catalogued path can be
+// removed from it — a path the system also finds stays detectable after unregistering. Reporting
+// 'both' is what lets Settings offer to unregister only where doing so changes anything.
+export type RuntimeRegistration = 'catalog' | 'system' | 'both'
+
 export type DiscoveredInterpreter = {
   language: NotebookLanguage
   provenance: EnvProvenance
+  // Absent on hand-built entries (tests, callers that already know the interpreter).
+  registration?: RuntimeRegistration
   envId: string
   interpreterPath: string
   label: string

@@ -6,7 +6,11 @@ import { join, win32 } from 'node:path'
 import { promisify } from 'node:util'
 
 import type { NotebookLanguage } from '../../shared/notebook'
-import type { DiscoveredInterpreter, EnvProvenance } from '../../shared/notebook-runtime'
+import type {
+  DiscoveredInterpreter,
+  EnvProvenance,
+  RuntimeRegistration
+} from '../../shared/notebook-runtime'
 import { probeInterpreterVersion } from './python-command'
 import { parseRVersion, rHasJsonlite } from './r-command'
 import {
@@ -36,10 +40,17 @@ const isWin = (): boolean => process.platform === 'win32'
 
 // Injectable so discovery is unit-testable without a real machine. The real defaults enumerate PATH,
 // common install dirs, pyenv, conda/mamba envs, and the app's own runtime/envs.
+// A candidate interpreter and which source produced it. See RuntimeRegistration for why the
+// distinction matters: the manual catalog is the only source the user can take a path back out of.
+export type RuntimeCandidate = {
+  path: string
+  source: RuntimeRegistration
+}
+
 export type DiscoveryDeps = {
   // Absolute candidate interpreter paths for a language, across all sources (may contain dupes/misses;
   // the orchestrator realpath-dedupes and drops non-existent ones).
-  candidatePaths: (language: NotebookLanguage) => Promise<string[]>
+  candidatePaths: (language: NotebookLanguage) => Promise<RuntimeCandidate[]>
   // `<interp> --version` → version string (e.g. "3.12.4" / "4.4.1"), or undefined if it doesn't run.
   probeVersion: (interpreterPath: string, language: NotebookLanguage) => Promise<string | undefined>
   // Whether an R interpreter can actually back the kernel loop (jsonlite + protocol). Python
@@ -192,27 +203,28 @@ export const windowsCondaPrefixForR = (
 // snapshot; a missing/failed lookup contributes nothing.
 export const defaultCandidatePaths =
   (runtimeRoot: string, manualPaths?: (language: NotebookLanguage) => string[]) =>
-  async (language: NotebookLanguage): Promise<string[]> => {
+  async (language: NotebookLanguage): Promise<RuntimeCandidate[]> => {
     const names = interpreterNames(language)
-    const found = new Set<string>()
+    // Kept apart from the scan on purpose: a path in both is one the user cannot actually unregister.
+    const catalogued = new Set(manualPaths?.(language) ?? [])
+    const scanned = new Set<string>()
 
     // Targeted probes of KNOWN interpreter locations — never a recursive filesystem walk. A packaged
     // GUI app inherits a minimal PATH (not the user's shell), so `which` alone finds almost nothing;
     // we must also check the well-known install dirs, framework versions, and conda roots directly, or
     // a user's real R / Python / conda envs go undetected. Each is an existsSync of a specific path.
 
-    // Manually-added interpreters from the Settings catalog.
-    for (const p of manualPaths?.(language) ?? []) found.add(p)
+    // Manually-added interpreters from the Settings catalog are already in `catalogued`.
 
     // On PATH (`which -a` / `where`) — the happy path when launched from a shell.
-    for (const name of names) for (const p of await whichAll(name)) found.add(p)
+    for (const name of names) for (const p of await whichAll(name)) scanned.add(p)
 
     // Well-known install bin dirs (Homebrew, /usr/local, /usr/bin) — reached even without a shell PATH.
     const commonBinDirs = ['/usr/bin', '/usr/local/bin', '/opt/homebrew/bin']
     for (const dir of commonBinDirs)
       for (const name of names) {
         const p = join(dir, name)
-        if (existsSync(p)) found.add(p)
+        if (existsSync(p)) scanned.add(p)
       }
 
     // macOS framework installs (python.org Python, CRAN R): one interpreter per versioned Resources dir.
@@ -226,7 +238,7 @@ export const defaultCandidatePaths =
           join(frameworkGlobs, ver, language === 'r' ? 'Resources' : ''),
           language
         )
-        if (existsSync(p)) found.add(p)
+        if (existsSync(p)) scanned.add(p)
       }
     } catch {
       // no framework dir
@@ -238,7 +250,7 @@ export const defaultCandidatePaths =
       try {
         for (const ver of readdirSync(versionsDir)) {
           const p = join(versionsDir, ver, 'bin', 'python')
-          if (existsSync(p)) found.add(p)
+          if (existsSync(p)) scanned.add(p)
         }
       } catch {
         // no pyenv
@@ -249,11 +261,11 @@ export const defaultCandidatePaths =
     // scan inside listCondaPrefixes (so envs are found even when conda itself is off the GUI PATH).
     for (const prefix of await listCondaPrefixes()) {
       const p = prefixInterpreter(prefix, language)
-      if (existsSync(p)) found.add(p)
+      if (existsSync(p)) scanned.add(p)
     }
 
     // Windows Python launcher: `py -0p` lists installed interpreters' paths.
-    if (language === 'python' && isWin()) for (const p of await pyLauncherPaths()) found.add(p)
+    if (language === 'python' && isWin()) for (const p of await pyLauncherPaths()) scanned.add(p)
 
     // Windows CRAN R standard installations: check Program Files and user-local directories for versioned
     // R installs (R-x.y.z). CRAN R doesn't register with a launcher like Python's `py`, so we enumerate
@@ -293,7 +305,7 @@ export const defaultCandidatePaths =
           for (const p of candidates) {
             try {
               await access(p)
-              found.add(p)
+              scanned.add(p)
               break
             } catch {
               // Candidate doesn't exist, try next
@@ -314,7 +326,7 @@ export const defaultCandidatePaths =
         const prefix = join(appEnvsDir, directory)
         if (prefix !== envPrefix(runtimeRoot, name)) continue
         const p = language === 'python' ? pythonBin(prefix) : rBin(prefix)
-        if (existsSync(p)) found.add(p)
+        if (existsSync(p)) scanned.add(p)
       }
     } catch {
       // No runtime/envs dir yet (first run) — nothing app-owned to add.
@@ -322,7 +334,15 @@ export const defaultCandidatePaths =
 
     // R and Rscript are two binaries of ONE R install; collapse to a single card (the R binary). The
     // launcher/probe derives the sibling Rscript when needed (see rscriptFor), so nothing is lost.
-    return collapseRscript([...found])
+    return collapseRscript([...new Set([...catalogued, ...scanned])]).map((path) => ({
+      path,
+      source:
+        catalogued.has(path) && scanned.has(path)
+          ? 'both'
+          : catalogued.has(path)
+            ? 'catalog'
+            : 'system'
+    }))
   }
 
 // Drops a `Rscript` candidate when its sibling `R` (same dir) is also a candidate, so a detected R
@@ -380,21 +400,38 @@ export const discoverInterpreters = async (
   // the number of interpreters (slow with many conda envs), but an unbounded Promise.all over dozens of
   // candidates would fan out too many processes/file descriptors at once. A small worker pool keeps it
   // fast without a spawn storm. Order is preserved (results written back at each candidate's index).
-  const seen = new Set<string>()
-  const unique: { path: string; envId: string }[] = []
-  for (const path of await deps.candidatePaths(language)) {
-    const envId = deps.realpath(path)
-    if (seen.has(envId)) continue
-    seen.add(envId)
-    unique.push({ path, envId })
+  const indexByEnvId = new Map<string, number>()
+  const unique: {
+    path: string
+    envId: string
+    fromCatalog: boolean
+    fromSystem: boolean
+  }[] = []
+  for (const candidate of await deps.candidatePaths(language)) {
+    const envId = deps.realpath(candidate.path)
+    const fromCatalog = candidate.source === 'catalog' || candidate.source === 'both'
+    const fromSystem = candidate.source === 'system' || candidate.source === 'both'
+    const at = indexByEnvId.get(envId)
+    if (at === undefined) {
+      indexByEnvId.set(envId, unique.length)
+      unique.push({ path: candidate.path, envId, fromCatalog, fromSystem })
+      continue
+    }
+    const entry = unique[at]
+    entry.fromCatalog = entry.fromCatalog || fromCatalog
+    entry.fromSystem = entry.fromSystem || fromSystem
   }
 
   const probe = async ({
     path,
-    envId
+    envId,
+    fromCatalog,
+    fromSystem
   }: {
     path: string
     envId: string
+    fromCatalog: boolean
+    fromSystem: boolean
   }): Promise<DiscoveredInterpreter> => {
     const version = await deps.probeVersion(path, language)
     const provenance = classify(path, deps.runtimeRoot)
@@ -413,6 +450,7 @@ export const discoverInterpreters = async (
     return {
       language,
       provenance,
+      registration: fromCatalog && fromSystem ? 'both' : fromCatalog ? 'catalog' : 'system',
       envId,
       interpreterPath: path,
       label: conda ? `conda: ${conda}` : path,

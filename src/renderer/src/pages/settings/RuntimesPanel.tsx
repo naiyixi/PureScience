@@ -6,7 +6,8 @@ import {
   RefreshCw,
   Search,
   ShieldCheck,
-  ShieldOff
+  ShieldOff,
+  Trash2
 } from 'lucide-react'
 import { AlertDialog, Dialog } from 'radix-ui'
 import { useEffect, useRef, useState } from 'react'
@@ -30,6 +31,8 @@ import {
   type DiscoveredInterpreter,
   type EnvPackage,
   type RuntimeEnablement,
+  type RuntimeSelection,
+  type RuntimeSurvey,
   type RuntimeUsage
 } from '../../../../shared/notebook-runtime'
 import type { NotebookLanguage } from '../../../../shared/notebook'
@@ -110,6 +113,10 @@ const RuntimesPanel = ({
   const [envs, setEnvs] = useState<EnvLists | null>(null)
   const [enablement, setEnablement] = useState<Enablements>({})
   const [loaded, setLoaded] = useState(false)
+  // The persisted per-language selection, plus the notices the selection controls set. The selection
+  // used to be loaded nowhere in the renderer at all: it was persisted, and invisible.
+  const [surveys, setSurveys] = useState<RuntimeSurvey[]>([])
+  const [notice, setNotice] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   // Network-protection status: mirrors the persisted egress master switch from Settings → Network
@@ -178,18 +185,24 @@ const RuntimesPanel = ({
   // On failure fall back to empty results (a recoverable "couldn't detect" state with Recheck)
   // rather than hanging on "Detecting…" forever. Loads the discovered envs plus the PERSISTED
   // enablement for both languages so cards show their saved enabled/install-auth state on open.
-  const fetchAll = (): Promise<[EnvLists, Enablements]> =>
+  const fetchAll = (): Promise<[EnvLists, Enablements, RuntimeSurvey[]]> =>
     Promise.all([
       window.api.runtime.listEnvironments().catch(() => ({ python: [], r: [] }) as EnvLists),
       window.api.runtime.getEnablement('python').catch(() => undefined),
-      window.api.runtime.getEnablement('r').catch(() => undefined)
-    ]).then(([nextEnvs, python, r]) => [nextEnvs, { python, r }])
+      window.api.runtime.getEnablement('r').catch(() => undefined),
+      window.api.runtime.survey().catch(() => [] as RuntimeSurvey[])
+    ]).then(([nextEnvs, python, r, nextSurveys]) => [nextEnvs, { python, r }, nextSurveys])
 
   // Commit discovery and persisted permissions as one snapshot. Mixing a fresh interpreter list
   // with stale enablement could briefly expose the wrong toggle or package-install authorization.
-  const applyAll = ([nextEnvs, nextEnablement]: [EnvLists, Enablements]): void => {
+  const applyAll = ([nextEnvs, nextEnablement, nextSurveys]: [
+    EnvLists,
+    Enablements,
+    RuntimeSurvey[]
+  ]): void => {
     setEnvs(nextEnvs)
     setEnablement(nextEnablement)
+    setSurveys(nextSurveys)
     setLoaded(true)
   }
 
@@ -270,6 +283,74 @@ const RuntimesPanel = ({
 
   const isInstallAuthorized = (language: NotebookLanguage, env: DiscoveredInterpreter): boolean =>
     enablement[language]?.installAuthorized[env.envId] ?? false
+
+  const isCurrentRuntime = (language: NotebookLanguage, env: DiscoveredInterpreter): boolean => {
+    const selection = surveys.find((survey) => survey.language === language)?.selection
+    if (selection === undefined) return false
+    if (selection.source === 'managed') return env.provenance === 'app-managed'
+
+    return selection.interpreterPath === env.interpreterPath
+  }
+
+  // Which env may be promoted to the language's runtime: the app-managed env always, and — Python
+  // only, because R is managed-only by contract — one of the user's own registered interpreters. An
+  // agent-created env belongs to the agent's own binding flow, so it is not offered here.
+  const canSelectAsRuntime = (language: NotebookLanguage, env: DiscoveredInterpreter): boolean =>
+    env.runnable &&
+    isEnabled(language, env) &&
+    (env.provenance === 'app-managed' || (language === 'python' && env.provenance === 'user-own'))
+
+  const selectAsRuntime = async (
+    language: NotebookLanguage,
+    env: DiscoveredInterpreter
+  ): Promise<void> => {
+    setBusy(true)
+    setError(null)
+    setNotice(null)
+    try {
+      const selection: RuntimeSelection =
+        env.provenance === 'app-managed'
+          ? { source: 'managed' }
+          : {
+              source: 'external',
+              interpreterPath: env.interpreterPath,
+              // The launched interpreter's leading args live on the readiness probe, not on the
+              // discovered entry, so a launcher-based install is addressed through its path here.
+              appOwnedOverlay: false,
+              packageInstallAuthorized: isInstallAuthorized(language, env)
+            }
+      const next = await window.api.runtime.setSelection(language, selection)
+      setSurveys((current) => [
+        ...current.filter((survey) => survey.language !== next.language),
+        next
+      ])
+      setNotice(t('settings.selectedRuntime').replace('{name}', env.label))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('settings.couldNotSelectRuntime'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const unregisterInterpreter = async (
+    language: NotebookLanguage,
+    env: DiscoveredInterpreter
+  ): Promise<void> => {
+    setBusy(true)
+    setError(null)
+    setNotice(null)
+    try {
+      await window.api.runtime.unregisterInterpreter(language, env.envId)
+      countsRef.current = {}
+      setPackageCounts({})
+      applyAll(await fetchAll())
+      setNotice(t('settings.unregisteredInterpreter').replace('{name}', env.label))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('settings.couldNotUnregisterInterpreter'))
+    } finally {
+      setBusy(false)
+    }
+  }
 
   const applyEnabled = async (
     language: NotebookLanguage,
@@ -429,6 +510,10 @@ const RuntimesPanel = ({
   // One environment card (detected app-managed or user-own): identity + readiness + enable toggle,
   // plus the install-authorization row for an enabled external env. Shared by the managed-first card
   // and each own interpreter so they render identically.
+  // A catalogued path that the system also discovers ('both') survives unregistering, so the control is
+  // offered only for a path the catalog alone knows about.
+  const canUnregister = (env: DiscoveredInterpreter): boolean => env.registration === 'catalog'
+
   const renderEnvCard = (
     language: NotebookLanguage,
     env: DiscoveredInterpreter
@@ -464,6 +549,45 @@ const RuntimesPanel = ({
             aria-label={`Enable ${env.label}`}
           />
         </div>
+
+        {isCurrentRuntime(language, env) ||
+        canSelectAsRuntime(language, env) ||
+        canUnregister(env) ? (
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {isCurrentRuntime(language, env) ? (
+              <Badge variant="secondary" data-testid="runtime-current">
+                <CheckCircle2 aria-hidden="true" /> {t('settings.currentRuntime')}
+              </Badge>
+            ) : canSelectAsRuntime(language, env) ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                data-testid="runtime-use-for-notebooks"
+                disabled={busy}
+                onClick={() => void selectAsRuntime(language, env)}
+              >
+                <CheckCircle2 aria-hidden="true" /> {t('settings.useForNotebooks')}
+              </Button>
+            ) : null}
+            {env.provenance === 'user-own' ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                data-testid="runtime-unregister"
+                disabled={busy}
+                onClick={() => void unregisterInterpreter(language, env)}
+              >
+                <Trash2 aria-hidden="true" />
+                {t('settings.unregisterInterpreter').replace('{name}', env.label)}
+              </Button>
+            ) : null}
+            <span className="text-[11px] text-muted-foreground">
+              {t('settings.runtimeSelectionHint')}
+            </span>
+          </div>
+        ) : null}
 
         {env.runnable ? (
           <div className="mt-2">
@@ -576,6 +700,11 @@ const RuntimesPanel = ({
         {error !== null && (
           <p role="alert" className="text-sm text-destructive" data-testid="runtimes-error">
             {error}
+          </p>
+        )}
+        {notice !== null && (
+          <p role="status" className="text-sm text-primary" data-testid="runtimes-notice">
+            {notice}
           </p>
         )}
         {loading ? (

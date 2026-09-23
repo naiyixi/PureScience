@@ -1,3 +1,5 @@
+import { realpathSync } from 'node:fs'
+
 import type { PackageMirror } from '../../shared/mirror'
 import type { NotebookLanguage } from '../../shared/notebook'
 import type { RuntimeEnablement, RuntimeSelection } from '../../shared/notebook-runtime'
@@ -5,6 +7,16 @@ import type { SetPackageMirrorRequest } from '../../shared/settings'
 import type { NotebookRuntimeSettings, NotebookRuntimeSettingsSnapshot } from './capabilities'
 import type { SettingsRepository } from './repository'
 import type { StoredSettings } from './types'
+
+// The canonical identity of an interpreter path, tolerating one that no longer exists (a stale catalog
+// entry must still be removable by its literal path).
+const canonicalInterpreterPath = (path: string): string => {
+  try {
+    return realpathSync(path)
+  } catch {
+    return path
+  }
+}
 
 const cloneRuntimeSelection = (
   selection: RuntimeSelection | undefined
@@ -94,9 +106,14 @@ class NotebookRuntimeSettingsModule implements NotebookRuntimeSettings {
 
   async removeManualInterpreter(language: NotebookLanguage, path: string): Promise<string[]> {
     const current = (await this.getSnapshot(language)).manualInterpreters
+    // Matched by canonical path, not by string: the catalog keeps whatever the user picked, while a
+    // caller names the interpreter by the identity discovery uses (`realpath`). On macOS those differ
+    // routinely — /var is a symlink to /private/var, and a symlinked interpreter resolves elsewhere — so
+    // an exact-string filter silently left the entry in place and unregistering appeared to do nothing.
+    const target = canonicalInterpreterPath(path)
     const settings = await this.repository.setManualInterpreters(
       language,
-      current.filter((candidate) => candidate !== path)
+      current.filter((candidate) => canonicalInterpreterPath(candidate) !== target)
     )
 
     return [...(settings.notebookManualInterpreters?.[language] ?? [])]

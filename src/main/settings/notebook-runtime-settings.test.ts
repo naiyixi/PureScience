@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
@@ -20,6 +20,22 @@ afterEach(async () => {
 })
 
 describe('NotebookRuntimeSettingsModule', () => {
+  it('removes a catalogued interpreter named by a different but equivalent path', async () => {
+    const settings = await createModule()
+    const root = await mkdtemp(join(tmpdir(), 'notebook-runtime-canonical-'))
+    roots.push(root)
+    const real = join(root, 'python3')
+    const alias = join(root, 'alias-python')
+    await writeFile(real, '#!/bin/sh\n')
+    await symlink(real, alias)
+    // The catalog holds the path the user picked; discovery names the same interpreter by its canonical
+    // path (on macOS /var and /private/var differ, and a symlink resolves away), so removal must match
+    // the identity, not the string.
+    await settings.addManualInterpreter('python', alias)
+
+    await expect(settings.removeManualInterpreter('python', real)).resolves.toEqual([])
+  })
+
   it('returns a detached default policy snapshot for one language', async () => {
     const settings = await createModule()
 

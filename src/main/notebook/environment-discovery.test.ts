@@ -84,7 +84,7 @@ const makeDeps = (
     realpath?: Record<string, string>
   } = {}
 ): DiscoveryDeps => ({
-  candidatePaths: async () => paths,
+  candidatePaths: async () => paths.map((path) => ({ path, source: 'system' as const })),
   probeVersion: async (p) => opts.versions?.[p],
   rRunnable: async (p) => opts.rRunnable?.[p] ?? false,
   realpath: (p) => opts.realpath?.[p] ?? p,
@@ -158,7 +158,7 @@ describe('discoverInterpreters', () => {
     // A probeVersion that tracks concurrent in-flight calls: overlap is only observable if each call
     // stays open across a real (tiny) delay, so the pool's cap can actually bite.
     const deps: DiscoveryDeps = {
-      candidatePaths: async () => paths,
+      candidatePaths: async () => paths.map((path) => ({ path, source: 'system' as const })),
       probeVersion: async (p) => {
         inFlight += 1
         maxInFlight = Math.max(maxInFlight, inFlight)
@@ -287,12 +287,17 @@ describe('defaultCandidatePaths (targeted enumeration)', () => {
     mkdirSync(join(root, 'custom'), { recursive: true })
     writeFileSync(manualR, 'x')
 
-    const paths = await defaultCandidatePaths(root, () => [manualR])('r')
+    const candidates = await defaultCandidatePaths(root, () => [manualR])('r')
+    const paths = candidates.map((candidate) => candidate.path)
 
     expect(paths).toContain(rBin(rPrefix))
     expect(paths).toContain(manualR)
     // The app default's Rscript sibling is collapsed (only its R remains).
     expect(paths).not.toContain(rScriptBin(rPrefix))
+    // The catalog is the only source for the manual path, while the app's own default comes from the
+    // scan — the distinction Settings uses to decide whether unregistering can remove anything.
+    expect(candidates.find((candidate) => candidate.path === manualR)?.source).toBe('catalog')
+    expect(candidates.find((candidate) => candidate.path === rBin(rPrefix))?.source).toBe('system')
     rmSync(root, { recursive: true, force: true })
   })
 })
@@ -312,7 +317,10 @@ describe('defaultCandidatePaths Windows CRAN R detection', () => {
     process.env.ProgramFiles = join(root, 'Program Files')
     Object.defineProperty(process, 'platform', { value: 'win32', configurable: true })
     try {
-      const paths = await defaultCandidatePaths(root)('r')
+      const candidates = await defaultCandidatePaths(root)('r')
+      const paths = candidates.map((candidate) => candidate.path)
+      // Nothing here came from the Settings catalog, so the whole list is a system-scan result.
+      expect(candidates.every((candidate) => candidate.source === 'system')).toBe(true)
       expect(paths).toContain(join(r443Dir, 'R.exe'))
       expect(paths).not.toContain(join(r443Dir, 'Rscript.exe'))
     } finally {
@@ -341,7 +349,7 @@ describe('defaultCandidatePaths Windows CRAN R detection', () => {
     process.env.ProgramFiles = join(root, 'Program Files')
     Object.defineProperty(process, 'platform', { value: 'win32', configurable: true })
     try {
-      const paths = await defaultCandidatePaths(root)('r')
+      const paths = (await defaultCandidatePaths(root)('r')).map((candidate) => candidate.path)
       expect(paths).toContain(join(r443x64, 'R.exe'))
       expect(paths).toContain(join(r430bin, 'R.exe'))
       expect(paths.length).toBeGreaterThanOrEqual(2)
@@ -374,7 +382,7 @@ describe('defaultCandidatePaths Windows CRAN R detection', () => {
     process.env.LOCALAPPDATA = join(root, 'AppData', 'Local')
     Object.defineProperty(process, 'platform', { value: 'win32', configurable: true })
     try {
-      const paths = await defaultCandidatePaths(root)('r')
+      const paths = (await defaultCandidatePaths(root)('r')).map((candidate) => candidate.path)
       expect(paths).toContain(join(r32bit, 'R.exe'))
       expect(paths).toContain(join(rLocal, 'R.exe'))
     } finally {
@@ -406,7 +414,7 @@ describe('defaultCandidatePaths Windows CRAN R detection', () => {
     process.env.ProgramFiles = join(root, 'Program Files')
     Object.defineProperty(process, 'platform', { value: 'win32', configurable: true })
     try {
-      const paths = await defaultCandidatePaths(root)('r')
+      const paths = (await defaultCandidatePaths(root)('r')).map((candidate) => candidate.path)
       expect(paths).toContain(join(rValid, 'R.exe'))
       expect(paths.filter((p) => p.includes('docs')).length).toBe(0)
       expect(paths.filter((p) => p.includes('R-alpha')).length).toBe(0)
@@ -429,12 +437,14 @@ describe('defaultCandidatePaths Windows CRAN R detection', () => {
     try {
       // On Windows: Python should not scan R paths
       Object.defineProperty(process, 'platform', { value: 'win32', configurable: true })
-      const pythonPaths = await defaultCandidatePaths(root)('python')
+      const pythonPaths = (await defaultCandidatePaths(root)('python')).map(
+        (candidate) => candidate.path
+      )
       expect(pythonPaths.filter((p) => p.includes('R-4.4.3')).length).toBe(0)
 
       // On non-Windows: R should not enumerate CRAN Program Files roots
       Object.defineProperty(process, 'platform', { value: 'darwin', configurable: true })
-      const rPaths = await defaultCandidatePaths(root)('r')
+      const rPaths = (await defaultCandidatePaths(root)('r')).map((candidate) => candidate.path)
       expect(rPaths.filter((p) => p.includes('R-4.4.3')).length).toBe(0)
     } finally {
       process.env.ProgramFiles = originalEnv

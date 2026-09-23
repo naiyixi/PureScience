@@ -55,6 +55,15 @@ export const en: Record<ZhKey, string> = {
   'common.remote': 'Remote',
   'common.theme': 'Theme',
   'common.total': 'Total',
+  'settings.useForNotebooks': 'Use for notebooks',
+  'settings.currentRuntime': 'Current runtime',
+  'settings.unregisterInterpreter': 'Unregister {name}',
+  'settings.unregisteredInterpreter': 'Unregistered {name}',
+  'settings.selectedRuntime': 'Notebooks will use {name}',
+  'settings.couldNotSelectRuntime': 'Could not change the notebook runtime',
+  'settings.couldNotUnregisterInterpreter': 'Could not unregister that interpreter',
+  'settings.runtimeSelectionHint':
+    'The selected runtime is the one notebooks run this language on.',
   'settings.logFile': 'Log file',
   'settings.somethingNotWorking': 'Something not working?',
   'settings.remoteAccessHint':
