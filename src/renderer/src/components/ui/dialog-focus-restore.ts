@@ -37,7 +37,14 @@ export const useDialogFocusRestore = (open: boolean): DialogFocusRestore => {
   const focusOpener = (): void => {
     const opener = openerRef.current
     openerRef.current = null
-    if (opener?.isConnected) opener.focus()
+    if (!opener?.isConnected) return
+    opener.focus()
+    // Dialogs with an exit animation are still mounted when this runs, and their focus trap pulls
+    // focus back inside — the restore is then lost when the layer finally unmounts. Re-assert once
+    // the layer is gone, but only if nothing else claimed focus in the meantime.
+    window.setTimeout(() => {
+      if (document.activeElement === document.body) opener.focus()
+    }, 0)
   }
 
   // The close transition is observed here rather than only through Radix's event, so the restore

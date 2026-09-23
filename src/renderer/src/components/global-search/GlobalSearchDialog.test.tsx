@@ -151,11 +151,10 @@ afterEach(() => {
 
 describe('GlobalSearchDialog', () => {
   it('hands focus back to the control that opened it when the palette closes', async () => {
-    // The palette is opened by a shortcut from anywhere, so the element to restore is rarely the
-    // shell's own button — it is whatever the reader was on.
     await act(async () => {
       await new Promise((resolve) => window.setTimeout(resolve, 0))
     })
+    // Radix leaves pointer-events on the body after a modal closes, and jsdom then refuses to focus.
     document.body.removeAttribute('style')
 
     const opener = document.createElement('button')
@@ -173,7 +172,7 @@ describe('GlobalSearchDialog', () => {
       root.render(
         <GlobalSearchDialog open={false} onOpenChange={vi.fn()} isSessionPersistenceReady />
       )
-      await new Promise((resolve) => window.setTimeout(resolve, 30))
+      await new Promise((resolve) => window.setTimeout(resolve, 40))
     })
 
     expect(document.activeElement).toBe(opener)

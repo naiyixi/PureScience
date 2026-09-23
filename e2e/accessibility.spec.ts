@@ -124,3 +124,67 @@ test('has no blocking accessibility violations in permission and file preview st
   await waitForFiniteAnimations(page)
   await expectNoBlockingViolations(page, 'File preview dialog')
 })
+
+// The keyboard-closure contract: every surface a keyboard opens takes focus when it opens, closes on
+// Escape, and hands focus back to where it came from instead of dropping it on the body.
+test('keyboard-opened surfaces close on Escape and hand focus back', async ({ app }) => {
+  let page = await app.completeOnboarding()
+  page = await app.configureFakeAgent()
+
+  const opener = page.getByRole('button', { name: /Search sessions and artifacts/ })
+  // Reach it the way a keyboard user does — a mouse click does not necessarily park focus there.
+  await opener.focus()
+  await page.keyboard.press('Enter')
+  const palette = page.getByTestId('global-search-dialog')
+  await expect(palette).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(palette).toBeHidden()
+  // Focus goes back to the control that opened it rather than to the body.
+  await expect(opener).toBeFocused()
+
+  const bell = page.getByRole('button', { name: /^Messages/ })
+  await bell.focus()
+  await page.keyboard.press('Enter')
+  await expect(bell).toHaveAttribute('aria-expanded', 'true')
+  await page.keyboard.press('Escape')
+  await expect(bell).toHaveAttribute('aria-expanded', 'false')
+  await expect(bell).toBeFocused()
+
+  await page.getByRole('button', { name: 'New project' }).click()
+  const projectDialog = page.getByRole('dialog', { name: 'New project' })
+  await projectDialog.getByLabel('Name').fill('Keyboard closure project')
+  await projectDialog.getByRole('button', { name: 'Create project' }).click()
+
+  const composer = page.getByRole('textbox', { name: 'Ask anything' })
+  await page.locator('input[type="file"][multiple]').setInputFiles({
+    name: 'keyboard-closure.md',
+    mimeType: 'text/markdown',
+    buffer: Buffer.from('# Keyboard closure\n\nShift+F10 target.')
+  })
+  await composer.fill('Preview the attached file.')
+  await page.getByRole('button', { name: 'Send message' }).click()
+  await expect(page.getByText('Deterministic reply:', { exact: false })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Files', exact: true }).click()
+  await page.getByRole('button', { name: 'Preview uploaded file keyboard-closure.md' }).click()
+  const modalPreview = page.getByRole('dialog', { name: 'Preview keyboard-closure.md' })
+  await expect(modalPreview).toBeVisible()
+  await page.getByRole('button', { name: 'Close preview of keyboard-closure.md' }).click()
+  await expect(modalPreview).toBeHidden()
+
+  // The workbench panel is the surface whose file-actions menu was pointer-only.
+  await page
+    .getByRole('button', { name: /keyboard-closure\.md/ })
+    .first()
+    .click()
+  const card = page.locator('[data-testid="preview-card"]')
+  await expect(card).toBeVisible()
+  await card.focus()
+  // Shift+F10 is the right-click equivalent: this menu had no keyboard route at all.
+  await page.keyboard.press('Shift+F10')
+  const menu = page.locator('[role="menu"]')
+  await expect(menu).toBeVisible()
+  expect(await page.evaluate(() => document.activeElement?.getAttribute('role') ?? 'missing')).toBe(
+    'menuitem'
+  )
+})

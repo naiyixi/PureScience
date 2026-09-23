@@ -982,8 +982,8 @@ export const GlobalSearchDialog = ({
   let rowIndex = 0
   const nextIndex = (): number => rowIndex++
 
-  // Opened by ⌘K from anywhere, so the element to hand focus back to is usually not the shell's
-  // toolbar button: capture whatever held focus when the palette opened and return it on close.
+  // Opened by ⌘K from anywhere, so the element to hand focus back to is whatever held it when the
+  // palette opened — Radix's own fallback lands on the body here.
   const focusRestore = useDialogFocusRestore(open)
 
   return (

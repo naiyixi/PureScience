@@ -151,8 +151,10 @@ const NotificationBell = ({
 
   useLayoutEffect(() => {
     if (!open) return
-    if (isMobile) panelRef.current?.focus()
-    else updatePanelPosition()
+    // Both layouts take focus into the panel: on desktop only the position was updated, so focus
+    // stayed on the bell and the panel's items were reachable by Tab only by accident of DOM order.
+    panelRef.current?.focus()
+    if (!isMobile) updatePanelPosition()
   }, [isMobile, open, updatePanelPosition])
 
   useEffect(() => {
@@ -171,7 +173,10 @@ const NotificationBell = ({
       if (!rootRef.current?.contains(target) && !panelRef.current?.contains(target)) setOpen(false)
     }
     const closeWithEscape = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') setOpen(false)
+      if (event.key !== 'Escape') return
+      setOpen(false)
+      // Escape puts focus back on the bell instead of dropping it on the body.
+      triggerRef.current?.focus()
     }
     const reposition = (): void => updatePanelPosition()
     document.addEventListener('pointerdown', closeOutside)
