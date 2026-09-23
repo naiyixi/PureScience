@@ -1,3 +1,7 @@
+import { readdir, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
 import { expect } from '@playwright/test'
 import { test } from '../fixtures/electron-app'
 import { createProject, sendPrompt } from './helpers'
@@ -27,6 +31,26 @@ const CONTINUED_REPLY = 'The interrupted turn continued from where it stopped.'
 //     Every run then died inside onboarding with 'Target page, context or browser has been closed', while
 //     a neighbouring spec that reassigns both passes in 13s. The helpers' return values are used below.
 //
+//   * Seventh and eighth measurements: the fixture can now produce the session this acceptance needs — a
+//     completed first turn, then a turn left hanging with its partial answer ('Part of the answer arrived
+//     before the app went down.'), and the app restarts while that turn is open. The restart itself had to be
+//     bounded first: an unbounded close hangs while a turn is in flight (284s, then the test timed out), so
+//     the fixture closes gracefully within a budget and forces after that. The open-turn memory also had to
+//     stop being keyed by session id, which is the same value every run: a marker left by a failed run made
+//     the next run answer instead of hang, and the spec now clears stale markers before it starts.
+//   * With all of that, the banner is reached on the real machine and works exactly as designed: the session
+//     row reads 'Session status: Error Answer this turn before the interruption.', the conversation carries
+//     the interrupted message with its partial answer and 'Failed' time, and after the restart the banner
+//     shows 'Session was interrupted before the app closed.' with 'Continue turn' beside 'Resume', the
+//     difference between them stated in words, and a named refusal when the action cannot be carried out.
+//     What it refuses with is the open item: "The turn could not be continued: Error invoking remote method
+//     'acp:continue-interrupted-turn': Error: Resume no longer matches the interrupted turn on the active
+//     Conversation Branch." — the renderer-to-main wiring fires (the failure is reported by name, which is
+//     the contract this unit added), and the main process then rejects the recorded turn. Whether the guard
+//     is comparing the wrong message, or a partial answer is treated as an answer, is the next thing to read
+//     in interrupted-turn-continuation.ts rather than guess at.
+//   * Sixth measurement: the marker moved to a session-keyed file under the system temp directory, because
+//     the agent cannot receive the app's environment. This run is the check for that channel.
 //   * Fifth measurement, with the fixture answering a first turn and hanging on a second: the first turn
 //     completes and is written down (the session row reads 'Session status: Error Answer this turn before the
 //     interruption.'), the second prompt is in the conversation, and no run is in flight — because this
@@ -53,6 +77,18 @@ const CONTINUED_REPLY = 'The interrupted turn continued from where it stopped.'
 // So the shape to establish is: the turn is left open, the app is restarted (which is when a session with
 // an unfinished turn is restored as interrupted), the session is opened, and Continue is expected to hand
 // the same turn back to the agent without producing a second copy of the message.
+// The fixture keeps 'this run already left a turn hanging' in a temp file named after the session id, which
+// is the same value every run. A run that failed before the continuation therefore leaves a marker behind and
+// the next run gets an answer instead of a hang (measured). Start from a clean slate.
+test.beforeEach(async () => {
+  const directory = tmpdir()
+  for (const entry of await readdir(directory)) {
+    if (entry.startsWith('purescience-e2e-interrupted-turn-')) {
+      await rm(join(directory, entry), { force: true })
+    }
+  }
+})
+
 test.fixme('a turn that was interrupted is continued, not sent again', async ({ app }) => {
   // Two turns, a restart and a session opened from scratch: more than the default budget allows.
   test.setTimeout(300_000)

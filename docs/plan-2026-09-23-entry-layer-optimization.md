@@ -297,3 +297,14 @@
 - 原因**在本轮的自伤**：我把「这一轮故意挂着」的记忆放进 `PURESCIENCE_FAKE_AGENT_STATE`，而**假 agent 拿不到应用的环境变量**——它的后端是用**配置里的 env** spawn 的（`src/main/acp/agent-connection-adapter.ts:179`），不是 `agent-process.ts:154` 那条继承 `process.env` 的路径。缺少该变量时我写的守卫直接抛错，于是第二发被应用记成 Error。
 - 已撤掉该守卫与那个变量；`interruptedTurnMarker` 现在**没有路径也不报错**，退化为进程内计数（够用在「运行内」形状，不够用在「跨重启」形状）。
 - **可复用结构事实**：给假 agent 传状态，必须走**它真正收到的通道**（配置 env／cwd），不能走应用的环境变量。
+
+### U13：第七/八次实测 —— **横幅已在真机触达**（U13 的真机缺口从"够不着"变成"被主进程拒绝"）
+- 夹具现在能造出这条路径：第一节**答完**（落盘）→ 第二节**挂住**并留下半截回答（会话里显示 `Part of the answer arrived before the app went down.` + `Failed`）→ **回合在飞时重启**。
+- 为此先修了两件基础设施：
+  - **`restart()` 必须有界**：`close()` 原本是无界的 `await application.close()`，回合一在飞就永久挂住（实测 284s 后测试超时）。现改为「优雅 10s → 强杀 10s」，与清理路径同一套预算。
+  - **挂起记忆不能按会话 id 命名**：假 agent 的会话 id 每次运行都一样（`e2e-session-1`），失败一轮留下的标记会让下一轮**不挂而直接作答**（实测）。spec 现在**开跑前清理**残留标记；标记也改为答完即自删。
+- **真机结果（快照原文）**：会话行 `Session status: Error Answer this turn before the interruption.`；横幅 `Session was interrupted before the app closed.` + `Continue turn` 与 `Resume session` 并列 + 语义差别整句写在界面上（`Continue picks the turn up where it stopped: … · Resume sends this message again as a new turn.`）+ 失败时**具名报错**。
+- **剩余缺口（唯一一条）**：主进程拒绝继续 —— `Error invoking remote method 'acp:continue-interrupted-turn': Error: Resume no longer matches the interrupted turn on the active Conversation Branch.`
+  - 渲染层→preload→主进程的接线**已通**（报错是具名的，正是 U12/U13 的契约）；
+  - 下一步是读 `src/main/acp/interrupted-turn-continuation.ts` 的匹配逻辑：是比对错了消息，还是"半截回答"被当成了回答——**不猜，读代码**。
+- **另需注意**：真机跑的是构建产物，本次源码里的 i18n 标签修复（`workspace.sendOptions`）**必须先 `npm run build:e2e` 才会进真机**；快照里仍见到旧的 `group "{t('workspace.sendMessage')} options"` 即为构建陈旧所致。

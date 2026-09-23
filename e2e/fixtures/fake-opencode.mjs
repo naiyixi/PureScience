@@ -3,7 +3,9 @@
 import * as acp from '@agentclientprotocol/sdk'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
-import { appendFileSync, existsSync, writeFileSync } from 'node:fs'
+import { appendFileSync, existsSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { Readable, Writable } from 'node:stream'
 
 const VERSION = '1.0.0'
@@ -18,10 +20,6 @@ const CONTINUED_TURN_REPLY = 'The interrupted turn continued from where it stopp
 
 const sessionRoutes = new Map()
 
-// How many interrupted-turn sends this process has seen. It only decides anything when no marker path is
-// available (see interruptedTurnMarker): the first send is left hanging and the next one is answered.
-let interruptedTurnPrompts = 0
-
 // The interrupted-turn fixture hangs on its first send of the run and answers afterwards. A restart starts a
 // fresh agent process, so the fact that the turn was left open has to outlive this process: the marker file
 // below is written when the turn is left hanging and read by the process that serves the continuation.
@@ -35,14 +33,11 @@ const agentLog = (line) => {
   }
 }
 
-// A marker path only exists if the environment carries one. It does not: the agent backend is spawned with
-// the config's environment rather than the app's, so this process never sees the app's variables. Until the
-// path travels through a channel the agent actually receives, the open-turn memory is per process, which
-// serves the in-run shape and not the restart shape.
-const interruptedTurnMarker = (sessionId) => {
-  const state = process.env.PURESCIENCE_FAKE_AGENT_STATE
-  return state ? `${state}.interrupted-${sessionId}` : undefined
-}
+// Whether this run has already left an interrupted turn hanging travels through the filesystem, because the
+// agent never receives the app's environment: its backend is spawned with the config's environment. The
+// session id keys it, so two runs cannot collide, and the process that answers the continuation removes it.
+const interruptedTurnMarker = (sessionId) =>
+  join(tmpdir(), `purescience-e2e-interrupted-turn-${sessionId}`)
 
 const stringEnvironment = (overrides = []) => {
   const environment = Object.fromEntries(
@@ -282,10 +277,8 @@ if (process.argv.includes('--version')) {
       // answered, and that answer is what the spec looks for.
       if (prompt.includes(INTERRUPTED_TURN_PROMPT)) {
         const marker = interruptedTurnMarker(context.params.sessionId)
-        agentLog(
-          `interrupted prompt (${interruptedTurnPrompts}) pid=${process.pid} marker=${marker ? existsSync(marker) : 'no-path'}`
-        )
-        if (!marker || !existsSync(marker)) {
+        agentLog(`interrupted prompt pid=${process.pid} marker=${existsSync(marker)} at ${marker}`)
+        if (!existsSync(marker)) {
           // Say something first, so this turn is visibly in flight, then write the marker and never finish:
           // the app is restarted while the turn is open, which is the interruption under test. The next
           // process to see this prompt is serving the continuation, and answers it.
@@ -297,10 +290,11 @@ if (process.argv.includes('--version')) {
               content: { type: 'text', text: PARTIAL_TURN_REPLY }
             }
           })
-          if (marker) writeFileSync(marker, PARTIAL_TURN_REPLY)
-          else interruptedTurnPrompts += 1
+          writeFileSync(marker, PARTIAL_TURN_REPLY)
           return new Promise(() => {})
         }
+        // The continuation is being served: the run is over as far as this marker is concerned.
+        rmSync(marker, { force: true })
         reply = CONTINUED_TURN_REPLY
       }
       agentLog(`prompt from session ${context.params.sessionId}: ${prompt.slice(0, 90)}`)

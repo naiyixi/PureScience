@@ -436,7 +436,21 @@ class ElectronAppHarness implements ElectronApp {
     const application = this.application
     this.application = undefined
     this.currentPage = undefined
-    await application.close()
+    // Bounded like the teardown path, and for a measured reason: an unbounded close hangs when a turn is
+    // still in flight (284s observed, then the test timed out), because the app holds its shutdown until
+    // that turn settles — and the acceptance for an interrupted turn restarts on purpose while one is open.
+    // Graceful if the app can manage it, forced otherwise.
+    await closeElectronApplicationForCleanup(
+      {
+        close: () => application.close(),
+        forceClose: async () => {
+          const result = await terminateProcessTree(application.process())
+          if (!result.reaped)
+            throw new Error('Electron E2E forced close did not reap the process tree.')
+        }
+      },
+      { gracefulTimeoutMs: 10_000, forcedTimeoutMs: 10_000 }
+    )
   }
 
   private async closeForCleanup(): Promise<void> {
