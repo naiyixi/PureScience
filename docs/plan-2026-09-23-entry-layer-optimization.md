@@ -308,3 +308,14 @@
   - 渲染层→preload→主进程的接线**已通**（报错是具名的，正是 U12/U13 的契约）；
   - 下一步是读 `src/main/acp/interrupted-turn-continuation.ts` 的匹配逻辑：是比对错了消息，还是"半截回答"被当成了回答——**不猜，读代码**。
 - **另需注意**：真机跑的是构建产物，本次源码里的 i18n 标签修复（`workspace.sendOptions`）**必须先 `npm run build:e2e` 才会进真机**；快照里仍见到旧的 `group "{t('workspace.sendMessage')} options"` 即为构建陈旧所致。
+
+### U13：第九次实测 —— **修掉一个"永远不可能满足"的守卫**，拒绝理由前移
+- **发现（全仓 grep 级证据）**：`resumeRecovery.kind === 'resume-required'` 这个前置条件，全仓**只有类型定义**（`src/shared/session-persistence.ts:202`）与**要求它的守卫**（`src/main/acp/interrupted-turn-continuation.ts:48`）两处，**没有任何代码写它** → 该守卫恒真拒绝 → **"继续这一回合"这个动作对任何用户都不可能成功**。这正是本轮审计要抓的「有入口、有实现、但路径不通」。
+- **修法（按"在哪里第一次知道回合被打断"落点）**：在 `normalizeSessionAfterRestore` 里、把中断会话恢复成可重试错误的那一支，**写入** `resumeRecovery: { cause: 'app-restart', kind: 'resume-required', promptMessageId }`；`promptMessageId` 取"最后一条没有完成回复的 user 消息"，与渲染层 `findInterruptedUserTurn` **同一条规则**（主侧不能引用渲染层模块，故按同规则各自实现，并在注释里写明）。
+- **验证**：`session-persistence.test.ts` **39 passed**（新增两例：中断会话命名被打断的那条消息；最后一回合已答完则不记录）；typecheck 0；eslint 0；`build:e2e` 成功。
+- **真机结果（快照原文，拒绝理由变了）**：
+  - 修复前：`Resume no longer matches the interrupted turn on the active Conversation Branch.`（守卫恒拒）
+  - 修复后：`The turn could not be continued: … acp:continue-interrupted-turn: Error: ACP session not found: e2e-session-1`（`src/main/acp/prompt-turn-workflow.ts:219`）
+  → 说明**守卫已通过、继续流程真的往前走了**，现在缺的是重启后那条 ACP 会话本身。
+- **下一处的读法（不猜）**：假 agent 声明 `loadSession: false` 且实现了 `session/resume`；而应用侧同时有 `:219` 与 `:200`（`after force-load`）两条分支。到底该由应用在重启后先 resume/重建会话，还是夹具该声明可装载 —— **下一步是给假 agent 记录它收到的 ACP 方法序列**，看应用究竟调没调 resume。
+- **同机顺带确认**：重建后无障碍修复已生效 —— 输入区 group 的标签从 `{t('workspace.sendMessage')} options` 变为 **`Send options`** ✓。

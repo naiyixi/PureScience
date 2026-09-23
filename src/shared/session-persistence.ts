@@ -710,6 +710,27 @@ const normalizeMessageAfterRestore = (message: PersistedChatMessage): PersistedC
       }
     : message
 
+// Names the turn that an interrupted session was cut off inside: the last user message with no completed
+// reply after it. The continuation path refuses to act on a turn it cannot name, and its record is written
+// where the interruption is discovered — nothing else writes one, which left that refusal unsatisfiable and
+// the continuation action unreachable from the UI. The renderer derives the same turn the same way.
+const interruptedTurnAfterRestore = (
+  messages: PersistedChatMessage[]
+): PersistedChatMessage | undefined => {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index]
+    if (message.role !== 'user') continue
+
+    const hasCompletedReply = messages
+      .slice(index + 1)
+      .some((later) => later.role === 'agent' && later.status === 'complete')
+
+    return hasCompletedReply ? undefined : message
+  }
+
+  return undefined
+}
+
 // Restores interrupted sessions as retryable errors because runtime state is gone.
 const normalizeSessionAfterRestore = (session: PersistedChatSession): PersistedChatSession => {
   if (
@@ -740,12 +761,17 @@ const normalizeSessionAfterRestore = (session: PersistedChatSession): PersistedC
     }
   }
 
-  // Runtime state cannot survive process shutdown, so restore interrupted turns as retryable errors.
+  // Runtime state cannot survive process shutdown, so restore interrupted turns as retryable errors, and
+  // record which turn was cut off so the continuation it offers can identify its subject.
+  const interruptedTurn = interruptedTurnAfterRestore(session.messages)
   return {
     ...session,
     status: 'error',
     activeRun: undefined,
     error: session.error ?? INTERRUPTED_SESSION_ERROR,
+    resumeRecovery: interruptedTurn
+      ? { cause: 'app-restart', kind: 'resume-required', promptMessageId: interruptedTurn.id }
+      : session.resumeRecovery,
     messages: session.messages.map(normalizeMessageAfterRestore)
   }
 }

@@ -206,6 +206,89 @@ describe('message terminal time persistence', () => {
     ])
   })
 
+  it('names the interrupted turn when an interrupted session is restored', () => {
+    const restored = normalizeSessionFile({
+      ...createSessionWithActivity(undefined),
+      status: 'running',
+      activities: undefined,
+      messages: [
+        {
+          id: 'answered-prompt',
+          role: 'user',
+          content: 'First',
+          status: 'complete',
+          eventIds: [],
+          createdAt: 1,
+          updatedAt: 1
+        },
+        {
+          id: 'answered-reply',
+          role: 'agent',
+          content: 'First answer',
+          status: 'complete',
+          eventIds: [],
+          createdAt: 2,
+          updatedAt: 2
+        },
+        {
+          id: 'interrupted-prompt',
+          role: 'user',
+          content: 'Second',
+          status: 'complete',
+          eventIds: [],
+          createdAt: 3,
+          updatedAt: 3
+        },
+        {
+          id: 'interrupted-reply',
+          role: 'agent',
+          content: 'Part of the answer',
+          status: 'streaming',
+          eventIds: [],
+          createdAt: 4,
+          updatedAt: 4
+        }
+      ]
+    })
+
+    expect(restored?.status).toBe('error')
+    expect(restored?.resumeRecovery).toEqual({
+      cause: 'app-restart',
+      kind: 'resume-required',
+      promptMessageId: 'interrupted-prompt'
+    })
+  })
+
+  it('records no interrupted turn when the last turn was answered', () => {
+    const restored = normalizeSessionFile({
+      ...createSessionWithActivity(undefined),
+      status: 'running',
+      activities: undefined,
+      messages: [
+        {
+          id: 'answered-prompt',
+          role: 'user',
+          content: 'First',
+          status: 'complete',
+          eventIds: [],
+          createdAt: 1,
+          updatedAt: 1
+        },
+        {
+          id: 'answered-reply',
+          role: 'agent',
+          content: 'First answer',
+          status: 'complete',
+          eventIds: [],
+          createdAt: 2,
+          updatedAt: 2
+        }
+      ]
+    })
+
+    expect(restored?.resumeRecovery).toBeUndefined()
+  })
+
   it('preserves response linkage and explicit terminal timestamps when updatedAt changes later', () => {
     const restored = normalizeSessionFile({
       ...createSessionWithActivity(undefined),

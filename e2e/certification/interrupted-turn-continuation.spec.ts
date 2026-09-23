@@ -31,6 +31,18 @@ const CONTINUED_REPLY = 'The interrupted turn continued from where it stopped.'
 //     Every run then died inside onboarding with 'Target page, context or browser has been closed', while
 //     a neighbouring spec that reassigns both passes in 13s. The helpers' return values are used below.
 //
+//   * Ninth measurement, after fixing what the eighth one exposed: the guard no longer refuses. The
+//     continuation path required a `resumeRecovery` record, and nothing in the repository ever wrote one —
+//     `kind: 'resume-required'` appeared only in the type and in that check — so the action could not have
+//     succeeded for anyone. The record is now written while restoring an interrupted session, where the app
+//     is the one who knows which turn was cut off, and the refusal moved on to the next honest obstacle:
+//     "The turn could not be continued: Error invoking remote method 'acp:continue-interrupted-turn': Error:
+//     ACP session not found: e2e-session-1" (thrown by prompt-turn-workflow.ts:219). Its force-load sibling
+//     at :200 is the 'after force-load' variant, so this is the plain one. The fixture's agent advertises
+//     `loadSession: false` while implementing `session/resume`, so which side is missing the session — the
+//     app's post-restart resume, or the fixture's capabilities — is what to read next.
+//   * The same rebuilt machine also confirms the accessibility fix from this round: the composer's group
+//     label now reads 'Send options' instead of the literal "{t('workspace.sendMessage')} options".
 //   * Seventh and eighth measurements: the fixture can now produce the session this acceptance needs — a
 //     completed first turn, then a turn left hanging with its partial answer ('Part of the answer arrived
 //     before the app went down.'), and the app restarts while that turn is open. The restart itself had to be
