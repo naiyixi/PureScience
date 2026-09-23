@@ -309,6 +309,7 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['set', 'annotation:set', LOCAL], ['list', 'annotation:list', LOCAL],
     ['remove', 'annotation:remove', LOCAL],
   ]),
+  group('clipboard', 'clipboard', [['writeText', 'clipboard:write-text', ELECTRON]]),
   group('pdf', 'pdf', [
     ['open', 'pdf:open', LOCAL], ['pages', 'pdf:pages', LOCAL],
     ['outline', 'pdf:outline', LOCAL], ['scan', 'pdf:scan', LOCAL],

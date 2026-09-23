@@ -24,6 +24,7 @@ import {
   type ImportedCitationStyle
 } from '../../../../shared/citation/csl'
 import type { CitationStyleDefinition } from '../../../../shared/citation/types'
+import { copyText } from '@/lib/copy-text'
 
 const IDENTIFIER_KINDS = ['doi', 'pmid', 'pmcid', 'arxivId'] as const
 type IdentifierKind = (typeof IDENTIFIER_KINDS)[number]
@@ -323,7 +324,7 @@ export function ReferencesLibraryDialog({
       { retrievedAt: todayIso() },
       citationStyles
     )
-    await navigator.clipboard.writeText(formatted.text)
+    await copyText(formatted.text)
     setNotice(t('references.copiedInStyle', { style: formatted.styleLabel }))
   }
 

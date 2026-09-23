@@ -56,6 +56,7 @@ import type {
 } from '../../../../shared/specialist-package'
 import { SpecialistEditor } from './SpecialistEditor'
 import { SpecialistAvatar } from './specialist-avatar'
+import { copyText } from '@/lib/copy-text'
 
 // Sub-view for the Specialists panel (parallels SkillsView).
 export type SpecialistsView =
@@ -753,7 +754,7 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                         null,
                         2
                       )
-                      void navigator.clipboard.writeText(json).then(
+                      void copyText(json).then(
                         () => setReportStatus(t('settings.reportCopied')),
                         () => setReportStatus(t('settings.couldNotCopyReport'))
                       )

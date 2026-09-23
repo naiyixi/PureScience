@@ -53,6 +53,7 @@ const INSTALLED_BUT_NOT_DELIVERED_EVENTS = {
 // These functions exist on the real Electron preload API but the current AST generator does not
 // recognize their implementation shape or channel constants. T1b must make each omission explicit.
 const GENERATED_SOURCE_OMISSIONS = [
+  'clipboard.writeText',
   'diagnostics.reportRendererFailure',
   'getRuntimeVersions',
   'handoff.list',
@@ -260,7 +261,7 @@ describe('renderer surface inventory', () => {
       ...Object.keys(WEB_EVENT_CHANNELS)
     ])
 
-    expect(electronPaths).toHaveLength(431)
+    expect(electronPaths).toHaveLength(432)
     expectSameSet(
       electronPaths,
       RENDERER_CONTRACT_CATALOG.map(({ publicPath }) => publicPath)

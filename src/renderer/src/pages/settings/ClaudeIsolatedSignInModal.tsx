@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog-chrome'
 import { Input } from '@/components/ui/input'
 import type { ValidateProviderResult } from '../../../../shared/settings'
+import { copyText } from '@/lib/copy-text'
 
 // One-line shell command the user runs to mint a long-lived OAuth token. Mirrors Anthropic's
 // `claude setup-token` docs (linked in the modal) — the command itself is portable across
@@ -85,7 +86,7 @@ const ClaudeIsolatedSignInModalBody = ({
 
   const copyCommand = async (): Promise<void> => {
     try {
-      await navigator.clipboard.writeText(SETUP_TOKEN_COMMAND)
+      await copyText(SETUP_TOKEN_COMMAND)
       setCopied(true)
       if (copyResetTimer.current) clearTimeout(copyResetTimer.current)
       copyResetTimer.current = setTimeout(() => setCopied(false), 1500)

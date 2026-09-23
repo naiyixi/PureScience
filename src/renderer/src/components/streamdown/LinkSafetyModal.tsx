@@ -12,6 +12,7 @@ import {
   dialogPanelClassName
 } from '@/components/ui/dialog-chrome'
 import { cn } from '@/lib/utils'
+import { canCopyText, copyText } from '@/lib/copy-text'
 
 const LinkSafetyModal = ({
   url,
@@ -87,12 +88,12 @@ const LinkSafetyModal = ({
   }, [isMounted])
 
   const copyLink = useCallback(async (): Promise<void> => {
-    if (!navigator.clipboard?.writeText) {
+    if (!canCopyText()) {
       return
     }
 
     try {
-      await navigator.clipboard.writeText(url)
+      await copyText(url)
       setCopied(true)
       window.setTimeout(() => {
         setCopied(false)

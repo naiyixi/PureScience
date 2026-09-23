@@ -1,4 +1,5 @@
 import { Dialog } from 'radix-ui'
+import { copyText } from '@/lib/copy-text'
 import { Check, Copy, ExternalLink, FolderOpen, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
@@ -119,8 +120,7 @@ const ReportErrorDialog = ({
 
   // Copies the full bundle (error + environment) with the redacted error; the write stays local.
   const handleCopy = (): void => {
-    void navigator.clipboard
-      .writeText(buildErrorReportText(editedContext))
+    void copyText(buildErrorReportText(editedContext))
       .then(() => {
         setCopied(true)
         window.setTimeout(() => setCopied(false), 1500)

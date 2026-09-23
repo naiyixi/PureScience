@@ -26,6 +26,7 @@ import { ExternalTextLink } from '@/components/ExternalTextLink'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { SettingsSection } from './SettingsLayout'
+import { copyText } from '@/lib/copy-text'
 
 const REMOTE_IT_DOWNLOAD_URL = 'https://www.remote.it/download/'
 
@@ -181,7 +182,7 @@ export const RemoteControlPanel = (): React.JSX.Element => {
 
   const copyUrl = async (): Promise<void> => {
     if (!snapshot?.accessUrl) return
-    await navigator.clipboard.writeText(snapshot.accessUrl)
+    await copyText(snapshot.accessUrl)
     setCopied(true)
     window.setTimeout(() => setCopied(false), 1_500)
   }

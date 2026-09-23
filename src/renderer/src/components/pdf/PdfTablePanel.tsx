@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useLanguage } from '@/i18n'
 import { PDF_TABLES_MAX_CANDIDATES, type PdfTableCandidateForAgent } from '../../../../shared/pdf'
 import { Button } from '@/components/ui/button'
+import { copyText } from '@/lib/copy-text'
 
 // Shows the table candidates the app's own reader finds, through the same channel the agent is given
 // (`pdf.tables`): geometry decides the columns from the page's own item positions, and only pages whose
@@ -73,7 +74,7 @@ const PdfTablePanel = ({
   }, [projectId, sourcePath, sourceSessionId, t])
 
   const copy = async (id: string, artifact: string): Promise<void> => {
-    await navigator.clipboard.writeText(artifact)
+    await copyText(artifact)
     setCopied(id)
   }
 

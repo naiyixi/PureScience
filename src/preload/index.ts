@@ -925,6 +925,11 @@ const api: PureScienceAPI = {
       electronRendererContracts.invoke('searchPins.save', input),
     remove: (id: string) => electronRendererContracts.invoke('searchPins.remove', id)
   },
+  clipboard: {
+    // Copies through the main process: the window denies Chromium clipboard permissions by construction.
+    writeText: (request: { text: string }) =>
+      electronRendererContracts.invoke('clipboard.writeText', request)
+  },
   pdf: {
     open: (request: { projectId: string; path: string; sessionId?: string }) =>
       electronRendererContracts.invoke('pdf.open', request),

@@ -12,8 +12,8 @@ describe('renderer contract catalog', () => {
   it('pins the complete capability-owned inventory and legacy map projection', () => {
     const projection = projectRendererContractMaps(RENDERER_CONTRACT_CATALOG)
 
-    expect(RENDERER_CONTRACT_GROUPS).toHaveLength(43)
-    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(431)
+    expect(RENDERER_CONTRACT_GROUPS).toHaveLength(44)
+    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(432)
     expect(projection.invoke).toEqual(WEB_INVOKE_CHANNELS)
     expect(projection.event).toEqual(WEB_EVENT_CHANNELS)
     // 329 with the saved-search-filter-set group (searchPins.list / remove / save).
@@ -54,7 +54,7 @@ describe('renderer contract catalog', () => {
     })
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb === 'unavailable')
-    ).toHaveLength(72)
+    ).toHaveLength(73)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.remoteWeb === 'rejecting-stub')
     ).toHaveLength(109)

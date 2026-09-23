@@ -41,6 +41,7 @@ import { cn } from '@/lib/utils'
 import { useComputeStore } from '@/stores/compute-store'
 import { useNavigationStore } from '@/stores/navigation-store'
 import { useProjectStore } from '@/stores/project-store'
+import { copyText } from '@/lib/copy-text'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -162,7 +163,7 @@ function DetailPanel({
   const remoteAbsPath = `${resolvedDir.replace(/\/$/, '')}/${entry.name}`
 
   const copyPath = async (): Promise<void> => {
-    await navigator.clipboard.writeText(remoteAbsPath)
+    await copyText(remoteAbsPath)
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
   }

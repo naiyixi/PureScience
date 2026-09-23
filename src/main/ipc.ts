@@ -165,6 +165,7 @@ import {
   registerSearchPinIpcHandlers
 } from './settings/search-pin-ipc'
 import { SearchPinRepository } from './settings/search-pin-repository'
+import { registerClipboardIpcHandlers } from './clipboard-ipc'
 import { createPdfCommandOwner, registerPdfIpcHandlers } from './settings/pdf-ipc'
 import { PdfService } from './settings/pdf-service'
 import { createFigureCommandOwner, registerFigureIpcHandlers } from './settings/figure-ipc'
@@ -2652,6 +2653,7 @@ const createApplicationModules = async (
     registerSearchPinIpcHandlers(createSearchPinCommandOwner(searchPinRepository))
   })
   declareElectronAdapter('pdf', () => {
+    registerClipboardIpcHandlers()
     registerPdfIpcHandlers(createPdfCommandOwner(pdfService))
   })
   declareElectronAdapter('figure', () => {

@@ -57,6 +57,7 @@ import { FILE_MISSING_TAG, isUnavailableFileError } from './previews/preview-err
 import { useNearViewport } from './previews/useNearViewport'
 import { useUnavailablePreviewProbe } from './previews/useUnavailablePreviewProbe'
 import { resolveSessionProviderId } from './error-report'
+import { copyText } from '@/lib/copy-text'
 
 type MessageArtifact = NonNullable<ChatSession['artifacts']>[number]
 type MessageUploadAttachment = NonNullable<ChatMessage['uploads']>[number]
@@ -908,7 +909,7 @@ const WorkspaceMessageItem = ({
 
   // Copies the prompt text and briefly swaps the icon to confirm the clipboard write succeeded.
   const handleCopyMessage = (): void => {
-    void navigator.clipboard.writeText(message.content).then(() => {
+    void copyText(message.content).then(() => {
       setCopied(true)
       if (copyResetTimeoutRef.current !== null) window.clearTimeout(copyResetTimeoutRef.current)
       copyResetTimeoutRef.current = window.setTimeout(() => setCopied(false), 2000)

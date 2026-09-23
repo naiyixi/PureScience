@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useNavigationStore } from '@/stores/navigation-store'
+import { copyText } from '@/lib/copy-text'
 
 // Primary labeled action for the "Preview unavailable" fallback of a local file: opening it in its
 // default OS app is the local analogue of the artifact/upload "Download" affordance.
@@ -74,7 +75,7 @@ export const LocalFileHeaderActions = ({
   useEffect(() => () => clearTimeout(copiedTimer.current), [])
 
   const copyPath = async (): Promise<void> => {
-    await navigator.clipboard.writeText(path)
+    await copyText(path)
     setCopied(true)
     clearTimeout(copiedTimer.current)
     copiedTimer.current = setTimeout(() => setCopied(false), 1500)

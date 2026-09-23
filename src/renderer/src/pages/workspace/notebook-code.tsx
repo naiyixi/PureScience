@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Check, Copy } from 'lucide-react'
 
 import { HighlightedCodeLines } from './HighlightedCodeLines'
+import { canCopyText, copyText } from '@/lib/copy-text'
 
 const NotebookCodeBlock = ({
   code,
@@ -15,9 +16,9 @@ const NotebookCodeBlock = ({
   const [copied, setCopied] = useState(false)
 
   const copyCode = (): void => {
-    if (!navigator.clipboard?.writeText) return
+    if (!canCopyText()) return
 
-    void navigator.clipboard.writeText(code).then(() => {
+    void copyText(code).then(() => {
       setCopied(true)
       window.setTimeout(() => setCopied(false), 1500)
     })
@@ -29,7 +30,7 @@ const NotebookCodeBlock = ({
         type="button"
         className="absolute right-2 top-2 z-10 rounded bg-bg-300/80 p-1.5 text-text-300 opacity-60 backdrop-blur-sm transition-[background-color,color,opacity] duration-150 hover:bg-bg-300 hover:text-text-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 active:bg-bg-300 disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none group-hover:opacity-100"
         aria-label={copied ? 'Copied' : 'Copy to clipboard'}
-        disabled={!navigator.clipboard?.writeText}
+        disabled={!canCopyText()}
         onClick={copyCode}
       >
         {copied ? (

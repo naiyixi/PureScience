@@ -5,6 +5,7 @@
  * contrast: inherited from the app's verified semantic tokens · slop: pass
  */
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { copyText } from '@/lib/copy-text'
 import { useLanguage, type TranslationKey } from '@/i18n'
 import { ArrowUpRight, AtSign, Hash, MessageCircle, Search, Zap } from 'lucide-react'
 import { Dialog } from 'radix-ui'
@@ -694,7 +695,7 @@ export const GlobalSearchDialog = ({
     if (!citation) return
 
     const key = `${hit.scope}:${hit.id}`
-    void Promise.resolve(navigator.clipboard?.writeText(citation)).then(() => {
+    void Promise.resolve(copyText(citation)).then(() => {
       setCopiedCitationKey(key)
       setTimeout(
         () => setCopiedCitationKey((current) => (current === key ? undefined : current)),

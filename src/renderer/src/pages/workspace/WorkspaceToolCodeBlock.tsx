@@ -3,6 +3,7 @@ import type { HighlightResult } from '@streamdown/code'
 import { cn } from '@/lib/utils'
 import { Copy } from 'lucide-react'
 import { Fragment, useCallback, useEffect, useState } from 'react'
+import { canCopyText, copyText } from '@/lib/copy-text'
 // Language type must match the shiki copy @streamdown/code bundles (3.x nested) —
 // the top-level shiki is 4.x for other consumers and its language union type is
 // incompatible with streamdown's runtime lookup.
@@ -51,10 +52,10 @@ const WorkspaceToolCodeBlock = ({
   const highlightKey = createHighlightKey(source, language)
 
   const copyCode = useCallback(async () => {
-    if (!navigator.clipboard) return
+    if (!canCopyText()) return
 
     try {
-      await navigator.clipboard.writeText(source)
+      await copyText(source)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {

@@ -1156,6 +1156,10 @@ export interface PureScienceAPI {
     }): Promise<GlobalSearchPin>
     remove(id: string): Promise<boolean>
   }
+  clipboard: {
+    /** Writes to the OS clipboard through the main process, where no permission is involved. */
+    writeText(request: { text: string }): Promise<void>
+  }
   pdf: {
     // Registers a PDF for layered reading (parses + persists page text).
     tables(request: { projectId: string; docId: string; page?: number }): Promise<PdfTablesResult>

@@ -1,4 +1,5 @@
 import type { SaveBlobFileRequest, SaveBlobFileResult } from '../../../../shared/file-save'
+import { canCopyText, copyText } from '@/lib/copy-text'
 import {
   extractTableDataFromElement,
   tableDataToCSV,
@@ -342,11 +343,11 @@ const copyTable = async (table: HTMLTableElement, format: TableFormat): Promise<
         ? tableDataToTSV(data)
         : tableDataToMarkdown(data)
 
-  if (!navigator.clipboard?.writeText) {
+  if (!canCopyText()) {
     throw new Error('Clipboard API not available')
   }
 
-  await navigator.clipboard.writeText(format === 'csv' ? `\uFEFF${text}` : text)
+  await copyText(format === 'csv' ? `\uFEFF${text}` : text)
 }
 
 const downloadTable = async (table: HTMLTableElement, format: 'csv' | 'md'): Promise<void> => {

@@ -5,6 +5,7 @@ import { formatBackgroundDeliveryLine } from '../../../shared/background-deliver
 import { backgroundDeliveryLabelsFor } from '../../../shared/background-delivery-labels'
 import { useLanguage } from '@/i18n'
 import { LOCALE_TAG } from '@/i18n/languages'
+import { copyText } from '@/lib/copy-text'
 
 // Where a delivered background result came from, shown on the job it belongs to. The main process
 // decides when a result is delivered; this panel is the receipt: which state the delivery reached,
@@ -76,7 +77,7 @@ export function JobDeliveryLedger({
 
   const copyDetails = async (): Promise<void> => {
     try {
-      await navigator.clipboard.writeText(formatBackgroundDeliveryLine(delivery, labels))
+      await copyText(formatBackgroundDeliveryLine(delivery, labels))
       setCopiedId(delivery.id)
     } catch {
       // Clipboard access can be refused; the identical details are already on screen.

@@ -11,6 +11,7 @@ import {
 } from '../../../../shared/search-evidence'
 
 import { evidenceLabels, evidenceTermsForQuery } from './search-evidence-labels'
+import { copyText } from '@/lib/copy-text'
 
 // Turns a search hit into a line someone else can check, then rechecks it on demand.
 //
@@ -90,9 +91,7 @@ export const useSearchEvidence = (t: (key: TranslationKey) => string): SearchEvi
         return
       }
 
-      await navigator.clipboard?.writeText(
-        formatSearchEvidenceLine(response.line, evidenceLabels(t))
-      )
+      await copyText(formatSearchEvidenceLine(response.line, evidenceLabels(t)))
       setStatus({ state: 'captured', hitKey, line: response.line })
     },
     [t]
