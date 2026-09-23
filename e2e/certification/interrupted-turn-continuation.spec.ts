@@ -31,6 +31,16 @@ const CONTINUED_REPLY = 'The interrupted turn continued from where it stopped.'
 //     Every run then died inside onboarding with 'Target page, context or browser has been closed', while
 //     a neighbouring spec that reassigns both passes in 13s. The helpers' return values are used below.
 //
+//   * Tenth measurement, with the fake agent logging every request it receives: the continuation never
+//     re-attaches the session. The log (one process, the one before the restart) reads
+//     'initialize / session.new -> e2e-session-1 / session.prompt e2e-session-1: <first turn> /
+//     session.new -> e2e-session-2 / session.prompt e2e-session-2: <reviewer instructions> /
+//     interrupted prompt … marker=false' — and then nothing: after the restart no agent process starts and
+//     no session/resume is ever sent, so the prompt workflow has no attached session to continue in and
+//     refuses with 'ACP session not found: e2e-session-1' (prompt-turn-workflow.ts:219, the plain variant,
+//     not the 'after force-load' one at :200). Resume, the action beside it, does re-attach; Continue does
+//     not. Whether that resume belongs to the continuation workflow or to opening a session is the next
+//     decision to make against the code.
 //   * Ninth measurement, after fixing what the eighth one exposed: the guard no longer refuses. The
 //     continuation path required a `resumeRecovery` record, and nothing in the repository ever wrote one —
 //     `kind: 'resume-required'` appeared only in the type and in that check — so the action could not have
@@ -95,7 +105,10 @@ const CONTINUED_REPLY = 'The interrupted turn continued from where it stopped.'
 test.beforeEach(async () => {
   const directory = tmpdir()
   for (const entry of await readdir(directory)) {
-    if (entry.startsWith('purescience-e2e-interrupted-turn-')) {
+    if (
+      entry.startsWith('purescience-e2e-interrupted-turn-') ||
+      entry === 'purescience-e2e-agent.log'
+    ) {
       await rm(join(directory, entry), { force: true })
     }
   }

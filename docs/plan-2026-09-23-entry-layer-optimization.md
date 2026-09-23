@@ -319,3 +319,11 @@
   → 说明**守卫已通过、继续流程真的往前走了**，现在缺的是重启后那条 ACP 会话本身。
 - **下一处的读法（不猜）**：假 agent 声明 `loadSession: false` 且实现了 `session/resume`；而应用侧同时有 `:219` 与 `:200`（`after force-load`）两条分支。到底该由应用在重启后先 resume/重建会话，还是夹具该声明可装载 —— **下一步是给假 agent 记录它收到的 ACP 方法序列**，看应用究竟调没调 resume。
 - **同机顺带确认**：重建后无障碍修复已生效 —— 输入区 group 的标签从 `{t('workspace.sendMessage')} options` 变为 **`Send options`** ✓。
+
+### U13：第十次实测 —— **「继续」缺少重挂会话那一步**（假 agent 请求日志为证）
+- 给假 agent 加了「它收到的每个请求」日志（写到临时目录固定路径，因为 agent 收不到应用的环境变量；spec 每次运行前清理）。
+- 实测日志（重启前那一个进程）：
+  `initialize` → `session.new -> e2e-session-1` → `session.prompt e2e-session-1: <第一发>` → `session.new -> e2e-session-2` → `session.prompt e2e-session-2: <reviewer_instructions>` → `interrupted prompt … marker=false`（第二发按设计挂住）。
+- **之后什么都没有**：重启后**没有新的 agent 进程**、**没有 `session.resume`**。于是 prompt 工作流里 `activeSession` 为空，抛出 `ACP session not found: e2e-session-1`（`:219` 的普通分支，不是 `:200` 的 "after force-load"）→ 说明**「继续」没有先重挂会话**，而并列的 **Resume 会**。
+- 下一步的决策点（对着代码定，不猜）：重挂这一步该由**继续工作流**做，还是该由「打开会话」做（真实用户自然路径是打开会话→点继续）。
+- 夹具侧同时落地：假 agent 现在对 `session/load` 显式报「不支持」并记日志（原先静默）。

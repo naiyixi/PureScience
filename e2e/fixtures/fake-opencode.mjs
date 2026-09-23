@@ -23,11 +23,12 @@ const sessionRoutes = new Map()
 // The interrupted-turn fixture hangs on its first send of the run and answers afterwards. A restart starts a
 // fresh agent process, so the fact that the turn was left open has to outlive this process: the marker file
 // below is written when the turn is left hanging and read by the process that serves the continuation.
+// The app spawns this agent with the configuration's environment rather than its own, so the log cannot be
+// keyed by a variable the app sets. It goes to one path in the temp directory instead, cleared per run.
+const agentLogPath = () => join(tmpdir(), 'purescience-e2e-agent.log')
 const agentLog = (line) => {
-  const state = process.env.PURESCIENCE_FAKE_AGENT_STATE
-  if (!state) return
   try {
-    appendFileSync(state + '.log', `${new Date().toISOString()} ${line}\n`)
+    appendFileSync(agentLogPath(), `${new Date().toISOString()} pid=${process.pid} ${line}\n`)
   } catch {
     /* logging must never break the fixture */
   }
@@ -242,14 +243,17 @@ if (process.argv.includes('--version')) {
 
   const app = acp
     .agent({ name: 'purescience-e2e-agent' })
-    .onRequest(acp.methods.agent.initialize, () => ({
-      protocolVersion: acp.PROTOCOL_VERSION,
-      agentCapabilities: {
-        loadSession: false,
-        sessionCapabilities: { close: {}, resume: {} }
-      },
-      authMethods: []
-    }))
+    .onRequest(acp.methods.agent.initialize, () => {
+      agentLog('initialize')
+      return {
+        protocolVersion: acp.PROTOCOL_VERSION,
+        agentCapabilities: {
+          loadSession: false,
+          sessionCapabilities: { close: {}, resume: {} }
+        },
+        authMethods: []
+      }
+    })
     .onRequest(acp.methods.agent.authenticate, () => ({}))
     .onRequest(acp.methods.agent.session.new, (context) => {
       const sessionId = `e2e-session-${nextSessionId++}`
@@ -257,14 +261,22 @@ if (process.argv.includes('--version')) {
         cwd: context.params.cwd,
         mcpServers: context.params.mcpServers ?? []
       })
+      agentLog(`session.new -> ${sessionId}`)
       return { sessionId }
     })
     .onRequest(acp.methods.agent.session.resume, (context) => {
+      agentLog(`session.resume ${context.params.sessionId}`)
       sessionRoutes.set(context.params.sessionId, {
         cwd: context.params.cwd,
         mcpServers: context.params.mcpServers ?? []
       })
       return {}
+    })
+    // Loading a stored session is deliberately unsupported (loadSession: false above), but the request is
+    // logged so a run that needs it says so instead of failing silently.
+    .onRequest(acp.methods.agent.session.load, (context) => {
+      agentLog(`session.load ${String(context.params.sessionId)} (unsupported)`)
+      throw new Error('session/load is not supported by the fixture agent.')
     })
     .onRequest(acp.methods.agent.session.prompt, async (context) => {
       const prompt = context.params.prompt
@@ -297,7 +309,7 @@ if (process.argv.includes('--version')) {
         rmSync(marker, { force: true })
         reply = CONTINUED_TURN_REPLY
       }
-      agentLog(`prompt from session ${context.params.sessionId}: ${prompt.slice(0, 90)}`)
+      agentLog(`session.prompt ${context.params.sessionId}: ${prompt.slice(0, 90)}`)
       try {
         if (prompt.includes(PROVIDER_BRIDGE_PROMPT)) {
           reply = verifyProviderBridge()
