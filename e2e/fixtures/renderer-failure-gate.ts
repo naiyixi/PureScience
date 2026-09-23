@@ -12,9 +12,12 @@ class RendererFailureGate {
       this.failures.set(`console:${text}`, new Error(`[renderer console] ${text}`))
     }
     const recordPageError = (error: Error): void => {
+      // The message goes into CI logs where the trace is not downloadable, so it carries the stack:
+      // a minified React error number alone cannot be acted on.
+      const detail = error.stack ? `${error.message}\n${error.stack}` : error.message
       this.failures.set(
         `pageerror:${error.message}`,
-        new Error(`[renderer pageerror] ${error.message}`, { cause: error })
+        new Error(`[renderer pageerror] ${detail}`, { cause: error })
       )
     }
 
