@@ -2,6 +2,7 @@
 // bounds enforcement, and persistence.
 
 import { mkdtempSync, writeFileSync } from 'node:fs'
+import { readFile, readdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -44,6 +45,17 @@ const fakeParser = (pages: string[], outline: unknown[] = []) => {
         .pop()
         ?.replace(/\.pdf$/i, '') ?? 'doc'
   })
+}
+
+// The service persists what it opened; the summary it hands the renderer is deliberately root-independent.
+const readPersistedDoc = async (): Promise<{ sourcePath?: string; sourceSessionId?: string }> => {
+  const entries = await readdir(root, { recursive: true })
+  const docFile = entries.find((entry) => entry.endsWith('.json'))
+  if (!docFile) throw new Error('no persisted PDF document')
+  return JSON.parse(await readFile(join(root, docFile), 'utf8')) as {
+    sourcePath?: string
+    sourceSessionId?: string
+  }
 }
 
 const makeService = (pages: string[], outline: unknown[] = []): PdfService =>
@@ -139,5 +151,50 @@ describe('PdfService', () => {
     // 200 pages × 6000 chars (the per-page cap) = 1.2M chars > the 1M document cap.
     const huge = makeService(Array.from({ length: 200 }, () => 'x'.repeat(6000)))
     await expect(huge.open(pdfPath)).rejects.toThrow(/char limit/)
+  })
+
+  // A PDF opened from an Artifact card is identified by its Version, not by a path: without resolving that
+  // identity first, opening a generated file fails with ENOENT and the reader never runs.
+  it('resolves an Artifact Version locator through the Session that owns it', async () => {
+    const seen: string[] = []
+    const svc = new PdfService({
+      storageRoot: root,
+      resolvePath: async (path) => (path.startsWith('/') ? path : join(root, path)),
+      parsePdf: async (filePath: string) => {
+        seen.push(`parse:${filePath}`)
+        return { pages: ['page one'], outline: [], title: 'table-evidence' }
+      },
+      resolveSessionArtifactPath: async (projectId, sessionId, path) => {
+        seen.push(`artifact:${projectId}:${sessionId}:${path}`)
+        return pdfPath
+      }
+    })
+    const locator = 'artifact-version:proj-1/session-1/artifact-1/version-1'
+
+    const result = await svc.open(locator, 'proj-1', 'session-1')
+
+    expect(seen).toEqual([`artifact:proj-1:session-1:${locator}`, `parse:${pdfPath}`])
+    // The identity is what the Session keeps, so later reads of the same document resolve it the same way.
+    const persisted = await readPersistedDoc()
+    expect(persisted.sourcePath).toBe(locator)
+    expect(persisted.sourceSessionId).toBe('session-1')
+    expect(result.doc.docId).toBeTruthy()
+  })
+
+  // Without a Session there is nothing to resolve the identity against, so the path is used as given.
+  it('leaves a locator alone when no Session can resolve it', async () => {
+    const locator = 'artifact-version:proj-1/session-1/artifact-1/version-1'
+    const svc = new PdfService({
+      storageRoot: root,
+      resolvePath: async (path) => path,
+      parsePdf: fakeParser(['page one']),
+      resolveSessionArtifactPath: async () => {
+        throw new Error('must not be called without a Session')
+      }
+    })
+
+    await svc.open(locator, 'proj-1')
+
+    expect((await readPersistedDoc()).sourcePath).toBe(locator)
   })
 })

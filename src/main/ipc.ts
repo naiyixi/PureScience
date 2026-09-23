@@ -1513,7 +1513,11 @@ const createApplicationModules = async (
   })
   const pdfService = new PdfService({
     storageRoot: resolveDataRoot(),
-    resolvePath: async (path) => (path.startsWith('/') ? path : join(resolveDataRoot(), path))
+    resolvePath: async (path) => (path.startsWith('/') ? path : join(resolveDataRoot(), path)),
+    // A PDF opened from an Artifact card is identified by its Version, not by a path: the same resolver the
+    // file surfaces use turns that identity into the file, so the reader can actually read it.
+    resolveSessionArtifactPath: (projectId, sessionId, path) =>
+      resolveSessionArtifactFilePath(projectId, sessionId, path)
   })
   // One reader for both surfaces: the PDF preview/annotation commands and the references module's
   // PDF → DOI import (3.4) use the same PdfService, so a document is registered once and read the same

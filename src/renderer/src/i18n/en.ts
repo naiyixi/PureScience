@@ -231,9 +231,9 @@ export const en: Record<ZhKey, string> = {
   'pdf.table.title': 'Extract table candidates',
   'pdf.table.exportHint':
     'Every export carries its page, method, counts and the reasons it needs checking.',
-  'pdf.table.scanning': 'Scanning the PDF text layer…',
+  'pdf.table.scanning': "Reading the PDF's own layout for tables…",
   'pdf.table.noneFound': 'No table candidate in the {n} page(s) scanned.',
-  'pdf.table.truncated': 'Only the first {n} pages were scanned.',
+  'pdf.table.capped': 'Stopped at the first {n} candidates the reader returns.',
   'pdf.table.pageLabel': 'Page {page}',
   'pdf.table.shape': '{rows} rows x {columns} columns',
   'pdf.table.confidenceLabel': 'Confidence {level}',

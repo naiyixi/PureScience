@@ -13,6 +13,7 @@ const PERMISSION_PROMPT = 'Request fixture permission.'
 const PROVIDER_BRIDGE_PROMPT = 'Verify the provider bridge.'
 const NOTEBOOK_LIFECYCLE_PROMPT = 'Verify the notebook lifecycle.'
 const ARTIFACT_PROVENANCE_PROMPT = 'Create a provenance artifact.'
+const PDF_TABLE_PROMPT = 'Create a table PDF fixture.'
 const PDF_REGION_PROMPT = 'Create a region drawing PDF.'
 const INTERRUPTED_TURN_PROMPT = 'Continue the interrupted turn fixture.'
 const PARTIAL_TURN_REPLY = 'Part of the answer arrived before the app went down.'
@@ -186,14 +187,11 @@ const createProvenanceArtifact = async (sessionId) => {
 // with a font and a content stream, and an xref table whose offsets are correct — which is exactly what
 // computing the offsets here guarantees. The page carries a picture and a caption under it, so the figure
 // extraction has something real to find: a 2x2 image painted at 200x150 points and "Figure 1." below it.
-const minimalPdf = (text) => {
-  // 2x2 RGB image samples, then the page content: paint the image, then write the caption under it.
+// One page whose content is given: the object layout is shared so every PDF this fixture writes can be read
+// the same way. The image is still referenced by the page whether or not the content paints it.
+const pdfFromContent = (content) => {
   const imageData = Buffer.from([255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0])
   const imageBytes = [...imageData].map((byte) => String.fromCharCode(byte)).join('')
-  const content =
-    `q 200 0 0 150 100 500 cm /Im1 Do Q\n` +
-    `BT /F1 18 Tf 40 320 Td (${text}) Tj ET\n` +
-    'BT /F1 12 Tf 100 470 Td (Figure 1. Measured response) Tj ET'
   const objects = [
     '<</Type/Catalog/Pages 2 0 R>>',
     '<</Type/Pages/Kids[3 0 R]/Count 1>>',
@@ -214,6 +212,61 @@ const minimalPdf = (text) => {
   body += `trailer\n<</Size ${objects.length + 1}/Root 1 0 R>>\nstartxref\n${xref}\n%%EOF\n`
   return Buffer.from(body, 'latin1').toString('base64')
 }
+
+const minimalPdf = (text) => {
+  // Paint the image, then write the caption under it.
+  const content =
+    `q 200 0 0 150 100 500 cm /Im1 Do Q\n` +
+    `BT /F1 18 Tf 40 320 Td (${text}) Tj ET\n` +
+    'BT /F1 12 Tf 100 470 Td (Figure 1. Measured response) Tj ET'
+  return pdfFromContent(content)
+}
+
+// A table that is really a table: four columns and four rows, each cell placed by its own text matrix, so
+// the columns are the reader's to find by position rather than by guessing from spacing.
+const FIXTURE_TABLE_ROWS = [
+  ['Sample', 'Value', 'sd', 'n'],
+  ['control', '12.4', '1.1', '6'],
+  ['treated', '31.8', '2.4', '6'],
+  ['vehicle', '9.7', '0.8', '6']
+]
+const FIXTURE_TABLE_COLUMN_X = [40, 150, 250, 330]
+// Inside the page's own box (400x600): text placed outside the media box is not read at all, so a table
+// written above the page would look like a document with no text in it.
+const FIXTURE_TABLE_ROW_Y = [520, 500, 480, 460]
+
+const tablePdf = () => {
+  const lines = ['BT /F1 12 Tf']
+  FIXTURE_TABLE_ROWS.forEach((row, rowIndex) => {
+    row.forEach((cell, columnIndex) => {
+      lines.push(
+        `1 0 0 1 ${FIXTURE_TABLE_COLUMN_X[columnIndex]} ${FIXTURE_TABLE_ROW_Y[rowIndex]} Tm (${cell}) Tj`
+      )
+    })
+  })
+  lines.push('ET')
+  return pdfFromContent(lines.join('\n'))
+}
+
+const createPdfTableArtifact = async (sessionId) =>
+  withMcpClient(sessionId, 'purescience-artifacts', async (client) => {
+    const stored = toolResult(
+      'write_artifact_file',
+      await client.callTool({
+        name: 'write_artifact_file',
+        arguments: {
+          filename: 'table-evidence.pdf',
+          mimeType: 'application/pdf',
+          encoding: 'base64',
+          content: tablePdf()
+        }
+      })
+    )
+    if (!stored.artifact?.artifact_id || !stored.artifact.version_id) {
+      throw new Error('The table PDF artifact was not stored with a Version.')
+    }
+    return `Table PDF ready for session ${sessionId}, artifact ${stored.artifact.artifact_id}, version ${stored.artifact.version_id}.`
+  })
 
 const createPdfRegionArtifact = async (sessionId) =>
   withMcpClient(sessionId, 'purescience-artifacts', async (client) => {
@@ -317,6 +370,8 @@ if (process.argv.includes('--version')) {
           reply = await verifyNotebookLifecycle(context.params.sessionId)
         } else if (prompt.includes(ARTIFACT_PROVENANCE_PROMPT)) {
           reply = await createProvenanceArtifact(context.params.sessionId)
+        } else if (prompt.includes(PDF_TABLE_PROMPT)) {
+          reply = await createPdfTableArtifact(context.params.sessionId)
         } else if (prompt.includes(PDF_REGION_PROMPT)) {
           reply = await createPdfRegionArtifact(context.params.sessionId)
         } else if (prompt.includes(PERMISSION_PROMPT)) {

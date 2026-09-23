@@ -23,7 +23,7 @@ export const PDF_IPC = {
 } as const
 
 export type PdfCommandOwner = {
-  open: (projectId: string, path: string) => Promise<PdfOpenResult>
+  open: (projectId: string, path: string, sessionId?: string) => Promise<PdfOpenResult>
   pages: (projectId: string, docId: string, start: number, end?: number) => Promise<PdfPagesResult>
   outline: (projectId: string, docId: string) => Promise<PdfOutlineResult>
   scan: (projectId: string, docId: string, query: string) => Promise<PdfScanResult>
@@ -32,7 +32,7 @@ export type PdfCommandOwner = {
 }
 
 export const createPdfCommandOwner = (service: PdfService): PdfCommandOwner => ({
-  open: (projectId, path) => service.open(path, projectId),
+  open: (projectId, path, sessionId) => service.open(path, projectId, sessionId),
   pages: (_projectId, docId, start, end) => service.pages(docId, start, end),
   outline: (_projectId, docId) => service.outline(docId),
   scan: (_projectId, docId, query) => service.scan(docId, query),
@@ -41,8 +41,10 @@ export const createPdfCommandOwner = (service: PdfService): PdfCommandOwner => (
 })
 
 export const registerPdfIpcHandlers = (owner: PdfCommandOwner): PdfCommandOwner => {
-  ipcMainHandle(PDF_IPC.OPEN, (_event, request: { projectId: string; path: string }) =>
-    owner.open(request.projectId, request.path)
+  ipcMainHandle(
+    PDF_IPC.OPEN,
+    (_event, request: { projectId: string; path: string; sessionId?: string }) =>
+      owner.open(request.projectId, request.path, request.sessionId)
   )
   ipcMainHandle(
     PDF_IPC.PAGES,

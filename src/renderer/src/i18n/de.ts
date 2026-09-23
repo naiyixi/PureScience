@@ -606,9 +606,9 @@ export const de: Partial<Record<ZhKey, string>> = {
   'pdf.table.title': 'Tabellenkandidaten extrahieren',
   'pdf.table.exportHint':
     'Jeder Export trägt Seite, Methode, Umfang und die Gründe für die Prüfung mit.',
-  'pdf.table.scanning': 'Die Textebene des PDFs wird gelesen…',
+  'pdf.table.scanning': 'Die Tabellen werden aus dem eigenen Layout der PDF gelesen…',
   'pdf.table.noneFound': 'Kein Tabellenkandidat auf den {n} gelesenen Seiten.',
-  'pdf.table.truncated': 'Es wurden nur die ersten {n} Seiten gelesen.',
+  'pdf.table.capped': 'Beim {n}. Kandidat des Lesers abgebrochen.',
   'pdf.table.pageLabel': 'Seite {page}',
   'pdf.table.shape': '{rows} Zeilen × {columns} Spalten',
   'pdf.table.confidenceLabel': 'Konfidenz {level}',

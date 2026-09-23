@@ -1160,7 +1160,12 @@ export interface PureScienceAPI {
     // Registers a PDF for layered reading (parses + persists page text).
     tables(request: { projectId: string; docId: string; page?: number }): Promise<PdfTablesResult>
     figures(request: { projectId: string; docId: string; page?: number }): Promise<PdfFiguresResult>
-    open(request: { projectId: string; path: string }): Promise<PdfOpenResult>
+    open(request: {
+      projectId: string
+      path: string
+      /** The Session the file belongs to; a Version locator cannot be resolved without it. */
+      sessionId?: string
+    }): Promise<PdfOpenResult>
     // Reads a page range as text.
     pages(request: {
       projectId: string

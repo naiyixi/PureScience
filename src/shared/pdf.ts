@@ -67,8 +67,10 @@ export type PdfPageScanHit = {
 export type RegisteredPdf = {
   docId: string
   projectId: string
-  // The path the agent opened (project-relative or absolute, as given).
+  // The path the agent opened (project-relative or absolute, as given), or an Artifact Version locator.
   sourcePath: string
+  /** The Session the document was opened from, when one is known: a locator needs it to be resolved. */
+  sourceSessionId?: string
   title: string
   pageCount: number
   // Bookmark-derived outline (may be empty for PDFs without bookmarks).
@@ -142,6 +144,8 @@ export type PdfTableCandidateForAgent = {
   confidence: string
   markdown: string
   tsv: string
+  /** Same provenance as `markdown`/`tsv`, for embedding the table in a report. */
+  html: string
   /** What a reader has to do before using it, from the extraction's own audit. */
   warnings: readonly string[]
 }

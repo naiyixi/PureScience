@@ -6,6 +6,8 @@
 // locate "where does this paper mention dataset X".
 
 import { createHash } from 'node:crypto'
+
+import { parseArtifactVersionLocator } from '../../shared/artifact-provenance'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
 
@@ -14,9 +16,10 @@ import {
   extractPdfTableCandidates,
   extractPdfTableCandidatesFromText,
   toMarkdownTable,
+  toHtmlTable,
   toTsv,
   type PdfTableCandidate,
-  type PdfTextItem,
+  type PdfTextItem
 } from '../../shared/pdf-table-extraction'
 import {
   auditPdfFigureForUse,
@@ -36,10 +39,7 @@ import type {
   PdfTablesResult,
   RegisteredPdf
 } from '../../shared/pdf'
-import type {
-  PdfFigureForAgent,
-  PdfFiguresResult
-} from '../../shared/pdf'
+import type { PdfFigureForAgent, PdfFiguresResult } from '../../shared/pdf'
 import { PDF_FIGURES_MAX_FIGURES } from '../../shared/pdf'
 import {
   PDF_MAX_PAGE_TEXT_CHARS,
@@ -67,6 +67,13 @@ export type PdfServiceOptions = {
   // Resolves a project-relative or absolute path to an on-disk file path. Absent ⇒ relative
   // paths resolve against storageRoot.
   resolvePath?: (path: string) => Promise<string | undefined>
+  // Resolves an Artifact Version locator (or a Session-relative artifact path) to a file on disk. Absent ⇒
+  // only filesystem paths can be read, which is what a caller with no Session has.
+  resolveSessionArtifactPath?: (
+    projectId: string,
+    sessionId: string,
+    path: string
+  ) => Promise<string>
   // Injectable PDF parser (tests); defaults to the pdfjs implementation.
   parsePdf?: (filePath: string) => Promise<{
     pages: string[]
@@ -78,7 +85,7 @@ export type PdfServiceOptions = {
      * can (see the method named on each candidate).
      */
     items?: PdfTextItem[][]
-  images?: PdfImagePlacement[][]
+    images?: PdfImagePlacement[][]
   }>
   now?: () => number
 }
@@ -113,8 +120,8 @@ export class PdfService {
   }
 
   // Opens (parses + persists) a PDF. Returns the outline-level summary; page text stays on disk.
-  async open(path: string, projectId = ''): Promise<PdfOpenResult> {
-    const resolved = await this.resolveSourcePath(path)
+  async open(path: string, projectId = '', sessionId?: string): Promise<PdfOpenResult> {
+    const resolved = await this.resolveInputPath(path, projectId, sessionId)
     if (!resolved) {
       throw new PdfValidationError('invalid_path', `Cannot resolve PDF path: ${path}`)
     }
@@ -139,6 +146,7 @@ export class PdfService {
       docId,
       projectId,
       sourcePath: path,
+      ...(sessionId ? { sourceSessionId: sessionId } : {}),
       title,
       pageCount: pages.length,
       outline,
@@ -191,7 +199,11 @@ export class PdfService {
     if (page !== undefined && (page < 1 || page > doc.pageCount)) {
       throw new PdfValidationError('not_found', `Page ${String(page)} is outside this document.`)
     }
-    const sourcePath = await this.resolveSourcePath(doc.sourcePath)
+    const sourcePath = await this.resolveInputPath(
+      doc.sourcePath,
+      doc.projectId,
+      doc.sourceSessionId
+    )
     if (!sourcePath)
       throw new PdfValidationError('not_found', `Source file is unavailable: ${doc.sourcePath}`)
     const parse = this.options.parsePdf ?? parsePdf
@@ -222,6 +234,7 @@ export class PdfService {
           confidence: candidate.confidence,
           markdown: toMarkdownTable(candidate),
           tsv: toTsv(candidate),
+          html: toHtmlTable(candidate),
           warnings: auditPdfTableCandidateForUse(candidate)
         })
       }
@@ -234,7 +247,11 @@ export class PdfService {
     if (page !== undefined && (page < 1 || page > doc.pageCount)) {
       throw new PdfValidationError('not_found', `Page ${String(page)} is outside this document.`)
     }
-    const sourcePath = await this.resolveSourcePath(doc.sourcePath)
+    const sourcePath = await this.resolveInputPath(
+      doc.sourcePath,
+      doc.projectId,
+      doc.sourceSessionId
+    )
     if (!sourcePath)
       throw new PdfValidationError('not_found', `Source file is unavailable: ${doc.sourcePath}`)
 
@@ -320,6 +337,20 @@ export class PdfService {
       throw new PdfValidationError('not_found', `No registered PDF with doc_id ${docId}.`)
     }
     return doc
+  }
+
+  // A Version locator is an opaque identity, not a path: it has to be resolved to that Version's file before
+  // anything can be read from it, and the locator itself knows which Session it belongs to.
+  private async resolveInputPath(
+    path: string,
+    projectId: string,
+    sessionId?: string
+  ): Promise<string | undefined> {
+    const resolveArtifact = this.options.resolveSessionArtifactPath
+    if (resolveArtifact && sessionId && parseArtifactVersionLocator(path)) {
+      return resolveArtifact(projectId, sessionId, path)
+    }
+    return this.resolveSourcePath(path)
   }
 
   private async resolveSourcePath(path: string): Promise<string | undefined> {

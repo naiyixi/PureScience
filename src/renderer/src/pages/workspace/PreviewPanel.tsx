@@ -823,6 +823,7 @@ const PreviewFilePanel = ({
           <PdfTablePanel
             projectId={activeProjectId}
             sourcePath={tableItem.path ?? tableItem.title}
+            sourceSessionId={tableItem.sessionId}
             onClose={() => setTableItem(null)}
           />
         </div>

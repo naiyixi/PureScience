@@ -926,7 +926,7 @@ const api: PureScienceAPI = {
     remove: (id: string) => electronRendererContracts.invoke('searchPins.remove', id)
   },
   pdf: {
-    open: (request: { projectId: string; path: string }) =>
+    open: (request: { projectId: string; path: string; sessionId?: string }) =>
       electronRendererContracts.invoke('pdf.open', request),
     pages: (request: { projectId: string; docId: string; start: number; end?: number }) =>
       electronRendererContracts.invoke('pdf.pages', request),

@@ -599,9 +599,9 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'pdf.table.title': 'Extraire des candidats de tableau',
   'pdf.table.exportHint':
     'Chaque export porte sa page, sa méthode, ses dimensions et les raisons de le vérifier.',
-  'pdf.table.scanning': 'Analyse de la couche texte du PDF…',
+  'pdf.table.scanning': "Lecture des tableaux d'après la mise en page du PDF…",
   'pdf.table.noneFound': 'Aucun candidat de tableau dans les {n} page(s) analysée(s).',
-  'pdf.table.truncated': 'Seules les {n} premières pages ont été analysées.',
+  'pdf.table.capped': 'Arrêt aux {n} premiers candidats renvoyés par le lecteur.',
   'pdf.table.pageLabel': 'Page n° {page}',
   'pdf.table.shape': '{rows} lignes × {columns} colonnes',
   'pdf.table.confidenceLabel': 'Confiance {level}',

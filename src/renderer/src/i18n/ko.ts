@@ -575,9 +575,9 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'pdf.table.title': '표 후보 추출',
   'pdf.table.exportHint':
     '내보내기에는 페이지, 방법, 행·열 수와 확인이 필요한 이유가 항상 포함됩니다.',
-  'pdf.table.scanning': 'PDF 텍스트 레이어를 스캔하는 중…',
+  'pdf.table.scanning': 'PDF 자체의 레이아웃에서 표를 읽는 중…',
   'pdf.table.noneFound': '스캔한 {n}페이지에서 표 후보를 찾지 못했습니다.',
-  'pdf.table.truncated': '처음 {n}페이지만 스캔했습니다.',
+  'pdf.table.capped': '리더가 반환하는 상위 {n}개 후보에서 멈췄습니다.',
   'pdf.table.pageLabel': '{page}페이지',
   'pdf.table.shape': '{rows}행 × {columns}열',
   'pdf.table.confidenceLabel': '신뢰도 {level}',
