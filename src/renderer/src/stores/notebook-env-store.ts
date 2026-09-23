@@ -229,7 +229,13 @@ export const useNotebookEnvStore = create<NotebookEnvStore>((set, get) => {
         // Applied on a microtask rather than straight from the message listener — see the coalescing
         // note where the listener is installed below.
         let pendingProgress: ProvisionProgress | undefined
-        let progressFlush: Promise<void> | undefined
+        let progressFlush: ReturnType<typeof setTimeout> | undefined
+        const flushProgress = (): void => {
+          progressFlush = undefined
+          const next = pendingProgress
+          pendingProgress = undefined
+          if (next) applyProgress(next)
+        }
         const applyProgress = (progress: ProvisionProgress): void => {
           applyUi({
             progress,
@@ -280,18 +286,16 @@ export const useNotebookEnvStore = create<NotebookEnvStore>((set, get) => {
             })
           }
         }
-        // Coalesce the main process's broadcast burst into one write per microtask. A write issued
-        // straight from the message listener lands while React is mid-render, and React counts updates
-        // scheduled during a render as nested ones — past its depth limit it throws, which the packaged
-        // build reports as error #185. Last broadcast wins, so the banner still advances every frame.
+        // Coalesce the main process's broadcast burst into one write per macrotask. The listener must not
+        // write the store itself: React counts an update scheduled while it renders as a nested one, and
+        // fifty of those is error #185 — which is what the packaged build (fastest bridge) hit. A
+        // microtask is not enough of a gap either, because React resumes a suspended render in a promise
+        // continuation, so a microtask flush can land inside the render it is meant to stay out of. A
+        // timer callback cannot interleave with a render at all. Last broadcast wins, so the banner still
+        // advances a frame at a time.
         bridge.onProgress((progress) => {
           pendingProgress = progress
-          progressFlush ??= Promise.resolve().then(() => {
-            progressFlush = undefined
-            const next = pendingProgress
-            pendingProgress = undefined
-            if (next) applyProgress(next)
-          })
+          progressFlush ??= setTimeout(flushProgress, 0)
         })
       }
       const status = await bridge.getStatus()

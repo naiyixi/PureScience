@@ -30,11 +30,12 @@ const installApi = (
   ;(globalThis as { window?: unknown }).window = { api: { notebookEnv: api } }
   return {
     api,
-    // Progress is applied on a microtask now (the store coalesces a broadcast burst into one write), so
-    // awaiting the emit is what makes an assertion see that broadcast rather than the previous frame.
+    // Progress is applied on a timer now (the store coalesces a broadcast burst into one write, and it
+    // deliberately stays out of microtasks), so awaiting the emit is what makes an assertion see that
+    // broadcast rather than the previous frame.
     emit: async (p: ProvisionProgress): Promise<void> => {
       listeners.forEach((l) => l(p))
-      await Promise.resolve()
+      await new Promise((resolve) => setTimeout(resolve, 0))
     }
   }
 }
@@ -70,7 +71,7 @@ describe('notebook-env-store', () => {
     listener({ phase: 'download', message: 'Fetching', progress: 0.1 })
     listener({ phase: 'download', message: 'Fetching', progress: 0.6 })
     listener({ phase: 'download', message: 'Fetching', progress: 0.9 })
-    await Promise.resolve()
+    await new Promise((resolve) => setTimeout(resolve, 0))
     unsubscribe()
 
     expect(useNotebookEnvStore.getState().progress).toEqual({
