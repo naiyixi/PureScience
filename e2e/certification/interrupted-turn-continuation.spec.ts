@@ -24,6 +24,12 @@ const CONTINUED_REPLY = 'The interrupted turn continued from where it stopped.'
 //     Every run then died inside onboarding with 'Target page, context or browser has been closed', while
 //     a neighbouring spec that reassigns both passes in 13s. The helpers' return values are used below.
 //
+//   * Third measurement, with the window bug fixed and the restart shape in place: onboarding, the prompt,
+//     the in-flight composer and the restart all succeed, and the run then reaches the workspace to find no
+//     session navigation at all — the page at that moment shows an overlay carrying a single 'Close'
+//     control, so something is covering the workspace before the banner can be looked for. Identifying that
+//     overlay (rather than guessing at it) is the next step.
+//
 // So the shape to establish is: the turn is left open, the app is restarted (which is when a session with
 // an unfinished turn is restored as interrupted), the session is opened, and Continue is expected to hand
 // the same turn back to the agent without producing a second copy of the message.
@@ -47,7 +53,12 @@ test.fixme('a turn that was interrupted is continued, not sent again', async ({ 
     .getByRole('region', { name: 'Projects' })
     .getByRole('button', { name: 'Interrupted turn', exact: true })
     .click()
+  // The workspace sidebar collapses its session list behind one button after a restart.
+  const expander = page.getByRole('button', { name: 'Sessions and bookmarks' })
+  if (await expander.isVisible().catch(() => false)) await expander.click()
+
   const sessions = page.getByRole('navigation', { name: 'Sessions' })
+  await expect(sessions).toBeVisible({ timeout: 30_000 })
   await sessions
     .getByRole('button', { name: /Session status/ })
     .first()
