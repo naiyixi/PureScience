@@ -656,19 +656,45 @@ const AgentPanel = ({
           {installedFrameworks.length > 0 ? (
             <div className="space-y-2">
               <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                Installed · {installedFrameworks.length}
+                {t('settings.agentFrameworksInstalled').replace(
+                  '{n}',
+                  String(installedFrameworks.length)
+                )}
               </p>
               <div className="space-y-3">{installedFrameworks.map(renderFrameworkCard)}</div>
             </div>
-          ) : null}
+          ) : (
+            // The heading simply vanished when nothing was ready, leaving the reader to guess whether
+            // nothing was installed or the list had failed to load.
+            <div className="rounded-lg border border-dashed border-border px-4 py-5 text-center">
+              <p className="text-sm text-foreground">
+                {t('settings.agentFrameworksNoneInstalled')}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {t('settings.agentFrameworksNoneInstalledHint')}
+              </p>
+            </div>
+          )}
           {availableFrameworks.length > 0 ? (
             <div className="space-y-2">
               <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                Available · {availableFrameworks.length}
+                {t('settings.agentFrameworksAvailable').replace(
+                  '{n}',
+                  String(availableFrameworks.length)
+                )}
               </p>
               <div className="space-y-3">{availableFrameworks.map(renderFrameworkCard)}</div>
             </div>
-          ) : null}
+          ) : (
+            <div className="rounded-lg border border-dashed border-border px-4 py-5 text-center">
+              <p className="text-sm text-foreground">
+                {t('settings.agentFrameworksNoneAvailable')}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {t('settings.agentFrameworksNoneAvailableHint')}
+              </p>
+            </div>
+          )}
           {activeFramework && !activeFramework.supportsSkills ? (
             <p className="text-xs text-muted-foreground">
               Skills aren&apos;t available with {activeFramework.displayName}; use Claude Code for

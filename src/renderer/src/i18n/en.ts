@@ -945,6 +945,14 @@ export const en: Record<ZhKey, string> = {
   'settings.agentRuntimeRepairIssues': 'Agent runtime repair issues',
   'settings.theSelectedAgent': 'The selected agent',
   'settings.agentInstallationBlockers': 'Agent installation blockers',
+  'settings.agentFrameworksInstalled': 'Installed · {n}',
+  'settings.agentFrameworksAvailable': 'Available · {n}',
+  'settings.agentFrameworksNoneInstalled': 'No framework is ready yet',
+  'settings.agentFrameworksNoneInstalledHint':
+    'Install one from the list below to start a conversation.',
+  'settings.agentFrameworksNoneAvailable': 'Every framework in this build is ready',
+  'settings.agentFrameworksNoneAvailableHint':
+    'Nothing left to install — the ones above are already usable.',
   'settings.installProgress': 'Install progress',
   'settings.hideLog': 'Hide log',
   'settings.showLog': 'Show log',

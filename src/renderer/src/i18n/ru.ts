@@ -945,6 +945,14 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.agentHomeCopyHint':
     'на этом компьютере. Отметьте навыки для копирования в PureScience; оригиналы останутся на месте.',
   'settings.agentInstallationBlockers': 'Препятствия для установки агента',
+  'settings.agentFrameworksInstalled': 'Установлено · {n}',
+  'settings.agentFrameworksAvailable': 'Доступно · {n}',
+  'settings.agentFrameworksNoneInstalled': 'Ни один фреймворк пока не готов',
+  'settings.agentFrameworksNoneInstalledHint':
+    'Установите один из списка ниже, чтобы начать беседу.',
+  'settings.agentFrameworksNoneAvailable': 'Все фреймворки этой сборки готовы',
+  'settings.agentFrameworksNoneAvailableHint':
+    'Устанавливать больше нечего — верхние уже можно использовать.',
   'settings.agentNoNativeAutoMode':
     'У этого агента нет собственного автоматического режима. PureScience автоматически одобряет только правки файлов внутри',
   'settings.agentOpencodeNotReady':

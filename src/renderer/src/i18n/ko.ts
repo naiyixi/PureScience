@@ -932,6 +932,14 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.agentHomeCopyHint':
     '이 컴퓨터에 있습니다. PureScience로 복사할 스킬을 선택하세요. 원본은 제자리에 그대로 유지됩니다.',
   'settings.agentInstallationBlockers': '에이전트 설치 차단 항목',
+  'settings.agentFrameworksInstalled': '설치됨 · {n}',
+  'settings.agentFrameworksAvailable': '설치 가능 · {n}',
+  'settings.agentFrameworksNoneInstalled': '아직 사용할 수 있는 프레임워크가 없습니다',
+  'settings.agentFrameworksNoneInstalledHint':
+    '아래 목록에서 하나를 설치하면 대화를 시작할 수 있습니다.',
+  'settings.agentFrameworksNoneAvailable': '이 빌드의 프레임워크가 모두 준비되었습니다',
+  'settings.agentFrameworksNoneAvailableHint':
+    '더 설치할 것이 없습니다 — 위의 것들을 바로 쓸 수 있습니다.',
   'settings.agentNoNativeAutoMode':
     '이 에이전트에는 기본 자동 모드가 없습니다. PureScience는 작업 영역 내 파일 편집만 자동 승인합니다.',
   'settings.agentOpencodeNotReady':

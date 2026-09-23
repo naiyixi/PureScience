@@ -943,6 +943,13 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.agentHomeCopyHint':
     'このコンピュータ上にあります。PureScience にコピーするスキルにチェックを付けてください。元のファイルは元の場所に残ります。',
   'settings.agentInstallationBlockers': 'エージェントのインストールを妨げる項目',
+  'settings.agentFrameworksInstalled': 'インストール済み · {n}',
+  'settings.agentFrameworksAvailable': '導入可能 · {n}',
+  'settings.agentFrameworksNoneInstalled': '利用できるフレームワークがまだありません',
+  'settings.agentFrameworksNoneInstalledHint': '下の一覧からインストールすると会話を始められます。',
+  'settings.agentFrameworksNoneAvailable': 'このビルドのフレームワークはすべて利用可能です',
+  'settings.agentFrameworksNoneAvailableHint':
+    '追加で入れるものはありません — 上のものがそのまま使えます。',
   'settings.agentNoNativeAutoMode':
     'このエージェントにはネイティブの自動モードがありません。PureScience が自動承認するのは、ワークスペース内のファイルへの編集のみです。コマンド・ネットワーク・MCP ツールは引き続き確認を求めます。',
   'settings.agentOpencodeNotReady':

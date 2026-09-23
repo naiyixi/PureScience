@@ -955,6 +955,14 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.agentHomeCopyHint':
     'en esta computadora. Marca las habilidades que quieras copiar a PureScience; los originales permanecen en su lugar.',
   'settings.agentInstallationBlockers': 'Bloqueos de instalación del agente',
+  'settings.agentFrameworksInstalled': 'Instalados · {n}',
+  'settings.agentFrameworksAvailable': 'Disponibles · {n}',
+  'settings.agentFrameworksNoneInstalled': 'Todavía no hay ningún framework listo',
+  'settings.agentFrameworksNoneInstalledHint':
+    'Instala uno de la lista de abajo para empezar una conversación.',
+  'settings.agentFrameworksNoneAvailable': 'Todos los frameworks de esta versión están listos',
+  'settings.agentFrameworksNoneAvailableHint':
+    'No queda nada por instalar: los de arriba ya se pueden usar.',
   'settings.agentNoNativeAutoMode':
     'Este agente no tiene modo automático nativo. PureScience solo aprueba automáticamente las ediciones de archivos dentro de',
   'settings.agentOpencodeNotReady':

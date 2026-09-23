@@ -2468,6 +2468,41 @@ describe('SettingsPage Codex framework', () => {
     expect(checkEnvironment).toHaveBeenCalledWith({ force: true })
   })
 
+  it('says nothing is ready yet and points at the list that can fix it', async () => {
+    const api = (window as unknown as { api: { settings: Record<string, unknown> } }).api
+    const snapshot = {
+      claude: {},
+      opencode: {},
+      codex: {},
+      providers: [],
+      agentFrameworkId: 'claude-code',
+      agentFrameworks: frameworks,
+      claudeManaged: false,
+      opencodeManaged: false,
+      codexManaged: false
+    }
+    api.settings.getSettings = vi.fn().mockResolvedValue(snapshot)
+    api.settings.getPreflight = vi.fn().mockResolvedValue({
+      claudeReady: false,
+      opencodeReady: false,
+      codexReady: false,
+      agentFrameworkId: 'claude-code',
+      agentReady: false,
+      activeProviderReady: false
+    })
+
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+    await openAgentPanel()
+
+    // Both headings used to disappear when their group was empty, so a machine with nothing installed
+    // showed a panel that explained neither the empty half nor where to start.
+    expect(document.body.textContent).toContain('No framework is ready yet')
+    expect(document.body.textContent).toContain('Install one from the list below')
+    expect(document.body.textContent).toContain('Available · 4')
+  })
+
   it('groups cards by install state and re-detects every framework from the section action', async () => {
     const api = (window as unknown as { api: { settings: Record<string, unknown> } }).api
     const snapshot = {

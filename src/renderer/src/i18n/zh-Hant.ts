@@ -891,6 +891,12 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.agentHomeCopyHint':
     '在此電腦上。勾選要複製到 PureScience 的技能；原始檔案會保留在原位。',
   'settings.agentInstallationBlockers': '智能體安裝阻礙',
+  'settings.agentFrameworksInstalled': '已安裝 · {n}',
+  'settings.agentFrameworksAvailable': '可安裝 · {n}',
+  'settings.agentFrameworksNoneInstalled': '還沒有就緒的框架',
+  'settings.agentFrameworksNoneInstalledHint': '從下面的清單安裝一個，就可以開始對話。',
+  'settings.agentFrameworksNoneAvailable': '這個版本裡的框架都已就緒',
+  'settings.agentFrameworksNoneAvailableHint': '沒有需要再安裝的了——上面的框架可以直接使用。',
   'settings.agentNoNativeAutoMode':
     '此智能體沒有原生自動模式。PureScience 只會自動核准對工作區內檔案的編輯',
   'settings.agentOpencodeNotReady': '此框架需要 OpenCode。請在下方安裝，或手動安裝（見 ',
