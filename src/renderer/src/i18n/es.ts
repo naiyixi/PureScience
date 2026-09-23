@@ -2940,6 +2940,8 @@ export const es: Partial<Record<ZhKey, string>> = {
   'figure.keyboardHint':
     'Teclado: las flechas mueven el cursor (con Mayús, 10 píxeles), Intro marca un punto y Retroceso elimina el último.',
   'figure.caretPosition': 'Cursor x {x} · y {y}',
+  'figure.exported': 'CSV copiado · {count} filas de datos',
+  'figure.exportFailed': 'No se pudo copiar el CSV: {reason}',
   'figure.pickSurface': 'Zona de captura de la figura',
   'figure.xAnchorTitle': 'ancla x {value}',
   'figure.yAnchorTitle': 'ancla y {value}',

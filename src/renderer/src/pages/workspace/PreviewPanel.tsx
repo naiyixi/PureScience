@@ -38,6 +38,7 @@ import { PreviewFileSurface } from './PreviewFileSurface'
 import { WebPreviewSurface } from './previews/renderers/WebPreview'
 import { PreviewFileContent } from './previews/PreviewFileContent'
 import { PreviewToolContent } from './previews/PreviewToolContent'
+import { copyText } from '@/lib/copy-text'
 
 type PreviewPanelProps = {
   panelRef: React.Ref<PanelImperativeHandle>
@@ -160,7 +161,7 @@ export const PreviewTabContextMenu = ({
   }
 
   const copyPath = (): void => {
-    if (tab.type === 'file' && tab.path) void navigator.clipboard.writeText(tab.path)
+    if (tab.type === 'file' && tab.path) void copyText(tab.path)
   }
   const download = (): void => {
     if (tab.type === 'file' && tab.path) {
@@ -308,7 +309,7 @@ export const PreviewContentContextMenu = ({
     action()
   }
   const copyPath = (): void => {
-    void navigator.clipboard.writeText(item.path)
+    void copyText(item.path)
   }
   const download = (): void => {
     void window.api.saveManagedFile({ source: 'local', path: item.path, suggestedName: item.name })
@@ -811,8 +812,9 @@ const PreviewFilePanel = ({
             sourcePath={digitizeItem.path ?? digitizeItem.title}
             defaultFigureRef={digitizeItem.title}
             requiresPageEntry={/\.pdf$/i.test(digitizeItem.title)}
-            onExport={(csv) => {
-              void navigator.clipboard.writeText(csv)
+            onExport={async (csv) => {
+              // Awaited so a refused clipboard reaches the panel instead of disappearing into a void.
+              await copyText(csv)
             }}
             onClose={() => setDigitizeItem(null)}
           />

@@ -2959,6 +2959,8 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'figure.keyboardHint':
     'Clavier : les flèches déplacent le curseur (avec Maj, 10 pixels), Entrée place un point, Retour arrière supprime le dernier.',
   'figure.caretPosition': 'Curseur x {x} · y {y}',
+  'figure.exported': 'CSV copié · {count} lignes de données',
+  'figure.exportFailed': 'Impossible de copier le CSV : {reason}',
   'figure.pickSurface': 'Zone de relevé de la figure',
   'figure.xAnchorTitle': 'ancrage x {value}',
   'figure.yAnchorTitle': 'ancrage y {value}',

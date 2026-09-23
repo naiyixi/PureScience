@@ -149,8 +149,8 @@ export const toDigitizationCsv = (result: FigureDigitizationResult): string => {
   const problems = auditDigitizationForUse(result)
   const auditLine =
     problems.length === 0
-      ? '# 审计：通过（仍需审查后方可使用）'
-      : `# 审计：不可用——${problems.join('；')}`
+      ? '# audit: passed (still needs review before use)'
+      : `# audit: unusable — ${problems.join('; ')}`
   const rows = result.points.map(
     (point) => `${csvValue(point.x)},${csvValue(point.y)},${point.pixel.x},${point.pixel.y}`
   )

@@ -2896,6 +2896,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'figure.keyboardHint':
     'キーボード：矢印キーでカーソル移動（Shift 併用で 10 ピクセル）、Enter で点を打ち、Backspace で最後の点を削除します。',
   'figure.caretPosition': 'カーソル x {x} · y {y}',
+  'figure.exported': 'CSV をコピーしました · データ {count} 行',
+  'figure.exportFailed': 'CSV をコピーできませんでした：{reason}',
   'figure.pickSurface': 'グラフ抽出エリア',
   'figure.xAnchorTitle': 'x 基準点 {value}',
   'figure.yAnchorTitle': 'y 基準点 {value}',

@@ -157,6 +157,9 @@ const formatNumber = (value: number): string =>
 
 // Rendered next to (or instead of) any table produced from the extraction: the numbers are only
 // usable when this text accompanies them.
+// The header is deliberately one language for every UI language: this text is read by whoever opens the
+// exported file, often outside the app, and a header that changes with a UI setting would make two
+// exports of the same figure disagree about what they are.
 export const formatDigitizationProvenance = (result: FigureDigitizationResult): string => {
   const ref = result.provenance.figureRef ? ` ${result.provenance.figureRef}` : ''
   const method =
@@ -164,13 +167,13 @@ export const formatDigitizationProvenance = (result: FigureDigitizationResult): 
       ? `model-fit${result.provenance.methodDetail ? ` (${result.provenance.methodDetail})` : ''}`
       : 'anchor-calibration'
   const lines = [
-    `数据来源：${result.provenance.sourcePath} 第 ${result.provenance.page} 页${ref}（图回归估计，非原始测量）`,
-    `提取方式：${method}`,
-    `标定分辨率：x ±${formatNumber(result.resolution.x)}，y ±${formatNumber(result.resolution.y)}（受锚点像素间距限制）`,
-    `状态：estimated · 需审查（不得直接进入正文，先进审查 Finding）`
+    `source: ${result.provenance.sourcePath} page ${result.provenance.page}${ref} (figure regression estimate, not a raw measurement)`,
+    `method: ${method}`,
+    `calibration: x ±${formatNumber(result.resolution.x)}, y ±${formatNumber(result.resolution.y)} (limited by the anchor pixel spacing)`,
+    `status: estimated · needs review (not admissible before it passes review)`
   ]
   if (result.notes.length > 0) {
-    lines.push(`注意事项：${result.notes.join('；')}`)
+    lines.push(`notes: ${result.notes.join('; ')}`)
   }
   return lines.join('\n')
 }
@@ -179,12 +182,12 @@ export const formatDigitizationProvenance = (result: FigureDigitizationResult): 
 // carries its source. Returns the problems that block such use.
 export const auditDigitizationForUse = (result: FigureDigitizationResult): string[] => {
   const problems: string[] = []
-  if (result.estimated !== true) problems.push('结果未标记为 estimated')
-  if (!result.provenance.sourcePath?.trim()) problems.push('缺少来源文件')
+  if (result.estimated !== true) problems.push('result is not labelled estimated')
+  if (!result.provenance.sourcePath?.trim()) problems.push('missing source file')
   if (!Number.isFinite(result.provenance.page) || result.provenance.page < 1) {
-    problems.push('缺少有效页码')
+    problems.push('missing a valid page number')
   }
-  if (result.points.length === 0) problems.push('没有任何数据点')
-  if (result.requiresReview !== true) problems.push('未路由到审查')
+  if (result.points.length === 0) problems.push('no data points')
+  if (result.requiresReview !== true) problems.push('not routed to review')
   return problems
 }

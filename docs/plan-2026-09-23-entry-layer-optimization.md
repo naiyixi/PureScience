@@ -96,6 +96,35 @@
 | U17  | 可发现性基建：命令面 + 菜单级入口 + 快捷键清单面 + 设置搜索扩到 `leaf`/关键词 | ⌘K 能搜到命令；设置搜「镜像/mirror/代理」命中；`Cmd+,` 与 `Cmd+W` 在界面上可见 |
 | U18  | 上下文门控入口（检查清单/复核/折叠时间线可主动打开）                          | 无评审记录时也能主动打开清单页签，并给出「还没有评审」的解释                   |
 
+### 批次 3 进行中记录
+
+**U14 ✅ 完成（真机 `1 passed (10.7s)`，提交 `640b22d`）**
+
+- 表格面板改走与 agent 同一条 `pdf:tables` 几何通道；`html` 也由主进程产出，三种导出与 agent 逐字节一致；审计标签（`verify-against-source`）与扫描范围空态保留；`pdf.table.capped` 取代 `pdf.table.truncated`（9 语）。认证用例 `e2e/certification/pdf-table-extraction.spec.ts`。
+- **真缺陷（已修）**：面板拿到的 `item.path` 是产物的**版本定位符**（`artifact-version:<projectId>/<appSessionId>/<artifactId>/<versionId>`，`src/shared/artifact-provenance.ts:116`），而 `pdf:open` 当路径用 → 用户点「提取表格」必然 ENOENT。修法：`pdf-service.ts` 新增 `resolveSessionArtifactPath` 注入点与 `resolveInputPath`（定位符交解析器、其余走原路径），`open/tables/figures` 统一走它并在落盘记 `sourceSessionId`；`main/ipc.ts` 注入**仓内已有**的 `resolveSessionArtifactFilePath`；`pdf-ipc.ts`/preload/类型带可选 `sessionId`；面板与 `PreviewPanel` 传下去。单测 +2（`pdf-service.test.ts`）、面板 +1。
+- 环境事实：**文字落在 MediaBox 之外 pdfjs 完全读不到**（夹具 y=700 > 页高 600 → 0 候选；移进框内立刻得 4 列）。排障时 vitest 只在失败时回显 `console.log`。
+
+**U15 图形拾取键盘化（实现 + 单测完成；真机用例已写，复跑待确认）**
+
+- `FigurePickOverlay` 拥有自己的游标：方向键 ±1px、Shift ±10px、Enter/空格打点、Backspace/Delete 撤点、Home 收回；**点击与键盘共用同一条打点路径**（`placePoint`）；拾取面 `tabIndex` + 焦点环 + `aria-describedby` + 坐标播报行。2 key × 9 语。
+- 计划点名的 `SelectionAnnotator.tsx:68` 复核结论：它是选中文字时渲染的**原生 `<button>`（带可见文案）** → 键盘本就可达，**归档**（附证据）。
+- **顺带抓住两个真缺陷（均已修）**：
+  1. **数字化导出静默**：`PreviewPanel` 的 `onExport` 原为 `void navigator.clipboard.writeText(csv)`，失败被吞。现在 `onExport` 可 reject，成功显示 `CSV 已复制 · N 行`（`figure.exported`），失败显示 `figure.exportFailed`（含原因）；编辑后自动作废上次导出状态。2 key × 9 语。
+  2. **剪贴板在打包态全坏（系统性）**：`src/main/windows.ts:82-85` 的加固 `setPermissionCheckHandler(() => false)` 把 Chromium 权限一律拒掉（含 `clipboard-write`）→ 渲染层 **20+ 处复制按钮**在打包应用里全部静默失败（含 U14 面板的 copy）。修法：新增 `src/main/clipboard-ipc.ts`（`clipboard:write-text` → 主进程 `clipboard.writeText`，不涉权限）→ 合同目录/preload/`renderer-api.d.ts` → 渲染层单点 `src/renderer/src/lib/copy-text.ts`（无 bridge 时回落 `navigator.clipboard`，故既有 jsdom 测试仍有效）→ 全部调用点迁移，含把可用性守卫 `!navigator.clipboard` 改为 `!window.api?.clipboard`。
+- 真机用例 `e2e/certification/figure-keyboard-picking.spec.ts`：预览右键 → 数字化 → **纯键盘**标定两轴、打点、导出，并断言导出成功的状态行。首跑即用它抓到上面的剪贴板缺陷。
+
+**U7e ✅ 拍板 A（单一稳定英文）已落地**
+
+- `src/shared/figure-to-data.ts`（来源行/提取方式/标定分辨率/状态/注意事项 + `auditDigitizationForUse` 的四条拒绝原因）与 `src/shared/figure-pick-session.ts`（`# audit: passed` / `# audit: unusable`）改为英文；`formatDigitizationProvenance` 只喂 CSV、不上屏（已核）。
+- 四处中文断言同步：`figure-to-data.test.ts`、`figure-pick-session.test.ts`、`FigurePickOverlay.render.test.tsx`、`FigureDigitizePanel.render.test.tsx`；迁移脚本以「零 CJK 残留」自检收尾。
+
+**v1.71.0 Release 失败与更正（必须保留）**
+
+- `build / Build macos-arm64` 失败 → Release 无页无资产。CI 日志：认证 e2e `artifact-replay.spec.ts:43` 让渲染层抛 **React #185（无限更新循环）**，被 `RendererFailureGate` 判失败。
+- **更正**：批次 2 门禁里同一条用例的失败曾判为「并行 worker 假红」——结论不完整，该用例确有渲染层问题。
+- 本地（全新构建）复现出**另一个**真缺陷并已修：`artifacts:replay-version` → `ENOTEMPTY: rmdir …/replay-*/data`（递归 rm 与刚被叫停的内核写入竞态，Node `maxRetries` 默认 0）→ `replay-composition.ts` 的移除加 `maxRetries: 5 / retryDelay: 100`。该用例 `1 passed (12.5s)`、整套认证 e2e 串行 **16 passed (2.8m)**、本地零次 "185"（提交 `e139676`；Windows 全测 **success**，Nightly 进行中）。
+- **未确认项 → 已确认（2026-09-23 深夜）**：`e139676` 的 **Nightly 结论 = failure**，失败 job 仍是 `build / Build macos-arm64`（job id `107255993753`）：`artifact-replay.spec.ts`「the remote command returns」失败（**15 passed / 1 failed (7.1m)**，两次 retry 均失败 → 不是抖动），日志里 `RendererFailureGate` 抓到 `Renderer pageerror: Minified React error #185`。**结论：ENOTEMPTY 修复（`e139676`）没有消解 #185**，二者是两个独立缺陷。#185 只在打包（minified production renderer）里出现、本地 e2e 不复现，**下一单元优先修**：嫌疑点是 `ArtifactProvenancePanel.tsx:499-505` 的 `reviewer.onUpdated → setReviewRevision(+1)` 与 `reviewReloadKey → deferredSectionKey`（`ArtifactProvenancePanel.tsx:603-611`）构成的自喂循环（review 更新 → 重取 review tab → 再发更新）；修法与验证方式需按「本地跑生产渲染器 + 断言更新次数有界」来做，不得只靠猜测收口。**v1.71.0 需重打 tag**（失败的 Release run 不产资产），且**批次 3 的发布门禁会被这个 job 卡住**，必须在批次 3 收尾前修掉。
+
 ## 批次 4（v1.73.0）拍板项落地
 
 每项二选一：**建入口**（附交互草案）或**归档**（在审计文档落结论，并同步合同清单/测试 pin）。

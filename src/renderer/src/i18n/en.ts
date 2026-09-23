@@ -399,6 +399,8 @@ export const en: Record<ZhKey, string> = {
   'figure.keyboardHint':
     'Keyboard: arrow keys move the caret (hold Shift for 10 px), Enter places a point, Backspace removes the last one.',
   'figure.caretPosition': 'Caret x {x} · y {y}',
+  'figure.exported': 'CSV copied · {count} data rows',
+  'figure.exportFailed': 'Could not copy the CSV: {reason}',
   'figure.pickSurface': 'Figure picking area',
   'figure.xAnchorTitle': 'x anchor {value}',
   'figure.yAnchorTitle': 'y anchor {value}',

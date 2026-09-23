@@ -2897,6 +2897,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'figure.keyboardHint':
     'Клавиатура: стрелки двигают курсор (с Shift — на 10 пикселей), Enter ставит точку, Backspace удаляет последнюю.',
   'figure.caretPosition': 'Курсор x {x} · y {y}',
+  'figure.exported': 'CSV скопирован · строк данных: {count}',
+  'figure.exportFailed': 'Не удалось скопировать CSV: {reason}',
   'figure.pickSurface': 'Область снятия данных с рисунка',
   'figure.xAnchorTitle': 'привязка x {value}',
   'figure.yAnchorTitle': 'привязка y {value}',

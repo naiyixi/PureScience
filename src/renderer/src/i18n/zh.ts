@@ -381,6 +381,8 @@ export const zh = {
   'figure.keyboardHint':
     '键盘：方向键移动游标（按住 Shift 每次 10 像素），回车打点，退格撤销上一个点。',
   'figure.caretPosition': '游标 x {x} · y {y}',
+  'figure.exported': 'CSV 已复制 · {count} 行数据',
+  'figure.exportFailed': '无法复制 CSV：{reason}',
   'figure.pickSurface': '图形拾取区',
   'figure.xAnchorTitle': 'x 锚点 {value}',
   'figure.yAnchorTitle': 'y 锚点 {value}',

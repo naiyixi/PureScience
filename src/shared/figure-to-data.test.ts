@@ -114,14 +114,14 @@ describe('figure-to-data: digitisation and G5 provenance', () => {
       xAxis: linearX,
       yAxis: logY,
       picks: [{ x: 300, y: 300 }],
-      notes: ['误差棒未提取']
+      notes: ['error bars not extracted']
     })
     const text = formatDigitizationProvenance(result)
-    expect(text).toContain('data/paper.pdf 第 3 页 Fig. 3B')
-    expect(text).toContain('图回归估计，非原始测量')
+    expect(text).toContain('data/paper.pdf page 3 Fig. 3B')
+    expect(text).toContain('figure regression estimate, not a raw measurement')
     expect(text).toContain('model-fit (plot2data-v0)')
-    expect(text).toContain('estimated · 需审查')
-    expect(text).toContain('误差棒未提取')
+    expect(text).toContain('estimated · needs review')
+    expect(text).toContain('error bars not extracted')
   })
 
   it('audits the G5 invariants before a value can be used outside review', () => {
@@ -137,11 +137,11 @@ describe('figure-to-data: digitisation and G5 provenance', () => {
       ...good,
       provenance: { ...provenance, sourcePath: '  ' }
     }
-    expect(auditDigitizationForUse(noSource)).toContain('缺少来源文件')
+    expect(auditDigitizationForUse(noSource)).toContain('missing source file')
 
     const noPage = { ...good, provenance: { ...provenance, page: 0 } }
-    expect(auditDigitizationForUse(noPage)).toContain('缺少有效页码')
+    expect(auditDigitizationForUse(noPage)).toContain('missing a valid page number')
 
-    expect(auditDigitizationForUse({ ...good, points: [] })).toContain('没有任何数据点')
+    expect(auditDigitizationForUse({ ...good, points: [] })).toContain('no data points')
   })
 })

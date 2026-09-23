@@ -2680,6 +2680,8 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'figure.keyboardHint':
     '鍵盤：方向鍵移動游標（按住 Shift 每次 10 像素），Enter 打點，Backspace 撤銷上一個點。',
   'figure.caretPosition': '游標 x {x} · y {y}',
+  'figure.exported': 'CSV 已複製 · {count} 行資料',
+  'figure.exportFailed': '無法複製 CSV：{reason}',
   'figure.pickSurface': '圖形拾取區',
   'figure.xAnchorTitle': 'x 錨點 {value}',
   'figure.yAnchorTitle': 'y 錨點 {value}',

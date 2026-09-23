@@ -24,8 +24,11 @@ import {
 // shared/figure-pick-session, so this file stays a view.
 export type FigurePickOverlayProps = {
   provenance: DigitizationProvenance
-  /** Called when the user finishes a digitisation (CSV ready). */
-  onExport?: (csv: string, result: FigureDigitizationResult) => void
+  /**
+   * Called when a digitisation is ready to leave the app. A rejection is reported to the user: an export
+   * that silently went nowhere is indistinguishable from one that worked.
+   */
+  onExport?: (csv: string, result: FigureDigitizationResult) => void | Promise<void>
   className?: string
 }
 
@@ -56,6 +59,12 @@ export function FigurePickOverlay({
   const [xValueDraft, setXValueDraft] = useState('')
   const [yValueDraft, setYValueDraft] = useState('')
   const [error, setError] = useState<string | undefined>(undefined)
+  // Rows the last export actually carried, so "exported" is something the user can see rather than assume.
+  // It is held against the session it came from: every edit replaces the session object, so a later change
+  // stops matching and the note goes away without an effect writing state.
+  const [exported, setExported] = useState<{ source: PickSessionState; rows: number } | undefined>(
+    undefined
+  )
   // The pointer has a crosshair wherever it goes; the keyboard needs one of its own, and needs to be told
   // where it is, or picking is a pointer-only action wearing a focus ring.
   const [caret, setCaret] = useState<{ x: number; y: number } | undefined>(undefined)
@@ -160,6 +169,7 @@ export function FigurePickOverlay({
   }, [])
 
   const canExport = session.phase === 'ready'
+  const exportedRows = exported?.source === session ? exported.rows : undefined
   const progressLabel = useMemo(() => {
     const parts = [
       t('figure.xAnchorProgress').replace('{count}', String(session.xAnchors.length)),
@@ -169,13 +179,20 @@ export function FigurePickOverlay({
     return parts.join(' · ')
   }, [session, t])
 
-  const handleExport = useCallback(() => {
+  const handleExport = useCallback(async () => {
     try {
       const result = buildDigitization(session, provenance)
-      onExport?.(toDigitizationCsv(result), result)
+      await onExport?.(toDigitizationCsv(result), result)
       setError(undefined)
+      setExported({ source: session, rows: result.points.length })
     } catch (cause) {
-      setError(describePickError(cause, t))
+      setExported(undefined)
+      setError(
+        t('figure.exportFailed').replace(
+          '{reason}',
+          cause instanceof Error ? cause.message : String(cause)
+        )
+      )
     }
   }, [onExport, provenance, session, t])
 
@@ -296,6 +313,15 @@ export function FigurePickOverlay({
       {error ? (
         <p role="alert" className="text-xs text-red-400">
           {error}
+        </p>
+      ) : null}
+      {exportedRows !== undefined ? (
+        <p
+          role="status"
+          data-testid="figure-pick-export-status"
+          className="text-xs text-emerald-400"
+        >
+          {t('figure.exported').replace('{count}', String(exportedRows))}
         </p>
       ) : null}
     </div>

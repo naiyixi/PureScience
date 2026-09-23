@@ -2974,6 +2974,8 @@ export const de: Partial<Record<ZhKey, string>> = {
   'figure.keyboardHint':
     'Tastatur: Pfeiltasten bewegen den Cursor (mit Umschalt 10 Pixel), Eingabe setzt einen Punkt, Rücktaste entfernt den letzten.',
   'figure.caretPosition': 'Cursor x {x} · y {y}',
+  'figure.exported': 'CSV kopiert · {count} Datenzeilen',
+  'figure.exportFailed': 'CSV konnte nicht kopiert werden: {reason}',
   'figure.pickSurface': 'Fläche zum Abgreifen der Abbildung',
   'figure.xAnchorTitle': 'x-Anker {value}',
   'figure.yAnchorTitle': 'y-Anker {value}',

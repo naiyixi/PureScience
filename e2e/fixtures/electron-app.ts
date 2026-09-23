@@ -100,6 +100,8 @@ type ElectronApp = {
   launchSecondInstance: () => Promise<Page>
   mainWindowState: () => Promise<{ minimized: boolean; visible: boolean }>
   pressMainWindowShortcut: (key: string, modifiers: ShortcutModifier[]) => Promise<void>
+  /** Reads the OS clipboard from the main process: the window denies Chromium clipboard access. */
+  readClipboardText: () => Promise<string>
   requestMainWindowClose: () => Promise<void>
   restart: () => Promise<Page>
 }
@@ -392,6 +394,10 @@ class ElectronAppHarness implements ElectronApp {
       },
       { key, modifiers }
     )
+  }
+
+  async readClipboardText(): Promise<string> {
+    return this.runningApplication.evaluate(({ clipboard }) => clipboard.readText())
   }
 
   async requestMainWindowClose(): Promise<void> {

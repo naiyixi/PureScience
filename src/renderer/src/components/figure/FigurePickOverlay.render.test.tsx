@@ -148,8 +148,8 @@ describe('FigurePickOverlay', () => {
 
     expect(onExport).toHaveBeenCalledTimes(1)
     const csv = onExport.mock.calls[0][0] as string
-    expect(csv).toContain('# 数据来源：data/paper.pdf 第 2 页 Fig. 2C')
-    expect(csv).toContain('# 状态：estimated · 需审查')
+    expect(csv).toContain('# source: data/paper.pdf page 2 Fig. 2C')
+    expect(csv).toContain('# status: estimated · needs review')
     expect(csv).toContain('x,y,pixel_x,pixel_y')
   })
 
@@ -257,5 +257,69 @@ describe('FigurePickOverlay', () => {
     press('Backspace')
     press('Backspace')
     expect(text('figure-pick-progress')).toContain('data points 0')
+  })
+
+  // An export that went nowhere reads exactly like one that worked, so both outcomes have to be visible.
+  it('says what the export carried, and says so when it could not carry it', async () => {
+    const onExport = vi.fn().mockResolvedValue(undefined)
+    render(onExport)
+    for (const [value, steps] of [
+      ['0', 2],
+      ['40', 4]
+    ] as const) {
+      typeValue(value)
+      moveBy('ArrowRight', steps)
+      press('Enter')
+    }
+    for (const [value, steps] of [
+      ['0', 2],
+      ['10', 4]
+    ] as const) {
+      typeValue(value)
+      moveBy('ArrowDown', steps)
+      press('Enter')
+    }
+    moveBy('ArrowRight', 1)
+    press('Enter')
+    press('Enter')
+
+    await act(async () => {
+      button('Export CSV (estimated)')?.click()
+      await Promise.resolve()
+    })
+    expect(text('figure-pick-export-status')).toContain('CSV copied · 2 data rows')
+
+    // A refused clipboard must not look like a successful export.
+    const refused = vi.fn().mockRejectedValue(new Error('Clipboard is not available'))
+    act(() => root.unmount())
+    root = createRoot(container)
+    render(refused)
+    for (const [value, steps] of [
+      ['0', 2],
+      ['40', 4]
+    ] as const) {
+      typeValue(value)
+      moveBy('ArrowRight', steps)
+      press('Enter')
+    }
+    for (const [value, steps] of [
+      ['0', 2],
+      ['10', 4]
+    ] as const) {
+      typeValue(value)
+      moveBy('ArrowDown', steps)
+      press('Enter')
+    }
+    moveBy('ArrowRight', 1)
+    press('Enter')
+
+    await act(async () => {
+      button('Export CSV (estimated)')?.click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain(
+      'Could not copy the CSV: Clipboard is not available'
+    )
   })
 })

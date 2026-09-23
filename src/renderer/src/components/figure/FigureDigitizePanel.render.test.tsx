@@ -104,7 +104,7 @@ describe('FigureDigitizePanel', () => {
 
     expect(onExport).toHaveBeenCalledTimes(1)
     const csv = onExport.mock.calls[0][0] as string
-    expect(csv).toContain('data/paper.pdf 第 2 页 Fig. 2C')
-    expect(csv).toContain('# 状态：estimated · 需审查')
+    expect(csv).toContain('data/paper.pdf page 2 Fig. 2C')
+    expect(csv).toContain('# status: estimated · needs review')
   })
 })
