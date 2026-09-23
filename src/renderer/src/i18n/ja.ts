@@ -720,6 +720,13 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'sidebar.newContent': '新着',
   'sidebar.sessionActions': 'セッション操作',
   'sidebar.unreadContent': 'セッションに新しいコンテンツがあります',
+  'sidebar.pinned': 'ピン留め',
+  'sidebar.active': '進行中',
+  'sidebar.sessionsNav': 'セッション',
+  'sidebar.emptyActive': 'セッションはまだありません',
+  'sidebar.emptyActiveHint':
+    '上の「新規」で開始するか、ライブラリからプロジェクトを開いてください。',
+  'sidebar.emptyActiveAction': 'セッションを開始',
   'sidebar.workspaceNav': 'ワークスペースナビゲーション',
   'skillEditor.catalogHint': 'このスキルがカタログとエージェントにどのように表示されるかです。',
   'skillEditor.dropReferences': '参照ファイルをドロップするか、クリックして選択',

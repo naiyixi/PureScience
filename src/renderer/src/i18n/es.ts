@@ -732,6 +732,13 @@ export const es: Partial<Record<ZhKey, string>> = {
   'sidebar.newContent': 'Nuevo',
   'sidebar.sessionActions': 'Acciones de sesión',
   'sidebar.unreadContent': 'La sesión tiene contenido nuevo',
+  'sidebar.pinned': 'Fijadas',
+  'sidebar.active': 'Activas',
+  'sidebar.sessionsNav': 'Sesiones',
+  'sidebar.emptyActive': 'Todavía no hay conversaciones',
+  'sidebar.emptyActiveHint':
+    'Inicia una con «Nuevo» arriba o abre un proyecto desde la biblioteca.',
+  'sidebar.emptyActiveAction': 'Iniciar una conversación',
   'sidebar.workspaceNav': 'Navegación del espacio de trabajo',
   'skillEditor.catalogHint': 'Cómo aparece esta habilidad en el catálogo y ante el agente.',
   'skillEditor.dropReferences': 'Arrastra archivos de referencia o haz clic para examinar',

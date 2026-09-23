@@ -723,6 +723,13 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'sidebar.newContent': 'Новое',
   'sidebar.sessionActions': 'Действия с сессией',
   'sidebar.unreadContent': 'В сессии новое содержимое',
+  'sidebar.pinned': 'Закреплённые',
+  'sidebar.active': 'Активные',
+  'sidebar.sessionsNav': 'Сеансы',
+  'sidebar.emptyActive': 'Бесед пока нет',
+  'sidebar.emptyActiveHint':
+    'Начните новую кнопкой «Создать» выше или откройте проект из библиотеки.',
+  'sidebar.emptyActiveAction': 'Начать беседу',
   'sidebar.workspaceNav': 'Навигация по рабочему пространству',
   'skillEditor.catalogHint': 'Как этот навык представлен в каталоге и агенту.',
   'skillEditor.dropReferences': 'Перетащите файлы-справочники или нажмите для выбора',

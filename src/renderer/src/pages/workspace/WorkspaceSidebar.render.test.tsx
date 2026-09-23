@@ -674,4 +674,63 @@ describe('WorkspaceSidebar accessible render', () => {
     expect(container.textContent).toContain('Project 4')
     expect(container.textContent).toContain('{count} more projects…')
   })
+
+  it('explains an empty session list and offers the next step', () => {
+    const onNewConversation = vi.fn()
+    const container = renderSidebarDom({
+      projectName: 'Example project',
+      sessions: [],
+      activeSessionId: undefined,
+      canCreateConversation: true,
+      canMutateConversations: true,
+      canDeleteConversations: true,
+      onGoHome: vi.fn(),
+      onNewConversation,
+      isFilesOpen: false,
+      onOpenFiles: vi.fn(),
+      onOpenSession: vi.fn(),
+      onRenameSession: vi.fn(),
+      canDownloadArtifacts: true,
+      onDownloadArtifacts: vi.fn(),
+      onViewNotebook: vi.fn(),
+      onOpenExportDialog: vi.fn(),
+      onTogglePin: vi.fn(),
+      onDeleteSession: vi.fn(),
+      onOpenSettings: vi.fn()
+    })
+
+    // The group used to render its heading over nothing: no signal whether the list was loading,
+    // broken, or simply empty, and no way forward from the sidebar itself.
+    expect(container.textContent).toContain('No conversations yet')
+    const action = findByText(container, 'Start a conversation')
+    expect(action.disabled).toBe(false)
+    clickByText(container, 'Start a conversation')
+    expect(onNewConversation).toHaveBeenCalledTimes(1)
+  })
+
+  it('hides the empty explanation as soon as a session exists', () => {
+    const container = renderSidebarDom({
+      projectName: 'Example project',
+      sessions: [createSession({ id: 'session-a', title: 'Notebook review' })],
+      activeSessionId: 'session-a',
+      canCreateConversation: true,
+      canMutateConversations: true,
+      canDeleteConversations: true,
+      onGoHome: vi.fn(),
+      onNewConversation: vi.fn(),
+      isFilesOpen: false,
+      onOpenFiles: vi.fn(),
+      onOpenSession: vi.fn(),
+      onRenameSession: vi.fn(),
+      canDownloadArtifacts: true,
+      onDownloadArtifacts: vi.fn(),
+      onViewNotebook: vi.fn(),
+      onOpenExportDialog: vi.fn(),
+      onTogglePin: vi.fn(),
+      onDeleteSession: vi.fn(),
+      onOpenSettings: vi.fn()
+    })
+
+    expect(container.textContent).not.toContain('No conversations yet')
+  })
 })

@@ -212,8 +212,9 @@ const WorkspaceSidebar = ({
   // Build section descriptors so the list renders with a labelled header per group.
   const sections: Array<{ label: string; items: typeof sessions }> = []
 
-  if (pinnedSessions.length > 0) sections.push({ label: 'Pinned', items: pinnedSessions })
-  sections.push({ label: 'Active', items: activeSessions })
+  if (pinnedSessions.length > 0)
+    sections.push({ label: t('sidebar.pinned'), items: pinnedSessions })
+  sections.push({ label: t('sidebar.active'), items: activeSessions })
 
   return (
     <aside
@@ -312,7 +313,7 @@ const WorkspaceSidebar = ({
           </div>
         </div>
 
-        <nav aria-label="Sessions" className="flex min-h-0 flex-1 flex-col">
+        <nav aria-label={t('sidebar.sessionsNav')} className="flex min-h-0 flex-1 flex-col">
           {/* New stays disabled until persistence hydration has reconciled restored sessions. */}
           <div className="flex h-9 items-center gap-1 px-2">
             <button
@@ -364,6 +365,28 @@ const WorkspaceSidebar = ({
                 <div className="px-2 pb-[5px] pt-3.5 text-[11px] font-medium text-muted-foreground">
                   {section.label}
                 </div>
+                {section.items.length === 0 ? (
+                  // An empty group used to be a bare heading with nothing under it: the reader could
+                  // not tell whether the list was still loading, broken, or genuinely empty.
+                  <div className="mx-2 rounded-lg border border-dashed border-border-300/40 p-3 text-center">
+                    <p className="text-xs text-muted-foreground">{t('sidebar.emptyActive')}</p>
+                    <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                      {t('sidebar.emptyActiveHint')}
+                    </p>
+                    <button
+                      type="button"
+                      className={cn(
+                        'mt-2 inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-xs text-text-000 hover:bg-bg-300 disabled:cursor-not-allowed disabled:opacity-50',
+                        sidebarInteractiveTransitionClassName
+                      )}
+                      disabled={!canCreateConversation}
+                      onClick={onNewConversation}
+                    >
+                      <Plus className="size-3" strokeWidth={2} aria-hidden="true" />
+                      <span>{t('sidebar.emptyActiveAction')}</span>
+                    </button>
+                  </div>
+                ) : null}
                 {section.items.map((session) => {
                   const isActive = session.id === activeSessionId
                   const isExportDisabled =
@@ -545,7 +568,7 @@ const WorkspaceSidebar = ({
                 'inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-text-300 hover:bg-bg-300 hover:text-text-000',
                 sidebarInteractiveTransitionClassName
               )}
-              aria-label="Settings"
+              aria-label={t('common.settings')}
             >
               <Settings className="size-4" strokeWidth={2} aria-hidden="true" />
             </button>
