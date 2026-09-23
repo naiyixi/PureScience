@@ -647,6 +647,11 @@ export const fr: Partial<Record<ZhKey, string>> = {
     'Le stockage sécurisé des clés est indisponible. Les clés d’API ne peuvent pas être enregistrées tant que le trousseau du système',
   'onboarding.largeFilesHere':
     'Les fichiers volumineux (artefacts, notebooks, environnements) vont ici. Vos paramètres et votre historique vont toujours',
+  'onboarding.relaunchFailed': 'Impossible de redémarrer pour appliquer le nouvel emplacement.',
+  'onboarding.locationSwitchFailed':
+    'Impossible de basculer vers le nouvel emplacement : {reason} Vous pouvez réessayer ou garder l’emplacement par défaut.',
+  'onboarding.largeFilesHereTail':
+    'restent à l’emplacement par défaut. Vous pourrez le changer plus tard dans les paramètres.',
   'onboarding.location': 'Emplacement',
   'onboarding.prepareEnvironment': 'Préparer l’environnement',
   'onboarding.providerChangedDuringSignIn':
@@ -1742,6 +1747,22 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.memoryNoNotes': 'Aucune note pour l’instant.',
   'settings.memoryNoNotesHint':
     'Écrivez la première note ci-dessus et appuyez sur Entrée pour l’enregistrer.',
+  'settings.validationOk': 'Connexion réussie.',
+  'settings.validationNetwork':
+    'Impossible d’atteindre l’endpoint. Vérifiez le réseau et l’URL de base.',
+  'settings.validationAuth': 'Échec de l’authentification. Vérifiez la clé API.',
+  'settings.validationModelNotFound':
+    'Le modèle a été refusé. Vérifiez le nom du modèle pour cette passerelle.',
+  'settings.validationBadUrl':
+    'L’URL de base est invalide. Saisissez une URL complète, par exemple https://gateway.example/v1.',
+  'settings.validationInsecureEndpoint':
+    'Cet endpoint est en http en clair : la clé API serait transmise sans chiffrement. Utilisez https, ou autorisez délibérément un endpoint en clair pour ce fournisseur.',
+  'settings.validationTimeout': 'La requête a expiré et a été arrêtée.',
+  'settings.validationIncompatible':
+    'Ce fournisseur n’est pas compatible avec le framework d’agent actif.',
+  'settings.validationServerError':
+    'La passerelle ou le service source est temporairement indisponible. Réessayez plus tard.',
+  'settings.validationUnknown': 'La validation a échoué pour une raison inconnue.',
   'settings.memoryNoteComposerPlaceholder': 'Ajouter une note…',
   'settings.memoryNotePlaceholder': 'Écrivez ce que l’application doit retenir…',
   'settings.memoryOff': 'Désactivé',
@@ -2564,11 +2585,18 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'ws.loadMore': 'Charger plus',
   'ws.loadMoreUploaded': 'Charger plus de fichiers téléversés',
   'ws.mainAgent': 'Agent principal',
+  'ws.dataRootSwitchFailed': 'Impossible de basculer vers ce dossier.',
+  'ws.projectFilesLoadFailed': 'Impossible de charger les fichiers du projet.',
+  'settings.codexReimportFailed': 'Impossible de réimporter la connexion Codex.',
+  'plan.updateFailed': 'Impossible de mettre à jour le Plan.',
+  'plan.feedbackUnavailable': 'Impossible d’envoyer le retour sur le Plan.',
   'handoff.awaitingApproval': 'En attente de validation pour basculer vers {target}',
   'handoff.switching': 'Bascule vers {target}',
   'handoff.reconfiguring': 'Reconfiguration de {target}',
   'handoff.continuationStart': 'Démarrage de la continuation avec {target}',
   'handoff.continued': 'Continué avec {target}',
+  'handoff.retryCouldNotStart':
+    'La nouvelle tentative n’a pas pu démarrer. La passation enregistrée reste disponible.',
   'handoff.failedContinue': 'Impossible de continuer avec {target}',
   'ws.marketplaceAllSourcesUnavailable':
     'La Marketplace est injoignable depuis toutes les sources configurées. Vérifiez votre réseau et réessayez.',

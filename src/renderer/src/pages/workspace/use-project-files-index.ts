@@ -76,8 +76,15 @@ const emptyPage = <Item>(): PageState<Item> => ({
   isLoaded: false
 })
 
+// The hook has no i18n hook of its own, so a failure without an Error message is reported as this key
+// and translated by the renderer that displays it (see `PageLoadError`).
+const PROJECT_FILES_LOAD_FAILED_KEY = 'ws.projectFilesLoadFailed'
+
+const isProjectFilesErrorKey = (value: string): value is typeof PROJECT_FILES_LOAD_FAILED_KEY =>
+  value === PROJECT_FILES_LOAD_FAILED_KEY
+
 const getErrorMessage = (error: unknown): string =>
-  error instanceof Error ? error.message : 'Could not load project files.'
+  error instanceof Error ? error.message : PROJECT_FILES_LOAD_FAILED_KEY
 
 // Omits blank state entirely so ordinary catalog reads retain their indexed path. Archive exclusions
 // remain part of the same query identity, keeping counts and cursors aligned with visible files.
@@ -836,5 +843,5 @@ const useProjectFilesIndex = (
   }
 }
 
-export { FILE_PAGE_SIZE, GROUP_PAGE_SIZE, useProjectFilesIndex }
+export { FILE_PAGE_SIZE, GROUP_PAGE_SIZE, isProjectFilesErrorKey, useProjectFilesIndex }
 export type { PageState, ProjectFilesIndexScope, ProjectFilesIndexState }

@@ -626,6 +626,10 @@ export const ko: Partial<Record<ZhKey, string>> = {
     '안전한 키 저장소를 사용할 수 없습니다. 시스템 키체인을 사용할 수 있을 때까지 API 키를 저장할 수 없습니다.',
   'onboarding.largeFilesHere':
     '큰 파일(산출물, 노트북, 환경)은 여기에 저장됩니다. 설정과 기록은 항상 ',
+  'onboarding.relaunchFailed': '새 위치를 적용하려고 다시 시작하지 못했습니다.',
+  'onboarding.locationSwitchFailed':
+    '새 위치로 전환하지 못했습니다: {reason} 다시 시도하거나 기본 위치를 유지할 수 있습니다.',
+  'onboarding.largeFilesHereTail': '기본 위치에 그대로 둡니다. 나중에 설정에서 변경할 수 있습니다.',
   'onboarding.location': '위치',
   'onboarding.prepareEnvironment': '환경 준비',
   'onboarding.providerChangedDuringSignIn':
@@ -1679,6 +1683,21 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.memoryNewCategory': '새 카테고리',
   'settings.memoryNoNotes': '아직 메모가 없습니다.',
   'settings.memoryNoNotesHint': '위 입력란에 첫 메모를 쓰고 Enter를 눌러 저장하세요.',
+  'settings.validationOk': '연결에 성공했습니다.',
+  'settings.validationNetwork':
+    '엔드포인트에 연결하지 못했습니다. 네트워크와 Base URL을 확인하세요.',
+  'settings.validationAuth': '인증에 실패했습니다. API key를 확인하세요.',
+  'settings.validationModelNotFound':
+    '모델이 거부되었습니다. 이 게이트웨이의 모델 이름을 확인하세요.',
+  'settings.validationBadUrl':
+    'Base URL이 올바르지 않습니다. https://gateway.example/v1 같은 전체 URL을 입력하세요.',
+  'settings.validationInsecureEndpoint':
+    '이 엔드포인트는 평문 http라 API key가 암호화되지 않고 전송됩니다. https를 쓰거나 이 공급자에 대해 평문 엔드포인트를 명시적으로 허용하세요.',
+  'settings.validationTimeout': '요청이 시간 초과되어 중단되었습니다.',
+  'settings.validationIncompatible': '이 공급자는 현재 agent 프레임워크와 호환되지 않습니다.',
+  'settings.validationServerError':
+    '게이트웨이 또는 소스 서비스를 일시적으로 사용할 수 없습니다. 나중에 다시 시도하세요.',
+  'settings.validationUnknown': '알 수 없는 이유로 검증에 실패했습니다.',
   'settings.memoryNoteComposerPlaceholder': '메모 추가…',
   'settings.memoryNotePlaceholder': '앱이 기억해야 할 내용을 작성하세요…',
   'settings.memoryOff': '끔',
@@ -2459,11 +2478,18 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'ws.loadMore': '더 불러오기',
   'ws.loadMoreUploaded': '업로드된 파일 더 불러오기',
   'ws.mainAgent': '메인 에이전트',
+  'ws.dataRootSwitchFailed': '이 폴더로 전환하지 못했습니다.',
+  'ws.projectFilesLoadFailed': '프로젝트 파일을 불러오지 못했습니다.',
+  'settings.codexReimportFailed': 'Codex 로그인을 다시 가져오지 못했습니다.',
+  'plan.updateFailed': 'Plan을 업데이트하지 못했습니다.',
+  'plan.feedbackUnavailable': 'Plan 피드백을 보내지 못했습니다.',
   'handoff.awaitingApproval': '{target}(으)로 전환 승인 대기 중',
   'handoff.switching': '{target}(으)로 전환 중',
   'handoff.reconfiguring': '{target} 재구성 중',
   'handoff.continuationStart': '{target}과(와) 이어가기 시작',
   'handoff.continued': '{target}과(와) 이어감',
+  'handoff.retryCouldNotStart':
+    '재시도를 시작하지 못했습니다. 저장된 인계는 그대로 사용할 수 있습니다.',
   'handoff.failedContinue': '{target}과(와) 이어가지 못했습니다',
   'ws.marketplaceAllSourcesUnavailable':
     '구성된 어떤 소스에서도 마켓플레이스에 연결할 수 없습니다. 네트워크를 확인하고 다시 시도하세요.',

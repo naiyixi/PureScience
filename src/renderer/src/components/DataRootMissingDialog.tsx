@@ -67,7 +67,7 @@ const DataRootMissingDialog = ({
     const result = await window.api.storage.setDataRootAndRelaunch(picked, false)
     if (!result.ok) {
       setIsChoosing(false)
-      setChooseError(result.error ?? 'Could not switch to this folder.')
+      setChooseError(result.error ?? t('ws.dataRootSwitchFailed'))
     }
     // On success the app relaunches; nothing left to update here.
   }

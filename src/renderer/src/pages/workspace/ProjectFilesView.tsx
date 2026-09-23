@@ -74,6 +74,7 @@ import { useNearViewport } from './previews/useNearViewport'
 import { useUnavailablePreviewProbe } from './previews/useUnavailablePreviewProbe'
 import {
   FILE_PAGE_SIZE,
+  isProjectFilesErrorKey,
   useProjectFilesIndex,
   type PageState,
   type ProjectFilesIndexScope
@@ -473,14 +474,20 @@ const PageLoadError = ({
 }: {
   message: string
   onRetry: () => void
-}): React.JSX.Element => (
-  <div className="flex items-center justify-between gap-3 px-4 py-3 text-[11px] text-danger-000">
-    <span className="min-w-0 flex-1 truncate">{message}</span>
-    <Button type="button" variant="outline" className="h-7 shrink-0 px-2.5" onClick={onRetry}>
-      Retry
-    </Button>
-  </div>
-)
+}): React.JSX.Element => {
+  const { t } = useLanguage()
+  // The index hook renders no copy itself, so a failure that carries no message arrives as a key.
+  const text = isProjectFilesErrorKey(message) ? t(message) : message
+
+  return (
+    <div className="flex items-center justify-between gap-3 px-4 py-3 text-[11px] text-danger-000">
+      <span className="min-w-0 flex-1 truncate">{text}</span>
+      <Button type="button" variant="outline" className="h-7 shrink-0 px-2.5" onClick={onRetry}>
+        {t('common.retry')}
+      </Button>
+    </div>
+  )
+}
 
 // All mode uses a compact per-section button; category mode normally scroll-loads. Both modes share
 // the same terminal state so each upload/session section says {t('workspace.noMoreSessions')} independently.

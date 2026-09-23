@@ -76,6 +76,7 @@ const WorkspacePlanCard = ({
     onResolved?: () => void
     className?: string
   }>): React.JSX.Element => {
+  const { t } = useLanguage()
   const decisionPending = projection.approval === 'pending' && !stale
   const [responseText, setResponseText] = useState('')
   const [decisionBusy, setDecisionBusy] = useState(false)
@@ -91,7 +92,7 @@ const WorkspacePlanCard = ({
       setResolvedProjectionKey(projectionKey)
       onResolved?.()
     } catch (error) {
-      setDecisionError(error instanceof Error ? error.message : 'Unable to update the Plan.')
+      setDecisionError(error instanceof Error ? error.message : t('plan.updateFailed'))
     } finally {
       setDecisionBusy(false)
     }
@@ -158,8 +159,7 @@ const WorkspacePlanCard = ({
               setDecisionBusy(true)
               setDecisionError(undefined)
               void (
-                onSubmitResponse?.(text) ??
-                Promise.reject(new Error('Unable to send Plan feedback.'))
+                onSubmitResponse?.(text) ?? Promise.reject(new Error(t('plan.feedbackUnavailable')))
               )
                 .then(() => {
                   setResponseText('')
@@ -167,9 +167,7 @@ const WorkspacePlanCard = ({
                   onResolved?.()
                 })
                 .catch((error: unknown) =>
-                  setDecisionError(
-                    error instanceof Error ? error.message : 'Unable to update the Plan.'
-                  )
+                  setDecisionError(error instanceof Error ? error.message : t('plan.updateFailed'))
                 )
                 .finally(() => setDecisionBusy(false))
             }}

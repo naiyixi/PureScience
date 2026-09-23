@@ -636,6 +636,12 @@ export const ru: Partial<Record<ZhKey, string>> = {
     'Безопасное хранение ключей недоступно. Ключи API нельзя сохранить, пока системная связка ключей',
   'onboarding.largeFilesHere':
     'Большие файлы (артефакты, Notebook, окружения) размещаются здесь. Ваши настройки и история всегда',
+  'onboarding.relaunchFailed':
+    'Не удалось перезапустить приложение для применения нового расположения.',
+  'onboarding.locationSwitchFailed':
+    'Не удалось переключиться на новое расположение: {reason} Можно повторить попытку или оставить расположение по умолчанию.',
+  'onboarding.largeFilesHereTail':
+    'остаются в расположении по умолчанию. Это можно изменить позже в настройках.',
   'onboarding.location': 'Расположение',
   'onboarding.prepareEnvironment': 'Подготовить окружение',
   'onboarding.providerChangedDuringSignIn':
@@ -1706,6 +1712,20 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.memoryNewCategory': 'Новая категория',
   'settings.memoryNoNotes': 'Заметок пока нет.',
   'settings.memoryNoNotesHint': 'Напишите первую заметку выше и нажмите Enter, чтобы сохранить.',
+  'settings.validationOk': 'Соединение установлено.',
+  'settings.validationNetwork': 'Не удалось достичь эндпоинта. Проверьте сеть и Base URL.',
+  'settings.validationAuth': 'Ошибка аутентификации. Проверьте API key.',
+  'settings.validationModelNotFound':
+    'Модель отклонена. Проверьте название модели для этого шлюза.',
+  'settings.validationBadUrl':
+    'Base URL некорректен. Введите полный URL, например https://gateway.example/v1.',
+  'settings.validationInsecureEndpoint':
+    'Этот эндпоинт — открытый http, поэтому API key уйдёт без шифрования. Используйте https или явно разрешите открытый эндпоинт для этого провайдера.',
+  'settings.validationTimeout': 'Запрос превысил время ожидания и был остановлен.',
+  'settings.validationIncompatible': 'Этот провайдер несовместим с активным agent-фреймворком.',
+  'settings.validationServerError':
+    'Шлюз или исходный сервис временно недоступен. Повторите попытку позже.',
+  'settings.validationUnknown': 'Проверка завершилась неудачей по неизвестной причине.',
   'settings.memoryNoteComposerPlaceholder': 'Добавить заметку…',
   'settings.memoryNotePlaceholder': 'Опишите, что приложению следует запомнить…',
   'settings.memoryOff': 'Выкл.',
@@ -2515,11 +2535,18 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'ws.loadMore': 'Загрузить ещё',
   'ws.loadMoreUploaded': 'Загрузить ещё загруженные файлы',
   'ws.mainAgent': 'Основной агент',
+  'ws.dataRootSwitchFailed': 'Не удалось переключиться на эту папку.',
+  'ws.projectFilesLoadFailed': 'Не удалось загрузить файлы проекта.',
+  'settings.codexReimportFailed': 'Не удалось повторно импортировать вход Codex.',
+  'plan.updateFailed': 'Не удалось обновить Plan.',
+  'plan.feedbackUnavailable': 'Не удалось отправить отзыв о Plan.',
   'handoff.awaitingApproval': 'Ожидается одобрение переключения на {target}',
   'handoff.switching': 'Переключение на {target}',
   'handoff.reconfiguring': 'Перенастройка {target}',
   'handoff.continuationStart': 'Начало продолжения с {target}',
   'handoff.continued': 'Продолжено с {target}',
+  'handoff.retryCouldNotStart':
+    'Не удалось запустить повтор. Сохранённая передача остаётся доступной.',
   'handoff.failedContinue': 'Не удалось продолжить с {target}',
   'ws.marketplaceAllSourcesUnavailable':
     'Не удалось связаться с маркетплейсом ни через один из настроенных источников. Проверьте сеть и попробуйте ещё раз.',

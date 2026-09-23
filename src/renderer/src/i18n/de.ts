@@ -656,6 +656,12 @@ export const de: Partial<Record<ZhKey, string>> = {
     'Die sichere Schlüsselspeicherung ist nicht verfügbar. API-Schlüssel können erst gespeichert werden, wenn der Systemschlüsselbund',
   'onboarding.largeFilesHere':
     'Große Dateien (Artefakte, Notebooks, Umgebungen) kommen hierher. Ihre Einstellungen und Ihr Verlauf',
+  'onboarding.relaunchFailed':
+    'Der Neustart zum Anwenden des neuen Speicherorts ist nicht möglich.',
+  'onboarding.locationSwitchFailed':
+    'Wechsel zum neuen Speicherort nicht möglich: {reason} Du kannst es erneut versuchen oder beim Standardordner bleiben.',
+  'onboarding.largeFilesHereTail':
+    'im Standardordner. Du kannst das später in den Einstellungen ändern.',
   'onboarding.location': 'Speicherort',
   'onboarding.prepareEnvironment': 'Umgebung vorbereiten',
   'onboarding.providerChangedDuringSignIn':
@@ -1760,6 +1766,21 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.memoryNoNotes': 'Noch keine Notizen.',
   'settings.memoryNoNotesHint':
     'Schreiben Sie die erste Notiz oben und drücken Sie Enter zum Speichern.',
+  'settings.validationOk': 'Verbindung erfolgreich.',
+  'settings.validationNetwork': 'Der Endpunkt war nicht erreichbar. Prüfe Netzwerk und Base-URL.',
+  'settings.validationAuth': 'Authentifizierung fehlgeschlagen. Prüfe den API key.',
+  'settings.validationModelNotFound':
+    'Das Modell wurde abgelehnt. Prüfe den Modellnamen für dieses Gateway.',
+  'settings.validationBadUrl':
+    'Die Base-URL ist ungültig. Gib eine vollständige URL an, z. B. https://gateway.example/v1.',
+  'settings.validationInsecureEndpoint':
+    'Dieser Endpunkt ist unverschlüsseltes http, der API key würde unverschlüsselt übertragen. Nutze https oder erlaube für diesen Anbieter bewusst einen Klartext-Endpunkt.',
+  'settings.validationTimeout': 'Die Anfrage lief in den Timeout und wurde abgebrochen.',
+  'settings.validationIncompatible':
+    'Dieser Anbieter ist mit dem aktiven agent framework nicht kompatibel.',
+  'settings.validationServerError':
+    'Das Gateway oder der Quelldienst ist vorübergehend nicht verfügbar. Versuche es später erneut.',
+  'settings.validationUnknown': 'Die Prüfung ist aus unbekanntem Grund fehlgeschlagen.',
   'settings.memoryNoteComposerPlaceholder': 'Notiz hinzufügen…',
   'settings.memoryNotePlaceholder': 'Schreiben Sie, was die App sich merken soll…',
   'settings.memoryOff': 'Aus',
@@ -2578,11 +2599,18 @@ export const de: Partial<Record<ZhKey, string>> = {
   'ws.loadMore': 'Mehr laden',
   'ws.loadMoreUploaded': 'Weitere hochgeladene Dateien laden',
   'ws.mainAgent': 'Hauptagent',
+  'ws.dataRootSwitchFailed': 'Der Wechsel zu diesem Ordner ist nicht möglich.',
+  'ws.projectFilesLoadFailed': 'Die Projektdateien konnten nicht geladen werden.',
+  'settings.codexReimportFailed': 'Die Codex-Anmeldung konnte nicht erneut importiert werden.',
+  'plan.updateFailed': 'Der Plan konnte nicht aktualisiert werden.',
+  'plan.feedbackUnavailable': 'Das Feedback zum Plan konnte nicht gesendet werden.',
   'handoff.awaitingApproval': 'Wartet auf Freigabe für den Wechsel zu {target}',
   'handoff.switching': 'Wechsel zu {target}',
   'handoff.reconfiguring': '{target} wird neu konfiguriert',
   'handoff.continuationStart': 'Fortsetzung mit {target} wird gestartet',
   'handoff.continued': 'Mit {target} fortgesetzt',
+  'handoff.retryCouldNotStart':
+    'Der erneute Versuch konnte nicht starten. Die gespeicherte Übergabe bleibt verfügbar.',
   'handoff.failedContinue': 'Fortsetzung mit {target} nicht möglich',
   'ws.marketplaceAllSourcesUnavailable':
     'Der Marketplace war über keine konfigurierte Quelle erreichbar. Prüfen Sie Ihr Netzwerk und versuchen Sie es erneut.',

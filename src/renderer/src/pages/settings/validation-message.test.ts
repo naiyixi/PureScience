@@ -1,6 +1,21 @@
 import { describe, expect, it } from 'vitest'
 
-import { describeValidation } from './validation-message'
+import type { Translate, TranslationKey } from '@/i18n'
+import { en } from '@/i18n/en'
+
+import { describeValidation as describeValidationWith } from './validation-message'
+
+// Mirrors the provider's own translator so the assertions below still read as the copy users see.
+const t: Translate = (key, vars) => {
+  const text = en[key as TranslationKey] ?? String(key)
+  if (!vars) return text
+  return text.replace(/\{(\w+)\}/g, (match, name: string) =>
+    name in vars ? String(vars[name]) : match
+  )
+}
+
+const describeValidation = (result: Parameters<typeof describeValidationWith>[0]): string =>
+  describeValidationWith(result, t)
 
 describe('describeValidation', () => {
   it('uses a custom auth message verbatim when one is supplied', () => {

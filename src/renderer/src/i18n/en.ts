@@ -118,6 +118,11 @@ export const en: Record<ZhKey, string> = {
   'onboarding.whereStoreData': 'Where should PureScience store your data?',
   'onboarding.largeFilesHere':
     'Large files (artifacts, notebooks, environments) go here. Your settings and history always',
+  'onboarding.relaunchFailed': 'Could not restart to apply the new location.',
+  'onboarding.locationSwitchFailed':
+    'Could not switch to the new location: {reason} You can retry or keep the default location.',
+  'onboarding.largeFilesHereTail':
+    'stay in the default location. You can change this later in Settings.',
   'onboarding.location': 'Location',
   'onboarding.dataWillBeStoredIn': 'Your data will be stored in ',
   'onboarding.useDefaultLocation': 'Use default location instead',
@@ -417,6 +422,21 @@ export const en: Record<ZhKey, string> = {
   'settings.memoryAddNote': 'Add note',
   'settings.memoryNoNotes': 'No notes yet.',
   'settings.memoryNoNotesHint': 'Write the first note above and press Enter to save it.',
+  'settings.validationOk': 'Connection succeeded.',
+  'settings.validationNetwork': 'Could not reach the endpoint. Check your network and base URL.',
+  'settings.validationAuth': 'Authentication failed. Check the API key.',
+  'settings.validationModelNotFound':
+    'The model was rejected. Check the model name for this gateway.',
+  'settings.validationBadUrl':
+    'The base URL is invalid. Enter a full URL like https://gateway.example/v1.',
+  'settings.validationInsecureEndpoint':
+    'This endpoint is plaintext http, so the API key would travel unencrypted. Use https, or allow a plaintext endpoint for this provider deliberately.',
+  'settings.validationTimeout': 'The request timed out and was stopped.',
+  'settings.validationIncompatible':
+    "This provider isn't compatible with the active agent framework.",
+  'settings.validationServerError':
+    'The gateway or source service is temporarily unavailable. Try again later.',
+  'settings.validationUnknown': 'Validation failed for an unknown reason.',
   'settings.memoryNotePlaceholder': 'Write what the app should remember…',
   'settings.memoryDeleteNote': 'Delete note',
   'settings.memoryEvidence': 'Source',
@@ -1348,11 +1368,17 @@ export const en: Record<ZhKey, string> = {
   'ws.syncDraftComputeHostsFailed':
     'Failed to sync draft compute hosts to registry for new session',
   'ws.mainAgent': 'Main Agent',
+  'ws.dataRootSwitchFailed': 'Could not switch to this folder.',
+  'ws.projectFilesLoadFailed': 'Could not load project files.',
+  'settings.codexReimportFailed': 'Could not re-import the Codex login.',
+  'plan.updateFailed': 'Unable to update the Plan.',
+  'plan.feedbackUnavailable': 'Unable to send Plan feedback.',
   'handoff.awaitingApproval': 'Awaiting approval to switch to {target}',
   'handoff.switching': 'Switching to {target}',
   'handoff.reconfiguring': 'Reconfiguring {target}',
   'handoff.continuationStart': 'Starting continuation with {target}',
   'handoff.continued': 'Continued with {target}',
+  'handoff.retryCouldNotStart': 'Retry could not start. The saved handoff remains available.',
   'handoff.failedContinue': 'Could not continue with {target}',
   'ws.theSelectedSpecialist': 'the selected specialist',
   'ws.closeNavigation': 'Close navigation',

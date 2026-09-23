@@ -756,7 +756,7 @@ const SettingsPage = forwardRef<SettingsPageHandle, SettingsPageProps>(function 
         persist: () => persistProvider(toUpsertRequest(formValue, editingProvider?.id)),
         validate: (providerId) => validateProvider({ providerId }),
         onBusy: setBusyProviderId,
-        describeFailure: describeValidation
+        describeFailure: (result) => describeValidation(result, t)
       })
 
       if (outcome.status === 'incomplete') {

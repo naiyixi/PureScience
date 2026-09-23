@@ -129,7 +129,7 @@ const LocationStep = ({
       // surface the error here and let the user retry or fall back to Keep default.
       isRestartingRef.current = false
       setIsRelaunching(false)
-      onRelaunchErrorChange(result.error ?? 'Could not restart to apply the new location.')
+      onRelaunchErrorChange(result.error ?? t('onboarding.relaunchFailed'))
     }
   }
 
@@ -141,7 +141,7 @@ const LocationStep = ({
         </CardTitle>
         <CardDescription className="text-xs leading-5">
           {t('onboarding.largeFilesHere')}
-          stay in the default location. You can change this later in Settings.
+          {t('onboarding.largeFilesHereTail')}
         </CardDescription>
       </CardHeader>
       <Separator className="bg-border-200" />
@@ -153,8 +153,7 @@ const LocationStep = ({
               className="rounded-lg border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive"
               role="alert"
             >
-              Could not switch to the new location: {relaunchError} You can retry or keep the
-              default location.
+              {t('onboarding.locationSwitchFailed').replace('{reason}', relaunchError)}
             </p>
           ) : null}
 

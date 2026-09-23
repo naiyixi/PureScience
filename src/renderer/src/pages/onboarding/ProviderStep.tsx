@@ -146,7 +146,7 @@ const ProviderStep = ({
       }
 
       setValidationOk(result.ok)
-      setValidationMessage(describeValidation(result))
+      setValidationMessage(describeValidation(result, t))
 
       if (result.ok) {
         if (claudeProviderIdRef.current) {
@@ -217,7 +217,7 @@ const ProviderStep = ({
         }
 
         setValidationOk(validation.ok)
-        setValidationMessage(describeValidation(validation))
+        setValidationMessage(describeValidation(validation, t))
 
         if (validation.ok) {
           if (providerId) await setActiveProvider(providerId)
@@ -253,7 +253,7 @@ const ProviderStep = ({
         }
 
         setValidationOk(validation.ok)
-        setValidationMessage(describeValidation(validation))
+        setValidationMessage(describeValidation(validation, t))
 
         if (validation.ok) {
           setIsClaudeSignInOpen(false)
@@ -283,7 +283,7 @@ const ProviderStep = ({
         }
 
         setValidationOk(validation.ok)
-        setValidationMessage(describeValidation(validation))
+        setValidationMessage(describeValidation(validation, t))
 
         if (validation.ok) {
           if (providerId) await setActiveProvider(providerId)
@@ -304,7 +304,7 @@ const ProviderStep = ({
       }
 
       setValidationOk(validation.ok)
-      setValidationMessage(describeValidation(validation))
+      setValidationMessage(describeValidation(validation, t))
 
       if (validation.ok) {
         onAdvance()

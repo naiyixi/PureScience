@@ -633,6 +633,10 @@ export const ja: Partial<Record<ZhKey, string>> = {
     '安全なキーストレージを利用できません。システムキーチェーンが利用可能になるまで、API キーを保存できません',
   'onboarding.largeFilesHere':
     '大きなファイル（成果物、Notebook、環境）はここに置かれます。設定と履歴は常に',
+  'onboarding.relaunchFailed': '新しい保存先を適用するために再起動できませんでした。',
+  'onboarding.locationSwitchFailed':
+    '新しい保存先に切り替えられませんでした：{reason} 再試行するか、既定の保存先のままにできます。',
+  'onboarding.largeFilesHereTail': '既定の保存先のままにします。あとで設定から変更できます。',
   'onboarding.location': '場所',
   'onboarding.prepareEnvironment': '環境を準備',
   'onboarding.providerChangedDuringSignIn':
@@ -1709,6 +1713,22 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.memoryNewCategory': '新しいカテゴリ',
   'settings.memoryNoNotes': 'メモはまだありません。',
   'settings.memoryNoNotesHint': '上の入力欄に最初のメモを書き、Enter で保存します。',
+  'settings.validationOk': '接続に成功しました。',
+  'settings.validationNetwork':
+    'エンドポイントに到達できませんでした。ネットワークと Base URL を確認してください。',
+  'settings.validationAuth': '認証に失敗しました。API key を確認してください。',
+  'settings.validationModelNotFound':
+    'モデルが拒否されました。このゲートウェイのモデル名を確認してください。',
+  'settings.validationBadUrl':
+    'Base URL が無効です。https://gateway.example/v1 のような完全な URL を入力してください。',
+  'settings.validationInsecureEndpoint':
+    'このエンドポイントは平文 http のため、API key が暗号化されずに送信されます。https を使うか、このプロバイダーで平文エンドポイントを明示的に許可してください。',
+  'settings.validationTimeout': 'リクエストがタイムアウトしたため中止しました。',
+  'settings.validationIncompatible':
+    'このプロバイダーは現在の agent フレームワークと互換性がありません。',
+  'settings.validationServerError':
+    'ゲートウェイまたはソースサービスが一時的に利用できません。しばらくして再試行してください。',
+  'settings.validationUnknown': '検証は不明な理由で失敗しました。',
   'settings.memoryNoteComposerPlaceholder': 'メモを追加…',
   'settings.memoryNotePlaceholder': 'アプリに覚えさせたい内容を入力…',
   'settings.memoryOff': 'オフ',
@@ -2512,11 +2532,18 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'ws.loadMore': 'さらに読み込む',
   'ws.loadMoreUploaded': 'アップロード済みファイルをさらに読み込む',
   'ws.mainAgent': 'メインエージェント',
+  'ws.dataRootSwitchFailed': 'このフォルダに切り替えられませんでした。',
+  'ws.projectFilesLoadFailed': 'プロジェクトのファイルを読み込めませんでした。',
+  'settings.codexReimportFailed': 'Codex のログインを再インポートできませんでした。',
+  'plan.updateFailed': 'Plan を更新できませんでした。',
+  'plan.feedbackUnavailable': 'Plan へのフィードバックを送信できませんでした。',
   'handoff.awaitingApproval': '{target} への切り替えの承認待ち',
   'handoff.switching': '{target} に切り替え中',
   'handoff.reconfiguring': '{target} を再構成中',
   'handoff.continuationStart': '{target} との継続を開始しています',
   'handoff.continued': '{target} と継続しました',
+  'handoff.retryCouldNotStart':
+    '再試行を開始できませんでした。保存された引き継ぎはそのまま利用できます。',
   'handoff.failedContinue': '{target} と継続できませんでした',
   'ws.marketplaceAllSourcesUnavailable':
     '設定済みのどのソースからもマーケットプレイスに到達できませんでした。ネットワークを確認して再試行してください。',

@@ -219,7 +219,7 @@ const ProvidersPanel = ({
       })
     } catch (error) {
       setProviderTestError(
-        error instanceof Error ? error.message : 'Could not re-import the Codex login.'
+        error instanceof Error ? error.message : t('settings.codexReimportFailed')
       )
     } finally {
       onBusyProviderChange(undefined)

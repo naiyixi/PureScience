@@ -644,6 +644,11 @@ export const es: Partial<Record<ZhKey, string>> = {
     'El almacenamiento seguro de claves no está disponible. No se pueden guardar las claves de API hasta que el llavero del sistema',
   'onboarding.largeFilesHere':
     'Los archivos grandes (artefactos, cuadernos, entornos) van aquí. Tus ajustes e historial siempre',
+  'onboarding.relaunchFailed': 'No se pudo reiniciar para aplicar la nueva ubicación.',
+  'onboarding.locationSwitchFailed':
+    'No se pudo cambiar a la nueva ubicación: {reason} Puedes reintentarlo o quedarte con la ubicación predeterminada.',
+  'onboarding.largeFilesHereTail':
+    'se quedan en la ubicación predeterminada. Podrás cambiarlo más tarde en Ajustes.',
   'onboarding.location': 'Ubicación',
   'onboarding.prepareEnvironment': 'Preparar el entorno',
   'onboarding.providerChangedDuringSignIn':
@@ -1734,6 +1739,21 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.memoryNewCategory': 'Nueva categoría',
   'settings.memoryNoNotes': 'Aún no hay notas.',
   'settings.memoryNoNotesHint': 'Escribe la primera nota arriba y pulsa Intro para guardarla.',
+  'settings.validationOk': 'Conexión correcta.',
+  'settings.validationNetwork': 'No se pudo alcanzar el endpoint. Comprueba la red y la URL base.',
+  'settings.validationAuth': 'Error de autenticación. Comprueba la clave de API.',
+  'settings.validationModelNotFound':
+    'El modelo fue rechazado. Comprueba el nombre del modelo para esta pasarela.',
+  'settings.validationBadUrl':
+    'La URL base no es válida. Introduce una URL completa, por ejemplo https://gateway.example/v1.',
+  'settings.validationInsecureEndpoint':
+    'Este endpoint es http en claro, así que la clave de API viajaría sin cifrar. Usa https, o permite deliberadamente un endpoint en claro para este proveedor.',
+  'settings.validationTimeout': 'La solicitud agotó el tiempo y se detuvo.',
+  'settings.validationIncompatible':
+    'Este proveedor no es compatible con el framework de agente activo.',
+  'settings.validationServerError':
+    'La pasarela o el servicio de origen no está disponible temporalmente. Inténtalo más tarde.',
+  'settings.validationUnknown': 'La validación falló por un motivo desconocido.',
   'settings.memoryNoteComposerPlaceholder': 'Añadir una nota…',
   'settings.memoryNotePlaceholder': 'Escribe lo que la aplicación debería recordar…',
   'settings.memoryOff': 'Desactivada',
@@ -2547,11 +2567,18 @@ export const es: Partial<Record<ZhKey, string>> = {
   'ws.loadMore': 'Cargar más',
   'ws.loadMoreUploaded': 'Cargar más archivos subidos',
   'ws.mainAgent': 'Agente principal',
+  'ws.dataRootSwitchFailed': 'No se pudo cambiar a esta carpeta.',
+  'ws.projectFilesLoadFailed': 'No se pudieron cargar los archivos del proyecto.',
+  'settings.codexReimportFailed': 'No se pudo reimportar el inicio de sesión de Codex.',
+  'plan.updateFailed': 'No se pudo actualizar el Plan.',
+  'plan.feedbackUnavailable': 'No se pudo enviar el comentario del Plan.',
   'handoff.awaitingApproval': 'Esperando aprobación para cambiar a {target}',
   'handoff.switching': 'Cambiando a {target}',
   'handoff.reconfiguring': 'Reconfigurando {target}',
   'handoff.continuationStart': 'Iniciando la continuación con {target}',
   'handoff.continued': 'Continuado con {target}',
+  'handoff.retryCouldNotStart':
+    'No se pudo iniciar el reintento. El traspaso guardado sigue disponible.',
   'handoff.failedContinue': 'No se pudo continuar con {target}',
   'ws.marketplaceAllSourcesUnavailable':
     'No se pudo acceder al Marketplace desde ninguna fuente configurada. Revisa tu red e inténtalo de nuevo.',

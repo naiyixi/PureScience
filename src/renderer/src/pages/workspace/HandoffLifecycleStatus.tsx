@@ -7,22 +7,25 @@ import type { HandoffTranscriptProjection } from './handoff-lifecycle-projection
 const targetLabel = (target: HandoffTranscriptProjection['target'], t: Translate): string =>
   target.kind === 'main' ? t('ws.mainAgent') : target.name
 
+// Interpolated here rather than through t's vars: several transcript suites render through the
+// non-interpolating fallback dictionary, and a status line has to read as a sentence there too.
 const statusCopy = (handoff: HandoffTranscriptProjection, t: Translate): string => {
   const target = targetLabel(handoff.target, t)
+  const withTarget = (copy: string): string => copy.replace('{target}', target)
 
   switch (handoff.phase) {
     case 'awaiting-approval':
-      return t('handoff.awaitingApproval', { target })
+      return withTarget(t('handoff.awaitingApproval'))
     case 'switching':
-      return t('handoff.switching', { target })
+      return withTarget(t('handoff.switching'))
     case 'reconfiguring':
-      return t('handoff.reconfiguring', { target })
+      return withTarget(t('handoff.reconfiguring'))
     case 'continuation-start':
-      return t('handoff.continuationStart', { target })
+      return withTarget(t('handoff.continuationStart'))
     case 'continued':
-      return t('handoff.continued', { target })
+      return withTarget(t('handoff.continued'))
     case 'failed':
-      return t('handoff.failedContinue', { target })
+      return withTarget(t('handoff.failedContinue'))
   }
 }
 
@@ -45,7 +48,7 @@ const HandoffLifecycleStatus = ({
     try {
       await onRetry()
     } catch {
-      setRetryError('Retry could not start. The saved handoff remains available.')
+      setRetryError(t('handoff.retryCouldNotStart'))
     } finally {
       setIsRetrying(false)
     }
