@@ -1490,6 +1490,38 @@ export const en: Record<ZhKey, string> = {
   'settings.onLatestVersion': 'You are on the latest version',
   'settings.updateCheckFailed': 'Update check failed',
   'settings.appVersion': 'App version',
+  'workspace.exportPackage': 'Export session package',
+  'sessions.packageExport.title': 'Export session package',
+  'sessions.packageExport.description':
+    'Writes this session to a .science package that another machine can read.',
+  'sessions.packageExport.modeLegend': 'What to include',
+  'sessions.packageExport.modeEssential': 'Essentials only',
+  'sessions.packageExport.modeEssentialHint':
+    'Conversation, citations, review findings and verifications.',
+  'sessions.packageExport.modeFull': 'Everything',
+  'sessions.packageExport.modeFullHint':
+    'The above, plus session files, reference PDFs, the environment lock and the reproduction outputs.',
+  'sessions.packageExport.export': 'Export package',
+  'sessions.packageExport.done': 'Wrote {name} ({size} KB).',
+  'sessions.packageExport.notesLabel': 'Left out',
+  'sessions.packageExport.note.file-omitted-too-large':
+    'A session file was too large to include: {detail}',
+  'sessions.packageExport.note.artifact-unreadable': 'A session file could not be read: {detail}',
+  'sessions.packageExport.note.files-not-requested':
+    '{count} session files left behind by the essentials mode',
+  'sessions.packageExport.note.environment-lock-unavailable':
+    'The environment lock could not be included',
+  'sessions.packageExport.note.reproduction-outputs-unavailable':
+    'The reproduction outputs could not be included',
+  'sessions.packageExport.note.reference-unreadable': 'A reference PDF could not be read: {detail}',
+  'sessions.packageExport.note.reference-omitted-too-large':
+    'A reference PDF was too large to include: {detail}',
+  'sessions.packageExport.note.reference-pdfs-not-requested':
+    '{count} reference PDFs left behind by the essentials mode',
+  'sessions.packageExport.failure.session-not-found': 'That session no longer exists.',
+  'sessions.packageExport.failure.session-unreadable': 'The session could not be read.',
+  'sessions.packageExport.failure.no-destination': 'No destination was chosen.',
+  'sessions.packageExport.failure.write-failed': 'The package could not be written.',
   'sessions.packageImport.title': 'Import session package',
   'sessions.packageImport.pickFile': 'Choose a package…',
   'sessions.packageImport.integrityIntact':

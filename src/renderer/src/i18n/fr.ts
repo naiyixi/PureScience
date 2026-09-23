@@ -1028,6 +1028,40 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.appStorageWriteAccessHint':
     'PureScience a besoin d’un accès en écriture à son répertoire de configuration privé.',
   'settings.appVersion': 'Version de l’application',
+  'workspace.exportPackage': 'Exporter le paquet de session',
+  'sessions.packageExport.title': 'Exporter le paquet de session',
+  'sessions.packageExport.description':
+    'Écrit cette session dans un paquet .science qu’une autre machine peut lire.',
+  'sessions.packageExport.modeLegend': 'Contenu',
+  'sessions.packageExport.modeEssential': 'L’essentiel',
+  'sessions.packageExport.modeEssentialHint':
+    'Conversation, citations, résultats de revue et vérifications.',
+  'sessions.packageExport.modeFull': 'Tout',
+  'sessions.packageExport.modeFullHint':
+    'Ce qui précède, plus les fichiers de session, les PDF de référence, le verrou d’environnement et les sorties de reproduction.',
+  'sessions.packageExport.export': 'Exporter le paquet',
+  'sessions.packageExport.done': '{name} écrit ({size} Ko).',
+  'sessions.packageExport.notesLabel': 'Non inclus',
+  'sessions.packageExport.note.file-omitted-too-large':
+    'Un fichier de session était trop volumineux : {detail}',
+  'sessions.packageExport.note.artifact-unreadable':
+    'Un fichier de session était illisible : {detail}',
+  'sessions.packageExport.note.files-not-requested':
+    'Le mode essentiel a laissé {count} fichiers de session',
+  'sessions.packageExport.note.environment-lock-unavailable':
+    'Le verrou d’environnement n’a pas pu être inclus',
+  'sessions.packageExport.note.reproduction-outputs-unavailable':
+    'Les sorties de reproduction n’ont pas pu être incluses',
+  'sessions.packageExport.note.reference-unreadable':
+    'Un PDF de référence était illisible : {detail}',
+  'sessions.packageExport.note.reference-omitted-too-large':
+    'Un PDF de référence était trop volumineux : {detail}',
+  'sessions.packageExport.note.reference-pdfs-not-requested':
+    'Le mode essentiel a laissé {count} PDF de référence',
+  'sessions.packageExport.failure.session-not-found': 'Cette session n’existe plus.',
+  'sessions.packageExport.failure.session-unreadable': 'La session n’a pas pu être lue.',
+  'sessions.packageExport.failure.no-destination': 'Aucune destination choisie.',
+  'sessions.packageExport.failure.write-failed': 'Le paquet n’a pas pu être écrit.',
   'sessions.packageImport.title': 'Importer un paquet de session',
   'sessions.packageImport.pickFile': 'Choisir un paquet…',
   'sessions.packageImport.integrityIntact':

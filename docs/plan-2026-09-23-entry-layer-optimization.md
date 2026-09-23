@@ -56,6 +56,13 @@
 2. **注销曾按字符串精确匹配**：面板传 `env.envId`（发现层的 `realpath`），而目录里存的是用户当初选的那串路径。macOS 上 `/var` → `/private/var`、解释器是符号链接时两者不同，于是注销**静默落空**、解释器赖在候选里。已在 `notebook-runtime-settings.ts:removeManualInterpreter` 改为**按规范路径等价删除**（`canonicalInterpreterPath`，容忍已不存在的陈旧条目），并补了一条用符号链接别名的单测。
 3. **数据根隔离缺陷的第二处表面**：隔离实例的 `listEnvironments` 列出的是 `~/PureScience-DEV/runtime/envs/*`（含 app-managed 与 agent-created 真实环境）——与迁移失败同源（见上文迁移缺陷段）。U10 的真机 spec 因此改用 `python -m venv --copies` 造一个只可能来自手工目录的临时解释器（默认 venv 会把解释器符号链接到 Homebrew，按 realpath 归并成 `both`，测不出注销）。
 
+### U11 落地记录（导出→导入回环）
+
+1. **补的是哪半截**：`sessions:export-package` 在 preload 已有、渲染层零调用——桌面能读别人发来的包（导入对话框），却做不出自己的包，会话只进不出。新增 `SessionPackageExportDialog`（`src/renderer/src/pages/workspace/`）：模式二选一（仅要点＝对话/引用/复核结论/验证；全部＝再加会话文件、参考文献 PDF、环境锁与复现产物）、成功态给出文件名与大小并逐条列出 `notes`（已知 code 映射成句并带 `{detail}`／`{count}`，未知 code 原样显示）、4 条具名失败、**保存面板被关掉不当失败**（直接关闭）。入口在会话菜单里紧挨文本导出，desktop 与移动两处都接了线。
+2. **真机带出的缺陷（已修，属批次 0 主题）**：`ExportConversationDialog` 用 `useRetainedDialogValue` 的返回值决定 `open`，于是 **Cancel／Escape／关闭按钮都调用 `onClose` 却关不掉面板**——真机证据：导出对话框 Cancel 后 `data-state="open"` 仍在屏上。同类写法在仓内是少数派（`DataRootMissingDialog`/`UpdateDialog` 用活值开门），已改成 `open={Boolean(session)}`，并补了一条「清空 session 后面板真的消失」的回归用例——**该用例在坏形式上会红**（已用回退验证），此前套件只断言 `onClose` 被调用过，所以一直没抓到。
+3. **真机验收口径（如实说明）**：保存面板是 OS 对话框，Playwright 驱动不了。UI 侧验到「菜单入口→对话框打开→模式可选→Cancel 关闭」；回环本身用同一批通道跑真字节：导出到磁盘（Node 侧核对存在、字节数与返回一致、`PK` 头）→ `previewPackage` 判定 `accepted` 且 `assertion = {origin:'source-party', locallyVerified:false}`、`mode='full'`、`messages ≥ 2` → `importPackage` 后新会话确实出现在会话表里。
+4. **CI 首红原因（记在 U10 名下）**：`RuntimesPanel` 被 onboarding 的笔记本步骤复用，而 `onboarding-test-utils.ts` 的 `runtime` stub 没有 `survey` → `window.api.runtime.survey is not a function`，败在 `NotebookStep.render.test.tsx`。已补 stub（onboarding 簇 7 文件 / 81 用例绿）。教训：改共享面板的数据需求时，簇必须覆盖**所有挂载它的界面**，不只它自己所在的目录。
+
 ## 批次 3（v1.72.0）体验真实差距 + 可发现性
 
 | 单元 | 内容                                                                          | 验收                                                                           |

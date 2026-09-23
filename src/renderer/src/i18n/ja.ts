@@ -1008,6 +1008,37 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.appStorageWriteAccessHint':
     'PureScience がプライベート設定ディレクトリへの書き込みアクセスを必要としています。',
   'settings.appVersion': 'アプリバージョン',
+  'workspace.exportPackage': 'セッションパッケージを書き出す',
+  'sessions.packageExport.title': 'セッションパッケージを書き出す',
+  'sessions.packageExport.description':
+    'このセッションを .science パッケージとして書き出します。他のマシンで読み取れます。',
+  'sessions.packageExport.modeLegend': '含める内容',
+  'sessions.packageExport.modeEssential': '要点のみ',
+  'sessions.packageExport.modeEssentialHint': '会話、引用、レビュー結果、検証記録。',
+  'sessions.packageExport.modeFull': 'すべて',
+  'sessions.packageExport.modeFullHint':
+    '上記に加えて、セッションファイル、参考文献 PDF、環境ロック、再現出力。',
+  'sessions.packageExport.export': 'パッケージを書き出す',
+  'sessions.packageExport.done': '{name} を書き出しました（{size} KB）。',
+  'sessions.packageExport.notesLabel': '含まれなかったもの',
+  'sessions.packageExport.note.file-omitted-too-large':
+    'セッションファイルが大きすぎて含められませんでした: {detail}',
+  'sessions.packageExport.note.artifact-unreadable':
+    'セッションファイルを読み取れませんでした: {detail}',
+  'sessions.packageExport.note.files-not-requested':
+    '要点モードでは {count} 個のセッションファイルが除外されました',
+  'sessions.packageExport.note.environment-lock-unavailable': '環境ロックを含められませんでした',
+  'sessions.packageExport.note.reproduction-outputs-unavailable': '再現出力を含められませんでした',
+  'sessions.packageExport.note.reference-unreadable':
+    '参考文献 PDF を読み取れませんでした: {detail}',
+  'sessions.packageExport.note.reference-omitted-too-large':
+    '参考文献 PDF が大きすぎて含められませんでした: {detail}',
+  'sessions.packageExport.note.reference-pdfs-not-requested':
+    '要点モードでは {count} 件の参考文献 PDF が除外されました',
+  'sessions.packageExport.failure.session-not-found': 'そのセッションはもう存在しません。',
+  'sessions.packageExport.failure.session-unreadable': 'セッションを読み取れませんでした。',
+  'sessions.packageExport.failure.no-destination': '保存先が選ばれませんでした。',
+  'sessions.packageExport.failure.write-failed': 'パッケージを書き出せませんでした。',
   'sessions.packageImport.title': 'セッションパッケージを読み込む',
   'sessions.packageImport.pickFile': 'パッケージを選択…',
   'sessions.packageImport.integrityIntact':

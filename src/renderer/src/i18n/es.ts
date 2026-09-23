@@ -1021,6 +1021,40 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.appStorageWriteAccessHint':
     'PureScience necesita permiso de escritura en su directorio de configuración privado.',
   'settings.appVersion': 'Versión de la aplicación',
+  'workspace.exportPackage': 'Exportar paquete de sesión',
+  'sessions.packageExport.title': 'Exportar paquete de sesión',
+  'sessions.packageExport.description':
+    'Escribe esta sesión en un paquete .science que otra máquina puede leer.',
+  'sessions.packageExport.modeLegend': 'Contenido',
+  'sessions.packageExport.modeEssential': 'Solo lo esencial',
+  'sessions.packageExport.modeEssentialHint':
+    'Conversación, citas, hallazgos de revisión y verificaciones.',
+  'sessions.packageExport.modeFull': 'Todo',
+  'sessions.packageExport.modeFullHint':
+    'Lo anterior, más los archivos de sesión, los PDF de referencia, el bloqueo de entorno y las salidas de reproducción.',
+  'sessions.packageExport.export': 'Exportar paquete',
+  'sessions.packageExport.done': 'Se escribió {name} ({size} KB).',
+  'sessions.packageExport.notesLabel': 'No incluido',
+  'sessions.packageExport.note.file-omitted-too-large':
+    'Un archivo de sesión era demasiado grande: {detail}',
+  'sessions.packageExport.note.artifact-unreadable':
+    'No se pudo leer un archivo de sesión: {detail}',
+  'sessions.packageExport.note.files-not-requested':
+    'El modo esencial dejó {count} archivos de sesión',
+  'sessions.packageExport.note.environment-lock-unavailable':
+    'No se pudo incluir el bloqueo de entorno',
+  'sessions.packageExport.note.reproduction-outputs-unavailable':
+    'No se pudieron incluir las salidas de reproducción',
+  'sessions.packageExport.note.reference-unreadable':
+    'No se pudo leer un PDF de referencia: {detail}',
+  'sessions.packageExport.note.reference-omitted-too-large':
+    'Un PDF de referencia era demasiado grande: {detail}',
+  'sessions.packageExport.note.reference-pdfs-not-requested':
+    'El modo esencial dejó {count} PDF de referencia',
+  'sessions.packageExport.failure.session-not-found': 'Esa sesión ya no existe.',
+  'sessions.packageExport.failure.session-unreadable': 'No se pudo leer la sesión.',
+  'sessions.packageExport.failure.no-destination': 'No se eligió destino.',
+  'sessions.packageExport.failure.write-failed': 'No se pudo escribir el paquete.',
   'sessions.packageImport.title': 'Importar paquete de sesión',
   'sessions.packageImport.pickFile': 'Elegir un paquete…',
   'sessions.packageImport.integrityIntact':

@@ -8,6 +8,7 @@ import {
   Download,
   Files,
   MoreVertical,
+  Package,
   Pencil,
   Pin,
   PinOff,
@@ -55,6 +56,9 @@ type WorkspaceSidebarProps = {
   onDownloadArtifacts: (session: ChatSession) => void
   onViewNotebook: (session: ChatSession) => void
   onOpenExportDialog?: (session: ChatSession) => void
+  // The package half of the same menu entry: the text export is readable prose, the package is the
+  // session another machine can import.
+  onOpenPackageExport?: (session: ChatSession) => void
   onTogglePin: (session: ChatSession) => void
   canArchiveSession?: (session: ChatSession) => boolean
   onArchiveSession?: (session: ChatSession) => void
@@ -121,6 +125,7 @@ const WorkspaceSidebar = ({
   onDownloadArtifacts,
   onViewNotebook,
   onOpenExportDialog,
+  onOpenPackageExport,
   onTogglePin,
   canArchiveSession,
   onArchiveSession,
@@ -515,6 +520,18 @@ const WorkspaceSidebar = ({
                                   <Download className="size-4" strokeWidth={2} aria-hidden="true" />
                                 </span>
                                 <span className="flex-1">{t('workspace.exportConversation')}</span>
+                              </DropdownMenuItem>
+                            ) : null}
+                            {onOpenPackageExport ? (
+                              <DropdownMenuItem
+                                className="gap-2"
+                                disabled={isExportDisabled}
+                                onSelect={() => onOpenPackageExport(session)}
+                              >
+                                <span className={sessionMenuIconClassName}>
+                                  <Package className="size-4" strokeWidth={2} aria-hidden="true" />
+                                </span>
+                                <span className="flex-1">{t('workspace.exportPackage')}</span>
                               </DropdownMenuItem>
                             ) : null}
                             <DropdownMenuItem

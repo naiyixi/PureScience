@@ -996,6 +996,36 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.appStorageWriteAccessHint':
     'PureScience는 자체 전용 구성 디렉터리에 대한 쓰기 권한이 필요합니다.',
   'settings.appVersion': '앱 버전',
+  'workspace.exportPackage': '세션 패키지 내보내기',
+  'sessions.packageExport.title': '세션 패키지 내보내기',
+  'sessions.packageExport.description':
+    '이 세션을 .science 패키지로 기록합니다. 다른 컴퓨터에서 읽을 수 있습니다.',
+  'sessions.packageExport.modeLegend': '포함할 내용',
+  'sessions.packageExport.modeEssential': '핵심만',
+  'sessions.packageExport.modeEssentialHint': '대화, 인용, 검토 결과, 검증 기록.',
+  'sessions.packageExport.modeFull': '전부',
+  'sessions.packageExport.modeFullHint':
+    '위 항목에 세션 파일, 참고문헌 PDF, 환경 잠금, 재현 산출물을 더합니다.',
+  'sessions.packageExport.export': '패키지 내보내기',
+  'sessions.packageExport.done': '{name}을(를) 기록했습니다 ({size} KB).',
+  'sessions.packageExport.notesLabel': '제외된 항목',
+  'sessions.packageExport.note.file-omitted-too-large':
+    '세션 파일이 너무 커서 포함하지 못했습니다: {detail}',
+  'sessions.packageExport.note.artifact-unreadable': '세션 파일을 읽지 못했습니다: {detail}',
+  'sessions.packageExport.note.files-not-requested':
+    '핵심 모드에서 세션 파일 {count}개를 제외했습니다',
+  'sessions.packageExport.note.environment-lock-unavailable': '환경 잠금을 포함하지 못했습니다',
+  'sessions.packageExport.note.reproduction-outputs-unavailable':
+    '재현 산출물을 포함하지 못했습니다',
+  'sessions.packageExport.note.reference-unreadable': '참고문헌 PDF를 읽지 못했습니다: {detail}',
+  'sessions.packageExport.note.reference-omitted-too-large':
+    '참고문헌 PDF가 너무 커서 포함하지 못했습니다: {detail}',
+  'sessions.packageExport.note.reference-pdfs-not-requested':
+    '핵심 모드에서 참고문헌 PDF {count}개를 제외했습니다',
+  'sessions.packageExport.failure.session-not-found': '해당 세션은 더 이상 없습니다.',
+  'sessions.packageExport.failure.session-unreadable': '세션을 읽지 못했습니다.',
+  'sessions.packageExport.failure.no-destination': '저장 위치를 선택하지 않았습니다.',
+  'sessions.packageExport.failure.write-failed': '패키지를 기록하지 못했습니다.',
   'sessions.packageImport.title': '세션 패키지 가져오기',
   'sessions.packageImport.pickFile': '패키지 선택…',
   'sessions.packageImport.integrityIntact': '패키지의 파일 {files}개가 내보내기 기록과 일치합니다',

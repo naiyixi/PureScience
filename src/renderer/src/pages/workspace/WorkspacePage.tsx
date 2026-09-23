@@ -85,6 +85,7 @@ import {
   ExportConversationDialog,
   type ExportConversationOptions
 } from './ExportConversationDialog'
+import { SessionPackageExportDialog } from './SessionPackageExportDialog'
 import { FilePreviewDialog } from './FilePreviewDialog'
 import { PreviewPanel } from './PreviewPanel'
 import { SideChatPanel } from './SideChatPanel'
@@ -880,6 +881,9 @@ const WorkspacePage = ({
     undefined
   )
   const [sessionToExport, setSessionToExport] = useState<ChatSession | undefined>(undefined)
+  const [sessionToExportPackage, setSessionToExportPackage] = useState<ChatSession | undefined>(
+    undefined
+  )
   const [jobListModal, setJobListModal] = useState({ open: false, sessionId: '' })
 
   useEffect(() => {
@@ -2768,6 +2772,10 @@ const WorkspacePage = ({
               setIsMobileSidebarOpen(false)
               setSessionToExport(session)
             }}
+            onOpenPackageExport={(session) => {
+              setIsMobileSidebarOpen(false)
+              setSessionToExportPackage(session)
+            }}
             onTogglePin={(session) => {
               setIsMobileSidebarOpen(false)
               if (isSessionPersistenceReady) togglePinned(session.id)
@@ -2836,6 +2844,11 @@ const WorkspacePage = ({
                   onOpenExportDialog={
                     typeof window.api.sessions?.exportConversation === 'function'
                       ? (session) => setSessionToExport(session)
+                      : undefined
+                  }
+                  onOpenPackageExport={
+                    typeof window.api.sessions?.exportPackage === 'function'
+                      ? (session) => setSessionToExportPackage(session)
                       : undefined
                   }
                   onTogglePin={(session) => {
@@ -3140,6 +3153,12 @@ const WorkspacePage = ({
       <DownloadSessionArtifactsDialog
         session={sessionToDownloadArtifacts}
         onClose={() => setSessionToDownloadArtifacts(undefined)}
+      />
+
+      <SessionPackageExportDialog
+        projectId={activeProjectId ?? ''}
+        session={sessionToExportPackage}
+        onClose={() => setSessionToExportPackage(undefined)}
       />
 
       <ExportConversationDialog

@@ -1014,6 +1014,38 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.appStorageWriteAccessHint':
     'PureScience требуется доступ на запись к своему приватному каталогу конфигурации.',
   'settings.appVersion': 'Версия приложения',
+  'workspace.exportPackage': 'Экспортировать пакет сеанса',
+  'sessions.packageExport.title': 'Экспортировать пакет сеанса',
+  'sessions.packageExport.description':
+    'Записывает этот сеанс в пакет .science, который прочитает другая машина.',
+  'sessions.packageExport.modeLegend': 'Что включить',
+  'sessions.packageExport.modeEssential': 'Только основное',
+  'sessions.packageExport.modeEssentialHint':
+    'Диалог, ссылки, результаты проверки и подтверждения.',
+  'sessions.packageExport.modeFull': 'Всё',
+  'sessions.packageExport.modeFullHint':
+    'Всё вышеперечисленное, плюс файлы сеанса, PDF литературы, слепок окружения и артефакты воспроизведения.',
+  'sessions.packageExport.export': 'Экспортировать пакет',
+  'sessions.packageExport.done': 'Записан {name} ({size} КБ).',
+  'sessions.packageExport.notesLabel': 'Не включено',
+  'sessions.packageExport.note.file-omitted-too-large': 'Файл сеанса слишком большой: {detail}',
+  'sessions.packageExport.note.artifact-unreadable': 'Не удалось прочитать файл сеанса: {detail}',
+  'sessions.packageExport.note.files-not-requested':
+    'Режим «только основное» оставил {count} файлов сеанса',
+  'sessions.packageExport.note.environment-lock-unavailable':
+    'Не удалось включить слепок окружения',
+  'sessions.packageExport.note.reproduction-outputs-unavailable':
+    'Не удалось включить артефакты воспроизведения',
+  'sessions.packageExport.note.reference-unreadable':
+    'Не удалось прочитать PDF литературы: {detail}',
+  'sessions.packageExport.note.reference-omitted-too-large':
+    'PDF литературы слишком большой: {detail}',
+  'sessions.packageExport.note.reference-pdfs-not-requested':
+    'Режим «только основное» оставил {count} PDF литературы',
+  'sessions.packageExport.failure.session-not-found': 'Этот сеанс больше не существует.',
+  'sessions.packageExport.failure.session-unreadable': 'Не удалось прочитать сеанс.',
+  'sessions.packageExport.failure.no-destination': 'Место сохранения не выбрано.',
+  'sessions.packageExport.failure.write-failed': 'Не удалось записать пакет.',
   'sessions.packageImport.title': 'Импорт пакета сессии',
   'sessions.packageImport.pickFile': 'Выбрать пакет…',
   'sessions.packageImport.integrityIntact':

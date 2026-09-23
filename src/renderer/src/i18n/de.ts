@@ -1039,6 +1039,38 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.appStorageWriteAccessHint':
     'PureScience benötigt Schreibzugriff auf sein privates Konfigurationsverzeichnis.',
   'settings.appVersion': 'App-Version',
+  'workspace.exportPackage': 'Sitzungspaket exportieren',
+  'sessions.packageExport.title': 'Sitzungspaket exportieren',
+  'sessions.packageExport.description':
+    'Schreibt diese Sitzung in ein .science-Paket, das eine andere Maschine lesen kann.',
+  'sessions.packageExport.modeLegend': 'Inhalt',
+  'sessions.packageExport.modeEssential': 'Nur das Wesentliche',
+  'sessions.packageExport.modeEssentialHint':
+    'Gespräch, Zitate, Prüfergebnisse und Verifikationen.',
+  'sessions.packageExport.modeFull': 'Alles',
+  'sessions.packageExport.modeFullHint':
+    'Das oben Genannte plus Sitzungsdateien, Referenz-PDFs, die Umgebungssperre und die Reproduktionsausgaben.',
+  'sessions.packageExport.export': 'Paket exportieren',
+  'sessions.packageExport.done': '{name} geschrieben ({size} KB).',
+  'sessions.packageExport.notesLabel': 'Nicht enthalten',
+  'sessions.packageExport.note.file-omitted-too-large': 'Eine Sitzungsdatei war zu groß: {detail}',
+  'sessions.packageExport.note.artifact-unreadable':
+    'Eine Sitzungsdatei war nicht lesbar: {detail}',
+  'sessions.packageExport.note.files-not-requested':
+    'Der Modus „Nur das Wesentliche“ ließ {count} Sitzungsdateien zurück',
+  'sessions.packageExport.note.environment-lock-unavailable':
+    'Die Umgebungssperre konnte nicht aufgenommen werden',
+  'sessions.packageExport.note.reproduction-outputs-unavailable':
+    'Die Reproduktionsausgaben konnten nicht aufgenommen werden',
+  'sessions.packageExport.note.reference-unreadable': 'Ein Referenz-PDF war nicht lesbar: {detail}',
+  'sessions.packageExport.note.reference-omitted-too-large':
+    'Ein Referenz-PDF war zu groß: {detail}',
+  'sessions.packageExport.note.reference-pdfs-not-requested':
+    'Der Modus „Nur das Wesentliche“ ließ {count} Referenz-PDFs zurück',
+  'sessions.packageExport.failure.session-not-found': 'Diese Sitzung existiert nicht mehr.',
+  'sessions.packageExport.failure.session-unreadable': 'Die Sitzung konnte nicht gelesen werden.',
+  'sessions.packageExport.failure.no-destination': 'Es wurde kein Ziel gewählt.',
+  'sessions.packageExport.failure.write-failed': 'Das Paket konnte nicht geschrieben werden.',
   'sessions.packageImport.title': 'Sitzungspaket importieren',
   'sessions.packageImport.pickFile': 'Paket auswählen…',
   'sessions.packageImport.integrityIntact':
