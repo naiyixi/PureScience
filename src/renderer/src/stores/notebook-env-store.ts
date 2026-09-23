@@ -67,10 +67,6 @@ const errorText = (e: unknown): string => (e instanceof Error ? e.message : Stri
 // re-read writes again — a loop bounded only by how fast the bridge answers. On the packaged app the
 // bridge is fastest, which is where it trips React's update-depth guard (error #185).
 // One level is enough: the fields this store exposes are primitives (status) or flat view objects (ui).
-// TEMPORARY DIAGNOSTIC (#185): see applyUi.
-const applyUiBurst: number[] = []
-const diagStacks: string[] = []
-
 const sameShallow = (a: unknown, b: unknown): boolean => {
   if (Object.is(a, b)) return true
   if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false
@@ -155,16 +151,6 @@ export const useNotebookEnvStore = create<NotebookEnvStore>((set, get) => {
   // view that always matches the latest mirrored state (reuses provisioning-view's pure reducer).
   // A partial that changes nothing returns the current state untouched, so no consumer is notified.
   const applyUi = (partial: Partial<NotebookEnvState>): void => {
-    // TEMPORARY DIAGNOSTIC for the packaged #185: a write storm here is what React reports as an
-    // update-depth overflow. Print the caller stacks so the driver is named. Remove with the fix.
-    const now = Date.now()
-    applyUiBurst.push(now)
-    while (applyUiBurst.length > 0 && now - applyUiBurst[0] > 200) applyUiBurst.shift()
-    if (applyUiBurst.length === 41 && diagStacks.length < 3) {
-      diagStacks.push(new Error('applyUi burst').stack ?? '(no stack)')
-      // eslint-disable-next-line no-console
-      console.error(`[diag] applyUi burst: 41 writes in 200ms\n${diagStacks.join('\n---\n')}`)
-    }
     set((s) => {
       const next = { ...s, ...partial }
       const ui = deriveProvisionUi(next.status, next.scope, next.progress, next.error)
@@ -278,10 +264,17 @@ export const useNotebookEnvStore = create<NotebookEnvStore>((set, get) => {
               )
             }))
           }
-          void bridge.getStatus().then((status) => {
-            applyUi({ status })
-            applyRecoveryBlocks(status)
-          })
+          // Re-read the authoritative status only when the run settles. The provisioner broadcasts a
+          // progress tick per frame, so re-reading (and rewriting) on every tick turns the progress bar
+          // into a write storm: each write notifies every consumer of this store, and on the packaged
+          // app — where the bridge answers fastest — that overflowed React's update-depth guard (error
+          // #185). Progress itself already carries what the banner shows, so nothing is lost in between.
+          if (progress.phase === 'done' || progress.phase === 'error') {
+            void bridge.getStatus().then((status) => {
+              applyUi({ status })
+              applyRecoveryBlocks(status)
+            })
+          }
         })
       }
       const status = await bridge.getStatus()

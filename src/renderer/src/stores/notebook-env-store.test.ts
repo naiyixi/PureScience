@@ -78,13 +78,34 @@ describe('notebook-env-store', () => {
     const notifications = vi.fn()
     const unsubscribe = useNotebookEnvStore.subscribe(notifications)
     getStatus.mockResolvedValue({ ...READY, version: 4 })
-    emit({ phase: 'download', message: 'Fetching', progress: 0.5 })
+    emit({ phase: 'done', message: 'ok', progress: 1 })
     await Promise.resolve()
     await Promise.resolve()
     unsubscribe()
 
     expect(useNotebookEnvStore.getState().status.version).toBe(4)
     expect(notifications).toHaveBeenCalled()
+  })
+
+  it('re-reads the authoritative status when a run settles, not on every progress tick', async () => {
+    // The provisioner ticks a progress event per frame. If each tick dragged the whole status back
+    // across the bridge and wrote it into the store, every consumer re-rendered per frame — which is
+    // what overflowed React's update-depth guard on the packaged app (error #185).
+    const getStatus = vi.fn(async () => ({ ...READY }))
+    const { emit } = installApi({ getStatus })
+    await useNotebookEnvStore.getState().init()
+    const hydrations = getStatus.mock.calls.length
+
+    emit({ phase: 'download', message: 'Fetching', progress: 0.2 })
+    emit({ phase: 'download', message: 'Fetching', progress: 0.4 })
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(getStatus.mock.calls.length).toBe(hydrations)
+
+    emit({ phase: 'done', message: 'ok', progress: 1, language: 'python' })
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(getStatus.mock.calls.length).toBe(hydrations + 1)
   })
 
   it('init subscribes to progress and hydrates the status snapshot', async () => {
@@ -156,7 +177,11 @@ describe('notebook-env-store', () => {
       message: 'Fetching bundle…',
       progress: 0.25
     })
-    // status is re-hydrated after each progress tick so provisioning/ready flip in lockstep.
+    // Status is re-hydrated when the run settles, not on every tick: a tick-per-frame re-read made
+    // every consumer of this store re-render per frame (React #185 on the packaged build).
+    expect(api.getStatus).toHaveBeenCalledTimes(1)
+    emit({ phase: 'done', message: 'ok', progress: 1 })
+    await Promise.resolve()
     expect(api.getStatus).toHaveBeenCalledTimes(2)
   })
 
