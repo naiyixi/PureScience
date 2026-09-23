@@ -1753,6 +1753,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.noBundledSkills': '同梱スキルがありません',
   'settings.noConnectorsMatchSearch': '検索条件に一致するコネクタがありません。',
   'settings.noDataYet': 'データはまだありません。',
+  'settings.noDataYetHint':
+    'モデルのダウンロード、計算ジョブの実行、成果物の保存が進むと、それぞれの占有量がここに表示されます。',
   'settings.noDescription': '説明なし',
   'settings.noDownloadableArtifacts': 'このセッションにはダウンロードできる成果物がありません。',
   'settings.noHostsInSshConfig': '~/.ssh/config にホストがありません',

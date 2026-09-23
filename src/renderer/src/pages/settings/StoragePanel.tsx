@@ -488,7 +488,12 @@ const StoragePanel = ({ onContinueToAgent }: StoragePanelProps): React.JSX.Eleme
                 ))}
             </div>
           ) : (
-            <p className="text-xs text-muted-foreground">{t('settings.noDataYet')}</p>
+            // The bar used to collapse into a single "no data yet" line with no explanation of what
+            // will ever put data there.
+            <div className="rounded border border-dashed border-border px-3 py-2">
+              <p className="text-xs text-muted-foreground">{t('settings.noDataYet')}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">{t('settings.noDataYetHint')}</p>
+            </div>
           )}
 
           <div className="mt-2 space-y-1.5">

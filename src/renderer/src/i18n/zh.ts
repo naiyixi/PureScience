@@ -546,6 +546,7 @@ export const zh = {
   'settings.archiveLimits': '归档限制',
   'settings.location': '位置',
   'settings.noDataYet': '暂无数据。',
+  'settings.noDataYetHint': '下载模型、跑计算任务、保存产物之后，各自会在这里显示占用份额。',
   'settings.total': '总计',
   'settings.availableOnDisk': '磁盘可用',
 

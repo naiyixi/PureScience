@@ -569,6 +569,8 @@ export const en: Record<ZhKey, string> = {
   'settings.archiveLimits': 'Archive limits',
   'settings.location': 'Location',
   'settings.noDataYet': 'No data yet.',
+  'settings.noDataYetHint':
+    'Storage fills up as you download models, run compute jobs, and save artifacts — each shows its own share here.',
   'settings.total': 'Total',
   'settings.availableOnDisk': 'Available on disk',
 

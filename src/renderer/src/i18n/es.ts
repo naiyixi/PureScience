@@ -1777,6 +1777,8 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.noBundledSkills': 'No hay habilidades incluidas',
   'settings.noConnectorsMatchSearch': 'Ningún conector coincide con tu búsqueda.',
   'settings.noDataYet': 'Aún no hay datos.',
+  'settings.noDataYetHint':
+    'El almacenamiento se llena al descargar modelos, ejecutar trabajos de cálculo y guardar artefactos: cada parte aparece aquí.',
   'settings.noDescription': 'Sin descripción',
   'settings.noDownloadableArtifacts': 'No hay artefactos descargables en esta sesión.',
   'settings.noHostsInSshConfig': 'No hay hosts en ~/.ssh/config',

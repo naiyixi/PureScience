@@ -1722,6 +1722,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.noBundledSkills': '번들 스킬 없음',
   'settings.noConnectorsMatchSearch': '검색과 일치하는 커넥터가 없습니다.',
   'settings.noDataYet': '아직 데이터가 없습니다.',
+  'settings.noDataYetHint':
+    '모델을 내려받고 계산 작업을 돌리고 산출물을 저장하면 각각의 점유량이 여기에 표시됩니다.',
   'settings.noDescription': '설명 없음',
   'settings.noDownloadableArtifacts': '이 세션에는 다운로드할 수 있는 산출물이 없습니다.',
   'settings.noHostsInSshConfig': '~/.ssh/config에 호스트가 없습니다',

@@ -1749,6 +1749,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.noBundledSkills': 'Нет встроенных навыков',
   'settings.noConnectorsMatchSearch': 'Ни один коннектор не соответствует вашему запросу.',
   'settings.noDataYet': 'Данных пока нет.',
+  'settings.noDataYetHint':
+    'Хранилище заполняется по мере загрузки моделей, запуска вычислений и сохранения артефактов — доля каждого видна здесь.',
   'settings.noDescription': 'Нет описания',
   'settings.noDownloadableArtifacts': 'В этой сессии нет доступных для скачивания артефактов.',
   'settings.noHostsInSshConfig': 'В ~/.ssh/config нет хостов',

@@ -1629,6 +1629,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.noBundledSkills': '沒有內建技能',
   'settings.noConnectorsMatchSearch': '沒有符合你搜尋的連接器。',
   'settings.noDataYet': '尚無資料。',
+  'settings.noDataYetHint': '下載模型、跑計算任務、儲存產物之後，各自會在這裡顯示佔用份額。',
   'settings.noDescription': '沒有描述',
   'settings.noDownloadableArtifacts': '此對話中沒有可下載的產物。',
   'settings.noHostsInSshConfig': '~/.ssh/config 中沒有主機',
