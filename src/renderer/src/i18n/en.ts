@@ -396,6 +396,9 @@ export const en: Record<ZhKey, string> = {
   'figure.pickProgress': 'data points {count}',
   'figure.tickValueLabel': 'Tick value',
   'figure.tickValuePlaceholder': 'e.g. 0.5',
+  'figure.keyboardHint':
+    'Keyboard: arrow keys move the caret (hold Shift for 10 px), Enter places a point, Backspace removes the last one.',
+  'figure.caretPosition': 'Caret x {x} · y {y}',
   'figure.pickSurface': 'Figure picking area',
   'figure.xAnchorTitle': 'x anchor {value}',
   'figure.yAnchorTitle': 'y anchor {value}',

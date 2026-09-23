@@ -2893,6 +2893,9 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'figure.pickProgress': 'データ点 {count}',
   'figure.tickValueLabel': '目盛りの数値',
   'figure.tickValuePlaceholder': '例 0.5',
+  'figure.keyboardHint':
+    'キーボード：矢印キーでカーソル移動（Shift 併用で 10 ピクセル）、Enter で点を打ち、Backspace で最後の点を削除します。',
+  'figure.caretPosition': 'カーソル x {x} · y {y}',
   'figure.pickSurface': 'グラフ抽出エリア',
   'figure.xAnchorTitle': 'x 基準点 {value}',
   'figure.yAnchorTitle': 'y 基準点 {value}',

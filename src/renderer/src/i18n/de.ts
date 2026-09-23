@@ -2971,6 +2971,9 @@ export const de: Partial<Record<ZhKey, string>> = {
   'figure.pickProgress': 'Datenpunkte {count}',
   'figure.tickValueLabel': 'Wert des Skalenstrichs',
   'figure.tickValuePlaceholder': 'z. B. 0,5',
+  'figure.keyboardHint':
+    'Tastatur: Pfeiltasten bewegen den Cursor (mit Umschalt 10 Pixel), Eingabe setzt einen Punkt, Rücktaste entfernt den letzten.',
+  'figure.caretPosition': 'Cursor x {x} · y {y}',
   'figure.pickSurface': 'Fläche zum Abgreifen der Abbildung',
   'figure.xAnchorTitle': 'x-Anker {value}',
   'figure.yAnchorTitle': 'y-Anker {value}',

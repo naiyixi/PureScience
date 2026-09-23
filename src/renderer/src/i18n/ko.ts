@@ -2830,6 +2830,9 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'figure.pickProgress': '데이터 포인트 {count}',
   'figure.tickValueLabel': '눈금 값',
   'figure.tickValuePlaceholder': '예 0.5',
+  'figure.keyboardHint':
+    '키보드: 방향키로 커서 이동(Shift 를 누르면 10 픽셀), Enter 로 점을 찍고 Backspace 로 마지막 점을 지웁니다.',
+  'figure.caretPosition': '커서 x {x} · y {y}',
   'figure.pickSurface': '그림 추출 영역',
   'figure.xAnchorTitle': 'x 기준점 {value}',
   'figure.yAnchorTitle': 'y 기준점 {value}',

@@ -2937,6 +2937,9 @@ export const es: Partial<Record<ZhKey, string>> = {
   'figure.pickProgress': 'puntos de datos {count}',
   'figure.tickValueLabel': 'Valor de la marca',
   'figure.tickValuePlaceholder': 'p. ej. 0,5',
+  'figure.keyboardHint':
+    'Teclado: las flechas mueven el cursor (con Mayús, 10 píxeles), Intro marca un punto y Retroceso elimina el último.',
+  'figure.caretPosition': 'Cursor x {x} · y {y}',
   'figure.pickSurface': 'Zona de captura de la figura',
   'figure.xAnchorTitle': 'ancla x {value}',
   'figure.yAnchorTitle': 'ancla y {value}',

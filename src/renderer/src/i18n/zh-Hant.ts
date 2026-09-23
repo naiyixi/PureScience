@@ -2677,6 +2677,9 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'figure.pickProgress': '資料點 {count}',
   'figure.tickValueLabel': '該刻度數值',
   'figure.tickValuePlaceholder': '例如 0.5',
+  'figure.keyboardHint':
+    '鍵盤：方向鍵移動游標（按住 Shift 每次 10 像素），Enter 打點，Backspace 撤銷上一個點。',
+  'figure.caretPosition': '游標 x {x} · y {y}',
   'figure.pickSurface': '圖形拾取區',
   'figure.xAnchorTitle': 'x 錨點 {value}',
   'figure.yAnchorTitle': 'y 錨點 {value}',

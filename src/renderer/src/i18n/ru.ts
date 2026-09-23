@@ -2894,6 +2894,9 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'figure.pickProgress': 'точки данных {count}',
   'figure.tickValueLabel': 'Значение отметки',
   'figure.tickValuePlaceholder': 'напр. 0,5',
+  'figure.keyboardHint':
+    'Клавиатура: стрелки двигают курсор (с Shift — на 10 пикселей), Enter ставит точку, Backspace удаляет последнюю.',
+  'figure.caretPosition': 'Курсор x {x} · y {y}',
   'figure.pickSurface': 'Область снятия данных с рисунка',
   'figure.xAnchorTitle': 'привязка x {value}',
   'figure.yAnchorTitle': 'привязка y {value}',

@@ -378,6 +378,9 @@ export const zh = {
   'figure.pickProgress': '数据点 {count}',
   'figure.tickValueLabel': '该刻度数值',
   'figure.tickValuePlaceholder': '例如 0.5',
+  'figure.keyboardHint':
+    '键盘：方向键移动游标（按住 Shift 每次 10 像素），回车打点，退格撤销上一个点。',
+  'figure.caretPosition': '游标 x {x} · y {y}',
   'figure.pickSurface': '图形拾取区',
   'figure.xAnchorTitle': 'x 锚点 {value}',
   'figure.yAnchorTitle': 'y 锚点 {value}',
