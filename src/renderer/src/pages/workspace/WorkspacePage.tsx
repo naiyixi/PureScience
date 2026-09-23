@@ -440,6 +440,7 @@ const SessionBookmarksToggleButton = ({
   isOpen: boolean
   onToggle: () => void
 }): React.JSX.Element => {
+  const { t } = useLanguage()
   return (
     <button
       type="button"
@@ -449,8 +450,8 @@ const SessionBookmarksToggleButton = ({
           ? 'bg-primary/20 shadow-card backdrop-blur text-action-panel-toggle'
           : 'bg-transparent shadow-none text-action-panel-toggle hover:bg-surface-control-hover'
       }`}
-      aria-label="会话书签"
-      title="会话书签"
+      aria-label={t('ws.sessionBookmark')}
+      title={t('ws.sessionBookmark')}
       onClick={onToggle}
     >
       <Bookmark className="size-4" strokeWidth={2} fill="none" aria-hidden="true" />
@@ -465,6 +466,7 @@ const ReferencesLibraryToggleButton = ({
   isOpen: boolean
   onToggle: () => void
 }): React.JSX.Element => {
+  const { t } = useLanguage()
   return (
     <button
       type="button"
@@ -474,8 +476,8 @@ const ReferencesLibraryToggleButton = ({
           ? 'bg-primary/20 shadow-card backdrop-blur text-action-panel-toggle'
           : 'bg-transparent shadow-none text-action-panel-toggle hover:bg-surface-control-hover'
       }`}
-      aria-label="文献库"
-      title="文献库"
+      aria-label={t('ws.referencesLibrary')}
+      title={t('ws.referencesLibrary')}
       onClick={onToggle}
     >
       <Library className="size-4" strokeWidth={2} fill="none" aria-hidden="true" />

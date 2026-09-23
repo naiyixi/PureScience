@@ -1009,7 +1009,10 @@ const ArtifactProvenancePanel = ({
         ) : null}
         {!error && !lineageUnavailable && !provenance ? (
           <div className="flex h-full items-center justify-center text-text-300">
-            <LoaderCircle className="size-4 animate-spin" aria-label="Loading Provenance" />
+            <LoaderCircle
+              className="size-4 animate-spin"
+              aria-label={t('artifact.loadingProvenance')}
+            />
           </div>
         ) : null}
         {provenance && deferredTabLabel && deferredSectionLoading ? (
@@ -1085,7 +1088,7 @@ const ArtifactProvenancePanel = ({
               )}
               {generatedCode ? (
                 <div className="min-w-0 flex-1 truncate text-sm text-text-300">
-                  <span>LLM-generated reconstruction · see </span>
+                  <span>{t('artifact.reconstructionPrefix')}</span>
                   <Button
                     type="button"
                     variant="link"
@@ -1095,7 +1098,7 @@ const ArtifactProvenancePanel = ({
                   >
                     Execution Log
                   </Button>
-                  <span> for the raw record</span>
+                  <span>{t('artifact.reconstructionSuffix')}</span>
                 </div>
               ) : codeReconstructionResult?.status === 'error' ? (
                 <p className="min-w-0 flex-1 truncate text-sm text-danger-000" role="alert">
@@ -1146,7 +1149,7 @@ const ArtifactProvenancePanel = ({
                   className="size-5 animate-spin motion-reduce:animate-none"
                   aria-hidden="true"
                 />
-                <span>Generating script…</span>
+                <span>{t('artifact.generatingScript')}</span>
               </div>
             ) : generatedCode ? (
               <NotebookCodeBlock code={generatedCode.code} language={generatedCode.language} />
@@ -1264,7 +1267,7 @@ const ArtifactProvenancePanel = ({
             {environment ? (
               <>
                 <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-xs">
-                  <dt className="text-text-300">Runtime</dt>
+                  <dt className="text-text-300">{t('settings.runtime')}</dt>
                   <dd className="text-text-100">
                     {asString(environment.runtime_version) ?? t('ws.versionUnavailable')}
                   </dd>
@@ -1273,7 +1276,7 @@ const ArtifactProvenancePanel = ({
                     {asString(environment.runtime_source) ?? 'unknown'} ·{' '}
                     {asString(environment.kernel_kind) ?? 'unknown'}
                   </dd>
-                  <dt className="text-text-300">Capture</dt>
+                  <dt className="text-text-300">{t('artifact.capture')}</dt>
                   <dd className="text-text-100">
                     {asString(environment.capture_status) ?? 'partial'} ·{' '}
                     {environmentPackages.length} packages
@@ -1298,9 +1301,9 @@ const ArtifactProvenancePanel = ({
                   <table className="w-full table-fixed text-left text-xs">
                     <thead className="bg-bg-100 text-text-300">
                       <tr>
-                        <th className="w-1/2 px-3 py-2 font-medium">Package</th>
-                        <th className="w-1/4 px-3 py-2 font-medium">Version</th>
-                        <th className="w-1/4 px-3 py-2 font-medium">State</th>
+                        <th className="w-1/2 px-3 py-2 font-medium">{t('artifact.package')}</th>
+                        <th className="w-1/4 px-3 py-2 font-medium">{t('settings.version')}</th>
+                        <th className="w-1/4 px-3 py-2 font-medium">{t('artifact.state')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1348,15 +1351,23 @@ const ArtifactProvenancePanel = ({
                 ) : null}
                 {environmentOperations.length > 0 ? (
                   <div className="space-y-2">
-                    <h4 className="font-semibold text-text-000">Operations</h4>
+                    <h4 className="font-semibold text-text-000">{t('artifact.operations')}</h4>
                     <div className="overflow-hidden rounded-md border border-border-300/60">
                       <table className="w-full table-fixed text-left text-xs">
                         <thead className="bg-bg-100 text-text-300">
                           <tr>
-                            <th className="w-[34%] break-words px-2 py-2 font-medium">Time</th>
-                            <th className="w-1/5 break-words px-2 py-2 font-medium">Operation</th>
-                            <th className="w-[28%] break-words px-2 py-2 font-medium">Packages</th>
-                            <th className="w-[18%] break-words px-2 py-2 font-medium">Result</th>
+                            <th className="w-[34%] break-words px-2 py-2 font-medium">
+                              {t('settings.perRunColumnTime')}
+                            </th>
+                            <th className="w-1/5 break-words px-2 py-2 font-medium">
+                              {t('artifact.operation')}
+                            </th>
+                            <th className="w-[28%] break-words px-2 py-2 font-medium">
+                              {t('artifact.packages')}
+                            </th>
+                            <th className="w-[18%] break-words px-2 py-2 font-medium">
+                              {t('artifact.result')}
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1506,7 +1517,7 @@ const ArtifactProvenancePanel = ({
                       : t('ws.versionGeneratedWithoutAudit')}
                 </p>
                 {reviewUnavailableReason !== 'source-session-unavailable' ? (
-                  <p className="mt-3 text-xs text-text-300">Model · not triggered</p>
+                  <p className="mt-3 text-xs text-text-300">{t('artifact.modelNotTriggered')}</p>
                 ) : null}
               </div>
             </section>

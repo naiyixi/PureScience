@@ -70,25 +70,29 @@ const PreviewProvenanceButton = ({
   item: PreviewFileItem
   onOpenProvenance: () => void
   tooltipClassName?: string
-}): React.JSX.Element => (
-  <TooltipProvider delayDuration={300}>
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-xs"
-          className="text-text-100 hover:text-text-000"
-          aria-label={`Open Provenance for ${item.title}`}
-          onClick={onOpenProvenance}
-        >
-          <GitBranch aria-hidden="true" />
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent className={tooltipClassName}>Provenance</TooltipContent>
-    </Tooltip>
-  </TooltipProvider>
-)
+}): React.JSX.Element => {
+  const { t } = useLanguage()
+
+  return (
+    <TooltipProvider delayDuration={300}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            className="text-text-100 hover:text-text-000"
+            aria-label={t('preview.openProvenanceFor').replace('{name}', item.title)}
+            onClick={onOpenProvenance}
+          >
+            <GitBranch aria-hidden="true" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent className={tooltipClassName}>{t('preview.provenance')}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+}
 
 // Puts the reader's own passage into the session's bookmarks. The anchor carries the exact Artifact
 // Version on screen, so jumping back opens the version the passage was read from rather than whatever

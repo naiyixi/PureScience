@@ -139,14 +139,18 @@ const WorkspacePlanCard = ({
                   disabled={decisionBusy}
                   onClick={() => void respond('approved')}
                 >
-                  Approve
+                  {t('plan.approve')}
                 </Button>
               </>
             ) : null}
           </div>
         </div>
         <div className="mt-3 inline-flex rounded-full bg-primary/10 px-2 py-1 text-[11px] font-medium text-primary">
-          ● {projection.document.feasibility.confidence} confidence
+          ●{' '}
+          {t('plan.confidence').replace(
+            '{level}',
+            String(projection.document.feasibility.confidence)
+          )}
         </div>
         {decisionPending ? (
           <form
@@ -430,7 +434,11 @@ const PlanPreviewSurface = ({
             <div className="mt-7 rounded-lg bg-muted p-4">
               <div className="flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.08em] text-muted-foreground">
                 <Info className="size-3 shrink-0" aria-hidden="true" />
-                SCOPE &amp; FEASIBILITY · {planDocument.feasibility.confidence} confidence
+                {t('plan.scopeFeasibility')} ·{' '}
+                {t('plan.confidence').replace(
+                  '{level}',
+                  String(planDocument.feasibility.confidence)
+                )}
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
                 {planDocument.feasibility.rationale}

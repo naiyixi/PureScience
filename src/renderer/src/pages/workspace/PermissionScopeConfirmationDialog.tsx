@@ -1,5 +1,7 @@
 import { AlertDialog } from 'radix-ui'
 
+import { useLanguage } from '@/i18n'
+
 import { Button } from '@/components/ui/button'
 import {
   dialogDescriptionClassName,
@@ -29,17 +31,23 @@ const PermissionScopeConfirmationDialog = ({
   onCancel,
   onConfirm
 }: PermissionScopeConfirmationDialogProps): React.JSX.Element => {
+  const { t } = useLanguage()
   const retainedConfirmation = useRetainedDialogValue(confirmation)
   const scope = retainedConfirmation?.scope ?? 'project'
-  const subject = retainedConfirmation?.subject ?? 'this permission'
+  const subject = retainedConfirmation?.subject ?? t('permissionScope.thisPermission')
   const isProject = scope === 'project'
-  const scopePhrase = isProject ? 'for this project' : 'globally'
-  const coveragePhrase = isProject
-    ? 'for every session in this project'
-    : 'for every session in every project'
-  const effect = retainedConfirmation?.codeExecution
-    ? `Code will run without preview ${coveragePhrase}.`
-    : `Matching actions can run without another approval ${coveragePhrase}.`
+  // Composed through keys rather than concatenated fragments: word order differs per language.
+  const scopePhrase = t(isProject ? 'permissionScope.scopeProject' : 'permissionScope.scopeGlobal')
+  const coveragePhrase = t(
+    isProject ? 'permissionScope.coverageProject' : 'permissionScope.coverageGlobal'
+  )
+  // Interpolated here rather than through t's vars: the confirmation suites render through the
+  // non-interpolating fallback dictionary, and this sentence has to read complete there too.
+  const effect = t(
+    retainedConfirmation?.codeExecution
+      ? 'permissionScope.effectCode'
+      : 'permissionScope.effectActions'
+  ).replace('{coverage}', coveragePhrase)
 
   return (
     <AlertDialog.Root
@@ -55,16 +63,21 @@ const PermissionScopeConfirmationDialog = ({
           data-testid="permission-scope-confirmation"
         >
           <AlertDialog.Title className={`${dialogTitleClassName} min-w-0 [overflow-wrap:anywhere]`}>
-            Allow {subject} {scopePhrase}?
+            {t('permissionScope.title')
+              .replace('{subject}', subject)
+              .replace('{scope}', scopePhrase)}
           </AlertDialog.Title>
           <AlertDialog.Description className={dialogDescriptionClassName}>
-            {effect} You can revoke it in{' '}
-            <strong className="font-semibold text-foreground">Settings → Permissions</strong>.
+            {effect} {t('permissionScope.revokeHint')}{' '}
+            <strong className="font-semibold text-foreground">
+              {t('permissionScope.settingsPath')}
+            </strong>
+            .
           </AlertDialog.Description>
           <div className={dialogFooterClassName}>
             <AlertDialog.Cancel asChild>
               <Button type="button" variant="outline" data-testid="permission-scope-cancel">
-                Cancel
+                {t('common.cancel')}
               </Button>
             </AlertDialog.Cancel>
             <AlertDialog.Action asChild>
@@ -74,7 +87,7 @@ const PermissionScopeConfirmationDialog = ({
                 data-testid="permission-scope-confirm"
                 onClick={onConfirm}
               >
-                {isProject ? 'Allow for this project' : 'Allow globally'}
+                {t(isProject ? 'permissionScope.allowProject' : 'permissionScope.allowGlobal')}
               </Button>
             </AlertDialog.Action>
           </div>

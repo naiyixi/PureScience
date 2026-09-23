@@ -1015,8 +1015,8 @@ const ProjectFilesFilterMenu = ({
           </DropdownMenuItem>
           <DropdownMenuItem disabled className="gap-2 text-muted-foreground">
             <Plus className="size-4 shrink-0" strokeWidth={1.8} aria-hidden="true" />
-            <span>Add local folder…</span>
-            <span className="ml-auto shrink-0 text-[11px]">Soon</span>
+            <span>{t('ws.addLocalFolder')}</span>
+            <span className="ml-auto shrink-0 text-[11px]">{t('common.soon')}</span>
           </DropdownMenuItem>
         </DropdownMenuGroup>
 
@@ -1061,7 +1061,7 @@ const ProjectFilesFilterMenu = ({
             onSelect={() => openSettingsToCompute()}
           >
             <Plus className="size-4 shrink-0" strokeWidth={1.8} aria-hidden="true" />
-            <span>Add SSH host…</span>
+            <span>{t('ws.addSshHost')}</span>
           </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>

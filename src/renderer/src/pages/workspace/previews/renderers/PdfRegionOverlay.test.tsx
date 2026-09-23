@@ -35,7 +35,16 @@ beforeEach(() => {
   root = createRoot(container)
   // jsdom reports a zero-sized box for everything; the overlay must be judged against a real page box.
   Element.prototype.getBoundingClientRect = function boxed(this: Element): DOMRect {
-    return { ...PAGE, top: 0, left: 0, right: PAGE.width, bottom: PAGE.height, x: 0, y: 0, toJSON: () => ({}) } as DOMRect
+    return {
+      ...PAGE,
+      top: 0,
+      left: 0,
+      right: PAGE.width,
+      bottom: PAGE.height,
+      x: 0,
+      y: 0,
+      toJSON: () => ({})
+    } as DOMRect
   }
 })
 

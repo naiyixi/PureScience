@@ -176,7 +176,7 @@ const SpecialistSubmenu = ({
                   <span className="min-w-0 flex-1 truncate text-[13px] line-through">
                     {unavailableProfile.name}
                   </span>
-                  <span className="text-[10px] text-amber-500">Unavailable</span>
+                  <span className="text-[10px] text-amber-500">{t('specialist.unavailable')}</span>
                 </div>
               ) : null}
               {enabledSpecialists.map((specialist) => {

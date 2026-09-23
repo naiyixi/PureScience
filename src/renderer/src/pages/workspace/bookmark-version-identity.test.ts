@@ -7,7 +7,9 @@ import { resolveBookmarkVersionIdentity } from './bookmark-version-identity'
 // artifact id and version id the artifacts store has never seen. Accepting them would store a bookmark
 // whose pointer resolves to nothing — a saved passage that opens an empty preview.
 
-const lineage = (versions: string[]): { artifactId: string; versions: Array<{ versionId: string }> } => ({
+const lineage = (
+  versions: string[]
+): { artifactId: string; versions: Array<{ versionId: string }> } => ({
   artifactId: 'artifact',
   versions: versions.map((versionId) => ({ versionId }))
 })
@@ -83,7 +85,9 @@ describe('resolveBookmarkVersionIdentity', () => {
   it('stores nothing when neither identity resolves', async () => {
     stubApi({
       lineages: {},
-      documentArtifacts: [{ name: 'other.pdf', artifactId: 'artifact-other', versionId: 'version-other' }]
+      documentArtifacts: [
+        { name: 'other.pdf', artifactId: 'artifact-other', versionId: 'version-other' }
+      ]
     })
     await expect(
       resolveBookmarkVersionIdentity({
@@ -100,7 +104,9 @@ describe('resolveBookmarkVersionIdentity', () => {
   it('stores nothing when the document names a version the artifact no longer has', async () => {
     stubApi({
       lineages: { 'artifact-real': ['version-other'] },
-      documentArtifacts: [{ name: 'figure.pdf', artifactId: 'artifact-real', versionId: 'version-real' }]
+      documentArtifacts: [
+        { name: 'figure.pdf', artifactId: 'artifact-real', versionId: 'version-real' }
+      ]
     })
     await expect(
       resolveBookmarkVersionIdentity({

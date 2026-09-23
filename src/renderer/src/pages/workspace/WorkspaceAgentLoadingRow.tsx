@@ -32,6 +32,7 @@ const formatElapsed = (ms: number): string => {
 // Thinking owns only silent model waits. Keeping its timer in this phase-specific child resets the
 // elapsed time whenever tool interaction ends and Thinking mounts again.
 const ThinkingLoadingContent = ({ sessionId }: { sessionId: string }): React.JSX.Element => {
+  const { t } = useLanguage()
   const status = useSessionStore(
     (state) => state.sessions.find((session) => session.id === sessionId)?.agentStatus
   )
@@ -52,11 +53,11 @@ const ThinkingLoadingContent = ({ sessionId }: { sessionId: string }): React.JSX
     <>
       <div className="flex items-center gap-2 text-xs text-text-000/70">
         <PureScienceThinkingIndicator />
-        <span>Thinking</span>
+        <span>{t('ws.agentThinking')}</span>
         <span className="tabular-nums" aria-hidden="true">
           {formatElapsed(elapsedMs)}
         </span>
-        {slow ? <span aria-hidden="true">· taking longer than usual</span> : null}
+        {slow ? <span aria-hidden="true">{t('ws.agentSlowHint')}</span> : null}
       </div>
       {status ? (
         <span className="truncate text-[11px] text-text-000/70" title={status}>

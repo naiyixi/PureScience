@@ -216,7 +216,9 @@ const SessionNotebookContent = ({
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         {status === 'loading' ? (
-          <p className="px-5 py-16 text-center text-sm text-muted-foreground">Loading notebook…</p>
+          <p className="px-5 py-16 text-center text-sm text-muted-foreground">
+            {t('ws.loadingNotebook')}
+          </p>
         ) : status === 'error' ? (
           <p className="px-5 py-16 text-center text-sm text-danger-000">
             {error ?? t('ws.notebookLoadFailed')}

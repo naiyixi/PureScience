@@ -338,7 +338,7 @@ const ComposerAgentControlsMenu = ({
                 }}
               >
                 <ChevronLeft className="size-4 shrink-0" strokeWidth={2} aria-hidden="true" />
-                <span className="text-[13px] font-medium leading-5">Permission mode</span>
+                <span className="text-[13px] font-medium leading-5">{t('ws.permissionMode')}</span>
               </DropdownMenuItem>
               <div className="mx-1 mb-1 border-t border-border-200" />
               {permissionOptions}

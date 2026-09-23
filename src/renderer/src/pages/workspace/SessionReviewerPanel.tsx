@@ -124,6 +124,7 @@ const LogEntryIcon = ({ kind }: { kind: 'thought' | 'message' }): React.JSX.Elem
 // One row in the reviewer log. Reuses the same visual vocabulary as the workspace activity rows
 // but de-emphasized: muted colors, no colored severity badges, smaller font.
 const ReviewerLogRow = ({ entry }: { entry: ReviewerLogEntry }): React.JSX.Element => {
+  const { t } = useLanguage()
   const [expanded, setExpanded] = useState(false)
   const rowClassName = 'flex items-start gap-1.5 py-0.5 text-[11px] leading-[1.45]'
 
@@ -152,9 +153,11 @@ const ReviewerLogRow = ({ entry }: { entry: ReviewerLogEntry }): React.JSX.Eleme
   // tool entry: collapsible row with real tool name + one-line summary + status dot
   const statusDot =
     entry.status === 'ok' ? (
-      <span className="shrink-0 text-[10px] text-green-600 dark:text-green-400">● ok</span>
+      <span className="shrink-0 text-[10px] text-green-600 dark:text-green-400">
+        ● {t('ws.reviewerStatusOk')}
+      </span>
     ) : entry.status === 'error' ? (
-      <span className="shrink-0 text-[10px] text-red-500">● error</span>
+      <span className="shrink-0 text-[10px] text-red-500">● {t('ws.reviewerStatusError')}</span>
     ) : null
 
   // One-line summary: prefer title, fall back to rawInput (first line only)
@@ -281,7 +284,7 @@ const SessionReviewerPanel = ({
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
       <div className="shrink-0 border-b border-border-200 px-4 py-3">
-        <h2 className="text-[13px] font-semibold text-text-000">Session Reviewer</h2>
+        <h2 className="text-[13px] font-semibold text-text-000">{t('ws.reviewerTitle')}</h2>
         <p className="mt-0.5 text-[11px] text-text-300">
           {review.model} &middot; {new Date(review.createdAt).toLocaleString()}
         </p>

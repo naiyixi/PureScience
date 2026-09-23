@@ -152,7 +152,7 @@ export const PreviewLoadingContent = ({
 export const PreviewFallbackCard = ({
   icon: Icon,
   name,
-  title = 'Preview unavailable',
+  title,
   message,
   retryable = false,
   action
@@ -164,6 +164,8 @@ export const PreviewFallbackCard = ({
   retryable?: boolean
   action?: React.ReactNode
 }): React.JSX.Element => {
+  const { t } = useLanguage()
+  const resolvedTitle = title ?? t('ws.previewUnavailable')
   const runtime = usePreviewRuntime()
 
   return (
@@ -176,7 +178,7 @@ export const PreviewFallbackCard = ({
           <Icon className="size-4" aria-hidden />
         </div>
         <div className="min-w-0 pt-px">
-          <div className="text-[12px] font-medium text-text-000">{title}</div>
+          <div className="text-[12px] font-medium text-text-000">{resolvedTitle}</div>
           <p className="mt-0.5 text-[10px] leading-4 text-text-300">{message}</p>
           {retryable && runtime ? (
             <Button
@@ -223,7 +225,7 @@ export const PreviewErrorCard = (props: {
     <PreviewFallbackCard
       icon={unavailable ? FileX : FileWarning}
       name={name}
-      title={unavailable ? 'File unavailable' : 'Preview unavailable'}
+      title={unavailable ? t('ws.fileUnavailable') : t('ws.previewUnavailable')}
       message={message}
       retryable
     />
@@ -239,6 +241,7 @@ export const PreviewUnsupportedContent = ({
   name: string
   source?: PreviewFileSource
 }): React.JSX.Element => {
+  const { t } = useLanguage()
   const runtime = usePreviewRuntime()
   const presentation = getFormatPresentation(runtime?.item.format ?? 'unknown', name)
 
@@ -250,10 +253,8 @@ export const PreviewUnsupportedContent = ({
       <div className="grid w-full max-w-[19rem] grid-cols-[2.25rem_minmax(0,1fr)] items-start gap-x-3">
         <PreviewFormatTile badge={presentation.badge} />
         <div className="min-w-0 pt-px">
-          <div className="text-[12px] font-medium text-text-000">Preview unavailable</div>
-          <p className="mt-0.5 text-[10px] leading-4 text-text-300">
-            This file type isn&apos;t supported for preview
-          </p>
+          <div className="text-[12px] font-medium text-text-000">{t('ws.previewUnavailable')}</div>
+          <p className="mt-0.5 text-[10px] leading-4 text-text-300">{t('ws.previewUnsupported')}</p>
           {source === 'local' ? (
             <LocalFileFallbackAction path={path} className="mt-3" />
           ) : (

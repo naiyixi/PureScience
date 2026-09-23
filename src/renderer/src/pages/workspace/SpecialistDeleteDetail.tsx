@@ -85,11 +85,13 @@ const SpecialistDeleteDetail = ({
             </span>
             {!profile.enabled ? (
               <span className="inline-flex items-center rounded-md border border-border bg-card px-1.5 py-0.5 text-[11px] text-muted-foreground">
-                Disabled
+                {t('specialist.disabled')}
               </span>
             ) : null}
           </div>
-          <div className="mt-1 text-xs text-muted-foreground">will be permanently removed</div>
+          <div className="mt-1 text-xs text-muted-foreground">
+            {t('specialist.removedPermanently')}
+          </div>
         </div>
       </div>
       {/* Fail-closed binding warning (design.md §10): bound conversations are NOT switched to Main
@@ -97,10 +99,8 @@ const SpecialistDeleteDetail = ({
       <div className="flex gap-2 rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-xs leading-relaxed">
         <AlertTriangle aria-hidden="true" className="mt-0.5 size-3.5 shrink-0 text-destructive" />
         <p className="text-foreground">
-          {t('ui.conversationsstillboundto')} <b>{profile.displayName ?? profile.name}</b> will
-          become <b>unavailable</b> and will <b>not</b> be switched to Main Agent automatically. For
-          each affected conversation you&apos;ll explicitly choose a new specialist or Main Agent
-          before it can send again.
+          {t('ui.conversationsstillboundto')} <b>{profile.displayName ?? profile.name}</b>{' '}
+          {t('specialist.boundNoticeUnavailable')} {t('specialist.boundNoticeChoose')}
         </p>
       </div>
     </div>

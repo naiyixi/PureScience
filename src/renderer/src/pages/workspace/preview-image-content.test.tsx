@@ -40,12 +40,12 @@ describe('PreviewUnsupportedContent', () => {
 
     const status = container.querySelector('[data-preview-status="unsupported"]')
     const description = Array.from(status?.querySelectorAll('p') ?? []).find((paragraph) =>
-      paragraph.textContent?.includes("This file type isn't supported for preview")
+      paragraph.textContent?.includes('This file type isn’t supported for preview')
     )
     const button = status?.querySelector<HTMLButtonElement>('button')
 
     expect(container.textContent).toContain('report.ppt')
-    expect(container.textContent).toContain("This file type isn't supported for preview")
+    expect(container.textContent).toContain('This file type isn’t supported for preview')
     expect(description?.parentElement?.contains(button ?? null)).toBe(true)
     expect(button?.dataset.variant).toBe('default')
     expect(button?.textContent).toBe('Download')

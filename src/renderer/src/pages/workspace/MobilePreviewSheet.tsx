@@ -23,9 +23,11 @@ const MobilePreviewSheet = ({ open, onClose }: MobilePreviewSheetProps): React.J
         >
           <div className="flex shrink-0 items-center gap-3 border-b border-border-200 px-4 py-2.5">
             <div className="h-1 w-10 rounded-full bg-border-300 md:hidden" aria-hidden="true" />
-            <Dialog.Title className="min-w-0 flex-1 text-sm font-semibold">Preview</Dialog.Title>
+            <Dialog.Title className="min-w-0 flex-1 text-sm font-semibold">
+              {t('ws.previewSheetTitle')}
+            </Dialog.Title>
             <Dialog.Description className="sr-only">
-              Open files, generated artifacts, code, and notebooks.
+              {t('ws.previewSheetDescription')}
             </Dialog.Description>
             <Dialog.Close asChild>
               <button

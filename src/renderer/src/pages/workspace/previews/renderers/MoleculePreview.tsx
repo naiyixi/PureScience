@@ -67,7 +67,7 @@ const MoleculePreviewCanvas = ({
         renderError instanceof Error ? renderError.message : t('preview.moleculeRenderFailed')
       )
     }
-  }, [content, extension, svgId])
+  }, [content, extension, svgId, t])
 
   useEffect(() => {
     let canceled = false
