@@ -222,7 +222,7 @@ const ConnectorDetailView = ({
       {/* Details: third-party source(s) and terms. */}
       {detail.sources.length > 0 ? (
         <section className="mt-6 border-t border-border pt-4">
-          <h2 className="mb-1 text-sm font-semibold text-foreground">Details</h2>
+          <h2 className="mb-1 text-sm font-semibold text-foreground">{t('settings.details')}</h2>
           <DetailRow label={t('settings.thirdPartySoftware')}>
             <span className="text-foreground">{detail.sources.join(', ')}</span>
             {detail.termsUrl ? (

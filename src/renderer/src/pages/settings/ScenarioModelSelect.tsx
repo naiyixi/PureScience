@@ -43,6 +43,7 @@ const EffortSegments = ({
   followLabel: string
   onChange: (effort: ReasoningEffort) => void
 }): React.JSX.Element => {
+  const { t } = useLanguage()
   const control = resolveReasoningEffortControl(value, profile)
   const options = [
     { value: 'default' as const, label: followLabel },
@@ -55,7 +56,7 @@ const EffortSegments = ({
   return (
     <div
       role="radiogroup"
-      aria-label="reasoning effort"
+      aria-label={t('settings.reasoningEffort')}
       className="flex w-fit flex-wrap items-center gap-0.5 rounded-lg bg-muted p-0.5"
     >
       {options.map((option) => {

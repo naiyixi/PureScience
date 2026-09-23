@@ -75,7 +75,9 @@ export function ConnectorExportView({ id, onDone }: ConnectorExportViewProps): R
           </p>
         </div>
 
-        {loading ? <p className="text-xs text-muted-foreground">Preparing preview…</p> : null}
+        {loading ? (
+          <p className="text-xs text-muted-foreground">{t('settings.preparingPreview')}</p>
+        ) : null}
 
         {error ? (
           <div

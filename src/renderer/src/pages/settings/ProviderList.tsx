@@ -257,7 +257,9 @@ const ProviderList = ({
                       </Tooltip>
                     ) : null}
                     {isBusy ? (
-                      <span className="shrink-0 text-[10px] text-muted-foreground">Testing…</span>
+                      <span className="shrink-0 text-[10px] text-muted-foreground">
+                        {t('settings.testing')}
+                      </span>
                     ) : failure ? (
                       <Tooltip>
                         <TooltipTrigger asChild>

@@ -102,7 +102,9 @@ const SkillImportCandidatePreview = ({
 
                 {metadata.length > 0 ? (
                   <section className="mt-5 border-t border-border pt-4">
-                    <h2 className="mb-2 text-sm font-semibold text-foreground">Metadata</h2>
+                    <h2 className="mb-2 text-sm font-semibold text-foreground">
+                      {t('settings.metadata')}
+                    </h2>
                     <dl className="grid gap-x-5 gap-y-2 sm:grid-cols-2">
                       {metadata.map(([key, value]) => (
                         <div key={key} className="min-w-0">

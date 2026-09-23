@@ -186,7 +186,7 @@ describe('FileBrowserModal', () => {
       await Promise.resolve()
     })
 
-    expect(document.body.textContent).toContain("Couldn't open this path.")
+    expect(document.body.textContent).toContain('Couldn’t open this path.')
   })
 
   it('shows detail panel when a file is selected', async () => {

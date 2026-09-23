@@ -237,7 +237,9 @@ const StorageMigrationModal = ({
 
           {stage === 'confirm' ? (
             <>
-              <Dialog.Title className="text-sm font-semibold">Move app data?</Dialog.Title>
+              <Dialog.Title className="text-sm font-semibold">
+                {t('settings.moveDataTitle')}
+              </Dialog.Title>
               <Dialog.Description className="mt-1 text-xs text-muted-foreground">
                 {t('settings.moveInterruptsSessions')}
               </Dialog.Description>
@@ -261,7 +263,9 @@ const StorageMigrationModal = ({
 
           {stage === 'migrating' ? (
             <>
-              <Dialog.Title className="text-sm font-semibold">Moving app data…</Dialog.Title>
+              <Dialog.Title className="text-sm font-semibold">
+                {t('settings.moveDataBusy')}
+              </Dialog.Title>
               <Dialog.Description className="mt-1 text-xs text-muted-foreground">
                 {progress ? t(PHASE_LABELS[progress.phase]) : t('settings.preparing')}
               </Dialog.Description>
@@ -338,7 +342,9 @@ const StorageMigrationModal = ({
 
           {stage === 'committing' ? (
             <>
-              <Dialog.Title className="text-sm font-semibold">Switching over…</Dialog.Title>
+              <Dialog.Title className="text-sm font-semibold">
+                {t('settings.switchingOver')}
+              </Dialog.Title>
               <Dialog.Description className="mt-1 text-xs text-muted-foreground">
                 {t('settings.finishingRestart')}
               </Dialog.Description>

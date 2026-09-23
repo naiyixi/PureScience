@@ -802,7 +802,9 @@ const SpecialistEditor = ({
 
         {/* Capabilities */}
         <section className="border-t border-border pt-5">
-          <h3 className="mb-1 text-base font-semibold text-foreground">Capabilities</h3>
+          <h3 className="mb-1 text-base font-semibold text-foreground">
+            {t('settings.capabilities')}
+          </h3>
           <p className="mb-4 text-[13px] leading-5 text-muted-foreground">
             {t('settings.specialistCapabilitiesHint')}
             and unreachable in its sessions, even when enabled globally.
@@ -850,7 +852,7 @@ const SpecialistEditor = ({
 
           <div className="my-3 flex items-center gap-3" aria-hidden="true">
             <span className="h-px flex-1 bg-border" />
-            <span className="text-[11px] text-text-300">or choose specific capabilities</span>
+            <span className="text-[11px] text-text-300">{t('settings.capabilitiesHint')}</span>
             <span className="h-px flex-1 bg-border" />
           </div>
 
@@ -1147,7 +1149,7 @@ const SpecialistEditor = ({
             className="mt-4 flex items-start gap-3 rounded-lg border border-border bg-muted/50 p-3 text-sm"
           >
             <div className="min-w-0 flex-1">
-              <p className="font-semibold text-foreground">Someone else saved a newer version</p>
+              <p className="font-semibold text-foreground">{t('settings.newerVersionElsewhere')}</p>
               <p className="mt-0.5 text-xs text-muted-foreground">
                 Your local edits are preserved. Reload to get the latest version (your unsaved
                 changes will be discarded), or cancel and try again.

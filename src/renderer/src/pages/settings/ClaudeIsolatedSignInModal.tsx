@@ -160,7 +160,9 @@ const ClaudeIsolatedSignInModalBody = ({
               they must run would be misleading — hide it and drop the now-orphaned "Step" numbering. */}
           {browserSignInPending ? null : (
             <div className="space-y-1.5">
-              <span className="text-xs font-medium text-muted-foreground">Step 1 · Run</span>
+              <span className="text-xs font-medium text-muted-foreground">
+                {t('settings.step1Run')}
+              </span>
               <div className="flex items-center gap-2">
                 <code className="flex-1 truncate rounded-md border border-border bg-muted/40 px-2 py-1 font-mono text-xs">
                   {SETUP_TOKEN_COMMAND}
@@ -190,9 +192,7 @@ const ClaudeIsolatedSignInModalBody = ({
 
           <div className="space-y-1.5">
             <label className="text-xs font-medium" htmlFor="claude-setup-token-input">
-              {browserSignInPending
-                ? t('settings.pasteSetupToken')
-                : 'Step 2 · Paste the token printed by setup-token'}
+              {browserSignInPending ? t('settings.pasteSetupToken') : t('settings.step2Paste')}
             </label>
             <Input
               id="claude-setup-token-input"

@@ -228,7 +228,9 @@ export function ComputePanel({ onNavigate }: ComputePanelProps): React.JSX.Eleme
             Couldn&apos;t load hosts: {loadError}
           </p>
         ) : !isLoaded ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">Loading hosts…</p>
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            {t('settings.loadingHosts')}
+          </p>
         ) : hosts.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">
             {t('settings.noSshHostsYet')}

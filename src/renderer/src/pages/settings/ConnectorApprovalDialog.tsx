@@ -68,7 +68,9 @@ export function ConnectorApprovalDialog(): React.JSX.Element | null {
 
           <div className="mt-3 space-y-1.5 rounded-lg border border-border bg-muted/40 p-3 text-xs">
             <div className="flex gap-2">
-              <span className="w-16 shrink-0 text-muted-foreground">Connector</span>
+              <span className="w-16 shrink-0 text-muted-foreground">
+                {t('settings.connectorLabel')}
+              </span>
               <span className="min-w-0 truncate font-medium text-foreground">{displayName}</span>
             </div>
             <div className="flex gap-2">

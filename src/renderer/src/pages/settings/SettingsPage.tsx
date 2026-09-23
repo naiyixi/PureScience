@@ -824,7 +824,7 @@ const SettingsPage = forwardRef<SettingsPageHandle, SettingsPageProps>(function 
           )}
         >
           {/* Radix requires a Title/Description for a11y; the visible panel title lives in the header. */}
-          <Dialog.Title className="sr-only">Settings</Dialog.Title>
+          <Dialog.Title className="sr-only">{t('common.settings')}</Dialog.Title>
           <Dialog.Description className="sr-only">
             {t('settingsPage.runtimeHint')}
           </Dialog.Description>
@@ -840,7 +840,7 @@ const SettingsPage = forwardRef<SettingsPageHandle, SettingsPageProps>(function 
 
           {/* Left navigation becomes an off-canvas drawer on narrow browser screens. */}
           <nav
-            aria-label="Settings"
+            aria-label={t('common.settings')}
             aria-hidden={isMobile && !isMobileNavOpen ? true : undefined}
             inert={isMobile && !isMobileNavOpen ? true : undefined}
             className={cn(
@@ -990,7 +990,7 @@ const SettingsPage = forwardRef<SettingsPageHandle, SettingsPageProps>(function 
                         size="icon-sm"
                         onClick={goBack}
                         disabled={!canGoBack}
-                        aria-label="Back"
+                        aria-label={t('common.back')}
                         className="shrink-0 rounded-lg text-muted-foreground disabled:opacity-40"
                       >
                         <ArrowLeft className="size-4" aria-hidden="true" />

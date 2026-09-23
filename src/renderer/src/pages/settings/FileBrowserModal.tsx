@@ -203,7 +203,7 @@ function DetailPanel({
     <div className="flex w-52 shrink-0 flex-col border-l border-border">
       <div className="flex items-center justify-between border-b border-border px-3 py-2">
         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-          Details
+          {t('settings.details')}
         </span>
         <button
           type="button"
@@ -811,7 +811,7 @@ export function FileBrowserModal({
                   className="m-2 flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive"
                 >
                   <div className="flex-1">
-                    <p className="font-semibold">Couldn&apos;t open this path.</p>
+                    <p className="font-semibold">{t('settings.pathOpenFailed')}</p>
                     <p className="mt-0.5 text-muted-foreground">{browserState.detail}</p>
                   </div>
                   <div className="flex gap-1.5">
@@ -860,7 +860,7 @@ export function FileBrowserModal({
                   <div className="grid grid-cols-[1fr_80px_80px] border-b border-border bg-muted/30 px-3 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">
                     <span>{t('common.name')}</span>
                     <span className="text-right">Size</span>
-                    <span className="text-right">Modified</span>
+                    <span className="text-right">{t('settings.modified')}</span>
                   </div>
                   {listing?.entries.length === 0 && (
                     <p className="py-6 text-center text-xs text-muted-foreground">

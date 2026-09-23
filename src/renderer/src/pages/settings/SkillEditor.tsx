@@ -252,7 +252,9 @@ const SkillEditor = ({ initial, onCancel, onSave }: SkillEditorProps): React.JSX
                 )}
               </label>
               <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium text-foreground">Description</span>
+                <span className="text-sm font-medium text-foreground">
+                  {t('settings.description')}
+                </span>
                 <Textarea
                   aria-label={t('settings.skillDescription')}
                   value={description}

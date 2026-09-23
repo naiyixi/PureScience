@@ -138,7 +138,7 @@ export function ComputeAddForm({ onCreated, onCancel }: ComputeAddFormProps): Re
             id="compute-alias"
             value={alias}
             onChange={(event) => setAlias(event.target.value)}
-            placeholder="例如：biowulf、lab-gpu、coder.myworkspace"
+            placeholder={t('settings.hostNameExample')}
           />
         </div>
 

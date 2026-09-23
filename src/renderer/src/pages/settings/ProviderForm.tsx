@@ -351,11 +351,12 @@ const ProviderForm = ({
           </div>
           <div className="space-y-1.5">
             <label className={fieldLabelClassName} htmlFor="provider-model">
-              Model <span className="text-muted-foreground">(optional override)</span>
+              {t('settings.model')}{' '}
+              <span className="text-muted-foreground">{t('settings.optionalOverride')}</span>
             </label>
             <Input
               id="provider-model"
-              aria-label="Model"
+              aria-label={t('settings.model')}
               value={value.model}
               disabled={disabled}
               placeholder={t('settings.leaveBlankForDefault')}
@@ -552,7 +553,7 @@ const ProviderForm = ({
             </label>
             <Input
               id="provider-model"
-              aria-label="Model"
+              aria-label={t('settings.model')}
               value={value.model}
               disabled={disabled}
               placeholder="claude-sonnet-4-5"
@@ -638,7 +639,7 @@ const ProviderForm = ({
         <>
           {vendor?.regions ? (
             <div className="space-y-1.5">
-              <span className={fieldLabelClassName}>Endpoint</span>
+              <span className={fieldLabelClassName}>{t('settings.endpoint')}</span>
               <Select
                 value={value.region ?? vendor.regions[0]?.id}
                 onValueChange={(region) => onChange({ region })}
@@ -705,11 +706,12 @@ const ProviderForm = ({
       ) : (
         <div className="space-y-1.5">
           <label className={fieldLabelClassName} htmlFor="provider-model">
-            Model <span className="text-muted-foreground">(optional override)</span>
+            {t('settings.model')}{' '}
+            <span className="text-muted-foreground">{t('settings.optionalOverride')}</span>
           </label>
           <Input
             id="provider-model"
-            aria-label="Model"
+            aria-label={t('settings.model')}
             value={value.model}
             disabled={disabled}
             placeholder={t('settings.leaveBlankForDefault')}
