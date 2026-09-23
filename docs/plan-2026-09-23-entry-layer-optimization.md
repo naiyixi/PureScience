@@ -337,3 +337,22 @@
 - **真机实测（假 agent 日志为证）**：点击「继续」→ 日志出现新进程 `initialize` + **`session.resume e2e-session-1`**（这正是界面点击触发的）→ 会话行转为 `Session status: Idle`、横幅消失（`markResumed` 生效）。
 - **仍不通的地方（换了形态）**：日志止于 `session.resume`，**没有任何 continuation 提示到达 agent**；界面上**也没有任何拒绝提示**（既非第八次那条守卫拒绝，也非新加的 contextReset 分支）。也就是说主进程那条继续请求**静默返回、不发也不报**——这是与先前"被拒"不同的失败形态。
 - **下一步**：给主进程 `continueInterruptedTurn` 加临时候选分支日志（或查它依赖的 live prompt / Conversation Branch 前置条件），确认它从哪一个 early return 走掉；spec 保持 fixme 挂账。
+
+### U13：第十二次实测 —— **继续请求已完整送达 agent**（先前被拒/静默的问题解除），剩回复呈现
+- **根因（探针直接测出，非推测）**：点击前后各读一次落盘会话 →
+  - 点击前：`status: error`，`resumeRecovery: {cause:'app-restart', kind:'resume-required', promptMessageId:'message-…-3'}`（指向被打断的那条 user 消息 ✓）
+  - 点击后：`status: idle`，**`resumeRecovery` 消失** → 主进程守卫读不到记录 → 抛错；而横幅已被清掉，**报错无处渲染**，所以表现为"静默"。
+  - 即：`markResumed` 的落盘会把 `resumeRecovery` 抹掉，**次序错了**——不能在请主进程续之前清状态。
+- **修复**：`reattachInterruptedWorkspaceSession` 只负责"接上"，**不再清中断状态**；它把 `frameworkId/backendId` 交回调用方，由各自在**自己的动作被接受之后**再清——Resume 接上后清（原行为不变），Continue **等继续请求返回之后再清**。
+- **验证**：typecheck 0、eslint 0；运行时/面板/工作区/store 四套件 **317 passed**。
+- **真机实测（第十二次，假 agent 日志为证）**：
+  ```
+  pid=54382 initialize
+  pid=54382 session.resume e2e-session-1                                    ← 界面点击触发的重挂
+  pid=54382 interrupted prompt pid=54382 marker=true at …interrupted-turn-e2e-session-1
+  pid=54382 session.prompt e2e-session-1: Continue the interrupted turn from where it stopped. Do not repeat completed work or compl…
+  pid=54382 session.new -> e2e-session-1                                    ← 继续之后应用又挂了一个同名 agent 会话
+  ```
+  即**第八次那条守卫拒绝与第十一次的静默丢弃都已解除，继续请求真正到达并驱动了 agent**。
+- **仍差最后一步（已缩到"回复呈现"）**：agent 按设计回了 `The interrupted turn continued from where it stopped.`（`fake-opencode.mjs:310` 与 spec 期待同文），但会话里看不到它 → 断言（spec:171）失败。日志里续答提示之后紧跟 `session.new -> e2e-session-1`，**疑似继续之后应用又接了一个 agent 会话**，回复落到了应用不再读的会话上。
+- **下一步（方法已定）**：给假 agent 的**回复**也加日志（现在只有请求日志，无法区分"agent 没答"与"答了没呈现"），据此锁定回复落在哪个会话；spec 保持 fixme 挂账。

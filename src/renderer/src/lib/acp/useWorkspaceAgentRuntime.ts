@@ -22,7 +22,7 @@ import {
   type UploadedAttachment
 } from '../../../../shared/uploads'
 import type { FileReference } from '../../../../shared/artifacts'
-import type { MessagePart } from '../../../../shared/session-persistence'
+import type { MessagePart, PersistedChatSession } from '../../../../shared/session-persistence'
 import { getActiveConversationContext } from '../../../../shared/conversation-graph'
 import type { AgentFrameworkId } from '../../../../shared/settings'
 import { resolveModelContextWindow } from '../../../../shared/provider-registry'
@@ -1406,7 +1406,15 @@ const restoreRemovedTurnProjection = (
 const reattachInterruptedWorkspaceSession = async (
   runtime: WorkspaceMessageRuntime,
   sessionId: string
-): Promise<{ contextReset: boolean; cwd: string } | undefined> => {
+): Promise<
+  | {
+      contextReset: boolean
+      cwd: string
+      frameworkId?: NonNullable<PersistedChatSession['agentFrameworkId']>
+      backendId?: NonNullable<PersistedChatSession['agentBackendId']>
+    }
+  | undefined
+> => {
   const session = useSessionStore.getState().sessions.find((item) => item.id === sessionId)
 
   if (!session) return undefined
@@ -1435,10 +1443,16 @@ const reattachInterruptedWorkspaceSession = async (
     )
     // Adopting a fresh agent session (framework switch, or an unresumable restart) wipes the agent's
     // context; the caller decides what to do about that — Resume replays the transcript, Continue cannot.
-    useSessionStore
-      .getState()
-      .markResumed(sessionId, resumeResult?.frameworkId, resumeResult?.backendId)
-    return { contextReset: Boolean(resumeResult?.contextReset), cwd: resumeCwd }
+    // Deliberately does NOT clear the interrupted state: that drops the recovery record from the persisted
+    // session, and main refuses to continue a turn whose record is gone (measured — the record is present
+    // before the click and absent after, with nothing sent). Each caller clears it when its own work is
+    // accepted.
+    return {
+      backendId: resumeResult?.backendId,
+      contextReset: Boolean(resumeResult?.contextReset),
+      cwd: resumeCwd,
+      frameworkId: resumeResult?.frameworkId
+    }
   } catch (error) {
     useSessionStore.getState().failRun(sessionId, getResumeFailureMessage(error))
     return undefined
@@ -1476,7 +1490,7 @@ const resumeInterruptedWorkspaceSession = async (
   const attached = await reattachInterruptedWorkspaceSession(runtime, sessionId)
   if (!attached) return
 
-  if (runtimeAlreadyAttached) useSessionStore.getState().markResumed(sessionId)
+  useSessionStore.getState().markResumed(sessionId, attached.frameworkId, attached.backendId)
 
   const resumeCwd = attached.cwd
   const contextReset = attached.contextReset
@@ -2216,8 +2230,9 @@ const useWorkspaceAgentRuntime = (): {
         promptMessageId: interruptedTurn.id
       })
 
-      // The continuation is running, so the banner's reason to exist is gone.
-      useSessionStore.getState().markResumed(sessionId)
+      // Only now: the interrupted state carries the recovery record main just used, and clearing it
+      // earlier erased that record before the request arrived.
+      useSessionStore.getState().markResumed(sessionId, attached.frameworkId, attached.backendId)
     },
     [runtime]
   )
