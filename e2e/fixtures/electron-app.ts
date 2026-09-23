@@ -117,9 +117,10 @@ const launchEnvironment = (
   }
 
   environment.PURESCIENCE_STORAGE_ROOT = storageRoot
-  if (environment.PURESCIENCE_E2E_EXECUTABLE) {
-    environment.PURESCIENCE_E2E_STORAGE_ROOT = storageRoot
-  }
+  // The data root is derived from the E2E root, not from the config root: without this a development run
+  // derives its data root from HOME, so a certification spec reads and writes the developer's real
+  // ~/PureScience-DEV and can fail on one machine while passing on CI. Set it for every run.
+  environment.PURESCIENCE_E2E_STORAGE_ROOT = storageRoot
   if (fakeRemoteItRoot) {
     environment.PURESCIENCE_FAKE_REMOTEIT_STATE = join(storageRoot, 'fake-remoteit-state.json')
     environment.PURESCIENCE_REMOTEIT_BIN = process.execPath

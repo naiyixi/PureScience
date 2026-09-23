@@ -512,6 +512,7 @@ export const en: Record<ZhKey, string> = {
   'workspace.archive': 'Archive',
   'workspace.downloadSessionArtifacts': 'Download session artifacts',
   'workspace.viewPlan': 'View plan',
+  'workspace.sendOptions': 'Send options',
   'workspace.moreSendOptions': 'More send options',
   'workspace.askAnything': 'Ask anything',
   'workspace.runCodePlaceholder': 'run code in this kernel...',

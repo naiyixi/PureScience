@@ -931,6 +931,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'workspace.hostUnreachable': '호스트에 연결할 수 없음',
   'workspace.listView': '목록 보기',
   'workspace.loadMoreSessions': '세션 더 불러오기',
+  'workspace.sendOptions': '보내기 옵션',
   'workspace.moreSendOptions': '전송 옵션 더 보기',
   'workspace.nav': '작업 영역 탐색',
   'workspace.newConversation': '새 대화',

@@ -275,3 +275,19 @@
 **验收**：面板 10 处 + 启动器 10 处 + 共享层 23 处全部入字典，**43 key × 9 语**；共享层测试改为注入真 `en` 字典的 `t`，断言读的正是用户看到的英文句子（`OmicsPreviewPanel.render.test.tsx`、`OmicsPreviewLauncher.render.test.tsx`、`omics-preview.test.ts`、`omics-full-run.test.ts` 的中文断言全部改英文）。**安全性语气未弱化**：`omics.provisionalWarning` 仍是「不得作为最终结论交付」，`omics.selectHostFirst` 仍要求「如实说明未计算、不得用预览数值替代」。
 
 **i18n 质量门又拦下两处**：zh「该文件」被判机翻腔标记词（→「这个文件」）；fr `variants` 与英文同形（→ `variantes`）。
+
+## 2026-09-23 收尾记录（迁移缺陷按建议执行 + U13 干净实测 + 一处无障碍缺陷）
+
+### 迁移缺陷：按建议执行（1a 隔离 + 1b 点名）
+- **1a 根因坐实**：`e2e/fixtures/electron-app.ts` 只在 `PURESCIENCE_E2E_EXECUTABLE` 存在时才设 `PURESCIENCE_E2E_STORAGE_ROOT`，而数据根是从它派生的（`src/main/storage-root.ts`：`defaultDataParent()` 先读 E2E 根、否则回落 `app.getPath('home')`）。因此**开发态跑 e2e 时数据根是开发者真实 `~/PureScience-DEV`**，配置根才是隔离的——这就是「本机红、CI 绿」的机制，也解释了隔离实例里为何能列出真实 `~/PureScience-DEV/runtime/envs/*`（U10 探针同形第二处）。**改动**：夹具对每次运行都设 `PURESCIENCE_E2E_STORAGE_ROOT`（不再只针对打包认证）。
+- **1b 落点与改法**：`src/main/storage/provenance-migration-validation.ts:164` 原文只报 `Notebook Environment manifest checksum mismatch: <checksum>`，不说差在哪。改为**仍 fail-closed**，但点名条目与双方摘要：清单相对路径、磁盘实际摘要、以及引用它的 notebook run 与 `项目/会话`；上层 `migration-service.ts:423` 会把它拼成 `Could not verify provenance data: …` 呈现给用户，因此用户能看见该修哪一条。
+- **验证**：`provenance-migration-validation.test.ts` + `migration-service.test.ts` **96 passed**；typecheck 0；eslint 0。
+
+### U13：干净条件下的第四次实测（结论变了）
+- 重启成功、项目可打开，但工作区会话列表显示 **`No conversations yet`**（快照原文）。
+- 结论：**唯一那个"永不结束"的回合没被持久化**——会话要有已完成的回合才会被写下来。因此本夹具的造法（只发一次、那一发就一直挂着）**测不到横幅**，不是应用的问题。可续回合的真实可达路径是：会话已有一个完成回合 → 之后的某个回合被打断。
+- 下一步（未做）：夹具改成"第一发正常作答、第二发挂住"，spec 相应发两次。
+
+### 无障碍缺陷（顺手修，实机快照抓到）
+- `src/renderer/src/pages/workspace/ConversationPanel.tsx:1191` 写成 `aria-label="{t('workspace.sendMessage')} options"`——**引号让 `t()` 从未求值**，模板字面量原样进了无障碍树（快照里可见 `group "{t('workspace.sendMessage'')} options"`）。改为新增 `workspace.sendOptions`（9 语）并直接求值。
+- **验证**：i18n **47 passed**；typecheck 0；eslint 0。

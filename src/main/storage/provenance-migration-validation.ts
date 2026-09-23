@@ -161,8 +161,15 @@ const validateReferencedEnvironmentManifests = async (
           'environment-manifests',
           `${checksum}.json`
         )
-        if ((await sha256File(manifestPath)) !== checksum) {
-          throw new Error(`Notebook Environment manifest checksum mismatch: ${checksum}`)
+        const recordedDigest = await sha256File(manifestPath)
+        if (recordedDigest !== checksum) {
+          // Fail closed either way, but name the entry and both digests: this run and the manifest it points
+          // at disagree, and whoever repairs the root has to see which of the two is wrong.
+          throw new Error(
+            `Notebook Environment manifest checksum mismatch: ${checksum} ` +
+              `(runtime/provenance/environment-manifests/${checksum}.json holds ${recordedDigest}), ` +
+              `referenced by notebook run ${String(run.runId ?? '')} in ${project.name}/${session.name}`
+          )
         }
         validated.add(checksum)
       }

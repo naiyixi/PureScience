@@ -972,6 +972,7 @@ export const de: Partial<Record<ZhKey, string>> = {
   'workspace.hostUnreachable': 'Host nicht erreichbar',
   'workspace.listView': 'Listenansicht',
   'workspace.loadMoreSessions': 'Weitere Sitzungen laden',
+  'workspace.sendOptions': 'Sendeoptionen',
   'workspace.moreSendOptions': 'Weitere Sendeoptionen',
   'workspace.nav': 'Arbeitsbereichsnavigation',
   'workspace.newConversation': 'Neue Konversation',

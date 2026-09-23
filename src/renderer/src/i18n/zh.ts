@@ -490,6 +490,7 @@ export const zh = {
   'workspace.archive': '归档',
   'workspace.downloadSessionArtifacts': '下载会话产物',
   'workspace.viewPlan': '查看计划',
+  'workspace.sendOptions': '发送选项',
   'workspace.moreSendOptions': '更多发送选项',
   'workspace.askAnything': '随便问问',
   'workspace.runCodePlaceholder': '在此内核中运行代码…',

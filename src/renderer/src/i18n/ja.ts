@@ -941,6 +941,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'workspace.hostUnreachable': 'ホストに到達できません',
   'workspace.listView': 'リストビュー',
   'workspace.loadMoreSessions': 'セッションをさらに読み込む',
+  'workspace.sendOptions': '送信オプション',
   'workspace.moreSendOptions': 'その他の送信オプション',
   'workspace.nav': 'ワークスペースナビゲーション',
   'workspace.newConversation': '新しい会話',

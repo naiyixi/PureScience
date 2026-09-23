@@ -24,6 +24,13 @@ const CONTINUED_REPLY = 'The interrupted turn continued from where it stopped.'
 //     Every run then died inside onboarding with 'Target page, context or browser has been closed', while
 //     a neighbouring spec that reassigns both passes in 13s. The helpers' return values are used below.
 //
+//   * Fourth measurement, clean conditions (no daemon, bookmarks dialog no longer clicked): the restart
+//     succeeds and the project opens, and the workspace then shows its session list with 'No conversations
+//     yet'. Nothing was left to continue because nothing was ever written down: this fixture's only turn is
+//     the one that never finishes, and a session whose single turn never completed is not persisted. So the
+//     fixture is wrong for this acceptance, not the app — an interrupted turn is reachable when a session
+//     that already has a completed turn is interrupted inside a later one. The fake agent answers the first
+//     send and hangs on the second; this spec has to do the same two sends.
 //   * Third measurement, with the window bug fixed and the restart shape in place: onboarding, the prompt,
 //     the in-flight composer and the restart all succeed. Reaching the session then failed because of this
 //     spec, not the app: clicking the sidebar's 'Sessions and bookmarks' control opens the Session bookmarks
@@ -35,7 +42,7 @@ const CONTINUED_REPLY = 'The interrupted turn continued from where it stopped.'
 // So the shape to establish is: the turn is left open, the app is restarted (which is when a session with
 // an unfinished turn is restored as interrupted), the session is opened, and Continue is expected to hand
 // the same turn back to the agent without producing a second copy of the message.
-test.fixme('a turn that was interrupted is continued, not sent again', async ({ app }) => {
+test('a turn that was interrupted is continued, not sent again', async ({ app }) => {
   let page = await app.completeOnboarding()
   page = await app.configureFakeAgent()
   await createProject(page, 'Interrupted turn')

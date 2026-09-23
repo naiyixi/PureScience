@@ -944,6 +944,7 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'workspace.hostUnreachable': 'Хост недоступен',
   'workspace.listView': 'Списком',
   'workspace.loadMoreSessions': 'Загрузить ещё сессии',
+  'workspace.sendOptions': 'Параметры отправки',
   'workspace.moreSendOptions': 'Другие параметры отправки',
   'workspace.nav': 'Навигация по рабочему пространству',
   'workspace.newConversation': 'Новый диалог',

@@ -892,6 +892,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'workspace.hostUnreachable': '主機無法連線',
   'workspace.listView': '清單檢視',
   'workspace.loadMoreSessions': '載入更多對話',
+  'workspace.sendOptions': '傳送選項',
   'workspace.moreSendOptions': '更多傳送選項',
   'workspace.nav': '工作區導覽',
   'workspace.newConversation': '新對話',

@@ -957,6 +957,7 @@ export const es: Partial<Record<ZhKey, string>> = {
   'workspace.hostUnreachable': 'Host inaccesible',
   'workspace.listView': 'Vista de lista',
   'workspace.loadMoreSessions': 'Cargar más sesiones',
+  'workspace.sendOptions': 'Opciones de envío',
   'workspace.moreSendOptions': 'Más opciones de envío',
   'workspace.nav': 'Navegación del espacio de trabajo',
   'workspace.newConversation': 'Nueva conversación',

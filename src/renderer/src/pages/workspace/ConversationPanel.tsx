@@ -1188,7 +1188,7 @@ const ConversationPanel = ({
                             <TooltipProvider delayDuration={200}>
                               <div
                                 role="group"
-                                aria-label="{t('workspace.sendMessage')} options"
+                                aria-label={t('workspace.sendOptions')}
                                 className={cn(
                                   'flex rounded-md bg-primary text-primary-foreground [@media(pointer:coarse)]:mx-3',
                                   !canSendMessage && 'opacity-50'
