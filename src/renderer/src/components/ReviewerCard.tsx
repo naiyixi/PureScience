@@ -279,7 +279,7 @@ export const ReviewerCard = ({
         aria-expanded={canExpand ? expanded : undefined}
       >
         {statusIcon}
-        <span className="font-medium text-text-200">Reviewer</span>
+        <span className="font-medium text-text-200">{t('reviewer.label')}</span>
         <span className="mx-1 text-text-400">&middot;</span>
         <span
           className={cn(
@@ -302,7 +302,9 @@ export const ReviewerCard = ({
         {isCapReached && (
           <>
             <span className="mx-1 text-text-400">&middot;</span>
-            <span className="text-yellow-600 dark:text-yellow-400">fix limit reached</span>
+            <span className="text-yellow-600 dark:text-yellow-400">
+              {t('reviewer.fixLimitReached')}
+            </span>
           </>
         )}
         {canExpand && (

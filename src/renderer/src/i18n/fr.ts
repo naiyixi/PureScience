@@ -2795,6 +2795,11 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'specialist.boundNoticeChoose':
     'Pour chaque conversation concernée, vous choisirez explicitement un nouveau spécialiste ou l’agent principal avant qu’elle puisse envoyer à nouveau.',
   'preview.provenance': 'Traçabilité',
+  'reviewer.label': 'Relecteur',
+  'reviewer.fixLimitReached': 'limite de corrections atteinte',
+  'references.detachPdf': 'Détacher le PDF',
+  'references.attachPdf': 'Joindre un PDF',
+  'preview.zoomLevel': 'Niveau de zoom',
   'preview.openProvenanceFor': 'Ouvrir la provenance de {name}',
   'artifact.loadingProvenance': 'Chargement de la traçabilité',
   'artifact.reconstructionPrefix': 'Reconstruction générée par LLM · voir ',

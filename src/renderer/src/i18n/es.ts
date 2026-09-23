@@ -2775,6 +2775,11 @@ export const es: Partial<Record<ZhKey, string>> = {
   'specialist.boundNoticeChoose':
     'En cada conversación afectada elegirás explícitamente un nuevo especialista o el agente principal antes de poder enviar de nuevo.',
   'preview.provenance': 'Procedencia',
+  'reviewer.label': 'Revisor',
+  'reviewer.fixLimitReached': 'límite de correcciones alcanzado',
+  'references.detachPdf': 'Desvincular PDF',
+  'references.attachPdf': 'Adjuntar PDF',
+  'preview.zoomLevel': 'Nivel de zoom',
   'preview.openProvenanceFor': 'Abrir la procedencia de {name}',
   'artifact.loadingProvenance': 'Cargando la procedencia',
   'artifact.reconstructionPrefix': 'Reconstrucción generada por LLM · ver ',

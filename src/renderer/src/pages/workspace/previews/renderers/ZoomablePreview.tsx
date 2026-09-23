@@ -1,3 +1,4 @@
+import { useLanguage } from '@/i18n'
 import { useState } from 'react'
 import { Shrink, ZoomIn, ZoomOut } from 'lucide-react'
 import {
@@ -14,6 +15,7 @@ const prefersReducedMotion = (): boolean =>
   window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
 
 const PreviewZoomControls = ({ reduceMotion }: { reduceMotion: boolean }): React.JSX.Element => {
+  const { t } = useLanguage()
   const { zoomIn, zoomOut, resetTransform } = useControls()
   const [scalePercent, setScalePercent] = useState(100)
   useTransformEffect(({ state }) => {
@@ -35,7 +37,7 @@ const PreviewZoomControls = ({ reduceMotion }: { reduceMotion: boolean }): React
       <div className="absolute bottom-3 right-3 z-10 flex items-center gap-1 rounded-md border border-border-300/50 bg-bg-000/90 p-1 shadow-sm backdrop-blur">
         <span
           aria-live="polite"
-          aria-label="Zoom level"
+          aria-label={t('preview.zoomLevel')}
           data-testid="zoom-level"
           className="px-1 text-[11px] tabular-nums text-text-100"
         >

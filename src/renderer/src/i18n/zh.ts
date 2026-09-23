@@ -265,6 +265,11 @@ export const zh = {
   'specialist.boundNoticeChoose':
     '每条受影响的会话都需要你明确选择新的专才或主 Agent，之后才能继续发送。',
   'preview.provenance': '溯源',
+  'reviewer.label': '复核员',
+  'reviewer.fixLimitReached': '已达修复次数上限',
+  'references.detachPdf': '解除 PDF',
+  'references.attachPdf': '挂载 PDF',
+  'preview.zoomLevel': '缩放级别',
   'preview.openProvenanceFor': '打开 {name} 的溯源',
   'artifact.loadingProvenance': '正在加载溯源',
   'artifact.reconstructionPrefix': '由 LLM 生成的重构 · 见 ',

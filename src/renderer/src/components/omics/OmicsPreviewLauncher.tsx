@@ -1,3 +1,4 @@
+import { useLanguage } from '@/i18n'
 import { useState } from 'react'
 import { FileJson, Upload } from 'lucide-react'
 
@@ -27,6 +28,7 @@ export function OmicsPreviewLauncher({
   onClose,
   className
 }: OmicsPreviewLauncherProps): React.JSX.Element {
+  const { t } = useLanguage()
   const [manifest, setManifest] = useState<OmicsPreviewManifest | null>(null)
   const [error, setError] = useState<string | undefined>(undefined)
 
@@ -88,7 +90,7 @@ export function OmicsPreviewLauncher({
             className="ml-auto text-xs text-[var(--muted-foreground)] underline"
             onClick={onClose}
           >
-            关闭
+            {t('common.close')}
           </button>
         ) : null}
       </div>

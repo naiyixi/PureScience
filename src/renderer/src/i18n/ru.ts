@@ -2740,6 +2740,11 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'specialist.boundNoticeChoose':
     'Для каждого затронутого диалога вам нужно явно выбрать нового специалиста или главный Agent, прежде чем он снова сможет отправлять сообщения.',
   'preview.provenance': 'Происхождение',
+  'reviewer.label': 'Рецензент',
+  'reviewer.fixLimitReached': 'достигнут предел исправлений',
+  'references.detachPdf': 'Отсоединить PDF',
+  'references.attachPdf': 'Прикрепить PDF',
+  'preview.zoomLevel': 'Масштаб',
   'preview.openProvenanceFor': 'Открыть происхождение {name}',
   'artifact.loadingProvenance': 'Загрузка происхождения',
   'artifact.reconstructionPrefix': 'Реконструкция, созданная LLM · см. ',

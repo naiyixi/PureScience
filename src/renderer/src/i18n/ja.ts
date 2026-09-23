@@ -2739,6 +2739,11 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'specialist.boundNoticeChoose':
     '影響を受ける各セッションでは、続けて送信する前に新しいスペシャリストかメインの Agent を明示的に選ぶ必要があります。',
   'preview.provenance': '来歴',
+  'reviewer.label': 'レビュアー',
+  'reviewer.fixLimitReached': '修正回数の上限に達しました',
+  'references.detachPdf': 'PDF を切り離す',
+  'references.attachPdf': 'PDF を添付',
+  'preview.zoomLevel': 'ズーム倍率',
   'preview.openProvenanceFor': '{name} の来歴を開く',
   'artifact.loadingProvenance': '来歴を読み込み中',
   'artifact.reconstructionPrefix': 'LLM が生成した再構築 · ',

@@ -178,7 +178,7 @@ const ReportErrorDialog = ({
                 variant="ghost"
                 size="icon-sm"
                 className={dialogCloseButtonClassName}
-                aria-label="Close"
+                aria-label={t('common.close')}
               >
                 <X className="size-4" aria-hidden="true" />
               </Button>

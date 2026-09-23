@@ -276,6 +276,11 @@ export const en: Record<ZhKey, string> = {
   'specialist.boundNoticeChoose':
     'For each affected conversation you’ll explicitly choose a new specialist or Main Agent before it can send again.',
   'preview.provenance': 'Provenance',
+  'reviewer.label': 'Reviewer',
+  'reviewer.fixLimitReached': 'fix limit reached',
+  'references.detachPdf': 'Detach PDF',
+  'references.attachPdf': 'Attach PDF',
+  'preview.zoomLevel': 'Zoom level',
   'preview.openProvenanceFor': 'Open Provenance for {name}',
   'artifact.loadingProvenance': 'Loading provenance',
   'artifact.reconstructionPrefix': 'LLM-generated reconstruction · see ',

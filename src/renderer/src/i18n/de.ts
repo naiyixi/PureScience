@@ -2809,6 +2809,11 @@ export const de: Partial<Record<ZhKey, string>> = {
   'specialist.boundNoticeChoose':
     'Für jede betroffene Konversation wählst du ausdrücklich einen neuen Spezialisten oder den Main Agent, bevor sie wieder senden kann.',
   'preview.provenance': 'Herkunft',
+  'reviewer.label': 'Prüfer',
+  'reviewer.fixLimitReached': 'Korrekturlimit erreicht',
+  'references.detachPdf': 'PDF trennen',
+  'references.attachPdf': 'PDF anhängen',
+  'preview.zoomLevel': 'Zoomstufe',
   'preview.openProvenanceFor': 'Herkunft von {name} öffnen',
   'artifact.loadingProvenance': 'Herkunft wird geladen',
   'artifact.reconstructionPrefix': 'LLM-erzeugte Rekonstruktion · siehe ',

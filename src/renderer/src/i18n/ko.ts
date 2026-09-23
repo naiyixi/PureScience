@@ -2681,6 +2681,11 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'specialist.boundNoticeChoose':
     '영향을 받는 각 세션에서는 다시 보내기 전에 새 전문가나 메인 Agent를 직접 선택해야 합니다.',
   'preview.provenance': '출처',
+  'reviewer.label': '리뷰어',
+  'reviewer.fixLimitReached': '수정 한도에 도달했습니다',
+  'references.detachPdf': 'PDF 분리',
+  'references.attachPdf': 'PDF 연결',
+  'preview.zoomLevel': '확대/축소 수준',
   'preview.openProvenanceFor': '{name}의 출처 열기',
   'artifact.loadingProvenance': '출처 불러오는 중',
   'artifact.reconstructionPrefix': 'LLM이 생성한 재구성 · ',

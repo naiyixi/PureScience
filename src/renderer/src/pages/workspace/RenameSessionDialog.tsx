@@ -71,7 +71,7 @@ const RenameSessionDialog = ({
                 type="button"
                 variant="ghost"
                 size="icon-sm"
-                aria-label="Close"
+                aria-label={t('common.close')}
                 className={dialogCloseButtonClassName}
                 onClick={onCancel}
               >

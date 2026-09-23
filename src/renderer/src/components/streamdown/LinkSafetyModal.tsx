@@ -141,7 +141,7 @@ const LinkSafetyModal = ({
               size="icon-sm"
               className={dialogCloseButtonClassName}
               onClick={closeModal}
-              aria-label="Close"
+              aria-label={t('common.close')}
             >
               <X className="size-4" strokeWidth={2} aria-hidden />
             </Button>

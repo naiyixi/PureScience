@@ -30,13 +30,14 @@ const THEME_OPTIONS: ThemeOption[] = [
 // Three-way segmented control for the Settings > Appearance section. The selected segment carries a
 // raised surface; the whole group is a radiogroup so it reads correctly to assistive tech.
 export const ThemeSegmentedControl = (): React.JSX.Element => {
+  const { t } = useLanguage()
   const preference = useThemeStore((state) => state.preference)
   const setPreference = useThemeStore((state) => state.setPreference)
 
   return (
     <div
       role="radiogroup"
-      aria-label="Theme"
+      aria-label={t('common.theme')}
       className="inline-flex items-center gap-1 rounded-lg border border-border bg-muted/50 p-1"
     >
       {THEME_OPTIONS.map(({ value, label, Icon }) => {

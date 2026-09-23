@@ -1021,7 +1021,7 @@ export function ReferencesLibraryDialog({
                                 PDF · {reference.pdfManagedFileId.slice(-8)}
                                 <button
                                   type="button"
-                                  title="解除 PDF"
+                                  title={t('references.detachPdf')}
                                   onClick={() => void handleDetachPdf(reference.id)}
                                 >
                                   <X className="size-3" aria-hidden="true" />
@@ -1031,7 +1031,7 @@ export function ReferencesLibraryDialog({
                               <button
                                 type="button"
                                 className={ghostClass}
-                                title="挂载 PDF"
+                                title={t('references.attachPdf')}
                                 onClick={() => {
                                   if (projectId) openPdfPicker(projectId, reference.id)
                                 }}

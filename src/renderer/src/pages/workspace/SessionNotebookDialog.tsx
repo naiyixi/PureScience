@@ -208,7 +208,7 @@ const SessionNotebookContent = ({
           type="button"
           onClick={onClose}
           className="-m-1 rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-          aria-label="Close"
+          aria-label={t('common.close')}
         >
           <X className="size-4" aria-hidden="true" />
         </button>

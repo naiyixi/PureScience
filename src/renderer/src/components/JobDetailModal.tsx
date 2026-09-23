@@ -363,7 +363,7 @@ export function JobDetailModal({
             <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
               <span className="text-[14px] font-semibold">{t('jobDetail.runningJobs')}</span>
               <Dialog.Close asChild>
-                <Button type="button" variant="ghost" size="icon-sm" aria-label="Close">
+                <Button type="button" variant="ghost" size="icon-sm" aria-label={t('common.close')}>
                   <X className="size-4" />
                 </Button>
               </Dialog.Close>

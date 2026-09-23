@@ -2535,6 +2535,11 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'specialist.boundNoticeChoose':
     '每條受影響的工作階段都需要你明確選擇新的專家或主 Agent，之後才能繼續傳送。',
   'preview.provenance': '溯源',
+  'reviewer.label': '複核員',
+  'reviewer.fixLimitReached': '已達修復次數上限',
+  'references.detachPdf': '解除 PDF',
+  'references.attachPdf': '掛載 PDF',
+  'preview.zoomLevel': '縮放層級',
   'preview.openProvenanceFor': '開啟 {name} 的溯源',
   'artifact.loadingProvenance': '正在載入溯源',
   'artifact.reconstructionPrefix': '由 LLM 生成的重構 · 見 ',
