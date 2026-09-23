@@ -200,7 +200,9 @@ const stubWindowApi = (): void => {
       getEnablement: vi.fn().mockResolvedValue({ enabled: {}, installAuthorized: {} }),
       setEnvironmentEnabled: vi.fn().mockResolvedValue({ enabled: {}, installAuthorized: {} }),
       registerInterpreter: vi.fn().mockResolvedValue([]),
-      pickInterpreter: vi.fn().mockResolvedValue(null)
+      pickInterpreter: vi.fn().mockResolvedValue(null),
+      // The panel also loads the persisted per-language selection, to mark the current runtime.
+      survey: vi.fn().mockResolvedValue([])
     }
   }
 }
