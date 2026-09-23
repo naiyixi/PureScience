@@ -126,7 +126,7 @@ const ReportErrorDialog = ({
         window.setTimeout(() => setCopied(false), 1500)
       })
       .catch(() => {
-        setRevealMessage('Could not write to clipboard.')
+        setRevealMessage(t('reportError.clipboardFailed'))
       })
   }
 
@@ -135,14 +135,14 @@ const ReportErrorDialog = ({
   // and the IPC call itself can reject — both surface inline rather than throwing (matches GeneralPanel).
   const handleRevealLog = async (): Promise<void> => {
     if (!window.api?.logs?.revealInFolder) {
-      setRevealMessage('Log reveal is not available in this environment.')
+      setRevealMessage(t('reportError.logRevealUnavailable'))
       return
     }
     try {
       const result = await window.api.logs.revealInFolder()
-      if (!result.revealed) setRevealMessage(result.error ?? 'Could not reveal the log file.')
+      if (!result.revealed) setRevealMessage(result.error ?? t('reportError.logRevealFailed'))
     } catch (error) {
-      setRevealMessage(error instanceof Error ? error.message : 'Could not reveal the log file.')
+      setRevealMessage(error instanceof Error ? error.message : t('reportError.logRevealFailed'))
     }
   }
 

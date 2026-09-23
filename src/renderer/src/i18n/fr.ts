@@ -735,6 +735,10 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'reportError.githubIssuePrefill': 'Préremplissage du problème GitHub',
   'reportError.reportThisError': 'Signaler cette erreur',
   'reportError.revealLogFile': 'Afficher le fichier journal',
+  'reportError.clipboardFailed': 'Impossible d’écrire dans le presse-papiers.',
+  'reportError.logRevealUnavailable':
+    'L’affichage du journal n’est pas disponible dans cet environnement.',
+  'reportError.logRevealFailed': 'Impossible d’afficher le fichier journal.',
   'reviewer.turnChanged': 'Le tour a changé après l’exécution de cette revue.',
   'runtimes.installedPackages': 'Paquets installés dans cet environnement.',
   'runtimes.noPackages': 'Aucun paquet installé.',

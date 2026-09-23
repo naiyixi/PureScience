@@ -210,6 +210,27 @@ describe('ReportErrorDialog', () => {
     expect(alert?.textContent).toContain('IPC channel closed')
   })
 
+  it('falls back to a translated message when the reveal failure carries no text', async () => {
+    ;(window as unknown as { api: { logs: { revealInFolder: () => Promise<unknown> } } }).api = {
+      // A rejection that is not an Error has no message of its own to show.
+      logs: { revealInFolder: vi.fn().mockRejectedValue('boom') }
+    } as never
+
+    renderDialog()
+
+    await act(async () => {
+      const revealBtn = Array.from(document.body.querySelectorAll('button')).find((b) =>
+        b.textContent?.includes('Reveal log file')
+      )
+      revealBtn?.click()
+      await Promise.resolve()
+    })
+
+    // Was a hardcoded English sentence inside the handler; now it comes from the dictionary.
+    const alert = document.body.querySelector('[role="alert"]')
+    expect(alert?.textContent).toContain('Could not reveal the log file.')
+  })
+
   it('revokes consent when a payload store field changes after consent', () => {
     renderDialog()
     act(() => {
