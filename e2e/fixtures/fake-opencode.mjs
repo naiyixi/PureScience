@@ -344,7 +344,7 @@ if (process.argv.includes('--version')) {
         reply = `E2E fixture failure: ${error instanceof Error ? error.message : String(error)}`
       }
 
-      const replyMessageId = `e2e-message-${nextMessageId++}`
+      const replyMessageId = `e2e-${process.pid}-message-${nextMessageId++}`
       await context.client.notify(acp.methods.client.session.update, {
         sessionId: context.params.sessionId,
         update: {

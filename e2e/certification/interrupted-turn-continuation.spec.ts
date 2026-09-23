@@ -1,3 +1,32 @@
+/*
+ * Continuing a turn the app interrupted — the action beside Resume in the interrupted banner.
+ *
+ * What this protects: an interruption that ends with the app closed and reopened leaves a session whose
+ * recorded turn can be continued where it stopped. The two actions differ and that difference is the point —
+ * Resume sends the message again as a new turn, Continue hands the recorded turn back so the agent carries on
+ * rather than starting over. The spec drives a turn, restarts the app while it is in flight, continues it, and
+ * then restarts once more to prove the continued answer was stored and not merely rendered.
+ *
+ * Reaching this took a long series of measurements against the running app; they are recorded in
+ * docs/plan-2026-09-23-entry-layer-optimization.md (U13). Three product defects were found and fixed on the
+ * way, none of which the code around them made visible:
+ *   1. The guard accepting a continuation required a recovery record nothing ever wrote, so the action could
+ *      not succeed for anyone; the record is now written when an interrupted session is restored.
+ *   2. The continuation asked main to pick a turn up without attaching a session first, and main refuses a
+ *      turn whose session it cannot find. The renderer now re-attaches the way Resume does — the request
+ *      type's own contextReset field says that was always the expectation.
+ *   3. Clearing the interrupted state writes the session back without that recovery record, so clearing it
+ *      before asking main to continue erased the record main was about to read; the state is now cleared only
+ *      once the request has been accepted (measured either side of the click: record present, then gone).
+ * A fourth, in the fixture alone, was the last thing between the answer and the assertion: the fixture agent
+ * restarted its message ids with the process, so its reply to the continued turn reused the id of the reply
+ * from before the restart, and the app discarded it as an already-complete message — which is why the agent
+ * had answered while the conversation showed nothing. Real agents issue unique ids and so does the fixture now.
+ *
+ * Run: npm run build:e2e first — Playwright loads out/main/index.js, so a stale build tests stale code — and
+ * unload the launch agent for the duration (see the plan document).
+ */
+
 import { readdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -140,7 +169,7 @@ test.beforeEach(async () => {
   }
 })
 
-test.fixme('a turn that was interrupted is continued, not sent again', async ({ app }) => {
+test('a turn that was interrupted is continued, not sent again', async ({ app }) => {
   // Two turns, a restart and a session opened from scratch: more than the default budget allows.
   test.setTimeout(300_000)
   let page = await app.completeOnboarding()

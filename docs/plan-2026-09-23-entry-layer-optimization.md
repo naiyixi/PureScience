@@ -42,6 +42,8 @@
 
 ## 批次 2（v1.71.0）半截功能补齐
 
+**收口（2026-09-23）**：U9–U13 全部完成，`package.json` 已置 **1.71.0**。五项入口各自带「优于有个入口」的差异化（U9 空合集分态、U10 来源三态 + 按规范路径删除、U11 活值开合、U12 mode/origin/verdict 不合并 + 字节级比对、U13 继续与恢复语义分写并实测通过 27.5s）。本批另修三处产品缺陷（守卫无人写恢复记录、继续不先重挂、清状态过早抹掉恢复记录）+ 一处夹具问题（消息 id 随进程重置）、迁移隔离与报错点名、无障碍字面量。门禁：typecheck 0、eslint 0、全量单测 14275 passed（1078 文件）、认证 e2e **串行** 15/15 全绿。
+
 | 单元 | 内容                                                                                                                                                                                                                                                                                     | 验收                                                                                                                                                                                                                |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | U9   | ✅ **收官** 文献合集删/移出（`references:delete-collection`、`references:remove-from-collection`）——后端与 preload 早已就绪，渲染层**零调用点**，合集只增不减；现已接上删除（两步确认，明说「条目仍留在库里」）、移出、选中空合集的专属空态，并修掉同行里反向硬编码的中文 `title="删除"` | 建合集 → 加入 → 移出 → 删除全程可点，删空后可再建同名 —— **真机 1 passed (6.1s)**，jsdom 4 用例                                                                                                                     |
@@ -279,26 +281,31 @@
 ## 2026-09-23 收尾记录（迁移缺陷按建议执行 + U13 干净实测 + 一处无障碍缺陷）
 
 ### 迁移缺陷：按建议执行（1a 隔离 + 1b 点名）
+
 - **1a 根因坐实**：`e2e/fixtures/electron-app.ts` 只在 `PURESCIENCE_E2E_EXECUTABLE` 存在时才设 `PURESCIENCE_E2E_STORAGE_ROOT`，而数据根是从它派生的（`src/main/storage-root.ts`：`defaultDataParent()` 先读 E2E 根、否则回落 `app.getPath('home')`）。因此**开发态跑 e2e 时数据根是开发者真实 `~/PureScience-DEV`**，配置根才是隔离的——这就是「本机红、CI 绿」的机制，也解释了隔离实例里为何能列出真实 `~/PureScience-DEV/runtime/envs/*`（U10 探针同形第二处）。**改动**：夹具对每次运行都设 `PURESCIENCE_E2E_STORAGE_ROOT`（不再只针对打包认证）。
 - **1b 落点与改法**：`src/main/storage/provenance-migration-validation.ts:164` 原文只报 `Notebook Environment manifest checksum mismatch: <checksum>`，不说差在哪。改为**仍 fail-closed**，但点名条目与双方摘要：清单相对路径、磁盘实际摘要、以及引用它的 notebook run 与 `项目/会话`；上层 `migration-service.ts:423` 会把它拼成 `Could not verify provenance data: …` 呈现给用户，因此用户能看见该修哪一条。
 - **验证**：`provenance-migration-validation.test.ts` + `migration-service.test.ts` **96 passed**；typecheck 0；eslint 0。
 
 ### U13：干净条件下的第四次实测（结论变了）
+
 - 重启成功、项目可打开，但工作区会话列表显示 **`No conversations yet`**（快照原文）。
 - 结论：**唯一那个"永不结束"的回合没被持久化**——会话要有已完成的回合才会被写下来。因此本夹具的造法（只发一次、那一发就一直挂着）**测不到横幅**，不是应用的问题。可续回合的真实可达路径是：会话已有一个完成回合 → 之后的某个回合被打断。
 - 下一步（未做）：夹具改成"第一发正常作答、第二发挂住"，spec 相应发两次。
 
 ### 无障碍缺陷（顺手修，实机快照抓到）
+
 - `src/renderer/src/pages/workspace/ConversationPanel.tsx:1191` 写成 `aria-label="{t('workspace.sendMessage')} options"`——**引号让 `t()` 从未求值**，模板字面量原样进了无障碍树（快照里可见 `group "{t('workspace.sendMessage'')} options"`）。改为新增 `workspace.sendOptions`（9 语）并直接求值。
 - **验证**：i18n **47 passed**；typecheck 0；eslint 0。
 
 ### U13：第五次实测（本轮自伤 + 一个可复用的结构事实）
+
 - 夹具已能造出**有完成回合的会话**（第一节答完并落盘，会话行显示 `Session status: Error Answer this turn before the interruption.`），第二发也进了会话——但 `Cancel run` 未出现。
 - 原因**在本轮的自伤**：我把「这一轮故意挂着」的记忆放进 `PURESCIENCE_FAKE_AGENT_STATE`，而**假 agent 拿不到应用的环境变量**——它的后端是用**配置里的 env** spawn 的（`src/main/acp/agent-connection-adapter.ts:179`），不是 `agent-process.ts:154` 那条继承 `process.env` 的路径。缺少该变量时我写的守卫直接抛错，于是第二发被应用记成 Error。
 - 已撤掉该守卫与那个变量；`interruptedTurnMarker` 现在**没有路径也不报错**，退化为进程内计数（够用在「运行内」形状，不够用在「跨重启」形状）。
 - **可复用结构事实**：给假 agent 传状态，必须走**它真正收到的通道**（配置 env／cwd），不能走应用的环境变量。
 
 ### U13：第七/八次实测 —— **横幅已在真机触达**（U13 的真机缺口从"够不着"变成"被主进程拒绝"）
+
 - 夹具现在能造出这条路径：第一节**答完**（落盘）→ 第二节**挂住**并留下半截回答（会话里显示 `Part of the answer arrived before the app went down.` + `Failed`）→ **回合在飞时重启**。
 - 为此先修了两件基础设施：
   - **`restart()` 必须有界**：`close()` 原本是无界的 `await application.close()`，回合一在飞就永久挂住（实测 284s 后测试超时）。现改为「优雅 10s → 强杀 10s」，与清理路径同一套预算。
@@ -310,17 +317,19 @@
 - **另需注意**：真机跑的是构建产物，本次源码里的 i18n 标签修复（`workspace.sendOptions`）**必须先 `npm run build:e2e` 才会进真机**；快照里仍见到旧的 `group "{t('workspace.sendMessage')} options"` 即为构建陈旧所致。
 
 ### U13：第九次实测 —— **修掉一个"永远不可能满足"的守卫**，拒绝理由前移
+
 - **发现（全仓 grep 级证据）**：`resumeRecovery.kind === 'resume-required'` 这个前置条件，全仓**只有类型定义**（`src/shared/session-persistence.ts:202`）与**要求它的守卫**（`src/main/acp/interrupted-turn-continuation.ts:48`）两处，**没有任何代码写它** → 该守卫恒真拒绝 → **"继续这一回合"这个动作对任何用户都不可能成功**。这正是本轮审计要抓的「有入口、有实现、但路径不通」。
 - **修法（按"在哪里第一次知道回合被打断"落点）**：在 `normalizeSessionAfterRestore` 里、把中断会话恢复成可重试错误的那一支，**写入** `resumeRecovery: { cause: 'app-restart', kind: 'resume-required', promptMessageId }`；`promptMessageId` 取"最后一条没有完成回复的 user 消息"，与渲染层 `findInterruptedUserTurn` **同一条规则**（主侧不能引用渲染层模块，故按同规则各自实现，并在注释里写明）。
 - **验证**：`session-persistence.test.ts` **39 passed**（新增两例：中断会话命名被打断的那条消息；最后一回合已答完则不记录）；typecheck 0；eslint 0；`build:e2e` 成功。
 - **真机结果（快照原文，拒绝理由变了）**：
   - 修复前：`Resume no longer matches the interrupted turn on the active Conversation Branch.`（守卫恒拒）
   - 修复后：`The turn could not be continued: … acp:continue-interrupted-turn: Error: ACP session not found: e2e-session-1`（`src/main/acp/prompt-turn-workflow.ts:219`）
-  → 说明**守卫已通过、继续流程真的往前走了**，现在缺的是重启后那条 ACP 会话本身。
+    → 说明**守卫已通过、继续流程真的往前走了**，现在缺的是重启后那条 ACP 会话本身。
 - **下一处的读法（不猜）**：假 agent 声明 `loadSession: false` 且实现了 `session/resume`；而应用侧同时有 `:219` 与 `:200`（`after force-load`）两条分支。到底该由应用在重启后先 resume/重建会话，还是夹具该声明可装载 —— **下一步是给假 agent 记录它收到的 ACP 方法序列**，看应用究竟调没调 resume。
 - **同机顺带确认**：重建后无障碍修复已生效 —— 输入区 group 的标签从 `{t('workspace.sendMessage')} options` 变为 **`Send options`** ✓。
 
 ### U13：第十次实测 —— **「继续」缺少重挂会话那一步**（假 agent 请求日志为证）
+
 - 给假 agent 加了「它收到的每个请求」日志（写到临时目录固定路径，因为 agent 收不到应用的环境变量；spec 每次运行前清理）。
 - 实测日志（重启前那一个进程）：
   `initialize` → `session.new -> e2e-session-1` → `session.prompt e2e-session-1: <第一发>` → `session.new -> e2e-session-2` → `session.prompt e2e-session-2: <reviewer_instructions>` → `interrupted prompt … marker=false`（第二发按设计挂住）。
@@ -329,6 +338,7 @@
 - 夹具侧同时落地：假 agent 现在对 `session/load` 显式报「不支持」并记日志（原先静默）。
 
 ### U13：第十一次实测 —— **「继续」已会重挂（界面路径实测生效）**，但继续请求静默未发出
+
 - **渲染层修复已落地**（按代码里的合同注释：`contextReset` "仅当 session/resume 采纳了新 provider 上下文时才有" ⇒ 重挂本就该由渲染层先做）：
   - 抽出 `reattachInterruptedWorkspaceSession(runtime, sessionId)`：Resume 与 Continue 共用「重挂」这一半；Resume 仍是「重挂 + 重发」，Continue 是「重挂 + 交给主进程续」。
   - 新增 `continueInterruptedSession(sessionId)` 并导出，`WorkspacePage` 以 `onContinueSession` 接到 `ConversationPanel`；面板不再直接调 bridge（直接调就是跳过重挂的旧行为）。
@@ -339,6 +349,7 @@
 - **下一步**：给主进程 `continueInterruptedTurn` 加临时候选分支日志（或查它依赖的 live prompt / Conversation Branch 前置条件），确认它从哪一个 early return 走掉；spec 保持 fixme 挂账。
 
 ### U13：第十二次实测 —— **继续请求已完整送达 agent**（先前被拒/静默的问题解除），剩回复呈现
+
 - **根因（探针直接测出，非推测）**：点击前后各读一次落盘会话 →
   - 点击前：`status: error`，`resumeRecovery: {cause:'app-restart', kind:'resume-required', promptMessageId:'message-…-3'}`（指向被打断的那条 user 消息 ✓）
   - 点击后：`status: idle`，**`resumeRecovery` 消失** → 主进程守卫读不到记录 → 抛错；而横幅已被清掉，**报错无处渲染**，所以表现为"静默"。
@@ -358,6 +369,7 @@
 - **下一步（方法已定）**：给假 agent 的**回复**也加日志（现在只有请求日志，无法区分"agent 没答"与"答了没呈现"），据此锁定回复落在哪个会话；spec 保持 fixme 挂账。
 
 ### U13：第十三次实测 —— **agent 确实作答（正确会话、正确文本），应用没把它呈现出来**
+
 - **诊断基建**：给假 agent 补上**回复日志**（`e2e/fixtures/fake-opencode.mjs`，回复以 `session/update` 通知发出后记一行）。此前只有请求日志，无法区分"agent 没答"与"答了没呈现"——补上后立刻分清了。
 - **实测（唯一一次运行的原始日志，无推测）**：
   ```
@@ -369,3 +381,9 @@
   结论：**请求已送达、已作答、会话与文本都对**；回复到达后 **135ms** 应用又为同一会话 id 建了一个新 agent 会话，回复落在那之前 → 会话里看不到 → spec:171 断言失败。
 - **性质判断**：这已**不是入口层问题**（入口、重挂、送达三步都实测通过），而是**主进程续答的投递/呈现**环节（`prompt-turn-workflow.ts:155-208` 的 `activeSession`/force-load 与续答的会话所有权次序）。
 - **下一步（已收窄到一处）**：查续答之后那条 `session/new` 由谁发起、以及续答的 `session/update` 在应用侧被丢弃的条件（很可能是应用在重挂/重载后会重新建会话，旧会话上的更新被忽略）。spec 保持 fixme 挂账。
+
+### 门禁纪律：认证 e2e 必须**串行**跑（本批新立）
+
+- 现象：`npx playwright test e2e/certification`（默认并行）在 `artifact-replay.spec.ts:43` 假红——`artifact-replay-verdict` **元素根本没渲染**（20s 超时），换过一次仍复现；而该 spec **单独跑 9.7s 通过**，整套 **`--workers=1` 串行 15/15 全绿（2.5m）**。
+- 判据：**默认并行下多个 Electron 实例共享同一套临时目录/存储根，互相污染 → 假红**。与 launchagent 是否 unload 无关（两次失败时 daemon 状态不同、失败形态完全相同）。
+- 规程：认证套件用 `npx playwright test e2e/certification --workers=1`；单跑与套件结果不一致时，先串行复核再判定回归。
