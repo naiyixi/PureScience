@@ -723,7 +723,7 @@ describe('PreviewPanel', () => {
     expect(labels.slice(0, 3)).toEqual(['Copy path', 'Download', 'Save as artifact'])
     // Image/PDF sources additionally offer figure→data extraction (estimated, review-routed).
     if (labels.length > 3) {
-      expect(labels[3]).toContain('从此图提取数据')
+      expect(labels[3]).toContain('Extract data from this figure')
     }
   })
 

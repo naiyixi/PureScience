@@ -2903,6 +2903,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'ws.previewTabCopyPath': '경로 복사',
   'ws.previewTabDownload': '다운로드',
   'ws.previewTabSaveAsArtifact': '산출물로 저장',
+  'ws.previewTabDigitizeFigure': '이 그림에서 데이터 추출(추정)',
+  'ws.previewTabOmicsPreview': '오믹스 대용량 파일 미리보기(먼저 살펴본 뒤 계산)',
   'ws.previousArtifactVersion': '이전 산출물 버전',
   'ws.producerRunNoScript': '프로듀서 실행에 재구성할 스크립트가 남아 있지 않습니다.',
   'ws.producerRunNotIdentified': '캡처된 증거에서 프로듀서 실행을 식별할 수 없습니다.',

@@ -3013,6 +3013,9 @@ export const es: Partial<Record<ZhKey, string>> = {
   'ws.previewTabCopyPath': 'Copiar ruta',
   'ws.previewTabDownload': 'Descargar',
   'ws.previewTabSaveAsArtifact': 'Guardar como artefacto',
+  'ws.previewTabDigitizeFigure': 'Extraer datos de esta figura (estimado)',
+  'ws.previewTabOmicsPreview':
+    'Vista previa de archivos ómicos grandes (explorar antes de calcular)',
   'ws.previousArtifactVersion': 'Versión anterior del artefacto',
   'ws.producerRunNoScript': 'La ejecución productora no conservó un script que reconstruir.',
   'ws.producerRunNotIdentified':

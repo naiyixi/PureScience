@@ -3046,6 +3046,8 @@ export const de: Partial<Record<ZhKey, string>> = {
   'ws.previewTabCopyPath': 'Pfad kopieren',
   'ws.previewTabDownload': 'Herunterladen',
   'ws.previewTabSaveAsArtifact': 'Als Artefakt speichern',
+  'ws.previewTabDigitizeFigure': 'Daten aus dieser Abbildung extrahieren (geschätzt)',
+  'ws.previewTabOmicsPreview': 'Vorschau großer Omics-Dateien (erst prüfen, dann rechnen)',
   'ws.previousArtifactVersion': 'Vorherige Artefaktversion',
   'ws.producerRunNoScript': 'Der Erzeugerlauf hat kein rekonstruierbares Skript aufbewahrt.',
   'ws.producerRunNotIdentified':

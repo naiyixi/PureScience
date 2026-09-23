@@ -362,7 +362,7 @@ export const PreviewContentContextMenu = ({
           className={previewContentMenuItemClassName}
           onClick={() => run(() => onStartDigitization(item))}
         >
-          <Crosshair className="size-3.5" aria-hidden="true" /> 从此图提取数据（estimated）
+          <Crosshair className="size-3.5" aria-hidden="true" /> {t('ws.previewTabDigitizeFigure')}
         </button>
       ) : null}
       {onStartOmicsPreview && OMICS_DATA_MEDIA.test(item.name) ? (
@@ -373,7 +373,7 @@ export const PreviewContentContextMenu = ({
           className={previewContentMenuItemClassName}
           onClick={() => run(() => onStartOmicsPreview(item))}
         >
-          <Dna className="size-3.5" aria-hidden="true" /> 组学大文件预览（先探后算）
+          <Dna className="size-3.5" aria-hidden="true" /> {t('ws.previewTabOmicsPreview')}
         </button>
       ) : null}
       {onStartReferenceImport && PDF_TABLE_MEDIA.test(item.name) ? (

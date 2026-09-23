@@ -2710,6 +2710,8 @@ export const zh = {
   'ws.previewTabCopyPath': '复制路径',
   'ws.previewTabDownload': '下载',
   'ws.previewTabSaveAsArtifact': '另存为产物',
+  'ws.previewTabDigitizeFigure': '从此图提取数据（estimated）',
+  'ws.previewTabOmicsPreview': '组学大文件预览（先探后算）',
   'ws.webPreviewOpenExternal': '在系统浏览器中打开',
   'ws.webPreviewUnsupported': '仅支持在应用内预览 HTTP(S) 链接。',
   'ws.sourceLinkHoverTitle': '来源',

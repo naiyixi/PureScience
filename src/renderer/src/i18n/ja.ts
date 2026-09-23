@@ -2966,6 +2966,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'ws.previewTabCopyPath': 'パスをコピー',
   'ws.previewTabDownload': 'ダウンロード',
   'ws.previewTabSaveAsArtifact': '成果物として保存',
+  'ws.previewTabDigitizeFigure': 'この図からデータを抽出（推定）',
+  'ws.previewTabOmicsPreview': 'オミクス大容量ファイルのプレビュー（先に調査してから計算）',
   'ws.previousArtifactVersion': '前の成果物バージョン',
   'ws.producerRunNoScript': 'プロデューサー実行は再構築用のスクリプトを保持していませんでした。',
   'ws.producerRunNotIdentified':

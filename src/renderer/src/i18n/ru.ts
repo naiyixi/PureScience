@@ -2969,6 +2969,9 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'ws.previewTabCopyPath': 'Скопировать путь',
   'ws.previewTabDownload': 'Скачать',
   'ws.previewTabSaveAsArtifact': 'Сохранить как артефакт',
+  'ws.previewTabDigitizeFigure': 'Извлечь данные из этого рисунка (оценка)',
+  'ws.previewTabOmicsPreview':
+    'Просмотр больших омиксных файлов (сначала разведка, потом вычисления)',
   'ws.previousArtifactVersion': 'Предыдущая версия артефакта',
   'ws.producerRunNoScript': 'Запуск-производитель не сохранил скрипт для восстановления.',
   'ws.producerRunNotIdentified':

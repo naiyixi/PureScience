@@ -2748,6 +2748,8 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'ws.previewTabCopyPath': '複製路徑',
   'ws.previewTabDownload': '下載',
   'ws.previewTabSaveAsArtifact': '另存為產物',
+  'ws.previewTabDigitizeFigure': '從此圖擷取資料（estimated）',
+  'ws.previewTabOmicsPreview': '組學大檔案預覽（先探後算）',
   'ws.previousArtifactVersion': '上一個產物版本',
   'ws.producerRunNoScript': '生產者執行未保留可重建的指令碼。',
   'ws.producerRunNotIdentified': '無法從擷取的證據中識別生產者執行。',

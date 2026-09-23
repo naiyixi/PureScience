@@ -2902,6 +2902,8 @@ export const en: Record<ZhKey, string> = {
   'ws.previewTabCopyPath': 'Copy path',
   'ws.previewTabDownload': 'Download',
   'ws.previewTabSaveAsArtifact': 'Save as artifact',
+  'ws.previewTabDigitizeFigure': 'Extract data from this figure (estimated)',
+  'ws.previewTabOmicsPreview': 'Omics large-file preview (probe before compute)',
   'ws.webPreviewOpenExternal': 'Open in system browser',
   'ws.webPreviewUnsupported': 'Only HTTP(S) links can be previewed in-app.',
   'ws.sourceLinkHoverTitle': 'Source',
