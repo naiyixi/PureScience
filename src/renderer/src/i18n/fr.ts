@@ -2890,6 +2890,17 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'preview.provenance': 'Traçabilité',
   'reviewer.label': 'Relecteur',
   'reviewer.fixLimitReached': 'limite de corrections atteinte',
+  'references.collectionDeleteLabel': 'Supprimer le dossier {name}',
+  'references.collectionDeleteConfirm':
+    'Supprimer « {name} » ? Les références restent dans la bibliothèque.',
+  'references.collectionDeleted': 'Dossier « {name} » supprimé',
+  'references.collectionRemoveShort': 'Retirer',
+  'references.collectionRemoveItem': 'Retirer de {name}',
+  'references.removedFromCollection': 'Retiré de « {name} »',
+  'references.collectionEmpty': 'Aucune référence dans ce dossier pour l’instant.',
+  'references.collectionEmptyHint':
+    'Revenez à « Tous les éléments » et utilisez le menu de dossier d’une référence.',
+  'references.removeReference': 'Supprimer la référence',
   'references.detachPdf': 'Détacher le PDF',
   'references.attachPdf': 'Joindre un PDF',
   'preview.zoomLevel': 'Niveau de zoom',

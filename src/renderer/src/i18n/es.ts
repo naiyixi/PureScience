@@ -2872,6 +2872,17 @@ export const es: Partial<Record<ZhKey, string>> = {
   'preview.provenance': 'Procedencia',
   'reviewer.label': 'Revisor',
   'reviewer.fixLimitReached': 'límite de correcciones alcanzado',
+  'references.collectionDeleteLabel': 'Eliminar la colección {name}',
+  'references.collectionDeleteConfirm':
+    '¿Eliminar «{name}»? Las referencias siguen en la biblioteca.',
+  'references.collectionDeleted': 'Colección «{name}» eliminada',
+  'references.collectionRemoveShort': 'Quitar',
+  'references.collectionRemoveItem': 'Quitar de {name}',
+  'references.removedFromCollection': 'Quitado de «{name}»',
+  'references.collectionEmpty': 'Todavía no hay referencias en esta colección.',
+  'references.collectionEmptyHint':
+    'Vuelve a «Todos los elementos» y usa el menú de colección de una referencia.',
+  'references.removeReference': 'Quitar la referencia',
   'references.detachPdf': 'Desvincular PDF',
   'references.attachPdf': 'Adjuntar PDF',
   'preview.zoomLevel': 'Nivel de zoom',

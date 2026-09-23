@@ -1,6 +1,6 @@
 import { Dialog } from 'radix-ui'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { BookMarked, Library, Plus, RefreshCw, X } from 'lucide-react'
+import { BookMarked, Library, Plus, RefreshCw, Trash2, X } from 'lucide-react'
 
 import { useLanguage, type TranslationKey } from '@/i18n'
 import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
@@ -149,6 +149,9 @@ export function ReferencesLibraryDialog({
 
   // New-collection + manual-add state.
   const [newCollectionName, setNewCollectionName] = useState('')
+  // Deleting a collection is destructive enough to ask twice, and the confirmation says the
+  // references survive — the single most useful thing to know before clicking it.
+  const [pendingCollectionDeleteId, setPendingCollectionDeleteId] = useState<string | null>(null)
   const [showManual, setShowManual] = useState(false)
   const [manualTitle, setManualTitle] = useState('')
   const [manualDoi, setManualDoi] = useState('')
@@ -381,6 +384,36 @@ export function ReferencesLibraryDialog({
     }
     setNotice(t('references.merged', { n: groups.length }))
     await refresh()
+  }
+
+  const pendingCollectionDelete =
+    collections.find((collection) => collection.id === pendingCollectionDeleteId) ?? null
+  const selectedCollectionName =
+    collections.find((collection) => collection.id === selectedCollectionId)?.name ?? ''
+
+  const handleDeleteCollection = async (collection: ReferenceCollection): Promise<void> => {
+    try {
+      await window.api.references.deleteCollection(collection.id)
+      if (selectedCollectionId === collection.id) setSelectedCollectionId(null)
+      setPendingCollectionDeleteId(null)
+      await refresh()
+      setNotice(t('references.collectionDeleted', { name: collection.name }))
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause))
+    }
+  }
+
+  const handleRemoveFromCollection = async (
+    reference: Reference,
+    collectionId: string
+  ): Promise<void> => {
+    try {
+      await window.api.references.removeFromCollection(collectionId, reference.id)
+      await refresh()
+      setNotice(t('references.removedFromCollection', { name: selectedCollectionName }))
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause))
+    }
   }
 
   const handleAddToCollection = async (
@@ -773,19 +806,60 @@ export function ReferencesLibraryDialog({
                 {t('references.allItems', { n: references.length })}
               </button>
               {collections.map((collection) => (
-                <button
-                  key={collection.id}
-                  type="button"
-                  onClick={() => setSelectedCollectionId(collection.id)}
-                  className={`rounded-md px-2 py-1 text-left text-xs ${
-                    selectedCollectionId === collection.id
-                      ? 'bg-[var(--accent)]/15 font-medium text-[var(--accent)]'
-                      : 'text-[var(--muted-foreground)] hover:bg-[var(--border)]'
-                  }`}
-                >
-                  {collection.name}
-                </button>
+                <div key={collection.id} className="group/collection flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCollectionId(collection.id)}
+                    className={`min-w-0 flex-1 truncate rounded-md px-2 py-1 text-left text-xs ${
+                      selectedCollectionId === collection.id
+                        ? 'bg-[var(--accent)]/15 font-medium text-[var(--accent)]'
+                        : 'text-[var(--muted-foreground)] hover:bg-[var(--border)]'
+                    }`}
+                  >
+                    {collection.name}
+                  </button>
+                  <button
+                    type="button"
+                    className={`${ghostClass} shrink-0 opacity-0 transition-opacity group-hover/collection:opacity-100 focus-visible:opacity-100`}
+                    title={t('references.collectionDeleteLabel', { name: collection.name })}
+                    aria-label={t('references.collectionDeleteLabel', { name: collection.name })}
+                    onClick={() => setPendingCollectionDeleteId(collection.id)}
+                  >
+                    <Trash2 className="size-3" aria-hidden="true" />
+                  </button>
+                </div>
               ))}
+              {pendingCollectionDelete ? (
+                <div
+                  role="group"
+                  aria-label={t('references.collectionDeleteConfirm', {
+                    name: pendingCollectionDelete.name
+                  })}
+                  className="rounded-md border border-[var(--border)] bg-[var(--accent)]/5 p-2"
+                >
+                  <p className="text-[10px] leading-snug text-[var(--muted-foreground)]">
+                    {t('references.collectionDeleteConfirm', {
+                      name: pendingCollectionDelete.name
+                    })}
+                  </p>
+                  <div className="mt-1.5 flex gap-1">
+                    <button
+                      type="button"
+                      className={ghostClass}
+                      onClick={() => void handleDeleteCollection(pendingCollectionDelete)}
+                    >
+                      {t('common.delete')}
+                    </button>
+                    <button
+                      type="button"
+                      className={ghostClass}
+                      onClick={() => setPendingCollectionDeleteId(null)}
+                    >
+                      {t('common.cancel')}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
               <div className="mt-2 flex gap-1 border-t border-[var(--border)] pt-2">
                 <input
                   value={newCollectionName}
@@ -988,9 +1062,18 @@ export function ReferencesLibraryDialog({
               ) : null}
               <div className="min-h-0 flex-1 overflow-y-auto p-2">
                 {shownReferences.length === 0 ? (
-                  <p className="py-10 text-center text-xs text-[var(--muted-foreground)]">
-                    {t('references.empty')}
-                  </p>
+                  <div className="py-10 text-center">
+                    <p className="text-xs text-[var(--muted-foreground)]">
+                      {selectedCollectionId === null
+                        ? t('references.empty')
+                        : t('references.collectionEmpty')}
+                    </p>
+                    {selectedCollectionId === null ? null : (
+                      <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+                        {t('references.collectionEmptyHint')}
+                      </p>
+                    )}
+                  </div>
                 ) : (
                   <ul className="flex flex-col gap-1.5">
                     {shownReferences.map((reference) => (
@@ -1082,10 +1165,24 @@ export function ReferencesLibraryDialog({
                                 ))}
                               </select>
                             ) : null}
+                            {selectedCollectionId === null ? null : (
+                              <button
+                                type="button"
+                                className={ghostClass}
+                                title={t('references.collectionRemoveItem', {
+                                  name: selectedCollectionName
+                                })}
+                                onClick={() =>
+                                  void handleRemoveFromCollection(reference, selectedCollectionId)
+                                }
+                              >
+                                {t('references.collectionRemoveShort')}
+                              </button>
+                            )}
                             <button
                               type="button"
                               className={ghostClass}
-                              title="删除"
+                              title={t('references.removeReference')}
                               onClick={() => {
                                 void window.api.references.remove(reference.id).then(refresh)
                               }}
