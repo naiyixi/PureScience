@@ -14,6 +14,7 @@ import { buildGlobalSearchHitCitation } from '../../../../shared/global-search-c
 import type { ProjectFileItem } from '../../../../shared/project-files'
 import { Button } from '@/components/ui/button'
 import { dialogOverlayClassName, dialogPanelClassName } from '@/components/ui/dialog-chrome'
+import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import {
@@ -981,6 +982,10 @@ export const GlobalSearchDialog = ({
   let rowIndex = 0
   const nextIndex = (): number => rowIndex++
 
+  // Opened by ⌘K from anywhere, so the element to hand focus back to is usually not the shell's
+  // toolbar button: capture whatever held focus when the palette opened and return it on close.
+  const focusRestore = useDialogFocusRestore(open)
+
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
@@ -988,6 +993,8 @@ export const GlobalSearchDialog = ({
         <Dialog.Content
           data-testid="global-search-dialog"
           aria-describedby={undefined}
+          onOpenAutoFocus={focusRestore.onOpenAutoFocus}
+          onCloseAutoFocus={focusRestore.onCloseAutoFocus}
           className={dialogPanelClassName(
             'flex h-[calc(100dvh_-_1rem)] w-[calc(100%_-_1rem)] max-w-[680px] flex-col overflow-hidden p-0 sm:h-[min(760px,calc(100dvh_-_2rem))] sm:w-[calc(100%_-_2rem)]'
           )}

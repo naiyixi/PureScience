@@ -99,6 +99,25 @@ const clickExport = (): void => {
 }
 
 describe('ExportConversationDialog', () => {
+  it('moves focus inside the panel when it opens', async () => {
+    // This dialog used to cancel Radix's autofocus, which left the reader's focus behind the modal:
+    // the first Tab came from the toolbar instead of from inside the panel.
+    await act(async () => {
+      await new Promise((resolve) => window.setTimeout(resolve, 0))
+    })
+
+    act(() => {
+      root.render(
+        <ExportConversationDialog session={session} onClose={() => undefined} onExport={vi.fn()} />
+      )
+    })
+
+    const panel = document.querySelector<HTMLElement>('[role="dialog"]')
+    expect(panel).not.toBeNull()
+    expect(document.activeElement).not.toBe(document.body)
+    expect(panel?.contains(document.activeElement)).toBe(true)
+  })
+
   it('renders the session title, turn count and defaults to Markdown + all rounds', () => {
     renderDialog()
 

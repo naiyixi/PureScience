@@ -87,7 +87,6 @@ const ExportConversationDialog = ({
       <Dialog.Overlay className={dialogOverlayClassName} />
       <Dialog.Content
         className={dialogPanelClassName('w-[26rem] max-w-[calc(100vw-2rem)]')}
-        onOpenAutoFocus={(event) => event.preventDefault()}
         onEscapeKeyDown={(event) => {
           event.preventDefault()
           onClose()
