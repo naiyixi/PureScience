@@ -25,10 +25,12 @@ const CONTINUED_REPLY = 'The interrupted turn continued from where it stopped.'
 //     a neighbouring spec that reassigns both passes in 13s. The helpers' return values are used below.
 //
 //   * Third measurement, with the window bug fixed and the restart shape in place: onboarding, the prompt,
-//     the in-flight composer and the restart all succeed, and the run then reaches the workspace to find no
-//     session navigation at all — the page at that moment shows an overlay carrying a single 'Close'
-//     control, so something is covering the workspace before the banner can be looked for. Identifying that
-//     overlay (rather than guessing at it) is the next step.
+//     the in-flight composer and the restart all succeed. Reaching the session then failed because of this
+//     spec, not the app: clicking the sidebar's 'Sessions and bookmarks' control opens the Session bookmarks
+//     dialog (the failure snapshot shows exactly that dialog with its Close button, the privacy note and
+//     'No bookmarks yet'), and the workspace's session navigation is not rendered while it is up. That click
+//     is gone below; how the workspace lists sessions after a restart — and whether the interrupted session
+//     is opened automatically — is the next thing to read from the app rather than assume.
 //
 // So the shape to establish is: the turn is left open, the app is restarted (which is when a session with
 // an unfinished turn is restored as interrupted), the session is opened, and Continue is expected to hand
@@ -53,10 +55,8 @@ test.fixme('a turn that was interrupted is continued, not sent again', async ({ 
     .getByRole('region', { name: 'Projects' })
     .getByRole('button', { name: 'Interrupted turn', exact: true })
     .click()
-  // The workspace sidebar collapses its session list behind one button after a restart.
-  const expander = page.getByRole('button', { name: 'Sessions and bookmarks' })
-  if (await expander.isVisible().catch(() => false)) await expander.click()
-
+  // NOT that control: 'Sessions and bookmarks' opens the Session bookmarks dialog, which takes the place of
+  // the workspace while it is up (measured). The session navigation is looked for directly instead.
   const sessions = page.getByRole('navigation', { name: 'Sessions' })
   await expect(sessions).toBeVisible({ timeout: 30_000 })
   await sessions
