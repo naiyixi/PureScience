@@ -12,7 +12,16 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'gs.filterSenderAgent': '에이전트',
   'gs.filterClear': '필터 지우기',
   'gs.pinsTitle': '저장한 필터',
-  'gs.pinsEmpty': '저장한 필터가 아직 없습니다',
+  'gs.pinsEmpty':
+    '저장된 필터 세트가 아직 없습니다 — 결과에서 "리뷰에 고정"을 선택하면 현재 필터가 저장됩니다.',
+  'gs.browseEmptyTitle': '아직 둘러볼 항목이 없습니다',
+  'gs.browseEmptyHint':
+    '위에 검색어를 입력해 세션과 산출물을 찾거나, 워크스페이스에서 대화를 시작하세요.',
+  'gs.noHits': '{query}에 일치하는 세션 또는 산출물이 없습니다.',
+  'gs.noHitsHint': '단어를 줄이거나 범위를 넓혀 자료 전문을 검색하세요.',
+  'gs.noHitsFilterHint': '필터가 이 검색을 좁히고 있습니다. 필터를 지우면 넓어집니다.',
+  'gs.artifactsLoadMoreRetry': '더 불러오지 못했습니다 — 다시 시도',
+  'gs.artifactsLoadRetry': '산출물을 불러오지 못했습니다 — 다시 시도',
   'gs.pinsCount': '저장 {n} / {max}',
   'gs.pinNamePlaceholder': '이 필터 이름 지정',
   'gs.pinSave': '필터 저장',

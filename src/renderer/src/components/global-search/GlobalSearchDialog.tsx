@@ -238,6 +238,9 @@ export const GlobalSearchDialog = ({
   }, [sessions])
   const trimmedQuery = query.trim()
   const isSearchMode = trimmedQuery.length > 0
+  // The empty-result copy has to distinguish "your filters narrowed this to nothing" from "the query
+  // itself found nothing", because only the first is fixable from inside the dialog.
+  const hasActiveFilter = Object.keys(contentFilters).length > 0
   const otherProjectIds = useMemo(
     () =>
       projects.filter((project) => project.id !== primaryProject?.id).map((project) => project.id),
@@ -1240,6 +1243,22 @@ export const GlobalSearchDialog = ({
                       {recentSessions.map((session) => renderSessionRow(session, nextIndex()))}
                     </section>
                   ) : null}
+                  {displayedArtifacts.length === 0 &&
+                  recentSessions.length === 0 &&
+                  artifactStatus !== 'loading' &&
+                  !artifactError ? (
+                    // Both lists were gated on length > 0, so a fresh project left the whole
+                    // result area white: indistinguishable from a search that returned nothing.
+                    <div
+                      data-testid="global-search-browse-empty"
+                      className="mx-4 my-3 rounded-lg border border-dashed border-border px-4 py-6 text-center"
+                    >
+                      <p className="text-sm text-foreground">{t('gs.browseEmptyTitle')}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {t('gs.browseEmptyHint')}
+                      </p>
+                    </div>
+                  ) : null}
                 </>
               ) : (
                 <>
@@ -1266,8 +1285,8 @@ export const GlobalSearchDialog = ({
                           onClick={() => void reloadArtifacts(failedArtifactCursor)}
                         >
                           {failedArtifactCursor
-                            ? 'Could not load more — retry'
-                            : 'Could not load artifacts — retry'}
+                            ? t('gs.artifactsLoadMoreRetry')
+                            : t('gs.artifactsLoadRetry')}
                         </Button>
                       ) : null}
                       {canLoadMoreArtifacts ? (
@@ -1423,9 +1442,12 @@ export const GlobalSearchDialog = ({
                   otherRows.length === 0 &&
                   artifactStatus !== 'loading' &&
                   !artifactError ? (
-                    <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-                      No sessions or artifacts match “{query}”.
-                    </p>
+                    <div className="px-4 py-8 text-center">
+                      <p className="text-sm text-muted-foreground">{t('gs.noHits', { query })}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {hasActiveFilter ? t('gs.noHitsFilterHint') : t('gs.noHitsHint')}
+                      </p>
+                    </div>
                   ) : null}
                 </>
               )}

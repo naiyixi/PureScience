@@ -179,6 +179,100 @@ describe('GlobalSearchDialog', () => {
     opener.remove()
   })
 
+  it('explains an empty browse list instead of leaving the results area blank', async () => {
+    vi.mocked(window.api.projectFiles.searchArtifacts).mockResolvedValue({
+      primary: { items: [], totalCount: 0 },
+      other: [],
+      isIndexComplete: true
+    })
+    useSessionStore.setState({ sessions: [] })
+
+    await act(async () => {
+      root.render(<GlobalSearchDialog open onOpenChange={vi.fn()} isSessionPersistenceReady />)
+      await new Promise((resolve) => window.setTimeout(resolve, 20))
+    })
+
+    // Both sections were gated on length > 0, so a project with nothing to show rendered a blank
+    // result area that looked exactly like a failed load.
+    const empty = document.body.querySelector<HTMLElement>(
+      '[data-testid="global-search-browse-empty"]'
+    )
+    expect(empty).not.toBeNull()
+    expect(empty?.textContent).toContain('Nothing to browse yet')
+    expect(empty?.textContent).toContain('start a conversation in the workspace')
+  })
+
+  it('keeps the browse explanation out of the way once there is something to browse', async () => {
+    await act(async () => {
+      root.render(<GlobalSearchDialog open onOpenChange={vi.fn()} isSessionPersistenceReady />)
+      await new Promise((resolve) => window.setTimeout(resolve, 20))
+    })
+
+    expect(document.body.querySelector('[data-testid="global-search-browse-empty"]')).toBeNull()
+    expect(document.body.textContent).toContain('Recent sessions')
+  })
+
+  it('tells a filtered dead end apart from a query that simply found nothing', async () => {
+    const query = window.api.search.query as unknown as ReturnType<typeof vi.fn>
+    // Keyword artifact search keeps serving the same rows regardless of the query, so it has to be
+    // emptied too: otherwise the Artifacts section alone keeps the dead end from being a dead end.
+    vi.mocked(window.api.projectFiles.searchArtifacts).mockResolvedValue({
+      primary: { items: [], totalCount: 0 },
+      other: [],
+      isIndexComplete: true
+    })
+    query.mockResolvedValue({
+      schemaVersion: 1,
+      query: '注意力',
+      scopes: ['sessions', 'messages', 'files', 'literature'],
+      hits: [],
+      counts: { sessions: 0, messages: 0, files: 0, literature: 0 },
+      truncated: false,
+      scan: { sessions: 1, messages: 1, files: 0, references: 0, bounded: false },
+      appliedLimit: 100,
+      notes: []
+    })
+
+    await act(async () => {
+      root.render(<GlobalSearchDialog open onOpenChange={vi.fn()} isSessionPersistenceReady />)
+      await new Promise((resolve) => window.setTimeout(resolve, 20))
+    })
+
+    const input = document.body.querySelector<HTMLInputElement>('input[role="combobox"]')
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set
+    await act(async () => {
+      setter?.call(input, '注意力')
+      input?.dispatchEvent(new Event('input', { bubbles: true }))
+      await new Promise((resolve) => window.setTimeout(resolve, 500))
+    })
+
+    expect(document.body.textContent).toContain('No sessions or artifacts match')
+    expect(document.body.textContent).toContain('Try fewer words')
+    expect(document.body.textContent).not.toContain('Filters are narrowing this search')
+
+    const bar = document.body.querySelector('[data-testid="global-search-filters"]')
+    const trigger = bar?.querySelector('button')
+    await act(async () => {
+      trigger?.dispatchEvent(
+        new MouseEvent('pointerdown', { bubbles: true, cancelable: true, button: 0 })
+      )
+      trigger?.click()
+      await new Promise((resolve) => window.setTimeout(resolve, 50))
+    })
+    const option = [...document.body.querySelectorAll('[role="option"], [role="menuitem"]')].find(
+      (node) => /^(助手|Agent)$/.test(node.textContent?.trim() ?? '')
+    )
+    expect(option).toBeDefined()
+    await act(async () => {
+      ;(option as HTMLElement).click()
+      await new Promise((resolve) => window.setTimeout(resolve, 500))
+    })
+
+    // Only the filtered dead end is fixable from inside the palette, so only that one says how.
+    expect(document.body.textContent).toContain('Filters are narrowing this search')
+    expect(document.body.textContent).not.toContain('Try fewer words')
+  })
+
   it('shows recent groups and sends a current-Project artifact to the composer mention handoff', async () => {
     await act(async () => {
       root.render(<GlobalSearchDialog open onOpenChange={vi.fn()} isSessionPersistenceReady />)

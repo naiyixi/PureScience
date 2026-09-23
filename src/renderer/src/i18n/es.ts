@@ -12,7 +12,16 @@ export const es: Partial<Record<ZhKey, string>> = {
   'gs.filterSenderAgent': 'Agente',
   'gs.filterClear': 'Borrar filtros',
   'gs.pinsTitle': 'Filtros guardados',
-  'gs.pinsEmpty': 'Aún no hay conjuntos de filtros guardados',
+  'gs.pinsEmpty':
+    'Aún no hay conjuntos de filtros guardados: usa «Fijar a la revisión» en un resultado para guardar los filtros actuales.',
+  'gs.browseEmptyTitle': 'Todavía no hay nada que explorar',
+  'gs.browseEmptyHint':
+    'Escribe arriba para buscar en tus sesiones y artefactos, o inicia una conversación en el espacio de trabajo.',
+  'gs.noHits': 'Ninguna sesión o artefacto coincide con «{query}».',
+  'gs.noHitsHint': 'Prueba con menos palabras o amplía el alcance al texto completo de una fuente.',
+  'gs.noHitsFilterHint': 'Los filtros están estrechando esta búsqueda: quítalos para ampliarla.',
+  'gs.artifactsLoadMoreRetry': 'No se pudo cargar más — reintentar',
+  'gs.artifactsLoadRetry': 'No se pudieron cargar los artefactos — reintentar',
   'gs.pinsCount': '{n} de {max} guardados',
   'gs.pinNamePlaceholder': 'Pon un nombre a este conjunto',
   'gs.pinSave': 'Guardar filtros',

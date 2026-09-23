@@ -12,7 +12,16 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'gs.filterSenderAgent': 'エージェント',
   'gs.filterClear': 'フィルタを解除',
   'gs.pinsTitle': '保存したフィルター',
-  'gs.pinsEmpty': '保存したフィルターはまだありません',
+  'gs.pinsEmpty':
+    '保存した絞り込みセットはまだありません — 結果の「レビューに固定」で現在の絞り込みを保存できます。',
+  'gs.browseEmptyTitle': 'まだ閲覧できるものがありません',
+  'gs.browseEmptyHint':
+    '上でキーワードを入力してセッションと成果物を検索するか、ワークスペースで会話を始めてください。',
+  'gs.noHits': '「{query}」に一致するセッションや成果物はありません。',
+  'gs.noHitsHint': '語を短くするか、範囲を広げて資料の全文を検索してください。',
+  'gs.noHitsFilterHint': '絞り込みがこの検索を狭めています。解除すると広がります。',
+  'gs.artifactsLoadMoreRetry': '追加の読み込みに失敗 — 再試行',
+  'gs.artifactsLoadRetry': '成果物の読み込みに失敗 — 再試行',
   'gs.pinsCount': '保存済み {n} / {max}',
   'gs.pinNamePlaceholder': 'このフィルターに名前を付ける',
   'gs.pinSave': 'フィルターを保存',
