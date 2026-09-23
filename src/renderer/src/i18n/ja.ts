@@ -452,6 +452,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'artifact.generateScriptHint': '生成開始時に選択されていたプロバイダーとモデルを使用します。',
   'artifact.noDependencyChanges': '追加のパッケージバージョン変更なし',
   'artifact.noProducerExecution': 'このバージョンのプロデューサー実行を特定できません。',
+  'artifact.noProducerExecutionHint':
+    'ノートブックかエージェントで生成元のセルを実行すると、このバージョンに実行・入力・出力が記録されます。',
   'artifact.partialCaptureDetails': '部分キャプチャの詳細',
   'closeConfirm.minimizeToTray': 'トレイに最小化',
   'closeConfirm.quitTitle': 'PureScience を終了しますか？',

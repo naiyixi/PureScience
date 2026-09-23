@@ -453,6 +453,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
     'Используются провайдер и модель, выбранные на момент начала генерации.',
   'artifact.noDependencyChanges': 'Других изменений версий пакетов нет',
   'artifact.noProducerExecution': 'Не удалось определить выполнение-производитель для этой версии.',
+  'artifact.noProducerExecutionHint':
+    'Запустите породившую его ячейку в блокноте или через агента — прогоны, входы и выходы будут записаны для этой версии.',
   'artifact.partialCaptureDetails': 'Сведения о частичном захвате',
   'closeConfirm.minimizeToTray': 'Свернуть в трей',
   'closeConfirm.quitTitle': 'Выйти из PureScience?',

@@ -468,6 +468,8 @@ export const de: Partial<Record<ZhKey, string>> = {
   'artifact.noDependencyChanges': 'Keine weiteren Paketversionsänderungen',
   'artifact.noProducerExecution':
     'Die Erzeugerausführung für diese Version konnte nicht bestimmt werden.',
+  'artifact.noProducerExecutionHint':
+    'Führen Sie die erzeugende Zelle im Notebook oder über den Agenten aus, dann werden Läufe, Eingaben und Ausgaben zu dieser Version erfasst.',
   'artifact.partialCaptureDetails': 'Details der Teilerfassung',
   'closeConfirm.minimizeToTray': 'In den Tray minimieren',
   'closeConfirm.quitTitle': 'PureScience beenden?',

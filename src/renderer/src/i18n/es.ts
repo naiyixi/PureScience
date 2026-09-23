@@ -459,6 +459,8 @@ export const es: Partial<Record<ZhKey, string>> = {
     'Usa el proveedor y el modelo seleccionados al iniciar la generación.',
   'artifact.noDependencyChanges': 'Sin cambios adicionales en las versiones de paquetes',
   'artifact.noProducerExecution': 'No se pudo determinar la ejecución productora de esta versión.',
+  'artifact.noProducerExecutionHint':
+    'Ejecuta la celda que lo produjo en el notebook o mediante el agente y sus ejecuciones, entradas y salidas quedarán registradas en esta versión.',
   'artifact.partialCaptureDetails': 'Detalles de captura parcial',
   'closeConfirm.minimizeToTray': 'Minimizar a la bandeja',
   'closeConfirm.quitTitle': '¿Salir de PureScience?',

@@ -1761,6 +1761,8 @@ export const zh = {
   'artifact.generateScriptHint': '使用生成开始时选择的提供商与模型。',
   'artifact.capturedProducerBlock': '捕获的生产者代码块',
   'artifact.noProducerExecution': '无法确定此版本的生产者执行。',
+  'artifact.noProducerExecutionHint':
+    '在笔记本里或让 agent 跑一次产生它的那一格，这一版的运行、输入与输出就会被记录下来。',
   'artifact.partialCaptureDetails': '部分捕获详情',
   'artifact.dependencyImpact': '依赖影响',
   'artifact.noDependencyChanges': '无其他包版本变化',

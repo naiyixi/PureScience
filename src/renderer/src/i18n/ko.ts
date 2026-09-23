@@ -447,6 +447,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'artifact.generateScriptHint': '생성 시작 시 선택한 공급자와 모델을 사용합니다.',
   'artifact.noDependencyChanges': '추가 패키지 버전 변경 없음',
   'artifact.noProducerExecution': '이 버전의 프로듀서 실행을 확인할 수 없습니다.',
+  'artifact.noProducerExecutionHint':
+    '노트북이나 에이전트에서 이 버전을 만든 셀을 실행하면 실행·입력·출력이 이 버전에 기록됩니다.',
   'artifact.partialCaptureDetails': '부분 캡처 세부 정보',
   'closeConfirm.minimizeToTray': '트레이로 최소화',
   'closeConfirm.quitTitle': 'PureScience를 종료할까요?',

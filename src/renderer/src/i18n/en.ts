@@ -1880,6 +1880,8 @@ export const en: Record<ZhKey, string> = {
   'artifact.generateScriptHint': 'Using the provider and model selected when generation started.',
   'artifact.capturedProducerBlock': 'Captured producer block',
   'artifact.noProducerExecution': 'Unable to determine the producer execution for this version.',
+  'artifact.noProducerExecutionHint':
+    'Run the producing cell in a notebook or under the agent, and its runs, inputs and outputs are recorded against this version.',
   'artifact.partialCaptureDetails': 'Partial capture details',
   'artifact.dependencyImpact': 'Dependency impact',
   'artifact.noDependencyChanges': 'No additional package version changes',

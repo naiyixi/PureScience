@@ -1233,7 +1233,10 @@ const ArtifactProvenancePanel = ({
               </div>
             </div>
           ) : (
-            <p className="p-5 text-sm text-text-300">{t('artifact.noProducerExecution')}</p>
+            <div className="p-5">
+              <p className="text-sm text-text-300">{t('artifact.noProducerExecution')}</p>
+              <p className="mt-1 text-xs text-text-300">{t('artifact.noProducerExecutionHint')}</p>
+            </div>
           )
         ) : null}
         {provenance && activeTab === 'messages' && deferredSectionReady ? (

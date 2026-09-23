@@ -706,6 +706,8 @@ describe('ArtifactProvenancePanel', () => {
     expect(container.textContent).toContain(
       'Unable to determine the producer execution for this version'
     )
+    // That line alone said what was missing but not how a version ever gets one.
+    expect(container.textContent).toContain('Run the producing cell in a notebook')
     expect(container.textContent).not.toContain('Loading Execution Log')
   })
 

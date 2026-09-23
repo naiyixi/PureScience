@@ -427,6 +427,8 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'artifact.generateScriptHint': '使用產生開始時所選的提供者與模型。',
   'artifact.noDependencyChanges': '沒有其他套件版本變更',
   'artifact.noProducerExecution': '無法判定此版本的生產者執行內容。',
+  'artifact.noProducerExecutionHint':
+    '在筆記本裡或讓 agent 跑一次產生它的那一格，這一版的執行、輸入與輸出就會被記錄下來。',
   'artifact.partialCaptureDetails': '部分擷取詳細資料',
   'closeConfirm.minimizeToTray': '最小化到系統匣',
   'closeConfirm.quitTitle': '退出 PureScience？',
