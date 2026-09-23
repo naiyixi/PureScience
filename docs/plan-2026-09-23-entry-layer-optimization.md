@@ -78,9 +78,10 @@
 2. **已接的界面**：`SessionInterruptedBanner` 新增「继续这一回合」，调 `window.api.acp.continueInterruptedTurn({projectId, sessionId, promptMessageId})`（`promptMessageId` 取自导出的 `findInterruptedUserTurn`，即「最后一条没有成功回复的用户消息」），成功后 `markResumed` 清中断态。**两个动作的差别写在横幅上**（`data-testid="session-interrupted-hints"`）：继续＝从那一步接着跑、消息与附件还是原来那条、已在跑不会起第二次；恢复＝把这条消息重新发一遍、算新回合。飞行中两个按钮互斥禁用；没有可续回合时继续按钮禁用并明说原因；续跑失败显示具名原因。i18n 6 key × 9 语；横幅套件 3 → **6 passed**；typecheck 0。
 3. **真机未通（实测两轮，不是猜测）**：
    - 第一轮（跨重启）：假 agent 先流一段半成品再永不作答，随后 `app.restart()`（走 Electron 自己的 close，属优雅退出）。重启后 `api.sessions.loadAll()` **返回 0 个会话**、首页 Recent sessions 为空、横幅不出现——「回合没写完就退出」在这条路径上什么也没留下。**结论：跨重启不是正确的验证形状**。
-   - 第二轮（不重启，已坐实前提）：同一个在飞回合**根本不用重启**——应用自己就把该会话标成 `status: 'error'` + `error: 'Session was interrupted before the app closed.'`、已持久化 2 条消息（`sessions.loadAll()` 实测）。即「中断」这件事是应用在回合悬着时自己认定的，横幅可达。
-   - 卡点不是功能而是**起不来**：改成不重启的 spec 后，每次运行都在启动画面就报 `Target page, context or browser has been closed`——本机有一个残留的 dev 实例占着开发根（`electron-vite` 进程 + `Electron .`，两次 kill 后仍在），属本机环境冲突，不是功能结论。
-   - spec 因此标 `test.fixme` 并把两轮测量写在文件头；**U13 的真机验收这一项仍未完成**，等环境清干净再补。
+   - **两处更正（都在 2026-09-23 晚实测推翻）**：
+     - 上面「不重启也中断」那条**作废**：换了干净的运行后，同样的在飞回合跑了 **120 秒仍是 `Session status: Running`**——应用不会自己在运行期把回合标成中断。横幅只有在该会话被恢复成中断态时才出现。
+     - 上面「重启后 0 个会话」那条**也作废**：它是在**窗口 bug** 下测的。`completeOnboarding()` 与 `configureFakeAgent()` 各自**返回它们留下的那个窗口**，而当时 spec 仍握着 reload 前的旧窗口，于是整个运行在 onboarding 阶段就以 `Target page, context or browser has been closed` 死掉，数据来自一个已经关掉的实例——**这条测量不算数，必须重测**。旁证：同一个仓里另一条 spec（`artifact-replay`）按惯例写 `page = await ...` 重新赋值，13.1s 通过；环境本身没问题。
+   - 卡点已从「环境」改判为「spec 自身」，窗口 bug 已修（`page = await completeOnboarding()` / `page = await configureFakeAgent()`），spec 改为**重启形状**并标 `test.fixme`，等下一轮按正确形状重测。**U13 的真机验收仍未完成**，但下一步是明确的、可执行的。
 4. **仍然成立的部分**：横幅本身、IPC 调用形状、main 侧 `continueInterruptedTurn` 的幂等（已在跑则原样返回快照）都由单测与 main 侧测试覆盖；缺的是端到端那一半。
 
 ## 批次 3（v1.72.0）体验真实差距 + 可发现性
