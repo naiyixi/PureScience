@@ -165,7 +165,15 @@ export const createArtifactReplayAdapter = (
           })
           .catch(() => undefined)
       }
-      await rm(session ? dirname(workspace) : workspace, { recursive: true, force: true })
+      // A kernel that has just been told to stop can still be writing inside its directory: a recursive
+      // removal empties what it saw and then fails the final rmdir with ENOTEMPTY, which would make the
+      // replay fail for a reason that has nothing to do with the recording. Retry that window instead.
+      await rm(session ? dirname(workspace) : workspace, {
+        recursive: true,
+        force: true,
+        maxRetries: 5,
+        retryDelay: 100
+      })
     },
     readFileBase64: (path) =>
       readFile(path)
