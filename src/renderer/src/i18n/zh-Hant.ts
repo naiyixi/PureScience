@@ -1778,7 +1778,6 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
     '無法載入。個別授權仍可撤銷；在取得完整集合前，「全部撤銷」會保持停用。',
   'settings.rememberedPermissions': '記住的權限',
   'settings.rememberedPermissionsDesc': '檢視或撤銷為工具、專案與對話儲存的核准。',
-  'settings.rememberedPermissionsNone': '此範圍內沒有記住的權限。',
   'settings.rememberedPermissionsScopeHint': '新對話不需先詢問即可執行指令、變更檔案及存取網路',
   'settings.remoteAccess': '遠端存取',
   'settings.remoteAccessHint':
@@ -2548,6 +2547,12 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'jobDetail.remoteWorkdir': '遠端工作目錄',
   'permissions.revokeAll': '全部撤銷',
   'permissions.revokeAllAria': '撤銷 {name} 的全部權限',
+  'permissions.emptyTitle': '還沒有記住任何權限決定',
+  'permissions.emptyHint':
+    '當 agent 請求權限、你選擇「永遠允許」時，這些決定會依涵蓋範圍出現在這裡。',
+  'permissions.emptyFilteredTitle': '這個範圍下沒有記住的權限',
+  'permissions.emptyFilteredHint': '其他範圍仍有記住的決定。',
+  'permissions.emptyShowAll': '顯示全部範圍',
   'permissions.useFullAccessTitle': '預設使用完整存取權限？',
   'permissions.useFullAccess': '使用完整存取權限',
   'jobDetail.jobId': '作業 ID',

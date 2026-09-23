@@ -994,7 +994,6 @@ export const zh = {
   'settings.noInstalledSkillsFound': '在扫描的全局文件夹中未找到已安装的技能。',
   'settings.newConvosRunWithoutAsking':
     '新对话可以在不询问的情况下运行命令、修改文件和访问网络。现有对话保持不变。',
-  'settings.rememberedPermissionsNone': '此范围内没有记住的权限。',
   'settings.rememberedGrantsIncomplete':
     '无法加载。单个授权仍可撤销；在完整集合确定前，全部撤销保持禁用。',
   'settings.rememberedPermissionsScopeHint':
@@ -2614,6 +2613,12 @@ export const zh = {
   'jobDetail.remoteWorkdir': '远程工作目录',
   'permissions.revokeAll': '全部撤销',
   'permissions.revokeAllAria': '撤销 {name} 的全部权限',
+  'permissions.emptyTitle': '还没有记住任何权限决定',
+  'permissions.emptyHint':
+    '当 agent 请求权限、你选择「始终允许」时，这些决定会按覆盖范围出现在这里。',
+  'permissions.emptyFilteredTitle': '这个范围下没有记住的权限',
+  'permissions.emptyFilteredHint': '其他范围仍有记住的决定。',
+  'permissions.emptyShowAll': '显示全部范围',
   'permissions.useFullAccessTitle': '默认使用完整访问权限？',
   'permissions.useFullAccess': '使用完整访问权限',
   'jobDetail.jobId': '作业 ID',

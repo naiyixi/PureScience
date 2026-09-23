@@ -1958,7 +1958,6 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.rememberedPermissions': 'Gemerkte Berechtigungen',
   'settings.rememberedPermissionsDesc':
     'Überprüfen oder widerrufen Sie Genehmigungen, die für Tools, Projekte und Konversationen gespeichert wurden.',
-  'settings.rememberedPermissionsNone': 'Keine gemerkten Berechtigungen für diesen Umfang.',
   'settings.rememberedPermissionsScopeHint':
     'Neue Konversationen können ohne Rückfrage Befehle ausführen, Dateien ändern und auf das Netzwerk zugreifen',
   'settings.remoteAccess': 'Remote-Zugriff',
@@ -2816,6 +2815,12 @@ export const de: Partial<Record<ZhKey, string>> = {
   'jobDetail.remoteWorkdir': 'Remote-Arbeitsverzeichnis',
   'permissions.revokeAll': 'Alle widerrufen',
   'permissions.revokeAllAria': 'Alle {name}-Berechtigungen widerrufen',
+  'permissions.emptyTitle': 'Noch keine Berechtigungsentscheidungen gemerkt',
+  'permissions.emptyHint':
+    'Entscheidungen, die Sie als „immer erlauben“ markieren, während ein Agent Zugriff anfragt, erscheinen hier — nach Umfang gruppiert.',
+  'permissions.emptyFilteredTitle': 'Für diesen Umfang ist nichts gemerkt',
+  'permissions.emptyFilteredHint': 'Andere Umfänge haben weiterhin gemerkte Entscheidungen.',
+  'permissions.emptyShowAll': 'Alle Umfänge zeigen',
   'permissions.useFullAccessTitle': 'Vollzugriff standardmäßig verwenden?',
   'permissions.useFullAccess': 'Vollzugriff verwenden',
   'jobDetail.jobId': 'Job-ID',

@@ -1906,7 +1906,6 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.rememberedPermissions': 'Запомненные разрешения',
   'settings.rememberedPermissionsDesc':
     'Просматривайте или отзывайте одобрения, сохранённые для инструментов, проектов и диалогов.',
-  'settings.rememberedPermissionsNone': 'Для этой области действия нет запомненных разрешений.',
   'settings.rememberedPermissionsScopeHint':
     'Новые диалоги могут выполнять команды, изменять файлы и обращаться к сети без запроса',
   'settings.remoteAccess': 'Удалённый доступ',
@@ -2751,6 +2750,12 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'jobDetail.remoteWorkdir': 'Удалённый рабочий каталог',
   'permissions.revokeAll': 'Отозвать все',
   'permissions.revokeAllAria': 'Отозвать все разрешения {name}',
+  'permissions.emptyTitle': 'Решения о разрешениях пока не запомнены',
+  'permissions.emptyHint':
+    'Решения, отмеченные как «всегда разрешать», когда агент запрашивает доступ, появятся здесь, сгруппированные по области.',
+  'permissions.emptyFilteredTitle': 'Для этой области ничего не запомнено',
+  'permissions.emptyFilteredHint': 'В других областях запомненные решения ещё есть.',
+  'permissions.emptyShowAll': 'Показать все области',
   'permissions.useFullAccessTitle': 'Использовать полный доступ по умолчанию?',
   'permissions.useFullAccess': 'Использовать полный доступ',
   'jobDetail.jobId': 'ID задания',

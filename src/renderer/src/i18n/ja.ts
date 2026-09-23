@@ -1911,7 +1911,6 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.rememberedPermissions': '記憶された権限',
   'settings.rememberedPermissionsDesc':
     'ツール・プロジェクト・会話に対して保存された承認を確認または取り消します。',
-  'settings.rememberedPermissionsNone': 'このスコープには記憶された権限がありません。',
   'settings.rememberedPermissionsScopeHint':
     '新しい会話は、確認なしでコマンドの実行・ファイルの変更・ネットワークアクセスを行えます',
   'settings.remoteAccess': 'リモートアクセス',
@@ -2753,6 +2752,12 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'jobDetail.remoteWorkdir': 'リモート作業ディレクトリ',
   'permissions.revokeAll': 'すべて取り消す',
   'permissions.revokeAllAria': '{name} のすべての権限を取り消す',
+  'permissions.emptyTitle': '許可の決定はまだ記憶されていません',
+  'permissions.emptyHint':
+    'エージェントが権限を求め、あなたが「常に許可」を選んだ決定が、範囲ごとにここへ並びます。',
+  'permissions.emptyFilteredTitle': 'この範囲に記憶された許可はありません',
+  'permissions.emptyFilteredHint': '他の範囲には記憶された決定が残っています。',
+  'permissions.emptyShowAll': 'すべての範囲を表示',
   'permissions.useFullAccessTitle': 'デフォルトでフルアクセスを使用しますか？',
   'permissions.useFullAccess': 'フルアクセスを使用',
   'jobDetail.jobId': 'ジョブ ID',

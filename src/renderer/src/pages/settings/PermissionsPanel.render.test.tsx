@@ -37,6 +37,8 @@ beforeEach(() => {
   Object.defineProperties(HTMLElement.prototype, {
     hasPointerCapture: { configurable: true, value: () => false },
     setPointerCapture: { configurable: true, value: () => undefined },
+    // Radix Select scrolls the highlighted option into view when it opens; jsdom has no layout.
+    scrollIntoView: { configurable: true, value: () => undefined },
     releasePointerCapture: { configurable: true, value: () => undefined }
   })
   container = document.createElement('div')
@@ -140,7 +142,7 @@ describe('PermissionsPanel', () => {
     expect(setDefaultPermissionProfile).toHaveBeenLastCalledWith({ profile: 'full' })
   })
 
-  it('keeps the default empty state visually quiet while exposing all scope counts', async () => {
+  it('explains an empty permission list in plain sight while exposing all scope counts', async () => {
     setPermissionApi({
       list: vi.fn().mockResolvedValue({
         version: 1,
@@ -156,9 +158,43 @@ describe('PermissionsPanel', () => {
       '[aria-label="Filter permissions by scope"]'
     )
     expect(trigger?.textContent).toContain('All (0)')
-    const emptyStatus = document.body.querySelector<HTMLElement>('[role="status"]')
-    expect(emptyStatus?.textContent).toContain('No remembered permissions for this scope.')
-    expect(emptyStatus?.classList.contains('sr-only')).toBe(true)
+    // This used to be an sr-only paragraph: sighted readers got a blank panel with no reason given.
+    const empty = document.body.querySelector<HTMLElement>('.border-dashed')
+    expect(empty).not.toBeNull()
+    expect(empty?.textContent).toContain('No permission decisions remembered yet')
+    expect(empty?.textContent).toContain('always allow')
+    // With nothing remembered at all there is nothing to clear, so no dead-end button.
+    expect(empty?.querySelector('button')).toBeNull()
+  })
+
+  it('offers to clear the scope filter when only the filter is empty', async () => {
+    setPermissionApi({ list: vi.fn().mockResolvedValue(snapshot) })
+
+    await act(async () => root.render(<PermissionsPanel />))
+
+    const trigger = document.body.querySelector<HTMLButtonElement>(
+      '[aria-label="Filter permissions by scope"]'
+    )
+    expect(trigger).not.toBeNull()
+    await act(async () => {
+      trigger?.click()
+    })
+    const projectOption = Array.from(
+      document.body.querySelectorAll<HTMLElement>('[role="option"]')
+    ).find((option) => option.textContent?.includes('Project'))
+    expect(projectOption).not.toBeUndefined()
+    await act(async () => {
+      projectOption?.click()
+    })
+
+    const empty = document.body.querySelector<HTMLElement>('.border-dashed')
+    expect(empty).not.toBeNull()
+    expect(empty?.textContent).toContain('Nothing remembered for this scope')
+    const showAll = empty?.querySelector('button')
+    expect(showAll?.textContent).toContain('Show all scopes')
+    await act(async () => {
+      showAll?.click()
+    })
     expect(document.body.querySelector('.border-dashed')).toBeNull()
   })
 

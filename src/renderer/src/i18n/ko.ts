@@ -1874,7 +1874,6 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.rememberedPermissions': '기억된 권한',
   'settings.rememberedPermissionsDesc':
     '도구, 프로젝트, 대화에 대해 저장된 승인을 검토하거나 취소하세요.',
-  'settings.rememberedPermissionsNone': '이 범위에 기억된 권한이 없습니다.',
   'settings.rememberedPermissionsScopeHint':
     '새 대화는 먼저 묻지 않고 명령 실행, 파일 변경, 네트워크 액세스가 가능합니다',
   'settings.remoteAccess': '원격 액세스',
@@ -2693,6 +2692,12 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'jobDetail.remoteWorkdir': '원격 작업 디렉터리',
   'permissions.revokeAll': '모두 취소',
   'permissions.revokeAllAria': '{name}의 모든 권한 취소',
+  'permissions.emptyTitle': '아직 기억된 권한 결정이 없습니다',
+  'permissions.emptyHint':
+    '에이전트가 권한을 요청할 때 "항상 허용"을 선택한 결정이 범위별로 여기에 표시됩니다.',
+  'permissions.emptyFilteredTitle': '이 범위에 기억된 권한이 없습니다',
+  'permissions.emptyFilteredHint': '다른 범위에는 기억된 결정이 남아 있습니다.',
+  'permissions.emptyShowAll': '모든 범위 표시',
   'permissions.useFullAccessTitle': '기본적으로 전체 액세스를 사용할까요?',
   'permissions.useFullAccess': '전체 액세스 사용',
   'jobDetail.jobId': '작업 ID',

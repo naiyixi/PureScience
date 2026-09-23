@@ -1050,7 +1050,6 @@ export const en: Record<ZhKey, string> = {
   'settings.noInstalledSkillsFound': 'No installed skills found in the scanned global folders.',
   'settings.newConvosRunWithoutAsking':
     'New conversations can run commands, change files, and access the network without asking first. Existing conversations are unchanged.',
-  'settings.rememberedPermissionsNone': 'No remembered permissions for this scope.',
   'settings.rememberedGrantsIncomplete':
     'could not be loaded. Individual grants remain revocable; Revoke all is disabled until the complete set is known.',
   'settings.rememberedPermissionsScopeHint':
@@ -2785,6 +2784,12 @@ export const en: Record<ZhKey, string> = {
   'jobDetail.remoteWorkdir': 'Remote workdir',
   'permissions.revokeAll': 'Revoke all',
   'permissions.revokeAllAria': 'Revoke all {name} permissions',
+  'permissions.emptyTitle': 'No permission decisions remembered yet',
+  'permissions.emptyHint':
+    'Decisions you mark as “always allow” while an agent asks for access appear here, grouped by what they cover.',
+  'permissions.emptyFilteredTitle': 'Nothing remembered for this scope',
+  'permissions.emptyFilteredHint': 'Other scopes still have remembered decisions.',
+  'permissions.emptyShowAll': 'Show all scopes',
   'permissions.useFullAccessTitle': 'Use Full access by default?',
   'permissions.useFullAccess': 'Use Full access',
   'jobDetail.jobId': 'Job ID',

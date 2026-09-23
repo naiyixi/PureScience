@@ -377,9 +377,31 @@ const PermissionsPanel = ({
             ))}
           </div>
         ) : visible.length === 0 ? (
-          <p className="sr-only" role="status">
-            {t('settings.rememberedPermissionsNone')}
-          </p>
+          // This used to be an sr-only paragraph, so sighted users got a blank panel with no reason
+          // given. It now says which kind of empty this is and offers the way out.
+          <div className="rounded-lg border border-dashed border-border p-6 text-center">
+            <p className="text-sm text-foreground">
+              {grants.length === 0
+                ? t('permissions.emptyTitle')
+                : t('permissions.emptyFilteredTitle')}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {grants.length === 0
+                ? t('permissions.emptyHint')
+                : t('permissions.emptyFilteredHint')}
+            </p>
+            {grants.length > 0 ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-3"
+                onClick={() => setFilter('all')}
+              >
+                {t('permissions.emptyShowAll')}
+              </Button>
+            ) : null}
+          </div>
         ) : (
           <div className="space-y-5">
             {FAMILY_DETAILS.map(({ id, title, description }) => {

@@ -1944,7 +1944,6 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.rememberedPermissions': 'Autorisations mémorisées',
   'settings.rememberedPermissionsDesc':
     'Consultez ou révoquez les approbations enregistrées pour les outils, les projets et les conversations.',
-  'settings.rememberedPermissionsNone': 'Aucune autorisation mémorisée pour cette portée.',
   'settings.rememberedPermissionsScopeHint':
     'Les nouvelles conversations peuvent exécuter des commandes, modifier des fichiers et accéder au réseau sans demander',
   'settings.remoteAccess': 'Accès à distance',
@@ -2804,6 +2803,12 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'jobDetail.remoteWorkdir': 'Répertoire de travail distant',
   'permissions.revokeAll': 'Tout révoquer',
   'permissions.revokeAllAria': 'Révoquer toutes les permissions {name}',
+  'permissions.emptyTitle': 'Aucune décision de permission mémorisée',
+  'permissions.emptyHint':
+    'Les décisions que vous marquez « toujours autoriser » lorsqu’un agent demande l’accès apparaissent ici, groupées par portée.',
+  'permissions.emptyFilteredTitle': 'Rien de mémorisé pour cette portée',
+  'permissions.emptyFilteredHint': 'D’autres portées ont encore des décisions mémorisées.',
+  'permissions.emptyShowAll': 'Afficher toutes les portées',
   'permissions.useFullAccessTitle': 'Utiliser l’accès complet par défaut ?',
   'permissions.useFullAccess': 'Utiliser l’accès complet',
   'jobDetail.jobId': 'ID de la tâche',

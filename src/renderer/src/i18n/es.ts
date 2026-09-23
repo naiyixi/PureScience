@@ -1933,7 +1933,6 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.rememberedPermissions': 'Permisos recordados',
   'settings.rememberedPermissionsDesc':
     'Revisa o revoca las aprobaciones guardadas para herramientas, proyectos y conversaciones.',
-  'settings.rememberedPermissionsNone': 'No hay permisos recordados para este ámbito.',
   'settings.rememberedPermissionsScopeHint':
     'Las conversaciones nuevas pueden ejecutar comandos, modificar archivos y acceder a la red sin preguntar',
   'settings.remoteAccess': 'Acceso remoto',
@@ -2786,6 +2785,12 @@ export const es: Partial<Record<ZhKey, string>> = {
   'jobDetail.remoteWorkdir': 'Directorio de trabajo remoto',
   'permissions.revokeAll': 'Revocar todo',
   'permissions.revokeAllAria': 'Revocar todos los permisos de {name}',
+  'permissions.emptyTitle': 'Todavía no hay decisiones de permiso recordadas',
+  'permissions.emptyHint':
+    'Las decisiones que marques como «permitir siempre» mientras un agente pide acceso aparecen aquí, agrupadas por alcance.',
+  'permissions.emptyFilteredTitle': 'No hay nada recordado para este alcance',
+  'permissions.emptyFilteredHint': 'Otros alcances siguen teniendo decisiones recordadas.',
+  'permissions.emptyShowAll': 'Mostrar todos los alcances',
   'permissions.useFullAccessTitle': '¿Usar acceso completo por defecto?',
   'permissions.useFullAccess': 'Usar acceso completo',
   'jobDetail.jobId': 'ID de la tarea',
