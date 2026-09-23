@@ -656,6 +656,7 @@ const WorkspacePage = ({
     resendEditedMessage,
     cancelRun,
     resumeInterruptedSession,
+    continueInterruptedSession,
     deleteRuntimeSession,
     respondToPermission,
     setPermissionProfile,
@@ -2407,6 +2408,13 @@ const WorkspacePage = ({
     await resumeInterruptedSession(activeSession.id)
   }
 
+  // Continue re-attaches the session and hands the recorded turn back; doing it here rather than in the
+  // panel keeps the runtime (which owns the attachment) in one place.
+  const continueActiveSession = async (): Promise<void> => {
+    if (!isSessionPersistenceReady || !activeSession) return
+    await continueInterruptedSession(activeSession.id)
+  }
+
   // Forwards side-chat content into the active session. ACP has no mid-turn input, so when the
   // main turn is running it is interrupted first and the advisory is then sent as a follow-up
   // prompt — the protocol-compatible approximation of live side-chat injection.
@@ -2924,6 +2932,7 @@ const WorkspacePage = ({
             onCancelAttachmentTransfer={cancelAttachmentTransfer}
             onCancelRun={cancelActiveRun}
             onResumeSession={resumeActiveSession}
+            onContinueSession={continueActiveSession}
             onOpenNotebook={openNotebookPreview}
             onTogglePreviewPanel={togglePreviewPanel}
             onOpenSidebar={() => setIsMobileSidebarOpen(true)}

@@ -80,7 +80,6 @@ import { SelectionAnnotator } from './SelectionAnnotator'
 import { normalizeRunFailureError } from './error-report'
 import { ReportErrorDialog } from './ReportErrorDialog'
 import { findInterruptedUserTurn } from '@/lib/acp/useWorkspaceAgentRuntime'
-import { useSessionStore } from '@/stores/session-store'
 import { SessionInterruptedBanner } from './SessionInterruptedBanner'
 import { ExtensionPreservingFileName } from './ExtensionPreservingFileName'
 import { TrimmedHistoryNotice } from './TrimmedHistoryNotice'
@@ -194,6 +193,10 @@ type ConversationPanelProps = {
   onCancelAttachmentTransfer: (transfer: ComposerUploadTransfer) => void
   onCancelRun: () => void
   onResumeSession: () => Promise<void>
+  // Re-attaches the session and hands the interrupted turn back to the agent. The runtime that owns the
+  // attachment lives above this panel, so the panel asks for it rather than calling the bridge itself:
+  // calling the bridge directly skipped the re-attach, and main then refused the turn.
+  onContinueSession: () => Promise<void>
   onOpenNotebook: (notebook: NotebookSessionReference) => void
   onTogglePreviewPanel?: () => void
   onOpenSidebar?: () => void
@@ -301,6 +304,7 @@ const ConversationPanel = ({
   onCancelAttachmentTransfer,
   onCancelRun,
   onResumeSession,
+  onContinueSession,
   onOpenNotebook,
   onTogglePreviewPanel = () => undefined,
   onOpenSidebar,
@@ -423,13 +427,7 @@ const ConversationPanel = ({
     setIsContinuing(true)
     setContinueError(undefined)
     try {
-      await window.api.acp.continueInterruptedTurn({
-        projectId: activeSession.projectId,
-        sessionId: activeSession.id,
-        promptMessageId: interruptedTurn.id
-      })
-      // The continuation is running, so the banner's reason to exist is gone.
-      useSessionStore.getState().markResumed(activeSession.id)
+      await onContinueSession()
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error)
       setContinueError(t('ws.continueTurnFailed').replace('{detail}', detail))

@@ -28,6 +28,7 @@ import type { AgentFrameworkId } from '../../../../shared/settings'
 import { resolveModelContextWindow } from '../../../../shared/provider-registry'
 import { isMediaOverflowError } from '../../../../shared/media-overflow'
 import {
+  CONTINUE_CONTEXT_RESET_MESSAGE,
   RESUME_MODEL_INCOMPATIBLE_MESSAGE,
   RESUME_RECONNECT_FAILED_MESSAGE,
   RESUME_TIMED_OUT_MESSAGE,
@@ -1397,6 +1398,53 @@ const restoreRemovedTurnProjection = (
   }))
 }
 
+// Re-attaches an interrupted session's ACP runtime so it can be talked to again. Both actions on the
+// interrupted banner need this and they differ only in what happens next: Continue hands the recorded turn
+// back to the agent, Resume re-sends it as a new turn. Returns undefined when the session could not be
+// re-attached (the failure is already recorded on the session). The continuation in particular cannot work
+// without it: main refuses a turn whose session it cannot find, and after a restart nothing has attached one.
+const reattachInterruptedWorkspaceSession = async (
+  runtime: WorkspaceMessageRuntime,
+  sessionId: string
+): Promise<{ contextReset: boolean; cwd: string } | undefined> => {
+  const session = useSessionStore.getState().sessions.find((item) => item.id === sessionId)
+
+  if (!session) return undefined
+
+  const runtimeAlreadyAttached = runtime.state.sessionIds.includes(sessionId)
+
+  // Empty string is treated as missing; fall back to runtime cwd
+  const resumeCwd = session.cwd || runtime.state.cwd
+
+  if (!resumeCwd) {
+    useSessionStore.getState().failRun(sessionId, RESUME_WORKSPACE_MISSING_MESSAGE)
+    return undefined
+  }
+
+  if (runtimeAlreadyAttached) return { contextReset: false, cwd: resumeCwd }
+
+  try {
+    const resumeResult = await runtime.resumeSession(
+      sessionId,
+      resumeCwd,
+      session.projectId,
+      session.permissionProfile ?? DEFAULT_PERMISSION_PROFILE,
+      session.agentFrameworkId,
+      session.agentBackendId,
+      session.specialistId
+    )
+    // Adopting a fresh agent session (framework switch, or an unresumable restart) wipes the agent's
+    // context; the caller decides what to do about that — Resume replays the transcript, Continue cannot.
+    useSessionStore
+      .getState()
+      .markResumed(sessionId, resumeResult?.frameworkId, resumeResult?.backendId)
+    return { contextReset: Boolean(resumeResult?.contextReset), cwd: resumeCwd }
+  } catch (error) {
+    useSessionStore.getState().failRun(sessionId, getResumeFailureMessage(error))
+    return undefined
+  }
+}
+
 // Explicitly re-attaches an interrupted session's ACP runtime so the user can keep chatting. On
 // success the composer is unlocked; on failure the interrupted banner stays so a retry stays possible.
 const resumeInterruptedWorkspaceSession = async (
@@ -1424,41 +1472,14 @@ const resumeInterruptedWorkspaceSession = async (
     useSessionStore.getState().markResumed(sessionId)
     return
   }
+
+  const attached = await reattachInterruptedWorkspaceSession(runtime, sessionId)
+  if (!attached) return
+
   if (runtimeAlreadyAttached) useSessionStore.getState().markResumed(sessionId)
 
-  // Empty string is treated as missing; fall back to runtime cwd
-  const resumeCwd = session.cwd || runtime.state.cwd
-
-  if (!resumeCwd) {
-    useSessionStore.getState().failRun(sessionId, RESUME_WORKSPACE_MISSING_MESSAGE)
-    return
-  }
-
-  let contextReset = false
-
-  if (!runtimeAlreadyAttached) {
-    try {
-      const resumeResult = await runtime.resumeSession(
-        sessionId,
-        resumeCwd,
-        session.projectId,
-        session.permissionProfile ?? DEFAULT_PERMISSION_PROFILE,
-        session.agentFrameworkId,
-        session.agentBackendId,
-        session.specialistId
-      )
-      // Adopting a fresh agent session (framework switch, or an unresumable restart) wipes the agent's
-      // context; capture that so the re-sent turn below replays the transcript. The shared send path's
-      // own re-resume can't observe this — by then the session is already attached.
-      contextReset = Boolean(resumeResult?.contextReset)
-      useSessionStore
-        .getState()
-        .markResumed(sessionId, resumeResult?.frameworkId, resumeResult?.backendId)
-    } catch (error) {
-      useSessionStore.getState().failRun(sessionId, getResumeFailureMessage(error))
-      return
-    }
-  }
+  const resumeCwd = attached.cwd
+  const contextReset = attached.contextReset
 
   // Continue the interrupted turn if it never got a successful reply. Removing the stale user message
   // first avoids a duplicate bubble, since the shared send path re-appends and re-prompts it once.
@@ -1939,6 +1960,7 @@ const useWorkspaceAgentRuntime = (): {
   ) => Promise<boolean>
   cancelRun: (sessionId: string) => Promise<void>
   resumeInterruptedSession: (sessionId: string) => Promise<void>
+  continueInterruptedSession: (sessionId: string) => Promise<void>
   deleteRuntimeSession: (sessionId: string) => Promise<boolean>
   respondToPermission: (requestId: string, optionId?: string) => Promise<void>
   setPermissionProfile: (sessionId: string, profile: PermissionProfileId) => Promise<boolean>
@@ -2166,6 +2188,40 @@ const useWorkspaceAgentRuntime = (): {
     ]
   )
 
+  // Hands an interrupted turn back to the agent instead of sending it again, so the same prompt carries on
+  // from where it stopped. The session has to be attached first — main refuses a turn whose session it
+  // cannot find, and after a restart nothing has attached one — so this re-attaches exactly as Resume does
+  // and then asks main to continue the recorded turn.
+  const continueInterruptedSession = useCallback(
+    async (sessionId: string): Promise<void> => {
+      const session = useSessionStore
+        .getState()
+        .sessions.find((candidate) => candidate.id === sessionId)
+      if (!session) return
+
+      const interruptedTurn = findInterruptedUserTurn(session.messages)
+      if (!interruptedTurn) return
+
+      const attached = await reattachInterruptedWorkspaceSession(runtime, sessionId)
+      if (!attached) return
+
+      if (attached.contextReset) {
+        useSessionStore.getState().failRun(sessionId, CONTINUE_CONTEXT_RESET_MESSAGE)
+        return
+      }
+
+      await window.api.acp.continueInterruptedTurn({
+        projectId: session.projectId,
+        sessionId,
+        promptMessageId: interruptedTurn.id
+      })
+
+      // The continuation is running, so the banner's reason to exist is gone.
+      useSessionStore.getState().markResumed(sessionId)
+    },
+    [runtime]
+  )
+
   // Sends a cancellation request while the runtime waits for the eventual stop event.
   const cancelRun = useCallback(
     (sessionId: string): Promise<void> =>
@@ -2235,6 +2291,7 @@ const useWorkspaceAgentRuntime = (): {
     resendEditedMessage,
     cancelRun,
     resumeInterruptedSession,
+    continueInterruptedSession,
     deleteRuntimeSession,
     respondToPermission,
     setPermissionProfile,

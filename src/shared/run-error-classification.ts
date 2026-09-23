@@ -23,6 +23,12 @@ export const RESUME_WORKSPACE_MISSING_MESSAGE =
 export const RESUME_TIMED_OUT_MESSAGE = 'Agent session resume timed out; click Resume to try again.'
 export const RESUME_UNSUPPORTED_MESSAGE =
   'This agent build cannot resume sessions; start a new conversation.'
+// Re-attaching had to adopt a fresh agent session, so the agent no longer holds the context this turn
+// belongs to. Only Resume replays the transcript, so say that rather than continuing into a reply that
+// ignores what the turn depended on. (Continue cannot replay: the continuation request's contextReset
+// payload has no renderer producer.)
+export const CONTINUE_CONTEXT_RESET_MESSAGE =
+  'This turn cannot be picked up where it stopped because the agent started a fresh session; click Resume to send it again with the conversation replayed.'
 export const RESUME_RECONNECT_FAILED_MESSAGE =
   'Could not reconnect to the agent; check it is installed, then click Resume to retry.'
 export const RESUME_MODEL_INCOMPATIBLE_MESSAGE =
@@ -81,6 +87,7 @@ const EXPECTED_RUN_FAILURE_MESSAGES = new Set<string>([
   RESUME_UNSUPPORTED_MESSAGE,
   RESUME_RECONNECT_FAILED_MESSAGE,
   RESUME_MODEL_INCOMPATIBLE_MESSAGE,
+  CONTINUE_CONTEXT_RESET_MESSAGE,
   IMAGE_REPLAY_UNSUPPORTED_MESSAGE,
   NO_ACTIVE_PROVIDER_MESSAGE,
   CLAUDE_EXECUTABLE_MISSING_MESSAGE,

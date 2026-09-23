@@ -31,6 +31,14 @@ const CONTINUED_REPLY = 'The interrupted turn continued from where it stopped.'
 //     Every run then died inside onboarding with 'Target page, context or browser has been closed', while
 //     a neighbouring spec that reassigns both passes in 13s. The helpers' return values are used below.
 //
+//   * Eleventh measurement, after giving Continue the re-attach that Resume performs: the click now
+//     re-attaches the session — the fake agent's log shows a new process taking 'session.resume
+//     e2e-session-1' at the moment of the click — and the session settles to Idle with the banner gone, so
+//     the renderer half works. The continuation itself still produces nothing: no prompt reaches the agent
+//     (the log ends at session.resume) and no refusal is shown, which is a different failure from the
+//     refusal in the eighth measurement. Something in main's continuation returns without sending, and
+//     nothing tells the user. That is where the next reading goes, and this spec stays held open until it
+//     is settled.
 //   * Tenth measurement, with the fake agent logging every request it receives: the continuation never
 //     re-attaches the session. The log (one process, the one before the restart) reads
 //     'initialize / session.new -> e2e-session-1 / session.prompt e2e-session-1: <first turn> /

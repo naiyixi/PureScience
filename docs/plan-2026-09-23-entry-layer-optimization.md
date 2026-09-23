@@ -327,3 +327,13 @@
 - **之后什么都没有**：重启后**没有新的 agent 进程**、**没有 `session.resume`**。于是 prompt 工作流里 `activeSession` 为空，抛出 `ACP session not found: e2e-session-1`（`:219` 的普通分支，不是 `:200` 的 "after force-load"）→ 说明**「继续」没有先重挂会话**，而并列的 **Resume 会**。
 - 下一步的决策点（对着代码定，不猜）：重挂这一步该由**继续工作流**做，还是该由「打开会话」做（真实用户自然路径是打开会话→点继续）。
 - 夹具侧同时落地：假 agent 现在对 `session/load` 显式报「不支持」并记日志（原先静默）。
+
+### U13：第十一次实测 —— **「继续」已会重挂（界面路径实测生效）**，但继续请求静默未发出
+- **渲染层修复已落地**（按代码里的合同注释：`contextReset` "仅当 session/resume 采纳了新 provider 上下文时才有" ⇒ 重挂本就该由渲染层先做）：
+  - 抽出 `reattachInterruptedWorkspaceSession(runtime, sessionId)`：Resume 与 Continue 共用「重挂」这一半；Resume 仍是「重挂 + 重发」，Continue 是「重挂 + 交给主进程续」。
+  - 新增 `continueInterruptedSession(sessionId)` 并导出，`WorkspacePage` 以 `onContinueSession` 接到 `ConversationPanel`；面板不再直接调 bridge（直接调就是跳过重挂的旧行为）。
+  - 新消息常量 `CONTINUE_CONTEXT_RESET_MESSAGE`（`src/shared/run-error-classification.ts`）：当重挂**不得不采纳全新会话**时明确告知「只有 Resume 能带上下文重放」，而不是让 agent 在失忆状态下继续。
+  - 验证：typecheck 0、eslint 0、运行时/面板/横幅/store 四套件 **293 passed**。
+- **真机实测（假 agent 日志为证）**：点击「继续」→ 日志出现新进程 `initialize` + **`session.resume e2e-session-1`**（这正是界面点击触发的）→ 会话行转为 `Session status: Idle`、横幅消失（`markResumed` 生效）。
+- **仍不通的地方（换了形态）**：日志止于 `session.resume`，**没有任何 continuation 提示到达 agent**；界面上**也没有任何拒绝提示**（既非第八次那条守卫拒绝，也非新加的 contextReset 分支）。也就是说主进程那条继续请求**静默返回、不发也不报**——这是与先前"被拒"不同的失败形态。
+- **下一步**：给主进程 `continueInterruptedTurn` 加临时候选分支日志（或查它依赖的 live prompt / Conversation Branch 前置条件），确认它从哪一个 early return 走掉；spec 保持 fixme 挂账。
