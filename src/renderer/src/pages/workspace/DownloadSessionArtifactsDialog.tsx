@@ -211,7 +211,7 @@ const DownloadSessionArtifactsDialog = ({
             ) : status === 'error' ? (
               <div className="flex min-h-32 flex-col items-center justify-center gap-3 px-6 text-center">
                 <p role="alert" className="text-sm text-danger-000">
-                  {loadError ?? 'Could not load session artifacts.'}
+                  {loadError ?? t('ws.sessionArtifactsLoadFailed')}
                 </p>
                 <Button
                   type="button"

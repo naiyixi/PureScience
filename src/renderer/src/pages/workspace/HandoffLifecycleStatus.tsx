@@ -1,28 +1,28 @@
-import { useLanguage } from '@/i18n'
+import { useLanguage, type Translate } from '@/i18n'
 import { Button } from '@/components/ui/button'
 import { useState } from 'react'
 
 import type { HandoffTranscriptProjection } from './handoff-lifecycle-projection'
 
-const targetLabel = (target: HandoffTranscriptProjection['target']): string =>
-  target.kind === 'main' ? 'Main Agent' : target.name
+const targetLabel = (target: HandoffTranscriptProjection['target'], t: Translate): string =>
+  target.kind === 'main' ? t('ws.mainAgent') : target.name
 
-const statusCopy = (handoff: HandoffTranscriptProjection): string => {
-  const target = targetLabel(handoff.target)
+const statusCopy = (handoff: HandoffTranscriptProjection, t: Translate): string => {
+  const target = targetLabel(handoff.target, t)
 
   switch (handoff.phase) {
     case 'awaiting-approval':
-      return `Awaiting approval to switch to ${target}`
+      return t('handoff.awaitingApproval', { target })
     case 'switching':
-      return `Switching to ${target}`
+      return t('handoff.switching', { target })
     case 'reconfiguring':
-      return `Reconfiguring ${target}`
+      return t('handoff.reconfiguring', { target })
     case 'continuation-start':
-      return `Starting continuation with ${target}`
+      return t('handoff.continuationStart', { target })
     case 'continued':
-      return `Continued with ${target}`
+      return t('handoff.continued', { target })
     case 'failed':
-      return `Could not continue with ${target}`
+      return t('handoff.failedContinue', { target })
   }
 }
 
@@ -65,7 +65,7 @@ const HandoffLifecycleStatus = ({
           : 'rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground'
       }
     >
-      <span className="font-medium text-foreground">{statusCopy(handoff)}</span>
+      <span className="font-medium text-foreground">{statusCopy(handoff, t)}</span>
       {handoff.phase === 'continued' ? (
         <span className="ml-1">{t('ui.theoriginaltaskcontinuesinth')}</span>
       ) : null}

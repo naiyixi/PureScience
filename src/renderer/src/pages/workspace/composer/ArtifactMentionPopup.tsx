@@ -246,10 +246,10 @@ export const ArtifactMentionPopup = ({
       {matches.length === 0 ? (
         <div className="px-2 py-1.5 text-sm text-text-300">
           {loadState === 'loading'
-            ? 'Loading project files…'
+            ? t('ws.artifactPopupLoading')
             : loadState === 'error'
-              ? 'Could not load project files'
-              : 'No artifacts yet'}
+              ? t('ws.artifactPopupLoadFailed')
+              : t('ws.artifactPopupEmpty')}
         </div>
       ) : (
         <ul

@@ -1908,6 +1908,8 @@ const ProjectFilesViewContent = ({
             <div className="flex h-full flex-col items-center justify-center gap-1 px-6 text-center text-[12px] text-text-300">
               {isSearchActive ? (
                 <>
+                  {/* Interpolated here rather than via t's vars: this suite renders through the
+                      non-interpolating fallback dictionary, and the dead end must read as a sentence. */}
                   <p>{t('ws.noFilesMatch').replace('{query}', debouncedSearchQuery)}</p>
                   <p>{t('ws.noFilesMatchHint')}</p>
                 </>

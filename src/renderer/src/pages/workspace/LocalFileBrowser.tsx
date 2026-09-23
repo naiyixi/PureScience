@@ -221,7 +221,7 @@ const LocalListing = ({
   if (state.kind === 'loading') {
     return (
       <div className="flex flex-1 items-center justify-center text-xs text-muted-foreground">
-        Loading…
+        {t('common.loading')}
       </div>
     )
   }

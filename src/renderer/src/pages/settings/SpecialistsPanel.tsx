@@ -1201,7 +1201,7 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
       </div>
 
       {!isLoaded ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
       ) : (
         <div className="flex flex-col gap-6">
           {/* Custom specialists group */}

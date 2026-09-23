@@ -748,7 +748,9 @@ const ConversationPanel = ({
                         />
                         <div className="min-w-0 flex-1">
                           <div className="text-[12px] font-medium leading-5 text-red-300">
-                            {`Could not switch to ${reconfigureError.specialistName}`}
+                            {t('conversation.switchSpecialistFailed', {
+                              name: reconfigureError.specialistName
+                            })}
                           </div>
                           <div className="text-[11px] leading-4 text-red-400/80">
                             The agent session could not be reconfigured. Your draft has been

@@ -219,7 +219,7 @@ const SessionNotebookContent = ({
           <p className="px-5 py-16 text-center text-sm text-muted-foreground">Loading notebook…</p>
         ) : status === 'error' ? (
           <p className="px-5 py-16 text-center text-sm text-danger-000">
-            {error ?? 'Failed to load notebook.'}
+            {error ?? t('ws.notebookLoadFailed')}
           </p>
         ) : runs.length === 0 ? (
           <p className="px-5 py-16 text-center text-sm text-muted-foreground">

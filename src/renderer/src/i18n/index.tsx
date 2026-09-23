@@ -40,6 +40,9 @@ type LanguageContextValue = {
   t: (key: keyof typeof dictionaries.en, vars?: Record<string, string | number>) => string
 }
 
+// The translate function's own type, for helpers that render copy but live outside a component.
+type Translate = LanguageContextValue['t']
+
 const LanguageContext = createContext<LanguageContextValue | null>(null)
 
 const LanguageProvider = ({ children }: { children: ReactNode }): React.JSX.Element => {
@@ -124,3 +127,4 @@ const useLanguage = (): LanguageContextValue => {
 // Splitting them would force every consumer through two imports for no HMR benefit.
 // eslint-disable-next-line react-refresh/only-export-components
 export { LanguageProvider, useLanguage }
+export type { Translate }

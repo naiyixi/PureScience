@@ -454,6 +454,7 @@ type SkillEditLoaderProps = {
 
 // Loads an existing personal skill's content, then renders the editor pre-filled.
 const SkillEditLoader = ({ skillId, onDone }: SkillEditLoaderProps): React.JSX.Element => {
+  const { t } = useLanguage()
   const updateSkill = useSettingsStore((state) => state.updateSkill)
   const [draft, setDraft] = useState<SkillDraft | null>(null)
 
@@ -476,7 +477,7 @@ const SkillEditLoader = ({ skillId, onDone }: SkillEditLoaderProps): React.JSX.E
     }
   }, [skillId])
 
-  if (!draft) return <div className="p-5 text-sm text-muted-foreground">Loading…</div>
+  if (!draft) return <div className="p-5 text-sm text-muted-foreground">{t('common.loading')}</div>
 
   return (
     <SkillEditor

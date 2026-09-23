@@ -3,6 +3,8 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { LanguageProvider } from '@/i18n'
+
 import type {
   HandoffLifecycleEvent,
   HandoffLifecycleEventSource
@@ -55,17 +57,21 @@ const statusEvent = (
 
 const Transcript = ({ source }: { source: HandoffLifecycleEventSource }): React.JSX.Element => {
   const events = useHandoffLifecycleEvents(source, 'session-1')
+  // Rendered through the real provider so the status copy interpolates its target the way production
+  // does; the bare fallback leaves `{target}` in the string.
   return (
-    <>
-      <div data-testid="user-turn" data-user-message-id="user-1">
-        Analyze the sample
-      </div>
-      <div data-testid="pre-handoff-output">I will inspect the input first.</div>
-      {projectHandoffLifecycle(events).map((handoff) => (
-        <HandoffLifecycleStatus key={handoff.id} handoff={handoff} />
-      ))}
-      <div data-testid="continuation-output">Continuing with the approved specialist.</div>
-    </>
+    <LanguageProvider>
+      <>
+        <div data-testid="user-turn" data-user-message-id="user-1">
+          Analyze the sample
+        </div>
+        <div data-testid="pre-handoff-output">I will inspect the input first.</div>
+        {projectHandoffLifecycle(events).map((handoff) => (
+          <HandoffLifecycleStatus key={handoff.id} handoff={handoff} />
+        ))}
+        <div data-testid="continuation-output">Continuing with the approved specialist.</div>
+      </>
+    </LanguageProvider>
   )
 }
 
@@ -142,10 +148,12 @@ describe('same-turn handoff transcript', () => {
     expect(lifecycle?.textContent).toContain('The approved target is unavailable.')
     await act(async () => {
       root.render(
-        <HandoffLifecycleStatus
-          handoff={projectHandoffLifecycle(source.getEvents('session-1'))[0]!}
-          onRetry={onRetry}
-        />
+        <LanguageProvider>
+          <HandoffLifecycleStatus
+            handoff={projectHandoffLifecycle(source.getEvents('session-1'))[0]!}
+            onRetry={onRetry}
+          />
+        </LanguageProvider>
       )
     })
     await act(async () => container.querySelector<HTMLButtonElement>('button')?.click())
@@ -161,7 +169,11 @@ describe('same-turn handoff transcript', () => {
       }
     ])[0]!
     await act(async () =>
-      root.render(<HandoffLifecycleStatus handoff={failed} onRetry={onRetry} />)
+      root.render(
+        <LanguageProvider>
+          <HandoffLifecycleStatus handoff={failed} onRetry={onRetry} />
+        </LanguageProvider>
+      )
     )
 
     await act(async () => container.querySelector<HTMLButtonElement>('button')?.click())

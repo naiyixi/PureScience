@@ -63,7 +63,9 @@ const MoleculePreviewCanvas = ({
       setError(undefined)
     } catch (renderError) {
       container.replaceChildren()
-      setError(renderError instanceof Error ? renderError.message : 'Could not render structure')
+      setError(
+        renderError instanceof Error ? renderError.message : t('preview.moleculeRenderFailed')
+      )
     }
   }, [content, extension, svgId])
 

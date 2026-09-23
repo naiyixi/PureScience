@@ -130,7 +130,7 @@ const FoldTimelinePanel = ({ projectId, sessionId }: FoldTimelinePanelProps): Re
       <div className="flex-1 overflow-y-auto px-4 py-3">
         {loading ? (
           <p className="text-xs text-text-400" data-testid="fold-timeline-loading">
-            Loading…
+            {t('common.loading')}
           </p>
         ) : chunks.length === 0 ? (
           <p className="text-xs text-text-400" data-testid="fold-timeline-empty">
