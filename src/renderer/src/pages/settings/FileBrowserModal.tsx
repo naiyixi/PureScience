@@ -372,6 +372,14 @@ export function FileBrowserModal({
   // Go-to dropdown open state
   const [gotoOpen, setGotoOpen] = useState(false)
 
+  // Keyboard reach for the two listboxes: the go-to menu hands focus to its first item and gives it
+  // back to the trigger on Escape, and the entry list keeps a single tab stop that the arrow keys
+  // move (roving tabindex) instead of making the reader Tab through every file in the folder.
+  const gotoTriggerRef = useRef<HTMLButtonElement>(null)
+  const gotoMenuRef = useRef<HTMLDivElement>(null)
+  const entryRefs = useRef<Array<HTMLButtonElement | null>>([])
+  const [activeEntryIndex, setActiveEntryIndex] = useState(0)
+
   // Open-edge detection + one-shot target directory for the current open session (e.g. a job's
   // remote_workdir). Tracked as state (not refs) so it works with the "adjust state during render"
   // pattern below without touching refs mid-render. `pending` is null when nothing is queued, or
@@ -391,6 +399,8 @@ export function FileBrowserModal({
       setCwd(path)
       setSelected(null)
       setBrowserState({ kind: 'loading' })
+      // A new directory starts its roving tab stop at the top entry.
+      setActiveEntryIndex(0)
       try {
         const listing = await window.api.compute.listDir(host.providerId, path)
         setBrowserState({ kind: 'ok', listing })
@@ -531,6 +541,67 @@ export function FileBrowserModal({
       : [])
   ]
 
+  // The go-to menu holds more than its pinned locations (pin / bookmarks), so navigation walks every
+  // button inside it rather than only the role=option rows.
+  const moveGotoFocus = (delta: number | 'first' | 'last'): void => {
+    const items = [...(gotoMenuRef.current?.querySelectorAll<HTMLButtonElement>('button') ?? [])]
+    if (items.length === 0) return
+    const current = items.findIndex((item) => item === document.activeElement)
+    const next =
+      delta === 'first'
+        ? 0
+        : delta === 'last'
+          ? items.length - 1
+          : current < 0
+            ? delta > 0
+              ? 0
+              : items.length - 1
+            : (current + delta + items.length) % items.length
+    items[next]?.focus()
+  }
+
+  const handleGotoKeyDown = (event: React.KeyboardEvent<HTMLDivElement>): void => {
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      setGotoOpen(false)
+      gotoTriggerRef.current?.focus()
+      return
+    }
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault()
+      moveGotoFocus(event.key === 'ArrowDown' ? 1 : -1)
+      return
+    }
+    if (event.key === 'Home' || event.key === 'End') {
+      event.preventDefault()
+      moveGotoFocus(event.key === 'Home' ? 'first' : 'last')
+    }
+  }
+
+  const handleEntryListKeyDown = (event: React.KeyboardEvent<HTMLDivElement>): void => {
+    const entries = listing?.entries ?? []
+    if (entries.length === 0) return
+    const current = entryRefs.current.findIndex((node) => node === document.activeElement)
+    const focus = (index: number): void => {
+      event.preventDefault()
+      const bounded = Math.max(0, Math.min(entries.length - 1, index))
+      setActiveEntryIndex(bounded)
+      entryRefs.current[bounded]?.focus()
+    }
+
+    if (event.key === 'ArrowDown') focus(current < 0 ? 0 : current + 1)
+    else if (event.key === 'ArrowUp') focus(current < 0 ? entries.length - 1 : current - 1)
+    else if (event.key === 'Home') focus(0)
+    else if (event.key === 'End') focus(entries.length - 1)
+  }
+
+  // Opening the menu from the keyboard should land on its first item instead of leaving focus on the
+  // trigger, so the next ArrowDown is one press rather than two.
+  useEffect(() => {
+    if (!gotoOpen) return
+    gotoMenuRef.current?.querySelector<HTMLButtonElement>('button')?.focus()
+  }, [gotoOpen])
+
   return (
     <Dialog.Root
       open={open}
@@ -618,6 +689,7 @@ export function FileBrowserModal({
                 type="button"
                 variant="ghost"
                 size="sm"
+                ref={gotoTriggerRef}
                 className="gap-1 text-xs"
                 onClick={() => setGotoOpen(!gotoOpen)}
                 aria-haspopup="listbox"
@@ -629,6 +701,8 @@ export function FileBrowserModal({
               </Button>
               {gotoOpen && (
                 <div
+                  ref={gotoMenuRef}
+                  onKeyDown={handleGotoKeyDown}
                   className="absolute left-0 top-full z-10 mt-1 min-w-[200px] rounded-lg border border-border bg-popover p-1 shadow-md"
                   role="listbox"
                   aria-label={t('settings.goToLocations')}
@@ -777,7 +851,11 @@ export function FileBrowserModal({
 
               {/* Entry list */}
               {browserState.kind === 'ok' && (
-                <div role="listbox" aria-label={t('fileBrowser.directoryContents')}>
+                <div
+                  role="listbox"
+                  aria-label={t('fileBrowser.directoryContents')}
+                  onKeyDown={handleEntryListKeyDown}
+                >
                   {/* Header row */}
                   <div className="grid grid-cols-[1fr_80px_80px] border-b border-border bg-muted/30 px-3 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">
                     <span>{t('common.name')}</span>
@@ -789,17 +867,31 @@ export function FileBrowserModal({
                       {t('fileBrowser.emptyDirectory')}
                     </p>
                   )}
-                  {listing?.entries.map((entry) => (
+                  {listing?.entries.map((entry, index) => (
                     <button
                       key={entry.name}
+                      ref={(node) => {
+                        entryRefs.current[index] = node
+                      }}
                       type="button"
                       role="option"
                       aria-selected={selected?.name === entry.name}
+                      // Roving tab stop: the directory list is one Tab stop, and the arrow keys move
+                      // inside it instead of the reader tabbing through every file in the folder.
+                      tabIndex={
+                        index === Math.min(activeEntryIndex, (listing?.entries.length ?? 1) - 1)
+                          ? 0
+                          : -1
+                      }
                       className={cn(
                         'grid w-full grid-cols-[1fr_80px_80px] items-center px-3 py-1.5 text-left text-xs transition-colors hover:bg-accent',
                         selected?.name === entry.name ? 'bg-accent/80' : ''
                       )}
-                      onClick={() => setSelected(entry)}
+                      onFocus={() => setActiveEntryIndex(index)}
+                      onClick={() => {
+                        setActiveEntryIndex(index)
+                        setSelected(entry)
+                      }}
                       onDoubleClick={() => handleEntryDoubleClick(entry)}
                     >
                       <span className="flex items-center gap-1.5 truncate">

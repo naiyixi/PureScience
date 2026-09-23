@@ -300,4 +300,84 @@ describe('FileBrowserModal', () => {
     ) as HTMLButtonElement | undefined
     expect(addButton?.disabled).toBe(true)
   })
+
+  it('takes focus into the go-to menu and hands it back to the trigger on Escape', async () => {
+    await act(async () => {
+      root.render(
+        <FileBrowserModal open={true} onClose={vi.fn()} initialProviderId="ssh:biowulf" />
+      )
+      await Promise.resolve()
+    })
+
+    const trigger = document.body.querySelector<HTMLButtonElement>('[aria-haspopup="listbox"]')
+    expect(trigger).not.toBeNull()
+
+    await act(async () => {
+      trigger?.click()
+      await Promise.resolve()
+    })
+
+    // Opening lands on the first location instead of leaving focus on the trigger, so the reader can
+    // keep pressing ArrowDown to walk the rest of the menu.
+    expect(document.activeElement?.closest('[role="listbox"]')).not.toBeNull()
+    const first = document.activeElement
+
+    await act(async () => {
+      document.activeElement?.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true })
+      )
+    })
+    expect(document.activeElement).not.toBe(first)
+
+    await act(async () => {
+      document.activeElement?.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })
+      )
+    })
+    expect(document.activeElement).toBe(trigger)
+  })
+
+  it('gives the directory list a single tab stop that the arrow keys move', async () => {
+    await act(async () => {
+      root.render(
+        <FileBrowserModal open={true} onClose={vi.fn()} initialProviderId="ssh:biowulf" />
+      )
+      await Promise.resolve()
+    })
+
+    const entries = (): HTMLButtonElement[] =>
+      Array.from(document.body.querySelectorAll<HTMLButtonElement>('button[role="option"]'))
+    expect(entries().length).toBe(2)
+
+    // One tab stop for the whole listing, so Tab does not walk every file in the folder.
+    expect(entries().filter((entry) => entry.tabIndex === 0)).toHaveLength(1)
+    expect(entries()[0].tabIndex).toBe(0)
+
+    const listbox = document.body.querySelector<HTMLElement>(
+      '[role="listbox"][aria-label*="directory"]'
+    )
+    expect(listbox).not.toBeNull()
+
+    // Tab reaches the listing here: the roving stop is the first entry.
+    await act(async () => {
+      entries()[0].focus()
+    })
+
+    await act(async () => {
+      listbox?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
+    })
+    expect(document.activeElement?.textContent).toContain('readme.txt')
+    expect(entries().filter((entry) => entry.tabIndex === 0)).toHaveLength(1)
+    expect(entries()[1].tabIndex).toBe(0)
+
+    await act(async () => {
+      listbox?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }))
+    })
+    expect(document.activeElement?.textContent).toContain('data')
+
+    await act(async () => {
+      listbox?.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }))
+    })
+    expect(document.activeElement?.textContent).toContain('readme.txt')
+  })
 })

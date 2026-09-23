@@ -46,6 +46,27 @@ const renderMenu = (overrides: Partial<Parameters<typeof PreviewTabContextMenu>[
 }
 
 describe('PreviewTabContextMenu', () => {
+  it('takes focus on open and hands it back to the tab on Escape', () => {
+    const tab = document.createElement('button')
+    tab.setAttribute('role', 'tab')
+    document.body.appendChild(tab)
+    tab.focus()
+
+    const onDismiss = vi.fn()
+    renderMenu({ onDismiss, returnFocusTo: tab })
+
+    // The menu itself is reachable now: keyboard users no longer need a pointer to walk it.
+    expect(document.activeElement?.getAttribute('role')).toBe('menuitem')
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    })
+
+    expect(onDismiss).toHaveBeenCalled()
+    expect(document.activeElement).toBe(tab)
+    tab.remove()
+  })
+
   beforeEach(() => {
     container = document.createElement('div')
     document.body.appendChild(container)

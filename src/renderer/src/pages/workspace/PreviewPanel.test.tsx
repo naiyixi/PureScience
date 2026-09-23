@@ -751,4 +751,35 @@ describe('PreviewPanel', () => {
       suggestedName: 'file-1.png'
     })
   })
+
+  it('opens the same file-actions menu from the keyboard and hands focus back on Escape', async () => {
+    usePreviewWorkbenchStore.getState().upsertAndActivateItem(createFileItem({}))
+    await renderPanel()
+
+    const card = container.querySelector<HTMLElement>('[data-testid="preview-card"]')
+    expect(card).not.toBeNull()
+    await act(async () => {
+      card?.focus()
+    })
+    expect(document.activeElement).toBe(card)
+
+    // Shift+F10 is the standard keyboard equivalent of a right-click: the file actions used to have
+    // no keyboard route at all.
+    await act(async () => {
+      card?.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'F10', shiftKey: true, bubbles: true })
+      )
+    })
+
+    const menu = container.querySelector<HTMLElement>('[role="menu"]')
+    expect(menu).not.toBeNull()
+    // Opening from the keyboard puts focus on the first action instead of leaving it behind.
+    expect(document.activeElement?.getAttribute('role')).toBe('menuitem')
+
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    })
+    expect(container.querySelector('[role="menu"]')).toBeNull()
+    expect(document.activeElement).toBe(card)
+  })
 })

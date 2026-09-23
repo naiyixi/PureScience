@@ -115,7 +115,8 @@ export const PreviewTabContextMenu = ({
   tab,
   onCloseTab,
   onCloseOthers,
-  onDismiss
+  onDismiss,
+  returnFocusTo
 }: {
   x: number
   y: number
@@ -123,6 +124,8 @@ export const PreviewTabContextMenu = ({
   onCloseTab: (id: string) => void
   onCloseOthers: (id: string) => void
   onDismiss: () => void
+  /** Element to hand focus back to when the menu closes (the tab it was opened from). */
+  returnFocusTo?: HTMLElement | null
 }): React.JSX.Element => {
   const { t } = useLanguage()
   const activeProjectId = useNavigationStore((state) => state.activeProjectId)
@@ -130,11 +133,18 @@ export const PreviewTabContextMenu = ({
   const menuRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
+    // Same contract as the content menu: take focus on open so the menu is walkable from the
+    // keyboard, and give it back to the tab it was opened from on dismiss.
+    menuRef.current?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus()
+    const dismissAndRestore = (): void => {
+      onDismiss()
+      returnFocusTo?.focus()
+    }
     const onPointerDown = (event: MouseEvent): void => {
-      if (!menuRef.current?.contains(event.target as Node)) onDismiss()
+      if (!menuRef.current?.contains(event.target as Node)) dismissAndRestore()
     }
     const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') onDismiss()
+      if (event.key === 'Escape') dismissAndRestore()
     }
     window.addEventListener('mousedown', onPointerDown)
     window.addEventListener('keydown', onKeyDown)
@@ -142,7 +152,7 @@ export const PreviewTabContextMenu = ({
       window.removeEventListener('mousedown', onPointerDown)
       window.removeEventListener('keydown', onKeyDown)
     }
-  }, [onDismiss])
+  }, [onDismiss, returnFocusTo])
 
   const run = (action: () => void): void => {
     onDismiss()
@@ -248,7 +258,8 @@ export const PreviewContentContextMenu = ({
   onStartDigitization,
   onStartOmicsPreview,
   onStartTableExtraction,
-  onStartReferenceImport
+  onStartReferenceImport,
+  returnFocusTo
 }: {
   x: number
   y: number
@@ -260,17 +271,27 @@ export const PreviewContentContextMenu = ({
   onStartTableExtraction?: (item: PreviewItem) => void
   /** Imports the references a PDF cites, by reading the identifiers off its pages (3.4). */
   onStartReferenceImport?: (item: PreviewItem) => void
+  /** Element to hand focus back to when the menu closes (the surface it was opened from). */
+  returnFocusTo?: HTMLElement | null
 }): React.JSX.Element | null => {
   const { t } = useLanguage()
   const activeProjectId = useNavigationStore((state) => state.activeProjectId)
   const menuRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
+    // Keyboard invocation has no pointer to leave focus at, so the menu takes focus itself: the
+    // reader can walk it with Tab, and Escape or a click outside hands focus back to the surface
+    // that opened it instead of dropping it on <body>.
+    menuRef.current?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus()
+    const dismissAndRestore = (): void => {
+      onDismiss()
+      returnFocusTo?.focus()
+    }
     const onPointerDown = (event: MouseEvent): void => {
-      if (!menuRef.current?.contains(event.target as Node)) onDismiss()
+      if (!menuRef.current?.contains(event.target as Node)) dismissAndRestore()
     }
     const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') onDismiss()
+      if (event.key === 'Escape') dismissAndRestore()
     }
     window.addEventListener('mousedown', onPointerDown)
     window.addEventListener('keydown', onKeyDown)
@@ -278,7 +299,7 @@ export const PreviewContentContextMenu = ({
       window.removeEventListener('mousedown', onPointerDown)
       window.removeEventListener('keydown', onKeyDown)
     }
-  }, [onDismiss])
+  }, [onDismiss, returnFocusTo])
 
   if (item.type !== 'file' || !item.path) return null
 
@@ -400,7 +421,9 @@ const PreviewTab = ({
   onKeyDown: (event: React.KeyboardEvent<HTMLButtonElement>) => void
 }): React.JSX.Element => {
   const removeItem = usePreviewWorkbenchStore((state) => state.removeItem)
-  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
+  const [menu, setMenu] = useState<{ x: number; y: number; returnTo: HTMLElement | null } | null>(
+    null
+  )
 
   return (
     <div
@@ -412,7 +435,23 @@ const PreviewTab = ({
       )}
       onContextMenu={(event) => {
         event.preventDefault()
-        setMenu({ x: event.clientX, y: event.clientY })
+        setMenu({
+          x: event.clientX,
+          y: event.clientY,
+          returnTo: event.currentTarget.querySelector<HTMLElement>('button[role="tab"]')
+        })
+      }}
+      // Shift+F10 / the context-menu key reaches the same tab menu without a mouse, and focus goes
+      // back to the tab it was opened from when it closes.
+      onKeyDown={(event) => {
+        if (event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10')) return
+        event.preventDefault()
+        const rect = event.currentTarget.getBoundingClientRect()
+        setMenu({
+          x: rect.left,
+          y: rect.bottom,
+          returnTo: event.currentTarget.querySelector<HTMLElement>('button[role="tab"]')
+        })
       }}
     >
       <button
@@ -468,6 +507,7 @@ const PreviewTab = ({
             for (const other of others) removeItem(other.id)
           }}
           onDismiss={() => setMenu(null)}
+          returnFocusTo={menu.returnTo}
         />
       ) : null}
     </div>
@@ -666,7 +706,9 @@ const PreviewFilePanel = ({
   onClose: (id: string) => void
 }): React.JSX.Element => {
   const [isFullScreenOpen, setIsFullScreenOpen] = useState(false)
-  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
+  const [menu, setMenu] = useState<{ x: number; y: number; returnTo: HTMLElement | null } | null>(
+    null
+  )
   // Figure→data picking target: set when the user asks to extract numbers from a figure.
   const [digitizeItem, setDigitizeItem] = useState<PreviewItem | null>(null)
   const [omicsItem, setOmicsItem] = useState<PreviewItem | null>(null)
@@ -705,7 +747,19 @@ const PreviewFilePanel = ({
         data-testid="preview-card"
         onContextMenu={(event) => {
           event.preventDefault()
-          setMenu({ x: event.clientX, y: event.clientY })
+          setMenu({ x: event.clientX, y: event.clientY, returnTo: event.currentTarget })
+        }}
+        // Shift+F10 / the context-menu key opens the same menu, anchored to the panel: without this
+        // the only way in was a right-click, so the file actions had no keyboard route at all.
+        onKeyDown={(event) => {
+          if (event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10')) return
+          event.preventDefault()
+          const rect = event.currentTarget.getBoundingClientRect()
+          setMenu({
+            x: rect.left + 16,
+            y: rect.top + 16,
+            returnTo: event.currentTarget
+          })
         }}
         role={isFullScreenOpen ? 'dialog' : 'tabpanel'}
         aria-modal={isFullScreenOpen || undefined}
@@ -740,6 +794,7 @@ const PreviewFilePanel = ({
           y={menu.y}
           item={item}
           onDismiss={() => setMenu(null)}
+          returnFocusTo={menu.returnTo}
           onStartDigitization={(target) => setDigitizeItem(target)}
           onStartOmicsPreview={(target) => setOmicsItem(target)}
           {...(activeProjectId && typeof window.api?.pdf?.pages === 'function'
