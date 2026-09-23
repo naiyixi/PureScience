@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
 // Audit: which renderer-surface capabilities have no UI entry at all?
 import fs from 'node:fs'
 import path from 'node:path'
@@ -23,7 +24,8 @@ while ((m = groupRe.exec(catalog))) {
   let e
   while ((e = entryRe.exec(body))) {
     const tail = e[3] || ''
-    const isEvent = /\b(EVENT|ELECTRON_EVENT|DORMANT_EVENT|CLOSE_PANE_EVENT|WINDOW_FIND_READY)\b/.test(tail)
+    const isEvent =
+      /\b(EVENT|ELECTRON_EVENT|DORMANT_EVENT|CLOSE_PANE_EVENT|WINDOW_FIND_READY)\b/.test(tail)
     members.push({ member: e[1], channel: e[2] ?? null, isEvent, tail: tail.trim() })
   }
   groups.push({ capability, root, members })
@@ -97,7 +99,6 @@ const onlyTest = noUi.filter((r) => r.testHits.length > 0)
 const onlyPlumbing = results.filter(
   (r) => r.uiHits.length > 0 && r.uiHits.every((h) => h.kind !== 'component')
 )
-const uiOnlyPlumbingNoTest = onlyPlumbing
 
 const out = {
   totals: {

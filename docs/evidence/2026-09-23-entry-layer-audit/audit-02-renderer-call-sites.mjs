@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
 // Pass 3: global bare-member search across renderer (any object), with per-hit evidence.
 // Rationale: stores receive a commands object (getCommands: () => window.api.<root>) so the
 // root prefix never appears at the call site. Bare member search is the reliable signal;
@@ -21,19 +22,45 @@ const walkFiles = (dirs) => {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
       const p = path.join(dir, e.name)
       if (e.isDirectory()) walk(p)
-      else if (/\.(ts|tsx)$/.test(e.name)) (/\.test\.(ts|tsx)$/.test(e.name) ? out.test : out.ui).push(p)
+      else if (/\.(ts|tsx)$/.test(e.name))
+        (/\.test\.(ts|tsx)$/.test(e.name) ? out.test : out.ui).push(p)
     }
   }
   for (const d of dirs) walk(path.join(ROOT, d))
   return out
 }
 const { ui, test } = walkFiles(['src/renderer/src', 'src/renderer/web'])
-const load = (l) => l.map((f) => ({ file: path.relative(ROOT, f), text: fs.readFileSync(f, 'utf8') }))
+const load = (l) =>
+  l.map((f) => ({ file: path.relative(ROOT, f), text: fs.readFileSync(f, 'utf8') }))
 const uiFiles = load(ui)
 const testFiles = load(test)
 
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-const GENERIC = new Set(['list', 'get', 'open', 'cancel', 'remove', 'set', 'save', 'update', 'close', 'run', 'delete', 'add', 'start', 'stop', 'getInfo', 'getState', 'getStatus', 'status', 'ready', 'onChanged', 'refresh', 'clear', 'reset'])
+const GENERIC = new Set([
+  'list',
+  'get',
+  'open',
+  'cancel',
+  'remove',
+  'set',
+  'save',
+  'update',
+  'close',
+  'run',
+  'delete',
+  'add',
+  'start',
+  'stop',
+  'getInfo',
+  'getState',
+  'getStatus',
+  'status',
+  'ready',
+  'onChanged',
+  'refresh',
+  'clear',
+  'reset'
+])
 
 const classify = (rel) => {
   if (/\/stores\//.test(rel)) return 'store'
@@ -62,7 +89,10 @@ const referenced = out.filter((r) => r.direct.length || r.bare.length)
 const absent = out.filter((r) => !r.direct.length && !r.bare.length)
 const absentTestOnly = absent.filter((r) => r.testBare.length)
 const bareNoComponent = out.filter(
-  (r) => r.bare.length && !r.bare.some((h) => h.kind === 'component') && !r.direct.some((h) => h.kind === 'component')
+  (r) =>
+    r.bare.length &&
+    !r.bare.some((h) => h.kind === 'component') &&
+    !r.direct.some((h) => h.kind === 'component')
 )
 
 fs.writeFileSync(path.join(scratch, 'ui-entry-audit3.json'), JSON.stringify({ out }, null, 2))
@@ -88,5 +118,10 @@ for (const r of absent) {
 console.log('\n=== REFERENCED ONLY FROM NON-COMPONENT (store/hook/lib) ===')
 for (const r of bareNoComponent) {
   const kinds = [...new Set(r.bare.map((h) => h.kind))].join(',')
-  console.log(`${r.publicPath.padEnd(46)} ${kinds.padEnd(20)} ${r.bare.map((h) => h.file).slice(0, 2).join(' | ')}`)
+  console.log(
+    `${r.publicPath.padEnd(46)} ${kinds.padEnd(20)} ${r.bare
+      .map((h) => h.file)
+      .slice(0, 2)
+      .join(' | ')}`
+  )
 }

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
 // Pass 10: reverse direction — channels main registers handlers for that the renderer surface never
 // exposes. Those capabilities can only be reached from main itself (tray/menu/CLI/web/MCP).
 import fs from 'node:fs'
@@ -32,7 +33,9 @@ const handledChannels = []
 for (const f of files) {
   const text = fs.readFileSync(f, 'utf8')
   const rel = path.relative(ROOT, f)
-  for (const m of text.matchAll(/([A-Z][A-Z0-9_]{2,})\s*=\s*'([a-z][a-z0-9-]*(?::[a-z0-9-]+)+)'/g)) {
+  for (const m of text.matchAll(
+    /([A-Z][A-Z0-9_]{2,})\s*=\s*'([a-z][a-z0-9-]*(?::[a-z0-9-]+)+)'/g
+  )) {
     tables.set(m[1], m[2])
   }
   for (const m of text.matchAll(/ipcMainHandle\(\s*([^,]+),/g)) {
@@ -60,10 +63,14 @@ for (const h of handledChannels) {
   resolved.push({ ...h, channel: channel ?? `?${expr}` })
 }
 
-const unexposed = resolved.filter((r) => r.channel && !r.channel.startsWith('?') && !exposed.has(r.channel))
+const unexposed = resolved.filter(
+  (r) => r.channel && !r.channel.startsWith('?') && !exposed.has(r.channel)
+)
 const unknown = resolved.filter((r) => r.channel && r.channel.startsWith('?'))
 
-console.log(`ipcMainHandle registrations: ${resolved.length}  resolved channels: ${resolved.length - unknown.length}`)
+console.log(
+  `ipcMainHandle registrations: ${resolved.length}  resolved channels: ${resolved.length - unknown.length}`
+)
 console.log(`channels NOT exposed through the renderer contract: ${unexposed.length}`)
 for (const r of unexposed) console.log(`  ${r.channel.padEnd(44)} ${r.file}`)
 console.log(`\nunresolved expressions: ${unknown.length}`)

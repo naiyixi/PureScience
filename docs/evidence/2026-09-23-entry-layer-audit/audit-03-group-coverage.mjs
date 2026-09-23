@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
 // Pass 6: for a given root, list which members ARE called in the renderer and where — so a group can
 // be read as "backend has N verbs, UI reaches M of them".
 import fs from 'node:fs'
@@ -44,7 +45,8 @@ for (const root of targets) {
     const re = new RegExp(`\\.${member.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`)
     const hits = []
     for (const f of files) {
-      if (re.test(f.text)) hits.push(f.rel.replace('src/renderer/src/', '').replace('src/renderer/', ''))
+      if (re.test(f.text))
+        hits.push(f.rel.replace('src/renderer/src/', '').replace('src/renderer/', ''))
     }
     const mark = hits.length ? '✔' : '✗'
     console.log(`  ${mark} ${member.padEnd(34)} ${hits.slice(0, 3).join(', ')}`)

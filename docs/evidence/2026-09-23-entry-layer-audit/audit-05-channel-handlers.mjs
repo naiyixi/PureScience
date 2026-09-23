@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
 // Pass 9: does every channel the preload exposes actually have a main-process handler?
 // A path in window.api with no handler in main is a promise the app cannot keep.
 import fs from 'node:fs'
@@ -24,12 +25,8 @@ const walk = (dir, out = []) => {
 const main = walk(path.join(ROOT, 'src/main'))
   .filter((f) => !/\.test\.(ts|tsx)$/.test(f) && !/\.test-harness\./.test(f))
   .map((f) => ({ rel: path.relative(ROOT, f), text: fs.readFileSync(f, 'utf8') }))
-const shared = walk(path.join(ROOT, 'src/shared'))
-  .filter((f) => !/\.test\.ts$/.test(f))
-  .map((f) => ({ rel: path.relative(ROOT, f), text: fs.readFileSync(f, 'utf8') }))
 
-// channel constant tables in shared/ and main/
-const constantText = [...main, ...shared].map((f) => f.text).join('\n')
+// channel constant tables in main/
 const mainText = main.map((f) => f.text).join('\n')
 
 const rows = []
@@ -41,6 +38,8 @@ for (const item of prev.details) {
   rows.push({ path: item.publicPath, channel: ch, literalInMain })
 }
 const missing = rows.filter((r) => !r.literalInMain)
-console.log(`channels: ${rows.length}   literal not found in main non-test sources: ${missing.length}`)
+console.log(
+  `channels: ${rows.length}   literal not found in main non-test sources: ${missing.length}`
+)
 for (const r of missing) console.log(`  ${r.path.padEnd(44)} ${r.channel}`)
 fs.writeFileSync(path.join(scratch, 'channel-handler-check.json'), JSON.stringify(rows, null, 2))
