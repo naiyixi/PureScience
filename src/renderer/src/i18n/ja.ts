@@ -1695,11 +1695,13 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.memoryDescription':
     'あなたについての編集可能なメモです。メモリがオンの場合、アプリはセッションをまたいでこれらの設定を呼び出します。',
   'settings.memoryEmpty': 'メモを表示・編集するカテゴリを選択してください',
+  'settings.memoryEmptyHint': '左の一覧から分類を選ぶか、新しく作って記録を始めてください。',
   'settings.memoryEnabled': 'メモリスイッチ',
   'settings.memoryEvidence': '出典',
   'settings.memoryLoading': 'メモリを読み込み中…',
   'settings.memoryNewCategory': '新しいカテゴリ',
   'settings.memoryNoNotes': 'メモはまだありません。',
+  'settings.memoryNoNotesHint': '上の入力欄に最初のメモを書き、Enter で保存します。',
   'settings.memoryNoteComposerPlaceholder': 'メモを追加…',
   'settings.memoryNotePlaceholder': 'アプリに覚えさせたい内容を入力…',
   'settings.memoryOff': 'オフ',
@@ -2383,6 +2385,9 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'ws.contextNoHistory': '実行履歴はまだありません',
   'ws.contextNoHistoryHint':
     '実行が完了・中断・エラー終了するとバーが表示されます。古いセッションは互換性を保ちますが、履歴データを含まない場合があります。',
+  'ws.contextCallsEmpty': '呼び出しごとの使用量はまだ記録されていません',
+  'ws.contextCallsEmptyHint':
+    '各モデル呼び出しは終了時にトークン内訳を記録します。古いセッションには残っていない場合があります。',
   'ws.contextOfSize': '/ {size} トークン',
   'ws.contextPointAria': '実行 {run}、{state}、コンテキストウィンドウ {tokens} トークン',
   'ws.contextRunTitle': '実行 {runNumber} · メッセージ {messageNumber}',

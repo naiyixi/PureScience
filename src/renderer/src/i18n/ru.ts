@@ -1691,11 +1691,14 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.memoryDescription':
     'Редактируемые заметки о вас. Когда память включена, приложение учитывает эти предпочтения во всех сессиях.',
   'settings.memoryEmpty': 'Выберите категорию, чтобы просмотреть или отредактировать заметки',
+  'settings.memoryEmptyHint':
+    'Выберите категорию слева или создайте новую, чтобы начать записывать.',
   'settings.memoryEnabled': 'Переключатель памяти',
   'settings.memoryEvidence': 'Источник',
   'settings.memoryLoading': 'Загрузка памяти…',
   'settings.memoryNewCategory': 'Новая категория',
   'settings.memoryNoNotes': 'Заметок пока нет.',
+  'settings.memoryNoNotesHint': 'Напишите первую заметку выше и нажмите Enter, чтобы сохранить.',
   'settings.memoryNoteComposerPlaceholder': 'Добавить заметку…',
   'settings.memoryNotePlaceholder': 'Опишите, что приложению следует запомнить…',
   'settings.memoryOff': 'Выкл.',
@@ -2379,6 +2382,9 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'ws.contextNoHistory': 'Истории запусков пока нет',
   'ws.contextNoHistoryHint':
     'Столбец появляется после того, как запуск завершён, прерван или закончился ошибкой. Более старые сессии остаются совместимыми и могут не содержать данных истории.',
+  'ws.contextCallsEmpty': 'Расход по отдельным вызовам пока не записан',
+  'ws.contextCallsEmptyHint':
+    'Каждый вызов модели записывает своё распределение токенов по завершении; в старых сеансах его может не быть.',
   'ws.contextOfSize': '/ {size} токенов',
   'ws.contextPointAria': 'Запуск {run}, {state}, токенов в окне контекста: {tokens}',
   'ws.contextRunTitle': 'Запуск {runNumber} · Сообщение {messageNumber}',

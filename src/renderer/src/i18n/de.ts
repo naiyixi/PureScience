@@ -1744,11 +1744,15 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.memoryDescription':
     'Bearbeitbare Notizen über Sie. Wenn der Speicher aktiviert ist, ruft die App diese Präferenzen sitzungsübergreifend ab.',
   'settings.memoryEmpty': 'Wählen Sie eine Kategorie, um Notizen anzusehen oder zu bearbeiten',
+  'settings.memoryEmptyHint':
+    'Wählen Sie links eine Kategorie oder legen Sie eine neue an, um Notizen zu schreiben.',
   'settings.memoryEnabled': 'Speicherschalter',
   'settings.memoryEvidence': 'Quelle',
   'settings.memoryLoading': 'Speicher wird geladen…',
   'settings.memoryNewCategory': 'Neue Kategorie',
   'settings.memoryNoNotes': 'Noch keine Notizen.',
+  'settings.memoryNoNotesHint':
+    'Schreiben Sie die erste Notiz oben und drücken Sie Enter zum Speichern.',
   'settings.memoryNoteComposerPlaceholder': 'Notiz hinzufügen…',
   'settings.memoryNotePlaceholder': 'Schreiben Sie, was die App sich merken soll…',
   'settings.memoryOff': 'Aus',
@@ -2439,6 +2443,9 @@ export const de: Partial<Record<ZhKey, string>> = {
   'ws.contextNoHistory': 'Noch kein Laufverlauf',
   'ws.contextNoHistoryHint':
     'Ein Balken erscheint, nachdem ein Lauf abgeschlossen, unterbrochen oder mit einem Fehler beendet wurde. Ältere Sitzungen bleiben kompatibel und enthalten möglicherweise keine Verlaufsdaten.',
+  'ws.contextCallsEmpty': 'Noch keine Nutzung pro Aufruf erfasst',
+  'ws.contextCallsEmptyHint':
+    'Jeder Modellaufruf erfasst nach dem Ende seine Token-Aufteilung; ältere Sitzungen haben sie womöglich nicht.',
   'ws.contextOfSize': '/ {size} Token',
   'ws.contextPointAria': 'Lauf {run}, {state}, {tokens} Kontextfenster-Token',
   'ws.contextRunTitle': 'Lauf {runNumber} · Nachricht {messageNumber}',

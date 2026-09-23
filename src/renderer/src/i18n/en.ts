@@ -413,8 +413,10 @@ export const en: Record<ZhKey, string> = {
   'settings.memoryAddCategory': 'New category',
   'settings.memoryNewCategory': 'New category',
   'settings.memoryEmpty': 'Select a category to view or edit notes',
+  'settings.memoryEmptyHint': 'Pick a category on the left, or create one to start writing notes.',
   'settings.memoryAddNote': 'Add note',
   'settings.memoryNoNotes': 'No notes yet.',
+  'settings.memoryNoNotesHint': 'Write the first note above and press Enter to save it.',
   'settings.memoryNotePlaceholder': 'Write what the app should remember…',
   'settings.memoryDeleteNote': 'Delete note',
   'settings.memoryEvidence': 'Source',
@@ -1389,6 +1391,9 @@ export const en: Record<ZhKey, string> = {
   'ws.contextCallsHint': 'Input / cache / output token share per model call, newest first',
   'ws.contextNoHistoryHint':
     'A bar appears after a run completes, is interrupted, or ends with an error. Older sessions remain compatible and may not contain history data.',
+  'ws.contextCallsEmpty': 'No per-call usage recorded yet',
+  'ws.contextCallsEmptyHint':
+    'Each model call records its own token split once it finishes; older sessions may not carry it.',
   'ws.contextDetails': 'Details',
   'ws.marketplaceLibrary': 'Specialist library',
   'ws.marketplaceBatchSelect': 'select for batch install',

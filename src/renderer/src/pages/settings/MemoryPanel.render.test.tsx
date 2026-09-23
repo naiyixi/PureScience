@@ -15,8 +15,10 @@ vi.mock('@/i18n', () => ({
       'settings.memoryClearAll': 'Clear all',
       'settings.memoryAddCategory': 'New category',
       'settings.memoryEmpty': 'Select a category',
+      'settings.memoryEmptyHint': 'Pick a category on the left, or create one.',
       'settings.memoryAddNote': 'Add note',
       'settings.memoryNoNotes': 'No notes yet.',
+      'settings.memoryNoNotesHint': 'Write the first note above and press Enter.',
       'settings.memoryNotePlaceholder': 'Write…',
       'settings.memoryNoteComposerPlaceholder': 'Add a note…',
       'settings.memoryDeleteNote': 'Delete note',
@@ -112,6 +114,22 @@ describe('MemoryPanel', () => {
 
   const composer = (): HTMLInputElement =>
     document.body.querySelector<HTMLInputElement>('[data-slot="memory-note-composer"]')!
+
+  it('tells the reader how an empty category fills up', async () => {
+    await renderPanel()
+
+    // "Research" carries no notes in the fixture, so the bare "No notes yet." was the whole answer.
+    const categoryRow = Array.from(container.querySelectorAll<HTMLButtonElement>('button')).find(
+      (button) => button.textContent?.includes('Research')
+    )
+    expect(categoryRow).not.toBeUndefined()
+    await act(async () => {
+      categoryRow?.click()
+    })
+
+    expect(container.textContent).toContain('No notes yet.')
+    expect(container.textContent).toContain('Write the first note above and press Enter.')
+  })
 
   it('renders categories, notes, the master switch, and the note composer', async () => {
     await renderPanel()

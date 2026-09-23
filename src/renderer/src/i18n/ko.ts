@@ -1665,11 +1665,13 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.memoryDescription':
     '사용자에 대한 편집 가능한 메모입니다. 메모리가 켜져 있으면 앱이 세션 간에 이러한 선호 사항을 기억합니다.',
   'settings.memoryEmpty': '메모를 보거나 편집할 카테고리를 선택하세요',
+  'settings.memoryEmptyHint': '왼쪽에서 분류를 고르거나 새로 만들어 기록을 시작하세요.',
   'settings.memoryEnabled': '메모리 스위치',
   'settings.memoryEvidence': '출처',
   'settings.memoryLoading': '메모리 불러오는 중…',
   'settings.memoryNewCategory': '새 카테고리',
   'settings.memoryNoNotes': '아직 메모가 없습니다.',
+  'settings.memoryNoNotesHint': '위 입력란에 첫 메모를 쓰고 Enter를 눌러 저장하세요.',
   'settings.memoryNoteComposerPlaceholder': '메모 추가…',
   'settings.memoryNotePlaceholder': '앱이 기억해야 할 내용을 작성하세요…',
   'settings.memoryOff': '끔',
@@ -2332,6 +2334,9 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'ws.contextNoHistory': '아직 실행 기록이 없습니다',
   'ws.contextNoHistoryHint':
     '실행이 완료, 중단 또는 오류로 끝나면 막대가 나타납니다. 이전 세션은 호환되며 기록 데이터가 없을 수 있습니다.',
+  'ws.contextCallsEmpty': '호출별 사용량이 아직 기록되지 않았습니다',
+  'ws.contextCallsEmptyHint':
+    '각 모델 호출은 끝날 때 토큰 구성을 기록합니다. 오래된 세션에는 없을 수 있습니다.',
   'ws.contextOfSize': '/ {size} 토큰',
   'ws.contextPointAria': '{run} 실행, {state}, 컨텍스트 창 {tokens} 토큰',
   'ws.contextRunTitle': '{runNumber} 실행 · 메시지 {messageNumber}',

@@ -97,8 +97,16 @@ describe('ContextWindowDialog usage calls section', () => {
     expect(text.indexOf('420 tokens')).toBeGreaterThan(-1)
   })
 
-  it('hides the section when no message reports usage', () => {
+  it('keeps the section and explains an empty per-call list', () => {
     renderDialog({ ...baseSession, messages: [{ ...usageMessage('m1', 1000, 0, 0, 0) }] })
-    expect(callsSection()).toBeNull()
+    // The section used to vanish outright, so "nothing recorded yet" read the same as "this build has
+    // no such section" — the sibling history section already explains itself instead of disappearing.
+    const section = callsSection()
+    expect(section).not.toBeNull()
+    // The fallback dictionary returns raw keys in this suite, so the assertions read keys.
+    expect(section?.textContent).toContain('ws.contextCallsTitle')
+    expect(section?.textContent).toContain('ws.contextCallsEmptyHint')
+    expect(section?.querySelector('.border-dashed')).not.toBeNull()
+    expect(section?.querySelector('.group\\/call')).toBeNull()
   })
 })

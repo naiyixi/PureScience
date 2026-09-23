@@ -1575,11 +1575,13 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.memoryDeleteNote': '刪除筆記',
   'settings.memoryDescription': '關於你的可編輯筆記。記憶開啟時，應用程式會跨對話記住這些偏好。',
   'settings.memoryEmpty': '選擇一個分類以檢視或編輯筆記',
+  'settings.memoryEmptyHint': '在左側選一個分類，或新增一個分類開始記錄。',
   'settings.memoryEnabled': '記憶開關',
   'settings.memoryEvidence': '來源',
   'settings.memoryLoading': '正在載入記憶…',
   'settings.memoryNewCategory': '新分類',
   'settings.memoryNoNotes': '還沒有筆記。',
+  'settings.memoryNoNotesHint': '在上方輸入框寫下第一條，按 Enter 即可儲存。',
   'settings.memoryNoteComposerPlaceholder': '新增筆記…',
   'settings.memoryNotePlaceholder': '寫下應用程式應記住的內容…',
   'settings.memoryOff': '關',
@@ -2207,6 +2209,9 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'ws.contextNoHistory': '尚無執行歷史',
   'ws.contextNoHistoryHint':
     '執行完成、中斷或出錯後會出現長條。較舊的對話仍相容，可能不含歷史資料。',
+  'ws.contextCallsEmpty': '還沒有逐次呼叫的用量記錄',
+  'ws.contextCallsEmptyHint':
+    '每次模型呼叫結束後會記下自己的詞元分配；舊工作階段可能沒有這部分資料。',
   'ws.contextOfSize': '/ {size} 詞元',
   'ws.contextPointAria': '執行 {run}，{state}，上下文視窗 {tokens} 詞元',
   'ws.contextRunTitle': '執行 {runNumber} · 訊息 {messageNumber}',

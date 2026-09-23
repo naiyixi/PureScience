@@ -464,8 +464,9 @@ const MemoryNoteList = ({
 
   if (!category) {
     return (
-      <div className="flex flex-1 items-center justify-center text-[12px] text-text-300">
-        {t('settings.memoryEmpty')}
+      <div className="flex flex-1 flex-col items-center justify-center gap-1 px-6 text-center">
+        <p className="text-[12px] text-text-300">{t('settings.memoryEmpty')}</p>
+        <p className="text-[12px] text-text-300">{t('settings.memoryEmptyHint')}</p>
       </div>
     )
   }
@@ -510,8 +511,9 @@ const MemoryNoteList = ({
           className="w-full rounded-lg border border-border bg-bg-00 px-3 py-2 text-[12px] text-text-100 outline-none placeholder:text-text-300 focus-visible:ring-2 focus-visible:ring-ring/50"
         />
         {notes.length === 0 ? (
-          <div className="py-8 text-center text-[12px] text-text-300">
-            {t('settings.memoryNoNotes')}
+          <div className="py-8 text-center">
+            <p className="text-[12px] text-text-300">{t('settings.memoryNoNotes')}</p>
+            <p className="mt-1 text-[12px] text-text-300">{t('settings.memoryNoNotesHint')}</p>
           </div>
         ) : (
           notes.map((note) => (

@@ -1725,11 +1725,15 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.memoryDescription':
     'Notes modifiables vous concernant. Lorsque la mémoire est activée, l’application rappelle ces préférences entre les sessions.',
   'settings.memoryEmpty': 'Sélectionnez une catégorie pour voir ou modifier des notes',
+  'settings.memoryEmptyHint':
+    'Choisissez une catégorie à gauche, ou créez-en une pour commencer à écrire.',
   'settings.memoryEnabled': 'Interrupteur de mémoire',
   'settings.memoryEvidence': 'Source',
   'settings.memoryLoading': 'Chargement de la mémoire…',
   'settings.memoryNewCategory': 'Nouvelle catégorie',
   'settings.memoryNoNotes': 'Aucune note pour l’instant.',
+  'settings.memoryNoNotesHint':
+    'Écrivez la première note ci-dessus et appuyez sur Entrée pour l’enregistrer.',
   'settings.memoryNoteComposerPlaceholder': 'Ajouter une note…',
   'settings.memoryNotePlaceholder': 'Écrivez ce que l’application doit retenir…',
   'settings.memoryOff': 'Désactivé',
@@ -2427,6 +2431,9 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'ws.contextNoHistory': 'Aucun historique d’exécution',
   'ws.contextNoHistoryHint':
     'Une barre apparaît après qu’une exécution se termine, est interrompue ou se solde par une erreur. Les sessions plus anciennes restent compatibles et peuvent ne pas contenir de données d’historique.',
+  'ws.contextCallsEmpty': 'Aucune utilisation par appel enregistrée',
+  'ws.contextCallsEmptyHint':
+    'Chaque appel de modèle enregistre sa répartition de jetons à la fin ; les sessions anciennes peuvent ne pas l’avoir.',
   'ws.contextOfSize': '/ {size} tokens',
   'ws.contextPointAria': 'Exécution {run}, {state}, {tokens} tokens de fenêtre de contexte',
   'ws.contextRunTitle': 'Exécution {runNumber} · Message {messageNumber}',

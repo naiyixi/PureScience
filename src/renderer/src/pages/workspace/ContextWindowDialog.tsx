@@ -106,7 +106,6 @@ const UsageCallsSection = ({
 }): React.JSX.Element | null => {
   const { t } = useLanguage()
   const records = useMemo(() => selectUsageCallRecords(messages), [messages])
-  if (records.length === 0) return null
 
   const maxTotal = Math.max(
     ...records.map((record) => record.inputTokens + record.cacheTokens + record.outputTokens),
@@ -119,41 +118,52 @@ const UsageCallsSection = ({
         <h3 className="text-sm font-medium text-foreground">{t('ws.contextCallsTitle')}</h3>
         <p className="mt-0.5 text-xs text-muted-foreground">{t('ws.contextCallsHint')}</p>
       </div>
-      <div className="space-y-2">
-        {records.slice(0, 50).map((record) => {
-          const total = record.inputTokens + record.cacheTokens + record.outputTokens
-          return (
-            <div key={record.id} className="group/call">
-              <div className="flex items-baseline justify-between gap-2 text-xs">
-                <span className="text-muted-foreground">{formatDateTime(record.createdAt)}</span>
-                <span className="text-foreground">
-                  {formatTokens(total)} tokens
-                  {record.turnCount
-                    ? ` · ${record.turnCount} model turn${record.turnCount === 1 ? '' : 's'}`
-                    : ''}
-                </span>
+      {records.length === 0 ? (
+        // This section used to return null outright, so "nothing was recorded" and "the panel has no
+        // such section" looked identical — the sibling history section already explains itself.
+        <div className="rounded-lg border border-dashed border-border px-4 py-5 text-center">
+          <p className="text-xs font-medium text-foreground">{t('ws.contextCallsEmpty')}</p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+            {t('ws.contextCallsEmptyHint')}
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {records.slice(0, 50).map((record) => {
+            const total = record.inputTokens + record.cacheTokens + record.outputTokens
+            return (
+              <div key={record.id} className="group/call">
+                <div className="flex items-baseline justify-between gap-2 text-xs">
+                  <span className="text-muted-foreground">{formatDateTime(record.createdAt)}</span>
+                  <span className="text-foreground">
+                    {formatTokens(total)} tokens
+                    {record.turnCount
+                      ? ` · ${record.turnCount} model turn${record.turnCount === 1 ? '' : 's'}`
+                      : ''}
+                  </span>
+                </div>
+                <div className="mt-1 flex h-3 w-full overflow-hidden rounded-full bg-bg-200">
+                  <div
+                    className="h-full bg-amber-400"
+                    style={{ width: `${(record.inputTokens / maxTotal) * 100}%` }}
+                    title={`Input ${formatTokens(record.inputTokens)}`}
+                  />
+                  <div
+                    className="h-full bg-cyan-400"
+                    style={{ width: `${(record.cacheTokens / maxTotal) * 100}%` }}
+                    title={`Cache ${formatTokens(record.cacheTokens)}`}
+                  />
+                  <div
+                    className="h-full bg-emerald-500"
+                    style={{ width: `${(record.outputTokens / maxTotal) * 100}%` }}
+                    title={`Output ${formatTokens(record.outputTokens)}`}
+                  />
+                </div>
               </div>
-              <div className="mt-1 flex h-3 w-full overflow-hidden rounded-full bg-bg-200">
-                <div
-                  className="h-full bg-amber-400"
-                  style={{ width: `${(record.inputTokens / maxTotal) * 100}%` }}
-                  title={`Input ${formatTokens(record.inputTokens)}`}
-                />
-                <div
-                  className="h-full bg-cyan-400"
-                  style={{ width: `${(record.cacheTokens / maxTotal) * 100}%` }}
-                  title={`Cache ${formatTokens(record.cacheTokens)}`}
-                />
-                <div
-                  className="h-full bg-emerald-500"
-                  style={{ width: `${(record.outputTokens / maxTotal) * 100}%` }}
-                  title={`Output ${formatTokens(record.outputTokens)}`}
-                />
-              </div>
-            </div>
-          )
-        })}
-      </div>
+            )
+          })}
+        </div>
+      )}
     </section>
   )
 }

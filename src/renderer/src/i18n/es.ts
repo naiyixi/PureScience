@@ -1719,11 +1719,14 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.memoryDescription':
     'Notas editables sobre ti. Cuando la memoria está activada, la aplicación recuerda estas preferencias entre sesiones.',
   'settings.memoryEmpty': 'Selecciona una categoría para ver o editar notas',
+  'settings.memoryEmptyHint':
+    'Elige una categoría a la izquierda, o crea una para empezar a escribir.',
   'settings.memoryEnabled': 'Interruptor de memoria',
   'settings.memoryEvidence': 'Origen',
   'settings.memoryLoading': 'Cargando la memoria…',
   'settings.memoryNewCategory': 'Nueva categoría',
   'settings.memoryNoNotes': 'Aún no hay notas.',
+  'settings.memoryNoNotesHint': 'Escribe la primera nota arriba y pulsa Intro para guardarla.',
   'settings.memoryNoteComposerPlaceholder': 'Añadir una nota…',
   'settings.memoryNotePlaceholder': 'Escribe lo que la aplicación debería recordar…',
   'settings.memoryOff': 'Desactivada',
@@ -2411,6 +2414,9 @@ export const es: Partial<Record<ZhKey, string>> = {
   'ws.contextNoHistory': 'Aún no hay historial de ejecuciones',
   'ws.contextNoHistoryHint':
     'Aparece una barra cuando una ejecución se completa, se interrumpe o termina con error. Las sesiones antiguas siguen siendo compatibles y puede que no contengan datos de historial.',
+  'ws.contextCallsEmpty': 'Todavía no hay uso por llamada registrado',
+  'ws.contextCallsEmptyHint':
+    'Cada llamada al modelo registra su reparto de tokens al terminar; las sesiones antiguas pueden no tenerlo.',
   'ws.contextOfSize': '/ {size} tokens',
   'ws.contextPointAria': 'Ejecución {run}, {state}, {tokens} tokens de la ventana de contexto',
   'ws.contextRunTitle': 'Ejecución {runNumber} · Mensaje {messageNumber}',
