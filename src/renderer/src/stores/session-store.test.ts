@@ -2633,6 +2633,7 @@ describe('session store public contract', () => {
       'src/renderer/src/pages/workspace/SessionHoverCard.tsx',
       'src/renderer/src/pages/workspace/SessionInfoCard.tsx',
       'src/renderer/src/pages/workspace/SessionNotebookDialog.tsx',
+      'src/renderer/src/pages/workspace/SessionPackageExportDialog.tsx',
       'src/renderer/src/pages/workspace/WorkspaceActivityIcon.tsx',
       'src/renderer/src/pages/workspace/WorkspaceAgentLoadingRow.tsx',
       'src/renderer/src/pages/workspace/WorkspaceMessageItem.tsx',

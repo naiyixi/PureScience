@@ -46,8 +46,9 @@ import { WorkspacePlanActivityRecord } from './WorkspacePlanActivityRecord'
 import { WorkspaceMessageItem } from './WorkspaceMessageItem'
 import { createConversationItems } from './workspace-conversation-items'
 import { groupConversationItems } from './workspace-tool-activity-groups'
+import { ArtifactReplaySection } from './ArtifactReplaySection'
 
-type ProvenanceTab = 'code' | 'execution' | 'messages' | 'environment' | 'review'
+type ProvenanceTab = 'code' | 'execution' | 'messages' | 'environment' | 'review' | 'replay'
 type DeferredProvenanceTab = Extract<ProvenanceTab, 'execution' | 'messages' | 'review'>
 type DeferredSection =
   | Pick<ArtifactVersionProvenance, 'execution'>
@@ -78,7 +79,9 @@ const tabs: Array<{ id: ProvenanceTab; label: TranslationKey }> = [
   { id: 'execution', label: 'ws.executionLog' },
   { id: 'messages', label: 'ws.messages' },
   { id: 'environment', label: 'ws.environment' },
-  { id: 'review', label: 'ws.review' }
+  { id: 'review', label: 'ws.review' },
+  // Runs on demand: a replay executes the recorded version, so it never fires on tab selection.
+  { id: 'replay', label: 'ws.replay' }
 ]
 
 const tabActionBarClassName = 'flex items-center gap-3 border-b border-border-300/50 px-4 py-2'
@@ -1257,6 +1260,19 @@ const ArtifactProvenancePanel = ({
             </p>
           )
         ) : null}
+        {provenance &&
+        activeTab === 'replay' &&
+        selectedVersionId &&
+        item.artifactId &&
+        item.sessionId ? (
+          <ArtifactReplaySection
+            projectId={projectId}
+            appSessionId={item.sessionId}
+            artifactId={item.artifactId}
+            versionId={selectedVersionId}
+          />
+        ) : null}
+
         {provenance && activeTab === 'environment' ? (
           <section className="space-y-4 p-5 text-sm">
             <h3 className="font-semibold text-text-000">
