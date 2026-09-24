@@ -563,3 +563,5 @@
 4. 单测覆盖形状转换的两个方向（含 `target: null → { kind: 'main' }`、`commitOrder` 缺失时的排序退化到 `observedAt → sequence → id`）。
 
 **完成后**：U22 的 UI 迁移可以重做（那时的迁移才是有证据的）。
+
+**U27 已修（`631dbd5`）**：`endpoint.approve` 由登记册转为实装（`listAll` 带 `approved`、面板待批准态 + 脚本原文 + 批准按钮、未批准时禁用启动按钮）；真机 `endpoint-approval.spec.ts` 6.7s 通过。
