@@ -12,6 +12,9 @@ import { RENDERER_CONTRACT_CATALOG } from './renderer-contract-catalog'
 const RENDERER_ROOT = join(__dirname, '..', 'renderer', 'src')
 const DESKTOP_INSTALLATIONS = new Set(['preload', 'browser-native'])
 
+// `relative` answers with backslashes on Windows, where every pattern below is written with slashes.
+const toPosix = (path: string): string => path.replaceAll('\\', '/')
+
 const collectSource = (root: string, collected: string[] = []): string[] => {
   for (const entry of readdirSync(root)) {
     const path = join(root, entry)
@@ -23,7 +26,8 @@ const collectSource = (root: string, collected: string[] = []): string[] => {
     // Tests are not consumers, and the string dictionaries cannot call anything. The i18n module
     // itself can (it persists the UI language), so only the per-language dictionaries are skipped.
     if (/\.test\.(ts|tsx)$/.test(entry)) continue
-    if (/^i18n\/(en|zh|zh-Hant|ja|ko|de|es|fr|ru)\.ts$/.test(relative(RENDERER_ROOT, path))) continue
+    if (/^i18n\/(en|zh|zh-Hant|ja|ko|de|es|fr|ru)\.ts$/.test(toPosix(relative(RENDERER_ROOT, path))))
+      continue
     collected.push(path)
   }
 
@@ -38,7 +42,7 @@ const collectSource = (root: string, collected: string[] = []): string[] => {
 const normalize = (text: string): string => text.replace(/[\s?]/g, '')
 
 const rendererFiles = collectSource(RENDERER_ROOT).map((path) => ({
-  path: relative(RENDERER_ROOT, path),
+  path: toPosix(relative(RENDERER_ROOT, path)),
   source: normalize(readFileSync(path, 'utf8'))
 }))
 

@@ -38,8 +38,11 @@ const collectSource = (root: string, collected: string[] = []): string[] => {
 
 const normalize = (text: string): string => text.replace(/[\s?]/g, '')
 
+// `relative` answers with backslashes on Windows, where the shell/allowlist patterns use slashes.
+const toPosix = (path: string): string => path.replaceAll('\\', '/')
+
 const rendererFiles = collectSource(RENDERER_ROOT).map((path) => ({
-  path: relative(RENDERER_ROOT, path),
+  path: toPosix(relative(RENDERER_ROOT, path)),
   source: normalize(readFileSync(path, 'utf8'))
 }))
 
@@ -83,6 +86,15 @@ describe('renderer interaction guard', () => {
     )
 
     expect(stale, 'these allowlisted files no longer declare a dialog role').toEqual([])
+  })
+
+  it('matches Windows separators, so the platform cannot silently disable the guard', () => {
+    // The failure this documents: on a Windows runner `relative` returned `components\\NotificationBell.tsx`,
+    // the allowlist keys (written with slashes) stopped matching, and both assertions above failed there
+    // while passing locally.
+    expect(toPosix('components\\NotificationBell.tsx')).toBe('components/NotificationBell.tsx')
+    expect(NON_MODAL_ALLOWLIST['components/NotificationBell.tsx']).toBeDefined()
+    expect(SHARED_SHELL.test(toPosix('components\\ui\\dialog.tsx'))).toBe(true)
   })
 
   it('reports collection surfaces that gate on a non-empty list without naming the empty state', () => {
