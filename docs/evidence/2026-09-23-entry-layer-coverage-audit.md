@@ -174,3 +174,11 @@
 - 断言：`window.api.handoff.list({ sessionId })` 解出数组；`handoff.retry({ sessionId, originatingTurnId })` 对没有 handoff 记录的回合是静默无操作。
 - 为什么这条重要：U22 迁移到该面时全 16 条认证一起红在 `No handler registered for 'handoff-lifecycle:list'`。现在这条断言会先拦住它。
 - 首跑失败原因（我自己的错）：`app.configureFakeAgent()` 返回导航后的页面，丢了返回值 ⇒ 在已关闭的句柄上 `evaluate`。
+
+## U32 取证（`HandoffLifecycleCoordinator` 的消费者）
+
+- 生产构造点：`src/main/ipc.ts:939-942` —— 传的是所有者 `completionHandoffLifecycle`；`HandoffLifecycleCoordinator` 在非测试文件里**零构造**。
+- 接口面：`src/main/agents/completion-gate.ts:186-193`（3 钩子）+ 特性检测点 :268 / :333 / :351 / :376-388。
+- 所有者侧：`grep -c 'onCaptured\|onPhase\|onFailed' src/main/agents/completion-handoff-lifecycle.ts` = **0**。
+- 测试侧构造点：`handoff-lifecycle.integration.test.ts`（4）、`app-handoff-runtime.integration.test.ts`（2）、`completion-gate.test-harness.ts:146`。
+- 结论：活接口的测试专用实现 ⇒ 不是缺口（详见排期 U32 结案）。

@@ -620,3 +620,24 @@
 ### 新立案 U32：`HandoffLifecycleCoordinator` 在生产里没有消费者
 
 `src/main/agents/handoff-lifecycle.ts:26` 的 `HandoffLifecycleCoordinator implements CompletionGateLifecycle` —— **与 U29 不是同一个东西**（U29 是窗口面的传输，这个是完成闸门的一个实现）。非测试文件里除它自身模块**零引用**，只有 `handoff-lifecycle.integration.test.ts` / `app-handoff-runtime.integration.test.ts` 在跑它。待定：接进闸门链，或删掉。
+
+### U32 结案：不是缺口 —— 闸门的 lifecycle 槽是双模的，协调器是「通知味」那一味的唯一实现（测试专用）
+
+事实（逐条带路径）：
+
+- `src/main/agents/completion-gate.ts:186-193` —— `CompletionGateLifecycle` 只要求三个钩子：`onCaptured` / `onPhase` / `onFailed`。
+- 闸门用 `in` **特性检测**决定调哪一味 lifecycle：`'approve'`（:268）、`'onCaptured'`（:333）、`'capture'`（:351）、`'onPhase'`/`'onFailed'`（:376-388）。
+- 生产传的是**所有者那一味**：`src/main/ipc.ts:939-942` `new CompletionGateCoordinator(completionGateRuntimeRegistry, completionHandoffLifecycle)`；而所有者 `completion-handoff-lifecycle.ts` 里 `onCaptured/onPhase/onFailed` **零命中** ⇒ 闸门的通知分支在生产中不触发。这是设计使然、不是接线漏了：阶段本来由所有者自己的记录路径写入，U29 的适配器正是从那些记录里读 `phase`。
+- `HandoffLifecycleCoordinator`（`handoff-lifecycle.ts:26`）是「通知味」那一味的**唯一实现**，只在测试里构造：`handoff-lifecycle.integration.test.ts`（4 处）、`app-handoff-runtime.integration.test.ts`（2 处）、`completion-gate.test-harness.ts:146`。
+
+**结论：不是缺口。** 一个活接口的测试专用实现——删掉会让闸门的通知分支失去唯一覆盖。按已拍板的验收口径（架构已覆盖或面窄低值可归档零代码收口）落档，不删、不改。
+
+### 同时记一个「实测后决定不建」的守卫（避免下一轮重复踩）
+
+想加「`ApplicationEventMap` 里声明过的通道都必须有广播点」，实测**三次都测不准**：
+
+1. 只认字符串字面量 → 26/36 条判成「无人广播」（`broadcastToRenderers(SPECIALIST_IPC.X, …)` 这类常量调用全漏）；
+2. 再把 `export const CONTAINER = { … }` 里的常量解析出来 → 仍剩 17 条：`notebook:available` 是经 **第三种原语** `events.publish('notebook:available', …)`（`src/main/notebook/application.ts:48`）发的；
+3. 三种原语（`broadcastToRenderers` / `webContents.send` / `events.publish`）全算上 + 常量解析 → 仍剩 14 条，而其中 `update:status`、`session:created` 等**确实在发**——发送点常把通道当**参数**传（`send(channel, payload)`），静态扫不到。
+
+判据本身不可静态判定 ⇒ 这类守卫会大量误报，而误报比没有守卫更糟（技能条目 14）。**故不建**，理由落档。
