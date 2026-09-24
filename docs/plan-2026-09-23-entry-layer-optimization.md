@@ -7,13 +7,13 @@
 
 ## 排期总览
 
-| 批次 | 版本    | 主题                            | 单元数 | 交付重心                               |
-| ---- | ------- | ------------------------------- | ------ | -------------------------------------- |
-| 0    | v1.69.0 | 键盘闭环必修                    | 4      | 消除「按键进黑洞」与「无路可退」的浮层 |
-| 1    | v1.70.0 | 三态成套 + 文案归位             | 4      | 不再有「空白且无解释」的面板           |
-| 2    | v1.71.0 | 半截功能补齐（有 A→B 没有 B→A） | 5      | 已建能力的管理动作闭环                 |
-| 3    | v1.72.0 | 体验真实差距 + 可发现性         | 5      | **✅ 已完成**：U14–U18 全部落地并逐项真机验收 |
-| 4    | v1.73.0 | 拍板项落地（建入口或归档）      | 6      | 把「已备未建」清成有结论的状态         |
+| 批次 | 版本    | 主题                            | 单元数 | 交付重心                                                                                   |
+| ---- | ------- | ------------------------------- | ------ | ------------------------------------------------------------------------------------------ |
+| 0    | v1.69.0 | 键盘闭环必修                    | 4      | 消除「按键进黑洞」与「无路可退」的浮层                                                     |
+| 1    | v1.70.0 | 三态成套 + 文案归位             | 4      | 不再有「空白且无解释」的面板                                                               |
+| 2    | v1.71.0 | 半截功能补齐（有 A→B 没有 B→A） | 5      | 已建能力的管理动作闭环                                                                     |
+| 3    | v1.72.0 | 体验真实差距 + 可发现性         | 5      | **✅ 已完成**：U14–U18 全部落地并逐项真机验收                                              |
+| 4    | v1.73.0 | 拍板项落地（建入口或归档）      | 6      | 把「已备未建」清成有结论的状态                                                             |
 | 5    | v1.74.0 | 防复发门禁                      | 2      | 让这类缺口不能再悄悄长出来（U25/U26 **已落地**，双向验收实跑；守卫自查出 U27/U28，已立案） |
 
 版本号按批次边界实际运行时行为分配；纯文档/测试改动不占版本号。
@@ -92,9 +92,9 @@
 | ---- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
 | U14  | PDF 表格改走几何法（`pdf:tables`），保留审计标签与扫描范围空态                | 同一真表格 PDF，UI 与 agent 都得 4 列、表头与数值同列                          |
 | U15  | 图形拾取键盘化（`FigurePickOverlay.tsx:131`、`SelectionAnnotator.tsx:68` 等） | 纯键盘完成打点/锚点标定并导出 CSV                                              |
-| U16  | **✅ 完成**（真机 `1 passed`）：预览头部工具栏，与右键同一份动作集                | 下载/存产物/数字化/表格抽取/文献导入均有工具栏或命令面入口，右键仍可用         |
-| U17  | **✅ 完成**（真机 `1 passed`）：命令面 + 快捷键清单面 + 设置搜索扩到关键词 | ⌘K 能搜到命令；设置搜「镜像/mirror/代理」命中；`Cmd+,` 与 `Cmd+W` 在界面上可见 |
-| U18  | **✅ 完成**（真机 `1 passed`）：会话级入口，不要求已有评审                     | 无评审记录时也能主动打开清单页签，并给出「还没有评审」的解释                   |
+| U16  | **✅ 完成**（真机 `1 passed`）：预览头部工具栏，与右键同一份动作集            | 下载/存产物/数字化/表格抽取/文献导入均有工具栏或命令面入口，右键仍可用         |
+| U17  | **✅ 完成**（真机 `1 passed`）：命令面 + 快捷键清单面 + 设置搜索扩到关键词    | ⌘K 能搜到命令；设置搜「镜像/mirror/代理」命中；`Cmd+,` 与 `Cmd+W` 在界面上可见 |
+| U18  | **✅ 完成**（真机 `1 passed`）：会话级入口，不要求已有评审                    | 无评审记录时也能主动打开清单页签，并给出「还没有评审」的解释                   |
 
 ### 批次 3 进行中记录
 
@@ -160,9 +160,9 @@
   1. **每次写入都造新对象** ⇒ 任何通知都触发全体消费者重渲染（`notebook-env-store` 的 `applyUi`/`applyLang`/`applyRecoveryBlocks`）→ 改为**引用稳定**：值不变则返回原 state，zustand 不通知（`97d351f`）。
   2. **每收一帧 progress 就整读一次权威 status 并写回**（provisioner 每帧广播一次 tick）→ 改为**只在落定（done/error）时重读**，progress 本身已携带横幅所需信息（`2937bbc`）。
   3. **flush 用微任务**：微任务会落进 React **恢复被挂起渲染**的中途（Suspense 以 promise 续体恢复），React 把"渲染期调度"计为**嵌套更新**，50 次即 #185 → flush 改**定时器（宏任务）**，宏任务无法与渲染交错（`b8e4036`）。
-  **定位工具链（可复用）**：性能线用「写风暴探针 + 闸门把 `error.stack` 带进失败消息」拿到渲染层原始栈（trace.zip 与 JSON reporter 都不含 pageerror 栈）；React 开发版构建（`define: {'process.env.NODE_ENV': '"development"'}`）确认了错误是**从 Electron IPC 消息监听器逃出**（`wrappedListener ← emit ← onMessage`），而 `#185` 是**提交期守卫**，因此不会有组件栈——不要再用"让 dev 版点名组件"这条路。
-  **排除项（各有证据）**：不稳定选择器（脚本扫描渲染层返回新对象/数组的选择器 **0 个**、`useShallow` **0 处**）、`useSyncExternalStore` 快照不缓存（渲染层仅 `useHandoffLifecycleEvents.ts:31`，其源返回缓存数组）、渲染层 `isPackaged` 分支（零命中）、主进程打包分支（无害）、更新器（渲染层零消费点）。
-  **纪律**：一次通过不算排除（间歇性）；失败栈必须带**完整同步链**才动手。
+     **定位工具链（可复用）**：性能线用「写风暴探针 + 闸门把 `error.stack` 带进失败消息」拿到渲染层原始栈（trace.zip 与 JSON reporter 都不含 pageerror 栈）；React 开发版构建（`define: {'process.env.NODE_ENV': '"development"'}`）确认了错误是**从 Electron IPC 消息监听器逃出**（`wrappedListener ← emit ← onMessage`），而 `#185` 是**提交期守卫**，因此不会有组件栈——不要再用"让 dev 版点名组件"这条路。
+     **排除项（各有证据）**：不稳定选择器（脚本扫描渲染层返回新对象/数组的选择器 **0 个**、`useShallow` **0 处**）、`useSyncExternalStore` 快照不缓存（渲染层仅 `useHandoffLifecycleEvents.ts:31`，其源返回缓存数组）、渲染层 `isPackaged` 分支（零命中）、主进程打包分支（无害）、更新器（渲染层零消费点）。
+     **纪律**：一次通过不算排除（间歇性）；失败栈必须带**完整同步链**才动手。
 
 ## 批次 4（v1.73.0）拍板项落地
 
@@ -232,15 +232,15 @@
 
 **U23 归档（零代码收口，逐条结论）— P-e 默认建议**
 
-| 项 | 渲染层调用点 | 结论与依据 |
-| --- | --- | --- |
-| `compute` 三件（启用主机直读 / 任务标记已消费 / 待通知任务） | 面板已覆盖主机 CRUD、详情、任务事件、审批卡 | **归档**：审计自身对这三处的定级是 P2，且 `ComputePanel` / `ComputeHostDetail` / `ComputeApprovalDialog` + `compute-store.ts` 已承载用户实际操作；余下属「直读/已读」细粒度读回，不构成缺入口 |
-| `local-fs:reveal` | **0** | **归档**：同类意图已有 `localFs.openPath`（`LocalFileHeaderActions.tsx:46`）；reveal 是更细粒度的同意图变体，面窄低值 |
-| `remote-access:disable` | **0**（面板走 `detect`/`getSnapshot`/`approve`/`setMode`） | **归档**：已被 `remoteAccess.setMode({ mode: 'off' })` 覆盖（`RemoteControlPanel.tsx:304`） |
-| `storage:validate-data-root` | **0** | **归档**：保留为 host/agent 命令（`host-application-commands.ts:284`、`storage/ipc.ts:27`）；数据根设置走设置保存路径，未发现需要用户单独触发校验的场景 |
-| `settings:get-package-mirror` | **0** | **归档**：镜像经设置快照下发（`settings-store.ts:113/173/193`），无需单独面 |
-| `settings:xai-oauth-*` | **已有 UI** | **归档（已覆盖）**：`ProvidersPanel.tsx:182/183/198` 已用 start/complete/logout 三件，本就不是缺口 |
-| `specialist:cancel-handoff` | **0** | **归档**：交接失败的重试/继续由**生产面** `specialist:retry-handoff` 承载（`ipc.ts:910` 安装）；cancel 无窗口意图。新面 `handoff-lifecycle:*` 未安装，见 U22 |
+| 项                                                           | 渲染层调用点                                               | 结论与依据                                                                                                                                                                                    |
+| ------------------------------------------------------------ | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `compute` 三件（启用主机直读 / 任务标记已消费 / 待通知任务） | 面板已覆盖主机 CRUD、详情、任务事件、审批卡                | **归档**：审计自身对这三处的定级是 P2，且 `ComputePanel` / `ComputeHostDetail` / `ComputeApprovalDialog` + `compute-store.ts` 已承载用户实际操作；余下属「直读/已读」细粒度读回，不构成缺入口 |
+| `local-fs:reveal`                                            | **0**                                                      | **归档**：同类意图已有 `localFs.openPath`（`LocalFileHeaderActions.tsx:46`）；reveal 是更细粒度的同意图变体，面窄低值                                                                         |
+| `remote-access:disable`                                      | **0**（面板走 `detect`/`getSnapshot`/`approve`/`setMode`） | **归档**：已被 `remoteAccess.setMode({ mode: 'off' })` 覆盖（`RemoteControlPanel.tsx:304`）                                                                                                   |
+| `storage:validate-data-root`                                 | **0**                                                      | **归档**：保留为 host/agent 命令（`host-application-commands.ts:284`、`storage/ipc.ts:27`）；数据根设置走设置保存路径，未发现需要用户单独触发校验的场景                                       |
+| `settings:get-package-mirror`                                | **0**                                                      | **归档**：镜像经设置快照下发（`settings-store.ts:113/173/193`），无需单独面                                                                                                                   |
+| `settings:xai-oauth-*`                                       | **已有 UI**                                                | **归档（已覆盖）**：`ProvidersPanel.tsx:182/183/198` 已用 start/complete/logout 三件，本就不是缺口                                                                                            |
+| `specialist:cancel-handoff`                                  | **0**                                                      | **归档**：交接失败的重试/继续由**生产面** `specialist:retry-handoff` 承载（`ipc.ts:910` 安装）；cancel 无窗口意图。新面 `handoff-lifecycle:*` 未安装，见 U22                                  |
 
 **U24 归档（零代码收口）— P-e 默认建议**
 
@@ -519,6 +519,7 @@
 ### 批次 5 完成记录（v1.74.0）
 
 **U25 入口守卫 — 已落地（门禁，非文档）**
+
 - 新增 `src/shared/renderer-contract-entry-coverage.test.ts`：遍历合同清单里**桌面应用真实安装**的面（`surfaceInstallation.electron ∈ {preload, browser-native}`），每个面必须在 `src/renderer/src` 下有调用点，否则必须在登记册里。
 - 登记册 `src/shared/entry-layer-archived-surfaces.ts`：23 条，每条带「决策 + 证据」，并反向校验（登记册里的路径必须仍在清单里，否则门禁红）+ 校验理由非空。
 - 匹配口径：容忍写法差异（`window.api.handoff.list` / `const h = window.api?.handoff; h.list(...)` / 解构），按「同一文件同时出现 capability 与 member」判定——刻意从宽，因为这条门禁的价值是抓**新声明**的面（新面的 member 名在窗口里根本不存在）。i18n 排除规则只跳 9 本字典，不跳 `i18n/index.tsx`（它会持久化界面语言）。
@@ -528,6 +529,7 @@
   - **U28 窗口内查找（`window.findInPage`/`clearFind`/`onShowWindowFind`/`onFindInPageResult`/`onWindowFindAppearance`/`closeFind`）** — 桌面应用装了这套面，窗口里**没有查找栏**。
 
 **U26 交互守卫 — 已落地（门禁）**
+
 - 新增 `src/shared/renderer-interaction-guard.test.ts`：① 手写 `role="dialog"` 必须走共享壳（`components/ui/dialog*`），否则红；仅放行**已核验**的非模态浮层（登记理由：自持 ESC / 指针离开即关 / 焦点归还），并对放行项做反向校验（该文件必须真的还声明 dialog 角色）；② 集合面用 `length > 0` 门控且全文无空态语义 → **告警**（按排期口径不阻断）。
 - 识别「声明」而非「检测」：`querySelector('[role="dialog"]')` 这类选择器字符串不算。
 - **守卫抓到的第三处真缺口并已修**：`pages/settings/SpecialistsPanel.tsx` 的 ZIP 预览步骤用 `<div role="dialog" aria-modal="true">` **冒充模态**（无 ESC / 无焦点圈闭 / 无归还）——正是 U2 在别处修掉的同一类缺陷；它是流程内的一个步骤视图，故**纠正语义**为 `role="region"` + 保留标签，而不是套壳伪造模态。
@@ -549,14 +551,15 @@
 
 **两条路线**：
 
-| 方案 | 做法 | 风险 | 取舍 |
-|---|---|---|---|
+| 方案                    | 做法                                                                                                                                                                                                                                                | 风险                                                                                                              | 取舍                                             |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
 | **A. 传输适配（推荐）** | 保留 `CompletionHandoffLifecycle` 作为状态所有者，新增一个**薄适配器**把它的数据搬到新面通道：`CompletionHandoffLifecycleEvent → HandoffLifecycleEvent` 形状转换、注册 `handoff-lifecycle:list/:retry`、`onChange` 广播 `handoff-lifecycle:changed` | 低：不触碰持久化与重试语义（`CompletionHandoffLifecycle` 的 777 行与 `FileCompletionHandoffRepository` 原样留用） | 解锁 UI 迁移，新旧面并存；新面成为可迁的**真面** |
-| B. 整体替换 | 用 `HandoffLifecycleCoordinator` 顶替闸门生命周期 | 高：持久化（run/事件落盘）、失败恢复、`retryById/cancelById` 语义都要一并迁移 | 终态更干净，但必须单独立项、逐条对打 |
+| B. 整体替换             | 用 `HandoffLifecycleCoordinator` 顶替闸门生命周期                                                                                                                                                                                                   | 高：持久化（run/事件落盘）、失败恢复、`retryById/cancelById` 语义都要一并迁移                                     | 终态更干净，但必须单独立项、逐条对打             |
 
 **推荐 A**，理由：U22 的教训是「不要在没有正本迁移方案前把窗口搬到另一套面上」；A 用最小改动让新面先成为真面，B 可以在 A 稳定后作为独立单元再评估。
 
 **U29 验收（必须实机）**：
+
 1. 打包应用里调用 `handoff-lifecycle:list` **不再**返回 `No handler registered`（这正是把 16 条认证用例打红的那条错误）；空态返回 `[]`。
 2. 新增一条认证用例断言新面可达（真窗口，非 jsdom）。
 3. 事件：一次真实交接的状态变化同时出现在旧面（现有用法）与新面（新订阅）——`onChange` 广播用确定性对打验证。
@@ -572,17 +575,18 @@
 
 **实际情况**：查找栏**存在且端到端接通**，只是它不在主窗口的 DOM 里：
 
-| 环节 | 落点 |
-|---|---|
-| 浮层本体（自带渲染层 + JS 逻辑 + 自带测试） | `resources/find-overlay/index.html`、`findOverlay.js`（4.7 KB）、`findOverlay.test.js` |
-| 创建与生命周期 | `src/main/windows.ts:301` `createFindOverlayManager(...)`、`windows.ts:39` 入口路径 |
-| 触发 | `windows.ts:321` `before-input-event` → `isFindInPageChord`（darwin 用 ⌘F、其它平台 Ctrl+F）→ `findOverlay.open()`；ESC 关闭（`windows.ts:332`） |
-| 6 条通道的消费者 | `resources/find-overlay/findOverlay.js:20/62/93/116/117/118`（**全部**在用） |
-| 既有真机覆盖 | `e2e/windows-window-system.spec.ts:49-60`（Windows 主机：和弦前 `findOverlayIsVisible()===false` → 后 `true`；macOS 上被平台门跳过） |
+| 环节                                        | 落点                                                                                                                                             |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 浮层本体（自带渲染层 + JS 逻辑 + 自带测试） | `resources/find-overlay/index.html`、`findOverlay.js`（4.7 KB）、`findOverlay.test.js`                                                           |
+| 创建与生命周期                              | `src/main/windows.ts:301` `createFindOverlayManager(...)`、`windows.ts:39` 入口路径                                                              |
+| 触发                                        | `windows.ts:321` `before-input-event` → `isFindInPageChord`（darwin 用 ⌘F、其它平台 Ctrl+F）→ `findOverlay.open()`；ESC 关闭（`windows.ts:332`） |
+| 6 条通道的消费者                            | `resources/find-overlay/findOverlay.js:20/62/93/116/117/118`（**全部**在用）                                                                     |
+| 既有真机覆盖                                | `e2e/windows-window-system.spec.ts:49-60`（Windows 主机：和弦前 `findOverlayIsVisible()===false` → 后 `true`；macOS 上被平台门跳过）             |
 
 **为什么我会判错**：U25 的守卫只扫 `src/renderer/src/**` 的 `.ts/.tsx`，而消费者是 `resources/**` 里的 `.js` ⇒ 守卫看不见 ⇒ 我把「守卫看不见」当成了「没人用」。这正是本仓另一个反复出现的形状：**测量工具的边界被当成了事实的边界**。
 
 **本轮交付**：
+
 1. **守卫扩容**：`renderer-contract-entry-coverage.test.ts` 现在把 `resources/find-overlay/**` 也当作渲染面扫描（`{ types/tsx }` → 可传扩展名，含 `.js`）。6 条登记项随之**移除**（反向校验通过即证明它们真被调用）。
 2. **双向验收**：抽掉浮层里的一次 `api.findInPage(` → 守卫变红并点名 `window.findInPage`；恢复 → 绿。
 3. **平台自适应的真机用例**：`e2e/certification/window-find-overlay.spec.ts`（新增），本地真机 **4.6s 通过**——和弦打开浮层、ESC 关闭（比既有的 Windows 用例更深：多验一步关闭）。
@@ -593,14 +597,15 @@
 
 ### U30 结案：守卫的两处盲区都已补上
 
-| 盲区 | 表现 | 补法 |
-|---|---|---|
+| 盲区                           | 表现                                                                                                         | 补法                                                                                                                                                                                                                                                                                                                                                      |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | (i) 不验证主进程真的安装了该面 | U22 从这条缝过去：`handoff-lifecycle:*` 合同、preload 全齐，`registerHandoffLifecycleIpcHandlers` 却零调用点 | 新增 `src/shared/main-installation-guard.test.ts`：**从主进程入口做可达性分析**（静态 `from`、懒 `import()`、`require()` 都算），要求每个导出的 IPC 注册器在**启动路径上的模块**里被引用；import/export 语句不算引用（否则注册器能靠导出语句自证合规）。未知的登记在 `MAIN_INSTALLATION_PENDING`（当前只有 U29 那一条），反向校验要求它一旦装上就必须出列 |
-| (ii) 只认 `src/**` 里的消费者 | U28 的误判来源：查找栏消费者在 `resources/find-overlay/**` | 见 U28 结案：守卫扫描面纳入该渲染面 |
+| (ii) 只认 `src/**` 里的消费者  | U28 的误判来源：查找栏消费者在 `resources/find-overlay/**`                                                   | 见 U28 结案：守卫扫描面纳入该渲染面                                                                                                                                                                                                                                                                                                                       |
 
 **验收（双向）**：抽掉 `MAIN_INSTALLATION_PENDING` 里那条 → 守卫变红并点名 `registerHandoffLifecycleIpcHandlers (main/agents/handoff-lifecycle-ipc.ts, off the boot path)`；把该注册器假装接到 `ipc.ts` → 反向校验变红（"installed again and must leave"）；恢复 → 3 passed。
 
 **过程中修掉的两个自身缺陷（都靠先跑一遍发现）**：
+
 - 命名匹配只认 `export const/function` ⇒ 漏掉 `const f = …` + 单独 `export { f }` 这种写法——**恰好就是它本该抓的那条**；
 - 可达性解析只认静态 import ⇒ 主进程入口刻意懒加载重模块，导致 44 条误报（"off the boot path"）。解析器补上 `import()` / `require()` 后归零。
 
@@ -641,3 +646,13 @@
 3. 三种原语（`broadcastToRenderers` / `webContents.send` / `events.publish`）全算上 + 常量解析 → 仍剩 14 条，而其中 `update:status`、`session:created` 等**确实在发**——发送点常把通道当**参数**传（`send(channel, payload)`），静态扫不到。
 
 判据本身不可静态判定 ⇒ 这类守卫会大量误报，而误报比没有守卫更糟（技能条目 14）。**故不建**，理由落档。
+
+### U29 补证：这条面拿到的是**真数据**（不是「总能返回空数组」的空壳）
+
+写了 `src/main/agents/handoff-lifecycle-adapter.integration.test.ts`（3 条，全过），用**生产那套组合**验证：真闸门 `CompletionGateCoordinator` + 真所有者 `CompletionHandoffLifecycle` + **文件仓库** `FileCompletionHandoffRepository`（生产用的就是它，`ipc.ts:906`）。
+
+- **生命周期投影是「每条 handoff 一条当前状态」，不是阶段日志**：`completion-handoff-lifecycle.ts:597-607` 读仓库后 `map(phase: handoff.stage)` ⇒ 一条已继续完的 handoff 报 `continued`，不会重放它经过的每个阶段（这一点我最初的断言想错了，是测试纠正的）。窗口若需要「它经历过什么」，得另设计；当前面给的是状态 + 排序（`commitOrder → sequence → id`）。
+- **待批准态真的会到窗口**：走生产入口 `onAwaitingApproval`（`:344`，AgentsService 经 `approvalLifecycle` 在权限卡出现前调用）⇒ 适配器读出 `awaiting-approval` + 真 target。
+- **没有 handoff 的会话返回空数组**：不臆造。
+
+也就是说 U29 不是「答得上但没有数据」的空壳：生产链（闸门 → 所有者 → 文件仓库 → 适配器 → 窗口）能给出真实的 phase / target / provenance 与稳定排序。

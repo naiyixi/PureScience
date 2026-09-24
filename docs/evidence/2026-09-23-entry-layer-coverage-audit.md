@@ -6,14 +6,14 @@
 
 ## 一、审计口径与方法（可复跑）
 
-| 方法                                       | 命令 / 脚本                                                                               | 覆盖                   |
-| ------------------------------------------ | ----------------------------------------------------------------------------------------- | ---------------------- |
+| 方法                                       | 命令 / 脚本                                                                                                                            | 覆盖                   |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
 | 正向：每个渲染层合同面是否有调用点         | `audit-01-contract-inventory.mjs`（严格 root 限定）→ `audit-02-renderer-call-sites.mjs`（宽松裸成员，含 `getCommands().x()` 间接调用） | 431 面                 |
-| 分组读覆盖度：后端 N 动词 / UI 触达 M 个   | `audit-03-group-coverage.mjs <root...>`（如 `pdf references runtime`）                    | 43 个能力组            |
-| 反向：main 有 handler 而渲染层拿不到的通道 | `audit-04-unexposed-channels.mjs`                                                         | 675 处 `ipcMainHandle` |
-| 通道-处理器对账（辅助口径）                | `audit-05-channel-handlers.mjs`——按字面量匹配，经常量表定义的通道会误报，需人工复核       | 430 通道               |
-| 空态/加载/错误态子审计                     | 独立子代理，逐文件读 `.map(` 与互斥分支                                                   | 63 个集合表面          |
-| 键盘闭合子审计                             | 独立子代理，逐浮层比对 `Escape/onKeyDown/tabIndex/autoFocus/aria-modal/onOpenAutoClose`   | 全部浮层与列表选择器   |
+| 分组读覆盖度：后端 N 动词 / UI 触达 M 个   | `audit-03-group-coverage.mjs <root...>`（如 `pdf references runtime`）                                                                 | 43 个能力组            |
+| 反向：main 有 handler 而渲染层拿不到的通道 | `audit-04-unexposed-channels.mjs`                                                                                                      | 675 处 `ipcMainHandle` |
+| 通道-处理器对账（辅助口径）                | `audit-05-channel-handlers.mjs`——按字面量匹配，经常量表定义的通道会误报，需人工复核                                                    | 430 通道               |
+| 空态/加载/错误态子审计                     | 独立子代理，逐文件读 `.map(` 与互斥分支                                                                                                | 63 个集合表面          |
+| 键盘闭合子审计                             | 独立子代理，逐浮层比对 `Escape/onKeyDown/tabIndex/autoFocus/aria-modal/onOpenAutoClose`                                                | 全部浮层与列表选择器   |
 
 判定规则：一条面记为「零调用点」需**严格**（`root.member`）与**宽松**（任意 `.member`，含 `getCommands().x()` 间接调用）两轮搜索都为空，再逐条人工打开源文件确认；`window.*` 一类由独立载体消费的面**不计入缺口**（见第七节）。
 
@@ -121,32 +121,32 @@
 
 按 2026-09 验收口径，以下差距项以「归档」收口：结论落档即为完成，不造空壳入口。逐条依据见排期 `docs/plan-2026-09-23-entry-layer-optimization.md` 的「批次 4 进行中记录」U23/U24 两节。
 
-| 差距项 | 归档依据（渲染层调用点 / 已有等价路径） |
-| --- | --- |
-| `compute` 三件（启用主机直读 / 任务标记已消费 / 待通知任务） | 面板已覆盖主机 CRUD、详情、任务事件与审批卡（`ComputePanel.tsx` / `ComputeHostDetail.tsx` / `ComputeApprovalDialog.tsx` / `stores/compute-store.ts` / `App.tsx:458,464`）；审计自身定级 P2，余下为细粒度读回 |
-| `local-fs:reveal` | 渲染层 0 命中；同意图已有 `localFs.openPath`（`LocalFileHeaderActions.tsx:46`） |
-| `remote-access:disable` | 渲染层 0 命中；已被 `setMode({ mode: 'off' })` 覆盖（`RemoteControlPanel.tsx:304`） |
-| `storage:validate-data-root` | 渲染层 0 命中；保留为 host/agent 命令（`host-application-commands.ts:284`、`storage/ipc.ts:27`） |
-| `settings:get-package-mirror` | 渲染层 0 命中；镜像经设置快照下发（`settings-store.ts:113/173/193`） |
-| `settings:xai-oauth-*` | 已覆盖：`ProvidersPanel.tsx:182/183/198` 已用 start/complete/logout |
-| `specialist:cancel-handoff`（含旧面 `getHandoffEvents` / `retryHandoff` / `onHandoffLifecycleEvent`） | 渲染层对 cancel 为 0 消费；**读回与重试仍是生产面**（`ipc.ts:910` 安装）。新面 `handoff-lifecycle:list/:changed/:retry` **在 main 里从未安装**（见 U22/U29），故 U22 的迁移已回退 |
-| `acp:event` / `acp:permission-request` | 渲染层 0 命中；权限请求由 `permission-grants-store` 与会话状态 `waiting-permission` 承载，主进程仍按 `application-events.ts:37-38` 广播；保留为兼容/观测通道 |
+| 差距项                                                                                                | 归档依据（渲染层调用点 / 已有等价路径）                                                                                                                                                                      |
+| ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `compute` 三件（启用主机直读 / 任务标记已消费 / 待通知任务）                                          | 面板已覆盖主机 CRUD、详情、任务事件与审批卡（`ComputePanel.tsx` / `ComputeHostDetail.tsx` / `ComputeApprovalDialog.tsx` / `stores/compute-store.ts` / `App.tsx:458,464`）；审计自身定级 P2，余下为细粒度读回 |
+| `local-fs:reveal`                                                                                     | 渲染层 0 命中；同意图已有 `localFs.openPath`（`LocalFileHeaderActions.tsx:46`）                                                                                                                              |
+| `remote-access:disable`                                                                               | 渲染层 0 命中；已被 `setMode({ mode: 'off' })` 覆盖（`RemoteControlPanel.tsx:304`）                                                                                                                          |
+| `storage:validate-data-root`                                                                          | 渲染层 0 命中；保留为 host/agent 命令（`host-application-commands.ts:284`、`storage/ipc.ts:27`）                                                                                                             |
+| `settings:get-package-mirror`                                                                         | 渲染层 0 命中；镜像经设置快照下发（`settings-store.ts:113/173/193`）                                                                                                                                         |
+| `settings:xai-oauth-*`                                                                                | 已覆盖：`ProvidersPanel.tsx:182/183/198` 已用 start/complete/logout                                                                                                                                          |
+| `specialist:cancel-handoff`（含旧面 `getHandoffEvents` / `retryHandoff` / `onHandoffLifecycleEvent`） | 渲染层对 cancel 为 0 消费；**读回与重试仍是生产面**（`ipc.ts:910` 安装）。新面 `handoff-lifecycle:list/:changed/:retry` **在 main 里从未安装**（见 U22/U29），故 U22 的迁移已回退                            |
+| `acp:event` / `acp:permission-request`                                                                | 渲染层 0 命中；权限请求由 `permission-grants-store` 与会话状态 `waiting-permission` 承载，主进程仍按 `application-events.ts:37-38` 广播；保留为兼容/观测通道                                                 |
 
 ### 批次 5 守卫自查出的两处缺口（U25 落地当轮，2026-09-24）
 
 这两条不是人工审计发现的，是新门禁第一次运行时报出来的，因此此前所有轮次都漏过：
 
-| # | 缺口 | 证据 | 结论 |
-|---|---|---|---|
-| U27 | `endpoint:approve` 无 UI：脚本字节的哈希锚定要求用户在设置面板里批准，而窗口零调用点 | `src/main/settings/endpoint-ipc.ts:1-5`（注释自陈是渲染层的面）；渲染层 `endpoint.approve` / `approveEndpoint` 均 0 命中 | **立案建 UI**（安全相关：没有批准入口则锚定链路走不通） |
-| U28 | ~~窗口内查找整组面无 UI~~ **审计前提有误**：查找栏是**独立浮层**，不在主窗口 DOM 里 | 6 条通道**全部**被 `resources/find-overlay/findOverlay.js:20/62/93/116/117/118` 消费；触发在 `main/windows.ts:321`（⌘/Ctrl+F → `findOverlay.open()`），ESC 关闭在 `:332`；既有真机用例 `e2e/windows-window-system.spec.ts:49-60`（Windows）。原判据只扫 `src/renderer/src/**` 而消费者在 `resources/**` | **已结案（归档 + 守卫扩容）**：守卫纳入该渲染面、6 条登记项移除、新增平台自适应真机用例 `e2e/certification/window-find-overlay.spec.ts` **4.6s 通过** |
+| #   | 缺口                                                                                 | 证据                                                                                                                                                                                                                                                                                                    | 结论                                                                                                                                                  |
+| --- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| U27 | `endpoint:approve` 无 UI：脚本字节的哈希锚定要求用户在设置面板里批准，而窗口零调用点 | `src/main/settings/endpoint-ipc.ts:1-5`（注释自陈是渲染层的面）；渲染层 `endpoint.approve` / `approveEndpoint` 均 0 命中                                                                                                                                                                                | **立案建 UI**（安全相关：没有批准入口则锚定链路走不通）                                                                                               |
+| U28 | ~~窗口内查找整组面无 UI~~ **审计前提有误**：查找栏是**独立浮层**，不在主窗口 DOM 里  | 6 条通道**全部**被 `resources/find-overlay/findOverlay.js:20/62/93/116/117/118` 消费；触发在 `main/windows.ts:321`（⌘/Ctrl+F → `findOverlay.open()`），ESC 关闭在 `:332`；既有真机用例 `e2e/windows-window-system.spec.ts:49-60`（Windows）。原判据只扫 `src/renderer/src/**` 而消费者在 `resources/**` | **已结案（归档 + 守卫扩容）**：守卫纳入该渲染面、6 条登记项移除、新增平台自适应真机用例 `e2e/certification/window-find-overlay.spec.ts` **4.6s 通过** |
 
 两处均已写入 `src/shared/entry-layer-archived-surfaces.ts` 的登记册（带 PENDING BUILD 标记与证据），门禁在建成前保持绿。
 
 ### U31：真机取证时发现的更大缺口（2026-09-24）
 
-| # | 缺口 | 证据 | 结论 |
-|---|---|---|---|
+| #   | 缺口                                                  | 证据                                                                                                                                                                     | 结论                                                                                                                                         |
+| --- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | U31 | 笔记本面板**无入口**：`notebook:available` 从未被触发 | `session-lifecycle.ts:159` 的 `notifyAvailable()` 主进程零调用点（`notifyChanged` 有多处）；`application.ts:48`、`application-events.ts:41`、合同清单与 preload 全部齐备 | **已修**：在 `runCell` / `executeControl` / `executeShell` 三条运行路径宣告；新增 `session-lifecycle.test.ts` 3 条（含一条源码级断言防复发） |
 
 ### U27：已修（批次 6 / v1.74.0 预置）
@@ -157,8 +157,9 @@
 而且 9 语字典里 `settings.endpointsApprove` / `settings.endpointsPending` 两条 key 早已存在、无人使用。
 
 修法：`listAll` 输出加上 `approved` 标志（`ManagedEndpointView`），面板对未批准的服务显示徽标 + 原因 + **待批准脚本原文**
-+ 批准按钮，并禁用那个只会失败的启动按钮。测试 7 条（面板 4 + IPC 3），其中一条当场抓出我自己实现里的错误顺序
-（先 `setError` 再 `load()`，而 `load()` 成功会清掉错误 ⇒ 提示永远看不到）。
+
+- 批准按钮，并禁用那个只会失败的启动按钮。测试 7 条（面板 4 + IPC 3），其中一条当场抓出我自己实现里的错误顺序
+  （先 `setError` 再 `load()`，而 `load()` 成功会清掉错误 ⇒ 提示永远看不到）。
 
 **真机证据**：`e2e/certification/endpoint-approval.spec.ts`（新增）在打包窗口里跑通 **6.7s**：待批准徽标可见、启动按钮禁用、
 展开脚本原文后两句都在、点批准后徽标与批准按钮消失且启动按钮转为可用。取证中另修正两处夹具问题（受管端点端口被限制在
@@ -182,3 +183,12 @@
 - 所有者侧：`grep -c 'onCaptured\|onPhase\|onFailed' src/main/agents/completion-handoff-lifecycle.ts` = **0**。
 - 测试侧构造点：`handoff-lifecycle.integration.test.ts`（4）、`app-handoff-runtime.integration.test.ts`（2）、`completion-gate.test-harness.ts:146`。
 - 结论：活接口的测试专用实现 ⇒ 不是缺口（详见排期 U32 结案）。
+
+## U29 真数据取证（适配器 over 生产组合）
+
+- 用例：`src/main/agents/handoff-lifecycle-adapter.integration.test.ts`（3 passed）
+- 组合：`CompletionGateCoordinator`（真闸门）+ `CompletionHandoffLifecycle`（真所有者，生产 `ipc.ts:939-942` 装的就是它）+ `FileCompletionHandoffRepository`（生产用的文件仓库，`ipc.ts:906`）
+- 产出：`coordinator.arm → runCompletionGatedTool` 捕获完成后，经 `toHandoffLifecycleEvent` 读出 `phase='continued'`、`target={kind:'specialist',name:'Data analyst'}`、`provenance.originatingTurnId='turn-1'`、sequence 单调；
+- 待批准：`owner.onAwaitingApproval(...)`（`:344`）后读出 `phase='awaiting-approval'`；
+- 空会话：`getEvents('session-without-handoffs')` 返回 `[]`。
+- 语义澄清：该面是「每条 handoff 一条当前状态」（`completion-handoff-lifecycle.ts:597-607`，`phase: handoff.stage`），不是阶段日志。
