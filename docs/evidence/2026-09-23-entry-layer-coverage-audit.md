@@ -165,3 +165,12 @@
 20000–29999；侧栏设置入口在项目视图下叫 `Settings`、会话视图下才叫 `Model settings`）。
 
 这条是 U21 真机取证的副产物：卡片控件写完了，但面板本身进不去 —— 又一次印证本仓反复出现的形状：**通道声明齐全 ≠ 链路可达**。
+
+## U29 真机证据（窗口的 handoff 面由生产生命周期供数）
+
+- 用例：`e2e/certification/handoff-seam.spec.ts`（打包应用）
+- 命令：`npm run build:e2e` → `npx playwright test e2e/certification/handoff-seam.spec.ts --workers=1`
+- 结果：**1 passed (7.4s)**
+- 断言：`window.api.handoff.list({ sessionId })` 解出数组；`handoff.retry({ sessionId, originatingTurnId })` 对没有 handoff 记录的回合是静默无操作。
+- 为什么这条重要：U22 迁移到该面时全 16 条认证一起红在 `No handler registered for 'handoff-lifecycle:list'`。现在这条断言会先拦住它。
+- 首跑失败原因（我自己的错）：`app.configureFakeAgent()` 返回导航后的页面，丢了返回值 ⇒ 在已关闭的句柄上 `evaluate`。

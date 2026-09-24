@@ -98,7 +98,7 @@ const ARCHIVED: EntryLayerArchivedSurface[] = [
     reason:
       'Host/agent command; the data-root setting flow validates inside its own save path, so no user-triggered check is needed.',
     evidence: 'audit 批次 4 归档结论（U23）；host-application-commands.ts:284'
-  },
+  }
 ]
 
 export const ENTRY_LAYER_ARCHIVED_SURFACES: readonly EntryLayerArchivedSurface[] =
@@ -113,12 +113,6 @@ export type MainInstallationPendingEntry = {
   evidence: string
 }
 
-export const MAIN_INSTALLATION_PENDING: MainInstallationPendingEntry[] = [
-  {
-    name: 'registerHandoffLifecycleIpcHandlers',
-    file: 'agents/handoff-lifecycle-ipc.ts',
-    reason:
-      'PENDING BUILD (U29): a parallel lifecycle implementation whose IPC was never installed — the production gate runs CompletionHandoffLifecycle (main/ipc.ts:899-910). U22 migrated the window onto this face, which reddened 16 packaged certification specs with "No handler registered", and had to be reverted. U29 wires this face onto the production lifecycle via a thin transport adapter.',
-    evidence: 'audit 批次 4（U22 复盘）；plan U29 方案'
-  }
-]
+// Empty on purpose: U29 served the window's handoff seam from the production lifecycle, so no registrar
+// is uninstalled today. The type and the guard stay in place for the next one.
+export const MAIN_INSTALLATION_PENDING: MainInstallationPendingEntry[] = []

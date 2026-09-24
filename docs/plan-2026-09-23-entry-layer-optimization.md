@@ -603,3 +603,20 @@
 **过程中修掉的两个自身缺陷（都靠先跑一遍发现）**：
 - 命名匹配只认 `export const/function` ⇒ 漏掉 `const f = …` + 单独 `export { f }` 这种写法——**恰好就是它本该抓的那条**；
 - 可达性解析只认静态 import ⇒ 主进程入口刻意懒加载重模块，导致 44 条误报（"off the boot path"）。解析器补上 `import()` / `require()` 后归零。
+
+### U29 结案：窗口的 handoff 面改由生产生命周期供数（薄传输适配，按方案 A）
+
+**做了什么**：`handoff-lifecycle:*`（`list` / `retry` / `changed`）此前有一套**从未安装**的并行实现（U22 真机红 16 条的根因），现改为由生产侧 `CompletionHandoffLifecycle` 供数：
+
+- 新增 `src/main/agents/handoff-lifecycle-adapter.ts` —— 把所有者的事件形状转成该面的形状，转法是**全量且不臆造**的：能带过的字段带过，带不过的显式窄化，`switchReadback` 不是真 target 时**丢掉** `continuation` 而不是用 handoff 自己的 target 编一个（那就是断言记录没说的事）。
+- `src/main/ipc.ts` —— 在既有注册点旁边装上新面：`list` → 所有者的 `getEvents(sessionId)` 逐条映射；`retry` → 由 `originatingTurnId` 在所有者**自己的记录**里（取最新）解析出 handoff id 再 `retryById`，解析不到就静默无操作；`changed` → 与旧面在同一回调里发，两个面看到同一份生命周期。
+- `src/main/application-events.ts` —— 声明 `handoff-lifecycle:changed`（`broadcastToRenderers` 只接受声明过的通道，U31 同款机制）。
+- 登记册 `MAIN_INSTALLATION_PENDING` 清空：U30 守卫的待办项出列。守卫仍是「可从启动入口到达的模块集合里必须有调用点」。
+
+**真机证据**：`e2e/certification/handoff-seam.spec.ts` —— 打包应用里 `window.api.handoff.list(...)` 解出数组、`retry` 对无记录的回合是静默无操作（而不是 `No handler registered`）。**本地 7.4s 通过**。这就是本可以拦住 U22 的那条断言。
+
+**真机首跑两处我自己的错**：①`app.configureFakeAgent()` **返回它导航后的页面**，我丢了返回值、在已关闭的旧句柄上 `evaluate`（`Target page, context or browser has been closed`）；②守卫脚本的 python 括号写错导致整段没跑（本身没动过文件）。
+
+### 新立案 U32：`HandoffLifecycleCoordinator` 在生产里没有消费者
+
+`src/main/agents/handoff-lifecycle.ts:26` 的 `HandoffLifecycleCoordinator implements CompletionGateLifecycle` —— **与 U29 不是同一个东西**（U29 是窗口面的传输，这个是完成闸门的一个实现）。非测试文件里除它自身模块**零引用**，只有 `handoff-lifecycle.integration.test.ts` / `app-handoff-runtime.integration.test.ts` 在跑它。待定：接进闸门链，或删掉。

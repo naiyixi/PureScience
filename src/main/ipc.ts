@@ -264,6 +264,12 @@ import {
 } from './agents/completion-handoff-lifecycle'
 import { registerCompletionHandoffIpcHandlers } from './agents/completion-handoff-ipc'
 import {
+  toHandoffLifecycleChange,
+  toHandoffLifecycleEvent
+} from './agents/handoff-lifecycle-adapter'
+import { registerHandoffLifecycleIpcHandlers } from './agents/handoff-lifecycle-ipc'
+import { HANDOFF_LIFECYCLE_IPC } from '../shared/handoff-lifecycle'
+import {
   registerClaudeCodeCompletionGateRuntime,
   selectPersistedUserTaskContext
 } from './agents/claude-code-handoff'
@@ -900,7 +906,11 @@ const createApplicationModules = async (
     new FileCompletionHandoffRepository(join(resolveStorageRoot(), 'specialist-handoffs')),
     completionGateRuntimeRegistry,
     Date.now,
-    (event) => broadcastToRenderers(SPECIALIST_IPC.HANDOFF_LIFECYCLE_CHANGED, event),
+    (event) => {
+      broadcastToRenderers(SPECIALIST_IPC.HANDOFF_LIFECYCLE_CHANGED, event)
+      // U29: the window's own seam is served from this same owner, so both faces see one lifecycle.
+      broadcastToRenderers(HANDOFF_LIFECYCLE_IPC.CHANGED, toHandoffLifecycleChange(event))
+    },
     async ({ targetName }) => {
       if (targetName === null) return undefined
       const profile = await profileService.resolveRunnableByName(targetName)
@@ -908,6 +918,24 @@ const createApplicationModules = async (
     }
   )
   registerCompletionHandoffIpcHandlers(completionHandoffLifecycle)
+  // U29: `handoff-lifecycle:*` had a parallel implementation nothing installed, so the window answered
+  // "No handler registered" (U22 shipped a migration onto it and reddened 16 packaged certifications).
+  // The seam is read-only and retry-only by design, and the owner above already holds the state — so the
+  // seam is served from it through the shape adapter rather than by a second lifecycle.
+  registerHandoffLifecycleIpcHandlers({
+    getEvents: async (sessionId) =>
+      (await completionHandoffLifecycle.getEvents(sessionId)).map(toHandoffLifecycleEvent),
+    retry: async (request) => {
+      const events = await completionHandoffLifecycle.getEvents(request.sessionId)
+      // The seam addresses a retry by its originating turn; the owner retries by handoff id, so the id
+      // is resolved from the owner's own records (latest first) rather than guessed from the turn id.
+      const target = [...events]
+        .reverse()
+        .find((event) => event.provenance.originatingTurnId === request.originatingTurnId)
+      if (!target) return
+      await completionHandoffLifecycle.retryById(target.id, request.sessionId)
+    }
+  })
   const completionGateCoordinator = new CompletionGateCoordinator(
     completionGateRuntimeRegistry,
     completionHandoffLifecycle

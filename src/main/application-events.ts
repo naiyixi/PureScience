@@ -27,6 +27,7 @@ import type {
 } from '../shared/settings'
 import type { CompletionHandoffLifecycleEvent, PendingSwitchBroadcast } from '../shared/specialist'
 import type { MigrationProgress } from '../shared/storage'
+import type { HandoffLifecycleChange } from '../shared/handoff-lifecycle'
 import type { UpdateStatus } from '../shared/update'
 
 // This catalog describes only events that already flow through renderer-broadcast. Window-only
@@ -56,6 +57,9 @@ export type ApplicationEventMap = {
   'specialist:catalog-changed': undefined
   'specialist:pending-switch': PendingSwitchBroadcast
   'specialist:handoff-lifecycle-changed': CompletionHandoffLifecycleEvent
+  // U29: the window's own seam (contract `handoff.onChanged`). Both faces are served from the one
+  // production lifecycle, so a window reading either sees the same transitions.
+  'handoff-lifecycle:changed': HandoffLifecycleChange
   'specialist:handoff-lifecycle': CompletionGateLifecycleEvent
   'specialist:marketplace-download-progress': MarketplaceDownloadProgress
   'settings:install-log': ClaudeInstallEvent

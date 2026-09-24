@@ -7,7 +7,11 @@ import { HANDOFF_LIFECYCLE_IPC } from '../../shared/handoff-lifecycle'
 import { ipcMainHandle } from '../ipc-handler-registry'
 
 type HandoffLifecycleIpcCoordinator = {
-  getEvents(sessionId: string): readonly HandoffLifecycleEvent[]
+  // The production lifecycle owns the state and reads it asynchronously; a synchronous in-memory
+  // implementation satisfies this too, so the handler accepts either.
+  getEvents(
+    sessionId: string
+  ): readonly HandoffLifecycleEvent[] | Promise<readonly HandoffLifecycleEvent[]>
   retry(request: HandoffRetryRequest): Promise<void>
 }
 
