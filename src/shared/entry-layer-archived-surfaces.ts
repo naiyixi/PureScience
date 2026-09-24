@@ -47,12 +47,6 @@ const ARCHIVED: EntryLayerArchivedSurface[] = [
     evidence: 'audit 批次 4 归档结论（U23）'
   },
   {
-    publicPath: 'endpoint.approve',
-    reason:
-      'PENDING BUILD (U27): endpoint-ipc.ts documents this as the settings panel surface — the first registration of a script set is hash-pinned only after the user approves it there — yet no window code calls it. Recorded here so the guard stays green until U27 wires an approval affordance.',
-    evidence: 'audit 批次 4 归档结论（U23）；main/settings/endpoint-ipc.ts:1-5'
-  },
-  {
     publicPath: 'notebook.appendCodeCell',
     reason:
       'Streaming half of the agent write protocol (begin/append/finish); the window observes cells through notebook:state instead of writing them.',

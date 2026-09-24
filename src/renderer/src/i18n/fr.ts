@@ -1614,6 +1614,10 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.elapsedTime': 'Temps écoulé',
   'settings.endpoint': 'Point d’accès',
   'settings.endpointsApprove': 'Approuver les scripts',
+  'settings.endpointsApproveScripts': 'Scripts à approuver',
+  'settings.endpointsApproveHint':
+    "Son script de démarrage n'est pas encore approuvé, le service ne peut donc pas démarrer. Vérifiez le texte exact ci-dessous puis approuvez-le pour figer ce jeu de scripts, ou supprimez le service.",
+  'settings.endpointsApproveMissing': "Ce service n'est plus enregistré ; actualisez la liste.",
   'settings.endpointsCredential': 'Identifiant (facultatif)',
   'settings.endpointsCredentialPlaceholder': 'Nom d’un identifiant enregistré',
   'settings.endpointsDelete': 'Retirer',

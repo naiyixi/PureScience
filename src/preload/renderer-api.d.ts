@@ -335,7 +335,11 @@ import type {
   ContextSummaryChunkView
 } from '../shared/reviewer'
 import type { RoutineConfigureRequest, RoutineSchedule } from '../shared/routine'
-import type { EndpointRegisterRequest, ManagedEndpoint } from '../shared/endpoint'
+import type {
+  EndpointRegisterRequest,
+  ManagedEndpoint,
+  ManagedEndpointView
+} from '../shared/endpoint'
 import type { AnnotationSetRequest, FileAnnotation } from '../shared/annotation'
 import type { SessionBookmark, SessionBookmarkInput } from '../shared/bookmark'
 import type { GlobalSearchPin, GlobalSearchPinFilters } from '../shared/global-search-pins'
@@ -1111,7 +1115,7 @@ export interface PureScienceAPI {
   }
   endpoint: {
     // Lists every managed local model service (settings panel).
-    listAll(): Promise<ManagedEndpoint[]>
+    listAll(): Promise<ManagedEndpointView[]>
     // Registers one; newlyApproved is true when the script set needs a user approval first.
     register(request: {
       sessionId: string

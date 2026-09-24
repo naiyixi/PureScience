@@ -1579,6 +1579,10 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.elapsedTime': 'Затраченное время',
   'settings.endpoint': 'Конечная точка',
   'settings.endpointsApprove': 'Одобрить скрипты',
+  'settings.endpointsApproveScripts': 'Скрипты на одобрение',
+  'settings.endpointsApproveHint':
+    'Стартовый скрипт ещё не одобрен, поэтому службу нельзя запустить. Проверьте точный текст ниже и одобрите его, чтобы закрепить этот набор скриптов, или удалите службу.',
+  'settings.endpointsApproveMissing': 'Эта служба больше не зарегистрирована; обновите список.',
   'settings.endpointsCredential': 'Учётные данные (необязательно)',
   'settings.endpointsCredentialPlaceholder': 'Имя сохранённых учётных данных',
   'settings.endpointsDelete': 'Удалить',

@@ -149,4 +149,15 @@
 |---|---|---|---|
 | U31 | 笔记本面板**无入口**：`notebook:available` 从未被触发 | `session-lifecycle.ts:159` 的 `notifyAvailable()` 主进程零调用点（`notifyChanged` 有多处）；`application.ts:48`、`application-events.ts:41`、合同清单与 preload 全部齐备 | **已修**：在 `runCell` / `executeControl` / `executeShell` 三条运行路径宣告；新增 `session-lifecycle.test.ts` 3 条（含一条源码级断言防复发） |
 
+### U27：已修（批次 6 / v1.74.0 预置）
+
+`endpoint:approve` 此前渲染层零调用点，而 `endpoint-manager.ts:89-92` 的 `start` 对未批准的哈希直接抛
+「has not been approved yet」⇒ **用户能注册本地模型服务、但永远起不来，界面既不说缺什么、也不能补上**
+（`EndpointPanel.tsx:14-16` 的注释早已声称"APPROVE a pending script set（scripts 原样展示）"，实现里没有这条路）。
+而且 9 语字典里 `settings.endpointsApprove` / `settings.endpointsPending` 两条 key 早已存在、无人使用。
+
+修法：`listAll` 输出加上 `approved` 标志（`ManagedEndpointView`），面板对未批准的服务显示徽标 + 原因 + **待批准脚本原文**
++ 批准按钮，并禁用那个只会失败的启动按钮。测试 7 条（面板 4 + IPC 3），其中一条当场抓出我自己实现里的错误顺序
+（先 `setError` 再 `load()`，而 `load()` 成功会清掉错误 ⇒ 提示永远看不到）。
+
 这条是 U21 真机取证的副产物：卡片控件写完了，但面板本身进不去 —— 又一次印证本仓反复出现的形状：**通道声明齐全 ≠ 链路可达**。

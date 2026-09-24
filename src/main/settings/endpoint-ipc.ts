@@ -8,7 +8,11 @@
 import { ipcMainHandle } from '../ipc-handler-registry'
 import type { EndpointManager } from './endpoint-manager'
 import type { EndpointRepository } from './endpoint-repository'
-import type { EndpointRegisterRequest, ManagedEndpoint } from '../../shared/endpoint'
+import type {
+  EndpointRegisterRequest,
+  ManagedEndpoint,
+  ManagedEndpointView
+} from '../../shared/endpoint'
 
 export const ENDPOINT_IPC = {
   LIST_ALL: 'endpoint:list-all',
@@ -20,7 +24,7 @@ export const ENDPOINT_IPC = {
 } as const
 
 export type EndpointCommandOwner = {
-  listAll: () => Promise<ManagedEndpoint[]>
+  listAll: () => Promise<ManagedEndpointView[]>
   register: (
     sessionId: string,
     request: EndpointRegisterRequest
@@ -35,7 +39,15 @@ export const createEndpointCommandOwner = (
   repository: EndpointRepository,
   manager: EndpointManager
 ): EndpointCommandOwner => ({
-  listAll: () => repository.list(),
+  listAll: async () => {
+    const endpoints = await repository.list()
+    return Promise.all(
+      endpoints.map(async (endpoint) => ({
+        ...endpoint,
+        approved: await repository.isHashApproved(endpoint.approvedScriptHash)
+      }))
+    )
+  },
   register: (sessionId, request) => repository.upsert(request, sessionId),
   approve: async (name) => {
     const endpoint = await repository.get(name)

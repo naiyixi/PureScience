@@ -1549,6 +1549,11 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.elapsedTime': '경과 시간',
   'settings.endpoint': '엔드포인트',
   'settings.endpointsApprove': '스크립트 승인',
+  'settings.endpointsApproveScripts': '승인 대기 중인 스크립트',
+  'settings.endpointsApproveHint':
+    '시작 스크립트가 아직 승인되지 않아 이 서비스를 실행할 수 없습니다. 아래 원문을 확인하고 승인하면 이 스크립트 묶음이 고정됩니다. 서비스를 제거해도 됩니다.',
+  'settings.endpointsApproveMissing':
+    '해당 서비스가 더 이상 등록되어 있지 않습니다. 목록을 새로 고치세요.',
   'settings.endpointsCredential': '자격 증명(선택 사항)',
   'settings.endpointsCredentialPlaceholder': '저장된 자격 증명의 이름',
   'settings.endpointsDelete': '제거',

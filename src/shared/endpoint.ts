@@ -123,6 +123,11 @@ export type ManagedEndpoint = {
   updatedAt: number
 }
 
+// The settings-panel view of a managed endpoint: the stored record plus whether its CURRENT script
+// bytes are in the approval store. `start` refuses an unapproved hash, so the panel needs this flag to
+// offer the approval action instead of a play button that can only fail.
+export type ManagedEndpointView = ManagedEndpoint & { approved: boolean }
+
 export type EndpointRegisterRequest = {
   name: string
   url: string

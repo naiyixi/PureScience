@@ -884,6 +884,10 @@ export const zh = {
   'settings.endpointsStop': '停止',
   'settings.endpointsDelete': '删除',
   'settings.endpointsApprove': '批准脚本',
+  'settings.endpointsApproveScripts': '待批准的脚本',
+  'settings.endpointsApproveHint':
+    '它的启动脚本尚未被批准，因此服务还不能启动。核对下方原文后批准，即可固定这组脚本字节；也可以直接移除该服务。',
+  'settings.endpointsApproveMissing': '该服务已不存在，请刷新列表。',
   'settings.endpointsPending': '待批准',
   'settings.network': '网络',
   'palette.openSettings': '打开设置',

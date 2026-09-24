@@ -1609,6 +1609,10 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.elapsedTime': 'Tiempo transcurrido',
   'settings.endpoint': 'Punto de conexión',
   'settings.endpointsApprove': 'Aprobar scripts',
+  'settings.endpointsApproveScripts': 'Scripts por aprobar',
+  'settings.endpointsApproveHint':
+    'Su script de arranque aún no está aprobado, así que el servicio no puede iniciarse. Revisa el texto exacto de abajo y apruébalo para fijar ese conjunto de scripts, o elimina el servicio.',
+  'settings.endpointsApproveMissing': 'Ese servicio ya no está registrado; actualiza la lista.',
   'settings.endpointsCredential': 'Credencial (opcional)',
   'settings.endpointsCredentialPlaceholder': 'Nombre de una credencial guardada',
   'settings.endpointsDelete': 'Quitar',

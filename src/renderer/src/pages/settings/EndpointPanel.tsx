@@ -1,13 +1,13 @@
 /* Hallmark · pre-emit critique: P4 H4 E4 S4 R4 V4 */
 import { useCallback, useEffect, useState } from 'react'
-import { CircleDot, Pause, Play, Plus, RefreshCw, Trash2 } from 'lucide-react'
+import { CircleDot, Pause, Play, Plus, RefreshCw, ShieldCheck, Trash2 } from 'lucide-react'
 
 import { useLanguage } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import type { EndpointRegisterRequest, ManagedEndpoint } from '../../../../shared/endpoint'
+import type { EndpointRegisterRequest, ManagedEndpointView } from '../../../../shared/endpoint'
 
 // Local model services ("managed endpoints"): daemon-owned lifecycle for locally hosted model
 // servers. The panel lists every endpoint (across sessions), lets the user register one (name,
@@ -16,7 +16,7 @@ import type { EndpointRegisterRequest, ManagedEndpoint } from '../../../../share
 // shown verbatim), and start/stop or remove an endpoint.
 export const EndpointPanel = (): React.JSX.Element => {
   const { t } = useLanguage()
-  const [endpoints, setEndpoints] = useState<ManagedEndpoint[]>([])
+  const [endpoints, setEndpoints] = useState<ManagedEndpointView[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [name, setName] = useState('')
@@ -100,7 +100,7 @@ export const EndpointPanel = (): React.JSX.Element => {
   ])
 
   const toggle = useCallback(
-    async (endpoint: ManagedEndpoint): Promise<void> => {
+    async (endpoint: ManagedEndpointView): Promise<void> => {
       if (busyName) return
       setBusyName(endpoint.name)
       try {
@@ -119,8 +119,26 @@ export const EndpointPanel = (): React.JSX.Element => {
     [busyName, load]
   )
 
+  const approve = useCallback(
+    async (endpoint: ManagedEndpointView): Promise<void> => {
+      if (busyName) return
+      setBusyName(endpoint.name)
+      try {
+        const approved = await window.api.endpoint.approve(endpoint.name)
+        // Reload first: load() clears the error on success, so a message set before it would never be seen.
+        await load()
+        if (!approved) setError(t('settings.endpointsApproveMissing'))
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : String(cause))
+      } finally {
+        setBusyName(undefined)
+      }
+    },
+    [busyName, load, t]
+  )
+
   const remove = useCallback(
-    async (endpoint: ManagedEndpoint): Promise<void> => {
+    async (endpoint: ManagedEndpointView): Promise<void> => {
       if (busyName) return
       setBusyName(endpoint.name)
       try {
@@ -135,7 +153,7 @@ export const EndpointPanel = (): React.JSX.Element => {
     [busyName, load]
   )
 
-  const stateLabel = (endpoint: ManagedEndpoint): string => {
+  const stateLabel = (endpoint: ManagedEndpointView): string => {
     switch (endpoint.state) {
       case 'live':
         return t('settings.endpointsLive')
@@ -306,20 +324,67 @@ export const EndpointPanel = (): React.JSX.Element => {
                     <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
                       {stateLabel(endpoint)}
                     </span>
+                    {endpoint.approved ? null : (
+                      <span
+                        data-testid="endpoint-approval-badge"
+                        className="rounded bg-warning-100/20 px-1.5 py-0.5 text-xs text-warning-900"
+                      >
+                        {t('settings.endpointsPending')}
+                      </span>
+                    )}
                   </div>
                   <p className="truncate text-xs text-muted-foreground">
                     {endpoint.url}
                     {endpoint.livePath} · {t('settings.endpointsSkill')}: {endpoint.skillName}
                   </p>
+                  {endpoint.approved ? null : (
+                    <p className="text-xs text-muted-foreground">
+                      {t('settings.endpointsApproveHint')}
+                    </p>
+                  )}
+                  {endpoint.approved ? null : (
+                    <details data-testid="endpoint-approval-scripts">
+                      <summary className="cursor-pointer text-xs text-muted-foreground">
+                        {t('settings.endpointsApproveScripts')}
+                      </summary>
+                      <pre className="mt-1 max-h-40 overflow-auto rounded bg-muted p-2 text-xs whitespace-pre-wrap">
+                        {[
+                          `# ${t('settings.endpointsStartScript')}`,
+                          endpoint.startScript,
+                          `# ${t('settings.endpointsStopScript')}`,
+                          endpoint.stopScript,
+                          `# ${t('settings.endpointsLivePath')}`,
+                          endpoint.livePath
+                        ].join('\n')}
+                      </pre>
+                    </details>
+                  )}
                   {endpoint.lastError ? (
                     <p className="truncate text-xs text-destructive">{endpoint.lastError}</p>
                   ) : null}
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
+                  {endpoint.approved ? null : (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      data-testid="endpoint-approve"
+                      disabled={busyName === endpoint.name}
+                      aria-label={t('settings.endpointsApprove')}
+                      onClick={() => void approve(endpoint)}
+                    >
+                      <ShieldCheck className="h-4 w-4" />
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="icon"
-                    disabled={busyName === endpoint.name}
+                    disabled={
+                      busyName === endpoint.name ||
+                      (!endpoint.approved &&
+                        endpoint.state !== 'live' &&
+                        endpoint.state !== 'starting')
+                    }
                     aria-label={
                       endpoint.state === 'live' || endpoint.state === 'starting'
                         ? t('settings.endpointsStop')

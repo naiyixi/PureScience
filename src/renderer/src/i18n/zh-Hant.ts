@@ -1466,6 +1466,10 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.elapsedTime': '已耗時間',
   'settings.endpoint': '端點',
   'settings.endpointsApprove': '核准指令碼',
+  'settings.endpointsApproveScripts': '待核准的指令碼',
+  'settings.endpointsApproveHint':
+    '它的啟動指令碼尚未被核准，因此服務還不能啟動。核對下方原文後核准，即可固定這組指令碼位元組；也可以直接移除該服務。',
+  'settings.endpointsApproveMissing': '該服務已不存在，請重新整理清單。',
   'settings.endpointsCredential': '憑證（選填）',
   'settings.endpointsCredentialPlaceholder': '已儲存憑證的名稱',
   'settings.endpointsDelete': '移除',

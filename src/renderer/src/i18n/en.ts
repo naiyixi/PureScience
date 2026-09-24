@@ -935,6 +935,10 @@ export const en: Record<ZhKey, string> = {
   'settings.endpointsStop': 'Stop',
   'settings.endpointsDelete': 'Remove',
   'settings.endpointsApprove': 'Approve scripts',
+  'settings.endpointsApproveScripts': 'Scripts awaiting approval',
+  'settings.endpointsApproveHint':
+    'Its start script has not been approved yet, so the service cannot be started. Review the exact bytes below and approve them to pin this script set, or remove the service.',
+  'settings.endpointsApproveMissing': 'That service is no longer registered; refresh the list.',
   'settings.endpointsPending': 'needs approval',
   'settings.network': 'Network',
   'palette.openSettings': 'Open settings',

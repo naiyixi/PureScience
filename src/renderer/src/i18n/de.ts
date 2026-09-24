@@ -1629,6 +1629,11 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.elapsedTime': 'Verstrichene Zeit',
   'settings.endpoint': 'Endpunkt',
   'settings.endpointsApprove': 'Skripte genehmigen',
+  'settings.endpointsApproveScripts': 'Skripte zur Freigabe',
+  'settings.endpointsApproveHint':
+    'Das Startskript ist noch nicht genehmigt, deshalb lässt sich der Dienst nicht starten. Prüfe den genauen Wortlaut unten und genehmige ihn, um dieses Skriptpaket festzuschreiben – oder entferne den Dienst.',
+  'settings.endpointsApproveMissing':
+    'Dieser Dienst ist nicht mehr registriert; bitte die Liste aktualisieren.',
   'settings.endpointsCredential': 'Anmeldedaten (optional)',
   'settings.endpointsCredentialPlaceholder': 'Name gespeicherter Anmeldedaten',
   'settings.endpointsDelete': 'Entfernen',

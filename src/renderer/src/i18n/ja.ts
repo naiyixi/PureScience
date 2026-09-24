@@ -1578,6 +1578,10 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.elapsedTime': '経過時間',
   'settings.endpoint': 'エンドポイント',
   'settings.endpointsApprove': 'スクリプトを承認',
+  'settings.endpointsApproveScripts': '承認待ちのスクリプト',
+  'settings.endpointsApproveHint':
+    '起動スクリプトがまだ承認されていないため、このサービスは開始できません。下の原文を確認して承認すると、このスクリプト一式が固定されます。サービスを削除してもかまいません。',
+  'settings.endpointsApproveMissing': 'このサービスは登録されていません。一覧を更新してください。',
   'settings.endpointsCredential': '認証情報（任意）',
   'settings.endpointsCredentialPlaceholder': '保存済み認証情報の名前',
   'settings.endpointsDelete': '削除',
