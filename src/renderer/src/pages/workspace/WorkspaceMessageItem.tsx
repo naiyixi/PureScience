@@ -107,18 +107,34 @@ type WorkspaceMessageItemProps = {
 
 const ARTIFACT_GALLERY_VISIBLE_COUNT = 5
 const tokenCountFormatter = new Intl.NumberFormat('en-US')
-const formatMessageTimestamp = (date: Date): string =>
-  new Intl.DateTimeFormat(getUiLocale(), {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit'
-  }).format(date)
+// Constructing an Intl.DateTimeFormat is expensive (it compiles locale data), and these two run for every
+// message on every streaming chunk. A CPU profile of a 45-turn streaming transcript attributed 16% of all
+// sampled time to the component that calls them, essentially all of it inside these constructors. One
+// formatter per locale is reused instead; the locale is the cache key because the UI language can change
+// while the app runs.
+const formatterByLocale = (options: Intl.DateTimeFormatOptions): (() => Intl.DateTimeFormat) => {
+  const cache = new Map<string, Intl.DateTimeFormat>()
+  return () => {
+    const locale = getUiLocale()
+    const cached = cache.get(locale)
+    if (cached) return cached
+    const formatter = new Intl.DateTimeFormat(locale, options)
+    cache.set(locale, formatter)
+    return formatter
+  }
+}
+
+const messageTimestampFormatter = formatterByLocale({
+  month: 'short',
+  day: 'numeric',
+  hour: 'numeric',
+  minute: '2-digit'
+})
+const messageTimestampTitleFormatter = formatterByLocale({ dateStyle: 'full', timeStyle: 'long' })
+
+const formatMessageTimestamp = (date: Date): string => messageTimestampFormatter().format(date)
 const formatMessageTimestampTitle = (date: Date): string =>
-  new Intl.DateTimeFormat(getUiLocale(), {
-    dateStyle: 'full',
-    timeStyle: 'long'
-  }).format(date)
+  messageTimestampTitleFormatter().format(date)
 
 const toMessageDate = (timestamp: number | undefined): Date | undefined => {
   if (timestamp === undefined) return undefined
