@@ -14,7 +14,7 @@
 | 2    | v1.71.0 | 半截功能补齐（有 A→B 没有 B→A） | 5      | 已建能力的管理动作闭环                 |
 | 3    | v1.72.0 | 体验真实差距 + 可发现性         | 5      | **✅ 已完成**：U14–U18 全部落地并逐项真机验收 |
 | 4    | v1.73.0 | 拍板项落地（建入口或归档）      | 6      | 把「已备未建」清成有结论的状态         |
-| 5    | v1.74.0 | 防复发门禁                      | 2      | 让这类缺口不能再悄悄长出来             |
+| 5    | v1.74.0 | 防复发门禁                      | 2      | 让这类缺口不能再悄悄长出来（U25/U26 **已落地**，双向验收实跑；守卫自查出 U27/U28，已立案） |
 
 版本号按批次边界实际运行时行为分配；纯文档/测试改动不占版本号。
 
@@ -106,7 +106,6 @@
 - **测试**：`preview-content-actions.test.ts` 6（顺序、媒体门控、能力缺失即不出现、每个动作真的调用自己的 handler）· `PreviewFileSurface.test.tsx` +2（工具栏渲染与命名、无动作时不渲染工具栏）· 真机 `e2e/certification/preview-toolbar.spec.ts` 1——**用工具栏抽表并断言与右键菜单一致**（4×4 同值），证明两个面是同一份动作而不是两套实现，并复核右键仍可用。
 - 9 语 +1 键（`previewSurface.toolbar`）。
 
-
 **U18 ✅ 完成（真机 `1 passed (7.6s)`）— 上下文门控入口**：
 
 - **缺口**：检查清单 / 折叠上下文都是**会话级**的（不需要评审行），但两个入口（`WorkspaceMessageScroller:288`、`ArtifactProvenancePanel:786`）都要求**已有评审**，所以「这个会话还没有评审」= 这条能力完全够不着。代码里甚至已经写着注释 `fall back to the newest when the item carries no reviewId (e.g. a session-level entry point)` —— 那个 entry point 当时并不存在（又一处名不副实）。
@@ -114,7 +113,6 @@
 - **空态按「说清是哪种空 + 给下一步」**：无评审时面板显式说明「本会话还没有评审记录；下面的检查清单与折叠上下文不需要评审也能用」，并把**折叠上下文**标签一并放出来（此前无评审分支只有清单一个标签）。
 - **顺带修掉一个真缺陷**：`reviewStore.getChecklist()` 的空态每次返回**新对象**，而它是被 zustand selector 读取的 → 快照永不相等 → 清单面板挂载即 `Maximum update depth exceeded`。改为按会话缓存空对象。**这条路径正是本次新入口会放大的那条**（新入口让「还没加载出清单」成为常见态）。定位教训：`=> state.getX(...)` 这类**方法调用式 selector** 不在我先前「返回对象/数组的选择器」扫描（`=> ({` / `=> [`）的覆盖范围内——扫描口径要含方法调用。
 - **测试**：`PreviewToolContent.no-review.test.tsx` 2（标签集 + 说明 + 切到折叠上下文）· `SessionInfoCard.render.test.tsx` +1（入口存在、点击回报并关闭）· `review-store.test.ts` +1（空清单对象身份稳定，修前必红）· 9 语 +2 键（`sessionInfo.review` / `reviewer.noReviewsYet`）· 真机 `e2e/certification/reviewer-session-entry.spec.ts` 1。
-
 
 **U17 ✅ 完成（真机 `1 passed (8.5s)`）— 可发现性基建四件**：
 
@@ -124,7 +122,6 @@
 - **设置搜索扩到关键词**：19 个面板各带 `keywords` 并抽出纯函数 `matchesSettingsQuery`；搜「镜像 / mirror / 代理」命中网络与运行环境面板。
 - **顺带**：面板页脚原有 4 个硬编码英文（navigate/open/mention/close）入 9 语；三处快捷键门控补上新对话框的排除，避免在清单面上再开一层。
 - **测试**：命令目录 5（含「每条命令必须真的执行一个动作」——防空壳入口）· 快捷键面 2 · 面板集成 1（输入 mirror → 命令行 → 点击真的把 store 指向网络面板）· 设置搜索 3 · 设置 ⌘K 所有权 1 · 真机认证 1。
-
 
 **U14 ✅ 完成（真机 `1 passed (10.7s)`，提交 `640b22d`）**
 
@@ -220,13 +217,15 @@
 - **测试**：`NotebookPreview.rerun.render.test.tsx` 7 条（载荷逐字段、只重跑被点那格、三种阻塞原因各自可见且点击不发出调用、结果回执）· i18n 门禁 42 passed · 9 语 +5 键。
 - **未完成的部分（不标 ✅）**：真机用例未跑（本轮第三次触发终端守卫、未获响应）。真机跑通前不计入完成。
 
-**U22 已落地、待真机（渲染层迁到生命周期新面）— P-d 默认建议**
+**U22 结论修正：迁移已回退（新面在 main 里从未安装）— 立案 U29**
 
-- **缺口**：`handoff-lifecycle-source.ts:150` 把客户端绑在 `window.api.specialist`（**旧面**），`WorkspacePage.tsx` 也用旧面 `onHandoffLifecycleEvent` / `getHandoffEvents(activeSessionId)` 订阅与重放——而 `handoff-lifecycle:list/:changed/:retry` 这套新面（`shared/handoff-lifecycle.ts:90-94`、preload `renderer-api.d.ts:711-715`）**无人使用**。
-- **做法**：客户端改绑 `window.api.handoff`；`retry` 直接发 `{ sessionId, originatingTurnId }`（主进程自己解析交接，客户端那段反查与「no longer available」自造错误删除——按文件自身注释，校验属于主进程）；`onChanged` 按 `upsert` / `remove`（批量 eventIds）处理；旧面形状转换器 `toHandoffEvent` / `targetFromReadback` 随之成为死码并删除。`WorkspacePage` 的订阅与重放改走新面；排序从旧面的 `commitOrder`（新面不提供）改为 `observedAt → sequence → id`（新面的 `sequence` 只在同一交接内单调，而这条路径只用于触发一次幂等的 specialist 回读）。
-- **取证**：旧面三件（`getHandoffEvents` / `retryHandoff` / `onHandoffLifecycleEvent`）迁移后渲染层**零消费**（剩余一处是同名 i18n 键 `common.retryHandoff` 的文案）；`specialist:cancel-handoff` 渲染层同样零消费 → 与旧面三件一并归档为兼容/agent 面。
-- **测试**：`handoff-lifecycle-source.test.ts` 3 条改新面（含「只转发 retry 意图」）· `WorkspacePage.pending-switch.test.tsx` 事件改 `{ kind: 'upsert', event }` 形状 · workspace+preload **151 files / 1742 passed**。
-- **未完成的部分（不标 ✅）**：无 UI 新增（纯迁移），真机证据待跑；现有认证用例集中没有 handoff 专项，如需真机证据需新增一条（已立案）。
+- **原计划（P-d 默认建议）**：把 UI 迁到 `handoff-lifecycle:list/:changed/:retry`（新面）、删旧面 retry。**按此实现并推送 `fa7dfb5`，随后被 CI 证伪。**
+- **CI 证据**：`fa7dfb5` → Nightly `35997046852` **failure**（`build / Build macos-arm64`），**16 条认证用例全红**，根因原文：
+  `[renderer pageerror] Error invoking remote method 'handoff-lifecycle:list': Error: No handler registered for 'handoff-lifecycle:list'`
+- **真根因（比错误文案更深）**：`registerHandoffLifecycleIpcHandlers`（`src/main/agents/handoff-lifecycle-ipc.ts:25`）**只出现在它自己的模块与它自己的单测里**——主进程从未调用；`HandoffLifecycleCoordinator`（`src/main/agents/handoff-lifecycle.ts:26`）也**没有任何 `new` 调用点**。生产实际安装的是**旧面**：`src/main/ipc.ts:910` 的 `registerCompletionHandoffIpcHandlers(completionHandoffLifecycle)` 装了 `specialist:get-handoff-events` / `retry-handoff` / `cancel-handoff`，且 `ipc.ts:911-914` 把 `completionHandoffLifecycle` 传给闸门。⇒ 新面是一套**声明齐备、从未安装**的平行实现（合同清单与 preload 都有，main 没有），我把它当成了正本。
+- **处置**：**回退**这次渲染层迁移，让窗口回到真正在跑的面；不把「迁 UI」建成半截新面（那正是禁止的空壳）。
+- **立案 U29**：把新面接成生产生命周期（用 `HandoffLifecycleCoordinator` 替换/桥接 `CompletionHandoffLifecycle`：注册 IPC、`onChange` 广播 `handoff-lifecycle:changed`、补事件形状转换），完成并拿到真机证据后再迁 UI。
+- **U25 守卫的能力边界（必须记住）**：入口守卫只保证**窗口有调用点**，**不保证主进程安装了该面**——本轮就栽在这条边界上。要覆盖需解析主进程的常量间接引用（`SPECIALIST_IPC.X` 这类），立案 U30。
 
 **U23 归档（零代码收口，逐条结论）— P-e 默认建议**
 
@@ -238,7 +237,7 @@
 | `storage:validate-data-root` | **0** | **归档**：保留为 host/agent 命令（`host-application-commands.ts:284`、`storage/ipc.ts:27`）；数据根设置走设置保存路径，未发现需要用户单独触发校验的场景 |
 | `settings:get-package-mirror` | **0** | **归档**：镜像经设置快照下发（`settings-store.ts:113/173/193`），无需单独面 |
 | `settings:xai-oauth-*` | **已有 UI** | **归档（已覆盖）**：`ProvidersPanel.tsx:182/183/198` 已用 start/complete/logout 三件，本就不是缺口 |
-| `specialist:cancel-handoff` | **0** | **归档**：见 U22——交接的重试/继续已由生命周期面承载 |
+| `specialist:cancel-handoff` | **0** | **归档**：交接失败的重试/继续由**生产面** `specialist:retry-handoff` 承载（`ipc.ts:910` 安装）；cancel 无窗口意图。新面 `handoff-lifecycle:*` 未安装，见 U22 |
 
 **U24 归档（零代码收口）— P-e 默认建议**
 
@@ -513,3 +512,22 @@
 - 现象：`npx playwright test e2e/certification`（默认并行）在 `artifact-replay.spec.ts:43` 假红——`artifact-replay-verdict` **元素根本没渲染**（20s 超时），换过一次仍复现；而该 spec **单独跑 9.7s 通过**，整套 **`--workers=1` 串行 15/15 全绿（2.5m）**。
 - 判据：**默认并行下多个 Electron 实例共享同一套临时目录/存储根，互相污染 → 假红**。与 launchagent 是否 unload 无关（两次失败时 daemon 状态不同、失败形态完全相同）。
 - 规程：认证套件用 `npx playwright test e2e/certification --workers=1`；单跑与套件结果不一致时，先串行复核再判定回归。
+
+### 批次 5 完成记录（v1.74.0）
+
+**U25 入口守卫 — 已落地（门禁，非文档）**
+- 新增 `src/shared/renderer-contract-entry-coverage.test.ts`：遍历合同清单里**桌面应用真实安装**的面（`surfaceInstallation.electron ∈ {preload, browser-native}`），每个面必须在 `src/renderer/src` 下有调用点，否则必须在登记册里。
+- 登记册 `src/shared/entry-layer-archived-surfaces.ts`：23 条，每条带「决策 + 证据」，并反向校验（登记册里的路径必须仍在清单里，否则门禁红）+ 校验理由非空。
+- 匹配口径：容忍写法差异（`window.api.handoff.list` / `const h = window.api?.handoff; h.list(...)` / 解构），按「同一文件同时出现 capability 与 member」判定——刻意从宽，因为这条门禁的价值是抓**新声明**的面（新面的 member 名在窗口里根本不存在）。i18n 排除规则只跳 9 本字典，不跳 `i18n/index.tsx`（它会持久化界面语言）。
+- **验收（已在本地实跑）**：登记册填满 → 4 passed 绿；**故意在合同清单里注入一条没人接线的面（`handoff.notifyNobody`）→ 门禁红并点名它**；撤销 → 恢复绿。
+- **守卫自己抓到的两处真缺口（非我预见）**，已立案：
+  - **U27 `endpoint.approve`** — `src/main/settings/endpoint-ipc.ts:1-5` 明写这是「渲染层设置面板的面」，脚本字节的哈希锚定**必须由用户在面板里批准**，而窗口里没有任何调用点 ⇒ 批准动作无 UI。
+  - **U28 窗口内查找（`window.findInPage`/`clearFind`/`onShowWindowFind`/`onFindInPageResult`/`onWindowFindAppearance`/`closeFind`）** — 桌面应用装了这套面，窗口里**没有查找栏**。
+
+**U26 交互守卫 — 已落地（门禁）**
+- 新增 `src/shared/renderer-interaction-guard.test.ts`：① 手写 `role="dialog"` 必须走共享壳（`components/ui/dialog*`），否则红；仅放行**已核验**的非模态浮层（登记理由：自持 ESC / 指针离开即关 / 焦点归还），并对放行项做反向校验（该文件必须真的还声明 dialog 角色）；② 集合面用 `length > 0` 门控且全文无空态语义 → **告警**（按排期口径不阻断）。
+- 识别「声明」而非「检测」：`querySelector('[role="dialog"]')` 这类选择器字符串不算。
+- **守卫抓到的第三处真缺口并已修**：`pages/settings/SpecialistsPanel.tsx` 的 ZIP 预览步骤用 `<div role="dialog" aria-modal="true">` **冒充模态**（无 ESC / 无焦点圈闭 / 无归还）——正是 U2 在别处修掉的同一类缺陷；它是流程内的一个步骤视图，故**纠正语义**为 `role="region"` + 保留标签，而不是套壳伪造模态。
+- **验收（已在本地实跑）**：写入一个裸 `role="dialog"` 浮层 → 门禁红并点名该文件；删除 → 恢复绿（守卫 + 面板簇 40 passed）。
+
+**接线**：两个守卫位于 `src/**`（vitest 默认 include），CI 的 `npm run test:coverage` 会跑 ⇒ 无需改 workflow。

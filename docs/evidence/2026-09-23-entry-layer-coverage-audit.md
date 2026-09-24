@@ -129,5 +129,16 @@
 | `storage:validate-data-root` | 渲染层 0 命中；保留为 host/agent 命令（`host-application-commands.ts:284`、`storage/ipc.ts:27`） |
 | `settings:get-package-mirror` | 渲染层 0 命中；镜像经设置快照下发（`settings-store.ts:113/173/193`） |
 | `settings:xai-oauth-*` | 已覆盖：`ProvidersPanel.tsx:182/183/198` 已用 start/complete/logout |
-| `specialist:cancel-handoff`（含旧面 `getHandoffEvents` / `retryHandoff` / `onHandoffLifecycleEvent`） | 渲染层 0 消费（U22 已把 UI 迁到 `handoff-lifecycle:list/:changed/:retry`）；保留为兼容/agent 面 |
+| `specialist:cancel-handoff`（含旧面 `getHandoffEvents` / `retryHandoff` / `onHandoffLifecycleEvent`） | 渲染层对 cancel 为 0 消费；**读回与重试仍是生产面**（`ipc.ts:910` 安装）。新面 `handoff-lifecycle:list/:changed/:retry` **在 main 里从未安装**（见 U22/U29），故 U22 的迁移已回退 |
 | `acp:event` / `acp:permission-request` | 渲染层 0 命中；权限请求由 `permission-grants-store` 与会话状态 `waiting-permission` 承载，主进程仍按 `application-events.ts:37-38` 广播；保留为兼容/观测通道 |
+
+### 批次 5 守卫自查出的两处缺口（U25 落地当轮，2026-09-24）
+
+这两条不是人工审计发现的，是新门禁第一次运行时报出来的，因此此前所有轮次都漏过：
+
+| # | 缺口 | 证据 | 结论 |
+|---|---|---|---|
+| U27 | `endpoint:approve` 无 UI：脚本字节的哈希锚定要求用户在设置面板里批准，而窗口零调用点 | `src/main/settings/endpoint-ipc.ts:1-5`（注释自陈是渲染层的面）；渲染层 `endpoint.approve` / `approveEndpoint` 均 0 命中 | **立案建 UI**（安全相关：没有批准入口则锚定链路走不通） |
+| U28 | 窗口内查找整组面无 UI：桌面应用装了 6 条 `window.*Find*` 通道，窗口没有查找栏 | `src/renderer/src` 里 `findInPage` / `clearFind` / `onShowWindowFind` / `onFindInPageResult` 生产代码 0 命中 | **立案建 UI**（快捷键驱动的查找栏） |
+
+两处均已写入 `src/shared/entry-layer-archived-surfaces.ts` 的登记册（带 PENDING BUILD 标记与证据），门禁在建成前保持绿。

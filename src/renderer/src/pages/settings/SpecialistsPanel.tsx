@@ -646,9 +646,10 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
             ) : null}
           </div>
         ) : (
-          <div
-            role="dialog"
-            aria-modal="true"
+          <section
+            // A step inside the panel's own flow, not an overlay: claiming modality here would promise
+            // Escape, a focus trap and focus restore that this markup does not own.
+            role="region"
             aria-label={t('settings.specialistZipPreview')}
             className="space-y-4"
           >
@@ -999,7 +1000,7 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                 </AlertDialog.Portal>
               </AlertDialog.Root>
             ) : null}
-          </div>
+          </section>
         )}
       </div>
     )
