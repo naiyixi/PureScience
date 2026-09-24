@@ -2897,7 +2897,7 @@ describe('SettingsPage Codex framework', () => {
       window.dispatchEvent(chord)
     })
 
-    // Not consuming the chord is the whole contract: the palette handler upstream bails on
+    // Not consuming the chord is the whole contract: the palette handler in App bails on
     // defaultPrevented, so a listener that swallows ⌘K while its own surface is closed makes the chord
     // dead everywhere else in the app.
     expect(chord.defaultPrevented).toBe(false)

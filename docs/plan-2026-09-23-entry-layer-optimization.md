@@ -247,7 +247,7 @@
 - **定位过程（可复用）**：临时真机探针分别用 (a) 真实按键、(b) `GLOBAL_SEARCH_OPEN_EVENT` 事件、(c) 在 `body`/`window` 上派发的合成 `KeyboardEvent` 三条路径对打 —— 事件路径能开、合成事件在 `window` **冒泡**阶段被 `prevented=true`（捕获阶段未拦），于是排除「面板本身/门控条件/焦点在编辑器」，锁到「window 冒泡阶段的监听器抢先 preventDefault」。全仓 `!== 'k'` 一处即中。
 - **修复**：`SettingsPage.tsx` 的监听按 `open` 门控（`if (!open) return` + deps `[open]`）——设置打开时它仍是 ⌘K 的唯一消费者（App 侧本来就排除 `isSettingsOpen`），设置关闭时 ⌘K 归还给命令面板。
 - **回归锁**：`SettingsPage.render.test.tsx` 新增「settings 关闭时不得消费 ⌘K」（断言 `defaultPrevented === false`，修前必红）；`e2e/certification/palette-commands.spec.ts` 真机覆盖 ⌘K→命令→落到设置→设置打开时 ⌘K 不再在背后开面板，以及快捷键面上的 `Cmd+,`/`Cmd+W`。
-- **教训**：注释与依赖数组不一致的「名不副实」监听是最难查的一类门控缺陷——它让上游门控的 `defaultPrevented` 分支静默吞键，而所有既有测试都不拥有这个键的所有权断言。
+- **教训**：注释与依赖数组不一致的「名不副实」监听是最难查的一类门控缺陷——它让外层门控的 `defaultPrevented` 分支静默吞键，而所有既有测试都不拥有这个键的所有权断言。
 
 ### 方法学（写给后续单元）
 
