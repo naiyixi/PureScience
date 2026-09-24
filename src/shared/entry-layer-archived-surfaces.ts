@@ -103,3 +103,22 @@ const ARCHIVED: EntryLayerArchivedSurface[] = [
 
 export const ENTRY_LAYER_ARCHIVED_SURFACES: readonly EntryLayerArchivedSurface[] =
   Object.freeze(ARCHIVED)
+
+// Registrars that install IPC handlers nothing installs at boot. Kept here (not silently deleted) so the
+// decision is visible and the main-installation guard can demand that an entry leave once it is wired.
+export type MainInstallationPendingEntry = {
+  name: string
+  file: string
+  reason: string
+  evidence: string
+}
+
+export const MAIN_INSTALLATION_PENDING: MainInstallationPendingEntry[] = [
+  {
+    name: 'registerHandoffLifecycleIpcHandlers',
+    file: 'agents/handoff-lifecycle-ipc.ts',
+    reason:
+      'PENDING BUILD (U29): a parallel lifecycle implementation whose IPC was never installed — the production gate runs CompletionHandoffLifecycle (main/ipc.ts:899-910). U22 migrated the window onto this face, which reddened 16 packaged certification specs with "No handler registered", and had to be reverted. U29 wires this face onto the production lifecycle via a thin transport adapter.',
+    evidence: 'audit 批次 4（U22 复盘）；plan U29 方案'
+  }
+]

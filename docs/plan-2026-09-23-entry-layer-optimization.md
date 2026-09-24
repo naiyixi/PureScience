@@ -590,3 +590,16 @@
 **顺带**：这条也把 **U30**（守卫边界）的内容补全了——守卫有**两处**盲区，不只是「不验证主进程安装侧」：
 (i) 不验证主进程真的安装了该面（U22 从这条缝过去）；
 (ii) 只认 `src/**` 里的消费者，看不见 `resources/**` 等仓库内非 src 渲染面（U28 的误判来源）。
+
+### U30 结案：守卫的两处盲区都已补上
+
+| 盲区 | 表现 | 补法 |
+|---|---|---|
+| (i) 不验证主进程真的安装了该面 | U22 从这条缝过去：`handoff-lifecycle:*` 合同、preload 全齐，`registerHandoffLifecycleIpcHandlers` 却零调用点 | 新增 `src/shared/main-installation-guard.test.ts`：**从主进程入口做可达性分析**（静态 `from`、懒 `import()`、`require()` 都算），要求每个导出的 IPC 注册器在**启动路径上的模块**里被引用；import/export 语句不算引用（否则注册器能靠导出语句自证合规）。未知的登记在 `MAIN_INSTALLATION_PENDING`（当前只有 U29 那一条），反向校验要求它一旦装上就必须出列 |
+| (ii) 只认 `src/**` 里的消费者 | U28 的误判来源：查找栏消费者在 `resources/find-overlay/**` | 见 U28 结案：守卫扫描面纳入该渲染面 |
+
+**验收（双向）**：抽掉 `MAIN_INSTALLATION_PENDING` 里那条 → 守卫变红并点名 `registerHandoffLifecycleIpcHandlers (main/agents/handoff-lifecycle-ipc.ts, off the boot path)`；把该注册器假装接到 `ipc.ts` → 反向校验变红（"installed again and must leave"）；恢复 → 3 passed。
+
+**过程中修掉的两个自身缺陷（都靠先跑一遍发现）**：
+- 命名匹配只认 `export const/function` ⇒ 漏掉 `const f = …` + 单独 `export { f }` 这种写法——**恰好就是它本该抓的那条**；
+- 可达性解析只认静态 import ⇒ 主进程入口刻意懒加载重模块，导致 44 条误报（"off the boot path"）。解析器补上 `import()` / `require()` 后归零。
