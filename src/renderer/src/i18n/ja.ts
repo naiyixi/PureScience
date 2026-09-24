@@ -754,6 +754,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'pdfRegion.saved': '範囲をブックマークに保存しました',
   'bookmark.versionUnresolved': 'このファイルにはブックマークできる版がまだありません',
   'previewSurface.thisComputer': 'このコンピュータ',
+  'previewSurface.toolbar': 'ファイル操作',
   'providerForm.apiFormat': 'API 形式',
   'providerForm.apiKey': 'API キー',
   'providerForm.getApiKey': 'API キーを取得',

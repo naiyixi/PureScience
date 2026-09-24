@@ -771,6 +771,7 @@ export const es: Partial<Record<ZhKey, string>> = {
   'pdfRegion.saved': 'Región guardada en marcadores',
   'bookmark.versionUnresolved': 'Este archivo aún no tiene una versión que marcar',
   'previewSurface.thisComputer': 'Esta computadora',
+  'previewSurface.toolbar': 'Acciones del archivo',
   'providerForm.apiFormat': 'Formato de API',
   'providerForm.apiKey': 'Clave de API',
   'providerForm.getApiKey': 'Obtener una clave de API',

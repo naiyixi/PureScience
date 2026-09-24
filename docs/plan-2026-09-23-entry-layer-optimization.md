@@ -92,11 +92,20 @@
 | ---- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
 | U14  | PDF 表格改走几何法（`pdf:tables`），保留审计标签与扫描范围空态                | 同一真表格 PDF，UI 与 agent 都得 4 列、表头与数值同列                          |
 | U15  | 图形拾取键盘化（`FigurePickOverlay.tsx:131`、`SelectionAnnotator.tsx:68` 等） | 纯键盘完成打点/锚点标定并导出 CSV                                              |
-| U16  | 预览动作从「只能右键」升为一等入口                                            | 下载/存产物/数字化/表格抽取/文献导入均有工具栏或命令面入口，右键仍可用         |
+| U16  | **✅ 完成**（真机 `1 passed`）：预览头部工具栏，与右键同一份动作集                | 下载/存产物/数字化/表格抽取/文献导入均有工具栏或命令面入口，右键仍可用         |
 | U17  | **✅ 完成**（真机 `1 passed`）：命令面 + 快捷键清单面 + 设置搜索扩到关键词 | ⌘K 能搜到命令；设置搜「镜像/mirror/代理」命中；`Cmd+,` 与 `Cmd+W` 在界面上可见 |
 | U18  | **✅ 完成**（真机 `1 passed`）：会话级入口，不要求已有评审                     | 无评审记录时也能主动打开清单页签，并给出「还没有评审」的解释                   |
 
 ### 批次 3 进行中记录
+
+**U16 ✅ 完成（真机 `1 passed (9.7s)`）— 预览动作升为一等入口**：
+
+- **缺口**：文件的能力（数字化、PDF 表格抽取、PDF 文献导入、下载、存为产物、复制路径）**只挂在右键菜单**上，界面上没有任何提示说这个文件能做什么——预览头部只有全屏/关闭/下载/更多。读者要么猜，要么永远不知道。媒体类型门控（`DIGITIZABLE_MEDIA`/`OMICS_DATA_MEDIA`/`PDF_TABLE_MEDIA`）写成菜单组件内的私有常量，谁想再加一个入口都得复制一遍。
+- **做法**：把动作集抽成**纯模块** `previews/preview-content-actions.ts`（谓词 + `buildPreviewContentActions(name, handlers)` → `{ id, labelKey, testId, Icon, run }[]`，媒体门控与顺序都在这里），右键菜单与**新的预览工具栏**都从它渲染——单一来源，两个面不可能给出不同的动作集；工具栏因而不需要单独判断媒体类型，只按列表渲染。
+- **入口**：`PreviewFileSurface` 头部新增 `contentActions` 槽（`role="toolbar"` + `data-testid="preview-toolbar"`，每个动作一个 `preview-toolbar-<id>` 按钮，`aria-label` 与 tooltip 同源），`PreviewFilePanel` 用与右键同一批 handler 构建列表（表格抽取/文献导入仍按 `window.api` 能力在场与否决定是否出现，与菜单的门控一致）。
+- **测试**：`preview-content-actions.test.ts` 6（顺序、媒体门控、能力缺失即不出现、每个动作真的调用自己的 handler）· `PreviewFileSurface.test.tsx` +2（工具栏渲染与命名、无动作时不渲染工具栏）· 真机 `e2e/certification/preview-toolbar.spec.ts` 1——**用工具栏抽表并断言与右键菜单一致**（4×4 同值），证明两个面是同一份动作而不是两套实现，并复核右键仍可用。
+- 9 语 +1 键（`previewSurface.toolbar`）。
+
 
 **U18 ✅ 完成（真机 `1 passed (7.6s)`）— 上下文门控入口**：
 

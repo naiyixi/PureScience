@@ -2103,6 +2103,7 @@ export const en: Record<ZhKey, string> = {
   'storage.dataRootPath': 'Data root path',
   'skillEditor.savedMetadata': 'Saved metadata',
   'previewSurface.thisComputer': 'This computer',
+  'previewSurface.toolbar': 'File actions',
   'previewSurface.fullScreen': 'Open full screen preview',
   'previewSurface.close': 'Close preview',
   'modelPicker.noModel': 'No model available',

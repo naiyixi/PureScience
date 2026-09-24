@@ -621,3 +621,52 @@ describe('PreviewFileSurface bookmark entry', () => {
     expect(container.textContent).toContain('Select a passage in the preview first')
   })
 })
+
+describe('preview content toolbar', () => {
+  it('offers a file action as a visible button, not only in the right-click menu', async () => {
+    const run = vi.fn()
+    await act(async () => {
+      root.render(
+        <PreviewFileSurface
+          item={item}
+          onClose={vi.fn()}
+          contentActions={[
+            {
+              id: 'pdfTables',
+              labelKey: 'pdf.table.menu',
+              testId: 'preview-pdf-tables',
+              Icon: () => <span data-testid="stub-icon" />,
+              run
+            }
+          ]}
+        />
+      )
+    })
+
+    const toolbar = container.querySelector('[data-testid="preview-toolbar"]')
+    expect(toolbar).not.toBeNull()
+    expect(toolbar?.getAttribute('role')).toBe('toolbar')
+
+    const button = toolbar?.querySelector<HTMLButtonElement>(
+      '[data-testid="preview-toolbar-pdfTables"]'
+    )
+    expect(button).not.toBeNull()
+    // Visible and named: the accessible name and the tooltip come from the same label key, so a button
+    // can never be visible but nameless. The assertion stays on the stable marker, not on the copy.
+    expect(button?.getAttribute('aria-label')).toBeTruthy()
+    expect(button?.getAttribute('title')).toBe(button?.getAttribute('aria-label'))
+
+    await act(async () => {
+      button?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    expect(run).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders no toolbar when the surface was given no actions', async () => {
+    await act(async () => {
+      root.render(<PreviewFileSurface item={item} onClose={vi.fn()} />)
+    })
+
+    expect(container.querySelector('[data-testid="preview-toolbar"]')).toBeNull()
+  })
+})

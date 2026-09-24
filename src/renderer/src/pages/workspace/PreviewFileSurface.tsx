@@ -44,6 +44,7 @@ import {
 } from './preview-file-item'
 import { formatVersionTimestamp } from './artifact-version-content'
 import { PreviewFileContent } from './previews/PreviewFileContent'
+import type { PreviewContentAction } from './previews/preview-content-actions'
 import { ArtifactProvenancePanel } from './ArtifactProvenancePanel'
 
 // User-editable preview formats: plain-text renderers whose content round-trips through the edit
@@ -60,6 +61,9 @@ type PreviewFileSurfaceProps = {
   onOpenProvenance?: () => void
   onReload?: () => void
   provenanceEntry?: 'menu' | 'leading' | 'trailing'
+  /** What this file can DO, as first-class buttons in the header — the same list the right-click menu
+   *  renders, so an action is never reachable from only one of the two. */
+  contentActions?: PreviewContentAction[]
 }
 
 const PreviewProvenanceButton = ({
@@ -188,6 +192,7 @@ const PreviewFileHeader = ({
   onOpenFullScreen,
   onOpenProvenance,
   onReload,
+  contentActions,
   provenanceEntry = 'menu',
   tooltipClassName
 }: Pick<
@@ -197,6 +202,7 @@ const PreviewFileHeader = ({
   | 'onOpenFullScreen'
   | 'onOpenProvenance'
   | 'onReload'
+  | 'contentActions'
   | 'provenanceEntry'
   | 'tooltipClassName'
 >): React.JSX.Element => {
@@ -239,6 +245,40 @@ const PreviewFileHeader = ({
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
+      {contentActions && contentActions.length > 0 ? (
+        <div
+          data-testid="preview-toolbar"
+          role="toolbar"
+          aria-label={t('previewSurface.toolbar')}
+          className="flex shrink-0 items-center gap-0.5"
+        >
+          {contentActions.map((action) => {
+            const Icon = action.Icon
+            const label = t(action.labelKey)
+            return (
+              <TooltipProvider key={action.id} delayDuration={300}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-xs"
+                      data-testid={`preview-toolbar-${action.id}`}
+                      aria-label={label}
+                      title={label}
+                      className="text-text-300 hover:text-text-000"
+                      onClick={action.run}
+                    >
+                      <Icon className="size-3.5" aria-hidden="true" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent className={tooltipClassName}>{label}</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )
+          })}
+        </div>
+      ) : null}
       {/* A local file has no managed provenance or origin Session, so it takes the reload/copy/open
         actions in place of the whole managed action row. */}
       {item.source === 'local' ? (
@@ -485,6 +525,7 @@ const PreviewFileSurface = ({
   tooltipClassName,
   onClose,
   onOpenFullScreen,
+  contentActions,
   provenanceEntry = 'menu'
 }: PreviewFileSurfaceProps): React.JSX.Element => {
   const [provenanceTarget, setProvenanceTarget] = useState<string>()
@@ -659,6 +700,7 @@ const PreviewFileSurface = ({
         onClose={onClose}
         onOpenFullScreen={onOpenFullScreen}
         onReload={() => setReloadToken((token) => token + 1)}
+        contentActions={contentActions}
         provenanceEntry={provenanceEntry}
         onOpenProvenance={
           previewItem.source !== 'upload' && previewItem.artifactId && projectId

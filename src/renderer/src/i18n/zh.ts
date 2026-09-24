@@ -1963,6 +1963,7 @@ export const zh = {
   'storage.dataRootPath': '数据根路径',
   'skillEditor.savedMetadata': '已保存的元数据',
   'previewSurface.thisComputer': '此电脑',
+  'previewSurface.toolbar': '文件动作',
   'previewSurface.fullScreen': '打开全屏预览',
   'previewSurface.close': '关闭预览',
   'modelPicker.noModel': '没有可用模型',

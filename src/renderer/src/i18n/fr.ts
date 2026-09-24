@@ -773,6 +773,7 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'pdfRegion.saved': 'Zone enregistrée dans les signets',
   'bookmark.versionUnresolved': "Ce fichier n'a pas encore de version à enregistrer",
   'previewSurface.thisComputer': 'Cet ordinateur',
+  'previewSurface.toolbar': 'Actions du fichier',
   'providerForm.apiFormat': 'Format d’API',
   'providerForm.apiKey': 'Clé d’API',
   'providerForm.getApiKey': 'Obtenir une clé d’API',

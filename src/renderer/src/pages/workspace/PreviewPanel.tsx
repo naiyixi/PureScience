@@ -7,11 +7,7 @@ import {
   FolderOpen,
   Globe2,
   Layers,
-  X,
-  Crosshair,
-  Dna,
-  BookMarked,
-  Table
+  X
 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { PanelImperativeHandle, PanelSize } from 'react-resizable-panels'
@@ -38,6 +34,7 @@ import { PreviewFileSurface } from './PreviewFileSurface'
 import { WebPreviewSurface } from './previews/renderers/WebPreview'
 import { PreviewFileContent } from './previews/PreviewFileContent'
 import { PreviewToolContent } from './previews/PreviewToolContent'
+import { buildPreviewContentActions } from './previews/preview-content-actions'
 import { copyText } from '@/lib/copy-text'
 
 type PreviewPanelProps = {
@@ -245,12 +242,6 @@ export const PreviewTabContextMenu = ({
 const previewContentMenuItemClassName =
   'flex w-full cursor-pointer items-center gap-2 rounded px-2.5 py-1.5 text-left text-[13px] text-text-000 hover:bg-bg-300 focus-visible:outline-none'
 
-const DIGITIZABLE_MEDIA = /\.(png|jpe?g|webp|tiff?|pdf)$/i
-// Large omics files: the preview never invents counts, it loads a manifest produced read-only.
-const OMICS_DATA_MEDIA = /\.(h5ad|vcf|vcf\.gz|vcf\.bgz)$/i
-// Table candidates come from the PDF's own text layer, so any PDF the app can register qualifies.
-const PDF_TABLE_MEDIA = /\.pdf$/i
-
 export const PreviewContentContextMenu = ({
   x,
   y,
@@ -308,20 +299,28 @@ export const PreviewContentContextMenu = ({
     onDismiss()
     action()
   }
-  const copyPath = (): void => {
-    void copyText(item.path)
-  }
-  const download = (): void => {
-    void window.api.saveManagedFile({ source: 'local', path: item.path, suggestedName: item.name })
-  }
-  const saveAsArtifact = (): void => {
-    void window.api.uploads.stageLocalPath?.({
-      transferId: crypto.randomUUID(),
-      name: item.name,
-      sourcePath: item.path,
-      projectId: activeProjectId
-    })
-  }
+  // The same list the preview toolbar renders — one source, so an action cannot be reachable in one
+  // surface and missing from the other.
+  const actions = buildPreviewContentActions(item.name, {
+    copyPath: () => void copyText(item.path),
+    download: () =>
+      void window.api.saveManagedFile({
+        source: 'local',
+        path: item.path,
+        suggestedName: item.name
+      }),
+    saveAsArtifact: () =>
+      void window.api.uploads.stageLocalPath?.({
+        transferId: crypto.randomUUID(),
+        name: item.name,
+        sourcePath: item.path,
+        projectId: activeProjectId
+      }),
+    digitizeFigure: onStartDigitization ? () => onStartDigitization(item) : undefined,
+    omicsPreview: onStartOmicsPreview ? () => onStartOmicsPreview(item) : undefined,
+    pdfReferenceImport: onStartReferenceImport ? () => onStartReferenceImport(item) : undefined,
+    pdfTables: onStartTableExtraction ? () => onStartTableExtraction(item) : undefined
+  })
 
   return (
     <div
@@ -330,75 +329,21 @@ export const PreviewContentContextMenu = ({
       className="fixed z-[90] w-52 rounded-lg border border-border-200 bg-bg-000 p-1 shadow-card"
       style={{ left: x, top: y }}
     >
-      <button
-        type="button"
-        role="menuitem"
-        className={previewContentMenuItemClassName}
-        onClick={() => run(copyPath)}
-      >
-        <ClipboardCopy className="size-3.5" aria-hidden="true" /> {t('ws.previewTabCopyPath')}
-      </button>
-      <button
-        type="button"
-        role="menuitem"
-        className={previewContentMenuItemClassName}
-        onClick={() => run(download)}
-      >
-        <Download className="size-3.5" aria-hidden="true" /> {t('ws.previewTabDownload')}
-      </button>
-      <button
-        type="button"
-        role="menuitem"
-        className={previewContentMenuItemClassName}
-        onClick={() => run(saveAsArtifact)}
-      >
-        <FileUp className="size-3.5" aria-hidden="true" /> {t('ws.previewTabSaveAsArtifact')}
-      </button>
-      {onStartDigitization && DIGITIZABLE_MEDIA.test(item.name) ? (
-        <button
-          type="button"
-          role="menuitem"
-          data-testid="preview-digitize-figure"
-          className={previewContentMenuItemClassName}
-          onClick={() => run(() => onStartDigitization(item))}
-        >
-          <Crosshair className="size-3.5" aria-hidden="true" /> {t('ws.previewTabDigitizeFigure')}
-        </button>
-      ) : null}
-      {onStartOmicsPreview && OMICS_DATA_MEDIA.test(item.name) ? (
-        <button
-          type="button"
-          role="menuitem"
-          data-testid="preview-omics-preview"
-          className={previewContentMenuItemClassName}
-          onClick={() => run(() => onStartOmicsPreview(item))}
-        >
-          <Dna className="size-3.5" aria-hidden="true" /> {t('ws.previewTabOmicsPreview')}
-        </button>
-      ) : null}
-      {onStartReferenceImport && PDF_TABLE_MEDIA.test(item.name) ? (
-        <button
-          type="button"
-          role="menuitem"
-          data-testid="preview-pdf-reference-import"
-          className={previewContentMenuItemClassName}
-          onClick={() => run(() => onStartReferenceImport(item))}
-        >
-          <BookMarked className="size-3.5" aria-hidden="true" />{' '}
-          {t('references.importFromPdf.menu')}
-        </button>
-      ) : null}
-      {onStartTableExtraction && PDF_TABLE_MEDIA.test(item.name) ? (
-        <button
-          type="button"
-          role="menuitem"
-          data-testid="preview-pdf-tables"
-          className={previewContentMenuItemClassName}
-          onClick={() => run(() => onStartTableExtraction(item))}
-        >
-          <Table className="size-3.5" aria-hidden="true" /> {t('pdf.table.menu')}
-        </button>
-      ) : null}
+      {actions.map((action) => {
+        const Icon = action.Icon
+        return (
+          <button
+            key={action.id}
+            type="button"
+            role="menuitem"
+            data-testid={action.testId}
+            className={previewContentMenuItemClassName}
+            onClick={() => run(action.run)}
+          >
+            <Icon className="size-3.5" aria-hidden="true" /> {t(action.labelKey)}
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -717,6 +662,34 @@ const PreviewFilePanel = ({
   const [referenceImportItem, setReferenceImportItem] = useState<PreviewItem | null>(null)
   const activeProjectId = useNavigationStore((state) => state.activeProjectId)
   const surfaceRef = useRef<HTMLElement | null>(null)
+  // What this file can do, as visible buttons in the header. Built from the same list the right-click
+  // menu renders, so the two can never drift; media gating and ordering live in the builder.
+  const toolbarActions = buildPreviewContentActions(item.name, {
+    copyPath: () => void copyText(item.path),
+    download: () =>
+      void window.api.saveManagedFile({
+        source: 'local',
+        path: item.path,
+        suggestedName: item.name
+      }),
+    saveAsArtifact: () =>
+      void window.api.uploads.stageLocalPath?.({
+        transferId: crypto.randomUUID(),
+        name: item.name,
+        sourcePath: item.path,
+        projectId: activeProjectId
+      }),
+    digitizeFigure: () => setDigitizeItem(item),
+    omicsPreview: () => setOmicsItem(item),
+    pdfTables:
+      activeProjectId && typeof window.api?.pdf?.pages === 'function'
+        ? () => setTableItem(item)
+        : undefined,
+    pdfReferenceImport:
+      activeProjectId && typeof window.api?.references?.importDoisFromPdf === 'function'
+        ? () => setReferenceImportItem(item)
+        : undefined
+  })
 
   const closeFullScreen = useCallback((): void => {
     setIsFullScreenOpen(false)
@@ -782,6 +755,7 @@ const PreviewFilePanel = ({
         <PreviewFileSurface
           item={item}
           contentKey={contentKey}
+          contentActions={toolbarActions}
           // Full-screen mode floats above the modal panel (z-[61]); tooltips must follow.
           tooltipClassName={isFullScreenOpen ? 'z-[70]' : undefined}
           onClose={isFullScreenOpen ? closeFullScreen : () => onClose(item.id)}
