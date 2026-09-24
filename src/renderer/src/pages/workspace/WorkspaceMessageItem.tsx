@@ -845,7 +845,7 @@ const MessagePartsContent = ({
 )
 
 // Renders one chat message with user bubbles and full-width assistant markdown surfaces.
-const WorkspaceMessageItem = ({
+const WorkspaceMessageItemImpl = ({
   message,
   onPreviewArtifact,
   onPreviewUploadAttachment,
@@ -1252,6 +1252,10 @@ const WorkspaceMessageItem = ({
     </MessageScrollerItem>
   )
 }
+
+// Memoised: a streaming turn re-renders the scroller on every chunk, so without this every message inside
+// the render window re-rendered with it. The effect depends entirely on the parent passing stable props.
+const WorkspaceMessageItem = memo(WorkspaceMessageItemImpl)
 
 export { WorkspaceMessageItem }
 export type { ArtifactMentionPart }
