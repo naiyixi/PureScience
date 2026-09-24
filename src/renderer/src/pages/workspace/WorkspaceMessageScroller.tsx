@@ -84,6 +84,11 @@ type SessionScopedActivityExpansionState = {
   overrides: ActivityExpansionOverrides
 }
 
+// Shared empty array: a slot with no revisions must keep the same identity across renders, otherwise it
+// hands the message item a fresh array every chunk and defeats its memoisation.
+type GraphMessage = NonNullable<ChatSession['conversationGraph']>['messages'][number]
+const NO_REVISIONS: ReadonlyArray<GraphMessage> = []
+
 type MessageArtifact = NonNullable<ChatSession['artifacts']>[number] & {
   // A copied message owns no artifact metadata. Resolver results retain the Version's real owner so
   // the preview locator continues to address immutable source bytes rather than the new Session.
@@ -473,6 +478,24 @@ const WorkspaceMessageScrollerImpl = ({
       ),
     [activeSession, handoffEvents]
   )
+  // Revisions grouped once per render. This used to be filtered and sorted inside every message slot,
+  // which made the transcript list quadratic in the number of messages per streaming chunk — the cost
+  // showed up as the residual >50ms tasks at 45 turns.
+  const revisionsByRootMessageId = useMemo(() => {
+    const grouped = new Map<string, GraphMessage[]>()
+    for (const message of activeSession?.conversationGraph?.messages ?? []) {
+      if (message.role !== 'user' || !message.revisionRootMessageId) continue
+      const bucket = grouped.get(message.revisionRootMessageId)
+      if (bucket) bucket.push(message)
+      else grouped.set(message.revisionRootMessageId, [message])
+    }
+    for (const bucket of grouped.values()) {
+      bucket.sort(
+        (left, right) => left.createdAt - right.createdAt || left.id.localeCompare(right.id)
+      )
+    }
+    return grouped
+  }, [activeSession?.conversationGraph])
   // User turns in transcript order — the run-marks rail renders one dot per turn and jumps to it.
   const runMarkUserMessageIds = useMemo(
     () =>
@@ -822,19 +845,10 @@ const WorkspaceMessageScrollerImpl = ({
                             : undefined
                           : runtimeSegment
                         const revisionRootMessageId = messageNode?.revisionRootMessageId
-                        const revisions = revisionRootMessageId
-                          ? (graph?.messages
-                              .filter(
-                                (message) =>
-                                  message.role === 'user' &&
-                                  message.revisionRootMessageId === revisionRootMessageId
-                              )
-                              .sort(
-                                (left, right) =>
-                                  left.createdAt - right.createdAt ||
-                                  left.id.localeCompare(right.id)
-                              ) ?? [])
-                          : []
+                        const revisions =
+                          (revisionRootMessageId
+                            ? revisionsByRootMessageId.get(revisionRootMessageId)
+                            : undefined) ?? NO_REVISIONS
                         const revisionIndex = revisions.findIndex(
                           (message) => message.id === item.message.id
                         )

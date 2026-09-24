@@ -89,3 +89,14 @@
 - 目标：把流式期间的 3~4 条 >50ms、峰值 50ms 继续压下去（45 轮会话）。
 - 入口数据：本文件两份 profile 的对照 + `npm run test:e2e:perf` 的 `PERF_TURNS=45` 读数。
 - 方向：稳定 prop 让 memo 生效（不是再加一层 memo），以及减少每片段的 DOM 变更量。
+
+## 追加：把转录列表的二次方开销去掉（已改，测数待补）
+
+**前提已验证**：流式更新走 `messages.map((m) => m.id === streamingId ? { ...m, content } : m)`（`session-store-run-output-helpers.ts:198-213`）⇒ **已定稿消息保持对象身份**，所以「稳定 prop 让 memo 生效」在原理上可行。
+
+**但 memo 仍会被抵掉**：scroller 的 `map` 体里每条消息、每次渲染都现算十来个值 —— `artifacts`（:792）、`messageNode`/`runtimeSegment`（:803/:806）、`synthesizedLegacyRuntime`/`runtimeIdentity`（:813/:816）、`revisions`（:825，**filter + sort 全图**）、`revisionIndex`（:838）、`activateRevision`（:841，新闭包）。稳定这些 prop 是一项独立的重构，不在本轮。
+
+**其中一条是纯算法问题，已修**：`revisions` 原来在**每条消息里**都 filter+sort 一遍全图 ⇒ 整个列表每帧 O(N²·logN)。改成渲染时**一次性分组**（`revisionsByRootMessageId` useMemo），空值共用同一常量以免身份抖动。
+
+- 门禁：typecheck 干净、lint 0 errors、workspace 簇 1644 passed。
+- **45 轮复测数字待补**：本地「构建 + 复测」这一步触发安全守卫（`NODE_OPTIONS`）并等待批准超时，按规矩未重试、未换写法。放行后补 `PERF_TURNS=45 npm run test:e2e:perf` 的对照。
