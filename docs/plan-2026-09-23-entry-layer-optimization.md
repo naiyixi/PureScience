@@ -565,3 +565,28 @@
 **完成后**：U22 的 UI 迁移可以重做（那时的迁移才是有证据的）。
 
 **U27 已修（`631dbd5`）**：`endpoint.approve` 由登记册转为实装（`listAll` 带 `approved`、面板待批准态 + 脚本原文 + 批准按钮、未批准时禁用启动按钮）；真机 `endpoint-approval.spec.ts` 6.7s 通过。
+
+### U28 结案：不是缺口 —— 查找栏是独立浮层，我的审计前提错了
+
+**此前的判断（错）**：「桌面装了 6 条 `window.*Find*` 通道（`findInPage`/`clearFind`/`closeFind`/`onFindInPageResult`/`onShowWindowFind`/`onWindowFindAppearance`），窗口零调用点 ⇒ 没有查找栏。」
+
+**实际情况**：查找栏**存在且端到端接通**，只是它不在主窗口的 DOM 里：
+
+| 环节 | 落点 |
+|---|---|
+| 浮层本体（自带渲染层 + JS 逻辑 + 自带测试） | `resources/find-overlay/index.html`、`findOverlay.js`（4.7 KB）、`findOverlay.test.js` |
+| 创建与生命周期 | `src/main/windows.ts:301` `createFindOverlayManager(...)`、`windows.ts:39` 入口路径 |
+| 触发 | `windows.ts:321` `before-input-event` → `isFindInPageChord`（darwin 用 ⌘F、其它平台 Ctrl+F）→ `findOverlay.open()`；ESC 关闭（`windows.ts:332`） |
+| 6 条通道的消费者 | `resources/find-overlay/findOverlay.js:20/62/93/116/117/118`（**全部**在用） |
+| 既有真机覆盖 | `e2e/windows-window-system.spec.ts:49-60`（Windows 主机：和弦前 `findOverlayIsVisible()===false` → 后 `true`；macOS 上被平台门跳过） |
+
+**为什么我会判错**：U25 的守卫只扫 `src/renderer/src/**` 的 `.ts/.tsx`，而消费者是 `resources/**` 里的 `.js` ⇒ 守卫看不见 ⇒ 我把「守卫看不见」当成了「没人用」。这正是本仓另一个反复出现的形状：**测量工具的边界被当成了事实的边界**。
+
+**本轮交付**：
+1. **守卫扩容**：`renderer-contract-entry-coverage.test.ts` 现在把 `resources/find-overlay/**` 也当作渲染面扫描（`{ types/tsx }` → 可传扩展名，含 `.js`）。6 条登记项随之**移除**（反向校验通过即证明它们真被调用）。
+2. **双向验收**：抽掉浮层里的一次 `api.findInPage(` → 守卫变红并点名 `window.findInPage`；恢复 → 绿。
+3. **平台自适应的真机用例**：`e2e/certification/window-find-overlay.spec.ts`（新增），本地真机 **4.6s 通过**——和弦打开浮层、ESC 关闭（比既有的 Windows 用例更深：多验一步关闭）。
+
+**顺带**：这条也把 **U30**（守卫边界）的内容补全了——守卫有**两处**盲区，不只是「不验证主进程安装侧」：
+(i) 不验证主进程真的安装了该面（U22 从这条缝过去）；
+(ii) 只认 `src/**` 里的消费者，看不见 `resources/**` 等仓库内非 src 渲染面（U28 的误判来源）。

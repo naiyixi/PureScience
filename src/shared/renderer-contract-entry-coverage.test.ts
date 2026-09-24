@@ -10,22 +10,30 @@ import { RENDERER_CONTRACT_CATALOG } from './renderer-contract-catalog'
 // suites notices a new one, so this guard does: either the renderer calls it, or a reviewed entry in
 // `entry-layer-archived-surfaces.ts` says why it stays agent-only.
 const RENDERER_ROOT = join(__dirname, '..', 'renderer', 'src')
+// The find bar is a second renderer surface: a plain .js file loaded by the overlay BrowserWindow under
+// resources/. A src-only scan cannot see it, which is exactly how the six window.* find channels looked
+// like gaps while the overlay had been calling every one of them.
+const OVERLAY_ROOT = join(__dirname, '..', '..', 'resources', 'find-overlay')
 const DESKTOP_INSTALLATIONS = new Set(['preload', 'browser-native'])
 
 // `relative` answers with backslashes on Windows, where every pattern below is written with slashes.
 const toPosix = (path: string): string => path.replaceAll('\\', '/')
 
-const collectSource = (root: string, collected: string[] = []): string[] => {
+const collectSource = (
+  root: string,
+  collected: string[] = [],
+  extensions = /\.(ts|tsx)$/
+): string[] => {
   for (const entry of readdirSync(root)) {
     const path = join(root, entry)
     if (statSync(path).isDirectory()) {
       collectSource(path, collected)
       continue
     }
-    if (!/\.(ts|tsx)$/.test(entry)) continue
+    if (!extensions.test(entry)) continue
     // Tests are not consumers, and the string dictionaries cannot call anything. The i18n module
     // itself can (it persists the UI language), so only the per-language dictionaries are skipped.
-    if (/\.test\.(ts|tsx)$/.test(entry)) continue
+    if (/\.test\.(ts|tsx|js)$/.test(entry)) continue
     if (/^i18n\/(en|zh|zh-Hant|ja|ko|de|es|fr|ru)\.ts$/.test(toPosix(relative(RENDERER_ROOT, path))))
       continue
     collected.push(path)
@@ -41,10 +49,16 @@ const collectSource = (root: string, collected: string[] = []): string[] => {
 // appears nowhere in the window at all.
 const normalize = (text: string): string => text.replace(/[\s?]/g, '')
 
-const rendererFiles = collectSource(RENDERER_ROOT).map((path) => ({
-  path: toPosix(relative(RENDERER_ROOT, path)),
-  source: normalize(readFileSync(path, 'utf8'))
-}))
+const rendererFiles = [
+  ...collectSource(RENDERER_ROOT).map((path) => ({
+    path: toPosix(relative(RENDERER_ROOT, path)),
+    source: normalize(readFileSync(path, 'utf8'))
+  })),
+  ...collectSource(OVERLAY_ROOT, [], /\.js$/).map((path) => ({
+    path: `find-overlay/${toPosix(relative(OVERLAY_ROOT, path))}`,
+    source: normalize(readFileSync(path, 'utf8'))
+  }))
+]
 
 const isExposed = (capability: string, member: string): boolean => {
   const capabilityToken = normalize(capability)

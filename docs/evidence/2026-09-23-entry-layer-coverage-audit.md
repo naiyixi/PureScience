@@ -139,7 +139,7 @@
 | # | 缺口 | 证据 | 结论 |
 |---|---|---|---|
 | U27 | `endpoint:approve` 无 UI：脚本字节的哈希锚定要求用户在设置面板里批准，而窗口零调用点 | `src/main/settings/endpoint-ipc.ts:1-5`（注释自陈是渲染层的面）；渲染层 `endpoint.approve` / `approveEndpoint` 均 0 命中 | **立案建 UI**（安全相关：没有批准入口则锚定链路走不通） |
-| U28 | 窗口内查找整组面无 UI：桌面应用装了 6 条 `window.*Find*` 通道，窗口没有查找栏 | `src/renderer/src` 里 `findInPage` / `clearFind` / `onShowWindowFind` / `onFindInPageResult` 生产代码 0 命中 | **立案建 UI**（快捷键驱动的查找栏） |
+| U28 | ~~窗口内查找整组面无 UI~~ **审计前提有误**：查找栏是**独立浮层**，不在主窗口 DOM 里 | 6 条通道**全部**被 `resources/find-overlay/findOverlay.js:20/62/93/116/117/118` 消费；触发在 `main/windows.ts:321`（⌘/Ctrl+F → `findOverlay.open()`），ESC 关闭在 `:332`；既有真机用例 `e2e/windows-window-system.spec.ts:49-60`（Windows）。原判据只扫 `src/renderer/src/**` 而消费者在 `resources/**` | **已结案（归档 + 守卫扩容）**：守卫纳入该渲染面、6 条登记项移除、新增平台自适应真机用例 `e2e/certification/window-find-overlay.spec.ts` **4.6s 通过** |
 
 两处均已写入 `src/shared/entry-layer-archived-surfaces.ts` 的登记册（带 PENDING BUILD 标记与证据），门禁在建成前保持绿。
 

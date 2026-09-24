@@ -99,38 +99,6 @@ const ARCHIVED: EntryLayerArchivedSurface[] = [
       'Host/agent command; the data-root setting flow validates inside its own save path, so no user-triggered check is needed.',
     evidence: 'audit 批次 4 归档结论（U23）；host-application-commands.ts:284'
   },
-  {
-    publicPath: 'window.clearFind',
-    reason:
-      'PENDING BUILD (U28): the desktop app installs a find-in-page surface and the window has no find bar at all. Recorded here so the guard stays green until U28 builds it.',
-    evidence: 'plan 批次 5 追加单元 U28；main/window find channels'
-  },
-  {
-    publicPath: 'window.closeFind',
-    reason: 'PENDING BUILD (U28): part of the same unexposed find-in-page surface.',
-    evidence: 'plan 批次 5 追加单元 U28'
-  },
-  {
-    publicPath: 'window.findInPage',
-    reason: 'PENDING BUILD (U28): the query half of the find-in-page surface.',
-    evidence: 'plan 批次 5 追加单元 U28'
-  },
-  {
-    publicPath: 'window.onFindInPageResult',
-    reason: 'PENDING BUILD (U28): the match-result feed the find bar would render.',
-    evidence: 'plan 批次 5 追加单元 U28'
-  },
-  {
-    publicPath: 'window.onShowWindowFind',
-    reason:
-      'PENDING BUILD (U28): the shortcut-driven open channel; nothing in the window listens for it today.',
-    evidence: 'plan 批次 5 追加单元 U28'
-  },
-  {
-    publicPath: 'window.onWindowFindAppearance',
-    reason: 'PENDING BUILD (U28): appearance updates for the find bar that does not exist yet.',
-    evidence: 'plan 批次 5 追加单元 U28'
-  }
 ]
 
 export const ENTRY_LAYER_ARCHIVED_SURFACES: readonly EntryLayerArchivedSurface[] =
