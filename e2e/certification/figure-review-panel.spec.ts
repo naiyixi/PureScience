@@ -1,5 +1,6 @@
 import { expect } from '@playwright/test'
 
+import { FIGURE_RULE_COLOR_THREADING } from '../../src/shared/figure'
 import { test } from '../fixtures/electron-app'
 import { createProject, sendPrompt } from './helpers'
 
@@ -32,11 +33,16 @@ test('runs the figure checks over what the reader declares, and reports the engi
   await expect(panel).toBeVisible()
   await expect(panel.getByTestId('figure-review-author-only')).toBeVisible()
 
+  // Hold the reproducibility declarations constant so the clean result below is attributable to the
+  // series count alone: the artifact rule also wants the image and the plotting script declared.
+  await panel.getByTestId('figure-review-image-path').fill('/tmp/figure.png')
+  await panel.getByTestId('figure-review-script-path').fill('/tmp/figure.py')
+
   // Nine series: the colour rule fires, with its own rule id and severity.
   await panel.getByTestId('figure-review-series-count').fill('9')
   await panel.getByTestId('figure-review-run').click()
   await expect(panel.getByTestId('figure-review-result')).toBeVisible()
-  const finding = panel.locator('[data-rule="color-threading"]').first()
+  const finding = panel.locator(`[data-rule="${FIGURE_RULE_COLOR_THREADING}"]`).first()
   await expect(finding).toBeVisible()
   await expect(finding).toHaveAttribute('data-severity', 'error')
   await expect(finding).toContainText('9')

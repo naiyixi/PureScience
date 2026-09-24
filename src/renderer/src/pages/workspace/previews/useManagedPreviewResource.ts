@@ -14,6 +14,13 @@ type ManagedPreviewResourceState =
 
 const idleState: ManagedPreviewResourceState = { status: 'idle' }
 
+// Releasing is best-effort. When the main process owns no such capability — for example right after a
+// window is replaced and the command groups are composed again — there is nothing to release, and a
+// rejection here would surface as a renderer console error and fail an unrelated certification spec.
+const releaseQuietly = (resourceId: string): void => {
+  void window.api.previewResources.release({ resourceId }).catch(() => undefined)
+}
+
 type ManagedPreviewResourceResult =
   | { requestKey: string; status: 'ready'; resource: ManagedPreviewResource }
   | { requestKey: string; status: 'error'; error: Error }
@@ -47,7 +54,7 @@ const useManagedPreviewResource = (
       .then((resource) => {
         // Release acquisitions that complete after the consumer was unmounted or disabled.
         if (disposed) {
-          void window.api.previewResources.release({ resourceId: resource.id })
+          releaseQuietly(resource.id)
           return
         }
 
@@ -68,7 +75,7 @@ const useManagedPreviewResource = (
       disposed = true
       // Releasing the capability lets the main process forget the path and future protocol access.
       if (acquiredResource) {
-        void window.api.previewResources.release({ resourceId: acquiredResource.id })
+        releaseQuietly(acquiredResource.id)
       }
       queueMicrotask(() => {
         setResult((currentResult) =>

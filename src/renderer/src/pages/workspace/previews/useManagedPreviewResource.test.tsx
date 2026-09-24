@@ -192,4 +192,33 @@ describe('useManagedPreviewResource', () => {
       maxBytes: 4096
     })
   })
+
+  it('treats a failed release as a no-op instead of an unhandled rejection', async () => {
+    // The certification suite fails a spec whose window logs a renderer console error, and a rejected
+    // release (main process composing its command groups again) used to surface exactly that way.
+    const unhandled: unknown[] = []
+    const onUnhandled = (reason: unknown): void => {
+      unhandled.push(reason)
+    }
+    process.on('unhandledRejection', onUnhandled)
+    vi.mocked(window.api.previewResources.acquire).mockResolvedValue({
+      id: 'resource-1',
+      url: 'purescience-preview://resource-1/first.pdf',
+      size: 12,
+      mimeType: 'application/pdf',
+      version: 1
+    })
+    vi.mocked(window.api.previewResources.release).mockRejectedValue(
+      new Error("No handler registered for 'preview-resources:release'")
+    )
+    root = createRoot(container)
+
+    await act(async () => root.render(<Probe item={firstItem} />))
+    await act(async () => root.unmount())
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    process.off('unhandledRejection', onUnhandled)
+
+    expect(window.api.previewResources.release).toHaveBeenCalledWith({ resourceId: 'resource-1' })
+    expect(unhandled).toEqual([])
+  })
 })
