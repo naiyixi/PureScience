@@ -542,3 +542,24 @@
 - **触发条件**：`notifyAvailable` 此前只被 `beginCodeCell`（agent 流式**写入**单元格的路径）调用。agent 用 `bash_execute`（`executeShell`）或直接跑一格（`runCell`）时走的是**运行路径**，从不宣告 ⇒ 只要 agent 没有先流式写入一个单元格，窗口就永远不知道有笔记本，整个面板（含 U21 的「运行这一格」）都不可达。单测看不见：通道声明、preload 订阅、发布层全齐备。
 - **修法**：在三条运行路径上宣告一次（`runCell` 与 `executeControl` 用 `request.source ?? 'agent'`；`executeShell` 记 `'agent'`，其调用者只有 MCP 的 `bash_execute` 与 host RPC）。语义不变：仍每会话一次、仍只对 agent 发起的会话发。
 - **测试**：新增 `src/main/notebook/session-lifecycle.test.ts`（3 条）——agent 每会话一次、user 从不宣告，外加一条**源码级**断言（「行为测试看不见『少了一次调用』这类缺陷」），保证下一条运行路径不会又把宣告漏掉。
+
+### U29 方案（把生命周期新面接成生产面）— 待开工
+
+**问题**：`handoff-lifecycle:*` 这套面（合同清单 + preload + `handoff-lifecycle-ipc.ts` + `HandoffLifecycleCoordinator`）在生产里**从未安装**：`registerHandoffLifecycleIpcHandlers` 只出现在自己的模块与单测里，`HandoffLifecycleCoordinator` 没有任何 `new` 调用点；生产状态由 `CompletionHandoffLifecycle`（`src/main/ipc.ts:899-910`，带 `FileCompletionHandoffRepository` 持久化）持有。U22 的迁移因此必须回退。
+
+**两条路线**：
+
+| 方案 | 做法 | 风险 | 取舍 |
+|---|---|---|---|
+| **A. 传输适配（推荐）** | 保留 `CompletionHandoffLifecycle` 作为状态所有者，新增一个**薄适配器**把它的数据搬到新面通道：`CompletionHandoffLifecycleEvent → HandoffLifecycleEvent` 形状转换、注册 `handoff-lifecycle:list/:retry`、`onChange` 广播 `handoff-lifecycle:changed` | 低：不触碰持久化与重试语义（`CompletionHandoffLifecycle` 的 777 行与 `FileCompletionHandoffRepository` 原样留用） | 解锁 UI 迁移，新旧面并存；新面成为可迁的**真面** |
+| B. 整体替换 | 用 `HandoffLifecycleCoordinator` 顶替闸门生命周期 | 高：持久化（run/事件落盘）、失败恢复、`retryById/cancelById` 语义都要一并迁移 | 终态更干净，但必须单独立项、逐条对打 |
+
+**推荐 A**，理由：U22 的教训是「不要在没有正本迁移方案前把窗口搬到另一套面上」；A 用最小改动让新面先成为真面，B 可以在 A 稳定后作为独立单元再评估。
+
+**U29 验收（必须实机）**：
+1. 打包应用里调用 `handoff-lifecycle:list` **不再**返回 `No handler registered`（这正是把 16 条认证用例打红的那条错误）；空态返回 `[]`。
+2. 新增一条认证用例断言新面可达（真窗口，非 jsdom）。
+3. 事件：一次真实交接的状态变化同时出现在旧面（现有用法）与新面（新订阅）——`onChange` 广播用确定性对打验证。
+4. 单测覆盖形状转换的两个方向（含 `target: null → { kind: 'main' }`、`commitOrder` 缺失时的排序退化到 `observedAt → sequence → id`）。
+
+**完成后**：U22 的 UI 迁移可以重做（那时的迁移才是有证据的）。
