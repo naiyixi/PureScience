@@ -787,7 +787,9 @@ class NotebookRuntimeService {
   // terminalization, and completion interception belong to NotebookExecutionOwner.
   async executeControl(request: ExecuteNotebookControlRequest): Promise<NotebookControlResult> {
     const session = await this.sessionLifecycle.ensure(request)
-    this.sessionLifecycle.notifyAvailable(session, request.source ?? 'agent')
+    // The control-plane REPL is reached by the agent's repl_execute and the host RPC, so a control run
+    // counts as agent-originated for the announcement (the request carries no source of its own).
+    this.sessionLifecycle.notifyAvailable(session, 'agent')
     return this.executionOwner.executeControl(session, request)
   }
 
