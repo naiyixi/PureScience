@@ -131,7 +131,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'palette.settingsAgent': 'Настройки: агент',
   'palette.keyboardShortcuts': 'Горячие клавиши',
   'shortcuts.title': 'Горячие клавиши',
-  'shortcuts.hint': 'Работают в любом месте приложения; палитра команд открывается только когда нет других диалогов.',
+  'shortcuts.hint':
+    'Работают в любом месте приложения; палитра команд открывается только когда нет других диалогов.',
   'shortcuts.commandPalette': 'Открыть палитру команд',
   'shortcuts.openSettings': 'Открыть настройки',
   'shortcuts.closeActivePane': 'Закрыть текущую вкладку, затем панель, затем окно',
@@ -272,6 +273,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'modelPicker.noModelAria': 'Нет доступных моделей — открыть настройки',
   'modelPicker.openSettings': 'Открыть настройки',
   'reviewer.viewsTablist': 'Представления проверки',
+  'reviewer.noReviewsYet':
+    'В этой сессии пока нет проверки — контрольный список и свёрнутый контекст ниже не требуют её.',
   'foldTimeline.reasonAutomatic': 'автоматически',
   'foldTimeline.reasonManual': 'вручную',
   'foldTimeline.reasonOverflow': 'восстановление после переполнения',
@@ -3299,6 +3302,7 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'sessionInfo.unpin': 'Открепить',
   'sessionInfo.close': 'Закрыть',
   'sessionInfo.evidence': 'Открыть доказательства',
+  'sessionInfo.review': 'Чек-лист проверки',
   'sessionFork.action': 'Ответвить сеанс',
   'sessionFork.measureHint': 'Сначала измерение: посмотрите, что будет в копии, затем создавайте',
   'sessionFork.willHold': 'Копия будет содержать',

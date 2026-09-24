@@ -90,6 +90,7 @@ import { isPlanProgressVisible } from './session-plan/plan-progress'
 import { respondToSessionPlan } from './session-plan/respond-to-session-plan'
 import {
   createSessionPlanPreviewItem,
+  createSessionReviewerPreviewItem,
   usePreviewWorkbenchStore
 } from '@/stores/preview-workbench-store'
 import { WorkspaceMessageEditStateProvider } from './workspace-message-edit-state'
@@ -565,6 +566,17 @@ const ConversationPanel = ({
                 key={activeSession.id}
                 session={activeSession}
                 onOpenEvidence={onOpenSessionEvidence}
+                onOpenReview={() => {
+                  // A session-level entry: no review id, so the surface opens on the checklist and explains
+                  // itself when this session has no review yet, instead of being unreachable until one exists.
+                  usePreviewWorkbenchStore.getState().upsertAndActivateItem(
+                    createSessionReviewerPreviewItem({
+                      sessionId: activeSession.id,
+                      findingId: undefined,
+                      locator: undefined
+                    })
+                  )
+                }}
                 onClose={() => setIsInfoCardOpen(false)}
               />
             ) : null}

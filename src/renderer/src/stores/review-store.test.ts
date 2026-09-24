@@ -274,4 +274,13 @@ describe('review store', () => {
     expect(getForSession).toHaveBeenCalledTimes(1)
     vi.unstubAllGlobals()
   })
+  it('hands back one and the same empty checklist object until a real one is loaded', () => {
+    // Read through a zustand selector, so a fresh object per call is a new snapshot per store
+    // notification — the checklist panel re-renders forever (React: Maximum update depth exceeded).
+    const store = useReviewStore.getState()
+    const first = store.getChecklist('session-stable', 'project-stable')
+    const second = useReviewStore.getState().getChecklist('session-stable', 'project-stable')
+    expect(first).toBe(second)
+    expect(first.items).toEqual([])
+  })
 })

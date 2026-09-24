@@ -216,7 +216,8 @@ const createProjectFilesPreviewItem = (): PreviewToolItem => ({
 // Input for opening the Session reviewer panel; findingId/locator determine scroll position.
 export type SessionReviewerPreviewInput = {
   sessionId: string
-  reviewId: string
+  /** Absent when the entry point is the session itself (no review yet) rather than one finding's review. */
+  reviewId?: string
   findingId: string | undefined
   locator: FindingLocator | undefined
 }

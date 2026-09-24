@@ -58,8 +58,9 @@ const SessionReviewerContent = ({
     </button>
   )
 
-  // The checklist is session-scoped and independent of a specific review; the checks tab needs a
-  // review row. When the session has no reviews yet, only the checklist tab is meaningful.
+  // The checklist and the folded-context timeline are session-scoped and independent of a specific
+  // review; only the checks tab needs a review row. A session with no reviews yet still reaches both,
+  // and says why the checks tab is missing rather than showing a surface that looks broken.
   if (!review) {
     return (
       <div className="flex size-full flex-col overflow-hidden">
@@ -70,9 +71,19 @@ const SessionReviewerContent = ({
             aria-label={t('reviewer.viewsTablist')}
           >
             {tabButton('checklist', t('ui.checklist'))}
+            {tabButton('context', t('ui.foldedcontext'))}
           </div>
         </div>
+        <p
+          data-testid="reviewer-no-review"
+          className="shrink-0 border-b border-border-200 px-4 py-2 text-[11px] text-text-300"
+        >
+          {t('reviewer.noReviewsYet')}
+        </p>
         <div className="flex-1 overflow-hidden">
+          {tab === 'context' ? (
+            <FoldTimelinePanel projectId={projectId ?? ''} sessionId={sessionId} />
+          ) : (
           <VerificationChecklistPanel
             projectId={projectId ?? ''}
             sessionId={sessionId}
@@ -80,6 +91,7 @@ const SessionReviewerContent = ({
               setTab('checks')
             }}
           />
+          )}
         </div>
       </div>
     )

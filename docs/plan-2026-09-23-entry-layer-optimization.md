@@ -94,9 +94,18 @@
 | U15  | 图形拾取键盘化（`FigurePickOverlay.tsx:131`、`SelectionAnnotator.tsx:68` 等） | 纯键盘完成打点/锚点标定并导出 CSV                                              |
 | U16  | 预览动作从「只能右键」升为一等入口                                            | 下载/存产物/数字化/表格抽取/文献导入均有工具栏或命令面入口，右键仍可用         |
 | U17  | **✅ 完成**（真机 `1 passed`）：命令面 + 快捷键清单面 + 设置搜索扩到关键词 | ⌘K 能搜到命令；设置搜「镜像/mirror/代理」命中；`Cmd+,` 与 `Cmd+W` 在界面上可见 |
-| U18  | 上下文门控入口（检查清单/复核/折叠时间线可主动打开）                          | 无评审记录时也能主动打开清单页签，并给出「还没有评审」的解释                   |
+| U18  | **✅ 完成**（真机 `1 passed`）：会话级入口，不要求已有评审                     | 无评审记录时也能主动打开清单页签，并给出「还没有评审」的解释                   |
 
 ### 批次 3 进行中记录
+
+**U18 ✅ 完成（真机 `1 passed (7.6s)`）— 上下文门控入口**：
+
+- **缺口**：检查清单 / 折叠上下文都是**会话级**的（不需要评审行），但两个入口（`WorkspaceMessageScroller:288`、`ArtifactProvenancePanel:786`）都要求**已有评审**，所以「这个会话还没有评审」= 这条能力完全够不着。代码里甚至已经写着注释 `fall back to the newest when the item carries no reviewId (e.g. a session-level entry point)` —— 那个 entry point 当时并不存在（又一处名不副实）。
+- **补的入口**：`SessionInfoCard` 新增「Verification checklist」（`session-info-open-review`），不要求已有评审；`SessionInfoCard` 的 `onOpenReview` 由 `ConversationPanel` 接线到 `upsertAndActivateItem(createSessionReviewerPreviewItem({ sessionId, findingId: undefined, locator: undefined }))`，`SessionReviewerPreviewInput.reviewId` 改为可选（工具项 id 仍是 `tool:<sessionId>:reviewer`，与「从某条 finding 进入」复用同一个页签）。
+- **空态按「说清是哪种空 + 给下一步」**：无评审时面板显式说明「本会话还没有评审记录；下面的检查清单与折叠上下文不需要评审也能用」，并把**折叠上下文**标签一并放出来（此前无评审分支只有清单一个标签）。
+- **顺带修掉一个真缺陷**：`reviewStore.getChecklist()` 的空态每次返回**新对象**，而它是被 zustand selector 读取的 → 快照永不相等 → 清单面板挂载即 `Maximum update depth exceeded`。改为按会话缓存空对象。**这条路径正是本次新入口会放大的那条**（新入口让「还没加载出清单」成为常见态）。定位教训：`=> state.getX(...)` 这类**方法调用式 selector** 不在我先前「返回对象/数组的选择器」扫描（`=> ({` / `=> [`）的覆盖范围内——扫描口径要含方法调用。
+- **测试**：`PreviewToolContent.no-review.test.tsx` 2（标签集 + 说明 + 切到折叠上下文）· `SessionInfoCard.render.test.tsx` +1（入口存在、点击回报并关闭）· `review-store.test.ts` +1（空清单对象身份稳定，修前必红）· 9 语 +2 键（`sessionInfo.review` / `reviewer.noReviewsYet`）· 真机 `e2e/certification/reviewer-session-entry.spec.ts` 1。
+
 
 **U17 ✅ 完成（真机 `1 passed (8.5s)`）— 可发现性基建四件**：
 

@@ -131,7 +131,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'palette.settingsAgent': '설정: 에이전트',
   'palette.keyboardShortcuts': '키보드 단축키',
   'shortcuts.title': '키보드 단축키',
-  'shortcuts.hint': '앱 어디서나 사용할 수 있습니다. 명령 팔레트는 다른 대화 상자가 열려 있지 않을 때만 열립니다.',
+  'shortcuts.hint':
+    '앱 어디서나 사용할 수 있습니다. 명령 팔레트는 다른 대화 상자가 열려 있지 않을 때만 열립니다.',
   'shortcuts.commandPalette': '명령 팔레트 열기',
   'shortcuts.openSettings': '설정 열기',
   'shortcuts.closeActivePane': '현재 탭을 닫고, 그다음 패널, 마지막으로 창을 닫습니다',
@@ -269,6 +270,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'modelPicker.noModelAria': '사용 가능한 모델 없음 — 설정 열기',
   'modelPicker.openSettings': '설정 열기',
   'reviewer.viewsTablist': '검토 보기',
+  'reviewer.noReviewsYet':
+    '이 세션에는 아직 리뷰가 없습니다. 아래 체크리스트와 접힌 컨텍스트는 리뷰 없이도 사용할 수 있습니다.',
   'foldTimeline.reasonAutomatic': '자동',
   'foldTimeline.reasonManual': '수동',
   'foldTimeline.reasonOverflow': '오버플로 복구',
@@ -3222,6 +3225,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'sessionInfo.unpin': '고정 해제',
   'sessionInfo.close': '닫기',
   'sessionInfo.evidence': '근거 열기',
+  'sessionInfo.review': '검증 체크리스트',
   'sessionFork.action': '세션 분기',
   'sessionFork.measureHint': '먼저 측정: 복사본에 무엇이 담기는지 확인한 뒤 생성',
   'sessionFork.willHold': '복사본에 포함될 항목',

@@ -109,6 +109,10 @@ export const selectProjectSessionReviews = (
   return reviewsBySession[reviewSessionKey(projectId ?? '', sessionId)] ?? EMPTY_REVIEWS
 }
 
+// Per-session placeholders for the checklist's "not loaded yet" state, kept so the selector that reads
+// them returns the same object every time (see getChecklist).
+const emptyChecklists = new Map<string, VerificationChecklist>()
+
 export const useReviewStore = create<ReviewStore>((set, get) => ({
   ...createInitialReviewState(),
 
@@ -178,12 +182,19 @@ export const useReviewStore = create<ReviewStore>((set, get) => ({
     }
   },
 
-  getChecklist: (sessionId: string, projectId: string) =>
-    get().checklistsBySession[reviewSessionKey(projectId, sessionId)] ?? {
-      projectId,
-      sessionId,
-      items: []
-    },
+  getChecklist: (sessionId: string, projectId: string) => {
+    const key = reviewSessionKey(projectId, sessionId)
+    const cached = get().checklistsBySession[key]
+    if (cached) return cached
+    // Stable identity for the "not loaded yet" value: this is read through a zustand selector, so handing
+    // back a fresh object on every call gives React a new snapshot on every store notification and the
+    // panel re-renders forever. The empty checklist is therefore cached per session.
+    const existingEmpty = emptyChecklists.get(key)
+    if (existingEmpty) return existingEmpty
+    const empty: VerificationChecklist = { projectId, sessionId, items: [] }
+    emptyChecklists.set(key, empty)
+    return empty
+  },
 
   mutateChecklist: async (request: VerificationChecklistMutationRequest) => {
     await window.api.reviewer.mutateChecklist(request)

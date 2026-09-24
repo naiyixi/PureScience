@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Bookmark, GitBranch, Pin, PinOff, X } from 'lucide-react'
+import { Bookmark, ClipboardCheck, GitBranch, Pin, PinOff, X } from 'lucide-react'
 
 import { useLanguage } from '@/i18n'
 import {
@@ -59,10 +59,13 @@ const formatTimestamp = (value: number | undefined, locale: string): string =>
 export function SessionInfoCard({
   session,
   onOpenEvidence,
+  onOpenReview,
   onClose
 }: {
   session: ChatSession
   onOpenEvidence?: () => void
+  /** Opens the session's verification checklist / reviewer surface — reachable before any review exists. */
+  onOpenReview?: () => void
   onClose: () => void
 }): React.JSX.Element {
   const { t } = useLanguage()
@@ -215,6 +218,21 @@ export function SessionInfoCard({
         >
           <Bookmark className="size-3" strokeWidth={2} aria-hidden="true" />
           {t('sessionInfo.evidence')}
+        </button>
+      ) : null}
+      {onOpenReview ? (
+        <button
+          type="button"
+          data-testid="session-info-open-review"
+          aria-label={t('sessionInfo.review')}
+          className="mt-2 flex items-center gap-1 text-[11px] text-text-300 hover:text-text-000"
+          onClick={() => {
+            onOpenReview()
+            onClose()
+          }}
+        >
+          <ClipboardCheck className="size-3" strokeWidth={2} aria-hidden="true" />
+          {t('sessionInfo.review')}
         </button>
       ) : null}
       {/* Forking: the numbers come first, the copy second. */}

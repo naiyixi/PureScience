@@ -901,7 +901,8 @@ export const en: Record<ZhKey, string> = {
   'palette.settingsAgent': 'Settings: Agent',
   'palette.keyboardShortcuts': 'Keyboard shortcuts',
   'shortcuts.title': 'Keyboard shortcuts',
-  'shortcuts.hint': 'These work anywhere in the app; the palette only opens when no other dialog is up.',
+  'shortcuts.hint':
+    'These work anywhere in the app; the palette only opens when no other dialog is up.',
   'shortcuts.commandPalette': 'Open the command palette',
   'shortcuts.openSettings': 'Open settings',
   'shortcuts.closeActivePane': 'Close the current tab, then the panel, then the window',
@@ -2464,6 +2465,8 @@ export const en: Record<ZhKey, string> = {
   'modelPicker.noModelAria': 'No model available — open settings',
   'modelPicker.openSettings': 'Open Settings',
   'reviewer.viewsTablist': 'Reviewer views',
+  'reviewer.noReviewsYet':
+    'No review yet for this session — the checklist and folded context below need one to exist.',
   'foldTimeline.reasonAutomatic': 'automatic',
   'foldTimeline.reasonManual': 'manual',
   'foldTimeline.reasonOverflow': 'overflow recovery',
@@ -3316,6 +3319,7 @@ export const en: Record<ZhKey, string> = {
   'sessionInfo.unpin': 'Unpin',
   'sessionInfo.close': 'Close',
   'sessionInfo.evidence': 'Open evidence',
+  'sessionInfo.review': 'Verification checklist',
   'sessionFork.action': 'Fork session',
   'sessionFork.measureHint': 'Measure first: see what the copy would hold before creating it',
   'sessionFork.willHold': 'The copy will hold',

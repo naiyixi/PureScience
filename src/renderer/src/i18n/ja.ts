@@ -133,7 +133,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'palette.settingsAgent': '設定：エージェント',
   'palette.keyboardShortcuts': 'キーボードショートカット',
   'shortcuts.title': 'キーボードショートカット',
-  'shortcuts.hint': 'アプリのどこでも使えます。コマンドパレットは他のダイアログが開いていないときだけ開きます。',
+  'shortcuts.hint':
+    'アプリのどこでも使えます。コマンドパレットは他のダイアログが開いていないときだけ開きます。',
   'shortcuts.commandPalette': 'コマンドパレットを開く',
   'shortcuts.openSettings': '設定を開く',
   'shortcuts.closeActivePane': '現在のタブ、次にパネル、最後にウインドウを閉じる',
@@ -272,6 +273,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'modelPicker.noModelAria': '利用可能なモデルがありません — 設定を開く',
   'modelPicker.openSettings': '設定を開く',
   'reviewer.viewsTablist': 'レビュー表示',
+  'reviewer.noReviewsYet':
+    'このセッションにはまだレビューがありません。以下のチェックリストと折りたたみコンテキストはレビューなしでも使えます。',
   'foldTimeline.reasonAutomatic': '自動',
   'foldTimeline.reasonManual': '手動',
   'foldTimeline.reasonOverflow': 'オーバーフロー回復',
@@ -3289,6 +3292,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'sessionInfo.unpin': 'ピンを外す',
   'sessionInfo.close': '閉じる',
   'sessionInfo.evidence': '根拠を開く',
+  'sessionInfo.review': '検証チェックリスト',
   'sessionFork.action': 'セッションを分岐',
   'sessionFork.measureHint': 'まず計測：コピーに何が含まれるかを確認してから作成',
   'sessionFork.willHold': 'コピーに含まれるもの',

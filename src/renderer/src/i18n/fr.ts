@@ -132,7 +132,8 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'palette.settingsAgent': 'Réglages : agent',
   'palette.keyboardShortcuts': 'Raccourcis clavier',
   'shortcuts.title': 'Raccourcis clavier',
-  'shortcuts.hint': 'Ils fonctionnent partout ; la palette ne s’ouvre que si aucune autre boîte de dialogue n’est ouverte.',
+  'shortcuts.hint':
+    'Ils fonctionnent partout ; la palette ne s’ouvre que si aucune autre boîte de dialogue n’est ouverte.',
   'shortcuts.commandPalette': 'Ouvrir la palette de commandes',
   'shortcuts.openSettings': 'Ouvrir les réglages',
   'shortcuts.closeActivePane': 'Fermer l’onglet actif, puis le panneau, puis la fenêtre',
@@ -276,6 +277,8 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'modelPicker.noModelAria': 'Aucun modèle disponible — ouvrir les réglages',
   'modelPicker.openSettings': 'Ouvrir les réglages',
   'reviewer.viewsTablist': 'Vues de la revue',
+  'reviewer.noReviewsYet':
+    "Cette session n'a pas encore de revue — la liste de vérification et le contexte replié ci-dessous n'en ont pas besoin.",
   'foldTimeline.reasonAutomatic': 'automatique',
   'foldTimeline.reasonManual': 'manuel',
   'foldTimeline.reasonOverflow': 'récupération de dépassement',
@@ -3366,6 +3369,7 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'sessionInfo.unpin': 'Détacher',
   'sessionInfo.close': 'Fermer',
   'sessionInfo.evidence': 'Ouvrir les preuves',
+  'sessionInfo.review': 'Liste de vérification',
   'sessionFork.action': 'Dériver la session',
   'sessionFork.measureHint':
     "Mesurer d'abord : voir ce que contiendrait la copie avant de la créer",

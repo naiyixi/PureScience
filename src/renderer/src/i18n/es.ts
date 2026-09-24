@@ -132,7 +132,8 @@ export const es: Partial<Record<ZhKey, string>> = {
   'palette.settingsAgent': 'Ajustes: Agente',
   'palette.keyboardShortcuts': 'Atajos de teclado',
   'shortcuts.title': 'Atajos de teclado',
-  'shortcuts.hint': 'Funcionan en toda la aplicación; la paleta solo se abre si no hay otro diálogo abierto.',
+  'shortcuts.hint':
+    'Funcionan en toda la aplicación; la paleta solo se abre si no hay otro diálogo abierto.',
   'shortcuts.commandPalette': 'Abrir la paleta de comandos',
   'shortcuts.openSettings': 'Abrir ajustes',
   'shortcuts.closeActivePane': 'Cerrar la pestaña actual, luego el panel y luego la ventana',
@@ -275,6 +276,8 @@ export const es: Partial<Record<ZhKey, string>> = {
   'modelPicker.noModelAria': 'No hay ningún modelo disponible — abrir ajustes',
   'modelPicker.openSettings': 'Abrir ajustes',
   'reviewer.viewsTablist': 'Vistas de revisión',
+  'reviewer.noReviewsYet':
+    'Esta sesión aún no tiene revisión: la lista de verificación y el contexto plegado de abajo no la necesitan.',
   'foldTimeline.reasonAutomatic': 'automático',
   'foldTimeline.reasonManual': 'manualmente',
   'foldTimeline.reasonOverflow': 'recuperación por desbordamiento',
@@ -3346,6 +3349,7 @@ export const es: Partial<Record<ZhKey, string>> = {
   'sessionInfo.unpin': 'Soltar',
   'sessionInfo.close': 'Cerrar',
   'sessionInfo.evidence': 'Abrir evidencia',
+  'sessionInfo.review': 'Lista de verificación',
   'sessionFork.action': 'Bifurcar sesión',
   'sessionFork.measureHint': 'Medir primero: ver qué contendría la copia antes de crearla',
   'sessionFork.willHold': 'La copia contendrá',

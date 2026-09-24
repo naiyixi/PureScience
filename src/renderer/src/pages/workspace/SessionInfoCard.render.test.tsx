@@ -156,4 +156,26 @@ describe('session information card', () => {
       ;(window as unknown as { api: unknown }).api = previous
     }
   })
+  it('offers the verification checklist even before this session has a review', async () => {
+    // U18: the reviewer surface used to be reachable only from an existing review, so a session without
+    // one could not be checked at all. The card's entry is the session itself, and it reports that it was
+    // pressed before closing so the caller can open the surface.
+    const onOpenReview = vi.fn()
+    const onClose = vi.fn()
+    const container = mount(
+      <SessionInfoCard session={session()} onOpenReview={onOpenReview} onClose={onClose} />
+    )
+
+    const entry = container.querySelector<HTMLButtonElement>(
+      '[data-testid="session-info-open-review"]'
+    )
+    expect(entry).not.toBeNull()
+
+    await act(async () => {
+      entry?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+
+    expect(onOpenReview).toHaveBeenCalledTimes(1)
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
 })

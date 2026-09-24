@@ -134,7 +134,8 @@ export const de: Partial<Record<ZhKey, string>> = {
   'palette.settingsAgent': 'Einstellungen: Agent',
   'palette.keyboardShortcuts': 'Tastenkürzel',
   'shortcuts.title': 'Tastenkürzel',
-  'shortcuts.hint': 'Diese gelten überall in der App; die Befehlspalette öffnet nur, wenn kein anderer Dialog offen ist.',
+  'shortcuts.hint':
+    'Diese gelten überall in der App; die Befehlspalette öffnet nur, wenn kein anderer Dialog offen ist.',
   'shortcuts.commandPalette': 'Befehlspalette öffnen',
   'shortcuts.openSettings': 'Einstellungen öffnen',
   'shortcuts.closeActivePane': 'Aktuellen Tab schließen, dann das Panel, dann das Fenster',
@@ -280,6 +281,8 @@ export const de: Partial<Record<ZhKey, string>> = {
   'modelPicker.noModelAria': 'Kein Modell verfügbar — Einstellungen öffnen',
   'modelPicker.openSettings': 'Einstellungen öffnen',
   'reviewer.viewsTablist': 'Prüfungsansichten',
+  'reviewer.noReviewsYet':
+    'Für diese Sitzung gibt es noch keinen Review – Checkliste und eingeklappter Kontext unten brauchen keinen.',
   'foldTimeline.reasonAutomatic': 'automatisch',
   'foldTimeline.reasonManual': 'manuell',
   'foldTimeline.reasonOverflow': 'Überlauf-Wiederherstellung',
@@ -3381,6 +3384,7 @@ export const de: Partial<Record<ZhKey, string>> = {
   'sessionInfo.unpin': 'Loslösen',
   'sessionInfo.close': 'Schließen',
   'sessionInfo.evidence': 'Belege öffnen',
+  'sessionInfo.review': 'Verifikations-Checkliste',
   'sessionFork.action': 'Sitzung forken',
   'sessionFork.measureHint': 'Erst messen: sehen, was die Kopie enthielte, dann erstellen',
   'sessionFork.willHold': 'Die Kopie enthält',
