@@ -142,3 +142,11 @@
 | U28 | 窗口内查找整组面无 UI：桌面应用装了 6 条 `window.*Find*` 通道，窗口没有查找栏 | `src/renderer/src` 里 `findInPage` / `clearFind` / `onShowWindowFind` / `onFindInPageResult` 生产代码 0 命中 | **立案建 UI**（快捷键驱动的查找栏） |
 
 两处均已写入 `src/shared/entry-layer-archived-surfaces.ts` 的登记册（带 PENDING BUILD 标记与证据），门禁在建成前保持绿。
+
+### U31：真机取证时发现的更大缺口（2026-09-24）
+
+| # | 缺口 | 证据 | 结论 |
+|---|---|---|---|
+| U31 | 笔记本面板**无入口**：`notebook:available` 从未被触发 | `session-lifecycle.ts:159` 的 `notifyAvailable()` 主进程零调用点（`notifyChanged` 有多处）；`application.ts:48`、`application-events.ts:41`、合同清单与 preload 全部齐备 | **已修**：在 `runCell` / `executeControl` / `executeShell` 三条运行路径宣告；新增 `session-lifecycle.test.ts` 3 条（含一条源码级断言防复发） |
+
+这条是 U21 真机取证的副产物：卡片控件写完了，但面板本身进不去 —— 又一次印证本仓反复出现的形状：**通道声明齐全 ≠ 链路可达**。

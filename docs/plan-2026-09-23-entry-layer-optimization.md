@@ -217,6 +217,9 @@
 - **测试**：`NotebookPreview.rerun.render.test.tsx` 7 条（载荷逐字段、只重跑被点那格、三种阻塞原因各自可见且点击不发出调用、结果回执）· i18n 门禁 42 passed · 9 语 +5 键。
 - **未完成的部分（不标 ✅）**：真机用例未跑（本轮第三次触发终端守卫、未获响应）。真机跑通前不计入完成。
 
+**U21 真机取证完成（2026-09-24）**：新增 `e2e/certification/notebook-rerun.spec.ts`，本地真机 **9.6s 通过**。
+取证过程本身抓出一个更大的缺口（见下 U31）——没有它，U21 的控件在运行的应用里根本不可达。
+
 **U22 结论修正：迁移已回退（新面在 main 里从未安装）— 立案 U29**
 
 - **原计划（P-d 默认建议）**：把 UI 迁到 `handoff-lifecycle:list/:changed/:retry`（新面）、删旧面 retry。**按此实现并推送 `fa7dfb5`，随后被 CI 证伪。**
@@ -531,3 +534,11 @@
 - **验收（已在本地实跑）**：写入一个裸 `role="dialog"` 浮层 → 门禁红并点名该文件；删除 → 恢复绿（守卫 + 面板簇 40 passed）。
 
 **接线**：两个守卫位于 `src/**`（vitest 默认 include），CI 的 `npm run test:coverage` 会跑 ⇒ 无需改 workflow。
+
+**U31 笔记本面板无入口（`notebook:available` 从不触发）— 已修（真机取证时发现）**
+
+- **怎么发现的**：U21 的真机用例第一条断言（打开笔记本面）30s 超时。DOM 快照显示右侧 `complementary: No preview content`、composer 区没有「Open notebook」按钮 —— 渲染层根本没有笔记本引用。
+- **链路排查**：`window.api.notebook.onAvailable` ← `notebook:available`（合同清单 `renderer-contract-catalog.ts:219`）← `application-events.ts:41` 已声明并转发 ← `application.ts:48` 由 runtime 回调发布 ← `session-lifecycle.ts:159` 的 `notifyAvailable()` —— **该方法在主进程里零调用点**（兄弟 `notifyChanged` 在 `runtime-service.ts` 多处都有调用）。
+- **触发条件**：`notifyAvailable` 此前只被 `beginCodeCell`（agent 流式**写入**单元格的路径）调用。agent 用 `bash_execute`（`executeShell`）或直接跑一格（`runCell`）时走的是**运行路径**，从不宣告 ⇒ 只要 agent 没有先流式写入一个单元格，窗口就永远不知道有笔记本，整个面板（含 U21 的「运行这一格」）都不可达。单测看不见：通道声明、preload 订阅、发布层全齐备。
+- **修法**：在三条运行路径上宣告一次（`runCell` 与 `executeControl` 用 `request.source ?? 'agent'`；`executeShell` 记 `'agent'`，其调用者只有 MCP 的 `bash_execute` 与 host RPC）。语义不变：仍每会话一次、仍只对 agent 发起的会话发。
+- **测试**：新增 `src/main/notebook/session-lifecycle.test.ts`（3 条）——agent 每会话一次、user 从不宣告，外加一条**源码级**断言（「行为测试看不见『少了一次调用』这类缺陷」），保证下一条运行路径不会又把宣告漏掉。

@@ -740,6 +740,10 @@ class NotebookRuntimeService {
   // Compatibility facade: Session lookup and public summary projection stay here; lifecycle is owned.
   async runCell(request: RunNotebookCellRequest): Promise<NotebookRunSummary> {
     const session = await this.sessionLifecycle.ensure(request)
+    // A run is the first thing the window can observe about a notebook it has never seen: announce it
+    // here too, not only on the cell-write path, or the pane stays unreachable until an agent happens to
+    // stream code into a cell first.
+    this.sessionLifecycle.notifyAvailable(session, request.source ?? 'agent')
     const run = await this.executionOwner.executeDataCell(session, request)
     return this.sessionReadModel.toRunSummary(session, run)
   }
@@ -783,6 +787,7 @@ class NotebookRuntimeService {
   // terminalization, and completion interception belong to NotebookExecutionOwner.
   async executeControl(request: ExecuteNotebookControlRequest): Promise<NotebookControlResult> {
     const session = await this.sessionLifecycle.ensure(request)
+    this.sessionLifecycle.notifyAvailable(session, request.source ?? 'agent')
     return this.executionOwner.executeControl(session, request)
   }
 
@@ -790,6 +795,9 @@ class NotebookRuntimeService {
   // a per-Session queue while the repository continues to serialize durable run writes.
   async executeShell(request: ExecuteShellRequest): Promise<NotebookShellResult> {
     const session = await this.sessionLifecycle.ensure(request)
+    // Only agent-side callers reach this facade (the notebook MCP's bash_execute and the host RPC), so a
+    // shell run counts as agent-originated for the announcement.
+    this.sessionLifecycle.notifyAvailable(session, 'agent')
     return this.executionOwner.executeShell(session, request)
   }
 
