@@ -214,7 +214,12 @@ const renderDialog = async (): Promise<void> => {
   await act(async () => {
     root.render(
       <LanguageProvider>
-        <GlobalSearchDialog open onOpenChange={vi.fn()} isSessionPersistenceReady />
+        <GlobalSearchDialog
+          open
+          onOpenChange={vi.fn()}
+          isSessionPersistenceReady
+          onOpenKeyboardShortcuts={vi.fn()}
+        />
       </LanguageProvider>
     )
     await new Promise((resolve) => window.setTimeout(resolve, 20))

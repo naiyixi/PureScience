@@ -12,6 +12,7 @@ import {
 import { createInitialProjectState, useProjectStore } from '@/stores/project-store'
 import { createInitialSessionState, useSessionStore } from '@/stores/session-store'
 import { useNavigationStore } from '@/stores/navigation-store'
+import { useSettingsStore } from '@/stores/settings-store'
 
 import { GlobalSearchDialog } from './GlobalSearchDialog'
 
@@ -163,14 +164,26 @@ describe('GlobalSearchDialog', () => {
     opener.focus()
 
     await act(async () => {
-      root.render(<GlobalSearchDialog open onOpenChange={vi.fn()} isSessionPersistenceReady />)
+      root.render(
+        <GlobalSearchDialog
+          open
+          onOpenChange={vi.fn()}
+          isSessionPersistenceReady
+          onOpenKeyboardShortcuts={vi.fn()}
+        />
+      )
       await new Promise((resolve) => window.setTimeout(resolve, 20))
     })
     expect(document.activeElement).not.toBe(document.body)
 
     await act(async () => {
       root.render(
-        <GlobalSearchDialog open={false} onOpenChange={vi.fn()} isSessionPersistenceReady />
+        <GlobalSearchDialog
+          open={false}
+          onOpenChange={vi.fn()}
+          isSessionPersistenceReady
+          onOpenKeyboardShortcuts={vi.fn()}
+        />
       )
       await new Promise((resolve) => window.setTimeout(resolve, 40))
     })
@@ -188,7 +201,14 @@ describe('GlobalSearchDialog', () => {
     useSessionStore.setState({ sessions: [] })
 
     await act(async () => {
-      root.render(<GlobalSearchDialog open onOpenChange={vi.fn()} isSessionPersistenceReady />)
+      root.render(
+        <GlobalSearchDialog
+          open
+          onOpenChange={vi.fn()}
+          isSessionPersistenceReady
+          onOpenKeyboardShortcuts={vi.fn()}
+        />
+      )
       await new Promise((resolve) => window.setTimeout(resolve, 20))
     })
 
@@ -204,7 +224,14 @@ describe('GlobalSearchDialog', () => {
 
   it('keeps the browse explanation out of the way once there is something to browse', async () => {
     await act(async () => {
-      root.render(<GlobalSearchDialog open onOpenChange={vi.fn()} isSessionPersistenceReady />)
+      root.render(
+        <GlobalSearchDialog
+          open
+          onOpenChange={vi.fn()}
+          isSessionPersistenceReady
+          onOpenKeyboardShortcuts={vi.fn()}
+        />
+      )
       await new Promise((resolve) => window.setTimeout(resolve, 20))
     })
 
@@ -234,7 +261,14 @@ describe('GlobalSearchDialog', () => {
     })
 
     await act(async () => {
-      root.render(<GlobalSearchDialog open onOpenChange={vi.fn()} isSessionPersistenceReady />)
+      root.render(
+        <GlobalSearchDialog
+          open
+          onOpenChange={vi.fn()}
+          isSessionPersistenceReady
+          onOpenKeyboardShortcuts={vi.fn()}
+        />
+      )
       await new Promise((resolve) => window.setTimeout(resolve, 20))
     })
 
@@ -275,7 +309,14 @@ describe('GlobalSearchDialog', () => {
 
   it('shows recent groups and sends a current-Project artifact to the composer mention handoff', async () => {
     await act(async () => {
-      root.render(<GlobalSearchDialog open onOpenChange={vi.fn()} isSessionPersistenceReady />)
+      root.render(
+        <GlobalSearchDialog
+          open
+          onOpenChange={vi.fn()}
+          isSessionPersistenceReady
+          onOpenKeyboardShortcuts={vi.fn()}
+        />
+      )
       await new Promise((resolve) => window.setTimeout(resolve, 20))
     })
 
@@ -308,7 +349,14 @@ describe('GlobalSearchDialog', () => {
 
   it('prioritizes Artifacts and selects the first Artifact for a keyword search', async () => {
     await act(async () => {
-      root.render(<GlobalSearchDialog open onOpenChange={vi.fn()} isSessionPersistenceReady />)
+      root.render(
+        <GlobalSearchDialog
+          open
+          onOpenChange={vi.fn()}
+          isSessionPersistenceReady
+          onOpenKeyboardShortcuts={vi.fn()}
+        />
+      )
       await new Promise((resolve) => window.setTimeout(resolve, 20))
     })
 
@@ -373,7 +421,14 @@ describe('GlobalSearchDialog', () => {
     })
 
     await act(async () => {
-      root.render(<GlobalSearchDialog open onOpenChange={vi.fn()} isSessionPersistenceReady />)
+      root.render(
+        <GlobalSearchDialog
+          open
+          onOpenChange={vi.fn()}
+          isSessionPersistenceReady
+          onOpenKeyboardShortcuts={vi.fn()}
+        />
+      )
       await new Promise((resolve) => window.setTimeout(resolve, 20))
     })
 
@@ -417,7 +472,14 @@ describe('GlobalSearchDialog', () => {
 
   it('keeps the result list scrollable and the shortcut footer outside the scroll viewport', async () => {
     await act(async () => {
-      root.render(<GlobalSearchDialog open onOpenChange={vi.fn()} isSessionPersistenceReady />)
+      root.render(
+        <GlobalSearchDialog
+          open
+          onOpenChange={vi.fn()}
+          isSessionPersistenceReady
+          onOpenKeyboardShortcuts={vi.fn()}
+        />
+      )
       await new Promise((resolve) => window.setTimeout(resolve, 20))
     })
 
@@ -445,7 +507,14 @@ describe('GlobalSearchDialog', () => {
   it('closes with Escape when an artifact row action holds focus', async () => {
     const onOpenChange = vi.fn()
     await act(async () => {
-      root.render(<GlobalSearchDialog open onOpenChange={onOpenChange} isSessionPersistenceReady />)
+      root.render(
+        <GlobalSearchDialog
+          open
+          onOpenChange={onOpenChange}
+          isSessionPersistenceReady
+          onOpenKeyboardShortcuts={vi.fn()}
+        />
+      )
       await new Promise((resolve) => window.setTimeout(resolve, 20))
     })
 
@@ -470,7 +539,14 @@ describe('GlobalSearchDialog', () => {
     useNavigationStore.setState({ view: 'home', activeProjectId: undefined })
     const onOpenChange = vi.fn()
     await act(async () => {
-      root.render(<GlobalSearchDialog open onOpenChange={onOpenChange} isSessionPersistenceReady />)
+      root.render(
+        <GlobalSearchDialog
+          open
+          onOpenChange={onOpenChange}
+          isSessionPersistenceReady
+          onOpenKeyboardShortcuts={vi.fn()}
+        />
+      )
       await new Promise((resolve) => window.setTimeout(resolve, 20))
     })
 
@@ -498,7 +574,14 @@ describe('GlobalSearchDialog', () => {
     useSessionStore.setState({ selectedSessionId: undefined })
     const onOpenChange = vi.fn()
     await act(async () => {
-      root.render(<GlobalSearchDialog open onOpenChange={onOpenChange} isSessionPersistenceReady />)
+      root.render(
+        <GlobalSearchDialog
+          open
+          onOpenChange={onOpenChange}
+          isSessionPersistenceReady
+          onOpenKeyboardShortcuts={vi.fn()}
+        />
+      )
       await new Promise((resolve) => window.setTimeout(resolve, 20))
     })
 
@@ -525,7 +608,14 @@ describe('GlobalSearchDialog', () => {
   it('mentions the active Artifact on Shift+Enter inside the current Session', async () => {
     const onOpenChange = vi.fn()
     await act(async () => {
-      root.render(<GlobalSearchDialog open onOpenChange={onOpenChange} isSessionPersistenceReady />)
+      root.render(
+        <GlobalSearchDialog
+          open
+          onOpenChange={onOpenChange}
+          isSessionPersistenceReady
+          onOpenKeyboardShortcuts={vi.fn()}
+        />
+      )
       await new Promise((resolve) => window.setTimeout(resolve, 20))
     })
 
@@ -555,7 +645,14 @@ describe('GlobalSearchDialog', () => {
     })
     const onOpenChange = vi.fn()
     await act(async () => {
-      root.render(<GlobalSearchDialog open onOpenChange={onOpenChange} isSessionPersistenceReady />)
+      root.render(
+        <GlobalSearchDialog
+          open
+          onOpenChange={onOpenChange}
+          isSessionPersistenceReady
+          onOpenKeyboardShortcuts={vi.fn()}
+        />
+      )
       await new Promise((resolve) => window.setTimeout(resolve, 20))
     })
 
@@ -598,7 +695,14 @@ describe('GlobalSearchDialog', () => {
     })
     const onOpenChange = vi.fn()
     await act(async () => {
-      root.render(<GlobalSearchDialog open onOpenChange={onOpenChange} isSessionPersistenceReady />)
+      root.render(
+        <GlobalSearchDialog
+          open
+          onOpenChange={onOpenChange}
+          isSessionPersistenceReady
+          onOpenKeyboardShortcuts={vi.fn()}
+        />
+      )
       await new Promise((resolve) => window.setTimeout(resolve, 20))
     })
 
@@ -676,7 +780,14 @@ describe('GlobalSearchDialog', () => {
     })
 
     await act(async () => {
-      root.render(<GlobalSearchDialog open onOpenChange={vi.fn()} isSessionPersistenceReady />)
+      root.render(
+        <GlobalSearchDialog
+          open
+          onOpenChange={vi.fn()}
+          isSessionPersistenceReady
+          onOpenKeyboardShortcuts={vi.fn()}
+        />
+      )
       await new Promise((resolve) => window.setTimeout(resolve, 20))
     })
 
@@ -691,7 +802,14 @@ describe('GlobalSearchDialog', () => {
       artifactMentionAvailability: { projectId: 'project-a', canMention: false }
     })
     await act(async () => {
-      root.render(<GlobalSearchDialog open onOpenChange={vi.fn()} isSessionPersistenceReady />)
+      root.render(
+        <GlobalSearchDialog
+          open
+          onOpenChange={vi.fn()}
+          isSessionPersistenceReady
+          onOpenKeyboardShortcuts={vi.fn()}
+        />
+      )
       await new Promise((resolve) => window.setTimeout(resolve, 20))
     })
 
@@ -736,7 +854,14 @@ describe('GlobalSearchDialog', () => {
     })
 
     await act(async () => {
-      root.render(<GlobalSearchDialog open onOpenChange={vi.fn()} isSessionPersistenceReady />)
+      root.render(
+        <GlobalSearchDialog
+          open
+          onOpenChange={vi.fn()}
+          isSessionPersistenceReady
+          onOpenKeyboardShortcuts={vi.fn()}
+        />
+      )
       await new Promise((resolve) => window.setTimeout(resolve, 20))
     })
     const input = document.body.querySelector<HTMLInputElement>('input[role="combobox"]')
@@ -762,7 +887,14 @@ describe('GlobalSearchDialog', () => {
     window.localStorage.setItem('purescience:last-opened-project', 'project-b')
     useNavigationStore.setState({ view: 'home', activeProjectId: undefined })
     await act(async () => {
-      root.render(<GlobalSearchDialog open onOpenChange={vi.fn()} isSessionPersistenceReady />)
+      root.render(
+        <GlobalSearchDialog
+          open
+          onOpenChange={vi.fn()}
+          isSessionPersistenceReady
+          onOpenKeyboardShortcuts={vi.fn()}
+        />
+      )
       await new Promise((resolve) => window.setTimeout(resolve, 20))
     })
 
@@ -804,7 +936,14 @@ describe('GlobalSearchDialog', () => {
       )
     }))
     await act(async () => {
-      root.render(<GlobalSearchDialog open onOpenChange={vi.fn()} isSessionPersistenceReady />)
+      root.render(
+        <GlobalSearchDialog
+          open
+          onOpenChange={vi.fn()}
+          isSessionPersistenceReady
+          onOpenKeyboardShortcuts={vi.fn()}
+        />
+      )
       await new Promise((resolve) => window.setTimeout(resolve, 20))
     })
 
@@ -831,7 +970,12 @@ describe('GlobalSearchDialog', () => {
       // skips the provider cannot see whether the placeholders in the line are actually filled in.
       root.render(
         <LanguageProvider>
-          <GlobalSearchDialog open onOpenChange={vi.fn()} isSessionPersistenceReady />
+          <GlobalSearchDialog
+            open
+            onOpenChange={vi.fn()}
+            isSessionPersistenceReady
+            onOpenKeyboardShortcuts={vi.fn()}
+          />
         </LanguageProvider>
       )
       await new Promise((resolve) => window.setTimeout(resolve, 20))
@@ -893,7 +1037,14 @@ describe('GlobalSearchDialog', () => {
     const onOpenChange = vi.fn()
 
     await act(async () => {
-      root.render(<GlobalSearchDialog open onOpenChange={onOpenChange} isSessionPersistenceReady />)
+      root.render(
+        <GlobalSearchDialog
+          open
+          onOpenChange={onOpenChange}
+          isSessionPersistenceReady
+          onOpenKeyboardShortcuts={vi.fn()}
+        />
+      )
       await new Promise((resolve) => window.setTimeout(resolve, 20))
     })
 
@@ -969,7 +1120,14 @@ describe('GlobalSearchDialog', () => {
     })
 
     await act(async () => {
-      root.render(<GlobalSearchDialog open onOpenChange={vi.fn()} isSessionPersistenceReady />)
+      root.render(
+        <GlobalSearchDialog
+          open
+          onOpenChange={vi.fn()}
+          isSessionPersistenceReady
+          onOpenKeyboardShortcuts={vi.fn()}
+        />
+      )
       await new Promise((resolve) => window.setTimeout(resolve, 20))
     })
 
@@ -1026,7 +1184,14 @@ describe('GlobalSearchDialog', () => {
     })
 
     await act(async () => {
-      root.render(<GlobalSearchDialog open onOpenChange={vi.fn()} isSessionPersistenceReady />)
+      root.render(
+        <GlobalSearchDialog
+          open
+          onOpenChange={vi.fn()}
+          isSessionPersistenceReady
+          onOpenKeyboardShortcuts={vi.fn()}
+        />
+      )
       await new Promise((resolve) => window.setTimeout(resolve, 20))
     })
 
@@ -1093,7 +1258,14 @@ describe('GlobalSearchDialog', () => {
     })
 
     await act(async () => {
-      root.render(<GlobalSearchDialog open onOpenChange={vi.fn()} isSessionPersistenceReady />)
+      root.render(
+        <GlobalSearchDialog
+          open
+          onOpenChange={vi.fn()}
+          isSessionPersistenceReady
+          onOpenKeyboardShortcuts={vi.fn()}
+        />
+      )
       await new Promise((resolve) => window.setTimeout(resolve, 20))
     })
 
@@ -1201,7 +1373,14 @@ describe('GlobalSearchDialog', () => {
     })
 
     await act(async () => {
-      root.render(<GlobalSearchDialog open onOpenChange={vi.fn()} isSessionPersistenceReady />)
+      root.render(
+        <GlobalSearchDialog
+          open
+          onOpenChange={vi.fn()}
+          isSessionPersistenceReady
+          onOpenKeyboardShortcuts={vi.fn()}
+        />
+      )
       await new Promise((resolve) => window.setTimeout(resolve, 20))
     })
 
@@ -1248,7 +1427,14 @@ describe('GlobalSearchDialog', () => {
     })
 
     await act(async () => {
-      root.render(<GlobalSearchDialog open onOpenChange={vi.fn()} isSessionPersistenceReady />)
+      root.render(
+        <GlobalSearchDialog
+          open
+          onOpenChange={vi.fn()}
+          isSessionPersistenceReady
+          onOpenKeyboardShortcuts={vi.fn()}
+        />
+      )
       await new Promise((resolve) => window.setTimeout(resolve, 20))
     })
 
@@ -1327,7 +1513,14 @@ describe('GlobalSearchDialog', () => {
     })
 
     await act(async () => {
-      root.render(<GlobalSearchDialog open onOpenChange={vi.fn()} isSessionPersistenceReady />)
+      root.render(
+        <GlobalSearchDialog
+          open
+          onOpenChange={vi.fn()}
+          isSessionPersistenceReady
+          onOpenKeyboardShortcuts={vi.fn()}
+        />
+      )
       await new Promise((resolve) => window.setTimeout(resolve, 20))
     })
 
@@ -1423,7 +1616,14 @@ describe('GlobalSearchDialog', () => {
     })
 
     await act(async () => {
-      root.render(<GlobalSearchDialog open onOpenChange={vi.fn()} isSessionPersistenceReady />)
+      root.render(
+        <GlobalSearchDialog
+          open
+          onOpenChange={vi.fn()}
+          isSessionPersistenceReady
+          onOpenKeyboardShortcuts={vi.fn()}
+        />
+      )
       await new Promise((resolve) => window.setTimeout(resolve, 20))
     })
 
@@ -1461,5 +1661,46 @@ describe('GlobalSearchDialog', () => {
     })
 
     expect(attach).toHaveBeenCalledWith({ action: 'attach', reviewId: 'review-2', line })
+  })
+
+  it('answers ⌘K with commands that actually go somewhere', async () => {
+    // The audit's complaint was that discoverability surfaces existed while nothing behind them moved, so
+    // this walks the whole path: a phrase a user would type reaches a command row, and running it drives
+    // the store that owns the destination.
+    const openSettingsToPanel = vi.fn()
+    useSettingsStore.setState({ openSettingsToPanel })
+    const onOpenChange = vi.fn()
+
+    await act(async () => {
+      root.render(
+        <GlobalSearchDialog
+          open
+          onOpenChange={onOpenChange}
+          isSessionPersistenceReady
+          onOpenKeyboardShortcuts={vi.fn()}
+        />
+      )
+      await new Promise((resolve) => window.setTimeout(resolve, 20))
+    })
+
+    const input = document.body.querySelector<HTMLInputElement>('input[role="combobox"]')
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set
+    await act(async () => {
+      setter?.call(input, 'mirror')
+      input?.dispatchEvent(new Event('input', { bubbles: true }))
+      await new Promise((resolve) => window.setTimeout(resolve, 500))
+    })
+
+    const commandRow = document.body.querySelector<HTMLElement>(
+      '[data-testid="palette-command-settings.network"]'
+    )
+    expect(commandRow).not.toBeNull()
+    expect(commandRow?.textContent).toContain('Network')
+
+    act(() => commandRow?.dispatchEvent(new MouseEvent('click', { bubbles: true })))
+
+    expect(openSettingsToPanel).toHaveBeenCalledWith('network')
+    // Running a command leaves the palette, exactly like opening a result does.
+    expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 })

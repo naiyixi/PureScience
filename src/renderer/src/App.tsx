@@ -14,6 +14,7 @@ import { PermissionUndoSnackbar } from '@/components/PermissionUndoSnackbar'
 import { SessionPersistenceAlert } from '@/components/SessionPersistenceAlert'
 import { UpdateDialog } from '@/components/UpdateDialog'
 import { GlobalSearchDialog } from '@/components/global-search/GlobalSearchDialog'
+import { KeyboardShortcutsDialog } from '@/components/KeyboardShortcutsDialog'
 import { STREAMDOWN_FULLSCREEN_SELECTOR } from '@/components/streamdown/dom-selectors'
 import { Button } from '@/components/ui/button'
 import { HomePage } from '@/pages/home/HomePage'
@@ -120,6 +121,9 @@ const App = (): React.JSX.Element | null => {
   })
   const [isCloseConfirmOpen, setIsCloseConfirmOpen] = useState(false)
   const [isGlobalSearchOpen, setIsGlobalSearchOpen] = useState(false)
+  // The shortcut sheet is reachable from the palette's commands, so it lives beside it rather than inside
+  // the dialog that opens it.
+  const [isKeyboardShortcutsOpen, setIsKeyboardShortcutsOpen] = useState(false)
   // Cmd+W / Ctrl+W closes transient modals before falling through to preview panes/window.
   const closeActiveModal = useCallback((): boolean => {
     const update = useUpdateStore.getState()
@@ -174,6 +178,7 @@ const App = (): React.JSX.Element | null => {
         !isSessionPersistenceHydrated ||
         isSettingsOpen ||
         isGlobalSearchOpen ||
+        isKeyboardShortcutsOpen ||
         hasConnectorApproval ||
         hasComputeApproval ||
         hasSkillImportApproval ||
@@ -197,6 +202,7 @@ const App = (): React.JSX.Element | null => {
     hasSkillImportApproval,
     isCloseConfirmOpen,
     isGlobalSearchOpen,
+    isKeyboardShortcutsOpen,
     isPreviewModalOpen,
     isSessionPersistenceHydrated,
     isSettingsOpen,
@@ -216,6 +222,7 @@ const App = (): React.JSX.Element | null => {
         startupView !== 'app' ||
         !isSessionPersistenceHydrated ||
         isSettingsOpen ||
+        isKeyboardShortcutsOpen ||
         hasConnectorApproval ||
         hasComputeApproval ||
         hasSkillImportApproval ||
@@ -236,6 +243,7 @@ const App = (): React.JSX.Element | null => {
     hasConnectorApproval,
     hasSkillImportApproval,
     isCloseConfirmOpen,
+    isKeyboardShortcutsOpen,
     isPreviewModalOpen,
     isSessionPersistenceHydrated,
     isSettingsLoaded,
@@ -257,6 +265,7 @@ const App = (): React.JSX.Element | null => {
         startupView !== 'app' ||
         !isSessionPersistenceHydrated ||
         isSettingsOpen ||
+        isKeyboardShortcutsOpen ||
         hasConnectorApproval ||
         hasComputeApproval ||
         hasSkillImportApproval ||
@@ -280,6 +289,7 @@ const App = (): React.JSX.Element | null => {
     hasSkillImportApproval,
     isCloseConfirmOpen,
     isSessionPersistenceHydrated,
+    isKeyboardShortcutsOpen,
     isPreviewModalOpen,
     isSettingsLoaded,
     isSettingsOpen,
@@ -610,6 +620,11 @@ const App = (): React.JSX.Element | null => {
         open={isGlobalSearchOpen}
         onOpenChange={setIsGlobalSearchOpen}
         isSessionPersistenceReady={isSessionPersistenceReady}
+        onOpenKeyboardShortcuts={() => setIsKeyboardShortcutsOpen(true)}
+      />
+      <KeyboardShortcutsDialog
+        open={isKeyboardShortcutsOpen}
+        onOpenChange={setIsKeyboardShortcutsOpen}
       />
       <DataRootMissingDialog
         open={missingDataRoot !== undefined}

@@ -93,10 +93,20 @@
 | U14  | PDF 表格改走几何法（`pdf:tables`），保留审计标签与扫描范围空态                | 同一真表格 PDF，UI 与 agent 都得 4 列、表头与数值同列                          |
 | U15  | 图形拾取键盘化（`FigurePickOverlay.tsx:131`、`SelectionAnnotator.tsx:68` 等） | 纯键盘完成打点/锚点标定并导出 CSV                                              |
 | U16  | 预览动作从「只能右键」升为一等入口                                            | 下载/存产物/数字化/表格抽取/文献导入均有工具栏或命令面入口，右键仍可用         |
-| U17  | 可发现性基建：命令面 + 菜单级入口 + 快捷键清单面 + 设置搜索扩到 `leaf`/关键词 | ⌘K 能搜到命令；设置搜「镜像/mirror/代理」命中；`Cmd+,` 与 `Cmd+W` 在界面上可见 |
+| U17  | **✅ 完成**（真机 `1 passed`）：命令面 + 快捷键清单面 + 设置搜索扩到关键词 | ⌘K 能搜到命令；设置搜「镜像/mirror/代理」命中；`Cmd+,` 与 `Cmd+W` 在界面上可见 |
 | U18  | 上下文门控入口（检查清单/复核/折叠时间线可主动打开）                          | 无评审记录时也能主动打开清单页签，并给出「还没有评审」的解释                   |
 
 ### 批次 3 进行中记录
+
+**U17 ✅ 完成（真机 `1 passed (8.5s)`）— 可发现性基建四件**：
+
+- **命令面**：⌘K 的宿主就是 `GlobalSearchDialog`（此前 1520 行里只有搜索源，注释却自称 command palette）→ 新增「命令」这一组，目录做成纯数据模块 `components/global-search/palette-commands.ts`（打开设置 / 网络与镜像 / 运行环境 / 模型与供应商 / 计算主机 / 存储与数据根 / 智能体 / 快捷键清单）。命中规则：**标签命中优先于关键词命中**，关键词覆盖 `mirror/镜像/代理/registry/npm/host/算力` 等用户真会输入的词；键盘走位与渲染顺序一致，回车与点击共用同一条执行路径。
+- **⌘K 打不开面板的真因**：不在 `App.tsx` 的门控串，而是 `SettingsPage` 里一条无条件的 ⌘K 监听抢先 `preventDefault`（详见下节）。
+- **快捷键清单面**：新增 `components/KeyboardShortcutsDialog.tsx`，只列**真实存在**的弦（⌘K / ⌘, / ⌘W 三级阶梯 / ↑↓ / ↵ / esc），修饰键按 `window.api.platform` 显示，从命令面可达。
+- **设置搜索扩到关键词**：19 个面板各带 `keywords` 并抽出纯函数 `matchesSettingsQuery`；搜「镜像 / mirror / 代理」命中网络与运行环境面板。
+- **顺带**：面板页脚原有 4 个硬编码英文（navigate/open/mention/close）入 9 语；三处快捷键门控补上新对话框的排除，避免在清单面上再开一层。
+- **测试**：命令目录 5（含「每条命令必须真的执行一个动作」——防空壳入口）· 快捷键面 2 · 面板集成 1（输入 mirror → 命令行 → 点击真的把 store 指向网络面板）· 设置搜索 3 · 设置 ⌘K 所有权 1 · 真机认证 1。
+
 
 **U14 ✅ 完成（真机 `1 passed (10.7s)`，提交 `640b22d`）**
 
@@ -213,10 +223,13 @@
 
 **U4 的收口方式**：通知中心桌面端取焦/归还以 `e2e/accessibility.spec.ts` 的键盘闭环用例覆盖（真机 Electron，非 jsdom 断言）；预览菜单与文件列表另有 jsdom 用例 29 + 11 条。
 
-### 本批次实测发现的待办（归入 U17）
+### 本批次实测发现的待办（归入 U17）—— **已定位并修复**
 
-- **搜索按钮上印着 `⌘K`，按键打不开面板**。真机 Electron 实测：配好 agent、进入 workspace、焦点在 composer 内按 `Meta+k`，面板不出现（`palette:false`，焦点停在 DIV）；同一状态下走可见按钮（聚焦 + Enter）正常打开。源码侧疑点在 `App.tsx:249-272` 的一串门控（`isSettingsLoaded` / `startupView === 'app'` / `isSessionPersistenceHydrated` / 各浮层开关 / 数据根缺失等），尚未定位到具体哪一条返回早。证据链：`npm run build:e2e` 后 `npx playwright test`（构建产物为 `out/`，改源码不重新构建等于测旧包）。
-- 归入 U17 的理由：U17 本来就要做「快捷键清单面 + 命令面」，改门控之前需要先决定快捷键在哪些状态下应当生效，避免把门的开关和清单面做成两套口径。
+- **搜索按钮上印着 `⌘K`，按键打不开面板** —— **根因不在 `App.tsx` 的门控串**（那条串本身是对的），而在 `SettingsPage.tsx:411` 的全局监听：它匹配**正好 ⌘K**（`event.key.toLowerCase() !== 'k'` + `metaKey/ctrlKey`）并 `preventDefault()` 去聚焦设置搜索框，注释写着「Settings search owns Cmd/Ctrl+K **while the dialog is open**」，**代码却是 `useEffect(..., [])` 且没有 `open` 判断** —— 于是设置页在任何状态下都抢走 ⌘K，App 的 `toggleGlobalSearch` 第一项 `event.defaultPrevented` 直接返回，命令面板永远收不到这个键。
+- **定位过程（可复用）**：临时真机探针分别用 (a) 真实按键、(b) `GLOBAL_SEARCH_OPEN_EVENT` 事件、(c) 在 `body`/`window` 上派发的合成 `KeyboardEvent` 三条路径对打 —— 事件路径能开、合成事件在 `window` **冒泡**阶段被 `prevented=true`（捕获阶段未拦），于是排除「面板本身/门控条件/焦点在编辑器」，锁到「window 冒泡阶段的监听器抢先 preventDefault」。全仓 `!== 'k'` 一处即中。
+- **修复**：`SettingsPage.tsx` 的监听按 `open` 门控（`if (!open) return` + deps `[open]`）——设置打开时它仍是 ⌘K 的唯一消费者（App 侧本来就排除 `isSettingsOpen`），设置关闭时 ⌘K 归还给命令面板。
+- **回归锁**：`SettingsPage.render.test.tsx` 新增「settings 关闭时不得消费 ⌘K」（断言 `defaultPrevented === false`，修前必红）；`e2e/certification/palette-commands.spec.ts` 真机覆盖 ⌘K→命令→落到设置→设置打开时 ⌘K 不再在背后开面板，以及快捷键面上的 `Cmd+,`/`Cmd+W`。
+- **教训**：注释与依赖数组不一致的「名不副实」监听是最难查的一类门控缺陷——它让上游门控的 `defaultPrevented` 分支静默吞键，而所有既有测试都不拥有这个键的所有权断言。
 
 ### 方法学（写给后续单元）
 

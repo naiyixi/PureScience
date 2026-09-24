@@ -46,6 +46,7 @@ import { useComputeStore } from '@/stores/compute-store'
 import { useProjectStore } from '@/stores/project-store'
 import { selectFrameworkApiEndpoints, useSettingsStore } from '@/stores/settings-store'
 import { isSettingsWriteErrorKey } from '@/stores/settings-write-error-keys'
+import { matchesSettingsQuery } from './settings-panel-search'
 import type { SettingsPanelId } from './settings-navigation'
 import { useSpecialistStore } from '@/stores/specialist-store'
 import { AgentPanel } from './AgentPanel'
@@ -166,6 +167,10 @@ type SettingsPanel = {
   id: SettingsPanelId
   label: string
   Icon: React.ComponentType<{ className?: string }>
+  // Extra search tokens: what the panel does, in the words a user would actually try, including the
+  // English and Chinese terms for the same thing. The palette command catalog uses the same vocabulary
+  // on purpose, so one query means one destination whichever surface answers it.
+  keywords?: readonly string[]
 }
 
 type SettingsGroup = {
@@ -178,36 +183,168 @@ const buildSettingsGroups = (t: (key: TranslationKey) => string): ReadonlyArray<
   {
     label: t('settings.capabilities'),
     panels: [
-      { id: 'skills', label: t('settings.skills'), Icon: ScrollText },
-      { id: 'connectors', label: t('settings.connectors'), Icon: ConnectorsNavIcon },
-      { id: 'credentials', label: t('settings.credentials'), Icon: KeyRound },
-      { id: 'specialists', label: t('settings.specialists'), Icon: Users },
-      { id: 'memory', label: t('settings.memory'), Icon: BookOpenText },
-      { id: 'tags', label: t('settings.tags'), Icon: Tags },
-      { id: 'compute', label: t('settings.compute'), Icon: Zap },
-      { id: 'routine', label: t('settings.routine'), Icon: CalendarClock },
-      { id: 'endpoint', label: t('settings.endpoints'), Icon: CircleDot },
-      { id: 'network', label: t('settings.network'), Icon: Globe }
+      {
+        id: 'skills',
+        label: t('settings.skills'),
+        Icon: ScrollText,
+        keywords: ['skill', 'plugin', 'extension', '技能', '插件']
+      },
+      {
+        id: 'connectors',
+        label: t('settings.connectors'),
+        Icon: ConnectorsNavIcon,
+        keywords: ['connector', 'mcp', 'integration', '连接器', '集成']
+      },
+      {
+        id: 'credentials',
+        label: t('settings.credentials'),
+        Icon: KeyRound,
+        keywords: ['credential', 'api key', 'token', 'secret', '密钥', '凭据', '令牌']
+      },
+      {
+        id: 'specialists',
+        label: t('settings.specialists'),
+        Icon: Users,
+        keywords: ['specialist', 'expert', 'role', '专家', '角色']
+      },
+      {
+        id: 'memory',
+        label: t('settings.memory'),
+        Icon: BookOpenText,
+        keywords: ['memory', 'context', '记忆', '上下文']
+      },
+      {
+        id: 'tags',
+        label: t('settings.tags'),
+        Icon: Tags,
+        keywords: ['tag', 'label', 'category', '标签', '分类']
+      },
+      {
+        id: 'compute',
+        label: t('settings.compute'),
+        Icon: Zap,
+        keywords: ['compute', 'host', 'gpu', 'cluster', '计算', '主机', '算力']
+      },
+      {
+        id: 'routine',
+        label: t('settings.routine'),
+        Icon: CalendarClock,
+        keywords: ['routine', 'schedule', 'cron', 'job', '定时', '例行', '计划任务']
+      },
+      {
+        id: 'endpoint',
+        label: t('settings.endpoints'),
+        Icon: CircleDot,
+        keywords: ['endpoint', 'api endpoint', 'base url', '端点', '接口']
+      },
+      {
+        id: 'network',
+        label: t('settings.network'),
+        Icon: Globe,
+        keywords: [
+          'network',
+          'proxy',
+          'mirror',
+          'registry',
+          'npm',
+          'download',
+          '镜像',
+          '代理',
+          '网络',
+          '下载源'
+        ]
+      }
     ]
   },
   {
     label: t('settings.workspace'),
     panels: [
-      { id: 'model', label: t('settings.model'), Icon: Brain },
-      { id: 'agent', label: t('settings.agent'), Icon: Bot },
-      { id: 'permissions', label: t('settings.permissions'), Icon: LockKeyhole },
-      { id: 'runtimes', label: t('settings.runtimes'), Icon: TerminalSquare },
-      { id: 'storage', label: t('settings.storage'), Icon: Cloud },
-      { id: 'usage', label: t('settings.tokenUsage'), Icon: ChartNoAxesCombined },
-      { id: 'general', label: t('settings.general'), Icon: Settings2 }
+      {
+        id: 'model',
+        label: t('settings.model'),
+        Icon: Brain,
+        keywords: ['model', 'provider', 'api key', 'llm', '模型', '供应商', '密钥']
+      },
+      {
+        id: 'agent',
+        label: t('settings.agent'),
+        Icon: Bot,
+        keywords: ['agent', 'prompt', 'instructions', '智能体', '提示词', '指令']
+      },
+      {
+        id: 'permissions',
+        label: t('settings.permissions'),
+        Icon: LockKeyhole,
+        keywords: ['permission', 'approval', 'allow', '权限', '授权', '审批']
+      },
+      {
+        id: 'runtimes',
+        label: t('settings.runtimes'),
+        Icon: TerminalSquare,
+        keywords: [
+          'runtime',
+          'python',
+          'r',
+          'environment',
+          'mirror',
+          'dependencies',
+          '运行环境',
+          '环境',
+          '镜像',
+          '依赖'
+        ]
+      },
+      {
+        id: 'storage',
+        label: t('settings.storage'),
+        Icon: Cloud,
+        keywords: ['storage', 'data root', 'disk', 'backup', '存储', '数据目录', '备份']
+      },
+      {
+        id: 'usage',
+        label: t('settings.tokenUsage'),
+        Icon: ChartNoAxesCombined,
+        keywords: ['usage', 'token', 'cost', '用量', '花费', '统计']
+      },
+      {
+        id: 'general',
+        label: t('settings.general'),
+        Icon: Settings2,
+        keywords: [
+          'general',
+          'language',
+          'theme',
+          'appearance',
+          'startup',
+          '通用',
+          '语言',
+          '主题',
+          '外观',
+          '开机'
+        ]
+      }
     ]
   },
   {
     label: t('settings.remoteAccess'),
-    panels: [{ id: 'remote-control', label: t('settings.remoteControl'), Icon: MonitorSmartphone }]
+    panels: [
+      {
+        id: 'remote-control',
+        label: t('settings.remoteControl'),
+        Icon: MonitorSmartphone,
+        keywords: ['remote', 'mobile', 'phone', '远程', '手机', '控制']
+      }
+    ]
   },
   {
-    panels: [{ id: 'archived', label: t('settings.archived'), Icon: Archive }],
+    panels: [
+      {
+        id: 'archived',
+        label: t('settings.archived'),
+        Icon: Archive,
+        keywords: ['archive', 'archived', '归档', '已归档']
+      }
+    ],
     bottom: true
   }
 ]
@@ -255,9 +392,13 @@ const SettingsPage = forwardRef<SettingsPageHandle, SettingsPageProps>(function 
   const settingsPanels = useMemo(() => flattenPanels(settingsGroups), [settingsGroups])
   const [settingsQuery, setSettingsQuery] = useState('')
   const settingsSearchRef = useRef<HTMLInputElement | null>(null)
-  // Settings search owns Cmd/Ctrl+K while the dialog is open (the app-level handler
-  // already yields when settings are open, so this is the only consumer).
+  // Settings search owns Cmd/Ctrl+K while the dialog is open (the app-level handler already yields when
+  // settings are open, so this is the only consumer then). Outside that window the chord belongs to the
+  // app-level command palette: while this listener was unconditional it swallowed every ⌘K in the app and
+  // focused a search box the user could not even see, which is why ⌘K never opened the palette.
   useEffect(() => {
+    if (!open) return
+
     const focusSettingsSearch = (event: KeyboardEvent): void => {
       if (
         event.defaultPrevented ||
@@ -273,17 +414,13 @@ const SettingsPage = forwardRef<SettingsPageHandle, SettingsPageProps>(function 
     }
     window.addEventListener('keydown', focusSettingsSearch)
     return () => window.removeEventListener('keydown', focusSettingsSearch)
-  }, [])
+  }, [open])
   // Filtered panel list for the search surface: matches the panel label or its stable id,
   // with the active panel always reachable even when the query matches nothing else.
   const normalizedQuery = settingsQuery.trim().toLowerCase()
   const matchedPanels = useMemo(() => {
     if (!normalizedQuery) return settingsPanels
-    return settingsPanels.filter(
-      (panel) =>
-        panel.label.toLowerCase().includes(normalizedQuery) ||
-        panel.id.toLowerCase().includes(normalizedQuery)
-    )
+    return settingsPanels.filter((panel) => matchesSettingsQuery(panel, normalizedQuery))
   }, [settingsPanels, normalizedQuery])
   const showSearchResults = normalizedQuery.length > 0
   const providers = useSettingsStore((state) => state.providers)

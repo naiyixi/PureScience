@@ -2887,4 +2887,19 @@ describe('SettingsPage Codex framework', () => {
     })
     expect(document.activeElement).toBe(search)
   })
+  it('leaves ⌘K to the app-level command palette while settings are closed', async () => {
+    await act(async () => {
+      root.render(<SettingsPage open={false} onClose={vi.fn()} />)
+    })
+
+    const chord = new KeyboardEvent('keydown', { key: 'k', metaKey: true, cancelable: true })
+    await act(async () => {
+      window.dispatchEvent(chord)
+    })
+
+    // Not consuming the chord is the whole contract: the palette handler upstream bails on
+    // defaultPrevented, so a listener that swallows ⌘K while its own surface is closed makes the chord
+    // dead everywhere else in the app.
+    expect(chord.defaultPrevented).toBe(false)
+  })
 })

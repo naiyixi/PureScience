@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { copyText } from '@/lib/copy-text'
 import { useLanguage, type TranslationKey } from '@/i18n'
-import { ArrowUpRight, AtSign, Hash, MessageCircle, Search, Zap } from 'lucide-react'
+import { ArrowUpRight, AtSign, Hash, MessageCircle, Search, Settings2, Zap } from 'lucide-react'
 import { Dialog } from 'radix-ui'
 
 import type { GlobalSearchHit } from '../../../../shared/global-search'
@@ -33,9 +33,11 @@ import { createPreviewFileItem } from '@/pages/workspace/preview-file-item'
 import type { MessageArtifact } from '@/pages/workspace/preview-file-item'
 import { usePreviewWorkbenchStore } from '@/stores/preview-workbench-store'
 import { useNavigationStore } from '@/stores/navigation-store'
+import { useSettingsStore } from '@/stores/settings-store'
 import { useProjectStore } from '@/stores/project-store'
 import { useSessionStore } from '@/stores/session-store'
 
+import { buildPaletteCommands, matchPaletteCommands, type PaletteCommand } from './palette-commands'
 import { useContentSearch } from './use-content-search'
 import { useSearchEvidence } from './use-search-evidence'
 import { searchPinFailureLabelKey, useSearchPins } from './use-search-pins'
@@ -57,6 +59,8 @@ type GlobalSearchDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   isSessionPersistenceReady: boolean
+  // App owns the shortcut surface, so the palette can offer it as a command without owning its state.
+  onOpenKeyboardShortcuts: () => void
 }
 
 type ArtifactState = {
@@ -77,6 +81,9 @@ type SelectableRow =
   | { kind: 'content'; hit: GlobalSearchHit }
   | { kind: 'new-session' }
   | { kind: 'new-project' }
+  // A palette command: settings panels, the shortcut surface. Additive to search — commands answer the
+  // same query the settings search does, so "mirror" reaches the network panel from either surface.
+  | { kind: 'command'; command: PaletteCommand }
 
 const emptyArtifactState: ArtifactState = {
   items: [],
@@ -143,9 +150,14 @@ const keycapClassName =
 export const GlobalSearchDialog = ({
   open,
   onOpenChange,
-  isSessionPersistenceReady
+  isSessionPersistenceReady,
+  onOpenKeyboardShortcuts
 }: GlobalSearchDialogProps): React.JSX.Element => {
   const { t } = useLanguage()
+  // Settings navigation is this palette's set of "go there" commands; the store owns the panel targets.
+  const openSettings = useSettingsStore((state) => state.openSettings)
+  const openSettingsToPanel = useSettingsStore((state) => state.openSettingsToPanel)
+  const openSettingsToCompute = useSettingsStore((state) => state.openSettingsToCompute)
   const inputRef = useRef<HTMLInputElement>(null)
   const requestVersionRef = useRef(0)
   const listboxId = useId()
@@ -441,6 +453,23 @@ export const GlobalSearchDialog = ({
     contentSearch.state.state === 'ready' ? contentSearch.state.response : undefined
   const contentHits = useMemo(() => contentResponse?.hits ?? [], [contentResponse])
 
+  // ⌘K answers commands, not just history. The catalog is plain data (see palette-commands.ts) so the
+  // same list can back the shortcut surface; matching is ranked so a label hit outranks a keyword hit.
+  const paletteCommands = useMemo(
+    () =>
+      buildPaletteCommands({
+        openSettings,
+        openSettingsToPanel,
+        openSettingsToCompute,
+        openKeyboardShortcuts: onOpenKeyboardShortcuts
+      }),
+    [onOpenKeyboardShortcuts, openSettings, openSettingsToCompute, openSettingsToPanel]
+  )
+  const matchedCommands = useMemo(
+    () => matchPaletteCommands(paletteCommands, trimmedQuery, t),
+    [paletteCommands, trimmedQuery, t]
+  )
+
   const selectableRows = useMemo<SelectableRow[]>(() => {
     const command = isProjectScope
       ? ({ kind: 'new-session' } as const)
@@ -464,6 +493,9 @@ export const GlobalSearchDialog = ({
       ...(sessionGroups?.primary.map((session) => ({ kind: 'session' as const, session })) ?? []),
       ...(sessionMoreCount > 0 ? [{ kind: 'more-sessions' as const }] : []),
       ...otherRows,
+      // Commands answer the query the way results do, and sit directly above the new-session/new-project
+      // row so the order the keyboard walks matches the order the sections render in.
+      ...matchedCommands.map((entry) => ({ kind: 'command' as const, command: entry })),
       command
     ]
   }, [
@@ -474,6 +506,7 @@ export const GlobalSearchDialog = ({
     displayedArtifacts,
     isProjectScope,
     isSearchMode,
+    matchedCommands,
     otherRows,
     primaryProject,
     recentSessions,
@@ -527,6 +560,13 @@ export const GlobalSearchDialog = ({
   const activate = useCallback(
     (row: SelectableRow | undefined, action?: 'mention' | 'preview'): void => {
       if (!row) return
+      if (row.kind === 'command') {
+        // Running the command is the whole point of the row, so the palette closes like it does for any
+        // other activation instead of leaving the user staring at a stale query.
+        row.command.run()
+        close()
+        return
+      }
       if (row.kind === 'session') {
         const isStillAvailable = sessions.some(
           (session) =>
@@ -1455,6 +1495,31 @@ export const GlobalSearchDialog = ({
               {!isProjectScope || primaryProject ? (
                 <section role="group" aria-label={t('gs.regionCommands')}>
                   <h2 className={sectionTitleClassName}>{t('home.commands')}</h2>
+                  {/* Commands the palette can run, above the new-session/new-project row so the rendered
+                      order matches the order the arrow keys walk. */}
+                  {matchedCommands.map((entry) => (
+                    <Button
+                      key={entry.id}
+                      id={`global-search-option-${nextIndex()}`}
+                      type="button"
+                      role="option"
+                      aria-selected={activeRowIndex === rowIndex - 1}
+                      variant="ghost"
+                      data-testid={`palette-command-${entry.id}`}
+                      className={cn(
+                        rowClassName,
+                        activeRowIndex === rowIndex - 1 && 'bg-bg-200 before:opacity-100'
+                      )}
+                      onMouseEnter={() => setActiveIndex(rowIndex - 1)}
+                      onClick={() => activate({ kind: 'command', command: entry })}
+                    >
+                      <Settings2 className="size-5 text-primary" aria-hidden="true" />
+                      <span className="text-sm font-medium">{t(entry.labelKey)}</span>
+                      {entry.shortcut ? (
+                        <kbd className={cn(keycapClassName, 'ml-auto')}>{entry.shortcut}</kbd>
+                      ) : null}
+                    </Button>
+                  ))}
                   <Button
                     id={`global-search-option-${nextIndex()}`}
                     type="button"
@@ -1496,21 +1561,21 @@ export const GlobalSearchDialog = ({
           >
             <span className={shortcutClassName}>
               <kbd className={keycapClassName}>↑↓</kbd>
-              <span>navigate</span>
+              <span>{t('palette.footerNavigate')}</span>
             </span>
             <span className={shortcutClassName}>
               <kbd className={keycapClassName}>↵</kbd>
-              <span>open</span>
+              <span>{t('palette.footerOpen')}</span>
             </span>
             {isProjectScope ? (
               <span className={shortcutClassName}>
                 <kbd className={keycapClassName}>⇧↵</kbd>
-                <span>mention</span>
+                <span>{t('palette.footerMention')}</span>
               </span>
             ) : null}
             <span className={shortcutClassName}>
               <kbd className={keycapClassName}>esc</kbd>
-              <span>close</span>
+              <span>{t('palette.footerClose')}</span>
             </span>
           </footer>
         </Dialog.Content>

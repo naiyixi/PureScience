@@ -115,3 +115,6 @@ docs/competitive-tracking/
 archive/OPTIMIZATION-LOG.md
 # Web-Rooter tool cache (local only)
 .web-rooter/
+
+# Local packaging smoke scratch (never committed)
+.tmp-packaged-smoke/
