@@ -116,3 +116,18 @@
 | **P2** | A1/A3/A4/A7/A11/A12/A13                           | 按产品意图择一：建入口或显式归档                                                                                         | 归档需在本文档留下结论                                                 |
 
 **差异化要求（交付红线）**：上述每一项落地时必须优于「有入口」本身——例如 A2 的表格抽取要带 `verify-against-source` 审计标签与扫描范围说明（本仓已有），A9 的重放要带环境锁与结果对比（本仓已有 `replay-*` 证据链），不允许出现「点得动但说不出所以然」的入口。
+
+## 批次 4 归档结论（零代码收口，2026-09-24）
+
+按 2026-09 验收口径，以下差距项以「归档」收口：结论落档即为完成，不造空壳入口。逐条依据见排期 `docs/plan-2026-09-23-entry-layer-optimization.md` 的「批次 4 进行中记录」U23/U24 两节。
+
+| 差距项 | 归档依据（渲染层调用点 / 已有等价路径） |
+| --- | --- |
+| `compute` 三件（启用主机直读 / 任务标记已消费 / 待通知任务） | 面板已覆盖主机 CRUD、详情、任务事件与审批卡（`ComputePanel.tsx` / `ComputeHostDetail.tsx` / `ComputeApprovalDialog.tsx` / `stores/compute-store.ts` / `App.tsx:458,464`）；审计自身定级 P2，余下为细粒度读回 |
+| `local-fs:reveal` | 渲染层 0 命中；同意图已有 `localFs.openPath`（`LocalFileHeaderActions.tsx:46`） |
+| `remote-access:disable` | 渲染层 0 命中；已被 `setMode({ mode: 'off' })` 覆盖（`RemoteControlPanel.tsx:304`） |
+| `storage:validate-data-root` | 渲染层 0 命中；保留为 host/agent 命令（`host-application-commands.ts:284`、`storage/ipc.ts:27`） |
+| `settings:get-package-mirror` | 渲染层 0 命中；镜像经设置快照下发（`settings-store.ts:113/173/193`） |
+| `settings:xai-oauth-*` | 已覆盖：`ProvidersPanel.tsx:182/183/198` 已用 start/complete/logout |
+| `specialist:cancel-handoff`（含旧面 `getHandoffEvents` / `retryHandoff` / `onHandoffLifecycleEvent`） | 渲染层 0 消费（U22 已把 UI 迁到 `handoff-lifecycle:list/:changed/:retry`）；保留为兼容/agent 面 |
+| `acp:event` / `acp:permission-request` | 渲染层 0 命中；权限请求由 `permission-grants-store` 与会话状态 `waiting-permission` 承载，主进程仍按 `application-events.ts:37-38` 广播；保留为兼容/观测通道 |

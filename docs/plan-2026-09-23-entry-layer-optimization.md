@@ -207,8 +207,42 @@
 - **缺口**：`figure:review`（发表级正确性清单，七条规则：#1 排除行不得混入汇总、#2 轴/系列标签与密度、#3 同类别同色且调色板可辨、#4 图形类型贴合数据形状、#5 渲染并目视、#6 对数轴刻度合理性、#7 图与脚本双产物 + 最小字号）只有 agent 的工具能跑。
 - **做法**：新增 `components/figure/FigureReviewPanel.tsx`。规则引擎要的是**申报**，所以面板只放读者从图上能看见的字段（图形类型、数据结构四选、系列数、标签数、最小字号、对数轴刻度、是否已渲染、图/脚本路径），**未申报的字段不发**（引擎按未申报处理），并在界面上写明「排除行是否混入汇总统计只能由出图方申报，此处报『无违规』不覆盖该规则」——不让「绿」被读成「数据已核」。
 - **入口**：`figureReview` 进同一动作集（`DIGITIZABLE_MEDIA` 门控 + `window.api.figure.review` 在场判断）。
+- **真机 + CI 双证**：`e2e/certification/figure-review-panel.spec.ts` 本地 `1 passed (10.8s)`；`73ac7a6` 的 Nightly `35991771501` 与 Windows Full Test `35991770935` 双绿（macos-arm64 打包认证同绿）。两处修法值得记住：规则 id 必须取共享常量 `FIGURE_RULE_COLOR_THREADING`（下划线形态，我按习惯写成连字符导致定位不到），两次运行之间只留**一个**变量（系列数），其余申报逐字相同。
+- **同批修掉一个真缺陷（认证门先发现的）**：`useManagedPreviewResource` 的两处 release 是裸 fire-and-forget，主进程重新组合命令分组时没有该 handler，rejection 被 PDF 缩略图的 catch 打成渲染层 `console.error`，把当时在跑的 `pdf-figure-extraction` 拖红（上一轮绿色 run 的同一 job 日志里该字样 0 命中 ⇒ 新出现）。改为 `releaseQuietly`（释放尽力而为），带回归「release 拒绝时不产生 unhandledRejection」。
 - **测试**：`FigureReviewPanel.render.test.tsx` 4（**请求断言**：只发读者给的值、`excludedRows`/`summaryUsedExcluded`/路径一律 undefined；引擎 findings 带自身 rule/severity；clean 只覆盖已申报；通道缺失说不可用）· 真机 `e2e/certification/figure-review-panel.spec.ts`（9 系列 → `color-threading`/error；2 系列 + 已渲染 → 同引擎 clean）；9 语 +23 键。
 - **待办**：真机跑一次（等放行）；宿主 SQL `query:run` 的归档结论待你追认后落审计文档。
+
+**U21 已落地、待真机（入口 + 阻塞原因已实现并单测；真机用例待跑）— 笔记本「运行这一格」**
+
+- **缺口**：`notebook:run-cell` 及单元格级三件（`begin/append/finish-code-cell`）在渲染层**零调用点**（`grep 'api.notebook.'` 只有 state/inspectVariables/execute/restart/shutdown）——agent 写下的格子一旦过期（界面上已有的 `notebookStale` 徽标就是那个信号）是死路：能力在，入口不在。
+- **做法**：每条运行记录行右侧加「运行这一格」，走同一条 `notebook:run-cell`，`source: 'user'`（记录行随即出现 `you` 徽标），并带上该 run **实际运行的环境**（python/r 的 `default-*` 或具名 env；repl/bash 不发该字段）。运行结果以一行回执说明（引擎自己的 status），并刷新笔记本状态。
+- **阻塞不再「点了没反应」**：逐格判定并显示原因——整本有一次运行在飞、agent 正在往这一格写代码（**只挡那一格**，邻格照常）、环境尚未准备好（供给门）。
+- **测试**：`NotebookPreview.rerun.render.test.tsx` 7 条（载荷逐字段、只重跑被点那格、三种阻塞原因各自可见且点击不发出调用、结果回执）· i18n 门禁 42 passed · 9 语 +5 键。
+- **未完成的部分（不标 ✅）**：真机用例未跑（本轮第三次触发终端守卫、未获响应）。真机跑通前不计入完成。
+
+**U22 已落地、待真机（渲染层迁到生命周期新面）— P-d 默认建议**
+
+- **缺口**：`handoff-lifecycle-source.ts:150` 把客户端绑在 `window.api.specialist`（**旧面**），`WorkspacePage.tsx` 也用旧面 `onHandoffLifecycleEvent` / `getHandoffEvents(activeSessionId)` 订阅与重放——而 `handoff-lifecycle:list/:changed/:retry` 这套新面（`shared/handoff-lifecycle.ts:90-94`、preload `renderer-api.d.ts:711-715`）**无人使用**。
+- **做法**：客户端改绑 `window.api.handoff`；`retry` 直接发 `{ sessionId, originatingTurnId }`（主进程自己解析交接，客户端那段反查与「no longer available」自造错误删除——按文件自身注释，校验属于主进程）；`onChanged` 按 `upsert` / `remove`（批量 eventIds）处理；旧面形状转换器 `toHandoffEvent` / `targetFromReadback` 随之成为死码并删除。`WorkspacePage` 的订阅与重放改走新面；排序从旧面的 `commitOrder`（新面不提供）改为 `observedAt → sequence → id`（新面的 `sequence` 只在同一交接内单调，而这条路径只用于触发一次幂等的 specialist 回读）。
+- **取证**：旧面三件（`getHandoffEvents` / `retryHandoff` / `onHandoffLifecycleEvent`）迁移后渲染层**零消费**（剩余一处是同名 i18n 键 `common.retryHandoff` 的文案）；`specialist:cancel-handoff` 渲染层同样零消费 → 与旧面三件一并归档为兼容/agent 面。
+- **测试**：`handoff-lifecycle-source.test.ts` 3 条改新面（含「只转发 retry 意图」）· `WorkspacePage.pending-switch.test.tsx` 事件改 `{ kind: 'upsert', event }` 形状 · workspace+preload **151 files / 1742 passed**。
+- **未完成的部分（不标 ✅）**：无 UI 新增（纯迁移），真机证据待跑；现有认证用例集中没有 handoff 专项，如需真机证据需新增一条（已立案）。
+
+**U23 归档（零代码收口，逐条结论）— P-e 默认建议**
+
+| 项 | 渲染层调用点 | 结论与依据 |
+| --- | --- | --- |
+| `compute` 三件（启用主机直读 / 任务标记已消费 / 待通知任务） | 面板已覆盖主机 CRUD、详情、任务事件、审批卡 | **归档**：审计自身对这三处的定级是 P2，且 `ComputePanel` / `ComputeHostDetail` / `ComputeApprovalDialog` + `compute-store.ts` 已承载用户实际操作；余下属「直读/已读」细粒度读回，不构成缺入口 |
+| `local-fs:reveal` | **0** | **归档**：同类意图已有 `localFs.openPath`（`LocalFileHeaderActions.tsx:46`）；reveal 是更细粒度的同意图变体，面窄低值 |
+| `remote-access:disable` | **0**（面板走 `detect`/`getSnapshot`/`approve`/`setMode`） | **归档**：已被 `remoteAccess.setMode({ mode: 'off' })` 覆盖（`RemoteControlPanel.tsx:304`） |
+| `storage:validate-data-root` | **0** | **归档**：保留为 host/agent 命令（`host-application-commands.ts:284`、`storage/ipc.ts:27`）；数据根设置走设置保存路径，未发现需要用户单独触发校验的场景 |
+| `settings:get-package-mirror` | **0** | **归档**：镜像经设置快照下发（`settings-store.ts:113/173/193`），无需单独面 |
+| `settings:xai-oauth-*` | **已有 UI** | **归档（已覆盖）**：`ProvidersPanel.tsx:182/183/198` 已用 start/complete/logout 三件，本就不是缺口 |
+| `specialist:cancel-handoff` | **0** | **归档**：见 U22——交接的重试/继续已由生命周期面承载 |
+
+**U24 归档（零代码收口）— P-e 默认建议**
+
+- `acp:event` / `acp:permission-request`：渲染层 **0** 命中（`onEvent` / `onPermissionRequest` 亦 0）；权限请求在渲染层由 `permission-grants-store`（`permissions.list/revoke`）与会话状态 `waiting-permission` 承载，主进程仍按 `application-events.ts:37-38` 广播。**归档**为兼容/观测通道（删除会波及 agent 事件面，收益不抵风险）。
 
 ## 批次 5（v1.74.0）防复发门禁
 

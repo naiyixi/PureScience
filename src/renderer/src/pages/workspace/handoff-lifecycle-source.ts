@@ -1,62 +1,22 @@
 import type {
+  HandoffEventsRequest,
+  HandoffLifecycleChange,
   HandoffLifecycleEvent,
   HandoffLifecycleEventSource,
-  HandoffRetryRequest,
-  HandoffTarget
+  HandoffRetryRequest
 } from '../../../../shared/handoff-lifecycle'
-import type {
-  CompletionHandoffLifecycleEvent,
-  CompletionHandoffCommand
-} from '../../../../shared/specialist'
 
+// The lifecycle's own face (window.api.handoff). It already speaks HandoffLifecycleEvent, so nothing
+// here translates the legacy specialist shape any more.
 type HandoffLifecycleApi = {
-  getHandoffEvents(sessionId: string): Promise<readonly CompletionHandoffLifecycleEvent[]>
-  retryHandoff(request: CompletionHandoffCommand): Promise<unknown>
-  onHandoffLifecycleEvent(listener: (event: CompletionHandoffLifecycleEvent) => void): () => void
+  list(request: HandoffEventsRequest): Promise<readonly HandoffLifecycleEvent[]>
+  retry(request: HandoffRetryRequest): Promise<void>
+  onChanged(listener: (change: HandoffLifecycleChange) => void): () => void
 }
 
 // `useSyncExternalStore` requires an unchanged snapshot to keep the same reference. Sessions with
 // no handoffs are common, so they must share this empty snapshot instead of allocating `[]` per read.
 const EMPTY_EVENTS: readonly HandoffLifecycleEvent[] = []
-
-const targetFromReadback = (readback: unknown, fallback: string | null): HandoffTarget => {
-  if (readback && typeof readback === 'object' && 'binding' in readback) {
-    const binding = readback.binding
-    if (binding && typeof binding === 'object' && 'targetName' in binding) {
-      const targetName = binding.targetName
-      if (targetName === null) return { kind: 'main' }
-      if (typeof targetName === 'string') return { kind: 'specialist', name: targetName }
-    }
-  }
-  return fallback === null ? { kind: 'main' } : { kind: 'specialist', name: fallback }
-}
-
-const toHandoffEvent = (event: CompletionHandoffLifecycleEvent): HandoffLifecycleEvent => ({
-  id: event.id,
-  sessionId: event.sessionId,
-  sequence: event.sequence,
-  observedAt: event.observedAt,
-  phase: event.phase,
-  target: event.target === null ? { kind: 'main' } : { kind: 'specialist', name: event.target },
-  provenance: {
-    originatingTurnId: event.provenance.originatingTurnId,
-    originatingUserMessageId:
-      event.provenance.originatingUserMessageId ?? event.provenance.originatingTurnId,
-    attachmentIds: event.provenance.attachmentIds,
-    artifactIds: event.provenance.artifactIds
-  },
-  ...(event.continuation?.outcome === 'returned' || event.continuation?.outcome === 'threw'
-    ? {
-        continuation: {
-          outcome: event.continuation.outcome,
-          switchReadback: {
-            target: targetFromReadback(event.continuation.switchReadback, event.target)
-          }
-        }
-      }
-    : {}),
-  ...(event.failure ? { failure: event.failure } : {})
-})
 
 const sameEvents = (
   left: readonly HandoffLifecycleEvent[],
@@ -100,30 +60,28 @@ class IpcHandoffLifecycleClient implements HandoffLifecycleEventSource {
     const api = this.getApi()
     if (!api) return
 
-    const retained = await api.getHandoffEvents(sessionId)
-    this.merge(sessionId, retained.map(toHandoffEvent))
+    const retained = await api.list({ sessionId })
+    this.merge(sessionId, retained)
   }
 
   async retry(request: HandoffRetryRequest): Promise<void> {
     const api = this.getApi()
     if (!api) throw new Error('Handoff lifecycle API is unavailable')
-    const event = [...this.getEvents(request.sessionId)]
-      .reverse()
-      .find((candidate) => candidate.provenance.originatingTurnId === request.originatingTurnId)
-    if (!event) throw new Error('The handoff is no longer available.')
-    await api.retryHandoff({ id: event.id, sessionId: request.sessionId })
+    // No client-side lookup: the coordinator resolves the originating turn itself and is the only side
+    // that validates a retry intent.
+    await api.retry({ sessionId: request.sessionId, originatingTurnId: request.originatingTurnId })
   }
 
   private ensureChangedListener(): void {
     if (this.stopChangedListener) return
     const api = this.getApi()
     if (!api) return
-    this.stopChangedListener = api.onHandoffLifecycleEvent((event) => {
-      if (event.removed) {
-        this.remove(event.sessionId, event.id)
+    this.stopChangedListener = api.onChanged((change) => {
+      if (change.kind === 'remove') {
+        for (const eventId of change.eventIds) this.remove(change.sessionId, eventId)
         return
       }
-      this.merge(event.sessionId, [toHandoffEvent(event)])
+      this.merge(change.event.sessionId, [change.event])
     })
   }
 
@@ -147,6 +105,6 @@ class IpcHandoffLifecycleClient implements HandoffLifecycleEventSource {
   }
 }
 
-const workspaceHandoffLifecycleClient = new IpcHandoffLifecycleClient(() => window.api?.specialist)
+const workspaceHandoffLifecycleClient = new IpcHandoffLifecycleClient(() => window.api?.handoff)
 
 export { IpcHandoffLifecycleClient, workspaceHandoffLifecycleClient }

@@ -25,9 +25,10 @@ import { useSpecialistStore } from '@/stores/specialist-store'
 
 import { type ComposerDoc } from './composer/composer-doc'
 import type {
-  CompletionHandoffLifecycleEvent,
-  SpecialistListItem
-} from '../../../../shared/specialist'
+  HandoffLifecycleChange,
+  HandoffLifecycleEvent
+} from '../../../../shared/handoff-lifecycle'
+import type { SpecialistListItem } from '../../../../shared/specialist'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -133,9 +134,12 @@ let root: Root
 // Captured pending-switch listener; the test fires it to simulate the host.agents.switch() broadcast.
 let pendingSwitchListener:
   ((pending: { sessionId: string; targetName: string | null }) => void) | undefined
-let handoffLifecycleListener: ((event: CompletionHandoffLifecycleEvent) => void) | undefined
+let handoffLifecycleListener: ((change: HandoffLifecycleChange) => void) | undefined
 
-const apiStub = (specialistOverrides?: Record<string, unknown>): typeof window.api => {
+const apiStub = (
+  specialistOverrides?: Record<string, unknown>,
+  handoffOverrides?: Record<string, unknown>
+): typeof window.api => {
   pendingSwitchListener = undefined
   handoffLifecycleListener = undefined
   return {
@@ -157,6 +161,17 @@ const apiStub = (specialistOverrides?: Record<string, unknown>): typeof window.a
       abortFixLoop: vi.fn(() => Promise.resolve())
     },
     compute: { enabledHostsSet: vi.fn(() => Promise.resolve()) },
+    handoff: {
+      list: vi.fn(() => Promise.resolve([])),
+      retry: vi.fn(() => Promise.resolve()),
+      onChanged: vi.fn((listener) => {
+        handoffLifecycleListener = listener
+        return () => {
+          handoffLifecycleListener = undefined
+        }
+      }),
+      ...handoffOverrides
+    },
     specialist: {
       onCatalogChanged: vi.fn(() => vi.fn()),
       onPendingSwitch: vi.fn((listener) => {
@@ -165,14 +180,6 @@ const apiStub = (specialistOverrides?: Record<string, unknown>): typeof window.a
           pendingSwitchListener = undefined
         }
       }),
-      getHandoffEvents: vi.fn(() => Promise.resolve([])),
-      onHandoffLifecycleEvent: vi.fn((listener) => {
-        handoffLifecycleListener = listener
-        return () => {
-          handoffLifecycleListener = undefined
-        }
-      }),
-      retryHandoff: vi.fn(() => Promise.resolve()),
       cancelHandoff: vi.fn(() => Promise.resolve()),
       setSessionSpecialist: vi.fn(() => Promise.resolve({ contextReset: false })),
       resolveSessionSpecialist: vi.fn(() => Promise.resolve({ kind: 'main' as const })),
@@ -234,18 +241,22 @@ describe('WorkspacePage pending-switch broadcast', () => {
 
     await act(async () => {
       handoffLifecycleListener?.({
-        id: 'handoff-1',
-        sessionId: 'sess-a',
-        sequence: 4,
-        observedAt: 1234,
-        phase: 'failed',
-        target: 'SQL Wrangler',
-        provenance: {
-          originatingTurnId: 'turn-1',
-          attachmentIds: [],
-          artifactIds: []
-        },
-        failure: { retryFrom: 'reconfiguring', message: 'target unavailable' }
+        kind: 'upsert',
+        event: {
+          id: 'handoff-1',
+          sessionId: 'sess-a',
+          sequence: 4,
+          observedAt: 1234,
+          phase: 'failed',
+          target: { kind: 'specialist', name: 'SQL Wrangler' },
+          provenance: {
+            originatingTurnId: 'turn-1',
+            originatingUserMessageId: 'user-1',
+            attachmentIds: [],
+            artifactIds: []
+          },
+          failure: { retryFrom: 'reconfiguring', message: 'target unavailable' }
+        }
       })
     })
 
@@ -276,13 +287,21 @@ describe('WorkspacePage pending-switch broadcast', () => {
 
     await act(async () => {
       handoffLifecycleListener?.({
-        id: 'handoff-specialist',
-        sessionId: 'sess-a',
-        sequence: 4,
-        observedAt: 1234,
-        phase: 'continuation-start',
-        target: 'SQL Wrangler',
-        provenance: { originatingTurnId: 'turn-1', attachmentIds: [], artifactIds: [] }
+        kind: 'upsert',
+        event: {
+          id: 'handoff-specialist',
+          sessionId: 'sess-a',
+          sequence: 4,
+          observedAt: 1234,
+          phase: 'continuation-start',
+          target: { kind: 'specialist', name: 'SQL Wrangler' },
+          provenance: {
+            originatingTurnId: 'turn-1',
+            originatingUserMessageId: 'user-1',
+            attachmentIds: [],
+            artifactIds: []
+          }
+        }
       })
       await Promise.resolve()
     })
@@ -293,13 +312,21 @@ describe('WorkspacePage pending-switch broadcast', () => {
 
     await act(async () => {
       handoffLifecycleListener?.({
-        id: 'handoff-main',
-        sessionId: 'sess-a',
-        sequence: 5,
-        observedAt: 1235,
-        phase: 'continuation-start',
-        target: null,
-        provenance: { originatingTurnId: 'turn-2', attachmentIds: [], artifactIds: [] }
+        kind: 'upsert',
+        event: {
+          id: 'handoff-main',
+          sessionId: 'sess-a',
+          sequence: 5,
+          observedAt: 1235,
+          phase: 'continuation-start',
+          target: { kind: 'main' },
+          provenance: {
+            originatingTurnId: 'turn-2',
+            originatingUserMessageId: 'user-2',
+            attachmentIds: [],
+            artifactIds: []
+          }
+        }
       })
       await Promise.resolve()
     })
@@ -317,29 +344,25 @@ describe('WorkspacePage pending-switch broadcast', () => {
       selectedSessionId: 'sess-a'
     })
     useSpecialistStore.setState({ items: [], isLoaded: true, load: vi.fn() })
-    const event = (
-      id: string,
-      sequence: number,
-      commitOrder: number,
-      message: string
-    ): CompletionHandoffLifecycleEvent => ({
+    const event = (id: string, sequence: number, message: string): HandoffLifecycleEvent => ({
       id,
       sessionId: 'sess-a',
       sequence,
-      commitOrder,
       observedAt: 100,
       phase: 'failed',
-      target: 'SQL Wrangler',
-      provenance: { originatingTurnId: 'turn-1', attachmentIds: [], artifactIds: [] },
+      target: { kind: 'specialist', name: 'SQL Wrangler' },
+      provenance: {
+        originatingTurnId: 'turn-1',
+        originatingUserMessageId: 'user-1',
+        attachmentIds: [],
+        artifactIds: []
+      },
       failure: { retryFrom: 'reconfiguring', message }
     })
-    window.api = apiStub({
-      getHandoffEvents: vi.fn(() =>
-        Promise.resolve([
-          event('older-high-sequence', 99, 1, 'older'),
-          event('newer', 2, 2, 'newer')
-        ])
-      )
+    window.api = apiStub(undefined, {
+      // The retained snapshot arrives out of order; the replay must apply the latest one and not
+      // regress the projection with the delayed older event.
+      list: vi.fn(() => Promise.resolve([event('older', 1, 'older'), event('newer', 2, 'newer')]))
     })
 
     await renderPage(root)

@@ -50,10 +50,11 @@ import {
   clearSuppressNextAutoReview
 } from '@/lib/acp/workspace-events'
 import type { UploadedAttachment } from '../../../../shared/uploads'
-import {
-  resolveEffectiveSpecialistSkills,
-  type CompletionHandoffLifecycleEvent
-} from '../../../../shared/specialist'
+import { resolveEffectiveSpecialistSkills } from '../../../../shared/specialist'
+import type {
+  HandoffLifecycleChange,
+  HandoffLifecycleEvent
+} from '../../../../shared/handoff-lifecycle'
 
 import { planComposerAttachmentIntake } from './composer-attachment-intake'
 import { stageComposerFile, type ComposerUploadTransfer } from './composer-upload-transfer'
@@ -116,17 +117,12 @@ type ComposerHistoryNavigation = {
 const getErrorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : String(error)
 
+// The lifecycle face orders by wall clock, then by the per-turn sequence the coordinator guarantees.
 const compareHandoffEventOrder = (
-  left: Pick<CompletionHandoffLifecycleEvent, 'commitOrder' | 'observedAt' | 'sequence' | 'id'>,
-  right: Pick<CompletionHandoffLifecycleEvent, 'commitOrder' | 'observedAt' | 'sequence' | 'id'>
+  left: Pick<HandoffLifecycleEvent, 'observedAt' | 'sequence' | 'id'>,
+  right: Pick<HandoffLifecycleEvent, 'observedAt' | 'sequence' | 'id'>
 ): number =>
-  (left.commitOrder !== undefined || right.commitOrder !== undefined
-    ? left.commitOrder === undefined
-      ? -1
-      : right.commitOrder === undefined
-        ? 1
-        : left.commitOrder - right.commitOrder
-    : left.observedAt - right.observedAt) ||
+  left.observedAt - right.observedAt ||
   left.sequence - right.sequence ||
   left.id.localeCompare(right.id)
 
@@ -2669,7 +2665,7 @@ const WorkspacePage = ({
   // the session store (and therefore the specialist menu) reflects the live identity. A completed
   // lifecycle replay uses the same path after the renderer reconnects.
   const syncCompletedHandoffSpecialist = useCallback(
-    (event: CompletionHandoffLifecycleEvent): void => {
+    (event: HandoffLifecycleEvent): void => {
       if (event.phase !== 'continuation-start' && event.phase !== 'continued') return
       const resolver = window.api?.specialist?.resolveSessionSpecialist
       if (!resolver) return
@@ -2691,8 +2687,9 @@ const WorkspacePage = ({
   )
 
   const applyHandoffLifecycleEvent = useCallback(
-    (event: CompletionHandoffLifecycleEvent): void => {
-      syncCompletedHandoffSpecialist(event)
+    (change: HandoffLifecycleChange): void => {
+      if (change.kind !== 'upsert') return
+      syncCompletedHandoffSpecialist(change.event)
     },
     [syncCompletedHandoffSpecialist]
   )
@@ -2700,22 +2697,22 @@ const WorkspacePage = ({
   // The renderer is a read-only lifecycle projection. Replay catches failures persisted before a
   // reload; subscription follows later transitions. Neither route grants execution authority.
   useEffect(() => {
-    const specialistApi = window.api?.specialist
-    if (!specialistApi?.onHandoffLifecycleEvent) return
-    return specialistApi.onHandoffLifecycleEvent(applyHandoffLifecycleEvent)
+    const handoffApi = window.api?.handoff
+    if (!handoffApi?.onChanged) return
+    return handoffApi.onChanged(applyHandoffLifecycleEvent)
   }, [applyHandoffLifecycleEvent])
 
   useEffect(() => {
-    const specialistApi = window.api?.specialist
-    if (!activeSessionId || !specialistApi?.getHandoffEvents) return
-    void specialistApi
-      .getHandoffEvents(activeSessionId)
+    const handoffApi = window.api?.handoff
+    if (!activeSessionId || !handoffApi?.list) return
+    void handoffApi
+      .list({ sessionId: activeSessionId })
       .then((events) => {
-        const latest = events.sort(compareHandoffEventOrder).at(-1)
-        if (latest) applyHandoffLifecycleEvent(latest)
+        const latest = [...events].sort(compareHandoffEventOrder).at(-1)
+        if (latest) syncCompletedHandoffSpecialist(latest)
       })
       .catch(() => undefined)
-  }, [activeSessionId, applyHandoffLifecycleEvent])
+  }, [activeSessionId, syncCompletedHandoffSpecialist])
 
   const toggleSidebarPanel = (): void => {
     setSidebarPanelState((state) => (state === 'collapsed' ? 'open' : 'collapsed'))
