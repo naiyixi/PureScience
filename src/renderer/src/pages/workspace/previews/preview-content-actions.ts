@@ -1,4 +1,14 @@
-import { BookMarked, ClipboardCopy, Crosshair, Dna, Download, FileUp, Table } from 'lucide-react'
+import {
+  BookMarked,
+  ClipboardCopy,
+  Crosshair,
+  Dna,
+  Download,
+  FileUp,
+  ListTree,
+  ShieldCheck,
+  Table
+} from 'lucide-react'
 
 import type { TranslationKey } from '@/i18n'
 
@@ -9,6 +19,8 @@ export const DIGITIZABLE_MEDIA = /\.(png|jpe?g|webp|tiff?|pdf)$/i
 export const OMICS_DATA_MEDIA = /\.(h5ad|vcf|vcf\.gz|vcf\.bgz)$/i
 // Table candidates come from the PDF's own text layer, so any PDF the app can register qualifies.
 export const PDF_TABLE_MEDIA = /\.pdf$/i
+// The same media, named for the actions that read the document's structure rather than its grids.
+export const PDF_DOCUMENT_MEDIA = /\.pdf$/i
 
 export type PreviewContentActionId =
   | 'copyPath'
@@ -18,6 +30,8 @@ export type PreviewContentActionId =
   | 'omicsPreview'
   | 'pdfReferenceImport'
   | 'pdfTables'
+  | 'pdfExplore'
+  | 'figureReview'
 
 export type PreviewContentAction = {
   id: PreviewContentActionId
@@ -36,6 +50,8 @@ export type PreviewContentActionHandlers = {
   omicsPreview?: () => void
   pdfReferenceImport?: () => void
   pdfTables?: () => void
+  pdfExplore?: () => void
+  figureReview?: () => void
 }
 
 // The single ordered source of what a preview can DO: the right-click menu and the toolbar both render this
@@ -69,6 +85,15 @@ export const buildPreviewContentActions = (
     }
   ]
 
+  if (handlers.figureReview && DIGITIZABLE_MEDIA.test(name)) {
+    actions.push({
+      id: 'figureReview',
+      labelKey: 'figureReview.title',
+      testId: 'preview-figure-review',
+      Icon: ShieldCheck,
+      run: handlers.figureReview
+    })
+  }
   if (handlers.digitizeFigure && DIGITIZABLE_MEDIA.test(name)) {
     actions.push({
       id: 'digitizeFigure',
@@ -94,6 +119,15 @@ export const buildPreviewContentActions = (
       testId: 'preview-pdf-reference-import',
       Icon: BookMarked,
       run: handlers.pdfReferenceImport
+    })
+  }
+  if (handlers.pdfExplore && PDF_DOCUMENT_MEDIA.test(name)) {
+    actions.push({
+      id: 'pdfExplore',
+      labelKey: 'pdf.explore.title',
+      testId: 'preview-pdf-explore',
+      Icon: ListTree,
+      run: handlers.pdfExplore
     })
   }
   if (handlers.pdfTables && PDF_TABLE_MEDIA.test(name)) {

@@ -15,6 +15,8 @@ import type { PanelImperativeHandle, PanelSize } from 'react-resizable-panels'
 import { dialogOverlayClassName, dialogPanelClassName } from '@/components/ui/dialog-chrome'
 import { ResizablePanel } from '@/components/ui/resizable'
 import { cn } from '@/lib/utils'
+import { FigureReviewPanel } from '@/components/figure/FigureReviewPanel'
+import { PdfExplorePanel } from '@/components/pdf/PdfExplorePanel'
 import { PdfTablePanel } from '@/components/pdf/PdfTablePanel'
 import { ReferenceImportPanel } from '@/components/pdf/ReferenceImportPanel'
 import type {
@@ -250,6 +252,8 @@ export const PreviewContentContextMenu = ({
   onStartDigitization,
   onStartOmicsPreview,
   onStartTableExtraction,
+  onStartPdfExplore,
+  onStartFigureReview,
   onStartReferenceImport,
   returnFocusTo
 }: {
@@ -261,6 +265,8 @@ export const PreviewContentContextMenu = ({
   onStartDigitization?: (item: PreviewItem) => void
   onStartOmicsPreview?: (item: PreviewItem) => void
   onStartTableExtraction?: (item: PreviewItem) => void
+  onStartPdfExplore?: (item: PreviewItem) => void
+  onStartFigureReview?: (item: PreviewItem) => void
   /** Imports the references a PDF cites, by reading the identifiers off its pages (3.4). */
   onStartReferenceImport?: (item: PreviewItem) => void
   /** Element to hand focus back to when the menu closes (the surface it was opened from). */
@@ -319,7 +325,9 @@ export const PreviewContentContextMenu = ({
     digitizeFigure: onStartDigitization ? () => onStartDigitization(item) : undefined,
     omicsPreview: onStartOmicsPreview ? () => onStartOmicsPreview(item) : undefined,
     pdfReferenceImport: onStartReferenceImport ? () => onStartReferenceImport(item) : undefined,
-    pdfTables: onStartTableExtraction ? () => onStartTableExtraction(item) : undefined
+    pdfTables: onStartTableExtraction ? () => onStartTableExtraction(item) : undefined,
+    pdfExplore: onStartPdfExplore ? () => onStartPdfExplore(item) : undefined,
+    figureReview: onStartFigureReview ? () => onStartFigureReview(item) : undefined
   })
 
   return (
@@ -659,6 +667,8 @@ const PreviewFilePanel = ({
   const [digitizeItem, setDigitizeItem] = useState<PreviewItem | null>(null)
   const [omicsItem, setOmicsItem] = useState<PreviewItem | null>(null)
   const [tableItem, setTableItem] = useState<PreviewItem | null>(null)
+  const [exploreItem, setExploreItem] = useState<PreviewItem | null>(null)
+  const [figureReviewItem, setFigureReviewItem] = useState<PreviewItem | null>(null)
   const [referenceImportItem, setReferenceImportItem] = useState<PreviewItem | null>(null)
   const activeProjectId = useNavigationStore((state) => state.activeProjectId)
   const surfaceRef = useRef<HTMLElement | null>(null)
@@ -679,8 +689,16 @@ const PreviewFilePanel = ({
         sourcePath: item.path,
         projectId: activeProjectId
       }),
+    figureReview:
+      typeof window.api?.figure?.review === 'function'
+        ? () => setFigureReviewItem(item)
+        : undefined,
     digitizeFigure: () => setDigitizeItem(item),
     omicsPreview: () => setOmicsItem(item),
+    pdfExplore:
+      activeProjectId && typeof window.api?.pdf?.outline === 'function'
+        ? () => setExploreItem(item)
+        : undefined,
     pdfTables:
       activeProjectId && typeof window.api?.pdf?.pages === 'function'
         ? () => setTableItem(item)
@@ -773,7 +791,11 @@ const PreviewFilePanel = ({
           onStartDigitization={(target) => setDigitizeItem(target)}
           onStartOmicsPreview={(target) => setOmicsItem(target)}
           {...(activeProjectId && typeof window.api?.pdf?.pages === 'function'
-            ? { onStartTableExtraction: (target: PreviewItem) => setTableItem(target) }
+            ? {
+                onStartTableExtraction: (target: PreviewItem) => setTableItem(target),
+                onStartPdfExplore: (target: PreviewItem) => setExploreItem(target),
+                onStartFigureReview: (target: PreviewItem) => setFigureReviewItem(target)
+              }
             : {})}
           {...(activeProjectId && typeof window.api?.references?.importDoisFromPdf === 'function'
             ? { onStartReferenceImport: (target: PreviewItem) => setReferenceImportItem(target) }
@@ -801,6 +823,25 @@ const PreviewFilePanel = ({
             sourcePath={tableItem.path ?? tableItem.title}
             sourceSessionId={tableItem.sessionId}
             onClose={() => setTableItem(null)}
+          />
+        </div>
+      ) : null}
+      {figureReviewItem && figureReviewItem.type === 'file' && activeProjectId ? (
+        <div className="absolute inset-x-3 bottom-3 z-[80] max-h-[70%] overflow-y-auto rounded-lg bg-bg-000 shadow-card">
+          <FigureReviewPanel
+            projectId={activeProjectId}
+            sourceName={figureReviewItem.path ?? figureReviewItem.title}
+            onClose={() => setFigureReviewItem(null)}
+          />
+        </div>
+      ) : null}
+      {exploreItem && exploreItem.type === 'file' && activeProjectId ? (
+        <div className="absolute inset-x-3 bottom-3 z-[80] max-h-[70%] overflow-y-auto rounded-lg bg-bg-000 shadow-card">
+          <PdfExplorePanel
+            projectId={activeProjectId}
+            sourcePath={exploreItem.path ?? exploreItem.title}
+            sourceSessionId={exploreItem.sessionId}
+            onClose={() => setExploreItem(null)}
           />
         </div>
       ) : null}

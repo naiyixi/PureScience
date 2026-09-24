@@ -13,7 +13,9 @@ const handlers = (): Parameters<typeof buildPreviewContentActions>[1] => ({
   digitizeFigure: vi.fn(),
   omicsPreview: vi.fn(),
   pdfReferenceImport: vi.fn(),
-  pdfTables: vi.fn()
+  pdfTables: vi.fn(),
+  pdfExplore: vi.fn(),
+  figureReview: vi.fn()
 })
 
 const ids = (
@@ -28,13 +30,21 @@ describe('preview content actions', () => {
   })
 
   it('offers figure digitization for images and PDFs, and the PDF-only actions for PDFs', () => {
-    expect(ids('figure.png')).toEqual(['copyPath', 'download', 'saveAsArtifact', 'digitizeFigure'])
+    expect(ids('figure.png')).toEqual([
+      'copyPath',
+      'download',
+      'saveAsArtifact',
+      'figureReview',
+      'digitizeFigure'
+    ])
     expect(ids('paper.PDF')).toEqual([
       'copyPath',
       'download',
       'saveAsArtifact',
+      'figureReview',
       'digitizeFigure',
       'pdfReferenceImport',
+      'pdfExplore',
       'pdfTables'
     ])
   })
@@ -46,7 +56,24 @@ describe('preview content actions', () => {
     expect(ids('paper.pdf')).not.toContain('omicsPreview')
   })
 
-  it('drops an action whose capability the surface was not given', () => {
+  it('offers the document-structure action for PDFs only, when the capability is provided', () => {
+    expect(ids('paper.pdf')).toContain('pdfExplore')
+    expect(ids('figure.png')).not.toContain('pdfExplore')
+    expect(ids('paper.pdf', { pdfExplore: undefined })).not.toContain('pdfExplore')
+    // Same media as table extraction, and both come from the document itself.
+    expect(ids('paper.pdf')).toEqual([
+      'copyPath',
+      'download',
+      'saveAsArtifact',
+      'figureReview',
+      'digitizeFigure',
+      'pdfReferenceImport',
+      'pdfExplore',
+      'pdfTables'
+    ])
+  })
+
+  it('drops an action whose capability was not provided', () => {
     expect(ids('paper.pdf', { pdfTables: undefined })).not.toContain('pdfTables')
     expect(ids('paper.pdf', { pdfReferenceImport: undefined })).not.toContain('pdfReferenceImport')
     // A missing capability must not leak the action onto media the capability would not apply to either.

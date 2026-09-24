@@ -192,6 +192,24 @@
 
 **建议 A**，并在实现时把 `figure-to-data.test.ts:92-107`、`FigureDigitizePanel.render.test.tsx:105-106`、`FigurePickOverlay.render.test.tsx:118-119` 的中文断言一并改为英文断言。**未拍板前不动代码**。
 
+### 批次 4 进行中记录
+
+**U19 ✅ 完成（真机 `1 passed (8.5s)`）— PDF 目录与图表升为可见入口**
+
+- **缺口**：`pdf:outline` 与 `pdf:figures` 自 PDF 阅读器落地起**在渲染层零调用点**（`grep 'api\.pdf\.' src/renderer/src` 当时 0 命中），于是读者看不到论文有目录，也事先不知道哪几页有图。`pdf-ipc.ts:1-2` 的注释自陈 "used by future UI"——即本单元。
+- **做法**：新增 `components/pdf/PdfExplorePanel.tsx`，读**与 agent 同一条通道**（`pdf.open` → `outline` + `figures`，并发取），渲染文档自身的书签树（按文档层级缩进、附自身页码）与按页分组的图表（尺寸、图注、`captionSource: none` 时明说、逐条 warnings）。不作跳跃导航：本仓没有页视图面，书签行就是结构信息而不是一个点了没反应的按钮。
+- **如实交代扫描范围**：扫描页数、因过小被丢弃的处数（`skippedSmall`）、文档未配图注的张数（`withoutCaption`）都显示；空图列表**必须与扫描页数同时出现**，禁止单摆一个空列表。
+- **入口**：`pdfExplore` 进 U16 的单一来源动作集（`PDF_DOCUMENT_MEDIA` 门控 + `window.api.pdf.outline` 能力在场判断），右键菜单与工具栏同时获得，宿主与表格面板同构。
+- **测试**：`preview-content-actions.test.ts`（含 PDF-only 与「能力缺失即不出现」）· `PdfExplorePanel.render.test.tsx` 5（文档自身页码 / 层级缩进 / 无图注明说 / 空列表带扫描页数 / 通道缺失说不可用）· 真机 `e2e/certification/pdf-structure-panel.spec.ts` 1。
+
+**U20 ✅ 完成（图核验建入口；宿主 SQL 按 P-b 默认建议归档 agent-only，待你追认）**
+
+- **缺口**：`figure:review`（发表级正确性清单，七条规则：#1 排除行不得混入汇总、#2 轴/系列标签与密度、#3 同类别同色且调色板可辨、#4 图形类型贴合数据形状、#5 渲染并目视、#6 对数轴刻度合理性、#7 图与脚本双产物 + 最小字号）只有 agent 的工具能跑。
+- **做法**：新增 `components/figure/FigureReviewPanel.tsx`。规则引擎要的是**申报**，所以面板只放读者从图上能看见的字段（图形类型、数据结构四选、系列数、标签数、最小字号、对数轴刻度、是否已渲染、图/脚本路径），**未申报的字段不发**（引擎按未申报处理），并在界面上写明「排除行是否混入汇总统计只能由出图方申报，此处报『无违规』不覆盖该规则」——不让「绿」被读成「数据已核」。
+- **入口**：`figureReview` 进同一动作集（`DIGITIZABLE_MEDIA` 门控 + `window.api.figure.review` 在场判断）。
+- **测试**：`FigureReviewPanel.render.test.tsx` 4（**请求断言**：只发读者给的值、`excludedRows`/`summaryUsedExcluded`/路径一律 undefined；引擎 findings 带自身 rule/severity；clean 只覆盖已申报；通道缺失说不可用）· 真机 `e2e/certification/figure-review-panel.spec.ts`（9 系列 → `color-threading`/error；2 系列 + 已渲染 → 同引擎 clean）；9 语 +23 键。
+- **待办**：真机跑一次（等放行）；宿主 SQL `query:run` 的归档结论待你追认后落审计文档。
+
 ## 批次 5（v1.74.0）防复发门禁
 
 | 单元 | 内容                                                                                                     | 验收                                            |
