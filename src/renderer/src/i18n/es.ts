@@ -2885,6 +2885,12 @@ export const es: Partial<Record<ZhKey, string>> = {
   'ws.notebookControl': 'Control del cuaderno',
   'ws.notebookHydrationFailed': 'Falló la hidratación de la referencia del cuaderno',
   'ws.notebookStale': 'desactualizado',
+  'ws.notebookRunCellAgain': 'Ejecutar esta celda',
+  'ws.notebookRunCellBlockedBusy': 'Ya hay una ejecución en curso; espera a que termine',
+  'ws.notebookRunCellBlockedWriting':
+    'El agente aún está escribiendo código en esta celda; ejecutarla ahora entrelazaría ambos',
+  'ws.notebookRunCellBlockedProvisioning': 'El entorno todavía se está preparando',
+  'ws.notebookRerunDone': 'Celda reejecutada · {status}',
   'ws.notebookVariables': 'Variables',
   'ws.notebookVariablesCount': 'variables',
   'ws.notebookVariablesEmpty': 'No hay variables en el espacio de nombres todavía',

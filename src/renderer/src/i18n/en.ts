@@ -521,6 +521,12 @@ export const en: Record<ZhKey, string> = {
   'ws.notebookVariablesRefresh': 'Refresh',
   'ws.notebookVariablesRefreshing': 'Refreshing…',
   'ws.notebookStale': 'stale',
+  'ws.notebookRunCellAgain': 'Run this cell',
+  'ws.notebookRunCellBlockedBusy': 'A run is already in flight — wait for it to finish',
+  'ws.notebookRunCellBlockedWriting':
+    'The agent is still streaming code into this cell — running it now would interleave the two',
+  'ws.notebookRunCellBlockedProvisioning': 'The environment is still being prepared',
+  'ws.notebookRerunDone': 'Re-ran this cell · {status}',
   'settings.marketplaceInstalled': 'Marketplace',
   'settings.marketplaceFilter': 'Marketplace',
   'settings.marketplaceGovernedNotice':

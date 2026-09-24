@@ -498,6 +498,11 @@ export const zh = {
   'ws.notebookVariablesRefresh': '刷新',
   'ws.notebookVariablesRefreshing': '刷新中…',
   'ws.notebookStale': '已过期',
+  'ws.notebookRunCellAgain': '运行这一格',
+  'ws.notebookRunCellBlockedBusy': '已有一次运行在进行，等它结束再重跑',
+  'ws.notebookRunCellBlockedWriting': 'agent 还在往这一格写代码，现在运行会把两段代码交错',
+  'ws.notebookRunCellBlockedProvisioning': '环境仍在准备中',
+  'ws.notebookRerunDone': '已重跑这一格 · {status}',
   'settings.marketplaceInstalled': '市场安装',
   'settings.marketplaceFilter': '市场',
   'settings.marketplaceGovernedNotice':

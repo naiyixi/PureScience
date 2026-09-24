@@ -2917,6 +2917,13 @@ export const de: Partial<Record<ZhKey, string>> = {
   'ws.notebookControl': 'Notebook-Steuerung',
   'ws.notebookHydrationFailed': 'Notebook-Referenz-Hydrierung fehlgeschlagen',
   'ws.notebookStale': 'veraltet',
+  'ws.notebookRunCellAgain': 'Diese Zelle ausführen',
+  'ws.notebookRunCellBlockedBusy':
+    'Es läuft bereits eine Ausführung — warten Sie, bis sie beendet ist',
+  'ws.notebookRunCellBlockedWriting':
+    'Der Agent schreibt noch Code in diese Zelle — ein Start jetzt würde beide Ströme verschränken',
+  'ws.notebookRunCellBlockedProvisioning': 'Die Umgebung wird noch vorbereitet',
+  'ws.notebookRerunDone': 'Zelle erneut ausgeführt · {status}',
   'ws.notebookVariables': 'Variablen',
   'ws.notebookVariablesCount': 'Variablen',
   'ws.notebookVariablesEmpty': 'Noch keine Variablen im Namensraum',

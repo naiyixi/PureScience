@@ -2842,6 +2842,12 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'ws.notebookControl': 'Управление Notebook',
   'ws.notebookHydrationFailed': 'Не удалось восстановить ссылку на Notebook',
   'ws.notebookStale': 'устарел',
+  'ws.notebookRunCellAgain': 'Запустить эту ячейку',
+  'ws.notebookRunCellBlockedBusy': 'Запуск уже идёт — дождитесь его завершения',
+  'ws.notebookRunCellBlockedWriting':
+    'Агент ещё пишет код в эту ячейку — запуск сейчас перемешает два потока',
+  'ws.notebookRunCellBlockedProvisioning': 'Среда ещё готовится',
+  'ws.notebookRerunDone': 'Ячейка запущена повторно · {status}',
   'ws.notebookVariables': 'Переменные',
   'ws.notebookVariablesCount': 'переменных',
   'ws.notebookVariablesEmpty': 'В пространстве имён пока нет переменных',

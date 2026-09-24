@@ -2841,6 +2841,12 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'ws.notebookControl': 'Notebook コントロール',
   'ws.notebookHydrationFailed': 'Notebook 参照のハイドレーションに失敗しました',
   'ws.notebookStale': '古い',
+  'ws.notebookRunCellAgain': 'このセルを実行',
+  'ws.notebookRunCellBlockedBusy': 'すでに実行中です。終わるまでお待ちください',
+  'ws.notebookRunCellBlockedWriting':
+    'agent がこのセルにコードを書き込み中です。今実行すると 2 つのコードが混ざります',
+  'ws.notebookRunCellBlockedProvisioning': '環境を準備しています',
+  'ws.notebookRerunDone': 'このセルを再実行しました · {status}',
   'ws.notebookVariables': '変数',
   'ws.notebookVariablesCount': '個の変数',
   'ws.notebookVariablesEmpty': '名前空間にまだ変数がありません',

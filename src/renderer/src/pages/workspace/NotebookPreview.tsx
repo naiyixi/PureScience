@@ -183,11 +183,18 @@ const getRunOutputText = (run: NotebookRunRecord | undefined): string => {
 const NotebookRunCell = ({
   run,
   index,
-  isStale = false
+  isStale = false,
+  onRunAgain,
+  runAgainBlockedReason
 }: {
   run: NotebookRunRecord
   index: number
   isStale?: boolean
+  // Runs this cell again through the same interpreter the agent uses. Absent when the pane is not
+  // allowed to drive the notebook at all (for example while an environment is still provisioning).
+  onRunAgain?: (run: NotebookRunRecord) => void
+  // Why the control is unavailable right now, shown on the row instead of leaving a dead button.
+  runAgainBlockedReason?: string
 }): React.JSX.Element => {
   const { t } = useLanguage()
   const isProblem = isProblemRunStatus(run.status)
@@ -222,12 +229,32 @@ const NotebookRunCell = ({
             )
           ) : null}
         </div>
-        {originLabel ? (
-          <span className="font-mono text-text-300" data-testid="notebook-cell-origin">
-            {originLabel}
-          </span>
-        ) : null}
+        <div className="flex shrink-0 items-center gap-2">
+          {originLabel ? (
+            <span className="font-mono text-text-300" data-testid="notebook-cell-origin">
+              {originLabel}
+            </span>
+          ) : null}
+          {onRunAgain ? (
+            <button
+              aria-label={runAgainBlockedReason ?? t('ws.notebookRunCellAgain')}
+              className="rounded border border-border-200 px-1.5 py-0.5 font-medium text-text-200 transition-colors hover:bg-bg-300 disabled:cursor-not-allowed disabled:opacity-50"
+              data-testid="notebook-cell-rerun"
+              disabled={runAgainBlockedReason !== undefined}
+              onClick={() => onRunAgain(run)}
+              title={runAgainBlockedReason ?? t('ws.notebookRunCellAgain')}
+              type="button"
+            >
+              {t('ws.notebookRunCellAgain')}
+            </button>
+          ) : null}
+        </div>
       </div>
+      {runAgainBlockedReason ? (
+        <p className="mb-2 text-[11px] text-text-300" data-testid="notebook-cell-rerun-blocked">
+          {runAgainBlockedReason}
+        </p>
+      ) : null}
       <NotebookInputDataStrip
         inputFiles={run.inputFiles ?? []}
         className="mb-2 rounded-md border border-border-100 bg-bg-100 px-2 py-1.5"
@@ -407,6 +434,9 @@ const NotebookPreview = ({ item }: NotebookPreviewProps): React.JSX.Element => {
   const [isLoading, setIsLoading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
+  // One-line receipt for a cell the user re-ran, so the outcome is attributable to their action even
+  // when they are not watching the run list.
+  const [rerunNotice, setRerunNotice] = useState<string | null>(null)
   const [isRestarting, setIsRestarting] = useState(false)
   const [activeKind, setActiveKind] = useState<NotebookKernelKind>('python')
   // Selected environment within the active python/r pane; undefined lets the effective-env
@@ -554,6 +584,46 @@ const NotebookPreview = ({ item }: NotebookPreviewProps): React.JSX.Element => {
   const isNotebookBusy = isSubmitting || Boolean(notebookState?.activeRunId)
   const isTerminalLocked =
     isLoading || isSubmitting || isAgentWriting || Boolean(notebookState?.activeRunId) || gated
+  // Runs one existing cell through the interpreter. The agent uses the same command (notebook:run-cell)
+  // to re-run its own cells; until now nothing in the window could, so a stale cell was a dead end in
+  // the UI even though the capability existed.
+  const rerunCell = async (run: NotebookRunRecord): Promise<void> => {
+    if (isNotebookBusy || (isAgentWriting && notebookState?.activeWrite?.cellId === run.cellId)) {
+      return
+    }
+
+    setActionError(null)
+    setRerunNotice(null)
+
+    const environment = resolveRunEnvironment(run)
+
+    try {
+      const summary = await window.api.notebook.runCell({
+        ...createNotebookRequest(item.notebook),
+        cellId: run.cellId,
+        source: 'user',
+        ...(environment ? { environment } : {})
+      })
+
+      setRerunNotice(t('ws.notebookRerunDone').replace('{status}', summary.status) as string)
+      await loadNotebookState()
+    } catch (error) {
+      setActionError(getErrorMessage(error))
+    }
+  }
+
+  // Why a row cannot be re-run; undefined means the control is live. Reasons are concrete rather than a
+  // blanket disable: a run in flight (any kernel) or the agent still streaming code into that very cell.
+  const rerunBlockedReasonFor = (run: NotebookRunRecord): string | undefined => {
+    if (gated) return t('ws.notebookRunCellBlockedProvisioning')
+    if (isNotebookBusy) return t('ws.notebookRunCellBlockedBusy')
+    if (isAgentWriting && notebookState?.activeWrite?.cellId === run.cellId) {
+      return t('ws.notebookRunCellBlockedWriting')
+    }
+
+    return undefined
+  }
+
   const runs = notebookState?.runs ?? notebookState?.recentRuns ?? []
 
   // Surface a tab only for kernel kinds that actually produced a run — no default python/r tabs on a
@@ -794,6 +864,8 @@ const NotebookPreview = ({ item }: NotebookPreviewProps): React.JSX.Element => {
                     run={run}
                     index={index}
                     isStale={staleRunIds.has(run.runId)}
+                    onRunAgain={rerunCell}
+                    runAgainBlockedReason={rerunBlockedReasonFor(run)}
                   />
                 ))}
               </div>
@@ -817,6 +889,14 @@ const NotebookPreview = ({ item }: NotebookPreviewProps): React.JSX.Element => {
             {actionError ? (
               <div className="border-b border-border-100/60 px-3 py-2 font-mono text-xs text-danger-000">
                 {actionError}
+              </div>
+            ) : null}
+            {rerunNotice ? (
+              <div
+                className="border-b border-border-100/60 px-3 py-2 font-mono text-xs text-text-300"
+                data-testid="notebook-rerun-summary"
+              >
+                {rerunNotice}
               </div>
             ) : null}
             <TerminalScrollback runs={runs} />

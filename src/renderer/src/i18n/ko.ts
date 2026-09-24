@@ -2781,6 +2781,12 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'ws.notebookControl': '노트북 컨트롤',
   'ws.notebookHydrationFailed': '노트북 참조 하이드레이션 실패',
   'ws.notebookStale': '오래됨',
+  'ws.notebookRunCellAgain': '이 셀 실행',
+  'ws.notebookRunCellBlockedBusy': '이미 실행 중입니다. 끝난 뒤 다시 실행하세요',
+  'ws.notebookRunCellBlockedWriting':
+    'agent가 이 셀에 코드를 쓰는 중입니다. 지금 실행하면 두 코드가 섞입니다',
+  'ws.notebookRunCellBlockedProvisioning': '환경을 준비하는 중입니다',
+  'ws.notebookRerunDone': '이 셀을 다시 실행했습니다 · {status}',
   'ws.notebookVariables': '변수',
   'ws.notebookVariablesCount': '변수',
   'ws.notebookVariablesEmpty': '네임스페이스에 변수가 없습니다',
