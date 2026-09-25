@@ -497,6 +497,10 @@ const WorkspaceMessageScrollerImpl = ({
     new Map<string, { deps: readonly unknown[]; value: EditableWorkspaceMessageItemProps }>()
   )
   const previousRevisionsRef = useRef<Map<string, GraphMessage[]>>(undefined)
+  // Read during render on purpose: the ref only ever holds the PREVIOUS grouping, and passing it in is
+  // what keeps item/revision identities stable across streaming deltas (see stable-identity.ts). The
+  // effect below is the only writer.
+  // eslint-disable-next-line react-hooks/refs -- intentional previous-value read, updated in an effect
   const revisionsByRootMessageId = useMemo(() => {
     const grouped = groupRevisionsByRoot(
       activeSession?.conversationGraph?.messages ?? [],

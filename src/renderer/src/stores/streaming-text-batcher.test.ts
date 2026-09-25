@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest'
 
 import { createStreamingTextBatcher } from './streaming-text-batcher'
 
-const createHarness = (flushMs = 50) => {
+type BatcherHarness = {
+  batcher: ReturnType<typeof createStreamingTextBatcher>
+  flushes: { messageId: string; text: string }[]
+  scheduled: { callback: () => void; delayMs: number }[]
+}
+
+const createHarness = (flushMs = 50): BatcherHarness => {
   const flushes: { messageId: string; text: string }[] = []
   const scheduled: { callback: () => void; delayMs: number }[] = []
   const batcher = createStreamingTextBatcher({

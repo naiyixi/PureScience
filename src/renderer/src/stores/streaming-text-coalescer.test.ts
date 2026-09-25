@@ -2,7 +2,13 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { createTextCoalescer } from './streaming-text-coalescer'
 
-const createHarness = (flushMs = 50) => {
+type CoalescerHarness = {
+  coalescer: ReturnType<typeof createTextCoalescer>
+  flushes: string[]
+  scheduled: { callback: () => void; delayMs: number }[]
+}
+
+const createHarness = (flushMs = 50): CoalescerHarness => {
   const flushes: string[] = []
   const scheduled: { callback: () => void; delayMs: number }[] = []
   const coalescer = createTextCoalescer({
