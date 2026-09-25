@@ -705,3 +705,22 @@
 - 关键点：合批**必须连 eventIds 一起合**——只传最新 id 会让重放把中间那段文本再追加一次。已由 5 条单测钉住（含「整批已应用 ⇒ 不重复追加」）。
 
 **剩下最后一步**：把 `lib/acp/workspace-events.ts:554` 那处唯一的调用点改成「文本按窗口合批 + 非文本事件前先 settle + 回合结束 settle」，然后跑 `PERF_TURNS=45` 对照（基线 `task=5699ms / 126.6ms 每轮`）与真机确认。
+
+### U33 接线第一次实测（收益被证实，接线本身踩到截断/重发 bug ⇒ 已回退）
+
+**收益（真机 45 轮，同一仪器口径）**
+
+| 指标                | 基线（合批前）        | 接线后                    | 变化      |
+| ------------------- | --------------------- | ------------------------- | --------- |
+| 主线程 task         | 5699ms / 126.6ms 每轮 | **5184ms / 115.2ms 每轮** | **-9%**   |
+| 脚本时间            | — / 83.5ms 每轮       | — / **74.1ms 每轮**       | **-11%**  |
+| 流式期 >50ms 长任务 | 3–5 条                | **1 条**                  | -60%~-80% |
+| 帧 p95 / 最大       | 18 / 51ms             | 18 / 51ms                 | 持平      |
+
+⇒ **合批方向被实测证实**（写入侧降压确实吃掉了主线程任务量），这也是本轮唯一一次对「随会话长度增长的总工作量」给出可复现下降。
+
+**但接线不可直接上线 —— 踩到真 bug**：`truncate-and-resend`（编辑重发）之后，**旧流缓冲的文本仍会落地**，把已被截断的 agent 消息复活（证据：`useWorkspaceAgentRuntime.test.ts:4759`「grows an agent bubble from streamed reply events after the truncate-and-resend」与 `useWorkspaceAgentRuntime.first-output.render.test.tsx` 各 1 条红）。
+
+**修法（已定）**：截断/重发与 `discard`/`removeMessage` 路径上，必须 `workspaceTextBatcher.discard(streamId)` 并清掉 `bufferedChunkIds` 同步项；工具活动/`finishRun`/`failRun`/取消前的 `settleAll` 规则（本次已实现并验证有效）保留。
+
+**处置**：接线已回退（`git checkout`），只留三件建筑块（合批器 / 批次管理器 / 整批 eventIds + 5 单测）；回退后 `lib/acp + stores` **751 passed**、工作树干净。下一次接线带上 discard 规则再测同一组数字。
