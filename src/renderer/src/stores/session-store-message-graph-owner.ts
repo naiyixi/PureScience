@@ -1,5 +1,7 @@
 import type { StoreApi } from 'zustand'
 
+import { discardStreamedAgentText } from './streamed-agent-text'
+
 import {
   activateConversationBranch,
   forkEditedConversationMessage,
@@ -548,6 +550,12 @@ export const createSessionMessageGraphOwner = <
 
             const cutMessage = session.messages[cutIndex]
             const removed = session.messages.slice(cutIndex)
+            // Streamed text that was still buffered for a cut message must be dropped, not written: writing
+            // it would resurrect the very message the user just edited away. Idempotent, so running the
+            // updater twice is harmless.
+            removed.forEach((message) => {
+              if (message.streamId) discardStreamedAgentText(message.streamId)
+            })
             const hasFiles = removed.some(
               (message) =>
                 (message.uploads?.length ?? 0) > 0 || (message.artifactIds?.length ?? 0) > 0

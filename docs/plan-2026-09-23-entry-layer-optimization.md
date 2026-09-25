@@ -724,3 +724,18 @@
 **修法（已定）**：截断/重发与 `discard`/`removeMessage` 路径上，必须 `workspaceTextBatcher.discard(streamId)` 并清掉 `bufferedChunkIds` 同步项；工具活动/`finishRun`/`failRun`/取消前的 `settleAll` 规则（本次已实现并验证有效）保留。
 
 **处置**：接线已回退（`git checkout`），只留三件建筑块（合批器 / 批次管理器 / 整批 eventIds + 5 单测）；回退后 `lib/acp + stores` **751 passed**、工作树干净。下一次接线带上 discard 规则再测同一组数字。
+
+### U33 第 4 件：批次宿主与截断守卫（生产侧仍未接线）
+
+落地 `src/renderer/src/stores/streamed-agent-text.ts`：
+
+- **批次宿主放在 stores 层**（不是 ACP 事件层），因为两侧必须对同一份缓冲达成一致：生产者（事件桥）写入，而**会话 store 自己在截断时必须丢弃**——缓冲若活过截断，就会把用户刚编辑掉的 agent 消息复活。
+- 写入路径用 **sink 注入**而非 import：该模块若有消费者是 store，自己再 import store 会成环。
+- `session-store-message-graph-owner.ts` 的 `truncateSessionFromMessage` 现在对被切掉的每条消息 `discardStreamedAgentText(message.streamId)`（覆盖首轮实测踩到的 truncate-and-resend bug）。
+- **状态：生产侧尚未接线**（`workspace-events.ts` 未调用它），因此当前行为零变化；`lib/acp + stores` **751 passed**。
+
+### U33 未解问题（下一轮第一件）
+
+接线本身已实测有收益（task −9%、峰值长任务 5→1），但**接线版的测试时钟不成立**：接上之后，`workspace-events.test.ts` 里第二条 delta 的 flush **不触发**。两次探针结论：`[append] event-1 Hel` / `[flush] Hel ['event-1']` / `[append] event-2 lo` —— **第二次没有任何 flush**，且第一条的 flush 来自第二个文本分支里的 `settle`（不是定时器回调），换 `advanceTimersByTimeAsync` 无改善。⇒ 即「合批器的调度在 vitest fake timers 下不被推进」这一交互未查明（同一现象很可能也是 `useWorkspaceAgentRuntime` 两条用例红的根因之一）。
+
+**下一轮做法**：先在单测里直接验证「`createStreamingTextBatcher` 在 fake timers 下能按时 flush」（不经过事件层），据结果二选一：修调度（例如让调度可注入、测试注入 fake 计时器）或改测试驱动方式（改用真实时钟 + 等待）。**在此之前不动 `workspace-events.ts`。**
