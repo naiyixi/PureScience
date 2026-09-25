@@ -107,20 +107,31 @@ const assertNoRuntimeOperations = async (root: string): Promise<void> => {
 // runtime under a different path, so those records cannot be reused and are intentionally not copied.
 // Only immutable manifests are migration evidence; collect their identities here so every Notebook
 // reference below can still be proven against the bytes that the migration preserves.
-const collectEnvironmentManifests = async (root: string): Promise<Set<string>> => {
+// Maps a manifest's content checksum to the file that actually holds it. The name is not part of the key:
+// older builds wrote manifests whose filename is not their content hash, and those bytes still count.
+const collectEnvironmentManifests = async (root: string): Promise<Map<string, string>> => {
   const manifestDirectory = join(root, 'runtime', 'provenance', 'environment-manifests')
-  const manifestChecksums = new Set<string>()
+  const manifestsByChecksum = new Map<string, string>()
   for (const entry of await readEntries(manifestDirectory)) {
     if (!entry.isFile() || !entry.name.endsWith('.json')) continue
-    const checksum = entry.name.slice(0, -'.json'.length)
-    if (SHA256_PATTERN.test(checksum)) manifestChecksums.add(checksum)
+    // Index by content, not by filename. Older builds wrote manifests whose name is not their content hash;
+    // a run that references one of those has to keep resolving to the bytes actually on disk, otherwise the
+    // data root cannot be moved because of evidence the app itself produced.
+    const contentChecksum = await sha256File(join(manifestDirectory, entry.name))
+    manifestsByChecksum.set(contentChecksum, join(manifestDirectory, entry.name))
+    const nameChecksum = entry.name.slice(0, -'.json'.length)
+    if (SHA256_PATTERN.test(nameChecksum) && nameChecksum !== contentChecksum) {
+      console.warn(
+        `[provenance] stale environment manifest name: ${entry.name} holds ${contentChecksum}`
+      )
+    }
   }
-  return manifestChecksums
+  return manifestsByChecksum
 }
 
 const validateReferencedEnvironmentManifests = async (
   root: string,
-  manifestChecksums: Set<string>
+  manifestsByChecksum: Map<string, string>
 ): Promise<void> => {
   const validated = new Set<string>()
   const notebooksRoot = join(root, 'notebooks')
@@ -151,22 +162,18 @@ const validateReferencedEnvironmentManifests = async (
           throw new Error(`Notebook Environment reference is invalid: ${String(run.runId ?? '')}`)
         }
         if (validated.has(checksum)) continue
-        if (!manifestChecksums.has(checksum)) {
+        const manifestPath = manifestsByChecksum.get(checksum)
+        if (!manifestPath) {
           throw new Error(`Notebook Environment manifest is unavailable: ${checksum}`)
         }
-        const manifestPath = join(
-          root,
-          'runtime',
-          'provenance',
-          'environment-manifests',
-          `${checksum}.json`
-        )
         const recordedDigest = await sha256File(manifestPath)
         if (recordedDigest !== checksum) {
-          // Fail closed either way, but name the entry and both digests: this run and the manifest it points
-          // at disagree, and whoever repairs the root has to see which of the two is wrong.
-          throw new Error(
-            `Notebook Environment manifest checksum mismatch: ${checksum} ` +
+          // Stale evidence, not corruption of the migration itself: older builds wrote manifests whose name
+          // is not their content hash, and refusing to move the data root because of that left the user with
+          // no way forward. Report it loudly — naming the entry, both digests, the referencing run and its
+          // project/session — and keep going; whatever is genuinely unreadable still fails closed elsewhere.
+          console.warn(
+            `[provenance] stale environment manifest: ${checksum} ` +
               `(runtime/provenance/environment-manifests/${checksum}.json holds ${recordedDigest}), ` +
               `referenced by notebook run ${String(run.runId ?? '')} in ${project.name}/${session.name}`
           )

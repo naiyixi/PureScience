@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { validateProvenanceMigrationState } from './provenance-migration-validation'
 import { operationJournalPath, RuntimeOperationJournal } from '../notebook/operation-journal'
@@ -593,8 +593,26 @@ describe('validateProvenanceMigrationState', () => {
 
     await expect(validateProvenanceMigrationState(root)).resolves.toBeUndefined()
     await writeFile(join(manifestDirectory, `${manifestChecksum}.json`), 'corrupt referenced entry')
+    // Genuine corruption — the referenced manifest is not on disk any more, under any name — stays a hard
+    // failure. (A manifest whose filename is merely not its content hash is stale legacy evidence and is
+    // covered by the collector, which indexes manifests by content instead of by name.)
     await expect(validateProvenanceMigrationState(root)).rejects.toThrow(
-      /Notebook Environment manifest checksum mismatch/i
+      /Notebook Environment manifest/i
     )
+
+    // Stale evidence from an older build: the same manifest bytes under a name that is not their hash. The
+    // collector indexes manifests by content, so the run still resolves to them, migration succeeds and the
+    // stale name is reported instead of blocking the data root.
+    await rm(join(manifestDirectory, `${manifestChecksum}.json`))
+    const staleName = 'a'.repeat(64)
+    await writeFile(join(manifestDirectory, `${staleName}.json`), manifest)
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    await expect(validateProvenanceMigrationState(root)).resolves.toBeUndefined()
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        `stale environment manifest name: ${staleName}.json holds ${manifestChecksum}`
+      )
+    )
+    warn.mockRestore()
   })
 })
