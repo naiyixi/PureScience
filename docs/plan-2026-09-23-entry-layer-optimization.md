@@ -895,3 +895,18 @@ if (recordedDigest !== checksum) {
 **验收（缺一不可）**：仪器断言「订阅方与列表容器 0 重渲 + 叶子 1 次」；真机 45 轮总量数字下降（`PERF_TURNS=45 npx playwright test e2e/perf/smoothness.spec.ts --workers=1`，基线 `task≈5162ms / 114.7ms 每轮`，须多次取噪声带）；最终文本**逐字一致**；真机仍在流；对话相关用例全绿。
 
 **风险与不做的事**：不引入按帧节流（已证 0.65 提交/帧无空间）、不恢复写入侧合批（store 写入仅 0.5%）。若测量显示面板并未每 delta 重渲，则第一/第二步的结论作废，回到「谁在重渲」重新测量——**先量后改**。
+
+#### U33 第一步（仪器）落点侦察结论
+
+**不能用的 harness**：`ConversationPanel.interaction.test.tsx:105` 用 `vi.mock('./WorkspaceMessageScroller', …)` 把转录列表换成了 plain marker（该文件为「composer 摄入」而写，注释明说子区域被 stub）⇒ 在这里数渲染次数数的是替身，量不到真实转录。
+
+**可用的 harness**：`src/renderer/src/pages/workspace/WorkspacePage.*.test.tsx`（8 个文件）——全仓**只有上面那一处** mock 了 `WorkspaceMessageScroller` ⇒ 这些页面级 harness 渲染的是**真面板 + 真 scroller + 真 store**，是唯一能承载该仪器的地方。
+
+**仪器形状**（下一步照此实现）：
+
+1. 在 `WorkspacePage.*.test.tsx` 之一（或新建同类文件）里用真 store 起一个含 ~40 条已定稿消息 + 1 条流式消息的会话；
+2. 用 React `<Profiler id onRender>` 分别包住 `ConversationPanel`、`WorkspaceMessageScroller` 与叶子消息项，记录 `onRender` 调用次数；
+3. 通过会话 store 的流式更新入口喂 K 个 delta（每 delta 一次 `act`）；
+4. **先只做特征化**：断言「每 delta 的重渲次数 ≤ 当前实测值」，并在注释里写明目标是 **0（订阅方与列表容器）**；得到当前值后再实施 selector 收窄／叶子自订阅，然后把断言收紧到 0，最后跑真机 45 轮验收。
+
+**注意**：`WorkspacePage` 渲染开销大（需预置多个 store），该用例应单文件、独立 `--maxWorkers=2` 跑；若首屏就超时，退而用「真面板 + 只 mock 与转录无关的子区域」的自建 harness，绝不再 mock scroller。
