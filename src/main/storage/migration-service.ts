@@ -522,8 +522,11 @@ export const runDataRootMigration = async (
   }
 
   operation.phase('verify-target')
+  // Stale-but-intact evidence found in the copied root. Collected here (not only in the commit) because
+  // the copy is what the completion screen reports on, so this is the outcome the user actually sees.
+  const staleEvidence: StaleProvenanceEvidence[] = []
   try {
-    await validateProvenanceState(target)
+    staleEvidence.push(...((await validateProvenanceState(target)) ?? []))
   } catch (error) {
     await rm(target, { recursive: true, force: true }).catch(() => undefined)
     operation.fail(error)
@@ -566,7 +569,7 @@ export const runDataRootMigration = async (
     fileCount: inventory.fileCount,
     totalBytes: inventory.totalBytes
   })
-  return result
+  return staleEvidence.length > 0 ? { ...result, staleEvidence } : result
 }
 
 // PHASE 2 (commit): flip settings.dataRoot to the (already-copied, verified) new root, THEN delete

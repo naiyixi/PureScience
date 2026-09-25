@@ -880,7 +880,12 @@ describe('runDataRootMigration (copy phase)', () => {
       runOpts()
     )
 
-    expect(result).toEqual({ ok: true })
+    expect(result.ok).toBe(true)
+    // The fixture writes a manifest whose name is not its content hash, so the move now reports it as
+    // stale evidence (reported, never fatal) while still moving the immutable manifests themselves.
+    expect(result.ok && result.staleEvidence).toEqual([
+      expect.objectContaining({ kind: 'manifest-name-mismatch' })
+    ])
     expect(existsSync(join(target, RUNTIME_ENVIRONMENT_MANIFESTS_DIR, manifestName))).toBe(true)
     expect(existsSync(join(target, 'runtime', 'provenance', 'environment-inventory'))).toBe(false)
     expect(existsSync(destinationRuntimeSentinel)).toBe(true)
