@@ -829,3 +829,20 @@ if (recordedDigest !== checksum) {
 ⇒ 剩余缺陷只有：① 旧版本产出过这类名实不符的文档；② **没有修复路径，一律 fail-closed 挡住搬迁**。
 
 **实施要点（下一轮，含 API 变更）**：`validateProvenanceMigrationState` 目前抛出即终止 ⇒ 要支持「降级为可报告项」，需把它的契约从「void / throw」改为「返回报告（含 `warnings: [{kind, project, session, runId, path, recordedDigest, expectedDigest}]`）」，由 `migration-service.ts:293` 收集并随迁移结果一起返回，最终呈现给用户；真正的损坏（无法归属到已知 run/文档者）仍 fail-closed。回归用例：构造 `名≠哈希但内容完整` 的清单 ⇒ 迁移**成功**且报告里列出该条；构造无法归属的损坏 ⇒ 仍**失败**。
+
+#### 实施与验证记录（本轮，提交 `cd439ff`）
+
+**已修**（`provenance-migration-validation.ts`）：
+
+1. `collectEnvironmentManifests` 从「文件名集合」改为 **`Map<内容哈希 → 真实文件路径>`**，并对「文件名 ≠ 内容哈希」的清单输出点名告警；
+2. 校验器改为**按内容哈希解析 + 用映射到的真实路径读取**（此前两步都依赖规范名 `${checksum}.json`，旧版数据必然落空）；
+3. 真实损坏（引用指向的字节在任何名字下都不存在）**仍 fail-closed**。
+
+**测试**：`provenance-migration-validation.test.ts` 新增两段——旧名字 + 内容完整 ⇒ `resolves` 且告警精确匹配 `<file> holds <contentHash>`；引用被替换为 corrupt 内容 ⇒ 仍 `rejects`。`src/main/storage` **259 passed**、`src/main/notebook` **1323 passed / 99 skipped**、typecheck 0 error、lint 0 error。
+
+**真机（本轮）**：`e2e/certification/storage-migration.spec.ts --workers=1` → **1 passed (12.8s)**（「stages a verified data-root move and recovers on discard」）。⚠️ **但该 spec 走的是正常数据根，并未覆盖本次修复的「旧清单」场景** ⇒ 本次修复的真机覆盖仍缺，已列为待办。
+
+**剩余（明确两项）**：
+
+1. **告警进迁移结果/UI**：现在只进日志。需把 `validateProvenanceMigrationState` 契约从 `Promise<void>` 改为**返回报告**（含 `warnings`），并让 `migration-service.ts` 的 DI 签名 `(root) => Promise<void>`（调用点 `:420/:423`、`:510`、`:636/:642`）与相关测试同步；最终呈现给用户。
+2. **真机覆盖旧清单场景**：给 `storage-migration.spec.ts` 加一个「夹具数据根里放一份名≠内容哈希但内容完整的环境清单 + 引用它的 notebook run ⇒ 迁移成功完成」的用例。
