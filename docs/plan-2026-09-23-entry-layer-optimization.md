@@ -863,3 +863,13 @@ if (recordedDigest !== checksum) {
 `StaleProvenanceEvidence` 类型与可选接收器已在 `provenance-migration-validation.ts` 就绪（提交 `c8c7570`），生产调用点也已收集，因此这里只是「把已有的数据接出去」。
 
 **另注**：`src/shared/artifact-provenance.ts:291` 已有 `warnings?: string[]` 的历史口径，接出去时对齐命名，避免同一件事在两层用两个名字。
+
+#### 实施记录：陈旧证据接出到结果 + 呈现（提交 `3985923`、`a4b112e`、待提交的重复渲染修复）
+
+**主进程**：`MigrationResult`（`data-migration.ts:14`）增 `staleEvidence?: StaleProvenanceEvidence[]`（**非空才挂字段**，既有 `toEqual({ ok: true })` 断言零改动）；两个 DI 类型放宽为 `Promise<StaleProvenanceEvidence[] | void>`（注入 fake 不必改）；`commitDataRootSwitch` 收集两个根的校验结果并随 outcome 返回；`provenance-migration-validation.ts` 导出 `StaleProvenanceEvidence`。回归用例：注入只对目标根上报的 fake ⇒ `expect(result).toEqual({ ok: true, staleEvidence: [evidence] })`。
+
+**渲染层**：`src/shared/storage.ts` 镜像同名字段与类型（renderer 不 import main-only 代码的既有约定）；`StorageMigrationModal` 在 `done` 阶段渲染 `data-testid="stale-evidence-note"`（文案 + 条数）；9 语键 `settings.moveStaleEvidenceNote` 由 `scripts/add-i18n-keys.py`（技能目录内）锚 `settings.moveDataTitle` 插入；渲染用例走完整流程后断言该节点存在且文案为「旧版清单按原样保留」+ 条数。
+
+**顺带修复的真 bug**：`StorageMigrationModal` 的 `done` 阶段原有一句硬编码英文尾巴，而 `settings.restartToSwitch` 的字典值**已包含同一句** ⇒ 9 种语言下都会在译文后重复渲染一句英文。已删除 JSX 尾巴（字典值为完整句子）。
+
+**门禁**：storage+notebook 1583 passed / settings+i18n+storage 894 passed / settings 587 passed；typecheck 0 error；lint 0 error。

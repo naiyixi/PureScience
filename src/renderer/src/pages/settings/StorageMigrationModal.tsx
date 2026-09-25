@@ -319,7 +319,6 @@ const StorageMigrationModal = ({
                   </Dialog.Title>
                   <Dialog.Description className="mt-1 text-xs leading-relaxed text-muted-foreground">
                     {t('settings.restartToSwitch')}
-                    Keep current location to stay where you are and discard the copy.
                   </Dialog.Description>
                   {outcome?.ok === true &&
                   outcome.staleEvidence &&
