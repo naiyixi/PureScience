@@ -910,3 +910,12 @@ if (recordedDigest !== checksum) {
 4. **先只做特征化**：断言「每 delta 的重渲次数 ≤ 当前实测值」，并在注释里写明目标是 **0（订阅方与列表容器）**；得到当前值后再实施 selector 收窄／叶子自订阅，然后把断言收紧到 0，最后跑真机 45 轮验收。
 
 **注意**：`WorkspacePage` 渲染开销大（需预置多个 store），该用例应单文件、独立 `--maxWorkers=2` 跑；若首屏就超时，退而用「真面板 + 只 mock 与转录无关的子区域」的自建 harness，绝不再 mock scroller。
+
+#### U33 仪器落点：现成 harness 全部不可用（已确证，需新建）
+
+- `ConversationPanel.interaction.test.tsx:105` ⇒ `vi.mock('./WorkspaceMessageScroller')`（转录被换成 plain marker）；
+- `WorkspacePage.*.test.tsx`（6+ 个文件，含 `customize-prefill` / `draft-preservation` / `edit-message` / `image-staging` / `notebook-hydration` / `pending-switch`）⇒ `vi.mock('./ConversationPanel', …)`，且用 `conversationProps` 捕获道具来驱动（为省开销刻意 mock 掉面板）。
+
+⇒ **仓库里没有任何 harness 同时渲染真面板 + 真 scroller + 真 store**。仪器必须**新建一个面板级 harness**，最省的做法是照 `ConversationPanel.interaction.test.tsx` 复制其**完整道具清单**（该文件已把 `ConversationPanel` 的 30 余个必填道具备齐），**但删掉 `vi.mock('./WorkspaceMessageScroller')` 那一处**，再挂 `<Profiler>` 与 store 流式更新入口。
+
+这样新文件就是「唯一渲染真实转录的 jsdom harness」，既承载 U33 仪器，也可复用于以后任何「转录渲染成本」的问题。
