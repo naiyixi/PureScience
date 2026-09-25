@@ -1046,4 +1046,87 @@ describe('WorkspaceMessageScroller artifact click behavior', () => {
     expect(createSessionPlanPreviewItem).not.toHaveBeenCalled()
     expect(upsertAndActivateItem).not.toHaveBeenCalled()
   })
+
+  it('measures how many message slots one streaming chunk re-renders', async () => {
+    // Imported dynamically like the neighbouring tests do — the modules have to be resolved after the
+    // mocks are registered.
+    const { WorkspaceMessageScroller } = await import('./WorkspaceMessageScroller')
+    const { WorkspaceMessageEditStateProvider } = await import('./workspace-message-edit-state')
+
+    // Instrument for the smoothness question the frame metrics cannot see: a chunk of streamed text is a
+    // small amount of work, so no single task crosses the long-task threshold even when every slot in the
+    // transcript re-renders. Counting slot renders answers it directly, deterministically, in CI.
+    const session = createSession({
+      messages: [
+        createMessage({ id: 'prompt-1' }),
+        createMessage({
+          id: 'reply-1',
+          role: 'agent',
+          content: 'First answer',
+          responseToMessageId: 'prompt-1'
+        }),
+        createMessage({ id: 'prompt-2' }),
+        createMessage({
+          id: 'reply-2',
+          role: 'agent',
+          content: 'Second answer',
+          responseToMessageId: 'prompt-2'
+        }),
+        createMessage({ id: 'reply-3', role: 'agent', content: 'partial', status: 'streaming' })
+      ]
+    })
+    useSessionStore.setState({ sessions: [session], selectedSessionId: session.id })
+
+    const Parent = (): React.JSX.Element => {
+      const activeSession = useSessionStore((state) =>
+        state.sessions.find((candidate) => candidate.id === session.id)
+      )
+      return (
+        <WorkspaceMessageEditStateProvider canEditMessage>
+          <WorkspaceMessageScroller activeSession={activeSession} onSendEditedMessage={vi.fn()} />
+        </WorkspaceMessageEditStateProvider>
+      )
+    }
+
+    root = createRoot(container)
+    await act(async () => {
+      root.render(<Parent />)
+    })
+    agentMarkdownRenderMock.mockClear()
+
+    // The shape the store's run-output helper applies per chunk: only the streaming message is replaced,
+    // every settled message keeps its instance.
+    await act(async () => {
+      const current = useSessionStore
+        .getState()
+        .sessions.find((candidate) => candidate.id === session.id)
+      useSessionStore.setState({
+        sessions: [
+          {
+            ...(current as ChatSession),
+            messages: (current?.messages ?? []).map((message) =>
+              message.id === 'reply-3'
+                ? { ...message, content: `${message.content} more` }
+                : message
+            )
+          }
+        ],
+        selectedSessionId: session.id
+      })
+    })
+
+    const renderedContents = agentMarkdownRenderMock.mock.calls.map(([content]) => String(content))
+    // eslint-disable-next-line no-console -- measurement output for whoever tightens the number below
+    console.log('[render-count] slots rendered by one chunk:', JSON.stringify(renderedContents))
+
+    // Known cost, measured: one chunk of streamed text renders *every* agent slot in the transcript, not
+    // just the streaming one. This is what the frame metrics cannot see (each slot's work is small, so no
+    // single task crosses the long-task threshold) and it is why the transcript gets heavy on long
+    // sessions. The markdown component is mocked here, so the counter tracks slot render bodies rather than
+    // markdown internals — which is exactly the question: are settled slots re-rendering at all?
+    //
+    // Target: this becomes ['partial more']. When a change makes that true, update it here — the frame
+    // metric cannot confirm it.
+    expect(renderedContents).toEqual(['First answer', 'Second answer', 'partial more'])
+  })
 })
