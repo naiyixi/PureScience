@@ -17,6 +17,7 @@ import {
 import { selectProjectSessionReviews, useReviewStore } from '@/stores/review-store'
 import { useSettingsStore } from '@/stores/settings-store'
 import { useSessionStore, type ChatSession } from '@/stores/session-store'
+import { groupRevisionsByRoot } from './revision-groups'
 import { useLanguage } from '@/i18n'
 import { flushSessionPersistence } from '@/lib/session-persistence/session-persistence'
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ComponentProps } from 'react'
@@ -481,19 +482,13 @@ const WorkspaceMessageScrollerImpl = ({
   // Revisions grouped once per render. This used to be filtered and sorted inside every message slot,
   // which made the transcript list quadratic in the number of messages per streaming chunk — the cost
   // showed up as the residual >50ms tasks at 45 turns.
+  const previousRevisionsRef = useRef<Map<string, GraphMessage[]>>(undefined)
   const revisionsByRootMessageId = useMemo(() => {
-    const grouped = new Map<string, GraphMessage[]>()
-    for (const message of activeSession?.conversationGraph?.messages ?? []) {
-      if (message.role !== 'user' || !message.revisionRootMessageId) continue
-      const bucket = grouped.get(message.revisionRootMessageId)
-      if (bucket) bucket.push(message)
-      else grouped.set(message.revisionRootMessageId, [message])
-    }
-    for (const bucket of grouped.values()) {
-      bucket.sort(
-        (left, right) => left.createdAt - right.createdAt || left.id.localeCompare(right.id)
-      )
-    }
+    const grouped = groupRevisionsByRoot(
+      activeSession?.conversationGraph?.messages ?? [],
+      previousRevisionsRef.current
+    )
+    previousRevisionsRef.current = grouped
     return grouped
   }, [activeSession?.conversationGraph])
   // User turns in transcript order — the run-marks rail renders one dot per turn and jumps to it.
