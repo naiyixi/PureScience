@@ -681,3 +681,17 @@
 - **改法**：owner 收到**纯文本** chunk 时走 `batcher.append(messageId, delta)`，由 batcher 的 `onFlush` 调既有投影落库；**非文本 chunk（工具调用/状态）必须先 `settle(messageId)` 再立即应用**，否则文本与工具的先后顺序会被打乱；回合完成/取消调 `settle(messageId)`，切会话调 `settleAll()`。
 - **顺序正确性是本单元最脆的地方**：合批只能合并**相邻的纯文本**，跨事件类型的顺序必须保持。这一条要单独写断言（文本→工具→文本 三段落的最终顺序与内容）。
 - **验证清单**（缺一不可）：① `PERF_TURNS=45` 总量对照（基线 `task=5699ms / 126.6ms 每轮`）；② 最终文本逐字一致（含跨事件交错那例）；③ 真机确认流式期间仍在逐字出现、无明显跳变；④ workspace 簇 + 认证套件里对话相关用例全绿。
+
+### U33 接线的新约束（影响设计，先说清楚再动手）
+
+读 owner 后发现拦路的一处**返回值契约**：
+
+- `appendAgentMessageChunk(input)` 的签名是 `(input) => AppendMessageResult | undefined`（`session-store-run-projection-owner.ts:43`）——**调用方依赖这个返回值**（要拿到被追加消息的 id）。
+- 若直接在 action 层做「先囤后写」，**首次 chunk 的返回值就拿不到了** ⇒ 调用方会读到 `undefined` ⇒ 静默的坏路径。
+
+**结论：合批不能拦在 action 层**。两个可行设计（接线时二选一并写断言）：
+
+1. **下移一层**：把合批放在 owner 里 `projectAgentMessageChunk` 的**调用点之内**（即 action 照常返回结果，但内容合并/落库按窗口延后）——注意此时返回的 message id 逻辑必须保持与现状一致。
+2. **上移一层**：在事件桥（把 ACP chunk 事件转成 action 调用的那一层）做窗口化，**首帧立即透传**（保证返回值语义不变），后续同消息纯文本帧才合批；任何非文本事件（工具活动 / `finishRun` / `failRun` / 取消）先 settle 再应用。
+
+两种都要满足的顺序断言：**文本 → 工具 → 文本** 三段落的最终顺序与内容逐字一致。
