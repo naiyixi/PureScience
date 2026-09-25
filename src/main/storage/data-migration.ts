@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto'
 import { chmod, lstat, mkdir, readdir, readlink, rm, rmdir, stat, symlink } from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
 import { pipeline } from 'node:stream/promises'
+import type { StaleProvenanceEvidence } from './provenance-migration-validation'
 
 export type MigrationPhase = 'scan' | 'copy' | 'verify' | 'delete'
 export type MigrationProgress = {
@@ -11,7 +12,9 @@ export type MigrationProgress = {
   totalBytes: number
   currentPath?: string
 }
-export type MigrationResult = { ok: true } | { ok: false; error: string; cancelled?: boolean }
+export type MigrationResult =
+  | { ok: true; staleEvidence?: StaleProvenanceEvidence[] }
+  | { ok: false; error: string; cancelled?: boolean }
 
 type MigrateOpts = {
   from: string

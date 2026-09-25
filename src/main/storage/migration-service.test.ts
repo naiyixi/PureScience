@@ -1101,6 +1101,53 @@ describe('runDataRootMigration (copy phase)', () => {
 })
 
 describe('commitDataRootSwitch (commit phase)', () => {
+  it('carries stale-but-intact evidence into the outcome instead of blocking the switch', async () => {
+    const deps = fakeDeps()
+    const logger = fakeDiagnosticLogger()
+    let markerToken = ''
+
+    await runDataRootMigration(
+      {
+        currentDataRoot,
+        runtime: deps.runtime,
+        notebook: deps.notebook,
+        copyAndVerify: async () => ({ ok: true }),
+        validateProvenanceState: async () => undefined,
+        logger
+      },
+      emptyParent,
+      {
+        ...runOpts(),
+        onVerified: ({ token }) => {
+          markerToken = token
+        }
+      }
+    )
+
+    const evidence = {
+      kind: 'manifest-name-mismatch' as const,
+      path: join(currentDataRoot, 'runtime', 'provenance', 'environment-manifests', 'aaaa.json'),
+      recordedDigest: 'b'.repeat(64),
+      expectedDigest: 'a'.repeat(64)
+    }
+
+    const result = await commitDataRootSwitch(
+      {
+        currentDataRoot,
+        setDataRoot: deps.setDataRoot,
+        deleteSources: async () => ({ deleted: [], failed: [] }),
+        // Realistically only the root that holds the stale manifest reports it, not both.
+        validateProvenanceState: async (root: string) =>
+          root === currentDataRoot ? undefined : [evidence],
+        expectedToken: markerToken,
+        logger
+      },
+      emptyParent
+    )
+
+    expect(result).toEqual({ ok: true, staleEvidence: [evidence] })
+  })
+
   it('correlates distinct copy and commit operations without reusing the marker token', async () => {
     const deps = fakeDeps()
     const logger = fakeDiagnosticLogger()

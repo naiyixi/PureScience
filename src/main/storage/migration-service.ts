@@ -28,7 +28,10 @@ import { waitForDataRootWriters } from './migration-state'
 import { DEFAULT_MAX_ENV_RELATIVE_PATH, PACK_PATH_BUDGET_FILE } from '../notebook/bundle-manifest'
 import { windowsDefaultEnvPrefixReserve } from '../notebook/runtime-paths'
 import { RELOCATABLE_DATA_DIRS } from './data-directories'
-import { validateProvenanceMigrationState } from './provenance-migration-validation'
+import {
+  validateProvenanceMigrationState,
+  type StaleProvenanceEvidence
+} from './provenance-migration-validation'
 import { disconnectProjectDbClient } from '../projects/prisma-client'
 import { createLogger, type Logger } from '../logger'
 import { startDiagnosticOperation } from '../diagnostics/operation'
@@ -289,12 +292,17 @@ const RUNTIME_ENVIRONMENT_INVENTORY_DIR = join('runtime', 'provenance', 'environ
 export const PROJECT_DATABASE_FILE = 'purescience.db'
 const BASE_MIGRATION_DIRS = [...MIGRATED_DIRS, RUNTIME_ENVIRONMENT_MANIFESTS_DIR]
 
-const defaultValidateProvenanceState = (dataRoot: string): Promise<void> =>
+const defaultValidateProvenanceState = (dataRoot: string): Promise<StaleProvenanceEvidence[]> =>
   // Stale evidence is collected structurally at the production call site (not only logged inside the
   // validator) so a later step can hand it to the migration result and show it to the user.
-  validateProvenanceMigrationState(dataRoot, resolveConfigRoot(), (evidence) => {
-    console.warn('[provenance] stale evidence', evidence)
-  })
+  (async () => {
+    const stale: StaleProvenanceEvidence[] = []
+    await validateProvenanceMigrationState(dataRoot, resolveConfigRoot(), (evidence) => {
+      console.warn('[provenance] stale evidence', evidence)
+      stale.push(evidence)
+    })
+    return stale
+  })()
 
 type MigrationInventory = NonNullable<MigrationMarker['inventory']>
 
@@ -329,7 +337,9 @@ type MigrationCopyDeps = {
     onProgress: (p: MigrationProgress) => void
     forceCopy?: boolean
   }) => Promise<MigrationResult>
-  validateProvenanceState?: (root: string) => Promise<void>
+  // Returns stale-but-intact evidence (older builds wrote it) when the implementation reports any; `void`
+  // stays acceptable so injected test doubles keep working.
+  validateProvenanceState?: (root: string) => Promise<StaleProvenanceEvidence[] | void>
 }
 
 type MigrationCommitDeps = {
@@ -346,7 +356,9 @@ type MigrationCommitDeps = {
     dirs: string[],
     onProgress?: (p: MigrationProgress) => void
   ) => Promise<{ deleted: string[]; failed: { dir: string; error: string }[] }>
-  validateProvenanceState?: (root: string) => Promise<void>
+  // Returns stale-but-intact evidence (older builds wrote it) when the implementation reports any; `void`
+  // stays acceptable so injected test doubles keep working.
+  validateProvenanceState?: (root: string) => Promise<StaleProvenanceEvidence[] | void>
 }
 
 // PHASE 1 (copy): validate the move parent -> interrupt running writers -> copy+verify the migrated
@@ -582,6 +594,10 @@ export const commitDataRootSwitch = async (
   // pair. This blocks committing a half-copied dir (crash mid-copy), a stale marker from an earlier
   // aborted move, or a copy staged against a different current root — any of which could delete the
   // wrong data on the delete step below.
+  // Stale-but-intact evidence reported by validation. Attached to the outcome only when non-empty, so
+  // existing exact-equality assertions on { ok: true } keep holding.
+  const staleEvidence: StaleProvenanceEvidence[] = []
+
   operation.phase('recheck-inventory')
   const marker = await readMigrationMarker(target)
   if (!marker || marker.status !== 'verified') {
@@ -643,8 +659,8 @@ export const commitDataRootSwitch = async (
     // Both roots are checked against the same fixed config-root SQLite authority. Run them in
     // sequence so two FULL WAL checkpoints cannot contend with each other and manufacture a busy
     // failure while the application is otherwise quiescent.
-    await validateProvenanceState(deps.currentDataRoot)
-    await validateProvenanceState(target)
+    staleEvidence.push(...((await validateProvenanceState(deps.currentDataRoot)) ?? []))
+    staleEvidence.push(...((await validateProvenanceState(target)) ?? []))
   } catch (error) {
     operation.fail(error)
     return {
@@ -705,7 +721,7 @@ export const commitDataRootSwitch = async (
     cleanupDegraded,
     cleanupFailureCount: deleteResult.failed.length
   })
-  return { ok: true }
+  return staleEvidence.length > 0 ? { ok: true, staleEvidence } : { ok: true }
 }
 
 // Throws away an uncommitted staged copy at `<parent>/PureScience` (the user chose "Keep current
