@@ -674,3 +674,10 @@
 **验收（缺一不可）**：`PERF_TURNS=45` 对照数字 + 最终文本逐字一致 + 流式期间肉眼/录像确认仍在流 + workspace 簇与认证套件里对话相关用例全绿 + **带窗口真机跑**（`launchctl unload` 前置）。
 
 **它不属于本轮已发布的 v1.73.0**；作为独立单元排入下一版本。
+
+### U33 接线点（已侦察，接线时直接照做）
+
+- **写入路径**：`projectAgentMessageChunk`（`src/renderer/src/stores/session-store-run-output-helpers.ts:142`，其中 `:202`/`:222` 是 `content:` 的落点），由 `src/renderer/src/stores/session-store-run-projection-owner.ts:24` 引入、在 owner 里被 chunk 事件驱动。
+- **改法**：owner 收到**纯文本** chunk 时走 `batcher.append(messageId, delta)`，由 batcher 的 `onFlush` 调既有投影落库；**非文本 chunk（工具调用/状态）必须先 `settle(messageId)` 再立即应用**，否则文本与工具的先后顺序会被打乱；回合完成/取消调 `settle(messageId)`，切会话调 `settleAll()`。
+- **顺序正确性是本单元最脆的地方**：合批只能合并**相邻的纯文本**，跨事件类型的顺序必须保持。这一条要单独写断言（文本→工具→文本 三段落的最终顺序与内容）。
+- **验证清单**（缺一不可）：① `PERF_TURNS=45` 总量对照（基线 `task=5699ms / 126.6ms 每轮`）；② 最终文本逐字一致（含跨事件交错那例）；③ 真机确认流式期间仍在逐字出现、无明显跳变；④ workspace 簇 + 认证套件里对话相关用例全绿。
