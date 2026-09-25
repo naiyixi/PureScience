@@ -283,3 +283,27 @@
 与前面的归属合起来看：45.4% 花在 React 渲染+提交上，但提交**并不频繁** ⇒ 成本在**每次提交有多贵**（一次提交要把整条转录的组件树走一遍：`renderWithHooks` 49ms、`updateFunctionComponent` 39ms、`beginWork` 17ms、`updateProperties` 27ms、`commitHostUpdate` 28ms），而不是「提交了多少次」。⇒ **正确的问题变成「一次 delta 提交时，到底有多少组件真的重渲染了（而不是 bail out）」**——渲染计数仪器（jsdom，`WorkspaceMessageScroller.interaction.test.tsx`）正是为此存在的，下一步把它扩展到真实提交路径上。
 
 **同时记录一处数据矛盾（不掩盖）**：本轮回退后的基线读数为 `task=5162ms / 114.7ms 每轮`，而先前"接线版"读数为 `12554ms / 279.0ms 每轮`（同一仪器、同一规格）。两次相差 2.4×，但按今天的基线看，接线版当时**可能**叠加了机器负载或陈旧构建，因此「合批导致 2.2× 变差」这一结论**证据强度不足**，不应作为路线否决的唯一依据；写入侧合批的真正否决理由改为：store 写入只占 0.5%，**该路线即使成立也无收益可图**（这条与负载无关）。
+
+## U33 定位：流式提交里真正跑起来的应用组件（45 轮 profile，self time）
+
+从同一份 profile 里剔除 React 内部帧与浏览器帧，剩下的应用侧帧：
+
+| 帧                                                                          | self          | 判读                                                                            |
+| --------------------------------------------------------------------------- | ------------- | ------------------------------------------------------------------------------- |
+| **`MessageTimestamp`**                                                      | **14.1ms**    | 应用侧最贵；formatter 缓存已把它从 15.8% 压到 1.4%，但它仍然每个 delta 都走一遍 |
+| `renderRootSync` / `commitBeforeMutationEffects`                            | 13.3 / 11.5ms | React 内部（列表提交）                                                          |
+| `reconcileChildren` + `reconcileChildrenArray` + `reconcileChildFibersImpl` | ~20ms 合计    | 列表协调（~90 条消息，属预期）                                                  |
+| **`react_production.cloneElement`**                                         | **7.5ms**     | ⚠️ 渲染路径里有人 `cloneElement`——按条触发，属于可去掉的重复工作                |
+| **`TooltipTrigger2`**                                                       | **5.9ms**     | ⚠️ 每条消息一个 tooltip 触发器，跟着列表一起重渲染                              |
+| **`WorkspaceMessageItemImpl`**                                              | **3.1ms**     | 消息项本身                                                                      |
+| `MessageScrollerItem`                                                       | 2.4ms         | 滚动项包装                                                                      |
+| `synchronizeActiveConversationMessages` / `…Activities`                     | 2.1 / 2.0ms   | 订阅同步                                                                        |
+| `sameOwnFields`                                                             | 1.8ms         | 比较函数                                                                        |
+
+**由此得到三个具体、低风险的改动目标**（都不涉及节流，也不需要改写入侧）：
+
+1. **`cloneElement`（7.5ms）**：找到热路径上的克隆点（多半在消息项/tooltip 包装里），改成直接构造元素或提前 hoist。
+2. **`TooltipTrigger2`（5.9ms）**：每条消息的 tooltip 触发器不应随列表重渲染——按需创建（仅悬停/聚焦时）或提到列表外。
+3. **`MessageTimestamp`（14.1ms）**：formatter 已缓存，剩下的是组件本身的重渲染——用稳定 props + `memo` 让它在内容未变时 bail out（同一槽位在流式期间只有它自己该重渲染）。
+
+判定口径不变：同一仪器（45 轮总量 + 提交计数 + 帧指标）+ 最终文本逐字一致 + 真机仍在流 + 对话相关用例全绿。
