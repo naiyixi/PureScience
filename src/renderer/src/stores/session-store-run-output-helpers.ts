@@ -24,6 +24,10 @@ export type AppendAgentMessageChunkInput = {
   sessionId: string
   streamId: string
   eventId: string
+  // Every event id whose text this input carries. Coalescing several deltas into one update must not lose
+  // their ids: `eventIds` is what makes a replayed stream idempotent, so dropping the intermediate ids
+  // would let a replay append their text a second time. Absent means "just `eventId`".
+  eventIds?: string[]
   promptMessageId?: string
   content?: string
   image?: AcpMessageImage
@@ -148,12 +152,13 @@ export const projectAgentMessageChunk = (
   if (!input.streamId || !input.eventId || (content.length === 0 && !sanitizedImage)) {
     return { session }
   }
+  const chunkEventIds = input.eventIds?.length ? input.eventIds : [input.eventId]
   const responseToMessageId = input.promptMessageId ?? session.activeRun?.promptMessageId
   const replayedGraphMessage = session.conversationGraph?.messages.find(
     (message) =>
       message.role === 'agent' &&
       message.responseToMessageId === responseToMessageId &&
-      message.eventIds.includes(input.eventId)
+      chunkEventIds.every((eventId) => message.eventIds.includes(eventId))
   )
   if (replayedGraphMessage) {
     return { session, result: { sessionId: input.sessionId, messageId: replayedGraphMessage.id } }
@@ -185,7 +190,7 @@ export const projectAgentMessageChunk = (
   const now = Date.now()
 
   if (existingMessage) {
-    if (existingMessage.eventIds.includes(input.eventId)) {
+    if (chunkEventIds.every((eventId) => existingMessage.eventIds.includes(eventId))) {
       return { session, result, shouldCommit: true }
     }
     return {
@@ -206,7 +211,7 @@ export const projectAgentMessageChunk = (
                       { id: input.eventId, ...sanitizedImage }
                     ])
                   : message.images,
-                eventIds: [...message.eventIds, input.eventId],
+                eventIds: [...message.eventIds, ...chunkEventIds],
                 updatedAt: now
               }
             : message
@@ -223,7 +228,7 @@ export const projectAgentMessageChunk = (
     status: 'streaming',
     streamId: input.streamId,
     responseToMessageId,
-    eventIds: [input.eventId],
+    eventIds: [...chunkEventIds],
     images: sanitizedImage ? [{ id: input.eventId, ...sanitizedImage }] : undefined,
     sortIndex: createSortIndex(),
     createdAt: now,
