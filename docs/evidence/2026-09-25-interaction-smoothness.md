@@ -219,3 +219,28 @@
 - 「槽位 3→1」是**正确的结构改进**（少做无用的 bailout 比较与元素创建），**保留**；
 - 但它**不是**那 127ms/轮的来源。真正的成本最大头是**流式中那一个槽位自己的 markdown 重渲**（每个片段都重新解析渲染一次），这才是下一个该动的杠杆。
 - 教训：**用 mock 掉的重组件当探针时，探针会把「被 mock 组件自身的 memo 收益」一并算进成本**，从而高估这条路径的重要性。
+
+## 流式落地的分段构成（renderer CPU profile，45 轮规格）
+
+采样口径：`npx playwright test e2e/perf/streaming-profile.spec.ts --workers=1`，产物 `test-results/perf/streaming.cpuprofile`；按**采样归属**（每条 sample 计入其栈顶帧）聚合 self time，总计 **947ms**。
+
+| 归属                                                                                                                                                                                        | self time | 占比      | 说明                                       |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | --------- | ------------------------------------------ |
+| `(program)`                                                                                                                                                                                 | 244.9ms   | **25.9%** | 浏览器内部（样式/布局/paint 等）           |
+| `(idle)`                                                                                                                                                                                    | 85.5ms    | 9.0%      | 空闲                                       |
+| React 渲染/提交（`beginWork`/`renderRootSync`/`updateFunctionComponent`/`commitBeforeMutationEffects`/`reconcileChildFibersImpl`/`renderWithHooks`/`propagateParentContextChanges` 等合计） | 88.8ms    | **9.4%**  | 归入 react-commit                          |
+| `(garbage collector)`                                                                                                                                                                       | 38.5ms    | 4.1%      | GC                                         |
+| `wrappedListener`                                                                                                                                                                           | 15.4ms    | 1.6%      | zustand 订阅者扇出                         |
+| `MessageTimestamp`                                                                                                                                                                          | 12.9ms    | 1.4%      | 时间戳组件（修复后从 15.8% 降下来）        |
+| `removeChild` / DOM 变动                                                                                                                                                                    | 8.3ms+    | ~1%       | DOM 增删                                   |
+| 无名字的包内帧（`(anonymous)` × 5）                                                                                                                                                         | ~57ms     | ~6%       | 同包内联函数，需更细仪器                   |
+| **markdown 解析/渲染**（remark/streamdown/shiki/mdast 等关键词）                                                                                                                            | **0.5ms** | **0.1%**  | ⚠️ 见下                                    |
+| store 派生（`appendAgentMessageChunk`/分组等）                                                                                                                                              | 17.1ms    | 1.8%      | 投影与派生                                 |
+| persistence（renderer 侧可见部分）                                                                                                                                                          | 3.6ms     | 0.4%      | 实际落盘在主进程，不在 renderer profile 内 |
+
+**两条否定性结论（比数字更重要）**
+
+1. **markdown 解析/渲染在 renderer 里几乎不花时间（0.1%）** ⇒ 先前「流式槽位自身 markdown 每片段重解析是 126.6ms/轮的大头」这一假设**不成立**（至少不以 JS 解析成本的形式存在）。
+2. **也不存在单一热点**：最大可归属项是 React 渲染/提交（9.4%）与无名字的包内帧（~6%），其余散在 GC、DOM 增删、订阅扇出与引擎内部。⇒ 「找一个最烫的函数改掉」与「减少写入次数」两条捷径都不成立。
+
+**下一步仪器（更高信号）**：在**开发构建**里给一次流式落地打 `performance.mark/measure` 分段——① store `set` 前后、② 订阅者通知完、③ 顶层 `<Profiler onRender>` 的 React commit 时长、④ 主进程侧 `saveSessionInOrder` 落盘（IPC 时间戳回传）。四段都拿到数之后，才决定在「渲染侧按帧节流」与「增量渲染」之间选哪个，也才知道该不该回到「写入侧」但换一种切法。
