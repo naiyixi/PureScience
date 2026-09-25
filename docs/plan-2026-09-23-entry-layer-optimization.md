@@ -930,4 +930,10 @@ if (recordedDigest !== checksum) {
 - **真机**：同日同机交替构建 A/B（`557deaf` vs `8428602`），45 轮每轮 task **117.2–120.5 → 94.2–105.6 ms（约 −16%，两带不重叠）**，每轮 script 约 −22%；提交近似数不变（249–274 → 265–271）——少的是**每次提交背后的走路**，这与帧指标向来正常并不矛盾。
 - **验收**：① 仪器 0/0/1 ✅ ② 真机 45 轮下降 ✅ ③ 文本逐字一致（`e2e/workspace-conversation.spec.ts` 的 `{ exact: true }` 断言，含重启后重载）✅ ④ 真机仍在流 + `npm run test:e2e:workspace` 8/8 + `npm run test:gate` 14426 passed / 0 failed ✅
 
-**原「立案到下一版」项已在本轮补掉**（不留未认领项）：`previews/PreviewToolContent.tsx:141` 的 session 对象订阅——先量（新仪器 `PreviewToolContent.stream-render.test.tsx` 量到 1 次/ chunk）→ 收窄为按字段订阅（`activePlanProjection` / `planHistoryProjections` / 会话是否存在 / 是否可批准）→ 复量 0 次/ chunk，「投影变化仍需重渲」的对照用例两种写法都过。A/B 与细节见 `docs/evidence/2026-09-25-interaction-smoothness.md` 的「相邻订阅方」一节。**当前无遗留的「仅剩 X 未落」项。**
+**原「立案到下一版」项已在本轮补掉**（不留未认领项）：`previews/PreviewToolContent.tsx:141` 的 session 对象订阅（新仪器 `PreviewToolContent.stream-render.test.tsx` 量到 1 次/ chunk）→ 收窄为按字段订阅（`activePlanProjection` / `planHistoryProjections` / 会话是否存在 / 是否可批准）→ 复量 0 次/ chunk，「投影变化仍需重渲」的对照用例两种写法都过。A/B 与细节见 `docs/evidence/2026-09-25-interaction-smoothness.md` 的「相邻订阅方」一节。**当前无遗留的「仅剩 X 未落」项。**
+
+#### U33 之后再次归因：app 侧已无值得动手的单点（已量，结论落档）
+
+45 轮 profile（3 个流式回合 767ms 采样）+ 按**独占时间归属到 app 组件**的新分析（`scripts/perf-profile-by-component.py` 已入 skill）：最大的具名 app 组件是 `MessageTimestamp` **1.6%（≈4ms/轮）**，其次是 Radix 触发器 0.6% 与会话同步 0.6%；剩下 39.3% 不在任何组件内（事件/IPC/DOM）、13.6% 是 React 根/调度、5.8% 提交写 DOM。
+
+⇒ 阈值判定：**U33 这条线在 app 组件层面到此为止**（继续抠组件低于仪器可辨别阈值）。若还要往下压每轮成本，下一层是「**结构性更新的传播面**」（工具活动/状态变化仍会走整条列表）与 **IPC 投递**，属另起一条线，需单独立案与仪器。明细见 `docs/evidence/2026-09-25-interaction-smoothness.md` 的「U33 之后再次归因」一节。

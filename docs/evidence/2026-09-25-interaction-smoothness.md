@@ -407,3 +407,23 @@
 同一 fixture 下 A/B（把组件 `git stash` 回旧写法再跑一次）得到 1 vs 0；「投影本身变化 ⇒ 重渲一次」的对照用例两种写法都过（说明收窄没有把该响应的情况一起冻掉）。
 
 **测量中发现的既有行为（只记录，未改）**：`projectAgentMessageChunk` 会把 `status` 从 `waiting-plan-approval` 改成 `running`（只保留 `waiting-permission`）⇒ 若某个 chunk 真的落在「等计划批准」期间，批准按钮会消失。实测这条路径在本仓不可达（等批准时 agent 不再发 chunk），故不作为本次改动的一部分。
+
+### U33 之后再次归因（45 轮规格，3 个流式回合采样 767ms，当前构建）
+
+仪器：`PERF_TURNS=45 npx playwright test e2e/perf/streaming-profile.spec.ts --workers=1`（跑前 unload launch agent），分析用 `perf-profile-buckets.py`（分桶）+ `perf-profile-by-component.py`（**按独占时间归属到 app 组件**，新脚本：React 内部帧的 self time 是所有组件的总和，直接看 self time 无法定位组件）。
+
+| 归属                                   | 独占时间      | 占比  | 读法                                                                 |
+| -------------------------------------- | ------------- | ----- | -------------------------------------------------------------------- |
+| （不在任何组件内）                      | 301.2ms       | 39.3% | 流式阶段的事件/IPC 投递、DOM、浏览器内部 —— 已不是「某个组件」的问题    |
+| `performSyncWorkOnRoot` 等 React 根/调度 | 92.4 + 11.2ms | 13.6% | React 自己的 commit/reconcile 机制，量随「一次提交里有多少组件要走」而定 |
+| `commitMutationEffectsOnFiber`          | 44.6ms        | 5.8%  | 提交阶段写 DOM                                                        |
+| `wrappedListener`                       | 28.9ms        | 3.8%  | IPC 监听器投递                                                        |
+| **`MessageTimestamp`**                  | **12.5ms**    | **1.6%** | **本轮之后最大的具名 app 组件**（≈4ms/轮，远低于可辨别阈值）           |
+| `TooltipTrigger2`                       | 4.9ms         | 0.6%  | Radix 触发器（Provider 层数已在早前一轮收敛）                          |
+| `synchronizeActiveConversationMessages` | 4.9ms         | 0.6%  | 会话同步                                                              |
+
+**判读**：U33 之后**没有单个值得动手的 app 侧目标** —— 最大的具名组件 1.6%、约 4ms/轮，低于「量得出来」的门槛（早前 `MessageTimestamp` 一类已在 −1.4% 量级的实验里被证过不可辨识）。剩下的两块是 React 自身的提交机械（随**结构性**更新 —— 工具活动/状态变化 —— 走的组件数量而定）与 IPC 投递，都属「另起一条线」的量级，不是继续抠组件能拿到的。
+
+**跑这台仪器时注意（别去优化它们）**：`query` / `elementText` / `checkVisibility` / `isElementHiddenForAria` / `querySelectorAll` 这几帧是 **Playwright 自己**在轮询定位器（`getByText` 等），不是应用开销 —— 夹具用真实文本等待答复时它们必然出现在 profile 里。
+
+**同时确认**：本轮修完后真机 45 轮为 **104.9ms/轮**（第 4 次运行），仍在改后带内（94.2–105.6）。
