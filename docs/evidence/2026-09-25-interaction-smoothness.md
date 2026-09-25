@@ -90,7 +90,7 @@
 - 入口数据：本文件两份 profile 的对照 + `npm run test:e2e:perf` 的 `PERF_TURNS=45` 读数。
 - 方向：稳定 prop 让 memo 生效（不是再加一层 memo），以及减少每片段的 DOM 变更量。
 
-## 追加：把转录列表的二次方开销去掉（已改，测数待补）
+## 追加：把转录列表的二次方开销去掉（已改，含对照测数）
 
 **前提已验证**：流式更新走 `messages.map((m) => m.id === streamingId ? { ...m, content } : m)`（`session-store-run-output-helpers.ts:198-213`）⇒ **已定稿消息保持对象身份**，所以「稳定 prop 让 memo 生效」在原理上可行。
 
@@ -99,4 +99,14 @@
 **其中一条是纯算法问题，已修**：`revisions` 原来在**每条消息里**都 filter+sort 一遍全图 ⇒ 整个列表每帧 O(N²·logN)。改成渲染时**一次性分组**（`revisionsByRootMessageId` useMemo），空值共用同一常量以免身份抖动。
 
 - 门禁：typecheck 干净、lint 0 errors、workspace 簇 1644 passed。
-- **45 轮复测数字待补**：本地「构建 + 复测」这一步触发安全守卫（`NODE_OPTIONS`）并等待批准超时，按规矩未重试、未换写法。放行后补 `PERF_TURNS=45 npm run test:e2e:perf` 的对照。
+- **45 轮复测（已补，`PERF_TURNS=45 npm run test:e2e:perf`，不带堆上限环境变量的构建）**：
+
+| 指标（45 轮）         | formatter+memo 之后 | 去二次方之后    |
+| --------------------- | ------------------- | --------------- |
+| 流式最长阻塞任务      | 56ms                | 55ms            |
+| 流式超 50ms 任务数    | 4 条                | **3 条**        |
+| 流式帧间隔 p95 / 最大 | **33ms** / 51ms     | **18ms** / 51ms |
+| 打字最大帧间隔        | 33ms                | **18ms**        |
+| 切回重会话长任务      | 0ms                 | 0ms             |
+
+读法：**帧间隔的改善是实的（p95 33→18ms，回到 60Hz 节奏）**；但 3 条 ~55ms 的最坏任务没动 —— 那部分就是下面说的 React 提交聚合成本，只能靠稳定 prop 让 memo 生效来消。单组对照，有运行间波动。
