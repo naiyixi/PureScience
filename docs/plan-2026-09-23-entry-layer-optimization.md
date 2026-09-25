@@ -663,7 +663,7 @@
 
 **目标**：同口径（`PERF_TURNS=45 npm run test:e2e:perf`）的 `task=…ms | per turn: task=…ms` **下降**；这是判定标准，帧指标不作为判据。
 
-**进度**：第一步（写入侧合批）的**建筑块已落地** —— `src/renderer/src/stores/streaming-text-coalescer.ts` + 8 条单测（不改动任何现有行为，接线前先保证合批器自身的语义：不丢字、不重排、flush 后不发第二次、flush 期间新增的片段归入下一窗）。**接线（把 delta 写入路径改为经合批器 + 完成态 flushNow）与 `PERF_TURNS=45` 对照仍待做**。
+**进度**：第一步（写入侧合批）的建筑块**已落地两件** —— `streaming-text-coalescer.ts`（合批语义）+ `streaming-text-batcher.ts`（按消息管理实例、`settle`/`settleAll`/`discard`，注入式 sink，不耦合 store），共 14 条单测（不改动任何现有行为，接线前先保证合批器自身的语义：不丢字、不重排、flush 后不发第二次、flush 期间新增的片段归入下一窗）。**接线（把 delta 写入路径改为经合批器 + 完成态 flushNow）与 `PERF_TURNS=45` 对照仍待做**。
 
 **候选方案（按风险从低到高）**：
 
