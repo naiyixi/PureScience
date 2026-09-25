@@ -30,7 +30,13 @@ const sendTurn = async (page: Page, prompt: string): Promise<void> => {
 const PROBE = `
   if (!window.__perfInstalled) {
     window.__perfInstalled = true
-    window.__perf = { longTasks: [], frames: [] }
+    window.__perf = { longTasks: [], frames: [], batches: 0 }
+    // React commits show up as DOM mutation batches: one commit usually produces one batch callback. The
+    // ratio against frame count is what says whether the transcript re-renders per delta or per frame.
+    const mutations = new MutationObserver(() => {
+      window.__perf.batches += 1
+    })
+    mutations.observe(document.body, { subtree: true, characterData: true, childList: true })
     new PerformanceObserver((list) => {
       for (const entry of list.getEntries()) {
         window.__perf.longTasks.push({ start: entry.startTime, duration: entry.duration })
@@ -44,9 +50,14 @@ const PROBE = `
   }
   window.__perf.longTasks.length = 0
   window.__perf.frames.length = 0
+  window.__perf.batches = 0
 `
 
-type RawProbe = { longTasks: Array<{ start: number; duration: number }>; frames: number[] }
+type RawProbe = {
+  longTasks: Array<{ start: number; duration: number }>
+  frames: number[]
+  batches: number
+}
 
 const startProbe = async (page: import('playwright').Page): Promise<void> => {
   await page.evaluate(PROBE)
@@ -69,6 +80,10 @@ const stopProbe = async (page: import('playwright').Page, label: string): Promis
       // The max gap is the stall signal that matters: a dropped-frame pileup shows up here even when
       // average cadence looks fine.
       ` | frames=${gaps.length} p95=${p95(gaps)}ms max=${Math.max(...gaps, 0).toFixed(0)}ms`
+  )
+  console.log(
+    `[perf] ${label}: mutation batches≈${raw.batches} commits over frames=${raw.frames.length}` +
+      ` | per frame: ${(raw.batches / Math.max(raw.frames.length, 1)).toFixed(2)}`
   )
   // Catastrophic-only ceilings: a hang or a multi-second block is the signal worth failing on.
   expect(durations[0] ?? 0).toBeLessThan(5000)
