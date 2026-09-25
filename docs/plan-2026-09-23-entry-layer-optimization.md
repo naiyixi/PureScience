@@ -846,3 +846,20 @@ if (recordedDigest !== checksum) {
 
 1. **告警进迁移结果/UI**：现在只进日志。需把 `validateProvenanceMigrationState` 契约从 `Promise<void>` 改为**返回报告**（含 `warnings`），并让 `migration-service.ts` 的 DI 签名 `(root) => Promise<void>`（调用点 `:420/:423`、`:510`、`:636/:642`）与相关测试同步；最终呈现给用户。
 2. **真机覆盖旧清单场景**：给 `storage-migration.spec.ts` 加一个「夹具数据根里放一份名≠内容哈希但内容完整的环境清单 + 引用它的 notebook run ⇒ 迁移成功完成」的用例。
+
+#### 收口项 ①的精确改动点（已侦察，未实施 —— 需干净上下文）
+
+目标：把陈旧证据从「生产调用点已收集、只进日志」推进到「随迁移结果返回并可呈现」。
+
+| 位置                                               | 现状                                                        | 需要改成                                                              |
+| -------------------------------------------------- | ----------------------------------------------------------- | --------------------------------------------------------------------- |
+| `migration-service.ts:332` / `:349`                | `validateProvenanceState?: (root: string) => Promise<void>` | `=> Promise<StaleProvenanceEvidence[]>`（或返回 `{ staleEvidence }`） |
+| `migration-service.ts:427`、`:514`、`:646`、`:647` | `await validateProvenanceState(root)`（丢弃返回值）         | 收集成数组                                                            |
+| `migration-service.ts:272` `MigrationOutcome`      | 无该字段                                                    | 增 `staleEvidence?: StaleProvenanceEvidence[]`                        |
+| `migration-service.ts` 返回 outcome 处             | —                                                           | 带上收集结果                                                          |
+| 注入 `validateProvenanceState` 的既有测试          | fake 返回 `void`                                            | 同步改为返回数组（否则类型不过）                                      |
+| 渲染层                                             | 无消费者                                                    | 呈现（迁移完成提示里列出「因旧版本证据跳过校验的条目」）              |
+
+`StaleProvenanceEvidence` 类型与可选接收器已在 `provenance-migration-validation.ts` 就绪（提交 `c8c7570`），生产调用点也已收集，因此这里只是「把已有的数据接出去」。
+
+**另注**：`src/shared/artifact-provenance.ts:291` 已有 `warnings?: string[]` 的历史口径，接出去时对齐命名，避免同一件事在两层用两个名字。
