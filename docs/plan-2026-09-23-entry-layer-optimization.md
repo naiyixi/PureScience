@@ -919,3 +919,15 @@ if (recordedDigest !== checksum) {
 ⇒ **仓库里没有任何 harness 同时渲染真面板 + 真 scroller + 真 store**。仪器必须**新建一个面板级 harness**，最省的做法是照 `ConversationPanel.interaction.test.tsx` 复制其**完整道具清单**（该文件已把 `ConversationPanel` 的 30 余个必填道具备齐），**但删掉 `vi.mock('./WorkspaceMessageScroller')` 那一处**，再挂 `<Profiler>` 与 store 流式更新入口。
 
 这样新文件就是「唯一渲染真实转录的 jsdom harness」，既承载 U33 仪器，也可复用于以后任何「转录渲染成本」的问题。
+
+#### U33 结构性改造：实施落定（四判据达成）
+
+**完整改动表、仪器坑、改前/改后数字与有意保留的代价见 `docs/evidence/2026-09-25-interaction-smoothness.md` 的「U33 结构性改造落地」一节。**要点：
+
+- **机制**：不是「道具侧 memo」，而是**订阅侧冻结**——工作区对 `state.sessions` 的订阅改为 `useRenderSessions()`（只有流式正文变了就返回上一份快照，身份不变 ⇒ 页面不重渲），正文下沉为**自订阅叶子**（`WorkspaceMessageItem` 经 `selectLiveMessageContent` / `resolveMessageContent` 读自己的正文；容器的道具跨 delta 保持不变，正文不能再走道具），列表容器只把 `sessionId` 交给消息项。
+- **为什么不用 memo**：实测 `<ConversationPanel>` 调用点有 **75 个道具、其中 7 处内联闭包 + ~40 个非 `useCallback` 的 handler** ⇒ 面板 memo 永远 bail 不掉，除非先做几十处 `useCallback` 化（大而无谓）。这条侦察结论使设计从「收窄面板 selector / 面板 memo」改为「冻结页面订阅 + 叶子自订阅」。
+- **仪器判据**：`ConversationPanel.transcript-render.test.tsx` 断言 **panel 0 / scroller 0 / 叶子 1**。**`<Profiler>` 不能当判据**——它对该 bail out 的子树仍会触发 `onRender`（实测仍报 1）；判据换成「容器每次渲染都会新建的恒渲染子元素」探针。
+- **真机**：同日同机交替构建 A/B（`557deaf` vs `8428602`），45 轮每轮 task **117.2–120.5 → 94.2–105.6 ms（约 −16%，两带不重叠）**，每轮 script 约 −22%；提交近似数不变（249–274 → 265–271）——少的是**每次提交背后的走路**，这与帧指标向来正常并不矛盾。
+- **验收**：① 仪器 0/0/1 ✅ ② 真机 45 轮下降 ✅ ③ 文本逐字一致（`e2e/workspace-conversation.spec.ts` 的 `{ exact: true }` 断言，含重启后重载）✅ ④ 真机仍在流 + `npm run test:e2e:workspace` 8/8 + `npm run test:gate` 14426 passed / 0 failed ✅
+
+**立案到下一版（不在本版判据内，但已确认存在）**：`previews/PreviewToolContent.tsx:141` 仍按 session 对象订阅 ⇒ plan 预览打开时每 delta 重渲一次；同类窄化 selector 即可，本版未动。

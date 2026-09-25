@@ -331,3 +331,62 @@
 | 帧 p95 / max       | 18 / 51ms        | 18 / 50ms            | 持平                                  |
 
 **结论**：该目标绝对量约 13ms/901ms ≈ **1.4%**，**低于仪器可辨别阈值**（噪声带约 ±10%）。因此本次改动按「结构正确、量不出体感」保留，**不声称性能收益**——与 `9339ab8`（闭包稳定化）同类。若要在这条线上继续，必须挑**量级足够大**的目标：`MessageTimestamp`（14.1ms）与列表 reconcile（~20ms）属同一量级，加起来仍只有 ~4%；**真正的量级问题是「一次提交要走完整条转录」本身**，需要结构性方案（例如流式期间只让「流中那一条」进入重渲染路径，把已定稿部分移出协调范围），而不是逐个组件抠毫秒。
+
+## U33 结构性改造落地：一个流式片段只重渲正文那一条（订阅方与列表容器 0 重渲）
+
+上面最后一行就是本节的立案理由。现在做完了，且**这次量得出来**——因为它动的不是几毫秒，而是「每个 delta 走完整条转录组件树」这件事本身。
+
+### 改动（结构性，非抠毫秒）
+
+| 位置                              | 改动                                                                                                                                                                            |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `use-render-sessions.ts`（新）    | 工作区对 `state.sessions` 的订阅改为 `useSyncExternalStore` + 每实例 ref 快照：**只有流式正文变了**就返回上一份快照（身份不变）⇒ 页面不再每 delta 重渲                                        |
+| `transcript-render-identity.ts`（新） | `carriesSameTranscriptStructure` / `carriesSameSessionListStructure`：own-key 枚举比较，忽略 session `updatedAt` / `messages` / `branchSwitchBlocked`，以及**流中那条消息**的 `content`/`eventIds`/`updatedAt`；未知差异一律判为「需要重渲」（安全方向：漏判只是少一次优化，不会显示旧内容） |
+| `message-content-subscription.ts`（新） | `selectLiveMessageContent`（从 store 取该消息正文）+ `resolveMessageContent`（store 值不是「渲染时正文的延续」时保留渲染时的正文）                                                     |
+| `WorkspaceMessageItem.tsx`       | 正文改由**自订阅叶子**从 store 读（容器道具跨 delta 保持不变，正文不能再走道具）；5 处 `message.content` 读取点全部改走它                                                          |
+| `WorkspaceMessageScroller.tsx`    | 把 `sessionId`（**不是正文**）交给消息项；比较器换用共享的 `carriesSameTranscriptStructure`（原 `areSessionsEqualForTranscript` 只忽略 `branchSwitchBlocked`）                    |
+| `WorkspacePage.tsx`               | `state.sessions` → `useRenderSessions()`；转录之外**读正文**的入口（导出 / 产物下载 / 打包导出）改为从 store 解析活会话，避免导出中途的旧快照                                     |
+
+### 仪器（新建面板级 harness，进 CI、确定性、秒级）
+
+`src/renderer/src/pages/workspace/ConversationPanel.transcript-render.test.tsx` —— 真 store + 真面板 + 真 scroller（照 `ConversationPanel.interaction.test.tsx` 的道具清单，**删掉它那处 `vi.mock('./WorkspaceMessageScroller')`**），40 条已定稿消息 + 一整轮流式，经 store 真实入口喂 delta。
+
+**仪器坑（写下来给后来人）**：`<Profiler>` 对**已 bail out 的子树仍会触发 `onRender`**（实测 bail-out 时仍报 1）⇒ 它不能当「谁重渲了」的判据。改用**渲染探针**：给容器挂一个它每次渲染都会新建的子元素（面板 = 恒渲染的 `TrimmedHistoryNotice`，列表容器 = `MessageScrollerProvider` 替身，叶子 = 喂给 `AgentMarkdown` 的正文），「子元素被重新渲染过」即「容器的 body 跑过」。`<Profiler>` 的数仍在输出里并列，作为反面对照。
+
+### 改前 / 改后（同一 jsdom 仪器，单位 = 每个 delta 的重渲次数）
+
+| 组件                    | 改前 | 改后 | 说明                                                     |
+| ----------------------- | ---- | ---- | -------------------------------------------------------- |
+| `ConversationPanel`     | 1    | **0** | 页面订阅不再因正文变化而重渲                                 |
+| `WorkspaceMessageScroller` | 1 | **0** | 列表容器连「逐条 map 生成元素」都不再发生                    |
+| 正文叶子                | 1    | **1** | 正是要保留的那一次（每个 chunk 只重渲流中那一条的正文）        |
+| `slot` 重渲名单          | `['reply-streaming']` | `[]` | 槽位由自订阅驱动，不再由容器道具驱动 |
+
+### 真机 45 轮（同日同机 A/B，`557deaf`（改前）与 `8428602`（改后）交替构建，同一仪器）
+
+| 运行 | 构建 | 主线程 task / 45 轮 | 每轮 task | 每轮 script | 提交近似数 |
+| ---- | ---- | ------------------- | --------- | ----------- | ---------- |
+| 1    | 改前 | 5276ms              | 117.2ms   | 76.9ms      | 269        |
+| 2    | 改前 | 5423ms              | 120.5ms   | 79.4ms      | 274        |
+| 3    | 改后 | 4508ms              | **100.2ms** | 61.0ms    | 265        |
+| 4    | 改后 | 4241ms              | **94.2ms**  | 57.3ms    | 249        |
+| 5    | 改后 | 4751ms              | **105.6ms** | 64.8ms    | 271        |
+
+**判读**：改前带 117.2–120.5（均值 118.9），改后带 94.2–105.6（均值 100.0）——**两带不重叠**，每轮 task **约 −16%**、每轮 script（JS 执行）**约 −22%**。历史基线 114.7 / 118.6 / 126.6 全在改前带内 ⇒ 差值来自本次改动，不是机器抖动。提交数几乎不变（249–274 ⇒ 265–271）：**提交还是那么多，但每次提交背后的工作少了一整条转录树的走路**——这与帧指标（p95 18ms，本来就正常）不矛盾，也解释了为什么以前在帧指标上量不出来。
+
+### 有意保留的代价（写清楚，别当成 bug）
+
+1. 经 `useRenderSessions` 读到的会话在**正文之外**最多一个 delta 陈旧：会话 `updatedAt`（侧栏相对时间、`SessionInfoCard` 的「更新于」）在流式期间滞后到上一次结构性变化。结构性字段（标题/状态/审批/产物）照旧即时。
+2. **读正文的入口必须取活数据**：已改的是导出 / 产物下载 / 打包导出；`previews/PreviewToolContent.tsx:141`（plan 预览）仍按 session 对象订阅 ⇒ plan 预览打开时每 delta 重渲一次，**本版未改，已立案**（同类窄化 selector 即可）。
+3. `resolveMessageContent` 的延续守卫：store 里的值若**不是**渲染时正文的前缀（隔离面/代际不同的快照/被回撤的 chunk），保留渲染时的正文 ⇒ 最坏是「一帧旧文本」，等下一次结构性变化刷新，不会出现与周围转录矛盾的画面。
+
+### 判定（计划里的四条验收）
+
+| 验收项                                          | 结果                                                                     |
+| ----------------------------------------------- | ------------------------------------------------------------------------ |
+| ① 仪器断言「订阅方与列表容器 0 重渲 + 叶子 1 次」 | ✅ 断言已收紧到 `panel 0 / scroller 0 / slots [] / markdown ['partial more']` |
+| ② 真机 45 轮总量下降                             | ✅ 同日 A/B：117.2–120.5 → 94.2–105.6 ms/轮（−16%），两带不重叠             |
+| ③ 最终文本逐字一致                               | ✅ `e2e/workspace-conversation.spec.ts` 用 `{ exact: true }` 断言用户消息与答复全文，含改消息、修订切换与**重启后**从持久化重载 |
+| ④ 真机仍在流 + 对话相关用例全绿                   | ✅ 45 轮流式跑通（每轮都等到了完整答复）、`npm run test:e2e:workspace` 8/8、`npm run test:gate` 14426 passed / 0 failed |
+
+**顺带修掉的既有红**：`e2e/launch-environment.spec.ts:14` 仍断言 `PURESCIENCE_E2E_STORAGE_ROOT` 为 `undefined`，而 fixture 自 `3335d23` 起**每次启动都设置它**（注释写明「Set it for every run」）⇒ 陈旧断言，与本次改动无关，一并更正。

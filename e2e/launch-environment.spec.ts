@@ -11,7 +11,9 @@ test('normalizes a Windows-style Path before injecting the fake Agent directory'
   expect(environment.PATH).toBe(`fake-agent-bin${delimiter}system-bin`)
   expect(environment.Path).toBeUndefined()
   expect(environment.ELECTRON_RENDERER_URL).toBeUndefined()
-  expect(environment.PURESCIENCE_E2E_STORAGE_ROOT).toBeUndefined()
+  // The data root is derived from the E2E root for every launch, not only the packaged ones: a dev run
+  // must not derive it from HOME and read the developer's real data directory (`launchEnvironment`).
+  expect(environment.PURESCIENCE_E2E_STORAGE_ROOT).toBe('storage-root')
   expect(environment.PURESCIENCE_STORAGE_ROOT).toBe('storage-root')
 })
 
