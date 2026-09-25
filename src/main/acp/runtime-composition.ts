@@ -34,6 +34,7 @@ import type { UploadRepository } from '../uploads/repository'
 import type { SessionPersistenceCoordinator } from '../session-persistence/coordinator'
 import { ElicitationBroker } from '../elicitation-broker'
 import { createBoundedEventAdmission } from '../event-admission'
+import { createLatestSnapshotBroadcast } from '../latest-snapshot-broadcast'
 import { AgentMcpHttpHost } from './mcp-http-host'
 import { projectRegistrySessionGrants } from './permission-broker'
 import { AcpRuntime, type AcpRuntimeCallbacks, type AcpRuntimeOptions } from './runtime'
@@ -140,8 +141,15 @@ const createAcpRuntime = ({
   const admitEvent = createBoundedEventAdmission((event) =>
     broadcastToRenderers('acp:event', event)
   )
+  // Bounded broadcast for the snapshot channel, which is emitted on every state change (effectively per
+  // streamed chunk) and carries the whole event log: one message per window keeps the renderer's per-chunk
+  // deserialize + full event-log walk bounded, and the newest snapshot still reconciles everything the
+  // collapsed ones held. An isolated change is still sent immediately.
+  const broadcastState = createLatestSnapshotBroadcast<AcpStateSnapshot>((state) =>
+    broadcastToRenderers('acp:state', state)
+  )
   const callbacks: AcpRuntimeCallbacks = {
-    onStateChanged: (state: AcpStateSnapshot) => broadcastToRenderers('acp:state', state),
+    onStateChanged: (state: AcpStateSnapshot) => broadcastState(state),
     onEvent: (event: AcpRuntimeEvent) => {
       admitEvent(event)
       // Fire-and-forget: a notification hiccup must never stall the renderer event stream.
