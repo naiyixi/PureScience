@@ -18,6 +18,7 @@ import { selectProjectSessionReviews, useReviewStore } from '@/stores/review-sto
 import { useSettingsStore } from '@/stores/settings-store'
 import { useSessionStore, type ChatSession } from '@/stores/session-store'
 import { groupRevisionsByRoot } from './revision-groups'
+import { sameElements, stableArray, stableValue } from './stable-identity'
 import { useLanguage } from '@/i18n'
 import { flushSessionPersistence } from '@/lib/session-persistence/session-persistence'
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ComponentProps } from 'react'
@@ -96,6 +97,8 @@ type MessageArtifact = NonNullable<ChatSession['artifacts']>[number] & {
   resolvedProjectId?: string
   resolvedSessionId?: string
 }
+// User bubbles carry no artifacts; a shared empty array keeps their prop identity stable across chunks.
+const NO_ARTIFACTS: MessageArtifact[] = []
 type MessageUploadAttachment = NonNullable<ChatSession['messages'][number]['uploads']>[number]
 const conversationContentClassName = 'relative mx-auto w-full max-w-4xl pb-[56px]'
 // How long a "no longer available" mention notice stays visible before auto-dismissing.
@@ -482,6 +485,17 @@ const WorkspaceMessageScrollerImpl = ({
   // Revisions grouped once per render. This used to be filtered and sorted inside every message slot,
   // which made the transcript list quadratic in the number of messages per streaming chunk — the cost
   // showed up as the residual >50ms tasks at 45 turns.
+  // Per-slot caches: a streaming chunk rebuilds this list, and anything it hands a slot that did not
+  // actually change has to keep its identity, or the message item's memo never gets to skip it.
+  const artifactsCacheRef = useRef(
+    new Map<string, EditableWorkspaceMessageItemProps['artifacts']>()
+  )
+  const runtimeIdentityCacheRef = useRef(
+    new Map<string, EditableWorkspaceMessageItemProps['runtimeIdentity']>()
+  )
+  const itemPropsCacheRef = useRef(
+    new Map<string, { deps: readonly unknown[]; value: EditableWorkspaceMessageItemProps }>()
+  )
   const previousRevisionsRef = useRef<Map<string, GraphMessage[]>>(undefined)
   const revisionsByRootMessageId = useMemo(() => {
     const grouped = groupRevisionsByRoot(
@@ -620,7 +634,9 @@ const WorkspaceMessageScrollerImpl = ({
   )
 
   // Shows a transient notice and schedules its auto-dismiss, replacing any in-flight timer.
-  const showMentionNotice = (message: string): void => {
+  // Stable identity: the mention handlers below depend on it, and those are part of the transcript
+  // slot's prop set — a fresh closure here would rebuild every slot's props on every streaming chunk.
+  const showMentionNotice = useCallback((message: string): void => {
     if (mentionNoticeTimerRef.current !== undefined) {
       window.clearTimeout(mentionNoticeTimerRef.current)
     }
@@ -630,74 +646,88 @@ const WorkspaceMessageScrollerImpl = ({
       setMentionNotice(null)
       mentionNoticeTimerRef.current = undefined
     }, MENTION_NOTICE_TIMEOUT_MS)
-  }
+  }, [])
 
   // Routes a generated-file click to the preview workbench, scoped to the active session.
-  const onPreviewArtifact = (artifact: MessageArtifact): void => {
-    if (currentSessionId) previewArtifact(artifact, currentSessionId, currentProjectId)
-  }
+  // Stable identity matters here: the transcript slot's props are compared by identity, and a fresh
+  // closure per render would make every slot re-render on every streaming chunk.
+  const onPreviewArtifact = useCallback(
+    (artifact: MessageArtifact): void => {
+      if (currentSessionId) previewArtifact(artifact, currentSessionId, currentProjectId)
+    },
+    [currentProjectId, currentSessionId, previewArtifact]
+  )
 
   // Routes a sent-message upload click to the preview workbench for the active session.
-  const onPreviewUploadAttachment = (attachment: MessageUploadAttachment): void => {
-    if (currentSessionId) {
-      previewUploadAttachment(attachment, currentSessionId, activeSession?.projectId)
-    }
-  }
+  const onPreviewUploadAttachment = useCallback(
+    (attachment: MessageUploadAttachment): void => {
+      if (currentSessionId) {
+        previewUploadAttachment(attachment, currentSessionId, activeSession?.projectId)
+      }
+    },
+    [activeSession?.projectId, currentSessionId, previewUploadAttachment]
+  )
 
   // Opens an artifact mention in the preview panel, probing existence first so a stale link warns.
-  const onPreviewMentionArtifact = async (part: ArtifactMentionPart): Promise<void> => {
-    if (!currentSessionId) return
-    if (part.source === 'linked-folder') {
-      showMentionNotice('Linked-folder files are not available until the folder is connected.')
-      return
-    }
+  const onPreviewMentionArtifact = useCallback(
+    async (part: ArtifactMentionPart): Promise<void> => {
+      if (!currentSessionId) return
+      if (part.source === 'linked-folder') {
+        showMentionNotice('Linked-folder files are not available until the folder is connected.')
+        return
+      }
 
-    const read =
-      part.source === 'upload' ? window.api.uploads.readPreview : window.api.artifacts.readPreview
+      const read =
+        part.source === 'upload' ? window.api.uploads.readPreview : window.api.artifacts.readPreview
 
-    try {
-      await read({
-        ...createPreviewRequestScope({
-          projectId: currentProjectId,
-          sessionId: currentSessionId,
-          source: part.source,
-          path: part.path
-        }),
-        path: part.path,
-        maxBytes: 1,
-        encoding: 'utf8'
-      })
-    } catch {
-      showMentionNotice(`"${part.name}" is no longer available.`)
-      return
-    }
+      try {
+        await read({
+          ...createPreviewRequestScope({
+            projectId: currentProjectId,
+            sessionId: currentSessionId,
+            source: part.source,
+            path: part.path
+          }),
+          path: part.path,
+          maxBytes: 1,
+          encoding: 'utf8'
+        })
+      } catch {
+        showMentionNotice(`"${part.name}" is no longer available.`)
+        return
+      }
 
-    usePreviewWorkbenchStore
-      .getState()
-      .upsertAndActivateItem(
-        createPreviewFileItemFromMention(part, currentSessionId, currentProjectId)
-      )
-  }
+      usePreviewWorkbenchStore
+        .getState()
+        .upsertAndActivateItem(
+          createPreviewFileItemFromMention(part, currentSessionId, currentProjectId)
+        )
+    },
+    [currentProjectId, currentSessionId, showMentionNotice]
+  )
 
   // Opens Settings on a skill mention's detail, warning instead when the skill no longer exists.
-  const onOpenSkillMention = async (skillId: string, name: string): Promise<void> => {
-    const detail = await window.api.settings.getSkillDetail(skillId).catch(() => null)
+  const onOpenSkillMention = useCallback(
+    async (skillId: string, name: string): Promise<void> => {
+      const detail = await window.api.settings.getSkillDetail(skillId).catch(() => null)
 
-    if (!detail) {
-      showMentionNotice(`Skill "${name}" is no longer available.`)
-      return
-    }
+      if (!detail) {
+        showMentionNotice(`Skill "${name}" is no longer available.`)
+        return
+      }
 
-    useSettingsStore.getState().openSettingsToSkill(skillId)
-  }
+      useSettingsStore.getState().openSettingsToSkill(skillId)
+    },
+    [showMentionNotice]
+  )
 
   // # session-reference pill navigation: switch the workspace to the referenced session.
-  const onOpenSessionMention = (sessionId: string): void => {
+  const onOpenSessionMention = useCallback((sessionId: string): void => {
     const selectSession = useSessionStore.getState().selectSession
     if (useSessionStore.getState().sessions.some((session) => session.id === sessionId)) {
       selectSession(sessionId)
     }
-  }
+  }, [])
 
   // Toggles a whole adjacent tool-activity group without affecting other sessions.
   const toggleActivityGroup = (groupId: string): void => {
@@ -807,14 +837,17 @@ const WorkspaceMessageScrollerImpl = ({
                         )
                       }
                       if (item.type === 'message') {
-                        const artifacts =
+                        const artifacts = stableArray(
+                          artifactsCacheRef.current,
+                          item.message.id,
                           activeSession && item.message.role !== 'user'
                             ? getMessageArtifacts(
                                 activeSession,
                                 item.message,
                                 historicalArtifactsByVersionId
                               )
-                            : []
+                            : NO_ARTIFACTS
+                        )
                         // Jobs pre-assigned to this slot: each job appears in exactly one slot.
                         const jobsBeforeMessage = jobSlotsByItemIndex.get(itemIndex) ?? []
                         const graph = activeSession?.conversationGraph
@@ -831,14 +864,18 @@ const WorkspaceMessageScrollerImpl = ({
                         const synthesizedLegacyRuntime =
                           runtimeSegment?.id === `runtime-segment-${activeSession?.id}` &&
                           !activeSession?.agentFrameworkId
-                        const runtimeIdentity = synthesizedLegacyRuntime
-                          ? activeSession?.agentBackendId || activeSession?.agentModel
-                            ? {
-                                backendId: activeSession.agentBackendId,
-                                model: activeSession.agentModel
-                              }
-                            : undefined
-                          : runtimeSegment
+                        const runtimeIdentity = stableValue(
+                          runtimeIdentityCacheRef.current,
+                          item.message.id,
+                          synthesizedLegacyRuntime
+                            ? activeSession?.agentBackendId || activeSession?.agentModel
+                              ? {
+                                  backendId: activeSession.agentBackendId,
+                                  model: activeSession.agentModel
+                                }
+                              : undefined
+                            : runtimeSegment
+                        )
                         const revisionRootMessageId = messageNode?.revisionRootMessageId
                         const revisions =
                           (revisionRootMessageId
@@ -859,8 +896,28 @@ const WorkspaceMessageScrollerImpl = ({
                                   )
                             : undefined
                         }
-                        const messageItemProps: EditableWorkspaceMessageItemProps = {
-                          message: item.message,
+                        const showAssistantFooter =
+                          item.message.role !== 'agent' ||
+                          assistantFooterMessageIds.has(item.message.id)
+                        const subsequentTurns =
+                          subsequentTurnCountByMessageId.get(item.message.id) ?? 0
+                        const turnStartedAt = item.message.responseToMessageId
+                          ? messageCreatedAtById.get(item.message.responseToMessageId)
+                          : undefined
+                        // Everything this slot's props are built from. A real change makes the tuple differ
+                        // and the bundle — closures included — is rebuilt, so a reused bundle can never serve
+                        // stale values. The session is reduced to its id on purpose: the closures only read
+                        // that, and keying on the session object would rebuild on every streaming chunk.
+                        const propsDeps: readonly unknown[] = [
+                          item.message,
+                          artifacts,
+                          runtimeIdentity,
+                          revisionIndex,
+                          revisions,
+                          showAssistantFooter,
+                          subsequentTurns,
+                          turnStartedAt,
+                          activeSession?.id,
                           onPreviewArtifact,
                           onPreviewUploadAttachment,
                           onOpenSkillMention,
@@ -869,25 +926,43 @@ const WorkspaceMessageScrollerImpl = ({
                           onAnnotateImage,
                           onSendEditedMessage,
                           canBranchInNewSession,
-                          onBranchInNewSession,
-                          turnStartedAt: item.message.responseToMessageId
-                            ? messageCreatedAtById.get(item.message.responseToMessageId)
-                            : undefined,
-                          runtimeIdentity,
-                          showAssistantFooter:
-                            item.message.role !== 'agent' ||
-                            assistantFooterMessageIds.has(item.message.id),
-                          subsequentTurns: subsequentTurnCountByMessageId.get(item.message.id) ?? 0,
-                          revisionNavigation:
-                            revisionIndex >= 0 && revisions.length > 1
-                              ? {
-                                  index: revisionIndex,
-                                  total: revisions.length,
-                                  onPrevious: activateRevision(revisionIndex - 1),
-                                  onNext: activateRevision(revisionIndex + 1)
-                                }
-                              : undefined,
-                          artifacts
+                          onBranchInNewSession
+                        ]
+                        const cachedProps = itemPropsCacheRef.current.get(item.message.id)
+                        let messageItemProps: EditableWorkspaceMessageItemProps
+                        if (cachedProps && sameElements(cachedProps.deps, propsDeps)) {
+                          messageItemProps = cachedProps.value
+                        } else {
+                          messageItemProps = {
+                            message: item.message,
+                            onPreviewArtifact,
+                            onPreviewUploadAttachment,
+                            onOpenSkillMention,
+                            onPreviewMentionArtifact,
+                            onOpenSessionMention,
+                            onAnnotateImage,
+                            onSendEditedMessage,
+                            canBranchInNewSession,
+                            onBranchInNewSession,
+                            turnStartedAt,
+                            runtimeIdentity,
+                            showAssistantFooter,
+                            subsequentTurns,
+                            revisionNavigation:
+                              revisionIndex >= 0 && revisions.length > 1
+                                ? {
+                                    index: revisionIndex,
+                                    total: revisions.length,
+                                    onPrevious: activateRevision(revisionIndex - 1),
+                                    onNext: activateRevision(revisionIndex + 1)
+                                  }
+                                : undefined,
+                            artifacts
+                          }
+                          itemPropsCacheRef.current.set(item.message.id, {
+                            deps: propsDeps,
+                            value: messageItemProps
+                          })
                         }
 
                         return (

@@ -173,3 +173,16 @@
 **这也回答了上一节的疑问**：那套 props 身份缓存方向是对的（问题真在「槽位整体重渲」），但当时既没有仪器、也没证明 memo 是否生效；现在有了**可判定的目标值**。
 
 **目标值已写进断言**：这段期望应变成 `['partial more']`。改完这里即算完成，用帧指标确认不了。
+
+## 修好了：一个流式片段现在只重渲流式中那一个槽位
+
+有了仪器，「稳定 prop」这一步从盲改变成了红绿灯。定位过程（每一步都由仪器判定）：
+
+1. 把 `artifacts`/`runtimeIdentity`/整份 props 连闭包按依赖元组缓存 ⇒ **仍然是 3 个槽位**，说明依赖元组每次片段都在变。
+2. 仪器先抓到一个**测试自身的伪影**：我在 `Parent` 里内联传了 `vi.fn()`，每次渲染都是新函数。提成稳定引用后仍是 3 个槽位 ⇒ 真问题在组件内。
+3. 查渲染层源码：`onPreviewArtifact`、`onPreviewUploadAttachment`、`onPreviewMentionArtifact`、`onOpenSkillMention`、`onOpenSessionMention` **全都在 `WorkspaceMessageScroller` 函数体里定义**，`showMentionNotice`（前两个的用户）同样是内联的 ⇒ 每次渲染都是新函数 ⇒ 槽位 prop 集合每帧变化 ⇒ 消息项的 `memo` 永远被抵掉。
+4. 把这 6 个闭包改成 `useCallback`（依赖只含标量与会话 id）⇒ **仪器变绿：`['partial more']`**。
+
+**结果**：一个流式片段只渲染流式中那个槽位，已定稿槽位被 `memo` 跳过。断言已固化为 `expect(renderedContents).toEqual(['partial more'])`，并注明回归时要往哪查（scroller 里按渲染重建的闭包）。
+
+**回归测试**：workspace 簇 151 files / **1657 passed**；typecheck / lint 干净。

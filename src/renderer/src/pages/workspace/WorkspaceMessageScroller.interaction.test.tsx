@@ -1077,13 +1077,19 @@ describe('WorkspaceMessageScroller artifact click behavior', () => {
     })
     useSessionStore.setState({ sessions: [session], selectedSessionId: session.id })
 
+    // Stable identity on purpose: the real workspace passes durable handlers, and an inline `vi.fn()`
+    // would change the slot's prop set on every chunk by itself — measuring the harness, not the app.
+    const onSendEditedMessage = vi.fn()
     const Parent = (): React.JSX.Element => {
       const activeSession = useSessionStore((state) =>
         state.sessions.find((candidate) => candidate.id === session.id)
       )
       return (
         <WorkspaceMessageEditStateProvider canEditMessage>
-          <WorkspaceMessageScroller activeSession={activeSession} onSendEditedMessage={vi.fn()} />
+          <WorkspaceMessageScroller
+            activeSession={activeSession}
+            onSendEditedMessage={onSendEditedMessage}
+          />
         </WorkspaceMessageEditStateProvider>
       )
     }
@@ -1119,14 +1125,14 @@ describe('WorkspaceMessageScroller artifact click behavior', () => {
     // eslint-disable-next-line no-console -- measurement output for whoever tightens the number below
     console.log('[render-count] slots rendered by one chunk:', JSON.stringify(renderedContents))
 
-    // Known cost, measured: one chunk of streamed text renders *every* agent slot in the transcript, not
-    // just the streaming one. This is what the frame metrics cannot see (each slot's work is small, so no
-    // single task crosses the long-task threshold) and it is why the transcript gets heavy on long
-    // sessions. The markdown component is mocked here, so the counter tracks slot render bodies rather than
-    // markdown internals — which is exactly the question: are settled slots re-rendering at all?
+    // A streamed chunk must touch the streaming slot only. Before this was pinned down, every agent slot
+    // in the transcript re-rendered on every chunk — the transcript's cost grew with session length, and
+    // the frame metrics could not see it (each slot's work is small, so no single task crossed the
+    // long-task threshold). The markdown component is mocked here, so the counter tracks slot render
+    // bodies, which is exactly the question.
     //
-    // Target: this becomes ['partial more']. When a change makes that true, update it here — the frame
-    // metric cannot confirm it.
-    expect(renderedContents).toEqual(['First answer', 'Second answer', 'partial more'])
+    // Keep this exact. A regression means the slot's prop set is unstable again — check for a closure
+    // recreated per render in the scroller (handlers, notices), which is what defeated the item's memo.
+    expect(renderedContents).toEqual(['partial more'])
   })
 })
