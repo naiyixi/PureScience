@@ -806,3 +806,26 @@
 2. **提供隔离/修复入口**：把这类文档移入 `*.stale` 隔离区并记录，让迁移继续。
 
 倾向 1（改动面更小、用户可感知、可加回归用例：构造一个「名≠哈希但内容完整」的文档 ⇒ 迁移应成功且结果里列出该条）。**实施需要完整门禁 + 真机验证迁移流程**，留给下一轮。
+
+#### 更正（本轮读码后）：抱怨 ③ 已不存在，剩下的只有 ①/②
+
+`provenance-migration-validation.ts:164-173` 的**实际代码**是：
+
+```
+const recordedDigest = await sha256File(manifestPath)
+if (recordedDigest !== checksum) {
+  // Fail closed either way, but name the entry and both digests: this run and the manifest it points
+  // at disagree, and whoever repairs the root has to see which of the two is wrong.
+  throw new Error(
+    `Notebook Environment manifest checksum mismatch: ${checksum} ` +
+      `(runtime/provenance/environment-manifests/${checksum}.json holds ${recordedDigest}), ` +
+      `referenced by notebook run ${run.runId} in ${project.name}/${session.name}`
+  )
+}
+```
+
+⇒ 报错**已经**给出了：目标路径、文件实际摘要、与**引用它的 run + 项目/会话名**。先前记录的「错误不指名项目/会话」是**陈旧描述**，予以纠正。
+
+⇒ 剩余缺陷只有：① 旧版本产出过这类名实不符的文档；② **没有修复路径，一律 fail-closed 挡住搬迁**。
+
+**实施要点（下一轮，含 API 变更）**：`validateProvenanceMigrationState` 目前抛出即终止 ⇒ 要支持「降级为可报告项」，需把它的契约从「void / throw」改为「返回报告（含 `warnings: [{kind, project, session, runId, path, recordedDigest, expectedDigest}]`）」，由 `migration-service.ts:293` 收集并随迁移结果一起返回，最终呈现给用户；真正的损坏（无法归属到已知 run/文档者）仍 fail-closed。回归用例：构造 `名≠哈希但内容完整` 的清单 ⇒ 迁移**成功**且报告里列出该条；构造无法归属的损坏 ⇒ 仍**失败**。
