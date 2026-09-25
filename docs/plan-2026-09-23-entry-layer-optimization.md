@@ -873,3 +873,25 @@ if (recordedDigest !== checksum) {
 **顺带修复的真 bug**：`StorageMigrationModal` 的 `done` 阶段原有一句硬编码英文尾巴，而 `settings.restartToSwitch` 的字典值**已包含同一句** ⇒ 9 种语言下都会在译文后重复渲染一句英文。已删除 JSX 尾巴（字典值为完整句子）。
 
 **门禁**：storage+notebook 1583 passed / settings+i18n+storage 894 passed / settings 587 passed；typecheck 0 error；lint 0 error。
+
+### U33 结构性改造：设计定案（本轮侦察结论，未动代码）
+
+**链路（45.4% 成本怎么来的）**
+
+`ConversationPanel.tsx:615` → `<WorkspaceMessageScroller activeSession={activeSession} … />`：
+`activeSession` 是**道具**，由 `ConversationPanel`（订阅会话 store）传下 ⇒ 每个 delta 触发 store 通知 ⇒ **面板重渲 → scroller 重渲 → 逐条 map 生成元素 → React 走完整条转录组件树**（memo 只让「重渲」变成「便宜地 bail out」，**走路本身仍要付**）。这与「slot 级只重渲流中那一个」并存：那是**渲染次数**，这是**提交成本**，两者不矛盾。
+
+**现有仪器测不到目标**：`WorkspaceMessageScroller.interaction.test.tsx:369` 把 scroller 当**受控组件**渲染（`activeSession` 作为 prop 传入）⇒ 在这里数渲染次数只会数到**测试自己的**渲染；`:366` 的 `agentMarkdownRenderMock` 断言属于「已定稿槽位不重渲 AgentMarkdown」这一层，同样够不到「每个 delta 谁在重渲」。
+
+**目标性质（可判定）**：一个流式 delta 到达后，**订阅方与列表容器零重渲，只有承载该消息正文的叶子组件重渲一次**。
+
+**第一步必须是仪器（否则又是在假设上动手）**：写一个渲染计数用例，**渲染真实的订阅方**（`ConversationPanel` 或其等价 harness：真 store + 真 selector），用 React `<Profiler>` 分别记录 `ConversationPanel`／`WorkspaceMessageScroller`／叶子 三类组件的**每次 delta 的重渲次数**，先得到当前值（预期：面板与 scroller 每 delta 各 ≥1）。仪器的判据是「delta 次数 → 各类组件重渲次数」的映射，进 CI、确定性、秒级。
+
+**第二步（按测量结果择一）**：
+
+- 若面板每 delta 重渲 ⇒ 收窄其 selector（只订阅「消息 id 列表 + 修订结构」，不订阅逐 delta 变化的正文），或把正文读取下沉为**自订阅叶子**；
+- 若 scroller 仍重渲 ⇒ 使其 `props` 在 delta 期间身份不变（修订结构只在**新修订**时变，正文不属于它），正文由叶子自订阅。
+
+**验收（缺一不可）**：仪器断言「订阅方与列表容器 0 重渲 + 叶子 1 次」；真机 45 轮总量数字下降（`PERF_TURNS=45 npx playwright test e2e/perf/smoothness.spec.ts --workers=1`，基线 `task≈5162ms / 114.7ms 每轮`，须多次取噪声带）；最终文本**逐字一致**；真机仍在流；对话相关用例全绿。
+
+**风险与不做的事**：不引入按帧节流（已证 0.65 提交/帧无空间）、不恢复写入侧合批（store 写入仅 0.5%）。若测量显示面板并未每 delta 重渲，则第一/第二步的结论作废，回到「谁在重渲」重新测量——**先量后改**。
