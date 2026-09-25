@@ -120,3 +120,22 @@
 **为什么这件事单独成立**：真实数据里已定稿消息在流式片段之间确实是**同一批实例**（`session-store-run-output-helpers.ts` 的更新是 `messages.map(m => m.id === streamingId ? {...m, content} : m)`），所以「逐元素同实例」在真实运行中成立，不是纸面假设。
 
 **诚实边界**：这一步只是让 `revisions`/`revisionIndex` 稳定，**并不能单独提升流畅度**——消息槽还有 `artifacts`/`runtimeIdentity`/`activateRevision`（闭包）等每次渲染新建的入参，memo 仍然会被抵掉。单测钉住的是复用语义本身（同实例 ⇒ 还同一数组；成员变 ⇒ 重建），性能收益要等「把逐项派生值搬进被 memo 包住的那一层」落地后才有，届时用 `PERF_TURNS=45` 对照。
+
+## 下一步的完整设计（可直接执行，不需要重新侦察）
+
+**目标**：消掉 45 轮流式期间剩下的 3 条 ~55ms 最坏任务（React 提交/协调的聚合成本）。
+
+**已确认的事实**（勿重复侦察）：
+
+- 流式更新保持已定稿消息的**对象身份**（`session-store-run-output-helpers.ts`，`map` 只替换流式中那条）。
+- `AgentMarkdown` **已经是 `memo`**（`AgentMarkdown.tsx:199`）⇒ 已定稿消息的 markdown 子树本来就不重渲；成本在 scroller 自己的逐项派生 + 提交阶段。
+- 逐项派生值（`WorkspaceMessageScroller.tsx` 的 map 体）：`artifacts`(:792)、`jobsBeforeMessage`(:801，已是 memo)、`graph`(:802)、`messageNode`(:803)、`runtimeSegment`(:806)、`synthesizedLegacyRuntime`(:813)、`runtimeIdentity`(:816)、`revisionRootMessageId`(:824)、`revisions`(:825，**已稳定**)、`revisionIndex`(:838)、`activateRevision`(:841，**新闭包**)。
+
+**执行步骤**：
+
+1. 新增 `stable-identity.ts`：`stableArrayIdentity(cache, key, next)`（逐元素同实例 ⇒ 还旧数组）+ `stableObjectIdentity(cache, key, next)`（浅比较自身字段 ⇒ 还旧对象），各带单测（同/变两种情形）。
+2. scroller 里用 `useRef(new Map())` 承接：把 `artifacts`、`runtimeIdentity` 过这两个函数；`messageNode`/`runtimeSegment` 同理（它们是 `graph`/`runtimeSegments` 里的**既有实例**，天然稳定，只要别在 map 体里重建）。
+3. **闭包是最后一块**：`activateRevision` 不能靠缓存闭包（会捕获旧值 ⇒ 陈旧）。正解是把它提升为**一个稳定的 `useCallback`**，签名带上它需要的位置信息（`activateRevision(revisionIndex)`），把 `revisionIndex` 作为**独立标量 prop** 传给消息项——标量天然稳定，闭包只有一个。这一步会碰到消息项的 prop 形状，所以要同时跑它的簇测试。
+4. 全绿后用 `PERF_TURNS=45 npm run test:e2e:perf` 对照本文表格；**没有对照数字就不算完成**。
+
+**风险点**：memo 一旦生效，「本该更新的项没更新」会表现为陈旧 UI —— 必须跑 workspace 簇全量 + 认证套件里的对话/会话流用例，而不只是跑性能基线。
