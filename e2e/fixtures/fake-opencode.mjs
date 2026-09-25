@@ -400,14 +400,23 @@ if (process.argv.includes('--version')) {
       }
 
       const replyMessageId = `e2e-${process.pid}-message-${nextMessageId++}`
-      await context.client.notify(acp.methods.client.session.update, {
-        sessionId: context.params.sessionId,
-        update: {
-          sessionUpdate: 'agent_message_chunk',
-          messageId: replyMessageId,
-          content: { type: 'text', text: reply }
-        }
-      })
+      // A real agent streams a reply in many chunks; delivering the whole answer in one notification (the
+      // default) hides every per-chunk cost from the perf specs — the transcript then commits once per turn
+      // instead of once per few characters. `PURESCIENCE_E2E_STREAM_CHUNKS=<n>` splits the reply into n
+      // notifications with a small gap, so the smoothness numbers describe streaming rather than delivery.
+      const streamChunks = Math.max(1, Number(process.env.PURESCIENCE_E2E_STREAM_CHUNKS ?? 1) || 1)
+      const chunkSize = Math.ceil(reply.length / streamChunks)
+      for (let offset = 0; offset < reply.length; offset += chunkSize) {
+        await context.client.notify(acp.methods.client.session.update, {
+          sessionId: context.params.sessionId,
+          update: {
+            sessionUpdate: 'agent_message_chunk',
+            messageId: replyMessageId,
+            content: { type: 'text', text: reply.slice(offset, offset + chunkSize) }
+          }
+        })
+        if (offset + chunkSize < reply.length) await new Promise((resolve) => setTimeout(resolve, 5))
+      }
       // The request log says what the app asked for; this says what it was told back. Without it a reply the
       // app failed to render looks identical to an agent that never answered.
       agentLog(

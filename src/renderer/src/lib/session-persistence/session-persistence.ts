@@ -40,6 +40,24 @@ type SessionPersistenceApi = {
 
 type LatestSessionSaveTask = (options?: SaveSessionOptions) => Promise<PersistedChatSession>
 
+// A streamed reply reaches the store as dozens of snapshots per turn, and each snapshot became one durable
+// write plus a whole-session echo back to this window: measured at 19–29 writes and 178–374KB of session
+// payload per 40-chunk turn. The queue below only collapsed a snapshot that arrived while the previous
+// write was still in flight, and a local write finishes far faster than the chunk cadence, so nearly every
+// snapshot got its own write. Holding a superseded snapshot for this long keeps the newest state without
+// paying a write (and its echo) per chunk; the delay is a fraction of what a user could notice as lost
+// work if the app died, and recorded turns are flushed by the forced path, which never goes through here.
+const LATEST_SAVE_COALESCE_MS = 350
+
+type HeldLatestSave = {
+  target: string
+  task: LatestSessionSaveTask
+  options: SaveSessionOptions | undefined
+  timer: ReturnType<typeof setTimeout> | undefined
+  resolve: (session: PersistedChatSession) => void
+  reject: (error: unknown) => void
+}
+
 type OrderedSessionPersistence = Pick<SessionPersistenceApi, 'saveSession' | 'saveManifest'> & {
   saveLatestSession: (
     target: string,
@@ -90,18 +108,44 @@ const createOrderedSessionPersistence = (
   api: Pick<SessionPersistenceApi, 'saveSession' | 'saveManifest'>
 ): OrderedSessionPersistence => {
   let queue: Promise<unknown> = Promise.resolve()
-  let pendingLatest:
-    | {
-        target: string
-        task: LatestSessionSaveTask
-        options: SaveSessionOptions | undefined
-      }
-    | undefined
-  let pendingLatestPromise: Promise<PersistedChatSession> | undefined
+  let held: HeldLatestSave | undefined
+  let heldPromise: Promise<PersistedChatSession> | undefined
+  const lastWriteAt = new Map<string, number>()
+
+  // Runs one held snapshot in queue order. The promise handed to the caller resolves here (or here with the
+  // error), so holding a snapshot delays its durability report but never strands an awaiter.
+  const startWrite = (entry: HeldLatestSave): void => {
+    const run = queue.then(
+      () => entry.task(entry.options),
+      () => entry.task(entry.options)
+    )
+    queue = run.then(
+      () => undefined,
+      () => undefined
+    )
+    run.then(
+      (result) => {
+        lastWriteAt.set(entry.target, Date.now())
+        entry.resolve(result)
+      },
+      (error: unknown) => entry.reject(error)
+    )
+  }
+
+  // A held snapshot is already the newest state for its target, so anything that must not be overtaken (an
+  // explicit write, a manifest barrier, a flush) releases it first instead of dropping it: dropping would
+  // both strand the caller's promise and lose the newest snapshot.
+  const releaseHeld = (): void => {
+    const entry = held
+    if (!entry) return
+    held = undefined
+    heldPromise = undefined
+    if (entry.timer !== undefined) clearTimeout(entry.timer)
+    startWrite(entry)
+  }
 
   const enqueue = <Result>(task: () => Promise<Result>): Promise<Result> => {
-    pendingLatest = undefined
-    pendingLatestPromise = undefined
+    releaseHeld()
     const run = queue.then(task, task)
     queue = run.then(
       () => undefined,
@@ -115,28 +159,49 @@ const createOrderedSessionPersistence = (
     task: LatestSessionSaveTask,
     options?: SaveSessionOptions
   ): Promise<PersistedChatSession> => {
-    if (pendingLatest?.target === target && pendingLatestPromise) {
-      pendingLatest.task = task
-      pendingLatest.options = mergeSaveSessionOptions(pendingLatest.options, options)
-      return pendingLatestPromise
+    // A snapshot arriving while one for the same target waits replaces it — the newest state wins, and the
+    // callers of both snapshots share the one write.
+    if (held?.target === target && heldPromise) {
+      held.task = task
+      held.options = mergeSaveSessionOptions(held.options, options)
+      return heldPromise
     }
 
-    const entry = { target, task, options }
-    const runTask = (): Promise<PersistedChatSession> => {
-      if (pendingLatest === entry) {
-        pendingLatest = undefined
-        pendingLatestPromise = undefined
-      }
-      return entry.task(entry.options)
+    let resolveEntry: (session: PersistedChatSession) => void = () => undefined
+    let rejectEntry: (error: unknown) => void = () => undefined
+    const promise = new Promise<PersistedChatSession>((resolve, reject) => {
+      resolveEntry = resolve
+      rejectEntry = reject
+    })
+    // The hold only applies to a snapshot that follows another write for the same target: an isolated save
+    // (a rename, the first chunk of a turn, a resumed session) keeps its prompt write and its prompt
+    // resolution, and the coalescing window is measured from when the previous write started, so a snapshot
+    // arriving while that write is still in flight is held too.
+    const previousWriteAt = lastWriteAt.get(target)
+    const delay =
+      previousWriteAt === undefined
+        ? 0
+        : Math.max(0, previousWriteAt + LATEST_SAVE_COALESCE_MS - Date.now())
+    const entry: HeldLatestSave = {
+      target,
+      task,
+      options,
+      timer: undefined,
+      resolve: resolveEntry,
+      reject: rejectEntry
     }
-    const run = queue.then(runTask, runTask)
-    pendingLatest = entry
-    pendingLatestPromise = run
-    queue = run.then(
-      () => undefined,
-      () => undefined
-    )
-    return run
+    lastWriteAt.set(target, Date.now())
+    if (delay === 0) {
+      startWrite(entry)
+      return promise
+    }
+
+    entry.timer = setTimeout(() => {
+      if (held === entry) releaseHeld()
+    }, delay)
+    held = entry
+    heldPromise = promise
+    return promise
   }
 
   return {
@@ -144,7 +209,12 @@ const createOrderedSessionPersistence = (
     saveSession: (session, options) =>
       enqueue(() => (options ? api.saveSession(session, options) : api.saveSession(session))),
     saveManifest: (request) => enqueue(() => api.saveManifest(request)),
-    flush: () => queue.then(() => undefined)
+    // A flush is the barrier callers use before quitting or reloading, so it writes the held snapshot rather
+    // than waiting out the coalescing window.
+    flush: () => {
+      releaseHeld()
+      return queue.then(() => undefined)
+    }
   }
 }
 

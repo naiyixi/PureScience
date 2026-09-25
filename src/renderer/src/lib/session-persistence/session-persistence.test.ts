@@ -880,50 +880,120 @@ describe('renderer session persistence bridge', () => {
     })
   })
 
+  it('collapses a burst of snapshots for one target into one write per window', async () => {
+    vi.useFakeTimers()
+    try {
+      const saveSession = vi.fn(async (submitted: PersistedChatSession) => submitted)
+      const persistence = createOrderedSessionPersistence(createApi({ saveSession }))
+      const session = createPersistedSession()
+
+      const first = persistence.saveLatestSession('session-1', () => saveSession(session))
+      await flushMicrotasks()
+      expect(saveSession).toHaveBeenCalledTimes(1)
+
+      // A streamed reply produces a store snapshot every few milliseconds. Only the newest of them may reach
+      // the bridge inside one window: this is the difference between one echo per chunk and one per window.
+      for (let index = 0; index < 20; index += 1) {
+        void persistence.saveLatestSession('session-1', () => saveSession(session))
+        await flushMicrotasks()
+      }
+      expect(saveSession).toHaveBeenCalledTimes(1)
+
+      vi.advanceTimersByTime(400)
+      await flushMicrotasks()
+      expect(saveSession).toHaveBeenCalledTimes(2)
+
+      await first
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('releases a held snapshot before an explicit write or a flush', async () => {
+    vi.useFakeTimers()
+    try {
+      const saveSession = vi.fn(async (submitted: PersistedChatSession) => submitted)
+      const api = createApi({ saveSession })
+      const persistence = createOrderedSessionPersistence(api)
+      const session = createPersistedSession()
+
+      void persistence.saveLatestSession('session-1', () => saveSession(session))
+      await flushMicrotasks()
+      expect(saveSession).toHaveBeenCalledTimes(1)
+
+      // Held, then overtaken by an explicit write: the held snapshot has to go first (it is the newer state
+      // for its target) and must resolve its callers instead of being dropped.
+      const held = persistence.saveLatestSession('session-1', () => saveSession(session))
+      await persistence.saveSession(session)
+      await held
+      expect(saveSession).toHaveBeenCalledTimes(3)
+
+      // A flush is the barrier before quitting or reloading: it writes what is held without waiting out the
+      // window.
+      void persistence.saveLatestSession('session-1', () => saveSession(session))
+      await persistence.flush()
+      expect(saveSession).toHaveBeenCalledTimes(4)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('queues writes so later snapshots do not resolve before earlier ones', async () => {
-    const firstSave = createDeferred<PersistedChatSession>()
-    const secondSave = createDeferred<PersistedChatSession>()
-    const saveSession = vi
-      .fn()
-      .mockReturnValueOnce(firstSave.promise)
-      .mockReturnValueOnce(secondSave.promise)
-    const api = createApi({ saveSession })
+    vi.useFakeTimers()
+    try {
+      const firstSave = createDeferred<PersistedChatSession>()
+      const secondSave = createDeferred<PersistedChatSession>()
+      const saveSession = vi
+        .fn()
+        .mockReturnValueOnce(firstSave.promise)
+        .mockReturnValueOnce(secondSave.promise)
+      const api = createApi({ saveSession })
 
-    // Select a session first so the baseline already knows the selection; later saves only change
-    // content, keeping the queue free of interleaved manifest writes for this ordering assertion.
-    useSessionStore.getState().appendUserMessage({
-      sessionId: 'session-1',
-      content: 'First',
-      cwd: '/workspace/project',
-      projectId: 'project-a'
-    })
-    const save = createStoreSaver(api, useSessionStore.getState())
+      // Select a session first so the baseline already knows the selection; later saves only change
+      // content, keeping the queue free of interleaved manifest writes for this ordering assertion.
+      useSessionStore.getState().appendUserMessage({
+        sessionId: 'session-1',
+        content: 'First',
+        cwd: '/workspace/project',
+        projectId: 'project-a'
+      })
+      const save = createStoreSaver(api, useSessionStore.getState())
 
-    useSessionStore.getState().appendUserMessage({
-      sessionId: 'session-1',
-      content: 'Second',
-      cwd: '/workspace/project'
-    })
-    void save(useSessionStore.getState())
-    await flushMicrotasks()
-    expect(saveSession).toHaveBeenCalledTimes(1)
+      useSessionStore.getState().appendUserMessage({
+        sessionId: 'session-1',
+        content: 'Second',
+        cwd: '/workspace/project'
+      })
+      void save(useSessionStore.getState())
+      await flushMicrotasks()
+      expect(saveSession).toHaveBeenCalledTimes(1)
 
-    useSessionStore.getState().appendUserMessage({
-      sessionId: 'session-1',
-      content: 'Third',
-      cwd: '/workspace/project'
-    })
-    void save(useSessionStore.getState())
+      useSessionStore.getState().appendUserMessage({
+        sessionId: 'session-1',
+        content: 'Third',
+        cwd: '/workspace/project'
+      })
+      void save(useSessionStore.getState())
 
-    await flushMicrotasks()
-    expect(saveSession).toHaveBeenCalledTimes(1)
+      await flushMicrotasks()
+      expect(saveSession).toHaveBeenCalledTimes(1)
 
-    firstSave.resolve(saveSession.mock.calls[0][0])
-    await flushMicrotasks()
-    expect(saveSession).toHaveBeenCalledTimes(2)
+      firstSave.resolve(saveSession.mock.calls[0][0])
+      await flushMicrotasks()
+      // A snapshot that follows a write is held for the coalescing window — it is not written just because
+      // the earlier write finished. That is what keeps a streamed reply (a state change per chunk) from
+      // turning into one durable write and one whole-session echo per chunk.
+      expect(saveSession).toHaveBeenCalledTimes(1)
 
-    secondSave.resolve(saveSession.mock.calls[1][0])
-    await flushMicrotasks()
+      vi.advanceTimersByTime(400)
+      await flushMicrotasks()
+      expect(saveSession).toHaveBeenCalledTimes(2)
+
+      secondSave.resolve(saveSession.mock.calls[1][0])
+      await flushMicrotasks()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('coalesces backpressured Store writes to the latest Session snapshot', async () => {
