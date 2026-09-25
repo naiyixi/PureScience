@@ -389,4 +389,8 @@
 | ③ 最终文本逐字一致                               | ✅ `e2e/workspace-conversation.spec.ts` 用 `{ exact: true }` 断言用户消息与答复全文，含改消息、修订切换与**重启后**从持久化重载 |
 | ④ 真机仍在流 + 对话相关用例全绿                   | ✅ 45 轮流式跑通（每轮都等到了完整答复）、`npm run test:e2e:workspace` 8/8、`npm run test:gate` 14426 passed / 0 failed |
 
+**④ 的加强证据（一次性真机探针，跑完已删）**：仓库现有 e2e 都只断言「回合结束后答复在屏」，而**回合结束本身是结构性变化**——就算正文订阅断了，结束那一刻道具重铸、正文照样会出现。所以另写了一个探针用 fixture 的中断回合（投递部分答复后**永不结束**）：在 `Cancel run` 仍在屏（回合确实在飞）时读转录 DOM，得到
+`"…Continue the interrupted turn fixture.Sent Sep 25, 11:10 PMPart of the answer arrived before the app went down."`
+⇒ 部分答复在**流式期间**就在屏上，正文订阅这条链路在真机上是通的（探针 26.1s 通过，随后删除）。
+
 **顺带修掉的既有红**：`e2e/launch-environment.spec.ts:14` 仍断言 `PURESCIENCE_E2E_STORAGE_ROOT` 为 `undefined`，而 fixture 自 `3335d23` 起**每次启动都设置它**（注释写明「Set it for every run」）⇒ 陈旧断言，与本次改动无关，一并更正。
