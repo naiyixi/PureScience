@@ -1406,6 +1406,8 @@ export const en: Record<ZhKey, string> = {
   'settings.optionalOverride': '(optional override)',
   'settings.connectorLabel': 'Connector',
   'settings.moveDataTitle': 'Move app data?',
+  'settings.moveStaleEvidenceNote':
+    'Older environment manifests were kept as-is and not re-validated.',
   'settings.moveDataBusy': 'Moving app data…',
   'settings.switchingOver': 'Switching over…',
   'settings.capabilitiesHint': 'or choose specific capabilities',

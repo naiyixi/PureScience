@@ -56,7 +56,21 @@ export type MigrationProgress = {
   totalBytes: number
   currentPath?: string
 }
-export type MigrationResult = { ok: true } | { ok: false; error: string; cancelled?: boolean }
+export type MigrationResult =
+  | { ok: true; staleEvidence?: StaleProvenanceEvidence[] }
+  | { ok: false; error: string; cancelled?: boolean }
+// Mirrors main's StaleProvenanceEvidence (src/main/storage/provenance-migration-validation.ts): evidence
+// from an older build that is intact but no longer validates. Reported to the user, never fatal.
+export type StaleProvenanceEvidence = {
+  kind: 'manifest-name-mismatch' | 'manifest-checksum-mismatch'
+  path: string
+  recordedDigest: string
+  expectedDigest: string
+  runId?: string
+  project?: string
+  session?: string
+}
+
 export type MigrationOutcome =
   MigrationResult | { ok: false; error: string; switchoverFailed: true }
 

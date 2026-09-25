@@ -2272,6 +2272,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.optionalOverride': '(선택적 재정의)',
   'settings.connectorLabel': '커넥터',
   'settings.moveDataTitle': '앱 데이터를 이동할까요?',
+  'settings.moveStaleEvidenceNote':
+    '이전 버전의 환경 매니페스트는 그대로 유지되며 다시 검증되지 않습니다.',
   'settings.moveDataBusy': '앱 데이터 이동 중…',
   'settings.switchingOver': '전환 중…',
   'settings.capabilitiesHint': '또는 개별 기능 선택',

@@ -321,6 +321,19 @@ const StorageMigrationModal = ({
                     {t('settings.restartToSwitch')}
                     Keep current location to stay where you are and discard the copy.
                   </Dialog.Description>
+                  {outcome?.ok === true &&
+                  outcome.staleEvidence &&
+                  outcome.staleEvidence.length > 0 ? (
+                    <p
+                      className="mt-2 text-xs leading-relaxed text-muted-foreground"
+                      data-testid="stale-evidence-note"
+                    >
+                      {t('settings.moveStaleEvidenceNote')}{' '}
+                      <span className="font-medium text-foreground">
+                        {outcome.staleEvidence.length}
+                      </span>
+                    </p>
+                  ) : null}
                 </div>
               </div>
               <div className="mt-5 flex justify-end gap-2">

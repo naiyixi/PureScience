@@ -2367,6 +2367,8 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.optionalOverride': '(surcharge facultative)',
   'settings.connectorLabel': 'Connecteur',
   'settings.moveDataTitle': 'Déplacer les données de l’app ?',
+  'settings.moveStaleEvidenceNote':
+    "Les manifestes d'environnement plus anciens ont été conservés tels quels et ne sont plus revalidés.",
   'settings.moveDataBusy': 'Déplacement des données de l’app…',
   'settings.switchingOver': 'Bascule en cours…',
   'settings.capabilitiesHint': 'ou choisissez des capacités précises',

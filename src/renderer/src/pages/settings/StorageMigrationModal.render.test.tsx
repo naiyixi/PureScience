@@ -143,6 +143,45 @@ describe('StorageMigrationModal', () => {
     expect(api.commitAndRelaunch).toHaveBeenCalledWith('/mnt/data')
   })
 
+  it('reports stale-but-intact environment evidence after a completed move', async () => {
+    let resolveMigrate: ((outcome: MigrationOutcome) => void) | undefined
+    installApi({
+      migrate: vi.fn(
+        () =>
+          new Promise<MigrationOutcome>((resolve) => {
+            resolveMigrate = resolve
+          })
+      )
+    })
+
+    await act(async () => {
+      root.render(<StorageMigrationModal targetPath="/mnt/data" onClose={vi.fn()} />)
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    await act(async () => {
+      resolveMigrate?.({
+        ok: true,
+        staleEvidence: [
+          {
+            kind: 'manifest-name-mismatch',
+            path: '/old/runtime/provenance/environment-manifests/aaaa.json',
+            recordedDigest: 'b'.repeat(64),
+            expectedDigest: 'a'.repeat(64)
+          }
+        ]
+      })
+    })
+
+    // The move succeeded, so the user sees the done stage — plus a line saying older evidence was kept
+    // as-is rather than re-validated, which is exactly what changed: it no longer blocks the move.
+    const note = document.body.querySelector('[data-testid="stale-evidence-note"]')
+    expect(note?.textContent).toContain('Older environment manifests were kept as-is')
+    expect(note?.textContent).toMatch(/\b1\b/)
+  })
+
   it('Keep current location discards the copy and closes without committing', async () => {
     const onClose = vi.fn()
     const api = installApi({

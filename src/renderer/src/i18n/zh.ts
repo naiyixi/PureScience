@@ -1323,6 +1323,7 @@ export const zh = {
   'settings.optionalOverride': '（可选覆盖）',
   'settings.connectorLabel': '连接器',
   'settings.moveDataTitle': '迁移应用数据？',
+  'settings.moveStaleEvidenceNote': '旧版环境清单已按原样保留，不再重新校验。',
   'settings.moveDataBusy': '正在迁移应用数据…',
   'settings.switchingOver': '正在切换…',
   'settings.capabilitiesHint': '或选择具体能力',

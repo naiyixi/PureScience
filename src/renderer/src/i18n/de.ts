@@ -2381,6 +2381,8 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.optionalOverride': '(optionale Überschreibung)',
   'settings.connectorLabel': 'Konnektor',
   'settings.moveDataTitle': 'App-Daten verschieben?',
+  'settings.moveStaleEvidenceNote':
+    'Ältere Umgebungsmanifeste wurden unverändert beibehalten und werden nicht erneut geprüft.',
   'settings.moveDataBusy': 'App-Daten werden verschoben…',
   'settings.switchingOver': 'Wird umgestellt…',
   'settings.capabilitiesHint': 'oder einzelne Fähigkeiten wählen',

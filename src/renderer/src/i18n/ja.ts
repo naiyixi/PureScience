@@ -2315,6 +2315,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.optionalOverride': '（任意で上書き）',
   'settings.connectorLabel': 'コネクタ',
   'settings.moveDataTitle': 'アプリのデータを移動しますか？',
+  'settings.moveStaleEvidenceNote':
+    '旧バージョンの環境マニフェストはそのまま保持され、再検証されません。',
   'settings.moveDataBusy': 'アプリのデータを移動中…',
   'settings.switchingOver': '切り替え中…',
   'settings.capabilitiesHint': 'または個別のケイパビリティを選択',

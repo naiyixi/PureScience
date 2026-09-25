@@ -2316,6 +2316,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.optionalOverride': '(необязательное переопределение)',
   'settings.connectorLabel': 'Коннектор',
   'settings.moveDataTitle': 'Переместить данные приложения?',
+  'settings.moveStaleEvidenceNote':
+    'Старые манифесты окружения сохранены как есть и больше не проверяются.',
   'settings.moveDataBusy': 'Перемещение данных приложения…',
   'settings.switchingOver': 'Переключение…',
   'settings.capabilitiesHint': 'или выберите отдельные возможности',

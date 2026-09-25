@@ -2149,6 +2149,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.optionalOverride': '（可選覆寫）',
   'settings.connectorLabel': '連接器',
   'settings.moveDataTitle': '遷移應用程式資料？',
+  'settings.moveStaleEvidenceNote': '舊版環境清單已按原樣保留，不再重新校驗。',
   'settings.moveDataBusy': '正在遷移應用程式資料…',
   'settings.switchingOver': '正在切換…',
   'settings.capabilitiesHint': '或選擇具體能力',

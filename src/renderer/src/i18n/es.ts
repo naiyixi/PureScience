@@ -2352,6 +2352,8 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.optionalOverride': '(anulación opcional)',
   'settings.connectorLabel': 'Conector',
   'settings.moveDataTitle': '¿Mover los datos de la app?',
+  'settings.moveStaleEvidenceNote':
+    'Los manifiestos de entorno más antiguos se conservaron tal cual y ya no se revalidan.',
   'settings.moveDataBusy': 'Moviendo los datos de la app…',
   'settings.switchingOver': 'Cambiando…',
   'settings.capabilitiesHint': 'o elige capacidades concretas',
