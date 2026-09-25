@@ -739,3 +739,5 @@
 接线本身已实测有收益（task −9%、峰值长任务 5→1），但**接线版的测试时钟不成立**：接上之后，`workspace-events.test.ts` 里第二条 delta 的 flush **不触发**。两次探针结论：`[append] event-1 Hel` / `[flush] Hel ['event-1']` / `[append] event-2 lo` —— **第二次没有任何 flush**，且第一条的 flush 来自第二个文本分支里的 `settle`（不是定时器回调），换 `advanceTimersByTimeAsync` 无改善。⇒ 即「合批器的调度在 vitest fake timers 下不被推进」这一交互未查明（同一现象很可能也是 `useWorkspaceAgentRuntime` 两条用例红的根因之一）。
 
 **下一轮做法**：先在单测里直接验证「`createStreamingTextBatcher` 在 fake timers 下能按时 flush」（不经过事件层），据结果二选一：修调度（例如让调度可注入、测试注入 fake 计时器）或改测试驱动方式（改用真实时钟 + 等待）。**在此之前不动 `workspace-events.ts`。**
+
+**收窄（同轮探针）**：新增 `src/renderer/src/stores/streaming-text-batcher.fake-clock.test.ts`（3 例，全绿）证明合批器在 fake clock 下可被推进，且三种形状都成立——① 测试期创建、② 每次 append 前先 settle（照抄事件桥的调用序列）、③ **模块加载期创建**（早于 `useFakeTimers()`，即应用单例的真实形状）。⇒ **合批器与批次宿主无问题**，未解现象被压缩到「`workspace-events.ts` 的事件分支 ↔ 批次宿主」之间：下一步只需在该分支加两行探针（记录 `settle` 与 `append` 的先后与 key），即可定位为何第二条 delta 的 flush 不触发。
