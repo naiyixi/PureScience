@@ -109,7 +109,10 @@ const assertNoRuntimeOperations = async (root: string): Promise<void> => {
 // reference below can still be proven against the bytes that the migration preserves.
 // Maps a manifest's content checksum to the file that actually holds it. The name is not part of the key:
 // older builds wrote manifests whose filename is not their content hash, and those bytes still count.
-const collectEnvironmentManifests = async (root: string): Promise<Map<string, string>> => {
+const collectEnvironmentManifests = async (
+  root: string,
+  onStaleEvidence?: StaleEvidenceSink
+): Promise<Map<string, string>> => {
   const manifestDirectory = join(root, 'runtime', 'provenance', 'environment-manifests')
   const manifestsByChecksum = new Map<string, string>()
   for (const entry of await readEntries(manifestDirectory)) {
@@ -124,6 +127,12 @@ const collectEnvironmentManifests = async (root: string): Promise<Map<string, st
       console.warn(
         `[provenance] stale environment manifest name: ${entry.name} holds ${contentChecksum}`
       )
+      onStaleEvidence?.({
+        kind: 'manifest-name-mismatch',
+        path: join(manifestDirectory, entry.name),
+        recordedDigest: contentChecksum,
+        expectedDigest: nameChecksum
+      })
     }
   }
   return manifestsByChecksum
@@ -131,7 +140,8 @@ const collectEnvironmentManifests = async (root: string): Promise<Map<string, st
 
 const validateReferencedEnvironmentManifests = async (
   root: string,
-  manifestsByChecksum: Map<string, string>
+  manifestsByChecksum: Map<string, string>,
+  onStaleEvidence?: StaleEvidenceSink
 ): Promise<void> => {
   const validated = new Set<string>()
   const notebooksRoot = join(root, 'notebooks')
@@ -177,6 +187,15 @@ const validateReferencedEnvironmentManifests = async (
               `(runtime/provenance/environment-manifests/${checksum}.json holds ${recordedDigest}), ` +
               `referenced by notebook run ${String(run.runId ?? '')} in ${project.name}/${session.name}`
           )
+          onStaleEvidence?.({
+            kind: 'manifest-checksum-mismatch',
+            path: manifestPath,
+            recordedDigest,
+            expectedDigest: checksum,
+            runId: String(run.runId ?? ''),
+            project: project.name,
+            session: session.name
+          })
         }
         validated.add(checksum)
       }
@@ -567,18 +586,36 @@ const validateSqliteStore = async (dataRoot: string, authorityRoot: string): Pro
   }
 }
 
+// Evidence that is stale rather than corrupt: an older build wrote it, its bytes are intact, and refusing
+// to move the data root over it would leave the user with no way forward. Reported, not thrown.
+export type StaleProvenanceEvidence = {
+  kind: 'manifest-name-mismatch' | 'manifest-checksum-mismatch'
+  path: string
+  recordedDigest: string
+  expectedDigest: string
+  runId?: string
+  project?: string
+  session?: string
+}
+
+type StaleEvidenceSink = (evidence: StaleProvenanceEvidence) => void
+
 // Migration validates durable domain evidence in addition to byte-for-byte copy inventories. Mutable
 // Environment caches are rebuilt with the relocated runtime; immutable evidence must validate before
 // either root can become authoritative.
+//
+// `onStaleEvidence` is optional so every existing caller keeps working; when it is provided, stale evidence
+// is handed over instead of only being logged, which is what lets a caller surface it to the user.
 export const validateProvenanceMigrationState = async (
   dataRoot: string,
-  authorityRoot: string = dataRoot
+  authorityRoot: string = dataRoot,
+  onStaleEvidence?: StaleEvidenceSink
 ): Promise<void> => {
   await assertNoRuntimeOperations(dataRoot)
   await validateSessionGraphs(authorityRoot)
   await validateSqliteStore(dataRoot, authorityRoot)
-  const manifests = await collectEnvironmentManifests(dataRoot)
-  await validateReferencedEnvironmentManifests(dataRoot, manifests)
+  const manifests = await collectEnvironmentManifests(dataRoot, onStaleEvidence)
+  await validateReferencedEnvironmentManifests(dataRoot, manifests, onStaleEvidence)
   await validateArtifactVersions(dataRoot)
   await assertNoUploadStaging(dataRoot)
 }

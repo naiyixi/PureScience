@@ -290,7 +290,11 @@ export const PROJECT_DATABASE_FILE = 'purescience.db'
 const BASE_MIGRATION_DIRS = [...MIGRATED_DIRS, RUNTIME_ENVIRONMENT_MANIFESTS_DIR]
 
 const defaultValidateProvenanceState = (dataRoot: string): Promise<void> =>
-  validateProvenanceMigrationState(dataRoot, resolveConfigRoot())
+  // Stale evidence is collected structurally at the production call site (not only logged inside the
+  // validator) so a later step can hand it to the migration result and show it to the user.
+  validateProvenanceMigrationState(dataRoot, resolveConfigRoot(), (evidence) => {
+    console.warn('[provenance] stale evidence', evidence)
+  })
 
 type MigrationInventory = NonNullable<MigrationMarker['inventory']>
 

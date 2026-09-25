@@ -607,12 +607,22 @@ describe('validateProvenanceMigrationState', () => {
     const staleName = 'a'.repeat(64)
     await writeFile(join(manifestDirectory, `${staleName}.json`), manifest)
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
-    await expect(validateProvenanceMigrationState(root)).resolves.toBeUndefined()
+    const reported: unknown[] = []
+    await expect(
+      validateProvenanceMigrationState(root, root, (evidence) => reported.push(evidence))
+    ).resolves.toBeUndefined()
     expect(warn).toHaveBeenCalledWith(
       expect.stringContaining(
         `stale environment manifest name: ${staleName}.json holds ${manifestChecksum}`
       )
     )
+    // The same notice is handed to the caller as data, which is what a migration result or UI can print.
+    expect(reported).toContainEqual({
+      kind: 'manifest-name-mismatch',
+      path: join(manifestDirectory, `${staleName}.json`),
+      recordedDigest: manifestChecksum,
+      expectedDigest: staleName
+    })
     warn.mockRestore()
   })
 })
