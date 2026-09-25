@@ -772,3 +772,13 @@
 **处置**：接线第四次回退（`git checkout`），仓库保持全绿（`lib/acp + stores` **757 passed**）。保留：合批器、批次管理器、批次宿主（含截断守卫）、以及整套守卫（14 + 5 + 3 + 3 例）。**同时按验收口径判定「合批」这条路线不达标，不再重试同一形态**。
 
 **下一轮方向（换了假设）**：先把「一次流式落地到底花在哪」量出来——在接线上加分段计时（store 写入 / 持久化 / 派生 / markdown 解析各占多少），拿到 279ms/轮 的构成再定方案。U33 的候选方案表相应更新：写入侧合批**已否决**，剩下「渲染侧按帧节流」与「增量渲染」需先有分段数据再选。
+
+### U13 续答侦察（本轮，答案已定位到具体入口）
+
+「回复到达后 135ms 应用又为同名会话发起 `session/new`」——**这条就是续答自己的 resume**，不是别的路径：
+
+- `src/main/acp/handler-workflows.ts:150 resumeSession(request)` → `:170 runtime.resumeSession(request)`（ACP 客户端底层即 `session/new`，与假 agent 日志里的 `session.new` 对应）。
+- 该流程内部另接 `interrupted-turn-continuation`（`handler-workflows.ts:205-206` 注入 `loadSession`；`interrupted-turn-continuation.ts:190` 读持久化会话）。
+- 续答投递侧的会话查找在 `src/main/acp/prompt-turn-workflow.ts:156-157`（`activeSession(request.sessionId)`，找不到即抛）、`:198-216`（**续答过程中重取 activeSession，取不到就走各自的分支**）、`:430 activeSession()`。
+
+⇒ **待定的那一半**：resume 之后 `activeSession(sessionId)` 指向的是**新**的会话对象，而续答回复是从**旧**会话对象发出的 update；需要确认「按会话 id 路由 update」的地方（`prompt-turn-workflow.ts:246` 传 `session: activeSession` 附近 + 渲染层按 sessionId 的归属判定）是否因为对象被替换而丢弃旧对象的更新。**下一步（唯一）**：在 `prompt-turn-workflow.ts:190-250` 打点，记录 `activeSession` 对象身份在续答前后的变化与 update 的丢弃点，然后按结果修「归属判定」而不是入口（入口已实测可用）。
