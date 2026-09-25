@@ -789,3 +789,20 @@
 - **状态澄清**：spec 里**已无 `fixme`**，且本轮没有任何针对它的代码改动（构建产物来自本轮回退后的 main）。查提交史：该 spec 的续答断言由 `f0d9cef` 引入，其后 `f814707`/`1f51ac8`/`c4b5a15`/`af41a92` 是真正的修复（重挂会话、续答先挂载、中断态保留、夹具补回复日志），均已进入 **v1.71.0**（`72a33ca`）。⇒ 本排期文档「spec 保持 fixme 挂账」一句是**陈旧记录**，现予纠正：**U13 已在 v1.71.0 收口**（当时未回填结论）。
 - **附带说明**：本轮侦察仍有效——`session/new` 的产生点确认为 `prompt-turn-workflow.ts:180-203` 的 force-load/reload 分支（`disconnectForReload` + `resumeAfterReload`），若将来复现同类「回复落在会话替换之前」，从这三处入手（`:156-157`/`:198-216`/`:246`）。
 - **附属待办**：夹具改成「第一发正常作答、第二发挂住」以覆盖另一种时序 —— 现有 spec 已通过，故降级为**非阻塞改进项**。
+
+### 数据根迁移 fail-closed 缺陷 —— 本轮侦察定位（未改代码）
+
+**契约与其实现位置**
+
+- 存储文档按**内容哈希命名**：`src/main/notebook/environment-state-tracker.ts:898-902` 注释写明「`checksum` addresses the stored document and is what readers re-hash to prove integrity」，配套 `:226 sha256()`、`:1142 inventoryChecksum()`、`:1100 targetDirectory()`（写到 `runtime/provenance/environment-inventory/<targetKey>/operations/<id>.json`）。
+- 迁移前的校验：`src/main/storage/provenance-migration-validation.ts:566 validateProvenanceMigrationState`，由 `migration-service.ts:293` 在搬动前后调用。
+- 旁证（同一「名字即哈希」纪律的其它落点）：`src/main/notebook/bundle-manifest.ts:64 SHA256_HEX = /^[0-9a-f]{64}$/i`（校验 manifest 的 sha256 字段）、`:107` 要求归档文件名必须是 `packArchiveFile(language, version)` 的规范名。
+
+**缺陷本质（与排期先前记录一致）**：契约本身没错，但 ① **app 自己的旧版本曾产出过不满足该契约的文档**；② 校验器只有 fail-closed，**没有检测/修复路径**；③ 报错不指名 **项目/会话**，用户无从下手。
+
+**修法（二选一，均已定位到落点）**
+
+1. **降级为陈旧证据**：在 `provenance-migration-validation.ts` 把「名字 ≠ 内容哈希」这一类归为**可报告项**（warning + 在结果里逐条列出 **project/session + 文件路径**），不阻塞搬迁；真正的损坏（哈希与内容都不匹配且无法归属到已知目标）仍 fail-closed。
+2. **提供隔离/修复入口**：把这类文档移入 `*.stale` 隔离区并记录，让迁移继续。
+
+倾向 1（改动面更小、用户可感知、可加回归用例：构造一个「名≠哈希但内容完整」的文档 ⇒ 迁移应成功且结果里列出该条）。**实施需要完整门禁 + 真机验证迁移流程**，留给下一轮。
