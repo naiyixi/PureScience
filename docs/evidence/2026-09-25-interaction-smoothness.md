@@ -307,3 +307,11 @@
 3. **`MessageTimestamp`（14.1ms）**：formatter 已缓存，剩下的是组件本身的重渲染——用稳定 props + `memo` 让它在内容未变时 bail out（同一槽位在流式期间只有它自己该重渲染）。
 
 判定口径不变：同一仪器（45 轮总量 + 提交计数 + 帧指标）+ 最终文本逐字一致 + 真机仍在流 + 对话相关用例全绿。
+
+## U33 目标 ①/② 同源：`cloneElement` 来自 Radix tooltip，且**每个按钮各带一个 Provider**
+
+- 全仓 `src/renderer/src` 里**第一方零处 `cloneElement`** ⇒ profile 里的 `react_production.cloneElement`（7.5ms）来自 **Radix `TooltipTrigger asChild`**（Radix 用它把事件 props 注进子元素），即目标 ① 与 ②（`TooltipTrigger2` 5.9ms）是同一件事。
+- 源头定位：`pages/workspace/WorkspaceMessageItem.tsx:457-472` 的 `UserMessageActionTooltip` **自带 `TooltipProvider` + `Tooltip` + `TooltipTrigger asChild`**；该 helper 在本文件有 **11 处用法**（`:1022/1036/1115/1137/1176/1190/1214` 等），而其中一组外面（`:1020`）**又套了一层 Provider** ⇒ 同一屏内 Radix context 层数是「用法数 + 1」，与 `propagateParentContextChanges`（2.8ms）和两处 `commitHostUpdate` 吻合。
+- `components/ui/tooltip.tsx` 只是 Radix 原语直出（**不含 Provider**）⇒ 这些显式 Provider 不是冗余样例，去掉会改变「同组 tooltip 共享 200ms 延迟」的行为，必须保留语义。
+
+**修法（已定，实施要在能跑完整门禁的环境里做）**：把「每个用法一个 Provider」收敛为「**每个消息项（更好：每个列表）一个 Provider**」——即从 `UserMessageActionTooltip` 里删掉 `TooltipProvider`，在消息项/转录根各放一个；语义（同组共享 delay）不变，Radix context 层数与 `cloneElement` 触发次数从「用法数」降到「1」。判定同上（同仪器 + 45 轮总量 + 用例全绿）。
