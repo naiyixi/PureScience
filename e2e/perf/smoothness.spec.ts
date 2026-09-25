@@ -104,11 +104,32 @@ test('measures smoothness of the interactions a user feels', async ({ app }) => 
   // with `PERF_TURNS=40 npm run test:e2e:perf` to find where the interaction layer starts to hurt — the
   // baseline above is a small session, which is not where "it feels laggy" would come from.
   const turns = Number(process.env.PERF_TURNS ?? 10)
+  // Aggregate main-thread work, which the long-task probe cannot see: a streamed chunk does a little work
+  // in every slot it touches, and none of those tasks crosses the 50ms threshold. CDP's Performance
+  // counters accumulate per process (no threshold), so the delta across the streaming phase is the total
+  // work the transcript burned — the quantity that grows with session length. Accumulating totals need one
+  // session with metrics enabled once; the counters are read from that same session.
+  const perfSession = await page.context().newCDPSession(page)
+  await perfSession.send('Performance.enable')
+  const readClock = async (): Promise<{ taskMs: number; scriptMs: number }> => {
+    const { metrics } = await perfSession.send('Performance.getMetrics')
+    const seconds = (name: string): number =>
+      (metrics.find((metric) => metric.name === name)?.value ?? 0) * 1000
+    return { taskMs: seconds('TaskDuration'), scriptMs: seconds('ScriptDuration') }
+  }
+  const beforeStream = await readClock()
   await startProbe(page)
   for (let index = 0; index < turns; index += 1) {
     await sendTurn(page, `Baseline turn ${index}`)
   }
   await stopProbe(page, `streaming ${turns} turns`)
+  const afterStream = await readClock()
+  const taskDelta = afterStream.taskMs - beforeStream.taskMs
+  const scriptDelta = afterStream.scriptMs - beforeStream.scriptMs
+  console.log(
+    `[perf] streaming ${turns} turns main thread: task=${Math.round(taskDelta)}ms script=${Math.round(scriptDelta)}ms` +
+      ` | per turn: task=${(taskDelta / turns).toFixed(1)}ms script=${(scriptDelta / turns).toFixed(1)}ms`
+  )
 
   // Typing into the composer with that transcript on screen — the "typing feels laggy" case.
   const composer = page.getByRole('textbox', { name: 'Ask anything' })
