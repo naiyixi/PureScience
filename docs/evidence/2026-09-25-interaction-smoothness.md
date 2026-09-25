@@ -244,3 +244,26 @@
 2. **也不存在单一热点**：最大可归属项是 React 渲染/提交（9.4%）与无名字的包内帧（~6%），其余散在 GC、DOM 增删、订阅扇出与引擎内部。⇒ 「找一个最烫的函数改掉」与「减少写入次数」两条捷径都不成立。
 
 **下一步仪器（更高信号）**：在**开发构建**里给一次流式落地打 `performance.mark/measure` 分段——① store `set` 前后、② 订阅者通知完、③ 顶层 `<Profiler onRender>` 的 React commit 时长、④ 主进程侧 `saveSessionInOrder` 落盘（IPC 时间戳回传）。四段都拿到数之后，才决定在「渲染侧按帧节流」与「增量渲染」之间选哪个，也才知道该不该回到「写入侧」但换一种切法。
+
+## U33 决策用归属：按调用链分桶（45 轮真机 profile，非 self-time）
+
+方法：把每条采样沿 `parent` 链上溯，归到**最近的已知根**（React 渲染 / React 提交 / store 写入 / IPC 投递 / markdown / 定时器回调）。产物仍是 `PERF_TURNS=45 npx playwright test e2e/perf/streaming-profile.spec.ts --workers=1`。总采样 **901ms**。
+
+| 桶                        | 时间        | 占比      | 桶内主要帧                                                                                         |
+| ------------------------- | ----------- | --------- | -------------------------------------------------------------------------------------------------- |
+| other（引擎内部/空闲/GC） | 448.0ms     | 49.7%     | `(program)` 201 · `(idle)` 102 · GC 34 · `query` 10                                                |
+| **React 渲染**            | **295.6ms** | **32.8%** | `renderWithHooks` 49 · `updateFunctionComponent` 39 · `beginWork` 17 · **`MessageTimestamp` 15**   |
+| **React 提交**            | **113.3ms** | **12.6%** | `commitHostUpdate` 28 · `updateProperties` 27 · `commitBeforeMutationEffects` 12 · `removeChild` 8 |
+| IPC 投递                  | 33.4ms      | 3.7%      | `wrappedListener` 26 · `synchronizeActiveConversationMessages` 3                                   |
+| 定时器回调                | 6.3ms       | 0.7%      | `elementsFromPoint` · `synchronizeActiveConversationActivities`                                    |
+| **store 写入**            | **4.4ms**   | **0.5%**  | `mergeDurableUploadProjection` 2 · `setState` 1                                                    |
+| markdown 解析             | ~0          | ~0%       | 关键词零命中                                                                                       |
+
+**结论（可据此选方案）**
+
+1. **流式期成本 45.4% 在 React 渲染+提交**（32.8% + 12.6%），**store 写入只占 0.5%**、markdown 解析≈0、IPC 3.7%。⇒ 成本取决于「**每次 delta 让多少组件重渲染 + React 写多少 DOM 属性**」，与「写了几次 store」「解析了多少 markdown」都无关。
+2. 因此正确杠杆是**渲染侧按帧节流**（让 React 每帧最多提交一次，而不是每个 delta 一次），而不是把更多内容攒进一次写入。
+3. **这也解释了写入侧合批为何 2.2× 变差**：当时的接线在**每个非文本事件**（工具活动/状态变化，流式期非常密集）都会 flush ⇒ 实际**增加**了 React 提交次数 ✗，同时每次内容更大 ⇒ 双输。⇒ 「合批」这个想法本身没错，错的是**触发策略**；若回到写入侧，必须按**帧**（rAF）触发而不是按事件触发——但那本质上就是「渲染侧按帧节流」，所以直接做 2 即可。
+4. `MessageTimestamp` 仍是**具名组件里最贵的**（15ms）：修复（formatter 按语言缓存）把 self 从 15.8% 降到 1.4%，但它是每个 delta 都会重渲染的槽位之一，属于第 2 条要覆盖的对象。
+
+**U33 下一版方案（有据）**：让「流中内容」以 **rAF 节流**进入 React（`useSyncExternalStore` + 帧对齐快照，或对消息列表的订阅做帧对齐批量通知），保证流式期 React 提交次数 ≈ 帧数而非 delta 数；判定仍用同一仪器与 45 轮总量，另加「最终文本逐字一致 + 真机仍在流 + 对话相关用例全绿」。
