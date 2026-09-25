@@ -461,12 +461,10 @@ const UserMessageActionTooltip = ({
   children: React.ReactElement
   label: string
 }): React.JSX.Element => (
-  <TooltipProvider delayDuration={200}>
-    <Tooltip>
-      <TooltipTrigger asChild>{children}</TooltipTrigger>
-      <TooltipContent>{label}</TooltipContent>
-    </Tooltip>
-  </TooltipProvider>
+  <Tooltip>
+    <TooltipTrigger asChild>{children}</TooltipTrigger>
+    <TooltipContent>{label}</TooltipContent>
+  </Tooltip>
 )
 // Inline editing replaces the bubble with a bordered multi-line editor card aligned to the right.
 const editCardClassName =
@@ -1172,57 +1170,64 @@ const WorkspaceMessageItemImpl = ({
                 className="mt-3 flex items-center gap-x-3 whitespace-nowrap text-[11px] leading-4 text-text-000/70 tabular-nums"
               >
                 {message.status === 'complete' && onBranchInNewSession ? (
-                  <div data-slot="assistant-message-actions" className="flex items-center gap-0.5">
-                    <UserMessageActionTooltip label={copied ? t('ws.copied') : t('ws.copyMessage')}>
-                      <button
-                        type="button"
-                        className={userMessageActionButtonClassName}
-                        aria-label={copied ? t('ws.copied') : t('ws.copyMessage')}
-                        onClick={handleCopyMessage}
-                      >
-                        {copied ? (
-                          <Check className="size-3.5" strokeWidth={2} aria-hidden="true" />
-                        ) : (
-                          <Copy className="size-3.5" strokeWidth={2} aria-hidden="true" />
-                        )}
-                      </button>
-                    </UserMessageActionTooltip>
-                    <UserMessageActionTooltip
-                      label={
-                        bookmarkFailed
-                          ? t('bookmarks.saveFailed')
-                          : bookmarked
-                            ? t('bookmarks.saved')
-                            : t('bookmarks.save')
-                      }
+                  <TooltipProvider delayDuration={200}>
+                    <div
+                      data-slot="assistant-message-actions"
+                      className="flex items-center gap-0.5"
                     >
-                      <button
-                        type="button"
-                        className={userMessageActionButtonClassName}
-                        aria-label={t('bookmarks.save')}
-                        data-slot="assistant-message-bookmark"
-                        onClick={handleBookmarkMessage}
+                      <UserMessageActionTooltip
+                        label={copied ? t('ws.copied') : t('ws.copyMessage')}
                       >
-                        <Bookmark
-                          className="size-3.5"
-                          strokeWidth={2}
-                          fill={bookmarked ? 'currentColor' : 'none'}
-                          aria-hidden="true"
-                        />
-                      </button>
-                    </UserMessageActionTooltip>
-                    <UserMessageActionTooltip label={t('ws.branchInNewSession')}>
-                      <button
-                        type="button"
-                        className={userMessageActionButtonClassName}
-                        aria-label={t('ws.branchInNewSession')}
-                        disabled={!canBranchInNewSession}
-                        onClick={() => onBranchInNewSession(message.id)}
+                        <button
+                          type="button"
+                          className={userMessageActionButtonClassName}
+                          aria-label={copied ? t('ws.copied') : t('ws.copyMessage')}
+                          onClick={handleCopyMessage}
+                        >
+                          {copied ? (
+                            <Check className="size-3.5" strokeWidth={2} aria-hidden="true" />
+                          ) : (
+                            <Copy className="size-3.5" strokeWidth={2} aria-hidden="true" />
+                          )}
+                        </button>
+                      </UserMessageActionTooltip>
+                      <UserMessageActionTooltip
+                        label={
+                          bookmarkFailed
+                            ? t('bookmarks.saveFailed')
+                            : bookmarked
+                              ? t('bookmarks.saved')
+                              : t('bookmarks.save')
+                        }
                       >
-                        <GitBranch className="size-3.5" strokeWidth={2} aria-hidden="true" />
-                      </button>
-                    </UserMessageActionTooltip>
-                  </div>
+                        <button
+                          type="button"
+                          className={userMessageActionButtonClassName}
+                          aria-label={t('bookmarks.save')}
+                          data-slot="assistant-message-bookmark"
+                          onClick={handleBookmarkMessage}
+                        >
+                          <Bookmark
+                            className="size-3.5"
+                            strokeWidth={2}
+                            fill={bookmarked ? 'currentColor' : 'none'}
+                            aria-hidden="true"
+                          />
+                        </button>
+                      </UserMessageActionTooltip>
+                      <UserMessageActionTooltip label={t('ws.branchInNewSession')}>
+                        <button
+                          type="button"
+                          className={userMessageActionButtonClassName}
+                          aria-label={t('ws.branchInNewSession')}
+                          disabled={!canBranchInNewSession}
+                          onClick={() => onBranchInNewSession(message.id)}
+                        >
+                          <GitBranch className="size-3.5" strokeWidth={2} aria-hidden="true" />
+                        </button>
+                      </UserMessageActionTooltip>
+                    </div>
+                  </TooltipProvider>
                 ) : null}
                 {terminalDate ? (
                   <MessageTimestamp label={terminalLabel} date={terminalDate} />
