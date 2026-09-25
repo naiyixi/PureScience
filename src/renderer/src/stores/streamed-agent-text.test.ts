@@ -25,7 +25,7 @@ describe('buffered streamed agent text', () => {
   })
 
   afterEach(() => {
-    setStreamedAgentTextSink(previousSink)
+    if (previousSink) setStreamedAgentTextSink(previousSink)
     vi.useRealTimers()
   })
 
