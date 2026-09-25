@@ -741,3 +741,16 @@
 **下一轮做法**：先在单测里直接验证「`createStreamingTextBatcher` 在 fake timers 下能按时 flush」（不经过事件层），据结果二选一：修调度（例如让调度可注入、测试注入 fake 计时器）或改测试驱动方式（改用真实时钟 + 等待）。**在此之前不动 `workspace-events.ts`。**
 
 **收窄（同轮探针）**：新增 `src/renderer/src/stores/streaming-text-batcher.fake-clock.test.ts`（3 例，全绿）证明合批器在 fake clock 下可被推进，且三种形状都成立——① 测试期创建、② 每次 append 前先 settle（照抄事件桥的调用序列）、③ **模块加载期创建**（早于 `useFakeTimers()`，即应用单例的真实形状）。⇒ **合批器与批次宿主无问题**，未解现象被压缩到「`workspace-events.ts` 的事件分支 ↔ 批次宿主」之间：下一步只需在该分支加两行探针（记录 `settle` 与 `append` 的先后与 key），即可定位为何第二条 delta 的 flush 不触发。
+
+### U33 第二探针结论（接线第三次回退，但拿到两条硬信息）
+
+接线后跑 `lib/acp + stores`：**755 passed / 2 failed**，两条都在 hook 层：
+
+- `useWorkspaceAgentRuntime.test.ts` 「grows an agent bubble from streamed reply events after the truncate-and-resend」→ 断言处最后一条仍是 user 消息，agent 回复**完全没落地**（即使等待 80ms 真实时钟）。
+- `useWorkspaceAgentRuntime.first-output.render.test.tsx` 「does not rearm waiting when prompt ownership and the first visible output share a snapshot」→ 同上（首屏可见输出被窗口推迟）。
+
+而**同一个接线**下 `workspace-events.test.ts` 79/79 全绿（含两片文本合成 'Hello'、顺序、eventIds 全记）⇒ 差异在 **hook 驱动路径**（`processVisibleWorkspaceRuntimeEvents` 之类的注入式 apply），不在产品写入链。
+
+**附带修掉一个真陷阱**（保留）：模块级单例在**同一进程内跨测试文件共享**，测试若把 `setStreamedAgentTextSink` 换成自己的 no-op 又不还原，后续文件里所有 flush 都会写进空气。现在 setter **返回上一个 sink**，测试 set/restore 成对（`streamed-agent-text.test.ts`）。这条对任何「模块级可替换依赖」都成立。
+
+**下一轮**：在 hook 驱动的用例里接线后先 `settleAllStreamedAgentText()`（或让 hook 驱动本身在断言前关闭窗口），确认这两条转为绿；若绿 ⇒ 接线收口、跑复测；若不绿 ⇒ 说明 hook 路径还存在第二处未预期的文本入口，届时以探针定位（探针已备好写法）。

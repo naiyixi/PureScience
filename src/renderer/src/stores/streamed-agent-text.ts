@@ -38,9 +38,15 @@ export const STREAM_TEXT_FLUSH_MS = 50
 
 let sink: StreamedAgentTextSink | undefined
 
-// The event bridge registers the real writer at module initialisation.
-export const setStreamedAgentTextSink = (next: StreamedAgentTextSink): void => {
+// The event bridge registers the real writer at module initialisation. Returns the previous sink: a test
+// that replaces it has to be able to put the production one back, or every later test in the process would
+// flush into a no-op.
+export const setStreamedAgentTextSink = (
+  next: StreamedAgentTextSink
+): StreamedAgentTextSink | undefined => {
+  const previous = sink
   sink = next
+  return previous
 }
 
 // The ids of the events whose text is still buffered, per stream. They travel with the text: `eventId` is

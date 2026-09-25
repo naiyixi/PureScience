@@ -14,16 +14,18 @@ import {
 describe('buffered streamed agent text', () => {
   const writes: { streamId: string; eventIds: string[]; content: string }[] = []
 
+  let previousSink: ReturnType<typeof setStreamedAgentTextSink>
+
   beforeEach(() => {
     vi.useFakeTimers()
     writes.length = 0
-    setStreamedAgentTextSink((write) => {
+    previousSink = setStreamedAgentTextSink((write) => {
       writes.push({ streamId: write.streamId, eventIds: write.eventIds, content: write.content })
     })
   })
 
   afterEach(() => {
-    setStreamedAgentTextSink(() => {})
+    setStreamedAgentTextSink(previousSink)
     vi.useRealTimers()
   })
 
