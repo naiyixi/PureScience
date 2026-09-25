@@ -782,3 +782,10 @@
 - 续答投递侧的会话查找在 `src/main/acp/prompt-turn-workflow.ts:156-157`（`activeSession(request.sessionId)`，找不到即抛）、`:198-216`（**续答过程中重取 activeSession，取不到就走各自的分支**）、`:430 activeSession()`。
 
 ⇒ **待定的那一半**：resume 之后 `activeSession(sessionId)` 指向的是**新**的会话对象，而续答回复是从**旧**会话对象发出的 update；需要确认「按会话 id 路由 update」的地方（`prompt-turn-workflow.ts:246` 传 `session: activeSession` 附近 + 渲染层按 sessionId 的归属判定）是否因为对象被替换而丢弃旧对象的更新。**下一步（唯一）**：在 `prompt-turn-workflow.ts:190-250` 打点，记录 `activeSession` 对象身份在续答前后的变化与 update 的丢弃点，然后按结果修「归属判定」而不是入口（入口已实测可用）。
+
+### U13 ✅ 结案：真机复跑通过（该缺陷当前不可复现，非本轮修复）
+
+- **真机证据（本轮）**：`npx playwright test e2e/certification/interrupted-turn-continuation.spec.ts --workers=1` → **1 passed (26.6s)**，其中 `:218` 断言**续答回复可见**（`CONTINUED_REPLY`）——即先前「agent 答了但应用没呈现」的缺陷当前不复现。
+- **状态澄清**：spec 里**已无 `fixme`**，且本轮没有任何针对它的代码改动（构建产物来自本轮回退后的 main）。查提交史：该 spec 的续答断言由 `f0d9cef` 引入，其后 `f814707`/`1f51ac8`/`c4b5a15`/`af41a92` 是真正的修复（重挂会话、续答先挂载、中断态保留、夹具补回复日志），均已进入 **v1.71.0**（`72a33ca`）。⇒ 本排期文档「spec 保持 fixme 挂账」一句是**陈旧记录**，现予纠正：**U13 已在 v1.71.0 收口**（当时未回填结论）。
+- **附带说明**：本轮侦察仍有效——`session/new` 的产生点确认为 `prompt-turn-workflow.ts:180-203` 的 force-load/reload 分支（`disconnectForReload` + `resumeAfterReload`），若将来复现同类「回复落在会话替换之前」，从这三处入手（`:156-157`/`:198-216`/`:246`）。
+- **附属待办**：夹具改成「第一发正常作答、第二发挂住」以覆盖另一种时序 —— 现有 spec 已通过，故降级为**非阻塞改进项**。
