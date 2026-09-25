@@ -377,7 +377,7 @@
 ### 有意保留的代价（写清楚，别当成 bug）
 
 1. 经 `useRenderSessions` 读到的会话在**正文之外**最多一个 delta 陈旧：会话 `updatedAt`（侧栏相对时间、`SessionInfoCard` 的「更新于」）在流式期间滞后到上一次结构性变化。结构性字段（标题/状态/审批/产物）照旧即时。
-2. **读正文的入口必须取活数据**：已改的是导出 / 产物下载 / 打包导出；`previews/PreviewToolContent.tsx:141`（plan 预览）仍按 session 对象订阅 ⇒ plan 预览打开时每 delta 重渲一次，**本版未改，已立案**（同类窄化 selector 即可）。
+2. **读正文的入口必须取活数据**：已改的是导出 / 产物下载 / 打包导出。
 3. `resolveMessageContent` 的延续守卫：store 里的值若**不是**渲染时正文的前缀（隔离面/代际不同的快照/被回撤的 chunk），保留渲染时的正文 ⇒ 最坏是「一帧旧文本」，等下一次结构性变化刷新，不会出现与周围转录矛盾的画面。
 
 ### 判定（计划里的四条验收）
@@ -394,3 +394,16 @@
 ⇒ 部分答复在**流式期间**就在屏上，正文订阅这条链路在真机上是通的（探针 26.1s 通过，随后删除）。
 
 **顺带修掉的既有红**：`e2e/launch-environment.spec.ts:14` 仍断言 `PURESCIENCE_E2E_STORAGE_ROOT` 为 `undefined`，而 fixture 自 `3335d23` 起**每次启动都设置它**（注释写明「Set it for every run」）⇒ 陈旧断言，与本次改动无关，一并更正。
+
+### 相邻订阅方：plan 预览也曾每 delta 重渲（已一并收窄，先量后改）
+
+`previews/PreviewToolContent.tsx` 原本 `useSessionStore((state) => state.sessions.find(...))` 拿的是**整个 Session 对象** ⇒ chunk 换对象就重渲，连带重跑整块 plan 投影的渲染。仪器 `PreviewToolContent.stream-render.test.tsx`（jsdom + 真 store + 计数探针 = 该组件每次渲染都会新建的 `PlanPreviewSurface`）：
+
+| | 一个 chunk 引起的 plan 面重渲 |
+| --- | --- |
+| 收窄前（选 Session 对象） | **1** |
+| 收窄后（各字段单独选：`activePlanProjection` / `planHistoryProjections` / session 是否存在 / 是否可批准） | **0** |
+
+同一 fixture 下 A/B（把组件 `git stash` 回旧写法再跑一次）得到 1 vs 0；「投影本身变化 ⇒ 重渲一次」的对照用例两种写法都过（说明收窄没有把该响应的情况一起冻掉）。
+
+**测量中发现的既有行为（只记录，未改）**：`projectAgentMessageChunk` 会把 `status` 从 `waiting-plan-approval` 改成 `running`（只保留 `waiting-permission`）⇒ 若某个 chunk 真的落在「等计划批准」期间，批准按钮会消失。实测这条路径在本仓不可达（等批准时 agent 不再发 chunk），故不作为本次改动的一部分。

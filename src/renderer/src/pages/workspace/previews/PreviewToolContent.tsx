@@ -84,13 +84,13 @@ const SessionReviewerContent = ({
           {tab === 'context' ? (
             <FoldTimelinePanel projectId={projectId ?? ''} sessionId={sessionId} />
           ) : (
-          <VerificationChecklistPanel
-            projectId={projectId ?? ''}
-            sessionId={sessionId}
-            onGoToTranscript={() => {
-              setTab('checks')
-            }}
-          />
+            <VerificationChecklistPanel
+              projectId={projectId ?? ''}
+              sessionId={sessionId}
+              onGoToTranscript={() => {
+                setTab('checks')
+              }}
+            />
           )}
         </div>
       </div>
@@ -137,14 +137,29 @@ export const PreviewToolContent = ({
   item: PreviewToolItem
 }): React.JSX.Element | null => {
   const activeProjectId = useNavigationStore((state) => state.activeProjectId)
-  const planSession = useSessionStore((state) =>
-    state.sessions.find((session) => session.id === item.sessionId)
+  // Read the Session's *fields*, not the Session object: a streamed chunk replaces it several times a
+  // second (see transcript-render-identity), and taking the object made this surface re-render — plan
+  // projection and all — for text that belongs to the transcript. Each selection below is an
+  // `Object.is`-comparable value that only moves when the preview actually has something new to show.
+  const planActiveProjection = useSessionStore(
+    (state) => state.sessions.find((session) => session.id === item.sessionId)?.activePlanProjection
   )
+  const planHistoryProjections = useSessionStore(
+    (state) =>
+      state.sessions.find((session) => session.id === item.sessionId)?.planHistoryProjections
+  )
+  const planSessionExists = useSessionStore((state) =>
+    state.sessions.some((session) => session.id === item.sessionId)
+  )
+  const canRespondToPlan = useSessionStore((state) => {
+    const session = state.sessions.find((candidate) => candidate.id === item.sessionId)
+    return session?.status === 'waiting-plan-approval' && session.activeRun !== undefined
+  })
   const isPlanExpanded = usePreviewWorkbenchStore((state) => state.expandedToolItemId === item.id)
   const setToolItemExpanded = usePreviewWorkbenchStore((state) => state.setToolItemExpanded)
-  const activePlanProjection = planSession?.activePlanProjection
+  const activePlanProjection = planActiveProjection
   const planProjection = item.planArtifactVersionId
-    ? (planSession?.planHistoryProjections?.find(
+    ? (planHistoryProjections?.find(
         (projection) => projection.artifactVersionId === item.planArtifactVersionId
       ) ??
       (activePlanProjection?.artifactVersionId === item.planArtifactVersionId
@@ -159,8 +174,6 @@ export const PreviewToolContent = ({
       { decision }
     )
   }
-  const canRespondToPlan =
-    planSession?.status === 'waiting-plan-approval' && planSession.activeRun !== undefined
 
   // Remount the Files tool per project so its transient dialog cannot outlive the project it opened.
   if (item.toolKind === 'files') {
@@ -172,7 +185,7 @@ export const PreviewToolContent = ({
   }
 
   if (item.toolKind === 'plan') {
-    if (!planProjection || !planSession) return null
+    if (!planProjection || !planSessionExists) return null
     const stale = planProjection.artifactVersionId !== activePlanProjection?.artifactVersionId
     return (
       <PlanPreviewSurface
