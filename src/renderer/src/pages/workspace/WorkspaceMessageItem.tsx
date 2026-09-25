@@ -9,6 +9,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { cn, formatByteSize } from '@/lib/utils'
 import { useSettingsStore } from '@/stores/settings-store'
 import { useSessionStore } from '@/stores/session-store'
+import { resolveMessageContent, selectLiveMessageContent } from './message-content-subscription'
 import type { ChatMessage, ChatSession } from '@/stores/session-store'
 import { Collapsible } from 'radix-ui'
 import {
@@ -68,6 +69,11 @@ type MessageRuntimeIdentity = Partial<
 >
 type WorkspaceMessageItemProps = {
   message: ChatMessage
+  // The Session this message belongs to, used to read the message's *text* from the store: the
+  // transcript's containers keep their props across a streamed chunk (see transcript-render-identity),
+  // so the streamed text arrives here through a subscription rather than through `message.content`.
+  // Absent on isolated/immutable surfaces (e.g. Provenance), which fall back to the props' content.
+  sessionId?: string
   onPreviewArtifact: (artifact: MessageArtifact) => void
   onPreviewUploadAttachment: (attachment: MessageUploadAttachment) => void
   onOpenSkillMention: (skillId: string, name: string) => void
@@ -845,6 +851,7 @@ const MessagePartsContent = ({
 // Renders one chat message with user bubbles and full-width assistant markdown surfaces.
 const WorkspaceMessageItemImpl = ({
   message,
+  sessionId,
   onPreviewArtifact,
   onPreviewUploadAttachment,
   onOpenSkillMention,
@@ -866,6 +873,14 @@ const WorkspaceMessageItemImpl = ({
   staticParts
 }: WorkspaceMessageItemProps): React.JSX.Element => {
   const { t } = useLanguage()
+  // The message's own text comes from the store rather than from props: the transcript's containers hold
+  // their props across a streamed chunk on purpose (see transcript-render-identity), so the streamed text
+  // has to arrive through a subscription. Every other message's value is identical across a chunk, so a
+  // chunk re-renders the one message it is streaming into and nothing else.
+  const liveContent = useSessionStore((state) =>
+    selectLiveMessageContent(state, sessionId, message.id)
+  )
+  const content = resolveMessageContent(liveContent, message.content)
   const isUserMessage = message.role === 'user'
   const uploads = message.uploads ?? []
   const hasTurnUsage = Boolean(message.turnUsage || message.turnUsageUnavailable)
@@ -912,7 +927,7 @@ const WorkspaceMessageItemImpl = ({
     void window.api.bookmark
       .set({
         sessionId: selectedSessionId,
-        anchor: { kind: 'message-text', messageId: message.id, text: message.content }
+        anchor: { kind: 'message-text', messageId: message.id, text: content }
       })
       .then(() => {
         setBookmarkFailed(false)
@@ -923,7 +938,7 @@ const WorkspaceMessageItemImpl = ({
 
   // Copies the prompt text and briefly swaps the icon to confirm the clipboard write succeeded.
   const handleCopyMessage = (): void => {
-    void copyText(message.content).then(() => {
+    void copyText(content).then(() => {
       setCopied(true)
       if (copyResetTimeoutRef.current !== null) window.clearTimeout(copyResetTimeoutRef.current)
       copyResetTimeoutRef.current = window.setTimeout(() => setCopied(false), 2000)
@@ -936,7 +951,7 @@ const WorkspaceMessageItemImpl = ({
     setEditDoc(
       message.parts && message.parts.length > 0
         ? docFromMessageParts(message.parts)
-        : docFromText(message.content)
+        : docFromText(content)
     )
     setIsEditing(true)
   }
@@ -1091,9 +1106,9 @@ const WorkspaceMessageItemImpl = ({
                       onPreviewMentionArtifact={onPreviewMentionArtifact}
                       onOpenSessionMention={onOpenSessionMention}
                     />
-                  ) : message.content ? (
+                  ) : content ? (
                     <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-                      {message.content}
+                      {content}
                     </p>
                   ) : null}
                 </div>
@@ -1152,9 +1167,9 @@ const WorkspaceMessageItemImpl = ({
           )
         ) : (
           <div className={cn(assistantMessageSurfaceClassName, 'select-text overflow-visible')}>
-            {message.content ? (
+            {content ? (
               <AgentMarkdown
-                content={message.content}
+                content={content}
                 isAnimating={message.status === 'streaming'}
                 sessionLinks
               />

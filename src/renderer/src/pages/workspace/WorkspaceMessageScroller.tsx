@@ -18,6 +18,7 @@ import { selectProjectSessionReviews, useReviewStore } from '@/stores/review-sto
 import { useSettingsStore } from '@/stores/settings-store'
 import { useSessionStore, type ChatSession } from '@/stores/session-store'
 import { groupRevisionsByRoot } from './revision-groups'
+import { carriesSameTranscriptStructure } from './transcript-render-identity'
 import { sameElements, stableArray, stableValue } from './stable-identity'
 import { useLanguage } from '@/i18n'
 import { flushSessionPersistence } from '@/lib/session-persistence/session-persistence'
@@ -939,6 +940,10 @@ const WorkspaceMessageScrollerImpl = ({
                         } else {
                           messageItemProps = {
                             message: item.message,
+                            // The message renders its own text from the store (see WorkspaceMessageItem):
+                            // this container deliberately keeps its props across a streamed chunk, so the
+                            // text must not travel through here.
+                            sessionId: activeSession?.id,
                             onPreviewArtifact,
                             onPreviewUploadAttachment,
                             onOpenSkillMention,
@@ -1149,35 +1154,19 @@ const WorkspaceMessageScrollerImpl = ({
 
 // Composer controls above the transcript react to reviewer lifecycle changes. Keep those parent
 // renders from rebuilding an unchanged transcript; review cards maintain their own scoped subscription.
-const areSessionsEqualForTranscript = (
-  previous: ChatSession | undefined,
-  next: ChatSession | undefined
-): boolean => {
-  if (Object.is(previous, next)) return true
-  if (!previous || !next) return false
-
-  // WorkspacePage mirrors reviewer activity into this transient operation gate. It changes the
-  // ChatSession object identity but is not rendered by the transcript, so compare every other field.
-  const previousKeys = Object.keys(previous).filter(
-    (key) => key !== 'branchSwitchBlocked'
-  ) as Array<keyof ChatSession>
-  const nextKeys = Object.keys(next).filter((key) => key !== 'branchSwitchBlocked') as Array<
-    keyof ChatSession
-  >
-
-  return (
-    previousKeys.length === nextKeys.length &&
-    previousKeys.every((key) => Object.is(previous[key], next[key]))
-  )
-}
-
+//
+// The comparison ignores the streamed text of the turn that is currently running (`carriesSameTranscript
+// Structure`): a chunk replaces the Session object every few characters, but the transcript's structure —
+// which turns exist, their order, roles, statuses, attachments and artifacts — is unchanged, so this
+// container must not re-walk the whole list for it. The streamed text reaches the one message that renders
+// it through that message's own store subscription.
 const areWorkspaceMessageScrollerPropsEqual = (
   previous: WorkspaceMessageScrollerProps,
   next: WorkspaceMessageScrollerProps
 ): boolean =>
   previous.onSendEditedMessage === next.onSendEditedMessage &&
   previous.onAnnotateImage === next.onAnnotateImage &&
-  areSessionsEqualForTranscript(previous.activeSession, next.activeSession)
+  carriesSameTranscriptStructure(previous.activeSession, next.activeSession)
 
 const WorkspaceMessageScroller = memo(
   WorkspaceMessageScrollerImpl,

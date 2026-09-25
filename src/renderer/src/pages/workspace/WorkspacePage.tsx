@@ -77,6 +77,7 @@ import {
 } from './composer/composer-history'
 import { buildCustomizePrefillDoc } from '@/lib/customize-chat'
 import { ConversationPanel } from './ConversationPanel'
+import { useRenderSessions } from './use-render-sessions'
 import { FolderGrantsPanel } from '@/components/FolderGrantsPanel'
 import { DeleteSessionDialog } from './DeleteSessionDialog'
 import { MobilePreviewSheet } from './MobilePreviewSheet'
@@ -562,7 +563,11 @@ const WorkspacePage = ({
   const specialistItems = useSpecialistStore((state) => state.items)
   const specialistCatalogLoaded = useSpecialistStore((state) => state.isLoaded)
   const loadSpecialists = useSpecialistStore((state) => state.load)
-  const allSessions = useSessionStore((state) => state.sessions)
+  // Deliberately not `useSessionStore((state) => state.sessions)`: a streamed chunk rewrites the list
+  // several times a second for text that only one message renders, and subscribing to it directly
+  // re-rendered this whole page per chunk. See use-render-sessions.ts for the invariant and for what a
+  // content consumer must do instead.
+  const allSessions = useRenderSessions()
   const selectedSessionId = useSessionStore((state) => state.selectedSessionId)
   const newConversationDraftKey = newConversationDraftKeyFor(scopedProjectId)
   const currentDraftKey = selectedSessionId ?? newConversationDraftKey
@@ -591,6 +596,13 @@ const WorkspacePage = ({
         : [],
     [activeProject?.archivedAt, allSessions, scopedProjectId]
   )
+  // Menus in the sidebar hand a session back the way it was rendered — the frozen snapshot this page
+  // renders from (see use-render-sessions). Anything that *reads* the conversation's text must resolve the
+  // live session instead, otherwise an export started while a turn is streaming would miss that turn's
+  // text and export the transcript as of the last structural change.
+  const liveSession = (session: ChatSession): ChatSession =>
+    useSessionStore.getState().sessions.find((candidate) => candidate.id === session.id) ?? session
+
   const previewPanelState = usePreviewWorkbenchStore((state) => state.panelState)
   const previewItems = usePreviewWorkbenchStore((state) => state.items)
   const [initialPreviewPanelDefaultSize] = useState(() =>
@@ -2770,7 +2782,7 @@ const WorkspacePage = ({
             canDownloadArtifacts={typeof window.api?.saveSessionArtifacts === 'function'}
             onDownloadArtifacts={(session) => {
               setIsMobileSidebarOpen(false)
-              setSessionToDownloadArtifacts(session)
+              setSessionToDownloadArtifacts(liveSession(session))
             }}
             onViewNotebook={(session) => {
               setIsMobileSidebarOpen(false)
@@ -2778,11 +2790,11 @@ const WorkspacePage = ({
             }}
             onOpenExportDialog={(session) => {
               setIsMobileSidebarOpen(false)
-              setSessionToExport(session)
+              setSessionToExport(liveSession(session))
             }}
             onOpenPackageExport={(session) => {
               setIsMobileSidebarOpen(false)
-              setSessionToExportPackage(session)
+              setSessionToExportPackage(liveSession(session))
             }}
             onTogglePin={(session) => {
               setIsMobileSidebarOpen(false)

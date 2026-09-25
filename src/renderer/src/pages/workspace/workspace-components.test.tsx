@@ -272,8 +272,31 @@ describe('conversation message scroller integration', () => {
     expect(workspaceMessageItemSource).toContain("scrollAnchor={message.role === 'user'}")
     expect(workspaceMessageItemSource).toContain('messageId={message.id}')
     expect(workspaceMessageItemSource).toContain('<AgentMarkdown')
-    expect(workspaceMessageItemSource).toContain('content={message.content}')
+    // The text of a message travels through its own store subscription, not through the containers above
+    // it: those deliberately keep their props across a streamed chunk (`transcript-render-identity`), so
+    // `message.content` here would freeze the visible text of the turn being streamed.
+    expect(workspaceMessageItemSource).toContain(
+      'selectLiveMessageContent(state, sessionId, message.id)'
+    )
+    expect(workspaceMessageItemSource).toContain('resolveMessageContent(liveContent, message.content)')
+    expect(workspaceMessageItemSource).toContain('content={content}')
     expect(workspaceMessageItemSource).toContain('sessionLinks')
+  })
+
+  // The transcript is rendered from a subscription that deliberately ignores a streamed chunk
+  // (`useRenderSessions`): subscribing to `state.sessions` directly re-rendered the page, the panel and the
+  // list container for every chunk, and walked the whole transcript's element tree in the commit phase.
+  it('renders the transcript from the stream-stable session subscription', () => {
+    const workspacePageSource = readFileSync(workspacePagePath, 'utf8')
+
+    expect(workspacePageSource).toContain('const allSessions = useRenderSessions()')
+    expect(workspacePageSource).not.toContain(
+      'const allSessions = useSessionStore((state) => state.sessions)'
+    )
+    // Surfaces outside the transcript that *read* the text resolve the live session, so e.g. an export
+    // started while a turn is streaming does not ship the last structural snapshot.
+    expect(workspacePageSource).toContain('setSessionToExport(liveSession(session))')
+    expect(workspacePageSource).toContain('setSessionToDownloadArtifacts(liveSession(session))')
   })
 
   // Agent replies should read as a full-width transcript surface, while user bubbles stay compact.
@@ -396,6 +419,8 @@ describe('conversation message scroller integration', () => {
     )
     expect(workspaceMessageScrollerSource).not.toContain('<AgentMarkdown')
     expect(workspaceMessageScrollerSource).not.toContain('content={message.content}')
+    // …the text does not pass through the list either; the session id does, so the message can read it.
+    expect(workspaceMessageScrollerSource).toContain('sessionId: activeSession?.id')
   })
 
   it('keeps transcript rendering modules focused by responsibility', () => {
@@ -443,7 +468,7 @@ describe('conversation message scroller integration', () => {
     )
     expect(workspaceMessageItemSource).toContain('const WorkspaceMessageItem')
     expect(workspaceMessageItemSource).toContain('<AgentMarkdown')
-    expect(workspaceMessageItemSource).toContain('content={message.content}')
+    expect(workspaceMessageItemSource).toContain('content={content}')
     expect(workspaceAgentLoadingRowSource).toContain('const WorkspaceAgentLoadingRow')
     expect(workspaceAgentLoadingRowSource).toContain('thinking')
   })
