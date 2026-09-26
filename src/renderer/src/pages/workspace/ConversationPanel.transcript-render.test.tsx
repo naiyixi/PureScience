@@ -29,7 +29,7 @@ import type { PropsWithChildren } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ConversationPanel } from './ConversationPanel'
-import { emptyDoc } from './composer/composer-doc'
+import { emptyDoc, type ComposerDoc } from './composer/composer-doc'
 import { useSessionStore, type ChatMessage, type ChatSession } from '@/stores/session-store'
 import { useRenderSessions } from './use-render-sessions'
 import {
@@ -363,7 +363,11 @@ let root: Root
 
 // The subscription shape the workspace page uses (`useRenderSessions` + `selectedSessionId`, then a
 // `useMemo` lookup), so a delta propagates exactly the way it does in the app.
-const WorkspaceLikeHost = (): React.JSX.Element => {
+const WorkspaceLikeHost = ({
+  draftDoc = emptyDoc
+}: {
+  draftDoc?: ComposerDoc
+}): React.JSX.Element => {
   const sessions = useRenderSessions()
   const selectedSessionId = useSessionStore((state) => state.selectedSessionId)
   const activeSession = useMemo(
@@ -378,7 +382,7 @@ const WorkspaceLikeHost = (): React.JSX.Element => {
         instrument.profiler()
       }}
     >
-      <ConversationPanel activeSession={activeSession} {...panelProps} />
+      <ConversationPanel activeSession={activeSession} {...panelProps} draftDoc={draftDoc} />
     </Profiler>
   )
 }
@@ -563,6 +567,27 @@ describe('ConversationPanel transcript render cost', () => {
     expect(container.querySelector('[data-icon="LoaderCircle"]')).toBeNull()
     expect(container.textContent).toContain('partial')
   })
+  it('keeps a composer keystroke out of the transcript', () => {
+    renderHost()
+    pushDelta(1, 'partial')
+    resetInstrument()
+
+    // A keystroke replaces the draft object, which is a WorkspacePage prop — the page-level re-render is
+    // expected, the transcript's is not.
+    const typed: ComposerDoc = { nodes: [{ type: 'text', text: 'h' }] }
+    act(() => root.render(<WorkspaceLikeHost draftDoc={typed} />))
+
+    expect(panelRenderCount()).toBe(1)
+    // The expensive part of the panel: none of it may come along for a keystroke.
+    expect(scrollerRenderCount()).toBe(0)
+    expect(renderedSlotIds()).toEqual([])
+    expect(renderedMarkdown()).toEqual([])
+    expect(timestampProbe.renders).toBe(0)
+    // Only the chrome is allowed to redraw — those icons reflect the draft state the user is editing.
+    expect(Object.keys(renderedIcons()).length).toBeGreaterThan(0)
+    expect(container.textContent).toContain('partial')
+  })
+
   it('keeps message timestamps out of every hot path', () => {
     renderHost()
     // Live probe check: the transcript really does render timestamps (the settled prompts carry "Sent").
@@ -626,5 +651,4 @@ describe('ConversationPanel transcript render cost', () => {
     // The activity content itself has to be on screen (icons alone would not prove the row is live).
     expect(container.textContent).toContain('public data repositories')
   })
-
 })

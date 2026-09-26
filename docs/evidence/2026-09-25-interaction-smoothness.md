@@ -650,3 +650,21 @@ profile 里 `MessageTimestamp` self time 16.96–20.6ms/3 回合，看起来是"
 微基准（V8/ICU）：label `short` **1µs/次**、title `full+long` **1µs/次**、`toISOString` ~0µs ⇒ 单条 **≈2µs**，**200 条消息 ≈0.4ms**。
 
 ⇒ 那 17–20ms 不是 Intl（微基准直接否掉），更像小组件帧**吸收被内联子帧**后的记名；三条热路径均为 0，无可省。**归档零代码**，只留一条常驻守卫（三条热路径恒 0 + 挂载活性自检）。若要让 profile 的自陈说得住，就得先微基准再谈优化 —— 这是本轮最省时间的一条纪律。
+
+### 交互普查（CDP Performance 计数）：滚动便宜、打字最贵、且多半不可优化
+
+**新仪器**：`e2e/perf/interaction-metrics.spec.ts`（常驻）。它用 CDP `Performance.getMetrics` 的**计数**（LayoutCount / RecalcStyleCount / Nodes / TaskDuration）而不是墙钟 —— 计数不随机器负载漂移，**对比不必 ABBA**。30 回合 × 每回合 6 条工具事件的长会话（2200 DOM 元素 / 122 条目 / 6 行活动）：
+
+| 动作 | 读数 |
+| --- | --- |
+| 滚动 14 步 | LayoutCount +17、TaskDuration **106ms**（≈7.6ms/步）⇒ 不卡 |
+| 聚焦 composer | script 1ms |
+| **打字 57 字符** | LayoutCount +58（每键 1 次布局）、**ScriptDuration 453ms / TaskDuration 533ms** ⇒ **7.94ms script + 9.35ms task 每键** |
+| 流式中打字 34 字符 | 149ms / 213ms ⇒ 4.4ms/字符 |
+| 一个流式回合 | script 106ms / task 162ms |
+
+**归因（打字窗 128 字符）**：React 渲染帧 ~109ms（`performWorkOnRoot` 46.7、`commitMutationEffectsOnFiber` 37.3、`reconcileChildren` 8.8、`commitRoot` 7.7）、lucide 图标 ~16ms、GC 26.6ms、应用 `querySelectorAll` 11.6ms。
+
+**根因**：`draftDoc` 是 `WorkspacePage` 的 `useState` ⇒ 每键整页重渲；memo 边界保住了转录（harness 实测敲键时 scroller / 消息槽 / markdown / 时间戳**全 0**），但 React 自根走一遍 ≈0.85ms/字符。
+
+**结论**：应用可优化的只有 **~1.0–1.2ms/键（12–15%）**，其余是输入事件 + contenteditable + GC 的固有成本；8ms/键仍在 60fps 预算内 ⇒ **不为 15% 重构页面状态归属**（改法已写明：`draftDoc` 下沉到 composer 区域/专用 store），立案低值。**下一步该看的是流式 profile 里那 60% 无归属的 `other` 桶**。

@@ -1069,6 +1069,26 @@ harness 断言已收紧为 `{ ChevronRight: 1, LoaderCircle: 1 }` → `{ Chevron
 
 **下一单元（已量并归档，见下节）**：`MessageTimestamp` 在 profile 里占 17–20ms/3 回合（每消息一个组件，随消息数放大）——**量过之后结论是"不是瓶颈"，零代码归档**。
 
+### 交互普查（新仪器：CDP Performance **计数**）：打字是当前最贵的一处，且主要是编辑器固有开销
+
+profile 回答"哪一帧"，但它的墙钟数受负载影响；**CDP `Performance.getMetrics` 给的是计数**（LayoutCount / RecalcStyleCount / Nodes / ScriptDuration / TaskDuration），不随负载漂移 ⇒ **对比不需要 ABBA 配对**。新仪器 `e2e/perf/interaction-metrics.spec.ts`（常驻，30 回合 × 6 工具事件的长会话上依次量：滚动 / 聚焦 / 逐键打字 / 流式中打字 / 一整个流式回合，并写出 `test-results/perf/typing.cpuprofile`）：
+
+| 动作 | 读数（长会话，2200 DOM 元素 / 122 条目 / 6 行活动） |
+| --- | --- |
+| 滚动 14 步（回看老答案） | LayoutCount +17、TaskDuration **106ms**（≈7.6ms/步）⇒ 不卡 |
+| 聚焦 composer | script 1ms ⇒ 干净 |
+| **打字 57 字符** | LayoutCount +58（每键 1 次布局，便宜）、**ScriptDuration 453ms / TaskDuration 533ms** ⇒ **7.94ms script + 9.35ms task 每键** |
+| 流式中打字 34 字符 | 149ms / 213ms ⇒ 4.4ms/字符 |
+| 一个流式回合 | script 106ms / task 162ms |
+
+**打字成本的构成（profile 归因，128 个字符的采样窗）**：React 渲染帧合计 ~109ms（`performWorkOnRoot` 46.7 / `commitMutationEffectsOnFiber` 37.3 / `reconcileChildren` 8.8 / `commitRoot` 7.7）、lucide 图标工厂 ~16ms、GC 26.6ms，另有应用在敲键时做的 `querySelectorAll` 11.6ms 等。
+
+**为什么 React 从"根"渲染**：`draftDoc` 是 **`WorkspacePage` 的 `useState`**（`WorkspacePage.tsx:678`），每敲一键整页重渲；memo 化的子树会 bail out（harness 实测：敲键时 **scroller 0 / 消息槽 0 / markdown 0 / 时间戳 0** ✓ 转录没被拖下水），但 React 仍要自根而下走一遍（~0.85ms/字符）。
+
+**结论（不夸大）**：可归因于应用渲染路径的只有 **~1.0–1.2ms/键（约 12–15%）**，其余是输入事件/contenteditable 编辑器/GC 的固有开销；8ms/键仍在 60fps 帧预算（16.7ms）内。⇒ **不为 15% 去重构页面状态归属**（把 `draftDoc` 下沉到 composer 区域或专用 store 的改法已写明，立案，低值）。若"卡"的体感仍在，更可能来自**流式期间的突发 work**（每轮 ~150ms 主线程），而不是打字或滚动本身。
+
+**下一步（立案，未做）**：把流式 profile 里 60% 的 `other` 桶拆开——ipc-delivery 已降到 0.7%、react-render/commit 合计 ~38%，剩下的 60% 目前没有归属，是唯一还没认领的大块。
+
 ### 消息时间戳：量出不是瓶颈（审计归档，零代码）
 
 上一节把 `MessageTimestamp`（profile self time 16.96–20.6ms/3 回合）立为"比活动行更值得看的一处"。本单元按纪律先量，结论是**这一项不需要改代码**：
