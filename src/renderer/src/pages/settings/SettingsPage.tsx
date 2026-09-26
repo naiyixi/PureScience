@@ -938,6 +938,9 @@ const SettingsPage = forwardRef<SettingsPageHandle, SettingsPageProps>(function 
   // Opened from page state rather than a Dialog.Trigger, so the restore has to be explicit:
   // without it closing this dialog drops a keyboard user onto <body>.
   const focusRestore = useDialogFocusRestore(open)
+  // Set while this surface hands an Escape up to the layer above, so the event that bounces back to
+  // this same listener is recognised and left alone.
+  const forwardingEscapeRef = useRef(false)
 
   return (
     <Dialog.Root
@@ -954,6 +957,34 @@ const SettingsPage = forwardRef<SettingsPageHandle, SettingsPageProps>(function 
           onOpenAutoFocus={focusRestore.onOpenAutoFocus}
           onCloseAutoFocus={focusRestore.onCloseAutoFocus}
           data-slot="settings-surface"
+          // Escape belongs to the layer on top. Radix listens for the key on the document, so with a confirm
+          // dialog open above this surface both layers dismissed and closing the confirm tore the whole settings
+          // surface down with it (measured in the packaged app). When something is open above, keep this layer
+          // and forward the key to the topmost one — the technique `closeActivePane` already uses. The forwarded
+          // event is untrusted and comes back here, which is what the isTrusted check filters out.
+          onEscapeKeyDown={(event) => {
+            // Radix hands this callback the native event, so `currentTarget` is the document rather than this
+            // surface; the forwarding flag below is what stops a forwarded Escape from looping.
+            if (forwardingEscapeRef.current) return
+            const topmost = Array.from(
+              document.querySelectorAll<HTMLElement>(
+                '[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]'
+              )
+            )
+              .filter((layer) => layer.dataset.slot !== 'settings-surface')
+              .at(-1)
+            // An Escape that came from the layer above belongs to that layer, not here.
+            if (!topmost || (event.target instanceof Node && topmost.contains(event.target))) return
+            event.preventDefault()
+            forwardingEscapeRef.current = true
+            try {
+              topmost.dispatchEvent(
+                new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
+              )
+            } finally {
+              forwardingEscapeRef.current = false
+            }
+          }}
           // Don't let a click/focus outside the dialog dismiss it. A Radix Select inside the panel
           // (provider type, active model, install source) portals its listbox outside the dialog's
           // DOM, so an outside-click meant only to close the open dropdown would otherwise also close

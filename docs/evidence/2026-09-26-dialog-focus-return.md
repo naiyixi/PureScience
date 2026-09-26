@@ -86,6 +86,21 @@ opener still connected:  true
 Enter ⇒ 预警确认框；**Escape** 关闭 ⇒ 断言 `Change location` 重新获焦；再用它自己的 **Cancel**（打开时
 它自己聚焦的那个按钮）关闭一次 ⇒ 同样断言归还。
 
+## 第三件：嵌套模态的 Escape 只关最内层
+
+第二族收口时观察到"确认框上按 Escape 会把底下的设置面一起关掉"，本轮落地为修复 + 真机断言。
+
+- **机制**：Radix 把 Escape 监听挂在 `document` 上 ⇒ 一层里的按键被每一层都收到 ⇒ 设置面与上层确认框同时
+  `onOpenChange(false)`。失败读数（修复前真机）：Escape 后界面回到工作区、`Change location` 按钮已不存在。
+- **修法（单点）**：`SettingsPage` 的 `Dialog.Content` 上加 `onEscapeKeyDown` —— 有更上层时 `preventDefault()`
+  关自己，并把同一个 Escape 转发给最上层（`closeActivePane` 同款手法）。转发事件会回到同一监听器 ⇒ 组件内 ref 标志防回环。
+- **两个坑（写进注释）**：Radix 回调里 `event.currentTarget` 是 `document` 而非该 Content ⇒ "目标是否在本层内"
+  必须换成"目标是否落在最上层内"；无转发标志会死循环（实测 521 次反复关闭）。
+- **真机断言**：`alert dialogs hand focus back to their opener as well` 内追加 —— Escape ⇒ 确认框关、
+  **设置面仍在**、焦点回 `Change location`。整份 `e2e/accessibility.spec.ts` **6 passed (1.4m)**。
+- **覆盖方式说明**：本条只由真机用例锁。jsdom 复现不出 Radix 的两层同关——我写的第一版 jsdom 用例在停用守卫后
+  **仍通过**（空断言），已删除，不留在仓库里冒充覆盖。
+
 ## 未覆盖（已立案为下一单元）
 
 - 真机断言覆盖设置面、工作区文件面、存储预警确认框三处；**引导页 `LocationStep`** 的确认框已按代码接线

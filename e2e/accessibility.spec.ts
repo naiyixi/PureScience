@@ -262,4 +262,16 @@ test('alert dialogs hand focus back to their opener as well', async ({ app }) =>
   await page.keyboard.press('Enter')
   await expect(warn).toBeHidden()
   await expect(change).toBeFocused()
+
+  // Escape with this confirm open used to dismiss the Settings surface underneath as well: Radix listens for the
+  // key on the document, so both layers reacted to one press. The nested layer has to absorb it and the opener
+  // takes focus back — this packaged-app test is the lock for that (jsdom does not reproduce the double dismissal).
+  const settings = page.getByRole('dialog', { name: 'Settings' })
+  await change.focus()
+  await page.keyboard.press('Enter')
+  await expect(warn).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(warn).toBeHidden()
+  await expect(settings).toBeVisible()
+  await expect(change).toBeFocused()
 })
