@@ -9,6 +9,7 @@ import type {
   AcpContextUsage
 } from '../../../../shared/acp'
 import type { ActivePlanProjection } from '../../../../shared/session-plan/contract'
+import { mergeLiveEvents } from './runtime-event-live-set'
 import type { ConversationAnnotation } from '../../../../shared/annotations'
 import {
   DEFAULT_PERMISSION_PROFILE,
@@ -604,7 +605,7 @@ const createWorkspaceRuntimeEventProcessor = (
 
   return {
     process: (events) => {
-      latestEvents = events
+      latestEvents = mergeLiveEvents(latestEvents, events)
       const visibleLaneKeys = new Set<string | symbol>()
 
       for (const event of events) {

@@ -962,3 +962,9 @@ if (recordedDigest !== checksum) {
 ### 下一层立项（有数，未动）：`acp:state` 每条 209KB 的整份事件日志
 
 来源 `runtime-coordinator.ts` 的 `MAX_EVENTS = 500` 截断：单条快照 ≈209KB、每回合 2–5 次 ⇒ 0.4–0.6MB/回合（45 回合下 0.4–0.8MB/回合）。裁这份数组会改变渲染端 `latestEvents` / `cleanEventLane` 的清理语义，属两侧契约改动，需单独立项 + 复用同一台探针做前后对照。明细见 `docs/evidence/2026-09-25-interaction-smoothness.md`。
+
+### 广播事件日志裁到「未发送 + 重叠」（已落定，两侧对齐）
+
+主进程广播快照时只带「上次广播之后 + 60 条重叠」的事件（拉取路径 `acp.getState` 仍全量）；渲染端可用集同步改为**累积**（`mergeLiveEvents`，上限 1000，空窗口不清空）——只改一侧会回退：45 轮 task 91.5 → **216.5ms/轮**（lane 被回收、ledger 丢失、重叠事件每份快照重新应用）。
+
+实测：`acp:state` 单条 137.8→209.1KB（随会话变胖）→ **29.6–33.0KB 恒定**；过桥总字节 473–845KB → **103–130KB/回合**；真机 45 轮 task 105.0ms（同口径噪声带 94–106ms 内）。单测 10 条、`test:e2e:workspace` 8/8、全量门禁 14442 passed。

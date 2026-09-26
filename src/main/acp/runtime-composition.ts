@@ -35,6 +35,7 @@ import type { SessionPersistenceCoordinator } from '../session-persistence/coord
 import { ElicitationBroker } from '../elicitation-broker'
 import { createBoundedEventAdmission } from '../event-admission'
 import { createLatestSnapshotBroadcast } from '../latest-snapshot-broadcast'
+import { createStateSnapshotEventsTrimmer } from './state-snapshot-events'
 import { AgentMcpHttpHost } from './mcp-http-host'
 import { projectRegistrySessionGrants } from './permission-broker'
 import { AcpRuntime, type AcpRuntimeCallbacks, type AcpRuntimeOptions } from './runtime'
@@ -144,9 +145,13 @@ const createAcpRuntime = ({
   // Bounded broadcast for the snapshot channel, which is emitted on every state change (effectively per
   // streamed chunk) and carries the whole event log: one message per window keeps the renderer's per-chunk
   // deserialize + full event-log walk bounded, and the newest snapshot still reconciles everything the
-  // collapsed ones held. An isolated change is still sent immediately.
+  // collapsed ones held. An isolated change is still sent immediately. The trimmer keeps each message's event
+  // log to what this renderer has not been sent yet (see `state-snapshot-events.ts`): without it every
+  // message re-shipped the full 500-event log (≈209KB) however few events had actually arrived. The pull path
+  // (`acp.getState`) still returns the untrimmed log for a window that mounts or reloads.
+  const trimStateEvents = createStateSnapshotEventsTrimmer()
   const broadcastState = createLatestSnapshotBroadcast<AcpStateSnapshot>((state) =>
-    broadcastToRenderers('acp:state', state)
+    broadcastToRenderers('acp:state', trimStateEvents(state))
   )
   const callbacks: AcpRuntimeCallbacks = {
     onStateChanged: (state: AcpStateSnapshot) => broadcastState(state),
