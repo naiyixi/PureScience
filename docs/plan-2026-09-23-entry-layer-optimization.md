@@ -295,6 +295,13 @@
   - **普查（本轮，为独立单元备料）**：含 `Dialog.Content` 的非测试文件 **49** 个；没有 Trigger / 受控开关注入点的 **23** 个；其中**既无 `Dialog.Close` 也无 `onCloseAutoFocus` 的 22 个**（这就是"关闭后焦点落到 `<body>`"的候选面）。已修好的先例 5 处：`global-search/GlobalSearchDialog`、`KeyboardShortcutsDialog`、`FolderGrantsPanel`、`AnnotationDialog`、`SessionBookmarksDialog`。
   - **现成机制**：`src/renderer/src/components/ui/dialog-focus-restore.ts` 的 `useDialogFocusRestore(open)`，用法是把它挂到 `Dialog.Content` 的 `onOpenAutoFocus`/`onCloseAutoFocus`（先例 `SessionBookmarksDialog:147-148`）。⇒ 每处只需 3 行接线，**机械但需逐条验证**。
   - **批次计划（下一步执行）**：① 先建**防复发普查守卫**（渲染层扫描：凡无 `Dialog.Trigger` 的 `Dialog.Content` 必须用该钩子或带显式豁免注记，进 CI）；② 再来补该钩子自身的单测（当前无专属测试文件）；③ 22 个文件分批接线（每批 8 个 + 守卫与门禁全绿）；④ **真机证据**：抽 2–3 个代表性对话框（设置页 / 工作区 / 引导页各一）断言关闭后 `document.activeElement` 回到打开它的控件。
+  - **✅ 本单元已执行完毕（四步全落）**：
+    1. **守卫已建** `src/renderer/src/components/ui/dialog-focus-restore-coverage.test.ts`：扫渲染层所有非测试 `.tsx`，凡渲染 `Dialog.Content` 而无 `Dialog.Trigger` 的，必须用 `useDialogFocusRestore` 或带 `focus-restore-exempt: <理由>` 注记；另加"扫描到的文件数 > 200"的自检，**防止遍历静默失败被读成合规**。
+    2. **钩子专属单测** `dialog-focus-restore.test.ts`（现 6 条）：关闭归还、**页面卸载式关闭**归还、认领 close 事件、退场动画后的重申、开者已移除时不抛错、**对话框自己 autoFocus 时仍归还给真正的开者**。
+    3. **22 处接线**完成（含 `<Dialog.Root open>` 的常开形态传 `true`、受控形态传 `Boolean(session)`/`packagesEnv !== null` 等；`ContextWindowDialog` 用文档里那条**组合写法**（先让钩子捕获、再放它自己的 `contentRef` 焦点）；`ConnectorApprovalDialog` 的钩子置于提前返回之前，满足 hooks 顺序规则）。
+    4. **真机证据**：`e2e/accessibility.spec.ts` 新增「dialogs opened from page state hand focus back to their opener」——**设置面**（侧栏 Settings → Enter → Escape ⇒ 断言侧栏按钮重新获焦）+ **工作区文件预览**（文件行按钮 → 关闭 ⇒ 断言该按钮重新获焦）；整个 spec 真机 **5 passed (45.0s)**。
+  - **⚠️ 真机发现并修掉的一处真缺陷（这轮最有价值的部分）**：钩子原先只在 Radix 的 open-autofocus 事件里读 `document.activeElement`。但设置面在**挂载时**用 `autoFocus` 聚焦自己的搜索框，React 在 commit 阶段就做了，**早于** Radix 的那个事件 ⇒ 钩子记下的是**对话框内部的输入框**，关闭时它自己也被卸载 ⇒ 归还无效果 ⇒ 焦点仍落 `<body>`。真机探针读数（改前）：打开后 `INPUT | Search settings…`、关闭后 `BODY`。修法：**持续跟踪"对话框之外的最近焦点"**（`focusin` 捕获监听、忽略落在 `[role="dialog"]` 内的目标），打开时优先用"当前确实在外部的活动元素"，否则回退到跟踪值。真机复测：关闭后 **`BUTTON | Settings`** ✓。
+  - **⚠️ 明确的下一步单元（同类问题同量级，本轮未做）**：`AlertDialog.Content` 一族——21 个文件里 **20 个**同样没有 Trigger 也没有归还处理；守卫目前只守 `Dialog.Content`（先守一族，避免一次性把门禁弄红）。真机断言也只覆盖了设置面与工作区两面，**引导页那个对话框尚未纳入**。
 
 **U4 的收口方式**：通知中心桌面端取焦/归还以 `e2e/accessibility.spec.ts` 的键盘闭环用例覆盖（真机 Electron，非 jsdom 断言）；预览菜单与文件列表另有 jsdom 用例 29 + 11 条。
 

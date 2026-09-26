@@ -188,3 +188,48 @@ test('keyboard-opened surfaces close on Escape and hand focus back', async ({ ap
     'menuitem'
   )
 })
+
+// The other half of the dialog-focus sweep: `useDialogFocusRestore` is wired into every dialog that is
+// opened from page state (no Radix Trigger) and the coverage guard keeps that list honest — this checks the
+// behaviour a keyboard user actually feels, through the real entry points those dialogs have. Closing has to
+// put focus back on the control that opened the dialog, not on <body>.
+test('dialogs opened from page state hand focus back to their opener', async ({ app }) => {
+  let page = await app.completeOnboarding()
+  page = await app.configureFakeAgent()
+
+  // A project first: the rail (and its Settings button) belongs to the workspace surface.
+  await page.getByRole('button', { name: 'New project' }).click()
+  const projectDialog = page.getByRole('dialog', { name: 'New project' })
+  await projectDialog.getByLabel('Name').fill('Focus return project')
+  await projectDialog.getByRole('button', { name: 'Create project' }).click()
+
+  // The settings surface: a rail button opens it, Escape closes it. Without the restore this is the dialog
+  // that stranded a keyboard user at the top of the document.
+  const railSettings = page.getByRole('button', { name: 'Settings', exact: true })
+  await railSettings.focus()
+  await page.keyboard.press('Enter')
+  const settings = page.getByRole('dialog', { name: 'Settings' })
+  await expect(settings).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(settings).toBeHidden()
+  await expect(railSettings).toBeFocused()
+
+  // The workspace file preview: a file-row button opens it, its own close button closes it.
+  await page.locator('input[type="file"][multiple]').setInputFiles({
+    name: 'focus-return.md',
+    mimeType: 'text/markdown',
+    buffer: Buffer.from('# Focus return\n\nPreview me.')
+  })
+  await page.getByRole('textbox', { name: 'Ask anything' }).fill('Preview the attached file.')
+  await page.getByRole('button', { name: 'Send message' }).click()
+  await expect(page.getByText('Deterministic reply:', { exact: false })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Files', exact: true }).click()
+  const previewOpener = page.getByRole('button', { name: 'Preview uploaded file focus-return.md' })
+  await previewOpener.click()
+  const preview = page.getByRole('dialog', { name: 'Preview focus-return.md' })
+  await expect(preview).toBeVisible()
+  await page.getByRole('button', { name: 'Close preview of focus-return.md' }).click()
+  await expect(preview).toBeHidden()
+  await expect(previewOpener).toBeFocused()
+})
