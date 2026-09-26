@@ -526,3 +526,20 @@ U33 之后 app 组件层面已无单点可抠，于是换仪器量**每回合的
 即：**过桥不再是问题**，剩下的主线程开销几乎全在 React 渲染与提交。最贵的具名帧是 `updateForwardRef`（5.5%），把它底下的组件还原到 bundle 位置后是 **`lucide` 图标工厂**（`({color, size, strokeWidth, absoluteStrokeWidth, className, children, iconNode, ...rest}, ref) => …`，self ≈57.7ms/3 回合 ≈ **19ms/轮**），配套的是提交阶段写 SVG 属性（`updateProperties` 28ms + `setProp` 14ms / 3 回合）。
 
 **成因**：U33 让**消息项**自订阅正文，于是每块重渲的是整个项 —— 除了正文，还包括它周边的 chrome（图标、尾部动作）。**下一单元（已定，未动）**：把订阅再下沉一层，只让**正文子组件**订阅 store，消息项只接收 `sessionId`/`messageId`，这样每块只重渲正文，图标与 chrome 不动。目标量：图标渲染 ≈19ms/轮 + 提交属性写入 ≈5ms/轮。
+
+### 上述下一单元：做了，A/B 中性，已回退（结论比改动值钱）
+
+按该设计实现过一版（新增 `live-message-content.ts`（`useLiveMessageContent` / `readLiveMessageContent`）+ `live-message-content-view.tsx`（`LiveMessageText` / `LiveAssistantMarkdown`），消息项不再订阅；复制/编辑/书签处理器改走点击时读取，避免拿到冻结快照里的旧正文）。同口径 A/B（45 回合、40 块/回合）：
+
+| 指标（同一次会话内，先 stash 改动重建再切回） | 改前 | 改后 |
+| --- | --- | --- |
+| 每轮 task | 172.4ms | **167.5ms** |
+| 每轮 script | 103.6ms | **102.2ms** |
+| DOM 变更批次 | 1620 | **1608** |
+| `lucide` 图标帧（3 回合采样） | 57.7ms | **58.0ms** |
+
+**中性 ⇒ 判断错了一层**：图标重渲**不在消息项的 chrome 里**，项不再订阅后它一分钱没降。它来自**正文子树内部**（markdown 渲染器自身的 chrome），要动它得进 `AgentMarkdown` 内部做记忆化，不是搬订阅。既然无实测收益，改动**已回退**（工作树回到 `2443a58`），只留结论。
+
+### 测量纪律：跨时段绝对值不可比，只能同时段 A/B
+
+同一份代码（`2443a58`）在不同时段量到 **105.0ms/轮** 与 **172.4ms/轮**（DOM 变更批次 291 vs 1620、frames 512 vs 1209，p95 帧时间都是 18ms）。此前几轮的「91.5ms/轮」「−80%」是**同一时段成对 A/B** 得到的相对值，仍然成立；但**跨时段拿绝对值对比会得出假结论**（本次差点把中性改动误判成 +57% 回退）。凡涉及帧/批次这类随机器负载漂移的指标，必须同一次会话内成对测。
