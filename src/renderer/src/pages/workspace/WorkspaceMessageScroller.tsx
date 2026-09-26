@@ -48,6 +48,10 @@ import { WorkspaceMessageItem } from './WorkspaceMessageItem'
 import type { ArtifactMentionPart } from './WorkspaceMessageItem'
 import { useWorkspaceMessageEditState } from './workspace-message-edit-state-context'
 import { createConversationItems } from './workspace-conversation-items'
+import {
+  selectLiveSessionActivities,
+  selectLiveSessionActivityGroups
+} from './activity-subscription'
 import { groupConversationItems } from './workspace-tool-activity-groups'
 import type { ActivityExpansionOverrides } from './workspace-tool-activity-groups'
 import { useSessionJobStore } from '@/stores/session-job-store'
@@ -475,13 +479,37 @@ const WorkspaceMessageScrollerImpl = ({
     activityExpansionOverrideState.sessionId === currentSessionId
       ? activityExpansionOverrideState.overrides
       : {}
+  // Activities and their groups arrive several times a turn (every tool event, plus every status change), so
+  // they are read from the store rather than from props — the same reason the streamed text is. The props
+  // keep the frozen snapshot's values for isolated surfaces, which is the same fallback direction the text
+  // channel uses. The comparators ignore both fields, so an activity update no longer re-mints the panel's
+  // props: measured, one update used to re-render the panel and this container plus nine icons.
+  const liveActivities = useSessionStore((state) =>
+    selectLiveSessionActivities(state, currentSessionId)
+  )
+  const liveActivityGroups = useSessionStore((state) =>
+    selectLiveSessionActivityGroups(state, currentSessionId)
+  )
+  // One object, memoised so the item assembly keeps its identity across a text chunk (the store's arrays do
+  // too — the selectors above return the same reference until an activity actually changes).
+  const sessionForItems = useMemo(
+    () =>
+      activeSession === undefined
+        ? undefined
+        : {
+            ...activeSession,
+            activities: liveActivities ?? activeSession.activities,
+            activityGroups: liveActivityGroups ?? activeSession.activityGroups
+          },
+    [activeSession, liveActivities, liveActivityGroups]
+  )
   const conversationItems = useMemo(
     () =>
       groupConversationItems(
-        createConversationItems(activeSession, handoffEvents),
-        activeSession?.activityGroups
+        createConversationItems(sessionForItems, handoffEvents),
+        liveActivityGroups ?? sessionForItems?.activityGroups
       ),
-    [activeSession, handoffEvents]
+    [sessionForItems, liveActivityGroups, handoffEvents]
   )
   // Revisions grouped once per render. This used to be filtered and sorted inside every message slot,
   // which made the transcript list quadratic in the number of messages per streaming chunk — the cost
@@ -571,7 +599,7 @@ const WorkspaceMessageScrollerImpl = ({
     const byActivityId = new Map<string, JobSummary>()
     const bound = new Set<string>()
 
-    const allActivities = activeSession?.activities ?? []
+    const allActivities = liveActivities ?? activeSession?.activities ?? []
     for (const job of sessionJobs) {
       // Scan all activities for this job_id
       for (const activity of allActivities) {
@@ -585,7 +613,7 @@ const WorkspaceMessageScrollerImpl = ({
     }
 
     return { jobsByActivityId: byActivityId, boundJobIds: bound }
-  }, [sessionJobs, activeSession?.activities])
+  }, [sessionJobs, liveActivities, activeSession?.activities])
 
   // Unbound completed jobs: jobs not found in any activity rawOutput — go into timeline
   const unboundCompletedJobs = useMemo((): JobSummary[] => {

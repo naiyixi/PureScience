@@ -574,3 +574,25 @@ U33 之后 app 组件层面已无单点可抠，于是换仪器量**每回合的
 **判读**：U33 的冻结容器在**文本通道**上守住了（消息槽与正文都不重渲），但**活动通道把它打穿了** —— 活动数据走 props（`activeSession.activities` / `activityGroups`）而不是订阅，于是每条工具事件都重渲整个面板 + 滚动容器 + 8 个无关图标。而流式回合里工具事件是高频的（每个 tool 事件一次，且 pending/completed 各一次）⇒ 真机那 ≈19ms/轮的 lucide 帧与 `TooltipTrigger2` 开销主要来自这里。
 
 **下一单元（已立项）**：把活动通道按文本通道的同一套做法处理——活动数据不再参与冻结快照的比较，改由**活动行自己订阅 store**（面板/滚动容器保持冻结）。判据就是上表：目标 `panel 0 / scroller ≤1 / 图标只剩活动行自己那一个`，由这台 harness 精确断言把关（现基线已写进断言）。
+
+### 活动通道：已实现并验收（确定性证据），真机 spec 对此**不敏感**
+
+实现（三处，小改）：
+
+1. `transcript-render-identity.ts`：`IGNORED_SESSION_KEYS` 加入 `activities` / `activityGroups`（与 `messages` / `updatedAt` 同类：每回合多次变的易变数据）。
+2. 新增 `activity-subscription.ts`：`selectLiveSessionActivities` / `selectLiveSessionActivityGroups`（`undefined` 时回落到 props，与文本通道同向）。
+3. `WorkspaceMessageScroller.tsx`：自行订阅这两个字段，并用一个**记忆化**的 `sessionForItems`（`{...activeSession, activities, activityGroups}`）喂给 `createConversationItems`，保证文本块上身份稳定。
+
+**先量再改的一步（关键）**：订阅是否安全取决于「投影数组在文本块上是否保持引用」。实测（临时探针，已转为正式用例）：`activities` / `activityGroups` **在文本块上引用稳定、在活动更新时变化** ⇒ 裸订阅不会把滚动容器拖成每块重渲（否则会把文本通道的收益打回去）。
+
+**确定性读数（同一 harness）**：
+
+| 一条工具活动更新 | 改前 | 改后 |
+| --- | --- | --- |
+| 面板 | 1 | **0** |
+| 滚动容器 | 1 | 1（它拥有时间线装配，理应重渲） |
+| 图标 | 9（8 个与活动无关） | **2**（活动行自身的状态图标 + 分组 `ChevronRight`） |
+
+并加了**存活验证**（防止重蹈"冻结"覆辙）：更新后 `[data-icon="LoaderCircle"]` 必须出现，状态变更后必须换成 `[data-icon="Check"]` 且旧图标消失。新增 `activity-subscription.test.ts`（4 条：读到会话、无 sessionId 回落、文本块上身份稳定、活动变化时身份变化）。
+
+**真机侧如实说明**：`e2e/fixtures/fake-opencode.mjs` 的流式场景**只发文本块、不发工具事件**（`PURESCIENCE_E2E_STREAM_CHUNKS` 切的是文本分块），因此 `smoothness` / `streaming-profile` 这两个 spec 对本次改动**天然不敏感**。同会话 A/B 读数：DOM 变更批次 1613 → **1599**（−0.9%，方向一致但很小）、每轮 task 185.0 → 202.4ms（在本机漂移带内）。**不声称真机提速**——要真机量化活动通道，夹具得会发工具事件（已列为下一步前置）。另外本次 profile 的"改前"侧被我自己的脚本 bug（两次都读同一个 `.cpuprofile`）覆盖丢失，不做前后归因断言。

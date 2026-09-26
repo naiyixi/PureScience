@@ -22,7 +22,17 @@ import type { ChatMessage, ChatSession } from '@/stores/session-store'
 // WorkspacePage mirrors onto the Session (already ignored here before this module existed);
 // `updatedAt` is bumped on every chunk, and is only rendered by surfaces outside the transcript (the
 // sidebar reads the live store; the Session info card shows it as of the last structural change).
-const IGNORED_SESSION_KEYS = new Set(['branchSwitchBlocked', 'messages', 'updatedAt'])
+// `activities` / `activityGroups` arrive several times a turn (every tool event, plus every status change)
+// and are rendered by the list container's own subscription (see activity-subscription) — comparing them
+// here re-minted the panel's props on every tool event, which re-rendered the panel, the list container and
+// the panel chrome with it (measured: nine icons for one update, eight of them unrelated to it).
+const IGNORED_SESSION_KEYS = new Set([
+  'branchSwitchBlocked',
+  'messages',
+  'updatedAt',
+  'activities',
+  'activityGroups'
+])
 
 // Message fields a chunk may write for the message it is streaming into.
 const STREAMED_MESSAGE_KEYS = new Set(['content', 'updatedAt', 'eventIds'])

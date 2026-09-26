@@ -507,27 +507,21 @@ describe('ConversationPanel transcript render cost', () => {
     }
     console.log('[render-count] activity created:', JSON.stringify(created))
 
-    // Baseline before the activity channel is handled like the text channel (see the plan doc, "活动通道"):
-    // one activity update re-renders the panel and the scroller, and drags nine icons with it — eight of
-    // which (`Menu`, `Bell`, `PanelRight`, `ChevronRight`, `Plus`, `FileText`, `ScanEye`, `Square`) belong
-    // to chrome the update did not touch. The message slots and the markdown body correctly stay put.
+    // The activity channel is handled like the text channel: the panel keeps its props (and so do its eight
+    // chrome icons — before this, one activity update dragged all of them along), and the list container
+    // re-renders because it owns the timeline. Only the icons that belong to the activity itself render:
+    // the row's status icon and the group's chevron.
     expect(created).toEqual({
-      panel: 1,
+      panel: 0,
       scroller: 1,
       slots: [],
       markdown: [],
-      icons: {
-        Menu: 1,
-        Bell: 1,
-        PanelRight: 1,
-        ChevronRight: 1,
-        LoaderCircle: 1,
-        Plus: 1,
-        FileText: 1,
-        ScanEye: 1,
-        Square: 1
-      }
+      icons: { ChevronRight: 1, LoaderCircle: 1 }
     })
+
+    // The update has to be *visible* — reading from the store must not leave the row frozen on the snapshot
+    // the props carry (the failure mode the text channel hit first).
+    expect(container.querySelector('[data-icon="LoaderCircle"]')).not.toBeNull()
 
     // The same activity changes status: the update an agent emits far more often than a creation.
     resetInstrument()
@@ -542,26 +536,18 @@ describe('ConversationPanel transcript render cost', () => {
     }
     console.log('[render-count] activity settled:', JSON.stringify(settled))
 
-    // The status change costs exactly the same as the creation: the row swaps its own icon
-    // (`LoaderCircle` → `Check`) and the same chrome comes along.
+    // A status change costs the same as a creation, and the row really swaps its icon in the DOM
+    // (`LoaderCircle` → `Check`): the store is the source, not the frozen props.
     expect(settled).toEqual({
-      panel: 1,
+      panel: 0,
       scroller: 1,
       slots: [],
       markdown: [],
-      icons: {
-        Menu: 1,
-        Bell: 1,
-        PanelRight: 1,
-        ChevronRight: 1,
-        Check: 1,
-        Plus: 1,
-        FileText: 1,
-        ScanEye: 1,
-        Square: 1
-      }
+      icons: { Check: 1, ChevronRight: 1 }
     })
 
+    expect(container.querySelector('[data-icon="Check"]')).not.toBeNull()
+    expect(container.querySelector('[data-icon="LoaderCircle"]')).toBeNull()
     expect(container.textContent).toContain('partial')
   })
 })

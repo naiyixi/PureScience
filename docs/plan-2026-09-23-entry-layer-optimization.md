@@ -986,6 +986,13 @@ if (recordedDigest !== checksum) {
 
 **下一单元（已立项，先量后改）**：活动数据移出冻结快照的比较，改由**活动行自订阅 store**；判据 = 上述 harness 的精确断言收紧到 `panel 0 / scroller ≤1 / 图标仅剩活动行自己那个`（基线值已写进断言，改动后必须同步下调）。
 
+### 活动通道（已实现，确定性验收通过；真机量化待夹具升级）
+
+- `IGNORED_SESSION_KEYS` += `activities` / `activityGroups`；新增 `activity-subscription.ts`（`selectLiveSessionActivities` / `selectLiveSessionActivityGroups`）；`WorkspaceMessageScroller` 自订阅并用记忆化的 `sessionForItems` 喂装配。
+- 前置实测：投影数组在**文本块上引用稳定**、在活动更新时变化 ⇒ 裸订阅安全（否则会把文本通道收益打回去）。
+- 读数：面板 **1 → 0**、图标 **9 → 2**（只剩活动行状态图标 + 分组 chevron），并带 DOM 存活验证（图标真的换）。
+- **真机量化前置**：`fake-opencode.mjs` 的流式场景不发工具事件 ⇒ `smoothness` / `streaming-profile` 对活动通道不敏感。下一步要给夹具加一个「按 `PURESCIENCE_E2E_TOOL_EVENTS=<n>` 发工具活动事件」的开关，才能真机量化这条通道（同会话成对 A/B）。
+
 ### 广播事件日志裁到「未发送 + 重叠」（已落定，两侧对齐）
 
 主进程广播快照时只带「上次广播之后 + 60 条重叠」的事件（拉取路径 `acp.getState` 仍全量）；渲染端可用集同步改为**累积**（`mergeLiveEvents`，上限 1000，空窗口不清空）——只改一侧会回退：45 轮 task 91.5 → **216.5ms/轮**（lane 被回收、ledger 丢失、重叠事件每份快照重新应用）。
