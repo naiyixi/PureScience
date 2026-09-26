@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const windows: Array<{
   destroyed: boolean
   isDestroyed: () => boolean
-  webContents: { send: ReturnType<typeof vi.fn> }
+  webContents: { id?: number; send: ReturnType<typeof vi.fn> }
 }> = []
 
 vi.mock('electron', () => ({
@@ -90,5 +90,51 @@ describe('broadcastToRenderers', () => {
     broadcastToRenderers('specialist:catalog-changed', undefined)
     expect(sink).toHaveBeenCalledOnce()
     removeSecond()
+  })
+})
+
+describe('session:updated echoes', () => {
+  const createWindow = (id: number): (typeof windows)[number] => ({
+    destroyed: false,
+    isDestroyed: () => false,
+    webContents: { id, send: vi.fn() }
+  })
+
+  it('skips the window that made the change and still updates the others', () => {
+    const origin = createWindow(7)
+    const other = createWindow(9)
+    windows.push(origin, other)
+
+    broadcastToRenderers('session:updated', {
+      session: {} as never,
+      originClientId: 'electron:7'
+    })
+
+    expect(origin.webContents.send).not.toHaveBeenCalled()
+    expect(other.webContents.send).toHaveBeenCalledOnce()
+  })
+
+  it('broadcasts a creation to the creating window as well', () => {
+    const origin = createWindow(7)
+    windows.push(origin)
+
+    broadcastToRenderers('session:created', {
+      session: {} as never,
+      originClientId: 'electron:7'
+    })
+
+    expect(origin.webContents.send).toHaveBeenCalledOnce()
+  })
+
+  it('does not skip a window for identifiers that are not Electron clients', () => {
+    const window = createWindow(7)
+    windows.push(window)
+
+    broadcastToRenderers('session:updated', {
+      session: {} as never,
+      originClientId: 'web:paired-client'
+    })
+
+    expect(window.webContents.send).toHaveBeenCalledOnce()
   })
 })

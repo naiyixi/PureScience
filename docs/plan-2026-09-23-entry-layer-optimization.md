@@ -952,3 +952,13 @@ if (recordedDigest !== checksum) {
 `acp:state` **40/26/32 → 5/3/2 次/回合**、字节 294–941KB → **32–68KB**、过桥总字节 310–955KB → **62–109KB**；
 真机 45 轮（40 块/回合）task **323.6 → 91.5ms/轮**、script **130.2 → 59.1ms/轮**、React 提交批次 1568 → 278。
 逐字显示已用渲染端 MutationObserver 探针实测未受影响（38 次变更批次、长度逐步增长）。代价：快照类状态连续变动时最多滞后一个窗口（150ms）。仪器 `e2e/perf/ipc-traffic.spec.ts` 常驻。
+
+### `session:updated` 不回送发起窗口（已落定）
+
+写入的**返回值**里已有权威文档（渲染端在广播之前就 apply 了 invoke 的返回），发起窗口收到的回声被直接丢弃。投影（`renderer-broadcast.ts`）按 `originClientId` 跳过发起窗口——Electron 调用方在 `caller-context.ts` 里就是 `electron:<webContents.id>`，无需新增映射；其他窗口、远程与网页客户端照发。
+
+实测（单窗口、40 块/回合）：`session:updated` **1–2 次/回合 → 0**，过桥总字节 62–109KB → **49–81KB/回合**（45 回合时回声单条曾达 242KB）。`session:created` 不跳过。验证：多窗口单测 3 条 + 真机 `test:e2e:workspace` 8/8（含重启重载、逐字一致）+ 过桥探针 ×0。
+
+### 下一层立项（有数，未动）：`acp:state` 每条 209KB 的整份事件日志
+
+来源 `runtime-coordinator.ts` 的 `MAX_EVENTS = 500` 截断：单条快照 ≈209KB、每回合 2–5 次 ⇒ 0.4–0.6MB/回合（45 回合下 0.4–0.8MB/回合）。裁这份数组会改变渲染端 `latestEvents` / `cleanEventLane` 的清理语义，属两侧契约改动，需单独立项 + 复用同一台探针做前后对照。明细见 `docs/evidence/2026-09-25-interaction-smoothness.md`。
