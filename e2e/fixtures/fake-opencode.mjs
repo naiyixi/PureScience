@@ -406,16 +406,65 @@ if (process.argv.includes('--version')) {
       // notifications with a small gap, so the smoothness numbers describe streaming rather than delivery.
       const streamChunks = Math.max(1, Number(process.env.PURESCIENCE_E2E_STREAM_CHUNKS ?? 1) || 1)
       const chunkSize = Math.ceil(reply.length / streamChunks)
-      for (let offset = 0; offset < reply.length; offset += chunkSize) {
+      // Tool activity is the transcript's *other* per-event channel: an agent emits a tool call, then
+      // several status updates for it, and each one used to re-render the whole workspace because the
+      // activity arrays travelled inside the session props. The default (0) emits none, exactly as before;
+      // `PURESCIENCE_E2E_TOOL_EVENTS=<n>` interleaves n tool-call lifecycles with the text chunks so that
+      // channel can be measured on a real machine instead of only in a render-count harness.
+      const toolEvents = Math.max(0, Number(process.env.PURESCIENCE_E2E_TOOL_EVENTS ?? 0) || 0)
+      const steps = []
+      const toolEvery = toolEvents > 0 ? Math.max(1, Math.floor(streamChunks / toolEvents)) : 0
+      let emittedTools = 0
+      for (let offset = 0, index = 0; offset < reply.length; offset += chunkSize, index += 1) {
+        if (toolEvery > 0 && index > 0 && index % toolEvery === 0 && emittedTools < toolEvents) {
+          emittedTools += 1
+          steps.push({ kind: 'tool', index: emittedTools })
+        }
+        steps.push({ kind: 'text', text: reply.slice(offset, offset + chunkSize) })
+      }
+      // A short reply offers fewer interleaving points than requested activities, so the rest follow the
+      // text: the switch promises *n* lifecycles, not "n if the answer happens to be long enough".
+      while (emittedTools < toolEvents) {
+        emittedTools += 1
+        steps.push({ kind: 'tool', index: emittedTools })
+      }
+      for (let stepIndex = 0; stepIndex < steps.length; stepIndex += 1) {
+        const step = steps[stepIndex]
+        const isLastStep = stepIndex === steps.length - 1
+        if (step.kind === 'tool') {
+          const toolCallId = `e2e-${process.pid}-tool-${step.index}`
+          const notify = async (update) =>
+            context.client.notify(acp.methods.client.session.update, {
+              sessionId: context.params.sessionId,
+              update
+            })
+          // One lifecycle, the shape a real agent sends: announced, running, done.
+          await notify({
+            sessionUpdate: 'tool_call',
+            toolCallId,
+            title: `Search repositories ${step.index}`,
+            kind: 'fetch',
+            status: 'in_progress'
+          })
+          await notify({
+            sessionUpdate: 'tool_call_update',
+            toolCallId,
+            title: `Search repositories ${step.index}`,
+            kind: 'fetch',
+            status: 'completed'
+          })
+          agentLog(`tool -> ${context.params.sessionId} ${toolCallId}: completed`)
+          continue
+        }
         await context.client.notify(acp.methods.client.session.update, {
           sessionId: context.params.sessionId,
           update: {
             sessionUpdate: 'agent_message_chunk',
             messageId: replyMessageId,
-            content: { type: 'text', text: reply.slice(offset, offset + chunkSize) }
+            content: { type: 'text', text: step.text }
           }
         })
-        if (offset + chunkSize < reply.length) await new Promise((resolve) => setTimeout(resolve, 5))
+        if (!isLastStep) await new Promise((resolve) => setTimeout(resolve, 5))
       }
       // The request log says what the app asked for; this says what it was told back. Without it a reply the
       // app failed to render looks identical to an agent that never answered.
