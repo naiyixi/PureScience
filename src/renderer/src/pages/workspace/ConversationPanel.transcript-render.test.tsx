@@ -54,7 +54,10 @@ const instrument = vi.hoisted(() => ({
   scroller: vi.fn(),
   profiler: vi.fn(),
   leaf: vi.fn(),
-  markdown: vi.fn()
+  markdown: vi.fn(),
+  // Which icon components the chunk re-rendered. The icons live in the app's own chrome, so counting them
+  // by name says *which* component came along with the text (the profile only says "a lucide icon frame").
+  icon: vi.fn()
 }))
 
 const resetInstrument = (): void => {
@@ -67,6 +70,15 @@ const profilerRenderCount = (): number => instrument.profiler.mock.calls.length
 const renderedSlotIds = (): string[] => instrument.leaf.mock.calls.map(([id]) => String(id))
 const renderedMarkdown = (): string[] =>
   instrument.markdown.mock.calls.map(([text]) => String(text))
+
+const renderedIcons = (): Record<string, number> => {
+  const counts: Record<string, number> = {}
+  for (const [name] of instrument.icon.mock.calls) {
+    const key = String(name)
+    counts[key] = (counts[key] ?? 0) + 1
+  }
+  return counts
+}
 
 // Child regions pull in stores/UI unrelated to the transcript, so stub them to plain markers.
 vi.mock('@/components/ui/resizable', () => ({
@@ -161,6 +173,30 @@ vi.mock('@/components/streamdown/AgentMarkdown', () => ({
     return <div>{content}</div>
   }
 }))
+
+// Icon probe: `lucide-react` is a name-to-component map, so a counting stand-in for every icon export
+// reports exactly which icons rendered (non-component exports keep their real value so nothing else breaks).
+vi.mock('lucide-react', async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>()
+
+  const countingIcon = (name: string): React.ComponentType<Record<string, unknown>> => {
+    const Icon = ({ ...rest }: Record<string, unknown>): React.JSX.Element => {
+      instrument.icon(name)
+      return <span data-icon={name} {...rest} />
+    }
+    Icon.displayName = name
+    return Icon
+  }
+
+  const probe: Record<string, unknown> = {}
+  for (const [name, value] of Object.entries(actual)) {
+    const isIconComponent =
+      typeof value === 'object' && value !== null && '$$typeof' in (value as object)
+    probe[name] = isIconComponent ? countingIcon(name) : value
+  }
+
+  return probe
+})
 
 // Everything is visible in tests: the bounded-render window collapses to the full transcript. The
 // provider wrapper doubles as the container counter — the scroller mints that element on every render
@@ -383,6 +419,10 @@ describe('ConversationPanel transcript render cost', () => {
     expect(container.textContent).toContain('Answer 37')
     expect(container.textContent).not.toContain('partial')
 
+    // The icon probe has to be live before its "no icon re-rendered" reading means anything: the mount
+    // renders the transcript's own chrome, so some icon must have rendered by now.
+    expect(Object.keys(renderedIcons()).length).toBeGreaterThan(0)
+
     // The first chunk of a turn is a structural change by definition: it creates the Agent message the
     // run streams into (that is also how the app's own projection shapes it, `images: undefined`
     // included). Measure the chunks after it — the ones that only carry text.
@@ -397,7 +437,8 @@ describe('ConversationPanel transcript render cost', () => {
       scroller: scrollerRenderCount(),
       profiler: profilerRenderCount(),
       slots: renderedSlotIds(),
-      markdown: renderedMarkdown()
+      markdown: renderedMarkdown(),
+      icons: renderedIcons()
     }
 
     console.log('[render-count] one delta:', JSON.stringify(measured))
@@ -415,12 +456,18 @@ describe('ConversationPanel transcript render cost', () => {
       panel: measured.panel,
       scroller: measured.scroller,
       slots: measured.slots,
-      markdown: measured.markdown
+      markdown: measured.markdown,
+      icons: measured.icons
     }).toEqual({
       panel: 0,
       scroller: 0,
       slots: [],
-      markdown: ['partial more']
+      markdown: ['partial more'],
+      // A text chunk re-renders the text and *no icon at all*: the icons in a workspace screen belong to the
+      // tool-activity rows and the panel chrome, none of which this chunk changed. Measured rather than
+      // assumed — the CPU profile only ever says "a lucide icon frame", with the rendering component's name
+      // already lost inside React's work loop.
+      icons: {}
     })
   })
 })
