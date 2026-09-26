@@ -42,6 +42,7 @@ import { useComputeStore } from '@/stores/compute-store'
 import { useNavigationStore } from '@/stores/navigation-store'
 import { useProjectStore } from '@/stores/project-store'
 import { copyText } from '@/lib/copy-text'
+import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -603,6 +604,9 @@ export function FileBrowserModal({
     gotoMenuRef.current?.querySelector<HTMLButtonElement>('button')?.focus()
   }, [gotoOpen])
 
+  // Opened from job rows and settings, never from a Dialog.Trigger.
+  const focusRestore = useDialogFocusRestore(open)
+
   return (
     <Dialog.Root
       open={open}
@@ -613,6 +617,8 @@ export function FileBrowserModal({
       <Dialog.Portal>
         <Dialog.Overlay className={cn(dialogOverlayClassName, 'z-[70]')} />
         <Dialog.Content
+          onOpenAutoFocus={focusRestore.onOpenAutoFocus}
+          onCloseAutoFocus={focusRestore.onCloseAutoFocus}
           className={dialogPanelClassName(
             'z-[70] flex w-[min(860px,calc(100vw-2rem))] h-[min(600px,calc(100vh-4rem))] flex-col overflow-hidden p-0'
           )}

@@ -3,6 +3,7 @@ import { AlertTriangle, LoaderCircle, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import { useLanguage } from '@/i18n'
+import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 import { Button } from '@/components/ui/button'
 import {
   dialogCloseButtonClassName,
@@ -142,11 +143,17 @@ const ArtifactEditDialog = ({
 
   const publishHint = t('artifactEdit.publishHint').replace('{version}', String(versionNumber))
 
+  // Opened from page state rather than a Dialog.Trigger, so the restore has to be explicit:
+  // without it closing this dialog drops a keyboard user onto <body>.
+  const focusRestore = useDialogFocusRestore(open)
+
   return (
     <Dialog.Root open={open} onOpenChange={handleOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className={dialogOverlayClassName} />
         <Dialog.Content
+          onOpenAutoFocus={focusRestore.onOpenAutoFocus}
+          onCloseAutoFocus={focusRestore.onCloseAutoFocus}
           className={dialogPanelClassName(
             'flex max-h-[min(720px,calc(100vh-2rem))] w-[min(860px,calc(100vw-2rem))] flex-col'
           )}

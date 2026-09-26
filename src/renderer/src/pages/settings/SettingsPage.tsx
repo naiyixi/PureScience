@@ -30,6 +30,7 @@ import { Dialog } from 'radix-ui'
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 
 import { useLanguage, type TranslationKey } from '@/i18n'
+import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 
 import {
   resolveCodexSubscriptionType,
@@ -934,6 +935,10 @@ const SettingsPage = forwardRef<SettingsPageHandle, SettingsPageProps>(function 
     }
   }
 
+  // Opened from page state rather than a Dialog.Trigger, so the restore has to be explicit:
+  // without it closing this dialog drops a keyboard user onto <body>.
+  const focusRestore = useDialogFocusRestore(open)
+
   return (
     <Dialog.Root
       open={open}
@@ -946,6 +951,8 @@ const SettingsPage = forwardRef<SettingsPageHandle, SettingsPageProps>(function 
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50 data-[state=closed]:animate-out data-[state=open]:animate-in data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 motion-reduce:data-[state=closed]:animate-none motion-reduce:data-[state=open]:animate-none" />
         <Dialog.Content
+          onOpenAutoFocus={focusRestore.onOpenAutoFocus}
+          onCloseAutoFocus={focusRestore.onCloseAutoFocus}
           data-slot="settings-surface"
           // Don't let a click/focus outside the dialog dismiss it. A Radix Select inside the panel
           // (provider type, active model, install source) portals its listbox outside the dialog's

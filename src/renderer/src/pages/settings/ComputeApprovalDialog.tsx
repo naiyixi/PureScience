@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 import { ShieldAlert, ChevronDown, ChevronUp } from 'lucide-react'
 import { Dialog } from 'radix-ui'
 import { useLanguage } from '@/i18n'
@@ -36,6 +37,9 @@ export function ComputeApprovalDialog(): React.JSX.Element | null {
   const [pendingBroadScope, setPendingBroadScope] = useState<BroadPermissionScope>()
 
   const dialogRequest = useRetainedDialogValue(request)
+  // The approval card mounts already open (the request is why it exists): the restore runs on
+  // unmount. Placed before the early return below — hooks run in the same order every render.
+  const focusRestore = useDialogFocusRestore(Boolean(request))
   if (!dialogRequest) return null
 
   const deny = (): void => void respondApproval(dialogRequest.id, 'deny')
@@ -56,6 +60,8 @@ export function ComputeApprovalDialog(): React.JSX.Element | null {
       <Dialog.Portal>
         <Dialog.Overlay className={cn(dialogOverlayClassName, 'z-[60]')} />
         <Dialog.Content
+          onOpenAutoFocus={focusRestore.onOpenAutoFocus}
+          onCloseAutoFocus={focusRestore.onCloseAutoFocus}
           onInteractOutside={(event) => event.preventDefault()}
           onEscapeKeyDown={(event) => event.preventDefault()}
           className={dialogPanelClassName(

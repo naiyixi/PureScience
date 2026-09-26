@@ -1,4 +1,5 @@
 import { X } from 'lucide-react'
+import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 import { Dialog } from 'radix-ui'
 
 import { useLanguage } from '@/i18n'
@@ -42,6 +43,10 @@ const RenameSessionDialog = ({
   const { t } = useLanguage()
   const dialogRenameDraft = useRetainedDialogValue(session ? renameDraft : undefined) ?? renameDraft
 
+  // Opened from page state rather than a Dialog.Trigger, so the restore has to be explicit: without it
+  // closing this dialog drops a keyboard user onto <body>.
+  const focusRestore = useDialogFocusRestore(Boolean(session))
+
   return (
     <Dialog.Root
       open={Boolean(session)}
@@ -54,6 +59,8 @@ const RenameSessionDialog = ({
       <Dialog.Portal>
         <Dialog.Overlay className={dialogOverlayClassName} />
         <Dialog.Content
+          onOpenAutoFocus={focusRestore.onOpenAutoFocus}
+          onCloseAutoFocus={focusRestore.onCloseAutoFocus}
           onInteractOutside={(event) => event.preventDefault()}
           className={dialogPanelClassName('w-[min(420px,calc(100vw-2rem))]')}
         >

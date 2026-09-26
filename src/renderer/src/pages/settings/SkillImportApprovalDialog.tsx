@@ -13,6 +13,7 @@ import { dialogOverlayClassName, dialogPanelClassName } from '@/components/ui/di
 import { useSkillImportStore } from '@/stores/skill-import-store'
 import { SkillImportCandidatePreview } from './SkillImportCandidatePreview'
 import { useSkillImportCandidatePreview } from './useSkillImportCandidatePreview'
+import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 
 type SkillImportApprovalRequestDialogProps = {
   request: ConversationSkillImportApprovalRequest
@@ -75,12 +76,18 @@ const SkillImportApprovalRequestDialog = ({
         ? `Import ${count} Skill${count === 1 ? '' : 's'}`
         : t('settings.importSelected')
 
+  // Approval dialogs mount already open (the request is the reason they exist), so the restore runs on
+  // unmount. `true` is the honest flag here: while mounted, the layer is open.
+  const focusRestore = useDialogFocusRestore(true)
+
   return (
     <>
       <Dialog.Root open>
         <Dialog.Portal>
           <Dialog.Overlay className={dialogOverlayClassName} />
           <Dialog.Content
+            onOpenAutoFocus={focusRestore.onOpenAutoFocus}
+            onCloseAutoFocus={focusRestore.onCloseAutoFocus}
             onInteractOutside={(event) => event.preventDefault()}
             onEscapeKeyDown={(event) => event.preventDefault()}
             className={dialogPanelClassName(

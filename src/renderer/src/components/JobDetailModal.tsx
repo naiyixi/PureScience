@@ -12,6 +12,7 @@ import { JobDeliveryLedger } from './JobDeliveryLedger'
 import { JobStatusBadge } from './JobStatusBadge'
 import { JobTerminalOutput } from './JobTerminalOutput'
 import { formatDuration, jobElapsedMs } from './remote-job-badge-utils'
+import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 import { FileBrowserModal } from '../pages/settings/FileBrowserModal'
 
 // How often the terminal output auto-refreshes (design.md §15.3: ≈15s).
@@ -342,6 +343,10 @@ export function JobDetailModal({
     setFileBrowserOpen(true)
   }, [])
 
+  // No Dialog.Trigger: the job list and the remote-job rows open this from page state, so closing it
+  // has to put focus back explicitly (the layer is unmounted, not closed).
+  const focusRestore = useDialogFocusRestore(open)
+
   return (
     <>
       <Dialog.Root
@@ -353,6 +358,8 @@ export function JobDetailModal({
         <Dialog.Portal>
           <Dialog.Overlay className={cn(dialogOverlayClassName, 'z-[70]')} />
           <Dialog.Content
+            onOpenAutoFocus={focusRestore.onOpenAutoFocus}
+            onCloseAutoFocus={focusRestore.onCloseAutoFocus}
             className={dialogPanelClassName(
               'z-[70] flex w-[640px] max-w-[calc(100vw-2rem)] max-h-[82vh] flex-col overflow-hidden p-0'
             )}

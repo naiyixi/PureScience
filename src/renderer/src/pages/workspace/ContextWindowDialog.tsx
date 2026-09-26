@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button'
+import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 import {
   dialogCloseButtonClassName,
   dialogDescriptionClassName,
@@ -711,15 +712,23 @@ const ContextWindowDialog = ({
   const currentUsage = contextUsage ?? latestPoint?.sample.contextWindow
   const contentRef = useRef<HTMLDivElement>(null)
 
+  // Opened from page state rather than a Dialog.Trigger, so the restore has to be explicit: without it
+  // closing this dialog drops a keyboard user onto <body>.
+  const focusRestore = useDialogFocusRestore(open)
+
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className={dialogOverlayClassName} />
         <Dialog.Content
+          onCloseAutoFocus={focusRestore.onCloseAutoFocus}
           ref={contentRef}
           data-slot="context-window-dialog"
           aria-describedby="context-window-description"
+          // Composed: the hook captures the opener first (this is the only moment it is still the active
+          // element), then the dialog places focus where it wants it.
           onOpenAutoFocus={(event) => {
+            focusRestore.onOpenAutoFocus()
             event.preventDefault()
             contentRef.current?.focus()
           }}

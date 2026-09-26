@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils'
 import { useUpdateStore } from '@/stores/update-store'
 import { APP } from '../../../shared/app-config'
 import { formatBytes } from '../../../shared/update'
+import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 
 // Update confirmation dialog: shows the target version and release notes so the user can decide
 // before a large download. Opened from the external capsule and the settings About section. When the
@@ -35,6 +36,10 @@ const UpdateDialog = (): React.JSX.Element | null => {
   const isReady = dialogStatus?.state === 'ready'
   const isApplying = dialogStatus?.state === 'applying'
 
+  // The update dialog is opened by the update capsule in the rail, not by a Dialog.Trigger; without
+  // this the keyboard user lands back on <body> when it closes.
+  const focusRestore = useDialogFocusRestore(open)
+
   return (
     <Dialog.Root
       open={open}
@@ -46,6 +51,8 @@ const UpdateDialog = (): React.JSX.Element | null => {
         <Dialog.Portal>
           <Dialog.Overlay className={cn(dialogOverlayClassName, 'z-[60]')} />
           <Dialog.Content
+            onOpenAutoFocus={focusRestore.onOpenAutoFocus}
+            onCloseAutoFocus={focusRestore.onCloseAutoFocus}
             onInteractOutside={(event) => event.preventDefault()}
             className={dialogPanelClassName('z-[60] w-[min(560px,calc(100vw-2rem))]')}
           >

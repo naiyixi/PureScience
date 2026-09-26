@@ -9,6 +9,7 @@ import {
   type BroadPermissionScope
 } from '@/pages/workspace/PermissionScopeConfirmationDialog'
 import { useSettingsStore } from '@/stores/settings-store'
+import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 
 // A modal approval card for an un-trusted connector call. A connector tool sends data to an external
 // service, so a call that isn't pre-allowed or skip-approved is held until the user decides here.
@@ -20,6 +21,9 @@ export function ConnectorApprovalDialog(): React.JSX.Element | null {
   const customServers = useSettingsStore((state) => state.customServers)
   const respondApproval = useSettingsStore((state) => state.respondApproval)
   const [pendingBroadScope, setPendingBroadScope] = useState<BroadPermissionScope>()
+  // Mounts already open, like the other approval dialogs: the restore runs on unmount. Called before the
+  // early return below, because hooks have to run in the same order on every render.
+  const focusRestore = useDialogFocusRestore(true)
 
   if (!request) return null
   const availableScopes = request.availableScopes ?? ['once']
@@ -49,6 +53,8 @@ export function ConnectorApprovalDialog(): React.JSX.Element | null {
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-[60] bg-black/50" />
         <Dialog.Content
+          onOpenAutoFocus={focusRestore.onOpenAutoFocus}
+          onCloseAutoFocus={focusRestore.onCloseAutoFocus}
           onInteractOutside={(event) => event.preventDefault()}
           onEscapeKeyDown={(event) => event.preventDefault()}
           className="fixed left-1/2 top-1/2 z-[60] w-[min(440px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 overscroll-contain rounded-xl border border-border bg-card p-5 text-foreground shadow-dialog"

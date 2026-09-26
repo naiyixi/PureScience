@@ -3,6 +3,7 @@ import { Archive, Download, LoaderCircle, X } from 'lucide-react'
 import { Dialog } from 'radix-ui'
 
 import { useLanguage } from '@/i18n'
+import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 import { Button } from '@/components/ui/button'
 import {
   dialogCloseButtonClassName,
@@ -159,6 +160,10 @@ const DownloadSessionArtifactsDialog = ({
     }
   }
 
+  // Opened from page state rather than a Dialog.Trigger, so the restore has to be explicit:
+  // without it closing this dialog drops a keyboard user onto <body>.
+  const focusRestore = useDialogFocusRestore(Boolean(session))
+
   return (
     <Dialog.Root
       open={Boolean(session)}
@@ -169,6 +174,8 @@ const DownloadSessionArtifactsDialog = ({
       <Dialog.Portal>
         <Dialog.Overlay className={dialogOverlayClassName} />
         <Dialog.Content
+          onOpenAutoFocus={focusRestore.onOpenAutoFocus}
+          onCloseAutoFocus={focusRestore.onCloseAutoFocus}
           className={dialogPanelClassName(
             'flex max-h-[80svh] w-[min(640px,calc(100vw-2rem))] flex-col overflow-hidden p-0'
           )}

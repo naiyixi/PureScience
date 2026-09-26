@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Download, LoaderCircle, X } from 'lucide-react'
 import { useLanguage } from '@/i18n'
+import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 import { Dialog } from 'radix-ui'
 
 import { dialogOverlayClassName, dialogPanelClassName } from '@/components/ui/dialog-chrome'
@@ -427,6 +428,10 @@ const SessionNotebookDialog = ({
     }
   }, [sessionId, projectId, cwd])
 
+  // Opened from page state rather than a Dialog.Trigger, so the restore has to be explicit:
+  // without it closing this dialog drops a keyboard user onto <body>.
+  const focusRestore = useDialogFocusRestore(Boolean(session))
+
   return (
     <Dialog.Root
       open={Boolean(session)}
@@ -437,6 +442,8 @@ const SessionNotebookDialog = ({
       <Dialog.Portal>
         <Dialog.Overlay className={dialogOverlayClassName} />
         <Dialog.Content
+          onOpenAutoFocus={focusRestore.onOpenAutoFocus}
+          onCloseAutoFocus={focusRestore.onCloseAutoFocus}
           aria-describedby={undefined}
           onInteractOutside={(event) => event.preventDefault()}
           className={dialogPanelClassName(

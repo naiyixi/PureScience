@@ -31,6 +31,34 @@ export type DialogFocusRestore = {
   onCloseAutoFocus: (event: Event) => void
 }
 
+// The element that had focus outside any dialog, tracked as focus moves. Reading `document.activeElement`
+// only at Radix's open-autofocus event is not enough: a dialog that focuses its own field on mount (React's
+// `autoFocus`, or a select) does that during the commit, *before* Radix fires the event — so the reading
+// would be the dialog's own input, and "restoring" focus to it is a no-op once it unmounts. Focus that lands
+// inside a dialog layer is therefore ignored here, which leaves the control the person actually came from.
+let lastFocusOutsideDialogs: HTMLElement | null = null
+let isTrackingFocus = false
+
+const trackFocusOutsideDialogs = (): void => {
+  if (isTrackingFocus) return
+  isTrackingFocus = true
+  document.addEventListener(
+    'focusin',
+    (event) => {
+      const target = event.target
+      if (!(target instanceof HTMLElement)) return
+      if (target.closest('[role="dialog"]')) return
+      lastFocusOutsideDialogs = target
+    },
+    true
+  )
+}
+
+// Installed when the module loads (guarded for non-DOM environments) instead of from the first hook: the
+// focus that matters — the person clicking or tabbing to the control that opens a dialog — can happen before
+// any dialog component has run its effects.
+if (typeof document !== 'undefined') trackFocusOutsideDialogs()
+
 export const useDialogFocusRestore = (open: boolean): DialogFocusRestore => {
   const openerRef = useRef<HTMLElement | null>(null)
 
@@ -58,7 +86,15 @@ export const useDialogFocusRestore = (open: boolean): DialogFocusRestore => {
   return {
     onOpenAutoFocus: () => {
       const active = document.activeElement
-      openerRef.current = active instanceof HTMLElement ? active : null
+      // Prefer the element that is focused right now, as long as it is a real control outside every dialog.
+      // When it is the dialog's own field (mounted with `autoFocus`, or a select that grabs focus during the
+      // commit) or the body, fall back to the last element focused outside a dialog — the control the person
+      // actually came from.
+      const external =
+        active instanceof HTMLElement &&
+        active !== document.body &&
+        active.closest('[role="dialog"]') === null
+      openerRef.current = external ? active : lastFocusOutsideDialogs
     },
     onCloseAutoFocus: (event: Event) => {
       event.preventDefault()

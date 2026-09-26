@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Dialog } from 'radix-ui'
 
 import { dialogOverlayClassName, dialogPanelClassName } from '@/components/ui/dialog-chrome'
+import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 import { STREAMDOWN_FULLSCREEN_SELECTOR } from '@/components/streamdown/dom-selectors'
 import { useRetainedDialogValue } from '@/components/ui/use-retained-dialog-value'
 import type { PreviewFileItem } from '@/stores/preview-workbench-store'
@@ -78,6 +79,10 @@ const FilePreviewDialog = ({ item, onClose }: FilePreviewDialogProps): React.JSX
 
   useEffect(() => releaseBackgroundIsolation, [releaseBackgroundIsolation])
 
+  // Opened from page state rather than a Dialog.Trigger, so the restore has to be explicit:
+  // without it closing this dialog drops a keyboard user onto <body>.
+  const focusRestore = useDialogFocusRestore(open)
+
   return (
     <Dialog.Root
       modal={false}
@@ -93,6 +98,8 @@ const FilePreviewDialog = ({ item, onClose }: FilePreviewDialogProps): React.JSX
           className={`${dialogOverlayClassName} z-[60]`}
         />
         <Dialog.Content
+          onOpenAutoFocus={focusRestore.onOpenAutoFocus}
+          onCloseAutoFocus={focusRestore.onCloseAutoFocus}
           aria-describedby={undefined}
           aria-modal="true"
           onInteractOutside={(event) => event.preventDefault()}

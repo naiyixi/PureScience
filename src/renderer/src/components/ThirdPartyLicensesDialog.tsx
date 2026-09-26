@@ -3,6 +3,7 @@ import { Dialog } from 'radix-ui'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { useLanguage } from '@/i18n'
+import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 import {
   dialogDescriptionClassName,
   dialogFooterClassName,
@@ -50,11 +51,18 @@ const ThirdPartyLicensesDialog = ({
     })()
   }, [open, entries.length, loading, t])
 
+  // Closing this dialog used to drop focus on <body>: there is no Dialog.Trigger, and the page
+  // unmounts the layer instead of closing it. The hook captures the opener on open and hands focus
+  // back on the way out — including the unmount path.
+  const focusRestore = useDialogFocusRestore(open)
+
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className={dialogOverlayClassName} />
         <Dialog.Content
+          onOpenAutoFocus={focusRestore.onOpenAutoFocus}
+          onCloseAutoFocus={focusRestore.onCloseAutoFocus}
           className={dialogPanelClassName(
             'flex max-h-[min(640px,calc(100vh-2rem))] w-[min(560px,calc(100vw-2rem))] flex-col'
           )}

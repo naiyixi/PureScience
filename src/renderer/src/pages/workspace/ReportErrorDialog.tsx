@@ -1,4 +1,5 @@
 import { Dialog } from 'radix-ui'
+import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 import { copyText } from '@/lib/copy-text'
 import { Check, Copy, ExternalLink, FolderOpen, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
@@ -151,11 +152,17 @@ const ReportErrorDialog = ({
     if (!next) onClose()
   }
 
+  // Opened from page state rather than a Dialog.Trigger, so the restore has to be explicit: without it
+  // closing this dialog drops a keyboard user onto <body>.
+  const focusRestore = useDialogFocusRestore(open)
+
   return (
     <Dialog.Root open={open} onOpenChange={handleOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className={dialogOverlayClassName} />
         <Dialog.Content
+          onOpenAutoFocus={focusRestore.onOpenAutoFocus}
+          onCloseAutoFocus={focusRestore.onCloseAutoFocus}
           onInteractOutside={(event) => event.preventDefault()}
           className={dialogPanelClassName(
             'flex max-h-[min(640px,calc(100vh-2rem))] w-[min(560px,calc(100vw-2rem))] flex-col'

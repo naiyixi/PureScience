@@ -21,6 +21,16 @@ vi.mock('@/components/ui/input', () => ({
 vi.mock('@/components/ui/use-retained-dialog-value', () => ({
   useRetainedDialogValue: <T,>(value: T | null | undefined): T | undefined => value ?? undefined
 }))
+// The dialogs in this file carry the focus-restore hook; these structure tests call the components as pure
+// functions, so the hook is stubbed exactly like the retained-value one above. Its behavior is covered by
+// components/ui/dialog-focus-restore.test.ts (jsdom) and the packaged-app assertions in
+// e2e/accessibility.spec.ts.
+vi.mock('@/components/ui/dialog-focus-restore', () => ({
+  useDialogFocusRestore: () => ({
+    onOpenAutoFocus: () => {},
+    onCloseAutoFocus: () => {}
+  })
+}))
 
 type ElementWithProps = ReactElement<Record<string, unknown>>
 

@@ -1,4 +1,5 @@
 import { FileText, LoaderCircle, X } from 'lucide-react'
+import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 import { useLanguage } from '@/i18n'
 import { Dialog } from 'radix-ui'
 
@@ -34,11 +35,17 @@ const SkillImportCandidatePreview = ({
   const { t } = useLanguage()
   const metadata = content ? Object.entries(content.metadata) : []
 
+  // Opened from page state rather than a Dialog.Trigger, so the restore has to be explicit: without it
+  // closing this dialog drops a keyboard user onto <body>.
+  const focusRestore = useDialogFocusRestore(open)
+
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className={dialogOverlayClassName} />
         <Dialog.Content
+          onOpenAutoFocus={focusRestore.onOpenAutoFocus}
+          onCloseAutoFocus={focusRestore.onCloseAutoFocus}
           className={dialogPanelClassName(
             'flex max-h-[min(88vh,760px)] w-[min(760px,calc(100vw-2rem))] flex-col overflow-hidden p-0'
           )}

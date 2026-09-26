@@ -1,4 +1,5 @@
 import { useLanguage, type TranslationKey } from '@/i18n'
+import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 import {
   CheckCircle2,
   FolderInput,
@@ -138,6 +139,9 @@ const RuntimesPanel = ({
   // The env whose installed-packages dialog is open (null = closed).
   const [packagesEnv, setPackagesEnv] = useState<DiscoveredInterpreter | null>(null)
   const dialogPackagesEnv = useRetainedDialogValue(packagesEnv)
+  // The packages dialog is opened from the runtime cards, never from a Dialog.Trigger, and it renders
+  // as a sibling of the panel body: the restore has to be explicit for the keyboard user.
+  const focusRestore = useDialogFocusRestore(packagesEnv !== null)
   // Dialog content: the fetched list, or a load error with a Retry affordance. retryNonce re-runs
   // the fetch effect without closing/reopening the dialog.
   const [packages, setPackages] = useState<EnvPackage[] | null>(null)
@@ -950,6 +954,8 @@ const RuntimesPanel = ({
         <Dialog.Portal>
           <Dialog.Overlay className={dialogOverlayClassName} />
           <Dialog.Content
+            onOpenAutoFocus={focusRestore.onOpenAutoFocus}
+            onCloseAutoFocus={focusRestore.onCloseAutoFocus}
             data-testid="runtime-packages-dialog"
             className={dialogPanelClassName(
               'flex max-h-[85vh] w-[min(760px,calc(100vw-2rem))] flex-col'

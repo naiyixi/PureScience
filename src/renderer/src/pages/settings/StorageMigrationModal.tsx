@@ -1,4 +1,5 @@
 import { Dialog } from 'radix-ui'
+import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 import { Check, RefreshCw, TriangleAlert } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useLanguage, type TranslationKey } from '@/i18n'
@@ -211,11 +212,17 @@ const StorageMigrationModal = ({
   // the error stage renders it in a calmer, non-destructive tone than an outright failure.
   const isSwitchover = Boolean(outcome && 'switchoverFailed' in outcome)
 
+  // Opened from page state rather than a Dialog.Trigger, so the restore has to be explicit: without it
+  // closing this dialog drops a keyboard user onto <body>.
+  const focusRestore = useDialogFocusRestore(true)
+
   return (
     <Dialog.Root open>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-[60] bg-black/50" />
         <Dialog.Content
+          onOpenAutoFocus={focusRestore.onOpenAutoFocus}
+          onCloseAutoFocus={focusRestore.onCloseAutoFocus}
           onInteractOutside={(event) => {
             if (!dismissable) event.preventDefault()
           }}

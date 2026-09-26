@@ -4,6 +4,7 @@ import { Dialog } from 'radix-ui'
 import { PreviewPanelSurface } from './PreviewPanel'
 
 import { useLanguage } from '@/i18n'
+import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 type MobilePreviewSheetProps = {
   open: boolean
   onClose: () => void
@@ -13,11 +14,17 @@ type MobilePreviewSheetProps = {
 // but rise from the bottom so the conversation remains the primary screen.
 const MobilePreviewSheet = ({ open, onClose }: MobilePreviewSheetProps): React.JSX.Element => {
   const { t } = useLanguage()
+  // Opened from page state rather than a Dialog.Trigger, so the restore has to be explicit:
+  // without it closing this dialog drops a keyboard user onto <body>.
+  const focusRestore = useDialogFocusRestore(open)
+
   return (
     <Dialog.Root open={open} onOpenChange={(next) => (next ? undefined : onClose())}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/45 data-[state=closed]:animate-out data-[state=open]:animate-in data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 motion-reduce:data-[state=closed]:animate-none motion-reduce:data-[state=open]:animate-none" />
         <Dialog.Content
+          onOpenAutoFocus={focusRestore.onOpenAutoFocus}
+          onCloseAutoFocus={focusRestore.onCloseAutoFocus}
           data-testid="mobile-preview-sheet"
           className="fixed inset-x-0 bottom-0 z-[60] flex h-[min(82dvh,760px)] flex-col overflow-hidden rounded-t-2xl border border-b-0 border-border-200 bg-bg-10 pb-[env(safe-area-inset-bottom)] text-text-000 shadow-dialog outline-none data-[state=closed]:animate-out data-[state=open]:animate-in data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom motion-reduce:data-[state=closed]:animate-none motion-reduce:data-[state=open]:animate-none"
         >
