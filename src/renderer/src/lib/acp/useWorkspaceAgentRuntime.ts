@@ -517,6 +517,9 @@ const createWorkspaceRuntimeEventProcessor = (
   const unscopedEventLane = Symbol('unscoped-workspace-runtime-events')
   const eventLanes = new Map<string | symbol, EventLane>()
   let latestEvents: AcpRuntimeEvent[] = []
+  // What the *source* currently lists, per lane: only this decides whether a failed event is still worth
+  // retrying, so trimming the broadcast window cannot change the retry ledger's behaviour.
+  let incomingLaneKeys = new Map<string, string | symbol>()
   let acceptedEventVersion = 0
 
   const getEventLaneKey = (event: AcpRuntimeEvent): string | symbol =>
@@ -578,9 +581,11 @@ const createWorkspaceRuntimeEventProcessor = (
               lane.failedEventIds.delete(event.id)
               return applied
             } catch (error) {
-              const isVisible = latestEvents.some(
-                (candidate) => candidate.id === event.id && getEventLaneKey(candidate) === laneKey
-              )
+              // Release a failed event once the *source window* no longer carries it, which is the behaviour
+              // this retry ledger is written around. The live set above accumulates (so lane bookkeeping
+              // survives a trimmed window), but "the source stopped listing it" has to keep meaning the
+              // latest incoming window, not the accumulated set.
+              const isVisible = incomingLaneKeys.get(event.id) === laneKey
               if (hadFailed && !isVisible) {
                 lane.acceptedEvents.delete(event.id)
                 lane.failedEventIds.delete(event.id)
@@ -606,6 +611,8 @@ const createWorkspaceRuntimeEventProcessor = (
   return {
     process: (events) => {
       latestEvents = mergeLiveEvents(latestEvents, events)
+      incomingLaneKeys = new Map<string, string | symbol>()
+      for (const event of events) incomingLaneKeys.set(event.id, getEventLaneKey(event))
       const visibleLaneKeys = new Set<string | symbol>()
 
       for (const event of events) {
