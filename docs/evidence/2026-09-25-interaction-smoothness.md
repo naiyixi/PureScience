@@ -511,3 +511,18 @@ U33 之后 app 组件层面已无单点可抠，于是换仪器量**每回合的
 仪器与验证：单测（trimmer 5 条、`mergeLiveEvents` 5 条）；`test:e2e:workspace` 8/8；全量门禁 **14442 passed / 0 failed**。
 
 **一个必须同时保留的语义（后续提交修正）**：累积集只用于 lane 账本。**放弃重试**仍以「**本次传入的窗口**是否还列着它」为准（`incomingLaneKeys`）——第一版把两处都改成累积集，导致既有用例「releases an evicted event after its deferred retry also fails」失败（放弃重试的时机被推迟）。修正后该用例未改断言即通过，全量门禁 **14447 passed / 0 failed**。
+
+### 过桥收口后的重新归因：剩的是图标重渲
+
+同一台仪器（45 回合、40 块/回合、3 个流式回合 1244ms 采样）在过桥三项收口后重跑：
+
+| 归属        | 改前（U33 之后） | 现在      |
+| ----------- | ---------------- | --------- |
+| `ipc-delivery` | 23.4%         | **0.7%**  |
+| `react-render` | 22.3%         | **27.4%** |
+| `react-commit` | 8.1%          | **10.5%** |
+| `other`（idle/GC/Playwright 自身） | 45.1% | 60.3% |
+
+即：**过桥不再是问题**，剩下的主线程开销几乎全在 React 渲染与提交。最贵的具名帧是 `updateForwardRef`（5.5%），把它底下的组件还原到 bundle 位置后是 **`lucide` 图标工厂**（`({color, size, strokeWidth, absoluteStrokeWidth, className, children, iconNode, ...rest}, ref) => …`，self ≈57.7ms/3 回合 ≈ **19ms/轮**），配套的是提交阶段写 SVG 属性（`updateProperties` 28ms + `setProp` 14ms / 3 回合）。
+
+**成因**：U33 让**消息项**自订阅正文，于是每块重渲的是整个项 —— 除了正文，还包括它周边的 chrome（图标、尾部动作）。**下一单元（已定，未动）**：把订阅再下沉一层，只让**正文子组件**订阅 store，消息项只接收 `sessionId`/`messageId`，这样每块只重渲正文，图标与 chrome 不动。目标量：图标渲染 ≈19ms/轮 + 提交属性写入 ≈5ms/轮。

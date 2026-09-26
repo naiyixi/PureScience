@@ -963,6 +963,12 @@ if (recordedDigest !== checksum) {
 
 来源 `runtime-coordinator.ts` 的 `MAX_EVENTS = 500` 截断：单条快照 ≈209KB、每回合 2–5 次 ⇒ 0.4–0.6MB/回合（45 回合下 0.4–0.8MB/回合）。裁这份数组会改变渲染端 `latestEvents` / `cleanEventLane` 的清理语义，属两侧契约改动，需单独立项 + 复用同一台探针做前后对照。明细见 `docs/evidence/2026-09-25-interaction-smoothness.md`。
 
+### 过桥三项收口后的归因（已量）：剩下的在 React 渲染，最贵的是图标重渲
+
+`ipc-delivery` 23.4% → **0.7%**；`react-render` + `react-commit` 合计 **37.9%**。最贵具名帧 = `lucide` 图标工厂（≈**19ms/轮**）+ 提交阶段写 SVG 属性（≈5ms/轮）。成因是 U33 让**消息项**整体自订阅正文 ⇒ 每块连图标与 chrome 一起重渲。
+
+**下一单元（已定，未动，先量后改）**：把内容订阅再下沉一层——消息项只收 `sessionId`/`messageId`，正文子组件自订阅 store，使每块只重渲正文；验收口径同 U33 四条（仪器计数、真机、正文逐字一致、真机仍在流），并复用 `e2e/perf/streaming-profile.spec.ts` 做前后归因对照。
+
 ### 广播事件日志裁到「未发送 + 重叠」（已落定，两侧对齐）
 
 主进程广播快照时只带「上次广播之后 + 60 条重叠」的事件（拉取路径 `acp.getState` 仍全量）；渲染端可用集同步改为**累积**（`mergeLiveEvents`，上限 1000，空窗口不清空）——只改一侧会回退：45 轮 task 91.5 → **216.5ms/轮**（lane 被回收、ledger 丢失、重叠事件每份快照重新应用）。
