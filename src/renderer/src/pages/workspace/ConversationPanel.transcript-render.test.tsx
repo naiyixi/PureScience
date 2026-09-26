@@ -60,8 +60,15 @@ const instrument = vi.hoisted(() => ({
   icon: vi.fn()
 }))
 
+// Every `MessageTimestamp` render formats its date with Intl and stamps `toISOString()` onto the <time>
+// element, so counting that call is a deterministic proxy for "how many timestamps re-rendered". Patched
+// for the duration of a test only, and reset by `resetInstrument` like the other counters.
+const timestampProbe = { renders: 0 }
+let originalToISOString: Date['toISOString'] | undefined
+
 const resetInstrument = (): void => {
   for (const counter of Object.values(instrument)) counter.mockClear()
+  timestampProbe.renders = 0
 }
 
 const panelRenderCount = (): number => instrument.panel.mock.calls.length
@@ -414,6 +421,11 @@ const pushDelta = (index: number, text: string): void => {
 }
 
 beforeEach(() => {
+  originalToISOString = Date.prototype.toISOString
+  Date.prototype.toISOString = function patchedToISOString(this: Date): string {
+    timestampProbe.renders += 1
+    return originalToISOString?.call(this) ?? ''
+  }
   container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
@@ -428,6 +440,7 @@ beforeEach(() => {
 afterEach(() => {
   act(() => root.unmount())
   container.remove()
+  if (originalToISOString) Date.prototype.toISOString = originalToISOString
 })
 
 describe('ConversationPanel transcript render cost', () => {
@@ -550,6 +563,34 @@ describe('ConversationPanel transcript render cost', () => {
     expect(container.querySelector('[data-icon="LoaderCircle"]')).toBeNull()
     expect(container.textContent).toContain('partial')
   })
+  it('keeps message timestamps out of every hot path', () => {
+    renderHost()
+    // Live probe check: the transcript really does render timestamps (the settled prompts carry "Sent").
+    expect(timestampProbe.renders).toBeGreaterThan(0)
+
+    pushDelta(1, 'partial')
+    resetInstrument()
+    pushDelta(2, ' more')
+    const perDelta = timestampProbe.renders
+
+    resetInstrument()
+    pushActivity('tool-activity-timestamp', 1, 'pending')
+    const perActivity = timestampProbe.renders
+
+    // A panel render caused by anything else must not drag the timestamps along either.
+    resetInstrument()
+    act(() => root.render(<WorkspaceLikeHost />))
+    const perHostRender = timestampProbe.renders
+
+    // Each of these used to be a place a timestamp could be re-formatted; all three must stay at zero.
+    // (Measured cost per timestamp is ~2µs — see docs/evidence — so this is about keeping the invariant,
+    // not about a big win.)
+    expect(perDelta).toBe(0)
+    expect(perActivity).toBe(0)
+    expect(perHostRender).toBe(0)
+    expect(container.textContent).toContain('partial more')
+  })
+
   it('keeps a long activity timeline to the one row that changed', () => {
     renderHost()
     pushDelta(1, 'partial')
