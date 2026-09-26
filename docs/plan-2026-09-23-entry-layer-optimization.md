@@ -841,12 +841,15 @@ if (recordedDigest !== checksum) {
 
 **测试**：`provenance-migration-validation.test.ts` 新增两段——旧名字 + 内容完整 ⇒ `resolves` 且告警精确匹配 `<file> holds <contentHash>`；引用被替换为 corrupt 内容 ⇒ 仍 `rejects`。`src/main/storage` **259 passed**、`src/main/notebook` **1323 passed / 99 skipped**、typecheck 0 error、lint 0 error。
 
-**真机（本轮）**：`e2e/certification/storage-migration.spec.ts --workers=1` → **1 passed (12.8s)**（「stages a verified data-root move and recovers on discard」）。⚠️ **但该 spec 走的是正常数据根，并未覆盖本次修复的「旧清单」场景** ⇒ 本次修复的真机覆盖仍缺，已列为待办。
+**真机（本轮）**：`e2e/certification/storage-migration.spec.ts --workers=1` → **3 passed (1.1m)**——含**本轮新增的真入口/真 UI 用例**「shows the stale-evidence note in the move dialog an older manifest would otherwise block」：侧栏 → 设置 → 存储 → 「Change location → Continue」露出目录编辑框 → 填目标 → 编辑器里的「Change location」→（会话在跑则先过「Interrupt and move」确认）→ 迁移完成后断言 `data-testid="stale-evidence-note"` **可见**、文案为「Older environment manifests were kept as-is and not re-validated.」+ 条数（`toHaveText(/not re-validated\.\s*\d+\s*$/)`）。⇒ 先前「本次修复的真机覆盖仍缺」**已补**。
+**同时补的负向对照**：干净数据根（本构建自己写出）迁移后断言 `migration.staleEvidence === undefined` ⇒ 保证提示只在真有旧清单时出现，不会变成常驻文案。
 
-**剩余（明确两项）**：
+**剩余（明确两项 · 均已完成 —— 本节为待办原文，结论见下）**：
 
 1. **告警进迁移结果/UI**：现在只进日志。需把 `validateProvenanceMigrationState` 契约从 `Promise<void>` 改为**返回报告**（含 `warnings`），并让 `migration-service.ts` 的 DI 签名 `(root) => Promise<void>`（调用点 `:420/:423`、`:510`、`:636/:642`）与相关测试同步；最终呈现给用户。
 2. **真机覆盖旧清单场景**：给 `storage-migration.spec.ts` 加一个「夹具数据根里放一份名≠内容哈希但内容完整的环境清单 + 引用它的 notebook run ⇒ 迁移成功完成」的用例。
+
+**这两项的收口结论（后补）**：① **已实施**（提交 `3985923`、`a4b112e`，见下方「实施记录」）——主进程 `MigrationResult.staleEvidence` 非空才挂 + 渲染层镜像类型 + 弹窗 `data-testid="stale-evidence-note"`；② **已补**——`storage-migration.spec.ts` 现在有「桥接层」和「真入口/真 UI」两个旧清单用例 + 一条「干净根不报证据」的负向对照，真机 **3 passed**。⇒ 本模块**无遗留项**。
 
 #### 收口项 ①的精确改动点（已侦察，未实施 —— 需干净上下文）
 
