@@ -550,4 +550,40 @@ describe('ConversationPanel transcript render cost', () => {
     expect(container.querySelector('[data-icon="LoaderCircle"]')).toBeNull()
     expect(container.textContent).toContain('partial')
   })
+  it('keeps a long activity timeline to the one row that changed', () => {
+    renderHost()
+    pushDelta(1, 'partial')
+    // A tool-heavy turn: the timeline is already full of settled rows before the next one arrives.
+    const settled = 12
+    for (let index = 1; index <= settled; index += 1) {
+      pushActivity(`tool-activity-${index}`, index, 'completed')
+    }
+    resetInstrument()
+
+    // One *new* activity arrives while the other twelve are unchanged.
+    pushActivity('tool-activity-live', settled + 1, 'pending')
+    const arrived = renderedIcons()
+    resetInstrument()
+
+    // …and then it settles. The same row has to redraw on its own (a frozen lane would keep the spinner).
+    pushActivity('tool-activity-live', settled + 2, 'completed')
+    const settledIcons = renderedIcons()
+
+    const measured = {
+      panel: panelRenderCount(),
+      scroller: scrollerRenderCount(),
+      slots: renderedSlotIds(),
+      markdown: renderedMarkdown(),
+      icons: arrived,
+      iconsAfterSettle: settledIcons
+    }
+    console.log('[render-count] long activity timeline:', JSON.stringify(measured))
+
+    // Only the changing row draws an icon; the twelve settled ones must not redraw at all.
+    expect(arrived).toEqual({ ChevronRight: 1, LoaderCircle: 1 })
+    expect(settledIcons).toEqual({ ChevronRight: 1, Check: 1 })
+    // The activity content itself has to be on screen (icons alone would not prove the row is live).
+    expect(container.textContent).toContain('public data repositories')
+  })
+
 })

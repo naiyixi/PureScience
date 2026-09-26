@@ -1,3 +1,5 @@
+import { memo } from 'react'
+
 import { cn } from '@/lib/utils'
 import type { ToolActivity } from '@/stores/session-store'
 import {
@@ -20,7 +22,11 @@ type WorkspaceActivityIconProps = {
 }
 
 // Picks the smallest status/tool-kind icon that describes the current activity state.
-const WorkspaceActivityIcon = ({ activity }: WorkspaceActivityIconProps): React.JSX.Element => {
+// Memoised: the lucide factory is the single most expensive frame in the streaming profile, and a timeline
+// holds one of these per activity — without memo every activity update re-creates every icon.
+const WorkspaceActivityIcon = memo(function WorkspaceActivityIcon({
+  activity
+}: WorkspaceActivityIconProps): React.JSX.Element {
   const isActive = isActivityActive(activity)
   const className = cn('size-3.5 shrink-0', isActive ? 'animate-spin' : undefined)
   const iconProps = {
@@ -51,6 +57,6 @@ const WorkspaceActivityIcon = ({ activity }: WorkspaceActivityIconProps): React.
     default:
       return <Wrench {...iconProps} />
   }
-}
+})
 
 export { WorkspaceActivityIcon }

@@ -1,3 +1,5 @@
+import { memo } from 'react'
+
 import type { ToolActivity } from '@/stores/session-store'
 
 import { WorkspaceToolActivityRowButton } from './WorkspaceToolActivityRowButton'
@@ -55,7 +57,7 @@ const renderSearchDetailsBody = (
 // Renders one web-search activity row with an optional expandable result summary.
 // This module stays i18n-free (transcript rendering layer); callers may inject
 // localized strings through the optional label props.
-const WorkspaceWebSearchActivityRow = ({
+const WorkspaceWebSearchActivityRowView = ({
   activity,
   details,
   isExpanded,
@@ -79,5 +81,8 @@ const WorkspaceWebSearchActivityRow = ({
     {renderSearchDetailsBody(details, queryLabel ?? 'query')}
   </WorkspaceToolActivityRowButton>
 )
+// Memoised for the same reason as the plain tool row: a long timeline must not redraw every row
+// on every activity update.
+const WorkspaceWebSearchActivityRow = memo(WorkspaceWebSearchActivityRowView)
 
 export { WorkspaceWebSearchActivityRow }

@@ -1,3 +1,5 @@
+import { memo } from 'react'
+
 import type { ToolActivity } from '@/stores/session-store'
 
 import { WorkspaceActivityIcon } from './WorkspaceActivityIcon'
@@ -9,9 +11,10 @@ type WorkspaceToolActivityRowProps = {
 }
 
 // Renders a compact non-search tool activity with live status semantics while it is running.
-const WorkspaceToolActivityRow = ({
+// Memoised so a status update on one row does not re-render every other row in the timeline.
+const WorkspaceToolActivityRow = memo(function WorkspaceToolActivityRow({
   activity
-}: WorkspaceToolActivityRowProps): React.JSX.Element => {
+}: WorkspaceToolActivityRowProps): React.JSX.Element {
   const isActive = isActivityActive(activity)
 
   return (
@@ -27,6 +30,6 @@ const WorkspaceToolActivityRow = ({
       <span className="min-w-0 flex-1 truncate text-left">{formatActivityTitle(activity)}</span>
     </div>
   )
-}
+})
 
 export { WorkspaceToolActivityRow }

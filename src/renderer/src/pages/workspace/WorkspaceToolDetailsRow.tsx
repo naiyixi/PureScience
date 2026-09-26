@@ -1,3 +1,5 @@
+import { memo } from 'react'
+
 import type { ToolActivity } from '@/stores/session-store'
 import type { NotebookRunRecord } from '../../../../shared/notebook'
 
@@ -140,7 +142,7 @@ const renderSection = (
 }
 
 // Renders a non-search tool call with an expandable panel showing input, output, or diffs.
-const WorkspaceToolDetailsRow = ({
+const WorkspaceToolDetailsRowView = ({
   activity,
   details,
   notebookRun,
@@ -172,5 +174,6 @@ const WorkspaceToolDetailsRow = ({
     </WorkspaceToolActivityRowButton>
   )
 }
+const WorkspaceToolDetailsRow = memo(WorkspaceToolDetailsRowView)
 
 export { WorkspaceToolDetailsRow }
