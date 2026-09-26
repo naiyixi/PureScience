@@ -292,6 +292,9 @@
 - 本次已修：四个自建浮层（U2）+ 命令面板（U3），每处都有焦点归还断言。
 - **刻意未接线的两处及原因**：导出对话框走 `useRetainedDialogValue`（退场动画期间面板仍在，陷阱会把焦点抢回），且常驻式对话框在浏览器里 Radix 自身那条兜底是有效的；接线反而会压制它，故只做「打开后焦点进面板」。
 - 仍待处理：其余「无 Trigger」的 Radix 对话框（`grep -rl "Dialog.Content" src/renderer/src --include=*.tsx` 减去 `Dialog.Trigger`，共 47 个文件，其中仅卸载式关闭的会真丢焦点）。**不并入本批次**：无逐条验证的批量改动属于半截工程，需作为独立单元逐个接线并补测试。
+  - **普查（本轮，为独立单元备料）**：含 `Dialog.Content` 的非测试文件 **49** 个；没有 Trigger / 受控开关注入点的 **23** 个；其中**既无 `Dialog.Close` 也无 `onCloseAutoFocus` 的 22 个**（这就是"关闭后焦点落到 `<body>`"的候选面）。已修好的先例 5 处：`global-search/GlobalSearchDialog`、`KeyboardShortcutsDialog`、`FolderGrantsPanel`、`AnnotationDialog`、`SessionBookmarksDialog`。
+  - **现成机制**：`src/renderer/src/components/ui/dialog-focus-restore.ts` 的 `useDialogFocusRestore(open)`，用法是把它挂到 `Dialog.Content` 的 `onOpenAutoFocus`/`onCloseAutoFocus`（先例 `SessionBookmarksDialog:147-148`）。⇒ 每处只需 3 行接线，**机械但需逐条验证**。
+  - **批次计划（下一步执行）**：① 先建**防复发普查守卫**（渲染层扫描：凡无 `Dialog.Trigger` 的 `Dialog.Content` 必须用该钩子或带显式豁免注记，进 CI）；② 再来补该钩子自身的单测（当前无专属测试文件）；③ 22 个文件分批接线（每批 8 个 + 守卫与门禁全绿）；④ **真机证据**：抽 2–3 个代表性对话框（设置页 / 工作区 / 引导页各一）断言关闭后 `document.activeElement` 回到打开它的控件。
 
 **U4 的收口方式**：通知中心桌面端取焦/归还以 `e2e/accessibility.spec.ts` 的键盘闭环用例覆盖（真机 Electron，非 jsdom 断言）；预览菜单与文件列表另有 jsdom 用例 29 + 11 条。
 
