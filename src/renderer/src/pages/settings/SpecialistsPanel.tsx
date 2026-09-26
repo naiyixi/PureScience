@@ -57,6 +57,7 @@ import type {
 import { SpecialistEditor } from './SpecialistEditor'
 import { SpecialistAvatar } from './specialist-avatar'
 import { copyText } from '@/lib/copy-text'
+import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 
 // Sub-view for the Specialists panel (parallels SkillsView).
 export type SpecialistsView =
@@ -157,6 +158,8 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
   const [packageBusy, setPackageBusy] = useState(false)
   const [packageErrorCode, setPackageErrorCode] = useState<string | undefined>()
   const [overwriteConfirmationOpen, setOverwriteConfirmationOpen] = useState(false)
+  const focusRestoreOverwrite = useDialogFocusRestore(overwriteConfirmationOpen)
+  const focusRestoreDelete = useDialogFocusRestore(deletingItem !== null)
   const [reportStatus, setReportStatus] = useState<string | undefined>()
   const [includedExportSkillIds, setIncludedExportSkillIds] = useState<string[]>([])
   const [exportBusy, setExportBusy] = useState(false)
@@ -906,6 +909,8 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                   <AlertDialog.Overlay className={dialogOverlayClassName} />
                   <AlertDialog.Content
                     className={dialogPanelClassName('w-[min(520px,calc(100vw-2rem))]')}
+                    onOpenAutoFocus={focusRestoreOverwrite.onOpenAutoFocus}
+                    onCloseAutoFocus={focusRestoreOverwrite.onCloseAutoFocus}
                   >
                     <AlertDialog.Title className={dialogTitleClassName}>
                       {t('settings.specialistLocalChangesReplaced')}
@@ -1484,7 +1489,11 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
       >
         <AlertDialog.Portal>
           <AlertDialog.Overlay className={dialogOverlayClassName} />
-          <AlertDialog.Content className={dialogPanelClassName('w-[min(440px,calc(100vw-2rem))]')}>
+          <AlertDialog.Content
+            className={dialogPanelClassName('w-[min(440px,calc(100vw-2rem))]')}
+            onOpenAutoFocus={focusRestoreDelete.onOpenAutoFocus}
+            onCloseAutoFocus={focusRestoreDelete.onCloseAutoFocus}
+          >
             <AlertDialog.Title className={dialogTitleClassName}>
               Delete “{deletingItem?.name}”?
             </AlertDialog.Title>

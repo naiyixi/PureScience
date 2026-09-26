@@ -14,6 +14,7 @@ import type {
   CloseConfirmVariant
 } from '../../../shared/window-controls'
 import { useLanguage } from '@/i18n'
+import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 
 type ActiveRequest = {
   requestId: string
@@ -59,6 +60,7 @@ export const CloseConfirmModal = ({
   }
 
   const dialogRequest = useRetainedDialogValue(request)
+  const focusRestore = useDialogFocusRestore(Boolean(request))
   if (!dialogRequest) return null
 
   const isQuitVariant = dialogRequest.variant === 'quit'
@@ -78,6 +80,8 @@ export const CloseConfirmModal = ({
       <AlertDialog.Portal>
         <AlertDialog.Overlay className={cn(dialogOverlayClassName, 'z-[60]')} />
         <AlertDialog.Content
+          onOpenAutoFocus={focusRestore.onOpenAutoFocus}
+          onCloseAutoFocus={focusRestore.onCloseAutoFocus}
           className={dialogPanelClassName('z-[60] w-[min(420px,calc(100vw-2rem))]')}
         >
           <AlertDialog.Title className="text-sm font-semibold">{title}</AlertDialog.Title>

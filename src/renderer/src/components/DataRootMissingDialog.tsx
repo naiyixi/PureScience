@@ -11,6 +11,7 @@ import {
   dialogTitleClassName
 } from '@/components/ui/dialog-chrome'
 import { useRetainedDialogValue } from '@/components/ui/use-retained-dialog-value'
+import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 
 type DataRootMissingDialogProps = {
   open: boolean
@@ -34,6 +35,7 @@ const DataRootMissingDialog = ({
   const [stillMissing, setStillMissing] = useState(false)
   const [isChoosing, setIsChoosing] = useState(false)
   const [chooseError, setChooseError] = useState<string | undefined>(undefined)
+  const focusRestore = useDialogFocusRestore(open)
   const dialogDataRoot = useRetainedDialogValue(open ? dataRoot : undefined) ?? dataRoot
 
   const handleRetry = async (): Promise<void> => {
@@ -76,7 +78,11 @@ const DataRootMissingDialog = ({
     <AlertDialog.Root open={open}>
       <AlertDialog.Portal>
         <AlertDialog.Overlay className={dialogOverlayClassName} />
-        <AlertDialog.Content className={dialogPanelClassName('w-[min(460px,calc(100vw-2rem))]')}>
+        <AlertDialog.Content
+          className={dialogPanelClassName('w-[min(460px,calc(100vw-2rem))]')}
+          onOpenAutoFocus={focusRestore.onOpenAutoFocus}
+          onCloseAutoFocus={focusRestore.onCloseAutoFocus}
+        >
           <AlertDialog.Title className={dialogTitleClassName}>
             {t('dataRoot.folderNotFound')}
           </AlertDialog.Title>

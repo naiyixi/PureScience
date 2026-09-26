@@ -14,6 +14,7 @@ import {
 import { Input } from '@/components/ui/input'
 import type { ValidateProviderResult } from '../../../../shared/settings'
 import { copyText } from '@/lib/copy-text'
+import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 
 // One-line shell command the user runs to mint a long-lived OAuth token. Mirrors Anthropic's
 // `claude setup-token` docs (linked in the modal) — the command itself is portable across
@@ -69,6 +70,9 @@ const ClaudeIsolatedSignInModalBody = ({
   'onOpenChange' | 'onSubmit' | 'browserSignInPending'
 >): React.JSX.Element => {
   const { t } = useLanguage()
+  // This body only ever mounts while the dialog is open (the root is keyed per open), so the layer is
+  // always open from the hook's point of view; it still restores focus on unmount.
+  const focusRestore = useDialogFocusRestore(true)
   const [token, setToken] = useState('')
   const [copied, setCopied] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -120,7 +124,11 @@ const ClaudeIsolatedSignInModalBody = ({
   return (
     <>
       <AlertDialog.Overlay className={dialogOverlayClassName} />
-      <AlertDialog.Content className={dialogPanelClassName('w-[min(560px,92vw)]')}>
+      <AlertDialog.Content
+        className={dialogPanelClassName('w-[min(560px,92vw)]')}
+        onOpenAutoFocus={focusRestore.onOpenAutoFocus}
+        onCloseAutoFocus={focusRestore.onCloseAutoFocus}
+      >
         <AlertDialog.Title className={dialogTitleClassName}>
           {t('settings.signInWithAnthropic')}
         </AlertDialog.Title>

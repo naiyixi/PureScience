@@ -63,6 +63,7 @@ import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { cn } from '@/lib/utils'
 import { useComputeStore } from '@/stores/compute-store'
 import { useSettingsStore } from '@/stores/settings-store'
+import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 
 // Mirrors composerIconButtonClassName in ConversationPanel, but hugs the icon + grants pill.
 const triggerButtonClassName =
@@ -191,6 +192,7 @@ const ComposerAgentControlsMenu = ({
   const isLoaded = useComputeStore((state) => state.isLoaded)
   const loadHosts = useComputeStore((state) => state.loadHosts)
   const openSettingsToCompute = useSettingsStore((state) => state.openSettingsToCompute)
+  const focusRestore = useDialogFocusRestore(confirmFullAccess)
 
   const sshHosts = hosts.filter((host) => host.sshAlias)
 
@@ -597,6 +599,8 @@ const ComposerAgentControlsMenu = ({
         <AlertDialog.Portal>
           <AlertDialog.Overlay className={dialogOverlayClassName} />
           <AlertDialog.Content
+            onOpenAutoFocus={focusRestore.onOpenAutoFocus}
+            onCloseAutoFocus={focusRestore.onCloseAutoFocus}
             className={dialogPanelClassName('w-[min(440px,calc(100vw-2rem))] overscroll-contain')}
           >
             <div className={dialogHeaderClassName}>

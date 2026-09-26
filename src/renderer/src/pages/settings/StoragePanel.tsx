@@ -25,6 +25,7 @@ import type { DataRootKind, StorageInfo, UsageCategoryKey } from '../../../../sh
 import { SettingsSection } from './SettingsLayout'
 import { isAgentRepairCheck } from './settings-navigation'
 import { StorageMigrationModal } from './StorageMigrationModal'
+import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 
 // Formats a byte count as a human-readable size (1000-based, one decimal place).
 const formatBytes = (bytes: number): string => {
@@ -108,6 +109,8 @@ const StoragePanel = ({ onContinueToAgent }: StoragePanelProps): React.JSX.Eleme
   const [expandedCategory, setExpandedCategory] = useState<UsageCategoryKey | null>(null)
   // Guards against a stale inspectDataRoot response (from a superseded path) overwriting a newer one.
   const inspectRequestRef = useRef(0)
+  const focusRestoreWarn = useDialogFocusRestore(warnOpen)
+  const focusRestoreAdopt = useDialogFocusRestore(adoptConfirmOpen)
 
   useEffect(() => {
     void window.api.storage.getInfo().then(setInfo)
@@ -571,7 +574,11 @@ const StoragePanel = ({ onContinueToAgent }: StoragePanelProps): React.JSX.Eleme
       <AlertDialog.Root open={warnOpen} onOpenChange={setWarnOpen}>
         <AlertDialog.Portal>
           <AlertDialog.Overlay className={dialogOverlayClassName} />
-          <AlertDialog.Content className={dialogPanelClassName('w-[min(440px,calc(100vw-2rem))]')}>
+          <AlertDialog.Content
+            className={dialogPanelClassName('w-[min(440px,calc(100vw-2rem))]')}
+            onOpenAutoFocus={focusRestoreWarn.onOpenAutoFocus}
+            onCloseAutoFocus={focusRestoreWarn.onCloseAutoFocus}
+          >
             <AlertDialog.Title className={dialogTitleClassName}>
               {t('storage.changeDataLocationTitle')}
             </AlertDialog.Title>
@@ -606,7 +613,11 @@ const StoragePanel = ({ onContinueToAgent }: StoragePanelProps): React.JSX.Eleme
       <AlertDialog.Root open={adoptConfirmOpen} onOpenChange={setAdoptConfirmOpen}>
         <AlertDialog.Portal>
           <AlertDialog.Overlay className={dialogOverlayClassName} />
-          <AlertDialog.Content className={dialogPanelClassName('w-[min(420px,calc(100vw-2rem))]')}>
+          <AlertDialog.Content
+            className={dialogPanelClassName('w-[min(420px,calc(100vw-2rem))]')}
+            onOpenAutoFocus={focusRestoreAdopt.onOpenAutoFocus}
+            onCloseAutoFocus={focusRestoreAdopt.onCloseAutoFocus}
+          >
             <AlertDialog.Title className={dialogTitleClassName}>
               {t('storage.useThisFolderQuestion')}
             </AlertDialog.Title>

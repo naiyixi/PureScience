@@ -25,6 +25,7 @@ import { usePermissionGrantsStore } from '@/stores/permission-grants-store'
 import { useSettingsStore } from '@/stores/settings-store'
 import { cn } from '@/lib/utils'
 import { SettingsIconAction, SettingsRow, SettingsSection } from './SettingsLayout'
+import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 
 type ScopeFilter = 'all' | PermissionGrantScope['kind']
 
@@ -210,6 +211,7 @@ const PermissionsPanel = ({
     void load()
   }, [load])
 
+  const focusRestore = useDialogFocusRestore(confirmFullAccess)
   const visible = useMemo(
     () => grants.filter((grant) => filter === 'all' || grant.scopeKind === filter),
     [filter, grants]
@@ -455,6 +457,8 @@ const PermissionsPanel = ({
         <AlertDialog.Portal>
           <AlertDialog.Overlay className={cn(dialogOverlayClassName, 'z-[60]')} />
           <AlertDialog.Content
+            onOpenAutoFocus={focusRestore.onOpenAutoFocus}
+            onCloseAutoFocus={focusRestore.onCloseAutoFocus}
             className={dialogPanelClassName(
               'z-[60] w-[min(440px,calc(100vw-2rem))] overscroll-contain'
             )}

@@ -31,15 +31,24 @@ export type DialogFocusRestore = {
   onCloseAutoFocus: (event: Event) => void
 }
 
-// The element that had focus outside any dialog, tracked as focus moves. Reading `document.activeElement`
-// only at Radix's open-autofocus event is not enough: a dialog that focuses its own field on mount (React's
-// `autoFocus`, or a select) does that during the commit, *before* Radix fires the event — so the reading
-// would be the dialog's own input, and "restoring" focus to it is a no-op once it unmounts. Focus that lands
-// inside a dialog layer is therefore ignored here, which leaves the control the person actually came from.
-let lastFocusOutsideDialogs: HTMLElement | null = null
+// Both Radix families render their surface with a layer role: `Dialog.Content` is a dialog and
+// `AlertDialog.Content` is an alertdialog. Leaving one role out makes the tracker treat the layer's own
+// control as "outside" — an AlertDialog focuses its Cancel button on open — and closing would then hand
+// focus to something that is itself unmounting.
+const DIALOG_LAYER_SELECTOR = '[role="dialog"], [role="alertdialog"]'
+
+// Recent focus targets, newest first. Reading `document.activeElement` only at Radix's open-autofocus event is
+// not enough: a dialog that focuses its own field on mount (React's `autoFocus`, or a select) does that during
+// the commit, *before* Radix fires the event, so that reading would be the dialog's own input — and
+// "restoring" focus to it is a no-op once it unmounts. Deciding at capture time which elements are
+// interesting does not work either: the element that opened the dialog may itself sit inside another layer
+// (the storage panel's confirm lives in the settings dialog), so "ignore everything inside a dialog" throws
+// away the very control we need. Keep a short history instead and pick from it when a layer opens.
+const FOCUS_HISTORY_LIMIT = 8
+let focusHistory: HTMLElement[] = []
 let isTrackingFocus = false
 
-const trackFocusOutsideDialogs = (): void => {
+const trackFocus = (): void => {
   if (isTrackingFocus) return
   isTrackingFocus = true
   document.addEventListener(
@@ -47,17 +56,32 @@ const trackFocusOutsideDialogs = (): void => {
     (event) => {
       const target = event.target
       if (!(target instanceof HTMLElement)) return
-      if (target.closest('[role="dialog"]')) return
-      lastFocusOutsideDialogs = target
+      if (focusHistory[0] === target) return
+      focusHistory = [target, ...focusHistory].slice(0, FOCUS_HISTORY_LIMIT)
     },
     true
   )
 }
 
+// The opener is the most recent still-connected element that is not part of the layer opening right now. That
+// layer is the innermost one mounted, and its own autofocus may already have moved focus inside it, so those
+// entries are skipped — which leaves the control the person actually came from, whether it sits on the page or
+// inside an outer dialog.
+const resolveOpener = (): HTMLElement | null => {
+  const layers = document.querySelectorAll(DIALOG_LAYER_SELECTOR)
+  const opening = layers.length > 0 ? layers[layers.length - 1] : null
+  for (const candidate of focusHistory) {
+    if (candidate === document.body || !candidate.isConnected) continue
+    if (opening && opening.contains(candidate)) continue
+    return candidate
+  }
+  return null
+}
+
 // Installed when the module loads (guarded for non-DOM environments) instead of from the first hook: the
 // focus that matters — the person clicking or tabbing to the control that opens a dialog — can happen before
 // any dialog component has run its effects.
-if (typeof document !== 'undefined') trackFocusOutsideDialogs()
+if (typeof document !== 'undefined') trackFocus()
 
 export const useDialogFocusRestore = (open: boolean): DialogFocusRestore => {
   const openerRef = useRef<HTMLElement | null>(null)
@@ -85,16 +109,7 @@ export const useDialogFocusRestore = (open: boolean): DialogFocusRestore => {
 
   return {
     onOpenAutoFocus: () => {
-      const active = document.activeElement
-      // Prefer the element that is focused right now, as long as it is a real control outside every dialog.
-      // When it is the dialog's own field (mounted with `autoFocus`, or a select that grabs focus during the
-      // commit) or the body, fall back to the last element focused outside a dialog — the control the person
-      // actually came from.
-      const external =
-        active instanceof HTMLElement &&
-        active !== document.body &&
-        active.closest('[role="dialog"]') === null
-      openerRef.current = external ? active : lastFocusOutsideDialogs
+      openerRef.current = resolveOpener()
     },
     onCloseAutoFocus: (event: Event) => {
       event.preventDefault()

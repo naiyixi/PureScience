@@ -20,6 +20,7 @@ import { Separator } from '@/components/ui/separator'
 import type { StorageInfo } from '../../../../shared/storage'
 import { useSettingsStore } from '@/stores/settings-store'
 import { DataRootWarning } from '@/components/DataRootWarning'
+import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 
 type LocationStepProps = {
   // Fetched once by the wizard shell up front, so this step has the default location to show.
@@ -61,6 +62,7 @@ const LocationStep = ({
   // AlertDialog.Action fires onOpenChange(false) on click (same as Cancel), and closures inside
   // that handler can't see isRelaunching's update from the same synchronous batch, so a ref is
   // used instead of state for this check.
+  const focusRestore = useDialogFocusRestore(confirmRestart)
   const isRestartingRef = useRef(false)
 
   const handleBrowseLocation = async (): Promise<void> => {
@@ -224,7 +226,11 @@ const LocationStep = ({
       >
         <AlertDialog.Portal>
           <AlertDialog.Overlay className={dialogOverlayClassName} />
-          <AlertDialog.Content className={dialogPanelClassName('w-[min(420px,calc(100vw-2rem))]')}>
+          <AlertDialog.Content
+            className={dialogPanelClassName('w-[min(420px,calc(100vw-2rem))]')}
+            onOpenAutoFocus={focusRestore.onOpenAutoFocus}
+            onCloseAutoFocus={focusRestore.onCloseAutoFocus}
+          >
             <AlertDialog.Title className={dialogTitleClassName}>
               {t('onboarding.restartToSetUp')}
             </AlertDialog.Title>

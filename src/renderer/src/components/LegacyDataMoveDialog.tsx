@@ -11,6 +11,7 @@ import {
   dialogTitleClassName
 } from '@/components/ui/dialog-chrome'
 import { StorageMigrationModal } from '@/pages/settings/StorageMigrationModal'
+import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 
 type LegacyDataMoveDialogProps = {
   // The hidden config root where a legacy install's data currently lives (e.g. ~/.purescience).
@@ -41,6 +42,7 @@ const LegacyDataMoveDialog = ({
   // hidden config root itself.
   const [destination, setDestination] = useState<string | undefined>(undefined)
   const [pickError, setPickError] = useState<string | undefined>(undefined)
+  const focusRestore = useDialogFocusRestore(true)
   const [isPicking, setIsPicking] = useState(false)
 
   useEffect(() => {
@@ -96,7 +98,11 @@ const LegacyDataMoveDialog = ({
     <AlertDialog.Root open>
       <AlertDialog.Portal>
         <AlertDialog.Overlay className={dialogOverlayClassName} />
-        <AlertDialog.Content className={dialogPanelClassName('w-[min(460px,calc(100vw-2rem))]')}>
+        <AlertDialog.Content
+          className={dialogPanelClassName('w-[min(460px,calc(100vw-2rem))]')}
+          onOpenAutoFocus={focusRestore.onOpenAutoFocus}
+          onCloseAutoFocus={focusRestore.onCloseAutoFocus}
+        >
           <AlertDialog.Title className={dialogTitleClassName}>
             {t('legacyDataMove.title')}
           </AlertDialog.Title>

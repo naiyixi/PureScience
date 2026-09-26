@@ -11,6 +11,7 @@ import {
   dialogTitleClassName
 } from '@/components/ui/dialog-chrome'
 import { useRetainedDialogValue } from '@/components/ui/use-retained-dialog-value'
+import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 
 type BroadPermissionScope = 'project' | 'global'
 
@@ -33,6 +34,7 @@ const PermissionScopeConfirmationDialog = ({
 }: PermissionScopeConfirmationDialogProps): React.JSX.Element => {
   const { t } = useLanguage()
   const retainedConfirmation = useRetainedDialogValue(confirmation)
+  const focusRestore = useDialogFocusRestore(Boolean(confirmation))
   const scope = retainedConfirmation?.scope ?? 'project'
   const subject = retainedConfirmation?.subject ?? t('permissionScope.thisPermission')
   const isProject = scope === 'project'
@@ -59,6 +61,8 @@ const PermissionScopeConfirmationDialog = ({
       <AlertDialog.Portal>
         <AlertDialog.Overlay className={`${dialogOverlayClassName} z-[70]`} />
         <AlertDialog.Content
+          onOpenAutoFocus={focusRestore.onOpenAutoFocus}
+          onCloseAutoFocus={focusRestore.onCloseAutoFocus}
           className={dialogPanelClassName('z-[70] w-[min(420px,calc(100vw-2rem))]')}
           data-testid="permission-scope-confirmation"
         >

@@ -25,7 +25,13 @@ const Harness = ({ open }: { open: boolean }): React.JSX.Element => {
   useEffect(() => {
     handlers = restore
   })
-  return createElement('div', null, open ? createElement('span', { 'data-testid': 'layer' }) : null)
+  // The layer carries its role like the real surfaces do: the hook picks the opener by skipping whatever is
+  // inside the innermost layer mounted, so an unroled stand-in would not exercise that rule.
+  return createElement(
+    'div',
+    null,
+    open ? createElement('span', { 'data-testid': 'layer', role: 'dialog' }) : null
+  )
 }
 
 const render = (open: boolean): void => {
@@ -80,6 +86,9 @@ describe('useDialogFocusRestore', () => {
     opener.focus()
     opener.dispatchEvent(new FocusEvent('focusin', { bubbles: true }))
     field.focus()
+    // The browser does synthesise this one; the hook has to skip it because it sits inside the layer that is
+    // opening, and a restore to a node that unmounts with the layer is how focus ended up on <body>.
+    field.dispatchEvent(new FocusEvent('focusin', { bubbles: true }))
 
     render(true)
     handlers?.onOpenAutoFocus()
@@ -89,6 +98,28 @@ describe('useDialogFocusRestore', () => {
 
     expect(document.activeElement).toBe(opener)
     layer.remove()
+  })
+
+  it('returns focus to an opener that lives inside an outer dialog layer', () => {
+    // Nested layers are the case that broke the first attempt: the storage confirm is opened from a button
+    // inside the settings dialog, so "the element focused outside any dialog" was not that button at all and
+    // the restore handed focus to a control on a completely different surface.
+    const outer = document.createElement('div')
+    outer.setAttribute('role', 'dialog')
+    const outerOpener = document.createElement('button')
+    outer.append(outerOpener)
+    document.body.insertBefore(outer, document.body.firstChild)
+
+    outerOpener.focus()
+    outerOpener.dispatchEvent(new FocusEvent('focusin', { bubbles: true }))
+
+    openLayer()
+    expect(document.activeElement).toBe(inside)
+
+    render(false)
+
+    expect(document.activeElement).toBe(outerOpener)
+    outer.remove()
   })
 
   it('returns focus to the opener when the layer closes', () => {

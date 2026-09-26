@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog-chrome'
 import { useRetainedDialogValue } from '@/components/ui/use-retained-dialog-value'
 import type { ChatSession } from '@/stores/session-store'
+import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 
 type DeleteSessionDialogProps = {
   session: ChatSession | undefined
@@ -34,6 +35,7 @@ const DeleteSessionDialog = ({
 }: DeleteSessionDialogProps): React.JSX.Element => {
   const { t } = useLanguage()
   const dialogSession = useRetainedDialogValue(session)
+  const focusRestore = useDialogFocusRestore(Boolean(session))
 
   return (
     <AlertDialog.Root
@@ -44,7 +46,11 @@ const DeleteSessionDialog = ({
     >
       <AlertDialog.Portal>
         <AlertDialog.Overlay className={dialogOverlayClassName} />
-        <AlertDialog.Content className={dialogPanelClassName('w-[min(420px,calc(100vw-2rem))]')}>
+        <AlertDialog.Content
+          className={dialogPanelClassName('w-[min(420px,calc(100vw-2rem))]')}
+          onOpenAutoFocus={focusRestore.onOpenAutoFocus}
+          onCloseAutoFocus={focusRestore.onCloseAutoFocus}
+        >
           <div className={dialogHeaderClassName}>
             <div className="min-w-0">
               <AlertDialog.Title className={dialogTitleClassName}>

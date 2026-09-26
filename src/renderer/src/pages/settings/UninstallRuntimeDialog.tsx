@@ -9,6 +9,7 @@ import {
   dialogTitleClassName
 } from '@/components/ui/dialog-chrome'
 import { useRetainedDialogValue } from '@/components/ui/use-retained-dialog-value'
+import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 
 type UninstallRuntimeDialogProps = {
   // The framework whose app-managed runtime is being removed; null keeps the dialog closed.
@@ -42,6 +43,7 @@ const UninstallRuntimeDialog = ({
 }: UninstallRuntimeDialogProps): React.JSX.Element => {
   const { t } = useLanguage()
   const dialogFramework = useRetainedDialogValue(framework)
+  const focusRestore = useDialogFocusRestore(Boolean(framework))
   const dialogIsUninstalling =
     useRetainedDialogValue(framework ? isUninstalling : undefined) ?? isUninstalling
   const name = dialogFramework ? DISPLAY_NAME[dialogFramework] : ''
@@ -55,7 +57,11 @@ const UninstallRuntimeDialog = ({
     >
       <AlertDialog.Portal>
         <AlertDialog.Overlay className={dialogOverlayClassName} />
-        <AlertDialog.Content className={dialogPanelClassName('w-[min(440px,calc(100vw-2rem))]')}>
+        <AlertDialog.Content
+          className={dialogPanelClassName('w-[min(440px,calc(100vw-2rem))]')}
+          onOpenAutoFocus={focusRestore.onOpenAutoFocus}
+          onCloseAutoFocus={focusRestore.onCloseAutoFocus}
+        >
           <AlertDialog.Title className={dialogTitleClassName}>
             {t('settings.uninstallTitle').replace('{name}', name)}
           </AlertDialog.Title>

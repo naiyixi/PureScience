@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog-chrome'
 import { useMemoryStore } from '@/stores/memory-store'
 import type { MemoryCategory, MemoryNote, MemorySettings } from '../../../../shared/settings'
+import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 
 // The built-in landing category, present even for a fresh, never-written memory.
 const DEFAULT_MEMORY_CATEGORY_NAME = 'About you'
@@ -142,6 +143,7 @@ const MemoryCategoryList = ({
   const [categoryPendingDelete, setCategoryPendingDelete] = useState<MemoryCategory | null>(null)
   const renameInputRef = useRef<HTMLInputElement>(null)
 
+  const focusRestore = useDialogFocusRestore(categoryPendingDelete !== null)
   const counts = useMemo(() => {
     const result = new Map<string, number>()
     for (const note of memory.notes) {
@@ -260,7 +262,11 @@ const MemoryCategoryList = ({
       >
         <AlertDialog.Portal>
           <AlertDialog.Overlay className={dialogOverlayClassName} />
-          <AlertDialog.Content className={dialogPanelClassName('w-[min(440px,calc(100vw-2rem))]')}>
+          <AlertDialog.Content
+            className={dialogPanelClassName('w-[min(440px,calc(100vw-2rem))]')}
+            onOpenAutoFocus={focusRestore.onOpenAutoFocus}
+            onCloseAutoFocus={focusRestore.onCloseAutoFocus}
+          >
             <AlertDialog.Title className={dialogTitleClassName}>
               {t('settings.memoryDeleteCategoryTitle').replace(
                 '{name}',

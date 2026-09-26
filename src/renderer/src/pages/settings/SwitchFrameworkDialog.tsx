@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog-chrome'
 import { useRetainedDialogValue } from '@/components/ui/use-retained-dialog-value'
 import { cn } from '@/lib/utils'
+import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 
 type SwitchFrameworkDialogProps = {
   // Display name of the framework being switched to; null keeps the dialog closed.
@@ -28,6 +29,7 @@ const SwitchFrameworkDialog = ({
 }: SwitchFrameworkDialogProps): React.JSX.Element => {
   const { t } = useLanguage()
   const dialogTargetName = useRetainedDialogValue(targetName)
+  const focusRestore = useDialogFocusRestore(Boolean(targetName))
 
   return (
     <AlertDialog.Root
@@ -39,6 +41,8 @@ const SwitchFrameworkDialog = ({
       <AlertDialog.Portal>
         <AlertDialog.Overlay className={cn(dialogOverlayClassName, 'z-[60]')} />
         <AlertDialog.Content
+          onOpenAutoFocus={focusRestore.onOpenAutoFocus}
+          onCloseAutoFocus={focusRestore.onCloseAutoFocus}
           className={dialogPanelClassName('z-[60] w-[min(440px,calc(100vw-2rem))]')}
         >
           <AlertDialog.Title className={dialogTitleClassName}>

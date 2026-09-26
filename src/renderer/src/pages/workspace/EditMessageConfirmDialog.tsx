@@ -2,6 +2,7 @@ import { AlertDialog } from 'radix-ui'
 import { useLanguage } from '@/i18n'
 
 import { Button } from '@/components/ui/button'
+import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 import {
   dialogDescriptionClassName,
   dialogFooterClassName,
@@ -29,6 +30,7 @@ const EditMessageConfirmDialog = ({
   onCancel,
   onConfirm
 }: EditMessageConfirmDialogProps): React.JSX.Element => {
+  const focusRestore = useDialogFocusRestore(open)
   const { t } = useLanguage()
   return (
     <AlertDialog.Root
@@ -39,7 +41,11 @@ const EditMessageConfirmDialog = ({
     >
       <AlertDialog.Portal>
         <AlertDialog.Overlay className={dialogOverlayClassName} />
-        <AlertDialog.Content className={dialogPanelClassName('w-[min(420px,calc(100vw-2rem))]')}>
+        <AlertDialog.Content
+          className={dialogPanelClassName('w-[min(420px,calc(100vw-2rem))]')}
+          onOpenAutoFocus={focusRestore.onOpenAutoFocus}
+          onCloseAutoFocus={focusRestore.onCloseAutoFocus}
+        >
           <AlertDialog.Title className={dialogTitleClassName}>
             Resend on a new branch?
           </AlertDialog.Title>

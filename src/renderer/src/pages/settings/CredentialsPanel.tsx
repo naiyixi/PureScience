@@ -17,6 +17,7 @@ import { useLanguage, type TranslationKey } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { GitHubMark } from '@/components/GitHubStarBadge'
+import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 import {
   dialogDescriptionClassName,
   dialogOverlayClassName,
@@ -392,6 +393,7 @@ export const CredentialsPanel = (): React.JSX.Element => {
   const [pendingDelete, setPendingDelete] = useState<CredentialView | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
+  const focusRestore = useDialogFocusRestore(pendingDelete !== null)
   const byService = useMemo(() => {
     const result = new Map<CredentialServiceId, CredentialView[]>()
     for (const credential of store.credentials) {
@@ -593,7 +595,11 @@ export const CredentialsPanel = (): React.JSX.Element => {
       >
         <AlertDialog.Portal>
           <AlertDialog.Overlay className={dialogOverlayClassName} />
-          <AlertDialog.Content className={dialogPanelClassName('w-[min(440px,calc(100vw-2rem))]')}>
+          <AlertDialog.Content
+            className={dialogPanelClassName('w-[min(440px,calc(100vw-2rem))]')}
+            onOpenAutoFocus={focusRestore.onOpenAutoFocus}
+            onCloseAutoFocus={focusRestore.onCloseAutoFocus}
+          >
             <AlertDialog.Title className={dialogTitleClassName}>
               {t('settings.credentialsDeleteTitle')}
             </AlertDialog.Title>

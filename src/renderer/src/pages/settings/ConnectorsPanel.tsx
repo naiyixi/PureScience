@@ -45,6 +45,7 @@ import { CatalogFilterChips } from '@/components/catalog/CatalogFilterChips'
 import { useSpecialistStore } from '@/stores/specialist-store'
 import { ConnectorGlyph } from './connector-icons'
 import { SettingsIconAction, SettingsSection, SettingsToggle } from './SettingsLayout'
+import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 
 // The connectors panel sub-view, driven by the settings navigation history. The detail and add pages
 // are separate components owned by SettingsPage; this panel only renders the list + contact-email section.
@@ -394,6 +395,7 @@ export function ConnectorsPanel({ onNavigate }: ConnectorsPanelProps): React.JSX
   }
 
   const [bulkRunning, setBulkRunning] = useState(false)
+  const focusRestore = useDialogFocusRestore(removal !== null)
   const runBulk = async (enabled: boolean): Promise<void> => {
     const ids = visibleConnectors.map((connector) => connector.id)
     if (ids.length === 0) return
@@ -790,7 +792,11 @@ export function ConnectorsPanel({ onNavigate }: ConnectorsPanelProps): React.JSX
       >
         <AlertDialog.Portal>
           <AlertDialog.Overlay className={dialogOverlayClassName} />
-          <AlertDialog.Content className={dialogPanelClassName('w-[min(440px,calc(100vw-2rem))]')}>
+          <AlertDialog.Content
+            className={dialogPanelClassName('w-[min(440px,calc(100vw-2rem))]')}
+            onOpenAutoFocus={focusRestore.onOpenAutoFocus}
+            onCloseAutoFocus={focusRestore.onCloseAutoFocus}
+          >
             <AlertDialog.Title className={dialogTitleClassName}>
               {t('settings.removeConnectorTitle').replace('{name}', removal?.server.name ?? '')}
             </AlertDialog.Title>

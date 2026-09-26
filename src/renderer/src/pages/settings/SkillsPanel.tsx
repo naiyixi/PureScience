@@ -40,6 +40,7 @@ import { SkillImportView } from './SkillImportView'
 import { SkillUploadView } from './SkillUploadView'
 import { AgentHomeImportView } from './AgentHomeImportView'
 import { SettingsIconAction, SettingsRow, SettingsSection, SettingsToggle } from './SettingsLayout'
+import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 // Learnt skills carry a trust state; the panel shows it as a badge so a recorded-but-unchecked
 // procedure is not mistaken for an established one. Labels come from the language catalogs — the
 // summary sentence and the evidence are recorded data and stay as they are.
@@ -231,6 +232,7 @@ const SkillsPanel = ({
     })
   }, [skills, filter, query, scope, specialistNamesBySkillId])
 
+  const focusRestore = useDialogFocusRestore(pendingLicenseSkill !== null)
   const visible = useMemo(() => {
     return scoped.filter((skill) => {
       if (showFavorites && !catalogEntries[`skill:${skill.id}`]?.favorite) return false
@@ -848,7 +850,11 @@ const SkillsPanel = ({
       >
         <AlertDialog.Portal>
           <AlertDialog.Overlay className="fixed inset-0 z-50 bg-black/50" />
-          <AlertDialog.Content className="fixed left-1/2 top-1/2 z-50 w-[min(420px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-bg-000 p-5 shadow-xl">
+          <AlertDialog.Content
+            className="fixed left-1/2 top-1/2 z-50 w-[min(420px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-bg-000 p-5 shadow-xl"
+            onOpenAutoFocus={focusRestore.onOpenAutoFocus}
+            onCloseAutoFocus={focusRestore.onCloseAutoFocus}
+          >
             <AlertDialog.Title className="text-sm font-semibold text-foreground">
               {t('settings.licenseConfirmTitle').replace('{name}', pendingLicenseSkill?.name ?? '')}
             </AlertDialog.Title>

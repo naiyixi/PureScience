@@ -4,6 +4,7 @@ import { useLanguage } from '@/i18n'
 import { Button } from '@/components/ui/button'
 import type { ClaudeInstallSource } from '../../../../shared/settings'
 import { AgentInstallSourceMenu, type AgentInstallSourceMenuProps } from './AgentInstallSourceMenu'
+import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 
 type RepairFrameworkDialogProps = Omit<
   AgentInstallSourceMenuProps,
@@ -26,6 +27,7 @@ const RepairFrameworkDialog = ({
   onCancel,
   onRepair
 }: RepairFrameworkDialogProps): React.JSX.Element => {
+  const focusRestore = useDialogFocusRestore(Boolean(name))
   const { t } = useLanguage()
   return (
     <AlertDialog.Root
@@ -36,7 +38,11 @@ const RepairFrameworkDialog = ({
     >
       <AlertDialog.Portal>
         <AlertDialog.Overlay className="fixed inset-0 z-[60] bg-black/50" />
-        <AlertDialog.Content className="fixed left-1/2 top-1/2 z-[60] w-[min(440px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-popover p-6 text-foreground shadow-menu">
+        <AlertDialog.Content
+          className="fixed left-1/2 top-1/2 z-[60] w-[min(440px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-popover p-6 text-foreground shadow-menu"
+          onOpenAutoFocus={focusRestore.onOpenAutoFocus}
+          onCloseAutoFocus={focusRestore.onCloseAutoFocus}
+        >
           <AlertDialog.Title className="text-base font-semibold text-foreground">
             {name} needs repair
           </AlertDialog.Title>
