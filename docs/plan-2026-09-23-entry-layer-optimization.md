@@ -1089,6 +1089,29 @@ profile 回答"哪一帧"，但它的墙钟数受负载影响；**CDP `Performan
 
 **下一步（立案，未做）**：把流式 profile 里 60% 的 `other` 桶拆开——ipc-delivery 已降到 0.7%、react-render/commit 合计 ~38%，剩下的 60% 目前没有归属，是唯一还没认领的大块。
 
+### `other` 桶已拆开：桶里没有剩余的应用侧杠杆（零代码归档）
+
+对 45 回合 × 每回合 6 条工具事件的 profile（采样 1707ms）做桶内归因：
+
+| 桶内构成 | 量 | 判读 |
+| --- | --- | --- |
+| `(program)` | **450ms（26%）** | V8/引擎自身（含布局、绘制、编译）——应用只能通过"更少更轻的 DOM 变更"间接影响 |
+| `(idle)` | 239ms（14%） | 夹具 5ms/块的节奏留白，**不是应用工作** |
+| `garbage collector` | 65ms（3.8%） | 分配压力（元素/props 创建） |
+| lucide 图标工厂 | 44ms（2.6%） | 主要是新消息挂载时的图标 |
+| Radix Slot / Context | 43ms（2.5%） | portal/context 开销 |
+| `MessageTimestamp` | 26ms | 已证明是小组件帧吸收内联子帧（微基准 2µs/条） |
+| `scrollTo` | 22ms | 流式自动滚动 ✓ 必要 |
+| React 记账（`commitLayoutEffectOnFiber`/`updateCallback`/`updateMemo`/`cloneElement`/`setProp`） | ~60ms | 必要 |
+| **`query` / `elementText` / `checkVisibility` / `querySelectorAll` 簇** | ~53ms | **见下：先怀疑后实测排除了应用侧** |
+
+**一次被实测推翻的假设（留档）**：那簇 DOM 查询看着像 `useUnreadTaskViewSync` 里**逐条 mutation 记录**跑 `matches`/`querySelector(subtree)`/`closest` 的过滤逻辑（流式期间记录多、命中少 ⇒ 全扫）。→ **直接复刻该逻辑在真机计时**（临时探针：同配置 MutationObserver，10 个流式回合，删于测后）：**98 批 / 252 条记录 / 252 个不同节点 / 过滤总耗时 1ms ⇒ 0.1ms/轮** ⇒ 排除，且顺带证明"按批去重"不会有收益（252 条记录无重复节点）。
+**真身**：`checkVisibility`/`elementText` 是 **Playwright 自己的页面内定位器工作**（`expect.poll(getByText(...).count())` 在页面里算可见性与取文本）⇒ **profile 窗口被测量工具本身污染了**。
+
+**结论**：`other` 桶 = 引擎工作 + 夹具留白 + GC + 一条必要的细尾，**应用侧已无大杠杆**；本轮"流式逐层压"的收益也已在确定性口径上拿满（1 块 = 1 槽 + 1 次 markdown；1 次活动 = 1 次装配 + 1 行；面板/图标/时间戳均不再随事件重渲）。**归档零代码。** 若今后要再压，得先换夹具（例如不靠 Playwright 定位器轮询来探测完成）或直接看打包版本的 profile（dev/e2e 构建本身带额外开销）。
+
+**方法论（已入 skill）**：① 怀疑某段逻辑是热点时，**在真机复刻它并直接计时**，别停在 profile 的调用链上；② **profile 窗口可能被测试工具本身污染**（Playwright 定位器会在页面里跑 `checkVisibility`/`elementText`）⇒ 归因到 DOM 查询簇前先排除它。
+
 ### 消息时间戳：量出不是瓶颈（审计归档，零代码）
 
 上一节把 `MessageTimestamp`（profile self time 16.96–20.6ms/3 回合）立为"比活动行更值得看的一处"。本单元按纪律先量，结论是**这一项不需要改代码**：

@@ -668,3 +668,11 @@ profile 里 `MessageTimestamp` self time 16.96–20.6ms/3 回合，看起来是"
 **根因**：`draftDoc` 是 `WorkspacePage` 的 `useState` ⇒ 每键整页重渲；memo 边界保住了转录（harness 实测敲键时 scroller / 消息槽 / markdown / 时间戳**全 0**），但 React 自根走一遍 ≈0.85ms/字符。
 
 **结论**：应用可优化的只有 **~1.0–1.2ms/键（12–15%）**，其余是输入事件 + contenteditable + GC 的固有成本；8ms/键仍在 60fps 预算内 ⇒ **不为 15% 重构页面状态归属**（改法已写明：`draftDoc` 下沉到 composer 区域/专用 store），立案低值。**下一步该看的是流式 profile 里那 60% 无归属的 `other` 桶**。
+
+### `other` 桶拆开后：里面没有应用侧杠杆（含一次被实测推翻的假设）
+
+45 回合 × 每回合 6 条工具事件的 profile（采样 1707ms）桶内构成：`(program)` **450ms（26%，V8/引擎含布局绘制）**、`(idle)` 239ms（14%，**夹具 5ms/块留白，不是应用工作**）、GC 65ms、lucide 图标 44ms、Radix Slot/Context 43ms、`MessageTimestamp` 26ms（内联吸收）、`scrollTo` 22ms（自动滚动 ✓ 必要）、React 记账 ~60ms，以及一簇 **`query`/`elementText`/`checkVisibility`/`querySelectorAll` ≈53ms**。
+
+**假设 → 实测推翻**：那簇 DOM 查询初看像 `useUnreadTaskViewSync` 逐条 mutation 记录做 `matches`/`querySelector(subtree)`/`closest`（流式期间记录多、命中少）。真机复刻该逻辑计时（同配置 MutationObserver，10 个流式回合）：**98 批 / 252 记录 / 252 个不同节点 / 过滤共 1ms ⇒ 0.1ms/轮** ⇒ **排除**（顺带排除"按批去重"这条路：252 条记录无重复节点）。真身是 **Playwright 自己的页面内定位器工作**（`expect.poll` + `getByText().count()` 会在页面里跑 `checkVisibility`/`elementText`）⇒ **profile 窗口被测量工具污染**。
+
+**结论**：`other` = 引擎 + 夹具留白 + GC + 必要的细尾 ⇒ **应用侧无大杠杆，归档零代码**；要再压需先换夹具（不靠 Playwright 定位器轮询探测完成）或看打包版 profile（dev/e2e 构建自带开销）。**方法论**：怀疑某段逻辑时要在真机复刻并直接计时，别停在 profile 调用链上；归因 DOM 查询簇前先排除测试工具自身。
