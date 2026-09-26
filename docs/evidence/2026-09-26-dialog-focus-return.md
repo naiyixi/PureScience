@@ -62,7 +62,37 @@ npx eslint <改动文件>  → 0 error
 npx prettier --check   → All matched files use Prettier code style
 ```
 
+## 第二族：AlertDialog（同流程，先证实再改）
+
+守卫扩到 `AlertDialog.Content` 后报出 **20 个文件 / 22 个实例**。先量后改：先在打包应用上验证这一族是否
+真丢焦点（临时探针，设置→存储→「Change location」→ 预警确认框；读数后已删）：
+
+```
+opener focused:          BUTTON | Change location
+alertdialog open:        BUTTON | Cancel          ← AlertDialog 打开时聚焦自己的 Cancel 按钮
+closed via Escape:       BODY | All projects…     ← 开者仍在 DOM 里
+closed via Cancel:       BODY | All projects…
+opener still connected:  true
+```
+
+两条关闭路径（Escape / 自带 Cancel）焦点都落 `<body>`，开它的按钮**仍连接** ⇒ 与 Dialog 族同缺陷，
+接线站得住。随即接线 20 文件 / 22 实例，并修正钩子的层判定：
+`[role="dialog"]` → `[role="dialog"], [role="alertdialog"]`（否则 AlertDialog 打开时聚焦的 Cancel 会被
+跟踪器当成「层外元素」记下，关闭时把焦点交给一个正在卸载的控件）。
+
+### 真机断言（`e2e/accessibility.spec.ts` 第二条焦点用例）
+
+`alert dialogs hand focus back to their opener as well`：侧栏 Settings → 存储 → `Change location` →
+Enter ⇒ 预警确认框；**Escape** 关闭 ⇒ 断言 `Change location` 重新获焦；再用它自己的 **Cancel**（打开时
+它自己聚焦的那个按钮）关闭一次 ⇒ 同样断言归还。
+
 ## 未覆盖（已立案为下一单元）
+
+- 真机断言覆盖设置面、工作区文件面、存储预警确认框三处；**引导页 `LocationStep`** 的确认框已按代码接线
+  （守卫覆盖），但尚未纳入真机断言；
+- 焦点归还只断言「回到开者」，未断言「开者已被卸载时不抛错、且落点合理」的真机行为（jsdom 单测覆盖该分支）。
+
+## 旧版未覆盖记录（已被上一节取代）
 
 - `AlertDialog.Content` 一族（21 个文件中 20 个同类），守卫目前只守 `Dialog.Content`；
 - 真机断言只覆盖设置面与工作区两面，**引导页那处对话框**尚未纳入。

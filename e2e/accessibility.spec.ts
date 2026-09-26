@@ -233,3 +233,33 @@ test('dialogs opened from page state hand focus back to their opener', async ({ 
   await expect(preview).toBeHidden()
   await expect(previewOpener).toBeFocused()
 })
+
+// The AlertDialog side of the same sweep: `AlertDialog.Content` renders with role="alertdialog" and needed the
+// same restore. Measured on the packaged app before wiring it: Escape and the dialog's own Cancel button both
+// left `document.activeElement` on <body> while the button that opened it was still connected.
+test('alert dialogs hand focus back to their opener as well', async ({ app }) => {
+  let page = await app.completeOnboarding()
+  page = await app.configureFakeAgent()
+
+  await page.getByRole('button', { name: 'New project' }).click()
+  const projectDialog = page.getByRole('dialog', { name: 'New project' })
+  await projectDialog.getByLabel('Name').fill('Alert dialog focus project')
+  await projectDialog.getByRole('button', { name: 'Create project' }).click()
+
+  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await page.getByRole('button', { name: 'Storage', exact: true }).click()
+
+  const change = page.getByRole('button', { name: 'Change location' })
+  await change.focus()
+  await page.keyboard.press('Enter')
+  const warn = page.getByRole('alertdialog')
+  await expect(warn).toBeVisible()
+
+  // The dialog focuses its own Cancel button on open, so Enter activates it: closing this way has to hand focus
+  // back to the button that opened it. Escape is deliberately not the assertion path here — measured on the
+  // packaged app it also dismisses the Settings dialog underneath, which unmounts the opener, so there is no
+  // control left to return to (whether the inner layer should absorb Escape is tracked separately).
+  await page.keyboard.press('Enter')
+  await expect(warn).toBeHidden()
+  await expect(change).toBeFocused()
+})

@@ -303,6 +303,23 @@
   - **⚠️ 真机发现并修掉的一处真缺陷（这轮最有价值的部分）**：钩子原先只在 Radix 的 open-autofocus 事件里读 `document.activeElement`。但设置面在**挂载时**用 `autoFocus` 聚焦自己的搜索框，React 在 commit 阶段就做了，**早于** Radix 的那个事件 ⇒ 钩子记下的是**对话框内部的输入框**，关闭时它自己也被卸载 ⇒ 归还无效果 ⇒ 焦点仍落 `<body>`。真机探针读数（改前）：打开后 `INPUT | Search settings…`、关闭后 `BODY`。修法：**持续跟踪"对话框之外的最近焦点"**（`focusin` 捕获监听、忽略落在 `[role="dialog"]` 内的目标），打开时优先用"当前确实在外部的活动元素"，否则回退到跟踪值。真机复测：关闭后 **`BUTTON | Settings`** ✓。
   - **⚠️ 明确的下一步单元（同类问题同量级，本轮未做）**：`AlertDialog.Content` 一族——21 个文件里 **20 个**同样没有 Trigger 也没有归还处理；守卫目前只守 `Dialog.Content`（先守一族，避免一次性把门禁弄红）。真机断言也只覆盖了设置面与工作区两面，**引导页那个对话框尚未纳入**。
 
+  - **✅ 第二族（AlertDialog）已执行完毕，同四步 + 先量后改**：
+    1. **先真机证实是缺陷再动手**（临时探针，设置→存储→「Change location」→ 预警确认框；读数后已删）：
+       `opener focused: BUTTON|Change location` / `alertdialog open: BUTTON|Cancel`（打开时它自己聚焦 Cancel）/
+       `closed via Escape: BODY` / `closed via Cancel: BODY` / `opener still connected: true`
+       —— 两条关闭路径焦点都落 body 而开者仍在 DOM ⇒ 与 Dialog 族同缺陷，接线站得住（不是照普查数字盲改）。
+    2. **守卫扩到两族**（同一豁免注记），立即报出 **20 文件 / 22 实例** 违规；接完后 **9 passed**（7 钩子 + 2 守卫）。
+    3. **20 文件 / 22 实例接线**完成，含引导页 `LocationStep`。两处特殊结构：`SpecialistsPanel`（两个 Root 同组件 ⇒ 两个钩子）、
+       `ClaudeIsolatedSignInModal`（Root 在外层、Content 在按 open 重新挂载的 Body 里 ⇒ 钩子在 Body 内以 `true` 调用）。
+    4. **真机断言**：`e2e/accessibility.spec.ts` 新增「alert dialogs hand focus back to their opener as well」——
+       存储预警确认框（打开时聚焦自己的 Cancel）用**键盘 Enter 触发 Cancel** 关闭 ⇒ 断言 `Change location` 重新获焦。
+  - **⚠️ 第二族又抓出钩子的一处真缺陷（嵌套层）**：`Change location` **本身在"设置"对话框内部**，而钩子当时的规则是
+    "忽略一切落在 `[role=dialog]` 内的焦点" ⇒ 真正的开者被丢掉，归还时把焦点送去了**别的界面上的控件**（真机读数 `inactive`）。
+    修法：不再在捕获时按层过滤，改为**记录最近 8 个焦点目标**，打开时取"**不在正在打开的那一层里**（= 最后挂载的那层）的最近元素"
+    ⇒ 嵌套场景（设置里的确认框）与顶层场景（侧栏→设置）都正确。钩子单测相应加一条**嵌套回归用例**。
+  - **⚠️ 一并记下的观察（未断言成期望行为）**：这类确认框上按 **Escape 会把底下的设置面一起关掉**（开者随之下线，故无归还对象）。
+    是否应让内层吸收 Escape 单独立案，没有把它写成断言（避免把可能有问题的行为钉成契约）。
+
 **U4 的收口方式**：通知中心桌面端取焦/归还以 `e2e/accessibility.spec.ts` 的键盘闭环用例覆盖（真机 Electron，非 jsdom 断言）；预览菜单与文件列表另有 jsdom 用例 29 + 11 条。
 
 ### 本批次实测发现的待办（归入 U17）—— **已定位并修复**
