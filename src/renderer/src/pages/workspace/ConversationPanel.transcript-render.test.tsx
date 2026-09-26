@@ -382,6 +382,25 @@ const renderHost = (): void => {
   })
 }
 
+// One tool-activity update through the store's real entry point (the path a streamed tool event takes).
+const pushActivity = (
+  toolCallId: string,
+  eventIndex: number,
+  status: 'pending' | 'completed'
+): void => {
+  act(() => {
+    useSessionStore.getState().upsertToolActivity({
+      sessionId: SESSION_ID,
+      toolCallId,
+      eventId: `event-activity-${eventIndex}`,
+      toolKind: 'fetch',
+      providerToolName: 'WebSearch',
+      title: '"public data repositories"',
+      status
+    })
+  })
+}
+
 // One streamed delta through the store's real entry point.
 const pushDelta = (index: number, text: string): void => {
   act(() => {
@@ -469,5 +488,80 @@ describe('ConversationPanel transcript render cost', () => {
       // already lost inside React's work loop.
       icons: {}
     })
+  })
+  it('characterises what a tool-activity update re-renders', () => {
+    renderHost()
+    // A run in progress: the first text chunk creates the streaming slot the activity lands next to.
+    pushDelta(1, 'partial')
+    resetInstrument()
+
+    // A tool event arrives (pending), the way a streamed tool call reaches the store.
+    pushActivity('tool-activity-1', 1, 'pending')
+
+    const created = {
+      panel: panelRenderCount(),
+      scroller: scrollerRenderCount(),
+      slots: renderedSlotIds(),
+      markdown: renderedMarkdown(),
+      icons: renderedIcons()
+    }
+    console.log('[render-count] activity created:', JSON.stringify(created))
+
+    // Baseline before the activity channel is handled like the text channel (see the plan doc, "活动通道"):
+    // one activity update re-renders the panel and the scroller, and drags nine icons with it — eight of
+    // which (`Menu`, `Bell`, `PanelRight`, `ChevronRight`, `Plus`, `FileText`, `ScanEye`, `Square`) belong
+    // to chrome the update did not touch. The message slots and the markdown body correctly stay put.
+    expect(created).toEqual({
+      panel: 1,
+      scroller: 1,
+      slots: [],
+      markdown: [],
+      icons: {
+        Menu: 1,
+        Bell: 1,
+        PanelRight: 1,
+        ChevronRight: 1,
+        LoaderCircle: 1,
+        Plus: 1,
+        FileText: 1,
+        ScanEye: 1,
+        Square: 1
+      }
+    })
+
+    // The same activity changes status: the update an agent emits far more often than a creation.
+    resetInstrument()
+    pushActivity('tool-activity-1', 2, 'completed')
+
+    const settled = {
+      panel: panelRenderCount(),
+      scroller: scrollerRenderCount(),
+      slots: renderedSlotIds(),
+      markdown: renderedMarkdown(),
+      icons: renderedIcons()
+    }
+    console.log('[render-count] activity settled:', JSON.stringify(settled))
+
+    // The status change costs exactly the same as the creation: the row swaps its own icon
+    // (`LoaderCircle` → `Check`) and the same chrome comes along.
+    expect(settled).toEqual({
+      panel: 1,
+      scroller: 1,
+      slots: [],
+      markdown: [],
+      icons: {
+        Menu: 1,
+        Bell: 1,
+        PanelRight: 1,
+        ChevronRight: 1,
+        Check: 1,
+        Plus: 1,
+        FileText: 1,
+        ScanEye: 1,
+        Square: 1
+      }
+    })
+
+    expect(container.textContent).toContain('partial')
   })
 })

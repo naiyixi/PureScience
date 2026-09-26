@@ -978,6 +978,14 @@ if (recordedDigest !== checksum) {
 - 判据已进 CI：`ConversationPanel.transcript-render.test.tsx` 的精确断言含 `icons: {}`。
 - **下一单元若要碰图标**，判据必须是「驱动活动事件的确定性计数探针」（给同一 harness 补喂活动更新），不能靠 profile 猜栈；先量出「哪一行活动更新重渲了哪些图标」，再决定改不改。
 
+### 活动通道打穿了冻结容器（已量，已立项）
+
+同一 harness 驱动 `upsertToolActivity`（流式工具事件的真实入口）的读数：**面板 1 / 滚动容器 1 / 槽 0 / 正文 0 / 图标 9**（9 个里只有 1 个是活动行自己的图标，另 8 个是面板 chrome 的 `Menu`/`Bell`/`PanelRight`/`ChevronRight`/`Plus`/`FileText`/`ScanEye`/`Square`）。创建与状态变更同价。
+
+原因：文本通道靠订阅守住了（槽与正文都不重渲），**活动通道仍走 props**（`activeSession.activities` / `activityGroups`），冻结快照一因活动变化就重发 props ⇒ 面板 + 滚动容器 + 全部 chrome 图标跟着重渲。工具事件在流式回合里高频 ⇒ 这是真机图标开销的主要来源。
+
+**下一单元（已立项，先量后改）**：活动数据移出冻结快照的比较，改由**活动行自订阅 store**；判据 = 上述 harness 的精确断言收紧到 `panel 0 / scroller ≤1 / 图标仅剩活动行自己那个`（基线值已写进断言，改动后必须同步下调）。
+
 ### 广播事件日志裁到「未发送 + 重叠」（已落定，两侧对齐）
 
 主进程广播快照时只带「上次广播之后 + 60 条重叠」的事件（拉取路径 `acp.getState` 仍全量）；渲染端可用集同步改为**累积**（`mergeLiveEvents`，上限 1000，空窗口不清空）——只改一侧会回退：45 轮 task 91.5 → **216.5ms/轮**（lane 被回收、ledger 丢失、重叠事件每份快照重新应用）。
