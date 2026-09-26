@@ -664,6 +664,7 @@
 **目标**：同口径（`PERF_TURNS=45 npm run test:e2e:perf`）的 `task=…ms | per turn: task=…ms` **下降**；这是判定标准，帧指标不作为判据。
 
 **进度**：第一步（写入侧合批）的建筑块**已落地两件** —— `streaming-text-coalescer.ts`（合批语义）+ `streaming-text-batcher.ts`（按消息管理实例、`settle`/`settleAll`/`discard`，注入式 sink，不耦合 store），共 14 条单测（不改动任何现有行为，接线前先保证合批器自身的语义：不丢字、不重排、flush 后不发第二次、flush 期间新增的片段归入下一窗）。**接线（把 delta 写入路径改为经合批器 + 完成态 flushNow）与 `PERF_TURNS=45` 对照仍待做**。
+**（后记·已纠正）**：接线**已完成**——`src/renderer/src/stores/streamed-agent-text.ts` 在生产路径里 `createStreamingTextBatcher` 并调用 `batcher.append/settle/settleAll/discard`（`PERF_TURNS=45` 对照随后由 U33 系列仪器给出，表现为每轮成本逐层下降）。此前的"仍待做"是**陈旧记录**。
 
 **候选方案（按风险从低到高）**：
 
