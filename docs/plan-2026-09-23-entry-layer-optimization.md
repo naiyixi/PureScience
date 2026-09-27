@@ -1178,3 +1178,11 @@ profile 回答"哪一帧"，但它的墙钟数受负载影响；**CDP `Performan
 主进程广播快照时只带「上次广播之后 + 60 条重叠」的事件（拉取路径 `acp.getState` 仍全量）；渲染端可用集同步改为**累积**（`mergeLiveEvents`，上限 1000，空窗口不清空）——只改一侧会回退：45 轮 task 91.5 → **216.5ms/轮**（lane 被回收、ledger 丢失、重叠事件每份快照重新应用）。
 
 实测：`acp:state` 单条 137.8→209.1KB（随会话变胖）→ **29.6–33.0KB 恒定**；过桥总字节 473–845KB → **103–130KB/回合**；真机 45 轮 task 105.0ms（同口径噪声带 94–106ms 内）。单测 10 条、`test:e2e:workspace` 8/8、全量门禁 14442 passed。
+
+## v1.74.0 发布记录（2026-09-27）
+
+- 提交 `39d2aa4`「release: v1.74.0（跑起来才量得准的两件事：流式每一层的重渲 + 键盘焦点闭环）」；tag `v1.74.0`（轻量 tag，指向该提交）；run `36260944010` = **completed | success**。
+- Release 页：非草稿、非预发布、已是 **Latest**；**资产 19 个**（四平台安装包 + blockmap、`latest*.yml`、`version.json`、`SHA256SUMS.txt`、`RELEASE-CERTIFICATION.json`）。
+- 核对结果：线上 `version.json` → `version=1.74.0`、`notes` 与 CHANGELOG 该段**逐字一致**、四平台 `sha256` 与认证记录逐项吻合；Release 正文已用 `node scripts/release-notes.mjs v1.74.0 --apply` 补写（4602 字符，此前只有 GitHub 默认那行）。
+- 既存状态（与 v1.72.0 / v1.73.0 横向对比一致，**不是本版退化**）：mac 产物 ad-hoc 签名、未公证（`notarize-mac / refresh-checksums` 恒 `skipped`）；`windows-upgrade-smoke` 红但 `continue-on-error`；`mirror-to-website.yml` 从未运行（下载站未部署）。
+- 发版前置在发版提交上实跑：typecheck 0 / lint 0 error / prettier clean / `test:gate` **14464 passed**。
