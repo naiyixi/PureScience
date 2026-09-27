@@ -11,7 +11,7 @@ import type { AcpRuntimeEvent, AcpRuntimeEventKind } from '../shared/acp'
 
 // Events the renderer must never miss: lifecycle terminals and state-bearing signals. Everything
 // else is classed as transient (high-frequency, reconcilable from the snapshot).
-const ALWAYS_ADMIT: ReadonlySet<AcpRuntimeEventKind> = new Set<AcpRuntimeEventKind>([
+export const ALWAYS_ADMIT: ReadonlySet<AcpRuntimeEventKind> = new Set<AcpRuntimeEventKind>([
   'stop',
   'error',
   'artifact',
@@ -19,6 +19,11 @@ const ALWAYS_ADMIT: ReadonlySet<AcpRuntimeEventKind> = new Set<AcpRuntimeEventKi
   'plan',
   'message' // chunked text is coalesced by the renderer; keep it flowing at a bounded rate
 ])
+
+// True when this kind is never withheld by the gate — so anything carrying it reached the renderer on the
+// event channel unless the webContents itself was gone. Consumers use this to tell "definitely delivered,
+// safe to stop re-sending" from "may have been dropped, must stay in the reconciliation set".
+export const isAlwaysAdmittedKind = (kind: AcpRuntimeEventKind): boolean => ALWAYS_ADMIT.has(kind)
 
 export type BoundedEventAdmissionOptions = {
   // How long a batch window stays open before flushing.
