@@ -517,11 +517,21 @@ describe('completion gate through the real host.agents SDK and executeControl se
     }
   })
 
-  // Known load-sensitive: on a machine at load average ~50 this test HANGS (not fails fast), and a
-  // raised budget does not help — measured at --testTimeout=180000 it still consumed the full 180s and
-  // failed, so it is an ordering assumption under contention, not a test that needs more time. It passes
-  // on a quiet machine. Left as-is rather than papered over with a bigger timeout; the scheduled flaky
-  // lane is what will surface it in the wild. Tracked for the next version.
+  // Root cause of the old hang (measured, not guessed — see the v1.76.0 note in CHANGELOG):
+  //
+  // The outer `executeControl` budget is armed on the kernel request frame and enforced by SIGINT to the
+  // repl-loop child (src/main/notebook/kernel-executor.ts:701, src/main/notebook/timeout-controller.ts:73),
+  // and the child installs no SIGINT handler, so the deadline kills it outright. This test needs the
+  // connector call to have STARTED while that budget is still ticking. The fixture's own floor — a cold repl
+  // child plus one switch round-trip — measured 73-79ms on a quiet machine and grows several-fold under
+  // contention, which at a 200ms budget was the same order as the budget itself: the child could be killed
+  // before `host.mcp('test', 'wait')` ever ran, and the await below then parked forever on an event that had
+  // already become impossible. That is why it HUNG (rather than failing) at load ~50 and why raising
+  // --testTimeout to 180000 changed nothing: it was never short of time.
+  //
+  // Two changes, neither of which relaxes what is asserted: the budget now clears the fixture floor by an
+  // order of magnitude, and the precondition is checked with a bounded race that fails fast and loudly
+  // instead of waiting on an impossibility.
   it('preserves the outer executeControl timeout before handing the timeout outcome off once', async () => {
     const connectorStarted = deferred()
     const finishConnector = deferred<unknown>()
@@ -532,11 +542,25 @@ describe('completion gate through the real host.agents SDK and executeControl se
       }
     })
     try {
+      // The budget is what this test is about; the connector never settles on its own, so the timeout is
+      // still the only thing that can end the execution. It just has to outlast the fixture, not the
+      // scenario.
+      const FIXTURE_BUDGET_MS = 2_000
+      const CONNECTOR_START_LIMIT_MS = 10_000
       const execution = harness.executeControl(
         "await host.agents.switch('Approved Specialist'); return host.mcp('test', 'wait')",
-        200
+        FIXTURE_BUDGET_MS
       )
-      await connectorStarted.promise
+      const connectorStartedInTime = await Promise.race([
+        connectorStarted.promise.then(() => true),
+        new Promise<boolean>((resolve) => setTimeout(() => resolve(false), CONNECTOR_START_LIMIT_MS))
+      ])
+      expect(
+        connectorStartedInTime,
+        'the connector was never invoked inside the budget: the fixture floor (cold repl child + switch ' +
+          'round-trip) consumed it, so this scenario never started. Not a timeout-semantics failure — raise ' +
+          'the budget above the floor, or cover the semantics on the injectable executor seam instead.'
+      ).toBe(true)
 
       expect(harness.calls).toEqual([])
       expect(harness.continuations).toEqual([])
