@@ -5449,6 +5449,13 @@ describe('v4 runtime bindings & agent tools', () => {
         runtimeId: userPyA.envId
       })
       const close = teardown === 'shutdown' ? service.shutdownAll() : service.dispose()
+      // A liveness check, not a latency one: bind() and an immediate teardown must BOTH settle — the failure
+      // mode this guards is a wedge, where neither does. The bound therefore only has to clear the fixture's
+      // own work, and 250ms was the same order as that work on a disk-bound runner, so it fired on Windows CI
+      // as `expected 'timed-out' to be 'completed'` with nothing actually wrong. Sized to sit below both test
+      // budgets (60s here, 120s on the Windows lane) so a genuine wedge reports through the message below
+      // rather than through the runner's own timeout.
+      const BIND_TEARDOWN_SETTLE_MS = 30_000
       let timeout: ReturnType<typeof setTimeout> | undefined
       const outcome = await Promise.race([
         Promise.all([bind, close]).then(
@@ -5456,12 +5463,17 @@ describe('v4 runtime bindings & agent tools', () => {
           () => 'rejected' as const
         ),
         new Promise<'timed-out'>((resolve) => {
-          timeout = setTimeout(() => resolve('timed-out'), 250)
+          timeout = setTimeout(() => resolve('timed-out'), BIND_TEARDOWN_SETTLE_MS)
         })
       ])
       if (timeout) clearTimeout(timeout)
 
-      expect(outcome).toBe('completed')
+      expect(
+        outcome,
+        `bind() + ${teardown}() did not settle within ${BIND_TEARDOWN_SETTLE_MS}ms (outcome: ${outcome}). ` +
+          'That is the wedge this case exists to catch, not a slow runner — raising this bound again would ' +
+          'hide it.'
+      ).toBe('completed')
     }
   )
 
