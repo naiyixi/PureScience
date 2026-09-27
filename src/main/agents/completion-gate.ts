@@ -197,6 +197,13 @@ export type CompletionGateLifecycle = {
 // may receive a completed envelope.
 export class CompletionGateCoordinator {
   private readonly armedBySession = new Map<string, ArmedHandoff>()
+  // Keys whose completion was already delivered to the running prompt, oldest first. An approval for one of
+  // them can still arrive afterwards (measured on CI: the outer execute-control budget settles the completion
+  // while the approved switch is still committing its binding), and that arrival has to be reported as a
+  // superseded handoff rather than arming a gate only a later, unrelated completion could fall into. Capped
+  // because every unarmed completion is remembered, which is the ordinary no-handoff path.
+  private readonly deliveredToCurrentPrompt = new Map<string, true>()
+  private static readonly DELIVERED_KEY_WINDOW = 64
   private readonly armedKeysBySession = new Map<string, Set<string>>()
   private readonly newestHandoffGenerationBySession = new Map<string, number>()
   private readonly lifecycleListeners = new Set<CompletionGateLifecycleListener>()
@@ -211,6 +218,16 @@ export class CompletionGateCoordinator {
   subscribeLifecycle(listener: CompletionGateLifecycleListener): () => void {
     this.lifecycleListeners.add(listener)
     return () => this.lifecycleListeners.delete(listener)
+  }
+
+  private rememberDelivered(key: string): void {
+    this.deliveredToCurrentPrompt.delete(key)
+    this.deliveredToCurrentPrompt.set(key, true)
+    while (this.deliveredToCurrentPrompt.size > CompletionGateCoordinator.DELIVERED_KEY_WINDOW) {
+      const oldest = this.deliveredToCurrentPrompt.keys().next().value
+      if (oldest === undefined) break
+      this.deliveredToCurrentPrompt.delete(oldest)
+    }
   }
 
   releaseSession(sessionId: string): void {
@@ -256,12 +273,20 @@ export class CompletionGateCoordinator {
       ...(switchReadback ? { switchReadback } : {})
     }
     const key = this.keyFor(context)
-    this.armedBySession.set(key, handoff)
-    const sessionKeys = this.armedKeysBySession.get(context.sessionId) ?? new Set<string>()
-    sessionKeys.add(key)
-    this.armedKeysBySession.set(context.sessionId, sessionKeys)
-    this.newestHandoffGenerationBySession.set(context.sessionId, handoff.handoffGeneration)
-    this.emitLifecycle('approval-committed', context, {
+    // If this invocation's completion was already delivered to the running prompt, there is nothing left to
+    // capture: arming a gate now would only let a later, unrelated completion fall into it, and nothing in the
+    // lifecycle would record that the approved handoff never took effect. Report the supersession instead —
+    // the same kind the newer-handoff path uses — and leave the approval's own durable record alone, which is
+    // what the renderer projects.
+    const supersededDelivery = this.deliveredToCurrentPrompt.delete(key)
+    if (!supersededDelivery) {
+      this.armedBySession.set(key, handoff)
+      const sessionKeys = this.armedKeysBySession.get(context.sessionId) ?? new Set<string>()
+      sessionKeys.add(key)
+      this.armedKeysBySession.set(context.sessionId, sessionKeys)
+      this.newestHandoffGenerationBySession.set(context.sessionId, handoff.handoffGeneration)
+    }
+    this.emitLifecycle(supersededDelivery ? 'handoff-superseded' : 'approval-committed', context, {
       handoffGeneration: handoff.handoffGeneration ?? 0,
       targetName: target.kind === 'specialist' ? target.name : null
     })
@@ -303,7 +328,10 @@ export class CompletionGateCoordinator {
   ): CompletionDisposition {
     const key = this.keyFor(context)
     const armed = this.armedBySession.get(key)
-    if (!armed) return { kind: 'deliver-to-current-prompt', envelope }
+    if (!armed) {
+      this.rememberDelivered(key)
+      return { kind: 'deliver-to-current-prompt', envelope }
+    }
 
     this.armedBySession.delete(key)
     const sessionKeys = this.armedKeysBySession.get(context.sessionId)

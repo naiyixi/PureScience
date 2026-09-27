@@ -112,6 +112,47 @@ describe('completion gate tracer bullet', () => {
     })
   })
 
+  it('reports a superseded handoff when the approval lands after the completion was delivered', async () => {
+    const repository = new InMemoryCompletionHandoffRepository()
+    const runtime = {
+      stopOldPrompt: vi.fn(async () => undefined),
+      waitForOwnershipRelease: vi.fn(async () => undefined),
+      reconfigure: vi.fn(async () => undefined),
+      continueAsApproved: vi.fn(async () => undefined),
+      reportHandoffFailure: vi.fn(async () => undefined)
+    }
+    const lifecycle = new CompletionHandoffLifecycle(repository, runtime)
+    const coordinator = new CompletionGateCoordinator(runtime, lifecycle)
+    const kinds: string[] = []
+    coordinator.subscribeLifecycle((event) => kinds.push(event.kind))
+    const deliverToCurrentPrompt = vi.fn(async () => undefined)
+
+    // The turn settles first: the outer execute-control budget ended it while the approved switch was still
+    // committing its binding (measured on CI), so this completion belongs to the running prompt.
+    await runCompletionGatedTool({
+      coordinator,
+      context: completionContext,
+      deliverToCurrentPrompt,
+      execute: async () => ({ result: 'owned by the old prompt' })
+    })
+    expect(deliverToCurrentPrompt).toHaveBeenCalledOnce()
+    expect(kinds).toEqual([])
+
+    // The approval arrives late. That has to be visible as a superseded handoff, not a silent no-op.
+    await coordinator.arm(completionContext, 'Approved Specialist')
+    expect(kinds).toEqual(['handoff-superseded'])
+
+    // And it must not leave a gate behind that a later, unrelated completion could fall into.
+    await runCompletionGatedTool({
+      coordinator,
+      context: completionContext,
+      deliverToCurrentPrompt,
+      execute: async () => ({ result: 'later' })
+    })
+    expect(deliverToCurrentPrompt).toHaveBeenCalledTimes(2)
+    expect(runtime.continueAsApproved).not.toHaveBeenCalled()
+  })
+
   it('persists the original prompt provenance exactly once from the approved switch to continuation', async () => {
     const repository = new InMemoryCompletionHandoffRepository()
     const runtime = {
