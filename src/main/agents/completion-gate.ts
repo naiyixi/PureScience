@@ -291,7 +291,8 @@ export class CompletionGateCoordinator {
       targetName: target.kind === 'specialist' ? target.name : null
     })
     if (this.lifecycle && 'approve' in this.lifecycle) {
-      return this.lifecycle
+      const lifecycle = this.lifecycle
+      return lifecycle
         .approve({
           context,
           targetName: target.kind === 'specialist' ? target.name : null,
@@ -303,7 +304,14 @@ export class CompletionGateCoordinator {
           },
           ...(switchReadback ? { continuation: { outcome: 'pending', switchReadback } } : {})
         })
-        .then(() => undefined)
+        .then(async () => {
+          // The approval is durable, but when its completion was already delivered this handoff can never be
+          // captured. Settle the record the same way a superseded capture is settled, so the renderer does not
+          // keep projecting a handoff as awaiting approval that will never run. Order matters: `approve` has to
+          // land first, or a later `approve` for the same context would overwrite the settled stage.
+          if (!supersededDelivery) return
+          if ('cancel' in lifecycle) await lifecycle.cancel(context)
+        })
         .catch((error: unknown) => {
           this.armedBySession.delete(key)
           const pendingKeys = this.armedKeysBySession.get(context.sessionId)

@@ -142,6 +142,14 @@ describe('completion gate tracer bullet', () => {
     await coordinator.arm(completionContext, 'Approved Specialist')
     expect(kinds).toEqual(['handoff-superseded'])
 
+    // The approval is still recorded (it happened), and then settled: the renderer must not keep projecting a
+    // handoff as awaiting approval that can never run. The normal path keeps stage 'awaiting-approval' until
+    // capture — asserted by the continuation test above, which would break if this settling leaked into it.
+    expect(await repository.get(completionContext)).toMatchObject({
+      stage: 'failed',
+      cancelled: true
+    })
+
     // And it must not leave a gate behind that a later, unrelated completion could fall into.
     await runCompletionGatedTool({
       coordinator,
