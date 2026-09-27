@@ -4,6 +4,8 @@ import { join } from 'node:path'
 import { load } from 'js-yaml'
 import { describe, expect, it } from 'vitest'
 
+import { WINDOWS_TEST_SHARD_COUNT } from './ci/windows-test-sequencer'
+
 type WorkflowStep = {
   'continue-on-error'?: boolean
   env?: Record<string, string>
@@ -61,9 +63,15 @@ describe('post-merge Windows validation', () => {
       'runs-on': 'windows-latest'
     })
     expect(job['continue-on-error']).toBeUndefined()
-    expect(job.strategy?.matrix?.shard).toEqual([1, 2])
+    // The shard matrix is derived from the sequencer's own constant: module-aware sharding fails
+    // closed (it refuses any other count), so a workflow that drifted from the sequencer would
+    // otherwise be discovered only on a Windows runner, after a full checkout and install.
+    expect(job.strategy?.matrix?.shard).toEqual(
+      Array.from({ length: WINDOWS_TEST_SHARD_COUNT }, (_, index) => index + 1)
+    )
+    expect(job.env?.VITEST_WINDOWS_FULL_TEST).toBe('1')
     expect(findStep(job, 'Test complete suite shard').run).toBe(
-      'npm test -- --shard=${{ matrix.shard }}/2 --maxWorkers=1 --testTimeout=120000 --hookTimeout=120000'
+      `npm test -- --shard=\${{ matrix.shard }}/${WINDOWS_TEST_SHARD_COUNT} --maxWorkers=1 --testTimeout=120000 --hookTimeout=120000 --reporter=default --reporter=github-actions`
     )
   })
 

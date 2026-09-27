@@ -23,13 +23,19 @@ concurrency:
 
 jobs:
   windows_full_test:
-    name: Windows full test (${{ matrix.shard }}/2)
+    name: Windows full test (${{ matrix.shard }}/8)
     runs-on: windows-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+    env:
+      # Turns on module-aware sharding (scripts/ci/windows-test-sequencer.ts): one module family per
+      # shard instead of Vitest's file-count split. Hosted Windows runners are disk-bound, so a shard
+      # that mixes SQLite-heavy suites with kernel or packaging suites spends its time waiting on I/O
+      # while another shard idles. The sequencer refuses to run on any shard count other than 8.
+      VITEST_WINDOWS_FULL_TEST: '1'
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -44,9 +50,8 @@ jobs:
         run: npm ci
 
       - name: Test complete suite shard
-        # SQLite-heavy integration suites contend heavily for Windows disk I/O when Vitest uses
-        # every available core, and hosted-runner disk latency occasionally exceeds the default
-        # per-test/hook budgets. Keep files serial and use bounded 120-second budgets (60s proved
-        # borderline under runner load for glob/prefix analysis cases); the 25-minute job timeout
-        # remains the backstop for a real hang.
-        run: npm test -- --shard=${{ matrix.shard }}/2 --maxWorkers=1 --testTimeout=120000 --hookTimeout=120000
+        # Files stay serial on Windows, and the 120-second budgets are kept deliberately: with module
+        # sharding the contention that made them necessary is mostly gone, but lowering a timeout in
+        # the same change would confound two variables — if a suite still needs the ceiling, that is a
+        # finding to chase, not a number to tune down.
+        run: npm test -- --shard=${{ matrix.shard }}/8 --maxWorkers=1 --testTimeout=120000 --hookTimeout=120000 --reporter=default --reporter=github-actions

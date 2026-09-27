@@ -1,0 +1,160 @@
+name: Scheduled Regression
+
+# Daily stability lane. Ordinary CI runs each test once and retries what fails, which is the right
+# trade-off for pull requests (an infra hiccup should not block a merge) but it hides one class of
+# defect: a test that passes ONLY after a retry. This lane turns that invisibility off — vitest runs
+# with an explicit retry budget and a reporter that records every retried pass, Playwright runs with
+# --fail-on-flaky-tests, and any unhealthy job opens (or refreshes) a single tracking issue.
+#
+# Findings land in an issue rather than a red badge because nobody watches the Actions tab at 03:17.
+on:
+  schedule:
+    # 03:17 UTC — 11:17 in CST, after the nightly build, before the working day.
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scheduled-regression
+  # Unlike the PR lanes this one is never cancelled by a newer run: the result is the measurement.
+  cancel-in-progress: false
+
+jobs:
+  vitest_stability:
+    name: Vitest stability (retry budget 1)
+    runs-on: macos-14
+    timeout-minutes: 120
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run suite with an explicit retry budget
+        id: suite
+        # continue-on-error keeps the two signals separate: this step reports whether the suite passed,
+        # the verdict step below reports whether anything passed *only* because of a retry, and both
+        # must be visible in the same run instead of the first failure hiding the second.
+        continue-on-error: true
+        env:
+          PURESCIENCE_FLAKY_REPORT: flaky-tests.json
+        run: >-
+          npm test -- --retry=1 --reporter=default
+          --reporter=./scripts/ci/flaky-tests-reporter.mjs
+
+      - name: Verdict on unstable tests
+        if: always()
+        run: node scripts/ci/check-flaky-tests.mjs flaky-tests.json
+
+      - name: Fail when the suite itself failed
+        if: steps.suite.outcome == 'failure'
+        run: |
+          echo "The suite run failed; see the log above. The verdict step only covers tests that passed after a retry."
+          exit 1
+
+      - name: Upload stability report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
+        with:
+          name: vitest-stability-report
+          path: flaky-tests.json
+          if-no-files-found: warn
+
+  e2e_stability:
+    name: Playwright journey stability (zero flake tolerance)
+    runs-on: macos-14
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build app for e2e
+        run: npm run build:e2e
+
+      - name: Journey e2e with --fail-on-flaky-tests
+        # playwright.config.ts retries once in CI, so without this flag a retried pass is reported as
+        # success. The flag exists in Playwright (it does not exist in Vitest 4 — see
+        # scripts/ci/flaky-tests-reporter.mjs) and is what makes this lane strict.
+        run: npm run test:e2e:journey -- --fail-on-flaky-tests
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
+        with:
+          name: e2e-stability-report
+          path: playwright-report/
+          if-no-files-found: ignore
+
+  perf_leak_check:
+    name: Per-turn IPC growth (leak assertion)
+    runs-on: macos-14
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build app for e2e
+        run: npm run build:e2e
+
+      - name: Five identical streamed turns must not grow the per-turn payload
+        # e2e/perf/ipc-traffic.spec.ts only measured before this lane existed. With PERF_LEAK_STRICT it
+        # also asserts that five same-shaped turns do not ship progressively more bytes — the signature
+        # of state accumulating across turns, which reads as a slow renderer instead of a leak.
+        run: npm run test:e2e:perf-leak
+
+  track:
+    name: Track the result in an issue
+    needs: [vitest_stability, e2e_stability, perf_leak_check]
+    # Runs on red and on green: green is what closes the issue, so it cannot be skipped.
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Ensure the tracking label exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >-
+          gh label create ci-scheduled-failure --color BFD4F2
+          --description "Opened by the scheduled regression lane" --force
+
+      - name: Open, refresh or close the tracking issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >-
+          node scripts/ci/report-scheduled-failure.mjs
+          --lane vitest=${{ needs.vitest_stability.result }}
+          --lane e2e=${{ needs.e2e_stability.result }}
+          --lane perf_leak=${{ needs.perf_leak_check.result }}
+          --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

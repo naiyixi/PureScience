@@ -22,7 +22,9 @@ import type { Page } from 'playwright'
 process.env.PURESCIENCE_E2E_STREAM_CHUNKS ??= '40'
 
 type ChannelTraffic = { channels: Record<string, number>; bytes: Record<string, number> }
-type MainBridge = { runningApplication: { evaluate: (fn: unknown, arg?: unknown) => Promise<unknown> } }
+type MainBridge = {
+  runningApplication: { evaluate: (fn: unknown, arg?: unknown) => Promise<unknown> }
+}
 
 const INSTALL = ({ webContents, app }: { webContents: unknown; app: unknown }): void => {
   const scope = globalThis as unknown as {
@@ -49,7 +51,9 @@ const INSTALL = ({ webContents, app }: { webContents: unknown; app: unknown }): 
   }
   const bridge = webContents as { getAllWebContents: () => unknown[] }
   for (const contents of bridge.getAllWebContents()) patch(contents)
-  const lifecycle = app as { on: (event: string, listener: (event: unknown, contents: unknown) => void) => void }
+  const lifecycle = app as {
+    on: (event: string, listener: (event: unknown, contents: unknown) => void) => void
+  }
   lifecycle.on('web-contents-created', (_event, contents) => patch(contents))
 }
 
@@ -79,6 +83,8 @@ test('measures how much a streamed turn sends to the renderer', async ({ app }) 
 
   const turns = Number(process.env.PERF_TURNS ?? 3)
   const chunks = Number(process.env.PURESCIENCE_E2E_STREAM_CHUNKS ?? 1)
+  const perTurn: { total: number; transcript: number }[] = []
+
   for (let index = 0; index < turns; index += 1) {
     await bridge.runningApplication.evaluate(RESET as unknown as (electron: unknown) => void)
     await sendTurn(page, `Traffic turn ${index}`)
@@ -95,10 +101,51 @@ test('measures how much a streamed turn sends to the renderer', async ({ app }) 
             bytes / Math.max(traffic.channels[channel] ?? 1, 1)
           )}B each)`
       )
+    perTurn.push({ total: totalBytes, transcript: transcriptBytes })
     console.log(
       `[ipc] turn ${index}: chunks=${chunks} transcript≈${transcriptBytes}B total=${Math.round(
         totalBytes / 1024
       )}KB | ${ranked.join(', ')}`
     )
+  }
+
+  // The measurement above is also a leak detector, which is the part a bare console.log cannot do.
+  //
+  // Every turn here is the same size — same prompt shape, same 40-chunk reply — so a per-turn byte
+  // count that grows with the turn index is state accumulating across turns rather than a bigger
+  // answer. That is precisely the class this instrument was built for: the broadcast event log used to
+  // carry every earlier event again on each turn (one 209KB payload, then larger), which looked like a
+  // slow renderer rather than a leak.
+  //
+  // Timing note: the one legitimate grower is the transcript being re-sent, which grows by one small
+  // message per turn and is bounded by the turn count itself. So the assertion is a RATIO against an
+  // allowance for N extra messages, not a flat "must be identical" — a flat check would fail on a
+  // healthy app as soon as the transcript got long enough to serialise.
+  const first = perTurn[0]
+  const last = perTurn[perTurn.length - 1]
+
+  // Sanity first: if the turns did not actually happen the growth check below proves nothing.
+  expect(perTurn.length).toBe(turns)
+  expect(last.transcript).toBeGreaterThan(first.transcript)
+
+  if (process.env.PERF_LEAK_STRICT === '1') {
+    const perTurnTranscriptGrowth = (last.transcript - first.transcript) / Math.max(turns - 1, 1)
+    // Allow the transcript delta to be re-sent on EVERY channel it legitimately travels on, with 2x
+    // headroom, plus 20KB of slack for channel-level bookkeeping.
+    const allowedGrowth = perTurnTranscriptGrowth * 8 * 2 + 20 * 1024
+    const growth = last.total - first.total
+
+    console.log(
+      `[ipc] leak check: turn0=${Math.round(first.total / 1024)}KB turn${turns - 1}=${Math.round(
+        last.total / 1024
+      )}KB growth=${Math.round(growth / 1024)}KB allowed=${Math.round(allowedGrowth / 1024)}KB`
+    )
+    expect(
+      growth,
+      `per-turn IPC bytes grew by ${Math.round(growth / 1024)}KB over ${turns} identical turns ` +
+        `(turn 0 = ${Math.round(first.total / 1024)}KB, last = ${Math.round(
+          last.total / 1024
+        )}KB) — state is accumulating across turns`
+    ).toBeLessThanOrEqual(allowedGrowth)
   }
 })
