@@ -22,6 +22,22 @@ import type { Page } from 'playwright'
 process.env.PURESCIENCE_E2E_STREAM_CHUNKS ??= '40'
 
 type ChannelTraffic = { channels: Record<string, number>; bytes: Record<string, number> }
+
+// What is INSIDE the per-turn snapshot payload, not just how big it is.
+//
+// `acp:state` dominates per-turn traffic, and its size plateaus rather than leaking, so the next
+// question is which side of the budget to attack: the replay window (how many events ride along —
+// BROADCAST_EVENT_OVERLAP = 60 in src/main/acp/state-snapshot-events.ts) or the individual events
+// (how much each one carries). Those imply completely different changes, so measure before choosing.
+type SnapshotComposition = {
+  sends: number
+  bytes: number
+  events: number
+  maxEventBytes: number
+  maxEventKind: string
+  byKind: Record<string, { count: number; bytes: number }>
+}
+
 type MainBridge = {
   runningApplication: { evaluate: (fn: unknown, arg?: unknown) => Promise<unknown> }
 }
@@ -30,6 +46,7 @@ const INSTALL = ({ webContents, app }: { webContents: unknown; app: unknown }): 
   const scope = globalThis as unknown as {
     __ipcTraffic?: ChannelTraffic
     __ipcTrafficInstalled?: boolean
+    __ipcSnapshot?: SnapshotComposition
   }
   if (scope.__ipcTrafficInstalled) return
   scope.__ipcTrafficInstalled = true
@@ -45,6 +62,34 @@ const INSTALL = ({ webContents, app }: { webContents: unknown; app: unknown }): 
         // already been validated as cloneable by reaching this call.
         traffic.bytes[channel] =
           (traffic.bytes[channel] ?? 0) + (args.length > 0 ? JSON.stringify(args).length : 0)
+      }
+      if (channel === 'acp:state') {
+        scope.__ipcSnapshot ??= {
+          sends: 0,
+          bytes: 0,
+          events: 0,
+          maxEventBytes: 0,
+          maxEventKind: '',
+          byKind: {}
+        }
+        const composition = scope.__ipcSnapshot
+        const payload = args[0] as { events?: unknown[] } | undefined
+        const events = Array.isArray(payload?.events) ? payload.events : []
+        composition.sends += 1
+        composition.bytes += args.length > 0 ? JSON.stringify(args).length : 0
+        composition.events += events.length
+        for (const event of events) {
+          const kind = String((event as { kind?: unknown } | undefined)?.kind ?? 'unknown')
+          const eventBytes = JSON.stringify(event).length
+          const bucket = composition.byKind[kind] ?? { count: 0, bytes: 0 }
+          bucket.count += 1
+          bucket.bytes += eventBytes
+          composition.byKind[kind] = bucket
+          if (eventBytes > composition.maxEventBytes) {
+            composition.maxEventBytes = eventBytes
+            composition.maxEventKind = kind
+          }
+        }
       }
       original(channel, ...args)
     }
@@ -64,6 +109,9 @@ const RESET = (): void => {
 
 const READ = (): ChannelTraffic | undefined =>
   (globalThis as unknown as { __ipcTraffic?: ChannelTraffic }).__ipcTraffic
+
+const READ_COMPOSITION = (): SnapshotComposition | undefined =>
+  (globalThis as unknown as { __ipcSnapshot?: SnapshotComposition }).__ipcSnapshot
 
 const sendTurn = async (page: Page, prompt: string): Promise<void> => {
   const replies = page.getByText('Deterministic reply', { exact: false })
@@ -121,6 +169,37 @@ test('measures how much a streamed turn sends to the renderer', async ({ app }) 
   // message per turn and is bounded by the turn count itself. So the assertion is a RATIO against an
   // allowance for N extra messages, not a flat "must be identical" — a flat check would fail on a
   // healthy app as soon as the transcript got long enough to serialise.
+  // Decompose the snapshot budget: replay window (event count) versus per-event payload.
+  const composition = (await bridge.runningApplication.evaluate(
+    READ_COMPOSITION as unknown as () => SnapshotComposition | undefined
+  )) as SnapshotComposition | undefined
+
+  if (composition && composition.sends > 0) {
+    const perSendBytes = composition.bytes / composition.sends
+    const perSendEvents = composition.events / composition.sends
+    const perEventBytes = composition.events > 0 ? composition.bytes / composition.events : 0
+    const rankedKinds = Object.entries(composition.byKind)
+      .sort((left, right) => right[1].bytes - left[1].bytes)
+      .slice(0, 6)
+      .map(
+        ([kind, bucket]) =>
+          `${kind}:${bucket.count}条/${Math.round(bucket.bytes / 1024)}KB(≈${Math.round(
+            bucket.bytes / Math.max(bucket.count, 1)
+          )}B每条)`
+      )
+
+    console.log(
+      `[ipc] acp:state composition: ${composition.sends} 次发送 / ${Math.round(
+        composition.bytes / 1024
+      )}KB 合计 | 每次 ${Math.round(perSendBytes / 1024)}KB、${perSendEvents.toFixed(
+        1
+      )} 条事件 | 折合每条事件 ${Math.round(perEventBytes)}B | 单条最大 ${Math.round(
+        composition.maxEventBytes / 1024
+      )}KB(${composition.maxEventKind})`
+    )
+    console.log(`[ipc] acp:state events by kind: ${rankedKinds.join(' | ')}`)
+  }
+
   const first = perTurn[0]
   const last = perTurn[perTurn.length - 1]
 
