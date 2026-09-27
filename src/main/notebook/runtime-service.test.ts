@@ -7540,7 +7540,11 @@ describe('v4 runtime bindings & agent tools', () => {
       language: 'python'
     })
     // Wait until the cell is genuinely in flight (the executor was invoked).
-    await vi.waitFor(() => expect(rejectRun).toBeDefined())
+    // Generous window on purpose: vi.waitFor defaults to a 1s timeout, and this assertion only checks
+    // that the run reached the executor — a machine under load needs longer than that to schedule it.
+    // Measured: with the default it failed at ~1.1s under load average ~70 while passing on a quiet
+    // machine, which is a flake waiting to happen rather than a product fault.
+    await vi.waitFor(() => expect(rejectRun).toBeDefined(), { timeout: 30_000 })
 
     // Force-stop: abort the running cell now. The killed run is recorded 'cancelled', not 'failed'.
     await service.revokeRuntime('python', userPyA.envId, { force: true })

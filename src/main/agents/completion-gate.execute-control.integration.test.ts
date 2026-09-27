@@ -517,6 +517,11 @@ describe('completion gate through the real host.agents SDK and executeControl se
     }
   })
 
+  // Known load-sensitive: on a machine at load average ~50 this test HANGS (not fails fast), and a
+  // raised budget does not help — measured at --testTimeout=180000 it still consumed the full 180s and
+  // failed, so it is an ordering assumption under contention, not a test that needs more time. It passes
+  // on a quiet machine. Left as-is rather than papered over with a bigger timeout; the scheduled flaky
+  // lane is what will surface it in the wild. Tracked for the next version.
   it('preserves the outer executeControl timeout before handing the timeout outcome off once', async () => {
     const connectorStarted = deferred()
     const finishConnector = deferred<unknown>()
