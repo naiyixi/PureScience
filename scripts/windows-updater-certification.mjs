@@ -27,6 +27,8 @@ import {
 
 const UPDATE_TIMEOUT_MS = 180_000
 const SMOKE_ROOT_PREFIX = 'purescience-installer-smoke-updater-'
+const CHROMIUM_STORAGE_PATTERN =
+  /(Local Storage|Session Storage|IndexedDB|leveldb|blob_storage|Crashpad|Network\\|Cache)/i
 
 const singleFile = async (directory, pattern, description) => {
   const matches = (await readdir(directory))
@@ -305,7 +307,7 @@ const printPackagedAppLogTail = async (env, reason) => {
         const entryPath = join(directory, entry.name)
         if (entry.isDirectory()) {
           await walk(entryPath, depth + 1)
-        } else if (entry.name.endsWith('.log')) {
+        } else if (entry.name.endsWith('.log') && !CHROMIUM_STORAGE_PATTERN.test(entryPath)) {
           const info = await stat(entryPath).catch(() => undefined)
           if (info) candidates.push({ path: entryPath, mtimeMs: info.mtimeMs })
         }
@@ -313,7 +315,12 @@ const printPackagedAppLogTail = async (env, reason) => {
     }
     await walk(env.APPDATA, 0)
     await walk(env.LOCALAPPDATA, 0)
-    candidates.sort((left, right) => right.mtimeMs - left.mtimeMs)
+    // The application's own log lives under a `logs` directory; Chromium keeps its own *.log files
+    // (leveldb etc.) that say nothing about the updater, so prefer `logs` and drop the storage dirs.
+    candidates.sort((left, right) => {
+      const rank = (candidate) => (/[\\/]logs[\\/]/i.test(candidate.path) ? 1 : 0)
+      return rank(right) - rank(left) || right.mtimeMs - left.mtimeMs
+    })
     const newest = candidates[0]
     if (!newest) {
       console.log(`[updater] no application log under the drill profile (${reason})`)
@@ -325,6 +332,55 @@ const printPackagedAppLogTail = async (env, reason) => {
     }
   } catch (error) {
     console.log(`[updater] could not read the application log: ${String(error)}`)
+  }
+}
+
+// When the update never lands, the interesting question is where things ended up: did the installer move the
+// app somewhere else, did it stall (its process still running), or did it never start? Print all three.
+const describeInstallState = async (installDirectory, env) => {
+  const listing = async (directory) => {
+    const entries = await readdir(directory, { withFileTypes: true }).catch(() => undefined)
+    return entries
+      ? entries
+          .map((entry) => entry.name)
+          .slice(0, 30)
+          .join(', ') || '(empty)'
+      : 'unreadable'
+  }
+  console.log(`[updater] install state: ${installDirectory} -> ${await listing(installDirectory)}`)
+  console.log(`[updater] local app data: ${env.LOCALAPPDATA} -> ${await listing(env.LOCALAPPDATA)}`)
+  const roots = [
+    env.LOCALAPPDATA,
+    join(env.LOCALAPPDATA, 'Programs'),
+    process.env.ProgramFiles,
+    process.env['ProgramFiles(x86)']
+  ].filter(Boolean)
+  for (const root of roots) {
+    const found = []
+    const walk = async (directory, depth) => {
+      if (depth > 3) return
+      const entries = await readdir(directory, { withFileTypes: true }).catch(() => [])
+      for (const entry of entries) {
+        const entryPath = join(directory, entry.name)
+        if (entry.isDirectory()) await walk(entryPath, depth + 1)
+        else if (entry.name.toLowerCase() === 'purescience.exe') found.push(entryPath)
+      }
+    }
+    await walk(root, 0)
+    if (!found.length) console.log(`[updater] no purescience.exe under ${root}`)
+    for (const foundPath of found) {
+      const version = await executableVersion(foundPath, env)
+      console.log(`[updater] found purescience.exe at ${foundPath} version=${version ?? 'unknown'}`)
+    }
+  }
+  for (const filter of ['purescience.exe', '*setup*.exe']) {
+    const tasks = await runProcess(
+      'tasklist.exe',
+      ['/FO', 'CSV', '/NH', '/FI', `IMAGENAME eq ${filter}`],
+      { allowNonZero: true, env, timeoutMs: 20_000 }
+    ).catch(() => undefined)
+    const rendered = (tasks?.stdout ?? '').trim().split('\n').slice(0, 6).join(' | ')
+    console.log(`[updater] tasklist ${filter}: ${rendered || '(none)'}`)
   }
 }
 
@@ -455,8 +511,14 @@ const main = async () => {
     await waitFor(
       `installed version ${currentVersion}`,
       async () => {
-        const observed = await executableVersion(join(installDirectory, 'purescience.exe'), env)
-        const rendered = observed ?? '(unreadable)'
+        const executable = join(installDirectory, 'purescience.exe')
+        const observed = await executableVersion(executable, env)
+        // "unreadable" used to cover both "the file is gone" and "reading it failed", which are different
+        // findings. Print both facts so the next timeout says which one it is.
+        const fileState = await stat(executable)
+          .then((info) => `present(${info.size}B)`)
+          .catch((error) => `absent(${error.code ?? error.message})`)
+        const rendered = `${observed ?? 'unknown'} file=${fileState}`
         if (rendered !== lastObservedVersion) {
           lastObservedVersion = rendered
           console.log(
@@ -481,6 +543,9 @@ const main = async () => {
     await writeFile(options.output, `${JSON.stringify(observation, null, 2)}\n`, 'utf8')
     console.log('Windows electron-updater differential certification completed successfully.')
   } catch (error) {
+    await describeInstallState(join(root, 'app'), env).catch((stateError) =>
+      console.log(`[updater] could not describe install state: ${String(stateError)}`)
+    )
     await printPackagedAppLogTail(env, String(error))
     primaryError = error
   }
