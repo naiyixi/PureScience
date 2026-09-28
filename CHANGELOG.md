@@ -37,6 +37,10 @@ PureScience 是一款面向科学研究的开源 AI 工作台：多智能体协�
 
 **Windows 全量车道连抓两处（都在我自己的新代码里，如实记录）**：① 用例断言写死了 `/downloads/…`，而 `join()` 在 Windows 上产出反斜杠——**本机两种写法都过**，只有真 Windows 才暴露；② 更要紧的一处是实现的不确定性：「上限内保留哪些日志」只按 mtime 倒序，而 Windows 上两次紧邻写入会报**相同** mtime ⇒ 排序任意 ⇒ 一份 8MB 上限的包里留下当前日志还是归档日志由偶然决定。已加确定性 tie-break（名字倒序：活动日志 `<name>.log` 排在轮转备份 `<name>.1.log` 之后，支持人员最想看的那份赢），用例改为显式 `utimes` 并新增一条「时间相同」用例钉住它；顺带把 `entries` 从「含空字符串的根目录项」改为「只列文件」。修完 `76fcf7b` **Windows 8/8 全绿（0 失败分片）**。这就是「真机门禁」的价值：单靠本机与单元测试，这两条都会带着走。
 
+**Nightly 抓到我引入的一处启动期回归（已修，并说明为什么单靠本机与单元测试抓不到）**：windows-x64 打包失败，日志顺序是 `Error: Failed to get 'downloads' path` → `[main] operation failed` → `Timed out waiting for the installed app web service`——**应用根本起不来**。根因是我在装配处写了 `defaultDir: app.getPath('downloads')`，这是**启动时立即求值**，而全新 Windows 配置目录里没有 Downloads 文件夹，Electron 对解析不了的路径会抛错。仓库里其它同类调用（`file-save` / `update` / `notebook` / `conversation-export`）**全都把 `getPath('downloads')` 放在保存流程内部惰性取**——我破了这个既有模式，而这正是它们平时不出问题的原因。改法：deps 改为 `getDefaultDir: () => string | undefined` 惰性求值，并加一条回退链（`downloads → home → documents → userData`，某个解析不了就换下一个；全解析不了就让对话框不带 `defaultPath` 打开——仍是一次可用导出而不是失败），解析器抛错也被吞掉并降级。新增 3 条用例（抛错时仍能导出且不带默认路径、回退链取下一个、全失败返回 undefined）。修完 `e4ff162` 上 **windows-x64 构建成功**（正是失败的那一处），linux-x64 / macos-x64 / Verify（lint + typecheck + 全量测试 + 打包）/ Windows 全量 8/8 亦全绿。
+
+**macos-arm64 这次的失败已判定为既有 flaky，不是本批引入**：报错是渲染器在应用拆除后仍调用 `preview-resources:release`（PDF 缩略图收尾），同一报错串在 **09-24 的 `35988336698`**（早于本批任何改动）就出现过，同期另三个平台的同一套认证用例全过。已立案 **issue #12**（含证据表与两条候选修法、验收口径），不在本批顺手改——它需要先定「release 失败是否该升级为渲染器错误」。因该作业失败，本次 Nightly 的 `publish` 被跳过，nightly 页仍停在上一版产物。
+
 **仍立案**：① `timeoutMs` 是含冷启动的墙钟预算，无法区分「代码跑太久」与「这次执行根本还没开始」；② `acp:state` 快照新增段的分片能否不重复投递（需渲染器回报已应用 id）；③ 竞品审计剩余缺口（文档标注层 / RO-Crate / 序列工具 / 文献分诊）；④ Windows 代码签名（待证书主体）。
 
 ## v1.75.0 — 2026-09-27（天工：先让门禁能报警，再谈跑得更快）
