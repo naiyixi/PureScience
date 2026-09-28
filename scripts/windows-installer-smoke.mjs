@@ -688,8 +688,19 @@ const launchAndProbe = async ({ installDirectory, expectedVersion, env, legacyCo
   let stderr = ''
   child.stdout?.setEncoding('utf8')
   child.stderr?.setEncoding('utf8')
+  const launchedAt = Date.now()
   child.stdout?.on('data', (chunk) => {
     stdout += chunk
+    // Print the app's startup phases with elapsed time as they arrive. The captured dump alone cannot say
+    // which phase was slow: every line in it carries the dump's timestamp. When the health wait times out,
+    // these lines are the measurement — that is what tells apart "still composing the runtime" from
+    // "never started", before any budget is changed.
+    for (const line of String(chunk).split('\n')) {
+      // The app logs a startup phase as a block: `[main] operation phase {`, then its keys, one of which is
+      // `phase: '<name>'`. Only that key is reprinted, so the timeline stays one line per phase.
+      const phase = /^\s*phase: '([^']+)'/.exec(line)?.[1]
+      if (phase) console.log(`[app +${Date.now() - launchedAt}ms] phase=${phase}`)
+    }
   })
   child.stderr?.on('data', (chunk) => {
     stderr += chunk
