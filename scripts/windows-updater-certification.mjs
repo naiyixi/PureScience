@@ -223,9 +223,25 @@ const runElectronUpdater = async ({ executable, env, expectedVersion }) => {
     }
 
     const closed = withTimeout(application.waitForEvent('close'), 'electron-updater restart')
-    await page.evaluate(() => {
-      void globalThis.window.api.update.apply()
-    })
+    // `apply()` resolves with the updater status; only a successful hand-over quits the app, so the two
+    // outcomes race. The return value used to be discarded, and that is why five releases of red could only
+    // ever say "timed out waiting for the installed version": the app refuses to run the installer when it
+    // cannot fully stop its background processes, and it says exactly that in the status (issue #14).
+    const applied = await Promise.race([
+      page
+        .evaluate(() => globalThis.window.api.update.apply())
+        .catch((error) => ({
+          state: 'error',
+          error: error instanceof Error ? error.message : String(error)
+        })),
+      closed.then(() => ({ state: 'restarting' }))
+    ])
+    console.log(`[updater] apply() -> ${JSON.stringify(applied)}`)
+    if (applied?.state === 'error') {
+      throw new Error(
+        `The updater refused to install (state=error): ${applied.error ?? '(no reason given)'}`
+      )
+    }
     await closed
   } catch (error) {
     await application.close().catch(() => {})
@@ -268,6 +284,48 @@ const assertDifferentialObservation = (observation) => {
     )
   }
   return observation
+}
+
+// The application's own log is where the updater writes *why* it refused to install (which teardown step
+// was incomplete, which process trees were not reaped). The status only repeats the user-facing sentence, so
+// without this tail a red run can only ever say "timed out waiting for the installed version" — which is
+// exactly what happened for five releases (issue #14).
+const printPackagedAppLogTail = async (env, reason) => {
+  try {
+    const candidates = []
+    const walk = async (directory, depth) => {
+      if (depth > 4) return
+      let entries
+      try {
+        entries = await readdir(directory, { withFileTypes: true })
+      } catch {
+        return
+      }
+      for (const entry of entries) {
+        const entryPath = join(directory, entry.name)
+        if (entry.isDirectory()) {
+          await walk(entryPath, depth + 1)
+        } else if (entry.name.endsWith('.log')) {
+          const info = await stat(entryPath).catch(() => undefined)
+          if (info) candidates.push({ path: entryPath, mtimeMs: info.mtimeMs })
+        }
+      }
+    }
+    await walk(env.APPDATA, 0)
+    await walk(env.LOCALAPPDATA, 0)
+    candidates.sort((left, right) => right.mtimeMs - left.mtimeMs)
+    const newest = candidates[0]
+    if (!newest) {
+      console.log(`[updater] no application log under the drill profile (${reason})`)
+      return
+    }
+    console.log(`[updater] application log tail (${newest.path}):`)
+    for (const line of (await readFile(newest.path, 'utf8')).split('\n').slice(-40)) {
+      console.log(`  ${line}`)
+    }
+  } catch (error) {
+    console.log(`[updater] could not read the application log: ${String(error)}`)
+  }
 }
 
 const main = async () => {
@@ -423,6 +481,7 @@ const main = async () => {
     await writeFile(options.output, `${JSON.stringify(observation, null, 2)}\n`, 'utf8')
     console.log('Windows electron-updater differential certification completed successfully.')
   } catch (error) {
+    await printPackagedAppLogTail(env, String(error))
     primaryError = error
   }
 
