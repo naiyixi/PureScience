@@ -373,7 +373,15 @@ describe('post-merge Windows validation', () => {
     expect(release.jobs.build.needs).toBe('release-preflight')
     expect(release.jobs.build.with?.require_windows_signing).toBeUndefined()
     expect(release.jobs['notarize-mac'].if).toBe(stableTagCondition)
-    expect(release.jobs['windows-upgrade-smoke'].if).toBe(stableTagCondition)
+    // The drill must not become unreachable again. It still certifies the published path on a stable tag push
+    // (and still only after publish succeeded), and it is additionally dispatchable on demand so that a red
+    // drill can be read without cutting a release — five releases of red went unnoticed precisely because the
+    // only way to run it was to publish first (issue #14).
+    expect(release.jobs['windows-upgrade-smoke'].if).toContain(stableTagCondition)
+    expect(release.jobs['windows-upgrade-smoke'].if).toContain('needs.publish.result')
+    expect(release.jobs['windows-upgrade-smoke'].if).toContain(
+      "github.event_name == 'workflow_dispatch'"
+    )
     expect(release.jobs.publish.if).toBe(
       "(github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) || " +
         "(github.event_name == 'workflow_dispatch' && inputs.release_tag != '')"

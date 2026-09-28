@@ -77,7 +77,14 @@ jobs:
     # updated version is older than this change and failed the same way on the previous release, which the
     # workflow already documents as timing-sensitive on hosted runners.
     needs: [build, publish]
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    # Tag pushes certify the published update path, so this drill still waits for publish. A manual dispatch
+    # with an empty `release_tag` (artifacts only) is how the drill gets exercised on demand: it needs only the
+    # current artifacts plus the last published stable, and it builds its own local update feed. Being runnable
+    # only *after* a successful release is how this drill stayed red for five releases without anyone noticing.
+    if: >-
+      always() && needs.build.result == 'success' &&
+      (github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') && needs.publish.result == 'success'))
     runs-on: windows-latest
     # Windows packages are intentionally unsigned until a certificate is provisioned. This historical
     # upgrade drill is timing-sensitive on hosted runners, so keep its failure visible without blocking
