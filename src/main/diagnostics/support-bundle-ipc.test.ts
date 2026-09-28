@@ -1,3 +1,5 @@
+import { basename, join } from 'node:path'
+
 import { describe, expect, it, vi } from 'vitest'
 
 import { createSupportBundleCommandOwner, type SupportBundleFacts } from './support-bundle-ipc'
@@ -93,9 +95,12 @@ describe('support bundle command owner', () => {
 
     await owner.exportBundle(sender)
 
-    // The stamp uses local time on purpose (it is read by the person saving the file), so assert its shape
-    // rather than a value that would only hold in the CI timezone.
+    // Two things are asserted separately because neither is portable on its own: the stamp uses local time
+    // on purpose (it is read by the person saving the file, so a fixed value would only hold in one
+    // timezone), and the separator differs by platform (a literal '/downloads/...' pattern fails on Windows,
+    // which is how this test first went red).
     expect(seen).toHaveLength(1)
-    expect(seen[0]).toMatch(/^\/downloads\/support-bundle-\d{8}-\d{6}\.tar\.gz$/)
+    expect(seen[0].startsWith(join('/downloads', ''))).toBe(true)
+    expect(basename(seen[0])).toMatch(/^support-bundle-\d{8}-\d{6}\.tar\.gz$/)
   })
 })
