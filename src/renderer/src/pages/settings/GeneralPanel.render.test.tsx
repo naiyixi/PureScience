@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 
 import { useUpdateStore } from '@/stores/update-store'
 import { useSettingsStore } from '@/stores/settings-store'
@@ -33,6 +33,7 @@ let settingsApi: {
   setAppIconVariant: ReturnType<typeof vi.fn>
   listAppIcons: ReturnType<typeof vi.fn>
 }
+let exportSupportBundle: Mock<() => Promise<unknown>>
 
 const findButton = (pattern: RegExp): HTMLButtonElement | undefined =>
   Array.from(container.querySelectorAll('button')).find((element) =>
@@ -54,6 +55,7 @@ beforeEach(() => {
     appInfo: { name: 'PureScience', version: '0.4.0', copyright: '© 2026 ZEROLINK' },
     status: { state: 'up-to-date', current: '0.4.0', latest: '0.4.0' }
   })
+  exportSupportBundle = vi.fn().mockResolvedValue({ exported: false })
   cliApi = {
     getStatus: vi.fn().mockResolvedValue({
       installed: false,
@@ -108,6 +110,10 @@ beforeEach(() => {
       getPath: vi.fn().mockResolvedValue('/logs/main.log'),
       openFile: vi.fn().mockResolvedValue({ opened: true }),
       revealInFolder: vi.fn().mockResolvedValue({ revealed: true })
+    },
+    diagnostics: {
+      reportRendererFailure: vi.fn(),
+      exportSupportBundle: (): unknown => exportSupportBundle()
     },
     platform: 'win32',
     window: { onCloseConfirmRequest: vi.fn() },
@@ -307,5 +313,49 @@ describe('GeneralPanel app icon', () => {
 
     expect(settingsApi.setAppIconVariant).toHaveBeenCalledWith({ variant: 'dark' })
     expect(useSettingsStore.getState().appIconVariant).toBe('dark')
+  })
+})
+
+describe('GeneralPanel support bundle', () => {
+  it('exports a bundle and reports where it was saved', async () => {
+    root.render(<GeneralPanel />)
+    await flush()
+
+    exportSupportBundle.mockResolvedValue({
+      exported: true,
+      path: '/tmp/support-bundle-20260928-123456.tar.gz',
+      bytes: 4096,
+      redactions: 2
+    })
+
+    const button = findButton(/Export support bundle/)
+    expect(button).toBeDefined()
+
+    await act(async () => {
+      button?.click()
+    })
+    await flush()
+
+    expect(exportSupportBundle).toHaveBeenCalledTimes(1)
+    expect(container.textContent).toContain('/tmp/support-bundle-20260928-123456.tar.gz')
+  })
+
+  it('surfaces a refused bundle as an error instead of a saved path', async () => {
+    root.render(<GeneralPanel />)
+    await flush()
+
+    exportSupportBundle.mockResolvedValue({
+      exported: false,
+      error: 'Support bundle aborted: logs/main.log still contains "/Users/example-user".'
+    })
+
+    const button = findButton(/Export support bundle/)
+    await act(async () => {
+      button?.click()
+    })
+    await flush()
+
+    expect(container.textContent).toContain('Support bundle aborted')
+    expect(container.textContent).not.toContain('Support bundle saved to')
   })
 })

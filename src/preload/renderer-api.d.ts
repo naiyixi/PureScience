@@ -91,7 +91,7 @@ import type {
 import type { BackgroundDelivery } from '../shared/background-delivery'
 import type { DirListing, DownloadDest, LocalFile } from '../shared/remote-fs'
 import type { LocalDirListing, LocalRoots } from '../shared/local-fs'
-import type { RendererFailureReport } from '../shared/diagnostics'
+import type { ExportSupportBundleResult, RendererFailureReport } from '../shared/diagnostics'
 import type { OpenLogFileResult, RevealLogFileResult } from '../shared/logs'
 import type {
   OpenSessionFromNotificationRequest,
@@ -426,6 +426,7 @@ export interface PureScienceAPI {
   }
   diagnostics?: {
     reportRendererFailure(report: RendererFailureReport): void
+    exportSupportBundle(): Promise<ExportSupportBundleResult>
   }
   acp: {
     getState(): Promise<AcpStateSnapshot>

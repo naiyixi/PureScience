@@ -1,4 +1,4 @@
-import { basename, join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { readFile, stat, writeFile } from 'node:fs/promises'
 import { customConnectorSlug } from '../shared/custom-connector'
@@ -90,6 +90,10 @@ import {
 } from './lifecycle-shutdown'
 import { registerLifecycleIpcHandlers } from './lifecycle-broadcast'
 import { createLogsCommandOwner, registerLogsIpcHandlers } from './logs-ipc'
+import {
+  createSupportBundleCommandOwner,
+  registerSupportBundleIpcHandlers
+} from './diagnostics/support-bundle-ipc'
 import { registerNetworkIpcHandlers } from './network-ipc'
 import { registerWindowIpcHandlers } from './window-ipc'
 import { registerWindowFindIpcHandlers } from './window-find-ipc'
@@ -103,7 +107,7 @@ import {
   buildConnectorApprovalBroadcast,
   buildTaskNotificationShow
 } from './notifications/electron-wiring'
-import { createLogger, diagnosticErrorFields, errorLogFields } from './logger'
+import { createLogger, diagnosticErrorFields, errorLogFields, getLogFilePath } from './logger'
 import { startDiagnosticOperation } from './diagnostics/operation'
 import { broadcastNotebookEnvProgress, registerNotebookEnvIpcHandlers } from './notebook/env-ipc'
 import {
@@ -1778,9 +1782,31 @@ const createApplicationModules = async (
   const cliCommandOwner = createCliCommandOwner()
   const githubCommandOwner = createGithubCommandOwner()
   const logsCommandOwner = createLogsCommandOwner()
+  // The support bundle records the storage location *class*, never the path, matching the storage log above:
+  // a bundle that carried absolute paths would hand over the user name and folder layout it is meant to spare.
+  const supportBundleCommandOwner = createSupportBundleCommandOwner({
+    getLogDir: () => dirname(getLogFilePath() ?? join(resolveDataRoot(), 'logs')),
+    getFacts: () => ({
+      versions: {
+        app: app.getVersion(),
+        electron: process.versions.electron ?? 'unknown',
+        chrome: process.versions.chrome ?? 'unknown',
+        node: process.versions.node
+      },
+      platform: process.platform,
+      arch: process.arch,
+      locale: app.getLocale(),
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      packaged: app.isPackaged,
+      storageLocation: samePath(resolveDataRoot(), computeDefaultDataRoot()) ? 'default' : 'custom'
+    }),
+    defaultDir: app.getPath('downloads'),
+    log: createLogger('diagnostics')
+  })
   declareElectronAdapter('desktop-utilities', () => {
     registerFileSaveHandlers({ resolveManagedFilePath, resolveSessionArtifactFilePath })
     registerLogsIpcHandlers(logsCommandOwner)
+    registerSupportBundleIpcHandlers(supportBundleCommandOwner)
     registerGithubIpcHandlers({}, githubCommandOwner)
     registerNetworkIpcHandlers()
     registerCliInstallIpcHandlers(cliCommandOwner)

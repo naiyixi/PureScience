@@ -195,6 +195,7 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
   ]),
   group('diagnostics', 'diagnostics', [
     ['reportRendererFailure', 'diagnostics:renderer-failure', SEND],
+    ['exportSupportBundle', 'diagnostics:export-support-bundle', ELECTRON],
   ]),
   group('github', 'github', [
     ['getStars', 'github:get-stars'],

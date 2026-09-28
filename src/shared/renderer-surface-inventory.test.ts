@@ -54,6 +54,7 @@ const INSTALLED_BUT_NOT_DELIVERED_EVENTS = {
 // recognize their implementation shape or channel constants. T1b must make each omission explicit.
 const GENERATED_SOURCE_OMISSIONS = [
   'clipboard.writeText',
+  'diagnostics.exportSupportBundle',
   'diagnostics.reportRendererFailure',
   'getRuntimeVersions',
   'handoff.list',
@@ -261,7 +262,7 @@ describe('renderer surface inventory', () => {
       ...Object.keys(WEB_EVENT_CHANNELS)
     ])
 
-    expect(electronPaths).toHaveLength(432)
+    expect(electronPaths).toHaveLength(433)
     expectSameSet(
       electronPaths,
       RENDERER_CONTRACT_CATALOG.map(({ publicPath }) => publicPath)

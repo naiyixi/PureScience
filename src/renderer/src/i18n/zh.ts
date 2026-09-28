@@ -1461,6 +1461,11 @@ export const zh = {
   // settings — general panel
   'settings.couldNotOpenLogFile': '无法打开日志文件。',
   'settings.couldNotRevealLogFile': '无法显示日志文件。',
+  'settings.supportBundle': '支持包',
+  'settings.supportBundleDesc': '把版本、运行环境、近期日志和存储位置类别打包成一个文件，方便随问题反馈一起提交。不会自动发送任何内容。',
+  'settings.exportSupportBundle': '导出支持包…',
+  'settings.supportBundleSaved': '支持包已保存到 {path}',
+  'settings.couldNotExportSupportBundle': '无法导出支持包。',
   'settings.windowBehavior': '窗口行为',
   'settings.windowBehaviorHint': '选择标题栏关闭按钮的作用。',
   'settings.whenClosingWindow': '关闭窗口时',

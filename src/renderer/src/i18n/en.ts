@@ -1558,6 +1558,11 @@ export const en: Record<ZhKey, string> = {
   // settings — general panel
   'settings.couldNotOpenLogFile': 'Could not open the log file.',
   'settings.couldNotRevealLogFile': 'Could not reveal the log file.',
+  'settings.supportBundle': 'Support bundle',
+  'settings.supportBundleDesc': 'Collects versions, environment, recent logs and the storage location class into one file you can attach to a support request. Nothing is sent automatically.',
+  'settings.exportSupportBundle': 'Export support bundle…',
+  'settings.supportBundleSaved': 'Support bundle saved to {path}',
+  'settings.couldNotExportSupportBundle': 'Could not export the support bundle.',
   'settings.windowBehavior': 'Window behavior',
   'settings.windowBehaviorHint': 'Choose what the titlebar close button does.',
   'settings.whenClosingWindow': 'When closing the window',

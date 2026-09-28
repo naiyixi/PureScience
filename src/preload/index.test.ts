@@ -294,6 +294,7 @@ describe('preload bridge — public surface inventory', () => {
       'compute.revealInFolder',
       'compute.scratchSet',
       'compute.sshConfigAliases',
+      'diagnostics.exportSupportBundle',
       'diagnostics.reportRendererFailure',
       'egress.onApprovalRequest',
       'egress.respondApproval',
@@ -780,7 +781,7 @@ describe('preload bridge — core renderer contract catalog', () => {
       'uploads',
       'window'
     ])
-    expect(coreContracts).toHaveLength(205)
+    expect(coreContracts).toHaveLength(206)
     expect({
       requests: coreContracts.filter(
         ({ dispatchPolicy }) => dispatchPolicy.electron === 'electron-ipc-request'
@@ -792,7 +793,7 @@ describe('preload bridge — core renderer contract catalog', () => {
       surfaceNative: coreContracts.filter(
         ({ dispatchPolicy }) => dispatchPolicy.electron === 'surface-native'
       ).length
-    }).toEqual({ requests: 167, events: 27, sends: 10, surfaceNative: 1 })
+    }).toEqual({ requests: 168, events: 27, sends: 10, surfaceNative: 1 })
   })
 
   it('routes every core request method through its cataloged Electron channel', async () => {
@@ -801,7 +802,7 @@ describe('preload bridge — core renderer contract catalog', () => {
     )
     const localFile = { name: 'catalog.csv' } as File
 
-    expect(requestContracts).toHaveLength(167)
+    expect(requestContracts).toHaveLength(168)
 
     for (const contract of requestContracts) {
       invokeMock.mockClear()

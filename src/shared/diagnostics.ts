@@ -52,3 +52,18 @@ export const isRendererFailureReport = (value: unknown): value is RendererFailur
       (typeof record.fingerprint === 'string' && /^[a-f0-9]{8,64}$/.test(record.fingerprint)))
   )
 }
+
+export const SUPPORT_BUNDLE_CHANNEL = 'diagnostics:export-support-bundle'
+
+/**
+ * Outcome of a support-bundle export. `exported: false` without an `error` means the user cancelled at the
+ * save dialog; with an `error`, nothing was written (the bundle refuses to be produced when it would carry
+ * the home directory, the user name or a secret-shaped value).
+ */
+export type ExportSupportBundleResult = {
+  exported: boolean
+  path?: string
+  bytes?: number
+  redactions?: number
+  error?: string
+}

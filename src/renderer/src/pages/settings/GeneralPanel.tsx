@@ -1,6 +1,6 @@
 import { useLanguage, type Language } from '@/i18n'
 import { LANGUAGES } from '@/i18n/languages'
-import { ExternalLink, FolderOpen, Globe, Terminal } from 'lucide-react'
+import { ExternalLink, FolderOpen, Globe, PackageOpen, Terminal } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import { ExternalTextLink } from '@/components/ExternalTextLink'
@@ -42,6 +42,9 @@ const GeneralPanel = (): React.JSX.Element => {
   const isMac = window.api.platform === 'darwin'
   const [logPath, setLogPath] = useState<string | null>(null)
   const [message, setMessage] = useState<string | undefined>(undefined)
+  // Kept apart from `message`: a saved bundle is not a problem, and `message` renders as an alert.
+  const [bundleMessage, setBundleMessage] = useState<string | undefined>(undefined)
+  const [isExporting, setIsExporting] = useState(false)
   const [isOpening, setIsOpening] = useState(false)
   const [cli, setCli] = useState<CliLauncherStatus | null>(null)
   const [isUpdatingCli, setIsUpdatingCli] = useState(false)
@@ -87,6 +90,27 @@ const GeneralPanel = (): React.JSX.Element => {
       setMessage(error instanceof Error ? error.message : t('settings.couldNotOpenLogFile'))
     } finally {
       setIsOpening(false)
+    }
+  }
+
+  // Assembles the bundle locally, after the user picks where it goes. A cancelled dialog leaves the panel
+  // untouched: the user asked for nothing and should see nothing change.
+  const handleExportBundle = async (): Promise<void> => {
+    setIsExporting(true)
+    setBundleMessage(undefined)
+
+    try {
+      const result = await window.api.diagnostics?.exportSupportBundle()
+
+      if (result?.exported && result.path) {
+        setBundleMessage(t('settings.supportBundleSaved').replace('{path}', result.path))
+      } else if (result?.error) {
+        setMessage(result.error)
+      }
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : t('settings.couldNotExportSupportBundle'))
+    } finally {
+      setIsExporting(false)
     }
   }
 
@@ -288,6 +312,26 @@ const GeneralPanel = (): React.JSX.Element => {
         >
           {logPath ?? t('settings.notAvailableYet')}
         </pre>
+
+        <SettingsRow
+          label={t('settings.supportBundle')}
+          description={t('settings.supportBundleDesc')}
+          controlClassName="w-auto justify-self-end"
+        >
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => void handleExportBundle()}
+            disabled={isExporting}
+          >
+            <PackageOpen className="size-4" aria-hidden="true" />
+            {t('settings.exportSupportBundle')}
+          </Button>
+        </SettingsRow>
+
+        {bundleMessage ? (
+          <p className="mt-2 text-xs text-muted-foreground">{bundleMessage}</p>
+        ) : null}
 
         {message ? (
           <p className="mt-2 text-xs text-destructive" role="alert">
