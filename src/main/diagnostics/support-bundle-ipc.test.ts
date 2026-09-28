@@ -2,7 +2,11 @@ import { basename, join } from 'node:path'
 
 import { describe, expect, it, vi } from 'vitest'
 
-import { createSupportBundleCommandOwner, type SupportBundleFacts } from './support-bundle-ipc'
+import {
+  createSupportBundleCommandOwner,
+  resolveDefaultSaveDirectory,
+  type SupportBundleFacts
+} from './support-bundle-ipc'
 
 const facts: SupportBundleFacts = {
   versions: { app: '1.75.0', electron: '43.7.5', chrome: '140.0.0.0', node: '22.22.3' },
@@ -26,7 +30,7 @@ describe('support bundle command owner', () => {
     const owner = createSupportBundleCommandOwner({
       getLogDir: () => '/logs',
       getFacts: () => facts,
-      defaultDir: '/downloads',
+      getDefaultDir: () => '/downloads',
       showSaveDialog: async () => ({ canceled: false, filePath: '/chosen/bundle.tar.gz' }),
       create,
       now: () => new Date('2026-09-28T12:34:56.000Z')
@@ -43,12 +47,32 @@ describe('support bundle command owner', () => {
     )
   })
 
+  it('falls back through the path candidates when one cannot be resolved', () => {
+    const attempts: string[] = []
+    const resolved = resolveDefaultSaveDirectory((name) => {
+      attempts.push(name)
+      if (name === 'downloads') throw new Error("Failed to get 'downloads' path")
+      return `/home/user/${name}`
+    })
+
+    expect(resolved).toBe('/home/user/home')
+    expect(attempts).toEqual(['downloads', 'home'])
+  })
+
+  it('reports no default directory when none of the candidates resolve', () => {
+    expect(
+      resolveDefaultSaveDirectory(() => {
+        throw new Error('unavailable')
+      })
+    ).toBeUndefined()
+  })
+
   it('reports a cancel as "nothing exported" rather than an error, and writes nothing', async () => {
     const create = vi.fn()
     const owner = createSupportBundleCommandOwner({
       getLogDir: () => '/logs',
       getFacts: () => facts,
-      defaultDir: '/downloads',
+      getDefaultDir: () => '/downloads',
       showSaveDialog: async () => ({ canceled: true, filePath: '' }),
       create
     })
@@ -62,7 +86,7 @@ describe('support bundle command owner', () => {
     const owner = createSupportBundleCommandOwner({
       getLogDir: () => '/logs',
       getFacts: () => facts,
-      defaultDir: '/downloads',
+      getDefaultDir: () => '/downloads',
       showSaveDialog: async () => ({ canceled: false, filePath: '/chosen/bundle.tar.gz' }),
       create: async () => {
         throw new Error(
@@ -79,12 +103,38 @@ describe('support bundle command owner', () => {
     expect(warn).toHaveBeenCalledTimes(1)
   })
 
+  it('still exports when the default directory cannot be resolved', async () => {
+    const create = vi.fn(async (input: { outPath: string }) => ({
+      path: input.outPath,
+      bytes: 1,
+      redactions: 0
+    }))
+    const seen: Array<Record<string, unknown>> = []
+    const owner = createSupportBundleCommandOwner({
+      getLogDir: () => '/logs',
+      getFacts: () => facts,
+      // `app.getPath('downloads')` throws on a fresh Windows profile; the export must survive it.
+      getDefaultDir: () => {
+        throw new Error("Failed to get 'downloads' path")
+      },
+      showSaveDialog: async (_sender, options) => {
+        seen.push(options as Record<string, unknown>)
+        return { canceled: false, filePath: '/chosen/bundle.tar.gz' }
+      },
+      create
+    })
+
+    await expect(owner.exportBundle(sender)).resolves.toMatchObject({ exported: true })
+    // No default path at all, rather than a broken one: the dialog opens wherever the platform prefers.
+    expect(seen[0]?.defaultPath).toBeUndefined()
+  })
+
   it('stamps a distinct default file name per export', async () => {
     const seen: string[] = []
     const owner = createSupportBundleCommandOwner({
       getLogDir: () => '/logs',
       getFacts: () => facts,
-      defaultDir: '/downloads',
+      getDefaultDir: () => '/downloads',
       showSaveDialog: async (_sender, options) => {
         seen.push(String(options?.defaultPath))
         return { canceled: true, filePath: '' }

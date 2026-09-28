@@ -92,7 +92,8 @@ import { registerLifecycleIpcHandlers } from './lifecycle-broadcast'
 import { createLogsCommandOwner, registerLogsIpcHandlers } from './logs-ipc'
 import {
   createSupportBundleCommandOwner,
-  registerSupportBundleIpcHandlers
+  registerSupportBundleIpcHandlers,
+  resolveDefaultSaveDirectory
 } from './diagnostics/support-bundle-ipc'
 import { registerNetworkIpcHandlers } from './network-ipc'
 import { registerWindowIpcHandlers } from './window-ipc'
@@ -1800,7 +1801,9 @@ const createApplicationModules = async (
       packaged: app.isPackaged,
       storageLocation: samePath(resolveDataRoot(), computeDefaultDataRoot()) ? 'default' : 'custom'
     }),
-    defaultDir: app.getPath('downloads'),
+    // Lazy on purpose: `app.getPath('downloads')` throws when the folder cannot be resolved (a fresh
+    // Windows profile has none), and resolving it eagerly at startup would take the whole app down with it.
+    getDefaultDir: () => resolveDefaultSaveDirectory((name) => app.getPath(name)),
     log: createLogger('diagnostics')
   })
   declareElectronAdapter('desktop-utilities', () => {

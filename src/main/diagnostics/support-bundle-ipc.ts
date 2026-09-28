@@ -19,8 +19,12 @@ export type SupportBundleCommandOwner = Readonly<{
 export type SupportBundleCommandDeps = Readonly<{
   getLogDir: () => string
   getFacts: () => SupportBundleFacts
-  /** Directory the save dialog opens in. The file name is stamped here so two exports cannot collide. */
-  defaultDir: string
+  /**
+   * Directory the save dialog opens in. Resolved lazily and defensively: `app.getPath` throws when the
+   * folder cannot be resolved — a fresh Windows profile has no Downloads folder — and an export must not
+   * depend on that existing. The file name is stamped when the dialog opens, so two exports cannot collide.
+   */
+  getDefaultDir: () => string | undefined
   showSaveDialog?: (
     sender: WebContents,
     options: SaveDialogOptions
@@ -29,6 +33,25 @@ export type SupportBundleCommandDeps = Readonly<{
   now?: () => Date
   log?: Readonly<{ warn: (message: string, fields?: unknown) => void }>
 }>
+
+/**
+ * Directory to open the save dialog in, trying each candidate in turn: `app.getPath` throws for a folder the
+ * platform cannot resolve, and a fresh Windows profile without a Downloads folder does exactly that.
+ * Returns undefined when none resolves, which the caller treats as "let the platform decide".
+ */
+export const resolveDefaultSaveDirectory = (
+  getPath: (name: 'downloads' | 'home' | 'documents' | 'userData') => string
+): string | undefined => {
+  for (const name of ['downloads', 'home', 'documents', 'userData'] as const) {
+    try {
+      const resolved = getPath(name)
+      if (resolved) return resolved
+    } catch {
+      // Try the next candidate: the point of the chain is that one missing folder is not fatal.
+    }
+  }
+  return undefined
+}
 
 const fileStamp = (now: Date): string => {
   const pad = (value: number): string => String(value).padStart(2, '0')
@@ -58,10 +81,21 @@ export const createSupportBundleCommandOwner = (
 
   return {
     exportBundle: async (sender: WebContents): Promise<ExportSupportBundleResult> => {
-      const defaultPath = join(deps.defaultDir, `support-bundle-${fileStamp(now())}.tar.gz`)
+      // A throwing or empty directory must not fail the export: without a default path the dialog simply
+      // opens wherever the platform prefers, which is still a working export.
+      let defaultDir: string | undefined
+      try {
+        defaultDir = deps.getDefaultDir() || undefined
+      } catch {
+        defaultDir = undefined
+      }
+      const defaultPath = defaultDir
+        ? join(defaultDir, `support-bundle-${fileStamp(now())}.tar.gz`)
+        : undefined
+
       const selected = await showSaveDialog(sender, {
         title: 'Export support bundle',
-        defaultPath,
+        ...(defaultPath ? { defaultPath } : {}),
         filters: [{ name: 'Support bundle', extensions: ['gz'] }]
       })
 
