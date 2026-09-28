@@ -15,6 +15,10 @@ on:
         description: 'Tag to publish assets to (e.g. v0.11.1); empty = artifacts only'
         required: false
         default: ''
+      previous_version:
+        description: 'Stable tag the update drill starts from (e.g. v1.74.0); empty = newest stable'
+        required: false
+        default: ''
 
 # Required to create a Release and upload assets.
 permissions:
@@ -117,11 +121,15 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CURRENT_TAG: ${{ github.ref_name }}
+          PREVIOUS_VERSION: ${{ inputs.previous_version }}
         run: |
           New-Item -ItemType Directory -Force previous | Out-Null
-          $releases = gh release list --exclude-drafts --exclude-pre-releases --limit 20 --json tagName
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $tag = ($releases | ConvertFrom-Json | Where-Object { $_.tagName -like 'v*' -and $_.tagName -ne $env:CURRENT_TAG } | Select-Object -First 1).tagName
+          $tag = $env:PREVIOUS_VERSION
+          if ([string]::IsNullOrWhiteSpace($tag)) {
+            $releases = gh release list --exclude-drafts --exclude-pre-releases --limit 20 --json tagName
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $tag = ($releases | ConvertFrom-Json | Where-Object { $_.tagName -like 'v*' -and $_.tagName -ne $env:CURRENT_TAG } | Select-Object -First 1).tagName
+          }
           if ([string]::IsNullOrWhiteSpace($tag)) {
             "available=false" >> $env:GITHUB_OUTPUT
             "reason=no-previous-stable-release" >> $env:GITHUB_OUTPUT
