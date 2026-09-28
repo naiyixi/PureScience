@@ -4,7 +4,20 @@ import { createRoot } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { SessionInfoCard } from './SessionInfoCard'
+import { drainWorkspaceRuntimeEventsForPersistence } from '../../lib/acp/useWorkspaceAgentRuntime'
+import { flushSessionPersistence } from '../../lib/session-persistence/session-persistence'
 import type { ChatSession } from '@/stores/session-store'
+
+// The measurement must push pending writes down before it reads the document, so the two calls that do it
+// are spies here; everything else in these modules stays real.
+vi.mock('../../lib/acp/useWorkspaceAgentRuntime', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../lib/acp/useWorkspaceAgentRuntime')>()),
+  drainWorkspaceRuntimeEventsForPersistence: vi.fn(async () => undefined)
+}))
+vi.mock('../../lib/session-persistence/session-persistence', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../lib/session-persistence/session-persistence')>()),
+  flushSessionPersistence: vi.fn(async () => undefined)
+}))
 
 // Counts are read from the same messages the transcript renders, so the card cannot disagree with
 // what the reader sees — this test pins that, plus the pin's persistence and the evidence hand-off.
@@ -111,6 +124,51 @@ describe('session information card', () => {
     })
     expect(onOpenEvidence).toHaveBeenCalledTimes(1)
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  // The transcript is persisted asynchronously, so a document read taken while a reply is still in flight
+  // reports a copy that omits it — the preview would under-count what is already on screen. That is how the
+  // fork certification spec failed on a slow runner; the order below is the fix.
+  it('drains and flushes the transcript before reading the document it measures', async () => {
+    const order: string[] = []
+    const measured = session({ id: 'session-flush-order' })
+    const api = {
+      sessions: {
+        readDocument: async (): Promise<unknown> => {
+          order.push('read')
+          return {
+            ...measured,
+            messages: measured.messages,
+            activities: [],
+            createdAt: 1,
+            updatedAt: 2
+          }
+        },
+        saveSession: async (): Promise<void> => undefined
+      }
+    }
+    const previous = (window as unknown as { api?: unknown }).api
+    ;(window as unknown as { api: unknown }).api = api
+    vi.mocked(drainWorkspaceRuntimeEventsForPersistence).mockImplementation(async () => {
+      order.push('drain')
+    })
+    vi.mocked(flushSessionPersistence).mockImplementation(async () => {
+      order.push('flush')
+    })
+    try {
+      const container = mount(<SessionInfoCard session={measured} onClose={() => {}} />)
+      await act(async () => {
+        container
+          .querySelector('[data-slot="session-fork-measure"]')
+          ?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      })
+      await vi.waitFor(() => {
+        expect(order).toContain('read')
+      })
+      expect(order).toEqual(['drain', 'flush', 'read'])
+    } finally {
+      ;(window as unknown as { api: unknown }).api = previous
+    }
   })
 
   // The card is re-mounted while it is open (a session update re-renders the mount site), which the

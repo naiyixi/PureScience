@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Bookmark, ClipboardCheck, GitBranch, Pin, PinOff, X } from 'lucide-react'
 
 import { useLanguage } from '@/i18n'
+import { drainWorkspaceRuntimeEventsForPersistence } from '../../lib/acp/useWorkspaceAgentRuntime'
+import { flushSessionPersistence } from '../../lib/session-persistence/session-persistence'
 import {
   buildSessionFork,
   planSessionFork,
@@ -103,6 +105,13 @@ export function SessionInfoCard({
     setForkBusy(true)
     updateForkState({ notice: undefined })
     try {
+      // Measure what the user can see. The transcript is persisted asynchronously, so reading the document
+      // while a reply is still in flight reports a copy that omits it — the preview would under-count what is
+      // already on screen (that is how the fork certification spec failed on a slow runner). Drain the runtime
+      // events and flush first, the same sequence the quit handshake uses, so the counts describe the session
+      // as it stands rather than as it happened to be written.
+      await drainWorkspaceRuntimeEventsForPersistence()
+      await flushSessionPersistence()
       const document = await window.api.sessions.readDocument({
         projectId: session.projectId,
         sessionId: session.id
