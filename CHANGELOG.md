@@ -41,6 +41,8 @@ PureScience 是一款面向科学研究的开源 AI 工作台：多智能体协�
 
 **macos-arm64 这次的失败已判定为既有 flaky，不是本批引入**：报错是渲染器在应用拆除后仍调用 `preview-resources:release`（PDF 缩略图收尾），同一报错串在 **09-24 的 `35988336698`**（早于本批任何改动）就出现过，同期另三个平台的同一套认证用例全过。已立案 **issue #12**（含证据表与两条候选修法、验收口径），不在本批顺手改——它需要先定「release 失败是否该升级为渲染器错误」。因该作业失败，本次 Nightly 的 `publish` 被跳过，nightly 页仍停在上一版产物。
 
+**顺手把上一段里判定为既有 flaky 的 PDF 预览竞态修掉了（issue #12 已闭环）**：`release` 是尽力而为的收尾调用，应用关闭/窗口重建后主进程已无该能力，而两处调用把它升格成渲染器 console error——`RendererFailureGate` 记的正是任何 console error，于是拖垮无关的认证用例。代码库里 `useManagedPreviewResource` 的 `releaseQuietly` 注释早就写明这条道理，另两处（`PdfThumbnail` 的 `finally` await、`PdfPreview` 的自带 `console.error`）没遵循。改法：把 `releaseQuietly` 提成单一出处，三处统一。用例已验能抓回归（改回旧写法后精确红在 `expect(consoleError).not.toHaveBeenCalled()`）。**实机证据**：`5ef94da` 的 Nightly 四平台全绿、publish 成功，`RELEASE-CERTIFICATION.json` 记 macos-arm64 `electronP0 / visualRegression / packageSmoke` 三项 **passed**——正是此前两次红的认证套件；nightly 页产物带 `g5ef94da`。
+
 **仍立案**：① `timeoutMs` 是含冷启动的墙钟预算，无法区分「代码跑太久」与「这次执行根本还没开始」；② `acp:state` 快照新增段的分片能否不重复投递（需渲染器回报已应用 id）；③ 竞品审计剩余缺口（文档标注层 / RO-Crate / 序列工具 / 文献分诊）；④ Windows 代码签名（待证书主体）。
 
 ## v1.75.0 — 2026-09-27（天工：先让门禁能报警，再谈跑得更快）
