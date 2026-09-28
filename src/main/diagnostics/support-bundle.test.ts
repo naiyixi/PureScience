@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, stat, utimes, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -137,10 +137,38 @@ describe('support bundle', () => {
   it('copies the newest logs first and stops at the byte cap', async () => {
     const root = await createRoot()
     const input = await baseInput(root)
-    await writeFile(join(root, 'logs', 'purescience.1.log'), 'old'.repeat(200), 'utf8')
-    await writeFile(join(root, 'logs', 'purescience.log'), 'new'.repeat(200), 'utf8')
+    const rotated = join(root, 'logs', 'purescience.1.log')
+    const active = join(root, 'logs', 'purescience.log')
+    await writeFile(rotated, 'old'.repeat(200), 'utf8')
+    await writeFile(active, 'new'.repeat(200), 'utf8')
+    // Ordering is by modification time, so the times are set explicitly: relying on two writes landing in a
+    // different clock tick holds on one platform and not on another (Windows reports them equal, and this
+    // test then failed there).
+    const earlier = new Date('2026-09-27T00:00:00.000Z')
+    const later = new Date('2026-09-28T00:00:00.000Z')
+    await utimes(rotated, earlier, earlier)
+    await utimes(active, later, later)
 
     // One log fits the cap, not two.
+    const result = await createSupportBundle({ ...input, maxLogBytes: 700 })
+
+    expect(result.entries).toContain('logs/purescience.log')
+    expect(result.entries).not.toContain('logs/purescience.1.log')
+  })
+
+  it('prefers the active log when the filesystem cannot separate two writes', async () => {
+    const root = await createRoot()
+    const input = await baseInput(root)
+    const rotated = join(root, 'logs', 'purescience.1.log')
+    const active = join(root, 'logs', 'purescience.log')
+    await writeFile(rotated, 'old'.repeat(200), 'utf8')
+    await writeFile(active, 'new'.repeat(200), 'utf8')
+    // Identical times: without a tie-breaker the order is arbitrary, and here that would decide which log
+    // survives the cap.
+    const same = new Date('2026-09-28T00:00:00.000Z')
+    await utimes(rotated, same, same)
+    await utimes(active, same, same)
+
     const result = await createSupportBundle({ ...input, maxLogBytes: 700 })
 
     expect(result.entries).toContain('logs/purescience.log')

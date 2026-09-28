@@ -144,19 +144,30 @@ const listLogFilesNewestFirst = async (logDir: string): Promise<string[]> => {
       return info?.isFile() ? { full, mtime: info.mtimeMs } : undefined
     })
   )
-  return files
-    .filter((file): file is { full: string; mtime: number } => !!file)
-    .sort((left, right) => right.mtime - left.mtime)
-    .map((file) => file.full)
+  return (
+    files
+      .filter((file): file is { full: string; mtime: number } => !!file)
+      // Ties are real, and an arbitrary order there silently decides which logs survive the byte cap: a
+      // filesystem with coarse mtime granularity reports the same time for writes that happened milliseconds
+      // apart. Name descending is the tie-breaker — the active log (`<name>.log`) sorts after its rotated
+      // backups (`<name>.1.log`), so the file a support engineer wants first is the one that wins.
+      .sort(
+        (left, right) =>
+          right.mtime - left.mtime || (right.full > left.full ? 1 : right.full < left.full ? -1 : 0)
+      )
+      .map((file) => file.full)
+  )
 }
 
-/** Lists the entries inside a written bundle — used by the read-back check and by tests. */
+/** Lists the files inside a written bundle — used by callers and by tests to assert what shipped. */
 export const listSupportBundleEntries = async (path: string): Promise<string[]> => {
   const entries: string[] = []
   await tar.list({
     file: path,
     onentry: (entry) => {
-      entries.push(entry.path.replace(/^\.\//, ''))
+      // Files only: the archive also carries a directory entry for the root, which normalises to an empty
+      // string and is not something the bundle contains.
+      if (entry.type === 'File') entries.push(entry.path.replace(/^\.\//, ''))
     }
   })
   return entries
