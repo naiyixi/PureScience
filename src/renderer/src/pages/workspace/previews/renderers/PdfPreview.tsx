@@ -13,6 +13,7 @@ import { PreviewErrorCard, PreviewLoadingContent } from '../PreviewFallback'
 import { createManagedPdfLoadingTask } from '../managed-pdf-document'
 import { isUnavailableFileError } from '../preview-errors'
 import { createPreviewResourceKey } from '../preview-resource-key'
+import { releaseQuietly } from '../preview-resource-release'
 import { createPreviewRequestScope } from '../preview-file-reader'
 import type { PreviewFileRendererProps } from '../preview-types'
 import { useNearViewport } from '../useNearViewport'
@@ -520,13 +521,9 @@ export const PdfPreviewContent = ({
           console.error('Failed to destroy PDF preview', error)
         }
 
-        if (resourceId) {
-          try {
-            await window.api.previewResources.release({ resourceId })
-          } catch (error) {
-            console.error('Failed to release PDF preview resource', error)
-          }
-        }
+        // Quiet on purpose: releasing while the application shuts down has nothing to release, and a
+        // console error here fails unrelated certification specs (see releaseQuietly).
+        if (resourceId) releaseQuietly(resourceId)
       })()
       return disposePromise
     }

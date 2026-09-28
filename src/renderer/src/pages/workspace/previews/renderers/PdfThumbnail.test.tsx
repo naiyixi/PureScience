@@ -127,6 +127,37 @@ describe('PdfThumbnail', () => {
     expect(window.api.previewResources.release).toHaveBeenCalled()
   })
 
+  it('keeps the render when releasing the resource fails during teardown', async () => {
+    // Releasing is best-effort: while the application shuts down the main process owns no such capability,
+    // and escalating that to a console error is what failed an unrelated certification spec (issue #12).
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    vi.mocked(window.api.previewResources.release).mockRejectedValue(
+      new Error(
+        "Error invoking remote method 'preview-resources:release': Error: No handler registered for 'preview-resources:release'"
+      )
+    )
+
+    await act(async () => {
+      root.render(
+        <PdfThumbnail
+          path="/uploads/session-1/report.pdf"
+          name="report.pdf"
+          source="upload"
+          projectId="project-1"
+          sessionId="session-1"
+          size={4096}
+          mtimeMs={1}
+        />
+      )
+      await flushMicrotasks()
+    })
+
+    expect(container.querySelector('img[alt="Preview of report.pdf"]')?.getAttribute('src')).toBe(
+      'blob:rendered-page'
+    )
+    expect(consoleError).not.toHaveBeenCalled()
+  })
+
   it('recovers silently after a pending path disappears and the finalized path succeeds', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     vi.mocked(window.api.previewResources.acquire)

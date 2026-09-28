@@ -6,6 +6,7 @@ import type { ManagedPreviewResource } from '../../../../../../shared/preview-re
 import type { PreviewFileSource } from '@/stores/preview-workbench-store'
 
 import { createManagedPdfLoadingTask } from '../managed-pdf-document'
+import { releaseQuietly } from '../preview-resource-release'
 import { isUnavailableFileError } from '../preview-errors'
 import { createPreviewResourceKey } from '../preview-resource-key'
 import { createPreviewRequestScope } from '../preview-file-reader'
@@ -210,9 +211,8 @@ const createThumbnailJob = (
         resourceVersion: resource.version
       })
     } finally {
-      if (resource) {
-        await window.api.previewResources.release({ resourceId: resource.id })
-      }
+      // Quiet on purpose: a failure to release must not fail the render (see releaseQuietly).
+      if (resource) releaseQuietly(resource.id)
     }
   }, abortController.signal).catch((error: unknown) => {
     if (abortController.signal.aborted) throw createAbortError()

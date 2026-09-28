@@ -4,6 +4,7 @@ import type { ManagedPreviewResource } from '../../../../../shared/preview-resou
 import type { PreviewFileItem } from '@/stores/preview-workbench-store'
 
 import { createPreviewResourceKey } from './preview-resource-key'
+import { releaseQuietly } from './preview-resource-release'
 import { createPreviewRequestScope } from './preview-file-reader'
 
 type ManagedPreviewResourceState =
@@ -13,13 +14,6 @@ type ManagedPreviewResourceState =
   | { status: 'error'; resource?: undefined; error: Error }
 
 const idleState: ManagedPreviewResourceState = { status: 'idle' }
-
-// Releasing is best-effort. When the main process owns no such capability — for example right after a
-// window is replaced and the command groups are composed again — there is nothing to release, and a
-// rejection here would surface as a renderer console error and fail an unrelated certification spec.
-const releaseQuietly = (resourceId: string): void => {
-  void window.api.previewResources.release({ resourceId }).catch(() => undefined)
-}
 
 type ManagedPreviewResourceResult =
   | { requestKey: string; status: 'ready'; resource: ManagedPreviewResource }
