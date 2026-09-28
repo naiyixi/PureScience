@@ -389,12 +389,24 @@ const main = async () => {
       previousInstallerCacheVerified: true
     })
 
+    // Sample the installed version as it changes instead of only polling a terminal value: the timeout
+    // error alone cannot tell "the silent install never started" from "it failed" from "it finished and
+    // the old version is still in place". This line is that measurement (issue #14).
+    const versionWaitStartedAt = Date.now()
+    let lastObservedVersion = '(not read yet)'
     await waitFor(
       `installed version ${currentVersion}`,
-      async () =>
-        (await executableVersion(join(installDirectory, 'purescience.exe'), env))?.startsWith(
-          currentVersion
-        ),
+      async () => {
+        const observed = await executableVersion(join(installDirectory, 'purescience.exe'), env)
+        const rendered = observed ?? '(unreadable)'
+        if (rendered !== lastObservedVersion) {
+          lastObservedVersion = rendered
+          console.log(
+            `[updater +${Date.now() - versionWaitStartedAt}ms] installed=${rendered} (want ${currentVersion})`
+          )
+        }
+        return observed?.startsWith(currentVersion)
+      },
       UPDATE_TIMEOUT_MS
     )
     await runProcess('taskkill.exe', ['/IM', 'purescience.exe', '/T', '/F'], {
