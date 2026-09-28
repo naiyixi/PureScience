@@ -102,6 +102,12 @@ type ElectronApp = {
   pressMainWindowShortcut: (key: string, modifiers: ShortcutModifier[]) => Promise<void>
   /** Reads the OS clipboard from the main process: the window denies Chromium clipboard access. */
   readClipboardText: () => Promise<string>
+  /**
+   * Replaces the native save dialog in the main process. No test can operate a native dialog, so this is the
+   * one seam a save-to-file flow needs; everything downstream (IPC, the work itself, the write) stays real.
+   * Pass null to simulate the user cancelling.
+   */
+  stubSaveDialog: (filePath: string | null) => Promise<void>
   requestMainWindowClose: () => Promise<void>
   restart: () => Promise<Page>
 }
@@ -398,6 +404,12 @@ class ElectronAppHarness implements ElectronApp {
 
   async readClipboardText(): Promise<string> {
     return this.runningApplication.evaluate(({ clipboard }) => clipboard.readText())
+  }
+
+  async stubSaveDialog(filePath: string | null): Promise<void> {
+    await this.runningApplication.evaluate(({ dialog }, path) => {
+      dialog.showSaveDialog = async () => ({ canceled: path === null, filePath: path ?? '' })
+    }, filePath)
   }
 
   async requestMainWindowClose(): Promise<void> {
