@@ -8,6 +8,12 @@ import type {
   PdfAnnotationExportReceipt,
   PdfAnnotationView
 } from '../../../../../../shared/pdf-annotation-surface'
+import {
+  buildPdfAnnotationCitation,
+  formatPdfAnnotationCitation,
+  type PdfAnnotationCitationLabels,
+  type PdfAnnotationCitationRecord
+} from '../../../../../../shared/pdf-annotation-citation'
 import type { PdfEmbeddedAnnotationImportReport } from '../../../../../../shared/pdf-annotation-import'
 import type { PdfAnnotationImportFailureCode } from '../../../../../../shared/pdf-annotation-import'
 import type {
@@ -92,6 +98,69 @@ const quoteOf = (view: PdfAnnotationView): string => {
   const selector = view.annotation.selector as unknown as Record<string, unknown>
   if (selector.shape === 'text-range' && typeof selector.quote === 'string') return selector.quote
   return view.annotation.body
+}
+
+/**
+ * One annotation as a CITATION (文档标注层 A5, 需求 2), shown under the markup it describes.
+ *
+ * The line is the shared citation record rendered with the UI language's labels, and the record itself is
+ * carried in the element's data attributes. That is deliberate: the four facts a reader has to be able to
+ * check — which version, which checksum, which page, which passage — are then readable by an acceptance
+ * run from the panel rather than paraphrased in prose. A stored row that disagrees with its own rule is
+ * refused by the shared builder and shows its named reason instead of a citation nobody could verify.
+ */
+const CitationLine = ({
+  view,
+  labels
+}: {
+  view: PdfAnnotationView
+  labels: PdfAnnotationCitationLabels
+}): React.JSX.Element => {
+  const { t } = useLanguage()
+  const outcome = buildPdfAnnotationCitation({
+    annotationId: view.annotation.id,
+    sourceFileId: view.annotation.sourceFileId,
+    versionId: view.annotation.versionId,
+    checksum: view.annotation.checksum,
+    kind: view.annotation.kind,
+    selector: view.annotation.selector,
+    body: view.annotation.body,
+    createdAt: view.annotation.createdAt,
+    anchorState: view.anchorState
+  })
+
+  if (outcome.status === 'refused') {
+    return (
+      <p
+        data-testid="pdf-annotation-citation"
+        data-status="refused"
+        data-code={outcome.code}
+        role="alert"
+        className="text-[10px] text-rose-500 [overflow-wrap:anywhere]"
+      >
+        {t('pdfAnnotation.citation.refused', { reason: outcome.message })}
+      </p>
+    )
+  }
+
+  const record: PdfAnnotationCitationRecord = outcome.record
+  return (
+    <p
+      data-testid="pdf-annotation-citation"
+      data-status="record"
+      data-annotation-id={record.annotationId}
+      data-source-file-id={record.anchor.sourceFileId}
+      data-version-id={record.anchor.versionId}
+      data-checksum={record.anchor.checksum}
+      data-anchor-state={record.anchorState}
+      data-page={record.page}
+      data-rect-count={record.rects.length}
+      data-quote={record.quote}
+      className="whitespace-pre-wrap rounded bg-bg-200/60 px-1.5 py-1 text-[10px] text-text-300 [overflow-wrap:anywhere]"
+    >
+      {formatPdfAnnotationCitation(record, labels)}
+    </p>
+  )
 }
 
 const ImportReport = ({
@@ -479,6 +548,19 @@ export const PdfAnnotationPanel = ({
 }: PdfAnnotationPanelProps): React.JSX.Element => {
   const { t } = useLanguage()
   const anchoredElsewhere = counts.versionChanged + counts.checksumMismatch
+  // The citation labels, read once from the UI language. Identifiers, the checksum and the coordinates
+  // inside the formatted line do not translate — the point of a citation is that someone else can check it.
+  const citationLabels: PdfAnnotationCitationLabels = {
+    header: t('pdfAnnotation.citation.header'),
+    file: t('pdfAnnotation.citation.file'),
+    version: t('pdfAnnotation.citation.version'),
+    checksum: t('pdfAnnotation.citation.checksum'),
+    page: t('pdfAnnotation.citation.page'),
+    region: t('pdfAnnotation.citation.region'),
+    quote: t('pdfAnnotation.citation.quote'),
+    note: t('pdfAnnotation.citation.note'),
+    anchorState: t('pdfAnnotation.citation.anchorState')
+  }
 
   return (
     <aside
@@ -642,6 +724,10 @@ export const PdfAnnotationPanel = ({
                   {quoteOf(view)}
                 </p>
 
+                {/* The annotation as a citation: the version, the checksum, the page, the boxes and the
+                    quoted passage, all readable off the element's data attributes. */}
+                <CitationLine view={view} labels={citationLabels} />
+
                 {anchoredHere ? null : (
                   <div className="space-y-1">
                     <p className="text-[11px] text-text-300">
@@ -674,6 +760,17 @@ export const PdfAnnotationPanel = ({
       {/* Stated once, at the bottom: the handling path the reader has, for the state they will hit. */}
       <p className="mt-auto px-3 py-2 text-[10px] text-text-300">
         {t('pdfAnnotation.anchor.keepHint')}
+      </p>
+
+      {/* The red line, said where the reader can see it (文档标注层 A5, 红线 5): an annotation is the
+          reader's own markup, indexed for SEARCH and cited for the record — it is never assembled into a
+          model's input. The test that keeps this true lives beside the two paths that build model input
+          (src/main/acp/pdf-annotation-model-input-boundary.test.ts). */}
+      <p
+        data-testid="pdf-annotation-model-context-policy"
+        className="border-t border-border-300/40 px-3 py-2 text-[10px] text-text-300"
+      >
+        {t('pdfAnnotation.policy.modelContext')}
       </p>
     </aside>
   )

@@ -19,8 +19,18 @@ import {
 type Row = Record<string, unknown>
 type Where = Record<string, unknown>
 
-const matches = (row: Row, where: Where | undefined): boolean =>
-  Object.entries(where ?? {}).every(([key, value]) => row[key] === value)
+const matches = (row: Row, where: Where | undefined): boolean => {
+  if (!where) return true
+  // `OR` is the one combinator the repository uses, for a multi-anchor read (A5's search corpus). Honoured
+  // rather than ignored: a fake that dropped it would answer "any of these file versions" with the whole
+  // table, which is the failure the real query exists to avoid.
+  const or = Array.isArray(where.OR) ? (where.OR as Where[]) : undefined
+  if (or && !or.some((clause) => matches(row, clause))) return false
+
+  return Object.entries(where)
+    .filter(([key]) => key !== 'OR')
+    .every(([key, value]) => row[key] === value)
+}
 
 const orderOf = (orderBy: unknown): Array<[string, 'asc' | 'desc']> =>
   (Array.isArray(orderBy) ? orderBy : [orderBy ?? {}]).map((entry) => {
@@ -51,7 +61,12 @@ const project = (row: Row, select: Row | undefined): Row => {
 }
 
 type FakeDelegate = {
-  findMany: (args: { where?: Where; orderBy?: unknown; select?: Row }) => Promise<Row[]>
+  findMany: (args: {
+    where?: Where
+    orderBy?: unknown
+    select?: Row
+    take?: number
+  }) => Promise<Row[]>
   findUnique: (args: { where: Where }) => Promise<Row | null>
   create: (args: { data: Row }) => Promise<Row>
   update: () => Promise<never>
@@ -75,13 +90,26 @@ const createFakeClient = (): {
     uniqueFields: string[],
     createDefaults: (data: Row) => Row
   ): FakeDelegate => ({
-    findMany: ({ where, orderBy, select }: { where?: Where; orderBy?: unknown; select?: Row }) =>
-      Promise.resolve(
-        sortRows(
-          rows.filter((row) => matches(row, where)),
-          orderBy
-        ).map((row) => project(row, select))
-      ),
+    findMany: ({
+      where,
+      orderBy,
+      select,
+      take
+    }: {
+      where?: Where
+      orderBy?: unknown
+      select?: Row
+      take?: number
+    }) => {
+      const ordered = sortRows(
+        rows.filter((row) => matches(row, where)),
+        orderBy
+      )
+      // `take` is honoured: a bounded read the fake ignored would make "the bound was reached" untestable,
+      // which is the one thing the bound exists to make checkable.
+      const limited = typeof take === 'number' ? ordered.slice(0, Math.max(0, take)) : ordered
+      return Promise.resolve(limited.map((row) => project(row, select)))
+    },
     findUnique: ({ where }: { where: Where }) => {
       const compoundKey = where.sourceKind_sourceFileId_versionId_digest as Where | undefined
       const found = rows.find((row) =>
@@ -505,5 +533,85 @@ describe('PdfAnnotationRepository import receipts are idempotent and independent
     await expect(
       repositoryFor(client).getImport({ ...anchor, sourceKind: 'embedded-pdf', digest: 'd' })
     ).resolves.toBeNull()
+  })
+})
+
+// The multi-anchor read the search corpus of a project is built from (A5). It answers one question — "the
+// annotations of these file versions" — and the two properties that matter are that it is scoped to the
+// anchors it was given and that it says when its bound was reached.
+describe('PdfAnnotationRepository listAnnotationsForFileVersions', () => {
+  it('answers with the annotations of the named anchors, and only those', async () => {
+    const { client, annotations } = createFakeClient()
+    annotations.push(
+      storedAnnotation({ id: 'a-1', sourceFileId: 'file-1', versionId: 'version-2' }),
+      storedAnnotation({ id: 'a-2', sourceFileId: 'file-2', versionId: 'version-5' }),
+      // The same file on another version: not one of the anchors, so it must not be swept in by file id.
+      storedAnnotation({ id: 'a-3', sourceFileId: 'file-1', versionId: 'version-1' })
+    )
+
+    const read = await repositoryFor(client).listAnnotationsForFileVersions(
+      [
+        { sourceFileId: 'file-1', versionId: 'version-2' },
+        { sourceFileId: 'file-2', versionId: 'version-5' }
+      ],
+      { limit: 10 }
+    )
+
+    expect(read.annotations.map((annotation) => annotation.id)).toEqual(['a-1', 'a-2'])
+    expect(read.bounded).toBe(false)
+  })
+
+  it('answers an empty anchor list with nothing and no error', async () => {
+    const { client, annotations } = createFakeClient()
+    annotations.push(storedAnnotation())
+
+    await expect(
+      repositoryFor(client).listAnnotationsForFileVersions([], { limit: 10 })
+    ).resolves.toEqual({ annotations: [], bounded: false })
+  })
+
+  it('reports the bound being reached rather than serving a short corpus as the whole library', async () => {
+    const { client, annotations } = createFakeClient()
+    annotations.push(
+      storedAnnotation({ id: 'a-1' }),
+      storedAnnotation({ id: 'a-2' }),
+      storedAnnotation({ id: 'a-3' })
+    )
+
+    const read = await repositoryFor(client).listAnnotationsForFileVersions(
+      [{ sourceFileId: 'file-1', versionId: 'version-2' }],
+      { limit: 2 }
+    )
+
+    expect(read.annotations).toHaveLength(2)
+    expect(read.bounded).toBe(true)
+  })
+
+  it('refuses an anchor that names no version, rather than reading the whole file', async () => {
+    const { client } = createFakeClient()
+
+    await expect(
+      repositoryFor(client).listAnnotationsForFileVersions(
+        [{ sourceFileId: 'file-1', versionId: ' ' }],
+        { limit: 10 }
+      )
+    ).rejects.toThrow(/versionId is missing/)
+  })
+
+  it('refuses a stored row whose kind and selector disagree, on this read too', async () => {
+    const { client, annotations } = createFakeClient()
+    annotations.push(
+      storedAnnotation({
+        kind: 'area',
+        selectorJson: JSON.stringify(textRangeSelector)
+      })
+    )
+
+    await expect(
+      repositoryFor(client).listAnnotationsForFileVersions(
+        [{ sourceFileId: 'file-1', versionId: 'version-2' }],
+        { limit: 10 }
+      )
+    ).rejects.toThrow(/inconsistent and cannot be read/)
   })
 })

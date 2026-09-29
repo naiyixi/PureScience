@@ -332,6 +332,9 @@ const loadPendingKeys = (language: string): Set<string> => {
 const LATIN_COGNATES = new Set<string>([
   'Installable',
   'Total',
+  // 2026-09 A5：PDF 标注检索作用域的标签。fr/de 中本就是同一个词（借词），不是漏翻——
+  // 与 en 同形是正确译文，故登记为合法同形词。
+  'Annotation',
   'Agent',
   'Name',
   'Remote',

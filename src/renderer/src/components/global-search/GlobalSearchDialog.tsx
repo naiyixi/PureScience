@@ -760,9 +760,16 @@ export const GlobalSearchDialog = ({
         ? t('gs.contentScopeMessage')
         : hit.scope === 'files'
           ? t('gs.contentScopeFile')
-          : t('gs.contentScopeLiterature')
+          : hit.scope === 'annotations'
+            ? t('gs.contentScopeAnnotation')
+            : t('gs.contentScopeLiterature')
     const provenance = [
       scopeLabel,
+      // An annotation hit names the file VERSION its markup is anchored to: the search reads the store and
+      // never resolves a version, so it reports the version the markup is on rather than implying it is
+      // still the file on disk (see the anchor-state rule the panel applies).
+      hit.annotation ? `${hit.annotation.versionId}` : undefined,
+      hit.annotation?.page ? t('gs.contentAnnotationPage', { n: hit.annotation.page }) : undefined,
       hit.projectName ?? projectNames.get(hit.projectId) ?? t('home.unknownProject'),
       hit.role ? t(hit.role === 'user' ? 'gs.contentRoleUser' : 'gs.contentRoleAgent') : undefined,
       hit.timestamp ? new Date(hit.timestamp).toLocaleDateString() : undefined
@@ -1438,6 +1445,24 @@ export const GlobalSearchDialog = ({
                           className="px-4 py-1.5 text-xs text-muted-foreground"
                         >
                           {t('gs.fileListBounded')}
+                        </p>
+                      ) : null}
+                      {/* The annotation scope's own honesty (A5): an empty corpus is a statement about the
+                          markup, not about the phrase, and a bounded read says it stopped early. */}
+                      {contentResponse?.notes.includes('annotations-empty') ? (
+                        <p
+                          data-testid="global-search-annotations-empty"
+                          className="px-4 py-1.5 text-xs text-muted-foreground"
+                        >
+                          {t('gs.contentAnnotationsEmpty')}
+                        </p>
+                      ) : null}
+                      {contentResponse?.notes.includes('annotations-bounded') ? (
+                        <p
+                          data-testid="global-search-annotations-bounded"
+                          className="px-4 py-1.5 text-xs text-muted-foreground"
+                        >
+                          {t('gs.contentAnnotationsBounded')}
                         </p>
                       ) : null}
                       {contentHits.map((hit) => renderContentRow(hit, nextIndex()))}

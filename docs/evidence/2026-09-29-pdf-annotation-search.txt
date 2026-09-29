@@ -1,0 +1,48 @@
+collected-at: 2026-09-29T14:45:29.108Z
+project: cmumsgbor0000wfhs6z2n33yl
+session: e2e-session-1
+artifact: d8bb85b3-2272-456d-8796-b3cd40e979d0
+
+the annotation (a page note, written through the panel):
+  id: cmumsgdan0002wfhsclvsu6dq
+  kind: page-note
+  body: "E2E sentinel: the effect is large."
+
+the anchor the version authority resolved (also what the panel shows):
+  version-id: 2c558d07-9e31-4607-b017-75891d68d837
+  checksum: sha256:8ab6d242d6445ff581f30994352b29e0a875546fcb095bf81b58fbd33a7abf36
+
+the citation line the panel renders (read off its data attributes):
+  data-status: record
+  data-source-file-id: d8bb85b3-2272-456d-8796-b3cd40e979d0
+  data-version-id: 2c558d07-9e31-4607-b017-75891d68d837
+  data-checksum: 8ab6d242d6445ff581f30994352b29e0a875546fcb095bf81b58fbd33a7abf36
+  data-anchor-state: current
+  data-page: 1
+  data-rect-count: 1
+  data-quote: ""
+
+the search, over the annotation scope alone:
+  query: "E2E sentinel: the effect is large."
+  hits: 1
+  hit scope: annotations
+  hit title (the file the markup is on): region-evidence.pdf
+  hit match field: body
+  hit anchor version-id: 2c558d07-9e31-4607-b017-75891d68d837
+  hit anchor checksum: sha256:8ab6d242d6445ff581f30994352b29e0a875546fcb095bf81b58fbd33a7abf36
+  hit anchors the same bytes the panel shows: true
+  scan: sessions=0 messages=0 files=0 references=0 annotations=1
+  the corpus equals the store (annotations scanned 1 vs the store holds 1): true
+
+不解析 PDF — the negative control, and why it is one:
+  query: "Measured response" — this string IS in the fixture PDF's own text layer
+  hits: 0
+  annotations scanned on that query: 1 (a corpus built from the PDF would have matched)
+  notes: []
+
+the policy line the panel shows (红线 3 的界面声明):
+  "Annotations are used for search and citation only — they are never assembled into a model’s context."
+
+the store after the searches (nothing written, nothing re-anchored):
+  counts: {"current":1,"versionChanged":0,"checksumMismatch":0}
+  anchor unchanged: true

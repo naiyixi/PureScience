@@ -25,6 +25,7 @@ const scan: GlobalSearchScanReport = {
   messages: 3,
   files: 2,
   references: 1,
+  annotations: 0,
   bounded: false
 }
 
@@ -85,7 +86,7 @@ describe('global search — cursor pagination', () => {
     const cursor = encodeSearchCursor({ messages: 4, files: 2 })
 
     expect(decodeSearchCursor(cursor)).toEqual({
-      offsets: { sessions: 0, messages: 4, files: 2, literature: 0 },
+      offsets: { sessions: 0, messages: 4, files: 2, literature: 0, annotations: 0 },
       invalid: false
     })
   })

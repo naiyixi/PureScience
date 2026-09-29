@@ -7,6 +7,7 @@ import type { PersistedChatSession } from '../../shared/session-persistence'
 import type { SearchEvidenceRequest, SearchEvidenceResponse } from '../../shared/search-evidence'
 import {
   createGlobalSearchService,
+  type SearchableAnnotation,
   type SearchableFile,
   type SearchableReference,
   type SearchableSession,
@@ -42,6 +43,20 @@ export type SearchHandlerPorts = {
       createdAt?: string
     }>
   >
+  /**
+   * The annotations of one project, as the store already holds them.
+   *
+   * The caller resolves "which project" (annotations are anchored to a file version, not to a project)
+   * and hands over the stored texts unchanged. This port never reads a PDF: the two fields it carries are
+   * the ones A1 persisted, so a search cannot become a second parser. Optional, and its absence is
+   * reported (`annotations-empty`) rather than presented as "no markup matches".
+   */
+  listAnnotations?(request: { projectId: string }): Promise<{
+    annotations: SearchableAnnotation[]
+    // True when the read stopped at its own bound and the project holds more annotations than were
+    // handed over. Without it a truncated corpus would read as the whole library.
+    bounded?: boolean
+  }>
   // Optional: text of a project file, bounded by the caller. Absent means file hits are name-and-path
   // matches only, which the response then says out loud.
   readFileText?(fileId: string): Promise<string | undefined>
@@ -129,7 +144,8 @@ export const createSearchHandlers = (ports: SearchHandlerPorts): SearchHandlers 
       'sessions',
       'messages',
       'files',
-      'literature'
+      'literature',
+      'annotations'
     ]
     const listed =
       projectId && scopes.includes('files')
@@ -176,21 +192,38 @@ export const createSearchHandlers = (ports: SearchHandlerPorts): SearchHandlers 
           }))
         : []
 
+    const annotationScan =
+      projectId && scopes.includes('annotations') && ports.listAnnotations
+        ? await ports.listAnnotations({ projectId })
+        : undefined
+    const annotations: SearchableAnnotation[] = projectId
+      ? (annotationScan?.annotations ?? []).map((annotation) => ({ ...annotation, projectId }))
+      : []
+    const annotationScanBounded = annotationScan?.bounded === true
+
     const service = createGlobalSearchService({
       listSessions: async () => sessions.map(toSearchableSession),
       readSessionMessages: async (sessionId) => messagesBySession.get(sessionId) ?? [],
       listFiles: async () => files,
-      listReferences: async () => references
+      listReferences: async () => references,
+      // Only supplied when the caller wired one: an absent port leaves the scope empty AND says so,
+      // instead of an empty list that reads like "nothing matched".
+      ...(ports.listAnnotations ? { listAnnotations: async () => annotations } : {})
     })
     const response = await service.query(request)
 
-    // A project-less query cannot reach files or literature; say it instead of implying they were
-    // searched and came back empty.
-    const needsProject = !projectId && (scopes.includes('files') || scopes.includes('literature'))
+    // A project-less query cannot reach files, literature or the project's annotations; say it instead of
+    // implying they were searched and came back empty.
+    const needsProject =
+      !projectId &&
+      (scopes.includes('files') || scopes.includes('literature') || scopes.includes('annotations'))
     const notes = [...response.notes]
     if (needsProject) notes.push('no-project-scope')
     // Say when the content budget, not the data, decided how many files were read.
     if (fileScan.contentScanBounded) notes.push('file-content-scan-bounded')
+    // And when the annotation read stopped at its own bound, so a miss cannot be read as "the rest of
+    // the markup does not contain it".
+    if (annotationScanBounded) notes.push('annotations-bounded')
     // And when the listing itself stopped early, so "no hit" cannot be read as "not in the project".
     if (fileListBounded) notes.push('file-list-bounded')
 

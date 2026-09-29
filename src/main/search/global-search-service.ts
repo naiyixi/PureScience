@@ -354,6 +354,63 @@ export const createGlobalSearchService = (ports: GlobalSearchPorts): GlobalSearc
       }
     }
 
+    // The annotation scope. Its corpus is the two texts the annotation store already holds — the
+    // annotation's own body and the passage its selector quotes — and nothing else: no PDF is opened, no
+    // page is parsed, and no text is extracted here. `GLOBAL_SEARCH_ANNOTATION_INDEXED_FIELDS` names
+    // exactly which fields those are, so "what is in the index" is a fact a caller can read rather than
+    // infer from a hit happening to appear.
+    if (scopes.includes('annotations')) {
+      const listAnnotations = ports.listAnnotations
+      const all = listAnnotations ? await listAnnotations(request.projectId) : []
+      const scoped = all.filter((annotation) => inProject(annotation.projectId))
+      scan.annotations = Math.min(scoped.length, GLOBAL_SEARCH_MAX_SCANNED_ANNOTATIONS)
+      if (scoped.length > GLOBAL_SEARCH_MAX_SCANNED_ANNOTATIONS) notes.push('annotations-bounded')
+      // An empty corpus is stated, not left to read as "the phrase is not in your markup".
+      if (listAnnotations && scoped.length === 0) notes.push('annotations-empty')
+
+      for (const annotation of scoped.slice(0, GLOBAL_SEARCH_MAX_SCANNED_ANNOTATIONS)) {
+        if (!searchHitsInTimestampRange(annotation.timestamp, range)) continue
+
+        // Both stored texts are searched, and each match names the field it came from, so "the note says
+        // this" and "the highlighted passage says this" are distinguishable in the result.
+        const matches = [
+          ...(annotation.body
+            ? collectTermMatches({ text: annotation.body, terms, field: 'body' })
+            : []),
+          ...(annotation.quote
+            ? collectTermMatches({ text: annotation.quote, terms, field: 'quote' })
+            : [])
+        ]
+        if (matches.length === 0) continue
+
+        hits.push({
+          scope: 'annotations',
+          id: annotation.id,
+          projectId: annotation.projectId,
+          // The file the markup is on is what a reader recognises; the annotation's own text is in the
+          // matches, so the title does not double-count it (see weightedMatchCount).
+          title: annotation.fileName,
+          score: scoreSearchHit({
+            matches: weightedMatchCount(matches),
+            titleRank: searchTitleRank(annotation.fileName, terms),
+            timestamp: annotation.timestamp
+          }),
+          matches,
+          ...(annotation.timestamp ? { timestamp: annotation.timestamp } : {}),
+          // Carried with the hit so a citation is built from the anchor the store holds.
+          annotation: {
+            annotationId: annotation.id,
+            sourceFileId: annotation.sourceFileId,
+            versionId: annotation.versionId,
+            checksum: annotation.checksum,
+            kind: annotation.kind,
+            ...(annotation.page === undefined ? {} : { page: annotation.page }),
+            ...(annotation.quote ? { quote: annotation.quote } : {})
+          }
+        })
+      }
+    }
+
     return finalizeSearchResponse({
       query,
       scopes,

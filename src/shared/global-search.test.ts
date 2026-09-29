@@ -34,9 +34,23 @@ describe('query and scope normalization', () => {
   })
 
   it('searches every scope by default and only known scopes when asked', () => {
-    expect(resolveSearchScopes(undefined)).toEqual(['sessions', 'messages', 'files', 'literature'])
-    expect(resolveSearchScopes([])).toEqual(['sessions', 'messages', 'files', 'literature'])
+    expect(resolveSearchScopes(undefined)).toEqual([
+      'sessions',
+      'messages',
+      'files',
+      'literature',
+      'annotations'
+    ])
+    expect(resolveSearchScopes([])).toEqual([
+      'sessions',
+      'messages',
+      'files',
+      'literature',
+      'annotations'
+    ])
     expect(resolveSearchScopes(['literature', 'messages'])).toEqual(['messages', 'literature'])
+    // The annotation scope is a scope like any other: a caller that does not name it does not search it.
+    expect(resolveSearchScopes(['annotations'])).toEqual(['annotations'])
   })
 })
 
@@ -267,12 +281,18 @@ describe('finalizeSearchResponse', () => {
         hit({ id: 'message-1', scope: 'messages' }),
         hit({ id: 'file-1', scope: 'files', score: 9 })
       ],
-      scan: { sessions: 3, messages: 12, files: 4, references: 0, bounded: false },
+      scan: { sessions: 3, messages: 12, files: 4, references: 0, annotations: 0, bounded: false },
       appliedLimit: 50,
       notes: []
     })
 
-    expect(response.counts).toEqual({ sessions: 0, messages: 1, files: 1, literature: 0 })
+    expect(response.counts).toEqual({
+      sessions: 0,
+      messages: 1,
+      files: 1,
+      literature: 0,
+      annotations: 0
+    })
     expect(response.truncated).toBe(false)
     expect(response.scan.sessions).toBe(3)
     expect(response.hits[0].id).toBe('file-1')
@@ -287,7 +307,7 @@ describe('finalizeSearchResponse', () => {
         hit({ id: 'message-2', score: 4 }),
         hit({ id: 'file-1', scope: 'files', score: 3 })
       ],
-      scan: { sessions: 1, messages: 3, files: 1, references: 0, bounded: false },
+      scan: { sessions: 1, messages: 3, files: 1, references: 0, annotations: 0, bounded: false },
       appliedLimit: 1,
       notes: []
     })
@@ -308,6 +328,7 @@ describe('finalizeSearchResponse', () => {
         messages: 0,
         files: 0,
         references: 0,
+        annotations: 0,
         bounded: true
       },
       appliedLimit: 50,

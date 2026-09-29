@@ -208,6 +208,12 @@ import {
 import { createProjectFilesHandlers, registerProjectFilesIpcHandlers } from './project-files/ipc'
 import { createSearchIpcHandlers, registerSearchIpcHandlers } from './search/ipc'
 import { GLOBAL_SEARCH_FILE_LIST_MAX_PAGES } from './search/handlers'
+import {
+  createSearchAnnotationCorpus,
+  isAnnotatableProjectFile,
+  type AnnotationCorpusAnchor,
+  type SearchAnnotationCorpus
+} from './search/annotation-corpus'
 import { MAX_PAGE_LIMIT as MAX_PROJECT_FILES_PAGE_LIMIT } from './project-files/query-support'
 import { createSessionIndex } from './search/session-index'
 import { getSessionRevision } from './session-persistence/session-revision'
@@ -1237,6 +1243,10 @@ const createApplicationModules = async (
     throw new Error('Artifact preview reader is not wired yet.')
   }
 
+  // Same seam for the annotation corpus (A5): the annotation store and the project file index are built
+  // later in this scope, and the corpus is only read while a query is being served.
+  let searchAnnotationCorpus: SearchAnnotationCorpus | undefined
+
   // Search reads every session; without this it did so per query, which cost over a second on a real
   // corpus. The durable repository bumps the revision on every write, so the view is only re-read when
   // something actually changed.
@@ -1311,6 +1321,17 @@ const createApplicationModules = async (
         ...(reference.pmid ? { pmid: reference.pmid } : {}),
         ...(reference.pmcid ? { pmcid: reference.pmcid } : {})
       }))
+    },
+    // The annotation scope (A5, 需求 1). The corpus is the stored text of the project's annotations —
+    // never a PDF read during the search — and it is resolved through the same project file index the
+    // file scope above uses, because an annotation's anchor (`sourceFileId`) IS a project file's source
+    // id. A project the index cannot enumerate therefore contributes no annotations, and the response
+    // says the corpus was empty rather than that the phrase is absent.
+    listAnnotations: async ({ projectId }) => {
+      const corpus = searchAnnotationCorpus
+      if (!corpus) return { annotations: [], bounded: false }
+      const read = await corpus.list({ projectId })
+      return { annotations: read.annotations, bounded: read.bounded }
     }
   })
   surfaceAdapters = beforeAcpAdapters
@@ -1554,6 +1575,49 @@ const createApplicationModules = async (
   const pdfAnnotationRepository = new PdfAnnotationRepository(() =>
     getProjectDbClient(resolveStorageRoot())
   )
+  // The search corpus of one project (A5, 需求 1). Both halves are reads: the project's artifact file
+  // versions come from the same index the file scope pages, and the annotations come from the store A1
+  // owns. Nothing here opens a file, so a search cannot accidentally become a PDF parser — see
+  // search/annotation-corpus.ts for why that is a property of the wiring rather than a promise.
+  searchAnnotationCorpus = createSearchAnnotationCorpus({
+    listAnchors: async ({ projectId }) => {
+      const anchors: AnnotationCorpusAnchor[] = []
+      let cursor: string | undefined
+      let bounded = false
+
+      for (let page = 0; page < GLOBAL_SEARCH_FILE_LIST_MAX_PAGES; page += 1) {
+        const result = await projectFilesHandlers.listFiles({
+          projectId,
+          collection: { kind: 'all' },
+          limit: MAX_PROJECT_FILES_PAGE_LIMIT,
+          ...(cursor ? { cursor } : {})
+        })
+        for (const item of result.items) {
+          // An annotation is anchored to a file VERSION, so a file the index has no version for cannot
+          // carry one. Only PDFs are considered: every annotation kind the store accepts is a markup on a
+          // PDF page (A1), so another format could not hold one.
+          if (item.source !== 'artifact' || !item.sourceVersionId) continue
+          if (!isAnnotatableProjectFile(item)) continue
+          anchors.push({
+            sourceFileId: item.sourceFileId,
+            versionId: item.sourceVersionId,
+            fileName: item.name,
+            ...(item.mtimeMs ? { timestamp: new Date(item.mtimeMs).toISOString() } : {})
+          })
+        }
+        if (!result.nextCursor) return { anchors, bounded }
+        cursor = result.nextCursor
+        // The last allowed page still had a cursor: more files exist than were listed, so a miss here
+        // must not read as "this project holds no such markup".
+        bounded = true
+      }
+      return { anchors, bounded }
+    },
+    readAnnotations: async ({ anchors, limit }) => {
+      const read = await pdfAnnotationRepository.listAnnotationsForFileVersions(anchors, { limit })
+      return { annotations: read.annotations, bounded: read.bounded }
+    }
+  })
   const resolvePdfAnnotationVersionFile: PdfAnnotationVersionFileResolver = async (request) =>
     (
       await artifactProvenanceRepository.resolveVersionContent({

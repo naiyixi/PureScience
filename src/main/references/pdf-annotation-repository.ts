@@ -214,6 +214,48 @@ export class PdfAnnotationRepository {
     return rows.map((row) => mapPdfAnnotation(row as StoredPdfAnnotationRow))
   }
 
+  /**
+   * The annotations of MANY file versions at once, for a caller that has a set of anchors rather than
+   * one (文档标注层 A5: the search corpus of a project).
+   *
+   * One query rather than one per anchor, for the same reason the version prefix is on every index: a
+   * caller holding a project's files should not pay a round-trip per file. The result reports whether the
+   * bound was reached — a truncated corpus that did not say so would read as the whole annotation
+   * library, which is exactly what a search must never imply.
+   *
+   * An empty anchor list is answered with nothing and no error: "this project has no annotated file
+   * versions" is a fact, not a failure.
+   */
+  async listAnnotationsForFileVersions(
+    anchors: readonly PdfAnnotationVersionAnchor[],
+    options: { limit: number }
+  ): Promise<{ annotations: PdfAnnotation[]; bounded: boolean }> {
+    const client = await this.getClient()
+    if (anchors.length === 0) return { annotations: [], bounded: false }
+    for (const anchor of anchors) requireVersionAnchor(anchor, 'A PDF annotation search read')
+
+    const limit = Math.max(1, Math.floor(options.limit))
+    // One row past the bound: what proves the corpus was larger than what is handed back is a row that
+    // exists, not an inference from the count.
+    const rows = await client.pdfAnnotation.findMany({
+      where: {
+        OR: anchors.map((anchor) => ({
+          sourceFileId: anchor.sourceFileId,
+          versionId: anchor.versionId
+        }))
+      },
+      orderBy: [{ sourceFileId: 'asc' }, { versionId: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
+      take: limit + 1
+    })
+
+    return {
+      annotations: rows
+        .slice(0, limit)
+        .map((row) => mapPdfAnnotation(row as StoredPdfAnnotationRow)),
+      bounded: rows.length > limit
+    }
+  }
+
   async countAnnotations(anchor: PdfAnnotationVersionAnchor): Promise<number> {
     const client = await this.getClient()
     requireVersionAnchor(anchor, 'A PDF annotation count')

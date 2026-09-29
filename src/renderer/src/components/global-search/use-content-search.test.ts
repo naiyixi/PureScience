@@ -34,11 +34,11 @@ const renderHook = (
 const response = (
   hits: { id: string }[],
   nextCursor?: string,
-  counts = { sessions: 0, messages: hits.length, files: 0, literature: 0 }
+  counts = { sessions: 0, messages: hits.length, files: 0, literature: 0, annotations: 0 }
 ): GlobalSearchResponse => ({
   schemaVersion: 1,
   query: '注意力',
-  scopes: ['sessions', 'messages', 'files', 'literature'],
+  scopes: ['sessions', 'messages', 'files', 'literature', 'annotations'],
   hits: hits.map((hit) => ({
     scope: 'messages' as const,
     id: hit.id,
@@ -50,7 +50,7 @@ const response = (
   ...(nextCursor ? { nextCursor } : {}),
   counts,
   truncated: nextCursor !== undefined,
-  scan: { sessions: 1, messages: 3, files: 0, references: 0, bounded: false },
+  scan: { sessions: 1, messages: 3, files: 0, references: 0, annotations: 0, bounded: false },
   appliedLimit: 5,
   notes: []
 })

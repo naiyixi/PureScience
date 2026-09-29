@@ -16,8 +16,18 @@ import type {
 
 type Row = Record<string, unknown>
 
-const matches = (row: Row, where: Row | undefined): boolean =>
-  Object.entries(where ?? {}).every(([key, value]) => row[key] === value)
+const matches = (row: Row, where: Row | undefined): boolean => {
+  if (!where) return true
+  // `OR` is the one combinator the repository uses (a multi-anchor read: "any of these file versions").
+  // It is honoured rather than ignored: a fake that dropped it would answer a multi-anchor query with the
+  // whole table, which is the failure mode the real query exists to avoid.
+  const or = Array.isArray(where.OR) ? (where.OR as Row[]) : undefined
+  if (or && !or.some((clause) => matches(row, clause))) return false
+
+  return Object.entries(where)
+    .filter(([key]) => key !== 'OR')
+    .every(([key, value]) => row[key] === value)
+}
 
 const orderOf = (orderBy: unknown): Array<[string, 'asc' | 'desc']> =>
   (Array.isArray(orderBy) ? orderBy : [orderBy ?? {}]).map((entry) => {
@@ -49,7 +59,12 @@ export type InMemoryPdfAnnotationStore = {
 }
 
 type FakeDelegate = {
-  findMany: (args: { where?: Row; orderBy?: unknown; select?: Row }) => Promise<Row[]>
+  findMany: (args: {
+    where?: Row
+    orderBy?: unknown
+    select?: Row
+    take?: number
+  }) => Promise<Row[]>
   findUnique: (args: { where: Row }) => Promise<Row | null>
   create: (args: { data: Row }) => Promise<Row>
   deleteMany: (args: { where?: Row }) => Promise<{ count: number }>
@@ -70,18 +85,26 @@ export const createInMemoryPdfAnnotationStore = (): InMemoryPdfAnnotationStore =
     findMany: async ({
       where,
       orderBy,
-      select
+      select,
+      take
     }: {
       where?: Row
       orderBy?: unknown
       select?: Row
-    }) =>
-      sortRows(
+      take?: number
+    }) => {
+      const matched = sortRows(
         rows.filter((row) => matches(row, where)),
         orderBy
-      ).map((row): Row =>
+      )
+      // `take` is honoured: a bounded read that the fake ignored would make "the bound was reached"
+      // untestable, which is the one thing the bound exists to make checkable.
+      const limited = typeof take === 'number' ? matched.slice(0, Math.max(0, take)) : matched
+
+      return limited.map((row): Row =>
         select ? Object.fromEntries(Object.keys(select).map((field) => [field, row[field]])) : row
-      ),
+      )
+    },
     findUnique: async ({ where }: { where: Row }) => {
       const compound = (where.sourceKind_sourceFileId_versionId_digest ?? where) as Row
       const found = rows.find((row) =>
