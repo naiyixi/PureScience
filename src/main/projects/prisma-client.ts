@@ -751,6 +751,72 @@ const COLLECTION_ITEM_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "CollectionItem" (
 const COLLECTION_ITEM_UNIQUE_COLLECTION_REFERENCE_DDL = `CREATE UNIQUE INDEX IF NOT EXISTS "CollectionItem_collectionId_referenceId_key" ON "CollectionItem"("collectionId", "referenceId")`
 const COLLECTION_ITEM_REFERENCE_INDEX_DDL = `CREATE INDEX IF NOT EXISTS "CollectionItem_referenceId_idx" ON "CollectionItem"("referenceId")`
 
+// Literature screening (v1.77): the纳排分诊 layer over the reference library above. Five pure-additive
+// tables with logical foreign keys only (no relational constraints) — nothing references them, so
+// these CREATE/INDEX statements stay safe to (re)run on any existing DB, and their DDL is
+// byte-identical to what `prisma migrate diff` generates for the Screening* models. The composite
+// primary keys are load-bearing, not convenience: (collectionId, revision) makes a rule revision
+// immutable (a second write of the same revision cannot overwrite it), (collectionId, referenceId)
+// gives a reference exactly one current verdict, and (runId, referenceId) makes a pass resumable
+// without duplicating its own progress rows.
+const SCREENING_RULE_REVISION_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "ScreeningRuleRevision" (
+    "collectionId" TEXT NOT NULL,
+    "revision" INTEGER NOT NULL,
+    "inclusionJson" TEXT NOT NULL DEFAULT '[]',
+    "exclusionJson" TEXT NOT NULL DEFAULT '[]',
+    "contentHash" TEXT NOT NULL,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY ("collectionId", "revision")
+)`
+const SCREENING_ASSESSMENT_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "ScreeningAssessment" (
+    "collectionId" TEXT NOT NULL,
+    "referenceId" TEXT NOT NULL,
+    "ruleRevision" INTEGER NOT NULL,
+    "inputDigest" TEXT NOT NULL,
+    "policyKey" TEXT NOT NULL,
+    "model" TEXT NOT NULL,
+    "verdict" TEXT NOT NULL DEFAULT 'not-evaluated',
+    "probabilitiesJson" TEXT NOT NULL DEFAULT '{}',
+    "evidenceJson" TEXT NOT NULL DEFAULT '[]',
+    "decidedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY ("collectionId", "referenceId")
+)`
+const SCREENING_OVERRIDE_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "ScreeningOverride" (
+    "collectionId" TEXT NOT NULL,
+    "referenceId" TEXT NOT NULL,
+    "decision" TEXT NOT NULL,
+    "reason" TEXT NOT NULL,
+    "actor" TEXT NOT NULL,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY ("collectionId", "referenceId")
+)`
+const SCREENING_RUN_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "ScreeningRun" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "collectionId" TEXT NOT NULL,
+    "ruleRevision" INTEGER NOT NULL,
+    "startedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "finishedAt" DATETIME,
+    "status" TEXT NOT NULL DEFAULT 'running'
+)`
+const SCREENING_RUN_ITEM_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "ScreeningRunItem" (
+    "runId" TEXT NOT NULL,
+    "referenceId" TEXT NOT NULL,
+    "state" TEXT NOT NULL DEFAULT 'pending',
+    "failureKind" TEXT,
+    "deferredReason" TEXT,
+    "inputDigest" TEXT,
+    PRIMARY KEY ("runId", "referenceId")
+)`
+const SCREENING_INDEX_DDLS = [
+  `CREATE INDEX IF NOT EXISTS "ScreeningRuleRevision_collectionId_contentHash_idx" ON "ScreeningRuleRevision"("collectionId", "contentHash")`,
+  `CREATE INDEX IF NOT EXISTS "ScreeningAssessment_collectionId_verdict_idx" ON "ScreeningAssessment"("collectionId", "verdict")`,
+  `CREATE INDEX IF NOT EXISTS "ScreeningAssessment_collectionId_ruleRevision_idx" ON "ScreeningAssessment"("collectionId", "ruleRevision")`,
+  `CREATE INDEX IF NOT EXISTS "ScreeningOverride_collectionId_createdAt_idx" ON "ScreeningOverride"("collectionId", "createdAt")`,
+  `CREATE INDEX IF NOT EXISTS "ScreeningRun_collectionId_startedAt_idx" ON "ScreeningRun"("collectionId", "startedAt")`,
+  `CREATE INDEX IF NOT EXISTS "ScreeningRun_status_idx" ON "ScreeningRun"("status")`,
+  `CREATE INDEX IF NOT EXISTS "ScreeningRunItem_runId_state_idx" ON "ScreeningRunItem"("runId", "state")`
+]
+
 // Indexes for ComputeJob: by providerId (per-host poller queries), sessionId (UI list), status
 // (finding non-terminal jobs on restart). IF NOT EXISTS makes re-runs idempotent.
 const COMPUTE_JOB_PROVIDER_INDEX_DDL = `CREATE INDEX IF NOT EXISTS "ComputeJob_providerId_idx" ON "ComputeJob"("providerId")`
@@ -985,6 +1051,18 @@ const ensureProjectSchema = async (client: PrismaClient): Promise<void> => {
   await client.$executeRawUnsafe(COLLECTION_ITEM_TABLE_DDL)
   await client.$executeRawUnsafe(COLLECTION_ITEM_UNIQUE_COLLECTION_REFERENCE_DDL)
   await client.$executeRawUnsafe(COLLECTION_ITEM_REFERENCE_INDEX_DDL)
+
+  // Literature screening (v1.77): rule revisions, the AI verdict layer, the human override layer, and
+  // the run/item ledger. Every statement is IF NOT EXISTS, so an existing installation gets the tables
+  // without any of its reference data being touched.
+  await client.$executeRawUnsafe(SCREENING_RULE_REVISION_TABLE_DDL)
+  await client.$executeRawUnsafe(SCREENING_ASSESSMENT_TABLE_DDL)
+  await client.$executeRawUnsafe(SCREENING_OVERRIDE_TABLE_DDL)
+  await client.$executeRawUnsafe(SCREENING_RUN_TABLE_DDL)
+  await client.$executeRawUnsafe(SCREENING_RUN_ITEM_TABLE_DDL)
+  for (const ddl of SCREENING_INDEX_DDLS) {
+    await client.$executeRawUnsafe(ddl)
+  }
 }
 
 let clientPromise: Promise<PrismaClient> | undefined

@@ -644,3 +644,89 @@ model BackgroundDelivery {
   @@index([jobId])
   @@index([state, claimExpiresAt])
 }
+
+// Literature screening (v1.77): triage of one collection's references against a versioned inclusion /
+// exclusion rule set (有库无分诊 → 分诊). The rule revision is the immutable anchor: every decision
+// names the revision it was decided against, so a rule change surfaces as a named staleness reason
+// instead of an unexplained re-verdict. Pure-additive tables with logical foreign keys only (no
+// relational constraints), so the runtime DDL stays byte-compatible with any pre-existing DB —
+// created via CREATE TABLE IF NOT EXISTS (see src/main/projects/prisma-client.ts), not migrate.
+model ScreeningRuleRevision {
+  collectionId  String // logical FK to ReferenceCollection.id
+  revision      Int // 1-based; a rule change is a new revision, never an edit of an existing one
+  inclusionJson String   @default("[]") // JSON [{ id, text }] — canonically ordered by criterion id
+  exclusionJson String   @default("[]") // JSON [{ id, text }]
+  contentHash   String // sha256 of the canonical rule JSON: proves two revisions state the same rule
+  createdAt     DateTime @default(now())
+
+  @@id([collectionId, revision])
+  @@index([collectionId, contentHash])
+}
+
+// The current AI verdict for one reference in one collection. The composite id is the "one reference,
+// one current decision" guarantee: re-evaluating replaces the row in place, while the per-item history
+// stays in ScreeningRunItem. verdict is the state a surface filters on (included | needs-review |
+// excluded | not-evaluated); the raw model output lives in probabilitiesJson so a guarded verdict
+// never hides what the model actually said.
+model ScreeningAssessment {
+  collectionId      String
+  referenceId       String // logical FK to Reference.id
+  ruleRevision      Int // the revision this verdict was decided against
+  inputDigest       String // sha256 of the exact evidence handed to the model
+  policyKey         String // model + prompt-guardrail policy identity
+  model             String
+  verdict           String   @default("not-evaluated")
+  probabilitiesJson String   @default("{}") // JSON { include?, exclude?, uncertain? }
+  // JSON [{ criterionId, coverage, quote, locator? }] — the passage each decision rests on, so the
+  // verdict can be explained (and re-checked) without re-running the model.
+  evidenceJson      String   @default("[]")
+  decidedAt         DateTime @default(now())
+
+  @@id([collectionId, referenceId])
+  @@index([collectionId, verdict])
+  @@index([collectionId, ruleRevision])
+}
+
+// A person's decision layered over the AI verdict (人工覆盖). Deliberately a separate row: the AI
+// verdict is never rewritten, so clearing the override restores the original decision exactly.
+model ScreeningOverride {
+  collectionId String
+  referenceId  String
+  decision     String // include | exclude
+  reason       String // why a person disagreed — shown verbatim in the decision's history
+  actor        String // user | agent
+  createdAt    DateTime @default(now())
+
+  @@id([collectionId, referenceId])
+  @@index([collectionId, createdAt])
+}
+
+// One screening pass over a collection, bound to exactly one rule revision. startedAt/finishedAt with
+// status is the closing pair: a pass interrupted mid-flight stays visible as running rather than
+// looking finished or being silently dropped.
+model ScreeningRun {
+  id           String    @id @default(cuid())
+  collectionId String
+  ruleRevision Int
+  startedAt    DateTime  @default(now())
+  finishedAt   DateTime?
+  status       String    @default("running") // running | completed | failed
+
+  @@index([collectionId, startedAt])
+  @@index([status])
+}
+
+// Per-reference progress inside a run: the row that makes a pass resumable. inputDigest is the digest
+// the item was (or will be) decided from, so a resume re-evaluates exactly the items whose evidence
+// changed and leaves the rest alone. failureKind/deferredReason are named, never a bare boolean.
+model ScreeningRunItem {
+  runId          String
+  referenceId    String
+  state          String  @default("pending") // pending | assessed | deferred | failed
+  failureKind    String?
+  deferredReason String?
+  inputDigest    String?
+
+  @@id([runId, referenceId])
+  @@index([runId, state])
+}
