@@ -214,12 +214,28 @@ jobs:
   # publish job avoids the race of multiple build jobs writing the same Release). Depends on
   # notarize-mac so the mac dmg/zip it downloads are the stapled versions.
   publish:
-    # notarize-mac 只在 tag run 提供签名 mac 资产; dispatch 发布时 (无 Developer ID) 它始终
-    # skipped, 会连带跳过 publish. 因此仅依赖 build.
-    needs: [build]
+    # Ordering, not convenience: with `needs: [build]` alone, publish starts the moment the builds
+    # finish and can attach the signed-but-unstapled mac dmg/zip — an installed app then downloads a
+    # mac build Gatekeeper rejects. Waiting on notarize-mac is what makes the stapled re-emit win.
+    #
+    # The trade-off is taken on failure mode, not on strictness. notarize-mac reports `skipped` when
+    # the publishing run is a dispatch to an existing tag (it is gated on the tag ref, so there is no
+    # signed mac artifact to staple): that is a no-op, and treating it as fatal would make manual
+    # publishing impossible — hence `skipped` does not block. A real `failure` (Apple rejection, or
+    # the job's 30-minute cap expiring) DOES block, so a broken notarization can never publish mac
+    # assets. `always()` is required for the job to be evaluated at all once a dependency is skipped;
+    # `needs.build.result == 'success'` keeps a failed/cancelled build from publishing anything.
+    # notarize-mac's own `from_run` input is untouched — release.yml still calls it via workflow_call
+    # with the default from_run: true, so the standalone repair path (from_run: false) is unaffected.
+    #
+    # The event gate below is the pre-existing condition, kept verbatim (tag push, or a dispatch that
+    # named a release_tag); windows-upgrade-smoke reads `needs.publish.result`, which is unchanged.
+    needs: [build, notarize-mac]
     if: >-
-      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) ||
-      (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
+      always() && (needs.build.result == 'success') &&
+      (needs.notarize-mac.result == 'success' || needs.notarize-mac.result == 'skipped') &&
+      ((github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) ||
+      (github.event_name == 'workflow_dispatch' && inputs.release_tag != ''))
     runs-on: ubuntu-latest
     # Job-level permissions fully override the workflow-level block, so contents:write is restated
     # alongside the two scopes the SLSA attestation needs: id-token to sign via Sigstore OIDC, and

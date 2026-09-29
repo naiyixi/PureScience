@@ -318,7 +318,9 @@ describe('post-merge Windows validation', () => {
       findStep(upgrade, 'Drill Windows silent upgrade, process lock, rollback, and restart')
     ).toMatchObject({ id: 'installer', 'continue-on-error': true })
     expect(release.jobs['windows-full-test']).toBeUndefined()
-    expect(release.jobs.publish.needs).toEqual(['build'])
+    // publish waits for the stapled mac re-emit: depending on build alone lets it attach the
+    // signed-but-unstapled dmg/zip before notarize-mac finishes.
+    expect(release.jobs.publish.needs).toEqual(['build', 'notarize-mac'])
     expect(
       findStep(release.jobs.publish, 'Aggregate release certification evidence').run
     ).not.toContain('--require-signed-windows')
@@ -382,9 +384,14 @@ describe('post-merge Windows validation', () => {
     expect(release.jobs['windows-upgrade-smoke'].if).toContain(
       "github.event_name == 'workflow_dispatch'"
     )
+    // The gate is event-based *and* dependency-based now: a dispatch that names a release_tag still
+    // publishes, but only after build succeeded and notarize-mac succeeded or no-opped (skipped);
+    // a real notarization failure blocks the release rather than shipping unstapled mac assets.
     expect(release.jobs.publish.if).toBe(
-      "(github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) || " +
-        "(github.event_name == 'workflow_dispatch' && inputs.release_tag != '')"
+      "always() && (needs.build.result == 'success') && " +
+        "(needs.notarize-mac.result == 'success' || needs.notarize-mac.result == 'skipped') && " +
+        "((github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) || " +
+        "(github.event_name == 'workflow_dispatch' && inputs.release_tag != ''))"
     )
   })
 
