@@ -1,0 +1,34 @@
+collected-at: 2026-09-29T12:06:14.808Z
+version-id: b00f48e1-a46a-46f5-8925-f4d297f7ea20
+anchor-checksum (the store's, resolved by the version authority): 8ab6d242d6445ff581f30994352b29e0a875546fcb095bf81b58fbd33a7abf36
+annotations-in-store: 1
+
+source file(s) on disk (found by content digest under the storage root):
+  /var/folders/2j/gdbnsc8d6hg9jhq34stph6g40000gn/T/purescience-electron-e2e-XvacBm/storage/PureScience-DEV/artifacts/cmummrj270000wfl0ru7pzdr3/e2e-session-1/message-1790683573700-2/region-evidence.pdf
+    bytes: 834
+    sha256 before any export: 8ab6d242d6445ff581f30994352b29e0a875546fcb095bf81b58fbd33a7abf36
+    sha256 after both channels: 8ab6d242d6445ff581f30994352b29e0a875546fcb095bf81b58fbd33a7abf36
+    unchanged: true
+
+channel 1 - annotated copy:
+  path: /var/folders/2j/gdbnsc8d6hg9jhq34stph6g40000gn/T/purescience-electron-e2e-XvacBm/pdf-annotation-export/region-evidence (annotated).pdf
+  bytes: 1239
+  source bytes carried verbatim at the head: 834
+  appended bytes: 405
+  copy sha256: 138947bab5cc0ed4cecd45116ebf1854f1f4ab0851f058ed12f61b7ccda4043d
+  head is byte-for-byte the source: true
+  copy carries "/Subtype /Square": true
+  copy carries "/Annots [": true
+  source carries "/Subtype /Square": false
+  source carries "/Annots [": false
+
+channel 2 - notes list:
+  path: /var/folders/2j/gdbnsc8d6hg9jhq34stph6g40000gn/T/purescience-electron-e2e-XvacBm/pdf-annotation-export/region-evidence (annotations).txt
+  bytes: 405
+  sha256: 3d43520708639a83b9083732c3f52a96596da1ecd474391798d2feb675e204a0
+  starts with %PDF-: false
+  entry lines: 1 (the store holds 1)
+  carries "/Subtype": false
+
+export directory after both channels: region-evidence (annotated).pdf, region-evidence (annotations).txt
+copy unchanged by channel 2: true

@@ -15,6 +15,7 @@ import type { SessionBookmark, SessionBookmarkInput } from '../shared/bookmark'
 import type { PdfAnnotation } from '../shared/pdf-annotations'
 import type {
   PdfAnnotationCreateRequest,
+  PdfAnnotationExportOutcome,
   PdfAnnotationImportOutcome,
   PdfAnnotationListResult,
   PdfAnnotationReattachResult,
@@ -339,6 +340,14 @@ const createDependencies = (): HostApplicationCommandDependencies => ({
       code: 'unreadable-pdf',
       message: 'not a PDF'
     })),
+    exportAnnotated: vi.fn(async (): Promise<PdfAnnotationExportOutcome> => ({
+      status: 'cancelled',
+      channel: 'annotated-pdf'
+    })),
+    exportNotes: vi.fn(async (): Promise<PdfAnnotationExportOutcome> => ({
+      status: 'cancelled',
+      channel: 'notes'
+    })),
     list: vi.fn(async (): Promise<PdfAnnotationListResult> => ({
       anchor: { sourceFileId: 'artifact-1', versionId: 'version-1', checksum: 'a'.repeat(64) },
       annotations: [],
@@ -459,8 +468,8 @@ describe('Host application commands', () => {
         .filter((channel): channel is string => channel !== null)
     }))
 
-    // 82 with the five PDF annotation channels.
-    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(82)
+    // 84 with the seven PDF annotation channels (the store, the import, and the two export channels).
+    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(84)
     const actualGroups = hostApplicationCommandGroups
       .map(({ name, commands }) => ({
         capability: name,
@@ -478,7 +487,7 @@ describe('Host application commands', () => {
       {} as HostApplicationCommandDependencies
     )
 
-    expect(router.dispatcher.commandNames()).toHaveLength(82)
+    expect(router.dispatcher.commandNames()).toHaveLength(84)
     installation.uninstall()
     expect(router.dispatcher.commandNames()).toEqual([])
   })
@@ -685,6 +694,14 @@ describe('Host application commands', () => {
       invocation([{ ...pdfAnnotationAnchor, kind: 'highlight', selector: { version: 1 } }])
     )
     await router.dispatcher.invoke(
+      hostApplicationCommands.pdfAnnotations.exportAnnotated,
+      invocation([{ ...pdfAnnotationAnchor, fileName: 'region-evidence.pdf' }])
+    )
+    await router.dispatcher.invoke(
+      hostApplicationCommands.pdfAnnotations.exportNotes,
+      invocation([{ ...pdfAnnotationAnchor, fileName: 'region-evidence.pdf' }])
+    )
+    await router.dispatcher.invoke(
       hostApplicationCommands.pdfAnnotations.import,
       invocation([pdfAnnotationAnchor])
     )
@@ -826,6 +843,16 @@ describe('Host application commands', () => {
       kind: 'highlight',
       selector: { version: 1 }
     })
+    // Both export channels are addressed by the same four identity facts, and each one carries the file
+    // name the window displays: main decides the extension from it.
+    expect(dependencies.pdfAnnotations.exportAnnotated).toHaveBeenCalledWith({
+      ...pdfAnnotationAnchor,
+      fileName: 'region-evidence.pdf'
+    })
+    expect(dependencies.pdfAnnotations.exportNotes).toHaveBeenCalledWith({
+      ...pdfAnnotationAnchor,
+      fileName: 'region-evidence.pdf'
+    })
     expect(dependencies.pdfAnnotations.import).toHaveBeenCalledWith(pdfAnnotationAnchor)
     expect(dependencies.pdfAnnotations.list).toHaveBeenCalledWith(pdfAnnotationAnchor)
     expect(dependencies.pdfAnnotations.reattach).toHaveBeenCalledWith({
@@ -924,9 +951,9 @@ describe('Host application commands', () => {
         .filter((channel): channel is string => channel !== null)
     )
 
-    // 54 with the PDF annotation channels, 49 with the saved-search-filter-set channels: all of them
-    // are local-only like the bookmarks beside them.
-    expect(localOnlyChannels).toHaveLength(54)
+    // 56 with the PDF annotation channels (including the two export channels), 49 with the
+    // saved-search-filter-set channels: all of them are local-only like the bookmarks beside them.
+    expect(localOnlyChannels).toHaveLength(56)
     for (const channel of localOnlyChannels) {
       await expect(
         router.dispatcher.invoke(

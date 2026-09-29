@@ -880,6 +880,46 @@ export const es: Partial<Record<ZhKey, string>> = {
   'pdfAnnotation.import.skipReason.no-text-under-markup': 'sin texto bajo la marca',
   'pdfAnnotation.import.skipReason.empty-note': 'nota sin texto',
   'pdfAnnotation.import.skipReason.invalid-anchor': 'ancla que el almacén rechaza',
+  'pdfAnnotation.export.title': 'Sacar las anotaciones',
+  'pdfAnnotation.export.annotatedAction': 'Guardar copia anotada',
+  'pdfAnnotation.export.notesAction': 'Guardar la lista de anotaciones',
+  'pdfAnnotation.export.annotatedHint':
+    'Escribe las marcas de esta versión en una copia. El archivo que está leyendo no se modifica nunca.',
+  'pdfAnnotation.export.notesHint':
+    'Escribe las anotaciones como una lista de texto plano. Esta vía no produce ningún PDF.',
+  'pdfAnnotation.export.running': 'Exportando…',
+  'pdfAnnotation.export.cancelled': 'Exportación cancelada — no se escribió ningún archivo',
+  'pdfAnnotation.export.exported':
+    'Se exportaron {exported} de {inStore} anotaciones (versión {versionId})',
+  'pdfAnnotation.export.copyLine': 'Copia anotada: {path}',
+  'pdfAnnotation.export.notesLine': 'Archivo de la lista: {path}',
+  'pdfAnnotation.export.noPdf': 'Esta vía no produce ningún PDF',
+  'pdfAnnotation.export.sourceUnchanged':
+    'La versión no se modificó: sha256 {checksumBefore} antes de la copia y {checksumAfter} después.',
+  'pdfAnnotation.export.versionLine': 'Versión {versionId} · sha256 {checksum}',
+  'pdfAnnotation.export.skippedTotal': 'No llevadas a la copia: {count}',
+  'pdfAnnotation.export.skippedLine': '{reason}: {count}',
+  'pdfAnnotation.export.failed': 'La exportación no pudo ejecutarse: {message}',
+  'pdfAnnotation.export.failure': 'No se escribió nada — {reason}',
+  'pdfAnnotation.export.failureReason.missing-anchor':
+    'la exportación no nombró ninguna versión del archivo',
+  'pdfAnnotation.export.failureReason.checksum-mismatch': 'este archivo ya no es esa versión',
+  'pdfAnnotation.export.failureReason.unreadable-source':
+    'no se pudo leer el archivo de esa versión',
+  'pdfAnnotation.export.failureReason.not-a-pdf': 'este archivo no es un PDF',
+  'pdfAnnotation.export.failureReason.unsupported-pdf-structure':
+    'a este PDF no se le puede añadir nada',
+  'pdfAnnotation.export.failureReason.nothing-to-export':
+    'esta versión no lleva ninguna anotación propia',
+  'pdfAnnotation.export.failureReason.source-changed':
+    'el archivo de origen cambió durante la exportación',
+  'pdfAnnotation.export.failureReason.write-failed': 'no se pudo escribir en el destino',
+  'pdfAnnotation.export.skipReason.another-version': 'dibujada en otra versión',
+  'pdfAnnotation.export.skipReason.document-level': 'señala el documento, no una página',
+  'pdfAnnotation.export.skipReason.unknown-page': 'esa página no está en este archivo',
+  'pdfAnnotation.export.skipReason.rotated-page': 'la página está girada',
+  'pdfAnnotation.export.skipReason.degenerate-geometry': 'sin extensión en la página',
+  'pdfAnnotation.export.skipReason.unplaceable-page': 'la página no se puede reescribir',
   'previewSurface.thisComputer': 'Esta computadora',
   'previewSurface.toolbar': 'Acciones del archivo',
   'providerForm.apiFormat': 'Formato de API',

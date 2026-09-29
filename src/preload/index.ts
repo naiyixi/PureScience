@@ -76,6 +76,7 @@ import type { SessionBookmarkInput } from '../shared/bookmark'
 import type {
   PdfAnnotationAnchorRequest,
   PdfAnnotationCreateRequest,
+  PdfAnnotationExportRequest,
   PdfAnnotationReattachRequest,
   PdfAnnotationRemoveRequest
 } from '../shared/pdf-annotation-surface'
@@ -975,11 +976,16 @@ const api: PureScienceAPI = {
     figures: (request: { projectId: string; docId: string; page?: number }) =>
       electronRendererContracts.invoke('pdf.figures', request)
   },
-  // PDF annotations (文档标注层 A3): the reader's own markup on one file version. Renderer-only by
-  // design, like the session bookmarks above — nothing here has an agent-facing counterpart.
+  // PDF annotations (文档标注层 A3/A4): the reader's own markup on one file version, and the two export
+  // channels that take it out of the app. Renderer-only by design, like the session bookmarks above —
+  // nothing here has an agent-facing counterpart.
   pdfAnnotations: {
     create: (request: PdfAnnotationCreateRequest) =>
       electronRendererContracts.invoke('pdfAnnotations.create', request),
+    exportAnnotated: (request: PdfAnnotationExportRequest) =>
+      electronRendererContracts.invoke('pdfAnnotations.exportAnnotated', request),
+    exportNotes: (request: PdfAnnotationExportRequest) =>
+      electronRendererContracts.invoke('pdfAnnotations.exportNotes', request),
     import: (request: PdfAnnotationAnchorRequest) =>
       electronRendererContracts.invoke('pdfAnnotations.import', request),
     list: (request: PdfAnnotationAnchorRequest) =>

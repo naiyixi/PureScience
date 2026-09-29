@@ -187,10 +187,10 @@ describe('renderer argument-shape characterization', () => {
     const actualPaths = collectFunctionPaths(webApi).sort()
 
     expect(new Set(actualPaths).size).toBe(actualPaths.length)
-    // 372 with the PDF annotation surface, 367 with the literature-screening surface: +8
-    // `references.*Screening*` channels (see the same increment in
-    // src/shared/renderer-contract-catalog.test.ts).
-    expect(actualPaths).toHaveLength(372)
+    // 374 with the two PDF annotation export channels, 372 with the annotation surface before them, 367
+    // with the literature-screening surface: +8 `references.*Screening*` channels (see the same increment
+    // in src/shared/renderer-contract-catalog.test.ts).
+    expect(actualPaths).toHaveLength(374)
     expect(actualPaths).toEqual(expectedPaths)
   })
 

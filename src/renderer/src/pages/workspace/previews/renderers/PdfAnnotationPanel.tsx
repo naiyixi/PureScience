@@ -5,10 +5,15 @@ import { useLanguage, type TranslationKey } from '@/i18n'
 import type {
   PdfAnnotationAnchor,
   PdfAnnotationAnchorCounts,
+  PdfAnnotationExportReceipt,
   PdfAnnotationView
 } from '../../../../../../shared/pdf-annotation-surface'
 import type { PdfEmbeddedAnnotationImportReport } from '../../../../../../shared/pdf-annotation-import'
 import type { PdfAnnotationImportFailureCode } from '../../../../../../shared/pdf-annotation-import'
+import type {
+  PdfAnnotationExportChannel,
+  PdfAnnotationExportFailureCode
+} from '../../../../../../shared/pdf-annotation-export'
 
 // The annotation panel on a PDF preview (文档标注层 A3): what is stored on this file, what is stored on
 // OTHER versions of it, and what an import actually did.
@@ -31,6 +36,26 @@ export type PdfAnnotationImportView =
   /** The IPC call itself failed — an unreachable version, a closed window: named, not a silent no-op. */
   | { kind: 'failed'; message: string }
 
+/**
+ * The two export channels (文档标注层 A4) as the panel shows them.
+ *
+ * A receipt is the only state that names a file, and it names the channel's OWN output: `copy` for the
+ * annotated channel, `notes` for the list channel. Nothing here can present a cancelled save as an
+ * export, and nothing can present the notes channel as having produced a PDF.
+ */
+export type PdfAnnotationExportView =
+  | { kind: 'idle' }
+  | { kind: 'running'; channel: PdfAnnotationExportChannel }
+  | { kind: 'receipt'; receipt: PdfAnnotationExportReceipt }
+  | { kind: 'cancelled'; channel: PdfAnnotationExportChannel }
+  | {
+      kind: 'failure'
+      channel: PdfAnnotationExportChannel
+      code: PdfAnnotationExportFailureCode
+      message: string
+    }
+  | { kind: 'failed'; channel: PdfAnnotationExportChannel; message: string }
+
 export type PdfAnnotationPanelProps = {
   annotations: readonly PdfAnnotationView[]
   counts: PdfAnnotationAnchorCounts
@@ -52,6 +77,9 @@ export type PdfAnnotationPanelProps = {
   onNoteCancel: () => void
   importer: PdfAnnotationImportView
   onImport: () => void
+  exporter: PdfAnnotationExportView
+  onExportAnnotated: () => void
+  onExportNotes: () => void
   onClose: () => void
 }
 
@@ -206,6 +234,230 @@ const ImportReport = ({
   )
 }
 
+/**
+ * The two export channels (文档标注层 A4).
+ *
+ * The panel is where the channels' honesty is visible: the annotated channel states the copy it wrote
+ * AND the digest the source file had before and after it (the same number, or the export is not reported
+ * as a success at all), and the notes channel states that it produces no PDF. What a copy could not carry
+ * is listed with its named reason and count, so "7 of 9" is a number the reader can act on.
+ */
+const ExportReport = ({
+  exporter,
+  onExportAnnotated,
+  onExportNotes
+}: {
+  exporter: PdfAnnotationExportView
+  onExportAnnotated: () => void
+  onExportNotes: () => void
+}): React.JSX.Element => {
+  const { t } = useLanguage()
+  const running = exporter.kind === 'running'
+
+  const receiptView = (receipt: PdfAnnotationExportReceipt): React.JSX.Element => {
+    const total = receipt.skipped.reduce((sum, entry) => sum + entry.count, 0)
+    return (
+      <div
+        data-testid="pdf-annotation-export-status"
+        data-status="exported"
+        data-channel={receipt.channel}
+        data-anchor-checksum={receipt.anchorChecksum}
+        className="space-y-1"
+      >
+        <p data-testid="pdf-annotation-export-summary" className="text-[11px] text-text-100">
+          {t('pdfAnnotation.export.exported', {
+            exported: receipt.annotationsExported,
+            inStore: receipt.annotationsInStore,
+            versionId: receipt.provenance.versionId
+          })}
+        </p>
+        {receipt.copy ? (
+          <p
+            data-testid="pdf-annotation-export-copy"
+            data-path={receipt.copy.path}
+            data-bytes={receipt.copy.bytes}
+            data-source-bytes={receipt.copy.sourceBytes}
+            data-appended-bytes={receipt.copy.appendedBytes}
+            className="text-[11px] text-text-200 [overflow-wrap:anywhere]"
+          >
+            {t('pdfAnnotation.export.copyLine', { path: receipt.copy.path })}
+          </p>
+        ) : null}
+        {receipt.notes ? (
+          <p
+            data-testid="pdf-annotation-export-notes"
+            data-path={receipt.notes.path}
+            data-lines={receipt.notes.entryLines}
+            className="text-[11px] text-text-200 [overflow-wrap:anywhere]"
+          >
+            {t('pdfAnnotation.export.notesLine', { path: receipt.notes.path })}
+          </p>
+        ) : null}
+        {/* The channel's own fact, stated rather than inferred from the file name. */}
+        {receipt.channel === 'notes' ? (
+          <p data-testid="pdf-annotation-export-no-pdf" className="text-[10px] text-text-300">
+            {t('pdfAnnotation.export.noPdf')}
+          </p>
+        ) : null}
+        {receipt.sourceBytes ? (
+          <p
+            data-testid="pdf-annotation-export-source"
+            data-checksum-before={receipt.sourceBytes.checksumBefore}
+            data-checksum-after={receipt.sourceBytes.checksumAfter}
+            data-anchor-checksum={receipt.anchorChecksum}
+            className="text-[10px] text-text-300 [overflow-wrap:anywhere]"
+          >
+            {t('pdfAnnotation.export.sourceUnchanged', {
+              checksumBefore: receipt.sourceBytes.checksumBefore,
+              checksumAfter: receipt.sourceBytes.checksumAfter
+            })}
+          </p>
+        ) : null}
+        <p
+          data-testid="pdf-annotation-export-provenance"
+          className="text-[10px] text-text-300 [overflow-wrap:anywhere]"
+        >
+          {t('pdfAnnotation.export.versionLine', {
+            versionId: receipt.provenance.versionId,
+            checksum: receipt.provenance.checksum
+          })}
+        </p>
+        {receipt.skipped.length > 0 ? (
+          <div data-testid="pdf-annotation-export-skipped" className="space-y-0.5">
+            <p
+              data-testid="pdf-annotation-export-skipped-total"
+              className="text-[11px] text-text-200"
+            >
+              {t('pdfAnnotation.export.skippedTotal', { count: total })}
+            </p>
+            {receipt.skipped.map((entry) => (
+              <p
+                key={entry.reason}
+                data-testid="pdf-annotation-export-skip"
+                data-reason={entry.reason}
+                data-count={entry.count}
+                title={entry.detail}
+                className="text-[10px] text-text-300"
+              >
+                {t('pdfAnnotation.export.skippedLine', {
+                  reason: t(`pdfAnnotation.export.skipReason.${entry.reason}` as TranslationKey),
+                  count: entry.count
+                })}
+              </p>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    )
+  }
+
+  const status = (): React.JSX.Element | null => {
+    if (exporter.kind === 'idle') return null
+    if (exporter.kind === 'running') {
+      return (
+        <p
+          data-testid="pdf-annotation-export-status"
+          data-status="running"
+          data-channel={exporter.channel}
+          className="text-[11px] text-text-300"
+        >
+          {t('pdfAnnotation.export.running')}
+        </p>
+      )
+    }
+    if (exporter.kind === 'cancelled') {
+      return (
+        <p
+          data-testid="pdf-annotation-export-status"
+          data-status="cancelled"
+          data-channel={exporter.channel}
+          role="status"
+          className="text-[11px] text-text-300"
+        >
+          {t('pdfAnnotation.export.cancelled')}
+        </p>
+      )
+    }
+    if (exporter.kind === 'failed') {
+      return (
+        <p
+          data-testid="pdf-annotation-export-status"
+          data-status="failed"
+          data-channel={exporter.channel}
+          role="alert"
+          className="text-[11px] text-rose-500"
+        >
+          {t('pdfAnnotation.export.failed', { message: exporter.message })}
+        </p>
+      )
+    }
+    if (exporter.kind === 'failure') {
+      return (
+        <div
+          data-testid="pdf-annotation-export-status"
+          data-status="failure"
+          data-channel={exporter.channel}
+          data-code={exporter.code}
+          role="alert"
+          className="space-y-1"
+        >
+          <p className="text-[11px] text-rose-500">
+            {t('pdfAnnotation.export.failure', {
+              reason: t(`pdfAnnotation.export.failureReason.${exporter.code}` as TranslationKey)
+            })}
+          </p>
+          <p
+            data-testid="pdf-annotation-export-failure-detail"
+            className="text-[11px] text-text-300 [overflow-wrap:anywhere]"
+          >
+            {exporter.message}
+          </p>
+        </div>
+      )
+    }
+    return receiptView(exporter.receipt)
+  }
+
+  return (
+    <section
+      data-testid="pdf-annotation-export"
+      data-channels="annotated-pdf notes"
+      className="space-y-1.5 border-b border-border-300/40 px-3 py-2"
+    >
+      <p className="text-[11px] font-medium text-text-000">{t('pdfAnnotation.export.title')}</p>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          data-slot="pdf-annotation-export-annotated"
+          className="h-7 px-2 text-[11px] text-text-100 hover:text-text-000"
+          disabled={running}
+          onClick={onExportAnnotated}
+        >
+          {t('pdfAnnotation.export.annotatedAction')}
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          data-slot="pdf-annotation-export-notes"
+          className="h-7 px-2 text-[11px] text-text-100 hover:text-text-000"
+          disabled={running}
+          onClick={onExportNotes}
+        >
+          {t('pdfAnnotation.export.notesAction')}
+        </Button>
+      </div>
+      {/* What each channel does, said before it is pressed: which file it writes, and that the file being
+          read is not the one being written. */}
+      <p className="text-[10px] text-text-300">{t('pdfAnnotation.export.annotatedHint')}</p>
+      <p className="text-[10px] text-text-300">{t('pdfAnnotation.export.notesHint')}</p>
+      {status()}
+    </section>
+  )
+}
+
 export const PdfAnnotationPanel = ({
   annotations,
   counts,
@@ -220,6 +472,9 @@ export const PdfAnnotationPanel = ({
   onNoteCancel,
   importer,
   onImport,
+  exporter,
+  onExportAnnotated,
+  onExportNotes,
   onClose
 }: PdfAnnotationPanelProps): React.JSX.Element => {
   const { t } = useLanguage()
@@ -327,6 +582,14 @@ export const PdfAnnotationPanel = ({
       ) : null}
 
       <ImportReport importer={importer} onImport={onImport} />
+
+      {/* The two export channels sit beside the import: same read, opposite direction — and each one
+          writes its own file or writes nothing at all. */}
+      <ExportReport
+        exporter={exporter}
+        onExportAnnotated={onExportAnnotated}
+        onExportNotes={onExportNotes}
+      />
 
       {annotations.length === 0 ? (
         <p data-testid="pdf-annotation-empty" className="px-3 py-2 text-[11px] text-text-300">

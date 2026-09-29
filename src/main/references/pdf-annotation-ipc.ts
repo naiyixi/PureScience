@@ -10,6 +10,8 @@ import { ipcMainHandle } from '../ipc-handler-registry'
 import type {
   PdfAnnotationAnchorRequest,
   PdfAnnotationCreateRequest,
+  PdfAnnotationExportOutcome,
+  PdfAnnotationExportRequest,
   PdfAnnotationImportOutcome,
   PdfAnnotationListResult,
   PdfAnnotationReattachRequest,
@@ -19,9 +21,12 @@ import type {
 } from '../../shared/pdf-annotation-surface'
 import type { PdfAnnotation } from '../../shared/pdf-annotations'
 import type { PdfAnnotationService } from './pdf-annotation-service'
+import type { PdfAnnotationExportService } from './pdf-annotation-export'
 
 export const PDF_ANNOTATION_IPC = {
   CREATE: 'pdf-annotations:create',
+  EXPORT_ANNOTATED: 'pdf-annotations:export-annotated',
+  EXPORT_NOTES: 'pdf-annotations:export-notes',
   IMPORT: 'pdf-annotations:import',
   LIST: 'pdf-annotations:list',
   REATTACH: 'pdf-annotations:reattach',
@@ -30,6 +35,8 @@ export const PDF_ANNOTATION_IPC = {
 
 export type PdfAnnotationCommandOwner = {
   create: (request: PdfAnnotationCreateRequest) => Promise<PdfAnnotation>
+  exportAnnotated: (request: PdfAnnotationExportRequest) => Promise<PdfAnnotationExportOutcome>
+  exportNotes: (request: PdfAnnotationExportRequest) => Promise<PdfAnnotationExportOutcome>
   import: (request: PdfAnnotationAnchorRequest) => Promise<PdfAnnotationImportOutcome>
   list: (request: PdfAnnotationAnchorRequest) => Promise<PdfAnnotationListResult>
   reattach: (request: PdfAnnotationReattachRequest) => Promise<PdfAnnotationReattachResult>
@@ -37,9 +44,15 @@ export type PdfAnnotationCommandOwner = {
 }
 
 export const createPdfAnnotationCommandOwner = (
-  service: PdfAnnotationService
+  service: PdfAnnotationService,
+  exporter: PdfAnnotationExportService
 ): PdfAnnotationCommandOwner => ({
   create: (request) => service.create(request),
+  // The two export channels are wired to the export service, which is where the version's bytes live.
+  // They are two members rather than one with a channel argument: a window asks for the annotated copy
+  // or for the notes, and neither request can be mistaken for the other.
+  exportAnnotated: (request) => exporter.exportAnnotatedPdf(request),
+  exportNotes: (request) => exporter.exportNotes(request),
   import: (request) => service.import(request),
   list: (request) => service.list(request),
   reattach: (request) => service.reattach(request),
@@ -51,6 +64,13 @@ export const registerPdfAnnotationIpcHandlers = (
 ): PdfAnnotationCommandOwner => {
   ipcMainHandle(PDF_ANNOTATION_IPC.CREATE, (_event, request: PdfAnnotationCreateRequest) =>
     owner.create(request)
+  )
+  ipcMainHandle(
+    PDF_ANNOTATION_IPC.EXPORT_ANNOTATED,
+    (_event, request: PdfAnnotationExportRequest) => owner.exportAnnotated(request)
+  )
+  ipcMainHandle(PDF_ANNOTATION_IPC.EXPORT_NOTES, (_event, request: PdfAnnotationExportRequest) =>
+    owner.exportNotes(request)
   )
   ipcMainHandle(PDF_ANNOTATION_IPC.IMPORT, (_event, request: PdfAnnotationAnchorRequest) =>
     owner.import(request)
@@ -70,6 +90,8 @@ export const registerPdfAnnotationIpcHandlers = (
 export type {
   PdfAnnotationAnchorRequest,
   PdfAnnotationCreateRequest,
+  PdfAnnotationExportOutcome,
+  PdfAnnotationExportRequest,
   PdfAnnotationImportOutcome,
   PdfAnnotationListResult,
   PdfAnnotationReattachRequest,

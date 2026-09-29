@@ -884,6 +884,46 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'pdfAnnotation.import.skipReason.no-text-under-markup': 'aucun texte sous la marque',
   'pdfAnnotation.import.skipReason.empty-note': 'note sans texte',
   'pdfAnnotation.import.skipReason.invalid-anchor': 'ancre que le stockage refuse',
+  'pdfAnnotation.export.title': 'Sortir les annotations',
+  'pdfAnnotation.export.annotatedAction': 'Enregistrer une copie annotée',
+  'pdfAnnotation.export.notesAction': 'Enregistrer la liste des annotations',
+  'pdfAnnotation.export.annotatedHint':
+    "Écrit les annotations de cette version dans une copie. Le fichier que vous lisez n'est jamais modifié.",
+  'pdfAnnotation.export.notesHint':
+    'Écrit les annotations sous forme de liste en texte brut. Cette voie ne produit aucun PDF.',
+  'pdfAnnotation.export.running': 'Exportation…',
+  'pdfAnnotation.export.cancelled': "Exportation annulée — aucun fichier n'a été écrit",
+  'pdfAnnotation.export.exported':
+    '{exported} annotations sur {inStore} exportées (version {versionId})',
+  'pdfAnnotation.export.copyLine': 'Copie annotée : {path}',
+  'pdfAnnotation.export.notesLine': 'Fichier de liste : {path}',
+  'pdfAnnotation.export.noPdf': 'Cette voie ne produit aucun PDF',
+  'pdfAnnotation.export.sourceUnchanged':
+    "La version n'a pas été modifiée : sha256 {checksumBefore} avant la copie, {checksumAfter} après.",
+  'pdfAnnotation.export.versionLine': 'Version {versionId} · empreinte sha256 {checksum}',
+  'pdfAnnotation.export.skippedTotal': 'Non reportées dans la copie : {count}',
+  'pdfAnnotation.export.skippedLine': '{reason} : {count}',
+  'pdfAnnotation.export.failed': "L'exportation n'a pas pu se faire : {message}",
+  'pdfAnnotation.export.failure': "Rien n'a été écrit — {reason}",
+  'pdfAnnotation.export.failureReason.missing-anchor':
+    "l'exportation ne nommait aucune version de fichier",
+  'pdfAnnotation.export.failureReason.checksum-mismatch': "ce fichier n'est plus cette version",
+  'pdfAnnotation.export.failureReason.unreadable-source':
+    'le fichier de cette version est illisible',
+  'pdfAnnotation.export.failureReason.not-a-pdf': "ce fichier n'est pas un PDF",
+  'pdfAnnotation.export.failureReason.unsupported-pdf-structure':
+    'ce PDF ne peut pas être complété',
+  'pdfAnnotation.export.failureReason.nothing-to-export':
+    'cette version ne porte aucune annotation qui lui soit propre',
+  'pdfAnnotation.export.failureReason.source-changed':
+    "le fichier source a changé pendant l'exportation",
+  'pdfAnnotation.export.failureReason.write-failed': "la destination n'a pas pu être écrite",
+  'pdfAnnotation.export.skipReason.another-version': 'tracée sur une autre version',
+  'pdfAnnotation.export.skipReason.document-level': 'désigne le document, pas une page',
+  'pdfAnnotation.export.skipReason.unknown-page': 'page absente de ce fichier',
+  'pdfAnnotation.export.skipReason.rotated-page': 'page pivotée',
+  'pdfAnnotation.export.skipReason.degenerate-geometry': 'aucune étendue sur la page',
+  'pdfAnnotation.export.skipReason.unplaceable-page': 'la page ne peut pas être réécrite',
   'previewSurface.thisComputer': 'Cet ordinateur',
   'previewSurface.toolbar': 'Actions du fichier',
   'providerForm.apiFormat': 'Format d’API',

@@ -19,12 +19,18 @@ import type { BookmarkRect } from '../../../../../../shared/bookmark'
 import type {
   PdfAnnotationAnchorCounts,
   PdfAnnotationAnchorRequest,
+  PdfAnnotationExportRequest,
   PdfAnnotationListResult
 } from '../../../../../../shared/pdf-annotation-surface'
+import type { PdfAnnotationExportChannel } from '../../../../../../shared/pdf-annotation-export'
 import { resolveBookmarkVersionIdentity } from '../../bookmark-version-identity'
 
 import { PdfAnnotationMarks } from './PdfAnnotationMarks'
-import { PdfAnnotationPanel, type PdfAnnotationImportView } from './PdfAnnotationPanel'
+import {
+  PdfAnnotationPanel,
+  type PdfAnnotationExportView,
+  type PdfAnnotationImportView
+} from './PdfAnnotationPanel'
 import {
   pdfAnnotationAreaSelector,
   pdfAnnotationNoteAnchor,
@@ -486,6 +492,7 @@ export const PdfPreviewContent = ({
   const [annotationStatus, setAnnotationStatus] = useState<string | undefined>(undefined)
   const [panelOpen, setPanelOpen] = useState(false)
   const [importer, setImporter] = useState<PdfAnnotationImportView>({ kind: 'idle' })
+  const [exporter, setExporter] = useState<PdfAnnotationExportView>({ kind: 'idle' })
   const [pendingNote, setPendingNote] = useState<
     { page: number; anchorRect: BookmarkRect } | undefined
   >(undefined)
@@ -618,6 +625,42 @@ export const PdfPreviewContent = ({
       })
       .catch((error: unknown) =>
         setAnnotationStatus(t('pdfAnnotation.status.failed', { message: describeFailure(error) }))
+      )
+  }
+
+  // The two export channels (文档标注层 A4). Each is triggered on its own and lands its own file; the
+  // request carries the file name the pane displays, and the main process decides the extension, the
+  // checksum and the bytes. A channel that wrote nothing (a cancelled save, a named refusal) therefore
+  // never leaves a receipt behind.
+  const exportRequest: PdfAnnotationExportRequest | undefined = useMemo(
+    () => (anchorRequest ? { ...anchorRequest, fileName: name } : undefined),
+    [anchorRequest, name]
+  )
+
+  const runExport = (channel: PdfAnnotationExportChannel): void => {
+    if (!annotationClient || !exportRequest) return
+    setExporter({ kind: 'running', channel })
+    const call =
+      channel === 'notes'
+        ? annotationClient.exportNotes(exportRequest)
+        : annotationClient.exportAnnotated(exportRequest)
+    void call
+      .then((outcome) => {
+        if (outcome.status === 'exported') {
+          setExporter({ kind: 'receipt', receipt: outcome.receipt })
+          // The store is read again after an export so the panel shows the store, not the export's hopes —
+          // the same reason the counts are re-read after a create.
+          reloadAnnotations()
+          return
+        }
+        setExporter(
+          outcome.status === 'cancelled'
+            ? { kind: 'cancelled', channel }
+            : { kind: 'failure', channel, code: outcome.code, message: outcome.message }
+        )
+      })
+      .catch((error: unknown) =>
+        setExporter({ kind: 'failed', channel, message: describeFailure(error) })
       )
   }
 
@@ -999,6 +1042,9 @@ export const PdfPreviewContent = ({
           }}
           importer={importer}
           onImport={handleImport}
+          exporter={exporter}
+          onExportAnnotated={() => runExport('annotated-pdf')}
+          onExportNotes={() => runExport('notes')}
           onClose={() => setPanelOpen(false)}
         />
       ) : null}

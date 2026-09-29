@@ -346,6 +346,8 @@ import type { PdfAnnotation } from '../shared/pdf-annotations'
 import type {
   PdfAnnotationAnchorRequest,
   PdfAnnotationCreateRequest,
+  PdfAnnotationExportOutcome,
+  PdfAnnotationExportRequest,
   PdfAnnotationImportOutcome,
   PdfAnnotationListResult,
   PdfAnnotationReattachRequest,
@@ -1225,7 +1227,8 @@ export interface PureScienceAPI {
     // Scans pages for a query, ranked by relevance.
     scan(request: { projectId: string; docId: string; query: string }): Promise<PdfScanResult>
   }
-  // PDF annotations (文档标注层 A3): list / create / remove / re-anchor, and the import channel. Every
+  // PDF annotations (文档标注层 A3/A4): list / create / remove / re-anchor, the import channel, and the
+  // two export channels — an annotated copy of the version's bytes, and a plain-text notes list. Every
   // request names the file VERSION; the content checksum and the anchor state are resolved in the main
   // process, never supplied by the window.
   pdfAnnotations: {
@@ -1234,6 +1237,10 @@ export interface PureScienceAPI {
     remove(request: PdfAnnotationRemoveRequest): Promise<PdfAnnotationRemoveResult>
     reattach(request: PdfAnnotationReattachRequest): Promise<PdfAnnotationReattachResult>
     import(request: PdfAnnotationAnchorRequest): Promise<PdfAnnotationImportOutcome>
+    // Writes the markup of this version into a COPY of it; the version's own file is never written.
+    exportAnnotated(request: PdfAnnotationExportRequest): Promise<PdfAnnotationExportOutcome>
+    // Writes the annotations as a list. Produces no PDF.
+    exportNotes(request: PdfAnnotationExportRequest): Promise<PdfAnnotationExportOutcome>
   }
   figure: {
     // Reviews a figure against the publication-grade correctness checklist.

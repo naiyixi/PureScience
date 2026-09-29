@@ -3,6 +3,13 @@ import type {
   PdfEmbeddedAnnotationImportReport
 } from './pdf-annotation-import'
 import type {
+  PdfAnnotationBurnSkip,
+  PdfAnnotationExportChannel,
+  PdfAnnotationExportFailureCode,
+  PdfAnnotationExportKindCount,
+  PdfAnnotationExportProvenance
+} from './pdf-annotation-export'
+import type {
   PdfAnnotation,
   PdfAnnotationAnchorState,
   PdfAnnotationKind,
@@ -95,6 +102,87 @@ export type PdfAnnotationReattachResult = {
 }
 
 export type PdfAnnotationImportRequest = PdfAnnotationAnchorRequest
+
+// --- the two export channels (文档标注层 A4) ---------------------------------------------------------
+
+/**
+ * One export request: the same four identity facts as every other annotation call, plus the name the
+ * window displays for the file.
+ *
+ * The name is a HINT and nothing else — the main process derives the suggested file name from it and
+ * decides the extension, so the window cannot land a notes export behind a `.pdf` extension. There is
+ * still no checksum in the request: the version's bytes are resolved and hashed in the main process.
+ */
+export type PdfAnnotationExportRequest = PdfAnnotationAnchorRequest & {
+  fileName?: string
+}
+
+/** What one channel carried, per annotation kind. */
+export type PdfAnnotationExportKindCountEntry = PdfAnnotationExportKindCount
+
+/** Why one annotation was left out of a copy, with the count and the first occurrence's explanation. */
+export type PdfAnnotationExportSkip = PdfAnnotationBurnSkip
+
+/**
+ * The bytes of the version's file, hashed before and after the outlet wrote. `null` for a channel that
+ * never opened it — the notes channel reads the store, not the PDF.
+ */
+export type PdfAnnotationExportSourceBytes = {
+  path: string
+  /** sha256 of the bytes read before the export wrote anything. Asserted equal to `anchorChecksum`. */
+  checksumBefore: string
+  /** sha256 of the same file, re-read after the write. Equal to `checksumBefore`, or nothing is reported. */
+  checksumAfter: string
+  bytes: number
+}
+
+/**
+ * What an export answers with.
+ *
+ * The two channels are visible in the shape: `copy` is non-null for the annotated channel and `notes`
+ * for the list channel, and neither channel ever fills both. A reader (or an acceptance run) can then
+ * check "the notes export produced no PDF" by reading one field rather than by inferring it from a file
+ * name.
+ */
+export type PdfAnnotationExportReceipt = {
+  channel: PdfAnnotationExportChannel
+  provenance: PdfAnnotationExportProvenance
+  /** The version's content checksum as the version authority resolved it — the anchor, restated. */
+  anchorChecksum: string
+  sourceBytes: PdfAnnotationExportSourceBytes | null
+  /** Every annotation of the file as the store held it when the export ran. */
+  annotationsInStore: number
+  /** What this channel carried: burned into the copy, or listed in the notes file. */
+  annotationsExported: number
+  kinds: readonly PdfAnnotationExportKindCountEntry[]
+  copy: {
+    path: string
+    bytes: number
+    /** Bytes of the version copied verbatim at the head of the copy. */
+    sourceBytes: number
+    /** Bytes appended after them: the annotation dictionaries and the re-stated page dictionaries. */
+    appendedBytes: number
+    pageCount: number
+  } | null
+  notes: { path: string; bytes: number; entryLines: number } | null
+  /** What the copy could not carry, each with its named reason. Empty for the notes channel. */
+  skipped: readonly PdfAnnotationExportSkip[]
+  exportedAt: number
+}
+
+/**
+ * What an export attempt answers with. `cancelled` is its own outcome: a save the reader abandoned is
+ * not an export, and no receipt may claim a file nobody wrote.
+ */
+export type PdfAnnotationExportOutcome =
+  | { status: 'exported'; receipt: PdfAnnotationExportReceipt }
+  | { status: 'cancelled'; channel: PdfAnnotationExportChannel }
+  | {
+      status: 'failure'
+      channel: PdfAnnotationExportChannel
+      code: PdfAnnotationExportFailureCode
+      message: string
+    }
 
 /**
  * What an import attempt answers with.

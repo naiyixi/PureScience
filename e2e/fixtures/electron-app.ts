@@ -92,6 +92,12 @@ const closeElectronApplicationForCleanup = async (
 
 type ElectronApp = {
   readonly page: Page
+  /**
+   * The storage root the launched app was given. A spec that has to hash a MANAGED file on disk (the
+   * annotation export's byte-level assertion is exactly that) reads it here rather than guessing at a
+   * container path.
+   */
+  readonly storageRoot: string
   completeOnboarding: () => Promise<Page>
   configureFakeAgent: () => Promise<Page>
   createTestDirectory: (name: string) => Promise<string>
@@ -270,6 +276,10 @@ class ElectronAppHarness implements ElectronApp {
   get page(): Page {
     if (!this.currentPage) throw new Error('Electron application is not running.')
     return this.currentPage
+  }
+
+  get storageRoot(): string {
+    return this.roots.storageRoot
   }
 
   async completeOnboarding(): Promise<Page> {

@@ -61,6 +61,8 @@ import { createComputeIpcModule } from './compute/ipc'
 import { createReferencesIpcModule, installReferencesIpcHandlers } from './references/ipc'
 import { PdfAnnotationRepository } from './references/pdf-annotation-repository'
 import { PdfAnnotationService } from './references/pdf-annotation-service'
+import type { PdfAnnotationVersionFileResolver } from './references/pdf-annotation-service'
+import { PdfAnnotationExportService } from './references/pdf-annotation-export'
 import {
   createPdfAnnotationCommandOwner,
   registerPdfAnnotationIpcHandlers
@@ -1544,13 +1546,23 @@ const createApplicationModules = async (
   const bookmarkRepository = new BookmarkRepository({
     storageRoot: resolveDataRoot()
   })
-  // PDF annotations (文档标注层 A3): the A1 store, addressed through the version authority. The window
-  // names the file VERSION it is looking at; the checksum comes from here, because a checksum the window
-  // typed would describe bytes nobody read. Reading the bytes is a separate, later step (import only), so
-  // opening a large PDF does not pay for its content twice.
+  // PDF annotations (文档标注层 A3/A4): the store, the import channel and the two export channels, all
+  // addressed through the version authority. The window names the file VERSION it is looking at; the
+  // checksum comes from here, because a checksum the window typed would describe bytes nobody read.
+  // Reading the bytes is a separate, later step (import and the annotated export), so opening a large PDF
+  // does not pay for its content twice.
   const pdfAnnotationRepository = new PdfAnnotationRepository(() =>
     getProjectDbClient(resolveStorageRoot())
   )
+  const resolvePdfAnnotationVersionFile: PdfAnnotationVersionFileResolver = async (request) =>
+    (
+      await artifactProvenanceRepository.resolveVersionContent({
+        projectId: request.projectId,
+        appSessionId: request.sessionId,
+        artifactId: request.artifactId,
+        versionId: request.versionId
+      })
+    ).path
   const pdfAnnotationService = new PdfAnnotationService({
     repository: pdfAnnotationRepository,
     resolveVersion: async (request) => {
@@ -1568,15 +1580,36 @@ const createApplicationModules = async (
     },
     // The same resolver the preview reads through, so an import reads the bytes the reader is looking at
     // and refuses (by checksum) any other bytes.
-    resolveVersionFile: async (request) =>
-      (
-        await artifactProvenanceRepository.resolveVersionContent({
-          projectId: request.projectId,
-          appSessionId: request.sessionId,
-          artifactId: request.artifactId,
-          versionId: request.versionId
-        })
-      ).path
+    resolveVersionFile: resolvePdfAnnotationVersionFile
+  })
+  // The two export channels (A4). The save dialog lives at the edge, like the session-package export's
+  // picker: only this composition knows the window, and the channels themselves never see one. The write
+  // that follows the dialog is real — a channel that reports a file has to have written one.
+  const saveBytesToChosenPath = async (
+    suggestedName: string,
+    bytes: Uint8Array,
+    options: { filter: { name: string; extensions: string[] }; title: string }
+  ): Promise<string | null> => {
+    const { canceled, filePath } = await dialog.showSaveDialog({
+      defaultPath: join(app.getPath('downloads'), basename(suggestedName)),
+      filters: [options.filter],
+      title: options.title
+    })
+    if (canceled || !filePath) return null
+    await writeFile(filePath, bytes)
+    return filePath
+  }
+  const pdfAnnotationExportService = new PdfAnnotationExportService({
+    annotations: pdfAnnotationService,
+    resolveVersionFile: resolvePdfAnnotationVersionFile,
+    write: async (request) =>
+      saveBytesToChosenPath(request.suggestedName, request.bytes, {
+        filter: {
+          name: request.channel === 'notes' ? 'Text' : 'PDF',
+          extensions: [request.channel === 'notes' ? 'txt' : 'pdf']
+        },
+        title: request.channel === 'notes' ? 'Save annotation notes' : 'Save annotated copy'
+      })
   })
   // Saved search filter sets (v1.67): the researcher's own working state, wired for the renderer only —
   // there is no agent-facing owner beside it.
@@ -2809,7 +2842,9 @@ const createApplicationModules = async (
     registerPdfIpcHandlers(createPdfCommandOwner(pdfService))
   })
   declareElectronAdapter('pdfAnnotations', () => {
-    registerPdfAnnotationIpcHandlers(createPdfAnnotationCommandOwner(pdfAnnotationService))
+    registerPdfAnnotationIpcHandlers(
+      createPdfAnnotationCommandOwner(pdfAnnotationService, pdfAnnotationExportService)
+    )
   })
   declareElectronAdapter('figure', () => {
     registerFigureIpcHandlers(
@@ -2917,7 +2952,10 @@ const createApplicationModules = async (
       bookmark: createBookmarkCommandOwner(bookmarkRepository),
       searchPins: createSearchPinCommandOwner(searchPinRepository),
       pdf: createPdfCommandOwner(pdfService),
-      pdfAnnotations: createPdfAnnotationCommandOwner(pdfAnnotationService),
+      pdfAnnotations: createPdfAnnotationCommandOwner(
+        pdfAnnotationService,
+        pdfAnnotationExportService
+      ),
       figure: createFigureCommandOwner((request) =>
         reviewFigure(request.panels, request.figureNote)
       ),

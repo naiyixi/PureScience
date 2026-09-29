@@ -59,6 +59,8 @@ import type { PdfAnnotation } from '../shared/pdf-annotations'
 import type {
   PdfAnnotationAnchorRequest,
   PdfAnnotationCreateRequest,
+  PdfAnnotationExportOutcome,
+  PdfAnnotationExportRequest,
   PdfAnnotationImportOutcome,
   PdfAnnotationListResult,
   PdfAnnotationReattachRequest,
@@ -448,13 +450,23 @@ const pdfCommands = Object.freeze({
 })
 
 // Declared in the same order the contract catalogue lists them, which for this group is the channel
-// order: create, import, list, reattach, remove.
+// order: create, export-annotated, export-notes, import, list, reattach, remove.
 const pdfAnnotationCommands = Object.freeze({
   create: defineApplicationCommand<
     'pdf-annotations:create',
     readonly [request: PdfAnnotationCreateRequest],
     PdfAnnotation
   >('pdf-annotations:create'),
+  exportAnnotated: defineApplicationCommand<
+    'pdf-annotations:export-annotated',
+    readonly [request: PdfAnnotationExportRequest],
+    PdfAnnotationExportOutcome
+  >('pdf-annotations:export-annotated'),
+  exportNotes: defineApplicationCommand<
+    'pdf-annotations:export-notes',
+    readonly [request: PdfAnnotationExportRequest],
+    PdfAnnotationExportOutcome
+  >('pdf-annotations:export-notes'),
   import: defineApplicationCommand<
     'pdf-annotations:import',
     readonly [request: PdfAnnotationAnchorRequest],
@@ -905,6 +917,17 @@ const registerHostApplicationCommands = (
       'pdf-annotations:create': ({ args, callerContext }) =>
         localCommand(callerContext, 'pdf-annotations:create', () =>
           dependencies.pdfAnnotations.create(args[0])
+        ),
+      // The two export channels (A4): two commands rather than one with a channel argument, so a window
+      // asks for the annotated copy or for the notes and neither request can be mistaken for the other.
+      // Both are local-only, like every other channel of this group.
+      'pdf-annotations:export-annotated': ({ args, callerContext }) =>
+        localCommand(callerContext, 'pdf-annotations:export-annotated', () =>
+          dependencies.pdfAnnotations.exportAnnotated(args[0])
+        ),
+      'pdf-annotations:export-notes': ({ args, callerContext }) =>
+        localCommand(callerContext, 'pdf-annotations:export-notes', () =>
+          dependencies.pdfAnnotations.exportNotes(args[0])
         ),
       'pdf-annotations:import': ({ args, callerContext }) =>
         localCommand(callerContext, 'pdf-annotations:import', () =>

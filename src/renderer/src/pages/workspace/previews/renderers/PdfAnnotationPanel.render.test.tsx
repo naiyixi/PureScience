@@ -17,6 +17,7 @@ import { ru } from '@/i18n/ru'
 import { zh } from '@/i18n/zh'
 import { zhHant } from '@/i18n/zh-Hant'
 import type { PdfAnnotationView } from '../../../../../../shared/pdf-annotation-surface'
+import type { PdfAnnotationExportReceipt } from '../../../../../../shared/pdf-annotation-surface'
 import type { PdfAnnotation } from '../../../../../../shared/pdf-annotations'
 import type { PdfEmbeddedAnnotationImportReport } from '../../../../../../shared/pdf-annotation-import'
 import { PdfAnnotationPanel, type PdfAnnotationImportView } from './PdfAnnotationPanel'
@@ -98,6 +99,9 @@ const render = (
           onNoteCancel={vi.fn()}
           importer={{ kind: 'idle' }}
           onImport={vi.fn()}
+          exporter={{ kind: 'idle' }}
+          onExportAnnotated={vi.fn()}
+          onExportNotes={vi.fn()}
           onClose={vi.fn()}
           {...props}
         />
@@ -370,6 +374,186 @@ describe('PdfAnnotationPanel', () => {
     )
     click(item('[data-testid="pdf-annotation-note-save"]'))
     expect(onNoteSave).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('the export channels', () => {
+  const receipt = (
+    overrides: Partial<PdfAnnotationExportReceipt> = {}
+  ): PdfAnnotationExportReceipt => ({
+    channel: 'annotated-pdf',
+    provenance: {
+      projectId: 'project-1',
+      sessionId: 'session-1',
+      sourceFileId: 'artifact-1',
+      versionId: 'version-1',
+      checksum: 'a'.repeat(64),
+      exportedAt: Date.UTC(2026, 8, 29, 12, 0, 0)
+    },
+    anchorChecksum: 'a'.repeat(64),
+    sourceBytes: {
+      path: '/tmp/region-evidence.pdf',
+      checksumBefore: 'a'.repeat(64),
+      checksumAfter: 'a'.repeat(64),
+      bytes: 900
+    },
+    annotationsInStore: 2,
+    annotationsExported: 1,
+    kinds: [{ kind: 'area', count: 1 }],
+    copy: {
+      path: '/tmp/region-evidence (annotated).pdf',
+      bytes: 1_240,
+      sourceBytes: 900,
+      appendedBytes: 340,
+      pageCount: 1
+    },
+    notes: null,
+    skipped: [],
+    exportedAt: Date.UTC(2026, 8, 29, 12, 0, 0),
+    ...overrides
+  })
+
+  it('offers both channels, each one press away, and says what each writes', () => {
+    render({})
+
+    const section = item('[data-testid="pdf-annotation-export"]')
+    expect(section?.getAttribute('data-channels')).toBe('annotated-pdf notes')
+    expect(section?.textContent).toContain('Save annotated copy')
+    expect(section?.textContent).toContain('Save notes')
+    expect(section?.textContent).toContain('never modified')
+    expect(section?.textContent).toContain('produces no PDF')
+    // Nothing is claimed before anything was exported.
+    expect(item('[data-testid="pdf-annotation-export-status"]')).toBeNull()
+  })
+
+  it('triggers either channel on its own', () => {
+    const onExportAnnotated = vi.fn()
+    const onExportNotes = vi.fn()
+    render({ onExportAnnotated, onExportNotes })
+
+    click(item('[data-slot="pdf-annotation-export-notes"]'))
+    expect(onExportNotes).toHaveBeenCalledTimes(1)
+    expect(onExportAnnotated).not.toHaveBeenCalled()
+
+    click(item('[data-slot="pdf-annotation-export-annotated"]'))
+    expect(onExportAnnotated).toHaveBeenCalledTimes(1)
+  })
+
+  it('reports the annotated copy, the digest the source had before and after it, and the version', () => {
+    const withSkipped = receipt({
+      skipped: [
+        { reason: 'another-version', count: 1, detail: 'drawn on other bytes' },
+        { reason: 'document-level', count: 1, detail: 'names no page' }
+      ]
+    })
+    render({
+      annotations: [viewOf(annotation())],
+      exporter: { kind: 'receipt', receipt: withSkipped }
+    })
+
+    const status = item('[data-testid="pdf-annotation-export-status"]')
+    expect(status?.getAttribute('data-status')).toBe('exported')
+    expect(status?.getAttribute('data-channel')).toBe('annotated-pdf')
+    expect(status?.getAttribute('data-anchor-checksum')).toBe('a'.repeat(64))
+    expect(item('[data-testid="pdf-annotation-export-summary"]')?.textContent).toContain(
+      'Exported 1 of 2 annotations of version version-1'
+    )
+
+    const copy = item('[data-testid="pdf-annotation-export-copy"]')
+    expect(copy?.getAttribute('data-path')).toBe('/tmp/region-evidence (annotated).pdf')
+    expect(copy?.getAttribute('data-bytes')).toBe('1240')
+    expect(copy?.getAttribute('data-source-bytes')).toBe('900')
+    expect(copy?.getAttribute('data-appended-bytes')).toBe('340')
+
+    // The red line, visible on the surface: the source's digest before and after the write, and the
+    // version's own anchor — one number, three places.
+    const source = item('[data-testid="pdf-annotation-export-source"]')
+    expect(source?.getAttribute('data-checksum-before')).toBe('a'.repeat(64))
+    expect(source?.getAttribute('data-checksum-after')).toBe('a'.repeat(64))
+    expect(source?.getAttribute('data-anchor-checksum')).toBe('a'.repeat(64))
+    expect(source?.textContent).toContain('was not modified')
+
+    expect(item('[data-testid="pdf-annotation-export-provenance"]')?.textContent).toContain(
+      'sha256'
+    )
+    // What the copy could not carry is named, with a count.
+    expect(item('[data-testid="pdf-annotation-export-skipped-total"]')?.textContent).toBe(
+      'Not carried into the copy: 2'
+    )
+    const skipped = container.querySelectorAll('[data-testid="pdf-annotation-export-skip"]')
+    expect(skipped).toHaveLength(2)
+    expect(skipped[0]?.getAttribute('data-reason')).toBe('another-version')
+    expect(skipped[0]?.textContent).toBe('drawn on another version ×1')
+    // No notes line and no "writes no PDF" claim: this channel produced a copy.
+    expect(item('[data-testid="pdf-annotation-export-notes"]')).toBeNull()
+    expect(item('[data-testid="pdf-annotation-export-no-pdf"]')).toBeNull()
+  })
+
+  it('reports the notes list and states that no PDF was produced', () => {
+    const notesReceipt = receipt({
+      channel: 'notes',
+      sourceBytes: null,
+      annotationsExported: 2,
+      notes: { path: '/tmp/region-evidence (annotations).txt', bytes: 420, entryLines: 2 },
+      copy: null
+    })
+    render({ exporter: { kind: 'receipt', receipt: notesReceipt } })
+
+    const status = item('[data-testid="pdf-annotation-export-status"]')
+    expect(status?.getAttribute('data-channel')).toBe('notes')
+    // 仅此一处可见: no copy, and the channel says so in words rather than leaving it to the file name.
+    expect(item('[data-testid="pdf-annotation-export-copy"]')).toBeNull()
+    expect(item('[data-testid="pdf-annotation-export-source"]')).toBeNull()
+    const notes = item('[data-testid="pdf-annotation-export-notes"]')
+    expect(notes?.getAttribute('data-path')).toBe('/tmp/region-evidence (annotations).txt')
+    expect(notes?.getAttribute('data-lines')).toBe('2')
+    expect(item('[data-testid="pdf-annotation-export-no-pdf"]')?.textContent).toBe(
+      'This channel writes no PDF'
+    )
+  })
+
+  it('never reports a cancelled save as an export', () => {
+    render({ exporter: { kind: 'cancelled', channel: 'notes' } })
+
+    const status = item('[data-testid="pdf-annotation-export-status"]')
+    expect(status?.getAttribute('data-status')).toBe('cancelled')
+    expect(status?.getAttribute('data-channel')).toBe('notes')
+    expect(status?.textContent).toContain('no file was written')
+    expect(item('[data-testid="pdf-annotation-export-notes"]')).toBeNull()
+    expect(item('[data-testid="pdf-annotation-export-copy"]')).toBeNull()
+  })
+
+  it('names the reason a channel wrote nothing, with the refusal’s own words', () => {
+    render({
+      exporter: {
+        kind: 'failure',
+        channel: 'annotated-pdf',
+        code: 'nothing-to-export',
+        message: 'This version carries no annotations, so there is nothing to write into a copy.'
+      }
+    })
+
+    const status = item('[data-testid="pdf-annotation-export-status"]')
+    expect(status?.getAttribute('data-status')).toBe('failure')
+    expect(status?.getAttribute('data-code')).toBe('nothing-to-export')
+    expect(status?.textContent).toContain('this version carries no annotation of its own')
+    expect(item('[data-testid="pdf-annotation-export-failure-detail"]')?.textContent).toBe(
+      'This version carries no annotations, so there is nothing to write into a copy.'
+    )
+  })
+
+  it('disables both channels while one is running', () => {
+    render({ exporter: { kind: 'running', channel: 'annotated-pdf' } })
+
+    expect(item('[data-testid="pdf-annotation-export-status"]')?.getAttribute('data-status')).toBe(
+      'running'
+    )
+    expect(
+      (item('[data-slot="pdf-annotation-export-annotated"]') as HTMLButtonElement).disabled
+    ).toBe(true)
+    expect((item('[data-slot="pdf-annotation-export-notes"]') as HTMLButtonElement).disabled).toBe(
+      true
+    )
   })
 })
 

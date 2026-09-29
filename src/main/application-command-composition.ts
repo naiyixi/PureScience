@@ -132,14 +132,18 @@ const GROUP_COUNT = 39
 // +5 each on internal, local Web and the remote rejections: the PDF annotation surface. Read, write,
 // re-anchor and import are all local-only — a paired remote browser may not touch the reader's markup —
 // so the remote dispatch count is untouched and the fail-closed set takes all five.
-const INTERNAL_COMMAND_COUNT = 336
+// +2 each on internal, local Web and the remote rejections: the two annotation export channels
+// (pdfAnnotations.exportAnnotated / exportNotes). Each one writes a file on the reader's machine, so both
+// are local-only like the five above: the remote dispatch count stays where it was, and the fail-closed
+// set takes both.
+const INTERNAL_COMMAND_COUNT = 338
 // +3 each on internal, local Web and the remote rejections: the saved-search-filter-set channels are
 // reachable from the window locally and are refused on the remote surface, which is where they are counted.
-const LOCAL_WEB_COMMAND_COUNT = 334
+const LOCAL_WEB_COMMAND_COUNT = 336
 // Two more as well: the same two channels are mapped, so they count on both the local and the remote Web
 // surfaces. The rejected (fail-closed) and task counts are untouched.
 const REMOTE_WEB_COMMAND_COUNT = 220
-const REMOTE_REJECTED_COMMAND_COUNT = 114
+const REMOTE_REJECTED_COMMAND_COUNT = 116
 const TASK_COMMAND_COUNT = 11
 
 const ELECTRON_NATIVE_COMMAND_NAMES = Object.freeze([

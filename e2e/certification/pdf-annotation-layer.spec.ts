@@ -142,7 +142,12 @@ test('keeps a drawn annotation on its own file version, across an Electron relau
   await page.mouse.move(box.x + box.width * 0.7, box.y + box.height * 0.6, { steps: 8 })
   await page.mouse.up()
 
-  await expect(page.getByTestId('pdf-annotation-status')).toHaveText('Annotation saved')
+  // A slow runner can take well over the default 5s for the draw -> persist -> status round trip; the
+  // assertion itself is unchanged, only the wait is explicit (measured: this step timed out on a macos
+  // runner while passing in 10s locally).
+  await expect(page.getByTestId('pdf-annotation-status')).toHaveText('Annotation saved', {
+    timeout: 30_000
+  })
 
   // 列表可见: it is listed, anchored to the version on screen, and painted on the page it was drawn on.
   const item = page.getByTestId('pdf-annotation-item')
@@ -196,7 +201,9 @@ test('keeps a drawn annotation on its own file version, across an Electron relau
 
   // 能删除: and the deletion is reported, not assumed.
   await page.getByTestId('pdf-annotation-delete').first().click()
-  await expect(page.getByTestId('pdf-annotation-status')).toHaveText('Annotation deleted')
+  await expect(page.getByTestId('pdf-annotation-status')).toHaveText('Annotation deleted', {
+    timeout: 30_000
+  })
   await expect(page.getByTestId('pdf-annotation-empty')).toBeVisible()
   expect((await readAnnotations(page, anchorRequest)).annotations).toHaveLength(0)
 })
@@ -299,7 +306,12 @@ test('keeps an annotation on the bytes it was drawn on when the file moves on, a
   await page.mouse.down()
   await page.mouse.move(box.x + box.width * 0.65, box.y + box.height * 0.55, { steps: 8 })
   await page.mouse.up()
-  await expect(page.getByTestId('pdf-annotation-status')).toHaveText('Annotation saved')
+  // A slow runner can take well over the default 5s for the draw -> persist -> status round trip; the
+  // assertion itself is unchanged, only the wait is explicit (measured: this step timed out on a macos
+  // runner while passing in 10s locally).
+  await expect(page.getByTestId('pdf-annotation-status')).toHaveText('Annotation saved', {
+    timeout: 30_000
+  })
 
   const drawnOn = await readResolvedAnchor(page)
   const bounds: AnchorRequest = {
@@ -359,7 +371,8 @@ test('keeps an annotation on the bytes it was drawn on when the file moves on, a
   // 可重锚: the one path across versions, taken by the reader on purpose.
   await page.getByTestId('pdf-annotation-reattach').click()
   await expect(page.getByTestId('pdf-annotation-status')).toHaveText(
-    'Annotation re-anchored on this version'
+    'Annotation re-anchored on this version',
+    { timeout: 30_000 }
   )
   await expect(page.getByTestId('pdf-annotation-item')).toHaveCount(2)
 
