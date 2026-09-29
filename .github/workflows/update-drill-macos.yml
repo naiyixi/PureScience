@@ -1,0 +1,184 @@
+name: Update Drill (macOS)
+
+# Real-machine gate for the macOS in-place update path (issue #17, U2/U3).
+#
+# Nothing is built and nothing is installed here. The drill takes two PUBLISHED, Developer ID signed
+# stable builds, serves the newer one from a local asset server, points the older app's app-update.yml
+# at that server, and drives the shipped hand-off for real:
+#
+#   download -> "restart to update" -> the app quits -> Squirrel.Mac replaces the .app
+#   -> the new version launches -> the downloaded package is purged
+#
+# A developer machine cannot exercise this: Squirrel.Mac only replaces a bundle whose designated
+# requirement matches the replacement's, and a locally packaged build is ad-hoc signed, so the shipped
+# strategy (macCanAutoUpdate) refuses the in-place path entirely. A runner can, because published
+# stable mac builds carry the shipping Developer ID signature.
+#
+# Manual only, on purpose: it downloads ~600 MB of installers and performs a real install, so it is a
+# release-time gate, not a per-push check.
+on:
+  workflow_dispatch:
+    inputs:
+      previous_tag:
+        description: 'Stable tag the drill upgrades FROM (e.g. v1.74.0); empty = the second-newest stable release'
+        required: false
+        default: ''
+      current_tag:
+        description: 'Stable tag the drill upgrades TO (e.g. v1.75.0); empty = the newest stable release'
+        required: false
+        default: ''
+
+# Read-only: the drill only reads published release assets.
+permissions:
+  contents: read
+
+# A manual run at a time: a second dispatch waits rather than racing the same release assets.
+concurrency:
+  group: update-drill-macos
+  cancel-in-progress: false
+
+jobs:
+  macos_update_drill:
+    name: macOS update drill
+    # Apple Silicon: electron-updater's MacUpdater picks the arm64 entry from the feed on an arm64 host,
+    # so the published arm64 zip is the artifact this drill must exercise.
+    runs-on: macos-14
+    # Hard ceiling so a stuck hand-off can never hold the runner; the drill step below is bounded
+    # separately so a hang fails with its own log intact.
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Verify the runner is Apple Silicon
+        # A named failure up front instead of an arm64 binary that mysteriously will not launch.
+        shell: bash
+        run: |
+          set -euo pipefail
+          architecture="$(uname -m)"
+          echo "runner architecture: $architecture"
+          if [ "$architecture" != "arm64" ]; then
+            echo "::error::the macOS update drill needs an Apple Silicon runner, got $architecture"
+            exit 1
+          fi
+
+      - name: Install dependencies
+        # The drill drives the published app with Playwright and parses feeds with js-yaml, both
+        # already dev dependencies. --ignore-scripts skips the prisma/electron-builder postinstall,
+        # which this job never uses because it builds nothing.
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Resolve the two published versions
+        id: versions
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREVIOUS_TAG: ${{ inputs.previous_tag }}
+          CURRENT_TAG: ${{ inputs.current_tag }}
+        run: |
+          set -euo pipefail
+          releases="$(gh release list --repo "$GITHUB_REPOSITORY" --exclude-drafts \
+            --exclude-pre-releases --limit 30 --json tagName,publishedAt)"
+          # Newest first, stable semver tags only. Parsed with Node (already required by the drill)
+          # so the step does not depend on jq being present on the image.
+          stable_tags="$(node -e '
+            const releases = JSON.parse(process.argv[1])
+            process.stdout.write(
+              releases
+                .filter((release) => /^v\d+\.\d+\.\d+$/.test(release.tagName))
+                .sort((left, right) => right.publishedAt.localeCompare(left.publishedAt))
+                .map((release) => release.tagName)
+                .join("\n")
+            )
+          ' "$releases")"
+          current="${CURRENT_TAG:-$(printf '%s\n' "$stable_tags" | sed -n '1p')}"
+          previous="${PREVIOUS_TAG:-$(printf '%s\n' "$stable_tags" | sed -n '2p')}"
+          if [ -z "$current" ] || [ -z "$previous" ]; then
+            echo "::error::could not resolve two published stable releases (current='$current', previous='$previous')"
+            exit 1
+          fi
+          if [ "$current" = "$previous" ]; then
+            echo "::error::the drill needs two distinct releases but both resolved to $current"
+            exit 1
+          fi
+          echo "current=$current" >> "$GITHUB_OUTPUT"
+          echo "previous=$previous" >> "$GITHUB_OUTPUT"
+          echo "macOS update drill: $previous -> $current"
+
+      - name: Download the published arm64 builds
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREVIOUS_TAG: ${{ steps.versions.outputs.previous }}
+          CURRENT_TAG: ${{ steps.versions.outputs.current }}
+        run: |
+          set -euo pipefail
+          mkdir -p previous current
+          gh release download "$PREVIOUS_TAG" --repo "$GITHUB_REPOSITORY" --dir previous \
+            --pattern 'zerolink-purescience-*-mac-arm64.zip' --clobber
+          gh release download "$CURRENT_TAG" --repo "$GITHUB_REPOSITORY" --dir current \
+            --pattern 'zerolink-purescience-*-mac-arm64.zip' --pattern 'latest-mac.yml' --clobber
+          ls -l previous current
+
+      - name: Run the macOS in-place update drill
+        id: drill
+        shell: bash
+        # Bounded independently of the job ceiling so a hung hand-off fails here, with its log intact.
+        timeout-minutes: 30
+        run: |
+          set -o pipefail
+          node scripts/macos-update-cache-drill.mjs \
+            --real-update \
+            --previous-zip "$(find previous -name '*-mac-arm64.zip' -print -quit)" \
+            --update-zip "$(find current -name '*-mac-arm64.zip' -print -quit)" \
+            --update-feed current/latest-mac.yml \
+            --output macos-update-drill-observation.json 2>&1 | tee macos-update-drill.log
+
+      - name: Confirm the drill's success line
+        # The run must not be able to pass without printing its verdict, so the success line is a
+        # contract rather than a nicety.
+        if: steps.drill.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F 'macos update drill: ok ' macos-update-drill.log
+
+      - name: Record the drill evidence
+        if: always()
+        shell: bash
+        env:
+          PREVIOUS_TAG: ${{ steps.versions.outputs.previous }}
+          CURRENT_TAG: ${{ steps.versions.outputs.current }}
+          DRILL_OUTCOME: ${{ steps.drill.outcome }}
+        run: |
+          {
+            echo "## macOS update drill"
+            echo
+            echo "- from: \`${PREVIOUS_TAG:-unknown}\`"
+            echo "- to: \`${CURRENT_TAG:-unknown}\`"
+            echo "- outcome: **${DRILL_OUTCOME:-unknown}**"
+            echo
+            echo '```'
+            tail -n 40 macos-update-drill.log 2>/dev/null || echo '(no log was written)'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the drill evidence
+        # Always uploads: on a red run the log is the whole point.
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: macos-update-drill
+          retention-days: 5
+          path: |
+            macos-update-drill.log
+            macos-update-drill-observation.json
+          if-no-files-found: warn

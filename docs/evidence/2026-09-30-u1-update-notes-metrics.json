@@ -10,28 +10,28 @@
     "scrollHeight": 741,
     "ellipsized": 0,
     "clipped": 0,
-    "widestRight": -11.83563232421875
+    "widestRight": -11.844482421875
   },
   "longTokenLineBoxes": {
     "characters": 2010,
     "lineBoxes": 27,
-    "widestRight": 884.5728149414062,
-    "surfaceRight": 896.9588012695312
+    "widestRight": 885.5034790039062,
+    "surfaceRight": 897.9366760253906
   },
   "dialog": {
     "clientWidth": 558,
     "scrollWidth": 558
   },
   "downloadButtonBox": {
-    "x": 723.7197265625,
-    "y": 633.040283203125,
-    "width": 171.7314453125,
-    "height": 31.5615234375
+    "x": 724.2186279296875,
+    "y": 634.4169921875,
+    "width": 172.75469970703125,
+    "height": 31.7496337890625
   },
   "dialogBox": {
-    "x": 363.83660888671875,
-    "y": 117.69964599609375,
-    "width": 552.3267822265625,
-    "height": 568.6007080078125
+    "x": 362.19097900390625,
+    "y": 116.00552368164062,
+    "width": 555.6180419921875,
+    "height": 571.9889221191406
   }
 }
