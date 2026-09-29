@@ -251,20 +251,37 @@ const runElectronUpdater = async ({ executable, env, expectedVersion }) => {
   }
 }
 
-const executableVersion = async (executable, env) => {
-  const result = await runProcess(
-    'powershell.exe',
-    [
-      '-NoProfile',
-      '-NonInteractive',
-      '-Command',
-      '[Console]::Out.Write((Get-Item -LiteralPath $args[0]).VersionInfo.ProductVersion)',
-      executable
-    ],
-    { allowNonZero: true, env, timeoutMs: 10_000 }
-  )
-  if (result.code !== 0) return undefined
-  return result.stdout.trim()
+// The installed version comes from the registry entry the NSIS install maintains, not from a PowerShell
+// read of the executable's PE resource: that read kept exiting non-zero in this drill environment (the file
+// was always present), so the wait below could never observe any version at all and the drill could only
+// ever report a timeout (issue #14).
+const registryInstalledVersion = async (env) => {
+  const uninstallRoot = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall'
+  const keys = await runProcess('reg.exe', ['query', uninstallRoot], {
+    allowNonZero: true,
+    env,
+    timeoutMs: 20_000
+  }).catch(() => undefined)
+  if (!keys) return undefined
+  for (const key of keys.stdout
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith('HKEY_'))) {
+    const displayName = await runProcess('reg.exe', ['query', key, '/v', 'DisplayName'], {
+      allowNonZero: true,
+      env,
+      timeoutMs: 20_000
+    }).catch(() => undefined)
+    if (!displayName || !/purescience/i.test(displayName.stdout)) continue
+    const version = await runProcess('reg.exe', ['query', key, '/v', 'DisplayVersion'], {
+      allowNonZero: true,
+      env,
+      timeoutMs: 20_000
+    }).catch(() => undefined)
+    const match = version?.stdout.match(/DisplayVersion\s+REG_SZ\s+(\S+)/i)
+    return match?.[1]
+  }
+  return undefined
 }
 
 const assertDifferentialObservation = (observation) => {
@@ -347,6 +364,9 @@ const describeInstallState = async (installDirectory, env) => {
           .join(', ') || '(empty)'
       : 'unreadable'
   }
+  console.log(
+    `[updater] registry installed version: ${(await registryInstalledVersion(env)) ?? '(no entry)'}`
+  )
   console.log(`[updater] install state: ${installDirectory} -> ${await listing(installDirectory)}`)
   console.log(`[updater] local app data: ${env.LOCALAPPDATA} -> ${await listing(env.LOCALAPPDATA)}`)
   const roots = [
@@ -369,8 +389,10 @@ const describeInstallState = async (installDirectory, env) => {
     await walk(root, 0)
     if (!found.length) console.log(`[updater] no purescience.exe under ${root}`)
     for (const foundPath of found) {
-      const version = await executableVersion(foundPath, env)
-      console.log(`[updater] found purescience.exe at ${foundPath} version=${version ?? 'unknown'}`)
+      const size = await stat(foundPath)
+        .then((info) => info.size)
+        .catch(() => undefined)
+      console.log(`[updater] found purescience.exe at ${foundPath} size=${size ?? 'unknown'}`)
     }
   }
   for (const filter of ['purescience.exe', '*setup*.exe']) {
@@ -512,7 +534,7 @@ const main = async () => {
       `installed version ${currentVersion}`,
       async () => {
         const executable = join(installDirectory, 'purescience.exe')
-        const observed = await executableVersion(executable, env)
+        const observed = await registryInstalledVersion(env)
         // "unreadable" used to cover both "the file is gone" and "reading it failed", which are different
         // findings. Print both facts so the next timeout says which one it is.
         const fileState = await stat(executable)
