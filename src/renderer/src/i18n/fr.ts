@@ -3492,6 +3492,36 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'references.screening.runFailed': 'L’exécution signale : {message}',
   'references.screening.probabilities':
     'p(inclure) {include} · p(exclure) {exclude} · p(incertain) {uncertain}',
+  'references.screening.stats.title': 'Statistiques',
+  'references.screening.stats.ai': 'Décisions de l’IA',
+  'references.screening.stats.overrides': 'Remplacements humains',
+  'references.screening.stats.unprocessed': 'Non traités',
+  'references.screening.stats.unprocessedNote':
+    'Les enregistrements non traités sont comptés à part et n’entrent jamais dans un export.',
+  'references.screening.stats.verdicts': 'Répartition des quatre états',
+  'references.screening.stats.coverage': 'Répartition de la couverture des preuves',
+  'references.screening.export.title': 'Exportation',
+  'references.screening.export.scope':
+    'Portée de l’export : inclus uniquement, selon le verdict effectif, où un remplacement humain prime sur le verdict de l’IA.',
+  'references.screening.export.scopeIncludedOnly': 'inclus uniquement',
+  'references.screening.export.preview':
+    'Export de {included} · non exportés {notExported} (à vérifier {review} · exclus {excluded} · non évalués {notEvaluated})',
+  'references.screening.export.action': 'Exporter les inclus',
+  'references.screening.export.nothingIncluded':
+    'Rien n’est encore inclus : il n’y a donc rien à exporter.',
+  'references.screening.export.receiptExported':
+    '{exported} citations incluses exportées en {style} · portée {scope}.',
+  'references.screening.export.receiptNotExported':
+    'Non exportés {notExported} : à vérifier {review} · exclus {excluded} · non évalués {notEvaluated} · par remplacement humain {byOverride}',
+  'references.screening.export.receiptReasons': 'Motifs nommés : {reasons}',
+  'references.screening.export.receiptNoReasons': 'Aucun motif nommé.',
+  'references.screening.export.receiptProvenance':
+    'dossier {collection} · révision {revision} ({hash}) · {time}',
+  'references.screening.export.receiptSavedTo': 'Enregistré dans {path}.',
+  'references.screening.export.listChanged':
+    '{n} références incluses ne figurent plus dans cette liste ; rouvrez le dossier et relancez l’export.',
+  'references.screening.export.failed': 'L’export n’a pas été enregistré : {message}',
+  'references.screening.export.cancelled': 'L’enregistrement a été annulé : rien n’a été écrit.',
   'bookmarks.title': 'Signets de session',
   'bookmarks.privacy':
     "Privé : les signets restent sur cette machine et ne vous appartiennent qu'à vous. Ils ne sont jamais envoyés au modèle.",

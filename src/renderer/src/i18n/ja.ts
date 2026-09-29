@@ -3411,6 +3411,35 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'references.screening.runFailed': '実行の報告：{message}',
   'references.screening.probabilities':
     'p(採用) {include} · p(除外) {exclude} · p(不明) {uncertain}',
+  'references.screening.stats.title': '統計',
+  'references.screening.stats.ai': 'AI 判定数',
+  'references.screening.stats.overrides': '人手の上書き数',
+  'references.screening.stats.unprocessed': '未処理数',
+  'references.screening.stats.unprocessedNote': '未処理は別に数え、書き出しには決して含めません。',
+  'references.screening.stats.verdicts': '四状態の分布',
+  'references.screening.stats.coverage': 'エビデンスの網羅度',
+  'references.screening.export.title': '書き出し',
+  'references.screening.export.scope':
+    '今回の書き出し範囲：採用のみ（有効判定ベース。人の上書きは AI の判定より優先する）',
+  'references.screening.export.scopeIncludedOnly': '採用のみ',
+  'references.screening.export.preview':
+    '書き出し {included} 件 · 書き出さない {notExported} 件（要確認 {review} · 除外 {excluded} · 未判定 {notEvaluated}）',
+  'references.screening.export.action': '採用分を書き出す',
+  'references.screening.export.nothingIncluded':
+    '「採用」の文献がまだないため、書き出すものがありません。',
+  'references.screening.export.receiptExported':
+    '{style} で採用 {exported} 件の引用を書き出しました · 範囲 {scope}。',
+  'references.screening.export.receiptNotExported':
+    '書き出さない {notExported} 件：要確認 {review} · 除外 {excluded} · 未判定 {notEvaluated} · うち人の上書き {byOverride}',
+  'references.screening.export.receiptReasons': '理由：{reasons}',
+  'references.screening.export.receiptNoReasons': '該当する理由はありません。',
+  'references.screening.export.receiptProvenance':
+    'コレクション {collection} · ルール改訂 {revision}（{hash}）· {time}',
+  'references.screening.export.receiptSavedTo': '{path} に保存しました。',
+  'references.screening.export.listChanged':
+    '採用の文献 {n} 件が現在の一覧にないため、コレクションを開き直してから書き出してください。',
+  'references.screening.export.failed': '書き出しを保存できませんでした：{message}',
+  'references.screening.export.cancelled': '保存を取り消したため、ファイルは書き出していません。',
   'bookmarks.title': 'セッションのしおり',
   'bookmarks.privacy':
     '非公開：しおりはこの端末にだけ残り、あなたのものです。モデルには一切送信されません。',

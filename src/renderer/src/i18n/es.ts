@@ -3472,6 +3472,36 @@ export const es: Partial<Record<ZhKey, string>> = {
   'references.screening.runFailed': 'La ejecución informa: {message}',
   'references.screening.probabilities':
     'p(incluir) {include} · p(excluir) {exclude} · p(incierto) {uncertain}',
+  'references.screening.stats.title': 'Estadísticas',
+  'references.screening.stats.ai': 'Decisiones de la IA',
+  'references.screening.stats.overrides': 'Anulaciones humanas',
+  'references.screening.stats.unprocessed': 'Sin procesar',
+  'references.screening.stats.unprocessedNote':
+    'Los registros sin procesar se cuentan aparte y nunca entran en una exportación.',
+  'references.screening.stats.verdicts': 'Distribución de los cuatro estados',
+  'references.screening.stats.coverage': 'Distribución de cobertura de evidencia',
+  'references.screening.export.title': 'Exportar',
+  'references.screening.export.scope':
+    'Alcance de la exportación: solo incluidos, según el veredicto efectivo, donde una anulación humana prevalece sobre el veredicto de la IA.',
+  'references.screening.export.scopeIncludedOnly': 'solo incluidos',
+  'references.screening.export.preview':
+    'Se exportarán {included} · sin exportar {notExported} (por revisar {review} · excluidos {excluded} · sin evaluar {notEvaluated})',
+  'references.screening.export.action': 'Exportar incluidos',
+  'references.screening.export.nothingIncluded':
+    'Todavía no hay nada incluido, así que no hay nada que exportar.',
+  'references.screening.export.receiptExported':
+    'Se exportaron {exported} citas incluidas en {style} · alcance {scope}.',
+  'references.screening.export.receiptNotExported':
+    'Sin exportar {notExported}: por revisar {review} · excluidos {excluded} · sin evaluar {notEvaluated} · por anulación humana {byOverride}',
+  'references.screening.export.receiptReasons': 'Motivos con nombre: {reasons}',
+  'references.screening.export.receiptNoReasons': 'Sin motivos con nombre.',
+  'references.screening.export.receiptProvenance':
+    'colección {collection} · revisión {revision} ({hash}) · {time}',
+  'references.screening.export.receiptSavedTo': 'Guardado en {path}.',
+  'references.screening.export.listChanged':
+    '{n} registros incluidos ya no están en esta lista; vuelva a abrir la colección y exporte de nuevo.',
+  'references.screening.export.failed': 'No se guardó la exportación: {message}',
+  'references.screening.export.cancelled': 'Se canceló el guardado, así que no se escribió nada.',
   'bookmarks.title': 'Marcadores de la sesión',
   'bookmarks.privacy':
     'Privado: los marcadores permanecen en este equipo y son solo suyos. Nunca se envían al modelo.',

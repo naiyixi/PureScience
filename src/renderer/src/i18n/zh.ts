@@ -3221,6 +3221,34 @@ export const zh = {
   'references.screening.runFailed': '本次运行报告：{message}',
   'references.screening.probabilities':
     'p(纳入) {include} · p(排除) {exclude} · p(不确定) {uncertain}',
+  // S4 统计与按筛选范围导出。三个数各自成列，未处理量单独标注且明说不进入导出。
+  'references.screening.stats.title': '统计',
+  'references.screening.stats.ai': 'AI 判定数',
+  'references.screening.stats.overrides': '人工覆盖数',
+  'references.screening.stats.unprocessed': '未处理数',
+  'references.screening.stats.unprocessedNote': '未处理量单独计数，绝不进入导出。',
+  'references.screening.stats.verdicts': '四态分布',
+  'references.screening.stats.coverage': '证据覆盖度分布',
+  'references.screening.export.title': '导出',
+  'references.screening.export.scope': '本次导出范围：仅纳入（按有效判定，人工覆盖优先于 AI 原判）',
+  'references.screening.export.scopeIncludedOnly': '仅纳入',
+  'references.screening.export.preview':
+    '将导出 {included} 条 · 未导出 {notExported} 条（待复核 {review} · 排除 {excluded} · 未判定 {notEvaluated}）',
+  'references.screening.export.action': '导出纳入结果',
+  'references.screening.export.nothingIncluded': '当前没有「纳入」的文献，无从导出。',
+  'references.screening.export.receiptExported':
+    '已导出 {exported} 条「纳入」引文（{style}）· 范围 {scope}。',
+  'references.screening.export.receiptNotExported':
+    '未导出 {notExported} 条：待复核 {review} · 排除 {excluded} · 未判定 {notEvaluated} · 其中人工覆盖 {byOverride}',
+  'references.screening.export.receiptReasons': '具名原因：{reasons}',
+  'references.screening.export.receiptNoReasons': '无具名原因。',
+  'references.screening.export.receiptProvenance':
+    '合集 {collection} · 规则修订 {revision}（{hash}）· {time}',
+  'references.screening.export.receiptSavedTo': '已保存到 {path}。',
+  'references.screening.export.listChanged':
+    '有 {n} 条「纳入」文献已不在当前列表，请重新打开合集后再导出。',
+  'references.screening.export.failed': '导出未保存：{message}',
+  'references.screening.export.cancelled': '已取消保存，未写入文件。',
   'bookmarks.title': '会话书签',
   'bookmarks.privacy': '私有：书签只存在本机、只属于你，绝不会进入模型上下文。',
   'bookmarks.empty': '还没有书签。在消息上点「存为书签」即可保留一段阅读痕迹。',

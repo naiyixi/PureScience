@@ -3439,6 +3439,39 @@ export const en: Record<ZhKey, string> = {
   'references.screening.runFailed': 'The pass reported: {message}',
   'references.screening.probabilities':
     'p(include) {include} · p(exclude) {exclude} · p(uncertain) {uncertain}',
+  // S4 statistics + the screening-range export. The three headline counts are stated apart (AI
+  // decisions / human overrides / unprocessed) and the unprocessed line says out loud that it never
+  // enters an export.
+  'references.screening.stats.title': 'Statistics',
+  'references.screening.stats.ai': 'AI decisions',
+  'references.screening.stats.overrides': 'Human overrides',
+  'references.screening.stats.unprocessed': 'Unprocessed',
+  'references.screening.stats.unprocessedNote':
+    'Unprocessed records are counted separately and never enter an export.',
+  'references.screening.stats.verdicts': 'Verdicts',
+  'references.screening.stats.coverage': 'Evidence coverage',
+  'references.screening.export.title': 'Export',
+  'references.screening.export.scope':
+    'Export scope: included only — by the effective verdict, where a human override outranks the AI verdict.',
+  'references.screening.export.scopeIncludedOnly': 'included only',
+  'references.screening.export.preview':
+    'Will export {included} · not exported {notExported} (needs review {review} · excluded {excluded} · not evaluated {notEvaluated})',
+  'references.screening.export.action': 'Export included',
+  'references.screening.export.nothingIncluded':
+    'Nothing is included yet, so there is nothing to export.',
+  'references.screening.export.receiptExported':
+    'Exported {exported} included citations in {style} · scope {scope}.',
+  'references.screening.export.receiptNotExported':
+    'Not exported {notExported}: needs review {review} · excluded {excluded} · not evaluated {notEvaluated} · by a human override {byOverride}',
+  'references.screening.export.receiptReasons': 'Named reasons: {reasons}',
+  'references.screening.export.receiptNoReasons': 'No named reasons.',
+  'references.screening.export.receiptProvenance':
+    'collection {collection} · rule revision {revision} ({hash}) · {time}',
+  'references.screening.export.receiptSavedTo': 'Saved to {path}.',
+  'references.screening.export.listChanged':
+    '{n} included records are not in this list any more; reopen the collection and export again.',
+  'references.screening.export.failed': 'The export was not saved: {message}',
+  'references.screening.export.cancelled': 'The save was cancelled, so nothing was written.',
   'bookmarks.title': 'Session bookmarks',
   'bookmarks.privacy':
     'Private: bookmarks stay on this machine and belong to you alone. They are never sent to the model.',

@@ -58,7 +58,9 @@ vi.mock('@/i18n', () => {
     'references.screening.reason.input-too-long': 'Evidence beyond the model input budget',
     'references.screening.reason.uncertain': 'The decision itself is uncertain',
     'references.screening.coverage.full-text': 'Full text',
+    'references.screening.coverage.abstract-only': 'Abstract only',
     'references.screening.coverage.metadata-only': 'Metadata only',
+    'references.screening.coverage.unavailable': 'No evidence',
     'references.screening.filter.all': 'All',
     'references.screening.freshnessStale': 'Not current',
     'references.screening.freshnessCurrent': 'Current',
@@ -80,7 +82,40 @@ vi.mock('@/i18n', () => {
     'references.screening.revisionCurrent': 'current',
     'references.screening.revisionSuperseded': 'superseded',
     'references.screening.ruleChanged': 'rule changed',
-    'references.screening.batchApplied2': 'applied'
+    'references.screening.batchApplied2': 'applied',
+    // The S4 statistics + export surface.
+    'references.screening.stats.ai': 'AI decisions',
+    'references.screening.stats.overrides': 'Human overrides',
+    'references.screening.stats.unprocessed': 'Unprocessed',
+    'references.screening.stats.unprocessedNote':
+      'Unprocessed records are counted separately and never enter an export.',
+    'references.screening.stats.verdicts': 'Verdicts',
+    'references.screening.stats.coverage': 'Evidence coverage',
+    'references.screening.export.title': 'Export',
+    'references.screening.export.scope':
+      'Export scope: included only — by the effective verdict, where a human override outranks the AI verdict.',
+    'references.screening.export.scopeIncludedOnly': 'included only',
+    'references.screening.export.preview':
+      'Will export {included} · not exported {notExported} (needs review {review} · excluded {excluded} · not evaluated {notEvaluated})',
+    'references.screening.export.action': 'Export included',
+    'references.screening.export.nothingIncluded':
+      'Nothing is included yet, so there is nothing to export.',
+    'references.screening.export.receiptExported':
+      'Exported {exported} included citations in {style} · scope {scope}.',
+    'references.screening.export.receiptNotExported':
+      'Not exported {notExported}: needs review {review} · excluded {excluded} · not evaluated {notEvaluated} · by a human override {byOverride}',
+    'references.screening.export.receiptReasons': 'Named reasons: {reasons}',
+    'references.screening.export.receiptNoReasons': 'No named reasons.',
+    'references.screening.export.receiptProvenance':
+      'collection {collection} · rule revision {revision} ({hash}) · {time}',
+    'references.screening.export.receiptSavedTo': 'Saved to {path}.',
+    'references.screening.export.listChanged':
+      '{n} included records are not in this list any more; reopen the collection and export again.',
+    'references.screening.export.failed': 'The export was not saved: {message}',
+    'references.screening.export.cancelled': 'The save was cancelled, so nothing was written.',
+    'references.citationStyle': 'Citation style',
+    'references.builtinStyles': 'Built-in styles',
+    'references.importedStyles': 'Imported styles'
   }
 
   return {
@@ -231,8 +266,12 @@ describe('ReferencesScreeningPanel', () => {
     cancelScreeningRun: vi.fn(),
     setScreeningOverride: vi.fn(),
     setScreeningOverrides: vi.fn(),
-    clearScreeningOverride: vi.fn()
+    clearScreeningOverride: vi.fn(),
+    listCitationStyles: vi.fn()
   }
+  // The app's file-save channel, which is how a real export reaches disk (and how the acceptance spec
+  // reads a real file back).
+  const saveBlobFile = vi.fn()
 
   // Exact text, because a row's "Include" button sits under a filter chip reading "Included".
   const findExactButton = (label: string): HTMLButtonElement => {
@@ -241,6 +280,12 @@ describe('ReferencesScreeningPanel', () => {
     )
     if (!match) throw new Error(`no button whose text is exactly ${label}`)
     return match
+  }
+
+  const byTestId = (id: string): HTMLElement => {
+    const found = container.querySelector<HTMLElement>(`[data-testid="${id}"]`)
+    if (!found) throw new Error(`no element for ${id}`)
+    return found
   }
 
   // React tracks an input's value, so assigning `.value` directly leaves its tracker unchanged and the
@@ -298,7 +343,11 @@ describe('ReferencesScreeningPanel', () => {
     api.setScreeningOverrides.mockReset()
     api.clearScreeningOverride.mockReset()
     api.listScreeningRuleRevisions.mockResolvedValue([])
-    window.api = { references: api } as unknown as typeof window.api
+    api.listCitationStyles.mockReset()
+    api.listCitationStyles.mockResolvedValue([])
+    saveBlobFile.mockReset()
+    saveBlobFile.mockResolvedValue({ saved: true, filePath: '/tmp/references-screen-hits.txt' })
+    window.api = { references: api, saveBlobFile } as unknown as typeof window.api
   })
 
   afterEach(() => {
@@ -550,6 +599,335 @@ describe('ReferencesScreeningPanel', () => {
     await flush()
     expect(api.cancelScreeningRun).toHaveBeenCalledWith('collection-1')
   })
+
+  // --- S4: the statistics panel and the screening-range export ------------------------------------
+
+  it('states AI decisions, human overrides and unprocessed as three separate numbers, beside both distributions', async () => {
+    const references = [
+      reference('ref-included', 'Included record'),
+      reference('ref-review', 'Uncertain record'),
+      reference('ref-excluded', 'Excluded record'),
+      reference('ref-pending', 'Untouched record')
+    ]
+    const items = [
+      item('ref-included', 'included'),
+      item('ref-review', 'needs-review', ['uncertain']),
+      item('ref-excluded', 'excluded'),
+      item('ref-pending', 'not-evaluated', ['input-too-long'])
+    ]
+    await render(snapshot(items), references)
+
+    // The three numbers are each their own element: AI decisions / human overrides / unprocessed.
+    expect(byTestId('screening-stat-ai').textContent?.trim()).toBe('AI decisions 3')
+    expect(byTestId('screening-stat-overrides').textContent?.trim()).toBe('Human overrides 0')
+    expect(byTestId('screening-stat-unprocessed').textContent?.trim()).toBe('Unprocessed 1')
+    // 未处理量 is labelled as such, and the surface says it never reaches an export.
+    expect(byTestId('screening-stats').textContent).toContain(
+      'Unprocessed records are counted separately and never enter an export.'
+    )
+    // The four-state distribution and the evidence-coverage distribution, each per state.
+    for (const [verdict, label] of [
+      ['included', 'Included'],
+      ['needs-review', 'Needs review'],
+      ['excluded', 'Excluded'],
+      ['not-evaluated', 'Not evaluated']
+    ] as const) {
+      expect(byTestId(`screening-stat-verdict-${verdict}`).textContent?.trim()).toBe(`${label} 1`)
+    }
+    expect(byTestId('screening-stat-coverage-full-text').textContent?.trim()).toBe('Full text 4')
+    expect(byTestId('screening-stat-coverage-abstract-only').textContent?.trim()).toBe(
+      'Abstract only 0'
+    )
+    expect(byTestId('screening-stat-coverage-metadata-only').textContent?.trim()).toBe(
+      'Metadata only 0'
+    )
+    expect(byTestId('screening-stat-coverage-unavailable').textContent?.trim()).toBe(
+      'No evidence 0'
+    )
+
+    // 与库内逐项一致: recomputed from the rows themselves, the same numbers come out — the aggregate
+    // the panel prints is what the lines say, not a second opinion.
+    const rows = Array.from(
+      container.querySelectorAll<HTMLElement>('[data-testid="screening-row"]')
+    )
+    const verdicts = rows.map((row) => row.dataset.verdict)
+    const aiDecided = verdicts.filter((verdict) => verdict !== 'not-evaluated').length
+    const unprocessed = verdicts.filter((verdict) => verdict === 'not-evaluated').length
+    const overrides = rows.filter((row) => (row.dataset.override ?? '') !== '').length
+    expect(aiDecided).toBe(3)
+    expect(unprocessed).toBe(1)
+    expect(overrides).toBe(0)
+    expect(rows.filter((row) => row.dataset.coverage === 'full-text')).toHaveLength(4)
+  })
+
+  it('exports only the effective "included" records, states the range, and says what stayed out', async () => {
+    const references = [
+      reference('ref-included-by-human', 'Later cohort'),
+      reference('ref-excluded-by-human', 'Withdrawn record'),
+      reference('ref-untouched', 'Unturned stone')
+    ]
+    const items = [
+      // The model was unsure; a person included it. It IS exported (人工覆盖优先于 AI 原判).
+      item('ref-included-by-human', 'needs-review', ['uncertain'], {
+        collectionId: 'collection-1',
+        referenceId: 'ref-included-by-human',
+        decision: 'include',
+        reason: 'the protocol admits this cohort',
+        actor: 'user',
+        createdAt: 1
+      }),
+      // The model included it; a person excluded it. It is NOT exported, whatever the model said.
+      item('ref-excluded-by-human', 'included', ['rule-changed'], {
+        collectionId: 'collection-1',
+        referenceId: 'ref-excluded-by-human',
+        decision: 'exclude',
+        reason: 'retracted after screening',
+        actor: 'user',
+        createdAt: 1
+      }),
+      item('ref-untouched', 'needs-review', ['uncertain'])
+    ]
+    const onNotice = vi.fn()
+    api.getScreening.mockResolvedValue(snapshot(items))
+    await act(async () => {
+      root.render(
+        <ReferencesScreeningPanel
+          collectionId="collection-1"
+          collectionName="Screen hits"
+          references={references}
+          onNotice={onNotice}
+          onError={() => {}}
+        />
+      )
+    })
+    await flush()
+
+    // The range is stated before the button, not after it.
+    expect(byTestId('screening-export').dataset.scope).toBe('included-only')
+    expect(byTestId('screening-export-scope').textContent).toContain('included only')
+    expect(byTestId('screening-export-preview').textContent?.trim()).toBe(
+      'Will export 1 · not exported 2 (needs review 1 · excluded 1 · not evaluated 0)'
+    )
+
+    await act(async () => {
+      findExactButton('Export included').click()
+      await Promise.resolve()
+    })
+    await flush()
+
+    expect(saveBlobFile).toHaveBeenCalledTimes(1)
+    const request = saveBlobFile.mock.calls[0]?.[0] as {
+      suggestedName: string
+      mimeType: string
+      data: ArrayBuffer
+    }
+    // The file names the scope, the collection, the rule revision and the style it was built from.
+    expect(request.suggestedName).toMatch(
+      /^references-screen-hits-included-only-r1-gbt7714-2015-\d{4}-\d{2}-\d{2}\.txt$/
+    )
+    expect(request.mimeType).toBe('text/plain')
+    const exported = new TextDecoder().decode(request.data)
+    expect(exported).toContain('Later cohort')
+    expect(exported).not.toContain('Withdrawn record')
+    expect(exported).not.toContain('Unturned stone')
+    // One citation per exported record, and nothing else.
+    expect(exported.trim().split('\n')).toHaveLength(1)
+
+    // The receipt: the range, what stayed out per state, the NAMED reasons, and the provenance.
+    expect(byTestId('screening-export-receipt-summary').textContent?.trim()).toBe(
+      'Exported 1 included citations in GB/T 7714-2015 (numeric) · scope included only.'
+    )
+    expect(byTestId('screening-export-receipt-not-exported').textContent?.trim()).toBe(
+      'Not exported 2: needs review 1 · excluded 1 · not evaluated 0 · by a human override 1'
+    )
+    expect(byTestId('screening-export-receipt-reasons').textContent?.trim()).toBe(
+      'Named reasons: The rule set changed: 1 · The decision itself is uncertain: 1'
+    )
+    expect(byTestId('screening-export-receipt-provenance').textContent).toContain(
+      'collection Screen hits · rule revision 1'
+    )
+    expect(byTestId('screening-export-receipt-path').textContent?.trim()).toBe(
+      'Saved to /tmp/references-screen-hits.txt.'
+    )
+    // The toast carries the same receipt, so a reviewer who only watched the notice still saw it.
+    expect(onNotice).toHaveBeenCalledWith(
+      expect.stringContaining('Not exported 2: needs review 1 · excluded 1 · not evaluated 0')
+    )
+  })
+
+  it('says there are no named reasons rather than leaving the receipt line blank', async () => {
+    const references = [
+      reference('ref-included', 'Included record'),
+      reference('ref-untouched', 'Unturned stone')
+    ]
+    // Nothing decided and no reason recorded: the excluded line still states the unprocessed record, and
+    // the reasons line says outright that there is nothing to explain.
+    const items = [item('ref-included', 'included'), item('ref-untouched', 'not-evaluated')]
+    api.getScreening.mockResolvedValue(snapshot(items))
+    await act(async () => {
+      root.render(
+        <ReferencesScreeningPanel
+          collectionId="collection-1"
+          collectionName="Screen hits"
+          references={references}
+          onNotice={() => {}}
+          onError={() => {}}
+        />
+      )
+    })
+    await flush()
+    await act(async () => {
+      findExactButton('Export included').click()
+      await Promise.resolve()
+    })
+    await flush()
+
+    expect(byTestId('screening-export-receipt-not-exported').textContent?.trim()).toBe(
+      'Not exported 1: needs review 0 · excluded 0 · not evaluated 1 · by a human override 0'
+    )
+    expect(byTestId('screening-export-receipt-reasons').textContent?.trim()).toBe(
+      'No named reasons.'
+    )
+  })
+
+  it('writes nothing when the save is cancelled, and reports a failed write instead of a receipt', async () => {
+    const references = [reference('ref-included', 'Included record')]
+    const onNotice = vi.fn()
+    const onError = vi.fn()
+    api.getScreening.mockResolvedValue(snapshot([item('ref-included', 'included')]))
+    await act(async () => {
+      root.render(
+        <ReferencesScreeningPanel
+          collectionId="collection-1"
+          collectionName="Screen hits"
+          references={references}
+          onNotice={onNotice}
+          onError={onError}
+        />
+      )
+    })
+    await flush()
+
+    saveBlobFile.mockResolvedValueOnce({ saved: false })
+    await act(async () => {
+      findExactButton('Export included').click()
+      await Promise.resolve()
+    })
+    await flush()
+    expect(saveBlobFile).toHaveBeenCalledTimes(1)
+    expect(onNotice).toHaveBeenCalledWith('The save was cancelled, so nothing was written.')
+    // A cancelled save is not an export: no receipt may claim a file nobody wrote.
+    expect(container.querySelector('[data-testid="screening-export-receipt"]')).toBeNull()
+
+    // A write that throws is named, and still leaves no receipt behind.
+    saveBlobFile.mockRejectedValueOnce(new Error('the disk is full'))
+    await act(async () => {
+      findExactButton('Export included').click()
+      await Promise.resolve()
+    })
+    await flush()
+    expect(onError).toHaveBeenCalledWith('The export was not saved: the disk is full')
+    expect(container.querySelector('[data-testid="screening-export-receipt"]')).toBeNull()
+  })
+
+  it('refuses to write when the ledger names an included record this list no longer has', async () => {
+    const onError = vi.fn()
+    // The scope says one record is included, and the window's list has none of them: a file written from
+    // it would silently be smaller than the range it is named after.
+    api.getScreening.mockResolvedValue(snapshot([item('ref-gone', 'included')]))
+    await act(async () => {
+      root.render(
+        <ReferencesScreeningPanel
+          collectionId="collection-1"
+          collectionName="Screen hits"
+          references={[]}
+          onNotice={() => {}}
+          onError={onError}
+        />
+      )
+    })
+    await flush()
+
+    await act(async () => {
+      findExactButton('Export included').click()
+      await Promise.resolve()
+    })
+    await flush()
+
+    expect(saveBlobFile).not.toHaveBeenCalled()
+    expect(onError).toHaveBeenCalledWith(
+      '1 included records are not in this list any more; reopen the collection and export again.'
+    )
+  })
+
+  it('re-reads the ledger when the collection’s membership changes behind the panel', async () => {
+    const state = snapshot([item('ref-included', 'included')])
+    api.getScreening.mockResolvedValue(state)
+    await render(state, [
+      reference('ref-included', 'Included record'),
+      reference('ref-late', 'Added later')
+    ])
+    const readsAfterMount = api.getScreening.mock.calls.length
+
+    // The library adds or removes a record while this panel is open: the statistics are counts over the
+    // members, so the panel re-reads instead of showing a number the ledger already disagrees with.
+    await act(async () => {
+      root.render(
+        <ReferencesScreeningPanel
+          collectionId="collection-1"
+          collectionName="Screen hits"
+          references={[reference('ref-included', 'Included record')]}
+          onNotice={() => {}}
+          onError={() => {}}
+        />
+      )
+    })
+    await flush()
+    expect(api.getScreening.mock.calls.length).toBeGreaterThan(readsAfterMount)
+  })
+
+  it('re-reads the ledger when export is pressed, so a range that moved cannot be written', async () => {
+    const references = [reference('ref-included-by-human', 'Later cohort')]
+    const before = snapshot([
+      item('ref-included-by-human', 'needs-review', ['uncertain'], {
+        collectionId: 'collection-1',
+        referenceId: 'ref-included-by-human',
+        decision: 'include',
+        reason: 'the protocol admits this cohort',
+        actor: 'user',
+        createdAt: 1
+      })
+    ])
+    // The preview is drawn from this read; the export re-reads and finds the override cleared.
+    const after = snapshot([item('ref-included-by-human', 'needs-review', ['uncertain'])])
+    const onError = vi.fn()
+    api.getScreening.mockResolvedValueOnce(before).mockResolvedValue(after)
+    await act(async () => {
+      root.render(
+        <ReferencesScreeningPanel
+          collectionId="collection-1"
+          collectionName="Screen hits"
+          references={references}
+          onNotice={() => {}}
+          onError={onError}
+        />
+      )
+    })
+    await flush()
+    expect(byTestId('screening-export-preview').textContent).toContain('Will export 1')
+
+    await act(async () => {
+      findExactButton('Export included').click()
+      await Promise.resolve()
+    })
+    await flush()
+
+    // The range came from the fresh read, not the preview: nothing is included any more, so no file is
+    // written and the reviewer is told why instead of receiving an empty bibliography.
+    expect(api.getScreening.mock.calls.length).toBeGreaterThan(1)
+    expect(saveBlobFile).not.toHaveBeenCalled()
+    expect(onError).toHaveBeenCalledWith('Nothing is included yet, so there is nothing to export.')
+  })
 })
 
 describe('the screening surface speaks all nine languages', () => {
@@ -586,5 +964,72 @@ describe('the screening surface speaks all nine languages', () => {
     expect(zhText('references.screening.coverage.unavailable')).toBe('无依据')
     expect(zhText('references.screening.aiVsHuman')).toContain('人工覆盖')
     expect(zhText('references.screening.summary')).toContain('未处理')
+  })
+
+  // S4's own copy, in all nine — the statistics labels, the range statement, the export action and the
+  // receipt. 中文 states the range as 仅纳入, and the receipt's "what stayed out" line names the three
+  // buckets plus the human override, because a receipt that only says "done" is not a receipt.
+  it('has copy for the statistics panel and the screening export in every language', async () => {
+    const { dictionaries } = await import('@/i18n/languages')
+    const { en } = await import('@/i18n/en')
+    const s4Keys = [
+      'references.screening.stats.title',
+      'references.screening.stats.ai',
+      'references.screening.stats.overrides',
+      'references.screening.stats.unprocessed',
+      'references.screening.stats.unprocessedNote',
+      'references.screening.stats.verdicts',
+      'references.screening.stats.coverage',
+      'references.screening.export.title',
+      'references.screening.export.scope',
+      'references.screening.export.scopeIncludedOnly',
+      'references.screening.export.preview',
+      'references.screening.export.action',
+      'references.screening.export.nothingIncluded',
+      'references.screening.export.receiptExported',
+      'references.screening.export.receiptNotExported',
+      'references.screening.export.receiptReasons',
+      'references.screening.export.receiptNoReasons',
+      'references.screening.export.receiptProvenance',
+      'references.screening.export.receiptSavedTo',
+      'references.screening.export.listChanged',
+      'references.screening.export.failed',
+      'references.screening.export.cancelled'
+    ] as const
+    // Every key the panel uses exists — a missing one would render the raw key in the window.
+    expect(s4Keys.every((key) => key in en)).toBe(true)
+
+    for (const [language, dictionary] of Object.entries(dictionaries)) {
+      const missing = s4Keys.filter((key) => !dictionary[key]?.trim())
+      expect({ language, missing }).toEqual({ language, missing: [] })
+    }
+
+    const zh = dictionaries.zh
+    const zhText = (key: keyof typeof en): string => zh[key] ?? ''
+    expect(zhText('references.screening.export.scopeIncludedOnly')).toBe('仅纳入')
+    expect(zhText('references.screening.export.scope')).toContain('仅纳入')
+    expect(zhText('references.screening.export.preview')).toContain('未导出')
+    expect(zhText('references.screening.export.receiptNotExported')).toContain('人工覆盖')
+    expect(zhText('references.screening.export.receiptReasons')).toContain('具名原因')
+    expect(zhText('references.screening.stats.unprocessedNote')).toContain('未处理')
+    expect(zhText('references.screening.stats.unprocessed')).toBe('未处理数')
+    // Placeholder parity: the receipt templates are filled by name, so every language must carry them.
+    for (const [key, placeholders] of [
+      [
+        'references.screening.export.preview',
+        ['included', 'notExported', 'review', 'excluded', 'notEvaluated']
+      ],
+      [
+        'references.screening.export.receiptNotExported',
+        ['notExported', 'review', 'excluded', 'notEvaluated', 'byOverride']
+      ],
+      ['references.screening.export.receiptProvenance', ['collection', 'revision', 'hash', 'time']]
+    ] as const) {
+      for (const [language, dictionary] of Object.entries(dictionaries)) {
+        const value = dictionary[key as keyof typeof en] ?? ''
+        const absent = placeholders.filter((name) => !value.includes(`{${name}}`))
+        expect({ language, key, absent }).toEqual({ language, key, absent: [] })
+      }
+    }
   })
 })

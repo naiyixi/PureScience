@@ -3345,6 +3345,36 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'references.screening.runFailed': '실행 보고: {message}',
   'references.screening.probabilities':
     'p(포함) {include} · p(제외) {exclude} · p(불확실) {uncertain}',
+  'references.screening.stats.title': '통계',
+  'references.screening.stats.ai': 'AI 판정 수',
+  'references.screening.stats.overrides': '사람이 덮어쓴 수',
+  'references.screening.stats.unprocessed': '미처리 수',
+  'references.screening.stats.unprocessedNote':
+    '미처리 항목은 따로 세며, 내보내기에는 절대 포함되지 않습니다.',
+  'references.screening.stats.verdicts': '네 가지 상태 분포',
+  'references.screening.stats.coverage': '근거 범위 분포',
+  'references.screening.export.title': '내보내기',
+  'references.screening.export.scope':
+    '이번 내보내기 범위: 포함만(유효 판정 기준이며 사람의 덮어쓰기가 AI 판정보다 우선합니다).',
+  'references.screening.export.scopeIncludedOnly': '포함만',
+  'references.screening.export.preview':
+    '{included}건 내보내기 · 내보내지 않음 {notExported}건(검토 필요 {review} · 제외 {excluded} · 미판정 {notEvaluated})',
+  'references.screening.export.action': '포함 항목 내보내기',
+  'references.screening.export.nothingIncluded':
+    '아직 “포함”된 문헌이 없어 내보낼 내용이 없습니다.',
+  'references.screening.export.receiptExported':
+    '{style} 형식으로 포함 {exported}건의 인용을 내보냈습니다 · 범위 {scope}.',
+  'references.screening.export.receiptNotExported':
+    '내보내지 않음 {notExported}건: 검토 필요 {review} · 제외 {excluded} · 미판정 {notEvaluated} · 사람이 덮어쓴 항목 {byOverride}',
+  'references.screening.export.receiptReasons': '이유: {reasons}',
+  'references.screening.export.receiptNoReasons': '해당하는 이유가 없습니다.',
+  'references.screening.export.receiptProvenance':
+    '컬렉션 {collection} · 규칙 개정 {revision}({hash}) · {time}',
+  'references.screening.export.receiptSavedTo': '{path}에 저장했습니다.',
+  'references.screening.export.listChanged':
+    '포함된 문헌 {n}건이 현재 목록에 없습니다. 컬렉션을 다시 연 뒤 내보내세요.',
+  'references.screening.export.failed': '내보내기를 저장하지 못했습니다: {message}',
+  'references.screening.export.cancelled': '저장을 취소해 파일을 쓰지 않았습니다.',
   'bookmarks.title': '세션 책갈피',
   'bookmarks.privacy':
     '비공개: 책갈피는 이 기기에만 남고 사용자에게만 속합니다. 모델로는 절대 전송되지 않습니다.',

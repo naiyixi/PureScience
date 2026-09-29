@@ -4,6 +4,15 @@ import { useLanguage, type TranslationKey } from '@/i18n'
 import { getUiLocale } from '@/lib/ui-locale'
 import type { Reference } from '../../../../shared/references'
 import {
+  DEFAULT_CITATION_STYLE_ID,
+  citationItemFromReference,
+  formatCitationList,
+  resolveCitationStyles
+} from '../../../../shared/citation/format'
+import { citationStyleFromImport } from '../../../../shared/citation/csl'
+import type { CitationStyleDefinition } from '../../../../shared/citation/types'
+import {
+  SCREENING_EVIDENCE_COVERAGES,
   SCREENING_NAMED_REASONS,
   SCREENING_VERDICTS,
   type ScreeningCollectionSnapshot,
@@ -15,6 +24,13 @@ import {
   type ScreeningRuleRevision,
   type ScreeningVerdict
 } from '../../../../shared/references-screening'
+import {
+  SCREENING_EXPORT_SCOPE,
+  buildScreeningExportScope,
+  screeningExportFileName,
+  screeningExportReasonBreakdown,
+  type ScreeningExportScope
+} from '../../../../shared/references-screening-export'
 
 // The screening surface of one collection (S3). It reads the collection's triage state, drives a pass,
 // edits the versioned rule set, and records human overrides — and it is built so that the two layers a
@@ -52,6 +68,69 @@ const COVERAGE_LABEL: Record<ScreeningEvidenceCoverage, TranslationKey> = {
   'abstract-only': 'references.screening.coverage.abstract-only',
   'metadata-only': 'references.screening.coverage.metadata-only',
   unavailable: 'references.screening.coverage.unavailable'
+}
+
+type TranslateFn = (key: TranslationKey, vars?: Record<string, string | number>) => string
+
+// One export action's receipt (S4). It carries the range that was used, how much of it reached a file,
+// and what stayed out — so the sentence a reviewer reads afterwards is built from the same object the
+// file was built from, instead of from a hopeful re-derivation.
+type ScreeningExportReceipt = {
+  scope: ScreeningExportScope
+  exportedCount: number
+  styleLabel: string
+  fileName: string
+  savedPath: string | null
+  exportedAt: number
+}
+
+type ScreeningExportReceiptText = {
+  exported: string
+  notExported: string
+  reasons: string
+  provenance: string
+  savedTo: string | null
+}
+
+// The receipt, in words. Both the persistent block and the toast are this one function's output, so a
+// reviewer reading either sees the same numbers — and the named reasons behind the exclusions are
+// spelled out rather than counted into the total.
+const describeScreeningExportReceipt = (
+  receipt: ScreeningExportReceipt,
+  input: { collectionName: string; time: string; t: TranslateFn }
+): ScreeningExportReceiptText => {
+  const { scope } = receipt
+  const { t } = input
+  const reasons = screeningExportReasonBreakdown(scope).map(
+    (entry) => `${t(REASON_LABEL[entry.reason])}: ${entry.count}`
+  )
+  return {
+    exported: t('references.screening.export.receiptExported', {
+      exported: receipt.exportedCount,
+      style: receipt.styleLabel,
+      scope: t('references.screening.export.scopeIncludedOnly')
+    }),
+    notExported: t('references.screening.export.receiptNotExported', {
+      notExported: scope.notExportedCount,
+      review: scope.notExportedCounts['needs-review'],
+      excluded: scope.notExportedCounts.excluded,
+      notEvaluated: scope.notExportedCounts['not-evaluated'],
+      byOverride: scope.notExportedByOverrideCount
+    }),
+    reasons:
+      reasons.length > 0
+        ? t('references.screening.export.receiptReasons', { reasons: reasons.join(' · ') })
+        : t('references.screening.export.receiptNoReasons'),
+    provenance: t('references.screening.export.receiptProvenance', {
+      collection: input.collectionName,
+      revision: scope.ruleRevision ?? 0,
+      hash: (scope.ruleContentHash ?? '').slice(0, 12),
+      time: input.time
+    }),
+    savedTo: receipt.savedPath
+      ? t('references.screening.export.receiptSavedTo', { path: receipt.savedPath })
+      : null
+  }
 }
 
 // Colour by state, and a human override always carries its own badge: a decision a person made must be
@@ -110,6 +189,7 @@ export function ReferencesScreeningPanel({
     review: number
     ai: number
     overrides: number
+    verdicts: Record<ScreeningVerdict, number>
     coverage: Record<ScreeningEvidenceCoverage, number>
     reasons: Record<ScreeningNamedReason, number>
   } | null>(null)
@@ -140,6 +220,16 @@ export function ReferencesScreeningPanel({
   const [batchReason, setBatchReason] = useState('')
   const [busy, setBusy] = useState(false)
 
+  // The export side (S4). The citation-style catalogue is the library's OWN (built-ins from the shared
+  // catalogue, imported styles from the existing store), so the screening export formats through the
+  // same path as every other export in the app instead of growing a second one.
+  const [styles, setStyles] = useState<readonly CitationStyleDefinition[]>(() =>
+    resolveCitationStyles()
+  )
+  const [styleId, setStyleId] = useState<string>(DEFAULT_CITATION_STYLE_ID)
+  const [exporting, setExporting] = useState(false)
+  const [receipt, setReceipt] = useState<ScreeningExportReceipt | null>(null)
+
   const applySnapshot = useCallback((next: ScreeningCollectionSnapshot): void => {
     setSnapshot(next.items)
     setRule(next.rule)
@@ -157,6 +247,7 @@ export function ReferencesScreeningPanel({
       review: next.summary.reviewCount,
       ai: next.aiDecidedCount,
       overrides: next.overrideCount,
+      verdicts: next.summary.verdictCounts,
       coverage: next.summary.coverageCounts,
       reasons: next.reasonCounts
     })
@@ -203,6 +294,25 @@ export function ReferencesScreeningPanel({
     }
   }, [applySnapshot, collectionId, onError])
 
+  // The imported citation styles come from the library's own store: the export offers exactly the
+  // styles the rest of the app offers, and a style store that cannot be read is reported rather than
+  // quietly narrowed to the built-ins.
+  useEffect(() => {
+    let alive = true
+    window.api.references
+      .listCitationStyles()
+      .then((imported) => {
+        if (alive)
+          setStyles(resolveCitationStyles(imported.map((style) => citationStyleFromImport(style))))
+      })
+      .catch((cause: unknown) => {
+        if (alive) onError(cause instanceof Error ? cause.message : String(cause))
+      })
+    return () => {
+      alive = false
+    }
+  }, [onError])
+
   const running = run?.running ?? false
   useEffect(() => {
     if (!running) return
@@ -212,6 +322,25 @@ export function ReferencesScreeningPanel({
     return () => clearInterval(timer)
   }, [running, reload])
 
+  // The collection's MEMBERSHIP can change while this panel is open (a record added, removed, or
+  // re-assigned from the library toolbar behind it). The statistics are counts over those members, so a
+  // change re-reads the ledger rather than leaving a number on screen that the database already
+  // disagrees with. Keyed on the id set, and skipped on mount: the mount read above is that one.
+  const memberKey = useMemo(
+    () =>
+      references
+        .map((entry) => entry.id)
+        .sort()
+        .join(','),
+    [references]
+  )
+  const memberKeyRef = useRef(memberKey)
+  useEffect(() => {
+    if (memberKeyRef.current === memberKey) return
+    memberKeyRef.current = memberKey
+    void reload()
+  }, [memberKey, reload])
+
   const byId = useMemo(() => new Map(references.map((item) => [item.id, item])), [references])
 
   const shown = useMemo(
@@ -219,7 +348,26 @@ export function ReferencesScreeningPanel({
     [snapshot, filter]
   )
 
+  // The range this export WOULD use, previewed from the same lines the rows are drawn from — so the
+  // reviewer decides with the scope in front of them ("仅纳入") instead of discovering it in the file.
+  // Pressing export re-reads the ledger first (see handleExportIncluded): the preview informs, the read
+  // decides.
+  const exportScope = useMemo<ScreeningExportScope | null>(
+    () =>
+      snapshot === null ? null : buildScreeningExportScope({ collectionId, rule, items: snapshot }),
+    [collectionId, rule, snapshot]
+  )
+
   const when = (value: number): string => new Date(value).toLocaleString(getUiLocale())
+
+  // The receipt in words, computed once: the same strings are shown in the panel and sent as the toast.
+  const receiptText = receipt
+    ? describeScreeningExportReceipt(receipt, {
+        collectionName,
+        time: when(receipt.exportedAt),
+        t
+      })
+    : null
 
   const draftFrom = (rows: readonly CriterionDraft[]): ScreeningCriterion[] =>
     rows
@@ -396,6 +544,97 @@ export function ReferencesScreeningPanel({
       onError(cause instanceof Error ? cause.message : String(cause))
     } finally {
       setBusy(false)
+    }
+  }
+
+  // The export (S4): the triage result goes straight into the library's existing GB/T 7714 export, over
+  // the EFFECTIVE verdicts only. Three properties are deliberate:
+  //
+  //   1. the range is re-read from the ledger at the moment of the export, so a file cannot be built
+  //      from a list that has since moved (a revision appended, an override applied a second ago);
+  //   2. the text is formatted by the same shared citation layer every other export uses, in the
+  //      library's own style catalogue — this is not a second export path;
+  //   3. nothing is silent: what stayed out is counted per state and per named reason in the receipt,
+  //      and the rule revision + hash + moment travel with it, so the file is attributable.
+  const handleExportIncluded = async (): Promise<void> => {
+    setExporting(true)
+    try {
+      const fresh = await window.api.references.getScreening(collectionId)
+      const scope = buildScreeningExportScope({
+        collectionId,
+        rule: fresh.rule,
+        items: fresh.items
+      })
+      if (scope.includedCount === 0) {
+        onError(t('references.screening.export.nothingIncluded'))
+        return
+      }
+      const byId = new Map(references.map((entry) => [entry.id, entry]))
+      const exported = scope.includedReferenceIds
+        .map((referenceId) => byId.get(referenceId))
+        .filter((entry): entry is Reference => entry !== undefined)
+      // The scope is read from the ledger and the records come from this window's list. If the ledger
+      // names an included record the list no longer has (deleted or re-assigned elsewhere), the file
+      // would silently contain fewer citations than the range it is named after — so nothing is
+      // written and the reviewer is told, instead of receiving a bibliography with a hole in it.
+      const missing = scope.includedCount - exported.length
+      if (missing > 0) {
+        onError(t('references.screening.export.listChanged', { n: missing }))
+        return
+      }
+      const exportedAt = Date.now()
+      const style = styles.find((entry) => entry.id === styleId) ?? styles[0]
+      const text = formatCitationList(
+        exported.map((entry) => citationItemFromReference(entry)),
+        styleId,
+        { retrievedAt: new Date(exportedAt).toISOString().slice(0, 10) },
+        styles
+      )
+      const fileName = screeningExportFileName({
+        collectionName,
+        styleId,
+        revision: scope.ruleRevision,
+        generatedAt: exportedAt
+      })
+      const saved = await window.api.saveBlobFile({
+        suggestedName: fileName,
+        mimeType: 'text/plain',
+        data: new TextEncoder().encode(text).buffer
+      })
+      if (!saved.saved) {
+        // A cancelled save is not an export: no receipt may claim a file nobody wrote.
+        onNotice(t('references.screening.export.cancelled'))
+        return
+      }
+      const next: ScreeningExportReceipt = {
+        scope,
+        exportedCount: exported.length,
+        styleLabel: style?.label ?? styleId,
+        fileName,
+        savedPath: saved.filePath ?? null,
+        exportedAt
+      }
+      setReceipt(next)
+      const described = describeScreeningExportReceipt(next, {
+        collectionName,
+        time: when(exportedAt),
+        t
+      })
+      onNotice(
+        [described.exported, described.notExported, described.reasons, described.provenance].join(
+          ' · '
+        )
+      )
+      // Read the state back after the write so the panel shows the ledger, not the export's hopes.
+      await reload()
+    } catch (cause) {
+      onError(
+        t('references.screening.export.failed', {
+          message: cause instanceof Error ? cause.message : String(cause)
+        })
+      )
+    } finally {
+      setExporting(false)
     }
   }
 
@@ -631,6 +870,183 @@ export function ReferencesScreeningPanel({
           </div>
         ) : null}
 
+        {/* 统计面板 (S4): AI decisions / human overrides / unprocessed are THREE separate numbers, each
+            its own element, because a surface that adds them together cannot answer either question —
+            and the unprocessed line says outright that it never reaches an export. Alongside them, the
+            four-state distribution and the evidence-coverage distribution, which is what makes "how much
+            is left and on what basis" checkable per item rather than in aggregate. */}
+        {summaryText ? (
+          <div
+            className="mt-2 flex flex-col gap-1 rounded-lg border border-[var(--border)] p-2"
+            data-testid="screening-stats"
+          >
+            <div className="flex flex-wrap items-baseline gap-3">
+              <span
+                className="text-[11px] text-[var(--muted-foreground)]"
+                data-testid="screening-stat-ai"
+              >
+                {t('references.screening.stats.ai')}{' '}
+                <span className="font-semibold text-[var(--foreground)]">{summaryText.ai}</span>
+              </span>
+              <span
+                className="text-[11px] text-[var(--muted-foreground)]"
+                data-testid="screening-stat-overrides"
+              >
+                {t('references.screening.stats.overrides')}{' '}
+                <span className="font-semibold text-[var(--foreground)]">
+                  {summaryText.overrides}
+                </span>
+              </span>
+              <span
+                className="text-[11px] text-[var(--muted-foreground)]"
+                data-testid="screening-stat-unprocessed"
+              >
+                {t('references.screening.stats.unprocessed')}{' '}
+                <span className="font-semibold text-amber-400">{summaryText.unprocessed}</span>
+              </span>
+            </div>
+            <p className="text-[10px] text-[var(--muted-foreground)]">
+              {t('references.screening.stats.unprocessedNote')}
+            </p>
+            <p
+              className="text-[10px] text-[var(--muted-foreground)]"
+              data-testid="screening-stat-verdicts"
+            >
+              {t('references.screening.stats.verdicts')}:{' '}
+              {SCREENING_VERDICTS.map((verdict) => (
+                <span
+                  key={verdict}
+                  className="mr-2 inline-block"
+                  data-testid={`screening-stat-verdict-${verdict}`}
+                >
+                  {t(VERDICT_LABEL[verdict])}{' '}
+                  <span className="font-medium text-[var(--foreground)]">
+                    {summaryText.verdicts[verdict]}
+                  </span>
+                </span>
+              ))}
+            </p>
+            <p
+              className="text-[10px] text-[var(--muted-foreground)]"
+              data-testid="screening-stat-coverage"
+            >
+              {t('references.screening.stats.coverage')}:{' '}
+              {SCREENING_EVIDENCE_COVERAGES.map((coverage) => (
+                <span
+                  key={coverage}
+                  className="mr-2 inline-block"
+                  data-testid={`screening-stat-coverage-${coverage}`}
+                >
+                  {t(COVERAGE_LABEL[coverage])}{' '}
+                  <span className="font-medium text-[var(--foreground)]">
+                    {summaryText.coverage[coverage]}
+                  </span>
+                </span>
+              ))}
+            </p>
+          </div>
+        ) : null}
+
+        {/* The export (S4): 仅纳入 — the effective verdicts only — into the library's own GB/T 7714
+            export. The scope is stated BEFORE the button, the range is re-read when it is pressed, and
+            the receipt afterwards names what stayed out and why, with the revision and the moment. */}
+        <div
+          className="mt-2 flex flex-col gap-1 rounded-lg border border-[var(--border)] p-2"
+          data-testid="screening-export"
+          data-scope={SCREENING_EXPORT_SCOPE}
+        >
+          <p className="text-[11px] text-[var(--foreground)]" data-testid="screening-export-scope">
+            {t('references.screening.export.title')} · {t('references.screening.export.scope')}
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              className="max-w-56 rounded border border-[var(--border)] bg-transparent px-1 py-0.5 text-[10px]"
+              aria-label={t('references.citationStyle')}
+              value={styleId}
+              onChange={(event) => setStyleId(event.target.value)}
+            >
+              <optgroup label={t('references.builtinStyles')}>
+                {styles
+                  .filter((style) => style.source === 'builtin')
+                  .map((style) => (
+                    <option key={style.id} value={style.id}>
+                      {style.labelZh}
+                    </option>
+                  ))}
+              </optgroup>
+              {styles.some((style) => style.source === 'imported') ? (
+                <optgroup label={t('references.importedStyles')}>
+                  {styles
+                    .filter((style) => style.source === 'imported')
+                    .map((style) => (
+                      <option key={style.id} value={style.id}>
+                        {style.label}
+                      </option>
+                    ))}
+                </optgroup>
+              ) : null}
+            </select>
+            <button
+              type="button"
+              className={buttonClass}
+              disabled={exporting || (exportScope?.includedCount ?? 0) === 0}
+              onClick={() => void handleExportIncluded()}
+            >
+              {t('references.screening.export.action')}
+            </button>
+            {exportScope ? (
+              <span
+                className="text-[10px] text-[var(--muted-foreground)]"
+                data-testid="screening-export-preview"
+              >
+                {t('references.screening.export.preview', {
+                  included: exportScope.includedCount,
+                  notExported: exportScope.notExportedCount,
+                  review: exportScope.notExportedCounts['needs-review'],
+                  excluded: exportScope.notExportedCounts.excluded,
+                  notEvaluated: exportScope.notExportedCounts['not-evaluated']
+                })}
+              </span>
+            ) : null}
+          </div>
+          {receipt && receiptText ? (
+            <div className="flex flex-col gap-0.5" data-testid="screening-export-receipt">
+              <p
+                className="text-[10px] text-[var(--foreground)]"
+                data-testid="screening-export-receipt-summary"
+              >
+                {receiptText.exported}
+              </p>
+              <p
+                className="text-[10px] text-[var(--muted-foreground)]"
+                data-testid="screening-export-receipt-not-exported"
+              >
+                {receiptText.notExported}
+              </p>
+              <p
+                className="text-[10px] text-[var(--muted-foreground)]"
+                data-testid="screening-export-receipt-reasons"
+              >
+                {receiptText.reasons}
+              </p>
+              <p
+                className="text-[10px] text-[var(--muted-foreground)]"
+                data-testid="screening-export-receipt-provenance"
+              >
+                {receiptText.provenance}
+              </p>
+              {receiptText.savedTo ? (
+                <p
+                  className="text-[10px] text-[var(--muted-foreground)]"
+                  data-testid="screening-export-receipt-path"
+                >
+                  {receiptText.savedTo}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+
         {run ? (
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <span className="text-[11px] font-medium text-[var(--foreground)]">
@@ -729,10 +1145,21 @@ export function ReferencesScreeningPanel({
             const record = byId.get(item.referenceId)
             const verdict = item.decision.verdict
             const override = item.decision.override
+            // The row's state is also written as data attributes (see the <li> below): a reviewer's tool
+            // — or an acceptance spec — can recompute the statistics from the rows themselves instead of
+            // trusting a total printed once at the top.
             return (
               <li
                 key={item.referenceId}
                 data-testid="screening-row"
+                data-reference-id={item.referenceId}
+                data-verdict={verdict}
+                data-effective={item.decision.effective}
+                data-effective-source={item.decision.effectiveSource}
+                data-coverage={item.coverage}
+                data-override={override?.decision ?? ''}
+                data-stale={item.freshness.stale ? 'true' : 'false'}
+                data-reasons={item.freshness.reasons.join(',')}
                 className="rounded-lg border border-[var(--border)] px-3 py-2"
               >
                 <div className="flex items-start gap-2">

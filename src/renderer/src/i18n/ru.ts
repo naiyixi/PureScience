@@ -3421,6 +3421,35 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'references.screening.runFailed': 'Отчёт о запуске: {message}',
   'references.screening.probabilities':
     'p(включить) {include} · p(исключить) {exclude} · p(неясно) {uncertain}',
+  'references.screening.stats.title': 'Статистика',
+  'references.screening.stats.ai': 'Решения ИИ',
+  'references.screening.stats.overrides': 'Правки человеком',
+  'references.screening.stats.unprocessed': 'Не обработано',
+  'references.screening.stats.unprocessedNote':
+    'Необработанные записи считаются отдельно и никогда не попадают в экспорт.',
+  'references.screening.stats.verdicts': 'Распределение четырёх состояний',
+  'references.screening.stats.coverage': 'Распределение охвата доказательствами',
+  'references.screening.export.title': 'Экспорт',
+  'references.screening.export.scope':
+    'Область экспорта: только включённые — по действующему решению, где правка человеком важнее решения ИИ.',
+  'references.screening.export.scopeIncludedOnly': 'только включённые',
+  'references.screening.export.preview':
+    'Экспорт {included} · не экспортируется {notExported} (на проверку {review} · исключено {excluded} · не оценено {notEvaluated})',
+  'references.screening.export.action': 'Экспортировать включённые',
+  'references.screening.export.nothingIncluded': 'Пока ничего не включено, экспортировать нечего.',
+  'references.screening.export.receiptExported':
+    'Экспортировано {exported} включённых ссылок в {style} · область {scope}.',
+  'references.screening.export.receiptNotExported':
+    'Не экспортировано {notExported}: на проверку {review} · исключено {excluded} · не оценено {notEvaluated} · правка человеком {byOverride}',
+  'references.screening.export.receiptReasons': 'Именованные причины: {reasons}',
+  'references.screening.export.receiptNoReasons': 'Именованных причин нет.',
+  'references.screening.export.receiptProvenance':
+    'коллекция {collection} · редакция правил {revision} ({hash}) · {time}',
+  'references.screening.export.receiptSavedTo': 'Сохранено в {path}.',
+  'references.screening.export.listChanged':
+    '{n} включённых записей больше нет в этом списке; откройте коллекцию заново и повторите экспорт.',
+  'references.screening.export.failed': 'Экспорт не сохранён: {message}',
+  'references.screening.export.cancelled': 'Сохранение отменено, файл не записан.',
   'bookmarks.title': 'Закладки сеанса',
   'bookmarks.privacy':
     'Приватно: закладки остаются на этом компьютере и принадлежат только вам. Они никогда не отправляются модели.',

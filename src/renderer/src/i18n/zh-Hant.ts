@@ -3159,6 +3159,33 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'references.screening.runFailed': '本次執行回報：{message}',
   'references.screening.probabilities':
     'p(納入) {include} · p(排除) {exclude} · p(不確定) {uncertain}',
+  'references.screening.stats.title': '統計',
+  'references.screening.stats.ai': 'AI 判定數',
+  'references.screening.stats.overrides': '人工覆蓋數',
+  'references.screening.stats.unprocessed': '未處理數',
+  'references.screening.stats.unprocessedNote': '未處理量單獨計數，絕不進入匯出。',
+  'references.screening.stats.verdicts': '四態分布',
+  'references.screening.stats.coverage': '證據覆蓋度分布',
+  'references.screening.export.title': '匯出',
+  'references.screening.export.scope': '本次匯出範圍：僅納入（依有效判定，人工覆蓋優先於 AI 原判）',
+  'references.screening.export.scopeIncludedOnly': '僅納入',
+  'references.screening.export.preview':
+    '將匯出 {included} 筆 · 未匯出 {notExported} 筆（待複核 {review} · 排除 {excluded} · 未判定 {notEvaluated}）',
+  'references.screening.export.action': '匯出納入結果',
+  'references.screening.export.nothingIncluded': '目前沒有「納入」的文獻，無從匯出。',
+  'references.screening.export.receiptExported':
+    '已匯出 {exported} 筆「納入」引文（{style}）· 範圍 {scope}。',
+  'references.screening.export.receiptNotExported':
+    '未匯出 {notExported} 筆：待複核 {review} · 排除 {excluded} · 未判定 {notEvaluated} · 其中人工覆蓋 {byOverride}',
+  'references.screening.export.receiptReasons': '具名原因：{reasons}',
+  'references.screening.export.receiptNoReasons': '無具名原因。',
+  'references.screening.export.receiptProvenance':
+    '合集 {collection} · 規則修訂 {revision}（{hash}）· {time}',
+  'references.screening.export.receiptSavedTo': '已儲存到 {path}。',
+  'references.screening.export.listChanged':
+    '有 {n} 筆「納入」文獻已不在目前清單，請重新開啟合集後再匯出。',
+  'references.screening.export.failed': '匯出未儲存：{message}',
+  'references.screening.export.cancelled': '已取消儲存，未寫入檔案。',
   'bookmarks.title': '工作階段書籤',
   'bookmarks.privacy': '私有：書籤只存在本機、只屬於你，絕不會進入模型上下文。',
   'bookmarks.empty': '還沒有書籤。在訊息上點「存為書籤」即可保留一段閱讀痕跡。',

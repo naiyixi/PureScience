@@ -3509,6 +3509,37 @@ export const de: Partial<Record<ZhKey, string>> = {
   'references.screening.runFailed': 'Der Durchlauf meldet: {message}',
   'references.screening.probabilities':
     'p(einschließen) {include} · p(ausschließen) {exclude} · p(unsicher) {uncertain}',
+  'references.screening.stats.title': 'Statistik',
+  'references.screening.stats.ai': 'KI-Entscheidungen',
+  'references.screening.stats.overrides': 'Menschliche Überschreibungen',
+  'references.screening.stats.unprocessed': 'Unbearbeitet',
+  'references.screening.stats.unprocessedNote':
+    'Unbearbeitete Einträge werden getrennt gezählt und gelangen nie in einen Export.',
+  'references.screening.stats.verdicts': 'Verteilung der vier Zustände',
+  'references.screening.stats.coverage': 'Verteilung der Evidenzabdeckung',
+  'references.screening.export.title': 'Exportieren',
+  'references.screening.export.scope':
+    'Exportumfang: nur aufgenommen – nach dem wirksamen Urteil, bei dem eine menschliche Überschreibung das KI-Urteil schlägt.',
+  'references.screening.export.scopeIncludedOnly': 'nur aufgenommen',
+  'references.screening.export.preview':
+    'Export {included} · nicht exportiert {notExported} (zu prüfen {review} · ausgeschlossen {excluded} · nicht bewertet {notEvaluated})',
+  'references.screening.export.action': 'Aufgenommene exportieren',
+  'references.screening.export.nothingIncluded':
+    'Noch ist nichts aufgenommen, es gibt also nichts zu exportieren.',
+  'references.screening.export.receiptExported':
+    '{exported} aufgenommene Zitate in {style} exportiert · Umfang {scope}.',
+  'references.screening.export.receiptNotExported':
+    'Nicht exportiert {notExported}: zu prüfen {review} · ausgeschlossen {excluded} · nicht bewertet {notEvaluated} · durch menschliche Überschreibung {byOverride}',
+  'references.screening.export.receiptReasons': 'Benannte Gründe: {reasons}',
+  'references.screening.export.receiptNoReasons': 'Keine benannten Gründe.',
+  'references.screening.export.receiptProvenance':
+    'Sammlung {collection} · Regelrevision {revision} ({hash}) · {time}',
+  'references.screening.export.receiptSavedTo': 'Gespeichert unter {path}.',
+  'references.screening.export.listChanged':
+    '{n} aufgenommene Einträge stehen nicht mehr in dieser Liste; öffnen Sie die Sammlung erneut und exportieren Sie noch einmal.',
+  'references.screening.export.failed': 'Der Export wurde nicht gespeichert: {message}',
+  'references.screening.export.cancelled':
+    'Das Speichern wurde abgebrochen, es wurde nichts geschrieben.',
   'bookmarks.title': 'Sitzungslesezeichen',
   'bookmarks.privacy':
     'Privat: Lesezeichen bleiben auf diesem Rechner und gehören nur Ihnen. Sie werden nie an das Modell gesendet.',
