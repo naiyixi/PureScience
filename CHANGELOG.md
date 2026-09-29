@@ -70,6 +70,12 @@ PureScience 是一款面向科学研究的开源 AI 工作台：多智能体协�
 - Windows 代码签名（等证书主体；不阻塞发布，CI 判 `authenticode: not-required`）与 KEGG 数据源（许可限制，可选）。
 - **一道从未校验过任何东西的运行时发布门禁已改为对着已部署的基址校验**（#15 B，按「不影响用户」口径定）：CI 原先把运行时基址覆盖到**尚未部署**的镜像（`build.yml` 自己的注释写着 CDN 未部署），导致四个平台全部 `fetch failed`，而失败被 `continue-on-error` 吞掉——只在依赖运行时的 macos-arm64 上以红点露出来。现改为校验**应用真正会回退到的**那份已部署资产（GitHub release `runtime-v1`），并在注释里写明「待 `purescience.work` 建站后把基址切回镜像」。**用户侧零影响**：运行时来源、下载路径、回退逻辑都没动，改的只是 CI 去哪校验。**待办（记录在案）**：专家市场的官方源同样指向该未部署主机（`src/main/specialist/marketplace/official-source.ts:18,24`，注释标 `reserved`），待建站后与 CI 一并切换。
 
+## v1.76.0 之后的开工项
+
+**文档标注层（PDF 标注库）**：切片计划见 `docs/plan-2026-09-29-pdf-annotations.md`（差异化红线：标注绑「**文件版本 + 内容哈希**」而非会话；导入**幂等 + 回执独立存活**；导出**两条独立通道**且**永不改写源字节**（字节级断言）；标注可挂进审查证据与 GB/T 7714 引文链；**显式声明标注不进模型上下文并有测试约束**）。
+
+- **A1 数据层已落地**：新增 `PdfAnnotation`（定位到不可变文件版本 `sourceFileId + versionId + checksum`，七种 kind, 带 `version` 信封的 selector）与 `PdfAnnotationImport`（导入回执，幂等键唯一）；kind 与 selector 形状**不一致即拒绝并点名**；版本锚定三态 `current / version-changed / checksum-mismatch`；**回执与标注可分别清理**（不互相耦合，因此无外键级联）。运行期 DDL 新增 6 条语句、**破坏性语句 0**（我用 `prisma migrate diff` 对照 HEAD 模式自行复核），且与 Prisma 生成语句逐条一致。测试 45 通过（含「重复导入不重复」「两者可分别清理」「不一致被拒」）。
+
 ## v1.75.0 — 2026-09-27（天工：先让门禁能报警，再谈跑得更快）
 
 **这一版不新增能力面，收口的是「工程门禁」：测试分区、覆盖率、Windows 分片、flaky、定时回归各自能报警，并把「哪些文件真的跑了」变成可断言的。每一项都附实测数字或真机断言——包括我自己写坏又修回的一处，以及测量中揪出的两个真问题。**

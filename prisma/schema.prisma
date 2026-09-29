@@ -730,3 +730,54 @@ model ScreeningRunItem {
   @@id([runId, referenceId])
   @@index([runId, state])
 }
+
+// PDF annotations (文档标注层 A1): a markup, a region or a note tied to ONE immutable file version —
+// the anchor is (sourceFileId, versionId, checksum), never a session. A newer version of the same file
+// therefore carries NONE of the old version's annotations: nothing is migrated silently, because a
+// region drawn on bytes that changed is not the same region. `kind` and the selector's shape must agree
+// (the shape decides which anchor fields exist: a text range has rects + a quote, an area has one rect,
+// a page note has a page, a document note has neither) — an annotation whose kind and selector
+// disagree is refused on write instead of being stored and repaired on read. selectorJson carries its
+// own `version` envelope, so an older reader can recognize a selector it does not understand.
+//
+// No relational constraints on purpose, same as the screening tables: the version anchor is a logical
+// pointer at the files layer (ManagedFile.sourceFileId / sourceVersionId / checksum), so this table
+// stays pure-additive and byte-compatible with any pre-existing DB. Created via CREATE TABLE IF NOT
+// EXISTS in src/main/projects/prisma-client.ts, not migrate.
+model PdfAnnotation {
+  id           String   @id @default(cuid())
+  sourceFileId String // logical pointer at ManagedFile.sourceFileId — the file, across all its versions
+  versionId    String // logical pointer at ManagedFile.sourceVersionId — the immutable version
+  checksum     String // that version's content checksum: the anchor is the version, not the filename
+  kind         String // highlight | underline | squiggly | strikethrough | area | page-note | document-note
+  // JSON { version, shape, ...anchor fields }. NOT NULL with no default: an annotation without a
+  // selector has no anchor at all, so there is no honest placeholder to write in its place.
+  selectorJson String
+  body         String   @default("") // note text for notes; empty for pure markups
+  createdAt    DateTime @default(now())
+
+  // Every index starts with (sourceFileId, versionId) — that prefix is what a version switch queries,
+  // so switching versions never degrades into a scan of the whole annotation store.
+  @@index([sourceFileId, versionId, createdAt])
+  @@index([sourceFileId, versionId, kind])
+}
+
+// Import receipt (导入回执): one row per successful import of a reader's annotation payload into one
+// file version. Its job is to make importing idempotent (the digest of the payload plus the version it
+// was read from is unique) and to survive independently: a receipt is a statement that an import
+// happened, so clearing annotations must not erase it, and deleting a receipt must not erase
+// annotations. That independence is exactly why nothing here points at PdfAnnotation.
+model PdfAnnotationImport {
+  id           String   @id @default(cuid())
+  sourceKind   String // embedded-pdf | annotation-file — which channel the payload came from
+  sourceFileId String
+  versionId    String
+  importedAt   DateTime @default(now())
+  // sha256 of the imported payload: the idempotency key. Scoped to (sourceKind, sourceFileId,
+  // versionId) rather than global, because two different files may legitimately carry an identical
+  // payload — deduping those would lose a receipt that is owed.
+  digest       String
+
+  @@unique([sourceKind, sourceFileId, versionId, digest])
+  @@index([sourceFileId, versionId, importedAt])
+}

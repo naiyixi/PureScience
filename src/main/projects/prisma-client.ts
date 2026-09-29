@@ -817,6 +817,44 @@ const SCREENING_INDEX_DDLS = [
   `CREATE INDEX IF NOT EXISTS "ScreeningRunItem_runId_state_idx" ON "ScreeningRunItem"("runId", "state")`
 ]
 
+// PDF annotations (文档标注层 A1): two pure-additive tables with logical foreign keys only (no
+// relational constraints) — nothing references them and they reference nothing, so these CREATE/INDEX
+// statements stay safe to (re)run on any existing DB, and their DDL is byte-identical to what
+// `prisma migrate diff` generates for the PdfAnnotation* models. Two properties are load-bearing:
+//   * the version anchor — (sourceFileId, versionId) is the prefix of EVERY index, so switching a file
+//     to another version is an indexed lookup rather than a scan of the annotation store;
+//   * the import receipt — its idempotency key (sourceKind, sourceFileId, versionId, digest) is a
+//     UNIQUE index, so a repeated import is refused by the database itself and not only by the caller
+//     remembering to check first. Nothing links a receipt to an annotation, because clearing one must
+//     never clear the other.
+const PDF_ANNOTATION_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "PdfAnnotation" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "sourceFileId" TEXT NOT NULL,
+    "versionId" TEXT NOT NULL,
+    "checksum" TEXT NOT NULL,
+    "kind" TEXT NOT NULL,
+    "selectorJson" TEXT NOT NULL,
+    "body" TEXT NOT NULL DEFAULT '',
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+)`
+const PDF_ANNOTATION_IMPORT_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "PdfAnnotationImport" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "sourceKind" TEXT NOT NULL,
+    "sourceFileId" TEXT NOT NULL,
+    "versionId" TEXT NOT NULL,
+    "importedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "digest" TEXT NOT NULL
+)`
+const PDF_ANNOTATION_INDEX_DDLS = [
+  // Both annotation indexes start with (sourceFileId, versionId): the version-switch read, and the
+  // same read filtered by kind, both resolve without touching another version's rows.
+  `CREATE INDEX IF NOT EXISTS "PdfAnnotation_sourceFileId_versionId_createdAt_idx" ON "PdfAnnotation"("sourceFileId", "versionId", "createdAt")`,
+  `CREATE INDEX IF NOT EXISTS "PdfAnnotation_sourceFileId_versionId_kind_idx" ON "PdfAnnotation"("sourceFileId", "versionId", "kind")`,
+  `CREATE INDEX IF NOT EXISTS "PdfAnnotationImport_sourceFileId_versionId_importedAt_idx" ON "PdfAnnotationImport"("sourceFileId", "versionId", "importedAt")`,
+  // The idempotency key, enforced by the database rather than by the import path remembering to look.
+  `CREATE UNIQUE INDEX IF NOT EXISTS "PdfAnnotationImport_sourceKind_sourceFileId_versionId_digest_key" ON "PdfAnnotationImport"("sourceKind", "sourceFileId", "versionId", "digest")`
+]
+
 // Indexes for ComputeJob: by providerId (per-host poller queries), sessionId (UI list), status
 // (finding non-terminal jobs on restart). IF NOT EXISTS makes re-runs idempotent.
 const COMPUTE_JOB_PROVIDER_INDEX_DDL = `CREATE INDEX IF NOT EXISTS "ComputeJob_providerId_idx" ON "ComputeJob"("providerId")`
@@ -1061,6 +1099,16 @@ const ensureProjectSchema = async (client: PrismaClient): Promise<void> => {
   await client.$executeRawUnsafe(SCREENING_RUN_TABLE_DDL)
   await client.$executeRawUnsafe(SCREENING_RUN_ITEM_TABLE_DDL)
   for (const ddl of SCREENING_INDEX_DDLS) {
+    await client.$executeRawUnsafe(ddl)
+  }
+
+  // PDF annotations (文档标注层 A1): the annotations themselves and the import receipt ledger. Two
+  // tables, neither referencing the other — a receipt survives its annotations and vice versa, which
+  // is the whole point of keeping them apart. Every statement is IF NOT EXISTS, so an existing
+  // installation gets both tables without any stored data being touched.
+  await client.$executeRawUnsafe(PDF_ANNOTATION_TABLE_DDL)
+  await client.$executeRawUnsafe(PDF_ANNOTATION_IMPORT_TABLE_DDL)
+  for (const ddl of PDF_ANNOTATION_INDEX_DDLS) {
     await client.$executeRawUnsafe(ddl)
   }
 }

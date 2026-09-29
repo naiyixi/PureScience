@@ -11,6 +11,7 @@ import {
   ensureProjectSchema,
   getProjectDbClient
 } from './prisma-client'
+import { PdfAnnotationRepository } from '../references/pdf-annotation-repository'
 import { ReviewRepository } from '../reviewer/repository'
 
 // Proves the runtime CREATE TABLE IF NOT EXISTS DDL is byte-compatible with the generated Prisma client
@@ -929,5 +930,260 @@ describe('project prisma client (integration)', () => {
     const reviewRepo = new ReviewRepository(() => Promise.resolve(client))
     const [stored] = await reviewRepo.getReviewsForSession('s1')
     expect(stored.checks[0]!.reflagCount).toBe(0)
+  })
+
+  // PDF annotation storage (文档标注层 A1). Three properties are asserted against a real SQLite file,
+  // because each of them is a promise the runtime DDL makes and a mock cannot check:
+  //   * the columns are the ones the generated client reads (type, NOT NULL, default, primary key),
+  //     in the order Prisma declares them;
+  //   * every annotation index starts with (sourceFileId, versionId), and a version-scoped query
+  //     really resolves through that prefix;
+  //   * the import receipt's idempotency key is unique in the database, and nothing ties a receipt to
+  //     an annotation — so clearing either one leaves the other alive.
+  it('creates the PDF annotation tables column-for-column with Prisma, index-prefixed by the version anchor', async () => {
+    storageRoot = await mkdtemp(join(tmpdir(), 'purescience-pdf-annotation-schema-'))
+
+    const client = createProjectDbClient(storageRoot)
+    disconnect = () => client.$disconnect()
+
+    await ensureProjectSchema(client)
+
+    const normalizedColumns = async (
+      tableName: string
+    ): Promise<
+      Array<{
+        name: string
+        type: string
+        notNull: number
+        primaryKey: number
+        defaultValue: unknown
+      }>
+    > =>
+      (
+        await client.$queryRawUnsafe<Array<Record<string, unknown>>>(
+          `PRAGMA table_info("${tableName}")`
+        )
+      ).map((column) => ({
+        name: column.name as string,
+        type: column.type as string,
+        notNull: Number(column.notnull),
+        primaryKey: Number(column.pk),
+        defaultValue: column.dflt_value ?? null
+      }))
+
+    expect(await normalizedColumns('PdfAnnotation')).toEqual([
+      { name: 'id', type: 'TEXT', notNull: 1, primaryKey: 1, defaultValue: null },
+      { name: 'sourceFileId', type: 'TEXT', notNull: 1, primaryKey: 0, defaultValue: null },
+      { name: 'versionId', type: 'TEXT', notNull: 1, primaryKey: 0, defaultValue: null },
+      { name: 'checksum', type: 'TEXT', notNull: 1, primaryKey: 0, defaultValue: null },
+      { name: 'kind', type: 'TEXT', notNull: 1, primaryKey: 0, defaultValue: null },
+      { name: 'selectorJson', type: 'TEXT', notNull: 1, primaryKey: 0, defaultValue: null },
+      { name: 'body', type: 'TEXT', notNull: 1, primaryKey: 0, defaultValue: "''" },
+      {
+        name: 'createdAt',
+        type: 'DATETIME',
+        notNull: 1,
+        primaryKey: 0,
+        defaultValue: 'CURRENT_TIMESTAMP'
+      }
+    ])
+    expect(await normalizedColumns('PdfAnnotationImport')).toEqual([
+      { name: 'id', type: 'TEXT', notNull: 1, primaryKey: 1, defaultValue: null },
+      { name: 'sourceKind', type: 'TEXT', notNull: 1, primaryKey: 0, defaultValue: null },
+      { name: 'sourceFileId', type: 'TEXT', notNull: 1, primaryKey: 0, defaultValue: null },
+      { name: 'versionId', type: 'TEXT', notNull: 1, primaryKey: 0, defaultValue: null },
+      {
+        name: 'importedAt',
+        type: 'DATETIME',
+        notNull: 1,
+        primaryKey: 0,
+        defaultValue: 'CURRENT_TIMESTAMP'
+      },
+      { name: 'digest', type: 'TEXT', notNull: 1, primaryKey: 0, defaultValue: null }
+    ])
+
+    // The same list, taken from the generated client's own model definition: the runtime DDL and the
+    // client agree column by column, in order.
+    for (const modelName of ['PdfAnnotation', 'PdfAnnotationImport']) {
+      const model = Prisma.dmmf.datamodel.models.find((entry) => entry.name === modelName)
+      expect(model, `${modelName} must exist in the generated client`).toBeDefined()
+      expect((await normalizedColumns(modelName)).map((column) => column.name)).toEqual(
+        model!.fields
+          .filter((field) => field.kind === 'scalar')
+          .map((field) => field.dbName ?? field.name)
+      )
+    }
+
+    const indexColumns = async (tableName: string): Promise<Record<string, string[]>> => {
+      const indexes = await client.$queryRawUnsafe<Array<Record<string, unknown>>>(
+        `PRAGMA index_list("${tableName}")`
+      )
+      const result: Record<string, string[]> = {}
+      for (const index of indexes) {
+        const name = String(index.name)
+        // The implicit primary-key index is not a statement this layer issues.
+        if (name.startsWith('sqlite_autoindex_')) continue
+        const info = await client.$queryRawUnsafe<Array<Record<string, unknown>>>(
+          `PRAGMA index_info("${name}")`
+        )
+        result[name] = info.map((column) => String(column.name))
+      }
+      return result
+    }
+
+    expect(await indexColumns('PdfAnnotation')).toEqual({
+      PdfAnnotation_sourceFileId_versionId_createdAt_idx: [
+        'sourceFileId',
+        'versionId',
+        'createdAt'
+      ],
+      PdfAnnotation_sourceFileId_versionId_kind_idx: ['sourceFileId', 'versionId', 'kind']
+    })
+    expect(await indexColumns('PdfAnnotationImport')).toEqual({
+      PdfAnnotationImport_sourceFileId_versionId_importedAt_idx: [
+        'sourceFileId',
+        'versionId',
+        'importedAt'
+      ],
+      PdfAnnotationImport_sourceKind_sourceFileId_versionId_digest_key: [
+        'sourceKind',
+        'sourceFileId',
+        'versionId',
+        'digest'
+      ]
+    })
+
+    // The prefix is not decoration: every way this layer reads a version — listing it, listing it by
+    // kind, or asking which versions carry annotations — resolves through an index that starts with
+    // (sourceFileId, versionId) instead of scanning the annotation store.
+    const plans = await Promise.all(
+      [
+        `SELECT "versionId" FROM "PdfAnnotation" WHERE "sourceFileId" = 'file-1' ORDER BY "versionId"`,
+        `SELECT "id" FROM "PdfAnnotation" WHERE "sourceFileId" = 'file-1' AND "versionId" = 'version-2' ORDER BY "createdAt"`,
+        `SELECT "id" FROM "PdfAnnotation" WHERE "sourceFileId" = 'file-1' AND "versionId" = 'version-2' AND "kind" = 'highlight'`,
+        `SELECT "id" FROM "PdfAnnotationImport" WHERE "sourceFileId" = 'file-1' AND "versionId" = 'version-2' ORDER BY "importedAt"`
+      ].map((query) =>
+        client.$queryRawUnsafe<Array<{ detail: string }>>(`EXPLAIN QUERY PLAN ${query}`)
+      )
+    )
+    for (const plan of plans) {
+      const detail = plan.map((step) => step.detail).join(' | ')
+      expect(detail).toContain('USING')
+      expect(detail).toContain('sourceFileId')
+      expect(detail).not.toContain('SCAN ')
+    }
+
+    // Re-running the initializer is idempotent for the two new tables as well.
+    await expect(ensureProjectSchema(client)).resolves.toBeUndefined()
+  })
+
+  it('round-trips version-anchored annotations and keeps import receipts independently alive', async () => {
+    storageRoot = await mkdtemp(join(tmpdir(), 'purescience-pdf-annotation-round-trip-'))
+
+    const client = createProjectDbClient(storageRoot)
+    disconnect = () => client.$disconnect()
+
+    await ensureProjectSchema(client)
+    const repository = new PdfAnnotationRepository(() => Promise.resolve(client))
+
+    const selector = {
+      version: 1 as const,
+      shape: 'text-range' as const,
+      page: 3,
+      rects: [{ x: 0.1, y: 0.2, width: 0.3, height: 0.04 }],
+      quote: 'the passage that was marked'
+    }
+    const versionOne = { sourceFileId: 'file-1', versionId: 'version-1', checksum: 'a'.repeat(64) }
+    const versionTwo = { sourceFileId: 'file-1', versionId: 'version-2', checksum: 'b'.repeat(64) }
+
+    await repository.createAnnotation({
+      ...versionOne,
+      kind: 'highlight',
+      selector,
+      createdAt: 1710000000000
+    })
+    await repository.createAnnotation({
+      ...versionTwo,
+      kind: 'area',
+      selector: {
+        version: 1,
+        shape: 'area',
+        page: 1,
+        rect: { x: 0.1, y: 0.1, width: 0.2, height: 0.2 }
+      }
+    })
+    await repository.createAnnotation({
+      ...versionTwo,
+      kind: 'document-note',
+      selector: { version: 1, shape: 'document-note' },
+      body: 'whole-document remark'
+    })
+
+    // Version 2 has the two annotations written against it and none of version 1's; switching the
+    // file to version 2 does not carry version 1's highlight along.
+    expect(
+      (await repository.listAnnotations(versionTwo)).map((annotation) => annotation.kind)
+    ).toEqual(['area', 'document-note'])
+    expect(
+      (await repository.listAnnotations(versionOne)).map((annotation) => annotation.kind)
+    ).toEqual(['highlight'])
+    expect(await repository.countAnnotations(versionTwo)).toBe(2)
+    expect(await repository.listAnnotatedVersions('file-1')).toEqual(['version-1', 'version-2'])
+    expect(
+      (await repository.listAnnotations(versionTwo, { kind: 'area' })).map(
+        (annotation) => annotation.selector.shape
+      )
+    ).toEqual(['area'])
+
+    // The idempotency key is the database's, not the caller's: a receipt recorded twice is one row,
+    // while the same payload for another version is a different import that is owed its own receipt.
+    const receipt = {
+      sourceFileId: 'file-1',
+      versionId: 'version-2',
+      sourceKind: 'embedded-pdf' as const,
+      digest: 'd'.repeat(64)
+    }
+    await expect(
+      repository.recordImport({ ...receipt, importedAt: 1710000000000 })
+    ).resolves.toMatchObject({
+      created: true
+    })
+    await expect(repository.recordImport(receipt)).resolves.toMatchObject({ created: false })
+    await expect(
+      repository.recordImport({ ...receipt, versionId: 'version-3' })
+    ).resolves.toMatchObject({ created: true })
+    expect(await repository.listImports({ sourceFileId: 'file-1' })).toHaveLength(2)
+    // ...and the same key really is refused by the index, even from outside the repository.
+    await expect(
+      client.pdfAnnotationImport.create({
+        data: {
+          sourceKind: receipt.sourceKind,
+          sourceFileId: receipt.sourceFileId,
+          versionId: receipt.versionId,
+          digest: receipt.digest
+        }
+      })
+    ).rejects.toThrow()
+
+    // Neither table constrains the other, which is what lets the two be cleaned up separately.
+    expect(await client.$queryRawUnsafe(`PRAGMA foreign_key_list("PdfAnnotation")`)).toEqual([])
+    expect(await client.$queryRawUnsafe(`PRAGMA foreign_key_list("PdfAnnotationImport")`)).toEqual(
+      []
+    )
+
+    expect(await repository.deleteAnnotationsForVersion(versionTwo)).toBe(2)
+    expect(await repository.listImports({ sourceFileId: 'file-1' })).toHaveLength(2)
+    expect(await repository.deleteImportsForVersion(versionTwo)).toBe(1)
+    // Version 1's annotation was never in the deleted scope, and it is still there afterwards.
+    expect(await repository.listAnnotations(versionOne)).toHaveLength(1)
+    expect(await repository.listImports({ sourceFileId: 'file-1' })).toHaveLength(1)
+
+    // A stored row that disagrees with itself is refused on read rather than relabelled.
+    await client.$executeRawUnsafe(
+      `UPDATE "PdfAnnotation" SET "kind" = 'area' WHERE "versionId" = 'version-1'`
+    )
+    await expect(repository.listAnnotations(versionOne)).rejects.toThrow(
+      'kind "area" needs selector shape "area", but the selector declares shape "text-range".'
+    )
   })
 })
