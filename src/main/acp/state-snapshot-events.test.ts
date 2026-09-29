@@ -57,28 +57,15 @@ describe('state snapshot events trimmer', () => {
     expect(idsOf(first)).toEqual(['event-15', 'event-16', 'event-17', 'event-18', 'event-19'])
   })
 
-  it('carries only what the gate could have withheld, and drops the chunks it already delivered', () => {
+  it('replays only what the gate could have withheld, plus everything new', () => {
     const trim = createStateSnapshotEventsTrimmer(5)
     trim(createSnapshot(20))
 
-    // Two more events arrive. The chunks among them already crossed the event channel (the window is
-    // subscribed to it), so the snapshot drops them; the transient the gate might have withheld stays,
-    // however new it is — that reconciliation is the reason this array exists.
+    // Two more events arrive. New events always go; inside the replayed window the chunks the event channel
+    // already delivered are dropped, and the transient the gate might have withheld stays.
     const second = trim(createSnapshot(22))
-    expect(idsOf(second)).toEqual(['event-19'])
-    expect(kindsOf(second)).toEqual(['thought'])
-  })
-
-  it('keeps a new event the gate could have withheld, even as the newest event', () => {
-    const trim = createStateSnapshotEventsTrimmer(5)
-    trim(createSnapshot(20))
-
-    // `thought` is not always-admitted: this channel is the only one that can still carry it, so it is sent
-    // even though it is newer than the anchor. Redundancy never applies to a kind the gate can withhold.
-    const trimmed = trim(snapshotWith([...createStream(20), createEvent(20, 'thought')]))
-    // event-19 is the transient still inside the replay overlap, event-20 the new one: both survive,
-    // because neither could be relied on to have crossed the event channel.
-    expect(idsOf(trimmed)).toEqual(['event-19', 'event-20'])
+    expect(idsOf(second)).toEqual(['event-19', 'event-20', 'event-21'])
+    expect(kindsOf(second)).toEqual(['thought', 'message', 'message'])
   })
 
   it('never hands back an empty live set when nothing new arrived', () => {
@@ -99,13 +86,12 @@ describe('state snapshot events trimmer', () => {
     const after = trim(createSnapshot(140))
     const kinds = kindsOf(after)
 
-    // Every chunk is dropped — the ones inside the replay window and the ones newer than the anchor — because
-    // the event channel delivered all of them. What is left is the transient class the gate may have withheld.
+    // Every chunk in the payload is newer than the anchor; the replayed part is the droppable class only.
     const newestReplayedId = idsOf(after).indexOf('event-99')
     expect(newestReplayedId).toBeGreaterThanOrEqual(0)
     expect(kinds.slice(0, newestReplayedId + 1).every((kind) => kind === 'thought')).toBe(true)
-    // 12 transients reach back (44,49,…,99) and 8 more are new (104,…,139).
-    expect(after.events.length).toBe(12 + 8)
+    // 12 transients reach back (44,49,…,99), then all 40 new events.
+    expect(after.events.length).toBe(12 + 40)
   })
 
   it('keeps the payload flat as the log grows', () => {
