@@ -3,7 +3,7 @@ import { Dialog } from 'radix-ui'
 
 import { DownloadProgressLine } from '@/components/DownloadProgressLine'
 import { ExternalTextLink } from '@/components/ExternalTextLink'
-import { AgentMarkdown } from '@/components/streamdown/AgentMarkdown'
+import { UpdateReleaseNotes } from '@/components/UpdateReleaseNotes'
 import { Button } from '@/components/ui/button'
 import {
   dialogCloseButtonClassName,
@@ -18,9 +18,19 @@ import { APP } from '../../../shared/app-config'
 import { formatBytes } from '../../../shared/update'
 import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 
-// Update confirmation dialog: shows the target version and release notes so the user can decide
+// The update confirmation dialog: shows the target version and release notes so the user can decide
 // before a large download. Opened from the external capsule and the settings About section. When the
 // manifest carries no notes, it links to the matching GitHub release so the user can still read them.
+//
+// The notes are rendered as a structured view (group titles, numbered entries, bold subtitle inside an
+// entry) by UpdateReleaseNotes; the raw text is what the parser falls back to.
+//
+// A size is only ever shown when the updater reported one: no estimate, no placeholder, no zero.
+const knownDownloadSize = (totalBytes: number | undefined): number | undefined =>
+  typeof totalBytes === 'number' && Number.isFinite(totalBytes) && totalBytes > 0
+    ? totalBytes
+    : undefined
+
 const UpdateDialog = (): React.JSX.Element | null => {
   const { t, lang } = useLanguage()
   const status = useUpdateStore((state) => state.status)
@@ -35,6 +45,10 @@ const UpdateDialog = (): React.JSX.Element | null => {
   const isDownloading = dialogStatus?.state === 'downloading'
   const isReady = dialogStatus?.state === 'ready'
   const isApplying = dialogStatus?.state === 'applying'
+  // The size shown on the download button is the one the updater reported for this platform's
+  // artifact (manifest size, or electron-updater's artifact size). A missing/zero/non-finite total
+  // means "not known yet" — the button then says only what it can promise, never a guessed number.
+  const downloadSize = knownDownloadSize(dialogStatus?.totalBytes)
 
   // The update dialog is opened by the update capsule in the rail, not by a Dialog.Trigger; without
   // this the keyboard user lands back on <body> when it closes.
@@ -89,8 +103,11 @@ const UpdateDialog = (): React.JSX.Element | null => {
                   <p className="mb-1 text-xs font-medium text-muted-foreground">
                     {t('update.whatsNew')}
                   </p>
-                  <div className="max-h-96 overflow-auto rounded-lg bg-muted px-3 py-2">
-                    <AgentMarkdown content={notes} />
+                  <div
+                    data-testid="update-notes-surface"
+                    className="max-h-96 overflow-auto rounded-lg bg-muted px-3 py-2"
+                  >
+                    <UpdateReleaseNotes notes={notes} />
                   </div>
                   <ExternalTextLink href={releaseUrl} className="mt-2 text-xs">
                     {t('update.viewFullNotes')}
@@ -210,10 +227,11 @@ const UpdateDialog = (): React.JSX.Element | null => {
                         '{percent}',
                         String(dialogStatus.progress ?? 0)
                       )
-                    : dialogStatus.totalBytes
+                    : downloadSize !== undefined
                       ? t('update.downloadSize').replace(
                           '{size}',
-                          formatBytes(dialogStatus.totalBytes)
+                          // Decimal separator follows the interface language.
+                          formatBytes(downloadSize, lang)
                         )
                       : t('update.download')}
                 </button>

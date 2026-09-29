@@ -1,0 +1,37 @@
+{
+  "host": "darwin/arm64",
+  "artifactKey": "mac-arm64",
+  "reportedSizeBytes": 7864320,
+  "shownSizeLabel": "7.5 MB",
+  "notesSurface": {
+    "clientWidth": 518,
+    "scrollWidth": 518,
+    "clientHeight": 384,
+    "scrollHeight": 741,
+    "ellipsized": 0,
+    "clipped": 0,
+    "widestRight": -11.83563232421875
+  },
+  "longTokenLineBoxes": {
+    "characters": 2010,
+    "lineBoxes": 27,
+    "widestRight": 884.5728149414062,
+    "surfaceRight": 896.9588012695312
+  },
+  "dialog": {
+    "clientWidth": 558,
+    "scrollWidth": 558
+  },
+  "downloadButtonBox": {
+    "x": 723.7197265625,
+    "y": 633.040283203125,
+    "width": 171.7314453125,
+    "height": 31.5615234375
+  },
+  "dialogBox": {
+    "x": 363.83660888671875,
+    "y": 117.69964599609375,
+    "width": 552.3267822265625,
+    "height": 568.6007080078125
+  }
+}

@@ -553,6 +553,7 @@ export const en: Record<ZhKey, string> = {
   'settings.couldNotSignInToXai': 'Could not sign in to xAI',
   'settings.couldNotSignOutOfXai': 'Could not sign out of xAI',
   'update.whatsNew': "What's new",
+  'update.notesHighlights': 'Highlights',
   'update.viewFullNotes': 'View full release notes on GitHub',
   'update.notesUnavailable': "Release notes aren't available in-app for this version.",
   'update.viewNotes': 'View release notes on GitHub',

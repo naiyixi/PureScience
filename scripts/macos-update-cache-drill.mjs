@@ -26,10 +26,9 @@
 // and now asserts the same purge on that path.
 //
 // Usage: node scripts/macos-update-cache-drill.mjs [--app <PureScience.app>] [--output <path>]
-import { spawn } from 'node:child_process'
 import { mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { homedir, tmpdir } from 'node:os'
-import { basename, join, resolve } from 'node:path'
+import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 import { dump, load } from 'js-yaml'
@@ -60,23 +59,6 @@ const parseArguments = (argv) => {
     output: valueFor('--output') ? resolve(valueFor('--output')) : undefined
   }
 }
-
-const runProcess = (executable, args, options = {}) =>
-  new Promise((resolveProcess, rejectProcess) => {
-    const child = spawn(executable, args, { env: options.env, stdio: ['ignore', 'pipe', 'pipe'] })
-    let stdout = ''
-    let stderr = ''
-    child.stdout.setEncoding('utf8')
-    child.stderr.setEncoding('utf8')
-    child.stdout.on('data', (chunk) => (stdout += chunk))
-    child.stderr.on('data', (chunk) => (stderr += chunk))
-    child.once('error', rejectProcess)
-    child.once('exit', (code) => {
-      if (code === 0) resolveProcess(stdout.trim())
-      else
-        rejectProcess(new Error(`${basename(executable)} exited with ${code}: ${stderr || stdout}`))
-    })
-  })
 
 const waitFor = async (description, check, timeoutMs) => {
   const deadline = Date.now() + timeoutMs

@@ -77,4 +77,13 @@ describe('formatBytes', () => {
   it('formats GB', () => {
     expect(formatBytes(1024 * 1024 * 1024)).toBe('1.0 GB')
   })
+  it('follows the interface language decimal separator when a locale is given', () => {
+    expect(formatBytes(12.5 * 1024 * 1024, 'zh')).toBe('12.5 MB')
+    expect(formatBytes(12.5 * 1024 * 1024, 'en')).toBe('12.5 MB')
+    expect(formatBytes(12.5 * 1024 * 1024, 'de')).toBe('12,5 MB')
+    expect(formatBytes(12.5 * 1024 * 1024, 'ru')).toBe('12,5 MB')
+    // The unit symbol is a format name, not copy: it stays as-is in every language.
+    expect(formatBytes(1536, 'fr')).toBe('1,5 KB')
+    expect(formatBytes(512, 'de')).toBe('512 B')
+  })
 })

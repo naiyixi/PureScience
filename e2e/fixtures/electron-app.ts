@@ -119,6 +119,13 @@ type ElectronApp = {
    * for, which the stub would otherwise swallow.
    */
   lastSaveDialogOptions: () => Promise<{ defaultPath?: string } | null>
+  /**
+   * Serves a release manifest for the app's own `version.json` request. The update check runs in the MAIN
+   * process through Electron's `net.fetch`, so no page-level route can intercept it; replacing that one
+   * call is the smallest seam that keeps everything downstream real (real UpdateService, real status
+   * broadcast, real update store, real dialog). Every other request is passed through untouched.
+   */
+  stubUpdateManifest: (manifest: unknown) => Promise<void>
   requestMainWindowClose: () => Promise<void>
   restart: () => Promise<Page>
 }
@@ -442,6 +449,28 @@ class ElectronAppHarness implements ElectronApp {
         (globalThis as { __psLastSaveDialogOptions?: { defaultPath?: string } })
           .__psLastSaveDialogOptions ?? null
     )
+  }
+
+  async stubUpdateManifest(manifest: unknown): Promise<void> {
+    await this.runningApplication.evaluate(({ net }, payload) => {
+      const originalFetch = net.fetch.bind(net)
+      const body = JSON.stringify(payload)
+      // Read at call time by the app's fetch wrapper, so replacing the property is enough — no module
+      // is reloaded and every other request keeps going to the real network stack.
+      net.fetch = ((input: unknown, init?: unknown) => {
+        const url =
+          typeof input === 'string' ? input : String((input as { url?: unknown } | null)?.url ?? '')
+        if (url.split('?')[0].endsWith('/version.json')) {
+          return Promise.resolve(
+            new Response(body, {
+              status: 200,
+              headers: { 'content-type': 'application/json' }
+            })
+          )
+        }
+        return originalFetch(input as never, init as never)
+      }) as unknown as typeof net.fetch
+    }, manifest)
   }
 
   async requestMainWindowClose(): Promise<void> {

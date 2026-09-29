@@ -1245,8 +1245,11 @@ const createApplicationModules = async (
   }
 
   // Same seam for the annotation corpus (A5): the annotation store and the project file index are built
-  // later in this scope, and the corpus is only read while a query is being served.
-  const searchAnnotationCorpus: SearchAnnotationCorpus | undefined
+  // later in this scope, and the corpus is only read while a query is being served. It lives in a slot
+  // rather than a plain binding because the adapter object that reads it is constructed above the point
+  // where the corpus can be built — a slot keeps both the type checker (no assignment to a const) and
+  // the linter (no never-reassigned `let`) satisfied.
+  const annotationCorpus: { current?: SearchAnnotationCorpus } = {}
 
   // Search reads every session; without this it did so per query, which cost over a second on a real
   // corpus. The durable repository bumps the revision on every write, so the view is only re-read when
@@ -1329,7 +1332,7 @@ const createApplicationModules = async (
     // id. A project the index cannot enumerate therefore contributes no annotations, and the response
     // says the corpus was empty rather than that the phrase is absent.
     listAnnotations: async ({ projectId }) => {
-      const corpus = searchAnnotationCorpus
+      const corpus = annotationCorpus.current
       if (!corpus) return { annotations: [], bounded: false }
       const read = await corpus.list({ projectId })
       return { annotations: read.annotations, bounded: read.bounded }
@@ -1580,7 +1583,7 @@ const createApplicationModules = async (
   // versions come from the same index the file scope pages, and the annotations come from the store A1
   // owns. Nothing here opens a file, so a search cannot accidentally become a PDF parser — see
   // search/annotation-corpus.ts for why that is a property of the wiring rather than a promise.
-  searchAnnotationCorpus = createSearchAnnotationCorpus({
+  annotationCorpus.current = createSearchAnnotationCorpus({
     listAnchors: async ({ projectId }) => {
       const anchors: AnnotationCorpusAnchor[] = []
       let cursor: string | undefined

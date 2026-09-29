@@ -3373,6 +3373,7 @@ export const es: Partial<Record<ZhKey, string>> = {
   'update.notesUnavailable':
     'Las notas de la versión no están disponibles en la aplicación para esta versión.',
   'update.whatsNew': 'Novedades',
+  'update.notesHighlights': 'Destacados',
   'dataMove.currentHidden': 'Actual (oculto)',
   'common.reviewing': 'Revisando…',
   'connectorExport.exportTitle': 'Exportar la configuración del conector',

@@ -40,10 +40,6 @@ vi.mock('@/components/ui/button', () => ({
   )
 }))
 
-vi.mock('@/components/streamdown/AgentMarkdown', () => ({
-  AgentMarkdown: ({ content }: { content: string }) => <div>{content}</div>
-}))
-
 import { UpdateDialog } from './UpdateDialog'
 
 let container: HTMLDivElement

@@ -6,20 +6,16 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { LanguageProvider, type Language } from '@/i18n'
 import { useUpdateStore } from '@/stores/update-store'
 import { UpdateDialog } from './UpdateDialog'
 import { APP } from '../../../shared/app-config'
-
-// Markdown rendering is covered by AgentMarkdown's own tests; stub it to a plain passthrough so this
-// render test stays deterministic and independent of the streamdown pipeline.
-vi.mock('@/components/streamdown/AgentMarkdown', () => ({
-  AgentMarkdown: ({ content }: { content: string }) => <div data-slot="markdown">{content}</div>
-}))
 
 let container: HTMLDivElement
 let root: Root
 
 beforeEach(() => {
+  window.localStorage.clear()
   container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
@@ -28,8 +24,28 @@ beforeEach(() => {
 afterEach(() => {
   act(() => root.unmount())
   container.remove()
+  window.localStorage.clear()
   useUpdateStore.setState({ isDialogOpen: false, status: { state: 'idle', current: '' } })
 })
+
+// The renderer copy is asserted in the default (English) language; the language-specific cases mount a
+// fresh provider so the dictionary under test is the one that renders.
+const renderDialog = (language?: Language): void => {
+  if (language) {
+    act(() => root.unmount())
+    root = createRoot(container)
+    window.localStorage.setItem('purescience-language', language)
+    act(() => {
+      root.render(
+        <LanguageProvider>
+          <UpdateDialog />
+        </LanguageProvider>
+      )
+    })
+    return
+  }
+  act(() => root.render(<UpdateDialog />))
+}
 
 describe('UpdateDialog', () => {
   it('uses shared settings dialog chrome and prevents outside-click dismissal', () => {
@@ -199,6 +215,83 @@ describe('UpdateDialog', () => {
     })
     act(() => root.render(<UpdateDialog />))
     expect(document.body.textContent).toContain('Download update (12.5 MB)')
+  })
+
+  it('shows the size the updater reported and formats it for the interface language', () => {
+    // R2: the number on the button is the updater's own report for this platform's artifact — the
+    // decimal separator follows the interface language and nothing else changes.
+    const reported = 12.5 * 1024 * 1024
+    useUpdateStore.setState({
+      isDialogOpen: true,
+      status: { state: 'available', current: '0.1.0', latest: '0.2.0', totalBytes: reported }
+    })
+    renderDialog('de')
+    expect(document.body.textContent).toContain('Update herunterladen (12,5 MB)')
+
+    act(() =>
+      useUpdateStore.setState({
+        status: { state: 'available', current: '0.1.0', latest: '0.2.0', totalBytes: reported }
+      })
+    )
+    renderDialog('zh')
+    expect(document.body.textContent).toContain('下载更新（12.5 MB）')
+
+    act(() =>
+      useUpdateStore.setState({
+        status: { state: 'available', current: '0.1.0', latest: '0.2.0', totalBytes: reported }
+      })
+    )
+    renderDialog('ru')
+    expect(document.body.textContent).toContain('Скачать обновление (12,5 MB)')
+  })
+
+  it('never shows a size the updater did not report', () => {
+    // R2: no estimate, no placeholder, no zero — an unknown total leaves the plain action label.
+    for (const totalBytes of [undefined, 0, Number.NaN]) {
+      act(() =>
+        useUpdateStore.setState({
+          isDialogOpen: true,
+          status: { state: 'available', current: '0.1.0', latest: '0.2.0', totalBytes }
+        })
+      )
+      renderDialog()
+      const button = Array.from(document.body.querySelectorAll('button')).find((element) =>
+        /download update/i.test(element.textContent ?? '')
+      )
+      expect(button?.textContent).toBe('Download update')
+      expect(document.body.textContent).not.toContain('MB')
+    }
+  })
+
+  it('renders the release notes as group titles, numbered entries and entry subtitles', () => {
+    useUpdateStore.setState({
+      isDialogOpen: true,
+      status: {
+        state: 'available',
+        current: '0.1.0',
+        latest: '0.2.0',
+        notes: [
+          '## 修复',
+          '- **下载体积**：按钮上显示更新器报出的真实体积',
+          '- 保留条目里的改动引用 5ef94da',
+          '',
+          '> 渲染不了的语法原样显示'
+        ].join('\n')
+      }
+    })
+    renderDialog('zh')
+
+    const groups = document.body.querySelectorAll('[data-testid="release-note-group"]')
+    expect(groups).toHaveLength(1)
+    expect(
+      document.body.querySelector('[data-testid="release-note-group-title"]')?.textContent
+    ).toBe('修复')
+    expect(document.body.querySelectorAll('[data-testid="release-note-entry"]')).toHaveLength(2)
+    expect(
+      document.body.querySelector('[data-testid="release-note-entry-title"]')?.textContent
+    ).toBe('下载体积：')
+    expect(document.body.textContent).toContain('5ef94da')
+    expect(document.body.textContent).toContain('> 渲染不了的语法原样显示')
   })
 
   it('shows downloaded and total bytes alongside the progress bar while downloading', () => {

@@ -529,6 +529,7 @@ export const zh = {
   'settings.couldNotSignInToXai': '无法登录 xAI',
   'settings.couldNotSignOutOfXai': '无法退出 xAI 登录',
   'update.whatsNew': '更新内容',
+  'update.notesHighlights': '亮点',
   'update.viewFullNotes': '在 GitHub 查看完整更新说明',
   'update.notesUnavailable': '此版本的更新说明暂不支持应用内查看。',
   'update.viewNotes': '在 GitHub 查看更新说明',

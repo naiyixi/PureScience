@@ -3244,6 +3244,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
     '메인 에이전트의 모든 스킬과 커넥터를 사용합니다(나중에 추가되는 항목 포함). 각 항목을 구성할 필요가 없습니다.',
   'update.notesUnavailable': '이 버전의 릴리스 노트는 앱 내에서 볼 수 없습니다.',
   'update.whatsNew': '새로운 기능',
+  'update.notesHighlights': '주요 변경',
   'dataMove.currentHidden': '현재(숨김)',
   'common.reviewing': '검토 중…',
   'connectorExport.exportTitle': '커넥터 구성 내보내기',

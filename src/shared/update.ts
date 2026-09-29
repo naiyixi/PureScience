@@ -81,8 +81,21 @@ export const selectDownload = (
 
 // Formats a byte count into a human-readable string (e.g. 1234567 → "1.2 MB"). Uses 1024-based
 // binary units, matching the convention most desktop OSes show for file/download sizes.
+//
+// `locale` (an i18n language id, e.g. 'de') only changes the DECIMAL SEPARATOR — "1.5 MB" vs
+// "1,5 MB" — because that is all a reader notices differ. Omitted, the historical dot form is kept so
+// every existing caller (main process logs, progress lines) is unchanged.
 const BYTE_UNITS = ['B', 'KB', 'MB', 'GB'] as const
-export const formatBytes = (bytes: number): string => {
+
+const formatByteValue = (value: number, locale: string | undefined, digits: number): string => {
+  if (!locale) return value.toFixed(digits)
+  return new Intl.NumberFormat(locale, {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits
+  }).format(value)
+}
+
+export const formatBytes = (bytes: number, locale?: string): string => {
   if (bytes < 1024) return `${bytes} B`
   let value = bytes
   let unitIndex = 0
@@ -90,5 +103,5 @@ export const formatBytes = (bytes: number): string => {
     value /= 1024
     unitIndex += 1
   }
-  return `${value.toFixed(1)} ${BYTE_UNITS[unitIndex]}`
+  return `${formatByteValue(value, locale, 1)} ${BYTE_UNITS[unitIndex]}`
 }

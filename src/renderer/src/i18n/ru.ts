@@ -3318,6 +3318,7 @@ export const ru: Partial<Record<ZhKey, string>> = {
     'Используйте все навыки и коннекторы основного агента, включая те, что будут добавлены позже. Настраивать каждый пункт не нужно.',
   'update.notesUnavailable': 'Примечания к выпуску недоступны в приложении для этой версии.',
   'update.whatsNew': 'Что нового',
+  'update.notesHighlights': 'Главное',
   'dataMove.currentHidden': 'Текущее (скрыто)',
   'common.reviewing': 'Проверка…',
   'connectorExport.exportTitle': 'Экспорт конфигурации коннектора',
