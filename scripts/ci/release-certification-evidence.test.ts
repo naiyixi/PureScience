@@ -164,6 +164,25 @@ describe('release certification evidence', () => {
         environment
       })
     ).rejects.toThrow(/do not match the release tags/)
+    // On-demand drill (dispatch, no tag): the differential proof is still recorded, even though there is no
+    // release tag for the observed versions to match (issue #14).
+    await expect(
+      writeWindowsUpdateEvidence({
+        argv: [
+          '--output',
+          output,
+          '--current-tag',
+          'main',
+          '--previous-tag',
+          'v0.10.0',
+          '--status',
+          'passed',
+          '--updater-observation',
+          updaterObservation
+        ],
+        environment
+      })
+    ).resolves.toMatchObject({ kind: 'windows-update-drill', status: 'passed' })
     await expect(
       writeWindowsUpdateEvidence({
         argv: ['--output', output, '--current-tag', 'v0.11.0', '--status', 'not-applicable'],

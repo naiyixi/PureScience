@@ -130,9 +130,12 @@ const writeWindowsUpdateEvidence = async ({ argv, environment = process.env }) =
     ) {
       throw new Error('Windows updater observation does not prove a differential download.')
     }
+    // Mapping the observed versions onto tags only means something when this run HAS a release tag. An
+    // on-demand drill (workflow_dispatch, no tag) still certifies the differential path — it just has no tag
+    // to compare against, and rejecting it there is what left the drill unreadable on demand (issue #14).
     if (
-      `v${updater.currentVersion}` !== currentTag ||
-      `v${updater.previousVersion}` !== previousTag
+      /^v\d+\.\d+\.\d+/.test(currentTag) &&
+      (`v${updater.currentVersion}` !== currentTag || `v${updater.previousVersion}` !== previousTag)
     ) {
       throw new Error('Windows updater observation versions do not match the release tags.')
     }
