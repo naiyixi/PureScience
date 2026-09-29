@@ -1,0 +1,338 @@
+{
+  "generatedAt": "2026-09-29T17:47:03.049Z",
+  "generator": "src/main/ro-crate/export.ts#writeRoCrateExport",
+  "app": {
+    "name": "PureScience",
+    "version": "1.75.0"
+  },
+  "source": {
+    "storageRoot": "~/PureScience-DEV",
+    "projectId": "cmt377xqh0000wfi5zv5w67mg",
+    "publishedVersionCount": 15,
+    "migratedFrom": "artifacts/<projectId>/<sessionId>/.provenance/<artifactId>/versions/<versionId>"
+  },
+  "skipped": [],
+  "files": [
+    {
+      "cratePath": "files/ad_cure_conclusion_2026.md",
+      "appSessionId": "c3fd83c6-760b-4e2a-b7c7-d1cd0a49db5a",
+      "artifactId": "e6b676ff-b631-4a38-b8b3-d7e10d56985c",
+      "versionId": "e41d2512-3e5d-4bd8-a727-b49bd98d471e",
+      "sizeBytes": 4881,
+      "sha256": "ca40d5a8287d4795f09eeb1bb26850640e4b6a4361c8fbad43baf73cb3e60811"
+    },
+    {
+      "cratePath": "files/kras_g12c_inhibitors.csv",
+      "appSessionId": "5733048b-0a4e-4758-9aab-14482c2f443f",
+      "artifactId": "f7061524-3c69-429f-98f2-31f55557d62f",
+      "versionId": "a7c7483d-7b6d-4023-9366-b321ee32e5d9",
+      "sizeBytes": 4826,
+      "sha256": "7372df0c615bb67bf495546512654fef32d5ffce9c23c044c87bed312d86f887"
+    },
+    {
+      "cratePath": "files/kras_g12c_ic50.png",
+      "appSessionId": "5733048b-0a4e-4758-9aab-14482c2f443f",
+      "artifactId": "219d25a1-ccbd-4abc-9c08-4db633247948",
+      "versionId": "0bf85e51-4abf-4b54-9847-5eee97ad4bab",
+      "sizeBytes": 97403,
+      "sha256": "b1180db6b9a00858755d0fc159702842b5e04389b12b38d0e55eb13d03027a7f"
+    },
+    {
+      "cratePath": "files/kras_g12c_dossier.md",
+      "appSessionId": "5733048b-0a4e-4758-9aab-14482c2f443f",
+      "artifactId": "d18ccc1c-34d6-4be5-920f-b93181314f39",
+      "versionId": "e97d2c38-7094-4880-88aa-3433ed36416a",
+      "sizeBytes": 9321,
+      "sha256": "bb9e96d1cf2e7f11be5207dc9884ba0fbc42b5b14fc3f9bb2e04235e2f22161e"
+    },
+    {
+      "cratePath": "files/generate_kras_g12c_dossier.py",
+      "appSessionId": "5733048b-0a4e-4758-9aab-14482c2f443f",
+      "artifactId": "c2df854e-ef91-4cd4-847c-548160dda536",
+      "versionId": "2d890ace-531a-4a27-8b23-20652f8c4cf4",
+      "sizeBytes": 6817,
+      "sha256": "270ff54844637926aba0efde8dc84b9ddb3841bbe194d229052549b4c939ace1"
+    },
+    {
+      "cratePath": "files/kras_structures.csv",
+      "appSessionId": "234d4be0-ee9f-44c2-804f-ec2a7a76c30f",
+      "artifactId": "63f1d770-db69-4df3-b2d8-f826fcc2a5e0",
+      "versionId": "898558f6-91b2-41bc-98ef-1d5bb480bbe6",
+      "sizeBytes": 1389,
+      "sha256": "75d562ab99d0aaf4b3e96f88d2fff5d3bd88b32cd92fe25a7135d63fce9497a3"
+    },
+    {
+      "cratePath": "files/kras_structures_comparison.png",
+      "appSessionId": "234d4be0-ee9f-44c2-804f-ec2a7a76c30f",
+      "artifactId": "e845e6d5-99a4-4715-8684-860735bcf2fe",
+      "versionId": "965ac5df-6cc3-4c6c-b654-8f6bba721ed8",
+      "sizeBytes": 100514,
+      "sha256": "c7ad208f1244a32b2e1ecd5fcf3f8c2199120767dbd7ecdf9443a6d3e37df391"
+    },
+    {
+      "cratePath": "files/build_kras_structures.py",
+      "appSessionId": "234d4be0-ee9f-44c2-804f-ec2a7a76c30f",
+      "artifactId": "1d749e4f-dee9-4eb7-b635-77e3cb7ec180",
+      "versionId": "32431949-2b6c-4a79-8ec0-e76eb07039e5",
+      "sizeBytes": 4148,
+      "sha256": "f4322070bd4c461c37d1ada9ac746e39f7b846127306ca7fcbb9a6ecb4b25dda"
+    },
+    {
+      "cratePath": "files/kras_structures.md",
+      "appSessionId": "234d4be0-ee9f-44c2-804f-ec2a7a76c30f",
+      "artifactId": "2014bd73-7a0b-4efd-aaa6-86059339c51d",
+      "versionId": "84f0e91d-16cf-48f1-9d91-482d60244e4b",
+      "sizeBytes": 4970,
+      "sha256": "b42a552a6bfaa794d74e80518614ea9dc706f26880e74fb6c9968100ae1eda96"
+    },
+    {
+      "cratePath": "files/assay_analysis.py",
+      "appSessionId": "173209ec-1621-4507-af0b-5b6340d7c5a8",
+      "artifactId": "cf5f548d-bb0d-4bb4-840f-42b0e34e2b3e",
+      "versionId": "edd81308-3465-49eb-b8be-a82bcf7edd2a",
+      "sizeBytes": 25848,
+      "sha256": "e4d773b7059beca191a49de186457a43308fccdfc5dcaa72aca763b078b66301"
+    },
+    {
+      "cratePath": "files/assay_summary.csv",
+      "appSessionId": "173209ec-1621-4507-af0b-5b6340d7c5a8",
+      "artifactId": "0463a12f-4eb7-426d-b723-18620e7841a3",
+      "versionId": "81bdab55-3e17-443c-9c95-4ebe74d64ce3",
+      "sizeBytes": 399,
+      "sha256": "fe291e290b9f9ba18cabbe9c5253aa62557bbe1e10ea32ed5fd183868ab2a7e2"
+    },
+    {
+      "cratePath": "files/assay_tests.csv",
+      "appSessionId": "173209ec-1621-4507-af0b-5b6340d7c5a8",
+      "artifactId": "c583fef7-6acb-4eeb-b822-2e9a1f635d14",
+      "versionId": "862f6c4f-b3d2-4315-afd0-c665244bdc14",
+      "sizeBytes": 1052,
+      "sha256": "2ceb6ad1ae37c33b1a5e680bfa87df072798979e18a116104facaade09bd00b2"
+    },
+    {
+      "cratePath": "files/assay_dotplot.png",
+      "appSessionId": "173209ec-1621-4507-af0b-5b6340d7c5a8",
+      "artifactId": "6c305efa-6b67-4ffc-8681-66595f4d1652",
+      "versionId": "b6d876e9-85d8-4a4e-bdd4-fd3ae7bc4607",
+      "sizeBytes": 67774,
+      "sha256": "e011d243ff11d89752690b7d7265abb7cd13fd140bc313f4a43ac23030b68595"
+    },
+    {
+      "cratePath": "files/assay_summary_plot.png",
+      "appSessionId": "173209ec-1621-4507-af0b-5b6340d7c5a8",
+      "artifactId": "469f5e59-aa89-4cbf-ab3e-4832b8e6ae7b",
+      "versionId": "96340b54-b989-4797-aa5a-21fe30a8e309",
+      "sizeBytes": 107443,
+      "sha256": "3cac8dbcecbe909abd077730898d06ed7c4f9d8e3dd98b6c7a4a055148e7c9e9"
+    },
+    {
+      "cratePath": "files/assay_analysis.md",
+      "appSessionId": "173209ec-1621-4507-af0b-5b6340d7c5a8",
+      "artifactId": "d707c2f6-6cca-49d7-8cf8-9c7f30df708d",
+      "versionId": "48eab09c-1ac8-4e3e-9e6a-b0c6ca028cde",
+      "sizeBytes": 5873,
+      "sha256": "9302f2c35d4eef236955375e1be847b62778deb6b6944801328f9d2aeecb5db2"
+    }
+  ],
+  "validation": {
+    "ok": true,
+    "passed": 30,
+    "failed": 0,
+    "assertions": [
+      {
+        "id": "graph-flattened-entries",
+        "level": "spec-must",
+        "requirement": "RO-Crate 1.1 §RO-Crate Structure: ro-crate-metadata.json MUST be in the crate root, and a valid graph MUST describe the Metadata File Descriptor and the Root Data Entity.",
+        "ok": true,
+        "detail": "@graph entries: 43, of which addressable objects: 43"
+      },
+      {
+        "id": "no-duplicate-entity-ids",
+        "level": "spec-must",
+        "requirement": "RO-Crate 1.1 §Contextual Entities: the @graph MUST NOT list two entities with the same @id, and a referenced entity SHOULD be described in the same metadata file and linked from at least one other entity.",
+        "ok": true
+      },
+      {
+        "id": "context-references-ro-crate-profile",
+        "level": "spec-should",
+        "requirement": "RO-Crate 1.1 §RO-Crate Structure: ro-crate-metadata.json MUST be in the crate root, and a valid graph MUST describe the Metadata File Descriptor and the Root Data Entity.",
+        "ok": true,
+        "detail": "@context: [\"https://w3id.org/ro/crate/1.1/context\",{\"sha256\":\"http://schema.org/sha256\"}]"
+      },
+      {
+        "id": "metadata-file-descriptor-present",
+        "level": "spec-must",
+        "requirement": "RO-Crate 1.1 §RO-Crate Structure: ro-crate-metadata.json MUST be in the crate root, and a valid graph MUST describe the Metadata File Descriptor and the Root Data Entity.",
+        "ok": true,
+        "detail": "descriptor @id: ro-crate-metadata.json"
+      },
+      {
+        "id": "metadata-descriptor-id",
+        "level": "spec-must",
+        "requirement": "RO-Crate 1.1 §Root Data Entity: the Metadata File Descriptor MUST have @id ro-crate-metadata.json and @type CreativeWork, MUST have an about property referencing the Root Data Entity, and its conformsTo SHOULD be a versioned https://w3id.org/ro/crate/ permalink.",
+        "ok": true,
+        "detail": "descriptor @id: ro-crate-metadata.json"
+      },
+      {
+        "id": "metadata-descriptor-type",
+        "level": "spec-must",
+        "requirement": "RO-Crate 1.1 §Root Data Entity: the Metadata File Descriptor MUST have @id ro-crate-metadata.json and @type CreativeWork, MUST have an about property referencing the Root Data Entity, and its conformsTo SHOULD be a versioned https://w3id.org/ro/crate/ permalink.",
+        "ok": true,
+        "detail": "descriptor @type: \"CreativeWork\""
+      },
+      {
+        "id": "root-data-entity-present",
+        "level": "spec-must",
+        "requirement": "RO-Crate 1.1 §RO-Crate Structure: ro-crate-metadata.json MUST be in the crate root, and a valid graph MUST describe the Metadata File Descriptor and the Root Data Entity.",
+        "ok": true,
+        "detail": "found ./"
+      },
+      {
+        "id": "root-data-entity-is-dataset",
+        "level": "spec-must",
+        "requirement": "RO-Crate 1.1 §Root Data Entity: the Root Data Entity MUST be a Dataset whose @id ends with /, its datePublished MUST be an ISO 8601 string, and name/description SHOULD disambiguate the dataset.",
+        "ok": true,
+        "detail": "root @type: \"Dataset\""
+      },
+      {
+        "id": "root-data-entity-id-slashed",
+        "level": "spec-must",
+        "requirement": "RO-Crate 1.1 §Root Data Entity: the Root Data Entity MUST be a Dataset whose @id ends with /, its datePublished MUST be an ISO 8601 string, and name/description SHOULD disambiguate the dataset.",
+        "ok": true,
+        "detail": "root @id: ./"
+      },
+      {
+        "id": "root-date-published-iso8601",
+        "level": "spec-must",
+        "requirement": "RO-Crate 1.1 §Root Data Entity: the Root Data Entity MUST be a Dataset whose @id ends with /, its datePublished MUST be an ISO 8601 string, and name/description SHOULD disambiguate the dataset.",
+        "ok": true,
+        "detail": "datePublished: \"2026-09-29T17:47:03.036Z\""
+      },
+      {
+        "id": "root-name-and-description",
+        "level": "spec-should",
+        "requirement": "RO-Crate 1.1 §Root Data Entity: the Root Data Entity MUST be a Dataset whose @id ends with /, its datePublished MUST be an ISO 8601 string, and name/description SHOULD disambiguate the dataset.",
+        "ok": true
+      },
+      {
+        "id": "metadata-descriptor-about-root",
+        "level": "spec-must",
+        "requirement": "RO-Crate 1.1 §Root Data Entity: the Metadata File Descriptor MUST have @id ro-crate-metadata.json and @type CreativeWork, MUST have an about property referencing the Root Data Entity, and its conformsTo SHOULD be a versioned https://w3id.org/ro/crate/ permalink.",
+        "ok": true,
+        "detail": "about: {\"@id\":\"./\"}"
+      },
+      {
+        "id": "metadata-descriptor-conforms-to-profile",
+        "level": "spec-should",
+        "requirement": "RO-Crate 1.1 §Root Data Entity: the Metadata File Descriptor MUST have @id ro-crate-metadata.json and @type CreativeWork, MUST have an about property referencing the Root Data Entity, and its conformsTo SHOULD be a versioned https://w3id.org/ro/crate/ permalink.",
+        "ok": true,
+        "detail": "conformsTo: {\"@id\":\"https://w3id.org/ro/crate/1.1\"}"
+      },
+      {
+        "id": "root-license-described",
+        "level": "spec-should",
+        "requirement": "RO-Crate 1.1 §Root Data Entity: the Root Data Entity MUST be a Dataset whose @id ends with /, its datePublished MUST be an ISO 8601 string, and name/description SHOULD disambiguate the dataset.",
+        "ok": true,
+        "detail": "license: https://spdx.org/licenses/Apache-2.0"
+      },
+      {
+        "id": "file-entities-typed-file",
+        "level": "spec-must",
+        "requirement": "RO-Crate 1.1 §Data Entities: File entities MUST have \"File\" as a @type value and MUST be linked from the Root Data Entity through hasPart; Data Entities MUST be payload files inside the crate root or web-based, and contentSize/encodingFormat SHOULD describe the encoding.",
+        "ok": true
+      },
+      {
+        "id": "files-linked-from-root",
+        "level": "spec-must",
+        "requirement": "RO-Crate 1.1 §Data Entities: File entities MUST have \"File\" as a @type value and MUST be linked from the Root Data Entity through hasPart; Data Entities MUST be payload files inside the crate root or web-based, and contentSize/encodingFormat SHOULD describe the encoding.",
+        "ok": true
+      },
+      {
+        "id": "data-entities-are-payload-or-web",
+        "level": "spec-must",
+        "requirement": "RO-Crate 1.1 §Data Entities: File entities MUST have \"File\" as a @type value and MUST be linked from the Root Data Entity through hasPart; Data Entities MUST be payload files inside the crate root or web-based, and contentSize/encodingFormat SHOULD describe the encoding.",
+        "ok": true
+      },
+      {
+        "id": "file-content-size-and-format",
+        "level": "spec-should",
+        "requirement": "RO-Crate 1.1 §Data Entities: File entities MUST have \"File\" as a @type value and MUST be linked from the Root Data Entity through hasPart; Data Entities MUST be payload files inside the crate root or web-based, and contentSize/encodingFormat SHOULD describe the encoding.",
+        "ok": true
+      },
+      {
+        "id": "references-resolve",
+        "level": "spec-should",
+        "requirement": "RO-Crate 1.1 §Contextual Entities: the @graph MUST NOT list two entities with the same @id, and a referenced entity SHOULD be described in the same metadata file and linked from at least one other entity.",
+        "ok": true
+      },
+      {
+        "id": "contextual-entities-linked",
+        "level": "spec-should",
+        "requirement": "RO-Crate 1.1 §Contextual Entities: the @graph MUST NOT list two entities with the same @id, and a referenced entity SHOULD be described in the same metadata file and linked from at least one other entity.",
+        "ok": true
+      },
+      {
+        "id": "create-action-complete",
+        "level": "spec-should",
+        "requirement": "RO-Crate 1.1 §Provenance of entities: software used to create a file SHOULD be a SoftwareApplication with a version, associated with the file through a CreateAction instrument/result, and an Action SHOULD have a name and an endTime.",
+        "ok": true
+      },
+      {
+        "id": "software-application-named",
+        "level": "spec-should",
+        "requirement": "RO-Crate 1.1 §Provenance of entities: software used to create a file SHOULD be a SoftwareApplication with a version, associated with the file through a CreateAction instrument/result, and an Action SHOULD have a name and an endTime.",
+        "ok": true
+      },
+      {
+        "id": "crate-describes-at-least-one-payload",
+        "level": "export-contract",
+        "requirement": "PureScience export contract: every content file in the crate is a byte-identical copy of one stored Version, repeats that Version’s recorded sha256, and names the Version it came from.",
+        "ok": true,
+        "detail": "payloads: 15, actions: 15, software: 5"
+      },
+      {
+        "id": "file-sha256-recorded",
+        "level": "export-contract",
+        "requirement": "PureScience export contract: every content file in the crate is a byte-identical copy of one stored Version, repeats that Version’s recorded sha256, and names the Version it came from.",
+        "ok": true
+      },
+      {
+        "id": "file-sha256-matches-copied-bytes",
+        "level": "export-contract",
+        "requirement": "PureScience export contract: every content file in the crate is a byte-identical copy of one stored Version, repeats that Version’s recorded sha256, and names the Version it came from.",
+        "ok": true
+      },
+      {
+        "id": "file-content-size-matches-copied-bytes",
+        "level": "export-contract",
+        "requirement": "PureScience export contract: every content file in the crate is a byte-identical copy of one stored Version, repeats that Version’s recorded sha256, and names the Version it came from.",
+        "ok": true
+      },
+      {
+        "id": "every-payload-described",
+        "level": "export-contract",
+        "requirement": "PureScience export contract: every content file in the crate is a byte-identical copy of one stored Version, repeats that Version’s recorded sha256, and names the Version it came from.",
+        "ok": true
+      },
+      {
+        "id": "no-payload-without-action",
+        "level": "export-contract",
+        "requirement": "PureScience export contract: every content file in the crate is a byte-identical copy of one stored Version, repeats that Version’s recorded sha256, and names the Version it came from.",
+        "ok": true
+      },
+      {
+        "id": "file-provenance-names-stored-version",
+        "level": "export-contract",
+        "requirement": "PureScience export contract: every content file in the crate is a byte-identical copy of one stored Version, repeats that Version’s recorded sha256, and names the Version it came from.",
+        "ok": true,
+        "detail": "15/15 actions name a stored Version"
+      },
+      {
+        "id": "file-names-stored-version",
+        "level": "export-contract",
+        "requirement": "PureScience export contract: every content file in the crate is a byte-identical copy of one stored Version, repeats that Version’s recorded sha256, and names the Version it came from.",
+        "ok": true
+      }
+    ]
+  }
+}

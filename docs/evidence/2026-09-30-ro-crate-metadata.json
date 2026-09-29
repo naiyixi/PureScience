@@ -1,0 +1,779 @@
+{
+  "@context": [
+    "https://w3id.org/ro/crate/1.1/context",
+    {
+      "sha256": "http://schema.org/sha256"
+    }
+  ],
+  "@graph": [
+    {
+      "@id": "ro-crate-metadata.json",
+      "@type": "CreativeWork",
+      "conformsTo": {
+        "@id": "https://w3id.org/ro/crate/1.1"
+      },
+      "about": {
+        "@id": "./"
+      }
+    },
+    {
+      "@id": "./",
+      "@type": "Dataset",
+      "name": "research object cmt377xqh0000wfi5zv5w67mg",
+      "description": "Files produced in the PureScience workbench for project cmt377xqh0000wfi5zv5w67mg, exported with the immutable Artifact Version each file came from.",
+      "datePublished": "2026-09-29T17:47:03.036Z",
+      "conformsTo": {
+        "@id": "https://w3id.org/ro/crate/1.1"
+      },
+      "identifier": "cmt377xqh0000wfi5zv5w67mg",
+      "hasPart": [
+        {
+          "@id": "files/ad_cure_conclusion_2026.md"
+        },
+        {
+          "@id": "files/assay_analysis.md"
+        },
+        {
+          "@id": "files/assay_analysis.py"
+        },
+        {
+          "@id": "files/assay_dotplot.png"
+        },
+        {
+          "@id": "files/assay_summary_plot.png"
+        },
+        {
+          "@id": "files/assay_summary.csv"
+        },
+        {
+          "@id": "files/assay_tests.csv"
+        },
+        {
+          "@id": "files/build_kras_structures.py"
+        },
+        {
+          "@id": "files/generate_kras_g12c_dossier.py"
+        },
+        {
+          "@id": "files/kras_g12c_dossier.md"
+        },
+        {
+          "@id": "files/kras_g12c_ic50.png"
+        },
+        {
+          "@id": "files/kras_g12c_inhibitors.csv"
+        },
+        {
+          "@id": "files/kras_structures_comparison.png"
+        },
+        {
+          "@id": "files/kras_structures.csv"
+        },
+        {
+          "@id": "files/kras_structures.md"
+        }
+      ],
+      "mentions": [
+        {
+          "@id": "#session-173209ec-1621-4507-af0b-5b6340d7c5a8"
+        },
+        {
+          "@id": "#session-234d4be0-ee9f-44c2-804f-ec2a7a76c30f"
+        },
+        {
+          "@id": "#session-5733048b-0a4e-4758-9aab-14482c2f443f"
+        },
+        {
+          "@id": "#session-c3fd83c6-760b-4e2a-b7c7-d1cd0a49db5a"
+        }
+      ],
+      "license": {
+        "@id": "https://spdx.org/licenses/Apache-2.0"
+      },
+      "publisher": {
+        "@id": "https://www.zerolink.com"
+      }
+    },
+    {
+      "@id": "files/ad_cure_conclusion_2026.md",
+      "@type": "File",
+      "name": "ad_cure_conclusion_2026.md",
+      "identifier": "artifact-version:cmt377xqh0000wfi5zv5w67mg/c3fd83c6-760b-4e2a-b7c7-d1cd0a49db5a/e6b676ff-b631-4a38-b8b3-d7e10d56985c/e41d2512-3e5d-4bd8-a727-b49bd98d471e",
+      "encodingFormat": "text/markdown",
+      "contentSize": "4881",
+      "sha256": "ca40d5a8287d4795f09eeb1bb26850640e4b6a4361c8fbad43baf73cb3e60811",
+      "datePublished": "2026-08-21T17:09:29.870Z",
+      "prov:wasGeneratedBy": {
+        "@id": "#create-ad_cure_conclusion_2026.md"
+      },
+      "wasDerivedFrom": {
+        "@id": "./"
+      }
+    },
+    {
+      "@id": "files/assay_analysis.md",
+      "@type": "File",
+      "name": "assay_analysis.md",
+      "identifier": "artifact-version:cmt377xqh0000wfi5zv5w67mg/173209ec-1621-4507-af0b-5b6340d7c5a8/d707c2f6-6cca-49d7-8cf8-9c7f30df708d/48eab09c-1ac8-4e3e-9e6a-b0c6ca028cde",
+      "encodingFormat": "text/markdown",
+      "contentSize": "5873",
+      "sha256": "9302f2c35d4eef236955375e1be847b62778deb6b6944801328f9d2aeecb5db2",
+      "datePublished": "2026-08-21T17:27:33.373Z",
+      "prov:wasGeneratedBy": {
+        "@id": "#create-assay_analysis.md"
+      },
+      "wasDerivedFrom": {
+        "@id": "./"
+      }
+    },
+    {
+      "@id": "files/assay_analysis.py",
+      "@type": "File",
+      "name": "assay_analysis.py",
+      "identifier": "artifact-version:cmt377xqh0000wfi5zv5w67mg/173209ec-1621-4507-af0b-5b6340d7c5a8/cf5f548d-bb0d-4bb4-840f-42b0e34e2b3e/edd81308-3465-49eb-b8be-a82bcf7edd2a",
+      "encodingFormat": "text/x-python",
+      "contentSize": "25848",
+      "sha256": "e4d773b7059beca191a49de186457a43308fccdfc5dcaa72aca763b078b66301",
+      "datePublished": "2026-08-21T17:27:18.975Z",
+      "prov:wasGeneratedBy": {
+        "@id": "#create-assay_analysis.py"
+      },
+      "wasDerivedFrom": {
+        "@id": "./"
+      }
+    },
+    {
+      "@id": "files/assay_dotplot.png",
+      "@type": "File",
+      "name": "assay_dotplot.png",
+      "identifier": "artifact-version:cmt377xqh0000wfi5zv5w67mg/173209ec-1621-4507-af0b-5b6340d7c5a8/6c305efa-6b67-4ffc-8681-66595f4d1652/b6d876e9-85d8-4a4e-bdd4-fd3ae7bc4607",
+      "encodingFormat": "image/png",
+      "contentSize": "67774",
+      "sha256": "e011d243ff11d89752690b7d7265abb7cd13fd140bc313f4a43ac23030b68595",
+      "datePublished": "2026-08-21T17:27:28.076Z",
+      "prov:wasGeneratedBy": {
+        "@id": "#create-assay_dotplot.png"
+      },
+      "wasDerivedFrom": {
+        "@id": "./"
+      }
+    },
+    {
+      "@id": "files/assay_summary_plot.png",
+      "@type": "File",
+      "name": "assay_summary_plot.png",
+      "identifier": "artifact-version:cmt377xqh0000wfi5zv5w67mg/173209ec-1621-4507-af0b-5b6340d7c5a8/469f5e59-aa89-4cbf-ab3e-4832b8e6ae7b/96340b54-b989-4797-aa5a-21fe30a8e309",
+      "encodingFormat": "image/png",
+      "contentSize": "107443",
+      "sha256": "3cac8dbcecbe909abd077730898d06ed7c4f9d8e3dd98b6c7a4a055148e7c9e9",
+      "datePublished": "2026-08-21T17:27:30.438Z",
+      "prov:wasGeneratedBy": {
+        "@id": "#create-assay_summary_plot.png"
+      },
+      "wasDerivedFrom": {
+        "@id": "./"
+      }
+    },
+    {
+      "@id": "files/assay_summary.csv",
+      "@type": "File",
+      "name": "assay_summary.csv",
+      "identifier": "artifact-version:cmt377xqh0000wfi5zv5w67mg/173209ec-1621-4507-af0b-5b6340d7c5a8/0463a12f-4eb7-426d-b723-18620e7841a3/81bdab55-3e17-443c-9c95-4ebe74d64ce3",
+      "encodingFormat": "text/csv",
+      "contentSize": "399",
+      "sha256": "fe291e290b9f9ba18cabbe9c5253aa62557bbe1e10ea32ed5fd183868ab2a7e2",
+      "datePublished": "2026-08-21T17:27:21.534Z",
+      "prov:wasGeneratedBy": {
+        "@id": "#create-assay_summary.csv"
+      },
+      "wasDerivedFrom": {
+        "@id": "./"
+      }
+    },
+    {
+      "@id": "files/assay_tests.csv",
+      "@type": "File",
+      "name": "assay_tests.csv",
+      "identifier": "artifact-version:cmt377xqh0000wfi5zv5w67mg/173209ec-1621-4507-af0b-5b6340d7c5a8/c583fef7-6acb-4eeb-b822-2e9a1f635d14/862f6c4f-b3d2-4315-afd0-c665244bdc14",
+      "encodingFormat": "text/csv",
+      "contentSize": "1052",
+      "sha256": "2ceb6ad1ae37c33b1a5e680bfa87df072798979e18a116104facaade09bd00b2",
+      "datePublished": "2026-08-21T17:27:24.933Z",
+      "prov:wasGeneratedBy": {
+        "@id": "#create-assay_tests.csv"
+      },
+      "wasDerivedFrom": {
+        "@id": "./"
+      }
+    },
+    {
+      "@id": "files/build_kras_structures.py",
+      "@type": "File",
+      "name": "build_kras_structures.py",
+      "identifier": "artifact-version:cmt377xqh0000wfi5zv5w67mg/234d4be0-ee9f-44c2-804f-ec2a7a76c30f/1d749e4f-dee9-4eb7-b635-77e3cb7ec180/32431949-2b6c-4a79-8ec0-e76eb07039e5",
+      "encodingFormat": "text/x-python",
+      "contentSize": "4148",
+      "sha256": "f4322070bd4c461c37d1ada9ac746e39f7b846127306ca7fcbb9a6ecb4b25dda",
+      "datePublished": "2026-08-21T17:26:13.792Z",
+      "prov:wasGeneratedBy": {
+        "@id": "#create-build_kras_structures.py"
+      },
+      "wasDerivedFrom": {
+        "@id": "./"
+      }
+    },
+    {
+      "@id": "files/generate_kras_g12c_dossier.py",
+      "@type": "File",
+      "name": "generate_kras_g12c_dossier.py",
+      "identifier": "artifact-version:cmt377xqh0000wfi5zv5w67mg/5733048b-0a4e-4758-9aab-14482c2f443f/c2df854e-ef91-4cd4-847c-548160dda536/2d890ace-531a-4a27-8b23-20652f8c4cf4",
+      "encodingFormat": "text/x-python",
+      "contentSize": "6817",
+      "sha256": "270ff54844637926aba0efde8dc84b9ddb3841bbe194d229052549b4c939ace1",
+      "datePublished": "2026-08-21T17:18:04.782Z",
+      "prov:wasGeneratedBy": {
+        "@id": "#create-generate_kras_g12c_dossier.py"
+      },
+      "wasDerivedFrom": {
+        "@id": "./"
+      }
+    },
+    {
+      "@id": "files/kras_g12c_dossier.md",
+      "@type": "File",
+      "name": "kras_g12c_dossier.md",
+      "identifier": "artifact-version:cmt377xqh0000wfi5zv5w67mg/5733048b-0a4e-4758-9aab-14482c2f443f/d18ccc1c-34d6-4be5-920f-b93181314f39/e97d2c38-7094-4880-88aa-3433ed36416a",
+      "encodingFormat": "text/markdown",
+      "contentSize": "9321",
+      "sha256": "bb9e96d1cf2e7f11be5207dc9884ba0fbc42b5b14fc3f9bb2e04235e2f22161e",
+      "datePublished": "2026-08-21T17:18:02.914Z",
+      "prov:wasGeneratedBy": {
+        "@id": "#create-kras_g12c_dossier.md"
+      },
+      "wasDerivedFrom": {
+        "@id": "./"
+      }
+    },
+    {
+      "@id": "files/kras_g12c_ic50.png",
+      "@type": "File",
+      "name": "kras_g12c_ic50.png",
+      "identifier": "artifact-version:cmt377xqh0000wfi5zv5w67mg/5733048b-0a4e-4758-9aab-14482c2f443f/219d25a1-ccbd-4abc-9c08-4db633247948/0bf85e51-4abf-4b54-9847-5eee97ad4bab",
+      "encodingFormat": "image/png",
+      "contentSize": "97403",
+      "sha256": "b1180db6b9a00858755d0fc159702842b5e04389b12b38d0e55eb13d03027a7f",
+      "datePublished": "2026-08-21T17:18:00.988Z",
+      "prov:wasGeneratedBy": {
+        "@id": "#create-kras_g12c_ic50.png"
+      },
+      "wasDerivedFrom": {
+        "@id": "./"
+      }
+    },
+    {
+      "@id": "files/kras_g12c_inhibitors.csv",
+      "@type": "File",
+      "name": "kras_g12c_inhibitors.csv",
+      "identifier": "artifact-version:cmt377xqh0000wfi5zv5w67mg/5733048b-0a4e-4758-9aab-14482c2f443f/f7061524-3c69-429f-98f2-31f55557d62f/a7c7483d-7b6d-4023-9366-b321ee32e5d9",
+      "encodingFormat": "text/csv",
+      "contentSize": "4826",
+      "sha256": "7372df0c615bb67bf495546512654fef32d5ffce9c23c044c87bed312d86f887",
+      "datePublished": "2026-08-21T17:17:58.771Z",
+      "prov:wasGeneratedBy": {
+        "@id": "#create-kras_g12c_inhibitors.csv"
+      },
+      "wasDerivedFrom": {
+        "@id": "./"
+      }
+    },
+    {
+      "@id": "files/kras_structures_comparison.png",
+      "@type": "File",
+      "name": "kras_structures_comparison.png",
+      "identifier": "artifact-version:cmt377xqh0000wfi5zv5w67mg/234d4be0-ee9f-44c2-804f-ec2a7a76c30f/e845e6d5-99a4-4715-8684-860735bcf2fe/965ac5df-6cc3-4c6c-b654-8f6bba721ed8",
+      "encodingFormat": "image/png",
+      "contentSize": "100514",
+      "sha256": "c7ad208f1244a32b2e1ecd5fcf3f8c2199120767dbd7ecdf9443a6d3e37df391",
+      "datePublished": "2026-08-21T17:26:11.527Z",
+      "prov:wasGeneratedBy": {
+        "@id": "#create-kras_structures_comparison.png"
+      },
+      "wasDerivedFrom": {
+        "@id": "./"
+      }
+    },
+    {
+      "@id": "files/kras_structures.csv",
+      "@type": "File",
+      "name": "kras_structures.csv",
+      "identifier": "artifact-version:cmt377xqh0000wfi5zv5w67mg/234d4be0-ee9f-44c2-804f-ec2a7a76c30f/63f1d770-db69-4df3-b2d8-f826fcc2a5e0/898558f6-91b2-41bc-98ef-1d5bb480bbe6",
+      "encodingFormat": "text/csv",
+      "contentSize": "1389",
+      "sha256": "75d562ab99d0aaf4b3e96f88d2fff5d3bd88b32cd92fe25a7135d63fce9497a3",
+      "datePublished": "2026-08-21T17:26:09.632Z",
+      "prov:wasGeneratedBy": {
+        "@id": "#create-kras_structures.csv"
+      },
+      "wasDerivedFrom": {
+        "@id": "./"
+      }
+    },
+    {
+      "@id": "files/kras_structures.md",
+      "@type": "File",
+      "name": "kras_structures.md",
+      "identifier": "artifact-version:cmt377xqh0000wfi5zv5w67mg/234d4be0-ee9f-44c2-804f-ec2a7a76c30f/2014bd73-7a0b-4efd-aaa6-86059339c51d/84f0e91d-16cf-48f1-9d91-482d60244e4b",
+      "encodingFormat": "text/markdown",
+      "contentSize": "4970",
+      "sha256": "b42a552a6bfaa794d74e80518614ea9dc706f26880e74fb6c9968100ae1eda96",
+      "datePublished": "2026-08-21T17:26:15.938Z",
+      "prov:wasGeneratedBy": {
+        "@id": "#create-kras_structures.md"
+      },
+      "wasDerivedFrom": {
+        "@id": "./"
+      }
+    },
+    {
+      "@id": "#create-ad_cure_conclusion_2026.md",
+      "@type": "CreateAction",
+      "name": "produce ad_cure_conclusion_2026.md",
+      "endTime": "2026-08-21T17:09:29.870Z",
+      "instrument": [
+        {
+          "@id": "https://www.zerolink.com/purescience"
+        },
+        {
+          "@id": "#agent-Claude-Code"
+        }
+      ],
+      "result": [
+        {
+          "@id": "files/ad_cure_conclusion_2026.md"
+        }
+      ],
+      "identifier": "artifact-version:cmt377xqh0000wfi5zv5w67mg/c3fd83c6-760b-4e2a-b7c7-d1cd0a49db5a/e6b676ff-b631-4a38-b8b3-d7e10d56985c/e41d2512-3e5d-4bd8-a727-b49bd98d471e"
+    },
+    {
+      "@id": "#create-assay_analysis.md",
+      "@type": "CreateAction",
+      "name": "produce assay_analysis.md",
+      "description": "Recorded recipe: import sys\nsys.argv = [\"assay_analysis.py\", \"~/ps-test-data/assay_measurements.csv\", \".\"]\nexec(open(\"assay_analysis.py\", encoding=\"utf-8\").read())",
+      "endTime": "2026-08-21T17:27:33.373Z",
+      "instrument": [
+        {
+          "@id": "https://www.zerolink.com/purescience"
+        },
+        {
+          "@id": "#environment-python"
+        },
+        {
+          "@id": "#environment-kras-env"
+        },
+        {
+          "@id": "#agent-Claude-Code"
+        }
+      ],
+      "result": [
+        {
+          "@id": "files/assay_analysis.md"
+        }
+      ],
+      "identifier": "artifact-version:cmt377xqh0000wfi5zv5w67mg/173209ec-1621-4507-af0b-5b6340d7c5a8/d707c2f6-6cca-49d7-8cf8-9c7f30df708d/48eab09c-1ac8-4e3e-9e6a-b0c6ca028cde"
+    },
+    {
+      "@id": "#create-assay_analysis.py",
+      "@type": "CreateAction",
+      "name": "produce assay_analysis.py",
+      "endTime": "2026-08-21T17:27:18.975Z",
+      "instrument": [
+        {
+          "@id": "https://www.zerolink.com/purescience"
+        },
+        {
+          "@id": "#agent-Claude-Code"
+        }
+      ],
+      "result": [
+        {
+          "@id": "files/assay_analysis.py"
+        }
+      ],
+      "identifier": "artifact-version:cmt377xqh0000wfi5zv5w67mg/173209ec-1621-4507-af0b-5b6340d7c5a8/cf5f548d-bb0d-4bb4-840f-42b0e34e2b3e/edd81308-3465-49eb-b8be-a82bcf7edd2a"
+    },
+    {
+      "@id": "#create-assay_dotplot.png",
+      "@type": "CreateAction",
+      "name": "produce assay_dotplot.png",
+      "description": "Recorded recipe: import sys\nsys.argv = [\"assay_analysis.py\", \"~/ps-test-data/assay_measurements.csv\", \".\"]\nexec(open(\"assay_analysis.py\", encoding=\"utf-8\").read())",
+      "endTime": "2026-08-21T17:27:28.076Z",
+      "instrument": [
+        {
+          "@id": "https://www.zerolink.com/purescience"
+        },
+        {
+          "@id": "#environment-python"
+        },
+        {
+          "@id": "#environment-kras-env"
+        },
+        {
+          "@id": "#agent-Claude-Code"
+        }
+      ],
+      "result": [
+        {
+          "@id": "files/assay_dotplot.png"
+        }
+      ],
+      "identifier": "artifact-version:cmt377xqh0000wfi5zv5w67mg/173209ec-1621-4507-af0b-5b6340d7c5a8/6c305efa-6b67-4ffc-8681-66595f4d1652/b6d876e9-85d8-4a4e-bdd4-fd3ae7bc4607"
+    },
+    {
+      "@id": "#create-assay_summary_plot.png",
+      "@type": "CreateAction",
+      "name": "produce assay_summary_plot.png",
+      "description": "Recorded recipe: import sys\nsys.argv = [\"assay_analysis.py\", \"~/ps-test-data/assay_measurements.csv\", \".\"]\nexec(open(\"assay_analysis.py\", encoding=\"utf-8\").read())",
+      "endTime": "2026-08-21T17:27:30.438Z",
+      "instrument": [
+        {
+          "@id": "https://www.zerolink.com/purescience"
+        },
+        {
+          "@id": "#environment-python"
+        },
+        {
+          "@id": "#environment-kras-env"
+        },
+        {
+          "@id": "#agent-Claude-Code"
+        }
+      ],
+      "result": [
+        {
+          "@id": "files/assay_summary_plot.png"
+        }
+      ],
+      "identifier": "artifact-version:cmt377xqh0000wfi5zv5w67mg/173209ec-1621-4507-af0b-5b6340d7c5a8/469f5e59-aa89-4cbf-ab3e-4832b8e6ae7b/96340b54-b989-4797-aa5a-21fe30a8e309"
+    },
+    {
+      "@id": "#create-assay_summary.csv",
+      "@type": "CreateAction",
+      "name": "produce assay_summary.csv",
+      "description": "Recorded recipe: import sys\nsys.argv = [\"assay_analysis.py\", \"~/ps-test-data/assay_measurements.csv\", \".\"]\nexec(open(\"assay_analysis.py\", encoding=\"utf-8\").read())",
+      "endTime": "2026-08-21T17:27:21.534Z",
+      "instrument": [
+        {
+          "@id": "https://www.zerolink.com/purescience"
+        },
+        {
+          "@id": "#environment-python"
+        },
+        {
+          "@id": "#environment-kras-env"
+        },
+        {
+          "@id": "#agent-Claude-Code"
+        }
+      ],
+      "result": [
+        {
+          "@id": "files/assay_summary.csv"
+        }
+      ],
+      "identifier": "artifact-version:cmt377xqh0000wfi5zv5w67mg/173209ec-1621-4507-af0b-5b6340d7c5a8/0463a12f-4eb7-426d-b723-18620e7841a3/81bdab55-3e17-443c-9c95-4ebe74d64ce3"
+    },
+    {
+      "@id": "#create-assay_tests.csv",
+      "@type": "CreateAction",
+      "name": "produce assay_tests.csv",
+      "description": "Recorded recipe: import sys\nsys.argv = [\"assay_analysis.py\", \"~/ps-test-data/assay_measurements.csv\", \".\"]\nexec(open(\"assay_analysis.py\", encoding=\"utf-8\").read())",
+      "endTime": "2026-08-21T17:27:24.933Z",
+      "instrument": [
+        {
+          "@id": "https://www.zerolink.com/purescience"
+        },
+        {
+          "@id": "#environment-python"
+        },
+        {
+          "@id": "#environment-kras-env"
+        },
+        {
+          "@id": "#agent-Claude-Code"
+        }
+      ],
+      "result": [
+        {
+          "@id": "files/assay_tests.csv"
+        }
+      ],
+      "identifier": "artifact-version:cmt377xqh0000wfi5zv5w67mg/173209ec-1621-4507-af0b-5b6340d7c5a8/c583fef7-6acb-4eeb-b822-2e9a1f635d14/862f6c4f-b3d2-4315-afd0-c665244bdc14"
+    },
+    {
+      "@id": "#create-build_kras_structures.py",
+      "@type": "CreateAction",
+      "name": "produce build_kras_structures.py",
+      "description": "Recorded recipe: script = '''#!/usr/bin/env python3\n\"\"\"Regenerate kras_structures.csv and kras_structures_comparison.png from the fetched\nRCSB PDB metadata (kras_data.json).\n\nUsage:\n    python build_kras_structures.py [input.json] [output_dir]\nDefaults: input from $PURESCIENCE_HANDOFF_DIR/kras_data.json (or ./kras_data.json);\noutputs written to the current directory.\n\"\"\"\nimport json, os, sys\nimport pandas as pd\nimport matplotlib\nmatplotlib.use(\"Agg\")\nimport matplotlib.pyplot as plt\nfrom matplotlib.patches import Patch\n\ndef build_row(r):\n    return {\n        \"pdb_id\": r[\"pdb_id\"],\n        \"title\": r[\"title\"],\n        \"experimental_method\": \"; \".join(r[\"experimental_methods\"]),\n        \"resolution_angstrom\": r[\"resolution_angstrom\"],\n        \"polymer_chain_count\": r[\"polymer_chain_count\"],\n        \"polymer_entity_count\": r[\"polymer_entity_count\"],\n        \"nonpolymer_entity_count\": r[\"nonpolymer_entity_count\"],\n        \"ligand_comp_ids\": \"; \".join(r[\"ligand_comp_ids\"]),\n        \"ligand_summary\": r[\"ligand_summary\"],\n        \"deposit_date\": r[\"deposit_date\"],\n        \"initial_release_date\": r[\"initial_release_date\"],\n        \"source_organism\": r[\"organism\"],\n        \"uniprot_ids\": r[\"uniprot_ids\"],\n        \"mutation_count\": r[\"mutation_count\"],\n        \"molecular_weight_kda\": r[\"molecular_weight_kda\"],\n        \"structure_determination_methodology\": r[\"methodology\"],\n        \"comparable_in_kras_comparison\": r[\"comparable\"],\n        \"notes\": r[\"notes\"],\n    }\n\ndef main():\n    handoff = os.environ.get(\"PURESCIENCE_HANDOFF_DIR\")\n    src = sys.argv[1] if len(sys.argv) > 1 else (\n        os.path.join(handoff, \"kras_data.json\") if handoff else \"kras_data.json\")\n    out = sys.argv[2] if len(sys.argv) > 2 else \".\"\n    with open(src) as f:\n        data = json.load(f)\n\n    df = pd.DataFrame([build_row(r) for r in data[\"rows\"]])\n    df = df.set_index(\"pdb_id\").loc[[\"4OBE\", \"6OIM\", \"8E8X\"]].reset_index()\n    csv_path = os.path.join(out, \"kras_structures.csv\")\n    df.to_csv(csv_path, index=False)\n\n    order = [\"4OBE\", \"6OIM\", \"8E8X\"]\n    fig, axes = plt.subplots(1, 2, figsize=(11, 5))\n\n    ax = axes[0]\n    for pid in order:\n        row = df[df[\"pdb_id\"] == pid].iloc[0]\n        if row[\"comparable_in_kras_comparison\"]:\n            ax.bar(pid, row[\"resolution_angstrom\"], color=\"#1f77b4\", width=0.55)\n        else:\n            ax.bar(pid, row[\"resolution_angstrom\"], color=\"#b0b0b0\", hatch=\"///\", width=0.55)\n    ax.set_ylabel(\"Reported resolution (A)\")\n    ax.set_title(\"(a) Resolution\")\n    for i, pid in enumerate(order):\n        v = df[df[\"pdb_id\"] == pid].iloc[0][\"resolution_angstrom\"]\n        ax.text(i, v + 0.03, f\"{v:.2f}\", ha=\"center\", va=\"bottom\", fontsize=9)\n\n    ax = axes[1]\n    for pid in order:\n        row = df[df[\"pdb_id\"] == pid].iloc[0]\n        if row[\"comparable_in_kras_comparison\"]:\n            ax.bar(pid, row[\"polymer_chain_count\"], color=\"#1f77b4\", width=0.55)\n        else:\n            ax.bar(pid, row[\"polymer_chain_count\"], color=\"#b0b0b0\", hatch=\"///\", width=0.55)\n    ax.set_ylabel(\"Polymer chains (deposited copies)\")\n    ax.set_title(\"(b) Number of polymer chains\")\n    for i, pid in enumerate(order):\n        v = df[df[\"pdb_id\"] == pid].iloc[0][\"polymer_chain_count\"]\n        ax.text(i, v + 0.05, str(v), ha=\"center\", va=\"bottom\", fontsize=9)\n\n    handles = [\n        Patch(facecolor=\"#1f77b4\", label=\"Comparable KRAS structures (X-ray; included in summary stats)\"),\n        Patch(facecolor=\"#b0b0b0\", hatch=\"///\",\n              label=\"8E8X - retrieved but NOT a human KRAS structure (poliovirus 3 + Fab); excluded from comparison\"),\n    ]\n    fig.legend(handles=handles, loc=\"lower center\", ncol=1, fontsize=8, frameon=True,\n               bbox_to_anchor=(0.5, -0.03))\n    fig.suptitle(f\"Human KRAS PDB structures 4OBE, 6OIM and the retrieved-but-excluded entry 8E8X\\\\n\"\n                 f\"Data: RCSB PDB (retrieved {data['request_date']})\", fontsize=11)\n    fig.tight_layout(rect=[0, 0.12, 1, 0.94])\n    png_path = os.path.join(out, \"kras_structures_comparison.png\")\n    fig.savefig(png_path, dpi=160, bbox_inches=\"tight\")\n    print(\"wrote:\", csv_path)\n    print(\"wrote:\", png_path)\n\nif __name__ == \"__main__\":\n    main()\n'''\nwith open(\"build_kras_structures.py\", \"w\") as f:\n    f.write(script)\nprint(\"script written:\", len(script), \"bytes\")\nimport os\nprint(os.path.abspath(\"build_kras_structures.py\"))",
+      "endTime": "2026-08-21T17:26:13.792Z",
+      "instrument": [
+        {
+          "@id": "https://www.zerolink.com/purescience"
+        },
+        {
+          "@id": "#environment-python"
+        },
+        {
+          "@id": "#environment-kras-env"
+        },
+        {
+          "@id": "#agent-Claude-Code"
+        }
+      ],
+      "result": [
+        {
+          "@id": "files/build_kras_structures.py"
+        }
+      ],
+      "identifier": "artifact-version:cmt377xqh0000wfi5zv5w67mg/234d4be0-ee9f-44c2-804f-ec2a7a76c30f/1d749e4f-dee9-4eb7-b635-77e3cb7ec180/32431949-2b6c-4a79-8ec0-e76eb07039e5"
+    },
+    {
+      "@id": "#create-generate_kras_g12c_dossier.py",
+      "@type": "CreateAction",
+      "name": "produce generate_kras_g12c_dossier.py",
+      "endTime": "2026-08-21T17:18:04.782Z",
+      "instrument": [
+        {
+          "@id": "https://www.zerolink.com/purescience"
+        },
+        {
+          "@id": "#agent-Claude-Code"
+        }
+      ],
+      "result": [
+        {
+          "@id": "files/generate_kras_g12c_dossier.py"
+        }
+      ],
+      "identifier": "artifact-version:cmt377xqh0000wfi5zv5w67mg/5733048b-0a4e-4758-9aab-14482c2f443f/c2df854e-ef91-4cd4-847c-548160dda536/2d890ace-531a-4a27-8b23-20652f8c4cf4"
+    },
+    {
+      "@id": "#create-kras_g12c_dossier.md",
+      "@type": "CreateAction",
+      "name": "produce kras_g12c_dossier.md",
+      "endTime": "2026-08-21T17:18:02.914Z",
+      "instrument": [
+        {
+          "@id": "https://www.zerolink.com/purescience"
+        },
+        {
+          "@id": "#agent-Claude-Code"
+        }
+      ],
+      "result": [
+        {
+          "@id": "files/kras_g12c_dossier.md"
+        }
+      ],
+      "identifier": "artifact-version:cmt377xqh0000wfi5zv5w67mg/5733048b-0a4e-4758-9aab-14482c2f443f/d18ccc1c-34d6-4be5-920f-b93181314f39/e97d2c38-7094-4880-88aa-3433ed36416a"
+    },
+    {
+      "@id": "#create-kras_g12c_ic50.png",
+      "@type": "CreateAction",
+      "name": "produce kras_g12c_ic50.png",
+      "description": "Recorded recipe: env -u PYTHONPATH ~/PureScience-DEV/runtime/envs/kras-env/bin/python3.12 \"~/PureScience-DEV/notebooks/cmt377xqh0000wfi5zv5w67mg/5733048b-0a4e-4758-9aab-14482c2f443f/data/generate_kras_g12c_dossier.py\" \"$PURESCIENCE_HANDOFF_DIR/kras_g12c_dataset.json\" \"~/PureScience-DEV/notebooks/cmt377xqh0000wfi5zv5w67mg/5733048b-0a4e-4758-9aab-14482c2f443f/data\"",
+      "endTime": "2026-08-21T17:18:00.988Z",
+      "instrument": [
+        {
+          "@id": "https://www.zerolink.com/purescience"
+        },
+        {
+          "@id": "#environment-bash"
+        },
+        {
+          "@id": "#agent-Claude-Code"
+        }
+      ],
+      "result": [
+        {
+          "@id": "files/kras_g12c_ic50.png"
+        }
+      ],
+      "identifier": "artifact-version:cmt377xqh0000wfi5zv5w67mg/5733048b-0a4e-4758-9aab-14482c2f443f/219d25a1-ccbd-4abc-9c08-4db633247948/0bf85e51-4abf-4b54-9847-5eee97ad4bab"
+    },
+    {
+      "@id": "#create-kras_g12c_inhibitors.csv",
+      "@type": "CreateAction",
+      "name": "produce kras_g12c_inhibitors.csv",
+      "description": "Recorded recipe: env -u PYTHONPATH ~/PureScience-DEV/runtime/envs/kras-env/bin/python3.12 \"~/PureScience-DEV/notebooks/cmt377xqh0000wfi5zv5w67mg/5733048b-0a4e-4758-9aab-14482c2f443f/data/generate_kras_g12c_dossier.py\" \"$PURESCIENCE_HANDOFF_DIR/kras_g12c_dataset.json\" \"~/PureScience-DEV/notebooks/cmt377xqh0000wfi5zv5w67mg/5733048b-0a4e-4758-9aab-14482c2f443f/data\"",
+      "endTime": "2026-08-21T17:17:58.771Z",
+      "instrument": [
+        {
+          "@id": "https://www.zerolink.com/purescience"
+        },
+        {
+          "@id": "#environment-bash"
+        },
+        {
+          "@id": "#agent-Claude-Code"
+        }
+      ],
+      "result": [
+        {
+          "@id": "files/kras_g12c_inhibitors.csv"
+        }
+      ],
+      "identifier": "artifact-version:cmt377xqh0000wfi5zv5w67mg/5733048b-0a4e-4758-9aab-14482c2f443f/f7061524-3c69-429f-98f2-31f55557d62f/a7c7483d-7b6d-4023-9366-b321ee32e5d9"
+    },
+    {
+      "@id": "#create-kras_structures_comparison.png",
+      "@type": "CreateAction",
+      "name": "produce kras_structures_comparison.png",
+      "description": "Recorded recipe: import os, json\nimport pandas as pd\nimport matplotlib\nmatplotlib.use(\"Agg\")\nimport matplotlib.pyplot as plt\nfrom matplotlib.patches import Patch\n\nhandoff = os.environ.get(\"PURESCIENCE_HANDOFF_DIR\")\nwith open(os.path.join(handoff, \"kras_data.json\")) as f:\n    data = json.load(f)\n\nrows = data[\"rows\"]\n\ndef build_row(r):\n    return {\n        \"pdb_id\": r[\"pdb_id\"],\n        \"title\": r[\"title\"],\n        \"experimental_method\": \"; \".join(r[\"experimental_methods\"]),\n        \"resolution_angstrom\": r[\"resolution_angstrom\"],\n        \"polymer_chain_count\": r[\"polymer_chain_count\"],\n        \"polymer_entity_count\": r[\"polymer_entity_count\"],\n        \"nonpolymer_entity_count\": r[\"nonpolymer_entity_count\"],\n        \"ligand_comp_ids\": \"; \".join(r[\"ligand_comp_ids\"]),\n        \"ligand_summary\": r[\"ligand_summary\"],\n        \"deposit_date\": r[\"deposit_date\"],\n        \"initial_release_date\": r[\"initial_release_date\"],\n        \"source_organism\": r[\"organism\"],\n        \"uniprot_ids\": r[\"uniprot_ids\"],\n        \"mutation_count\": r[\"mutation_count\"],\n        \"molecular_weight_kda\": r[\"molecular_weight_kda\"],\n        \"structure_determination_methodology\": r[\"methodology\"],\n        \"comparable_in_kras_comparison\": r[\"comparable\"],\n        \"notes\": r[\"notes\"],\n    }\n\ndf = pd.DataFrame([build_row(r) for r in rows])\ndf = df.set_index(\"pdb_id\").loc[[\"4OBE\", \"6OIM\", \"8E8X\"]].reset_index()\ndf.to_csv(\"kras_structures.csv\", index=False)\nprint(df.to_string(index=False))\nprint(\"\\nCSV written ->\", os.path.abspath(\"kras_structures.csv\"))\n\n# ----------------- Figure -----------------\norder = [\"4OBE\", \"6OIM\", \"8E8X\"]\ncomp = df[df[\"comparable_in_kras_comparison\"]]\nexcl = df[~df[\"comparable_in_kras_comparison\"]]\nexcl_pid = excl[\"pdb_id\"].iloc[0]\n\nfig, axes = plt.subplots(1, 2, figsize=(11, 5))\n\n# Panel (a): Resolution\nax = axes[0]\nfor pid in order:\n    row = df[df[\"pdb_id\"] == pid].iloc[0]\n    if row[\"comparable_in_kras_comparison\"]:\n        ax.bar(pid, row[\"resolution_angstrom\"], color=\"#1f77b4\", width=0.55,\n               label=\"Comparable KRAS structure (included in comparison)\") if pid == comp[\"pdb_id\"].iloc[0] else None\n    else:\n        ax.bar(pid, row[\"resolution_angstrom\"], color=\"#b0b0b0\", hatch=\"///\", width=0.55,\n               label=\"Excluded from comparison (not a KRAS entry)\")\nax.set_ylabel(\"Reported resolution (Å)\")\nax.set_title(\"(a) Resolution\")\nax.text(2, 3.05, \"2.91 Å\\n(not a KRAS entry)\", ha=\"center\", va=\"bottom\", fontsize=8, color=\"#555555\")\nfor i, pid in enumerate(order):\n    v = df[df[\"pdb_id\"] == pid].iloc[0][\"resolution_angstrom\"]\n    ax.text(i, v + 0.03, f\"{v:.2f}\", ha=\"center\", va=\"bottom\", fontsize=9, color=\"black\")\n\n# Panel (b): Chain count\nax = axes[1]\nfor pid in order:\n    row = df[df[\"pdb_id\"] == pid].iloc[0]\n    if row[\"comparable_in_kras_comparison\"]:\n        ax.bar(pid, row[\"polymer_chain_count\"], color=\"#1f77b4\", width=0.55)\n    else:\n        ax.bar(pid, row[\"polymer_chain_count\"], color=\"#b0b0b0\", hatch=\"///\", width=0.55)\nax.set_ylabel(\"Polymer chains (deposited copies)\")\nax.set_title(\"(b) Number of polymer chains\")\nfor i, pid in enumerate(order):\n    v = df[df[\"pdb_id\"] == pid].iloc[0][\"polymer_chain_count\"]\n    ax.text(i, v + 0.05, str(v), ha=\"center\", va=\"bottom\", fontsize=9)\n\nhandles = [Patch(facecolor=\"#1f77b4\", label=\"Comparable KRAS structures (X-ray; included in summary stats)\"),\n           Patch(facecolor=\"#b0b0b0\", hatch=\"///\", label=\"8E8X — retrieved but NOT a human KRAS structure (poliovirus 3 + Fab); excluded from comparison\")]\nfig.legend(handles=handles, loc=\"lower center\", ncol=1, fontsize=8, frameon=True, bbox_to_anchor=(0.5, -0.03))\nfig.suptitle(\"Human KRAS PDB structures 4OBE, 6OIM and the retrieved-but-excluded entry 8E8X\\nData: RCSB PDB (retrieved 2026-08-22)\", fontsize=11)\nfig.tight_layout(rect=[0, 0.12, 1, 0.94])\nfig.savefig(\"kras_structures_comparison.png\", dpi=160, bbox_inches=\"tight\")\nprint(\"\\nFigure written ->\", os.path.abspath(\"kras_structures_comparison.png\"))",
+      "endTime": "2026-08-21T17:26:11.527Z",
+      "instrument": [
+        {
+          "@id": "https://www.zerolink.com/purescience"
+        },
+        {
+          "@id": "#environment-python"
+        },
+        {
+          "@id": "#environment-kras-env"
+        },
+        {
+          "@id": "#agent-Claude-Code"
+        }
+      ],
+      "result": [
+        {
+          "@id": "files/kras_structures_comparison.png"
+        }
+      ],
+      "identifier": "artifact-version:cmt377xqh0000wfi5zv5w67mg/234d4be0-ee9f-44c2-804f-ec2a7a76c30f/e845e6d5-99a4-4715-8684-860735bcf2fe/965ac5df-6cc3-4c6c-b654-8f6bba721ed8"
+    },
+    {
+      "@id": "#create-kras_structures.csv",
+      "@type": "CreateAction",
+      "name": "produce kras_structures.csv",
+      "description": "Recorded recipe: import os, json\nimport pandas as pd\nimport matplotlib\nmatplotlib.use(\"Agg\")\nimport matplotlib.pyplot as plt\nfrom matplotlib.patches import Patch\n\nhandoff = os.environ.get(\"PURESCIENCE_HANDOFF_DIR\")\nwith open(os.path.join(handoff, \"kras_data.json\")) as f:\n    data = json.load(f)\n\nrows = data[\"rows\"]\n\ndef build_row(r):\n    return {\n        \"pdb_id\": r[\"pdb_id\"],\n        \"title\": r[\"title\"],\n        \"experimental_method\": \"; \".join(r[\"experimental_methods\"]),\n        \"resolution_angstrom\": r[\"resolution_angstrom\"],\n        \"polymer_chain_count\": r[\"polymer_chain_count\"],\n        \"polymer_entity_count\": r[\"polymer_entity_count\"],\n        \"nonpolymer_entity_count\": r[\"nonpolymer_entity_count\"],\n        \"ligand_comp_ids\": \"; \".join(r[\"ligand_comp_ids\"]),\n        \"ligand_summary\": r[\"ligand_summary\"],\n        \"deposit_date\": r[\"deposit_date\"],\n        \"initial_release_date\": r[\"initial_release_date\"],\n        \"source_organism\": r[\"organism\"],\n        \"uniprot_ids\": r[\"uniprot_ids\"],\n        \"mutation_count\": r[\"mutation_count\"],\n        \"molecular_weight_kda\": r[\"molecular_weight_kda\"],\n        \"structure_determination_methodology\": r[\"methodology\"],\n        \"comparable_in_kras_comparison\": r[\"comparable\"],\n        \"notes\": r[\"notes\"],\n    }\n\ndf = pd.DataFrame([build_row(r) for r in rows])\ndf = df.set_index(\"pdb_id\").loc[[\"4OBE\", \"6OIM\", \"8E8X\"]].reset_index()\ndf.to_csv(\"kras_structures.csv\", index=False)\nprint(df.to_string(index=False))\nprint(\"\\nCSV written ->\", os.path.abspath(\"kras_structures.csv\"))\n\n# ----------------- Figure -----------------\norder = [\"4OBE\", \"6OIM\", \"8E8X\"]\ncomp = df[df[\"comparable_in_kras_comparison\"]]\nexcl = df[~df[\"comparable_in_kras_comparison\"]]\nexcl_pid = excl[\"pdb_id\"].iloc[0]\n\nfig, axes = plt.subplots(1, 2, figsize=(11, 5))\n\n# Panel (a): Resolution\nax = axes[0]\nfor pid in order:\n    row = df[df[\"pdb_id\"] == pid].iloc[0]\n    if row[\"comparable_in_kras_comparison\"]:\n        ax.bar(pid, row[\"resolution_angstrom\"], color=\"#1f77b4\", width=0.55,\n               label=\"Comparable KRAS structure (included in comparison)\") if pid == comp[\"pdb_id\"].iloc[0] else None\n    else:\n        ax.bar(pid, row[\"resolution_angstrom\"], color=\"#b0b0b0\", hatch=\"///\", width=0.55,\n               label=\"Excluded from comparison (not a KRAS entry)\")\nax.set_ylabel(\"Reported resolution (Å)\")\nax.set_title(\"(a) Resolution\")\nax.text(2, 3.05, \"2.91 Å\\n(not a KRAS entry)\", ha=\"center\", va=\"bottom\", fontsize=8, color=\"#555555\")\nfor i, pid in enumerate(order):\n    v = df[df[\"pdb_id\"] == pid].iloc[0][\"resolution_angstrom\"]\n    ax.text(i, v + 0.03, f\"{v:.2f}\", ha=\"center\", va=\"bottom\", fontsize=9, color=\"black\")\n\n# Panel (b): Chain count\nax = axes[1]\nfor pid in order:\n    row = df[df[\"pdb_id\"] == pid].iloc[0]\n    if row[\"comparable_in_kras_comparison\"]:\n        ax.bar(pid, row[\"polymer_chain_count\"], color=\"#1f77b4\", width=0.55)\n    else:\n        ax.bar(pid, row[\"polymer_chain_count\"], color=\"#b0b0b0\", hatch=\"///\", width=0.55)\nax.set_ylabel(\"Polymer chains (deposited copies)\")\nax.set_title(\"(b) Number of polymer chains\")\nfor i, pid in enumerate(order):\n    v = df[df[\"pdb_id\"] == pid].iloc[0][\"polymer_chain_count\"]\n    ax.text(i, v + 0.05, str(v), ha=\"center\", va=\"bottom\", fontsize=9)\n\nhandles = [Patch(facecolor=\"#1f77b4\", label=\"Comparable KRAS structures (X-ray; included in summary stats)\"),\n           Patch(facecolor=\"#b0b0b0\", hatch=\"///\", label=\"8E8X — retrieved but NOT a human KRAS structure (poliovirus 3 + Fab); excluded from comparison\")]\nfig.legend(handles=handles, loc=\"lower center\", ncol=1, fontsize=8, frameon=True, bbox_to_anchor=(0.5, -0.03))\nfig.suptitle(\"Human KRAS PDB structures 4OBE, 6OIM and the retrieved-but-excluded entry 8E8X\\nData: RCSB PDB (retrieved 2026-08-22)\", fontsize=11)\nfig.tight_layout(rect=[0, 0.12, 1, 0.94])\nfig.savefig(\"kras_structures_comparison.png\", dpi=160, bbox_inches=\"tight\")\nprint(\"\\nFigure written ->\", os.path.abspath(\"kras_structures_comparison.png\"))",
+      "endTime": "2026-08-21T17:26:09.632Z",
+      "instrument": [
+        {
+          "@id": "https://www.zerolink.com/purescience"
+        },
+        {
+          "@id": "#environment-python"
+        },
+        {
+          "@id": "#environment-kras-env"
+        },
+        {
+          "@id": "#agent-Claude-Code"
+        }
+      ],
+      "result": [
+        {
+          "@id": "files/kras_structures.csv"
+        }
+      ],
+      "identifier": "artifact-version:cmt377xqh0000wfi5zv5w67mg/234d4be0-ee9f-44c2-804f-ec2a7a76c30f/63f1d770-db69-4df3-b2d8-f826fcc2a5e0/898558f6-91b2-41bc-98ef-1d5bb480bbe6"
+    },
+    {
+      "@id": "#create-kras_structures.md",
+      "@type": "CreateAction",
+      "name": "produce kras_structures.md",
+      "description": "Recorded recipe: md = \"\"\"# 人源 KRAS PDB 结构比较：4OBE、6OIM、8E8X\n\n- **数据请求日期**：2026-08-22\n- **数据来源**：RCSB PDB（经 structures 连接器，`pdb_get_structures` / `pdb_get_entities` / `pdb_get_ligands`）\n- **请求的 PDB ID**：`4OBE`、`6OIM`、`8E8X`\n- **获取结果**：3/3 均可从数据源取回（`retrieved = [4OBE, 6OIM, 8E8X]`），无 \"not found\" 失败记录。\n\n## 关键说明：8E8X 不是人源 KRAS 结构\n\n`8E8X`（标题 \"9H2 Fab-Sabin poliovirus 3 complex\"，冷冻电镜，2.91 Å）被成功取回，但其内容为\n脊髓灰质炎病毒 3 型（Sabin 株）衣壳蛋白 VP1–VP4（UniProt P03302）加人源 9H2 Fab 重/轻链——\n**不包含任何 KRAS/KRas（UniProt P01116）多肽**。因此它无法作为 KRAS 结构参与比较，\n在 CSV 中以 `comparable_in_kras_comparison = False` 标注，图中以灰色斜纹柱显示并被排除在比较与汇总统计之外。\n\n## 记录摘要\n\n| PDB ID | 实验方法 | 分辨率 (Å) | 聚合链数（沉积拷贝） | 配体（沉积的非聚合物组分） | 沉积日期 | 首次释放日期 | 分子量 (kDa) | KRAS 可比？ |\n|---|---|---|---|---|---|---|---|---|\n| 4OBE | X-RAY DIFFRACTION | 1.24 | 2（链 A, B，均为 KRas） | GDP；MG（Mg²⁺） | 2014-01-07 | 2014-06-04 | 39.59 | 是 |\n| 6OIM | X-RAY DIFFRACTION | 1.65 | 1（链 A，KRas） | GDP；MG（Mg²⁺）；MOV（AMG 510 抑制剂） | 2019-04-09 | 2019-11-06 | 22.07 | 是 |\n| 8E8X | ELECTRON MICROSCOPY | 2.91 | 6（VP1–VP4 + Fab 重/轻链） | 无报告配体 | 2022-08-26 | 2023-06-21 | 120.09 | 否（见上） |\n\n> 4OBE 与 6OIM 的聚合实体均映射到人源 UniProt **P01116**（GTPase KRas，Homo sapiens）。\n> 6OIM 条目报告相对参考序列有 4 处突变，且标题注明为 G12C 共价结合 AMG 510；4OBE 条目报告 0 突变。\n> 两条目均结合 GDP 与 Mg²⁺；仅 6OIM 结合 AMG 510（MOV）。\n\n## 记录支持的观察（仅限可被数据直接支持者）\n\n1. 三个请求的 ID 全部可取回；但三者中只有 **2 个（4OBE、6OIM）是人源 KRAS 结构**，`8E8X` 虽可取回却并非 KRAS 条目，故比较仅在 4OBE 与 6OIM 之间进行。\n2. **实验方法与分辨率**：两个 KRAS 条目均为 X 射线衍射，报告分辨率 4OBE = 1.24 Å、6OIM = 1.65 Å，即 4OBE 的分辨率数值上更高（更低 Å）。\n3. **链数**：4OBE 的非对称单元含 2 份 KRas 链拷贝（A、B），6OIM 含 1 份（A）。\n4. **配体**：两条 KRAS 记录都报告结合 GDP 与 Mg²⁺；6OIM 额外报告结合 MOV（AMG 510 抑制剂）。8E8X 报告无配体。\n5. **释放日期**：4OBE 2014-06-04、6OIM 2019-11-06、8E8X 2023-06-21，与沉积日期一致（均先沉积后释放）。\n6. **条目分子量**：4OBE 39.59 kDa（2 条 KRas 链 + GDP/MG）、6OIM 22.07 kDa（1 条 KRas 链 + GDP/MG/MOV）、8E8X 120.09 kDa。\n\n## 图\n\n`kras_structures_comparison.png`：两联图。(a) 报告分辨率；(b) 聚合链数。\n**图例/处理方式**：蓝色实心柱 = 可比 KRAS 结构（X 射线，纳入比较与汇总统计）；\n灰色斜纹柱 = `8E8X`——成功取回但**不是**人源 KRAS 结构（脊髓灰质炎病毒 3 + Fab），**被排除在比较之外**，\n也不进入任何汇总统计（未对全部三条目计算均值等）。两个可比条目间只报告描述性数值，未做推断性统计。\n\n## 限制（重要）\n\n- **PDB 条目之间不能直接推断生物学结论**：分辨率反映的是该特定晶体/样品的衍射或成像质量，\n  并不表示某结构在生物学上\"更好\"或更具功能意义；链数、配体与分子量反映沉积时的结晶条件与样品组成，\n  不能据此推导 KRAS 在细胞内的功能状态、抑制剂效价或 G12C 突变的临床意义。\n- **可比样本不同**：4OBE 与 6OIM 在构建体长度（记录分别 170 与 183 残基）、突变状态（0 vs 4 处突变，标题为 G12C）、\n  非对称单元拷贝数（2 vs 1）与结合配体（有无 AMG 510）上均有差异，因此两者并非相同样品，其差异是描述性的而非对同一样品不同处理的直接对照。\n- **配体列表 = 沉积的非聚合物组分**：配体存在反映结晶/实验条件；\"无配体\"（如 8E8X）不等于生物体内不相关。\n- **单一来源、时点数据**：全部元数据来自 RCSB PDB，取回于 2026-08-22；PDB 条目可被修订\n  （三个条目的 revision date 分别晚于各自释放日期），数值以取回当日为准。\n- **实验方法差异**：8E8X 为冷冻电镜，即使它是 KRAS 条目，其 2.91 Å 也不与 X 射线分辨率直接可比；本报告中它已被排除，故不构成混淆。\n- **样本量**：可比条目仅 2 个，未进行任何统计检验。\n\n## 交付物\n\n- `build_kras_structures.py` — 重建脚本（由取回元数据生成 CSV 与图）\n- `kras_structures.csv` — 结构化记录\n- `kras_structures_comparison.png` — 比较图\n- 本文件 `kras_structures.md`\n\"\"\"\nwith open(\"kras_structures.md\", \"w\") as f:\n    f.write(md)\nprint(\"markdown written:\", len(md), \"bytes\")\nprint(os.path.abspath(\"kras_structures.md\"))",
+      "endTime": "2026-08-21T17:26:15.938Z",
+      "instrument": [
+        {
+          "@id": "https://www.zerolink.com/purescience"
+        },
+        {
+          "@id": "#environment-python"
+        },
+        {
+          "@id": "#environment-kras-env"
+        },
+        {
+          "@id": "#agent-Claude-Code"
+        }
+      ],
+      "result": [
+        {
+          "@id": "files/kras_structures.md"
+        }
+      ],
+      "identifier": "artifact-version:cmt377xqh0000wfi5zv5w67mg/234d4be0-ee9f-44c2-804f-ec2a7a76c30f/2014bd73-7a0b-4efd-aaa6-86059339c51d/84f0e91d-16cf-48f1-9d91-482d60244e4b"
+    },
+    {
+      "@id": "https://www.zerolink.com/purescience",
+      "@type": "SoftwareApplication",
+      "name": "PureScience",
+      "version": "1.75.0",
+      "url": "https://www.zerolink.com/purescience"
+    },
+    {
+      "@id": "#environment-python",
+      "@type": "SoftwareApplication",
+      "name": "python kernel",
+      "description": "Notebook kernel that ran the code producing this file."
+    },
+    {
+      "@id": "#environment-kras-env",
+      "@type": "SoftwareApplication",
+      "name": "kras-env",
+      "version": "3.12.13",
+      "identifier": "b1ad25cac2ac82ecfc93f3451b41c51a6f1ad58d384a41ec6db73b4ae64d5089"
+    },
+    {
+      "@id": "#environment-bash",
+      "@type": "SoftwareApplication",
+      "name": "bash kernel",
+      "description": "Notebook kernel that ran the code producing this file."
+    },
+    {
+      "@id": "#agent-Claude-Code",
+      "@type": "SoftwareApplication",
+      "name": "Claude Code",
+      "description": "Coding agent that authored the code which produced this file."
+    },
+    {
+      "@id": "https://www.zerolink.com",
+      "@type": "Organization",
+      "name": "zerolink"
+    },
+    {
+      "@id": "https://spdx.org/licenses/Apache-2.0",
+      "@type": "CreativeWork",
+      "name": "Apache License 2.0"
+    },
+    {
+      "@id": "#session-173209ec-1621-4507-af0b-5b6340d7c5a8",
+      "@type": "CreativeWork",
+      "name": "173209ec-1621-4507-af0b-5b6340d7c5a8",
+      "identifier": "173209ec-1621-4507-af0b-5b6340d7c5a8",
+      "description": "Analysis session whose recorded runs produced the files in this crate."
+    },
+    {
+      "@id": "#session-234d4be0-ee9f-44c2-804f-ec2a7a76c30f",
+      "@type": "CreativeWork",
+      "name": "234d4be0-ee9f-44c2-804f-ec2a7a76c30f",
+      "identifier": "234d4be0-ee9f-44c2-804f-ec2a7a76c30f",
+      "description": "Analysis session whose recorded runs produced the files in this crate."
+    },
+    {
+      "@id": "#session-5733048b-0a4e-4758-9aab-14482c2f443f",
+      "@type": "CreativeWork",
+      "name": "5733048b-0a4e-4758-9aab-14482c2f443f",
+      "identifier": "5733048b-0a4e-4758-9aab-14482c2f443f",
+      "description": "Analysis session whose recorded runs produced the files in this crate."
+    },
+    {
+      "@id": "#session-c3fd83c6-760b-4e2a-b7c7-d1cd0a49db5a",
+      "@type": "CreativeWork",
+      "name": "c3fd83c6-760b-4e2a-b7c7-d1cd0a49db5a",
+      "identifier": "c3fd83c6-760b-4e2a-b7c7-d1cd0a49db5a",
+      "description": "Analysis session whose recorded runs produced the files in this crate."
+    }
+  ]
+}
