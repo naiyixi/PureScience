@@ -7,7 +7,12 @@ import { join, relative } from 'node:path'
 import { tmpdir } from 'node:os'
 import { randomUUID } from 'node:crypto'
 import { createServer, type Server } from 'node:http'
-import { framePythonRequest, parseLoopResponse, type KernelLoopResponse } from './kernel-protocol'
+import {
+  framePythonRequest,
+  parseLoopResponse,
+  parseLoopStarted,
+  type KernelLoopResponse
+} from './kernel-protocol'
 import { listenForLocalRpc } from '../local-rpc-transport'
 
 // Run with: RUN_KERNEL=1 npx vitest run src/main/notebook/repl-loop.integration.test.ts
@@ -24,6 +29,7 @@ const startLoop = (
   env: NodeJS.ProcessEnv
 ): {
   child: ChildProcessWithoutNullStreams
+  startedIds: Set<string>
   send: (code: string) => Promise<KernelLoopResponse>
 } => {
   const child = spawn(process.execPath, [LOOP], {
@@ -31,7 +37,15 @@ const startLoop = (
   })
   const rl = createInterface({ input: child.stdout })
   const waiters = new Map<string, (v: KernelLoopResponse) => void>()
+  // The loop announces "I have begun executing" before it responds; the driver starts its execution
+  // budget from that frame, so the protocol contract is worth asserting here too.
+  const startedIds = new Set<string>()
   rl.on('line', (line) => {
+    const started = parseLoopStarted(line)
+    if (started) {
+      startedIds.add(started.reqId)
+      return
+    }
     const msg = parseLoopResponse(line)
     if (!msg) return
     const w = waiters.get(msg.reqId)
@@ -46,7 +60,7 @@ const startLoop = (
       waiters.set(reqId, resolve)
       child.stdin.write(framePythonRequest(reqId, code))
     })
-  return { child, send }
+  return { child, startedIds, send }
 }
 
 describe('repl_loop local RPC transport', () => {
@@ -68,7 +82,7 @@ describe('repl_loop local RPC transport', () => {
       name: 'repl-loop-test',
       transport: 'pipe'
     })
-    const { child, send } = startLoop({
+    const { child, startedIds, send } = startLoop({
       PURESCIENCE_MCP_RPC_ENDPOINT: connection.endpoint,
       PURESCIENCE_MCP_RPC_SOCKET_PATH: connection.socketPath,
       PURESCIENCE_MCP_RPC_TOKEN: 'test-token',
@@ -79,6 +93,8 @@ describe('repl_loop local RPC transport', () => {
       const result = await send("return await host.mcp('pubmed', 'search', { q: 'rna' })")
       expect(result.error).toBeNull()
       expect(result.result).toBe('{"ok":true}')
+      // Exactly one start announcement for the one request, and it was not mistaken for the response.
+      expect([...startedIds]).toHaveLength(1)
       expect(received).toMatchObject({
         method: 'mcpCall',
         params: { server: 'pubmed' }

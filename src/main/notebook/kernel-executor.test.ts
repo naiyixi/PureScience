@@ -26,15 +26,20 @@ import {
 // transitions are deterministic without real time.
 const makeTimerHarness = (): {
   timers: Map<number, () => void>
-  schedule: (fn: () => void) => number
+  delays: Map<number, number>
+  schedule: (fn: () => void, ms: number) => number
   cancel: (handle: unknown) => void
   fireOldest: () => void
 } => {
   const timers = new Map<number, () => void>()
+  // The scheduled delay is recorded too: the execution budget's claim is "boot is not charged against
+  // it", which is only observable as the millisecond value handed to the scheduler.
+  const delays = new Map<number, number>()
   let nextId = 1
-  const schedule = (fn: () => void): number => {
+  const schedule = (fn: () => void, ms: number): number => {
     const id = nextId++
     timers.set(id, fn)
+    delays.set(id, ms)
     return id
   }
   const cancel = (handle: unknown): void => {
@@ -44,12 +49,63 @@ const makeTimerHarness = (): {
     const [id] = timers.keys()
     const fn = timers.get(id)
     timers.delete(id)
+    delays.delete(id)
     fn?.()
   }
-  return { timers, schedule, cancel, fireOldest }
+  return { timers, delays, schedule, cancel, fireOldest }
 }
 
 describe('TimeoutController', () => {
+  it('charges the execution budget from the start report, not from the frame write', () => {
+    const h = makeTimerHarness()
+    const signals: NodeJS.Signals[] = []
+    const controller = new TimeoutController({
+      kill: (signal) => signals.push(signal),
+      onHardTimeout: () => {},
+      schedule: h.schedule,
+      cancel: h.cancel,
+      startupGraceMs: 5_000
+    })
+
+    // Until the loop says it is executing, the deadline is the budget plus the bounded startup grace:
+    // a cold interpreter boot must not consume a short budget (issue: budget used to start at write).
+    controller.arm(100)
+    expect([...h.delays.values()]).toEqual([5_100])
+    expect(controller.executing).toBe(false)
+
+    // The loop reports it started: the semantic budget begins now, and only now.
+    controller.markStarted()
+    expect([...h.delays.values()].slice(-1)).toEqual([100])
+    expect(controller.executing).toBe(true)
+    expect(controller.timedOut).toBe(false)
+
+    h.fireOldest()
+    expect(signals).toEqual(['SIGINT'])
+    expect(controller.timedOut).toBe(true)
+  })
+
+  it('a loop that never reports starting is still cut by the startup grace', () => {
+    const h = makeTimerHarness()
+    const signals: NodeJS.Signals[] = []
+    const controller = new TimeoutController({
+      kill: (signal) => signals.push(signal),
+      onHardTimeout: () => {},
+      schedule: h.schedule,
+      cancel: h.cancel,
+      startupGraceMs: 300
+    })
+
+    controller.arm(100)
+    expect([...h.delays.values()]).toEqual([400])
+    h.fireOldest()
+
+    // Bounded: a loop that never boots is interrupted, and the flag says execution never began, so the
+    // driver can report "never began executing" instead of "ran too long".
+    expect(signals).toEqual(['SIGINT'])
+    expect(controller.executing).toBe(false)
+    expect(controller.timedOut).toBe(true)
+  })
+
   it('soft timeout sends SIGINT, marks timedOut, and arms the hard timer', () => {
     const h = makeTimerHarness()
     const signals: NodeJS.Signals[] = []
@@ -491,6 +547,28 @@ gate('NotebookKernelExecutor (fake loop)', () => {
       await executor.shutdown()
     }
   })
+
+  it('does not charge a cold interpreter boot against a short execution budget', async () => {
+    // The fixture sleeps before it reads — or reports — anything, exactly like a loop still booting.
+    // With a 100 ms budget the previous behaviour (budget armed at frame-write, before the loop could
+    // report that it was executing) killed the run as a timeout without the code ever running.
+    const previousDelay = process.env.FAKE_LOOP_BOOT_DELAY_MS
+    process.env.FAKE_LOOP_BOOT_DELAY_MS = '300'
+    cwdDir = await makeDefaultEnvCwd('os-kernel-cold-budget-')
+    const executor = makeExecutor()
+    try {
+      const cold = await executor.execute({
+        ...baseRequest(cwdDir),
+        code: 'cold',
+        timeoutMs: 100
+      })
+      expect(cold.status).toBe('completed')
+    } finally {
+      await executor.shutdown()
+      if (previousDelay === undefined) delete process.env.FAKE_LOOP_BOOT_DELAY_MS
+      else process.env.FAKE_LOOP_BOOT_DELAY_MS = previousDelay
+    }
+  }, 15_000)
 
   it('soft-interrupts a long run with SIGINT and reports a timeout', async () => {
     cwdDir = await makeDefaultEnvCwd('os-kernel-soft-')

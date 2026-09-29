@@ -113,6 +113,9 @@ export function parseLoopResponse(line: string): KernelLoopResponse | null {
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return null
 
   const obj = parsed as Record<string, unknown>
+  // A started frame is not a response: it must never resolve the in-flight request. The driver reads it
+  // through parseLoopStarted before this parser, and rejecting it here keeps every other consumer safe.
+  if (obj.started === true) return null
   const figures: KernelLoopFigure[] = Array.isArray(obj.figures)
     ? obj.figures
         .filter((f): f is Record<string, unknown> => typeof f === 'object' && f !== null)
@@ -132,6 +135,25 @@ export function parseLoopResponse(line: string): KernelLoopResponse | null {
     figures,
     ...(environmentOverlay ? { environmentOverlay } : {})
   }
+}
+
+// The loop's "I have begun executing this request" frame. The driver starts its execution budget when
+// this arrives, so a cold interpreter boot is never charged against a short budget (and a loop that
+// never boots is still interrupted by the driver's startup cap). Parsed separately from a response so a
+// started frame can never be mistaken for a finished one.
+export type KernelLoopStarted = { reqId: string; started: true }
+
+export function parseLoopStarted(line: string): KernelLoopStarted | null {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(line)
+  } catch {
+    return null
+  }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return null
+  const obj = parsed as Record<string, unknown>
+  if (obj.started !== true || typeof obj.req_id !== 'string') return null
+  return { reqId: obj.req_id, started: true }
 }
 
 // One JSON line + newline for the Python loop's stdin protocol; key order is stable so the wire

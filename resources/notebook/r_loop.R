@@ -1090,6 +1090,8 @@ inspect_variables <- function() {
 repeat {
   req <- read_request()
   if (is.null(req)) break
+  # Tell the driver execution is starting: its budget measures execution, not interpreter boot.
+  emit(list(req_id = req$req_id, started = TRUE))
   if (isTRUE(req$action == "inspect_variables")) {
     resp <- list(stdout = "", stderr = "", error = NA, error_line = NULL, result = NA,
                  cwd = getwd(), figures = list(), environment = capture_environment(),

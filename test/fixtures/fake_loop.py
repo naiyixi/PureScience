@@ -7,6 +7,8 @@
 #   __WRITE_FILE__      write an output file into the kernel working directory
 #   __OVERWRITE_FILE__  replace a pre-existing output in the kernel working directory
 #   __WRITE_DELAYED_A__ / __WRITE_DELAYED_B__ overlap two kernels writing the same data root
+# FAKE_LOOP_BOOT_DELAY_MS simulates a cold interpreter: the process takes that long before it reads
+# (and reports) anything. Used to prove the execution budget is not charged for interpreter boot.
 import base64
 import json
 import os
@@ -15,6 +17,7 @@ import sys
 import time
 
 _FIGURES_DIR = os.environ.get("PURESCIENCE_KERNEL_FIGURES_DIR", "")
+_BOOT_DELAY_MS = int(os.environ.get("FAKE_LOOP_BOOT_DELAY_MS", "0") or "0")
 # A real 1x1 PNG so the driver's read+base64 path exercises actual image bytes.
 _PNG = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/pLvAAAAAElFTkSuQmCC"
@@ -59,6 +62,9 @@ def _respond(req_id, code):
 
 
 def main():
+    # A cold interpreter: delay before anything is read or reported, like a real loop still booting.
+    if _BOOT_DELAY_MS > 0:
+        time.sleep(_BOOT_DELAY_MS / 1000.0)
     for line in sys.stdin:
         line = line.strip()
         if not line:
@@ -69,6 +75,8 @@ def main():
             continue
         code = request.get("code", "")
         req_id = request.get("req_id")
+        sys.stdout.write(json.dumps({"req_id": req_id, "started": True}) + "\n")
+        sys.stdout.flush()
         if code == "__IGNORE_SIGINT__":
             signal.signal(signal.SIGINT, signal.SIG_IGN)
             time.sleep(30)

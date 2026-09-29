@@ -1311,6 +1311,8 @@ rl.on('line', (line) => {
   }
   chain = chain.then(async () => {
     ACTIVE_CONTROL_INVOCATION_ID = request.control_invocation_id
+    // Tell the driver execution is starting: its budget measures execution, not interpreter boot.
+    emit({ req_id: request.req_id, started: true })
     try {
       const resp = await run(request.code || '')
       resp.req_id = request.req_id

@@ -15,6 +15,7 @@ import {
   frameRRequest,
   framePythonRequest,
   parseLoopResponse,
+  parseLoopStarted,
   type KernelLoopFigure,
   type KernelLoopResponse,
   type KernelVariable
@@ -484,7 +485,9 @@ class NotebookKernelExecutor implements NotebookExecutor {
         proc,
         pending?.timeout.timedOut
           ? new NotebookExecutionTimeoutError(
-              `Notebook execution timed out after ${pending.timeoutMs}ms.`
+              pending.timeout.executing
+                ? `Notebook execution timed out after ${pending.timeoutMs}ms.`
+                : 'Notebook kernel never began executing: its startup grace expired.'
             )
           : new Error('Notebook kernel process exited.')
       )
@@ -679,7 +682,11 @@ class NotebookKernelExecutor implements NotebookExecutor {
           // fires onTerminated because dropProc already removed it from the map).
           this.onTerminated?.(proc.kind, proc.env)
           reject(
-            new NotebookExecutionTimeoutError(`Notebook execution timed out after ${timeoutMs}ms.`)
+            new NotebookExecutionTimeoutError(
+              timeout.executing
+                ? `Notebook execution timed out after ${timeoutMs}ms.`
+                : 'Notebook kernel never began executing: its startup grace expired.'
+            )
           )
         }
       })
@@ -704,6 +711,16 @@ class NotebookKernelExecutor implements NotebookExecutor {
 
   // Matches one loop response line to the in-flight request and clears its timeout.
   private handleLine(proc: ProcState, line: string): void {
+    // The loop announces that it has begun executing; the execution budget starts here (see
+    // TimeoutController.arm/markStarted), so a cold interpreter boot cannot be mistaken for the code
+    // running too long.
+    const started = parseLoopStarted(line)
+    if (started) {
+      const starting = proc.pending
+      if (starting && starting.reqId === started.reqId) starting.timeout.markStarted()
+      return
+    }
+
     const response = parseLoopResponse(line)
     if (!response) return
 

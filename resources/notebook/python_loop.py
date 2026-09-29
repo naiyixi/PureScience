@@ -510,6 +510,9 @@ def main():
             continue
         req_id = request.get("req_id")
         try:
+            # Tell the driver execution is starting: its budget measures execution, not interpreter boot.
+            _protocol_out.write(json.dumps({"req_id": req_id, "started": True}) + "\n")
+            _protocol_out.flush()
             # The emit (dumps/write/flush) stays inside this guard too: a soft-timeout
             # SIGINT (KeyboardInterrupt) can land at any point while handling a request,
             # including during figure capture or the response write itself. Catching it

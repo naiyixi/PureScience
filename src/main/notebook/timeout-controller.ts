@@ -6,6 +6,10 @@
 export const DEFAULT_TIMEOUT_MS = 120_000
 // After SIGINT, how long we wait for the loop to actually stop before escalating to SIGKILL.
 export const HARD_GRACE_MS = 2_000
+// How long a loop may take to report that it began executing before the driver stops waiting. A cold
+// interpreter boot is not execution time, but it must not be unbounded either: without this cap a loop
+// that never boots would never be interrupted.
+export const DEFAULT_STARTUP_GRACE_MS = 30_000
 
 // Opaque timer identity; the default scheduler returns a NodeJS.Timeout, tests return a number.
 type TimerHandle = unknown
@@ -21,6 +25,7 @@ export type TimeoutControllerDeps = {
   schedule?: ScheduleTimer
   cancel?: CancelTimer
   hardGraceMs?: number
+  startupGraceMs?: number
 }
 
 // Real scheduler: unref'd so a pending timeout alone never keeps the process alive.
@@ -36,19 +41,44 @@ export class TimeoutController {
   private softTimer: TimerHandle | undefined
   private hardTimer: TimerHandle | undefined
   private softFired = false
+  private hasStarted = false
+  private semanticTimeoutMs = 0
   private readonly schedule: ScheduleTimer
   private readonly cancel: CancelTimer
   private readonly hardGraceMs: number
+  private readonly startupGraceMs: number
 
   constructor(private readonly deps: TimeoutControllerDeps) {
     this.schedule = deps.schedule ?? defaultSchedule
     this.cancel = deps.cancel ?? defaultCancel
     this.hardGraceMs = deps.hardGraceMs ?? HARD_GRACE_MS
+    this.startupGraceMs = deps.startupGraceMs ?? DEFAULT_STARTUP_GRACE_MS
   }
 
-  // Starts the soft-timeout countdown for one request.
+  // Starts the countdown for one request. Until the loop reports that it has begun executing, the
+  // deadline is the semantic budget plus a bounded startup grace: a cold interpreter boot is not the
+  // code running, so it must not consume a short budget — yet a loop that never boots still gets cut.
   arm(timeoutMs: number): void {
-    this.softTimer = this.schedule(() => this.onSoftTimeout(), timeoutMs)
+    this.semanticTimeoutMs = timeoutMs
+    this.scheduleSoft(timeoutMs + this.startupGraceMs)
+  }
+
+  // The loop reported it has begun executing this request: the semantic budget starts now.
+  markStarted(): void {
+    if (this.hasStarted || this.softFired || this.softTimer === undefined) return
+    this.hasStarted = true
+    this.cancel(this.softTimer)
+    this.scheduleSoft(this.semanticTimeoutMs)
+  }
+
+  // True once the loop reported execution began. Callers use this to say which of the two things
+  // happened — the code ran past its budget, or execution never got going. Those are different findings.
+  get executing(): boolean {
+    return this.hasStarted
+  }
+
+  private scheduleSoft(ms: number): void {
+    this.softTimer = this.schedule(() => this.onSoftTimeout(), ms)
   }
 
   // True once the soft timeout fired (an interrupt was sent), so any reply that still arrives is
