@@ -1302,6 +1302,24 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'sessions.packageExport.failure.session-unreadable': 'La session n’a pas pu être lue.',
   'sessions.packageExport.failure.no-destination': 'Aucune destination choisie.',
   'sessions.packageExport.failure.write-failed': 'Le paquet n’a pas pu être écrit.',
+  'roCrate.export.menu': 'Exporter au format RO-Crate…',
+  'roCrate.export.title': 'Exporter le projet au format RO-Crate',
+  'roCrate.export.description':
+    'Écrit un objet de recherche RO-Crate 1.1 pour ce projet : ro-crate-metadata.json, plus une copie identique octet pour octet de chaque version d’artefact publiée.',
+  'roCrate.export.export': 'Exporter',
+  'roCrate.export.done': '{count} fichiers écrits dans {path}.',
+  'roCrate.export.validated': 'Vérification RO-Crate réussie : {passed} contrôles.',
+  'roCrate.export.refused':
+    '{count} versions publiées refusées : leurs octets ne correspondent plus à l’empreinte enregistrée.',
+  'roCrate.export.failure.project-not-found': 'Ce projet n’existe plus.',
+  'roCrate.export.failure.no-published-version':
+    'Ce projet n’a encore aucune version d’artefact publiée à exporter.',
+  'roCrate.export.failure.no-exportable-version':
+    'Toutes les versions publiées ont été refusées : leur provenance enregistrée ne correspond plus aux octets stockés.',
+  'roCrate.export.failure.destination-unwritable': 'Le dossier choisi n’a pas pu être écrit.',
+  'roCrate.export.failure.validation-failed':
+    'L’objet de recherche exporté a échoué à la vérification RO-Crate.',
+  'roCrate.export.failure.write-failed': 'L’objet de recherche n’a pas pu être écrit.',
   'sessions.packageImport.title': 'Importer un paquet de session',
   'sessions.packageImport.pickFile': 'Choisir un paquet…',
   'sessions.packageImport.integrityIntact':

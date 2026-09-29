@@ -76,7 +76,12 @@ export const WINDOWS_TEST_MODULE_GROUPS = [
     'src/main/skills/',
     'src/main/specialist/',
     'src/main/permission-grants/',
-    'src/main/compute/'
+    'src/main/compute/',
+    // RO-Crate export reads the durable Artifact Version layout and re-hashes its bytes, so it is
+    // disk-bound in the same way as the artifact family it exports. Routed here (rather than left in
+    // the catch-all shard) because the catch-all is the largest shard and the balance check has no
+    // headroom left: a new directory there is what tipped it past 2x.
+    'src/main/ro-crate/'
   ]
   // 8 (the shard after this list, and the fallback below): shared contracts and tooling —
   // src/shared, scripts, packages, cli, build, resources, plus test/ and anything new.

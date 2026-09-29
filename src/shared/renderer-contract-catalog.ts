@@ -270,6 +270,11 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['onCreated', 'project:created', EVENT], ['onDeleted', 'project:deleted', EVENT], ['onUpdated', 'project:updated', EVENT], ['create', 'projects:create'],
     ['delete', 'projects:delete'], ['get', 'projects:get'], ['list', 'projects:list'], ['updateArchive', 'projects:update-archive'], ['update', 'projects:update'],
   ]),
+  group('ro-crate', 'roCrate', [
+    // One Project as an interoperable research object. Desktop-only: the crate is a folder on the
+    // machine, and a native dialogue is the only honest way to obtain its destination.
+    ['exportProject', 'ro-crate:export-project', ELECTRON],
+  ]),
   group('references', 'references', [
     ['add', 'references:add'], ['addToCollection', 'references:add-to-collection'], ['attachPdf', 'references:attach-pdf'],
     ['createCollection', 'references:create-collection'], ['deleteCollection', 'references:delete-collection'], ['detachPdf', 'references:detach-pdf'],

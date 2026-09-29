@@ -540,6 +540,11 @@ const api: PureScienceAPI = {
     onUpdated: (listener) => electronRendererContracts.subscribe('projects.onUpdated', listener),
     onDeleted: (listener) => electronRendererContracts.subscribe('projects.onDeleted', listener)
   },
+  // One Project as an RO-Crate 1.1 research object. Desktop only: the crate is a folder on this machine
+  // and the destination comes from a native dialogue.
+  roCrate: {
+    exportProject: (request) => electronRendererContracts.invoke('roCrate.exportProject', request)
+  },
   // Files exposes metadata pages only. Thumbnail/full-preview bytes continue through the existing
   // artifact/upload APIs after a visible item has been selected or rendered.
   projectFiles: {

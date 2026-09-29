@@ -1271,6 +1271,24 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'sessions.packageExport.failure.session-unreadable': 'Не удалось прочитать сеанс.',
   'sessions.packageExport.failure.no-destination': 'Место сохранения не выбрано.',
   'sessions.packageExport.failure.write-failed': 'Не удалось записать пакет.',
+  'roCrate.export.menu': 'Экспортировать как RO-Crate…',
+  'roCrate.export.title': 'Экспортировать проект как RO-Crate',
+  'roCrate.export.description':
+    'Записывает объект исследования RO-Crate 1.1 для этого проекта: ro-crate-metadata.json и побайтовую копию каждой опубликованной версии артефакта.',
+  'roCrate.export.export': 'Экспорт',
+  'roCrate.export.done': 'Записано файлов: {count} в {path}.',
+  'roCrate.export.validated': 'Проверка RO-Crate пройдена: {passed} проверок.',
+  'roCrate.export.refused':
+    'Отклонено опубликованных версий: {count}. Их байты больше не совпадают с записанной контрольной суммой.',
+  'roCrate.export.failure.project-not-found': 'Этот проект больше не существует.',
+  'roCrate.export.failure.no-published-version':
+    'У этого проекта пока нет опубликованной версии артефакта для экспорта.',
+  'roCrate.export.failure.no-exportable-version':
+    'Все опубликованные версии отклонены: записанные сведения о происхождении больше не совпадают с сохранёнными байтами.',
+  'roCrate.export.failure.destination-unwritable': 'Не удалось записать в выбранную папку.',
+  'roCrate.export.failure.validation-failed':
+    'Экспортированный объект исследования не прошёл проверку RO-Crate.',
+  'roCrate.export.failure.write-failed': 'Не удалось записать объект исследования.',
   'sessions.packageImport.title': 'Импорт пакета сессии',
   'sessions.packageImport.pickFile': 'Выбрать пакет…',
   'sessions.packageImport.integrityIntact':

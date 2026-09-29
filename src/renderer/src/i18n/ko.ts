@@ -1250,6 +1250,24 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'sessions.packageExport.failure.session-unreadable': '세션을 읽지 못했습니다.',
   'sessions.packageExport.failure.no-destination': '저장 위치를 선택하지 않았습니다.',
   'sessions.packageExport.failure.write-failed': '패키지를 기록하지 못했습니다.',
+  'roCrate.export.menu': 'RO-Crate로 내보내기…',
+  'roCrate.export.title': '프로젝트를 RO-Crate로 내보내기',
+  'roCrate.export.description':
+    '이 프로젝트의 RO-Crate 1.1 연구 객체를 기록합니다. ro-crate-metadata.json과 게시된 각 산출물 버전의 바이트 단위 사본이 포함됩니다.',
+  'roCrate.export.export': '내보내기',
+  'roCrate.export.done': '파일 {count}개를 {path}에 기록했습니다.',
+  'roCrate.export.validated': 'RO-Crate 검증을 통과했습니다({passed}개 항목).',
+  'roCrate.export.refused':
+    '게시된 버전 {count}개를 거부했습니다. 바이트가 기록된 체크섬과 더 이상 일치하지 않습니다.',
+  'roCrate.export.failure.project-not-found': '이 프로젝트는 더 이상 없습니다.',
+  'roCrate.export.failure.no-published-version':
+    '이 프로젝트에는 아직 내보낼 수 있는 게시된 산출물 버전이 없습니다.',
+  'roCrate.export.failure.no-exportable-version':
+    '게시된 버전이 모두 거부되었습니다. 기록된 출처 정보가 저장된 바이트와 더 이상 일치하지 않습니다.',
+  'roCrate.export.failure.destination-unwritable': '선택한 폴더에 기록할 수 없습니다.',
+  'roCrate.export.failure.validation-failed':
+    '내보낸 연구 객체가 RO-Crate 검증을 통과하지 못했습니다.',
+  'roCrate.export.failure.write-failed': '연구 객체를 기록하지 못했습니다.',
   'sessions.packageImport.title': '세션 패키지 가져오기',
   'sessions.packageImport.pickFile': '패키지 선택…',
   'sessions.packageImport.integrityIntact': '패키지의 파일 {files}개가 내보내기 기록과 일치합니다',

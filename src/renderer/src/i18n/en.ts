@@ -1661,6 +1661,23 @@ export const en: Record<ZhKey, string> = {
   'sessions.packageExport.failure.session-unreadable': 'The session could not be read.',
   'sessions.packageExport.failure.no-destination': 'No destination was chosen.',
   'sessions.packageExport.failure.write-failed': 'The package could not be written.',
+  'roCrate.export.menu': 'Export as RO-Crate…',
+  'roCrate.export.title': 'Export project as RO-Crate',
+  'roCrate.export.description':
+    'Writes an RO-Crate 1.1 research object for this project: ro-crate-metadata.json plus a byte-identical copy of every published Artifact Version.',
+  'roCrate.export.export': 'Export',
+  'roCrate.export.done': 'Wrote {count} files to {path}.',
+  'roCrate.export.validated': 'RO-Crate verification passed: {passed} checks.',
+  'roCrate.export.refused':
+    'Refused {count} published versions whose bytes no longer match the recorded checksum.',
+  'roCrate.export.failure.project-not-found': 'That project no longer exists.',
+  'roCrate.export.failure.no-published-version':
+    'This project has no published Artifact Version to export yet.',
+  'roCrate.export.failure.no-exportable-version':
+    'Every published version was refused: their recorded provenance no longer matches the stored bytes.',
+  'roCrate.export.failure.destination-unwritable': 'The chosen folder could not be written to.',
+  'roCrate.export.failure.validation-failed': 'The exported crate failed RO-Crate verification.',
+  'roCrate.export.failure.write-failed': 'The crate could not be written.',
   'sessions.packageImport.title': 'Import session package',
   'sessions.packageImport.pickFile': 'Choose a package…',
   'sessions.packageImport.integrityIntact':

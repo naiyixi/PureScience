@@ -12,11 +12,13 @@ describe('renderer contract catalog', () => {
   it('pins the complete capability-owned inventory and legacy map projection', () => {
     const projection = projectRendererContractMaps(RENDERER_CONTRACT_CATALOG)
 
+    // 46 groups / 449 contracts with the RO-Crate export (roCrate.exportProject): one desktop-only
+    // channel, so no Web projection and no local-Web installation move with it.
     // 45 groups / 448 contracts with the PDF annotation surface (pdfAnnotations.create /
     // exportAnnotated / exportNotes / import / list / reattach / remove): seven local-only channels
     // beside the PDF reading surface they belong to.
-    expect(RENDERER_CONTRACT_GROUPS).toHaveLength(45)
-    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(448)
+    expect(RENDERER_CONTRACT_GROUPS).toHaveLength(46)
+    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(449)
     expect(projection.invoke).toEqual(WEB_INVOKE_CHANNELS)
     expect(projection.event).toEqual(WEB_EVENT_CHANNELS)
     // 344 with the PDF annotation export channels (pdfAnnotations.exportAnnotated / exportNotes):
@@ -58,7 +60,7 @@ describe('renderer contract catalog', () => {
     })
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb === 'unavailable')
-    ).toHaveLength(74)
+    ).toHaveLength(75)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.remoteWeb === 'rejecting-stub')
     ).toHaveLength(116)

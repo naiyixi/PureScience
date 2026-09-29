@@ -73,6 +73,7 @@ const GENERATED_SOURCE_OMISSIONS = [
   'officePreview.onState',
   'officePreview.open',
   'officePreview.reportState',
+  'roCrate.exportProject',
   'sessions.exportPackage',
   'sessions.importPackage',
   'sessions.onFlushRequest',
@@ -271,9 +272,11 @@ describe('renderer surface inventory', () => {
       ...Object.keys(WEB_EVENT_CHANNELS)
     ])
 
+    // 449 with the RO-Crate export (roCrate.exportProject): a desktop-only channel, so it appears in the
+    // preload inventory and in the generator-omission list, and in neither Web map.
     // 448 with the two PDF annotation export channels (文档标注层 A4): the preload bridge exposes one
     // method per contract, so the two inventories move together.
-    expect(electronPaths).toHaveLength(448)
+    expect(electronPaths).toHaveLength(449)
     expectSameSet(
       electronPaths,
       RENDERER_CONTRACT_CATALOG.map(({ publicPath }) => publicPath)

@@ -87,6 +87,7 @@ import {
   type ExportConversationOptions
 } from './ExportConversationDialog'
 import { SessionPackageExportDialog } from './SessionPackageExportDialog'
+import { RoCrateExportDialog } from './RoCrateExportDialog'
 import { FilePreviewDialog } from './FilePreviewDialog'
 import { PreviewPanel } from './PreviewPanel'
 import { SideChatPanel } from './SideChatPanel'
@@ -897,6 +898,8 @@ const WorkspacePage = ({
   const [sessionToExportPackage, setSessionToExportPackage] = useState<ChatSession | undefined>(
     undefined
   )
+  // RO-Crate export is project-scoped, so its dialogue is a plain switch rather than a payload slot.
+  const [roCrateExportOpen, setRoCrateExportOpen] = useState(false)
   const [jobListModal, setJobListModal] = useState({ open: false, sessionId: '' })
 
   useEffect(() => {
@@ -2847,6 +2850,11 @@ const WorkspacePage = ({
                   projects={projects}
                   activeProjectId={scopedProjectId}
                   onSwitchProject={(projectId) => openProject(projectId, 'user')}
+                  onExportRoCrate={
+                    typeof window.api?.roCrate?.exportProject === 'function'
+                      ? () => setRoCrateExportOpen(true)
+                      : undefined
+                  }
                   sessions={sessions}
                   activeSessionId={selectedSessionId}
                   canCreateConversation={isSessionPersistenceReady}
@@ -3180,6 +3188,13 @@ const WorkspacePage = ({
         projectId={activeProjectId ?? ''}
         session={sessionToExportPackage}
         onClose={() => setSessionToExportPackage(undefined)}
+      />
+
+      <RoCrateExportDialog
+        projectId={scopedProjectId}
+        projectName={activeProject?.name ?? ''}
+        open={roCrateExportOpen}
+        onClose={() => setRoCrateExportOpen(false)}
       />
 
       <ExportConversationDialog

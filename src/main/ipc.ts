@@ -205,6 +205,8 @@ import {
   createConversationExportService,
   registerConversationExportIpcHandler
 } from './session-persistence/conversation-export'
+import { createRoCrateExportOwner, registerRoCrateExportIpcHandlers } from './ro-crate/ipc'
+import { RO_CRATE_EXPORT_SOFTWARE } from '../shared/ro-crate-export'
 import { createProjectFilesHandlers, registerProjectFilesIpcHandlers } from './project-files/ipc'
 import { createSearchIpcHandlers, registerSearchIpcHandlers } from './search/ipc'
 import { GLOBAL_SEARCH_FILE_LIST_MAX_PAGES } from './search/handlers'
@@ -2765,6 +2767,27 @@ const createApplicationModules = async (
   })
   declareElectronAdapter('conversation-export', () =>
     registerConversationExportIpcHandler(conversationExportService)
+  )
+  // One Project as an RO-Crate 1.1 research object. The writer reads the durable Artifact Version layout,
+  // so the crate can only ever hold files the app already published with a recorded checksum; this adapter
+  // supplies the Project's human-facing name and the destination the OS dialogue returns.
+  declareElectronAdapter('ro-crate-export', () =>
+    registerRoCrateExportIpcHandlers(
+      createRoCrateExportOwner({
+        storageRoot: resolveDataRoot(),
+        loadProject: async (projectId) => {
+          const project = await projectRepository.get(projectId)
+          return project
+            ? { id: project.id, name: project.name, description: project.description }
+            : null
+        },
+        app: { ...RO_CRATE_EXPORT_SOFTWARE, version: app.getVersion() },
+        // Lazy for the same reason as the support bundle's: `app.getPath('downloads')` throws when the
+        // platform cannot resolve the folder (a fresh Windows profile has none).
+        getDefaultDir: () => resolveDefaultSaveDirectory((name) => app.getPath(name)),
+        log: createLogger('ro-crate')
+      })
+    )
   )
   declareElectronAdapter('permission-grants', () =>
     registerPermissionGrantIpcAdapter(permissionGrantProjection)

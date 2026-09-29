@@ -174,6 +174,7 @@ import type {
   UpdateProjectArchiveRequest,
   UpdateProjectRequest
 } from '../shared/projects'
+import type { RoCrateExportRequest, RoCrateExportResult } from '../shared/ro-crate-export'
 import type {
   ArtifactGroupPage,
   GetProjectFilesOverviewRequest,
@@ -785,6 +786,16 @@ export interface PureScienceAPI {
     onCreated(listener: AcpListener<Project>): RemoveListener
     onUpdated(listener: AcpListener<Project>): RemoveListener
     onDeleted(listener: AcpListener<ProjectDeletedEvent>): RemoveListener
+  }
+  roCrate: {
+    /**
+     * Writes one Project as an RO-Crate 1.1 research object — `ro-crate-metadata.json` plus a
+     * byte-identical copy of every published Artifact Version — into a folder the user picks in a native
+     * save dialogue. Desktop only: the crate needs a real destination and the dialogue is the only honest
+     * way to obtain one. A refusal is named (cancelled / project-not-found / no-published-version /
+     * no-exportable-version / destination-unwritable / validation-failed / write-failed).
+     */
+    exportProject(request: RoCrateExportRequest): Promise<RoCrateExportResult>
   }
   projectFiles: {
     getOverview(request: GetProjectFilesOverviewRequest): Promise<ProjectFilesOverview>

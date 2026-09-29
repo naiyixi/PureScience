@@ -1265,6 +1265,24 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'sessions.packageExport.failure.session-unreadable': 'セッションを読み取れませんでした。',
   'sessions.packageExport.failure.no-destination': '保存先が選ばれませんでした。',
   'sessions.packageExport.failure.write-failed': 'パッケージを書き出せませんでした。',
+  'roCrate.export.menu': 'RO-Crate としてエクスポート…',
+  'roCrate.export.title': 'プロジェクトを RO-Crate としてエクスポート',
+  'roCrate.export.description':
+    'このプロジェクトの RO-Crate 1.1 リサーチオブジェクトを書き出します。ro-crate-metadata.json と、公開済みの各成果物バージョンのバイト単位のコピーを含みます。',
+  'roCrate.export.export': 'エクスポート',
+  'roCrate.export.done': '{count} 個のファイルを {path} に書き出しました。',
+  'roCrate.export.validated': 'RO-Crate 検証に合格しました（{passed} 項目）。',
+  'roCrate.export.refused':
+    '公開済みバージョン {count} 件を拒否しました。バイトが記録されたチェックサムと一致しなくなっています。',
+  'roCrate.export.failure.project-not-found': 'このプロジェクトはもう存在しません。',
+  'roCrate.export.failure.no-published-version':
+    'このプロジェクトには、まだエクスポートできる公開済みの成果物バージョンがありません。',
+  'roCrate.export.failure.no-exportable-version':
+    '公開済みバージョンはすべて拒否されました。記録された来歴が保存されたバイトと一致しなくなっています。',
+  'roCrate.export.failure.destination-unwritable': '選択したフォルダーに書き込めません。',
+  'roCrate.export.failure.validation-failed':
+    '書き出したリサーチオブジェクトは RO-Crate 検証に合格しませんでした。',
+  'roCrate.export.failure.write-failed': 'リサーチオブジェクトを書き出せませんでした。',
   'sessions.packageImport.title': 'セッションパッケージを読み込む',
   'sessions.packageImport.pickFile': 'パッケージを選択…',
   'sessions.packageImport.integrityIntact':

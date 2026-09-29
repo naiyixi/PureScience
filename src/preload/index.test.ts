@@ -44,6 +44,9 @@ type PreloadApi = {
   lifecycle: {
     getClientId: () => unknown
   }
+  roCrate: {
+    exportProject: (request: unknown) => unknown
+  }
   sessions: {
     loadAll: () => unknown
     saveSession: (session: unknown, options?: unknown) => unknown
@@ -444,6 +447,7 @@ describe('preload bridge — public surface inventory', () => {
       'reviewer.onSuppressNextAutoReview',
       'reviewer.onUpdated',
       'reviewer.run',
+      'roCrate.exportProject',
       'routine.listAll',
       'routine.remove',
       'routine.setEnabled',
@@ -776,6 +780,8 @@ describe('preload bridge — core renderer contract catalog', () => {
       'project-files',
       'search',
       'projects',
+      // One Project as an RO-Crate 1.1 research object, beside the project surface it exports.
+      'ro-crate',
       'references',
       'remote-access',
       'reviewer',
@@ -798,7 +804,7 @@ describe('preload bridge — core renderer contract catalog', () => {
       'uploads',
       'window'
     ])
-    expect(coreContracts).toHaveLength(221)
+    expect(coreContracts).toHaveLength(222)
     expect({
       requests: coreContracts.filter(
         ({ dispatchPolicy }) => dispatchPolicy.electron === 'electron-ipc-request'
@@ -810,7 +816,7 @@ describe('preload bridge — core renderer contract catalog', () => {
       surfaceNative: coreContracts.filter(
         ({ dispatchPolicy }) => dispatchPolicy.electron === 'surface-native'
       ).length
-    }).toEqual({ requests: 183, events: 27, sends: 10, surfaceNative: 1 })
+    }).toEqual({ requests: 184, events: 27, sends: 10, surfaceNative: 1 })
   })
 
   it('routes every core request method through its cataloged Electron channel', async () => {
@@ -819,7 +825,7 @@ describe('preload bridge — core renderer contract catalog', () => {
     )
     const localFile = { name: 'catalog.csv' } as File
 
-    expect(requestContracts).toHaveLength(183)
+    expect(requestContracts).toHaveLength(184)
 
     for (const contract of requestContracts) {
       invokeMock.mockClear()
@@ -1055,6 +1061,7 @@ const sampleConversationExport = {
   sessionId: 's-1',
   format: 'markdown'
 }
+const sampleRoCrateExport = { projectId: 'p-1' }
 const sampleInstall = { executablePath: '/usr/local/bin/opencode' }
 const sampleFramework = { framework: 'opencode' }
 const sampleResumeRequest = { sessionId: 's-1', cwd: '/workspace/project' }
@@ -1167,6 +1174,12 @@ const cases: ForwardingCase[] = [
     invoke: (a) => a.sessions.exportConversation(sampleConversationExport),
     channel: 'sessions:export-conversation',
     args: [sampleConversationExport]
+  },
+  {
+    name: 'roCrate.exportProject → ro-crate:export-project',
+    invoke: (a) => a.roCrate.exportProject(sampleRoCrateExport),
+    channel: 'ro-crate:export-project',
+    args: [sampleRoCrateExport]
   },
   // agent-framework / opencode settings additions
   {

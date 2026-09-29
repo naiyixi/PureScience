@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Archive,
   BookOpen,
+  Boxes,
   Check,
   ChevronDown,
   ChevronLeft,
@@ -41,6 +42,9 @@ type WorkspaceSidebarProps = {
   projects: Project[]
   activeProjectId: string | undefined
   onSwitchProject: (projectId: string) => void
+  // Project-scoped actions live in the project title's own menu: the name is what a person clicks to
+  // act on the project they are looking at.
+  onExportRoCrate?: () => void
   sessions: ChatSession[]
   activeSessionId: string | undefined
   canCreateConversation: boolean
@@ -110,6 +114,7 @@ const WorkspaceSidebar = ({
   projects,
   activeProjectId,
   onSwitchProject,
+  onExportRoCrate,
   sessions,
   activeSessionId,
   canCreateConversation,
@@ -301,6 +306,21 @@ const WorkspaceSidebar = ({
                       <Check className="size-4 text-muted-foreground" aria-hidden="true" />
                       <span className="text-sm">{t('ws.allProjects')}</span>
                     </DropdownMenuItem>
+                    {onExportRoCrate ? (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="gap-2"
+                          onSelect={() => onExportRoCrate()}
+                          data-testid="export-ro-crate"
+                        >
+                          <span className={sessionMenuIconClassName}>
+                            <Boxes className="size-4" strokeWidth={2} aria-hidden="true" />
+                          </span>
+                          <span className="flex-1">{t('roCrate.export.menu')}</span>
+                        </DropdownMenuItem>
+                      </>
+                    ) : null}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
