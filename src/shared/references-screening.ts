@@ -16,6 +16,14 @@
 export const SCREENING_VERDICTS = ['included', 'needs-review', 'excluded', 'not-evaluated'] as const
 export type ScreeningVerdict = (typeof SCREENING_VERDICTS)[number]
 
+// The verdict vocabulary a MODEL may answer with. Narrower than the stored states on purpose: 'not-
+// evaluated' is our own bookkeeping for "we have not looked" and a model can never assert it, while
+// the model's third answer is 'uncertain' — the word the guardrails require it to use when the
+// evidence does not settle the question. The response parser is the single place that maps these onto
+// ScreeningVerdict ('uncertain' → 'needs-review'), so a model can never invent a stored state.
+export const SCREENING_MODEL_VERDICTS = ['included', 'excluded', 'uncertain'] as const
+export type ScreeningModelVerdict = (typeof SCREENING_MODEL_VERDICTS)[number]
+
 // Why a stored decision is not current, or why an item could not be decided. Exactly six values: a
 // surface can only explain itself if the reasons are enumerable, and a reason that is not in this list
 // is a bug rather than a new state.
