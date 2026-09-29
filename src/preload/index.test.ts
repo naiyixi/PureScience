@@ -365,6 +365,11 @@ describe('preload bridge — public surface inventory', () => {
       'pdf.pages',
       'pdf.scan',
       'pdf.tables',
+      'pdfAnnotations.create',
+      'pdfAnnotations.import',
+      'pdfAnnotations.list',
+      'pdfAnnotations.reattach',
+      'pdfAnnotations.remove',
       'permissions.extendUndo',
       'permissions.list',
       'permissions.onChanged',
@@ -749,7 +754,7 @@ describe('preload bridge — runtime renderer contract catalog', () => {
 })
 
 describe('preload bridge — core renderer contract catalog', () => {
-  it('pins the exact 34-group, 204-contract T1d complement', () => {
+  it('pins the exact 35-group, 209-contract T1d complement', () => {
     expect(coreContractGroups.map(({ capability }) => capability)).toEqual([
       'artifacts',
       'cli',
@@ -781,6 +786,8 @@ describe('preload bridge — core renderer contract catalog', () => {
       'annotation',
       'clipboard',
       'pdf',
+      // PDF annotations (文档标注层 A3): renderer-only, beside the PDF reading surface.
+      'pdfAnnotations',
       'figure',
       'query',
       'sessions',
@@ -789,7 +796,7 @@ describe('preload bridge — core renderer contract catalog', () => {
       'uploads',
       'window'
     ])
-    expect(coreContracts).toHaveLength(214)
+    expect(coreContracts).toHaveLength(219)
     expect({
       requests: coreContracts.filter(
         ({ dispatchPolicy }) => dispatchPolicy.electron === 'electron-ipc-request'
@@ -801,7 +808,7 @@ describe('preload bridge — core renderer contract catalog', () => {
       surfaceNative: coreContracts.filter(
         ({ dispatchPolicy }) => dispatchPolicy.electron === 'surface-native'
       ).length
-    }).toEqual({ requests: 176, events: 27, sends: 10, surfaceNative: 1 })
+    }).toEqual({ requests: 181, events: 27, sends: 10, surfaceNative: 1 })
   })
 
   it('routes every core request method through its cataloged Electron channel', async () => {
@@ -810,7 +817,7 @@ describe('preload bridge — core renderer contract catalog', () => {
     )
     const localFile = { name: 'catalog.csv' } as File
 
-    expect(requestContracts).toHaveLength(176)
+    expect(requestContracts).toHaveLength(181)
 
     for (const contract of requestContracts) {
       invokeMock.mockClear()

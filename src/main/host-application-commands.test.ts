@@ -12,6 +12,14 @@ import type {
   PdfTablesResult
 } from '../shared/pdf'
 import type { SessionBookmark, SessionBookmarkInput } from '../shared/bookmark'
+import type { PdfAnnotation } from '../shared/pdf-annotations'
+import type {
+  PdfAnnotationCreateRequest,
+  PdfAnnotationImportOutcome,
+  PdfAnnotationListResult,
+  PdfAnnotationReattachResult,
+  PdfAnnotationRemoveResult
+} from '../shared/pdf-annotation-surface'
 import type { FigureReviewRequest, FigureReviewResult } from '../shared/figure'
 import type { HostQueryResult } from '../shared/host-query'
 import { RENDERER_CONTRACT_GROUPS } from '../shared/renderer-contract-catalog'
@@ -49,6 +57,8 @@ const HOST_CAPABILITIES = [
   // Session bookmarks (v1.65): renderer-only host capability, last in the host group order.
   'bookmark',
   'pdf',
+  // PDF annotations (文档标注层 A3): a renderer-only host capability beside the PDF reading surface.
+  'pdfAnnotations',
   'figure',
   'query',
   'storage',
@@ -313,6 +323,51 @@ const createDependencies = (): HostApplicationCommandDependencies => ({
       withoutCaption: 0
     }))
   },
+  pdfAnnotations: {
+    create: vi.fn(async (request: PdfAnnotationCreateRequest): Promise<PdfAnnotation> => ({
+      id: 'annotation-1',
+      sourceFileId: request.artifactId,
+      versionId: request.versionId,
+      checksum: 'a'.repeat(64),
+      kind: 'highlight',
+      selector: { version: 1, shape: 'text-range', page: 1, rects: [], quote: 'passage' },
+      body: '',
+      createdAt: 1
+    })),
+    import: vi.fn(async (): Promise<PdfAnnotationImportOutcome> => ({
+      status: 'failure',
+      code: 'unreadable-pdf',
+      message: 'not a PDF'
+    })),
+    list: vi.fn(async (): Promise<PdfAnnotationListResult> => ({
+      anchor: { sourceFileId: 'artifact-1', versionId: 'version-1', checksum: 'a'.repeat(64) },
+      annotations: [],
+      counts: { current: 0, versionChanged: 0, checksumMismatch: 0 }
+    })),
+    reattach: vi.fn(async (): Promise<PdfAnnotationReattachResult> => ({
+      annotation: {
+        id: 'annotation-2',
+        sourceFileId: 'artifact-1',
+        versionId: 'version-2',
+        checksum: 'b'.repeat(64),
+        kind: 'area',
+        selector: { version: 1, shape: 'area', page: 1, rect: { x: 0, y: 0, width: 1, height: 1 } },
+        body: '',
+        createdAt: 2
+      },
+      source: {
+        id: 'annotation-1',
+        sourceFileId: 'artifact-1',
+        versionId: 'version-1',
+        checksum: 'a'.repeat(64),
+        kind: 'area',
+        selector: { version: 1, shape: 'area', page: 1, rect: { x: 0, y: 0, width: 1, height: 1 } },
+        body: '',
+        createdAt: 1
+      }
+    })),
+    remove: vi.fn(async (): Promise<PdfAnnotationRemoveResult> => ({ removed: true }))
+  },
   figure: {
     review: vi.fn(
       async (_projectId: string, request: FigureReviewRequest): Promise<FigureReviewResult> => ({
@@ -404,7 +459,8 @@ describe('Host application commands', () => {
         .filter((channel): channel is string => channel !== null)
     }))
 
-    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(77)
+    // 82 with the five PDF annotation channels.
+    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(82)
     const actualGroups = hostApplicationCommandGroups
       .map(({ name, commands }) => ({
         capability: name,
@@ -422,7 +478,7 @@ describe('Host application commands', () => {
       {} as HostApplicationCommandDependencies
     )
 
-    expect(router.dispatcher.commandNames()).toHaveLength(77)
+    expect(router.dispatcher.commandNames()).toHaveLength(82)
     installation.uninstall()
     expect(router.dispatcher.commandNames()).toEqual([])
   })
@@ -458,6 +514,12 @@ describe('Host application commands', () => {
     }
     const parent = { parent: '/target' }
     const pdfPath = '/data/paper.pdf'
+    const pdfAnnotationAnchor = {
+      projectId: 'project-1',
+      sessionId: 'session-1',
+      artifactId: 'artifact-1',
+      versionId: 'version-1'
+    }
     const figureRequest = {
       figureNote: 'Figure 3',
       panels: [{ id: 'A', chartType: 'bar' as const, dataShape: { categorical: true } }]
@@ -619,6 +681,26 @@ describe('Host application commands', () => {
       invocation([{ projectId: 'project-1', docId: 'doc-1', page: 2 }])
     )
     await router.dispatcher.invoke(
+      hostApplicationCommands.pdfAnnotations.create,
+      invocation([{ ...pdfAnnotationAnchor, kind: 'highlight', selector: { version: 1 } }])
+    )
+    await router.dispatcher.invoke(
+      hostApplicationCommands.pdfAnnotations.import,
+      invocation([pdfAnnotationAnchor])
+    )
+    await router.dispatcher.invoke(
+      hostApplicationCommands.pdfAnnotations.list,
+      invocation([pdfAnnotationAnchor])
+    )
+    await router.dispatcher.invoke(
+      hostApplicationCommands.pdfAnnotations.reattach,
+      invocation([{ ...pdfAnnotationAnchor, annotationId: 'annotation-1' }])
+    )
+    await router.dispatcher.invoke(
+      hostApplicationCommands.pdfAnnotations.remove,
+      invocation([{ annotationId: 'annotation-1' }])
+    )
+    await router.dispatcher.invoke(
       hostApplicationCommands.figure.review,
       invocation([{ projectId: 'project-1', request: figureRequest }])
     )
@@ -739,6 +821,20 @@ describe('Host application commands', () => {
     expect(dependencies.pdf.scan).toHaveBeenCalledWith('project-1', 'doc-1', 'attention')
     expect(dependencies.pdf.tables).toHaveBeenCalledWith('project-1', 'doc-1', 2)
     expect(dependencies.pdf.figures).toHaveBeenCalledWith('project-1', 'doc-1', 2)
+    expect(dependencies.pdfAnnotations.create).toHaveBeenCalledWith({
+      ...pdfAnnotationAnchor,
+      kind: 'highlight',
+      selector: { version: 1 }
+    })
+    expect(dependencies.pdfAnnotations.import).toHaveBeenCalledWith(pdfAnnotationAnchor)
+    expect(dependencies.pdfAnnotations.list).toHaveBeenCalledWith(pdfAnnotationAnchor)
+    expect(dependencies.pdfAnnotations.reattach).toHaveBeenCalledWith({
+      ...pdfAnnotationAnchor,
+      annotationId: 'annotation-1'
+    })
+    expect(dependencies.pdfAnnotations.remove).toHaveBeenCalledWith({
+      annotationId: 'annotation-1'
+    })
     expect(dependencies.figure.review).toHaveBeenCalledWith('project-1', figureRequest)
     expect(dependencies.query.run).toHaveBeenCalledWith('project-1', querySql)
     expect(dependencies.storage.commitAndRelaunch).toHaveBeenCalledWith(parent)
@@ -828,8 +924,9 @@ describe('Host application commands', () => {
         .filter((channel): channel is string => channel !== null)
     )
 
-    // 49 with the saved-search-filter-set channels, which are local-only like the bookmarks beside them.
-    expect(localOnlyChannels).toHaveLength(49)
+    // 54 with the PDF annotation channels, 49 with the saved-search-filter-set channels: all of them
+    // are local-only like the bookmarks beside them.
+    expect(localOnlyChannels).toHaveLength(54)
     for (const channel of localOnlyChannels) {
       await expect(
         router.dispatcher.invoke(

@@ -73,6 +73,12 @@ import type { RoutineConfigureRequest } from '../shared/routine'
 import type { EndpointRegisterRequest } from '../shared/endpoint'
 import type { AnnotationSetRequest } from '../shared/annotation'
 import type { SessionBookmarkInput } from '../shared/bookmark'
+import type {
+  PdfAnnotationAnchorRequest,
+  PdfAnnotationCreateRequest,
+  PdfAnnotationReattachRequest,
+  PdfAnnotationRemoveRequest
+} from '../shared/pdf-annotation-surface'
 import type { GlobalSearchPinFilters } from '../shared/global-search-pins'
 import type { FigureReviewRequest } from '../shared/figure'
 import type { HandoffEventsRequest, HandoffRetryRequest } from '../shared/handoff-lifecycle'
@@ -968,6 +974,20 @@ const api: PureScienceAPI = {
       electronRendererContracts.invoke('pdf.tables', request),
     figures: (request: { projectId: string; docId: string; page?: number }) =>
       electronRendererContracts.invoke('pdf.figures', request)
+  },
+  // PDF annotations (文档标注层 A3): the reader's own markup on one file version. Renderer-only by
+  // design, like the session bookmarks above — nothing here has an agent-facing counterpart.
+  pdfAnnotations: {
+    create: (request: PdfAnnotationCreateRequest) =>
+      electronRendererContracts.invoke('pdfAnnotations.create', request),
+    import: (request: PdfAnnotationAnchorRequest) =>
+      electronRendererContracts.invoke('pdfAnnotations.import', request),
+    list: (request: PdfAnnotationAnchorRequest) =>
+      electronRendererContracts.invoke('pdfAnnotations.list', request),
+    reattach: (request: PdfAnnotationReattachRequest) =>
+      electronRendererContracts.invoke('pdfAnnotations.reattach', request),
+    remove: (request: PdfAnnotationRemoveRequest) =>
+      electronRendererContracts.invoke('pdfAnnotations.remove', request)
   },
   figure: {
     review: (request: { projectId: string; request: FigureReviewRequest }) =>

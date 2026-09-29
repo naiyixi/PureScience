@@ -15,6 +15,7 @@ const NOTEBOOK_LIFECYCLE_PROMPT = 'Verify the notebook lifecycle.'
 const ARTIFACT_PROVENANCE_PROMPT = 'Create a provenance artifact.'
 const PDF_TABLE_PROMPT = 'Create a table PDF fixture.'
 const PDF_REGION_PROMPT = 'Create a region drawing PDF.'
+const PDF_ANNOTATED_PROMPT = 'Create an annotated PDF fixture.'
 const INTERRUPTED_TURN_PROMPT = 'Continue the interrupted turn fixture.'
 // Literature screening: the app asks this agent to screen ONE record per session. The fixture answers in
 // the shape the app's guardrails demand (a citation of an inclusion criterion, or an explicit
@@ -240,16 +241,23 @@ const createProvenanceArtifact = async (sessionId) => {
 // extraction has something real to find: a 2x2 image painted at 200x150 points and "Figure 1." below it.
 // One page whose content is given: the object layout is shared so every PDF this fixture writes can be read
 // the same way. The image is still referenced by the page whether or not the content paints it.
-const pdfFromContent = (content) => {
+// `annotationObjects` are appended as objects 7..N and referenced from the page's own /Annots, so a PDF
+// this fixture writes can carry markup inside itself — which is what the annotation import reads.
+const pdfFromContent = (content, annotationObjects = []) => {
   const imageData = Buffer.from([255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0])
   const imageBytes = [...imageData].map((byte) => String.fromCharCode(byte)).join('')
+  const annots =
+    annotationObjects.length > 0
+      ? `/Annots[${annotationObjects.map((_, index) => `${7 + index} 0 R`).join(' ')}]`
+      : ''
   const objects = [
     '<</Type/Catalog/Pages 2 0 R>>',
     '<</Type/Pages/Kids[3 0 R]/Count 1>>',
-    '<</Type/Page/Parent 2 0 R/MediaBox[0 0 400 600]/Resources<</Font<</F1 4 0 R>>/XObject<</Im1 6 0 R>>>>/Contents 5 0 R>>',
+    `<</Type/Page/Parent 2 0 R/MediaBox[0 0 400 600]${annots}/Resources<</Font<</F1 4 0 R>>/XObject<</Im1 6 0 R>>>>/Contents 5 0 R>>`,
     '<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>',
     `<</Length ${content.length}>>stream\n${content}\nendstream`,
-    `<</Type/XObject/Subtype/Image/Width 2/Height 2/ColorSpace/DeviceRGB/BitsPerComponent 8/Length ${imageData.length}>>stream\n${imageBytes}\nendstream`
+    `<</Type/XObject/Subtype/Image/Width 2/Height 2/ColorSpace/DeviceRGB/BitsPerComponent 8/Length ${imageData.length}>>stream\n${imageBytes}\nendstream`,
+    ...annotationObjects
   ]
   let body = '%PDF-1.4\n'
   const offsets = []
@@ -264,14 +272,22 @@ const pdfFromContent = (content) => {
   return Buffer.from(body, 'latin1').toString('base64')
 }
 
-const minimalPdf = (text) => {
-  // Paint the image, then write the caption under it.
-  const content =
-    `q 200 0 0 150 100 500 cm /Im1 Do Q\n` +
-    `BT /F1 18 Tf 40 320 Td (${text}) Tj ET\n` +
-    'BT /F1 12 Tf 100 470 Td (Figure 1. Measured response) Tj ET'
-  return pdfFromContent(content)
-}
+// Paint the image, then write the caption under it.
+const minimalPdfContent = (text) =>
+  `q 200 0 0 150 100 500 cm /Im1 Do Q\n` +
+  `BT /F1 18 Tf 40 320 Td (${text}) Tj ET\n` +
+  'BT /F1 12 Tf 100 470 Td (Figure 1. Measured response) Tj ET'
+
+const minimalPdf = (text) => pdfFromContent(minimalPdfContent(text))
+
+// One page whose caption carries two annotations the file itself wrote: a highlight over the caption
+// (which the app imports, quoting the passage) and an ink stroke (a kind this build does not place, so
+// the import report has to name it with its reason and count rather than quietly dropping it).
+const annotatedPdf = () =>
+  pdfFromContent(minimalPdfContent('Annotated evidence'), [
+    '<</Type/Annot/Subtype/Highlight/F 4/C[1 1 0]/Rect[100 468 250 482]/QuadPoints[100 482 250 482 100 470 250 470]/Contents(Keep this: the effect is large)>>',
+    '<</Type/Annot/Subtype/Ink/F 4/Rect[300 300 340 340]/InkList[[300 300 340 340]]/Contents(drawn stroke)>>'
+  ])
 
 // A table that is really a table: four columns and four rows, each cell placed by its own text matrix, so
 // the columns are the reader's to find by position rather than by guessing from spacing.
@@ -317,6 +333,26 @@ const createPdfTableArtifact = async (sessionId) =>
       throw new Error('The table PDF artifact was not stored with a Version.')
     }
     return `Table PDF ready for session ${sessionId}, artifact ${stored.artifact.artifact_id}, version ${stored.artifact.version_id}.`
+  })
+
+const createPdfAnnotatedArtifact = async (sessionId) =>
+  withMcpClient(sessionId, 'purescience-artifacts', async (client) => {
+    const stored = toolResult(
+      'write_artifact_file',
+      await client.callTool({
+        name: 'write_artifact_file',
+        arguments: {
+          filename: 'annotated-evidence.pdf',
+          mimeType: 'application/pdf',
+          encoding: 'base64',
+          content: annotatedPdf()
+        }
+      })
+    )
+    if (!stored.artifact?.artifact_id || !stored.artifact.version_id) {
+      throw new Error('The annotated PDF artifact was not stored with a Version.')
+    }
+    return `Annotated PDF ready for session ${sessionId}, artifact ${stored.artifact.artifact_id}, version ${stored.artifact.version_id}.`
   })
 
 const createPdfRegionArtifact = async (sessionId) =>
@@ -427,6 +463,8 @@ if (process.argv.includes('--version')) {
           reply = await createPdfTableArtifact(context.params.sessionId)
         } else if (prompt.includes(PDF_REGION_PROMPT)) {
           reply = await createPdfRegionArtifact(context.params.sessionId)
+        } else if (prompt.includes(PDF_ANNOTATED_PROMPT)) {
+          reply = await createPdfAnnotatedArtifact(context.params.sessionId)
         } else if (prompt.includes(PERMISSION_PROMPT)) {
           const permission = await context.client.request(
             acp.methods.client.session.requestPermission,

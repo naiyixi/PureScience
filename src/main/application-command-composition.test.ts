@@ -173,8 +173,9 @@ describe('application command composition', () => {
     // Two more than before the list/document split: sessions:list-catalog and sessions:read-document are
     // local-Web channels, so the total moves with them. The task surface is untouched (neither channel
     // carries a task registration); the remote Web surface moves too — see the pin below. One more again
-    // for project-files:list-kinds, which is a plain Web request profile like the read it replaces.
-    expect(composition.localWeb.commandNames()).toHaveLength(329)
+    // project-files:list-kinds, which is a plain Web request profile like the read it replaces. Five
+    // more for the PDF annotation surface, whose channels are all local-only.
+    expect(composition.localWeb.commandNames()).toHaveLength(334)
   })
 
   it('partitions remote Web dispatch from fail-closed pre-dispatch rejections', async () => {
@@ -195,7 +196,7 @@ describe('application command composition', () => {
     // project-files:list-kinds, which carries no surface flag.
     expect(composition.remoteWeb.commandNames()).toHaveLength(220)
     expect(composition.remoteWeb.rejectedCommandNames()).toEqual(expectedRemoteRejections())
-    expect(composition.remoteWeb.rejectedCommandNames()).toHaveLength(109)
+    expect(composition.remoteWeb.rejectedCommandNames()).toHaveLength(114)
     await expect(
       composition.remoteWeb.invoke('compute:download', invocation('remote'))
     ).rejects.toThrow('Application command is rejected before dispatch: compute:download')

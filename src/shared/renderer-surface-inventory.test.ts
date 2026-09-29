@@ -157,6 +157,7 @@ const REMOTE_LOCAL_ONLY_CHANNELS: GroupedInventory = {
   'search-pins': ['list', 'remove', 'save'],
   annotation: ['list', 'remove', 'set'],
   pdf: ['figures', 'open', 'outline', 'pages', 'scan', 'tables'],
+  'pdf-annotations': ['create', 'import', 'list', 'reattach', 'remove'],
   figure: ['review'],
   query: ['run'],
   search: ['query', 'evidence'],
@@ -262,14 +263,14 @@ describe('renderer surface inventory', () => {
       ...Object.keys(WEB_EVENT_CHANNELS)
     ])
 
-    expect(electronPaths).toHaveLength(441)
+    expect(electronPaths).toHaveLength(446)
     expectSameSet(
       electronPaths,
       RENDERER_CONTRACT_CATALOG.map(({ publicPath }) => publicPath)
     )
-    // 337 since the literature-screening surface (v1.77 unit): its eight channels are local invoke
-    // channels, so the invoke map moves with them.
-    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(337)
+    // 342 since the PDF annotation surface (文档标注层 A3) and 337 since the literature-screening
+    // surface (v1.77 unit): both are local invoke channels, so the invoke map moves with them.
+    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(342)
     expect(Object.keys(WEB_EVENT_CHANNELS)).toHaveLength(34)
     expectSameSet(
       electronPaths.filter((path) => !generatedPaths.has(path)),
@@ -305,7 +306,7 @@ describe('renderer surface inventory', () => {
     const expectedRemoteLocalOnly = expand(REMOTE_LOCAL_ONLY_CHANNELS, ':')
 
     expectSameSet(REMOTE_LOCAL_ONLY_RPC_CHANNELS, expectedRemoteLocalOnly)
-    expect(expectedRemoteLocalOnly).toHaveLength(109)
+    expect(expectedRemoteLocalOnly).toHaveLength(114)
     expect(
       expectedRemoteLocalOnly.every((channel) => WEB_RPC_ALLOWED_CHANNELS.includes(channel))
     ).toBe(true)

@@ -12,22 +12,24 @@ describe('renderer contract catalog', () => {
   it('pins the complete capability-owned inventory and legacy map projection', () => {
     const projection = projectRendererContractMaps(RENDERER_CONTRACT_CATALOG)
 
-    expect(RENDERER_CONTRACT_GROUPS).toHaveLength(44)
-    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(441)
+    // 45 groups / 446 contracts with the PDF annotation surface (pdfAnnotations.create / import / list /
+    // reattach / remove): five local-only channels beside the PDF reading surface they belong to.
+    expect(RENDERER_CONTRACT_GROUPS).toHaveLength(45)
+    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(446)
     expect(projection.invoke).toEqual(WEB_INVOKE_CHANNELS)
     expect(projection.event).toEqual(WEB_EVENT_CHANNELS)
     // 337 with the literature-screening surface (references.getScreening / listScreeningRuleRevisions /
     // appendScreeningRuleRevision / startScreeningRun / cancelScreeningRun / setScreeningOverride /
     // setScreeningOverrides / clearScreeningOverride): all eight are Web-profile invoke channels, so the
     // invoke map and the local-only set move together.
-    expect(Object.keys(projection.invoke)).toHaveLength(337)
+    expect(Object.keys(projection.invoke)).toHaveLength(342)
     expect(Object.keys(projection.event)).toHaveLength(34)
   })
 
   it('separates actual Web installation from the generated compatibility projection', () => {
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb !== 'unavailable')
-    ).toHaveLength(367)
+    ).toHaveLength(372)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb === 'browser-native')
     ).toEqual(['getRuntimeVersions', 'saveBlobFile', 'saveManagedFile', 'window.close'])
@@ -60,7 +62,7 @@ describe('renderer contract catalog', () => {
     ).toHaveLength(74)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.remoteWeb === 'rejecting-stub')
-    ).toHaveLength(109)
+    ).toHaveLength(114)
     expect(
       paths(({ eventDeliverability }) =>
         Object.values(eventDeliverability).includes('installed-undelivered')

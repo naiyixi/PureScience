@@ -108,7 +108,9 @@ type ApplicationCommandComposition = Readonly<{
   dispose: () => void
 }>
 
-const GROUP_COUNT = 38
+const GROUP_COUNT = 39
+// +1 group: the PDF annotation group (pdf-annotations:create / import / list / reattach / remove) sits
+// beside the PDF reading surface it belongs to, and every one of its channels is local-only.
 // +1 group: the saved-search-filter-set group (searchPins.list / remove / save) sits beside the bookmarks
 // and is registered on the local Web view like theirs.
 // Counts are certified at startup: a new command without a matching increment fails the boot rather
@@ -127,14 +129,17 @@ const GROUP_COUNT = 38
 // startScreeningRun / cancelScreeningRun / setScreeningOverride / setScreeningOverrides /
 // clearScreeningOverride) is reachable from the window and both Web surfaces. The fail-closed remote
 // rejection count is untouched because none of them is a local-only channel.
-const INTERNAL_COMMAND_COUNT = 331
+// +5 each on internal, local Web and the remote rejections: the PDF annotation surface. Read, write,
+// re-anchor and import are all local-only — a paired remote browser may not touch the reader's markup —
+// so the remote dispatch count is untouched and the fail-closed set takes all five.
+const INTERNAL_COMMAND_COUNT = 336
 // +3 each on internal, local Web and the remote rejections: the saved-search-filter-set channels are
 // reachable from the window locally and are refused on the remote surface, which is where they are counted.
-const LOCAL_WEB_COMMAND_COUNT = 329
+const LOCAL_WEB_COMMAND_COUNT = 334
 // Two more as well: the same two channels are mapped, so they count on both the local and the remote Web
 // surfaces. The rejected (fail-closed) and task counts are untouched.
 const REMOTE_WEB_COMMAND_COUNT = 220
-const REMOTE_REJECTED_COMMAND_COUNT = 109
+const REMOTE_REJECTED_COMMAND_COUNT = 114
 const TASK_COMMAND_COUNT = 11
 
 const ELECTRON_NATIVE_COMMAND_NAMES = Object.freeze([

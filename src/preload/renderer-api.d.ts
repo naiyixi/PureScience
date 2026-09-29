@@ -342,6 +342,17 @@ import type {
 } from '../shared/endpoint'
 import type { AnnotationSetRequest, FileAnnotation } from '../shared/annotation'
 import type { SessionBookmark, SessionBookmarkInput } from '../shared/bookmark'
+import type { PdfAnnotation } from '../shared/pdf-annotations'
+import type {
+  PdfAnnotationAnchorRequest,
+  PdfAnnotationCreateRequest,
+  PdfAnnotationImportOutcome,
+  PdfAnnotationListResult,
+  PdfAnnotationReattachRequest,
+  PdfAnnotationReattachResult,
+  PdfAnnotationRemoveRequest,
+  PdfAnnotationRemoveResult
+} from '../shared/pdf-annotation-surface'
 import type { GlobalSearchPin, GlobalSearchPinFilters } from '../shared/global-search-pins'
 import type {
   PdfOpenResult,
@@ -1213,6 +1224,16 @@ export interface PureScienceAPI {
     outline(request: { projectId: string; docId: string }): Promise<PdfOutlineResult>
     // Scans pages for a query, ranked by relevance.
     scan(request: { projectId: string; docId: string; query: string }): Promise<PdfScanResult>
+  }
+  // PDF annotations (文档标注层 A3): list / create / remove / re-anchor, and the import channel. Every
+  // request names the file VERSION; the content checksum and the anchor state are resolved in the main
+  // process, never supplied by the window.
+  pdfAnnotations: {
+    list(request: PdfAnnotationAnchorRequest): Promise<PdfAnnotationListResult>
+    create(request: PdfAnnotationCreateRequest): Promise<PdfAnnotation>
+    remove(request: PdfAnnotationRemoveRequest): Promise<PdfAnnotationRemoveResult>
+    reattach(request: PdfAnnotationReattachRequest): Promise<PdfAnnotationReattachResult>
+    import(request: PdfAnnotationAnchorRequest): Promise<PdfAnnotationImportOutcome>
   }
   figure: {
     // Reviews a figure against the publication-grade correctness checklist.

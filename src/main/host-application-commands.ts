@@ -54,6 +54,18 @@ import type {
   PdfTablesResult
 } from '../shared/pdf'
 import type { PdfCommandOwner } from './settings/pdf-ipc'
+import type { PdfAnnotationCommandOwner } from './references/pdf-annotation-ipc'
+import type { PdfAnnotation } from '../shared/pdf-annotations'
+import type {
+  PdfAnnotationAnchorRequest,
+  PdfAnnotationCreateRequest,
+  PdfAnnotationImportOutcome,
+  PdfAnnotationListResult,
+  PdfAnnotationReattachRequest,
+  PdfAnnotationReattachResult,
+  PdfAnnotationRemoveRequest,
+  PdfAnnotationRemoveResult
+} from '../shared/pdf-annotation-surface'
 import type { FigureReviewResult, FigureReviewRequest } from '../shared/figure'
 import type { FigureCommandOwner } from './settings/figure-ipc'
 import type { HostQueryResult } from '../shared/host-query'
@@ -435,6 +447,36 @@ const pdfCommands = Object.freeze({
   >('pdf:figures')
 })
 
+// Declared in the same order the contract catalogue lists them, which for this group is the channel
+// order: create, import, list, reattach, remove.
+const pdfAnnotationCommands = Object.freeze({
+  create: defineApplicationCommand<
+    'pdf-annotations:create',
+    readonly [request: PdfAnnotationCreateRequest],
+    PdfAnnotation
+  >('pdf-annotations:create'),
+  import: defineApplicationCommand<
+    'pdf-annotations:import',
+    readonly [request: PdfAnnotationAnchorRequest],
+    PdfAnnotationImportOutcome
+  >('pdf-annotations:import'),
+  list: defineApplicationCommand<
+    'pdf-annotations:list',
+    readonly [request: PdfAnnotationAnchorRequest],
+    PdfAnnotationListResult
+  >('pdf-annotations:list'),
+  reattach: defineApplicationCommand<
+    'pdf-annotations:reattach',
+    readonly [request: PdfAnnotationReattachRequest],
+    PdfAnnotationReattachResult
+  >('pdf-annotations:reattach'),
+  remove: defineApplicationCommand<
+    'pdf-annotations:remove',
+    readonly [request: PdfAnnotationRemoveRequest],
+    PdfAnnotationRemoveResult
+  >('pdf-annotations:remove')
+})
+
 const figureCommands = Object.freeze({
   review: defineApplicationCommand<
     'figure:review',
@@ -466,6 +508,7 @@ const hostApplicationCommands = Object.freeze({
   bookmark: bookmarkCommands,
   searchPins: searchPinCommands,
   pdf: pdfCommands,
+  pdfAnnotations: pdfAnnotationCommands,
   figure: figureCommands,
   query: queryCommands,
   storage: storageCommands,
@@ -492,7 +535,10 @@ const hostApplicationCommandGroups = Object.freeze([
   // Appended last on purpose: group registration below addresses these by index, so a new group
   // goes at the end rather than into the middle.
   defineApplicationCommandGroup('bookmark', Object.values(bookmarkCommands)),
-  defineApplicationCommandGroup('searchPins', Object.values(searchPinCommands))
+  defineApplicationCommandGroup('searchPins', Object.values(searchPinCommands)),
+  // Appended last for the same reason as the two above: the registration below addresses groups by
+  // index, so a new group goes at the end rather than into the middle.
+  defineApplicationCommandGroup('pdfAnnotations', Object.values(pdfAnnotationCommands))
 ] as const)
 
 type HostApplicationCommandDependencies = Readonly<{
@@ -538,6 +584,9 @@ type HostApplicationCommandDependencies = Readonly<{
   bookmark: BookmarkCommandOwner
   searchPins: SearchPinCommandOwner
   pdf: PdfCommandOwner
+  // PDF annotations: renderer-only, with no agent-facing owner beside it — the reader's own markup on
+  // their own file version, like the bookmarks above.
+  pdfAnnotations: PdfAnnotationCommandOwner
   figure: FigureCommandOwner
   query: HostQueryCommandOwner
   storage: Readonly<{
@@ -847,6 +896,31 @@ const registerHostApplicationCommands = (
       'bookmark:update-note': ({ args, callerContext }) =>
         localCommand(callerContext, 'bookmark:update-note', () =>
           dependencies.bookmark.updateNote(args[0], args[1], args[2])
+        )
+    })
+    // PDF annotations (文档标注层 A3): the same transport-independent path as the bookmarks, and
+    // deliberately nowhere near an agent-facing tool list. Every channel is local-only, so each one goes
+    // through localCommand — a paired remote browser cannot reach the reader's markup.
+    scope.registerGroup(hostApplicationCommandGroups[18], {
+      'pdf-annotations:create': ({ args, callerContext }) =>
+        localCommand(callerContext, 'pdf-annotations:create', () =>
+          dependencies.pdfAnnotations.create(args[0])
+        ),
+      'pdf-annotations:import': ({ args, callerContext }) =>
+        localCommand(callerContext, 'pdf-annotations:import', () =>
+          dependencies.pdfAnnotations.import(args[0])
+        ),
+      'pdf-annotations:list': ({ args, callerContext }) =>
+        localCommand(callerContext, 'pdf-annotations:list', () =>
+          dependencies.pdfAnnotations.list(args[0])
+        ),
+      'pdf-annotations:reattach': ({ args, callerContext }) =>
+        localCommand(callerContext, 'pdf-annotations:reattach', () =>
+          dependencies.pdfAnnotations.reattach(args[0])
+        ),
+      'pdf-annotations:remove': ({ args, callerContext }) =>
+        localCommand(callerContext, 'pdf-annotations:remove', () =>
+          dependencies.pdfAnnotations.remove(args[0])
         )
     })
     return scope.complete()

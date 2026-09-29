@@ -85,6 +85,36 @@ describe('PdfRegionOverlay', () => {
     expect(onRegion).not.toHaveBeenCalled()
   })
 
+  // A press that never moved is where a page note wants to sit (文档标注层 A3): reported as a point on the
+  // page, not as a rectangle with no extent (which is refused everywhere else).
+  it('reports where a press happened when the caller is placing something', () => {
+    const onRegion = vi.fn()
+    const onPress = vi.fn()
+    act(() => {
+      root.render(<PdfRegionOverlay onRegion={onRegion} onPress={onPress} />)
+    })
+
+    act(() => {
+      press(overlay(), 'pointerdown', 150, 200)
+      press(overlay(), 'pointerup', 150, 200)
+    })
+
+    expect(onRegion).not.toHaveBeenCalled()
+    expect(onPress).toHaveBeenCalledWith({ x: 0.25, y: 0.25 })
+  })
+
+  // While nothing is being placed the layer steps out of the way entirely: a page must still be scrollable
+  // and its text still selectable.
+  it('takes no pointer events at all while it is disabled', () => {
+    const onRegion = vi.fn()
+    act(() => {
+      root.render(<PdfRegionOverlay onRegion={onRegion} enabled={false} />)
+    })
+
+    expect(overlay()).toBeNull()
+    expect(onRegion).not.toHaveBeenCalled()
+  })
+
   it('shows the rubber band while the drag is in progress and clears it afterwards', () => {
     const onRegion = vi.fn()
     act(() => {

@@ -59,6 +59,12 @@ import { ProvenanceMessageSnapshotRepository } from './artifacts/provenance-mess
 import { ArtifactRunRegistry } from './artifacts/run-registry'
 import { createComputeIpcModule } from './compute/ipc'
 import { createReferencesIpcModule, installReferencesIpcHandlers } from './references/ipc'
+import { PdfAnnotationRepository } from './references/pdf-annotation-repository'
+import { PdfAnnotationService } from './references/pdf-annotation-service'
+import {
+  createPdfAnnotationCommandOwner,
+  registerPdfAnnotationIpcHandlers
+} from './references/pdf-annotation-ipc'
 import { fingerprintPdfFile } from './settings/pdf-fingerprint'
 import { attachEnabledComputeHosts } from './compute/enabled-hosts-registry'
 import { createComputeJobRuntime } from './compute/job-runtime'
@@ -1538,6 +1544,40 @@ const createApplicationModules = async (
   const bookmarkRepository = new BookmarkRepository({
     storageRoot: resolveDataRoot()
   })
+  // PDF annotations (文档标注层 A3): the A1 store, addressed through the version authority. The window
+  // names the file VERSION it is looking at; the checksum comes from here, because a checksum the window
+  // typed would describe bytes nobody read. Reading the bytes is a separate, later step (import only), so
+  // opening a large PDF does not pay for its content twice.
+  const pdfAnnotationRepository = new PdfAnnotationRepository(() =>
+    getProjectDbClient(resolveStorageRoot())
+  )
+  const pdfAnnotationService = new PdfAnnotationService({
+    repository: pdfAnnotationRepository,
+    resolveVersion: async (request) => {
+      const lineage = await artifactProvenanceRepository.getLineage({
+        projectId: request.projectId,
+        appSessionId: request.sessionId,
+        artifactId: request.artifactId
+      })
+      const version = (lineage?.versions ?? []).find(
+        (candidate) => candidate.versionId === request.versionId
+      )
+      return version?.checksum
+        ? { versionId: version.versionId, checksum: version.checksum }
+        : undefined
+    },
+    // The same resolver the preview reads through, so an import reads the bytes the reader is looking at
+    // and refuses (by checksum) any other bytes.
+    resolveVersionFile: async (request) =>
+      (
+        await artifactProvenanceRepository.resolveVersionContent({
+          projectId: request.projectId,
+          appSessionId: request.sessionId,
+          artifactId: request.artifactId,
+          versionId: request.versionId
+        })
+      ).path
+  })
   // Saved search filter sets (v1.67): the researcher's own working state, wired for the renderer only —
   // there is no agent-facing owner beside it.
   const searchPinRepository = new SearchPinRepository({
@@ -2768,6 +2808,9 @@ const createApplicationModules = async (
     registerClipboardIpcHandlers()
     registerPdfIpcHandlers(createPdfCommandOwner(pdfService))
   })
+  declareElectronAdapter('pdfAnnotations', () => {
+    registerPdfAnnotationIpcHandlers(createPdfAnnotationCommandOwner(pdfAnnotationService))
+  })
   declareElectronAdapter('figure', () => {
     registerFigureIpcHandlers(
       createFigureCommandOwner((request) => reviewFigure(request.panels, request.figureNote))
@@ -2874,6 +2917,7 @@ const createApplicationModules = async (
       bookmark: createBookmarkCommandOwner(bookmarkRepository),
       searchPins: createSearchPinCommandOwner(searchPinRepository),
       pdf: createPdfCommandOwner(pdfService),
+      pdfAnnotations: createPdfAnnotationCommandOwner(pdfAnnotationService),
       figure: createFigureCommandOwner((request) =>
         reviewFigure(request.panels, request.figureNote)
       ),

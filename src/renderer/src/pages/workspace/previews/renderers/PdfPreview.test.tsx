@@ -3,6 +3,7 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { LanguageProvider } from '@/i18n'
 import { createManagedPdfLoadingTask } from '../managed-pdf-document'
 import { PdfPreviewContent } from './PdfPreview'
 
@@ -1050,5 +1051,304 @@ describe('PdfPreviewContent', () => {
     expect(page?.dataset.annotationSource).toBe('PDF · evidence.pdf · p.1')
 
     clientWidthSpy.mockRestore()
+  })
+})
+
+// The annotation layer (文档标注层 A3), driven through the preview: a gesture becomes an annotation
+// through the version-anchored surface, and the surface is absent when there is no version to anchor to.
+describe('PdfPreviewContent annotations', () => {
+  let container: HTMLDivElement
+  let root: Root
+  let getPage: ReturnType<typeof vi.fn>
+  let annotations: {
+    list: ReturnType<typeof vi.fn>
+    create: ReturnType<typeof vi.fn>
+    remove: ReturnType<typeof vi.fn>
+    reattach: ReturnType<typeof vi.fn>
+    import: ReturnType<typeof vi.fn>
+  }
+  const PAGE = { width: 600, height: 800 }
+
+  const anchor = { sourceFileId: 'artifact-1', versionId: 'version-1', checksum: 'a'.repeat(64) }
+
+  const listView = (anchorState: string): unknown => ({
+    anchor,
+    annotations: [
+      {
+        annotation: {
+          id: 'annotation-old',
+          sourceFileId: 'artifact-1',
+          versionId: 'version-0',
+          checksum: 'b'.repeat(64),
+          kind: 'area',
+          selector: {
+            version: 1,
+            shape: 'area',
+            page: 1,
+            rect: { x: 0.2, y: 0.2, width: 0.2, height: 0.2 }
+          },
+          body: '',
+          createdAt: 1
+        },
+        anchorState
+      }
+    ],
+    counts: { current: 0, versionChanged: 1, checksumMismatch: 0 }
+  })
+
+  const renderPreview = async (extraProps: Record<string, unknown> = {}): Promise<void> => {
+    await act(async () => {
+      root.render(
+        // Through the real provider: the panel's copy is the dictionary's, placeholders included.
+        <LanguageProvider>
+          <PdfPreviewContent
+            path="artifact-version:version-1"
+            name="report.pdf"
+            source="artifact"
+            projectId="project-1"
+            sessionId="session-1"
+            artifactId="artifact-1"
+            selectedVersionId="version-1"
+            {...extraProps}
+          />
+        </LanguageProvider>
+      )
+    })
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+  }
+
+  const page = (): HTMLElement => container.querySelector<HTMLElement>('[data-page-number="1"]')!
+
+  const press = (element: HTMLElement, type: string, x: number, y: number): void => {
+    element.dispatchEvent(new MouseEvent(type, { bubbles: true, clientX: x, clientY: y }))
+  }
+
+  beforeEach(() => {
+    container = document.createElement('div')
+    document.body.appendChild(container)
+    root = createRoot(container)
+    annotations = {
+      list: vi.fn().mockResolvedValue(listView('version-changed')),
+      create: vi.fn().mockResolvedValue(undefined),
+      remove: vi.fn().mockResolvedValue({ removed: true }),
+      reattach: vi.fn().mockResolvedValue(undefined),
+      import: vi.fn().mockResolvedValue({
+        status: 'report',
+        report: {
+          sourceKind: 'embedded-pdf',
+          sourceFileId: 'artifact-1',
+          versionId: 'version-1',
+          checksum: 'a'.repeat(64),
+          digest: 'a'.repeat(64),
+          status: 'no-annotations',
+          imported: 0,
+          kinds: [],
+          skipped: [],
+          pageCount: 0,
+          annotationsInFile: 0,
+          receiptCreated: false
+        }
+      })
+    }
+    window.api = {
+      previewResources: {
+        acquire: vi.fn().mockResolvedValue({
+          id: 'resource-1',
+          url: 'purescience-preview://resource-1/report.pdf',
+          size: 1024,
+          mimeType: 'application/pdf',
+          version: 1
+        }),
+        readRange: vi.fn(),
+        release: vi.fn().mockResolvedValue(undefined)
+      },
+      pdfAnnotations: annotations
+    } as unknown as Window['api']
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(
+      {} as CanvasRenderingContext2D
+    )
+    getPage = vi.fn().mockResolvedValue({
+      getViewport: vi.fn(() => ({ width: PAGE.width, height: PAGE.height })),
+      getTextContent: vi.fn().mockResolvedValue({ items: [] }),
+      render: vi.fn(() => ({ promise: Promise.resolve(), cancel: vi.fn() })),
+      cleanup: vi.fn()
+    })
+    vi.mocked(createManagedPdfLoadingTask).mockReturnValue({
+      promise: Promise.resolve({ numPages: 1, getPage, destroy: vi.fn() }),
+      destroy: vi.fn().mockResolvedValue(undefined)
+    } as never)
+    // jsdom reports a zero-sized box for everything, and a drag normalized against a zero box stores
+    // nothing at all: the page has to be judged against a real page box.
+    Element.prototype.getBoundingClientRect = function boxed(this: Element): DOMRect {
+      return {
+        ...PAGE,
+        top: 0,
+        left: 0,
+        right: PAGE.width,
+        bottom: PAGE.height,
+        x: 0,
+        y: 0,
+        toJSON: () => ({})
+      } as DOMRect
+    }
+  })
+
+  afterEach(async () => {
+    await act(async () => root?.unmount())
+    container.remove()
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+
+  it('reads the file version it is showing, and stores a drawn region as an annotation of it', async () => {
+    annotations.list.mockResolvedValue({
+      anchor,
+      annotations: [],
+      counts: { current: 0, versionChanged: 0, checksumMismatch: 0 }
+    })
+    await renderPreview()
+
+    // The window names the version; it never names a checksum.
+    await vi.waitFor(() =>
+      expect(annotations.list).toHaveBeenCalledWith({
+        projectId: 'project-1',
+        sessionId: 'session-1',
+        artifactId: 'artifact-1',
+        versionId: 'version-1'
+      })
+    )
+
+    await act(async () => {
+      container.querySelector<HTMLElement>('[data-slot="pdf-annotation-mode-area"]')?.click()
+    })
+    const overlay = container.querySelector<HTMLElement>('[data-slot="pdf-region-overlay"]')
+    expect(overlay).not.toBeNull()
+
+    await act(async () => {
+      press(overlay!, 'pointerdown', 60, 80)
+      press(overlay!, 'pointermove', 360, 480)
+      press(overlay!, 'pointerup', 360, 480)
+      await Promise.resolve()
+    })
+
+    await vi.waitFor(() =>
+      expect(annotations.create).toHaveBeenCalledWith({
+        projectId: 'project-1',
+        sessionId: 'session-1',
+        artifactId: 'artifact-1',
+        versionId: 'version-1',
+        kind: 'area',
+        selector: {
+          version: 1,
+          shape: 'area',
+          page: 1,
+          rect: { x: 0.1, y: 0.1, width: 0.5, height: 0.5 }
+        },
+        body: ''
+      })
+    )
+    expect(container.querySelector('[data-testid="pdf-annotation-status"]')?.textContent).toBe(
+      'Annotation saved'
+    )
+  })
+
+  it('turns a text selection into a highlight only while a marking mode is on', async () => {
+    annotations.list.mockResolvedValue({
+      anchor,
+      annotations: [],
+      counts: { current: 0, versionChanged: 0, checksumMismatch: 0 }
+    })
+    const quote = 'the effect is large'
+    const range = {
+      getClientRects: () => [
+        { left: 160, top: 130, right: 460, bottom: 150, width: 300, height: 20 }
+      ]
+    }
+    vi.spyOn(window, 'getSelection').mockReturnValue({
+      toString: () => quote,
+      rangeCount: 1,
+      getRangeAt: () => range
+    } as unknown as Selection)
+
+    await renderPreview()
+
+    // No marking mode: selecting a passage means what it always meant.
+    await act(async () => {
+      page().dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
+      await Promise.resolve()
+    })
+    expect(annotations.create).not.toHaveBeenCalled()
+
+    await act(async () => {
+      container.querySelector<HTMLElement>('[data-slot="pdf-annotation-mode-highlight"]')?.click()
+    })
+    expect(container.querySelector('[data-testid="pdf-annotation-hint"]')?.textContent).toBe(
+      'Select text on a page to highlight it'
+    )
+
+    await act(async () => {
+      page().dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
+      await Promise.resolve()
+    })
+
+    await vi.waitFor(() =>
+      expect(annotations.create).toHaveBeenCalledWith({
+        projectId: 'project-1',
+        sessionId: 'session-1',
+        artifactId: 'artifact-1',
+        versionId: 'version-1',
+        kind: 'highlight',
+        selector: {
+          version: 1,
+          shape: 'text-range',
+          page: 1,
+          rects: [{ x: 0.2667, y: 0.1625, width: 0.5, height: 0.025 }],
+          quote
+        },
+        body: ''
+      })
+    )
+  })
+
+  it('offers no annotation surface when the preview cannot name a file version', async () => {
+    await renderPreview({ artifactId: undefined, selectedVersionId: undefined })
+
+    expect(container.querySelector('[data-slot="pdf-annotation-mode-area"]')).toBeNull()
+    expect(annotations.list).not.toHaveBeenCalled()
+  })
+
+  it('lists an annotation of another version by name, and shows what an import answered', async () => {
+    await renderPreview()
+    await act(async () => {
+      container.querySelector<HTMLElement>('[data-slot="pdf-annotation-panel-toggle"]')?.click()
+    })
+
+    const panel = container.querySelector('[data-testid="pdf-annotation-panel"]')
+    expect(panel).not.toBeNull()
+    // The annotation is listed with the version it belongs to, and named as changed — never dropped.
+    await vi.waitFor(() => expect(panel?.textContent).toContain('version-0'))
+    expect(panel?.querySelectorAll('[data-testid="pdf-annotation-item"]')).toHaveLength(1)
+
+    await act(async () => {
+      container.querySelector<HTMLElement>('[data-slot="pdf-annotation-import"]')?.click()
+      await Promise.resolve()
+    })
+
+    await vi.waitFor(() =>
+      expect(annotations.import).toHaveBeenCalledWith({
+        projectId: 'project-1',
+        sessionId: 'session-1',
+        artifactId: 'artifact-1',
+        versionId: 'version-1'
+      })
+    )
+    await vi.waitFor(() =>
+      expect(
+        container.querySelector('[data-testid="pdf-annotation-import-status"]')?.textContent
+      ).toBe('This PDF carries no annotations')
+    )
   })
 })

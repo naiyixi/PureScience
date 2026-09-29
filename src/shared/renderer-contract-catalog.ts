@@ -321,6 +321,11 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['tables', 'pdf:tables', LOCAL],
     ['figures', 'pdf:figures', LOCAL],
   ]),
+  group('pdfAnnotations', 'pdfAnnotations', [
+    ['create', 'pdf-annotations:create', LOCAL], ['import', 'pdf-annotations:import', LOCAL],
+    ['list', 'pdf-annotations:list', LOCAL], ['reattach', 'pdf-annotations:reattach', LOCAL],
+    ['remove', 'pdf-annotations:remove', LOCAL],
+  ]),
   group('figure', 'figure', [
     ['review', 'figure:review', LOCAL],
   ]),

@@ -1,13 +1,38 @@
-import { Maximize2, SquareDashed, ZoomIn, ZoomOut } from 'lucide-react'
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import {
+  Highlighter,
+  List,
+  Maximize2,
+  SquareDashed,
+  StickyNote,
+  Underline,
+  ZoomIn,
+  ZoomOut
+} from 'lucide-react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { useLanguage } from '@/i18n'
+import { useLanguage, type TranslationKey } from '@/i18n'
 import { cn } from '@/lib/utils'
 import type { PreviewFileSource } from '@/stores/preview-workbench-store'
 import type { BookmarkRect } from '../../../../../../shared/bookmark'
+import type {
+  PdfAnnotationAnchorCounts,
+  PdfAnnotationAnchorRequest,
+  PdfAnnotationListResult
+} from '../../../../../../shared/pdf-annotation-surface'
 import { resolveBookmarkVersionIdentity } from '../../bookmark-version-identity'
+
+import { PdfAnnotationMarks } from './PdfAnnotationMarks'
+import { PdfAnnotationPanel, type PdfAnnotationImportView } from './PdfAnnotationPanel'
+import {
+  pdfAnnotationAreaSelector,
+  pdfAnnotationNoteAnchor,
+  pdfAnnotationPageNoteSelector,
+  pdfAnnotationTextRangeSelector
+} from './pdf-annotation-content'
+import { pdfAnnotationMarks, type PdfAnnotationMark } from './pdf-annotation-marks'
+import { readPdfPageSelection, type PdfTextSelection } from './pdf-annotation-selection'
 
 import { PreviewErrorCard, PreviewLoadingContent } from '../PreviewFallback'
 import { createManagedPdfLoadingTask } from '../managed-pdf-document'
@@ -33,6 +58,33 @@ type TextSpan = {
   top: number
   fontSize: number
   lineHeight: number
+}
+
+// The marking modes the annotation toolbar offers (文档标注层 A3), in reading order: the two text
+// markups, then a region, then a note. Each one carries its own copy key, so the toolbar renders no
+// hard-coded word of its own.
+type PdfAnnotationGestureMode = 'highlight' | 'underline' | 'area' | 'page-note'
+
+const ANNOTATION_MODES: readonly {
+  mode: PdfAnnotationGestureMode
+  labelKey: TranslationKey
+  Icon: typeof Highlighter
+}[] = [
+  { mode: 'highlight', labelKey: 'pdfAnnotation.mode.highlight', Icon: Highlighter },
+  { mode: 'underline', labelKey: 'pdfAnnotation.mode.underline', Icon: Underline },
+  { mode: 'area', labelKey: 'pdfAnnotation.mode.area', Icon: SquareDashed },
+  { mode: 'page-note', labelKey: 'pdfAnnotation.mode.pageNote', Icon: StickyNote }
+]
+
+// What the reader has to do next, named for whichever gesture is armed.
+const ANNOTATION_HINT_KEYS: Readonly<
+  Record<'bookmark-region' | PdfAnnotationGestureMode, TranslationKey>
+> = {
+  'bookmark-region': 'pdfRegion.mode',
+  highlight: 'pdfAnnotation.hint.highlight',
+  underline: 'pdfAnnotation.hint.underline',
+  area: 'pdfAnnotation.hint.area',
+  'page-note': 'pdfAnnotation.hint.pageNote'
 }
 
 // Comfortable reading width a page fills at 100%; zoom scales the displayed page beyond it.
@@ -115,7 +167,11 @@ const PdfPageCanvas = ({
   documentName,
   registerDisposer,
   regionMode = false,
-  onRegion
+  onRegion,
+  onPagePress,
+  textMarkKind,
+  onTextMark,
+  marks
 }: {
   document: PdfDocument
   pageNumber: number
@@ -124,6 +180,12 @@ const PdfPageCanvas = ({
   registerDisposer: (dispose: () => void) => () => void
   regionMode?: boolean
   onRegion?: (page: number, rect: BookmarkRect) => void
+  onPagePress?: (page: number, point: { x: number; y: number }) => void
+  /** Set while the reader is marking text: which kind a selection becomes. */
+  textMarkKind?: 'highlight' | 'underline'
+  onTextMark?: (page: number, kind: 'highlight' | 'underline', selection: PdfTextSelection) => void
+  /** The stored markup of the version on screen, already filtered to this page. */
+  marks?: readonly PdfAnnotationMark[]
 }): React.JSX.Element => {
   const [setNearViewportRef, isNearViewport] = useNearViewport<HTMLDivElement>()
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -309,6 +371,13 @@ const PdfPageCanvas = ({
       // The workspace SelectionAnnotator reads this to label evidence picked from this page;
       // the resulting card names the PDF and the page, so the source passage stays locatable.
       data-annotation-source={`PDF · ${documentName} · p.${pageNumber}`}
+      // A completed text selection becomes an annotation only while a marking mode is on: outside one,
+      // selecting a passage means what it always meant (the evidence annotator, or a copy).
+      onMouseUp={(event) => {
+        if (!textMarkKind || !onTextMark) return
+        const selection = readPdfPageSelection(event.currentTarget)
+        if (selection) onTextMark(pageNumber, textMarkKind, selection)
+      }}
     >
       {displayedStatus === 'loading' || (displayedStatus === 'idle' && isNearViewport) ? (
         <div className="absolute inset-0">
@@ -323,13 +392,19 @@ const PdfPageCanvas = ({
       {isNearViewport ? (
         <canvas ref={canvasRef} width={0} height={0} className="block size-full object-contain" />
       ) : null}
+      {/* The stored markup of the version on screen: above the canvas, below the text layer, and with
+          pointer events off so it can never take a click meant for the passage under it. */}
+      {isNearViewport && marks && marks.length > 0 ? <PdfAnnotationMarks marks={marks} /> : null}
       {/* Selectable text layer: positioned exactly over the canvas so the annotator can select
           a passage as evidence. The wrapper ignores pointer events (scroll/wheel pass through to
           the scroller); each span opts back in so the text itself is selectable/copyable. */}
       {/* Region picking sits above the text layer on purpose: while it is on, a drag draws a region
           rather than selecting a passage, and the reader can see that from the crosshair. */}
       {regionMode && onRegion && isNearViewport ? (
-        <PdfRegionOverlay onRegion={(rect) => onRegion(pageNumber, rect)} />
+        <PdfRegionOverlay
+          onRegion={(rect) => onRegion(pageNumber, rect)}
+          onPress={onPagePress ? (point) => onPagePress(pageNumber, point) : undefined}
+        />
       ) : null}
       {isNearViewport && textSpans ? (
         <div className="pointer-events-none absolute inset-0" aria-hidden="false">
@@ -381,10 +456,188 @@ export const PdfPreviewContent = ({
   // A region bookmark is traceable only if there is a session to file it under and a version to reopen
   // it on; without both, the action is absent rather than storing an anchor that leads nowhere.
   const canRegionBookmark = Boolean(sessionId && artifactId && selectedVersionId && projectId)
-  const [regionMode, setRegionMode] = useState(false)
   const [regionStatus, setRegionStatus] = useState<string | undefined>(undefined)
 
-  const handleRegion = (page: number, rect: BookmarkRect): void => {
+  // --- the annotation layer (文档标注层 A3) ------------------------------------------------------------
+  //
+  // One gesture state for the page, because two overlays competing for the same drag is how a reader ends
+  // up with the wrong thing stored. The annotation surface is used only when the window can name the file
+  // VERSION: the anchor is (file, version, checksum) and the checksum is resolved in the main process, so
+  // without the identity there is no anchor to write — the same rule the region bookmark above follows.
+  const annotationClient = window.api?.pdfAnnotations
+  // Memoized so the read below depends on the four identity facts rather than on a fresh object every
+  // render: an identity that has not changed must not re-read the store on every keystroke elsewhere.
+  const anchorRequest: PdfAnnotationAnchorRequest | undefined = useMemo(
+    () =>
+      projectId && sessionId && artifactId && selectedVersionId
+        ? { projectId, sessionId, artifactId, versionId: selectedVersionId }
+        : undefined,
+    [projectId, sessionId, artifactId, selectedVersionId]
+  )
+  const canAnnotate = Boolean(annotationClient && anchorRequest)
+  const [gestureMode, setGestureMode] = useState<
+    'off' | 'bookmark-region' | 'highlight' | 'underline' | 'area' | 'page-note'
+  >('off')
+  const [annotationList, setAnnotationList] = useState<PdfAnnotationListResult | undefined>(
+    undefined
+  )
+  const [annotationLoadError, setAnnotationLoadError] = useState<string | undefined>(undefined)
+  const [annotationReload, setAnnotationReload] = useState(0)
+  const [annotationStatus, setAnnotationStatus] = useState<string | undefined>(undefined)
+  const [panelOpen, setPanelOpen] = useState(false)
+  const [importer, setImporter] = useState<PdfAnnotationImportView>({ kind: 'idle' })
+  const [pendingNote, setPendingNote] = useState<
+    { page: number; anchorRect: BookmarkRect } | undefined
+  >(undefined)
+  const [noteBody, setNoteBody] = useState('')
+
+  const reloadAnnotations = (): void => setAnnotationReload((value) => value + 1)
+  const describeFailure = (error: unknown): string =>
+    error instanceof Error ? error.message : String(error)
+
+  // Reads the stored annotations of this file (every version of it — an annotation drawn on other bytes is
+  // labelled rather than hidden) whenever the previewed version changes or something was just written.
+  useEffect(() => {
+    if (!annotationClient || !anchorRequest) return
+    let canceled = false
+    void annotationClient
+      .list(anchorRequest)
+      .then((result) => {
+        if (canceled) return
+        setAnnotationList(result)
+        setAnnotationLoadError(undefined)
+      })
+      .catch((error: unknown) => {
+        if (canceled) return
+        setAnnotationList(undefined)
+        setAnnotationLoadError(describeFailure(error))
+      })
+    return () => {
+      canceled = true
+    }
+  }, [annotationClient, anchorRequest, annotationReload])
+
+  const counts: PdfAnnotationAnchorCounts = annotationList?.counts ?? {
+    current: 0,
+    versionChanged: 0,
+    checksumMismatch: 0
+  }
+  const marks = useMemo(
+    () => pdfAnnotationMarks(annotationList?.annotations ?? []),
+    [annotationList]
+  )
+
+  const writeAnnotation = (
+    content: { kind: string; selector: unknown; body?: string },
+    done: string
+  ): void => {
+    if (!annotationClient || !anchorRequest) return
+    void annotationClient
+      .create({ ...anchorRequest, ...content })
+      .then(() => {
+        setAnnotationStatus(done)
+        reloadAnnotations()
+      })
+      .catch((error: unknown) =>
+        setAnnotationStatus(t('pdfAnnotation.status.failed', { message: describeFailure(error) }))
+      )
+  }
+
+  const handleTextMark = (
+    page: number,
+    kind: 'highlight' | 'underline',
+    selection: PdfTextSelection
+  ): void => {
+    writeAnnotation(
+      {
+        kind,
+        selector: pdfAnnotationTextRangeSelector(page, selection),
+        body: ''
+      },
+      t('pdfAnnotation.status.saved')
+    )
+  }
+
+  // Placing a note is two steps on purpose: the click says WHERE, and the text says WHAT. Storing an empty
+  // note on the click would be a note that annotates nothing, which the store refuses anyway.
+  const handlePagePress = (page: number, point: { x: number; y: number }): void => {
+    if (gestureMode !== 'page-note') return
+    setPendingNote({ page, anchorRect: pdfAnnotationNoteAnchor(point) })
+  }
+
+  const saveNote = (): void => {
+    if (!pendingNote) return
+    writeAnnotation(
+      {
+        kind: 'page-note',
+        selector: pdfAnnotationPageNoteSelector(pendingNote.page, pendingNote.anchorRect),
+        body: noteBody
+      },
+      t('pdfAnnotation.status.saved')
+    )
+    setPendingNote(undefined)
+    setNoteBody('')
+  }
+
+  // One drag, two meanings, decided here: while the reader is placing a region annotation the gesture
+  // makes one, and while the region tool is on it makes the bookmark it always made. Deciding at the
+  // gesture's end rather than by mounting two overlays keeps a single drag from ever storing two things.
+  const handleRegionGesture = (page: number, rect: BookmarkRect): void => {
+    if (gestureMode === 'area') {
+      writeAnnotation(
+        { kind: 'area', selector: pdfAnnotationAreaSelector(page, rect), body: '' },
+        t('pdfAnnotation.status.saved')
+      )
+      return
+    }
+    if (gestureMode === 'bookmark-region') handleRegionBookmark(page, rect)
+  }
+
+  const handleDeleteAnnotation = (annotationId: string): void => {
+    if (!annotationClient) return
+    void annotationClient
+      .remove({ annotationId })
+      .then(() => {
+        setAnnotationStatus(t('pdfAnnotation.status.deleted'))
+        reloadAnnotations()
+      })
+      .catch((error: unknown) =>
+        setAnnotationStatus(t('pdfAnnotation.status.failed', { message: describeFailure(error) }))
+      )
+  }
+
+  // The only way an annotation crosses versions, and it is a write of a copy: the original stays on the
+  // version it was drawn on, which is what makes the record of "drawn on these bytes" still true.
+  const handleReattachAnnotation = (annotationId: string): void => {
+    if (!annotationClient || !anchorRequest) return
+    void annotationClient
+      .reattach({ ...anchorRequest, annotationId })
+      .then(() => {
+        setAnnotationStatus(t('pdfAnnotation.status.reattached'))
+        reloadAnnotations()
+      })
+      .catch((error: unknown) =>
+        setAnnotationStatus(t('pdfAnnotation.status.failed', { message: describeFailure(error) }))
+      )
+  }
+
+  const handleImport = (): void => {
+    if (!annotationClient || !anchorRequest) return
+    setImporter({ kind: 'running' })
+    void annotationClient
+      .import(anchorRequest)
+      .then((outcome) => {
+        setImporter(
+          outcome.status === 'report'
+            ? { kind: 'report', report: outcome.report }
+            : { kind: 'failure', code: outcome.code, message: outcome.message }
+        )
+        if (outcome.status === 'report' && outcome.report.imported > 0) reloadAnnotations()
+      })
+      .catch((error: unknown) => setImporter({ kind: 'failed', message: describeFailure(error) }))
+  }
+
+  const handleRegionBookmark = (page: number, rect: BookmarkRect): void => {
     if (!sessionId || !artifactId || !selectedVersionId || !projectId) return
     void (async () => {
       // The identity is confirmed before anything is written: a preview can carry a version pair the
@@ -619,37 +872,106 @@ export const PdfPreviewContent = ({
                 pageWidth={pageWidth}
                 documentName={name}
                 registerDisposer={registerPageDisposer}
-                regionMode={regionMode}
-                onRegion={handleRegion}
+                regionMode={
+                  gestureMode === 'bookmark-region' ||
+                  gestureMode === 'area' ||
+                  gestureMode === 'page-note'
+                }
+                onRegion={handleRegionGesture}
+                onPagePress={handlePagePress}
+                textMarkKind={
+                  gestureMode === 'highlight' || gestureMode === 'underline'
+                    ? gestureMode
+                    : undefined
+                }
+                onTextMark={handleTextMark}
+                marks={marks.filter((mark) => mark.page === index + 1)}
               />
             ))}
           </div>
         ) : null}
       </div>
-      {document && canRegionBookmark ? (
+      {document && (canRegionBookmark || canAnnotate) ? (
         <div className="absolute bottom-3 left-3 z-10 flex items-center gap-1 rounded-md border border-border-300/50 bg-bg-000/90 p-1 shadow-sm backdrop-blur">
           <TooltipProvider delayDuration={300}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-xs"
-                  data-slot="pdf-region-toggle"
-                  aria-pressed={regionMode}
-                  aria-label={t('pdfRegion.mode')}
-                  onClick={() => {
-                    setRegionStatus(undefined)
-                    setRegionMode((on) => !on)
-                  }}
-                >
-                  <SquareDashed aria-hidden="true" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{t('pdfRegion.mode')}</TooltipContent>
-            </Tooltip>
+            {canAnnotate
+              ? ANNOTATION_MODES.map(({ mode, labelKey, Icon }) => (
+                  <Tooltip key={mode}>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-xs"
+                        data-slot={`pdf-annotation-mode-${mode}`}
+                        aria-pressed={gestureMode === mode}
+                        aria-label={t(labelKey)}
+                        className={gestureMode === mode ? 'text-primary' : 'text-text-100'}
+                        onClick={() => {
+                          setAnnotationStatus(undefined)
+                          setPendingNote(undefined)
+                          setGestureMode((current) => (current === mode ? 'off' : mode))
+                        }}
+                      >
+                        <Icon aria-hidden="true" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{t(labelKey)}</TooltipContent>
+                  </Tooltip>
+                ))
+              : null}
+            {canRegionBookmark ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-xs"
+                    data-slot="pdf-region-toggle"
+                    aria-pressed={gestureMode === 'bookmark-region'}
+                    aria-label={t('pdfRegion.mode')}
+                    onClick={() => {
+                      setRegionStatus(undefined)
+                      setGestureMode((current) =>
+                        current === 'bookmark-region' ? 'off' : 'bookmark-region'
+                      )
+                    }}
+                  >
+                    <SquareDashed aria-hidden="true" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{t('pdfRegion.mode')}</TooltipContent>
+              </Tooltip>
+            ) : null}
+            {canAnnotate ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-xs"
+                    data-slot="pdf-annotation-panel-toggle"
+                    aria-expanded={panelOpen}
+                    aria-label={t('pdfAnnotation.panel.title')}
+                    onClick={() => setPanelOpen((open) => !open)}
+                  >
+                    <List aria-hidden="true" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{t('pdfAnnotation.panel.title')}</TooltipContent>
+              </Tooltip>
+            ) : null}
           </TooltipProvider>
         </div>
+      ) : null}
+      {/* What the reader has to do next, in words: a crosshair alone does not say whether the next drag
+          makes a highlight, a region or a note. */}
+      {document && gestureMode !== 'off' ? (
+        <p
+          data-testid="pdf-annotation-hint"
+          className="absolute left-3 top-3 z-10 rounded border border-border-300/50 bg-bg-000/90 px-2 py-1 text-[11px] text-text-100 backdrop-blur"
+        >
+          {t(ANNOTATION_HINT_KEYS[gestureMode])}
+        </p>
       ) : null}
       {document ? (
         <PdfZoomControls
@@ -658,6 +980,36 @@ export const PdfPreviewContent = ({
           onZoomOut={() => zoomBy(-ZOOM_BUTTON_STEP)}
           onReset={() => setZoom(1)}
         />
+      ) : null}
+      {document && canAnnotate && panelOpen ? (
+        <PdfAnnotationPanel
+          annotations={annotationList?.annotations ?? []}
+          counts={counts}
+          anchor={annotationList?.anchor}
+          loadError={annotationLoadError}
+          onDelete={handleDeleteAnnotation}
+          onReattach={handleReattachAnnotation}
+          pendingNote={pendingNote}
+          noteBody={noteBody}
+          onNoteBodyChange={setNoteBody}
+          onNoteSave={saveNote}
+          onNoteCancel={() => {
+            setPendingNote(undefined)
+            setNoteBody('')
+          }}
+          importer={importer}
+          onImport={handleImport}
+          onClose={() => setPanelOpen(false)}
+        />
+      ) : null}
+      {annotationStatus ? (
+        <p
+          data-testid="pdf-annotation-status"
+          role="status"
+          className="absolute bottom-3 left-1/2 z-10 -translate-x-1/2 rounded border border-border-300/50 bg-bg-000/90 px-2 py-1 text-[11px] text-text-100 backdrop-blur"
+        >
+          {annotationStatus}
+        </p>
       ) : null}
       {regionStatus ? (
         <p
