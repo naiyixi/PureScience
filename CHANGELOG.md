@@ -76,6 +76,13 @@ PureScience 是一款面向科学研究的开源 AI 工作台：多智能体协�
 
 - **A1 数据层已落地**：新增 `PdfAnnotation`（定位到不可变文件版本 `sourceFileId + versionId + checksum`，七种 kind, 带 `version` 信封的 selector）与 `PdfAnnotationImport`（导入回执，幂等键唯一）；kind 与 selector 形状**不一致即拒绝并点名**；版本锚定三态 `current / version-changed / checksum-mismatch`；**回执与标注可分别清理**（不互相耦合，因此无外键级联）。运行期 DDL 新增 6 条语句、**破坏性语句 0**（我用 `prisma migrate diff` 对照 HEAD 模式自行复核），且与 Prisma 生成语句逐条一致。测试 45 通过（含「重复导入不重复」「两者可分别清理」「不一致被拒」）。
 
+- **A2 导入通道已落地**：把「已附到记录的 PDF」里**文件自带**的标注导入为我方**版本锚定**的标注并写导入回执（`src/main/references/pdf-annotation-import.ts` + 解析适配 `pdf-embedded-annotation-reader.ts` + 渲染层安全的映射与报告 `src/shared/pdf-annotation-import.ts`）。复用仓库既有 PDF 解析设施，**不新增依赖**；顺序是「先校验锚点与摘要 → 解析 → 全部映射完成 → 才第一次写入」。
+  - **诚实回报是这一片的重点**：无标注 ⇒ `no-annotations`（**不写回执**，因此重复导入仍如实回答"这份文件没有标注"，而不是"已导入过"）；只有不支持的子类型 ⇒ `no-supported-annotations` + 每个子类型**具名计数**（`Ink/Circle/Link/Popup` 等，以及无 `/Subtype` 的畸形条目，一并点名）；损坏 PDF / 字节与版本 checksum 不符 / 缺锚点 ⇒ **具名失败且零写入**。幂等复用 A1 的 `(channel, file, version, digest)` 键：同一 payload 第二次导入读回执即返回 `unchanged`，不重复写。
+  - **开发中查实一处「解析口径用错就静默丢标注」的真问题并改掉**：解析库的 display intent 会把**只有 `/Rect`、没有 `/QuadPoints`** 的文本标注**静默过滤**（其 `viewable` 要求 `quadPoints !== null`，**既不警告也不报错** ⇒ 在真机上连"跳过了什么"都无从计数）。现改为 `intent: 'any'` 读取、由我方按文件自身 flag 决策（Hidden/NoView 以 `not-displayed` 具名跳过；旋转页以 `rotated-page` 具名跳过而不猜坐标），该标注遂可导入（矩形即锚点、引用文本取自文本层），并**用测试钉死该读数口径**防回退。
+  - 夹具是**自造最小合法 PDF**（手写 xref、含真标注、约 1 KB、无时间戳因此字节确定、两次 sha256 相同），全部经**真实解析器**跑通；`imported + Σskipped === annotationsInFile` 可核账。
+  - 两处自查后确认的语义（已写进代码注释）：无标注或只有不支持的子类型时**不写回执**（回执＝"这里确实发生过一次导入"）；单条引用文本超 2000 字符截断而非跳过。
+  - **已知缺口（记录在案）**：该通道的端到端只用「强制唯一键的内存台账 + A1 的真 SQLite 用例」组合覆盖；把它的测试文件登记进串行数据库分区是另一处改动（会动 `vitest.config.ts` 的分区与守卫），留待需要时做。
+
 ## v1.75.0 — 2026-09-27（天工：先让门禁能报警，再谈跑得更快）
 
 **这一版不新增能力面，收口的是「工程门禁」：测试分区、覆盖率、Windows 分片、flaky、定时回归各自能报警，并把「哪些文件真的跑了」变成可断言的。每一项都附实测数字或真机断言——包括我自己写坏又修回的一处，以及测量中揪出的两个真问题。**
