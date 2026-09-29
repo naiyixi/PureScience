@@ -11,6 +11,7 @@ import type {
   ReferenceCollection
 } from '../../../../shared/references'
 import { normalizeTitleForDedupe } from '../../../../shared/references'
+import type { ProjectFileItem } from '../../../../shared/project-files'
 import {
   citationItemFromReference,
   compareCitationStyles,
@@ -442,19 +443,34 @@ export function ReferencesLibraryDialog({
     }
   }
 
+  // The main process caps one page at 100 entries (project-files/query-support.ts MAX_PAGE_LIMIT), so a
+  // single 500-entry request was rejected outright and the rejection surfaced as "no PDFs in this project"
+  // — a failure dressed as an empty project, on a button whose whole job is to find PDFs. Walk the cursor
+  // instead, keeping the original 500-entry intent as a cap so one large project cannot stall the picker.
+  const PDF_CANDIDATE_PAGE_LIMIT = 100
+  const PDF_CANDIDATE_MAX = 500
   const loadPdfCandidates = async (projectId: string): Promise<void> => {
     setPdfLoading(true)
     try {
-      const page = await window.api.projectFiles.listFiles({
-        projectId,
-        collection: { kind: 'all' },
-        limit: 500
-      })
-      const pdfs = page.items.filter(
-        (item) =>
-          item.name.toLowerCase().endsWith('.pdf') ||
-          item.mimeType?.toLowerCase() === 'application/pdf'
-      )
+      const items: ProjectFileItem[] = []
+      let cursor: string | undefined
+      do {
+        const page = await window.api.projectFiles.listFiles({
+          projectId,
+          collection: { kind: 'all' },
+          limit: PDF_CANDIDATE_PAGE_LIMIT,
+          ...(cursor === undefined ? {} : { cursor })
+        })
+        items.push(...page.items)
+        cursor = page.nextCursor
+      } while (cursor !== undefined && items.length < PDF_CANDIDATE_MAX)
+      const pdfs = items
+        .slice(0, PDF_CANDIDATE_MAX)
+        .filter(
+          (item) =>
+            item.name.toLowerCase().endsWith('.pdf') ||
+            item.mimeType?.toLowerCase() === 'application/pdf'
+        )
       setPdfCandidates(pdfs.map((item) => ({ id: item.id, name: item.name })))
       if (pdfs.length === 0) setError(t('references.notFound'))
     } catch (cause) {
