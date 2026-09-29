@@ -141,14 +141,15 @@ jobs:
 
       # Installers do not carry a managed-runtime bundle. Stable/nightly builds therefore fail closed
       # unless the exact immutable manifest required by this app version and platform is already live
-      # on the official CDN. The notarization dry-run skips this release-readiness gate.
-      # NOTE (rebrand): statics.zerolink.com CDN is not deployed yet; managed-runtime download is a
-      # runtime feature (external BYO runtimes work). Keep packaging non-blocking until CDN lands.
+      # where the app actually downloads from. The notarization dry-run skips this release-readiness gate.
+      # The future official CDN is purescience.work; it is not built yet. Until it is, this step verifies
+      # the published default base — the GitHub release the app itself falls back to — instead of a mirror
+      # that cannot answer: a gate aimed at an undeployed host verified nothing on any platform while its
+      # failure was swallowed by continue-on-error everywhere except where a downstream spec needed the
+      # runtime. Keep packaging non-blocking until the CDN lands, then set PURESCIENCE_ENV_CDN_BASE to it.
       - name: Verify managed runtime bundle is published
         if: ${{ !inputs.skip_verify }}
         continue-on-error: true
-        env:
-          PURESCIENCE_ENV_CDN_BASE: https://statics.zerolink.com/purescience
         run: node scripts/verify-runtime-bundle.mjs "${{ matrix.subdir }}"
 
       # The schema's binaryTargets generates Prisma engines for several platforms; keep only the one
