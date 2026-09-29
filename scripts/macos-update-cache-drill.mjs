@@ -73,7 +73,8 @@ const runProcess = (executable, args, options = {}) =>
     child.once('error', rejectProcess)
     child.once('exit', (code) => {
       if (code === 0) resolveProcess(stdout.trim())
-      else rejectProcess(new Error(`${basename(executable)} exited with ${code}: ${stderr || stdout}`))
+      else
+        rejectProcess(new Error(`${basename(executable)} exited with ${code}: ${stderr || stdout}`))
     })
   })
 
@@ -85,7 +86,9 @@ const waitFor = async (description, check, timeoutMs) => {
     if (last !== undefined && last !== false) return last
     await delay(250)
   }
-  throw new Error(`Timed out waiting for ${description} (last observation: ${JSON.stringify(last)})`)
+  throw new Error(
+    `Timed out waiting for ${description} (last observation: ${JSON.stringify(last)})`
+  )
 }
 
 const fileExists = (path) =>
@@ -301,9 +304,7 @@ const main = async () => {
     application = first
     const appVersion = String(first.appInfo.version)
     const newerVersion = (() => {
-      const parts = appVersion
-        .split('.')
-        .map((part) => Number.parseInt(part, 10) || 0)
+      const parts = appVersion.split('.').map((part) => Number.parseInt(part, 10) || 0)
       parts[parts.length - 1] += 1
       return parts.join('.')
     })()
@@ -453,7 +454,8 @@ const main = async () => {
     throw error
   } finally {
     await closeApp(application?.client)
-    if (options.output) await writeFile(options.output, `${JSON.stringify(evidence, null, 2)}\n`, 'utf8')
+    if (options.output)
+      await writeFile(options.output, `${JSON.stringify(evidence, null, 2)}\n`, 'utf8')
     console.log(
       `[drill] scenarios: ${evidence.scenarios
         .map((scenario) => `${scenario.name}=${scenario.passed ? 'passed' : 'FAILED'}`)
