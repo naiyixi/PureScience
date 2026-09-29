@@ -10,6 +10,8 @@
 // Matching is deliberately literal (case-insensitive substring). No stemming, no fuzzy expansion, no
 // model guessing: a hit either contains the query or it does not.
 
+import type { PdfAnnotationKind } from './pdf-annotations'
+
 export const GLOBAL_SEARCH_SCHEMA_VERSION = 1
 
 // Bounds. A search that stops early says so (`truncated`, `scan-bounded`) instead of returning a
@@ -21,14 +23,31 @@ export const GLOBAL_SEARCH_MAX_MESSAGE_CHARS = 20_000
 export const GLOBAL_SEARCH_SNIPPET_CHARS = 160
 export const GLOBAL_SEARCH_MIN_QUERY_CHARS = 2
 
-export type GlobalSearchScope = 'sessions' | 'messages' | 'files' | 'literature'
+export type GlobalSearchScope = 'sessions' | 'messages' | 'files' | 'literature' | 'annotations'
 
 export const GLOBAL_SEARCH_SCOPES: readonly GlobalSearchScope[] = [
   'sessions',
   'messages',
   'files',
-  'literature'
+  'literature',
+  'annotations'
 ]
+
+/**
+ * What the annotation scope searches, and nothing else.
+ *
+ * The corpus for this scope is the TEXT THE STORE ALREADY HOLDS for each annotation — its own body and
+ * the passage it quotes — never PDF content parsed during a search. The distinction is the whole point of
+ * the scope: a search must be able to answer "is this phrase in any of my markup?" without reading a
+ * single PDF byte, and the fields below are exactly what that text is. `quote` is stored in the
+ * annotation's own selector at write time (A1/A2), so it is as stable as the record it belongs to.
+ */
+export const GLOBAL_SEARCH_ANNOTATION_INDEXED_FIELDS = ['body', 'quote'] as const
+
+// How many annotations one query may carry into its corpus. Reading the entire annotation library for
+// every search would trade a fast search for a complete one; the response says when the budget was
+// reached (`annotations-bounded`) instead of returning a smaller set that reads like all of them.
+export const GLOBAL_SEARCH_MAX_SCANNED_ANNOTATIONS = 500
 
 export type GlobalSearchRequest = {
   query: string
@@ -77,6 +96,27 @@ export type GlobalSearchCitation = {
   pmcid?: string
 }
 
+/**
+ * Which annotation a hit came from — the anchor, restated.
+ *
+ * The three identity facts a citation from this hit would need (`sourceFileId`, `versionId`, `checksum`)
+ * travel WITH the hit for the same reason a literature hit carries its citation fields: a record built
+ * from what was found cannot describe something else. The version is named rather than resolved: a search
+ * reads the store, not the version authority, so it says which version the markup is on instead of
+ * claiming the anchor still matches the file on disk.
+ */
+export type GlobalSearchAnnotationProvenance = {
+  annotationId: string
+  sourceFileId: string
+  versionId: string
+  checksum: string
+  kind: PdfAnnotationKind
+  /** The 1-based page the markup is on, when its selector names one. */
+  page?: number
+  /** The passage the markup quotes, when its selector carries one (text-range kinds). */
+  quote?: string
+}
+
 export type GlobalSearchHit = {
   scope: GlobalSearchScope
   id: string
@@ -95,6 +135,9 @@ export type GlobalSearchHit = {
   // Present on literature hits: everything a GB/T 7714 citation needs, carried with the hit so a
   // citation is built from the record the search actually found rather than re-fetched later.
   citation?: GlobalSearchCitation
+  // Present on annotation hits: the file version and the checksum the markup is anchored to, so a
+  // citation or an evidence line is built from the anchor the store holds — never from a re-read file.
+  annotation?: GlobalSearchAnnotationProvenance
 }
 
 export type GlobalSearchScanReport = {
@@ -102,6 +145,9 @@ export type GlobalSearchScanReport = {
   messages: number
   files: number
   references: number
+  // How many annotations were carried into the corpus. This is the count of STORED annotations the
+  // query could see, not a count of PDFs read: the scope reads the annotation store, never a PDF.
+  annotations: number
   // True when a scan bound stopped the walk before the corpus was exhausted.
   bounded: boolean
 }
@@ -188,6 +234,12 @@ export type GlobalSearchNote =
   // A term with no literal occurrence was resolved by its parts (see collectTermMatches), so the hit is
   // real but the reader should know the phrase itself is not in the text.
   | 'matched-by-term-parts'
+  // The annotation corpus stopped at its own bound: the project holds more annotations than were read,
+  // so a miss here does not mean the phrase is absent from the rest of the markup.
+  | 'annotations-bounded'
+  // The annotation scope was searched and the store held nothing to search: an empty result is then a
+  // statement about the corpus, not about the phrase, and it says so.
+  | 'annotations-empty'
 
 export type GlobalSearchResponse = {
   schemaVersion: typeof GLOBAL_SEARCH_SCHEMA_VERSION
@@ -443,10 +495,13 @@ export const encodeSearchCursor = (offsets: Partial<Record<GlobalSearchScope, nu
 export const decodeSearchCursor = (
   cursor: string | undefined
 ): { offsets: Record<GlobalSearchScope, number>; invalid: boolean } => {
-  const zero = { sessions: 0, messages: 0, files: 0, literature: 0 } as Record<
-    GlobalSearchScope,
-    number
-  >
+  const zero = {
+    sessions: 0,
+    messages: 0,
+    files: 0,
+    literature: 0,
+    annotations: 0
+  } as Record<GlobalSearchScope, number>
   if (!cursor) return { offsets: zero, invalid: false }
 
   const separator = cursor.indexOf(':')
@@ -553,7 +608,13 @@ export const finalizeSearchResponse = ({
 
       return accumulator
     },
-    { sessions: 0, messages: 0, files: 0, literature: 0 } as Record<GlobalSearchScope, number>
+    {
+      sessions: 0,
+      messages: 0,
+      files: 0,
+      literature: 0,
+      annotations: 0
+    } as Record<GlobalSearchScope, number>
   )
 
   const sorted = [...filtered].sort(

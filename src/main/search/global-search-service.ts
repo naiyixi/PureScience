@@ -11,6 +11,7 @@ import {
   resolveSearchScopes,
   scoreSearchHit,
   searchHitsInTimestampRange,
+  GLOBAL_SEARCH_MAX_SCANNED_ANNOTATIONS,
   type GlobalSearchHit,
   type GlobalSearchHitFilters,
   type GlobalSearchNote,
@@ -19,6 +20,7 @@ import {
   type GlobalSearchScanReport,
   type GlobalSearchScope
 } from '../../shared/global-search'
+import type { PdfAnnotationKind } from '../../shared/pdf-annotations'
 
 // Main-process global search.
 //
@@ -69,6 +71,30 @@ export type SearchableReference = {
   pmcid?: string
 }
 
+/**
+ * One stored annotation, as the search sees it.
+ *
+ * The two texts are the ones the STORE already holds (A1's `body` and the `quote` inside the selector),
+ * handed over as-is. Nothing here reads a PDF: the corpus for this scope is text that was already
+ * persisted when the annotation was written or imported, which is what lets a search answer without a
+ * parser and without a file. `fileName` is the owning file's display name, supplied by the caller that
+ * listed the project's files, so a hit can name where the markup lives without the search opening it.
+ */
+export type SearchableAnnotation = {
+  id: string
+  projectId: string
+  sourceFileId: string
+  versionId: string
+  checksum: string
+  kind: PdfAnnotationKind
+  body: string
+  quote: string
+  page?: number
+  fileName: string
+  createdAt: number
+  timestamp?: string
+}
+
 export type GlobalSearchPorts = {
   listSessions(): Promise<SearchableSession[]>
   // Keyed by session id: the real implementation already holds the loaded sessions, so the search never
@@ -76,6 +102,9 @@ export type GlobalSearchPorts = {
   readSessionMessages(sessionId: string): Promise<SearchableSessionMessage[]>
   listFiles(projectId?: string): Promise<SearchableFile[]>
   listReferences(projectId?: string): Promise<SearchableReference[]>
+  // Optional: without it the annotation scope is empty and the response says the corpus was empty
+  // (`annotations-empty`) rather than leaving the reader to conclude the markup does not exist.
+  listAnnotations?(projectId?: string): Promise<SearchableAnnotation[]>
 }
 
 export type GlobalSearchService = {
@@ -87,6 +116,7 @@ const emptyScan = (): GlobalSearchScanReport => ({
   messages: 0,
   files: 0,
   references: 0,
+  annotations: 0,
   bounded: false
 })
 

@@ -151,7 +151,8 @@ const SCOPE_LABELS: Record<GlobalSearchScope, string> = {
   sessions: 'sessions',
   messages: 'messages',
   files: 'files',
-  literature: 'literature'
+  literature: 'literature',
+  annotations: 'annotations'
 }
 
 /**
