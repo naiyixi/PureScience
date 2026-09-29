@@ -13,6 +13,11 @@ export type ShutdownOutcome = {
   completed: boolean
   // Every process tree was cleanly reaped. Only meaningful when completed is true; false otherwise.
   reaped: boolean
+  // Per-backend outcome, so a refused update-install gate can NAME which teardown was incomplete
+  // (the agent runtime vs. the notebook kernels) instead of only saying that something was. A backend
+  // still running when the deadline elapsed stays 'timeout'; a teardown that threw is 'failed'; one
+  // that finished with process trees still alive is 'degraded'.
+  steps: { runtime: ShutdownStepOutcome; notebook: ShutdownStepOutcome }
 }
 
 export class BackendShutdownOutcomeError extends Error {
@@ -76,6 +81,10 @@ const runBounded = async (
   log?: BackendShutdownDeps['log']
 ): Promise<ShutdownOutcome> => {
   let reaped = false
+  // Default to 'timeout': if the deadline below wins, whichever teardown is still running is exactly a
+  // teardown that did not finish in budget. A teardown that settles records its own outcome, so a
+  // finished-but-degraded backend is never reported as a timeout.
+  const steps: ShutdownOutcome['steps'] = { runtime: 'timeout', notebook: 'timeout' }
   const logFailure = (backend: 'runtime' | 'notebook', error: unknown): void => {
     try {
       log?.error('backend shutdown failed', {
@@ -87,24 +96,30 @@ const runBounded = async (
     }
   }
 
-  // allSettled ensures one rejection never short-circuits the other.
-  const settleAll = Promise.allSettled([runtimeTeardown, notebookTeardown]).then(
-    ([runtimeResult, notebookResult]) => {
-      if (runtimeResult.status === 'rejected') {
-        logFailure('runtime', runtimeResult.reason)
-      }
-      if (notebookResult.status === 'rejected') {
-        logFailure('notebook', notebookResult.reason)
-      }
-
-      // Optional chaining keeps the never-throw invariant even if a teardown resolves a malformed value.
-      const runtimeReaped =
-        runtimeResult.status === 'fulfilled' && runtimeResult.value?.reaped === true
-      const notebookReaped =
-        notebookResult.status === 'fulfilled' && notebookResult.value?.reaped === true
-      reaped = runtimeReaped && notebookReaped
+  // Each teardown is tracked individually so its own outcome survives the other one timing out, and so
+  // `reaped` still requires BOTH to have settled cleanly.
+  const track = async (
+    backend: 'runtime' | 'notebook',
+    teardown: Promise<{ reaped: boolean }>
+  ): Promise<{ reaped: boolean }> => {
+    try {
+      const value = await teardown
+      const clean = value?.reaped === true
+      steps[backend] = clean ? 'completed' : 'degraded'
+      return { reaped: clean }
+    } catch (error) {
+      logFailure(backend, error)
+      steps[backend] = 'failed'
+      return { reaped: false }
     }
-  )
+  }
+
+  const settleAll = Promise.all([
+    track('runtime', runtimeTeardown),
+    track('notebook', notebookTeardown)
+  ]).then(([runtimeResult, notebookResult]) => {
+    reaped = runtimeResult.reaped && notebookResult.reaped
+  })
 
   // Race the work against a self-unreffing timer so a stuck backend can't keep the process alive or hang
   // quit; whichever finishes first resolves the caller.
@@ -118,7 +133,9 @@ const runBounded = async (
   if (timer) clearTimeout(timer)
 
   const completed = result === 'done'
-  return { completed, reaped: completed && reaped }
+  // Snapshot the steps: a teardown that settles after the deadline must not retroactively change an
+  // outcome the caller already read (it did not finish in budget — that is the fact being reported).
+  return { completed, reaped: completed && reaped, steps: { ...steps } }
 }
 
 // Quit/relaunch helper (latching teardown). Kept as a standalone function for the data-root migration

@@ -54,6 +54,9 @@ describe('Windows updater certification', () => {
       installerBytes: 100,
       versionedFeed: true,
       previousInstallerCacheVerified: true,
+      installerCachePurged: true,
+      installerCacheBytesBefore: 150_000_000,
+      installerCacheBytesAfter: 0,
       previousVersion: '0.10.0',
       currentVersion: '0.11.0'
     }
@@ -63,6 +66,39 @@ describe('Windows updater certification', () => {
     ).toThrow(/complete differential path/)
     expect(() =>
       assertDifferentialObservation({ ...observation, downloadedInstallerBytes: 100 })
+    ).toThrow(/complete differential path/)
+  })
+
+  // U3 (#17): the certification also owns "the package is gone once it is installed" — a run that
+  // leaves the downloaded installer in the cache is a red run, not a silent 150 MB of residue.
+  it('fails when the downloaded installer survives the install', () => {
+    const observation = {
+      feedRequests: 1,
+      blockmapRequests: 2,
+      rangeRequests: 2,
+      fullInstallerRequests: 0,
+      downloadedInstallerBytes: 40,
+      installerBytes: 100,
+      versionedFeed: true,
+      previousInstallerCacheVerified: true,
+      installerCachePurged: true,
+      installerCacheBytesBefore: 150_000_000,
+      installerCacheBytesAfter: 0,
+      previousVersion: '0.10.0',
+      currentVersion: '0.11.0'
+    }
+    expect(() =>
+      assertDifferentialObservation({
+        ...observation,
+        installerCachePurged: false,
+        installerCacheBytesAfter: 150_000_000
+      })
+    ).toThrow(/complete differential path/)
+    expect(() =>
+      assertDifferentialObservation({ ...observation, installerCacheBytesBefore: 0 })
+    ).toThrow(/complete differential path/)
+    expect(() =>
+      assertDifferentialObservation({ ...observation, installerCacheBytesAfter: 1 })
     ).toThrow(/complete differential path/)
   })
 

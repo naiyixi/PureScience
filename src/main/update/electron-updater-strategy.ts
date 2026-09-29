@@ -6,8 +6,9 @@ import { APP } from '../../shared/app-config'
 import type { UpdateStatus } from '../../shared/update'
 import { startDiagnosticOperation, type DiagnosticOperation } from '../diagnostics/operation'
 import type { Logger } from '../logger'
+import { createUpdateCacheMaintenance, type InstallMarkerWriter } from './cache-maintenance'
 import { fetchManifest } from './manifest'
-import type { InstallGate, UpdateStrategy } from './strategy'
+import { describeInstallGateRefusal, type InstallGate, type UpdateStrategy } from './strategy'
 import type { ApplicationEventMap } from '../application-events'
 import { broadcastToRenderers } from '../renderer-broadcast'
 import { markApplicationShutdownTrigger } from '../application-shutdown-trigger'
@@ -61,6 +62,10 @@ export type ElectronUpdaterDeps = {
   manifestUrl?: string
   // Pre-install backend-shutdown gate, fixed when the strategy is constructed.
   installGate?: InstallGate
+  // U3: records the install handoff in electron-updater's cache directory so the next launch (the new
+  // version) can prove the install landed and purge the downloaded package. Injectable; the default
+  // resolves the packaged app-update.yml, and is inert when there is no Electron runtime (unit tests).
+  updateCache?: InstallMarkerWriter
   // Diagnostics sink for update lifecycle operations; defaults to a no-op so unit tests stay quiet.
   log?: Logger
   // Marks the app lifecycle handoff immediately before quitAndInstall. Injectable for tests.
@@ -204,6 +209,9 @@ export class ElectronUpdaterStrategy implements UpdateStrategy {
   private notesHydration?: Promise<void>
   // Pre-install backend-shutdown gate, owned immutably for the strategy lifetime.
   private readonly installGate?: InstallGate
+  // Owner of the electron-updater cache bookkeeping (U3): records the handoff, and lets the startup
+  // sweep purge the package once the install demonstrably landed.
+  private readonly updateCache: InstallMarkerWriter
   private readonly markUpdateShutdown: () => () => void
   private readonly applyGithubFeed: () => void | Promise<void>
   // Whether a GitHub retry is even possible: the real autoUpdater can switch feeds, while a test double
@@ -239,6 +247,9 @@ export class ElectronUpdaterStrategy implements UpdateStrategy {
     this.log = deps.log ?? NOOP_LOGGER
     this.createCancellationToken = deps.createCancellationToken ?? (() => new CancellationToken())
     this.installGate = deps.installGate
+    // A default instance keeps `apply()` self-contained: it writes the "install pending" marker for the
+    // version handed to the installer, which the next launch's sweep reads to decide the purge.
+    this.updateCache = deps.updateCache ?? createUpdateCacheMaintenance({ log: this.log })
     this.markUpdateShutdown =
       deps.markUpdateShutdown ?? (() => markApplicationShutdownTrigger('update'))
     this.applyGithubFeed =
@@ -533,7 +544,9 @@ export class ElectronUpdaterStrategy implements UpdateStrategy {
         this.setStatus({
           ...this.status,
           state: 'error',
-          error: 'Could not stop background processes before updating. Please try again.'
+          // Named cause, not a silent no-op: the teardown itself threw, so nothing was replaced.
+          error:
+            'The background-process teardown failed, so the update was not installed. Please try again.'
         })
         operation.fail(error, { result: 'error' })
         return this.status
@@ -543,17 +556,21 @@ export class ElectronUpdaterStrategy implements UpdateStrategy {
         return this.status
       }
       if (!readiness.completed || !readiness.reaped) {
-        this.log.error('update install gate refused: backend teardown degraded', readiness)
-        this.applying = false
-        this.setStatus({
-          ...this.status,
-          state: 'error',
-          error: 'Could not fully stop background processes before updating. Please try again.'
+        // The refusal names the cause AND the backend whose teardown was incomplete (see
+        // describeInstallGateRefusal) — a silent refusal was issue #17's U2 complaint.
+        const refusal = describeInstallGateRefusal(readiness)
+        this.log.error('update install gate refused', {
+          reason: refusal.reason,
+          readiness
         })
+        this.applying = false
+        this.setStatus({ ...this.status, state: 'error', error: refusal.message })
         operation.fail(new Error('Install gate refused'), {
-          reason: 'install-gate-refused',
+          reason: refusal.reason,
           gateCompleted: readiness.completed,
-          processTreesReaped: readiness.reaped
+          processTreesReaped: readiness.reaped,
+          gateStepRuntime: readiness.steps?.runtime ?? 'unknown',
+          gateStepNotebook: readiness.steps?.notebook ?? 'unknown'
         })
         return this.status
       }
@@ -561,6 +578,12 @@ export class ElectronUpdaterStrategy implements UpdateStrategy {
     }
 
     operation.phase('install')
+    // U3: record the version being handed to the installer INSIDE electron-updater's cache directory.
+    // The next launch (the new version) compares it with its own version: only when the running version
+    // is at least this one has the install demonstrably landed, and only then is the downloaded package
+    // purged. Best-effort — a marker write must never block an install the user already asked for; a
+    // missing marker costs the cleanup, never the install.
+    await this.updateCache.markInstallPending(this.status.latest ?? this.currentVersion)
     const rollbackTrigger = this.markUpdateShutdown()
     this.pendingInstallRollback = rollbackTrigger
     this.installerStarted = true
@@ -568,6 +591,8 @@ export class ElectronUpdaterStrategy implements UpdateStrategy {
       this.updater.quitAndInstall(true, true)
     } catch (error) {
       rollbackTrigger()
+      // The handoff never started, so no install is pending: drop the claim the marker just made.
+      await this.updateCache.clearInstallPending()
       this.pendingInstallRollback = undefined
       this.applying = false
       this.installerStarted = false

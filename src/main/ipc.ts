@@ -337,6 +337,7 @@ import {
   resolveStorageRoot,
   samePath
 } from './storage-root'
+import { createUpdateCacheMaintenance } from './update/cache-maintenance'
 import { createUpdateCommandOwner, registerUpdateIpcHandlers } from './update/ipc'
 import { createUpdateStrategy } from './update/create-strategy'
 import { startUpdateScheduler } from './update/scheduler'
@@ -1245,7 +1246,7 @@ const createApplicationModules = async (
 
   // Same seam for the annotation corpus (A5): the annotation store and the project file index are built
   // later in this scope, and the corpus is only read while a query is being served.
-  let searchAnnotationCorpus: SearchAnnotationCorpus | undefined
+  const searchAnnotationCorpus: SearchAnnotationCorpus | undefined
 
   // Search reads every session; without this it did so per query, which cost over a second on a real
   // corpus. The durable repository bumps the revision on every write, so the view is only re-read when
@@ -2262,6 +2263,16 @@ const createApplicationModules = async (
   const updateStrategy = createUpdateStrategy(process.platform, {
     installGate: () => shutdownCoordinator.runForUpdateGate(UPDATE_SHUTDOWN_BUDGET_MS)
   })
+  // U3 (#17): the install that just landed leaves the package it was installed from behind — a copy of
+  // this app's own size (~200 MB) that is never needed again. Sweep once per launch, deliberately
+  // outside the strategy: the cache belongs to electron-updater, not to whichever strategy this build
+  // ended up routing to, and running it on every launch is what makes the cleanup re-entrant (a refused
+  // or interrupted purge is simply retried next time). It never touches a download in flight or a
+  // package that is still installable — see cache-maintenance.ts. Fire-and-forget: deleting an installer
+  // must never delay startup, so the sweep logs its outcome instead of being awaited here.
+  void createUpdateCacheMaintenance({ log: createLogger('update') })
+    .sweep({ currentVersion: app.getVersion() })
+    .catch(() => {})
   const updateCommandOwner = createUpdateCommandOwner(updateStrategy, {
     // Settings → General auto-apply opt-in: when on, a finished in-place download restarts the
     // app to install instead of waiting for the user's click.

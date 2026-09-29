@@ -478,9 +478,13 @@ describe('ElectronUpdaterStrategy', () => {
     expect(updater.quitAndInstall).toHaveBeenCalledTimes(1)
   })
 
-  it('apply refuses to install and reports an error when the teardown times out', async () => {
+  it('apply refuses to install and names the cause when the teardown times out', async () => {
     const updater = new FakeUpdater()
-    const gate = vi.fn(async () => ({ completed: false, reaped: false }))
+    const gate = vi.fn(async () => ({
+      completed: false,
+      reaped: false,
+      steps: { runtime: 'timeout' as const, notebook: 'completed' as const }
+    }))
     const log = createLogSpy()
     const strategy = new ElectronUpdaterStrategy({
       updater,
@@ -494,15 +498,22 @@ describe('ElectronUpdaterStrategy', () => {
 
     expect(updater.quitAndInstall).not.toHaveBeenCalled()
     expect(status.state).toBe('error')
+    // The refusal is NAMED: which teardown, and that it ran out of budget (issue #17's U2 complaint
+    // was a refusal the user could not act on).
+    expect(status.error).toContain('did not stop in time')
+    expect(status.error).toContain('agent runtime')
+    expect(status.error).toContain('Please try again')
     expect(diagnosticRecords(log)).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           operation: 'update-apply',
           outcome: 'failed',
           phase: 'install-gate',
-          reason: 'install-gate-refused',
+          reason: 'install-gate-timeout',
           gateCompleted: false,
-          processTreesReaped: false
+          processTreesReaped: false,
+          gateStepRuntime: 'timeout',
+          gateStepNotebook: 'completed'
         })
       ])
     )
@@ -625,9 +636,13 @@ describe('ElectronUpdaterStrategy', () => {
     expect(status.error).toContain('Please try again')
   })
 
-  it('apply refuses to install when the teardown completed but a tree was not cleanly reaped', async () => {
+  it('apply refuses to install and names the backend when the teardown completed but a tree was not cleanly reaped', async () => {
     const updater = new FakeUpdater()
-    const gate = vi.fn(async () => ({ completed: true, reaped: false }))
+    const gate = vi.fn(async () => ({
+      completed: true,
+      reaped: false,
+      steps: { runtime: 'completed' as const, notebook: 'degraded' as const }
+    }))
     const strategy = new ElectronUpdaterStrategy({
       updater,
       currentVersion: '0.2.0',
@@ -639,6 +654,97 @@ describe('ElectronUpdaterStrategy', () => {
 
     expect(updater.quitAndInstall).not.toHaveBeenCalled()
     expect(status.state).toBe('error')
+    expect(status.error).toContain('notebook kernels')
+    expect(status.error).toContain('Please try again')
+  })
+
+  it('refuses without inventing a backend name when the gate reports no step detail', async () => {
+    const updater = new FakeUpdater()
+    const gate = vi.fn(async () => ({ completed: false, reaped: false }))
+    const strategy = new ElectronUpdaterStrategy({
+      updater,
+      currentVersion: '0.2.0',
+      broadcast: vi.fn(),
+      installGate: gate
+    })
+
+    const status = await strategy.apply()
+
+    expect(status.state).toBe('error')
+    expect(status.error).toContain('did not stop in time')
+    // Still named (the cause), just without a subsystem it cannot prove.
+    expect(status.error).not.toContain('undefined')
+    expect(status.error).not.toContain('()')
+  })
+
+  it('records the pending install before the handoff and keeps it when quitAndInstall succeeds', async () => {
+    const updater = new FakeUpdater()
+    const updateCache = {
+      markInstallPending: vi.fn(async () => true),
+      clearInstallPending: vi.fn(async () => {})
+    }
+    const strategy = new ElectronUpdaterStrategy({
+      updater,
+      currentVersion: '0.2.0',
+      broadcast: vi.fn(),
+      updateCache
+    })
+    await strategy.check()
+    await strategy.download()
+
+    await strategy.apply()
+
+    // The version the installer was asked to install — the next launch compares it with its own.
+    expect(updateCache.markInstallPending).toHaveBeenCalledTimes(1)
+    expect(updateCache.markInstallPending).toHaveBeenCalledWith('0.3.0')
+    expect(updateCache.clearInstallPending).not.toHaveBeenCalled()
+  })
+
+  it('drops the pending-install claim when quitAndInstall throws', async () => {
+    const updater = new FakeUpdater()
+    updater.quitAndInstall.mockImplementationOnce(() => {
+      throw new Error('installer launch failed')
+    })
+    const updateCache = {
+      markInstallPending: vi.fn(async () => true),
+      clearInstallPending: vi.fn(async () => {})
+    }
+    const strategy = new ElectronUpdaterStrategy({
+      updater,
+      currentVersion: '0.2.0',
+      broadcast: vi.fn(),
+      updateCache
+    })
+    await strategy.check()
+
+    const status = await strategy.apply()
+
+    expect(status.state).toBe('error')
+    // Nothing was handed over, so nothing is pending: the marker must not outlive the failed handoff.
+    expect(updateCache.markInstallPending).toHaveBeenCalledTimes(1)
+    expect(updateCache.clearInstallPending).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not record a pending install when the gate refuses', async () => {
+    const updater = new FakeUpdater()
+    const updateCache = {
+      markInstallPending: vi.fn(async () => true),
+      clearInstallPending: vi.fn(async () => {})
+    }
+    const strategy = new ElectronUpdaterStrategy({
+      updater,
+      currentVersion: '0.2.0',
+      broadcast: vi.fn(),
+      installGate: vi.fn(async () => ({ completed: true, reaped: false })),
+      updateCache
+    })
+    await strategy.check()
+
+    const status = await strategy.apply()
+
+    expect(status.state).toBe('error')
+    expect(updater.quitAndInstall).not.toHaveBeenCalled()
+    expect(updateCache.markInstallPending).not.toHaveBeenCalled()
   })
 
   it('hydrates notes from the CDN manifest when the version matches', async () => {

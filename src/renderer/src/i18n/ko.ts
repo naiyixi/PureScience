@@ -1086,8 +1086,10 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'update.failed': '업데이트 실패',
   'update.applyNote':
     'PureScience가 백그라운드 작업을 중지하고 설치를 마치기 위해 종료됩니다. 잠시 걸릴 수 있습니다. 이 단계에서 앱을 다시 열지 마세요. 완료되면 자동으로 다시 시작됩니다.',
-  'update.readyRestartHint': '다운로드 완료 — PureScience를 다시 시작하면 설치가 완료됩니다.',
-  'update.readyInstallerHint': '다운로드 완료 — 설치 프로그램을 실행해 업데이트를 완료하세요.',
+  'update.readyRestartHint':
+    '다운로드 완료 — “업데이트하려면 다시 시작”을 누르면 PureScience가 종료되고 설치가 완료됩니다.',
+  'update.readyInstallerHint':
+    '다운로드 완료 — “설치 프로그램 열기”를 누르면 업데이트가 완료됩니다.',
   'update.quitBeforeInstall':
     '설치 전에 PureScience를 종료하세요. 실행 중인 앱은 교체할 수 없습니다.',
   'update.downloadManually': '수동 다운로드',

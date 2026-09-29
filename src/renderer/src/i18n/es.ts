@@ -1123,8 +1123,10 @@ export const es: Partial<Record<ZhKey, string>> = {
   'update.failed': 'Error en la actualización',
   'update.applyNote':
     'PureScience está deteniendo las tareas en segundo plano y se cerrará para terminar la instalación. Puede tardar un momento; no vuelvas a abrir la aplicación durante este paso. La aplicación se reabrirá automáticamente.',
-  'update.readyRestartHint': 'Descargada: reinicia PureScience para terminar de instalarla.',
-  'update.readyInstallerHint': 'Descargada: ejecuta el instalador para completar la actualización.',
+  'update.readyRestartHint':
+    'Descargada: pulsa «Reiniciar para actualizar» para salir de PureScience y completar la instalación.',
+  'update.readyInstallerHint':
+    'Descargada: pulsa «Abrir instalador» para completar la actualización.',
   'update.quitBeforeInstall':
     'Sal de PureScience antes de instalar: una app en ejecución no puede sustituirse.',
   'update.downloadManually': 'Descargar manualmente',

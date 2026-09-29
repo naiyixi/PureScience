@@ -1129,9 +1129,10 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'update.failed': 'Échec de la mise à jour',
   'update.applyNote':
     'PureScience arrête les tâches en arrière-plan et va se fermer pour terminer l’installation. Cela peut prendre un moment ; veuillez ne pas rouvrir l’application pendant cette étape. L’application se rouvrira automatiquement.',
-  'update.readyRestartHint': 'Téléchargée — redémarrez PureScience pour terminer l’installation.',
+  'update.readyRestartHint':
+    'Téléchargée — cliquez sur « Redémarrer pour mettre à jour » pour quitter PureScience et terminer l’installation.',
   'update.readyInstallerHint':
-    'Téléchargée — exécutez le programme d’installation pour terminer la mise à jour.',
+    'Téléchargée — cliquez sur « Ouvrir l’installateur » pour terminer la mise à jour.',
   'update.quitBeforeInstall':
     'Quittez PureScience avant l’installation — une application en cours d’exécution ne peut pas être remplacée.',
   'update.downloadManually': 'Télécharger manuellement',

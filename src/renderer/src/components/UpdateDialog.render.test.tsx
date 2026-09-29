@@ -112,8 +112,31 @@ describe('UpdateDialog', () => {
     act(() => root.render(<UpdateDialog />))
     expect(document.body.textContent).toContain('Restart to update')
     expect(document.body.textContent).not.toContain('Open installer')
-    // U1: the downloaded state says plainly that restarting finishes the install.
-    expect(document.body.textContent).toContain('restart PureScience to finish installing')
+    // U2: the downloaded state names the action that finishes the install — it used to read as advice
+    // to go restart the app by hand ("restart PureScience to finish installing").
+    expect(document.body.textContent).toContain(
+      'click “Restart to update” to quit PureScience and finish installing'
+    )
+  })
+
+  it('quits and installs from the one click the ready state asks for', () => {
+    const apply = vi.fn()
+    useUpdateStore.setState({
+      isDialogOpen: true,
+      status: { state: 'ready', current: '0.1.0', latest: '0.2.0', applyKind: 'restart' },
+      apply
+    })
+    act(() => root.render(<UpdateDialog />))
+
+    const button = Array.from(document.body.querySelectorAll('button')).find((element) =>
+      /restart to update/i.test(element.textContent ?? '')
+    )
+    expect(button).toBeDefined()
+    act(() => button?.click())
+
+    // The whole point of U2: one click hands off to the installer (the app quits itself) — the user is
+    // never asked to end the process by hand.
+    expect(apply).toHaveBeenCalledTimes(1)
   })
 
   it('points a ready installer-kind update at the downloaded package (macOS)', () => {
@@ -123,7 +146,7 @@ describe('UpdateDialog', () => {
     })
     act(() => root.render(<UpdateDialog />))
     expect(document.body.textContent).toContain('Open installer')
-    expect(document.body.textContent).toContain('run the installer to finish updating')
+    expect(document.body.textContent).toContain('click “Open installer” to finish updating')
     expect(document.body.textContent).not.toContain('Restart to update')
   })
 

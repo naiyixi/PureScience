@@ -2280,8 +2280,11 @@ export const en: Record<ZhKey, string> = {
   'update.failed': 'Update failed',
   'update.applyNote':
     'PureScience is stopping background tasks and will close to finish installing. The update may take a moment; please don’t reopen the app during this step. The updated app will reopen automatically.',
-  'update.readyRestartHint': 'Downloaded — restart PureScience to finish installing.',
-  'update.readyInstallerHint': 'Downloaded — run the installer to finish updating.',
+  // U2 (#17): this line sits next to the action button — say which action finishes the install, instead
+  // of reading like advice to go restart the app by hand.
+  'update.readyRestartHint':
+    'Downloaded — click “Restart to update” to quit PureScience and finish installing.',
+  'update.readyInstallerHint': 'Downloaded — click “Open installer” to finish updating.',
   'update.quitBeforeInstall':
     'Quit PureScience before installing — a running app cannot be replaced.',
   'fileBrowser.close': 'Close file browser',

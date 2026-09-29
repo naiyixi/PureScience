@@ -1134,9 +1134,9 @@ export const de: Partial<Record<ZhKey, string>> = {
   'update.applyNote':
     'PureScience stoppt Hintergrundaufgaben und wird geschlossen, um die Installation abzuschließen. Das kann einen Moment dauern; öffnen Sie die App währenddessen nicht erneut. Die App startet danach automatisch neu.',
   'update.readyRestartHint':
-    'Heruntergeladen — starten Sie PureScience neu, um die Installation abzuschließen.',
+    'Heruntergeladen — klicken Sie auf „Zum Aktualisieren neu starten“, um PureScience zu beenden und die Installation abzuschließen.',
   'update.readyInstallerHint':
-    'Heruntergeladen — führen Sie das Installationsprogramm aus, um das Update abzuschließen.',
+    'Heruntergeladen — klicken Sie auf „Installer öffnen“, um das Update abzuschließen.',
   'update.quitBeforeInstall':
     'Beenden Sie PureScience vor der Installation — eine laufende App kann nicht ersetzt werden.',
   'update.downloadManually': 'Manuell herunterladen',

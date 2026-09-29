@@ -202,8 +202,9 @@ const withTimeout = (promise, description, timeoutMs = UPDATE_TIMEOUT_MS) =>
     )
   })
 
-const runElectronUpdater = async ({ executable, env, expectedVersion }) => {
+const runElectronUpdater = async ({ executable, env, expectedVersion, cacheDir }) => {
   const application = await electron.launch({ executablePath: executable, env, timeout: 60_000 })
+  let cacheBeforeApply
   try {
     const page = await application.firstWindow({ timeout: 60_000 })
     await page.waitForFunction(() => Boolean(globalThis.window?.api?.update), undefined, {
@@ -222,6 +223,14 @@ const runElectronUpdater = async ({ executable, env, expectedVersion }) => {
     )
     if (downloaded.state !== 'ready' || downloaded.applyKind !== 'restart') {
       throw new Error(`Unexpected updater download result: ${JSON.stringify(downloaded)}`)
+    }
+    if (cacheDir) {
+      // U3 (#17) evidence, taken while the package is still needed: the cache must be non-empty here,
+      // otherwise "empty after the install" would prove nothing.
+      cacheBeforeApply = await cacheSnapshot(cacheDir)
+      if (cacheBeforeApply.bytes < 1) {
+        throw new Error(`The updater cache had nothing downloaded to clean up: ${cacheDir}`)
+      }
     }
 
     const closed = withTimeout(application.waitForEvent('close'), 'electron-updater restart')
@@ -249,6 +258,46 @@ const runElectronUpdater = async ({ executable, env, expectedVersion }) => {
     await application.close().catch(() => {})
     throw error
   }
+  return { cacheBeforeApply }
+}
+
+// Byte count + file list of a directory tree, so the evidence records what was actually on disk rather
+// than a boolean. Two levels is all electron-updater's cache uses (root + `pending/`).
+const cacheSnapshot = async (directory, depth = 0) => {
+  const entries = await readdir(directory, { withFileTypes: true }).catch(() => undefined)
+  if (!entries) return { exists: false, files: [], bytes: 0 }
+  const files = []
+  let bytes = 0
+  for (const entry of entries) {
+    const entryPath = join(directory, entry.name)
+    if (entry.isDirectory() && depth < 2) {
+      const nested = await cacheSnapshot(entryPath, depth + 1)
+      files.push(...nested.files)
+      bytes += nested.bytes
+    } else if (entry.isFile()) {
+      const size = await stat(entryPath).then(
+        (info) => info.size,
+        () => 0
+      )
+      files.push({ name: entryPath.slice(directory.length + 1), bytes: size })
+      bytes += size
+    }
+  }
+  return { exists: true, files, bytes }
+}
+
+// The startup sweep is fire-and-forget, so poll: the new version purges the package it was installed
+// from on its first launch (cache-maintenance.ts), and only a real launch can prove that.
+const waitForPurgedUpdateCache = async (cacheDir) => {
+  const snapshot = await waitFor(
+    `the update cache to be emptied after the install (${cacheDir})`,
+    async () => {
+      const observed = await cacheSnapshot(cacheDir)
+      return observed.files.length === 0 ? observed : false
+    },
+    UPDATE_TIMEOUT_MS
+  )
+  return snapshot
 }
 
 // The installed version comes from the registry entry the NSIS install maintains, not from a PowerShell
@@ -294,6 +343,10 @@ const assertDifferentialObservation = (observation) => {
     observation.downloadedInstallerBytes >= observation.installerBytes ||
     observation.versionedFeed !== true ||
     observation.previousInstallerCacheVerified !== true ||
+    // U3 (#17): the installed app must not keep the package it was installed from.
+    observation.installerCachePurged !== true ||
+    observation.installerCacheBytesBefore < 1 ||
+    observation.installerCacheBytesAfter !== 0 ||
     typeof observation.previousVersion !== 'string' ||
     typeof observation.currentVersion !== 'string' ||
     observation.previousVersion === observation.currentVersion
@@ -508,10 +561,11 @@ const main = async () => {
       )
     }
 
-    await runElectronUpdater({
+    const { cacheBeforeApply } = await runElectronUpdater({
       executable: join(installDirectory, 'purescience.exe'),
       env,
-      expectedVersion: currentVersion
+      expectedVersion: currentVersion,
+      cacheDir: updaterCache
     })
     const installerBytes = (await stat(currentInstaller)).size
     observation = assertDifferentialObservation({
@@ -562,6 +616,18 @@ const main = async () => {
       env
     })
     await profileGuard.verifyCycle('current', currentConfigRoot)
+    // U3 (#17): the new version, on its first launch, must have purged the package it was installed
+    // from — the ~150 MB that used to stay in the updater cache forever.
+    const cacheAfterApply = await waitForPurgedUpdateCache(updaterCache)
+    observation.installerCachePurged = cacheAfterApply.files.length === 0
+    observation.installerCacheBytesAfter = cacheAfterApply.bytes
+    observation.installerCacheBytesBefore = cacheBeforeApply?.bytes ?? 0
+    observation.installerCacheFilesBefore = cacheBeforeApply?.files ?? []
+    console.log(
+      `[updater] updater cache after install: ${JSON.stringify(cacheAfterApply.files)} ` +
+        `(${cacheAfterApply.bytes}B, before: ${observation.installerCacheBytesBefore}B)`
+    )
+    assertDifferentialObservation(observation)
     await writeFile(options.output, `${JSON.stringify(observation, null, 2)}\n`, 'utf8')
     console.log('Windows electron-updater differential certification completed successfully.')
   } catch (error) {

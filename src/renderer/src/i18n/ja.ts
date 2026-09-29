@@ -1099,8 +1099,9 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'update.applyNote':
     'PureScience はバックグラウンドタスクを停止し、インストールを完了するために閉じます。しばらくかかる場合があります。この間アプリを開き直さないでください。完了すると自動的に再起動します。',
   'update.readyRestartHint':
-    'ダウンロード完了 — PureScience を再起動するとインストールが完了します。',
-  'update.readyInstallerHint': 'ダウンロード完了 — インストーラーを実行して更新を完了します。',
+    'ダウンロード完了 — 「再起動して更新」を押すと、PureScience を終了してインストールが完了します。',
+  'update.readyInstallerHint':
+    'ダウンロード完了 — 「インストーラーを開く」を押すと更新が完了します。',
   'update.quitBeforeInstall':
     'インストール前に PureScience を終了してください——実行中のアプリは置き換えられません。',
   'update.downloadManually': '手動でダウンロード',

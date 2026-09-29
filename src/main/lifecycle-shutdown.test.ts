@@ -129,7 +129,11 @@ describe('BackendShutdownCoordinator', () => {
 
     const outcome = await coordinator.runForQuit()
 
-    expect(outcome).toEqual({ completed: true, reaped: true })
+    expect(outcome).toEqual({
+      completed: true,
+      reaped: true,
+      steps: { runtime: 'completed', notebook: 'completed' }
+    })
     expect(deps.runtime.shutdownForQuit).toHaveBeenCalledTimes(1)
     expect(deps.runtime.shutdownForUpdateGate).not.toHaveBeenCalled()
     expect(deps.notebook.dispose).toHaveBeenCalledTimes(1)
@@ -142,7 +146,11 @@ describe('BackendShutdownCoordinator', () => {
 
     const outcome = await coordinator.runForUpdateGate()
 
-    expect(outcome).toEqual({ completed: true, reaped: true })
+    expect(outcome).toEqual({
+      completed: true,
+      reaped: true,
+      steps: { runtime: 'completed', notebook: 'completed' }
+    })
     expect(deps.runtime.shutdownForUpdateGate).toHaveBeenCalledTimes(1)
     expect(deps.runtime.shutdownForQuit).not.toHaveBeenCalled()
     expect(deps.notebook.shutdownAll).toHaveBeenCalledTimes(1)
@@ -159,7 +167,29 @@ describe('BackendShutdownCoordinator', () => {
 
     const outcome = await coordinator.runForUpdateGate()
 
-    expect(outcome).toEqual({ completed: true, reaped: false })
+    // The step detail names WHICH teardown was degraded, so a refused install can say so instead of
+    // only reporting that "something" was.
+    expect(outcome).toEqual({
+      completed: true,
+      reaped: false,
+      steps: { runtime: 'completed', notebook: 'degraded' }
+    })
+  })
+
+  it('names the backend that threw while the other still reports its own outcome', async () => {
+    const deps = makeDeps({
+      runtime: {
+        shutdownForQuit: vi.fn(async () => ({ reaped: true })),
+        shutdownForUpdateGate: vi.fn(async () => Promise.reject(new Error('taskkill exploded')))
+      }
+    })
+    const coordinator = new BackendShutdownCoordinator(deps)
+
+    const outcome = await coordinator.runForUpdateGate()
+
+    expect(outcome.steps).toEqual({ runtime: 'failed', notebook: 'completed' })
+    expect(outcome.completed).toBe(true)
+    expect(outcome.reaped).toBe(false)
   })
 
   it('reports completed:false (and reaped:false) when the gate teardown exceeds its budget', async () => {
@@ -176,12 +206,23 @@ describe('BackendShutdownCoordinator', () => {
     const pending = coordinator.runForUpdateGate(UPDATE_SHUTDOWN_BUDGET_MS)
     await vi.advanceTimersByTimeAsync(UPDATE_SHUTDOWN_BUDGET_MS)
 
-    await expect(pending).resolves.toEqual({ completed: false, reaped: false })
+    // The hung backend is 'timeout'; the one that finished keeps its real outcome.
+    await expect(pending).resolves.toEqual({
+      completed: false,
+      reaped: false,
+      steps: { runtime: 'timeout', notebook: 'completed' }
+    })
   })
 
   it.each([
-    ['timeout', { completed: false, reaped: false }],
-    ['degraded', { completed: true, reaped: false }]
+    [
+      'timeout',
+      { completed: false, reaped: false, steps: { runtime: 'timeout', notebook: 'completed' } }
+    ],
+    [
+      'degraded',
+      { completed: true, reaped: false, steps: { runtime: 'completed', notebook: 'degraded' } }
+    ]
   ] as const)(
     'converts a non-clean quit result into the fixed %s category',
     (expected, outcome) => {
