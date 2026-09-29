@@ -117,6 +117,196 @@ const openAnnotationPanel = async (page: Page, fileName: string): Promise<void> 
   await ensureAnnotationPanel(page)
 }
 
+type PageBox = { x: number; y: number; width: number; height: number }
+
+/**
+ * What is under a point of the window, named. The only way to tell that a press never arrived: nothing
+ * above a page says so, and a drag that misses the overlay is silent (no status line, no error).
+ */
+const hitAt = (page: Page, x: number, y: number): Promise<string> =>
+  page.evaluate(
+    ([pointX, pointY]: [number, number]) => {
+      const element = document.elementFromPoint(pointX, pointY) as HTMLElement | null
+      if (!element) return 'nothing'
+      if (element.closest('[data-slot="pdf-region-overlay"]')) return 'overlay'
+      const slot = element.getAttribute('data-slot')
+      const testId = element.getAttribute('data-testid')
+      return `${element.tagName.toLowerCase()}${slot ? `[${slot}]` : ''}${testId ? `[${testId}]` : ''}`
+    },
+    [x, y] as [number, number]
+  )
+
+/**
+ * The page's box once two consecutive readings agree, because the pane is still finding its width when
+ * this runs: it animates open, and every page — and the overlay over it — is sized from that width. A box
+ * read mid-animation belongs to a layout the press no longer lands in, and the press would be dropped
+ * without a word.
+ */
+const stablePageBox = async (page: Page): Promise<PageBox> => {
+  const overlay = page.locator('[data-slot="pdf-region-overlay"]').first()
+  await expect(overlay).toBeVisible()
+  const sameBox = (left: PageBox | null, right: PageBox | null): boolean =>
+    Boolean(
+      left &&
+      right &&
+      Math.abs(left.x - right.x) < 0.5 &&
+      Math.abs(left.y - right.y) < 0.5 &&
+      Math.abs(left.width - right.width) < 0.5 &&
+      Math.abs(left.height - right.height) < 0.5
+    )
+  let previous = await overlay.boundingBox()
+  for (let reading = 0; reading < 25; reading += 1) {
+    await page.waitForTimeout(80)
+    const current = await overlay.boundingBox()
+    if (sameBox(previous, current)) return current as PageBox
+    previous = current
+  }
+  throw new Error('the PDF page never settled into a box to draw on')
+}
+
+/**
+ * The region mode really on: the app's own button says so (`aria-pressed`), and the app shows the hint it
+ * puts up while a marking mode is on. A click that lands while the pane is still laying itself out leaves
+ * no mode behind, and an unarmed pane drops the whole gesture — so this retries the click, and then fails
+ * loudly if the mode is still not on.
+ */
+const armAreaMode = async (page: Page): Promise<void> => {
+  const mode = page.locator('[data-slot="pdf-annotation-mode-area"]')
+  const hint = page.getByTestId('pdf-annotation-hint')
+  for (let click = 0; click < 3; click += 1) {
+    if ((await mode.getAttribute('aria-pressed')) === 'true') break
+    await mode.click()
+    await hint.waitFor({ state: 'visible', timeout: 5_000 }).catch(() => undefined)
+  }
+  await expect(mode).toHaveAttribute('aria-pressed', 'true')
+  await expect(hint).toBeVisible()
+}
+
+// Where the gesture starts and how far it runs, as a fraction of the page. The start point has to be a
+// point of the page the reader can actually reach — the annotation panel floats over the right part of it
+// (measured: the panel covers from 956px of a page ending at 1260px, and proportionally more of the page
+// while the pane is still opening) and a press that starts there goes to the panel. The extent stays a
+// diagonal of ~40% x 30% of the page, so a stored rectangle still describes a real region.
+const DRAW_FRACTIONS: ReadonlyArray<readonly [number, number]> = [
+  [0.25, 0.25],
+  [0.15, 0.3],
+  [0.05, 0.4],
+  [0.35, 0.15]
+]
+const DRAW_EXTENT: readonly [number, number] = [0.4, 0.3]
+
+const drawPoints = async (
+  page: Page,
+  box: PageBox
+): Promise<{ start: { x: number; y: number }; end: { x: number; y: number } } | undefined> => {
+  for (const [fractionX, fractionY] of DRAW_FRACTIONS) {
+    const start = { x: box.x + box.width * fractionX, y: box.y + box.height * fractionY }
+    if ((await hitAt(page, start.x, start.y)) !== 'overlay') continue
+    return {
+      start,
+      end: {
+        x: box.x + box.width * Math.min(fractionX + DRAW_EXTENT[0], 0.95),
+        y: box.y + box.height * Math.min(fractionY + DRAW_EXTENT[1], 0.95)
+      }
+    }
+  }
+  return undefined
+}
+
+/**
+ * Draws one region on the page in front of the reader, and returns only once the app really holds an
+ * annotation for the version on screen.
+ *
+ * Written this way because a gesture that misses is completely silent: the app reports neither an empty
+ * drag nor a refused one, so a press that did not arrive leaves the panel, the toolbar and the status line
+ * exactly as they were. That is the state a slow runner was found in — an armed mode, a visible overlay,
+ * a press, and then no status element for 30s (`element(s) not found`), while the same steps pass on a
+ * laptop where the pane has long settled. The steps below are what makes the difference:
+ *
+ *   * the mode must be armed before anything is pressed (the button's own state, and the app's hint);
+ *   * the page's box must have stopped moving (two consecutive readings that agree);
+ *   * the press must land ON the overlay, checked with `elementFromPoint` before the button goes down —
+ *     the panel covers part of the page, and a press starting there is swallowed by it;
+ *   * the gesture must be LIVE before it is released: the rubber band the app draws during a drag, with a
+ *     real extent. It is the one signal that survives a re-render replacing the overlay mid-gesture, and
+ *     releasing without it stores nothing and reports nothing;
+ *   * the loop condition is the app's own record of a write — its status line, its list, or the store read
+ *     back over the window's own surface — never an attempt count. A press that stored anything ends the
+ *     loop, so a retry can only ever be another press and can never leave two annotations behind.
+ */
+const drawRegionAnnotation = async (
+  page: Page,
+  file: Omit<AnchorRequest, 'versionId'>
+): Promise<void> => {
+  const band = page.locator('[data-slot="pdf-region-rubber-band"]')
+  const status = page.getByTestId('pdf-annotation-status')
+  const item = page.getByTestId('pdf-annotation-item')
+
+  // What the app itself recorded: a message, a listed annotation, or the stored row. Any of the three ends
+  // the loop, which is what keeps a retry from writing a second annotation.
+  const recorded = async (): Promise<boolean> => {
+    if ((await status.count()) > 0 || (await item.count()) > 0) return true
+    const anchor = await readResolvedAnchorIfOpen(page)
+    if (!anchor) return false
+    const stored = await readAnnotations(page, { ...file, versionId: anchor.versionId })
+    return stored.annotations.length > 0
+  }
+
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    if (attempt > 1 && (await recorded())) return
+
+    await armAreaMode(page)
+    const box = await stablePageBox(page)
+    const points = await drawPoints(page, box)
+    if (!points) {
+      throw new Error(
+        `every point the region tool would start on is covered (under the first one: ${await hitAt(
+          page,
+          box.x + box.width * DRAW_FRACTIONS[0]![0],
+          box.y + box.height * DRAW_FRACTIONS[0]![1]
+        )})`
+      )
+    }
+
+    await page.mouse.move(points.start.x, points.start.y)
+    await page.waitForTimeout(60)
+    await page.mouse.down()
+    const live = await band
+      .waitFor({ state: 'visible', timeout: 3_000 })
+      .then(() => true)
+      .catch(() => false)
+    if (!live) {
+      // The press never reached the overlay: the app has seen nothing, so nothing can be in flight and the
+      // next attempt is safe to make.
+      await page.mouse.up()
+      continue
+    }
+    await page.mouse.move(points.end.x, points.end.y, { steps: 8 })
+    await page.waitForTimeout(60)
+    const extent = await band.boundingBox().catch(() => null)
+    await page.mouse.up()
+    // A gesture with no extent is stored as nothing (a press, not a drag), so it is retried like a miss.
+    if (!extent || extent.width < 2 || extent.height < 2) continue
+
+    let written = true
+    try {
+      await expect.poll(recorded, { timeout: 30_000 }).toBe(true)
+    } catch {
+      written = false
+    }
+    if (written) return
+    // A live gesture the app recorded nothing for: the pane can re-mount mid-gesture and take the app's
+    // record of it with it, so the reader's next attempt is what makes the annotation land.
+  }
+
+  throw new Error(
+    `three region gestures were drawn and the app recorded none of them (status lines=${await status.count()}, ` +
+      `listed=${await item.count()}, armed=${await page
+        .locator('[data-slot="pdf-annotation-mode-area"]')
+        .getAttribute('aria-pressed')})`
+  )
+}
+
 test('keeps a drawn annotation on its own file version, across an Electron relaunch', async ({
   app
 }) => {
@@ -131,16 +321,10 @@ test('keeps a drawn annotation on its own file version, across an Electron relau
   await openAnnotationPanel(page, 'region-evidence.pdf')
   await expect(page.getByTestId('pdf-annotation-empty')).toBeVisible()
 
-  // Draw the way a hand does: arm the region tool, then press, move and release on the page.
-  await page.locator('[data-slot="pdf-annotation-mode-area"]').click()
-  const overlay = page.locator('[data-slot="pdf-region-overlay"]').first()
-  await expect(overlay).toBeVisible()
-  const box = await overlay.boundingBox()
-  if (!box) throw new Error('the PDF page offers no box to draw on')
-  await page.mouse.move(box.x + box.width * 0.2, box.y + box.height * 0.2)
-  await page.mouse.down()
-  await page.mouse.move(box.x + box.width * 0.7, box.y + box.height * 0.6, { steps: 8 })
-  await page.mouse.up()
+  // Draw the way a hand does — arm the region tool, press, move, release on the page — but held to the
+  // app's own record of the write. See `drawRegionAnnotation` for the runner case it exists for.
+  await drawRegionAnnotation(page, { projectId, sessionId, artifactId })
+  await ensureAnnotationPanel(page)
 
   // A slow runner can take well over the default 5s for the draw -> persist -> status round trip; the
   // assertion itself is unchanged, only the wait is explicit (measured: this step timed out on a macos
@@ -297,21 +481,22 @@ test('keeps an annotation on the bytes it was drawn on when the file moves on, a
   const { sessionId, artifactId } = receiptIdentity(receipt, 'Region PDF ready')
 
   await openAnnotationPanel(page, 'region-evidence.pdf')
-  await page.locator('[data-slot="pdf-annotation-mode-area"]').click()
-  const overlay = page.locator('[data-slot="pdf-region-overlay"]').first()
-  await expect(overlay).toBeVisible()
-  const box = await overlay.boundingBox()
-  if (!box) throw new Error('the PDF page offers no box to draw on')
-  await page.mouse.move(box.x + box.width * 0.25, box.y + box.height * 0.25)
-  await page.mouse.down()
-  await page.mouse.move(box.x + box.width * 0.65, box.y + box.height * 0.55, { steps: 8 })
-  await page.mouse.up()
+  // Draw the way a hand does — arm the region tool, press, move, release — and let the helper hold this to
+  // the app's own record of a write. On the macos runner this step was red for 30s with `element(s) not
+  // found`: the app had stored nothing at all, which is what a gesture that misses looks like. See
+  // `drawRegionAnnotation` for what makes the gesture land and what proves that it did.
+  await drawRegionAnnotation(page, { projectId, sessionId, artifactId })
   // A slow runner can take well over the default 5s for the draw -> persist -> status round trip; the
   // assertion itself is unchanged, only the wait is explicit (measured: this step timed out on a macos
   // runner while passing in 10s locally).
   await expect(page.getByTestId('pdf-annotation-status')).toHaveText('Annotation saved', {
     timeout: 30_000
   })
+  // 真有一条: the list holds the annotation that was just drawn — the assertion above is a message, this
+  // one is the artifact.
+  await expect(page.getByTestId('pdf-annotation-item')).toHaveCount(1)
+  // The panel can be closed by a re-mount of the pane; the anchor below is read off the panel itself.
+  await ensureAnnotationPanel(page)
 
   const drawnOn = await readResolvedAnchor(page)
   const bounds: AnchorRequest = {
