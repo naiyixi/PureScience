@@ -28,10 +28,18 @@ import { isAlwaysAdmittedKind } from '../event-admission'
 // ALWAYS_ADMIT set, so a chunk is withheld only if the webContents itself is gone; replaying one is
 // therefore pure redundancy, and the renderer dedupes by id so it discarded the payload anyway.
 //
-// The filter applies to the replay portion only — events at or before the last broadcast id. Events newer
-// than the anchor are always sent, because the live set must still reconcile everything this channel has not
-// carried. The snapshot thus keeps its reconciliation duty for exactly the events that could have been
-// withheld, and stops re-shipping the one class that provably could not be.
+// The filter applies to everything the snapshot hands over, with one exception: the newest event is kept even
+// when it is a chunk (the empty-live-set guard below). It used to apply to the replay portion only — events
+// newer than the anchor went out whole "so the live set could reconcile everything this channel had not
+// carried". Measurement said otherwise: after the replay trim this channel still carried 11.3 events / ~5KB
+// per send, and `message` was 36KB of the 52KB total (69%) — the same chunks the event channel had just
+// delivered, sent a second time because they were newer than the anchor. For a kind that is both
+// always-admitted (the gate cannot withhold it) and token-rate, "newer than the anchor" does not mean
+// un-carried: this window is subscribed to the event channel, so the chunk arrived there first and the
+// duplicate buys nothing. Kinds the gate CAN withhold stay in at any age — they are the reconciliation duty
+// the snapshot exists for — and a window that mounts or reloads bootstraps from acp.getState, which is
+// untouched. The one behaviour that changes is bounded and already true of the replay trim: a lane that
+// failed to apply an event can only retry while the event is still listed.
 
 const BROADCAST_EVENT_OVERLAP = 60
 
@@ -72,9 +80,9 @@ export const createStateSnapshotEventsTrimmer = (
     // replayed chunk in it is still one the event channel already delivered, so it is filtered like any other.
     if (anchor < 0) return start === 0 ? snapshot : { ...snapshot, events: replayed }
 
-    const trimmed = replayed.filter(
-      (event, offset) => start + offset > anchor || !isReplayRedundant(event)
-    )
+    // The redundant-kind filter covers the new segment too: see the note above — for an always-admitted,
+    // token-rate kind, being newer than the anchor does not make it un-delivered.
+    const trimmed = replayed.filter((event) => !isReplayRedundant(event))
     // Never hand back an empty live set: a state change that only moved something else (status, in-flight
     // flags) still reconciles against the newest event, and the renderer's bookkeeping keeps its anchor.
     if (trimmed.length === 0) return { ...snapshot, events: [replayed[replayed.length - 1]] }
