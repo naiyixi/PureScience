@@ -93,6 +93,63 @@ const seedDownloadedCache = (fs: MemoryFs): void => {
 const marker = (version: string): string =>
   JSON.stringify({ version, recordedAt: '2026-09-29T00:00:00.000Z' })
 
+// A stand-in for the build's update config. It is never read from disk (MemoryFs owns it), so the path
+// stays a literal — it is a map key, not a host path.
+const APP_UPDATE_YML_PATH = '/app/app-update.yml'
+const APP_UPDATE_YML =
+  'provider: generic\nurl: https://example.invalid\nupdaterCacheDirName: purescience-updater\n'
+
+// One row per cache-root rule this module mirrors from electron-updater's own AppAdapter
+// (`getAppCacheDir`): LOCALAPPDATA on Windows, ~/Library/Caches on macOS, XDG_CACHE_HOME elsewhere —
+// each with the environment the rule reads and the root it must produce. The cache directory is always
+// `<root>/<updaterCacheDirName>`, and every expectation below is composed with the HOST's own join():
+// what is asserted is WHICH root the rule picks, not which separator this machine's path module emits.
+// A hard-coded POSIX literal here is a macOS-only assertion — it fails on Windows even though the rule
+// is right (the shard-6 failure this table replaces), because join() is the *host's* join().
+const UPDATER_CACHE_ROOTS: {
+  name: string
+  platform: NodeJS.Platform
+  env: NodeJS.ProcessEnv
+  home: string
+  root: string
+}[] = [
+  {
+    name: 'macOS: ~/Library/Caches',
+    platform: 'darwin',
+    env: {},
+    home: '/Users/researcher',
+    root: join('/Users/researcher', 'Library', 'Caches')
+  },
+  {
+    name: 'Windows: %LOCALAPPDATA%',
+    platform: 'win32',
+    env: { LOCALAPPDATA: 'C:\\Users\\researcher\\AppData\\Local' },
+    home: 'C:\\Users\\researcher',
+    root: join('C:\\Users\\researcher\\AppData\\Local')
+  },
+  {
+    name: 'Windows without %LOCALAPPDATA%: <home>/AppData/Local',
+    platform: 'win32',
+    env: {},
+    home: 'C:\\Users\\researcher',
+    root: join('C:\\Users\\researcher', 'AppData', 'Local')
+  },
+  {
+    name: 'Linux: $XDG_CACHE_HOME',
+    platform: 'linux',
+    env: { XDG_CACHE_HOME: '/var/tmp/researcher/.cache' },
+    home: '/home/researcher',
+    root: join('/var/tmp/researcher/.cache')
+  },
+  {
+    name: 'Linux without $XDG_CACHE_HOME: ~/.cache',
+    platform: 'linux',
+    env: {},
+    home: '/home/researcher',
+    root: join('/home/researcher', '.cache')
+  }
+]
+
 afterEach(() => {
   vi.restoreAllMocks()
 })
@@ -231,27 +288,33 @@ describe('UpdateCacheMaintenance.sweep', () => {
     })
   })
 
-  it('resolves the layout from the app cache root + updaterCacheDirName in app-update.yml', async () => {
-    const fs = new MemoryFs()
-    fs.write(
-      '/app/app-update.yml',
-      'provider: generic\nurl: https://example.invalid\nupdaterCacheDirName: purescience-updater\n'
-    )
-    const maintenance = new UpdateCacheMaintenance({
-      ...fs.hooks(),
-      platform: 'darwin',
-      homeDirectory: () => '/Users/researcher',
-      appName: () => 'PureScience',
-      configPath: () => '/app/app-update.yml',
-      env: {}
-    })
+  // Platform and environment are explicit inputs, so both rule sets are exercised on every host — a
+  // Windows runner covers the macOS/XDG rows and a macOS runner covers the Windows rows.
+  it.each(UPDATER_CACHE_ROOTS)(
+    'resolves the layout from the app cache root + updaterCacheDirName [$name]',
+    async ({ platform, env, home, root }) => {
+      const fs = new MemoryFs()
+      fs.write(APP_UPDATE_YML_PATH, APP_UPDATE_YML)
+      const maintenance = new UpdateCacheMaintenance({
+        ...fs.hooks(),
+        platform,
+        env,
+        homeDirectory: () => home,
+        // Deliberately different from `updaterCacheDirName`: the yaml value must win over the app name.
+        appName: () => 'PureScience',
+        configPath: () => APP_UPDATE_YML_PATH
+      })
 
-    await expect(maintenance.layout()).resolves.toEqual({
-      cacheDir: '/Users/researcher/Library/Caches/purescience-updater',
-      pendingDir: '/Users/researcher/Library/Caches/purescience-updater/pending',
-      markerPath: `/Users/researcher/Library/Caches/purescience-updater/${INSTALL_MARKER_FILE}`
-    })
-  })
+      // The whole triple, spelled out: the cache dir is the platform root + the yaml's dir name, and the
+      // pending dir and the marker are placed inside it.
+      const cacheDir = join(root, 'purescience-updater')
+      await expect(maintenance.layout()).resolves.toEqual({
+        cacheDir,
+        pendingDir: join(cacheDir, 'pending'),
+        markerPath: join(cacheDir, INSTALL_MARKER_FILE)
+      })
+    }
+  )
 
   it('falls back to the app name when app-update.yml carries no cache dir name', async () => {
     const maintenance = new UpdateCacheMaintenance({
