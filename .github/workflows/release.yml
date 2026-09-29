@@ -249,10 +249,21 @@ jobs:
           --output artifacts/RELEASE-CERTIFICATION.json
           --expected-sha "$GITHUB_SHA"
 
-      # Merge the two per-arch mac feeds (from notarize-mac) into the single latest-mac.yml the
-      # installed app polls (default `latest` channel). No-ops if the mac feeds are absent.
+      # Build the single mac feed the installed app polls (default `latest` channel), from the actual
+      # bytes of this release's two mac zips: sha512 + size are recomputed per arch, so the feed can
+      # never describe bytes other than the ones attached below, and it does not matter whether the
+      # (optional, secret-gated) notarize-mac job ran. Fails the job — before anything is uploaded —
+      # unless BOTH arms resolve; a feed naming one arch is the #18 failure, not a warning.
       - name: Merge mac update feed
         run: node scripts/merge-mac-feed.mjs artifacts
+
+      # Release gate (#18): the published mac feed must list BOTH architectures, each with a sha512
+      # and a size. Re-reads the file that is about to be uploaded rather than trusting the step
+      # above, and is judged on its own exit code (no pipeline), so a regression in the merge path
+      # can only ever publish a feed that passes this. Must not become continue-on-error: an
+      # installed Apple Silicon app polls this file and would otherwise update to the x64 build.
+      - name: Gate the mac update feed on both architectures
+        run: node scripts/merge-mac-feed.mjs artifacts --verify
 
       # One SHA256SUMS.txt covering all installers so users can verify downloads.
       - name: Generate checksums

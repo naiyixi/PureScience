@@ -207,12 +207,14 @@ jobs:
         run: node scripts/macos-package-smoke.mjs --artifact-dir mac --gatekeeper
 
       # Stapling repackaged the zip (new bytes), so the build-time feed — written over the PRE-staple
-      # zip — now carries a stale sha512/size that would fail the updater's signature check. The build
-      # runs the default `latest` channel, so it emits `latest-mac.yml` per arch; drop that stale copy
-      # and regenerate a per-arch intermediate `${arch}-mac.yml` from the stapled zip (recompute sha512
-      # base64 + size, minimal zip-only feed, no blockmap -> full-zip mac updates for v1). The publish
-      # job merges the two arch intermediates into the single `latest-mac.yml` the updater polls.
-      # Derived purely from the stapled zip, so it is correct on both the call and standalone paths.
+      # zip — now carries a stale sha512/size that would fail the updater's signature check. build.yml
+      # already names that feed after the arch (`${arch}-mac.yml`), so dropping any `latest-mac.yml` is
+      # only a guard against an artifact from an older run shape; the per-arch file is then regenerated
+      # from the stapled zip (recompute sha512 base64 + size, minimal zip-only feed, no blockmap ->
+      # full-zip mac updates for v1). The publish job merges the two arch intermediates into the single
+      # `latest-mac.yml` the updater polls — and derives it from the zips' bytes, so it is correct even
+      # when this job is skipped for want of signing secrets. Derived purely from the stapled zip, so
+      # it is correct on both the call and standalone paths.
       - name: Regenerate mac update feed
         if: steps.gate.outputs.enabled == 'true'
         env:
@@ -324,7 +326,8 @@ jobs:
             --repo "$GITHUB_REPOSITORY" --clobber
 
       # Rebuild the combined latest-mac.yml from the re-stapled per-arch feeds and clobber it onto the
-      # release. No-ops (script exits 0) if the per-arch mac feeds aren't present (non-mac backfill).
+      # release. --allow-missing keeps a non-mac/backfill release a no-op (script exits 0 when there is
+      # no mac material at all) while still refusing to publish a feed that names only ONE arch.
       - name: Merge + upload latest-mac.yml
         env:
           GH_TOKEN: ${{ github.token }}
@@ -333,7 +336,7 @@ jobs:
           dir=$(mktemp -d)
           gh release download "${{ inputs.tag }}" --repo "$GITHUB_REPOSITORY" --dir "$dir" \
             --pattern 'arm64-mac.yml' --pattern 'x64-mac.yml' || true
-          node scripts/merge-mac-feed.mjs "$dir"
+          node scripts/merge-mac-feed.mjs "$dir" --allow-missing
           if [ -f "$dir/latest-mac.yml" ]; then
             gh release upload "${{ inputs.tag }}" "$dir/latest-mac.yml" \
               --repo "$GITHUB_REPOSITORY" --clobber

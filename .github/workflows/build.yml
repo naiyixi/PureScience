@@ -290,10 +290,11 @@ jobs:
             # Update channel stays the default `latest`, so `channel: latest` is baked into
             # app-update.yml and the mac updater polls the standard `latest-mac.yml`. arm64 and x64
             # build on separate runners; each emits its own `latest-mac.yml` listing only its arch,
-            # which the publish job merges into a single `latest-mac.yml` carrying both arch zips
-            # (electron-updater's MacUpdater picks the right one by arch at download time). This avoids
-            # the per-arch `${arch}-mac.yml` scheme, which shipped an app-update.yml the mac updater
-            # never matched against the published feed names.
+            # which the step below renames to `${arch}-mac.yml` and the publish job merges into a
+            # single `latest-mac.yml` carrying both arch zips (electron-updater's MacUpdater picks the
+            # right one by arch at download time). This avoids the per-arch `${arch}-mac.yml` channel
+            # scheme, which shipped an app-update.yml the mac updater never matched against the
+            # published feed names.
             npx electron-builder ${{ matrix.eb_args }} "${eb_ver[@]}" --publish never \
               -c.mac.notarize=false
           else
@@ -310,6 +311,26 @@ jobs:
             fi
             npx electron-builder ${{ matrix.eb_args }} "${eb_ver[@]}" "${unsigned_args[@]}" --publish never
           fi
+
+      # Each mac job packages on the default `latest` channel, so BOTH archs write `dist/latest-mac.yml`
+      # — the same filename from two runners, which the publish job's flattened `merge-multiple` download
+      # collapses into one (whichever unpacked last wins: that is how v1.75.0's release ended up with an
+      # x64-only feed, issue #18). Name it after the arch here so the two mac artifacts can never
+      # collide, and so the merge step has a per-arch fallback for an arch whose zip it cannot see.
+      # Pure rename of electron-builder's own file: the feed is not regenerated (no cert => the ad-hoc
+      # signed bytes are final; with a cert, notarize-mac.yml overwrites this file from the stapled zip).
+      - name: Name the macOS update feed by architecture
+        if: ${{ matrix.platform == 'mac' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          feed=dist/latest-mac.yml
+          if [ ! -f "$feed" ]; then
+            echo "::error::electron-builder did not write $feed for ${{ matrix.name }}"
+            exit 1
+          fi
+          mv "$feed" "dist/${{ matrix.bin_arch }}-mac.yml"
+          cat "dist/${{ matrix.bin_arch }}-mac.yml"
 
       - name: Clean up macOS signing keychain
         if: ${{ always() && steps.mac_signing.outputs.keychain != '' }}

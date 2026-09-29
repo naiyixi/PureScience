@@ -152,12 +152,13 @@ deb:
 npmRebuild: false
 # electron-updater feed. Win/Linux/macOS auto-update reads app-update.yml (generated from this block)
 # and fetches its feed from <url>. Win/Linux use the default `latest` channel (latest.yml /
-# latest-linux.yml). macOS builds override the channel to the arch at build time (see build.yml), so
-# each arch polls its own `${arch}-mac.yml` — arm64 and x64 build on separate runners and would
-# otherwise collide on one latest-mac.yml. Mac in-place update needs a Developer ID signature (now
-# configured) and the feed is regenerated post-staple in notarize-mac.yml. The GitHub Release remains
-# the human-facing download source, populated by release.yml — electron-builder runs with --publish
-# never, so this block only shapes app-update.yml + the feed files, it does not upload anything.
+# latest-linux.yml). macOS keeps `latest` too, so BOTH mac archs emit a feed named `latest-mac.yml`;
+# build.yml renames each to `${arch}-mac.yml` right after packaging (two runners, one filename) and
+# the release's publish job merges them back into the single `latest-mac.yml` the updater polls —
+# computed from the published zips' own bytes, so it is right with or without notarization. The
+# GitHub Release remains the human-facing download source, populated by release.yml —
+# electron-builder runs with --publish never, so this block only shapes app-update.yml + the feed
+# files, it does not upload anything.
 publish:
   provider: generic
   url: https://statics.zerolink.com/purescience/app/stable
