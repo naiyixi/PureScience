@@ -165,6 +165,7 @@
         "src/main/storage-root.ts",
         "src/main/storage/**",
         "src/main/tray.ts",
+        "src/main/update/cache-maintenance.ts",
         "src/main/update/create-strategy.ts",
         "src/main/update/electron-updater-strategy.ts",
         "src/main/session-persistence/**",

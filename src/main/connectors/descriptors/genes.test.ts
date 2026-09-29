@@ -10,6 +10,7 @@ const EXPECTED_IDS = [
   'get_ontology_term',
   'get_go_annotations',
   'get_uniprot_entries',
+  'map_uniprot_ids',
   'map_reactome_pathways'
 ]
 

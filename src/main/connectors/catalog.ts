@@ -228,6 +228,20 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
     requiresNcbi: false
   },
   {
+    id: 'sequence_tools',
+    displayName: '序列分析',
+    aliases: ['BLAST', 'Clustal Omega', 'InterProScan', 'sequence alignment', 'similarity search'],
+    description:
+      '序列相似性检索与多序列比对（EMBL-EBI Job Dispatcher）——NCBI BLAST+、Clustal Omega，以及只读的 InterProScan 作业结果查询。',
+    useWhen:
+      'Use when you need to search a sequence database for similar sequences (NCBI BLAST+ — blastp/blastn/blastx/tblastn/tblastx against UniProtKB, PDB and friends), align several sequences (Clustal Omega multiple sequence alignment), or read an existing InterProScan job’s status and TSV result without submitting or cancelling anything. Sourced from the EMBL-EBI Job Dispatcher (NCBI BLAST+, Clustal Omega, InterProScan).',
+    sources: ['NCBI BLAST+', 'Clustal Omega', 'InterProScan'],
+    termsUrl: 'https://www.ebi.ac.uk/about/terms-of-use',
+    // The Job Dispatcher requires a contact email per its fair-use policy, so this connector shares the
+    // "share contact email" gate the NCBI-backed connectors use.
+    requiresNcbi: true
+  },
+  {
     id: 'omics_archives',
     displayName: '组学数据库',
     description:

@@ -1,10 +1,33 @@
 import type { ToolContext, ToolDescriptor } from '../types'
+import {
+  JobTranscript,
+  RemoteFailure,
+  bytesOf,
+  fetchTextRetrying,
+  sleep,
+  submitOnce
+} from './job-transport'
 
 // mygene.info batch gene resolution + UniProtKB record retrieval. mygene answers a POST /query with a
 // JSON array (one item per query term, misses flagged notfound:true); UniProt is queried with a single
 // batched OR-query over accessions and served as TSV (token-lean tabular), FASTA, or flat-file text.
+//
+// map_uniprot_ids adds the UniProt ID Mapping service, which is a THREE-SEGMENT job: POST
+// /idmapping/run (submit, non-retried) → GET /idmapping/status/<jobId> (poll) → GET
+// /idmapping/stream/<jobId> (results, paged by a Link header). It shares its transport with the
+// sequence-tools connector so the submit/poll/result rules live in one place.
 const MYGENE = 'https://mygene.info/v3'
 const UNIPROT = 'https://rest.uniprot.org/uniprotkb'
+const IDMAPPING = 'https://rest.uniprot.org/idmapping'
+
+// The ID Mapping service accepts up to 100,000 identifiers per submission and tells callers to split
+// anything larger into batches; the tool chunks at that ceiling and never fans out parallel jobs.
+const IDMAPPING_JOB_ID_CAP = 100_000
+const IDMAPPING_POLL_INTERVAL_MS = 1_500
+const IDMAPPING_MAX_PAGES = 200
+// A named unmapped list is the point of the tool, so it is listed in full up to this many names and
+// then explicitly reported as truncated — never silently collapsed to a bare count.
+const UNMAPPED_LIST_CAP = 5_000
 
 // mygene batch caps at 1000 terms/request; UniProt OR-queries are chunked to keep the URL bounded.
 const MYGENE_BATCH = 1000
@@ -114,6 +137,229 @@ function mapEntries(
     else missing.push(acc)
   }
   return { records, missing }
+}
+
+// -- UniProt ID Mapping transport -----------------------------------------------------------------
+// (shares job-transport's submitOnce / fetchTextRetrying so the two-phase rules live in one place)
+
+const excerpt = (text: string): string => {
+  const collapsed = text.replace(/\s+/g, ' ').trim()
+  return collapsed.length > 300 ? `${collapsed.slice(0, 300)}…` : collapsed
+}
+
+const clampInt = (raw: unknown, fallback: number, min: number, max: number): number => {
+  const value = Number(raw)
+  if (!Number.isFinite(value)) return fallback
+  return Math.max(min, Math.min(max, Math.trunc(value)))
+}
+
+// The service delimits identifiers on commas/whitespace, so an id containing either cannot be
+// expressed and would silently corrupt the batch — reject it by name instead.
+const SPLIT_RE = /[\s,]/
+
+// Follows the `rel="next"` URL of an RFC-5988 Link header, but only within the same host: a result
+// stream must never be redirected to a third-party origin by a response header.
+const nextPageUrl = (headers: Headers): string | undefined => {
+  const link = headers.get('link')
+  if (!link) return undefined
+  for (const part of link.split(',')) {
+    const match = /<([^>]+)>\s*;\s*rel="next"/.exec(part)
+    if (!match) continue
+    try {
+      const url = new URL(match[1])
+      if (url.hostname !== 'rest.uniprot.org') return undefined
+      return url.toString()
+    } catch {
+      return undefined
+    }
+  }
+  return undefined
+}
+
+async function submitIdMappingJob(
+  transcript: JobTranscript,
+  from: string,
+  to: string,
+  ids: string[]
+): Promise<string> {
+  const res = await submitOnce(
+    `${IDMAPPING}/run`,
+    { from, to, ids: ids.join(',') },
+    { accept: 'application/json' }
+  )
+  transcript.record(res.text)
+  if (!res.ok) {
+    throw new RemoteFailure(
+      'remote-rejected',
+      `UniProt ID mapping rejected the submission (HTTP ${res.status}): ${excerpt(res.text)}`
+    )
+  }
+  let body: unknown
+  try {
+    body = JSON.parse(res.text)
+  } catch {
+    throw new RemoteFailure(
+      'contract-changed',
+      `UniProt ID mapping returned a non-JSON receipt: ${excerpt(res.text)}`
+    )
+  }
+  const jobId = (body as { jobId?: unknown } | null)?.jobId
+  if (typeof jobId !== 'string' || jobId === '') {
+    throw new RemoteFailure(
+      'contract-changed',
+      `UniProt ID mapping receipt carried no jobId: ${excerpt(res.text)}`
+    )
+  }
+  return jobId
+}
+
+type MappingRecord = { from: string; to: unknown }
+
+// One id may be reported as unmatched by the service itself (`failedIds`) instead of merely being
+// absent from `results`; both are named so neither can be lost.
+const stringList = (value: unknown): string[] =>
+  Array.isArray(value) ? value.map((entry) => String(entry)) : []
+
+const toMappingRecords = (rows: unknown): MappingRecord[] => {
+  if (!Array.isArray(rows)) return []
+  const out: MappingRecord[] = []
+  for (const row of rows) {
+    if (row && typeof row === 'object' && 'from' in row) {
+      const record = row as { from?: unknown; to?: unknown }
+      out.push({ from: String(record.from), to: record.to })
+    }
+  }
+  return out
+}
+
+type IdMappingPoll = {
+  // Set when the service delivered the results inline (a finished job that fits on one page answers
+  // /status with `results` and NO `jobStatus`); otherwise the caller streams them.
+  results?: MappingRecord[]
+  failedIds: string[]
+}
+
+async function pollIdMappingJob(
+  transcript: JobTranscript,
+  jobId: string,
+  pollTimeoutS: number
+): Promise<IdMappingPoll> {
+  const deadline = Date.now() + pollTimeoutS * 1_000
+  for (;;) {
+    const url = `${IDMAPPING}/status/${encodeURIComponent(jobId)}`
+    const res = await fetchTextRetrying(url, { accept: 'application/json' })
+    transcript.record(res.text)
+    if (res.status === 404) {
+      throw new RemoteFailure(
+        'job-not-found',
+        `UniProt ID mapping does not know job ${jobId} (HTTP 404): ${excerpt(res.text)}`
+      )
+    }
+    if (!res.ok) {
+      throw new RemoteFailure(
+        'remote-rejected',
+        `UniProt ID mapping status read for job ${jobId} returned HTTP ${res.status}: ${excerpt(res.text)}`
+      )
+    }
+    let body: { jobStatus?: unknown; results?: unknown; failedIds?: unknown } | null
+    try {
+      body = JSON.parse(res.text) as {
+        jobStatus?: unknown
+        results?: unknown
+        failedIds?: unknown
+      } | null
+    } catch {
+      throw new RemoteFailure(
+        'contract-changed',
+        `UniProt ID mapping status for job ${jobId} was not JSON: ${excerpt(res.text)}`
+      )
+    }
+    const failedIds = stringList(body?.failedIds)
+    // A finished job whose results fit on one page is answered inline: `results` present, no
+    // `jobStatus` at all (observed live). Taking it here also saves the follow-up stream request.
+    if (body && Array.isArray(body.results)) {
+      return { results: toMappingRecords(body.results), failedIds }
+    }
+    const status = body && typeof body.jobStatus === 'string' ? body.jobStatus : undefined
+    if (status === 'FINISHED') return { failedIds }
+    if (status === 'ERROR' || status === 'FAILURE') {
+      throw new RemoteFailure(
+        'job-failed',
+        `UniProt ID mapping job ${jobId} ended in status ${status}; there is no result to read.`
+      )
+    }
+    if (status !== 'RUNNING' && status !== 'QUEUED' && status !== 'NEW') {
+      throw new RemoteFailure(
+        'contract-changed',
+        `UniProt ID mapping job ${jobId} reported an unrecognized status '${String(status)}': ${excerpt(res.text)}`
+      )
+    }
+    if (Date.now() >= deadline) {
+      throw new RemoteFailure(
+        'timeout',
+        `UniProt ID mapping job ${jobId} did not finish within ${pollTimeoutS}s (last status ` +
+          `${status}). It may still be running remotely — narrow the batch (smaller chunk_size) and ` +
+          `retry, or submit fewer identifiers. The job id is ${jobId}.`
+      )
+    }
+    await sleep(IDMAPPING_POLL_INTERVAL_MS)
+  }
+}
+
+// Reads every page of /idmapping/stream/<jobId>, following the Link header, and enforces the byte cap
+// on the accumulated records so a huge mapping fails by name instead of overflowing the transport.
+async function fetchIdMappingResults(
+  transcript: JobTranscript,
+  jobId: string,
+  maxBytes: number
+): Promise<MappingRecord[]> {
+  const records: MappingRecord[] = []
+  let url: string | undefined = `${IDMAPPING}/stream/${encodeURIComponent(jobId)}`
+  let pages = 0
+  while (url) {
+    const res = await fetchTextRetrying(url, { accept: 'application/json' })
+    transcript.record(res.text)
+    if (!res.ok) {
+      throw new RemoteFailure(
+        'remote-rejected',
+        `UniProt ID mapping results for job ${jobId} returned HTTP ${res.status} on page ${pages + 1}: ${excerpt(res.text)}`
+      )
+    }
+    let body: { results?: unknown } | null
+    try {
+      body = JSON.parse(res.text) as { results?: unknown } | null
+    } catch {
+      throw new RemoteFailure(
+        'contract-changed',
+        `UniProt ID mapping result page ${pages + 1} for job ${jobId} was not JSON: ${excerpt(res.text)}`
+      )
+    }
+    if (!body || !Array.isArray(body.results)) {
+      throw new RemoteFailure(
+        'contract-changed',
+        `UniProt ID mapping result page ${pages + 1} for job ${jobId} carried no results array.`
+      )
+    }
+    for (const record of toMappingRecords(body.results)) records.push(record)
+    pages += 1
+    if (bytesOf(JSON.stringify(records)) > maxBytes) {
+      throw new RemoteFailure(
+        'response-too-large',
+        `the mapped records for job ${jobId} exceed the ${maxBytes}-byte cap after ${pages} page(s). ` +
+          `Raise max_bytes, or narrow the identifier batch.`
+      )
+    }
+    const next = nextPageUrl(res.headers)
+    if (next && pages >= IDMAPPING_MAX_PAGES) {
+      throw new RemoteFailure(
+        'response-too-large',
+        `UniProt ID mapping job ${jobId} still had pages after ${IDMAPPING_MAX_PAGES} — the result is ` +
+          `far larger than this tool will assemble in one call. Narrow the batch.`
+      )
+    }
+    url = next
+  }
+  return records
 }
 
 export const GENES_PROTEINS_TOOLS: ToolDescriptor[] = [
@@ -238,6 +484,166 @@ export const GENES_PROTEINS_TOOLS: ToolDescriptor[] = [
         n_found: Object.keys(records).length,
         missing,
         records
+      }
+    }
+  },
+  {
+    id: 'map_uniprot_ids',
+    connector: 'genes',
+    description:
+      'Batch identifier mapping through the UniProt ID Mapping service (e.g. UniProtKB_AC-ID → Ensembl, ' +
+      'Ensembl → UniProtKB, gene names → UniProtKB). Three segments, documented here because they matter: ' +
+      'submit (`from`,`to`,`ids` → a job id; a single, non-retried POST), poll the job status, then read ' +
+      'the streamed results. Identifiers are chunked at the service ceiling (100,000 per submission) so a ' +
+      'larger list becomes several sequential jobs, never parallel ones. Unmapped identifiers are named ' +
+      'individually in `unmapped` (not just counted) — a silent miss is the failure mode this tool exists ' +
+      'to avoid. Failures are named: a rejected submission, an unknown or failed job, a poll timeout, a ' +
+      'result larger than `max_bytes`.',
+    input: {
+      type: 'object',
+      properties: {
+        from: {
+          type: 'string',
+          description: 'Source database, e.g. "UniProtKB_AC-ID", "Ensembl", "Gene_Name".'
+        },
+        to: {
+          type: 'string',
+          description: 'Target database, e.g. "Ensembl", "UniProtKB", "UniProtKB-Swiss-Prot".'
+        },
+        ids: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Identifiers to map (no commas/whitespace inside an id).'
+        },
+        chunk_size: {
+          type: 'number',
+          description: `Identifiers per job, default ${IDMAPPING_JOB_ID_CAP} (the service ceiling).`
+        },
+        max_records: {
+          type: 'number',
+          description:
+            'Mapped records returned, default 5000; extra records are reported as truncated, not dropped.'
+        },
+        max_bytes: {
+          type: 'number',
+          description:
+            'Accumulated-records byte cap, default 16000000; exceeding it is a named error.'
+        },
+        poll_timeout_s: { type: 'number', description: 'Deadline per job, default 300s.' }
+      },
+      required: ['from', 'to', 'ids']
+    },
+    required: ['from', 'to', 'ids'],
+    returns:
+      '`{ from, to, n_input, n_unique_input, n_duplicate_skipped, n_records, n_mapped_inputs, n_unmapped, ' +
+      'unmapped: [identifier, ...] (named, in input order; `unmapped_truncated: true` when longer than the ' +
+      'cap), records: [{from, to}], records_truncated, batches: [{chunk_index, n_ids, job_id, n_records, ' +
+      'n_failed_ids, n_http_requests}], provenance: {connector, tool, params, response_sha256, retrieved_at, ' +
+      'n_http_requests, bytes_received, jobs} }`.',
+    example:
+      'const result = await host.mcp("genes", "map_uniprot_ids", {"from": "UniProtKB_AC-ID", "to": "Ensembl", "ids": ["P04637", "P38398"]})',
+    run: async (_ctx: ToolContext, a: Record<string, unknown>) => {
+      const from = String(a.from ?? '').trim()
+      const to = String(a.to ?? '').trim()
+      if (from === '' || to === '') {
+        throw new Error(
+          'map_uniprot_ids: both `from` and `to` database names are required (e.g. from="UniProtKB_AC-ID", to="Ensembl").'
+        )
+      }
+      const rawIds = Array.isArray(a.ids)
+        ? (a.ids as unknown[]).map((value) => String(value).trim())
+        : []
+      const ids = rawIds.filter((id) => id !== '')
+      if (ids.length === 0)
+        throw new Error('map_uniprot_ids: `ids` must contain at least one identifier.')
+
+      const malformed = ids.filter((id) => SPLIT_RE.test(id))
+      if (malformed.length > 0) {
+        throw new Error(
+          `map_uniprot_ids: ${malformed.length} identifier(s) contain a comma or whitespace and cannot be ` +
+            `expressed in a comma-delimited batch (first few: ${malformed.slice(0, 5).join(', ')}).`
+        )
+      }
+
+      // Deduplicate but keep the caller's order so `unmapped` reads back in a familiar sequence.
+      const uniqueIds: string[] = []
+      const seen = new Set<string>()
+      for (const id of ids) {
+        const key = id.toUpperCase()
+        if (seen.has(key)) continue
+        seen.add(key)
+        uniqueIds.push(id)
+      }
+      const duplicateSkipped = ids.length - uniqueIds.length
+
+      const chunkSize = clampInt(a.chunk_size, IDMAPPING_JOB_ID_CAP, 1, IDMAPPING_JOB_ID_CAP)
+      const maxRecords = clampInt(a.max_records, 5_000, 1, 100_000)
+      const maxBytes = clampInt(a.max_bytes, 16_000_000, 1_000, 32_000_000)
+      const pollTimeoutS = clampInt(a.poll_timeout_s, 300, 5, 900)
+
+      const transcript = new JobTranscript()
+      const records: MappingRecord[] = []
+      const batches: Array<Record<string, unknown>> = []
+      const remoteFailedIds: string[] = []
+
+      for (let start = 0; start < uniqueIds.length; start += chunkSize) {
+        const chunk = uniqueIds.slice(start, start + chunkSize)
+        const requestsBefore = transcript.nHttpRequests
+        const jobId = await submitIdMappingJob(transcript, from, to, chunk)
+        const poll = await pollIdMappingJob(transcript, jobId, pollTimeoutS)
+        for (const failedId of poll.failedIds) remoteFailedIds.push(failedId)
+        const chunkRecords =
+          poll.results ?? (await fetchIdMappingResults(transcript, jobId, maxBytes))
+        for (const record of chunkRecords) records.push(record)
+        batches.push({
+          chunk_index: batches.length,
+          n_ids: chunk.length,
+          job_id: jobId,
+          n_records: chunkRecords.length,
+          n_failed_ids: poll.failedIds.length,
+          n_http_requests: transcript.nHttpRequests - requestsBefore
+        })
+      }
+
+      // An identifier counts as unmapped when no result answers for it, and also when the service
+      // named it as failed — a service-declared failure outranks a stray echo in the results.
+      const mappedKeys = new Set(records.map((record) => record.from.toUpperCase()))
+      const failedKeys = new Set(remoteFailedIds.map((id) => id.toUpperCase()))
+      const unmappedIds = uniqueIds.filter(
+        (id) => !mappedKeys.has(id.toUpperCase()) || failedKeys.has(id.toUpperCase())
+      )
+      const unmappedTruncated = unmappedIds.length > UNMAPPED_LIST_CAP
+      const batchesForProvenance = batches.map((batch) => ({
+        job_id: String(batch.job_id),
+        n_http_requests: Number(batch.n_http_requests)
+      }))
+
+      return {
+        from,
+        to,
+        n_input: ids.length,
+        n_unique_input: uniqueIds.length,
+        n_duplicate_skipped: duplicateSkipped,
+        n_records: records.length,
+        n_mapped_inputs: uniqueIds.length - unmappedIds.length,
+        n_unmapped: unmappedIds.length,
+        unmapped: unmappedIds.slice(0, UNMAPPED_LIST_CAP),
+        ...(unmappedTruncated ? { unmapped_truncated: true } : {}),
+        records: records.slice(0, maxRecords),
+        records_truncated: records.length > maxRecords,
+        batches,
+        provenance: transcript.provenance(
+          'genes',
+          'map_uniprot_ids',
+          {
+            from,
+            to,
+            chunk_size: chunkSize,
+            n_input: ids.length,
+            n_unique_input: uniqueIds.length
+          },
+          batchesForProvenance
+        )
       }
     }
   }

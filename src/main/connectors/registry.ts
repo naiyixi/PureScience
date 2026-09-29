@@ -24,6 +24,7 @@ import { PUBMED_TOOLS } from './descriptors/pubmed'
 import { REGULATION_TOOLS } from './descriptors/regulation'
 import { RESEARCH_RESOURCES_TOOLS } from './descriptors/research-resources'
 import { RNA_TOOLS } from './descriptors/rna'
+import { SEQUENCE_TOOLS } from './descriptors/sequence-tools'
 import { STRUCTURES_TOOLS } from './descriptors/structures'
 import { VARIANTS_TOOLS } from './descriptors/variants'
 import { ZINC_TOOLS } from './descriptors/zinc'
@@ -56,6 +57,7 @@ const ALL_TOOLS: ToolDescriptor[] = [
   ...REGULATION_TOOLS,
   ...RESEARCH_RESOURCES_TOOLS,
   ...RNA_TOOLS,
+  ...SEQUENCE_TOOLS,
   ...STRUCTURES_TOOLS,
   ...VARIANTS_TOOLS,
   ...ZINC_TOOLS
