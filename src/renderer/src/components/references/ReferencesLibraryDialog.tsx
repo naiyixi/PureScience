@@ -25,6 +25,7 @@ import {
 } from '../../../../shared/citation/csl'
 import type { CitationStyleDefinition } from '../../../../shared/citation/types'
 import { copyText } from '@/lib/copy-text'
+import { ReferencesScreeningPanel } from './ReferencesScreeningPanel'
 
 const IDENTIFIER_KINDS = ['doi', 'pmid', 'pmcid', 'arxivId'] as const
 type IdentifierKind = (typeof IDENTIFIER_KINDS)[number]
@@ -168,6 +169,10 @@ export function ReferencesLibraryDialog({
   const [importProgress, setImportProgress] = useState<{ done: number; total: number } | null>(null)
   const cancelImportRef = useRef(false)
   const [attachToReferenceId, setAttachToReferenceId] = useState<string | null>(null)
+  // Literature screening (v1.77) is a per-collection view: the triage columns replace the plain list
+  // while it is on, and it is only offered once a collection is open (a screen runs against a
+  // collection's references, never against the whole library).
+  const [showScreening, setShowScreening] = useState(false)
 
   // Citation-style layer (v1.65): built-ins come from the shared catalogue, imported styles from the
   // store; both are merged here so one picker drives export, copy and the side-by-side comparison.
@@ -284,6 +289,13 @@ export function ReferencesLibraryDialog({
     )
   }, [references, selectedCollectionId])
 
+  // Leaving the collection leaves the screening view too: the state on screen belongs to one collection,
+  // so the toggle is reset where the selection is made rather than in an effect.
+  const selectCollection = (collectionId: string | null): void => {
+    setSelectedCollectionId(collectionId)
+    setShowScreening(false)
+  }
+
   if (!open) return null
 
   const todayIso = (): string => new Date().toISOString().slice(0, 10)
@@ -395,7 +407,7 @@ export function ReferencesLibraryDialog({
   const handleDeleteCollection = async (collection: ReferenceCollection): Promise<void> => {
     try {
       await window.api.references.deleteCollection(collection.id)
-      if (selectedCollectionId === collection.id) setSelectedCollectionId(null)
+      if (selectedCollectionId === collection.id) selectCollection(null)
       setPendingCollectionDeleteId(null)
       await refresh()
       setNotice(t('references.collectionDeleted', { name: collection.name }))
@@ -797,7 +809,7 @@ export function ReferencesLibraryDialog({
             <aside className="flex w-52 shrink-0 flex-col gap-1 overflow-y-auto border-r border-[var(--border)] p-2">
               <button
                 type="button"
-                onClick={() => setSelectedCollectionId(null)}
+                onClick={() => selectCollection(null)}
                 className={`rounded-md px-2 py-1 text-left text-xs ${
                   selectedCollectionId === null
                     ? 'bg-[var(--accent)]/15 font-medium text-[var(--accent)]'
@@ -810,7 +822,7 @@ export function ReferencesLibraryDialog({
                 <div key={collection.id} className="group/collection flex items-center gap-1">
                   <button
                     type="button"
-                    onClick={() => setSelectedCollectionId(collection.id)}
+                    onClick={() => selectCollection(collection.id)}
                     className={`min-w-0 flex-1 truncate rounded-md px-2 py-1 text-left text-xs ${
                       selectedCollectionId === collection.id
                         ? 'bg-[var(--accent)]/15 font-medium text-[var(--accent)]'
@@ -888,6 +900,17 @@ export function ReferencesLibraryDialog({
                     ? t('references.allItems', { n: shownReferences.length })
                     : (collections.find((c) => c.id === selectedCollectionId)?.name ?? '')}
                 </span>
+                {selectedCollectionId === null ? null : (
+                  <button
+                    type="button"
+                    className={`${ghostClass} ml-2`}
+                    aria-pressed={showScreening}
+                    title={t('references.screening.scopeHint')}
+                    onClick={() => setShowScreening((current) => !current)}
+                  >
+                    {t('references.screening.title')}
+                  </button>
+                )}
                 <button
                   type="button"
                   className={ghostClass}
@@ -1061,142 +1084,157 @@ export function ReferencesLibraryDialog({
                   </ul>
                 </div>
               ) : null}
-              <div className="min-h-0 flex-1 overflow-y-auto p-2">
-                {shownReferences.length === 0 ? (
-                  <div className="py-10 text-center">
-                    <p className="text-xs text-[var(--muted-foreground)]">
-                      {selectedCollectionId === null
-                        ? t('references.empty')
-                        : t('references.collectionEmpty')}
-                    </p>
-                    {selectedCollectionId === null ? null : (
-                      <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-                        {t('references.collectionEmptyHint')}
+              {showScreening && selectedCollectionId !== null ? (
+                <ReferencesScreeningPanel
+                  // Re-keyed by collection: every piece of screening state belongs to exactly one
+                  // collection, so switching collections starts from that collection's own reads.
+                  key={selectedCollectionId}
+                  collectionId={selectedCollectionId}
+                  collectionName={selectedCollectionName}
+                  references={shownReferences}
+                  onNotice={setNotice}
+                  onError={setError}
+                />
+              ) : (
+                <div className="min-h-0 flex-1 overflow-y-auto p-2">
+                  {shownReferences.length === 0 ? (
+                    <div className="py-10 text-center">
+                      <p className="text-xs text-[var(--muted-foreground)]">
+                        {selectedCollectionId === null
+                          ? t('references.empty')
+                          : t('references.collectionEmpty')}
                       </p>
-                    )}
-                  </div>
-                ) : (
-                  <ul className="flex flex-col gap-1.5">
-                    {shownReferences.map((reference) => (
-                      <li
-                        key={reference.id}
-                        className="group rounded-lg border border-[var(--border)] px-3 py-2"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="text-xs font-medium leading-snug text-[var(--foreground)]">
-                              {reference.title}
-                            </p>
-                            <p className="mt-0.5 text-[11px] text-[var(--muted-foreground)]">
-                              {reference.authors
-                                .slice(0, 3)
-                                .map((author) => author.name)
-                                .join(', ')}
-                              {reference.authors.length > 3 ? ' et al.' : ''}
-                              {reference.year ? ` · ${reference.year}` : ''}
-                              {reference.venue ? ` · ${reference.venue}` : ''}
-                              {reference.doi ? ` · ${reference.doi}` : ''}
-                              {reference.provenance ? ` · ${t('references.provenanceBadge')}` : ''}
-                            </p>
-                          </div>
-                          <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                            {reference.pdfManagedFileId ? (
-                              <span className="flex items-center gap-1 rounded border border-[var(--border)] px-1.5 py-0.5 text-[10px] text-[var(--muted-foreground)]">
-                                PDF · {reference.pdfManagedFileId.slice(-8)}
+                      {selectedCollectionId === null ? null : (
+                        <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+                          {t('references.collectionEmptyHint')}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <ul className="flex flex-col gap-1.5">
+                      {shownReferences.map((reference) => (
+                        <li
+                          key={reference.id}
+                          className="group rounded-lg border border-[var(--border)] px-3 py-2"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-xs font-medium leading-snug text-[var(--foreground)]">
+                                {reference.title}
+                              </p>
+                              <p className="mt-0.5 text-[11px] text-[var(--muted-foreground)]">
+                                {reference.authors
+                                  .slice(0, 3)
+                                  .map((author) => author.name)
+                                  .join(', ')}
+                                {reference.authors.length > 3 ? ' et al.' : ''}
+                                {reference.year ? ` · ${reference.year}` : ''}
+                                {reference.venue ? ` · ${reference.venue}` : ''}
+                                {reference.doi ? ` · ${reference.doi}` : ''}
+                                {reference.provenance
+                                  ? ` · ${t('references.provenanceBadge')}`
+                                  : ''}
+                              </p>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                              {reference.pdfManagedFileId ? (
+                                <span className="flex items-center gap-1 rounded border border-[var(--border)] px-1.5 py-0.5 text-[10px] text-[var(--muted-foreground)]">
+                                  PDF · {reference.pdfManagedFileId.slice(-8)}
+                                  <button
+                                    type="button"
+                                    title={t('references.detachPdf')}
+                                    onClick={() => void handleDetachPdf(reference.id)}
+                                  >
+                                    <X className="size-3" aria-hidden="true" />
+                                  </button>
+                                </span>
+                              ) : (
                                 <button
                                   type="button"
-                                  title={t('references.detachPdf')}
-                                  onClick={() => void handleDetachPdf(reference.id)}
+                                  className={ghostClass}
+                                  title={t('references.attachPdf')}
+                                  onClick={() => {
+                                    if (projectId) openPdfPicker(projectId, reference.id)
+                                  }}
                                 >
-                                  <X className="size-3" aria-hidden="true" />
+                                  PDF
                                 </button>
-                              </span>
-                            ) : (
+                              )}
                               <button
                                 type="button"
                                 className={ghostClass}
-                                title={t('references.attachPdf')}
-                                onClick={() => {
-                                  if (projectId) openPdfPicker(projectId, reference.id)
-                                }}
-                              >
-                                PDF
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              className={ghostClass}
-                              title={t('references.copyInStyle', {
-                                style: selectedStyle?.label ?? ''
-                              })}
-                              onClick={() => void handleCopyInStyle(reference)}
-                            >
-                              {t('references.copyCitation')}
-                            </button>
-                            <button
-                              type="button"
-                              className={ghostClass}
-                              title={t('references.compareStyles')}
-                              onClick={() =>
-                                setCompareTarget((current) =>
-                                  current?.id === reference.id ? null : reference
-                                )
-                              }
-                            >
-                              {t('references.compareStyles')}
-                            </button>
-                            {collections.length > 0 ? (
-                              <select
-                                className="max-w-24 rounded border border-[var(--border)] bg-transparent px-1 py-0.5 text-[10px]"
-                                aria-label={t('references.manualAdd')}
-                                defaultValue=""
-                                onChange={(event) => {
-                                  if (event.target.value) {
-                                    void handleAddToCollection(reference.id, event.target.value)
-                                  }
-                                }}
-                              >
-                                <option value="" disabled>
-                                  {t('references.collectionNewPlaceholder')}
-                                </option>
-                                {collections.map((collection) => (
-                                  <option key={collection.id} value={collection.id}>
-                                    {collection.name}
-                                  </option>
-                                ))}
-                              </select>
-                            ) : null}
-                            {selectedCollectionId === null ? null : (
-                              <button
-                                type="button"
-                                className={ghostClass}
-                                title={t('references.collectionRemoveItem', {
-                                  name: selectedCollectionName
+                                title={t('references.copyInStyle', {
+                                  style: selectedStyle?.label ?? ''
                                 })}
+                                onClick={() => void handleCopyInStyle(reference)}
+                              >
+                                {t('references.copyCitation')}
+                              </button>
+                              <button
+                                type="button"
+                                className={ghostClass}
+                                title={t('references.compareStyles')}
                                 onClick={() =>
-                                  void handleRemoveFromCollection(reference, selectedCollectionId)
+                                  setCompareTarget((current) =>
+                                    current?.id === reference.id ? null : reference
+                                  )
                                 }
                               >
-                                {t('references.collectionRemoveShort')}
+                                {t('references.compareStyles')}
                               </button>
-                            )}
-                            <button
-                              type="button"
-                              className={ghostClass}
-                              title={t('references.removeReference')}
-                              onClick={() => {
-                                void window.api.references.remove(reference.id).then(refresh)
-                              }}
-                            >
-                              <X className="size-3.5" aria-hidden="true" />
-                            </button>
+                              {collections.length > 0 ? (
+                                <select
+                                  className="max-w-24 rounded border border-[var(--border)] bg-transparent px-1 py-0.5 text-[10px]"
+                                  aria-label={t('references.manualAdd')}
+                                  defaultValue=""
+                                  onChange={(event) => {
+                                    if (event.target.value) {
+                                      void handleAddToCollection(reference.id, event.target.value)
+                                    }
+                                  }}
+                                >
+                                  <option value="" disabled>
+                                    {t('references.collectionNewPlaceholder')}
+                                  </option>
+                                  {collections.map((collection) => (
+                                    <option key={collection.id} value={collection.id}>
+                                      {collection.name}
+                                    </option>
+                                  ))}
+                                </select>
+                              ) : null}
+                              {selectedCollectionId === null ? null : (
+                                <button
+                                  type="button"
+                                  className={ghostClass}
+                                  title={t('references.collectionRemoveItem', {
+                                    name: selectedCollectionName
+                                  })}
+                                  onClick={() =>
+                                    void handleRemoveFromCollection(reference, selectedCollectionId)
+                                  }
+                                >
+                                  {t('references.collectionRemoveShort')}
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                className={ghostClass}
+                                title={t('references.removeReference')}
+                                onClick={() => {
+                                  void window.api.references.remove(reference.id).then(refresh)
+                                }}
+                              >
+                                <X className="size-3.5" aria-hidden="true" />
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
             </section>
           </div>
         </Dialog.Content>

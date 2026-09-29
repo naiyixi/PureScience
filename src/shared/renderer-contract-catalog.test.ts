@@ -13,18 +13,21 @@ describe('renderer contract catalog', () => {
     const projection = projectRendererContractMaps(RENDERER_CONTRACT_CATALOG)
 
     expect(RENDERER_CONTRACT_GROUPS).toHaveLength(44)
-    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(433)
+    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(441)
     expect(projection.invoke).toEqual(WEB_INVOKE_CHANNELS)
     expect(projection.event).toEqual(WEB_EVENT_CHANNELS)
-    // 329 with the saved-search-filter-set group (searchPins.list / remove / save).
-    expect(Object.keys(projection.invoke)).toHaveLength(329)
+    // 337 with the literature-screening surface (references.getScreening / listScreeningRuleRevisions /
+    // appendScreeningRuleRevision / startScreeningRun / cancelScreeningRun / setScreeningOverride /
+    // setScreeningOverrides / clearScreeningOverride): all eight are Web-profile invoke channels, so the
+    // invoke map and the local-only set move together.
+    expect(Object.keys(projection.invoke)).toHaveLength(337)
     expect(Object.keys(projection.event)).toHaveLength(34)
   })
 
   it('separates actual Web installation from the generated compatibility projection', () => {
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb !== 'unavailable')
-    ).toHaveLength(359)
+    ).toHaveLength(367)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb === 'browser-native')
     ).toEqual(['getRuntimeVersions', 'saveBlobFile', 'saveManagedFile', 'window.close'])

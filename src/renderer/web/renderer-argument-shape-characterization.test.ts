@@ -187,7 +187,9 @@ describe('renderer argument-shape characterization', () => {
     const actualPaths = collectFunctionPaths(webApi).sort()
 
     expect(new Set(actualPaths).size).toBe(actualPaths.length)
-    expect(actualPaths).toHaveLength(359)
+    // 367 with the literature-screening surface: +8 `references.*Screening*` channels (see the same
+    // increment in src/shared/renderer-contract-catalog.test.ts).
+    expect(actualPaths).toHaveLength(367)
     expect(actualPaths).toEqual(expectedPaths)
   })
 

@@ -16,10 +16,61 @@ const ARTIFACT_PROVENANCE_PROMPT = 'Create a provenance artifact.'
 const PDF_TABLE_PROMPT = 'Create a table PDF fixture.'
 const PDF_REGION_PROMPT = 'Create a region drawing PDF.'
 const INTERRUPTED_TURN_PROMPT = 'Continue the interrupted turn fixture.'
+// Literature screening: the app asks this agent to screen ONE record per session. The fixture answers in
+// the shape the app's guardrails demand (a citation of an inclusion criterion, or an explicit
+// counter-evidence passage for an exclusion), so the real prompt assembly, parse and ledger write run.
+const SCREENING_PROMPT_MARKER = 'You screen ONE bibliographic record'
+const SCREENING_EXCLUDE_MARKER = 'Please exclude me'
 const PARTIAL_TURN_REPLY = 'Part of the answer arrived before the app went down.'
 const CONTINUED_TURN_REPLY = 'The interrupted turn continued from where it stopped.'
 
 const sessionRoutes = new Map()
+
+// Reads the criteria the prompt declared, so the fixture cites a criterion id that really exists — an
+// invented id would be discarded by the guardrails and the record would come back as uncertain.
+const screeningCriteria = (prompt) => {
+  const inclusion = []
+  const exclusion = []
+  let zone = null
+  for (const line of prompt.split('\n')) {
+    if (line.startsWith('## Inclusion criteria')) {
+      zone = inclusion
+      continue
+    }
+    if (line.startsWith('## Exclusion criteria')) {
+      zone = exclusion
+      continue
+    }
+    if (line.startsWith('## ')) zone = null
+    const match = /^- ([^:]+): (.+)$/.exec(line)
+    if (match && zone) zone.push(match[1].trim())
+  }
+  return { inclusion, exclusion }
+}
+
+// One record, one answer. A title carrying the exclusion marker is answered with counter-evidence (the
+// only shape an exclusion survives); everything else is included on the first inclusion criterion.
+const screeningReply = (prompt) => {
+  const { inclusion, exclusion } = screeningCriteria(prompt)
+  const title = /^Title: (.+)$/m.exec(prompt)?.[1] ?? 'the record'
+  if (prompt.includes(SCREENING_EXCLUDE_MARKER)) {
+    return JSON.stringify({
+      verdict: 'excluded',
+      probabilities: { include: 0.02, exclude: 0.95, uncertain: 0.03 },
+      citations: [],
+      refutation: {
+        criterionId: exclusion[0] ?? 'e-1',
+        quote: 'This article is a systematic review and reports no primary data.'
+      }
+    })
+  }
+  return JSON.stringify({
+    verdict: 'included',
+    probabilities: { include: 0.86, exclude: 0.04, uncertain: 0.1 },
+    citations: [{ criterionId: inclusion[0] ?? 'i-1', quote: `Title: ${title}` }],
+    refutation: null
+  })
+}
 
 // The interrupted-turn fixture hangs on its first send of the run and answers afterwards. A restart starts a
 // fresh agent process, so the fact that the turn was left open has to outlive this process: the marker file
@@ -364,7 +415,9 @@ if (process.argv.includes('--version')) {
       }
       agentLog(`session.prompt ${context.params.sessionId}: ${prompt.slice(0, 90)}`)
       try {
-        if (prompt.includes(PROVIDER_BRIDGE_PROMPT)) {
+        if (prompt.includes(SCREENING_PROMPT_MARKER)) {
+          reply = screeningReply(prompt)
+        } else if (prompt.includes(PROVIDER_BRIDGE_PROMPT)) {
           reply = verifyProviderBridge()
         } else if (prompt.includes(NOTEBOOK_LIFECYCLE_PROMPT)) {
           reply = await verifyNotebookLifecycle(context.params.sessionId)

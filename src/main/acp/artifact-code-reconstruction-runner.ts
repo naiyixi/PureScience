@@ -19,6 +19,21 @@ const RECONSTRUCTION_AGENT_NAME = 'purescience-reconstruction'
 const STALE_PROFILE_AGE_MS = 24 * 60 * 60 * 1000
 const PROVIDER_DEFAULT_MODEL = 'provider-default'
 
+// What one restricted, tool-less backend profile is. Named so a second one-shot caller (literature
+// screening) reuses the same restriction mechanics — deny-all permissions, tool-less sessions, a
+// disposable profile root — with its OWN system prompt, instead of copying them and drifting.
+export type RestrictedBackendProfile = {
+  /** Appended to the backend's persistent system prompt for every session this profile opens. */
+  systemPromptAppends: readonly string[]
+  /** The single tool-less agent the framework is configured to run (OpenCode names it explicitly). */
+  agentName?: string
+}
+
+const RECONSTRUCTION_BACKEND_PROFILE: RestrictedBackendProfile = {
+  systemPromptAppends: [RECONSTRUCTION_SYSTEM_PROMPT],
+  agentName: RECONSTRUCTION_AGENT_NAME
+}
+
 export type ArtifactCodeReconstructionRunResult = {
   text: string
   frameworkId: AgentFrameworkId
@@ -52,7 +67,8 @@ const releaseUnattachedBackend = async (backend: ResolvedAgentBackend): Promise<
 
 const prepareOpenCodeBackend = async (
   backend: ResolvedAgentBackend,
-  profileRoot: string
+  profileRoot: string,
+  profile: RestrictedBackendProfile
 ): Promise<ResolvedAgentBackend> => {
   const configHome = join(profileRoot, 'opencode', 'config')
   const dataHome = join(profileRoot, 'opencode', 'data')
@@ -64,14 +80,15 @@ const prepareOpenCodeBackend = async (
     mkdir(home, { recursive: true })
   ])
 
+  const agentName = profile.agentName ?? RECONSTRUCTION_AGENT_NAME
   const configured = record(JSON.parse(backend.env.OPENCODE_CONFIG_CONTENT ?? '{}'))
   const restricted = {
     ...configured,
-    default_agent: RECONSTRUCTION_AGENT_NAME,
+    default_agent: agentName,
     permission: { '*': 'deny' },
     agent: {
-      [RECONSTRUCTION_AGENT_NAME]: {
-        description: 'One-shot Artifact code reconstruction without tools.',
+      [agentName]: {
+        description: 'One-shot restricted turn without tools.',
         mode: 'primary',
         steps: 1,
         permission: { '*': 'deny' }
@@ -90,14 +107,15 @@ const prepareOpenCodeBackend = async (
       OPENCODE_TEST_HOME: home,
       OPENCODE_CONFIG_CONTENT: JSON.stringify(restricted)
     },
-    systemPromptAppends: [RECONSTRUCTION_SYSTEM_PROMPT],
+    systemPromptAppends: [...profile.systemPromptAppends],
     persistentSystemPrompt: undefined
   }
 }
 
 const prepareCodexBackend = async (
   backend: ResolvedAgentBackend,
-  profileRoot: string
+  profileRoot: string,
+  profile: RestrictedBackendProfile
 ): Promise<ResolvedAgentBackend> => {
   const codexHome = join(profileRoot, 'codex')
   await mkdir(codexHome, { recursive: true })
@@ -110,14 +128,15 @@ const prepareCodexBackend = async (
   return {
     ...backend,
     env: { ...backend.env, CODEX_HOME: codexHome, CODEX_CONFIG: JSON.stringify(codexConfig) },
-    systemPromptAppends: [RECONSTRUCTION_SYSTEM_PROMPT],
+    systemPromptAppends: [...profile.systemPromptAppends],
     persistentSystemPrompt: undefined
   }
 }
 
 const prepareClaudeBackend = async (
   backend: ResolvedAgentBackend,
-  profileRoot: string
+  profileRoot: string,
+  profile: RestrictedBackendProfile
 ): Promise<ResolvedAgentBackend> => {
   const env = { ...backend.env }
   if (env.CLAUDE_CODE_OAUTH_TOKEN || env.ANTHROPIC_AUTH_TOKEN || env.ANTHROPIC_API_KEY) {
@@ -136,18 +155,20 @@ const prepareClaudeBackend = async (
       settingSources: [],
       persistSession: false
     },
-    systemPromptAppends: [RECONSTRUCTION_SYSTEM_PROMPT],
+    systemPromptAppends: [...profile.systemPromptAppends],
     persistentSystemPrompt: undefined
   }
 }
 
 export const prepareBackend = (
   backend: ResolvedAgentBackend,
-  profileRoot: string
+  profileRoot: string,
+  profile: RestrictedBackendProfile = RECONSTRUCTION_BACKEND_PROFILE
 ): Promise<ResolvedAgentBackend> => {
-  if (backend.framework.id === 'opencode') return prepareOpenCodeBackend(backend, profileRoot)
-  if (backend.framework.id === 'codex') return prepareCodexBackend(backend, profileRoot)
-  return prepareClaudeBackend(backend, profileRoot)
+  if (backend.framework.id === 'opencode')
+    return prepareOpenCodeBackend(backend, profileRoot, profile)
+  if (backend.framework.id === 'codex') return prepareCodexBackend(backend, profileRoot, profile)
+  return prepareClaudeBackend(backend, profileRoot, profile)
 }
 
 export const resolveReconstructionModel = (

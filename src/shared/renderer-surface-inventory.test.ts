@@ -262,14 +262,14 @@ describe('renderer surface inventory', () => {
       ...Object.keys(WEB_EVENT_CHANNELS)
     ])
 
-    expect(electronPaths).toHaveLength(433)
+    expect(electronPaths).toHaveLength(441)
     expectSameSet(
       electronPaths,
       RENDERER_CONTRACT_CATALOG.map(({ publicPath }) => publicPath)
     )
-    // 329 since the saved-search-filter-set surface (v1.67 unit): searchPins.list / remove / save are
-    // local invoke channels, so the invoke map and the local-only set move together.
-    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(329)
+    // 337 since the literature-screening surface (v1.77 unit): its eight channels are local invoke
+    // channels, so the invoke map moves with them.
+    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(337)
     expect(Object.keys(WEB_EVENT_CHANNELS)).toHaveLength(34)
     expectSameSet(
       electronPaths.filter((path) => !generatedPaths.has(path)),

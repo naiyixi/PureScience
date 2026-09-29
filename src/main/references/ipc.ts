@@ -14,6 +14,20 @@ import type {
   Reference,
   ReferenceCollection
 } from '../../shared/references'
+import type {
+  AppendScreeningRuleRevisionInput,
+  AppendScreeningRuleRevisionResult,
+  CancelScreeningRunResult,
+  ClearScreeningOverrideResult,
+  ScreeningBatchOverrideRequest,
+  ScreeningBatchOverrideResult,
+  ScreeningCollectionSnapshot,
+  ScreeningItemView,
+  ScreeningOverrideRequest,
+  ScreeningRuleRevision,
+  StartScreeningRunInput,
+  StartScreeningRunResult
+} from '../../shared/references-screening'
 import type { ImportedCitationStyle } from '../../shared/citation/csl'
 import { fetchReferenceByIdentifier, type IdentifierKind } from './service'
 import { createPdfDoiImportOwner, type PdfDocumentPorts } from './pdf-doi-owner'
@@ -22,6 +36,10 @@ import { ReferenceRepository } from './repository'
 import { ReferenceService } from './service'
 import { CitationStyleRepository, type CitationStyleClient } from './citation-style-repository'
 import { CitationStyleService, type CitationStyleImportResult } from './citation-style-service'
+import { ScreeningRunnerUnavailableError, ScreeningService } from './screening-service'
+import type { ScreeningModelRunner } from './screening-engine'
+import type { ScreeningFullTextReader } from './screening-full-text-cache'
+import { ScreeningRepository } from './screening-repository'
 
 // Renderer-callable surface of the project reference library (v1.51).
 export type ReferencesHandlers = {
@@ -44,17 +62,51 @@ export type ReferencesHandlers = {
   listCitationStyles(): Promise<ImportedCitationStyle[]>
   importCitationStyle(input: { fileName: string; xml: string }): Promise<CitationStyleImportResult>
   removeCitationStyle(styleId: string): Promise<void>
+  // Literature screening (v1.77): one collection's triage against a versioned rule set. The reads keep
+  // the AI verdict and the human override apart; the writes are append-only (a rule change is a new
+  // revision) and layered (an override never rewrites the verdict it overrides).
+  getScreening(collectionId: string): Promise<ScreeningCollectionSnapshot>
+  listScreeningRuleRevisions(collectionId: string): Promise<ScreeningRuleRevision[]>
+  appendScreeningRuleRevision(
+    input: AppendScreeningRuleRevisionInput
+  ): Promise<AppendScreeningRuleRevisionResult>
+  startScreeningRun(input: StartScreeningRunInput): Promise<StartScreeningRunResult>
+  cancelScreeningRun(collectionId: string): Promise<CancelScreeningRunResult>
+  setScreeningOverride(input: ScreeningOverrideRequest): Promise<ScreeningItemView>
+  setScreeningOverrides(input: ScreeningBatchOverrideRequest): Promise<ScreeningBatchOverrideResult>
+  clearScreeningOverride(
+    collectionId: string,
+    referenceId: string
+  ): Promise<ClearScreeningOverrideResult>
+}
+
+// The pieces of the screening layer that can only be created later in the composition root: the model
+// runner (which lives beside the agent runtime) and the reader that turns a record's attached managed
+// file into body text (which lives beside the PDF service). Binding them late is the same seam the PDF
+// reader uses below — until they are bound, the surface reports a named failure instead of pretending
+// a pass ran.
+export type ReferencesScreeningPorts = {
+  runner: () => ScreeningModelRunner
+  readFullText: ScreeningFullTextReader
+  beginPass?: () => void
 }
 
 export type ReferencesIpcModule = {
   handlers: ReferencesHandlers
   service: ReferenceService
+  screening: ScreeningService
   // Bound by the composition root once the PDF reader exists (see createReferencesIpcModule).
   bindPdfPorts: (ports: PdfDocumentPorts) => void
+  bindScreening: (ports: ReferencesScreeningPorts) => void
 }
 
 const createDefaultReferenceRepository = (): ReferenceRepository =>
   new ReferenceRepository(() => getProjectDbClient(resolveStorageRoot()))
+
+// Same lazy-client seam for the screening store: it lives in the same project database, so a
+// schema-ensure failure can recover exactly like the reference library does.
+const createDefaultScreeningRepository = (): ScreeningRepository =>
+  new ScreeningRepository(() => getProjectDbClient(resolveStorageRoot()))
 
 // Same lazy-client seam for the citation-style store: it lives in the project database, so a
 // schema-ensure failure can recover exactly like the reference library does.
@@ -69,10 +121,32 @@ export const createReferencesIpcModule = (
   options: {
     resolvePdfFingerprint?: (projectId: string, managedFileId: string) => Promise<string | null>
   } = {},
-  citationStyleRepository: CitationStyleRepository = createDefaultCitationStyleRepository()
+  citationStyleRepository: CitationStyleRepository = createDefaultCitationStyleRepository(),
+  screeningRepository: ScreeningRepository = createDefaultScreeningRepository()
 ): ReferencesIpcModule => {
   const service = new ReferenceService(repository, options)
   const citationStyles = new CitationStyleService(citationStyleRepository)
+  // Long-lived holders for the two late-bound collaborators of the screening layer (see
+  // ReferencesScreeningPorts). Until they are bound the surface says so: a snapshot reports
+  // runnerAvailable: false, and starting a pass fails with a named error instead of opening a run
+  // whose items could never be decided.
+  const screeningHolder: { ports?: ReferencesScreeningPorts } = {}
+  const screening = new ScreeningService({
+    repository: screeningRepository,
+    references: {
+      listCollectionReferences: (collectionId) =>
+        repository.listReferencesByCollection(collectionId),
+      getReference: (referenceId) => repository.getReference(referenceId)
+    },
+    fullText: async (reference) =>
+      screeningHolder.ports ? screeningHolder.ports.readFullText(reference) : null,
+    runner: () => {
+      const ports = screeningHolder.ports
+      if (!ports) throw new ScreeningRunnerUnavailableError()
+      return ports.runner()
+    },
+    beginPass: () => screeningHolder.ports?.beginPass?.()
+  })
   // The PDF reader lives in the settings/pdf module and is created later in the composition root, so it
   // arrives through a holder rather than forcing the creation order. Until it is bound, the import
   // reports a named failure instead of pretending a document was read.
@@ -122,13 +196,26 @@ export const createReferencesIpcModule = (
     detachPdf: (referenceId) => service.detachPdf(referenceId),
     listCitationStyles: () => citationStyles.listStyles(),
     importCitationStyle: (input) => citationStyles.importStyle(input),
-    removeCitationStyle: (styleId) => citationStyles.removeStyle(styleId)
+    removeCitationStyle: (styleId) => citationStyles.removeStyle(styleId),
+    getScreening: (collectionId) => screening.snapshot(collectionId),
+    listScreeningRuleRevisions: (collectionId) => screening.listRuleRevisions(collectionId),
+    appendScreeningRuleRevision: (input) => screening.appendRuleRevision(input),
+    startScreeningRun: (input) => screening.startRun(input),
+    cancelScreeningRun: (collectionId) => screening.cancelRun(collectionId),
+    setScreeningOverride: (input) => screening.setOverride(input),
+    setScreeningOverrides: (input) => screening.setOverrides(input),
+    clearScreeningOverride: (collectionId, referenceId) =>
+      screening.clearOverride(collectionId, referenceId)
   }
   return {
     handlers,
     service,
+    screening,
     bindPdfPorts: (ports) => {
       pdfHolder.ports = ports
+    },
+    bindScreening: (ports) => {
+      screeningHolder.ports = ports
     }
   }
 }
@@ -190,6 +277,35 @@ export const installReferencesIpcHandlers = (
     )
     ipcMainHandle('references:remove-citation-style', (_event, styleId: string) =>
       handlers.removeCitationStyle(styleId)
+    )
+    ipcMainHandle('references:get-screening', (_event, collectionId: string) =>
+      handlers.getScreening(collectionId)
+    )
+    ipcMainHandle('references:list-screening-rule-revisions', (_event, collectionId: string) =>
+      handlers.listScreeningRuleRevisions(collectionId)
+    )
+    ipcMainHandle(
+      'references:append-screening-rule-revision',
+      (_event, input: AppendScreeningRuleRevisionInput) =>
+        handlers.appendScreeningRuleRevision(input)
+    )
+    ipcMainHandle('references:start-screening-run', (_event, input: StartScreeningRunInput) =>
+      handlers.startScreeningRun(input)
+    )
+    ipcMainHandle('references:cancel-screening-run', (_event, collectionId: string) =>
+      handlers.cancelScreeningRun(collectionId)
+    )
+    ipcMainHandle('references:set-screening-override', (_event, input: ScreeningOverrideRequest) =>
+      handlers.setScreeningOverride(input)
+    )
+    ipcMainHandle(
+      'references:set-screening-overrides',
+      (_event, input: ScreeningBatchOverrideRequest) => handlers.setScreeningOverrides(input)
+    )
+    ipcMainHandle(
+      'references:clear-screening-override',
+      (_event, collectionId: string, referenceId: string) =>
+        handlers.clearScreeningOverride(collectionId, referenceId)
     )
     return scope.complete()
   } catch (error) {

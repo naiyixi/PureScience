@@ -153,6 +153,30 @@ export type ScreeningRunItem = {
   inputDigest?: string
 }
 
+// One row of the coverage list, and the list a "we screened everything" claim is checked against.
+// Defined here (with the rest of the renderer-facing vocabulary) because the surface that shows the
+// coverage counts is on the other side of the boundary; screening-freshness.ts re-exports both so the
+// domain layer keeps its own public names.
+export type ScreeningCoverageEntry = {
+  verdict: ScreeningVerdict
+  coverage: ScreeningEvidenceCoverage
+  fresh: boolean
+}
+
+export type ScreeningCoverageSummary = {
+  searchedCount: number
+  candidateCount: number
+  // Candidates that produced a decision (included / excluded / needs-review).
+  assessedCount: number
+  // candidateCount − assessedCount, always computed: the未处理量 is stated, never inferred from a
+  // missing row.
+  unprocessedCount: number
+  // uncertain ∪ stale.
+  reviewCount: number
+  verdictCounts: Record<ScreeningVerdict, number>
+  coverageCounts: Record<ScreeningEvidenceCoverage, number>
+}
+
 // What a surface reads for one reference: the AI verdict with its own identity, the human layer beside
 // it (never merged into it), and which one a person should act on today.
 export type ScreeningDecisionView = {
@@ -161,4 +185,148 @@ export type ScreeningDecisionView = {
   override: ScreeningOverride | null
   effective: ScreeningVerdict
   effectiveSource: 'ai' | 'override'
+}
+
+// --- the renderer-facing read/write surface (S3) ------------------------------------------------
+//
+// Everything below crosses the renderer boundary, so it is stated here once instead of being restated
+// by the main process, the preload bridge and the window. Two rules shape it:
+//
+//   1. the AI layer and the human layer travel APART (verdict beside override), never pre-merged — a
+//      surface that only received `effective` could not show the original decision at all, which is
+//      exactly what 人工覆盖不改写 AI 原判 requires a surface to keep showing;
+//   2. every state that is not a decisive verdict carries its named reason, and the counts that say
+//      what is still unprocessed travel WITH the decisions (never inferred by subtracting rows a
+//      caller happens to have).
+
+// Why a stored decision is not current, and what it was decided from. The reasons are S1's
+// ScreeningNamedReason list, unmodified: a surface translates them, it never invents new ones.
+export type ScreeningFreshnessView = {
+  // current ⇔ the identity triple matches (evaluateScreeningFreshness).
+  current: boolean
+  // A decision exists but is not today's answer.
+  stale: boolean
+  // uncertain ∪ stale — the records a person has to look at.
+  review: boolean
+  reasons: ScreeningNamedReason[]
+}
+
+// One reference's screening line: the AI verdict with its identity and evidence, the human override
+// beside it, the freshness verdict, and how much of the record the decision actually had to go on.
+export type ScreeningItemView = {
+  referenceId: string
+  decision: ScreeningDecisionView
+  freshness: ScreeningFreshnessView
+  coverage: ScreeningEvidenceCoverage
+  // Characters of evidence the decision rests on / would rest on today, against the model's budget.
+  inputChars: number
+  inputCharBudget: number
+  // The revision the stored AI verdict was decided against (null when nothing is stored).
+  ruleRevision: number | null
+  policyKey: string | null
+  model: string | null
+  decidedAt: number | null
+  probabilities: ScreeningProbabilities
+  evidence: ScreeningEvidenceCitation[]
+}
+
+// The aggregated view of one pass that is still running or was interrupted. Counts are stated per
+// state, so "how much is left" is answered rather than derived from a missing row.
+export type ScreeningRunView = {
+  run: ScreeningRun
+  ruleRevision: number
+  referenceCount: number
+  assessed: number
+  deferred: number
+  failed: number
+  pending: number
+  // True while this process is actively driving the pass.
+  running: boolean
+}
+
+export type ScreeningCollectionSnapshot = {
+  collectionId: string
+  // The newest rule revision, or null when the collection has no criteria declared yet.
+  rule: ScreeningRuleRevision | null
+  items: ScreeningItemView[]
+  // S1's coverage list, computed over the collection's members: candidateCount ≤ searchedCount is
+  // asserted there, and unprocessedCount is stated rather than inferred.
+  summary: ScreeningCoverageSummary
+  reasonCounts: Record<ScreeningNamedReason, number>
+  // AI decided vs human overridden, counted separately (统计必须区分 AI 判定数 / 人工覆盖数).
+  aiDecidedCount: number
+  overrideCount: number
+  lastRun: ScreeningRunView | null
+  // Environment facts the surface must be able to explain instead of silently showing nothing.
+  runnerAvailable: boolean
+  // The last background failure of a pass in this collection, verbatim, or null.
+  lastError: string | null
+}
+
+export type AppendScreeningRuleRevisionInput = {
+  collectionId: string
+  inclusion: readonly ScreeningCriterion[]
+  exclusion: readonly ScreeningCriterion[]
+}
+
+export type AppendScreeningRuleRevisionResult = {
+  revision: ScreeningRuleRevision
+  // False when the canonical content hash already matched the newest revision: nothing changed, so no
+  // revision was stacked (and no stored decision was staled for nothing).
+  appended: boolean
+  // Stored decisions that this new revision turns into 'rule-changed'.
+  affectedDecisions: number
+}
+
+export type StartScreeningRunInput = {
+  collectionId: string
+  // Defaults to every reference in the collection.
+  referenceIds?: readonly string[]
+  // Resume an interrupted pass instead of opening a new one.
+  resumeRunId?: string
+}
+
+export type StartScreeningRunResult = {
+  runId: string
+  ruleRevision: number
+  referenceCount: number
+  // False when a pass was already running for this collection: the existing run is reported instead
+  // of opening a second one.
+  started: boolean
+}
+
+export type CancelScreeningRunResult = {
+  runId: string
+  // False when nothing was running in this collection.
+  cancelled: boolean
+  processed: number
+  remaining: number
+}
+
+export type ScreeningOverrideRequest = {
+  collectionId: string
+  referenceId: string
+  decision: ScreeningOverrideDecision
+  // Required: an override a reviewer cannot read the grounds of is not reviewable.
+  reason: string
+  actor: string
+}
+
+export type ScreeningBatchOverrideRequest = {
+  collectionId: string
+  referenceIds: readonly string[]
+  decision: ScreeningOverrideDecision
+  reason: string
+  actor: string
+}
+
+export type ScreeningBatchOverrideResult = {
+  applied: number
+  // The updated lines, read back after the write so the surface shows state rather than assuming it.
+  items: ScreeningItemView[]
+}
+
+export type ClearScreeningOverrideResult = {
+  referenceId: string
+  item: ScreeningItemView
 }

@@ -276,6 +276,10 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['fetchByIdentifier', 'references:fetch-by-identifier'], ['importDoisFromPdf', 'references:import-dois-from-pdf'], ['importCitationStyle', 'references:import-citation-style'], ['list', 'references:list'],
     ['listCitationStyles', 'references:list-citation-styles'], ['listCollections', 'references:list-collections'], ['merge', 'references:merge'], ['remove', 'references:remove'],
     ['removeCitationStyle', 'references:remove-citation-style'], ['removeFromCollection', 'references:remove-from-collection'],
+    ['getScreening', 'references:get-screening'], ['listScreeningRuleRevisions', 'references:list-screening-rule-revisions'],
+    ['appendScreeningRuleRevision', 'references:append-screening-rule-revision'], ['startScreeningRun', 'references:start-screening-run'],
+    ['cancelScreeningRun', 'references:cancel-screening-run'], ['setScreeningOverride', 'references:set-screening-override'],
+    ['setScreeningOverrides', 'references:set-screening-overrides'], ['clearScreeningOverride', 'references:clear-screening-override'],
   ]),
   group('remote-access', 'remoteAccess', [
     ['onChanged', 'remote-access:changed', EVENT], ['approve', 'remote-access:approve'], ['detect', 'remote-access:detect'],

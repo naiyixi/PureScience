@@ -122,13 +122,18 @@ const GROUP_COUNT = 38
 // task surface are untouched because neither channel carries a remote flag. project-files:list-kinds
 // moved internal / local Web / remote dispatch by one each (it carries no surface flag, like the
 // per-project read it replaces).
-const INTERNAL_COMMAND_COUNT = 323
+// +8 each on internal, local Web and remote Web dispatch: the literature-screening surface
+// (references.getScreening / listScreeningRuleRevisions / appendScreeningRuleRevision /
+// startScreeningRun / cancelScreeningRun / setScreeningOverride / setScreeningOverrides /
+// clearScreeningOverride) is reachable from the window and both Web surfaces. The fail-closed remote
+// rejection count is untouched because none of them is a local-only channel.
+const INTERNAL_COMMAND_COUNT = 331
 // +3 each on internal, local Web and the remote rejections: the saved-search-filter-set channels are
 // reachable from the window locally and are refused on the remote surface, which is where they are counted.
-const LOCAL_WEB_COMMAND_COUNT = 321
+const LOCAL_WEB_COMMAND_COUNT = 329
 // Two more as well: the same two channels are mapped, so they count on both the local and the remote Web
 // surfaces. The rejected (fail-closed) and task counts are untouched.
-const REMOTE_WEB_COMMAND_COUNT = 212
+const REMOTE_WEB_COMMAND_COUNT = 220
 const REMOTE_REJECTED_COMMAND_COUNT = 109
 const TASK_COMMAND_COUNT = 11
 

@@ -653,7 +653,31 @@ const api: PureScienceAPI = {
     importCitationStyle: (input) =>
       electronRendererContracts.invoke('references.importCitationStyle', input),
     removeCitationStyle: (styleId) =>
-      electronRendererContracts.invoke('references.removeCitationStyle', styleId)
+      electronRendererContracts.invoke('references.removeCitationStyle', styleId),
+    // Literature screening (v1.77): one collection's triage against a versioned inclusion / exclusion
+    // rule set. Reads keep the AI verdict and the human override apart (so the original decision stays
+    // visible beside a person's); writes are append-only (a rule change is a new revision) and layered
+    // (an override never rewrites the verdict it overrides).
+    getScreening: (collectionId) =>
+      electronRendererContracts.invoke('references.getScreening', collectionId),
+    listScreeningRuleRevisions: (collectionId) =>
+      electronRendererContracts.invoke('references.listScreeningRuleRevisions', collectionId),
+    appendScreeningRuleRevision: (input) =>
+      electronRendererContracts.invoke('references.appendScreeningRuleRevision', input),
+    startScreeningRun: (input) =>
+      electronRendererContracts.invoke('references.startScreeningRun', input),
+    cancelScreeningRun: (collectionId) =>
+      electronRendererContracts.invoke('references.cancelScreeningRun', collectionId),
+    setScreeningOverride: (input) =>
+      electronRendererContracts.invoke('references.setScreeningOverride', input),
+    setScreeningOverrides: (input) =>
+      electronRendererContracts.invoke('references.setScreeningOverrides', input),
+    clearScreeningOverride: (collectionId, referenceId) =>
+      electronRendererContracts.invoke(
+        'references.clearScreeningOverride',
+        collectionId,
+        referenceId
+      )
   },
   preview: {
     // Per-project preview panel state, persisted alongside projects in SQLite.

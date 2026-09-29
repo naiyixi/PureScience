@@ -878,6 +878,33 @@ export interface PureScienceAPI {
       xml: string
     }): Promise<import('../main/references/citation-style-service').CitationStyleImportResult>
     removeCitationStyle(styleId: string): Promise<void>
+    // Literature screening (v1.77): a collection's triage against a versioned rule set. The reads return
+    // the AI verdict and the human override as SEPARATE layers, so a surface can always show both.
+    getScreening(
+      collectionId: string
+    ): Promise<import('../shared/references-screening').ScreeningCollectionSnapshot>
+    listScreeningRuleRevisions(
+      collectionId: string
+    ): Promise<import('../shared/references-screening').ScreeningRuleRevision[]>
+    appendScreeningRuleRevision(
+      input: import('../shared/references-screening').AppendScreeningRuleRevisionInput
+    ): Promise<import('../shared/references-screening').AppendScreeningRuleRevisionResult>
+    startScreeningRun(
+      input: import('../shared/references-screening').StartScreeningRunInput
+    ): Promise<import('../shared/references-screening').StartScreeningRunResult>
+    cancelScreeningRun(
+      collectionId: string
+    ): Promise<import('../shared/references-screening').CancelScreeningRunResult>
+    setScreeningOverride(
+      input: import('../shared/references-screening').ScreeningOverrideRequest
+    ): Promise<import('../shared/references-screening').ScreeningItemView>
+    setScreeningOverrides(
+      input: import('../shared/references-screening').ScreeningBatchOverrideRequest
+    ): Promise<import('../shared/references-screening').ScreeningBatchOverrideResult>
+    clearScreeningOverride(
+      collectionId: string,
+      referenceId: string
+    ): Promise<import('../shared/references-screening').ClearScreeningOverrideResult>
   }
   preview: {
     load(request: LoadPreviewStateRequest): Promise<PersistedPreviewState | null>

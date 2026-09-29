@@ -1,6 +1,8 @@
 import {
   SCREENING_EVIDENCE_COVERAGES,
   SCREENING_VERDICTS,
+  type ScreeningCoverageEntry,
+  type ScreeningCoverageSummary,
   type ScreeningEvidenceCoverage,
   type ScreeningNamedReason,
   type ScreeningOverride,
@@ -149,26 +151,14 @@ export const resolveEffectiveDecision = (
 }
 
 // One row of the coverage list: what was actually read for a record, what was decided, and whether that
-// decision is still current.
-export type ScreeningCoverageEntry = {
-  verdict: ScreeningVerdict
-  coverage: ScreeningEvidenceCoverage
-  fresh: boolean
-}
-
-export type ScreeningCoverageSummary = {
-  searchedCount: number
-  candidateCount: number
-  // Candidates that produced a decision (included / excluded / needs-review).
-  assessedCount: number
-  // candidateCount − assessedCount, always computed: the未处理量 is stated, never inferred from a
-  // missing row.
-  unprocessedCount: number
-  // uncertain ∪ stale.
-  reviewCount: number
-  verdictCounts: Record<ScreeningVerdict, number>
-  coverageCounts: Record<ScreeningEvidenceCoverage, number>
-}
+// decision is still current. The shape (and the summary below) is declared with the rest of the
+// renderer-facing vocabulary in ../../shared/references-screening.ts, because the surface that shows the
+// coverage counts reads these exact fields across the process boundary; re-exported here so this module
+// keeps its own public names.
+export type {
+  ScreeningCoverageEntry,
+  ScreeningCoverageSummary
+} from '../../shared/references-screening'
 
 const emptyCounts = <K extends string>(keys: readonly K[]): Record<K, number> =>
   Object.fromEntries(keys.map((key) => [key, 0])) as Record<K, number>

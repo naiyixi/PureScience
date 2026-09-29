@@ -38,6 +38,14 @@ type ReferencesCommandOwner = Pick<
   | 'listCitationStyles'
   | 'importCitationStyle'
   | 'removeCitationStyle'
+  | 'getScreening'
+  | 'listScreeningRuleRevisions'
+  | 'appendScreeningRuleRevision'
+  | 'startScreeningRun'
+  | 'cancelScreeningRun'
+  | 'setScreeningOverride'
+  | 'setScreeningOverrides'
+  | 'clearScreeningOverride'
 >
 
 const referencesApplicationCommands = Object.freeze({
@@ -120,7 +128,47 @@ const referencesApplicationCommands = Object.freeze({
     'references:remove-citation-style',
     OwnerArgs<ReferencesCommandOwner, 'removeCitationStyle'>,
     OwnerResult<ReferencesCommandOwner, 'removeCitationStyle'>
-  >('references:remove-citation-style')
+  >('references:remove-citation-style'),
+  getScreening: defineApplicationCommand<
+    'references:get-screening',
+    OwnerArgs<ReferencesCommandOwner, 'getScreening'>,
+    OwnerResult<ReferencesCommandOwner, 'getScreening'>
+  >('references:get-screening'),
+  listScreeningRuleRevisions: defineApplicationCommand<
+    'references:list-screening-rule-revisions',
+    OwnerArgs<ReferencesCommandOwner, 'listScreeningRuleRevisions'>,
+    OwnerResult<ReferencesCommandOwner, 'listScreeningRuleRevisions'>
+  >('references:list-screening-rule-revisions'),
+  appendScreeningRuleRevision: defineApplicationCommand<
+    'references:append-screening-rule-revision',
+    OwnerArgs<ReferencesCommandOwner, 'appendScreeningRuleRevision'>,
+    OwnerResult<ReferencesCommandOwner, 'appendScreeningRuleRevision'>
+  >('references:append-screening-rule-revision'),
+  startScreeningRun: defineApplicationCommand<
+    'references:start-screening-run',
+    OwnerArgs<ReferencesCommandOwner, 'startScreeningRun'>,
+    OwnerResult<ReferencesCommandOwner, 'startScreeningRun'>
+  >('references:start-screening-run'),
+  cancelScreeningRun: defineApplicationCommand<
+    'references:cancel-screening-run',
+    OwnerArgs<ReferencesCommandOwner, 'cancelScreeningRun'>,
+    OwnerResult<ReferencesCommandOwner, 'cancelScreeningRun'>
+  >('references:cancel-screening-run'),
+  setScreeningOverride: defineApplicationCommand<
+    'references:set-screening-override',
+    OwnerArgs<ReferencesCommandOwner, 'setScreeningOverride'>,
+    OwnerResult<ReferencesCommandOwner, 'setScreeningOverride'>
+  >('references:set-screening-override'),
+  setScreeningOverrides: defineApplicationCommand<
+    'references:set-screening-overrides',
+    OwnerArgs<ReferencesCommandOwner, 'setScreeningOverrides'>,
+    OwnerResult<ReferencesCommandOwner, 'setScreeningOverrides'>
+  >('references:set-screening-overrides'),
+  clearScreeningOverride: defineApplicationCommand<
+    'references:clear-screening-override',
+    OwnerArgs<ReferencesCommandOwner, 'clearScreeningOverride'>,
+    OwnerResult<ReferencesCommandOwner, 'clearScreeningOverride'>
+  >('references:clear-screening-override')
 })
 
 const referencesApplicationCommandGroup = defineApplicationCommandGroup('references', [
@@ -139,7 +187,15 @@ const referencesApplicationCommandGroup = defineApplicationCommandGroup('referen
   referencesApplicationCommands.detachPdf,
   referencesApplicationCommands.listCitationStyles,
   referencesApplicationCommands.importCitationStyle,
-  referencesApplicationCommands.removeCitationStyle
+  referencesApplicationCommands.removeCitationStyle,
+  referencesApplicationCommands.appendScreeningRuleRevision,
+  referencesApplicationCommands.cancelScreeningRun,
+  referencesApplicationCommands.clearScreeningOverride,
+  referencesApplicationCommands.getScreening,
+  referencesApplicationCommands.listScreeningRuleRevisions,
+  referencesApplicationCommands.setScreeningOverride,
+  referencesApplicationCommands.setScreeningOverrides,
+  referencesApplicationCommands.startScreeningRun
 ] as const)
 
 // Registers the library channels as application commands delegating to the references owner.
@@ -173,7 +229,22 @@ const registerReferencesApplicationCommands = (
       'references:import-citation-style': ({ args }) =>
         dependencies.references.importCitationStyle(args[0]),
       'references:remove-citation-style': ({ args }) =>
-        dependencies.references.removeCitationStyle(args[0])
+        dependencies.references.removeCitationStyle(args[0]),
+      'references:get-screening': ({ args }) => dependencies.references.getScreening(args[0]),
+      'references:list-screening-rule-revisions': ({ args }) =>
+        dependencies.references.listScreeningRuleRevisions(args[0]),
+      'references:append-screening-rule-revision': ({ args }) =>
+        dependencies.references.appendScreeningRuleRevision(args[0]),
+      'references:start-screening-run': ({ args }) =>
+        dependencies.references.startScreeningRun(args[0]),
+      'references:cancel-screening-run': ({ args }) =>
+        dependencies.references.cancelScreeningRun(args[0]),
+      'references:set-screening-override': ({ args }) =>
+        dependencies.references.setScreeningOverride(args[0]),
+      'references:set-screening-overrides': ({ args }) =>
+        dependencies.references.setScreeningOverrides(args[0]),
+      'references:clear-screening-override': ({ args }) =>
+        dependencies.references.clearScreeningOverride(args[0], args[1])
     })
     return scope.complete()
   } catch (error) {

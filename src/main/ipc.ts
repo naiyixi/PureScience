@@ -37,6 +37,7 @@ import { createAcpCreateSessionWorkflow } from './acp/create-session-workflow'
 import { createAcpHandlerWorkflows } from './acp/handler-workflows'
 import { createAcpTaskAgentPort } from './acp/task-agent-port'
 import { ArtifactCodeReconstructionRunner } from './acp/artifact-code-reconstruction-runner'
+import { ScreeningAcpModelRunner } from './acp/screening-model-runner'
 import { ArchiveCoordinator } from './archive/coordinator'
 import { ArtifactCodeReconstructionService } from './artifacts/code-reconstruction'
 import { createArtifactReplayAdapter } from './artifacts/replay-composition'
@@ -339,6 +340,7 @@ import type { ConversationSkillImportApprovalResponse } from '../shared/settings
 import type { TaskAgentPort } from './tasks/task-runner'
 
 const permissionGrantsLog = createLogger('permission-grants')
+const screeningLog = createLogger('references:screening')
 // How long a delivery turn waits for a session that is already running a turn, and how often it looks.
 const BACKGROUND_DELIVERY_TURN_WAIT_MS = 15 * 60 * 1000
 const BACKGROUND_DELIVERY_TURN_POLL_MS = 500
@@ -1145,9 +1147,9 @@ const createApplicationModules = async (
     async (sessionId) => (await deliveryLedgerReader.list?.(sessionId)) ?? []
   )
   // Project reference library (v1.51): register its renderer surface alongside compute.
-  // Fingerprint an attached PDF's content (head hash + exact size) so a swapped file is
-  // detectable behind a reference. Fail-soft: provenance sugar never blocks the attach itself.
-  const fingerprintManagedPdf = async (
+  // Resolves a managed file id to its path on disk. `managedFileId` is either `source:sourceFileId`
+  // or a bare `sourceFileId`; the newest row wins. Null means "not found", never an empty string.
+  const resolveManagedStoragePath = async (
     projectId: string,
     managedFileId: string
   ): Promise<string | null> => {
@@ -1169,8 +1171,20 @@ const createApplicationModules = async (
               orderBy: { seq: 'desc' }
             })
       if (!row?.storageKey) return null
-      const path = join(resolveDataRoot(), ...row.storageKey.split('/'))
-      return await fingerprintPdfFile(path)
+      return join(resolveDataRoot(), ...row.storageKey.split('/'))
+    } catch {
+      return null
+    }
+  }
+  // Fingerprint an attached PDF's content (head hash + exact size) so a swapped file is
+  // detectable behind a reference. Fail-soft: provenance sugar never blocks the attach itself.
+  const fingerprintManagedPdf = async (
+    projectId: string,
+    managedFileId: string
+  ): Promise<string | null> => {
+    try {
+      const path = await resolveManagedStoragePath(projectId, managedFileId)
+      return path ? await fingerprintPdfFile(path) : null
     } catch {
       return null
     }
@@ -1183,24 +1197,8 @@ const createApplicationModules = async (
     managedFileId: string
   ): Promise<Uint8Array | null> => {
     try {
-      const client = await getProjectDbClient(configRoot)
-      const separator = managedFileId.indexOf(':')
-      const row =
-        separator > 0
-          ? await client.managedFile.findFirst({
-              where: {
-                projectId,
-                source: managedFileId.slice(0, separator),
-                sourceFileId: managedFileId.slice(separator + 1)
-              },
-              orderBy: { seq: 'desc' }
-            })
-          : await client.managedFile.findFirst({
-              where: { projectId, sourceFileId: managedFileId },
-              orderBy: { seq: 'desc' }
-            })
-      if (!row?.storageKey) return null
-      const path = join(resolveDataRoot(), ...row.storageKey.split('/'))
+      const path = await resolveManagedStoragePath(projectId, managedFileId)
+      if (!path) return null
       return new Uint8Array(await readFile(path))
     } catch {
       return null
@@ -1914,6 +1912,63 @@ const createApplicationModules = async (
   const codeReconstruction = new ArtifactCodeReconstructionService({
     provenance: artifactProvenanceRepository,
     runner: codeReconstructionRunner
+  })
+  // Literature screening (v1.77): the model side of the S2 engine, bound to the references module here
+  // because the runner needs the agent runtime's settings service and the PDF reader — both of which are
+  // created after the references module itself. Until this binding runs, the screening surface reports
+  // runnerAvailable: false and refuses to start a pass, rather than opening one nothing could decide.
+  const screeningModelRunner = await modules.add(
+    {
+      appVersion: app.getVersion(),
+      configRoot,
+      captureTarget: () => settingsService.captureActiveExplicitAgentBackendTarget(),
+      resolveTarget: (target, context) =>
+        settingsService.resolveExplicitAgentBackend(target, context)
+    },
+    (options) => {
+      const runner = new ScreeningAcpModelRunner(options)
+      return {
+        name: 'screening-model-runner',
+        capability: runner,
+        dispose: () => runner.shutdown()
+      }
+    }
+  )
+  void screeningModelRunner
+    .sweepStaleProfiles()
+    .catch((error) =>
+      screeningLog.error('stale screening profile cleanup failed', diagnosticErrorFields(error))
+    )
+  referencesIpcModule.bindScreening({
+    runner: () => screeningModelRunner,
+    beginPass: () => screeningModelRunner.beginPass(),
+    // The evidence a screening decision rests on: the record's newest attached PDF, read through the
+    // same PDF service the reader and the DOI import use. A document the reader refuses (unparsable, too
+    // many pages) is not an error of the pass — the record falls back to its abstract or its metadata,
+    // which is exactly what the coverage tiers mean — so it reads as "no full text on hand".
+    readFullText: async (reference) => {
+      if (!reference.pdfManagedFileId) return null
+      const path = await resolveManagedStoragePath(reference.projectId, reference.pdfManagedFileId)
+      if (!path) return null
+      try {
+        const opened = await pdfService.open(path, reference.projectId)
+        if (opened.doc.pageCount === 0) return null
+        const read = await pdfService.pages(opened.doc.docId, 1, opened.doc.pageCount)
+        const text = read.pages
+          .slice()
+          .sort((left, right) => left.page - right.page)
+          .map((page) => page.text)
+          .join('\n')
+          .trim()
+        return text.length > 0 ? text : null
+      } catch (error) {
+        screeningLog.warn('attached PDF text could not be read for screening', {
+          referenceId: reference.id,
+          ...diagnosticErrorFields(error)
+        })
+        return null
+      }
+    }
   })
   const createSessionWorkflow = createAcpCreateSessionWorkflow(runtime, {
     assertProjectAvailable: (projectId) => archiveCoordinator.assertProjectAvailable(projectId)
