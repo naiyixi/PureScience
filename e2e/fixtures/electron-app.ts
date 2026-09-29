@@ -108,6 +108,11 @@ type ElectronApp = {
    * Pass null to simulate the user cancelling.
    */
   stubSaveDialog: (filePath: string | null) => Promise<void>
+  /**
+   * The options the stubbed dialog was last handed — `defaultPath` is the file name the APP itself asked
+   * for, which the stub would otherwise swallow.
+   */
+  lastSaveDialogOptions: () => Promise<{ defaultPath?: string } | null>
   requestMainWindowClose: () => Promise<void>
   restart: () => Promise<Page>
 }
@@ -408,8 +413,25 @@ class ElectronAppHarness implements ElectronApp {
 
   async stubSaveDialog(filePath: string | null): Promise<void> {
     await this.runningApplication.evaluate(({ dialog }, path) => {
-      dialog.showSaveDialog = async () => ({ canceled: path === null, filePath: path ?? '' })
+      // The two call shapes the app uses (with and without a parent window) both land here, and the
+      // options are kept so a test can read the file name the APP proposed (`defaultPath`).
+      dialog.showSaveDialog = async (
+        windowOrOptions: unknown,
+        maybeOptions?: unknown
+      ): Promise<{ canceled: boolean; filePath: string }> => {
+        const options = (maybeOptions ?? windowOrOptions) as { defaultPath?: string } | undefined
+        ;(globalThis as { __psLastSaveDialogOptions?: unknown }).__psLastSaveDialogOptions = options
+        return { canceled: path === null, filePath: path ?? '' }
+      }
     }, filePath)
+  }
+
+  async lastSaveDialogOptions(): Promise<{ defaultPath?: string } | null> {
+    return this.runningApplication.evaluate(
+      () =>
+        (globalThis as { __psLastSaveDialogOptions?: { defaultPath?: string } })
+          .__psLastSaveDialogOptions ?? null
+    )
   }
 
   async requestMainWindowClose(): Promise<void> {

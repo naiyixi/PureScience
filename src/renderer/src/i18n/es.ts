@@ -3062,6 +3062,19 @@ export const es: Partial<Record<ZhKey, string>> = {
   'references.removeReference': 'Quitar la referencia',
   'references.detachPdf': 'Desvincular PDF',
   'references.attachPdf': 'Adjuntar PDF',
+  'references.pdfImport.open': 'Importar PDF',
+  'references.pdfImport.titleAttach': 'Elige el PDF que se vinculará a este registro',
+  'references.pdfImport.titleBatch': 'Importar desde los PDF del proyecto ({n} seleccionados)',
+  'references.pdfImport.stop': 'Detener',
+  'references.pdfImport.empty': 'No hay archivos PDF en este proyecto.',
+  'references.pdfImport.attachSelected': 'Vincular a este registro ({n})',
+  'references.pdfImport.asNewRecords': 'Importar como registros nuevos ({n})',
+  'references.pdfImport.summary': 'Se importaron {imported} archivos PDF.',
+  'references.pdfImport.summaryWithFailures':
+    'Se importaron {imported} archivos PDF y {failed} fallaron.',
+  'references.pdfImport.summaryStopped': 'Detenido · se importaron {imported} archivos PDF.',
+  'references.pdfImport.summaryStoppedWithFailures':
+    'Detenido · se importaron {imported} archivos PDF y {failed} fallaron.',
   'preview.zoomLevel': 'Nivel de zoom',
   'preview.openProvenanceFor': 'Abrir la procedencia de {name}',
   'artifact.loadingProvenance': 'Cargando la procedencia',
@@ -3480,6 +3493,23 @@ export const es: Partial<Record<ZhKey, string>> = {
     'Los registros sin procesar se cuentan aparte y nunca entran en una exportación.',
   'references.screening.stats.verdicts': 'Distribución de los cuatro estados',
   'references.screening.stats.coverage': 'Distribución de cobertura de evidencia',
+  'references.screening.coverageList.title': 'Lista de cobertura',
+  'references.screening.coverageList.reconcile':
+    'Buscados {searched} ({scope}) · candidatos {candidate} · total de las cuatro clases {classified}',
+  'references.screening.coverageList.scope.collectionMembers': 'los miembros de la colección',
+  'references.screening.coverageList.scopeNote':
+    'Esta versión no registra un recuento aparte de resultados de búsqueda: el cribado se hace sobre una colección, cuyos miembros son a la vez el corpus buscado y los candidatos; ambas cifras salen del mismo conjunto.',
+  'references.screening.coverageList.tierRule':
+    'Cada referencia pertenece exactamente a una de las cuatro clases — texto completo / solo resumen / solo metadatos / sin evidencia — y las cuatro cifras deben sumar el número de candidatos.',
+  'references.screening.coverageList.reconciled':
+    'Las cuatro clases suman el número de candidatos: {classified}.',
+  'references.screening.coverageList.notReconciled':
+    'La lista no cuadra: las cuatro clases suman {classified}, pero hay {candidate} candidatos.',
+  'references.screening.coverageList.groupEmpty': 'Ninguno',
+  'references.screening.coverageList.counted': '{label}: {count}',
+  'references.screening.coverageList.unprocessed':
+    'Sin procesar {unprocessed} — enumeradas una a una, nunca omitidas:',
+  'references.screening.coverageList.violations': 'Problemas de la lista: {issues}',
   'references.screening.export.title': 'Exportar',
   'references.screening.export.scope':
     'Alcance de la exportación: solo incluidos, según el veredicto efectivo, donde una anulación humana prevalece sobre el veredicto de la IA.',

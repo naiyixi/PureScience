@@ -1,0 +1,26 @@
+collected-at: 2026-09-29T09:55:01.812Z
+collection: Coverage hits (project: Screening coverage acceptance project)
+
+checklist before the pass (nothing screened):
+  data-scope: collection-members
+  data-searched: 5
+  data-candidate: 5
+  data-classified: 5
+  data-reconciled: true
+  data-within-searched: true
+  data-unprocessed: 5
+  reconcile line: Searched 5 (the collection's members) · candidates 5 · the four tiers total 5
+  reconciliation line: The four tiers add up to the candidate count: 5.
+  unprocessed line: Unprocessed 5 — listed one by one, never omitted:
+  unprocessed rows listed (5): table evidenceFull text | Abstract only: cohort with a measured endpointAbstract only | Metadata only AMetadata only | Metadata only BMetadata only | Metadata only CMetadata only
+  four tiers:
+    full-text: 1
+    abstract-only: 1
+    metadata-only: 3
+    unavailable: 0
+  tier memberships (5, one per reference):
+    cmumi2th70003wffyu3udmi65 -> full-text (unprocessed: true)
+    cmumi2s6g0001wffyt2e73c99 -> abstract-only (unprocessed: true)
+    cmumi2tkh0004wffy0mdmgfx8 -> metadata-only (unprocessed: true)
+    cmumi2tm90005wffyww2n77au -> metadata-only (unprocessed: true)
+    cmumi2tof0006wffyr3t3znnm -> metadata-only (unprocessed: true)

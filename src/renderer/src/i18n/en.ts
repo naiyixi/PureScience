@@ -476,6 +476,18 @@ export const en: Record<ZhKey, string> = {
   'references.removeReference': 'Remove reference',
   'references.detachPdf': 'Detach PDF',
   'references.attachPdf': 'Attach PDF',
+  'references.pdfImport.open': 'Import PDFs',
+  'references.pdfImport.titleAttach': 'Choose the PDF to attach to this record',
+  'references.pdfImport.titleBatch': 'Import from project PDFs (selected {n})',
+  'references.pdfImport.stop': 'Stop',
+  'references.pdfImport.empty': 'No PDF files in this project.',
+  'references.pdfImport.attachSelected': 'Attach to this record ({n})',
+  'references.pdfImport.asNewRecords': 'Import as new records ({n})',
+  'references.pdfImport.summary': 'Imported {imported} PDF file(s).',
+  'references.pdfImport.summaryWithFailures': 'Imported {imported} PDF file(s), {failed} failed.',
+  'references.pdfImport.summaryStopped': 'Stopped · imported {imported} PDF file(s).',
+  'references.pdfImport.summaryStoppedWithFailures':
+    'Stopped · imported {imported} PDF file(s), {failed} failed.',
   'preview.zoomLevel': 'Zoom level',
   'preview.openProvenanceFor': 'Open Provenance for {name}',
   'artifact.loadingProvenance': 'Loading provenance',
@@ -3450,6 +3462,23 @@ export const en: Record<ZhKey, string> = {
     'Unprocessed records are counted separately and never enter an export.',
   'references.screening.stats.verdicts': 'Verdicts',
   'references.screening.stats.coverage': 'Evidence coverage',
+  'references.screening.coverageList.title': 'Coverage checklist',
+  'references.screening.coverageList.reconcile':
+    'Searched {searched} ({scope}) · candidates {candidate} · the four tiers total {classified}',
+  'references.screening.coverageList.scope.collectionMembers': "the collection's members",
+  'references.screening.coverageList.scopeNote':
+    'This build keeps no separate search-hit count: a screen runs over a collection, so its members are both the searched corpus and the candidates, and both numbers come from that one set.',
+  'references.screening.coverageList.tierRule':
+    'Every reference belongs to exactly one of the four tiers — full text / abstract only / metadata only / no evidence — and the four counts must add up to the candidate count.',
+  'references.screening.coverageList.reconciled':
+    'The four tiers add up to the candidate count: {classified}.',
+  'references.screening.coverageList.notReconciled':
+    'The checklist does not reconcile: the four tiers add up to {classified}, but there are {candidate} candidates.',
+  'references.screening.coverageList.groupEmpty': 'None',
+  'references.screening.coverageList.counted': '{label} {count}',
+  'references.screening.coverageList.unprocessed':
+    'Unprocessed {unprocessed} — listed one by one, never omitted:',
+  'references.screening.coverageList.violations': 'Checklist problems: {issues}',
   'references.screening.export.title': 'Export',
   'references.screening.export.scope':
     'Export scope: included only — by the effective verdict, where a human override outranks the AI verdict.',

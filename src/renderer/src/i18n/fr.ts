@@ -3081,6 +3081,19 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'references.removeReference': 'Supprimer la référence',
   'references.detachPdf': 'Détacher le PDF',
   'references.attachPdf': 'Joindre un PDF',
+  'references.pdfImport.open': 'Importer des PDF',
+  'references.pdfImport.titleAttach': 'Choisir le PDF à joindre à cette référence',
+  'references.pdfImport.titleBatch': 'Importer depuis les PDF du projet ({n} sélectionnés)',
+  'references.pdfImport.stop': 'Arrêter',
+  'references.pdfImport.empty': 'Le projet ne contient aucun fichier PDF.',
+  'references.pdfImport.attachSelected': 'Joindre à cette référence ({n})',
+  'references.pdfImport.asNewRecords': 'Importer comme nouvelles références ({n})',
+  'references.pdfImport.summary': '{imported} fichiers PDF importés.',
+  'references.pdfImport.summaryWithFailures':
+    '{imported} fichiers PDF importés, {failed} en échec.',
+  'references.pdfImport.summaryStopped': 'Arrêté · {imported} fichiers PDF importés.',
+  'references.pdfImport.summaryStoppedWithFailures':
+    'Arrêté · {imported} fichiers PDF importés, {failed} en échec.',
   'preview.zoomLevel': 'Niveau de zoom',
   'preview.openProvenanceFor': 'Ouvrir la provenance de {name}',
   'artifact.loadingProvenance': 'Chargement de la traçabilité',
@@ -3500,6 +3513,23 @@ export const fr: Partial<Record<ZhKey, string>> = {
     'Les enregistrements non traités sont comptés à part et n’entrent jamais dans un export.',
   'references.screening.stats.verdicts': 'Répartition des quatre états',
   'references.screening.stats.coverage': 'Répartition de la couverture des preuves',
+  'references.screening.coverageList.title': 'Liste de couverture',
+  'references.screening.coverageList.reconcile':
+    'Recherchés {searched} ({scope}) · candidats {candidate} · total des quatre catégories {classified}',
+  'references.screening.coverageList.scope.collectionMembers': 'les membres de la collection',
+  'references.screening.coverageList.scopeNote':
+    'Cette version ne consigne pas de nombre de résultats de recherche distinct : le triage porte sur une collection, dont les membres sont à la fois le corpus recherché et les candidats — les deux nombres viennent de ce même ensemble.',
+  'references.screening.coverageList.tierRule':
+    'Chaque référence appartient à exactement une des quatre catégories — texte intégral / résumé seul / notice seule / aucune preuve — et la somme des quatre doit égaler le nombre de candidats.',
+  'references.screening.coverageList.reconciled':
+    'La somme des quatre catégories égale le nombre de candidats : {classified}.',
+  'references.screening.coverageList.notReconciled':
+    'Le contrôle ne passe pas : les quatre catégories totalisent {classified}, pour {candidate} candidats.',
+  'references.screening.coverageList.groupEmpty': 'Aucun',
+  'references.screening.coverageList.counted': '{label} : {count}',
+  'references.screening.coverageList.unprocessed':
+    'Non traitées {unprocessed} — énumérées une à une, jamais omises :',
+  'references.screening.coverageList.violations': 'Anomalies de la liste : {issues}',
   'references.screening.export.title': 'Exportation',
   'references.screening.export.scope':
     'Portée de l’export : inclus uniquement, selon le verdict effectif, où un remplacement humain prime sur le verdict de l’IA.',

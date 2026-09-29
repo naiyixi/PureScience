@@ -3097,6 +3097,19 @@ export const de: Partial<Record<ZhKey, string>> = {
   'references.removeReference': 'Eintrag entfernen',
   'references.detachPdf': 'PDF trennen',
   'references.attachPdf': 'PDF anhängen',
+  'references.pdfImport.open': 'PDFs importieren',
+  'references.pdfImport.titleAttach': 'PDF zum Anhängen an diesen Eintrag wählen',
+  'references.pdfImport.titleBatch': 'Aus Projekt-PDFs importieren ({n} ausgewählt)',
+  'references.pdfImport.stop': 'Stoppen',
+  'references.pdfImport.empty': 'In diesem Projekt gibt es keine PDF-Dateien.',
+  'references.pdfImport.attachSelected': 'An diesen Eintrag anhängen ({n})',
+  'references.pdfImport.asNewRecords': 'Als neue Einträge importieren ({n})',
+  'references.pdfImport.summary': '{imported} PDF-Dateien importiert.',
+  'references.pdfImport.summaryWithFailures':
+    '{imported} PDF-Dateien importiert, {failed} fehlgeschlagen.',
+  'references.pdfImport.summaryStopped': 'Gestoppt · {imported} PDF-Dateien importiert.',
+  'references.pdfImport.summaryStoppedWithFailures':
+    'Gestoppt · {imported} PDF-Dateien importiert, {failed} fehlgeschlagen.',
   'preview.zoomLevel': 'Zoomstufe',
   'preview.openProvenanceFor': 'Herkunft von {name} öffnen',
   'artifact.loadingProvenance': 'Herkunft wird geladen',
@@ -3517,6 +3530,23 @@ export const de: Partial<Record<ZhKey, string>> = {
     'Unbearbeitete Einträge werden getrennt gezählt und gelangen nie in einen Export.',
   'references.screening.stats.verdicts': 'Verteilung der vier Zustände',
   'references.screening.stats.coverage': 'Verteilung der Evidenzabdeckung',
+  'references.screening.coverageList.title': 'Abdeckungsliste',
+  'references.screening.coverageList.reconcile':
+    'Durchsucht {searched} ({scope}) · Kandidaten {candidate} · Summe der vier Klassen {classified}',
+  'references.screening.coverageList.scope.collectionMembers': 'die Mitglieder der Sammlung',
+  'references.screening.coverageList.scopeNote':
+    'Diese Version führt keine separate Trefferzahl: gescreent wird eine Sammlung, deren Mitglieder zugleich Suchkorpus und Kandidaten sind — beide Zahlen stammen aus derselben Menge.',
+  'references.screening.coverageList.tierRule':
+    'Jede Referenz gehört zu genau einer der vier Klassen — Volltext / nur Abstract / nur Metadaten / keine Evidenz — und die vier Zahlen müssen zusammen die Kandidatenzahl ergeben.',
+  'references.screening.coverageList.reconciled':
+    'Die vier Klassen ergeben zusammen die Kandidatenzahl: {classified}.',
+  'references.screening.coverageList.notReconciled':
+    'Die Liste stimmt nicht: die vier Klassen ergeben {classified}, es gibt aber {candidate} Kandidaten.',
+  'references.screening.coverageList.groupEmpty': 'Keine',
+  'references.screening.coverageList.counted': '{label}: {count}',
+  'references.screening.coverageList.unprocessed':
+    'Unbearbeitet {unprocessed} — einzeln aufgeführt, nie stillschweigend ausgelassen:',
+  'references.screening.coverageList.violations': 'Probleme der Liste: {issues}',
   'references.screening.export.title': 'Exportieren',
   'references.screening.export.scope':
     'Exportumfang: nur aufgenommen – nach dem wirksamen Urteil, bei dem eine menschliche Überschreibung das KI-Urteil schlägt.',

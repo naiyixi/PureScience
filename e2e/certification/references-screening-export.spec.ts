@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, stat } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -30,6 +30,9 @@ const COLLECTION_NAME = 'Screen hits'
 const INCLUDED_TITLE = 'Adults with a measured primary endpoint'
 const EXCLUDED_TITLE = 'Please exclude me: a systematic review'
 const UNTOUCHED_TITLE = 'Untouched: a case series'
+
+/** Where the S5 evidence record's raw export dump is written, when one is asked for. */
+const EVIDENCE_DIR = process.env.PURESCIENCE_EVIDENCE_DIR
 
 const openLibrary = async (page: Page): Promise<ReturnType<Page['getByRole']>> => {
   await page.getByTestId('workspace-references-toggle').click()
@@ -247,6 +250,47 @@ test('screens a collection, overrides two records, and exports only the included
     expect(rows.filter((row) => row.effective === 'included')).toHaveLength(1)
     expect(rows.filter((row) => row.effective === 'excluded')).toHaveLength(1)
     expect(rows.filter((row) => row.effective === 'needs-review')).toHaveLength(1)
+
+    // The name the app asked the file to carry: scope, collection, rule revision, style and the day, so a
+    // bibliography on someone's disk is attributable to a revision rather than to a mood. Read off the
+    // native save dialog the export handed it to (the stub records the options; it does not invent them).
+    const dialogOptions = await app.lastSaveDialogOptions()
+    const suggestedName = dialogOptions?.defaultPath ?? ''
+    expect(suggestedName).toMatch(
+      /^references-screen-hits-included-only-r1-gbt7714-2015-\d{4}-\d{2}-\d{2}\.txt$/
+    )
+
+    // The raw readings this acceptance is archived from (see docs/evidence/2026-09-29-literature-
+    // screening.md). Written only when asked for, so a CI run leaves no trace behind it.
+    if (EVIDENCE_DIR) {
+      await mkdir(EVIDENCE_DIR, { recursive: true })
+      const receiptLines = await Promise.all(
+        [
+          'screening-export-receipt-summary',
+          'screening-export-receipt-not-exported',
+          'screening-export-receipt-reasons',
+          'screening-export-receipt-provenance',
+          'screening-export-receipt-path'
+        ].map(async (testId) => `${testId}: ${(await statText(panel, testId)) || '(absent)'}`)
+      )
+      await writeFile(
+        join(EVIDENCE_DIR, '2026-09-29-literature-screening-export-receipt.txt'),
+        [
+          `collected-at: ${new Date().toISOString()}`,
+          `exported-file-name (suggested by the app): ${suggestedName}`,
+          `saved-path (stubbed save dialog): ${target}`,
+          `file-bytes: ${(await stat(target)).size}`,
+          `citation-lines: ${(await readFile(target, 'utf8')).trim().split('\n').length}`,
+          '',
+          'receipt:',
+          ...receiptLines,
+          '',
+          'exported file verbatim:',
+          (await readFile(target, 'utf8')).trimEnd(),
+          ''
+        ].join('\n')
+      )
+    }
   } finally {
     await rm(root, { recursive: true, force: true })
   }

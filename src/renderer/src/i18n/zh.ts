@@ -454,6 +454,18 @@ export const zh = {
   'references.removeReference': '移除条目',
   'references.detachPdf': '解除 PDF',
   'references.attachPdf': '挂载 PDF',
+  'references.pdfImport.open': 'PDF 入册',
+  'references.pdfImport.titleAttach': '选择要挂到该条目的 PDF',
+  'references.pdfImport.titleBatch': '从项目 PDF 批量入册（已选 {n}）',
+  'references.pdfImport.stop': '停止',
+  'references.pdfImport.empty': '项目内没有 PDF 文件。',
+  'references.pdfImport.attachSelected': '挂到该条目（{n}）',
+  'references.pdfImport.asNewRecords': '入册为新记录（{n}）',
+  'references.pdfImport.summary': '已导入 {imported} 个 PDF。',
+  'references.pdfImport.summaryWithFailures': '已导入 {imported} 个 PDF，{failed} 个失败。',
+  'references.pdfImport.summaryStopped': '已停止 · 已导入 {imported} 个 PDF。',
+  'references.pdfImport.summaryStoppedWithFailures':
+    '已停止 · 已导入 {imported} 个 PDF，{failed} 个失败。',
   'preview.zoomLevel': '缩放级别',
   'preview.openProvenanceFor': '打开 {name} 的溯源',
   'artifact.loadingProvenance': '正在加载溯源',
@@ -3229,6 +3241,22 @@ export const zh = {
   'references.screening.stats.unprocessedNote': '未处理量单独计数，绝不进入导出。',
   'references.screening.stats.verdicts': '四态分布',
   'references.screening.stats.coverage': '证据覆盖度分布',
+  'references.screening.coverageList.title': '覆盖率清单',
+  'references.screening.coverageList.reconcile':
+    '检索 {searched} 条（口径：{scope}）· 进入分诊候选 {candidate} 条 · 四类合计 {classified} 条',
+  'references.screening.coverageList.scope.collectionMembers': '集合成员',
+  'references.screening.coverageList.scopeNote':
+    '本版本不单独统计「检索命中数」：分诊按集合进行，集合成员既是检索范围、也是进入分诊的候选，两个数出自同一个集合，而不是应用另行记录的命中总量。',
+  'references.screening.coverageList.tierRule':
+    '每篇文献恰属下列四类之一：全文 / 只有摘要 / 只有题录 / 无依据；四类计数相加必须等于候选数。',
+  'references.screening.coverageList.reconciled': '四类合计与候选数一致：{classified} 条。',
+  'references.screening.coverageList.notReconciled':
+    '核账不通过：四类合计 {classified} 条，而候选数为 {candidate} 条。',
+  'references.screening.coverageList.groupEmpty': '无',
+  'references.screening.coverageList.counted': '{label} {count} 条',
+  'references.screening.coverageList.unprocessed':
+    '未处理 {unprocessed} 条——逐条列出，不静默省略：',
+  'references.screening.coverageList.violations': '清单异常：{issues}',
   'references.screening.export.title': '导出',
   'references.screening.export.scope': '本次导出范围：仅纳入（按有效判定，人工覆盖优先于 AI 原判）',
   'references.screening.export.scopeIncludedOnly': '仅纳入',

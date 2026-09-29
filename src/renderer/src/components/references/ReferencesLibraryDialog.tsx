@@ -555,9 +555,16 @@ export function ReferencesLibraryDialog({
     setShowPdfPicker(false)
     setSelectedPdfIds([])
     setPdfCandidates([])
-    setNotice(
-      `${stopped ? '已停止 · ' : ''}已导入 ${imported} 个 PDF${failed > 0 ? `，${failed} 个失败` : ''}。`
-    )
+    // Four whole sentences rather than concatenated fragments: a stop and a failure count are each
+    // optional, and every language needs to be able to word the combination its own way.
+    const summaryKey = stopped
+      ? failed > 0
+        ? 'references.pdfImport.summaryStoppedWithFailures'
+        : 'references.pdfImport.summaryStopped'
+      : failed > 0
+        ? 'references.pdfImport.summaryWithFailures'
+        : 'references.pdfImport.summary'
+    setNotice(t(summaryKey, { imported, failed }))
     await refresh()
   }
 
@@ -652,8 +659,8 @@ export function ReferencesLibraryDialog({
               <div className="flex items-center justify-between">
                 <p className="text-xs font-medium text-[var(--foreground)]">
                   {attachToReferenceId
-                    ? '选择要挂到该条目的 PDF'
-                    : `从项目 PDF 批量入册（已选 ${selectedPdfIds.length}）`}
+                    ? t('references.pdfImport.titleAttach')
+                    : t('references.pdfImport.titleBatch', { n: selectedPdfIds.length })}
                 </p>
                 {importProgress ? (
                   <span className="flex items-center gap-2 text-[11px] text-[var(--muted-foreground)]">
@@ -665,7 +672,7 @@ export function ReferencesLibraryDialog({
                         cancelImportRef.current = true
                       }}
                     >
-                      停止
+                      {t('references.pdfImport.stop')}
                     </button>
                   </span>
                 ) : null}
@@ -675,7 +682,7 @@ export function ReferencesLibraryDialog({
                   <p className="px-2 py-3 text-[11px] text-[var(--muted-foreground)]">…</p>
                 ) : pdfCandidates.length === 0 ? (
                   <p className="px-2 py-3 text-[11px] text-[var(--muted-foreground)]">
-                    项目内没有 PDF 文件。
+                    {t('references.pdfImport.empty')}
                   </p>
                 ) : (
                   pdfCandidates.map((candidate) => (
@@ -707,7 +714,7 @@ export function ReferencesLibraryDialog({
                     disabled={selectedPdfIds.length === 0 || importProgress !== null}
                     onClick={() => void handleAttachSelectedToRecord(attachToReferenceId)}
                   >
-                    挂到该条目（{selectedPdfIds.length}）
+                    {t('references.pdfImport.attachSelected', { n: selectedPdfIds.length })}
                   </button>
                 ) : (
                   <button
@@ -718,7 +725,7 @@ export function ReferencesLibraryDialog({
                       if (projectId) void handleImportSelectedPdfs(projectId)
                     }}
                   >
-                    入册为新记录（{selectedPdfIds.length}）
+                    {t('references.pdfImport.asNewRecords', { n: selectedPdfIds.length })}
                   </button>
                 )}
                 <button
@@ -732,7 +739,7 @@ export function ReferencesLibraryDialog({
                     setPdfCandidates([])
                   }}
                 >
-                  取消
+                  {t('common.cancel')}
                 </button>
               </div>
             </div>
@@ -1006,7 +1013,8 @@ export function ReferencesLibraryDialog({
                     if (projectId) openPdfPicker(projectId, null)
                   }}
                 >
-                  <BookMarked className="size-3" aria-hidden="true" /> PDF 入册
+                  <BookMarked className="size-3" aria-hidden="true" />{' '}
+                  {t('references.pdfImport.open')}
                 </button>
               </div>
               {importedStyles.length > 0 ? (

@@ -2791,6 +2791,18 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'references.removeReference': '移除條目',
   'references.detachPdf': '解除 PDF',
   'references.attachPdf': '掛載 PDF',
+  'references.pdfImport.open': 'PDF 入庫',
+  'references.pdfImport.titleAttach': '選擇要掛到該條目的 PDF',
+  'references.pdfImport.titleBatch': '從專案 PDF 批次入庫（已選 {n}）',
+  'references.pdfImport.stop': '停止',
+  'references.pdfImport.empty': '專案內沒有 PDF 檔案。',
+  'references.pdfImport.attachSelected': '掛到該條目（{n}）',
+  'references.pdfImport.asNewRecords': '入庫為新條目（{n}）',
+  'references.pdfImport.summary': '已匯入 {imported} 個 PDF。',
+  'references.pdfImport.summaryWithFailures': '已匯入 {imported} 個 PDF，{failed} 個失敗。',
+  'references.pdfImport.summaryStopped': '已停止 · 已匯入 {imported} 個 PDF。',
+  'references.pdfImport.summaryStoppedWithFailures':
+    '已停止 · 已匯入 {imported} 個 PDF，{failed} 個失敗。',
   'preview.zoomLevel': '縮放層級',
   'preview.openProvenanceFor': '開啟 {name} 的溯源',
   'artifact.loadingProvenance': '正在載入溯源',
@@ -3166,6 +3178,22 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'references.screening.stats.unprocessedNote': '未處理量單獨計數，絕不進入匯出。',
   'references.screening.stats.verdicts': '四態分布',
   'references.screening.stats.coverage': '證據覆蓋度分布',
+  'references.screening.coverageList.title': '覆蓋率清單',
+  'references.screening.coverageList.reconcile':
+    '檢索 {searched} 筆（口徑：{scope}）· 進入分診候選 {candidate} 筆 · 四類合計 {classified} 筆',
+  'references.screening.coverageList.scope.collectionMembers': '集合成員',
+  'references.screening.coverageList.scopeNote':
+    '本版本不單獨統計「檢索命中數」：分診以集合為單位，集合成員既是檢索範圍、也是進入分診的候選，兩個數出自同一個集合，而不是應用另行記錄的命中總量。',
+  'references.screening.coverageList.tierRule':
+    '每篇文獻恰屬下列四類之一：全文／僅摘要／僅題錄／無依據；四類計數相加必須等於候選數。',
+  'references.screening.coverageList.reconciled': '四類合計與候選數一致：{classified} 筆。',
+  'references.screening.coverageList.notReconciled':
+    '核帳不通過：四類合計 {classified} 筆，而候選數為 {candidate} 筆。',
+  'references.screening.coverageList.groupEmpty': '無',
+  'references.screening.coverageList.counted': '{label} {count} 筆',
+  'references.screening.coverageList.unprocessed':
+    '未處理 {unprocessed} 筆——逐筆列出，不靜默省略：',
+  'references.screening.coverageList.violations': '清單異常：{issues}',
   'references.screening.export.title': '匯出',
   'references.screening.export.scope': '本次匯出範圍：僅納入（依有效判定，人工覆蓋優先於 AI 原判）',
   'references.screening.export.scopeIncludedOnly': '僅納入',

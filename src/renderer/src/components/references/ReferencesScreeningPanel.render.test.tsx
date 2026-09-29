@@ -91,6 +91,24 @@ vi.mock('@/i18n', () => {
       'Unprocessed records are counted separately and never enter an export.',
     'references.screening.stats.verdicts': 'Verdicts',
     'references.screening.stats.coverage': 'Evidence coverage',
+    // The S5 coverage checklist.
+    'references.screening.coverageList.title': 'Coverage checklist',
+    'references.screening.coverageList.reconcile':
+      'Searched {searched} ({scope}) · candidates {candidate} · the four tiers total {classified}',
+    'references.screening.coverageList.scope.collectionMembers': "the collection's members",
+    'references.screening.coverageList.scopeNote':
+      'This build keeps no separate search-hit count; both numbers come from the collection.',
+    'references.screening.coverageList.tierRule':
+      'Every reference belongs to exactly one of the four tiers.',
+    'references.screening.coverageList.reconciled':
+      'The four tiers add up to the candidate count: {classified}.',
+    'references.screening.coverageList.notReconciled':
+      'The checklist does not reconcile: the four tiers add up to {classified}, but there are {candidate} candidates.',
+    'references.screening.coverageList.groupEmpty': 'None',
+    'references.screening.coverageList.counted': '{label} {count}',
+    'references.screening.coverageList.unprocessed':
+      'Unprocessed {unprocessed} — listed one by one, never omitted:',
+    'references.screening.coverageList.violations': 'Checklist problems: {issues}',
     'references.screening.export.title': 'Export',
     'references.screening.export.scope':
       'Export scope: included only — by the effective verdict, where a human override outranks the AI verdict.',
@@ -660,6 +678,160 @@ describe('ReferencesScreeningPanel', () => {
     expect(rows.filter((row) => row.dataset.coverage === 'full-text')).toHaveLength(4)
   })
 
+  // --- S5: the coverage checklist -----------------------------------------------------------------
+
+  it('lays the corpus out as four tier lists, reconciles them against the candidate count, and names the unprocessed records', async () => {
+    const references = [
+      reference('ref-full', 'Full text record'),
+      reference('ref-abstract', 'Abstract record'),
+      reference('ref-metadata', 'Metadata record'),
+      reference('ref-bare', 'Bare record')
+    ]
+    const items = [
+      item('ref-full', 'included'),
+      {
+        ...item('ref-abstract', 'needs-review', ['uncertain']),
+        coverage: 'abstract-only' as const
+      },
+      {
+        ...item('ref-metadata', 'not-evaluated', ['input-too-long']),
+        coverage: 'metadata-only' as const
+      },
+      {
+        ...item('ref-bare', 'not-evaluated', ['missing-evidence']),
+        coverage: 'unavailable' as const
+      }
+    ]
+    await render(snapshot(items), references)
+
+    const list = byTestId('screening-coverage-list')
+    // Both totals are carried, and the searched total's scope is NAMED: the collection's members, not a
+    // retrieval count this build never keeps.
+    expect(list.dataset.scope).toBe('collection-members')
+    expect(list.dataset.searched).toBe('4')
+    expect(list.dataset.candidate).toBe('4')
+    expect(list.dataset.classified).toBe('4')
+    expect(list.dataset.reconciled).toBe('true')
+    expect(list.dataset.withinSearched).toBe('true')
+    expect(list.dataset.unprocessed).toBe('2')
+    expect(byTestId('screening-coverage-reconcile').textContent?.trim()).toBe(
+      "Searched 4 (the collection's members) · candidates 4 · the four tiers total 4"
+    )
+    expect(byTestId('screening-coverage-reconciliation').textContent?.trim()).toBe(
+      'The four tiers add up to the candidate count: 4.'
+    )
+    expect(container.querySelector('[data-testid="screening-coverage-violations"]')).toBeNull()
+
+    // 每篇恰属其一: four tiers, always all four, each with its own count AND its own membership list —
+    // read off the rendered rows, not off the count the panel printed.
+    const groups = Array.from(
+      container.querySelectorAll<HTMLElement>('[data-testid="screening-coverage-group"]')
+    )
+    expect(groups.map((group) => [group.dataset.coverage, group.dataset.count])).toEqual([
+      ['full-text', '1'],
+      ['abstract-only', '1'],
+      ['metadata-only', '1'],
+      ['unavailable', '1']
+    ])
+    expect(
+      groups.map((group) =>
+        (
+          group.querySelector('[data-testid="screening-coverage-group-count"]')?.textContent ?? ''
+        ).trim()
+      )
+    ).toEqual(['Full text 1', 'Abstract only 1', 'Metadata only 1', 'No evidence 1'])
+
+    const listed = Array.from(
+      container.querySelectorAll<HTMLElement>('[data-testid="screening-coverage-item"]')
+    ).map((row) => [row.dataset.referenceId, row.dataset.coverage, row.dataset.unprocessed])
+    expect(listed).toEqual([
+      ['ref-full', 'full-text', 'false'],
+      ['ref-abstract', 'abstract-only', 'false'],
+      ['ref-metadata', 'metadata-only', 'true'],
+      ['ref-bare', 'unavailable', 'true']
+    ])
+    // Every reference appears exactly once across the four lists: the partition is total.
+    const ids = listed.map(([id]) => id)
+    expect(new Set(ids).size).toBe(ids.length)
+    expect(new Set(ids)).toEqual(new Set(references.map((entry) => entry.id)))
+    // …and it agrees with the ROWS the reviewer scrolls, which carry their own coverage attribute.
+    const rowCoverage = Array.from(
+      container.querySelectorAll<HTMLElement>('[data-testid="screening-row"]')
+    ).map((row) => row.dataset.coverage)
+    expect(rowCoverage).toHaveLength(4)
+    for (const group of groups) {
+      expect(rowCoverage.filter((coverage) => coverage === group.dataset.coverage)).toHaveLength(
+        Number(group.dataset.count)
+      )
+    }
+
+    // 未处理量显式: the number, then the names — and the tier each one would be decided on.
+    expect(byTestId('screening-coverage-unprocessed-line').textContent?.trim()).toBe(
+      'Unprocessed 2 — listed one by one, never omitted:'
+    )
+    expect(
+      Array.from(
+        container.querySelectorAll<HTMLElement>(
+          '[data-testid="screening-coverage-unprocessed-item"]'
+        )
+      ).map((row) => [row.dataset.referenceId, row.dataset.coverage])
+    ).toEqual([
+      ['ref-metadata', 'metadata-only'],
+      ['ref-bare', 'unavailable']
+    ])
+    expect(byTestId('screening-coverage-unprocessed-tiers').textContent?.trim()).toBe(
+      'Metadata only 1 · No evidence 1'
+    )
+  })
+
+  it('prints zero unprocessed rather than leaving the count to be inferred from an empty space', async () => {
+    const references = [reference('ref-a', 'Decided record'), reference('ref-b', 'Also decided')]
+    const items = [
+      item('ref-a', 'included'),
+      { ...item('ref-b', 'excluded'), coverage: 'abstract-only' as const }
+    ]
+    await render(snapshot(items), references)
+
+    expect(byTestId('screening-coverage-list').dataset.unprocessed).toBe('0')
+    expect(byTestId('screening-coverage-unprocessed-line').textContent?.trim()).toBe(
+      'Unprocessed 0 — listed one by one, never omitted:'
+    )
+    expect(
+      container.querySelectorAll('[data-testid="screening-coverage-unprocessed-item"]')
+    ).toHaveLength(0)
+    // The tiers are still four, with the empty ones stated as "None" rather than dropped.
+    expect(
+      Array.from(container.querySelectorAll('[data-testid="screening-coverage-group"]')).map(
+        (group) => (group as HTMLElement).dataset.count
+      )
+    ).toEqual(['1', '1', '0', '0'])
+    expect(
+      Array.from(container.querySelectorAll('[data-testid="screening-coverage-group-empty"]'))
+    ).toHaveLength(2)
+  })
+
+  it('shows a failed reconciliation instead of a total that quietly means nothing', async () => {
+    const references = [reference('ref-a', 'One'), reference('ref-b', 'Two')]
+    const state = snapshot([item('ref-a', 'included'), item('ref-b', 'excluded')])
+    // The ledger claims five candidates and four searched, while the lines are two: both totals are
+    // still printed, and every disagreement with them is surfaced.
+    state.summary = { ...state.summary, searchedCount: 4, candidateCount: 5 }
+    await render(state, references)
+
+    const list = byTestId('screening-coverage-list')
+    expect(list.dataset.searched).toBe('4')
+    expect(list.dataset.candidate).toBe('5')
+    expect(list.dataset.classified).toBe('2')
+    expect(list.dataset.reconciled).toBe('false')
+    expect(list.dataset.withinSearched).toBe('false')
+    expect(byTestId('screening-coverage-reconciliation').textContent?.trim()).toBe(
+      'The checklist does not reconcile: the four tiers add up to 2, but there are 5 candidates.'
+    )
+    const violations = byTestId('screening-coverage-violations').textContent ?? ''
+    expect(violations).toContain('candidateCount (5) exceeds searchedCount (4)')
+    expect(violations).toContain('the four tiers add up to 2, but there are 5 candidates')
+  })
+
   it('exports only the effective "included" records, states the range, and says what stayed out', async () => {
     const references = [
       reference('ref-included-by-human', 'Later cohort'),
@@ -1030,6 +1202,52 @@ describe('the screening surface speaks all nine languages', () => {
         const absent = placeholders.filter((name) => !value.includes(`{${name}}`))
         expect({ language, key, absent }).toEqual({ language, key, absent: [] })
       }
+    }
+  })
+
+  // S5's own copy, in all nine: the checklist title, the reconciliation lines, the tier rule that states
+  // 每篇恰属其一, the counted template the four tier counts use, and the unprocessed line — which has to
+  // say in every language that the records are listed and not silently omitted.
+  it('has copy for the coverage checklist in every language', async () => {
+    const { dictionaries } = await import('@/i18n/languages')
+    const { en } = await import('@/i18n/en')
+    const s5Keys = [
+      'references.screening.coverageList.title',
+      'references.screening.coverageList.reconcile',
+      'references.screening.coverageList.scope.collectionMembers',
+      'references.screening.coverageList.scopeNote',
+      'references.screening.coverageList.tierRule',
+      'references.screening.coverageList.reconciled',
+      'references.screening.coverageList.notReconciled',
+      'references.screening.coverageList.groupEmpty',
+      'references.screening.coverageList.counted',
+      'references.screening.coverageList.unprocessed',
+      'references.screening.coverageList.violations'
+    ] as const
+    expect(s5Keys.every((key) => key in en)).toBe(true)
+
+    for (const [language, dictionary] of Object.entries(dictionaries)) {
+      const missing = s5Keys.filter((key) => !dictionary[key]?.trim())
+      expect({ language, missing }).toEqual({ language, missing: [] })
+    }
+
+    const zh = dictionaries.zh
+    const zhText = (key: keyof typeof en): string => zh[key] ?? ''
+    expect(zhText('references.screening.coverageList.title')).toBe('覆盖率清单')
+    expect(zhText('references.screening.coverageList.tierRule')).toContain('恰属')
+    expect(zhText('references.screening.coverageList.reconciled')).toContain('四类合计')
+    expect(zhText('references.screening.coverageList.notReconciled')).toContain('核账不通过')
+    expect(zhText('references.screening.coverageList.unprocessed')).toContain('未处理')
+    expect(zhText('references.screening.coverageList.unprocessed')).toContain('不静默省略')
+
+    // Placeholder parity: the reconcile line is filled by name, in every language — a language missing
+    // one would print a raw {candidate} in the window.
+    for (const [language, dictionary] of Object.entries(dictionaries)) {
+      const value = dictionary['references.screening.coverageList.reconcile'] ?? ''
+      const absent = ['searched', 'scope', 'candidate', 'classified'].filter(
+        (name) => !value.includes(`{${name}}`)
+      )
+      expect({ language, absent }).toEqual({ language, absent: [] })
     }
   })
 })

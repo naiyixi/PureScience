@@ -3015,6 +3015,19 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'references.removeReference': '文献を削除',
   'references.detachPdf': 'PDF を切り離す',
   'references.attachPdf': 'PDF を添付',
+  'references.pdfImport.open': 'PDF を取り込む',
+  'references.pdfImport.titleAttach': 'この文献に添付する PDF を選択',
+  'references.pdfImport.titleBatch': 'プロジェクトの PDF から一括取り込み（{n} 件選択）',
+  'references.pdfImport.stop': '停止',
+  'references.pdfImport.empty': 'プロジェクトに PDF ファイルがありません。',
+  'references.pdfImport.attachSelected': 'この文献に添付（{n}）',
+  'references.pdfImport.asNewRecords': '新しい文献として取り込む（{n}）',
+  'references.pdfImport.summary': 'PDF を {imported} 件取り込みました。',
+  'references.pdfImport.summaryWithFailures':
+    'PDF を {imported} 件取り込み、{failed} 件失敗しました。',
+  'references.pdfImport.summaryStopped': '停止しました · PDF を {imported} 件取り込みました。',
+  'references.pdfImport.summaryStoppedWithFailures':
+    '停止しました · PDF を {imported} 件取り込み、{failed} 件失敗しました。',
   'preview.zoomLevel': 'ズーム倍率',
   'preview.openProvenanceFor': '{name} の来歴を開く',
   'artifact.loadingProvenance': '来歴を読み込み中',
@@ -3418,6 +3431,23 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'references.screening.stats.unprocessedNote': '未処理は別に数え、書き出しには決して含めません。',
   'references.screening.stats.verdicts': '四状態の分布',
   'references.screening.stats.coverage': 'エビデンスの網羅度',
+  'references.screening.coverageList.title': 'カバレッジ一覧',
+  'references.screening.coverageList.reconcile':
+    '検索 {searched} 件（範囲：{scope}）・スクリーニング候補 {candidate} 件・四分類の合計 {classified} 件',
+  'references.screening.coverageList.scope.collectionMembers': 'コレクションのメンバー',
+  'references.screening.coverageList.scopeNote':
+    '本バージョンは「検索ヒット数」を別途記録しません。スクリーニングはコレクション単位で行うため、メンバーが検索範囲と候補の両方であり、二つの数は同じ集合から出ています。',
+  'references.screening.coverageList.tierRule':
+    '各文献は全文／要旨のみ／書誌のみ／根拠なしのいずれか一つに必ず属し、四つの計数の合計は候補数と一致しなければなりません。',
+  'references.screening.coverageList.reconciled':
+    '四分類の合計は候補数と一致しています：{classified} 件。',
+  'references.screening.coverageList.notReconciled':
+    '照合できません：四分類の合計は {classified} 件ですが、候補数は {candidate} 件です。',
+  'references.screening.coverageList.groupEmpty': 'なし',
+  'references.screening.coverageList.counted': '{label} {count} 件',
+  'references.screening.coverageList.unprocessed':
+    '未処理 {unprocessed} 件——一件ずつ列挙し、黙って省略しません：',
+  'references.screening.coverageList.violations': '一覧の異常：{issues}',
   'references.screening.export.title': '書き出し',
   'references.screening.export.scope':
     '今回の書き出し範囲：採用のみ（有効判定ベース。人の上書きは AI の判定より優先する）',

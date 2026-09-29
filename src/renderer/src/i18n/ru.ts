@@ -3017,6 +3017,19 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'references.removeReference': 'Удалить запись',
   'references.detachPdf': 'Отсоединить PDF',
   'references.attachPdf': 'Прикрепить PDF',
+  'references.pdfImport.open': 'Импорт PDF',
+  'references.pdfImport.titleAttach': 'Выберите PDF для прикрепления к этой записи',
+  'references.pdfImport.titleBatch': 'Импорт из PDF проекта ({n} выбрано)',
+  'references.pdfImport.stop': 'Остановить',
+  'references.pdfImport.empty': 'В проекте нет PDF-файлов.',
+  'references.pdfImport.attachSelected': 'Прикрепить к этой записи ({n})',
+  'references.pdfImport.asNewRecords': 'Импортировать как новые записи ({n})',
+  'references.pdfImport.summary': 'Импортировано PDF-файлов: {imported}.',
+  'references.pdfImport.summaryWithFailures':
+    'Импортировано PDF-файлов: {imported}, с ошибкой: {failed}.',
+  'references.pdfImport.summaryStopped': 'Остановлено · импортировано PDF-файлов: {imported}.',
+  'references.pdfImport.summaryStoppedWithFailures':
+    'Остановлено · импортировано PDF-файлов: {imported}, с ошибкой: {failed}.',
   'preview.zoomLevel': 'Масштаб',
   'preview.openProvenanceFor': 'Открыть происхождение {name}',
   'artifact.loadingProvenance': 'Загрузка происхождения',
@@ -3429,6 +3442,23 @@ export const ru: Partial<Record<ZhKey, string>> = {
     'Необработанные записи считаются отдельно и никогда не попадают в экспорт.',
   'references.screening.stats.verdicts': 'Распределение четырёх состояний',
   'references.screening.stats.coverage': 'Распределение охвата доказательствами',
+  'references.screening.coverageList.title': 'Список покрытия',
+  'references.screening.coverageList.reconcile':
+    'Просмотрено {searched} ({scope}) · кандидатов {candidate} · сумма четырёх категорий {classified}',
+  'references.screening.coverageList.scope.collectionMembers': 'участники коллекции',
+  'references.screening.coverageList.scopeNote':
+    'В этой версии нет отдельного счётчика результатов поиска: отбор идёт по коллекции, её участники — это и корпус поиска, и кандидаты, поэтому оба числа берутся из одного набора.',
+  'references.screening.coverageList.tierRule':
+    'Каждый источник относится ровно к одной из четырёх категорий — полный текст / только аннотация / только метаданные / нет доказательств — и сумма четырёх чисел должна совпадать с числом кандидатов.',
+  'references.screening.coverageList.reconciled':
+    'Сумма четырёх категорий совпадает с числом кандидатов: {classified}.',
+  'references.screening.coverageList.notReconciled':
+    'Сверка не сходится: сумма четырёх категорий — {classified}, а кандидатов — {candidate}.',
+  'references.screening.coverageList.groupEmpty': 'Нет',
+  'references.screening.coverageList.counted': '{label} — {count}',
+  'references.screening.coverageList.unprocessed':
+    'Не обработано {unprocessed} — перечислены по одному, без умолчаний:',
+  'references.screening.coverageList.violations': 'Замечания к списку: {issues}',
   'references.screening.export.title': 'Экспорт',
   'references.screening.export.scope':
     'Область экспорта: только включённые — по действующему решению, где правка человеком важнее решения ИИ.',

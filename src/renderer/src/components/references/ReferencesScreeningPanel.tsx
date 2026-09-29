@@ -31,6 +31,8 @@ import {
   screeningExportReasonBreakdown,
   type ScreeningExportScope
 } from '../../../../shared/references-screening-export'
+import { buildScreeningCoverageChecklist } from '../../../../shared/references-screening-coverage'
+import { ReferencesScreeningCoverageList } from './ReferencesScreeningCoverageList'
 
 // The screening surface of one collection (S3). It reads the collection's triage state, drives a pass,
 // edits the versioned rule set, and records human overrides — and it is built so that the two layers a
@@ -356,6 +358,28 @@ export function ReferencesScreeningPanel({
     () =>
       snapshot === null ? null : buildScreeningExportScope({ collectionId, rule, items: snapshot }),
     [collectionId, rule, snapshot]
+  )
+
+  // The coverage checklist (S5), derived from the SAME lines the rows are drawn from and from the two
+  // totals the ledger returned with them. Nothing here re-counts anything by hand: the membership
+  // lists, the four tier counts and the reconciliation verdict all come from one pure function, so the
+  // checklist a reader audits and the rows they scroll are two readings of one object.
+  const coverageChecklist = useMemo(
+    () =>
+      snapshot === null || summaryText === null
+        ? null
+        : buildScreeningCoverageChecklist({
+            collectionId,
+            searchedCount: summaryText.searched,
+            candidateCount: summaryText.candidate,
+            items: snapshot
+          }),
+    [collectionId, snapshot, summaryText]
+  )
+
+  const titleOf = useCallback(
+    (referenceId: string): string => byId.get(referenceId)?.title ?? referenceId,
+    [byId]
   )
 
   const when = (value: number): string => new Date(value).toLocaleString(getUiLocale())
@@ -945,6 +969,14 @@ export function ReferencesScreeningPanel({
               ))}
             </p>
           </div>
+        ) : null}
+
+        {/* 覆盖率清单 (S5): the four evidence tiers as four MEMBERSHIP lists plus their counts, the
+            reconciliation line that says whether they add up to the candidate count, and the
+            unprocessed records named one by one — so "we covered everything" can be checked by
+            re-counting the list rather than by trusting a total. */}
+        {coverageChecklist ? (
+          <ReferencesScreeningCoverageList checklist={coverageChecklist} titleOf={titleOf} />
         ) : null}
 
         {/* The export (S4): 仅纳入 — the effective verdicts only — into the library's own GB/T 7714

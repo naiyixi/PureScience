@@ -2952,6 +2952,19 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'references.removeReference': '문헌 제거',
   'references.detachPdf': 'PDF 분리',
   'references.attachPdf': 'PDF 연결',
+  'references.pdfImport.open': 'PDF 가져오기',
+  'references.pdfImport.titleAttach': '이 항목에 연결할 PDF 선택',
+  'references.pdfImport.titleBatch': '프로젝트 PDF에서 일괄 가져오기(선택 {n})',
+  'references.pdfImport.stop': '중지',
+  'references.pdfImport.empty': '프로젝트에 PDF 파일이 없습니다.',
+  'references.pdfImport.attachSelected': '이 항목에 연결({n})',
+  'references.pdfImport.asNewRecords': '새 항목으로 가져오기({n})',
+  'references.pdfImport.summary': 'PDF {imported}개를 가져왔습니다.',
+  'references.pdfImport.summaryWithFailures':
+    'PDF {imported}개를 가져왔고 {failed}개가 실패했습니다.',
+  'references.pdfImport.summaryStopped': '중지됨 · PDF {imported}개를 가져왔습니다.',
+  'references.pdfImport.summaryStoppedWithFailures':
+    '중지됨 · PDF {imported}개를 가져왔고 {failed}개가 실패했습니다.',
   'preview.zoomLevel': '확대/축소 수준',
   'preview.openProvenanceFor': '{name}의 출처 열기',
   'artifact.loadingProvenance': '출처 불러오는 중',
@@ -3353,6 +3366,23 @@ export const ko: Partial<Record<ZhKey, string>> = {
     '미처리 항목은 따로 세며, 내보내기에는 절대 포함되지 않습니다.',
   'references.screening.stats.verdicts': '네 가지 상태 분포',
   'references.screening.stats.coverage': '근거 범위 분포',
+  'references.screening.coverageList.title': '커버리지 목록',
+  'references.screening.coverageList.reconcile':
+    '검색 {searched}건(기준: {scope}) · 심사 후보 {candidate}건 · 네 분류 합계 {classified}건',
+  'references.screening.coverageList.scope.collectionMembers': '컬렉션 구성원',
+  'references.screening.coverageList.scopeNote':
+    '이 버전은 "검색 적중 수"를 따로 기록하지 않습니다. 심사는 컬렉션 단위로 이루어지므로 구성원이 검색 범위이자 후보이며, 두 수는 같은 집합에서 나옵니다.',
+  'references.screening.coverageList.tierRule':
+    '각 문헌은 전문/초록만/서지만/근거 없음 중 하나에 반드시 속하며, 네 개수의 합은 후보 수와 같아야 합니다.',
+  'references.screening.coverageList.reconciled':
+    '네 분류 합계가 후보 수와 일치합니다: {classified}건.',
+  'references.screening.coverageList.notReconciled':
+    '대조 실패: 네 분류 합계는 {classified}건인데 후보 수는 {candidate}건입니다.',
+  'references.screening.coverageList.groupEmpty': '없음',
+  'references.screening.coverageList.counted': '{label} {count}건',
+  'references.screening.coverageList.unprocessed':
+    '미처리 {unprocessed}건 — 하나씩 나열하며 조용히 생략하지 않습니다:',
+  'references.screening.coverageList.violations': '목록 이상: {issues}',
   'references.screening.export.title': '내보내기',
   'references.screening.export.scope':
     '이번 내보내기 범위: 포함만(유효 판정 기준이며 사람의 덮어쓰기가 AI 판정보다 우선합니다).',
