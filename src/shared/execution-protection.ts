@@ -18,7 +18,7 @@ export const EXECUTION_SURFACES = ['notebook', 'shell', 'background-job', 'remot
 
 // Where an execution physically happens, as the user meets it:
 //  - notebook:       a local analysis cell (python/r), executed by the app-owned kernel process.
-//  - shell:          a local terminal command (bash/powershell) or the control-plane repl kernel.
+//  - shell:          a local terminal command (the platform's own shell) or the control-plane repl kernel.
 //  - background-job: a job submitted to a compute host that keeps running after the turn (submit_job:
 //                    detached SSH session or a scheduler submission).
 //  - remote-host:    a command run on a compute host as part of the turn (call_command) or a
