@@ -69,7 +69,7 @@ Builds are **not** signed with a paid Apple/Microsoft certificate yet, so your O
 will show an "unverified developer" (macOS) or "unknown publisher" (Windows) prompt
 on first launch. That prompt is expected and is **not** evidence of tampering — but
 a checksum mismatch is. See the
-[macOS Gatekeeper note](README.md#building-from-source-macos-gatekeeper-note) for the
+[macOS Gatekeeper troubleshooting](docs/DEPLOY.md#故障排查) for the
 one-time steps to open an unsigned build.
 
 ## Credentials and local data — do not leak them
