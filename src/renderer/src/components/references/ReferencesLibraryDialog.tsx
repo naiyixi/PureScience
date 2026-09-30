@@ -1113,6 +1113,7 @@ export function ReferencesLibraryDialog({
                   // Re-keyed by collection: every piece of screening state belongs to exactly one
                   // collection, so switching collections starts from that collection's own reads.
                   key={selectedCollectionId}
+                  projectId={projectId}
                   collectionId={selectedCollectionId}
                   collectionName={selectedCollectionName}
                   references={shownReferences}

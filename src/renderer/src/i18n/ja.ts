@@ -850,6 +850,9 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'pdfAnnotation.status.reattached': '注釈をこの版にアンカーし直しました',
   'pdfAnnotation.status.failed': '注釈を保存できませんでした：{message}',
   'pdfAnnotation.status.loadFailed': '注釈を読み込めませんでした：{message}',
+  'pdfAnnotation.status.outsidePage': 'ページ上ではないため、描き始めていません',
+  'pdfAnnotation.status.nothingDrawn': 'ドラッグした領域がないため、何も描かれていません',
+  'pdfAnnotation.status.interrupted': '操作が中断され、保存されていません——もう一度描いてください',
   'pdfAnnotation.import.action': 'この PDF から注釈を取り込む',
   'pdfAnnotation.import.idleHint':
     'PDF 自体が注釈を持つことがあります。取り込みは配置できる分を残し、除外した分を明示します。',
@@ -3602,6 +3605,26 @@ export const ja: Partial<Record<ZhKey, string>> = {
     '書き出さない {notExported} 件：要確認 {review} · 除外 {excluded} · 未判定 {notEvaluated} · うち人の上書き {byOverride}',
   'references.screening.export.receiptReasons': '理由：{reasons}',
   'references.screening.export.receiptNoReasons': '該当する理由はありません。',
+  // 出力に載る注釈の根拠（ドキュメント注釈層 A5 の接続）：ファイル内の引用ブロックと、件数と除外分を述べる受領行。
+  'references.screening.export.citation.header': '注釈の引用',
+  'references.screening.export.citation.scope': '範囲',
+  'references.screening.export.citation.counts':
+    '引用した注釈 {cited} 件 · 根拠のある文献 {withEvidence} / {exportable}',
+  'references.screening.export.citation.annotation': '根拠となる注釈',
+  'references.screening.export.citation.notAligned': '除外された注釈',
+  'references.screening.export.citation.reason.reference-not-in-export-range':
+    'その文献は出力範囲外です',
+  'references.screening.export.citation.reason.reference-unknown':
+    'そのファイルは今回の出力のどの文献にも紐づいていません',
+  'references.screening.export.citation.reason.anchor-not-current':
+    '今のファイル版にアンカーされていません',
+  'references.screening.export.citation.reason.annotation-refused':
+    '保存された注釈が自身の種別規則と一致しません',
+  'references.screening.export.receiptCitations':
+    '注釈の引用：引用 {cited} 件 · 根拠のある文献 {withEvidence} / {exportable} · 除外 {notAligned}',
+  'references.screening.export.receiptCitationReasons': '除外された注釈（理由別）：{reasons}',
+  'references.screening.export.citationGap':
+    '{count} 件の文献の注釈を読み取れませんでした：{detail}',
   'references.screening.export.receiptProvenance':
     'コレクション {collection} · ルール改訂 {revision}（{hash}）· {time}',
   'references.screening.export.receiptSavedTo': '{path} に保存しました。',

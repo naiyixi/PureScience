@@ -2210,6 +2210,11 @@ export const en: Record<ZhKey, string> = {
   'pdfAnnotation.status.reattached': 'Annotation re-anchored on this version',
   'pdfAnnotation.status.failed': 'The annotation could not be saved: {message}',
   'pdfAnnotation.status.loadFailed': 'Annotations could not be read: {message}',
+  // The three ways a marking gesture ends without an annotation (issue #16): each one says what
+  // happened, so that "nothing happened" is never the only evidence the reader has.
+  'pdfAnnotation.status.outsidePage': 'That press was not on a page — nothing was started',
+  'pdfAnnotation.status.nothingDrawn': 'No area was dragged — nothing was drawn',
+  'pdfAnnotation.status.interrupted': 'The gesture was interrupted — nothing was saved; draw again',
   'pdfAnnotation.import.action': 'Import annotations from this PDF',
   'pdfAnnotation.import.idleHint':
     'The PDF may carry annotations of its own; importing keeps what it can place and says what it skipped.',
@@ -3636,6 +3641,28 @@ export const en: Record<ZhKey, string> = {
     'Not exported {notExported}: needs review {review} · excluded {excluded} · not evaluated {notEvaluated} · by a human override {byOverride}',
   'references.screening.export.receiptReasons': 'Named reasons: {reasons}',
   'references.screening.export.receiptNoReasons': 'No named reasons.',
+  // The annotation evidence of the export (文档标注层 A5 接线): the block the file carries, and the
+  // receipt lines that say how much of it there is and what stayed out.
+  'references.screening.export.citation.header': 'Annotation citations',
+  'references.screening.export.citation.scope': 'scope',
+  'references.screening.export.citation.counts':
+    'Annotations cited {cited} · records with evidence {withEvidence} of {exportable}',
+  'references.screening.export.citation.annotation': 'Evidence annotation',
+  'references.screening.export.citation.notAligned': 'Annotations left out',
+  'references.screening.export.citation.reason.reference-not-in-export-range':
+    'its record is not in the export range',
+  'references.screening.export.citation.reason.reference-unknown':
+    'its file is attached to no record in this export',
+  'references.screening.export.citation.reason.anchor-not-current':
+    'it is not anchored to the file version on hand',
+  'references.screening.export.citation.reason.annotation-refused':
+    'the stored annotation does not match its own kind',
+  'references.screening.export.receiptCitations':
+    'Annotations cited {cited} · records with evidence {withEvidence} of {exportable} · left out {notAligned}',
+  'references.screening.export.receiptCitationReasons':
+    'Annotations left out, by reason: {reasons}',
+  'references.screening.export.citationGap':
+    'No annotation evidence could be read for {count} record(s): {detail}',
   'references.screening.export.receiptProvenance':
     'collection {collection} · rule revision {revision} ({hash}) · {time}',
   'references.screening.export.receiptSavedTo': 'Saved to {path}.',

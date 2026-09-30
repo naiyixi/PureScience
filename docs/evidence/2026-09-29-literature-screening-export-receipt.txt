@@ -1,15 +1,19 @@
-collected-at: 2026-09-29T09:35:12.989Z
-exported-file-name (suggested by the app): references-screen-hits-included-only-r1-gbt7714-2015-2026-09-29.txt
-saved-path (stubbed save dialog): /var/folders/2j/gdbnsc8d6hg9jhq34stph6g40000gn/T/ps-screening-export-Tv0ZXQ/screening-export.txt
-file-bytes: 67
-citation-lines: 1
+collected-at: 2026-09-30T11:20:42.343Z
+exported-file-name (suggested by the app): references-screen-hits-included-only-r1-gbt7714-2015-2026-09-30.txt
+saved-path (stubbed save dialog): /var/folders/2j/gdbnsc8d6hg9jhq34stph6g40000gn/T/ps-screening-export-GwilWd/screening-export.txt
+file-bytes: 196
+citation-lines: 4
 
 receipt:
 screening-export-receipt-summary: Exported 1 included citations in GB/T 7714-2015 (numeric) · scope included only.
 screening-export-receipt-not-exported: Not exported 2: needs review 1 · excluded 1 · not evaluated 0 · by a human override 1
 screening-export-receipt-reasons: Named reasons: The decision itself is uncertain: 2
-screening-export-receipt-provenance: collection Screen hits · rule revision 1 (1352d454ea1d) · 9/29/2026, 5:35:12 PM
-screening-export-receipt-path: Saved to /var/folders/2j/gdbnsc8d6hg9jhq34stph6g40000gn/T/ps-screening-export-Tv0ZXQ/screening-export.txt.
+screening-export-receipt-citations: Annotations cited 0 · records with evidence 0 of 1 · left out 0
+screening-export-receipt-provenance: collection Screen hits · rule revision 1 (1352d454ea1d) · 9/30/2026, 7:20:42 PM
+screening-export-receipt-path: Saved to /var/folders/2j/gdbnsc8d6hg9jhq34stph6g40000gn/T/ps-screening-export-GwilWd/screening-export.txt.
 
 exported file verbatim:
-[1] . Adults with a measured primary endpoint[EB/OL]. [2026-09-29].
+[1] . Adults with a measured primary endpoint[EB/OL]. [2026-09-30].
+
+Annotation citations: cmuo0ktcc0004wfq8vahoy7rz (included-only, scope r1)
+Annotations cited 0 · records with evidence 0 of 1

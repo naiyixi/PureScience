@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
+import type { ReactElement } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { PdfRegionOverlay } from './PdfRegionOverlay'
@@ -131,5 +132,59 @@ describe('PdfRegionOverlay', () => {
       press(overlay(), 'pointerup', 110, 210)
     })
     expect(container.querySelector('[data-slot="pdf-region-rubber-band"]')).toBeNull()
+  })
+
+  // The dropped gesture (issue #16): the layer is taken away while it is holding a drag — a re-render
+  // that replaces it, a scroll that takes the page out of the overscan window, the tool being disarmed.
+  // The instance that holds the pointer state is gone, so the release that ends the drag arrives at an
+  // instance with empty refs and the half-drawn region evaporates; this is the one moment the drop is
+  // knowable, and the caller is told rather than left with a shape that vanished.
+  it('reports a gesture it was holding when it is taken away mid-drag', () => {
+    const onRegion = vi.fn()
+    const onInterrupted = vi.fn()
+    const layer = (mounted: boolean): ReactElement | null =>
+      mounted ? <PdfRegionOverlay onRegion={onRegion} onInterrupted={onInterrupted} /> : null
+
+    act(() => {
+      root.render(layer(true))
+    })
+    act(() => {
+      press(overlay(), 'pointerdown', 50, 60)
+      press(overlay(), 'pointermove', 200, 260)
+    })
+    expect(container.querySelector('[data-slot="pdf-region-rubber-band"]')).not.toBeNull()
+
+    act(() => {
+      root.render(layer(false))
+    })
+
+    expect(onInterrupted).toHaveBeenCalledTimes(1)
+    // Nothing was stored and nothing is claimed to have been: the gesture was dropped, not completed.
+    expect(onRegion).not.toHaveBeenCalled()
+  })
+
+  // The same teardown AFTER a completed gesture is an ordinary unmount: the region is stored, nothing
+  // was interrupted, and no message is raised.
+  it('stays quiet when it is taken away after the gesture finished', () => {
+    const onRegion = vi.fn()
+    const onInterrupted = vi.fn()
+    const layer = (mounted: boolean): ReactElement | null =>
+      mounted ? <PdfRegionOverlay onRegion={onRegion} onInterrupted={onInterrupted} /> : null
+
+    act(() => {
+      root.render(layer(true))
+    })
+    act(() => {
+      press(overlay(), 'pointerdown', 60, 80)
+      press(overlay(), 'pointermove', 360, 480)
+      press(overlay(), 'pointerup', 360, 480)
+    })
+    expect(onRegion).toHaveBeenCalledTimes(1)
+
+    act(() => {
+      root.render(layer(false))
+    })
+
+    expect(onInterrupted).not.toHaveBeenCalled()
   })
 })

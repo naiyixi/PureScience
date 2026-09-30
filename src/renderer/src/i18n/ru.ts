@@ -855,6 +855,9 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'pdfAnnotation.status.reattached': 'Аннотация перепривязана к этой версии',
   'pdfAnnotation.status.failed': 'Аннотацию не удалось сохранить: {message}',
   'pdfAnnotation.status.loadFailed': 'Аннотации не удалось прочитать: {message}',
+  'pdfAnnotation.status.outsidePage': 'Эта точка не на странице — ничего не начато',
+  'pdfAnnotation.status.nothingDrawn': 'Область не растянута — ничего не нарисовано',
+  'pdfAnnotation.status.interrupted': 'Жест прерван — ничего не сохранено, нарисуйте заново',
   'pdfAnnotation.import.action': 'Импортировать аннотации из этого PDF',
   'pdfAnnotation.import.idleHint':
     'В PDF могут быть собственные аннотации; импорт сохраняет то, что удаётся разместить, и называет пропущенное.',
@@ -3611,6 +3614,28 @@ export const ru: Partial<Record<ZhKey, string>> = {
     'Не экспортировано {notExported}: на проверку {review} · исключено {excluded} · не оценено {notEvaluated} · правка человеком {byOverride}',
   'references.screening.export.receiptReasons': 'Именованные причины: {reasons}',
   'references.screening.export.receiptNoReasons': 'Именованных причин нет.',
+  // Доказательства-аннотации экспорта (文档标注层 A5 接线): блок в файле и строки квитанции о том,
+  // сколько их и что осталось вне.
+  'references.screening.export.citation.header': 'Цитаты аннотаций',
+  'references.screening.export.citation.scope': 'область',
+  'references.screening.export.citation.counts':
+    'Процитировано аннотаций {cited} · записей с доказательством {withEvidence} из {exportable}',
+  'references.screening.export.citation.annotation': 'Аннотация-доказательство',
+  'references.screening.export.citation.notAligned': 'Аннотации, оставшиеся вне',
+  'references.screening.export.citation.reason.reference-not-in-export-range':
+    'её запись вне области экспорта',
+  'references.screening.export.citation.reason.reference-unknown':
+    'её файл не привязан ни к одной записи этого экспорта',
+  'references.screening.export.citation.reason.anchor-not-current':
+    'она не привязана к текущей версии файла',
+  'references.screening.export.citation.reason.annotation-refused':
+    'сохранённая аннотация не соответствует своему типу',
+  'references.screening.export.receiptCitations':
+    'Цитаты аннотаций: процитировано {cited} · записей с доказательством {withEvidence} из {exportable} · вне {notAligned}',
+  'references.screening.export.receiptCitationReasons':
+    'Аннотации, оставшиеся вне, по причинам: {reasons}',
+  'references.screening.export.citationGap':
+    'Не удалось прочитать аннотации для {count} записей: {detail}',
   'references.screening.export.receiptProvenance':
     'коллекция {collection} · редакция правил {revision} ({hash}) · {time}',
   'references.screening.export.receiptSavedTo': 'Сохранено в {path}.',

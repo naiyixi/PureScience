@@ -226,6 +226,11 @@ test('screens a collection, overrides two records, and exports only the included
     await expect(panel.getByTestId('screening-export-receipt-provenance')).toContainText(
       `collection ${COLLECTION_NAME} · rule revision 1`
     )
+    // The evidence side of the same receipt: nothing was cited, and nothing was left out silently. A
+    // reviewer who never opens the file still learns that its evidence block is empty and why.
+    await expect(panel.getByTestId('screening-export-receipt-citations')).toContainText(
+      'Annotations cited 0 · records with evidence 0 of 1 · left out 0'
+    )
     await expect(panel.getByTestId('screening-export-receipt-path')).toContainText(
       `Saved to ${target}.`
     )
@@ -236,10 +241,24 @@ test('screens a collection, overrides two records, and exports only the included
     expect(exported).toContain(INCLUDED_TITLE)
     expect(exported).not.toContain(EXCLUDED_TITLE)
     expect(exported).not.toContain(UNTOUCHED_TITLE)
-    // One citation per included record: no header, no stray blank entry, nothing else.
-    expect(exported.trim().split('\n')).toHaveLength(1)
-    // The library's own GB/T 7714 numbering is what the file uses.
-    expect(exported.trim()).toMatch(/^\[1\] /)
+    // The artifact has two parts: the numbered bibliography, a blank line, then the annotation-evidence
+    // block (A5 接线). S4's shipped assertion pinned the WHOLE file to a single line; the pin now covers
+    // the bibliography exactly — one `[1] …` line per included record and nothing else above the blank
+    // line — so a second citation, a header or a stray entry still fails. The block below it is new
+    // content, asserted on its own terms next.
+    const separator = exported.indexOf('\n\n')
+    expect(separator).toBeGreaterThan(0)
+    const bibliography = exported.slice(0, separator).split('\n')
+    expect(bibliography).toHaveLength(1)
+    // The library's own GB/T 7714 numbering is what the file uses, and the one line is the included record.
+    expect(bibliography[0]).toMatch(/^\[1\] /)
+    expect(bibliography[0]).toContain(INCLUDED_TITLE)
+    // None of these three records has a PDF attached, so the block states that it read no annotation at
+    // all — 「没有人看过」 and 「看过，一条也没有」 are then two different sentences.
+    const evidenceBlock = exported.slice(separator + 2)
+    expect(evidenceBlock).toContain('Annotation citations: ')
+    expect(evidenceBlock).toContain('(included-only, scope r1)')
+    expect(evidenceBlock).toContain('Annotations cited 0 · records with evidence 0 of 1')
 
     // The export read the ledger and wrote a file; it changed nothing about the triage. The statistics
     // are re-read after the action and still agree with the rows.
@@ -269,6 +288,7 @@ test('screens a collection, overrides two records, and exports only the included
           'screening-export-receipt-summary',
           'screening-export-receipt-not-exported',
           'screening-export-receipt-reasons',
+          'screening-export-receipt-citations',
           'screening-export-receipt-provenance',
           'screening-export-receipt-path'
         ].map(async (testId) => `${testId}: ${(await statText(panel, testId)) || '(absent)'}`)

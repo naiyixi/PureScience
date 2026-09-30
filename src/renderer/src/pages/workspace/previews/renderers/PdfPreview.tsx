@@ -93,6 +93,23 @@ const ANNOTATION_HINT_KEYS: Readonly<
   'page-note': 'pdfAnnotation.hint.pageNote'
 }
 
+// Every marking gesture this pane can be in: 'off', the four tools of the toolbar, and the region
+// bookmark's own tool.
+type PdfAnnotationGestureState = 'off' | 'bookmark-region' | PdfAnnotationGestureMode
+
+// The gestures the page's own overlay serves. They are the ones that can be MISSED (the press lands
+// somewhere other than the page), EMPTY (a press that never moved) or INTERRUPTED (the instance holding
+// the drag is replaced mid-gesture) — so they are the ones the pane answers for, in words, when no
+// region comes of the gesture.
+const isRegionMode = (mode: PdfAnnotationGestureState): boolean =>
+  mode === 'bookmark-region' || mode === 'area' || mode === 'page-note'
+
+// What one of the pane's own controls looks like as a press target: pressing one is the reader operating
+// the pane (a tool, the panel toggle, a zoom step, a field), never aiming at a page. A press that
+// matches none of these and still misses every page is the silent one the pane answers below.
+const PANE_CONTROL_SELECTOR =
+  'button, a, input, textarea, select, [role="button"], [role="textbox"], [contenteditable="true"]'
+
 // Comfortable reading width a page fills at 100%; zoom scales the displayed page beyond it.
 const FIT_PAGE_WIDTH = 768
 const MIN_ZOOM = 0.5
@@ -175,6 +192,7 @@ const PdfPageCanvas = ({
   regionMode = false,
   onRegion,
   onPagePress,
+  onRegionInterrupted,
   textMarkKind,
   onTextMark,
   marks
@@ -187,6 +205,8 @@ const PdfPageCanvas = ({
   regionMode?: boolean
   onRegion?: (page: number, rect: BookmarkRect) => void
   onPagePress?: (page: number, point: { x: number; y: number }) => void
+  /** A drag that had started on this page and was dropped without finishing (the overlay replaced). */
+  onRegionInterrupted?: () => void
   /** Set while the reader is marking text: which kind a selection becomes. */
   textMarkKind?: 'highlight' | 'underline'
   onTextMark?: (page: number, kind: 'highlight' | 'underline', selection: PdfTextSelection) => void
@@ -410,6 +430,7 @@ const PdfPageCanvas = ({
         <PdfRegionOverlay
           onRegion={(rect) => onRegion(pageNumber, rect)}
           onPress={onPagePress ? (point) => onPagePress(pageNumber, point) : undefined}
+          onInterrupted={onRegionInterrupted}
         />
       ) : null}
       {isNearViewport && textSpans ? (
@@ -481,9 +502,7 @@ export const PdfPreviewContent = ({
     [projectId, sessionId, artifactId, selectedVersionId]
   )
   const canAnnotate = Boolean(annotationClient && anchorRequest)
-  const [gestureMode, setGestureMode] = useState<
-    'off' | 'bookmark-region' | 'highlight' | 'underline' | 'area' | 'page-note'
-  >('off')
+  const [gestureMode, setGestureMode] = useState<PdfAnnotationGestureState>('off')
   const [annotationList, setAnnotationList] = useState<PdfAnnotationListResult | undefined>(
     undefined
   )
@@ -550,6 +569,29 @@ export const PdfPreviewContent = ({
       )
   }
 
+  // Where a gesture's own words belong: the region bookmark keeps its own line, and the annotation layer
+  // keeps the status line that sits beside the toolbar. Both already exist, and the sentences below are
+  // put into them rather than into a second surface — a reader should not have to learn where a refusal
+  // is told apart from a success.
+  const reportGesture = (message: string): void => {
+    if (gestureMode === 'bookmark-region') setRegionStatus(message)
+    else setAnnotationStatus(message)
+  }
+
+  // A press that reaches no page is the gesture the app used to lose without a word: the page's overlay
+  // reports what IT receives, so a press it never receives (the pane's own padding, the gap between
+  // pages, or the annotation panel floating over the page on a narrow pane) left neither a shape nor a
+  // sentence behind, and the reader could not tell "I missed" from "the app is broken". Answered here, at
+  // the pane, which is the only element every one of those presses does reach.
+  const handlePanePress = (event: React.PointerEvent<HTMLDivElement>): void => {
+    if (!isRegionMode(gestureMode)) return
+    const target = event.target instanceof Element ? event.target : null
+    if (!target) return
+    if (target.closest('[data-slot="pdf-region-overlay"]')) return
+    if (target.closest(PANE_CONTROL_SELECTOR)) return
+    reportGesture(t('pdfAnnotation.status.outsidePage'))
+  }
+
   const handleTextMark = (
     page: number,
     kind: 'highlight' | 'underline',
@@ -568,8 +610,15 @@ export const PdfPreviewContent = ({
   // Placing a note is two steps on purpose: the click says WHERE, and the text says WHAT. Storing an empty
   // note on the click would be a note that annotates nothing, which the store refuses anyway.
   const handlePagePress = (page: number, point: { x: number; y: number }): void => {
-    if (gestureMode !== 'page-note') return
-    setPendingNote({ page, anchorRect: pdfAnnotationNoteAnchor(point) })
+    if (gestureMode === 'page-note') {
+      setPendingNote({ page, anchorRect: pdfAnnotationNoteAnchor(point) })
+      return
+    }
+    // A press that never moved leaves a gesture with no extent, and a region with no extent is refused
+    // everywhere in this layer (see `normalizePdfRegionDrag`): nothing is drawn and nothing is stored.
+    // Saying so is the point — a click on a page that silently does nothing is what makes a reader think
+    // the tool, or the file, is broken.
+    if (isRegionMode(gestureMode)) reportGesture(t('pdfAnnotation.status.nothingDrawn'))
   }
 
   const saveNote = (): void => {
@@ -882,7 +931,10 @@ export const PdfPreviewContent = ({
     // side, so this element is the query container for that decision (see the panel's `bottom` classes): it
     // is the box both overlays are positioned in, and keeping the switch in CSS means a press that lands
     // mid-resize never races a second render.
-    <div className="@container/pdf-pane relative size-full overflow-hidden bg-bg-20">
+    <div
+      className="@container/pdf-pane relative size-full overflow-hidden bg-bg-20"
+      onPointerDown={handlePanePress}
+    >
       {/* The inner element is the real scroller (the outer div holds the fixed zoom overlay), so it
           must be keyboard-focusable or PageUp/Down, Space, and arrows never reach the PDF. */}
       <div
@@ -919,13 +971,10 @@ export const PdfPreviewContent = ({
                 pageWidth={pageWidth}
                 documentName={name}
                 registerDisposer={registerPageDisposer}
-                regionMode={
-                  gestureMode === 'bookmark-region' ||
-                  gestureMode === 'area' ||
-                  gestureMode === 'page-note'
-                }
+                regionMode={isRegionMode(gestureMode)}
                 onRegion={handleRegionGesture}
                 onPagePress={handlePagePress}
+                onRegionInterrupted={() => reportGesture(t('pdfAnnotation.status.interrupted'))}
                 textMarkKind={
                   gestureMode === 'highlight' || gestureMode === 'underline'
                     ? gestureMode

@@ -869,6 +869,10 @@ export const es: Partial<Record<ZhKey, string>> = {
   'pdfAnnotation.status.reattached': 'Anotación reanclada en esta versión',
   'pdfAnnotation.status.failed': 'La anotación no se pudo guardar: {message}',
   'pdfAnnotation.status.loadFailed': 'No se pudieron leer las anotaciones: {message}',
+  'pdfAnnotation.status.outsidePage': 'Ese punto no está en una página: no se inició nada',
+  'pdfAnnotation.status.nothingDrawn': 'No se arrastró ninguna zona: no se dibujó nada',
+  'pdfAnnotation.status.interrupted':
+    'El gesto se interrumpió: no se guardó nada, vuelve a dibujar',
   'pdfAnnotation.import.action': 'Importar las anotaciones de este PDF',
   'pdfAnnotation.import.idleHint':
     'El PDF puede traer sus propias anotaciones; la importación conserva lo que puede situar y dice qué descartó.',
@@ -3672,6 +3676,28 @@ export const es: Partial<Record<ZhKey, string>> = {
     'Sin exportar {notExported}: por revisar {review} · excluidos {excluded} · sin evaluar {notEvaluated} · por anulación humana {byOverride}',
   'references.screening.export.receiptReasons': 'Motivos con nombre: {reasons}',
   'references.screening.export.receiptNoReasons': 'Sin motivos con nombre.',
+  // La evidencia de anotaciones de la exportación (文档标注层 A5 接线): el bloque que lleva el archivo y
+  // las líneas del recibo que dicen cuántas hay y qué quedó fuera.
+  'references.screening.export.citation.header': 'Citas de anotaciones',
+  'references.screening.export.citation.scope': 'alcance',
+  'references.screening.export.citation.counts':
+    'Anotaciones citadas {cited} · registros con evidencia {withEvidence} de {exportable}',
+  'references.screening.export.citation.annotation': 'Anotación probatoria',
+  'references.screening.export.citation.notAligned': 'Anotaciones excluidas',
+  'references.screening.export.citation.reason.reference-not-in-export-range':
+    'su registro está fuera del alcance de exportación',
+  'references.screening.export.citation.reason.reference-unknown':
+    'su archivo no está vinculado a ningún registro de esta exportación',
+  'references.screening.export.citation.reason.anchor-not-current':
+    'no está anclada a la versión de archivo abierta',
+  'references.screening.export.citation.reason.annotation-refused':
+    'la anotación guardada no coincide con su propio tipo',
+  'references.screening.export.receiptCitations':
+    'Anotaciones citadas {cited} · registros con evidencia {withEvidence} de {exportable} · excluidas {notAligned}',
+  'references.screening.export.receiptCitationReasons':
+    'Anotaciones excluidas, por motivo: {reasons}',
+  'references.screening.export.citationGap':
+    'No se pudieron leer anotaciones de {count} registro(s): {detail}',
   'references.screening.export.receiptProvenance':
     'colección {collection} · revisión {revision} ({hash}) · {time}',
   'references.screening.export.receiptSavedTo': 'Guardado en {path}.',

@@ -68,6 +68,27 @@ const labels: PdfAnnotationCitationLabels = {
   anchorState: 'Anchor'
 }
 
+/** The alignment formatter's label set, worded once so every test in this file asks it the same way. */
+const formatLabels = (
+  overrides: Partial<Parameters<typeof formatAnnotationCitationAlignment>[1]> = {}
+): Parameters<typeof formatAnnotationCitationAlignment>[1] => ({
+  header: 'Evidence',
+  scope: 'range',
+  counts: (counts) =>
+    `Annotations cited ${counts.alignedAnnotations} · records with evidence ${counts.referencesWithEvidence} of ${counts.exportableReferences}`,
+  annotationHeader: 'Evidence annotation',
+  citationLabels: labels,
+  notAligned: 'Left out',
+  numbered: true,
+  reasonLabels: {
+    'reference-not-in-export-range': 'The range excludes its record',
+    'reference-unknown': 'Its file belongs to no record',
+    'anchor-not-current': 'It is on another file version',
+    'annotation-refused': 'The stored row could not be cited'
+  },
+  ...overrides
+})
+
 const scope = (includedReferenceIds: string[]): ScreeningExportScope => ({
   kind: 'included-only',
   collectionId: 'collection-1',
@@ -255,6 +276,9 @@ describe('alignPdfAnnotationCitationsWithScreeningExport', () => {
     })
 
     expect(alignment.entries.map((entry) => entry.referenceId)).toEqual(['ref-2', 'ref-1'])
+    // The number is the record's position in the RANGE, so it follows `includedReferenceIds` — the same
+    // order (and therefore the same `[n]` numbering) the triage export's own list is built in.
+    expect(alignment.entries.map((entry) => entry.number)).toEqual([1, 2])
     expect(alignment.entries[0]!.citation).toContain('Second paper')
     expect(alignment.entries[0]!.citation).toContain('2024')
     expect(alignment.entries[1]!.annotations.map((record) => record.annotationId)).toEqual([
@@ -345,6 +369,34 @@ describe('alignPdfAnnotationCitationsWithScreeningExport', () => {
     expect(alignment.counts.referencesWithEvidence).toBe(1)
   })
 
+  it('numbers a record by its place in the range, not by its place among the entries', () => {
+    // The middle record is in the export range and carries no evidence, so the third record's number is
+    // 3 while it is the second — and only — entry. That is the whole point of carrying the number: an
+    // evidence block that renumbered itself 1..n would point at the wrong `[n]` line of the bibliography.
+    const alignment = alignPdfAnnotationCitationsWithScreeningExport({
+      exportScope: scope(['ref-1', 'ref-2', 'ref-3']),
+      references: [
+        reference({ id: 'ref-1' }),
+        reference({ id: 'ref-2' }),
+        reference({ id: 'ref-3', title: 'Third paper' })
+      ],
+      citations: [
+        {
+          referenceId: 'ref-3',
+          outcome: { status: 'record', record: recordOf({ annotationId: 'annotation-3' }) }
+        }
+      ]
+    })
+
+    expect(alignment.entries.map((entry) => entry.referenceId)).toEqual(['ref-3'])
+    expect(alignment.entries.map((entry) => entry.number)).toEqual([3])
+
+    const text = formatAnnotationCitationAlignment(alignment, formatLabels())
+    expect(text).toContain('[3] Lovelace A., Turing A. Third paper[J]. Journal of Tests, 2024.')
+    expect(text).not.toContain('[1] ')
+    expect(text).not.toContain('[2] ')
+  })
+
   it('orders one record’s annotations oldest first, whatever order they arrived in', () => {
     const alignment = alignPdfAnnotationCitationsWithScreeningExport({
       exportScope: scope(['ref-1']),
@@ -390,30 +442,58 @@ describe('formatAnnotationCitationAlignment', () => {
       ]
     })
 
-    const text = formatAnnotationCitationAlignment(alignment, {
-      header: 'Evidence',
-      scope: 'range',
-      evidenceCount: 'Annotations',
-      annotationHeader: 'Evidence annotation',
-      citationLabels: labels,
-      notAligned: 'Left out',
-      reasonLabels: {
-        'reference-not-in-export-range': 'The range excludes its record',
-        'reference-unknown': 'Its file belongs to no record',
-        'anchor-not-current': 'It is on another file version',
-        'annotation-refused': 'The stored row could not be cited'
-      }
-    })
+    const text = formatAnnotationCitationAlignment(alignment, formatLabels())
 
     expect(text).toContain('Evidence: collection-1 (included-only, range r3)')
-    expect(text).toContain('Annotations: 1')
-    // The GB/T 7714 line for the record, followed by the annotation that is its evidence.
+    expect(text).toContain('Annotations cited 1 · records with evidence 1 of 2')
+    // The GB/T 7714 line for the record, prefixed with the number the export's own `[1] …` list gave it,
+    // followed by the annotation that is its evidence.
     expect(text).toContain(
-      'Lovelace A., Turing A. A randomized trial of something[J]. Journal of Tests, 2024.'
+      '[1] Lovelace A., Turing A. A randomized trial of something[J]. Journal of Tests, 2024.'
     )
     expect(text).toContain('Evidence annotation: annotation-1 (highlight)')
     expect(text).toContain(`Checksum: sha256:${'a'.repeat(64)}`)
     expect(text).toContain('Left out: 1')
     expect(text).toContain('  broken: The stored row could not be cited')
+  })
+
+  it('prints the list’s own line for an entry when the caller hands one over', () => {
+    // The panel does this: it passes the bibliography line it just formatted, so the block and the list say
+    // the same words for the same record instead of two spellings of it. The fallback must not be used.
+    const alignment = alignPdfAnnotationCitationsWithScreeningExport({
+      exportScope: scope(['ref-1']),
+      references: [reference()],
+      citations: [{ referenceId: 'ref-1', outcome: { status: 'record', record: recordOf() } }]
+    })
+
+    const text = formatAnnotationCitationAlignment(
+      alignment,
+      formatLabels({ listLine: (entry) => `[${entry.number}] the list’s own line` })
+    )
+    expect(text).toContain('[1] the list’s own line')
+    expect(text).not.toContain('Lovelace A.')
+    // A caller that has no list line for an entry still gets the GB/T 7714 one.
+    const partial = formatAnnotationCitationAlignment(
+      alignment,
+      formatLabels({ listLine: (entry) => (entry.number === 2 ? 'x' : undefined) })
+    )
+    expect(partial).toContain('[1] Lovelace A., Turing A.')
+  })
+
+  it('prints no number when the list it accompanies is not numbered', () => {
+    // An author-date list has no `[n]` for a reader to match, so a number here would be a pointer into
+    // nothing. The citation itself is still printed — the evidence does not disappear with the numbering.
+    const alignment = alignPdfAnnotationCitationsWithScreeningExport({
+      exportScope: scope(['ref-1']),
+      references: [reference()],
+      citations: [{ referenceId: 'ref-1', outcome: { status: 'record', record: recordOf() } }]
+    })
+
+    const text = formatAnnotationCitationAlignment(alignment, formatLabels({ numbered: false }))
+    expect(text).toContain(
+      'Lovelace A., Turing A. A randomized trial of something[J]. Journal of Tests, 2024.'
+    )
+    expect(text).not.toContain('[1] ')
+    expect(text).not.toMatch(/^\d+\./m)
   })
 })

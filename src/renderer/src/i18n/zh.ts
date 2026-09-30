@@ -2062,6 +2062,9 @@ export const zh = {
   'pdfAnnotation.status.reattached': '标注已重锚到当前版本',
   'pdfAnnotation.status.failed': '标注没能保存：{message}',
   'pdfAnnotation.status.loadFailed': '标注读取失败：{message}',
+  'pdfAnnotation.status.outsidePage': '这一点不在页面上，没有开始标注',
+  'pdfAnnotation.status.nothingDrawn': '没有拖出区域，请拖出面积',
+  'pdfAnnotation.status.interrupted': '手势被中断，未保存，请重画',
   'pdfAnnotation.import.action': '从这份 PDF 导入标注',
   'pdfAnnotation.import.idleHint': 'PDF 自身可能带标注；导入会保留能落位的部分，并说明跳过了什么。',
   'pdfAnnotation.import.running': '导入中…',
@@ -3396,6 +3399,22 @@ export const zh = {
     '未导出 {notExported} 条：待复核 {review} · 排除 {excluded} · 未判定 {notEvaluated} · 其中人工覆盖 {byOverride}',
   'references.screening.export.receiptReasons': '具名原因：{reasons}',
   'references.screening.export.receiptNoReasons': '无具名原因。',
+  // 导出的标注证据（文档标注层 A5 接线）：文件里的引文区块，以及回执里说清「有多少、什么留在外面」的两行。
+  'references.screening.export.citation.header': '标注引文',
+  'references.screening.export.citation.scope': '范围',
+  'references.screening.export.citation.counts':
+    '标注引文 {cited} 条 · 有依据的记录 {withEvidence} / {exportable}',
+  'references.screening.export.citation.annotation': '依据标注',
+  'references.screening.export.citation.notAligned': '留在外面的标注',
+  'references.screening.export.citation.reason.reference-not-in-export-range':
+    '其记录不在导出范围内',
+  'references.screening.export.citation.reason.reference-unknown': '其文件未挂到本次导出的任何记录',
+  'references.screening.export.citation.reason.anchor-not-current': '它未锚定在当前文件版本上',
+  'references.screening.export.citation.reason.annotation-refused': '库内标注与自身的类型规则不符',
+  'references.screening.export.receiptCitations':
+    '标注引文：引用 {cited} 条 · 有依据的记录 {withEvidence} / {exportable} · 留在外面 {notAligned}',
+  'references.screening.export.receiptCitationReasons': '留在外面的标注，按原因：{reasons}',
+  'references.screening.export.citationGap': '有 {count} 条记录的标注无法读取：{detail}',
   'references.screening.export.receiptProvenance':
     '合集 {collection} · 规则修订 {revision}（{hash}）· {time}',
   'references.screening.export.receiptSavedTo': '已保存到 {path}。',

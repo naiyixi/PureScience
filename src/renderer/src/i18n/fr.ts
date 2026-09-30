@@ -872,6 +872,10 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'pdfAnnotation.status.reattached': 'Annotation réancrée sur cette version',
   'pdfAnnotation.status.failed': 'Annotation non enregistrée : {message}',
   'pdfAnnotation.status.loadFailed': 'Annotations illisibles : {message}',
+  'pdfAnnotation.status.outsidePage': "Ce point n'est pas sur une page — rien n'a été commencé",
+  'pdfAnnotation.status.nothingDrawn': 'Aucune zone tracée — faites glisser pour en délimiter une',
+  'pdfAnnotation.status.interrupted':
+    "Le geste a été interrompu — rien n'a été enregistré, recommencez",
   'pdfAnnotation.import.action': 'Importer les annotations de ce PDF',
   'pdfAnnotation.import.idleHint':
     "Le PDF peut porter ses propres annotations ; l'importation garde ce qu'elle sait placer et dit ce qu'elle a écarté.",
@@ -3692,6 +3696,28 @@ export const fr: Partial<Record<ZhKey, string>> = {
     'Non exportés {notExported} : à vérifier {review} · exclus {excluded} · non évalués {notEvaluated} · par remplacement humain {byOverride}',
   'references.screening.export.receiptReasons': 'Motifs nommés : {reasons}',
   'references.screening.export.receiptNoReasons': 'Aucun motif nommé.',
+  // Les preuves d’annotation de l’export (文档标注层 A5 接线) : le bloc porté par le fichier, et les
+  // lignes du reçu qui disent combien et ce qui est resté de côté.
+  'references.screening.export.citation.header': 'Citations des annotations',
+  'references.screening.export.citation.scope': 'portée',
+  'references.screening.export.citation.counts':
+    'Annotations citées {cited} · notices avec preuve {withEvidence} sur {exportable}',
+  'references.screening.export.citation.annotation': 'Annotation probante',
+  'references.screening.export.citation.notAligned': 'Annotations laissées de côté',
+  'references.screening.export.citation.reason.reference-not-in-export-range':
+    'sa notice est hors de la portée d’export',
+  'references.screening.export.citation.reason.reference-unknown':
+    'son fichier n’est rattaché à aucune notice de cet export',
+  'references.screening.export.citation.reason.anchor-not-current':
+    'elle n’est pas ancrée sur la version de fichier ouverte',
+  'references.screening.export.citation.reason.annotation-refused':
+    'l’annotation stockée ne correspond pas à son propre type',
+  'references.screening.export.receiptCitations':
+    'Annotations citées {cited} · notices avec preuve {withEvidence} sur {exportable} · laissées de côté {notAligned}',
+  'references.screening.export.receiptCitationReasons':
+    'Annotations laissées de côté, par motif : {reasons}',
+  'references.screening.export.citationGap':
+    'Aucune annotation n’a pu être lue pour {count} notice(s) : {detail}',
   'references.screening.export.receiptProvenance':
     'dossier {collection} · révision {revision} ({hash}) · {time}',
   'references.screening.export.receiptSavedTo': 'Enregistré dans {path}.',

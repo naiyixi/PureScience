@@ -1320,6 +1320,102 @@ describe('PdfPreviewContent annotations', () => {
     expect(annotations.list).not.toHaveBeenCalled()
   })
 
+  // The three silent paths of issue #16, at the level where they were silent: a press the page's overlay
+  // never receives, a press that never moved, and a gesture whose instance is taken away mid-drag. Each
+  // one has to leave a named sentence in the pane's own status line — "nothing happened" is exactly the
+  // state the reader could not tell apart from a broken tool.
+  const statusText = (): string | null =>
+    container.querySelector('[data-testid="pdf-annotation-status"]')?.textContent ?? null
+
+  const armAreaMode = async (): Promise<void> => {
+    await act(async () => {
+      container.querySelector<HTMLElement>('[data-slot="pdf-annotation-mode-area"]')?.click()
+    })
+  }
+
+  it('names a press that reached no page instead of dropping it in silence', async () => {
+    annotations.list.mockResolvedValue({
+      anchor,
+      annotations: [],
+      counts: { current: 0, versionChanged: 0, checksumMismatch: 0 }
+    })
+    await renderPreview()
+    await armAreaMode()
+
+    // Operating the pane's own controls is not a missed gesture: a tool, the panel toggle or a zoom step
+    // must never be answered with "that was not a page".
+    await act(async () => {
+      container
+        .querySelector<HTMLElement>('[data-slot="pdf-annotation-panel-toggle"]')
+        ?.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true }))
+      await Promise.resolve()
+    })
+    expect(container.querySelector('[data-testid="pdf-annotation-status"]')).toBeNull()
+
+    // The overlay is mounted, so what is left is a press that never reaches it: the pane's own padding,
+    // the gap between pages, or the annotation panel floating over the page on a narrow pane.
+    const scroller = container.querySelector<HTMLElement>('[role="region"]')
+    expect(scroller).not.toBeNull()
+    await act(async () => {
+      press(scroller!, 'pointerdown', 4, 4)
+      await Promise.resolve()
+    })
+
+    expect(annotations.create).not.toHaveBeenCalled()
+    expect(statusText()).toBe('That press was not on a page — nothing was started')
+  })
+
+  it('names a press that never moved as a gesture that drew nothing', async () => {
+    annotations.list.mockResolvedValue({
+      anchor,
+      annotations: [],
+      counts: { current: 0, versionChanged: 0, checksumMismatch: 0 }
+    })
+    await renderPreview()
+    await armAreaMode()
+
+    const overlay = container.querySelector<HTMLElement>('[data-slot="pdf-region-overlay"]')
+    expect(overlay).not.toBeNull()
+    await act(async () => {
+      press(overlay!, 'pointerdown', 60, 80)
+      press(overlay!, 'pointerup', 60, 80)
+      await Promise.resolve()
+    })
+
+    expect(annotations.create).not.toHaveBeenCalled()
+    expect(statusText()).toBe('No area was dragged — nothing was drawn')
+  })
+
+  it('names a live gesture that is dropped when the tool changes under it', async () => {
+    annotations.list.mockResolvedValue({
+      anchor,
+      annotations: [],
+      counts: { current: 0, versionChanged: 0, checksumMismatch: 0 }
+    })
+    await renderPreview()
+    await armAreaMode()
+
+    const overlay = container.querySelector<HTMLElement>('[data-slot="pdf-region-overlay"]')
+    await act(async () => {
+      press(overlay!, 'pointerdown', 60, 80)
+      press(overlay!, 'pointermove', 300, 400)
+      await Promise.resolve()
+    })
+    expect(container.querySelector('[data-slot="pdf-region-rubber-band"]')).not.toBeNull()
+
+    // The gesture is live and the layer holding it is replaced (the tool changes, so the page stops
+    // serving the region overlay): the drag is dropped, and it says so instead of losing the rectangle
+    // without a word.
+    await act(async () => {
+      container.querySelector<HTMLElement>('[data-slot="pdf-annotation-mode-highlight"]')?.click()
+      await Promise.resolve()
+    })
+
+    expect(container.querySelector('[data-slot="pdf-region-overlay"]')).toBeNull()
+    expect(annotations.create).not.toHaveBeenCalled()
+    expect(statusText()).toBe('The gesture was interrupted — nothing was saved; draw again')
+  })
+
   it('lists an annotation of another version by name, and shows what an import answered', async () => {
     await renderPreview()
     await act(async () => {

@@ -841,6 +841,9 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'pdfAnnotation.status.reattached': '주석을 이 버전에 다시 고정했습니다',
   'pdfAnnotation.status.failed': '주석을 저장하지 못했습니다: {message}',
   'pdfAnnotation.status.loadFailed': '주석을 읽지 못했습니다: {message}',
+  'pdfAnnotation.status.outsidePage': '그 지점은 페이지 위가 아니어서 아무것도 시작되지 않았습니다',
+  'pdfAnnotation.status.nothingDrawn': '끌어낸 영역이 없어 아무것도 그려지지 않았습니다',
+  'pdfAnnotation.status.interrupted': '동작이 중단되어 저장되지 않았습니다 — 다시 그려 주세요',
   'pdfAnnotation.import.action': '이 PDF에서 주석 가져오기',
   'pdfAnnotation.import.idleHint':
     'PDF 자체에 주석이 있을 수 있습니다. 가져오기는 자리를 잡을 수 있는 것만 남기고 건너뛴 것을 밝힙니다.',
@@ -3536,6 +3539,25 @@ export const ko: Partial<Record<ZhKey, string>> = {
     '내보내지 않음 {notExported}건: 검토 필요 {review} · 제외 {excluded} · 미판정 {notEvaluated} · 사람이 덮어쓴 항목 {byOverride}',
   'references.screening.export.receiptReasons': '이유: {reasons}',
   'references.screening.export.receiptNoReasons': '해당하는 이유가 없습니다.',
+  // 내보내기의 주석 근거(문서 주석 계층 A5 연결): 파일에 실리는 인용 블록과, 몇 건인지·무엇이 빠졌는지 말하는 영수증 줄.
+  'references.screening.export.citation.header': '주석 인용',
+  'references.screening.export.citation.scope': '범위',
+  'references.screening.export.citation.counts':
+    '인용한 주석 {cited}건 · 근거가 있는 레코드 {withEvidence} / {exportable}',
+  'references.screening.export.citation.annotation': '근거 주석',
+  'references.screening.export.citation.notAligned': '제외된 주석',
+  'references.screening.export.citation.reason.reference-not-in-export-range':
+    '해당 레코드가 내보내기 범위 밖입니다',
+  'references.screening.export.citation.reason.reference-unknown':
+    '해당 파일이 이번 내보내기의 어떤 레코드에도 연결되어 있지 않습니다',
+  'references.screening.export.citation.reason.anchor-not-current':
+    '현재 파일 버전에 앵커되어 있지 않습니다',
+  'references.screening.export.citation.reason.annotation-refused':
+    '저장된 주석이 자체 종류 규칙과 맞지 않습니다',
+  'references.screening.export.receiptCitations':
+    '주석 인용: 인용 {cited}건 · 근거가 있는 레코드 {withEvidence} / {exportable} · 제외 {notAligned}',
+  'references.screening.export.receiptCitationReasons': '제외된 주석(이유별): {reasons}',
+  'references.screening.export.citationGap': '레코드 {count}건의 주석을 읽을 수 없습니다: {detail}',
   'references.screening.export.receiptProvenance':
     '컬렉션 {collection} · 규칙 개정 {revision}({hash}) · {time}',
   'references.screening.export.receiptSavedTo': '{path}에 저장했습니다.',

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import type { BookmarkRect } from '../../../../../../shared/bookmark'
 import { normalizePdfRegionDrag, type PdfRegionPoint } from '../../../../../../shared/pdf-region'
@@ -26,6 +26,14 @@ export type PdfRegionOverlayProps = {
    */
   onPress?: (point: PdfPagePoint) => void
   /**
+   * Called when a gesture that had already started is dropped without ever finishing, because THIS
+   * instance is being taken away mid-drag: the pointer state lives here, so the release that ends the
+   * reader's drag arrives at an instance that never saw the press and there is nothing left to complete.
+   * A half-drawn region that simply disappears is what a reader cannot tell apart from a broken tool, so
+   * the caller gets the one moment where the drop is knowable and can say so by name.
+   */
+  onInterrupted?: () => void
+  /**
    * False while the reader is not placing anything: the layer stops taking pointer events, so a page can
    * still be scrolled and its text still selected.
    */
@@ -44,6 +52,7 @@ const round4 = (value: number): number => Math.round(value * 10_000) / 10_000
 export const PdfRegionOverlay = ({
   onRegion,
   onPress,
+  onInterrupted,
   enabled = true,
   className
 }: PdfRegionOverlayProps): React.JSX.Element | null => {
@@ -58,6 +67,23 @@ export const PdfRegionOverlay = ({
   // The box is captured per gesture: the overlay can be re-laid out mid-drag (a resize, a scroll), and
   // normalizing against a box that moved would store a rectangle the reader never drew.
   const boundsRef = useRef<{ width: number; height: number } | undefined>(undefined)
+
+  // Being taken away mid-drag is the one interruption this component can observe by itself, and it is
+  // exactly the case where nothing downstream can: the instance that held the gesture is gone, so the
+  // reader's release reaches a fresh instance whose refs are empty and the drag evaporates in silence.
+  // Reported from an effect cleanup (passive phase, after the commit that removed the node) so the
+  // caller's own state update lands on a live parent; a completed gesture clears startRef first, which
+  // is what keeps an ordinary unmount from claiming to have interrupted anything.
+  const interruptedRef = useRef(onInterrupted)
+  useEffect(() => {
+    interruptedRef.current = onInterrupted
+  })
+  useEffect(
+    () => () => {
+      if (startRef.current) interruptedRef.current?.()
+    },
+    []
+  )
 
   const finish = (): void => {
     const origin = startRef.current

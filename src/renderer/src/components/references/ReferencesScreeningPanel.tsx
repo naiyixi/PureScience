@@ -6,6 +6,7 @@ import type { Reference } from '../../../../shared/references'
 import {
   DEFAULT_CITATION_STYLE_ID,
   citationItemFromReference,
+  findCitationStyle,
   formatCitationList,
   resolveCitationStyles
 } from '../../../../shared/citation/format'
@@ -31,6 +32,15 @@ import {
   screeningExportReasonBreakdown,
   type ScreeningExportScope
 } from '../../../../shared/references-screening-export'
+import {
+  ANNOTATION_CITATION_MISALIGNMENT_REASONS,
+  formatAnnotationCitationAlignment,
+  type AnnotationCitationMisalignmentReason
+} from '../../../../shared/pdf-annotation-citation'
+import {
+  readScreeningExportCitations,
+  type ScreeningExportCitationGap
+} from './screening-export-citations'
 import { buildScreeningCoverageChecklist } from '../../../../shared/references-screening-coverage'
 import { ReferencesScreeningCoverageList } from './ReferencesScreeningCoverageList'
 
@@ -72,11 +82,35 @@ const COVERAGE_LABEL: Record<ScreeningEvidenceCoverage, TranslationKey> = {
   unavailable: 'references.screening.coverage.unavailable'
 }
 
+// The four reasons an annotation is not evidence for an exported record, in the shared vocabulary's own
+// order: every one of them is a sentence rather than a machine token, because a count nobody can read is
+// a count nobody can act on.
+const MISALIGNMENT_LABEL: Record<AnnotationCitationMisalignmentReason, TranslationKey> = {
+  'reference-not-in-export-range':
+    'references.screening.export.citation.reason.reference-not-in-export-range',
+  'reference-unknown': 'references.screening.export.citation.reason.reference-unknown',
+  'anchor-not-current': 'references.screening.export.citation.reason.anchor-not-current',
+  'annotation-refused': 'references.screening.export.citation.reason.annotation-refused'
+}
+
 type TranslateFn = (key: TranslationKey, vars?: Record<string, string | number>) => string
 
 // One export action's receipt (S4). It carries the range that was used, how much of it reached a file,
 // and what stayed out — so the sentence a reviewer reads afterwards is built from the same object the
 // file was built from, instead of from a hopeful re-derivation.
+//
+// The annotation evidence (A5 接线) rides in the same receipt: how many citations the file carries, how
+// many exportable records have evidence, and every annotation that stayed out with its named reason — so
+// 「文件里只有入选文献的标注」 is something the reviewer is told rather than something they must trust.
+type ScreeningExportReceiptCitationSummary = {
+  cited: number
+  withEvidence: number
+  exportable: number
+  notAligned: number
+  reasons: readonly { reason: AnnotationCitationMisalignmentReason; count: number }[]
+  gaps: readonly ScreeningExportCitationGap[]
+}
+
 type ScreeningExportReceipt = {
   scope: ScreeningExportScope
   exportedCount: number
@@ -84,6 +118,7 @@ type ScreeningExportReceipt = {
   fileName: string
   savedPath: string | null
   exportedAt: number
+  citations: ScreeningExportReceiptCitationSummary
 }
 
 type ScreeningExportReceiptText = {
@@ -92,6 +127,9 @@ type ScreeningExportReceiptText = {
   reasons: string
   provenance: string
   savedTo: string | null
+  citations: string
+  citationReasons: string | null
+  citationGaps: string | null
 }
 
 // The receipt, in words. Both the persistent block and the toast are this one function's output, so a
@@ -105,6 +143,9 @@ const describeScreeningExportReceipt = (
   const { t } = input
   const reasons = screeningExportReasonBreakdown(scope).map(
     (entry) => `${t(REASON_LABEL[entry.reason])}: ${entry.count}`
+  )
+  const citationReasons = receipt.citations.reasons.map(
+    (entry) => `${t(MISALIGNMENT_LABEL[entry.reason])}: ${entry.count}`
   )
   return {
     exported: t('references.screening.export.receiptExported', {
@@ -131,7 +172,30 @@ const describeScreeningExportReceipt = (
     }),
     savedTo: receipt.savedPath
       ? t('references.screening.export.receiptSavedTo', { path: receipt.savedPath })
-      : null
+      : null,
+    // The evidence side of the same export, counted from the alignment the file was built from: the
+    // reason line is omitted when nothing stayed out (the counts line already says so).
+    citations: t('references.screening.export.receiptCitations', {
+      cited: receipt.citations.cited,
+      withEvidence: receipt.citations.withEvidence,
+      exportable: receipt.citations.exportable,
+      notAligned: receipt.citations.notAligned
+    }),
+    citationReasons:
+      citationReasons.length > 0
+        ? t('references.screening.export.receiptCitationReasons', {
+            reasons: citationReasons.join(' · ')
+          })
+        : null,
+    citationGaps:
+      receipt.citations.gaps.length > 0
+        ? t('references.screening.export.citationGap', {
+            count: receipt.citations.gaps.length,
+            detail: receipt.citations.gaps
+              .map((gap) => (gap.message ? `${gap.title}: ${gap.message}` : gap.title))
+              .join(' · ')
+          })
+        : null
   }
 }
 
@@ -168,12 +232,15 @@ const toDraft = (criteria: readonly ScreeningCriterion[], prefix: string): Crite
   }))
 
 export function ReferencesScreeningPanel({
+  projectId,
   collectionId,
   collectionName,
   references,
   onNotice,
   onError
 }: {
+  /** Which project's file index the annotation evidence of an export is read through. */
+  projectId: string | undefined
   collectionId: string
   collectionName: string
   references: readonly Reference[]
@@ -608,12 +675,70 @@ export function ReferencesScreeningPanel({
       }
       const exportedAt = Date.now()
       const style = styles.find((entry) => entry.id === styleId) ?? styles[0]
+      // The evidence block is numbered exactly when the bibliography is: `formatCitationList` numbers a
+      // numeric convention (`[1] …`) and leaves an author-date list unnumbered, so the block asks the
+      // same question of the same style rather than assuming GB/T 7714's convention for every style.
+      const numbered = findCitationStyle(styleId, styles)?.family === 'numeric'
+      // The annotation evidence of this very range (A5 接线). Read for EVERY record of the collection, not
+      // only the included ones: a record the range kept out has to be reported as kept out, and that
+      // cannot be reported by never looking. The alignment itself is the shared module's — the same one
+      // the annotation chain uses — so 「目录只含入选文献」 and 「每条能看见关联标注」 stay two readings of
+      // one range.
+      const evidence = await readScreeningExportCitations({
+        projectId,
+        scope,
+        collectionReferenceIds: fresh.items.map((item) => item.referenceId),
+        references
+      })
+      const alignment = evidence.alignment
       const text = formatCitationList(
         exported.map((entry) => citationItemFromReference(entry)),
         styleId,
         { retrievedAt: new Date(exportedAt).toISOString().slice(0, 10) },
         styles
       )
+      // The bibliography, then the evidence block. The block is written even when there is no annotation
+      // at all: a file silent about evidence could not be told apart from one nobody checked.
+      //
+      // The block's per-record line is the LIST'S OWN LINE, taken from the text just formatted — not a
+      // second formatting of the same record. The `[n]` of the block and the `[n]` of the list then
+      // correspond by construction, and a reader comparing the two finds one sentence rather than two
+      // spellings of it.
+      const bibliographyLines = text.split('\n')
+      const citationBlock = formatAnnotationCitationAlignment(alignment, {
+        header: t('references.screening.export.citation.header'),
+        scope: t('references.screening.export.citation.scope'),
+        counts: (counts) =>
+          t('references.screening.export.citation.counts', {
+            cited: counts.alignedAnnotations,
+            withEvidence: counts.referencesWithEvidence,
+            exportable: counts.exportableReferences
+          }),
+        annotationHeader: t('references.screening.export.citation.annotation'),
+        citationLabels: {
+          header: t('pdfAnnotation.citation.header'),
+          file: t('pdfAnnotation.citation.file'),
+          version: t('pdfAnnotation.citation.version'),
+          checksum: t('pdfAnnotation.citation.checksum'),
+          page: t('pdfAnnotation.citation.page'),
+          region: t('pdfAnnotation.citation.region'),
+          quote: t('pdfAnnotation.citation.quote'),
+          note: t('pdfAnnotation.citation.note'),
+          anchorState: t('pdfAnnotation.citation.anchorState')
+        },
+        notAligned: t('references.screening.export.citation.notAligned'),
+        reasonLabels: Object.fromEntries(
+          ANNOTATION_CITATION_MISALIGNMENT_REASONS.map((reason) => [
+            reason,
+            t(MISALIGNMENT_LABEL[reason])
+          ])
+        ) as Record<AnnotationCitationMisalignmentReason, string>,
+        numbered,
+        // Entry numbers are positions in `includedReferenceIds`, which is the order the list was built in,
+        // and the list is only written when every included record is on hand (checked above) — so the nth
+        // entry's line is the nth line, with no second index to drift.
+        listLine: (entry) => bibliographyLines[entry.number - 1]
+      })
       const fileName = screeningExportFileName({
         collectionName,
         styleId,
@@ -623,7 +748,9 @@ export function ReferencesScreeningPanel({
       const saved = await window.api.saveBlobFile({
         suggestedName: fileName,
         mimeType: 'text/plain',
-        data: new TextEncoder().encode(text).buffer
+        // The two parts are separated by a blank line, so a reader (and a check) can take the numbered
+        // bibliography as everything above the first blank line.
+        data: new TextEncoder().encode(`${text}\n\n${citationBlock}\n`).buffer
       })
       if (!saved.saved) {
         // A cancelled save is not an export: no receipt may claim a file nobody wrote.
@@ -636,7 +763,22 @@ export function ReferencesScreeningPanel({
         styleLabel: style?.label ?? styleId,
         fileName,
         savedPath: saved.filePath ?? null,
-        exportedAt
+        exportedAt,
+        citations: {
+          cited: alignment.counts.alignedAnnotations,
+          withEvidence: alignment.counts.referencesWithEvidence,
+          exportable: alignment.counts.exportableReferences,
+          notAligned: alignment.counts.notAlignedAnnotations,
+          // Counted in the vocabulary's own order, so two exports of the same state word it the same way.
+          reasons: ANNOTATION_CITATION_MISALIGNMENT_REASONS.map((reason) => ({
+            reason,
+            count: alignment.notAligned.filter((entry) => entry.reason === reason).length
+          })).filter((entry) => entry.count > 0),
+          // Only the gaps that bear on the export: a record the range kept out carries no evidence here
+          // whatever its file looks like, so naming its file as unreadable would add noise to a receipt
+          // about what IS in the file.
+          gaps: evidence.gaps.filter((gap) => scope.includedReferenceIds.includes(gap.referenceId))
+        }
       }
       setReceipt(next)
       const described = describeScreeningExportReceipt(next, {
@@ -645,9 +787,17 @@ export function ReferencesScreeningPanel({
         t
       })
       onNotice(
-        [described.exported, described.notExported, described.reasons, described.provenance].join(
-          ' · '
-        )
+        [
+          described.exported,
+          described.notExported,
+          described.reasons,
+          described.citations,
+          described.citationReasons,
+          described.citationGaps,
+          described.provenance
+        ]
+          .filter((line): line is string => line !== null)
+          .join(' · ')
       )
       // Read the state back after the write so the panel shows the ledger, not the export's hopes.
       await reload()
@@ -1061,6 +1211,30 @@ export function ReferencesScreeningPanel({
               >
                 {receiptText.reasons}
               </p>
+              {/* The evidence side of the same export: how many citations the file carries, and what
+                  stayed out with its named reason. Rendered from the alignment the file was built from. */}
+              <p
+                className="text-[10px] text-[var(--muted-foreground)]"
+                data-testid="screening-export-receipt-citations"
+              >
+                {receiptText.citations}
+              </p>
+              {receiptText.citationReasons ? (
+                <p
+                  className="text-[10px] text-[var(--muted-foreground)]"
+                  data-testid="screening-export-receipt-citation-reasons"
+                >
+                  {receiptText.citationReasons}
+                </p>
+              ) : null}
+              {receiptText.citationGaps ? (
+                <p
+                  className="text-[10px] text-rose-400"
+                  data-testid="screening-export-receipt-citation-gaps"
+                >
+                  {receiptText.citationGaps}
+                </p>
+              ) : null}
               <p
                 className="text-[10px] text-[var(--muted-foreground)]"
                 data-testid="screening-export-receipt-provenance"

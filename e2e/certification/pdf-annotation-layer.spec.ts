@@ -242,10 +242,15 @@ const drawRegionAnnotation = async (
   const status = page.getByTestId('pdf-annotation-status')
   const item = page.getByTestId('pdf-annotation-item')
 
-  // What the app itself recorded: a message, a listed annotation, or the stored row. Any of the three ends
+  // What the app itself recorded: the write it reported, a listed annotation, or the stored row. Any of the three ends
   // the loop, which is what keeps a retry from writing a second annotation.
+  //
+  // The status line is asked for its TEXT rather than for its presence: the app also puts a refusal up
+  // there when a gesture missed the page, drew nothing or was interrupted (issue #16), and a refusal is
+  // not a write. An element that exists is no longer evidence that anything was stored.
   const recorded = async (): Promise<boolean> => {
-    if ((await status.count()) > 0 || (await item.count()) > 0) return true
+    if ((await status.allTextContents()).includes('Annotation saved')) return true
+    if ((await item.count()) > 0) return true
     const anchor = await readResolvedAnchorIfOpen(page)
     if (!anchor) return false
     const stored = await readAnnotations(page, { ...file, versionId: anchor.versionId })

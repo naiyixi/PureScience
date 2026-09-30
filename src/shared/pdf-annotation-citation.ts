@@ -31,6 +31,11 @@ import type { ScreeningExportScope, ScreeningExportScopeKind } from './reference
 // `ScreeningExportScope` the screening export consumes (`includedReferenceIds`) — one range, two readers.
 // A record the effective verdict kept out keeps its annotations out too, and the reason travels with it.
 //
+// The numbering is part of that alignment rather than a decoration on it: `includedReferenceIds` is the
+// order the triage export's own `[1] … [n]` list is built in, so an entry carries its 1-based position in
+// that range (`number`). A block of evidence that could not be matched back to the `[n]` line it belongs
+// to would be evidence for nothing in particular.
+//
 // Pure and renderer-safe: it imports the closed vocabularies and the GB/T 7714 formatter, and nothing else.
 
 /** The citation record's own schema version. Bumping it is a breaking change to the shape a reader holds. */
@@ -234,22 +239,35 @@ export type AnnotationCitationReference = {
   pmcid?: string | undefined
 }
 
-/** Why one annotation is not evidence for anything the export may contain. Always named. */
-export type AnnotationCitationMisalignmentReason =
+/**
+ * The four reasons, in the order a receipt lists them. Closed and named, because "we left it out" is only
+ * reviewable if it can say why — and one list is what keeps a count, a label and a test from drifting.
+ */
+export const ANNOTATION_CITATION_MISALIGNMENT_REASONS = [
   // The file's record exists, but the export range excludes it (a reviewer excluded it, or the model's
   // verdict stood). The record's annotations leave with it — this is the alignment, not a failure.
-  | 'reference-not-in-export-range'
+  'reference-not-in-export-range',
   // The annotation's file is not attached to any record the caller supplied. It is not evidence for a
   // bibliography entry because it is not on a bibliography entry's file.
-  | 'reference-unknown'
+  'reference-unknown',
   // The markup is not on the bytes the file version now carries. It is named rather than silently placed
   // on the current version, which is the same rule the store and the panel follow.
-  | 'anchor-not-current'
+  'anchor-not-current',
   // The stored row disagreed with its own kind/selector rule, so no citation could be built from it.
-  | 'annotation-refused'
+  'annotation-refused'
+] as const
+
+export type AnnotationCitationMisalignmentReason =
+  (typeof ANNOTATION_CITATION_MISALIGNMENT_REASONS)[number]
 
 export type AnnotationCitationAlignmentEntry = {
   referenceId: string
+  /**
+   * The 1-based position of this record in the export range — the number the triage export's own list
+   * gives it (`[1] … [n]`), so the evidence block and the bibliography entry it belongs to can be
+   * matched by a reader without a second index.
+   */
+  number: number
   /** The GB/T 7714 line for the record, built from the reference the caller supplied. */
   citation: string
   /** The annotations of that record's file that are evidence for it, oldest first. */
@@ -353,9 +371,10 @@ export const alignPdfAnnotationCitationsWithScreeningExport = (
     else collected.set(referenceId, [record])
   }
 
-  // The range's order, not the citations' — two runs over the same range produce the same bibliography.
+  // The range's order, not the citations' — two runs over the same range produce the same bibliography,
+  // and each entry carries the number that range order gives it.
   const entries: AnnotationCitationAlignmentEntry[] = []
-  for (const referenceId of input.exportScope.includedReferenceIds) {
+  for (const [position, referenceId] of input.exportScope.includedReferenceIds.entries()) {
     const annotations = collected.get(referenceId)
     if (!annotations || annotations.length === 0) continue
     const reference = byReference.get(referenceId)
@@ -366,6 +385,7 @@ export const alignPdfAnnotationCitationsWithScreeningExport = (
     if (!reference) continue
     entries.push({
       referenceId,
+      number: position + 1,
       citation: gbt7714Of(reference),
       annotations: [...annotations].sort(
         (left, right) =>
@@ -401,29 +421,54 @@ export const alignPdfAnnotationCitationsWithScreeningExport = (
  * One pasteable block for the whole alignment: each exportable record's GB/T 7714 line followed by the
  * annotations that are evidence for it. Labels come from the UI language; the citation and the anchors do
  * not translate.
+ *
+ * `listLine` is how the block is kept to the SAME words as the bibliography it accompanies: the caller
+ * (which is the one that formatted that bibliography) hands over the list's own line for an entry, and the
+ * block prints it verbatim. That matters because the list is formatted by the library's citation-style
+ * layer, and a second formatter would say the same record slightly differently — two lines for one record
+ * is exactly what "the `[n]` of the block and the `[n]` of the list correspond" is supposed to prevent.
+ * Without it the entry's own GB/T 7714 line is used, which is the right answer for a caller that has no
+ * list.
+ *
+ * `numbered` decides the fallback's numbering, and nothing else: does the list this block sits beside
+ * carry numbers? When it does (a numeric convention such as GB/T 7714), the fallback is prefixed with the
+ * SAME `[n]` the bibliography gives that record — the alignment entry's own position in the range. When it
+ * does not (an author-date list), no number is printed at all: a `[3]` pointing at nothing would be worse
+ * than no number, because a reader would go looking for a line that is not there.
  */
 export const formatAnnotationCitationAlignment = (
   alignment: AnnotationCitationAlignment,
   labels: {
     header: string
     scope: string
-    evidenceCount: string
+    /**
+     * The counting line, given the counts rather than a finished sentence: how three numbers are worded
+     * is the dictionary's business (and the language's), not this module's.
+     */
+    counts: (counts: AnnotationCitationAlignment['counts']) => string
     annotationHeader: string
     citationLabels: PdfAnnotationCitationLabels
     notAligned: string
     reasonLabels: Record<AnnotationCitationMisalignmentReason, string>
+    /** Whether the list this block accompanies numbers its entries (`[1] …`), as GB/T 7714 does. */
+    numbered: boolean
+    /** The list's own line for one entry — the bibliography's own words, when the caller has them. */
+    listLine?: (entry: AnnotationCitationAlignmentEntry) => string | undefined
   }
 ): string => {
   const lines = [
     `${labels.header}: ${alignment.scope.collectionId} (${alignment.scope.kind}, ${labels.scope} r${
       alignment.scope.ruleRevision ?? '-'
     })`,
-    `${labels.evidenceCount}: ${alignment.counts.alignedAnnotations}`,
+    labels.counts(alignment.counts),
     ''
   ]
 
   for (const entry of alignment.entries) {
-    lines.push(entry.citation)
+    lines.push(
+      labels.listLine?.(entry) ??
+        (labels.numbered ? `[${entry.number}] ${entry.citation}` : entry.citation)
+    )
     for (const record of entry.annotations) {
       lines.push(`${labels.annotationHeader}: ${record.annotationId} (${record.kind})`)
       lines.push(formatPdfAnnotationCitation(record, labels.citationLabels))

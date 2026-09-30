@@ -881,6 +881,11 @@ export const de: Partial<Record<ZhKey, string>> = {
   'pdfAnnotation.status.reattached': 'Anmerkung auf dieser Version neu verankert',
   'pdfAnnotation.status.failed': 'Anmerkung konnte nicht gespeichert werden: {message}',
   'pdfAnnotation.status.loadFailed': 'Anmerkungen konnten nicht gelesen werden: {message}',
+  'pdfAnnotation.status.outsidePage':
+    'Dieser Punkt liegt nicht auf einer Seite — nichts wurde begonnen',
+  'pdfAnnotation.status.nothingDrawn': 'Kein Bereich aufgezogen — es wurde nichts gezeichnet',
+  'pdfAnnotation.status.interrupted':
+    'Die Geste wurde unterbrochen — nichts gespeichert, bitte neu zeichnen',
   'pdfAnnotation.import.action': 'Anmerkungen aus diesem PDF importieren',
   'pdfAnnotation.import.idleHint':
     'Das PDF kann eigene Anmerkungen enthalten; der Import behält, was er platzieren kann, und nennt, was er übersprungen hat.',
@@ -3705,6 +3710,28 @@ export const de: Partial<Record<ZhKey, string>> = {
     'Nicht exportiert {notExported}: zu prüfen {review} · ausgeschlossen {excluded} · nicht bewertet {notEvaluated} · durch menschliche Überschreibung {byOverride}',
   'references.screening.export.receiptReasons': 'Benannte Gründe: {reasons}',
   'references.screening.export.receiptNoReasons': 'Keine benannten Gründe.',
+  // Die Anmerkungsbelege des Exports (文档标注层 A5 接线): der Block in der Datei und die Belegzeilen,
+  // die sagen, wie viele es sind und was ausgelassen wurde.
+  'references.screening.export.citation.header': 'Anmerkungszitate',
+  'references.screening.export.citation.scope': 'Umfang',
+  'references.screening.export.citation.counts':
+    'Zitierte Anmerkungen {cited} · Einträge mit Beleg {withEvidence} von {exportable}',
+  'references.screening.export.citation.annotation': 'Beleg-Anmerkung',
+  'references.screening.export.citation.notAligned': 'Ausgelassene Anmerkungen',
+  'references.screening.export.citation.reason.reference-not-in-export-range':
+    'ihr Eintrag liegt außerhalb des Exportumfangs',
+  'references.screening.export.citation.reason.reference-unknown':
+    'ihre Datei hängt an keinem Eintrag dieses Exports',
+  'references.screening.export.citation.reason.anchor-not-current':
+    'sie ist nicht an der vorliegenden Dateiversion verankert',
+  'references.screening.export.citation.reason.annotation-refused':
+    'die gespeicherte Anmerkung widerspricht ihrer eigenen Art',
+  'references.screening.export.receiptCitations':
+    'Anmerkungszitate: {cited} zitiert · Einträge mit Beleg {withEvidence} von {exportable} · ausgelassen {notAligned}',
+  'references.screening.export.receiptCitationReasons':
+    'Ausgelassene Anmerkungen, nach Grund: {reasons}',
+  'references.screening.export.citationGap':
+    'Für {count} Einträge konnten keine Anmerkungen gelesen werden: {detail}',
   'references.screening.export.receiptProvenance':
     'Sammlung {collection} · Regelrevision {revision} ({hash}) · {time}',
   'references.screening.export.receiptSavedTo': 'Gespeichert unter {path}.',

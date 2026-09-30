@@ -387,6 +387,23 @@ jobs:
           PURESCIENCE_E2E_EXECUTABLE: ${{ steps.packaged_app.outputs.executable }}
         run: npm run test:e2e:p0
 
+      # A failing P0 lane used to be undiagnosable from the log alone: Playwright's own failure context —
+      # `test-results/**/error-context.md`, the failure screenshots and the traces — goes away with the
+      # runner, so the same class of red (issue #16: an annotation gesture the app never received) could
+      # only be reasoned about by reproducing it locally. Uploaded on failure only, and never gating: an
+      # artifact that cannot be uploaded must not turn a red lane into a different red.
+      - name: Upload P0 failure context
+        if: ${{ steps.p0.outcome == 'failure' }}
+        continue-on-error: true
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: p0-test-results-${{ matrix.name }}
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 5
+          if-no-files-found: warn
+
       # Visual behavior uses the same renderer bundle on every package. Keep one canonical hard gate
       # beside P0 instead of multiplying antialiasing and launch variance across four native runners.
       - name: Run desktop visual regression

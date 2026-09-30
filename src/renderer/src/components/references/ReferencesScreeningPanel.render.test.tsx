@@ -131,6 +131,37 @@ vi.mock('@/i18n', () => {
       '{n} included records are not in this list any more; reopen the collection and export again.',
     'references.screening.export.failed': 'The export was not saved: {message}',
     'references.screening.export.cancelled': 'The save was cancelled, so nothing was written.',
+    // The annotation evidence of the export (A5 接线).
+    'references.screening.export.citation.header': 'Annotation citations',
+    'references.screening.export.citation.scope': 'scope',
+    'references.screening.export.citation.counts':
+      'Annotations cited {cited} · records with evidence {withEvidence} of {exportable}',
+    'references.screening.export.citation.annotation': 'Evidence annotation',
+    'references.screening.export.citation.notAligned': 'Annotations left out',
+    'references.screening.export.citation.reason.reference-not-in-export-range':
+      'its record is not in the export range',
+    'references.screening.export.citation.reason.reference-unknown':
+      'its file is attached to no record in this export',
+    'references.screening.export.citation.reason.anchor-not-current':
+      'it is not anchored to the file version on hand',
+    'references.screening.export.citation.reason.annotation-refused':
+      'the stored annotation does not match its own kind',
+    'references.screening.export.receiptCitations':
+      'Annotations cited {cited} · records with evidence {withEvidence} of {exportable} · left out {notAligned}',
+    'references.screening.export.receiptCitationReasons':
+      'Annotations left out, by reason: {reasons}',
+    'references.screening.export.citationGap':
+      'No annotation evidence could be read for {count} record(s): {detail}',
+    // The citation labels the panel renders (shared with the annotation panel; en's own wording).
+    'pdfAnnotation.citation.header': 'Citation',
+    'pdfAnnotation.citation.file': 'File',
+    'pdfAnnotation.citation.version': 'Version',
+    'pdfAnnotation.citation.checksum': 'Checksum',
+    'pdfAnnotation.citation.page': 'Page',
+    'pdfAnnotation.citation.region': 'Region',
+    'pdfAnnotation.citation.quote': 'Quoted passage',
+    'pdfAnnotation.citation.note': 'Annotation text',
+    'pdfAnnotation.citation.anchorState': 'Anchor',
     'references.citationStyle': 'Citation style',
     'references.builtinStyles': 'Built-in styles',
     'references.importedStyles': 'Imported styles'
@@ -152,6 +183,11 @@ vi.mock('@/i18n', () => {
 
 const { ReferencesScreeningPanel } = await import('./ReferencesScreeningPanel')
 import type { Reference } from '../../../../shared/references'
+import type { ProjectFileItem } from '../../../../shared/project-files'
+import type {
+  PdfAnnotationSelector,
+  PdfAnnotationView
+} from '../../../../shared/pdf-annotation-surface'
 import type {
   ScreeningCollectionSnapshot,
   ScreeningItemView,
@@ -160,7 +196,7 @@ import type {
   ScreeningVerdict
 } from '../../../../shared/references-screening'
 
-const reference = (id: string, title: string): Reference => ({
+const reference = (id: string, title: string, overrides: Partial<Reference> = {}): Reference => ({
   id,
   projectId: 'project-1',
   title,
@@ -180,7 +216,8 @@ const reference = (id: string, title: string): Reference => ({
   pdfManagedFileId: undefined,
   notes: undefined,
   createdAt: 1,
-  updatedAt: 1
+  updatedAt: 1,
+  ...overrides
 })
 
 const item = (
@@ -273,6 +310,55 @@ const snapshot = (items: ScreeningItemView[], running = false): ScreeningCollect
   lastError: null
 })
 
+// One file of the project index, as the export's annotation read addresses it: the id a record names
+// (`pdfManagedFileId`), the session the artifact lives in, and the artifact + version the markup is
+// anchored to.
+const projectFile = (
+  id: string,
+  sessionId: string,
+  sourceFileId: string,
+  sourceVersionId: string
+): ProjectFileItem => ({
+  id,
+  source: 'artifact',
+  sourceFileId,
+  sourceVersionId,
+  projectId: 'project-1',
+  sessionId,
+  name: `${id}.pdf`,
+  path: `/tmp/${id}.pdf`,
+  size: 834,
+  sortAtMs: 1
+})
+
+// One stored annotation as the panel's read answers with it: the anchor lives on the ROW, and the state
+// describes how that anchor compares to the version on screen.
+const annotationView = (input: {
+  artifactId: string
+  versionId: string
+  annotationId: string
+  quote: string
+  body: string
+}): PdfAnnotationView => ({
+  annotation: {
+    id: input.annotationId,
+    sourceFileId: input.artifactId,
+    versionId: input.versionId,
+    checksum: 'a'.repeat(64),
+    kind: 'highlight',
+    selector: {
+      version: 1,
+      shape: 'text-range',
+      page: 1,
+      rects: [{ x: 0.1, y: 0.2, width: 0.3, height: 0.05 }],
+      quote: input.quote
+    } as PdfAnnotationSelector,
+    body: input.body,
+    createdAt: 1
+  },
+  anchorState: 'current'
+})
+
 describe('ReferencesScreeningPanel', () => {
   let container: HTMLDivElement
   let root: Root
@@ -290,6 +376,11 @@ describe('ReferencesScreeningPanel', () => {
   // The app's file-save channel, which is how a real export reaches disk (and how the acceptance spec
   // reads a real file back).
   const saveBlobFile = vi.fn()
+  // The two reads the export makes for the annotation evidence (A5 接线): the project's file index, and
+  // the annotations of one file version. Both are the app's own channels rather than fixtures — what the
+  // panel does with what they answer is what these tests are about.
+  const projectFiles = { listFiles: vi.fn() }
+  const pdfAnnotations = { list: vi.fn() }
 
   // Exact text, because a row's "Include" button sits under a filter chip reading "Included".
   const findExactButton = (label: string): HTMLButtonElement => {
@@ -336,6 +427,7 @@ describe('ReferencesScreeningPanel', () => {
     await act(async () => {
       root.render(
         <ReferencesScreeningPanel
+          projectId="project-1"
           collectionId="collection-1"
           collectionName="Screen hits"
           references={references}
@@ -365,7 +457,22 @@ describe('ReferencesScreeningPanel', () => {
     api.listCitationStyles.mockResolvedValue([])
     saveBlobFile.mockReset()
     saveBlobFile.mockResolvedValue({ saved: true, filePath: '/tmp/references-screen-hits.txt' })
-    window.api = { references: api, saveBlobFile } as unknown as typeof window.api
+    // Default: a project whose index holds no file at all — the honest answer for a bibliography whose
+    // records carry no PDF, and the case the export tests start from.
+    projectFiles.listFiles.mockReset()
+    projectFiles.listFiles.mockResolvedValue({ items: [], nextCursor: undefined, totalCount: 0 })
+    pdfAnnotations.list.mockReset()
+    pdfAnnotations.list.mockResolvedValue({
+      anchor: { sourceFileId: 'artifact-1', versionId: 'version-1', checksum: 'a'.repeat(64) },
+      annotations: [],
+      counts: { current: 0, versionChanged: 0, checksumMismatch: 0 }
+    })
+    window.api = {
+      references: api,
+      projectFiles,
+      pdfAnnotations,
+      saveBlobFile
+    } as unknown as typeof window.api
   })
 
   afterEach(() => {
@@ -450,6 +557,7 @@ describe('ReferencesScreeningPanel', () => {
     await act(async () => {
       root.render(
         <ReferencesScreeningPanel
+          projectId="project-1"
           collectionId="collection-1"
           collectionName="Screen hits"
           references={[reference('ref-included', 'Included record')]}
@@ -591,6 +699,7 @@ describe('ReferencesScreeningPanel', () => {
     await act(async () => {
       root.render(
         <ReferencesScreeningPanel
+          projectId="project-1"
           collectionId="collection-1"
           collectionName="Screen hits"
           references={references}
@@ -864,6 +973,7 @@ describe('ReferencesScreeningPanel', () => {
     await act(async () => {
       root.render(
         <ReferencesScreeningPanel
+          projectId="project-1"
           collectionId="collection-1"
           collectionName="Screen hits"
           references={references}
@@ -902,8 +1012,20 @@ describe('ReferencesScreeningPanel', () => {
     expect(exported).toContain('Later cohort')
     expect(exported).not.toContain('Withdrawn record')
     expect(exported).not.toContain('Unturned stone')
-    // One citation per exported record, and nothing else.
-    expect(exported.trim().split('\n')).toHaveLength(1)
+    // The file has two parts, and the bibliography is ALL of the first: one numbered line per exported
+    // record and nothing else. S4's original assertion pinned the whole file to a single line; the
+    // evidence block below the blank line is new, so the pin moved onto the bibliography rather than
+    // being relaxed — a second citation or a stray line here still fails.
+    const separator = exported.indexOf('\n\n')
+    expect(separator).toBeGreaterThan(0)
+    const bibliography = exported.slice(0, separator).split('\n')
+    expect(bibliography).toHaveLength(1)
+    expect(bibliography[0]).toMatch(/^\[1\] /)
+    // …and the block states, in the file itself, that this export carries no annotation evidence —
+    // rather than leaving a reader to guess whether anybody looked.
+    const evidenceBlock = exported.slice(separator + 2)
+    expect(evidenceBlock).toContain('Annotation citations: collection-1 (included-only, scope r1)')
+    expect(evidenceBlock).toContain('Annotations cited 0 · records with evidence 0 of 1')
 
     // The receipt: the range, what stayed out per state, the NAMED reasons, and the provenance.
     expect(byTestId('screening-export-receipt-summary').textContent?.trim()).toBe(
@@ -915,6 +1037,16 @@ describe('ReferencesScreeningPanel', () => {
     expect(byTestId('screening-export-receipt-reasons').textContent?.trim()).toBe(
       'Named reasons: The rule set changed: 1 · The decision itself is uncertain: 1'
     )
+    // The evidence side of the same receipt: nothing was cited, and nothing was left out silently.
+    expect(byTestId('screening-export-receipt-citations').textContent?.trim()).toBe(
+      'Annotations cited 0 · records with evidence 0 of 1 · left out 0'
+    )
+    expect(
+      container.querySelector('[data-testid="screening-export-receipt-citation-reasons"]')
+    ).toBe(null)
+    expect(container.querySelector('[data-testid="screening-export-receipt-citation-gaps"]')).toBe(
+      null
+    )
     expect(byTestId('screening-export-receipt-provenance').textContent).toContain(
       'collection Screen hits · rule revision 1'
     )
@@ -924,6 +1056,172 @@ describe('ReferencesScreeningPanel', () => {
     // The toast carries the same receipt, so a reviewer who only watched the notice still saw it.
     expect(onNotice).toHaveBeenCalledWith(
       expect.stringContaining('Not exported 2: needs review 1 · excluded 1 · not evaluated 0')
+    )
+  })
+
+  it('writes the included records’ annotation citations and leaves an excluded record’s markup out by name', async () => {
+    // Two records with a PDF and one without: the two annotations carry their own text, so "the excluded
+    // record's markup is not in the file" is a claim about that text rather than about a count.
+    const references = [
+      reference('ref-included', 'Later cohort', { pdfManagedFileId: 'file-included' }),
+      reference('ref-excluded', 'Withdrawn record', { pdfManagedFileId: 'file-excluded' }),
+      reference('ref-untouched', 'Unturned stone')
+    ]
+    const items = [
+      item('ref-included', 'needs-review', ['uncertain'], {
+        collectionId: 'collection-1',
+        referenceId: 'ref-included',
+        decision: 'include',
+        reason: 'the protocol admits this cohort',
+        actor: 'user',
+        createdAt: 1
+      }),
+      item('ref-excluded', 'included', ['rule-changed'], {
+        collectionId: 'collection-1',
+        referenceId: 'ref-excluded',
+        decision: 'exclude',
+        reason: 'retracted after screening',
+        actor: 'user',
+        createdAt: 1
+      }),
+      item('ref-untouched', 'needs-review', ['uncertain'])
+    ]
+    projectFiles.listFiles.mockResolvedValue({
+      items: [
+        projectFile('file-included', 'session-1', 'artifact-included', 'version-included'),
+        projectFile('file-excluded', 'session-2', 'artifact-excluded', 'version-excluded')
+      ],
+      nextCursor: undefined,
+      totalCount: 2
+    })
+    // Each file version answers with its own annotation; the two are told apart by their passage and text.
+    pdfAnnotations.list.mockImplementation(async (request: { artifactId: string }) =>
+      request.artifactId === 'artifact-included'
+        ? {
+            anchor: {
+              sourceFileId: 'artifact-included',
+              versionId: 'version-included',
+              checksum: 'a'.repeat(64)
+            },
+            annotations: [
+              annotationView({
+                artifactId: 'artifact-included',
+                versionId: 'version-included',
+                annotationId: 'annotation-included',
+                quote: 'the effect is large',
+                body: 'Trial enrolled 120 adults.'
+              })
+            ],
+            counts: { current: 1, versionChanged: 0, checksumMismatch: 0 }
+          }
+        : {
+            anchor: {
+              sourceFileId: 'artifact-excluded',
+              versionId: 'version-excluded',
+              checksum: 'b'.repeat(64)
+            },
+            annotations: [
+              annotationView({
+                artifactId: 'artifact-excluded',
+                versionId: 'version-excluded',
+                annotationId: 'annotation-excluded',
+                quote: 'withdrawn passage',
+                body: 'Retracted in 2026.'
+              })
+            ],
+            counts: { current: 1, versionChanged: 0, checksumMismatch: 0 }
+          }
+    )
+    api.getScreening.mockResolvedValue(snapshot(items))
+    await act(async () => {
+      root.render(
+        <ReferencesScreeningPanel
+          projectId="project-1"
+          collectionId="collection-1"
+          collectionName="Screen hits"
+          references={references}
+          onNotice={() => {}}
+          onError={() => {}}
+        />
+      )
+    })
+    await flush()
+
+    await act(async () => {
+      findExactButton('Export included').click()
+      await Promise.resolve()
+    })
+    await flush()
+
+    // Both records' annotations were read (the excluded one has to be READ to be reported as kept out),
+    // and only the included record's file was asked for by version.
+    expect(pdfAnnotations.list).toHaveBeenCalledTimes(2)
+    expect(pdfAnnotations.list.mock.calls.map((call) => call[0])).toEqual([
+      {
+        projectId: 'project-1',
+        sessionId: 'session-1',
+        artifactId: 'artifact-included',
+        versionId: 'version-included'
+      },
+      {
+        projectId: 'project-1',
+        sessionId: 'session-2',
+        artifactId: 'artifact-excluded',
+        versionId: 'version-excluded'
+      }
+    ])
+
+    const exported = new TextDecoder().decode(
+      (saveBlobFile.mock.calls[0]?.[0] as { data: ArrayBuffer }).data
+    )
+    const separator = exported.indexOf('\n\n')
+    const bibliography = exported.slice(0, separator)
+    const block = exported.slice(separator + 2)
+    // The numbered bibliography is unchanged: one `[1] …` line for the one included record.
+    expect(bibliography.split('\n')).toHaveLength(1)
+    expect(bibliography).toContain('Later cohort')
+    expect(bibliography).not.toContain('Withdrawn record')
+
+    // The evidence block: the SAME number, then every fact the citation carries, so the block can be
+    // matched back to the `[1]` line it belongs to.
+    expect(block).toContain('Annotation citations: collection-1 (included-only, scope r1)')
+    expect(block).toContain('Annotations cited 1 · records with evidence 1 of 1')
+    expect(block).toContain('[1] Author A. Later cohort[J]. Journal, 2026.')
+    expect(block).toContain('Evidence annotation: annotation-included (highlight)')
+    expect(block).toContain('File: artifact-included')
+    expect(block).toContain('Version: version-included')
+    expect(block).toContain(`Checksum: sha256:${'a'.repeat(64)}`)
+    expect(block).toContain('Page: 1')
+    expect(block).toContain('Region 1: 0.100 0.200 0.300 0.050')
+    expect(block).toContain('Quoted passage: the effect is large')
+    expect(block).toContain('Annotation text: Trial enrolled 120 adults.')
+    // The block follows the record it belongs to, never before it.
+    expect(exported.indexOf('[1] ')).toBeLessThan(exported.indexOf('Annotation citations:'))
+
+    // 被排除记录的标注不在里面 — not by count but by its own text, its version and its checksum.
+    expect(exported).not.toContain('withdrawn passage')
+    expect(exported).not.toContain('Retracted in 2026.')
+    expect(exported).not.toContain('version-excluded')
+    expect(exported).not.toContain('artifact-excluded')
+    expect(exported).not.toContain(`sha256:${'b'.repeat(64)}`)
+    // Its ID appears EXACTLY once, and in the left-out line rather than under an evidence heading: a
+    // named exclusion is not a citation, and the two cannot be confused in the file.
+    expect(exported.split('annotation-excluded')).toHaveLength(2)
+    expect(exported).not.toContain('Evidence annotation: annotation-excluded')
+    expect(exported).not.toContain('Citation: annotation-excluded')
+    // …and it is left out BY NAME rather than dropped: the reason is written into the file itself.
+    expect(block).toContain('Annotations left out: 1')
+    expect(block).toContain('  annotation-excluded: its record is not in the export range')
+
+    // The receipt carries the same counts and the same named reason.
+    expect(byTestId('screening-export-receipt-citations').textContent?.trim()).toBe(
+      'Annotations cited 1 · records with evidence 1 of 1 · left out 1'
+    )
+    expect(byTestId('screening-export-receipt-citation-reasons').textContent?.trim()).toBe(
+      'Annotations left out, by reason: its record is not in the export range: 1'
+    )
+    expect(container.querySelector('[data-testid="screening-export-receipt-citation-gaps"]')).toBe(
+      null
     )
   })
 
@@ -939,6 +1237,7 @@ describe('ReferencesScreeningPanel', () => {
     await act(async () => {
       root.render(
         <ReferencesScreeningPanel
+          projectId="project-1"
           collectionId="collection-1"
           collectionName="Screen hits"
           references={references}
@@ -970,6 +1269,7 @@ describe('ReferencesScreeningPanel', () => {
     await act(async () => {
       root.render(
         <ReferencesScreeningPanel
+          projectId="project-1"
           collectionId="collection-1"
           collectionName="Screen hits"
           references={references}
@@ -1010,6 +1310,7 @@ describe('ReferencesScreeningPanel', () => {
     await act(async () => {
       root.render(
         <ReferencesScreeningPanel
+          projectId="project-1"
           collectionId="collection-1"
           collectionName="Screen hits"
           references={[]}
@@ -1046,6 +1347,7 @@ describe('ReferencesScreeningPanel', () => {
     await act(async () => {
       root.render(
         <ReferencesScreeningPanel
+          projectId="project-1"
           collectionId="collection-1"
           collectionName="Screen hits"
           references={[reference('ref-included', 'Included record')]}
@@ -1077,6 +1379,7 @@ describe('ReferencesScreeningPanel', () => {
     await act(async () => {
       root.render(
         <ReferencesScreeningPanel
+          projectId="project-1"
           collectionId="collection-1"
           collectionName="Screen hits"
           references={references}
@@ -1166,7 +1469,21 @@ describe('the screening surface speaks all nine languages', () => {
       'references.screening.export.receiptSavedTo',
       'references.screening.export.listChanged',
       'references.screening.export.failed',
-      'references.screening.export.cancelled'
+      'references.screening.export.cancelled',
+      // The annotation evidence of the export (A5 接线): the block's labels, the four named reasons and
+      // the receipt lines that carry the counts.
+      'references.screening.export.citation.header',
+      'references.screening.export.citation.scope',
+      'references.screening.export.citation.counts',
+      'references.screening.export.citation.annotation',
+      'references.screening.export.citation.notAligned',
+      'references.screening.export.citation.reason.reference-not-in-export-range',
+      'references.screening.export.citation.reason.reference-unknown',
+      'references.screening.export.citation.reason.anchor-not-current',
+      'references.screening.export.citation.reason.annotation-refused',
+      'references.screening.export.receiptCitations',
+      'references.screening.export.receiptCitationReasons',
+      'references.screening.export.citationGap'
     ] as const
     // Every key the panel uses exists — a missing one would render the raw key in the window.
     expect(s4Keys.every((key) => key in en)).toBe(true)
@@ -1183,6 +1500,13 @@ describe('the screening surface speaks all nine languages', () => {
     expect(zhText('references.screening.export.preview')).toContain('未导出')
     expect(zhText('references.screening.export.receiptNotExported')).toContain('人工覆盖')
     expect(zhText('references.screening.export.receiptReasons')).toContain('具名原因')
+    // The annotation evidence, in Chinese: the block's heading says what it is, and the four reasons read
+    // as sentences rather than as the codes the alignment carries.
+    expect(zhText('references.screening.export.citation.header')).toBe('标注引文')
+    expect(zhText('references.screening.export.citation.notAligned')).toBe('留在外面的标注')
+    expect(
+      zhText('references.screening.export.citation.reason.reference-not-in-export-range')
+    ).toBe('其记录不在导出范围内')
     expect(zhText('references.screening.stats.unprocessedNote')).toContain('未处理')
     expect(zhText('references.screening.stats.unprocessed')).toBe('未处理数')
     // Placeholder parity: the receipt templates are filled by name, so every language must carry them.
@@ -1195,7 +1519,14 @@ describe('the screening surface speaks all nine languages', () => {
         'references.screening.export.receiptNotExported',
         ['notExported', 'review', 'excluded', 'notEvaluated', 'byOverride']
       ],
-      ['references.screening.export.receiptProvenance', ['collection', 'revision', 'hash', 'time']]
+      ['references.screening.export.receiptProvenance', ['collection', 'revision', 'hash', 'time']],
+      ['references.screening.export.citation.counts', ['cited', 'withEvidence', 'exportable']],
+      [
+        'references.screening.export.receiptCitations',
+        ['cited', 'withEvidence', 'exportable', 'notAligned']
+      ],
+      ['references.screening.export.receiptCitationReasons', ['reasons']],
+      ['references.screening.export.citationGap', ['count', 'detail']]
     ] as const) {
       for (const [language, dictionary] of Object.entries(dictionaries)) {
         const value = dictionary[key as keyof typeof en] ?? ''

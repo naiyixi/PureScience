@@ -1,5 +1,13 @@
 # PureScience 更新日记
 
+## v1.76.1（已发布：把红修成真绿，把"看起来公证"改成如实）
+
+- **修掉 Windows 更新演练里一道不可满足的闸门**（v1.76.0 的 `windows-upgrade-smoke` 假红真因）：共用断言要求"安装之后才有"的三个清理字段，而早先那个为快速失败保留的调用点递的是尚未富化的对象 ⇒ 每次必红；日志里它自己打印的数字反而证明产品侧是好的（安装后读数已是新版、旧版日志完整走完 check → available → ready → install-gate cleared → quitAndInstall → shutdown(trigger=update)）。修法：共用断言只管差分路径，新增安装后清理断言，并补一条"早调用点接受未富化观测"的调用顺序回归；变异测试自证未弱化。
+- **mac 签名状态不再能被误读成已公证**：无凭据时公证整段跳过而作业仍报 success ⇒ 现在检查名直接写 `SKIPPED — UNSIGNED macOS assets, not notarized`，步骤摘要明写"本作业的 success 意味着什么都没做"，`RELEASE-CERTIFICATION.json` 记 `macSignature`（signed/unsigned/unproven）且发布页在资产上传之后才读它；替换掉发布脚本里"macOS 用户可通过应用内更新安装"这句不实承诺。门禁已备好：有凭据却未签名 ⇒ 发布失败；无凭据 ⇒ 不失败只如实标注；无凭据且读数缺失 ⇒ 不算通过。
+- **文档口径**：README 中英 / PRD / ROADMAP 里 6 处"已签名、已公证"等与实际不符的声称改成事实口径（有凭据时会签名并公证、每版实际状态在发布页与认证记录中标明），另收口 3 处同类遗留（横幅限定、macOS 原地更新的签名前提、两处死锚点）。
+- **标注手势不再静默**：三条路径（按下点不在覆盖层 / 拖拽被重渲染中断 / 零面积手势）各自给出具名状态（9 语言），拖拽中断不搬橡皮筋而改为具名句子（搬运只会留下永远无法提交的残影）；标注类 spec 失败时上传 `test-results/`，同类问题不再只能靠本机推理。
+- **引文链接进分诊导出**（A5 当时遗留的那一处）：引文作为同一个导出产物里的区块写入，编号与清单 `[n]` 结构性一致；只含入选记录，未入选的标注**带四种具名理由留在外面**；源字节前后 sha256 相同。
+
 ## v1.77.0（排期中：对齐同类应用的搜索、模型分域与技能市场）
 
 > 来源：对一款同类应用三项功能的实测研究（搜索 / 模型列表 / 技能市场）。原始笔记留在 gitignore 的 `docs/competitive-tracking/` 下，**不进仓库**；可提交的排期见 `docs/plan-2026-09-30-v1.77.0-search-models-skills.md`。原则不变：**交付必须优于对标而非平齐**，每片都要列差异化点与**真机**验收。
@@ -73,7 +81,8 @@ PureScience 是一款面向科学研究的开源 AI 工作台：多智能体协�
 - **文档标注层 A5「标注不进模型上下文」红线钉在两条真实装配路径上，并用差分证明隔离**（`src/main/acp/pdf-annotation-model-input-boundary.test.ts`）：路径一·交互轮次的模型输入（`AcpPromptContentOwner.prepare`：附件 → 送模型的 content blocks，PDF 正文经 `extractPdfText` 进入内容）；路径二·文献分诊的模型输入（`assembleScreeningEvidence` → `assembleScreeningPrompt`）。**差分是断言成立的关键**：同一份 PDF 先经 **A2 自己的标注读取器**跑一遍，证明那些标注正文**确实在文件字节里**并被逐字读出；随后两条路径送模型的内容里**一个字都没有**。第三条检查闭合另一面：**同样的文本能被检索语料读到**（说明应用真的持有它）——所以这是「被排除在模型输入之外」，不是「应用里没有」。另有一处**负控制**（真机亦有）：PDF 文本层里存在、却从未被存成标注的字符串，在标注作用域里**检索不到**。
 - **文档标注层 A5 界面与文案**：面板每条标注下渲染引文行（版本、checksum、页码、Rect、所引原文写在**元素 data 属性**上，验收可直接读而不必信旁边的散文）；面板底部**显式声明**「标注只用于检索与引用，不会被送入模型上下文」。新增 15 个文案键 × **9 语言**、渲染代码零硬编码文案。**未新增任何 IPC 渠道**：检索复用既有 `search:query`（仅扩请求/响应契约），引文是渲染层纯函数，因此 `web-api-map` 与契约计数门禁**零改动**。
 - **文档标注层 A5 验证（本次实跑，逐条可复现）**：`typecheck` 干净；`i18n:coverage --min 100` 九语言 100%（3196 键）；`check:web-api-map` 通过；eslint 0 error；prettier 对全部改动文件 `--check` 通过；**全量套件 `vitest run --maxWorkers=4`：1147 文件 / 14952 用例全绿（15 文件 / 191 用例 skip）**；契约/计数门禁 9 文件 151 用例全绿。真机新增用例 `--retries=0 --repeat-each=2` **2 passed**，并与 A3 三条 + A4 一条一起 `--retries=0` **5 passed**（A1–A4 语义未动）。原始读数存档见 `docs/evidence/2026-09-29-pdf-annotation-search.md`。
-- **文档标注层 A5 未做的一处（如实记录）**：**引文链接进分诊面板的导出**尚未接界面入口——接进去会改写 S4 已冻结的导出内容、并把 A4 已冻结的「两条通道」变成三条，两者都是本片的硬约束；接线可行性已核实（`Reference.pdfManagedFileId` 即 `ProjectFileItem.id`，artifact 项的 `sourceFileId`/`sourceVersionId` 正是标注锚点），留给需要时的一个小切片。
+  （该处已在 v1.76.1 补上：引文作为同一个分诊导出产物里的区块写入，A4 的通道词汇与字节级红线未动。）
+- **文档标注层 A5 当时未做的一处（现已补上）**：**引文链接进分诊面板的导出**当时尚未接界面入口——接进去会改写 S4 已冻结的导出内容、并把 A4 已冻结的「两条通道」变成三条，两者都是本片的硬约束；接线可行性已核实（`Reference.pdfManagedFileId` 即 `ProjectFileItem.id`，artifact 项的 `sourceFileId`/`sourceVersionId` 正是标注锚点），留给需要时的一个小切片。
 - **序列与结构工具 S1–S4（只读半片）**：UniProt 批量映射、BLAST、Clustal Omega、InterProScan 只读。五条红线均以用例钉住：① 提交单次尝试（`attempts===1`），轮询与取结果才可重试；② 结果落产物带 provenance（连接器 id + 参数 + 响应 sha256）；③ 批量映射逐条具名未命中（`n_mapped+n_unmapped===n_unique`）；④ InterProScan 只读——逐条断言请求只匹配 `/status` 与 `/result`、方法 GET、不含 `/run`；⑤ 失败具名七类（远端拒绝／作业未找到／作业失败／超时／结果为空／响应过大／契约变化）。真机（LIVE_API）：真 UniProt 映射 2.1s、真 blastp 作业 24.6s、真 Clustal 14.2s、真 InterProScan 只读 1.8s。
 - **序列与结构工具未做的三处已给理由**：HMMER 无可验证端点（不臆造 API）、S5 属另一数据湖域、S6 STRING 富集缺口有证据。同时修掉 `descriptors/genes.ts` 的显式 ORDER 白名单会静默丢弃新工具的坑，并补期望列表断言兜住；`src/main/update/cache-maintenance.ts` 登记进 `windows_sensitive` 分类（U3 遗漏），`classify-pr-changes` 41/41 绿。
 - **RO-Crate 1.1 导出**：把项目产出导出为**可互操作研究对象**——`ro-crate-metadata.json` 按 RO-Crate 1.1 的必需实体与引用规则成形，crate 里每个内容文件都能回溯到应用自己那条不可变、带 sha256 的产物版本记录。内容**全部接在既有机制上**（产物不可变版本 + `ArtifactVersionEvidence`、版本定位符 `createArtifactVersionLocator`、项目文件投影 `ProjectFileItem`、durable 布局）；**不新造身份编码**，`.staging/versions/` 里未发布的版本**永不出现在 crate 里**。新增纯函数 `src/shared/ro-crate.ts`（`buildRoCrateMetadata` + `validateRoCrate` **30 条断言**，分 `spec-must` / `spec-should` / `export-contract` 三级）、主进程导出器（读 durable provenance、逐字节复验、写完自校验）、真文件系统测试（真导出／篡改拒收／`.staging` 不导出／缺 content／空项目／路径逃逸）。**真机取证**：本机 dev 数据根下一个真实项目（4 个会话、15 个已发布产物版本）导出，`validation = { ok: true, passed: 30, failed: 0 }`、`skipped = []`，`@graph` 实体分布 `Dataset×1 / File×15 / CreateAction×15 / SoftwareApplication×5 / CreativeWork×6 / Organization×1`；原件与逐条断言结果存档在 `docs/evidence/2026-09-30-ro-crate-export.md`、`…-metadata.json`、`…-validation.json`（内容文件本身是研究数据，未提交）。常驻测试把已提交的 evidence 重新校验一遍（无网络、无真实数据根）。

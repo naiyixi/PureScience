@@ -805,6 +805,9 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'pdfAnnotation.status.reattached': '標註已重錨到目前版本',
   'pdfAnnotation.status.failed': '標註沒能儲存：{message}',
   'pdfAnnotation.status.loadFailed': '標註讀取失敗：{message}',
+  'pdfAnnotation.status.outsidePage': '這一點不在頁面上，沒有開始標註',
+  'pdfAnnotation.status.nothingDrawn': '沒有拖出區域，請拖出面積',
+  'pdfAnnotation.status.interrupted': '手勢被中斷，未儲存，請重畫',
   'pdfAnnotation.import.action': '從這份 PDF 匯入標註',
   'pdfAnnotation.import.idleHint': 'PDF 自身可能帶標註；匯入會保留能落位的部分，並說明跳過了什麼。',
   'pdfAnnotation.import.running': '匯入中…',
@@ -3333,6 +3336,22 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
     '未匯出 {notExported} 筆：待複核 {review} · 排除 {excluded} · 未判定 {notEvaluated} · 其中人工覆蓋 {byOverride}',
   'references.screening.export.receiptReasons': '具名原因：{reasons}',
   'references.screening.export.receiptNoReasons': '無具名原因。',
+  // 匯出的標註證據（文檔標註層 A5 接線）：檔案裡的引文區塊，以及回執裡說清「有多少、什麼留在外面」的兩行。
+  'references.screening.export.citation.header': '標註引文',
+  'references.screening.export.citation.scope': '範圍',
+  'references.screening.export.citation.counts':
+    '標註引文 {cited} 條 · 有依據的記錄 {withEvidence} / {exportable}',
+  'references.screening.export.citation.annotation': '依據標註',
+  'references.screening.export.citation.notAligned': '留在外面的標註',
+  'references.screening.export.citation.reason.reference-not-in-export-range':
+    '其記錄不在匯出範圍內',
+  'references.screening.export.citation.reason.reference-unknown': '其檔案未掛到本次匯出的任何記錄',
+  'references.screening.export.citation.reason.anchor-not-current': '它未錨定在目前檔案版本上',
+  'references.screening.export.citation.reason.annotation-refused': '庫內標註與自身的類型規則不符',
+  'references.screening.export.receiptCitations':
+    '標註引文：引用 {cited} 條 · 有依據的記錄 {withEvidence} / {exportable} · 留在外面 {notAligned}',
+  'references.screening.export.receiptCitationReasons': '留在外面的標註，按原因：{reasons}',
+  'references.screening.export.citationGap': '有 {count} 條記錄的標註無法讀取：{detail}',
   'references.screening.export.receiptProvenance':
     '合集 {collection} · 規則修訂 {revision}（{hash}）· {time}',
   'references.screening.export.receiptSavedTo': '已儲存到 {path}。',

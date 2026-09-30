@@ -1,0 +1,40 @@
+collected-at: 2026-09-30T11:20:32.155Z
+project: cmuo0ki940000wfllo8win6pt
+included record: Adults with a measured primary endpoint (file 3f4efa74-8452-4763-b24e-6c3e5e64cb86, version 13939906-807d-421e-92a1-dfbfee68426a)
+excluded record: Please exclude me: a systematic review (file 7e3adfe4-447e-4070-89ad-1f9c618b9d6f, version 580d6642-1c37-4ec8-b4cd-75eacb759717)
+
+the included record’s annotation (imported from the PDF’s own markup):
+  id: cmuo0klx20004wfllequxwgor
+  kind: highlight
+  quote: "Figure 1. Measured response"
+  checksum: sha256:89ea001945045aa4d56e33b884166efa77b0b09a0e7183ed6d139e53a46f8859
+  region 1: 0.250 0.197 0.375 0.020
+
+the excluded record’s annotation (drawn on the page):
+  id: cmuo0kl2x0003wflled77ewb5
+  kind: area
+  checksum: sha256:8ab6d242d6445ff581f30994352b29e0a875546fcb095bf81b58fbd33a7abf36
+
+the byte-level red line (the PDF the export describes):
+  /var/folders/2j/gdbnsc8d6hg9jhq34stph6g40000gn/T/purescience-electron-e2e-wefadP/storage/PureScience-DEV/artifacts/cmuo0ki940000wfllo8win6pt/e2e-session-1/message-1790767228200-4/annotated-evidence.pdf: 89ea001945045aa4d56e33b884166efa77b0b09a0e7183ed6d139e53a46f8859 (after: 89ea001945045aa4d56e33b884166efa77b0b09a0e7183ed6d139e53a46f8859)
+
+the exported file verbatim:
+[1] . Adults with a measured primary endpoint[EB/OL]. [2026-09-30].
+
+Annotation citations: cmuo0kmjh0008wfllxrbttm8s (included-only, scope r1)
+Annotations cited 1 · records with evidence 1 of 1
+
+[1] . Adults with a measured primary endpoint[EB/OL]. [2026-09-30].
+Evidence annotation: cmuo0klx20004wfllequxwgor (highlight)
+Citation: cmuo0klx20004wfllequxwgor (highlight)
+File: 3f4efa74-8452-4763-b24e-6c3e5e64cb86
+Version: 13939906-807d-421e-92a1-dfbfee68426a
+Checksum: sha256:89ea001945045aa4d56e33b884166efa77b0b09a0e7183ed6d139e53a46f8859
+Anchor: current
+Page: 1
+Region 1: 0.250 0.197 0.375 0.020
+Quoted passage: Figure 1. Measured response
+Annotation text: Keep this: the effect is large
+
+Annotations left out: 1
+  cmuo0kl2x0003wflled77ewb5: its record is not in the export range
