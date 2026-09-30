@@ -20,6 +20,11 @@ import type {
 } from '../../shared/settings'
 import type { EgressSettings } from '../../shared/egress'
 import type { ManualProxyConfig, ProxySettings } from '../../shared/proxy'
+import {
+  DEFAULT_EXECUTION_PROTECTION_SETTINGS,
+  isRemoteUnprotectedExecutionPolicy,
+  type ExecutionProtectionSettings
+} from '../../shared/execution-protection'
 import { SCENARIO_MODEL_IDS } from '../../shared/settings'
 import type { ScenarioModels } from '../../shared/settings'
 import type { ExternalComputeEndpoint } from '../../shared/compute'
@@ -526,6 +531,20 @@ export const sanitizeEgressSettings = (value: unknown): EgressSettings | undefin
   return { enabled: value.enabled === true, groups, customDomains }
 }
 
+// Rebuilds the stored execution-protection preferences from untrusted JSON. An unknown policy value
+// resolves to the default ("ask explicitly") rather than being dropped: a settings file edited by
+// hand must not be able to make unprotected remote execution silent.
+export const sanitizeExecutionProtectionSettings = (
+  value: unknown
+): ExecutionProtectionSettings | undefined => {
+  if (!isRecord(value)) return undefined
+  return {
+    remoteUnprotectedPolicy: isRemoteUnprotectedExecutionPolicy(value.remoteUnprotectedPolicy)
+      ? value.remoteUnprotectedPolicy
+      : DEFAULT_EXECUTION_PROTECTION_SETTINGS.remoteUnprotectedPolicy
+  }
+}
+
 // Rebuilds the stored child-process proxy settings from untrusted JSON: mode must be
 // 'system' or 'manual', and a manual entry only survives with a known type, a non-empty
 // host, and a port in 1..65535. A malformed payload yields undefined (follow system).
@@ -796,6 +815,10 @@ const sanitizeSettings = (value: unknown): StoredSettings => {
   const egress = sanitizeEgressSettings(value.egress)
 
   if (egress) settings.egress = egress
+
+  const executionProtection = sanitizeExecutionProtectionSettings(value.executionProtection)
+
+  if (executionProtection) settings.executionProtection = executionProtection
 
   const proxy = sanitizeProxySettings(value.proxy)
 
@@ -1291,6 +1314,15 @@ class SettingsRepository {
       customDomains: []
     }
     return this.mutate((settings) => ({ ...settings, egress: sanitized }))
+  }
+
+  // Persists the execution-protection preferences. Sanitized before write, so an unknown policy can
+  // never reach disk (it resolves to the default "ask explicitly" instead).
+  async setExecutionProtection(protection: ExecutionProtectionSettings): Promise<StoredSettings> {
+    const sanitized = sanitizeExecutionProtectionSettings(protection) ?? {
+      ...DEFAULT_EXECUTION_PROTECTION_SETTINGS
+    }
+    return this.mutate((settings) => ({ ...settings, executionProtection: sanitized }))
   }
 
   // Persists the child-process proxy settings. Sanitized before write; a malformed

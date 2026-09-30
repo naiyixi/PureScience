@@ -1,4 +1,5 @@
 import type { ArtifactFile } from './artifacts'
+import type { ExecutionProtectionSnapshot } from './execution-protection'
 import type { NotebookRuntimeBindings } from './notebook-runtime'
 
 export const NOTEBOOKS_DIR = 'notebooks'
@@ -345,6 +346,12 @@ export type NotebookRunRecord = {
   // The digest of the environment itself, so two runs in one environment can be compared at all: the
   // checksum above hashes the stored document, which carries capture timestamps and therefore never matches.
   environmentManifestFingerprint?: string
+  // The protection level this run executed at, captured when the run started — not reconstructed
+  // later from whatever the settings happen to say now. A run that produced a questionable result
+  // must be answerable with "what was it running under", and the answer has to be the one in force
+  // at the time. Absent on records written before protection levels existed (and on embedded
+  // constructions that were not given the live protection service).
+  executionProtection?: ExecutionProtectionSnapshot
   // Trusted turn/Branch attribution injected by the main-process RPC bridge. Legacy and user-run
   // records may omit it; a supplied Artifact producer must match all five fields.
   rootFrameId?: string

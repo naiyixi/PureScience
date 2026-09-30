@@ -14,6 +14,11 @@ import type {
   RunNotebookCellRequest
 } from '../../shared/notebook'
 import { getAppClaudeConfigDir } from '../settings/provider-env'
+import {
+  unresolvedExecutionProtectionSnapshot,
+  type ExecutionProtectionSnapshot,
+  type ExecutionSurface
+} from '../../shared/execution-protection'
 import { NotebookDataExecutionAdmissionOwner } from './data-execution-admission'
 import {
   EnvironmentManifestPublicationError,
@@ -91,6 +96,10 @@ type NotebookExecutionOwnerOptions = {
   ) => Promise<void>
   getMcpRpcConnectionResolver: () => McpRpcConnectionResolver | undefined
   notifyAvailable: (session: NotebookSessionAggregate, source: NotebookRunSource) => void
+  // The protection level each run executes at, captured at run start and persisted with the run.
+  // Required rather than optional: a construction that cannot answer this would silently write runs
+  // with no protection evidence, which is the gap this feature exists to close.
+  resolveExecutionProtection: (surface: ExecutionSurface) => Promise<ExecutionProtectionSnapshot>
   platform?: NodeJS.Platform
   shellProcess?: NotebookShellProcess
 }
@@ -120,6 +129,27 @@ class NotebookExecutionOwner {
 
   constructor(private readonly options: NotebookExecutionOwnerOptions) {
     this.shellProcess = options.shellProcess ?? new NotebookShellProcessAdapter(options.platform)
+  }
+
+  // Resolves the protection evidence for one run. A failing resolver must not block the execution the
+  // user asked for, but it must not be silent either: the run then records the floor with the reason
+  // named, so an unmeasured level can never read as "measured and fine".
+  private async executionProtectionEvidence(
+    surface: ExecutionSurface
+  ): Promise<Pick<NotebookRunRecord, 'executionProtection'>> {
+    try {
+      return { executionProtection: await this.options.resolveExecutionProtection(surface) }
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error)
+      console.error(`[notebook] Execution protection could not be resolved: ${detail}`)
+      return {
+        executionProtection: unresolvedExecutionProtectionSnapshot({
+          surface,
+          platform: this.options.platform ?? process.platform,
+          detail
+        })
+      }
+    }
   }
 
   setControlCompletionInterceptor(
@@ -168,6 +198,7 @@ class NotebookExecutionOwner {
       executionCount,
       environment,
       ...request.provenanceContext,
+      ...(await this.executionProtectionEvidence('notebook')),
       text: { stdout: '', stderr: '', traceback: '', plain: [] },
       outputs: [],
       artifacts: [],
@@ -342,6 +373,9 @@ class NotebookExecutionOwner {
       startedAt: Date.now(),
       cwdBefore: session.cwd,
       ...request.provenanceContext,
+      // The control-plane repl kernel is a local process spawned through the same wrapper as the
+      // terminal, so it reports the terminal surface rather than inventing a fifth one.
+      ...(await this.executionProtectionEvidence('shell')),
       text: { stdout: '', stderr: '', traceback: '', plain: [] },
       outputs: [],
       artifacts: [],
@@ -438,6 +472,7 @@ class NotebookExecutionOwner {
       startedAt: Date.now(),
       cwdBefore: session.cwd,
       ...request.provenanceContext,
+      ...(await this.executionProtectionEvidence('shell')),
       text: { stdout: '', stderr: '', traceback: '', plain: [] },
       outputs: [],
       artifacts: [],

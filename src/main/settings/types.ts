@@ -13,6 +13,7 @@ import type {
 } from '../../shared/settings'
 import type { EgressSettings } from '../../shared/egress'
 import type { ProxySettings } from '../../shared/proxy'
+import type { ExecutionProtectionSettings } from '../../shared/execution-protection'
 import type { ExternalComputeEndpoint } from '../../shared/compute'
 import { SETTINGS_FILE_VERSION } from '../../shared/settings'
 import type { OfficialVendorId } from '../../shared/provider-registry'
@@ -222,6 +223,9 @@ export type StoredSettings = {
   credentials?: StoredCredential[]
   // Network egress allowlist for child processes (notebook/repl/shell). Absent means unrestricted.
   egress?: EgressSettings
+  // Execution-protection preferences (how remote execution without any isolation is treated).
+  // Absent means the default policy: ask explicitly, never cover it with a remembered approval.
+  executionProtection?: ExecutionProtectionSettings
   // Outbound proxy for child processes (notebook/repl/shell): 'system' (default) or a
   // manual proxy. Absent means follow the system settings.
   proxy?: ProxySettings

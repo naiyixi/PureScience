@@ -30,6 +30,11 @@ import type {
   ProvisionProgress
 } from '../../shared/notebook-env'
 import type { PackageMirror } from '../../shared/mirror'
+import type {
+  ExecutionProtectionSnapshot,
+  ExecutionSurface
+} from '../../shared/execution-protection'
+import { conservativeExecutionProtectionResolver } from '../execution-protection/service'
 import { NotebookDataExecutionAdmissionOwner } from './data-execution-admission'
 import {
   NotebookEnvironmentManagementOwner,
@@ -166,6 +171,11 @@ type NotebookRuntimeServiceOptions = {
   // Platform seam for path-layout decisions. Production uses process.platform; tests can verify that
   // a Windows-shaped string alone never activates Windows conda behavior on another platform.
   platform?: NodeJS.Platform
+  // Resolves the protection level a run executes at, so every run record can answer "what was this
+  // running under". Production injects the live protection service (which reads the egress allowlist);
+  // omitted (tests / isolated embedders) falls back to the conservative resolver, which reports only
+  // the local OS write-guard and never assumes the allowlist is on.
+  resolveExecutionProtection?: (surface: ExecutionSurface) => Promise<ExecutionProtectionSnapshot>
   // Stateless shell child-process port. The production adapter owns platform invocation, encoding,
   // environment projection, and timeout teardown; tests inject a fake without crossing IPC/shared.
   shellProcess?: NotebookShellProcess
@@ -475,6 +485,9 @@ class NotebookRuntimeService {
       getMcpRpcConnectionResolver: () => this.mcpRpcConnectionResolver,
       notifyAvailable: (session, source) =>
         this.sessionLifecycle.notifyAvailable(session as RuntimeSession, source),
+      resolveExecutionProtection:
+        options.resolveExecutionProtection ??
+        conservativeExecutionProtectionResolver(options.platform ?? process.platform),
       platform: options.platform,
       shellProcess: options.shellProcess
     })

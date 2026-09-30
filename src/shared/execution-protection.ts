@@ -76,7 +76,10 @@ export const EXECUTION_PROTECTION_UNMET_CODES = [
   'os-sandbox-component-missing',
   // Remote execution runs under the user's own account on the host, with no local protection
   // layer applicable at all. This is the honest state of every remote surface in this build.
-  'remote-execution-has-no-local-protection'
+  'remote-execution-has-no-local-protection',
+  // The level could not be determined at all (the settings read backing it failed). Reported as its
+  // own gap instead of being mistaken for a level that was measured and came out low.
+  'protection-unresolved'
 ] as const
 
 export type ExecutionProtectionUnmetCode = (typeof EXECUTION_PROTECTION_UNMET_CODES)[number]
@@ -239,6 +242,26 @@ export const resolveExecutionProtection = (
   }
 }
 
+/**
+ * A snapshot for the case where the level could not be determined at all. Level is the floor
+ * (`unprotected`) and the reason is named, so a failed lookup is never confused with a measurement
+ * that came out low — and never silently reported as protected.
+ */
+export const unresolvedExecutionProtectionSnapshot = (input: {
+  surface: ExecutionSurface
+  platform: string
+  detail: string
+  capturedAt?: number
+}): ExecutionProtectionSnapshot => ({
+  surface: input.surface,
+  level: 'unprotected',
+  platform: input.platform,
+  capturedAt: input.capturedAt ?? Date.now(),
+  scope: { filesystem: 'unrestricted', network: 'unrestricted' },
+  applied: [],
+  unmet: [unmet('protection-unresolved', input.detail)]
+})
+
 /** The repair steps for the gaps a snapshot reports, in a stable order. Empty when nothing is unmet. */
 export const protectionRepairSteps = (
   snapshot: ExecutionProtectionSnapshot
@@ -303,6 +326,17 @@ export const isRemoteUnprotectedExecutionPolicy = (
 ): value is RemoteUnprotectedExecutionPolicy =>
   typeof value === 'string' &&
   (REMOTE_UNPROTECTED_EXECUTION_POLICIES as readonly string[]).includes(value)
+
+// Persisted execution-protection preferences. Kept as its own settings block rather than folded into
+// the egress allowlist: the allowlist decides what the network may reach, this decides what the app
+// is willing to run unprotected.
+export type ExecutionProtectionSettings = {
+  remoteUnprotectedPolicy: RemoteUnprotectedExecutionPolicy
+}
+
+export const DEFAULT_EXECUTION_PROTECTION_SETTINGS: ExecutionProtectionSettings = {
+  remoteUnprotectedPolicy: DEFAULT_REMOTE_UNPROTECTED_EXECUTION_POLICY
+}
 
 /**
  * Whether a remembered (session/project/global) approval may cover this request without asking

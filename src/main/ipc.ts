@@ -241,6 +241,7 @@ import { FolderGrantsService } from './folder-grants'
 import { registerFolderGrantsIpcHandlers } from './folder-grants-ipc'
 import { getAppClaudeConfigDir } from './settings/provider-env'
 import { createDefaultSettingsService } from './settings/service'
+import { createExecutionProtectionService } from './execution-protection/service'
 import { ContextSummaryRepository } from './settings/context-summary-repository'
 import { createContextSummaryCapture } from './settings/context-summary-capture'
 import { RoutineRepository } from './settings/routine-repository'
@@ -454,6 +455,15 @@ const createApplicationModules = async (
     capability: createDefaultSettingsService()
   }))
   const storedSettings = await settingsService.getStoredSettings()
+  // One execution-protection service backs every surface: the run evidence the notebook runtime
+  // writes, the compute approval gate, and the protection matrix the settings panel reads. It reads
+  // the egress allowlist from this same settings service, so the reported level can never disagree
+  // with the switch the user actually flipped.
+  const executionProtection = createExecutionProtectionService({
+    readEgress: () => settingsService.getEgress(),
+    readRemoteUnprotectedPolicy: async () =>
+      (await settingsService.getExecutionProtection())?.remoteUnprotectedPolicy
+  })
   const storageLog = createLogger('storage')
   // Prime the data-root cache from settings before any data repository is constructed below. A change
   // to this value only takes effect after a restart, so reading it once here is sufficient.
@@ -768,6 +778,7 @@ const createApplicationModules = async (
           request.sessionId,
           request.path
         ),
+      resolveExecutionProtection: (surface) => executionProtection.snapshot(surface),
       events: applicationEvents,
       disposeTimeoutMs: QUIT_SHUTDOWN_BUDGET_MS,
       isBackendTeardownOwned: () => backendTeardownOwnedByCoordinator

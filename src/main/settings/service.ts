@@ -97,6 +97,10 @@ import { collectThirdPartyLicenses, type ThirdPartyLicenseEntry } from '../third
 import { CREDENTIAL_SERVICE_LABELS, testCredentialSecret, toCredentialView } from './credentials'
 import { mirrorEgressHosts } from '../../shared/egress'
 import {
+  DEFAULT_EXECUTION_PROTECTION_SETTINGS,
+  type ExecutionProtectionSettings
+} from '../../shared/execution-protection'
+import {
   applyEgressSettings,
   respondToEgressApproval,
   type EgressApprovalRequest,
@@ -575,6 +579,12 @@ class SettingsService {
     return (await this.repository.getSettings()).egress
   }
 
+  // Reads the persisted execution-protection preferences (undefined = defaults: ask explicitly,
+  // never let a remembered approval cover an unprotected remote run).
+  async getExecutionProtection(): Promise<ExecutionProtectionSettings | undefined> {
+    return (await this.repository.getSettings()).executionProtection
+  }
+
   // Reads the persisted child-process proxy settings (undefined = follow system).
   async getProxy(): Promise<ProxySettings | undefined> {
     return (await this.repository.getSettings()).proxy
@@ -658,6 +668,15 @@ class SettingsService {
       mirrorEgressHosts(persisted.packageMirror)
     )
     return persisted.egress ?? { enabled: false, groups: {}, customDomains: [] }
+  }
+
+  // Persists the execution-protection preferences. No runtime to re-apply: the value is read fresh
+  // by every approval decision and every matrix query, so the next run already sees it.
+  async setExecutionProtection(
+    protection: ExecutionProtectionSettings
+  ): Promise<ExecutionProtectionSettings> {
+    const persisted = await this.repository.setExecutionProtection(protection)
+    return persisted.executionProtection ?? { ...DEFAULT_EXECUTION_PROTECTION_SETTINGS }
   }
 
   // Settles a suspended egress approval from the in-conversation card (deny / allow once /

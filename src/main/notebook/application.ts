@@ -16,6 +16,7 @@ type NotebookApplicationDeps = Pick<
   | 'locale'
   | 'appVersion'
   | 'resolveArtifactPath'
+  | 'resolveExecutionProtection'
 > & {
   events: ApplicationEventPublisher
 }

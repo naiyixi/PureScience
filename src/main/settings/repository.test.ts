@@ -3,7 +3,11 @@ import { isAbsolute, join, normalize, sep } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { SettingsRepository, sanitizeSettings } from './repository'
+import {
+  SettingsRepository,
+  sanitizeExecutionProtectionSettings,
+  sanitizeSettings
+} from './repository'
 import type { StoredProvider } from './types'
 
 // Capture the warn calls the repository makes through createLogger. vi.hoisted runs before the
@@ -1202,5 +1206,53 @@ describe('auto-apply update flag', () => {
 
     await repository.setAutoApplyUpdate(false)
     expect((await repository.getSettings()).autoApplyUpdate).toBeUndefined()
+  })
+})
+
+describe('execution protection settings', () => {
+  it('keeps a known remote policy and resolves an unknown one to the default', () => {
+    expect(sanitizeExecutionProtectionSettings({ remoteUnprotectedPolicy: 'deny' })).toEqual({
+      remoteUnprotectedPolicy: 'deny'
+    })
+    expect(sanitizeExecutionProtectionSettings({ remoteUnprotectedPolicy: 'remembered' })).toEqual({
+      remoteUnprotectedPolicy: 'remembered'
+    })
+    // A hand-edited file must not be able to reach a silent policy: unknown values fall back to the
+    // default (ask explicitly) instead of being dropped or trusted.
+    expect(sanitizeExecutionProtectionSettings({ remoteUnprotectedPolicy: 'silent' })).toEqual({
+      remoteUnprotectedPolicy: 'confirm'
+    })
+    expect(sanitizeExecutionProtectionSettings({})).toEqual({
+      remoteUnprotectedPolicy: 'confirm'
+    })
+    expect(sanitizeExecutionProtectionSettings('deny')).toBeUndefined()
+    expect(sanitizeExecutionProtectionSettings(null)).toBeUndefined()
+  })
+
+  it('round-trips the policy through settings.json', async () => {
+    const root = await createStorageRoot()
+    const repository = new SettingsRepository(root)
+
+    await repository.setExecutionProtection({ remoteUnprotectedPolicy: 'deny' })
+    expect((await repository.getSettings()).executionProtection).toEqual({
+      remoteUnprotectedPolicy: 'deny'
+    })
+
+    const raw = JSON.parse(await readFile(join(root, 'settings.json'), 'utf8')) as {
+      executionProtection?: { remoteUnprotectedPolicy?: string }
+    }
+    expect(raw.executionProtection?.remoteUnprotectedPolicy).toBe('deny')
+  })
+
+  it('falls back to the default when the stored value is unreadable', async () => {
+    const root = await createStorageRoot()
+    await writeFile(
+      join(root, 'settings.json'),
+      JSON.stringify({ version: 2, executionProtection: { remoteUnprotectedPolicy: 'whatever' } })
+    )
+    const repository = new SettingsRepository(root)
+    expect((await repository.getSettings()).executionProtection).toEqual({
+      remoteUnprotectedPolicy: 'confirm'
+    })
   })
 })
