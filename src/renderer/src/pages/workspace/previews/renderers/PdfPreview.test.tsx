@@ -1447,4 +1447,39 @@ describe('PdfPreviewContent annotations', () => {
       ).toBe('This PDF carries no annotations')
     )
   })
+
+  // The cover decision (#16): on a pane too narrow for the panel and the page side by side, the panel
+  // covers the page instead of taking room from it. jsdom has no layout, so what is held here is the
+  // STRUCTURE that makes that true — the panel is an absolutely positioned child of the PANE, not a
+  // sibling of the pages inside the scroller whose width they are laid out to. A panel moved inside that
+  // box (or given a place in its flow) is the regression that would narrow every page, and it fails here
+  // before it ever shows up in the measured numbers.
+  it('keeps the panel an overlay on the pane, outside the box the pages are laid out in', async () => {
+    await renderPreview()
+
+    await act(async () => {
+      container.querySelector<HTMLElement>('[data-slot="pdf-annotation-panel-toggle"]')?.click()
+    })
+
+    const panel = container.querySelector<HTMLElement>('[data-testid="pdf-annotation-panel"]')
+    const scroller = container.querySelector<HTMLElement>('[role="region"]')
+    expect(panel).not.toBeNull()
+    expect(scroller).not.toBeNull()
+
+    expect(
+      scroller!.contains(panel!),
+      'the panel sits inside the scroller the pages are measured in'
+    ).toBe(false)
+    expect(panel!.parentElement, 'the panel is not positioned against the pane itself').toBe(
+      scroller!.parentElement
+    )
+    expect(panel!.className, 'the panel is not taken out of the pane’s flow').toContain('absolute')
+
+    // And its width is bounded by the PANE, never by a share of it: `w-80` where the pane allows it,
+    // `max-w-full` where it does not. The 85% bound this replaced shrank the panel to 283px on a 333px
+    // pane — narrower than the reading width the cover decision exists to preserve.
+    expect(panel!.className).toContain('w-80')
+    expect(panel!.className).toContain('max-w-full')
+    expect(panel!.className).not.toContain('max-w-[85%]')
+  })
 })
