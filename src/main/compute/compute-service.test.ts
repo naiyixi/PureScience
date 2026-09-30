@@ -12,6 +12,7 @@ import type { ComputeHostRepository } from './repository'
 import type { ResolvedSshTarget, SshRunner } from './ssh-runner'
 import type { ScpRunner } from './scp-runner'
 import type { ConcurrencyManager } from './concurrency-manager'
+import { resolveExecutionProtection } from '../../shared/execution-protection'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -2764,5 +2765,95 @@ describe('getSessionConcurrencyStatus', () => {
     await expect(service.getSessionConcurrencyStatus('session-123')).rejects.toThrow(
       /ConcurrencyManager is required/
     )
+  })
+})
+
+// ---------------------------------------------------------------------------
+// ComputeService — protection evidence on remote operations
+// ---------------------------------------------------------------------------
+
+describe('ComputeService — protection evidence', () => {
+  // The real resolver's answer for the remote-host surface: a remote command cannot be isolated by
+  // this machine, so this is what the card must state and what the result must carry.
+  const remoteSnapshot = resolveExecutionProtection({
+    surface: 'remote-host',
+    platform: 'darwin',
+    networkAllowlistEnabled: true,
+    osWriteGuardAvailable: true
+  })
+
+  const buildService = (
+    broker: ComputeApprovalBroker,
+    resolveExecutionProtectionPort: (
+      surface: never,
+      remote: never
+    ) => Promise<typeof remoteSnapshot>
+  ): ComputeService => {
+    const runner = makeFakeRunner({
+      exitCode: 0,
+      stdout: 'ok',
+      stderr: '',
+      truncated: false,
+      timedOut: false
+    })
+    const { repo } = makeRepo()
+    return new ComputeService(
+      runner,
+      repo,
+      broker,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      // Positional slot 12 in the ComputeService constructor: the protection port.
+      resolveExecutionProtectionPort as never
+    )
+  }
+
+  it('states the level on the approval the user decides on, and on that call result', async () => {
+    let approval: { protection?: { surface: string; level: string } } | undefined
+    const request = vi.fn((info: { protection?: { surface: string; level: string } }) => {
+      approval = info
+      return Promise.resolve('once')
+    })
+    const broker = { request, respond: vi.fn() } as unknown as ComputeApprovalBroker
+    const service = buildService(broker, async () => remoteSnapshot)
+
+    const result = await service.callCommand('ssh:biowulf', 'echo hello', 'test intent')
+
+    // The card is where the user cannot judge the risk without this field.
+    expect(approval?.protection).toMatchObject({
+      surface: 'remote-host',
+      level: 'unprotected'
+    })
+    // ...and the call keeps its own evidence after the card is gone.
+    expect(result.execution_protection).toMatchObject({
+      surface: 'remote-host',
+      level: 'unprotected'
+    })
+  })
+
+  it('records an unresolved gap instead of inventing a level when the resolver fails', async () => {
+    let approval: { protection?: unknown } | undefined
+    const request = vi.fn((info: { protection?: unknown }) => {
+      approval = info
+      return Promise.resolve('once')
+    })
+    const broker = { request, respond: vi.fn() } as unknown as ComputeApprovalBroker
+    const service = buildService(broker, async () => {
+      throw new Error('settings unreadable')
+    })
+
+    const result = await service.callCommand('ssh:biowulf', 'echo hello', 'test intent')
+
+    expect(approval?.protection).toMatchObject({
+      level: 'unprotected',
+      unmet: [{ code: 'protection-unresolved', detail: 'settings unreadable' }]
+    })
+    expect(result.execution_protection).toMatchObject({ level: 'unprotected' })
   })
 })

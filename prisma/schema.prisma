@@ -429,6 +429,9 @@ model ComputeJob {
   harvestError            String?
   // leftOnRemote: JSON [{uri, size_mb, reason}] — files left on the remote side after harvest.
   leftOnRemote            String?
+  // executionProtection: JSON snapshot of the protection level in force at submission. Nullable and
+  // pure-additive so existing rows are unaffected; the level is recorded, never recomputed on read.
+  executionProtection     String?
   // notifiedAt: set when the compute_done notification has been enqueued to the inbox.
   notifiedAt              DateTime?
   // notificationConsumedAt: set by wait_for_notification when the notification is consumed.

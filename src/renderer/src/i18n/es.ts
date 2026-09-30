@@ -2405,7 +2405,7 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.remoteBrowserLinkHint':
     'Abre un enlace persistente en cualquier navegador con verificación en dos pasos.',
   'settings.remoteCommandsNotSandboxed':
-    'Los comandos remotos se ejecutan con tu cuenta en el host y no están aislados en un sandbox. Aprueba solo',
+    'Los comandos remotos se ejecutan con tu cuenta en el host y nunca están aislados en un sandbox. Aprueba solo si confías en el origen del comando.',
   'settings.remoteFileBrowser': 'Explorador de archivos remoto',
   'settings.remoteItThirdParty':
     'Remote.It es un servicio de terceros. PureScience solo llama a su CLI de escritorio instalada por el usuario y no lo incluye, redistribuye, registra ni crea una cuenta para él.',

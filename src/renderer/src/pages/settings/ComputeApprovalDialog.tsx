@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 import { ShieldAlert, ChevronDown, ChevronUp } from 'lucide-react'
 import { Dialog } from 'radix-ui'
-import { useLanguage } from '@/i18n'
+import { useLanguage, type TranslationKey } from '@/i18n'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -18,6 +18,7 @@ import {
   PermissionScopeConfirmationDialog,
   type BroadPermissionScope
 } from '@/pages/workspace/PermissionScopeConfirmationDialog'
+import type { ExecutionProtectionLevel } from '../../../../shared/execution-protection'
 import { useComputeStore } from '@/stores/compute-store'
 
 // A modal approval card for a pending compute call_command. The card cannot be dismissed without
@@ -55,6 +56,22 @@ export function ComputeApprovalDialog(): React.JSX.Element | null {
   const isLongCommand = dialogRequest.command_preview !== dialogRequest.command_full
   const showFull = expandedRequestId === dialogRequest.id
 
+  // A remote run cannot be isolated by this machine, and the card must say so before the decision. When
+  // the resolved level is unprotected, the remembered scopes are NOT offered: under the default policy
+  // such a grant would not be honored on the next call, so offering it would promise something the app
+  // will not keep. Widening that is an explicit opt-in in Settings → Execution protection.
+  const protection = dialogRequest.protection
+  const isUnprotected = protection?.level === 'unprotected'
+  const protectionLabelKey: TranslationKey | undefined = protection
+    ? (
+        {
+          'os-sandbox': 'protection.levelOsSandbox',
+          'network-allowlist': 'protection.levelNetworkAllowlist',
+          unprotected: 'protection.levelUnprotected'
+        } satisfies Record<ExecutionProtectionLevel, TranslationKey>
+      )[protection.level]
+    : undefined
+
   return (
     <Dialog.Root open={Boolean(request)}>
       <Dialog.Portal>
@@ -78,7 +95,6 @@ export function ComputeApprovalDialog(): React.JSX.Element | null {
                 className={cn(dialogDescriptionClassName, 'text-xs [text-wrap:pretty]')}
               >
                 {t('settings.remoteCommandsNotSandboxed')}
-                if you trust this command.
               </Dialog.Description>
             </div>
           </div>
@@ -135,6 +151,37 @@ export function ComputeApprovalDialog(): React.JSX.Element | null {
             )}
           </div>
 
+          {protectionLabelKey && (
+            <div
+              data-slot="compute-approval-protection"
+              className={cn(
+                'mt-3 space-y-1.5 rounded-lg border p-3 text-xs',
+                isUnprotected ? 'border-destructive/40 bg-destructive/10' : 'border-border bg-card'
+              )}
+            >
+              <div className="flex gap-2">
+                <span className="w-16 shrink-0 text-muted-foreground">
+                  {t('protection.runEvidenceLabel')}
+                </span>
+                <span
+                  data-slot="compute-approval-protection-level"
+                  className={cn(
+                    'min-w-0 font-medium',
+                    isUnprotected ? 'text-destructive' : 'text-foreground'
+                  )}
+                >
+                  {t(protectionLabelKey)}
+                </span>
+              </div>
+              {isUnprotected && (
+                <>
+                  <p className="text-muted-foreground">{t('protection.approvalUnprotectedBody')}</p>
+                  <p className="text-muted-foreground">{t('protection.approvalPolicyPointer')}</p>
+                </>
+              )}
+            </div>
+          )}
+
           <div className={cn(dialogFooterClassName, 'mt-4 flex-wrap')}>
             <Button type="button" variant="destructive" onClick={deny}>
               Deny
@@ -142,15 +189,25 @@ export function ComputeApprovalDialog(): React.JSX.Element | null {
             <Button type="button" variant="outline" onClick={approveOnce}>
               Once
             </Button>
-            <Button type="button" variant="outline" onClick={approveSession}>
-              {t('settings.thisSessionScope')}
-            </Button>
-            <Button type="button" variant="outline" onClick={() => setPendingBroadScope('project')}>
-              {t('settings.thisProjectScope')}
-            </Button>
-            <Button type="button" onClick={() => setPendingBroadScope('global')}>
-              Always
-            </Button>
+            {/* Remembered scopes are hidden for an unprotected run (see the note above the label):
+                only an explicit opt-in in settings makes such a grant effective. */}
+            {!isUnprotected && (
+              <>
+                <Button type="button" variant="outline" onClick={approveSession}>
+                  {t('settings.thisSessionScope')}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setPendingBroadScope('project')}
+                >
+                  {t('settings.thisProjectScope')}
+                </Button>
+                <Button type="button" onClick={() => setPendingBroadScope('global')}>
+                  Always
+                </Button>
+              </>
+            )}
           </div>
         </Dialog.Content>
       </Dialog.Portal>

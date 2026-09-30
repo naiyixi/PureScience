@@ -4,6 +4,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { ComputeApprovalRequest } from '../../../../shared/compute'
+import { resolveExecutionProtection } from '../../../../shared/execution-protection'
 import { createInitialComputeState, useComputeStore } from '@/stores/compute-store'
 import { ComputeApprovalDialog } from './ComputeApprovalDialog'
 
@@ -124,5 +125,57 @@ describe('ComputeApprovalDialog', () => {
     )
 
     expect(useComputeStore.getState().respondApproval).toHaveBeenCalledWith(request.id, decision)
+  })
+})
+
+describe('ComputeApprovalDialog — protection level', () => {
+  // A remote command cannot be isolated by this machine, so this is the real resolver's answer for
+  // the remote-host surface — not a hand-written fixture.
+  const unprotected = resolveExecutionProtection({
+    surface: 'remote-host',
+    platform: 'darwin',
+    networkAllowlistEnabled: true,
+    osWriteGuardAvailable: true
+  })
+
+  it('states that the run is unprotected and withholds the scopes the broker would not keep', () => {
+    useComputeStore.setState({ pendingApprovals: [{ ...request, protection: unprotected }] })
+    act(() => root.render(<ComputeApprovalDialog />))
+
+    const block = document.body.querySelector('[data-slot="compute-approval-protection"]')
+    expect(block).not.toBeNull()
+    expect(block?.textContent).toContain('Protection level')
+    expect(block?.textContent).toContain('Unprotected')
+    // The pointer to the explicit opt-in stands where the remembered scopes would be.
+    expect(block?.textContent).toContain('Settings → Execution protection')
+
+    expect(findButton('Deny')).toBeDefined()
+    expect(findButton('Once')).toBeDefined()
+    expect(findButton('This session')).toBeUndefined()
+    expect(findButton('This project')).toBeUndefined()
+    expect(findButton('Always')).toBeUndefined()
+  })
+
+  it('keeps the remembered scopes when the request reports a protected level', () => {
+    useComputeStore.setState({
+      pendingApprovals: [
+        { ...request, protection: { ...unprotected, level: 'os-sandbox' } }
+      ]
+    })
+    act(() => root.render(<ComputeApprovalDialog />))
+
+    const block = document.body.querySelector('[data-slot="compute-approval-protection"]')
+    expect(block?.textContent).toContain('OS sandbox')
+    expect(findButton('This session')).toBeDefined()
+    expect(findButton('This project')).toBeDefined()
+    expect(findButton('Always')).toBeDefined()
+  })
+
+  it('renders no protection block for a request that carries none', () => {
+    useComputeStore.setState({ pendingApprovals: [request] })
+    act(() => root.render(<ComputeApprovalDialog />))
+
+    expect(document.body.querySelector('[data-slot="compute-approval-protection"]')).toBeNull()
+    expect(findButton('Always')).toBeDefined()
   })
 })

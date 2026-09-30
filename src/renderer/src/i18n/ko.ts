@@ -2314,7 +2314,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.remoteBrowserAccessTitle': '원격 브라우저 액세스',
   'settings.remoteBrowserLinkHint': '2단계 인증으로 모든 브라우저에서 영구 링크를 엽니다.',
   'settings.remoteCommandsNotSandboxed':
-    '원격 명령은 호스트에서 사용자 계정으로 실행되며 샌드박스로 보호되지 않습니다. 승인할 때는 ',
+    '원격 명령은 호스트에서 사용자 계정으로 실행되며 샌드박스로 보호되지 않습니다. 명령의 출처를 신뢰할 수 있을 때만 승인하세요.',
   'settings.remoteFileBrowser': '원격 파일 브라우저',
   'settings.remoteItThirdParty':
     'Remote.It은 타사 서비스입니다. PureScience는 사용자가 설치한 데스크톱 CLI만 호출하며, 이를 포함하거나 재배포, 등록 또는 계정을 만들지 않습니다.',

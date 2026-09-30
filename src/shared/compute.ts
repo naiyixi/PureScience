@@ -1,3 +1,5 @@
+import type { ExecutionProtectionSnapshot } from './execution-protection'
+
 // Shared compute-host types crossing the main <-> renderer IPC boundary.
 //
 // Phase 1 (issue 01) covers host record management only: the SQLite/Prisma layer owns ComputeHost
@@ -142,6 +144,10 @@ export type ExecResult = {
   stdout: string
   stderr: string
   truncated: boolean
+  // The protection level this remote command ran under. A command on a compute host cannot be
+  // isolated by this machine, so the result carries the fact rather than leaving the reader to
+  // assume either way. Absent only when no protection resolver was wired.
+  execution_protection?: ExecutionProtectionSnapshot
 }
 
 // Structured error payload for call_command failures. error_code identifies the failure class;
@@ -179,6 +185,10 @@ export type ComputeApprovalRequest = {
   resources?: string
   timeout_seconds?: number
   remote_workdir?: string
+  // The protection level in force when this operation was requested. Always present in production:
+  // a remote approval must state whether the run is protected, and the same value is persisted with
+  // the job so the answer survives the turn.
+  protection?: ExecutionProtectionSnapshot
 }
 
 // The job status values for the Phase 3a state machine. 'queued' is reserved for Phase 3c.
@@ -219,6 +229,10 @@ export type ComputeJob = {
   harvest_error?: string
   // left_on_remote: JSON string [{uri, size_mb, reason}] — files not downloaded from remote.
   left_on_remote?: string
+  // The protection level this job was submitted under. Persisted (not recomputed on read) because
+  // the level in force at submission is the fact a later reader needs; the settings may have changed
+  // since. Absent on jobs submitted before protection levels existed.
+  execution_protection?: ExecutionProtectionSnapshot
   // notified_at: epoch ms when the compute_done notification was enqueued to the inbox.
   notified_at?: number
   // notification_consumed_at: epoch ms when wait_for_notification consumed the notification.

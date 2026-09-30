@@ -612,6 +612,10 @@ const COMPUTE_JOB_ADD_LEFT_ON_REMOTE_DDL = `ALTER TABLE "ComputeJob" ADD COLUMN 
 const COMPUTE_JOB_ADD_NOTIFIED_AT_DDL = `ALTER TABLE "ComputeJob" ADD COLUMN "notifiedAt" DATETIME`
 const COMPUTE_JOB_ADD_NOTIFICATION_CONSUMED_AT_DDL = `ALTER TABLE "ComputeJob" ADD COLUMN "notificationConsumedAt" DATETIME`
 
+// Migration guard: add the execution-protection snapshot to ComputeJob. Nullable like the harvest
+// columns, so a database created before protection levels existed keeps working without a rewrite.
+const COMPUTE_JOB_ADD_EXECUTION_PROTECTION_DDL = `ALTER TABLE "ComputeJob" ADD COLUMN "executionProtection" TEXT`
+
 // Cached image-evidence results from the Vision model relay . Pure-additive
 // table referencing nothing, applied as CREATE TABLE IF NOT EXISTS so a packaged app stays
 // byte-compatible with the generated client without shipping the migrate engine. DDL mirrors the
@@ -1037,6 +1041,13 @@ const ensureProjectSchema = async (client: PrismaClient): Promise<void> => {
   await addColumnIfMissing(client, 'ComputeJob', 'harvestError', COMPUTE_JOB_ADD_HARVEST_ERROR_DDL)
   await addColumnIfMissing(client, 'ComputeJob', 'leftOnRemote', COMPUTE_JOB_ADD_LEFT_ON_REMOTE_DDL)
   await addColumnIfMissing(client, 'ComputeJob', 'notifiedAt', COMPUTE_JOB_ADD_NOTIFIED_AT_DDL)
+  // Migration guard for the execution-protection snapshot column (see the DDL comment above).
+  await addColumnIfMissing(
+    client,
+    'ComputeJob',
+    'executionProtection',
+    COMPUTE_JOB_ADD_EXECUTION_PROTECTION_DDL
+  )
   await addColumnIfMissing(
     client,
     'Reference',

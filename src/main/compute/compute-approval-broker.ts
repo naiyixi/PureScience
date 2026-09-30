@@ -1,8 +1,18 @@
 import type { ComputeApprovalRequest, ComputeApprovalDecision } from '../../shared/compute'
+import {
+  DEFAULT_REMOTE_UNPROTECTED_EXECUTION_POLICY,
+  policyDeniesUnprotectedExecution,
+  rememberedApprovalCoversUnprotected,
+  type RemoteUnprotectedExecutionPolicy
+} from '../../shared/execution-protection'
 import type { ComputePermissionGrantAdapter } from './permission-grant-adapter'
+
+import { createLogger } from '../logger'
 
 // Re-export so callers that import from this module don't have to reference shared/compute directly.
 export type { ComputeApprovalDecision }
+
+const log = createLogger('compute-approval')
 
 // Context passed with each approval request so the broker can check and record grants.
 export type ComputeApprovalContext = {
@@ -44,6 +54,12 @@ type ComputeApprovalBrokerDeps = {
   }) => Promise<void>
   // Revalidates the immutable host identity immediately before a remembered decision is persisted.
   isProviderCurrent?: (owner: { providerId: string; ownerId?: string }) => Promise<boolean>
+  // How remote execution with no protection is treated. Absent means the default policy: ask
+  // explicitly every time, never let a remembered approval cover it silently.
+  readRemoteUnprotectedPolicy?: () =>
+    | RemoteUnprotectedExecutionPolicy
+    | Promise<RemoteUnprotectedExecutionPolicy | undefined>
+    | undefined
 }
 
 // Bridges the main-process compute gate to the renderer approval card. Holds the call_command
@@ -127,7 +143,27 @@ export class ComputeApprovalBroker {
     const providerId = info.provider_id
     const providerGeneration = this.providerGenerations.get(providerId) ?? 0
 
-    if (this.deps.permissionGrants) {
+    // ── unprotected remote execution policy ────────────────────────────────────────
+    // A remote run cannot be isolated by this machine, so the level it would run at is decided before
+    // any grant is consulted. Under `deny` there is no card: the run is refused outright. Under the
+    // default (`confirm`), a remembered approval is not allowed to cover it — that approval was
+    // granted without ever naming a protection level, so honoring it silently would be exactly the
+    // silent unprotected execution this feature exists to remove.
+    //
+    // The policy is read ONLY for a request that carries a protection snapshot: a request without one
+    // did not participate in protection reporting, and introducing an await on that path would change
+    // the resolution order for every existing caller (a caller that answers synchronously after the
+    // first flush would answer before the card is armed, and the request would hang).
+    const isUnprotected = info.protection?.level === 'unprotected'
+    let policy: RemoteUnprotectedExecutionPolicy = DEFAULT_REMOTE_UNPROTECTED_EXECUTION_POLICY
+    let rememberedCoversRequest = true
+    if (isUnprotected) {
+      policy = await this.unprotectedPolicy()
+      if (policyDeniesUnprotectedExecution(policy, info.protection!.level)) return 'deny'
+      rememberedCoversRequest = rememberedApprovalCoversUnprotected(policy)
+    }
+
+    if (rememberedCoversRequest && this.deps.permissionGrants) {
       const durableScope = await this.deps.permissionGrants.resolve({
         sessionId,
         projectId,
@@ -144,7 +180,7 @@ export class ComputeApprovalBroker {
     }
 
     // ── legacy project grant check (persistent) ───────────────────────────────────
-    if (this.deps.checkProjectGrant) {
+    if (rememberedCoversRequest && this.deps.checkProjectGrant) {
       const hasProject = await this.deps.checkProjectGrant({ projectId, operation, providerId })
       if (hasProject) {
         return (await this.isProviderCurrent(providerId, ctx.ownerId, providerGeneration))
@@ -155,7 +191,7 @@ export class ComputeApprovalBroker {
 
     // ── conversation grant check (session in-memory) ───────────────────────────────
     const convKey = `${sessionId}:${operation}:${providerId}`
-    if (this.conversationGrants.has(convKey)) {
+    if (rememberedCoversRequest && this.conversationGrants.has(convKey)) {
       return (await this.isProviderCurrent(providerId, ctx.ownerId, providerGeneration))
         ? 'conversation'
         : 'deny'
@@ -183,15 +219,27 @@ export class ComputeApprovalBroker {
       return 'deny'
     }
 
-    // Record grant if applicable.
-    if (this.deps.permissionGrants) {
+    // Record grant if applicable. An unprotected request under a policy that does not honor
+    // remembered approvals records nothing: persisting a grant the next call would ignore would make
+    // the revocable-grant list lie about what the user has actually authorized. The refusal is named
+    // rather than silent, so a caller that somehow offered that scope is visible in the log.
+    if (!rememberedCoversRequest && decision !== 'deny' && decision !== 'once') {
+      log.warn('unprotected remote approval scope was not memorized', {
+        operation,
+        providerId,
+        scope: decision,
+        policy
+      })
+    }
+
+    if (rememberedCoversRequest && this.deps.permissionGrants) {
       await this.deps.permissionGrants.remember(
         { sessionId, projectId, operation, providerId },
         decision
       )
-    } else if (decision === 'conversation') {
+    } else if (rememberedCoversRequest && decision === 'conversation') {
       this.conversationGrants.add(convKey)
-    } else if (decision === 'project' && this.deps.saveProjectGrant) {
+    } else if (rememberedCoversRequest && decision === 'project' && this.deps.saveProjectGrant) {
       await this.deps.saveProjectGrant({ projectId, operation, providerId })
     }
 
@@ -203,6 +251,13 @@ export class ComputeApprovalBroker {
     }
 
     return decision
+  }
+
+  // The stored policy, read fresh for every decision so a settings change applies to the next remote
+  // operation instead of waiting for a restart. Absent reader or value means the default (ask).
+  private async unprotectedPolicy(): Promise<RemoteUnprotectedExecutionPolicy> {
+    const stored = await this.deps.readRemoteUnprotectedPolicy?.()
+    return stored ?? DEFAULT_REMOTE_UNPROTECTED_EXECUTION_POLICY
   }
 
   // Called from the IPC handler when the renderer responds. Unknown ids are ignored.

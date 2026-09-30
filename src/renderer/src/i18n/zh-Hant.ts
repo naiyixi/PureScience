@@ -2178,7 +2178,8 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.remoteBrowserAccess': '遠端瀏覽器存取',
   'settings.remoteBrowserAccessTitle': '遠端瀏覽器存取',
   'settings.remoteBrowserLinkHint': '在任意瀏覽器中開啟持久連結，並經過兩步驟驗證。',
-  'settings.remoteCommandsNotSandboxed': '遠端指令會以你的帳戶在主機上執行，且不受沙箱保護。請僅在',
+  'settings.remoteCommandsNotSandboxed':
+    '遠端指令會以你的帳戶在主機上執行，且不受沙箱保護。請僅在確認指令來源可信時批准。',
   'settings.remoteFileBrowser': '遠端檔案瀏覽器',
   'settings.remoteItThirdParty':
     'Remote.It 是第三方服務。PureScience 只會呼叫使用者安裝的桌面版 CLI，不會隨附、轉散佈、註冊或為其建立帳戶。',

@@ -4,6 +4,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import type { NotebookOutput, NotebookRunRecord } from '../../../../shared/notebook'
+import { resolveExecutionProtection } from '../../../../shared/execution-protection'
 import { NotebookRunOutputs } from './NotebookRunOutputs'
 
 let container: HTMLDivElement
@@ -102,6 +103,32 @@ describe('NotebookRunOutputs', () => {
   it('renders nothing when there is neither structured output nor text', () => {
     render([])
 
+    expect(container.querySelector('[data-testid="notebook-run-outputs"]')).toBeNull()
+  })
+})
+
+describe('NotebookRunOutputs — protection evidence', () => {
+  it('shows the level the run executed at, even when the run produced no output', () => {
+    render([], {
+      executionProtection: resolveExecutionProtection({
+        surface: 'notebook',
+        platform: 'darwin',
+        networkAllowlistEnabled: false,
+        osWriteGuardAvailable: true
+      })
+    })
+
+    const line = container.querySelector('[data-slot="notebook-run-protection"]')
+    expect(line).not.toBeNull()
+    expect(line?.textContent).toContain('Protection level')
+    expect(line?.textContent).toContain('Unprotected')
+  })
+
+  it('renders nothing for a run recorded before protection levels existed', () => {
+    render([])
+
+    // No snapshot means no claim. The container stays empty rather than inventing a level.
+    expect(container.querySelector('[data-slot="notebook-run-protection"]')).toBeNull()
     expect(container.querySelector('[data-testid="notebook-run-outputs"]')).toBeNull()
   })
 })

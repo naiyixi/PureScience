@@ -22,6 +22,7 @@ import type {
   ProbeResult
 } from '../../shared/compute'
 import { computeProviderId } from '../../shared/compute'
+import { createExecutionProtectionService } from '../execution-protection/service'
 import type { BackgroundDelivery } from '../../shared/background-delivery'
 import type {
   DirListing,
@@ -226,6 +227,15 @@ const createComputeHandlers = (
       .catch((error) => log.warn('legacy compute grant migration failed', errorLogFields(error)))
   }
 
+  // One protection service for the remote surfaces. It reads the persisted egress allowlist and the
+  // remote policy from the same repository the settings panel writes, so the level on the approval
+  // card, the level stored on the job row and the level the matrix reports cannot disagree.
+  const executionProtection = createExecutionProtectionService({
+    readEgress: async () => (await settingsRepository?.getSettings())?.egress,
+    readRemoteUnprotectedPolicy: async () =>
+      (await settingsRepository?.getSettings())?.executionProtection?.remoteUnprotectedPolicy
+  })
+
   // The broadcast function sends approval requests to all renderer windows. In tests, callers
   // inject a fake broker so this function is never called directly.
   const broker =
@@ -258,7 +268,10 @@ const createComputeHandlers = (
         const current = await repository.get(providerId)
         return current !== null && (ownerId === undefined || current.id === ownerId)
       },
-      permissionGrants
+      permissionGrants,
+      // Read fresh for every decision, so a policy change applies to the next remote operation
+      // instead of waiting for a restart.
+      readRemoteUnprotectedPolicy: () => executionProtection.remoteUnprotectedPolicy()
     })
 
   // Compute provider ids are deterministic and reusable. Keep create, delete, and owner-grant cleanup
@@ -335,7 +348,10 @@ const createComputeHandlers = (
         artifactResolver,
         storageRoot,
         concurrencyManager,
-        externalDispatch
+        externalDispatch,
+        // Protection evidence for the remote surfaces: the card shows it before the decision, the job
+        // row persists it, and call_command returns it with its result.
+        (surface, remote) => executionProtection.snapshot(surface, remote)
       )
     })()
 

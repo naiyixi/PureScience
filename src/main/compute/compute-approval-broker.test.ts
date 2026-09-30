@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { ComputeApprovalBroker } from './compute-approval-broker'
 import type { ComputeApprovalRequest } from '../../shared/compute'
+import { resolveExecutionProtection } from '../../shared/execution-protection'
 
 // A synchronous fake timer so timeout behavior is deterministic without real time passing.
 const makeTimer = (): {
@@ -669,5 +670,165 @@ describe('ComputeApprovalBroker — download operation', () => {
     const d2 = await broker2.requestWithContext(req, ctx)
     expect(d2).toBe('project')
     expect(broadcastCount).toBe(0)
+  })
+})
+
+describe('ComputeApprovalBroker — unprotected remote execution policy', () => {
+  const remoteSnapshot = (
+    level: 'os-sandbox' | 'unprotected'
+  ): ReturnType<typeof resolveExecutionProtection> =>
+    level === 'unprotected'
+      ? resolveExecutionProtection({
+          surface: 'remote-host',
+          platform: 'darwin',
+          networkAllowlistEnabled: true,
+          osWriteGuardAvailable: true
+        })
+      : {
+          ...resolveExecutionProtection({
+            surface: 'notebook',
+            platform: 'darwin',
+            networkAllowlistEnabled: true,
+            osWriteGuardAvailable: true
+          }),
+          surface: 'remote-host'
+        }
+
+  const context = {
+    sessionId: 'session-1',
+    projectId: 'project-1',
+    operation: 'call_command',
+    ownerId: 'host-row-1'
+  }
+
+  it('shows the card even when a remembered grant exists, under the default policy', async () => {
+    const timer = makeTimer()
+    const broadcast = vi.fn()
+    const remember = vi.fn()
+    const broker = new ComputeApprovalBroker({
+      generateId: () => 'id-1',
+      broadcast,
+      setTimer: timer.set,
+      clearTimer: timer.clear,
+      permissionGrants: { resolve: vi.fn().mockResolvedValue('project'), remember } as never
+    })
+
+    const decision = broker.requestWithContext(
+      makeRequest({ protection: remoteSnapshot('unprotected') }),
+      context
+    )
+    await vi.waitFor(() => expect(broadcast).toHaveBeenCalledOnce())
+    broker.respond('id-1', 'once')
+
+    await expect(decision).resolves.toBe('once')
+  })
+
+  it('does not memorize a remembered scope for an unprotected run under the default policy', async () => {
+    const timer = makeTimer()
+    const remember = vi.fn()
+    const broadcast = vi.fn()
+    const broker = new ComputeApprovalBroker({
+      generateId: () => 'id-1',
+      broadcast,
+      setTimer: timer.set,
+      clearTimer: timer.clear,
+      permissionGrants: { resolve: vi.fn(), remember } as never
+    })
+
+    const decision = broker.requestWithContext(
+      makeRequest({ protection: remoteSnapshot('unprotected') }),
+      context
+    )
+    // The unprotected path reads the policy before the card is armed, so the answer must wait for the
+    // card rather than for a fixed number of microtasks.
+    await vi.waitFor(() => expect(broadcast).toHaveBeenCalledOnce())
+    // The user asked to remember it; storing a grant the next call would ignore would make the
+    // revocable-grant list lie about what was authorized.
+    broker.respond('id-1', 'project')
+
+    await expect(decision).resolves.toBe('project')
+    expect(remember).not.toHaveBeenCalled()
+  })
+
+  it('refuses an unprotected run outright under the deny policy, without asking', async () => {
+    const resolve = vi.fn()
+    const broadcast = vi.fn()
+    const broker = new ComputeApprovalBroker({
+      generateId: () => 'id-1',
+      broadcast,
+      permissionGrants: { resolve, remember: vi.fn() } as never,
+      readRemoteUnprotectedPolicy: () => 'deny'
+    })
+
+    const decision = await broker.requestWithContext(
+      makeRequest({ protection: remoteSnapshot('unprotected') }),
+      context
+    )
+
+    expect(decision).toBe('deny')
+    expect(broadcast).not.toHaveBeenCalled()
+    expect(resolve).not.toHaveBeenCalled()
+  })
+
+  it('honors a remembered grant for an unprotected run only when the user opted in', async () => {
+    const timer = makeTimer()
+    const broadcast = vi.fn()
+    const broker = new ComputeApprovalBroker({
+      generateId: () => 'id-1',
+      broadcast,
+      setTimer: timer.set,
+      clearTimer: timer.clear,
+      permissionGrants: {
+        resolve: vi.fn().mockResolvedValue('project'),
+        remember: vi.fn()
+      } as never,
+      readRemoteUnprotectedPolicy: () => 'remembered'
+    })
+
+    const decision = await broker.requestWithContext(
+      makeRequest({ protection: remoteSnapshot('unprotected') }),
+      context
+    )
+
+    expect(decision).toBe('project')
+    expect(broadcast).not.toHaveBeenCalled()
+  })
+
+  it('still honors a remembered grant when the request reports a protected level', async () => {
+    const timer = makeTimer()
+    const broadcast = vi.fn()
+    const broker = new ComputeApprovalBroker({
+      generateId: () => 'id-1',
+      broadcast,
+      setTimer: timer.set,
+      clearTimer: timer.clear,
+      permissionGrants: { resolve: vi.fn().mockResolvedValue('global'), remember: vi.fn() } as never
+    })
+
+    const decision = await broker.requestWithContext(
+      makeRequest({ protection: remoteSnapshot('os-sandbox') }),
+      context
+    )
+
+    expect(decision).toBe('global')
+    expect(broadcast).not.toHaveBeenCalled()
+  })
+
+  it('keeps the existing resolution order when a request carries no protection snapshot', async () => {
+    const timer = makeTimer()
+    const broker = new ComputeApprovalBroker({
+      generateId: () => 'id-1',
+      broadcast: () => undefined,
+      setTimer: timer.set,
+      clearTimer: timer.clear
+    })
+
+    const decision = broker.requestWithContext(makeRequest(), context)
+    // One flush is what every existing caller relies on to answer before the card is armed; an extra
+    // await on this path would drop that answer and hang the request.
+    await Promise.resolve()
+    broker.respond('id-1', 'once')
+
+    await expect(decision).resolves.toBe('once')
   })
 })

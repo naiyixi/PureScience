@@ -1,5 +1,6 @@
 import type { ComputeJob as PrismaComputeJob, PrismaClient } from '@prisma/client'
 import type { ComputeJob, ComputeJobStatus } from '../../shared/compute'
+import type { ExecutionProtectionSnapshot } from '../../shared/execution-protection'
 
 // Only the computeJob delegate is needed.
 type ComputeJobClient = Pick<PrismaClient, 'computeJob'>
@@ -16,6 +17,17 @@ const asStatus = (value: string): ComputeJobStatus => {
     'error'
   ]
   return valid.includes(value as ComputeJobStatus) ? (value as ComputeJobStatus) : 'error'
+}
+
+// Reads the stored protection snapshot. A malformed value is dropped rather than guessed at: an
+// unreadable snapshot must not become a plausible-looking level.
+const parseProtectionSnapshot = (value: string | null): ExecutionProtectionSnapshot | undefined => {
+  if (!value) return undefined
+  try {
+    return JSON.parse(value) as ExecutionProtectionSnapshot
+  } catch {
+    return undefined
+  }
 }
 
 // Maps a Prisma row to the shared ComputeJob type.
@@ -45,6 +57,7 @@ const toJob = (row: PrismaComputeJob): ComputeJob => ({
   // Phase 3b harvest fields
   harvest_error: row.harvestError ?? undefined,
   left_on_remote: row.leftOnRemote ?? undefined,
+  execution_protection: parseProtectionSnapshot(row.executionProtection),
   notified_at: row.notifiedAt?.getTime(),
   notification_consumed_at: row.notificationConsumedAt?.getTime(),
   created_at: row.createdAt.getTime(),
@@ -70,6 +83,9 @@ export type CreateJobRequest = {
   harvestConfig?: string
   timeoutSeconds?: number
   remoteWorkdir?: string
+  // Persisted protection snapshot for this submission (JSON). Written once at creation: the level in
+  // force at submission is the fact a later reader needs.
+  protectionJson?: string
   initialStatus?: ComputeJobStatus
 }
 
@@ -122,6 +138,7 @@ export class ComputeJobRepository {
         harvestConfig: request.harvestConfig,
         timeoutSeconds: request.timeoutSeconds,
         remoteWorkdir: request.remoteWorkdir,
+        executionProtection: request.protectionJson,
         submittedAt: initialStatus === 'submitted' ? new Date() : undefined
       }
     })

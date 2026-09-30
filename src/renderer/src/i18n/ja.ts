@@ -2358,7 +2358,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.remoteBrowserAccessTitle': 'リモートブラウザアクセス',
   'settings.remoteBrowserLinkHint': '2 段階認証付きの永続リンクを任意のブラウザで開きます。',
   'settings.remoteCommandsNotSandboxed':
-    'リモートコマンドはホスト上でユーザーのアカウント権限で実行され、サンドボックスでは保護されません。承認できるのは、',
+    'リモートコマンドはホスト上でユーザーのアカウント権限で実行され、サンドボックスで保護されることはありません。承認するのは、コマンドの出所を信頼できる場合だけにしてください。',
   'settings.remoteFileBrowser': 'リモートファイルブラウザ',
   'settings.remoteItThirdParty':
     'Remote.It はサードパーティサービスです。PureScience はユーザーがインストールしたデスクトップ CLI を呼び出すだけで、同サービスの組み込み・再配布・登録・アカウント作成は行いません。',

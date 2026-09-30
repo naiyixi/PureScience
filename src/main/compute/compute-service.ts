@@ -15,6 +15,12 @@ import type {
   SubmitJobResult
 } from '../../shared/compute'
 import { DETAILS_DOC_MAX_LENGTH } from '../../shared/compute'
+import {
+  unresolvedExecutionProtectionSnapshot,
+  type ExecutionProtectionSnapshot,
+  type ExecutionSurface,
+  type RemoteExecutionTarget
+} from '../../shared/execution-protection'
 import type { DirListing, DownloadDest, LocalFile, RemoteFsError } from '../../shared/remote-fs'
 import { classifyRemoteError, parseFindListing } from '../../shared/remote-fs'
 import type { ComputeApprovalBroker } from './compute-approval-broker'
@@ -320,9 +326,41 @@ export class ComputeService {
     private readonly externalDispatch?: {
       externalEndpoints: () => Promise<ExternalComputeEndpoint[]>
       resolveCredentialSecret: (credentialId: string) => Promise<string | undefined>
-    }
+    },
+    // The protection level every remote operation runs at. Required in production (wired in
+    // compute/ipc.ts from the settings service); omitted only by isolated constructions, which then
+    // produce no protection evidence at all — and the approval gate treats a missing snapshot as
+    // unprotected rather than as protected.
+    private readonly resolveExecutionProtection?: (
+      surface: ExecutionSurface,
+      remote: RemoteExecutionTarget
+    ) => Promise<ExecutionProtectionSnapshot>
   ) {
     this.scpRunner = scpRunner ?? new SystemScpRunner()
+  }
+
+  // The protection snapshot for one remote operation, or undefined when no resolver was wired. A
+  // failing resolver is not allowed to invent a level: it degrades to "unresolved", which the gate
+  // and the evidence both treat as unprotected.
+  private async protectionFor(
+    surface: ExecutionSurface,
+    host: { providerId: string; displayName: string; executionMode: 'direct_ssh' | 'slurm' }
+  ): Promise<ExecutionProtectionSnapshot | undefined> {
+    if (!this.resolveExecutionProtection) return undefined
+    try {
+      return await this.resolveExecutionProtection(surface, {
+        providerId: host.providerId,
+        displayName: host.displayName,
+        executionMode: host.executionMode
+      })
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error)
+      return unresolvedExecutionProtectionSnapshot({
+        surface,
+        platform: process.platform,
+        detail
+      })
+    }
   }
 
   // Decrypts the SSH password bound to a host's Credentials-panel credential (if any). The
@@ -719,13 +757,18 @@ export class ComputeService {
     const commandPreview =
       cmd.length > COMMAND_PREVIEW_MAX_LEN ? `${cmd.slice(0, COMMAND_PREVIEW_MAX_LEN)}…` : cmd
 
+    // The protection level is resolved BEFORE the card is shown: an approval the user cannot judge is
+    // not an approval. `protectionFor` never invents a level (a failing resolver degrades to
+    // "unresolved", which reads as unprotected).
+    const protection = await this.protectionFor('remote-host', host)
     const approvalInfo = {
       provider_id: host.providerId,
       provider_name: host.displayName,
       shape: host.shape,
       intent,
       command_preview: commandPreview,
-      command_full: cmd
+      command_full: cmd,
+      protection
     }
 
     // Use grant-aware requestWithContext when session/project context is available (issue 05).
@@ -818,7 +861,10 @@ export class ComputeService {
       exit_code: runResult.exitCode,
       stdout: runResult.stdout,
       stderr: runResult.stderr,
-      truncated: runResult.truncated
+      truncated: runResult.truncated,
+      // The result carries the level it ran at, so the call keeps its own protection evidence after
+      // the approval card is gone.
+      ...(protection ? { execution_protection: protection } : {})
     }
   }
 
@@ -894,7 +940,8 @@ export class ComputeService {
         provider_name: host.displayName,
         shape: host.shape,
         intent: 'Download remote file to session workspace',
-        remote_path: remotePath
+        remote_path: remotePath,
+        protection: await this.protectionFor('remote-host', host)
       }
 
       // Use grant-aware requestWithContext when session/project context is available.
@@ -1272,6 +1319,9 @@ export class ComputeService {
         ? `${command.slice(0, COMMAND_PREVIEW_MAX_LEN)}…`
         : command
 
+    // The requested protection level for this submission, resolved before the card so the user
+    // approves a known level, and reused for the job row so the evidence and the card agree.
+    const protection = await this.protectionFor('background-job', host)
     const approvalInfo = {
       provider_id: host.providerId,
       provider_name: host.displayName,
@@ -1281,7 +1331,8 @@ export class ComputeService {
       command_full: command,
       inputs_summary: inputsSummary || undefined,
       timeout_seconds: timeoutSeconds,
-      remote_workdir: remoteWorkdir
+      remote_workdir: remoteWorkdir,
+      protection
     }
 
     const decision = await this.approvalBroker.requestWithContext(approvalInfo, {
@@ -1324,6 +1375,9 @@ export class ComputeService {
         harvestConfig: options.harvestConfig,
         timeoutSeconds,
         remoteWorkdir,
+        // Persisted once, at submission: the level in force when the job was approved, which is the
+        // fact a later reader needs (the settings may have changed since).
+        ...(protection ? { protectionJson: JSON.stringify(protection) } : {}),
         initialStatus
       })
     }

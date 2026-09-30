@@ -1,7 +1,8 @@
+import type { ExecutionProtectionLevel } from '../../../../shared/execution-protection'
 import type { NotebookOutput, NotebookRunRecord } from '../../../../shared/notebook'
 import { resolveNotebookRunFigures } from './notebook-run-figures'
 
-import { useLanguage } from '@/i18n'
+import { useLanguage, type TranslationKey } from '@/i18n'
 
 // Shared cell-output area for Notebook, Session dialog, and conversation tool rows. Text and figures
 // are intentionally separate: text owns its collapse control, while every figure stays visible in an
@@ -309,6 +310,43 @@ const NotebookRunFigureOutputs = ({
   )
 }
 
+// The protection level this run executed at, rendered with the run it belongs to. A run recorded
+// before protection levels existed carries no snapshot, and the honest rendering of that is nothing:
+// inventing a level for it would be worse than the gap.
+const PROTECTION_LEVEL_KEYS: Record<ExecutionProtectionLevel, TranslationKey> = {
+  'os-sandbox': 'protection.levelOsSandbox',
+  'network-allowlist': 'protection.levelNetworkAllowlist',
+  unprotected: 'protection.levelUnprotected'
+}
+
+const NotebookRunProtectionLine = ({
+  run
+}: {
+  run: NotebookRunRecord
+}): React.JSX.Element | null => {
+  const { t } = useLanguage()
+  const protection = run.executionProtection
+  if (!protection) return null
+
+  return (
+    <p
+      data-slot="notebook-run-protection"
+      className="flex flex-wrap items-center gap-1.5 px-2 pt-1 text-xs text-muted-foreground"
+    >
+      {t('protection.runEvidenceLabel')}
+      {':'}
+      <span
+        data-slot="notebook-run-protection-level"
+        className={
+          protection.level === 'unprotected' ? 'font-medium text-destructive' : 'font-medium'
+        }
+      >
+        {t(PROTECTION_LEVEL_KEYS[protection.level])}
+      </span>
+    </p>
+  )
+}
+
 // Composes the two independent output surfaces used by the notebook panel and session dialog.
 const NotebookRunOutputs = ({ run }: { run: NotebookRunRecord }): React.JSX.Element | null => {
   const hasText =
@@ -322,15 +360,19 @@ const NotebookRunOutputs = ({ run }: { run: NotebookRunRecord }): React.JSX.Elem
         (value) => value.trim().length > 0
       ))
   const hasFigures = resolveNotebookRunFigures(run).length > 0
+  // The protection line is evidence about the run itself, so it renders even for a run with no
+  // output — that is exactly the run whose level a reader may need to check.
+  const hasProtectionEvidence = run.executionProtection !== undefined
 
-  if (!hasText && !hasFigures) return null
+  if (!hasText && !hasFigures && !hasProtectionEvidence) return null
 
   return (
     <div data-testid="notebook-run-outputs">
+      <NotebookRunProtectionLine run={run} />
       <NotebookRunTextOutputs run={run} />
       <NotebookRunFigureOutputs run={run} />
     </div>
   )
 }
 
-export { NotebookRunFigureOutputs, NotebookRunOutputs }
+export { NotebookRunFigureOutputs, NotebookRunOutputs, NotebookRunProtectionLine }

@@ -1449,7 +1449,7 @@ export const en: Record<ZhKey, string> = {
   'settings.openingBrowserToSignIn':
     'Opening your browser to sign in… finish there and this closes automatically.',
   'settings.remoteCommandsNotSandboxed':
-    'Remote commands run as your account on the host and are not sandboxed. Approve only',
+    'Remote commands run as your account on the host and are never sandboxed. Approve only if you trust where the command comes from.',
   'settings.connectorSendsExternal':
     'The agent wants to call a connector tool that sends data to an external service.',
   'settings.exportReviewHint':
