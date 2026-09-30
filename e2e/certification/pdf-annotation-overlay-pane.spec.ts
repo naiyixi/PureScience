@@ -1,7 +1,7 @@
 import { expect } from '@playwright/test'
 import type { Page } from 'playwright'
 
-import { test } from '../fixtures/electron-app'
+import { test, type ElectronApp } from '../fixtures/electron-app'
 import { createProject, sendPrompt } from './helpers'
 
 // Acceptance for the COVER layout (#16, decided): on a pane too narrow to hold the annotation panel beside
@@ -34,10 +34,25 @@ test.setTimeout(240_000)
 
 const REGION_PROMPT = 'Create a region drawing PDF.'
 // The app's own minimum width (src/main/windows.ts), i.e. the narrowest window a user can reach.
-const NARROW_WINDOW = { width: 1100, height: 800 }
+const APP_MINIMUM_WINDOW_WIDTH = 1100
+// A run can put the window at a width below that minimum (`PURESCIENCE_E2E_NARROW_WINDOW_WIDTH=1000`),
+// which no reader can drag the window to — a window the app itself never lays out. Everything below reads
+// its geometry back from the pane this window produced, so it has to hold there too: that run is the check
+// that nothing here depends on the width this machine (or a CI runner) happens to give.
+const NARROW_WINDOW_WIDTH = Number(
+  process.env.PURESCIENCE_E2E_NARROW_WINDOW_WIDTH ?? APP_MINIMUM_WINDOW_WIDTH
+)
+const NARROW_WINDOW = { width: NARROW_WINDOW_WIDTH, height: 800 }
+const NARROW_WINDOW_BELOW_MINIMUM = NARROW_WINDOW_WIDTH < APP_MINIMUM_WINDOW_WIDTH
 const WIDE_WINDOW = { width: 1600, height: 900 }
 // The panel's own reading width (`w-80`) — the width the cover layout is there to preserve.
 const PANEL_WIDTH = 320
+// How much of the pane the reader's pull takes off it, as a SHARE of the pane this window laid out. The
+// divider follows the pointer pixel for pixel, so a share lands on a share — of a 423px pane on the window
+// above, and of whatever the pane is on the machine running this. A fixed 90px was a guess at the 423:
+// where the window gave a smaller pane the same pull ran to the divider's floor and left the pane wider
+// than the split it was supposed to narrow.
+const PULL_SHARE = 0.15
 
 /**
  * How far the page's width may move when the panel opens.
@@ -259,13 +274,36 @@ const expectCoverContract = (
   ).toBeGreaterThan(probe.pane.width - probe.panel.width)
 }
 
-/** The pane's width once two consecutive readings agree: a pane read mid-resize is a layout no press lands in. */
+/**
+ * Puts the window at the width this file tests at and returns only once the renderer's own viewport reports
+ * it. The window is the layout's input and the renderer is where it is measured, so the width is confirmed
+ * there before anything reads a pane: a pane read before the resize reaches the renderer belongs to the
+ * window that was there before it, and a slower machine reads exactly that.
+ */
+const setNarrowWindow = async (app: ElectronApp, page: Page): Promise<void> => {
+  await app.setMainWindowSize(NARROW_WINDOW, { belowMinimum: NARROW_WINDOW_BELOW_MINIMUM })
+  await expect
+    .poll(() => page.evaluate(() => window.innerWidth), { timeout: 10_000 })
+    .toBe(NARROW_WINDOW.width)
+}
+
+/**
+ * The pane's width once three consecutive readings agree: a pane read mid-resize is a layout no press lands
+ * in. Two agreeing readings were not enough — a stalled layout answers two reads 120ms apart with the width
+ * it had before the resize, and everything measured from that width is measured from the wrong window.
+ */
 const settledPaneWidth = async (page: Page): Promise<number> => {
   let previous = (await readWidths(page)).paneWidth
-  for (let reading = 0; reading < 40; reading += 1) {
+  let agreements = 0
+  for (let reading = 0; reading < 60; reading += 1) {
     await page.waitForTimeout(120)
     const current = (await readWidths(page)).paneWidth
-    if (current > 0 && current === previous) return current
+    if (current > 0 && current === previous) {
+      agreements += 1
+      if (agreements >= 2) return current
+    } else {
+      agreements = 0
+    }
     previous = current
   }
   throw new Error(`the preview pane never settled into a width (last reading ${previous}px)`)
@@ -292,11 +330,9 @@ test('covers the page instead of narrowing it, with both surfaces reachable and 
   const panel = page.getByTestId('pdf-annotation-panel')
   await expect(toggle).toBeVisible()
 
-  // The narrowest window the app allows: the pane the cover decision is about (measured: 423px).
-  await app.setMainWindowSize(NARROW_WINDOW)
-  await expect
-    .poll(() => page.evaluate(() => window.innerWidth), { timeout: 10_000 })
-    .toBe(NARROW_WINDOW.width)
+  // The narrowest window the app allows: the pane the cover decision is about. Its width is read back from
+  // the renderer rather than assumed, so everything below measures this window's pane.
+  await setNarrowWindow(app, page)
   await settledPaneWidth(page)
   const closed = await readWidths(page)
   expect(
@@ -468,7 +504,8 @@ test('covers the page instead of narrowing it, with both surfaces reachable and 
 /**
  * Pulls the pane's own divider to the right — the reader's gesture for a narrower pane — and returns the
  * width the pane settled at. Read back rather than assumed: the pane's minimum is a share of the window,
- * and a drag that overshoots far enough collapses the pane instead of narrowing it.
+ * and a drag that overshoots far enough collapses the pane instead of narrowing it. Callers pass a share of
+ * the pane they measured, so the pull is a delta on this window's layout and not a width of its own.
  */
 const pullPaneNarrower = async (page: Page, by: number): Promise<number> => {
   const handle = page.locator('[aria-label="Resize right panel"]')
@@ -496,15 +533,22 @@ test('keeps the panel readable and the page unchanged on a hand-narrowed pane, i
   const panel = page.getByTestId('pdf-annotation-panel')
   await expect(toggle).toBeVisible()
 
-  await app.setMainWindowSize(NARROW_WINDOW)
+  // The pane this window actually lays out, read back from the renderer once the renderer reports the window
+  // width: the width the reader's gesture is measured against is this one, not a size this file assumed.
+  await setNarrowWindow(app, page)
   const split = await settledPaneWidth(page)
   await toggle.click()
   await expect(panel).toBeVisible()
 
-  const narrower = await pullPaneNarrower(page, 90)
+  // The reader's gesture, driven from that measurement: pull the divider by a share of the pane this window
+  // laid out. A fixed 90px was a guess at a 423px pane — where the window gives a smaller pane the same pull
+  // ran past the divider's floor and the pane settled AT the floor, wider than the split it was meant to
+  // narrow. A share of the measured split lands on the same share of whatever this window gave.
+  const pulledBy = Math.round(split * PULL_SHARE)
+  const narrower = await pullPaneNarrower(page, pulledBy)
   expect(
     narrower,
-    `the pane did not get narrower than the window's own ${split}px split`
+    `the pane did not get narrower than the window's own ${split}px split (pulled ${pulledBy}px)`
   ).toBeLessThan(split)
   expect(narrower, 'this pane is wide enough to be the cover case after all').toBeLessThan(
     (PANEL_WIDTH * 100) / 85
