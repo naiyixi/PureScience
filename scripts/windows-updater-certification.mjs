@@ -343,16 +343,31 @@ const assertDifferentialObservation = (observation) => {
     observation.downloadedInstallerBytes >= observation.installerBytes ||
     observation.versionedFeed !== true ||
     observation.previousInstallerCacheVerified !== true ||
-    // U3 (#17): the installed app must not keep the package it was installed from.
-    observation.installerCachePurged !== true ||
-    observation.installerCacheBytesBefore < 1 ||
-    observation.installerCacheBytesAfter !== 0 ||
     typeof observation.previousVersion !== 'string' ||
     typeof observation.currentVersion !== 'string' ||
     observation.previousVersion === observation.currentVersion
   ) {
     throw new Error(
       `Windows updater did not use a complete differential path: ${JSON.stringify(observation)}`
+    )
+  }
+  return observation
+}
+
+// U3 (#17): the installed app must not keep the package it was installed from. This lives in its own gate
+// because those three fields only exist *after* the install: the call site at the top of the run reads the
+// observation before the version wait, so folding these conditions into the differential gate made every
+// run red on a payload that could not possibly carry them.
+const assertInstallerCachePurged = (observation) => {
+  if (
+    observation.installerCachePurged !== true ||
+    // `typeof` first: a missing field makes `< 1` evaluate to false and would otherwise slip through.
+    typeof observation.installerCacheBytesBefore !== 'number' ||
+    observation.installerCacheBytesBefore < 1 ||
+    observation.installerCacheBytesAfter !== 0
+  ) {
+    throw new Error(
+      `Windows updater did not purge the package it was installed from: ${JSON.stringify(observation)}`
     )
   }
   return observation
@@ -627,7 +642,7 @@ const main = async () => {
       `[updater] updater cache after install: ${JSON.stringify(cacheAfterApply.files)} ` +
         `(${cacheAfterApply.bytes}B, before: ${observation.installerCacheBytesBefore}B)`
     )
-    assertDifferentialObservation(observation)
+    assertInstallerCachePurged(observation)
     await writeFile(options.output, `${JSON.stringify(observation, null, 2)}\n`, 'utf8')
     console.log('Windows electron-updater differential certification completed successfully.')
   } catch (error) {
@@ -672,6 +687,7 @@ if (invokedAsScript) {
 
 export {
   assertDifferentialObservation,
+  assertInstallerCachePurged,
   buildLocalUpdaterConfig,
   parseArguments,
   parseSingleRange,

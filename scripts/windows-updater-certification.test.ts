@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   assertDifferentialObservation,
+  assertInstallerCachePurged,
   buildLocalUpdaterConfig,
   parseArguments,
   parseSingleRange,
@@ -87,18 +88,71 @@ describe('Windows updater certification', () => {
       previousVersion: '0.10.0',
       currentVersion: '0.11.0'
     }
+    expect(assertInstallerCachePurged(observation)).toBe(observation)
     expect(() =>
-      assertDifferentialObservation({
+      assertInstallerCachePurged({
         ...observation,
         installerCachePurged: false,
         installerCacheBytesAfter: 150_000_000
       })
+    ).toThrow(/did not purge the package it was installed from/)
+    expect(() =>
+      assertInstallerCachePurged({ ...observation, installerCacheBytesBefore: 0 })
+    ).toThrow(/did not purge the package it was installed from/)
+    expect(() =>
+      assertInstallerCachePurged({ ...observation, installerCacheBytesAfter: 1 })
+    ).toThrow(/did not purge the package it was installed from/)
+    // A post-install observation that never recorded the three fields is a failure, not a silent pass.
+    for (const key of [
+      'installerCachePurged',
+      'installerCacheBytesBefore',
+      'installerCacheBytesAfter'
+    ]) {
+      expect(() => assertInstallerCachePurged({ ...observation, [key]: undefined })).toThrow(
+        /did not purge the package it was installed from/
+      )
+    }
+  })
+
+  // Regression (#17): `assertDifferentialObservation` runs at the top of the run, *before* the version
+  // wait, on an observation that cannot carry the installer-cache fields yet — they are only written
+  // after the install. Folding those three conditions into this gate turned every run red on a correct
+  // differential path (job 109766168273).
+  it('accepts the early observation that omits the post-install installer-cache fields', () => {
+    const earlyObservation = {
+      schemaVersion: 1,
+      mode: 'electron-updater-differential',
+      previousVersion: '0.10.0',
+      currentVersion: '0.11.0',
+      installerBytes: 100,
+      feedRequests: 33,
+      blockmapRequests: 2,
+      rangeRequests: 33,
+      fullInstallerRequests: 0,
+      downloadedInstallerBytes: 40,
+      versionedFeed: true,
+      previousInstallerCacheVerified: true
+    }
+
+    expect(assertDifferentialObservation(earlyObservation)).toBe(earlyObservation)
+    // The same payload is *not* purgeable evidence — which is exactly why the early call site cannot be
+    // the one that checks the cache.
+    expect(() => assertInstallerCachePurged(earlyObservation)).toThrow(
+      /did not purge the package it was installed from/
+    )
+    // The early call site still has to fail fast on a path that never was differential: dropping the
+    // purge conditions must not have turned it into a no-op.
+    expect(() =>
+      assertDifferentialObservation({ ...earlyObservation, fullInstallerRequests: 1 })
+    ).toThrow(/complete differential path/)
+    expect(() => assertDifferentialObservation({ ...earlyObservation, rangeRequests: 0 })).toThrow(
+      /complete differential path/
+    )
+    expect(() =>
+      assertDifferentialObservation({ ...earlyObservation, previousInstallerCacheVerified: false })
     ).toThrow(/complete differential path/)
     expect(() =>
-      assertDifferentialObservation({ ...observation, installerCacheBytesBefore: 0 })
-    ).toThrow(/complete differential path/)
-    expect(() =>
-      assertDifferentialObservation({ ...observation, installerCacheBytesAfter: 1 })
+      assertDifferentialObservation({ ...earlyObservation, currentVersion: '0.10.0' })
     ).toThrow(/complete differential path/)
   })
 
