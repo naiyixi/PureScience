@@ -1,6 +1,6 @@
 # PureScience 更新日记
 
-## v1.76.1（已发布：把红修成真绿，把"看起来公证"改成如实）
+## v1.76.1 — 2026-09-30（补丁：把红修成真绿，把"看起来公证"改成如实）
 
 - **修掉 Windows 更新演练里一道不可满足的闸门**（v1.76.0 的 `windows-upgrade-smoke` 假红真因）：共用断言要求"安装之后才有"的三个清理字段，而早先那个为快速失败保留的调用点递的是尚未富化的对象 ⇒ 每次必红；日志里它自己打印的数字反而证明产品侧是好的（安装后读数已是新版、旧版日志完整走完 check → available → ready → install-gate cleared → quitAndInstall → shutdown(trigger=update)）。修法：共用断言只管差分路径，新增安装后清理断言，并补一条"早调用点接受未富化观测"的调用顺序回归；变异测试自证未弱化。
 - **mac 签名状态不再能被误读成已公证**：无凭据时公证整段跳过而作业仍报 success ⇒ 现在检查名直接写 `SKIPPED — UNSIGNED macOS assets, not notarized`，步骤摘要明写"本作业的 success 意味着什么都没做"，`RELEASE-CERTIFICATION.json` 记 `macSignature`（signed/unsigned/unproven）且发布页在资产上传之后才读它；替换掉发布脚本里"macOS 用户可通过应用内更新安装"这句不实承诺。门禁已备好：有凭据却未签名 ⇒ 发布失败；无凭据 ⇒ 不失败只如实标注；无凭据且读数缺失 ⇒ 不算通过。
