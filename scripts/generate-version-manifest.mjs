@@ -167,6 +167,44 @@ const githubManifest = (dir, version) => {
   return { ...built, downloads }
 }
 
+// A release version: three numeric parts with an optional prerelease/build suffix (`1.76.1`,
+// `1.76.1-rc.1`). Deliberately stricter than "any non-empty string", because the failure this guards
+// against is a *ref name* being mistaken for a version: on a manual publish the ref being built is the
+// branch (`main`), so the manifest was generated for version `main`, matched no installer, and only
+// surfaced three steps later as "no installers for version main found in artifacts" (v1.76.1).
+export const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)*$/
+
+// The version this manifest describes, in precedence order:
+//  1. the positional argument — the publish job passes the tag its Release is created under;
+//  2. `RELEASE_TAG` — the same tag, exported by the publish job, which is the only source that stays
+//     correct on a `workflow_dispatch` (there the ref is the branch, and GITHUB_REF_NAME says `main`);
+//  3. `GITHUB_REF_NAME` — a tag push, where the ref *is* the release tag (`v1.76.1`).
+// A leading `v` is stripped and a non-version candidate is rejected outright rather than silently
+// producing a manifest that matches no file.
+export const resolveVersion = (argument, env = process.env) => {
+  const sources = [
+    ['the version argument', argument],
+    ['RELEASE_TAG', env.RELEASE_TAG],
+    ['GITHUB_REF_NAME', env.GITHUB_REF_NAME]
+  ]
+  for (const [label, raw] of sources) {
+    const rawText = String(raw ?? '').trim()
+    if (!rawText) continue
+    const candidate = rawText.replace(/^v(?=\d)/, '')
+    if (!VERSION_PATTERN.test(candidate)) {
+      throw new Error(
+        `${label} is not a version number: ${JSON.stringify(rawText)}. Pass the release tag ` +
+          '(e.g. 1.76.1) as the version argument, or set RELEASE_TAG to the tag the Release is ' +
+          'published under.'
+      )
+    }
+    return candidate
+  }
+  throw new Error(
+    'version required: pass the release tag as an argument, or set RELEASE_TAG (or GITHUB_REF_NAME) to it'
+  )
+}
+
 const main = async () => {
   const args = process.argv.slice(2)
   const github = args.includes('--github')
@@ -176,10 +214,11 @@ const main = async () => {
     console.error('usage: generate-version-manifest.mjs <artifacts-dir> [version] [--github]')
     process.exit(1)
   }
-  const ref = process.env.GITHUB_REF_NAME ?? ''
-  const version = versionArg?.trim() || (ref.startsWith('v') ? ref.slice(1) : ref)
-  if (!version) {
-    console.error('version required (argument or GITHUB_REF_NAME)')
+  let version
+  try {
+    version = resolveVersion(versionArg)
+  } catch (error) {
+    console.error(`error: ${error instanceof Error ? error.message : String(error)}`)
     process.exit(1)
   }
   const manifest = github

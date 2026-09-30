@@ -1,4 +1,5 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -9,7 +10,9 @@ import {
   extractHighlights,
   manifestNotes,
   NOTES_FALLBACK,
-  parseSha256Sums
+  parseSha256Sums,
+  resolveVersion,
+  VERSION_PATTERN
 } from './generate-version-manifest.mjs'
 
 const VERSION = '0.1.2'
@@ -276,5 +279,148 @@ describe('manifestNotes', () => {
     expect(notes).not.toBe(NOTES_FALLBACK)
     expect(notes.startsWith('## v')).toBe(false)
     expect(notes.length).toBeGreaterThan(200)
+  })
+})
+
+describe('resolveVersion', () => {
+  it('prefers the explicit argument, which is how the publish job states the release tag', () => {
+    expect(resolveVersion('1.76.1', { GITHUB_REF_NAME: 'main' })).toBe('1.76.1')
+  })
+
+  it('strips a leading v from every source', () => {
+    expect(resolveVersion('v1.76.1', {})).toBe('1.76.1')
+    expect(resolveVersion(undefined, { RELEASE_TAG: 'v1.76.1' })).toBe('1.76.1')
+    expect(resolveVersion(undefined, { GITHUB_REF_NAME: 'v1.76.1' })).toBe('1.76.1')
+  })
+
+  // The bug this pins: a manual publish builds the branch (`main`), so the ref name is NOT the
+  // version — the tag the Release is created under is.
+  it('prefers RELEASE_TAG over GITHUB_REF_NAME when the built ref is not the release tag', () => {
+    expect(resolveVersion(undefined, { GITHUB_REF_NAME: 'main', RELEASE_TAG: 'v1.76.1' })).toBe(
+      '1.76.1'
+    )
+  })
+
+  it('falls back to GITHUB_REF_NAME on a tag push, where the ref is the tag', () => {
+    expect(resolveVersion(undefined, { GITHUB_REF_NAME: 'v1.76.1', RELEASE_TAG: '' })).toBe(
+      '1.76.1'
+    )
+  })
+
+  it('rejects a branch name instead of generating a manifest for it', () => {
+    expect(() => resolveVersion(undefined, { GITHUB_REF_NAME: 'main' })).toThrow(
+      /GITHUB_REF_NAME is not a version number/
+    )
+  })
+
+  it('rejects a non-version argument even when a valid RELEASE_TAG is present', () => {
+    // Fail closed on the explicit input: silently falling through to the env var would hide a
+    // workflow that passes the wrong thing.
+    expect(() => resolveVersion('main', { RELEASE_TAG: 'v1.76.1' })).toThrow(
+      /the version argument is not a version number/
+    )
+  })
+
+  it('requires a version when nothing supplies one', () => {
+    expect(() => resolveVersion(undefined, {})).toThrow(/version required/)
+  })
+
+  it('accepts prerelease and build suffixes', () => {
+    expect(resolveVersion('0.2.0-beta.1', {})).toBe('0.2.0-beta.1')
+    expect(VERSION_PATTERN.test('1.76.1-rc.2+build.5')).toBe(true)
+    expect(VERSION_PATTERN.test('1.76')).toBe(false)
+  })
+})
+
+// The publish job runs this CLI and judges it on `$?`, so the exit code is the contract worth pinning
+// from a real process. On the v1.76.1 manual dispatch (ref = main, tag = v1.76.1, release_tag=input)
+// the job died here with "no installers for version main found in artifacts".
+const runCli = (
+  args: string[],
+  env: Record<string, string>
+): { status: number; stdout: string; stderr: string } => {
+  try {
+    const stdout = execFileSync('node', ['scripts/generate-version-manifest.mjs', ...args], {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+      env: { ...process.env, GITHUB_REF_NAME: '', RELEASE_TAG: '', ...env }
+    })
+    return { status: 0, stdout, stderr: '' }
+  } catch (error) {
+    const failure = error as { status?: number; stdout?: string; stderr?: string }
+    return {
+      status: failure.status ?? -1,
+      stdout: failure.stdout ?? '',
+      stderr: failure.stderr ?? ''
+    }
+  }
+}
+
+// A release directory as the build matrix leaves it: installers named for 1.76.1 (the version under
+// test here) plus the SHA256SUMS.txt the publish job generates before this step.
+const RELEASE_1_76_1: FileSpec[] = [
+  { name: 'zerolink-purescience-1.76.1-mac-arm64.dmg', content: 'arm', sha: HEX('a') },
+  { name: 'zerolink-purescience-1.76.1-mac-x64.dmg', content: 'x64', sha: HEX('b') },
+  { name: 'zerolink-purescience-1.76.1-win-x64-setup.exe', content: 'win', sha: HEX('c') }
+]
+
+describe('CLI', () => {
+  let dir: string | undefined
+  afterEach(() => dir && rmSync(dir, { recursive: true, force: true }))
+
+  it("writes the release tag's manifest on a manual dispatch whose ref is main", () => {
+    dir = makeReleaseDir(RELEASE_1_76_1)
+
+    const result = runCli([dir, 'v1.76.1', '--github'], { GITHUB_REF_NAME: 'main' })
+
+    expect(result.stderr).toBe('')
+    expect(result.status).toBe(0)
+    const manifest = JSON.parse(readFileSync(join(dir, 'version.json'), 'utf8'))
+    expect(manifest.version).toBe('1.76.1')
+    expect(Object.keys(manifest.downloads).sort()).toEqual(['mac-arm64', 'mac-x64', 'win-x64'])
+    // URLs point at the tag the Release is published under, not at the branch that was built.
+    expect(manifest.downloads['mac-arm64'].url).toBe(
+      'https://github.com/naiyixi/PureScience/releases/download/v1.76.1/' +
+        'zerolink-purescience-1.76.1-mac-arm64.dmg'
+    )
+    expect(result.stdout).toContain('version=1.76.1')
+  })
+
+  it('resolves the version from RELEASE_TAG when the CLI gets no version argument', () => {
+    dir = makeReleaseDir(RELEASE_1_76_1)
+
+    const result = runCli([dir, '--github'], { GITHUB_REF_NAME: 'main', RELEASE_TAG: 'v1.76.1' })
+
+    expect(result.status).toBe(0)
+    expect(JSON.parse(readFileSync(join(dir, 'version.json'), 'utf8')).version).toBe('1.76.1')
+  })
+
+  it('fails on a branch ref with a message naming the cause, not "no installers"', () => {
+    dir = makeReleaseDir(RELEASE_1_76_1)
+
+    const result = runCli([dir, '--github'], { GITHUB_REF_NAME: 'main' })
+
+    expect(result.status).toBe(1)
+    expect(result.stderr).toMatch(/GITHUB_REF_NAME is not a version number: "main"/)
+    // The old symptom (a manifest silently built for `main`) must not come back.
+    expect(result.stderr).not.toMatch(/no installers/)
+  })
+
+  it('still fails closed when the version matches no installer file', () => {
+    dir = makeReleaseDir(RELEASE_1_76_1)
+
+    const result = runCli([dir, '1.76.0', '--github'], { GITHUB_REF_NAME: 'v1.76.0' })
+
+    expect(result.status).toBe(1)
+    expect(result.stderr).toContain('no installers for version 1.76.0 found in')
+  })
+
+  it('keeps working on a tag push, where the ref itself is the tag', () => {
+    dir = makeReleaseDir(RELEASE_1_76_1)
+
+    const result = runCli([dir, '--github'], { GITHUB_REF_NAME: 'v1.76.1' })
+
+    expect(result.status).toBe(0)
+    expect(JSON.parse(readFileSync(join(dir, 'version.json'), 'utf8')).version).toBe('1.76.1')
   })
 })

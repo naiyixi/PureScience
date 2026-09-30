@@ -298,8 +298,16 @@ jobs:
       # Without it every manifest-flow client (mac local/nightly/unsigned + fallback) sees
       # "Manifest fetch failed: 404" on check-for-updates; stable in-place clients use the
       # electron-updater feeds uploaded below instead.
+      #
+      # The version is the tag the Release is created under, NOT the ref that was built: a manual
+      # dispatch builds `main`, so the script's GITHUB_REF_NAME fallback named the manifest `main`,
+      # matched no installer, and failed the job with "no installers for version main found in
+      # artifacts" (v1.76.1). RELEASE_TAG is the same expression as the `tag_name` below, so the
+      # manifest cannot describe a version other than the one it is published under.
       - name: Generate version.json client manifest
-        run: node scripts/generate-version-manifest.mjs artifacts --github
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
+        run: node scripts/generate-version-manifest.mjs artifacts "$RELEASE_TAG" --github
 
       # Sign a SLSA build-provenance attestation for the exact installer bytes about to be published,
       # so users can prove each download was built by this workflow from this commit (verify with
