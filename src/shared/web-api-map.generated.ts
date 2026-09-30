@@ -229,6 +229,7 @@ export const WEB_INVOKE_CHANNELS = {
   'settings.detectCodebuddy': 'settings:detect-codebuddy',
   'settings.detectCodex': 'settings:detect-codex',
   'settings.detectOpencode': 'settings:detect-opencode',
+  'settings.executionProtection': 'settings:execution-protection',
   'settings.exportMcpServers': 'settings:export-mcp-servers',
   'settings.getAutoApply': 'settings:get-auto-apply',
   'settings.getConnectorDetail': 'settings:get-connector-detail',

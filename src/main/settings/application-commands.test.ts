@@ -24,6 +24,7 @@ const expectedChannels = [
   'settings:detect-codebuddy',
   'settings:detect-codex',
   'settings:detect-opencode',
+  'settings:execution-protection',
   'settings:get-connector-detail',
   'settings:get-memory',
   'settings:list-credentials',
@@ -139,7 +140,7 @@ const createDependencies = (): Readonly<{
 }
 
 describe('Settings core application commands', () => {
-  it('installs the exact 48-command inventory and dispatches a remote-safe preflight query', async () => {
+  it('installs the exact 62-command inventory and dispatches a remote-safe preflight query', async () => {
     const { dependencies, serviceMethod } = createDependencies()
     const preflight = { agentReady: true }
     serviceMethod('getPreflight').mockResolvedValue(preflight)
@@ -181,6 +182,42 @@ describe('Settings core application commands', () => {
     // arguments here made the lookup key that whole object, so the decision was dropped and the suspended
     // request ran to its timeout while the card stayed on screen.
     expect(serviceMethod('respondEgressApproval')).toHaveBeenCalledWith('egress-9', 'allow_once')
+  })
+
+  it('routes the protection matrix read and the remote-policy write through one channel', async () => {
+    const { dependencies, serviceMethod } = createDependencies()
+    const router = createApplicationCommandRouter()
+    registerCoreSettingsApplicationCommands(router.registrar, dependencies)
+    const matrix = { platform: 'darwin', surfaces: [] }
+    serviceMethod('getExecutionProtectionMatrix').mockResolvedValue(matrix)
+    serviceMethod('setRemoteUnprotectedPolicy').mockResolvedValue({ matrix })
+
+    await expect(
+      router.dispatcher.invoke(
+        settingsCoreApplicationCommands.executionProtection,
+        invocation([{ action: 'matrix' }] as const)
+      )
+    ).resolves.toEqual({ matrix })
+
+    // A write returns the freshly resolved matrix, so the panel never renders a level that predates
+    // the change it just made.
+    await expect(
+      router.dispatcher.invoke(
+        settingsCoreApplicationCommands.executionProtection,
+        invocation([{ action: 'set-remote-policy', policy: 'deny' }] as const)
+      )
+    ).resolves.toEqual({ matrix })
+    expect(serviceMethod('setRemoteUnprotectedPolicy')).toHaveBeenCalledWith('deny')
+
+    // Local-only by construction: a paired remote browser may neither read nor change this machine's
+    // protection policy, so the command must refuse a remote caller before touching the service.
+    await expect(
+      router.dispatcher.invoke(
+        settingsCoreApplicationCommands.executionProtection,
+        invocation([{ action: 'matrix' }] as const, 'remote')
+      )
+    ).rejects.toThrow()
+    expect(serviceMethod('getExecutionProtectionMatrix')).toHaveBeenCalledTimes(1)
   })
 
   it('delegates canonical requests for every direct remote-safe owner command', async () => {

@@ -122,6 +122,77 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.routine': 'Плановые задачи',
   'settings.endpoints': 'Локальные модели',
   'settings.network': 'Сеть',
+  'settings.executionProtection': 'Защита выполнения',
+  'protection.intro':
+    'Какая изоляция на самом деле есть у каждой поверхности выполнения на этой машине — до запуска. Удалённое выполнение всегда указано как незащищённое: оно идёт под вашей учётной записью на хосте, без локальных слоёв защиты.',
+  'protection.weakestLinkNote':
+    'Уровень определяется по самому слабому звену: для системной песочницы нужны и защита файловой системы от записи, и фильтрация сети. Обе оси всегда видны рядом с уровнем, поэтому понижение не скрывает защиту, которая всё ещё действует.',
+  'protection.capabilityTitle': 'Эта машина',
+  'protection.capabilityPlatform': 'Платформа',
+  'protection.capabilityOsWriteGuard': 'Системная защита от записи',
+  'protection.capabilityOsWriteGuardAvailable': 'доступна',
+  'protection.capabilityOsWriteGuardUnsupported': 'недоступно на этой платформе',
+  'protection.capabilityOsWriteGuardComponentMissing': 'нет {component}',
+  'protection.capabilityNetworkAllowlist': 'Фильтрация сети',
+  'protection.enabled': 'включена',
+  'protection.disabled': 'выключена',
+  'protection.matrixTitle': 'Матрица защиты',
+  'protection.scopeFilesystem': 'Файловая система',
+  'protection.scopeFilesystemProtected': 'среда выполнения защищена от записи',
+  'protection.scopeFilesystemUnrestricted': 'без ограничений',
+  'protection.scopeNetwork': 'Сеть',
+  'protection.scopeNetworkAllowlist': 'только список разрешённых',
+  'protection.scopeNetworkUnrestricted': 'без фильтрации',
+  'protection.noAppliedLayers': 'К этой поверхности не применён ни один слой защиты.',
+  'protection.repairLabel': 'Как исправить',
+  'protection.surfaceNotebook': 'Ядро блокнота',
+  'protection.surfaceShell': 'Команда терминала',
+  'protection.surfaceBackgroundJob': 'Фоновая задача',
+  'protection.surfaceRemoteHost': 'Удалённый хост',
+  'protection.levelOsSandbox': 'Системная песочница',
+  'protection.levelNetworkAllowlist': 'Только сетевой список разрешённых',
+  'protection.levelUnprotected': 'Без защиты',
+  'protection.layerMacosSeatbeltRuntimeWrite':
+    'Защита среды выполнения от записи в macOS (Seatbelt)',
+  'protection.layerEgressAllowlist': 'Прокси со списком разрешённых',
+  'protection.layerManagedRuntimeMutationGuard': 'Семантическая защита от изменений среды',
+  'protection.unmetNetworkAllowlistDisabled':
+    'Трафик дочерних процессов не фильтруется: ограничение сетевого доступа процессов выключено.',
+  'protection.unmetOsSandboxUnavailablePlatform':
+    'В этой сборке системная защита от записи не применяется к дочерним процессам на этой платформе.',
+  'protection.unmetOsSandboxComponentMissing':
+    'Компонент защиты от записи в macOS отсутствует, поэтому среда выполнения не защищена от записи для дочерних процессов.',
+  'protection.unmetRemoteExecutionHasNoLocalProtection':
+    'Удалённое выполнение идёт под вашей учётной записью на хосте; локальные слои защиты не применяются.',
+  'protection.unmetProtectionUnresolved':
+    'Уровень определить не удалось, поэтому он указан как незащищённый, а не предположен.',
+  'protection.repairEnableNetworkAllowlist':
+    'Включите «Ограничить сетевой доступ процессов» в настройках сети.',
+  'protection.repairRunLocally':
+    'Если уровень защиты важен, выполните это на этой машине (блокнот или терминал).',
+  'protection.repairPlatformHasNoOsSandbox':
+    'В этой сборке нет адаптера системной песочницы для этой платформы; список разрешённых — единственная доступная изоляция.',
+  'protection.policyTitle': 'Удалённое выполнение без защиты',
+  'protection.policyHint':
+    'Удалённую команду или задачу нельзя изолировать средствами этой машины. Выберите, что делать при отправке.',
+  'protection.policyConfirm': 'Спрашивать каждый раз',
+  'protection.policyConfirmHint':
+    'Сохранённое разрешение выдавалось без указания уровня защиты, поэтому оно никогда не покрывает незащищённый запуск молча. Каждая отправка запрашивает подтверждение и оставляет запись.',
+  'protection.policyRemembered': 'Разрешить покрывать сохранёнными разрешениями',
+  'protection.policyRememberedHint':
+    'Разрешения для сеанса, проекта и глобальные будут покрывать и незащищённое удалённое выполнение. Выбирайте это только если постоянные запросы вам не нужны.',
+  'protection.policyDeny': 'Отклонять незащищённое удалённое выполнение',
+  'protection.policyDenyHint': 'Пока уровень незащищённый, удалённые команды и задачи отклоняются.',
+  'protection.loading': 'Чтение матрицы защиты…',
+  'protection.loadError': 'Матрица защиты недоступна в этом окне.',
+  'protection.reload': 'Повторить',
+  'protection.recordedAt': 'Прочитано в {time}',
+  'protection.runEvidenceLabel': 'Уровень защиты',
+  'protection.approvalUnprotectedTitle': 'Этот запуск без защиты',
+  'protection.approvalUnprotectedBody':
+    'Он идёт под вашей учётной записью на хосте, вне любой песочницы этой машины. Уровень записывается вместе с результатом.',
+  'protection.approvalPolicyPointer':
+    'Чтобы не отвечать каждый раз, выберите политику в разделе «Настройки → Защита выполнения».',
   'palette.openSettings': 'Открыть настройки',
   'palette.settingsNetwork': 'Настройки: сеть и зеркало',
   'palette.settingsRuntimes': 'Настройки: среды выполнения',

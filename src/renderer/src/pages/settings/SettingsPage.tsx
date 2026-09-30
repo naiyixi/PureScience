@@ -20,6 +20,7 @@ import {
   ScrollText,
   Search,
   Settings2,
+  ShieldHalf,
   Tags,
   TerminalSquare,
   Users,
@@ -53,6 +54,7 @@ import { useSpecialistStore } from '@/stores/specialist-store'
 import { AgentPanel } from './AgentPanel'
 import { ProvidersPanel } from './ProvidersPanel'
 import { GeneralPanel } from './GeneralPanel'
+import { ExecutionProtectionPanel } from './ExecutionProtectionPanel'
 import { NetworkPanel } from './NetworkPanel'
 import { StoragePanel } from './StoragePanel'
 import { RuntimesPanel } from './RuntimesPanel'
@@ -253,6 +255,24 @@ const buildSettingsGroups = (t: (key: TranslationKey) => string): ReadonlyArray<
           '代理',
           '网络',
           '下载源'
+        ]
+      },
+      {
+        id: 'protection',
+        label: t('settings.executionProtection'),
+        Icon: ShieldHalf,
+        keywords: [
+          'protection',
+          'sandbox',
+          'isolation',
+          'execution',
+          'remote',
+          'unprotected',
+          '保护',
+          '沙箱',
+          '隔离',
+          '执行',
+          '无保护'
         ]
       }
     ]
@@ -1390,6 +1410,8 @@ const SettingsPage = forwardRef<SettingsPageHandle, SettingsPageProps>(function 
                   />
                 ) : activePanel === 'network' ? (
                   <NetworkPanel view={networkView} onNavigate={navigateNetwork} />
+                ) : activePanel === 'protection' ? (
+                  <ExecutionProtectionPanel />
                 ) : activePanel === 'usage' ? (
                   // The usage view reads every session's content, which the list tier does not carry, so it
                   // fetches the full catalog when it is opened rather than aggregating from summaries.

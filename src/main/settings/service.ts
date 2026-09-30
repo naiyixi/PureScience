@@ -98,7 +98,13 @@ import { CREDENTIAL_SERVICE_LABELS, testCredentialSecret, toCredentialView } fro
 import { mirrorEgressHosts } from '../../shared/egress'
 import {
   DEFAULT_EXECUTION_PROTECTION_SETTINGS,
-  type ExecutionProtectionSettings
+  type ExecutionProtectionCommandResult,
+  type ExecutionProtectionMatrix,
+  type ExecutionProtectionSettings,
+  type ExecutionProtectionSnapshot,
+  type ExecutionSurface,
+  type RemoteExecutionTarget,
+  type RemoteUnprotectedExecutionPolicy
 } from '../../shared/execution-protection'
 import {
   applyEgressSettings,
@@ -118,6 +124,7 @@ import { ConnectorSettingsModule, type CustomServerSecurityChangeGuard } from '.
 import { ProviderAccountsModule } from './provider-accounts'
 import type { XaiDeviceCodeSession } from './xai-oauth'
 import { createVisionModels, VisionModelOwner } from './vision-model-owner'
+import { ExecutionProtectionService } from '../execution-protection/service'
 import { AgentRuntimeManager, type ExecuteClaudeProbe } from './agent-runtime-manager'
 import {
   AgentBackendResolver,
@@ -212,6 +219,8 @@ class SettingsService {
   private readonly runtimeManager: AgentRuntimeManager
   private readonly backendResolver: AgentBackendResolver
   private readonly visionModels: VisionModelOwner
+  // One owner for the protection level every surface reports (matrix, run evidence, approval gate).
+  private readonly executionProtection: ExecutionProtectionService
   private readonly storageRoot: string
   private readonly userClaudeDir: string
   private customServerAuthenticator?: (serverId: string) => Promise<void>
@@ -223,6 +232,14 @@ class SettingsService {
     this.storageRoot = options.storageRoot ?? resolveStorageRoot()
     this.repository = options.repository ?? new SettingsRepository(this.storageRoot)
     this.preferences = new SettingsPreferencesModule(this.repository)
+    // The protection service reads the egress allowlist and the remote policy back through this
+    // service, so the level, the matrix and the settings the user sees can never disagree. The
+    // callbacks run after construction, so this is not a construction cycle.
+    this.executionProtection = new ExecutionProtectionService({
+      readEgress: () => this.getEgress(),
+      readRemoteUnprotectedPolicy: async () =>
+        (await this.getExecutionProtection())?.remoteUnprotectedPolicy
+    })
     this.notebookRuntimeSettings = new NotebookRuntimeSettingsModule(this.repository)
     this.connectors = new ConnectorSettingsModule(this.repository)
     this.userClaudeDir = options.userClaudeDir ?? getUserClaudeConfigDir()
@@ -677,6 +694,31 @@ class SettingsService {
   ): Promise<ExecutionProtectionSettings> {
     const persisted = await this.repository.setExecutionProtection(protection)
     return persisted.executionProtection ?? { ...DEFAULT_EXECUTION_PROTECTION_SETTINGS }
+  }
+
+  // The protection level a surface will run at, resolved from live capability plus settings. Used by
+  // the notebook runtime to stamp run evidence, so the level a user reads here is the level a run
+  // recorded.
+  async resolveExecutionProtection(
+    surface: ExecutionSurface,
+    remote?: RemoteExecutionTarget
+  ): Promise<ExecutionProtectionSnapshot> {
+    return this.executionProtection.snapshot(surface, remote)
+  }
+
+  // The queryable protection matrix: platform × execution surface × current level, each row carrying
+  // the layers actually applied, the named gaps, and (in the panel) the repair step for each gap.
+  async getExecutionProtectionMatrix(): Promise<ExecutionProtectionMatrix> {
+    return this.executionProtection.matrix()
+  }
+
+  // Changes how remote execution without any isolation is treated, and returns the freshly resolved
+  // matrix so the caller never renders a level that predates its own change.
+  async setRemoteUnprotectedPolicy(
+    policy: RemoteUnprotectedExecutionPolicy
+  ): Promise<ExecutionProtectionCommandResult> {
+    await this.setExecutionProtection({ remoteUnprotectedPolicy: policy })
+    return { matrix: await this.getExecutionProtectionMatrix() }
   }
 
   // Settles a suspended egress approval from the in-conversation card (deny / allow once /

@@ -125,6 +125,77 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.routine': 'Geplante Aufgaben',
   'settings.endpoints': 'Lokale Modelle',
   'settings.network': 'Netzwerk',
+  'settings.executionProtection': 'Ausführungsschutz',
+  'protection.intro':
+    'Welche Isolation jede Ausführungsfläche auf diesem Rechner tatsächlich hat – noch bevor etwas läuft. Remote-Ausführung steht immer als ungeschützt: Sie läuft unter Ihrem Konto auf dem Host, ohne lokale Schutzschicht.',
+  'protection.weakestLinkNote':
+    'Die Stufe ist das schwächste Glied: Für die System-Sandbox müssen Schreibschutz des Dateisystems und Netzwerkfilterung beide greifen. Beide Achsen bleiben neben der Stufe sichtbar, damit eine Herabstufung nie einen weiterhin wirksamen Schutz verdeckt.',
+  'protection.capabilityTitle': 'Dieser Rechner',
+  'protection.capabilityPlatform': 'Plattform',
+  'protection.capabilityOsWriteGuard': 'System-Schreibschutz',
+  'protection.capabilityOsWriteGuardAvailable': 'verfügbar',
+  'protection.capabilityOsWriteGuardUnsupported': 'auf dieser Plattform nicht anwendbar',
+  'protection.capabilityOsWriteGuardComponentMissing': '{component} fehlt',
+  'protection.capabilityNetworkAllowlist': 'Netzwerkfilterung',
+  'protection.enabled': 'an',
+  'protection.disabled': 'aus',
+  'protection.matrixTitle': 'Schutzmatrix',
+  'protection.scopeFilesystem': 'Dateisystem',
+  'protection.scopeFilesystemProtected': 'Laufzeit schreibgeschützt',
+  'protection.scopeFilesystemUnrestricted': 'uneingeschränkt',
+  'protection.scopeNetwork': 'Netzwerk',
+  'protection.scopeNetworkAllowlist': 'nur Positivliste',
+  'protection.scopeNetworkUnrestricted': 'ungefiltert',
+  'protection.noAppliedLayers': 'Für diese Fläche ist keine Schutzschicht aktiv.',
+  'protection.repairLabel': 'Behebung',
+  'protection.surfaceNotebook': 'Notebook-Kernel',
+  'protection.surfaceShell': 'Terminal-Befehl',
+  'protection.surfaceBackgroundJob': 'Hintergrundauftrag',
+  'protection.surfaceRemoteHost': 'Remote-Host',
+  'protection.levelOsSandbox': 'System-Sandbox',
+  'protection.levelNetworkAllowlist': 'Nur Netzwerk-Positivliste',
+  'protection.levelUnprotected': 'Ungeschützt',
+  'protection.layerMacosSeatbeltRuntimeWrite': 'macOS-Schreibschutz der Laufzeit (Seatbelt)',
+  'protection.layerEgressAllowlist': 'Netzwerk-Positivlisten-Proxy',
+  'protection.layerManagedRuntimeMutationGuard': 'Semantischer Schutz gegen Laufzeitänderungen',
+  'protection.unmetNetworkAllowlistDisabled':
+    'Der Datenverkehr der Kindprozesse wird nicht gefiltert: Die Netzwerkbeschränkung für Prozesse ist aus.',
+  'protection.unmetOsSandboxUnavailablePlatform':
+    'In dieser Version wird auf dieser Plattform kein System-Schreibschutz auf Kindprozesse angewendet.',
+  'protection.unmetOsSandboxComponentMissing':
+    'Die macOS-Schreibschutzkomponente fehlt, daher ist die Laufzeit für Kindprozesse nicht schreibgeschützt.',
+  'protection.unmetRemoteExecutionHasNoLocalProtection':
+    'Remote-Ausführung läuft unter Ihrem Konto auf dem Host; lokale Schutzschichten greifen nicht.',
+  'protection.unmetProtectionUnresolved':
+    'Die Stufe ließ sich nicht ermitteln und wird deshalb als ungeschützt gemeldet statt angenommen.',
+  'protection.repairEnableNetworkAllowlist':
+    'Aktivieren Sie in den Netzwerkeinstellungen „Prozess-Netzwerkzugriff beschränken“.',
+  'protection.repairRunLocally':
+    'Führen Sie dies auf diesem Rechner aus (Notebook oder Terminal), wenn die Schutzstufe zählt.',
+  'protection.repairPlatformHasNoOsSandbox':
+    'Diese Version hat keinen System-Sandbox-Adapter für diese Plattform; die Positivliste ist die einzige verfügbare Isolation.',
+  'protection.policyTitle': 'Ungeschützte Remote-Ausführung',
+  'protection.policyHint':
+    'Ein Remote-Befehl oder -Auftrag lässt sich von diesem Rechner nicht isolieren. Wählen Sie, was beim Absenden geschieht.',
+  'protection.policyConfirm': 'Jedes Mal fragen',
+  'protection.policyConfirmHint':
+    'Eine gemerkte Genehmigung wurde ohne Schutzstufe erteilt und deckt daher keinen ungeschützten Lauf stillschweigend ab. Jede Einsendung fragt nach und wird protokolliert.',
+  'protection.policyRemembered': 'Gemerkte Genehmigungen zulassen',
+  'protection.policyRememberedHint':
+    'Sitzungs-, Projekt- und globale Genehmigungen decken dann auch ungeschützte Remote-Läufe ab. Wählen Sie das nur, wenn Nachfragen nicht lohnt.',
+  'protection.policyDeny': 'Ungeschützte Remote-Ausführung ablehnen',
+  'protection.policyDenyHint':
+    'Remote-Befehle und -Aufträge werden abgelehnt, solange die Stufe ungeschützt ist.',
+  'protection.loading': 'Schutzmatrix wird gelesen…',
+  'protection.loadError': 'Die Schutzmatrix ist in diesem Fenster nicht verfügbar.',
+  'protection.reload': 'Erneut versuchen',
+  'protection.recordedAt': 'Gelesen um {time}',
+  'protection.runEvidenceLabel': 'Schutzstufe',
+  'protection.approvalUnprotectedTitle': 'Dieser Lauf ist ungeschützt',
+  'protection.approvalUnprotectedBody':
+    'Er läuft mit Ihrem Konto auf dem Host, außerhalb jeder Sandbox dieses Rechners. Die Stufe wird mit dem Ergebnis aufgezeichnet.',
+  'protection.approvalPolicyPointer':
+    'Wenn Sie nicht jedes Mal gefragt werden möchten, wählen Sie eine Richtlinie unter Einstellungen → Ausführungsschutz.',
   'palette.openSettings': 'Einstellungen öffnen',
   'palette.settingsNetwork': 'Einstellungen: Netzwerk und Mirror',
   'palette.settingsRuntimes': 'Einstellungen: Laufzeitumgebungen',

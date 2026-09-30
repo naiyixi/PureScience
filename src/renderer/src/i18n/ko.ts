@@ -122,6 +122,75 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.routine': '예약 작업',
   'settings.endpoints': '로컬 모델',
   'settings.network': '네트워크',
+  'settings.executionProtection': '실행 보호',
+  'protection.intro':
+    '무엇이든 실행되기 전에, 이 컴퓨터에서 각 실행 표면이 실제로 어떤 보호 수준으로 동작하는지 보여 줍니다. 원격 실행은 항상 보호 없음입니다. 호스트의 사용자 계정으로 실행되며 로컬 보호 계층이 적용되지 않습니다.',
+  'protection.weakestLinkNote':
+    '수준은 가장 약한 축으로 정합니다. OS 샌드박스는 파일 시스템 쓰기 보호와 네트워크 필터링이 모두 성립해야 합니다. 두 축은 항상 수준 옆에 함께 표시되므로, 하향되어도 여전히 유효한 보호가 가려지지 않습니다.',
+  'protection.capabilityTitle': '이 컴퓨터',
+  'protection.capabilityPlatform': '플랫폼',
+  'protection.capabilityOsWriteGuard': 'OS 쓰기 보호',
+  'protection.capabilityOsWriteGuardAvailable': '사용 가능',
+  'protection.capabilityOsWriteGuardUnsupported': '이 플랫폼에서는 해당 없음',
+  'protection.capabilityOsWriteGuardComponentMissing': '{component} 없음',
+  'protection.capabilityNetworkAllowlist': '네트워크 필터링',
+  'protection.enabled': '켜짐',
+  'protection.disabled': '꺼짐',
+  'protection.matrixTitle': '보호 매트릭스',
+  'protection.scopeFilesystem': '파일 시스템',
+  'protection.scopeFilesystemProtected': '런타임 쓰기 보호됨',
+  'protection.scopeFilesystemUnrestricted': '제한 없음',
+  'protection.scopeNetwork': '네트워크',
+  'protection.scopeNetworkAllowlist': '허용 목록만',
+  'protection.scopeNetworkUnrestricted': '필터 없음',
+  'protection.noAppliedLayers': '이 실행 표면에는 보호 계층이 적용되지 않았습니다.',
+  'protection.repairLabel': '조치',
+  'protection.surfaceNotebook': '노트북 커널',
+  'protection.surfaceShell': '터미널 명령',
+  'protection.surfaceBackgroundJob': '백그라운드 작업',
+  'protection.surfaceRemoteHost': '원격 호스트',
+  'protection.levelOsSandbox': 'OS 샌드박스',
+  'protection.levelNetworkAllowlist': '네트워크 허용 목록만',
+  'protection.levelUnprotected': '보호 없음',
+  'protection.layerMacosSeatbeltRuntimeWrite': 'macOS 런타임 쓰기 보호(Seatbelt)',
+  'protection.layerEgressAllowlist': '네트워크 허용 목록 프록시',
+  'protection.layerManagedRuntimeMutationGuard': '런타임 변경 의미 가드',
+  'protection.unmetNetworkAllowlistDisabled':
+    '자식 프로세스 트래픽이 필터링되지 않습니다. 프로세스 네트워크 제한이 꺼져 있습니다.',
+  'protection.unmetOsSandboxUnavailablePlatform':
+    '이 빌드에서는 이 플랫폼의 자식 프로세스에 OS 쓰기 보호를 적용하지 않습니다.',
+  'protection.unmetOsSandboxComponentMissing':
+    'macOS 쓰기 보호 구성 요소가 없어 자식 프로세스에 대해 런타임이 읽기 전용이 아닙니다.',
+  'protection.unmetRemoteExecutionHasNoLocalProtection':
+    '원격 실행은 호스트의 사용자 계정으로 실행되므로 로컬 보호 계층이 적용되지 않습니다.',
+  'protection.unmetProtectionUnresolved':
+    '보호 수준을 확인하지 못해, 보호가 있다고 가정하지 않고 보호 없음으로 보고합니다.',
+  'protection.repairEnableNetworkAllowlist':
+    '네트워크 설정에서 "프로세스 네트워크 액세스 제한"을 켜세요.',
+  'protection.repairRunLocally':
+    '보호 수준이 중요하면 이 작업을 이 컴퓨터(노트북 또는 터미널)에서 실행하세요.',
+  'protection.repairPlatformHasNoOsSandbox':
+    '이 빌드에는 이 플랫폼용 OS 샌드박스 어댑터가 없습니다. 허용 목록이 여기서 쓸 수 있는 유일한 격리 수단입니다.',
+  'protection.policyTitle': '보호 없는 원격 실행',
+  'protection.policyHint':
+    '원격 명령이나 작업은 이 컴퓨터에서 격리할 수 없습니다. 제출할 때 어떻게 할지 선택하세요.',
+  'protection.policyConfirm': '매번 확인',
+  'protection.policyConfirmHint':
+    '이전에 기억한 승인은 보호 수준을 기록하지 않았으므로 보호 없는 실행을 조용히 덮지 않습니다. 제출할 때마다 확인하고 기록합니다.',
+  'protection.policyRemembered': '기억한 승인으로 덮기',
+  'protection.policyRememberedHint':
+    '세션, 프로젝트, 전역 승인이 보호 없는 원격 실행도 덮습니다. 매번 묻지 않아도 괜찮을 때만 선택하세요.',
+  'protection.policyDeny': '보호 없는 원격 실행 거부',
+  'protection.policyDenyHint': '수준이 보호 없음인 동안에는 원격 명령과 작업을 일괄 거부합니다.',
+  'protection.loading': '보호 매트릭스를 읽는 중…',
+  'protection.loadError': '이 창에서는 보호 매트릭스를 읽을 수 없습니다.',
+  'protection.reload': '다시 시도',
+  'protection.recordedAt': '읽은 시각 {time}',
+  'protection.runEvidenceLabel': '보호 수준',
+  'protection.approvalUnprotectedTitle': '이 실행은 보호 없음입니다',
+  'protection.approvalUnprotectedBody':
+    '호스트의 사용자 계정으로 실행되며, 이 컴퓨터가 적용하는 샌드박스 밖에 있습니다. 수준은 결과와 함께 기록됩니다.',
+  'protection.approvalPolicyPointer': '매번 묻지 않으려면 설정 → 실행 보호에서 정책을 선택하세요.',
   'palette.openSettings': '설정 열기',
   'palette.settingsNetwork': '설정: 네트워크 및 미러',
   'palette.settingsRuntimes': '설정: 런타임',

@@ -18,40 +18,17 @@ import type { EgressSettings } from '../../shared/egress'
 import {
   DEFAULT_REMOTE_UNPROTECTED_EXECUTION_POLICY,
   resolveExecutionProtection,
+  type ExecutionProtectionMatrix,
   type ExecutionProtectionSnapshot,
   type ExecutionSurface,
+  type OsWriteGuardStatus,
+  type RemoteExecutionTarget,
   type RemoteUnprotectedExecutionPolicy
 } from '../../shared/execution-protection'
 
 // The component the macOS write-guard spawn wrapper executes. Kept in sync with
 // notebook/managed-runtime-guard `protectManagedRuntimeWrites`.
 export const OS_WRITE_GUARD_COMPONENT = '/usr/bin/sandbox-exec'
-
-export type OsWriteGuardStatus = {
-  platform: string
-  component: string
-  componentPresent: boolean
-  // True only for a platform whose spawn paths apply the guard AND whose component is present.
-  available: boolean
-}
-
-export type ExecutionProtectionMatrix = {
-  platform: string
-  capturedAt: number
-  osWriteGuard: OsWriteGuardStatus
-  networkAllowlist: { enabled: boolean }
-  // One row per execution surface. Remote rows carry no host block: the level of a remote execution
-  // does not depend on which host it is, so per-host duplication would only invite the reader to
-  // think some host is safer than another.
-  surfaces: ExecutionProtectionSnapshot[]
-  remoteUnprotectedPolicy: RemoteUnprotectedExecutionPolicy
-}
-
-export type RemoteExecutionTarget = {
-  providerId: string
-  displayName: string
-  executionMode: 'direct_ssh' | 'slurm'
-}
 
 export type ExecutionProtectionServiceDeps = {
   platform?: NodeJS.Platform

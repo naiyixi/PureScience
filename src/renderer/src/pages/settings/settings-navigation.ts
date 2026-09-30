@@ -18,6 +18,7 @@ export type SettingsPanelId =
   | 'general'
   | 'storage'
   | 'network'
+  | 'protection'
   | 'runtimes'
   | 'remote-control'
 

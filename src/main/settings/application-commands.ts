@@ -25,6 +25,10 @@ import type {
   ValidateProviderRequest
 } from '../../shared/settings'
 import type { EgressApprovalRespondRequest } from '../../shared/egress'
+import type {
+  ExecutionProtectionCommandRequest,
+  ExecutionProtectionCommandResult
+} from '../../shared/execution-protection'
 import {
   defineApplicationCommand,
   defineApplicationCommandGroup,
@@ -53,6 +57,8 @@ type CoreSettingsCommandStore = Pick<
   | 'detectCodebuddy'
   | 'detectCodex'
   | 'detectOpencode'
+  | 'getExecutionProtectionMatrix'
+  | 'setRemoteUnprotectedPolicy'
   | 'getConnectorDetail'
   | 'getMemory'
   | 'listCredentials'
@@ -152,6 +158,11 @@ const settingsCoreApplicationCommands = Object.freeze({
     readonly [],
     StoreResult<'detectOpencode'>
   >('settings:detect-opencode'),
+  executionProtection: defineApplicationCommand<
+    'settings:execution-protection',
+    readonly [request: ExecutionProtectionCommandRequest],
+    ExecutionProtectionCommandResult
+  >('settings:execution-protection'),
   getConnectorDetail: defineApplicationCommand<
     'settings:get-connector-detail',
     readonly [id: string],
@@ -435,6 +446,7 @@ const settingsCoreApplicationCommandGroup = defineApplicationCommandGroup('setti
   settingsCoreApplicationCommands.detectCodebuddy,
   settingsCoreApplicationCommands.detectCodex,
   settingsCoreApplicationCommands.detectOpencode,
+  settingsCoreApplicationCommands.executionProtection,
   settingsCoreApplicationCommands.getConnectorDetail,
   settingsCoreApplicationCommands.getMemory,
   settingsCoreApplicationCommands.getCredentials,
@@ -528,6 +540,15 @@ const registerCoreSettingsApplicationCommands = (
       'settings:detect-codebuddy': () => dependencies.service.detectCodebuddy(),
       'settings:detect-codex': () => dependencies.service.detectCodex(),
       'settings:detect-opencode': () => dependencies.service.detectOpencode(),
+      // One channel, two actions: the panel reads the matrix and writes the remote policy through the
+      // same entry, and every write comes back with the freshly resolved matrix.
+      'settings:execution-protection': async ({ args, callerContext }) => {
+        requireLocalCaller(callerContext, 'settings:execution-protection')
+        const request = args[0]
+        return request.action === 'set-remote-policy'
+          ? await dependencies.service.setRemoteUnprotectedPolicy(request.policy)
+          : { matrix: await dependencies.service.getExecutionProtectionMatrix() }
+      },
       'settings:get-connector-detail': ({ args }) =>
         dependencies.service.getConnectorDetail(args[0]),
       'settings:get-package-mirror': () => dependencies.service.getPackageMirror(),

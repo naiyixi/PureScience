@@ -954,6 +954,77 @@ export const en: Record<ZhKey, string> = {
   'settings.endpointsApproveMissing': 'That service is no longer registered; refresh the list.',
   'settings.endpointsPending': 'needs approval',
   'settings.network': 'Network',
+  'settings.executionProtection': 'Execution protection',
+  'protection.intro':
+    'What isolation each execution surface actually has on this machine, before anything runs. Remote execution is always listed as unprotected: it runs under your account on the host, with no local protection layer.',
+  'protection.weakestLinkNote':
+    'The level is weakest-link: the filesystem write-guard and network filtering must both hold for OS sandbox. The two axes stay visible next to the level, so a downgrade never hides a protection that is still in force.',
+  'protection.capabilityTitle': 'This machine',
+  'protection.capabilityPlatform': 'Platform',
+  'protection.capabilityOsWriteGuard': 'OS write-guard',
+  'protection.capabilityOsWriteGuardAvailable': 'available',
+  'protection.capabilityOsWriteGuardUnsupported': 'not applicable on this platform',
+  'protection.capabilityOsWriteGuardComponentMissing': '{component} is missing',
+  'protection.capabilityNetworkAllowlist': 'Network filtering',
+  'protection.enabled': 'on',
+  'protection.disabled': 'off',
+  'protection.matrixTitle': 'Protection matrix',
+  'protection.scopeFilesystem': 'Filesystem',
+  'protection.scopeFilesystemProtected': 'runtime write-protected',
+  'protection.scopeFilesystemUnrestricted': 'unrestricted',
+  'protection.scopeNetwork': 'Network',
+  'protection.scopeNetworkAllowlist': 'allowlist only',
+  'protection.scopeNetworkUnrestricted': 'unfiltered',
+  'protection.noAppliedLayers': 'No protection layer is applied to this surface.',
+  'protection.repairLabel': 'Fix',
+  'protection.surfaceNotebook': 'Notebook kernel',
+  'protection.surfaceShell': 'Terminal command',
+  'protection.surfaceBackgroundJob': 'Background job',
+  'protection.surfaceRemoteHost': 'Remote host',
+  'protection.levelOsSandbox': 'OS sandbox',
+  'protection.levelNetworkAllowlist': 'Network allowlist only',
+  'protection.levelUnprotected': 'Unprotected',
+  'protection.layerMacosSeatbeltRuntimeWrite': 'macOS runtime write-guard (Seatbelt)',
+  'protection.layerEgressAllowlist': 'Network allowlist proxy',
+  'protection.layerManagedRuntimeMutationGuard': 'Runtime-mutation semantic guard',
+  'protection.unmetNetworkAllowlistDisabled':
+    'Child-process traffic is not filtered: process network access is off.',
+  'protection.unmetOsSandboxUnavailablePlatform':
+    'No OS write-guard is applied to child processes on this platform in this build.',
+  'protection.unmetOsSandboxComponentMissing':
+    'The macOS write-guard component is missing, so the runtime is not write-protected for child processes.',
+  'protection.unmetRemoteExecutionHasNoLocalProtection':
+    'Remote execution runs under your account on the host; no local protection layer applies.',
+  'protection.unmetProtectionUnresolved':
+    'The level could not be resolved, so it is reported as unprotected rather than assumed.',
+  'protection.repairEnableNetworkAllowlist':
+    'Turn on “Restrict process network access” in Network settings.',
+  'protection.repairRunLocally':
+    'Run this on this machine (notebook or terminal) when the protection level matters.',
+  'protection.repairPlatformHasNoOsSandbox':
+    'This build has no OS sandbox adapter for this platform; the allowlist is the only isolation available.',
+  'protection.policyTitle': 'Remote execution without protection',
+  'protection.policyHint':
+    'A remote command or job cannot be isolated by this machine. Choose what happens when one is submitted.',
+  'protection.policyConfirm': 'Ask every time',
+  'protection.policyConfirmHint':
+    'A remembered approval was granted without naming a protection level, so it never silently covers an unprotected run. Each unprotected submission asks and is recorded.',
+  'protection.policyRemembered': 'Let remembered approvals cover it',
+  'protection.policyRememberedHint':
+    'Session, project and global approvals also cover unprotected remote runs. Choose this only if being asked each time is not worth it.',
+  'protection.policyDeny': 'Refuse unprotected remote execution',
+  'protection.policyDenyHint':
+    'Remote commands and jobs are rejected outright while the level is unprotected.',
+  'protection.loading': 'Reading the protection matrix…',
+  'protection.loadError': 'The protection matrix is unavailable in this window.',
+  'protection.reload': 'Try again',
+  'protection.recordedAt': 'Read at {time}',
+  'protection.runEvidenceLabel': 'Protection level',
+  'protection.approvalUnprotectedTitle': 'This run is unprotected',
+  'protection.approvalUnprotectedBody':
+    'It runs with your account on the host, outside any sandbox this machine applies. The level is recorded with the result.',
+  'protection.approvalPolicyPointer':
+    'To stop being asked every time, choose a policy under Settings → Execution protection.',
   'palette.openSettings': 'Open settings',
   'palette.settingsNetwork': 'Settings: Network & mirror',
   'palette.settingsRuntimes': 'Settings: Runtimes',

@@ -230,6 +230,8 @@ import type {
   SetCredentialRequest,
   TestCredentialRequest,
   EgressSettings,
+  ExecutionProtectionCommandRequest,
+  ExecutionProtectionCommandResult,
   ProxySettings,
   ExternalComputeEndpoint,
   CreateExternalComputeEndpointRequest,
@@ -610,6 +612,9 @@ export interface PureScienceAPI {
     setAutoApply(enabled: boolean): Promise<boolean>
     getProxy(): Promise<ProxySettings | undefined>
     setProxy(proxy: ProxySettings): Promise<ProxySettings | undefined>
+    executionProtection(
+      request: ExecutionProtectionCommandRequest
+    ): Promise<ExecutionProtectionCommandResult>
     getExternalComputeEndpoints(): Promise<ExternalComputeEndpoint[]>
     setExternalComputeEndpoint(
       request: CreateExternalComputeEndpointRequest

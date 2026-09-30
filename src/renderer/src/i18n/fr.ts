@@ -123,6 +123,79 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.routine': 'Tâches planifiées',
   'settings.endpoints': 'Modèles locaux',
   'settings.network': 'Réseau',
+  'settings.executionProtection': "Protection d'exécution",
+  'protection.intro':
+    "Quel isolement chaque surface d'exécution a réellement sur cette machine, avant toute exécution. L'exécution distante est toujours indiquée comme non protégée : elle s'exécute avec votre compte sur l'hôte, sans couche de protection locale.",
+  'protection.weakestLinkNote':
+    "Le niveau suit le maillon faible : le bac à sable système exige à la fois la protection en écriture du système de fichiers et le filtrage réseau. Les deux axes restent affichés à côté du niveau, pour qu'une rétrogradation ne masque jamais une protection toujours active.",
+  'protection.capabilityTitle': 'Cette machine',
+  'protection.capabilityPlatform': 'Plateforme',
+  'protection.capabilityOsWriteGuard': 'Protection en écriture du système',
+  'protection.capabilityOsWriteGuardAvailable': 'disponible',
+  'protection.capabilityOsWriteGuardUnsupported': 'non applicable sur cette plateforme',
+  'protection.capabilityOsWriteGuardComponentMissing': '{component} est absent',
+  'protection.capabilityNetworkAllowlist': 'Filtrage réseau',
+  'protection.enabled': 'activé',
+  'protection.disabled': 'désactivé',
+  'protection.matrixTitle': 'Matrice de protection',
+  'protection.scopeFilesystem': 'Système de fichiers',
+  'protection.scopeFilesystemProtected': "environnement d'exécution protégé en écriture",
+  'protection.scopeFilesystemUnrestricted': 'sans restriction',
+  'protection.scopeNetwork': 'Réseau',
+  'protection.scopeNetworkAllowlist': "liste d'autorisation uniquement",
+  'protection.scopeNetworkUnrestricted': 'non filtré',
+  'protection.noAppliedLayers': "Aucune couche de protection n'est appliquée à cette surface.",
+  'protection.repairLabel': 'Comment corriger',
+  'protection.surfaceNotebook': 'Noyau du carnet',
+  'protection.surfaceShell': 'Commande de terminal',
+  'protection.surfaceBackgroundJob': 'Tâche en arrière-plan',
+  'protection.surfaceRemoteHost': 'Hôte distant',
+  'protection.levelOsSandbox': 'Bac à sable système',
+  'protection.levelNetworkAllowlist': "Liste d'autorisation réseau uniquement",
+  'protection.levelUnprotected': 'Non protégé',
+  'protection.layerMacosSeatbeltRuntimeWrite':
+    "Protection en écriture de l'environnement (Seatbelt) sur macOS",
+  'protection.layerEgressAllowlist': "Proxy à liste d'autorisation",
+  'protection.layerManagedRuntimeMutationGuard':
+    "Garde sémantique des modifications de l'environnement",
+  'protection.unmetNetworkAllowlistDisabled':
+    "Le trafic des processus enfants n'est pas filtré : la restriction d'accès réseau des processus est désactivée.",
+  'protection.unmetOsSandboxUnavailablePlatform':
+    "Cette version n'applique aucune protection en écriture système aux processus enfants sur cette plateforme.",
+  'protection.unmetOsSandboxComponentMissing':
+    "Le composant de protection en écriture de macOS est absent : l'environnement d'exécution n'est donc pas protégé en écriture pour les processus enfants.",
+  'protection.unmetRemoteExecutionHasNoLocalProtection':
+    "L'exécution distante s'exécute avec votre compte sur l'hôte ; aucune couche de protection locale ne s'applique.",
+  'protection.unmetProtectionUnresolved':
+    "Le niveau n'a pas pu être déterminé : il est donc signalé comme non protégé plutôt que supposé.",
+  'protection.repairEnableNetworkAllowlist':
+    "Activez « Restreindre l'accès réseau des processus » dans les réglages Réseau.",
+  'protection.repairRunLocally':
+    'Exécutez cette étape sur cette machine (carnet ou terminal) lorsque le niveau de protection compte.',
+  'protection.repairPlatformHasNoOsSandbox':
+    "Cette version n'a pas d'adaptateur de bac à sable système pour cette plateforme ; la liste d'autorisation est le seul isolement disponible.",
+  'protection.policyTitle': 'Exécution distante sans protection',
+  'protection.policyHint':
+    "Une commande ou une tâche distante ne peut pas être isolée depuis cette machine. Choisissez ce qui se passe à l'envoi.",
+  'protection.policyConfirm': 'Demander à chaque fois',
+  'protection.policyConfirmHint':
+    'Une autorisation mémorisée a été accordée sans niveau de protection : elle ne couvre donc jamais en silence une exécution non protégée. Chaque envoi demande et laisse une trace.',
+  'protection.policyRemembered': 'Laisser les autorisations mémorisées la couvrir',
+  'protection.policyRememberedHint':
+    'Les autorisations de session, de projet et globales couvrent alors aussi les exécutions distantes non protégées. Ne le choisissez que si être redemandé à chaque fois ne vaut pas la peine.',
+  'protection.policyDeny': "Refuser l'exécution distante non protégée",
+  'protection.policyDenyHint':
+    'Les commandes et tâches distantes sont refusées tant que le niveau est non protégé.',
+  'protection.loading': 'Lecture de la matrice de protection…',
+  'protection.loadError': "La matrice de protection n'est pas disponible dans cette fenêtre.",
+  'protection.reload': 'Réessayer',
+  'protection.recordedAt': 'Lu à {time}',
+  'protection.runEvidenceLabel': 'Niveau de protection',
+  'protection.approvalUnprotectedTitle': "Cette exécution n'est pas protégée",
+  'protection.approvalUnprotectedBody':
+    "Elle s'exécute avec votre compte sur l'hôte, hors de tout bac à sable de cette machine. Le niveau est enregistré avec le résultat.",
+  'protection.approvalPolicyPointer':
+    "Pour ne plus être interrogé à chaque fois, choisissez une politique dans Réglages → Protection d'exécution.",
   'palette.openSettings': 'Ouvrir les réglages',
   'palette.settingsNetwork': 'Réglages : réseau et miroir',
   'palette.settingsRuntimes': 'Réglages : environnements',

@@ -321,6 +321,47 @@ export type RemoteUnprotectedExecutionPolicy =
 export const DEFAULT_REMOTE_UNPROTECTED_EXECUTION_POLICY: RemoteUnprotectedExecutionPolicy =
   'confirm'
 
+export type ExecutionProtectionMatrix = {
+  platform: string
+  capturedAt: number
+  osWriteGuard: OsWriteGuardStatus
+  networkAllowlist: { enabled: boolean }
+  // One row per execution surface. Remote rows carry no host block: the level of a remote execution
+  // does not depend on which host it is, so per-host duplication would only invite the reader to
+  // think some host is safer than another.
+  surfaces: ExecutionProtectionSnapshot[]
+  remoteUnprotectedPolicy: RemoteUnprotectedExecutionPolicy
+}
+
+// The OS write-guard this build can apply to local child processes, and whether this machine has the
+// component it needs. Reported next to the level so "why isn't this sandboxed" is answerable.
+export type OsWriteGuardStatus = {
+  platform: string
+  component: string
+  componentPresent: boolean
+  // True only for a platform whose spawn paths apply the guard AND whose component is present.
+  available: boolean
+}
+
+export type RemoteExecutionTarget = {
+  providerId: string
+  displayName: string
+  executionMode: 'direct_ssh' | 'slurm'
+}
+
+// Read/write surface for the protection matrix. One channel with two actions rather than two
+// channels: the setter is the same settings block the getter reports, and every write returns the
+// freshly resolved matrix so the panel never renders a stale level after a change.
+export const EXECUTION_PROTECTION_COMMAND_CHANNEL = 'settings:execution-protection'
+
+export type ExecutionProtectionCommandRequest =
+  | { action: 'matrix' }
+  | { action: 'set-remote-policy'; policy: RemoteUnprotectedExecutionPolicy }
+
+export type ExecutionProtectionCommandResult = {
+  matrix: ExecutionProtectionMatrix
+}
+
 export const isRemoteUnprotectedExecutionPolicy = (
   value: unknown
 ): value is RemoteUnprotectedExecutionPolicy =>

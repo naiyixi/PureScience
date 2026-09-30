@@ -205,6 +205,7 @@ const REMOTE_LOCAL_ONLY_CHANNELS: GroupedInventory = {
     'set-egress',
     'get-proxy',
     'set-proxy',
+    'execution-protection',
     'list-external-compute-endpoints',
     'set-external-compute-endpoint',
     'delete-external-compute-endpoint',
@@ -276,7 +277,7 @@ describe('renderer surface inventory', () => {
     // preload inventory and in the generator-omission list, and in neither Web map.
     // 448 with the two PDF annotation export channels (文档标注层 A4): the preload bridge exposes one
     // method per contract, so the two inventories move together.
-    expect(electronPaths).toHaveLength(449)
+    expect(electronPaths).toHaveLength(450)
     expectSameSet(
       electronPaths,
       RENDERER_CONTRACT_CATALOG.map(({ publicPath }) => publicPath)
@@ -284,7 +285,7 @@ describe('renderer surface inventory', () => {
     // 344 since the PDF annotation export channels (文档标注层 A4), 342 since the annotation surface
     // (A3) and 337 since the literature-screening surface (v1.77 unit): all of them are local invoke
     // channels, so the invoke map moves with them.
-    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(344)
+    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(345)
     expect(Object.keys(WEB_EVENT_CHANNELS)).toHaveLength(34)
     expectSameSet(
       electronPaths.filter((path) => !generatedPaths.has(path)),
@@ -320,7 +321,7 @@ describe('renderer surface inventory', () => {
     const expectedRemoteLocalOnly = expand(REMOTE_LOCAL_ONLY_CHANNELS, ':')
 
     expectSameSet(REMOTE_LOCAL_ONLY_RPC_CHANNELS, expectedRemoteLocalOnly)
-    expect(expectedRemoteLocalOnly).toHaveLength(116)
+    expect(expectedRemoteLocalOnly).toHaveLength(117)
     expect(
       expectedRemoteLocalOnly.every((channel) => WEB_RPC_ALLOWED_CHANNELS.includes(channel))
     ).toBe(true)

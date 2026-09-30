@@ -123,6 +123,78 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.routine': 'Tareas programadas',
   'settings.endpoints': 'Modelos locales',
   'settings.network': 'Red',
+  'settings.executionProtection': 'Protección de ejecución',
+  'protection.intro':
+    'Qué aislamiento tiene realmente cada superficie de ejecución en este equipo, antes de que se ejecute nada. La ejecución remota figura siempre como sin protección: se ejecuta con tu cuenta en el host, sin ninguna capa local.',
+  'protection.weakestLinkNote':
+    'El nivel es el eslabón más débil: para la zona de pruebas del sistema deben cumplirse la protección de escritura del sistema de archivos y el filtrado de red. Los dos ejes permanecen visibles junto al nivel, así una bajada nunca oculta una protección que sigue vigente.',
+  'protection.capabilityTitle': 'Este equipo',
+  'protection.capabilityPlatform': 'Plataforma',
+  'protection.capabilityOsWriteGuard': 'Protección de escritura del sistema',
+  'protection.capabilityOsWriteGuardAvailable': 'disponible',
+  'protection.capabilityOsWriteGuardUnsupported': 'no aplicable en esta plataforma',
+  'protection.capabilityOsWriteGuardComponentMissing': 'falta {component}',
+  'protection.capabilityNetworkAllowlist': 'Filtrado de red',
+  'protection.enabled': 'activado',
+  'protection.disabled': 'desactivado',
+  'protection.matrixTitle': 'Matriz de protección',
+  'protection.scopeFilesystem': 'Sistema de archivos',
+  'protection.scopeFilesystemProtected': 'entorno de ejecución protegido contra escritura',
+  'protection.scopeFilesystemUnrestricted': 'sin restricciones',
+  'protection.scopeNetwork': 'Red',
+  'protection.scopeNetworkAllowlist': 'solo lista de permitidos',
+  'protection.scopeNetworkUnrestricted': 'sin filtrar',
+  'protection.noAppliedLayers': 'No hay ninguna capa de protección aplicada a esta superficie.',
+  'protection.repairLabel': 'Cómo corregirlo',
+  'protection.surfaceNotebook': 'Núcleo del cuaderno',
+  'protection.surfaceShell': 'Comando de terminal',
+  'protection.surfaceBackgroundJob': 'Trabajo en segundo plano',
+  'protection.surfaceRemoteHost': 'Host remoto',
+  'protection.levelOsSandbox': 'Zona de pruebas del sistema',
+  'protection.levelNetworkAllowlist': 'Solo lista de permitidos de red',
+  'protection.levelUnprotected': 'Sin protección',
+  'protection.layerMacosSeatbeltRuntimeWrite':
+    'Protección de escritura del entorno (Seatbelt) en macOS',
+  'protection.layerEgressAllowlist': 'Proxy con lista de permitidos',
+  'protection.layerManagedRuntimeMutationGuard': 'Guarda semántica de cambios en el entorno',
+  'protection.unmetNetworkAllowlistDisabled':
+    'El tráfico de los procesos hijos no se filtra: el acceso a la red de procesos está desactivado.',
+  'protection.unmetOsSandboxUnavailablePlatform':
+    'En esta versión no se aplica ninguna protección de escritura del sistema a los procesos hijos en esta plataforma.',
+  'protection.unmetOsSandboxComponentMissing':
+    'Falta el componente de protección de escritura de macOS, así que el entorno no está protegido contra escritura para los procesos hijos.',
+  'protection.unmetRemoteExecutionHasNoLocalProtection':
+    'La ejecución remota se ejecuta con tu cuenta en el host; no se aplica ninguna capa de protección local.',
+  'protection.unmetProtectionUnresolved':
+    'No se pudo resolver el nivel, por eso se informa como sin protección en lugar de darlo por supuesto.',
+  'protection.repairEnableNetworkAllowlist':
+    'Activa «Restringir el acceso a la red de los procesos» en los ajustes de Red.',
+  'protection.repairRunLocally':
+    'Ejecuta esto en este equipo (cuaderno o terminal) cuando el nivel de protección importe.',
+  'protection.repairPlatformHasNoOsSandbox':
+    'Esta versión no tiene adaptador de zona de pruebas del sistema para esta plataforma; la lista de permitidos es el único aislamiento disponible.',
+  'protection.policyTitle': 'Ejecución remota sin protección',
+  'protection.policyHint':
+    'Un comando o trabajo remoto no puede aislarse desde este equipo. Elige qué ocurre al enviarlo.',
+  'protection.policyConfirm': 'Preguntar siempre',
+  'protection.policyConfirmHint':
+    'Una aprobación recordada se concedió sin indicar nivel de protección, así que nunca cubre en silencio una ejecución sin protección. Cada envío pregunta y queda registrado.',
+  'protection.policyRemembered': 'Permitir que las aprobaciones recordadas la cubran',
+  'protection.policyRememberedHint':
+    'Las aprobaciones de sesión, de proyecto y globales también cubren ejecuciones remotas sin protección. Elige esto solo si no te importa no volver a ser preguntado.',
+  'protection.policyDeny': 'Rechazar la ejecución remota sin protección',
+  'protection.policyDenyHint':
+    'Los comandos y trabajos remotos se rechazan mientras el nivel sea sin protección.',
+  'protection.loading': 'Leyendo la matriz de protección…',
+  'protection.loadError': 'La matriz de protección no está disponible en esta ventana.',
+  'protection.reload': 'Reintentar',
+  'protection.recordedAt': 'Leído a las {time}',
+  'protection.runEvidenceLabel': 'Nivel de protección',
+  'protection.approvalUnprotectedTitle': 'Esta ejecución no tiene protección',
+  'protection.approvalUnprotectedBody':
+    'Se ejecuta con tu cuenta en el host, fuera de cualquier zona de pruebas de este equipo. El nivel se registra con el resultado.',
+  'protection.approvalPolicyPointer':
+    'Si no quieres que se pregunte cada vez, elige una política en Ajustes → Protección de ejecución.',
   'palette.openSettings': 'Abrir ajustes',
   'palette.settingsNetwork': 'Ajustes: Red y espejo',
   'palette.settingsRuntimes': 'Ajustes: Entornos de ejecución',

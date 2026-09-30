@@ -124,6 +124,77 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.routine': '定期タスク',
   'settings.endpoints': 'ローカルモデル',
   'settings.network': 'ネットワーク',
+  'settings.executionProtection': '実行保護',
+  'protection.intro':
+    '何かを実行する前に、このマシンで各実行面が実際にどの保護レベルで動くかを示します。リモート実行は常に「保護なし」です。ホスト上のあなたのアカウントで動き、ローカルの保護層は適用されません。',
+  'protection.weakestLinkNote':
+    'レベルは最も弱い面で決まります。OS サンドボックスにはファイルシステムの書き込み保護とネットワークのフィルタリングの両方が必要です。2 つの軸は常にレベルと並べて表示されるため、降格が有効な保護を隠すことはありません。',
+  'protection.capabilityTitle': 'このマシン',
+  'protection.capabilityPlatform': 'プラットフォーム',
+  'protection.capabilityOsWriteGuard': 'OS 書き込み保護',
+  'protection.capabilityOsWriteGuardAvailable': '利用可',
+  'protection.capabilityOsWriteGuardUnsupported': 'このプラットフォームでは対象外',
+  'protection.capabilityOsWriteGuardComponentMissing': '{component} が見つかりません',
+  'protection.capabilityNetworkAllowlist': 'ネットワークフィルタリング',
+  'protection.enabled': '有効',
+  'protection.disabled': '無効',
+  'protection.matrixTitle': '保護マトリクス',
+  'protection.scopeFilesystem': 'ファイルシステム',
+  'protection.scopeFilesystemProtected': 'ランタイムは書き込み保護済み',
+  'protection.scopeFilesystemUnrestricted': '制限なし',
+  'protection.scopeNetwork': 'ネットワーク',
+  'protection.scopeNetworkAllowlist': '許可リストのみ',
+  'protection.scopeNetworkUnrestricted': '未フィルタ',
+  'protection.noAppliedLayers': 'この実行面には保護層が適用されていません。',
+  'protection.repairLabel': '対処',
+  'protection.surfaceNotebook': 'ノートブックカーネル',
+  'protection.surfaceShell': 'ターミナルコマンド',
+  'protection.surfaceBackgroundJob': 'バックグラウンドジョブ',
+  'protection.surfaceRemoteHost': 'リモートホスト',
+  'protection.levelOsSandbox': 'OS サンドボックス',
+  'protection.levelNetworkAllowlist': 'ネットワーク許可リストのみ',
+  'protection.levelUnprotected': '保護なし',
+  'protection.layerMacosSeatbeltRuntimeWrite': 'macOS ランタイム書き込み保護（Seatbelt）',
+  'protection.layerEgressAllowlist': 'ネットワーク許可リストプロキシ',
+  'protection.layerManagedRuntimeMutationGuard': 'ランタイム変更の意味ガード',
+  'protection.unmetNetworkAllowlistDisabled':
+    '子プロセスの通信は未フィルタです。プロセスのネットワーク制限がオフになっています。',
+  'protection.unmetOsSandboxUnavailablePlatform':
+    'このビルドでは、このプラットフォームの子プロセスに OS 書き込み保護を適用しません。',
+  'protection.unmetOsSandboxComponentMissing':
+    'macOS の書き込み保護コンポーネントが無いため、子プロセスに対してランタイムは読み取り専用ではありません。',
+  'protection.unmetRemoteExecutionHasNoLocalProtection':
+    'リモート実行はホスト上のあなたのアカウントで動くため、ローカルの保護層は適用されません。',
+  'protection.unmetProtectionUnresolved':
+    'レベルを解決できなかったため、保護ありと仮定せず「保護なし」として報告しています。',
+  'protection.repairEnableNetworkAllowlist':
+    '「ネットワーク」設定で「プロセスのネットワークアクセスを制限」をオンにしてください。',
+  'protection.repairRunLocally':
+    '保護レベルが重要な場合は、この処理をこのマシン（ノートブックまたはターミナル）で実行してください。',
+  'protection.repairPlatformHasNoOsSandbox':
+    'このビルドにはこのプラットフォーム向けの OS サンドボックス実装がありません。許可リストが唯一の分離手段です。',
+  'protection.policyTitle': '保護なしのリモート実行',
+  'protection.policyHint':
+    'リモートのコマンドやジョブはこのマシンでは分離できません。送信時の扱いを選んでください。',
+  'protection.policyConfirm': '毎回確認する',
+  'protection.policyConfirmHint':
+    '以前に記憶した許可は保護レベルを記録していないため、保護なしの実行を暗黙に覆うことはありません。送信ごとに確認し、記録に残します。',
+  'protection.policyRemembered': '記憶した許可で覆う',
+  'protection.policyRememberedHint':
+    'セッション・プロジェクト・全体の許可が保護なしのリモート実行も覆います。毎回尋ねられたくない場合のみ選んでください。',
+  'protection.policyDeny': '保護なしのリモート実行を拒否する',
+  'protection.policyDenyHint':
+    'レベルが保護なしの間は、リモートのコマンドとジョブを一律に拒否します。',
+  'protection.loading': '保護マトリクスを読み込み中…',
+  'protection.loadError': 'このウィンドウでは保護マトリクスを読み込めません。',
+  'protection.reload': '再試行',
+  'protection.recordedAt': '読み取り時刻 {time}',
+  'protection.runEvidenceLabel': '保護レベル',
+  'protection.approvalUnprotectedTitle': 'この実行は保護なしです',
+  'protection.approvalUnprotectedBody':
+    'ホスト上のあなたのアカウントで動き、このマシンが適用するサンドボックスの外にあります。レベルは結果と一緒に記録されます。',
+  'protection.approvalPolicyPointer':
+    '毎回尋ねられたくない場合は「設定 → 実行保護」でポリシーを選んでください。',
   'palette.openSettings': '設定を開く',
   'palette.settingsNetwork': '設定：ネットワークとミラー',
   'palette.settingsRuntimes': '設定：実行環境',
