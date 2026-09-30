@@ -105,6 +105,13 @@ type ElectronApp = {
   findOverlayIsVisible: () => Promise<boolean>
   launchSecondInstance: () => Promise<Page>
   mainWindowState: () => Promise<{ minimized: boolean; visible: boolean }>
+  /**
+   * Resizes the main window. The pane widths every preview is laid out from follow the window, and no
+   * renderer surface can resize its own window, so a spec that has to reproduce a narrow preview pane
+   * (the app's own minimum width is 1100) asks the window directly. Sizes below the window's minimum are
+   * clamped by the OS, which is the point: the requested size is what a reader can actually reach.
+   */
+  setMainWindowSize: (size: { width: number; height: number }) => Promise<void>
   pressMainWindowShortcut: (key: string, modifiers: ShortcutModifier[]) => Promise<void>
   /** Reads the OS clipboard from the main process: the window denies Chromium clipboard access. */
   readClipboardText: () => Promise<string>
@@ -368,6 +375,25 @@ class ElectronAppHarness implements ElectronApp {
 
       return { minimized: mainWindow.isMinimized(), visible: mainWindow.isVisible() }
     })
+  }
+
+  async setMainWindowSize(size: { width: number; height: number }): Promise<void> {
+    await this.runningApplication.evaluate(({ BrowserWindow }, next) => {
+      const mainWindow = BrowserWindow.getAllWindows()[0]
+      if (!mainWindow) throw new Error('PureScience main window was not found.')
+
+      // Read the width back before anything measures the layout: a width below the window's own minimum
+      // is clamped by the OS, and a spec that laid out a size it did not get would assert on nothing.
+      // The height is the display's to clamp (a taller request is cut to the work area), and no pane
+      // width depends on it.
+      mainWindow.setSize(next.width, next.height)
+      const [width] = mainWindow.getSize()
+      if (width !== next.width) {
+        throw new Error(
+          `The main window is ${width}px wide instead of the requested ${next.width}px.`
+        )
+      }
+    }, size)
   }
 
   async launchSecondInstance(): Promise<Page> {

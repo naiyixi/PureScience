@@ -878,7 +878,11 @@ export const PdfPreviewContent = ({
   const zoomBy = (delta: number): void => setZoom((current) => clampZoom(current + delta))
 
   return (
-    <div className="relative size-full overflow-hidden bg-bg-20">
+    // The pane's OWN width decides whether the annotation panel and the annotation toolbar can sit side by
+    // side, so this element is the query container for that decision (see the panel's `bottom` classes): it
+    // is the box both overlays are positioned in, and keeping the switch in CSS means a press that lands
+    // mid-resize never races a second render.
+    <div className="@container/pdf-pane relative size-full overflow-hidden bg-bg-20">
       {/* The inner element is the real scroller (the outer div holds the fixed zoom overlay), so it
           must be keyboard-focusable or PageUp/Down, Space, and arrows never reach the PDF. */}
       <div
@@ -1011,7 +1015,7 @@ export const PdfPreviewContent = ({
       {document && gestureMode !== 'off' ? (
         <p
           data-testid="pdf-annotation-hint"
-          className="absolute left-3 top-3 z-10 rounded border border-border-300/50 bg-bg-000/90 px-2 py-1 text-[11px] text-text-100 backdrop-blur"
+          className="pointer-events-none absolute left-3 top-3 z-10 rounded border border-border-300/50 bg-bg-000/90 px-2 py-1 text-[11px] text-text-100 backdrop-blur"
         >
           {t(ANNOTATION_HINT_KEYS[gestureMode])}
         </p>
@@ -1048,11 +1052,17 @@ export const PdfPreviewContent = ({
           onClose={() => setPanelOpen(false)}
         />
       ) : null}
+      {/* The pane's text overlays — the hint, this status line and the region status below it — are words,
+          not controls: none of them takes a press of its own, so a click aimed at whatever is under them
+          (the toolbar, or the page being annotated) is never swallowed by a line of text. On a pane too
+          narrow to hold the toolbar and the annotation panel side by side the status line also steps up out
+          of the toolbar's row — the same reservation the panel makes for it — so the two never cover each
+          other. */}
       {annotationStatus ? (
         <p
           data-testid="pdf-annotation-status"
           role="status"
-          className="absolute bottom-3 left-1/2 z-10 -translate-x-1/2 rounded border border-border-300/50 bg-bg-000/90 px-2 py-1 text-[11px] text-text-100 backdrop-blur"
+          className="pointer-events-none absolute bottom-3 left-1/2 z-10 -translate-x-1/2 rounded border border-border-300/50 bg-bg-000/90 px-2 py-1 text-[11px] text-text-100 backdrop-blur @max-[33rem]/pdf-pane:bottom-16"
         >
           {annotationStatus}
         </p>
@@ -1060,7 +1070,7 @@ export const PdfPreviewContent = ({
       {regionStatus ? (
         <p
           role="status"
-          className="absolute left-3 top-3 z-10 rounded border border-border-300/50 bg-bg-000/90 px-2 py-1 text-[11px] text-text-100 backdrop-blur"
+          className="pointer-events-none absolute left-3 top-3 z-10 rounded border border-border-300/50 bg-bg-000/90 px-2 py-1 text-[11px] text-text-100 backdrop-blur"
         >
           {regionStatus}
         </p>

@@ -563,10 +563,19 @@ export const PdfAnnotationPanel = ({
   }
 
   return (
+    // The panel floats over the page's right edge; the annotation toolbar sits on the page's lower left. On a
+    // pane narrower than the two of them side by side the panel covers the toolbar's own buttons — the
+    // panel toggle is the LAST button, so it is covered first, and once covered the reader can neither arm a
+    // tool from the toolbar nor close the panel from it (the X inside the panel is the only way out). Below
+    // that width the panel stops ABOVE the toolbar row instead of over it: nothing overlaps, nothing moves
+    // horizontally, and on the panes where both fit the panel keeps its full height exactly as before.
+    // The width that decides is the PANE's (`@container/pdf-pane` on the preview root), and the arithmetic
+    // is the panel's own 20rem plus the toolbar's ~11.6rem of the left edge: 33rem is below the point where
+    // they would collide, with margin for the buttons the toolbar adds for a region-capable reader.
     <aside
       data-testid="pdf-annotation-panel"
       aria-label={t('pdfAnnotation.panel.title')}
-      className="absolute right-0 top-0 z-20 flex h-full w-80 max-w-[85%] flex-col overflow-y-auto border-l border-border-300/50 bg-bg-000/95 backdrop-blur"
+      className="absolute right-0 top-0 bottom-0 z-20 flex w-80 max-w-[85%] flex-col overflow-y-auto border-l border-border-300/50 bg-bg-000/95 backdrop-blur @max-[33rem]/pdf-pane:bottom-16"
     >
       <header className="flex items-center justify-between gap-2 border-b border-border-300/40 px-3 py-2">
         <h2 className="text-[12px] font-medium text-text-000">{t('pdfAnnotation.panel.title')}</h2>
