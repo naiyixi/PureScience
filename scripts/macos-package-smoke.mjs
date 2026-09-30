@@ -1,10 +1,12 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 
 import { spawn } from 'node:child_process'
-import { access, mkdir, mkdtemp, readdir, rm } from 'node:fs/promises'
+import { access, mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { basename, join, resolve } from 'node:path'
+import { basename, dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
+
+import { readMacBundleSignature } from './ci/mac-signing-status.mjs'
 
 const ARTIFACT_PATTERN = /^zerolink-purescience-(.+)-mac-(?:arm64|x64)\.(dmg|zip)$/
 const SMOKE_ROOT_PREFIX = 'purescience-macos-package-smoke-'
@@ -178,15 +180,35 @@ const smokeAppBundle = async ({ appBundle, expectedVersion, env, gatekeeper, use
   await launchAndProbe({ executable, expectedVersion, env, userDataRoot })
 }
 
+// The shipped bytes' signing state, written where the certification-evidence step can read it
+// (issue #19). Read from the ZIP's own bundle — the artifact the mac updater replaces in place — so
+// the recorded state describes what a user installs, not what the build directory happened to hold.
+const writeSignatureReading = async (path, { artifact, source, bundle }) => {
+  const reading = readMacBundleSignature(bundle, { artifact, source })
+  await mkdir(dirname(path), { recursive: true })
+  await writeFile(path, `${JSON.stringify(reading, null, 2)}\n`, 'utf8')
+  console.log(
+    `macOS signature reading (${source}): Identifier=${reading.identifier ?? '<none>'} ` +
+      `TeamIdentifier=${reading.teamIdentifier ?? '<none>'} signed=${reading.signed}`
+  )
+  return reading
+}
+
 const parseArguments = (argv) => {
   const index = argv.indexOf('--artifact-dir')
   const artifactDirectory = index === -1 ? undefined : argv[index + 1]
   if (!artifactDirectory) {
-    throw new Error('Usage: --artifact-dir <path> [--gatekeeper]')
+    throw new Error('Usage: --artifact-dir <path> [--gatekeeper] [--signature-reading <path>]')
+  }
+  const readingIndex = argv.indexOf('--signature-reading')
+  const signatureReading = readingIndex === -1 ? undefined : argv[readingIndex + 1]
+  if (readingIndex !== -1 && !signatureReading) {
+    throw new Error('--signature-reading needs a path')
   }
   return {
     artifactDirectory: resolve(artifactDirectory),
-    gatekeeper: argv.includes('--gatekeeper')
+    gatekeeper: argv.includes('--gatekeeper'),
+    signatureReading
   }
 }
 
@@ -250,13 +272,21 @@ const main = async () => {
     }
 
     await runProcess('/usr/bin/ditto', ['-x', '-k', zip, extracted], { env })
+    const extractedApp = await findAppBundle(extracted)
     await smokeAppBundle({
-      appBundle: await findAppBundle(extracted),
+      appBundle: extractedApp,
       expectedVersion,
       env,
       gatekeeper: options.gatekeeper,
       userDataRoot
     })
+    if (options.signatureReading) {
+      await writeSignatureReading(options.signatureReading, {
+        artifact: basename(zip),
+        source: 'shipped-zip',
+        bundle: extractedApp
+      })
+    }
     console.log('macOS DMG and ZIP launch smoke completed successfully.')
   } finally {
     await rm(root, { force: true, maxRetries: 5, recursive: true, retryDelay: 200 })

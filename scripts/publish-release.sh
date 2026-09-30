@@ -93,22 +93,47 @@ echo "==> artifact: $INSTALLER_PATH"
 echo "    size:    $SIZE bytes"
 echo "    sha256:  $SHA256"
 
+# ---------- macOS signing state (issue #19) ----------
+# The default notes below used to promise "macOS users can install via the in-app updater". Squirrel.Mac
+# cannot replace an ad-hoc signed bundle, so that promise only holds when the built app actually carries
+# the Developer ID signature. Read the built bundle's signature with the same reader CI uses and say
+# what is true — never infer "signed" from the fact that the build succeeded.
+MAC_SIGNING_STATE="signed"
+MAC_SIGNING_NOTE=""
+if [[ "$TARGET" == "mac" ]]; then
+  APP_BUNDLE="$(find dist -maxdepth 2 -name 'PureScience.app' -type d -print -quit 2>/dev/null || true)"
+  MAC_SIGNING_STATE="$(node scripts/ci/mac-signing-status.mjs read --app "${APP_BUNDLE:-$INSTALLER_PATH}" --source built-app 2>/dev/null || true)"
+  if [[ -z "$MAC_SIGNING_STATE" ]]; then MAC_SIGNING_STATE="unproven"; fi
+  echo "==> macOS signing state: $MAC_SIGNING_STATE"
+  if [[ "$MAC_SIGNING_STATE" != "signed" ]]; then
+    MAC_SIGNING_NOTE="$(node scripts/ci/mac-signing-status.mjs note --state "$MAC_SIGNING_STATE" 2>/dev/null || true)"
+  fi
+fi
+
 # ---------- release notes ----------
 if [[ -n "$NOTES_FILE" ]]; then
   if [[ ! -f "$NOTES_FILE" ]]; then echo "error: notes file not found: $NOTES_FILE" >&2; exit 1; fi
   NOTES="$(cat "$NOTES_FILE")"
+  if [[ -n "$MAC_SIGNING_NOTE" ]]; then
+    echo "warning: the macOS packages in this release are unsigned ($MAC_SIGNING_STATE) — the notes file must say so:" >&2
+    echo "  $MAC_SIGNING_NOTE" >&2
+  fi
 else
   PREV_TAG="$(git describe --tags --abbrev=0 2>/dev/null || true)"
+  # Only the honest line survives: the in-app-updater promise when the bundle really is signed, the
+  # measured unsigned/unverified statement otherwise.
+  MAC_LINE="> macOS users can install via the in-app updater (Settings → About → Check for updates)."
+  if [[ -n "$MAC_SIGNING_NOTE" ]]; then MAC_LINE="$MAC_SIGNING_NOTE"; fi
   if [[ -n "$PREV_TAG" && "$PREV_TAG" != "$TAG" ]]; then
     NOTES="## PureScience $VERSION
 
 $(git log --oneline "${PREV_TAG}..HEAD" | sed 's/^/- /')
 
-> macOS users can install via the in-app updater (Settings → About → Check for updates)."
+$MAC_LINE"
   else
     NOTES="## PureScience $VERSION
 
-> macOS users can install via the in-app updater (Settings → About → Check for updates)."
+$MAC_LINE"
   fi
 fi
 

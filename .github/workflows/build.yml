@@ -402,13 +402,32 @@ jobs:
         run: npm run test:e2e:visual
 
       # Exercise both macOS distributables rather than treating the unpacked app launch above as
-      # package coverage: mount the DMG, extract the ZIP, verify each bundle, and launch each app.
+      # package coverage: mount the DMG, extract the ZIP, verify each bundle, and launch each app. The
+      # smoke also reads the shipped ZIP bundle's own signature into --signature-reading, so the mac
+      # signing state below comes from the bytes a user installs rather than from a job going green
+      # (issue #19).
       - name: Smoke test macOS packages
         if: ${{ matrix.platform == 'mac' && !inputs.skip_verify }}
         id: macos_smoke
         continue-on-error: true
         timeout-minutes: 10
-        run: node scripts/macos-package-smoke.mjs --artifact-dir dist
+        run: >-
+          node scripts/macos-package-smoke.mjs
+          --artifact-dir dist
+          --signature-reading "$RUNNER_TEMP/purescience-mac-signature.json"
+
+      # Issue #19 gate. With MAC_CSC_LINK configured the mac assets MUST carry the Developer ID
+      # signature: a bundle that silently fell back to the ad-hoc hook (wrong identity, cert problem)
+      # fails the build here instead of shipping unsigned behind a green job. Without credentials this
+      # step does not fail — it reports and records `macSignature: unsigned` (today's real state) — but
+      # an unreadable reading is never accepted as a pass. Nothing is relaxed to make either case green.
+      - name: Enforce the macOS Developer ID signature gate
+        if: ${{ matrix.platform == 'mac' && !inputs.skip_verify }}
+        run: >-
+          node scripts/ci/mac-signing-status.mjs verify
+          --credentials "${{ steps.mac_signing.outputs.enabled == 'true' && 'present' || 'absent' }}"
+          --reading "$RUNNER_TEMP/purescience-mac-signature.json"
+          --label "built macos-${{ matrix.bin_arch }}"
 
       # Run the actual NSIS artifact, not the source tree: silent install into an isolated directory,
       # start the packaged app in headless web mode, verify its authenticated bootstrap and bundled
@@ -464,6 +483,17 @@ jobs:
           if [ "${{ matrix.platform }}" = "win" ]; then
             authenticode=not-required
           fi
+          # macOS: whether signing credentials were configured AND the bundle reading the smoke wrote
+          # are recorded alongside the other checks (issue #19). The writer refuses to produce a mac
+          # record without both, and refuses to produce one the signature gate rejects.
+          mac_args=""
+          if [ "${{ matrix.platform }}" = "mac" ]; then
+            credentials=absent
+            if [ "${{ steps.mac_signing.outputs.enabled }}" = "true" ]; then
+              credentials=present
+            fi
+            mac_args="--mac-signing-credentials $credentials --mac-signature-reading $RUNNER_TEMP/purescience-mac-signature.json"
+          fi
           node scripts/ci/release-certification-evidence.mjs write \
             --platform "${{ matrix.name }}" \
             --artifact-dir dist \
@@ -471,7 +501,8 @@ jobs:
             --electron-p0 "$electron_p0" \
             --visual-regression "$visual_regression" \
             --package-smoke "$package_smoke" \
-            --authenticode "$authenticode"
+            --authenticode "$authenticode" \
+            $mac_args
 
       # Upload only the distributables + electron-updater metadata for the caller's publish job.
       - name: Upload build artifacts

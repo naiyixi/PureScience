@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 
-import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -226,6 +226,19 @@ describe('release certification evidence', () => {
         packageSmoke: 'passed',
         authenticode: platform === 'windows-x64' ? 'not-required' : 'not-applicable'
       },
+      // The macOS arm of every record states its signing state and the reading behind it (issue #19).
+      ...(platform.startsWith('macos-')
+        ? {
+            macSignature: 'unsigned',
+            macSignatureEvidence: {
+              credentialsPresent: false,
+              teamIdExpected: '87G9WFU9H3',
+              identifier: 'com.zerolink.purescience',
+              teamIdentifier: 'not set',
+              readingSource: 'shipped-zip'
+            }
+          }
+        : {}),
       artifacts: [{ name: `${platform}.zip`, sha256: artifactDigest }]
     })
     for (const platform of platforms.slice(0, -1)) {
@@ -343,5 +356,158 @@ describe('release certification evidence', () => {
         windowsUpdate: { status: 'passed' }
       }
     })
+
+    // The macOS signing state travels in the record (issue #19). A mac record that cannot state it,
+    // that claims an unproven state, or that contradicts its own credentials input is not publishable;
+    // a record that honestly says "unsigned, no credentials configured" is (that is today's reality).
+    const macRecord = () => JSON.parse(JSON.stringify(recordFor('macos-arm64')))
+    const writeMacRecord = (record: unknown) =>
+      writeFile(join(root, 'certification-macos-arm64.json'), JSON.stringify(record))
+
+    const statedNothing = macRecord()
+    delete statedNothing.macSignature
+    await writeMacRecord(statedNothing)
+    await expect(aggregateEvidence({ argv: args })).rejects.toThrow(/must record macSignature/)
+
+    await writeMacRecord({ ...macRecord(), macSignature: 'unproven' })
+    await expect(aggregateEvidence({ argv: args })).rejects.toThrow(/records an unproven signature/)
+
+    await writeMacRecord({
+      ...macRecord(),
+      macSignature: 'unsigned',
+      macSignatureEvidence: { ...macRecord().macSignatureEvidence, credentialsPresent: true }
+    })
+    await expect(aggregateEvidence({ argv: args })).rejects.toThrow(
+      /contradicts its signing credentials/
+    )
+
+    await writeMacRecord(macRecord())
+    await expect(aggregateEvidence({ argv: args })).resolves.toMatchObject({
+      platforms: expect.arrayContaining([
+        expect.objectContaining({ platform: 'macos-arm64', macSignature: 'unsigned' })
+      ])
+    })
+  })
+
+  it('records the macOS signing state and refuses to write one the signature gate rejects', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'release-evidence-mac-signing-'))
+    const output = join(root, 'certification-macos-arm64.json')
+    const reading = join(root, 'purescience-mac-signature.json')
+    const environment = { GITHUB_SHA: 'abc123', GITHUB_RUN_ID: '42', GITHUB_RUN_ATTEMPT: '1' }
+    const macArguments = (credentials: string, extra: string[] = []) => [
+      '--platform',
+      'macos-arm64',
+      '--artifact-dir',
+      root,
+      '--output',
+      output,
+      '--electron-p0',
+      'not-applicable',
+      '--visual-regression',
+      'not-applicable',
+      '--package-smoke',
+      'passed',
+      '--authenticode',
+      'not-applicable',
+      ...extra,
+      '--mac-signing-credentials',
+      credentials,
+      '--mac-signature-reading',
+      reading
+    ]
+    const readingFor = (teamIdentifier: string) =>
+      JSON.stringify({
+        schemaVersion: 1,
+        source: 'shipped-zip',
+        readable: true,
+        identifier: 'com.zerolink.purescience',
+        teamIdentifier,
+        signed: teamIdentifier === '87G9WFU9H3'
+      })
+    await writeFile(join(root, 'app.zip'), 'artifact')
+
+    // Credentials configured but the shipped bundle is ad-hoc: the record is never written.
+    await writeFile(reading, readingFor('not set'))
+    await expect(
+      writePlatformEvidence({ argv: macArguments('present'), environment })
+    ).rejects.toThrow(/macOS signature gate failed for macos-arm64/)
+    await expect(readFile(output, 'utf8')).rejects.toThrow()
+
+    // No credentials: recorded as unsigned — reported, never verified.
+    await expect(
+      writePlatformEvidence({ argv: macArguments('absent'), environment })
+    ).resolves.toMatchObject({
+      platform: 'macos-arm64',
+      macSignature: 'unsigned',
+      macSignatureEvidence: {
+        credentialsPresent: false,
+        teamIdExpected: '87G9WFU9H3',
+        teamIdentifier: 'not set',
+        readingSource: 'shipped-zip'
+      }
+    })
+
+    // No credentials AND no reading: unobserved must not become a record (not a pass).
+    await rm(reading)
+    await expect(
+      writePlatformEvidence({ argv: macArguments('absent'), environment })
+    ).rejects.toThrow(/macOS signature gate failed for macos-arm64/)
+
+    // Credentials configured and the bundle carries the shipping Developer ID: signed.
+    await writeFile(reading, readingFor('87G9WFU9H3'))
+    await expect(
+      writePlatformEvidence({ argv: macArguments('present'), environment })
+    ).resolves.toMatchObject({
+      macSignature: 'signed',
+      macSignatureEvidence: { credentialsPresent: true, teamIdentifier: '87G9WFU9H3' }
+    })
+
+    // macOS evidence without the credentials input is refused by name rather than defaulted.
+    await expect(
+      writePlatformEvidence({
+        argv: [
+          '--platform',
+          'macos-x64',
+          '--artifact-dir',
+          root,
+          '--output',
+          output,
+          '--electron-p0',
+          'not-applicable',
+          '--visual-regression',
+          'not-applicable',
+          '--package-smoke',
+          'passed',
+          '--authenticode',
+          'not-applicable'
+        ],
+        environment
+      })
+    ).rejects.toThrow(/--mac-signing-credentials/)
+
+    // ...and without a reading either.
+    await expect(
+      writePlatformEvidence({
+        argv: [
+          '--platform',
+          'macos-x64',
+          '--artifact-dir',
+          root,
+          '--output',
+          output,
+          '--electron-p0',
+          'not-applicable',
+          '--visual-regression',
+          'not-applicable',
+          '--package-smoke',
+          'passed',
+          '--authenticode',
+          'not-applicable',
+          '--mac-signing-credentials',
+          'absent'
+        ],
+        environment
+      })
+    ).rejects.toThrow(/--mac-signature-reading/)
   })
 })

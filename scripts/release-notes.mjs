@@ -8,18 +8,30 @@
 // CHANGELOG.md, so the release page cannot drift from the repository, and keeps whatever generated notes
 // it finds so the PR list is not lost.
 //
+// It also carries the macOS signing disclosure (issue #19): when this release's
+// RELEASE-CERTIFICATION.json says the mac assets are unsigned (or the state was never established), the
+// page has to say so — otherwise a green notarize job reads as "notarized". The line is re-derived from
+// that record on every run and, when the record is unavailable, an existing disclosure in the current
+// body is kept verbatim, so a rewrite of this page can never silently drop the fact.
+//
 // Usage:
 //   node scripts/release-notes.mjs 1.68.0 --print            # preview (default)
 //   node scripts/release-notes.mjs v1.68.0 --keep-generated  # preview, keeping the generated notes tail
 //   node scripts/release-notes.mjs v1.68.0 --apply           # write the body to the GitHub release
+//   node scripts/release-notes.mjs v1.68.0 --certification RELEASE-CERTIFICATION.json
 //
 // Re-running is safe: the body is replaced wholesale by freshly composed content, never appended to.
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 
 import { execFileSync } from 'node:child_process'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+
+import {
+  MAC_SIGNING_DISCLOSURE_MARKER,
+  macSigningDisclosureFromRecord
+} from './ci/mac-signing-status.mjs'
 
 const MATURITY_HEADING = '## Maturity and Known Limitations'
 const GENERATED_MARKERS = ["## What's Changed", '**Full Changelog**']
@@ -57,9 +69,13 @@ export function extractMaturityBlock(readme) {
   return lines.slice(start, end).join('\n').trim()
 }
 
-// Order matters: what is verified, then what changed, then the generated PR list.
-export function composeReleaseBody({ maturity, changelog, generated = '' }) {
-  const parts = [maturity.trim(), changelog.trim()]
+// Order matters: what is verified, then the mac signing fact, then what changed, then the generated
+// PR list. The disclosure sits directly under the maturity block so a reader cannot reach the
+// download links (or an update prompt) without passing it.
+export function composeReleaseBody({ maturity, changelog, generated = '', disclosure = '' }) {
+  const parts = [maturity.trim()]
+  if (String(disclosure).trim()) parts.push(String(disclosure).trim())
+  parts.push(changelog.trim())
   if (generated.trim()) parts.push(generated.trim())
   return `${parts.join('\n\n---\n\n')}\n`
 }
@@ -72,6 +88,15 @@ export function extractGeneratedTail(body) {
   )
   if (start < 0) return ''
   return lines.slice(start).join('\n').trim()
+}
+
+// The macOS signing disclosure already on the page, as composed by
+// scripts/ci/mac-signing-status.mjs. Kept verbatim when the certification record cannot be read: the
+// fact is machine-derived from the certification record, so a rewrite must be able to
+// preserve it but never invent one.
+export function extractMacSigningDisclosure(body) {
+  const lines = String(body ?? '').split('\n')
+  return lines.find((line) => line.startsWith(MAC_SIGNING_DISCLOSURE_MARKER))?.trim() ?? ''
 }
 
 function gh(args, options = {}) {
@@ -87,26 +112,39 @@ function main() {
     console.error('usage: release-notes.mjs <version|tag> [--keep-generated] [--apply]')
     process.exit(1)
   }
+  const argument = (name) => {
+    const index = argv.indexOf(name)
+    return index === -1 ? undefined : argv[index + 1]
+  }
   const tag = `v${version.replace(/^v/, '')}`
   const root = resolve(new URL('..', import.meta.url).pathname)
   const changelog = readFileSync(join(root, 'CHANGELOG.md'), 'utf8')
   const readme = readFileSync(join(root, 'README.en.md'), 'utf8')
-  let generated = ''
-  if (keepGenerated) {
+
+  // The current body is read once and reused: --keep-generated keeps the PR list from it, and the
+  // macOS disclosure is preserved from it when no certification record can be read. --apply reads it
+  // for the same reason (it used to be dropped wholesale), so a rewrite can never lose the fact.
+  let currentBody
+  const readCurrentBody = () => {
+    if (currentBody !== undefined) return currentBody
+    currentBody = ''
     try {
-      generated = extractGeneratedTail(
-        gh(['release', 'view', tag, '--json', 'body', '--jq', '.body'])
-      )
+      currentBody = gh(['release', 'view', tag, '--json', 'body', '--jq', '.body'])
     } catch (error) {
-      console.error(
-        `release-notes: could not read the generated notes for ${tag}: ${error.message}`
-      )
+      console.error(`release-notes: could not read the current body for ${tag}: ${error.message}`)
     }
+    return currentBody
   }
+
+  let generated = ''
+  if (keepGenerated) generated = extractGeneratedTail(readCurrentBody())
+  const disclosure = resolveMacSigningDisclosure({ tag, readCurrentBody, argument })
+
   const body = composeReleaseBody({
     maturity: extractMaturityBlock(readme),
     changelog: extractChangelogSection(changelog, version),
-    generated
+    generated,
+    disclosure
   })
   if (!apply) {
     process.stdout.write(body)
@@ -116,6 +154,62 @@ function main() {
   writeFileSync(file, body)
   const out = gh(['release', 'edit', tag, '--notes-file', file])
   console.log(`release-notes: wrote ${body.length} chars into ${tag}${out ? ` (${out})` : ''}`)
+}
+
+// The macOS signing fact comes from the machine-readable record the release published — never from
+// prose. An unreadable/absent record keeps whatever disclosure the page already carries (verbatim),
+// so the two failure modes are impossible: claiming signed, and silently dropping the fact.
+function resolveMacSigningDisclosure({ tag, readCurrentBody, argument }) {
+  const explicitPath = argument('--certification')
+  const record = explicitPath ? readJsonIfPossible(explicitPath) : readCertificationRecord(tag)
+
+  if (record) {
+    const derived = macSigningDisclosureFromRecord(record)
+    console.log(
+      `release-notes: macOS signing disclosure ${derived ? 'required' : 'not required'} ` +
+        `(RELEASE-CERTIFICATION.json for ${tag})`
+    )
+    return derived ?? ''
+  }
+
+  const preserved = extractMacSigningDisclosure(readCurrentBody())
+  if (preserved) {
+    console.error(
+      `release-notes: no certification record for ${tag} — keeping the existing macOS signing ` +
+        'disclosure verbatim'
+    )
+  }
+  return preserved
+}
+
+function readJsonIfPossible(path) {
+  try {
+    return JSON.parse(readFileSync(path, 'utf8'))
+  } catch (error) {
+    console.error(`release-notes: cannot read ${path}: ${error.message}`)
+    return undefined
+  }
+}
+
+// The record is a release asset, so it is fetched from the tag itself: the page cannot disagree with
+// the artifact it publishes. Absent for releases cut before the record carried the mac state.
+function readCertificationRecord(tag) {
+  const directory = mkdtempSync(join(tmpdir(), 'purescience-certification-'))
+  try {
+    gh([
+      'release',
+      'download',
+      tag,
+      '--pattern',
+      'RELEASE-CERTIFICATION.json',
+      '--dir',
+      directory,
+      '--clobber'
+    ])
+  } catch {
+    return undefined
+  }
+  return readJsonIfPossible(join(directory, 'RELEASE-CERTIFICATION.json'))
 }
 
 if (process.argv[1] && import.meta.url.endsWith(process.argv[1].split('/').pop())) {

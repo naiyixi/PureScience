@@ -25,6 +25,20 @@ name: Notarize macOS
 # `notarytool info <id>` command to check the real status. A timeout is NOT a rejection — the Apple
 # submission keeps running; publish (which needs this job) is skipped, so nothing bad is published,
 # and re-running this workflow re-checks + staples with no rebuild.
+#
+# Skipping is NEVER silent (issue #19). Without the Apple credentials every real step below is skipped
+# and the job used to look exactly like a successful notarization — a green "Notarize + staple arm64"
+# was read (here, and on the releases page) as "the mac build is notarized" while the published mac
+# assets were not even Developer ID signed. So:
+#   - the `credentials` job resolves presence first, and the notarize job's NAME states which of the
+#     two things happened ("Notarize + staple macos-arm64" vs
+#     "SKIPPED — UNSIGNED macOS assets, not notarized (no Apple credentials): macos-arm64"),
+#   - the gate step emits a warning annotation plus a `$GITHUB_STEP_SUMMARY` block spelling out that
+#     signing/notarization/stapling did not happen and in-place mac update is unavailable,
+#   - the certification record carries the measured state (`macSignature`), so downstream gates and
+#     the release body describe the assets instead of the job result,
+#   - when credentials ARE configured, the stapled bundle must be Developer ID signed or the run
+#     fails (mac-signing-status.mjs): nothing is loosened to make a credentialed run green.
 on:
   workflow_call:
     inputs:
@@ -58,8 +72,50 @@ permissions:
   contents: write
 
 jobs:
+  # Resolve whether the Apple credentials exist BEFORE anything else, so the answer is visible in the
+  # checks list on its own and the notarize job can name what it is about to do (see the file header,
+  # issue #19). Reading the secret here keeps a single source of truth: every gate below consumes this
+  # output instead of re-deriving presence.
+  credentials:
+    name: Resolve Apple notarization credentials
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      enabled: ${{ steps.resolve.outputs.enabled }}
+    steps:
+      - name: Read APPLE_API_KEY_P8_BASE64
+        id: resolve
+        env:
+          P8_B64: ${{ secrets.APPLE_API_KEY_P8_BASE64 }}
+        run: |
+          if [ -n "${P8_B64:-}" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+          ## Apple notarization credentials: PRESENT
+
+          Signing, notarization and stapling will run, and the certification record will carry the measured \`macSignature\` for each arch (a credentialed run that ends up unsigned fails).
+          EOF
+            exit 0
+          fi
+          echo "enabled=false" >> "$GITHUB_OUTPUT"
+          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+          ## Apple notarization credentials: ABSENT
+
+          \`APPLE_API_KEY_P8_BASE64\` is not configured, so this run cannot sign, notarize, or staple anything. The notarize job is skipped *by name* and the macOS assets ship **unsigned** (ad-hoc signature only).
+          EOF
+
   notarize:
-    name: Notarize + staple ${{ matrix.arch }}
+    # The name is the headline: a skipped run must not be readable as a notarized one. With the
+    # credentials configured this is the historical "Notarize + staple"; without them the check list
+    # itself says the mac assets stay UNSIGNED (issue #19). The literal ` macos-` token is load-bearing:
+    # a name built only from expressions could render as the reserved required check names, which is what
+    # scripts/ci/check-ci-integrity.mjs forbids (this name provably cannot equal them).
+    name: >-
+      ${{ needs.credentials.outputs.enabled == 'true'
+      && 'Notarize + staple'
+      || 'SKIPPED — UNSIGNED macOS assets, not notarized (no Apple credentials):' }} macos-${{ matrix.arch }}
+    needs: credentials
     # The final package smoke launches the stapled app. Keep it architecture-native so the x64
     # launch is not silently dependent on Rosetta being installed on an Apple Silicon runner.
     runs-on: ${{ matrix.os }}
@@ -77,18 +133,34 @@ jobs:
     steps:
       # Notarization is optional: if the API key secret isn't configured, no-op so a tagged release
       # still succeeds with the ad-hoc mac build (today's behavior) instead of failing here. Every
-      # real step below is gated on this.
-      - name: Gate on API key presence
+      # real step below is gated on this. The skip is announced by name, by warning annotation, and in
+      # the step summary — a silent green no-op is what this gate must never look like again (issue #19).
+      - name: Verify Apple credentials (every step below is skipped without them)
         id: gate
         env:
-          P8_B64: ${{ secrets.APPLE_API_KEY_P8_BASE64 }}
+          CREDENTIALS_ENABLED: ${{ needs.credentials.outputs.enabled }}
+          ARCH: ${{ matrix.arch }}
         run: |
-          if [ -n "${P8_B64:-}" ]; then
+          if [ "$CREDENTIALS_ENABLED" = "true" ]; then
             echo "enabled=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "enabled=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::APPLE_API_KEY_P8_BASE64 not set — skipping notarization; mac stays as built."
+            exit 0
           fi
+          echo "enabled=false" >> "$GITHUB_OUTPUT"
+          echo "::warning::APPLE_API_KEY_P8_BASE64 is not set — notarization, stapling and the Gatekeeper smoke are SKIPPED for ${ARCH}; the macOS assets ship UNSIGNED (ad-hoc signature only)."
+          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+          ## macOS notarization SKIPPED for ${ARCH} — assets are UNSIGNED
+
+          No Apple credentials are configured (\`APPLE_API_KEY_P8_BASE64\` is unset), so nothing in this job ran: the dmg/zip were neither notarized nor stapled, and the signature was not upgraded to a Developer ID.
+
+          | what | state |
+          | --- | --- |
+          | macOS assets shipped by this run | ad-hoc signed (\`TeamIdentifier=not set\`) |
+          | notarized | **no** |
+          | Gatekeeper on first launch | warns; right-click → Open needed |
+          | in-place auto-update on macOS | **unavailable** |
+
+          This job's \`success\` therefore means "nothing was done", NOT "macOS is notarized". The certification record carries \`macSignature: unsigned\` as the machine-readable counterpart of this notice.
+          EOF
 
       - name: Checkout certification tooling
         if: steps.gate.outputs.enabled == 'true'
@@ -200,11 +272,29 @@ jobs:
           done
 
       # Stapling/repacking changes the shipped bytes. Mount/extract and launch both final artifacts,
-      # and require Gatekeeper assessment before their refreshed hashes can be certified.
+      # and require Gatekeeper assessment before their refreshed hashes can be certified. The smoke also
+      # reads the shipped zip's own bundle signature and writes it to --signature-reading, so the state
+      # below is a measurement of the stapled artifacts rather than an inference from this job's result.
       - name: Smoke test final macOS packages
         if: steps.gate.outputs.enabled == 'true'
         timeout-minutes: 10
-        run: node scripts/macos-package-smoke.mjs --artifact-dir mac --gatekeeper
+        run: >-
+          node scripts/macos-package-smoke.mjs
+          --artifact-dir mac
+          --gatekeeper
+          --signature-reading "$RUNNER_TEMP/purescience-mac-signature.json"
+
+      # This job only runs with credentials configured (every step above is gated on them), so the
+      # stapled bundle MUST carry the Developer ID signature. Fail-closed on the reading: a notarized
+      # ticket on an ad-hoc bundle cannot update in place, and a credentialed run must never be the
+      # green path that ships an unsigned mac asset (issue #19). Nothing is loosened to pass this.
+      - name: Enforce the Developer ID signature on the stapled mac assets
+        if: steps.gate.outputs.enabled == 'true'
+        run: >-
+          node scripts/ci/mac-signing-status.mjs verify
+          --credentials present
+          --reading "$RUNNER_TEMP/purescience-mac-signature.json"
+          --label "stapled macos-${{ matrix.arch }}"
 
       # Stapling repackaged the zip (new bytes), so the build-time feed — written over the PRE-staple
       # zip — now carries a stale sha512/size that would fail the updater's signature check. build.yml
@@ -249,7 +339,10 @@ jobs:
           '
 
       # Stapling changes the installer bytes. Re-hash the final artifacts while preserving the
-      # platform certification signal already established by the build job.
+      # platform certification signal already established by the build job, and record the measured
+      # mac signing state so the refreshed record cannot be read as "signed because the job was green".
+      # Credentials are present in this job by construction (the gate above), so the writer's gate is
+      # the fail-closed one: a stapled bundle without the Developer ID signature throws here.
       - name: Refresh macOS certification evidence
         if: >-
           steps.gate.outputs.enabled == 'true' &&
@@ -264,6 +357,8 @@ jobs:
           --visual-regression "${{ matrix.arch == 'arm64' && 'passed' || 'not-applicable' }}"
           --package-smoke passed
           --authenticode not-applicable
+          --mac-signing-credentials present
+          --mac-signature-reading "$RUNNER_TEMP/purescience-mac-signature.json"
 
       # Call path: replace this run's signed artifacts with the stapled ones (same names) plus the
       # regenerated ${arch}-mac.yml feed, so the publish job's merge-multiple download picks them up.

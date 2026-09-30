@@ -5,6 +5,13 @@ import { readFile, readdir, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
+import {
+  MAC_SIGNATURE_STATES,
+  evaluateMacSignatureGate,
+  macSignatureEvidence,
+  readJsonFile
+} from './mac-signing-status.mjs'
+
 const PLATFORMS = ['linux-x64', 'macos-arm64', 'macos-x64', 'windows-x64']
 const DISTRIBUTABLE = /\.(?:AppImage|deb|dmg|exe|zip)$/
 const CHECK_STATES = ['passed', 'not-applicable']
@@ -49,13 +56,47 @@ const writePlatformEvidence = async ({ argv, environment = process.env }) => {
         '--electron-p0 <passed|not-applicable> ' +
         '--visual-regression <passed|not-applicable> ' +
         '--package-smoke <passed|not-applicable> ' +
-        '--authenticode <passed|not-required|not-applicable>'
+        '--authenticode <passed|not-required|not-applicable> ' +
+        '[--mac-signing-credentials <present|absent> --mac-signature-reading <path>] ' +
+        '(both required for macos-* platforms)'
     )
   }
   const artifactDirectory = resolve(artifactDirectoryArgument)
   const output = resolve(outputArgument)
   if (!environment.GITHUB_SHA || !environment.GITHUB_RUN_ID || !environment.GITHUB_RUN_ATTEMPT) {
     throw new Error('Release certification evidence requires GitHub run identity variables.')
+  }
+
+  // macOS: the signing state is recorded, never inferred (issue #19). Whether the Apple credentials
+  // were configured AND the actual bundle reading are both inputs; the gate below decides, and a
+  // record the gate rejects is never written — every later consumer (aggregate, the release page)
+  // trusts this file, so it may not exist for a state the gate fails.
+  const macPlatform = platform.startsWith('macos-')
+  const macCredentials = argumentValue(argv, '--mac-signing-credentials')
+  const macReadingArgument = argumentValue(argv, '--mac-signature-reading')
+  let macSigning
+  if (macPlatform) {
+    if (!['present', 'absent'].includes(macCredentials)) {
+      throw new Error(
+        'macOS certification evidence must state whether Apple signing credentials were configured: ' +
+          `--mac-signing-credentials <present|absent> (got ${macCredentials ?? 'nothing'}).`
+      )
+    }
+    if (!macReadingArgument) {
+      throw new Error(
+        'macOS certification evidence must carry a bundle signature reading ' +
+          '(--mac-signature-reading <path>): an unobserved signature is not a pass.'
+      )
+    }
+    const credentialsPresent = macCredentials === 'present'
+    // The reading the package smoke wrote (run against the shipped zip's own bundle).
+    const reading = readJsonFile(macReadingArgument)
+    const decision = evaluateMacSignatureGate({ credentialsPresent, reading })
+    if (!decision.ok) {
+      throw new Error(`macOS signature gate failed for ${platform}: ${decision.reason}`)
+    }
+    macSigning = macSignatureEvidence({ credentialsPresent, reading })
+    console.log(`release certification: ${platform} macSignature=${macSigning.macSignature}`)
   }
 
   const evidence = {
@@ -74,6 +115,7 @@ const writePlatformEvidence = async ({ argv, environment = process.env }) => {
       packageSmoke,
       authenticode
     },
+    ...(macSigning ?? {}),
     artifacts: await artifactEvidence(artifactDirectory)
   }
   await writeFile(output, `${JSON.stringify(evidence, null, 2)}\n`, 'utf8')
@@ -221,6 +263,38 @@ const aggregateEvidence = async ({ argv }) => {
     }
     if (record.checks.packageSmoke !== 'passed') {
       throw new Error(`Package smoke did not pass for ${platform}.`)
+    }
+    if (platform.startsWith('macos-')) {
+      // Re-checked here rather than trusted from the writer (same reason the mac feed is re-read in
+      // the publish job): "the notarize job was green" must never be the evidence that the mac assets
+      // are signed. The record has to state the state, an unproven state is not a pass, and a record
+      // that contradicts its own credentials input cannot be published (issue #19).
+      if (
+        !MAC_SIGNATURE_STATES.includes(record.macSignature) ||
+        !record.macSignatureEvidence ||
+        typeof record.macSignatureEvidence !== 'object'
+      ) {
+        throw new Error(
+          `macOS certification evidence for ${platform} must record macSignature ` +
+            `(signed|unsigned|unproven) with its reading; found ` +
+            `${JSON.stringify(record.macSignature ?? null)}.`
+        )
+      }
+      if (record.macSignature === 'unproven') {
+        throw new Error(
+          `macOS certification evidence for ${platform} records an unproven signature; ` +
+            'unobserved is not a pass.'
+        )
+      }
+      if (
+        record.macSignatureEvidence.credentialsPresent === true &&
+        record.macSignature !== 'signed'
+      ) {
+        throw new Error(
+          `macOS certification evidence for ${platform} contradicts its signing credentials ` +
+            `(credentialsPresent but macSignature=${record.macSignature}).`
+        )
+      }
     }
   }
   let windowsUpdate

@@ -7,8 +7,10 @@ import {
   composeReleaseBody,
   extractChangelogSection,
   extractGeneratedTail,
+  extractMacSigningDisclosure,
   extractMaturityBlock
 } from './release-notes.mjs'
+import { MAC_SIGNING_DISCLOSURE_MARKER, macSigningDisclosure } from './ci/mac-signing-status.mjs'
 
 const root = resolve(__dirname, '..')
 const readRepo = (name: string): string => readFileSync(resolve(root, name), 'utf8')
@@ -86,6 +88,32 @@ describe('release notes composition', () => {
 
     const withoutTail = composeReleaseBody({ maturity: 'M', changelog: 'C' })
     expect(withoutTail.trim()).toBe('M\n\n---\n\nC')
+  })
+
+  it('puts the macOS signing disclosure directly under the maturity block', () => {
+    const disclosure = macSigningDisclosure('unsigned') as string
+    const body = composeReleaseBody({
+      maturity: 'M',
+      changelog: 'C',
+      generated: 'G',
+      disclosure
+    })
+
+    expect(body.indexOf('M')).toBeLessThan(body.indexOf(disclosure))
+    expect(body.indexOf(disclosure)).toBeLessThan(body.indexOf('C'))
+    expect(body).toContain(MAC_SIGNING_DISCLOSURE_MARKER)
+    // A signed release adds nothing, so every existing composition stays byte-identical.
+    expect(composeReleaseBody({ maturity: 'M', changelog: 'C', disclosure: '' }).trim()).toBe(
+      'M\n\n---\n\nC'
+    )
+  })
+
+  it('keeps an existing macOS signing disclosure out of the current body', () => {
+    const disclosure = macSigningDisclosure('unsigned') as string
+    const current = `## Maturity\n\nold\n\n${disclosure}\n\n## What's Changed\n* x by @y in #1`
+
+    expect(extractMacSigningDisclosure(current)).toBe(disclosure)
+    expect(extractMacSigningDisclosure("## What's Changed\n* x")).toBe('')
   })
 
   it('keeps the generated PR list when the current body carries one', () => {

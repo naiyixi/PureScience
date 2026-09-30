@@ -22,7 +22,9 @@ type WorkflowJob = {
   'continue-on-error'?: boolean
   env?: Record<string, string>
   if?: string
+  name?: string
   needs?: string | string[]
+  outputs?: Record<string, string>
   permissions?: Record<string, string>
   'runs-on'?: string
   steps?: WorkflowStep[]
@@ -171,7 +173,10 @@ describe('post-merge Windows validation', () => {
     expect(p0.run).toBe('npm run test:e2e:p0')
     expect(visual.run).toBe('npm run test:e2e:visual')
     expect(macos.if).toBe("${{ matrix.platform == 'mac' && !inputs.skip_verify }}")
-    expect(macos.run).toBe('node scripts/macos-package-smoke.mjs --artifact-dir dist')
+    expect(macos.run).toBe(
+      'node scripts/macos-package-smoke.mjs --artifact-dir dist ' +
+        '--signature-reading "$RUNNER_TEMP/purescience-mac-signature.json"'
+    )
     expect(linux.run).toContain('scripts/linux-package-smoke.mjs')
     expect(evidence.run).toContain('package_smoke=passed')
     expect(evidence.run).toContain('electron_p0=not-applicable')
@@ -179,7 +184,8 @@ describe('post-merge Windows validation', () => {
     expect(evidence.run).toContain('--electron-p0 "$electron_p0"')
     expect(evidence.run).toContain('--visual-regression "$visual_regression"')
     expect(finalMacos.run).toBe(
-      'node scripts/macos-package-smoke.mjs --artifact-dir mac --gatekeeper'
+      'node scripts/macos-package-smoke.mjs --artifact-dir mac --gatekeeper ' +
+        '--signature-reading "$RUNNER_TEMP/purescience-mac-signature.json"'
     )
     expect(notarize['runs-on']).toBe('${{ matrix.os }}')
     expect(notarize.strategy?.matrix).toEqual({
@@ -204,6 +210,64 @@ describe('post-merge Windows validation', () => {
     expect(notarize.steps?.indexOf(refreshedMacosEvidence)).toBeGreaterThan(
       notarize.steps?.indexOf(finalMacos) ?? -1
     )
+  })
+
+  it('never lets a skipped macOS notarization read as a signed or notarized mac build', () => {
+    const build = readWorkflow('build.yml').jobs.build
+    const notarizeWorkflow = readWorkflow('notarize-mac.yml')
+    const notarize = notarizeWorkflow.jobs.notarize
+    const credentials = notarizeWorkflow.jobs.credentials
+    const signatureGate = findStep(build, 'Enforce the macOS Developer ID signature gate')
+    const evidence = findStep(build, 'Record platform certification evidence')
+    const notarizeGate = findStep(
+      notarize,
+      'Verify Apple credentials (every step below is skipped without them)'
+    )
+    const stapledGate = findStep(
+      notarize,
+      'Enforce the Developer ID signature on the stapled mac assets'
+    )
+    const refreshed = findStep(notarize, 'Refresh macOS certification evidence')
+    const disclose = findStep(
+      readWorkflow('release.yml').jobs.publish,
+      'Disclose the macOS signing state on the release page'
+    )
+
+    // The verdict is resolved first, and the notarize job's NAME states what it is doing: without
+    // credentials the check list itself says the mac assets stay unsigned (issue #19).
+    expect(credentials.name).toBe('Resolve Apple notarization credentials')
+    expect(credentials.outputs?.enabled).toBe('${{ steps.resolve.outputs.enabled }}')
+    expect(notarize.needs).toBe('credentials')
+    expect(notarize.name).toContain("needs.credentials.outputs.enabled == 'true'")
+    expect(notarize.name).toContain(
+      'SKIPPED — UNSIGNED macOS assets, not notarized (no Apple credentials):'
+    )
+
+    // The skip is a warning annotation plus a step-summary block naming what did NOT happen, not a
+    // quiet one-line notice that still leaves the job looking like a real notarization.
+    expect(notarizeGate.run).toContain('::warning::')
+    expect(notarizeGate.run).toContain('GITHUB_STEP_SUMMARY')
+    expect(notarizeGate.run).toContain('in-place auto-update on macOS')
+
+    // The measured signing state travels with the evidence on both writers, so nothing downstream has
+    // to infer it from a job result.
+    expect(evidence.run).toContain('--mac-signing-credentials')
+    expect(evidence.run).toContain('--mac-signature-reading')
+    expect(refreshed.run).toContain('--mac-signing-credentials present')
+    expect(refreshed.run).toContain('--mac-signature-reading')
+
+    // Fail-closed where credentials exist: an unsigned bundle fails, on the build and on the stapled
+    // artifacts. Neither gate is continue-on-error.
+    expect(signatureGate.run).toContain('mac-signing-status.mjs verify')
+    expect(signatureGate.run).toContain("steps.mac_signing.outputs.enabled == 'true'")
+    expect(signatureGate['continue-on-error']).toBeUndefined()
+    expect(stapledGate.run).toContain('--credentials present')
+    expect(stapledGate['continue-on-error']).toBeUndefined()
+
+    // ...and the page says what the record says, in the job that just wrote it.
+    expect(disclose.run).toContain('mac-signing-status.mjs disclose')
+    expect(disclose.run).toContain('--record artifacts/RELEASE-CERTIFICATION.json')
+    expect(disclose['continue-on-error']).toBeUndefined()
   })
 
   it('uploads built packages before enforcing collected certification outcomes', () => {

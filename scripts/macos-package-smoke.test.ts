@@ -52,12 +52,23 @@ describe('macOS package smoke', () => {
     await expect(findAppBundle(root)).rejects.toThrow(/found 2/)
   })
 
-  it('parses isolated artifact and Gatekeeper options', () => {
+  it('parses isolated artifact, Gatekeeper, and signature-reading options', () => {
     expect(parseArguments(['--artifact-dir', 'dist', '--gatekeeper'])).toEqual({
       artifactDirectory: resolve('dist'),
-      gatekeeper: true
+      gatekeeper: true,
+      signatureReading: undefined
+    })
+    expect(
+      parseArguments(['--artifact-dir', 'dist', '--signature-reading', '/tmp/reading.json'])
+    ).toEqual({
+      artifactDirectory: resolve('dist'),
+      gatekeeper: false,
+      signatureReading: '/tmp/reading.json'
     })
     expect(() => parseArguments([])).toThrow(/Usage/)
+    expect(() => parseArguments(['--artifact-dir', 'dist', '--signature-reading'])).toThrow(
+      /--signature-reading needs a path/
+    )
   })
 
   it('extracts the authenticated packaged service endpoint', () => {

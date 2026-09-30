@@ -64,7 +64,9 @@ jobs:
   # Notarize + staple the signed macOS artifacts on their own runner, then re-emit the stapled dmg/zip
   # (overwriting the build's signed-only ones) so publish always attaches a stapled mac build. Kept out
   # of the build matrix so a slow Apple notarization never holds up the platform builds; the job is
-  # time-capped and re-runnable (see notarize-mac.yml). No-ops when signing secrets aren't configured.
+  # time-capped and re-runnable (see notarize-mac.yml). When the Apple credentials are absent it skips
+  # *by name* and the certification record carries `macSignature: unsigned` — a skipped notarization
+  # must never read as a notarized mac build (issue #19).
   notarize-mac:
     needs: build
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
@@ -341,3 +343,19 @@ jobs:
             artifacts/latest-linux.yml
             artifacts/*-mac.yml
             artifacts/*.blockmap
+
+      # The release page is where the "was the mac build notarized?" question is actually answered, and
+      # the generated notes say nothing about it — a green notarize job is not evidence of a signed mac
+      # asset (issue #19). The state is read from the certification record this job just wrote and
+      # re-checked above, so the page cannot disagree with the bytes; the line is added, replaced, or
+      # dropped idempotently, and scripts/release-notes.mjs preserves it on a later body rewrite. This
+      # step is not continue-on-error: publishing a mac release without stating its signing state is the
+      # failure this issue is about. (Runs only for tagged/manual publishing runs, as does this job.)
+      - name: Disclose the macOS signing state on the release page
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
+        run: >-
+          node scripts/ci/mac-signing-status.mjs disclose
+          --record artifacts/RELEASE-CERTIFICATION.json
+          --tag "$RELEASE_TAG"
