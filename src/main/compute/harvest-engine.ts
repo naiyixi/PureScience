@@ -335,6 +335,7 @@ const harvestJobUnchecked = async (job: ComputeJob, deps: HarvestDeps): Promise<
         stderr_tail: updatedJob.stderr_tail,
         notified_at: updatedJob.notified_at,
         notification_consumed_at: updatedJob.notification_consumed_at,
+        execution_protection: updatedJob.execution_protection,
         featured_files: payload.featured_files,
         featured_file_count: payload.featured_file_count,
         left_on_remote_count: payload.left_on_remote_count,

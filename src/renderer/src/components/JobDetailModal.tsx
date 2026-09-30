@@ -2,8 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowLeft, ExternalLink, X } from 'lucide-react'
 import { Dialog } from 'radix-ui'
 
-import { useLanguage } from '@/i18n'
+import { useLanguage, type TranslationKey } from '@/i18n'
 import type { JobSummary } from '../../../shared/compute'
+import type { ExecutionProtectionLevel } from '../../../shared/execution-protection'
 import { useSessionJobStore } from '@/stores/session-job-store'
 import { Button } from '@/components/ui/button'
 import { dialogOverlayClassName, dialogPanelClassName } from '@/components/ui/dialog-chrome'
@@ -17,6 +18,14 @@ import { FileBrowserModal } from '../pages/settings/FileBrowserModal'
 
 // How often the terminal output auto-refreshes (design.md §15.3: ≈15s).
 const TERMINAL_REFRESH_MS = 15_000
+
+// The level a remote job was submitted at. A job row without a snapshot predates protection levels,
+// and the honest rendering of that is no row at all rather than a guessed level.
+const PROTECTION_LEVEL_KEYS: Record<ExecutionProtectionLevel, TranslationKey> = {
+  'os-sandbox': 'protection.levelOsSandbox',
+  'network-allowlist': 'protection.levelNetworkAllowlist',
+  unprotected: 'protection.levelUnprotected'
+}
 
 // ─── Session jobs list view (Back view inside the modal) ─────────────────────
 
@@ -182,6 +191,13 @@ function JobDetailView({ job, onBack, onOpenFileBrowser }: JobDetailViewProps): 
         <MetaRow label={t('jobDetail.provider')} value={latestJob.display_name} />
         <MetaRow label={t('jobDetail.status')} value={latestJob.status} />
         <MetaRow label={t('jobDetail.runtime')} value={runtimeDisplay()} />
+        {/* The job's own evidence: what protection level this submission ran under. */}
+        {latestJob.execution_protection && (
+          <MetaRow
+            label={t('protection.runEvidenceLabel')}
+            value={t(PROTECTION_LEVEL_KEYS[latestJob.execution_protection.level])}
+          />
+        )}
         <MetaRow
           label={t('jobDetail.remoteWorkdir')}
           value={latestJob.remote_workdir ?? '—'}

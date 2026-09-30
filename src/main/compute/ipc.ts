@@ -137,7 +137,8 @@ export const toJobSummary = async (
     featured_file_count: featuredFiles.length,
     left_on_remote_count: leftOnRemote.length,
     left_on_remote: leftOnRemote,
-    harvest_error: job.harvest_error ?? undefined
+    harvest_error: job.harvest_error ?? undefined,
+    execution_protection: job.execution_protection
   }
 }
 

@@ -318,6 +318,9 @@ export type JobSummary = {
   remote_workdir: string | undefined
   stdout_tail: string | undefined
   stderr_tail: string | undefined
+  // The protection level this job was submitted under, so the job view can state what the run was.
+  // Absent on jobs submitted before protection levels existed.
+  execution_protection?: ExecutionProtectionSnapshot
   // Phase 3b: inbox timestamps — renderer uses these to decide whether to start an analysis turn.
   notified_at: number | undefined
   notification_consumed_at: number | undefined
