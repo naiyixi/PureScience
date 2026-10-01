@@ -14,7 +14,12 @@
 
 ## 队列（按顺序；每项做完即提交）
 
-### Q1. R4-U4「为什么不是表」的可读理由 —— 代码已完成并提交（`7d520f0c`）；**只剩真机取证**
+### Q1. R4-U4「为什么不是表」的可读理由 —— **已完成**（代码 `7d520f0c` + 真机取证 `docs/evidence/2026-10-02-r4-u4-rejection-reasons.md`）
+>
+> 真机读数（隔离实例 44185，走应用自身 RPC）：散文页 `too-few-columns` ＋ `counts={columns:1,itemCount:5,rows:5,spanningRows:0}`；
+> 空页 `blank-page`；真表格页 1 条候选（6 行×4 列 high）且 `rejectedPages` **字段不存在**；"真表 + 散文页"同样**不附理由**（抑制规则成立）。
+> 隔离证明：`/tmp/ps-q1/data/.pdfs` 3 个（本次），`~/PureScience-DEV/.pdfs` 基线 18 → 仍 18。**未取**：面板的浏览器级读数（如实记为待取证）。
+
 
 > 第 1 轮（02:16）实现了 Q1 全部代码与测试（shared 6 + service 3 + 面板 2 = 新增 11 例；typecheck 0、eslint 干净、
 > 复跑 5 文件 100 例全绿），但**结束时未提交**（预算耗尽在实现与门禁上）。会话侧已复验并提交推送（`7d520f0c`）。
