@@ -9,6 +9,7 @@ import {
   type GlobalSearchPin,
   type GlobalSearchPinFilters
 } from '../../../../shared/global-search-pins'
+import type { GlobalSearchOrdering } from '../../../../shared/global-search'
 
 // Saved filter sets, as the palette uses them.
 //
@@ -21,10 +22,25 @@ export type GlobalSearchContentFilters = {
   role?: 'user' | 'agent'
   extension?: string
   referenceType?: 'doi' | 'arxiv' | 'pmid' | 'pmcid'
+  /** Inclusive ISO-8601 bounds on the hit's own time, exactly as the search takes them. */
+  since?: string
+  until?: string
+  /** Page order: what a saved set must also carry for its results to come back the same way. */
+  orderBy?: GlobalSearchOrdering
 }
 
-const isSupportedKey = (key: string): key is 'role' | 'extensions' | 'referenceTypes' =>
-  key === 'role' || key === 'extensions' || key === 'referenceTypes'
+// A pin may carry only what the palette can put back. The date bounds and the ordering joined this list
+// when the panel learned to set them: before that, calling such a pin "applied" would have put its name on
+// results from a wider question than the set describes.
+const isSupportedKey = (
+  key: string
+): key is 'role' | 'extensions' | 'referenceTypes' | 'since' | 'until' | 'orderBy' =>
+  key === 'role' ||
+  key === 'extensions' ||
+  key === 'referenceTypes' ||
+  key === 'since' ||
+  key === 'until' ||
+  key === 'orderBy'
 
 /** The filter set a pin stores for the filters in force, or undefined when nothing is set. */
 export const pinFiltersForContentFilters = (
@@ -34,6 +50,9 @@ export const pinFiltersForContentFilters = (
   if (filters.role) pinFilters.role = filters.role
   if (filters.extension) pinFilters.extensions = [filters.extension]
   if (filters.referenceType) pinFilters.referenceTypes = [filters.referenceType]
+  if (filters.since) pinFilters.since = filters.since
+  if (filters.until) pinFilters.until = filters.until
+  if (filters.orderBy) pinFilters.orderBy = filters.orderBy
   // A pin with no filters would name "everything", which is what the absence of a pin already means.
   return Object.keys(pinFilters).length === 0 ? undefined : pinFilters
 }
@@ -44,6 +63,9 @@ export const contentFiltersForPin = (pin: GlobalSearchPin): GlobalSearchContentF
   if (pin.filters.role) filters.role = pin.filters.role
   if (pin.filters.extensions?.[0]) filters.extension = pin.filters.extensions[0]
   if (pin.filters.referenceTypes?.[0]) filters.referenceType = pin.filters.referenceTypes[0]
+  if (pin.filters.since) filters.since = pin.filters.since
+  if (pin.filters.until) filters.until = pin.filters.until
+  if (pin.filters.orderBy) filters.orderBy = pin.filters.orderBy
   return filters
 }
 
@@ -53,12 +75,15 @@ const sameFilters = (
 ): boolean =>
   left.role === right.role &&
   left.extension === right.extension &&
-  left.referenceType === right.referenceType
+  left.referenceType === right.referenceType &&
+  left.since === right.since &&
+  left.until === right.until &&
+  left.orderBy === right.orderBy
 
 /**
  * The pin whose filters are exactly the ones in force. A pin carrying anything the palette cannot put back
- * (a scope, a project, a date bound) never matches: calling it "applied" would put its name on results that
- * came from a narrower question than the set describes.
+ * (a scope, a project) never matches: calling it "applied" would put its name on results that came from a
+ * narrower question than the set describes.
  */
 export const appliedPinFor = (
   pins: readonly GlobalSearchPin[],

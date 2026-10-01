@@ -1705,3 +1705,156 @@ describe('GlobalSearchDialog', () => {
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 })
+
+describe('GlobalSearchDialog — advanced filters and evidence verification', () => {
+  const responseWith = (hits: unknown[]): Record<string, unknown> => ({
+    schemaVersion: 1,
+    query: 'zzz',
+    scopes: ['messages'],
+    hits,
+    counts: {
+      sessions: 0,
+      messages: hits.length,
+      uploads: 0,
+      artifacts: 0,
+      literature: 0,
+      annotations: 0
+    },
+    coverage: {
+      sessions: { considered: 0, contentRead: 0, bounded: false },
+      messages: { considered: hits.length, contentRead: 0, bounded: false },
+      uploads: { considered: 0, contentRead: 0, bounded: false },
+      artifacts: { considered: 0, contentRead: 0, bounded: false },
+      literature: { considered: 0, contentRead: 0, bounded: false },
+      annotations: { considered: 0, contentRead: 0, bounded: false }
+    },
+    truncated: false,
+    scan: {
+      sessions: 0,
+      messages: hits.length,
+      uploads: 0,
+      artifacts: 0,
+      references: 0,
+      annotations: 0,
+      bounded: false
+    },
+    appliedLimit: 100,
+    notes: [],
+    orderBy: 'relevance'
+  })
+
+  const messageHit = (overrides: Record<string, unknown> = {}): Record<string, unknown> => ({
+    scope: 'messages',
+    id: 'message-1',
+    projectId: 'project-a',
+    title: 'Session',
+    score: 5,
+    matches: [{ field: 'text', snippet: 'zzz happened', offset: 12 }],
+    sessionId: 'session-a',
+    messageId: 'message-1',
+    role: 'user',
+    timestamp: '2026-09-20T00:00:00.000Z',
+    ...overrides
+  })
+
+  // Types a query past the debounce and returns the palette's own proof line.
+  const renderAndSearch = async (query: string): Promise<string> => {
+    // No artifact matches, so the first selectable row is the content hit the verification acts on.
+    vi.mocked(window.api.projectFiles.searchArtifacts).mockResolvedValue({
+      primary: { items: [], totalCount: 0 },
+      other: [],
+      isIndexComplete: true
+    } as never)
+    await act(async () => {
+      root.render(
+        <GlobalSearchDialog
+          open
+          onOpenChange={vi.fn()}
+          isSessionPersistenceReady
+          onOpenKeyboardShortcuts={vi.fn()}
+        />
+      )
+      await new Promise((resolve) => window.setTimeout(resolve, 20))
+    })
+    const input = document.body.querySelector<HTMLInputElement>('input[role="combobox"]')
+    const valueSetter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype,
+      'value'
+    )?.set
+    await act(async () => {
+      valueSetter?.call(input, query)
+      input?.dispatchEvent(new Event('input', { bubbles: true }))
+      await new Promise((resolve) => window.setTimeout(resolve, 400))
+    })
+
+    return document.body.querySelector('[data-testid="gs-filter-proof"]')?.textContent ?? ''
+  }
+
+  it('prints the conditions the page was produced under, on the page itself', async () => {
+    vi.mocked(window.api.search.query).mockResolvedValue(responseWith([]) as never)
+
+    const proof = await renderAndSearch('zzz')
+
+    // The project is in force (the palette is scoped to the open project) and it is named, not implied.
+    expect(proof).toContain('project=project-a')
+    expect(proof).not.toContain('orderBy=')
+  })
+
+  it('reports an unchanged evidence line as unchanged, by asking again', async () => {
+    vi.mocked(window.api.search.query).mockResolvedValue(responseWith([messageHit()]) as never)
+
+    await renderAndSearch('zzz')
+    const verify = document.body.querySelector<HTMLButtonElement>(
+      '[data-testid="gs-verify-active"]'
+    )
+    expect(verify?.disabled).toBe(false)
+    await act(async () => {
+      verify?.click()
+      await new Promise((resolve) => window.setTimeout(resolve, 20))
+    })
+
+    expect(document.body.querySelector('[data-testid="gs-verify-status"]')?.textContent).toBe(
+      'Evidence unchanged'
+    )
+  })
+
+  it('says an evidence line is missing rather than passing it, when the record is gone', async () => {
+    vi.mocked(window.api.search.query).mockResolvedValue(responseWith([messageHit()]) as never)
+
+    await renderAndSearch('zzz')
+    vi.mocked(window.api.search.query).mockResolvedValue(responseWith([]) as never)
+    const verify = document.body.querySelector<HTMLButtonElement>(
+      '[data-testid="gs-verify-active"]'
+    )
+    await act(async () => {
+      verify?.click()
+      await new Promise((resolve) => window.setTimeout(resolve, 20))
+    })
+
+    expect(document.body.querySelector('[data-testid="gs-verify-status"]')?.textContent).toBe(
+      'Evidence not found'
+    )
+  })
+
+  it('says an evidence line changed when the same record no longer carries the same match', async () => {
+    vi.mocked(window.api.search.query).mockResolvedValue(responseWith([messageHit()]) as never)
+
+    await renderAndSearch('zzz')
+    vi.mocked(window.api.search.query).mockResolvedValue(
+      responseWith([
+        messageHit({ matches: [{ field: 'text', snippet: 'zzz moved elsewhere', offset: 99 }] })
+      ]) as never
+    )
+    const verify = document.body.querySelector<HTMLButtonElement>(
+      '[data-testid="gs-verify-active"]'
+    )
+    await act(async () => {
+      verify?.click()
+      await new Promise((resolve) => window.setTimeout(resolve, 20))
+    })
+
+    expect(document.body.querySelector('[data-testid="gs-verify-status"]')?.textContent).toBe(
+      'Evidence changed'
+    )
+  })
+})

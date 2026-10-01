@@ -11,6 +11,22 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'gs.filterSenderUser': '나',
   'gs.filterSenderAgent': '에이전트',
   'gs.filterClear': '필터 지우기',
+  'gs.filterTime': '기간',
+  'gs.filterTimeAny': '전체 기간',
+  'gs.filterTime7d': '최근 7일',
+  'gs.filterTimeCustom': '사용자 지정',
+  'gs.filterSince': '시작일',
+  'gs.filterUntil': '종료일',
+  'gs.filterOrder': '결과 정렬',
+  'gs.filterOrderRelevance': '관련도',
+  'gs.filterOrderTime': '최신순',
+  'gs.filterProofNone': '필터 없음',
+
+  'gs.verifyUnchanged': '근거 그대로',
+  'gs.verifyChanged': '근거 변경됨',
+  'gs.verifyMissing': '근거 없음',
+  'gs.verifyFailed': '검증 실패',
+
   'gs.pinsTitle': '저장한 필터',
   'gs.pinsEmpty':
     '저장된 필터 세트가 아직 없습니다 — 결과에서 "리뷰에 고정"을 선택하면 현재 필터가 저장됩니다.',

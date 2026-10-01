@@ -13,7 +13,9 @@ import { Dialog } from 'radix-ui'
 import {
   isFileSearchScope,
   type GlobalSearchHit,
-  type GlobalSearchScope
+  type GlobalSearchOrdering,
+  type GlobalSearchScope,
+  type GlobalSearchRequest
 } from '../../../../shared/global-search'
 import { buildGlobalSearchHitCitation } from '../../../../shared/global-search-citation'
 import type { ProjectFileItem } from '../../../../shared/project-files'
@@ -44,7 +46,11 @@ import { useSessionStore } from '@/stores/session-store'
 import { buildPaletteCommands, matchPaletteCommands, type PaletteCommand } from './palette-commands'
 import { useContentSearch } from './use-content-search'
 import { useSearchEvidence } from './use-search-evidence'
-import { searchPinFailureLabelKey, useSearchPins } from './use-search-pins'
+import {
+  searchPinFailureLabelKey,
+  useSearchPins,
+  type GlobalSearchContentFilters
+} from './use-search-pins'
 import { evidenceReasonLabelKey, pinRejectionLabelKey } from './search-evidence-labels'
 import {
   GLOBAL_SEARCH_PIN_MAX_SETS,
@@ -189,11 +195,10 @@ export const GlobalSearchDialog = ({
   const [query, setQuery] = useState('')
   // Filters are state of the search, not of the results: changing one re-asks, and the pages that come
   // back are pages of what was asked for.
-  const [contentFilters, setContentFilters] = useState<{
-    role?: 'user' | 'agent'
-    extension?: string
-    referenceType?: 'doi' | 'arxiv' | 'pmid' | 'pmcid'
-  }>({})
+  const [contentFilters, setContentFilters] = useState<GlobalSearchContentFilters>({})
+  // The time window is a window, not two loose dates: "any / last 7 days / custom" is what a user means,
+  // and an empty custom box must not turn into a bound that silently narrows the search.
+  const [timeWindow, setTimeWindow] = useState<'any' | '7d' | 'custom'>('any')
   const [visibleSessionCount, setVisibleSessionCount] = useState(GLOBAL_SEARCH_PAGE_SIZE)
   const [artifacts, setArtifacts] = useState<ArtifactState>(emptyArtifactState)
   const [artifactStatus, setArtifactStatus] = useState<'idle' | 'loading' | 'error'>('idle')
@@ -476,11 +481,88 @@ export const GlobalSearchDialog = ({
               : {})
           }
         }
-      : {})
+      : {}),
+    ...(contentFilters.since ? { since: contentFilters.since } : {}),
+    ...(contentFilters.until ? { until: contentFilters.until } : {}),
+    ...(contentFilters.orderBy ? { orderBy: contentFilters.orderBy } : {})
   })
   const contentResponse =
     contentSearch.state.state === 'ready' ? contentSearch.state.response : undefined
   const contentHits = useMemo(() => contentResponse?.hits ?? [], [contentResponse])
+
+  // What the current search actually asked for, in the machine-stable wording the pins already use. It is
+  // printed on the result summary so the conditions a page was produced under are readable from the page
+  // itself, instead of living only in the controls that happen to be set above it.
+  const filterProof = useMemo(() => {
+    const described = describeGlobalSearchFilters({
+      ...(scopeFilter ? { scopes: [scopeFilter] } : {}),
+      ...(primaryProject ? { projectId: primaryProject.id } : {}),
+      ...(contentFilters.since ? { since: contentFilters.since } : {}),
+      ...(contentFilters.until ? { until: contentFilters.until } : {}),
+      ...(contentFilters.role ? { role: contentFilters.role } : {}),
+      ...(contentFilters.extension ? { extensions: [contentFilters.extension] } : {}),
+      ...(contentFilters.referenceType ? { referenceTypes: [contentFilters.referenceType] } : {}),
+      ...(contentFilters.orderBy ? { orderBy: contentFilters.orderBy } : {})
+    })
+
+    return described.length > 0 ? described : t('gs.filterProofNone')
+  }, [scopeFilter, primaryProject, contentFilters, t])
+
+  const handleTimeWindowChange = useCallback((value: string): void => {
+    const next = value === '7d' || value === 'custom' ? value : 'any'
+    setTimeWindow(next)
+    setContentFilters((current) =>
+      next === '7d'
+        ? { ...current, since: new Date(Date.now() - 7 * 86_400_000).toISOString() }
+        : next === 'any'
+          ? { ...current, since: undefined, until: undefined }
+          : current
+    )
+  }, [])
+
+  // Verifying an evidence line means asking the same question again and comparing the answer: the hit is
+  // unchanged only when the same record still carries the same match at the same offset. Anything else is
+  // reported as changed or missing — an unverifiable line is never passed silently.
+  const [verifyState, setVerifyState] = useState<{
+    hitId: string
+    status: 'unchanged' | 'changed' | 'missing' | 'failed'
+  }>()
+  const verifyHit = useCallback(
+    async (hit: GlobalSearchHit): Promise<void> => {
+      const request: GlobalSearchRequest = {
+        query: trimmedQuery,
+        ...(primaryProject ? { projectId: primaryProject.id } : {}),
+        ...(scopeFilter ? { scopes: [scopeFilter] } : {}),
+        ...(contentFilters.role ? { role: contentFilters.role } : {}),
+        ...(contentFilters.extension ? { extensions: [contentFilters.extension] } : {}),
+        ...(contentFilters.referenceType ? { referenceTypes: [contentFilters.referenceType] } : {}),
+        ...(contentFilters.since ? { since: contentFilters.since } : {}),
+        ...(contentFilters.until ? { until: contentFilters.until } : {}),
+        ...(contentFilters.orderBy ? { orderBy: contentFilters.orderBy } : {})
+      }
+      try {
+        const response = await window.api.search.query(request)
+        const again = response.hits.find(
+          (entry) => entry.id === hit.id && entry.scope === hit.scope
+        )
+        const before = hit.matches[0]
+        const after = again?.matches[0]
+        const same =
+          before !== undefined &&
+          after !== undefined &&
+          before.offset === after.offset &&
+          before.snippet === after.snippet
+
+        setVerifyState({
+          hitId: hit.id,
+          status: again ? (same ? 'unchanged' : 'changed') : 'missing'
+        })
+      } catch {
+        setVerifyState({ hitId: hit.id, status: 'failed' })
+      }
+    },
+    [trimmedQuery, primaryProject, scopeFilter, contentFilters]
+  )
 
   // ⌘K answers commands, not just history. The catalog is plain data (see palette-commands.ts) so the
   // same list can back the shortcut surface; matching is ranked so a label hit outranks a keyword hit.
@@ -544,6 +626,13 @@ export const GlobalSearchDialog = ({
   ])
 
   const activeRowIndex = Math.max(0, Math.min(activeIndex, selectableRows.length - 1))
+  // The verify control acts on the highlighted row: this palette is keyboard-first, so "the row I am on"
+  // is the only row the user points at without reaching for the mouse.
+  const activeHit = ((): GlobalSearchHit | undefined => {
+    const entry = selectableRows[activeRowIndex]
+
+    return entry && entry.kind === 'content' ? entry.hit : undefined
+  })()
   const activeRowId = `global-search-option-${activeRowIndex}`
 
   useEffect(() => {
@@ -1188,6 +1277,115 @@ export const GlobalSearchDialog = ({
                 >
                   {t('gs.filterClear')}
                 </Button>
+              ) : null}
+            </div>
+          ) : null}
+          {isSearchMode ? (
+            <div
+              data-testid="gs-advanced-filters"
+              data-slot="gs-advanced-filters"
+              className="mt-2 flex flex-wrap items-center gap-2 px-1"
+            >
+              <Select value={timeWindow} onValueChange={handleTimeWindowChange}>
+                <SelectTrigger
+                  aria-label={t('gs.filterTime')}
+                  data-testid="gs-filter-time"
+                  className="h-8 w-auto gap-2 text-xs"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="any">{t('gs.filterTimeAny')}</SelectItem>
+                  <SelectItem value="7d">{t('gs.filterTime7d')}</SelectItem>
+                  <SelectItem value="custom">{t('gs.filterTimeCustom')}</SelectItem>
+                </SelectContent>
+              </Select>
+              {timeWindow === 'custom' ? (
+                <>
+                  <Input
+                    type="date"
+                    aria-label={t('gs.filterSince')}
+                    data-testid="gs-filter-since"
+                    className="h-8 w-auto text-xs"
+                    value={contentFilters.since?.slice(0, 10) ?? ''}
+                    onChange={(event) =>
+                      setContentFilters((current) => ({
+                        ...current,
+                        since: event.target.value
+                          ? `${event.target.value}T00:00:00.000Z`
+                          : undefined
+                      }))
+                    }
+                  />
+                  <Input
+                    type="date"
+                    aria-label={t('gs.filterUntil')}
+                    data-testid="gs-filter-until"
+                    className="h-8 w-auto text-xs"
+                    value={contentFilters.until?.slice(0, 10) ?? ''}
+                    onChange={(event) =>
+                      setContentFilters((current) => ({
+                        ...current,
+                        until: event.target.value
+                          ? `${event.target.value}T23:59:59.999Z`
+                          : undefined
+                      }))
+                    }
+                  />
+                </>
+              ) : null}
+              <Select
+                value={contentFilters.orderBy ?? 'relevance'}
+                onValueChange={(value) =>
+                  setContentFilters((current) => ({
+                    ...current,
+                    orderBy: value === 'relevance' ? undefined : (value as GlobalSearchOrdering)
+                  }))
+                }
+              >
+                <SelectTrigger
+                  aria-label={t('gs.filterOrder')}
+                  data-testid="gs-filter-order"
+                  className="h-8 w-auto gap-2 text-xs"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="relevance">{t('gs.filterOrderRelevance')}</SelectItem>
+                  <SelectItem value="time">{t('gs.filterOrderTime')}</SelectItem>
+                </SelectContent>
+              </Select>
+              <span
+                data-testid="gs-filter-proof"
+                data-slot="gs-filter-proof"
+                className="max-w-full truncate text-xs text-muted-foreground"
+              >
+                {filterProof}
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-8 px-2 text-xs"
+                data-testid="gs-verify-active"
+                disabled={!activeHit}
+                onClick={() => {
+                  if (activeHit) void verifyHit(activeHit)
+                }}
+              >
+                {t('gs.verifyEvidence')}
+              </Button>
+              {verifyState ? (
+                <span data-testid="gs-verify-status" className="text-xs text-muted-foreground">
+                  {t(
+                    verifyState.status === 'unchanged'
+                      ? 'gs.verifyUnchanged'
+                      : verifyState.status === 'changed'
+                        ? 'gs.verifyChanged'
+                        : verifyState.status === 'missing'
+                          ? 'gs.verifyMissing'
+                          : 'gs.verifyFailed'
+                  )}
+                </span>
               ) : null}
             </div>
           ) : null}

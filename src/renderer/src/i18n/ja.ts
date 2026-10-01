@@ -11,6 +11,22 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'gs.filterSenderUser': '自分',
   'gs.filterSenderAgent': 'エージェント',
   'gs.filterClear': 'フィルタを解除',
+  'gs.filterTime': '期間',
+  'gs.filterTimeAny': '指定なし',
+  'gs.filterTime7d': '過去7日間',
+  'gs.filterTimeCustom': 'カスタム範囲',
+  'gs.filterSince': '開始日',
+  'gs.filterUntil': '終了日',
+  'gs.filterOrder': '並び順',
+  'gs.filterOrderRelevance': '関連度',
+  'gs.filterOrderTime': '新しい順',
+  'gs.filterProofNone': 'フィルタなし',
+
+  'gs.verifyUnchanged': '証拠は未変更',
+  'gs.verifyChanged': '証拠が変更済み',
+  'gs.verifyMissing': '証拠が見つからない',
+  'gs.verifyFailed': '検証できません',
+
   'gs.pinsTitle': '保存したフィルター',
   'gs.pinsEmpty':
     '保存した絞り込みセットはまだありません — 結果の「レビューに固定」で現在の絞り込みを保存できます。',

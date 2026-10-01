@@ -11,6 +11,22 @@ export const es: Partial<Record<ZhKey, string>> = {
   'gs.filterSenderUser': 'Yo',
   'gs.filterSenderAgent': 'Agente',
   'gs.filterClear': 'Borrar filtros',
+  'gs.filterTime': 'Intervalo de tiempo',
+  'gs.filterTimeAny': 'Cualquier fecha',
+  'gs.filterTime7d': 'Últimos 7 días',
+  'gs.filterTimeCustom': 'Rango personalizado',
+  'gs.filterSince': 'Desde',
+  'gs.filterUntil': 'Hasta',
+  'gs.filterOrder': 'Orden de resultados',
+  'gs.filterOrderRelevance': 'Relevancia',
+  'gs.filterOrderTime': 'Más recientes',
+  'gs.filterProofNone': 'Sin filtros',
+
+  'gs.verifyUnchanged': 'Evidencia sin cambios',
+  'gs.verifyChanged': 'Evidencia modificada',
+  'gs.verifyMissing': 'Evidencia no encontrada',
+  'gs.verifyFailed': 'No se pudo verificar',
+
   'gs.pinsTitle': 'Filtros guardados',
   'gs.pinsEmpty':
     'Aún no hay conjuntos de filtros guardados: usa «Fijar a la revisión» en un resultado para guardar los filtros actuales.',

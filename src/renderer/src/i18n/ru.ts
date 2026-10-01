@@ -11,6 +11,22 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'gs.filterSenderUser': 'Я',
   'gs.filterSenderAgent': 'Агент',
   'gs.filterClear': 'Сбросить фильтры',
+  'gs.filterTime': 'Период',
+  'gs.filterTimeAny': 'За всё время',
+  'gs.filterTime7d': 'Последние 7 дней',
+  'gs.filterTimeCustom': 'Свой диапазон',
+  'gs.filterSince': 'С даты',
+  'gs.filterUntil': 'По дату',
+  'gs.filterOrder': 'Порядок результатов',
+  'gs.filterOrderRelevance': 'По релевантности',
+  'gs.filterOrderTime': 'Сначала новые',
+  'gs.filterProofNone': 'Без фильтров',
+
+  'gs.verifyUnchanged': 'Свидетельство не изменилось',
+  'gs.verifyChanged': 'Свидетельство изменилось',
+  'gs.verifyMissing': 'Свидетельство не найдено',
+  'gs.verifyFailed': 'Не удалось проверить',
+
   'gs.pinsTitle': 'Сохранённые фильтры',
   'gs.pinsEmpty':
     'Сохранённых наборов фильтров пока нет — выберите «Закрепить для проверки» у результата, чтобы сохранить текущие фильтры.',

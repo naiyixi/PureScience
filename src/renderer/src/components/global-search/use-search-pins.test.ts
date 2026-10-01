@@ -85,3 +85,35 @@ describe('searchPinFailureLabelKey', () => {
     expect(GLOBAL_SEARCH_PIN_MAX_SETS).toBe(50)
   })
 })
+
+describe('time bounds and ordering in a saved set', () => {
+  it('stores them, because a set that cannot put them back cannot reproduce its own results', () => {
+    expect(
+      pinFiltersForContentFilters({
+        extension: 'csv',
+        since: '2026-09-23T00:00:00.000Z',
+        until: '2026-09-30T23:59:59.999Z',
+        orderBy: 'time'
+      })
+    ).toEqual({
+      extensions: ['csv'],
+      since: '2026-09-23T00:00:00.000Z',
+      until: '2026-09-30T23:59:59.999Z',
+      orderBy: 'time'
+    })
+  })
+
+  it('puts them back into the palette when the set is applied', () => {
+    expect(
+      contentFiltersForPin(pin({ filters: { since: '2026-09-23T00:00:00.000Z', orderBy: 'time' } }))
+    ).toEqual({ since: '2026-09-23T00:00:00.000Z', orderBy: 'time' })
+  })
+
+  it('counts a bounded set as the set in force, now that the palette can set a bound', () => {
+    const bounded = pin({ id: 'pin-bounded', filters: { since: '2026-09-23T00:00:00.000Z' } })
+
+    expect(appliedPinFor([bounded], { since: '2026-09-23T00:00:00.000Z' })?.id).toBe('pin-bounded')
+    // A different bound is a different question: the pin must not be called applied to it.
+    expect(appliedPinFor([bounded], { since: '2026-09-01T00:00:00.000Z' })).toBeUndefined()
+  })
+})
