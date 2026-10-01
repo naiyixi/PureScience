@@ -105,6 +105,49 @@ const SkillDetailView = ({ skillId }: SkillDetailViewProps): React.JSX.Element =
         <p className="mt-2 text-xs text-muted-foreground">{t('settings.skillAlwaysOn')}</p>
       ) : null}
 
+      {/* Trigger quality: pure local rules, scored at read time, so the number is one the user can
+          reproduce offline instead of a publisher's self-assessment. Every failing check says what is
+          missing — a bare score would say "worse" without saying "worse how". */}
+      {detail?.triggerQuality ? (
+        <section className="mt-6 border-t border-border pt-4" data-testid="skill-trigger-quality">
+          <h2 className="mb-1 text-sm font-semibold text-foreground">
+            {t('settings.skillTriggerQuality')}
+          </h2>
+          <p className="text-xs text-muted-foreground" data-testid="skill-trigger-quality-score">
+            {t('settings.skillTriggerQualityScore', {
+              score: String(detail.triggerQuality.score),
+              passed: String(detail.triggerQuality.checks.filter((check) => check.passed).length),
+              total: String(detail.triggerQuality.checks.length)
+            })}
+          </p>
+          <p className="mb-2 mt-1 text-xs text-muted-foreground">
+            {t('settings.skillTriggerQualityHint')}
+          </p>
+          {detail.triggerQuality.checks.map((check) => (
+            <div
+              key={check.id}
+              className="flex flex-wrap items-baseline gap-x-2 py-0.5"
+              data-testid={`skill-trigger-check-${check.id}`}
+            >
+              <span className="text-xs text-foreground">
+                {TRIGGER_CHECK_NAME_KEYS[check.id]
+                  ? t(TRIGGER_CHECK_NAME_KEYS[check.id])
+                  : check.id}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {check.passed
+                  ? t('settings.skillTriggerCheckPassed')
+                  : TRIGGER_CHECK_MISSING_KEYS[check.id]
+                    ? t(TRIGGER_CHECK_MISSING_KEYS[check.id])
+                    : // A check this build has no wording for keeps the evaluator's own sentence rather
+                      // than being mistranslated into a rule it does not describe.
+                      check.message}
+              </span>
+            </div>
+          ))}
+        </section>
+      ) : null}
+
       {/* Files: the rendered SKILL.md body. */}
       <section className="mt-6 border-t border-border pt-4">
         <h2 className="mb-3 text-sm font-semibold text-foreground">Files</h2>
@@ -137,3 +180,22 @@ const SkillDetailView = ({ skillId }: SkillDetailViewProps): React.JSX.Element =
 }
 
 export { SkillDetailView }
+
+// The evaluator's five checks, named and explained in the user's language. A check this build does not have
+// wording for is shown by its id and the evaluator's own sentence — an unknown rule must never be described
+// by a translation of a different one.
+const TRIGGER_CHECK_NAME_KEYS: Record<string, TranslationKey> = {
+  length: 'settings.skillTriggerCheckNameLength',
+  self_contained: 'settings.skillTriggerCheckNameSelfContained',
+  action_vocabulary: 'settings.skillTriggerCheckNameActionVocabulary',
+  concrete_subject: 'settings.skillTriggerCheckNameConcreteSubject',
+  keyword_density: 'settings.skillTriggerCheckNameKeywordDensity'
+}
+
+const TRIGGER_CHECK_MISSING_KEYS: Record<string, TranslationKey> = {
+  length: 'settings.skillTriggerCheckMissingLength',
+  self_contained: 'settings.skillTriggerCheckMissingSelfContained',
+  action_vocabulary: 'settings.skillTriggerCheckMissingActionVocabulary',
+  concrete_subject: 'settings.skillTriggerCheckMissingConcreteSubject',
+  keyword_density: 'settings.skillTriggerCheckMissingKeywordDensity'
+}

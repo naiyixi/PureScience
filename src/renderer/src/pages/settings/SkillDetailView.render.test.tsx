@@ -53,6 +53,44 @@ afterEach(() => {
 })
 
 describe('SkillDetailView', () => {
+  it('shows the locally computed trigger quality and names the failing check', async () => {
+    ;(window as unknown as { api: unknown }).api = {
+      settings: {
+        getSkillDetail: vi.fn().mockResolvedValue({
+          ...detail,
+          triggerQuality: {
+            score: 6,
+            checks: [
+              { id: 'length', passed: true, message: 'ok' },
+              { id: 'keyword_density', passed: false, message: 'no substantive keyword' }
+            ],
+            suggestions: []
+          }
+        })
+      }
+    }
+    await act(async () => {
+      root.render(<SkillDetailView skillId="a" />)
+    })
+    await act(async () => {
+      await new Promise((resolve) => window.setTimeout(resolve, 0))
+    })
+
+    // The suite's i18n fallback returns the key with placeholders intact, so the assertion is on the row's
+    // presence and its difference from a passing row — the numbers are covered by the main-side case where
+    // the score is compared against the pure scorer itself.
+    expect(container.querySelector('[data-testid="skill-trigger-quality-score"]')).toBeTruthy()
+    const failing = container.querySelector(
+      '[data-testid="skill-trigger-check-keyword_density"]'
+    )?.textContent
+    const passing = container.querySelector(
+      '[data-testid="skill-trigger-check-length"]'
+    )?.textContent
+    // The failing row says what is missing; it must not read like the passing one.
+    expect(failing).toBeTruthy()
+    expect(failing).not.toEqual(passing)
+  })
+
   it('renders the header, Files body, and Details metadata from the frontmatter', async () => {
     await act(async () => {
       root.render(<SkillDetailView skillId="a" />)

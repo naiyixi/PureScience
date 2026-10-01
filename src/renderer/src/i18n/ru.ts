@@ -438,6 +438,27 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'runtimes.stopRunningWork': 'Остановить выполняемую работу',
   'runtimes.disableAfterCurrentWork': 'Отключить после завершения текущей работы',
   'skillDetail.detailsTitle': 'Подробности',
+  'settings.skillTriggerQuality': 'Качество срабатывания',
+  'settings.skillTriggerQualityScore': '{score} / 10 — пройдено {passed} из {total} проверок',
+  'settings.skillTriggerQualityHint':
+    'Оценка ставится фиксированными локальными правилами при открытии страницы, поэтому её можно пересчитать офлайн — это не самооценка издателя.',
+  'settings.skillTriggerCheckPassed': 'пройдена',
+  'settings.skillTriggerCheckNameLength': 'Длина описания',
+  'settings.skillTriggerCheckMissingLength':
+    'Длина вне рабочего диапазона: слишком коротко для срабатывания или так длинно, что первое предложение перестаёт нести триггер.',
+  'settings.skillTriggerCheckNameSelfContained': 'Первое предложение самодостаточно',
+  'settings.skillTriggerCheckMissingSelfContained':
+    'Начало не срабатывает само по себе: слишком короткое, слишком расплывчатое или опирается на имя навыка.',
+  'settings.skillTriggerCheckNameActionVocabulary': 'Лексика действия',
+  'settings.skillTriggerCheckMissingActionVocabulary':
+    'Нет формулировки действия или ситуации: не сказано, что делает навык и когда к нему обращаться.',
+  'settings.skillTriggerCheckNameConcreteSubject': 'Конкретный предмет',
+  'settings.skillTriggerCheckMissingConcreteSubject':
+    'Формулировка остаётся расплывчатой: назовите инструмент, тип данных или область, с которой работает навык.',
+  'settings.skillTriggerCheckNameKeywordDensity': 'Содержательное ключевое слово',
+  'settings.skillTriggerCheckMissingKeywordDensity':
+    'Нет содержательного ключевого слова: загрузчик не отличит этот навык от других.',
+
   'skillDetail.author': 'Автор',
   'skillDetail.license': 'Лицензия',
   'boot.loadingSettings': 'Запуск PureScience…',

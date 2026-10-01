@@ -447,6 +447,27 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'runtimes.stopRunningWork': 'Arrêter le travail en cours',
   'runtimes.disableAfterCurrentWork': 'Désactiver après le travail en cours',
   'skillDetail.detailsTitle': 'Détails',
+  'settings.skillTriggerQuality': 'Qualité de déclenchement',
+  'settings.skillTriggerQualityScore': '{score} / 10 — {passed} sur {total} vérifications réussies',
+  'settings.skillTriggerQualityHint':
+    'Le score est calculé par des règles locales fixes à l’ouverture de cette page, donc recalculable hors ligne — ce n’est pas l’auto-évaluation de l’éditeur.',
+  'settings.skillTriggerCheckPassed': 'réussie',
+  'settings.skillTriggerCheckNameLength': 'Longueur de la description',
+  'settings.skillTriggerCheckMissingLength':
+    'La longueur sort de la plage utile : trop courte pour déclencher, ou trop longue pour que la première phrase porte encore le déclencheur.',
+  'settings.skillTriggerCheckNameSelfContained': 'La première phrase tient seule',
+  'settings.skillTriggerCheckMissingSelfContained':
+    'L’ouverture ne déclenche pas seule : trop courte, trop vague, ou elle s’appuie sur le nom de la compétence.',
+  'settings.skillTriggerCheckNameActionVocabulary': 'Vocabulaire d’action',
+  'settings.skillTriggerCheckMissingActionVocabulary':
+    'Aucune formulation d’action ou de situation : le texte ne dit pas ce que fait la compétence ni quand y recourir.',
+  'settings.skillTriggerCheckNameConcreteSubject': 'Sujet concret',
+  'settings.skillTriggerCheckMissingConcreteSubject':
+    'La formulation reste vague : nommez l’outil, le type de données ou le domaine sur lequel la compétence agit.',
+  'settings.skillTriggerCheckNameKeywordDensity': 'Mot-clé substantiel',
+  'settings.skillTriggerCheckMissingKeywordDensity':
+    'Aucun mot-clé substantiel : le chargeur ne peut pas distinguer cette compétence des autres.',
+
   'skillDetail.author': 'Auteur',
   'skillDetail.license': 'Licence',
   'boot.loadingSettings': 'Démarrage de PureScience…',

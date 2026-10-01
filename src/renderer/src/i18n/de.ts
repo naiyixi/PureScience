@@ -449,6 +449,27 @@ export const de: Partial<Record<ZhKey, string>> = {
   'runtimes.stopRunningWork': 'Laufende Arbeit stoppen',
   'runtimes.disableAfterCurrentWork': 'Nach der aktuellen Arbeit deaktivieren',
   'skillDetail.detailsTitle': 'Einzelheiten',
+  'settings.skillTriggerQuality': 'Auslöse-Qualität',
+  'settings.skillTriggerQualityScore': '{score} / 10 — {passed} von {total} Prüfungen bestanden',
+  'settings.skillTriggerQualityHint':
+    'Beim Öffnen dieser Seite wird nach festen lokalen Regeln bewertet, sodass du das Ergebnis offline nachrechnen kannst — es ist nicht die Selbsteinschätzung des Herausgebers.',
+  'settings.skillTriggerCheckPassed': 'bestanden',
+  'settings.skillTriggerCheckNameLength': 'Länge der Beschreibung',
+  'settings.skillTriggerCheckMissingLength':
+    'Die Länge liegt außerhalb des brauchbaren Bereichs: zu kurz zum Auslösen oder so lang, dass der erste Satz den Auslöser nicht mehr trägt.',
+  'settings.skillTriggerCheckNameSelfContained': 'Erster Satz steht für sich',
+  'settings.skillTriggerCheckMissingSelfContained':
+    'Der Anfang löst nicht von selbst aus: zu kurz, zu vage oder er stützt sich auf den Namen des Skills.',
+  'settings.skillTriggerCheckNameActionVocabulary': 'Handlungsvokabular',
+  'settings.skillTriggerCheckMissingActionVocabulary':
+    'Keine Handlungs- oder Situationsformulierung: es steht nicht da, was der Skill tut oder wann man ihn heranzieht.',
+  'settings.skillTriggerCheckNameConcreteSubject': 'Konkretes Subjekt',
+  'settings.skillTriggerCheckMissingConcreteSubject':
+    'Die Formulierung bleibt vage: nenne das Werkzeug, den Datentyp oder das Gebiet, auf dem der Skill arbeitet.',
+  'settings.skillTriggerCheckNameKeywordDensity': 'Gehaltvolles Stichwort',
+  'settings.skillTriggerCheckMissingKeywordDensity':
+    'Kein gehaltvolles Stichwort: die Ladeseite kann diesen Skill nicht von anderen unterscheiden.',
+
   'skillDetail.author': 'Autor',
   'skillDetail.license': 'Lizenz',
   'boot.loadingSettings': 'PureScience wird gestartet…',

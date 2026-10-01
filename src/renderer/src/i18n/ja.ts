@@ -437,6 +437,27 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'runtimes.stopRunningWork': '実行中の作業を停止',
   'runtimes.disableAfterCurrentWork': '現在の作業完了後に無効にする',
   'skillDetail.detailsTitle': '詳細',
+  'settings.skillTriggerQuality': 'トリガー品質',
+  'settings.skillTriggerQualityScore': '{score} / 10 —— {total} 項目中 {passed} 項目が合格',
+  'settings.skillTriggerQualityHint':
+    'このページを開いたときにローカルの固定規則で採点するため、オフラインで再計算できます。発行元の自己評価ではありません。',
+  'settings.skillTriggerCheckPassed': '合格',
+  'settings.skillTriggerCheckNameLength': '説明の長さ',
+  'settings.skillTriggerCheckMissingLength':
+    '長さが適切な範囲外です。短すぎてトリガーにならないか、長すぎて冒頭の一文がトリガーを担わなくなっています。',
+  'settings.skillTriggerCheckNameSelfContained': '冒頭の一文が単独で成立する',
+  'settings.skillTriggerCheckMissingSelfContained':
+    '冒頭が単独でトリガーになりません。短すぎる、曖昧すぎる、またはスキル名に依存した書き出しになっています。',
+  'settings.skillTriggerCheckNameActionVocabulary': '動作・状況の語彙',
+  'settings.skillTriggerCheckMissingActionVocabulary':
+    '動作や状況を表す語がありません。このスキルが何をするのか、いつ使うのかが書かれていません。',
+  'settings.skillTriggerCheckNameConcreteSubject': '具体的な対象',
+  'settings.skillTriggerCheckMissingConcreteSubject':
+    '表現が曖昧です。このスキルが実際に扱うツール、データ型、領域を明記してください。',
+  'settings.skillTriggerCheckNameKeywordDensity': '実質的なキーワード',
+  'settings.skillTriggerCheckMissingKeywordDensity':
+    '実質的なキーワードがありません。読み込み側がこのスキルを他と区別できません。',
+
   'skillDetail.author': '作者',
   'skillDetail.license': 'ライセンス',
   'boot.loadingSettings': 'PureScience を起動しています…',

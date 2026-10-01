@@ -445,6 +445,28 @@ export const es: Partial<Record<ZhKey, string>> = {
   'runtimes.stopRunningWork': 'Detener el trabajo en ejecución',
   'runtimes.disableAfterCurrentWork': 'Desactivar tras el trabajo actual',
   'skillDetail.detailsTitle': 'Detalles',
+  'settings.skillTriggerQuality': 'Calidad de activación',
+  'settings.skillTriggerQualityScore':
+    '{score} / 10 — {passed} de {total} comprobaciones superadas',
+  'settings.skillTriggerQualityHint':
+    'Se puntúa con reglas locales fijas al abrir esta página, así que puedes recalcularlo sin conexión: no es la valoración del editor.',
+  'settings.skillTriggerCheckPassed': 'superada',
+  'settings.skillTriggerCheckNameLength': 'Longitud de la descripción',
+  'settings.skillTriggerCheckMissingLength':
+    'La longitud queda fuera del rango útil: demasiado corta para activarse, o tan larga que la primera frase deja de cargar la activación.',
+  'settings.skillTriggerCheckNameSelfContained': 'La primera frase se sostiene sola',
+  'settings.skillTriggerCheckMissingSelfContained':
+    'El inicio no activa por sí solo: es demasiado corto, demasiado vago o se apoya en el nombre de la habilidad.',
+  'settings.skillTriggerCheckNameActionVocabulary': 'Vocabulario de acción',
+  'settings.skillTriggerCheckMissingActionVocabulary':
+    'No hay formulación de acción ni de situación: no dice qué hace la habilidad ni cuándo recurrir a ella.',
+  'settings.skillTriggerCheckNameConcreteSubject': 'Sujeto concreto',
+  'settings.skillTriggerCheckMissingConcreteSubject':
+    'La redacción sigue siendo vaga: nombra la herramienta, el tipo de dato o el ámbito sobre el que trabaja la habilidad.',
+  'settings.skillTriggerCheckNameKeywordDensity': 'Palabra clave sustantiva',
+  'settings.skillTriggerCheckMissingKeywordDensity':
+    'Sin palabra clave sustantiva: quien carga no puede distinguir esta habilidad de otra.',
+
   'skillDetail.author': 'Autor',
   'skillDetail.license': 'Licencia',
   'boot.loadingSettings': 'Iniciando PureScience…',

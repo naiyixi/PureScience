@@ -2834,6 +2834,27 @@ export const en: Record<ZhKey, string> = {
   'runtimes.stopRunningWork': 'Stop running work',
   'runtimes.disableAfterCurrentWork': 'Disable after current work',
   'skillDetail.detailsTitle': 'Details',
+  'settings.skillTriggerQuality': 'Trigger quality',
+  'settings.skillTriggerQualityScore': '{score} / 10 — {passed} of {total} checks pass',
+  'settings.skillTriggerQualityHint':
+    'Scored locally by fixed rules when this page is read, so you can recompute it offline — this is not the publisher’s own assessment.',
+  'settings.skillTriggerCheckPassed': 'passes',
+  'settings.skillTriggerCheckNameLength': 'Description length',
+  'settings.skillTriggerCheckMissingLength':
+    'Length is outside the usable range: too short to trigger, or long enough that the opening sentence stops carrying the trigger.',
+  'settings.skillTriggerCheckNameSelfContained': 'First sentence stands alone',
+  'settings.skillTriggerCheckMissingSelfContained':
+    'The opening does not trigger on its own: too short, too vague, or it starts by leaning on the skill name.',
+  'settings.skillTriggerCheckNameActionVocabulary': 'Action vocabulary',
+  'settings.skillTriggerCheckMissingActionVocabulary':
+    'No action or scenario wording: the description does not say what the skill does or when to reach for it.',
+  'settings.skillTriggerCheckNameConcreteSubject': 'Concrete subject',
+  'settings.skillTriggerCheckMissingConcreteSubject':
+    'Wording stays vague: name the actual tool, data type or domain the skill operates on.',
+  'settings.skillTriggerCheckNameKeywordDensity': 'Substantive keyword',
+  'settings.skillTriggerCheckMissingKeywordDensity':
+    'No substantive keyword: the loader cannot tell this skill apart from any other.',
+
   'skillDetail.author': 'Author',
   'skillDetail.license': 'License',
   'boot.loadingSettings': 'Starting PureScience…',

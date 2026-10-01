@@ -1,4 +1,5 @@
 import { readdir, realpath } from 'node:fs/promises'
+import { evaluateSkillDescription } from '../skills/skill-eval-service'
 import { homedir } from 'node:os'
 import { isAbsolute, join, relative, resolve, sep } from 'node:path'
 
@@ -262,12 +263,16 @@ class SkillCatalogModule {
     const skill = skills.find((entry) => entry.id === id)
     if (!skill) throw new Error(`Unknown skill: ${id}`)
     const { fields, body } = await readSkillFile(skill.sourceDir)
+    const view = this.toSkillView(
+      skill,
+      this.withoutAlwaysOnSkillIds(settings.disabledSkillIds ?? [], skills),
+      settings.trustedSkillIds ?? []
+    )
     return {
-      ...this.toSkillView(
-        skill,
-        this.withoutAlwaysOnSkillIds(settings.disabledSkillIds ?? [], skills),
-        settings.trustedSkillIds ?? []
-      ),
+      ...view,
+      // Scored on the description as the loader sees it, at read time: a score that travels with the file
+      // would go stale the moment the description is edited.
+      triggerQuality: evaluateSkillDescription(view.description),
       body,
       metadata: Object.fromEntries(
         Object.entries(fields).filter(([key]) => key !== 'name' && key !== 'description')

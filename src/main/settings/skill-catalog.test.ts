@@ -3,6 +3,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { afterEach, describe, expect, it } from 'vitest'
+
+import { evaluateSkillDescription } from '../skills/skill-eval-service'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 
 import { SkillRegistry } from '../skills/registry'
@@ -136,6 +138,11 @@ describe('SkillCatalogModule', () => {
     ])
     expect(await catalog.getSkillDetail('demo')).toMatchObject({ enabled: true })
     expect((await catalog.getSkillDetail('demo')).body).toContain('demo body')
+
+    // The trigger quality is scored when the detail is read, by the same pure function the agent's tool
+    // uses — so the number on the page is one the user can recompute offline, not a stored claim.
+    const scored = await catalog.getSkillDetail('demo')
+    expect(scored.triggerQuality).toEqual(evaluateSkillDescription(scored.description))
 
     expect(
       (await catalog.createSkill({ name: 'My Skill', description: 'Mine.', body: '# Mine' })).map(

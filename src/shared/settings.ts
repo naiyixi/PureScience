@@ -14,6 +14,7 @@ import type { PackageMirror } from './mirror'
 import type { CloseActionPreference } from './window-controls'
 import type { SkillProvenance } from './skill-provenance'
 import type { FunctionModels } from './function-models'
+import type { SkillEvalResult } from './skill-eval'
 
 // Settings file schema version; bumped when the on-disk shape changes. v2 adds official-vendor
 // providers (vendorId/region) and a per-selection activeModel alongside activeProviderId.
@@ -985,6 +986,12 @@ export type SkillView = {
 // A skill view plus its SKILL.md body (frontmatter stripped) and the names of any files under its
 // `references/` directory, for the detail/edit view.
 export type SkillDetailView = SkillView & {
+  /**
+   * The trigger-quality scoring of this skill's own description: pure rules, no external model, recomputable
+   * offline. It is computed here rather than stored so a description edited outside the app cannot be shown
+   * with a stale score — and so the number is the user's to reproduce, not a publisher's to assert.
+   */
+  triggerQuality?: SkillEvalResult
   body: string
   metadata?: Record<string, string>
   references: SkillReferenceInfo[]

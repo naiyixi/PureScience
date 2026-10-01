@@ -433,6 +433,27 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'runtimes.stopRunningWork': '실행 중인 작업 중지',
   'runtimes.disableAfterCurrentWork': '현재 작업 종료 후 비활성화',
   'skillDetail.detailsTitle': '세부 정보',
+  'settings.skillTriggerQuality': '트리거 품질',
+  'settings.skillTriggerQualityScore': '{score} / 10 —— {total}개 검사 중 {passed}개 통과',
+  'settings.skillTriggerQualityHint':
+    '이 페이지를 열 때 로컬 고정 규칙으로 채점하므로 오프라인에서 다시 계산할 수 있습니다. 발행자의 자체 평가가 아닙니다.',
+  'settings.skillTriggerCheckPassed': '통과',
+  'settings.skillTriggerCheckNameLength': '설명 길이',
+  'settings.skillTriggerCheckMissingLength':
+    '길이가 적절한 범위를 벗어났습니다. 너무 짧아 트리거가 되지 않거나, 너무 길어 첫 문장이 트리거 역할을 하지 못합니다.',
+  'settings.skillTriggerCheckNameSelfContained': '첫 문장의 독립성',
+  'settings.skillTriggerCheckMissingSelfContained':
+    '첫 문장이 스스로 트리거가 되지 못합니다. 너무 짧거나 모호하거나, 스킬 이름에 기대는 표현으로 시작합니다.',
+  'settings.skillTriggerCheckNameActionVocabulary': '동작·상황 어휘',
+  'settings.skillTriggerCheckMissingActionVocabulary':
+    '동작이나 상황을 나타내는 표현이 없습니다. 이 스킬이 무엇을 하고 언제 쓰는지 드러나지 않습니다.',
+  'settings.skillTriggerCheckNameConcreteSubject': '구체적 대상',
+  'settings.skillTriggerCheckMissingConcreteSubject':
+    '표현이 모호합니다. 이 스킬이 실제로 다루는 도구, 데이터 유형, 분야를 밝히세요.',
+  'settings.skillTriggerCheckNameKeywordDensity': '실질 키워드',
+  'settings.skillTriggerCheckMissingKeywordDensity':
+    '실질 키워드가 없습니다. 불러오는 쪽이 이 스킬을 다른 것과 구분할 수 없습니다.',
+
   'skillDetail.author': '작성자',
   'skillDetail.license': '라이선스',
   'boot.loadingSettings': 'PureScience를 시작하는 중…',

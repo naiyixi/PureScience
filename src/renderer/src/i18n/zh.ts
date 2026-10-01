@@ -2638,6 +2638,27 @@ export const zh = {
   'runtimes.stopRunningWork': '停止运行中的工作',
   'runtimes.disableAfterCurrentWork': '在当前工作结束后禁用',
   'skillDetail.detailsTitle': '详情',
+  'settings.skillTriggerQuality': '触发质量',
+  'settings.skillTriggerQualityScore': '{score} / 10 —— {total} 项检查通过 {passed} 项',
+  'settings.skillTriggerQualityHint':
+    '本页读取时由本地固定规则评分，可离线复算——这不是发布方的自评。',
+  'settings.skillTriggerCheckPassed': '通过',
+  'settings.skillTriggerCheckNameLength': '描述长度',
+  'settings.skillTriggerCheckMissingLength':
+    '长度不在可用区间：太短难以触发，或长到首句不再承担触发职责。',
+  'settings.skillTriggerCheckNameSelfContained': '首句能独立成立',
+  'settings.skillTriggerCheckMissingSelfContained':
+    '首句不能独立触发：过短、过泛，或以依赖技能名的说法起句。',
+  'settings.skillTriggerCheckNameActionVocabulary': '动作/场景词',
+  'settings.skillTriggerCheckMissingActionVocabulary':
+    '没有动作或场景措辞：没说清这个技能做什么、什么时候该用它。',
+  'settings.skillTriggerCheckNameConcreteSubject': '具体主语',
+  'settings.skillTriggerCheckMissingConcreteSubject':
+    '用词偏空泛：请点出这个技能实际处理的工具、数据类型或领域。',
+  'settings.skillTriggerCheckNameKeywordDensity': '实质关键词',
+  'settings.skillTriggerCheckMissingKeywordDensity':
+    '缺少实质关键词：加载器无法把这个技能与别的区分开。',
+
   'skillDetail.author': '作者',
   'skillDetail.license': '许可证',
   'boot.loadingSettings': '正在启动 PureScience…',

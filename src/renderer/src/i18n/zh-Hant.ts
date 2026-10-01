@@ -368,6 +368,27 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'runtimes.stopRunningWork': '停止執行中的工作',
   'runtimes.disableAfterCurrentWork': '在目前工作結束後停用',
   'skillDetail.detailsTitle': '詳細',
+  'settings.skillTriggerQuality': '觸發品質',
+  'settings.skillTriggerQualityScore': '{score} / 10 —— {total} 項檢查通過 {passed} 項',
+  'settings.skillTriggerQualityHint':
+    '本頁讀取時由本機固定規則評分，可離線複算——這不是發佈方的自評。',
+  'settings.skillTriggerCheckPassed': '通過',
+  'settings.skillTriggerCheckNameLength': '描述長度',
+  'settings.skillTriggerCheckMissingLength':
+    '長度不在可用區間：太短難以觸發，或長到首句不再承擔觸發職責。',
+  'settings.skillTriggerCheckNameSelfContained': '首句能獨立成立',
+  'settings.skillTriggerCheckMissingSelfContained':
+    '首句不能獨立觸發：過短、過泛，或以依賴技能名的說法起句。',
+  'settings.skillTriggerCheckNameActionVocabulary': '動作／情境詞',
+  'settings.skillTriggerCheckMissingActionVocabulary':
+    '沒有動作或情境措辭：沒說清這個技能做什麼、什麼時候該用它。',
+  'settings.skillTriggerCheckNameConcreteSubject': '具體主語',
+  'settings.skillTriggerCheckMissingConcreteSubject':
+    '用詞偏空泛：請點出這個技能實際處理的工具、資料類型或領域。',
+  'settings.skillTriggerCheckNameKeywordDensity': '實質關鍵詞',
+  'settings.skillTriggerCheckMissingKeywordDensity':
+    '缺少實質關鍵詞：載入器無法把這個技能與別的分開。',
+
   'skillDetail.author': '作者',
   'skillDetail.license': '授權條款',
   'boot.loadingSettings': '正在啟動 PureScience…',
