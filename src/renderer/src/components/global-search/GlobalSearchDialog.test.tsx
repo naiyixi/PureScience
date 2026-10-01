@@ -1019,7 +1019,7 @@ describe('GlobalSearchDialog', () => {
           timestamp: '2026-09-13T00:00:00.000Z'
         },
         {
-          scope: 'files',
+          scope: 'uploads',
           id: 'file-1',
           projectId: 'project-a',
           title: 'sin_probe.csv',
@@ -1072,7 +1072,8 @@ describe('GlobalSearchDialog', () => {
     expect(rows[0].textContent).toContain('Message')
     expect(rows[0].textContent).toContain('agent')
     expect(rows[0].textContent).toContain('wrote sin(x) values')
-    expect(rows[1].textContent).toContain('File')
+    // The label names the file domain: an uploaded file and a generated one are different corpora.
+    expect(rows[1].textContent).toContain('Uploaded file')
 
     await act(async () => {
       rows[0].dispatchEvent(new MouseEvent('click', { bubbles: true }))

@@ -23,15 +23,43 @@ export const GLOBAL_SEARCH_MAX_MESSAGE_CHARS = 20_000
 export const GLOBAL_SEARCH_SNIPPET_CHARS = 160
 export const GLOBAL_SEARCH_MIN_QUERY_CHARS = 2
 
-export type GlobalSearchScope = 'sessions' | 'messages' | 'files' | 'literature' | 'annotations'
+export type GlobalSearchScope =
+  'sessions' | 'messages' | 'uploads' | 'artifacts' | 'literature' | 'annotations'
+
+// The file domain is split into its two origins — files the user brought in (`uploads`) and files the
+// app/nb produced (`artifacts`) — because they are not the same corpus and a reader deciding whether a
+// miss means anything needs to know which one they searched.
+//
+// `files` is the token that listed BOTH before that split. It is still accepted on input (a saved
+// filter set or a cursor written earlier carries it) and expands to the two scopes above, so an old
+// pin keeps resolving to the same corpus instead of silently matching nothing.
+export type GlobalSearchLegacyScope = 'files'
+export type GlobalSearchScopeToken = GlobalSearchScope | GlobalSearchLegacyScope
 
 export const GLOBAL_SEARCH_SCOPES: readonly GlobalSearchScope[] = [
   'sessions',
   'messages',
-  'files',
+  'uploads',
+  'artifacts',
   'literature',
   'annotations'
 ]
+
+const LEGACY_FILE_SCOPE_EXPANSION: readonly GlobalSearchScope[] = ['uploads', 'artifacts']
+
+export const isGlobalSearchScope = (value: unknown): value is GlobalSearchScope =>
+  typeof value === 'string' && (GLOBAL_SEARCH_SCOPES as readonly string[]).includes(value)
+
+export const isGlobalSearchScopeToken = (value: unknown): value is GlobalSearchScopeToken =>
+  value === 'files' || isGlobalSearchScope(value)
+
+/** The canonical scopes a token covers. The legacy file token covers both file origins. */
+export const expandGlobalSearchScopeToken = (token: GlobalSearchScopeToken): GlobalSearchScope[] =>
+  token === 'files' ? [...LEGACY_FILE_SCOPE_EXPANSION] : [token]
+
+/** True for the two scopes that read the project file index (they differ by origin, not by field set). */
+export const isFileSearchScope = (scope: GlobalSearchScope): scope is 'uploads' | 'artifacts' =>
+  scope === 'uploads' || scope === 'artifacts'
 
 /**
  * What the annotation scope searches, and nothing else.
@@ -51,8 +79,8 @@ export const GLOBAL_SEARCH_MAX_SCANNED_ANNOTATIONS = 500
 
 export type GlobalSearchRequest = {
   query: string
-  // Undefined means every scope.
-  scopes?: GlobalSearchScope[]
+  // Undefined means every scope. Legacy tokens (see GlobalSearchScopeToken) are accepted and expanded.
+  scopes?: GlobalSearchScopeToken[]
   // Undefined means every project.
   projectId?: string
   // Inclusive ISO-8601 bounds on the hit's own timestamp.
@@ -143,7 +171,10 @@ export type GlobalSearchHit = {
 export type GlobalSearchScanReport = {
   sessions: number
   messages: number
-  files: number
+  // Files of each origin that the scan considered. They are reported separately because the two file
+  // scopes are different corpora: "nothing matched in generated files" says nothing about uploads.
+  uploads: number
+  artifacts: number
   references: number
   // How many annotations were carried into the corpus. This is the count of STORED annotations the
   // query could see, not a count of PDFs read: the scope reads the annotation store, never a PDF.
@@ -250,20 +281,35 @@ export type GlobalSearchResponse = {
   nextCursor?: string
   // Hits per scope after filtering, before the per-scope cap.
   counts: Record<GlobalSearchScope, number>
+  // What each scope's search actually covered, so a chip can say "read 12 of 340, bounded" instead of
+  // only "3 hits". `considered` is how many items of that class the scan looked at, `contentRead` how
+  // many had their content read (0 for classes matched by name only), `bounded` whether a bound cut the
+  // walk short. Honesty rule: a scope with hits > 0 and considered === 0 cannot happen, and a scope
+  // whose corpus was bounded says so rather than presenting its slice as the whole class.
+  coverage: Record<GlobalSearchScope, GlobalSearchScopeCoverage>
   truncated: boolean
   scan: GlobalSearchScanReport
   appliedLimit: number
   notes: GlobalSearchNote[]
 }
 
+export type GlobalSearchScopeCoverage = {
+  considered: number
+  contentRead: number
+  bounded: boolean
+}
+
 export const normalizeSearchQuery = (query: string): string => query.trim()
 
 export const resolveSearchScopes = (
-  scopes: readonly GlobalSearchScope[] | undefined
+  scopes: readonly GlobalSearchScopeToken[] | undefined
 ): GlobalSearchScope[] => {
   if (!scopes || scopes.length === 0) return [...GLOBAL_SEARCH_SCOPES]
 
-  return GLOBAL_SEARCH_SCOPES.filter((scope) => scopes.includes(scope))
+  const expanded = new Set<GlobalSearchScope>(
+    scopes.filter(isGlobalSearchScopeToken).flatMap(expandGlobalSearchScopeToken)
+  )
+  return GLOBAL_SEARCH_SCOPES.filter((scope) => expanded.has(scope))
 }
 
 // NFKC folds fullwidth forms and compatibility characters (so a fullwidth query finds its ASCII text
@@ -498,7 +544,8 @@ export const decodeSearchCursor = (
   const zero = {
     sessions: 0,
     messages: 0,
-    files: 0,
+    uploads: 0,
+    artifacts: 0,
     literature: 0,
     annotations: 0
   } as Record<GlobalSearchScope, number>
@@ -562,7 +609,7 @@ export const searchHitMatchesFilters = (
     if (hit.role !== filters.role) return false
   }
   if (filters.extensions?.length) {
-    if (hit.scope !== 'files') return false
+    if (!isFileSearchScope(hit.scope)) return false
     const extension = extensionOf(hit.relativePath ?? hit.title)
     if (
       !filters.extensions.map((value) => value.toLowerCase().replace(/^\./, '')).includes(extension)
@@ -585,6 +632,7 @@ export const finalizeSearchResponse = ({
   scopes,
   hits,
   scan,
+  coverage,
   appliedLimit,
   notes,
   cursor,
@@ -594,6 +642,7 @@ export const finalizeSearchResponse = ({
   scopes: GlobalSearchScope[]
   hits: GlobalSearchHit[]
   scan: GlobalSearchScanReport
+  coverage: Record<GlobalSearchScope, GlobalSearchScopeCoverage>
   appliedLimit: number
   notes: GlobalSearchNote[]
   cursor?: string
@@ -611,7 +660,8 @@ export const finalizeSearchResponse = ({
     {
       sessions: 0,
       messages: 0,
-      files: 0,
+      uploads: 0,
+      artifacts: 0,
       literature: 0,
       annotations: 0
     } as Record<GlobalSearchScope, number>
@@ -669,6 +719,7 @@ export const finalizeSearchResponse = ({
     // "There is more than this page shows" — the one thing a reader must not have to infer.
     truncated: moreBeyondPage,
     scan,
+    coverage,
     appliedLimit,
     notes: [...new Set(nextNotes)]
   }

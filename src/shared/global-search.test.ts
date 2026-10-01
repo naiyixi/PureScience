@@ -15,8 +15,22 @@ import {
   searchHitsInTimestampRange,
   snippetAround,
   splitSearchTerms,
-  type GlobalSearchHit
+  type GlobalSearchHit,
+  type GlobalSearchScope,
+  type GlobalSearchScopeCoverage
 } from './global-search'
+
+// Every response states what each scope covered, so the fixtures declare it too. These tests assert on
+// counts, ranking and notes — not on the coverage figures — so one shared, plainly-stated block keeps
+// them readable.
+const coverage = (): Record<GlobalSearchScope, GlobalSearchScopeCoverage> => ({
+  sessions: { considered: 0, contentRead: 0, bounded: false },
+  messages: { considered: 0, contentRead: 0, bounded: false },
+  uploads: { considered: 0, contentRead: 0, bounded: false },
+  artifacts: { considered: 0, contentRead: 0, bounded: false },
+  literature: { considered: 0, contentRead: 0, bounded: false },
+  annotations: { considered: 0, contentRead: 0, bounded: false }
+})
 
 const hit = (overrides: Partial<GlobalSearchHit> = {}): GlobalSearchHit => ({
   scope: 'messages',
@@ -37,20 +51,26 @@ describe('query and scope normalization', () => {
     expect(resolveSearchScopes(undefined)).toEqual([
       'sessions',
       'messages',
-      'files',
+      'uploads',
+      'artifacts',
       'literature',
       'annotations'
     ])
     expect(resolveSearchScopes([])).toEqual([
       'sessions',
       'messages',
-      'files',
+      'uploads',
+      'artifacts',
       'literature',
       'annotations'
     ])
     expect(resolveSearchScopes(['literature', 'messages'])).toEqual(['messages', 'literature'])
     // The annotation scope is a scope like any other: a caller that does not name it does not search it.
     expect(resolveSearchScopes(['annotations'])).toEqual(['annotations'])
+    // The legacy file token covers BOTH file origins and is expanded rather than dropped: a saved set
+    // from before the split keeps the corpus it was saved with.
+    expect(resolveSearchScopes(['files'])).toEqual(['uploads', 'artifacts'])
+    expect(resolveSearchScopes(['files', 'messages'])).toEqual(['messages', 'uploads', 'artifacts'])
   })
 })
 
@@ -276,12 +296,13 @@ describe('finalizeSearchResponse', () => {
   it('reports what it scanned and how many hits each scope has', () => {
     const response = finalizeSearchResponse({
       query: 'sin',
-      scopes: ['messages', 'files'],
+      scopes: ['messages', 'artifacts'],
       hits: [
         hit({ id: 'message-1', scope: 'messages' }),
-        hit({ id: 'file-1', scope: 'files', score: 9 })
+        hit({ id: 'file-1', scope: 'artifacts', score: 9 })
       ],
-      scan: { sessions: 3, messages: 12, files: 4, references: 0, annotations: 0, bounded: false },
+      scan: { sessions: 3, messages: 12, uploads: 0, artifacts: 4, references: 0, annotations: 0, bounded: false },
+      coverage: coverage(),
       appliedLimit: 50,
       notes: []
     })
@@ -289,7 +310,8 @@ describe('finalizeSearchResponse', () => {
     expect(response.counts).toEqual({
       sessions: 0,
       messages: 1,
-      files: 1,
+      uploads: 0,
+      artifacts: 1,
       literature: 0,
       annotations: 0
     })
@@ -305,9 +327,10 @@ describe('finalizeSearchResponse', () => {
       hits: [
         hit({ id: 'message-1', score: 5 }),
         hit({ id: 'message-2', score: 4 }),
-        hit({ id: 'file-1', scope: 'files', score: 3 })
+        hit({ id: 'file-1', scope: 'artifacts', score: 3 })
       ],
-      scan: { sessions: 1, messages: 3, files: 1, references: 0, annotations: 0, bounded: false },
+      scan: { sessions: 1, messages: 3, uploads: 0, artifacts: 1, references: 0, annotations: 0, bounded: false },
+      coverage: coverage(),
       appliedLimit: 1,
       notes: []
     })
@@ -326,11 +349,13 @@ describe('finalizeSearchResponse', () => {
       scan: {
         sessions: GLOBAL_SEARCH_MAX_SCANNED_SESSIONS,
         messages: 0,
-        files: 0,
+        uploads: 0,
+        artifacts: 0,
         references: 0,
         annotations: 0,
         bounded: true
       },
+      coverage: coverage(),
       appliedLimit: 50,
       notes: ['scan-bounded-by-session-limit']
     })

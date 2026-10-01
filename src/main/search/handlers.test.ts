@@ -37,7 +37,14 @@ const harness = (
   listReferences: ReturnType<typeof vi.fn>
 } => {
   const listFiles = vi.fn(async () => ({
-    files: [{ id: 'file-1', title: 'sin_probe.csv', relativePath: 'data/sin_probe.csv' }]
+    files: [
+      {
+        id: 'file-1',
+        title: 'sin_probe.csv',
+        relativePath: 'data/sin_probe.csv',
+        source: 'upload' as const
+      }
+    ]
   }))
   const listReferences = vi.fn(async () => [
     { id: 'ref-1', title: 'A study of sin', abstract: 'sin everywhere' }
@@ -56,12 +63,14 @@ describe('createSearchHandlers', () => {
   it('says the file list was bounded, so a miss cannot read as absence', async () => {
     const { query } = harness({
       listFiles: vi.fn(async () => ({
-        files: [{ id: 'file-1', title: 'notes.md', relativePath: 'notes.md' }],
+        files: [
+          { id: 'file-1', title: 'notes.md', relativePath: 'notes.md', source: 'upload' as const }
+        ],
         listBounded: true
       }))
     })
 
-    const response = await query({ query: 'sin', scopes: ['files'], projectId: 'project-1' })
+    const response = await query({ query: 'sin', scopes: ['uploads'], projectId: 'project-1' })
 
     expect(response.notes).toContain('file-list-bounded')
   })
@@ -71,12 +80,14 @@ describe('createSearchHandlers', () => {
     const { query } = harness({
       // A file whose name and path say nothing about the query: only its content can match.
       listFiles: vi.fn(async () => ({
-        files: [{ id: 'file-9', title: 'notes.md', relativePath: 'notes.md' }]
+        files: [
+          { id: 'file-9', title: 'notes.md', relativePath: 'notes.md', source: 'upload' as const }
+        ]
       })),
       readFileText
     })
 
-    const response = await query({ query: 'sin', scopes: ['files'], projectId: 'project-1' })
+    const response = await query({ query: 'sin', scopes: ['uploads'], projectId: 'project-1' })
 
     expect(readFileText).toHaveBeenCalledWith('file-9')
     expect(response.hits).toHaveLength(1)
@@ -93,13 +104,14 @@ describe('createSearchHandlers', () => {
         files: Array.from({ length: fileCount }, (_, index) => ({
           id: `file-${index}`,
           title: `note-${index}.md`,
-          relativePath: `note-${index}.md`
+          relativePath: `note-${index}.md`,
+          source: 'upload' as const
         }))
       })),
       readFileText
     })
 
-    const response = await query({ query: 'sin', scopes: ['files'], projectId: 'project-1' })
+    const response = await query({ query: 'sin', scopes: ['uploads'], projectId: 'project-1' })
 
     expect(readFileText).toHaveBeenCalledTimes(40)
     expect(response.notes).toContain('file-content-scan-bounded')
@@ -108,7 +120,7 @@ describe('createSearchHandlers', () => {
   it('does not claim a bounded content scan when no provider is wired', async () => {
     const { query } = harness()
 
-    const response = await query({ query: 'sin', scopes: ['files'], projectId: 'project-1' })
+    const response = await query({ query: 'sin', scopes: ['uploads'], projectId: 'project-1' })
 
     expect(response.notes).not.toContain('file-content-scan-bounded')
     expect(response.notes).toContain('files-matched-by-name-and-path')
@@ -139,12 +151,12 @@ describe('createSearchHandlers', () => {
 
   it('reads files and literature only for a project, and only when asked', async () => {
     const { query, listFiles, listReferences } = harness()
-    const response = await query({ query: 'sin', projectId: 'project-1', scopes: ['files'] })
+    const response = await query({ query: 'sin', projectId: 'project-1', scopes: ['uploads'] })
 
     expect(listFiles).toHaveBeenCalledWith({ projectId: 'project-1' })
     expect(listReferences).not.toHaveBeenCalled()
     expect(response.notes).not.toContain('no-project-scope')
-    expect(response.hits.map((hit) => hit.scope)).toEqual(['files'])
+    expect(response.hits.map((hit) => hit.scope)).toEqual(['uploads'])
   })
 
   it('searches the literature library when asked', async () => {
@@ -165,7 +177,7 @@ describe('createSearchHandlers', () => {
 
     expect(response.hits).toEqual([])
     expect(response.scan.messages).toBe(2)
-    expect(response.scan.files).toBe(1)
+    expect(response.scan.uploads).toBe(1)
     expect(response.scan.references).toBe(1)
   })
 })

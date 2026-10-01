@@ -39,9 +39,25 @@ const response = (overrides: Partial<GlobalSearchResponse> = {}): GlobalSearchRe
   query: 'effect',
   scopes: ['annotations'],
   hits: [],
-  counts: { sessions: 0, messages: 0, files: 0, literature: 0, annotations: 0 },
+  counts: { sessions: 0, messages: 0, uploads: 0, artifacts: 0, literature: 0, annotations: 0 },
+  coverage: {
+    sessions: { considered: 0, contentRead: 0, bounded: false },
+    messages: { considered: 0, contentRead: 0, bounded: false },
+    uploads: { considered: 0, contentRead: 0, bounded: false },
+    artifacts: { considered: 0, contentRead: 0, bounded: false },
+    literature: { considered: 0, contentRead: 0, bounded: false },
+    annotations: { considered: 0, contentRead: 0, bounded: false }
+  },
   truncated: false,
-  scan: { sessions: 0, messages: 0, files: 0, references: 0, annotations: 0, bounded: false },
+  scan: {
+    sessions: 0,
+    messages: 0,
+    uploads: 0,
+    artifacts: 0,
+    references: 0,
+    annotations: 0,
+    bounded: false
+  },
   appliedLimit: 100,
   notes: [],
   ...overrides
@@ -163,8 +179,23 @@ describe('GlobalSearchDialog — the annotation scope', () => {
     vi.mocked(window.api.search.query).mockResolvedValue(
       response({
         hits: [annotationHit],
-        counts: { sessions: 0, messages: 0, files: 0, literature: 0, annotations: 1 },
-        scan: { sessions: 0, messages: 0, files: 0, references: 0, annotations: 1, bounded: false }
+        counts: {
+          sessions: 0,
+          messages: 0,
+          uploads: 0,
+          artifacts: 0,
+          literature: 0,
+          annotations: 1
+        },
+        scan: {
+          sessions: 0,
+          messages: 0,
+          uploads: 0,
+          artifacts: 0,
+          references: 0,
+          annotations: 1,
+          bounded: false
+        }
       })
     )
 
