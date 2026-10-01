@@ -4,6 +4,7 @@ import {
   auditPdfTableCandidateForUse,
   extractPdfTableCandidates,
   extractPdfTableCandidatesFromText,
+  joinWrappedHeaderRows,
   PDF_TABLE_MANDATORY_LABELS,
   toHtmlTable,
   toMarkdownTable,
@@ -290,5 +291,77 @@ describe('PDF table extraction', () => {
 
     expect(candidates).toHaveLength(1)
     expect(candidates[0]!.columnCount).toBe(3)
+  })
+})
+
+describe('joinWrappedHeaderRows', () => {
+  it('folds a wrapped header line into the row above and reports which line it folded', () => {
+    const { rows, joined } = joinWrappedHeaderRows([
+      ['Mean annual', '', 'Site'],
+      ['precipitation', '', ''],
+      ['120', '4.5', 'Alpha']
+    ])
+
+    expect(rows).toEqual([
+      ['Mean annual precipitation', '', 'Site'],
+      ['120', '4.5', 'Alpha']
+    ])
+    expect(joined).toEqual([1])
+  })
+
+  it('refuses a full-width second line, because shape alone cannot tell it from a data row', () => {
+    // Two lines that each fill every column look exactly like two rows. The positional path can use the
+    // geometry to decide; this function only sees shapes, so it must not guess.
+    const input = [
+      ['Mean annual', 'Site'],
+      ['precipitation', 'name'],
+      ['120', 'Alpha']
+    ]
+    const { rows, joined } = joinWrappedHeaderRows(input)
+
+    expect(rows).toEqual(input)
+    expect(joined).toEqual([])
+  })
+
+  it('does not join a line that only fills columns the line above left empty', () => {
+    // That shape is a spanning sub-header, not a wrap: joining it would move the label into the wrong cell.
+    const input = [
+      ['Region', ''],
+      ['', 'Station']
+    ]
+    const { rows, joined } = joinWrappedHeaderRows(input)
+
+    expect(rows).toEqual(input)
+    expect(joined).toEqual([])
+  })
+
+  it('leaves short rows below the header block alone', () => {
+    const input = [
+      ['Site', 'Mean'],
+      ['Alpha', '4.5'],
+      ['Total', ''],
+      ['note', '']
+    ]
+    const { rows, joined } = joinWrappedHeaderRows(input)
+
+    expect(rows).toEqual(input)
+    expect(joined).toEqual([])
+  })
+
+  it('reports the fold on candidates extracted from the text layer', () => {
+    const page = [
+      'Mean annual     Site',
+      'precipitation   name',
+      '120              Alpha',
+      '95               Beta'
+    ].join('\n')
+
+    const candidates = extractPdfTableCandidatesFromText(1, page, { minRows: 2, minColumns: 2 })
+
+    // Every line here fills every column, so the text layer cannot tell the wrapped title from a real
+    // second row — and it must not guess: no candidate claims a fold it cannot justify.
+    expect(candidates.every((candidate) => candidate.evidence.joinedHeaderRows === undefined)).toBe(
+      true
+    )
   })
 })

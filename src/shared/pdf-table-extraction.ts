@@ -40,6 +40,11 @@ export type PdfTableCandidate = {
     rowCount: number
     /** The gap width that separated the columns on this page, in points. */
     columnGapPoints: number
+    /**
+     * How many physical lines were folded into the row above as a wrapped header. Reported instead of
+     * silently applied: a reader comparing the candidate with the page needs to know the row count changed.
+     */
+    joinedHeaderRows?: number
   }
 }
 
@@ -237,6 +242,72 @@ export const mergeSplitColumns = (
   }
 }
 
+/**
+ * Joins a wrapped header line into the line above it, which is how a two-line column title ("Mean annual\nprecipitation") stops looking like two rows of data.
+ *
+ * Deliberately conservative, and the limits are the point:
+ * - only inside the leading header block, i.e. before the first row that fills every column. A short row
+ *   further down is a legitimate row of its own (a footnote, a subtotal) and merging it would invent data;
+ * - every filled cell of the candidate line must sit in a column the line above also fills, and at least one
+ *   column must be filled in both — that is what makes it the same cells wrapped, not a new row;
+ * - a line that fills only columns the line above left empty is NOT joined. That shape is a spanning
+ *   sub-header (multi-level header), a different recovery step, and treating it as a wrap would misplace it.
+ *
+ * `joined` reports the indices that were folded in, so the caller can say how many rows the page's own
+ * layout did not actually contain.
+ */
+export const joinWrappedHeaderRows = (
+  rows: readonly (readonly string[])[]
+): { rows: string[][]; joined: number[] } => {
+  const output: string[][] = []
+  const joined: number[] = []
+  let headerOpen = true
+
+  for (const [index, row] of rows.entries()) {
+    const filled = row.map((cell) => cell.trim() !== '')
+    const previous = output[output.length - 1]
+
+    if (headerOpen && index > 0 && previous && filled.some(Boolean)) {
+      const previousFilled = previous.map((cell) => cell.trim() !== '')
+      const sharesAColumn = filled.some(
+        (isFilled, column) => isFilled && previousFilled[column] === true
+      )
+      // A STRICT subset: the candidate line fills fewer columns than the line above. Two lines that both
+      // fill every column have the same shape as two data rows, and this function only sees shapes — the
+      // geometry that could tell them apart lives in the positional path. Refusing is the honest answer.
+      const fillsFewer = filled.filter(Boolean).length < previousFilled.filter(Boolean).length
+
+      if (sharesAColumn && fillsFewer) {
+        let insideAbove = true
+        for (const [column, isFilled] of filled.entries()) {
+          if (isFilled && previousFilled[column] !== true) {
+            insideAbove = false
+            break
+          }
+        }
+        if (insideAbove) {
+          for (const [column, isFilled] of filled.entries()) {
+            if (!isFilled) continue
+            const addition = row[column]?.trim() ?? ''
+            previous[column] = `${previous[column]?.trim() ?? ''} ${addition}`.trim()
+          }
+          joined.push(index)
+          continue
+        }
+      }
+    }
+
+    // The header block ends at the SECOND consecutive full row, not the first. A wrapped title makes its
+    // first physical line full and the second partial, so closing on the first would refuse exactly the case
+    // this function exists for; two full rows in a row is the earliest point data can have started.
+    const previousWasFull = (previous ?? []).every((cell) => cell.trim() !== '')
+    output.push([...row])
+    if (filled.every(Boolean) && previousWasFull) headerOpen = false
+  }
+
+  return { rows: output, joined }
+}
+
 export const extractPdfTableCandidates = (
   page: number,
   items: readonly PdfTextItem[],
@@ -263,7 +334,10 @@ export const extractPdfTableCandidates = (
     columnExtents(cellsByRow, anchors, columnTolerance),
     columnGapPoints
   )
-  const rows = merged.rows
+  // Wrapped header lines are folded in before the row gates: a two-line title is one row on the page, and
+  // counting it as two would both inflate the row count and split a header cell in half.
+  const joinedHeaders = joinWrappedHeaderRows(merged.rows)
+  const rows = joinedHeaders.rows
   const columnCount = merged.anchors.length
   // Enough rows must actually SPAN the columns: spaced prose on one line followed by a single item is not
   // a table, and calling it one would invent structure the page does not have.
@@ -280,7 +354,14 @@ export const extractPdfTableCandidates = (
       rows,
       columnCount,
       confidence: confidenceFor(rows),
-      evidence: { itemCount: usable.length, rowCount: rows.length, columnGapPoints }
+      evidence: {
+        itemCount: usable.length,
+        rowCount: rows.length,
+        columnGapPoints,
+        ...(joinedHeaders.joined.length > 0
+          ? { joinedHeaderRows: joinedHeaders.joined.length }
+          : {})
+      }
     }
   ]
 }
@@ -359,7 +440,8 @@ export const extractPdfTableCandidatesFromText = (
       run = undefined
       return
     }
-    const rows = run.shapes.map((shape) => shape.cells)
+    const joinedHeaders = joinWrappedHeaderRows(run.shapes.map((shape) => shape.cells))
+    const rows = joinedHeaders.rows
     candidates.push({
       page,
       status: 'candidate',
@@ -370,7 +452,10 @@ export const extractPdfTableCandidatesFromText = (
       evidence: {
         itemCount: rows.reduce((total, row) => total + row.length, 0),
         rowCount: rows.length,
-        columnGapPoints: minGapSpaces
+        columnGapPoints: minGapSpaces,
+        ...(joinedHeaders.joined.length > 0
+          ? { joinedHeaderRows: joinedHeaders.joined.length }
+          : {})
       }
     })
     run = undefined
