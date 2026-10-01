@@ -93,9 +93,11 @@ const detectCodex = async (
 
     const versionOutput = await deps.getAdapterVersion(adapterPath)
     const adapterVersion = versionOutput ? parseVersion(versionOutput) : undefined
-    if (!adapterVersion) continue
-
-    const result: CodexDetectResult = { adapterPath, adapterVersion }
+    // A missing version is a missing LABEL, not a missing adapter: `codex-acp` speaks ACP over stdio and
+    // does not necessarily answer `--version` (the Zed adapter errors on the flag). Requiring the label
+    // made a correctly installed adapter undetectable — the handshake below is the actual evidence, and the
+    // version is reported as 'unknown' rather than invented.
+    const result: CodexDetectResult = { adapterPath, adapterVersion: adapterVersion ?? 'unknown' }
     const isManagedAdapter = adapterPath === deps.managedAdapterPath
     // Both kinds of adapter get the native executable pinned through CODEX_PATH. The app-owned adapter
     // needs one, and a user-installed adapter needs the same help: the Codex a user actually has may live

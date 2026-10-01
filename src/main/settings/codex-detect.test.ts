@@ -232,7 +232,12 @@ describe('codex-detect', () => {
     expect(result).toEqual({ adapterPath, adapterVersion: '1.1.4' })
   })
 
-  it('does not report an adapter that cannot complete its version probe', async () => {
+  // REVERSED on purpose: an adapter that cannot answer `--version` used to be dropped here, which made a
+  // correctly installed adapter undetectable — `codex-acp` speaks ACP over stdio and errors on the flag
+  // (measured on a real install: `error: unexpected argument '--version' found`). A missing version is a
+  // missing label; the live ACP initialize is the actual evidence, so this case now reports the adapter with
+  // the version honestly marked 'unknown'. The smoke check below is what still refuses a bad adapter.
+  it('reports an adapter whose version probe answers nothing, marking the version unknown', async () => {
     const result = await detectCodex(
       createDeps(
         {},
@@ -243,7 +248,8 @@ describe('codex-detect', () => {
       )
     )
 
-    expect(result).toBeUndefined()
+    expect(result?.adapterVersion).toBe('unknown')
+    expect(result?.adapterPath).toBeDefined()
   })
 
   it('rejects a versioned adapter that fails the live ACP initialize smoke check', async () => {
