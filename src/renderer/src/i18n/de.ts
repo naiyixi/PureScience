@@ -2878,6 +2878,9 @@ export const de: Partial<Record<ZhKey, string>> = {
     'Token-Menge, tägliche Zusammensetzung und Konversationsaktivität einsehen.',
   'settings.toolsTitle': 'Tools',
   'settings.total': 'Gesamt',
+  'settings.storageSharedLabel': 'Mit anderen Dateien geteilt',
+  'settings.storageSharedTitle':
+    'Diese Bytes liegen einmal auf der Platte, werden aber von mehreren Dateien genutzt und zählen daher nur einmal.',
   'settings.totalArtifacts': 'Artefakte gesamt',
   'settings.totalProjects': 'Projekte gesamt',
   'settings.totalRuns': 'Läufe gesamt',

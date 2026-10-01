@@ -2796,6 +2796,9 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.tokenUsageDesc': 'トークン量、日別の構成、会話アクティビティを確認します。',
   'settings.toolsTitle': 'ツール',
   'settings.total': '合計',
+  'settings.storageSharedLabel': '他のファイルと共有している分',
+  'settings.storageSharedTitle':
+    'ディスク上に 1 つだけ存在し、複数のファイルから使われているため、合計では 1 回だけ数えています。',
   'settings.totalArtifacts': '成果物合計',
   'settings.totalProjects': 'プロジェクト合計',
   'settings.totalRuns': '実行合計',

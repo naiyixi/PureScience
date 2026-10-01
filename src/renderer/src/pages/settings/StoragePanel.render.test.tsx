@@ -80,7 +80,7 @@ beforeEach(() => {
       getInfo: vi.fn().mockResolvedValue({
         dataRoot: '/home/u/.purescience',
         isDefault: true,
-        usage: { categories: [], totalBytes: 35_600_000 },
+        usage: { categories: [], totalBytes: 35_600_000, sharedBytes: 2_500_000, sharedFiles: 3 },
         availableBytes: 500_000_000_000
       }),
       revealAppStorage: vi.fn().mockResolvedValue({ revealed: true }),
@@ -105,6 +105,34 @@ afterEach(() => {
 })
 
 describe('StoragePanel', () => {
+  it('states what sharing saved, from the same walk as the total', async () => {
+    await act(async () => {
+      root.render(<StoragePanel />)
+    })
+
+    const row = document.body.querySelector('[data-testid="storage-shared-bytes"]')
+    expect(row?.textContent).toContain('Shared with other files')
+    expect(row?.textContent?.trim()).not.toBe('')
+  })
+
+  it('renders no sharing row when the walk found nothing shared', async () => {
+    // A permanent "0 B saved" line would read as furniture and stop being read at all.
+    ;(
+      window as unknown as { api: { storage: { getInfo: ReturnType<typeof vi.fn> } } }
+    ).api.storage.getInfo.mockResolvedValue({
+      dataRoot: '/home/u/.purescience',
+      isDefault: true,
+      usage: { categories: [], totalBytes: 35_600_000 },
+      availableBytes: 500_000_000_000
+    })
+
+    await act(async () => {
+      root.render(<StoragePanel />)
+    })
+
+    expect(document.body.querySelector('[data-testid="storage-shared-bytes"]')).toBeNull()
+  })
+
   it('uses shared settings dialog chrome for data-location confirmations', async () => {
     ;(
       window as unknown as { api: { storage: { pickDirectory: ReturnType<typeof vi.fn> } } }

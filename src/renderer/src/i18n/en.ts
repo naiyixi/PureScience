@@ -934,6 +934,9 @@ export const en: Record<ZhKey, string> = {
   'settings.saveFailedVisionModel': 'Could not save the Vision model. Try again.',
   'settings.saveFailedScenarioModel': 'Could not save the scenario model. Try again.',
   'settings.total': 'Total',
+  'settings.storageSharedLabel': 'Shared with other files',
+  'settings.storageSharedTitle':
+    'Bytes that exist once on disk but are used by more than one file, so they are counted in the total only once.',
   'settings.availableOnDisk': 'Available on disk',
 
   'settings.capabilities': 'Capabilities',

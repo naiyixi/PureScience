@@ -2,11 +2,17 @@
 // (src/main/storage/*), mirroring how ArtifactFile/NotebookRunSummary are shared with preload.
 
 export type UsageCategoryKey = 'artifacts' | 'uploads' | 'runtime' | 'notebooks' | 'workspaces'
+export type SharedBytes = { bytes: number; files: number }
 export type UsageChild = { name: string; bytes: number }
 export type UsageCategory = { key: UsageCategoryKey; bytes: number; children?: UsageChild[] }
 export type StorageUsage = {
   categories: UsageCategory[]
   totalBytes: number
+  // What sharing saved, measured in the same walk: a file whose inode was already counted contributes
+  // nothing to `totalBytes`, and this is the size it would otherwise have added. Absent means the walk did
+  // not track it (older payloads) — never "nothing was saved".
+  sharedBytes?: number
+  sharedFiles?: number
   // True when these numbers are a placeholder while the first walk of the root is still running. Reading usage
   // is a full disk walk (measured 13.7 s on a real 7 GB root), so a cold cache answers with this instead of
   // blocking the caller for the length of the walk. Callers must render it as "still measuring" — never as a

@@ -8,7 +8,7 @@ export type UsageChild = { name: string; bytes: number }
 export type UsageCategory = { key: UsageCategoryKey; bytes: number; children?: UsageChild[] }
 // One definition, shared with the renderer: the reading crosses IPC, so a `pending` flag added on one side only
 // would compile here and be dropped at the boundary.
-import type { StorageUsage } from '../../shared/storage'
+import type { SharedBytes, StorageUsage } from '../../shared/storage'
 export type { StorageUsage }
 
 const CATEGORY_KEYS: UsageCategoryKey[] = [
@@ -26,7 +26,7 @@ const CATEGORY_KEYS: UsageCategoryKey[] = [
 // independent buckets pass their own fresh `seen`; the runtime breakdown shares ONE `seen` across
 // conda+envs so the shared inodes are attributed to conda (counted first) and not re-counted per env.
 // Missing dirs contribute 0; symlinks are skipped (not followed) to avoid cycles and double-counting.
-const dirSize = async (dir: string, seen: Set<string>): Promise<number> => {
+const dirSize = async (dir: string, seen: Set<string>, shared?: SharedBytes): Promise<number> => {
   let entries
   try {
     entries = await readdir(dir, { withFileTypes: true })
@@ -38,20 +38,27 @@ const dirSize = async (dir: string, seen: Set<string>): Promise<number> => {
     if (entry.isSymbolicLink()) continue
     const path = join(dir, entry.name)
     if (entry.isDirectory()) {
-      total += await dirSize(path, seen)
+      total += await dirSize(path, seen, shared)
     } else if (entry.isFile()) {
-      total += await fileSize(path, seen)
+      total += await fileSize(path, seen, shared)
     }
   }
   return total
 }
 
-// Size of one file, or 0 if its inode was already counted via `seen` (hard-link dedup).
-const fileSize = async (path: string, seen: Set<string>): Promise<number> => {
+// Size of one file, or 0 if its inode was already counted via `seen` (hard-link dedup). The skipped size is
+// accumulated into `shared` so the panel can state what sharing saved instead of only the smaller total.
+const fileSize = async (path: string, seen: Set<string>, shared?: SharedBytes): Promise<number> => {
   const info = await stat(path).catch(() => undefined)
   if (!info) return 0
   const key = `${info.dev}:${info.ino}`
-  if (seen.has(key)) return 0
+  if (seen.has(key)) {
+    if (shared) {
+      shared.bytes += info.size
+      shared.files += 1
+    }
+    return 0
+  }
   seen.add(key)
   return info.size
 }
@@ -67,7 +74,10 @@ const ENV_LABELS: Record<string, string> = { 'default-python': 'python', 'defaul
 // user data, and is usually 0 B after restore.
 const RUNTIME_HIDDEN_DIRS = ['envs.lock']
 
-const runtimeUsage = async (dir: string): Promise<{ bytes: number; children: UsageChild[] }> => {
+const runtimeUsage = async (
+  dir: string,
+  shared?: SharedBytes
+): Promise<{ bytes: number; children: UsageChild[] }> => {
   const children: UsageChild[] = []
   let looseBytes = 0
   // ONE dedup set across conda + every env: conda is scanned first, so the shared package inodes are
@@ -77,7 +87,8 @@ const runtimeUsage = async (dir: string): Promise<{ bytes: number; children: Usa
 
   // conda infrastructure: shared package cache (pkgs) + any downloaded micromamba root.
   let condaBytes = 0
-  for (const infra of RUNTIME_INFRA_DIRS) condaBytes += await dirSize(join(dir, infra), seen)
+  for (const infra of RUNTIME_INFRA_DIRS)
+    condaBytes += await dirSize(join(dir, infra), seen, shared)
   if (condaBytes > 0) children.push({ name: 'conda', bytes: condaBytes })
 
   // one child per environment under envs/ (default-python/-r -> python/r, others by name).
@@ -92,7 +103,7 @@ const runtimeUsage = async (dir: string): Promise<{ bytes: number; children: Usa
     if (entry.isSymbolicLink() || !entry.isDirectory()) continue
     const logicalName = logicalEnvNameFromDirectory(entry.name)
     const label = ENV_LABELS[logicalName] ?? logicalName
-    const bytes = await dirSize(join(dir, 'envs', entry.name), seen)
+    const bytes = await dirSize(join(dir, 'envs', entry.name), seen, shared)
     envBytes.set(label, (envBytes.get(label) ?? 0) + bytes)
   }
   for (const [name, bytes] of envBytes) children.push({ name, bytes })
@@ -113,7 +124,7 @@ const runtimeUsage = async (dir: string): Promise<{ bytes: number; children: Usa
       entry.name !== 'envs' &&
       !RUNTIME_INFRA_DIRS.includes(entry.name)
     ) {
-      const bytes = await dirSize(join(dir, entry.name), seen)
+      const bytes = await dirSize(join(dir, entry.name), seen, shared)
       // Hidden plumbing (e.g. envs.lock) counts toward the total but is not shown as its own row.
       if (RUNTIME_HIDDEN_DIRS.includes(entry.name)) looseBytes += bytes
       else children.push({ name: entry.name, bytes })
@@ -127,18 +138,21 @@ const runtimeUsage = async (dir: string): Promise<{ bytes: number; children: Usa
 
 export const computeStorageUsage = async (dataRoot: string): Promise<StorageUsage> => {
   const categories: UsageCategory[] = []
+  // One accumulator for the whole walk. Every hard link that spares a second count adds its size here, so
+  // the panel can say what sharing saved — a number read off the same walk, not a claim about dedup.
+  const shared: SharedBytes = { bytes: 0, files: 0 }
   for (const key of CATEGORY_KEYS) {
     const dir = join(dataRoot, key)
     if (key === 'runtime') {
-      const { bytes, children } = await runtimeUsage(dir)
+      const { bytes, children } = await runtimeUsage(dir, shared)
       categories.push({ key, bytes, children })
     } else {
       // Independent bucket: its own dedup set (no hard links cross data-category boundaries).
-      categories.push({ key, bytes: await dirSize(dir, new Set()) })
+      categories.push({ key, bytes: await dirSize(dir, new Set(), shared) })
     }
   }
   const totalBytes = categories.reduce((sum, c) => sum + c.bytes, 0)
-  return { categories, totalBytes }
+  return { categories, totalBytes, sharedBytes: shared.bytes, sharedFiles: shared.files }
 }
 
 export const availableBytes = async (targetPath: string): Promise<number> => {

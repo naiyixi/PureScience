@@ -2852,6 +2852,9 @@ export const es: Partial<Record<ZhKey, string>> = {
     'Revisa el volumen de tokens, la composición diaria y la actividad de conversación.',
   'settings.toolsTitle': 'Herramientas',
   'settings.total': 'Total',
+  'settings.storageSharedLabel': 'Compartido con otros archivos',
+  'settings.storageSharedTitle':
+    'Estos bytes existen una sola vez en el disco pero los usan varios archivos, así que se cuentan una sola vez.',
   'settings.totalArtifacts': 'Total de artefactos',
   'settings.totalProjects': 'Total de proyectos',
   'settings.totalRuns': 'Total de ejecuciones',

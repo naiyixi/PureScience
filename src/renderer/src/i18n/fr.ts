@@ -2868,6 +2868,9 @@ export const fr: Partial<Record<ZhKey, string>> = {
     'Examinez le volume de tokens, la composition quotidienne et l’activité des conversations.',
   'settings.toolsTitle': 'Outils',
   'settings.total': 'Total',
+  'settings.storageSharedLabel': 'Partagé avec d autres fichiers',
+  'settings.storageSharedTitle':
+    'Ces octets n existent qu une fois sur le disque mais servent à plusieurs fichiers, ils ne sont donc comptés qu une fois.',
   'settings.totalArtifacts': 'Total des artefacts',
   'settings.totalProjects': 'Total des projets',
   'settings.totalRuns': 'Total des exécutions',

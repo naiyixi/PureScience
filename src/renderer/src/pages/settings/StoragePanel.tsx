@@ -557,6 +557,19 @@ const StoragePanel = ({ onContinueToAgent }: StoragePanelProps): React.JSX.Eleme
               )
             })}
 
+            {/* What sharing saved, from the same walk as the total above. Only shown when there is
+                something to report: a permanent "0 B saved" would train the eye to skip the row. */}
+            {(info?.usage.sharedBytes ?? 0) > 0 ? (
+              <div
+                className="flex items-center justify-between text-xs text-muted-foreground"
+                data-testid="storage-shared-bytes"
+                title={t('settings.storageSharedTitle')}
+              >
+                <span>{t('settings.storageSharedLabel')}</span>
+                <span className="tabular-nums">{formatBytes(info?.usage.sharedBytes ?? 0)}</span>
+              </div>
+            ) : null}
+
             <div className="flex items-center justify-between border-t border-border pt-1.5 text-xs">
               <span className="font-medium text-foreground">{t('settings.total')}</span>
               <span className="font-medium tabular-nums text-foreground" aria-busy={usagePending}>

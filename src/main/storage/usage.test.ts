@@ -147,6 +147,21 @@ describe('computeStorageUsage', () => {
     })
   })
 
+  it('reports what hard links saved instead of only the smaller total', async () => {
+    const first = join(dataRoot, 'uploads', 'project', 'session', 'one.bin')
+    const second = join(dataRoot, 'uploads', 'project', 'session', 'two.bin')
+    await writeSized(first, 4096)
+    await link(first, second)
+
+    const usage = await computeStorageUsage(dataRoot)
+
+    // Two names, one copy: the total counts the bytes once, and the size the second name would have added
+    // is reported as the saving — read off the same walk, so the two numbers cannot disagree.
+    expect(usage.totalBytes).toBe(4096)
+    expect(usage.sharedBytes).toBe(4096)
+    expect(usage.sharedFiles).toBe(1)
+  })
+
   it('tolerates an empty or missing data root without throwing', async () => {
     const missingRoot = join(dataRoot, 'does-not-exist')
 

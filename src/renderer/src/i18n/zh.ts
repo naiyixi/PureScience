@@ -887,6 +887,9 @@ export const zh = {
   'settings.saveFailedVisionModel': '保存视觉模型失败，请重试。',
   'settings.saveFailedScenarioModel': '保存场景模型失败，请重试。',
   'settings.total': '总计',
+  'settings.storageSharedLabel': '与其它文件共享同一份字节',
+  'settings.storageSharedTitle':
+    '这些字节在磁盘上只有一份，但被多个文件使用，因此在总计里只算了一次。',
   'settings.availableOnDisk': '磁盘可用',
 
   'settings.capabilities': '能力',
