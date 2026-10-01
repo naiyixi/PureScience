@@ -448,6 +448,18 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'runtimes.disableAfterCurrentWork': 'Désactiver après le travail en cours',
   'skillDetail.detailsTitle': 'Détails',
   'settings.skillTriggerQuality': 'Qualité de déclenchement',
+  'settings.skillAvailability': 'Disponibilité des compétences par lecteur',
+  'settings.skillAvailabilityHint':
+    "Vous pouvez désactiver une compétence pour un seul lecteur. « Désactivée globalement » et « toujours active » ne se modifient pas ici : elles apparaissent verrouillées, car un interrupteur sans effet vaut moins que pas d'interrupteur.",
+  'settings.skillAvailabilityTargetClaudeCode': 'Sessions Claude Code',
+  'settings.skillAvailabilityTargetCodex': 'Sessions Codex',
+  'settings.skillAvailabilityTargetOpencode': 'Sessions OpenCode',
+  'settings.skillAvailabilityWithheld': '{n} désactivées',
+  'settings.skillAvailabilityAlwaysOn': 'toujours active',
+  'settings.skillAvailabilityGloballyOff': 'désactivée globalement',
+  'settings.skillAvailabilityUnavailable':
+    'La disponibilité des compétences est indisponible dans cette fenêtre.',
+
   'settings.skillTriggerQualityScore': '{score} / 10 — {passed} sur {total} vérifications réussies',
   'settings.skillTriggerQualityHint':
     'Le score est calculé par des règles locales fixes à l’ouverture de cette page, donc recalculable hors ligne — ce n’est pas l’auto-évaluation de l’éditeur.',

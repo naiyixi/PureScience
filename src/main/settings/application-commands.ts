@@ -33,6 +33,10 @@ import type {
   FunctionModelCommandRequest,
   FunctionModelCommandResult
 } from '../../shared/function-models'
+import type {
+  SkillAvailabilityCommandRequest,
+  SkillAvailabilityCommandResult
+} from '../../shared/skill-availability'
 import {
   defineApplicationCommand,
   defineApplicationCommandGroup,
@@ -62,6 +66,8 @@ type CoreSettingsCommandStore = Pick<
   | 'detectCodex'
   | 'detectOpencode'
   | 'detectFunctionModel'
+  | 'getSkillAvailabilityView'
+  | 'setSkillAvailabilityForTarget'
   | 'getFunctionModelEvents'
   | 'getExecutionProtectionMatrix'
   | 'getFunctionModels'
@@ -172,6 +178,11 @@ const settingsCoreApplicationCommands = Object.freeze({
     readonly [request: FunctionModelCommandRequest],
     FunctionModelCommandResult
   >('settings:function-models'),
+  skillAvailability: defineApplicationCommand<
+    'settings:skill-availability',
+    readonly [request: SkillAvailabilityCommandRequest],
+    SkillAvailabilityCommandResult
+  >('settings:skill-availability'),
   executionProtection: defineApplicationCommand<
     'settings:execution-protection',
     readonly [request: ExecutionProtectionCommandRequest],
@@ -461,6 +472,7 @@ const settingsCoreApplicationCommandGroup = defineApplicationCommandGroup('setti
   settingsCoreApplicationCommands.detectCodex,
   settingsCoreApplicationCommands.detectOpencode,
   settingsCoreApplicationCommands.executionProtection,
+  settingsCoreApplicationCommands.skillAvailability,
   settingsCoreApplicationCommands.functionModels,
   settingsCoreApplicationCommands.getConnectorDetail,
   settingsCoreApplicationCommands.getMemory,
@@ -557,6 +569,20 @@ const registerCoreSettingsApplicationCommands = (
       'settings:detect-opencode': () => dependencies.service.detectOpencode(),
       // One channel, two actions: the panel reads the matrix and writes the remote policy through the
       // same entry, and every write comes back with the freshly resolved matrix.
+      // The availability matrix: one channel for reading it and for withholding skills from one target.
+      'settings:skill-availability': async ({ args, callerContext }) => {
+        requireLocalCaller(callerContext, 'settings:skill-availability')
+        const request = args[0]
+        return {
+          view:
+            request.action === 'set'
+              ? await dependencies.service.setSkillAvailabilityForTarget(
+                  request.targetId,
+                  request.disabledSkillIds
+                )
+              : await dependencies.service.getSkillAvailabilityView()
+        }
+      },
       'settings:function-models': async ({ args, callerContext }) => {
         requireLocalCaller(callerContext, 'settings:function-models')
         const request = args[0]

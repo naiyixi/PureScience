@@ -450,6 +450,18 @@ export const de: Partial<Record<ZhKey, string>> = {
   'runtimes.disableAfterCurrentWork': 'Nach der aktuellen Arbeit deaktivieren',
   'skillDetail.detailsTitle': 'Einzelheiten',
   'settings.skillTriggerQuality': 'Auslöse-Qualität',
+  'settings.skillAvailability': 'Skill-Verfügbarkeit je Leser',
+  'settings.skillAvailabilityHint':
+    'Ein Skill lässt sich für einen einzelnen Leser abschalten. „Global aus“ und „immer an“ sind hier unveränderlich und erscheinen als Schloss — ein Schalter, der still nichts tut, ist schlechter als keiner.',
+  'settings.skillAvailabilityTargetClaudeCode': 'Claude-Code-Sitzungen',
+  'settings.skillAvailabilityTargetCodex': 'Codex-Sitzungen',
+  'settings.skillAvailabilityTargetOpencode': 'OpenCode-Sitzungen',
+  'settings.skillAvailabilityWithheld': '{n} abgeschaltet',
+  'settings.skillAvailabilityAlwaysOn': 'immer an',
+  'settings.skillAvailabilityGloballyOff': 'global aus',
+  'settings.skillAvailabilityUnavailable':
+    'Die Skill-Verfügbarkeit ist in diesem Fenster nicht verfügbar.',
+
   'settings.skillTriggerQualityScore': '{score} / 10 — {passed} von {total} Prüfungen bestanden',
   'settings.skillTriggerQualityHint':
     'Beim Öffnen dieser Seite wird nach festen lokalen Regeln bewertet, sodass du das Ergebnis offline nachrechnen kannst — es ist nicht die Selbsteinschätzung des Herausgebers.',

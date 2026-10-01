@@ -2640,6 +2640,17 @@ export const zh = {
   'runtimes.disableAfterCurrentWork': '在当前工作结束后禁用',
   'skillDetail.detailsTitle': '详情',
   'settings.skillTriggerQuality': '触发质量',
+  'settings.skillAvailability': '按读取方的技能可用性',
+  'settings.skillAvailabilityHint':
+    '只对某一个读取方关闭某个技能。「全局关闭」与「始终启用」不能在这里改动——这两种会显示为锁定：一个点了没反应的开关比没有开关更糟。',
+  'settings.skillAvailabilityTargetClaudeCode': 'Claude Code 会话',
+  'settings.skillAvailabilityTargetCodex': 'Codex 会话',
+  'settings.skillAvailabilityTargetOpencode': 'OpenCode 会话',
+  'settings.skillAvailabilityWithheld': '已对此外 {n} 个技能关闭',
+  'settings.skillAvailabilityAlwaysOn': '始终启用',
+  'settings.skillAvailabilityGloballyOff': '全局关闭',
+  'settings.skillAvailabilityUnavailable': '此窗口无法读取技能可用性设置。',
+
   'settings.skillTriggerQualityScore': '{score} / 10 —— {total} 项检查通过 {passed} 项',
   'settings.skillTriggerQualityHint':
     '本页读取时由本地固定规则评分，可离线复算——这不是发布方的自评。',

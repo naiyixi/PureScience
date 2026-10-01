@@ -234,6 +234,8 @@ import type {
   ExecutionProtectionCommandResult,
   FunctionModelCommandRequest,
   FunctionModelCommandResult,
+  SkillAvailabilityCommandRequest,
+  SkillAvailabilityCommandResult,
   ProxySettings,
   ExternalComputeEndpoint,
   CreateExternalComputeEndpointRequest,
@@ -618,6 +620,9 @@ export interface PureScienceAPI {
       request: ExecutionProtectionCommandRequest
     ): Promise<ExecutionProtectionCommandResult>
     functionModels(request: FunctionModelCommandRequest): Promise<FunctionModelCommandResult>
+    skillAvailability(
+      request: SkillAvailabilityCommandRequest
+    ): Promise<SkillAvailabilityCommandResult>
     getExternalComputeEndpoints(): Promise<ExternalComputeEndpoint[]>
     setExternalComputeEndpoint(
       request: CreateExternalComputeEndpointRequest

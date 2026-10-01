@@ -446,6 +446,18 @@ export const es: Partial<Record<ZhKey, string>> = {
   'runtimes.disableAfterCurrentWork': 'Desactivar tras el trabajo actual',
   'skillDetail.detailsTitle': 'Detalles',
   'settings.skillTriggerQuality': 'Calidad de activación',
+  'settings.skillAvailability': 'Disponibilidad de habilidades por lector',
+  'settings.skillAvailabilityHint':
+    'Puedes desactivar una habilidad solo para un lector. «Desactivada globalmente» y «siempre activa» no se cambian aquí: aparecen bloqueadas, porque un interruptor que no hace nada es peor que no tenerlo.',
+  'settings.skillAvailabilityTargetClaudeCode': 'Sesiones de Claude Code',
+  'settings.skillAvailabilityTargetCodex': 'Sesiones de Codex',
+  'settings.skillAvailabilityTargetOpencode': 'Sesiones de OpenCode',
+  'settings.skillAvailabilityWithheld': '{n} desactivadas',
+  'settings.skillAvailabilityAlwaysOn': 'siempre activa',
+  'settings.skillAvailabilityGloballyOff': 'desactivada globalmente',
+  'settings.skillAvailabilityUnavailable':
+    'La disponibilidad de habilidades no está disponible en esta ventana.',
+
   'settings.skillTriggerQualityScore':
     '{score} / 10 — {passed} de {total} comprobaciones superadas',
   'settings.skillTriggerQualityHint':

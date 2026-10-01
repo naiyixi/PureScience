@@ -439,6 +439,17 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'runtimes.disableAfterCurrentWork': 'Отключить после завершения текущей работы',
   'skillDetail.detailsTitle': 'Подробности',
   'settings.skillTriggerQuality': 'Качество срабатывания',
+  'settings.skillAvailability': 'Доступность навыков по читателю',
+  'settings.skillAvailabilityHint':
+    'Навык можно отключить для одного читателя. «Отключено глобально» и «всегда включено» здесь не меняются — они показаны под замком, потому что переключатель, который ничего не делает, хуже его отсутствия.',
+  'settings.skillAvailabilityTargetClaudeCode': 'Сеансы Claude Code',
+  'settings.skillAvailabilityTargetCodex': 'Сеансы Codex',
+  'settings.skillAvailabilityTargetOpencode': 'Сеансы OpenCode',
+  'settings.skillAvailabilityWithheld': 'отключено: {n}',
+  'settings.skillAvailabilityAlwaysOn': 'всегда включён',
+  'settings.skillAvailabilityGloballyOff': 'отключён глобально',
+  'settings.skillAvailabilityUnavailable': 'Доступность навыков недоступна в этом окне.',
+
   'settings.skillTriggerQualityScore': '{score} / 10 — пройдено {passed} из {total} проверок',
   'settings.skillTriggerQualityHint':
     'Оценка ставится фиксированными локальными правилами при открытии страницы, поэтому её можно пересчитать офлайн — это не самооценка издателя.',

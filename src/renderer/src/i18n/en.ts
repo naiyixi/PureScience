@@ -2835,6 +2835,17 @@ export const en: Record<ZhKey, string> = {
   'runtimes.disableAfterCurrentWork': 'Disable after current work',
   'skillDetail.detailsTitle': 'Details',
   'settings.skillTriggerQuality': 'Trigger quality',
+  'settings.skillAvailability': 'Skill availability by reader',
+  'settings.skillAvailabilityHint':
+    'Turn a skill off for one reader only. “Off globally” and “always on” cannot be changed here — a lock is shown for those, because a switch that silently does nothing is worse than no switch.',
+  'settings.skillAvailabilityTargetClaudeCode': 'Claude Code sessions',
+  'settings.skillAvailabilityTargetCodex': 'Codex sessions',
+  'settings.skillAvailabilityTargetOpencode': 'OpenCode sessions',
+  'settings.skillAvailabilityWithheld': '{n} withheld',
+  'settings.skillAvailabilityAlwaysOn': 'always on',
+  'settings.skillAvailabilityGloballyOff': 'off globally',
+  'settings.skillAvailabilityUnavailable': 'Skill availability is unavailable in this window.',
+
   'settings.skillTriggerQualityScore': '{score} / 10 — {passed} of {total} checks pass',
   'settings.skillTriggerQualityHint':
     'Scored locally by fixed rules when this page is read, so you can recompute it offline — this is not the publisher’s own assessment.',

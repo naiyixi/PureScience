@@ -434,6 +434,17 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'runtimes.disableAfterCurrentWork': '현재 작업 종료 후 비활성화',
   'skillDetail.detailsTitle': '세부 정보',
   'settings.skillTriggerQuality': '트리거 품질',
+  'settings.skillAvailability': '읽는 주체별 스킬 가용성',
+  'settings.skillAvailabilityHint':
+    '특정 읽는 주체에 대해서만 스킬을 끌 수 있습니다. "전체 끄기"와 "항상 켜기"는 여기서 바꿀 수 없으며 잠금으로 표시됩니다. 눌러도 아무 일이 없는 스위치는 스위치가 없는 것보다 나쁩니다.',
+  'settings.skillAvailabilityTargetClaudeCode': 'Claude Code 세션',
+  'settings.skillAvailabilityTargetCodex': 'Codex 세션',
+  'settings.skillAvailabilityTargetOpencode': 'OpenCode 세션',
+  'settings.skillAvailabilityWithheld': '{n}개 끔',
+  'settings.skillAvailabilityAlwaysOn': '항상 켜짐',
+  'settings.skillAvailabilityGloballyOff': '전체 끔',
+  'settings.skillAvailabilityUnavailable': '이 창에서는 스킬 가용성을 사용할 수 없습니다.',
+
   'settings.skillTriggerQualityScore': '{score} / 10 —— {total}개 검사 중 {passed}개 통과',
   'settings.skillTriggerQualityHint':
     '이 페이지를 열 때 로컬 고정 규칙으로 채점하므로 오프라인에서 다시 계산할 수 있습니다. 발행자의 자체 평가가 아닙니다.',

@@ -70,6 +70,11 @@ import type {
 import { providerValidationFailed } from '../../shared/settings'
 import type { ResponsesBridgeTarget } from './responses-bridge'
 import {
+  SKILL_AVAILABILITY_TARGET_IDS,
+  isSkillAvailabilityTargetId,
+  type SkillAvailabilityView
+} from '../../shared/skill-availability'
+import {
   appendFunctionModelEvent,
   readFunctionModelEvents,
   type FunctionModelEvent
@@ -759,6 +764,55 @@ class SettingsService {
     })
 
     return { ...outcome, providerId: resolution.override.providerId }
+  }
+
+  // The availability matrix as the settings surface reads it: the targets that can withhold a skill, the
+  // skills with their always-on flag, and what the global setting already withholds.
+  async getSkillAvailabilityView(): Promise<SkillAvailabilityView> {
+    const [skills, settings, alwaysOn] = await Promise.all([
+      this.skills.listSkills(),
+      this.repository.getSettings(),
+      this.skills.alwaysOnSkillIds()
+    ])
+
+    return {
+      targets: SKILL_AVAILABILITY_TARGET_IDS.map((id) => ({
+        id,
+        skillIds: settings.skillAvailability?.[id]?.disabledSkillIds ?? []
+      })),
+      skills: skills.map((skill) => ({
+        id: skill.id,
+        name: skill.name,
+        alwaysOn: alwaysOn.has(skill.id)
+      })),
+      globallyDisabledSkillIds: settings.disabledSkillIds ?? []
+    }
+  }
+
+  // Withholds skills from ONE target. The target must be one this build can act on, and the always-on skills
+  // are dropped here as well as at the materialization point: a write path that accepted them would let the
+  // gate be bypassed through the UI even though every reader honours it.
+  async setSkillAvailabilityForTarget(
+    targetId: string,
+    disabledSkillIds: readonly string[]
+  ): Promise<SkillAvailabilityView> {
+    if (!isSkillAvailabilityTargetId(targetId)) {
+      throw new Error(`Unknown skill availability target: ${targetId}`)
+    }
+    const [current, alwaysOn] = await Promise.all([
+      this.repository.getSettings(),
+      this.skills.alwaysOnSkillIds()
+    ])
+    const kept = disabledSkillIds.filter(
+      (id) => typeof id === 'string' && id !== '' && !alwaysOn.has(id)
+    )
+    const next = { ...(current.skillAvailability ?? {}) }
+    if (kept.length === 0) delete next[targetId]
+    else next[targetId] = { disabledSkillIds: [...new Set(kept)] }
+
+    await this.repository.setSkillAvailability(next)
+
+    return this.getSkillAvailabilityView()
   }
 
   // Writes one entry to the function-model trail. The trail is the answer to "why did this run not use the

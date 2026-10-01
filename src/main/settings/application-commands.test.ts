@@ -26,6 +26,7 @@ const expectedChannels = [
   'settings:detect-opencode',
   'settings:execution-protection',
   'settings:function-models',
+  'settings:skill-availability',
   'settings:get-connector-detail',
   'settings:get-memory',
   'settings:list-credentials',
@@ -141,7 +142,7 @@ const createDependencies = (): Readonly<{
 }
 
 describe('Settings core application commands', () => {
-  it('installs the exact 63-command inventory and dispatches a remote-safe preflight query', async () => {
+  it('installs the exact 64-command inventory and dispatches a remote-safe preflight query', async () => {
     const { dependencies, serviceMethod } = createDependencies()
     const preflight = { agentReady: true }
     serviceMethod('getPreflight').mockResolvedValue(preflight)

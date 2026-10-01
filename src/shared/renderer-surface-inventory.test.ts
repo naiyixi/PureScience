@@ -185,6 +185,7 @@ const REMOTE_LOCAL_ONLY_CHANNELS: GroupedInventory = {
     'cancel-custom-server-authentication',
     'cancel-isolated-claude-login',
     'function-models',
+    'skill-availability',
     'install-claude',
     'install-codebuddy',
     'install-codex',
@@ -274,11 +275,15 @@ describe('renderer surface inventory', () => {
       ...Object.keys(WEB_EVENT_CHANNELS)
     ])
 
+    // 452 with the skill availability channel (settings:skillAvailability): a local-only settings channel
+    // still exposes one preload method, so the preload inventory moves with it.
+    // 451 with the function-model channel (settings.functionModels), 450 with the execution-protection
+    // channel: both local-only for the same reason.
     // 449 with the RO-Crate export (roCrate.exportProject): a desktop-only channel, so it appears in the
     // preload inventory and in the generator-omission list, and in neither Web map.
     // 448 with the two PDF annotation export channels (文档标注层 A4): the preload bridge exposes one
     // method per contract, so the two inventories move together.
-    expect(electronPaths).toHaveLength(451)
+    expect(electronPaths).toHaveLength(452)
     expectSameSet(
       electronPaths,
       RENDERER_CONTRACT_CATALOG.map(({ publicPath }) => publicPath)
@@ -286,7 +291,7 @@ describe('renderer surface inventory', () => {
     // 344 since the PDF annotation export channels (文档标注层 A4), 342 since the annotation surface
     // (A3) and 337 since the literature-screening surface (v1.77 unit): all of them are local invoke
     // channels, so the invoke map moves with them.
-    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(346)
+    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(347)
     expect(Object.keys(WEB_EVENT_CHANNELS)).toHaveLength(34)
     expectSameSet(
       electronPaths.filter((path) => !generatedPaths.has(path)),
@@ -322,7 +327,7 @@ describe('renderer surface inventory', () => {
     const expectedRemoteLocalOnly = expand(REMOTE_LOCAL_ONLY_CHANNELS, ':')
 
     expectSameSet(REMOTE_LOCAL_ONLY_RPC_CHANNELS, expectedRemoteLocalOnly)
-    expect(expectedRemoteLocalOnly).toHaveLength(118)
+    expect(expectedRemoteLocalOnly).toHaveLength(119)
     expect(
       expectedRemoteLocalOnly.every((channel) => WEB_RPC_ALLOWED_CHANNELS.includes(channel))
     ).toBe(true)

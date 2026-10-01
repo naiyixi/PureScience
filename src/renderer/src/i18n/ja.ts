@@ -438,6 +438,17 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'runtimes.disableAfterCurrentWork': '現在の作業完了後に無効にする',
   'skillDetail.detailsTitle': '詳細',
   'settings.skillTriggerQuality': 'トリガー品質',
+  'settings.skillAvailability': '読み手ごとのスキル可用性',
+  'settings.skillAvailabilityHint':
+    '特定の読み手にだけスキルをオフにできます。「全体でオフ」「常時オン」はここでは変更できません。その場合はロックとして表示します。押しても何も起きないスイッチは、スイッチが無いより悪いからです。',
+  'settings.skillAvailabilityTargetClaudeCode': 'Claude Code のセッション',
+  'settings.skillAvailabilityTargetCodex': 'Codex のセッション',
+  'settings.skillAvailabilityTargetOpencode': 'OpenCode のセッション',
+  'settings.skillAvailabilityWithheld': '{n} 件をオフ',
+  'settings.skillAvailabilityAlwaysOn': '常時オン',
+  'settings.skillAvailabilityGloballyOff': '全体でオフ',
+  'settings.skillAvailabilityUnavailable': 'このウィンドウではスキル可用性を利用できません。',
+
   'settings.skillTriggerQualityScore': '{score} / 10 —— {total} 項目中 {passed} 項目が合格',
   'settings.skillTriggerQualityHint':
     'このページを開いたときにローカルの固定規則で採点するため、オフラインで再計算できます。発行元の自己評価ではありません。',

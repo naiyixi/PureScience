@@ -369,6 +369,17 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'runtimes.disableAfterCurrentWork': '在目前工作結束後停用',
   'skillDetail.detailsTitle': '詳細',
   'settings.skillTriggerQuality': '觸發品質',
+  'settings.skillAvailability': '依讀取方的技能可用性',
+  'settings.skillAvailabilityHint':
+    '只對某一個讀取方關閉某個技能。「全域關閉」與「始終啟用」不能在這裡改動——這兩種會顯示為鎖定：一個點了沒反應的開關比沒有開關更糟。',
+  'settings.skillAvailabilityTargetClaudeCode': 'Claude Code 工作階段',
+  'settings.skillAvailabilityTargetCodex': 'Codex 工作階段',
+  'settings.skillAvailabilityTargetOpencode': 'OpenCode 工作階段',
+  'settings.skillAvailabilityWithheld': '已對此外 {n} 個技能關閉',
+  'settings.skillAvailabilityAlwaysOn': '始終啟用',
+  'settings.skillAvailabilityGloballyOff': '全域關閉',
+  'settings.skillAvailabilityUnavailable': '此視窗無法讀取技能可用性設定。',
+
   'settings.skillTriggerQualityScore': '{score} / 10 —— {total} 項檢查通過 {passed} 項',
   'settings.skillTriggerQualityHint':
     '本頁讀取時由本機固定規則評分，可離線複算——這不是發佈方的自評。',

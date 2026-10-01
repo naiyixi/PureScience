@@ -34,6 +34,7 @@ import { CatalogFavoriteButton } from '@/components/catalog/CatalogFavoriteButto
 import { CatalogTagEditor } from '@/components/catalog/CatalogTagEditor'
 import { CatalogFilterChips } from '@/components/catalog/CatalogFilterChips'
 import { cn } from '@/lib/utils'
+import { SkillAvailabilityMatrix } from './SkillAvailabilityMatrix'
 import { SkillDetailView } from './SkillDetailView'
 import { SkillEditor, SkillEditLoader } from './SkillEditor'
 import { SkillImportView } from './SkillImportView'
@@ -882,6 +883,9 @@ const SkillsPanel = ({
           </AlertDialog.Content>
         </AlertDialog.Portal>
       </AlertDialog.Root>
+      {/* Availability by reader: the list above says whether a skill is installed; this says who may load
+          it. It sits in the list view rather than the detail view because it is about all skills at once. */}
+      <SkillAvailabilityMatrix />
     </>
   )
 }
