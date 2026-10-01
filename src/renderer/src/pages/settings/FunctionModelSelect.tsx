@@ -55,6 +55,15 @@ const DETECT_REASON_KEYS: Record<FunctionModelDetectionFailureReason, Translatio
   'http-error': 'settings.functionModelDetectReasonHttpError',
   'invalid-response': 'settings.functionModelDetectReasonInvalidResponse'
 }
+// Every reason a run can end on, named. Shared by the row's probe line and the trail so a reason can never
+// render as an unnamed value in one place and a sentence in the other — the exhaustive Record means a new
+// reason does not compile until it has words.
+const RUN_REASON_KEYS: Record<FunctionModelEvent['reason'] & string, TranslationKey> = {
+  ...DETECT_REASON_KEYS,
+  'call-failed': 'settings.functionModelTrailCallFailed',
+  'call-not-attempted': 'settings.functionModelNotAttempted'
+}
+
 
 const UNUSABLE_KEYS: Record<FunctionModelUnusableReason, TranslationKey> = {
   'provider-missing': 'settings.functionModelUnusableProviderMissing',
@@ -310,7 +319,7 @@ export const FunctionModelRow = ({
               })
             : `${t('settings.functionModelProbeBuiltIn', {
                 ms: String(probe.elapsedMs)
-              })} ${t(DETECT_REASON_KEYS[probe.reason ?? 'not-configured'])}`}
+              })} ${t(RUN_REASON_KEYS[probe.reason ?? 'not-configured'])}`}
         </p>
       ) : null}
       {/* Detection spends real quota, so the control says so and is only offered once there is a model to
@@ -351,11 +360,6 @@ export const FunctionModelRow = ({
       </div>
     </div>
   )
-}
-
-const TRAIL_REASON_KEYS: Record<FunctionModelEvent['reason'] & string, TranslationKey> = {
-  ...DETECT_REASON_KEYS,
-  'call-failed': 'settings.functionModelTrailCallFailed'
 }
 
 /**
@@ -453,7 +457,7 @@ export const FunctionModelTrail = (): React.JSX.Element => {
                       provider: providerName(event.providerId)
                     })
                   : `${t('settings.functionModelTrailBuiltIn')} ${t(
-                      TRAIL_REASON_KEYS[event.reason ?? 'not-configured']
+                      RUN_REASON_KEYS[event.reason ?? 'not-configured']
                     )}`
               }`}
             </p>

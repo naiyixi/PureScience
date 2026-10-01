@@ -761,6 +761,7 @@ export const zh = {
   'settings.functionModelTrailUsed': '使用 {model}（来自 {provider}）',
   'settings.functionModelTrailBuiltIn': '内置路径：',
   'settings.functionModelTrailCallFailed': '调用失败',
+  'settings.functionModelNotAttempted': '未发出请求：没有可选项',
 
   'settings.functionModelDetecting': '正在调用模型…',
   'settings.functionModelProbeRun': '立即试跑一次选择',

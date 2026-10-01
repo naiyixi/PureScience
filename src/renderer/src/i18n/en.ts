@@ -797,6 +797,7 @@ export const en: Record<ZhKey, string> = {
   'settings.functionModelTrailUsed': 'used {model} from {provider}',
   'settings.functionModelTrailBuiltIn': 'built-in path:',
   'settings.functionModelTrailCallFailed': 'the call failed',
+  'settings.functionModelNotAttempted': 'no request was sent: nothing to select for',
 
   'settings.functionModelDetecting': 'Calling the model…',
   'settings.functionModelProbeRun': 'Run one selection now',

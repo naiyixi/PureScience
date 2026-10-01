@@ -108,6 +108,7 @@ import {
   type AgentFrameworkId,
   type ResolvedAgentBackend
 } from '../agent-framework'
+import { codexStorageDir } from '../agent-framework/codex'
 import type { ClaudeDetectDeps } from './claude-detect'
 import type { OpencodeDetectDeps } from './opencode-detect'
 import type { CodexDetectDeps } from './codex-detect'
@@ -279,7 +280,24 @@ class SettingsService {
     })
     this.probeSkillSelection =
       options.probeSkillSelection ??
-      ((target, catalog) => new ResponsesBridge(target).selectSkills(PROBE_SELECTION_TEXT, catalog))
+      ((target, catalog) => {
+        // A selection that never reached the network must not be reported as a model answer. The bridge
+        // returns an empty list both when the model answered "nothing" and when it never asked (an empty
+        // catalog, or the deterministic connector shortcut), so the requests are recorded and a run that
+        // sent none fails with a name that says so.
+        let sent = false
+        const bridge = new ResponsesBridge(target, (input, init) => {
+          sent = true
+
+          return fetch(input, init)
+        })
+
+        return bridge.selectSkills(PROBE_SELECTION_TEXT, catalog).then((selected) => {
+          if (!sent) throw new Error('probe-not-attempted')
+
+          return selected
+        })
+      })
     this.notebookRuntimeSettings = new NotebookRuntimeSettingsModule(this.repository)
     this.connectors = new ConnectorSettingsModule(this.repository)
     this.userClaudeDir = options.userClaudeDir ?? getUserClaudeConfigDir()
@@ -778,7 +796,7 @@ class SettingsService {
   // without waiting for a turn, and on a session whose framework never makes this call at all (it lives on
   // the bridged path) this is the only way to exercise it.
   async probeFunctionModel(functionId: FunctionModelId): Promise<FunctionModelProbeResult> {
-    const catalog = await this.codexSkillCatalog(undefined)
+    const catalog = await this.probeSkillCandidates()
     const { value, selection } = await runFunctionModelSkillSelection({
       functionId,
       host: {
@@ -788,10 +806,36 @@ class SettingsService {
       // The built-in path keeps a turn alive; outside a turn it has nothing to select with, and saying so
       // with an empty list beats inventing a selection.
       builtIn: async () => [],
-      runWithModel: (target) => this.probeSkillSelection(target, catalog)
+      runWithModel: (target) => this.probeSkillSelection(target, catalog),
+      classifyRunFailure: (error) =>
+        error instanceof Error && error.message === 'probe-not-attempted'
+          ? 'call-not-attempted'
+          : 'call-failed'
     })
 
     return { ...selection, selectedSkillIds: value.map((entry) => entry.name) }
+  }
+
+  // A turn's catalog comes from the framework's materialized skill root. Without one (codex not installed,
+  // nothing materialized yet) the probe still needs a non-empty catalog: the narrow call picks by name, and
+  // an empty catalog makes the bridge answer WITHOUT EVER CALLING the model — the one shape the probe must
+  // never report as "the model answered".
+  private async probeSkillCandidates(): Promise<ResponsesBridgeSkillCandidate[]> {
+    const materialized = await this.codexSkillCatalog(codexStorageDir(this.storageRoot))
+    if (materialized.length > 0) return materialized
+
+    // Fall back to the app's own catalog with each skill's own name and path: identities are real even
+    // when no root has been materialized for a framework that is not installed.
+    const skills = await this.skills.listSkills()
+
+    return skills.map((skill) => ({
+      name: skill.name,
+      description: skill.description,
+      // The candidate's `path` is how the caller names a chosen skill back; nothing is loaded from it during
+      // a probe, so the skill's own id is the honest value here rather than a materialized path that may not
+      // exist for a framework that was never installed.
+      path: skill.id
+    }))
   }
 
   async detectFunctionModel(functionId: FunctionModelId): Promise<FunctionModelDetection> {

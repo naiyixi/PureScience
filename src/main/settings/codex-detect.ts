@@ -96,17 +96,23 @@ const detectCodex = async (
     if (!adapterVersion) continue
 
     const result: CodexDetectResult = { adapterPath, adapterVersion }
-    if (adapterPath === deps.managedAdapterPath) {
-      const managedOutput = deps.managedCodexPath
+    const isManagedAdapter = adapterPath === deps.managedAdapterPath
+    // Both kinds of adapter get the native executable pinned through CODEX_PATH. The app-owned adapter
+    // needs one, and a user-installed adapter needs the same help: the Codex a user actually has may live
+    // inside an application bundle (the ChatGPT app ships one) rather than on PATH, and an adapter that
+    // only searches PATH would fail its smoke test against a Codex that is demonstrably installed.
+    const managedOutput =
+      isManagedAdapter && deps.managedCodexPath
         ? await deps.getCodexVersion(deps.managedCodexPath)
         : undefined
-      const managedVersion = managedOutput ? parseVersion(managedOutput) : undefined
-      const nativeCodex = managedVersion
-        ? { path: deps.managedCodexPath!, version: managedVersion }
-        : await detectNativeCodex(deps)
-      // The adapter is app-owned, while the native executable may be the bundled binary or a global
-      // installation. Pin the resolved executable through CODEX_PATH in either case.
-      if (!nativeCodex) continue
+    const managedVersion = managedOutput ? parseVersion(managedOutput) : undefined
+    const nativeCodex = managedVersion
+      ? { path: deps.managedCodexPath!, version: managedVersion }
+      : await detectNativeCodex(deps)
+    // Only the managed pair is required to come as a pair: without it there is nothing to run at all. A
+    // discovered adapter that cannot be given a native path is still tried — it may find its own Codex.
+    if (isManagedAdapter && !nativeCodex) continue
+    if (nativeCodex) {
       result.nativeCodexPath = nativeCodex.path
       result.nativeCodexVersion = nativeCodex.version
     }

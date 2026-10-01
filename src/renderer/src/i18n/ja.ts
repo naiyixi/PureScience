@@ -1846,6 +1846,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.functionModelTrailUsed': '{provider} の {model} を使用',
   'settings.functionModelTrailBuiltIn': '内蔵経路：',
   'settings.functionModelTrailCallFailed': '呼び出しに失敗しました',
+  'settings.functionModelNotAttempted': 'リクエストは送信されませんでした（選択対象がありません）',
 
   'settings.functionModelDetecting': 'モデルを呼び出し中…',
   'settings.functionModelProbeRun': '今すぐ選択を1回試す',

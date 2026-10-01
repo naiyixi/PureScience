@@ -54,6 +54,50 @@ const createDeps = (
 })
 
 describe('codex-detect', () => {
+  it('pins a detected native Codex for a user-installed adapter too', async () => {
+    // The Codex a user actually has may live inside an application bundle (the ChatGPT app ships one)
+    // rather than on PATH. A user-installed adapter needs the same pinning the app-owned one gets, or its
+    // smoke test fails against a Codex that is demonstrably installed.
+    const adapterPath = '/usr/local/bin/codex-acp'
+    const globalCodexPath = '/usr/local/bin/codex'
+    const smokeInitialize = vi.fn().mockResolvedValue(true)
+
+    const result = await detectCodex(
+      createDeps(
+        { [adapterPath]: '@agentclientprotocol/codex-acp 1.1.4' },
+        {
+          getCodexVersion: (candidate) =>
+            Promise.resolve(
+              candidate === globalCodexPath ? 'codex-cli 0.154.0-alpha.6.2' : undefined
+            ),
+          smokeInitialize
+        }
+      )
+    )
+
+    expect(result).toEqual({
+      adapterPath,
+      adapterVersion: '1.1.4',
+      nativeCodexPath: globalCodexPath,
+      nativeCodexVersion: '0.154.0-alpha.6.2'
+    })
+    expect(smokeInitialize).toHaveBeenCalledWith(adapterPath, { codexPath: globalCodexPath })
+  })
+
+  it('still tries a user-installed adapter when no native Codex can be pinned', async () => {
+    // Only the managed pair has to come as a pair: a discovered adapter may find its own Codex, so a
+    // missing native path is not a reason to skip it.
+    const adapterPath = '/usr/local/bin/codex-acp'
+    const smokeInitialize = vi.fn().mockResolvedValue(true)
+
+    const result = await detectCodex(
+      createDeps({ [adapterPath]: '@agentclientprotocol/codex-acp 1.1.4' }, { smokeInitialize })
+    )
+
+    expect(result).toEqual({ adapterPath, adapterVersion: '1.1.4' })
+    expect(smokeInitialize).toHaveBeenCalledWith(adapterPath, undefined)
+  })
+
   it('finds a runnable codex-acp on PATH and reports its adapter version', async () => {
     const result = await detectCodex(
       createDeps({ '/usr/local/bin/codex-acp': '@agentclientprotocol/codex-acp 1.1.4' })

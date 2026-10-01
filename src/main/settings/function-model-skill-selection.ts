@@ -47,6 +47,9 @@ export const runFunctionModelSkillSelection = async <T>(options: {
   builtIn: () => Promise<T>
   runWithModel: (target: ResponsesBridgeTarget) => Promise<T>
   now?: () => number
+  // Lets a caller that can tell more apart than "it threw" name the reason precisely — the probe
+  // distinguishes a call that failed from one that was never attempted.
+  classifyRunFailure?: (error: unknown) => FunctionModelEventReason
 }): Promise<{ value: T; selection: FunctionModelSkillSelectionOutcome }> => {
   const now = options.now ?? Date.now
   if (!options.host) {
@@ -92,13 +95,14 @@ export const runFunctionModelSkillSelection = async <T>(options: {
         elapsedMs: now() - started
       }
     }
-  } catch {
+  } catch (error) {
     // A narrow call that failed must not fail the caller: the built-in path still runs, and the trail says
     // the configured model did not answer instead of leaving the fallback unexplained.
+    const reason = options.classifyRunFailure?.(error) ?? 'call-failed'
     options.host.recordFunctionModelEvent({
       functionId: options.functionId,
       outcome: 'built-in',
-      reason: 'call-failed',
+      reason,
       providerId: override.providerId,
       model: override.model
     })
@@ -107,7 +111,7 @@ export const runFunctionModelSkillSelection = async <T>(options: {
       value: await options.builtIn(),
       selection: {
         outcome: 'built-in',
-        reason: 'call-failed',
+        reason,
         providerId: override.providerId,
         model: override.model,
         elapsedMs: now() - started

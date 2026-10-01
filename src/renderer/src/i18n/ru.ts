@@ -1844,6 +1844,7 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.functionModelTrailUsed': 'использована {model} от {provider}',
   'settings.functionModelTrailBuiltIn': 'встроенный путь:',
   'settings.functionModelTrailCallFailed': 'вызов не удался',
+  'settings.functionModelNotAttempted': 'запрос не отправлен: нечего выбирать',
 
   'settings.functionModelDetecting': 'Вызов модели…',
   'settings.functionModelProbeRun': 'Запустить выбор прямо сейчас',

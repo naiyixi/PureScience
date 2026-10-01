@@ -179,6 +179,12 @@ export type FunctionModelEventReason =
   | FunctionModelUnusableReason
   /** The call was attempted and did not come back with a selector result. */
   | 'call-failed'
+  /**
+   * No request was sent at all: the selector had nothing to select for (an empty catalog), or the
+   * deterministic connector shortcut answered first. Distinct from 'call-failed' because reporting a model
+   * as "used" when nothing left the machine is the exact false claim this vocabulary exists to prevent.
+   */
+  | 'call-not-attempted'
 
 export type FunctionModelEvent = Readonly<{
   at: number

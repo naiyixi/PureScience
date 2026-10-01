@@ -611,10 +611,13 @@ const registerCoreSettingsApplicationCommands = (
         if (request.action === 'probe') {
           // One immediate selection, returned with the refreshed setting and trail: the row, the result and
           // the history then describe the same moment instead of three different ones.
-          const [models, events, probe] = await Promise.all([
+          // The probe is awaited BEFORE the other two reads: reading the trail in parallel with the run
+          // that writes to it returns the entry before last, and the panel would then show a history that
+          // stops one run short of the result beside it.
+          const probe = await dependencies.service.probeFunctionModel(request.functionId)
+          const [models, events] = await Promise.all([
             dependencies.service.getFunctionModels(),
-            Promise.resolve(dependencies.service.getFunctionModelEvents()),
-            dependencies.service.probeFunctionModel(request.functionId)
+            Promise.resolve(dependencies.service.getFunctionModelEvents())
           ])
 
           return { models, events, probe }

@@ -1815,6 +1815,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.functionModelTrailUsed': '{provider}의 {model} 사용',
   'settings.functionModelTrailBuiltIn': '내장 경로:',
   'settings.functionModelTrailCallFailed': '호출 실패',
+  'settings.functionModelNotAttempted': '요청이 전송되지 않았습니다(선택할 항목 없음)',
 
   'settings.functionModelDetecting': '모델 호출 중…',
   'settings.functionModelProbeRun': '지금 선택을 한 번 실행',

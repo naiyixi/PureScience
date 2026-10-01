@@ -1711,6 +1711,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.functionModelTrailUsed': '使用 {model}（來自 {provider}）',
   'settings.functionModelTrailBuiltIn': '內建路徑：',
   'settings.functionModelTrailCallFailed': '呼叫失敗',
+  'settings.functionModelNotAttempted': '未發出請求：沒有可選項',
 
   'settings.functionModelDetecting': '正在呼叫模型…',
   'settings.functionModelProbeRun': '立即試跑一次選擇',

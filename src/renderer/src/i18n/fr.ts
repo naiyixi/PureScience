@@ -1892,6 +1892,7 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.functionModelTrailUsed': 'a utilisé {model} de {provider}',
   'settings.functionModelTrailBuiltIn': 'voie intégrée :',
   'settings.functionModelTrailCallFailed': "l'appel a échoué",
+  'settings.functionModelNotAttempted': 'aucune requête envoyée : rien à sélectionner',
 
   'settings.functionModelDetecting': 'Appel du modèle…',
   'settings.functionModelProbeRun': 'Lancer une sélection maintenant',
