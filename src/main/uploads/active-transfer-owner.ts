@@ -198,7 +198,8 @@ class ActiveTransferOwner {
     const { filename, filePath } = await moveToUniqueUploadFile(
       transfer.stagingPath,
       pendingDir,
-      toSafeUploadFilename(transfer.name)
+      toSafeUploadFilename(transfer.name),
+      this.storageRoot
     )
     this.activeTransfers.delete(transfer.transferId)
 
@@ -334,7 +335,8 @@ class ActiveTransferOwner {
       const { filename, filePath } = await moveToUniqueUploadFile(
         stagingPath,
         pendingDir,
-        toSafeUploadFilename(originalName)
+        toSafeUploadFilename(originalName),
+        this.storageRoot
       )
 
       return createUploadedAttachment({

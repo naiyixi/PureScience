@@ -148,7 +148,8 @@ class StagedPublicationOwner {
     const { filename, filePath } = await moveToUniqueUploadFile(
       sourcePath,
       targetDir,
-      attachment.name
+      attachment.name,
+      this.storageRoot
     )
 
     return createUploadedAttachment({

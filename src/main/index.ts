@@ -39,6 +39,7 @@ import {
   reportApplicationStartupFailure
 } from './diagnostics/startup'
 import { createLogger, diagnosticErrorFields, flushLogs } from './logger'
+import { measureSpace, pruneUnreferencedContent } from './storage/content-store'
 import {
   createRendererFailureReporter,
   registerRendererDiagnosticsIpc
@@ -428,6 +429,28 @@ async function startElectronApp(mainEntryPath: string): Promise<void> {
       const unreadTaskRepository = new UnreadTaskDbRepository(() =>
         getProjectDbClient(resolveStorageRoot())
       )
+
+      // Content storage maintenance, detached so it never delays the window: content that no name points at
+      // any more is unreachable and is dropped, then the space numbers are MEASURED off the filesystem and
+      // logged — a report that can be checked against `du` rather than believed.
+      void (async () => {
+        const log = createLogger('storage')
+        try {
+          const storageRoot = resolveStorageRoot()
+          const pruned = await pruneUnreferencedContent({ storageRoot })
+          const space = await measureSpace({ storageRoot })
+          log.info('content storage', {
+            prunedFiles: pruned.removed,
+            prunedBytes: pruned.bytes,
+            uniqueBytes: space.uniqueBytes,
+            totalBytes: space.totalBytes,
+            files: space.files,
+            linkedFiles: space.linkedFiles
+          })
+        } catch (error) {
+          log.warn('content storage maintenance failed', diagnosticErrorFields(error))
+        }
+      })()
       const unreadTaskController = createUnreadTaskController({
         headless: webMode.headless,
         // Only the main conversation window can acknowledge a visible session. A focused preview

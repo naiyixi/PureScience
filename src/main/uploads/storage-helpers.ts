@@ -1,5 +1,7 @@
 import { constants } from 'node:fs'
 import { copyFile, link, rm, stat } from 'node:fs/promises'
+
+import { installContent } from '../storage/content-store'
 import { basename, extname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 
 import {
@@ -100,7 +102,8 @@ const getSessionUploadDir = (storageRoot: string, sessionId: string): string => 
 const moveToUniqueUploadFile = async (
   sourcePath: string,
   targetDir: string,
-  filename: string
+  filename: string,
+  storageRoot: string
 ): Promise<{ filename: string; filePath: string }> => {
   const safeFilename = toSafeUploadFilename(filename)
 
@@ -118,6 +121,11 @@ const moveToUniqueUploadFile = async (
         await copyFile(sourcePath, filePath, constants.COPYFILE_EXCL)
       }
       await rm(sourcePath, { force: true })
+      // The bytes are in place; now they are also content. The first copy of a digest gains a canonical name
+      // (no extra bytes) and a later copy of the same bytes is replaced by a link to the copy already on
+      // disk, so uploading the same file twice does not store it twice. 'unavailable' means the filesystem
+      // refused a link; the file is untouched and nothing is claimed about it.
+      await installContent({ path: filePath, storageRoot })
       return { filename: candidate, filePath }
     } catch (error) {
       if (isFileExistsError(error)) continue
