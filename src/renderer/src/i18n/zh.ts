@@ -3397,6 +3397,7 @@ export const zh = {
   'writeAudit.writeUncaptured': '写出未捕获：{reason}。',
   'writeAudit.sharedDirectory': '共享目录中看到 {n} 处变化，无法归属到某一轮。',
   'writeAudit.observedPaths': '观察到的变化：{paths}',
+  'writeAudit.readMissing': '有 {n} 个路径被打开但未找到：{paths}',
   'writeAudit.legacyRuns': '有 {n} 轮记录早于本项证据，其文件活动不可知。',
   'writeAudit.summaryReads': '从本次会话读入 {n} 个文件',
   'writeAudit.reason.driver-without-read-capture': '该驱动不上报读入',

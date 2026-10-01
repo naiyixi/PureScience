@@ -63,6 +63,33 @@ describe('parseLoopResponse', () => {
     expect(emptyReads?.readFiles).toEqual([])
   })
 
+  it('carries whether an opened path was actually there', () => {
+    const parsed = parseLoopResponse(
+      JSON.stringify({
+        req_id: 'r-present',
+        stdout: '',
+        stderr: '',
+        error: null,
+        result: null,
+        cwd: '/tmp',
+        figures: [],
+        read_files: [
+          { path: '/tmp/here.csv', reads: 1, present: true },
+          { path: '/tmp/gone.csv', reads: 1, present: false },
+          // A driver that predates the flag reports no `present`: the field stays absent so the
+          // classifier can tell "unknown" from "was not there".
+          { path: '/tmp/older.csv', reads: 1 }
+        ]
+      })
+    )
+
+    expect(parsed?.readFiles).toEqual([
+      { path: '/tmp/here.csv', reads: 1, present: true },
+      { path: '/tmp/gone.csv', reads: 1, present: false },
+      { path: '/tmp/older.csv', reads: 1 }
+    ])
+  })
+
   it('drops unusable read entries instead of passing them through', () => {
     const parsed = parseLoopResponse(
       JSON.stringify({

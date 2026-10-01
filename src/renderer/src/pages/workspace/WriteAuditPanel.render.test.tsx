@@ -224,6 +224,25 @@ describe('WriteAuditPanel', () => {
     expect(container.querySelectorAll('[data-testid="write-audit-row"]')).toHaveLength(0)
   })
 
+  it('reports a path that was opened but not found without calling it an input', () => {
+    renderPanel([
+      makeRun({
+        fileEvidence: buildFileEvidence(
+          capturedReadEvidence([
+            { path: '/data/gone.csv', relativePath: 'data/gone.csv', kind: 'missing' }
+          ]),
+          { status: 'captured' }
+        )
+      })
+    ])
+
+    const notice = container.querySelector('[data-testid="write-audit-read-missing"]')?.textContent ?? ''
+    expect(notice).toContain('data/gone.csv')
+    expect(notice).toContain('not found')
+    // It must not show up as a file the result read.
+    expect(container.querySelectorAll('[data-testid="write-audit-read-row"]')).toHaveLength(0)
+  })
+
   it('says a bounded write capture is short instead of presenting it as complete', () => {
     renderPanel([
       makeRun({

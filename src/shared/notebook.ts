@@ -304,7 +304,10 @@ export type NotebookWorkingFile = {
 // A file the run OPENED FOR READING. 'input' = it already existed when the run started (the answer to
 // "which existing files did this result use"); 'intermediate' = this same run wrote it first, so it is
 // a step inside the run rather than an input to it.
-export type NotebookReadFileKind = 'input' | 'intermediate'
+// 'missing' is the third state on purpose: the driver records an OPEN, and an open can fail. A path that
+// was not there is not an input the run used, and reporting it as one would put a file that was never
+// read into the list of what this result depends on.
+export type NotebookReadFileKind = 'input' | 'intermediate' | 'missing'
 
 export type NotebookReadFile = {
   // Host path, for opening the file.
@@ -383,14 +386,17 @@ export type NotebookFileEvidenceUncapturedStatus = Exclude<
 // Classifies collected read paths against what the same run wrote. Kept pure so the rule is testable
 // without a kernel: a path in the written set is an intermediate step, everything else is an input.
 export const classifyReadFiles = (
-  readPaths: ReadonlyArray<{ path: string; relativePath: string; reads?: number }>,
+  readPaths: ReadonlyArray<{ path: string; relativePath: string; reads?: number; present?: boolean }>,
   writtenFiles: ReadonlyArray<{ path: string; relativePath: string }>
 ): NotebookReadFile[] => {
   const written = new Set(writtenFiles.map((file) => file.relativePath))
   return readPaths.map((read) => ({
     path: read.path,
     relativePath: read.relativePath,
-    kind: written.has(read.relativePath) ? 'intermediate' : 'input',
+    // A path that was not there outranks the classification: it cannot be an input this run used, and it
+    // cannot be an intermediate step either — nothing was read.
+    kind:
+      read.present === false ? 'missing' : written.has(read.relativePath) ? 'intermediate' : 'input',
     ...(read.reads === undefined ? {} : { reads: read.reads })
   }))
 }
@@ -473,7 +479,7 @@ const EVIDENCE_REASONS: readonly NotebookFileEvidenceReason[] = [
   'observation-unavailable'
 ]
 
-const READ_FILE_KINDS: readonly NotebookReadFileKind[] = ['input', 'intermediate']
+const READ_FILE_KINDS: readonly NotebookReadFileKind[] = ['input', 'intermediate', 'missing']
 
 // Reads back a persisted evidence record. Anything malformed is dropped WHOLE rather than partially
 // trusted: a half-read list that still claims 'captured' is worse than no evidence at all, because the

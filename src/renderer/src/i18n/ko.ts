@@ -3538,6 +3538,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'writeAudit.sharedDirectory':
     '공유 디렉터리에서 변경 {n}건이 관찰되었지만 어느 실행인지 귀속할 수 없습니다.',
   'writeAudit.observedPaths': '관찰된 변경: {paths}',
+  'writeAudit.readMissing': '{n}개 경로를 열었지만 찾지 못했습니다: {paths}',
   'writeAudit.legacyRuns': '{n}개 실행은 이 증거보다 이전이라 파일 활동을 알 수 없습니다.',
   'writeAudit.summaryReads': '세션에서 파일 {n}개 읽기',
   'writeAudit.reason.driver-without-read-capture': '이 드라이버는 읽기를 보고하지 않습니다',

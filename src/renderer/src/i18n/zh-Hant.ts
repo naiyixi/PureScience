@@ -3336,6 +3336,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'writeAudit.writeUncaptured': '寫出未擷取：{reason}。',
   'writeAudit.sharedDirectory': '共享目錄中看到 {n} 處變化，無法歸屬到某一輪。',
   'writeAudit.observedPaths': '觀察到的變化：{paths}',
+  'writeAudit.readMissing': '有 {n} 個路徑被打開但未找到：{paths}',
   'writeAudit.legacyRuns': '有 {n} 輪紀錄早於本項證據，其檔案活動不可知。',
   'writeAudit.summaryReads': '從本次工作階段讀入 {n} 個檔案',
   'writeAudit.reason.driver-without-read-capture': '該驅動不上報讀入',

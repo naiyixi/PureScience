@@ -3606,6 +3606,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'writeAudit.sharedDirectory':
     '共有ディレクトリで {n} 件の変更が見つかりましたが、どの実行のものか特定できません。',
   'writeAudit.observedPaths': '観測された変更：{paths}',
+  'writeAudit.readMissing': '{n} 件のパスは開かれましたが存在しませんでした：{paths}',
   'writeAudit.legacyRuns': '{n} 件の実行はこの記録より前のもので、ファイル操作は不明です。',
   'writeAudit.summaryReads': 'このセッションから {n} 件のファイルを読み取り',
   'writeAudit.reason.driver-without-read-capture': 'このドライバーは読み取りを報告しません',

@@ -500,8 +500,11 @@ def _run(code):
         _globals["_read_capture_active"] = False
         sys.stdout, sys.stderr = old_out, old_err
     figures = _capture_figures()
+    # The audit event fires BEFORE the open happens, so an attempt on a file that is not there would
+    # otherwise be reported as an input the run used. Existence is settled here, at the end of the cell,
+    # and travels with the entry: the reader can then tell an input from a path that was merely tried.
     read_files = [
-        {"path": path, "reads": count}
+        {"path": path, "reads": count, "present": os.path.exists(path)}
         for path, count in sorted(_globals.get("_read_counts", {}).items())
     ]
     return {"stdout": out.getvalue(), "stderr": err.getvalue(), "error": error,

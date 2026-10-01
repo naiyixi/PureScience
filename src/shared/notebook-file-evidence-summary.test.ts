@@ -142,6 +142,25 @@ describe('file evidence session summary', () => {
     })
   })
 
+  it('separates a path that was opened but not found from the inputs the run read', () => {
+    const summary = summarizeFileEvidence([
+      run(
+        'r',
+        buildFileEvidence(
+          capturedReadEvidence([
+            { path: '/s/data/real.csv', relativePath: 'data/real.csv', kind: 'input', reads: 1 },
+            { path: '/s/data/gone.csv', relativePath: 'data/gone.csv', kind: 'missing' }
+          ]),
+          { status: 'captured' }
+        )
+      )
+    ])
+
+    expect(summary.readRows.map((row) => row.relativePath)).toEqual(['data/real.csv'])
+    expect(summary.missingReadPaths).toEqual(['data/gone.csv'])
+    expect(summary.read.captured).toBe(1)
+  })
+
   it("keeps a shared directory's changes out of the file list but visible as an observation", () => {
     const summary = summarizeFileEvidence([
       run(

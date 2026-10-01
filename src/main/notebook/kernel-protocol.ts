@@ -32,6 +32,9 @@ export type KernelLoopResponse = {
 export type KernelLoopReadFile = {
   path: string
   reads: number
+  // Whether the path existed when the cell finished. The loop's audit hook fires before the open, so a
+  // failed attempt would otherwise reach the run record looking exactly like an input that was used.
+  present?: boolean
 }
 
 // One entry of the kernel's live namespace. `shape` is a compact structural hint (array dims,
@@ -143,7 +146,8 @@ export function parseLoopResponse(line: string): KernelLoopResponse | null {
         .filter((entry) => typeof entry.path === 'string' && entry.path.length > 0)
         .map((entry) => ({
           path: entry.path as string,
-          reads: typeof entry.reads === 'number' && Number.isFinite(entry.reads) ? entry.reads : 1
+          reads: typeof entry.reads === 'number' && Number.isFinite(entry.reads) ? entry.reads : 1,
+          ...(typeof entry.present === 'boolean' ? { present: entry.present } : {})
         }))
     : undefined
 

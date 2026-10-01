@@ -35,6 +35,9 @@ export type FileEvidenceSummary = {
   read: AxisSummary
   write: AxisSummary
   readRows: ReadInRow[]
+  // Paths the runs OPENED but that were not there. Kept out of readRows: a file that was never read is
+  // not something the result depends on, and listing it as an input would say exactly that.
+  missingReadPaths: string[]
   // Paths seen changing in a directory two sessions shared, kept out of any run's file list.
   observedPaths: string[]
   // Runs whose record predates the evidence entirely: their file activity is unknown, not empty.
@@ -112,6 +115,7 @@ export const summarizeFileEvidence = (
   const read = emptyAxis()
   const write = emptyAxis()
   const readRows: ReadInRow[] = []
+  const missingReadPaths: string[] = []
   const observedPaths: string[] = []
   let runsWithoutEvidence = 0
   let runsWithEvidence = 0
@@ -129,6 +133,11 @@ export const summarizeFileEvidence = (
       run.fileEvidence.read.readStatus === 'truncated'
     ) {
       for (const file of run.fileEvidence.read.read) {
+        if (file.kind === 'missing') {
+          if (!missingReadPaths.includes(file.relativePath))
+            missingReadPaths.push(file.relativePath)
+          continue
+        }
         readRows.push({
           runId: run.runId,
           relativePath: file.relativePath,
@@ -148,7 +157,15 @@ export const summarizeFileEvidence = (
       left.relativePath.localeCompare(right.relativePath)
   )
 
-  return { read, write, readRows, observedPaths, runsWithoutEvidence, runsWithEvidence }
+  return {
+    read,
+    write,
+    readRows,
+    missingReadPaths,
+    observedPaths,
+    runsWithoutEvidence,
+    runsWithEvidence
+  }
 }
 
 // Which single sentence the read axis deserves. Ordered from "we looked and it was empty" to "we could

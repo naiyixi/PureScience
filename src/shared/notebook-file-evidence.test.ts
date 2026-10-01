@@ -47,6 +47,28 @@ describe('per-run file evidence', () => {
       expect(file.kind).toBe('intermediate')
     })
 
+    it('never calls a path that was not there an input the run used', () => {
+      // The driver records the OPEN, and the audit hook fires before the open happens, so a failed
+      // attempt arrives looking exactly like a read. Existence settles it.
+      const [missing, present] = classifyReadFiles(
+        [
+          { path: '/ws/data/gone.csv', relativePath: 'data/gone.csv', present: false },
+          { path: '/ws/data/here.csv', relativePath: 'data/here.csv', present: true, reads: 1 }
+        ],
+        written
+      )
+
+      expect(missing.kind).toBe('missing')
+      expect(present.kind).toBe('input')
+      // Even a file this run wrote earlier is 'missing' if it was gone when the cell ended: nothing was
+      // read, so it cannot be an intermediate step either.
+      const [writtenThenGone] = classifyReadFiles(
+        [{ path: '/ws/data/clean.csv', relativePath: 'data/clean.csv', present: false }],
+        written
+      )
+      expect(writtenThenGone.kind).toBe('missing')
+    })
+
     it('leaves reads absent when the driver did not report a count', () => {
       const [file] = classifyReadFiles([{ path: '/ws/a.csv', relativePath: 'a.csv' }], [])
 

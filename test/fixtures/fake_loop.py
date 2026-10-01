@@ -34,7 +34,13 @@ def _read_report(code):
     # realpath, exactly like the real loop: on macOS TMPDIR is /var while the resolved form is
     # /private/var, which is what the driver has to cope with.
     inside = os.path.realpath(os.path.join(os.getcwd(), payload.get("in", "")))
-    reads = [{"path": inside, "reads": int(payload.get("reads", 1))}]
+    reads = [
+        {
+            "path": inside,
+            "reads": int(payload.get("reads", 1)),
+            "present": bool(payload.get("present", True)),
+        }
+    ]
     outside = payload.get("out")
     if outside:
         reads.append({"path": os.path.realpath(outside), "reads": 1})

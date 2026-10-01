@@ -3613,6 +3613,7 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'writeAudit.sharedDirectory':
     'В общем каталоге замечено {n} изменений; их нельзя отнести к одному запуску.',
   'writeAudit.observedPaths': 'Наблюдаемые изменения: {paths}',
+  'writeAudit.readMissing': '{n} путей были открыты и не найдены: {paths}',
   'writeAudit.legacyRuns': '{n} запусков старше этих данных, их работа с файлами неизвестна.',
   'writeAudit.summaryReads': 'Прочитано файлов из сессии: {n}',
   'writeAudit.reason.driver-without-read-capture': 'Этот драйвер не сообщает о чтениях',

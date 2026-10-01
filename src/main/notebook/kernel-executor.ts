@@ -289,7 +289,8 @@ const buildReadEvidence = async (
     .map(({ entry, canonical }) => ({
       path: canonical,
       relativePath: toPortableNotebookRelativePath(relative(sessionRoot, canonical)),
-      reads: entry.reads
+      reads: entry.reads,
+      ...(entry.present === undefined ? {} : { present: entry.present })
     }))
 
   const classified = classifyReadFiles(reads, workingFiles)

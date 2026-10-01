@@ -40,7 +40,9 @@ const KIND_STYLES: Record<ChangeKind, string> = {
   removed: 'bg-red-50 text-red-700 dark:bg-red-950/20 dark:text-red-300'
 }
 
-const READ_KIND_LABEL_KEYS: Record<NotebookReadFileKind, TranslationKey> = {
+// Only the kinds that reach the read table: 'missing' paths are surfaced as a notice instead, so a label
+// for them would be a string nothing can ever render.
+const READ_KIND_LABEL_KEYS: Record<Exclude<NotebookReadFileKind, 'missing'>, TranslationKey> = {
   input: 'writeAudit.readKindInput',
   intermediate: 'writeAudit.readKindIntermediate'
 }
@@ -244,6 +246,11 @@ const WriteAuditPanel = ({ runs }: WriteAuditPanelProps): React.JSX.Element => {
           notice(
             `${t('writeAudit.sharedDirectory').replace('{n}', String(summary.observedPaths.length))} ${t('writeAudit.observedPaths').replace('{paths}', summary.observedPaths.join(', '))}`,
             'write-audit-shared-directory'
+          )}
+        {summary.missingReadPaths.length > 0 &&
+          notice(
+            `${t('writeAudit.readMissing').replace('{n}', String(summary.missingReadPaths.length))} ${t('writeAudit.observedPaths').replace('{paths}', summary.missingReadPaths.join(', '))}`,
+            'write-audit-read-missing'
           )}
         {summary.runsWithoutEvidence > 0 &&
           notice(

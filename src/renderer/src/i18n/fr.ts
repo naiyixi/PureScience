@@ -3697,6 +3697,7 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'writeAudit.sharedDirectory':
     '{n} modifications ont été vues dans un répertoire partagé par deux sessions ; elles ne sont attribuées à aucune exécution.',
   'writeAudit.observedPaths': 'Modifications observées : {paths}',
+  'writeAudit.readMissing': '{n} chemins ont été ouverts et introuvables : {paths}',
   'writeAudit.legacyRuns':
     '{n} exécutions précèdent cette preuve : leur activité de fichiers est inconnue.',
   'writeAudit.summaryReads': '{n} fichiers lus depuis cette session',

@@ -3635,6 +3635,7 @@ export const en: Record<ZhKey, string> = {
   'writeAudit.sharedDirectory':
     '{n} changes were seen in a directory two sessions shared; they are not attributed to a run.',
   'writeAudit.observedPaths': 'Seen changing: {paths}',
+  'writeAudit.readMissing': '{n} paths were opened and not found: {paths}',
   'writeAudit.legacyRuns': '{n} runs predate this evidence, so their file activity is unknown.',
   'writeAudit.summaryReads': '{n} files read from this session',
   'writeAudit.reason.driver-without-read-capture': 'This driver does not report reads',

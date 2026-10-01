@@ -3709,6 +3709,7 @@ export const de: Partial<Record<ZhKey, string>> = {
   'writeAudit.sharedDirectory':
     'In einem gemeinsam genutzten Verzeichnis wurden {n} Änderungen gesehen; sie lassen sich keinem Lauf zuordnen.',
   'writeAudit.observedPaths': 'Gesehene Änderungen: {paths}',
+  'writeAudit.readMissing': '{n} Pfade wurden geöffnet und nicht gefunden: {paths}',
   'writeAudit.legacyRuns':
     '{n} Läufe stammen von vor diesem Nachweis; ihre Dateiaktivität ist unbekannt.',
   'writeAudit.summaryReads': '{n} Dateien aus dieser Sitzung gelesen',
