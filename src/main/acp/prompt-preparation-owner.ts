@@ -23,7 +23,11 @@ import type {
 import type { TurnSkillHandle } from './turn-skill-owner'
 
 const log = createLogger('acp-prompt-preparation-owner')
-type SelectBridgeSkills = NonNullable<ResolvedAgentBackend['responsesBridgeLease']>['selectSkills']
+// The one definition of "select skills through the bridge". The prompt composition builds a wrapper around
+// this signature, so both sides must mean the same thing by it.
+export type SelectBridgeSkills = NonNullable<
+  ResolvedAgentBackend['responsesBridgeLease']
+>['selectSkills']
 type NotebookTurnInputs = Readonly<{
   projectId: string
   appSessionId: string

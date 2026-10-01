@@ -3,7 +3,7 @@ import type { ArtifactTurnHandle } from './artifact-turn-owner'
 import { AcpContextCompactionWorkflow } from './context-compaction-workflow'
 import { createInputNoticeResolver } from './input-notice'
 import { createLogger, errorLogFields } from '../logger'
-import { AcpPromptPreparationOwner } from './prompt-preparation-owner'
+import { AcpPromptPreparationOwner, type SelectBridgeSkills } from './prompt-preparation-owner'
 import {
   AcpPromptTurnWorkflow,
   type AcpPromptTurnPlanWorkflow,
@@ -12,6 +12,7 @@ import {
 import type { AcpRuntimeOptions } from './runtime'
 import type { AcpRuntimeBaseOwners } from './runtime-base-composition'
 import type { AcpRuntimeSessionOwners } from './runtime-session-composition'
+import type { AcpSettingsCapabilities } from '../settings/service-capabilities'
 
 type AcpRuntimePromptReloadHost = Readonly<{
   disconnect: AcpPromptTurnWorkflowOptions['disconnectForReload']
@@ -55,6 +56,83 @@ const safeLogError = (message: string, error: unknown): void => {
 // Composes the complete Prompt workflow around authoritative Base and Session owners. The host is
 // limited to Plan application policy and public reload re-entry; constructors never invoke it.
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
+type SkillSelectionFunctionModels = Pick<
+  AcpSettingsCapabilities,
+  'recordFunctionModelEvent' | 'resolveFunctionModelTarget'
+>
+
+/**
+ * Skill selection is one of the app's narrow model calls, so it honours the function-level slot: the
+ * configured model answers, or the built-in path runs — and either way the trail records which happened,
+ * because "the model I configured was not used" has to be answerable rather than merely invisible.
+ *
+ * Exported and dependency-injected so the wiring itself is testable: the branch that decides between the
+ * configured model and the built-in path is exactly where a silent fallback would hide.
+ */
+export const createSkillSelectionBridge = ({
+  functionModels,
+  select
+}: {
+  functionModels?: SkillSelectionFunctionModels
+  select: (
+    text: string,
+    catalog: Parameters<SelectBridgeSkills>[1],
+    signal?: AbortSignal,
+    targetOverride?: Parameters<SelectBridgeSkills>[3]
+    // Undefined is an honest answer here: the connection owner has no lane to a bridge at all when the
+    // session is not connected, and that is the built-in path, not an error.
+  ) => Promise<Awaited<ReturnType<SelectBridgeSkills>> | undefined>
+}): SelectBridgeSkills => {
+  const builtIn = async (
+    text: string,
+    catalog: Parameters<SelectBridgeSkills>[1],
+    signal?: AbortSignal
+  ): Promise<Awaited<ReturnType<SelectBridgeSkills>>> => (await select(text, catalog, signal)) ?? []
+
+  return async (text, catalog, signal) => {
+    if (!functionModels) return builtIn(text, catalog, signal)
+
+    const { resolution, target } =
+      await functionModels.resolveFunctionModelTarget('skill-selection')
+    if (!resolution.override || !target) {
+      // No usable model: the built-in path runs, and the trail says which kind of "no" this was —
+      // "nobody configured it" and "the configured one cannot be used" are different facts.
+      functionModels.recordFunctionModelEvent({
+        functionId: 'skill-selection',
+        outcome: 'built-in',
+        reason: resolution.unusable[0] ?? 'not-configured'
+      })
+
+      return builtIn(text, catalog, signal)
+    }
+
+    const override = resolution.override
+    try {
+      const selected = (await select(text, catalog, signal, target)) ?? []
+      functionModels.recordFunctionModelEvent({
+        functionId: 'skill-selection',
+        outcome: 'used-model',
+        providerId: override.providerId,
+        model: override.model
+      })
+
+      return selected
+    } catch {
+      // A selection that failed must not fail the turn: the whole catalog still reaches the agent, and the
+      // trail says the configured model did not answer instead of leaving it unexplained.
+      functionModels.recordFunctionModelEvent({
+        functionId: 'skill-selection',
+        outcome: 'built-in',
+        reason: 'call-failed',
+        providerId: override.providerId,
+        model: override.model
+      })
+
+      return builtIn(text, catalog, signal)
+    }
+  }
+}
+
 const composeAcpRuntimePromptOwners = (
   options: AcpRuntimeOptions,
   base: AcpRuntimeBaseOwners,
@@ -140,53 +218,11 @@ const composeAcpRuntimePromptOwners = (
     promptContent: base.promptContentOwner,
     presentation: base.sessionPresentationPolicy,
     contextUsage: base.contextUsageTracker,
-    // Skill selection is one of the app's narrow model calls, so it honours the function-level slot when
-    // settings are wired here: the configured model answers, or the built-in path runs — and either way the
-    // trail records which happened, because "the model I configured was not used" must be answerable.
-    selectBridgeSkills: async (text, catalog, signal) => {
-      const functionModels = options.functionModels
-      if (!functionModels) {
-        return (await base.connectionResources.selectBridgeSkills(text, catalog, signal)) ?? []
-      }
-
-      const { resolution, target } =
-        await functionModels.resolveFunctionModelTarget('skill-selection')
-      if (!resolution.override || !target) {
-        functionModels.recordFunctionModelEvent({
-          functionId: 'skill-selection',
-          outcome: 'built-in',
-          reason: resolution.unusable[0] ?? 'not-configured'
-        })
-
-        return (await base.connectionResources.selectBridgeSkills(text, catalog, signal)) ?? []
-      }
-
-      const override = resolution.override
-      try {
-        const selected =
-          (await base.connectionResources.selectBridgeSkills(text, catalog, signal, target)) ?? []
-        functionModels.recordFunctionModelEvent({
-          functionId: 'skill-selection',
-          outcome: 'used-model',
-          providerId: override.providerId,
-          model: override.model
-        })
-
-        return selected
-      } catch {
-        // A selection that failed must not fail the turn: the whole catalog still reaches the agent, and the
-        // trail says the configured model did not answer rather than leaving it unexplained.
-        functionModels.recordFunctionModelEvent({
-          functionId: 'skill-selection',
-          outcome: 'built-in',
-          reason: 'call-failed',
-          providerId: override.providerId,
-          model: override.model
-        })
-
-        return (await base.connectionResources.selectBridgeSkills(text, catalog, signal)) ?? []
-      }
-    },
+    selectBridgeSkills: createSkillSelectionBridge({
+      ...(options.functionModels ? { functionModels: options.functionModels } : {}),
+      select: (text, catalog, signal, targetOverride) =>
+        base.connectionResources.selectBridgeSkills(text, catalog, signal, targetOverride)
+    }),
     authorizeReferencedUploads: options.skillImport?.authorizeReferencedUploads,
     imageInputCompatibility: options.imageInputCompatibility,
     inputNotice: (request) =>
