@@ -29,7 +29,7 @@ We label every capability the way we build it: ✅ shipped **and verified on a r
 
 **Rules we do not relax**: no model weight is downloaded without a published SHA256; an imported style or skill without a licence is not installed; a field the record does not carry stays empty and is named — never filled in on its own; code a model _reconstructed_ is never certified as a reproduction; timing conclusions are only drawn from the same corpus, the same driver, measured before and after (a millisecond assertion that wobbles under load is reported as unstable rather than tuned until it passes).
 
-> 💡 **[PureScience v1.78.0 released](https://github.com/naiyixi/PureScience/releases/latest)** — Every run now lists the files it read and wrote *and* what it could not capture with a named reason; identical content is stored once, with the space saved measured from the filesystem rather than asserted; skill lists carry a recomputable quality score and an imported skill says whether its content still matches what was imported; and the function-model probe path proves the real round-trip, its timing and its fallback.
+> 💡 **[PureScience v1.78.0 released](https://github.com/naiyixi/PureScience/releases/latest)** — Every run now lists the files it read and wrote *and* what it could not capture, with a named reason; identical content is stored once and the space saved is measured from the filesystem rather than asserted; skill rows carry a recomputable quality score, an imported skill says whether its content still matches what was imported, and the function-model probe path proves a real round-trip with its measured timing.
 
 <p align="center">
   <img src="docs/purescience-title.png" alt="PureScience" width="620" />
