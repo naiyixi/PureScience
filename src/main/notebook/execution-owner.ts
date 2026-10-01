@@ -14,6 +14,7 @@ import type {
   NotebookWorkingFile,
   RunNotebookCellRequest
 } from '../../shared/notebook'
+import { uncapturedReadEvidence } from '../../shared/notebook'
 import { getAppClaudeConfigDir } from '../settings/provider-env'
 import {
   unresolvedExecutionProtectionSnapshot,
@@ -46,7 +47,14 @@ import { startWorkingFileObservation } from './working-file-observer'
 
 type NotebookControlResult = Pick<
   NotebookSessionExecutionResult,
-  'status' | 'stdout' | 'stderr' | 'traceback' | 'outputs' | 'workingFiles' | 'fileCapture'
+  | 'status'
+  | 'stdout'
+  | 'stderr'
+  | 'traceback'
+  | 'outputs'
+  | 'workingFiles'
+  | 'fileCapture'
+  | 'fileReads'
 >
 
 type NotebookControlCompletionInterceptor = {
@@ -539,6 +547,9 @@ class NotebookExecutionOwner {
           outputs,
           workingFiles,
           fileCapture,
+          // A shell run has no interpreter hook to report reads: named, so the empty list it produces
+          // is never mistaken for "this run read nothing".
+          fileReads: uncapturedReadEvidence('kernel-language-unsupported'),
           exitCode: shellResult.exitCode
         }
       }

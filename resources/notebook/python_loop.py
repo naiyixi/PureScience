@@ -292,6 +292,10 @@ def _protected_paths_audit(event, args):
         isinstance(flags, int)
         and bool(flags & (os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_TRUNC | os.O_APPEND))
     )
+    # Read capture happens only after every guard has had its say: a read the guard refuses (a
+    # protected directory raises below) never happened, so it must not appear as evidence.
+    if not write_open:
+        _read_capture_record(resolved)
     if write_open and os.path.basename(resolved).casefold() == "pyvenv.cfg":
         _blocked_environment_mutation()
     if write_open and _managed_runtime_dir and (
@@ -301,6 +305,44 @@ def _protected_paths_audit(event, args):
     for directory in _protected_dirs:
         if resolved == directory or resolved.startswith(directory + os.sep):
             raise PermissionError("Access to protected application files is not allowed.")
+
+# --- per-run read capture (added to the same audit hook the guard already uses) -----------------
+# Which existing files a cell READ is evidence the guard never collected: the hook below saw every
+# open() already, but only to police writes. Reads are filtered to the session's own roots — the
+# interpreter's own imports (site-packages, stdlib) are not this run's evidence and would bury it.
+# The limit is a promise, not a silent cut: past it the driver reports HOW MANY paths went
+# unrecorded, so a short list can never be read as a complete one.
+_read_capture_limit = 2000
+_read_capture_roots = [
+    os.path.realpath(value)
+    for value in (
+        os.environ.get("PURESCIENCE_NOTEBOOK_DATA_DIR", ""),
+        os.environ.get("PURESCIENCE_NOTEBOOK_DIR", ""),
+    )
+    if value
+]
+_read_counts = {}
+_read_dropped = 0
+_read_capture_active = False
+
+
+def _read_capture_record(resolved):
+    global _read_dropped
+    if not _read_capture_active or not _read_capture_roots:
+        return
+    for root in _read_capture_roots:
+        if resolved != root and not resolved.startswith(root + os.sep):
+            continue
+        count = _read_counts.get(resolved)
+        if count is None:
+            if len(_read_counts) >= _read_capture_limit:
+                _read_dropped += 1
+                return
+            _read_counts[resolved] = 1
+        else:
+            _read_counts[resolved] = count + 1
+        return
+
 
 sys.addaudithook(_protected_paths_audit)
 
@@ -428,6 +470,12 @@ def _run(code):
     sys.stdout, sys.stderr = out, err
     error = None
     result = None
+    # The window matters: only reads made while the cell runs belong to this run, so the collector is
+    # opened here and closed in the finally below (interpreter boot and figure capture are not the
+    # cell's doing).
+    _globals["_read_counts"] = {}
+    _globals["_read_dropped"] = 0
+    _globals["_read_capture_active"] = True
     try:
         parsed = ast.parse(code, mode="exec")
         body = parsed.body
@@ -449,11 +497,18 @@ def _run(code):
     except Exception:
         error = traceback.format_exc()
     finally:
+        _globals["_read_capture_active"] = False
         sys.stdout, sys.stderr = old_out, old_err
     figures = _capture_figures()
+    read_files = [
+        {"path": path, "reads": count}
+        for path, count in sorted(_globals.get("_read_counts", {}).items())
+    ]
     return {"stdout": out.getvalue(), "stderr": err.getvalue(), "error": error,
             "result": result, "cwd": os.getcwd(), "figures": figures,
-            "environment": _capture_environment()}
+            "environment": _capture_environment(),
+            "read_files": read_files,
+            "read_files_truncated": _globals.get("_read_dropped", 0)}
 
 
 def _shape_of(value):
@@ -518,6 +573,8 @@ def main():
             # including during figure capture or the response write itself. Catching it
             # here means the loop always survives instead of dying mid-request.
             if request.get("action") == "inspect_variables":
+                # No cell ran, so there is no read evidence to report for this frame; the driver keeps
+                # the run's own capture from the executing request.
                 response = {"stdout": "", "stderr": "", "error": None, "result": None,
                             "cwd": os.getcwd(), "figures": [],
                             "environment": _capture_environment(),

@@ -357,4 +357,46 @@ describe('NotebookRunTerminalizationOwner', () => {
 
     expect(harness.events).toEqual(['append:running', 'notify:running', 'update:completed'])
   })
+
+  it('writes both axes of the per-run file evidence onto the record', async () => {
+    const harness = createHarness()
+
+    await harness.owner.run({
+      session,
+      runningRun: runningRun('run-evidence'),
+      invoke: async () => ({
+        ...completedResult(),
+        fileCapture: { status: 'truncated', droppedCount: 4 },
+        fileReads: {
+          read: [{ path: '/s/data/in.csv', relativePath: 'data/in.csv', kind: 'input', reads: 1 }],
+          readStatus: 'captured'
+        }
+      })
+    })
+
+    expect(harness.document().runs[0]?.fileEvidence).toEqual({
+      read: {
+        read: [{ path: '/s/data/in.csv', relativePath: 'data/in.csv', kind: 'input', reads: 1 }],
+        readStatus: 'captured'
+      },
+      write: { status: 'truncated', droppedCount: 4 }
+    })
+  })
+
+  it('names why a run has no evidence rather than leaving an empty list', async () => {
+    const harness = createHarness()
+
+    await harness.owner.run({
+      session,
+      runningRun: runningRun('run-no-evidence'),
+      invoke: async () => completedResult()
+    })
+
+    // A run whose executor reported nothing at all still has to say which half is missing and why — an
+    // absent field would be indistinguishable from "this run touched no files".
+    expect(harness.document().runs[0]?.fileEvidence).toEqual({
+      read: { read: [], readStatus: 'unsupported', readReason: 'driver-without-read-capture' },
+      write: { status: 'unavailable', reason: 'observation-unavailable' }
+    })
+  })
 })

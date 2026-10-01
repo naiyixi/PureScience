@@ -1,6 +1,7 @@
 import type {
   NotebookEnvironmentManifest,
   NotebookFileCapture,
+  NotebookRunReadEvidence,
   NotebookOutput,
   NotebookRunEnvironmentCapture,
   NotebookRunRecord,
@@ -33,6 +34,7 @@ type NotebookRunTerminalResult = {
   outputs: NotebookOutput[]
   workingFiles?: NotebookWorkingFile[]
   fileCapture?: NotebookFileCapture
+  fileReads?: NotebookRunReadEvidence
   environmentManifest?: NotebookEnvironmentManifest
   environmentManifestChecksum?: string
   environmentManifestFingerprint?: string
@@ -106,7 +108,9 @@ class NotebookRunTerminalizationOwner {
       // The write axis comes from the observation that ran alongside this execution; the read axis is
       // still uncaptured on this platform path, and it says so instead of reporting an empty list.
       fileEvidence: buildFileEvidence(
-        uncapturedReadEvidence('driver-without-read-capture'),
+        // The read axis comes from the loop that ran this cell when it reports reads at all; when it
+        // does not, the record says which driver could not rather than showing an empty list.
+        result.fileReads ?? uncapturedReadEvidence('driver-without-read-capture'),
         result.fileCapture ?? unavailableWriteEvidence('observation-unavailable')
       ),
       environmentCapture,

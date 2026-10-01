@@ -2,6 +2,7 @@ import type {
   NotebookCell,
   NotebookEnvironmentManifest,
   NotebookFileCapture,
+  NotebookRunReadEvidence,
   NotebookKernelMetadata,
   NotebookLanguage,
   NotebookLiveEnvironmentOverlay,
@@ -61,6 +62,9 @@ export type NotebookSessionExecutionResult = {
   // unattributed + shared directory). Carried beside workingFiles so a short list can never be read
   // as a complete one.
   fileCapture?: NotebookFileCapture
+  // The read axis, built by the executor from what the loop reported. Absent when the caller produced
+  // no evidence at all (the run record then says why it has none).
+  fileReads?: NotebookRunReadEvidence
   environmentOverlay?: NotebookLiveEnvironmentOverlay
   environmentCapture?: NotebookRunEnvironmentCapture
   environmentManifest?: NotebookEnvironmentManifest

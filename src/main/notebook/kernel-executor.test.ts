@@ -565,6 +565,83 @@ gate('NotebookKernelExecutor (fake loop)', () => {
     }
   })
 
+  it('reports the reads a cell made, canonicalised to the session, and drops paths outside it', async () => {
+    cwdDir = await makeDefaultEnvCwd('os-kernel-reads-')
+    await mkdir(join(cwdDir, 'nb', 'data'), { recursive: true })
+    await writeFile(join(cwdDir, 'nb', 'data', 'input.csv'), 'a,b\n1,2\n')
+    const executor = makeExecutor()
+    try {
+      const result = await executor.execute({
+        ...baseRequest(cwdDir),
+        cwd: join(cwdDir, 'nb', 'data'),
+        // The fake loop resolves the path like the real one does, so the driver side is exercised
+        // against the /var -> /private/var shape macOS actually produces.
+        code: `__READS__${JSON.stringify({ in: 'input.csv', out: '/etc/hosts', reads: 3 })}`
+      } as never)
+
+      expect(result.fileReads).toEqual({
+        read: [
+          {
+            path: realpathSync(join(cwdDir, 'nb', 'data', 'input.csv')),
+            relativePath: 'data/input.csv',
+            kind: 'input',
+            reads: 3
+          }
+        ],
+        readStatus: 'captured'
+      })
+    } finally {
+      await executor.shutdown()
+    }
+  })
+
+  it('carries the read-capture shortfall instead of presenting a short list as complete', async () => {
+    cwdDir = await makeDefaultEnvCwd('os-kernel-reads-truncated-')
+    await mkdir(join(cwdDir, 'nb', 'data'), { recursive: true })
+    await writeFile(join(cwdDir, 'nb', 'data', 'input.csv'), 'a,b\n1,2\n')
+    const executor = makeExecutor()
+    try {
+      const result = await executor.execute({
+        ...baseRequest(cwdDir),
+        cwd: join(cwdDir, 'nb', 'data'),
+        code: `__READS__${JSON.stringify({ in: 'input.csv', truncated: 5 })}`
+      } as never)
+
+      expect(result.fileReads).toEqual({
+        read: [
+          {
+            path: realpathSync(join(cwdDir, 'nb', 'data', 'input.csv')),
+            relativePath: 'data/input.csv',
+            kind: 'input',
+            reads: 1
+          }
+        ],
+        readStatus: 'truncated',
+        readTruncatedCount: 5
+      })
+    } finally {
+      await executor.shutdown()
+    }
+  })
+
+  it('says the loop reported no reads at all rather than claiming it read nothing', async () => {
+    cwdDir = await makeDefaultEnvCwd('os-kernel-reads-absent-')
+    const executor = makeExecutor()
+    try {
+      const result = await executor.execute({ ...baseRequest(cwdDir), code: 'print(1)' } as never)
+
+      // The fixture reports reads only for the __READS__ marker, so this is the "driver reported
+      // nothing" shape — the one that must never be read as "this run opened no files".
+      expect(result.fileReads).toEqual({
+        read: [],
+        readStatus: 'unsupported',
+        readReason: 'driver-without-read-capture'
+      })
+    } finally {
+      await executor.shutdown()
+    }
+  })
+
   it('runs a registry-resolved interpreter with NO managed env on disk (BYO seam)', async () => {
     // No stubEnvPython here: the managed default-python bin does not exist. A resolvedInterpreter
     // (as the Runtime Registry supplies for an external/overlay interpreter) must bypass the managed

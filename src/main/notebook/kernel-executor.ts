@@ -1,9 +1,9 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { existsSync, mkdtempSync } from 'node:fs'
-import { readFile, rm, unlink } from 'node:fs/promises'
+import { readFile, realpath, rm, unlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { delimiter, join } from 'node:path'
+import { delimiter, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { createInterface, type Interface } from 'node:readline'
 
 import { terminateProcessTree, type ProcessTreeKillResult } from '../process-tree'
@@ -22,6 +22,15 @@ import {
 } from './kernel-protocol'
 import { mapLoopOutputs, type MappedFigure } from './loop-output-mapper'
 import { protectManagedRuntimeWrites } from './managed-runtime-guard'
+import {
+  capturedReadEvidence,
+  classifyReadFiles,
+  truncatedReadEvidence,
+  uncapturedReadEvidence,
+  type NotebookRunReadEvidence,
+  type NotebookWorkingFile
+} from '../../shared/notebook'
+import { toPortableNotebookRelativePath } from './working-file-observer'
 import {
   condaActivatedPath,
   DEFAULT_PY_ENV,
@@ -246,6 +255,48 @@ const errorToExecutionResult = (
 // stdin, matching responses by id, enforcing the interrupt/kill timeout, and mapping each reply to a
 // NotebookExecutionResult (mapLoopOutputs). The python/r data loops and the repl control loop coexist
 // as independent processes; the requested kind never triggers a restart of another.
+// Turns the driver's read report into the read axis of the run's file evidence. The report is wire
+// data, so it is filtered to the session before it is trusted: the loop already filters, but a path
+// outside the session that reached here would otherwise be presented as this run's input.
+const buildReadEvidence = async (
+  request: NotebookExecutionRequest,
+  response: KernelLoopResponse,
+  workingFiles: NotebookWorkingFile[]
+): Promise<NotebookRunReadEvidence> => {
+  const reported = response.readFiles
+  if (!reported) {
+    // The R loop and older packaged drivers report nothing at all: not the same claim as "read
+    // nothing", and the reader must be able to tell them apart.
+    return uncapturedReadEvidence(
+      request.language === 'r' ? 'kernel-language-unsupported' : 'driver-without-read-capture'
+    )
+  }
+
+  // The loop resolves symlinks (TMPDIR is /private/var on macOS while the request carries /var), so
+  // both sides are canonicalised before a relative path is derived — otherwise every entry would come
+  // out as a chain of "..".
+  const sessionRoot = await realpath(request.notebookSessionRoot).catch(() =>
+    resolve(request.notebookSessionRoot)
+  )
+  const reads = reported
+    .map((entry) => ({ entry, canonical: resolve(entry.path) }))
+    .filter(({ canonical }) => {
+      const nested = relative(sessionRoot, canonical)
+      return (
+        nested !== '' && !isAbsolute(nested) && nested !== '..' && !nested.startsWith(`..${sep}`)
+      )
+    })
+    .map(({ entry, canonical }) => ({
+      path: canonical,
+      relativePath: toPortableNotebookRelativePath(relative(sessionRoot, canonical)),
+      reads: entry.reads
+    }))
+
+  const classified = classifyReadFiles(reads, workingFiles)
+  const dropped = response.readFilesTruncated ?? 0
+  return dropped > 0 ? truncatedReadEvidence(classified, dropped) : capturedReadEvidence(classified)
+}
+
 class NotebookKernelExecutor implements NotebookExecutor {
   private readonly procs = new Map<ProcessKey, ProcState>()
   // In-flight process-tree teardowns, keyed by the process key of the proc being reaped. A dropped
@@ -300,6 +351,7 @@ class NotebookKernelExecutor implements NotebookExecutor {
       workingFileObservation = undefined
 
       const figures = await this.readFigures(response.figures)
+      const readEvidence = await buildReadEvidence(request, response, workingFiles)
       const mapped = mapLoopOutputs({
         stdout: response.stdout,
         stderr: response.stderr,
@@ -322,6 +374,7 @@ class NotebookKernelExecutor implements NotebookExecutor {
         outputs: mapped.outputs,
         workingFiles,
         fileCapture: observation.capture,
+        fileReads: readEvidence,
         environmentOverlay: response.environmentOverlay
       }
     } catch (error) {

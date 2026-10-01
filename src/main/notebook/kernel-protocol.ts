@@ -17,10 +17,21 @@ export type KernelLoopResponse = {
   result: string | null
   cwd: string
   figures: KernelLoopFigure[]
+  // Paths the cell OPENED FOR READING while it ran, with the number of times each was opened, plus the
+  // number of distinct paths past the driver's capture bound. Absent entirely on loops that do not
+  // report reads (the R loop, or an older packaged driver) — which is a different fact from an empty
+  // list, and the run record keeps that difference.
+  readFiles?: KernelLoopReadFile[]
+  readFilesTruncated?: number
   environmentOverlay?: NotebookLiveEnvironmentOverlay
   // Live namespace snapshot for the Variables view: present only when the
   // request asked for it (action: "inspect_variables").
   variables?: KernelVariable[]
+}
+
+export type KernelLoopReadFile = {
+  path: string
+  reads: number
 }
 
 // One entry of the kernel's live namespace. `shape` is a compact structural hint (array dims,
@@ -122,6 +133,19 @@ export function parseLoopResponse(line: string): KernelLoopResponse | null {
         .map((f) => ({ mime: String(f.mime), path: String(f.path) }))
     : []
   const environmentOverlay = parseEnvironmentOverlay(obj.environment)
+  const readFiles: KernelLoopReadFile[] | undefined = Array.isArray(obj.read_files)
+    ? obj.read_files
+        .filter(
+          (entry): entry is Record<string, unknown> => typeof entry === 'object' && entry !== null
+        )
+        // A missing path must be DROPPED, not stringified: String(undefined) is the literal
+        // "undefined", which would enter the evidence as a path nothing can be resolved against.
+        .filter((entry) => typeof entry.path === 'string' && entry.path.length > 0)
+        .map((entry) => ({
+          path: entry.path as string,
+          reads: typeof entry.reads === 'number' && Number.isFinite(entry.reads) ? entry.reads : 1
+        }))
+    : undefined
 
   return {
     reqId: typeof obj.req_id === 'string' ? obj.req_id : '',
@@ -133,6 +157,10 @@ export function parseLoopResponse(line: string): KernelLoopResponse | null {
     result: typeof obj.result === 'string' ? obj.result : null,
     cwd: typeof obj.cwd === 'string' ? obj.cwd : '',
     figures,
+    ...(readFiles ? { readFiles } : {}),
+    ...(typeof obj.read_files_truncated === 'number' && Number.isFinite(obj.read_files_truncated)
+      ? { readFilesTruncated: obj.read_files_truncated }
+      : {}),
     ...(environmentOverlay ? { environmentOverlay } : {})
   }
 }

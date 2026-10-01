@@ -8,6 +8,79 @@ import {
 } from './kernel-protocol'
 
 describe('parseLoopResponse', () => {
+  it('parses the driver read report, and keeps an absent report absent', () => {
+    const withReads = parseLoopResponse(
+      JSON.stringify({
+        req_id: 'r-reads',
+        stdout: '',
+        stderr: '',
+        error: null,
+        result: null,
+        cwd: '/tmp/nb/data',
+        figures: [],
+        read_files: [
+          { path: '/tmp/nb/data/in.csv', reads: 2 },
+          { path: '/tmp/nb/data/other.csv', reads: 1 }
+        ],
+        read_files_truncated: 5
+      })
+    )
+    expect(withReads?.readFiles).toEqual([
+      { path: '/tmp/nb/data/in.csv', reads: 2 },
+      { path: '/tmp/nb/data/other.csv', reads: 1 }
+    ])
+    expect(withReads?.readFilesTruncated).toBe(5)
+
+    // No report at all (the R loop, or a driver that predates the capture) is NOT an empty report:
+    // the field stays missing so the run record can say which driver could not report.
+    const withoutReads = parseLoopResponse(
+      JSON.stringify({
+        req_id: 'r-2',
+        stdout: '',
+        stderr: '',
+        error: null,
+        result: null,
+        cwd: '/tmp',
+        figures: []
+      })
+    )
+    expect(withoutReads).not.toHaveProperty('readFiles')
+    expect(withoutReads).not.toHaveProperty('readFilesTruncated')
+
+    // An empty report IS a report: it says the cell opened no file.
+    const emptyReads = parseLoopResponse(
+      JSON.stringify({
+        req_id: 'r-3',
+        stdout: '',
+        stderr: '',
+        error: null,
+        result: null,
+        cwd: '/tmp',
+        figures: [],
+        read_files: []
+      })
+    )
+    expect(emptyReads?.readFiles).toEqual([])
+  })
+
+  it('drops unusable read entries instead of passing them through', () => {
+    const parsed = parseLoopResponse(
+      JSON.stringify({
+        req_id: 'r-4',
+        stdout: '',
+        stderr: '',
+        error: null,
+        result: null,
+        cwd: '/tmp',
+        figures: [],
+        read_files: [{ path: '', reads: 1 }, { reads: 3 }, { path: '/tmp/a.csv' }]
+      })
+    )
+
+    // A path-less entry is not evidence of anything, and a missing count defaults to one open.
+    expect(parsed?.readFiles).toEqual([{ path: '/tmp/a.csv', reads: 1 }])
+  })
+
   it('parses a well-formed snake_case response line into camelCase', () => {
     const line = JSON.stringify({
       req_id: 'r1',

@@ -7,6 +7,9 @@
 #   __WRITE_FILE__      write an output file into the kernel working directory
 #   __OVERWRITE_FILE__  replace a pre-existing output in the kernel working directory
 #   __WRITE_DELAYED_A__ / __WRITE_DELAYED_B__ overlap two kernels writing the same data root
+#   __READS__{json}    report read opens as python_loop.py does: the payload names a session-relative
+#                      path, a path OUTSIDE the session, and a truncation count, so the driver-side
+#                      filtering and canonicalising can be exercised without a real interpreter
 # FAKE_LOOP_BOOT_DELAY_MS simulates a cold interpreter: the process takes that long before it reads
 # (and reports) anything. Used to prove the execution budget is not charged for interpreter boot.
 import base64
@@ -22,6 +25,20 @@ _BOOT_DELAY_MS = int(os.environ.get("FAKE_LOOP_BOOT_DELAY_MS", "0") or "0")
 _PNG = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/pLvAAAAAElFTkSuQmCC"
 )
+
+
+def _read_report(code):
+    if not code.startswith("__READS__"):
+        return {}
+    payload = json.loads(code.removeprefix("__READS__"))
+    # realpath, exactly like the real loop: on macOS TMPDIR is /var while the resolved form is
+    # /private/var, which is what the driver has to cope with.
+    inside = os.path.realpath(os.path.join(os.getcwd(), payload.get("in", "")))
+    reads = [{"path": inside, "reads": int(payload.get("reads", 1))}]
+    outside = payload.get("out")
+    if outside:
+        reads.append({"path": os.path.realpath(outside), "reads": 1})
+    return {"read_files": reads, "read_files_truncated": int(payload.get("truncated", 0))}
 
 
 def _respond(req_id, code):
@@ -54,6 +71,7 @@ def _respond(req_id, code):
                 "result": None,
                 "cwd": os.getcwd(),
                 "figures": figures,
+                **_read_report(code),
             }
         )
         + "\n"
