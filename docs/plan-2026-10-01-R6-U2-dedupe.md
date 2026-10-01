@@ -48,6 +48,15 @@ blobPathFor(storageRoot, digest)               // 摘要命名位置（不用存
 4. 模拟跨卷/不支持链接（临时目录）→ 结果是 `copied-fallback`，且如实上报"未去重"；
 5. 旧数据（无摘要字段）读取不受影响。
 
+## 5b. 端到端验收的可行路线（本轮探明）
+
+- **HTTP 面不通**：`src/main/web-service/http-server.ts` 暴露 `/api/v1/...`（projects、sessions、readiness、
+  runtimes、connectors、artifacts/replay、runs），**没有 uploads 路由** ⇒ headless 实例无法用脚本驱动上传。
+- **可行路线（owner 层真流程）**：`src/main/uploads/repository.test.ts` 的夹具本身就是**真 sqlite + 真文件**
+  （`createProjectDbClient` + `ensureProjectSchema`），因此可以在这个层面写"同一份内容走两次真实上传流程"的
+  验收：断言最终落点是同一 inode、`.content/<摘要>` 存在、`measureSpace` 的数字与 `find` 实测一致。
+- 更重的备选：驱动渲染器界面（真机窗口 + 文件选择）。代价高，仅在需要"用户视角"时做。
+
 ## 6. 回滚
 
 U2 不删除任何既有名字；最坏情形是"去重没生效"（退化为原有复制行为）。就地整理片单独开关 + 进度落盘，
