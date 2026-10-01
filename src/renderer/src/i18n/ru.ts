@@ -1797,6 +1797,25 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.functionModels': 'Модели для функций',
   'settings.functionModelsHint':
     'Узкие вызовы, которые приложение делает для себя. Каждая строка называет действующую модель и встроенный путь, работающий без модели.',
+  'settings.functionModelDetect': 'Проверить',
+  'settings.functionModelDetecting': 'Вызов модели…',
+  'settings.functionModelDetectNote':
+    'Проверка отправляет настоящий запрос и может израсходовать немного квоты.',
+  'settings.functionModelDetectNeedsModel': 'Сначала выберите модель.',
+  'settings.functionModelDetected': 'Ответ за {ms} мс; {usage}.',
+  'settings.functionModelDetectedUsage': '{input} вход / {output} выход',
+  'settings.functionModelDetectedNoUsage': 'расход не сообщён',
+  'settings.functionModelDetectFailed': 'Проверка не удалась:',
+  'settings.functionModelDetectReasonNotConfigured': 'для этой функции модель не настроена',
+  'settings.functionModelDetectReasonProviderMissing': 'сохранённой службы больше нет',
+  'settings.functionModelDetectReasonNoCredentials': 'у сохранённой службы нет пригодного ключа',
+  'settings.functionModelDetectReasonUnverified': 'сохранённая служба не прошла последнюю проверку',
+  'settings.functionModelDetectReasonModelMissing': 'эта служба больше не предлагает такую модель',
+  'settings.functionModelDetectReasonUnreachable': 'конечная точка недоступна',
+  'settings.functionModelDetectReasonTimeout': 'истекло время ожидания запроса',
+  'settings.functionModelDetectReasonHttpError': 'конечная точка отклонила запрос',
+  'settings.functionModelDetectReasonInvalidResponse': 'конечная точка ответила без результата',
+
   'settings.functionModelSkillSelection': 'Подбор навыков',
   'settings.functionModelSkillSelectionDetail':
     'Перед началом хода выбирает из каталога, какие навыки загрузит этот ход.',
@@ -2875,7 +2894,7 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'ws.contextCallsEmptyHint':
     'Каждый вызов модели записывает своё распределение токенов по завершении; в старых сеансах его может не быть.',
   'ws.contextOfSize': '/ {size} токенов',
-  'ws.contextPointAria': 'Запуск {run}, {state}, токенов в окне контекста: {tokens}',
+  'ws.contextPointAria': 'Запуск {run}, {state}, токенов в окне контекста: {usage}',
   'ws.contextRunTitle': 'Запуск {runNumber} · Сообщение {messageNumber}',
   'ws.contextSourceEstimate': 'Локальная оценка',
   'ws.contextSourceResponse': 'Ответ провайдера',

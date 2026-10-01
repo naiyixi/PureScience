@@ -61,6 +61,7 @@ type CoreSettingsCommandStore = Pick<
   | 'detectCodebuddy'
   | 'detectCodex'
   | 'detectOpencode'
+  | 'detectFunctionModel'
   | 'getExecutionProtectionMatrix'
   | 'getFunctionModels'
   | 'resolveFunctionModel'
@@ -560,6 +561,16 @@ const registerCoreSettingsApplicationCommands = (
         const request = args[0]
         if (request.action === 'set') {
           return { models: await dependencies.service.setFunctionModels(request.models) }
+        }
+        if (request.action === 'detect') {
+          // One real round trip, and the stored map travels back with it so the caller never renders a
+          // detection result beside a setting that changed since.
+          const [models, detected] = await Promise.all([
+            dependencies.service.getFunctionModels(),
+            dependencies.service.detectFunctionModel(request.functionId)
+          ])
+
+          return { models, detected }
         }
         if (request.action === 'resolve') {
           const [models, resolved] = await Promise.all([

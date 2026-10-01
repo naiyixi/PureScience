@@ -128,15 +128,56 @@ export const resolveFunctionModel = ({
  * The settings surface for these slots: one channel, three actions, so the panel reads the stored map, writes
  * it, and asks what a function will actually use without three commands drifting apart.
  */
+/** Token counts a provider reported for the detection round trip, when it reported any. */
+export type FunctionModelDetectionUsage = {
+  inputTokens?: number
+  outputTokens?: number
+  totalTokens?: number
+}
+
+export type FunctionModelDetectionFailureReason =
+  | 'not-configured'
+  | FunctionModelUnusableReason
+  | 'unreachable'
+  | 'timeout'
+  | 'http-error'
+  | 'invalid-response'
+
+/**
+ * What a detection run found. A detection is a real round trip, so it reports what that round trip cost —
+ * elapsed time always, tokens when the provider says so. A green tick with no measurement would be a claim
+ * about a call nobody saw.
+ */
+export type FunctionModelDetection =
+  | {
+      ok: true
+      /** Measured wall time of the round trip. */
+      elapsedMs: number
+      providerId: string
+      model: string
+      usage?: FunctionModelDetectionUsage
+    }
+  | {
+      ok: false
+      elapsedMs: number
+      reason: FunctionModelDetectionFailureReason
+      status?: number
+      providerId?: string
+      model?: string
+    }
+
 export type FunctionModelCommandRequest =
   | { action: 'get' }
   | { action: 'set'; models: FunctionModels }
   | { action: 'resolve'; functionId: FunctionModelId }
+  | { action: 'detect'; functionId: FunctionModelId }
 
 export type FunctionModelCommandResult = {
   models: FunctionModels
   /** Present for `resolve`: what that function will use, and its built-in path when it will not. */
   resolved?: FunctionModelResolution
+  /** Present for `detect`: the outcome of one real round trip. */
+  detected?: FunctionModelDetection
 }
 
 export const sanitizeFunctionModels = (value: unknown): FunctionModels | undefined => {

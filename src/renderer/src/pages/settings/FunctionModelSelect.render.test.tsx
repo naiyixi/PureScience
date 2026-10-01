@@ -15,7 +15,17 @@ const LABELS: Record<string, string> = {
   'settings.functionModelUnusableUnverified': 'the service on record failed its last check.',
   'settings.functionModelUnusableModelMissing': 'that service no longer offers the model.',
   'settings.functionModelLoading': 'Reading…',
-  'settings.functionModelUnavailable': 'Unavailable in this window.'
+  'settings.functionModelUnavailable': 'Unavailable in this window.',
+  'settings.functionModelDetect': 'Detect',
+  'settings.functionModelDetecting': 'Calling the model…',
+  'settings.functionModelDetectNote': 'Detection sends one real request.',
+  'settings.functionModelDetectNeedsModel': 'Choose a model first.',
+  'settings.functionModelDetected': 'Answered in {ms} ms; {usage}.',
+  'settings.functionModelDetectedUsage': '{input} in / {output} out',
+  'settings.functionModelDetectedNoUsage': 'usage not reported',
+  'settings.functionModelDetectFailed': 'Detection failed:',
+  'settings.functionModelDetectReasonUnreachable': 'the endpoint could not be reached',
+  'settings.functionModelDetectReasonNotConfigured': 'no model is configured for this function'
 }
 
 vi.mock('@/i18n', () => ({
@@ -44,14 +54,23 @@ const fallback = {
 }
 
 // The row reads through one channel; the test stands in for the main process behind it.
-const stubApi = (resolved: unknown, models: unknown = {}): void => {
+const stubApi = (resolved: unknown, models: unknown = {}, detected?: unknown): void => {
+  const call = vi
+    .fn()
+    .mockImplementation(async (request: { action: string }) =>
+      request.action === 'detect' ? { models, detected } : { models, resolved }
+    )
   Object.defineProperty(window, 'api', {
     configurable: true,
-    value: {
-      settings: {
-        functionModels: vi.fn().mockResolvedValue({ models, resolved })
-      }
-    }
+    value: { settings: { functionModels: call } }
+  })
+}
+
+const click = async (testId: string): Promise<void> => {
+  const button = container.querySelector<HTMLButtonElement>(`[data-testid="${testId}"]`)
+  await act(async () => {
+    button?.click()
+    await new Promise((resolve) => window.setTimeout(resolve, 0))
   })
 }
 
@@ -126,6 +145,76 @@ describe('FunctionModelRow', () => {
       container.querySelector('[data-testid="function-model-fallback-skill-selection"]')
         ?.textContent
     ).toContain('the service on record no longer exists.')
+  })
+
+  it('offers detection only once there is a model to detect', async () => {
+    useSettingsStore.setState({ ...createInitialSettingsState(), providers: [] })
+    stubApi({ functionId: 'skill-selection', override: null, fallback, unusable: [] })
+
+    await render()
+
+    const button = container.querySelector<HTMLButtonElement>(
+      '[data-testid="function-model-detect-skill-selection"]'
+    )
+    // Probing the built-in path would be a measurement of nothing.
+    expect(button?.disabled).toBe(true)
+    expect(container.textContent).toContain('Choose a model first.')
+  })
+
+  it('shows what a detection measured, not just that it passed', async () => {
+    useSettingsStore.setState({
+      ...createInitialSettingsState(),
+      providers: [{ id: 'p1', name: 'Gateway', type: 'custom', models: ['small-model'] } as never]
+    })
+    stubApi(
+      {
+        functionId: 'skill-selection',
+        override: { providerId: 'p1', model: 'small-model' },
+        fallback,
+        unusable: []
+      },
+      { 'skill-selection': { providerId: 'p1', model: 'small-model' } },
+      {
+        ok: true,
+        elapsedMs: 42,
+        providerId: 'p1',
+        model: 'small-model',
+        usage: { inputTokens: 3, outputTokens: 2 }
+      }
+    )
+
+    await render()
+    await click('function-model-detect-skill-selection')
+
+    const line = container.querySelector('[data-testid="function-model-detection-skill-selection"]')
+    expect(line?.textContent).toContain('42')
+    // The token counts are the point of measuring: a tick alone would be a claim about a call nobody saw.
+    expect(line?.textContent).toContain('3 in / 2 out')
+  })
+
+  it('names why a detection failed', async () => {
+    useSettingsStore.setState({
+      ...createInitialSettingsState(),
+      providers: [{ id: 'p1', name: 'Gateway', type: 'custom', models: ['small-model'] } as never]
+    })
+    stubApi(
+      {
+        functionId: 'skill-selection',
+        override: { providerId: 'p1', model: 'small-model' },
+        fallback,
+        unusable: []
+      },
+      { 'skill-selection': { providerId: 'p1', model: 'small-model' } },
+      { ok: false, elapsedMs: 12, reason: 'unreachable', providerId: 'p1', model: 'small-model' }
+    )
+
+    await render()
+    await click('function-model-detect-skill-selection')
+
+    expect(
+      container.querySelector('[data-testid="function-model-detection-skill-selection"]')
+        ?.textContent
+    ).toContain('the endpoint could not be reached')
   })
 
   it('says the settings are unreadable here instead of showing an empty row', async () => {

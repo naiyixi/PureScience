@@ -1768,6 +1768,26 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.functionModels': '기능 모델',
   'settings.functionModelsHint':
     '앱이 스스로 수행하는 좁은 용도의 호출입니다. 각 행은 현재 적용되는 모델과 모델을 쓸 수 없을 때의 내장 경로를 밝힙니다.',
+  'settings.functionModelDetect': '검사',
+  'settings.functionModelDetecting': '모델 호출 중…',
+  'settings.functionModelDetectNote':
+    '검사는 실제로 요청을 한 번 보내므로 소량의 할당량을 사용할 수 있습니다.',
+  'settings.functionModelDetectNeedsModel': '먼저 모델을 선택하세요.',
+  'settings.functionModelDetected': '{ms}밀리초 만에 응답; {usage}.',
+  'settings.functionModelDetectedUsage': '입력 {input} / 출력 {output}',
+  'settings.functionModelDetectedNoUsage': '사용량 미보고',
+  'settings.functionModelDetectFailed': '검사 실패:',
+  'settings.functionModelDetectReasonNotConfigured': '이 기능에 모델이 설정되어 있지 않습니다',
+  'settings.functionModelDetectReasonProviderMissing': '기록된 서비스가 더 이상 없습니다',
+  'settings.functionModelDetectReasonNoCredentials': '기록된 서비스에 사용할 수 있는 키가 없습니다',
+  'settings.functionModelDetectReasonUnverified': '기록된 서비스가 지난 검사에서 실패했습니다',
+  'settings.functionModelDetectReasonModelMissing':
+    '해당 서비스가 이 모델을 더 이상 제공하지 않습니다',
+  'settings.functionModelDetectReasonUnreachable': '엔드포인트에 연결할 수 없습니다',
+  'settings.functionModelDetectReasonTimeout': '요청 시간이 초과되었습니다',
+  'settings.functionModelDetectReasonHttpError': '엔드포인트가 요청을 거부했습니다',
+  'settings.functionModelDetectReasonInvalidResponse': '엔드포인트가 내용 없는 응답을 보냈습니다',
+
   'settings.functionModelSkillSelection': '스킬 자동 선택',
   'settings.functionModelSkillSelectionDetail':
     '턴이 시작되기 전에 카탈로그에서 그 턴에 불러올 스킬을 고릅니다.',
@@ -2818,7 +2838,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'ws.contextCallsEmptyHint':
     '각 모델 호출은 끝날 때 토큰 구성을 기록합니다. 오래된 세션에는 없을 수 있습니다.',
   'ws.contextOfSize': '/ {size} 토큰',
-  'ws.contextPointAria': '{run} 실행, {state}, 컨텍스트 창 {tokens} 토큰',
+  'ws.contextPointAria': '{run} 실행, {state}, 컨텍스트 창 {usage} 토큰',
   'ws.contextRunTitle': '{runNumber} 실행 · 메시지 {messageNumber}',
   'ws.contextSourceEstimate': '로컬 추정',
   'ws.contextSourceResponse': '공급자 응답',

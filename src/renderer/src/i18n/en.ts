@@ -788,6 +788,25 @@ export const en: Record<ZhKey, string> = {
   'settings.functionModels': 'Function models',
   'settings.functionModelsHint':
     'The narrow calls the app makes for itself. Each one names the model in force and the built-in path that runs when no model is usable.',
+  'settings.functionModelDetect': 'Detect',
+  'settings.functionModelDetecting': 'Calling the model…',
+  'settings.functionModelDetectNote':
+    'Detection sends one real request and may use a little quota.',
+  'settings.functionModelDetectNeedsModel': 'Choose a model first.',
+  'settings.functionModelDetected': 'Answered in {ms} ms; {usage}.',
+  'settings.functionModelDetectedUsage': '{input} in / {output} out',
+  'settings.functionModelDetectedNoUsage': 'usage not reported',
+  'settings.functionModelDetectFailed': 'Detection failed:',
+  'settings.functionModelDetectReasonNotConfigured': 'no model is configured for this function',
+  'settings.functionModelDetectReasonProviderMissing': 'the service on record no longer exists',
+  'settings.functionModelDetectReasonNoCredentials': 'the service on record has no usable key',
+  'settings.functionModelDetectReasonUnverified': 'the service on record failed its last check',
+  'settings.functionModelDetectReasonModelMissing': 'that service no longer offers the model',
+  'settings.functionModelDetectReasonUnreachable': 'the endpoint could not be reached',
+  'settings.functionModelDetectReasonTimeout': 'the request timed out',
+  'settings.functionModelDetectReasonHttpError': 'the endpoint refused the request',
+  'settings.functionModelDetectReasonInvalidResponse': 'the endpoint answered without a completion',
+
   'settings.functionModelSkillSelection': 'Skill selection',
   'settings.functionModelSkillSelectionDetail':
     'Decides which skills a turn loads, choosing from the catalog before the turn starts.',
@@ -1890,7 +1909,7 @@ export const en: Record<ZhKey, string> = {
   'ws.contextUnknown': 'Unknown',
   'ws.contextTerminalStateCode': 'Terminal state code:',
   'ws.contextChartAria': 'Context window chart across {count} terminal outcomes',
-  'ws.contextPointAria': 'Run {run}, {state}, {tokens} context-window tokens',
+  'ws.contextPointAria': 'Run {run}, {state}, {usage} context-window tokens',
   'ws.contextCompactedAfter': 'Context compacted after run {run}',
   'ws.contextHistory': 'History',
   'ws.contextHistoryHint':

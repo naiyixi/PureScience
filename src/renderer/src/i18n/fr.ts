@@ -1844,6 +1844,28 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.functionModels': 'Modèles par fonction',
   'settings.functionModelsHint':
     "Les appels ciblés que l'application fait pour elle-même. Chaque ligne indique le modèle en vigueur et la voie intégrée utilisée sans modèle.",
+  'settings.functionModelDetect': 'Tester',
+  'settings.functionModelDetecting': 'Appel du modèle…',
+  'settings.functionModelDetectNote':
+    'Le test envoie une vraie requête et peut consommer un peu de quota.',
+  'settings.functionModelDetectNeedsModel': "Choisissez d'abord un modèle.",
+  'settings.functionModelDetected': 'Réponse en {ms} ms ; {usage}.',
+  'settings.functionModelDetectedUsage': '{input} entrée / {output} sortie',
+  'settings.functionModelDetectedNoUsage': 'consommation non fournie',
+  'settings.functionModelDetectFailed': 'Échec du test :',
+  'settings.functionModelDetectReasonNotConfigured':
+    "aucun modèle n'est configuré pour cette fonction",
+  'settings.functionModelDetectReasonProviderMissing': "le service enregistré n'existe plus",
+  'settings.functionModelDetectReasonNoCredentials':
+    "le service enregistré n'a pas de clé utilisable",
+  'settings.functionModelDetectReasonUnverified':
+    'le service enregistré a échoué à sa dernière vérification',
+  'settings.functionModelDetectReasonModelMissing': 'ce service ne propose plus ce modèle',
+  'settings.functionModelDetectReasonUnreachable': "le point d'accès est injoignable",
+  'settings.functionModelDetectReasonTimeout': 'la requête a expiré',
+  'settings.functionModelDetectReasonHttpError': "le point d'accès a refusé la requête",
+  'settings.functionModelDetectReasonInvalidResponse': "le point d'accès a répondu sans contenu",
+
   'settings.functionModelSkillSelection': 'Sélection des compétences',
   'settings.functionModelSkillSelectionDetail':
     'Choisit dans le catalogue les compétences chargées par un tour avant son démarrage.',
@@ -2948,7 +2970,7 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'ws.contextCallsEmptyHint':
     'Chaque appel de modèle enregistre sa répartition de jetons à la fin ; les sessions anciennes peuvent ne pas l’avoir.',
   'ws.contextOfSize': '/ {size} tokens',
-  'ws.contextPointAria': 'Exécution {run}, {state}, {tokens} tokens de fenêtre de contexte',
+  'ws.contextPointAria': 'Exécution {run}, {state}, {usage} tokens de fenêtre de contexte',
   'ws.contextRunTitle': 'Exécution {runNumber} · Message {messageNumber}',
   'ws.contextSourceEstimate': 'Estimation locale',
   'ws.contextSourceResponse': 'Réponse du fournisseur',

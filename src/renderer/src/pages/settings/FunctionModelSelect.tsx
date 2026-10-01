@@ -3,6 +3,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import {
   FUNCTION_MODEL_FALLBACKS,
+  type FunctionModelDetection,
+  type FunctionModelDetectionFailureReason,
   type FunctionModelId,
   type FunctionModelResolution,
   type FunctionModelUnusableReason,
@@ -16,6 +18,7 @@ import {
   SelectLabel,
   SelectTrigger
 } from '@/components/ui/select'
+import { Button } from '@/components/ui/button'
 import { useSettingsStore } from '@/stores/settings-store'
 import { ProviderKindIcon } from './provider-icons'
 import { providerKindKey } from './provider-form-value'
@@ -32,6 +35,19 @@ const FUNCTION_NAME_KEYS: Record<FunctionModelId, TranslationKey> = {
 
 const FUNCTION_DETAIL_KEYS: Record<FunctionModelId, TranslationKey> = {
   'skill-selection': 'settings.functionModelSkillSelectionDetail'
+}
+
+// Every way a detection can fail names itself: "it did not work" sends the user looking in the wrong place.
+const DETECT_REASON_KEYS: Record<FunctionModelDetectionFailureReason, TranslationKey> = {
+  'not-configured': 'settings.functionModelDetectReasonNotConfigured',
+  'provider-missing': 'settings.functionModelDetectReasonProviderMissing',
+  'provider-has-no-credentials': 'settings.functionModelDetectReasonNoCredentials',
+  'provider-unverified': 'settings.functionModelDetectReasonUnverified',
+  'model-missing': 'settings.functionModelDetectReasonModelMissing',
+  unreachable: 'settings.functionModelDetectReasonUnreachable',
+  timeout: 'settings.functionModelDetectReasonTimeout',
+  'http-error': 'settings.functionModelDetectReasonHttpError',
+  'invalid-response': 'settings.functionModelDetectReasonInvalidResponse'
 }
 
 const UNUSABLE_KEYS: Record<FunctionModelUnusableReason, TranslationKey> = {
@@ -58,6 +74,8 @@ export const FunctionModelRow = ({
   const [models, setModels] = useState<FunctionModels>({})
   const [resolution, setResolution] = useState<FunctionModelResolution>()
   const [failed, setFailed] = useState(false)
+  const [detecting, setDetecting] = useState(false)
+  const [detection, setDetection] = useState<FunctionModelDetection>()
 
   // Reading happens in an async effect body on purpose: the answer arrives from the main process, and a
   // synchronous set during render would be a state update the row never asked for.
@@ -117,6 +135,22 @@ export const FunctionModelRow = ({
       await read()
     } catch {
       setFailed(true)
+    }
+  }
+
+  const detect = async (): Promise<void> => {
+    const client = window.api?.settings?.functionModels
+    if (!client) return
+    setDetecting(true)
+    try {
+      const result = await client({ action: 'detect', functionId })
+      setModels(result.models)
+      setDetection(result.detected)
+      setFailed(false)
+    } catch {
+      setFailed(true)
+    } finally {
+      setDetecting(false)
     }
   }
 
@@ -215,6 +249,45 @@ export const FunctionModelRow = ({
           }`}
         </p>
       ) : null}
+      {detection ? (
+        <p
+          className="text-xs text-muted-foreground"
+          data-testid={`function-model-detection-${functionId}`}
+        >
+          {detection.ok
+            ? t('settings.functionModelDetected', {
+                ms: String(detection.elapsedMs),
+                usage: detection.usage
+                  ? t('settings.functionModelDetectedUsage', {
+                      input: String(detection.usage.inputTokens ?? 0),
+                      output: String(detection.usage.outputTokens ?? 0)
+                    })
+                  : t('settings.functionModelDetectedNoUsage')
+              })
+            : `${t('settings.functionModelDetectFailed')} ${t(
+                DETECT_REASON_KEYS[detection.reason]
+              )}${detection.status ? ` (${detection.status})` : ''}`}
+        </p>
+      ) : null}
+      {/* Detection spends real quota, so the control says so and is only offered once there is a model to
+          detect: probing the built-in path would produce a measurement of nothing. */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          variant="ghost"
+          className="h-7 px-2 text-xs"
+          data-testid={`function-model-detect-${functionId}`}
+          disabled={detecting || !current}
+          onClick={() => void detect()}
+        >
+          {detecting ? t('settings.functionModelDetecting') : t('settings.functionModelDetect')}
+        </Button>
+        <span className="text-xs text-muted-foreground">
+          {current
+            ? t('settings.functionModelDetectNote')
+            : t('settings.functionModelDetectNeedsModel')}
+        </span>
+      </div>
     </div>
   )
 }

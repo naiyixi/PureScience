@@ -1838,6 +1838,27 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.functionModels': 'Modelos por función',
   'settings.functionModelsHint':
     'Las llamadas concretas que la aplicación hace para sí misma. Cada fila indica el modelo vigente y la ruta integrada que se usa sin modelo.',
+  'settings.functionModelDetect': 'Comprobar',
+  'settings.functionModelDetecting': 'Llamando al modelo…',
+  'settings.functionModelDetectNote':
+    'La comprobación envía una petición real y puede consumir algo de cuota.',
+  'settings.functionModelDetectNeedsModel': 'Elige primero un modelo.',
+  'settings.functionModelDetected': 'Respondió en {ms} ms; {usage}.',
+  'settings.functionModelDetectedUsage': '{input} entrada / {output} salida',
+  'settings.functionModelDetectedNoUsage': 'consumo no informado',
+  'settings.functionModelDetectFailed': 'Falló la comprobación:',
+  'settings.functionModelDetectReasonNotConfigured': 'no hay modelo configurado para esta función',
+  'settings.functionModelDetectReasonProviderMissing': 'el servicio registrado ya no existe',
+  'settings.functionModelDetectReasonNoCredentials':
+    'el servicio registrado no tiene clave utilizable',
+  'settings.functionModelDetectReasonUnverified':
+    'el servicio registrado falló su última comprobación',
+  'settings.functionModelDetectReasonModelMissing': 'ese servicio ya no ofrece el modelo',
+  'settings.functionModelDetectReasonUnreachable': 'no se pudo alcanzar el punto de acceso',
+  'settings.functionModelDetectReasonTimeout': 'la petición agotó el tiempo',
+  'settings.functionModelDetectReasonHttpError': 'el punto de acceso rechazó la petición',
+  'settings.functionModelDetectReasonInvalidResponse': 'el punto de acceso respondió sin contenido',
+
   'settings.functionModelSkillSelection': 'Selección de habilidades',
   'settings.functionModelSkillSelectionDetail':
     'Elige del catálogo qué habilidades carga cada turno antes de empezar.',
@@ -2929,7 +2950,7 @@ export const es: Partial<Record<ZhKey, string>> = {
   'ws.contextCallsEmptyHint':
     'Cada llamada al modelo registra su reparto de tokens al terminar; las sesiones antiguas pueden no tenerlo.',
   'ws.contextOfSize': '/ {size} tokens',
-  'ws.contextPointAria': 'Ejecución {run}, {state}, {tokens} tokens de la ventana de contexto',
+  'ws.contextPointAria': 'Ejecución {run}, {state}, {usage} tokens de la ventana de contexto',
   'ws.contextRunTitle': 'Ejecución {runNumber} · Mensaje {messageNumber}',
   'ws.contextSourceEstimate': 'Estimación local',
   'ws.contextSourceResponse': 'Respuesta del proveedor',

@@ -1799,6 +1799,25 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.functionModels': '機能モデル',
   'settings.functionModelsHint':
     'アプリ自身が行う用途を絞った呼び出しです。各行は現在有効なモデルと、モデルが使えないときの内蔵経路を示します。',
+  'settings.functionModelDetect': '検出',
+  'settings.functionModelDetecting': 'モデルを呼び出し中…',
+  'settings.functionModelDetectNote':
+    '検出は実際に一度リクエストを送るため、わずかな利用枠を消費します。',
+  'settings.functionModelDetectNeedsModel': '先にモデルを選んでください。',
+  'settings.functionModelDetected': '{ms} ミリ秒で応答；{usage}。',
+  'settings.functionModelDetectedUsage': '入力 {input} / 出力 {output}',
+  'settings.functionModelDetectedNoUsage': '使用量の報告なし',
+  'settings.functionModelDetectFailed': '検出に失敗：',
+  'settings.functionModelDetectReasonNotConfigured': 'この機能にはモデルが設定されていません',
+  'settings.functionModelDetectReasonProviderMissing': '記録されたサービスは存在しません',
+  'settings.functionModelDetectReasonNoCredentials': '記録されたサービスに使える鍵がありません',
+  'settings.functionModelDetectReasonUnverified': '記録されたサービスは前回の確認に失敗しました',
+  'settings.functionModelDetectReasonModelMissing': 'そのサービスはこのモデルを提供していません',
+  'settings.functionModelDetectReasonUnreachable': 'エンドポイントに到達できません',
+  'settings.functionModelDetectReasonTimeout': 'リクエストがタイムアウトしました',
+  'settings.functionModelDetectReasonHttpError': 'エンドポイントが要求を拒否しました',
+  'settings.functionModelDetectReasonInvalidResponse': 'エンドポイントは中身のない応答を返しました',
+
   'settings.functionModelSkillSelection': 'スキルの選択',
   'settings.functionModelSkillSelectionDetail':
     'ターンの開始前に、カタログからそのターンで読み込むスキルを選びます。',
@@ -2874,7 +2893,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'ws.contextCallsEmptyHint':
     '各モデル呼び出しは終了時にトークン内訳を記録します。古いセッションには残っていない場合があります。',
   'ws.contextOfSize': '/ {size} トークン',
-  'ws.contextPointAria': '実行 {run}、{state}、コンテキストウィンドウ {tokens} トークン',
+  'ws.contextPointAria': '実行 {run}、{state}、コンテキストウィンドウ {usage} トークン',
   'ws.contextRunTitle': '実行 {runNumber} · メッセージ {messageNumber}',
   'ws.contextSourceEstimate': 'ローカル推定',
   'ws.contextSourceResponse': 'プロバイダー応答',

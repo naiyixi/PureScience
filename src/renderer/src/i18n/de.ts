@@ -1854,6 +1854,30 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.functionModels': 'Funktionsmodelle',
   'settings.functionModelsHint':
     'Die schmalen Aufrufe, die die App für sich selbst macht. Jede Zeile nennt das wirksame Modell und den eingebauten Weg, der ohne Modell läuft.',
+  'settings.functionModelDetect': 'Prüfen',
+  'settings.functionModelDetecting': 'Modell wird aufgerufen…',
+  'settings.functionModelDetectNote':
+    'Die Prüfung sendet eine echte Anfrage und verbraucht eventuell ein wenig Kontingent.',
+  'settings.functionModelDetectNeedsModel': 'Zuerst ein Modell auswählen.',
+  'settings.functionModelDetected': 'Antwort in {ms} ms; {usage}.',
+  'settings.functionModelDetectedUsage': '{input} ein / {output} aus',
+  'settings.functionModelDetectedNoUsage': 'Verbrauch nicht gemeldet',
+  'settings.functionModelDetectFailed': 'Prüfung fehlgeschlagen:',
+  'settings.functionModelDetectReasonNotConfigured':
+    'für diese Funktion ist kein Modell hinterlegt',
+  'settings.functionModelDetectReasonProviderMissing':
+    'der hinterlegte Dienst existiert nicht mehr',
+  'settings.functionModelDetectReasonNoCredentials':
+    'der hinterlegte Dienst hat keinen brauchbaren Schlüssel',
+  'settings.functionModelDetectReasonUnverified':
+    'der hinterlegte Dienst hat die letzte Prüfung nicht bestanden',
+  'settings.functionModelDetectReasonModelMissing': 'dieser Dienst bietet das Modell nicht mehr an',
+  'settings.functionModelDetectReasonUnreachable': 'der Endpunkt war nicht erreichbar',
+  'settings.functionModelDetectReasonTimeout': 'die Anfrage lief in eine Zeitüberschreitung',
+  'settings.functionModelDetectReasonHttpError': 'der Endpunkt hat die Anfrage abgelehnt',
+  'settings.functionModelDetectReasonInvalidResponse':
+    'der Endpunkt antwortete ohne Vervollständigung',
+
   'settings.functionModelSkillSelection': 'Skill-Auswahl',
   'settings.functionModelSkillSelectionDetail':
     'Wählt vor dem Lauf aus dem Katalog, welche Skills dieser Durchgang lädt.',
@@ -2954,7 +2978,7 @@ export const de: Partial<Record<ZhKey, string>> = {
   'ws.contextCallsEmptyHint':
     'Jeder Modellaufruf erfasst nach dem Ende seine Token-Aufteilung; ältere Sitzungen haben sie womöglich nicht.',
   'ws.contextOfSize': '/ {size} Token',
-  'ws.contextPointAria': 'Lauf {run}, {state}, {tokens} Kontextfenster-Token',
+  'ws.contextPointAria': 'Lauf {run}, {state}, {usage} Kontextfenster-Token',
   'ws.contextRunTitle': 'Lauf {runNumber} · Nachricht {messageNumber}',
   'ws.contextSourceEstimate': 'Lokale Schätzung',
   'ws.contextSourceResponse': 'Anbieterantwort',

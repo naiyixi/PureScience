@@ -74,6 +74,7 @@ import {
   readFunctionModelEvents,
   type FunctionModelEvent
 } from '../function-models/event-log'
+import { detectFunctionModelTarget } from '../function-models/detect'
 import type {
   ExternalComputeEndpoint,
   CreateExternalComputeEndpointRequest
@@ -125,6 +126,7 @@ import type { ProxySettings } from '../../shared/proxy'
 import type { ScenarioModels, SetScenarioModelRequest } from '../../shared/settings'
 import {
   resolveFunctionModel as resolveFunctionModelFromFacts,
+  type FunctionModelDetection,
   type FunctionModelId,
   type FunctionModelResolution,
   type FunctionModels
@@ -737,6 +739,26 @@ class SettingsService {
         validationFailed: providerValidationFailed(provider)
       }))
     })
+  }
+
+  // One real round trip to the model a function is pointed at, with the measured cost of that trip. This is
+  // the only place in the app that spends a token just to find out whether a configuration works, which is
+  // why the result carries the measurement and every failure names itself.
+  async detectFunctionModel(functionId: FunctionModelId): Promise<FunctionModelDetection> {
+    const { resolution, target } = await this.resolveFunctionModelTarget(functionId)
+    if (!resolution.override || !target) {
+      return { ok: false, elapsedMs: 0, reason: resolution.unusable[0] ?? 'not-configured' }
+    }
+
+    const outcome = await detectFunctionModelTarget({
+      target: {
+        baseUrl: target.baseUrl,
+        ...(target.key ? { key: target.key } : {}),
+        model: resolution.override.model
+      }
+    })
+
+    return { ...outcome, providerId: resolution.override.providerId }
   }
 
   // Writes one entry to the function-model trail. The trail is the answer to "why did this run not use the
