@@ -158,9 +158,7 @@ describe('ComputeApprovalDialog — protection level', () => {
 
   it('keeps the remembered scopes when the request reports a protected level', () => {
     useComputeStore.setState({
-      pendingApprovals: [
-        { ...request, protection: { ...unprotected, level: 'os-sandbox' } }
-      ]
+      pendingApprovals: [{ ...request, protection: { ...unprotected, level: 'os-sandbox' } }]
     })
     act(() => root.render(<ComputeApprovalDialog />))
 

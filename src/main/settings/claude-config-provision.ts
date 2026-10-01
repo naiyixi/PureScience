@@ -3,11 +3,7 @@ import { join } from 'node:path'
 
 import { ClaudeCodeSkillMaterializer, type SkillMaterializer } from '../skills/materializer'
 import { SkillRegistry, type BundledSkill } from '../skills/registry'
-import {
-  isPathGuardHookEntry,
-  pathGuardHookSettings,
-  writePathGuard
-} from './path-guard-hook'
+import { isPathGuardHookEntry, pathGuardHookSettings, writePathGuard } from './path-guard-hook'
 import {
   isSkillUsageHookEntry,
   skillUsageHookSettings,

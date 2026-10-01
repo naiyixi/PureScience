@@ -957,7 +957,7 @@ export const zh = {
   'protection.policyRememberedHint':
     '会话、项目、全局批准同样覆盖无保护的远程执行。只有当你不想每次都被问到时才选它。',
   'protection.policyDeny': '直接拒绝无保护执行',
-  'protection.policyDenyHint': '级别为无保护时，远程命令与作业一律直接拒绝。',
+  'protection.policyDenyHint': '级别为无保护时，远程命令与作业一律直接拒绝。 这是默认档。',
   'protection.loading': '正在读取保护矩阵…',
   'protection.loadError': '这个窗口里读不到保护矩阵。',
   'protection.reload': '重试',

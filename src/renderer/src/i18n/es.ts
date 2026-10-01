@@ -184,7 +184,7 @@ export const es: Partial<Record<ZhKey, string>> = {
     'Las aprobaciones de sesión, de proyecto y globales también cubren ejecuciones remotas sin protección. Elige esto solo si no te importa no volver a ser preguntado.',
   'protection.policyDeny': 'Rechazar la ejecución remota sin protección',
   'protection.policyDenyHint':
-    'Los comandos y trabajos remotos se rechazan mientras el nivel sea sin protección.',
+    'Los comandos y trabajos remotos se rechazan mientras el nivel sea sin protección. Esta es la opción predeterminada.',
   'protection.loading': 'Leyendo la matriz de protección…',
   'protection.loadError': 'La matriz de protección no está disponible en esta ventana.',
   'protection.reload': 'Reintentar',

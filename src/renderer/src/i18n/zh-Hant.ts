@@ -143,7 +143,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'protection.policyRememberedHint':
     '工作階段、專案、全域批准同樣涵蓋無保護的遠端執行。只有不想每次都被詢問時才選它。',
   'protection.policyDeny': '直接拒絕無保護執行',
-  'protection.policyDenyHint': '層級為無保護時，遠端指令與作業一律直接拒絕。',
+  'protection.policyDenyHint': '層級為無保護時，遠端指令與作業一律直接拒絕。 這是預設檔。',
   'protection.loading': '正在讀取保護矩陣…',
   'protection.loadError': '這個視窗讀不到保護矩陣。',
   'protection.reload': '重試',

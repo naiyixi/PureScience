@@ -929,8 +929,6 @@ describe('SettingsPage layout', () => {
     expect(onClose).toHaveBeenCalledOnce()
   })
 
-  
-
   it('dispatches the close-pane Escape to an active link-safety dialog', () => {
     const settingsRef = createRef<SettingsPageHandle>()
     const onLinkClose = vi.fn()

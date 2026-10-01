@@ -181,7 +181,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'protection.policyRememberedHint':
     '세션, 프로젝트, 전역 승인이 보호 없는 원격 실행도 덮습니다. 매번 묻지 않아도 괜찮을 때만 선택하세요.',
   'protection.policyDeny': '보호 없는 원격 실행 거부',
-  'protection.policyDenyHint': '수준이 보호 없음인 동안에는 원격 명령과 작업을 일괄 거부합니다.',
+  'protection.policyDenyHint':
+    '수준이 보호 없음인 동안에는 원격 명령과 작업을 일괄 거부합니다. 이것이 기본값입니다.',
   'protection.loading': '보호 매트릭스를 읽는 중…',
   'protection.loadError': '이 창에서는 보호 매트릭스를 읽을 수 없습니다.',
   'protection.reload': '다시 시도',

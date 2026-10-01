@@ -122,6 +122,7 @@ describe('ComputeApprovalBroker', () => {
       broadcast: () => undefined,
       setTimer: timer.set,
       clearTimer: timer.clear,
+      readRemoteUnprotectedPolicy: async () => 'confirm' as const,
       permissionGrants: { resolve: vi.fn(), remember } as never
     })
 
@@ -701,7 +702,7 @@ describe('ComputeApprovalBroker — unprotected remote execution policy', () => 
     ownerId: 'host-row-1'
   }
 
-  it('shows the card even when a remembered grant exists, under the default policy', async () => {
+  it('refuses an unprotected remote run under the default policy, with no card and no grant', async () => {
     const timer = makeTimer()
     const broadcast = vi.fn()
     const remember = vi.fn()
@@ -710,6 +711,29 @@ describe('ComputeApprovalBroker — unprotected remote execution policy', () => 
       broadcast,
       setTimer: timer.set,
       clearTimer: timer.clear,
+      // A remembered grant is on record and would cover a protected run.
+      permissionGrants: { resolve: vi.fn().mockResolvedValue('project'), remember } as never
+    })
+
+    await expect(
+      broker.requestWithContext(makeRequest({ protection: remoteSnapshot('unprotected') }), context)
+    ).resolves.toBe('deny')
+    // The refusal happens before the card is armed: an unprotected remote run is not a question the
+    // user is asked to answer over and over, it is a run this machine cannot isolate.
+    expect(broadcast).not.toHaveBeenCalled()
+    expect(remember).not.toHaveBeenCalled()
+  })
+
+  it('shows the card even when a remembered grant exists, under the confirm policy', async () => {
+    const timer = makeTimer()
+    const broadcast = vi.fn()
+    const remember = vi.fn()
+    const broker = new ComputeApprovalBroker({
+      generateId: () => 'id-1',
+      broadcast,
+      setTimer: timer.set,
+      clearTimer: timer.clear,
+      readRemoteUnprotectedPolicy: async () => 'confirm' as const,
       permissionGrants: { resolve: vi.fn().mockResolvedValue('project'), remember } as never
     })
 
@@ -723,7 +747,7 @@ describe('ComputeApprovalBroker — unprotected remote execution policy', () => 
     await expect(decision).resolves.toBe('once')
   })
 
-  it('does not memorize a remembered scope for an unprotected run under the default policy', async () => {
+  it('does not memorize a remembered scope for an unprotected run under the confirm policy', async () => {
     const timer = makeTimer()
     const remember = vi.fn()
     const broadcast = vi.fn()
@@ -732,6 +756,7 @@ describe('ComputeApprovalBroker — unprotected remote execution policy', () => 
       broadcast,
       setTimer: timer.set,
       clearTimer: timer.clear,
+      readRemoteUnprotectedPolicy: async () => 'confirm' as const,
       permissionGrants: { resolve: vi.fn(), remember } as never
     })
 

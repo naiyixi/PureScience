@@ -102,10 +102,10 @@ describe('matrix', () => {
     }
   })
 
-  it('defaults the remote policy to asking explicitly when nothing is stored', async () => {
+  it('defaults the remote policy to refusing unprotected runs when nothing is stored', async () => {
     const matrix = await service().matrix()
-    expect(matrix.remoteUnprotectedPolicy).toBe('confirm')
-    expect(await service().remoteUnprotectedPolicy()).toBe('confirm')
+    expect(matrix.remoteUnprotectedPolicy).toBe('deny')
+    expect(await service().remoteUnprotectedPolicy()).toBe('deny')
   })
 
   it('reports the stored remote policy when one is set', async () => {

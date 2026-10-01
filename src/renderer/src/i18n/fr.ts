@@ -185,7 +185,7 @@ export const fr: Partial<Record<ZhKey, string>> = {
     'Les autorisations de session, de projet et globales couvrent alors aussi les exécutions distantes non protégées. Ne le choisissez que si être redemandé à chaque fois ne vaut pas la peine.',
   'protection.policyDeny': "Refuser l'exécution distante non protégée",
   'protection.policyDenyHint':
-    'Les commandes et tâches distantes sont refusées tant que le niveau est non protégé.',
+    'Les commandes et tâches distantes sont refusées tant que le niveau est non protégé. Valeur par défaut.',
   'protection.loading': 'Lecture de la matrice de protection…',
   'protection.loadError': "La matrice de protection n'est pas disponible dans cette fenêtre.",
   'protection.reload': 'Réessayer',

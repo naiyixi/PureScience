@@ -185,7 +185,7 @@ export const de: Partial<Record<ZhKey, string>> = {
     'Sitzungs-, Projekt- und globale Genehmigungen decken dann auch ungeschützte Remote-Läufe ab. Wählen Sie das nur, wenn Nachfragen nicht lohnt.',
   'protection.policyDeny': 'Ungeschützte Remote-Ausführung ablehnen',
   'protection.policyDenyHint':
-    'Remote-Befehle und -Aufträge werden abgelehnt, solange die Stufe ungeschützt ist.',
+    'Remote-Befehle und -Aufträge werden abgelehnt, solange die Stufe ungeschützt ist. Dies ist die Voreinstellung.',
   'protection.loading': 'Schutzmatrix wird gelesen…',
   'protection.loadError': 'Die Schutzmatrix ist in diesem Fenster nicht verfügbar.',
   'protection.reload': 'Erneut versuchen',

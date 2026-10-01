@@ -1014,7 +1014,7 @@ export const en: Record<ZhKey, string> = {
     'Session, project and global approvals also cover unprotected remote runs. Choose this only if being asked each time is not worth it.',
   'protection.policyDeny': 'Refuse unprotected remote execution',
   'protection.policyDenyHint':
-    'Remote commands and jobs are rejected outright while the level is unprotected.',
+    'Remote commands and jobs are rejected outright while the level is unprotected. This is the default.',
   'protection.loading': 'Reading the protection matrix…',
   'protection.loadError': 'The protection matrix is unavailable in this window.',
   'protection.reload': 'Try again',

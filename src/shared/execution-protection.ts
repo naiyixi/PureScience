@@ -308,18 +308,18 @@ export const protectionEvidenceLine = (snapshot: ExecutionProtectionSnapshot): s
 // Remote unprotected execution policy
 // ---------------------------------------------------------------------------
 
-// How the app treats a remote execution that cannot be isolated. The default is `confirm`: a
-// remembered approval was granted without ever naming a protection level, so it cannot silently
-// cover an unprotected run — the run asks explicitly and the answer is recorded. `remembered`
-// restores the older silent behavior for users who accept it; `deny` refuses unprotected remote
-// execution outright.
+// How the app treats a remote execution that cannot be isolated. The default is `deny`: a remote
+// run has no isolation to fall back on, and an approval recorded before protection levels existed
+// never named one, so it cannot silently authorize an unprotected run. `confirm` lets each such run
+// ask explicitly and records the answer; `remembered` restores the older silent behavior for users
+// who deliberately accept it. Relaxing the default is a decision the user makes, never a default
+// they discover.
 export const REMOTE_UNPROTECTED_EXECUTION_POLICIES = ['confirm', 'remembered', 'deny'] as const
 
 export type RemoteUnprotectedExecutionPolicy =
   (typeof REMOTE_UNPROTECTED_EXECUTION_POLICIES)[number]
 
-export const DEFAULT_REMOTE_UNPROTECTED_EXECUTION_POLICY: RemoteUnprotectedExecutionPolicy =
-  'confirm'
+export const DEFAULT_REMOTE_UNPROTECTED_EXECUTION_POLICY: RemoteUnprotectedExecutionPolicy = 'deny'
 
 export type ExecutionProtectionMatrix = {
   platform: string
@@ -355,8 +355,7 @@ export type RemoteExecutionTarget = {
 export const EXECUTION_PROTECTION_COMMAND_CHANNEL = 'settings:execution-protection'
 
 export type ExecutionProtectionCommandRequest =
-  | { action: 'matrix' }
-  | { action: 'set-remote-policy'; policy: RemoteUnprotectedExecutionPolicy }
+  { action: 'matrix' } | { action: 'set-remote-policy'; policy: RemoteUnprotectedExecutionPolicy }
 
 export type ExecutionProtectionCommandResult = {
   matrix: ExecutionProtectionMatrix

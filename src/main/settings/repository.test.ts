@@ -1220,10 +1220,10 @@ describe('execution protection settings', () => {
     // A hand-edited file must not be able to reach a silent policy: unknown values fall back to the
     // default (ask explicitly) instead of being dropped or trusted.
     expect(sanitizeExecutionProtectionSettings({ remoteUnprotectedPolicy: 'silent' })).toEqual({
-      remoteUnprotectedPolicy: 'confirm'
+      remoteUnprotectedPolicy: 'deny'
     })
     expect(sanitizeExecutionProtectionSettings({})).toEqual({
-      remoteUnprotectedPolicy: 'confirm'
+      remoteUnprotectedPolicy: 'deny'
     })
     expect(sanitizeExecutionProtectionSettings('deny')).toBeUndefined()
     expect(sanitizeExecutionProtectionSettings(null)).toBeUndefined()
@@ -1252,7 +1252,7 @@ describe('execution protection settings', () => {
     )
     const repository = new SettingsRepository(root)
     expect((await repository.getSettings()).executionProtection).toEqual({
-      remoteUnprotectedPolicy: 'confirm'
+      remoteUnprotectedPolicy: 'deny'
     })
   })
 })

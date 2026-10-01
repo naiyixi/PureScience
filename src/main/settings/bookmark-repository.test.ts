@@ -129,9 +129,9 @@ describe('session bookmark storage', () => {
       })
     ).rejects.toBeInstanceOf(BookmarkValidationError)
     expect(await repository.list('session-1')).toHaveLength(0)
-    await expect(repository.updateNote('session-1', 'any', 'x'.repeat(4001))).rejects.toBeInstanceOf(
-      BookmarkValidationError
-    )
+    await expect(
+      repository.updateNote('session-1', 'any', 'x'.repeat(4001))
+    ).rejects.toBeInstanceOf(BookmarkValidationError)
   })
 
   it('treats a missing file as an empty list and ignores malformed rows', async () => {
@@ -193,7 +193,10 @@ describe('pdf region bookmark pointers', () => {
 
   it('still refuses a region on a page that cannot exist', () => {
     expect(
-      validateBookmarkInput({ sessionId: 'session-1', anchor: { kind: 'pdf-region', page: 0, rect } })
+      validateBookmarkInput({
+        sessionId: 'session-1',
+        anchor: { kind: 'pdf-region', page: 0, rect }
+      })
     ).toMatchObject({ code: 'invalid_page' })
   })
 })

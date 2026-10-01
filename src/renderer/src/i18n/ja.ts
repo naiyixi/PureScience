@@ -184,7 +184,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
     'セッション・プロジェクト・全体の許可が保護なしのリモート実行も覆います。毎回尋ねられたくない場合のみ選んでください。',
   'protection.policyDeny': '保護なしのリモート実行を拒否する',
   'protection.policyDenyHint':
-    'レベルが保護なしの間は、リモートのコマンドとジョブを一律に拒否します。',
+    'レベルが保護なしの間は、リモートのコマンドとジョブを一律に拒否します。 これが既定です。',
   'protection.loading': '保護マトリクスを読み込み中…',
   'protection.loadError': 'このウィンドウでは保護マトリクスを読み込めません。',
   'protection.reload': '再試行',

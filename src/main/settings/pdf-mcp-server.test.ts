@@ -49,7 +49,7 @@ const makeHandler = (): PdfMcpHandler => ({
     figures: [],
     skippedSmall: 0,
     withoutCaption: 0
-  })),
+  }))
 })
 
 describe('PDF MCP server contract', () => {

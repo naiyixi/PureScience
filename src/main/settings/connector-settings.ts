@@ -213,7 +213,12 @@ class ConnectorSettingsModule {
     for (const item of request.items) {
       const id = item.id.trim()
       if (id === '') {
-        results.push({ connector: item.id, enabled: item.enabled, changed: false, error: 'empty connector id' })
+        results.push({
+          connector: item.id,
+          enabled: item.enabled,
+          changed: false,
+          error: 'empty connector id'
+        })
         continue
       }
       const current = known.get(id)
