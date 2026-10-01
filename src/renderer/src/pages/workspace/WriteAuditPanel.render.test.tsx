@@ -6,6 +6,11 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import type { NotebookRunRecord } from '../../../../shared/notebook'
+import {
+  buildFileEvidence,
+  capturedReadEvidence,
+  uncapturedReadEvidence
+} from '../../../../shared/notebook'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -134,6 +139,104 @@ describe('WriteAuditPanel', () => {
     rows = container.querySelectorAll('[data-testid="write-audit-row"]')
     expect(rows).toHaveLength(1)
     expect(rows[0]!.textContent).toContain('c')
+  })
+
+  it('lists what the session read, separating an input from a file this run wrote', () => {
+    renderPanel([
+      makeRun({
+        fileEvidence: buildFileEvidence(
+          capturedReadEvidence([
+            { path: '/data/raw.csv', relativePath: 'data/raw.csv', kind: 'input', reads: 2 },
+            { path: '/data/clean.csv', relativePath: 'data/clean.csv', kind: 'intermediate' }
+          ]),
+          { status: 'captured' }
+        )
+      })
+    ])
+
+    const rows = container.querySelectorAll('[data-testid="write-audit-read-row"]')
+    expect(rows).toHaveLength(2)
+    expect(container.textContent).toContain('data/raw.csv')
+    expect(container.textContent).toContain('input')
+    expect(container.textContent).toContain('written by this run')
+    // The read table is its own surface: no read may leak into the write table.
+    expect(container.querySelectorAll('[data-testid="write-audit-row"]')).toHaveLength(0)
+  })
+
+  it('says a bounded read capture is short instead of presenting it as complete', () => {
+    renderPanel([
+      makeRun({
+        fileEvidence: buildFileEvidence(
+          { read: [], readStatus: 'truncated', readTruncatedCount: 37 },
+          { status: 'captured' }
+        )
+      })
+    ])
+
+    expect(
+      container.querySelector('[data-testid="write-audit-read-truncated"]')?.textContent
+    ).toContain('37')
+  })
+
+  it('names why reads were not captured rather than showing an empty list', () => {
+    renderPanel([
+      makeRun({
+        fileEvidence: buildFileEvidence(uncapturedReadEvidence('kernel-language-unsupported'), {
+          status: 'captured'
+        })
+      })
+    ])
+
+    const body =
+      container.querySelector('[data-testid="write-audit-read-empty"]')?.textContent ?? ''
+    expect(body).toContain('were not captured')
+    expect(body).toContain('no read capture')
+  })
+
+  it('says a record predates the evidence instead of claiming it read nothing', () => {
+    renderPanel([makeRun({})])
+
+    expect(
+      container.querySelector('[data-testid="write-audit-read-empty"]')?.textContent
+    ).toContain('no read evidence')
+    expect(
+      container.querySelector('[data-testid="write-audit-legacy-runs"]')?.textContent
+    ).toContain('1')
+  })
+
+  it("keeps a shared directory's changes labelled as unattributed, out of the file list", () => {
+    renderPanel([
+      makeRun({
+        fileEvidence: buildFileEvidence(capturedReadEvidence([]), {
+          status: 'unattributed',
+          reason: 'attribution-conflict',
+          directoryConflict: 'shared-directory',
+          observedPaths: ['data/a.csv']
+        })
+      })
+    ])
+
+    const notice =
+      container.querySelector('[data-testid="write-audit-shared-directory"]')?.textContent ?? ''
+    expect(notice).toContain('1')
+    expect(notice).toContain('data/a.csv')
+    // The observation is shown, but never as one of this run's written files.
+    expect(container.querySelectorAll('[data-testid="write-audit-row"]')).toHaveLength(0)
+  })
+
+  it('says a bounded write capture is short instead of presenting it as complete', () => {
+    renderPanel([
+      makeRun({
+        fileEvidence: buildFileEvidence(capturedReadEvidence([]), {
+          status: 'truncated',
+          droppedCount: 12
+        })
+      })
+    ])
+
+    expect(
+      container.querySelector('[data-testid="write-audit-write-truncated"]')?.textContent
+    ).toContain('12')
   })
 
   it('falls back to modified for legacy rows without changeKind', () => {

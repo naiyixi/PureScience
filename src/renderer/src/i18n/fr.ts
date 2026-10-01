@@ -3670,6 +3670,43 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'conversation.referenceSession': 'Référencer une session',
   'sessionPlan.downloadPlan': 'Télécharger le plan',
   'writeAudit.filterKind': 'Filtrer par type de modification',
+  'writeAudit.filterAll': 'Tous',
+  'writeAudit.columnPath': 'Chemin',
+  'writeAudit.columnChange': 'Modification',
+  'writeAudit.columnSize': 'Taille',
+  'writeAudit.columnTime': 'Heure',
+  'writeAudit.columnRun': 'Exécution',
+  'writeAudit.columnKind': 'Type',
+  'writeAudit.columnReads': 'Lectures',
+  'writeAudit.changeCreated': 'créé',
+  'writeAudit.changeModified': 'modifié',
+  'writeAudit.changeRemoved': 'supprimé',
+  'writeAudit.emptyBody':
+    'Aucune écriture de fichier enregistrée pour cette session pour l instant. Les modifications faites par le code et le shell apparaissent ici.',
+  'writeAudit.readTitle': 'Lectures',
+  'writeAudit.readEmpty': 'Cette session n a lu aucun fichier existant.',
+  'writeAudit.readUnknown': 'Cette session n a pas de preuve de lecture.',
+  'writeAudit.readKindInput': 'fichier existant',
+  'writeAudit.readKindIntermediate': 'écrit par cette exécution',
+  'writeAudit.readTruncated':
+    '{n} lectures supplémentaires n ont pas été enregistrées (limite de capture).',
+  'writeAudit.readUncaptured': 'Les lectures n ont pas été capturées : {reason}.',
+  'writeAudit.writeTruncated':
+    '{n} écritures supplémentaires n ont pas été enregistrées (limite de capture).',
+  'writeAudit.writeUncaptured': 'Les écritures n ont pas été capturées : {reason}.',
+  'writeAudit.sharedDirectory':
+    '{n} modifications ont été vues dans un répertoire partagé par deux sessions ; elles ne sont attribuées à aucune exécution.',
+  'writeAudit.observedPaths': 'Modifications observées : {paths}',
+  'writeAudit.legacyRuns':
+    '{n} exécutions précèdent cette preuve : leur activité de fichiers est inconnue.',
+  'writeAudit.summaryReads': '{n} fichiers lus depuis cette session',
+  'writeAudit.reason.driver-without-read-capture': 'Ce pilote ne signale pas les lectures',
+  'writeAudit.reason.kernel-language-unsupported':
+    'Ce langage de noyau n a pas de capture des lectures',
+  'writeAudit.reason.capture-failed': 'Échec de la capture',
+  'writeAudit.reason.limit-exceeded': 'Limite atteinte',
+  'writeAudit.reason.observation-unavailable': 'Observation indisponible',
+  'writeAudit.reason.attribution-conflict': 'Attribution impossible (répertoire partagé)',
   'tiffPreview.decoding': 'Décodage de l’image TIFF…',
 
   // references
