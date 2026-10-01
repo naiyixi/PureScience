@@ -2646,7 +2646,7 @@ describe('session store public contract', () => {
       'src/renderer/src/pages/workspace/WorkspaceToolDetailsRow.tsx',
       'src/renderer/src/pages/workspace/WorkspaceWebSearchActivityRow.tsx',
       'src/renderer/src/pages/workspace/activity-subscription.ts',
-    'src/renderer/src/pages/workspace/agent-loading-message.ts',
+      'src/renderer/src/pages/workspace/agent-loading-message.ts',
       'src/renderer/src/pages/workspace/artifact-preview-utils.ts',
       'src/renderer/src/pages/workspace/artifact-preview.tsx',
       'src/renderer/src/pages/workspace/composer/SessionMentionPopup.tsx',

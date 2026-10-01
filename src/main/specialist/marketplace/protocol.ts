@@ -3,6 +3,7 @@ import { createHash, createPublicKey, verify } from 'node:crypto'
 import { z } from 'zod'
 
 import { validateSpecialistPackageVersion } from '../../../shared/specialist'
+import type { MarketplaceSkillsCatalog } from '../../../shared/specialist-marketplace'
 
 const id = z.string().regex(/^[a-z0-9][a-z0-9-]{0,127}$/)
 const digest = z.string().regex(/^[a-f0-9]{64}$/)
@@ -54,7 +55,23 @@ const rootSchema = z
           })
           .strict()
       )
+      .max(2_000),
+    // The skills catalog is optional on purpose, and it must stay optional: this schema is `.strict()`, so
+    // a published root that carried a section older clients do not know would fail to parse AT ALL — the
+    // whole marketplace would appear broken to them rather than being seen to lack skills. An unknown key is
+    // rejected; an optional known one is simply absent until the catalog exists.
+    skills: z
+      .array(
+        z
+          .object({
+            id,
+            display_name: z.string().min(1).max(160),
+            summary: z.string().min(1).max(500)
+          })
+          .strict()
+      )
       .max(2_000)
+      .optional()
   })
   .strict()
 
@@ -127,6 +144,20 @@ const releaseSchema = z
   .strict()
 
 export type MarketplaceRoot = z.infer<typeof rootSchema>
+
+// Whether the root carries a skills catalog, as one pure decision so it can be tested without a signed root
+// (producing a valid signature in a test would need the private key the app never has).
+// `undefined` means no root was read at all — "we could not look" is not "there is nothing there".
+export const skillsCatalogFromRoot = (
+  root: MarketplaceRoot | undefined,
+  refreshedAt?: string
+): MarketplaceSkillsCatalog => {
+  if (!root) return { state: 'unreachable' }
+  const skills = root.skills
+  if (!skills) return { state: 'absent', ...(refreshedAt ? { refreshedAt } : {}) }
+
+  return { state: 'published', count: skills.length, ...(refreshedAt ? { refreshedAt } : {}) }
+}
 export type MarketplaceSignature = z.infer<typeof signatureSchema>
 export type MarketplaceRelease = z.infer<typeof releaseSchema>
 

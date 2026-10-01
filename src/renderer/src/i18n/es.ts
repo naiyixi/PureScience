@@ -2827,6 +2827,15 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.skillTrustFailureMode': 'Modo de fallo',
   'settings.skillReuseBadge': 'Usado {uses}× · {failures} fallidos',
   'settings.skillReuseNone': 'Aún no hay reutilización de skills registrada',
+  'settings.skillsOfficialCatalog': 'Catálogo oficial de habilidades',
+  'settings.skillsOfficialCatalogCheck': 'Comprobar',
+  'settings.skillsOfficialCatalogChecking': 'Comprobando…',
+  'settings.skillsOfficialCatalogPublished': 'Publicado: {n} habilidades.',
+  'settings.skillsOfficialCatalogAbsent':
+    'Fuente leída, pero no incluye catálogo de habilidades (su protocolo solo lleva especialistas).',
+  'settings.skillsOfficialCatalogUnreachable': 'No se pudo leer el catálogo oficial aquí: {reason}',
+  'settings.skillsOfficialCatalogUnread': 'Aún sin comprobar.',
+  'settings.skillsOfficialCatalogNoReason': 'sin motivo informado',
   'settings.skillReuseUnattached':
     'Cargados desde skills fuera de esta lista (de conectores o eliminados después):',
   'settings.skillReuseHistoryNote':

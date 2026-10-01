@@ -2771,6 +2771,16 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.skillTrustFailureMode': '失敗モード',
   'settings.skillReuseBadge': '{uses} 回使用 · 失敗 {failures}',
   'settings.skillReuseNone': 'スキルの再利用記録はまだありません',
+  'settings.skillsOfficialCatalog': '公式スキルカタログ',
+  'settings.skillsOfficialCatalogCheck': '確認',
+  'settings.skillsOfficialCatalogChecking': '確認中…',
+  'settings.skillsOfficialCatalogPublished': '公開済み：{n} 件のスキル。',
+  'settings.skillsOfficialCatalogAbsent':
+    'ソースは読めましたが、スキルカタログは含まれていません（現行プロトコルは専門家のみ）。',
+  'settings.skillsOfficialCatalogUnreachable':
+    'この環境では公式カタログを読めませんでした：{reason}',
+  'settings.skillsOfficialCatalogUnread': 'まだ確認していません。',
+  'settings.skillsOfficialCatalogNoReason': '理由は報告されていません',
   'settings.skillReuseUnattached':
     'この一覧にないスキルからの読み込み（コネクタ提供、または削除済み）：',
   'settings.skillReuseHistoryNote':

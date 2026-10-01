@@ -64,7 +64,6 @@ const RUN_REASON_KEYS: Record<FunctionModelEvent['reason'] & string, Translation
   'call-not-attempted': 'settings.functionModelNotAttempted'
 }
 
-
 const UNUSABLE_KEYS: Record<FunctionModelUnusableReason, TranslationKey> = {
   'provider-missing': 'settings.functionModelUnusableProviderMissing',
   'provider-has-no-credentials': 'settings.functionModelUnusableNoCredentials',

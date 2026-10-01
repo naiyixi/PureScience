@@ -24,6 +24,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select'
+import { useMarketplaceStore } from '@/stores/marketplace-store'
+import { officialCatalogSentence } from './skills-official-catalog'
 import { useSettingsStore } from '@/stores/settings-store'
 import { useSpecialistStore } from '@/stores/specialist-store'
 import { useCatalogTagsStore } from '@/stores/catalog-tags-store'
@@ -234,6 +236,18 @@ const SkillsPanel = ({
   }, [skills, filter, query, scope, specialistNamesBySkillId])
 
   const focusRestore = useDialogFocusRestore(pendingLicenseSkill !== null)
+  const marketplaceSnapshot = useMarketplaceStore((state) => state.snapshot)
+  const marketplaceRefreshing = useMarketplaceStore((state) => state.isRefreshing)
+  const refreshMarketplace = useMarketplaceStore((state) => state.refresh)
+
+  // Read once when this view opens without a snapshot; the store keeps the last one, so re-entering does not
+  // re-fetch. A user-initiated check passes forceRefresh and therefore always reaches the network.
+  useEffect(() => {
+    if (!marketplaceSnapshot && !marketplaceRefreshing) void refreshMarketplace()
+  }, [marketplaceSnapshot, marketplaceRefreshing, refreshMarketplace])
+
+  const officialCatalogText = officialCatalogSentence(marketplaceSnapshot, t)
+
   const visible = useMemo(() => {
     return scoped.filter((skill) => {
       if (showFavorites && !catalogEntries[`skill:${skill.id}`]?.favorite) return false
@@ -612,6 +626,37 @@ const SkillsPanel = ({
             {t('settings.skillReuseHistoryNote')}
           </p>
         )}
+
+        {/* The official catalog is a SOURCE like the local ones, and its state is stated rather than implied:
+            a user who has heard there is a marketplace deserves to know whether we could read it at all. */}
+        <div
+          className="rounded-lg border border-border-200 px-3 py-2"
+          data-testid="skills-official-catalog"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm font-semibold text-foreground">
+              {t('settings.skillsOfficialCatalog')}
+            </span>
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-7 px-2 text-xs"
+              data-testid="skills-official-catalog-check"
+              disabled={marketplaceRefreshing}
+              onClick={() => void refreshMarketplace({ forceRefresh: true })}
+            >
+              {marketplaceRefreshing
+                ? t('settings.skillsOfficialCatalogChecking')
+                : t('settings.skillsOfficialCatalogCheck')}
+            </Button>
+          </div>
+          <p
+            className="mt-1 text-xs text-muted-foreground"
+            data-testid="skills-official-catalog-state"
+          >
+            {officialCatalogText}
+          </p>
+        </div>
 
         <div className="flex flex-col gap-4">
           {groups.map((group) => {

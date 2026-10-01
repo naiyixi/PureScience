@@ -2721,6 +2721,16 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.skillTrustFailureMode': '실패 모드',
   'settings.skillReuseBadge': '{uses}회 사용 · 실패 {failures}',
   'settings.skillReuseNone': '아직 기록된 스킬 재사용이 없습니다',
+  'settings.skillsOfficialCatalog': '공식 스킬 카탈로그',
+  'settings.skillsOfficialCatalogCheck': '확인',
+  'settings.skillsOfficialCatalogChecking': '확인 중…',
+  'settings.skillsOfficialCatalogPublished': '게시됨: 스킬 {n}개.',
+  'settings.skillsOfficialCatalogAbsent':
+    '출처는 읽었지만 스킬 카탈로그가 없습니다(현재 프로토콜은 전문가만 담습니다).',
+  'settings.skillsOfficialCatalogUnreachable':
+    '이 환경에서는 공식 카탈로그를 읽지 못했습니다: {reason}',
+  'settings.skillsOfficialCatalogUnread': '아직 확인하지 않았습니다.',
+  'settings.skillsOfficialCatalogNoReason': '보고된 이유 없음',
   'settings.skillReuseUnattached': '이 목록에 없는 스킬에서 로드됨(커넥터 제공 또는 이후 삭제됨):',
   'settings.skillReuseHistoryNote':
     '이 버전 이전의 세션은 스킬 이름을 기록하지 않았으므로 여기에 표시될 수 없습니다.',

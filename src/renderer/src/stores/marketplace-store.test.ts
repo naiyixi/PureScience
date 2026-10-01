@@ -22,7 +22,9 @@ const makeSnapshot = (): MarketplaceSnapshot => ({
     }
   ],
   specialists: [],
-  failures: []
+  failures: [],
+  // No official source in this fixture: nothing was read, which the panel must not present as "no skills".
+  skillsCatalog: { state: 'unreachable' }
 })
 
 describe('marketplace store', () => {

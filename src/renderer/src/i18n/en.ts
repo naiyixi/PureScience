@@ -1146,6 +1146,15 @@ export const en: Record<ZhKey, string> = {
   'settings.skillTrustFailureMode': 'Failure mode',
   'settings.skillReuseBadge': 'Used {uses}× · {failures} failed',
   'settings.skillReuseNone': 'No skill reuse recorded yet',
+  'settings.skillsOfficialCatalog': 'Official skills catalog',
+  'settings.skillsOfficialCatalogCheck': 'Check',
+  'settings.skillsOfficialCatalogChecking': 'Checking…',
+  'settings.skillsOfficialCatalogPublished': 'Published: {n} skills.',
+  'settings.skillsOfficialCatalogAbsent':
+    'Source read, but it carries no skills catalog (its protocol carries specialists only).',
+  'settings.skillsOfficialCatalogUnreachable': 'Could not read the official catalog here: {reason}',
+  'settings.skillsOfficialCatalogUnread': 'Not checked yet.',
+  'settings.skillsOfficialCatalogNoReason': 'no reason reported',
   'settings.skillReuseUnattached':
     'Loaded from skills outside this list (connector-provided, or removed since):',
   'settings.skillReuseHistoryNote':

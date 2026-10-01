@@ -10,6 +10,7 @@ import type {
   MarketplaceDownloadProgress,
   MarketplaceSnapshot,
   MarketplaceSourceCandidate,
+  MarketplaceSkillsCatalog,
   MarketplaceSourceFailure,
   MarketplaceSourceView,
   MarketplaceSpecialistListing,
@@ -24,6 +25,7 @@ import {
   marketplaceKeyFingerprint,
   parseMarketplaceRelease,
   parseMarketplaceRoot,
+  skillsCatalogFromRoot,
   parseMarketplaceSignature,
   sha256,
   verifyMarketplaceRoot,
@@ -342,6 +344,9 @@ export class MarketplaceService {
     )
     const specialists: MarketplaceSpecialistListing[] = []
     const failures: MarketplaceSourceFailure[] = []
+    // The official source's skills section is reported beside the specialists it does carry: a user reading
+    // "no skills marketplace yet" deserves to know whether the source was read at all.
+    let skillsCatalog: MarketplaceSkillsCatalog = { state: 'unreachable' }
     for (const [index, result] of results.entries()) {
       const source = sources[index]
       if (result.status === 'rejected') {
@@ -362,6 +367,12 @@ export class MarketplaceService {
           installedSpecialists
         )
       )
+      if (source.kind === 'official') {
+        skillsCatalog = skillsCatalogFromRoot(
+          result.value.loadedRoot.root,
+          result.value.loadedRoot.refreshedAt
+        )
+      }
       if (source.kind === 'github' && !result.value.loadedRoot.usingCachedMetadata) {
         await this.options.repository.markRefreshed(source.id, result.value.loadedRoot.refreshedAt)
       }
@@ -379,7 +390,8 @@ export class MarketplaceService {
           left.displayName.localeCompare(right.displayName) ||
           left.sourceName.localeCompare(right.sourceName)
       ),
-      failures
+      failures,
+      skillsCatalog
     }
   }
 

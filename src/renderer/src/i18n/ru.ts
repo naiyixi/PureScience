@@ -2769,6 +2769,15 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.skillTrustFailureMode': 'Режим отказа',
   'settings.skillReuseBadge': 'Использован {uses}× · ошибок {failures}',
   'settings.skillReuseNone': 'Повторное использование навыков пока не зафиксировано',
+  'settings.skillsOfficialCatalog': 'Официальный каталог навыков',
+  'settings.skillsOfficialCatalogCheck': 'Проверить',
+  'settings.skillsOfficialCatalogChecking': 'Проверка…',
+  'settings.skillsOfficialCatalogPublished': 'Опубликовано: {n} навыков.',
+  'settings.skillsOfficialCatalogAbsent':
+    'Источник прочитан, но каталога навыков в нём нет (его протокол несёт только специалистов).',
+  'settings.skillsOfficialCatalogUnreachable': 'Официальный каталог здесь не читается: {reason}',
+  'settings.skillsOfficialCatalogUnread': 'Ещё не проверено.',
+  'settings.skillsOfficialCatalogNoReason': 'причина не указана',
   'settings.skillReuseUnattached':
     'Загружено из навыков вне этого списка (предоставлены коннектором или удалены):',
   'settings.skillReuseHistoryNote':

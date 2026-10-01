@@ -56,10 +56,24 @@ export type MarketplaceSourceFailure = {
   message: string
 }
 
+/**
+ * Whether the official source carries a SKILLS catalog at all. Three states, because "we could not read the
+ * source" and "the source is there and has no skills section" are different answers to the user's question
+ * "why is there no skills marketplace" — and only one of them is about the catalog being unpublished.
+ */
+export type MarketplaceSkillsCatalog = {
+  state: 'published' | 'absent' | 'unreachable'
+  /** Present for 'published': how many skills the catalog offers. */
+  count?: number
+  /** Present for the states reached by reading the source: when it was read. */
+  refreshedAt?: string
+}
+
 export type MarketplaceSnapshot = {
   sources: readonly MarketplaceSourceView[]
   specialists: readonly MarketplaceSpecialistListing[]
   failures: readonly MarketplaceSourceFailure[]
+  skillsCatalog: MarketplaceSkillsCatalog
 }
 
 // Optional renderer intent: a user-initiated refresh bypasses the cached-root TTL so the button

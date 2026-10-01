@@ -13,6 +13,7 @@ import {
   marketplaceKeyFingerprint,
   parseMarketplaceRelease,
   parseMarketplaceRoot,
+  skillsCatalogFromRoot,
   parseMarketplaceSignature,
   sha256,
   verifyMarketplaceRoot
@@ -173,6 +174,106 @@ describe('marketplace protocol', () => {
     const root = parseMarketplaceRoot(bytes)
     expect(root.marketplace.id).toBe('test-marketplace')
     expect(root.specialists[0]?.latest.version).toBe('1.0.0')
+  })
+
+  it('accepts a root that carries a skills catalog, and stays strict about keys it does not know', () => {
+    const withSkills = (extra: Record<string, unknown> = {}): Uint8Array =>
+      new TextEncoder().encode(
+        JSON.stringify({
+          schema_version: 1,
+          revision: 'r',
+          marketplace: { id: 'm', name: 'M' },
+          specialists: [],
+          skills: [
+            { id: 'expression-data-prep', display_name: 'Data prep', summary: 'Prepares a table.' }
+          ],
+          ...extra
+        })
+      )
+
+    // The section is optional and known: a published root that carries it must not break clients that
+    // predate it, and the parser must expose what it found.
+    const parsed = parseMarketplaceRoot(withSkills())
+    expect(parsed.skills).toHaveLength(1)
+    expect(parsed.skills?.[0]?.id).toBe('expression-data-prep')
+    expect(skillsCatalogFromRoot(parsed)).toEqual({ state: 'published', count: 1 })
+
+    // A root without the section is the shape every client knows today: readable, and honest about it.
+    const withoutSkills = new TextEncoder().encode(
+      JSON.stringify({
+        schema_version: 1,
+        revision: 'r',
+        marketplace: { id: 'm', name: 'M' },
+        specialists: []
+      })
+    )
+    const noSkills = parseMarketplaceRoot(withoutSkills)
+    expect(noSkills.skills).toBeUndefined()
+    expect(skillsCatalogFromRoot(noSkills, '2026-10-01T00:00:00.000Z')).toEqual({
+      state: 'absent',
+      refreshedAt: '2026-10-01T00:00:00.000Z'
+    })
+
+    // No root read at all is a third state, not an empty catalog.
+    expect(skillsCatalogFromRoot(undefined)).toEqual({ state: 'unreachable' })
+
+    // Unknown keys are still refused: the optional section buys forward compatibility for what the protocol
+    // defines, not for anything a publisher invents.
+    expect(() => parseMarketplaceRoot(withSkills({ invented: true }))).toThrow()
+    // And a malformed skills entry is refused like any other malformed document.
+    expect(() =>
+      parseMarketplaceRoot(
+        new TextEncoder().encode(
+          JSON.stringify({
+            schema_version: 1,
+            revision: 'r',
+            marketplace: { id: 'm', name: 'M' },
+            specialists: [],
+            skills: [{ id: 'x' }]
+          })
+        )
+      )
+    ).toThrow()
+  })
+
+  it('reports the official catalog as unreachable when the source cannot be read', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'marketplace-skills-catalog-'))
+    try {
+      const service = new MarketplaceService({
+        repository: new MarketplaceRepository(dir),
+        packages: {
+          preview: vi.fn(),
+          install: vi.fn(),
+          candidateNewSkillIds: vi.fn(),
+          cancel: vi.fn(),
+          dispose: vi.fn()
+        },
+        fetch: vi.fn().mockRejectedValue(new Error('offline')),
+        // A non-empty trusted-key table keeps the official source in play; an empty one omits it entirely.
+        officialSource: {
+          id: 'test-official',
+          name: 'Test Official',
+          repositoryUrl: 'https://github.com/example/test-marketplace',
+          ref: 'main',
+          metadataBaseUrls: ['https://example.com/marketplace/'],
+          artifactBaseUrls: [],
+          trustedKeys: {
+            'test-key': 'MCowBQYDK2VwAyEA8Jt1UypmPMFX0N8u8QJdJzRkmEwX2b0kK0v6Qy6iN4Q='
+          }
+        },
+        getDisabledSkillIds: async () => [],
+        getInstalledSpecialists: async () => [],
+        setSkillsMainEnabled: async () => {}
+      })
+
+      const snapshot = await service.list()
+
+      // "We could not read the source" must not be reported as "the catalog is empty".
+      expect(snapshot.skillsCatalog).toEqual({ state: 'unreachable' })
+      expect(snapshot.failures.length).toBeGreaterThan(0)
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
   })
 
   it('rejects a root with a dangerous release path', () => {
