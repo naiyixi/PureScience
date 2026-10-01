@@ -19,9 +19,12 @@ on:
 permissions:
   contents: write
 
-# A newer push supersedes an in-flight nightly — no point finishing a stale one.
+# A newer push supersedes an in-flight nightly — no point finishing a stale one. The group is scoped by
+# EVENT, not by the branch alone: a push may cancel another push, but a manually dispatched verification
+# (the only determinate way to ask "verify this head and let it finish", which a release decision needs)
+# must not be cancelled by whatever is pushed while it runs.
 concurrency:
-  group: nightly
+  group: nightly-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
