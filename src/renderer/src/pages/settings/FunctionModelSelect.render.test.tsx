@@ -37,7 +37,8 @@ const LABELS: Record<string, string> = {
   'settings.functionModelProbing': 'Running…',
   'settings.functionModelProbeNote': 'Runs the same narrow call a turn makes.',
   'settings.functionModelProbeUsedModel': '{model} answered in {ms} ms and selected {n} skill(s).',
-  'settings.functionModelProbeBuiltIn': 'Built-in path ran in {ms} ms —'
+  'settings.functionModelProbeBuiltIn': 'Built-in path ran in {ms} ms —',
+  'settings.functionModelNotAttempted': 'no request was sent: nothing to select for'
 }
 
 vi.mock('@/i18n', () => ({
@@ -116,12 +117,17 @@ describe('FunctionModelRow', () => {
     // No model configured: the built-in path is what a turn would take, and naming that IS the answer to
     // "is my model being used" — so the control must not disappear behind a disabled state.
     useSettingsStore.setState({ ...createInitialSettingsState(), providers: [] })
-    stubApi({ functionId: 'skill-selection', override: null, fallback, unusable: [] }, {}, undefined, {
-      outcome: 'built-in',
-      reason: 'not-configured',
-      elapsedMs: 3,
-      selectedSkillIds: []
-    })
+    stubApi(
+      { functionId: 'skill-selection', override: null, fallback, unusable: [] },
+      {},
+      undefined,
+      {
+        outcome: 'built-in',
+        reason: 'not-configured',
+        elapsedMs: 3,
+        selectedSkillIds: []
+      }
+    )
 
     await render()
     const button = container.querySelector<HTMLButtonElement>(
@@ -138,13 +144,55 @@ describe('FunctionModelRow', () => {
     expect(line).toContain('no model is configured for this function')
   })
 
+  it('says no request was sent instead of reporting a model that never ran', async () => {
+    // The bridge returns an empty list both when a model answers "nothing" and when it was never asked, so
+    // the probe refuses to guess: this reason exists so "used-model" cannot be claimed for a call that never
+    // left the machine.
+    useSettingsStore.setState({
+      ...createInitialSettingsState(),
+      providers: [{ id: 'p1', name: 'Gateway', type: 'custom', models: ['small-model'] } as never]
+    })
+    stubApi(
+      {
+        functionId: 'skill-selection',
+        override: { providerId: 'p1', model: 'small-model' },
+        fallback,
+        unusable: []
+      },
+      { 'skill-selection': { providerId: 'p1', model: 'small-model' } },
+      undefined,
+      {
+        outcome: 'built-in',
+        reason: 'call-not-attempted',
+        providerId: 'p1',
+        model: 'small-model',
+        elapsedMs: 1,
+        selectedSkillIds: []
+      }
+    )
+
+    await render()
+    await click('function-model-run-probe-skill-selection')
+
+    const line = container.querySelector(
+      '[data-testid="function-model-probe-skill-selection"]'
+    )?.textContent
+    expect(line).toContain('Built-in path ran in 1 ms')
+    expect(line).toContain('no request was sent')
+  })
+
   it('reports the model that answered and what it selected', async () => {
     useSettingsStore.setState({
       ...createInitialSettingsState(),
       providers: [{ id: 'p1', name: 'Gateway', type: 'custom', models: ['small-model'] } as never]
     })
     stubApi(
-      { functionId: 'skill-selection', override: { providerId: 'p1', model: 'small-model' }, fallback, unusable: [] },
+      {
+        functionId: 'skill-selection',
+        override: { providerId: 'p1', model: 'small-model' },
+        fallback,
+        unusable: []
+      },
       { 'skill-selection': { providerId: 'p1', model: 'small-model' } },
       undefined,
       {

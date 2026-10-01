@@ -83,6 +83,28 @@ describe('runFunctionModelSkillSelection', () => {
     expect(configured.events.at(-1)).toMatchObject({ outcome: 'built-in', reason: 'call-failed' })
   })
 
+  it('lets a caller name a failure more precisely than "it threw"', async () => {
+    // The probe distinguishes a call that failed from one that was never attempted; both reach the helper
+    // as a throw, so the caller decides the word.
+    const configured = host({ override: { providerId: 'p1', model: 'm1' }, unusable: [] })
+
+    const result = await runFunctionModelSkillSelection({
+      functionId: 'skill-selection',
+      host: configured,
+      builtIn: async () => ['built-in'],
+      runWithModel: async () => {
+        throw new Error('probe-not-attempted')
+      },
+      classifyRunFailure: (error) =>
+        error instanceof Error && error.message === 'probe-not-attempted'
+          ? 'call-not-attempted'
+          : 'call-failed'
+    })
+
+    expect(result.selection.reason).toBe('call-not-attempted')
+    expect(configured.events.at(-1)).toMatchObject({ reason: 'call-not-attempted' })
+  })
+
   it('separates "nobody configured it" from "the configured one cannot be used"', async () => {
     const none = host({ override: null, unusable: [] })
     const unusable = host({ override: null, unusable: ['provider-has-no-credentials'] })
