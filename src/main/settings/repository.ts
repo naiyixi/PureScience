@@ -26,6 +26,7 @@ import {
   type ExecutionProtectionSettings
 } from '../../shared/execution-protection'
 import { sanitizeFunctionModels, type FunctionModels } from '../../shared/function-models'
+import { sanitizeSkillAvailability, type SkillAvailability } from '../../shared/skill-availability'
 import { SCENARIO_MODEL_IDS } from '../../shared/settings'
 import type { ScenarioModels } from '../../shared/settings'
 import type { ExternalComputeEndpoint } from '../../shared/compute'
@@ -783,6 +784,10 @@ const sanitizeSettings = (value: unknown): StoredSettings => {
     settings.disabledSkillIds = disabledSkillIds
   }
 
+  const skillAvailability = sanitizeSkillAvailability(value.skillAvailability)
+
+  if (skillAvailability) settings.skillAvailability = skillAvailability
+
   const trustedSkillIds = Array.isArray(value.trustedSkillIds)
     ? [
         ...new Set(
@@ -1323,6 +1328,18 @@ class SettingsRepository {
 
   // Persists the execution-protection preferences. Sanitized before write, so an unknown policy can
   // never reach disk (it resolves to the default "ask explicitly" instead).
+  // Persists the per-target skill availability. Sanitized before write; a map whose targets are all empty or
+  // malformed clears it, which is what "every target loads what the global setting allows" already means.
+  async setSkillAvailability(availability: SkillAvailability): Promise<StoredSettings> {
+    const sanitized = sanitizeSkillAvailability(availability)
+    return this.mutate((settings) => {
+      if (sanitized) return { ...settings, skillAvailability: sanitized }
+      const { skillAvailability: _dropped, ...rest } = settings
+
+      return rest
+    })
+  }
+
   // Persists the per-function model overrides. Sanitized before write; a map whose slots are all unknown to
   // this build (or malformed) clears the overrides, which is what "no function model" already means.
   async setFunctionModels(functionModels: FunctionModels): Promise<StoredSettings> {

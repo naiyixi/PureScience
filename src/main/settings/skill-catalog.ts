@@ -730,6 +730,16 @@ class SkillCatalogModule {
     return new Set(disabledIds.filter((id) => !alwaysOn.has(id)))
   }
 
+  // The skills no disabled set may hold, global or per-target. Exposed so the per-target gate uses the same
+  // judgement as the global one instead of re-deriving it (a gate only one path honours is worse than none).
+  async alwaysOnSkillIds(): Promise<Set<string>> {
+    return new Set(
+      (await this.catalog())
+        .filter((skill) => isSkillAlwaysOn(skill.source))
+        .map((skill) => skill.id)
+    )
+  }
+
   // Ids withheld by the verification gate: learnt skills nothing has verified and the user has not
   // allowed explicitly. One place computes this so listing, materialization and provisioning cannot
   // drift apart (a gate that only one path honours is worse than none).

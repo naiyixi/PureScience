@@ -726,7 +726,7 @@ export class AgentBackendResolver {
           ? codexSubscriptionStorageDir(this.storageRoot)
           : codexStorageDir(this.storageRoot)
         : opencodeConfigDir(this.storageRoot)
-    await this.runtime.materializeAgentSkills(settings, skillsRoot, forcedSkillIds)
+    await this.runtime.materializeAgentSkills(settings, skillsRoot, forcedSkillIds, framework.id)
 
     const openCodeProviderTransport =
       framework.id === 'opencode'

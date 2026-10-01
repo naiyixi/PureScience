@@ -20,6 +20,7 @@ import type {
 import { isProviderUsableByFramework } from '../../shared/settings'
 import { isModelBridgeSupported } from '../../shared/provider-registry'
 import { CLAUDE_EXECUTABLE_MISSING_MESSAGE } from '../../shared/run-error-classification'
+import { skillIdsDisabledForTarget } from '../../shared/skill-availability'
 import { buildAgentSpawnEnv } from '../acp/agent-process'
 import {
   DEFAULT_AGENT_FRAMEWORK_ID,
@@ -663,11 +664,22 @@ export class AgentRuntimeManager {
   async materializeAgentSkills(
     settings: StoredSettings,
     configRoot: string,
-    forcedSkillIds: ReadonlySet<string>
+    forcedSkillIds: ReadonlySet<string>,
+    targetId: string
   ): Promise<void> {
+    // Same rule as the Claude path: what this target must not load, on top of the global set, with the
+    // always-on skills removed either way. Each framework reads its own root, so this is where a per-target
+    // choice takes effect.
     await this.skills.materializeSkills(
       configRoot,
-      settings.disabledSkillIds ?? [],
+      [
+        ...skillIdsDisabledForTarget({
+          ...(settings.skillAvailability ? { availability: settings.skillAvailability } : {}),
+          targetId,
+          globalDisabledIds: settings.disabledSkillIds ?? [],
+          alwaysOnSkillIds: await this.skills.alwaysOnSkillIds()
+        })
+      ],
       forcedSkillIds,
       settings.trustedSkillIds ?? []
     )
@@ -695,9 +707,20 @@ export class AgentRuntimeManager {
     const dataRoot = settings.dataRoot?.trim() ? settings.dataRoot : this.storageRoot
     // The verification gate lives inside provisionClaudeConfig, so it applies here too; forced ids
     // (specialist flows that ask for a skill by id) still win over it.
+    // The disabled set for THIS target: the global one minus the always-on skills, plus what this target
+    // must not load. The agent reads only its own config dir, so subtracting here is what makes a
+    // per-target choice real rather than a label.
+    const disabledSkillIds = [
+      ...skillIdsDisabledForTarget({
+        ...(settings.skillAvailability ? { availability: settings.skillAvailability } : {}),
+        targetId: 'claude-code',
+        globalDisabledIds: settings.disabledSkillIds ?? [],
+        alwaysOnSkillIds: await this.skills.alwaysOnSkillIds()
+      })
+    ]
     await this.skills.provisionClaudeConfig(
       configDir,
-      settings.disabledSkillIds ?? [],
+      disabledSkillIds,
       modelConfig,
       settings.trustedSkillIds ?? [],
       forcedSkillIds,

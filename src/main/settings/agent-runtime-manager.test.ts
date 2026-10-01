@@ -86,15 +86,21 @@ describe('AgentRuntimeManager', () => {
   let managedAdapterPath: string
   let managedCodexPath: string
   let provisionClaudeConfig: ReturnType<typeof vi.fn>
+  let materializeSkills: ReturnType<typeof vi.fn>
+  // What the catalog reports as always-on. Mutable per case: the point of the gate is that it cannot be
+  // bypassed per target, so a case has to be able to make a skill always-on.
+  let alwaysOnIds = new Set<string>()
   let manager: InstanceType<typeof AgentRuntimeManager>
 
   const createManager = (
     overrides: Partial<ManagerOptions> = {}
   ): InstanceType<typeof AgentRuntimeManager> => {
     provisionClaudeConfig = vi.fn().mockResolvedValue(undefined)
+    materializeSkills = vi.fn().mockResolvedValue(undefined)
     const skills = {
-      materializeSkills: vi.fn().mockResolvedValue(undefined),
-      provisionClaudeConfig
+      materializeSkills,
+      provisionClaudeConfig,
+      alwaysOnSkillIds: vi.fn(async () => new Set(alwaysOnIds))
     } as unknown as SkillCatalogModule
     const connectors = {
       getConnectors: vi.fn().mockResolvedValue(undefined),
@@ -434,13 +440,50 @@ describe('AgentRuntimeManager', () => {
     const settings = await repository.getSettings()
     const agentRoot = join(storageRoot, 'codex')
 
-    await manager.materializeAgentSkills(settings, agentRoot, new Set())
+    await manager.materializeAgentSkills(settings, agentRoot, new Set(), 'codex')
     await manager.provisionClaudeRuntimeConfig(settings)
 
     expect(syncComputeSkillDocument).toHaveBeenCalledWith(join(agentRoot, 'skills'))
     expect(syncComputeSkillDocument).toHaveBeenCalledWith(
       join(getAppClaudeConfigDir(storageRoot), 'skills')
     )
+  })
+
+  it('withholds a skill from the target that asked, and only that target', async () => {
+    manager = createManager()
+    const settings = {
+      ...(await repository.getSettings()),
+      skillAvailability: { codex: { disabledSkillIds: ['pdf-notes'] } }
+    }
+    const agentRoot = join(storageRoot, 'codex')
+
+    await manager.materializeAgentSkills(settings, agentRoot, new Set(), 'codex')
+    expect(materializeSkills.mock.calls.at(-1)?.[1]).toContain('pdf-notes')
+
+    await manager.materializeAgentSkills(settings, agentRoot, new Set(), 'claude-code')
+    // The other target must be untouched: a per-target set that leaked everywhere would be a global switch
+    // wearing a matrix.
+    expect(materializeSkills.mock.calls.at(-1)?.[1]).not.toContain('pdf-notes')
+
+    await manager.provisionClaudeRuntimeConfig(settings)
+    expect(provisionClaudeConfig.mock.calls.at(-1)?.[1]).not.toContain('pdf-notes')
+  })
+
+  it('cannot be used to turn off an always-on gatekeeper skill', async () => {
+    alwaysOnIds = new Set(['os-gatekeeper'])
+    manager = createManager()
+    const settings = {
+      ...(await repository.getSettings()),
+      disabledSkillIds: ['os-gatekeeper'],
+      skillAvailability: { codex: { disabledSkillIds: ['os-gatekeeper', 'pdf-notes'] } }
+    }
+
+    await manager.materializeAgentSkills(settings, join(storageRoot, 'codex'), new Set(), 'codex')
+
+    const passed = materializeSkills.mock.calls.at(-1)?.[1] as string[]
+    expect(passed).toContain('pdf-notes')
+    // A per-target set that could hold it would be a documented way around the gate.
+    expect(passed).not.toContain('os-gatekeeper')
   })
 
   it.each([

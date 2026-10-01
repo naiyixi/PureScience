@@ -15,6 +15,7 @@ import type { CloseActionPreference } from './window-controls'
 import type { SkillProvenance } from './skill-provenance'
 import type { FunctionModels } from './function-models'
 import type { SkillEvalResult } from './skill-eval'
+import type { SkillAvailability } from './skill-availability'
 
 // Settings file schema version; bumped when the on-disk shape changes. v2 adds official-vendor
 // providers (vendorId/region) and a per-selection activeModel alongside activeProviderId.
@@ -492,6 +493,9 @@ export type SettingsSnapshot = {
   // Per-scenario default-model overrides (conversation detail / subagent / review). Absence of an
   // id means that scenario inherits the active model.
   scenarioModels?: ScenarioModels
+  // Per-target skill availability: what each agent framework or specialist must not load. Absence of a
+  // target means it loads whatever the global setting allows.
+  skillAvailability?: SkillAvailability
   // Per-function model overrides for the app's narrow, non-conversational model calls. Absence of an id
   // means that function runs on its built-in deterministic path (see shared/function-models.ts).
   functionModels?: FunctionModels

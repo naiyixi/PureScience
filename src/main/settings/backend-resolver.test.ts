@@ -1199,10 +1199,13 @@ describe('AgentBackendResolver runtime delegation', () => {
       expect(harness.runtime.materializeAgentSkills).not.toHaveBeenCalled()
       expect(harness.runtime.materializeAgentConfigFiles).not.toHaveBeenCalled()
     } else {
+      // The target id travels with the call: the materialized set is "what THIS framework must not load",
+      // so a call without it would silently fall back to the global set.
       expect(harness.runtime.materializeAgentSkills).toHaveBeenCalledWith(
         harness.getSettings(),
         expect.any(String),
-        new Set(['forced-skill'])
+        new Set(['forced-skill']),
+        testCase.frameworkId
       )
       expect(harness.runtime.materializeAgentConfigFiles).toHaveBeenCalledTimes(1)
     }

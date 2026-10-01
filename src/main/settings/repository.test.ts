@@ -1209,6 +1209,33 @@ describe('auto-apply update flag', () => {
   })
 })
 
+describe('per-target skill availability', () => {
+  it('round-trips a target set and drops what this build cannot read', async () => {
+    const repository = new SettingsRepository(await createStorageRoot())
+
+    const stored = await repository.setSkillAvailability({
+      codex: { disabledSkillIds: ['pdf-notes', 'pdf-notes'] },
+      'claude-code': { disabledSkillIds: [] },
+      broken: { disabledSkillIds: 'not-a-list' } as never
+    })
+
+    expect(stored.skillAvailability).toEqual({ codex: { disabledSkillIds: ['pdf-notes'] } })
+    expect((await repository.getSettings()).skillAvailability).toEqual({
+      codex: { disabledSkillIds: ['pdf-notes'] }
+    })
+  })
+
+  it('clears the setting when nothing usable is left', async () => {
+    const repository = new SettingsRepository(await createStorageRoot())
+    await repository.setSkillAvailability({ codex: { disabledSkillIds: ['pdf-notes'] } })
+
+    const cleared = await repository.setSkillAvailability({ codex: { disabledSkillIds: [] } })
+
+    // "No target withholds anything" is the absence of the setting, not an empty map.
+    expect(cleared.skillAvailability).toBeUndefined()
+  })
+})
+
 describe('execution protection settings', () => {
   it('keeps a known remote policy and resolves an unknown one to the default', () => {
     expect(sanitizeExecutionProtectionSettings({ remoteUnprotectedPolicy: 'deny' })).toEqual({

@@ -16,6 +16,7 @@ import type { ProxySettings } from '../../shared/proxy'
 import type { ExecutionProtectionSettings } from '../../shared/execution-protection'
 import type { ExternalComputeEndpoint } from '../../shared/compute'
 import type { FunctionModels } from '../../shared/function-models'
+import type { SkillAvailability } from '../../shared/skill-availability'
 import { SETTINGS_FILE_VERSION } from '../../shared/settings'
 import type { OfficialVendorId } from '../../shared/provider-registry'
 import type { PermissionProfileId } from '../../shared/permission-profiles'
@@ -272,6 +273,8 @@ export type StoredSettings = {
   // Per-function model overrides for the app's narrow, non-conversational model calls. Sanitized on read:
   // a slot for a function this build does not have never survives into the running settings.
   functionModels?: FunctionModels
+  // Per-target skill availability. Sanitized on read: a target this build does not know never survives.
+  skillAvailability?: SkillAvailability
 }
 
 // Legacy settings.json shape retained only so existing installations can migrate without data loss.
