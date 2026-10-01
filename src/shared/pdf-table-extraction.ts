@@ -35,6 +35,13 @@ export type PdfTableCandidate = {
   rows: readonly (readonly string[])[]
   columnCount: number
   confidence: PdfTableConfidence
+  /**
+   * The line that names this table, when the page has one adjacent to it ("Table 2. …"), with where it sat.
+   * Absent means no caption was found — not that the table has none: a table without a caption field must not
+   * be read as a table whose caption was dropped.
+   */
+  caption?: string
+  captionPosition?: 'above' | 'below'
   evidence: {
     itemCount: number
     rowCount: number
@@ -308,6 +315,42 @@ export const joinWrappedHeaderRows = (
   return { rows: output, joined }
 }
 
+// "Table 2", "Tab. 3", "表 2" — the shapes a caption actually opens with. Kept narrow on purpose: a loose
+// pattern would start calling ordinary sentences captions.
+const TABLE_CAPTION_PATTERN = /^\s*(table|tab\.?|表)\s*[0-9ivx]{1,4}\s*[.:：、]?\s*(\S|$)/i
+
+/**
+ * The caption nearest to a table's rows, with its position. Only a single text item is considered a caption:
+ * a caption split across items on one line is not stitched together here, because guessing which fragments
+ * belong together is exactly the kind of invention the rest of this module refuses. Items INSIDE the table's
+ * own vertical range are ignored (a cell that happens to read "Table 4" is data, not a caption), and a match
+ * further away than the distance budget is not a caption either.
+ */
+export const findTableCaption = (
+  items: readonly PdfTextItem[],
+  rowBaselines: readonly number[],
+  options: { maxDistancePoints?: number } = {}
+): { text: string; position: 'above' | 'below' } | undefined => {
+  if (rowBaselines.length === 0) return undefined
+  const maxDistance = options.maxDistancePoints ?? 28
+  const top = Math.min(...rowBaselines)
+  const bottom = Math.max(...rowBaselines)
+
+  let best: { text: string; position: 'above' | 'below'; distance: number } | undefined
+  for (const item of items) {
+    const text = item.text.trim()
+    if (!TABLE_CAPTION_PATTERN.test(text)) continue
+    if (item.y >= top && item.y <= bottom) continue
+
+    const position = item.y > bottom ? 'below' : 'above'
+    const distance = position === 'below' ? item.y - bottom : top - item.y
+    if (distance > maxDistance) continue
+    if (!best || distance < best.distance) best = { text, position, distance }
+  }
+
+  return best ? { text: best.text, position: best.position } : undefined
+}
+
 export const extractPdfTableCandidates = (
   page: number,
   items: readonly PdfTextItem[],
@@ -339,6 +382,10 @@ export const extractPdfTableCandidates = (
   const joinedHeaders = joinWrappedHeaderRows(merged.rows)
   const rows = joinedHeaders.rows
   const columnCount = merged.anchors.length
+  const caption = findTableCaption(
+    usable,
+    grouped.map((row) => row.y)
+  )
   // Enough rows must actually SPAN the columns: spaced prose on one line followed by a single item is not
   // a table, and calling it one would invent structure the page does not have.
   const spanningRows = rows.filter(
@@ -354,6 +401,7 @@ export const extractPdfTableCandidates = (
       rows,
       columnCount,
       confidence: confidenceFor(rows),
+      ...(caption ? { caption: caption.text, captionPosition: caption.position } : {}),
       evidence: {
         itemCount: usable.length,
         rowCount: rows.length,

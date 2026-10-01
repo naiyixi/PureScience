@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   auditPdfTableCandidateForUse,
+  findTableCaption,
   extractPdfTableCandidates,
   extractPdfTableCandidatesFromText,
   joinWrappedHeaderRows,
@@ -363,5 +364,56 @@ describe('joinWrappedHeaderRows', () => {
     expect(candidates.every((candidate) => candidate.evidence.joinedHeaderRows === undefined)).toBe(
       true
     )
+  })
+})
+
+describe('findTableCaption', () => {
+  const table = [
+    { text: 'Site', x: 40, y: 200, width: 30, height: 10 },
+    { text: 'Alpha', x: 40, y: 220, width: 35, height: 10 }
+  ]
+
+  it('finds the caption above the table and says where it sat', () => {
+    const caption = findTableCaption(
+      [
+        { text: 'Table 2. Annual rainfall by site', x: 40, y: 180, width: 200, height: 10 },
+        ...table
+      ],
+      [200, 220]
+    )
+
+    expect(caption).toEqual({ text: 'Table 2. Annual rainfall by site', position: 'above' })
+  })
+
+  it('finds a caption that sits below the table', () => {
+    const caption = findTableCaption(
+      [...table, { text: '表 3：各站点年均降水', x: 40, y: 246, width: 160, height: 10 }],
+      [200, 220]
+    )
+
+    expect(caption).toEqual({ text: '表 3：各站点年均降水', position: 'below' })
+  })
+
+  it('does not take a row inside the table for a caption', () => {
+    // "Table 4" here is a cell's value. Reading it as the table's name would put data in the caption field.
+    const caption = findTableCaption(
+      [...table, { text: 'Table 4', x: 40, y: 210, width: 40, height: 10 }],
+      [200, 220]
+    )
+
+    expect(caption).toBeUndefined()
+  })
+
+  it('ignores a caption-shaped line that is too far away, and prose that merely mentions a table', () => {
+    const caption = findTableCaption(
+      [
+        { text: 'Table 5. Something else entirely', x: 40, y: 60, width: 180, height: 10 },
+        { text: 'as shown in the table above', x: 40, y: 230, width: 150, height: 10 },
+        ...table
+      ],
+      [200, 220]
+    )
+
+    expect(caption).toBeUndefined()
   })
 })
