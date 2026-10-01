@@ -2654,6 +2654,7 @@ export const zh = {
   'runtimes.disableAfterCurrentWork': '在当前工作结束后禁用',
   'skillDetail.detailsTitle': '详情',
   'settings.skillTriggerQuality': '触发质量',
+  'settings.skillQualityBadge': '质量 {score}',
   'settings.skillAvailability': '按读取方的技能可用性',
   'settings.skillLicenseUnknown': '未知',
   'settings.skillLicenseRestricted': '该许可证为非商业条款：商业使用前请先核对。',

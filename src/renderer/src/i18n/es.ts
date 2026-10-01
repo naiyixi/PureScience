@@ -446,6 +446,7 @@ export const es: Partial<Record<ZhKey, string>> = {
   'runtimes.disableAfterCurrentWork': 'Desactivar tras el trabajo actual',
   'skillDetail.detailsTitle': 'Detalles',
   'settings.skillTriggerQuality': 'Calidad de activación',
+  'settings.skillQualityBadge': 'Calidad {score}',
   'settings.skillAvailability': 'Disponibilidad de habilidades por lector',
   'settings.skillLicenseUnknown': 'Desconocida',
   'settings.skillLicenseRestricted':

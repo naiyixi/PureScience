@@ -438,6 +438,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'runtimes.disableAfterCurrentWork': '現在の作業完了後に無効にする',
   'skillDetail.detailsTitle': '詳細',
   'settings.skillTriggerQuality': 'トリガー品質',
+  'settings.skillQualityBadge': '品質 {score}',
   'settings.skillAvailability': '読み手ごとのスキル可用性',
   'settings.skillLicenseUnknown': '不明',
   'settings.skillLicenseRestricted':

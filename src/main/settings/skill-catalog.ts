@@ -270,9 +270,6 @@ class SkillCatalogModule {
     )
     return {
       ...view,
-      // Scored on the description as the loader sees it, at read time: a score that travels with the file
-      // would go stale the moment the description is edited.
-      triggerQuality: evaluateSkillDescription(view.description),
       body,
       metadata: Object.fromEntries(
         Object.entries(fields).filter(([key]) => key !== 'name' && key !== 'description')
@@ -826,6 +823,10 @@ class SkillCatalogModule {
       author: skill.author,
       license: skill.license,
       thirdParty: skill.thirdParty,
+      // Scored at read time on the description as the loader sees it (a score that travelled with the file
+      // would go stale the moment the description is edited). The list carries it too, so a user can see
+      // which skills are worth opening instead of opening each one to find out.
+      triggerQuality: evaluateSkillDescription(skill.description),
       // Surface the trust state so Settings can badge unverified learnt skills, and so the gate below
       // has one place to ask "may this be reused without review?".
       ...(skill.provenance

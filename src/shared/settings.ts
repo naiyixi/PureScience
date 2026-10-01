@@ -967,6 +967,14 @@ export type SkillView = {
   source: SkillSource
   updatedAt: string
   enabled: boolean
+  /**
+   * The trigger-quality scoring of this skill's own description: pure rules, no external model, recomputable
+   * offline. Computed at read time rather than stored, so a description edited outside the app cannot be
+   * shown with a stale score — and so the number is the user's to reproduce, not a publisher's to assert.
+   * Carried on the LIST as well as the detail: "which of these is worth opening" is a question the list
+   * should answer.
+   */
+  triggerQuality?: SkillEvalResult
   // From the SKILL.md frontmatter; shown in the detail view's "Details" section when present.
   author?: string
   license?: string
@@ -990,12 +998,6 @@ export type SkillView = {
 // A skill view plus its SKILL.md body (frontmatter stripped) and the names of any files under its
 // `references/` directory, for the detail/edit view.
 export type SkillDetailView = SkillView & {
-  /**
-   * The trigger-quality scoring of this skill's own description: pure rules, no external model, recomputable
-   * offline. It is computed here rather than stored so a description edited outside the app cannot be shown
-   * with a stale score — and so the number is the user's to reproduce, not a publisher's to assert.
-   */
-  triggerQuality?: SkillEvalResult
   body: string
   metadata?: Record<string, string>
   references: SkillReferenceInfo[]

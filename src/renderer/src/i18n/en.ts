@@ -2850,6 +2850,7 @@ export const en: Record<ZhKey, string> = {
   'runtimes.disableAfterCurrentWork': 'Disable after current work',
   'skillDetail.detailsTitle': 'Details',
   'settings.skillTriggerQuality': 'Trigger quality',
+  'settings.skillQualityBadge': 'Quality {score}',
   'settings.skillAvailability': 'Skill availability by reader',
   'settings.skillLicenseUnknown': 'Unknown',
   'settings.skillLicenseRestricted':

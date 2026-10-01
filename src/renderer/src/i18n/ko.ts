@@ -434,6 +434,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'runtimes.disableAfterCurrentWork': '현재 작업 종료 후 비활성화',
   'skillDetail.detailsTitle': '세부 정보',
   'settings.skillTriggerQuality': '트리거 품질',
+  'settings.skillQualityBadge': '품질 {score}',
   'settings.skillAvailability': '읽는 주체별 스킬 가용성',
   'settings.skillLicenseUnknown': '알 수 없음',
   'settings.skillLicenseRestricted':

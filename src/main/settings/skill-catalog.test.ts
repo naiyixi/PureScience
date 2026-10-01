@@ -144,6 +144,11 @@ describe('SkillCatalogModule', () => {
     const scored = await catalog.getSkillDetail('demo')
     expect(scored.triggerQuality).toEqual(evaluateSkillDescription(scored.description))
 
+    // The LIST carries the same number the detail shows. Two different scores for one skill would be worse
+    // than none, and "which of these is worth opening" is a question the list should answer by itself.
+    const listed = (await catalog.listSkills()).find((skill) => skill.id === 'demo')
+    expect(listed?.triggerQuality).toEqual(scored.triggerQuality)
+
     expect(
       (await catalog.createSkill({ name: 'My Skill', description: 'Mine.', body: '# Mine' })).map(
         (skill) => skill.id

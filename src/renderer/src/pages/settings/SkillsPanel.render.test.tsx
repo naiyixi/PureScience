@@ -18,7 +18,10 @@ const seedSkills = [
     description: 'First',
     source: 'featured' as const,
     updatedAt: '2026-07-08T00:00:00.000Z',
-    enabled: true
+    enabled: true,
+    // The main process scores every skill at read time; the row shows it so the list answers "which of these
+    // is worth opening" without a detail visit per skill.
+    triggerQuality: { score: 8, checks: [], suggestions: [] }
   },
   {
     id: 'b',
@@ -169,6 +172,16 @@ const pasteValue = (label: string, value: string): void => {
 }
 
 describe('SkillsPanel (list view)', () => {
+  it('shows the trigger-quality score on the row, not only in the detail', () => {
+    act(() => {
+      root.render(<SkillsPanel view={{ kind: 'list' }} onNavigate={vi.fn()} />)
+    })
+
+    const badges = document.body.querySelectorAll('[data-testid="skill-quality-badge"]')
+    expect(badges).toHaveLength(1)
+    expect(badges[0]?.textContent).toContain('8')
+  })
+
   it('renders skills grouped by source with one toggle each and an Add skill control', () => {
     act(() => {
       root.render(<SkillsPanel view={{ kind: 'list' }} onNavigate={vi.fn()} />)

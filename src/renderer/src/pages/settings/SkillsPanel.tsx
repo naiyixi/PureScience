@@ -750,6 +750,18 @@ const SkillsPanel = ({
                                       .replace('{failures}', String(reuse.failures))}
                                   </span>
                                 ) : null}
+                                {skill.triggerQuality ? (
+                                  <span
+                                    data-testid="skill-quality-badge"
+                                    title={t('settings.skillTriggerQuality')}
+                                    className="shrink-0 rounded-full border border-border-200 bg-bg-100 px-2 py-0.5 text-[11px] text-muted-foreground"
+                                  >
+                                    {t('settings.skillQualityBadge').replace(
+                                      '{score}',
+                                      String(skill.triggerQuality.score)
+                                    )}
+                                  </span>
+                                ) : null}
                                 {ownerNames.length > 0 ? (
                                   <span
                                     data-testid="skill-owner-badge"

@@ -369,6 +369,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'runtimes.disableAfterCurrentWork': '在目前工作結束後停用',
   'skillDetail.detailsTitle': '詳細',
   'settings.skillTriggerQuality': '觸發品質',
+  'settings.skillQualityBadge': '品質 {score}',
   'settings.skillAvailability': '依讀取方的技能可用性',
   'settings.skillLicenseUnknown': '未知',
   'settings.skillLicenseRestricted': '該授權為非商業條款：商業使用前請先核對。',
