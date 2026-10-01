@@ -467,6 +467,15 @@ describe('AgentRuntimeManager', () => {
 
     await manager.provisionClaudeRuntimeConfig(settings)
     expect(provisionClaudeConfig.mock.calls.at(-1)?.[1]).not.toContain('pdf-notes')
+
+    // And the row that DID ask for it reaches the Claude provisioning — otherwise the matrix would be a
+    // label on this path while the codex path honoured it.
+    const claudeSettings = {
+      ...(await repository.getSettings()),
+      skillAvailability: { 'claude-code': { disabledSkillIds: ['pdf-notes'] } }
+    }
+    await manager.provisionClaudeRuntimeConfig(claudeSettings)
+    expect(provisionClaudeConfig.mock.calls.at(-1)?.[1]).toContain('pdf-notes')
   })
 
   it('cannot be used to turn off an always-on gatekeeper skill', async () => {
