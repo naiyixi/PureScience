@@ -23,6 +23,16 @@ export const GLOBAL_SEARCH_MAX_MESSAGE_CHARS = 20_000
 export const GLOBAL_SEARCH_SNIPPET_CHARS = 160
 export const GLOBAL_SEARCH_MIN_QUERY_CHARS = 2
 
+// How a result page is ordered. `relevance` is the score the search computed; `time` is the hit's own
+// timestamp, newest first. The ordering travels in the request and is echoed in the response, because a
+// page whose order the caller cannot name is a page the caller cannot reproduce.
+export const GLOBAL_SEARCH_ORDERINGS = ['relevance', 'time'] as const
+
+export type GlobalSearchOrdering = (typeof GLOBAL_SEARCH_ORDERINGS)[number]
+
+export const isGlobalSearchOrdering = (value: unknown): value is GlobalSearchOrdering =>
+  typeof value === 'string' && (GLOBAL_SEARCH_ORDERINGS as readonly string[]).includes(value)
+
 export type GlobalSearchScope =
   'sessions' | 'messages' | 'uploads' | 'artifacts' | 'literature' | 'annotations'
 
@@ -95,6 +105,8 @@ export type GlobalSearchRequest = {
   extensions?: string[]
   // Literature record types the caller will accept.
   referenceTypes?: ReferenceTypeFilter[]
+  // Page order. Absent means relevance, which is what the score column already means.
+  orderBy?: GlobalSearchOrdering
   // Opaque cursor from a previous response. Absent starts at the first page.
   cursor?: string
 }
@@ -291,6 +303,9 @@ export type GlobalSearchResponse = {
   scan: GlobalSearchScanReport
   appliedLimit: number
   notes: GlobalSearchNote[]
+  // The order this page was actually produced in, so a saved filter set can state it and a later run can
+  // be compared against it rather than against an assumption.
+  orderBy: GlobalSearchOrdering
 }
 
 export type GlobalSearchScopeCoverage = {
@@ -635,6 +650,7 @@ export const finalizeSearchResponse = ({
   coverage,
   appliedLimit,
   notes,
+  orderBy: ordering = 'relevance',
   cursor,
   filters
 }: {
@@ -647,6 +663,7 @@ export const finalizeSearchResponse = ({
   notes: GlobalSearchNote[]
   cursor?: string
   filters?: GlobalSearchHitFilters
+  orderBy?: GlobalSearchOrdering
 }): GlobalSearchResponse => {
   const { offsets, invalid } = decodeSearchCursor(cursor)
   const filtered = filters ? hits.filter((hit) => searchHitMatchesFilters(hit, filters)) : hits
@@ -667,9 +684,26 @@ export const finalizeSearchResponse = ({
     } as Record<GlobalSearchScope, number>
   )
 
-  const sorted = [...filtered].sort(
-    (left, right) => right.score - left.score || left.id.localeCompare(right.id)
-  )
+  const timestampOf = (hit: GlobalSearchHit): number | undefined => {
+    if (!hit.timestamp) return undefined
+    const parsed = Date.parse(hit.timestamp)
+
+    return Number.isNaN(parsed) ? undefined : parsed
+  }
+  const sorted = [...filtered].sort((left, right) => {
+    if (ordering === 'time') {
+      const leftAt = timestampOf(left)
+      const rightAt = timestampOf(right)
+      // A hit with no timestamp is not the oldest hit, it is a hit whose time is unknown — so it goes
+      // last with the score order deciding among such hits, instead of being given a time it never had.
+      if (leftAt === undefined && rightAt !== undefined) return 1
+      if (rightAt === undefined && leftAt !== undefined) return -1
+      if (leftAt !== undefined && rightAt !== undefined && leftAt !== rightAt)
+        return rightAt - leftAt
+    }
+
+    return right.score - left.score || left.id.localeCompare(right.id)
+  })
   const seenPerScope = new Map<GlobalSearchScope, number>()
   const servedPerScope = new Map<GlobalSearchScope, number>()
   const page: GlobalSearchHit[] = []
@@ -719,6 +753,7 @@ export const finalizeSearchResponse = ({
     // "There is more than this page shows" — the one thing a reader must not have to infer.
     truncated: moreBeyondPage,
     scan,
+    orderBy: ordering,
     coverage,
     appliedLimit,
     notes: [...new Set(nextNotes)]

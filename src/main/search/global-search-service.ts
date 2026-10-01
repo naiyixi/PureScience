@@ -9,6 +9,7 @@ import {
   GLOBAL_SEARCH_MAX_MESSAGE_CHARS,
   GLOBAL_SEARCH_MAX_SCANNED_SESSIONS,
   GLOBAL_SEARCH_MIN_QUERY_CHARS,
+  isGlobalSearchOrdering,
   normalizeSearchQuery,
   resolveSearchScopes,
   scoreSearchHit,
@@ -178,6 +179,9 @@ export const createGlobalSearchService = (ports: GlobalSearchPorts): GlobalSearc
   async query(request) {
     const query = normalizeSearchQuery(request.query)
     const scopes = resolveSearchScopes(request.scopes)
+    // An unknown ordering is not guessed at: it falls back to the documented default, and the response
+    // reports which order the page is actually in.
+    const orderBy = isGlobalSearchOrdering(request.orderBy) ? request.orderBy : undefined
     const appliedLimit = clampSearchLimit(request.limitPerScope)
     const scan = emptyScan()
     const coverage = emptyCoverage()
@@ -195,6 +199,7 @@ export const createGlobalSearchService = (ports: GlobalSearchPorts): GlobalSearc
     if (query.length < GLOBAL_SEARCH_MIN_QUERY_CHARS) {
       return finalizeSearchResponse({
         query,
+        orderBy,
         scopes,
         hits: [],
         scan,
@@ -457,6 +462,7 @@ export const createGlobalSearchService = (ports: GlobalSearchPorts): GlobalSearc
 
     return finalizeSearchResponse({
       query,
+      orderBy,
       scopes,
       hits,
       scan,

@@ -301,7 +301,15 @@ describe('finalizeSearchResponse', () => {
         hit({ id: 'message-1', scope: 'messages' }),
         hit({ id: 'file-1', scope: 'artifacts', score: 9 })
       ],
-      scan: { sessions: 3, messages: 12, uploads: 0, artifacts: 4, references: 0, annotations: 0, bounded: false },
+      scan: {
+        sessions: 3,
+        messages: 12,
+        uploads: 0,
+        artifacts: 4,
+        references: 0,
+        annotations: 0,
+        bounded: false
+      },
       coverage: coverage(),
       appliedLimit: 50,
       notes: []
@@ -329,7 +337,15 @@ describe('finalizeSearchResponse', () => {
         hit({ id: 'message-2', score: 4 }),
         hit({ id: 'file-1', scope: 'artifacts', score: 3 })
       ],
-      scan: { sessions: 1, messages: 3, uploads: 0, artifacts: 1, references: 0, annotations: 0, bounded: false },
+      scan: {
+        sessions: 1,
+        messages: 3,
+        uploads: 0,
+        artifacts: 1,
+        references: 0,
+        annotations: 0,
+        bounded: false
+      },
       coverage: coverage(),
       appliedLimit: 1,
       notes: []
@@ -364,5 +380,68 @@ describe('finalizeSearchResponse', () => {
     expect(response.hits).toEqual([])
     expect(response.notes).toContain('scan-bounded-by-session-limit')
     expect(response.scan.bounded).toBe(true)
+  })
+})
+
+describe('result ordering', () => {
+  const base = {
+    query: 'effect',
+    scopes: ['messages'] as GlobalSearchScope[],
+    scan: {
+      sessions: 0,
+      messages: 3,
+      uploads: 0,
+      artifacts: 0,
+      references: 0,
+      annotations: 0,
+      bounded: false
+    },
+    coverage: coverage(),
+    appliedLimit: 20,
+    notes: []
+  }
+
+  it('orders by the hit timestamp when asked, newest first', () => {
+    const response = finalizeSearchResponse({
+      ...base,
+      orderBy: 'time',
+      hits: [
+        hit({ id: 'old', score: 90, timestamp: '2026-01-05T00:00:00.000Z' }),
+        hit({ id: 'new', score: 10, timestamp: '2026-09-30T00:00:00.000Z' }),
+        hit({ id: 'middle', score: 50, timestamp: '2026-05-05T00:00:00.000Z' })
+      ]
+    })
+
+    expect(response.hits.map((entry) => entry.id)).toEqual(['new', 'middle', 'old'])
+    expect(response.orderBy).toBe('time')
+  })
+
+  it('puts a hit whose time it does not know last, rather than calling it the oldest', () => {
+    const response = finalizeSearchResponse({
+      ...base,
+      orderBy: 'time',
+      hits: [
+        hit({ id: 'undated', score: 99 }),
+        hit({ id: 'unparseable', score: 98, timestamp: 'not-a-date' }),
+        hit({ id: 'dated', score: 1, timestamp: '2026-05-05T00:00:00.000Z' })
+      ]
+    })
+
+    // The two without a usable time keep the score order among themselves, and neither is allowed to
+    // sit above a hit that does have a time.
+    expect(response.hits.map((entry) => entry.id)).toEqual(['dated', 'undated', 'unparseable'])
+  })
+
+  it('defaults to relevance and says so, so a page can be reproduced', () => {
+    const response = finalizeSearchResponse({
+      ...base,
+      hits: [
+        hit({ id: 'low', score: 1, timestamp: '2026-09-30T00:00:00.000Z' }),
+        hit({ id: 'high', score: 90, timestamp: '2026-01-05T00:00:00.000Z' })
+      ]
+    })
+
+    expect(response.hits.map((entry) => entry.id)).toEqual(['high', 'low'])
+    expect(response.orderBy).toBe('relevance')
   })
 })

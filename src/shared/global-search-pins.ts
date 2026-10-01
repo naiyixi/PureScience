@@ -1,6 +1,7 @@
 import {
   expandGlobalSearchScopeToken,
   isGlobalSearchScopeToken,
+  type GlobalSearchOrdering,
   type GlobalSearchScope,
   type ReferenceTypeFilter
 } from './global-search'
@@ -26,6 +27,8 @@ export type GlobalSearchPinFilters = {
   /** Lowercase, without the dot. */
   extensions?: readonly string[]
   referenceTypes?: readonly ReferenceTypeFilter[]
+  /** The order the results were read in; absent means relevance, the default. */
+  orderBy?: GlobalSearchOrdering
 }
 
 export type GlobalSearchPin = {
@@ -177,5 +180,6 @@ export const describeGlobalSearchFilters = (filters: GlobalSearchPinFilters): st
   if (filters.referenceTypes && filters.referenceTypes.length > 0) {
     parts.push(`referenceTypes=${filters.referenceTypes.join('|')}`)
   }
+  if (filters.orderBy) parts.push(`orderBy=${filters.orderBy}`)
   return parts.join(' ')
 }

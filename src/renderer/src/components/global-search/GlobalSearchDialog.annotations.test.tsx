@@ -39,6 +39,7 @@ const response = (overrides: Partial<GlobalSearchResponse> = {}): GlobalSearchRe
   query: 'effect',
   scopes: ['annotations'],
   hits: [],
+  orderBy: 'relevance',
   counts: { sessions: 0, messages: 0, uploads: 0, artifacts: 0, literature: 0, annotations: 0 },
   coverage: {
     sessions: { considered: 0, contentRead: 0, bounded: false },

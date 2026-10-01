@@ -45,6 +45,7 @@ const response = (
 ): GlobalSearchResponse => ({
   schemaVersion: 1,
   query: '注意力',
+  orderBy: 'relevance',
   scopes: ['sessions', 'messages', 'uploads', 'artifacts', 'literature', 'annotations'],
   hits: hits.map((hit) => ({
     scope: 'messages' as const,

@@ -182,11 +182,16 @@ describe('level ordering', () => {
 })
 
 describe('remote unprotected execution policy', () => {
-  it('defaults to asking explicitly rather than silently remembering', () => {
-    expect(DEFAULT_REMOTE_UNPROTECTED_EXECUTION_POLICY).toBe('confirm')
+  it('defaults to refusing an unprotected run rather than asking or silently remembering', () => {
+    expect(DEFAULT_REMOTE_UNPROTECTED_EXECUTION_POLICY).toBe('deny')
+    // The default must also close the two looser doors: it may not let a remembered approval cover the
+    // run, and it must refuse the run outright instead of leaving it to a per-run answer.
     expect(rememberedApprovalCoversUnprotected(DEFAULT_REMOTE_UNPROTECTED_EXECUTION_POLICY)).toBe(
       false
     )
+    expect(
+      policyDeniesUnprotectedExecution(DEFAULT_REMOTE_UNPROTECTED_EXECUTION_POLICY, 'unprotected')
+    ).toBe(true)
   })
 
   it('only lets remembered approvals cover unprotected runs when the user opted in', () => {
