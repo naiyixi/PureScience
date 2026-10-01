@@ -3,6 +3,8 @@ import {
   collectTermMatches,
   splitSearchTerms,
   finalizeSearchResponse,
+  GLOBAL_SEARCH_SCOPES,
+  isFileSearchScope,
   searchTitleRank,
   GLOBAL_SEARCH_MAX_MESSAGE_CHARS,
   GLOBAL_SEARCH_MAX_SCANNED_SESSIONS,
@@ -18,7 +20,8 @@ import {
   type GlobalSearchRequest,
   type GlobalSearchResponse,
   type GlobalSearchScanReport,
-  type GlobalSearchScope
+  type GlobalSearchScope,
+  type GlobalSearchScopeCoverage
 } from '../../shared/global-search'
 import type { PdfAnnotationKind } from '../../shared/pdf-annotations'
 
@@ -51,6 +54,10 @@ export type SearchableFile = {
   projectId: string
   title: string
   relativePath: string
+  // Which corpus this file belongs to. The two file scopes search different origins, so the port has to
+  // say which one a file came from: guessing from a path would turn "generated" into "uploaded" the day
+  // a workspace folder is renamed.
+  source: 'artifact' | 'upload'
   timestamp?: string
   // Optional text preview when the index already carries one; never a second full read of the file.
   textPreview?: string
@@ -114,11 +121,21 @@ export type GlobalSearchService = {
 const emptyScan = (): GlobalSearchScanReport => ({
   sessions: 0,
   messages: 0,
-  files: 0,
+  uploads: 0,
+  artifacts: 0,
   references: 0,
   annotations: 0,
   bounded: false
 })
+
+const emptyCoverage = (): Record<GlobalSearchScope, GlobalSearchScopeCoverage> =>
+  GLOBAL_SEARCH_SCOPES.reduce(
+    (accumulator, scope) => {
+      accumulator[scope] = { considered: 0, contentRead: 0, bounded: false }
+      return accumulator
+    },
+    {} as Record<GlobalSearchScope, GlobalSearchScopeCoverage>
+  )
 
 /**
  * Counts matches for ranking, weighting the two kinds differently. A text that contains the phrase the
@@ -163,6 +180,7 @@ export const createGlobalSearchService = (ports: GlobalSearchPorts): GlobalSearc
     const scopes = resolveSearchScopes(request.scopes)
     const appliedLimit = clampSearchLimit(request.limitPerScope)
     const scan = emptyScan()
+    const coverage = emptyCoverage()
     const notes: GlobalSearchNote[] = []
     const hits: GlobalSearchHit[] = []
     const range = {
@@ -259,16 +277,27 @@ export const createGlobalSearchService = (ports: GlobalSearchPorts): GlobalSearc
       }
     }
 
-    if (scopes.includes('files')) {
+    const fileScopesRequested = scopes.filter(isFileSearchScope)
+    if (fileScopesRequested.length > 0) {
       const files = await ports.listFiles(request.projectId)
-      // Whether any file carried searchable text. When none does, file hits are name-and-path matches
-      // only, and the response says so instead of letting "no hit" read as "that text is not there".
-      let sawFileText = false
+      // Whether any file of a given origin carried searchable text. When none does, that scope's hits are
+      // name-and-path matches only, and the response says so instead of letting "no hit" read as "that
+      // text is not there".
+      const sawTextByScope = new Map<GlobalSearchScope, boolean>()
+      const originScope = (file: SearchableFile): GlobalSearchScope =>
+        file.source === 'upload' ? 'uploads' : 'artifacts'
       for (const file of files.filter((entry) => inProject(entry.projectId))) {
-        scan.files += 1
+        const scope = originScope(file)
+        // A file whose origin was not requested is not part of this search at all: it is neither a hit
+        // nor something this response covered, so it is left out of both.
+        if (!fileScopesRequested.includes(scope)) continue
+        if (scope === 'uploads') scan.uploads += 1
+        else scan.artifacts += 1
+        coverage[scope].considered += 1
+        if (file.textPreview) coverage[scope].contentRead += 1
         if (!searchHitsInTimestampRange(file.timestamp, range)) continue
 
-        if (file.textPreview) sawFileText = true
+        if (file.textPreview) sawTextByScope.set(scope, true)
         const nameMatches = [
           ...collectTermMatches({ text: file.title, terms, field: 'name' }),
           ...collectTermMatches({ text: file.relativePath, terms, field: 'path' })
@@ -283,7 +312,7 @@ export const createGlobalSearchService = (ports: GlobalSearchPorts): GlobalSearc
         if (nameMatches.length === 0 && previewMatches.length === 0) continue
 
         hits.push({
-          scope: 'files',
+          scope,
           id: file.id,
           projectId: file.projectId,
           title: file.title,
@@ -298,8 +327,14 @@ export const createGlobalSearchService = (ports: GlobalSearchPorts): GlobalSearc
         })
       }
 
-      // Self-healing honesty: once a content provider supplies file text, this note stops appearing.
-      if (!sawFileText && files.length > 0) notes.push('files-matched-by-name-and-path')
+      // Self-healing honesty, now per origin: it appears only for a scope that was searched, had items,
+      // and produced no content match at all — so "nothing in the generated files" and "nothing in your
+      // uploads" are never conflated.
+      for (const scope of fileScopesRequested) {
+        if (coverage[scope].considered > 0 && !sawTextByScope.get(scope)) {
+          notes.push('files-matched-by-name-and-path')
+        }
+      }
     }
 
     if (scopes.includes('literature')) {
@@ -411,11 +446,20 @@ export const createGlobalSearchService = (ports: GlobalSearchPorts): GlobalSearc
       }
     }
 
+    // Classes without a bound of their own take the walk-level flag: a session cap that cut the walk
+    // short is also what makes the message corpus a slice.
+    coverage.sessions.considered = scan.sessions
+    coverage.sessions.bounded = scan.bounded
+    coverage.messages.considered = scan.messages
+    coverage.literature.considered = scan.references
+    coverage.annotations.considered = scan.annotations
+
     return finalizeSearchResponse({
       query,
       scopes,
       hits,
       scan,
+      coverage,
       appliedLimit,
       notes,
       ...(request.cursor === undefined ? {} : { cursor: request.cursor }),

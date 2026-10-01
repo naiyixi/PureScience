@@ -1,5 +1,6 @@
 import {
-  GLOBAL_SEARCH_SCOPES,
+  expandGlobalSearchScopeToken,
+  isGlobalSearchScopeToken,
   type GlobalSearchScope,
   type ReferenceTypeFilter
 } from './global-search'
@@ -61,10 +62,10 @@ const trimmed = (value: unknown): string | undefined => {
 
 const scopeList = (value: unknown): GlobalSearchScope[] | undefined => {
   if (!Array.isArray(value)) return undefined
-  const scopes = value.filter(
-    (item): item is GlobalSearchScope =>
-      typeof item === 'string' && (GLOBAL_SEARCH_SCOPES as readonly string[]).includes(item)
-  )
+  // Legacy tokens are EXPANDED, never dropped: a set saved as `files` searched both file origins, and
+  // dropping the token would silently widen that saved filter to every scope — the one failure mode a
+  // pinned filter set exists to prevent.
+  const scopes = value.filter(isGlobalSearchScopeToken).flatMap(expandGlobalSearchScopeToken)
   return scopes.length === 0 ? undefined : [...new Set(scopes)]
 }
 
@@ -150,7 +151,8 @@ export const sanitizeGlobalSearchPins = (value: unknown): GlobalSearchPin[] => {
 const SCOPE_LABELS: Record<GlobalSearchScope, string> = {
   sessions: 'sessions',
   messages: 'messages',
-  files: 'files',
+  uploads: 'uploads',
+  artifacts: 'artifacts',
   literature: 'literature',
   annotations: 'annotations'
 }

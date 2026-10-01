@@ -1274,8 +1274,13 @@ const createApplicationModules = async (
       // files contract allows — asking for more than that is rejected outright, which is exactly how this
       // seam broke once — up to a bounded number of pages.
       searchableFileItems.clear()
-      const files: Array<{ id: string; title: string; relativePath: string; timestamp?: string }> =
-        []
+      const files: Array<{
+        id: string
+        title: string
+        relativePath: string
+        source: 'artifact' | 'upload'
+        timestamp?: string
+      }> = []
       let cursor: string | undefined
       let listBounded = false
 
@@ -1298,6 +1303,9 @@ const createApplicationModules = async (
             id: item.id,
             title: item.name,
             relativePath: item.path,
+            // The origin the project-files index already knows (uploaded by the user vs produced by a
+            // run), passed through unchanged: the search must not infer it.
+            source: item.source,
             ...(item.mtimeMs ? { timestamp: new Date(item.mtimeMs).toISOString() } : {})
           })
         }

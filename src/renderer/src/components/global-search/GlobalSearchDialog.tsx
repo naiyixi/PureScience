@@ -758,7 +758,7 @@ export const GlobalSearchDialog = ({
     const scopeLabel =
       hit.scope === 'messages'
         ? t('gs.contentScopeMessage')
-        : hit.scope === 'files'
+        : isFileSearchScope(hit.scope)
           ? t('gs.contentScopeFile')
           : hit.scope === 'annotations'
             ? t('gs.contentScopeAnnotation')

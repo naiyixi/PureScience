@@ -5,6 +5,7 @@ import type {
 } from '../../shared/global-search'
 import type { PersistedChatSession } from '../../shared/session-persistence'
 import type { SearchEvidenceRequest, SearchEvidenceResponse } from '../../shared/search-evidence'
+import { isFileSearchScope, resolveSearchScopes } from '../../shared/global-search'
 import {
   createGlobalSearchService,
   type SearchableAnnotation,
@@ -23,7 +24,15 @@ export type SearchHandlerPorts = {
   // caller (session scan limit), never re-read per query file by file.
   loadSessions(): Promise<PersistedChatSession[]>
   listFiles(request: { projectId: string }): Promise<{
-    files: Array<{ id: string; title: string; relativePath: string; timestamp?: string }>
+    files: Array<{
+      id: string
+      title: string
+      relativePath: string
+      // Which file scope this entry belongs to. Required: the caller knows the origin from its own index,
+      // and a default here would silently file every upload under generated artifacts.
+      source: 'artifact' | 'upload'
+      timestamp?: string
+    }>
     // True when the listing stopped at its own bound and the project holds more files than were
     // listed. Without it a truncated list would read as the whole project.
     listBounded?: boolean
@@ -140,33 +149,21 @@ export const createSearchHandlers = (ports: SearchHandlerPorts): SearchHandlers 
     // Files and literature live per project; without a project the response says so through its notes
     // rather than quietly returning nothing.
     const projectId = request.projectId
-    const scopes: GlobalSearchScope[] = request.scopes ?? [
-      'sessions',
-      'messages',
-      'files',
-      'literature',
-      'annotations'
-    ]
+    const scopes: GlobalSearchScope[] = resolveSearchScopes(request.scopes)
+    const filesRequested = scopes.some(isFileSearchScope)
     const listed =
-      projectId && scopes.includes('files')
+      projectId && filesRequested
         ? await ports.listFiles({ projectId })
-        : {
-            files: [] as Array<{
-              id: string
-              title: string
-              relativePath: string
-              timestamp?: string
-            }>,
-            listBounded: false
-          }
+        : { files: [] as SearchableFile[], listBounded: false }
     const fileScan =
-      projectId && scopes.includes('files')
+      projectId && filesRequested
         ? await withFileText(
             listed.files.map((file) => ({
               id: file.id,
               projectId,
               title: file.title,
               relativePath: file.relativePath,
+              source: file.source,
               ...(file.timestamp ? { timestamp: file.timestamp } : {})
             })),
             ports
@@ -216,7 +213,7 @@ export const createSearchHandlers = (ports: SearchHandlerPorts): SearchHandlers 
     // implying they were searched and came back empty.
     const needsProject =
       !projectId &&
-      (scopes.includes('files') || scopes.includes('literature') || scopes.includes('annotations'))
+      (filesRequested || scopes.includes('literature') || scopes.includes('annotations'))
     const notes = [...response.notes]
     if (needsProject) notes.push('no-project-scope')
     // Say when the content budget, not the data, decided how many files were read.
@@ -227,7 +224,24 @@ export const createSearchHandlers = (ports: SearchHandlerPorts): SearchHandlers 
     // And when the listing itself stopped early, so "no hit" cannot be read as "not in the project".
     if (fileListBounded) notes.push('file-list-bounded')
 
-    return notes.length > 0 ? { ...response, notes: [...new Set(notes)] } : response
+    // A bound that cut the file walk applies to both file origins: the walk stopped before either class
+    // was fully seen, so each one's coverage is a possible slice — stated as such rather than left
+    // looking complete.
+    const coverage = { ...response.coverage }
+    if (filesRequested && (fileListBounded || fileScan.contentScanBounded)) {
+      for (const scope of ['uploads', 'artifacts'] as const) {
+        coverage[scope] = { ...coverage[scope], bounded: true }
+      }
+    }
+    if (annotationScanBounded) {
+      coverage.annotations = { ...coverage.annotations, bounded: true }
+    }
+
+    return {
+      ...response,
+      coverage,
+      ...(notes.length > 0 ? { notes: [...new Set(notes)] } : {})
+    }
   },
 
   async evidence(request) {
