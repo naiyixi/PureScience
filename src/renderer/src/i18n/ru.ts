@@ -759,6 +759,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'pdf.table.rejectedLine':
     'Страница {page}: {reason} — строк {rows}, столбцов {columns}, строк с заполненными ' +
     'столбцами {spanning}; порог требует не менее {minRows} строк и {minColumns} столбцов.',
+  'pdf.table.rotatedLine':
+    'Страница {page}: поток содержимого повёрнут на {rotation}°; приведённые ниже координаты нормализованы к прямому положению и не совпадут со страницей на экране.',
   'pdf.table.pageLabel': 'Страница {page}',
   'pdf.table.shape': '{rows} строк × {columns} столбцов',
   'pdf.table.confidenceLabel': 'Уверенность {level}',

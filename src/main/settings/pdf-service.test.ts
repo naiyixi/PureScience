@@ -8,6 +8,7 @@ import { join } from 'node:path'
 
 import { beforeEach, describe, expect, it } from 'vitest'
 
+import type { AxisAlignedRotation } from '../../shared/pdf-page-rotation'
 import type { PdfTextItem } from '../../shared/pdf-table-extraction'
 import { PdfService, PdfValidationError, type PdfServiceOptions } from './pdf-service'
 
@@ -309,5 +310,68 @@ describe('PdfService.tables rejection reasons', () => {
         thresholds: { minRows: 2, minColumns: 2 }
       }
     ])
+  })
+})
+
+// A rotated content stream is turned back to upright before anything is measured, and the result SAYS so —
+// regardless of whether a candidate came off the page, because a table read from a rotated page is exactly
+// the case where the numbers look shifted against the page as displayed.
+describe('PdfService.tables rotated pages', () => {
+  const item = (text: string, x: number, y: number, width = text.length * 5): PdfTextItem => ({
+    text,
+    x,
+    y,
+    width,
+    height: 10
+  })
+
+  // A 2x2 grid on page 1, prose on page 2, with the rotation each page was read at.
+  const table = [
+    item('Site', 40, 700),
+    item('Value', 120, 700),
+    item('control', 40, 686),
+    item('12.4', 120, 686)
+  ]
+  const prose = [item('plain prose', 40, 700), item('with no grid', 150, 700)]
+
+  const serviceFor = (rotations: AxisAlignedRotation[]): PdfService =>
+    new PdfService({
+      storageRoot: root,
+      resolvePath: async (path) => (path.startsWith('/') ? path : join(root, path)),
+      parsePdf: async () => ({
+        pages: ['Site Value\ncontrol 12.4', 'plain prose with no grid'],
+        outline: [],
+        title: 'rotated',
+        items: [table, prose],
+        pageRotations: rotations
+      })
+    })
+
+  it('names the rotated page even when a table was read off it', async () => {
+    const svc = serviceFor([90, 0])
+    const { doc } = await svc.open(pdfPath)
+
+    const result = await svc.tables(doc.docId)
+
+    expect(result.candidates.length).toBeGreaterThan(0)
+    expect(result.rotatedPages).toEqual([{ page: 1, rotation: 90 }])
+  })
+
+  it('leaves the field absent — not empty — when every page was already upright', async () => {
+    const svc = serviceFor([0, 0])
+    const { doc } = await svc.open(pdfPath)
+
+    const result = await svc.tables(doc.docId)
+
+    expect(result.rotatedPages).toBeUndefined()
+  })
+
+  it('scopes the rotated pages to the page that was asked for', async () => {
+    const svc = serviceFor([90, 0])
+    const { doc } = await svc.open(pdfPath)
+
+    const pageTwo = await svc.tables(doc.docId, 2)
+
+    expect(pageTwo.rotatedPages).toBeUndefined()
   })
 })

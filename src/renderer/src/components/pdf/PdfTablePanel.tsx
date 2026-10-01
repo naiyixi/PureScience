@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react'
 
 import { useLanguage } from '@/i18n'
-import { PDF_TABLES_MAX_CANDIDATES, type PdfTableCandidateForAgent } from '../../../../shared/pdf'
+import {
+  PDF_TABLES_MAX_CANDIDATES,
+  type PdfRotatedPage,
+  type PdfTableCandidateForAgent
+} from '../../../../shared/pdf'
 import type { PdfTableRejection } from '../../../../shared/pdf-table-extraction'
 import { Button } from '@/components/ui/button'
 import { copyText } from '@/lib/copy-text'
@@ -14,7 +18,9 @@ import { copyText } from '@/lib/copy-text'
 //
 // Two things this panel must never do: report a clean "no tables" as if the page had none when what it means
 // is that the reader found no grid (so it says how many pages it looked at), and imply the list is complete
-// when the reader stopped at its candidate cap (so it says that it stopped).
+// when the reader stopped at its candidate cap (so it says that it stopped). A third: present coordinates as
+// if they matched the page as displayed when the page's content stream was rotated and the reader rewrote
+// them to upright — so those pages are named too, even when a candidate came off them.
 
 type PdfTablePanelProps = {
   projectId: string
@@ -32,6 +38,8 @@ type ScanState =
       scannedPages: number
       /** Present only when the reader found nothing: why each scanned page was not reported as a table. */
       rejectedPages: readonly PdfTableRejection[]
+      /** Pages whose coordinates were rotated back to upright before the reader measured them. */
+      rotatedPages: readonly PdfRotatedPage[]
     }
   | { status: 'failed'; message: string }
 
@@ -65,7 +73,8 @@ const PdfTablePanel = ({
           status: 'ready',
           candidates: result.candidates,
           scannedPages: result.scannedPages,
-          rejectedPages: result.rejectedPages ?? []
+          rejectedPages: result.rejectedPages ?? [],
+          rotatedPages: result.rotatedPages ?? []
         })
       } catch (error) {
         if (!active) return
@@ -108,6 +117,20 @@ const PdfTablePanel = ({
         <p className="text-xs text-red-600" role="alert">
           {state.message}
         </p>
+      ) : null}
+
+      {state.status === 'ready' && state.rotatedPages.length > 0 ? (
+        <div className="text-xs text-muted-foreground" data-testid="pdf-table-rotated">
+          <ul className="flex flex-col gap-0.5">
+            {state.rotatedPages.map((entry) => (
+              <li key={entry.page} data-testid={`pdf-table-rotated-${entry.page}`}>
+                {t('pdf.table.rotatedLine')
+                  .replace('{page}', String(entry.page))
+                  .replace('{rotation}', String(entry.rotation))}
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : null}
 
       {state.status === 'ready' && state.candidates.length === 0 ? (

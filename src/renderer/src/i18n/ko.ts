@@ -750,6 +750,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'pdf.table.rejectedLine':
     '{page}페이지: {reason} — 행 {rows}, 열 {columns}, 열을 채우는 행 {spanning}; ' +
     '판정 기준은 {minRows}행 이상, {minColumns}열 이상입니다.',
+  'pdf.table.rotatedLine':
+    '{page}페이지: 콘텐츠 스트림이 {rotation}° 회전되어 있어 아래 좌표를 정립으로 정규화했습니다(화면에 표시된 페이지와 위치가 일치하지 않습니다).',
   'pdf.table.pageLabel': '{page}페이지',
   'pdf.table.shape': '{rows}행 × {columns}열',
   'pdf.table.confidenceLabel': '신뢰도 {level}',

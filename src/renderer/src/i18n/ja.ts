@@ -759,6 +759,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'pdf.table.rejectedLine':
     '{page} ページ：{reason} — 行 {rows}、列 {columns}、列にまたがる行 {spanning}。' +
     '判定には {minRows} 行以上と {minColumns} 列以上が必要です。',
+  'pdf.table.rotatedLine':
+    'ページ {page}: コンテンツストリームが {rotation}° 回転しているため、以下の座標は正立に正規化されています（表示中のページとは位置が一致しません）。',
   'pdf.table.pageLabel': '{page} ページ',
   'pdf.table.shape': '{rows} 行 × {columns} 列',
   'pdf.table.confidenceLabel': '信頼度 {level}',

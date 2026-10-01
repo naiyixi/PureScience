@@ -226,6 +226,8 @@ export const zh = {
   'pdf.table.rejectedLine':
     '{page} 页：{reason} —— 行数 {rows}，列数 {columns}，跨满列的行 {spanning}；' +
     '形状判定至少要 {minRows} 行、{minColumns} 列。',
+  'pdf.table.rotatedLine':
+    '第 {page} 页：内容流旋转了 {rotation}°，下面的坐标已按正向归一化，因此不会与页面显示时的位置重合。',
   'pdf.table.pageLabel': '第 {page} 页',
   'pdf.table.shape': '{rows} 行 × {columns} 列',
   'pdf.table.confidenceLabel': '置信度 {level}',

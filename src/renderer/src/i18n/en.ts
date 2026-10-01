@@ -238,6 +238,8 @@ export const en: Record<ZhKey, string> = {
   'pdf.table.rejectedLine':
     'Page {page}: {reason} — rows {rows}, columns {columns}, rows spanning the columns {spanning}; ' +
     'the shape test needs {minRows}+ rows and {minColumns}+ columns.',
+  'pdf.table.rotatedLine':
+    'Page {page}: its content stream is rotated {rotation}°, so the coordinates below were normalized to upright — they will not line up with the page as displayed.',
   'pdf.table.pageLabel': 'Page {page}',
   'pdf.table.shape': '{rows} rows x {columns} columns',
   'pdf.table.confidenceLabel': 'Confidence {level}',

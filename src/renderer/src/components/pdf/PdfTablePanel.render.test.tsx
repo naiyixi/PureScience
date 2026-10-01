@@ -36,6 +36,7 @@ const mount = async (
     candidates: PdfTableCandidateForAgent[]
     scannedPages: number
     rejectedPages?: PdfTableRejection[]
+    rotatedPages?: { page: number; rotation: 90 | 180 | 270 }[]
   },
   sessionId?: string
 ): Promise<void> => {
@@ -169,6 +170,28 @@ describe('PdfTablePanel', () => {
     await mount({ candidates: [CANDIDATE], scannedPages: 5 })
 
     expect(container.querySelector('[data-testid="pdf-table-rejections"]')).toBeNull()
+  })
+
+  it('names a rotated page so the coordinates can be read against the page as displayed', async () => {
+    await mount({
+      candidates: [CANDIDATE],
+      scannedPages: 5,
+      rotatedPages: [{ page: 3, rotation: 90 }]
+    })
+
+    const rotated =
+      container.querySelector('[data-testid="pdf-table-rotated-3"]')?.textContent ?? ''
+    expect(rotated).toContain('Page 3')
+    expect(rotated).toContain('90°')
+    // It appears even though a candidate came off that page: a table read from a rotated page is exactly
+    // when the numbers look shifted.
+    expect(container.querySelector('[data-testid="pdf-table-candidate"]')).not.toBeNull()
+  })
+
+  it('says nothing about rotation when every page was upright', async () => {
+    await mount({ candidates: [CANDIDATE], scannedPages: 5 })
+
+    expect(container.querySelector('[data-testid="pdf-table-rotated"]')).toBeNull()
   })
 
   it("says it stopped at the reader's cap rather than implying the document holds no more", async () => {

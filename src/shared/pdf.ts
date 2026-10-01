@@ -9,6 +9,7 @@
 // owner, same spine as routine/endpoint/annotation).
 
 import type { PdfTableRejection } from './pdf-table-extraction'
+import type { AxisAlignedRotation } from './pdf-page-rotation'
 
 export const PDF_MCP_SERVER_NAME = 'purescience-pdf'
 
@@ -159,12 +160,21 @@ export type PdfTablesResult = {
   scannedPages: number
   candidates: PdfTableCandidateForAgent[]
   /**
+   * Pages whose content stream carried an axis-aligned rotation, whose text coordinates were therefore
+   * rewritten to upright before they were measured. Absent — not empty — when every scanned page was
+   * already upright, so a reader is told exactly when the numbers were moved.
+   */
+  rotatedPages?: readonly PdfRotatedPage[]
+  /**
    * Written only when the whole scan produced NO candidate: one entry per scanned page saying which gate
    * its shape failed and with which counts. Absent — not empty — when candidates were found, so an empty
    * result can never be read as "these pages are table-free".
    */
   rejectedPages?: PdfTableRejection[]
 }
+
+/** A page whose text was placed with a rotated matrix and read back upright; 0 is never listed. */
+export type PdfRotatedPage = { page: number; rotation: AxisAlignedRotation }
 
 export type PdfScanResult = {
   docId: string

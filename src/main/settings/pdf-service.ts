@@ -30,12 +30,19 @@ import {
   type PdfImagePlacement,
   type PdfPaintOperation
 } from '../../shared/pdf-figure-extraction'
+import {
+  normalizePageOrientation,
+  type AxisAlignedRotation,
+  type PdfPlacedTextItem,
+  type PdfTextMatrix
+} from '../../shared/pdf-page-rotation'
 import type {
   PdfOpenResult,
   PdfOutlineEntry,
   PdfOutlineResult,
   PdfPageScanHit,
   PdfPagesResult,
+  PdfRotatedPage,
   PdfScanResult,
   PdfTableCandidateForAgent,
   PdfTablesResult,
@@ -88,6 +95,12 @@ export type PdfServiceOptions = {
      */
     items?: PdfTextItem[][]
     images?: PdfImagePlacement[][]
+    /**
+     * The content-stream rotation the parser normalized away, one entry per page (0 = the page was already
+     * upright). Optional for the same reason `items` is: a parser that does not read text matrices has no
+     * rotation to report, and must not claim one.
+     */
+    pageRotations?: AxisAlignedRotation[]
   }>
   now?: () => number
 }
@@ -217,10 +230,16 @@ export class PdfService {
     // the result ONLY when the whole scan found no candidate: next to a real table the reasons would be
     // noise, and a reader who got candidates is not asking why other pages have none.
     const rejectedPages: PdfTableRejection[] = []
+    // Pages whose content stream was rotated (and so had their coordinates rewritten to upright before
+    // anything was measured). Reported whether or not a candidate came off them: a table read from a
+    // rotated page is exactly the case where the numbers look shifted against the page as displayed.
+    const rotatedPages: PdfRotatedPage[] = []
     let scannedPages = 0
     for (let pageNumber = first; pageNumber <= last; pageNumber += 1) {
       if (candidates.length >= PDF_TABLES_MAX_CANDIDATES) break
       scannedPages += 1
+      const rotation = parsed.pageRotations?.[pageNumber - 1] ?? 0
+      if (rotation !== 0) rotatedPages.push({ page: pageNumber, rotation })
       const items = parsed.items?.[pageNumber - 1]
       const pageText = parsed.pages[pageNumber - 1] ?? ''
       const positioned = items && items.length > 0 ? items : undefined
@@ -259,6 +278,7 @@ export class PdfService {
       ...(page === undefined ? {} : { page }),
       scannedPages,
       candidates,
+      ...(rotatedPages.length > 0 ? { rotatedPages } : {}),
       ...(candidates.length === 0 && rejectedPages.length > 0 ? { rejectedPages } : {})
     }
   }
@@ -394,6 +414,8 @@ const parsePdf = async (
   /** Absent on the paths that stop before the text layer could be read. */
   items?: PdfTextItem[][]
   images?: PdfImagePlacement[][]
+  /** One entry per page: the content-stream rotation that was normalized away (0 = already upright). */
+  pageRotations?: AxisAlignedRotation[]
 }> => {
   const { createRequire } = await import('node:module')
   const { pathToFileURL } = await import('node:url')
@@ -420,24 +442,42 @@ const parsePdf = async (
   try {
     const pages: string[] = []
     const itemsPerPage: PdfTextItem[][] = []
+    const pageRotations: AxisAlignedRotation[] = []
     const imagesPerPage: PdfImagePlacement[][] = []
     for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
       const page = await document.getPage(pageNumber)
       const content = await page.getTextContent()
       page.cleanup()
-      const positioned: PdfTextItem[] = []
+      const placed: PdfPlacedTextItem[] = []
       for (const item of content.items) {
         if (!('str' in item) || item.str.trim() === '') continue
         const transform = Array.isArray(item.transform) ? item.transform : []
-        positioned.push({
-          text: item.str,
-          x: typeof transform[4] === 'number' ? transform[4] : 0,
-          y: typeof transform[5] === 'number' ? transform[5] : 0,
-          width: typeof item.width === 'number' ? item.width : 0,
-          height: typeof item.height === 'number' ? item.height : 0
+        const matrix: PdfTextMatrix = [
+          finiteOrZero(transform[0]),
+          finiteOrZero(transform[1]),
+          finiteOrZero(transform[2]),
+          finiteOrZero(transform[3]),
+          finiteOrZero(transform[4]),
+          finiteOrZero(transform[5])
+        ]
+        placed.push({
+          item: {
+            text: item.str,
+            x: matrix[4],
+            y: matrix[5],
+            width: typeof item.width === 'number' ? item.width : 0,
+            height: typeof item.height === 'number' ? item.height : 0
+          },
+          matrix
         })
       }
-      itemsPerPage.push(positioned)
+      // A page whose content stream is rotated is turned back to upright HERE, before any geometry
+      // consumer sees it: rows, columns, captions and figures all rest on "left edge, baseline, width",
+      // which a rotated text matrix falsifies. The rotation travels with the parse so a reader can be
+      // told the coordinates were rewritten.
+      const oriented = normalizePageOrientation(placed)
+      itemsPerPage.push(oriented.items)
+      pageRotations.push(oriented.reading.rotation)
 
       // The same pass that reads the text reads the page's images: a figure is an image placement plus
       // whatever label the document put near it, so the placements travel with the items.
@@ -508,12 +548,18 @@ const parsePdf = async (
       // The positioned items travel with the page texts: the table extraction needs coordinates, and the
       // text path that other readers use is unaffected by carrying them.
       items: itemsPerPage,
-      images: imagesPerPage
+      images: imagesPerPage,
+      // Pages whose coordinates were rotated back to upright, so the caller can say so instead of
+      // handing back numbers that silently disagree with the page as displayed.
+      pageRotations
     }
   } finally {
     await document.destroy().catch(() => undefined)
   }
 }
+
+const finiteOrZero = (value: unknown): number =>
+  typeof value === 'number' && Number.isFinite(value) ? value : 0
 
 // Resolves an outline destination to a 1-indexed page number (best effort).
 const resolveDestPage = async (

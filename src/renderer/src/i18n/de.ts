@@ -783,6 +783,8 @@ export const de: Partial<Record<ZhKey, string>> = {
   'pdf.table.rejectedLine':
     'Seite {page}: {reason} — {rows} Zeilen, {columns} Spalten, {spanning} Zeilen über die ' +
     'Spalten; die Schwelle verlangt mindestens {minRows} Zeilen und {minColumns} Spalten.',
+  'pdf.table.rotatedLine':
+    'Seite {page}: Der Inhaltsstrom ist um {rotation}° gedreht; die Koordinaten unten wurden aufrecht normalisiert und decken sich daher nicht mit der angezeigten Seite.',
   'pdf.table.pageLabel': 'Seite {page}',
   'pdf.table.shape': '{rows} Zeilen × {columns} Spalten',
   'pdf.table.confidenceLabel': 'Konfidenz {level}',

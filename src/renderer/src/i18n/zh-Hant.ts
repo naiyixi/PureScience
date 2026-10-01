@@ -718,6 +718,8 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'pdf.table.rejectedLine':
     '{page} 頁：{reason} —— 列數 {rows}，欄數 {columns}，跨滿欄的列 {spanning}；' +
     '形狀判定至少要 {minRows} 列、{minColumns} 欄。',
+  'pdf.table.rotatedLine':
+    '第 {page} 頁：內容流旋轉了 {rotation}°，下面的座標已按正向歸一化，因此不會與頁面顯示時的位置重合。',
   'pdf.table.pageLabel': '第 {page} 頁',
   'pdf.table.shape': '{rows} 列 × {columns} 欄',
   'pdf.table.confidenceLabel': '信賴度 {level}',

@@ -774,6 +774,8 @@ export const es: Partial<Record<ZhKey, string>> = {
   'pdf.table.rejectedLine':
     'Página {page}: {reason} — {rows} filas, {columns} columnas, {spanning} filas que abarcan ' +
     'las columnas; el umbral exige al menos {minRows} filas y {minColumns} columnas.',
+  'pdf.table.rotatedLine':
+    'Página {page}: el flujo de contenido está girado {rotation}°; las coordenadas de abajo se normalizaron a la vertical y no coincidirán con la página tal como se muestra.',
   'pdf.table.pageLabel': 'Página {page}',
   'pdf.table.shape': '{rows} filas × {columns} columnas',
   'pdf.table.confidenceLabel': 'Confianza {level}',

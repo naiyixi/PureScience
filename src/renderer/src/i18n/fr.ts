@@ -778,6 +778,8 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'pdf.table.rejectedLine':
     'Page {page} : {reason} — {rows} lignes, {columns} colonnes, {spanning} lignes couvrant ' +
     'les colonnes ; le seuil exige au moins {minRows} lignes et {minColumns} colonnes.',
+  'pdf.table.rotatedLine':
+    'Page {page} : le flux de contenu est pivoté de {rotation}° ; les coordonnées ci-dessous ont été redressées et ne coïncideront donc pas avec la page telle qu’affichée.',
   'pdf.table.pageLabel': 'Page n° {page}',
   'pdf.table.shape': '{rows} lignes × {columns} colonnes',
   'pdf.table.confidenceLabel': 'Confiance {level}',
