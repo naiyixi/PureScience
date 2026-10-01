@@ -46,8 +46,16 @@ describe('pin filters keep the ordering', () => {
   })
 
   it('reports an unreadable store rather than inventing sets', () => {
-    expect(sanitizeGlobalSearchPins([storedPin({ orderBy: 'time' })].concat([{ nope: true }]))).toEqual(
-      [{ schemaVersion: GLOBAL_SEARCH_PIN_SCHEMA_VERSION, id: 'pin-1', name: 'Bounded set', savedAt: '2026-09-30T10:00:00.000Z', filters: { orderBy: 'time' } }]
-    )
+    expect(
+      sanitizeGlobalSearchPins([storedPin({ orderBy: 'time' })].concat([{ nope: true }]))
+    ).toEqual([
+      {
+        schemaVersion: GLOBAL_SEARCH_PIN_SCHEMA_VERSION,
+        id: 'pin-1',
+        name: 'Bounded set',
+        savedAt: '2026-09-30T10:00:00.000Z',
+        filters: { orderBy: 'time' }
+      }
+    ])
   })
 })

@@ -108,7 +108,9 @@ for (const file of files) {
 
 const installed = (registrar: { name: string }): boolean => {
   const pattern = new RegExp(`\\b${registrar.name}\\b`)
-  return files.some((file) => reachable.has(file.absolute) && pattern.test(stripWiring(file.source)))
+  return files.some(
+    (file) => reachable.has(file.absolute) && pattern.test(stripWiring(file.source))
+  )
 }
 
 const pending = new Set(MAIN_INSTALLATION_PENDING.map((entry) => entry.name))

@@ -66,6 +66,8 @@ import type {
   StoredCredential,
   EgressSettings
 } from '../../shared/settings'
+// A value, not a type: it decides whether a provider may be used at all.
+import { providerValidationFailed } from '../../shared/settings'
 import type {
   ExternalComputeEndpoint,
   CreateExternalComputeEndpointRequest
@@ -115,6 +117,12 @@ import {
 import { applyProxySettings } from '../net/proxy-runtime'
 import type { ProxySettings } from '../../shared/proxy'
 import type { ScenarioModels, SetScenarioModelRequest } from '../../shared/settings'
+import {
+  resolveFunctionModel as resolveFunctionModelFromFacts,
+  type FunctionModelId,
+  type FunctionModelResolution,
+  type FunctionModels
+} from '../../shared/function-models'
 import { getAppClaudeConfigDir, getUserClaudeConfigDir } from './provider-env'
 import { SettingsRepository } from './repository'
 import { SettingsPreferencesModule, toSettingsPreferencesSnapshot } from './preferences'
@@ -694,6 +702,35 @@ class SettingsService {
   ): Promise<ExecutionProtectionSettings> {
     const persisted = await this.repository.setExecutionProtection(protection)
     return persisted.executionProtection ?? { ...DEFAULT_EXECUTION_PROTECTION_SETTINGS }
+  }
+
+  // The per-function model overrides as stored. An absent slot means "use the built-in path", which is why
+  // this returns a map rather than an optional value: the caller asks a function, not the map.
+  async getFunctionModels(): Promise<FunctionModels> {
+    return (await this.repository.getSettings()).functionModels ?? {}
+  }
+
+  // Persists them and returns what is stored now, so a caller never renders a value that predates its write.
+  async setFunctionModels(functionModels: FunctionModels): Promise<FunctionModels> {
+    const persisted = await this.repository.setFunctionModels(functionModels)
+
+    return persisted.functionModels ?? {}
+  }
+
+  // What a function will actually use: the model it is pointed at, or its built-in path, plus the named
+  // reasons an override on record is not being used. The provider facts come from the same view the model
+  // pickers use, so a slot can never claim a provider the pickers have already ruled out.
+  async resolveFunctionModel(functionId: FunctionModelId): Promise<FunctionModelResolution> {
+    return resolveFunctionModelFromFacts({
+      functionId,
+      stored: await this.getFunctionModels(),
+      providers: (await this.getSettingsView()).providers.map((provider) => ({
+        id: provider.id,
+        hasCredentials: provider.hasKey && !provider.needsKey,
+        models: provider.models,
+        validationFailed: providerValidationFailed(provider)
+      }))
+    })
   }
 
   // The protection level a surface will run at, resolved from live capability plus settings. Used by

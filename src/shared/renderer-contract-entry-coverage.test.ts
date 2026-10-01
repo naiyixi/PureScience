@@ -34,7 +34,9 @@ const collectSource = (
     // Tests are not consumers, and the string dictionaries cannot call anything. The i18n module
     // itself can (it persists the UI language), so only the per-language dictionaries are skipped.
     if (/\.test\.(ts|tsx|js)$/.test(entry)) continue
-    if (/^i18n\/(en|zh|zh-Hant|ja|ko|de|es|fr|ru)\.ts$/.test(toPosix(relative(RENDERER_ROOT, path))))
+    if (
+      /^i18n\/(en|zh|zh-Hant|ja|ko|de|es|fr|ru)\.ts$/.test(toPosix(relative(RENDERER_ROOT, path)))
+    )
       continue
     collected.push(path)
   }

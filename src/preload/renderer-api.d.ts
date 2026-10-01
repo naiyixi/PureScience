@@ -232,6 +232,8 @@ import type {
   EgressSettings,
   ExecutionProtectionCommandRequest,
   ExecutionProtectionCommandResult,
+  FunctionModelCommandRequest,
+  FunctionModelCommandResult,
   ProxySettings,
   ExternalComputeEndpoint,
   CreateExternalComputeEndpointRequest,
@@ -615,6 +617,7 @@ export interface PureScienceAPI {
     executionProtection(
       request: ExecutionProtectionCommandRequest
     ): Promise<ExecutionProtectionCommandResult>
+    functionModels(request: FunctionModelCommandRequest): Promise<FunctionModelCommandResult>
     getExternalComputeEndpoints(): Promise<ExternalComputeEndpoint[]>
     setExternalComputeEndpoint(
       request: CreateExternalComputeEndpointRequest

@@ -1663,6 +1663,26 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.scenarioModels': '場景模型',
   'settings.scenarioModelsHint':
     '會話詳情、子智能體與審查各自使用的預設模型；未在此單獨指定時，與主模型相同。',
+  'settings.functionModels': '功能模型',
+  'settings.functionModelsHint':
+    '應用為自身發起的窄用途呼叫。每一列都會說明當前生效的模型，以及模型不可用時走哪條內建路徑。',
+  'settings.functionModelSkillSelection': '能力自動選擇',
+  'settings.functionModelSkillSelectionDetail': '在每輪開始前從目錄中挑出這一輪要載入哪些技能。',
+  'settings.functionModelBuiltInPath': '內建路徑（不呼叫模型）',
+  'settings.functionModelUsing': '使用 {model}（來自 {provider}）。',
+  'settings.functionModelsFallbackSkillSelection':
+    '不使用模型時，這一輪不預選技能，整個目錄仍交給代理自行閱讀。',
+  'settings.functionModelUnusableProviderMissing': '記錄中的服務已不存在。',
+  'settings.functionModelUnusableNoCredentials': '記錄中的服務沒有可用的金鑰。',
+  'settings.functionModelUnusableUnverified': '記錄中的服務上次檢查未通過。',
+  'settings.functionModelUnusableModelMissing': '該服務已不再提供這個模型。',
+  'settings.functionModelLoading': '正在讀取目前設定…',
+  'settings.functionModelUnavailable': '此視窗無法讀取功能模型設定。',
+  'settings.localParsingModels': '本機解析模型',
+  'settings.localParsingModelsHint': '在本機執行、用於解析文件與圖表的模型。',
+  'settings.localParsingModelsPlanned':
+    '本版尚未提供：這一區先把位置說明白。v1.78.0 才會帶來這些資產，且沒有發佈方校驗值就不下載。',
+
   'settings.scenarioModelInherit': '與主模型相同',
   'settings.scenarioModelSessionDetail': '會話詳情',
   'settings.scenarioModelSubagent': '子智能體',

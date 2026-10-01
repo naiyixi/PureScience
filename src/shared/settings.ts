@@ -13,6 +13,7 @@ import type {
 import type { PackageMirror } from './mirror'
 import type { CloseActionPreference } from './window-controls'
 import type { SkillProvenance } from './skill-provenance'
+import type { FunctionModels } from './function-models'
 
 // Settings file schema version; bumped when the on-disk shape changes. v2 adds official-vendor
 // providers (vendorId/region) and a per-selection activeModel alongside activeProviderId.
@@ -490,6 +491,9 @@ export type SettingsSnapshot = {
   // Per-scenario default-model overrides (conversation detail / subagent / review). Absence of an
   // id means that scenario inherits the active model.
   scenarioModels?: ScenarioModels
+  // Per-function model overrides for the app's narrow, non-conversational model calls. Absence of an id
+  // means that function runs on its built-in deterministic path (see shared/function-models.ts).
+  functionModels?: FunctionModels
   providers: ProviderView[]
   // The selected agent backend, and the frameworks available to choose from.
   agentFrameworkId: AgentFrameworkId

@@ -1794,6 +1794,28 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.scenarioModels': 'Модели по сценариям',
   'settings.scenarioModelsHint':
     'Модели по умолчанию для производных задач: деталей разговора, субагентов и рецензирования. Каждый сценарий наследует активную модель, если не указано иное.',
+  'settings.functionModels': 'Модели для функций',
+  'settings.functionModelsHint':
+    'Узкие вызовы, которые приложение делает для себя. Каждая строка называет действующую модель и встроенный путь, работающий без модели.',
+  'settings.functionModelSkillSelection': 'Подбор навыков',
+  'settings.functionModelSkillSelectionDetail':
+    'Перед началом хода выбирает из каталога, какие навыки загрузит этот ход.',
+  'settings.functionModelBuiltInPath': 'Встроенный путь (без модели)',
+  'settings.functionModelUsing': 'Используется {model} от {provider}.',
+  'settings.functionModelsFallbackSkillSelection':
+    'Без модели ход не предвыбирает навыки, и весь каталог всё равно передаётся агенту.',
+  'settings.functionModelUnusableProviderMissing': 'Сохранённая служба больше не существует.',
+  'settings.functionModelUnusableNoCredentials': 'У сохранённой службы нет пригодного ключа.',
+  'settings.functionModelUnusableUnverified': 'Сохранённая служба не прошла последнюю проверку.',
+  'settings.functionModelUnusableModelMissing': 'Эта служба больше не предлагает такую модель.',
+  'settings.functionModelLoading': 'Чтение текущей настройки…',
+  'settings.functionModelUnavailable': 'Модели для функций недоступны в этом окне.',
+  'settings.localParsingModels': 'Локальные модели разбора',
+  'settings.localParsingModelsHint':
+    'Модели, работающие на этой машине для разбора документов и иллюстраций.',
+  'settings.localParsingModelsPlanned':
+    'В этой версии пока нет: раздел говорит, где они будут. Файлы появятся в v1.78.0, и без контрольной суммы издателя ничего не загружается.',
+
   'settings.scenarioModelInherit': 'Как активная модель',
   'settings.scenarioModelSessionDetail': 'Детали разговора',
   'settings.scenarioModelSubagent': 'Субагенты',

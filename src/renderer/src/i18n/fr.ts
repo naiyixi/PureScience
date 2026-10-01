@@ -1841,6 +1841,30 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.scenarioModels': 'Modèles par scénario',
   'settings.scenarioModelsHint':
     'Modèles par défaut des tâches dérivées : détails de conversation, sous-agents et revue. Chaque scénario hérite du modèle actif sauf si vous le remplacez ici.',
+  'settings.functionModels': 'Modèles par fonction',
+  'settings.functionModelsHint':
+    "Les appels ciblés que l'application fait pour elle-même. Chaque ligne indique le modèle en vigueur et la voie intégrée utilisée sans modèle.",
+  'settings.functionModelSkillSelection': 'Sélection des compétences',
+  'settings.functionModelSkillSelectionDetail':
+    'Choisit dans le catalogue les compétences chargées par un tour avant son démarrage.',
+  'settings.functionModelBuiltInPath': 'Voie intégrée (sans modèle)',
+  'settings.functionModelUsing': 'Utilise {model} de {provider}.',
+  'settings.functionModelsFallbackSkillSelection':
+    "Sans modèle, le tour ne présélectionne aucune compétence et le catalogue entier parvient quand même à l'agent.",
+  'settings.functionModelUnusableProviderMissing': "Le service enregistré n'existe plus.",
+  'settings.functionModelUnusableNoCredentials': "Le service enregistré n'a pas de clé utilisable.",
+  'settings.functionModelUnusableUnverified':
+    'Le service enregistré a échoué à sa dernière vérification.',
+  'settings.functionModelUnusableModelMissing': 'Ce service ne propose plus ce modèle.',
+  'settings.functionModelLoading': 'Lecture du réglage actuel…',
+  'settings.functionModelUnavailable':
+    'Les modèles par fonction ne sont pas disponibles dans cette fenêtre.',
+  'settings.localParsingModels': "Modèles d'analyse locaux",
+  'settings.localParsingModelsHint':
+    'Modèles exécutés sur cette machine pour analyser documents et figures.',
+  'settings.localParsingModelsPlanned':
+    "Pas encore dans cette version : la section indique où ils prendront place. La v1.78.0 apportera les fichiers, sans somme de contrôle de l'éditeur rien n'est téléchargé.",
+
   'settings.scenarioModelInherit': 'Comme le modèle actif',
   'settings.scenarioModelSessionDetail': 'Détails de conversation',
   'settings.scenarioModelSubagent': 'Sous-agents',

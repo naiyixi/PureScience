@@ -15,6 +15,7 @@ import type { EgressSettings } from '../../shared/egress'
 import type { ProxySettings } from '../../shared/proxy'
 import type { ExecutionProtectionSettings } from '../../shared/execution-protection'
 import type { ExternalComputeEndpoint } from '../../shared/compute'
+import type { FunctionModels } from '../../shared/function-models'
 import { SETTINGS_FILE_VERSION } from '../../shared/settings'
 import type { OfficialVendorId } from '../../shared/provider-registry'
 import type { PermissionProfileId } from '../../shared/permission-profiles'
@@ -268,6 +269,9 @@ export type StoredSettings = {
   // Per-scenario default-model overrides (conversation detail / subagent / review). Absence of an
   // id means that scenario inherits the active model.
   scenarioModels?: ScenarioModels
+  // Per-function model overrides for the app's narrow, non-conversational model calls. Sanitized on read:
+  // a slot for a function this build does not have never survives into the running settings.
+  functionModels?: FunctionModels
 }
 
 // Legacy settings.json shape retained only so existing installations can migrate without data loss.

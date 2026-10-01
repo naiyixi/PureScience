@@ -49,7 +49,11 @@ const rendererFiles = collectSource(RENDERER_ROOT).map((path) => ({
 // A declaration, not a detection: `[role="dialog"]` inside a selector string (how a popover yields to
 // an open dialog) is not a surface claiming to be a dialog.
 const declaresDialogRole = (source: string): boolean => {
-  for (let index = source.indexOf('role='); index !== -1; index = source.indexOf('role=', index + 1)) {
+  for (
+    let index = source.indexOf('role=');
+    index !== -1;
+    index = source.indexOf('role=', index + 1)
+  ) {
     const previous = source[index - 1] ?? ''
     if (previous === '[' || previous === "'" || previous === '"') continue
     if (/^role=["']?\[?"?'?dialog/.test(source.slice(index))) return true
@@ -58,7 +62,9 @@ const declaresDialogRole = (source: string): boolean => {
   return false
 }
 
-const dialogDeclarations = rendererFiles.filter((file) => declaresDialogRole(file.source)).map((file) => file.path)
+const dialogDeclarations = rendererFiles
+  .filter((file) => declaresDialogRole(file.source))
+  .map((file) => file.path)
 
 // The audit's mechanical feature for a missing empty state: a group rendered only when the list is
 // non-empty, with nothing anywhere in the file that names the empty case.

@@ -749,6 +749,26 @@ export const zh = {
   'settings.scenarioModels': '场景模型',
   'settings.scenarioModelsHint':
     '会话详情、子智能体与审查各自使用的默认模型；未在此单独指定时，与主模型相同。',
+  'settings.functionModels': '功能模型',
+  'settings.functionModelsHint':
+    '应用为自身发起的窄用途调用。每一行都会说明当前生效的模型，以及模型不可用时走哪条内置路径。',
+  'settings.functionModelSkillSelection': '能力自动选择',
+  'settings.functionModelSkillSelectionDetail': '在每轮开始前从目录中挑出这一轮要加载哪些技能。',
+  'settings.functionModelBuiltInPath': '内置路径（不调用模型）',
+  'settings.functionModelUsing': '使用 {model}（来自 {provider}）。',
+  'settings.functionModelsFallbackSkillSelection':
+    '不使用模型时，这一轮不预选技能，整个目录仍然交给智能体自己读。',
+  'settings.functionModelUnusableProviderMissing': '记录中的服务已不存在。',
+  'settings.functionModelUnusableNoCredentials': '记录中的服务没有可用的密钥。',
+  'settings.functionModelUnusableUnverified': '记录中的服务上次检查未通过。',
+  'settings.functionModelUnusableModelMissing': '该服务已不再提供这个模型。',
+  'settings.functionModelLoading': '正在读取当前设置…',
+  'settings.functionModelUnavailable': '此窗口无法读取功能模型设置。',
+  'settings.localParsingModels': '本地解析模型',
+  'settings.localParsingModelsHint': '在本机运行、用于解析文档与插图的模型。',
+  'settings.localParsingModelsPlanned':
+    '本版尚未提供：这一区先把位置说明白。v1.78.0 才会带来这些资产，且没有发布方校验值就不下载。',
+
   'settings.scenarioModelInherit': '与主模型相同',
   'settings.scenarioModelSessionDetail': '会话详情',
   'settings.scenarioModelSubagent': '子智能体',

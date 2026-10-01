@@ -1851,6 +1851,30 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.scenarioModels': 'Szenariomodelle',
   'settings.scenarioModelsHint':
     'Standardmodelle für abgeleitete Arbeiten: Konversationsdetails, Sub-Agents und Review. Jedes Szenario übernimmt das aktive Modell, sofern hier nichts anderes festgelegt ist.',
+  'settings.functionModels': 'Funktionsmodelle',
+  'settings.functionModelsHint':
+    'Die schmalen Aufrufe, die die App für sich selbst macht. Jede Zeile nennt das wirksame Modell und den eingebauten Weg, der ohne Modell läuft.',
+  'settings.functionModelSkillSelection': 'Skill-Auswahl',
+  'settings.functionModelSkillSelectionDetail':
+    'Wählt vor dem Lauf aus dem Katalog, welche Skills dieser Durchgang lädt.',
+  'settings.functionModelBuiltInPath': 'Eingebauter Weg (ohne Modell)',
+  'settings.functionModelUsing': 'Verwendet {model} von {provider}.',
+  'settings.functionModelsFallbackSkillSelection':
+    'Ohne Modell wählt der Lauf keine Skills vor; der ganze Katalog erreicht den Agenten trotzdem.',
+  'settings.functionModelUnusableProviderMissing': 'Der hinterlegte Dienst existiert nicht mehr.',
+  'settings.functionModelUnusableNoCredentials':
+    'Der hinterlegte Dienst hat keinen brauchbaren Schlüssel.',
+  'settings.functionModelUnusableUnverified':
+    'Der hinterlegte Dienst hat die letzte Prüfung nicht bestanden.',
+  'settings.functionModelUnusableModelMissing': 'Dieser Dienst bietet das Modell nicht mehr an.',
+  'settings.functionModelLoading': 'Aktuelle Einstellung wird gelesen…',
+  'settings.functionModelUnavailable': 'Funktionsmodelle sind in diesem Fenster nicht verfügbar.',
+  'settings.localParsingModels': 'Lokale Analysemodelle',
+  'settings.localParsingModelsHint':
+    'Modelle, die auf diesem Rechner Dokumente und Abbildungen auswerten.',
+  'settings.localParsingModelsPlanned':
+    'Noch nicht in dieser Fassung: der Abschnitt sagt, wo diese Modelle künftig stehen. v1.78.0 bringt die Dateien — ohne Prüfsumme des Herausgebers wird nichts geladen.',
+
   'settings.scenarioModelInherit': 'Wie aktives Modell',
   'settings.scenarioModelSessionDetail': 'Konversationsdetails',
   'settings.scenarioModelSubagent': 'Sub-Agents',

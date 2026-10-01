@@ -150,7 +150,10 @@ describe('global search — filters applied before pagination', () => {
 
   // A sender filter is a statement about messages: a file list cannot satisfy it.
   it('drops scopes that cannot carry the filtered property', () => {
-    const withFile = [...mixed, hit({ id: 'f1', scope: 'uploads', score: 60, relativePath: 'a.csv' })]
+    const withFile = [
+      ...mixed,
+      hit({ id: 'f1', scope: 'uploads', score: 60, relativePath: 'a.csv' })
+    ]
     const response = finalize(withFile, { filters: { role: 'user' } })
 
     expect(response.hits.map((entry) => entry.id)).toEqual(['user-1', 'user-2'])

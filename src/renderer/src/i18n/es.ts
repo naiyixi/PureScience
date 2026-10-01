@@ -1835,6 +1835,31 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.scenarioModels': 'Modelos por escenario',
   'settings.scenarioModelsHint':
     'Modelos predeterminados para tareas derivadas: detalles de conversación, subagentes y revisión. Cada escenario hereda el modelo activo salvo que se indique otra cosa aquí.',
+  'settings.functionModels': 'Modelos por función',
+  'settings.functionModelsHint':
+    'Las llamadas concretas que la aplicación hace para sí misma. Cada fila indica el modelo vigente y la ruta integrada que se usa sin modelo.',
+  'settings.functionModelSkillSelection': 'Selección de habilidades',
+  'settings.functionModelSkillSelectionDetail':
+    'Elige del catálogo qué habilidades carga cada turno antes de empezar.',
+  'settings.functionModelBuiltInPath': 'Ruta integrada (sin modelo)',
+  'settings.functionModelUsing': 'Usa {model} de {provider}.',
+  'settings.functionModelsFallbackSkillSelection':
+    'Sin modelo, el turno no preselecciona habilidades y el catálogo completo llega igualmente al agente.',
+  'settings.functionModelUnusableProviderMissing': 'El servicio registrado ya no existe.',
+  'settings.functionModelUnusableNoCredentials':
+    'El servicio registrado no tiene clave utilizable.',
+  'settings.functionModelUnusableUnverified':
+    'El servicio registrado falló su última comprobación.',
+  'settings.functionModelUnusableModelMissing': 'Ese servicio ya no ofrece el modelo.',
+  'settings.functionModelLoading': 'Leyendo el ajuste actual…',
+  'settings.functionModelUnavailable':
+    'Los modelos por función no están disponibles en esta ventana.',
+  'settings.localParsingModels': 'Modelos de análisis locales',
+  'settings.localParsingModelsHint':
+    'Modelos que se ejecutan en este equipo para analizar documentos y figuras.',
+  'settings.localParsingModelsPlanned':
+    'Todavía no en esta versión: la sección indica dónde vivirán. v1.78.0 trae los archivos y sin la suma de comprobación del editor no se descarga nada.',
+
   'settings.scenarioModelInherit': 'Igual que el modelo activo',
   'settings.scenarioModelSessionDetail': 'Detalles de conversación',
   'settings.scenarioModelSubagent': 'Subagentes',

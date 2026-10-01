@@ -1765,6 +1765,29 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.scenarioModels': '시나리오 모델',
   'settings.scenarioModelsHint':
     '대화 상세·서브에이전트·리뷰에 사용하는 기본 모델입니다. 여기서 지정하지 않으면 각 시나리오는 활성 모델을 따릅니다.',
+  'settings.functionModels': '기능 모델',
+  'settings.functionModelsHint':
+    '앱이 스스로 수행하는 좁은 용도의 호출입니다. 각 행은 현재 적용되는 모델과 모델을 쓸 수 없을 때의 내장 경로를 밝힙니다.',
+  'settings.functionModelSkillSelection': '스킬 자동 선택',
+  'settings.functionModelSkillSelectionDetail':
+    '턴이 시작되기 전에 카탈로그에서 그 턴에 불러올 스킬을 고릅니다.',
+  'settings.functionModelBuiltInPath': '내장 경로(모델 미사용)',
+  'settings.functionModelUsing': '{provider}의 {model}을(를) 사용합니다.',
+  'settings.functionModelsFallbackSkillSelection':
+    '모델을 쓰지 않으면 그 턴에서는 스킬을 미리 고르지 않고 전체 카탈로그가 에이전트에 전달됩니다.',
+  'settings.functionModelUnusableProviderMissing': '기록된 서비스가 더 이상 없습니다.',
+  'settings.functionModelUnusableNoCredentials': '기록된 서비스에 사용할 수 있는 키가 없습니다.',
+  'settings.functionModelUnusableUnverified': '기록된 서비스가 지난 검사에서 실패했습니다.',
+  'settings.functionModelUnusableModelMissing':
+    '해당 서비스가 이 모델을 더 이상 제공하지 않습니다.',
+  'settings.functionModelLoading': '현재 설정을 읽는 중…',
+  'settings.functionModelUnavailable': '이 창에서는 기능 모델을 사용할 수 없습니다.',
+  'settings.localParsingModels': '로컬 파싱 모델',
+  'settings.localParsingModelsHint':
+    '문서와 그림을 해석하기 위해 이 컴퓨터에서 실행되는 모델입니다.',
+  'settings.localParsingModelsPlanned':
+    '이 버전에는 없습니다. 이 영역은 자리가 어디인지 밝히기 위한 것입니다. 자산은 v1.78.0에서 제공되며 발행자 검증값이 없으면 내려받지 않습니다.',
+
   'settings.scenarioModelInherit': '활성 모델과 동일',
   'settings.scenarioModelSessionDetail': '대화 상세',
   'settings.scenarioModelSubagent': '서브에이전트',

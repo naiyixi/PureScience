@@ -25,6 +25,7 @@ import {
   isRemoteUnprotectedExecutionPolicy,
   type ExecutionProtectionSettings
 } from '../../shared/execution-protection'
+import { sanitizeFunctionModels, type FunctionModels } from '../../shared/function-models'
 import { SCENARIO_MODEL_IDS } from '../../shared/settings'
 import type { ScenarioModels } from '../../shared/settings'
 import type { ExternalComputeEndpoint } from '../../shared/compute'
@@ -820,6 +821,10 @@ const sanitizeSettings = (value: unknown): StoredSettings => {
 
   if (executionProtection) settings.executionProtection = executionProtection
 
+  const functionModels = sanitizeFunctionModels(value.functionModels)
+
+  if (functionModels) settings.functionModels = functionModels
+
   const proxy = sanitizeProxySettings(value.proxy)
 
   if (proxy) settings.proxy = proxy
@@ -1318,6 +1323,18 @@ class SettingsRepository {
 
   // Persists the execution-protection preferences. Sanitized before write, so an unknown policy can
   // never reach disk (it resolves to the default "ask explicitly" instead).
+  // Persists the per-function model overrides. Sanitized before write; a map whose slots are all unknown to
+  // this build (or malformed) clears the overrides, which is what "no function model" already means.
+  async setFunctionModels(functionModels: FunctionModels): Promise<StoredSettings> {
+    const sanitized = sanitizeFunctionModels(functionModels)
+    return this.mutate((settings) => {
+      if (sanitized) return { ...settings, functionModels: sanitized }
+      const { functionModels: _dropped, ...rest } = settings
+
+      return rest
+    })
+  }
+
   async setExecutionProtection(protection: ExecutionProtectionSettings): Promise<StoredSettings> {
     const sanitized = sanitizeExecutionProtectionSettings(protection) ?? {
       ...DEFAULT_EXECUTION_PROTECTION_SETTINGS

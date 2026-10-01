@@ -785,6 +785,28 @@ export const en: Record<ZhKey, string> = {
   'settings.scenarioModels': 'Scenario models',
   'settings.scenarioModelsHint':
     'Default models used for derived work: conversation details, sub-agents and review. Each scenario inherits the active model unless overridden here.',
+  'settings.functionModels': 'Function models',
+  'settings.functionModelsHint':
+    'The narrow calls the app makes for itself. Each one names the model in force and the built-in path that runs when no model is usable.',
+  'settings.functionModelSkillSelection': 'Skill selection',
+  'settings.functionModelSkillSelectionDetail':
+    'Decides which skills a turn loads, choosing from the catalog before the turn starts.',
+  'settings.functionModelBuiltInPath': 'Built-in path (no model)',
+  'settings.functionModelUsing': 'Using {model} from {provider}.',
+  'settings.functionModelsFallbackSkillSelection':
+    'Without a model, the turn pre-selects no skills and the whole catalog still reaches the agent.',
+  'settings.functionModelUnusableProviderMissing': 'The service on record no longer exists.',
+  'settings.functionModelUnusableNoCredentials': 'The service on record has no usable key.',
+  'settings.functionModelUnusableUnverified': 'The service on record failed its last check.',
+  'settings.functionModelUnusableModelMissing': 'That service no longer offers the model.',
+  'settings.functionModelLoading': 'Reading the current setting…',
+  'settings.functionModelUnavailable': 'Function models are unavailable in this window.',
+  'settings.localParsingModels': 'Local parsing models',
+  'settings.localParsingModelsHint':
+    'Models that run on this machine to parse documents and figures.',
+  'settings.localParsingModelsPlanned':
+    'Not part of this version: the section is here so the page says where these will live. v1.78.0 brings the assets, with a publisher checksum required before anything is downloaded.',
+
   'settings.scenarioModelInherit': 'Same as active model',
   'settings.scenarioModelSessionDetail': 'Conversation details',
   'settings.scenarioModelSubagent': 'Sub-agents',

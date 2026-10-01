@@ -1796,6 +1796,27 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.scenarioModels': 'シナリオ別モデル',
   'settings.scenarioModelsHint':
     '会話詳細・サブエージェント・レビューで使う既定モデル。ここで指定しない限り、各シナリオはアクティブモデルを引き継ぎます。',
+  'settings.functionModels': '機能モデル',
+  'settings.functionModelsHint':
+    'アプリ自身が行う用途を絞った呼び出しです。各行は現在有効なモデルと、モデルが使えないときの内蔵経路を示します。',
+  'settings.functionModelSkillSelection': 'スキルの選択',
+  'settings.functionModelSkillSelectionDetail':
+    'ターンの開始前に、カタログからそのターンで読み込むスキルを選びます。',
+  'settings.functionModelBuiltInPath': '内蔵経路（モデル不使用）',
+  'settings.functionModelUsing': '{provider} の {model} を使用します。',
+  'settings.functionModelsFallbackSkillSelection':
+    'モデルを使わない場合、そのターンではスキルを事前選択せず、カタログ全体がエージェントに渡されます。',
+  'settings.functionModelUnusableProviderMissing': '記録されたサービスは存在しません。',
+  'settings.functionModelUnusableNoCredentials': '記録されたサービスに使える鍵がありません。',
+  'settings.functionModelUnusableUnverified': '記録されたサービスは前回の確認に失敗しました。',
+  'settings.functionModelUnusableModelMissing': 'そのサービスはこのモデルを提供していません。',
+  'settings.functionModelLoading': '現在の設定を読み込み中…',
+  'settings.functionModelUnavailable': 'このウィンドウでは機能モデルを利用できません。',
+  'settings.localParsingModels': 'ローカル解析モデル',
+  'settings.localParsingModelsHint': '文書や図表の解析のためにこの端末で動くモデルです。',
+  'settings.localParsingModelsPlanned':
+    'この版には未搭載です。この区画は置き場所を示すためのものです。資産は v1.78.0 で提供し、発行元の検証値がない限りダウンロードしません。',
+
   'settings.scenarioModelInherit': 'アクティブモデルと同じ',
   'settings.scenarioModelSessionDetail': '会話詳細',
   'settings.scenarioModelSubagent': 'サブエージェント',

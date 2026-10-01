@@ -312,6 +312,8 @@ const api: PureScienceAPI = {
     setProxy: (proxy) => electronRendererContracts.invoke('settings.setProxy', proxy),
     executionProtection: (request) =>
       electronRendererContracts.invoke('settings.executionProtection', request),
+    functionModels: (request) =>
+      electronRendererContracts.invoke('settings.functionModels', request),
     getExternalComputeEndpoints: () =>
       electronRendererContracts.invoke('settings.getExternalComputeEndpoints'),
     setExternalComputeEndpoint: (request) =>

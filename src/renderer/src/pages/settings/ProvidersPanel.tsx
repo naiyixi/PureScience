@@ -7,6 +7,8 @@ import type { ProviderView, ValidateProviderResult } from '../../../../shared/se
 import { isCodexSubscriptionProvider } from '../../../../shared/settings'
 import { ActiveModelSelect } from './ActiveModelSelect'
 import { VisionModelSelect } from './VisionModelSelect'
+import { FUNCTION_MODEL_IDS } from '../../../../shared/function-models'
+import { FunctionModelRow } from './FunctionModelSelect'
 import { ScenarioModelRow } from './ScenarioModelSelect'
 import { ProviderList } from './ProviderList'
 import { ReasoningEffortSelect } from './ReasoningEffortSelect'
@@ -375,6 +377,35 @@ const ProvidersPanel = ({
         </div>
         <p className="mt-3 text-xs text-muted-foreground">
           {t('settings.scenarioModelsScopeNote')}
+        </p>
+      </SettingsSection>
+
+      {/* Function models: the narrow, non-conversational calls the app makes for itself. Each row names
+          the model in force, where it comes from, and the built-in path that runs when it is not usable —
+          the fallback is a path, not a failure. */}
+      <SettingsSection
+        title={t('settings.functionModels')}
+        aria-label={t('settings.functionModels')}
+        description={t('settings.functionModelsHint')}
+        separated={visibleProviders.length > 0}
+      >
+        <div className="max-w-md space-y-4" data-testid="function-models">
+          {FUNCTION_MODEL_IDS.map((functionId) => (
+            <FunctionModelRow key={functionId} functionId={functionId} />
+          ))}
+        </div>
+      </SettingsSection>
+
+      {/* Local parsing models: stated now, provided later. No switches — a control that changes nothing is
+          worse than the sentence that says why it is not here yet. */}
+      <SettingsSection
+        title={t('settings.localParsingModels')}
+        aria-label={t('settings.localParsingModels')}
+        description={t('settings.localParsingModelsHint')}
+        separated={visibleProviders.length > 0}
+      >
+        <p className="max-w-md text-xs text-muted-foreground" data-testid="local-parsing-models">
+          {t('settings.localParsingModelsPlanned')}
         </p>
       </SettingsSection>
 

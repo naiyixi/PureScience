@@ -29,6 +29,10 @@ import type {
   ExecutionProtectionCommandRequest,
   ExecutionProtectionCommandResult
 } from '../../shared/execution-protection'
+import type {
+  FunctionModelCommandRequest,
+  FunctionModelCommandResult
+} from '../../shared/function-models'
 import {
   defineApplicationCommand,
   defineApplicationCommandGroup,
@@ -58,6 +62,9 @@ type CoreSettingsCommandStore = Pick<
   | 'detectCodex'
   | 'detectOpencode'
   | 'getExecutionProtectionMatrix'
+  | 'getFunctionModels'
+  | 'resolveFunctionModel'
+  | 'setFunctionModels'
   | 'setRemoteUnprotectedPolicy'
   | 'getConnectorDetail'
   | 'getMemory'
@@ -158,6 +165,11 @@ const settingsCoreApplicationCommands = Object.freeze({
     readonly [],
     StoreResult<'detectOpencode'>
   >('settings:detect-opencode'),
+  functionModels: defineApplicationCommand<
+    'settings:function-models',
+    readonly [request: FunctionModelCommandRequest],
+    FunctionModelCommandResult
+  >('settings:function-models'),
   executionProtection: defineApplicationCommand<
     'settings:execution-protection',
     readonly [request: ExecutionProtectionCommandRequest],
@@ -447,6 +459,7 @@ const settingsCoreApplicationCommandGroup = defineApplicationCommandGroup('setti
   settingsCoreApplicationCommands.detectCodex,
   settingsCoreApplicationCommands.detectOpencode,
   settingsCoreApplicationCommands.executionProtection,
+  settingsCoreApplicationCommands.functionModels,
   settingsCoreApplicationCommands.getConnectorDetail,
   settingsCoreApplicationCommands.getMemory,
   settingsCoreApplicationCommands.getCredentials,
@@ -542,6 +555,23 @@ const registerCoreSettingsApplicationCommands = (
       'settings:detect-opencode': () => dependencies.service.detectOpencode(),
       // One channel, two actions: the panel reads the matrix and writes the remote policy through the
       // same entry, and every write comes back with the freshly resolved matrix.
+      'settings:function-models': async ({ args, callerContext }) => {
+        requireLocalCaller(callerContext, 'settings:function-models')
+        const request = args[0]
+        if (request.action === 'set') {
+          return { models: await dependencies.service.setFunctionModels(request.models) }
+        }
+        if (request.action === 'resolve') {
+          const [models, resolved] = await Promise.all([
+            dependencies.service.getFunctionModels(),
+            dependencies.service.resolveFunctionModel(request.functionId)
+          ])
+
+          return { models, resolved }
+        }
+
+        return { models: await dependencies.service.getFunctionModels() }
+      },
       'settings:execution-protection': async ({ args, callerContext }) => {
         requireLocalCaller(callerContext, 'settings:execution-protection')
         const request = args[0]
