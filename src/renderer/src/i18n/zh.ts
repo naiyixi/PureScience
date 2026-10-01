@@ -780,7 +780,8 @@ export const zh = {
   'settings.functionModelDetectReasonInvalidResponse': '端点返回了没有内容的应答',
 
   'settings.functionModelSkillSelection': '能力自动选择',
-  'settings.functionModelSkillSelectionDetail': '在每轮开始前从目录中挑出这一轮要加载哪些技能。',
+  'settings.functionModelSkillSelectionDetail':
+    '在每轮开始前从目录中挑出这一轮要加载哪些技能。 在桥接（Codex）回合路径上执行——这是该调用唯一发生的路径。',
   'settings.functionModelBuiltInPath': '内置路径（不调用模型）',
   'settings.functionModelUsing': '使用 {model}（来自 {provider}）。',
   'settings.functionModelsFallbackSkillSelection':

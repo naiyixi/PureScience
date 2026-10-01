@@ -1898,7 +1898,7 @@ export const fr: Partial<Record<ZhKey, string>> = {
 
   'settings.functionModelSkillSelection': 'Sélection des compétences',
   'settings.functionModelSkillSelectionDetail':
-    'Choisit dans le catalogue les compétences chargées par un tour avant son démarrage.',
+    "Choisit dans le catalogue les compétences chargées par un tour avant son démarrage. S'exécute sur le chemin ponté (Codex) d'un tour : c'est le seul endroit où cet appel a lieu.",
   'settings.functionModelBuiltInPath': 'Voie intégrée (sans modèle)',
   'settings.functionModelUsing': 'Utilise {model} de {provider}.',
   'settings.functionModelsFallbackSkillSelection':

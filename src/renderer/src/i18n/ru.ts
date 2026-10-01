@@ -1848,7 +1848,7 @@ export const ru: Partial<Record<ZhKey, string>> = {
 
   'settings.functionModelSkillSelection': 'Подбор навыков',
   'settings.functionModelSkillSelectionDetail':
-    'Перед началом хода выбирает из каталога, какие навыки загрузит этот ход.',
+    'Перед началом хода выбирает из каталога, какие навыки загрузит этот ход. Выполняется на мостовом (Codex) пути хода — единственном месте, где происходит этот вызов.',
   'settings.functionModelBuiltInPath': 'Встроенный путь (без модели)',
   'settings.functionModelUsing': 'Используется {model} от {provider}.',
   'settings.functionModelsFallbackSkillSelection':

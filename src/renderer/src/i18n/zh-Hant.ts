@@ -1715,7 +1715,8 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.functionModelDetectReasonInvalidResponse': '端點回傳了沒有內容的回應',
 
   'settings.functionModelSkillSelection': '能力自動選擇',
-  'settings.functionModelSkillSelectionDetail': '在每輪開始前從目錄中挑出這一輪要載入哪些技能。',
+  'settings.functionModelSkillSelectionDetail':
+    '在每輪開始前從目錄中挑出這一輪要載入哪些技能。 在橋接（Codex）回合路徑上執行——這是該呼叫唯一發生的路徑。',
   'settings.functionModelBuiltInPath': '內建路徑（不呼叫模型）',
   'settings.functionModelUsing': '使用 {model}（來自 {provider}）。',
   'settings.functionModelsFallbackSkillSelection':

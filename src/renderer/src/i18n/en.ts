@@ -818,7 +818,7 @@ export const en: Record<ZhKey, string> = {
 
   'settings.functionModelSkillSelection': 'Skill selection',
   'settings.functionModelSkillSelectionDetail':
-    'Decides which skills a turn loads, choosing from the catalog before the turn starts.',
+    'Decides which skills a turn loads, choosing from the catalog before the turn starts.  Runs on the bridged (Codex) turn path — the only place this call is made.',
   'settings.functionModelBuiltInPath': 'Built-in path (no model)',
   'settings.functionModelUsing': 'Using {model} from {provider}.',
   'settings.functionModelsFallbackSkillSelection':

@@ -1850,7 +1850,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
 
   'settings.functionModelSkillSelection': 'スキルの選択',
   'settings.functionModelSkillSelectionDetail':
-    'ターンの開始前に、カタログからそのターンで読み込むスキルを選びます。',
+    'ターンの開始前に、カタログからそのターンで読み込むスキルを選びます。 実行されるのはブリッジ（Codex）経路のターンです。この呼び出しが行われる唯一の経路です。',
   'settings.functionModelBuiltInPath': '内蔵経路（モデル不使用）',
   'settings.functionModelUsing': '{provider} の {model} を使用します。',
   'settings.functionModelsFallbackSkillSelection':

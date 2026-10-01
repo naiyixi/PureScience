@@ -1910,7 +1910,7 @@ export const de: Partial<Record<ZhKey, string>> = {
 
   'settings.functionModelSkillSelection': 'Skill-Auswahl',
   'settings.functionModelSkillSelectionDetail':
-    'Wählt vor dem Lauf aus dem Katalog, welche Skills dieser Durchgang lädt.',
+    'Wählt vor dem Lauf aus dem Katalog, welche Skills dieser Durchgang lädt. Läuft auf dem gebrückten (Codex-)Pfad eines Durchgangs — dort, und nur dort, findet dieser Aufruf statt.',
   'settings.functionModelBuiltInPath': 'Eingebauter Weg (ohne Modell)',
   'settings.functionModelUsing': 'Verwendet {model} von {provider}.',
   'settings.functionModelsFallbackSkillSelection':

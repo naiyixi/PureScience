@@ -1892,7 +1892,7 @@ export const es: Partial<Record<ZhKey, string>> = {
 
   'settings.functionModelSkillSelection': 'Selección de habilidades',
   'settings.functionModelSkillSelectionDetail':
-    'Elige del catálogo qué habilidades carga cada turno antes de empezar.',
+    'Elige del catálogo qué habilidades carga cada turno antes de empezar. Se ejecuta en la ruta puenteada (Codex) del turno: es el único lugar donde se hace esta llamada.',
   'settings.functionModelBuiltInPath': 'Ruta integrada (sin modelo)',
   'settings.functionModelUsing': 'Usa {model} de {provider}.',
   'settings.functionModelsFallbackSkillSelection':

@@ -1820,7 +1820,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
 
   'settings.functionModelSkillSelection': '스킬 자동 선택',
   'settings.functionModelSkillSelectionDetail':
-    '턴이 시작되기 전에 카탈로그에서 그 턴에 불러올 스킬을 고릅니다.',
+    '턴이 시작되기 전에 카탈로그에서 그 턴에 불러올 스킬을 고릅니다. 브리지(Codex) 경로의 턴에서 실행됩니다. 이 호출이 일어나는 유일한 경로입니다.',
   'settings.functionModelBuiltInPath': '내장 경로(모델 미사용)',
   'settings.functionModelUsing': '{provider}의 {model}을(를) 사용합니다.',
   'settings.functionModelsFallbackSkillSelection':
