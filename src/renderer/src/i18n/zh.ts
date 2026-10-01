@@ -222,6 +222,10 @@ export const zh = {
   'pdf.table.scanning': '正在按 PDF 自身的版面读取表格…',
   'pdf.table.noneFound': '已扫描 {n} 页，没有发现表格候选。',
   'pdf.table.capped': '已达到读取器返回的前 {n} 个候选上限。',
+  'pdf.table.rejectedTitle': '这些页面为什么没被当作表格：',
+  'pdf.table.rejectedLine':
+    '{page} 页：{reason} —— 行数 {rows}，列数 {columns}，跨满列的行 {spanning}；' +
+    '形状判定至少要 {minRows} 行、{minColumns} 列。',
   'pdf.table.pageLabel': '第 {page} 页',
   'pdf.table.shape': '{rows} 行 × {columns} 列',
   'pdf.table.confidenceLabel': '置信度 {level}',

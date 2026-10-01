@@ -8,7 +8,8 @@ import { join } from 'node:path'
 
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { PdfService, PdfValidationError } from './pdf-service'
+import type { PdfTextItem } from '../../shared/pdf-table-extraction'
+import { PdfService, PdfValidationError, type PdfServiceOptions } from './pdf-service'
 
 let root: string
 let service: PdfService
@@ -196,5 +197,117 @@ describe('PdfService', () => {
     await svc.open(locator, 'proj-1')
 
     expect((await readPersistedDoc()).sourcePath).toBe(locator)
+  })
+})
+
+// The tables result has to answer "why is this page not a table" without being asked: a bare empty list
+// reads as "these pages have no tables", which is a claim the reader cannot make.
+describe('PdfService.tables rejection reasons', () => {
+  const item = (text: string, x: number, y: number, width = text.length * 5): PdfTextItem => ({
+    text,
+    x,
+    y,
+    width,
+    height: 10
+  })
+
+  // A parser that can position items (the geometry path). An EMPTY item list on a page means that page has
+  // text but no coordinates — the weaker whitespace method's territory, named as such.
+  const parserWithPositions =
+    (pages: string[], items: PdfTextItem[][]): PdfServiceOptions['parsePdf'] =>
+    async () => ({ pages, outline: [], title: 'positioned', items })
+
+  const serviceFor = (pages: string[], items: PdfTextItem[][]): PdfService =>
+    new PdfService({
+      storageRoot: root,
+      resolvePath: async (path) => (path.startsWith('/') ? path : join(root, path)),
+      parsePdf: parserWithPositions(pages, items)
+    })
+
+  it('adds no reasons when the scan found a candidate', async () => {
+    const svc = serviceFor(
+      ['Site Value\ncontrol 12.4', 'plain prose that carries no grid'],
+      [
+        [
+          item('Site', 40, 700),
+          item('Value', 120, 700),
+          item('control', 40, 686),
+          item('12.4', 120, 686)
+        ],
+        [item('plain prose', 40, 700), item('that carries no grid', 150, 700)]
+      ]
+    )
+    const { doc } = await svc.open(pdfPath)
+
+    const result = await svc.tables(doc.docId)
+
+    expect(result.candidates.length).toBeGreaterThan(0)
+    // Page 2 would have failed a gate, and it is still not reported: next to a real table the reasons are
+    // noise, and the field is absent rather than empty so it cannot be mistaken for "no page failed".
+    expect(result.rejectedPages).toBeUndefined()
+  })
+
+  it('names the gate each scanned page failed, with the counts, when nothing was found', async () => {
+    const svc = serviceFor(
+      ['alpha\nbeta', 'text that has no coordinates', ''],
+      [[item('alpha', 40, 700), item('beta', 40, 686)], [], []]
+    )
+    const { doc } = await svc.open(pdfPath)
+
+    const result = await svc.tables(doc.docId)
+
+    expect(result.candidates).toEqual([])
+    expect(result.scannedPages).toBe(3)
+    expect(result.rejectedPages).toEqual([
+      {
+        page: 1,
+        reason: 'too-few-columns',
+        counts: { itemCount: 2, rows: 2, columns: 1, spanningRows: 0 },
+        thresholds: { minRows: 2, minColumns: 2 }
+      },
+      {
+        page: 2,
+        reason: 'no-positioned-text',
+        counts: { itemCount: 0, rows: 0, columns: 0, spanningRows: 0 },
+        thresholds: { minRows: 2, minColumns: 2 }
+      },
+      {
+        page: 3,
+        reason: 'blank-page',
+        counts: { itemCount: 0, rows: 0, columns: 0, spanningRows: 0 },
+        thresholds: { minRows: 2, minColumns: 2 }
+      }
+    ])
+  })
+
+  it('scopes the reasons to the single page that was asked for', async () => {
+    const svc = serviceFor(
+      ['Site Value\ncontrol 12.4', 'prose only here'],
+      [
+        [
+          item('Site', 40, 700),
+          item('Value', 120, 700),
+          item('control', 40, 686),
+          item('12.4', 120, 686)
+        ],
+        [item('prose only here', 40, 700)]
+      ]
+    )
+    const { doc } = await svc.open(pdfPath)
+
+    const withTable = await svc.tables(doc.docId, 1)
+    const without = await svc.tables(doc.docId, 2)
+
+    expect(withTable.candidates).toHaveLength(1)
+    expect(withTable.rejectedPages).toBeUndefined()
+    expect(without.candidates).toEqual([])
+    expect(without.rejectedPages).toEqual([
+      {
+        page: 2,
+        reason: 'too-few-rows',
+        counts: { itemCount: 1, rows: 1, columns: 1, spanningRows: 0 },
+        thresholds: { minRows: 2, minColumns: 2 }
+      }
+    ])
   })
 })

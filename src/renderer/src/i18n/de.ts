@@ -779,6 +779,10 @@ export const de: Partial<Record<ZhKey, string>> = {
   'pdf.table.scanning': 'Die Tabellen werden aus dem eigenen Layout der PDF gelesen…',
   'pdf.table.noneFound': 'Kein Tabellenkandidat auf den {n} gelesenen Seiten.',
   'pdf.table.capped': 'Beim {n}. Kandidat des Lesers abgebrochen.',
+  'pdf.table.rejectedTitle': 'Warum keine Tabelle gemeldet wurde:',
+  'pdf.table.rejectedLine':
+    'Seite {page}: {reason} — {rows} Zeilen, {columns} Spalten, {spanning} Zeilen über die ' +
+    'Spalten; die Schwelle verlangt mindestens {minRows} Zeilen und {minColumns} Spalten.',
   'pdf.table.pageLabel': 'Seite {page}',
   'pdf.table.shape': '{rows} Zeilen × {columns} Spalten',
   'pdf.table.confidenceLabel': 'Konfidenz {level}',

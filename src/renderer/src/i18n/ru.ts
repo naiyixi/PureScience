@@ -755,6 +755,10 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'pdf.table.scanning': 'Таблицы читаются из собственной разметки PDF…',
   'pdf.table.noneFound': 'На {n} просмотренных страницах кандидатов таблиц нет.',
   'pdf.table.capped': 'Остановлено на первых {n} кандидатах, возвращённых читалкой.',
+  'pdf.table.rejectedTitle': 'Почему таблица не была найдена:',
+  'pdf.table.rejectedLine':
+    'Страница {page}: {reason} — строк {rows}, столбцов {columns}, строк с заполненными ' +
+    'столбцами {spanning}; порог требует не менее {minRows} строк и {minColumns} столбцов.',
   'pdf.table.pageLabel': 'Страница {page}',
   'pdf.table.shape': '{rows} строк × {columns} столбцов',
   'pdf.table.confidenceLabel': 'Уверенность {level}',

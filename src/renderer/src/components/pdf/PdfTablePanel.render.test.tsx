@@ -4,6 +4,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { PDF_TABLES_MAX_CANDIDATES, type PdfTableCandidateForAgent } from '../../../../shared/pdf'
+import type { PdfTableRejection } from '../../../../shared/pdf-table-extraction'
 import { PdfTablePanel } from './PdfTablePanel'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -34,6 +35,7 @@ const mount = async (
   result: {
     candidates: PdfTableCandidateForAgent[]
     scannedPages: number
+    rejectedPages?: PdfTableRejection[]
   },
   sessionId?: string
 ): Promise<void> => {
@@ -127,6 +129,46 @@ describe('PdfTablePanel', () => {
 
     expect(container.querySelector('[data-testid="pdf-table-candidate"]')).toBeNull()
     expect(container.textContent).toContain('No table candidate in the 5 page(s) scanned.')
+  })
+
+  it('says which gate each page failed, with the counts, when the reader found nothing', async () => {
+    await mount({
+      candidates: [],
+      scannedPages: 2,
+      rejectedPages: [
+        {
+          page: 1,
+          reason: 'too-few-columns',
+          counts: { itemCount: 3, rows: 3, columns: 1, spanningRows: 0 },
+          thresholds: { minRows: 2, minColumns: 2 }
+        },
+        {
+          page: 2,
+          reason: 'blank-page',
+          counts: { itemCount: 0, rows: 0, columns: 0, spanningRows: 0 },
+          thresholds: { minRows: 2, minColumns: 2 }
+        }
+      ]
+    })
+
+    expect(container.querySelector('[data-testid="pdf-table-rejections"]')?.textContent).toContain(
+      'Why no table was reported:'
+    )
+    const first =
+      container.querySelector('[data-testid="pdf-table-rejection-1"]')?.textContent ?? ''
+    expect(first).toContain('too-few-columns')
+    // The counts are on screen, so "no table here" can be checked rather than believed.
+    expect(first).toContain('rows 3')
+    expect(first).toContain('columns 1')
+    expect(container.querySelector('[data-testid="pdf-table-rejection-2"]')?.textContent).toContain(
+      'blank-page'
+    )
+  })
+
+  it('shows no rejection list when the reader did return candidates', async () => {
+    await mount({ candidates: [CANDIDATE], scannedPages: 5 })
+
+    expect(container.querySelector('[data-testid="pdf-table-rejections"]')).toBeNull()
   })
 
   it("says it stopped at the reader's cap rather than implying the document holds no more", async () => {

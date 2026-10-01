@@ -774,6 +774,10 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'pdf.table.scanning': "Lecture des tableaux d'après la mise en page du PDF…",
   'pdf.table.noneFound': 'Aucun candidat de tableau dans les {n} page(s) analysée(s).',
   'pdf.table.capped': 'Arrêt aux {n} premiers candidats renvoyés par le lecteur.',
+  'pdf.table.rejectedTitle': "Pourquoi aucun tableau n'a été signalé :",
+  'pdf.table.rejectedLine':
+    'Page {page} : {reason} — {rows} lignes, {columns} colonnes, {spanning} lignes couvrant ' +
+    'les colonnes ; le seuil exige au moins {minRows} lignes et {minColumns} colonnes.',
   'pdf.table.pageLabel': 'Page n° {page}',
   'pdf.table.shape': '{rows} lignes × {columns} colonnes',
   'pdf.table.confidenceLabel': 'Confiance {level}',

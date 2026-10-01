@@ -351,26 +351,42 @@ export const findTableCaption = (
   return best ? { text: best.text, position: best.position } : undefined
 }
 
-export const extractPdfTableCandidates = (
-  page: number,
+/**
+ * The shape a page's text layer has, measured ONCE and used by both the extraction and the explanation of
+ * why no table was reported. Two independent measurements would drift apart, and a "why not a table" that
+ * disagrees with the decision that produced it is a lie dressed as a diagnosis.
+ *
+ * Every field is a count, not a verdict: `rows`, `columns` and `spanningRows` are exactly the numbers the
+ * candidate's gates are compared against.
+ */
+export type PdfTableShape = {
+  /** Rows after wrapped header lines are folded in — the rows a candidate would carry. */
+  rows: string[][]
+  /** Column count after split columns are merged — the count a candidate would report. */
+  columns: number
+  /** Rows filling at least `minColumns` columns: spaced prose never fills more than one. */
+  spanningRows: number
+  /** Non-blank positioned items the measurement came from. */
+  itemCount: number
+  /** Row baselines before folding, for the caption search. */
+  rowBaselines: number[]
+  /** Physical lines folded into a wrapped header; 0 when nothing was joined. */
+  joinedHeaderRows: number
+}
+
+export const measureTableShape = (
   items: readonly PdfTextItem[],
   options: PdfTableExtractionOptions = {}
-): PdfTableCandidate[] => {
+): PdfTableShape => {
   const rowTolerancePoints = options.rowTolerancePoints ?? DEFAULTS.rowTolerancePoints
   const columnGapPoints = options.columnGapPoints ?? DEFAULTS.columnGapPoints
-  const minRows = options.minRows ?? DEFAULTS.minRows
   const minColumns = options.minColumns ?? DEFAULTS.minColumns
 
   const usable = items.filter((item) => item.text.trim() !== '')
-  if (usable.length === 0) return []
-
   const grouped = groupRows(usable, rowTolerancePoints)
-  const anchors = columnAnchors(
-    grouped.map((row) => splitRow(row, columnGapPoints)),
-    Math.max(1, columnGapPoints / 2)
-  )
   const cellsByRow = grouped.map((row) => splitRow(row, columnGapPoints))
   const columnTolerance = Math.max(1, columnGapPoints / 2)
+  const anchors = columnAnchors(cellsByRow, columnTolerance)
   const merged = mergeSplitColumns(
     cellsByRow.map((cells) => placeInColumns(cells, anchors, columnTolerance)),
     anchors,
@@ -379,36 +395,128 @@ export const extractPdfTableCandidates = (
   )
   // Wrapped header lines are folded in before the row gates: a two-line title is one row on the page, and
   // counting it as two would both inflate the row count and split a header cell in half.
-  const joinedHeaders = joinWrappedHeaderRows(merged.rows)
-  const rows = joinedHeaders.rows
-  const columnCount = merged.anchors.length
-  const caption = findTableCaption(
-    usable,
-    grouped.map((row) => row.y)
+  const joined = joinWrappedHeaderRows(merged.rows)
+  const rows = joined.rows
+  return {
+    rows,
+    columns: merged.anchors.length,
+    spanningRows: rows.filter((row) => row.filter((cell) => cell !== '').length >= minColumns)
+      .length,
+    itemCount: usable.length,
+    rowBaselines: grouped.map((row) => row.y),
+    joinedHeaderRows: joined.joined.length
+  }
+}
+
+/**
+ * Why a page that WAS scanned produced no candidate. Named, never inferred by the caller: the page is not
+ * "empty of tables", it failed a specific gate with specific numbers.
+ */
+export type PdfTableRejectionReason =
+  // Nothing the reader could measure: no text at all, or no positioned items while the page does carry
+  // text (the weaker whitespace method ran instead, and its gates are not these).
+  | 'blank-page'
+  | 'no-positioned-text'
+  // The positional gates, in the order the extractor applies them.
+  | 'too-few-rows'
+  | 'too-few-columns'
+  | 'rows-do-not-span-columns'
+
+export type PdfTableRejection = {
+  page: number
+  reason: PdfTableRejectionReason
+  /** The counts the decision used, so "no table here" can be checked rather than trusted. */
+  counts: { itemCount: number; rows: number; columns: number; spanningRows: number }
+  /** The floors those counts were compared against. */
+  thresholds: { minRows: number; minColumns: number }
+}
+
+/**
+ * Explains a page the extractor rejected, using the SAME measurement the extractor used. `pageText` is the
+ * page's stored string: it is only consulted to tell a genuinely blank page from one whose text carries no
+ * positions, which is a different (and weaker) method's story to tell.
+ *
+ * A shape that passes every gate throws: reaching that branch means this function and the extraction
+ * disagree, and inventing a reason for it would be exactly the failure this module exists to prevent.
+ */
+export const explainTableRejection = (
+  page: number,
+  input: { items?: readonly PdfTextItem[]; pageText?: string },
+  options: PdfTableExtractionOptions = {}
+): PdfTableRejection => {
+  const minRows = options.minRows ?? DEFAULTS.minRows
+  const minColumns = options.minColumns ?? DEFAULTS.minColumns
+  const thresholds = { minRows, minColumns }
+  const items = input.items ?? []
+  const positioned = items.filter((item) => item.text.trim() !== '').length > 0
+
+  if (!positioned) {
+    const reason: PdfTableRejectionReason =
+      (input.pageText ?? '').trim() === '' ? 'blank-page' : 'no-positioned-text'
+    return {
+      page,
+      reason,
+      counts: { itemCount: 0, rows: 0, columns: 0, spanningRows: 0 },
+      thresholds
+    }
+  }
+
+  const measured = measureTableShape(items, options)
+  const counts = {
+    itemCount: measured.itemCount,
+    rows: measured.rows.length,
+    columns: measured.columns,
+    spanningRows: measured.spanningRows
+  }
+  if (measured.rows.length < minRows) return { page, reason: 'too-few-rows', counts, thresholds }
+  if (measured.columns < minColumns) return { page, reason: 'too-few-columns', counts, thresholds }
+  if (measured.spanningRows < minRows)
+    return { page, reason: 'rows-do-not-span-columns', counts, thresholds }
+
+  throw new Error(
+    `explainTableRejection was asked about page ${String(page)}, whose measured shape (rows ${String(
+      counts.rows
+    )}, columns ${String(counts.columns)}, spanning ${String(counts.spanningRows)}) passes every gate the ` +
+      'extractor applies. A page that passes is reported as a candidate, so this is a disagreement between ' +
+      'the measurement and the extraction — fix that instead of reporting a reason that would be false.'
   )
+}
+
+export const extractPdfTableCandidates = (
+  page: number,
+  items: readonly PdfTextItem[],
+  options: PdfTableExtractionOptions = {}
+): PdfTableCandidate[] => {
+  const columnGapPoints = options.columnGapPoints ?? DEFAULTS.columnGapPoints
+  const minRows = options.minRows ?? DEFAULTS.minRows
+  const minColumns = options.minColumns ?? DEFAULTS.minColumns
+
+  const usable = items.filter((item) => item.text.trim() !== '')
+  if (usable.length === 0) return []
+
+  // One measurement, shared with explainTableRejection: what this function decides is exactly what that
+  // function reports the reason for.
+  const shape = measureTableShape(items, options)
+  const { rows, columns, spanningRows } = shape
   // Enough rows must actually SPAN the columns: spaced prose on one line followed by a single item is not
   // a table, and calling it one would invent structure the page does not have.
-  const spanningRows = rows.filter(
-    (row) => row.filter((cell) => cell !== '').length >= minColumns
-  ).length
-  if (rows.length < minRows || columnCount < minColumns || spanningRows < minRows) return []
+  if (rows.length < minRows || columns < minColumns || spanningRows < minRows) return []
 
+  const caption = findTableCaption(usable, shape.rowBaselines)
   return [
     {
       page,
       status: 'candidate',
       method: 'text-layer-row-column-clustering',
       rows,
-      columnCount,
+      columnCount: columns,
       confidence: confidenceFor(rows),
       ...(caption ? { caption: caption.text, captionPosition: caption.position } : {}),
       evidence: {
         itemCount: usable.length,
         rowCount: rows.length,
         columnGapPoints,
-        ...(joinedHeaders.joined.length > 0
-          ? { joinedHeaderRows: joinedHeaders.joined.length }
-          : {})
+        ...(shape.joinedHeaderRows > 0 ? { joinedHeaderRows: shape.joinedHeaderRows } : {})
       }
     }
   ]

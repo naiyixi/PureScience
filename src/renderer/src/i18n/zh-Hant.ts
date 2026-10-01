@@ -714,6 +714,10 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'pdf.table.scanning': '正在依 PDF 自身的版面讀取表格…',
   'pdf.table.noneFound': '已掃描 {n} 頁，沒有發現表格候選。',
   'pdf.table.capped': '已達讀取器回傳的前 {n} 個候選上限。',
+  'pdf.table.rejectedTitle': '這些頁面為什麼沒被當作表格：',
+  'pdf.table.rejectedLine':
+    '{page} 頁：{reason} —— 列數 {rows}，欄數 {columns}，跨滿欄的列 {spanning}；' +
+    '形狀判定至少要 {minRows} 列、{minColumns} 欄。',
   'pdf.table.pageLabel': '第 {page} 頁',
   'pdf.table.shape': '{rows} 列 × {columns} 欄',
   'pdf.table.confidenceLabel': '信賴度 {level}',

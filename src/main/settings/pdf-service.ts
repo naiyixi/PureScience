@@ -13,12 +13,14 @@ import { basename, dirname, join } from 'node:path'
 
 import {
   auditPdfTableCandidateForUse,
+  explainTableRejection,
   extractPdfTableCandidates,
   extractPdfTableCandidatesFromText,
   toMarkdownTable,
   toHtmlTable,
   toTsv,
   type PdfTableCandidate,
+  type PdfTableRejection,
   type PdfTextItem
 } from '../../shared/pdf-table-extraction'
 import {
@@ -211,18 +213,31 @@ export class PdfService {
     const first = page ?? 1
     const last = page ?? parsed.pages.length
     const candidates: PdfTableCandidateForAgent[] = []
+    // Why a scanned page produced nothing. Collected for the pages the reader looked at, and attached to
+    // the result ONLY when the whole scan found no candidate: next to a real table the reasons would be
+    // noise, and a reader who got candidates is not asking why other pages have none.
+    const rejectedPages: PdfTableRejection[] = []
     let scannedPages = 0
     for (let pageNumber = first; pageNumber <= last; pageNumber += 1) {
       if (candidates.length >= PDF_TABLES_MAX_CANDIDATES) break
       scannedPages += 1
       const items = parsed.items?.[pageNumber - 1]
       const pageText = parsed.pages[pageNumber - 1] ?? ''
-      const found: PdfTableCandidate[] =
-        items && items.length > 0
-          ? extractPdfTableCandidates(pageNumber, items)
-          : pageText.trim() === ''
-            ? []
-            : extractPdfTableCandidatesFromText(pageNumber, pageText)
+      const positioned = items && items.length > 0 ? items : undefined
+      const found: PdfTableCandidate[] = positioned
+        ? extractPdfTableCandidates(pageNumber, positioned)
+        : pageText.trim() === ''
+          ? []
+          : extractPdfTableCandidatesFromText(pageNumber, pageText)
+      if (found.length === 0) {
+        rejectedPages.push(
+          explainTableRejection(pageNumber, {
+            ...(positioned ? { items: positioned } : {}),
+            pageText
+          })
+        )
+        continue
+      }
       for (const candidate of found) {
         if (candidates.length >= PDF_TABLES_MAX_CANDIDATES) break
         candidates.push({
@@ -239,7 +254,13 @@ export class PdfService {
         })
       }
     }
-    return { docId, ...(page === undefined ? {} : { page }), scannedPages, candidates }
+    return {
+      docId,
+      ...(page === undefined ? {} : { page }),
+      scannedPages,
+      candidates,
+      ...(candidates.length === 0 && rejectedPages.length > 0 ? { rejectedPages } : {})
+    }
   }
 
   async figures(docId: string, page?: number): Promise<PdfFiguresResult> {

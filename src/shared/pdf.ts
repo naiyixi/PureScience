@@ -8,6 +8,8 @@
 // the PureScience main-process architecture (JSON-file repository + local RPC + capability
 // owner, same spine as routine/endpoint/annotation).
 
+import type { PdfTableRejection } from './pdf-table-extraction'
+
 export const PDF_MCP_SERVER_NAME = 'purescience-pdf'
 
 export const PDF_OPEN_TOOL_NAME = 'pdf_open'
@@ -156,6 +158,12 @@ export type PdfTablesResult = {
   page?: number
   scannedPages: number
   candidates: PdfTableCandidateForAgent[]
+  /**
+   * Written only when the whole scan produced NO candidate: one entry per scanned page saying which gate
+   * its shape failed and with which counts. Absent — not empty — when candidates were found, so an empty
+   * result can never be read as "these pages are table-free".
+   */
+  rejectedPages?: PdfTableRejection[]
 }
 
 export type PdfScanResult = {

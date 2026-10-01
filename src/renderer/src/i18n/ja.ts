@@ -755,6 +755,10 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'pdf.table.scanning': 'PDF 自体のレイアウトから表を読み取っています…',
   'pdf.table.noneFound': '走査した {n} ページに表の候補はありません。',
   'pdf.table.capped': 'リーダーが返す先頭 {n} 件の候補で打ち切りました。',
+  'pdf.table.rejectedTitle': '表として報告されなかった理由：',
+  'pdf.table.rejectedLine':
+    '{page} ページ：{reason} — 行 {rows}、列 {columns}、列にまたがる行 {spanning}。' +
+    '判定には {minRows} 行以上と {minColumns} 列以上が必要です。',
   'pdf.table.pageLabel': '{page} ページ',
   'pdf.table.shape': '{rows} 行 × {columns} 列',
   'pdf.table.confidenceLabel': '信頼度 {level}',

@@ -234,6 +234,10 @@ export const en: Record<ZhKey, string> = {
   'pdf.table.scanning': "Reading the PDF's own layout for tables…",
   'pdf.table.noneFound': 'No table candidate in the {n} page(s) scanned.',
   'pdf.table.capped': 'Stopped at the first {n} candidates the reader returns.',
+  'pdf.table.rejectedTitle': 'Why no table was reported:',
+  'pdf.table.rejectedLine':
+    'Page {page}: {reason} — rows {rows}, columns {columns}, rows spanning the columns {spanning}; ' +
+    'the shape test needs {minRows}+ rows and {minColumns}+ columns.',
   'pdf.table.pageLabel': 'Page {page}',
   'pdf.table.shape': '{rows} rows x {columns} columns',
   'pdf.table.confidenceLabel': 'Confidence {level}',

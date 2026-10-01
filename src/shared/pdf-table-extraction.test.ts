@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest'
 
 import {
   auditPdfTableCandidateForUse,
+  explainTableRejection,
   findTableCaption,
   extractPdfTableCandidates,
   extractPdfTableCandidatesFromText,
   joinWrappedHeaderRows,
+  measureTableShape,
   PDF_TABLE_MANDATORY_LABELS,
   toHtmlTable,
   toMarkdownTable,
@@ -415,5 +417,82 @@ describe('findTableCaption', () => {
     )
 
     expect(caption).toBeUndefined()
+  })
+})
+
+// "Why is this not a table" — the reasons must come from the SAME measurement the extraction gates use,
+// otherwise the explanation drifts away from the decision and starts to lie.
+describe('measureTableShape / explainTableRejection', () => {
+  it('measures exactly the counts the extraction gates use', () => {
+    const shape = measureTableShape(tableItems)
+    const [candidate] = extractPdfTableCandidates(3, tableItems)
+
+    expect(shape.rows).toEqual([
+      ['Sample', 'Value'],
+      ['control', '12.4'],
+      ['treated', '31.8']
+    ])
+    expect(shape.columns).toBe(2)
+    expect(shape.spanningRows).toBe(3)
+    expect(shape.itemCount).toBe(6)
+    // Same numbers on both sides of the gate: what the extractor decided is what the reason reports.
+    expect(candidate.columnCount).toBe(shape.columns)
+    expect(candidate.rows).toEqual(shape.rows)
+  })
+
+  it('names a blank page as blank, and says nothing was measured', () => {
+    expect(explainTableRejection(4, { items: [], pageText: '   \n ' })).toEqual({
+      page: 4,
+      reason: 'blank-page',
+      counts: { itemCount: 0, rows: 0, columns: 0, spanningRows: 0 },
+      thresholds: { minRows: 2, minColumns: 2 }
+    })
+  })
+
+  it('distinguishes a page with text but no positions from a blank one', () => {
+    // The weaker whitespace method ran here, so a positional gate is not the story — and saying one failed
+    // would attribute this page's result to a test that never ran on it.
+    const rejection = explainTableRejection(2, { pageText: 'prose with one   double gap' })
+
+    expect(rejection.reason).toBe('no-positioned-text')
+    expect(rejection.counts).toEqual({ itemCount: 0, rows: 0, columns: 0, spanningRows: 0 })
+  })
+
+  it('reports too-few-rows with the counts that failed', () => {
+    const rejection = explainTableRejection(1, {
+      items: [item('Sample', 40, 700), item('Value', 120, 700)],
+      pageText: 'Sample Value'
+    })
+
+    expect(rejection.reason).toBe('too-few-rows')
+    expect(rejection.counts).toEqual({ itemCount: 2, rows: 1, columns: 2, spanningRows: 1 })
+    expect(rejection.thresholds).toEqual({ minRows: 2, minColumns: 2 })
+  })
+
+  it('reports too-few-columns for a single column of lines', () => {
+    const rejection = explainTableRejection(1, {
+      items: [item('alpha', 40, 700), item('beta', 40, 686), item('gamma', 40, 672)],
+      pageText: 'alpha\nbeta\ngamma'
+    })
+
+    expect(rejection.reason).toBe('too-few-columns')
+    expect(rejection.counts).toEqual({ itemCount: 3, rows: 3, columns: 1, spanningRows: 0 })
+  })
+
+  it('reports rows-do-not-span-columns when only one row fills both columns', () => {
+    const rejection = explainTableRejection(1, {
+      items: [item('Site', 40, 700), item('Value', 120, 700), item('Alpha', 40, 686)],
+      pageText: 'Site Value\nAlpha'
+    })
+
+    expect(rejection.reason).toBe('rows-do-not-span-columns')
+    expect(rejection.counts).toEqual({ itemCount: 3, rows: 2, columns: 2, spanningRows: 1 })
+  })
+
+  it('is never asked about a page that measures as a table, and refuses loudly if it is', () => {
+    // This is the tripwire, not a use case: a caller that reached here would be about to print a reason
+    // that contradicts a candidate it already produced.
+    expect(extractPdfTableCandidates(3, tableItems)).toHaveLength(1)
+    expect(() => explainTableRejection(3, { items: tableItems })).toThrow(/passes every gate/)
   })
 })

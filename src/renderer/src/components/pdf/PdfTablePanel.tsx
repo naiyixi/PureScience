@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 
 import { useLanguage } from '@/i18n'
 import { PDF_TABLES_MAX_CANDIDATES, type PdfTableCandidateForAgent } from '../../../../shared/pdf'
+import type { PdfTableRejection } from '../../../../shared/pdf-table-extraction'
 import { Button } from '@/components/ui/button'
 import { copyText } from '@/lib/copy-text'
 
@@ -25,7 +26,13 @@ type PdfTablePanelProps = {
 
 type ScanState =
   | { status: 'scanning' }
-  | { status: 'ready'; candidates: PdfTableCandidateForAgent[]; scannedPages: number }
+  | {
+      status: 'ready'
+      candidates: PdfTableCandidateForAgent[]
+      scannedPages: number
+      /** Present only when the reader found nothing: why each scanned page was not reported as a table. */
+      rejectedPages: readonly PdfTableRejection[]
+    }
   | { status: 'failed'; message: string }
 
 const PdfTablePanel = ({
@@ -57,7 +64,8 @@ const PdfTablePanel = ({
         setState({
           status: 'ready',
           candidates: result.candidates,
-          scannedPages: result.scannedPages
+          scannedPages: result.scannedPages,
+          rejectedPages: result.rejectedPages ?? []
         })
       } catch (error) {
         if (!active) return
@@ -106,6 +114,26 @@ const PdfTablePanel = ({
         <p className="text-xs text-muted-foreground" data-testid="pdf-table-empty">
           {t('pdf.table.noneFound').replace('{n}', String(state.scannedPages))}
         </p>
+      ) : null}
+
+      {state.status === 'ready' && state.rejectedPages.length > 0 ? (
+        <div className="text-xs text-muted-foreground" data-testid="pdf-table-rejections">
+          <p>{t('pdf.table.rejectedTitle')}</p>
+          <ul className="mt-1 flex flex-col gap-0.5">
+            {state.rejectedPages.map((rejection) => (
+              <li key={rejection.page} data-testid={`pdf-table-rejection-${rejection.page}`}>
+                {t('pdf.table.rejectedLine')
+                  .replace('{page}', String(rejection.page))
+                  .replace('{reason}', rejection.reason)
+                  .replace('{rows}', String(rejection.counts.rows))
+                  .replace('{columns}', String(rejection.counts.columns))
+                  .replace('{spanning}', String(rejection.counts.spanningRows))
+                  .replace('{minRows}', String(rejection.thresholds.minRows))
+                  .replace('{minColumns}', String(rejection.thresholds.minColumns))}
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : null}
 
       {capped ? (

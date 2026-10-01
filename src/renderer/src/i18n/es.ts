@@ -770,6 +770,10 @@ export const es: Partial<Record<ZhKey, string>> = {
   'pdf.table.scanning': 'Leyendo las tablas según la propia maquetación del PDF…',
   'pdf.table.noneFound': 'Ningún candidato de tabla en las {n} páginas analizadas.',
   'pdf.table.capped': 'Se detuvo en los primeros {n} candidatos del lector.',
+  'pdf.table.rejectedTitle': 'Por qué no se informó de ninguna tabla:',
+  'pdf.table.rejectedLine':
+    'Página {page}: {reason} — {rows} filas, {columns} columnas, {spanning} filas que abarcan ' +
+    'las columnas; el umbral exige al menos {minRows} filas y {minColumns} columnas.',
   'pdf.table.pageLabel': 'Página {page}',
   'pdf.table.shape': '{rows} filas × {columns} columnas',
   'pdf.table.confidenceLabel': 'Confianza {level}',

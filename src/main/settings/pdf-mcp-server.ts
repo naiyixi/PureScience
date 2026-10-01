@@ -86,8 +86,10 @@ const pdfTablesToolDefinition = {
   description:
     'Extract tables from the PDF text layer. Candidates only: each one names the method that produced it ' +
     '(row/column geometry, or the weaker whitespace method when the page has no positions), its confidence, ' +
-    'and what you must still check against the source before using it. Nothing is transcribed for you and ' +
-    'an empty result means no table was detected, not that the page has none.',
+    'and what you must still check against the source before using it. Nothing is transcribed for you, and ' +
+    'when a scan returns no candidate it adds a per-page reason — which shape test the page failed and the ' +
+    'counts that test used — so "no table found" can be checked instead of trusted: an empty list is not a ' +
+    'statement that the pages have no table.',
   inputSchema: pdfTablesToolSchema
 }
 
