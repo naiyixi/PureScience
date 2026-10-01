@@ -2836,6 +2836,12 @@ export const en: Record<ZhKey, string> = {
   'skillDetail.detailsTitle': 'Details',
   'settings.skillTriggerQuality': 'Trigger quality',
   'settings.skillAvailability': 'Skill availability by reader',
+  'settings.skillLicenseUnknown': 'Unknown',
+  'settings.skillLicenseRestricted':
+    'This licence is non-commercial: check it before using the skill commercially.',
+  'settings.skillLicenseNeedsReview':
+    'The licence is missing or unrecognised: ask before commercial use.',
+
   'settings.skillAvailabilityHint':
     'Turn a skill off for one reader only. “Off globally” and “always on” cannot be changed here — a lock is shown for those, because a switch that silently does nothing is worse than no switch.',
   'settings.skillAvailabilityTargetClaudeCode': 'Claude Code sessions',

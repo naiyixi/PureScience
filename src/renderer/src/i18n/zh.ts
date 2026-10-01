@@ -2641,6 +2641,10 @@ export const zh = {
   'skillDetail.detailsTitle': '详情',
   'settings.skillTriggerQuality': '触发质量',
   'settings.skillAvailability': '按读取方的技能可用性',
+  'settings.skillLicenseUnknown': '未知',
+  'settings.skillLicenseRestricted': '该许可证为非商业条款：商业使用前请先核对。',
+  'settings.skillLicenseNeedsReview': '许可证缺失或无法识别：商业使用前请先确认。',
+
   'settings.skillAvailabilityHint':
     '只对某一个读取方关闭某个技能。「全局关闭」与「始终启用」不能在这里改动——这两种会显示为锁定：一个点了没反应的开关比没有开关更糟。',
   'settings.skillAvailabilityTargetClaudeCode': 'Claude Code 会话',

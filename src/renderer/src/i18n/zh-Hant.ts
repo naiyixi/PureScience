@@ -370,6 +370,10 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'skillDetail.detailsTitle': '詳細',
   'settings.skillTriggerQuality': '觸發品質',
   'settings.skillAvailability': '依讀取方的技能可用性',
+  'settings.skillLicenseUnknown': '未知',
+  'settings.skillLicenseRestricted': '該授權為非商業條款：商業使用前請先核對。',
+  'settings.skillLicenseNeedsReview': '授權缺失或無法辨識：商業使用前請先確認。',
+
   'settings.skillAvailabilityHint':
     '只對某一個讀取方關閉某個技能。「全域關閉」與「始終啟用」不能在這裡改動——這兩種會顯示為鎖定：一個點了沒反應的開關比沒有開關更糟。',
   'settings.skillAvailabilityTargetClaudeCode': 'Claude Code 工作階段',

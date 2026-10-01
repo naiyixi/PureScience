@@ -53,6 +53,51 @@ afterEach(() => {
 })
 
 describe('SkillDetailView', () => {
+  it('says the licence is unknown instead of leaving the row blank', async () => {
+    ;(window as unknown as { api: unknown }).api = {
+      settings: {
+        getSkillDetail: vi.fn().mockResolvedValue({
+          ...detail,
+          license: undefined,
+          licenseStatus: 'needs-review'
+        })
+      }
+    }
+    await act(async () => {
+      root.render(<SkillDetailView skillId="a" />)
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    // A blank where a licence should be reads as "nothing to worry about", which is the opposite of the truth.
+    expect(document.body.textContent).toContain('Unknown')
+    expect(
+      document.body.querySelector('[data-testid="skill-license-status"]')?.textContent
+    ).toContain('ask before commercial use')
+  })
+
+  it('keeps quiet when the licence is a recognised permissive one', async () => {
+    ;(window as unknown as { api: unknown }).api = {
+      settings: {
+        getSkillDetail: vi.fn().mockResolvedValue({
+          ...detail,
+          license: 'MIT',
+          licenseStatus: 'allowed'
+        })
+      }
+    }
+    await act(async () => {
+      root.render(<SkillDetailView skillId="a" />)
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    // Nothing to warn about: a permanent caution on every permissive skill would train the reader to ignore it.
+    expect(document.body.querySelector('[data-testid="skill-license-status"]')).toBeNull()
+  })
+
   it('shows the locally computed trigger quality and names the failing check', async () => {
     ;(window as unknown as { api: unknown }).api = {
       settings: {

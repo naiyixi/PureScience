@@ -440,6 +440,12 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'skillDetail.detailsTitle': 'Подробности',
   'settings.skillTriggerQuality': 'Качество срабатывания',
   'settings.skillAvailability': 'Доступность навыков по читателю',
+  'settings.skillLicenseUnknown': 'Неизвестно',
+  'settings.skillLicenseRestricted':
+    'Эта лицензия некоммерческая: проверьте её перед коммерческим использованием.',
+  'settings.skillLicenseNeedsReview':
+    'Лицензия отсутствует или не распознана: уточните перед коммерческим использованием.',
+
   'settings.skillAvailabilityHint':
     'Навык можно отключить для одного читателя. «Отключено глобально» и «всегда включено» здесь не меняются — они показаны под замком, потому что переключатель, который ничего не делает, хуже его отсутствия.',
   'settings.skillAvailabilityTargetClaudeCode': 'Сеансы Claude Code',

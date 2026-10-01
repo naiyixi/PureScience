@@ -447,6 +447,12 @@ export const es: Partial<Record<ZhKey, string>> = {
   'skillDetail.detailsTitle': 'Detalles',
   'settings.skillTriggerQuality': 'Calidad de activación',
   'settings.skillAvailability': 'Disponibilidad de habilidades por lector',
+  'settings.skillLicenseUnknown': 'Desconocida',
+  'settings.skillLicenseRestricted':
+    'Esta licencia no es comercial: revísala antes de usarla con fines comerciales.',
+  'settings.skillLicenseNeedsReview':
+    'Falta la licencia o no se reconoce: pregunta antes de un uso comercial.',
+
   'settings.skillAvailabilityHint':
     'Puedes desactivar una habilidad solo para un lector. «Desactivada globalmente» y «siempre activa» no se cambian aquí: aparecen bloqueadas, porque un interruptor que no hace nada es peor que no tenerlo.',
   'settings.skillAvailabilityTargetClaudeCode': 'Sesiones de Claude Code',

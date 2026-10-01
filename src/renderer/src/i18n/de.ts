@@ -451,6 +451,12 @@ export const de: Partial<Record<ZhKey, string>> = {
   'skillDetail.detailsTitle': 'Einzelheiten',
   'settings.skillTriggerQuality': 'Auslöse-Qualität',
   'settings.skillAvailability': 'Skill-Verfügbarkeit je Leser',
+  'settings.skillLicenseUnknown': 'Unbekannt',
+  'settings.skillLicenseRestricted':
+    'Diese Lizenz ist nicht kommerziell: vor kommerzieller Nutzung prüfen.',
+  'settings.skillLicenseNeedsReview':
+    'Die Lizenz fehlt oder ist unbekannt: vor kommerzieller Nutzung nachfragen.',
+
   'settings.skillAvailabilityHint':
     'Ein Skill lässt sich für einen einzelnen Leser abschalten. „Global aus“ und „immer an“ sind hier unveränderlich und erscheinen als Schloss — ein Schalter, der still nichts tut, ist schlechter als keiner.',
   'settings.skillAvailabilityTargetClaudeCode': 'Claude-Code-Sitzungen',

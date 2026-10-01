@@ -449,6 +449,12 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'skillDetail.detailsTitle': 'Détails',
   'settings.skillTriggerQuality': 'Qualité de déclenchement',
   'settings.skillAvailability': 'Disponibilité des compétences par lecteur',
+  'settings.skillLicenseUnknown': 'Inconnue',
+  'settings.skillLicenseRestricted':
+    'Cette licence est non commerciale : à vérifier avant tout usage commercial.',
+  'settings.skillLicenseNeedsReview':
+    'La licence est absente ou non reconnue : demandez avant tout usage commercial.',
+
   'settings.skillAvailabilityHint':
     "Vous pouvez désactiver une compétence pour un seul lecteur. « Désactivée globalement » et « toujours active » ne se modifient pas ici : elles apparaissent verrouillées, car un interrupteur sans effet vaut moins que pas d'interrupteur.",
   'settings.skillAvailabilityTargetClaudeCode': 'Sessions Claude Code',

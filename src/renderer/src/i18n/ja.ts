@@ -439,6 +439,12 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'skillDetail.detailsTitle': '詳細',
   'settings.skillTriggerQuality': 'トリガー品質',
   'settings.skillAvailability': '読み手ごとのスキル可用性',
+  'settings.skillLicenseUnknown': '不明',
+  'settings.skillLicenseRestricted':
+    'このライセンスは非商用条件です。商用利用の前に確認してください。',
+  'settings.skillLicenseNeedsReview':
+    'ライセンスが無いか判別できません。商用利用の前に確認してください。',
+
   'settings.skillAvailabilityHint':
     '特定の読み手にだけスキルをオフにできます。「全体でオフ」「常時オン」はここでは変更できません。その場合はロックとして表示します。押しても何も起きないスイッチは、スイッチが無いより悪いからです。',
   'settings.skillAvailabilityTargetClaudeCode': 'Claude Code のセッション',

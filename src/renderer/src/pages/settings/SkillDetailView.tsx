@@ -164,8 +164,20 @@ const SkillDetailView = ({ skillId }: SkillDetailViewProps): React.JSX.Element =
           {detail.author ? (
             <DetailRow label={t('skillDetail.author')} value={detail.author} />
           ) : null}
-          {detail.license ? (
-            <DetailRow label={t('skillDetail.license')} value={detail.license} />
+          {/* The row is always rendered: a missing license is a fact the reader needs (“unknown”), and a
+              blank where a license should be reads as “no problem here”, which is the opposite. */}
+          <DetailRow
+            label={t('skillDetail.license')}
+            value={detail.license ?? t('settings.skillLicenseUnknown')}
+          />
+          {detail.licenseStatus && detail.licenseStatus !== 'allowed' ? (
+            <p className="mb-2 text-xs text-muted-foreground" data-testid="skill-license-status">
+              {t(
+                detail.licenseStatus === 'restricted'
+                  ? 'settings.skillLicenseRestricted'
+                  : 'settings.skillLicenseNeedsReview'
+              )}
+            </p>
           ) : null}
           {detail.thirdParty ? (
             <DetailRow label={t('settings.thirdPartySoftware')} value={detail.thirdParty} />

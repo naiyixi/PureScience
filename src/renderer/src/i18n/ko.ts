@@ -435,6 +435,12 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'skillDetail.detailsTitle': '세부 정보',
   'settings.skillTriggerQuality': '트리거 품질',
   'settings.skillAvailability': '읽는 주체별 스킬 가용성',
+  'settings.skillLicenseUnknown': '알 수 없음',
+  'settings.skillLicenseRestricted':
+    '이 라이선스는 비상업 조건입니다. 상업적으로 쓰기 전에 확인하세요.',
+  'settings.skillLicenseNeedsReview':
+    '라이선스가 없거나 인식되지 않습니다. 상업적 사용 전에 확인하세요.',
+
   'settings.skillAvailabilityHint':
     '특정 읽는 주체에 대해서만 스킬을 끌 수 있습니다. "전체 끄기"와 "항상 켜기"는 여기서 바꿀 수 없으며 잠금으로 표시됩니다. 눌러도 아무 일이 없는 스위치는 스위치가 없는 것보다 나쁩니다.',
   'settings.skillAvailabilityTargetClaudeCode': 'Claude Code 세션',
