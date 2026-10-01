@@ -789,6 +789,15 @@ export const en: Record<ZhKey, string> = {
   'settings.functionModelsHint':
     'The narrow calls the app makes for itself. Each one names the model in force and the built-in path that runs when no model is usable.',
   'settings.functionModelDetect': 'Detect',
+  'settings.functionModelTrail': 'Recent function calls',
+  'settings.functionModelTrailHint':
+    'What the app’s own narrow calls did, newest first — recorded so that “why did this run not use my model” has an answer.',
+  'settings.functionModelTrailRefresh': 'Refresh',
+  'settings.functionModelTrailEmpty': 'Nothing recorded yet.',
+  'settings.functionModelTrailUsed': 'used {model} from {provider}',
+  'settings.functionModelTrailBuiltIn': 'built-in path:',
+  'settings.functionModelTrailCallFailed': 'the call failed',
+
   'settings.functionModelDetecting': 'Calling the model…',
   'settings.functionModelDetectNote':
     'Detection sends one real request and may use a little quota.',

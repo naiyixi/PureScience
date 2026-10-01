@@ -5,6 +5,7 @@ import {
   FUNCTION_MODEL_FALLBACKS,
   type FunctionModelDetection,
   type FunctionModelDetectionFailureReason,
+  type FunctionModelEvent,
   type FunctionModelId,
   type FunctionModelResolution,
   type FunctionModelUnusableReason,
@@ -288,6 +289,106 @@ export const FunctionModelRow = ({
             : t('settings.functionModelDetectNeedsModel')}
         </span>
       </div>
+    </div>
+  )
+}
+
+const TRAIL_REASON_KEYS: Record<FunctionModelEvent['reason'] & string, TranslationKey> = {
+  ...DETECT_REASON_KEYS,
+  'call-failed': 'settings.functionModelTrailCallFailed'
+}
+
+/**
+ * What the functions actually did, newest first.
+ *
+ * The settings rows above say what will happen; this says what happened. It is the answer to the question a
+ * model picker normally cannot answer — "why did this run not use the model I configured" — and it is why
+ * the entries name a reason instead of reporting a failure.
+ */
+export const FunctionModelTrail = (): React.JSX.Element => {
+  const { t } = useLanguage()
+  const providers = useSettingsStore((state) => state.providers)
+  const [events, setEvents] = useState<readonly FunctionModelEvent[]>([])
+  const [failed, setFailed] = useState(false)
+
+  const load = useCallback(async (): Promise<void> => {
+    const client = window.api?.settings?.functionModels
+    if (!client) {
+      setFailed(true)
+
+      return
+    }
+    const result = await client({ action: 'events' })
+    setEvents(result.events ?? [])
+    setFailed(false)
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        await load()
+      } catch {
+        if (!cancelled) setFailed(true)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [load])
+
+  const providerName = (providerId: string | undefined): string =>
+    providers.find((provider) => provider.id === providerId)?.name ?? providerId ?? ''
+
+  // Newest first, and bounded: a trail is for reading the recent story, not for scrolling history.
+  const shown = [...events].slice(-10).reverse()
+
+  return (
+    <div className="flex flex-col gap-1.5" data-testid="function-model-trail">
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-medium text-foreground">
+          {t('settings.functionModelTrail')}
+        </span>
+        <Button
+          type="button"
+          variant="ghost"
+          className="h-7 px-2 text-xs"
+          data-testid="function-model-trail-refresh"
+          onClick={() => void load().catch(() => setFailed(true))}
+        >
+          {t('settings.functionModelTrailRefresh')}
+        </Button>
+      </div>
+      <p className="text-xs text-muted-foreground">{t('settings.functionModelTrailHint')}</p>
+      {failed ? (
+        <p className="text-xs text-muted-foreground">{t('settings.functionModelUnavailable')}</p>
+      ) : null}
+      {!failed && shown.length === 0 ? (
+        <p className="text-xs text-muted-foreground" data-testid="function-model-trail-empty">
+          {t('settings.functionModelTrailEmpty')}
+        </p>
+      ) : null}
+      {!failed
+        ? shown.map((event, index) => (
+            <p
+              key={`${event.at}-${index}`}
+              className="text-xs text-muted-foreground"
+              data-testid="function-model-trail-entry"
+            >
+              {`${new Date(event.at).toLocaleString()} · ${t('settings.functionModelSkillSelection')} · ${
+                event.outcome === 'used-model'
+                  ? t('settings.functionModelTrailUsed', {
+                      model: event.model ?? '',
+                      provider: providerName(event.providerId)
+                    })
+                  : `${t('settings.functionModelTrailBuiltIn')} ${t(
+                      TRAIL_REASON_KEYS[event.reason ?? 'not-configured']
+                    )}`
+              }`}
+            </p>
+          ))
+        : null}
     </div>
   )
 }

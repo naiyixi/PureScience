@@ -166,11 +166,36 @@ export type FunctionModelDetection =
       model?: string
     }
 
+/**
+ * The trail a function leaves behind: what each narrow call did, which model it used, and — when it took its
+ * built-in path — whether that was because nobody configured it or because the configuration could not be
+ * used. A competitor's equivalent stops at "these features use the first service"; this is what lets the
+ * user ask why a particular run did not.
+ */
+export type FunctionModelEventReason =
+  /** Nothing is configured for this function. */
+  | 'not-configured'
+  /** Configured, but unusable — the same named reasons the settings row shows. */
+  | FunctionModelUnusableReason
+  /** The call was attempted and did not come back with a selector result. */
+  | 'call-failed'
+
+export type FunctionModelEvent = Readonly<{
+  at: number
+  functionId: FunctionModelId
+  /** `used-model` means the configured model answered; `built-in` means the built-in path ran instead. */
+  outcome: 'used-model' | 'built-in'
+  providerId?: string
+  model?: string
+  reason?: FunctionModelEventReason
+}>
+
 export type FunctionModelCommandRequest =
   | { action: 'get' }
   | { action: 'set'; models: FunctionModels }
   | { action: 'resolve'; functionId: FunctionModelId }
   | { action: 'detect'; functionId: FunctionModelId }
+  | { action: 'events' }
 
 export type FunctionModelCommandResult = {
   models: FunctionModels
@@ -178,6 +203,8 @@ export type FunctionModelCommandResult = {
   resolved?: FunctionModelResolution
   /** Present for `detect`: the outcome of one real round trip. */
   detected?: FunctionModelDetection
+  /** Present for `events`: the recorded trail, newest last. */
+  events?: readonly FunctionModelEvent[]
 }
 
 export const sanitizeFunctionModels = (value: unknown): FunctionModels | undefined => {

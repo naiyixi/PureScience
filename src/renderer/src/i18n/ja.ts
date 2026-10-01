@@ -1800,6 +1800,15 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.functionModelsHint':
     'アプリ自身が行う用途を絞った呼び出しです。各行は現在有効なモデルと、モデルが使えないときの内蔵経路を示します。',
   'settings.functionModelDetect': '検出',
+  'settings.functionModelTrail': '最近の機能呼び出し',
+  'settings.functionModelTrailHint':
+    'アプリ自身の絞った呼び出しの実際の結果を新しい順に示します。「なぜ今回は自分のモデルが使われなかったのか」に答えられるように記録しています。',
+  'settings.functionModelTrailRefresh': '更新',
+  'settings.functionModelTrailEmpty': 'まだ記録がありません。',
+  'settings.functionModelTrailUsed': '{provider} の {model} を使用',
+  'settings.functionModelTrailBuiltIn': '内蔵経路：',
+  'settings.functionModelTrailCallFailed': '呼び出しに失敗しました',
+
   'settings.functionModelDetecting': 'モデルを呼び出し中…',
   'settings.functionModelDetectNote':
     '検出は実際に一度リクエストを送るため、わずかな利用枠を消費します。',

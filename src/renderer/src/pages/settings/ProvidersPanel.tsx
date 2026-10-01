@@ -8,7 +8,7 @@ import { isCodexSubscriptionProvider } from '../../../../shared/settings'
 import { ActiveModelSelect } from './ActiveModelSelect'
 import { VisionModelSelect } from './VisionModelSelect'
 import { FUNCTION_MODEL_IDS } from '../../../../shared/function-models'
-import { FunctionModelRow } from './FunctionModelSelect'
+import { FunctionModelRow, FunctionModelTrail } from './FunctionModelSelect'
 import { ScenarioModelRow } from './ScenarioModelSelect'
 import { ProviderList } from './ProviderList'
 import { ReasoningEffortSelect } from './ReasoningEffortSelect'
@@ -393,6 +393,8 @@ const ProvidersPanel = ({
           {FUNCTION_MODEL_IDS.map((functionId) => (
             <FunctionModelRow key={functionId} functionId={functionId} />
           ))}
+          {/* The rows say what will happen; the trail says what did. */}
+          <FunctionModelTrail />
         </div>
       </SettingsSection>
 

@@ -62,6 +62,7 @@ type CoreSettingsCommandStore = Pick<
   | 'detectCodex'
   | 'detectOpencode'
   | 'detectFunctionModel'
+  | 'getFunctionModelEvents'
   | 'getExecutionProtectionMatrix'
   | 'getFunctionModels'
   | 'resolveFunctionModel'
@@ -561,6 +562,14 @@ const registerCoreSettingsApplicationCommands = (
         const request = args[0]
         if (request.action === 'set') {
           return { models: await dependencies.service.setFunctionModels(request.models) }
+        }
+        if (request.action === 'events') {
+          const [models, events] = await Promise.all([
+            dependencies.service.getFunctionModels(),
+            Promise.resolve(dependencies.service.getFunctionModelEvents())
+          ])
+
+          return { models, events }
         }
         if (request.action === 'detect') {
           // One real round trip, and the stored map travels back with it so the caller never renders a

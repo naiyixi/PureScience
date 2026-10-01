@@ -1798,6 +1798,15 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.functionModelsHint':
     'Узкие вызовы, которые приложение делает для себя. Каждая строка называет действующую модель и встроенный путь, работающий без модели.',
   'settings.functionModelDetect': 'Проверить',
+  'settings.functionModelTrail': 'Недавние вызовы функций',
+  'settings.functionModelTrailHint':
+    'Что на самом деле сделали собственные узкие вызовы приложения, сначала новые — записано, чтобы у вопроса «почему этот запуск не использовал мою модель» был ответ.',
+  'settings.functionModelTrailRefresh': 'Обновить',
+  'settings.functionModelTrailEmpty': 'Пока ничего не записано.',
+  'settings.functionModelTrailUsed': 'использована {model} от {provider}',
+  'settings.functionModelTrailBuiltIn': 'встроенный путь:',
+  'settings.functionModelTrailCallFailed': 'вызов не удался',
+
   'settings.functionModelDetecting': 'Вызов модели…',
   'settings.functionModelDetectNote':
     'Проверка отправляет настоящий запрос и может израсходовать немного квоты.',

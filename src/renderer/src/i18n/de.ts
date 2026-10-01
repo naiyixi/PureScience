@@ -1855,6 +1855,15 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.functionModelsHint':
     'Die schmalen Aufrufe, die die App für sich selbst macht. Jede Zeile nennt das wirksame Modell und den eingebauten Weg, der ohne Modell läuft.',
   'settings.functionModelDetect': 'Prüfen',
+  'settings.functionModelTrail': 'Letzte Funktionsaufrufe',
+  'settings.functionModelTrailHint':
+    'Was die eigenen schmalen Aufrufe der App tatsächlich getan haben, neueste zuerst — aufgezeichnet, damit „warum hat dieser Lauf nicht mein Modell genutzt“ eine Antwort hat.',
+  'settings.functionModelTrailRefresh': 'Aktualisieren',
+  'settings.functionModelTrailEmpty': 'Noch nichts aufgezeichnet.',
+  'settings.functionModelTrailUsed': '{model} von {provider} genutzt',
+  'settings.functionModelTrailBuiltIn': 'eingebauter Weg:',
+  'settings.functionModelTrailCallFailed': 'der Aufruf ist fehlgeschlagen',
+
   'settings.functionModelDetecting': 'Modell wird aufgerufen…',
   'settings.functionModelDetectNote':
     'Die Prüfung sendet eine echte Anfrage und verbraucht eventuell ein wenig Kontingent.',

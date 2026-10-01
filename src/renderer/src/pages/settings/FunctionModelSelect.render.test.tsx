@@ -24,6 +24,13 @@ const LABELS: Record<string, string> = {
   'settings.functionModelDetectedUsage': '{input} in / {output} out',
   'settings.functionModelDetectedNoUsage': 'usage not reported',
   'settings.functionModelDetectFailed': 'Detection failed:',
+  'settings.functionModelTrail': 'Recent function calls',
+  'settings.functionModelTrailHint': 'What the calls did',
+  'settings.functionModelTrailRefresh': 'Refresh',
+  'settings.functionModelTrailEmpty': 'Nothing recorded yet.',
+  'settings.functionModelTrailUsed': 'used {model} from {provider}',
+  'settings.functionModelTrailBuiltIn': 'built-in path:',
+  'settings.functionModelTrailCallFailed': 'the call failed',
   'settings.functionModelDetectReasonUnreachable': 'the endpoint could not be reached',
   'settings.functionModelDetectReasonNotConfigured': 'no model is configured for this function'
 }
@@ -43,7 +50,7 @@ vi.mock('@/i18n', () => ({
 
 import { useSettingsStore, createInitialSettingsState } from '@/stores/settings-store'
 
-import { FunctionModelRow } from './FunctionModelSelect'
+import { FunctionModelRow, FunctionModelTrail } from './FunctionModelSelect'
 
 let container: HTMLDivElement
 let root: Root
@@ -224,5 +231,62 @@ describe('FunctionModelRow', () => {
     await render()
 
     expect(container.textContent).toContain('Unavailable in this window.')
+  })
+})
+
+describe('FunctionModelTrail', () => {
+  const stubEvents = (events: unknown[]): void => {
+    Object.defineProperty(window, 'api', {
+      configurable: true,
+      value: {
+        settings: {
+          functionModels: vi.fn().mockResolvedValue({ models: {}, events })
+        }
+      }
+    })
+  }
+
+  const renderTrail = async (): Promise<void> => {
+    await act(async () => {
+      root.render(<FunctionModelTrail />)
+      await new Promise((resolve) => window.setTimeout(resolve, 0))
+    })
+  }
+
+  it('says nothing has been recorded yet rather than showing an empty box', async () => {
+    useSettingsStore.setState({ ...createInitialSettingsState(), providers: [] })
+    stubEvents([])
+
+    await renderTrail()
+
+    expect(
+      container.querySelector('[data-testid="function-model-trail-empty"]')?.textContent
+    ).toContain('Nothing recorded yet.')
+  })
+
+  it('shows what each call did, newest first, naming the model or the reason', async () => {
+    useSettingsStore.setState({
+      ...createInitialSettingsState(),
+      providers: [{ id: 'p1', name: 'Gateway', type: 'custom', models: ['small-model'] } as never]
+    })
+    stubEvents([
+      { at: 1, functionId: 'skill-selection', outcome: 'built-in', reason: 'not-configured' },
+      {
+        at: 2,
+        functionId: 'skill-selection',
+        outcome: 'used-model',
+        providerId: 'p1',
+        model: 'small-model'
+      }
+    ])
+
+    await renderTrail()
+
+    const entries = [...container.querySelectorAll('[data-testid="function-model-trail-entry"]')]
+    expect(entries).toHaveLength(2)
+    // Newest first: the answer to "why did this run do that" is about the most recent run.
+    expect(entries[0].textContent).toContain('used small-model from Gateway')
+    expect(entries[1].textContent).toContain('built-in path:')
+    expect(entries[1].textContent).toContain('no model is configured for this function')
   })
 })

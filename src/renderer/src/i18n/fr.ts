@@ -1845,6 +1845,15 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.functionModelsHint':
     "Les appels ciblés que l'application fait pour elle-même. Chaque ligne indique le modèle en vigueur et la voie intégrée utilisée sans modèle.",
   'settings.functionModelDetect': 'Tester',
+  'settings.functionModelTrail': 'Appels de fonction récents',
+  'settings.functionModelTrailHint':
+    'Ce que les appels ciblés de l’application ont réellement fait, du plus récent au plus ancien — consigné pour que « pourquoi cette exécution n’a pas utilisé mon modèle » ait une réponse.',
+  'settings.functionModelTrailRefresh': 'Actualiser',
+  'settings.functionModelTrailEmpty': 'Rien de consigné pour le moment.',
+  'settings.functionModelTrailUsed': 'a utilisé {model} de {provider}',
+  'settings.functionModelTrailBuiltIn': 'voie intégrée :',
+  'settings.functionModelTrailCallFailed': "l'appel a échoué",
+
   'settings.functionModelDetecting': 'Appel du modèle…',
   'settings.functionModelDetectNote':
     'Le test envoie une vraie requête et peut consommer un peu de quota.',

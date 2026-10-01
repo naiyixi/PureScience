@@ -3,9 +3,14 @@ import { dirname, join } from 'node:path'
 
 import {
   isFunctionModelId,
-  type FunctionModelId,
-  type FunctionModelUnusableReason
+  type FunctionModelEvent,
+  type FunctionModelEventReason,
+  type FunctionModelId
 } from '../../shared/function-models'
+
+// The trail's shape belongs to the shared contract: the settings surface renders these entries, so the two
+// sides must not each carry their own idea of what an entry is.
+export type { FunctionModelEvent, FunctionModelEventReason }
 
 /**
  * The trail a function leaves behind.
@@ -22,24 +27,6 @@ import {
  */
 
 export const FUNCTION_MODEL_EVENT_LOG_LIMIT = 200
-
-export type FunctionModelEventReason =
-  /** Nothing is configured for this function. */
-  | 'not-configured'
-  /** Configured, but unusable — the same named reasons the settings row shows. */
-  | FunctionModelUnusableReason
-  /** The call was attempted and did not come back with a selector result. */
-  | 'call-failed'
-
-export type FunctionModelEvent = Readonly<{
-  at: number
-  functionId: FunctionModelId
-  /** `used-model` means the configured model answered; `built-in` means the built-in path ran instead. */
-  outcome: 'used-model' | 'built-in'
-  providerId?: string
-  model?: string
-  reason?: FunctionModelEventReason
-}>
 
 const isReason = (value: unknown): value is FunctionModelEventReason =>
   value === 'not-configured' ||
@@ -91,7 +78,14 @@ export const readFunctionModelEvents = (configRoot: string): FunctionModelEvent[
 /** Appends one entry and trims the file to the most recent `FUNCTION_MODEL_EVENT_LOG_LIMIT`. */
 export const appendFunctionModelEvent = (
   configRoot: string,
-  event: Omit<FunctionModelEvent, 'at'> & { at?: number }
+  event: {
+    functionId: FunctionModelId
+    outcome: 'used-model' | 'built-in'
+    providerId?: string
+    model?: string
+    reason?: FunctionModelEventReason
+    at?: number
+  }
 ): FunctionModelEvent => {
   const entry: FunctionModelEvent = { at: event.at ?? Date.now(), ...event }
   const path = functionModelEventLogPath(configRoot)

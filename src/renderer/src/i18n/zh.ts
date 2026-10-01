@@ -753,6 +753,15 @@ export const zh = {
   'settings.functionModelsHint':
     '应用为自身发起的窄用途调用。每一行都会说明当前生效的模型，以及模型不可用时走哪条内置路径。',
   'settings.functionModelDetect': '检测',
+  'settings.functionModelTrail': '最近的功能调用',
+  'settings.functionModelTrailHint':
+    '应用自身窄用途调用的实际结果，最新在前——记录下来，是为了让「这次为什么没用我的模型」有答案。',
+  'settings.functionModelTrailRefresh': '刷新',
+  'settings.functionModelTrailEmpty': '暂无记录。',
+  'settings.functionModelTrailUsed': '使用 {model}（来自 {provider}）',
+  'settings.functionModelTrailBuiltIn': '内置路径：',
+  'settings.functionModelTrailCallFailed': '调用失败',
+
   'settings.functionModelDetecting': '正在调用模型…',
   'settings.functionModelDetectNote': '检测会真实发出一次请求，可能消耗少量额度。',
   'settings.functionModelDetectNeedsModel': '请先选一个模型。',

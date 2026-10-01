@@ -1667,6 +1667,15 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.functionModelsHint':
     '應用為自身發起的窄用途呼叫。每一列都會說明當前生效的模型，以及模型不可用時走哪條內建路徑。',
   'settings.functionModelDetect': '檢測',
+  'settings.functionModelTrail': '最近的功能呼叫',
+  'settings.functionModelTrailHint':
+    '應用自身窄用途呼叫的實際結果，最新在前——記錄下來，是為了讓「這次為什麼沒用我的模型」有答案。',
+  'settings.functionModelTrailRefresh': '重新整理',
+  'settings.functionModelTrailEmpty': '目前沒有記錄。',
+  'settings.functionModelTrailUsed': '使用 {model}（來自 {provider}）',
+  'settings.functionModelTrailBuiltIn': '內建路徑：',
+  'settings.functionModelTrailCallFailed': '呼叫失敗',
+
   'settings.functionModelDetecting': '正在呼叫模型…',
   'settings.functionModelDetectNote': '檢測會真的發出一次請求，可能消耗少量額度。',
   'settings.functionModelDetectNeedsModel': '請先選一個模型。',

@@ -1839,6 +1839,15 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.functionModelsHint':
     'Las llamadas concretas que la aplicación hace para sí misma. Cada fila indica el modelo vigente y la ruta integrada que se usa sin modelo.',
   'settings.functionModelDetect': 'Comprobar',
+  'settings.functionModelTrail': 'Llamadas recientes de funciones',
+  'settings.functionModelTrailHint':
+    'Lo que hicieron realmente las llamadas concretas de la aplicación, lo más reciente primero — registrado para que «por qué esta ejecución no usó mi modelo» tenga respuesta.',
+  'settings.functionModelTrailRefresh': 'Actualizar',
+  'settings.functionModelTrailEmpty': 'Todavía no hay registros.',
+  'settings.functionModelTrailUsed': 'usó {model} de {provider}',
+  'settings.functionModelTrailBuiltIn': 'ruta integrada:',
+  'settings.functionModelTrailCallFailed': 'la llamada falló',
+
   'settings.functionModelDetecting': 'Llamando al modelo…',
   'settings.functionModelDetectNote':
     'La comprobación envía una petición real y puede consumir algo de cuota.',

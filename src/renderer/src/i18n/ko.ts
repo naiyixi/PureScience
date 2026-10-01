@@ -1769,6 +1769,15 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.functionModelsHint':
     '앱이 스스로 수행하는 좁은 용도의 호출입니다. 각 행은 현재 적용되는 모델과 모델을 쓸 수 없을 때의 내장 경로를 밝힙니다.',
   'settings.functionModelDetect': '검사',
+  'settings.functionModelTrail': '최근 기능 호출',
+  'settings.functionModelTrailHint':
+    '앱이 스스로 수행한 좁은 호출의 실제 결과를 최신순으로 보여줍니다. "이번에는 왜 내 모델이 쓰이지 않았나"에 답할 수 있도록 기록합니다.',
+  'settings.functionModelTrailRefresh': '새로 고침',
+  'settings.functionModelTrailEmpty': '아직 기록이 없습니다.',
+  'settings.functionModelTrailUsed': '{provider}의 {model} 사용',
+  'settings.functionModelTrailBuiltIn': '내장 경로:',
+  'settings.functionModelTrailCallFailed': '호출 실패',
+
   'settings.functionModelDetecting': '모델 호출 중…',
   'settings.functionModelDetectNote':
     '검사는 실제로 요청을 한 번 보내므로 소량의 할당량을 사용할 수 있습니다.',
