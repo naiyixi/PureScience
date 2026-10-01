@@ -296,7 +296,9 @@ gate('NotebookKernelExecutor (fake loop)', () => {
 
     await writeFile(join(dataRoot, 'fallback.csv'), 'x,y\n1,2\n')
 
-    expect(await observation.finish()).toEqual([
+    const observed = await observation.finish()
+    expect(observed.capture).toEqual({ status: 'captured' })
+    expect(observed.files).toEqual([
       expect.objectContaining({
         path: resolve(dataRoot, 'fallback.csv'),
         relativePath: 'data/fallback.csv',
@@ -326,7 +328,115 @@ gate('NotebookKernelExecutor (fake loop)', () => {
       }
     )
 
-    await expect(observation.finish()).resolves.toEqual([])
+    // "The run changed nothing" is a real result, not the same thing as "we could not look".
+    await expect(observation.finish()).resolves.toEqual({
+      files: [],
+      capture: { status: 'captured' }
+    })
+  })
+
+  it('reports the shortfall when the changed-path bound is reached instead of dropping the list', async () => {
+    cwdDir = await mkdtemp(join(tmpdir(), 'os-working-file-bound-'))
+    const sessionRoot = join(cwdDir, 'nb')
+    const dataRoot = join(sessionRoot, 'data')
+    await mkdir(dataRoot, { recursive: true })
+    const watcher = { close: vi.fn(), on: vi.fn().mockReturnThis() }
+    let emit: ((event: string, filename: string) => void) | undefined
+    const observation = await startWorkingFileObservation(
+      { dataRoot, notebookSessionRoot: sessionRoot },
+      {
+        watchDirectory: ((_path, _options, listener) => {
+          emit = listener
+          return watcher
+        }) as never,
+        maxChangedPaths: 2
+      }
+    )
+
+    await writeFile(join(dataRoot, 'a.csv'), 'a\n')
+    await writeFile(join(dataRoot, 'b.csv'), 'b\n')
+    emit?.('rename', 'a.csv')
+    emit?.('rename', 'b.csv')
+    emit?.('rename', 'c.csv')
+    emit?.('rename', 'd.csv')
+    // A repeat for a path already recorded is not a dropped entry, so it must not inflate the count.
+    emit?.('rename', 'a.csv')
+
+    const observed = await observation.finish()
+
+    expect(observed.capture).toEqual({ status: 'truncated', droppedCount: 2 })
+    expect(observed.files.map((file) => file.relativePath).sort()).toEqual([
+      'data/a.csv',
+      'data/b.csv'
+    ])
+  })
+
+  it("keeps both sessions' lists and labels them unattributable when one directory is shared", async () => {
+    cwdDir = await mkdtemp(join(tmpdir(), 'os-working-file-conflict-'))
+    const sessionRoot = join(cwdDir, 'nb')
+    const dataRoot = join(sessionRoot, 'data')
+    await mkdir(dataRoot, { recursive: true })
+    const fakeWatcher = (): { close: ReturnType<typeof vi.fn>; on: ReturnType<typeof vi.fn> } => ({
+      close: vi.fn(),
+      on: vi.fn().mockReturnThis()
+    })
+
+    const first = await startWorkingFileObservation(
+      { dataRoot, notebookSessionRoot: sessionRoot },
+      { watchDirectory: (() => fakeWatcher()) as never }
+    )
+    const second = await startWorkingFileObservation(
+      { dataRoot, notebookSessionRoot: sessionRoot },
+      { watchDirectory: (() => fakeWatcher()) as never }
+    )
+
+    await writeFile(join(dataRoot, 'shared.csv'), 'x\n')
+
+    const [firstResult, secondResult] = await Promise.all([first.finish(), second.finish()])
+
+    // Both sides keep the observation — but never as their own file list: the same path belongs to the
+    // other session too, and workingFiles feeds artifact provenance, where a wrong attribution is a
+    // false claim rather than a gap. Each run therefore reports an empty list plus the reason and what
+    // was seen, so the interface can say "3 files changed here; two sessions shared this directory".
+    const shared = {
+      status: 'unattributed',
+      reason: 'attribution-conflict',
+      directoryConflict: 'shared-directory',
+      observedPaths: ['data/shared.csv']
+    }
+    expect(firstResult.capture).toEqual(shared)
+    expect(secondResult.capture).toEqual(shared)
+    expect(firstResult.files).toEqual([])
+    expect(secondResult.files).toEqual([])
+  })
+
+  it('withholds the list and names the reason when the watcher fails mid-run', async () => {
+    cwdDir = await mkdtemp(join(tmpdir(), 'os-working-file-watcher-error-'))
+    const sessionRoot = join(cwdDir, 'nb')
+    const dataRoot = join(sessionRoot, 'data')
+    await mkdir(dataRoot, { recursive: true })
+    const handlers: Record<string, (...args: unknown[]) => void> = {}
+    const watcher = {
+      close: vi.fn(),
+      on: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
+        handlers[event] = handler
+        return watcher
+      })
+    }
+    const observation = await startWorkingFileObservation(
+      { dataRoot, notebookSessionRoot: sessionRoot },
+      { watchDirectory: (() => watcher) as never }
+    )
+
+    await writeFile(join(dataRoot, 'partial.csv'), 'x\n')
+    handlers.error?.(new Error('watcher gone'))
+
+    // A capture that cannot vouch for itself says so; it does not report an empty list, and it does not
+    // report a partial one as if it were everything.
+    await expect(observation.finish()).resolves.toEqual({
+      files: [],
+      capture: { status: 'unavailable', reason: 'observation-unavailable' }
+    })
   })
 
   it('falls back to a final snapshot when the watcher misses a file event', async () => {
@@ -345,7 +455,9 @@ gate('NotebookKernelExecutor (fake loop)', () => {
 
     await writeFile(join(dataRoot, 'generated.csv'), 'x,y\n1,2\n')
 
-    await expect(observation.finish()).resolves.toEqual([
+    const observed = await observation.finish()
+    expect(observed.capture).toEqual({ status: 'captured' })
+    expect(observed.files).toEqual([
       expect.objectContaining({
         path: resolve(dataRoot, 'generated.csv'),
         relativePath: 'data/generated.csv',

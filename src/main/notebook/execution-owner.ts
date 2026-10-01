@@ -5,6 +5,7 @@ import type {
   ExecuteNotebookControlRequest,
   ExecuteShellRequest,
   NotebookCell,
+  NotebookFileCapture,
   NotebookLanguage,
   NotebookOutput,
   NotebookRunRecord,
@@ -45,7 +46,7 @@ import { startWorkingFileObservation } from './working-file-observer'
 
 type NotebookControlResult = Pick<
   NotebookSessionExecutionResult,
-  'status' | 'stdout' | 'stderr' | 'traceback' | 'outputs' | 'workingFiles'
+  'status' | 'stdout' | 'stderr' | 'traceback' | 'outputs' | 'workingFiles' | 'fileCapture'
 >
 
 type NotebookControlCompletionInterceptor = {
@@ -451,7 +452,8 @@ class NotebookExecutionOwner {
       stderr: result.stderr,
       traceback: result.traceback,
       outputs: result.outputs,
-      workingFiles: result.workingFiles
+      workingFiles: result.workingFiles,
+      fileCapture: result.fileCapture
     }
   }
 
@@ -487,6 +489,7 @@ class NotebookExecutionOwner {
       invoke: async () => {
         const workingFileObservation = await startWorkingFileObservation(session)
         let workingFiles: NotebookWorkingFile[] = []
+        let fileCapture: NotebookFileCapture | undefined
         const blockedMutation = detectManagedRuntimeMutation({
           source: request.command,
           surface: this.options.platform === 'win32' ? 'powershell' : 'bash',
@@ -508,7 +511,9 @@ class NotebookExecutionOwner {
                 timeoutMs: request.timeoutMs
               })
         ).finally(async () => {
-          workingFiles = await workingFileObservation.finish()
+          const observation = await workingFileObservation.finish()
+          workingFiles = observation.files
+          fileCapture = observation.capture
         })
         const status: NotebookRunStatus =
           shellResult.exitCode === 0
@@ -533,6 +538,7 @@ class NotebookExecutionOwner {
           cwdAfter: session.cwd,
           outputs,
           workingFiles,
+          fileCapture,
           exitCode: shellResult.exitCode
         }
       }

@@ -1,10 +1,16 @@
 import type {
   NotebookEnvironmentManifest,
+  NotebookFileCapture,
   NotebookOutput,
   NotebookRunEnvironmentCapture,
   NotebookRunRecord,
   NotebookRunStatus,
   NotebookWorkingFile
+} from '../../shared/notebook'
+import {
+  buildFileEvidence,
+  uncapturedReadEvidence,
+  unavailableWriteEvidence
 } from '../../shared/notebook'
 import type { NotebookRunRepository } from './repository'
 
@@ -26,6 +32,7 @@ type NotebookRunTerminalResult = {
   cwdAfter?: string
   outputs: NotebookOutput[]
   workingFiles?: NotebookWorkingFile[]
+  fileCapture?: NotebookFileCapture
   environmentManifest?: NotebookEnvironmentManifest
   environmentManifestChecksum?: string
   environmentManifestFingerprint?: string
@@ -96,6 +103,12 @@ class NotebookRunTerminalizationOwner {
       // make the preview render it twice.
       outputs: result.outputs,
       workingFiles: result.workingFiles ?? [],
+      // The write axis comes from the observation that ran alongside this execution; the read axis is
+      // still uncaptured on this platform path, and it says so instead of reporting an empty list.
+      fileEvidence: buildFileEvidence(
+        uncapturedReadEvidence('driver-without-read-capture'),
+        result.fileCapture ?? unavailableWriteEvidence('observation-unavailable')
+      ),
       environmentCapture,
       ...(environmentCapture.state !== 'unavailable' && result.environmentManifest
         ? { environmentManifest: result.environmentManifest }

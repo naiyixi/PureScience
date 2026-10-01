@@ -1,6 +1,7 @@
 import type {
   NotebookCell,
   NotebookEnvironmentManifest,
+  NotebookFileCapture,
   NotebookKernelMetadata,
   NotebookLanguage,
   NotebookLiveEnvironmentOverlay,
@@ -56,6 +57,10 @@ export type NotebookSessionExecutionResult = {
   cwdAfter: string
   outputs: NotebookOutput[]
   workingFiles?: NotebookWorkingFile[]
+  // How complete the write list is (captured / truncated + shortfall / unavailable + reason /
+  // unattributed + shared directory). Carried beside workingFiles so a short list can never be read
+  // as a complete one.
+  fileCapture?: NotebookFileCapture
   environmentOverlay?: NotebookLiveEnvironmentOverlay
   environmentCapture?: NotebookRunEnvironmentCapture
   environmentManifest?: NotebookEnvironmentManifest

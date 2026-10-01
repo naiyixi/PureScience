@@ -327,6 +327,9 @@ export type NotebookFileEvidenceReason =
   | 'capture-failed'
   | 'limit-exceeded'
   | 'observation-unavailable'
+  // Two sessions wrote into one working directory: the changes were observed, but they cannot be
+  // attributed to one run — so the list is kept and labelled instead of discarded.
+  | 'attribution-conflict'
 
 type NotebookFileEvidenceBase = {
   read: NotebookReadFile[]
@@ -338,9 +341,31 @@ type NotebookFileEvidenceBase = {
   directoryConflict?: 'shared-directory'
 }
 
-// A discriminated union on purpose: 'truncated' without a count, or 'unsupported' without a reason,
-// are unrepresentable — so a list that is short or missing can never be read as a complete one.
-export type NotebookRunFileEvidence =
+// How complete ONE axis of the evidence is. The write axis's file list already lives on the run
+// record (workingFiles), so this carries only the capture status for it; the read axis keeps its list
+// beside its status. Same rule as below: a status that implies missing data must carry that data.
+export type NotebookFileCapture =
+  | { status: 'captured' }
+  | { status: 'truncated'; droppedCount: number }
+  | { status: 'unsupported'; reason: NotebookFileEvidenceReason }
+  | { status: 'unavailable'; reason: NotebookFileEvidenceReason }
+  | {
+      status: 'unattributed'
+      reason: NotebookFileEvidenceReason
+      directoryConflict: 'shared-directory'
+      // Orthogonal to attribution: an over-limit run can also be an unattributable one.
+      droppedCount?: number
+      // What was seen changing in the shared directory, kept for the user to inspect but explicitly
+      // NOT this run's file list: the same paths belong to the other session too, and workingFiles
+      // feeds artifact provenance, where a file attributed to the wrong run is a false claim rather
+      // than a gap. So the observation is preserved under a label instead of being reported as ours.
+      observedPaths?: string[]
+    }
+
+// The read axis, as a discriminated union on purpose: 'truncated' without a count, or 'unsupported'
+// without a reason, are unrepresentable — so a list that is short or missing can never be read as a
+// complete one.
+export type NotebookRunReadEvidence =
   | (NotebookFileEvidenceBase & { readStatus: 'captured' })
   | (NotebookFileEvidenceBase & { readStatus: 'truncated'; readTruncatedCount: number })
   | (NotebookFileEvidenceBase & {
@@ -373,22 +398,69 @@ export const classifyReadFiles = (
 // The "capture did not happen" arm, named so a caller that only ever produces this shape gets the
 // reason in its type instead of having to narrow the union back down.
 export type NotebookFileEvidenceUncaptured = Extract<
-  NotebookRunFileEvidence,
+  NotebookRunReadEvidence,
   { readStatus: NotebookFileEvidenceUncapturedStatus }
 >
 
 // The honest shape for "the capture did not happen": an empty list that CANNOT be mistaken for a
 // verified "no reads" because the status and the reason travel with it.
-export const uncapturedFileEvidence = (
+export const uncapturedReadEvidence = (
   reason: NotebookFileEvidenceReason,
   status: NotebookFileEvidenceUncapturedStatus = 'unsupported'
 ): NotebookFileEvidenceUncaptured => ({ read: [], readStatus: status, readReason: reason })
 
-// The positive shape: a captured list plus whatever the write side observed at the same time.
-export const capturedFileEvidence = (
+// The positive shape for the read axis.
+export const capturedReadEvidence = (read: NotebookReadFile[]): NotebookRunReadEvidence => ({
+  read,
+  readStatus: 'captured'
+})
+
+// The read axis stopped at its limit: the collected list is real, and the dropped count says it is
+// short — which is why 'truncated' cannot be built without it.
+export const truncatedReadEvidence = (
   read: NotebookReadFile[],
-  extras: Pick<NotebookFileEvidenceBase, 'writeTruncatedCount' | 'directoryConflict'> = {}
-): NotebookRunFileEvidence => ({ read, readStatus: 'captured', ...extras })
+  droppedCount: number
+): NotebookRunReadEvidence => ({ read, readStatus: 'truncated', readTruncatedCount: droppedCount })
+
+// Write-axis captures. The file list is NotebookRunRecord.workingFiles; these say how complete it is.
+export const capturedWriteEvidence = (): NotebookFileCapture => ({ status: 'captured' })
+export const truncatedWriteEvidence = (droppedCount: number): NotebookFileCapture => ({
+  status: 'truncated',
+  droppedCount
+})
+export const unavailableWriteEvidence = (
+  reason: NotebookFileEvidenceReason
+): NotebookFileCapture => ({
+  status: 'unavailable',
+  reason
+})
+export const unsupportedWriteEvidence = (
+  reason: NotebookFileEvidenceReason
+): NotebookFileCapture => ({
+  status: 'unsupported',
+  reason
+})
+export const unattributedWriteEvidence = (
+  reason: NotebookFileEvidenceReason,
+  options: { droppedCount?: number; observedPaths?: string[] } = {}
+): NotebookFileCapture => ({
+  status: 'unattributed',
+  reason,
+  directoryConflict: 'shared-directory',
+  ...(options.droppedCount === undefined ? {} : { droppedCount: options.droppedCount }),
+  ...(options.observedPaths === undefined ? {} : { observedPaths: options.observedPaths })
+})
+
+// Both axes travel together so a reader never sees a read status without a write status (or a write
+// list whose completeness is left to guesswork).
+export type NotebookRunFileEvidence = {
+  read: NotebookRunReadEvidence
+  write: NotebookFileCapture
+}
+export const buildFileEvidence = (
+  read: NotebookRunReadEvidence,
+  write: NotebookFileCapture
+): NotebookRunFileEvidence => ({ read, write })
 
 const isNonNegativeInteger = (value: unknown): value is number =>
   typeof value === 'number' && Number.isInteger(value) && value >= 0
@@ -410,6 +482,15 @@ const READ_FILE_KINDS: readonly NotebookReadFileKind[] = ['input', 'intermediate
 export const sanitizeFileEvidence = (value: unknown): NotebookRunFileEvidence | undefined => {
   if (typeof value !== 'object' || value === null) return undefined
   const candidate = value as Record<string, unknown>
+  const readAxis = sanitizeReadAxis(candidate.read)
+  const writeAxis = sanitizeWriteAxis(candidate.write)
+  if (!readAxis || !writeAxis) return undefined
+  return buildFileEvidence(readAxis, writeAxis)
+}
+
+const sanitizeReadAxis = (value: unknown): NotebookRunReadEvidence | undefined => {
+  if (typeof value !== 'object' || value === null) return undefined
+  const candidate = value as Record<string, unknown>
   const read = candidate.read
   if (!Array.isArray(read)) return undefined
 
@@ -429,27 +510,12 @@ export const sanitizeFileEvidence = (value: unknown): NotebookRunFileEvidence | 
     })
   }
 
-  const extras: Pick<NotebookFileEvidenceBase, 'writeTruncatedCount' | 'directoryConflict'> = {}
-  if (candidate.writeTruncatedCount !== undefined) {
-    if (!isNonNegativeInteger(candidate.writeTruncatedCount)) return undefined
-    extras.writeTruncatedCount = candidate.writeTruncatedCount
-  }
-  if (candidate.directoryConflict !== undefined) {
-    if (candidate.directoryConflict !== 'shared-directory') return undefined
-    extras.directoryConflict = 'shared-directory'
-  }
-
   switch (candidate.readStatus) {
     case 'captured':
-      return capturedFileEvidence(files, extras)
+      return capturedReadEvidence(files)
     case 'truncated':
       if (!isNonNegativeInteger(candidate.readTruncatedCount)) return undefined
-      return {
-        read: files,
-        readStatus: 'truncated',
-        readTruncatedCount: candidate.readTruncatedCount,
-        ...extras
-      }
+      return truncatedReadEvidence(files, candidate.readTruncatedCount)
     case 'unsupported':
     case 'unavailable':
       if (!EVIDENCE_REASONS.includes(candidate.readReason as NotebookFileEvidenceReason))
@@ -457,9 +523,48 @@ export const sanitizeFileEvidence = (value: unknown): NotebookRunFileEvidence | 
       return {
         read: files,
         readStatus: candidate.readStatus,
-        readReason: candidate.readReason as NotebookFileEvidenceReason,
-        ...extras
+        readReason: candidate.readReason as NotebookFileEvidenceReason
       }
+    default:
+      return undefined
+  }
+}
+
+// The write axis carries no list of its own (workingFiles already holds it), so only the status has to
+// survive a read-back — with the same rule: a status that hides missing data must bring that data.
+const sanitizeWriteAxis = (value: unknown): NotebookFileCapture | undefined => {
+  if (typeof value !== 'object' || value === null) return undefined
+  const candidate = value as Record<string, unknown>
+  switch (candidate.status) {
+    case 'captured':
+      return capturedWriteEvidence()
+    case 'truncated':
+      if (!isNonNegativeInteger(candidate.droppedCount)) return undefined
+      return truncatedWriteEvidence(candidate.droppedCount)
+    case 'unsupported':
+    case 'unavailable':
+      if (!EVIDENCE_REASONS.includes(candidate.reason as NotebookFileEvidenceReason))
+        return undefined
+      return candidate.status === 'unsupported'
+        ? unsupportedWriteEvidence(candidate.reason as NotebookFileEvidenceReason)
+        : unavailableWriteEvidence(candidate.reason as NotebookFileEvidenceReason)
+    case 'unattributed':
+      if (!EVIDENCE_REASONS.includes(candidate.reason as NotebookFileEvidenceReason))
+        return undefined
+      if (candidate.directoryConflict !== 'shared-directory') return undefined
+      if (candidate.droppedCount !== undefined && !isNonNegativeInteger(candidate.droppedCount)) {
+        return undefined
+      }
+      if (candidate.observedPaths !== undefined) {
+        if (!Array.isArray(candidate.observedPaths)) return undefined
+        if (candidate.observedPaths.some((path) => typeof path !== 'string' || path.length === 0)) {
+          return undefined
+        }
+      }
+      return unattributedWriteEvidence(candidate.reason as NotebookFileEvidenceReason, {
+        droppedCount: candidate.droppedCount as number | undefined,
+        observedPaths: candidate.observedPaths as string[] | undefined
+      })
     default:
       return undefined
   }

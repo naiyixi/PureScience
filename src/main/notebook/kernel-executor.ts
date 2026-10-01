@@ -295,7 +295,8 @@ class NotebookKernelExecutor implements NotebookExecutor {
       workingFileObservation = await startWorkingFileObservation(request)
       const reqId = randomUUID()
       const { response, timedOut } = await this.sendRequest(proc, reqId, request)
-      const workingFiles = await workingFileObservation.finish()
+      const observation = await workingFileObservation.finish()
+      const workingFiles = observation.files
       workingFileObservation = undefined
 
       const figures = await this.readFigures(response.figures)
@@ -320,6 +321,7 @@ class NotebookKernelExecutor implements NotebookExecutor {
         cwdAfter: response.cwd || request.cwd,
         outputs: mapped.outputs,
         workingFiles,
+        fileCapture: observation.capture,
         environmentOverlay: response.environmentOverlay
       }
     } catch (error) {
