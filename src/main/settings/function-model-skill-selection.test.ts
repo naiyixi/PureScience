@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 import type { FunctionModelEvent, FunctionModelEventReason } from '../../shared/function-models'
 import {
+  createProbeSkillSelection,
   runFunctionModelSkillSelection,
   type FunctionModelSkillSelectionHost
 } from './function-model-skill-selection'
@@ -30,6 +31,48 @@ const host = (
     events
   }
 }
+
+describe('createProbeSkillSelection', () => {
+  const target = { baseUrl: 'https://gateway.example', key: 'k', model: 'm1' }
+  const catalog = [{ name: 'alpha', description: 'does alpha', path: 'alpha' }]
+
+  it('refuses to report a model that answered when the request never left', async () => {
+    // The bridge answers an empty catalog with an empty list and never calls out; a probe that read that as
+    // "the model answered" would be claiming a round trip that did not happen.
+    const select = createProbeSkillSelection({ fetchImpl: vi.fn() })
+
+    await expect(select(target, [])).rejects.toThrow('probe-not-attempted')
+  })
+
+  it('names an unreachable endpoint instead of reporting an empty selection', async () => {
+    const select = createProbeSkillSelection({
+      fetchImpl: vi.fn().mockRejectedValue(new Error('connect ECONNREFUSED'))
+    })
+
+    await expect(select(target, catalog)).rejects.toThrow('probe-request-failed')
+  })
+
+  it('treats an error status as a failed call, not as a model that chose nothing', async () => {
+    const select = createProbeSkillSelection({
+      fetchImpl: vi.fn().mockResolvedValue({ ok: false, status: 401 } as unknown as Response)
+    })
+
+    await expect(select(target, catalog)).rejects.toThrow('http-401')
+  })
+
+  it('passes a real answer through, including one that selected nothing', async () => {
+    const select = createProbeSkillSelection({
+      fetchImpl: vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ choices: [{ message: { content: '[]' } }] })
+      } as unknown as Response)
+    })
+
+    // No throw: the model answered. "It selected nothing" is a legitimate answer, spelled by an empty list.
+    await expect(select(target, catalog)).resolves.toEqual([])
+  })
+})
 
 describe('runFunctionModelSkillSelection', () => {
   it('measures the call it actually made, including the built-in path', async () => {

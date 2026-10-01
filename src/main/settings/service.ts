@@ -68,14 +68,13 @@ import type {
 } from '../../shared/settings'
 // A value, not a type: it decides whether a provider may be used at all.
 import { providerValidationFailed } from '../../shared/settings'
-import {
-  ResponsesBridge,
-  type ResponsesBridgeSkillCandidate,
-  type ResponsesBridgeSkillInput,
-  type ResponsesBridgeTarget
+import type {
+  ResponsesBridgeSkillCandidate,
+  ResponsesBridgeSkillInput,
+  ResponsesBridgeTarget
 } from './responses-bridge'
 import {
-  PROBE_SELECTION_TEXT,
+  createProbeSkillSelection,
   runFunctionModelSkillSelection
 } from './function-model-skill-selection'
 import {
@@ -278,26 +277,7 @@ class SettingsService {
       readRemoteUnprotectedPolicy: async () =>
         (await this.getExecutionProtection())?.remoteUnprotectedPolicy
     })
-    this.probeSkillSelection =
-      options.probeSkillSelection ??
-      ((target, catalog) => {
-        // A selection that never reached the network must not be reported as a model answer. The bridge
-        // returns an empty list both when the model answered "nothing" and when it never asked (an empty
-        // catalog, or the deterministic connector shortcut), so the requests are recorded and a run that
-        // sent none fails with a name that says so.
-        let sent = false
-        const bridge = new ResponsesBridge(target, (input, init) => {
-          sent = true
-
-          return fetch(input, init)
-        })
-
-        return bridge.selectSkills(PROBE_SELECTION_TEXT, catalog).then((selected) => {
-          if (!sent) throw new Error('probe-not-attempted')
-
-          return selected
-        })
-      })
+    this.probeSkillSelection = options.probeSkillSelection ?? createProbeSkillSelection()
     this.notebookRuntimeSettings = new NotebookRuntimeSettingsModule(this.repository)
     this.connectors = new ConnectorSettingsModule(this.repository)
     this.userClaudeDir = options.userClaudeDir ?? getUserClaudeConfigDir()

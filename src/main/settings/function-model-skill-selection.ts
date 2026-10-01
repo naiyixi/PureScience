@@ -10,7 +10,12 @@ import type {
   FunctionModelEventReason,
   FunctionModelId
 } from '../../shared/function-models'
-import type { ResponsesBridgeTarget } from './responses-bridge'
+import {
+  ResponsesBridge,
+  type ResponsesBridgeSkillCandidate,
+  type ResponsesBridgeSkillInput,
+  type ResponsesBridgeTarget
+} from './responses-bridge'
 
 // The narrow-call surface both callers already have: which model to use for this function, and where to
 // report what actually happened. Structural on purpose — the ACP runtime and the settings service each
@@ -30,6 +35,44 @@ export type FunctionModelSkillSelectionHost = {
 // branch and the model, not to judge the text, so the same sentence every time makes two runs comparable.
 export const PROBE_SELECTION_TEXT =
   'Normalise a table of measurements, join it with a second table on sample id, and save a summary figure.'
+
+// Runs one real selection through the bridge, without inheriting the bridge's best-effort swallowing.
+// A turn must never break on a selector, so the bridge answers a failed request with an empty list — but a
+// probe asked a different question: "is my configured model used, and does it answer". "The endpoint could
+// not be reached" and "the model answered nothing" are therefore told apart, and neither is reported as a
+// model that answered.
+export const createProbeSkillSelection = (
+  options: { fetchImpl?: typeof fetch } = {}
+): ((
+  target: ResponsesBridgeTarget,
+  catalog: ResponsesBridgeSkillCandidate[]
+) => Promise<ResponsesBridgeSkillInput[]>) => {
+  const doFetch = options.fetchImpl ?? fetch
+
+  return (target, catalog) => {
+    let sent = false
+    let failure: string | undefined
+    const bridge = new ResponsesBridge(target, async (input, init) => {
+      sent = true
+      try {
+        const response = await doFetch(input, init)
+        if (!response.ok) failure = `http-${response.status}`
+
+        return response
+      } catch (error) {
+        failure = error instanceof Error ? error.message : 'request-failed'
+        throw error
+      }
+    })
+
+    return bridge.selectSkills(PROBE_SELECTION_TEXT, catalog).then((selected) => {
+      if (!sent) throw new Error('probe-not-attempted')
+      if (failure) throw new Error(`probe-request-failed:${failure}`)
+
+      return selected
+    })
+  }
+}
 
 // What the caller can show afterwards. Elapsed time is measured around the call that actually happened
 // (including the built-in path, which is not free either) rather than estimated.
