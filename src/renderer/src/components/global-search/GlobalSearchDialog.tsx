@@ -508,6 +508,13 @@ export const GlobalSearchDialog = ({
     return described.length > 0 ? described : t('gs.filterProofNone')
   }, [scopeFilter, primaryProject, contentFilters, t])
 
+  // Whatever puts filters in force — a pin, a cleared panel — must leave the controls describing them. A
+  // window that is in force while the select reads "any time" is the same lie the proof line prevents.
+  const applyContentFilters = useCallback((next: GlobalSearchContentFilters): void => {
+    setContentFilters(next)
+    setTimeWindow(next.since || next.until ? 'custom' : 'any')
+  }, [])
+
   const handleTimeWindowChange = useCallback((value: string): void => {
     const next = value === '7d' || value === 'custom' ? value : 'any'
     setTimeWindow(next)
@@ -1273,7 +1280,7 @@ export const GlobalSearchDialog = ({
                   variant="ghost"
                   className="h-8 px-2 text-xs text-muted-foreground"
                   data-testid="global-search-filters-clear"
-                  onClick={() => setContentFilters({})}
+                  onClick={() => applyContentFilters({})}
                 >
                   {t('gs.filterClear')}
                 </Button>
@@ -1423,7 +1430,7 @@ export const GlobalSearchDialog = ({
                       // the tooltip says them rather than repeating the name.
                       title={describeGlobalSearchFilters(pin.filters)}
                       data-testid={`global-search-pin-apply-${pin.id}`}
-                      onClick={() => setContentFilters(pins.apply(pin))}
+                      onClick={() => applyContentFilters(pins.apply(pin))}
                     >
                       {pin.name}
                     </button>

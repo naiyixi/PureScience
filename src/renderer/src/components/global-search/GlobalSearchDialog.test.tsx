@@ -1790,6 +1790,46 @@ describe('GlobalSearchDialog — advanced filters and evidence verification', ()
     return document.body.querySelector('[data-testid="gs-filter-proof"]')?.textContent ?? ''
   }
 
+  it('puts an applied set back into the controls, not only into the request', async () => {
+    vi.mocked(window.api.search.query).mockResolvedValue(responseWith([]) as never)
+    // A set saved with a time window and an explicit order — the shape a real save produces.
+    ;(window.api as unknown as { searchPins: unknown }).searchPins = {
+      list: vi.fn().mockResolvedValue([
+        {
+          schemaVersion: 1,
+          id: 'pin-set-1',
+          name: 'Bounded set',
+          savedAt: '2026-09-30T10:00:00.000Z',
+          filters: {
+            since: '2026-01-01T00:00:00.000Z',
+            until: '2026-03-01T23:59:59.999Z',
+            orderBy: 'time'
+          }
+        }
+      ]),
+      save: vi.fn(),
+      remove: vi.fn()
+    }
+
+    await renderAndSearch('zzz')
+    const apply = document.body.querySelector<HTMLButtonElement>(
+      '[data-testid^="global-search-pin-apply-"]'
+    )
+    expect(apply).toBeTruthy()
+    await act(async () => {
+      apply?.click()
+      await new Promise((resolve) => window.setTimeout(resolve, 40))
+    })
+
+    const proof = document.body.querySelector('[data-testid="gs-filter-proof"]')?.textContent ?? ''
+    expect(proof).toContain('since=2026-01-01T00:00:00.000Z')
+    expect(proof).toContain('until=2026-03-01T23:59:59.999Z')
+    // The ordering travels with the set: a page produced in a different order is a different page.
+    expect(proof).toContain('orderBy=time')
+    // And the controls describe what is in force: the custom date boxes are the window that was applied.
+    expect(document.body.querySelector('[data-testid="gs-filter-since"]')).toBeTruthy()
+  })
+
   it('prints the conditions the page was produced under, on the page itself', async () => {
     vi.mocked(window.api.search.query).mockResolvedValue(responseWith([]) as never)
 

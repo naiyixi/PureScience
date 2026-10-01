@@ -1,5 +1,6 @@
 import {
   expandGlobalSearchScopeToken,
+  isGlobalSearchOrdering,
   isGlobalSearchScopeToken,
   type GlobalSearchOrdering,
   type GlobalSearchScope,
@@ -109,6 +110,9 @@ const readFilters = (value: unknown): GlobalSearchPinFilters => {
   if (extensions) filters.extensions = extensions
   const referenceTypes = referenceTypeList(value.referenceTypes)
   if (referenceTypes) filters.referenceTypes = referenceTypes
+  // The ordering belongs to the set: the same filters read in a different order are a different page, so a
+  // set that cannot store its order cannot reproduce its results. Validated, never trusted.
+  if (isGlobalSearchOrdering(value.orderBy)) filters.orderBy = value.orderBy
 
   // A pin with no filters is not a filter set: it would name "everything", which is what the absence of a
   // pin already means, and it would put a meaningless name on an evidence line.
