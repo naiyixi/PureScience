@@ -359,6 +359,33 @@ jobs:
       # dropped idempotently, and scripts/release-notes.mjs preserves it on a later body rewrite. This
       # step is not continue-on-error: publishing a mac release without stating its signing state is the
       # failure this issue is about. (Runs only for tagged/manual publishing runs, as does this job.)
+      # The release page is the public record of what a version claims, so its body has to be the version's
+      # OWN notes: the maturity block plus that version's CHANGELOG section, both composed by
+      # scripts/release-notes.mjs out of the tag's own sources. Until this step existed the page kept
+      # GitHub's auto-generated commit list, i.e. a stub on a page that answers "what does this version
+      # actually do?" (v1.76.1 shipped 428 characters, v1.78.0 the same). The length gate below is the
+      # point of the step: a stub can no longer be published silently, and a silently shorter body is the
+      # same failure as a silently wrong one.
+      - name: Write the version's own notes onto the release page
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          VERSION=$(node -p "require('./package.json').version")
+          NOTES=/tmp/release-notes.md
+          node scripts/release-notes.mjs "$VERSION" --print \
+            --certification artifacts/RELEASE-CERTIFICATION.json > "$NOTES"
+          # The generator warns on stdout; the notes file must start at its first heading.
+          sed -i.bak '/^release-notes:/d' "$NOTES"
+          gh release edit "$RELEASE_TAG" --notes-file "$NOTES"
+          LENGTH=$(gh release view "$RELEASE_TAG" --json body --jq '.body | length')
+          echo "release body length: $LENGTH"
+          if [ "$LENGTH" -lt 2000 ]; then
+            echo "::error::release body is $LENGTH characters — that is the stub, not the version's notes"
+            exit 1
+          fi
+
       - name: Disclose the macOS signing state on the release page
         env:
           GH_TOKEN: ${{ github.token }}
