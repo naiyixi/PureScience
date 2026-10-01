@@ -13,6 +13,7 @@ import type { AcpRuntimeOptions } from './runtime'
 import type { AcpRuntimeBaseOwners } from './runtime-base-composition'
 import type { AcpRuntimeSessionOwners } from './runtime-session-composition'
 import type { AcpSettingsCapabilities } from '../settings/service-capabilities'
+import { runFunctionModelSkillSelection } from '../settings/function-model-skill-selection'
 
 type AcpRuntimePromptReloadHost = Readonly<{
   disconnect: AcpPromptTurnWorkflowOptions['disconnectForReload']
@@ -90,46 +91,17 @@ export const createSkillSelectionBridge = ({
   ): Promise<Awaited<ReturnType<SelectBridgeSkills>>> => (await select(text, catalog, signal)) ?? []
 
   return async (text, catalog, signal) => {
-    if (!functionModels) return builtIn(text, catalog, signal)
+    // The branch itself lives in runFunctionModelSkillSelection so the settings surface's on-demand probe
+    // executes the SAME decision instead of a near-copy of it: the probe's whole purpose is to say what a
+    // turn would do.
+    const { value } = await runFunctionModelSkillSelection({
+      functionId: 'skill-selection',
+      host: functionModels,
+      builtIn: () => builtIn(text, catalog, signal),
+      runWithModel: async (target) => (await select(text, catalog, signal, target)) ?? []
+    })
 
-    const { resolution, target } =
-      await functionModels.resolveFunctionModelTarget('skill-selection')
-    if (!resolution.override || !target) {
-      // No usable model: the built-in path runs, and the trail says which kind of "no" this was —
-      // "nobody configured it" and "the configured one cannot be used" are different facts.
-      functionModels.recordFunctionModelEvent({
-        functionId: 'skill-selection',
-        outcome: 'built-in',
-        reason: resolution.unusable[0] ?? 'not-configured'
-      })
-
-      return builtIn(text, catalog, signal)
-    }
-
-    const override = resolution.override
-    try {
-      const selected = (await select(text, catalog, signal, target)) ?? []
-      functionModels.recordFunctionModelEvent({
-        functionId: 'skill-selection',
-        outcome: 'used-model',
-        providerId: override.providerId,
-        model: override.model
-      })
-
-      return selected
-    } catch {
-      // A selection that failed must not fail the turn: the whole catalog still reaches the agent, and the
-      // trail says the configured model did not answer instead of leaving it unexplained.
-      functionModels.recordFunctionModelEvent({
-        functionId: 'skill-selection',
-        outcome: 'built-in',
-        reason: 'call-failed',
-        providerId: override.providerId,
-        model: override.model
-      })
-
-      return builtIn(text, catalog, signal)
-    }
+    return value
   }
 }
 
