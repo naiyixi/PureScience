@@ -22,6 +22,7 @@ import {
   type PersistedUploadedAttachment
 } from '../../shared/uploads'
 import type { PersistedChatSession } from '../../shared/session-persistence'
+import { measureSpace } from '../storage/content-store'
 import { createProjectDbClient, ensureProjectSchema } from '../projects/prisma-client'
 import {
   OrphanLegacyUploadAuthorityMissingError,
@@ -235,6 +236,43 @@ describe('upload repository', () => {
       join(root, 'uploads', 'default-project', PENDING_UPLOAD_SESSION_ID, 'paste.png')
     )
     await expect(readFile(attachment.path, 'utf8')).resolves.toBe('png-bytes')
+  })
+
+  it('stores identical uploads once, end to end through the real transfer flow', async () => {
+    const root = await createStorageRoot()
+    const repository = new UploadRepository(root)
+    const content = Buffer.from('shared payload uploaded twice')
+
+    const upload = async (transferId: string, name: string): Promise<string> => {
+      await repository.beginTransfer({
+        transferId,
+        name,
+        mimeType: 'text/plain',
+        size: content.byteLength
+      })
+      await repository.appendTransfer({ transferId, offset: 0, chunk: content })
+      const attachment = await repository.finishTransfer({ transferId })
+      return attachment.path
+    }
+
+    const firstPath = await upload('dedupe-1', 'one.txt')
+    const secondPath = await upload('dedupe-2', 'two.txt')
+
+    // Both uploads remain readable under their own names...
+    await expect(readFile(firstPath)).resolves.toEqual(content)
+    await expect(readFile(secondPath)).resolves.toEqual(content)
+
+    // ...but the second upload did not put a second copy of the bytes on disk.
+    const first = await stat(firstPath)
+    const second = await stat(secondPath)
+    expect(second.ino).toBe(first.ino)
+
+    const digest = createHash('sha256').update(content).digest('hex')
+    await expect(stat(join(root, '.content', digest))).resolves.toBeTruthy()
+
+    // The measured report agrees with the disk: two names, one copy.
+    const space = await measureSpace({ storageRoot: root })
+    expect(space.uniqueBytes).toBeLessThan(space.totalBytes)
   })
 
   it('stages pathless files in bounded, offset-checked chunks', async () => {
