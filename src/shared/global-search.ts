@@ -24,12 +24,7 @@ export const GLOBAL_SEARCH_SNIPPET_CHARS = 160
 export const GLOBAL_SEARCH_MIN_QUERY_CHARS = 2
 
 export type GlobalSearchScope =
-  | 'sessions'
-  | 'messages'
-  | 'uploads'
-  | 'artifacts'
-  | 'literature'
-  | 'annotations'
+  'sessions' | 'messages' | 'uploads' | 'artifacts' | 'literature' | 'annotations'
 
 // The file domain is split into its two origins — files the user brought in (`uploads`) and files the
 // app/nb produced (`artifacts`) — because they are not the same corpus and a reader deciding whether a
@@ -59,15 +54,12 @@ export const isGlobalSearchScopeToken = (value: unknown): value is GlobalSearchS
   value === 'files' || isGlobalSearchScope(value)
 
 /** The canonical scopes a token covers. The legacy file token covers both file origins. */
-export const expandGlobalSearchScopeToken = (
-  token: GlobalSearchScopeToken
-): GlobalSearchScope[] =>
+export const expandGlobalSearchScopeToken = (token: GlobalSearchScopeToken): GlobalSearchScope[] =>
   token === 'files' ? [...LEGACY_FILE_SCOPE_EXPANSION] : [token]
 
 /** True for the two scopes that read the project file index (they differ by origin, not by field set). */
-export const isFileSearchScope = (
-  scope: GlobalSearchScope
-): scope is 'uploads' | 'artifacts' => scope === 'uploads' || scope === 'artifacts'
+export const isFileSearchScope = (scope: GlobalSearchScope): scope is 'uploads' | 'artifacts' =>
+  scope === 'uploads' || scope === 'artifacts'
 
 /**
  * What the annotation scope searches, and nothing else.
@@ -556,7 +548,7 @@ export const decodeSearchCursor = (
     artifacts: 0,
     literature: 0,
     annotations: 0
-    } as Record<GlobalSearchScope, number>
+  } as Record<GlobalSearchScope, number>
   if (!cursor) return { offsets: zero, invalid: false }
 
   const separator = cursor.indexOf(':')

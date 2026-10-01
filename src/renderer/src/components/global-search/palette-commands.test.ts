@@ -31,7 +31,8 @@ const buildContext = (): PaletteCommandContext => ({
   openKeyboardShortcuts: vi.fn<() => void>()
 })
 
-const callCount = (spy: unknown): number => (spy as { mock: { calls: unknown[][] } }).mock.calls.length
+const callCount = (spy: unknown): number =>
+  (spy as { mock: { calls: unknown[][] } }).mock.calls.length
 
 const callsOf = (spy: unknown): unknown[][] => (spy as { mock: { calls: unknown[][] } }).mock.calls
 

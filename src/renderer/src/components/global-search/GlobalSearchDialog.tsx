@@ -10,7 +10,11 @@ import { useLanguage, type TranslationKey } from '@/i18n'
 import { ArrowUpRight, AtSign, Hash, MessageCircle, Search, Settings2, Zap } from 'lucide-react'
 import { Dialog } from 'radix-ui'
 
-import { isFileSearchScope, type GlobalSearchHit } from '../../../../shared/global-search'
+import {
+  isFileSearchScope,
+  type GlobalSearchHit,
+  type GlobalSearchScope
+} from '../../../../shared/global-search'
 import { buildGlobalSearchHitCitation } from '../../../../shared/global-search-citation'
 import type { ProjectFileItem } from '../../../../shared/project-files'
 import { Button } from '@/components/ui/button'
@@ -146,6 +150,27 @@ const rowClassName =
 const shortcutClassName = 'inline-flex min-w-0 items-center gap-1.5 whitespace-nowrap'
 const keycapClassName =
   'inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-md border border-border bg-bg-000 px-1.5 font-mono text-[11px] leading-none text-foreground shadow-sm'
+
+// The chip row: "All" first, then the scopes in their canonical order. Undefined means every scope.
+const SCOPE_CHIP_ORDER: readonly (GlobalSearchScope | undefined)[] = [
+  undefined,
+  'sessions',
+  'messages',
+  'uploads',
+  'artifacts',
+  'literature',
+  'annotations'
+]
+
+const SCOPE_CHIP_LABELS: Record<GlobalSearchScope | 'all', TranslationKey> = {
+  all: 'gs.scopeAll',
+  sessions: 'gs.scopeSessions',
+  messages: 'gs.scopeMessages',
+  uploads: 'gs.scopeUploads',
+  artifacts: 'gs.scopeArtifacts',
+  literature: 'gs.scopeLiterature',
+  annotations: 'gs.scopeAnnotations'
+}
 
 export const GlobalSearchDialog = ({
   open,
@@ -433,10 +458,14 @@ export const GlobalSearchDialog = ({
   }, [artifacts.other, isProjectScope, isSearchMode, sessionGroups?.other])
   // Content search runs against the main-process command: messages, files and literature, with the
   // provenance and the scan bounds the response reports.
+  // Scope is part of the request, not a client-side view filter: the server searched exactly these, so
+  // a chip's count is the count for that corpus and switching a chip re-runs the search.
+  const [scopeFilter, setScopeFilter] = useState<GlobalSearchScope | undefined>(undefined)
   const contentSearch = useContentSearch({
     query,
     ...(primaryProject ? { projectId: primaryProject.id } : {}),
     enabled: isSearchMode,
+    ...(scopeFilter ? { scopes: [scopeFilter] } : {}),
     ...(contentFilters.role || contentFilters.extension || contentFilters.referenceType
       ? {
           filters: {
@@ -1393,6 +1422,69 @@ export const GlobalSearchDialog = ({
                   contentResponse?.notes.length ? (
                     <section role="group" aria-label={t('gs.regionContent')}>
                       <h2 className={sectionTitleClassName}>{t('gs.regionContent')}</h2>
+                      <div
+                        role="group"
+                        aria-label={t('gs.scopesLabel')}
+                        data-slot="gs-scope-chips"
+                        className="flex flex-wrap items-center gap-1.5 px-4 pb-1"
+                      >
+                        {SCOPE_CHIP_ORDER.map((scope) => {
+                          const searched =
+                            scope === undefined || (contentResponse?.scopes ?? []).includes(scope)
+                          const count =
+                            scope === undefined ? undefined : (contentResponse?.counts[scope] ?? 0)
+                          // `coverage?.` on purpose: a response that predates the coverage block must
+                          // still render the chips instead of taking the whole palette down.
+                          const row =
+                            scope === undefined ? undefined : contentResponse?.coverage?.[scope]
+                          const active = scopeFilter === scope
+                          return (
+                            <button
+                              key={scope ?? 'all'}
+                              type="button"
+                              data-slot={`gs-scope-chip-${scope ?? 'all'}`}
+                              aria-pressed={active}
+                              onClick={() => setScopeFilter(scope)}
+                              className={cn(
+                                'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors',
+                                active
+                                  ? 'border-primary/50 bg-primary/10 text-foreground'
+                                  : 'border-border bg-card text-muted-foreground hover:bg-muted'
+                              )}
+                            >
+                              <span>{t(SCOPE_CHIP_LABELS[scope ?? 'all'])}</span>
+                              {/* An unsearched scope shows a dash, never 0: "0 hits" and "we did not
+                                  look there" are different statements and the chip must not merge them. */}
+                              <span
+                                data-slot={`gs-scope-chip-count-${scope ?? 'all'}`}
+                                className="font-medium text-foreground"
+                              >
+                                {searched ? (count ?? '') : '—'}
+                              </span>
+                              {searched && row ? (
+                                <span className="text-[10px] text-muted-foreground">
+                                  {t('gs.scopeCoverage', {
+                                    considered: row.considered,
+                                    contentRead: row.contentRead
+                                  })}
+                                  {scope &&
+                                  isFileSearchScope(scope) &&
+                                  row.considered > 0 &&
+                                  row.contentRead === 0
+                                    ? ` · ${t('gs.scopeCoverageNameOnly')}`
+                                    : ''}
+                                </span>
+                              ) : null}
+                              {searched && row?.bounded ? (
+                                <span className="text-[10px] text-destructive">
+                                  {t('gs.scopeCoverageBounded')}
+                                </span>
+                              ) : null}
+                            </button>
+                          )
+                        })}
+                      </div>
+
                       {contentSearch.state.state === 'searching' && contentHits.length === 0 ? (
                         <p className="px-4 py-3 text-sm text-muted-foreground">
                           {t('gs.searchingContent')}

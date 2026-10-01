@@ -38,7 +38,12 @@ const harness = (
 } => {
   const listFiles = vi.fn(async () => ({
     files: [
-      { id: 'file-1', title: 'sin_probe.csv', relativePath: 'data/sin_probe.csv', source: 'upload' }
+      {
+        id: 'file-1',
+        title: 'sin_probe.csv',
+        relativePath: 'data/sin_probe.csv',
+        source: 'upload' as const
+      }
     ]
   }))
   const listReferences = vi.fn(async () => [
@@ -58,7 +63,9 @@ describe('createSearchHandlers', () => {
   it('says the file list was bounded, so a miss cannot read as absence', async () => {
     const { query } = harness({
       listFiles: vi.fn(async () => ({
-        files: [{ id: 'file-1', title: 'notes.md', relativePath: 'notes.md', source: 'upload' }],
+        files: [
+          { id: 'file-1', title: 'notes.md', relativePath: 'notes.md', source: 'upload' as const }
+        ],
         listBounded: true
       }))
     })
@@ -73,7 +80,9 @@ describe('createSearchHandlers', () => {
     const { query } = harness({
       // A file whose name and path say nothing about the query: only its content can match.
       listFiles: vi.fn(async () => ({
-        files: [{ id: 'file-9', title: 'notes.md', relativePath: 'notes.md', source: 'upload' }]
+        files: [
+          { id: 'file-9', title: 'notes.md', relativePath: 'notes.md', source: 'upload' as const }
+        ]
       })),
       readFileText
     })
