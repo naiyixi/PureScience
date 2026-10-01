@@ -294,6 +294,177 @@ export type NotebookWorkingFile = {
   createdByRunId?: string
 }
 
+// ------------------------------------------------------------------------------------------------
+// Per-run file evidence (R3). The write side already existed as NotebookWorkingFile; this adds the
+// read side and, more importantly, makes "we could not look" a first-class state. An empty read list
+// is otherwise indistinguishable from a capture that never ran, and a silent empty list reads as a
+// verified fact ("this run opened no existing files") when it may be a failure.
+// ------------------------------------------------------------------------------------------------
+
+// A file the run OPENED FOR READING. 'input' = it already existed when the run started (the answer to
+// "which existing files did this result use"); 'intermediate' = this same run wrote it first, so it is
+// a step inside the run rather than an input to it.
+export type NotebookReadFileKind = 'input' | 'intermediate'
+
+export type NotebookReadFile = {
+  // Host path, for opening the file.
+  path: string
+  // Portable session-relative path — the same form NotebookWorkingFile.relativePath uses.
+  relativePath: string
+  kind: NotebookReadFileKind
+  // How many times the path was opened for reading during the run (deduplicated to one entry).
+  reads?: number
+}
+
+// 'captured' = the capture ran and the list is complete. 'truncated' = the capture ran and stopped at
+// its limit (readTruncatedCount says how many were dropped). 'unsupported' = this kernel/driver cannot
+// report reads at all. 'unavailable' = capture was expected but failed.
+export type NotebookFileEvidenceStatus = 'captured' | 'truncated' | 'unsupported' | 'unavailable'
+
+export type NotebookFileEvidenceReason =
+  | 'driver-without-read-capture'
+  | 'kernel-language-unsupported'
+  | 'capture-failed'
+  | 'limit-exceeded'
+  | 'observation-unavailable'
+
+type NotebookFileEvidenceBase = {
+  read: NotebookReadFile[]
+  // The write observer stops at MAX_CHANGED_PATHS. It used to stop silently; this is how many paths
+  // were dropped, so "the run changed nothing else" is never claimed on the observer's behalf.
+  writeTruncatedCount?: number
+  // Two sessions shared one working directory during this run: each session's evidence stays its own,
+  // and the overlap is stated rather than resolved by guessing which writer owns a path.
+  directoryConflict?: 'shared-directory'
+}
+
+// A discriminated union on purpose: 'truncated' without a count, or 'unsupported' without a reason,
+// are unrepresentable — so a list that is short or missing can never be read as a complete one.
+export type NotebookRunFileEvidence =
+  | (NotebookFileEvidenceBase & { readStatus: 'captured' })
+  | (NotebookFileEvidenceBase & { readStatus: 'truncated'; readTruncatedCount: number })
+  | (NotebookFileEvidenceBase & {
+      readStatus: 'unsupported' | 'unavailable'
+      readReason: NotebookFileEvidenceReason
+    })
+
+// The statuses that mean "the capture did not complete", kept named so call sites and tests agree on
+// the vocabulary instead of comparing string literals.
+export type NotebookFileEvidenceUncapturedStatus = Exclude<
+  NotebookFileEvidenceStatus,
+  'captured' | 'truncated'
+>
+
+// Classifies collected read paths against what the same run wrote. Kept pure so the rule is testable
+// without a kernel: a path in the written set is an intermediate step, everything else is an input.
+export const classifyReadFiles = (
+  readPaths: ReadonlyArray<{ path: string; relativePath: string; reads?: number }>,
+  writtenFiles: ReadonlyArray<{ path: string; relativePath: string }>
+): NotebookReadFile[] => {
+  const written = new Set(writtenFiles.map((file) => file.relativePath))
+  return readPaths.map((read) => ({
+    path: read.path,
+    relativePath: read.relativePath,
+    kind: written.has(read.relativePath) ? 'intermediate' : 'input',
+    ...(read.reads === undefined ? {} : { reads: read.reads })
+  }))
+}
+
+// The "capture did not happen" arm, named so a caller that only ever produces this shape gets the
+// reason in its type instead of having to narrow the union back down.
+export type NotebookFileEvidenceUncaptured = Extract<
+  NotebookRunFileEvidence,
+  { readStatus: NotebookFileEvidenceUncapturedStatus }
+>
+
+// The honest shape for "the capture did not happen": an empty list that CANNOT be mistaken for a
+// verified "no reads" because the status and the reason travel with it.
+export const uncapturedFileEvidence = (
+  reason: NotebookFileEvidenceReason,
+  status: NotebookFileEvidenceUncapturedStatus = 'unsupported'
+): NotebookFileEvidenceUncaptured => ({ read: [], readStatus: status, readReason: reason })
+
+// The positive shape: a captured list plus whatever the write side observed at the same time.
+export const capturedFileEvidence = (
+  read: NotebookReadFile[],
+  extras: Pick<NotebookFileEvidenceBase, 'writeTruncatedCount' | 'directoryConflict'> = {}
+): NotebookRunFileEvidence => ({ read, readStatus: 'captured', ...extras })
+
+const isNonNegativeInteger = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isInteger(value) && value >= 0
+
+const EVIDENCE_REASONS: readonly NotebookFileEvidenceReason[] = [
+  'driver-without-read-capture',
+  'kernel-language-unsupported',
+  'capture-failed',
+  'limit-exceeded',
+  'observation-unavailable'
+]
+
+const READ_FILE_KINDS: readonly NotebookReadFileKind[] = ['input', 'intermediate']
+
+// Reads back a persisted evidence record. Anything malformed is dropped WHOLE rather than partially
+// trusted: a half-read list that still claims 'captured' is worse than no evidence at all, because the
+// reader would take it as a complete account of what the run touched. Dropping yields "absent", which
+// callers already treat as "this run predates the evidence" — an honest state, not a false one.
+export const sanitizeFileEvidence = (value: unknown): NotebookRunFileEvidence | undefined => {
+  if (typeof value !== 'object' || value === null) return undefined
+  const candidate = value as Record<string, unknown>
+  const read = candidate.read
+  if (!Array.isArray(read)) return undefined
+
+  const files: NotebookReadFile[] = []
+  for (const entry of read) {
+    if (typeof entry !== 'object' || entry === null) return undefined
+    const file = entry as Record<string, unknown>
+    if (typeof file.path !== 'string' || file.path.length === 0) return undefined
+    if (typeof file.relativePath !== 'string' || file.relativePath.length === 0) return undefined
+    if (!READ_FILE_KINDS.includes(file.kind as NotebookReadFileKind)) return undefined
+    if (file.reads !== undefined && !isNonNegativeInteger(file.reads)) return undefined
+    files.push({
+      path: file.path,
+      relativePath: file.relativePath,
+      kind: file.kind as NotebookReadFileKind,
+      ...(file.reads === undefined ? {} : { reads: file.reads as number })
+    })
+  }
+
+  const extras: Pick<NotebookFileEvidenceBase, 'writeTruncatedCount' | 'directoryConflict'> = {}
+  if (candidate.writeTruncatedCount !== undefined) {
+    if (!isNonNegativeInteger(candidate.writeTruncatedCount)) return undefined
+    extras.writeTruncatedCount = candidate.writeTruncatedCount
+  }
+  if (candidate.directoryConflict !== undefined) {
+    if (candidate.directoryConflict !== 'shared-directory') return undefined
+    extras.directoryConflict = 'shared-directory'
+  }
+
+  switch (candidate.readStatus) {
+    case 'captured':
+      return capturedFileEvidence(files, extras)
+    case 'truncated':
+      if (!isNonNegativeInteger(candidate.readTruncatedCount)) return undefined
+      return {
+        read: files,
+        readStatus: 'truncated',
+        readTruncatedCount: candidate.readTruncatedCount,
+        ...extras
+      }
+    case 'unsupported':
+    case 'unavailable':
+      if (!EVIDENCE_REASONS.includes(candidate.readReason as NotebookFileEvidenceReason))
+        return undefined
+      return {
+        read: files,
+        readStatus: candidate.readStatus,
+        readReason: candidate.readReason as NotebookFileEvidenceReason,
+        ...extras
+      }
+    default:
+      return undefined
+  }
+}
+
 // Captures the interpreter metadata persisted alongside run history.
 // 'idle' is the resting state between runs; 'running' is written around a live cell/control run;
 // 'restarting' covers the window of a restart() in progress; 'terminated' marks a proc dropped for
@@ -336,6 +507,8 @@ export type NotebookRunRecord = {
   // New native runs persist the exact registered input Versions. Optional keeps legacy run.json
   // documents readable; repository normalization supplies an empty array for old records.
   inputFiles?: NotebookRunInputFile[]
+  // Per-run read/write/capture evidence. Absent on records written before it existed.
+  fileEvidence?: NotebookRunFileEvidence
   truncated?: boolean
   // Named env that produced this run (python/r only; omitted for repl/bash).
   environment?: string
