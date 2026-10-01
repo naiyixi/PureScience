@@ -40,6 +40,7 @@ import {
 } from './diagnostics/startup'
 import { createLogger, diagnosticErrorFields, flushLogs } from './logger'
 import { measureSpace, pruneUnreferencedContent } from './storage/content-store'
+import { sweepDuplicateContent } from './storage/dedupe-sweep'
 import {
   createRendererFailureReporter,
   registerRendererDiagnosticsIpc
@@ -447,6 +448,15 @@ async function startElectronApp(mainEntryPath: string): Promise<void> {
             files: space.files,
             linkedFiles: space.linkedFiles
           })
+
+          // Content stored twice before the content store existed is only reclaimed by walking what is
+          // already on disk. Deferred so it never competes with the window for I/O, and safe to interrupt:
+          // each replacement is one atomic link-then-rename, and a re-run simply finds less to do.
+          await new Promise((resolve) => setTimeout(resolve, 60_000))
+          const swept = await sweepDuplicateContent({ storageRoot })
+          if (swept.linked > 0 || swept.unlinked > 0) {
+            log.info('content sweep', swept)
+          }
         } catch (error) {
           log.warn('content storage maintenance failed', diagnosticErrorFields(error))
         }
