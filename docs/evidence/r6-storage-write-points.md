@@ -7,10 +7,22 @@
 | 写点 | 位置 | 性质 | 是否已是"一份内容一份字节" |
 |---|---|---|---|
 | 产物版本正文 | `src/main/artifacts/provenance-repository.ts:1559`、`:1887` `copyFile(pendingFile.path, stagingContentPath)` | 每个版本一次**完整复制**到 `.provenance/.staging/versions/<versionId>/content`，再落到 `contentStorageKey` | 否：同内容多版本 = 多份字节 |
-| 上传文件 | `src/main/uploads/repository.ts:579` `copyFile(sourcePath, temporaryPath, COPYFILE_EXCL)` | 每次上传一次完整复制 | 否 |
+| 上传文件（发布） | 见下方更正 | **已经是硬链接优先**，不是复制 | 已优化（但仍按"每次上传一份"存在同内容多份） |
 | 会话/溯源快照、证据、执行快照 | `provenance-message-snapshot.ts:572/767`、`provenance-repository.ts:1655/2118/2126/2288/4163` | 均为 **JSON 元数据**写入（`writeFile`，含 `flag: 'wx'` 的原子写） | 不适用（去重目标是用户内容，不是元数据） |
 
 **结论 1**：用户内容有两处真正的字节写点（产物版本、上传），两者都是"来一份复制一份"，没有任何内容摘要参与落盘决策。
+
+### 更正（本文件第一版写错，2026-10-01 同日修正）
+
+第一版把 `src/main/uploads/repository.ts:579` 当作"每次上传一次完整复制"的写点。**错了**：
+`:579` 只是 `preserveSource` 分支的修复式复制；上传真正的落盘/发布在
+`src/main/uploads/storage-helpers.ts:107` `moveToUniqueUploadFile`，它**先 `link()`**
+（注释原文：同一卷的硬链接提交暂存 inode，"without a multi-GB second copy"），
+`EXDEV`/不支持时才回落 `copyFile`。也就是说**上传发布路径早就是链接优先，不是复制**。
+
+由此 R6 的实际剩余空间**比第一版判断的小**：真正还重复的只有"同一份内容被存到两个不同路径"
+（同一个文件上传两次、内容逐字节相同的产物版本等），而发布/移动本身已经不复制。
+这条更正同时改掉了 `docs/plan-2026-10-01-R6-U2-dedupe.md` 的写点 #1。
 
 ## 2. 摘要现状（核实）
 
