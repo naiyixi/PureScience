@@ -10,7 +10,7 @@ import { useLanguage, type TranslationKey } from '@/i18n'
 import { ArrowUpRight, AtSign, Hash, MessageCircle, Search, Settings2, Zap } from 'lucide-react'
 import { Dialog } from 'radix-ui'
 
-import type { GlobalSearchHit } from '../../../../shared/global-search'
+import { isFileSearchScope, type GlobalSearchHit } from '../../../../shared/global-search'
 import { buildGlobalSearchHitCitation } from '../../../../shared/global-search-citation'
 import type { ProjectFileItem } from '../../../../shared/project-files'
 import { Button } from '@/components/ui/button'
@@ -755,14 +755,18 @@ export const GlobalSearchDialog = ({
           ? pinStatus.messageId
           : undefined
     const pinStateForHit = pinMessageId === hit.id ? pinStatus : undefined
+    // A file hit names WHICH file domain it came from: "no hit here" means different things for a file
+    // you uploaded and one a run produced, so the label must not blur them into "File".
     const scopeLabel =
       hit.scope === 'messages'
         ? t('gs.contentScopeMessage')
-        : isFileSearchScope(hit.scope)
-          ? t('gs.contentScopeFile')
-          : hit.scope === 'annotations'
-            ? t('gs.contentScopeAnnotation')
-            : t('gs.contentScopeLiterature')
+        : hit.scope === 'uploads'
+          ? t('gs.contentScopeUpload')
+          : hit.scope === 'artifacts'
+            ? t('gs.contentScopeArtifact')
+            : hit.scope === 'annotations'
+              ? t('gs.contentScopeAnnotation')
+              : t('gs.contentScopeLiterature')
     const provenance = [
       scopeLabel,
       // An annotation hit names the file VERSION its markup is anchored to: the search reads the store and

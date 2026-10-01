@@ -127,6 +127,7 @@ describe('createGlobalSearchService', () => {
           projectId: 'project-1',
           title: 'sin_probe.csv',
           relativePath: 'data/sin_probe.csv',
+          source: 'upload' as const,
           timestamp: '2026-09-13T00:02:00.000Z'
         },
         {
@@ -134,12 +135,13 @@ describe('createGlobalSearchService', () => {
           projectId: 'project-1',
           title: 'sin_notes.md',
           relativePath: 'data/sin_notes.md',
+          source: 'upload' as const,
           textPreview: 'we measured sin(x) at ten points',
           timestamp: '2026-09-13T00:03:00.000Z'
         }
       ])
     })
-    const response = await service.query(request({ scopes: ['files'] }))
+    const response = await service.query(request({ scopes: ['uploads'] }))
 
     expect(response.hits.map((hit) => hit.id).sort()).toEqual(['file-1', 'file-2'])
     expect(response.hits.find((hit) => hit.id === 'file-1')?.relativePath).toBe(
@@ -254,12 +256,18 @@ describe('createGlobalSearchService', () => {
   it('says files are matched by name and path when no file text is available', async () => {
     const { service } = harness({
       listFiles: vi.fn(async () => [
-        { id: 'file-1', projectId: 'project-1', title: 'deg.csv', relativePath: 'out/deg.csv' }
+        {
+          id: 'file-1',
+          projectId: 'project-1',
+          title: 'deg.csv',
+          relativePath: 'out/deg.csv',
+          source: 'upload' as const
+        }
       ])
     })
 
     const response = await service.query(
-      request({ scopes: ['files'], projectId: 'project-1', query: 'sin' })
+      request({ scopes: ['uploads'], projectId: 'project-1', query: 'sin' })
     )
 
     // No content provider: the response says so, rather than letting "no hit" read as "not in the file".
@@ -274,13 +282,14 @@ describe('createGlobalSearchService', () => {
           projectId: 'project-1',
           title: 'notes.md',
           relativePath: 'notes.md',
+          source: 'upload' as const,
           textPreview: 'the sin(x) series was computed here'
         }
       ])
     })
 
     const response = await service.query(
-      request({ scopes: ['files'], projectId: 'project-1', query: 'sin' })
+      request({ scopes: ['uploads'], projectId: 'project-1', query: 'sin' })
     )
 
     expect(response.notes).not.toContain('files-matched-by-name-and-path')

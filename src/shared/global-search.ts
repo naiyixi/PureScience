@@ -552,10 +552,11 @@ export const decodeSearchCursor = (
   const zero = {
     sessions: 0,
     messages: 0,
-    files: 0,
+    uploads: 0,
+    artifacts: 0,
     literature: 0,
     annotations: 0
-  } as Record<GlobalSearchScope, number>
+    } as Record<GlobalSearchScope, number>
   if (!cursor) return { offsets: zero, invalid: false }
 
   const separator = cursor.indexOf(':')
@@ -639,6 +640,7 @@ export const finalizeSearchResponse = ({
   scopes,
   hits,
   scan,
+  coverage,
   appliedLimit,
   notes,
   cursor,

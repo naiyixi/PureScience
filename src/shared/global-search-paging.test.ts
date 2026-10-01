@@ -7,7 +7,9 @@ import {
   finalizeSearchResponse,
   searchHitMatchesFilters,
   type GlobalSearchHit,
-  type GlobalSearchScanReport
+  type GlobalSearchScanReport,
+  type GlobalSearchScope,
+  type GlobalSearchScopeCoverage
 } from './global-search'
 
 const hit = (overrides: Partial<GlobalSearchHit> = {}): GlobalSearchHit => ({
@@ -23,11 +25,23 @@ const hit = (overrides: Partial<GlobalSearchHit> = {}): GlobalSearchHit => ({
 const scan: GlobalSearchScanReport = {
   sessions: 1,
   messages: 3,
-  files: 2,
+  uploads: 2,
+  artifacts: 0,
   references: 1,
   annotations: 0,
   bounded: false
 }
+
+// Coverage is required on every response; these fixtures declare what the search looked at, so the
+// assertion is about paging and not about the coverage figures.
+const coverage = (): Record<GlobalSearchScope, GlobalSearchScopeCoverage> => ({
+  sessions: { considered: 1, contentRead: 0, bounded: false },
+  messages: { considered: 3, contentRead: 0, bounded: false },
+  uploads: { considered: 2, contentRead: 0, bounded: false },
+  artifacts: { considered: 0, contentRead: 0, bounded: false },
+  literature: { considered: 1, contentRead: 0, bounded: false },
+  annotations: { considered: 0, contentRead: 0, bounded: false }
+})
 
 const finalize = (
   hits: GlobalSearchHit[],
@@ -35,9 +49,10 @@ const finalize = (
 ): ReturnType<typeof finalizeSearchResponse> =>
   finalizeSearchResponse({
     query: 'cos',
-    scopes: ['sessions', 'messages', 'files', 'literature'],
+    scopes: ['sessions', 'messages', 'uploads', 'literature'],
     hits,
     scan,
+    coverage: coverage(),
     appliedLimit: 2,
     notes: [],
     ...overrides
@@ -73,7 +88,7 @@ describe('global search — cursor pagination', () => {
       hit({ id: 'm1', score: 40 }),
       hit({ id: 'm2', score: 30 }),
       hit({ id: 'm3', score: 20 }),
-      hit({ id: 'f1', scope: 'files', score: 10, relativePath: 'results/table.csv' })
+      hit({ id: 'f1', scope: 'uploads', score: 10, relativePath: 'results/table.csv' })
     ]
     const first = finalize(mixed, { appliedLimit: 2 })
     const second = finalize(mixed, { appliedLimit: 2, cursor: first.nextCursor })
@@ -83,10 +98,17 @@ describe('global search — cursor pagination', () => {
   })
 
   it('round-trips a cursor it produced', () => {
-    const cursor = encodeSearchCursor({ messages: 4, files: 2 })
+    const cursor = encodeSearchCursor({ messages: 4, uploads: 2 })
 
     expect(decodeSearchCursor(cursor)).toEqual({
-      offsets: { sessions: 0, messages: 4, files: 2, literature: 0, annotations: 0 },
+      offsets: {
+        sessions: 0,
+        messages: 4,
+        uploads: 2,
+        artifacts: 0,
+        literature: 0,
+        annotations: 0
+      },
       invalid: false
     })
   })
@@ -128,18 +150,18 @@ describe('global search — filters applied before pagination', () => {
 
   // A sender filter is a statement about messages: a file list cannot satisfy it.
   it('drops scopes that cannot carry the filtered property', () => {
-    const withFile = [...mixed, hit({ id: 'f1', scope: 'files', score: 60, relativePath: 'a.csv' })]
+    const withFile = [...mixed, hit({ id: 'f1', scope: 'uploads', score: 60, relativePath: 'a.csv' })]
     const response = finalize(withFile, { filters: { role: 'user' } })
 
     expect(response.hits.map((entry) => entry.id)).toEqual(['user-1', 'user-2'])
-    expect(response.counts.files).toBe(0)
+    expect(response.counts.uploads).toBe(0)
   })
 
   it('filters files by format', () => {
     const files = [
-      hit({ id: 'f1', scope: 'files', score: 30, relativePath: 'results/table.csv' }),
-      hit({ id: 'f2', scope: 'files', score: 20, relativePath: 'figures/plot.PNG' }),
-      hit({ id: 'f3', scope: 'files', score: 10, relativePath: 'README.md' })
+      hit({ id: 'f1', scope: 'uploads', score: 30, relativePath: 'results/table.csv' }),
+      hit({ id: 'f2', scope: 'uploads', score: 20, relativePath: 'figures/plot.PNG' }),
+      hit({ id: 'f3', scope: 'uploads', score: 10, relativePath: 'README.md' })
     ]
     const response = finalize(files, { filters: { extensions: ['csv', '.png'] } })
 
@@ -174,12 +196,12 @@ describe('global search — filters applied before pagination', () => {
       searchHitMatchesFilters(hit({ role: 'user', scope: 'messages' }), { role: 'agent' })
     ).toBe(false)
     expect(
-      searchHitMatchesFilters(hit({ scope: 'files', relativePath: 'a.csv' }), {
+      searchHitMatchesFilters(hit({ scope: 'uploads', relativePath: 'a.csv' }), {
         extensions: ['csv']
       })
     ).toBe(true)
     expect(
-      searchHitMatchesFilters(hit({ scope: 'files', relativePath: 'a' }), { extensions: ['csv'] })
+      searchHitMatchesFilters(hit({ scope: 'uploads', relativePath: 'a' }), { extensions: ['csv'] })
     ).toBe(false)
     expect(searchHitMatchesFilters(hit({ scope: 'messages' }), {})).toBe(true)
   })

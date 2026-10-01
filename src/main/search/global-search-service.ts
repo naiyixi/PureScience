@@ -198,6 +198,7 @@ export const createGlobalSearchService = (ports: GlobalSearchPorts): GlobalSearc
         scopes,
         hits: [],
         scan,
+        coverage: emptyCoverage(),
         appliedLimit,
         notes: ['query-too-short'],
         // The cursor and the filters are still read, so the response can say a cursor was unreadable even
@@ -277,8 +278,8 @@ export const createGlobalSearchService = (ports: GlobalSearchPorts): GlobalSearc
       }
     }
 
-    const fileScopesRequested = scopes.filter(isFileSearchScope)
-    if (fileScopesRequested.length > 0) {
+    const fileScopesRequested = new Set<GlobalSearchScope>(scopes.filter(isFileSearchScope))
+    if (fileScopesRequested.size > 0) {
       const files = await ports.listFiles(request.projectId)
       // Whether any file of a given origin carried searchable text. When none does, that scope's hits are
       // name-and-path matches only, and the response says so instead of letting "no hit" read as "that
@@ -290,7 +291,7 @@ export const createGlobalSearchService = (ports: GlobalSearchPorts): GlobalSearc
         const scope = originScope(file)
         // A file whose origin was not requested is not part of this search at all: it is neither a hit
         // nor something this response covered, so it is left out of both.
-        if (!fileScopesRequested.includes(scope)) continue
+        if (!fileScopesRequested.has(scope)) continue
         if (scope === 'uploads') scan.uploads += 1
         else scan.artifacts += 1
         coverage[scope].considered += 1
