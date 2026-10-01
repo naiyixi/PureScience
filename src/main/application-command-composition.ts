@@ -140,14 +140,18 @@ const GROUP_COUNT = 39
 // protection matrix read + the remote-policy write share one channel). It is a local-only settings
 // channel — a paired remote browser may neither read nor change this machine's protection policy —
 // so the remote dispatch count is untouched and the fail-closed set takes it.
-const INTERNAL_COMMAND_COUNT = 339
+// +1 each on internal, local Web and the remote rejections, and nothing on the remote dispatch: the
+// function-model channel (settings:function-models — reads the slots, writes them, resolves what a
+// function will use, runs a detection, and reads the trail). A paired remote browser may not change which
+// model answers this machine's own calls, so it is local-only like the protection channel above.
+const INTERNAL_COMMAND_COUNT = 340
 // +3 each on internal, local Web and the remote rejections: the saved-search-filter-set channels are
 // reachable from the window locally and are refused on the remote surface, which is where they are counted.
-const LOCAL_WEB_COMMAND_COUNT = 337
+const LOCAL_WEB_COMMAND_COUNT = 338
 // Two more as well: the same two channels are mapped, so they count on both the local and the remote Web
 // surfaces. The rejected (fail-closed) and task counts are untouched.
 const REMOTE_WEB_COMMAND_COUNT = 220
-const REMOTE_REJECTED_COMMAND_COUNT = 117
+const REMOTE_REJECTED_COMMAND_COUNT = 118
 const TASK_COMMAND_COUNT = 11
 
 const ELECTRON_NATIVE_COMMAND_NAMES = Object.freeze([
