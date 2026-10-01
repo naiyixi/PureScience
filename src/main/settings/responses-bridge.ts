@@ -1058,11 +1058,16 @@ export class ResponsesBridge {
     this.target = target
   }
 
+  // `targetOverride` lets one narrow call run on a model the user configured for this function instead of
+  // the session's target. Everything else about the call is identical — same prompt, same catalog, same
+  // tool contract — because the point of the override is which model answers, not how it is asked.
   async selectSkills(
     text: string,
     catalog: ResponsesBridgeSkillCandidate[],
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    targetOverride?: ResponsesBridgeTarget
   ): Promise<ResponsesBridgeSkillInput[]> {
+    const target = targetOverride ?? this.target
     if (!text.trim() || catalog.length === 0 || signal?.aborted) return []
     const explicit = selectExplicitConnectorSkills(text, catalog)
     if (explicit.length > 0) return explicit
@@ -1079,14 +1084,14 @@ export class ResponsesBridge {
     }, this.options.skillSelectorTimeoutMs ?? 15_000)
     timer.unref?.()
     try {
-      const response = await this.fetchImpl(chatUrl(this.target.baseUrl), {
+      const response = await this.fetchImpl(chatUrl(target.baseUrl), {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          ...(this.target.key ? { authorization: `Bearer ${this.target.key}` } : {})
+          ...(target.key ? { authorization: `Bearer ${target.key}` } : {})
         },
         body: JSON.stringify({
-          model: this.target.model,
+          model: target.model,
           stream: false,
           temperature: 0,
           max_tokens: 512,
@@ -1125,7 +1130,7 @@ export class ResponsesBridge {
       })
       if (!response.ok) {
         log.warn('bridge skill selection failed', {
-          model: this.target.model,
+          model: target.model,
           reason: 'source-http',
           status: response.status
         })
@@ -1139,7 +1144,7 @@ export class ResponsesBridge {
         : undefined
       if (typeof call?.function?.arguments !== 'string') {
         log.warn('bridge skill selection failed', {
-          model: this.target.model,
+          model: target.model,
           reason: 'missing-function-call'
         })
         return []
@@ -1149,7 +1154,7 @@ export class ResponsesBridge {
       const requested = Array.isArray(args.skill_names) ? args.skill_names : []
       const selected = resolveSelectedSkills(requested, selectorCatalog)
       log.info('bridge skill selection completed', {
-        model: this.target.model,
+        model: target.model,
         catalogCount: catalog.length,
         routedCatalogCount: selectorCatalog.length,
         selectedNames: selected.map(({ name }) => name)
@@ -1157,7 +1162,7 @@ export class ResponsesBridge {
       return selected
     } catch {
       log.warn('bridge skill selection failed', {
-        model: this.target.model,
+        model: target.model,
         reason: timedOut ? 'timeout' : signal?.aborted ? 'cancelled' : 'invalid-response'
       })
       return []

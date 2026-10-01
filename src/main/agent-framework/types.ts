@@ -297,7 +297,9 @@ export type ResolvedAgentBackend = {
     selectSkills: (
       text: string,
       catalog: ResponsesBridgeSkillCandidate[],
-      signal?: AbortSignal
+      signal?: AbortSignal,
+      // One narrow call may run on a model the user configured for this function instead of the session's.
+      targetOverride?: { baseUrl: string; key?: string; model?: string }
     ) => Promise<ResponsesBridgeSkillInput[]>
     registerReviewerSession: (promptCacheKey: string) => void
     unregisterReviewerSession: (promptCacheKey: string) => boolean

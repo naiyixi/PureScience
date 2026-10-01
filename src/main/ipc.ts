@@ -1996,6 +1996,13 @@ const createApplicationModules = async (
       authorizeSkillImportReferencedUploads: (projectId, sessionId, paths) =>
         conversationSkillImporter.authorizeReferencedUploads(projectId, sessionId, paths),
       settingsService,
+      // Function-level model slots: a narrow call asks what model to use and reports what it did, so the
+      // settings row and the trail are the same facts stated twice rather than two separate stories.
+      functionModels: {
+        resolveFunctionModelTarget: (functionId) =>
+          settingsService.resolveFunctionModelTarget(functionId),
+        recordFunctionModelEvent: (event) => settingsService.recordFunctionModelEvent(event)
+      },
       permissionGrantRegistry,
       taskNotifications,
       notificationInbox,

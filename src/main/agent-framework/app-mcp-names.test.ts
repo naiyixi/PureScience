@@ -89,10 +89,9 @@ describe('resolveCanonicalMcpToolIdentity', () => {
 
   it('resolves a call whose server name had its hyphen escaped as a separator', () => {
     expect(
-      resolveCanonicalMcpToolIdentity(
-        'mcp__purescience__notebook__notebook_execute',
-        ['purescience_notebook']
-      )
+      resolveCanonicalMcpToolIdentity('mcp__purescience__notebook__notebook_execute', [
+        'purescience_notebook'
+      ])
     ).toBe('purescience_notebook/notebook_execute')
   })
 

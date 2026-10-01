@@ -335,9 +335,15 @@ export class AcpConnectionResourceOwner {
   async selectBridgeSkills(
     text: Parameters<NonNullable<ResponsesBridgeLease>['selectSkills']>[0],
     catalog: Parameters<NonNullable<ResponsesBridgeLease>['selectSkills']>[1],
-    signal?: Parameters<NonNullable<ResponsesBridgeLease>['selectSkills']>[2]
+    signal?: Parameters<NonNullable<ResponsesBridgeLease>['selectSkills']>[2],
+    targetOverride?: Parameters<NonNullable<ResponsesBridgeLease>['selectSkills']>[3]
   ): Promise<Awaited<ReturnType<NonNullable<ResponsesBridgeLease>['selectSkills']>> | undefined> {
-    return this.currentResource()?.bridgeLease?.selectSkills(text, catalog, signal)
+    const lease = this.currentResource()?.bridgeLease
+    // The fourth argument is only added when there is one: callers and their assertions see the same call
+    // shape they always did unless a function-level model is actually in force.
+    return targetOverride
+      ? lease?.selectSkills(text, catalog, signal, targetOverride)
+      : lease?.selectSkills(text, catalog, signal)
   }
 
   private async reapProcessTree(process: ChildProcessWithoutNullStreams): Promise<void> {

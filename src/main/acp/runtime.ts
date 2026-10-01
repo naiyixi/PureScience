@@ -115,6 +115,7 @@ import type { AcpSessionEnvironmentPolicy } from './session-environment-policy'
 import { composeAcpRuntimeLifecycleOwners } from './runtime-lifecycle-composition'
 import { composeAcpRuntimeProviderSessionOwners } from './runtime-provider-session-composition'
 import { composeAcpRuntimePromptOwners } from './runtime-prompt-composition'
+import type { AcpSettingsCapabilities } from '../settings/service-capabilities'
 import {
   composeAcpRuntimePlanWorkflow,
   type AcpRuntimePlanWorkflow,
@@ -140,6 +141,12 @@ export type AcpRuntimeCallbacks = {
 
 type AcpRuntimeOptions = {
   appVersion: string
+  // Function-level model slots: what a narrow call will use, and where its outcome is recorded. Optional so
+  // runners built without settings keep the built-in path unchanged instead of inventing a resolution.
+  functionModels?: Pick<
+    AcpSettingsCapabilities,
+    'recordFunctionModelEvent' | 'resolveFunctionModelTarget'
+  >
   defaultCwd: string
   callbacks?: AcpRuntimeCallbacks
   permissionGrantStore?: ConversationPermissionGrantStore

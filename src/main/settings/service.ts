@@ -68,6 +68,12 @@ import type {
 } from '../../shared/settings'
 // A value, not a type: it decides whether a provider may be used at all.
 import { providerValidationFailed } from '../../shared/settings'
+import type { ResponsesBridgeTarget } from './responses-bridge'
+import {
+  appendFunctionModelEvent,
+  readFunctionModelEvents,
+  type FunctionModelEvent
+} from '../function-models/event-log'
 import type {
   ExternalComputeEndpoint,
   CreateExternalComputeEndpointRequest
@@ -731,6 +737,47 @@ class SettingsService {
         validationFailed: providerValidationFailed(provider)
       }))
     })
+  }
+
+  // Writes one entry to the function-model trail. The trail is the answer to "why did this run not use the
+  // model I configured", so the write is best-effort by design: losing a diagnostic entry must never be the
+  // reason a turn fails.
+  recordFunctionModelEvent(event: Omit<FunctionModelEvent, 'at'> & { at?: number }): void {
+    appendFunctionModelEvent(this.storageRoot, event)
+  }
+
+  // The recorded trail, newest last (the settings surface reads it).
+  getFunctionModelEvents(): FunctionModelEvent[] {
+    return readFunctionModelEvents(this.storageRoot)
+  }
+
+  // The model a function will actually call, resolved down to a usable endpoint — or nothing, in which case
+  // the built-in path runs. The settings row and this resolution read the same facts, so a row that says
+  // "using X" and a call that uses X cannot disagree about which service answered.
+  async resolveFunctionModelTarget(functionId: FunctionModelId): Promise<{
+    resolution: FunctionModelResolution
+    target?: ResponsesBridgeTarget
+  }> {
+    const resolution = await this.resolveFunctionModel(functionId)
+    if (!resolution.override) return { resolution }
+
+    const stored = (await this.repository.getSettings()).providers.find(
+      (provider) => provider.id === resolution.override?.providerId
+    )
+    if (!stored) return { resolution }
+
+    const resolved = this.providers.resolveProvider(stored, resolution.override.model)
+    const baseUrl = resolved.openaiBaseUrl ?? resolved.baseUrl
+    if (!baseUrl) return { resolution }
+
+    return {
+      resolution,
+      target: {
+        baseUrl,
+        ...(resolved.key ? { key: resolved.key } : {}),
+        model: resolution.override.model
+      }
+    }
   }
 
   // The protection level a surface will run at, resolved from live capability plus settings. Used by

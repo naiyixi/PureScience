@@ -140,8 +140,53 @@ const composeAcpRuntimePromptOwners = (
     promptContent: base.promptContentOwner,
     presentation: base.sessionPresentationPolicy,
     contextUsage: base.contextUsageTracker,
-    selectBridgeSkills: async (text, catalog, signal) =>
-      (await base.connectionResources.selectBridgeSkills(text, catalog, signal)) ?? [],
+    // Skill selection is one of the app's narrow model calls, so it honours the function-level slot when
+    // settings are wired here: the configured model answers, or the built-in path runs — and either way the
+    // trail records which happened, because "the model I configured was not used" must be answerable.
+    selectBridgeSkills: async (text, catalog, signal) => {
+      const functionModels = options.functionModels
+      if (!functionModels) {
+        return (await base.connectionResources.selectBridgeSkills(text, catalog, signal)) ?? []
+      }
+
+      const { resolution, target } =
+        await functionModels.resolveFunctionModelTarget('skill-selection')
+      if (!resolution.override || !target) {
+        functionModels.recordFunctionModelEvent({
+          functionId: 'skill-selection',
+          outcome: 'built-in',
+          reason: resolution.unusable[0] ?? 'not-configured'
+        })
+
+        return (await base.connectionResources.selectBridgeSkills(text, catalog, signal)) ?? []
+      }
+
+      const override = resolution.override
+      try {
+        const selected =
+          (await base.connectionResources.selectBridgeSkills(text, catalog, signal, target)) ?? []
+        functionModels.recordFunctionModelEvent({
+          functionId: 'skill-selection',
+          outcome: 'used-model',
+          providerId: override.providerId,
+          model: override.model
+        })
+
+        return selected
+      } catch {
+        // A selection that failed must not fail the turn: the whole catalog still reaches the agent, and the
+        // trail says the configured model did not answer rather than leaving it unexplained.
+        functionModels.recordFunctionModelEvent({
+          functionId: 'skill-selection',
+          outcome: 'built-in',
+          reason: 'call-failed',
+          providerId: override.providerId,
+          model: override.model
+        })
+
+        return (await base.connectionResources.selectBridgeSkills(text, catalog, signal)) ?? []
+      }
+    },
     authorizeReferencedUploads: options.skillImport?.authorizeReferencedUploads,
     imageInputCompatibility: options.imageInputCompatibility,
     inputNotice: (request) =>

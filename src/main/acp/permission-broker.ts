@@ -607,14 +607,13 @@ const describeGrant = (categoryKey: string): AcpPermissionGrant => {
               ? 'Bash'
               : undefined
     const [server, tool] = identity.split('/')
-    const notebookToolLabel =
-      isNotebookServerName(server)
-        ? tool === 'bash_execute'
-          ? 'Notebook shell'
-          : tool === 'notebook_execute' || tool === 'repl_execute'
-            ? 'Notebook REPL'
-            : undefined
-        : undefined
+    const notebookToolLabel = isNotebookServerName(server)
+      ? tool === 'bash_execute'
+        ? 'Notebook shell'
+        : tool === 'notebook_execute' || tool === 'repl_execute'
+          ? 'Notebook REPL'
+          : undefined
+      : undefined
 
     return {
       categoryKey,
