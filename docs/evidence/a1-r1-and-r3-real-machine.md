@@ -34,4 +34,15 @@
 `kind: 'input', reads: 1`：审计钩子在 open **真正执行前**触发，失败的打开与成功的读入在数据上同形。
 即「读入」这一列会对一个**从未读到的文件**说它被读了。修法：驱动在收尾处判定存在性并把 `present`
 随条目报出，契约新增第三种读入 `'missing'`（优先于写入集合判定），界面把它从读入表移出、改为带路径的提示。
-（我先前那次真机探针读的是**存在**的文件，所以没暴露这一条——这也是"只跑happy path 不算验收"的例子。）
+（我先前那次真机探针读的是**存在**的文件，所以没暴露这一条——这也是"只跑 happy path 不算验收"的例子。）
+
+**修复后的复验（同一套脚本，新构建的新实例）**：
+
+| 轮次 | 记录里的读入 | 判据 |
+| --- | --- | --- |
+| `open('input.csv').read()`（存在） | `[{relativePath:'data/input.csv', kind:'input', reads:1}]`、`captured` | 回归正常 |
+| `import os` + `1+1` | `read=[]`、`captured` | 回归正常 |
+| `open('nope.csv')` 且 `FileNotFoundError` 被吞 | `[{relativePath:'data/nope.csv', kind:'missing', reads:1}]`、`captured` | **修复生效**（修复前为 `'input'`） |
+
+结论：读入证据在真机上**三态都对**——存在的文件算 `input`、不存在的算 `missing`、确实没开文件是空清单；
+「驱动不会上报」仍由字段缺失表示。三者互不冒充。
