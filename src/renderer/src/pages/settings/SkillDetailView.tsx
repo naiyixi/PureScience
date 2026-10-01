@@ -2,7 +2,10 @@ import { ScrollText } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useLanguage, type TranslationKey } from '@/i18n'
 
-import type { SkillDetailView as SkillDetail } from '../../../../shared/settings'
+import type {
+  SkillContentIntegrity,
+  SkillDetailView as SkillDetail
+} from '../../../../shared/settings'
 import { isSkillAlwaysOn } from '../../../../shared/skill-activation'
 import { AgentMarkdown } from '@/components/streamdown/AgentMarkdown'
 import { useSettingsStore } from '@/stores/settings-store'
@@ -32,6 +35,14 @@ const DetailRow = ({ label, value }: { label: string; value: string }): React.JS
 
 const metadataLabel = (key: string): string =>
   key.replace(/[-_]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())
+
+// Every integrity state a detail can carry, named. 'unverified' is not a warning: it is the honest answer
+// for a skill imported before signatures were recorded (or one whose manifest is unreadable).
+const INTEGRITY_KEYS: Record<SkillContentIntegrity, TranslationKey> = {
+  ok: 'settings.skillIntegrityOk',
+  changed: 'settings.skillIntegrityChanged',
+  unverified: 'settings.skillIntegrityUnverified'
+}
 
 const DEDICATED_METADATA_KEYS = new Set([
   'author',
@@ -103,6 +114,19 @@ const SkillDetailView = ({ skillId }: SkillDetailViewProps): React.JSX.Element =
       ) : null}
       {alwaysOn ? (
         <p className="mt-2 text-xs text-muted-foreground">{t('settings.skillAlwaysOn')}</p>
+      ) : null}
+
+      {/* Imported content: does what is on disk still match what was imported? Only imported skills have
+          something to compare against, so the row appears for them alone — a curated or self-written skill
+          would be given a state that means nothing. 'changed' names the fact; it does not accuse anyone. */}
+      {detail?.source === 'imported' && detail.integrity ? (
+        <p
+          className="mt-2 text-xs text-muted-foreground"
+          data-testid="skill-content-integrity"
+          data-integrity={detail.integrity}
+        >
+          {t(INTEGRITY_KEYS[detail.integrity] as TranslationKey)}
+        </p>
       ) : null}
 
       {/* Trigger quality: pure local rules, scored at read time, so the number is one the user can

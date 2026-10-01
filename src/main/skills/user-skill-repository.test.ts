@@ -524,6 +524,29 @@ describe('UserSkillRepository', () => {
     expect(previews[0].files).toEqual(['SKILL.md', 'b/SKILL.md'].sort())
   })
 
+  it('says whether an imported skill still matches the bytes that were imported', async () => {
+    const storage = await makeStorage()
+    const repo = new UserSkillRepository(storage)
+    const zip = buildZip([
+      { path: 'demo/SKILL.md', content: Buffer.from('---\nname: Demo\n---\nbody') },
+      { path: 'demo/scripts/run.py', content: Buffer.from('print(1)') }
+    ])
+    expect(await repo.importFromZip(zip)).toEqual({ status: 'imported', id: 'imported-demo' })
+
+    // Untouched content compares equal to the signature taken at import time.
+    expect(await repo.contentIntegrity('imported-demo')).toBe('ok')
+
+    // One changed byte is enough. The signature scheme ignores the manifest itself, so the comparison stays
+    // meaningful even though the manifest sits inside the same directory.
+    await writeFile(join(storage, 'skills', 'imported', 'demo', 'scripts', 'run.py'), 'print(2)')
+    expect(await repo.contentIntegrity('imported-demo')).toBe('changed')
+
+    // Nothing to compare against is not the same claim as "intact", and a skill the app ships is not an
+    // import at all.
+    expect(await repo.contentIntegrity('personal-mine')).toBe('unverified')
+    expect(await repo.contentIntegrity('demo')).toBe('unverified')
+  })
+
   it('imports only the selected sub-skill from a multi-root bundle via subPath', async () => {
     const storage = await makeStorage()
     const repo = new UserSkillRepository(storage)

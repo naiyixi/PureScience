@@ -53,6 +53,46 @@ afterEach(() => {
 })
 
 describe('SkillDetailView', () => {
+  it('says an imported skill no longer matches what was imported', async () => {
+    ;(window as unknown as { api: unknown }).api = {
+      settings: {
+        getSkillDetail: vi.fn().mockResolvedValue({
+          ...detail,
+          source: 'imported',
+          integrity: 'changed'
+        })
+      }
+    }
+
+    await act(async () => {
+      root.render(<SkillDetailView skillId="a" />)
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    const row = document.body.querySelector('[data-testid="skill-content-integrity"]')
+    expect(row?.getAttribute('data-integrity')).toBe('changed')
+    expect(row?.textContent).toContain('Content differs from what was imported.')
+  })
+
+  it('gives a curated skill no integrity state at all', async () => {
+    // Nothing to compare a bundled skill against, so it gets no row rather than a meaningless state.
+    ;(window as unknown as { api: unknown }).api = {
+      settings: {
+        getSkillDetail: vi.fn().mockResolvedValue({ ...detail, source: 'featured' })
+      }
+    }
+    await act(async () => {
+      root.render(<SkillDetailView skillId="a" />)
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    expect(document.body.querySelector('[data-testid="skill-content-integrity"]')).toBeNull()
+  })
+
   it('says the licence is unknown instead of leaving the row blank', async () => {
     ;(window as unknown as { api: unknown }).api = {
       settings: {

@@ -270,6 +270,12 @@ class SkillCatalogModule {
     )
     return {
       ...view,
+      // For an imported skill this answers "is this still what I imported" from the signature recorded at
+      // import time. A skill with nothing to compare against reports 'unverified' rather than 'ok'.
+      integrity:
+        view.source === 'imported' && this.options.userSkills
+          ? await this.options.userSkills.contentIntegrity(skill.id)
+          : undefined,
       body,
       metadata: Object.fromEntries(
         Object.entries(fields).filter(([key]) => key !== 'name' && key !== 'description')

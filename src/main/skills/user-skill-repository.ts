@@ -10,6 +10,7 @@ import type {
   SkillBundlePreview,
   SkillBundlePreviewResult,
   SkillReference,
+  SkillContentIntegrity,
   SkillSource,
   SkippedSkill
 } from '../../shared/settings'
@@ -866,6 +867,56 @@ class UserSkillRepository {
       if (source?.url) urls.add(source.url)
     }
     return { urls, slugs }
+  }
+
+  // Whether an imported skill's files are still the ones that were imported. The recorded signature is the
+  // same one a re-import uses to detect source changes, so the app already held the data — it simply never
+  // asked the question at read time. Nothing to compare against is reported as 'unverified' rather than as
+  // 'ok': an absent record is not evidence that the content is intact.
+  async contentIntegrity(id: string): Promise<SkillContentIntegrity> {
+    const parsed = parseUserSkillId(id)
+    if (!parsed || parsed.source !== 'imported') return 'unverified'
+    const recorded = (await this.readSource(parsed.slug))?.signature
+    if (!recorded) return 'unverified'
+
+    const actual = await this.signatureOfDirectory(this.skillDir('imported', parsed.slug)).catch(
+      () => undefined
+    )
+    if (!actual) return 'unverified'
+
+    return actual === recorded ? 'ok' : 'changed'
+  }
+
+  // The SAME scheme as signatureOf(files) — relative path, NUL, content, NUL, sorted by path — so a signature
+  // taken at import time can be compared with one taken now. The manifest is excluded: it is the record OF the
+  // signature, so including it would make every comparison trivially fail.
+  private async signatureOfDirectory(dir: string): Promise<string> {
+    const files: Array<{ relativePath: string; content: Buffer }> = []
+    const walk = async (current: string, prefix: string): Promise<void> => {
+      const entries = await readdir(current, { withFileTypes: true })
+      for (const entry of entries) {
+        const relativePath = prefix ? `${prefix}/${entry.name}` : entry.name
+        if (relativePath === SOURCE_MANIFEST) continue
+        const target = join(current, entry.name)
+        if (entry.isDirectory()) {
+          await walk(target, relativePath)
+          continue
+        }
+        if (!entry.isFile()) continue
+        files.push({ relativePath, content: await readFile(target) })
+      }
+    }
+
+    await walk(dir, '')
+    const hash = createHash('sha256')
+    for (const file of files.sort((a, b) => a.relativePath.localeCompare(b.relativePath))) {
+      hash.update(file.relativePath)
+      hash.update('\0')
+      hash.update(file.content)
+      hash.update('\0')
+    }
+
+    return hash.digest('hex')
   }
 
   private async readSource(slug: string): Promise<ImportedSourceManifest | null> {

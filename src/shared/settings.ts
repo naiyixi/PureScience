@@ -997,7 +997,16 @@ export type SkillView = {
 
 // A skill view plus its SKILL.md body (frontmatter stripped) and the names of any files under its
 // `references/` directory, for the detail/edit view.
+/**
+ * Whether an imported skill's files are still the ones that were imported. Three states, and the neutral one
+ * matters: a personal skill (or one imported before signatures were recorded) has nothing to compare with, so
+ * "unverified" says exactly that instead of implying the content is intact.
+ */
+export type SkillContentIntegrity = 'ok' | 'changed' | 'unverified'
+
 export type SkillDetailView = SkillView & {
+  /** Present when the app had something to compare against (see SkillContentIntegrity). */
+  integrity?: SkillContentIntegrity
   body: string
   metadata?: Record<string, string>
   references: SkillReferenceInfo[]
