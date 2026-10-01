@@ -32,7 +32,12 @@ const LABELS: Record<string, string> = {
   'settings.functionModelTrailBuiltIn': 'built-in path:',
   'settings.functionModelTrailCallFailed': 'the call failed',
   'settings.functionModelDetectReasonUnreachable': 'the endpoint could not be reached',
-  'settings.functionModelDetectReasonNotConfigured': 'no model is configured for this function'
+  'settings.functionModelDetectReasonNotConfigured': 'no model is configured for this function',
+  'settings.functionModelProbeRun': 'Run one selection now',
+  'settings.functionModelProbing': 'Running…',
+  'settings.functionModelProbeNote': 'Runs the same narrow call a turn makes.',
+  'settings.functionModelProbeUsedModel': '{model} answered in {ms} ms and selected {n} skill(s).',
+  'settings.functionModelProbeBuiltIn': 'Built-in path ran in {ms} ms —'
 }
 
 vi.mock('@/i18n', () => ({
@@ -61,12 +66,18 @@ const fallback = {
 }
 
 // The row reads through one channel; the test stands in for the main process behind it.
-const stubApi = (resolved: unknown, models: unknown = {}, detected?: unknown): void => {
-  const call = vi
-    .fn()
-    .mockImplementation(async (request: { action: string }) =>
-      request.action === 'detect' ? { models, detected } : { models, resolved }
-    )
+const stubApi = (
+  resolved: unknown,
+  models: unknown = {},
+  detected?: unknown,
+  probe?: unknown
+): void => {
+  const call = vi.fn().mockImplementation(async (request: { action: string }) => {
+    if (request.action === 'detect') return { models, detected }
+    if (request.action === 'probe') return { models, probe }
+
+    return { models, resolved }
+  })
   Object.defineProperty(window, 'api', {
     configurable: true,
     value: { settings: { functionModels: call } }
@@ -101,6 +112,60 @@ afterEach(() => {
 })
 
 describe('FunctionModelRow', () => {
+  it('runs one selection on demand and leaves the control usable with no model configured', async () => {
+    // No model configured: the built-in path is what a turn would take, and naming that IS the answer to
+    // "is my model being used" — so the control must not disappear behind a disabled state.
+    useSettingsStore.setState({ ...createInitialSettingsState(), providers: [] })
+    stubApi({ functionId: 'skill-selection', override: null, fallback, unusable: [] }, {}, undefined, {
+      outcome: 'built-in',
+      reason: 'not-configured',
+      elapsedMs: 3,
+      selectedSkillIds: []
+    })
+
+    await render()
+    const button = container.querySelector<HTMLButtonElement>(
+      '[data-testid="function-model-run-probe-skill-selection"]'
+    )
+    expect(button?.disabled).toBe(false)
+
+    await click('function-model-run-probe-skill-selection')
+
+    const line = container.querySelector(
+      '[data-testid="function-model-probe-skill-selection"]'
+    )?.textContent
+    expect(line).toContain('Built-in path ran in 3 ms')
+    expect(line).toContain('no model is configured for this function')
+  })
+
+  it('reports the model that answered and what it selected', async () => {
+    useSettingsStore.setState({
+      ...createInitialSettingsState(),
+      providers: [{ id: 'p1', name: 'Gateway', type: 'custom', models: ['small-model'] } as never]
+    })
+    stubApi(
+      { functionId: 'skill-selection', override: { providerId: 'p1', model: 'small-model' }, fallback, unusable: [] },
+      { 'skill-selection': { providerId: 'p1', model: 'small-model' } },
+      undefined,
+      {
+        outcome: 'used-model',
+        providerId: 'p1',
+        model: 'small-model',
+        elapsedMs: 147,
+        selectedSkillIds: ['alpha', 'beta']
+      }
+    )
+
+    await render()
+    await click('function-model-run-probe-skill-selection')
+
+    const line = container.querySelector(
+      '[data-testid="function-model-probe-skill-selection"]'
+    )?.textContent
+    expect(line).toContain('small-model answered in 147 ms')
+    expect(line).toContain('2 skill(s)')
+  })
+
   it('says which built-in path runs when nothing is configured', async () => {
     useSettingsStore.setState({ ...createInitialSettingsState(), providers: [] })
     stubApi({ functionId: 'skill-selection', override: null, fallback, unusable: [] })

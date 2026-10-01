@@ -799,6 +799,11 @@ export const en: Record<ZhKey, string> = {
   'settings.functionModelTrailCallFailed': 'the call failed',
 
   'settings.functionModelDetecting': 'Calling the model…',
+  'settings.functionModelProbeRun': 'Run one selection now',
+  'settings.functionModelProbing': 'Running…',
+  'settings.functionModelProbeNote': 'Runs the same narrow call a turn makes.',
+  'settings.functionModelProbeUsedModel': '{model} answered in {ms} ms and selected {n} skill(s).',
+  'settings.functionModelProbeBuiltIn': 'Built-in path ran in {ms} ms —',
   'settings.functionModelDetectNote':
     'Detection sends one real request and may use a little quota.',
   'settings.functionModelDetectNeedsModel': 'Choose a model first.',

@@ -68,7 +68,16 @@ import type {
 } from '../../shared/settings'
 // A value, not a type: it decides whether a provider may be used at all.
 import { providerValidationFailed } from '../../shared/settings'
-import type { ResponsesBridgeTarget } from './responses-bridge'
+import {
+  ResponsesBridge,
+  type ResponsesBridgeSkillCandidate,
+  type ResponsesBridgeSkillInput,
+  type ResponsesBridgeTarget
+} from './responses-bridge'
+import {
+  PROBE_SELECTION_TEXT,
+  runFunctionModelSkillSelection
+} from './function-model-skill-selection'
 import {
   SKILL_AVAILABILITY_TARGET_IDS,
   isSkillAvailabilityTargetId,
@@ -133,6 +142,7 @@ import {
   resolveFunctionModel as resolveFunctionModelFromFacts,
   type FunctionModelDetection,
   type FunctionModelId,
+  type FunctionModelProbeResult,
   type FunctionModelResolution,
   type FunctionModels
 } from '../../shared/function-models'
@@ -188,6 +198,12 @@ export type SettingsServiceOptions = {
   // tests do not bind real sockets.
   allocateOpenCodeUsagePort?: () => Promise<number>
   codexDetectDeps?: CodexDetectDeps
+  // The one immediate skill-selection call the settings row can run on demand. Injectable so a test can
+  // exercise the branch without a network round trip.
+  probeSkillSelection?: (
+    target: ResponsesBridgeTarget,
+    catalog: ResponsesBridgeSkillCandidate[]
+  ) => Promise<ResponsesBridgeSkillInput[]>
   // The machine's own Claude config dir, used by the shared provider for auth/spawn and scanned as a
   // user skill source. Injectable so tests don't touch the real ~/.claude.
   userClaudeDir?: string
@@ -261,6 +277,9 @@ class SettingsService {
       readRemoteUnprotectedPolicy: async () =>
         (await this.getExecutionProtection())?.remoteUnprotectedPolicy
     })
+    this.probeSkillSelection =
+      options.probeSkillSelection ??
+      ((target, catalog) => new ResponsesBridge(target).selectSkills(PROBE_SELECTION_TEXT, catalog))
     this.notebookRuntimeSettings = new NotebookRuntimeSettingsModule(this.repository)
     this.connectors = new ConnectorSettingsModule(this.repository)
     this.userClaudeDir = options.userClaudeDir ?? getUserClaudeConfigDir()
@@ -749,6 +768,32 @@ class SettingsService {
   // One real round trip to the model a function is pointed at, with the measured cost of that trip. This is
   // the only place in the app that spends a token just to find out whether a configuration works, which is
   // why the result carries the measurement and every failure names itself.
+  private readonly probeSkillSelection: (
+    target: ResponsesBridgeTarget,
+    catalog: ResponsesBridgeSkillCandidate[]
+  ) => Promise<ResponsesBridgeSkillInput[]>
+
+  // Runs ONE skill-selection call right now, through the same branch a turn uses, and reports what
+  // happened. Two reasons it exists: the settings row can answer "is my configured model actually used"
+  // without waiting for a turn, and on a session whose framework never makes this call at all (it lives on
+  // the bridged path) this is the only way to exercise it.
+  async probeFunctionModel(functionId: FunctionModelId): Promise<FunctionModelProbeResult> {
+    const catalog = await this.codexSkillCatalog(undefined)
+    const { value, selection } = await runFunctionModelSkillSelection({
+      functionId,
+      host: {
+        resolveFunctionModelTarget: (id) => this.resolveFunctionModelTarget(id),
+        recordFunctionModelEvent: (event) => this.recordFunctionModelEvent(event)
+      },
+      // The built-in path keeps a turn alive; outside a turn it has nothing to select with, and saying so
+      // with an empty list beats inventing a selection.
+      builtIn: async () => [],
+      runWithModel: (target) => this.probeSkillSelection(target, catalog)
+    })
+
+    return { ...selection, selectedSkillIds: value.map((entry) => entry.name) }
+  }
+
   async detectFunctionModel(functionId: FunctionModelId): Promise<FunctionModelDetection> {
     const { resolution, target } = await this.resolveFunctionModelTarget(functionId)
     if (!resolution.override || !target) {

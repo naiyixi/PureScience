@@ -1846,6 +1846,11 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.functionModelTrailCallFailed': 'вызов не удался',
 
   'settings.functionModelDetecting': 'Вызов модели…',
+  'settings.functionModelProbeRun': 'Запустить выбор прямо сейчас',
+  'settings.functionModelProbing': 'Выполняется…',
+  'settings.functionModelProbeNote': 'Выполняет тот же узкий вызов, что и ход.',
+  'settings.functionModelProbeUsedModel': '{model} ответил за {ms} мс и выбрал {n} навык(ов).',
+  'settings.functionModelProbeBuiltIn': 'Выполнен встроенный путь за {ms} мс —',
   'settings.functionModelDetectNote':
     'Проверка отправляет настоящий запрос и может израсходовать немного квоты.',
   'settings.functionModelDetectNeedsModel': 'Сначала выберите модель.',

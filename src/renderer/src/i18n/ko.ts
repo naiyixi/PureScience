@@ -1817,6 +1817,12 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.functionModelTrailCallFailed': '호출 실패',
 
   'settings.functionModelDetecting': '모델 호출 중…',
+  'settings.functionModelProbeRun': '지금 선택을 한 번 실행',
+  'settings.functionModelProbing': '실행 중…',
+  'settings.functionModelProbeNote': '턴과 같은 좁은 호출을 실행합니다.',
+  'settings.functionModelProbeUsedModel':
+    '{model}이(가) {ms}ms에 응답해 스킬 {n}개를 선택했습니다.',
+  'settings.functionModelProbeBuiltIn': '내장 경로를 실행했습니다({ms}ms) —',
   'settings.functionModelDetectNote':
     '검사는 실제로 요청을 한 번 보내므로 소량의 할당량을 사용할 수 있습니다.',
   'settings.functionModelDetectNeedsModel': '먼저 모델을 선택하세요.',

@@ -1713,6 +1713,11 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.functionModelTrailCallFailed': '呼叫失敗',
 
   'settings.functionModelDetecting': '正在呼叫模型…',
+  'settings.functionModelProbeRun': '立即試跑一次選擇',
+  'settings.functionModelProbing': '試跑中…',
+  'settings.functionModelProbeNote': '跑的是回合裡那條同樣的窄呼叫。',
+  'settings.functionModelProbeUsedModel': '{model} 在 {ms} ms 內作答，選中 {n} 項技能。',
+  'settings.functionModelProbeBuiltIn': '走了內建路徑（{ms} ms）——',
   'settings.functionModelDetectNote': '檢測會真的發出一次請求，可能消耗少量額度。',
   'settings.functionModelDetectNeedsModel': '請先選一個模型。',
   'settings.functionModelDetected': '{ms} 毫秒內回應；{usage}。',

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   FUNCTION_MODEL_FALLBACKS,
   type FunctionModelDetection,
+  type FunctionModelProbeResult,
   type FunctionModelDetectionFailureReason,
   type FunctionModelEvent,
   type FunctionModelId,
@@ -37,6 +38,10 @@ const FUNCTION_NAME_KEYS: Record<FunctionModelId, TranslationKey> = {
 const FUNCTION_DETAIL_KEYS: Record<FunctionModelId, TranslationKey> = {
   'skill-selection': 'settings.functionModelSkillSelectionDetail'
 }
+
+// Fired after anything that writes to the function-model trail, so the trail below reloads instead of
+// showing a list that stops before the run the user just started.
+export const FUNCTION_MODEL_TRAIL_CHANGED_EVENT = 'purescience:function-model-trail-changed'
 
 // Every way a detection can fail names itself: "it did not work" sends the user looking in the wrong place.
 const DETECT_REASON_KEYS: Record<FunctionModelDetectionFailureReason, TranslationKey> = {
@@ -77,6 +82,8 @@ export const FunctionModelRow = ({
   const [failed, setFailed] = useState(false)
   const [detecting, setDetecting] = useState(false)
   const [detection, setDetection] = useState<FunctionModelDetection>()
+  const [probing, setProbing] = useState(false)
+  const [probe, setProbe] = useState<FunctionModelProbeResult>()
 
   // Reading happens in an async effect body on purpose: the answer arrives from the main process, and a
   // synchronous set during render would be a state update the row never asked for.
@@ -152,6 +159,26 @@ export const FunctionModelRow = ({
       setFailed(true)
     } finally {
       setDetecting(false)
+    }
+  }
+
+  // Runs the same narrow call a turn makes, on demand. Deliberately NOT gated on a configured model: with
+  // none configured the built-in path is what a turn would take, and the trail naming that is the answer to
+  // "is my model being used", not a reason to hide the control.
+  const runProbe = async (): Promise<void> => {
+    const client = window.api?.settings?.functionModels
+    if (!client) return
+    setProbing(true)
+    try {
+      const result = await client({ action: 'probe', functionId })
+      setModels(result.models)
+      setProbe(result.probe)
+      setFailed(false)
+      window.dispatchEvent(new CustomEvent(FUNCTION_MODEL_TRAIL_CHANGED_EVENT))
+    } catch {
+      setFailed(true)
+    } finally {
+      setProbing(false)
     }
   }
 
@@ -270,6 +297,22 @@ export const FunctionModelRow = ({
               )}${detection.status ? ` (${detection.status})` : ''}`}
         </p>
       ) : null}
+      {probe ? (
+        <p
+          className="text-xs text-muted-foreground"
+          data-testid={`function-model-probe-${functionId}`}
+        >
+          {probe.outcome === 'used-model'
+            ? t('settings.functionModelProbeUsedModel', {
+                model: probe.model ?? probe.providerId ?? '',
+                ms: String(probe.elapsedMs),
+                n: String(probe.selectedSkillIds.length)
+              })
+            : `${t('settings.functionModelProbeBuiltIn', {
+                ms: String(probe.elapsedMs)
+              })} ${t(DETECT_REASON_KEYS[probe.reason ?? 'not-configured'])}`}
+        </p>
+      ) : null}
       {/* Detection spends real quota, so the control says so and is only offered once there is a model to
           detect: probing the built-in path would produce a measurement of nothing. */}
       <div className="flex flex-wrap items-center gap-2">
@@ -287,6 +330,23 @@ export const FunctionModelRow = ({
           {current
             ? t('settings.functionModelDetectNote')
             : t('settings.functionModelDetectNeedsModel')}
+        </span>
+      </div>
+      {/* One real selection, now, through the same branch a turn uses — the only way to exercise this call on
+          a session whose framework never makes it. */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          variant="ghost"
+          className="h-7 px-2 text-xs"
+          data-testid={`function-model-run-probe-${functionId}`}
+          disabled={probing}
+          onClick={() => void runProbe()}
+        >
+          {probing ? t('settings.functionModelProbing') : t('settings.functionModelProbeRun')}
+        </Button>
+        <span className="text-xs text-muted-foreground">
+          {t('settings.functionModelProbeNote')}
         </span>
       </div>
     </div>
@@ -336,6 +396,16 @@ export const FunctionModelTrail = (): React.JSX.Element => {
     return () => {
       cancelled = true
     }
+  }, [load])
+
+  // A run started on a row above writes an entry, so the trail reloads instead of ending before it.
+  useEffect(() => {
+    const onChanged = (): void => {
+      void load()
+    }
+    window.addEventListener(FUNCTION_MODEL_TRAIL_CHANGED_EVENT, onChanged)
+
+    return () => window.removeEventListener(FUNCTION_MODEL_TRAIL_CHANGED_EVENT, onChanged)
   }, [load])
 
   const providerName = (providerId: string | undefined): string =>

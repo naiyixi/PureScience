@@ -66,6 +66,7 @@ type CoreSettingsCommandStore = Pick<
   | 'detectCodex'
   | 'detectOpencode'
   | 'detectFunctionModel'
+  | 'probeFunctionModel'
   | 'getSkillAvailabilityView'
   | 'setSkillAvailabilityForTarget'
   | 'getFunctionModelEvents'
@@ -606,6 +607,17 @@ const registerCoreSettingsApplicationCommands = (
           ])
 
           return { models, detected }
+        }
+        if (request.action === 'probe') {
+          // One immediate selection, returned with the refreshed setting and trail: the row, the result and
+          // the history then describe the same moment instead of three different ones.
+          const [models, events, probe] = await Promise.all([
+            dependencies.service.getFunctionModels(),
+            Promise.resolve(dependencies.service.getFunctionModelEvents()),
+            dependencies.service.probeFunctionModel(request.functionId)
+          ])
+
+          return { models, events, probe }
         }
         if (request.action === 'resolve') {
           const [models, resolved] = await Promise.all([

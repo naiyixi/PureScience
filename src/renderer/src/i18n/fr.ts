@@ -1894,6 +1894,12 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.functionModelTrailCallFailed': "l'appel a échoué",
 
   'settings.functionModelDetecting': 'Appel du modèle…',
+  'settings.functionModelProbeRun': 'Lancer une sélection maintenant',
+  'settings.functionModelProbing': 'En cours…',
+  'settings.functionModelProbeNote': 'Exécute le même appel étroit qu un tour.',
+  'settings.functionModelProbeUsedModel':
+    '{model} a répondu en {ms} ms et a choisi {n} compétence(s).',
+  'settings.functionModelProbeBuiltIn': 'Le chemin intégré a tourné en {ms} ms —',
   'settings.functionModelDetectNote':
     'Le test envoie une vraie requête et peut consommer un peu de quota.',
   'settings.functionModelDetectNeedsModel': "Choisissez d'abord un modèle.",

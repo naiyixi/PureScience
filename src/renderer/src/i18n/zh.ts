@@ -763,6 +763,11 @@ export const zh = {
   'settings.functionModelTrailCallFailed': '调用失败',
 
   'settings.functionModelDetecting': '正在调用模型…',
+  'settings.functionModelProbeRun': '立即试跑一次选择',
+  'settings.functionModelProbing': '试跑中…',
+  'settings.functionModelProbeNote': '跑的是回合里那条同样的窄调用。',
+  'settings.functionModelProbeUsedModel': '{model} 在 {ms} ms 内作答，选中 {n} 项技能。',
+  'settings.functionModelProbeBuiltIn': '走了内置路径（{ms} ms）——',
   'settings.functionModelDetectNote': '检测会真实发出一次请求，可能消耗少量额度。',
   'settings.functionModelDetectNeedsModel': '请先选一个模型。',
   'settings.functionModelDetected': '{ms} 毫秒内应答；{usage}。',

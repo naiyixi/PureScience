@@ -1848,6 +1848,12 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.functionModelTrailCallFailed': '呼び出しに失敗しました',
 
   'settings.functionModelDetecting': 'モデルを呼び出し中…',
+  'settings.functionModelProbeRun': '今すぐ選択を1回試す',
+  'settings.functionModelProbing': '試行中…',
+  'settings.functionModelProbeNote': 'ターンと同じ狭い呼び出しを実行します。',
+  'settings.functionModelProbeUsedModel':
+    '{model} が {ms} ms で応答し、{n} 件のスキルを選択しました。',
+  'settings.functionModelProbeBuiltIn': 'ビルトイン経路を実行しました（{ms} ms）—',
   'settings.functionModelDetectNote':
     '検出は実際に一度リクエストを送るため、わずかな利用枠を消費します。',
   'settings.functionModelDetectNeedsModel': '先にモデルを選んでください。',

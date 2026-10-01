@@ -195,7 +195,20 @@ export type FunctionModelCommandRequest =
   | { action: 'set'; models: FunctionModels }
   | { action: 'resolve'; functionId: FunctionModelId }
   | { action: 'detect'; functionId: FunctionModelId }
+  | { action: 'probe'; functionId: FunctionModelId }
   | { action: 'events' }
+
+// What one immediate selection did. `used-model` means the configured model answered and its picks are
+// listed; `built-in` means the built-in path ran instead, with the reason — and, outside a turn, that path
+// has nothing to select with, so an empty list is the honest answer rather than an invented one.
+export type FunctionModelProbeResult = Readonly<{
+  outcome: 'used-model' | 'built-in'
+  reason?: FunctionModelEventReason
+  providerId?: string
+  model?: string
+  elapsedMs: number
+  selectedSkillIds: readonly string[]
+}>
 
 export type FunctionModelCommandResult = {
   models: FunctionModels
@@ -203,6 +216,8 @@ export type FunctionModelCommandResult = {
   resolved?: FunctionModelResolution
   /** Present for `detect`: the outcome of one real round trip. */
   detected?: FunctionModelDetection
+  /** Present for `probe`: what one immediate selection did. */
+  probe?: FunctionModelProbeResult
   /** Present for `events`: the recorded trail, newest last. */
   events?: readonly FunctionModelEvent[]
 }

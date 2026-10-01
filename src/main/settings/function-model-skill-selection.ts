@@ -26,6 +26,11 @@ export type FunctionModelSkillSelectionHost = {
   recordFunctionModelEvent: (event: Omit<FunctionModelEvent, 'at'>) => void
 }
 
+// The sentence the on-demand probe selects for. Fixed on purpose: the probe's job is to exercise the
+// branch and the model, not to judge the text, so the same sentence every time makes two runs comparable.
+export const PROBE_SELECTION_TEXT =
+  'Normalise a table of measurements, join it with a second table on sample id, and save a summary figure.'
+
 // What the caller can show afterwards. Elapsed time is measured around the call that actually happened
 // (including the built-in path, which is not free either) rather than estimated.
 export type FunctionModelSkillSelectionOutcome = {

@@ -1904,6 +1904,12 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.functionModelTrailCallFailed': 'der Aufruf ist fehlgeschlagen',
 
   'settings.functionModelDetecting': 'Modell wird aufgerufen…',
+  'settings.functionModelProbeRun': 'Auswahl jetzt einmal ausführen',
+  'settings.functionModelProbing': 'Läuft…',
+  'settings.functionModelProbeNote': 'Führt denselben schmalen Aufruf wie ein Turn aus.',
+  'settings.functionModelProbeUsedModel':
+    '{model} antwortete in {ms} ms und wählte {n} Skill(s) aus.',
+  'settings.functionModelProbeBuiltIn': 'Integrierter Pfad lief in {ms} ms —',
   'settings.functionModelDetectNote':
     'Die Prüfung sendet eine echte Anfrage und verbraucht eventuell ein wenig Kontingent.',
   'settings.functionModelDetectNeedsModel': 'Zuerst ein Modell auswählen.',
