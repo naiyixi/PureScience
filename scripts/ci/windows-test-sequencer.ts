@@ -30,8 +30,19 @@ export const WINDOWS_TEST_MODULE_GROUPS = [
     'src/renderer/src/components/',
     'src/renderer/src/lib/'
   ],
-  // 3: Notebook runtime plus the application-composition specs that live at src/main's root.
-  ['src/main/notebook/', 'src/main/tray', 'src/main/window', 'src/main/lifecycle', 'src/main/app-'],
+  // 3: Notebook runtime, the artifact/review provenance chain and the application-composition specs that
+  // live at src/main's root. The provenance directories sit here rather than with the capability packages
+  // below because this group was the smallest and file counts are the wall-time proxy this layout uses.
+  [
+    'src/main/notebook/',
+    'src/main/tray',
+    'src/main/window',
+    'src/main/lifecycle',
+    'src/main/app-',
+    'src/main/artifacts/',
+    'src/main/reviewer/',
+    'src/main/ro-crate/'
+  ],
   // 4: Settings, storage and session persistence.
   [
     'src/main/settings/',
@@ -69,22 +80,19 @@ export const WINDOWS_TEST_MODULE_GROUPS = [
     'src/main/office-preview/',
     'src/main/vision/'
   ],
-  // 7: Artifacts, review and capability packages.
+  // 7: Capability packages, the compute bridge and the shared contracts both sides compile against.
+  // The shared specs used to sit in the catch-all shard below; 93 contract files in the shard that is
+  // already the largest is what tipped the largest/smallest ratio past the 2x this layout promises, so
+  // they live here and the catch-all keeps only what no group claims.
   [
-    'src/main/artifacts/',
-    'src/main/reviewer/',
     'src/main/skills/',
     'src/main/specialist/',
     'src/main/permission-grants/',
     'src/main/compute/',
-    // RO-Crate export reads the durable Artifact Version layout and re-hashes its bytes, so it is
-    // disk-bound in the same way as the artifact family it exports. Routed here (rather than left in
-    // the catch-all shard) because the catch-all is the largest shard and the balance check has no
-    // headroom left: a new directory there is what tipped it past 2x.
-    'src/main/ro-crate/'
+    'src/shared/'
   ]
-  // 8 (the shard after this list, and the fallback below): shared contracts and tooling —
-  // src/shared, scripts, packages, cli, build, resources, plus test/ and anything new.
+  // 8 (the shard after this list, and the fallback below): tooling and anything new — scripts, packages,
+  // cli, build, resources, plus test/ and directories no group claims yet.
 ] as const
 
 /** Shard index (1-based) for a repository-relative test path, on either path separator. */
