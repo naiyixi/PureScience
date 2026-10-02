@@ -332,6 +332,11 @@ export class AcpConnectionResourceOwner {
     return this.currentResource()?.providerTransportLease?.setTarget(targetId) ?? false
   }
 
+  /** What the last bridge skill-selection call did — undefined when this connection has no bridge at all. */
+  bridgeSkillSelectionOutcome(): 'answered' | 'failed' | 'skipped' | undefined {
+    return this.currentResource()?.bridgeLease?.skillSelectionOutcome?.()
+  }
+
   async selectBridgeSkills(
     text: Parameters<NonNullable<ResponsesBridgeLease>['selectSkills']>[0],
     catalog: Parameters<NonNullable<ResponsesBridgeLease>['selectSkills']>[1],

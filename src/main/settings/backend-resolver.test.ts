@@ -88,6 +88,8 @@ const makeResponsesBridgeDouble = (
     if (options.closeError) throw options.closeError
   }),
   selectSkills: vi.fn(async () => []),
+  // The real bridge always reports this; the turn path reads it back to tell a failed call from an answer.
+  skillSelectionOutcome: vi.fn(() => 'skipped' as const),
   registerReviewerSession: vi.fn(),
   unregisterReviewerSession: vi.fn(() => false),
   registerToolLessSession: vi.fn(),

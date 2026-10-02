@@ -301,6 +301,12 @@ export type ResolvedAgentBackend = {
       // One narrow call may run on a model the user configured for this function instead of the session's.
       targetOverride?: { baseUrl: string; key?: string; model?: string }
     ) => Promise<ResponsesBridgeSkillInput[]>
+    /**
+     * What that last call actually did. A failed call and an answered-but-empty one both return `[]`, and
+     * "the model you configured answered" must not be claimed for the first: the turn's function-model trail
+     * reads this to tell the two apart. Absent on runtimes that do not track it.
+     */
+    skillSelectionOutcome?: () => 'answered' | 'failed' | 'skipped'
     registerReviewerSession: (promptCacheKey: string) => void
     unregisterReviewerSession: (promptCacheKey: string) => boolean
     registerToolLessSession?: (promptCacheKey: string) => void

@@ -1037,7 +1037,19 @@ const streamChatToResponses = async (
   return { reasoning, callIds: toolCalls.map((item) => String(item.call_id)) }
 }
 
+/**
+ * What the last `selectSkills` call actually did.
+ *
+ * The caller needs this because a failed call and an answered-but-empty one both come back as an empty
+ * list: reporting the first as "the configured model answered" is a claim about a call that never
+ * succeeded, which is exactly what the function-model trail exists to prevent.
+ */
+export type BridgeSkillSelectionOutcome = 'answered' | 'failed' | 'skipped'
+
 export class ResponsesBridge {
+  // Set by every exit of `selectSkills`; 'skipped' means no request was attempted (empty input, empty
+  // catalog, or the deterministic connector shortcut answering first).
+  private lastSkillSelection: BridgeSkillSelectionOutcome = 'skipped'
   private server: Server | undefined
   private connection: ResponsesBridgeConnection | undefined
   private target: ResponsesBridgeTarget
@@ -1068,6 +1080,7 @@ export class ResponsesBridge {
     targetOverride?: ResponsesBridgeTarget
   ): Promise<ResponsesBridgeSkillInput[]> {
     const target = targetOverride ?? this.target
+    this.lastSkillSelection = 'skipped'
     if (!text.trim() || catalog.length === 0 || signal?.aborted) return []
     const explicit = selectExplicitConnectorSkills(text, catalog)
     if (explicit.length > 0) return explicit
@@ -1129,6 +1142,7 @@ export class ResponsesBridge {
         signal: timeout.signal
       })
       if (!response.ok) {
+        this.lastSkillSelection = 'failed'
         log.warn('bridge skill selection failed', {
           model: target.model,
           reason: 'source-http',
@@ -1143,6 +1157,7 @@ export class ResponsesBridge {
         ? calls.find((candidate) => candidate?.function?.name === 'select_skills')
         : undefined
       if (typeof call?.function?.arguments !== 'string') {
+        this.lastSkillSelection = 'failed'
         log.warn('bridge skill selection failed', {
           model: target.model,
           reason: 'missing-function-call'
@@ -1153,6 +1168,7 @@ export class ResponsesBridge {
       const args = JSON.parse(call.function.arguments) as JsonObject
       const requested = Array.isArray(args.skill_names) ? args.skill_names : []
       const selected = resolveSelectedSkills(requested, selectorCatalog)
+      this.lastSkillSelection = 'answered'
       log.info('bridge skill selection completed', {
         model: target.model,
         catalogCount: catalog.length,
@@ -1161,6 +1177,9 @@ export class ResponsesBridge {
       })
       return selected
     } catch {
+      // A turn must never break on a selector — the built-in path still runs — but the outcome is recorded so
+      // the caller can tell "the model answered nothing" from "the call failed": both used to be an empty list.
+      this.lastSkillSelection = 'failed'
       log.warn('bridge skill selection failed', {
         model: target.model,
         reason: timedOut ? 'timeout' : signal?.aborted ? 'cancelled' : 'invalid-response'
@@ -1170,6 +1189,11 @@ export class ResponsesBridge {
       clearTimeout(timer)
       signal?.removeEventListener('abort', abortFromCaller)
     }
+  }
+
+  /** What the last `selectSkills` call did — see `BridgeSkillSelectionOutcome`. */
+  skillSelectionOutcome(): BridgeSkillSelectionOutcome {
+    return this.lastSkillSelection
   }
 
   setTarget(target: ResponsesBridgeTarget): void {

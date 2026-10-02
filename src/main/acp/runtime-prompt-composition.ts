@@ -70,9 +70,14 @@ type SkillSelectionFunctionModels = Pick<
  * Exported and dependency-injected so the wiring itself is testable: the branch that decides between the
  * configured model and the built-in path is exactly where a silent fallback would hide.
  */
+// Named so the failure the bridge swallowed reaches the recorder with its cause intact.
+const BRIDGE_SELECTION_FAILED = 'bridge-skill-selection-failed'
+const BRIDGE_SELECTION_NOT_ATTEMPTED = 'bridge-skill-selection-not-attempted'
+
 export const createSkillSelectionBridge = ({
   functionModels,
-  select
+  select,
+  skillSelectionOutcome
 }: {
   functionModels?: SkillSelectionFunctionModels
   select: (
@@ -83,6 +88,12 @@ export const createSkillSelectionBridge = ({
     // Undefined is an honest answer here: the connection owner has no lane to a bridge at all when the
     // session is not connected, and that is the built-in path, not an error.
   ) => Promise<Awaited<ReturnType<SelectBridgeSkills>> | undefined>
+  /**
+   * What the last call actually did. Without it a failed call and an answered-but-empty one are the same
+   * empty list, and the trail would record the first as "the configured model answered" — a claim about a
+   * call that never succeeded. Absent ⇒ nothing extra is claimed (the value is still returned).
+   */
+  skillSelectionOutcome?: () => 'answered' | 'failed' | 'skipped' | undefined
 }): SelectBridgeSkills => {
   const builtIn = async (
     text: string,
@@ -98,7 +109,21 @@ export const createSkillSelectionBridge = ({
       functionId: 'skill-selection',
       host: functionModels,
       builtIn: () => builtIn(text, catalog, signal),
-      runWithModel: async (target) => (await select(text, catalog, signal, target)) ?? []
+      // The call is made, and then what it did is read back: throwing here is how a failure reaches the
+      // recorder. The bridge still swallows its own error (a turn must never break on a selector) — this only
+      // stops that swallow from being reported as an answer.
+      runWithModel: async (target) => {
+        const selected = await select(text, catalog, signal, target)
+        const outcome = skillSelectionOutcome?.()
+        if (outcome === 'failed') throw new Error(BRIDGE_SELECTION_FAILED)
+        if (outcome === 'skipped') throw new Error(BRIDGE_SELECTION_NOT_ATTEMPTED)
+
+        return selected ?? []
+      },
+      classifyRunFailure: (error) =>
+        error instanceof Error && error.message === BRIDGE_SELECTION_NOT_ATTEMPTED
+          ? 'call-not-attempted'
+          : 'call-failed'
     })
 
     return value
@@ -193,7 +218,9 @@ const composeAcpRuntimePromptOwners = (
     selectBridgeSkills: createSkillSelectionBridge({
       ...(options.functionModels ? { functionModels: options.functionModels } : {}),
       select: (text, catalog, signal, targetOverride) =>
-        base.connectionResources.selectBridgeSkills(text, catalog, signal, targetOverride)
+        base.connectionResources.selectBridgeSkills(text, catalog, signal, targetOverride),
+      // Read back after the call so a failure is not recorded as an answer.
+      skillSelectionOutcome: () => base.connectionResources.bridgeSkillSelectionOutcome()
     }),
     authorizeReferencedUploads: options.skillImport?.authorizeReferencedUploads,
     imageInputCompatibility: options.imageInputCompatibility,

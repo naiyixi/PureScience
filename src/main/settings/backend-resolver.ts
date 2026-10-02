@@ -143,7 +143,12 @@ type BridgeBasePort = Pick<
 >
 
 type ResponsesBridgePort = BridgeBasePort &
-  Pick<ResponsesBridge, 'setReasoningEffort' | 'setModelTarget' | 'setTarget'>
+  // skillSelectionOutcome is on the port because the turn path reads it back to tell a failed call from an
+  // answered-but-empty one.
+  Pick<
+    ResponsesBridge,
+    'setReasoningEffort' | 'setModelTarget' | 'setTarget' | 'skillSelectionOutcome'
+  >
 type NativeResponsesProxyPort = BridgeBasePort &
   Pick<NativeResponsesCompatibilityProxy, 'setModelTarget' | 'setTarget'>
 type AnthropicProviderBridgePort = Pick<AnthropicProviderBridge, 'start' | 'close' | 'setTarget'>
@@ -1355,6 +1360,8 @@ export class AgentBackendResolver {
       lease: {
         selectSkills: (text, catalog, signal) =>
           leasedEntry.bridge.selectSkills(text, catalog, signal),
+        // Handed to the turn path so a call that failed is not reported as one that answered.
+        skillSelectionOutcome: () => leasedEntry.bridge.skillSelectionOutcome(),
         registerReviewerSession: (promptCacheKey) =>
           leasedEntry.bridge.registerReviewerSession(promptCacheKey),
         unregisterReviewerSession: (promptCacheKey) =>
