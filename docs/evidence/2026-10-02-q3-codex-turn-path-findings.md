@@ -54,6 +54,24 @@ codex 技能根已物化 **625 个 `SKILL.md`**（`/tmp/ps-q3-root/codex/skills`
 `settings:skill-availability` 存在但用 `args=[]` 调用返回 500（需要请求对象），**因此这一轮没能读到 always-on 集合**——
 不猜，如实记为未读到。
 
+### 3.1 闸门定位（继续读到源码后的结论，文件:行可复核）
+
+- `state.selectedSkillIds` 由**请求**带入（`turn-skill-owner.ts:62`：`input.selectedSkillIds ?? []`），我这三次回合都没带技能
+  ⇒ 该分支（`:144-149`）**不成立**；`catalogForCodexHome` 在生产里**是接好的**（`runtime-composition.ts:265` →
+  `settingsService.codexSkillCatalog`）⇒ 也不是它。
+- 因此只剩 `codex?.bridgeSkillsAvailable`（`turn-skill-owner.ts:151`），其值为
+  `Boolean(currentResource()?.bridgeLease?.selectSkills)`（`connection-resource-owner.ts:106-108`）。
+- **为什么没有 bridge lease**：codex 后端只在特定 route 上建 Responses 桥
+  （`backend-resolver.ts:735-746`：`framework.id === 'codex' && modelRoute === 'codex-responses' && hasCodexProviderTransport`
+  → 走 `ensureNativeCodexProviderTransport`；否则才 `ensureResponsesBridge`）。本机两条 provider 形状
+  （订阅/隔离自带后端；DeepSeek 走 native codex provider transport）都落在**没有 Responses 桥**的那一支
+  ⇒ `bridgeSkillsAvailable=false` ⇒ 在调选择器之前就 `return []`。这解释了为什么两条路径各 3 个真回合都没有留痕。
+
+**独立交叉验证**：codex 自己的 rollout 逐字文件
+`/tmp/ps-q3-root/codex/sessions/2026/10/02/rollout-…-01a0fa80-….jsonl`（30 行）里，该回合的用户消息就是
+`Reply with the single word: ready`（**33 字符**），全文件 grep `skill` / `loaded skill` / `specialist` **均为 false**
+⇒ 该回合确实**没有**任何技能被注入，与"留痕为空"互相印证（不是"选了 0 个"的假绿，而是**这条支根本没跑**）。
+
 ## 4. 发现四（小）：`install-codex` 缺参数时是 500 TypeError，不是校验错误
 
 `settings:install-codex` 传空参返回 `handler_error: Cannot read properties of undefined (reading 'source')`。
@@ -64,9 +82,12 @@ codex 技能根已物化 **625 个 `SKILL.md`**（`/tmp/ps-q3-root/codex/skills`
 **未取**：①④⑤ 的留痕读数（内置回落与具名原因 / 真实往返与是否真选出技能 / `call-failed` 回落）。
 
 **下一步（按代价从小到大）**：
-1. 读出该会话的 always-on/预选技能集（`settings:skill-availability` 用正确的请求对象调），若非空 ⇒ 关掉它们或在无预选作用域的会话里重跑；
-2. 若仍为空，则在回合路径埋一次可读证据（`bridgeSkillsAvailable` 的取值）以定位闸门 2；
-3. 然后用同一驱动脚本 `/tmp/ps-q1/q3-turns.py`（三例一起跑、读 `<configRoot>/function-model-events.json`）取读数。
+1. **换到会产生 Responses 桥的那条 route**（上节 `backend-resolver.ts:735-746`）——即让 codex 的 `modelRoute` 落在
+   `ensureResponsesBridge` 那一支（而不是 native codex provider transport），再跑同样的三例。
+2. 若不换 route，则把 `bridgeSkillsAvailable` 做成可读证据（回合侧留痕一条"本回合有没有桥"），以断言闸门；
+   否则"turn 路径的技能选择"在**本机所有可用 provider 形状下都不跑**——这本身是一条要立案的事实
+   （功能存在但本机不可达），不能只写成"未取"。
+3. 用同一驱动脚本 `/tmp/ps-q1/q3-turns.py`（三例一起跑、读 `<configRoot>/function-model-events.json`）取读数。
    **纪律照旧**：④ 的"真实往返耗时"若该路径不上报，就写 **not reported**（`elapsedMs` 确实被算了但被桥丢弃，
    `runtime-prompt-composition.ts:97` 只取 `value`），绝不写 0。
 
