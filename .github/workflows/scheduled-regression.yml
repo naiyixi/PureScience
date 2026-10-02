@@ -39,6 +39,23 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Verify the Electron binary is provisioned
+        # Hosted macOS runners intermittently finish `npm ci` without the Electron binary — the postinstall
+        # download fails while the install still reports success. Two shapes followed from that in this lane:
+        # a vitest suite that imports Electron fails at collection, and the Playwright fixture spends its whole
+        # budget in "Downloading Electron binary..." before the app fixture times out, which this lane reports
+        # as a flake and which hides the real cause (see the 2026-10-02 run). Provisioning is not what these
+        # lanes measure, so check it here and retry once instead of letting it land on a test.
+        shell: bash
+        run: |
+          if [ -f node_modules/electron/path.txt ]; then
+            echo "electron binary: $(cat node_modules/electron/path.txt)"
+            exit 0
+          fi
+          echo "::warning::Electron binary missing after npm ci — retrying the postinstall"
+          node node_modules/electron/install.js
+          test -f node_modules/electron/path.txt
+
       - name: Run suite with an explicit retry budget
         id: suite
         # continue-on-error keeps the two signals separate: this step reports whether the suite passed,
@@ -86,6 +103,23 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Verify the Electron binary is provisioned
+        # Hosted macOS runners intermittently finish `npm ci` without the Electron binary — the postinstall
+        # download fails while the install still reports success. Two shapes followed from that in this lane:
+        # a vitest suite that imports Electron fails at collection, and the Playwright fixture spends its whole
+        # budget in "Downloading Electron binary..." before the app fixture times out, which this lane reports
+        # as a flake and which hides the real cause (see the 2026-10-02 run). Provisioning is not what these
+        # lanes measure, so check it here and retry once instead of letting it land on a test.
+        shell: bash
+        run: |
+          if [ -f node_modules/electron/path.txt ]; then
+            echo "electron binary: $(cat node_modules/electron/path.txt)"
+            exit 0
+          fi
+          echo "::warning::Electron binary missing after npm ci — retrying the postinstall"
+          node node_modules/electron/install.js
+          test -f node_modules/electron/path.txt
+
       - name: Build app for e2e
         run: npm run build:e2e
 
@@ -119,6 +153,23 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Verify the Electron binary is provisioned
+        # Hosted macOS runners intermittently finish `npm ci` without the Electron binary — the postinstall
+        # download fails while the install still reports success. Two shapes followed from that in this lane:
+        # a vitest suite that imports Electron fails at collection, and the Playwright fixture spends its whole
+        # budget in "Downloading Electron binary..." before the app fixture times out, which this lane reports
+        # as a flake and which hides the real cause (see the 2026-10-02 run). Provisioning is not what these
+        # lanes measure, so check it here and retry once instead of letting it land on a test.
+        shell: bash
+        run: |
+          if [ -f node_modules/electron/path.txt ]; then
+            echo "electron binary: $(cat node_modules/electron/path.txt)"
+            exit 0
+          fi
+          echo "::warning::Electron binary missing after npm ci — retrying the postinstall"
+          node node_modules/electron/install.js
+          test -f node_modules/electron/path.txt
 
       - name: Build app for e2e
         run: npm run build:e2e
