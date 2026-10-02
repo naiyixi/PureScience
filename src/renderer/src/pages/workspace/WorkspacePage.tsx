@@ -1185,26 +1185,67 @@ const WorkspacePage = ({
   }, [])
   // Blocked egress destinations broadcast by the main process surface as in-conversation cards;
   // answering settles the suspended request (deny / allow once / allow always).
+  //
+  // A card must not outlive the request behind it. The proxy refuses a suspended request when its deadline
+  // passes (APPROVAL_TIMEOUT_MS in net/egress-proxy.ts) and the main process reports that deadline as
+  // `expiresInSec` — so the card is retired on it. Before this, only `settled === true` removed a card and
+  // the call had no `.catch`, so a request that had already timed out left three buttons that settled
+  // nothing and never went away: a control that looks live but cannot do anything. The refusal itself is not
+  // hidden by retiring the card — the proxy answers 403 to the child process, so the notebook's own output
+  // carries the failure, and retrying raises a fresh card.
   const [pendingEgressApprovals, setPendingEgressApprovals] = useState<EgressApprovalRequest[]>([])
+  const dropEgressApproval = useCallback((requestId: string): void => {
+    setPendingEgressApprovals((current) => current.filter((item) => item.requestId !== requestId))
+  }, [])
   useEffect(() => {
-    return window.api.egress?.onApprovalRequest?.((request) => {
+    const deadlines = new Map<string, ReturnType<typeof setTimeout>>()
+    const unsubscribe = window.api.egress?.onApprovalRequest?.((request) => {
       setPendingEgressApprovals((current) => [
         ...current.filter((item) => item.requestId !== request.requestId),
         request
       ])
+      const previous = deadlines.get(request.requestId)
+      if (previous) clearTimeout(previous)
+      deadlines.set(
+        request.requestId,
+        setTimeout(
+          () => {
+            deadlines.delete(request.requestId)
+            dropEgressApproval(request.requestId)
+          },
+          Math.max(0, request.expiresInSec) * 1000
+        )
+      )
     })
-  }, [])
+
+    return () => {
+      for (const timer of deadlines.values()) clearTimeout(timer)
+      unsubscribe?.()
+    }
+  }, [dropEgressApproval])
   const respondToEgressApproval = useCallback(
     (requestId: string, decision: EgressApprovalDecision): void => {
-      void window.api.egress.respondApproval({ requestId, decision }).then((settled) => {
-        if (settled) {
-          setPendingEgressApprovals((current) =>
-            current.filter((item) => item.requestId !== requestId)
-          )
-        }
-      })
+      void window.api.egress
+        .respondApproval({ requestId, decision })
+        .then((settled) => {
+          // Either way the card goes: answered, or already settled by the proxy's own deadline. Keeping a
+          // card up after the request is gone is what turned a dead control into a mute one.
+          if (!settled) {
+            console.warn('egress approval was no longer pending', { requestId, decision })
+          }
+          dropEgressApproval(requestId)
+        })
+        .catch((error: unknown) => {
+          // A rejected invoke used to be swallowed by `void …then(…)`: no card change, no message, nothing.
+          console.warn('egress approval could not be delivered', {
+            requestId,
+            decision,
+            detail: error instanceof Error ? error.message : String(error)
+          })
+          dropEgressApproval(requestId)
+        })
     },
-    []
+    [dropEgressApproval]
   )
   const respondToElicitation = useCallback(
     (elicitationId: string, action: 'accept' | 'decline', answers?: ElicitationAnswer): void => {
