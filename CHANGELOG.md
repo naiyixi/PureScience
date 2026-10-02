@@ -16,6 +16,14 @@
 - **A8 的另一半：应用内检测仍只认托管适配器。** A8 的修复覆盖的是**零参数检测**；应用内固定 `managedAdapterPath`、检测据此只取这一条候选，因此**不接纳**用户自己装的 `~/.local/bin/codex-acp`，建会话会报 `Codex native executable not found`。本版把这条写进已知限制并立案，**未改路由**。
   - **后续（发布后更正并修好，2026-10-02，`c09648de`）**：把这条读成「不接纳用户自装适配器 = 缺陷」**过强**——`codex-detect.ts:85-89` 的注释写明，一旦声明托管适配器就**只认它**、PATH/自装适配器**不得绕过 app 固定扩展层**，这是**故意设计**，本轮不动。真正错的是失败**理由**：`agent-runtime-manager.ts` 在 `nativePath` 为空时抛「Codex native executable not found」，而真机实测该 CLI **就存在**于 `/Applications/ChatGPT.app/Contents/Resources/codex`（present: `True`），缺的是托管适配器（盘上 `False`）——**一句与事实不符的陈述**。现改为点名缺哪一半（适配器在而随附 CLI 缺 / 都没装），**行为不变、仍失败关闭**；真机复现与反向断言见证据档 §4.3。
 - **R2 期刊实体（U1–U4 四片）**：依赖已解除，但不在本版塞半条（不做「有表没入口」的空壳），立案下一版。
+  - **后续（发布后已实现 U1+U2，2026-10-02，真库验收见 `docs/evidence/2026-10-02-r2-journal-entity.md`）**：
+    `Journal` / `JournalMetric` 两表 + `Reference.journalId`/`journalMatch` 两列（走既有的 `addColumnIfMissing`）+ 四索引已进启动时的 DDL 序列；
+    `JournalRepository` 与**保守**解析器（标识符优先 → 精确规范化名；失败**具名**留空，**绝不为裸名造实体**）；
+    OpenAlex `issn_l` / PubMed `issn` 已作为 ISSN 的真实来源接入，`createReference` 是唯一写入点。
+    **真库读数**：全新库建表建列建索引全通；走真实 RPC 写两条引用 ⇒ 可识别者落 `('Nature','j-nature','by-issn')`、不可识别者落 `(None,'no-issn')`；
+    **重启后第二次跑 DDL 序列**：列与索引不变、两条真实数据**逐字未动**、启动零报错（加列幂等已证）。
+    **仍未做**：U3（按分区/影响因子筛选的统计面，缺失显示「未知」）与 U4（别名与用户显式合并）——立案下一版。
+    **顺带更正**：我原计划写「本仓从未做过给既有表加列、要新写 helper」是**错的**，`addColumnIfMissing` 早已存在且更严谨（重读后置条件而非解析引擎错误串），计划文档已改。
 - **A7 外部锁导入**：按排期顺延——需要新增一条通道（含渲染器契约与生成式 API 映射）并配一次真实环境构建验收，本版容量不足以做完，**不做半截**。
 
 ## v1.76.1 — 2026-09-30（补丁：把红修成真绿，把"看起来公证"改成如实）

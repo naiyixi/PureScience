@@ -480,6 +480,12 @@ model Reference {
   title            String
   authorsJson      String    @default("[]") // JSON [{ name, orcid? }]
   venue            String?
+  // How this row's journal was determined (R2-U2): by-issn | by-normalized-name | no-issn | name-not-exact |
+  // ambiguous. Failures are stored rather than inferred, so "we could not tell which journal this is" stays
+  // distinguishable from "there is no journal" — and when the id is absent the venue text remains what the
+  // surface shows (no backfill: backfilling would turn a failed parse into a silent "no journal").
+  journalId        String? // logical FK to Journal.id
+  journalMatch     String?
   year             Int?
   // Citation-style layer (v1.65): the bibliographic detail multi-style rendering needs.
   volume           String?
@@ -508,6 +514,7 @@ model Reference {
   @@index([doi])
   @@index([pmid])
   @@index([arxivId])
+  @@index([journalId])
 }
 
 model CitationStyle {
@@ -654,6 +661,50 @@ model BackgroundDelivery {
 // instead of an unexplained re-verdict. Pure-additive tables with logical foreign keys only (no
 // relational constraints), so the runtime DDL stays byte-compatible with any pre-existing DB —
 // created via CREATE TABLE IF NOT EXISTS (see src/main/projects/prisma-client.ts), not migrate.
+// Journals as first-class entities (R2). Two tables, not one, and the split is the point: metrics move
+// year by year, so a number with no year and no source is not a fact. Keeping them in their own table makes
+// the pair a per-year history that a surface can always label ("which year, which source"), whereas a
+// column on Journal would dress one year's number from one source up as an inherent property of the venue.
+model Journal {
+  id             String   @id @default(cuid())
+  // Case/punctuation/whitespace-normalized title. Exact-match only — see R2-U4: fuzzy matching would
+  // invent facts by merging two different venues into one.
+  normalizedName String
+  // Nullable on purpose: when an ISSN cannot be resolved it must stay absent, never be invented.
+  issn           String? // print ISSN
+  issnL          String? // linking ISSN
+  eissn          String?
+  publisher      String?
+  homepage       String?
+  // Which rule created this row: by-issn | by-normalized-name. Recorded at import time so a later reviewer
+  // can tell an identifier-backed identity from a name-backed one.
+  createdVia     String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([issn])
+  @@index([normalizedName])
+}
+
+// One measurement of one journal at one time, from one source. Append-only: correcting a value means adding
+// a row, not editing one, so the history of what was claimed when stays intact.
+model JournalMetric {
+  id           String   @id @default(cuid())
+  journalId    String // logical FK to Journal.id
+  kind         String // impact-factor | jcr-quartile | cas-partition | cas-top | acceptance-rate | …
+  // The value exactly as the source stated it (a quartile is "Q1", an impact factor "12.3"). Kept as text
+  // because the kinds do not share a shape.
+  value        String
+  // Filled only when the source value is unambiguously numeric, so filtering/sorting never has to guess.
+  numericValue Float?
+  year         Int // required: an undated metric is not a fact
+  source       String // required: an unsourced metric is not a fact
+  fetchedAt    DateTime @default(now())
+  note         String?
+
+  @@index([journalId, kind, year])
+}
+
 model ScreeningRuleRevision {
   collectionId  String // logical FK to ReferenceCollection.id
   revision      Int // 1-based; a rule change is a new revision, never an edit of an existing one

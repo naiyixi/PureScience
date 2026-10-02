@@ -10,6 +10,7 @@ import type {
   ReferenceCollection,
   ReferenceProvenance
 } from '../../shared/references'
+import { JournalRepository, type JournalClient } from './journal-repository'
 // Only the delegates this repository needs; typing to the subset keeps it unit-testable with a
 // lightweight mock instead of a real (engine-backed) PrismaClient.
 export type ReferenceClient = Pick<
@@ -234,12 +235,27 @@ export class ReferenceRepository {
   // unique-constraint error from the engine — callers map it to a readable message.
   async createReference(input: CreateReferenceInput & { citationKey: string }): Promise<Reference> {
     const client = await this.getClient()
+    // The journal link is derived here, in the one function every path goes through to write a reference, so
+    // no import path can forget it. Resolution is conservative on purpose: identifier first, then an exact
+    // name match against journals that are already registered; when neither identifies the venue the row is
+    // stored unlinked WITH the named reason, and the venue text stays what a surface shows.
+    const journal = await new JournalRepository({
+      // Two narrowed views of one engine client: ReferenceClient is the delegate subset this repository was
+      // already typed against (kept so the existing mocks stay valid), JournalClient is the subset the journal
+      // repository needs. The cast marks that seam instead of widening either narrowing.
+      getClient: async () => (await this.getClient()) as unknown as JournalClient
+    }).resolveJournal({
+      issn: input.issn,
+      venue: input.venue
+    })
     const row = await client.reference.create({
       data: {
         projectId: input.projectId,
         title: input.title.trim(),
         authorsJson: serializeAuthors(input.authors),
         venue: input.venue?.trim() || null,
+        journalId: journal.journalId,
+        journalMatch: journal.match,
         year: input.year ?? null,
         volume: input.volume?.trim() || null,
         issue: input.issue?.trim() || null,

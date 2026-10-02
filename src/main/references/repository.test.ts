@@ -71,7 +71,12 @@ const createMockClient = (): {
     itemCreate: vi.fn(),
     itemDeleteMany: vi.fn(() => Promise.resolve({ count: 0 })),
     versionCreate: vi.fn(() => Promise.resolve({ id: 'ver-1' })),
-    versionFindMany: vi.fn(() => Promise.resolve([]))
+    versionFindMany: vi.fn(() => Promise.resolve([])),
+    // The reference repository now resolves a journal link on every create, so the mock has to answer for the
+    // delegates that path reads: no identifier match (null) and no name match ([]).
+    journalFindUnique: vi.fn(() => Promise.resolve(null)),
+    journalFindMany: vi.fn(() => Promise.resolve([])),
+    journalCreate: vi.fn()
   }
   const client = {
     reference: {
@@ -97,6 +102,11 @@ const createMockClient = (): {
       findFirst: m.itemFindFirst,
       create: m.itemCreate,
       deleteMany: m.itemDeleteMany
+    },
+    journal: {
+      findUnique: m.journalFindUnique,
+      findMany: m.journalFindMany,
+      create: m.journalCreate
     }
   } as unknown as ReferenceClient
   return { client, m }

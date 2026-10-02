@@ -107,6 +107,10 @@ export type CreateReferenceInput = {
   title: string
   authors?: ReferenceAuthor[]
   venue?: string
+  // The venue's ISSN when the source states one (OpenAlex `issn_l`, PubMed `issn`). Present ⇒ the reference
+  // can link to an identified journal; absent ⇒ the name is all there is, and a link is only made when that
+  // name matches an already-registered journal exactly (R2-U2). Never guessed from the title.
+  issn?: string
   year?: number
   volume?: string
   issue?: string

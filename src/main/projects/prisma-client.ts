@@ -821,6 +821,39 @@ const SCREENING_INDEX_DDLS = [
   `CREATE INDEX IF NOT EXISTS "ScreeningRunItem_runId_state_idx" ON "ScreeningRunItem"("runId", "state")`
 ]
 
+// Journals as first-class entities (R2). Index names follow Prisma's own conventions
+// (Journal_issn_key / Journal_normalizedName_idx / JournalMetric_journalId_kind_year_idx) so this DDL stays
+// byte-compatible with what `prisma migrate diff` generates — the property the statements below rely on.
+const JOURNAL_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "Journal" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "normalizedName" TEXT NOT NULL,
+    "issn" TEXT,
+    "issnL" TEXT,
+    "eissn" TEXT,
+    "publisher" TEXT,
+    "homepage" TEXT,
+    "createdVia" TEXT NOT NULL,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+)`
+const JOURNAL_METRIC_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "JournalMetric" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "journalId" TEXT NOT NULL,
+    "kind" TEXT NOT NULL,
+    "value" TEXT NOT NULL,
+    "numericValue" REAL,
+    "year" INTEGER NOT NULL,
+    "source" TEXT NOT NULL,
+    "fetchedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "note" TEXT
+)`
+const JOURNAL_INDEX_DDLS = [
+  `CREATE UNIQUE INDEX IF NOT EXISTS "Journal_issn_key" ON "Journal"("issn")`,
+  `CREATE INDEX IF NOT EXISTS "Journal_normalizedName_idx" ON "Journal"("normalizedName")`,
+  `CREATE INDEX IF NOT EXISTS "JournalMetric_journalId_kind_year_idx" ON "JournalMetric"("journalId", "kind", "year")`
+]
+const REFERENCE_JOURNAL_ID_INDEX_DDL = `CREATE INDEX IF NOT EXISTS "Reference_journalId_idx" ON "Reference"("journalId")`
+
 // PDF annotations (文档标注层 A1): two pure-additive tables with logical foreign keys only (no
 // relational constraints) — nothing references them and they reference nothing, so these CREATE/INDEX
 // statements stay safe to (re)run on any existing DB, and their DDL is byte-identical to what
@@ -1122,6 +1155,30 @@ const ensureProjectSchema = async (client: PrismaClient): Promise<void> => {
   for (const ddl of PDF_ANNOTATION_INDEX_DDLS) {
     await client.$executeRawUnsafe(ddl)
   }
+
+  // Journals (R2): the venue as an identified entity plus its per-year, per-source metric history. The
+  // tables are additive like the rest; the two Reference columns are the first columns this sequence ever
+  // adds to an existing table, so they go through the guarded add that was already here for exactly this
+  // shape (it verifies the postcondition instead of trusting an engine error string), and their index is
+  // created after them.
+  await client.$executeRawUnsafe(JOURNAL_TABLE_DDL)
+  await client.$executeRawUnsafe(JOURNAL_METRIC_TABLE_DDL)
+  for (const ddl of JOURNAL_INDEX_DDLS) {
+    await client.$executeRawUnsafe(ddl)
+  }
+  await addColumnIfMissing(
+    client,
+    'Reference',
+    'journalId',
+    `ALTER TABLE "Reference" ADD COLUMN "journalId" TEXT`
+  )
+  await addColumnIfMissing(
+    client,
+    'Reference',
+    'journalMatch',
+    `ALTER TABLE "Reference" ADD COLUMN "journalMatch" TEXT`
+  )
+  await client.$executeRawUnsafe(REFERENCE_JOURNAL_ID_INDEX_DDL)
 }
 
 let clientPromise: Promise<PrismaClient> | undefined

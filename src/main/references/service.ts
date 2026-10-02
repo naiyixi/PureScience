@@ -66,6 +66,14 @@ export const fetchReferenceByIdentifier = async (
             ? (hit.primary_location as { source: { display_name: string } }).source.display_name
             : undefined,
         year: typeof hit.publication_year === 'number' ? hit.publication_year : undefined,
+        // The venue's identifier, when the source states one. OpenAlex carries the source's linking ISSN, and
+        // an identifier is what lets this reference link to an identified journal instead of depending on a
+        // name match (see JournalRepository.resolveJournal). Absent ⇒ absent, never guessed from the title.
+        issn:
+          typeof (hit.primary_location as { source?: { issn_l?: unknown } } | undefined)?.source
+            ?.issn_l === 'string'
+            ? (hit.primary_location as { source: { issn_l: string } }).source.issn_l
+            : undefined,
         ...openAlexBibliographicDetail(hit),
         doi:
           typeof hit.doi === 'string' ? hit.doi.replace(/^https?:\/\/doi\.org\//i, '') : undefined,
@@ -111,6 +119,8 @@ export const fetchReferenceByIdentifier = async (
         title: String(record.title ?? '').slice(0, MAX_TITLE_CHARS),
         authors,
         venue: typeof record.fulljournalname === 'string' ? record.fulljournalname : undefined,
+        // esummary reports the journal's ISSN (print) — the identifier the venue can be resolved by.
+        issn: typeof record.issn === 'string' ? record.issn : undefined,
         year: Number.isFinite(iso) ? iso : undefined,
         ...pubmedBibliographicDetail(record),
         pmid: kind === 'pmid' ? value : undefined,

@@ -24,12 +24,14 @@
 - 新增索引 DDL 数组：`Journal.issn` **唯一**（`CREATE UNIQUE INDEX IF NOT EXISTS`，注意 SQLite 对 NULL 的语义：多行 NULL 不冲突 ⇒ 允许「无 ISSN」的期刊共存）、`Journal.normalizedName`、`JournalMetric(journalId, kind, year)`、`Reference(journalId)`；
 - 挂进 `:1107-1112` 的执行序列。
 
-### 1.3 ⚠️ 本仓**从未做过**的一件事：给既有表加列 ⇒ 要新写一个「幂等加列」helper
-`Reference.journalId` 不能靠 `CREATE TABLE IF NOT EXISTS` 落地。SQLite 的 `ALTER TABLE ADD COLUMN` **不幂等**（列已存在即报错），所以必须：
-1. 先读 `PRAGMA table_info("Reference")`（或 `sqlite_master`）判断列是否存在；
-2. 只在缺失时执行 `ALTER TABLE "Reference" ADD COLUMN "journalId" TEXT`；
-3. 该 helper 必须**可重复执行且不抛错**，并配一条用例：连跑两次结果相同、第二次不改任何东西。
-   （这正是「真实数据根上有历史数据，每次迁移都要可回滚」那条风险的落点。）
+### 1.3 给既有表加列：**复用既有 helper**（我原先写的「本仓从未做过、要新写一个」是**错的**）
+
+`Reference.journalId` 不能靠 `CREATE TABLE IF NOT EXISTS` 落地，SQLite 的 `ALTER TABLE ADD COLUMN` 也不幂等。
+但**不需要新写**：本仓已有 `addColumnIfMissing`（`src/main/projects/prisma-client.ts:959` 起），而且比我先写的更严谨——
+它有 `hasTable` 守卫（缺表直接跳过）、`hasTableColumn` 前置判定，且**失败后重读后置条件**而不是解析引擎错误串
+（注释写明：不解释 engine-specific error string，只证明后置条件）。实现时编译器直接报「重复声明」把我拦下，
+这正是该有的形状。**用法**：`addColumnIfMissing(client, 'Reference', 'journalId', 'ALTER TABLE … ADD COLUMN … TEXT')`，
+索引在加列之后创建。
 
 ### 1.4 `JournalRepository`（新建，位置照 `src/main/references/repository.ts` 的邻居与命名）
 - `upsertByIssn(issn, fields)`：**ISSN 唯一**；同一 ISSN 两次 upsert 只出一行（验收 ①）。
