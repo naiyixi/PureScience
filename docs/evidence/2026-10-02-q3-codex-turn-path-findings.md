@@ -84,19 +84,24 @@ codex 技能根已物化 **625 个 `SKILL.md`**（`/tmp/ps-q3-root/codex/skills`
 
 **未取**：①④⑤ 的留痕读数（内置回落与具名原因 / 真实往返与是否真选出技能 / `call-failed` 回落）。
 
-**结论口径（只说量到的）**：本机**三种 provider 形状、8 个真实回合**都没有让这条支跑起来
-（留痕为空 + rollout 无技能文本）。因此**不能**声称"turn 路径的技能选择在应用里不可达"——
-只能说**本机可配的三种形状都不可达**；要断言前者，还差一步把 `currentResource()?.bridgeLease` 变成可读证据
-（例如回合侧留痕一条"本回合有没有桥"）。这本身若成立，就是一条要立案的事实：**功能存在但从不触发**
-（与 A3 的 ✅ 并不矛盾——A3 走的是 `settings:function-models` 的**探针**路径，不是 turn 路径，这正是 Q3 存在的理由）。
+**结论口径（只说量到的，2026-10-02 更正）**：八次真实回合（三种 provider 形状）**都发生在「跳过可读」之前**，
+那时这条支的跳过是静默的 ⇒ 只能确定「**选择器没跑**」，**不能**确定是哪一道闸门（无桥 / 无目录读取器 / 目录为空 当时都表现为同一片空白）。
+**更正**：本节初稿写「本机可配的三种形状都不可达（无桥）」，**证据不足**——按代码，自定义 chat-completions provider
+**本应**需要桥（`requiresChatCompletionsBridge`：框架=codex、框架支持 `responses`、provider 有 `openai` 无 `responses`），
+所以「本机没有形状会建桥」这句话当时无法成立，现在也**不声称**它。回合侧可读证据（`bridge-unavailable` / `call-not-attempted`）已交付，
+**下一次真机回合即可判定**；若届时仍报 `bridge-unavailable`，那才是「需要桥却没建桥」的具名缺陷。
+（与 A3 的 ✅ 不矛盾——A3 走的是 `settings:function-models` 的**探针**路径，不是 turn 路径，这正是 Q3 存在的理由。）
 
-**下一步（按代价从小到大）**：
-1. 把 `bridgeSkillsAvailable` 的取值做成**回合侧可读**（一条留痕即可），用它直接断言闸门，而不是靠"留痕为空"反推；
-2. 沿 `requiresChatCompletionsBridge(provider, framework)`（`provider-accounts.ts:1203`）核实第三种形状为何仍没建桥——
-   是否 `currentResource()` 在回合期指向了另一个 resource（那 `bridgeLease` 会缺席）；
-3. 拿到桥之后用同一驱动脚本 `/tmp/ps-q1/q3-turns.py` 三例一起跑、读 `<configRoot>/function-model-events.json`。
-   **纪律照旧**：④ 的"真实往返耗时"若该路径不上报，就写 **not reported**（`elapsedMs` 确实被算了但被桥丢弃，
-   `runtime-prompt-composition.ts:97` 只取 `value`），绝不写 0。
+**下一步（2026-10-02 更新：第 1 步已交付，剩下的只有第 2 步）**：
+1. ~~把 `bridgeSkillsAvailable` 的取值做成**回合侧可读**~~ ✅ **已交付**（提交 `b80fa197`）：新增具名原因
+   `bridge-unavailable`，真机回合实测写出并回读该条目；见 `docs/evidence/2026-10-02-q3-turn-side-reason.md`。
+2. **在下一次真机回合里读那条原因**，用它把闸门钉死：本机以**自定义 chat-completions provider**（`apiEndpoints:["openai"]`、无 `responses`）
+   起 codex 会话跑一个回合——
+   - 留痕是 `not-configured` ⇒ 选择器**跑了**（该形状有桥），④⑤ 只是还没配模型/端点，接着配 ④ 真模型与 ⑤ 不可达端点即可取得；
+   - 留痕是 `bridge-unavailable` ⇒ **需要桥却没建桥**，那才是具名缺陷（`target.needsChatResponsesBridge` 为真而 `bridgeLease` 缺席）。
+   本轮曾尝试这一测定（隔离实例 44194），**卡在托管安装**：`settings:install-codex {"source":"managed"}` 这次从 npm registry
+   下载**无进展**（>9 分钟零字节；上一次同样操作 ~3 分钟装完 303 MB）⇒ 未取得读数，实例与临时目录已清。
 
-**实例现状（供接手）**：44190 实例**仍在运行**（配置根 `/tmp/ps-q3-root`，含 303 MB 托管 codex），
-夹具/脚本在 `/tmp/ps-q1/`；未清理未停进程。收尾时应：停实例、确认 44190 无监听、删 `/tmp/ps-q3-root` 与 `/tmp/ps-q1`。
+**实例现状（2026-10-02 13:2x 更新）**：当时那个 44190 实例**已停**，`/tmp/ps-q3-root`（含 303 MB 托管 codex）与 `/tmp/ps-q1` 夹具
+**已删**（13:2x 的收尾轮完成，端口 44190/44192/44194 均无监听，`/private/tmp` 回到 26M）；本轮又一次测定用的 44194 实例
+也**已停并清干净**。留下的是**历史残留**（早期会话的 `/tmp/ps-*.log|.sh` 等几百个小文件，合计约 26M），非本次产物。
