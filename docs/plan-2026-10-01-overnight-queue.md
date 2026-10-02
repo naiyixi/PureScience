@@ -179,8 +179,14 @@
 | `007af97eaa958f1c2a5a0e72f6a777f3bd9582fa`（R4-U3/U4 面板级读数） | Nightly **#809 completed/success**、Windows Full Test **#804 completed/success** |
 | `a4cdffbc41bd4e5485ba5a96ad50e1167eb46be7`（acp：selector-error→call-failed / catalog-error→call-not-attempted） | Nightly **#810 success**、Windows Full Test **#805 success** |
 
-注：`9a5482b6 / 53ce7a36 / 8480a736 / 582c0039 / 95d735c5` 这五条 `total_count=0` —— 它们与 `a4cdffbc` 属同一批推送，只有批次尖端有 run；尖端已绿，故这批整体无红。
-（踩坑记录：短 SHA 查 `head_sha` 会返回 `total_count:0` 被误读成"没触发"，必须用完整 40 位。）
+注（**本轮实测更正**，不是推测）：`9a5482b6 / 53ce7a36 / 8480a736 / 582c0039 / 95d735c5` 这五条 `total_count=0` 的**真因是 `paths-ignore`**，不是"批次尖端"：
+`nightly.yml` 与 `windows-full-test.yml` 的 push 触发器都写有
+`paths-ignore: ['**/*.md', 'docs/**', 'LICENSE', '.gitignore']` ⇒ **纯 docs 提交按设计不触发 CI**。
+本轮那条 `1a090b23`（只改 `docs/plan-…`）同样 `total=0`，与这条解释自洽。
+含义（要说清，不要误读成"全绿"）：这些 docs 提交**从未被 CI 验证过**（设计如此，文档改不动应用）；
+`main` 上**最后一次被 CI 验证过的代码状态是 `a4cdffbc`，绿**。
+（踩坑记录：短 SHA 查 `head_sha` 会返回 `total_count:0`，会被误读成"没触发"，必须用完整 40 位。
+若要强行验证 docs 提交，只能 `gh workflow run nightly.yml` 强制一次——本轮**未做**：为纯文档让四平台构建跑约 20 分钟不值。）
 
 ### 2. 发布 run `36966180842` 全作业回读（上轮遗留的 `windows-upgrade-smoke` 一并闭口）
 
@@ -228,3 +234,18 @@
 - **Q3 ④⑤**：仍**未取得**（第四轮仍在测）——由上面那个会话持有，同一批文件不并行改。
 - **Q5 A7 外部锁导入**：维持顺延。前提是"Q1–Q3 全部收口"，而 Q3 未收口；且它需要新通道（渲染器契约 + `npm run gen:web-api-map`）＋一次真实环境构建验收，**不做半截**。
 - **Q4 R2 期刊实体**：维持立案下一版（U1–U4 四片连成一条能力），本版**未动库**。
+
+### 9. 发布资产对账（本轮新做：声明值 vs 发布页实际）
+
+从发布页**真实下载**三份清单（`version.json` 5608 / `SHA256SUMS.txt` 866 / `RELEASE-CERTIFICATION.json` 4069 字节），
+与 Releases API 报的 **21 个资产**逐项对账：
+
+| 检查 | 读数 |
+| --- | --- |
+| `version.json.downloads` 四平台的 `size` vs 上传后资产 `size` | **逐项相等**：mac-arm64 dmg `281448402`、mac-x64 dmg `296852726`、win-x64 setup.exe `232774161`、linux deb `229341488` |
+| `version.json.sha256` vs `SHA256SUMS.txt`（8 条） | 四平台**逐条一致**（`agree`） |
+| 声明引用但发布页不存在的资产 | **无**（`declared-but-absent: none`） |
+| `RELEASE-CERTIFICATION.json.sourceSha` | `a1493bf15bdff781183f66aced0610d729a238c3` = tag 提交 = 发布 run 的 `head_sha` |
+
+**未取（具名，不拿声明当重算）**：**资产字节级 sha256 本轮未重算** —— 那要下载四平台安装包约 **2.7 GB**，本轮不下载。
+所以"上传的字节与其声明哈希相符"这句话，在本轮只是**清单之间的自洽**＋本地上传作业的读数，**不是**本轮重算的结论。
