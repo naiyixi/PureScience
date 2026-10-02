@@ -18,8 +18,12 @@
 而回合本身是跑完的。因此「该形状有没有桥」**仍未判定**——我的具名原因本是为此设计的，它没有出现。
 
 **边界收窄到的候选**（都不是推断，是下一步要读的）：
-1. `state.selectedSkillIds.length > 0` 这一支被走到，且 `descriptorsForIds` 返回空 —— 该支**按设计不写留痕**，于是"没记录 + 没注入"两者同时成立；
-2. `prepareProvider` 对这个 backend 形状**压根没被调用**（回合路径中比它更早的条件把它跳过了）。
+1. `state.selectedSkillIds.length > 0` 这一支被走到，且 `descriptorsForIds` 返回空 —— 该支**按设计不写留痕**，于是"没记录 + 没注入"两者同时成立。
+   **已排除到大概率**：该值来自 `request.forcedSkillIds`（`prompt-turn-workflow.ts:168`），而本会话是 RPC 新建、无技能预选、无专家 ⇒ 应为空。
+2. `prepareProvider` / `resolveCodexInputs` 对这个 backend 形状**没被走到**（回合路径中比它更早的条件把它跳过了）。**当前更可能的一支。**
+   佐证（本轮新读）：函数模型宿主在生产里**是接好的**（`ipc.ts:2001-2005` 把 `resolveFunctionModelTarget` 与 `recordFunctionModelEvent` 交给运行时），
+   ⇒ 只要选择器**被调用**过，留痕就会有条目；只要**没有桥**，我的新代码就会写 `bridge-unavailable`。两者都没发生，
+   说明这条支**根本没进入**（或走了不写留痕的那一支）。下一步只需读 `prompt-preparation-owner.prepare` 的早退分支（handoff / 续轮 / 计划类）。
 
 ## 2. 我要更正自己的三条判断（都在本轮，且都是量出来的）
 
