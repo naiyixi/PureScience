@@ -93,9 +93,15 @@
 
 我这次改动是**双向**的：失败不能再被记成「作答」，而**真作答也不能被记成失败**。后半句此前只有单测，现在有真机读数。
 
-先试「把真实配置根里那个 provider 条目搬进隔离根」：条目文件里确实没有键 material（`{"id":"p_1786100000000_1","type":"official","models":null}`），
-但 `settings:upsert-provider` 对它的返回里没有 `result.providers`，随后实例内 provider 数仍为 **0** ⇒ **该条目没有落地，原因未查明**
-（我第一版的打印把错误体吞掉了，这是诊断写得不合格）。键本身在 keychain，隔离根看不到 ⇒ 这条路走不通，如实记下。
+先试「把真实配置根里那个 provider 条目搬进隔离根」，失败原因**现已查明（两条，各有 file:line）**：
+① **形状不对**：该 RPC 收的是 `UpsertProviderRequest = ProviderDraft & { id? }`（`src/shared/settings.ts:603`、`:634`），
+我递的是**存储态**条目（`{id,name,type,models}`），于是请求被拒——而我当时只打印 `result_of(...)`，
+把错误体压成了 `{}`（这是**我的诊断写得不合格**，`probe4.py` 已改成打印原始载荷）。
+② **键是每根一份的**：官方 provider 的键以 `keyRef: encryptKey(request.key)` 存在 **provider 记录里**
+（`provider-accounts.ts:300-305`），即**跟着存储根走**；全新的隔离根**按构造就没有**这一条 ⇒ 读不到键不是偶发故障，是设计。
+⇒ **④ 的「厂商模型 + 真选择」这一支，用隔离根纪律取不到**：要取得只有两条路——把真实根里那份**加密的 `keyRef` blob**
+复制进隔离根（safeStorage 在同机同用户下可解），或**直接在真实根上跑**。两条都涉及你的凭据，
+**我没有擅自做**（本轮到此为止，等你一句话即可继续）。本轮已取得的是「真作答仍记 `used-model`」这条**与凭据无关**的读数。
 
 改走**不需要任何凭据**的路：本地起一个真答 chat-completions 形状的桩服务，让桥走一次**真实 HTTP 往返**。
 
@@ -120,6 +126,22 @@
 | 调用失败 | `{"outcome":"built-in","reason":"call-failed",…}` | 44200（修复前 44198 是假声称 `used-model`） |
 | 真作答 | `{"outcome":"used-model",…}` | 44202（桩端点） |
 
+### 4.4 CI：定时回归那次红是 provisioning，不是被测代码（`e3d89975`）
+
+| 读数 | 原文 |
+| --- | --- |
+| 失败作业 / 用例 | `Playwright journey stability (zero flake tolerance)` → `e2e/electron-foundation.spec.ts:22` |
+| 日志顺序 | `Downloading Electron binary...`（09:53:46）→ `Test timeout of 120000ms exceeded while setting up "app"` / `TimeoutError: Timeout 180000ms exceeded`（09:59:35） |
+| 判定 | `1 flaky`，而该作业带 `--fail-on-flaky-tests` ⇒ 整条泳道红 |
+| 旁证（不是被测代码） | 同运行另两作业 **success**（Vitest stability / Per-turn IPC）；其余 7 例 5 passed / 2 skipped；该泳道**此前连续 5 天 success**（10-01、09-30、09-29、09-28、09-27） |
+
+⇒ 真因：**runner 上 `npm ci` 没把 Electron 二进制装下来**，Playwright fixture 现场下载烧满预算（与 CHANGELOG 记过的 Windows 同类病灶同源）。
+**修的是真缺口**：`windows-full-test.yml:52-66` 早已为同一个病立过守卫，而这条泳道三个作业都没有 ⇒ 按**同一形状**搬到三处
+（`npm ci` 后校验 `node_modules/electron/path.txt`；缺失则 warning + 重跑 `install.js` + 断言文件存在）。**断言一处未放松**，
+泳道要测的东西不变，只是 provisioning 故障不再冒充 test flake。
+**验证**：手动派发 run `36993966313`（HEAD `e3d89975`）**四作业全绿**；守卫步骤在三处日志中均执行；
+跟踪 issue **#21 被绿跑自动 CLOSED**（10:18:41Z，未手动动它）。
+
 ## 5. 本轮的代码修复（都随下一版走，v1.79.0 产物不含）
 
 | 提交 | 修了什么 |
@@ -129,8 +151,9 @@
 | `c7de13ff` | **宿主被静默丢弃**（`AcpRuntimeCompositionOptions` 未声明 `functionModels`）→ 现在转发；`selectSkills` 返回空时记 `call-failed`；新增源码守卫 `runtime-composition-wiring.test.ts` |
 | `9d79b984` | 失败不再记成「作答」：桥记录本次调用的实际结果（`answered`/`failed`/`skipped`）并在端口暴露，回合具名为 `call-failed`/`call-not-attempted`；引入 `runtime-prompt-composition` 侧的分类器；真机读数见 4.1 |
 | `c09648de` | Codex 缺失时的失败**理由**说了谎：`nativePath` 空时抛「Codex native executable not found」，而真机实测该 CLI 就在 ChatGPT.app 里（present: True）、缺的是托管适配器（False）⇒ 改为点名缺哪一半（适配器在而 CLI 缺 / 都没装）。行为不变，仍失败关闭。真机复现见 §4.3 |
+| `e3d89975` | CI：给定时回归的三个泳道补 Electron 前置守卫（provisioning 故障不再被记成 test flake）。诊断与验证见 §4.4 |
 
-**以上四项都是发布后修复，随下一版走**：v1.79.0 已发布的产物**不含**它们（所以没有动它的发布页正文与 CHANGELOG 里那一节的既有事实）。
+**表中列出的这些提交都是发布后修复，随下一版走**：v1.79.0 已发布的产物**不含**它们（所以没有动它的发布页正文与 CHANGELOG 里那一节的既有事实）。
 
 ### 4.3 失败理由的真机复现：旧话是假的，新话点名缺的那一半
 
