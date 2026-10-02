@@ -166,3 +166,65 @@
 - 本轮本机运行：`2 passed (19.7s)`（连同既有 `pdf-table-extraction.spec.ts` 一并跑过）。门禁：typecheck 0、
   eslint/prettier 干净、`npm run build:e2e` 成功。
 - 全文与复现命令：`docs/evidence/2026-10-02-r4-u3-u4-panel-readings.md`。
+
+## 第 3 轮（2026-10-02 15:42–，核对/闭口轮）
+
+本轮队列里的 Q1–Q6 **全部处于已完成或已立案状态**（Q1/Q2/Q6 完成并回读、Q3 ① 已取得/④⑤ 未取得、Q4 立案下一版、Q5 顺延），
+唯一还开着的工程项 Q3 ④⑤ **此刻由另一个会话持有**（见下）⇒ 本轮做的是**把上两轮挂在明处的开环逐条闭口**＋清理，不做并行改码。
+
+### 1. 上轮「CI 未到结论」现在闭口为绿（读数来自真实 API，用**完整 40 位 SHA**）
+
+| 提交 | 关联 run |
+| --- | --- |
+| `007af97eaa958f1c2a5a0e72f6a777f3bd9582fa`（R4-U3/U4 面板级读数） | Nightly **#809 completed/success**、Windows Full Test **#804 completed/success** |
+| `a4cdffbc41bd4e5485ba5a96ad50e1167eb46be7`（acp：selector-error→call-failed / catalog-error→call-not-attempted） | Nightly **#810 success**、Windows Full Test **#805 success** |
+
+注：`9a5482b6 / 53ce7a36 / 8480a736 / 582c0039 / 95d735c5` 这五条 `total_count=0` —— 它们与 `a4cdffbc` 属同一批推送，只有批次尖端有 run；尖端已绿，故这批整体无红。
+（踩坑记录：短 SHA 查 `head_sha` 会返回 `total_count:0` 被误读成"没触发"，必须用完整 40 位。）
+
+### 2. 发布 run `36966180842` 全作业回读（上轮遗留的 `windows-upgrade-smoke` 一并闭口）
+
+`run concl=success`，`sha=a1493bf15bdff781183f66aced0610d729a238c3`（= tag 提交），逐作业：
+
+- `Release preflight` / `build / Verify (lint + typecheck + test + package)` / `build / Resolve platform matrix` success；
+- 四平台构建（macos-arm64 / macos-x64 / windows-x64 / linux-x64）全部 **success**；
+- `notarize-mac / Resolve Apple notarization credentials` success；两个 `SKIPPED — UNSIGNED macOS assets, not notarized (no Apple credentials)` success；`refresh-checksums` **skipped**；
+- `publish` **success**；
+- **`windows-upgrade-smoke` = completed/success**（上轮"仍 in_progress、未再复核"的那一项，现已闭口）。
+
+### 3. 发布页复核（发布后真实 API 重读，确认"撤回收回"落在公开页而不只是 CHANGELOG）
+
+- `tagName=v1.79.0`、`draft=false`、`prerelease=false`、`publishedAt=2026-10-02T05:24:25Z`、**资产 21 个**（与上轮回读一致）。
+- 正文 **10072 字符 / 12768 字节**（上轮 9433 字符 ⇒ 之后按更正**重合成**过，长度增加有据；桩是 84–428）。
+- 正文含**更正后**的 Q3 口径：`本版**不声称**它们结构性不可得（这条要更正）`，并写明 `requiresChatCompletionsBridge` 的代码前提与"下一次真机回合即可判定"。
+  ⇒ 与 `95d735c5` 对 CHANGELOG/两个 README 的收回**同口径**，公开页没有留下旧的过强声称。
+
+### 4. README 双语横幅逐字相同（pre-push 守卫口径，程序化核对）
+
+`README.md` 与 `README.en.md` 各 1 条 `released](` 横幅行，长度各 **404 字符**，`identical=True`。
+
+### 5. 清理（可核查）
+
+- `/private/tmp`：**412M → 406M**，删除**历史残留 253 项**（早期各轮的 `ps-*.sh|.log|.json`、`/tmp/psreal|psrel|ps-rec|ps-wf|ps-gate|ps-rel79` 等）。
+  证据档里引用这些路径的地方都是"配方与读数"（读数已落在文档里），**不依赖文件在盘上**；剩余 406M 主要是下面那个在跑实例的根。
+- **保留**（属于在跑实例，不是我的）：`/tmp/psq7`、`/tmp/psq7-root`（386M，含托管 codex）、`/tmp/psq7-run`。
+- 用户真实安装 `/Applications/PureScience.app`（PID **22787**）**未动**；仓库 `git rev-list --left-right --count origin/main...main = 0 0`。
+
+### 6. `com.totota.purescience`：仍是"未加载"，且本轮**有意不加载**
+
+- 读数：`launchctl print gui/501/com.totota.purescience` → `Could not find service … in domain for user gui: 501`（plist 在 `/Users/totota/Library/LaunchAgents/`，835 字节，未改）。
+- 不加载的理由（具名）：该 plist 是 `RunAtLoad + KeepAlive` 跑 `scripts/serve-headless.sh`、工作目录=**本仓库**；而**此刻有另一个会话的隔离实例正在跑**（下条）。
+  此时加载会再起一个常驻 headless 服务、与在跑实例争端口并可能重建 `out/`（在跑实例的 MCP 子进程正是 `/Users/totota/purescience/out/main/index.js`），
+  有真实打扰风险 ⇒ 留给用户在**无验证实例**时执行一次：`launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.totota.purescience.plist`。
+
+### 7. 本轮让位的具名对象（不是我做的事，是我不去碰的事）
+
+- 另一个会话（**desktop Hermes**：`Hermes.app` pid 15806 → gateway 15866 → `npm run dev:headless` 56947 → 56982 → electron 57016，端口 **44198** LISTEN，数据根 `/tmp/psq7-root`）正在做 **Q3 ④⑤ 的下一步测定**；
+  它的 `src/main/acp/runtime-composition.ts`、`src/main/acp/turn-skill-owner.ts`、`turn-skill-owner.test.ts` 有**未提交**改动（mtime 15:27–15:34，`runtime-composition-wiring.test.ts` 为新增未跟踪）。
+- 本轮**未触碰**这四个路径、未停它的实例、未删它的 `/tmp/psq7*`，因此**本轮 `git status` 不干净**：工作区里那 4 项属于它。**不要在它提交前把这批文件当"残留"清理掉。**
+
+### 8. 本轮**没做**的（具名，不假装）
+
+- **Q3 ④⑤**：仍**未取得**（第四轮仍在测）——由上面那个会话持有，同一批文件不并行改。
+- **Q5 A7 外部锁导入**：维持顺延。前提是"Q1–Q3 全部收口"，而 Q3 未收口；且它需要新通道（渲染器契约 + `npm run gen:web-api-map`）＋一次真实环境构建验收，**不做半截**。
+- **Q4 R2 期刊实体**：维持立案下一版（U1–U4 四片连成一条能力），本版**未动库**。
