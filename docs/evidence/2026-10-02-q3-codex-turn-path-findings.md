@@ -37,6 +37,7 @@ settings:install-codex {"source":"managed"}   # 装在隔离根里，机器未�
 | --- | --- | --- | --- | --- |
 | `01a0fa79-…` | `codex:builtin-codex-isolated`（订阅/隔离，自带后端） | 147.4s / 135.6s / 135.2s | **一条也没有**（`[]`） | 0 |
 | `01a0fa80-…` | `codex:p_1786100000000_1`（API-key provider 走应用 Responses 桥） | 121.4s / 120.9s / ~121s | **一条也没有**（`[]`） | 0 |
+| `01a0fa89-…` | `codex:p_1790909688055_5`（**自定义 chat-completions-only** provider，即 `requiresChatCompletionsBridge` 该为真的那种形状） | 120.7s / 120.4s | **一条也没有**（`[]`） | 0 |
 
 三次回合的 function model 分别是：① `{}`（未配置）、④ `{skill-selection: deepseek-v4-pro}`、⑤ 不可达端点
 （`http://127.0.0.1:9`，临时 provider 用完即删）；每次 `acp:get-state` 都报 `status=connected`、`lastError=null`，
@@ -61,11 +62,13 @@ codex 技能根已物化 **625 个 `SKILL.md`**（`/tmp/ps-q3-root/codex/skills`
   `settingsService.codexSkillCatalog`）⇒ 也不是它。
 - 因此只剩 `codex?.bridgeSkillsAvailable`（`turn-skill-owner.ts:151`），其值为
   `Boolean(currentResource()?.bridgeLease?.selectSkills)`（`connection-resource-owner.ts:106-108`）。
-- **为什么没有 bridge lease**：codex 后端只在特定 route 上建 Responses 桥
-  （`backend-resolver.ts:735-746`：`framework.id === 'codex' && modelRoute === 'codex-responses' && hasCodexProviderTransport`
-  → 走 `ensureNativeCodexProviderTransport`；否则才 `ensureResponsesBridge`）。本机两条 provider 形状
-  （订阅/隔离自带后端；DeepSeek 走 native codex provider transport）都落在**没有 Responses 桥**的那一支
-  ⇒ `bridgeSkillsAvailable=false` ⇒ 在调选择器之前就 `return []`。这解释了为什么两条路径各 3 个真回合都没有留痕。
+- **为什么没有 bridge lease**：Responses 桥只在 target 声明需要它时创建
+  （`backend-resolver.ts:745-752`：`target.needsChatResponsesBridge ? ensureResponsesBridge(...) : needsNativeResponsesCompatibility ? ensureNativeResponsesCompatibility(...) : undefined`）。
+  本机两条 provider 形状都没走到建桥那一支 ⇒ 没有 `bridgeLease` ⇒ `bridgeSkillsAvailable=false`
+  ⇒ 在调选择器之前就 `return []`。这解释了为什么两条路径各 3 个真回合都没有留痕。
+  **更正**：本节初稿把建桥条件写成"`codex-responses` route 那一支"，**是错的**——那支（`:739-743`）是
+  **native codex provider transport**（把 `provider` 换成自带后端），与建桥无关；建桥的判据是
+  `target.needsChatResponsesBridge`。以本节为准。
 
 **独立交叉验证**：codex 自己的 rollout 逐字文件
 `/tmp/ps-q3-root/codex/sessions/2026/10/02/rollout-…-01a0fa80-….jsonl`（30 行）里，该回合的用户消息就是
@@ -81,13 +84,17 @@ codex 技能根已物化 **625 个 `SKILL.md`**（`/tmp/ps-q3-root/codex/skills`
 
 **未取**：①④⑤ 的留痕读数（内置回落与具名原因 / 真实往返与是否真选出技能 / `call-failed` 回落）。
 
+**结论口径（只说量到的）**：本机**三种 provider 形状、8 个真实回合**都没有让这条支跑起来
+（留痕为空 + rollout 无技能文本）。因此**不能**声称"turn 路径的技能选择在应用里不可达"——
+只能说**本机可配的三种形状都不可达**；要断言前者，还差一步把 `currentResource()?.bridgeLease` 变成可读证据
+（例如回合侧留痕一条"本回合有没有桥"）。这本身若成立，就是一条要立案的事实：**功能存在但从不触发**
+（与 A3 的 ✅ 并不矛盾——A3 走的是 `settings:function-models` 的**探针**路径，不是 turn 路径，这正是 Q3 存在的理由）。
+
 **下一步（按代价从小到大）**：
-1. **换到会产生 Responses 桥的那条 route**（上节 `backend-resolver.ts:735-746`）——即让 codex 的 `modelRoute` 落在
-   `ensureResponsesBridge` 那一支（而不是 native codex provider transport），再跑同样的三例。
-2. 若不换 route，则把 `bridgeSkillsAvailable` 做成可读证据（回合侧留痕一条"本回合有没有桥"），以断言闸门；
-   否则"turn 路径的技能选择"在**本机所有可用 provider 形状下都不跑**——这本身是一条要立案的事实
-   （功能存在但本机不可达），不能只写成"未取"。
-3. 用同一驱动脚本 `/tmp/ps-q1/q3-turns.py`（三例一起跑、读 `<configRoot>/function-model-events.json`）取读数。
+1. 把 `bridgeSkillsAvailable` 的取值做成**回合侧可读**（一条留痕即可），用它直接断言闸门，而不是靠"留痕为空"反推；
+2. 沿 `requiresChatCompletionsBridge(provider, framework)`（`provider-accounts.ts:1203`）核实第三种形状为何仍没建桥——
+   是否 `currentResource()` 在回合期指向了另一个 resource（那 `bridgeLease` 会缺席）；
+3. 拿到桥之后用同一驱动脚本 `/tmp/ps-q1/q3-turns.py` 三例一起跑、读 `<configRoot>/function-model-events.json`。
    **纪律照旧**：④ 的"真实往返耗时"若该路径不上报，就写 **not reported**（`elapsedMs` 确实被算了但被桥丢弃，
    `runtime-prompt-composition.ts:97` 只取 `value`），绝不写 0。
 
