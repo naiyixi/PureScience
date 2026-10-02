@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
 import {
+  FUNCTION_MODEL_EVENT_REASONS,
   isFunctionModelId,
   type FunctionModelEvent,
   type FunctionModelEventReason,
@@ -29,12 +30,8 @@ export type { FunctionModelEvent, FunctionModelEventReason }
 export const FUNCTION_MODEL_EVENT_LOG_LIMIT = 200
 
 const isReason = (value: unknown): value is FunctionModelEventReason =>
-  value === 'not-configured' ||
-  value === 'provider-missing' ||
-  value === 'provider-has-no-credentials' ||
-  value === 'provider-unverified' ||
-  value === 'model-missing' ||
-  value === 'call-failed'
+  typeof value === 'string' &&
+  (FUNCTION_MODEL_EVENT_REASONS as readonly string[]).includes(value)
 
 const sanitizeEvent = (value: unknown): FunctionModelEvent | undefined => {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return undefined

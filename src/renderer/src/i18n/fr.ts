@@ -1903,6 +1903,8 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.functionModelTrailBuiltIn': 'voie intégrée :',
   'settings.functionModelTrailCallFailed': "l'appel a échoué",
   'settings.functionModelNotAttempted': 'aucune requête envoyée : rien à sélectionner',
+  'settings.functionModelBridgeUnavailable':
+    "ce tour n'a pas eu de pont de sélection de compétences : rien n'a été tenté",
 
   'settings.functionModelDetecting': 'Appel du modèle…',
   'settings.functionModelProbeRun': 'Lancer une sélection maintenant',

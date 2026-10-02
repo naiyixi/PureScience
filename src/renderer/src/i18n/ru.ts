@@ -1855,6 +1855,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.functionModelTrailBuiltIn': 'встроенный путь:',
   'settings.functionModelTrailCallFailed': 'вызов не удался',
   'settings.functionModelNotAttempted': 'запрос не отправлен: нечего выбирать',
+  'settings.functionModelBridgeUnavailable':
+    'в этом ходе не было моста выбора навыков: попытка не выполнялась',
 
   'settings.functionModelDetecting': 'Вызов модели…',
   'settings.functionModelProbeRun': 'Запустить выбор прямо сейчас',

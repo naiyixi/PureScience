@@ -1913,6 +1913,8 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.functionModelTrailBuiltIn': 'eingebauter Weg:',
   'settings.functionModelTrailCallFailed': 'der Aufruf ist fehlgeschlagen',
   'settings.functionModelNotAttempted': 'keine Anfrage gesendet: nichts zur Auswahl',
+  'settings.functionModelBridgeUnavailable':
+    'in diesem Turn gab es keine Skill-Auswahl-Brücke: es wurde nichts versucht',
 
   'settings.functionModelDetecting': 'Modell wird aufgerufen…',
   'settings.functionModelProbeRun': 'Auswahl jetzt einmal ausführen',

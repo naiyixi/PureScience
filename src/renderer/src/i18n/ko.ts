@@ -1826,6 +1826,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.functionModelTrailBuiltIn': '내장 경로:',
   'settings.functionModelTrailCallFailed': '호출 실패',
   'settings.functionModelNotAttempted': '요청이 전송되지 않았습니다(선택할 항목 없음)',
+  'settings.functionModelBridgeUnavailable':
+    '이 턴에는 스킬 선택 브리지가 없습니다(선택이 시도되지 않았습니다)',
 
   'settings.functionModelDetecting': '모델 호출 중…',
   'settings.functionModelProbeRun': '지금 선택을 한 번 실행',

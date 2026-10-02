@@ -1,4 +1,5 @@
 import type { AgentFrameworkId } from '../../shared/settings'
+import type { FunctionModelEventReason, FunctionModelId } from '../../shared/function-models'
 import type { EffectiveSpecialistSkills } from '../../shared/specialist'
 import type { ResolvedAgentBackend } from '../agent-framework'
 import { createLogger } from '../logger'
@@ -9,6 +10,7 @@ import type {
 import { AcpSessionPresentationPolicy } from './session-presentation-policy'
 const log = createLogger('acp-turn-skill-owner')
 const presentation = new AcpSessionPresentationPolicy()
+const SKILL_SELECTION_FUNCTION_ID: FunctionModelId = 'skill-selection'
 type AcpTurnSkillHooks = Readonly<{
   needForceLoad: (ids: string[]) => Promise<string[]>
   namesForIds: (ids: string[]) => Promise<string[]>
@@ -17,6 +19,16 @@ type AcpTurnSkillHooks = Readonly<{
     codexHome: string | undefined
   ) => Promise<ResponsesBridgeSkillInput[]>
   catalogForCodexHome?: (codexHome: string | undefined) => Promise<ResponsesBridgeSkillCandidate[]>
+  /**
+   * Records why a turn did NOT run the selector, into the same trail the configured model writes to. Without
+   * it, "the model I configured was not used" and "the selector never ran" are indistinguishable to a reader:
+   * both are simply silence.
+   */
+  recordFunctionModelEvent?: (event: {
+    functionId: FunctionModelId
+    outcome: 'built-in'
+    reason: FunctionModelEventReason
+  }) => void
 }>
 type TurnSkillOutcome = 'completed' | 'failed' | 'cancelled' | 'reload-restored'
 type ProviderPreparationInput = Readonly<{
@@ -148,7 +160,17 @@ class AcpTurnSkillOwner {
       )
     }
     const codex = input.codex
-    if (!codex?.bridgeSkillsAvailable || !this.options.skills?.catalogForCodexHome) return []
+    // Why the selector did not run is a fact about the turn, and it has to be readable: a codex turn whose
+    // connection carries no responses bridge cannot reach a selector at all. Kept apart from "nothing was
+    // configured" (a model may well be configured) and from "there was nothing to select for".
+    if (!codex?.bridgeSkillsAvailable) {
+      this.recordSelectionNotRun('bridge-unavailable')
+      return []
+    }
+    if (!this.options.skills?.catalogForCodexHome) {
+      this.recordSelectionNotRun('call-not-attempted')
+      return []
+    }
     let catalog: ResponsesBridgeSkillCandidate[]
     try {
       catalog = await this.options.skills.catalogForCodexHome(codex.home)
@@ -159,7 +181,10 @@ class AcpTurnSkillOwner {
       const allowed = new Set(state.scope.frameworkNames)
       catalog = catalog.filter((skill) => allowed.has(skill.name))
     }
-    if (catalog.length === 0) return []
+    if (catalog.length === 0) {
+      this.recordSelectionNotRun('call-not-attempted')
+      return []
+    }
     try {
       const selected = await codex.selectSkills(input.selectionText, catalog, codex.signal)
       if (!selected) return []
@@ -172,6 +197,16 @@ class AcpTurnSkillOwner {
   private selectionFailed(reason: 'catalog-error' | 'selector-error'): [] {
     log.warn('Codex Skill selection failed', { reason })
     return []
+  }
+
+  // The trail entry a turn leaves when the selector never ran. Named reasons only: an unnamed skip would put
+  // the reader back where they started, unable to tell a missing bridge from an empty catalog.
+  private recordSelectionNotRun(reason: FunctionModelEventReason): void {
+    this.options.skills?.recordFunctionModelEvent?.({
+      functionId: SKILL_SELECTION_FUNCTION_ID,
+      outcome: 'built-in',
+      reason
+    })
   }
 }
 

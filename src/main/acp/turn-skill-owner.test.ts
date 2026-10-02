@@ -324,4 +324,85 @@ describe('AcpTurnSkillOwner', () => {
     expect(selectSkills).toHaveBeenCalledOnce()
     expect(prepared.codexSkillInputs).toEqual([])
   })
+
+  it('says so by name when the turn has no skill-selection bridge at all', async () => {
+    const selectSkills = vi.fn(async () => [])
+    const recordFunctionModelEvent = vi.fn()
+    const owner = new AcpTurnSkillOwner({
+      skills: {
+        needForceLoad: async () => [],
+        namesForIds: async () => [],
+        catalogForCodexHome: async () => [
+          { name: 'research', description: 'Research', path: '/skills/research/SKILL.md' }
+        ],
+        recordFunctionModelEvent
+      },
+      requestSkillsReload: vi.fn()
+    })
+    const handle = await owner.authorize({})
+
+    const prepared = await handle.prepareProvider({
+      frameworkId: codexFramework.id,
+      selectionText: 'find papers',
+      promptText: 'find papers',
+      codex: { bridgeSkillsAvailable: false, selectSkills }
+    })
+
+    expect(prepared.codexSkillInputs).toEqual([])
+    expect(selectSkills).not.toHaveBeenCalled()
+    expect(recordFunctionModelEvent).toHaveBeenCalledWith({
+      functionId: 'skill-selection',
+      outcome: 'built-in',
+      reason: 'bridge-unavailable'
+    })
+  })
+
+  it('names an empty catalog as nothing to select for rather than a failed call', async () => {
+    const recordFunctionModelEvent = vi.fn()
+    const owner = new AcpTurnSkillOwner({
+      skills: {
+        needForceLoad: async () => [],
+        namesForIds: async () => [],
+        catalogForCodexHome: async () => [],
+        recordFunctionModelEvent
+      },
+      requestSkillsReload: vi.fn()
+    })
+    const handle = await owner.authorize({})
+
+    await handle.prepareProvider({
+      frameworkId: codexFramework.id,
+      selectionText: 'find papers',
+      promptText: 'find papers',
+      codex: { bridgeSkillsAvailable: true, selectSkills: vi.fn(async () => []) }
+    })
+
+    expect(recordFunctionModelEvent).toHaveBeenCalledWith({
+      functionId: 'skill-selection',
+      outcome: 'built-in',
+      reason: 'call-not-attempted'
+    })
+  })
+
+  it('records nothing when the turn already carries selected Skills: that is not a skip', async () => {
+    const recordFunctionModelEvent = vi.fn()
+    const owner = new AcpTurnSkillOwner({
+      skills: {
+        needForceLoad: async () => [],
+        namesForIds: async (ids) => [...ids],
+        recordFunctionModelEvent
+      },
+      requestSkillsReload: vi.fn()
+    })
+    const handle = await owner.authorize({ selectedSkillIds: ['research'] })
+
+    await handle.prepareProvider({
+      frameworkId: codexFramework.id,
+      selectionText: 'find papers',
+      promptText: 'find papers',
+      codex: { bridgeSkillsAvailable: false, selectSkills: vi.fn(async () => []) }
+    })
+
+    expect(recordFunctionModelEvent).not.toHaveBeenCalled()
+  })
 })

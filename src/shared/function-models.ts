@@ -185,6 +185,28 @@ export type FunctionModelEventReason =
    * as "used" when nothing left the machine is the exact false claim this vocabulary exists to prevent.
    */
   | 'call-not-attempted'
+  /**
+   * The turn had no skill-selection bridge at all, so no selector could be reached: the connection this
+   * turn ran on is not bridged. Three facts that used to read the same (silence) now stay apart — nothing
+   * configured, nothing to select for, and no path to a selector.
+   */
+  | 'bridge-unavailable'
+
+/**
+ * Every reason, as data. The type and every validator derive from this one list so a reason cannot exist in
+ * the union but be dropped by a reader: `call-not-attempted` was in the type while the trail's sanitizer did
+ * not accept it, which silently removed the reason from the entry the user reads.
+ */
+export const FUNCTION_MODEL_EVENT_REASONS = [
+  'not-configured',
+  'provider-missing',
+  'provider-has-no-credentials',
+  'provider-unverified',
+  'model-missing',
+  'call-failed',
+  'call-not-attempted',
+  'bridge-unavailable'
+] as const satisfies readonly FunctionModelEventReason[]
 
 export type FunctionModelEvent = Readonly<{
   at: number

@@ -1857,6 +1857,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.functionModelTrailBuiltIn': '内蔵経路：',
   'settings.functionModelTrailCallFailed': '呼び出しに失敗しました',
   'settings.functionModelNotAttempted': 'リクエストは送信されませんでした（選択対象がありません）',
+  'settings.functionModelBridgeUnavailable':
+    'このターンにはスキル選択のブリッジがありません（選択は行われませんでした）',
 
   'settings.functionModelDetecting': 'モデルを呼び出し中…',
   'settings.functionModelProbeRun': '今すぐ選択を1回試す',

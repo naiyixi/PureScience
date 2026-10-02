@@ -61,7 +61,8 @@ const DETECT_REASON_KEYS: Record<FunctionModelDetectionFailureReason, Translatio
 const RUN_REASON_KEYS: Record<FunctionModelEvent['reason'] & string, TranslationKey> = {
   ...DETECT_REASON_KEYS,
   'call-failed': 'settings.functionModelTrailCallFailed',
-  'call-not-attempted': 'settings.functionModelNotAttempted'
+  'call-not-attempted': 'settings.functionModelNotAttempted',
+  'bridge-unavailable': 'settings.functionModelBridgeUnavailable'
 }
 
 const UNUSABLE_KEYS: Record<FunctionModelUnusableReason, TranslationKey> = {

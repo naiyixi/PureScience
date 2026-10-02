@@ -262,7 +262,9 @@ const createAcpRuntime = ({
           namesForIds: (ids) => settingsService.skillNudgeNamesForIds(ids),
           descriptorsForIds: (ids, codexHome) =>
             settingsService.codexSkillDescriptorsForIds(ids, codexHome),
-          catalogForCodexHome: (codexHome) => settingsService.codexSkillCatalog(codexHome)
+          catalogForCodexHome: (codexHome) => settingsService.codexSkillCatalog(codexHome),
+          // A turn that never reached the selector says so in the same trail the configured model writes to.
+          recordFunctionModelEvent: (event) => settingsService.recordFunctionModelEvent(event)
         },
         artifacts: {
           configRoot,

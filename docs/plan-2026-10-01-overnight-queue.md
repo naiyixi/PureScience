@@ -57,7 +57,7 @@
   或在 `src/main/settings/pdf-service.ts` 的解析层把旋转归一化）。**先写调查结论再动代码**（照 R6-U1 的先例）。
 - 验收：真机取一个旋转 90° 的表格页与一个含 ﬁ/ﬂ 的页，读数前后对比。
 
-### Q3. ①④⑤ 在真实 codex 回合路径上取证 —— **未取（阻塞具名，见 `docs/evidence/2026-10-02-q3-codex-turn-path-findings.md`）**
+### Q3. ①④⑤ 在真实 codex 回合路径上取证 —— **① 已取得（具名 `bridge-unavailable`）；④⑤ 结构性取不到、已立案**
 
 > **已探明（别重走）**：应用内检测**只认托管适配器**（`codex-detect.ts:85-89` + `agent-runtime-manager.ts:299-313`），
 > 用户装的 `~/.local/bin/codex-acp` 在应用里**不可用**（A8 的修复只覆盖零参数检测）；建会话会 500 `Codex native executable not found`。
@@ -71,8 +71,16 @@
 > 闸门 = `bridgeSkillsAvailable`（`connection-resource-owner.ts:106-108`）；桥只在 `target.needsChatResponsesBridge`
 > 时创建（`backend-resolver.ts:745-752`）。
 >
-> **下一步（要用户拍板才动）**：把 `bridgeLease`/`bridgeSkillsAvailable` 做成**回合侧可读证据**（新原因 + 文案 + 面板映射），
-> 用它直接断言闸门；若证实永不触发，即"功能存在但从不触发"，单独立案。**在此之前不要重跑安装/回合**。
+> **本片已交付（用户拍板"做成回合侧可读证据"）**：新增具名原因 `bridge-unavailable` + 回合侧写入 + 9 语种文案 + 面板穷尽映射；
+> **真机读数**（隔离实例 44192，真 codex 会话 `01a0faa4-…`，真实回合）：留痕写入
+> `{"functionId":"skill-selection","outcome":"built-in","reason":"bridge-unavailable"}` 且回读仍在
+> ⇒ **① 在 turn 路径上已取得**（内置回落 + 具名原因）。
+> 同时修掉一个真缺陷：留痕读取器漏收 `call-not-attempted`（写入带原因、读回丢掉），现由契约自身一份清单派生 + 回归用例。
+> 见 `docs/evidence/2026-10-02-q3-turn-side-reason.md`。
+>
+> **④⑤ 仍是结构性取不到（非"没做"）**：桥不存在 ⇒ 没有模型往返、配置的模型根本没被咨询 ⇒ 产生不了 `call-failed`。
+> 要取得 ④⑤，需要**让这些 provider 形状也有桥**（建桥条件是 `target.needsChatResponsesBridge`，属产品路由决定）——**独立立案**。
+> **在此之前不要重跑安装/回合**（配方见本段上方）。
 
 - ~~现在适配器通了~~ **（此前提已被实测推翻，见上）** 旧记录：`detectCodex()` 零参数即可复现：`adapterPath=~/.local/bin/codex-acp`、`nativeCodexPath=/Applications/ChatGPT.app/Contents/Resources/codex`、
   `nativeCodexVersion=0.154.0-alpha.6.2`，返回对象的前提是真实 ACP initialize 通过 —— **零参数检测确实如此，但应用内不走这条**。

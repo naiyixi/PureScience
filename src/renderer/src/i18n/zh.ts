@@ -768,6 +768,7 @@ export const zh = {
   'settings.functionModelTrailBuiltIn': '内置路径：',
   'settings.functionModelTrailCallFailed': '调用失败',
   'settings.functionModelNotAttempted': '未发出请求：没有可选项',
+  'settings.functionModelBridgeUnavailable': '本回合没有技能选择通道：未发起选择',
 
   'settings.functionModelDetecting': '正在调用模型…',
   'settings.functionModelProbeRun': '立即试跑一次选择',

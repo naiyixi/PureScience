@@ -1722,6 +1722,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.functionModelTrailBuiltIn': '內建路徑：',
   'settings.functionModelTrailCallFailed': '呼叫失敗',
   'settings.functionModelNotAttempted': '未發出請求：沒有可選項',
+  'settings.functionModelBridgeUnavailable': '本回合沒有技能選擇通道：未發起選擇',
 
   'settings.functionModelDetecting': '正在呼叫模型…',
   'settings.functionModelProbeRun': '立即試跑一次選擇',

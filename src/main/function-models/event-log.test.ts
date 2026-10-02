@@ -10,6 +10,7 @@ import {
   functionModelEventLogPath,
   readFunctionModelEvents
 } from './event-log'
+import { FUNCTION_MODEL_EVENT_REASONS } from '../../shared/function-models'
 
 // The trail is how "why did this run not use the model I configured" gets an answer instead of a shrug.
 // These cases pin its two hard properties: it is bounded, and it never resurrects a shape it cannot read.
@@ -98,5 +99,23 @@ describe('function model event log', () => {
     writeFileSync(functionModelEventLogPath(root), '{ not json', 'utf8')
 
     expect(readFunctionModelEvents(root)).toEqual([])
+  })
+
+  // Regression: the sanitizer used to carry its own list of reasons, and 'call-not-attempted' was missing
+  // from it — the entry was written with the reason and read back without it, so the user saw "built-in"
+  // and no explanation. The list is now the contract's own, and this case walks all of it.
+  it('reads back every reason the contract defines', () => {
+    for (const reason of FUNCTION_MODEL_EVENT_REASONS) {
+      appendFunctionModelEvent(root, {
+        functionId: 'skill-selection',
+        outcome: 'built-in',
+        reason,
+        at: 1
+      })
+    }
+
+    expect(readFunctionModelEvents(root).map((entry) => entry.reason)).toEqual([
+      ...FUNCTION_MODEL_EVENT_REASONS
+    ])
   })
 })

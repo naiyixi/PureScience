@@ -1898,6 +1898,8 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.functionModelTrailBuiltIn': 'ruta integrada:',
   'settings.functionModelTrailCallFailed': 'la llamada falló',
   'settings.functionModelNotAttempted': 'no se envió ninguna petición: nada que seleccionar',
+  'settings.functionModelBridgeUnavailable':
+    'este turno no tuvo puente de selección de skills: no se intentó nada',
 
   'settings.functionModelDetecting': 'Llamando al modelo…',
   'settings.functionModelProbeRun': 'Ejecutar una selección ahora',

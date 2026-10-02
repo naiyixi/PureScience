@@ -804,6 +804,8 @@ export const en: Record<ZhKey, string> = {
   'settings.functionModelTrailBuiltIn': 'built-in path:',
   'settings.functionModelTrailCallFailed': 'the call failed',
   'settings.functionModelNotAttempted': 'no request was sent: nothing to select for',
+  'settings.functionModelBridgeUnavailable':
+    'this turn had no skill-selection bridge: nothing was attempted',
 
   'settings.functionModelDetecting': 'Calling the model…',
   'settings.functionModelProbeRun': 'Run one selection now',
