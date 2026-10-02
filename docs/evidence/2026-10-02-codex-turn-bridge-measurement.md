@@ -45,7 +45,47 @@
    - **没有** ⇒ 是上面那一支（强制 id + 空描述符），则要修的是"描述符取不到时说一声"。
    两条都值得修；修法与我已经交付的三处跳过**同源**（复用既有的具名原因，不新增契约）。
 
-## 2. 我要更正自己的三条判断（都在本轮，且都是量出来的）
+## 4. 修好之后：同一实例上连续三次回合的**完整读数**（2026-10-02）
+
+诊断日志先把闸门钉死（短暂插入、跑完即删）：
+```
+[acp-turn-skill-owner] DIAG resolveCodexInputs {
+  frameworkId: 'codex', selectedSkillIds: 0, bridgeSkillsAvailable: true,
+  codexHome: '…/codex', hasCatalogReader: true, hasRecordHook: true }
+[acp-bridge] bridge skill selection failed { model: 'unreachable-model', reason: 'invalid-response' }
+```
+⇒ **该形状确实有桥**（`bridgeSkillsAvailable: true`，我撤回的那句得到实测确认），`selectedSkillIds` 为 0，
+目录读取器与留痕钩子都在 ⇒ 闸门既不是"没桥"也不是"没接线"，而是**这条支在修好宿主之前根本没把结果写出去**。
+
+修好宿主后连跑三例（真 codex 会话、隔离实例 44198）：
+
+| 例 | 留痕（磁盘原文） | 判读 |
+| --- | --- | --- |
+| ① 未配置 | `{"outcome":"built-in","reason":"not-configured"}` | ✅ **① 取得**，且真实 |
+| ⑤ 不可达端点（`http://127.0.0.1:9`） | `{"outcome":"used-model","providerId":"p_…_2","model":"unreachable-model"}` | ⛔ **假声称**——那个端点**不可能作答** |
+| ④ 真 provider（deepseek-v4-pro） | `{"outcome":"used-model","providerId":"p_…_1","model":"deepseek-v4-pro"}` | ⛔ **不成立**（见下） |
+
+**⑤ 为什么是假声称（机制，已读源码）**：桥把失败**吞掉**并返回空 ⇒ `createSkillSelectionBridge` 的
+`runWithModel` **正常 resolve**（从未抛错）⇒ `runFunctionModelSkillSelection` 走成功分支、记 `used-model`
+（`function-model-skill-selection.ts:123-130`）。即"请求没成功"被记成"模型作答了"。
+
+⇒ **turn 路径的 `call-failed` 取不到**——不是"模型没被咨询"，而是**失败被记成成功**；
+连带 **④ 也不成立**：它与上面那条假声称**用的是同一个标签**（`used-model`），在这条路径上无法区分
+"真往返"与"被吞掉的失败"。这与 A3 的教训同源（探针当年也踩过，靠注入**记账 fetch** 才修好）——
+**turn 路径缺那道记账**。
+
+**下一步（立案，未做）**：把探针那套记账（发没发请求 / 请求是否被拒 → `call-not-attempted` / `call-failed`）
+接到 turn 路径的桥包装器上；**在此之前 ④⑤ 一个字都不写进声称**。①（内置回落 + 具名原因）**已取得**且可复核。
+
+## 5. 本轮的代码修复（都随下一版走，v1.79.0 产物不含）
+
+| 提交 | 修了什么 |
+| --- | --- |
+| `b80fa197` | 跳过具名（`bridge-unavailable` / `call-not-attempted`）+ 原因清单与契约同源 |
+| `a4cdffbc` | `selector-error` → `call-failed`、`catalog-error` → `call-not-attempted`（失败不再只是日志） |
+| `c7de13ff` | **宿主被静默丢弃**（`AcpRuntimeCompositionOptions` 未声明 `functionModels`）→ 现在转发；`selectSkills` 返回空时记 `call-failed`；新增源码守卫 `runtime-composition-wiring.test.ts` |
+
+## 6. 我要更正自己的三条判断（都在本轮，且都是量出来的）
 
 | 我先前的说法 | 实际读数 | 结论 |
 | --- | --- | --- |
