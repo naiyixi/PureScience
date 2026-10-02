@@ -60,7 +60,32 @@
 
 **纪律提醒**：真实配置根 `~/.purescience-project` 只读；所有写入落在 `/tmp` 的隔离根；凭据不入库、不入文档、不入提交。
 
-## 4. 明确不做（本轮与下一版都不做）
+## 5. 下一片的**真实**顺序：先做指标导入，再做筛选面（U3 的前提核查，2026-10-02）
+
+**核查结论（有证据）**：`JournalMetric` **没有任何生产方** —— 全库 grep `appendMetric|journalMetric` 除
+`journal-repository.ts`（本片新建）与其测试外**零命中**。所以：
+
+- 如果先做 U3 的**显示/筛选面**，那个面在真机上**只会显示「未知」**：库里永远没有指标行，而这看起来像
+  「筛选功能有 bug」而不是「数据还没进来」——正是本仓最忌讳的那类假象。
+- ⇒ **下一片必须是「指标导入」**（给出 `appendMetric` 的第一个真实生产方），**然后**才是 U3 的筛选/统计面。
+
+### 5.1 指标导入片（建议下一片）
+
+| 面 | 内容 | 验收（真机/真文件） |
+| --- | --- | --- |
+| 数据形状 | 一行 = `{ issn? , journalName? , kind , value , year , source }`；**year 与 source 必填**（无年份无来源的数字不是事实） | 缺 year/source 的行**进不了库**且给出具名原因 |
+| 写入 | 复用 `JournalRepository`：有 ISSN 走 `upsertByIssn`、只有名字走 `upsertByNormalizedName`；值一律走 `appendMetric`（append-only） | 同一 ISSN 两次导入只出一行期刊；改指标＝**新增行** |
+| 报告 | 导入**逐行给结果**：`imported` / 具名跳过原因（`no-value`、`no-year`、`no-source`、`bad-issn`、`name-ambiguous`、`name-missing`）——**不静默丢行**（与 R3「未捕获必须带具名原因」同口径） | 真机：正例入库、反例逐条具名，**零静默丢弃** |
+| 入口 | 新增应用命令 `references:import-journal-metrics`（本仓命令模式：owner `Pick` + `defineApplicationCommand` + handler map），并跑 `npm run gen:web-api-map` 保持生成物同步 | 通过真实 RPC 导入一次并回读库 |
+| 界面 | 本片**不做**界面：UI 属 U3（显示指标时**必须**带上年份与来源；缺失显示「未知」而非 0/空白） | — |
+
+### 5.2 之后仍未做（立案，避免无人认领）
+
+- **R2-U3**：按分区/影响因子筛选的统计面 + 「未知」口径 + 9 语种文案；依赖 5.1 提供真实数据。
+- **R2-U4**：别名与更名——**只做精确规范化匹配 + 用户显式合并**，不做模糊自动合并。
+- **A7 外部锁导入**：前提（Q1–Q3 收口）已满足，理由只剩容量/排期；需新通道 + `gen:web-api-map` + 一次真实环境构建验收。
+
+## 6. 明确不做（本片交付）
 
 - **不做模糊自动合并**（R2-U4 只做精确规范化 + 用户显式合并）；
 - **不回填**既有 `Reference.venue`；
