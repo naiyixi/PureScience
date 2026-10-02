@@ -39,6 +39,14 @@ jobs:
     # Skipped by the notarization dry-run (skip_verify), which only needs a signed mac build.
     if: ${{ !inputs.skip_verify }}
     runs-on: macos-14
+    # Hosted runners give a Node process about a 2 GB V8 heap by default, and the node typecheck now needs
+    # more: on 2026-10-02 two different commits died with `FATAL ERROR: Reached heap limit` inside
+    # `typecheck:node`, while the same trees typecheck cleanly at the same limit on a dev machine — so the red
+    # lane read like a code defect that did not exist. Raise the ceiling here instead of trimming the type
+    # surface to fit a runner default, and keep the default elsewhere so a real memory regression still shows
+    # up locally.
+    env:
+      NODE_OPTIONS: --max-old-space-size=4096
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
