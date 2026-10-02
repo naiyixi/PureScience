@@ -89,9 +89,36 @@
 同一实例的另一次对照（未配置功能模型）：`{"outcome":"built-in","reason":"not-configured"}`（3.4 s，真实回合）。
 脚本自判：`{"① not-configured": true, "⑤ call-failed (post-fix)": true, "⑤ still claims used-model (pre-fix bug)": false}`。
 
-⇒ **④ 的读数仍取不到**，且原因已经明确、不再是「路径不可达」：隔离根里没有真 key，机器上能用的 provider
-不在这个实例内，所以**没有可用的模型可跑真往返**（脚本会打印 `④ NOT EXERCISABLE` 而不是编一个读数）。
-要在真机取 ④，得在一个配了真实可用 provider 的实例里跑同一场景——那是下一步，不是这一轮。
+### 4.2 ④ 的真机读数：真作答仍是 `used-model`（不被误记成失败）
+
+我这次改动是**双向**的：失败不能再被记成「作答」，而**真作答也不能被记成失败**。后半句此前只有单测，现在有真机读数。
+
+先试「把真实配置根里那个 provider 条目搬进隔离根」：条目文件里确实没有键 material（`{"id":"p_1786100000000_1","type":"official","models":null}`），
+但 `settings:upsert-provider` 对它的返回里没有 `result.providers`，随后实例内 provider 数仍为 **0** ⇒ **该条目没有落地，原因未查明**
+（我第一版的打印把错误体吞掉了，这是诊断写得不合格）。键本身在 keychain，隔离根看不到 ⇒ 这条路走不通，如实记下。
+
+改走**不需要任何凭据**的路：本地起一个真答 chat-completions 形状的桩服务，让桥走一次**真实 HTTP 往返**。
+
+| 读数 | 原文 |
+| --- | --- |
+| 选择器发出的请求（桩服务日志） | `POST /v1/chat/completions model=stub-model tools=['select_skills'] candidates=0 bytes=28614` |
+| 留痕 | `{"outcome":"used-model","providerId":"p_1790930794422_3","model":"stub-model"}` |
+| 脚本自判 | `{"④ answered call recorded as used-model": true, "not over-reported as a failure": true}` |
+
+桩服务故意回**空选择**（`skill_names: []`）——「作答了，但一个都没选」正是与失败最难区分、也最容易被误记的那一种。
+它被如实记成 `used-model`，而不是 `call-failed`。
+
+**如实标注这条读数的边界**：往返是真实的（请求出网、200 回来、tool call 被解析、回合因此继续到主模型），
+但**作答方是本地桩，不是厂商模型**——隔离根里看不到任何真键，所以「厂商模型 + 真选择」的组合这一轮仍**没测**，
+不能拿这条读数冒充它。桩的日志同时证明请求确实出网（`bytes=28614` 是选择器那次，随后 `bytes=79094` 是回合自己的主模型调用）。
+
+三轮真机读数合起来，turn 路径的三个状态都有实测：
+
+| 状态 | 留痕 | 实例 |
+| --- | --- | --- |
+| 未配置 | `{"outcome":"built-in","reason":"not-configured"}` | 44200 |
+| 调用失败 | `{"outcome":"built-in","reason":"call-failed",…}` | 44200（修复前 44198 是假声称 `used-model`） |
+| 真作答 | `{"outcome":"used-model",…}` | 44202（桩端点） |
 
 ## 5. 本轮的代码修复（都随下一版走，v1.79.0 产物不含）
 
