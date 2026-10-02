@@ -74,8 +74,24 @@
 "真往返"与"被吞掉的失败"。这与 A3 的教训同源（探针当年也踩过，靠注入**记账 fetch** 才修好）——
 **turn 路径缺那道记账**。
 
-**下一步（立案，未做）**：把探针那套记账（发没发请求 / 请求是否被拒 → `call-not-attempted` / `call-failed`）
-接到 turn 路径的桥包装器上；**在此之前 ④⑤ 一个字都不写进声称**。①（内置回落 + 具名原因）**已取得**且可复核。
+**已完成（同一条线的收口，2026-10-02 16:31）**：把探针那套记账接到了 turn 路径的桥包装器上——
+桥在知道真相的那一层记录本次调用的实际结果（`answered` / `failed` / `skipped`），经端口→租约→连接资源所有者
+→回合路径逐层转发，回合把它具名为 `call-failed` / `call-not-attempted`，而「作答但没选」仍如实记 `used-model`。
+吞掉异常的行为**保留**（回合照常回落内置路径），改的只是「怎么记账」。①（内置回落 + 具名原因）**已取得**且可复核。
+
+### 4.1 ⑤ 的真机读数：修复前 vs 修复后（同一场景、隔离实例、真实 codex 会话）
+
+| | 场景 | 留痕（磁盘原文） |
+| --- | --- | --- |
+| **修复前**（实例 44198） | 端点 `http://127.0.0.1:9` | `{"outcome":"used-model","providerId":"p_…_2","model":"unreachable-model"}` ⛔ 关于**不可能成功的调用**的声称 |
+| **修复后**（实例 44200，`9d79b984`） | 同一场景 | `{"outcome":"built-in","reason":"call-failed","providerId":"p_1790929705380_2","model":"unreachable-model"}` ✅ |
+
+同一实例的另一次对照（未配置功能模型）：`{"outcome":"built-in","reason":"not-configured"}`（3.4 s，真实回合）。
+脚本自判：`{"① not-configured": true, "⑤ call-failed (post-fix)": true, "⑤ still claims used-model (pre-fix bug)": false}`。
+
+⇒ **④ 的读数仍取不到**，且原因已经明确、不再是「路径不可达」：隔离根里没有真 key，机器上能用的 provider
+不在这个实例内，所以**没有可用的模型可跑真往返**（脚本会打印 `④ NOT EXERCISABLE` 而不是编一个读数）。
+要在真机取 ④，得在一个配了真实可用 provider 的实例里跑同一场景——那是下一步，不是这一轮。
 
 ## 5. 本轮的代码修复（都随下一版走，v1.79.0 产物不含）
 
@@ -84,6 +100,7 @@
 | `b80fa197` | 跳过具名（`bridge-unavailable` / `call-not-attempted`）+ 原因清单与契约同源 |
 | `a4cdffbc` | `selector-error` → `call-failed`、`catalog-error` → `call-not-attempted`（失败不再只是日志） |
 | `c7de13ff` | **宿主被静默丢弃**（`AcpRuntimeCompositionOptions` 未声明 `functionModels`）→ 现在转发；`selectSkills` 返回空时记 `call-failed`；新增源码守卫 `runtime-composition-wiring.test.ts` |
+| `9d79b984` | 失败不再记成「作答」：桥记录本次调用的实际结果（`answered`/`failed`/`skipped`）并在端口暴露，回合具名为 `call-failed`/`call-not-attempted`；引入 `runtime-prompt-composition` 侧的分类器；真机读数见 4.1 |
 
 ## 6. 我要更正自己的三条判断（都在本轮，且都是量出来的）
 
