@@ -57,9 +57,25 @@
   或在 `src/main/settings/pdf-service.ts` 的解析层把旋转归一化）。**先写调查结论再动代码**（照 R6-U1 的先例）。
 - 验收：真机取一个旋转 90° 的表格页与一个含 ﬁ/ﬂ 的页，读数前后对比。
 
-### Q3. ①④⑤ 在真实 codex 回合路径上取证
-- 现在适配器通了（`detectCodex()` 零参数即可复现：`adapterPath=~/.local/bin/codex-acp`、`nativeCodexPath=/Applications/ChatGPT.app/Contents/Resources/codex`、
-  `nativeCodexVersion=0.154.0-alpha.6.2`，返回对象的前提是真实 ACP initialize 通过）。
+### Q3. ①④⑤ 在真实 codex 回合路径上取证 —— **未取（阻塞具名，见 `docs/evidence/2026-10-02-q3-codex-turn-path-findings.md`）**
+
+> **已探明（别重走）**：应用内检测**只认托管适配器**（`codex-detect.ts:85-89` + `agent-runtime-manager.ts:299-313`），
+> 用户装的 `~/.local/bin/codex-acp` 在应用里**不可用**（A8 的修复只覆盖零参数检测）；建会话会 500 `Codex native executable not found`。
+> **可用配方**：`settings:install-codex {"source":"managed"}` 装在**隔离根**里即可（303 MB，`ok:true`，机器不受影响；
+> npm 源会跑全局 npm install，**未用**——那是用户决定），随后 `acp:create-session` 返回 `frameworkId=codex` 的真会话。
+> `acp:create-session` 的 `projectName` 字段实际要**项目 id**。
+>
+> **读数**：3 种 provider 形状（codex-isolated 订阅 / 官方 API-key / 自定义 chat-completions）、**8 个真实回合**
+> （120–147s/次，`status=connected`、`lastError=null`），`function-model-events.json` **始终为空**；
+> codex rollout 里该回合用户消息就是 33 字符原文、全文无 `skill` 文本 ⇒ **这条支没跑**（不是"选了 0 个"）。
+> 闸门 = `bridgeSkillsAvailable`（`connection-resource-owner.ts:106-108`）；桥只在 `target.needsChatResponsesBridge`
+> 时创建（`backend-resolver.ts:745-752`）。
+>
+> **下一步（要用户拍板才动）**：把 `bridgeLease`/`bridgeSkillsAvailable` 做成**回合侧可读证据**（新原因 + 文案 + 面板映射），
+> 用它直接断言闸门；若证实永不触发，即"功能存在但从不触发"，单独立案。**在此之前不要重跑安装/回合**。
+
+- ~~现在适配器通了~~ **（此前提已被实测推翻，见上）** 旧记录：`detectCodex()` 零参数即可复现：`adapterPath=~/.local/bin/codex-acp`、`nativeCodexPath=/Applications/ChatGPT.app/Contents/Resources/codex`、
+  `nativeCodexVersion=0.154.0-alpha.6.2`，返回对象的前提是真实 ACP initialize 通过 —— **零参数检测确实如此，但应用内不走这条**。
 - 取证方式：起隔离实例（`PURESCIENCE_STORAGE_ROOT=/tmp/<新名>`、`PURESCIENCE_WEB_PORT=<未用端口>`、`npm run dev:headless`），
   触发一次带技能选择的真实回合，读留痕（`FUNCTION_MODEL_EVENT_LOG_LIMIT=200`），记录：① 内置回落与具名原因 ④ 真实往返耗时与是否真选出技能 ⑤ 失败回落 `call-failed`。
 - 纪律：**a missing measurement must never be reported as a measurement**；用量未报告就写 "not reported"，绝不写 0。
