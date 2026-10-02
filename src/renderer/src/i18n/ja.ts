@@ -3751,6 +3751,23 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'references.journalMetrics.kind.casPartition': 'CAS 区分',
   'references.journalMetrics.kind.casTop': 'CAS Top',
   'references.journalMetrics.kind.acceptanceRate': '採択率',
+  'references.journalMetrics.merge.title': '2 つのジャーナルを統合',
+  'references.journalMetrics.merge.hint':
+    '統合すると、統合する側の指標と紐づいた文献がすべて残す側へ移り、元の名前は別名として残るため、古い名前も引き続きここに解決されます。統合は取り消せません。',
+  'references.journalMetrics.merge.source': '統合するジャーナル',
+  'references.journalMetrics.merge.target': '統合先のジャーナル',
+  'references.journalMetrics.merge.choose': 'ジャーナルを選択…',
+  'references.journalMetrics.merge.confirm': '統合',
+  'references.journalMetrics.merge.merging': '統合中…',
+  'references.journalMetrics.merge.aliases': '別名 {names}',
+  'references.journalMetrics.merge.done':
+    '指標 {metrics} 件と文献 {references} 件を移動しました。旧名「{alias}」は今後こちらに解決されます。',
+  'references.journalMetrics.merge.refusal.selfMerge':
+    'ジャーナルを自分自身に統合することはできません',
+  'references.journalMetrics.merge.refusal.sourceNotFound': '統合するジャーナルは既に存在しません',
+  'references.journalMetrics.merge.refusal.targetNotFound': '残すジャーナルは既に存在しません',
+  'references.journalMetrics.merge.refusal.aliasConflict':
+    'この名前は既に別のジャーナルに属しています',
   'references.screening.title': 'スクリーニング',
   'references.screening.scopeHint':
     'スクリーニングはコレクション単位です。コレクションを開いて文献を判定してください。',

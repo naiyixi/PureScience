@@ -14,6 +14,7 @@
 // + notMatching.
 
 import { KNOWN_JOURNAL_METRIC_KINDS } from './journal-metrics'
+import { journalDisplayName } from './journal-merge'
 
 // One claim about one journal, as the store keeps it. `fetchedAt` stays loose because it is a Date in the
 // main process and a string once it has travelled over the RPC boundary; the tie-break below reads both.
@@ -30,7 +31,17 @@ export type JournalMetricClaim = {
 export type JournalIdentityRow = {
   id: string
   normalizedName: string
+  // The spelling the source used, when the record has one (R2-U4). Optional because rows created before the
+  // column existed have none — the surface falls back to the normalized form rather than showing a blank.
+  displayName?: string | null
   issn: string | null
+}
+
+// One alias row: a spelling that resolves to a journal (written only by an explicit merge).
+export type JournalAliasRow = {
+  normalizedName: string
+  journalId: string
+  createdVia: string
 }
 
 export type JournalMetricsFilter = {
@@ -58,6 +69,8 @@ export type JournalOverviewRow = {
   journalId: string
   name: string
   issn: string | null
+  // The other spellings that resolve to this journal (a merge's record). Empty for a journal nobody merged.
+  aliases: string[]
   // Keyed by metric kind. Kinds the library knows about are always present (as `unknown` when absent), so a
   // column cannot vanish just because nobody imported that kind yet.
   cells: Record<string, JournalMetricCell>
@@ -87,6 +100,9 @@ export type JournalMetricsOverview = {
 export type JournalMetricLibrary = {
   journals: JournalIdentityRow[]
   claims: JournalMetricClaim[]
+  // Every alias in the library, so the panel can show which older spellings resolve to which journal without
+  // a second round trip. Absent aliases are an empty list, never an omitted field.
+  aliases: JournalAliasRow[]
 }
 
 const fold = (value: string): string => value.trim().toLowerCase()
@@ -151,9 +167,11 @@ const withinBounds = (numericValue: number, filter: JournalMetricsFilter): boole
 export const buildJournalMetricsOverview = (input: {
   journals: readonly JournalIdentityRow[]
   claims: readonly JournalMetricClaim[]
+  aliases?: readonly JournalAliasRow[]
   filter?: JournalMetricsFilter
 }): JournalMetricsOverview => {
   const filter = input.filter ?? {}
+  const aliasRows = input.aliases ?? []
   const kinds = journalMetricKinds(input.claims)
   const partition = filter.partition ? fold(filter.partition) : undefined
   const asksNumbers = filter.minImpactFactor !== undefined || filter.maxImpactFactor !== undefined
@@ -190,8 +208,13 @@ export const buildJournalMetricsOverview = (input: {
     if (verdict === 'matched') {
       rows.push({
         journalId: journal.id,
-        name: journal.normalizedName,
+        // The source's own spelling when the record kept one; the normalized form otherwise. Never blank.
+        name: journalDisplayName(journal),
         issn: journal.issn,
+        aliases: aliasRows
+          .filter((alias) => alias.journalId === journal.id)
+          .map((alias) => alias.normalizedName)
+          .sort(),
         cells
       })
     }

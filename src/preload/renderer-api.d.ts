@@ -915,6 +915,11 @@ export interface PureScienceAPI {
     ): Promise<import('../shared/journal-metrics').JournalMetricImportResult>
     // Read side of the journal library (R2-U3): the screening view filters this in memory.
     listJournalMetrics(): Promise<import('../shared/journal-metrics-overview').JournalMetricLibrary>
+    // Aliases and the explicit merge (R2-U4): re-attributes the source journal's metrics and references to the
+    // target and keeps the source's spelling as an alias. Never a fuzzy merge; every refusal is named.
+    mergeJournals(
+      input: import('../shared/journal-merge').JournalMergeRequest
+    ): Promise<import('../shared/journal-merge').JournalMergeResult>
     // Citation-style layer (v1.65): imported CSL styles, validated and stored with their licence.
     listCitationStyles(): Promise<import('../shared/citation/csl').ImportedCitationStyle[]>
     importCitationStyle(input: {

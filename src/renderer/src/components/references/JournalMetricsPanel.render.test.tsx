@@ -18,7 +18,21 @@ vi.mock('@/i18n', () => {
     'references.journalMetrics.counts':
       '{matched} of {total} journals match · {missing} have no such metric · {notNumeric} have a value that is not a number · {notMatching} fall outside the bounds',
     'references.journalMetrics.kind.impactFactor': 'Impact factor',
-    'references.journalMetrics.kind.casPartition': 'CAS partition'
+    'references.journalMetrics.kind.casPartition': 'CAS partition',
+    'references.journalMetrics.merge.title': 'Merge two journals',
+    'references.journalMetrics.merge.hint':
+      'Merging moves every metric and every linked reference into the journal you keep. It cannot be undone.',
+    'references.journalMetrics.merge.source': 'Merge this journal',
+    'references.journalMetrics.merge.target': 'Into this journal',
+    'references.journalMetrics.merge.choose': 'Choose a journal…',
+    'references.journalMetrics.merge.confirm': 'Merge',
+    'references.journalMetrics.merge.merging': 'Merging…',
+    'references.journalMetrics.merge.aliases': 'also known as {names}',
+    'references.journalMetrics.merge.done':
+      'Moved {metrics} metrics and {references} references; “{alias}” now resolves here.',
+    'references.journalMetrics.merge.refusal.selfMerge': 'A journal cannot be merged into itself',
+    'references.journalMetrics.merge.refusal.aliasConflict':
+      'That name already belongs to another journal'
   }
 
   return {
@@ -35,7 +49,7 @@ vi.mock('@/i18n', () => {
   }
 })
 
-import { JournalMetricsTable } from './JournalMetricsPanel'
+import { JournalMergeControls, JournalMetricsTable } from './JournalMetricsPanel'
 
 let container: HTMLDivElement
 let root: Root
@@ -66,6 +80,7 @@ describe('journal metrics table', () => {
             journalId: 'j-1',
             name: 'journal with no metrics',
             issn: null,
+            aliases: [],
             cells: { 'impact-factor': { state: 'unknown' } }
           }
         ]}
@@ -89,6 +104,7 @@ describe('journal metrics table', () => {
             journalId: 'j-1',
             name: 'nature',
             issn: '0028-0836',
+            aliases: [],
             cells: {
               'impact-factor': {
                 state: 'known',
@@ -128,5 +144,152 @@ describe('journal metrics table', () => {
     expect(text).toContain('4 have no such metric')
     expect(text).toContain('1 have a value that is not a number')
     expect(text).toContain('1 fall outside the bounds')
+  })
+
+  it('shows the spellings a merge left behind, so an old name on screen is explained', () => {
+    render(
+      <JournalMetricsTable
+        counts={{ total: 1, matched: 1, missingMetric: 0, valueNotNumeric: 0, notMatching: 0 }}
+        kinds={[]}
+        rows={[
+          {
+            journalId: 'j-1',
+            name: 'Nature',
+            issn: '0028-0836',
+            aliases: ['nature london'],
+            cells: {}
+          }
+        ]}
+        unknownLabel="Unknown"
+      />
+    )
+
+    expect(container.textContent ?? '').toContain('also known as nature london')
+  })
+})
+
+describe('journal merge controls', () => {
+  const journals = [
+    { id: 'j-nature', name: 'Nature' },
+    { id: 'j-london', name: 'Nature (London)' }
+  ]
+
+  it('keeps the button inert until two different journals are chosen, then reports the merge', () => {
+    const onMerge = vi.fn()
+    render(
+      <JournalMergeControls busy={false} journals={journals} onMerge={onMerge} result={null} />
+    )
+
+    const confirm = container.querySelector<HTMLButtonElement>(
+      '[data-slot="journal-merge-confirm"]'
+    )
+    expect(confirm?.disabled).toBe(true)
+
+    const selects = container.querySelectorAll<HTMLSelectElement>('select')
+    const [source, target] = selects
+    act(() => {
+      source.value = 'j-london'
+      source.dispatchEvent(new Event('change', { bubbles: true }))
+      target.value = 'j-nature'
+      target.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+
+    const enabled = container.querySelector<HTMLButtonElement>(
+      '[data-slot="journal-merge-confirm"]'
+    )
+    expect(enabled?.disabled).toBe(false)
+    act(() => enabled?.click())
+    expect(onMerge).toHaveBeenCalledWith('j-london', 'j-nature')
+  })
+
+  it('refuses to merge a journal into itself, and never calls the store that way', () => {
+    const onMerge = vi.fn()
+    render(
+      <JournalMergeControls busy={false} journals={journals} onMerge={onMerge} result={null} />
+    )
+
+    const selects = container.querySelectorAll<HTMLSelectElement>('select')
+    const [source, target] = selects
+    act(() => {
+      source.value = 'j-nature'
+      source.dispatchEvent(new Event('change', { bubbles: true }))
+      target.value = 'j-nature'
+      target.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+
+    expect(
+      container.querySelector<HTMLButtonElement>('[data-slot="journal-merge-confirm"]')?.disabled
+    ).toBe(true)
+    expect(onMerge).not.toHaveBeenCalled()
+  })
+
+  it('prints what the merge moved, so the window reports the effect instead of claiming success', () => {
+    render(
+      <JournalMergeControls
+        busy={false}
+        journals={journals}
+        onMerge={vi.fn()}
+        result={{
+          ok: true,
+          sourceJournalId: 'j-london',
+          targetJournalId: 'j-nature',
+          alias: 'nature london',
+          movedMetrics: 3,
+          movedReferences: 2,
+          movedAliases: 0
+        }}
+      />
+    )
+
+    const done = container.querySelector('[data-slot="journal-merge-result"]')?.textContent ?? ''
+    expect(done).toContain('3')
+    expect(done).toContain('2')
+    expect(done).toContain('nature london')
+  })
+
+  it('stays inert once the journal it merged away is gone, and still prints the report', () => {
+    render(
+      <JournalMergeControls
+        busy={false}
+        journals={[{ id: 'j-nature', name: 'Nature' }]}
+        onMerge={vi.fn()}
+        result={{
+          ok: true,
+          sourceJournalId: 'j-london',
+          targetJournalId: 'j-nature',
+          alias: 'nature london',
+          movedMetrics: 3,
+          movedReferences: 2,
+          movedAliases: 0
+        }}
+      />
+    )
+
+    // One journal left: the chosen source no longer exists, so the control cannot fire — and the report of
+    // the merge is still on screen, which is the whole reason it stays mounted.
+    expect(
+      container.querySelector<HTMLButtonElement>('[data-slot="journal-merge-confirm"]')?.disabled
+    ).toBe(true)
+    const done = container.querySelector('[data-slot="journal-merge-result"]')?.textContent ?? ''
+    expect(done).toContain('nature london')
+  })
+
+  it('prints a named refusal together with the store own sentence', () => {
+    render(
+      <JournalMergeControls
+        busy={false}
+        journals={journals}
+        onMerge={vi.fn()}
+        result={{
+          ok: false,
+          reason: 'alias-conflict',
+          detail: 'the name "nature london" is already an alias of journal j-third'
+        }}
+      />
+    )
+
+    const refusal = container.querySelector('[data-slot="journal-merge-result"]')?.textContent ?? ''
+    expect(refusal).toContain('That name already belongs to another journal')
+    expect(refusal).toContain('already an alias of journal j-third')
   })
 })

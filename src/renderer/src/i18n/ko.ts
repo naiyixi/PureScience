@@ -3685,6 +3685,22 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'references.journalMetrics.kind.casPartition': 'CAS 구분',
   'references.journalMetrics.kind.casTop': 'CAS Top',
   'references.journalMetrics.kind.acceptanceRate': '게재율',
+  'references.journalMetrics.merge.title': '두 저널 병합',
+  'references.journalMetrics.merge.hint':
+    '병합하면 합쳐지는 저널의 모든 지표와 연결된 문헌이 남는 저널로 옮겨지고, 원래 이름은 별칭으로 남아 예전 이름도 계속 여기로 해석됩니다. 병합은 되돌릴 수 없습니다.',
+  'references.journalMetrics.merge.source': '병합할 저널',
+  'references.journalMetrics.merge.target': '남길 저널',
+  'references.journalMetrics.merge.choose': '저널 선택…',
+  'references.journalMetrics.merge.confirm': '병합',
+  'references.journalMetrics.merge.merging': '병합 중…',
+  'references.journalMetrics.merge.aliases': '다른 이름 {names}',
+  'references.journalMetrics.merge.done':
+    '지표 {metrics}개와 문헌 {references}개를 옮겼습니다. 예전 이름 “{alias}”는 이제 여기로 해석됩니다.',
+  'references.journalMetrics.merge.refusal.selfMerge': '저널을 자기 자신에 병합할 수 없습니다',
+  'references.journalMetrics.merge.refusal.sourceNotFound': '병합할 저널이 더 이상 없습니다',
+  'references.journalMetrics.merge.refusal.targetNotFound': '남길 저널이 더 이상 없습니다',
+  'references.journalMetrics.merge.refusal.aliasConflict':
+    '이 이름은 이미 다른 저널에 속해 있습니다',
   'references.screening.title': '스크리닝',
   'references.screening.scopeHint':
     '스크리닝은 컬렉션 단위입니다. 컬렉션을 연 뒤 문헌을 판정하세요.',

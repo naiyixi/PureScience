@@ -10,6 +10,7 @@ import { JournalRepository, normalizeJournalName } from './journal-repository'
 type JournalRow = {
   id: string
   normalizedName: string
+  displayName: string | null
   issn: string | null
   issnL: string | null
   eissn: string | null
@@ -18,31 +19,57 @@ type JournalRow = {
   createdVia: string
 }
 
+type AliasRow = {
+  id: string
+  normalizedName: string
+  journalId: string
+  createdVia: string
+  mergedFromJournalId: string | null
+}
+
+type ReferenceRow = { id: string; journalId: string | null; journalMatch: string | null }
+
 type StubClient = {
   journal: {
     findUnique: ReturnType<typeof vi.fn>
     findMany: ReturnType<typeof vi.fn>
     create: ReturnType<typeof vi.fn>
+    update: ReturnType<typeof vi.fn>
+    delete: ReturnType<typeof vi.fn>
   }
   journalMetric: {
     create: ReturnType<typeof vi.fn>
     findFirst: ReturnType<typeof vi.fn>
     findMany: ReturnType<typeof vi.fn>
+    updateMany: ReturnType<typeof vi.fn>
   }
+  journalAlias: {
+    findUnique: ReturnType<typeof vi.fn>
+    findMany: ReturnType<typeof vi.fn>
+    create: ReturnType<typeof vi.fn>
+    updateMany: ReturnType<typeof vi.fn>
+  }
+  reference: { updateMany: ReturnType<typeof vi.fn> }
+  $transaction: ReturnType<typeof vi.fn>
   journals: JournalRow[]
   metrics: Array<Record<string, unknown>>
+  aliases: AliasRow[]
+  references: ReferenceRow[]
 }
 
-const stubClient = (seed: JournalRow[] = []): StubClient => {
+const stubClient = (seed: JournalRow[] = [], referenceSeed: ReferenceRow[] = []): StubClient => {
   const journals = [...seed]
   const metrics: Array<Record<string, unknown>> = []
+  const aliases: AliasRow[] = []
+  const references = [...referenceSeed]
   let nextId = 1
   const client = {
     journal: {
-      findUnique: vi.fn(
-        async ({ where }: { where: { issn: string } }) =>
-          journals.find((row) => row.issn === where.issn) ?? null
-      ),
+      findUnique: vi.fn(async ({ where }: { where: { issn?: string; id?: string } }) => {
+        if (where.id !== undefined) return journals.find((row) => row.id === where.id) ?? null
+
+        return journals.find((row) => row.issn === where.issn) ?? null
+      }),
       findMany: vi.fn(async ({ where }: { where: { normalizedName: string } }) =>
         journals.filter((row) => row.normalizedName === where.normalizedName)
       ),
@@ -50,6 +77,20 @@ const stubClient = (seed: JournalRow[] = []): StubClient => {
         const row = { id: `j${nextId++}`, ...data } as JournalRow
         journals.push(row)
         return row
+      }),
+      update: vi.fn(
+        async ({ where, data }: { where: { id: string }; data: Partial<JournalRow> }) => {
+          const row = journals.find((entry) => entry.id === where.id)
+          if (!row) throw new Error(`no journal ${where.id}`)
+          Object.assign(row, data)
+          return row
+        }
+      ),
+      delete: vi.fn(async ({ where }: { where: { id: string } }) => {
+        const index = journals.findIndex((entry) => entry.id === where.id)
+        if (index === -1) throw new Error(`no journal ${where.id}`)
+
+        return journals.splice(index, 1)[0]
       })
     },
     journalMetric: {
@@ -80,17 +121,89 @@ const stubClient = (seed: JournalRow[] = []): StubClient => {
       ),
       findMany: vi.fn(async ({ where }: { where: { journalId: string } }) =>
         metrics.filter((row) => row.journalId === where.journalId)
+      ),
+      // The merge's re-attribution, with the engine's own return shape (`{ count }`) so the caller cannot
+      // accidentally invent a total.
+      updateMany: vi.fn(
+        async ({
+          where,
+          data
+        }: {
+          where: { journalId: string }
+          data: Record<string, unknown>
+        }) => {
+          const affected = metrics.filter((row) => row.journalId === where.journalId)
+          for (const entry of affected) Object.assign(entry, data)
+
+          return { count: affected.length }
+        }
       )
     },
+    journalAlias: {
+      findUnique: vi.fn(async ({ where }: { where: { normalizedName: string } }) => {
+        const found = aliases.find((row) => row.normalizedName === where.normalizedName)
+
+        return found ? { ...found } : null
+      }),
+      findMany: vi.fn(async () => aliases.map((row) => ({ ...row }))),
+      create: vi.fn(async ({ data }: { data: Partial<Omit<AliasRow, 'id'>> }) => {
+        const row: AliasRow = {
+          id: `a${nextId++}`,
+          normalizedName: data.normalizedName ?? '',
+          journalId: data.journalId ?? '',
+          createdVia: data.createdVia ?? 'explicit-merge',
+          mergedFromJournalId: data.mergedFromJournalId ?? null
+        }
+        aliases.push(row)
+        return row
+      }),
+      updateMany: vi.fn(
+        async ({
+          where,
+          data
+        }: {
+          where: { journalId: string }
+          data: Record<string, unknown>
+        }) => {
+          const affected = aliases.filter((row) => row.journalId === where.journalId)
+          for (const entry of affected) Object.assign(entry, data)
+
+          return { count: affected.length }
+        }
+      )
+    },
+    reference: {
+      updateMany: vi.fn(
+        async ({
+          where,
+          data
+        }: {
+          where: { journalId: string }
+          data: Record<string, unknown>
+        }) => {
+          const affected = references.filter((row) => row.journalId === where.journalId)
+          for (const entry of affected) Object.assign(entry, data)
+
+          return { count: affected.length }
+        }
+      )
+    },
+    // The engine's interactive transaction, reduced to what the repository needs: one callback, one client.
+    $transaction: vi.fn(async (run: (client: unknown) => Promise<unknown>) => run(client)),
     journals,
-    metrics
+    metrics,
+    aliases,
+    references
   }
 
   return client
 }
 
-const build = (seed: JournalRow[] = []): { client: StubClient; repository: JournalRepository } => {
-  const client = stubClient(seed)
+const build = (
+  seed: JournalRow[] = [],
+  referenceSeed: ReferenceRow[] = []
+): { client: StubClient; repository: JournalRepository } => {
+  const client = stubClient(seed, referenceSeed)
   const repository = new JournalRepository({ getClient: async () => client as never })
 
   return { client, repository }
@@ -99,6 +212,7 @@ const build = (seed: JournalRow[] = []): { client: StubClient; repository: Journ
 const row = (over: Partial<JournalRow>): JournalRow => ({
   id: 'j0',
   normalizedName: 'nature',
+  displayName: 'Nature',
   issn: null,
   issnL: null,
   eissn: null,
@@ -359,5 +473,173 @@ describe('appendMetric', () => {
 
     expect(client.metrics[0].value).toBe('Q1')
     expect(client.metrics[0].numericValue).toBeNull()
+  })
+})
+
+describe('aliases (R2-U4)', () => {
+  it('resolves a merged-away spelling to the surviving journal, and never ahead of a journal own name', async () => {
+    const { repository, client } = build([row({ id: 'j-nature', normalizedName: 'nature' })])
+    client.aliases.push({
+      id: 'a1',
+      normalizedName: 'nature london',
+      journalId: 'j-nature',
+      createdVia: 'explicit-merge',
+      mergedFromJournalId: 'j-old'
+    })
+
+    await expect(repository.resolveJournal({ venue: 'Nature (London)' })).resolves.toEqual({
+      journalId: 'j-nature',
+      match: 'by-alias'
+    })
+    // A journal's own current name always beats an alias, so a merge can never shadow a live journal.
+    await expect(repository.resolveJournal({ venue: 'Nature' })).resolves.toEqual({
+      journalId: 'j-nature',
+      match: 'by-normalized-name'
+    })
+    // And an unknown name is still an unknown name: the alias table does not turn it into a match.
+    await expect(repository.resolveJournal({ venue: 'Nature Neuroscience' })).resolves.toEqual({
+      journalId: null,
+      match: 'no-issn'
+    })
+  })
+
+  it('refuses to register a second identity under a spelling that is already an alias', async () => {
+    const { repository, client } = build()
+    client.aliases.push({
+      id: 'a1',
+      normalizedName: 'nature london',
+      journalId: 'j-nature',
+      createdVia: 'explicit-merge',
+      mergedFromJournalId: 'j-old'
+    })
+
+    await expect(repository.upsertByNormalizedName({ venue: 'Nature (London)' })).rejects.toThrow(
+      /alias/
+    )
+    expect(client.journals).toHaveLength(0)
+  })
+})
+
+describe('mergeJournals (R2-U4)', () => {
+  it('moves metrics, references and aliases onto the survivor and keeps the old spelling resolving there', async () => {
+    const { repository, client } = build(
+      [
+        row({ id: 'j-nature', normalizedName: 'nature', displayName: 'Nature', issn: '0028-0836' }),
+        row({ id: 'j-london', normalizedName: 'nature london', displayName: 'Nature (London)' })
+      ],
+      [{ id: 'r1', journalId: 'j-london', journalMatch: 'by-normalized-name' }]
+    )
+    await repository.appendMetric({
+      journalId: 'j-london',
+      kind: 'impact-factor',
+      value: '64.8',
+      year: 2023,
+      source: 'JCR'
+    })
+
+    const result = await repository.mergeJournals({
+      sourceJournalId: 'j-london',
+      targetJournalId: 'j-nature'
+    })
+
+    expect(result).toEqual({
+      ok: true,
+      sourceJournalId: 'j-london',
+      targetJournalId: 'j-nature',
+      alias: 'nature london',
+      movedMetrics: 1,
+      movedReferences: 1,
+      movedAliases: 0
+    })
+    // The source row is gone; its name lives on as an alias, not as a second journal.
+    expect(client.journals.map((entry) => entry.id)).toEqual(['j-nature'])
+    expect(client.metrics[0].journalId).toBe('j-nature')
+    // The re-attributed reference says WHY it is linked now, rather than keeping a name match that no longer
+    // explains the link.
+    expect(client.references[0]).toEqual({
+      id: 'r1',
+      journalId: 'j-nature',
+      journalMatch: 'merged'
+    })
+    expect(client.aliases).toEqual([
+      {
+        id: expect.any(String),
+        normalizedName: 'nature london',
+        journalId: 'j-nature',
+        createdVia: 'explicit-merge',
+        mergedFromJournalId: 'j-london'
+      }
+    ])
+    await expect(repository.resolveJournal({ venue: 'Nature (London)' })).resolves.toEqual({
+      journalId: 'j-nature',
+      match: 'by-alias'
+    })
+  })
+
+  it('keeps the surviving spelling, and adopts the merged one only when the survivor has none', async () => {
+    const kept = build([
+      row({ id: 'j-a', normalizedName: 'alpha', displayName: 'Alpha' }),
+      row({ id: 'j-b', normalizedName: 'beta', displayName: 'Beta' })
+    ])
+    await kept.repository.mergeJournals({ sourceJournalId: 'j-b', targetJournalId: 'j-a' })
+    expect(kept.client.journals[0].displayName).toBe('Alpha')
+
+    const blank = build([
+      row({ id: 'j-a', normalizedName: 'alpha', displayName: null }),
+      row({ id: 'j-b', normalizedName: 'beta', displayName: 'Beta' })
+    ])
+    await blank.repository.mergeJournals({ sourceJournalId: 'j-b', targetJournalId: 'j-a' })
+    expect(blank.client.journals[0].displayName).toBe('Beta')
+  })
+
+  it('refuses a self merge, a missing source and a missing target by name — and changes nothing', async () => {
+    const { repository, client } = build([row({ id: 'j-nature' })])
+
+    await expect(
+      repository.mergeJournals({ sourceJournalId: 'j-nature', targetJournalId: 'j-nature' })
+    ).resolves.toEqual({
+      ok: false,
+      reason: 'self-merge',
+      detail: 'a journal cannot be merged into itself'
+    })
+    await expect(
+      repository.mergeJournals({ sourceJournalId: 'ghost', targetJournalId: 'j-nature' })
+    ).resolves.toMatchObject({ ok: false, reason: 'source-not-found' })
+    await expect(
+      repository.mergeJournals({ sourceJournalId: 'j-nature', targetJournalId: 'ghost' })
+    ).resolves.toMatchObject({ ok: false, reason: 'target-not-found' })
+    expect(client.journals).toHaveLength(1)
+    expect(client.aliases).toHaveLength(0)
+    expect(client.journal.delete).not.toHaveBeenCalled()
+  })
+
+  it('refuses when the spelling already names a third journal instead of taking that name away', async () => {
+    const { repository, client } = build([
+      row({ id: 'j-nature', normalizedName: 'nature' }),
+      row({ id: 'j-london', normalizedName: 'nature london' }),
+      row({ id: 'j-third', normalizedName: 'third' })
+    ])
+    client.aliases.push({
+      id: 'a1',
+      normalizedName: 'nature london',
+      journalId: 'j-third',
+      createdVia: 'explicit-merge',
+      mergedFromJournalId: 'j-old'
+    })
+
+    const result = await repository.mergeJournals({
+      sourceJournalId: 'j-london',
+      targetJournalId: 'j-nature'
+    })
+
+    expect(result).toMatchObject({ ok: false, reason: 'alias-conflict' })
+    // A refusal must not leave half a merge behind: nothing moved and the third journal still owns the name.
+    expect(client.journals.map((entry) => entry.id).sort()).toEqual([
+      'j-london',
+      'j-nature',
+      'j-third'
+    ])
+    expect(client.aliases[0].journalId).toBe('j-third')
+    expect(client.journal.delete).not.toHaveBeenCalled()
   })
 })

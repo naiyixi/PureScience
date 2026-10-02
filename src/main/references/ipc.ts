@@ -34,6 +34,7 @@ import type {
   JournalMetricImportResult
 } from '../../shared/journal-metrics'
 import type { JournalMetricLibrary } from '../../shared/journal-metrics-overview'
+import type { JournalMergeRequest, JournalMergeResult } from '../../shared/journal-merge'
 import { fetchReferenceByIdentifier, type IdentifierKind } from './service'
 import { createPdfDoiImportOwner, type PdfDocumentPorts } from './pdf-doi-owner'
 import type { PdfDoiImportResult } from './pdf-doi-import'
@@ -70,6 +71,9 @@ export type ReferencesHandlers = {
   // The screening view's read path (R2-U3): journals + every claim in one call; the renderer applies the
   // filter with the shared pure function, so a filter change costs no round trip.
   listJournalMetrics(): Promise<JournalMetricLibrary>
+  // Aliases and the explicit merge (R2-U4): merging two journals re-attributes their metrics and references
+  // and keeps the source's spelling as an alias — never a fuzzy/automatic merge, and every refusal is named.
+  mergeJournals(input: JournalMergeRequest): Promise<JournalMergeResult>
   // Citation-style layer (v1.65): imported CSL styles live application-wide; the renderer merges
   // them with the built-in styles and formats locally.
   listCitationStyles(): Promise<ImportedCitationStyle[]>
@@ -221,6 +225,9 @@ export const createReferencesIpcModule = (
     // Read side of the same store: one call for the whole library, filtered in the renderer (see the shared
     // pure view), so changing a filter never waits on the main process.
     listJournalMetrics: () => journalRepository.listJournalsWithMetrics(),
+    // The merge is the store's own write: no owner layer sits between the user's decision and the rewrite, so
+    // there is nowhere for a second interpretation of "the same journal" to creep in.
+    mergeJournals: (input) => journalRepository.mergeJournals(input),
     listCitationStyles: () => citationStyles.listStyles(),
     importCitationStyle: (input) => citationStyles.importStyle(input),
     removeCitationStyle: (styleId) => citationStyles.removeStyle(styleId),
@@ -302,6 +309,9 @@ export const installReferencesIpcHandlers = (
       (_event, input: JournalMetricImportRequest) => handlers.importJournalMetrics(input)
     )
     ipcMainHandle('references:list-journal-metrics', () => handlers.listJournalMetrics())
+    ipcMainHandle('references:merge-journals', (_event, input: JournalMergeRequest) =>
+      handlers.mergeJournals(input)
+    )
     ipcMainHandle('references:list-citation-styles', () => handlers.listCitationStyles())
     ipcMainHandle(
       'references:import-citation-style',

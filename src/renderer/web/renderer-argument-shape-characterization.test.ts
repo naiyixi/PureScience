@@ -193,7 +193,7 @@ describe('renderer argument-shape characterization', () => {
     // `references.*Screening*` channels (see the same increment in
     // src/shared/renderer-contract-catalog.test.ts).
     // 378 with the journal metric import (references.importJournalMetrics), a plain Web request profile.
-    expect(actualPaths).toHaveLength(379)
+    expect(actualPaths).toHaveLength(380)
     expect(actualPaths).toEqual(expectedPaths)
   })
 

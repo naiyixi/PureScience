@@ -852,6 +852,20 @@ const JOURNAL_INDEX_DDLS = [
   `CREATE INDEX IF NOT EXISTS "Journal_normalizedName_idx" ON "Journal"("normalizedName")`,
   `CREATE INDEX IF NOT EXISTS "JournalMetric_journalId_kind_year_idx" ON "JournalMetric"("journalId", "kind", "year")`
 ]
+// Aliases (R2-U4). The unique index is the load-bearing one: a spelling can name exactly one journal, so a
+// second alias for the same spelling is refused by the database itself and not only by a caller's check.
+const JOURNAL_ALIAS_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "JournalAlias" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "normalizedName" TEXT NOT NULL,
+    "journalId" TEXT NOT NULL,
+    "createdVia" TEXT NOT NULL,
+    "mergedFromJournalId" TEXT,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+)`
+const JOURNAL_ALIAS_INDEX_DDLS = [
+  `CREATE UNIQUE INDEX IF NOT EXISTS "JournalAlias_normalizedName_key" ON "JournalAlias"("normalizedName")`,
+  `CREATE INDEX IF NOT EXISTS "JournalAlias_journalId_idx" ON "JournalAlias"("journalId")`
+]
 const REFERENCE_JOURNAL_ID_INDEX_DDL = `CREATE INDEX IF NOT EXISTS "Reference_journalId_idx" ON "Reference"("journalId")`
 
 // PDF annotations (文档标注层 A1): two pure-additive tables with logical foreign keys only (no
@@ -1163,9 +1177,21 @@ const ensureProjectSchema = async (client: PrismaClient): Promise<void> => {
   // created after them.
   await client.$executeRawUnsafe(JOURNAL_TABLE_DDL)
   await client.$executeRawUnsafe(JOURNAL_METRIC_TABLE_DDL)
+  await client.$executeRawUnsafe(JOURNAL_ALIAS_TABLE_DDL)
   for (const ddl of JOURNAL_INDEX_DDLS) {
     await client.$executeRawUnsafe(ddl)
   }
+  for (const ddl of JOURNAL_ALIAS_INDEX_DDLS) {
+    await client.$executeRawUnsafe(ddl)
+  }
+  // The display name (R2-U4): the Journal table is already out in the world, so the column arrives through
+  // the guarded add rather than a CREATE — same shape as the two Reference columns below.
+  await addColumnIfMissing(
+    client,
+    'Journal',
+    'displayName',
+    `ALTER TABLE "Journal" ADD COLUMN "displayName" TEXT`
+  )
   await addColumnIfMissing(
     client,
     'Reference',

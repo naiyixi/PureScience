@@ -669,6 +669,9 @@ const api: PureScienceAPI = {
     // Read side of the same library (R2-U3): journals + every claim in one call; the screening panel
     // filters in memory with the shared pure view.
     listJournalMetrics: () => electronRendererContracts.invoke('references.listJournalMetrics'),
+    // The explicit merge (R2-U4): the merged journal's spelling survives as an alias, so the older name keeps
+    // resolving to the surviving record instead of registering a second identity for one venue.
+    mergeJournals: (input) => electronRendererContracts.invoke('references.mergeJournals', input),
     detachPdf: (referenceId) =>
       electronRendererContracts.invoke('references.detachPdf', referenceId),
     // Citation-style layer (v1.65): imported CSL styles are application-wide, so they carry no

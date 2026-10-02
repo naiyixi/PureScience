@@ -3828,6 +3828,24 @@ export const es: Partial<Record<ZhKey, string>> = {
   'references.journalMetrics.kind.casPartition': 'Categoría CAS',
   'references.journalMetrics.kind.casTop': 'CAS Top',
   'references.journalMetrics.kind.acceptanceRate': 'Tasa de aceptación',
+  'references.journalMetrics.merge.title': 'Combinar dos revistas',
+  'references.journalMetrics.merge.hint':
+    'Al combinar, todas las métricas y las referencias vinculadas de la revista que desaparece pasan a la que se conserva, y su nombre anterior queda como alias, de modo que seguirá resolviéndose aquí. No se puede deshacer.',
+  'references.journalMetrics.merge.source': 'Combinar esta revista',
+  'references.journalMetrics.merge.target': 'En esta revista',
+  'references.journalMetrics.merge.choose': 'Elige una revista…',
+  'references.journalMetrics.merge.confirm': 'Combinar',
+  'references.journalMetrics.merge.merging': 'Combinando…',
+  'references.journalMetrics.merge.aliases': 'también conocida como {names}',
+  'references.journalMetrics.merge.done':
+    'Se movieron {metrics} métricas y {references} referencias; «{alias}» ahora se resuelve aquí.',
+  'references.journalMetrics.merge.refusal.selfMerge':
+    'Una revista no puede combinarse consigo misma',
+  'references.journalMetrics.merge.refusal.sourceNotFound':
+    'La revista que se iba a combinar ya no existe',
+  'references.journalMetrics.merge.refusal.targetNotFound':
+    'La revista que se iba a conservar ya no existe',
+  'references.journalMetrics.merge.refusal.aliasConflict': 'Ese nombre ya pertenece a otra revista',
   'references.screening.title': 'Triaje',
   'references.screening.scopeHint':
     'El triaje se hace por colección: abre una colección para evaluar su bibliografía.',

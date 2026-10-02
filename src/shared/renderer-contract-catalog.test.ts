@@ -20,12 +20,12 @@ describe('renderer contract catalog', () => {
     // 453 with the journal metric import (references.importJournalMetrics): a library write channel like the
     // other references commands, so it installs on the window and both Web surfaces and no other count moves.
     expect(RENDERER_CONTRACT_GROUPS).toHaveLength(46)
-    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(454)
+    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(455)
     expect(projection.invoke).toEqual(WEB_INVOKE_CHANNELS)
     expect(projection.event).toEqual(WEB_EVENT_CHANNELS)
     // 344 with the PDF annotation export channels (pdfAnnotations.exportAnnotated / exportNotes):
     // both are local-only invoke channels, so the invoke map and the local-only set move together.
-    expect(Object.keys(projection.invoke)).toHaveLength(349)
+    expect(Object.keys(projection.invoke)).toHaveLength(350)
     expect(Object.keys(projection.event)).toHaveLength(34)
   })
 
@@ -33,7 +33,7 @@ describe('renderer contract catalog', () => {
     // 378 with the journal metric import (references.importJournalMetrics), a plain Web request profile.
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb !== 'unavailable')
-    ).toHaveLength(379)
+    ).toHaveLength(380)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb === 'browser-native')
     ).toEqual(['getRuntimeVersions', 'saveBlobFile', 'saveManagedFile', 'window.close'])

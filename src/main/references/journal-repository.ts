@@ -1,6 +1,7 @@
 import type { PrismaClient } from '@prisma/client'
 
-import type { JournalMetricClaim } from '../../shared/journal-metrics-overview'
+import type { JournalMetricLibrary } from '../../shared/journal-metrics-overview'
+import type { JournalMergeRequest, JournalMergeResult } from '../../shared/journal-merge'
 import { normalizeIssn, normalizeJournalName } from '../../shared/journal-identity'
 
 // The name rule lives in shared because the import path has to judge a row's identity before the repository
@@ -8,8 +9,13 @@ import { normalizeIssn, normalizeJournalName } from '../../shared/journal-identi
 export { normalizeJournalName }
 
 // Only the delegates this repository needs, typed to the subset so it stays unit-testable with a lightweight
-// mock instead of a real engine-backed client (the same convention as ReferenceClient).
-export type JournalClient = Pick<PrismaClient, 'journal' | 'journalMetric'>
+// mock instead of a real engine-backed client (the same convention as ReferenceClient). `$transaction` is
+// here because a merge is one indivisible rewrite: half a merge (metrics moved, alias not written) would
+// leave the library claiming something the user never asked for.
+export type JournalClient = Pick<
+  PrismaClient,
+  'journal' | 'journalMetric' | 'journalAlias' | 'reference' | '$transaction'
+>
 
 // Journals as first-class entities (R2). Two decisions here are load-bearing and are the reason this file
 // is separate from the reference repository:
@@ -26,6 +32,8 @@ export type JournalClient = Pick<PrismaClient, 'journal' | 'journalMetric'>
 export type JournalMatch =
   | 'by-issn'
   | 'by-normalized-name'
+  // The name is an alias written by an explicit merge: the same journal under its older spelling.
+  | 'by-alias'
   // No identifier and no usable name: there is nothing to resolve with.
   | 'no-issn'
   // A name was given but matched no existing journal exactly. Matching is never fuzzy: two venues whose
@@ -37,6 +45,7 @@ export type JournalMatch =
 export type JournalRecord = {
   id: string
   normalizedName: string
+  displayName: string | null
   issn: string | null
   createdVia: string
 }
@@ -50,7 +59,13 @@ export type JournalIdentity = {
   homepage?: string | null
 }
 
-const JOURNAL_SELECT = { id: true, normalizedName: true, issn: true, createdVia: true } as const
+const JOURNAL_SELECT = {
+  id: true,
+  normalizedName: true,
+  displayName: true,
+  issn: true,
+  createdVia: true
+} as const
 
 // The lazy-client seam every repository in this module uses: the engine client arrives on first use so a
 // schema-ensure failure can recover.
@@ -80,6 +95,7 @@ export class JournalRepository {
     return client.journal.create({
       data: {
         normalizedName,
+        displayName: identity.venue.trim(),
         issn,
         issnL: normalizeIssn(identity.issnL) ?? null,
         eissn: normalizeIssn(identity.eissn) ?? null,
@@ -112,10 +128,24 @@ export class JournalRepository {
     }
     if (matches[0]) return matches[0]
 
+    // The spelling may already name a journal through an alias (R2-U4). Creating a second journal under an
+    // old spelling of an existing one would make the name ambiguous and hand the next reader two rows for one
+    // venue — refuse and name the journal it already belongs to.
+    const alias = await client.journalAlias.findUnique({
+      where: { normalizedName },
+      select: { journalId: true }
+    })
+    if (alias) {
+      throw new Error(
+        `journal name "${identity.venue}" is already an alias of journal ${alias.journalId}; resolve it explicitly instead of registering a second identity`
+      )
+    }
+
     const issn = normalizeIssn(identity.issn) ?? normalizeIssn(identity.issnL)
     return client.journal.create({
       data: {
         normalizedName,
+        displayName: identity.venue.trim(),
         issn: issn ?? null,
         issnL: normalizeIssn(identity.issnL) ?? null,
         eissn: normalizeIssn(identity.eissn) ?? null,
@@ -149,9 +179,129 @@ export class JournalRepository {
     if (matches.length > 1) return { journalId: null, match: 'ambiguous' }
     if (matches[0]) return { journalId: matches[0].id, match: 'by-normalized-name' }
 
+    // Alias last, and deliberately after the journal's own name: a journal's current spelling must always
+    // win over any alias, so a merge can never shadow a journal that exists under that name today. An alias
+    // is written only by an explicit merge (R2-U4) — nothing here infers one from similarity.
+    const alias = await client.journalAlias.findUnique({
+      where: { normalizedName },
+      select: { journalId: true }
+    })
+    if (alias) return { journalId: alias.journalId, match: 'by-alias' }
+
     // An identifier that is not in the library yet is not a match either: the journal has not been
     // registered, so this reference stays unlinked and the venue text remains what a surface shows.
     return { journalId: null, match: issn ? 'name-not-exact' : 'no-issn' }
+  }
+
+  // The one write that turns two journal rows into one (R2-U4). Every effect below is a consequence of an
+  // explicit user decision, and every refusal is NAMED — this operation re-attributes numbers that belong to
+  // a journal, so guessing which two rows are "really" the same is not an option.
+  //
+  // The rewrite runs in ONE transaction: a half-applied merge (metrics moved but the alias not written, or the
+  // source row deleted before its claims moved) would leave the library asserting something the user never
+  // asked for, and nothing later could tell which half had happened.
+  async mergeJournals(input: JournalMergeRequest): Promise<JournalMergeResult> {
+    const client = await this.getClient()
+    if (input.sourceJournalId === input.targetJournalId) {
+      return { ok: false, reason: 'self-merge', detail: 'a journal cannot be merged into itself' }
+    }
+
+    return client.$transaction(async (tx): Promise<JournalMergeResult> => {
+      const source = await tx.journal.findUnique({
+        where: { id: input.sourceJournalId },
+        select: JOURNAL_SELECT
+      })
+      if (!source) {
+        return {
+          ok: false,
+          reason: 'source-not-found',
+          detail: `no journal with id ${input.sourceJournalId}`
+        }
+      }
+
+      const target = await tx.journal.findUnique({
+        where: { id: input.targetJournalId },
+        select: JOURNAL_SELECT
+      })
+      if (!target) {
+        return {
+          ok: false,
+          reason: 'target-not-found',
+          detail: `no journal with id ${input.targetJournalId}`
+        }
+      }
+
+      // A spelling names exactly one journal. If the source's spelling is already an alias of a THIRD journal,
+      // writing over that alias would silently take the name away from it, so the merge is refused instead.
+      const existingAlias = await tx.journalAlias.findUnique({
+        where: { normalizedName: source.normalizedName },
+        select: { journalId: true }
+      })
+      if (existingAlias && existingAlias.journalId !== target.id) {
+        return {
+          ok: false,
+          reason: 'alias-conflict',
+          detail: `the name "${source.normalizedName}" is already an alias of journal ${existingAlias.journalId}`
+        }
+      }
+
+      const movedMetrics = (
+        await tx.journalMetric.updateMany({
+          where: { journalId: source.id },
+          data: { journalId: target.id }
+        })
+      ).count
+      // The resolution rule stored on a reference is replaced by WHY the link is true now. After a merge the
+      // honest answer to "why is this paper linked to this journal" is "because of a merge"; leaving the old
+      // rule there would show a name match that no longer explains the link. (`journalMatch` is plain text on
+      // the row, so this does not widen the resolving vocabulary `resolveJournal` returns.)
+      const movedReferences = (
+        await tx.reference.updateMany({
+          where: { journalId: source.id },
+          data: { journalId: target.id, journalMatch: 'merged' }
+        })
+      ).count
+      const movedAliases = (
+        await tx.journalAlias.updateMany({
+          where: { journalId: source.id },
+          data: { journalId: target.id }
+        })
+      ).count
+
+      // The old spelling becomes the surviving journal's alias — this is the "更名" half: after the merge the
+      // old name still resolves here instead of registering a second identity for one venue.
+      if (!existingAlias) {
+        await tx.journalAlias.create({
+          data: {
+            normalizedName: source.normalizedName,
+            journalId: target.id,
+            createdVia: 'explicit-merge',
+            mergedFromJournalId: source.id
+          }
+        })
+      }
+
+      // Only adopt the source's spelling when the survivor has none: a merge must never rewrite a name that is
+      // already on screen.
+      if (!target.displayName && source.displayName) {
+        await tx.journal.update({
+          where: { id: target.id },
+          data: { displayName: source.displayName }
+        })
+      }
+
+      await tx.journal.delete({ where: { id: source.id } })
+
+      return {
+        ok: true,
+        sourceJournalId: source.id,
+        targetJournalId: target.id,
+        alias: source.normalizedName,
+        movedMetrics,
+        movedReferences,
+        movedAliases
+      }
+    })
   }
 
   // Append-only. Correcting a value means adding a row: an UPDATE would erase what the source said before.
@@ -234,17 +384,14 @@ export class JournalRepository {
     })
   }
 
-  // The screening view's read path (R2-U3): TWO queries — journals, then every claim in one shot — instead
+  // The screening view's read path (R2-U3/U4): THREE queries — journals, every claim, every alias — instead
   // of one query per journal. A screen that issues N queries for N journals is the shape that turns a large
   // library into a hang, and it also reads several inconsistent snapshots rather than one.
-  async listJournalsWithMetrics(): Promise<{
-    journals: Array<{ id: string; normalizedName: string; issn: string | null }>
-    claims: JournalMetricClaim[]
-  }> {
+  async listJournalsWithMetrics(): Promise<JournalMetricLibrary> {
     const client = await this.getClient()
     const journals = await client.journal.findMany({
       orderBy: { normalizedName: 'asc' },
-      select: { id: true, normalizedName: true, issn: true }
+      select: { id: true, normalizedName: true, displayName: true, issn: true }
     })
     const rows = await client.journalMetric.findMany({
       orderBy: [{ journalId: 'asc' }, { kind: 'asc' }, { year: 'desc' }],
@@ -258,11 +405,18 @@ export class JournalRepository {
         fetchedAt: true
       }
     })
+    // Aliases travel with the same read so the panel can show which older spellings resolve to which journal
+    // without a second round trip — and so a merge's effect is visible in the same snapshot as the table.
+    const aliases = await client.journalAlias.findMany({
+      orderBy: { normalizedName: 'asc' },
+      select: { normalizedName: true, journalId: true, createdVia: true }
+    })
 
     // `fetchedAt` travels as epoch milliseconds: the screening view breaks ties between two claims of the
     // same year on it, and an epoch number survives the RPC boundary unchanged (a Date does not).
     return {
       journals,
+      aliases,
       claims: rows.map((row) => ({
         ...row,
         fetchedAt: row.fetchedAt instanceof Date ? row.fetchedAt.getTime() : Number(row.fetchedAt)

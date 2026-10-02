@@ -3759,6 +3759,24 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'references.journalMetrics.kind.casPartition': 'Категория CAS',
   'references.journalMetrics.kind.casTop': 'CAS Top',
   'references.journalMetrics.kind.acceptanceRate': 'Доля принятых',
+  'references.journalMetrics.merge.title': 'Объединить два журнала',
+  'references.journalMetrics.merge.hint':
+    'При объединении все показатели и связанные ссылки присоединяемого журнала переходят к остающемуся, а прежнее название сохраняется как псевдоним, поэтому оно и дальше будет разрешаться сюда. Отменить это нельзя.',
+  'references.journalMetrics.merge.source': 'Объединяемый журнал',
+  'references.journalMetrics.merge.target': 'Журнал, который остаётся',
+  'references.journalMetrics.merge.choose': 'Выберите журнал…',
+  'references.journalMetrics.merge.confirm': 'Объединить',
+  'references.journalMetrics.merge.merging': 'Объединение…',
+  'references.journalMetrics.merge.aliases': 'также известен как {names}',
+  'references.journalMetrics.merge.done':
+    'Перенесено показателей: {metrics}, ссылок: {references}; прежнее название «{alias}» теперь разрешается сюда.',
+  'references.journalMetrics.merge.refusal.selfMerge': 'Журнал нельзя объединить с самим собой',
+  'references.journalMetrics.merge.refusal.sourceNotFound':
+    'Объединяемый журнал больше не существует',
+  'references.journalMetrics.merge.refusal.targetNotFound':
+    'Журнал, который нужно сохранить, больше не существует',
+  'references.journalMetrics.merge.refusal.aliasConflict':
+    'Это название уже принадлежит другому журналу',
   'references.screening.title': 'Скрининг',
   'references.screening.scopeHint':
     'Скрининг выполняется по коллекции: откройте коллекцию, чтобы оценить её литературу.',

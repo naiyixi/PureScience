@@ -153,6 +153,7 @@ describe('references IPC: the screening surface', () => {
         'references:list-journal-metrics',
         'references:list-screening-rule-revisions',
         'references:merge',
+        'references:merge-journals',
         'references:remove',
         'references:remove-citation-style',
         'references:remove-from-collection',

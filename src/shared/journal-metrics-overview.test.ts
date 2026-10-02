@@ -197,3 +197,36 @@ describe('buildJournalMetricsOverview', () => {
     ).toEqual(expect.arrayContaining(['society-ranking', 'impact-factor']))
   })
 })
+
+describe('display names and aliases (R2-U4)', () => {
+  it('shows the spelling the source used, and falls back to the normalized form', () => {
+    const overview = buildJournalMetricsOverview({
+      claims: [],
+      journals: [
+        { id: 'a', normalizedName: 'nature', displayName: 'Nature', issn: null },
+        { id: 'b', normalizedName: 'nature london', issn: null }
+      ]
+    })
+
+    expect(overview.rows.map((row) => row.name)).toEqual(['Nature', 'nature london'])
+  })
+
+  it('attaches each alias to the journal it resolves to, and an empty list to every other', () => {
+    const overview = buildJournalMetricsOverview({
+      claims: [],
+      journals: [
+        { id: 'a', normalizedName: 'nature', displayName: 'Nature', issn: null },
+        { id: 'b', normalizedName: 'cell', issn: null }
+      ],
+      aliases: [
+        { normalizedName: 'the lancet', journalId: 'a', createdVia: 'explicit-merge' },
+        { normalizedName: 'nature london', journalId: 'a', createdVia: 'explicit-merge' }
+      ]
+    })
+
+    const aliasesById = Object.fromEntries(overview.rows.map((row) => [row.journalId, row.aliases]))
+    // Sorted, so two snapshots of one library cannot disagree about the order of the same names.
+    expect(aliasesById.a).toEqual(['nature london', 'the lancet'])
+    expect(aliasesById.b).toEqual([])
+  })
+})

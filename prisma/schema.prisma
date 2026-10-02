@@ -670,6 +670,9 @@ model Journal {
   // Case/punctuation/whitespace-normalized title. Exact-match only — see R2-U4: fuzzy matching would
   // invent facts by merging two different venues into one.
   normalizedName String
+  // The spelling the source used, kept as given so the library can show `Nature` and not only `nature`.
+  // Optional: rows written before the column existed have none, and a surface falls back to normalizedName.
+  displayName    String?
   // Nullable on purpose: when an ISSN cannot be resolved it must stay absent, never be invented.
   issn           String? // print ISSN
   issnL          String? // linking ISSN
@@ -703,6 +706,26 @@ model JournalMetric {
   note         String?
 
   @@index([journalId, kind, year])
+}
+
+// A spelling that resolves to a journal (R2-U4). Written ONLY by an explicit user merge: `normalizedName` is
+// the merged journal's own normalized name, so the older spelling keeps resolving to the surviving journal.
+// Nothing here is inferred from similarity — that would merge two different venues into one and invent facts.
+model JournalAlias {
+  id           String    @id @default(cuid())
+  // The alias spelling, in the same normalized form as Journal.normalizedName (there is exactly one rule for
+  // that, shared by both tables).
+  normalizedName String
+  journalId    String // logical FK to Journal.id — the journal this spelling now names
+  // How the alias came to exist: explicit-merge. Recorded so a reader can tell a user's decision from
+  // anything the software might later add.
+  createdVia   String
+  // The journal row the alias was merged away from, kept for traceability after that row is deleted.
+  mergedFromJournalId String?
+  createdAt    DateTime  @default(now())
+
+  @@unique([normalizedName])
+  @@index([journalId])
 }
 
 model ScreeningRuleRevision {

@@ -26,6 +26,14 @@ export type JournalMetricImportOwner = {
 const detailOf = (error: unknown): string =>
   error instanceof Error ? error.message : String(error)
 
+// The outcome's field says which rule IDENTIFIED the journal, so only the three resolving rules belong there.
+// A journal with an id can only have come from one of them — if that ever stops being true the import must say
+// so instead of relabelling the row (`no-issn` would read as "identified by nothing" on an identified row).
+const isResolvingMatch = (
+  match: JournalMatch
+): match is 'by-issn' | 'by-normalized-name' | 'by-alias' =>
+  match === 'by-issn' || match === 'by-normalized-name' || match === 'by-alias'
+
 // A refusal the repository raises is a JUDGEMENT about the row, so it becomes a named row reason. Anything
 // else is not: an engine failure is not a verdict on a row, and recording it as one would hide a broken
 // import behind a report full of plausible reasons. So it propagates. Re-running after such a failure is
@@ -132,6 +140,13 @@ export const createJournalMetricImportOwner = (
           source: row.source,
           ...(row.note ? { note: row.note } : {})
         })
+        // Fail loudly rather than relabel: only a resolving rule can accompany a journal id.
+        if (!isResolvingMatch(journalMatch)) {
+          throw new Error(
+            `journal ${journalId} was resolved with ${journalMatch}, which does not identify a journal`
+          )
+        }
+
         outcomes.push({
           ...base,
           status: 'imported',
@@ -140,7 +155,7 @@ export const createJournalMetricImportOwner = (
           year: row.year,
           source: row.source,
           journalId,
-          journalMatch: journalMatch as 'by-issn' | 'by-normalized-name',
+          journalMatch,
           journalCreated,
           metricId: metric.id
         })

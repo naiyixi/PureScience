@@ -83,7 +83,9 @@ export type JournalMetricImportOutcome =
       year: number
       source: string
       journalId: string
-      journalMatch: 'by-issn' | 'by-normalized-name'
+      // Which rule identified the journal. `by-alias` (R2-U4) means the row's own name is an alias of a
+      // journal the user explicitly merged — the same journal under an older spelling.
+      journalMatch: 'by-issn' | 'by-normalized-name' | 'by-alias'
       // True when this row is what brought the journal into the library, so the report can say how many
       // identities the import established rather than only how many numbers it stored.
       journalCreated: boolean

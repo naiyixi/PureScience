@@ -80,7 +80,10 @@ const stub = (): { stub: Stub; client: JournalClient } => {
       findMany: vi.fn(async ({ where }: { where: { journalId: string } }) =>
         metrics.filter((entry) => entry.journalId === where.journalId)
       )
-    }
+    },
+    // The resolution path consults the alias table last (R2-U4). This stub has no merges, so every lookup
+    // comes back empty — the alias table must not turn an unknown name into a match.
+    journalAlias: { findUnique: vi.fn(async () => null) }
   }
 
   return { stub: { journals, metrics, failAppend }, client: client as unknown as JournalClient }

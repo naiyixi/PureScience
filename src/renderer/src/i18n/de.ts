@@ -3862,6 +3862,25 @@ export const de: Partial<Record<ZhKey, string>> = {
   'references.journalMetrics.kind.casPartition': 'CAS-Kategorie',
   'references.journalMetrics.kind.casTop': 'CAS Top',
   'references.journalMetrics.kind.acceptanceRate': 'Annahmequote',
+  'references.journalMetrics.merge.title': 'Zwei Zeitschriften zusammenführen',
+  'references.journalMetrics.merge.hint':
+    'Beim Zusammenführen wandern alle Kennzahlen und verknüpften Literaturangaben der aufgehenden Zeitschrift in die bleibende, und der alte Name bleibt als Alias erhalten, sodass er weiterhin hierhin aufgelöst wird. Das lässt sich nicht rückgängig machen.',
+  'references.journalMetrics.merge.source': 'Diese Zeitschrift zusammenführen',
+  'references.journalMetrics.merge.target': 'In diese Zeitschrift',
+  'references.journalMetrics.merge.choose': 'Zeitschrift wählen…',
+  'references.journalMetrics.merge.confirm': 'Zusammenführen',
+  'references.journalMetrics.merge.merging': 'Wird zusammengeführt…',
+  'references.journalMetrics.merge.aliases': 'auch bekannt als {names}',
+  'references.journalMetrics.merge.done':
+    '{metrics} Kennzahlen und {references} Literaturangaben verschoben; „{alias}“ wird nun hierhin aufgelöst.',
+  'references.journalMetrics.merge.refusal.selfMerge':
+    'Eine Zeitschrift kann nicht in sich selbst zusammengeführt werden',
+  'references.journalMetrics.merge.refusal.sourceNotFound':
+    'Die zusammenzuführende Zeitschrift existiert nicht mehr',
+  'references.journalMetrics.merge.refusal.targetNotFound':
+    'Die zu behaltende Zeitschrift existiert nicht mehr',
+  'references.journalMetrics.merge.refusal.aliasConflict':
+    'Dieser Name gehört bereits zu einer anderen Zeitschrift',
   'references.screening.title': 'Literatur-Screening',
   'references.screening.scopeHint':
     'Das Screening läuft pro Sammlung: Sammlung öffnen und ihre Literatur bewerten.',

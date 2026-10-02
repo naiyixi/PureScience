@@ -279,7 +279,7 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['add', 'references:add'], ['addToCollection', 'references:add-to-collection'], ['attachPdf', 'references:attach-pdf'],
     ['createCollection', 'references:create-collection'], ['deleteCollection', 'references:delete-collection'], ['detachPdf', 'references:detach-pdf'],
     ['fetchByIdentifier', 'references:fetch-by-identifier'], ['importDoisFromPdf', 'references:import-dois-from-pdf'], ['importCitationStyle', 'references:import-citation-style'], ['importJournalMetrics', 'references:import-journal-metrics'], ['list', 'references:list'],
-    ['listCitationStyles', 'references:list-citation-styles'], ['listCollections', 'references:list-collections'], ['listJournalMetrics', 'references:list-journal-metrics'], ['merge', 'references:merge'], ['remove', 'references:remove'],
+    ['listCitationStyles', 'references:list-citation-styles'], ['listCollections', 'references:list-collections'], ['listJournalMetrics', 'references:list-journal-metrics'], ['merge', 'references:merge'], ['mergeJournals', 'references:merge-journals'], ['remove', 'references:remove'],
     ['removeCitationStyle', 'references:remove-citation-style'], ['removeFromCollection', 'references:remove-from-collection'],
     ['getScreening', 'references:get-screening'], ['listScreeningRuleRevisions', 'references:list-screening-rule-revisions'],
     ['appendScreeningRuleRevision', 'references:append-screening-rule-revision'], ['startScreeningRun', 'references:start-screening-run'],

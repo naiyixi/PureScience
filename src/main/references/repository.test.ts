@@ -76,7 +76,8 @@ const createMockClient = (): {
     // delegates that path reads: no identifier match (null) and no name match ([]).
     journalFindUnique: vi.fn(() => Promise.resolve(null)),
     journalFindMany: vi.fn(() => Promise.resolve([])),
-    journalCreate: vi.fn()
+    journalCreate: vi.fn(),
+    journalAliasFindUnique: vi.fn(() => Promise.resolve(null))
   }
   const client = {
     reference: {
@@ -107,7 +108,9 @@ const createMockClient = (): {
       findUnique: m.journalFindUnique,
       findMany: m.journalFindMany,
       create: m.journalCreate
-    }
+    },
+    // Resolution consults the alias table last (R2-U4); this fixture has no merges, so it always misses.
+    journalAlias: { findUnique: m.journalAliasFindUnique }
   } as unknown as ReferenceClient
   return { client, m }
 }

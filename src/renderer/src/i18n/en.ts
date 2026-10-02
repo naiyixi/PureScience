@@ -3781,6 +3781,22 @@ export const en: Record<ZhKey, string> = {
   'references.journalMetrics.kind.casPartition': 'CAS partition',
   'references.journalMetrics.kind.casTop': 'CAS top',
   'references.journalMetrics.kind.acceptanceRate': 'Acceptance rate',
+  'references.journalMetrics.merge.title': 'Merge two journals',
+  'references.journalMetrics.merge.hint':
+    'Merging moves every metric and every linked reference into the journal you keep, and keeps the other name as an alias so it still resolves here. It cannot be undone.',
+  'references.journalMetrics.merge.source': 'Merge this journal',
+  'references.journalMetrics.merge.target': 'Into this journal',
+  'references.journalMetrics.merge.choose': 'Choose a journal…',
+  'references.journalMetrics.merge.confirm': 'Merge',
+  'references.journalMetrics.merge.merging': 'Merging…',
+  'references.journalMetrics.merge.aliases': 'also known as {names}',
+  'references.journalMetrics.merge.done':
+    'Moved {metrics} metrics and {references} references; “{alias}” now resolves here.',
+  'references.journalMetrics.merge.refusal.selfMerge': 'A journal cannot be merged into itself',
+  'references.journalMetrics.merge.refusal.sourceNotFound': 'The journal to merge no longer exists',
+  'references.journalMetrics.merge.refusal.targetNotFound': 'The journal to keep no longer exists',
+  'references.journalMetrics.merge.refusal.aliasConflict':
+    'That name already belongs to another journal',
   'references.screening.title': 'Screening',
   'references.screening.scopeHint':
     'Screening runs against one collection: open a collection to triage its references.',

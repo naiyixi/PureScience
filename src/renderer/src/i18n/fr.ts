@@ -3851,6 +3851,23 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'references.journalMetrics.kind.casPartition': 'Catégorie CAS',
   'references.journalMetrics.kind.casTop': 'CAS Top',
   'references.journalMetrics.kind.acceptanceRate': 'Taux d’acceptation',
+  'references.journalMetrics.merge.title': 'Fusionner deux revues',
+  'references.journalMetrics.merge.hint':
+    'La fusion déplace toutes les métriques et les références liées de la revue absorbée vers celle qui reste, et conserve son ancien nom comme alias : il continuera de se résoudre ici. L’opération est irréversible.',
+  'references.journalMetrics.merge.source': 'Fusionner cette revue',
+  'references.journalMetrics.merge.target': 'Dans cette revue',
+  'references.journalMetrics.merge.choose': 'Choisir une revue…',
+  'references.journalMetrics.merge.confirm': 'Fusionner',
+  'references.journalMetrics.merge.merging': 'Fusion en cours…',
+  'references.journalMetrics.merge.aliases': 'aussi appelée {names}',
+  'references.journalMetrics.merge.done':
+    '{metrics} métriques et {references} références déplacées ; « {alias} » se résout désormais ici.',
+  'references.journalMetrics.merge.refusal.selfMerge':
+    'Une revue ne peut pas être fusionnée avec elle-même',
+  'references.journalMetrics.merge.refusal.sourceNotFound': 'La revue à fusionner n’existe plus',
+  'references.journalMetrics.merge.refusal.targetNotFound': 'La revue à conserver n’existe plus',
+  'references.journalMetrics.merge.refusal.aliasConflict':
+    'Ce nom appartient déjà à une autre revue',
   'references.screening.title': 'Tri',
   'references.screening.scopeHint':
     'Le tri porte sur une collection : ouvrez une collection pour évaluer sa bibliographie.',

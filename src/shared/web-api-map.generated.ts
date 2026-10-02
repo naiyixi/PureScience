@@ -163,6 +163,7 @@ export const WEB_INVOKE_CHANNELS = {
   'references.listJournalMetrics': 'references:list-journal-metrics',
   'references.listScreeningRuleRevisions': 'references:list-screening-rule-revisions',
   'references.merge': 'references:merge',
+  'references.mergeJournals': 'references:merge-journals',
   'references.remove': 'references:remove',
   'references.removeCitationStyle': 'references:remove-citation-style',
   'references.removeFromCollection': 'references:remove-from-collection',
