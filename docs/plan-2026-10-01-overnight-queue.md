@@ -64,9 +64,12 @@
   触发一次带技能选择的真实回合，读留痕（`FUNCTION_MODEL_EVENT_LOG_LIMIT=200`），记录：① 内置回落与具名原因 ④ 真实往返耗时与是否真选出技能 ⑤ 失败回落 `call-failed`。
 - 纪律：**a missing measurement must never be reported as a measurement**；用量未报告就写 "not reported"，绝不写 0。
 
-### Q4. R2 期刊实体（**依赖**：文献智能筛选计划的 S1 迁移）
-- 若 S1 尚未落地：**不要单独动库**，保持 `docs/plan-2026-10-01-R2-journal-entity.md` 的设计与"共用一次迁移"的判断，
-  把状态写进该文档并在汇报里点名依赖；**不要为了让队列表看着有进展而先跑一次迁移**。
+### Q4. R2 期刊实体 —— **依赖判定完成（依赖已解除）**，本版不做、立案下一版
+- 复核结论：筛选 S1 **已落地**（五张表 + 索引在运行期 DDL，`prisma-client.ts:766-822` 定义 / `:1107-1112` 执行；
+  真机验收见 `docs/evidence/2026-09-29-literature-screening.md`）⇒ "与 S1 合批一次迁移"的前提**已失效**，
+  R2-U1 只能是独立迁移。判定与证据写进 `docs/plan-2026-10-01-R2-journal-entity.md` §6。
+- 本版不做的具名理由：R2 是 U1–U4 四片连成的一条能力，半条塞进本版即"有表没入口"的空壳。**未动库**（全库 grep `model Journal`/`issn` 零命中）。
+
 
 ### Q5. A7 外部锁导入（已显式顺延 v1.79.0）
 - 除非 Q1–Q3 全部收口且余量充足，否则**保持顺延并写明理由**。若要做：需要新通道（含渲染器契约与 `npm run gen:web-api-map`）
