@@ -128,6 +128,23 @@
 | `a4cdffbc` | `selector-error` → `call-failed`、`catalog-error` → `call-not-attempted`（失败不再只是日志） |
 | `c7de13ff` | **宿主被静默丢弃**（`AcpRuntimeCompositionOptions` 未声明 `functionModels`）→ 现在转发；`selectSkills` 返回空时记 `call-failed`；新增源码守卫 `runtime-composition-wiring.test.ts` |
 | `9d79b984` | 失败不再记成「作答」：桥记录本次调用的实际结果（`answered`/`failed`/`skipped`）并在端口暴露，回合具名为 `call-failed`/`call-not-attempted`；引入 `runtime-prompt-composition` 侧的分类器；真机读数见 4.1 |
+| `c09648de` | Codex 缺失时的失败**理由**说了谎：`nativePath` 空时抛「Codex native executable not found」，而真机实测该 CLI 就在 ChatGPT.app 里（present: True）、缺的是托管适配器（False）⇒ 改为点名缺哪一半（适配器在而 CLI 缺 / 都没装）。行为不变，仍失败关闭。真机复现见 §4.3 |
+
+**以上四项都是发布后修复，随下一版走**：v1.79.0 已发布的产物**不含**它们（所以没有动它的发布页正文与 CHANGELOG 里那一节的既有事实）。
+
+### 4.3 失败理由的真机复现：旧话是假的，新话点名缺的那一半
+
+隔离实例 44204，**刻意不装托管 codex**（复刻当初报错的真实状态），同一次运行里三条读数：
+
+| 读数 | 原文 |
+| --- | --- |
+| 系统 Codex CLI 是否存在 | `True`（`/Applications/ChatGPT.app/Contents/Resources/codex`）⇒ **旧文案说的「找不到」与事实不符** |
+| 检测与磁盘状态 | `detect-codex: {}`、托管适配器在盘上 `False` |
+| 新文案（`acp:create-session` 原始响应） | `{"httpError":500,…"message":"Codex is not installed for this app yet: its app-managed adapter has not been installed. Install Codex in settings."}` |
+| 脚本自判 | `{"names the missing half": true, "no longer blames the native CLI": true, "session refused (still fails closed)": true}` |
+
+**不改的地方（避免把设计当 bug 修）**：`codex-detect.ts:85-89` 写明「一旦声明托管适配器就只认它，PATH/自装适配器不得绕过 app 固定扩展层」——
+这是**故意**的，本轮不动；被修的只是**失败理由与事实不符**。因此我先前把它记成「应用无视你自己的 codex（缺陷）」的立案说法**在本轮被更正**为「失败理由说谎」。
 
 ## 6. 我要更正自己的三条判断（都在本轮，且都是量出来的）
 
