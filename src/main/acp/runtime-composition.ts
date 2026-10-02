@@ -70,6 +70,11 @@ type AcpRuntimeCompositionOptions = AcpRuntimeArtifacts & {
     paths: string[]
   ) => Promise<() => void>
   settingsService: AcpSettingsCapabilities
+  // Function-level model slots. Declared here so the value the app passes in is actually forwarded to the
+  // runtime: it used to be dropped (the composition type did not name it), which left the turn path's
+  // skill-selection bridge without a host — the configured model was never consulted there and nothing was
+  // recorded, i.e. a settings switch that changed nothing.
+  functionModels?: AcpRuntimeOptions['functionModels']
   permissionGrantRegistry?: PermissionGrantRegistry
   initializationBarrier?: Promise<unknown>
   taskNotifications?: TaskNotificationService
@@ -111,6 +116,7 @@ const createAcpRuntime = ({
   peekNotebookHandoffContext,
   authorizeSkillImportReferencedUploads,
   settingsService,
+  functionModels,
   permissionGrantRegistry,
   initializationBarrier,
   taskNotifications,
@@ -266,6 +272,9 @@ const createAcpRuntime = ({
           // A turn that never reached the selector says so in the same trail the configured model writes to.
           recordFunctionModelEvent: (event) => settingsService.recordFunctionModelEvent(event)
         },
+        // Forwarded, not dropped: without it the skill-selection bridge on the turn path has no host, so the
+        // configured function model is not consulted and no outcome is recorded.
+        ...(functionModels ? { functionModels } : {}),
         artifacts: {
           configRoot,
           dataRoot,

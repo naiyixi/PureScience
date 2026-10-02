@@ -152,6 +152,7 @@ class AcpTurnSkillOwner {
     state: Authorization,
     input: ProviderPreparationInput
   ): Promise<ResponsesBridgeSkillInput[]> {
+    // Every branch below reports its outcome to the function-model trail (see recordSelection).
     if (input.frameworkId !== 'codex') return []
     if (state.selectedSkillIds.length > 0) {
       return (
@@ -187,7 +188,12 @@ class AcpTurnSkillOwner {
     }
     try {
       const selected = await codex.selectSkills(input.selectionText, catalog, codex.signal)
-      if (!selected) return []
+      // Attempted and nothing came back: a named outcome, not silence. (The bridge logs its own failure under
+      // [acp-bridge]; without this line the turn's trail carried no trace of it at all.)
+      if (!selected) {
+        this.recordSelection('call-failed')
+        return []
+      }
       const offered = new Set(catalog.map((skill) => `${skill.name}\u0000${skill.path}`))
       return selected.filter((skill) => offered.has(`${skill.name}\u0000${skill.path}`))
     } catch {

@@ -469,4 +469,37 @@ describe('AcpTurnSkillOwner', () => {
       reason: 'call-not-attempted'
     })
   })
+
+  it('records call-failed when the bridge attempted a selection and returned nothing', async () => {
+    const recordFunctionModelEvent = vi.fn()
+    const owner = new AcpTurnSkillOwner({
+      skills: {
+        needForceLoad: async () => [],
+        namesForIds: async () => [],
+        catalogForCodexHome: async () => [
+          { name: 'research', description: 'Research', path: '/skills/research/SKILL.md' }
+        ],
+        recordFunctionModelEvent
+      },
+      requestSkillsReload: vi.fn()
+    })
+    const handle = await owner.authorize({})
+
+    // The bridge logs its own failure under [acp-bridge]; returning undefined here used to be the turn's last
+    // silent path — attempted, nothing came back, and the trail said nothing at all.
+    await handle.prepareProvider({
+      frameworkId: codexFramework.id,
+      selectionText: 'find papers',
+      promptText: 'find papers',
+      // Cast for the runtime shape: the selector's contract allows undefined, and this case is precisely the
+      // one where it returns nothing without throwing.
+      codex: { bridgeSkillsAvailable: true, selectSkills: vi.fn(async () => undefined) as never }
+    })
+
+    expect(recordFunctionModelEvent).toHaveBeenCalledWith({
+      functionId: 'skill-selection',
+      outcome: 'built-in',
+      reason: 'call-failed'
+    })
+  })
 })
