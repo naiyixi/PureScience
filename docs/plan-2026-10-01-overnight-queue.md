@@ -99,7 +99,22 @@
 - 除非 Q1–Q3 全部收口且余量充足，否则**保持顺延并写明理由**。若要做：需要新通道（含渲染器契约与 `npm run gen:web-api-map`）
   ＋ 一次真实环境构建验收；**不做半截**。
 
-### Q6. 发 v1.79.0
+### Q6. 发 v1.79.0 —— **已完成**（tag `v1.79.0` → `a1493bf1`，Release run `36966180842`）
+
+> **回读（2026-10-02 13:24 CST，全部来自发布后的真实 API）**
+> - tag `v1.79.0` 注解对象 `483c3884` → 提交 `a1493bf15bdff781183f66aced0610d729a238c3`（= release 提交，已在 `origin/main`）。
+> - publish 作业 **success**（步骤 1–12 全绿）；`notarize-mac` 两个作业按名 **SKIPPED — UNSIGNED macOS assets, not notarized**（无 Apple 凭据）。
+> - 发布页：**21 资产**（mac arm64/x64 的 dmg+zip+blockmap、win setup.exe+zip+blockmap、AppImage、deb、
+>   `latest.yml`/`latest-linux.yml`/`latest-mac.yml` + 两个 per-arch `*-mac.yml`、`version.json`、`SHA256SUMS.txt`、`RELEASE-CERTIFICATION.json`）。
+> - 正文 **9433 字符 / 11944 字节**（桩是 84–428；作业内 `>=2000` 闸门通过）：成熟度块 + 本版 CHANGELOG 小节 +
+>   「明确没做、已立案」+ mac 签名状态行；GitHub 自动生成的提交清单标记 **0 条** ⇒ 确为本版自己的正文。
+> - `version.json`：`version=1.79.0`，四平台 url/size/sha256 齐（mac-arm64 `d9ecfb82…`、mac-x64 `726afaea…`、
+>   win-x64 `0a9933e2…`、linux deb `876cacdc…`）。
+> - `RELEASE-CERTIFICATION.json`：`sourceSha` = `a1493bf15bdff781183f66aced0610d729a238c3` **与 tag 提交逐字符相同**；
+>   四平台 `packageSmoke: passed`，两个 mac 平台 `macSignature: unsigned`（如实标注，未假装已公证）。
+> - GitHub `Latest` 已指向 `PureScience v1.79.0`。
+> - 未决：`windows-upgrade-smoke`（`continue-on-error`，诊断性）本轮结束时仍 `in_progress`；它不影响上面任一读数。
+
 - 前提：Q1–Q3 收口（Q4/Q5 若仍顺延则写进 CHANGELOG 的"明确没做、已立案"）。
 - 流程：`CHANGELOG.md` 加代号行（**代号要新取一个**，两处：代号表 + 该版本小节标题）→ `README.md` 与 `README.en.md` 的**发布横幅逐字相同**（有 pre-push 守卫）
   → `package.json` 版本 → `git tag -a` → 推 tag 触发发布 → **正文必须自己写**（见下）→ 回读验证。
@@ -122,3 +137,15 @@
 2. 明确列出**没做**的与**为什么**（依赖/顺延/阻塞都要具名）。
 3. 工作区干净、无临时文件残留、隔离实例已停、端口无监听。
 （与 v1.77.0/v1.78.0 同口径：宁可报"没做 + 原因"，也不报一个无法核对的"已完成"。）
+
+## 收尾记录（2026-10-02 13:2x，v1.79.0 发布轮）
+
+- 上一轮遗留的隔离实例（PID 树 29405→29424→29439，端口 **44192**，数据根 `/tmp/ps-q4-root`）**已停**：
+  先 TERM 启动器与实例树，再复查；`lsof -nP -iTCP:44192 -sTCP:LISTEN` **无输出**（端口无监听）。
+- 临时目录**已删**：`/tmp/{ps-q1,ps-q1-root,ps-q2,ps-q2-root,ps-q2-start.sh,ps-q4,ps-q4-root,ps-q4-run}`
+  ＋ `/tmp/ps-sig-probe`（819 MB）；`du -sh /private/tmp` **847M → 26M**，`ls -d /tmp/ps-q*` 无匹配。
+  （`ps-q4-root/codex-subscription/**` 由托管安装置为只读，先 `chmod -R u+rwX` 再删。）
+- 确认**未动**用户真实安装（`/Applications/PureScience.app`，PID 22787 仍在）。
+- 仓库：`HEAD=a1493bf1`，`git status --porcelain` 空，`git rev-list --left-right --count origin/main...main` = `0	0`。
+- 仍**未取**（具名，不假装量过）：面板的**浏览器级**读数——R4-U4 的逐页理由与 R4-U3 的 `rotatedPages` 提示只在
+  服务/render 用例里覆盖过，没有一次"真实例 + 真 PDF + 真界面 DOM"的读数。
