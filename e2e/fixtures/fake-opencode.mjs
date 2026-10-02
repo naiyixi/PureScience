@@ -14,6 +14,8 @@ const PROVIDER_BRIDGE_PROMPT = 'Verify the provider bridge.'
 const NOTEBOOK_LIFECYCLE_PROMPT = 'Verify the notebook lifecycle.'
 const ARTIFACT_PROVENANCE_PROMPT = 'Create a provenance artifact.'
 const PDF_TABLE_PROMPT = 'Create a table PDF fixture.'
+const PDF_PROSE_PROMPT = 'Create a prose PDF fixture.'
+const PDF_ROTATED_TABLE_PROMPT = 'Create a rotated table PDF fixture.'
 const PDF_REGION_PROMPT = 'Create a region drawing PDF.'
 const PDF_ANNOTATED_PROMPT = 'Create an annotated PDF fixture.'
 const INTERRUPTED_TURN_PROMPT = 'Continue the interrupted turn fixture.'
@@ -243,7 +245,7 @@ const createProvenanceArtifact = async (sessionId) => {
 // the same way. The image is still referenced by the page whether or not the content paints it.
 // `annotationObjects` are appended as objects 7..N and referenced from the page's own /Annots, so a PDF
 // this fixture writes can carry markup inside itself — which is what the annotation import reads.
-const pdfFromContent = (content, annotationObjects = []) => {
+const pdfFromContent = (content, annotationObjects = [], mediaBox = '[0 0 400 600]') => {
   const imageData = Buffer.from([255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0])
   const imageBytes = [...imageData].map((byte) => String.fromCharCode(byte)).join('')
   const annots =
@@ -253,7 +255,7 @@ const pdfFromContent = (content, annotationObjects = []) => {
   const objects = [
     '<</Type/Catalog/Pages 2 0 R>>',
     '<</Type/Pages/Kids[3 0 R]/Count 1>>',
-    `<</Type/Page/Parent 2 0 R/MediaBox[0 0 400 600]${annots}/Resources<</Font<</F1 4 0 R>>/XObject<</Im1 6 0 R>>>>/Contents 5 0 R>>`,
+    `<</Type/Page/Parent 2 0 R/MediaBox${mediaBox}${annots}/Resources<</Font<</F1 4 0 R>>/XObject<</Im1 6 0 R>>>>/Contents 5 0 R>>`,
     '<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>',
     `<</Length ${content.length}>>stream\n${content}\nendstream`,
     `<</Type/XObject/Subtype/Image/Width 2/Height 2/ColorSpace/DeviceRGB/BitsPerComponent 8/Length ${imageData.length}>>stream\n${imageBytes}\nendstream`,
@@ -315,6 +317,59 @@ const tablePdf = () => {
   return pdfFromContent(lines.join('\n'))
 }
 
+// A page of prose: one column of plain sentences and nothing else. Its rows are above the row floor, so
+// the only gate it can fail is the column floor — which is what makes it the fixture for the panel's
+// "why no table was reported" line: the reason has to arrive with the counts the decision used, not as an
+// unexplained empty result.
+const FIXTURE_PROSE_LINES = [
+  'Samples were collected from three sites over two seasons.',
+  'Every sample was processed with the same protocol and the same reagents.',
+  'Reads were trimmed, aligned and counted against the reference assembly.',
+  'Counts were normalised before any comparison was made between groups.',
+  'No grid of values appears anywhere on this page.'
+]
+
+const prosePdf = () => {
+  const lines = ['BT /F1 12 Tf']
+  FIXTURE_PROSE_LINES.forEach((text, index) => {
+    lines.push(`1 0 0 1 40 ${700 - index * 16} Tm (${text}) Tj`)
+  })
+  lines.push('ET')
+  return pdfFromContent(lines.join('\n'), [], '[0 0 612 792]')
+}
+
+// The same six-by-four grid as the unit-level fixture, but every cell placed through a 90-degree text
+// matrix. "Left edge / baseline / width" are false on such a page until the parser turns it back to
+// upright — so this is the fixture for the panel's rotated-page line, and it must still yield a real
+// candidate (six rows by four columns), not a page wrongly reported as having no table.
+const FIXTURE_ROTATED_ROWS = [
+  ['Gene', 'log2FC', 'p-value', 'adjP'],
+  ['geneA', '2.31', '0.004', '0.011'],
+  ['geneB', '-1.05', '0.021', '0.038'],
+  ['geneC', '0.87', '0.130', '0.170'],
+  ['geneD', '3.42', '0.001', '0.003'],
+  ['geneE', '-2.10', '0.008', '0.019']
+]
+// The grid rotates about the origin, so the content it is drawn from necessarily sits at negative x: that
+// is what a rotated content stream looks like in user space, and the media box is widened to contain it
+// (the same reason the reading is rotated at all).
+const FIXTURE_ROTATED_MEDIA_BOX = '[-760 -40 612 792]'
+
+const rotatedTablePdf = () => {
+  const lines = ['BT /F1 12 Tf']
+  FIXTURE_ROTATED_ROWS.forEach((row, rowIndex) => {
+    row.forEach((cell, columnIndex) => {
+      const x = 40 + columnIndex * 80
+      const y = 700 - rowIndex * 14
+      // [0 1 -1 0 -y x]: a 90-degree matrix whose origin is the item's own position, so the parser reads
+      // the rotation AND the coordinates the same way it reads a real rotated page.
+      lines.push(`0 1 -1 0 ${-y} ${x} Tm (${cell}) Tj`)
+    })
+  })
+  lines.push('ET')
+  return pdfFromContent(lines.join('\n'), [], FIXTURE_ROTATED_MEDIA_BOX)
+}
+
 const createPdfTableArtifact = async (sessionId) =>
   withMcpClient(sessionId, 'purescience-artifacts', async (client) => {
     const stored = toolResult(
@@ -334,6 +389,28 @@ const createPdfTableArtifact = async (sessionId) =>
     }
     return `Table PDF ready for session ${sessionId}, artifact ${stored.artifact.artifact_id}, version ${stored.artifact.version_id}.`
   })
+
+// Stores one hand-built PDF for the session and returns the receipt line the spec waits for.
+const writePdfArtifact = async (sessionId, filename, content, label) =>
+  withMcpClient(sessionId, 'purescience-artifacts', async (client) => {
+    const stored = toolResult(
+      'write_artifact_file',
+      await client.callTool({
+        name: 'write_artifact_file',
+        arguments: { filename, mimeType: 'application/pdf', encoding: 'base64', content }
+      })
+    )
+    if (!stored.artifact?.artifact_id || !stored.artifact.version_id) {
+      throw new Error(`The ${label} PDF artifact was not stored with a Version.`)
+    }
+    return `${label} PDF ready for session ${sessionId}, artifact ${stored.artifact.artifact_id}, version ${stored.artifact.version_id}.`
+  })
+
+const createPdfProseArtifact = async (sessionId) =>
+  writePdfArtifact(sessionId, 'prose-evidence.pdf', prosePdf(), 'Prose')
+
+const createPdfRotatedTableArtifact = async (sessionId) =>
+  writePdfArtifact(sessionId, 'rotated-table-evidence.pdf', rotatedTablePdf(), 'Rotated table')
 
 const createPdfAnnotatedArtifact = async (sessionId) =>
   withMcpClient(sessionId, 'purescience-artifacts', async (client) => {
@@ -459,6 +536,10 @@ if (process.argv.includes('--version')) {
           reply = await verifyNotebookLifecycle(context.params.sessionId)
         } else if (prompt.includes(ARTIFACT_PROVENANCE_PROMPT)) {
           reply = await createProvenanceArtifact(context.params.sessionId)
+        } else if (prompt.includes(PDF_PROSE_PROMPT)) {
+          reply = await createPdfProseArtifact(context.params.sessionId)
+        } else if (prompt.includes(PDF_ROTATED_TABLE_PROMPT)) {
+          reply = await createPdfRotatedTableArtifact(context.params.sessionId)
         } else if (prompt.includes(PDF_TABLE_PROMPT)) {
           reply = await createPdfTableArtifact(context.params.sessionId)
         } else if (prompt.includes(PDF_REGION_PROMPT)) {

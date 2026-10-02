@@ -18,7 +18,8 @@
 >
 > 真机读数（隔离实例 44185，走应用自身 RPC）：散文页 `too-few-columns` ＋ `counts={columns:1,itemCount:5,rows:5,spanningRows:0}`；
 > 空页 `blank-page`；真表格页 1 条候选（6 行×4 列 high）且 `rejectedPages` **字段不存在**；"真表 + 散文页"同样**不附理由**（抑制规则成立）。
-> 隔离证明：`/tmp/ps-q1/data/.pdfs` 3 个（本次），`~/PureScience-DEV/.pdfs` 基线 18 → 仍 18。**未取**：面板的浏览器级读数（如实记为待取证）。
+> 隔离证明：`/tmp/ps-q1/data/.pdfs` 3 个（本次），`~/PureScience-DEV/.pdfs` 基线 18 → 仍 18。**面板级读数已于 2026-10-02 补掉**（原记为待取证）：
+> 见本文件「面板级读数」一节 —— 散文页逐页理由＋计数已在真实窗口的 DOM 上读出。
 
 
 > 第 1 轮（02:16）实现了 Q1 全部代码与测试（shared 6 + service 3 + 面板 2 = 新增 11 例；typecheck 0、eslint 干净、
@@ -51,7 +52,8 @@
 > `docs/evidence/r4-u3-rotation-investigation.md` §6（10/11 逐字不变，唯一变化是被修的缺陷页；旋转表 hash 与不旋转同表相同）。
 > 连字/软连字符这一半：**实测结论"无需改"** —— 手写 ToUnicode 夹具（`docs/evidence/2026-10-02-r4-u3-ligature-fixture.py`）
 > 经应用通道读出 3×3 完好、连字被 reader 展开成 ASCII、软连字符在两种归一化模式下都不出现在字符串里 ⇒ 不写死代码。
-> 具名未取：面板的浏览器级读数（`rotatedPages` 提示）。
+> 具名未取：面板的浏览器级读数（`rotatedPages` 提示）—— **已于 2026-10-02 补掉**：旋转页提示在真实窗口的 DOM 上读出
+> （`its content stream is rotated 90°…`），见本文件「面板级读数」一节。
 - 目标：旋转页面上的表被当成横排文本（列全乱）、连字（ﬁ/ﬂ）与软连字符切碎单元格词。
 - 做法：先探现状（`src/shared/pdf-table-extraction.ts` 是否有旋转信息可用：`PdfTextItem` 无角度字段 ⇒ 需从 PDF 操作符取 `Tm/Td` 的旋转分量，
   或在 `src/main/settings/pdf-service.ts` 的解析层把旋转归一化）。**先写调查结论再动代码**（照 R6-U1 的先例）。
@@ -149,3 +151,18 @@
 - 仓库：`HEAD=a1493bf1`，`git status --porcelain` 空，`git rev-list --left-right --count origin/main...main` = `0	0`。
 - 仍**未取**（具名，不假装量过）：面板的**浏览器级**读数——R4-U4 的逐页理由与 R4-U3 的 `rotatedPages` 提示只在
   服务/render 用例里覆盖过，没有一次"真实例 + 真 PDF + 真界面 DOM"的读数。
+  **当轮补掉**：见下方「面板级读数」一节（新认证 spec + 真实窗口读数）。
+
+## 面板级读数（2026-10-02 13:4x，补掉上面那条"未取"）
+
+- 新增认证 spec `e2e/certification/pdf-table-panel-reasons.spec.ts`：真实 Electron 窗口，走**文件自己的菜单**
+  打开表面板，读的是渲染出来的 DOM。
+- 夹具新增（`e2e/fixtures/fake-opencode.mjs`，手写 PDF，不依赖生成器）：`prose-evidence.pdf`（5 行散文，
+  单列）、`rotated-table-evidence.pdf`（6×4 真表，每格用 90° 文本矩阵 `[0 1 -1 0 -y x]` 放置）。
+- 实测读数（逐字）：散文页 `too-few-columns — rows 5, columns 1, rows spanning the columns 0; the shape test
+  needs 2+ rows and 2+ columns.`（候选计数 0）；旋转页形态 `6 rows x 4 columns`、提示
+  `its content stream is rotated 90°, so the coordinates below were normalized to upright…`、表头
+  `["Gene","log2FC","p-value","adjP"]`，且**不**同时报"没有表"。
+- 本轮本机运行：`2 passed (19.7s)`（连同既有 `pdf-table-extraction.spec.ts` 一并跑过）。门禁：typecheck 0、
+  eslint/prettier 干净、`npm run build:e2e` 成功。
+- 全文与复现命令：`docs/evidence/2026-10-02-r4-u3-u4-panel-readings.md`。
