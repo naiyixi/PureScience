@@ -24,6 +24,14 @@
    佐证（本轮新读）：函数模型宿主在生产里**是接好的**（`ipc.ts:2001-2005` 把 `resolveFunctionModelTarget` 与 `recordFunctionModelEvent` 交给运行时），
    ⇒ 只要选择器**被调用**过，留痕就会有条目；只要**没有桥**，我的新代码就会写 `bridge-unavailable`。两者都没发生，
    说明这条支**根本没进入**（或走了不写留痕的那一支）。下一步只需读 `prompt-preparation-owner.prepare` 的早退分支（handoff / 续轮 / 计划类）。
+   **该早退已排除（本轮读）**：`prepare` 在 `input.turnSkill.prepareProvider(...)`（`prompt-preparation-owner.ts:153`）之前**没有**任何提前返回，
+   所以 `prepareProvider` 一定被调用过。于是把观察（**无留痕**、且 `selectedSkillIds` 应为空、目录非空 625）逐条代入后，
+   **只剩一条在代码里自洽的路径**：
+   `bridgeSkillsAvailable` 为 **真**（⇒ 该形状**有桥**，我先前那条"没有形状会建桥"确实错了）→ 走到 `codex.selectSkills` → 进入桥的包装器，
+   而**该包装器的 `functionModels` 宿主为空** ⇒ 走 `runFunctionModelSkillSelection` 的"没有设置接线"分支（`function-skill-selection.ts:98-102`），
+   **按设计不写留痕**——于是"选择器其实跑了、但没有记录、也没用上配置的模型"三件事同时成立。
+   **这是一条假设，不是结论**：验证只需一步——数一遍**有几处**构造 ACP 运行时（`ipc.ts:2001-2005` 那处是接好宿主的），
+   确认我这个会话用的是哪一处；若是别处未接宿主，那就是一个具名缺陷（**跑在 codex 回合路径上的技能选择**既不写留痕、也永远不用用户配置的模型）。
 
 ## 2. 我要更正自己的三条判断（都在本轮，且都是量出来的）
 
