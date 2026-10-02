@@ -113,4 +113,37 @@ test('the metrics panel names year and source, and says Unknown where a metric i
   console.log(`[panel-reading] nature communications row: ${communicationsText}`)
   expect(communicationsText).toContain('16.6')
   expect(communicationsText).not.toContain('64.8')
+
+  // The filter controls, read off the same window: partition, impact-factor floor, year. The panel's own
+  // promise here is that a filter that matches nothing says so, and that a year-restricted view does not
+  // borrow a figure from another year.
+  const rows = async (): Promise<string[]> =>
+    (await table.locator('tbody tr').allInnerTexts()).map((text) => text.replace(/\s+/g, ' ').trim())
+
+  await dialog.getByLabel('Partition').selectOption('一区')
+  const partitionRows = await rows()
+  console.log(`[panel-reading] partition=一区 rows: ${JSON.stringify(partitionRows)}`)
+  expect(partitionRows).toHaveLength(1)
+  expect(partitionRows[0]).toContain('nature')
+  expect(partitionRows.join(' ')).not.toContain('16.6')
+
+  await dialog.getByLabel('Partition').selectOption('')
+  await dialog.getByLabel('Impact factor ≥').fill('999')
+  const emptyNotice = dialog.getByText('No journal matches this filter.')
+  await expect(emptyNotice).toBeVisible()
+  console.log(`[panel-reading] empty-filter notice: ${(await emptyNotice.innerText()).trim()}`)
+  expect(await table.locator('tbody tr').count()).toBe(0)
+
+  await dialog.getByLabel('Impact factor ≥').fill('')
+  await dialog.getByLabel('Year').fill('2022')
+  const yearRows = await rows()
+  console.log(`[panel-reading] year=2022 rows: ${JSON.stringify(yearRows)}`)
+  const natureIn2022 = yearRows.find((text) => text.startsWith('nature')) ?? ''
+  expect(natureIn2022).toContain('62.1')
+  expect(natureIn2022).toContain('2022')
+  // The 2024 partition claim does not belong to 2022, so that cell falls back to Unknown instead of showing
+  // a figure from another year — and Nature Communications has nothing in 2022 at all.
+  expect(natureIn2022).toContain('Unknown')
+  expect(yearRows.join(' ')).not.toContain('64.8')
+  expect(yearRows.join(' ')).not.toContain('16.6')
 })

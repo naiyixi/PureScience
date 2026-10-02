@@ -99,8 +99,17 @@ counts {"total":5,"matched":5,"missingMetric":0,"valueNotNumeric":0,"notMatching
   1 passed (9.1s)
   ```
   ⇒ **年份与来源在屏**、**缺失指标写成 `Unknown` 而不是 0 或空白**（cell 列表里没有裸 `0`，断言 `not.toContain('0')`）、
-  两本刊是两行互不相同的数字。**仍未做的**：面板里**筛选控件**的 DOM 交互读数（分区/影响因子/年份三个控件的点击路径）——
-  筛选逻辑此前只在纯函数层取证，控件交互**未取**，立案。
+  两本刊是两行互不相同的数字。
+- ~~面板里筛选控件的 DOM 交互读数未取~~ **已取（同一 spec 的续读，2026-10-02 晚）**：在同一个窗口里操作三个控件并读 DOM——
+  ```
+  [panel-reading] partition=一区 rows: ["nature 0028-0836 Unknown 一区(2024 · 中科院文献情报中心) Unknown 64.8(2023 · Journal Citation Reports) Unknown"]
+  [panel-reading] empty-filter notice: No journal matches this filter.
+  [panel-reading] year=2022 rows: ["nature 0028-0836 Unknown Unknown Unknown 62.1(2022 · Journal Citation Reports) Unknown",
+                                   "nature communications 2041-1723 Unknown Unknown Unknown Unknown Unknown"]
+  1 passed (6.6s)
+  ```
+  ⇒ 按「一区」筛选只剩 `nature`（`16.6` 那行消失）；**筛选无结果时有专门文案**（而不是看起来像空库）；
+  **限定 2022 时 `64.8` 不出现、2024 的分区退回 `Unknown`**——不借用别年的数字；`nature communications` 在 2022 全 `Unknown`（它那年没有任何主张）。
 - **面板显示的是库里的规范化名**（`nature` 全小写、`中国科学 生命科学` 这种），因为 `Journal` 实体**只存 `normalizedName`**，
   没有显示名列。这是本片实测到的既有事实（读数里可见 `nature` 小写）；要显示原始大小写需要给实体加 `displayName`
   列（走既有 `addColumnIfMissing`），**未做**，立案。
