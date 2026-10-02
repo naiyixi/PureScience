@@ -2435,8 +2435,11 @@ describe('SettingsService: preflight & spawn config', () => {
     ).providers[0]
     await service.setActiveProvider(provider.id)
 
+    // The old wording blamed the Codex CLI, but that is not what is missing in this state: the adapter entry
+    // exists on disk, so the absent half is the CLI shipped alongside it. A message that names the wrong
+    // missing thing sends people hunting for a binary they already have.
     await expect(resolveActiveBackend(service)).rejects.toThrow(
-      'Codex native executable not found. Re-detect or install Codex in settings.'
+      'The app-managed Codex adapter is installed, but the Codex CLI it ships with is missing. Reinstall Codex in settings.'
     )
   })
 

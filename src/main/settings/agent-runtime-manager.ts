@@ -761,7 +761,18 @@ export class AgentRuntimeManager {
   ): Promise<string> {
     void storedPath
     if (!nativePath) {
-      throw new Error('Codex native executable not found. Re-detect or install Codex in settings.')
+      // The old wording blamed the Codex CLI, and on a real machine that claim was simply false: the Codex
+      // CLI was sitting in the ChatGPT app while the app-owned adapter had never been installed. A message
+      // that names the wrong missing thing sends people hunting for something they already have, so say
+      // which half of the app-managed pair is actually absent.
+      const adapterEntry =
+        this.codexDetectDeps.managedAdapterPath ?? managedCodexAdapterEntry(this.storageRoot)
+      const adapterInstalled = await this.pathExists(adapterEntry)
+      throw new Error(
+        adapterInstalled
+          ? 'The app-managed Codex adapter is installed, but the Codex CLI it ships with is missing. Reinstall Codex in settings.'
+          : 'Codex is not installed for this app yet: its app-managed adapter has not been installed. Install Codex in settings.'
+      )
     }
     const adapterPath =
       this.codexDetectDeps.managedAdapterPath ?? managedCodexAdapterEntry(this.storageRoot)
