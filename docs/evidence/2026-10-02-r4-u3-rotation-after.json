@@ -1,0 +1,226 @@
+[
+  {
+    "candidates": [
+      {
+        "columns": 4,
+        "columnsPerRow": [
+          4
+        ],
+        "confidence": "high",
+        "page": 1,
+        "rows": 6,
+        "textHash": "2c482a3de36e7761"
+      }
+    ],
+    "case": "synthetic: /Tm 90 table (truth 6x4)",
+    "rejected": [],
+    "rotated": [
+      {
+        "page": 1,
+        "rotation": 90
+      }
+    ],
+    "rotatedFieldPresent": true,
+    "scannedPages": 1
+  },
+  {
+    "candidates": [
+      {
+        "columns": 4,
+        "columnsPerRow": [
+          4
+        ],
+        "confidence": "high",
+        "page": 1,
+        "rows": 6,
+        "textHash": "2c482a3de36e7761"
+      }
+    ],
+    "case": "synthetic: /Rotate 90 page",
+    "rejected": [],
+    "rotated": null,
+    "rotatedFieldPresent": false,
+    "scannedPages": 1
+  },
+  {
+    "candidates": [
+      {
+        "columns": 4,
+        "columnsPerRow": [
+          4
+        ],
+        "confidence": "high",
+        "page": 1,
+        "rows": 6,
+        "textHash": "2c482a3de36e7761"
+      }
+    ],
+    "case": "synthetic: upright table",
+    "rejected": [],
+    "rotated": null,
+    "rotatedFieldPresent": false,
+    "scannedPages": 1
+  },
+  {
+    "candidates": [],
+    "case": "synthetic: prose + blank",
+    "rejected": [
+      {
+        "counts": {
+          "columns": 1,
+          "itemCount": 5,
+          "rows": 5,
+          "spanningRows": 0
+        },
+        "page": 1,
+        "reason": "too-few-columns"
+      },
+      {
+        "counts": {
+          "columns": 0,
+          "itemCount": 0,
+          "rows": 0,
+          "spanningRows": 0
+        },
+        "page": 2,
+        "reason": "blank-page"
+      }
+    ],
+    "rotated": null,
+    "rotatedFieldPresent": false,
+    "scannedPages": 2
+  },
+  {
+    "candidates": [
+      {
+        "columns": 3,
+        "columnsPerRow": [
+          3
+        ],
+        "confidence": "high",
+        "page": 4,
+        "rows": 61,
+        "textHash": "31482425279a4a29"
+      }
+    ],
+    "case": "real: JAFC postbiotic colitis p4",
+    "rejected": [],
+    "rotated": null,
+    "rotatedFieldPresent": false,
+    "scannedPages": 1
+  },
+  {
+    "candidates": [
+      {
+        "columns": 13,
+        "columnsPerRow": [
+          13
+        ],
+        "confidence": "high",
+        "page": 4,
+        "rows": 66,
+        "textHash": "31224a430139c61b"
+      }
+    ],
+    "case": "real: L. casei Zhang antibiotic rats p4",
+    "rejected": [],
+    "rotated": null,
+    "rotatedFieldPresent": false,
+    "scannedPages": 1
+  },
+  {
+    "candidates": [
+      {
+        "columns": 2,
+        "columnsPerRow": [
+          2
+        ],
+        "confidence": "high",
+        "page": 7,
+        "rows": 36,
+        "textHash": "940b12399e577a58"
+      }
+    ],
+    "case": "real: pyrosequencing L. casei Zhang p7",
+    "rejected": [],
+    "rotated": null,
+    "rotatedFieldPresent": false,
+    "scannedPages": 1
+  },
+  {
+    "candidates": [
+      {
+        "columns": 3,
+        "columnsPerRow": [
+          3
+        ],
+        "confidence": "high",
+        "page": 2,
+        "rows": 13,
+        "textHash": "b0546425cf200c97"
+      }
+    ],
+    "case": "real: B. lactis V9 p2",
+    "rejected": [],
+    "rotated": null,
+    "rotatedFieldPresent": false,
+    "scannedPages": 1
+  },
+  {
+    "candidates": [
+      {
+        "columns": 7,
+        "columnsPerRow": [
+          7
+        ],
+        "confidence": "high",
+        "page": 4,
+        "rows": 42,
+        "textHash": "e832ccc286be7091"
+      }
+    ],
+    "case": "real: Eco immune-intestine 2022 p4",
+    "rejected": [],
+    "rotated": null,
+    "rotatedFieldPresent": false,
+    "scannedPages": 1
+  },
+  {
+    "candidates": [
+      {
+        "columns": 4,
+        "columnsPerRow": [
+          4
+        ],
+        "confidence": "high",
+        "page": 5,
+        "rows": 35,
+        "textHash": "455a63305af08bcf"
+      }
+    ],
+    "case": "real: Eco immune-intestine 2022 p5",
+    "rejected": [],
+    "rotated": null,
+    "rotatedFieldPresent": false,
+    "scannedPages": 1
+  },
+  {
+    "candidates": [
+      {
+        "columns": 4,
+        "columnsPerRow": [
+          4
+        ],
+        "confidence": "high",
+        "page": 6,
+        "rows": 39,
+        "textHash": "17d742f8503882e4"
+      }
+    ],
+    "case": "real: Eco immune-intestine 2022 p6",
+    "rejected": [],
+    "rotated": null,
+    "rotatedFieldPresent": false,
+    "scannedPages": 1
+  }
+]

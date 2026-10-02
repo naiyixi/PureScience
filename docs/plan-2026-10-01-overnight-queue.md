@@ -46,7 +46,12 @@
 3. 接进 `src/main/settings/pdf-service.ts`：**仅在整段扫描无候选时**附带 per-page 原因，随工具结果返回。
 4. 测试：四个原因分支各一条 ＋「有候选时不出理由」；真机取一页纯散文与一页真表格对比（散文页给原因与计数、真表格页出候选且不带理由）。
 
-### Q2. R4-U3 旋转与符号/连字修复
+### Q2. R4-U3 旋转与符号/连字修复 —— **已完成**
+> 旋转这一半：代码 `849b0839`（+ 调查 `facae33e`）；真机 before/after 11 例逐条对比见
+> `docs/evidence/r4-u3-rotation-investigation.md` §6（10/11 逐字不变，唯一变化是被修的缺陷页；旋转表 hash 与不旋转同表相同）。
+> 连字/软连字符这一半：**实测结论"无需改"** —— 手写 ToUnicode 夹具（`docs/evidence/2026-10-02-r4-u3-ligature-fixture.py`）
+> 经应用通道读出 3×3 完好、连字被 reader 展开成 ASCII、软连字符在两种归一化模式下都不出现在字符串里 ⇒ 不写死代码。
+> 具名未取：面板的浏览器级读数（`rotatedPages` 提示）。
 - 目标：旋转页面上的表被当成横排文本（列全乱）、连字（ﬁ/ﬂ）与软连字符切碎单元格词。
 - 做法：先探现状（`src/shared/pdf-table-extraction.ts` 是否有旋转信息可用：`PdfTextItem` 无角度字段 ⇒ 需从 PDF 操作符取 `Tm/Td` 的旋转分量，
   或在 `src/main/settings/pdf-service.ts` 的解析层把旋转归一化）。**先写调查结论再动代码**（照 R6-U1 的先例）。

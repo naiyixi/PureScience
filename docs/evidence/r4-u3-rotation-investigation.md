@@ -65,3 +65,30 @@
 
 **验收**：合成 /Tm 90 表（真值 6 行 × 4 列）修后必须量到 6 行 × 4 列且表头/数值逐格正确；
 `/Rotate 90` 页与 11 个真页（含上表）读数**必须一字不变**（before/after JSON 逐条对比）。
+
+## 六、修前 / 修后读数（2026-10-02，隔离实例 44186，走应用自身 RPC）
+
+夹具与探针留在 `docs/evidence/2026-10-02-r4-u3-rotation-{before,after}.json`（探针脚本见轮次记录；
+`synthetic: 20-page upright` 是修后那次额外加的夹具，不参与对比）。**11 例逐条对比结果：**
+
+| 用例 | before | after | 判定 |
+| --- | --- | --- | --- |
+| 合成 `/Tm 90` 表（真值 6×4） | **0 候选**，`too-few-columns`，`counts={columns:1,itemCount:24,rows:4,spanningRows:0}` | **6 行 × 4 列 high**，`columnsPerRow=[4]`，`textHash=2c482a3de36e7761`，`rotatedPages=[{page:1,rotation:90}]` | **改了，且只改了这一例** |
+| 合成 `/Rotate 90` 页 | 6×4 high `2c482a3de36e7761` | 逐字相同，`rotatedPages` **字段不存在** | 未变 |
+| 合成竖直表 | 6×4 high 同 hash | 逐字相同 | 未变 |
+| 合成 散文 + 空页 | `too-few-columns` + `blank-page`（含 counts） | 逐字相同 | 未变 |
+| 真：JAFC 后生元结肠炎 p4 | 61 行 × 3 列 high `31482425279a4a29` | 逐字相同 | 未变 |
+| 真：L. casei Zhang 抗生素大鼠 p4 | 66 行 × 13 列 high `31224a430139c61b` | 逐字相同 | 未变 |
+| 真：焦磷酸测序 L. casei Zhang p7 | 36 行 × 2 列 high `940b12399e577a58` | 逐字相同 | 未变 |
+| 真：B. lactis V9 p2 | 13 行 × 3 列 high `b0546425cf200c97` | 逐字相同 | 未变 |
+| 真：Eco 免疫肠道 2022 p4 | 42 行 × 7 列 high `e832ccc286be7091` | 逐字相同 | 未变 |
+| 真：Eco 免疫肠道 2022 p5 | 35 行 × 4 列 high `455a63305af08bcf` | 逐字相同 | 未变 |
+| 真：Eco 免疫肠道 2022 p6 | 39 行 × 4 列 high `17d742f8503882e4` | 逐字相同 | 未变 |
+
+两条关键读数：
+1. 修好后那张旋转表的 `textHash` = **`2c482a3de36e7761`**，与**不旋转的同一张表完全相同** —— 说明归一化后
+   不只是"行数列数对了"，**格子内容逐格相同**（hash 覆盖全表文本）。
+2. **10/11 逐字不变**（含 7 个真页），唯一变化是那个缺陷本身 ⇒ 修复没有把正常页拧坏。
+
+> `2026-10-02-r4-u3-ligature-reading.md`：连字/软连字符那一半已量，结论**无需改**（reader 默认归一化已处理，
+> 详见该文件）。另一处具名未取：**面板的浏览器级读数**（`rotatedPages` 提示只在 render 用例里覆盖过）。
