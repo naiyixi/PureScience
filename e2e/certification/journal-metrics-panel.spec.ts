@@ -78,6 +78,34 @@ test('the metrics panel names year and source, and says Unknown where a metric i
   expect(importResult.result.imported).toBe(4)
   expect(importResult.result.skipped).toBe(0)
 
+  // The brand blue is a claim about this product's own palette, so it is read as a NUMBER off the running
+  // window instead of trusted from the stylesheet. Chromium serializes `oklch()` as written, so the computed
+  // style alone proves only the token text; painting it on a canvas and reading the pixel is what proves the
+  // bytes a button actually shows. Tolerance is ±2 per channel for rounding.
+  const primary = await page.evaluate(() => {
+    const probe = document.createElement('div')
+    probe.style.backgroundColor = 'var(--primary)'
+    document.body.appendChild(probe)
+    const token = getComputedStyle(probe).backgroundColor
+    const canvas = document.createElement('canvas')
+    canvas.width = 1
+    canvas.height = 1
+    const context = canvas.getContext('2d')
+    const painted = 'n/a'
+    if (!context) return { token, painted }
+    context.fillStyle = token
+    context.fillRect(0, 0, 1, 1)
+    const [r, g, b] = context.getImageData(0, 0, 1, 1).data
+    probe.remove()
+
+    return { token, painted: `rgb(${r}, ${g}, ${b})` }
+  })
+  console.log(`[panel-reading] --primary token: ${primary.token} → paints as: ${primary.painted}`)
+  const [r, g, b] = (primary.painted.match(/\d+/g) ?? []).map(Number)
+  expect(Math.abs(r - 77)).toBeLessThanOrEqual(2)
+  expect(Math.abs(g - 107)).toBeLessThanOrEqual(2)
+  expect(Math.abs(b - 254)).toBeLessThanOrEqual(2)
+
   // Into the library through its own toggle, then the panel through its own button.
   await page.getByTestId('workspace-references-toggle').click()
   const dialog = page.getByRole('dialog')
@@ -85,6 +113,8 @@ test('the metrics panel names year and source, and says Unknown where a metric i
   const metricsToggle = dialog.getByRole('button', { name: 'Journal metrics' })
   await expect(metricsToggle).toBeVisible()
   await metricsToggle.click()
+  // A picture of the state the number describes: the panel open, with the primary-coloured toggle pressed.
+  await page.screenshot({ path: 'docs/evidence/2026-10-03-primary-brand-blue.png' })
 
   const table = dialog.locator('table')
   await expect(table).toBeVisible()
