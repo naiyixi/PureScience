@@ -164,11 +164,11 @@ class AcpTurnSkillOwner {
     // connection carries no responses bridge cannot reach a selector at all. Kept apart from "nothing was
     // configured" (a model may well be configured) and from "there was nothing to select for".
     if (!codex?.bridgeSkillsAvailable) {
-      this.recordSelectionNotRun('bridge-unavailable')
+      this.recordSelection('bridge-unavailable')
       return []
     }
     if (!this.options.skills?.catalogForCodexHome) {
-      this.recordSelectionNotRun('call-not-attempted')
+      this.recordSelection('call-not-attempted')
       return []
     }
     let catalog: ResponsesBridgeSkillCandidate[]
@@ -182,7 +182,7 @@ class AcpTurnSkillOwner {
       catalog = catalog.filter((skill) => allowed.has(skill.name))
     }
     if (catalog.length === 0) {
-      this.recordSelectionNotRun('call-not-attempted')
+      this.recordSelection('call-not-attempted')
       return []
     }
     try {
@@ -196,12 +196,16 @@ class AcpTurnSkillOwner {
   }
   private selectionFailed(reason: 'catalog-error' | 'selector-error'): [] {
     log.warn('Codex Skill selection failed', { reason })
+    // A log line nobody reads is not an answer. "The catalog could not be read" (nothing was attempted) and
+    // "the selection call failed" are different facts from "nothing was configured", and until this line
+    // existed a turn could fail its selection silently — the exact gap the named reasons were added for.
+    this.recordSelection(reason === 'catalog-error' ? 'call-not-attempted' : 'call-failed')
     return []
   }
 
-  // The trail entry a turn leaves when the selector never ran. Named reasons only: an unnamed skip would put
-  // the reader back where they started, unable to tell a missing bridge from an empty catalog.
-  private recordSelectionNotRun(reason: FunctionModelEventReason): void {
+  // The trail entry a turn leaves about its skill selection: why the selector never ran, or why a call it
+  // did make failed. Named reasons only — an unnamed entry would put the reader back where they started.
+  private recordSelection(reason: FunctionModelEventReason): void {
     this.options.skills?.recordFunctionModelEvent?.({
       functionId: SKILL_SELECTION_FUNCTION_ID,
       outcome: 'built-in',

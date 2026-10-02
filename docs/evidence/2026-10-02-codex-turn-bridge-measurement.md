@@ -25,13 +25,25 @@
    ⇒ 只要选择器**被调用**过，留痕就会有条目；只要**没有桥**，我的新代码就会写 `bridge-unavailable`。两者都没发生，
    说明这条支**根本没进入**（或走了不写留痕的那一支）。下一步只需读 `prompt-preparation-owner.prepare` 的早退分支（handoff / 续轮 / 计划类）。
    **该早退已排除（本轮读）**：`prepare` 在 `input.turnSkill.prepareProvider(...)`（`prompt-preparation-owner.ts:153`）之前**没有**任何提前返回，
-   所以 `prepareProvider` 一定被调用过。于是把观察（**无留痕**、且 `selectedSkillIds` 应为空、目录非空 625）逐条代入后，
-   **只剩一条在代码里自洽的路径**：
-   `bridgeSkillsAvailable` 为 **真**（⇒ 该形状**有桥**，我先前那条"没有形状会建桥"确实错了）→ 走到 `codex.selectSkills` → 进入桥的包装器，
-   而**该包装器的 `functionModels` 宿主为空** ⇒ 走 `runFunctionModelSkillSelection` 的"没有设置接线"分支（`function-skill-selection.ts:98-102`），
-   **按设计不写留痕**——于是"选择器其实跑了、但没有记录、也没用上配置的模型"三件事同时成立。
-   **这是一条假设，不是结论**：验证只需一步——数一遍**有几处**构造 ACP 运行时（`ipc.ts:2001-2005` 那处是接好宿主的），
-   确认我这个会话用的是哪一处；若是别处未接宿主，那就是一个具名缺陷（**跑在 codex 回合路径上的技能选择**既不写留痕、也永远不用用户配置的模型）。
+   所以 `prepareProvider` 一定被调用过。
+   **"宿主为空"这条假设已被我自己推翻（本轮读）**：服务这个会话的运行时**带着**函数模型宿主
+   （`ipc.ts:2001-2005` 的对象就是 `:2028` 交给 `createAcpRuntime` 的那一份；另一处构造在 `screening-model-runner`，与本会话无关）；
+   而且"什么都没配"那支**是先记录 `not-configured` 再调内置选择**（`function-skill-selection.ts:106-119`，`builtIn()` 在 try 之外）
+   —— 所以无论走"有桥"还是"无桥"，这条路径**都该留下一条记录**。两者都没留下，说明它**没走到那两处**。
+
+   ⇒ 与全部观测（**无留痕** + rollout 提示仅 33 字符无技能文本 + 目录非空 625 + 回合跑完）自洽的**只剩一支**：
+   `state.selectedSkillIds.length > 0`（`turn-skill-owner.ts:156`）——该支**按设计不写留痕**（"那是设计路径，不是跳过"），
+   且 `descriptorsForIds(...)` 若返回空，就既不注入技能、也不写任何记录。即：**会话带着强制技能 id（很可能是 always-on 的 `mcp-*` 连接器技能），
+   而这些 id 在 codex 技能根里取不到描述符 ⇒ 静默返回空**。这是**第二条静默失败**（第一条是我已修的三处跳过），
+   如果成立，它与"选择器没跑"是两件不同的事，都需要写清。
+
+   **一次真机即可分辨（下次务必留住日志）**：跑一个回合，看应用日志里有没有
+   `Codex Skill selection failed { reason: 'selector-error' | 'catalog-error' }`：
+   - **有** ⇒ 走的是选择器且**失败被静默**（`selectionFailed` 只 `log.warn`、不写留痕 —— `turn-skill-owner.ts:197-200`，这是我这份切片**没覆盖到**的缺口）
+     —— **该缺口本轮已修**：`selector-error` 现在记录 `call-failed`、`catalog-error` 记录 `call-not-attempted`（复用既有具名原因，不动契约；两条新用例钉住）。
+     于是**①④⑤ 里的 ⑤ 在 turn 路径上从此可取得**：失败不再只是日志。
+   - **没有** ⇒ 是上面那一支（强制 id + 空描述符），则要修的是"描述符取不到时说一声"。
+   两条都值得修；修法与我已经交付的三处跳过**同源**（复用既有的具名原因，不新增契约）。
 
 ## 2. 我要更正自己的三条判断（都在本轮，且都是量出来的）
 

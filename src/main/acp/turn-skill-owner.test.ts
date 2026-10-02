@@ -405,4 +405,68 @@ describe('AcpTurnSkillOwner', () => {
 
     expect(recordFunctionModelEvent).not.toHaveBeenCalled()
   })
+
+  it('records a named failure when the selector itself throws, instead of only logging it', async () => {
+    const recordFunctionModelEvent = vi.fn()
+    const owner = new AcpTurnSkillOwner({
+      skills: {
+        needForceLoad: async () => [],
+        namesForIds: async () => [],
+        catalogForCodexHome: async () => [
+          { name: 'research', description: 'Research', path: '/skills/research/SKILL.md' }
+        ],
+        recordFunctionModelEvent
+      },
+      requestSkillsReload: vi.fn()
+    })
+    const handle = await owner.authorize({})
+
+    const prepared = await handle.prepareProvider({
+      frameworkId: codexFramework.id,
+      selectionText: 'find papers',
+      promptText: 'find papers',
+      codex: {
+        bridgeSkillsAvailable: true,
+        selectSkills: vi.fn(async () => {
+          throw new Error('selector blew up')
+        })
+      }
+    })
+
+    expect(prepared.codexSkillInputs).toEqual([])
+    expect(recordFunctionModelEvent).toHaveBeenCalledWith({
+      functionId: 'skill-selection',
+      outcome: 'built-in',
+      reason: 'call-failed'
+    })
+  })
+
+  it('says nothing was attempted when the catalog cannot be read at all', async () => {
+    const recordFunctionModelEvent = vi.fn()
+    const owner = new AcpTurnSkillOwner({
+      skills: {
+        needForceLoad: async () => [],
+        namesForIds: async () => [],
+        catalogForCodexHome: async () => {
+          throw new Error('unreadable skill root')
+        },
+        recordFunctionModelEvent
+      },
+      requestSkillsReload: vi.fn()
+    })
+    const handle = await owner.authorize({})
+
+    await handle.prepareProvider({
+      frameworkId: codexFramework.id,
+      selectionText: 'find papers',
+      promptText: 'find papers',
+      codex: { bridgeSkillsAvailable: true, selectSkills: vi.fn(async () => []) }
+    })
+
+    expect(recordFunctionModelEvent).toHaveBeenCalledWith({
+      functionId: 'skill-selection',
+      outcome: 'built-in',
+      reason: 'call-not-attempted'
+    })
+  })
 })
