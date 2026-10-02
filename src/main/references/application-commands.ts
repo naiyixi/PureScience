@@ -35,6 +35,7 @@ type ReferencesCommandOwner = Pick<
   | 'attachPdf'
   | 'detachPdf'
   | 'importDoisFromPdf'
+  | 'importJournalMetrics'
   | 'listCitationStyles'
   | 'importCitationStyle'
   | 'removeCitationStyle'
@@ -104,6 +105,11 @@ const referencesApplicationCommands = Object.freeze({
     OwnerArgs<ReferencesCommandOwner, 'importDoisFromPdf'>,
     OwnerResult<ReferencesCommandOwner, 'importDoisFromPdf'>
   >('references:import-dois-from-pdf'),
+  importJournalMetrics: defineApplicationCommand<
+    'references:import-journal-metrics',
+    OwnerArgs<ReferencesCommandOwner, 'importJournalMetrics'>,
+    OwnerResult<ReferencesCommandOwner, 'importJournalMetrics'>
+  >('references:import-journal-metrics'),
   attachPdf: defineApplicationCommand<
     'references:attach-pdf',
     OwnerArgs<ReferencesCommandOwner, 'attachPdf'>,
@@ -183,6 +189,7 @@ const referencesApplicationCommandGroup = defineApplicationCommandGroup('referen
   referencesApplicationCommands.remove,
   referencesApplicationCommands.removeFromCollection,
   referencesApplicationCommands.importDoisFromPdf,
+  referencesApplicationCommands.importJournalMetrics,
   referencesApplicationCommands.attachPdf,
   referencesApplicationCommands.detachPdf,
   referencesApplicationCommands.listCitationStyles,
@@ -223,6 +230,8 @@ const registerReferencesApplicationCommands = (
         dependencies.references.fetchByIdentifier(args[0], args[1]),
       'references:import-dois-from-pdf': ({ args }) =>
         dependencies.references.importDoisFromPdf(args[0], args[1], args[2]),
+      'references:import-journal-metrics': ({ args }) =>
+        dependencies.references.importJournalMetrics(args[0]),
       'references:attach-pdf': ({ args }) => dependencies.references.attachPdf(args[0], args[1]),
       'references:detach-pdf': ({ args }) => dependencies.references.detachPdf(args[0]),
       'references:list-citation-styles': () => dependencies.references.listCitationStyles(),

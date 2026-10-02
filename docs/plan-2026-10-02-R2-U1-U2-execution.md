@@ -79,6 +79,26 @@
 | 入口 | 新增应用命令 `references:import-journal-metrics`（本仓命令模式：owner `Pick` + `defineApplicationCommand` + handler map），并跑 `npm run gen:web-api-map` 保持生成物同步 | 通过真实 RPC 导入一次并回读库 |
 | 界面 | 本片**不做**界面：UI 属 U3（显示指标时**必须**带上年份与来源；缺失显示「未知」而非 0/空白） | — |
 
+### 5.1 执行结果（2026-10-02 夜，真机已过）
+
+- **代码**：`src/shared/journal-metrics.ts`（行契约 + 九种具名跳过原因 + CSV/TSV 解析、中文表头别名）、
+  `src/shared/journal-identity.ts`（标识符规则上移 shared，导入侧才能在调仓储前判定）、
+  `src/main/references/journal-metric-import.ts`（owner：逐行校验 → 解析期刊 → 查重 → `appendMetric`；非判定类异常一律上抛）、
+  `JournalRepository.findMetric`（查重，防重复导入把 U3 统计翻倍）、应用命令 `references:import-journal-metrics`
+  ＋ 预加载桥 ＋ 渲染契约目录 ＋ `npm run gen:web-api-map` 生成物同步。
+- **真机读数**（隔离实例 44199 / `/tmp/psq8-root`，走真实 RPC `POST /rpc/references:import-journal-metrics`）：
+  十个结果面逐条走到；主用例 11 行 ⇒ 11 条 outcome（5 入库 / 6 具名跳过，零静默丢弃）；同表重导 `imported:0`（幂等，
+  原有具名原因逐条保留）；改值 `imported:1` 且旧行 id 逐字符未变（append-only）；缺列的表**点名缺哪列**而不是"导入了 0 行"。
+  全文 `docs/evidence/2026-10-02-r2-journal-metric-import.md` ＋ 逐字原文 `…-raw.txt` ＋ 夹具/探针。
+- **真机发现的缺陷（本片修掉）**：中文刊名被归一化成空串 —— `normalizeJournalName` 只保留 `[a-z0-9]`，
+  `中国科学：生命科学` ⇒ `""` ⇒ 任何非拉丁刊名永远无法登记/匹配，于是解析层明确映射了 `期刊名称`/`刊名` 的中文表头**一行也导不进**
+  （修前读数：2 行全 `name-missing`）。修为 `[^\p{L}\p{N}]+`（保留任意文种的字母/数字；拉丁与变音符行为逐字不变）；
+  修后同一张表 `imported:2`、两行落到同一个期刊 `中国科学 生命科学`。用户真实库**没有 `Journal` 表** ⇒ 零迁移风险（已核）。
+- **边界（具名，未做）**：ISSN 只校验形状、不校验校验位（`1234-567X` 形状合法故被接受，本片未改——改它属既有标识符规则，应独立立项）；
+  该行 ISSN 查无期刊时会按**精确归一化名**回落（实测落到 Nature）⇒ "ISSN 查无此刊"本身不拦行；
+  `name-ambiguous` 需库内已存在重名期刊，导入路径自身造不出该状态（本次为直接 seed）；
+  CSV 引号内换行未测；无界面（U3）。
+
 ### 5.2 之后仍未做（立案，避免无人认领）
 
 - **R2-U3**：按分区/影响因子筛选的统计面 + 「未知」口径 + 9 语种文案；依赖 5.1 提供真实数据。

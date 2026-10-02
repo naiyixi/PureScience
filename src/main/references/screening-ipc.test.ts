@@ -146,6 +146,7 @@ describe('references IPC: the screening surface', () => {
         'references:get-screening',
         'references:import-citation-style',
         'references:import-dois-from-pdf',
+        'references:import-journal-metrics',
         'references:list',
         'references:list-citation-styles',
         'references:list-collections',

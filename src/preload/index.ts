@@ -663,6 +663,9 @@ const api: PureScienceAPI = {
     // Reads the identifiers a PDF cites and imports the references they resolve to (3.4).
     importDoisFromPdf: (projectId, pdfPath, limit) =>
       electronRendererContracts.invoke('references.importDoisFromPdf', projectId, pdfPath, limit),
+    // Imports a publisher's metric table into the journal library (R2): per-row outcomes, named skips.
+    importJournalMetrics: (input) =>
+      electronRendererContracts.invoke('references.importJournalMetrics', input),
     detachPdf: (referenceId) =>
       electronRendererContracts.invoke('references.detachPdf', referenceId),
     // Citation-style layer (v1.65): imported CSL styles are application-wide, so they carry no

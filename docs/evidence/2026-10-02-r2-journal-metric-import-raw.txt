@@ -1,0 +1,63 @@
+# R2 journal-metric import — raw probe output (real isolated instance, port 44199)
+# root: /tmp/psq8-root   dataRoot: /tmp/psq8/data   channel: POST /rpc/references:import-journal-metrics
+
+===== main.out.txt =====
+{"mode": "main", "imported": 5, "skipped": 6, "journalsCreated": 3, "outcomeCount": 11, "reasons": ["imported", "duplicate", "imported", "imported", "no-year", "no-source", "no-value", "imported", "malformed-row", "name-missing", "imported"]}
+  line=2 IMPORTED kind=impact-factor value=64.8 year=2023 journal=cmur0enbc0000wfqr6dtaycms match=by-issn created=True
+  line=3 SKIPPED  reason=duplicate detail=metric cmur0enbf0001wfqr2izzo0yj already records impact-factor 64.8 (2023, Journal Citation Reports)
+  line=4 IMPORTED kind=jcr-quartile value=Q1 year=2023 journal=cmur0enbc0000wfqr6dtaycms match=by-issn created=False
+  line=5 IMPORTED kind=impact-factor value=16.6 year=2023 journal=cmur0enbi0003wfqrdvt83l26 match=by-issn created=True
+  line=6 SKIPPED  reason=no-year detail=year null is not a four-digit year
+  line=7 SKIPPED  reason=no-source detail=no source: a number whose source is unknown cannot be checked or cited
+  line=8 SKIPPED  reason=no-value detail=no value: a blank cell is a missing measurement, not a zero
+  line=9 IMPORTED kind=impact-factor value=1.0 year=2023 journal=cmur0enbc0000wfqr6dtaycms match=by-normalized-name created=False
+  line=10 SKIPPED  reason=malformed-row detail=the table has 7 columns but this line has 3 fields
+  line=11 SKIPPED  reason=name-missing detail=neither an ISSN nor a journal name: a metric belongs to a journal, not to a row
+  line=12 IMPORTED kind=impact-factor value=3.14 year=2024 journal=cmur0enbk0006wfqrsz0agiox match=by-normalized-name created=True
+
+===== rerun.out.txt =====
+{"mode": "rerun", "imported": 0, "skipped": 11, "journalsCreated": 0, "outcomeCount": 11, "reasons": ["duplicate", "duplicate", "duplicate", "duplicate", "no-year", "no-source", "no-value", "duplicate", "malformed-row", "name-missing", "duplicate"]}
+  line=2 SKIPPED  reason=duplicate detail=metric cmur0enbf0001wfqr2izzo0yj already records impact-factor 64.8 (2023, Journal Citation Reports)
+  line=3 SKIPPED  reason=duplicate detail=metric cmur0enbf0001wfqr2izzo0yj already records impact-factor 64.8 (2023, Journal Citation Reports)
+  line=4 SKIPPED  reason=duplicate detail=metric cmur0enbh0002wfqr9a6bzmg0 already records jcr-quartile Q1 (2023, Journal Citation Reports)
+  line=5 SKIPPED  reason=duplicate detail=metric cmur0enbj0004wfqrjwmk2xmn already records impact-factor 16.6 (2023, Journal Citation Reports)
+  line=6 SKIPPED  reason=no-year detail=year null is not a four-digit year
+  line=7 SKIPPED  reason=no-source detail=no source: a number whose source is unknown cannot be checked or cited
+  line=8 SKIPPED  reason=no-value detail=no value: a blank cell is a missing measurement, not a zero
+  line=9 SKIPPED  reason=duplicate detail=metric cmur0enbk0005wfqrdw25qfto already records impact-factor 1.0 (2023, Journal Citation Reports)
+  line=10 SKIPPED  reason=malformed-row detail=the table has 7 columns but this line has 3 fields
+  line=11 SKIPPED  reason=name-missing detail=neither an ISSN nor a journal name: a metric belongs to a journal, not to a row
+  line=12 SKIPPED  reason=duplicate detail=metric cmur0enbl0007wfqr2p8foi5q already records impact-factor 3.14 (2024, Test Source)
+
+===== zh.out.txt =====
+{"mode": "zh", "imported": 0, "skipped": 2, "journalsCreated": 0, "outcomeCount": 2, "reasons": ["name-missing", "name-missing"]}
+  line=2 SKIPPED  reason=name-missing detail=upsertByNormalizedName requires a usable venue name
+  line=3 SKIPPED  reason=name-missing detail=upsertByNormalizedName requires a usable venue name
+
+===== zh-after.out.txt =====
+{"mode": "zh", "imported": 2, "skipped": 0, "journalsCreated": 1, "outcomeCount": 2, "reasons": ["imported", "imported"]}
+  line=2 IMPORTED kind=cas-partition value=二区 year=2024 journal=cmur0h2t70000wfb9tcxbhkpj match=by-normalized-name created=True
+  line=3 IMPORTED kind=cas-top value=是 year=2024 journal=cmur0h2t70000wfb9tcxbhkpj match=by-normalized-name created=False
+
+===== badissn.out.txt =====
+{"mode": "badissn", "imported": 0, "skipped": 1, "journalsCreated": 0, "outcomeCount": 1, "reasons": ["bad-issn"]}
+  line=None SKIPPED  reason=bad-issn detail=ISSN "1234-567" is not a well-formed ISSN, and a repaired identifier is a fabricated one
+
+===== ambiguous.out.txt =====
+{"mode": "ambiguous", "imported": 0, "skipped": 1, "journalsCreated": 0, "outcomeCount": 1, "reasons": ["name-ambiguous"]}
+  line=None SKIPPED  reason=name-ambiguous detail=journal "Nature" matches more than one journal
+
+===== nokind.out.txt =====
+{"mode": "nokind", "imported": 0, "skipped": 1, "journalsCreated": 0, "outcomeCount": 1, "reasons": ["no-kind"]}
+  line=None SKIPPED  reason=no-kind detail=no metric kind: a number with no kind cannot be filtered, compared or labelled
+
+===== badheader.out.txt =====
+HTTP ERROR {"httpError": 500, "body": "{\"protocolVersion\":1,\"ok\":false,\"error\":{\"code\":\"handler_error\",\"message\":\"Journal metric import table is missing required column(s): year, source, kind (or defaultKind). Headers found: ISSN | Journal | Value\"}}"}
+
+===== append.out.txt =====
+{"mode": "append", "imported": 1, "skipped": 0, "journalsCreated": 0, "outcomeCount": 1, "reasons": ["imported"]}
+Traceback (most recent call last):
+  File "/private/tmp/psq8/probe.py", line 87, in <module>
+    "  line={line} IMPORTED kind={kind} value={value} year={year} journal={journalId} "
+KeyError: 'line'
+

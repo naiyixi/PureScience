@@ -24,7 +24,11 @@ type StubClient = {
     findMany: ReturnType<typeof vi.fn>
     create: ReturnType<typeof vi.fn>
   }
-  journalMetric: { create: ReturnType<typeof vi.fn>; findMany: ReturnType<typeof vi.fn> }
+  journalMetric: {
+    create: ReturnType<typeof vi.fn>
+    findFirst: ReturnType<typeof vi.fn>
+    findMany: ReturnType<typeof vi.fn>
+  }
   journals: JournalRow[]
   metrics: Array<Record<string, unknown>>
 }
@@ -50,9 +54,30 @@ const stubClient = (seed: JournalRow[] = []): StubClient => {
     },
     journalMetric: {
       create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
-        metrics.push(data)
-        return { id: `m${nextId++}` }
+        const created = { id: `m${nextId++}`, ...data }
+        metrics.push(created)
+        return { id: created.id }
       }),
+      findFirst: vi.fn(
+        async ({
+          where,
+          select
+        }: {
+          where: Record<string, unknown>
+          select?: Record<string, boolean>
+        }) => {
+          const found =
+            metrics.find((entry) =>
+              Object.entries(where).every(([key, value]) => entry[key] === value)
+            ) ?? null
+          if (!found || !select) return found
+
+          // Honour the projection like the engine does: the repository asks for an id and must get one.
+          return Object.fromEntries(
+            Object.keys(select).map((key) => [key, (found as Record<string, unknown>)[key]])
+          )
+        }
+      ),
       findMany: vi.fn(async ({ where }: { where: { journalId: string } }) =>
         metrics.filter((row) => row.journalId === where.journalId)
       )
@@ -93,6 +118,24 @@ describe('normalizeJournalName', () => {
   it('keeps two genuinely different venues apart (no stemming, no token sorting)', () => {
     expect(normalizeJournalName('Nature')).not.toBe(normalizeJournalName('Nature Communications'))
     expect(normalizeJournalName('Cell Stem Cell')).not.toBe(normalizeJournalName('Stem Cell'))
+  })
+
+  it('keeps non-Latin names usable instead of folding them away', () => {
+    // Regression, found on the real machine: an ASCII-only class turned every one of these into the empty
+    // string, so a Chinese-named journal could never be registered or matched — and a table with the
+    // 期刊名称 header this product maps imported zero rows, each refused as "requires a usable venue name".
+    expect(normalizeJournalName('中华医学杂志')).toBe('中华医学杂志')
+    expect(normalizeJournalName('中国科学：生命科学')).toBe('中国科学 生命科学')
+    // Full-width and half-width punctuation are one boundary (the same argument as the diacritics above),
+    // and Chinese book-title marks are punctuation, not part of the name.
+    const fullWidth = normalizeJournalName('中国科学：生命科学')
+    const halfWidth = normalizeJournalName('中国科学:生命科学')
+    expect(fullWidth).toBe(halfWidth)
+    expect(normalizeJournalName('《中华医学杂志》')).toBe('中华医学杂志')
+    // Compatibility forms fold, so one full-width number is one number.
+    expect(normalizeJournalName('Journal ２０２４')).toBe('journal 2024')
+    // A blank name still normalizes to nothing, which is what the "usable venue name" guard must catch.
+    expect(normalizeJournalName('   ')).toBe('')
   })
 })
 
@@ -199,6 +242,50 @@ describe('upsertByIssn', () => {
     const { repository } = build()
 
     await expect(repository.upsertByIssn({ issn: 'n/a', venue: 'Nature' })).rejects.toThrow(/ISSN/)
+  })
+})
+
+describe('findMetric', () => {
+  it('recognises an identical claim and answers null for a different one', async () => {
+    const { repository } = build()
+
+    await repository.appendMetric({
+      journalId: 'j-nature',
+      kind: 'impact-factor',
+      value: '48.5',
+      year: 2024,
+      source: 'JCR 2024'
+    })
+
+    await expect(
+      repository.findMetric({
+        journalId: 'j-nature',
+        kind: 'impact-factor',
+        value: '48.5',
+        year: 2024,
+        source: 'JCR 2024'
+      })
+    ).resolves.toEqual({ id: expect.any(String) })
+    // A different value is a different claim — both are kept, so this must NOT be read as the same row.
+    await expect(
+      repository.findMetric({
+        journalId: 'j-nature',
+        kind: 'impact-factor',
+        value: '50.5',
+        year: 2024,
+        source: 'JCR 2024'
+      })
+    ).resolves.toBeNull()
+    // Same number, different year: also a different claim.
+    await expect(
+      repository.findMetric({
+        journalId: 'j-nature',
+        kind: 'impact-factor',
+        value: '48.5',
+        year: 2023,
+        source: 'JCR 2024'
+      })
+    ).resolves.toBeNull()
   })
 })
 

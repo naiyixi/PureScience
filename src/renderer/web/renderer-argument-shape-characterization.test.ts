@@ -192,7 +192,8 @@ describe('renderer argument-shape characterization', () => {
     // annotation surface before them, 367 with the literature-screening surface: +8
     // `references.*Screening*` channels (see the same increment in
     // src/shared/renderer-contract-catalog.test.ts).
-    expect(actualPaths).toHaveLength(377)
+    // 378 with the journal metric import (references.importJournalMetrics), a plain Web request profile.
+    expect(actualPaths).toHaveLength(378)
     expect(actualPaths).toEqual(expectedPaths)
   })
 

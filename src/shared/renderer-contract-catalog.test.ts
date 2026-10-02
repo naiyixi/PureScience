@@ -17,20 +17,23 @@ describe('renderer contract catalog', () => {
     // 45 groups / 448 contracts with the PDF annotation surface (pdfAnnotations.create /
     // exportAnnotated / exportNotes / import / list / reattach / remove): seven local-only channels
     // beside the PDF reading surface they belong to.
+    // 453 with the journal metric import (references.importJournalMetrics): a library write channel like the
+    // other references commands, so it installs on the window and both Web surfaces and no other count moves.
     expect(RENDERER_CONTRACT_GROUPS).toHaveLength(46)
-    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(452)
+    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(453)
     expect(projection.invoke).toEqual(WEB_INVOKE_CHANNELS)
     expect(projection.event).toEqual(WEB_EVENT_CHANNELS)
     // 344 with the PDF annotation export channels (pdfAnnotations.exportAnnotated / exportNotes):
     // both are local-only invoke channels, so the invoke map and the local-only set move together.
-    expect(Object.keys(projection.invoke)).toHaveLength(347)
+    expect(Object.keys(projection.invoke)).toHaveLength(348)
     expect(Object.keys(projection.event)).toHaveLength(34)
   })
 
   it('separates actual Web installation from the generated compatibility projection', () => {
+    // 378 with the journal metric import (references.importJournalMetrics), a plain Web request profile.
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb !== 'unavailable')
-    ).toHaveLength(377)
+    ).toHaveLength(378)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb === 'browser-native')
     ).toEqual(['getRuntimeVersions', 'saveBlobFile', 'saveManagedFile', 'window.close'])

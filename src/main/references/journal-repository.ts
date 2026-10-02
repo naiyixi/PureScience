@@ -1,5 +1,11 @@
 import type { PrismaClient } from '@prisma/client'
 
+import { normalizeIssn, normalizeJournalName } from '../../shared/journal-identity'
+
+// The name rule lives in shared because the import path has to judge a row's identity before the repository
+// is called; re-exported here so the socket this file has always offered stays where callers expect it.
+export { normalizeJournalName }
+
 // Only the delegates this repository needs, typed to the subset so it stays unit-testable with a lightweight
 // mock instead of a real engine-backed client (the same convention as ReferenceClient).
 export type JournalClient = Pick<PrismaClient, 'journal' | 'journalMetric'>
@@ -45,33 +51,8 @@ export type JournalIdentity = {
 
 const JOURNAL_SELECT = { id: true, normalizedName: true, issn: true, createdVia: true } as const
 
-// Case, punctuation and whitespace only. Deliberately no fuzzy step (no stemming, no token sorting, no
-// edit distance): those would merge "Nature" with "Nature Communications", which is a false fact. Diacritics
-// are folded because "München" and "Munchen" are the same place spelled by two type systems, not two venues.
-export const normalizeJournalName = (name: string): string =>
-  name
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '') // strip combining marks
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ') // punctuation, "&", en-dashes, periods → word boundary
-    .trim()
-    .replace(/\s+/g, ' ')
-
-// ISSNs arrive printed both as `1234-5679` and as `12345679`, and some sources carry an `issn:` prefix.
-// Only a well-formed 8-character ISSN is accepted (7 digits + digit-or-X check digit); anything else is
-// reported as absent rather than repaired, because a repaired identifier is a fabricated one.
-const normalizeIssn = (value: string | null | undefined): string | undefined => {
-  if (!value) return undefined
-  const cleaned = value
-    .trim()
-    .replace(/^issn[:\s]*/i, '')
-    .replace(/\s+/g, '')
-  const bare = cleaned.replace(/-/g, '')
-  if (!/^\d{7}[\dX]$/i.test(bare)) return undefined
-
-  return `${bare.slice(0, 4)}-${bare.slice(4)}`.toUpperCase()
-}
-
+// The lazy-client seam every repository in this module uses: the engine client arrives on first use so a
+// schema-ensure failure can recover.
 export type JournalRepositoryOptions = {
   getClient: () => Promise<JournalClient>
 }
@@ -210,6 +191,30 @@ export class JournalRepository {
     })
 
     return row
+  }
+
+  // Reads one claim back by value. The import path uses it so re-importing the same table is a no-op
+  // instead of stacking identical rows — an append-only table that keeps identical claims would make every
+  // later count depend on how many times someone ran the import.
+  async findMetric(input: {
+    journalId: string
+    kind: string
+    value: string
+    year: number
+    source: string
+  }): Promise<{ id: string } | null> {
+    const client = await this.getClient()
+
+    return client.journalMetric.findFirst({
+      where: {
+        journalId: input.journalId,
+        kind: input.kind.trim(),
+        value: input.value.trim(),
+        year: input.year,
+        source: input.source.trim()
+      },
+      select: { id: true }
+    })
   }
 
   // The whole point of the separate table: a surface can show every claim ever made about one journal.

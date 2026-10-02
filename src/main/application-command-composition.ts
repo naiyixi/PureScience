@@ -147,13 +147,16 @@ const GROUP_COUNT = 39
 // +1 each on internal, local Web and the remote rejections, and nothing on the remote dispatch: the skill
 // availability channel (settings:skill-availability). Deciding which skills a paired remote browser's agent
 // may load is a change to this machine's install, so it is local-only as well.
-const INTERNAL_COMMAND_COUNT = 341
+// +1 each on internal, local Web and remote Web dispatch, and nothing on the fail-closed set: the journal
+// metric import (references:import-journal-metrics) is reachable from the window like every other library
+// write, so it carries no local-only flag.
+const INTERNAL_COMMAND_COUNT = 342
 // +3 each on internal, local Web and the remote rejections: the saved-search-filter-set channels are
 // reachable from the window locally and are refused on the remote surface, which is where they are counted.
-const LOCAL_WEB_COMMAND_COUNT = 339
+const LOCAL_WEB_COMMAND_COUNT = 340
 // Two more as well: the same two channels are mapped, so they count on both the local and the remote Web
 // surfaces. The rejected (fail-closed) and task counts are untouched.
-const REMOTE_WEB_COMMAND_COUNT = 220
+const REMOTE_WEB_COMMAND_COUNT = 221
 const REMOTE_REJECTED_COMMAND_COUNT = 119
 const TASK_COMMAND_COUNT = 11
 

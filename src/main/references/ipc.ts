@@ -29,11 +29,17 @@ import type {
   StartScreeningRunResult
 } from '../../shared/references-screening'
 import type { ImportedCitationStyle } from '../../shared/citation/csl'
+import type {
+  JournalMetricImportRequest,
+  JournalMetricImportResult
+} from '../../shared/journal-metrics'
 import { fetchReferenceByIdentifier, type IdentifierKind } from './service'
 import { createPdfDoiImportOwner, type PdfDocumentPorts } from './pdf-doi-owner'
 import type { PdfDoiImportResult } from './pdf-doi-import'
 import { ReferenceRepository } from './repository'
 import { ReferenceService } from './service'
+import { createJournalMetricImportOwner } from './journal-metric-import'
+import { JournalRepository, type JournalClient } from './journal-repository'
 import { CitationStyleRepository, type CitationStyleClient } from './citation-style-repository'
 import { CitationStyleService, type CitationStyleImportResult } from './citation-style-service'
 import { ScreeningRunnerUnavailableError, ScreeningService } from './screening-service'
@@ -57,6 +63,9 @@ export type ReferencesHandlers = {
   importDoisFromPdf(projectId: string, pdfPath: string, limit?: number): Promise<PdfDoiImportResult>
   attachPdf(referenceId: string, pdfManagedFileId: string | null): Promise<Reference>
   detachPdf(referenceId: string): Promise<Reference>
+  // Journal metric import (R2): one downloaded publisher table in, one outcome per row out — imported, or
+  // skipped with a named reason. Nothing is dropped silently, and no row without a year and a source lands.
+  importJournalMetrics(input: JournalMetricImportRequest): Promise<JournalMetricImportResult>
   // Citation-style layer (v1.65): imported CSL styles live application-wide; the renderer merges
   // them with the built-in styles and formats locally.
   listCitationStyles(): Promise<ImportedCitationStyle[]>
@@ -115,6 +124,14 @@ const createDefaultCitationStyleRepository = (): CitationStyleRepository =>
     async () => (await getProjectDbClient(resolveStorageRoot())) as unknown as CitationStyleClient
   )
 
+// Same lazy-client seam for the journal store: it lives in the same project database, so a schema-ensure
+// failure can recover exactly like the reference library does.
+const createDefaultJournalRepository = (): JournalRepository =>
+  new JournalRepository({
+    getClient: async () =>
+      (await getProjectDbClient(resolveStorageRoot())) as unknown as JournalClient
+  })
+
 // Constructs the references module without installing an Electron transport (same seam as compute).
 export const createReferencesIpcModule = (
   repository: ReferenceRepository = createDefaultReferenceRepository(),
@@ -122,10 +139,12 @@ export const createReferencesIpcModule = (
     resolvePdfFingerprint?: (projectId: string, managedFileId: string) => Promise<string | null>
   } = {},
   citationStyleRepository: CitationStyleRepository = createDefaultCitationStyleRepository(),
-  screeningRepository: ScreeningRepository = createDefaultScreeningRepository()
+  screeningRepository: ScreeningRepository = createDefaultScreeningRepository(),
+  journalRepository: JournalRepository = createDefaultJournalRepository()
 ): ReferencesIpcModule => {
   const service = new ReferenceService(repository, options)
   const citationStyles = new CitationStyleService(citationStyleRepository)
+  const journalMetrics = createJournalMetricImportOwner({ journals: journalRepository })
   // Long-lived holders for the two late-bound collaborators of the screening layer (see
   // ReferencesScreeningPorts). Until they are bound the surface says so: a snapshot reports
   // runnerAvailable: false, and starting a pass fails with a named error instead of opening a run
@@ -194,6 +213,7 @@ export const createReferencesIpcModule = (
       pdfDoi.importFromPdf(projectId, pdfPath, limit === undefined ? {} : { limit }),
     attachPdf: (referenceId, pdfManagedFileId) => service.attachPdf(referenceId, pdfManagedFileId),
     detachPdf: (referenceId) => service.detachPdf(referenceId),
+    importJournalMetrics: (input) => journalMetrics.importMetrics(input),
     listCitationStyles: () => citationStyles.listStyles(),
     importCitationStyle: (input) => citationStyles.importStyle(input),
     removeCitationStyle: (styleId) => citationStyles.removeStyle(styleId),
@@ -269,6 +289,10 @@ export const installReferencesIpcHandlers = (
     )
     ipcMainHandle('references:detach-pdf', (_event, referenceId: string) =>
       handlers.detachPdf(referenceId)
+    )
+    ipcMainHandle(
+      'references:import-journal-metrics',
+      (_event, input: JournalMetricImportRequest) => handlers.importJournalMetrics(input)
     )
     ipcMainHandle('references:list-citation-styles', () => handlers.listCitationStyles())
     ipcMainHandle(

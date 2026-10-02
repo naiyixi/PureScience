@@ -98,6 +98,12 @@ const ARCHIVED: EntryLayerArchivedSurface[] = [
     reason:
       'Host/agent command; the data-root setting flow validates inside its own save path, so no user-triggered check is needed.',
     evidence: 'audit 批次 4 归档结论（U23）；host-application-commands.ts:284'
+  },
+  {
+    publicPath: 'references.importJournalMetrics',
+    reason:
+      'Headless first, on purpose: the import is driven through the RPC surface (probed against a real database) and reaches the window with the journal screening panel (R2-U3), which is also the surface that has to print the year and the source beside every number. A panel now would be the empty UI this guard was built to catch.',
+    evidence: 'docs/plan-2026-10-02-R2-U1-U2-execution.md §5.1（指标导入先行，显示/筛选面属 R2-U3）'
   }
 ]
 

@@ -908,6 +908,11 @@ export interface PureScienceAPI {
       truncated: number
     }>
     detachPdf(referenceId: string): Promise<Reference>
+    // Imports a publisher's metric table into the journal library (R2): one outcome per input row, and a
+    // named reason for every row that was skipped.
+    importJournalMetrics(
+      input: import('../shared/journal-metrics').JournalMetricImportRequest
+    ): Promise<import('../shared/journal-metrics').JournalMetricImportResult>
     // Citation-style layer (v1.65): imported CSL styles, validated and stored with their licence.
     listCitationStyles(): Promise<import('../shared/citation/csl').ImportedCitationStyle[]>
     importCitationStyle(input: {

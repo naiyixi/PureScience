@@ -156,6 +156,7 @@ export const WEB_INVOKE_CHANNELS = {
   'references.getScreening': 'references:get-screening',
   'references.importCitationStyle': 'references:import-citation-style',
   'references.importDoisFromPdf': 'references:import-dois-from-pdf',
+  'references.importJournalMetrics': 'references:import-journal-metrics',
   'references.list': 'references:list',
   'references.listCitationStyles': 'references:list-citation-styles',
   'references.listCollections': 'references:list-collections',
