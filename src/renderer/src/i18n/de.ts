@@ -3844,6 +3844,24 @@ export const de: Partial<Record<ZhKey, string>> = {
   'references.citationWarning.fidelityMissing':
     'Die Treueprüfung konnte nicht wiedergeben: {field}',
   // 文献纳排分诊 (literature screening, v1.77)
+  'references.journalMetrics.title': 'Zeitschriftenkennzahlen',
+  'references.journalMetrics.hint':
+    'Jede Zahl steht mit ihrem Jahr und ihrer Quelle. Eine Kennzahl, die niemand importiert hat, heißt „Unbekannt“ — sie wird nie als 0 angezeigt.',
+  'references.journalMetrics.filter.partition': 'Kategorie',
+  'references.journalMetrics.filter.partitionAny': 'Alle Kategorien',
+  'references.journalMetrics.filter.minImpactFactor': 'Impact-Faktor ≥',
+  'references.journalMetrics.filter.year': 'Jahr',
+  'references.journalMetrics.filter.yearAny': 'Neuestes Jahr',
+  'references.journalMetrics.unknown': 'Unbekannt',
+  'references.journalMetrics.empty': 'Keine Zeitschrift entspricht diesem Filter.',
+  'references.journalMetrics.loading': 'Zeitschriftenbibliothek wird gelesen…',
+  'references.journalMetrics.counts':
+    '{matched} von {total} Zeitschriften entsprechen · {missing} ohne diese Kennzahl · {notNumeric} mit einem Wert, der keine Zahl ist · {notMatching} außerhalb der Grenzen',
+  'references.journalMetrics.kind.impactFactor': 'Impact-Faktor',
+  'references.journalMetrics.kind.jcrQuartile': 'JCR-Quartil',
+  'references.journalMetrics.kind.casPartition': 'CAS-Kategorie',
+  'references.journalMetrics.kind.casTop': 'CAS Top',
+  'references.journalMetrics.kind.acceptanceRate': 'Annahmequote',
   'references.screening.title': 'Literatur-Screening',
   'references.screening.scopeHint':
     'Das Screening läuft pro Sammlung: Sammlung öffnen und ihre Literatur bewerten.',

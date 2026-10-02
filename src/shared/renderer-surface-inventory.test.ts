@@ -285,7 +285,7 @@ describe('renderer surface inventory', () => {
     // method per contract, so the two inventories move together.
     // 453 with the journal metric import (references.importJournalMetrics): the bridge exposes one method per
     // contract, so the preload inventory and the catalog move together.
-    expect(electronPaths).toHaveLength(453)
+    expect(electronPaths).toHaveLength(454)
     expectSameSet(
       electronPaths,
       RENDERER_CONTRACT_CATALOG.map(({ publicPath }) => publicPath)
@@ -293,7 +293,7 @@ describe('renderer surface inventory', () => {
     // 344 since the PDF annotation export channels (文档标注层 A4), 342 since the annotation surface
     // (A3) and 337 since the literature-screening surface (v1.77 unit): all of them are local invoke
     // channels, so the invoke map moves with them.
-    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(348)
+    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(349)
     expect(Object.keys(WEB_EVENT_CHANNELS)).toHaveLength(34)
     expectSameSet(
       electronPaths.filter((path) => !generatedPaths.has(path)),

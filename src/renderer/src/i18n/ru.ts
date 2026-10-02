@@ -3741,6 +3741,24 @@ export const ru: Partial<Record<ZhKey, string>> = {
     'Этот стиль не прошёл проверку точности; вывод считается черновиком',
   'references.citationWarning.fidelityMissing': 'Проверка точности не воспроизвела: {field}',
   // 文献纳排分诊 (literature screening, v1.77)
+  'references.journalMetrics.title': 'Метрики журналов',
+  'references.journalMetrics.hint':
+    'Каждое число показано вместе с годом и источником. Метрика, которую никто не импортировал, отображается как «Неизвестно» — и никогда как 0.',
+  'references.journalMetrics.filter.partition': 'Категория',
+  'references.journalMetrics.filter.partitionAny': 'Все категории',
+  'references.journalMetrics.filter.minImpactFactor': 'Импакт-фактор ≥',
+  'references.journalMetrics.filter.year': 'Год',
+  'references.journalMetrics.filter.yearAny': 'Последний год',
+  'references.journalMetrics.unknown': 'Неизвестно',
+  'references.journalMetrics.empty': 'Ни один журнал не соответствует этому фильтру.',
+  'references.journalMetrics.loading': 'Чтение библиотеки журналов…',
+  'references.journalMetrics.counts':
+    '{matched} из {total} журналов соответствуют · {missing} без такой метрики · {notNumeric} со значением, не являющимся числом · {notMatching} вне границ',
+  'references.journalMetrics.kind.impactFactor': 'Импакт-фактор',
+  'references.journalMetrics.kind.jcrQuartile': 'Квартиль JCR',
+  'references.journalMetrics.kind.casPartition': 'Категория CAS',
+  'references.journalMetrics.kind.casTop': 'CAS Top',
+  'references.journalMetrics.kind.acceptanceRate': 'Доля принятых',
   'references.screening.title': 'Скрининг',
   'references.screening.scopeHint':
     'Скрининг выполняется по коллекции: откройте коллекцию, чтобы оценить её литературу.',

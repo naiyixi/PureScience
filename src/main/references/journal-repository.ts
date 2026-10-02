@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@prisma/client'
 
+import type { JournalMetricClaim } from '../../shared/journal-metrics-overview'
 import { normalizeIssn, normalizeJournalName } from '../../shared/journal-identity'
 
 // The name rule lives in shared because the import path has to judge a row's identity before the repository
@@ -231,5 +232,41 @@ export class JournalRepository {
       orderBy: [{ kind: 'asc' }, { year: 'desc' }],
       select: { kind: true, value: true, year: true, source: true, fetchedAt: true }
     })
+  }
+
+  // The screening view's read path (R2-U3): TWO queries — journals, then every claim in one shot — instead
+  // of one query per journal. A screen that issues N queries for N journals is the shape that turns a large
+  // library into a hang, and it also reads several inconsistent snapshots rather than one.
+  async listJournalsWithMetrics(): Promise<{
+    journals: Array<{ id: string; normalizedName: string; issn: string | null }>
+    claims: JournalMetricClaim[]
+  }> {
+    const client = await this.getClient()
+    const journals = await client.journal.findMany({
+      orderBy: { normalizedName: 'asc' },
+      select: { id: true, normalizedName: true, issn: true }
+    })
+    const rows = await client.journalMetric.findMany({
+      orderBy: [{ journalId: 'asc' }, { kind: 'asc' }, { year: 'desc' }],
+      select: {
+        journalId: true,
+        kind: true,
+        value: true,
+        numericValue: true,
+        year: true,
+        source: true,
+        fetchedAt: true
+      }
+    })
+
+    // `fetchedAt` travels as epoch milliseconds: the screening view breaks ties between two claims of the
+    // same year on it, and an epoch number survives the RPC boundary unchanged (a Date does not).
+    return {
+      journals,
+      claims: rows.map((row) => ({
+        ...row,
+        fetchedAt: row.fetchedAt instanceof Date ? row.fetchedAt.getTime() : Number(row.fetchedAt)
+      }))
+    }
   }
 }

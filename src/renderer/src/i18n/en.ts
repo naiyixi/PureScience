@@ -3763,6 +3763,24 @@ export const en: Record<ZhKey, string> = {
     'This style did not pass the fidelity probe; treat its output as a draft',
   'references.citationWarning.fidelityMissing': 'The fidelity probe could not reproduce: {field}',
   // 文献纳排分诊 (literature screening, v1.77)
+  'references.journalMetrics.title': 'Journal metrics',
+  'references.journalMetrics.hint':
+    'Every number is shown with the year and the source it came from. A metric nobody has imported reads "Unknown" — it is never shown as a zero.',
+  'references.journalMetrics.filter.partition': 'Partition',
+  'references.journalMetrics.filter.partitionAny': 'Any partition',
+  'references.journalMetrics.filter.minImpactFactor': 'Impact factor ≥',
+  'references.journalMetrics.filter.year': 'Year',
+  'references.journalMetrics.filter.yearAny': 'Latest year',
+  'references.journalMetrics.unknown': 'Unknown',
+  'references.journalMetrics.empty': 'No journal matches this filter.',
+  'references.journalMetrics.loading': 'Reading the journal library…',
+  'references.journalMetrics.counts':
+    '{matched} of {total} journals match · {missing} have no such metric · {notNumeric} have a value that is not a number · {notMatching} fall outside the bounds',
+  'references.journalMetrics.kind.impactFactor': 'Impact factor',
+  'references.journalMetrics.kind.jcrQuartile': 'JCR quartile',
+  'references.journalMetrics.kind.casPartition': 'CAS partition',
+  'references.journalMetrics.kind.casTop': 'CAS top',
+  'references.journalMetrics.kind.acceptanceRate': 'Acceptance rate',
   'references.screening.title': 'Screening',
   'references.screening.scopeHint':
     'Screening runs against one collection: open a collection to triage its references.',

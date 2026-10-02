@@ -3833,6 +3833,24 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'references.citationWarning.fidelityMissing':
     "Le test de fidélité n'a pas pu reproduire : {field}",
   // 文献纳排分诊 (literature screening, v1.77)
+  'references.journalMetrics.title': 'Métriques des revues',
+  'references.journalMetrics.hint':
+    'Chaque chiffre est affiché avec son année et sa source. Une métrique que personne n’a importée s’affiche « Inconnu » : jamais 0.',
+  'references.journalMetrics.filter.partition': 'Catégorie',
+  'references.journalMetrics.filter.partitionAny': 'Toutes les catégories',
+  'references.journalMetrics.filter.minImpactFactor': 'Facteur d’impact ≥',
+  'references.journalMetrics.filter.year': 'Année',
+  'references.journalMetrics.filter.yearAny': 'Année la plus récente',
+  'references.journalMetrics.unknown': 'Inconnu',
+  'references.journalMetrics.empty': 'Aucune revue ne correspond à ce filtre.',
+  'references.journalMetrics.loading': 'Lecture de la bibliothèque de revues…',
+  'references.journalMetrics.counts':
+    '{matched} sur {total} revues correspondent · {missing} sans cette métrique · {notNumeric} avec une valeur qui n’est pas un nombre · {notMatching} hors des bornes',
+  'references.journalMetrics.kind.impactFactor': 'Facteur d’impact',
+  'references.journalMetrics.kind.jcrQuartile': 'Quartile JCR',
+  'references.journalMetrics.kind.casPartition': 'Catégorie CAS',
+  'references.journalMetrics.kind.casTop': 'CAS Top',
+  'references.journalMetrics.kind.acceptanceRate': 'Taux d’acceptation',
   'references.screening.title': 'Tri',
   'references.screening.scopeHint':
     'Le tri porte sur une collection : ouvrez une collection pour évaluer sa bibliographie.',

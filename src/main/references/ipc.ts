@@ -33,6 +33,7 @@ import type {
   JournalMetricImportRequest,
   JournalMetricImportResult
 } from '../../shared/journal-metrics'
+import type { JournalMetricLibrary } from '../../shared/journal-metrics-overview'
 import { fetchReferenceByIdentifier, type IdentifierKind } from './service'
 import { createPdfDoiImportOwner, type PdfDocumentPorts } from './pdf-doi-owner'
 import type { PdfDoiImportResult } from './pdf-doi-import'
@@ -66,6 +67,9 @@ export type ReferencesHandlers = {
   // Journal metric import (R2): one downloaded publisher table in, one outcome per row out — imported, or
   // skipped with a named reason. Nothing is dropped silently, and no row without a year and a source lands.
   importJournalMetrics(input: JournalMetricImportRequest): Promise<JournalMetricImportResult>
+  // The screening view's read path (R2-U3): journals + every claim in one call; the renderer applies the
+  // filter with the shared pure function, so a filter change costs no round trip.
+  listJournalMetrics(): Promise<JournalMetricLibrary>
   // Citation-style layer (v1.65): imported CSL styles live application-wide; the renderer merges
   // them with the built-in styles and formats locally.
   listCitationStyles(): Promise<ImportedCitationStyle[]>
@@ -214,6 +218,9 @@ export const createReferencesIpcModule = (
     attachPdf: (referenceId, pdfManagedFileId) => service.attachPdf(referenceId, pdfManagedFileId),
     detachPdf: (referenceId) => service.detachPdf(referenceId),
     importJournalMetrics: (input) => journalMetrics.importMetrics(input),
+    // Read side of the same store: one call for the whole library, filtered in the renderer (see the shared
+    // pure view), so changing a filter never waits on the main process.
+    listJournalMetrics: () => journalRepository.listJournalsWithMetrics(),
     listCitationStyles: () => citationStyles.listStyles(),
     importCitationStyle: (input) => citationStyles.importStyle(input),
     removeCitationStyle: (styleId) => citationStyles.removeStyle(styleId),
@@ -294,6 +301,7 @@ export const installReferencesIpcHandlers = (
       'references:import-journal-metrics',
       (_event, input: JournalMetricImportRequest) => handlers.importJournalMetrics(input)
     )
+    ipcMainHandle('references:list-journal-metrics', () => handlers.listJournalMetrics())
     ipcMainHandle('references:list-citation-styles', () => handlers.listCitationStyles())
     ipcMainHandle(
       'references:import-citation-style',

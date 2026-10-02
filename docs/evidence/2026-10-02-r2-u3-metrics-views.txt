@@ -1,0 +1,26 @@
+journals in the library: 5 claims: 8
+=== no filter (all journals) ===
+counts {"total":5,"matched":5,"missingMetric":0,"valueNotNumeric":0,"notMatching":0}
+  journal with a non numeric factor [9999-1111]  acceptance-rate=UNKNOWN  cas-partition=UNKNOWN  cas-top=UNKNOWN  impact-factor=n/a(2023,Editorial Office)  jcr-quartile=UNKNOWN
+  journal with no metrics [no-issn]  acceptance-rate=UNKNOWN  cas-partition=UNKNOWN  cas-top=UNKNOWN  impact-factor=UNKNOWN  jcr-quartile=UNKNOWN
+  nature [0028-0836]  acceptance-rate=UNKNOWN  cas-partition=一区(2024,中科院文献情报中心)  cas-top=UNKNOWN  impact-factor=64.8(2023,Journal Citation Reports)  jcr-quartile=UNKNOWN
+  nature communications [2041-1723]  acceptance-rate=n/a(2023,Editorial Office)  cas-partition=二区(2024,中科院文献情报中心)  cas-top=UNKNOWN  impact-factor=16.6(2023,Journal Citation Reports)  jcr-quartile=UNKNOWN
+  中华医学杂志 [no-issn]  acceptance-rate=UNKNOWN  cas-partition=一区(2024,中科院文献情报中心)  cas-top=UNKNOWN  impact-factor=UNKNOWN  jcr-quartile=UNKNOWN
+
+=== filter: partition 一区 ===
+counts {"total":5,"matched":2,"missingMetric":2,"valueNotNumeric":0,"notMatching":1}
+  nature [0028-0836]  acceptance-rate=UNKNOWN  cas-partition=一区(2024,中科院文献情报中心)  cas-top=UNKNOWN  impact-factor=64.8(2023,Journal Citation Reports)  jcr-quartile=UNKNOWN
+  中华医学杂志 [no-issn]  acceptance-rate=UNKNOWN  cas-partition=一区(2024,中科院文献情报中心)  cas-top=UNKNOWN  impact-factor=UNKNOWN  jcr-quartile=UNKNOWN
+
+=== filter: minImpactFactor 10 ===
+counts {"total":5,"matched":2,"missingMetric":2,"valueNotNumeric":1,"notMatching":0}
+  nature [0028-0836]  acceptance-rate=UNKNOWN  cas-partition=一区(2024,中科院文献情报中心)  cas-top=UNKNOWN  impact-factor=64.8(2023,Journal Citation Reports)  jcr-quartile=UNKNOWN
+  nature communications [2041-1723]  acceptance-rate=n/a(2023,Editorial Office)  cas-partition=二区(2024,中科院文献情报中心)  cas-top=UNKNOWN  impact-factor=16.6(2023,Journal Citation Reports)  jcr-quartile=UNKNOWN
+
+=== filter: year 2022 (claims restricted to 2022) ===
+counts {"total":5,"matched":5,"missingMetric":0,"valueNotNumeric":0,"notMatching":0}
+  journal with a non numeric factor [9999-1111]  acceptance-rate=UNKNOWN  cas-partition=UNKNOWN  cas-top=UNKNOWN  impact-factor=UNKNOWN  jcr-quartile=UNKNOWN
+  journal with no metrics [no-issn]  acceptance-rate=UNKNOWN  cas-partition=UNKNOWN  cas-top=UNKNOWN  impact-factor=UNKNOWN  jcr-quartile=UNKNOWN
+  nature [0028-0836]  acceptance-rate=UNKNOWN  cas-partition=UNKNOWN  cas-top=UNKNOWN  impact-factor=62.1(2022,Journal Citation Reports)  jcr-quartile=UNKNOWN
+  nature communications [2041-1723]  acceptance-rate=UNKNOWN  cas-partition=UNKNOWN  cas-top=UNKNOWN  impact-factor=UNKNOWN  jcr-quartile=UNKNOWN
+  中华医学杂志 [no-issn]  acceptance-rate=UNKNOWN  cas-partition=UNKNOWN  cas-top=UNKNOWN  impact-factor=UNKNOWN  jcr-quartile=UNKNOWN

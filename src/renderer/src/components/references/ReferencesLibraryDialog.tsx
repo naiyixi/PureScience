@@ -27,6 +27,7 @@ import {
 import type { CitationStyleDefinition } from '../../../../shared/citation/types'
 import { copyText } from '@/lib/copy-text'
 import { ReferencesScreeningPanel } from './ReferencesScreeningPanel'
+import { JournalMetricsPanel } from './JournalMetricsPanel'
 
 const IDENTIFIER_KINDS = ['doi', 'pmid', 'pmcid', 'arxivId'] as const
 type IdentifierKind = (typeof IDENTIFIER_KINDS)[number]
@@ -174,6 +175,9 @@ export function ReferencesLibraryDialog({
   // while it is on, and it is only offered once a collection is open (a screen runs against a
   // collection's references, never against the whole library).
   const [showScreening, setShowScreening] = useState(false)
+  // Journals are a library-level entity, not a per-collection one, so this toggle does not depend on the
+  // selected collection (unlike the screening pass, which runs against one).
+  const [showJournalMetrics, setShowJournalMetrics] = useState(false)
 
   // Citation-style layer (v1.65): built-ins come from the shared catalogue, imported styles from the
   // store; both are merged here so one picker drives export, copy and the side-by-side comparison.
@@ -936,6 +940,15 @@ export function ReferencesLibraryDialog({
                 )}
                 <button
                   type="button"
+                  className={`${ghostClass} ml-2`}
+                  aria-pressed={showJournalMetrics}
+                  title={t('references.journalMetrics.hint')}
+                  onClick={() => setShowJournalMetrics((current) => !current)}
+                >
+                  {t('references.journalMetrics.title')}
+                </button>
+                <button
+                  type="button"
                   className={ghostClass}
                   onClick={() => void handleMergeDuplicates()}
                 >
@@ -1108,7 +1121,9 @@ export function ReferencesLibraryDialog({
                   </ul>
                 </div>
               ) : null}
-              {showScreening && selectedCollectionId !== null ? (
+              {showJournalMetrics ? (
+                <JournalMetricsPanel />
+              ) : showScreening && selectedCollectionId !== null ? (
                 <ReferencesScreeningPanel
                   // Re-keyed by collection: every piece of screening state belongs to exactly one
                   // collection, so switching collections starts from that collection's own reads.

@@ -176,7 +176,7 @@ describe('application command composition', () => {
     // project-files:list-kinds, which is a plain Web request profile like the read it replaces. Two
     // more for the PDF annotation surface, whose channels are all local-only: the store, the import and
     // the two export channels.
-    expect(composition.localWeb.commandNames()).toHaveLength(340)
+    expect(composition.localWeb.commandNames()).toHaveLength(341)
   })
 
   it('partitions remote Web dispatch from fail-closed pre-dispatch rejections', async () => {
@@ -195,7 +195,7 @@ describe('application command composition', () => {
     // the plain Web request profile, which is mapped on both Web surfaces), so remote dispatch grows with
     // local. The fail-closed rejection set is unchanged — neither channel is a rejection stub. Same +1 for
     // project-files:list-kinds, which carries no surface flag.
-    expect(composition.remoteWeb.commandNames()).toHaveLength(221)
+    expect(composition.remoteWeb.commandNames()).toHaveLength(222)
     expect(composition.remoteWeb.rejectedCommandNames()).toEqual(expectedRemoteRejections())
     expect(composition.remoteWeb.rejectedCommandNames()).toHaveLength(119)
     await expect(

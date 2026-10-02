@@ -3667,6 +3667,24 @@ export const ko: Partial<Record<ZhKey, string>> = {
     '이 스타일은 충실도 검사를 통과하지 못했습니다. 출력은 초안으로 취급합니다',
   'references.citationWarning.fidelityMissing': '충실도 검사에서 재현하지 못한 항목: {field}',
   // 文献纳排分诊 (literature screening, v1.77)
+  'references.journalMetrics.title': '저널 지표',
+  'references.journalMetrics.hint':
+    '모든 숫자는 연도와 출처와 함께 표시됩니다. 아무도 가져오지 않은 지표는 "알 수 없음"으로 표시되며 0으로 표시되지 않습니다.',
+  'references.journalMetrics.filter.partition': '구분',
+  'references.journalMetrics.filter.partitionAny': '모든 구분',
+  'references.journalMetrics.filter.minImpactFactor': '임팩트 팩터 ≥',
+  'references.journalMetrics.filter.year': '연도',
+  'references.journalMetrics.filter.yearAny': '최신 연도',
+  'references.journalMetrics.unknown': '알 수 없음',
+  'references.journalMetrics.empty': '이 조건에 맞는 저널이 없습니다.',
+  'references.journalMetrics.loading': '저널 라이브러리를 읽는 중…',
+  'references.journalMetrics.counts':
+    '{total}개 중 {matched}개 일치 · {missing}개는 해당 지표 없음 · {notNumeric}개는 값이 숫자가 아님 · {notMatching}개는 범위 밖',
+  'references.journalMetrics.kind.impactFactor': '임팩트 팩터',
+  'references.journalMetrics.kind.jcrQuartile': 'JCR 분위',
+  'references.journalMetrics.kind.casPartition': 'CAS 구분',
+  'references.journalMetrics.kind.casTop': 'CAS Top',
+  'references.journalMetrics.kind.acceptanceRate': '게재율',
   'references.screening.title': '스크리닝',
   'references.screening.scopeHint':
     '스크리닝은 컬렉션 단위입니다. 컬렉션을 연 뒤 문헌을 판정하세요.',

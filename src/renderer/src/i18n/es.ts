@@ -3810,6 +3810,24 @@ export const es: Partial<Record<ZhKey, string>> = {
   'references.citationWarning.fidelityMissing':
     'La prueba de fidelidad no pudo reproducir: {field}',
   // 文献纳排分诊 (literature screening, v1.77)
+  'references.journalMetrics.title': 'Métricas de revistas',
+  'references.journalMetrics.hint':
+    'Cada cifra se muestra con su año y su fuente. Una métrica que nadie ha importado aparece como «Desconocido»: nunca se muestra como 0.',
+  'references.journalMetrics.filter.partition': 'Categoría',
+  'references.journalMetrics.filter.partitionAny': 'Todas las categorías',
+  'references.journalMetrics.filter.minImpactFactor': 'Factor de impacto ≥',
+  'references.journalMetrics.filter.year': 'Año',
+  'references.journalMetrics.filter.yearAny': 'Año más reciente',
+  'references.journalMetrics.unknown': 'Desconocido',
+  'references.journalMetrics.empty': 'Ninguna revista cumple este filtro.',
+  'references.journalMetrics.loading': 'Leyendo la biblioteca de revistas…',
+  'references.journalMetrics.counts':
+    '{matched} de {total} revistas cumplen · {missing} sin esa métrica · {notNumeric} con un valor que no es un número · {notMatching} fuera de los límites',
+  'references.journalMetrics.kind.impactFactor': 'Factor de impacto',
+  'references.journalMetrics.kind.jcrQuartile': 'Cuartil JCR',
+  'references.journalMetrics.kind.casPartition': 'Categoría CAS',
+  'references.journalMetrics.kind.casTop': 'CAS Top',
+  'references.journalMetrics.kind.acceptanceRate': 'Tasa de aceptación',
   'references.screening.title': 'Triaje',
   'references.screening.scopeHint':
     'El triaje se hace por colección: abre una colección para evaluar su bibliografía.',

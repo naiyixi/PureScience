@@ -3733,6 +3733,24 @@ export const ja: Partial<Record<ZhKey, string>> = {
     'このスタイルは再現度検査に合格していません。出力は下書きとして扱います',
   'references.citationWarning.fidelityMissing': '再現度検査で再現できなかった項目：{field}',
   // 文献纳排分诊 (literature screening, v1.77)
+  'references.journalMetrics.title': 'ジャーナル指標',
+  'references.journalMetrics.hint':
+    'すべての数値は年と出典とともに表示されます。誰も取り込んでいない指標は「不明」と表示され、0 として表示されることはありません。',
+  'references.journalMetrics.filter.partition': '区分',
+  'references.journalMetrics.filter.partitionAny': 'すべての区分',
+  'references.journalMetrics.filter.minImpactFactor': 'インパクトファクター ≥',
+  'references.journalMetrics.filter.year': '年',
+  'references.journalMetrics.filter.yearAny': '最新年',
+  'references.journalMetrics.unknown': '不明',
+  'references.journalMetrics.empty': 'この条件に一致するジャーナルはありません。',
+  'references.journalMetrics.loading': 'ジャーナルライブラリを読み込み中…',
+  'references.journalMetrics.counts':
+    '{total} 件中 {matched} 件が一致 · {missing} 件は該当指標なし · {notNumeric} 件は値が数値でない · {notMatching} 件は条件範囲外',
+  'references.journalMetrics.kind.impactFactor': 'インパクトファクター',
+  'references.journalMetrics.kind.jcrQuartile': 'JCR 四分位',
+  'references.journalMetrics.kind.casPartition': 'CAS 区分',
+  'references.journalMetrics.kind.casTop': 'CAS Top',
+  'references.journalMetrics.kind.acceptanceRate': '採択率',
   'references.screening.title': 'スクリーニング',
   'references.screening.scopeHint':
     'スクリーニングはコレクション単位です。コレクションを開いて文献を判定してください。',

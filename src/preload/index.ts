@@ -666,6 +666,9 @@ const api: PureScienceAPI = {
     // Imports a publisher's metric table into the journal library (R2): per-row outcomes, named skips.
     importJournalMetrics: (input) =>
       electronRendererContracts.invoke('references.importJournalMetrics', input),
+    // Read side of the same library (R2-U3): journals + every claim in one call; the screening panel
+    // filters in memory with the shared pure view.
+    listJournalMetrics: () => electronRendererContracts.invoke('references.listJournalMetrics'),
     detachPdf: (referenceId) =>
       electronRendererContracts.invoke('references.detachPdf', referenceId),
     // Citation-style layer (v1.65): imported CSL styles are application-wide, so they carry no

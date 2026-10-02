@@ -81,3 +81,21 @@
 - **不把缺失指标显示成 0 或空白**（本片的核心口径）。
 - **不引入分页/虚拟滚动**（期刊量级未到；到了再做，且 §1.1 的契约不变）。
 - **不改既有引文列表对 `venue` 文本的显示**（未解析到期刊的引用仍按文本显示，不回填）。
+
+## 5. 执行结果（2026-10-02 夜，真机数据路径已过；面板 DOM 待取证）
+
+- **代码**：`src/shared/journal-metrics-overview.ts`（纯视图：每类取最大年份、并列取 `fetchedAt`、四桶计数恒等式、
+  数字比较只用写入期算好的 `numericValue`）；`JournalRepository.listJournalsWithMetrics()`（两次查询，不做 N+1）；
+  命令 `references:list-journal-metrics` ＋ ipc/preload/契约目录/`gen:web-api-map` ＋ 六处契约计数 +1；
+  新组件 `JournalMetricsPanel.tsx`（容器读通道 ＋ 纯展示表）挂进引文库对话框（`showJournalMetrics` 开关，照 `showScreening` 形状）；
+  9 语种文案实译（`references.journalMetrics.*`，zh≠en，未走 pending 逃逸）。
+- **真机读数**（隔离实例 44210；数据**由本产品自己的导入命令**造出，再走自己的读取通道读回，交给**出厂纯函数**算视图）：
+  - 不筛选：无指标期刊**整行 UNKNOWN**（无 0、无空白），每个数字带 `值(年份,来源)`；
+  - 按「一区」：命中 Nature ＋ 中华医学杂志；二区计 `notMatching`、无分区主张计 `missingMetric`，`2+2+1+0=5`；
+  - 影响因子 ≥ 10：命中 2 本；**`n/a` 的那本计 `valueNotNumeric`，绝不当 0 也绝不参与比较**；
+  - 限定 2022：同刊取到 62.1(2022)，不限定则取 64.8(2023) ⇒ 多年可分辨。
+  全文 `docs/evidence/2026-10-02-r2-u3-journal-metrics-surface.md` ＋ 逐字原文 `…-raw.txt` ＋ 探针/夹具。
+- **未取（具名）**：**真实窗口的面板 DOM 读数**——只有组件级渲染用例与真机数据路径读数；
+  要取需一条认证 spec（真 Electron 窗口 ＋ 夹具数据根），本片未做，如实记为待取证。
+- **本片实测到的既有缺口（立案）**：`Journal` 实体**只存 `normalizedName`**，面板只能显示规范化名（读数里可见 `nature` 全小写）；
+  要显示原始大小写需加 `displayName` 列（走既有 `addColumnIfMissing`）。**导入界面**仍不做（面板只读，归档条目已写明理由）。

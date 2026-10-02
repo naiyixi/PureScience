@@ -160,6 +160,7 @@ export const WEB_INVOKE_CHANNELS = {
   'references.list': 'references:list',
   'references.listCitationStyles': 'references:list-citation-styles',
   'references.listCollections': 'references:list-collections',
+  'references.listJournalMetrics': 'references:list-journal-metrics',
   'references.listScreeningRuleRevisions': 'references:list-screening-rule-revisions',
   'references.merge': 'references:merge',
   'references.remove': 'references:remove',
