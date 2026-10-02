@@ -88,11 +88,19 @@ counts {"total":5,"matched":5,"missingMetric":0,"valueNotNumeric":0,"notMatching
 
 ## 五、没取到的（具名，不假装）
 
-- **面板级 DOM 读数未取**。本片拿到的是：**真机数据路径**（导入 → 读取两个通道的逐字读数）＋ **出厂纯函数在该真库上算出的四条视图** ＋
-  **组件级渲染用例**（`JournalMetricsPanel.render.test.tsx`：未知 vs 0、年份与来源在屏、计数对账）。
-  没有做的是：在**真实窗口**里把面板点开、读渲染出来的 DOM。
-  要取它需要一条认证 spec（照 R4-U4 先例：真 Electron 窗口 ＋ 夹具数据根 ＋ 从界面自己的入口点进去），
-  本片**未做**——如实记为待取证，不写成「界面已实机验证」。
+- ~~面板级 DOM 读数未取~~ **已取（2026-10-02 晚，接管该轮后补）**：`e2e/certification/journal-metrics-panel.spec.ts`
+  在**真实 Electron 窗口**里走界面自己的入口（`[data-testid="workspace-references-toggle"]` → 对话里的 `Journal metrics` 按钮），
+  用**应用自己的桥**播种（`api.references.importJournalMetrics`，不是戳数据库），随后读**渲染出来的 DOM**：
+  ```
+  [panel-reading] import: {"imported":4,"skipped":0,"journalsCreated":2, "outcomes":[…逐行 journalMatch:"by-issn"…]}
+  [panel-reading] nature row: nature 0028-0836 Unknown 一区(2024 · 中科院文献情报中心) Unknown 64.8(2023 · Journal Citation Reports) Unknown
+  [panel-reading] cells: ["nature","0028-0836","Unknown","一区(2024 · 中科院文献情报中心)","Unknown",
+                          "64.8(2023 · Journal Citation Reports)","Unknown","nature communications",…]
+  1 passed (9.1s)
+  ```
+  ⇒ **年份与来源在屏**、**缺失指标写成 `Unknown` 而不是 0 或空白**（cell 列表里没有裸 `0`，断言 `not.toContain('0')`）、
+  两本刊是两行互不相同的数字。**仍未做的**：面板里**筛选控件**的 DOM 交互读数（分区/影响因子/年份三个控件的点击路径）——
+  筛选逻辑此前只在纯函数层取证，控件交互**未取**，立案。
 - **面板显示的是库里的规范化名**（`nature` 全小写、`中国科学 生命科学` 这种），因为 `Journal` 实体**只存 `normalizedName`**，
   没有显示名列。这是本片实测到的既有事实（读数里可见 `nature` 小写）；要显示原始大小写需要给实体加 `displayName`
   列（走既有 `addColumnIfMissing`），**未做**，立案。
