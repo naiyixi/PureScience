@@ -56,6 +56,16 @@
 | ~~IC8~~ ✅ **已完成（会话 `d726882a` + 列表刷新修复与真窗口读数 `b7feabd4`）** | A7 锁导入命名环境的**删除**与**用作运行时** —— 已交付：新通道 `runtime:manage-named-environments`（`list`/`remove`）+ 面板独立「具名环境」分组；移除二次确认，**在用内核时拒绝且理由逐字上屏**（不改写成更友好的话）；「用作笔记本运行时」走既有 `register→enable→select`，不新造后端 | `RuntimesPanel.tsx`、`runtime-application-commands.ts`、`environment-management.ts`         | 真窗口读数：`serviceNamedEnvs=["lock-import-env"]` / `namedEnvRows=1` / `namedEnvRemoved=true dirGone=true`（`e2e/certification/lock-import.spec.ts` 2 passed；证据 `docs/evidence/2026-10-03-A7-external-lock-import.md` §6）。**仍未取**：在用内核时拒绝移除的真窗口读数（需活的 notebook 内核） |
 | IC9                                                                            | 产物用系统程序打开 / 在文件夹中显示                                                                                                                                                                                                                                                   | `PreviewFileSurface.tsx` 头部或右键菜单 → `artifacts.openFile`                              | 真机点一次，系统程序打开的是该版本文件                                                                                                                                                                                                                                                             |
 
+> **IC6 已落地（`FeaturedOutputs`）**：`JobDetailModal.tsx:225` 那行注释掉的占位换成真组件；
+> 重点产出 / 留在远端（每条带自己的原因）/ 计数大于清单时**明说少了多少** / 收割失败原话 +
+> `remote_workdir` 并排给出。渲染测试 14 passed、i18n 42 passed、typecheck 0、eslint 0。
+> **真机「已收割」读数立案**：应用只有 `ssh:<alias>` provider，本机无远程主机 ⇒ 真窗口里一个真收割过的
+> 作业上取数需要环境；证据 `docs/evidence/2026-10-04-ic6-featured-outputs.md`。
+>
+> **IC9 已落地（`5fe6d1eb`）**：产物预览面加「用系统程序打开 / 在文件夹中显示」两个显式按钮，
+> 拒绝按 handler 原话上屏；真机 `artifact-open-actions.spec.ts` **1 passed (13.3s)**（两控件均可见、
+> 点击后无具名拒绝）。证据 `docs/evidence/2026-10-04-ic9-artifact-open-actions.md`。
+>
 > **IC7 接线已落地（`dba7d15a`）**：`App.tsx` 启动处订阅一次 `notification-inbox-store.listen()`
 > （内部走既有的 `notifications.onChanged` / `getSnapshot`，**零新通道**）；`App.test.tsx` 40 passed、
 > 契约四件套 91 passed。**真机读数待取**：需真窗口 + 一次真后台任务完成，观察红点不点铃铛自己亮。

@@ -9,6 +9,7 @@ import { useSessionJobStore } from '@/stores/session-job-store'
 import { Button } from '@/components/ui/button'
 import { dialogOverlayClassName, dialogPanelClassName } from '@/components/ui/dialog-chrome'
 import { cn } from '@/lib/utils'
+import { FeaturedOutputs } from './FeaturedOutputs'
 import { JobDeliveryLedger } from './JobDeliveryLedger'
 import { JobStatusBadge } from './JobStatusBadge'
 import { JobTerminalOutput } from './JobTerminalOutput'
@@ -222,8 +223,9 @@ function JobDetailView({ job, onBack, onOpenFileBrowser }: JobDetailViewProps): 
       {/* Where this result came from: the main process's delivery ledger for this job (P2-d-2). */}
       <JobDeliveryLedger sessionId={latestJob.session_id} jobId={latestJob.job_id} />
 
-      {/* 3b placeholder: featured outputs / left-on-remote — hidden until harvest data exists */}
-      {/* <FeaturedOutputs job={latestJob} /> */}
+      {/* What the job produced: featured outputs, what stayed on the remote host and why, and a failed
+          harvest with the workdir that was kept for a manual fetch. */}
+      <FeaturedOutputs job={latestJob} />
 
       {/* stdout / stderr tabs */}
       <div className="flex shrink-0 border-b border-border bg-background px-4">
