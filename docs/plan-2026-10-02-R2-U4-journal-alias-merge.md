@@ -88,3 +88,35 @@
 - 不做模糊/自动合并，不做批量合并；
 - 不做合并撤销（不可逆，文案写明）；
 - 不改既有引文列表对 `venue` 文本的显示（未解析的引用仍按文本显示，不回填）。
+
+
+## 5. 发布记录：v1.80.0「释名」（2026-10-03）
+
+R2 四片（U1/U2 实体与解析 → 指标导入 → U3 筛选/统计面 → U4 别名与显式合并）连同**指标导入界面**、
+**主色对齐**、**egress 拦截卡修复**与 **CI 堆上限修复**，由 release 提交 `f690b85a` 一并发布；
+代号 **释名**（汉《释名》辨名物、正异名），tag `v1.80.0` 指 `f690b85a`，release run `37096918426`。
+
+- **发版前门禁（本机）**：`typecheck:node` / `typecheck:web` 各 **0 error**；`eslint --no-cache .` **0 error / 111 warning**
+  （CI 只看 error）；`prettier --check` 四文件全过；`node scripts/check-readme-sync.mjs` 通过；
+  `release-notes.test.ts` **9 例通过**；组装出的发布正文 **13180 字节 / 10398 字符**（含代号行与本版小节）。
+- **全量 vitest（`--maxWorkers=4`）**：**1174 文件通过 / 10 文件 11 例超时**。该轮机器负载极高（整轮 60 分钟、
+  import 阶段 5988 s），10 个失败文件**逐文件隔离复跑 220 例全部通过** ⇒ 按**负载抖动**记档，
+  **既没当成「全绿」也没当成代码回归**（失败形态全是 `Test timed out`，其中一例是测试自身写明的
+  「冷启动地板吃掉了预算、本场景根本没开始」的具名断言）。
+- **提交后 CI**（全 40 位 SHA `f690b85a303c8edd06ad8a4a9e7b5354c1d3f404`）：
+  Nightly **completed/success**、Windows Full Test **completed/success**。
+- README 双语**成熟度块逐字相同**（两边各 8286 字符，程序化比对 `identical=True`），发布横幅双语一致。
+
+## 6. 下一单元（已立案，接 v1.81.0）
+
+**「同一期刊、同一 kind、同一年份有多条指标时，视图静默挑了一条」**——本轮实机读数新发现，
+证据 `docs/evidence/2026-10-03-r2-u4-journal-alias-merge.md` §3：合并前 `Nature` 的影响因子是 `64.8 (2023)`，
+被并入的刊带来 `16.6 (2023)` 后屏上只剩一个数字，而库里**两条都在**（`claims: [64.8, 16.6]`）——
+读者无从知道同一年还有另一条值/另一个来源。
+
+- **落点**：`src/shared/journal-metrics-overview.ts:119-140` 的 `selectLatestClaim`（先比年份、再比 `fetchedAt`，
+  确定性但**只取一条**）与 `cellOf`（`:149-`）；面板 `src/renderer/src/components/references/JournalMetricsPanel.tsx`。
+- **修法口径**：同 kind + 同 year 多值时**并列显示（各带 source）或显式标出冲突**，**不静默取一条**；
+  9 语种文案同步（zh ≠ en，跑 `translation-quality.test.ts`）。
+- **验收**：真窗口读数——合并前后同一 cell 必须能看到**两个值**或**冲突标记**（不能只看到一个数字）。
+- 另：合并拒绝的**面板级**（选择候选时的中间态 DOM）读数仍缺，只有通道读数 + 单测，随该片一起补。
