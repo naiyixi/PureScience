@@ -54,12 +54,15 @@
     （定时模式已实现，待该来源落地再开；届时仍不进启动关键路径）。索引的清单遍历**刻意独立于查询那条**
     （查询那条会 clear 并重建会话级读模型，索引不得扰动查询的读）。
     指纹取自项目文件索引已发布的事实：有 `checksum` 用 checksum，否则 `size + mtimeMs` 同时具备才用。
-- ⬜ **S3（界面读数）**：搜索面板显示「已索引 x / 待 x / 索引陈旧 y 分钟」+ 「立即索引」入口；
-  **9 语种**（zh ≠ en）+ 渲染用例。
-  ⚠️ 本片会新增通道（状态读数 + 「立即索引」）⇒ **契约计数连锁必须一起改**（这是本轮发版红的同一个坑）：
-  `renderer-contract-catalog`(+test)、`application-command-composition`(+test)、
-  `renderer-argument-shape-characterization`（写死的可调用面计数，A7/D1.3 已把它从 380 推到 382）、
-  `http-server.test.ts` 的 localOnly 拒绝集、preload 清单与 `renderer-api.d.ts`。
+- ✅ **S3（界面读数）——已完成 `0b2b220a`**：面板在结果区显示「已索引 x · 待更新 y · 索引更新于 z 分钟前」
+  （`present: false` 时明说「尚未建立索引」而不画 0；`capped` 时具名提示），有项目时给出「立即索引」按钮
+  （真调一次 tick 并回填新读数）。9 语种各 6 键（zh ≠ en，zh-Hant 全繁体）+ 渲染 4 / 钩子 4 / main 3 / 映射 2 条用例。
+  **偏离原设计，理由记档（选了低风险路径）**：原写「本片会新增通道（状态读数 + 「立即索引」）」，
+  实际**不新增通道**——读数搭既有 `search:query` 的响应（新增可选 `index` 块），「立即索引」搭请求上的
+  `refreshIndex` 标志（主进程**等待**恰好一次 tick 再取读数）。收益：零契约计数涟漪
+  （`renderer-argument-shape-characterization` 等写死计数一律不动，`check:web-api-map` 通过），
+  也避开「新通道半注册 ⇒ 应用启动即崩」那一类坑。诚实性质不变：普通查询照旧 fire-and-forget
+  （检索永不等待索引），没接索引时响应**不带** `index` 块——「没接」与「空索引」是两句话。
 - ⬜ **S4（真机验收）**：隔离根起真实例，逐条取父排期的四条断言读数（新导入→未覆盖提示→索引后条数增加、
   中断续跑不回退、删索引目录→覆盖为空而非无结果、前后超集），落 `docs/evidence/`。
 
