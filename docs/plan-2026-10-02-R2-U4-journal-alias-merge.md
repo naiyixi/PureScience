@@ -93,18 +93,33 @@
 ## 5. 发布记录：v1.80.0「释名」（2026-10-03）
 
 R2 四片（U1/U2 实体与解析 → 指标导入 → U3 筛选/统计面 → U4 别名与显式合并）连同**指标导入界面**、
-**主色对齐**、**egress 拦截卡修复**与 **CI 堆上限修复**，由 release 提交 `f690b85a` 一并发布；
-代号 **释名**（汉《释名》辨名物、正异名），tag `v1.80.0` 指 `f690b85a`，release run `37096918426`。
+**主色对齐**、**egress 拦截卡修复**与 **CI 堆上限修复**，一并发布；代号 **释名**（汉《释名》辨名物、正异名）。
 
-- **发版前门禁（本机）**：`typecheck:node` / `typecheck:web` 各 **0 error**；`eslint --no-cache .` **0 error / 111 warning**
+> **⚠️ 更正（2026-10-03 复核）**：本节初稿写在 Release **失败/未发布**之时，下面 tag 与 run 号已过时，按实际结论更正：
+> 首发 `f690b85a` + tag `v1.80.0` 的 release run **`37096918426` 是 failure**（`build / Verify` 撞上
+> `src/main/session-persistence/catalog-index.test.ts` 的偶发用例，四平台构建/公证/publish 全 skipped）；
+> 补了该偶发用例的真因修复（`ac859081`）与一处 lint（`f2a97d87`）后**删 tag 重建**。**最终发布态**：
+
+- **最终发布**：tag `v1.80.0`（注解对象 `95e3c7cb`）→ 提交 `f2a97d87a2e708fa2823e17583118540fb73c6b3`；
+  release run **`37099590863` completed/success**（`Release preflight`、`build / Verify`、四平台 Build、
+  `publish`、`windows-upgrade-smoke` 全 success；两个 `notarize-mac` 作业按名
+  **SKIPPED — UNSIGNED macOS assets, not notarized**）。发布页建于 `2026-10-03T05:21:50Z`，**21 资产**，
+  GitHub **Latest** 指向 `v1.80.0`。**`mac` 资产未签名 ⇒ mac 上应用内更新不成立**；Windows/Linux 的 feed 齐备（`latest.yml` / `latest-linux.yml`）。
+- **发布页正文自己写**：从该次运行的 `RELEASE-CERTIFICATION.json` 生成、删噪声行后写入；**回读
+  13,535 字节 / 10,745 字符**（UTF-8 精确计数；`… | wc -c` 的 13,537 含尾换行）。
+- **`RELEASE-CERTIFICATION.json`**：`sourceSha = f2a97d87a2e708fa2823e17583118540fb73c6b3` 与 tag 提交逐字符相同、
+  `runId 37099590863`；四平台 `packageSmoke: passed`，两个 mac 平台 `macSignature: unsigned`（如实标注，未假装已公证）。
+- **首发提交 `f690b85a` 的发版前门禁（本机）**：`typecheck:node` / `typecheck:web` 各 **0 error**；`eslint --no-cache .` **0 error / 111 warning**
   （CI 只看 error）；`prettier --check` 四文件全过；`node scripts/check-readme-sync.mjs` 通过；
   `release-notes.test.ts` **9 例通过**；组装出的发布正文 **13180 字节 / 10398 字符**（含代号行与本版小节）。
 - **全量 vitest（`--maxWorkers=4`）**：**1174 文件通过 / 10 文件 11 例超时**。该轮机器负载极高（整轮 60 分钟、
   import 阶段 5988 s），10 个失败文件**逐文件隔离复跑 220 例全部通过** ⇒ 按**负载抖动**记档，
   **既没当成「全绿」也没当成代码回归**（失败形态全是 `Test timed out`，其中一例是测试自身写明的
   「冷启动地板吃掉了预算、本场景根本没开始」的具名断言）。
-- **提交后 CI**（全 40 位 SHA `f690b85a303c8edd06ad8a4a9e7b5354c1d3f404`）：
-  Nightly **completed/success**、Windows Full Test **completed/success**。
+- **提交后 CI**（全 40 位 SHA `f690b85a303c8edd06ad8a4a9e7b5354c1d3f404`，首发）：
+  Nightly **completed/success**、Windows Full Test **completed/success**；**最终 tag 提交
+  `f2a97d87a2e708fa2823e17583118540fb73c6b3` 上**三条全绿：Release `37099590863` / Nightly `37099582636` /
+  Windows Full Test `37099582532`（均 completed/success）。
 - README 双语**成熟度块逐字相同**（两边各 8286 字符，程序化比对 `identical=True`），发布横幅双语一致。
 
 ## 6. 下一单元（已立案，接 v1.81.0）
