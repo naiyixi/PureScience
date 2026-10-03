@@ -66,6 +66,21 @@ RuntimesPanel 导入对话框 + 9 语种 13 键 + 契约计数连锁 + 真机读
 **D1.3 具名环境的列表/移除/用作运行时**（通道与面板 `d726882a` + 列表刷新修复与真窗口读数 `b7feabd4`：
 A7 导入的环境不再是死路——服务端列表含它、面板「具名环境」分组显示它、二次确认移除后 `envs/<name>` 目录消失；
 读数见 evidence §6。**仍未取**：在用内核时拒绝移除的真窗口读数，已立案）。
+**S3 增量全文索引的 S1/S2 两片**（持久层 `6f4d579b` + 查询合流 `a2f9217d`：指纹计划 / 续跑单调 checkpoint（磁盘权威）/
+存储上限具名拒绝 / 删目录即「空覆盖」；查询 = 索引 ∪ 现场有界扫描 ⇒ 索引只让命中变多，
+coverage 报 indexed/pending/stale/capped。自测先红抓出真缺陷一条：原实现只接受「批次」不接受「计划」，
+删除项从未被应用 ⇒ 删掉的文件会永远命中）。
+**⚠️ S3 未接线、不对外承诺**：后台**填充**索引的 builder 与面板读数尚未落地 ⇒ 生产里索引恒为空、
+coverage 只报 indexed:0。剩两片（S3 界面九语种 + S4 真机四条断言）已立案，见
+`docs/plan-2026-10-03-S3-incremental-fulltext-index.md`。
+**v1.80.1 发版红修复**（`dd76c03d`：D1.3 的 handler 改名 `applyNamedEnvAsRuntime`（use* 前缀让 linter 正确地
+判成「hook 在回调里调用」——改名不压规则）+ `refreshNamedEnvs` 改 `useCallback` 解身份抖动 +
+S3-S2 用例补返回类型 + Web 可调用面计数 380→382。根因记牢：**只跑改动文件的 eslint 证明不了全仓 lint**，
+而 CI 的 Verify 吃全仓；首发 tag `59b377d1` 的 run `37110227561` 三分半红在 build/Verify、下游
+Build/notarize-mac/publish 全 skipped ⇒ **连发布页都没有**，同一批错误也把 Nightly 与 Windows Full Test 打红。
+这条已写进本机开发技能的发版机制参考（`~/.hermes/skills/software-development/` 下的
+`references/release-mechanics.md`，「Gates before tagging」小节；该技能目录名本身在本仓品牌扫描的禁用词表内，
+故此处只写路径不写其名）。
 
 1. ~~**`49b2c83c` 那份 v1.80.0 发布记录需按实际结论更正**~~ ✅ **已完成（会话，`0fabd2e6`）**——
    已按实际结论更正为「已发布」：21 资产、run `37099590863` 全绿、`sourceSha = f2a97d87…`、
