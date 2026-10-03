@@ -36,9 +36,10 @@ describe('EgressApprovalCard', () => {
     })
 
     expect(document.body.textContent).toContain('Network access blocked')
-    // The test environment's fallback t() does not interpolate, so the raw {host} placeholder
-    // is what renders here; the path and actions still resolve.
-    expect(document.body.textContent).toContain('{host}')
+    // The fallback t() interpolates now (regression test in i18n-provider.test.tsx), so the banner
+    // must carry the real host: a raw `{host}` in the DOM would mean interpolation regressed.
+    expect(document.body.textContent).toContain('stats.example.com')
+    expect(document.body.textContent).not.toContain('{host}')
     expect(document.body.textContent).toContain('/metrics')
     expect(document.body.textContent).toContain('Deny')
     expect(document.body.textContent).toContain('Allow once')

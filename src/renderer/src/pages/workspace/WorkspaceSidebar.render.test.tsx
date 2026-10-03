@@ -668,11 +668,12 @@ describe('WorkspaceSidebar accessible render', () => {
     })
 
     // 7 other projects: 5 visible rows + 1 overflow row ("2 more projects…").
-    // The test environment's fallback t() does not interpolate, so the raw template
-    // with the {count} placeholder is what renders here.
+    // The fallback t() interpolates now, so the count must be substituted — a raw `{count}`
+    // here would mean interpolation regressed.
     expect(container.textContent).toContain('Project 0')
     expect(container.textContent).toContain('Project 4')
-    expect(container.textContent).toContain('{count} more projects…')
+    expect(container.textContent).toContain('2 more projects…')
+    expect(container.textContent).not.toContain('{count}')
   })
 
   it('explains an empty session list and offers the next step', () => {
