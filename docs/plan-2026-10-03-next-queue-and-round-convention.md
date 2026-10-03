@@ -118,6 +118,9 @@ Build/notarize-mac/publish 全 skipped ⇒ **连发布页都没有**，同一批
 2. **S3 增量全文索引**：索引 + 失效策略 + 验收。
 3. **M2 本地解析模型资产**：资产获取/校验（**无已发布 SHA256 的权重不下载**，见纪律）+ 接入。
 
+> **B 段剩下的活（S3 收口 + M2）与 A 段读数清账已排进 `docs/plan-2026-10-03-v1.81.0-queue.md`** —— 本队列只留「先做什么」的结论，
+> 单元明细、验收与纪律以那份 v1.81.0 排期为准（防两处漂移，规矩同 D 段）。
+
 ### D. 入口层闭环（2026-10-03 全软件扫描新增；证据见 `docs/evidence/2026-10-03-entry-layer-and-interaction-closure-audit.md`）
 
 > 通道级已确认不漏（449 条契约项 × 窗口调用点，真差 0）；下面全是**功能流层**的「能力已在、体验层缺一半」。
@@ -133,8 +136,11 @@ Build/notarize-mac/publish 全 skipped ⇒ **连发布页都没有**，同一批
    渲染层只剩 `JobDetailModal.tsx:225-226` 一行**注释占位**（组件不存在）。补 `FeaturedOutputs` 面板 + 逐产物下载。
 2. **通知到达点亮红点**：`notification-inbox-store.ts:76-97` 有 `listen()` 但**全渲染层无人调用**（`listen()` 全库 0 命中）。
    在 `App.tsx` 启动处调一次即可（照 `permission-grants-store` 的写法）。
-3. **A7 锁导入环境的删除 / 用作运行时**：`RuntimesPanel.tsx` 对 `agent-created` 卡只有启用开关，
-   `manageEnvironments`/`removeEnvironment` 渲染层 0 命中 ⇒ **A7 导入的环境对用户是死路**。补删除（二次确认 + 在用内核时拒绝）。
+3. ~~**A7 锁导入环境的删除 / 用作运行时**~~ ✅ **已完成（会话 `d726882a` + `b7feabd4`，即排期文件里的 IC8）**：
+   新通道 `runtime:manage-named-environments`（`list`/`remove`）+ 面板「具名环境」分组；移除二次确认、
+   **在用内核时拒绝且理由逐字上屏**；「用作笔记本运行时」走既有 `register→enable→select`（不新造后端）。
+   真窗口读数：`serviceNamedEnvs=["lock-import-env"]` / `namedEnvRows=1` / `namedEnvRemoved=true dirGone=true`。
+   **仍未取**：在用内核时拒绝移除的真窗口读数。
 4. **产物用系统程序打开**：`artifacts:open-file` 后端 + preload 全齐，`artifacts.openFile` 渲染层 0 命中。
    在 `PreviewFileSurface` 头部加「用系统程序打开 / 在文件夹中显示」。
 
