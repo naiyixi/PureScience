@@ -7,6 +7,7 @@ import {
 import {
   createGlobalSearchService,
   type GlobalSearchPorts,
+  type SearchIndexPorts,
   type SearchableFile,
   type SearchableReference,
   type SearchableSession,
@@ -74,7 +75,7 @@ describe('global search · incremental index (S3)', () => {
   const readIndexWith = (
     records: SearchIndexRecord[],
     extra: { pendingByScope?: Record<string, number>; capped?: boolean } = {}
-  ) =>
+  ): ((request: { projectId?: string }) => Promise<SearchIndexPorts>) =>
     vi.fn(async () => ({
       present: true,
       records,

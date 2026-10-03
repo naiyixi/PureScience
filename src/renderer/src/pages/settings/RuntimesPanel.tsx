@@ -12,7 +12,7 @@ import {
   Upload
 } from 'lucide-react'
 import { AlertDialog, Dialog } from 'radix-ui'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -602,8 +602,9 @@ const RuntimesPanel = ({
   }
 
   // Lists the named environments. A failure leaves an empty list rather than hanging on "Detecting…",
-  // and surfaces the reason through the panel's own error line.
-  const refreshNamedEnvs = async (): Promise<void> => {
+  // and surfaces the reason through the panel's own error line. Memoised because the mount effect below
+  // must be able to name it as a dependency instead of closing over a fresh identity every render.
+  const refreshNamedEnvs = useCallback(async (): Promise<void> => {
     try {
       const result = await window.api.runtime.manageNamedEnvironments({ action: 'list' })
       setNamedEnvs(result.environments)
@@ -611,11 +612,11 @@ const RuntimesPanel = ({
       setNamedEnvs([])
       setError(e instanceof Error ? e.message : t('runtimes.namedEnvsEmpty'))
     }
-  }
+  }, [t])
 
   useEffect(() => {
     void refreshNamedEnvs()
-  }, [])
+  }, [refreshNamedEnvs])
 
   // Removal is the service's call: it refuses while a live kernel uses the env, and that reason is shown
   // verbatim (never reworded into something friendlier).
@@ -639,7 +640,9 @@ const RuntimesPanel = ({
 
   // Promotes a named env through the EXISTING selection channels (register → enable → select), so no new
   // backend surface is needed to make an imported environment usable as a runtime.
-  const useNamedEnv = async (env: EnvironmentInfo): Promise<void> => {
+  // NOT a hook, despite what the old name implied: this is a plain handler, so it must NOT be called
+  // `useX` — the linter (rightly) reads that prefix as a hook and rejects calling it from a callback.
+  const applyNamedEnvAsRuntime = async (env: EnvironmentInfo): Promise<void> => {
     if (env.language !== 'python' || env.interpreterPath === undefined) return
     setBusy(true)
     setError(null)
@@ -1133,7 +1136,7 @@ const RuntimesPanel = ({
                       size="sm"
                       data-testid="named-env-use"
                       disabled={busy}
-                      onClick={() => void useNamedEnv(env)}
+                      onClick={() => void applyNamedEnvAsRuntime(env)}
                     >
                       <CheckCircle2 aria-hidden="true" /> {t('runtimes.useNamedEnv')}
                     </Button>

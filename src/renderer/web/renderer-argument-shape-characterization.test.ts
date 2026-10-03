@@ -193,7 +193,11 @@ describe('renderer argument-shape characterization', () => {
     // `references.*Screening*` channels (see the same increment in
     // src/shared/renderer-contract-catalog.test.ts).
     // 378 with the journal metric import (references.importJournalMetrics), a plain Web request profile.
-    expect(actualPaths).toHaveLength(380)
+    // 382 with the two runtime environment channels (runtime.importLock, runtime.manageNamedEnvironments):
+    // both are LOCAL-only and refused at dispatch in the Web profile, but they still appear as CALLABLE
+    // paths on the Web surface, which is what this pin counts — the remote rejection set carries the same
+    // two (see the localOnly pins in src/main/web-service/http-server.test.ts).
+    expect(actualPaths).toHaveLength(382)
     expect(actualPaths).toEqual(expectedPaths)
   })
 
