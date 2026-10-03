@@ -114,3 +114,37 @@ spec 里这四段在真机上**全部验证通过**，下轮照用：
 ③ 再 `notebook.execute`（**不传** `environment`，与 UI 同形）；④ 断言「状态表里有该环境的活条目
 ⇒ 移除必须被逐字拒绝、目录仍在」/「无活条目 ⇒ 移除应当成功」——**断言的是两者的一致性**，
 两条路径都能绿、「表说活着却放行」必红。
+
+---
+
+## 第三版：**读数取到了，1 passed (1.3m)**（V6 收口）
+
+按上面的正确配方改完即通过，真机逐字读数：
+
+```
+[v6b] import: Imported “lock-import-env” — 82 packages (82 from cache, 0 downloaded).
+[v6b] bound as runtime: Notebooks will use “lock-import-env”.
+[v6b] environments BEFORE any run: []
+[v6b] kernel start: ok=true  {"runId":"notebook-run-…","kernelKind":"python",…}
+[v6b] environments AFTER the run: [{"processKey":"python:lock-import-env","environment":"lock-import-env",
+                                    "kind":"python","status":"idle","restartRecommended":false}]
+[v6b] entry for lock-import-env: {…} => live=true
+[v6b] REFUSED as the status table required: Error: Environment "lock-import-env" is in use by a running
+       kernel — restart the notebook or wait for the run to finish before removing it.
+1 passed (1.3m)
+```
+
+**三点结论**：
+
+1. **能力本体是对的**：`isLive` 认「在用」= 状态表里该环境有非 `terminated` 的条目，实测绑定后条目为
+   `python:lock-import-env` / `status: "idle"`，移除被**逐字拒绝**，且环境目录仍在（那一支同时断言了
+   `existsSync(envs/lock-import-env)`）——即「理由上屏」与「文件没被删」两件事都成立。
+2. **这一整轮的弯路是我自己造的**：第一版把 `environment` 当权威（错），第二版才测出内核其实跑在
+   默认环境上、并据此撤回「产品缺陷」的判断（见上一节），第三版走面板绑定即通过。
+   **代价**：五次真机运行。**换来的**：一条可复用的配方 + 一条「per-call 字段不是路由输入」的事实。
+3. **spec 现在可以落树**（它是绿的验收，不是诊断稿）：`e2e/certification/named-env-kernel-in-use.spec.ts`。
+   断言写的是**契约一致性**（状态表说活着 ⇒ 必须逐字拒绝；无活条目 ⇒ 应当成功），所以它不会因为
+   「哪天内核起不来了」而假装通过——那种情况会走另一支并如实报出来。
+
+**立案档 V6 一行据此标记完成**（读数已取，配方已证）。
+
