@@ -2,6 +2,18 @@ import { ipcMainHandle } from '../ipc-handler-registry'
 import type { WebContents } from 'electron'
 
 import { EGRESS_APPROVAL_CHANNEL, type EgressApprovalRespondRequest } from '../../shared/egress'
+import type {
+  ExecutionProtectionCommandRequest,
+  ExecutionProtectionCommandResult
+} from '../../shared/execution-protection'
+import type {
+  FunctionModelCommandRequest,
+  FunctionModelCommandResult
+} from '../../shared/function-models'
+import type {
+  SkillAvailabilityCommandRequest,
+  SkillAvailabilityCommandResult
+} from '../../shared/skill-availability'
 import type { ProxySettings } from '../../shared/proxy'
 
 import {
@@ -324,6 +336,77 @@ const registerSettingsIpcHandlers = ({
   )
   ipcMainHandle('settings:get-proxy', () => service.getProxy())
   ipcMainHandle('settings:set-proxy', (_event, proxy: ProxySettings) => service.setProxy(proxy))
+
+  // These three are application commands (registered for the local-web/CLI surface in
+  // `settings/application-commands.ts`) and the window calls all three, but nothing served them on the
+  // ELECTRON bus — so every one of them rejected with "No handler registered for 'settings:…'" and the
+  // panels built on them read "this window cannot read the settings" with inert buttons. Probed on the real
+  // window: all three dead while their siblings answered. The bodies below mirror the command handlers
+  // one-for-one, so the two surfaces cannot drift into different behaviour.
+  ipcMainHandle(
+    'settings:function-models',
+    async (_event, request: FunctionModelCommandRequest): Promise<FunctionModelCommandResult> => {
+      if (request.action === 'set') {
+        return { models: await service.setFunctionModels(request.models) }
+      }
+      if (request.action === 'events') {
+        return {
+          models: await service.getFunctionModels(),
+          events: await Promise.resolve(service.getFunctionModelEvents())
+        }
+      }
+      if (request.action === 'detect') {
+        const [models, detected] = await Promise.all([
+          service.getFunctionModels(),
+          service.detectFunctionModel(request.functionId)
+        ])
+        return { models, detected }
+      }
+      if (request.action === 'probe') {
+        // Awaited before the other two reads: the trail is written by the run this asks for, and reading it in
+        // parallel would return the entry before last.
+        const probe = await service.probeFunctionModel(request.functionId)
+        const [models, events] = await Promise.all([
+          service.getFunctionModels(),
+          Promise.resolve(service.getFunctionModelEvents())
+        ])
+        return { models, events, probe }
+      }
+      if (request.action === 'resolve') {
+        const [models, resolved] = await Promise.all([
+          service.getFunctionModels(),
+          service.resolveFunctionModel(request.functionId)
+        ])
+        return { models, resolved }
+      }
+
+      return { models: await service.getFunctionModels() }
+    }
+  )
+
+  ipcMainHandle(
+    'settings:skill-availability',
+    async (
+      _event,
+      request: SkillAvailabilityCommandRequest
+    ): Promise<SkillAvailabilityCommandResult> => ({
+      view:
+        request.action === 'set'
+          ? await service.setSkillAvailabilityForTarget(request.targetId, request.disabledSkillIds)
+          : await service.getSkillAvailabilityView()
+    })
+  )
+
+  ipcMainHandle(
+    'settings:execution-protection',
+    async (
+      _event,
+      request: ExecutionProtectionCommandRequest
+    ): Promise<ExecutionProtectionCommandResult> =>
+      request.action === 'set-remote-policy'
+        ? await service.setRemoteUnprotectedPolicy(request.policy)
+        : { matrix: await service.getExecutionProtectionMatrix() }
+  )
 
   ipcMainHandle('settings:list-external-compute-endpoints', () =>
     service.listExternalComputeEndpoints()
