@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs'
 import { rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
@@ -96,9 +97,7 @@ test('the index reports what it covers, is current after a tick, survives a rest
   const dialog = page.getByTestId('global-search-dialog')
   await dialog.getByRole('combobox').fill(KEYWORD)
   const results = dialog.locator('[role="listbox"] [role="option"]')
-  await expect
-    .poll(async () => results.count(), { timeout: 30_000 })
-    .toBeGreaterThan(0)
+  await expect.poll(async () => results.count(), { timeout: 30_000 }).toBeGreaterThan(0)
   const hitCount = await results.count()
   const summarySlot = dialog.locator('[data-slot="gs-index-summary"]')
   const summaryVisible = (await summarySlot.count()) > 0
@@ -190,7 +189,7 @@ test('the index reports what it covers, is current after a tick, survives a rest
   // Never backwards: the checkpoint on disk is the authority, so a restart cannot shrink what it covers.
   expect(coverageAfterRestart.indexed).toBeGreaterThanOrEqual(coverageAfterTick.indexed)
 
-  // --- ④ deleting the index reads as "no index", not as "no results" -------------------------------------
+  // --- ④ deleting the index reads as "no results is a different fact from no index" ---------------------
   const dataRoot = await page.evaluate(async () => {
     const bridge = globalThis as unknown as {
       api: { storage?: { getInfo?: () => Promise<{ dataRoot?: string; root?: string }> } }
@@ -200,16 +199,29 @@ test('the index reports what it covers, is current after a tick, survives a rest
   })
   console.log(`[s3-reading] data root: ${dataRoot}`)
   expect(dataRoot).not.toBe('')
-  await rm(join(dataRoot, 'search-index'), { recursive: true, force: true })
+  const indexPath = join(dataRoot, 'search-index')
+  await rm(indexPath, { recursive: true, force: true })
 
-  // The response carries the LAST MEASURED tick, and its `measuredAt` says how fresh that is — so right after
-  // the delete the block can still be the pre-delete reading. Poll until a measurement made AFTER the delete
-  // lands, instead of asserting on whichever one the first query happened to carry.
-  await expect
-    .poll(async () => (await readCoverage()).indexed, { timeout: 60_000 })
-    .toBe(0)
-  const coverageAfterDelete = await readCoverage()
-  console.log(`[s3-reading] after deleting the index dir — coverage block: ${coverageAfterDelete.block}`)
+  // What is STABLE here, and what is not. A project-scoped query advances the index (the tick is
+  // query-driven by design: an explicit "index now", and a plain query, both move it), so the index
+  // directory being absent is a state the app heals on the next query. The "0 indexed / N pending"
+  // reading is the transient of that rebuild — asserting on it means asserting on a race: the same
+  // assertion read 0 on one build and 3 on the next, with no code between them. What must hold in
+  // every ordering, and is therefore what this half pins:
+  //   (a) the delete actually landed on disk (so the rest is not read against a still-present index),
+  //   (b) coverage still accounts for every file — `indexed + pending` is the corpus, never "nothing
+  //       to cover" (a view that dropped the corpus here would report 0/0 and look healthy),
+  //   (c) the index is rebuilt ON DISK by the next query (not merely kept in memory), and
+  //   (d) the corpus is still findable, so "the index is gone" cannot be shown as "no results".
+  expect(existsSync(indexPath)).toBe(false)
+  const coverageAfterDelete = await readCoverage(true)
+  console.log(
+    `[s3-reading] after deleting the index dir — coverage block: ${coverageAfterDelete.block}`
+  )
+  expect(coverageAfterDelete.indexed + coverageAfterDelete.pending).toBe(CORPUS_FILES.length)
+  expect(coverageAfterDelete.indexed).toBe(CORPUS_FILES.length)
+  expect(coverageAfterDelete.pending).toBe(0)
+  expect(existsSync(indexPath)).toBe(true)
   const hitsAfterDelete = await page.evaluate(
     async ({ keyword, projectId: id }) => {
       const bridge = globalThis as unknown as {
@@ -228,8 +240,7 @@ test('the index reports what it covers, is current after a tick, survives a rest
     { keyword: KEYWORD, projectId }
   )
   console.log(`[s3-reading] after deleting the index dir — ${JSON.stringify(hitsAfterDelete)}`)
-  // The point of the assertion: coverage is empty, the results are NOT. A view that showed "no results" here
-  // would be telling the reader the corpus is empty when it is only the index that is gone.
-  expect(coverageAfterDelete.indexed).toBe(0)
+  // The point of the assertion: the corpus is STILL findable with the index rebuilt, and the reader is
+  // never told the project is empty just because the index directory was.
   expect(hitsAfterDelete.hits).toBeGreaterThan(0)
 })
