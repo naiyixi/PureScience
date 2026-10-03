@@ -59,6 +59,7 @@ let setEnvironmentEnabled: ReturnType<typeof vi.fn>
 let setInstallAuthorized: ReturnType<typeof vi.fn>
 let registerInterpreter: ReturnType<typeof vi.fn>
 let pickInterpreter: ReturnType<typeof vi.fn>
+let importLock: ReturnType<typeof vi.fn>
 let provision: ReturnType<typeof vi.fn>
 let cancelBridge: ReturnType<typeof vi.fn>
 let repairBridge: ReturnType<typeof vi.fn>
@@ -110,6 +111,11 @@ beforeEach(() => {
     }))
   registerInterpreter = vi.fn().mockResolvedValue(['/usr/bin/python3'])
   pickInterpreter = vi.fn().mockResolvedValue('/usr/bin/python3')
+  importLock = vi.fn().mockResolvedValue({
+    status: 'imported',
+    environment: { name: 'lock-env', language: 'python', ready: true, isDefault: false },
+    coverage: { total: 2, fromCache: 1, downloaded: 1, missing: [] }
+  })
   provision = vi.fn().mockRejectedValue(new Error('runtime CDN unavailable'))
   cancelBridge = vi.fn().mockResolvedValue(undefined)
   repairBridge = vi.fn().mockResolvedValue(undefined)
@@ -124,6 +130,7 @@ beforeEach(() => {
       setInstallAuthorized,
       registerInterpreter,
       pickInterpreter,
+      importLock,
       // The panel now loads the persisted selection up front so it can mark the current runtime.
       survey: vi.fn().mockResolvedValue([])
     },
@@ -875,5 +882,133 @@ describe('RuntimesPanel network-protection status card', () => {
     await render()
 
     expect(container.querySelector('[data-testid="runtimes-egress-card"]')).toBeNull()
+  })
+})
+
+describe('RuntimesPanel lock import (A7)', () => {
+  const setValue = (el: HTMLInputElement | HTMLTextAreaElement, value: string): void => {
+    // React's onChange reads value via the synthetic event; the native setter bypasses its tracking.
+    const proto =
+      el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype
+    Object.getOwnPropertyDescriptor(proto, 'value')?.set?.call(el, value)
+    el.dispatchEvent(new Event('input', { bubbles: true }))
+  }
+
+  const flush = async (): Promise<void> => {
+    await act(async () => {})
+    await act(async () => {})
+  }
+
+  const fillForm = async (name: string, lock: string): Promise<void> => {
+    // Radix renders Dialog.Content in a portal on document.body, so dialog internals are queried on
+    // `document`, not on the panel container (same convention as the packages dialog tests).
+    const nameInput = document.querySelector<HTMLInputElement>(
+      '[data-testid="runtime-import-name"]'
+    )
+    const lockField = document.querySelector<HTMLTextAreaElement>(
+      '[data-testid="runtime-import-lock"]'
+    )
+    expect(nameInput).not.toBeNull()
+    expect(lockField).not.toBeNull()
+    await act(async () => {
+      if (nameInput) setValue(nameInput, name)
+      if (lockField) setValue(lockField, lock)
+    })
+    await flush()
+  }
+
+  const lockText =
+    'https://conda.example.org/conda-forge/zlib-1.3.1-h1.tar.bz2#aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+
+  it('imports through the window bridge and reports the coverage of the created environment', async () => {
+    await render()
+
+    // The entry point lives in the language section's action row, next to Add interpreter.
+    const open = container.querySelector('[data-testid="runtime-import-lock-python"]')
+    expect(open?.textContent).toContain('Import from lock')
+    await click(open)
+    expect(document.querySelector('[data-testid="runtime-import-dialog"]')).not.toBeNull()
+
+    await fillForm('lock-env', lockText)
+    await click(document.querySelector('[data-testid="runtime-import-submit"]'))
+    await flush()
+
+    expect(importLock).toHaveBeenCalledWith({
+      language: 'python',
+      name: 'lock-env',
+      lock: lockText,
+      allowDownload: true
+    })
+    const status = document.querySelector('[data-testid="runtime-import-status"]')
+    expect(status?.textContent).toContain('lock-env')
+    expect(status?.textContent).toContain('2')
+    // A successful import refreshes the cards rather than leaving a stale list behind.
+    expect(listEnvironments.mock.calls.length).toBeGreaterThan(1)
+  })
+
+  it('keeps the submit disabled until both the name and the lock are present', async () => {
+    await render()
+    await click(container.querySelector('[data-testid="runtime-import-lock-python"]'))
+
+    const submit = (): HTMLButtonElement | null =>
+      document.querySelector('[data-testid="runtime-import-submit"]')
+    expect(submit()?.disabled).toBe(true)
+
+    await fillForm('lock-env', '')
+    expect(submit()?.disabled).toBe(true)
+
+    await fillForm('', lockText)
+    expect(submit()?.disabled).toBe(true)
+
+    await fillForm('lock-env', lockText)
+    expect(submit()?.disabled).toBe(false)
+  })
+
+  it('renders every named reason when nothing was created, and no environment is implied', async () => {
+    importLock.mockResolvedValue({
+      status: 'incomplete',
+      coverage: {
+        total: 3,
+        fromCache: 1,
+        downloaded: 0,
+        missing: [
+          { file: 'pkg-b.tar.bz2', reason: 'Not in the local cache and downloads are disabled' },
+          { file: 'pkg-c.tar.bz2', reason: 'md5 mismatch (expected aaa, got bbb) — discarded' }
+        ]
+      }
+    })
+    await render()
+
+    await click(container.querySelector('[data-testid="runtime-import-lock-python"]'))
+    await fillForm('lock-env', lockText)
+    await click(document.querySelector('[data-testid="runtime-import-submit"]'))
+    await flush()
+
+    const status = document.querySelector('[data-testid="runtime-import-status"]')
+    expect(status?.textContent).toContain('2')
+    expect(status?.textContent).toContain('3')
+    const entries = Array.from(
+      document.querySelectorAll('[data-testid="runtime-import-missing-entry"]')
+    )
+    expect(entries).toHaveLength(2)
+    expect(entries[0].textContent).toContain('pkg-b.tar.bz2')
+    expect(entries[0].textContent).toContain('Not in the local cache')
+    expect(entries[1].textContent).toContain('pkg-c.tar.bz2')
+    expect(entries[1].textContent).toContain('md5 mismatch')
+    // Nothing was created, so the card list must not have been refreshed with a phantom env.
+    expect(listEnvironments.mock.calls.length).toBe(1)
+  })
+
+  it('shows a named failure when the import request itself rejects', async () => {
+    importLock.mockRejectedValue(new Error('Environment management is unavailable.'))
+    await render()
+
+    await click(container.querySelector('[data-testid="runtime-import-lock-python"]'))
+    await fillForm('lock-env', lockText)
+    await click(document.querySelector('[data-testid="runtime-import-submit"]'))
+    await flush()
+
+    const error = document.querySelector('[data-testid="runtime-import-error"]')
+    expect(error?.textContent).toContain('Environment management is unavailable.')
   })
 })

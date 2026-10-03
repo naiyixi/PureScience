@@ -171,6 +171,7 @@ const REMOTE_LOCAL_ONLY_CHANNELS: GroupedInventory = {
   query: ['run'],
   search: ['query', 'evidence'],
   runtime: [
+    'import-lock',
     'pick-interpreter',
     'register-interpreter',
     'set-environment-enabled',
@@ -285,7 +286,9 @@ describe('renderer surface inventory', () => {
     // method per contract, so the two inventories move together.
     // 453 with the journal metric import (references.importJournalMetrics): the bridge exposes one method per
     // contract, so the preload inventory and the catalog move together.
-    expect(electronPaths).toHaveLength(455)
+    // 456 with the external-lock import (runtime.importLock, A7): one local-only runtime channel, so the
+    // preload inventory, the catalog and the local-Web installation count all move by one.
+    expect(electronPaths).toHaveLength(456)
     expectSameSet(
       electronPaths,
       RENDERER_CONTRACT_CATALOG.map(({ publicPath }) => publicPath)
@@ -293,7 +296,7 @@ describe('renderer surface inventory', () => {
     // 344 since the PDF annotation export channels (文档标注层 A4), 342 since the annotation surface
     // (A3) and 337 since the literature-screening surface (v1.77 unit): all of them are local invoke
     // channels, so the invoke map moves with them.
-    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(350)
+    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(351)
     expect(Object.keys(WEB_EVENT_CHANNELS)).toHaveLength(34)
     expectSameSet(
       electronPaths.filter((path) => !generatedPaths.has(path)),
@@ -329,7 +332,7 @@ describe('renderer surface inventory', () => {
     const expectedRemoteLocalOnly = expand(REMOTE_LOCAL_ONLY_CHANNELS, ':')
 
     expectSameSet(REMOTE_LOCAL_ONLY_RPC_CHANNELS, expectedRemoteLocalOnly)
-    expect(expectedRemoteLocalOnly).toHaveLength(119)
+    expect(expectedRemoteLocalOnly).toHaveLength(120)
     expect(
       expectedRemoteLocalOnly.every((channel) => WEB_RPC_ALLOWED_CHANNELS.includes(channel))
     ).toBe(true)

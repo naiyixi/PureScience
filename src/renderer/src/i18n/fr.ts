@@ -446,6 +446,23 @@ export const fr: Partial<Record<ZhKey, string>> = {
     'Cet environnement est utilisé par {active} sessions actives — {running} en cours, {idle} inactives. La désactivation laisse les cellules en cours se terminer, puis ferme leurs noyaux ; ces sessions doivent passer à un autre environnement d’exécution pour continuer.',
   'runtimes.stopRunningWork': 'Arrêter le travail en cours',
   'runtimes.disableAfterCurrentWork': 'Désactiver après le travail en cours',
+  'runtimes.importLock': 'Importer depuis un fichier de verrouillage…',
+  'runtimes.importLockTitle': 'Importer un environnement depuis un fichier de verrouillage',
+  'runtimes.importLockDesc':
+    'Collez un fichier de verrouillage @EXPLICIT — une ligne par paquet, `https://…/paquet.tar.bz2#<md5>`. Chaque paquet est vérifié avec le md5 du fichier ; si une seule entrée ne peut pas être vérifiée, rien n’est créé.',
+  'runtimes.importLockName': 'Nom de l’environnement',
+  'runtimes.importLockContents': 'Contenu du fichier de verrouillage',
+  'runtimes.importLockAllowDownload': 'Télécharger les paquets absents du cache local',
+  'runtimes.importLockAllowDownloadDesc':
+    'Désactivé : un paquet absent du cache est signalé comme manquant et rien n’est créé. Activé : il est téléchargé depuis l’URL du fichier puis vérifié avant usage.',
+  'runtimes.importLockAction': 'Importer',
+  'runtimes.importLockBusy': 'Importation…',
+  'runtimes.importLockImported':
+    '« {name} » importé — {total} paquets ({fromCache} depuis le cache, {downloaded} téléchargés).',
+  'runtimes.importLockIncomplete':
+    'Rien n’a été créé : {missing} entrées sur {total} n’ont pas pu être vérifiées.',
+  'runtimes.importLockEmpty': 'Collez d’abord le contenu du fichier de verrouillage.',
+  'runtimes.importLockFailed': 'L’importation a échoué : {message}',
   'skillDetail.detailsTitle': 'Détails',
   'settings.skillTriggerQuality': 'Qualité de déclenchement',
   'settings.skillIntegrityOk': 'Le contenu correspond à ce qui a été importé.',

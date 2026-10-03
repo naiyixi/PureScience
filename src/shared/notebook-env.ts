@@ -57,3 +57,29 @@ export type ManageEnvironmentsRequest =
 
 // create/list/remove all return the full current env set so the caller/UI can refresh in one shot.
 export type ManageEnvironmentsResult = { environments: EnvironmentInfo[] }
+
+// A7 external-lock import (renderer channel `runtime:import-lock`). The user supplies a raw @EXPLICIT
+// lock; every entry must carry a 32-hex md5 or the whole lock is refused.
+export type ImportLockRequest = {
+  language: NotebookLanguage
+  name: string
+  /** Raw lock text: one `https://…/pkg.tar.bz2#<md5>` per line (a leading `@EXPLICIT` line is fine). */
+  lock: string
+  /** When false, a tarball missing from the shared cache is a named failure instead of a download. */
+  allowDownload: boolean
+}
+
+// Per-entry coverage of one import. `missing` is NAMED and non-empty means nothing was created.
+export type ImportLockCoverage = {
+  total: number
+  fromCache: number
+  downloaded: number
+  missing: Array<{ file: string; reason: string }>
+}
+
+// Discriminated so the window can render the per-entry failure list without parsing an error string.
+// `imported` means the environment prefix exists and its interpreter verified; `incomplete` means NO
+// prefix was created and `coverage.missing` explains every entry that could not be satisfied.
+export type ImportLockResult =
+  | { status: 'imported'; environment: EnvironmentInfo; coverage: ImportLockCoverage }
+  | { status: 'incomplete'; coverage: ImportLockCoverage }

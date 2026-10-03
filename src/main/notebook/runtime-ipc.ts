@@ -3,7 +3,9 @@ import { dialog } from 'electron'
 import { ipcMainHandle } from '../ipc-handler-registry'
 
 import type { NotebookLanguage } from '../../shared/notebook'
+import type { ImportLockRequest } from '../../shared/notebook-env'
 import type { RuntimeSelection } from '../../shared/notebook-runtime'
+import { broadcastNotebookEnvProgress } from './env-ipc'
 import type { RuntimeSelectionWorkflows } from './runtime-selection-workflows'
 
 export type RuntimeIpcOptions = {
@@ -82,6 +84,12 @@ const registerRuntimeIpcHandlers = (
   ipcMainHandle(
     'runtime:unregister-interpreter',
     (_event, request: { language: NotebookLanguage; path: string }) => workflows.unregister(request)
+  )
+
+  // A7 external-lock import. Progress is broadcast on the EXISTING notebook-env:progress event with a
+  // distinct `phase` the store routes into its own slot (never the per-language provisioning cards).
+  ipcMainHandle('runtime:import-lock', (_event, request: ImportLockRequest) =>
+    workflows.importLock(request, (progress) => broadcastNotebookEnvProgress(progress))
   )
 }
 

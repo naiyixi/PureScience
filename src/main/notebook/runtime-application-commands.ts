@@ -1,4 +1,5 @@
 import type { NotebookLanguage } from '../../shared/notebook'
+import type { ImportLockRequest, ImportLockResult } from '../../shared/notebook-env'
 import type {
   DiscoveredInterpreter,
   EnvPackage,
@@ -34,6 +35,8 @@ type RuntimeInstallAuthorizationRequest = Readonly<{
   authorized: boolean
 }>
 type RuntimeInterpreterRequest = Readonly<{ language: NotebookLanguage; path: string }>
+// A7 lock import: the whole request travels as one argument, matching the renderer channel shape.
+type RuntimeImportLockRequest = Readonly<ImportLockRequest>
 
 const runtimeApplicationCommands = Object.freeze({
   survey: defineApplicationCommand<'runtime:survey', readonly [], RuntimeSurvey[]>(
@@ -91,12 +94,20 @@ const runtimeApplicationCommands = Object.freeze({
     'runtime:unregister-interpreter',
     readonly [request: RuntimeInterpreterRequest],
     string[]
-  >('runtime:unregister-interpreter')
+  >('runtime:unregister-interpreter'),
+  // A7: materialize a named env from an external @EXPLICIT lock. Local-only (it writes the runtime
+  // root), and the result is the discriminated union the window renders.
+  importLock: defineApplicationCommand<
+    'runtime:import-lock',
+    readonly [request: RuntimeImportLockRequest],
+    ImportLockResult
+  >('runtime:import-lock')
 })
 
 const runtimeApplicationCommandGroup = defineApplicationCommandGroup('runtime', [
   runtimeApplicationCommands.describeUsage,
   runtimeApplicationCommands.getEnablement,
+  runtimeApplicationCommands.importLock,
   runtimeApplicationCommands.listEnvironments,
   runtimeApplicationCommands.listPackageCounts,
   runtimeApplicationCommands.listPackages,
@@ -166,6 +177,10 @@ const registerRuntimeApplicationCommands = (
       'runtime:unregister-interpreter': (invocation) => {
         requireLocalCaller(invocation.callerContext)
         return dependencies.workflows.unregister(invocation.args[0])
+      },
+      'runtime:import-lock': (invocation) => {
+        requireLocalCaller(invocation.callerContext)
+        return dependencies.workflows.importLock(invocation.args[0])
       }
     })
     return scope.complete()

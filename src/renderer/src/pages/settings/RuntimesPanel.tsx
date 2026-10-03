@@ -8,7 +8,8 @@ import {
   Search,
   ShieldCheck,
   ShieldOff,
-  Trash2
+  Trash2,
+  Upload
 } from 'lucide-react'
 import { AlertDialog, Dialog } from 'radix-ui'
 import { useEffect, useRef, useState } from 'react'
@@ -22,11 +23,13 @@ import {
   dialogTitleClassName
 } from '@/components/ui/dialog-chrome'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { useRetainedDialogValue } from '@/components/ui/use-retained-dialog-value'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { useNotebookEnvStore } from '@/stores/notebook-env-store'
 import { DEFAULT_EGRESS_SETTINGS, type EgressSettings } from '../../../../shared/egress'
+import type { ImportLockCoverage, ImportLockResult } from '../../../../shared/notebook-env'
 import {
   isEnvEnabled,
   type DiscoveredInterpreter,
@@ -105,6 +108,27 @@ const managedLine = (
   return runnable ? t('settings.installedAndReady') : t('settings.managedRuntimeNotSetUp')
 }
 
+// A7 lock import: the two result lines. Placeholders survive the string-key translator (tests' `t`
+// does not interpolate), so they are filled here — same convention as describeDisableImpact.
+const importImportedLine = (
+  t: (key: TranslationKey) => string,
+  environmentName: string,
+  coverage: ImportLockCoverage
+): string =>
+  t('runtimes.importLockImported')
+    .replace('{name}', environmentName)
+    .replace('{total}', String(coverage.total))
+    .replace('{fromCache}', String(coverage.fromCache))
+    .replace('{downloaded}', String(coverage.downloaded))
+
+const importIncompleteLine = (
+  t: (key: TranslationKey) => string,
+  coverage: ImportLockCoverage
+): string =>
+  t('runtimes.importLockIncomplete')
+    .replace('{missing}', String(coverage.missing.length))
+    .replace('{total}', String(coverage.total))
+
 const RuntimesPanel = ({
   title,
   description,
@@ -154,6 +178,19 @@ const RuntimesPanel = ({
   // the card simply omits the badge (a count failure is never surfaced as card-level error UI).
   const countsRef = useRef<Record<string, number | null>>({})
   const [packageCounts, setPackageCounts] = useState<Record<string, number | null>>({})
+  // A7 lock import: the language whose dialog is open (null = closed) plus its form/result state. The
+  // whole call is one awaited request, so `importing` is the only "running" flag; ticks broadcast by
+  // the main process land in the store's dedicated importProgress field (never a runtime card).
+  const [importTarget, setImportTarget] = useState<NotebookLanguage | null>(null)
+  const dialogImportTarget = useRetainedDialogValue(importTarget)
+  const importFocusRestore = useDialogFocusRestore(importTarget !== null)
+  const [importName, setImportName] = useState('')
+  const [importLock, setImportLock] = useState('')
+  const [importAllowDownload, setImportAllowDownload] = useState(true)
+  const [importing, setImporting] = useState(false)
+  const [importResult, setImportResult] = useState<ImportLockResult | null>(null)
+  const [importError, setImportError] = useState<string | null>(null)
+  const importProgress = useNotebookEnvStore((state) => state.importProgress)
   const initEnv = useNotebookEnvStore((state) => state.init)
   const provisionEnv = useNotebookEnvStore((state) => state.provision)
   const cancelEnv = useNotebookEnvStore((state) => state.cancel)
@@ -506,6 +543,52 @@ const RuntimesPanel = ({
     }
   }
 
+  // Opens the A7 import dialog for one language with a clean form and no stale progress/result.
+  const openImportLock = (language: NotebookLanguage): void => {
+    useNotebookEnvStore.setState({ importProgress: undefined })
+    setImportName('')
+    setImportLock('')
+    setImportAllowDownload(true)
+    setImportResult(null)
+    setImportError(null)
+    setImportTarget(language)
+  }
+
+  // A7: one awaited import. Fail-closed verification lives in the main process; here we surface the
+  // discriminated result (imported vs incomplete + the named per-entry reasons) and refresh the cards
+  // so a successfully created environment shows up immediately.
+  const runImportLock = async (): Promise<void> => {
+    if (importTarget === null) return
+    if (importLock.trim() === '') {
+      setImportError(t('runtimes.importLockEmpty'))
+      return
+    }
+    const language = importTarget
+    setImporting(true)
+    setImportError(null)
+    setImportResult(null)
+    try {
+      const result = await window.api.runtime.importLock({
+        language,
+        name: importName.trim(),
+        lock: importLock,
+        allowDownload: importAllowDownload
+      })
+      setImportResult(result)
+      if (result.status === 'imported') {
+        countsRef.current = {}
+        setPackageCounts({})
+        applyAll(await fetchAll())
+        setNotice(importImportedLine(t, result.environment.name, result.coverage))
+      }
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e)
+      setImportError(t('runtimes.importLockFailed').replace('{message}', message))
+    } finally {
+      setImporting(false)
+    }
+  }
+
   // Managed readiness is derived from discovery: the app-managed env for a language is present and
   // runnable once it is set up (replaces the old survey().managed readiness).
   const managedRunnableFor = (language: NotebookLanguage): boolean =>
@@ -741,27 +824,41 @@ const RuntimesPanel = ({
                 aria-label={`${label} runtime`}
                 separated
                 action={
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          disabled={busy}
-                          onClick={() => void addInterpreter(id)}
-                        >
-                          <FolderInput aria-hidden="true" />
-                          {t('settings.addInterpreter')}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-xs">
-                        {id === 'r'
-                          ? t('settings.pickRscriptExecutable')
-                          : t('settings.pickPythonExecutable')}
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                  <div className="flex items-center gap-2">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={busy}
+                            onClick={() => void addInterpreter(id)}
+                          >
+                            <FolderInput aria-hidden="true" />
+                            {t('settings.addInterpreter')}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs">
+                          {id === 'r'
+                            ? t('settings.pickRscriptExecutable')
+                            : t('settings.pickPythonExecutable')}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    {/* A7: materialize a named env from an external @EXPLICIT lock. */}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={busy}
+                      data-testid={`runtime-import-lock-${id}`}
+                      onClick={() => openImportLock(id)}
+                    >
+                      <Upload aria-hidden="true" />
+                      {t('runtimes.importLock')}
+                    </Button>
+                  </div>
                 }
               >
                 <div className="space-y-2" data-testid={`runtimes-cards-${id}`}>
@@ -1100,6 +1197,188 @@ const RuntimesPanel = ({
                       Close
                     </Button>
                   </Dialog.Close>
+                </div>
+              </>
+            ) : null}
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
+      {/* A7: import a named environment from an external @EXPLICIT lock. Fail-closed in the main
+          process — an incomplete import reports every unsatisfied entry and creates nothing. */}
+      <Dialog.Root
+        open={importTarget !== null}
+        onOpenChange={(open) => {
+          if (!open && !importing) setImportTarget(null)
+        }}
+      >
+        <Dialog.Portal>
+          <Dialog.Overlay className={dialogOverlayClassName} />
+          <Dialog.Content
+            onOpenAutoFocus={importFocusRestore.onOpenAutoFocus}
+            onCloseAutoFocus={importFocusRestore.onCloseAutoFocus}
+            data-testid="runtime-import-dialog"
+            className={dialogPanelClassName('w-[min(620px,calc(100vw-2rem))]')}
+          >
+            {dialogImportTarget ? (
+              <>
+                <Dialog.Title className={dialogTitleClassName}>
+                  {t('runtimes.importLockTitle')}
+                </Dialog.Title>
+                <Dialog.Description className={dialogDescriptionClassName}>
+                  {t('runtimes.importLockDesc')}
+                </Dialog.Description>
+
+                <div className="mt-3 space-y-3">
+                  <div className="space-y-1">
+                    <label
+                      className="text-[13px] font-medium text-foreground"
+                      htmlFor="runtime-import-name"
+                    >
+                      {t('runtimes.importLockName')}
+                    </label>
+                    <Input
+                      id="runtime-import-name"
+                      data-testid="runtime-import-name"
+                      value={importName}
+                      onChange={(event) => setImportName(event.target.value)}
+                      disabled={importing}
+                      placeholder={dialogImportTarget === 'r' ? 'r-lock-env' : 'lock-env'}
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label
+                      className="text-[13px] font-medium text-foreground"
+                      htmlFor="runtime-import-lock"
+                    >
+                      {t('runtimes.importLockContents')}
+                    </label>
+                    <Textarea
+                      id="runtime-import-lock"
+                      data-testid="runtime-import-lock"
+                      value={importLock}
+                      onChange={(event) => setImportLock(event.target.value)}
+                      disabled={importing}
+                      rows={8}
+                      spellCheck={false}
+                      className="font-mono text-xs"
+                    />
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <SettingsToggle
+                      enabled={importAllowDownload}
+                      onToggle={() => setImportAllowDownload((value) => !value)}
+                      disabled={importing}
+                      aria-label={t('runtimes.importLockAllowDownload')}
+                    />
+                    <div className="min-w-0">
+                      <p className="text-[13px] text-foreground">
+                        {t('runtimes.importLockAllowDownload')}
+                      </p>
+                      <p className="text-[12px] text-muted-foreground">
+                        {t('runtimes.importLockAllowDownloadDesc')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {importing ? (
+                  importProgress ? (
+                    <div className="mt-3" data-testid="runtime-import-progress">
+                      <div
+                        className="h-1.5 w-full overflow-hidden rounded-full bg-muted"
+                        role="progressbar"
+                        aria-label={t('runtimes.importLockBusy')}
+                        aria-valuenow={Math.round(importProgress.progress * 100)}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                      >
+                        <div
+                          className="h-full rounded-full bg-primary transition-[width] duration-300"
+                          style={{
+                            width: `${Math.max(2, Math.min(100, Math.round(importProgress.progress * 100)))}%`
+                          }}
+                        />
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">{importProgress.message}</p>
+                    </div>
+                  ) : (
+                    <p
+                      className="mt-3 text-[13px] text-muted-foreground"
+                      data-testid="runtime-import-busy"
+                    >
+                      {t('runtimes.importLockBusy')}
+                    </p>
+                  )
+                ) : null}
+
+                {importError !== null ? (
+                  <p
+                    role="alert"
+                    className="mt-3 text-[13px] text-destructive"
+                    data-testid="runtime-import-error"
+                  >
+                    {importError}
+                  </p>
+                ) : null}
+
+                {importResult !== null ? (
+                  <div
+                    className="mt-3 rounded-md border border-border p-3"
+                    data-testid="runtime-import-result"
+                  >
+                    <p
+                      className={cn(
+                        'text-[13px]',
+                        importResult.status === 'imported' ? 'text-primary' : 'text-destructive'
+                      )}
+                      data-testid="runtime-import-status"
+                    >
+                      {importResult.status === 'imported'
+                        ? importImportedLine(
+                            t,
+                            importResult.environment.name,
+                            importResult.coverage
+                          )
+                        : importIncompleteLine(t, importResult.coverage)}
+                    </p>
+                    {importResult.coverage.missing.length > 0 ? (
+                      <ul
+                        className="mt-1 max-h-40 space-y-0.5 overflow-y-auto"
+                        data-testid="runtime-import-missing"
+                      >
+                        {importResult.coverage.missing.map((entry) => (
+                          <li
+                            key={entry.file}
+                            className="text-[12px] text-muted-foreground"
+                            data-testid="runtime-import-missing-entry"
+                          >
+                            <code className="text-xs">{entry.file}</code> — {entry.reason}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                <div className="mt-4 flex justify-end gap-2">
+                  <Dialog.Close asChild>
+                    <Button type="button" variant="outline" size="sm" disabled={importing}>
+                      {t('common.cancel')}
+                    </Button>
+                  </Dialog.Close>
+                  <Button
+                    type="button"
+                    variant="default"
+                    size="sm"
+                    data-testid="runtime-import-submit"
+                    disabled={importing || importName.trim() === '' || importLock.trim() === ''}
+                    onClick={() => void runImportLock()}
+                  >
+                    {importing ? t('runtimes.importLockBusy') : t('runtimes.importLockAction')}
+                  </Button>
                 </div>
               </>
             ) : null}

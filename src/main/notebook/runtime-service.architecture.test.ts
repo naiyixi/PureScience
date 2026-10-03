@@ -241,6 +241,7 @@ describe('Notebook runtime facade architecture', () => {
         'finishCodeCell',
         'getActiveNotebookSessions',
         'getSessionReference',
+        'importEnvironmentFromLock',
         'inspectPackages',
         'inspectVariables',
         'isDefaultEnvRecoveryBlocked',

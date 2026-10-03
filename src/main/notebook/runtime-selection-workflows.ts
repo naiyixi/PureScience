@@ -1,5 +1,10 @@
 import type { NotebookLanguage } from '../../shared/notebook'
 import type {
+  ImportLockRequest,
+  ImportLockResult,
+  ProvisionProgress
+} from '../../shared/notebook-env'
+import type {
   EnvPackage,
   RuntimeEnablement,
   RuntimeSelection,
@@ -72,6 +77,13 @@ type RuntimeSelectionWorkflowDeps = {
   // Injectable for tests so the package-listing workflows never spawn micromamba/pip/Rscript;
   // production defaults to listEnvPackages against the real env.
   listPackages?: (env: DiscoveredInterpreter) => Promise<EnvPackage[]>
+  // A7 external-lock import. Production injects the notebook service's importEnvironmentFromLock
+  // (validated name/language + crash-recovery ordering + per-env mutation lock). Absent in tests that
+  // don't exercise the surface — calling it then is a guarded error, never a silent no-op.
+  importLock?: (
+    request: ImportLockRequest,
+    onProgress?: (progress: ProvisionProgress) => void
+  ) => Promise<ImportLockResult>
 }
 
 type RuntimeSelectionWorkflows = {
@@ -104,6 +116,11 @@ type RuntimeSelectionWorkflows = {
   }): Promise<RuntimeEnablement>
   register(request: { language: NotebookLanguage; path: string }): Promise<string[]>
   unregister(request: { language: NotebookLanguage; path: string }): Promise<string[]>
+  // A7: materialize a named env from an external @EXPLICIT lock (Settings → Runtimes).
+  importLock(
+    request: ImportLockRequest,
+    onProgress?: (progress: ProvisionProgress) => void
+  ): Promise<ImportLockResult>
 }
 
 const createRuntimeSelectionWorkflows = (
@@ -267,7 +284,14 @@ const createRuntimeSelectionWorkflows = (
     register: (request) =>
       deps.settingsService.addManualInterpreter(request.language, request.path),
     unregister: (request) =>
-      deps.settingsService.removeManualInterpreter(request.language, request.path)
+      deps.settingsService.removeManualInterpreter(request.language, request.path),
+    importLock: (request, onProgress) => {
+      const run = deps.importLock
+      if (!run) {
+        throw new Error('Lock import is unavailable (no environment manager configured).')
+      }
+      return run(request, onProgress)
+    }
   }
 }
 

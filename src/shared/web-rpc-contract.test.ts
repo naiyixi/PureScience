@@ -122,6 +122,7 @@ describe('Web RPC contract', () => {
     expect(invokePaths.filter((path) => path.startsWith('runtime.'))).toEqual([
       'runtime.describeUsage',
       'runtime.getEnablement',
+      'runtime.importLock',
       'runtime.listEnvironments',
       'runtime.listPackageCounts',
       'runtime.listPackages',

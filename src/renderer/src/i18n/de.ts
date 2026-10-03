@@ -448,6 +448,23 @@ export const de: Partial<Record<ZhKey, string>> = {
     'Wird von {active} aktiven Sitzungen verwendet — {running} läuft, {idle} inaktiv. Beim Deaktivieren können laufende Zellen beendet werden, dann werden ihre Kernel geschlossen; diese Sitzungen müssen zum Weiterarbeiten auf eine andere Laufzeit wechseln.',
   'runtimes.stopRunningWork': 'Laufende Arbeit stoppen',
   'runtimes.disableAfterCurrentWork': 'Nach der aktuellen Arbeit deaktivieren',
+  'runtimes.importLock': 'Aus Lock-Datei importieren…',
+  'runtimes.importLockTitle': 'Umgebung aus einer Lock-Datei importieren',
+  'runtimes.importLockDesc':
+    'Fügen Sie eine @EXPLICIT-Lock-Datei ein – pro Zeile ein `https://…/paket.tar.bz2#<md5>`. Jedes Paket wird gegen die md5 in der Lock-Datei geprüft; lässt sich auch nur ein Eintrag nicht prüfen, wird nichts erstellt.',
+  'runtimes.importLockName': 'Name der Umgebung',
+  'runtimes.importLockContents': 'Inhalt der Lock-Datei',
+  'runtimes.importLockAllowDownload': 'Pakete herunterladen, die nicht im lokalen Cache liegen',
+  'runtimes.importLockAllowDownloadDesc':
+    'Aus: Ein nicht zwischengespeichertes Paket wird als fehlend gemeldet und es wird nichts erstellt. An: Es wird über die URL aus der Lock-Datei geladen und vor der Verwendung geprüft.',
+  'runtimes.importLockAction': 'Importieren',
+  'runtimes.importLockBusy': 'Wird importiert…',
+  'runtimes.importLockImported':
+    '„{name}“ importiert – {total} Pakete ({fromCache} aus dem Cache, {downloaded} heruntergeladen).',
+  'runtimes.importLockIncomplete':
+    'Es wurde nichts erstellt: {missing} von {total} Lock-Einträgen ließen sich nicht prüfen.',
+  'runtimes.importLockEmpty': 'Fügen Sie zuerst den Inhalt der Lock-Datei ein.',
+  'runtimes.importLockFailed': 'Der Import ist fehlgeschlagen: {message}',
   'skillDetail.detailsTitle': 'Einzelheiten',
   'settings.skillTriggerQuality': 'Auslöse-Qualität',
   'settings.skillIntegrityOk': 'Der Inhalt entspricht dem importierten Stand.',

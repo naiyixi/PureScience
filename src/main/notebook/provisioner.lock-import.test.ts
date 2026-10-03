@@ -190,7 +190,7 @@ describe('DefaultRuntimeProvisioner.createNamedEnvironmentFromLock (A7)', () => 
     expect(existsSync(envPrefix(root, 'offline-env'))).toBe(false)
   })
 
-  it('treats a cache entry whose md5 does not match as absent and REMOVES it (no silent reuse)', async () => {
+  it('treats a cache entry whose md5 does not match as a VERIFICATION FAILURE and REMOVES it (no silent reuse)', async () => {
     const root = makeRoot()
     const file = 'pkg-d-4.0-0.tar.bz2'
     seedCache(root, file, 'poisoned-bytes')
@@ -204,6 +204,14 @@ describe('DefaultRuntimeProvisioner.createNamedEnvironmentFromLock (A7)', () => 
       .catch((e: unknown) => e)
 
     expect(error).toBeInstanceOf(ImportLockIncompleteError)
+    // The cached copy FAILED verification, which is a different fact from "not in the cache" — the
+    // reason must say so (a real-machine run caught the report blurring the two).
+    expect((error as ImportLockIncompleteError).coverage.missing).toEqual([
+      {
+        file,
+        reason: expect.stringContaining('cached copy does not match the md5') as unknown as string
+      }
+    ])
     expect(existsSync(join(pkgsCache(root), file))).toBe(false)
   })
 

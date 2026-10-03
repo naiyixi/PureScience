@@ -44,14 +44,20 @@
 
 ## 5. 切片
 
-- **S1（main 能力）**：`provisioner.createNamedEnvironmentFromLock(name, language, lockText, opts)`
+- **S1（main 能力）✅ `cd2bd978`**：`provisioner.createNamedEnvironmentFromLock(name, language, lockText, opts)`
   —— 解析 → 逐包缓存校验/取回 → 日志化建前缀 → 验解释器 → 返回 `EnvironmentInfo + ImportLockCoverage`。
-  单测覆盖：全命中 / 需下载 / 缺件(离线) / 坏 md5 / 缺校验行 / 非法名 / Windows 路径预算。
-- **S2（通道）**：shared 类型（`ImportLockRequest` / `ImportLockCoverage` / `ImportLockResult`）→
-  workflow `importLock` → `runtime:import-lock` → `renderer-contract-catalog.ts` → `npm run gen:web-api-map`
-  → preload 类型 → 入口覆盖测试。
-- **S3（界面）**：RuntimesPanel「从锁文件导入…」对话框（语言 / 名称 / 粘贴或选文件 / 进度 /
-  覆盖率结果与逐条原因）+ **9 语种** i18n（zh ≠ en，跑 `translation-quality.test.ts`）+ 渲染测试。
+  单测覆盖：全命中 / 需下载 / 缺件(离线) / 坏 md5 / 缺校验行 / 非法名 / Windows 路径预算 / 进度。
+- **S2（通道）✅**：shared 类型（`ImportLockRequest` / `ImportLockCoverage` / `ImportLockResult`）→
+  `environment-management.importLock`（校验名/语言 + 恢复顺序 + 逐环境 mutation 锁，把失败映射为
+  `{status:'incomplete'}` 判别联合）→ `runtime-service.importEnvironmentFromLock` → workflow `importLock`
+  → `runtime:import-lock`（ipc，LOCAL）→ `renderer-contract-catalog.ts` → `npm run gen:web-api-map`
+  → preload + `renderer-api.d.ts`。
+- **S3（界面）✅**：RuntimesPanel 每种语言区块的 action 加「从锁文件导入…」按钮 → 对话框
+  （环境名 / 锁内容 Textarea / 「允许下载缺件」开关 / 进度条 / 覆盖率结果与逐条缺件原因 /
+  成功后刷新卡片）+ **9 语种** i18n（13 个键，zh ≠ en，跑 `translation-quality.test.ts` 通过）+ 渲染测试 4 例。
+  - **进度通道**：复用既有 `notebook-env:progress` 广播，但 store 对 `phase==='import-lock'` 单独落到
+    `importProgress` 字段（**不**触碰按语言的 provisioning 卡与启动横幅）。
+  - 锁输入为**粘贴**（一个 Textarea）；「选文件」需要第二条通道（`*:pick-lock`），本片不做，见 §6。
 - **S4（真机验收）**：隔离根（`PURESCIENCE_STORAGE_ROOT` + `settings.dataRoot` 指隔离目录）真窗口：
   ① 全命中锁 → 建成 env、**0 下载**、解释器可跑并 `import` 一个包；
   ② 缺件锁 + `allowDownload:false` → 具名失败、不建 env；
@@ -61,6 +67,8 @@
 
 - **不做**活体环境导出（那是 A7 的邻居项，另立案）。
 - **不做**在线 solve 回退（锁建失败 → 不静默转 `createNamedEnvironment`）。
+- **不做**「选文件」入口：需要第二条通道（`runtime:pick-lock` 之类），会再撬动一轮契约计数；
+  本片的锁输入是**粘贴**。用户可从 `micromamba list --explicit --md5 > lock.txt` 取内容后粘贴。
 - **不改** agent 工具 `manage_environments` 的请求形状（本片只加**渲染器通道**；agent 侧要加另立项）。
 - **不做**镜像重写（锁里的 URL 按原样取；CN 镜像重写另立案，避免本片被网络问题拖死）。
 - 不新增运行时依赖；不引入新包。

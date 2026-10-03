@@ -2662,6 +2662,22 @@ export const zh = {
     '该环境正被 {active} 个活动会话使用（运行中 {running}，空闲 {idle}）。禁用后，运行中的单元可执行完毕再关闭其内核；这些会话必须切换到其他运行时才能继续工作。',
   'runtimes.stopRunningWork': '停止运行中的工作',
   'runtimes.disableAfterCurrentWork': '在当前工作结束后禁用',
+  'runtimes.importLock': '从锁文件导入…',
+  'runtimes.importLockTitle': '从锁文件导入环境',
+  'runtimes.importLockDesc':
+    '粘贴 @EXPLICIT 锁文件内容——每行一个 `https://…/包名.tar.bz2#<md5>`。每个包都会按锁里的 md5 校验；只要有一条无法校验，就不会创建任何环境。',
+  'runtimes.importLockName': '环境名称',
+  'runtimes.importLockContents': '锁文件内容',
+  'runtimes.importLockAllowDownload': '允许下载本地缓存中缺少的包',
+  'runtimes.importLockAllowDownloadDesc':
+    '关闭：缓存里没有的包按缺失报告，不创建环境。开启：按锁里的地址下载，校验通过后才使用。',
+  'runtimes.importLockAction': '导入',
+  'runtimes.importLockBusy': '正在导入…',
+  'runtimes.importLockImported':
+    '已导入“{name}”——共 {total} 个包（缓存命中 {fromCache} 个，下载 {downloaded} 个）。',
+  'runtimes.importLockIncomplete': '未创建任何环境：{total} 条锁记录中有 {missing} 条无法校验。',
+  'runtimes.importLockEmpty': '请先粘贴锁文件内容。',
+  'runtimes.importLockFailed': '导入失败：{message}',
   'skillDetail.detailsTitle': '详情',
   'settings.skillTriggerQuality': '触发质量',
   'settings.skillIntegrityOk': '内容与导入时一致。',

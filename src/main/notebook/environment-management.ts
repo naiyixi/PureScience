@@ -1,10 +1,15 @@
 import type { NotebookKernelMetadata, NotebookLanguage } from '../../shared/notebook'
 import type {
   EnvironmentInfo,
+  ImportLockCoverage,
+  ImportLockRequest,
+  ImportLockResult,
   ManageEnvironmentsRequest,
-  ManageEnvironmentsResult
+  ManageEnvironmentsResult,
+  ProvisionProgress
 } from '../../shared/notebook-env'
 import type { NotebookEnvironmentOperations } from './environment-operations'
+import { ImportLockIncompleteError } from './provisioner'
 import { assertSafeEnvName, DEFAULT_PY_ENV, DEFAULT_R_ENV, envPrefix } from './runtime-paths'
 import type { NotebookRuntimeRepairOwner } from './runtime-repair'
 
@@ -14,6 +19,18 @@ type NotebookEnvironmentManager = {
     language: NotebookLanguage,
     packages?: string[]
   ) => Promise<EnvironmentInfo>
+  // A7: build a named env from an external @EXPLICIT lock. OPTIONAL on the port on purpose: every test
+  // double of the manager predates this capability, and a missing implementation is a NAMED failure at
+  // call time (see importLock) rather than a compile error in a dozen unrelated fixtures. The only
+  // production manager (DefaultRuntimeProvisioner) implements it.
+  // Throws ImportLockIncompleteError (carrying the per-entry coverage) when ANY entry cannot be
+  // verified — no prefix is created in that case.
+  createNamedEnvironmentFromLock?: (
+    name: string,
+    language: NotebookLanguage,
+    lock: string,
+    options?: { allowDownload?: boolean; onProgress?: (progress: ProvisionProgress) => void }
+  ) => Promise<{ environment: EnvironmentInfo; coverage: ImportLockCoverage }>
   listEnvironments: () => EnvironmentInfo[]
   removeEnvironment: (name: string) => EnvironmentInfo[]
 }
@@ -94,6 +111,45 @@ class NotebookEnvironmentManagementOwner {
         })
       }
     }
+  }
+
+  // A7 external-lock import. Same validation and mutation ordering as `create`, but the result is a
+  // discriminated union: a lock entry that cannot be verified yields { status:'incomplete' } with the
+  // NAMED per-entry reasons (and NO prefix), so the window never has to parse an error string.
+  async importLock(
+    request: ImportLockRequest,
+    onProgress?: (progress: ProvisionProgress) => void
+  ): Promise<ImportLockResult> {
+    const manager = this.manager
+    if (!manager) {
+      throw new Error('Environment management is unavailable (no environment manager configured).')
+    }
+    const name = assertSafeEnvName(request.name)
+    if (request.language !== 'python' && request.language !== 'r') {
+      throw new Error('Importing a lock requires a language of "python" or "r".')
+    }
+    const importFromLock = manager.createNamedEnvironmentFromLock
+    if (!importFromLock) {
+      throw new Error(
+        'This environment manager does not support importing an environment from a lock.'
+      )
+    }
+    await this.options.ensureRecovered()
+    this.options.assertPrefixRecoverable(envPrefix(this.options.runtimeRoot, name))
+    return this.options.environmentOperations.runMutation(name, async () => {
+      try {
+        const outcome = await importFromLock(name, request.language, request.lock, {
+          allowDownload: request.allowDownload,
+          onProgress
+        })
+        return { status: 'imported', environment: outcome.environment, coverage: outcome.coverage }
+      } catch (error) {
+        if (error instanceof ImportLockIncompleteError) {
+          return { status: 'incomplete', coverage: error.coverage }
+        }
+        throw error
+      }
+    })
   }
 
   private isLive(name: string): boolean {

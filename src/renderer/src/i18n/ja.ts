@@ -436,6 +436,23 @@ export const ja: Partial<Record<ZhKey, string>> = {
     '{active} 個のアクティブセッションが使用中です（実行中 {running}、アイドル {idle}）。無効にすると、実行中のセルが終了してからカーネルが閉じられます。これらのセッションは作業を続けるには別のランタイムに切り替える必要があります。',
   'runtimes.stopRunningWork': '実行中の作業を停止',
   'runtimes.disableAfterCurrentWork': '現在の作業完了後に無効にする',
+  'runtimes.importLock': 'ロックファイルからインポート…',
+  'runtimes.importLockTitle': 'ロックファイルから環境をインポート',
+  'runtimes.importLockDesc':
+    '@EXPLICIT ロックファイルの内容を貼り付けてください（1 行につき `https://…/パッケージ.tar.bz2#<md5>`）。各パッケージはロック内の md5 で検証され、1 件でも検証できない場合は何も作成されません。',
+  'runtimes.importLockName': '環境名',
+  'runtimes.importLockContents': 'ロックファイルの内容',
+  'runtimes.importLockAllowDownload': 'ローカルキャッシュにないパッケージをダウンロードする',
+  'runtimes.importLockAllowDownloadDesc':
+    'オフ：キャッシュにないパッケージは欠落として報告され、何も作成されません。オン：ロック内の URL からダウンロードし、検証後に使用します。',
+  'runtimes.importLockAction': 'インポート',
+  'runtimes.importLockBusy': 'インポート中…',
+  'runtimes.importLockImported':
+    '「{name}」をインポートしました — {total} 個のパッケージ（キャッシュ {fromCache} 個、ダウンロード {downloaded} 個）。',
+  'runtimes.importLockIncomplete':
+    '何も作成されませんでした：{total} 件のロック項目のうち {missing} 件を検証できませんでした。',
+  'runtimes.importLockEmpty': '先にロックファイルの内容を貼り付けてください。',
+  'runtimes.importLockFailed': 'インポートに失敗しました：{message}',
   'skillDetail.detailsTitle': '詳細',
   'settings.skillTriggerQuality': 'トリガー品質',
   'settings.skillIntegrityOk': '内容は取り込み時と一致しています。',

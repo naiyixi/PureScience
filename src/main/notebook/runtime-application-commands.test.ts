@@ -63,6 +63,11 @@ const createWorkflows = (): RuntimeSelectionWorkflows => ({
   setSelection: vi.fn(async () => survey),
   getEnablement: vi.fn(async () => ({ enabled: {}, installAuthorized: {} })),
   describeUsage: vi.fn(async () => ({ running: 1, idle: 2, dormant: 3 })),
+  // A7: the group now owns a lock-import command, so the double needs the workflow method too.
+  importLock: vi.fn(async () => ({
+    status: 'incomplete' as const,
+    coverage: { total: 0, fromCache: 0, downloaded: 0, missing: [] }
+  })),
   setEnvironmentEnabled: vi.fn(async () => ({
     enabled: { managed: false },
     installAuthorized: {}
@@ -93,13 +98,13 @@ const install = (
 }
 
 describe('runtime application commands', () => {
-  it('installs the exact 12-command group and dispatches a remote-safe survey', async () => {
+  it('installs the exact 13-command group and dispatches a remote-safe survey', async () => {
     const { router, workflows } = install()
     const runtimeChannels = RENDERER_CONTRACT_GROUPS.find(
       (group) => group.capability === 'runtime'
     )?.contracts.map((contract) => contract.channel)
 
-    expect(runtimeChannels).toHaveLength(12)
+    expect(runtimeChannels).toHaveLength(13)
     expect(runtimeApplicationCommandGroup.commands.map((command) => command.name)).toEqual(
       runtimeChannels
     )

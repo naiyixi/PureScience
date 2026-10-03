@@ -25,6 +25,8 @@ import type {
   RunNotebookCellRequest
 } from '../../shared/notebook'
 import type {
+  ImportLockRequest,
+  ImportLockResult,
   ManageEnvironmentsRequest,
   ManageEnvironmentsResult,
   ProvisionProgress
@@ -914,6 +916,16 @@ class NotebookRuntimeService {
   // from under a running kernel). Create returns on completion (progress streaming is out of scope).
   async manageEnvironments(request: ManageEnvironmentsRequest): Promise<ManageEnvironmentsResult> {
     return this.environmentManagement.manage(request)
+  }
+
+  // A7 external-lock import (Settings → Runtimes → "Import from lock…"). Same owner/ordering as
+  // manageEnvironments; the result is a discriminated union so the window renders the per-entry
+  // reasons without parsing an error string.
+  async importEnvironmentFromLock(
+    request: ImportLockRequest,
+    onProgress?: (progress: ProvisionProgress) => void
+  ): Promise<ImportLockResult> {
+    return this.environmentManagement.importLock(request, onProgress)
   }
 
   // Shuts down one session executor and removes its in-memory routing state.

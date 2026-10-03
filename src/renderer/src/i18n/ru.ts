@@ -437,6 +437,23 @@ export const ru: Partial<Record<ZhKey, string>> = {
     'Используется {active} активными сеансами — {running} выполняется, {idle} простаивают. После отключения работающие ячейки завершатся, затем их ядра закроются; этим сеансам нужно переключиться на другую среду выполнения, чтобы продолжить работу.',
   'runtimes.stopRunningWork': 'Остановить выполняемую работу',
   'runtimes.disableAfterCurrentWork': 'Отключить после завершения текущей работы',
+  'runtimes.importLock': 'Импорт из файла блокировки…',
+  'runtimes.importLockTitle': 'Импорт окружения из файла блокировки',
+  'runtimes.importLockDesc':
+    'Вставьте файл блокировки @EXPLICIT — по одному `https://…/пакет.tar.bz2#<md5>` в строке. Каждый пакет проверяется по md5 из файла; если хотя бы одна запись не проверяется, ничего не создаётся.',
+  'runtimes.importLockName': 'Имя окружения',
+  'runtimes.importLockContents': 'Содержимое файла блокировки',
+  'runtimes.importLockAllowDownload': 'Скачивать пакеты, отсутствующие в локальном кэше',
+  'runtimes.importLockAllowDownloadDesc':
+    'Выкл.: пакет, которого нет в кэше, отмечается как отсутствующий, и ничего не создаётся. Вкл.: он скачивается по URL из файла и проверяется перед использованием.',
+  'runtimes.importLockAction': 'Импортировать',
+  'runtimes.importLockBusy': 'Импорт…',
+  'runtimes.importLockImported':
+    'Импортировано «{name}» — пакетов: {total} (из кэша: {fromCache}, скачано: {downloaded}).',
+  'runtimes.importLockIncomplete':
+    'Ничего не создано: не удалось проверить {missing} из {total} записей файла.',
+  'runtimes.importLockEmpty': 'Сначала вставьте содержимое файла блокировки.',
+  'runtimes.importLockFailed': 'Импорт не удался: {message}',
   'skillDetail.detailsTitle': 'Подробности',
   'settings.skillTriggerQuality': 'Качество срабатывания',
   'settings.skillIntegrityOk': 'Содержимое совпадает с импортированным.',

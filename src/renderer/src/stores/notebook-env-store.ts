@@ -28,6 +28,10 @@ export type NotebookEnvState = {
   // Per-language tracking for the Settings panel (see LangProvisionState); the single-slot fields above
   // still drive the python-centric onboarding/launch/gate surfaces unchanged.
   byLang: Partial<Record<NotebookLanguage, LangProvisionState>>
+  // A7 lock-import ticks, kept OUT of the fields above on purpose: an import builds a separate named
+  // env, so its progress must never flip a runtime card or the launch banner. The Runtimes import
+  // dialog reads this directly.
+  importProgress?: ProvisionProgress
 }
 
 type NotebookEnvStore = NotebookEnvState & {
@@ -55,7 +59,8 @@ export const createInitialNotebookEnvState = (): NotebookEnvState => {
     error: undefined,
     scope: undefined,
     ui: deriveProvisionUi(status, undefined, undefined, undefined),
-    byLang: {}
+    byLang: {},
+    importProgress: undefined
   }
 }
 
@@ -237,6 +242,13 @@ export const useNotebookEnvStore = create<NotebookEnvStore>((set, get) => {
           if (next) applyProgress(next)
         }
         const applyProgress = (progress: ProvisionProgress): void => {
+          // A7 lock import: these ticks describe a DIFFERENT named env being built, so they must not
+          // touch the provisioning slots (a card would otherwise spin for a runtime that isn't being
+          // set up) nor the launch banner's single-slot view. They land in their own field instead.
+          if (progress.phase === 'import-lock') {
+            set((s) => (sameShallow(s.importProgress, progress) ? s : { importProgress: progress }))
+            return
+          }
           applyUi({
             progress,
             ...(progress.scope === 'python' || progress.scope === 'r'

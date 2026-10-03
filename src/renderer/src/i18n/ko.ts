@@ -432,6 +432,23 @@ export const ko: Partial<Record<ZhKey, string>> = {
     '활성 세션 {active}개가 사용 중입니다(실행 중 {running}, 유휴 {idle}). 비활성화하면 실행 중인 셀이 끝난 뒤 커널이 닫히며, 해당 세션들은 계속 작업하려면 다른 런타임으로 전환해야 합니다.',
   'runtimes.stopRunningWork': '실행 중인 작업 중지',
   'runtimes.disableAfterCurrentWork': '현재 작업 종료 후 비활성화',
+  'runtimes.importLock': '잠금 파일에서 가져오기…',
+  'runtimes.importLockTitle': '잠금 파일에서 환경 가져오기',
+  'runtimes.importLockDesc':
+    '@EXPLICIT 잠금 파일 내용을 붙여넣으세요(한 줄에 `https://…/패키지.tar.bz2#<md5>` 하나). 모든 패키지는 잠금 파일의 md5로 검증되며, 한 항목이라도 검증할 수 없으면 아무것도 생성되지 않습니다.',
+  'runtimes.importLockName': '환경 이름',
+  'runtimes.importLockContents': '잠금 파일 내용',
+  'runtimes.importLockAllowDownload': '로컬 캐시에 없는 패키지 내려받기',
+  'runtimes.importLockAllowDownloadDesc':
+    '끄면 캐시에 없는 패키지는 누락으로 보고되고 아무것도 생성되지 않습니다. 켜면 잠금 파일의 URL에서 내려받아 검증한 뒤 사용합니다.',
+  'runtimes.importLockAction': '가져오기',
+  'runtimes.importLockBusy': '가져오는 중…',
+  'runtimes.importLockImported':
+    '“{name}”을(를) 가져왔습니다 — 패키지 {total}개(캐시 {fromCache}개, 내려받기 {downloaded}개).',
+  'runtimes.importLockIncomplete':
+    '아무것도 생성되지 않았습니다: 잠금 항목 {total}개 중 {missing}개를 검증하지 못했습니다.',
+  'runtimes.importLockEmpty': '먼저 잠금 파일 내용을 붙여넣으세요.',
+  'runtimes.importLockFailed': '가져오기에 실패했습니다: {message}',
   'skillDetail.detailsTitle': '세부 정보',
   'settings.skillTriggerQuality': '트리거 품질',
   'settings.skillIntegrityOk': '내용이 가져올 때와 일치합니다.',

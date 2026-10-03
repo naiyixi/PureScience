@@ -27,6 +27,7 @@ import {
 } from './operation-journal'
 import type {
   EnvironmentInfo,
+  ImportLockCoverage,
   ProvisionProgress,
   ProvisionStatus,
   RuntimeBundleSource
@@ -96,15 +97,8 @@ export type { ProvisionProgress, ProvisionStatus }
 // A resolved bundle on disk: the local @EXPLICIT lock whose tarballs are already in the pkgs cache.
 export type FetchedBundle = { lockPath: string; pathBudget?: PackPathBudget }
 
-// A7 external-lock import. Honest coverage for ONE import: `missing` is per-entry and NAMED, and a
-// non-empty list means NOTHING was created (fail-closed) — never a silently smaller environment.
-export type ImportLockCoverage = {
-  total: number
-  fromCache: number
-  downloaded: number
-  missing: Array<{ file: string; reason: string }>
-}
-
+// A7 external-lock import. `coverage` (shared wire type) is per-entry and NAMED; a non-empty `missing`
+// list means NOTHING was created (see ImportLockIncompleteError) — never a silently smaller env.
 export type ImportLockOutcome = {
   environment: EnvironmentInfo
   coverage: ImportLockCoverage
@@ -1232,7 +1226,8 @@ export class DefaultRuntimeProvisioner implements RuntimeProvisioner {
     await withSharedCacheLocks(this.cacheLockKeys(cache), async () => {
       for (const [index, entry] of entries.entries()) {
         const destination = join(cacheDir, entry.file)
-        if (await this.packageInCache(destination, entry.md5)) {
+        const state = await this.cacheEntryState(destination, entry.md5)
+        if (state === 'verified') {
           coverage.fromCache += 1
           emit(index + 1)
           continue
@@ -1240,7 +1235,13 @@ export class DefaultRuntimeProvisioner implements RuntimeProvisioner {
         if (!allowDownload) {
           coverage.missing.push({
             file: entry.file,
-            reason: 'Not in the local cache and downloads are disabled for this import'
+            // A cached file that FAILED verification is a different fact from a missing one, and the
+            // report must not blur them (found by the real-machine run: the poisoned copy was named
+            // "not in the cache", which is untrue and hides a tampered/truncated file).
+            reason:
+              state === 'mismatch'
+                ? 'The cached copy does not match the md5 in the lock (discarded) and downloads are disabled for this import'
+                : 'Not in the local cache and downloads are disabled for this import'
           })
           emit(index + 1)
           continue
@@ -1326,21 +1327,26 @@ export class DefaultRuntimeProvisioner implements RuntimeProvisioner {
     }
   }
 
-  // True when `path` exists AND re-hashes to the lock's md5. A file that is present but fails the
-  // digest is REMOVED, so a truncated/tampered cache entry can never be hard-linked into a new env.
-  private async packageInCache(path: string, md5: string): Promise<boolean> {
+  // Verifies one lock entry against the shared cache: 'verified' (re-hashed and matching), 'mismatch'
+  // (present but a different digest — the file is REMOVED, so a truncated/tampered cache entry can
+  // never be hard-linked into a new env) or 'absent'.
+  private async cacheEntryState(
+    path: string,
+    md5: string
+  ): Promise<'verified' | 'mismatch' | 'absent'> {
     try {
-      if (!statSync(path).isFile()) return false
+      if (!statSync(path).isFile()) return 'absent'
     } catch {
-      return false
+      return 'absent'
     }
     try {
-      if ((await md5File(path)).toLowerCase() === md5.toLowerCase()) return true
+      if ((await md5File(path)).toLowerCase() === md5.toLowerCase()) return 'verified'
     } catch {
-      // fall through to removal
+      // Unreadable cache entry counts as a verification failure, not as "absent".
+      return 'mismatch'
     }
     rmSync(path, { force: true })
-    return false
+    return 'mismatch'
   }
 
   // Scans the physical env directory and maps reserved Windows default directories back to their

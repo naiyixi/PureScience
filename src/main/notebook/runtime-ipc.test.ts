@@ -156,7 +156,8 @@ describe('runtime IPC adapter', () => {
       'runtime:set-install-authorized',
       'runtime:pick-interpreter',
       'runtime:register-interpreter',
-      'runtime:unregister-interpreter'
+      'runtime:unregister-interpreter',
+      'runtime:import-lock'
     ])
   })
 

@@ -190,6 +190,7 @@ export const WEB_INVOKE_CHANNELS = {
   'routine.upsert': 'routine:upsert',
   'runtime.describeUsage': 'runtime:describe-usage',
   'runtime.getEnablement': 'runtime:get-enablement',
+  'runtime.importLock': 'runtime:import-lock',
   'runtime.listEnvironments': 'runtime:list-environments',
   'runtime.listPackageCounts': 'runtime:list-package-counts',
   'runtime.listPackages': 'runtime:list-packages',

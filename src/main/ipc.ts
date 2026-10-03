@@ -2526,7 +2526,12 @@ const createApplicationModules = async (
         pypiIndex: mirror.pypiIndex,
         caBundle: mirror.caBundle
       })
-    }
+    },
+    // A7: materialize a named env from an external @EXPLICIT lock (Settings → Runtimes). Delegates to
+    // the notebook service so name/language validation, crash-recovery ordering and the per-env
+    // mutation lock stay in one owner.
+    importLock: (request, onProgress) =>
+      notebookService.importEnvironmentFromLock(request, onProgress)
   })
   declareElectronAdapter('notebook-runtime', () =>
     registerRuntimeIpcHandlers(runtimeSelectionWorkflows)

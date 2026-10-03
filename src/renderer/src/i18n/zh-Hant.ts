@@ -367,6 +367,23 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
     '此環境正被 {active} 個作用中工作階段使用（執行中 {running}，閒置 {idle}）。停用後，執行中的單元會執行完畢再關閉其核心；這些工作階段必須切換至其他執行環境才能繼續運作。',
   'runtimes.stopRunningWork': '停止執行中的工作',
   'runtimes.disableAfterCurrentWork': '在目前工作結束後停用',
+  'runtimes.importLock': '從鎖定檔匯入…',
+  'runtimes.importLockTitle': '從鎖定檔匯入環境',
+  'runtimes.importLockDesc':
+    '貼上 @EXPLICIT 鎖定檔內容——每行一個 `https://…/套件.tar.bz2#<md5>`。每個套件都會依鎖定檔中的 md5 驗證；只要有一筆無法驗證，就不會建立任何環境。',
+  'runtimes.importLockName': '環境名稱',
+  'runtimes.importLockContents': '鎖定檔內容',
+  'runtimes.importLockAllowDownload': '允許下載本機快取中缺少的套件',
+  'runtimes.importLockAllowDownloadDesc':
+    '關閉：快取中沒有的套件會回報為缺少，不建立環境。開啟：依鎖定檔中的網址下載，驗證通過後才使用。',
+  'runtimes.importLockAction': '匯入',
+  'runtimes.importLockBusy': '正在匯入…',
+  'runtimes.importLockImported':
+    '已匯入「{name}」——共 {total} 個套件（快取命中 {fromCache} 個，下載 {downloaded} 個）。',
+  'runtimes.importLockIncomplete':
+    '未建立任何環境：{total} 筆鎖定檔記錄中有 {missing} 筆無法驗證。',
+  'runtimes.importLockEmpty': '請先貼上鎖定檔內容。',
+  'runtimes.importLockFailed': '匯入失敗：{message}',
   'skillDetail.detailsTitle': '詳細',
   'settings.skillTriggerQuality': '觸發品質',
   'settings.skillIntegrityOk': '內容與匯入時一致。',

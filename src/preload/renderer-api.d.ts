@@ -139,7 +139,12 @@ import type {
   NotebookSessionState,
   RunNotebookCellRequest
 } from '../shared/notebook'
-import type { ProvisionProgress, ProvisionStatus } from '../shared/notebook-env'
+import type {
+  ImportLockRequest,
+  ImportLockResult,
+  ProvisionProgress,
+  ProvisionStatus
+} from '../shared/notebook-env'
 import type {
   DiscoveredInterpreter,
   EnvPackage,
@@ -1121,6 +1126,10 @@ export interface PureScienceAPI {
     // v4: add/remove a manually-picked interpreter path in the discovery catalog; returns the list.
     registerInterpreter(language: NotebookLanguage, path: string): Promise<string[]>
     unregisterInterpreter(language: NotebookLanguage, path: string): Promise<string[]>
+    // A7: materialize a named environment from an external @EXPLICIT lock. 'imported' means the env
+    // exists and its interpreter verified; 'incomplete' means NOTHING was created and `coverage.missing`
+    // names every entry that could not be satisfied (absent + offline, download failure, bad md5).
+    importLock(request: ImportLockRequest): Promise<ImportLockResult>
   }
   storage: {
     getInfo(): Promise<StorageInfo>

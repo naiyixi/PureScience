@@ -2859,6 +2859,23 @@ export const en: Record<ZhKey, string> = {
     'It is in use by {active} active sessions — {running} running, {idle} idle. Disabling lets any running cell finish, then closes its kernel; those sessions must switch to another runtime to keep working.',
   'runtimes.stopRunningWork': 'Stop running work',
   'runtimes.disableAfterCurrentWork': 'Disable after current work',
+  'runtimes.importLock': 'Import from lock…',
+  'runtimes.importLockTitle': 'Import an environment from a lock file',
+  'runtimes.importLockDesc':
+    'Paste an @EXPLICIT lock — one `https://…/package.tar.bz2#<md5>` per line. Every package is checked against the md5 in the lock; if even one entry cannot be verified, nothing is created.',
+  'runtimes.importLockName': 'Environment name',
+  'runtimes.importLockContents': 'Lock contents',
+  'runtimes.importLockAllowDownload': 'Download packages missing from the local cache',
+  'runtimes.importLockAllowDownloadDesc':
+    'Off: a package that is not already cached is reported as missing and nothing is created. On: it is downloaded from the URL in the lock and verified before use.',
+  'runtimes.importLockAction': 'Import',
+  'runtimes.importLockBusy': 'Importing…',
+  'runtimes.importLockImported':
+    'Imported “{name}” — {total} packages ({fromCache} from cache, {downloaded} downloaded).',
+  'runtimes.importLockIncomplete':
+    'Nothing was created: {missing} of {total} lock entries could not be verified.',
+  'runtimes.importLockEmpty': 'Paste the lock contents first.',
+  'runtimes.importLockFailed': 'The import failed: {message}',
   'skillDetail.detailsTitle': 'Details',
   'settings.skillTriggerQuality': 'Trigger quality',
   'settings.skillIntegrityOk': 'Content matches what was imported.',

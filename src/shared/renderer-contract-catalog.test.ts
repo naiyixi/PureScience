@@ -19,13 +19,16 @@ describe('renderer contract catalog', () => {
     // beside the PDF reading surface they belong to.
     // 453 with the journal metric import (references.importJournalMetrics): a library write channel like the
     // other references commands, so it installs on the window and both Web surfaces and no other count moves.
+    // 456 with the external-lock import (runtime.importLock, A7): a LOCAL runtime channel, so the catalog,
+    // the invoke map and the local-Web installation set each move by one while the remote-Web one grows by
+    // the rejecting stub it gets for being local-only.
     expect(RENDERER_CONTRACT_GROUPS).toHaveLength(46)
-    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(455)
+    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(456)
     expect(projection.invoke).toEqual(WEB_INVOKE_CHANNELS)
     expect(projection.event).toEqual(WEB_EVENT_CHANNELS)
     // 344 with the PDF annotation export channels (pdfAnnotations.exportAnnotated / exportNotes):
     // both are local-only invoke channels, so the invoke map and the local-only set move together.
-    expect(Object.keys(projection.invoke)).toHaveLength(350)
+    expect(Object.keys(projection.invoke)).toHaveLength(351)
     expect(Object.keys(projection.event)).toHaveLength(34)
   })
 
@@ -33,7 +36,7 @@ describe('renderer contract catalog', () => {
     // 378 with the journal metric import (references.importJournalMetrics), a plain Web request profile.
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb !== 'unavailable')
-    ).toHaveLength(380)
+    ).toHaveLength(381)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb === 'browser-native')
     ).toEqual(['getRuntimeVersions', 'saveBlobFile', 'saveManagedFile', 'window.close'])
@@ -66,7 +69,7 @@ describe('renderer contract catalog', () => {
     ).toHaveLength(75)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.remoteWeb === 'rejecting-stub')
-    ).toHaveLength(119)
+    ).toHaveLength(120)
     expect(
       paths(({ eventDeliverability }) =>
         Object.values(eventDeliverability).includes('installed-undelivered')

@@ -444,6 +444,23 @@ export const es: Partial<Record<ZhKey, string>> = {
     'Está en uso por {active} sesiones activas — {running} en ejecución, {idle} inactivas. Al desactivarlo, las celdas en ejecución terminan y luego se cierran sus núcleos; esas sesiones deben cambiar a otro entorno para seguir trabajando.',
   'runtimes.stopRunningWork': 'Detener el trabajo en ejecución',
   'runtimes.disableAfterCurrentWork': 'Desactivar tras el trabajo actual',
+  'runtimes.importLock': 'Importar desde archivo de bloqueo…',
+  'runtimes.importLockTitle': 'Importar un entorno desde un archivo de bloqueo',
+  'runtimes.importLockDesc':
+    'Pega un archivo de bloqueo @EXPLICIT: una línea por paquete, `https://…/paquete.tar.bz2#<md5>`. Cada paquete se verifica con el md5 del archivo; si un solo registro no se puede verificar, no se crea nada.',
+  'runtimes.importLockName': 'Nombre del entorno',
+  'runtimes.importLockContents': 'Contenido del archivo de bloqueo',
+  'runtimes.importLockAllowDownload': 'Descargar los paquetes que falten en la caché local',
+  'runtimes.importLockAllowDownloadDesc':
+    'Desactivado: un paquete que no esté en la caché se informa como faltante y no se crea nada. Activado: se descarga desde la URL del archivo y se verifica antes de usarlo.',
+  'runtimes.importLockAction': 'Importar',
+  'runtimes.importLockBusy': 'Importando…',
+  'runtimes.importLockImported':
+    'Se importó «{name}»: {total} paquetes ({fromCache} desde la caché, {downloaded} descargados).',
+  'runtimes.importLockIncomplete':
+    'No se creó nada: {missing} de {total} registros del archivo no se pudieron verificar.',
+  'runtimes.importLockEmpty': 'Pega primero el contenido del archivo de bloqueo.',
+  'runtimes.importLockFailed': 'La importación falló: {message}',
   'skillDetail.detailsTitle': 'Detalles',
   'settings.skillTriggerQuality': 'Calidad de activación',
   'settings.skillIntegrityOk': 'El contenido coincide con lo importado.',
