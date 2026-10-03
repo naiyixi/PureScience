@@ -56,6 +56,15 @@
 | ~~IC8~~ ✅ **已完成（会话 `d726882a` + 列表刷新修复与真窗口读数 `b7feabd4`）** | A7 锁导入命名环境的**删除**与**用作运行时** —— 已交付：新通道 `runtime:manage-named-environments`（`list`/`remove`）+ 面板独立「具名环境」分组；移除二次确认，**在用内核时拒绝且理由逐字上屏**（不改写成更友好的话）；「用作笔记本运行时」走既有 `register→enable→select`，不新造后端 | `RuntimesPanel.tsx`、`runtime-application-commands.ts`、`environment-management.ts`         | 真窗口读数：`serviceNamedEnvs=["lock-import-env"]` / `namedEnvRows=1` / `namedEnvRemoved=true dirGone=true`（`e2e/certification/lock-import.spec.ts` 2 passed；证据 `docs/evidence/2026-10-03-A7-external-lock-import.md` §6）。**仍未取**：在用内核时拒绝移除的真窗口读数（需活的 notebook 内核） |
 | IC9                                                                            | 产物用系统程序打开 / 在文件夹中显示                                                                                                                                                                                                                                                   | `PreviewFileSurface.tsx` 头部或右键菜单 → `artifacts.openFile`                              | 真机点一次，系统程序打开的是该版本文件                                                                                                                                                                                                                                                             |
 
+> **IC7 接线已落地（`dba7d15a`）**：`App.tsx` 启动处订阅一次 `notification-inbox-store.listen()`
+> （内部走既有的 `notifications.onChanged` / `getSnapshot`，**零新通道**）；`App.test.tsx` 40 passed、
+> 契约四件套 91 passed。**真机读数待取**：需真窗口 + 一次真后台任务完成，观察红点不点铃铛自己亮。
+>
+> **IC53 的 S3 认证 spec 第四条已改（`10a14928`）**：原断言「删掉索引目录后 `indexed` 变 0」是**竞态**
+> （tick 由查询驱动，删完随即被重建；同一行断言在一版上读 0、下一版读 3）⇒ 改钉删除真落盘、
+> `indexed+pending === 语料`、索引被重建回磁盘、语料仍可搜到。本机真机 1 passed (43.0s)。
+> 这是 CI 认证作业（P0）那次红的唯一原因；视觉回归那一条是 workflow 明示的**非门禁**项。
+
 ### 批次 3 · v1.83.0 —— 数据不丢与退路
 
 | 单元 | 内容                                                                  | 落点                                                                                          | 实机验收                                                       |
