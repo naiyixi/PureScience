@@ -926,6 +926,7 @@ describe('startWebHttpServer', () => {
     ).toEqual(['notebook-env:status'])
     expect(localOnly(runtimeChannels)).toEqual([
       'runtime:import-lock',
+      'runtime:manage-named-environments',
       'runtime:pick-interpreter',
       'runtime:register-interpreter',
       'runtime:set-environment-enabled',

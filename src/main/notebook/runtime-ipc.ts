@@ -3,7 +3,7 @@ import { dialog } from 'electron'
 import { ipcMainHandle } from '../ipc-handler-registry'
 
 import type { NotebookLanguage } from '../../shared/notebook'
-import type { ImportLockRequest } from '../../shared/notebook-env'
+import type { ImportLockRequest, NamedEnvironmentRequest } from '../../shared/notebook-env'
 import type { RuntimeSelection } from '../../shared/notebook-runtime'
 import { broadcastNotebookEnvProgress } from './env-ipc'
 import type { RuntimeSelectionWorkflows } from './runtime-selection-workflows'
@@ -90,6 +90,12 @@ const registerRuntimeIpcHandlers = (
   // distinct `phase` the store routes into its own slot (never the per-language provisioning cards).
   ipcMainHandle('runtime:import-lock', (_event, request: ImportLockRequest) =>
     workflows.importLock(request, (progress) => broadcastNotebookEnvProgress(progress))
+  )
+
+  // Audit P0-8: the named environments (the set notebooks select from) and removal of one — the surface
+  // an external-lock import used to be a dead end without.
+  ipcMainHandle('runtime:manage-named-environments', (_event, request: NamedEnvironmentRequest) =>
+    workflows.manageNamedEnvironments(request)
   )
 }
 

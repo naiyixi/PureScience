@@ -2531,7 +2531,10 @@ const createApplicationModules = async (
     // the notebook service so name/language validation, crash-recovery ordering and the per-env
     // mutation lock stay in one owner.
     importLock: (request, onProgress) =>
-      notebookService.importEnvironmentFromLock(request, onProgress)
+      notebookService.importEnvironmentFromLock(request, onProgress),
+    // Audit P0-8: the window lists/removes named environments through the SAME service call the agent
+    // uses, so the same validation and live-kernel refusal apply to both.
+    manageNamedEnvironments: (request) => notebookService.manageEnvironments(request)
   })
   declareElectronAdapter('notebook-runtime', () =>
     registerRuntimeIpcHandlers(runtimeSelectionWorkflows)

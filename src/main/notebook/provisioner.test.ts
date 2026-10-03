@@ -1185,7 +1185,15 @@ describe('DefaultRuntimeProvisioner.createNamedEnvironment', () => {
       expect.arrayContaining(['python=3.12', 'matplotlib-base', 'nomkl', 'numpy'])
     )
 
-    expect(info).toEqual({ name: 'my-analysis', language: 'python', ready: true, isDefault: false })
+    expect(info).toEqual({
+      name: 'my-analysis',
+      language: 'python',
+      ready: true,
+      isDefault: false,
+      // Audit P0-8: the env now reports its interpreter so the window can promote it via the existing
+      // selection channels.
+      interpreterPath: pythonBin(envPrefix(root, 'my-analysis'))
+    })
     // Named envs never touch the .env-ready marker.
     expect(readReadyMarker(root)).toBeUndefined()
   })

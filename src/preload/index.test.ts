@@ -461,6 +461,7 @@ describe('preload bridge — public surface inventory', () => {
       'runtime.listEnvironments',
       'runtime.listPackageCounts',
       'runtime.listPackages',
+      'runtime.manageNamedEnvironments',
       'runtime.pickInterpreter',
       'runtime.registerInterpreter',
       'runtime.setEnvironmentEnabled',
@@ -701,7 +702,7 @@ describe('preload bridge — runtime renderer contract catalog', () => {
   it('routes every owned method through its cataloged Electron channel', async () => {
     const requestContracts = runtimeContracts.filter(({ kind }) => kind === 'method')
 
-    expect(runtimeContracts).toHaveLength(231)
+    expect(runtimeContracts).toHaveLength(232)
 
     for (const contract of requestContracts) {
       invokeMock.mockClear()

@@ -343,7 +343,8 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['getEnablement', 'runtime:get-enablement', WEB, RUNTIME_LANGUAGE, POSITIONAL], ['importLock', 'runtime:import-lock', LOCAL],
     ['listEnvironments', 'runtime:list-environments'],
     ['listPackageCounts', 'runtime:list-package-counts', WEB, RUNTIME_LANGUAGE, POSITIONAL],
-    ['listPackages', 'runtime:list-packages', WEB, RUNTIME_LANGUAGE_ENV, POSITIONAL], ['pickInterpreter', 'runtime:pick-interpreter', LOCAL],
+    ['listPackages', 'runtime:list-packages', WEB, RUNTIME_LANGUAGE_ENV, POSITIONAL], ['manageNamedEnvironments', 'runtime:manage-named-environments', LOCAL],
+    ['pickInterpreter', 'runtime:pick-interpreter', LOCAL],
     ['registerInterpreter', 'runtime:register-interpreter', LOCAL, RUNTIME_INTERPRETER, POSITIONAL],
     [
       'setEnvironmentEnabled',

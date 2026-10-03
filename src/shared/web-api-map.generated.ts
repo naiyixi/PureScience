@@ -194,6 +194,7 @@ export const WEB_INVOKE_CHANNELS = {
   'runtime.listEnvironments': 'runtime:list-environments',
   'runtime.listPackageCounts': 'runtime:list-package-counts',
   'runtime.listPackages': 'runtime:list-packages',
+  'runtime.manageNamedEnvironments': 'runtime:manage-named-environments',
   'runtime.pickInterpreter': 'runtime:pick-interpreter',
   'runtime.registerInterpreter': 'runtime:register-interpreter',
   'runtime.setEnvironmentEnabled': 'runtime:set-environment-enabled',

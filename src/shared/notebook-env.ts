@@ -47,6 +47,10 @@ export type EnvironmentInfo = {
   ready: boolean
   isDefault: boolean
   sizeBytes?: number
+  // The env's interpreter, so the window can promote it through the EXISTING selection channels
+  // (register → enable → select) instead of needing a new backend surface. Absent for envs scanned off
+  // a prefix whose interpreter is missing.
+  interpreterPath?: string
 }
 
 // manage_environments tool request — discriminated on action (design D2).
@@ -57,6 +61,14 @@ export type ManageEnvironmentsRequest =
 
 // create/list/remove all return the full current env set so the caller/UI can refresh in one shot.
 export type ManageEnvironmentsResult = { environments: EnvironmentInfo[] }
+
+// Renderer-facing named-environment management (A7 follow-up, entry-layer audit P0-8). Deliberately
+// NARROWER than the agent's ManageEnvironmentsRequest: the window may list and remove a named env, but
+// never create one behind the agent's own binding flow.
+export type NamedEnvironmentRequest = { action: 'list' } | { action: 'remove'; name: string }
+
+// Same shape as the agent's result so both callers read the refreshed set from one place.
+export type NamedEnvironmentResult = ManageEnvironmentsResult
 
 // A7 external-lock import (renderer channel `runtime:import-lock`). The user supplies a raw @EXPLICIT
 // lock; every entry must carry a 32-hex md5 or the whole lock is refused.

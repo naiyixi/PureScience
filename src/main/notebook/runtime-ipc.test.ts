@@ -157,7 +157,8 @@ describe('runtime IPC adapter', () => {
       'runtime:pick-interpreter',
       'runtime:register-interpreter',
       'runtime:unregister-interpreter',
-      'runtime:import-lock'
+      'runtime:import-lock',
+      'runtime:manage-named-environments'
     ])
   })
 

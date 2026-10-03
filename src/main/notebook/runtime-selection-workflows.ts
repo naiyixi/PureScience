@@ -2,6 +2,8 @@ import type { NotebookLanguage } from '../../shared/notebook'
 import type {
   ImportLockRequest,
   ImportLockResult,
+  NamedEnvironmentRequest,
+  NamedEnvironmentResult,
   ProvisionProgress
 } from '../../shared/notebook-env'
 import type {
@@ -84,6 +86,10 @@ type RuntimeSelectionWorkflowDeps = {
     request: ImportLockRequest,
     onProgress?: (progress: ProvisionProgress) => void
   ) => Promise<ImportLockResult>
+  // Named-environment management for the Settings panel (audit P0-8). Production injects the notebook
+  // service's manageEnvironments, so the SAME validation and live-kernel refusal gate the window as the
+  // agent. Absent in tests that do not exercise the surface → guarded error, never a silent no-op.
+  manageNamedEnvironments?: (request: NamedEnvironmentRequest) => Promise<NamedEnvironmentResult>
 }
 
 type RuntimeSelectionWorkflows = {
@@ -121,6 +127,8 @@ type RuntimeSelectionWorkflows = {
     request: ImportLockRequest,
     onProgress?: (progress: ProvisionProgress) => void
   ): Promise<ImportLockResult>
+  // Audit P0-8: list the named environments (the set notebooks select from) and remove one.
+  manageNamedEnvironments(request: NamedEnvironmentRequest): Promise<NamedEnvironmentResult>
 }
 
 const createRuntimeSelectionWorkflows = (
@@ -291,6 +299,13 @@ const createRuntimeSelectionWorkflows = (
         throw new Error('Lock import is unavailable (no environment manager configured).')
       }
       return run(request, onProgress)
+    },
+    manageNamedEnvironments: (request) => {
+      const run = deps.manageNamedEnvironments
+      if (!run) {
+        throw new Error('Named-environment management is unavailable.')
+      }
+      return run(request)
     }
   }
 }

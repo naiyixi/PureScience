@@ -22,13 +22,15 @@ describe('renderer contract catalog', () => {
     // 456 with the external-lock import (runtime.importLock, A7): a LOCAL runtime channel, so the catalog,
     // the invoke map and the local-Web installation set each move by one while the remote-Web one grows by
     // the rejecting stub it gets for being local-only.
+    // 457 with the named-environment surface (runtime.manageNamedEnvironments, audit P0-8): same profile
+    // as the import above, so the same three counts move again.
     expect(RENDERER_CONTRACT_GROUPS).toHaveLength(46)
-    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(456)
+    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(457)
     expect(projection.invoke).toEqual(WEB_INVOKE_CHANNELS)
     expect(projection.event).toEqual(WEB_EVENT_CHANNELS)
     // 344 with the PDF annotation export channels (pdfAnnotations.exportAnnotated / exportNotes):
     // both are local-only invoke channels, so the invoke map and the local-only set move together.
-    expect(Object.keys(projection.invoke)).toHaveLength(351)
+    expect(Object.keys(projection.invoke)).toHaveLength(352)
     expect(Object.keys(projection.event)).toHaveLength(34)
   })
 
@@ -36,7 +38,7 @@ describe('renderer contract catalog', () => {
     // 378 with the journal metric import (references.importJournalMetrics), a plain Web request profile.
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb !== 'unavailable')
-    ).toHaveLength(381)
+    ).toHaveLength(382)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb === 'browser-native')
     ).toEqual(['getRuntimeVersions', 'saveBlobFile', 'saveManagedFile', 'window.close'])
@@ -69,7 +71,7 @@ describe('renderer contract catalog', () => {
     ).toHaveLength(75)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.remoteWeb === 'rejecting-stub')
-    ).toHaveLength(120)
+    ).toHaveLength(121)
     expect(
       paths(({ eventDeliverability }) =>
         Object.values(eventDeliverability).includes('installed-undelivered')

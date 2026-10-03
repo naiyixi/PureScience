@@ -142,6 +142,8 @@ import type {
 import type {
   ImportLockRequest,
   ImportLockResult,
+  NamedEnvironmentRequest,
+  NamedEnvironmentResult,
   ProvisionProgress,
   ProvisionStatus
 } from '../shared/notebook-env'
@@ -1130,6 +1132,9 @@ export interface PureScienceAPI {
     // exists and its interpreter verified; 'incomplete' means NOTHING was created and `coverage.missing`
     // names every entry that could not be satisfied (absent + offline, download failure, bad md5).
     importLock(request: ImportLockRequest): Promise<ImportLockResult>
+    // Audit P0-8: the named environments (what notebooks select from) and removal of one. Removal is
+    // refused while a live kernel uses the env — the rejection message says so.
+    manageNamedEnvironments(request: NamedEnvironmentRequest): Promise<NamedEnvironmentResult>
   }
   storage: {
     getInfo(): Promise<StorageInfo>

@@ -60,6 +60,7 @@ let setInstallAuthorized: ReturnType<typeof vi.fn>
 let registerInterpreter: ReturnType<typeof vi.fn>
 let pickInterpreter: ReturnType<typeof vi.fn>
 let importLock: ReturnType<typeof vi.fn>
+let manageNamedEnvironments: ReturnType<typeof vi.fn>
 let provision: ReturnType<typeof vi.fn>
 let cancelBridge: ReturnType<typeof vi.fn>
 let repairBridge: ReturnType<typeof vi.fn>
@@ -116,6 +117,8 @@ beforeEach(() => {
     environment: { name: 'lock-env', language: 'python', ready: true, isDefault: false },
     coverage: { total: 2, fromCache: 1, downloaded: 1, missing: [] }
   })
+  // Audit P0-8: the panel lists named environments on mount, so the double must answer that call.
+  manageNamedEnvironments = vi.fn().mockResolvedValue({ environments: [] })
   provision = vi.fn().mockRejectedValue(new Error('runtime CDN unavailable'))
   cancelBridge = vi.fn().mockResolvedValue(undefined)
   repairBridge = vi.fn().mockResolvedValue(undefined)
@@ -131,6 +134,7 @@ beforeEach(() => {
       registerInterpreter,
       pickInterpreter,
       importLock,
+      manageNamedEnvironments,
       // The panel now loads the persisted selection up front so it can mark the current runtime.
       survey: vi.fn().mockResolvedValue([])
     },
@@ -1010,5 +1014,71 @@ describe('RuntimesPanel lock import (A7)', () => {
 
     const error = document.querySelector('[data-testid="runtime-import-error"]')
     expect(error?.textContent).toContain('Environment management is unavailable.')
+  })
+})
+
+describe('RuntimesPanel named environments (audit P0-8)', () => {
+  const flush = async (): Promise<void> => {
+    await act(async () => {})
+    await act(async () => {})
+  }
+
+  const namedEnv = {
+    name: 'lock-import-env',
+    language: 'python' as const,
+    ready: true,
+    isDefault: false,
+    sizeBytes: 1024,
+    interpreterPath: '/data/runtime/envs/lock-import-env/bin/python'
+  }
+
+  it('lists a named environment, removes it after confirmation, and reports the removal', async () => {
+    manageNamedEnvironments.mockImplementation(async (request: { action: string }) =>
+      request.action === 'list' ? { environments: [namedEnv] } : { environments: [] }
+    )
+    await render()
+
+    const row = container.querySelector('[data-testid="named-env-row"]')
+    expect(row?.textContent).toContain('lock-import-env')
+    expect(row?.textContent).toContain(namedEnv.interpreterPath)
+
+    // Removal is confirmed first — it deletes files and cannot be undone.
+    await click(row?.querySelector('[data-testid="named-env-remove"]') ?? null)
+    expect(document.querySelector('[data-testid="named-env-remove-dialog"]')).not.toBeNull()
+    await click(document.querySelector('[data-testid="named-env-remove-confirm"]'))
+    await flush()
+
+    expect(manageNamedEnvironments).toHaveBeenCalledWith({
+      action: 'remove',
+      name: 'lock-import-env'
+    })
+    const notice = container.querySelector('[data-testid="runtimes-notice"]')
+    expect(notice?.textContent).toContain('lock-import-env')
+    // The list reflects the refreshed set the service returned (empty here).
+    expect(container.querySelector('[data-testid="named-env-row"]')).toBeNull()
+  })
+
+  it("shows the service's refusal verbatim when a live kernel holds the environment", async () => {
+    manageNamedEnvironments.mockImplementation(async (request: { action: string }) => {
+      if (request.action === 'remove') {
+        throw new Error(
+          'Environment "lock-import-env" is in use by a running kernel — restart the notebook or wait for the run to finish before removing it.'
+        )
+      }
+      return { environments: [namedEnv] }
+    })
+    await render()
+
+    await click(
+      container.querySelector('[data-testid="named-env-row"] [data-testid="named-env-remove"]')
+    )
+    await click(document.querySelector('[data-testid="named-env-remove-confirm"]'))
+    await flush()
+
+    // Never reworded into something friendlier: the refusal itself is the reading.
+    const error = container.querySelector('[data-testid="runtimes-error"]')
+    expect(error?.textContent).toContain('is in use by a running kernel')
+    // The row survives — nothing was deleted.
+    expect(container.querySelector('[data-testid="named-env-row"]')).not.toBeNull()
   })
 })

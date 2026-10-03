@@ -1163,7 +1163,8 @@ export class DefaultRuntimeProvisioner implements RuntimeProvisioner {
       name,
       language,
       ready: existsSync(bin),
-      isDefault: name === DEFAULT_PY_ENV || name === DEFAULT_R_ENV
+      isDefault: name === DEFAULT_PY_ENV || name === DEFAULT_R_ENV,
+      interpreterPath: bin
     }
   }
 
@@ -1321,7 +1322,8 @@ export class DefaultRuntimeProvisioner implements RuntimeProvisioner {
         language,
         ready: existsSync(bin),
         isDefault: name === DEFAULT_PY_ENV || name === DEFAULT_R_ENV,
-        sizeBytes: dirSizeBytes(prefix)
+        sizeBytes: dirSizeBytes(prefix),
+        interpreterPath: bin
       },
       coverage
     }
@@ -1374,7 +1376,8 @@ export class DefaultRuntimeProvisioner implements RuntimeProvisioner {
         language: isPython ? 'python' : 'r',
         ready: true,
         isDefault: name === DEFAULT_PY_ENV || name === DEFAULT_R_ENV,
-        sizeBytes: dirSizeBytes(prefix)
+        sizeBytes: dirSizeBytes(prefix),
+        interpreterPath: isPython ? pythonBin(prefix) : rBin(prefix)
       })
     }
     return infos

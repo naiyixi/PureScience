@@ -5,7 +5,12 @@ import type { PureScienceAPI } from './renderer-api'
 
 import type { ComputeApprovalDecision, ComputeApprovalRequest, JobSummary } from '../shared/compute'
 import type { NotebookLanguage } from '../shared/notebook'
-import type { ImportLockRequest, ImportLockResult } from '../shared/notebook-env'
+import type {
+  ImportLockRequest,
+  ImportLockResult,
+  NamedEnvironmentRequest,
+  NamedEnvironmentResult
+} from '../shared/notebook-env'
 import type { DiscoveredInterpreter } from '../shared/notebook-runtime'
 import type {
   AddCustomServerRequest,
@@ -888,7 +893,14 @@ const api: PureScienceAPI = {
     // A7: materialize a named environment from an external @EXPLICIT lock. The result is a
     // discriminated union — 'incomplete' carries the named per-entry reasons and created nothing.
     importLock: (request: ImportLockRequest) =>
-      electronRendererContracts.invoke('runtime.importLock', request) as Promise<ImportLockResult>
+      electronRendererContracts.invoke('runtime.importLock', request) as Promise<ImportLockResult>,
+    // Audit P0-8: the named environments (the set notebooks select from) and removal of one — the
+    // surface that makes an imported environment manageable instead of a dead end.
+    manageNamedEnvironments: (request: NamedEnvironmentRequest) =>
+      electronRendererContracts.invoke(
+        'runtime.manageNamedEnvironments',
+        request
+      ) as Promise<NamedEnvironmentResult>
   },
   storage: {
     getInfo: () => electronRendererContracts.invoke('storage.getInfo'),

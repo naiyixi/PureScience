@@ -1,5 +1,10 @@
 import type { NotebookLanguage } from '../../shared/notebook'
-import type { ImportLockRequest, ImportLockResult } from '../../shared/notebook-env'
+import type {
+  ImportLockRequest,
+  ImportLockResult,
+  NamedEnvironmentRequest,
+  NamedEnvironmentResult
+} from '../../shared/notebook-env'
 import type {
   DiscoveredInterpreter,
   EnvPackage,
@@ -37,6 +42,8 @@ type RuntimeInstallAuthorizationRequest = Readonly<{
 type RuntimeInterpreterRequest = Readonly<{ language: NotebookLanguage; path: string }>
 // A7 lock import: the whole request travels as one argument, matching the renderer channel shape.
 type RuntimeImportLockRequest = Readonly<ImportLockRequest>
+// Audit P0-8: list/remove named environments — one narrow request object, like the import above.
+type RuntimeNamedEnvironmentRequest = Readonly<NamedEnvironmentRequest>
 
 const runtimeApplicationCommands = Object.freeze({
   survey: defineApplicationCommand<'runtime:survey', readonly [], RuntimeSurvey[]>(
@@ -101,7 +108,14 @@ const runtimeApplicationCommands = Object.freeze({
     'runtime:import-lock',
     readonly [request: RuntimeImportLockRequest],
     ImportLockResult
-  >('runtime:import-lock')
+  >('runtime:import-lock'),
+  // Audit P0-8: the named environments a notebook can select, and removal of one. Local-only for the
+  // same reason as the import: it reads and writes THIS machine's runtime root.
+  manageNamedEnvironments: defineApplicationCommand<
+    'runtime:manage-named-environments',
+    readonly [request: RuntimeNamedEnvironmentRequest],
+    NamedEnvironmentResult
+  >('runtime:manage-named-environments')
 })
 
 const runtimeApplicationCommandGroup = defineApplicationCommandGroup('runtime', [
@@ -111,6 +125,7 @@ const runtimeApplicationCommandGroup = defineApplicationCommandGroup('runtime', 
   runtimeApplicationCommands.listEnvironments,
   runtimeApplicationCommands.listPackageCounts,
   runtimeApplicationCommands.listPackages,
+  runtimeApplicationCommands.manageNamedEnvironments,
   runtimeApplicationCommands.pickInterpreter,
   runtimeApplicationCommands.registerInterpreter,
   runtimeApplicationCommands.setEnvironmentEnabled,
@@ -181,6 +196,10 @@ const registerRuntimeApplicationCommands = (
       'runtime:import-lock': (invocation) => {
         requireLocalCaller(invocation.callerContext)
         return dependencies.workflows.importLock(invocation.args[0])
+      },
+      'runtime:manage-named-environments': (invocation) => {
+        requireLocalCaller(invocation.callerContext)
+        return dependencies.workflows.manageNamedEnvironments(invocation.args[0])
       }
     })
     return scope.complete()

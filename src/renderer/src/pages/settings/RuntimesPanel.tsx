@@ -29,7 +29,11 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { cn } from '@/lib/utils'
 import { useNotebookEnvStore } from '@/stores/notebook-env-store'
 import { DEFAULT_EGRESS_SETTINGS, type EgressSettings } from '../../../../shared/egress'
-import type { ImportLockCoverage, ImportLockResult } from '../../../../shared/notebook-env'
+import type {
+  EnvironmentInfo,
+  ImportLockCoverage,
+  ImportLockResult
+} from '../../../../shared/notebook-env'
 import {
   isEnvEnabled,
   type DiscoveredInterpreter,
@@ -191,6 +195,12 @@ const RuntimesPanel = ({
   const [importResult, setImportResult] = useState<ImportLockResult | null>(null)
   const [importError, setImportError] = useState<string | null>(null)
   const importProgress = useNotebookEnvStore((state) => state.importProgress)
+  // Audit P0-8: the named environments (the set notebooks select from). An external-lock import used to
+  // be a dead end here — no list, no removal, no way to make it a runtime. `namedEnvAction` is the row
+  // whose removal is being confirmed.
+  const [namedEnvs, setNamedEnvs] = useState<EnvironmentInfo[] | null>(null)
+  const [namedEnvAction, setNamedEnvAction] = useState<{ name: string } | null>(null)
+  const dialogNamedEnvAction = useRetainedDialogValue(namedEnvAction)
   const initEnv = useNotebookEnvStore((state) => state.init)
   const provisionEnv = useNotebookEnvStore((state) => state.provision)
   const cancelEnv = useNotebookEnvStore((state) => state.cancel)
@@ -586,6 +596,83 @@ const RuntimesPanel = ({
       setImportError(t('runtimes.importLockFailed').replace('{message}', message))
     } finally {
       setImporting(false)
+    }
+  }
+
+  // Lists the named environments. A failure leaves an empty list rather than hanging on "Detecting…",
+  // and surfaces the reason through the panel's own error line.
+  const refreshNamedEnvs = async (): Promise<void> => {
+    try {
+      const result = await window.api.runtime.manageNamedEnvironments({ action: 'list' })
+      setNamedEnvs(result.environments)
+    } catch (e) {
+      setNamedEnvs([])
+      setError(e instanceof Error ? e.message : t('runtimes.namedEnvsEmpty'))
+    }
+  }
+
+  useEffect(() => {
+    void refreshNamedEnvs()
+  }, [])
+
+  // Removal is the service's call: it refuses while a live kernel uses the env, and that reason is shown
+  // verbatim (never reworded into something friendlier).
+  const confirmRemoveNamedEnv = async (): Promise<void> => {
+    if (namedEnvAction === null) return
+    const { name } = namedEnvAction
+    setNamedEnvAction(null)
+    setBusy(true)
+    setError(null)
+    setNotice(null)
+    try {
+      const result = await window.api.runtime.manageNamedEnvironments({ action: 'remove', name })
+      setNamedEnvs(result.environments)
+      setNotice(t('runtimes.namedEnvRemoved').replace('{name}', name))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // Promotes a named env through the EXISTING selection channels (register → enable → select), so no new
+  // backend surface is needed to make an imported environment usable as a runtime.
+  const useNamedEnv = async (env: EnvironmentInfo): Promise<void> => {
+    if (env.language !== 'python' || env.interpreterPath === undefined) return
+    setBusy(true)
+    setError(null)
+    setNotice(null)
+    try {
+      await window.api.runtime.registerInterpreter(env.language, env.interpreterPath)
+      let next = await window.api.runtime.listEnvironments()
+      const added = next.python.find(
+        (candidate) => candidate.interpreterPath === env.interpreterPath
+      )
+      if (added && !isEnvEnabled(added, enablement.python)) {
+        const updated = await window.api.runtime.setEnvironmentEnabled('python', added.envId, true)
+        setEnablement((current) => ({ ...current, python: updated }))
+        next = await window.api.runtime.listEnvironments()
+      }
+      const selected =
+        next.python.find((candidate) => candidate.interpreterPath === env.interpreterPath) ?? added
+      if (selected) {
+        const survey = await window.api.runtime.setSelection('python', {
+          source: 'external',
+          interpreterPath: env.interpreterPath,
+          appOwnedOverlay: false,
+          packageInstallAuthorized: isInstallAuthorized('python', selected)
+        })
+        setSurveys((current) => [
+          ...current.filter((entry) => entry.language !== survey.language),
+          survey
+        ])
+      }
+      applyAll(await fetchAll())
+      setNotice(t('runtimes.namedEnvUsed').replace('{name}', env.name))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -996,6 +1083,117 @@ const RuntimesPanel = ({
           })
         )}
       </SettingsSection>
+
+      {/* Audit P0-8: the named environments — the surface an external-lock import used to be a dead end
+          without (no list, no removal, no way to make it a runtime). */}
+      <SettingsSection
+        title={t('runtimes.namedEnvs')}
+        description={t('runtimes.namedEnvsDesc')}
+        aria-label={t('runtimes.namedEnvs')}
+        separated
+      >
+        <div className="space-y-2" data-testid="runtimes-named-envs">
+          {namedEnvs === null ? (
+            <p className="text-sm text-muted-foreground">{t('settings.detectingRuntimes')}</p>
+          ) : namedEnvs.length === 0 ? (
+            <p
+              className="text-[13px] text-muted-foreground"
+              data-testid="runtimes-named-envs-empty"
+            >
+              {t('runtimes.namedEnvsEmpty')}
+            </p>
+          ) : (
+            namedEnvs.map((env) => (
+              <div
+                key={env.name}
+                data-testid="named-env-row"
+                className="flex items-center justify-between gap-4 rounded-lg border border-border bg-card p-3"
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-foreground">{env.name}</span>
+                    <Badge variant="secondary">{env.language}</Badge>
+                    <Badge variant={env.ready ? 'secondary' : 'destructive'}>
+                      {env.ready ? t('settings.ready') : t('settings.notRunnable')}
+                    </Badge>
+                  </div>
+                  {env.interpreterPath ? (
+                    <code className="mt-1 block truncate text-xs text-muted-foreground">
+                      {env.interpreterPath}
+                    </code>
+                  ) : null}
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  {env.language === 'python' && env.interpreterPath ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      data-testid="named-env-use"
+                      disabled={busy}
+                      onClick={() => void useNamedEnv(env)}
+                    >
+                      <CheckCircle2 aria-hidden="true" /> {t('runtimes.useNamedEnv')}
+                    </Button>
+                  ) : null}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    data-testid="named-env-remove"
+                    disabled={busy}
+                    onClick={() => setNamedEnvAction({ name: env.name })}
+                  >
+                    <Trash2 aria-hidden="true" /> {t('runtimes.removeNamedEnv')}
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </SettingsSection>
+
+      <AlertDialog.Root
+        open={namedEnvAction !== null}
+        onOpenChange={(open) => {
+          if (!open) setNamedEnvAction(null)
+        }}
+      >
+        <AlertDialog.Portal>
+          <AlertDialog.Overlay className={dialogOverlayClassName} />
+          <AlertDialog.Content
+            data-testid="named-env-remove-dialog"
+            className={dialogPanelClassName('w-[min(440px,calc(100vw-2rem))]')}
+          >
+            <AlertDialog.Title className={dialogTitleClassName}>
+              {t('runtimes.removeNamedEnvTitle').replace(
+                '{name}',
+                dialogNamedEnvAction?.name ?? ''
+              )}
+            </AlertDialog.Title>
+            <AlertDialog.Description className={dialogDescriptionClassName}>
+              {t('runtimes.namedEnvsDesc')}
+            </AlertDialog.Description>
+            <div className="mt-6 flex justify-end gap-2">
+              <AlertDialog.Cancel asChild>
+                <Button type="button" variant="outline">
+                  {t('common.cancel')}
+                </Button>
+              </AlertDialog.Cancel>
+              <AlertDialog.Action asChild>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  data-testid="named-env-remove-confirm"
+                  onClick={() => void confirmRemoveNamedEnv()}
+                >
+                  {t('runtimes.removeNamedEnv')}
+                </Button>
+              </AlertDialog.Action>
+            </div>
+          </AlertDialog.Content>
+        </AlertDialog.Portal>
+      </AlertDialog.Root>
 
       <AlertDialog.Root
         open={disableImpact !== null}
