@@ -590,6 +590,8 @@ const RuntimesPanel = ({
         setPackageCounts({})
         applyAll(await fetchAll())
         setNotice(importImportedLine(t, result.environment.name, result.coverage))
+        // The import just created a named env, so the list must show it without a reload.
+        void refreshNamedEnvs()
       }
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e)

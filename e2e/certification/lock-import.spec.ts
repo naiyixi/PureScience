@@ -131,6 +131,39 @@ test('the panel imports an environment from an external lock, with zero download
   ).trim()
   console.log(`[a7-window] interpreter=${printed}`)
   expect(JSON.parse(printed)).toEqual([3, 12, 13])
+
+  // Audit P0-8: the env this dialog just built must be MANAGEABLE from the panel — visible in the
+  // named-environment list (0 runtime CARDS is correct and expected: cards come from interpreter
+  // discovery) and removable, with its files actually gone afterwards. The import dialog is closed
+  // first: it is a modal, so the list behind it is not the reading we want.
+  const serviceEnvs = await page.evaluate(async () => {
+    const { api } = globalThis as unknown as {
+      api: {
+        runtime: {
+          manageNamedEnvironments: (request: unknown) => Promise<{
+            environments: Array<{ name: string; interpreterPath?: string }>
+          }>
+        }
+      }
+    }
+    const result = await api.runtime.manageNamedEnvironments({ action: 'list' })
+    return result.environments.map((env) => env.name)
+  })
+  console.log(`[a7-window] serviceNamedEnvs=${JSON.stringify(serviceEnvs)}`)
+  await dialog.getByRole('button', { name: 'Cancel' }).click()
+  await expect(dialog).toHaveCount(0)
+
+  const namedRow = settings.locator('[data-testid="named-env-row"]', { hasText: 'lock-import-env' })
+  await expect(namedRow).toBeVisible()
+  console.log(
+    `[a7-window] namedEnvRows=${await settings.locator('[data-testid="named-env-row"]').count()}`
+  )
+  await namedRow.getByTestId('named-env-remove').click()
+  await page.getByTestId('named-env-remove-confirm').click()
+  await expect(namedRow).toHaveCount(0)
+  const envDir = join(instanceDataRoot(app.storageRoot), 'runtime', 'envs', 'lock-import-env')
+  expect(existsSync(envDir)).toBe(false)
+  console.log('[a7-window] namedEnvRemoved=true dirGone=true')
 })
 
 test('the dialog prints every unsatisfied entry and creates nothing', async ({ app }) => {
