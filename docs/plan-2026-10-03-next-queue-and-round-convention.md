@@ -54,11 +54,15 @@ U4 别名合并 + `displayName`（`f0b0e218`）· 导入侧真机读数（`d1a96
 **v1.80.0 发布**（`f690b85a` 首次 tag → 偶发用例修复后**重建 tag** `f2a97d87`，21 资产、正文 13,535 字节）·
 **A1 v1.80.0 发布记录更正**（`0fabd2e6` + 格式 `d71a9331`：改为「已发布」实际结论，21 资产 / run `37099590863` 全绿 /
 `sourceSha=f2a97d87…` / mac 未签名已披露）·
-**A7 外部锁导入**（S1 能力 `cd2bd978` + S2/S3 通道与界面 `83a2cdbc`：`runtime:import-lock` 单通道 +
+**A7 外部锁导入**（S1 能力 `cd2bd978` + S2/S3 通道与界面 `83a2cdbc` + 真机三缺陷修复 `9b0496f1`：`runtime:import-lock` 单通道 +
 RuntimesPanel 导入对话框 + 9 语种 13 键 + 契约计数连锁 + 真机读数 `docs/evidence/2026-10-03-A7-external-lock-import.md`
 ——82 条真锁离线导入、conda-meta 逐条一致、0 下载、解释器真跑 `[3,12,13]`；坏 md5/缺件都具名失败不建环境）。
-**⚠️ A7 仍缺两条读数（已立案，见 evidence §3）**：① 下载路径（`allowDownload:true` 从锁 URL 取包）未实测；
-② 真窗口「点得动」读数未取（界面目前只有 jsdom 渲染测试 + 真机主进程读数）。
+**A7 真窗口读数已取**（`9b0496f1`，`e2e/certification/lock-import.spec.ts` = passed）：界面原文
+「Imported “lock-import-env” — 82 packages (82 from cache, 0 downloaded)」+ 失败路径具名原因上屏；
+这一跑额外揪出并修掉三个单测漏掉的真缺陷（启动自检计数 344→345 导致应用 fail-fast、对话框页脚越界、
+管理器丢 `this`）。
+**⚠️ A7 仅剩一条读数（已立案，见 evidence §5.2）**：**下载路径**（`allowDownload:true` 从锁 URL 取包 + 校验后建成环境）未实测；
+另记一条产品决策（具名环境不出现于 Settings→Runtimes 卡片列表，实测如此，未声称已覆盖）。
 
 1. ~~**`49b2c83c` 那份 v1.80.0 发布记录需按实际结论更正**~~ ✅ **已完成（会话，`0fabd2e6`）**——
    已按实际结论更正为「已发布」：21 资产、run `37099590863` 全绿、`sourceSha = f2a97d87…`、
