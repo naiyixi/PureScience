@@ -93,6 +93,38 @@ RuntimesPanel 导入对话框 + 9 语种 13 键 + 契约计数连锁 + 真机读
 2. **S3 增量全文索引**：索引 + 失效策略 + 验收。
 3. **M2 本地解析模型资产**：资产获取/校验（**无已发布 SHA256 的权重不下载**，见纪律）+ 接入。
 
+### D. 入口层闭环（2026-10-03 全软件扫描新增；证据见 `docs/evidence/2026-10-03-entry-layer-and-interaction-closure-audit.md`）
+
+> 通道级已确认不漏（449 条契约项 × 窗口调用点，真差 0）；下面全是**功能流层**的「能力已在、体验层缺一半」。
+> 扫描共 52 条（P0 9 / P1 33 / P2 10），按可收口程度分三批；**A 段由会话负责**（要拍板与真机读数），执行器在 A 段无人动时可接手。
+
+**D1（优先，四条都是「后端全齐、只差一个挂载点」，单轮可收口）**
+
+1. **计算任务产物清单**：`shared/compute.ts:328-332` 已有 `featured_files`/`left_on_remote`/`harvest_error`，
+   渲染层只剩 `JobDetailModal.tsx:225-226` 一行**注释占位**（组件不存在）。补 `FeaturedOutputs` 面板 + 逐产物下载。
+2. **通知到达点亮红点**：`notification-inbox-store.ts:76-97` 有 `listen()` 但**全渲染层无人调用**（`listen()` 全库 0 命中）。
+   在 `App.tsx` 启动处调一次即可（照 `permission-grants-store` 的写法）。
+3. **A7 锁导入环境的删除 / 用作运行时**：`RuntimesPanel.tsx` 对 `agent-created` 卡只有启用开关，
+   `manageEnvironments`/`removeEnvironment` 渲染层 0 命中 ⇒ **A7 导入的环境对用户是死路**。补删除（二次确认 + 在用内核时拒绝）。
+4. **产物用系统程序打开**：`artifacts:open-file` 后端 + preload 全齐，`artifacts.openFile` 渲染层 0 命中。
+   在 `PreviewFileSurface` 头部加「用系统程序打开 / 在文件夹中显示」。
+
+**D2（需要迁移或新 IPC 面，单独立项）**
+
+5. **会话包随包证据落地**：`import-session.ts:79` 只读 `{ only: ['conversation.json'] }`，而 `import.ts:22-24` 把
+   citations / review-findings / verifications 列为**强制**证据，导出侧确实写入 —— 导入侧全丢。
+6. **导入会话的姿态可见**：侧车 `<id>.import.json` 只被主进程用来拒绝运行，窗口 0 命中 ⇒ 加只读 IPC + 会话横幅。
+7. **存储迁移遗留副本的「完成 / 丢弃」**：`migration-service.ts:232` 的文案「Finish or discard that move」
+   **指向一个不存在的按钮**——两个通道都要求活动弹窗的 `targetPath`。启动时按 marker 扫描并给出两个入口。
+
+**D3（成批推进，按域）**
+
+- 笔记本/运行时一批 6 条（窗口直装包、会话级运行时绑定、内核重启/关闭、遮罩取消、下载明细、`bundleSource`）；
+- 自定义 MCP 一批 6 条（详情/逐工具权限、跳过审批、登出、可用性徽标、连接测试、批量启停）；
+- 文献/期刊一批 6 条（附件历史、notes、`defaultKind`、`maxImpactFactor`、手工订正、逐行归属）；
+- 文案与死面清理一批 10 条（核验面板 4 处硬编码英文、迁移弹窗英文、设置搜索缺 egress 关键词、
+  `handoff.list/retry` 死面择一正本等）。
+
 ### C. 阻塞（不是排期问题，别花轮次）
 
 - **K1a 技能市场只读纵切 / K3 市场全量交互**：卡在**官方技能目录不可达/未发布**（本机 jsDelivr 元数据 404、
