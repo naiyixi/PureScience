@@ -71,7 +71,17 @@ const EMPTY_SNAPSHOT: SearchIndexSnapshot = {
   listBounded: false
 }
 
-export const createSearchIndexService = (ports: SearchIndexServicePorts) => {
+/** The service's own surface — named so the factory can carry an explicit return type. */
+export type SearchIndexService = {
+  /** The query path's port: the LAST MEASURED tick, never a fresh listing. */
+  readIndex(): Promise<SearchIndexSnapshot>
+  tick(): Promise<SearchIndexSnapshot>
+  start(): void
+  stop(): void
+  snapshot(): SearchIndexSnapshot
+}
+
+export const createSearchIndexService = (ports: SearchIndexServicePorts): SearchIndexService => {
   const intervalMs = ports.intervalMs ?? 5_000
   const budget = ports.budget ?? 50
   const now = ports.now ?? ((): string => new Date().toISOString())
@@ -155,7 +165,7 @@ export const createSearchIndexService = (ports: SearchIndexServicePorts) => {
     return snapshot
   }
 
-  const api = {
+  const api: SearchIndexService = {
     /** The query path's port. Cheap: it answers from the last measured tick, never by listing files. */
     readIndex: async (): Promise<SearchIndexSnapshot> => snapshot,
     tick,
