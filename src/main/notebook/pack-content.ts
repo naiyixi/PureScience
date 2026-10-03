@@ -8,27 +8,36 @@ import { withExclusiveCacheLock } from './pkgs-cache-lock'
 
 export type LockPackage = { file: string; md5: string }
 
+// One parsed @EXPLICIT entry WITH its source URL. The external-lock import (A7) needs the URL to fetch
+// any tarball the shared cache lacks; the pack-seeding path only needs name + md5.
+export type LockEntry = { url: string; file: string; md5: string }
+
 // Parses the @EXPLICIT entries and rejects malformed lines before any file is copied into the shared
-// micromamba cache. Package URLs are expected to end in a basename and a 32-char md5 digest.
-export const lockPackages = (lockText: string): LockPackage[] => {
-  const packages = lockText
+// micromamba cache. Package URLs are expected to end in a basename and a 32-char md5 digest. One
+// malformed or checksum-less line rejects the WHOLE lock: "we could not verify this entry" must never
+// degrade into "we used it anyway".
+export const lockEntries = (lockText: string): LockEntry[] => {
+  const entries = lockText
     .split('\n')
     .map((line) => line.trim())
     .filter((line) => /^https?:\/\//.test(line))
     .map((line) => {
       const [url, md5] = line.split('#')
       const file = url.slice(url.lastIndexOf('/') + 1)
-      return { file, md5: md5 ?? '' }
+      return { url, file, md5: md5 ?? '' }
     })
 
-  if (packages.length === 0) throw new Error('runtime pack lock contains no package entries')
-  for (const pkg of packages) {
-    if (!pkg.file || pkg.file.includes('/') || !/^[0-9a-f]{32}$/i.test(pkg.md5)) {
-      throw new Error(`runtime pack lock contains a malformed package entry: ${pkg.file}`)
+  if (entries.length === 0) throw new Error('runtime pack lock contains no package entries')
+  for (const entry of entries) {
+    if (!entry.file || entry.file.includes('/') || !/^[0-9a-f]{32}$/i.test(entry.md5)) {
+      throw new Error(`runtime pack lock contains a malformed package entry: ${entry.file}`)
     }
   }
-  return packages
+  return entries
 }
+
+export const lockPackages = (lockText: string): LockPackage[] =>
+  lockEntries(lockText).map(({ file, md5 }) => ({ file, md5 }))
 
 export const validateAndSeedPack = async (
   root: string,

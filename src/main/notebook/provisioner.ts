@@ -1,4 +1,12 @@
-import { type Dirent, existsSync, readdirSync, rmSync, statSync } from 'node:fs'
+import {
+  type Dirent,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  writeFileSync
+} from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { basename, dirname, join } from 'node:path'
 
@@ -25,6 +33,8 @@ import type {
 } from '../../shared/notebook-env'
 import { chainFetchBundle, createLocalBundleAdapter, resolveBundleDir } from './bundle-local'
 import { createFetchBundleAdapter } from './language-pack-fetch'
+import { lockEntries } from './pack-content'
+import { resilientDownload } from '../net/resilient-download'
 import { DEFAULT_MAX_ENV_RELATIVE_PATH, type PackPathBudget } from './bundle-manifest'
 import { withExclusiveCacheLocks, withSharedCacheLocks } from './pkgs-cache-lock'
 import {
@@ -51,6 +61,7 @@ import {
 import { defaultOperationChildLiveness, readProcessStartToken } from './operation-recovery'
 import {
   isChildUnconfirmedError,
+  md5File,
   micromambaDiagnosticText,
   runMicromamba,
   verifyExecutable
@@ -84,6 +95,44 @@ export type { ProvisionProgress, ProvisionStatus }
 
 // A resolved bundle on disk: the local @EXPLICIT lock whose tarballs are already in the pkgs cache.
 export type FetchedBundle = { lockPath: string; pathBudget?: PackPathBudget }
+
+// A7 external-lock import. Honest coverage for ONE import: `missing` is per-entry and NAMED, and a
+// non-empty list means NOTHING was created (fail-closed) — never a silently smaller environment.
+export type ImportLockCoverage = {
+  total: number
+  fromCache: number
+  downloaded: number
+  missing: Array<{ file: string; reason: string }>
+}
+
+export type ImportLockOutcome = {
+  environment: EnvironmentInfo
+  coverage: ImportLockCoverage
+}
+
+// Thrown when at least one lock entry could not be satisfied (absent + offline, download failed, or a
+// checksum mismatch). Carries the full coverage so the caller/UI can show every reason; no prefix is
+// created when this is thrown.
+export class ImportLockIncompleteError extends Error {
+  constructor(
+    message: string,
+    readonly coverage: ImportLockCoverage
+  ) {
+    super(message)
+    this.name = 'ImportLockIncompleteError'
+  }
+}
+
+// Default lock-package fetcher: the shared resume/retry downloader. It is intentionally NOT given an
+// expected digest — it hashes sha256 for its own resume bookkeeping, while the official md5 check
+// happens in the provisioner against the lock entry.
+const defaultDownloadPackage = async (
+  url: string,
+  destination: string,
+  signal?: AbortSignal
+): Promise<void> => {
+  await resilientDownload(url, destination, signal ? { signal } : {})
+}
 
 // One default environment specification (A-internal). `version` is the curated interpreter version
 // (e.g. "3.12" / "4.4") — it identifies the staged offline pack via packId(language, version) (see
@@ -221,6 +270,11 @@ export type ProvisionerDeps = {
   // inject a manual one to drive ticks synchronously instead of waiting real wall-clock time. Returns
   // a cancel fn that stops further ticks.
   scheduleTick?: (onTick: () => void, ms: number) => () => void
+  // A7 external-lock import: fetches ONE lock-entry URL into `destination` (its path in the shared
+  // pkgs cache). Defaults to the resilient (resume/retry/progress) downloader; tests inject a stub so
+  // no network is touched. This must NOT verify anything itself — the provisioner re-hashes the file
+  // against the lock's md5 and deletes it on mismatch.
+  downloadPackage?: (url: string, destination: string, signal?: AbortSignal) => Promise<void>
 }
 
 // Default create-phase ticker scheduler: a setInterval that never keeps the process alive on its own.
@@ -1117,6 +1171,176 @@ export class DefaultRuntimeProvisioner implements RuntimeProvisioner {
       ready: existsSync(bin),
       isDefault: name === DEFAULT_PY_ENV || name === DEFAULT_R_ENV
     }
+  }
+
+  // A7 external-lock import (docs/plan-2026-10-03-A7-external-lock-import.md). Materializes a named
+  // environment from a user-supplied @EXPLICIT lock. Fail-closed at three points:
+  //   1. the lock parses with a 32-hex md5 on EVERY entry (lockEntries) or the whole lock is rejected;
+  //   2. every tarball is in the shared cache AND re-hashes to its md5, or (only when allowDownload)
+  //      is downloaded and re-hashed; a mismatch deletes the file and becomes a named failure;
+  //   3. if ANY entry is unsatisfied, NO prefix is created and ImportLockIncompleteError carries the
+  //      per-entry reasons — the env is never silently smaller than the lock.
+  async createNamedEnvironmentFromLock(
+    name: string,
+    language: NotebookLanguage,
+    lockText: string,
+    options: {
+      allowDownload?: boolean
+      signal?: AbortSignal
+      onProgress?: (p: ProvisionProgress) => void
+    } = {}
+  ): Promise<ImportLockOutcome> {
+    if (language !== 'python' && language !== 'r') {
+      throw new Error('Importing a lock requires a language of "python" or "r".')
+    }
+    // Throws (whole-lock rejection) on an empty lock or on any entry without a valid 32-hex md5.
+    const entries = lockEntries(lockText)
+    const prefix = envPrefix(this.deps.root, name)
+    if (
+      (this.deps.platform ?? process.platform) === 'win32' &&
+      prefix.length + DEFAULT_MAX_ENV_RELATIVE_PATH > WINDOWS_MAX_USABLE_PATH
+    ) {
+      throw new Error(
+        `Environment "${name}" exceeds the conservative Windows environment path budget; ` +
+          'choose a shorter name or data-root path.'
+      )
+    }
+    this.assertPrefixWritable(prefix)
+    const bin = language === 'python' ? pythonBin(prefix) : rBin(prefix)
+    const cache = this.cache
+    const cacheDir = pkgsCache(this.deps.root)
+    mkdirSync(cacheDir, { recursive: true })
+    const allowDownload = options.allowDownload ?? true
+    const coverage: ImportLockCoverage = {
+      total: entries.length,
+      fromCache: 0,
+      downloaded: 0,
+      missing: []
+    }
+    const emit = (completed: number): void =>
+      options.onProgress?.({
+        phase: 'import-lock',
+        message: `Verifying lock package ${completed}/${entries.length}`,
+        progress: entries.length === 0 ? 1 : completed / entries.length,
+        language,
+        scope: language
+      })
+
+    // Hold the shared cache lock for the whole verify/seed pass so a concurrent corrupt-cache repair
+    // (which takes the cache EXCLUSIVE and deletes incomplete extractions) cannot delete a package
+    // directory we are still producing.
+    await withSharedCacheLocks(this.cacheLockKeys(cache), async () => {
+      for (const [index, entry] of entries.entries()) {
+        const destination = join(cacheDir, entry.file)
+        if (await this.packageInCache(destination, entry.md5)) {
+          coverage.fromCache += 1
+          emit(index + 1)
+          continue
+        }
+        if (!allowDownload) {
+          coverage.missing.push({
+            file: entry.file,
+            reason: 'Not in the local cache and downloads are disabled for this import'
+          })
+          emit(index + 1)
+          continue
+        }
+        try {
+          await (this.deps.downloadPackage ?? defaultDownloadPackage)(
+            entry.url,
+            destination,
+            options.signal
+          )
+          const actual = (await md5File(destination)).toLowerCase()
+          if (actual !== entry.md5.toLowerCase()) {
+            rmSync(destination, { force: true })
+            coverage.missing.push({
+              file: entry.file,
+              reason: `md5 mismatch (expected ${entry.md5}, got ${actual}) — discarded`
+            })
+          } else {
+            coverage.downloaded += 1
+          }
+        } catch (cause) {
+          rmSync(destination, { force: true })
+          coverage.missing.push({
+            file: entry.file,
+            reason: `Download failed: ${cause instanceof Error ? cause.message : String(cause)}`
+          })
+        }
+        emit(index + 1)
+      }
+    })
+
+    if (coverage.missing.length > 0) {
+      throw new ImportLockIncompleteError(
+        `Lock import could not satisfy ${coverage.missing.length} of ${coverage.total} package ` +
+          `entries: ${coverage.missing.map((m) => `${m.file} (${m.reason})`).join('; ')}`,
+        coverage
+      )
+    }
+
+    // Stage the lock where micromamba can read it, then create the prefix OFFLINE: `create --file
+    // <lock> --offline` hard-links the verified tarballs from the shared cache, so the resulting env
+    // is exactly the lock's package set — no solve, no network.
+    const staging = join(this.deps.root, 'locks', `${randomUUID()}.lock`)
+    try {
+      mkdirSync(dirname(staging), { recursive: true })
+      writeFileSync(staging, lockText, 'utf8')
+      await this.withJournaledPrefixWrite(
+        'materialize',
+        name,
+        prefix,
+        `import-lock-${language}`,
+        (onBeforeSpawn, onChild) =>
+          this.runWithMaxPathRecovery(
+            () =>
+              withSharedCacheLocks(this.cacheLockKeys(cache), async () => {
+                this.clearIncompletePrefix(prefix, bin)
+                await this.deps.runArgv(
+                  createFromLockArgv(this.deps.mm, this.deps.root, prefix, staging),
+                  options.signal,
+                  onChild,
+                  onBeforeSpawn,
+                  cache,
+                  DEFAULT_MAX_CACHE_RELATIVE_PATH
+                )
+              }),
+            undefined,
+            cache
+          )
+      )
+    } finally {
+      rmSync(staging, { force: true })
+    }
+    await this.deps.verify(bin, prefix)
+    return {
+      environment: {
+        name,
+        language,
+        ready: existsSync(bin),
+        isDefault: name === DEFAULT_PY_ENV || name === DEFAULT_R_ENV,
+        sizeBytes: dirSizeBytes(prefix)
+      },
+      coverage
+    }
+  }
+
+  // True when `path` exists AND re-hashes to the lock's md5. A file that is present but fails the
+  // digest is REMOVED, so a truncated/tampered cache entry can never be hard-linked into a new env.
+  private async packageInCache(path: string, md5: string): Promise<boolean> {
+    try {
+      if (!statSync(path).isFile()) return false
+    } catch {
+      return false
+    }
+    try {
+      if ((await md5File(path)).toLowerCase() === md5.toLowerCase()) return true
+    } catch {
+      // fall through to removal
+    }
+    rmSync(path, { force: true })
+    return false
   }
 
   // Scans the physical env directory and maps reserved Windows default directories back to their
