@@ -35,7 +35,13 @@ export type SearchIndexEntry = {
 }
 
 /** What has been read out of a corpus item, ready to be matched later. */
-export type SearchIndexRecord = SearchIndexEntry & { text: string }
+export type SearchIndexRecord = SearchIndexEntry & {
+  text: string
+  projectId?: string
+  title?: string
+  relativePath?: string
+  timestamp?: string
+}
 
 export type SearchIndexCandidate = {
   id: string
@@ -44,6 +50,12 @@ export type SearchIndexCandidate = {
   /** The text to store. Truncated to SEARCH_INDEX_MAX_ENTRY_CHARS by the caller or here, either way the
    *  stored `bytes` says what was actually kept. */
   text: string
+  // Display fields carried WITH the stored text: a hit built from the index must be able to open the same
+  // source a scan-built hit would, so the index cannot be text-only.
+  projectId?: string
+  title?: string
+  relativePath?: string
+  timestamp?: string
 }
 
 /** Where an interrupted build resumes. `processed` is monotone: it never decreases across runs. */
@@ -187,7 +199,11 @@ export const applySearchIndexPlan = async (
       fingerprint: candidate.fingerprint,
       indexedAt: checkpoint.updatedAt,
       bytes: Buffer.byteLength(text, 'utf8'),
-      text
+      text,
+      ...(candidate.projectId === undefined ? {} : { projectId: candidate.projectId }),
+      ...(candidate.title === undefined ? {} : { title: candidate.title }),
+      ...(candidate.relativePath === undefined ? {} : { relativePath: candidate.relativePath }),
+      ...(candidate.timestamp === undefined ? {} : { timestamp: candidate.timestamp })
     }
   })
   const incoming = records.reduce((sum, record) => sum + record.bytes, 0)

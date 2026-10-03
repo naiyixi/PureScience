@@ -312,6 +312,14 @@ export type GlobalSearchScopeCoverage = {
   considered: number
   contentRead: number
   bounded: boolean
+  // S3: what the incremental index contributes to THIS scope. `indexed` is how many entries it holds,
+  // `pending` how many of them changed since they were indexed (0 ⇒ the index is current), `stale` is
+  // `pending > 0`, and `capped` says the storage budget refused some entries. All optional: a search that
+  // ran without an index reports none of them, which is itself the honest answer.
+  indexed?: number
+  pending?: number
+  stale?: boolean
+  capped?: boolean
 }
 
 export const normalizeSearchQuery = (query: string): string => query.trim()

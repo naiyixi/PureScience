@@ -12,6 +12,7 @@ import {
   type SearchableSession,
   type SearchableSessionMessage
 } from './global-search-service'
+import type { SearchIndexRecord } from './index-store'
 
 const session = (overrides: Partial<SearchableSession> = {}): SearchableSession => ({
   sessionId: 'session-1',
@@ -52,6 +53,96 @@ const harness = (
 const request = (overrides: Partial<GlobalSearchRequest> = {}): GlobalSearchRequest => ({
   query: 'sin',
   ...overrides
+})
+
+// S3 (incremental index): the query path must treat the index as ADDITIVE. These cases pin the union and
+// the coverage/staleness readout — the two properties the parent plan's acceptance ①/④ rest on.
+const indexRecord = (overrides: Partial<SearchIndexRecord> = {}): SearchIndexRecord => ({
+  id: 'file-1',
+  scope: 'uploads',
+  fingerprint: 'fingerprint-1',
+  indexedAt: '2026-10-03T00:00:00.000Z',
+  bytes: 24,
+  projectId: 'project-1',
+  title: 'panel.csv',
+  relativePath: 'uploads/panel.csv',
+  text: 'zebrafish_ortholog_panel',
+  ...overrides
+})
+
+describe('global search · incremental index (S3)', () => {
+  const readIndexWith = (
+    records: SearchIndexRecord[],
+    extra: { pendingByScope?: Record<string, number>; capped?: boolean } = {}
+  ) =>
+    vi.fn(async () => ({
+      present: true,
+      records,
+      pendingByScope: extra.pendingByScope ?? {},
+      capped: extra.capped ?? false
+    }))
+
+  it('returns a hit the bounded scan could not produce, and reports the index as current', async () => {
+    // The scan read no files at all: without the index this query would honestly return nothing.
+    const { service } = harness({
+      listSessions: vi.fn(async () => []),
+      readSessionMessages: vi.fn(async () => []),
+      readIndex: readIndexWith([indexRecord()])
+    })
+
+    const response = await service.query(
+      request({ query: 'zebrafish_ortholog_panel', scopes: ['uploads'] })
+    )
+
+    expect(response.hits).toHaveLength(1)
+    expect(response.hits[0]).toMatchObject({
+      scope: 'uploads',
+      id: 'file-1',
+      relativePath: 'uploads/panel.csv'
+    })
+    expect(response.coverage.uploads).toMatchObject({ indexed: 1, pending: 0, stale: false })
+    // A content match came back, so the name-and-path note must not be raised.
+    expect(response.notes).not.toContain('files-matched-by-name-and-path')
+  })
+
+  it('keeps returning the index hits while reporting staleness, never trading one for the other', async () => {
+    const { service } = harness({
+      listSessions: vi.fn(async () => []),
+      readSessionMessages: vi.fn(async () => []),
+      readIndex: readIndexWith([indexRecord()], { pendingByScope: { uploads: 3 } })
+    })
+
+    const response = await service.query(request({ query: 'zebrafish', scopes: ['uploads'] }))
+
+    expect(response.hits).toHaveLength(1)
+    expect(response.coverage.uploads).toMatchObject({ indexed: 1, pending: 3, stale: true })
+  })
+
+  it('names a capped index in the coverage instead of quietly holding fewer entries', async () => {
+    const { service } = harness({
+      listSessions: vi.fn(async () => []),
+      readSessionMessages: vi.fn(async () => []),
+      readIndex: readIndexWith([], { capped: true })
+    })
+
+    const response = await service.query(request({ query: 'zebrafish', scopes: ['uploads'] }))
+
+    expect(response.hits).toHaveLength(0)
+    expect(response.coverage.uploads.capped).toBe(true)
+    expect(response.coverage.uploads.indexed).toBe(0)
+  })
+
+  it('reports no index facts at all when the app has no index (an honest absence)', async () => {
+    const { service } = harness({
+      listSessions: vi.fn(async () => []),
+      readSessionMessages: vi.fn(async () => [])
+    })
+
+    const response = await service.query(request({ query: 'zebrafish', scopes: ['uploads'] }))
+
+    expect(response.coverage.uploads.indexed).toBeUndefined()
+    expect(response.coverage.uploads.stale).toBeUndefined()
+  })
 })
 
 describe('createGlobalSearchService', () => {

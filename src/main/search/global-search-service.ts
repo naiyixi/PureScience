@@ -25,6 +25,7 @@ import {
   type GlobalSearchScopeCoverage
 } from '../../shared/global-search'
 import type { PdfAnnotationKind } from '../../shared/pdf-annotations'
+import type { SearchIndexRecord } from './index-store'
 
 // Main-process global search.
 //
@@ -113,6 +114,18 @@ export type GlobalSearchPorts = {
   // Optional: without it the annotation scope is empty and the response says the corpus was empty
   // (`annotations-empty`) rather than leaving the reader to conclude the markup does not exist.
   listAnnotations?(projectId?: string): Promise<SearchableAnnotation[]>
+  // S3: the incremental index. Optional — an app without one still searches (bounded scan only) and the
+  // coverage simply reports no index facts. When present its records ADD hits to the scan's, so indexing
+  // can only ever make the same query return more; `pendingByScope` is what makes staleness readable.
+  readIndex?(request: { projectId?: string }): Promise<SearchIndexPorts>
+}
+
+/** What the query path needs from the index: the records, how stale they are, and whether it was capped. */
+export type SearchIndexPorts = {
+  present: boolean
+  records: SearchIndexRecord[]
+  pendingByScope: Record<string, number>
+  capped: boolean
 }
 
 export type GlobalSearchService = {
@@ -331,6 +344,60 @@ export const createGlobalSearchService = (ports: GlobalSearchPorts): GlobalSearc
           relativePath: file.relativePath,
           ...(file.timestamp ? { timestamp: file.timestamp } : {})
         })
+      }
+
+      // S3: the index ADDS to this bounded scan; it never replaces it. That union is what makes "the same
+      // query returns at least as much after indexing" a structural property instead of a promise — and
+      // it is why the live scan is allowed to stay bounded. A record the scan already produced is skipped
+      // by (scope,id), so the same file can never appear twice.
+      if (ports.readIndex) {
+        const index = await ports.readIndex({
+          ...(request.projectId === undefined ? {} : { projectId: request.projectId })
+        })
+        const alreadyHit = new Set(hits.map((hit) => `${hit.scope}\u0000${hit.id}`))
+        for (const scope of fileScopesRequested) {
+          const records = index.records.filter(
+            (record) => record.scope === scope && inProject(record.projectId ?? '')
+          )
+          coverage[scope].indexed = records.length
+          const pending = index.pendingByScope[scope] ?? 0
+          coverage[scope].pending = pending
+          coverage[scope].stale = pending > 0
+          if (index.capped) coverage[scope].capped = true
+
+          for (const record of records) {
+            const key = `${scope}\u0000${record.id}`
+            if (alreadyHit.has(key)) continue
+            if (!searchHitsInTimestampRange(record.timestamp, range)) continue
+            const matches = [
+              ...collectTermMatches({ text: record.title ?? '', terms, field: 'name' }),
+              ...collectTermMatches({ text: record.relativePath ?? '', terms, field: 'path' }),
+              ...collectTermMatches({
+                text: record.text.slice(0, GLOBAL_SEARCH_MAX_MESSAGE_CHARS),
+                terms,
+                field: 'content'
+              })
+            ]
+            if (matches.length === 0) continue
+            hits.push({
+              scope,
+              id: record.id,
+              projectId: record.projectId ?? '',
+              title: record.title ?? record.id,
+              score: scoreSearchHit({
+                matches: matches.length,
+                titleRank: searchTitleRank(record.title ?? record.id, terms),
+                timestamp: record.timestamp
+              }),
+              matches,
+              ...(record.relativePath ? { relativePath: record.relativePath } : {}),
+              ...(record.timestamp ? { timestamp: record.timestamp } : {})
+            })
+            alreadyHit.add(key)
+            // The scope produced a CONTENT match, so the name-and-path note below must not claim otherwise.
+            sawTextByScope.set(scope, true)
+          }
+        }
       }
 
       // Self-healing honesty, now per origin: it appears only for a scope that was searched, had items,
