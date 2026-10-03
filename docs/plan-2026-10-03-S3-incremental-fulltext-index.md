@@ -74,6 +74,24 @@
   （检索永不等待索引），没接索引时响应**不带** `index` 块——「没接」与「空索引」是两句话。
 - ⬜ **S4（真机验收）**：隔离根起真实例，逐条取父排期的四条断言读数（新导入→未覆盖提示→索引后条数增加、
   中断续跑不回退、删索引目录→覆盖为空而非无结果、前后超集），落 `docs/evidence/`。
+  - **S4 配方（2026-10-03 会话探明，可直接照做；本轮未落地）**：
+    - **仓里目前没有 S3 的认证 spec**（`e2e/certification/` 下无 search/index 相关文件），要**新建**一条。
+    - **打开搜索面板**照 `e2e/certification/palette-commands.spec.ts`（它已经会唤起全局搜索）。
+    - **读数槽位已就位，不用改界面**：`data-slot="gs-index-summary"` / `gs-index-counts` / `gs-index-age` /
+      `gs-index-capped` / `gs-index-absent`，以及「立即索引」按钮 `data-slot="gs-index-now"`（`GlobalSearchDialog.tsx:1713-1746`）。
+    - **契约形状**：请求侧 `refreshIndex?: boolean`（`src/shared/global-search.ts:117`），
+      响应侧 `index?: GlobalSearchIndexSummary`（`:311`），字段 `indexed / pending / capped /`（`:341-349`）；
+      每 scope 还有 `indexed / pending / stale / capped`（`:325-330`）。**「没接索引」不带 `index` 块，「空索引」带** —— 断言要分开这两句。
+    - **开放的设计问题（必须先定，否则读数会自相矛盾）**：索引语料的**来源**。`createSearchIndexService` 的端口只有
+      `listFiles(projectId)`（`src/main/ipc.ts:1280-1314`），而父排期说指纹也覆盖**会话**（`{updatedAt, messageCount}`）。
+      因此第一步要确认：S4 用**项目文件**做语料（需要真文件落进隔离根），还是**会话**（更好造，但要看是否真进了索引）。
+      判据②「索引后同一查询条数增加（超集）」还需要**超过现场扫描上限**（`MAX_PROJECT_FILES_PAGE_LIMIT` / 40 个文件那类边界）
+      的语料才看得出来——否则现场扫描已经全命中，条数不会变，只能读到 `pending→indexed` 的覆盖变化。
+      这两点定了再写 spec，不然会写出一条"看起来通过但其实没测到判据②"的用例。
+    - **判据③（中断续跑不回退）**：需要在一次 tick 之后 `app.restart()`，再读 `indexed`/`pending`，断言 `indexed` 不回退
+      （`checkpoint` 的磁盘权威语义已在 `6f4d579b` 的单测里，这里要的是**真机**那一条）。
+    - **判据④（删索引目录 ⇒ 覆盖为空而非无结果）**：隔离根里删掉 `<dataRoot>/search-index/`，再搜同一词，
+      断言面板给的是「未建立索引」那句（`gs.indexAbsent`）**且结果集不为空**——这两件事必须同时成立才算过。
 
 ## 5. 明确不做（本片）
 
