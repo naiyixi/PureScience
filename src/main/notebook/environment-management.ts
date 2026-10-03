@@ -128,7 +128,11 @@ class NotebookEnvironmentManagementOwner {
     if (request.language !== 'python' && request.language !== 'r') {
       throw new Error('Importing a lock requires a language of "python" or "r".')
     }
-    const importFromLock = manager.createNamedEnvironmentFromLock
+    // bind(), not a detached reference: the manager is a real provisioner whose method reads `this.deps`
+    // (`this.cache`, …). Extracting the function into a local and calling it loose drops the receiver and
+    // fails at runtime with "Cannot read properties of undefined (reading 'deps')" — invisible to a stub
+    // manager that never touches `this`. Found by the real-window run, not by the unit tests.
+    const importFromLock = manager.createNamedEnvironmentFromLock?.bind(manager)
     if (!importFromLock) {
       throw new Error(
         'This environment manager does not support importing an environment from a lock.'

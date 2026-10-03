@@ -23,6 +23,52 @@ const manager = (): NotebookEnvironmentManager => ({
   removeEnvironment: vi.fn(() => [])
 })
 
+// A manager double that READS `this`, the way the real provisioner does (`this.deps`, `this.cache`).
+// A detached-reference call would drop the receiver and blow up here, while a stub that never touches
+// `this` stays green — which is exactly how the production `TypeError: … reading 'deps'` slipped past
+// every unit test and was only caught by the real window.
+const selfReadingManager = (marker: string): NotebookEnvironmentManager => {
+  const double = {
+    marker,
+    createNamedEnvironment: async (name: string, language: 'python' | 'r') => ({
+      name,
+      language,
+      ready: true,
+      isDefault: false
+    }),
+    createNamedEnvironmentFromLock: async function (
+      this: { marker: string },
+      name: string,
+      language: 'python' | 'r',
+      _lock: string,
+      options?: { allowDownload?: boolean }
+    ): Promise<{
+      environment: EnvironmentInfo
+      coverage: {
+        total: number
+        fromCache: number
+        downloaded: number
+        missing: Array<{ file: string; reason: string }>
+      }
+    }> {
+      // Throws with "Cannot read properties of undefined" when called unbound.
+      if (this.marker !== marker) throw new Error('receiver was lost')
+      return {
+        environment: { name: `${name}-${this.marker}`, language, ready: true, isDefault: false },
+        coverage: {
+          total: 1,
+          fromCache: options?.allowDownload === false ? 1 : 0,
+          downloaded: 0,
+          missing: []
+        }
+      }
+    },
+    listEnvironments: () => [],
+    removeEnvironment: () => []
+  }
+  return double as unknown as NotebookEnvironmentManager
+}
+
 const session = (
   statuses: Array<[string, NotebookKernelMetadata['lastKnownStatus']]>
 ): EnvironmentSession => ({ kernelStatusEntries: () => statuses })
@@ -230,5 +276,53 @@ describe('NotebookEnvironmentManagementOwner', () => {
     )
 
     expect(options.runtimeRepair.completeRemovedManagedEnvironment).not.toHaveBeenCalled()
+  })
+
+  describe('importLock (A7)', () => {
+    const request = {
+      language: 'python' as const,
+      name: 'locked-env',
+      lock: 'https://conda.example.org/conda-forge/x-1.0-0.tar.bz2#aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      allowDownload: false
+    }
+
+    it('calls the manager WITH its receiver, so a real provisioner can read its own deps', async () => {
+      // Regression: the import path once held the method in a local and called it loose, which threw
+      // "Cannot read properties of undefined (reading 'deps')" only on the real provisioner.
+      const { owner } = harness({ manager: selfReadingManager('receiver-ok') })
+
+      const result = await owner.importLock(request)
+
+      expect(result).toEqual({
+        status: 'imported',
+        environment: {
+          name: 'locked-env-receiver-ok',
+          language: 'python',
+          ready: true,
+          isDefault: false
+        },
+        coverage: { total: 1, fromCache: 1, downloaded: 0, missing: [] }
+      })
+    })
+
+    it('passes the request through validation and reports an incomplete import as data, not an exception', async () => {
+      const configured = selfReadingManager('ok')
+      configured.createNamedEnvironmentFromLock = async () => ({
+        environment: { name: 'locked-env', language: 'python', ready: false, isDefault: false },
+        coverage: { total: 2, fromCache: 1, downloaded: 0, missing: [] }
+      })
+      const { owner, options } = harness({ manager: configured })
+
+      await expect(owner.importLock(request)).resolves.toMatchObject({ status: 'imported' })
+      // Validation and the recovery ordering still gate the write.
+      expect(options.ensureRecovered).toHaveBeenCalled()
+      expect(options.assertPrefixRecoverable).toHaveBeenCalledWith(
+        envPrefix('/runtime', 'locked-env')
+      )
+      // A reserved name is refused before any manager call.
+      await expect(owner.importLock({ ...request, name: 'default-python' })).rejects.toThrow(
+        /reserved/
+      )
+    })
   })
 })

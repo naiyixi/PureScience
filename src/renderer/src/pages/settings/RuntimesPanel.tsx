@@ -1218,7 +1218,9 @@ const RuntimesPanel = ({
             onOpenAutoFocus={importFocusRestore.onOpenAutoFocus}
             onCloseAutoFocus={importFocusRestore.onCloseAutoFocus}
             data-testid="runtime-import-dialog"
-            className={dialogPanelClassName('w-[min(620px,calc(100vw-2rem))]')}
+            className={dialogPanelClassName(
+              'flex max-h-[85vh] w-[min(620px,calc(100vw-2rem))] flex-col'
+            )}
           >
             {dialogImportTarget ? (
               <>
@@ -1229,7 +1231,10 @@ const RuntimesPanel = ({
                   {t('runtimes.importLockDesc')}
                 </Dialog.Description>
 
-                <div className="mt-3 space-y-3">
+                {/* A lock body is long (a real one ran to tens of lines): the middle scrolls and the
+                    footer stays put, so Import/Cancel remain reachable on a short window. A real-window
+                    run caught the button being pushed outside the viewport with no way to reach it. */}
+                <div className="mt-3 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
                   <div className="space-y-1">
                     <label
                       className="text-[13px] font-medium text-foreground"
@@ -1282,86 +1287,88 @@ const RuntimesPanel = ({
                       </p>
                     </div>
                   </div>
-                </div>
 
-                {importing ? (
-                  importProgress ? (
-                    <div className="mt-3" data-testid="runtime-import-progress">
-                      <div
-                        className="h-1.5 w-full overflow-hidden rounded-full bg-muted"
-                        role="progressbar"
-                        aria-label={t('runtimes.importLockBusy')}
-                        aria-valuenow={Math.round(importProgress.progress * 100)}
-                        aria-valuemin={0}
-                        aria-valuemax={100}
-                      >
+                  {importing ? (
+                    importProgress ? (
+                      <div className="mt-3" data-testid="runtime-import-progress">
                         <div
-                          className="h-full rounded-full bg-primary transition-[width] duration-300"
-                          style={{
-                            width: `${Math.max(2, Math.min(100, Math.round(importProgress.progress * 100)))}%`
-                          }}
-                        />
+                          className="h-1.5 w-full overflow-hidden rounded-full bg-muted"
+                          role="progressbar"
+                          aria-label={t('runtimes.importLockBusy')}
+                          aria-valuenow={Math.round(importProgress.progress * 100)}
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                        >
+                          <div
+                            className="h-full rounded-full bg-primary transition-[width] duration-300"
+                            style={{
+                              width: `${Math.max(2, Math.min(100, Math.round(importProgress.progress * 100)))}%`
+                            }}
+                          />
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {importProgress.message}
+                        </p>
                       </div>
-                      <p className="mt-1 text-xs text-muted-foreground">{importProgress.message}</p>
-                    </div>
-                  ) : (
-                    <p
-                      className="mt-3 text-[13px] text-muted-foreground"
-                      data-testid="runtime-import-busy"
-                    >
-                      {t('runtimes.importLockBusy')}
-                    </p>
-                  )
-                ) : null}
-
-                {importError !== null ? (
-                  <p
-                    role="alert"
-                    className="mt-3 text-[13px] text-destructive"
-                    data-testid="runtime-import-error"
-                  >
-                    {importError}
-                  </p>
-                ) : null}
-
-                {importResult !== null ? (
-                  <div
-                    className="mt-3 rounded-md border border-border p-3"
-                    data-testid="runtime-import-result"
-                  >
-                    <p
-                      className={cn(
-                        'text-[13px]',
-                        importResult.status === 'imported' ? 'text-primary' : 'text-destructive'
-                      )}
-                      data-testid="runtime-import-status"
-                    >
-                      {importResult.status === 'imported'
-                        ? importImportedLine(
-                            t,
-                            importResult.environment.name,
-                            importResult.coverage
-                          )
-                        : importIncompleteLine(t, importResult.coverage)}
-                    </p>
-                    {importResult.coverage.missing.length > 0 ? (
-                      <ul
-                        className="mt-1 max-h-40 space-y-0.5 overflow-y-auto"
-                        data-testid="runtime-import-missing"
+                    ) : (
+                      <p
+                        className="mt-3 text-[13px] text-muted-foreground"
+                        data-testid="runtime-import-busy"
                       >
-                        {importResult.coverage.missing.map((entry) => (
-                          <li
-                            key={entry.file}
-                            className="text-[12px] text-muted-foreground"
-                            data-testid="runtime-import-missing-entry"
-                          >
-                            <code className="text-xs">{entry.file}</code> — {entry.reason}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : null}
-                  </div>
-                ) : null}
+                        {t('runtimes.importLockBusy')}
+                      </p>
+                    )
+                  ) : null}
+
+                  {importError !== null ? (
+                    <p
+                      role="alert"
+                      className="mt-3 text-[13px] text-destructive"
+                      data-testid="runtime-import-error"
+                    >
+                      {importError}
+                    </p>
+                  ) : null}
+
+                  {importResult !== null ? (
+                    <div
+                      className="mt-3 rounded-md border border-border p-3"
+                      data-testid="runtime-import-result"
+                    >
+                      <p
+                        className={cn(
+                          'text-[13px]',
+                          importResult.status === 'imported' ? 'text-primary' : 'text-destructive'
+                        )}
+                        data-testid="runtime-import-status"
+                      >
+                        {importResult.status === 'imported'
+                          ? importImportedLine(
+                              t,
+                              importResult.environment.name,
+                              importResult.coverage
+                            )
+                          : importIncompleteLine(t, importResult.coverage)}
+                      </p>
+                      {importResult.coverage.missing.length > 0 ? (
+                        <ul
+                          className="mt-1 max-h-40 space-y-0.5 overflow-y-auto"
+                          data-testid="runtime-import-missing"
+                        >
+                          {importResult.coverage.missing.map((entry) => (
+                            <li
+                              key={entry.file}
+                              className="text-[12px] text-muted-foreground"
+                              data-testid="runtime-import-missing-entry"
+                            >
+                              <code className="text-xs">{entry.file}</code> — {entry.reason}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
 
                 <div className="mt-4 flex justify-end gap-2">
                   <Dialog.Close asChild>

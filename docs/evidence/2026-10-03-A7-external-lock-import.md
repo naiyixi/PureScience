@@ -63,3 +63,47 @@
 修法：`provisioner` 的缓存判定从布尔改为三态（`verified` / `mismatch` / `absent`），
 `mismatch` 现在如实报「缓存副本与锁里的 md5 不符（已丢弃）」。这一条是**单测没覆盖、只有真机跑才暴露**的
 （单测里那条投毒用例原先只断言「文件被删」，不断言文案）。同步补了单测断言。
+
+## 5. 真窗口读数（第二条遗留，**已取**，2026-10-03）
+
+载体：`e2e/certification/lock-import.spec.ts`（真 Electron 窗口 + 夹具隔离根 + **从界面自己的入口**：
+Settings → Runtimes →「从锁文件导入…」）。两次运行后 `test-results/electron/.last-run.json` = **`passed`，0 失败**。
+
+成功路径（界面自己的读数，原文）：
+
+```
+- paragraph: Imported “lock-import-env” — 82 packages (82 from cache, 0 downloaded).
+[a7-window] interpreter=[3, 12, 13]
+```
+
+失败路径（界面自己打印的具名原因，原文）：
+
+```
+- entry: nomkl-1.0-h5ca1d4c_0.tar.bz2 — The cached copy does not match the md5 in the lock
+  (discarded) and downloads are disabled for this import
+```
+
+两条路径都在真窗口里走通：成功路径**建出真环境**（`<隔离数据根>/runtime/envs/lock-import-env/bin/python` 真跑出 `[3,12,13]`），
+失败路径**什么都不建**。下载开关在两条用例里都关掉，所以读数**与网络无关**。
+
+### 5.1 这条读数额外揪出的三个真缺陷（全部已修，单测都漏了）
+
+1. **加了通道却没改启动自检 ⇒ 应用起不来**。应用自己的启动期认证钉着应用命令清单
+   （`src/main/application-command-composition.ts`），`runtime:import-lock` 让它 344 → 345，于是
+   **应用 fail-fast、连窗口都不开**（真机读数：`Application command inventory mismatch: expected 344
+commands, received 345`）。修正三处计数（internal 345 / local Web 343 / remote 拒绝集 120，远端 dispatch 与 task 不变）
+   —— 这几个数字**只有应用自己的启动认证和真窗口能证伪**，单元测试不会开窗口。
+2. **对话框在小窗口里按不到「导入」**。面板没有高度上限与滚动区，锁文本一长，页脚按钮被顶出视口
+   （Playwright 读数：`element is outside of the viewport`）。修正：面板 `flex max-h-[85vh] flex-col`，
+   中部滚动、页脚常驻。
+3. **管理器方法被解引用调用**，丢掉 `this` ⇒ 真机上 `Cannot read properties of undefined (reading 'deps')`
+   （界面把它显示成「The import failed: …」。修法：`?.bind(manager)`），并补了一条**替身读 `this`** 的回归用例
+   —— 用 `vi.fn()` 的替身永远抓不到这一类。
+
+### 5.2 仍未取的读数（不许当已验）
+
+- **下载路径**（`allowDownload:true` 时从锁 URL 取包 + md5 校验后落缓存）：仍**未实测**。本片两条用例
+  刻意关掉下载以保证确定性；真机一次「开着下载」的运行观察到它确实走下载分支并如实报不匹配，
+  但**没有**取到「下载成功且校验通过、环境建成」这条读数。⇒ 立案。
+- **具名环境是否应出现在 Settings→Runtimes 的卡片列表**：实测**不出现**（那些卡片来自解释器发现，
+  而具名环境是笔记本选择的那份列表）。这是产品决策，不是缺陷；本片只在读数里记下，不声称已覆盖。
