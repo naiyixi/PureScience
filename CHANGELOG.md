@@ -1,5 +1,22 @@
 # PureScience 更新日记
 
+## v1.82.0 — 2026-10-04（天工：器既成，启其户——把已经建好的能力接到读者手上）
+
+**你现在能看到的**：打开产物预览，头部多了两个按钮——**用系统程序打开**与**在文件夹中显示**，打开动作先过主进程解析（系统程序永远看不到未托管位置，落在产物存储之外的路径会被具名拒绝而不是默默打开），被拒时那句话原样印在按钮旁；远程作业跑完，作业详情里出现**它究竟产出了什么**——重点产出逐条列出，留在远端的每条**带着自己的原因**（大小 + 为什么没取回），收割失败时错误原话与**被保留下来供人工取回的远端工作目录**并排给出；后台任务一完成，**消息中心的红点自己就亮了**，不必先点开铃铛；以及设置里那个原先**读不出设置、按钮全点不动**的功能模型面板——它现在真的能读、能检测、能试跑。
+
+- **产物「用系统程序打开 / 在文件夹中显示」（IC9）**：`artifacts:open-file` 与 `local-fs:reveal` 的 handler、契约项、preload 成员三处**早就齐**，缺的是读者这一侧的入口——预览面动作行只有下载 / 书签 / 溯源。新增 `ArtifactFileOpenActions.tsx` 挂在 `PreviewFileSurface` 头部下载按钮旁，取预览项自己的 `item.path`；打开走 `src/main/artifacts/ipc.ts:209-223`（先试产物版本定位符、再解析托管路径），落在存储外的路径由 `storage-access.ts:100` 具名拒绝，拒绝文字上屏而不是被吞掉。真机 `artifact-open-actions.spec.ts` **1 passed (13.3s)**：两个控件均可见、均点击后无具名拒绝。3 键 × 9 语。
+- **任务产物面板（IC6）**：`JobDetailModal.tsx:225` 一直躺着一行注释掉的占位，而 `JobSummary`（`src/shared/compute.ts:304-333`）早已带上 `featured_files` / `left_on_remote[]`（每条含 `uri` · `size_mb` · `reason`）/ `harvest_error`，`JobResult` 段更写明 `remote_workdir` **在收割失败时也保留**就是为了让人能手工取回——渲染层对这些字段**一处都没读**。新增 `FeaturedOutputs.tsx` 挂回该占位：重点产出逐条列出并带计数；留在远端**每条带自己的原因**；**计数大于清单时明说「另有 N 个未在结果里列出」**，不静默只显示子集；收割失败时错误原话与 `remote_workdir` 并排给出；无收割数据则整体不出现。5 键 × 9 语。
+- **消息中心徽标由主进程广播点亮（IC7）**：主进程**每个终态 agent 回合**都会记一条 `task.completed`（`src/main/acp/runtime-composition.ts:191-208`），铃铛也一直渲染未读数，但**启动时没人订阅**——读者只有手动点开铃铛才看得到。`App.tsx:314` 起订阅一次（走既有 `notifications.onChanged` / `getSnapshot`，**零新通道**）。真机 `notification-arrival.spec.ts` **1 passed (33.5s)**：铃铛可访问名从 `Messages, no unread messages` 变为 `Messages, 1 unread`，**全程未点击铃铛**。
+- **修掉一个死功能（用户报障）：设置里三个通道在 Electron 总线上没人应答**。功能模型面板显示「此窗口无法读取功能模型设置」、检测与试跑全点不动；直接问窗口得到 `No handler registered for 'settings:function-models'`。一次探 17 个同类通道，另有两个同款死法（`settings:skill-availability`、`settings:execution-protection`）——它们都只注册成 **application command**（本地 Web / CLI 那条路），而 `src/main/settings/ipc.ts` 里那段 Electron 侧注册独独漏了这三个。补齐后真机 **12/12 探针应答**，其中三条带回各自面板真正要读的字段（`models`/`resolved`、`view`、`matrix`）。新增守卫 `e2e/certification/function-model-panel.spec.ts`：断言的是「通道**在调用它的那条表面上**必须被应答」，并要求答案带回面板要读的字段——一个注册了却返回空的 handler 装不成健康。
+- **两处过强声称的更正**：① S3 那条「删掉索引目录后覆盖读数为 `{indexed:0,pending:3}`（空覆盖）」**押在一个竞态上**——tick 由查询驱动，删完随即被重建，同一断言在一版上读 0、下一版读 3，中间没有代码变化；真机复跑显示覆盖块此时仍带**上一次真实 tick** 的 `measuredAt`。断言改成与顺序无关的四条（删确实落盘 / `indexed+pending` 恒等于语料数 / 下一次查询把索引重建回盘 / 语料仍可命中），`CHANGELOG.md`、`README.md`、`README.en.md` 与**已发布页面**同步改成「语料仍被找到」而不是「读数为 0」。② 在执行器复核指出该竞态后，同类表述一并核过，页面回读确认为 0 处旧句。
+
+### 明确没做（本版不承诺）
+
+- **IC6 的真机「已收割」读数**：面板四种状态已在**真实的 `JobSummary` 形状**上钉住（渲染测试 14 passed），但真窗口里一个真收割过的作业需要一台远程主机——应用只有 `ssh:<alias>` 一种 provider 约定（`src/shared/compute.ts:91`），本机没有 ⇒ 立案，补法写进 `docs/evidence/2026-10-04-ic6-featured-outputs.md`。
+- **V6「在用内核时拒绝移除」的真窗口读数**：五日真机取证把配方推到只剩最后一步，得到的是**否定结果**——`notebook.execute` 直传 `environment` **确实起了真内核**（`ok=true` + 真 runId），但点移除**成功了**（面板逐字提示 `Removed "lock-import-env".`），拒绝一次没发生 ⇒ `isLive` 当时为 false。**我先前的推导已更正**，立案内容改为「执行过的环境未被认作在用」，分辨配方见 `docs/evidence/2026-10-04-v6-kernel-in-use-recipe-refuted.md`。未把断言放宽成「拒绝或不拒绝都算过」。
+- **A7 的下载路径未实测**（`allowDownload:true` 时从锁里的 URL 取包并建成环境）：验收用例刻意关掉下载以保证与网络无关 ⇒ 立案。
+- **egress 审批卡的窗口侧（等满 60 秒自动撤卡）**：主进程侧到期分支已有真实用例（到点 403、死线后应答不复活请求），真窗口那一侧仍需沙箱子进程的被拦请求触发 ⇒ 立案。
+
 ## v1.81.0 — 2026-10-03（简仪：去繁就简而精度反升——把已有的能力取到读数，说不准的口径改准，测不到的具名）
 
 **你现在能看到的**：全局搜索里能看见**索引覆盖到哪一步**——「已索引 x · 待更新 y · 更新于 z 分钟前」，旁边一个「立即索引」按钮真的把这一格跑完再回填读数；同一年份有两条来源不同的指标时，两个值**并列上屏**，不再静默显示一个；一批界面文案补齐九语种；主色调上的文字对比度**测出来了**，不达标就照实写。
