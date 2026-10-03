@@ -73,7 +73,7 @@ describe('purescience doctor', () => {
   })
 
   // The token is reported by presence and length; its value must not appear anywhere in the output.
-  it('never prints the web token, only that it is there and how long it is', async () => {
+  it('never prints the web token, only that it is there and how long it is', async (): Promise<void> => {
     const root = await makeRoot()
     const token = 'sup3r-s3cret-token-value'
     await writeFile(join(root, 'web-token'), `${token}\n`, 'utf8')
