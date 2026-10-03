@@ -68,7 +68,9 @@
 >
 > **IC7 接线已落地（`dba7d15a`）**：`App.tsx` 启动处订阅一次 `notification-inbox-store.listen()`
 > （内部走既有的 `notifications.onChanged` / `getSnapshot`，**零新通道**）；`App.test.tsx` 40 passed、
-> 契约四件套 91 passed。**真机读数待取**：需真窗口 + 一次真后台任务完成，观察红点不点铃铛自己亮。
+> 契约四件套 91 passed。**真机读数已取（2026-10-04）**：`e2e/certification/notification-arrival.spec.ts`
+> **1 passed (33.5s)** —— 假 agent 一个回合走完，铃铛的可访问名从 `Messages, no unread messages` 变成
+> `Messages, 1 unread`，**全程未点击铃铛**（被验的正是那个订阅，手动刷新不算）。
 >
 > **IC53 的 S3 认证 spec 第四条已改（`10a14928`）**：原断言「删掉索引目录后 `indexed` 变 0」是**竞态**
 > （tick 由查询驱动，删完随即被重建；同一行断言在一版上读 0、下一版读 3）⇒ 改钉删除真落盘、
