@@ -1550,6 +1550,11 @@ export const de: Partial<Record<ZhKey, string>> = {
     'Es wurde kein Projekt für den Import gewählt.',
   'sessions.packageImport.refusal.write-failed':
     'Schreiben fehlgeschlagen: Die Platte ist womöglich voll oder der Ordner nicht beschreibbar.',
+  'sessions.packageImport.refusal.evidence-unreadable':
+    'Die von diesem Paket mitgeführten Belege sind nicht lesbar, daher kann es nicht importiert werden.',
+  'sessions.packageImport.landed':
+    'Hier übernommen: {citations} Zitate · {reviews} Prüfungen · {findings} Befunde · {verifications} Verifikationen',
+  'sessions.packageImport.landedSkipped': '{count} Belegzeilen wurden nicht übernommen:',
   'settings.appearanceDesc':
     'Wählen Sie das Erscheinungsbild der App. „System folgen“ richtet sich nach Ihrem Gerät; Hell und Dunkel bleiben fest. Ihre Wahl wird auf diesem Gerät gespeichert.',
   'settings.applicationStorage': 'Anwendungsspeicher',

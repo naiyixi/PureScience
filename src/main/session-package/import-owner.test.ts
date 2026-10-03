@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { PersistedChatSession } from '../../shared/session-persistence'
 import { createSessionFile, normalizeSessionFile } from '../../shared/session-persistence'
 import { SESSION_PACKAGE_IMPORT_POSTURE } from '../../shared/session-package-import'
+import type { SessionPackageEvidenceLanding } from '../../shared/session-package-import'
 import { createSessionPackage } from './export'
 import { importSessionPackage, type ImportedSessionDraft } from './import-session'
 import {
@@ -49,6 +50,16 @@ afterEach(async () => {
   await rm(root, { recursive: true, force: true })
 })
 
+// The owner only forwards this port; the landing itself is covered by import-evidence.test.ts. Here it
+// records that the port was bound at all (an owner without it could not import a package's evidence).
+const landEvidence = async (): Promise<SessionPackageEvidenceLanding> => ({
+  citations: 0,
+  reviews: 0,
+  reviewFindings: 0,
+  verificationRecords: 0,
+  skipped: []
+})
+
 describe('session package import owner', () => {
   // The app's own message shape (a package carries these verbatim), not a hand-made `{ id, text }`.
   const appMessage = {
@@ -75,7 +86,8 @@ describe('session package import owner', () => {
       saveSession: async (session: PersistedChatSession): Promise<void> => {
         saved.push(session)
       },
-      workspaceFor: (sessionId: string): string => `/data/workspaces/${sessionId}`
+      workspaceFor: (sessionId: string): string => `/data/workspaces/${sessionId}`,
+      landEvidence
     })
 
     await owner.saveImportedSession(realisticDraft)
@@ -101,7 +113,8 @@ describe('session package import owner', () => {
       saveSession: async (session: PersistedChatSession): Promise<void> => {
         saved.push(session)
       },
-      workspaceFor: (sessionId: string): string => `/data/workspaces/${sessionId}`
+      workspaceFor: (sessionId: string): string => `/data/workspaces/${sessionId}`,
+      landEvidence
     })
 
     // A caller that drops the container timestamps reproduces the quarantine the guard above prevents.
@@ -121,7 +134,8 @@ describe('session package import owner', () => {
       saveSession: async (session: PersistedChatSession): Promise<void> => {
         saved.push(session)
       },
-      workspaceFor: (sessionId: string): string => `/data/workspaces/${sessionId}`
+      workspaceFor: (sessionId: string): string => `/data/workspaces/${sessionId}`,
+      landEvidence
     })
 
     await owner.saveImportedSession(draft)
@@ -147,7 +161,8 @@ describe('session package import owner', () => {
     const owner = createSessionPackageImportOwner({
       configRoot: root,
       saveSession: async (): Promise<void> => {},
-      workspaceFor: (): string => '/data/ws'
+      workspaceFor: (): string => '/data/ws',
+      landEvidence
     })
     await owner.saveImportedSession(draft)
 
@@ -171,7 +186,8 @@ describe('session package import owner', () => {
       saveSession: async (): Promise<void> => {
         throw new Error('disk full')
       },
-      workspaceFor: (): string => '/data/ws'
+      workspaceFor: (): string => '/data/ws',
+      landEvidence
     })
 
     await expect(owner.saveImportedSession(draft)).rejects.toThrow('disk full')
@@ -187,7 +203,8 @@ describe('session package import owner', () => {
       saveSession: async (session: PersistedChatSession): Promise<void> => {
         saved.push(session)
       },
-      workspaceFor: (sessionId: string): string => `/data/workspaces/${sessionId}`
+      workspaceFor: (sessionId: string): string => `/data/workspaces/${sessionId}`,
+      landEvidence
     })
 
     const result = await importSessionPackage(

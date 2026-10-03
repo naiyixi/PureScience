@@ -5,11 +5,15 @@ import { strFromU8 } from 'fflate'
 import {
   SESSION_PACKAGE_IMPORT_POSTURE,
   SESSION_PACKAGE_LIMITS,
+  type SessionPackageEvidenceKind,
+  type SessionPackageEvidenceLanding,
+  type SessionPackageEvidenceSkip,
   type SessionPackageImportRecord,
   type SessionPackageImportRequest,
   type SessionPackageImportResult
 } from '../../shared/session-package-import'
-import { inspectSessionPackage } from './import'
+import { REQUIRED_PACKAGE_EVIDENCE, inspectSessionPackage } from './import'
+import type { ImportedEvidenceInput } from './import-evidence'
 import { readZipEntries } from './zip-reader'
 
 // A draft, not a PersistedChatSession: the app owns how a session document is shaped, and an imported
@@ -44,9 +48,54 @@ const asTimestamp = (value: unknown): number | undefined =>
 export type SessionPackageImportDeps = {
   readPackage: (path: string) => Promise<Uint8Array>
   saveImportedSession: (draft: ImportedSessionDraft) => Promise<void>
+  /**
+   * Hand the package's citations, review findings and verification records to this machine's stores.
+   * Called AFTER the session document is written: a pin is re-derived from the transcript, so the
+   * session has to exist first. Absent stores are not an excuse to drop the evidence — the port is
+   * required, and a store that cannot take a row says so through the landing report.
+   */
+  landEvidence: (input: ImportedEvidenceInput) => Promise<SessionPackageEvidenceLanding>
   now?: () => Date
   newId?: () => string
 }
+
+// Every evidence member is read from JSON the sender produced: an unreadable one is refused rather
+// than imported with the missing half silently dropped.
+const readEvidenceList = (
+  entries: ReadonlyMap<string, Uint8Array>,
+  path: string
+): { ok: true; rows: readonly unknown[] } | { ok: false } => {
+  const bytes = entries.get(path)
+  if (!bytes) return { ok: false }
+  try {
+    const parsed: unknown = JSON.parse(strFromU8(bytes))
+    return Array.isArray(parsed) ? { ok: true, rows: parsed } : { ok: false }
+  } catch {
+    return { ok: false }
+  }
+}
+
+const messageIdsOf = (conversation: unknown): string[] => {
+  const messages = (conversation as { messages?: unknown } | undefined)?.messages
+  if (!Array.isArray(messages)) return []
+  return messages.flatMap((message): string[] => {
+    const id = (message as { id?: unknown } | undefined)?.id
+    return typeof id === 'string' && id !== '' ? [id] : []
+  })
+}
+
+// Names every carried row as not landed, for the case where the landing port itself threw.
+const landingFailure = (
+  rows: readonly unknown[],
+  kind: SessionPackageEvidenceKind
+): SessionPackageEvidenceSkip[] =>
+  rows.map((row) => {
+    const record = (row ?? {}) as Record<string, unknown>
+    const id = kind === 'citations' ? record.citationKey : record.id
+    return typeof id === 'string' && id !== ''
+      ? { kind, reason: 'landing-failed', id }
+      : { kind, reason: 'landing-failed' }
+  })
 
 /**
  * Land a package as a new, read-only session. Nothing is written until the caller confirms, and the
@@ -74,9 +123,11 @@ export const importSessionPackage = async (
   }
 
   const described = preview.described
-  // The archive was inspected above (safe paths, bounded sizes, required evidence present). Only the one
-  // member that is needed is expanded, under the same ceilings — never the whole package at once.
-  const read = readZipEntries(bytes, SESSION_PACKAGE_LIMITS, { only: ['conversation.json'] })
+  // The archive was inspected above (safe paths, bounded sizes, required evidence present). Only the
+  // members that are needed are expanded, under the same ceilings — never the whole package at once.
+  const read = readZipEntries(bytes, SESSION_PACKAGE_LIMITS, {
+    only: [...REQUIRED_PACKAGE_EVIDENCE]
+  })
   if (!read.ok) return { ok: false, reason: 'not-a-package' }
   const conversationEntry = read.entries.get('conversation.json')
   if (!conversationEntry) return { ok: false, reason: 'required-evidence-missing' }
@@ -85,6 +136,14 @@ export const importSessionPackage = async (
     conversation = JSON.parse(strFromU8(conversationEntry))
   } catch {
     return { ok: false, reason: 'manifest-invalid' }
+  }
+  const citations = readEvidenceList(read.entries, 'evidence/citations.json')
+  const reviewFindings = readEvidenceList(read.entries, 'evidence/review-findings.json')
+  const verificationRecords = readEvidenceList(read.entries, 'evidence/verifications.json')
+  if (!citations.ok || !reviewFindings.ok || !verificationRecords.ok) {
+    // The package claims evidence it cannot produce as a list. Refusing here is the honest answer:
+    // importing half of it would hand the reader a session missing rows it was told it had.
+    return { ok: false, reason: 'evidence-unreadable' }
   }
 
   const sessionId = (deps.newId ?? randomUUID)()
@@ -119,5 +178,37 @@ export const importSessionPackage = async (
     return { ok: false, reason: 'write-failed' }
   }
 
-  return { ok: true, sessionId, posture: SESSION_PACKAGE_IMPORT_POSTURE, notes: described.notes }
+  // The evidence lands after the session document, because a pin's fingerprint is re-derived from the
+  // transcript this machine now holds. A landing never fails the import: the session is written, and
+  // every row that did not land is named in the report instead of being reported as if it had.
+  const landed = await deps
+    .landEvidence({
+      targetProjectId,
+      sessionId,
+      messageIds: messageIdsOf(conversation),
+      citations: citations.rows,
+      reviewFindings: reviewFindings.rows,
+      verificationRecords: verificationRecords.rows
+    })
+    // The landing module reports its own refusals; this guard only covers a port that threw anyway.
+    // Nothing is swallowed: every row the package carried is named as not landed.
+    .catch((): SessionPackageEvidenceLanding => ({
+      citations: 0,
+      reviews: 0,
+      reviewFindings: 0,
+      verificationRecords: 0,
+      skipped: [
+        ...landingFailure(citations.rows, 'citations'),
+        ...landingFailure(reviewFindings.rows, 'review-findings'),
+        ...landingFailure(verificationRecords.rows, 'verifications')
+      ]
+    }))
+
+  return {
+    ok: true,
+    sessionId,
+    posture: SESSION_PACKAGE_IMPORT_POSTURE,
+    notes: described.notes,
+    landed
+  }
 }

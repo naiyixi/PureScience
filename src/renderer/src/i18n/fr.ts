@@ -1546,6 +1546,11 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'sessions.packageImport.refusal.no-target-project': 'Aucun projet de destination n’a été choisi.',
   'sessions.packageImport.refusal.write-failed':
     'Écriture impossible : le disque est peut-être plein ou le dossier non inscriptible.',
+  'sessions.packageImport.refusal.evidence-unreadable':
+    'Les pièces justificatives de ce paquet sont illisibles : il ne peut pas être importé.',
+  'sessions.packageImport.landed':
+    'Enregistré ici : {citations} références · {reviews} revues · {findings} constats · {verifications} vérifications',
+  'sessions.packageImport.landedSkipped': '{count} lignes de preuve sont restées hors de la base :',
   'settings.appearanceDesc':
     'Choisissez l’apparence de l’application. « Système » suit votre appareil ; « Clair » et « Sombre » restent fixes. Votre choix est mémorisé sur cet appareil.',
   'settings.applicationStorage': 'Stockage de l’application',

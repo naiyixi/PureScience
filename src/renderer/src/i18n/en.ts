@@ -1859,6 +1859,11 @@ export const en: Record<ZhKey, string> = {
   'sessions.packageImport.refusal.no-target-project': 'No project was chosen to import into.',
   'sessions.packageImport.refusal.write-failed':
     'Writing failed. The disk may be full, or the folder may not be writable.',
+  'sessions.packageImport.refusal.evidence-unreadable':
+    'This package carries evidence that cannot be read, so it cannot be imported.',
+  'sessions.packageImport.landed':
+    'Landed here: {citations} citations · {reviews} reviews · {findings} findings · {verifications} verifications',
+  'sessions.packageImport.landedSkipped': '{count} evidence rows did not land:',
   'settings.maxInputTokens': 'Max input tokens',
   'settings.maxOutputTokens': 'Max output tokens',
   'settings.leaveEmptyForDefault': 'Leave empty for default',

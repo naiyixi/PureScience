@@ -3,7 +3,10 @@ import { useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { useLanguage } from '@/i18n'
-import type { SessionPackageImportPreview } from '../../../../shared/session-package-import'
+import type {
+  SessionPackageEvidenceLanding,
+  SessionPackageImportPreview
+} from '../../../../shared/session-package-import'
 
 // Every refusal has a sentence in the reader's language; an unknown code is shown as itself rather than
 // swallowed into a generic apology.
@@ -65,6 +68,7 @@ const SessionPackageImportDialog = ({
   const [busy, setBusy] = useState<'idle' | 'previewing' | 'importing'>('idle')
   const [refusal, setRefusal] = useState<string | undefined>(undefined)
   const [importedSessionId, setImportedSessionId] = useState<string | undefined>(undefined)
+  const [landed, setLanded] = useState<SessionPackageEvidenceLanding | undefined>(undefined)
 
   if (!open) return null
 
@@ -72,6 +76,7 @@ const SessionPackageImportDialog = ({
     setBusy('previewing')
     setRefusal(undefined)
     setImportedSessionId(undefined)
+    setLanded(undefined)
     setPreview(undefined)
     const result = await window.api.sessions.previewPackage({})
     setBusy('idle')
@@ -86,6 +91,7 @@ const SessionPackageImportDialog = ({
     if (!preview?.accepted || !packagePath) return
     setBusy('importing')
     setRefusal(undefined)
+    setLanded(undefined)
     const result = await window.api.sessions.importPackage({
       packagePath,
       confirm: { targetProjectId }
@@ -96,6 +102,7 @@ const SessionPackageImportDialog = ({
       return
     }
     setImportedSessionId(result.sessionId)
+    setLanded(result.landed)
     onImported?.(result.sessionId)
   }
 
@@ -174,6 +181,39 @@ const SessionPackageImportDialog = ({
           <p className="mt-3 text-xs text-muted-foreground" role="status">
             {importedSessionId}
           </p>
+        ) : null}
+
+        {/* What the package's evidence became here. A package can carry a row this machine will not
+            land (a citation key the target project already uses, a block that is not in the transcript
+            it arrived with), and the reader has to be able to tell that from a row that is simply not
+            there — so the count that landed and the named refusals are both on screen. */}
+        {landed ? (
+          <div className="mt-2 text-xs text-muted-foreground" data-testid="package-landed">
+            <p>
+              {t('sessions.packageImport.landed')
+                .replace('{citations}', String(landed.citations))
+                .replace('{reviews}', String(landed.reviews))
+                .replace('{findings}', String(landed.reviewFindings))
+                .replace('{verifications}', String(landed.verificationRecords))}
+            </p>
+            {landed.skipped.length > 0 ? (
+              <>
+                <p className="mt-1">
+                  {t('sessions.packageImport.landedSkipped').replace(
+                    '{count}',
+                    String(landed.skipped.length)
+                  )}
+                </p>
+                <ul className="mt-1 list-disc pl-4">
+                  {landed.skipped.map((skip, index) => (
+                    <li key={`${skip.kind}:${skip.id ?? index}:${skip.reason}`}>
+                      {`${skip.kind}${skip.id ? ` ${skip.id}` : ''} — ${skip.reason}`}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
+          </div>
         ) : null}
 
         <div className="mt-4 flex justify-end gap-2">

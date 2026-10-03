@@ -1506,6 +1506,11 @@ export const ja: Partial<Record<ZhKey, string>> = {
     '読み込み先のプロジェクトが選ばれていません。',
   'sessions.packageImport.refusal.write-failed':
     '書き込みに失敗しました。ディスク容量か書き込み権限をご確認ください。',
+  'sessions.packageImport.refusal.evidence-unreadable':
+    'このパッケージの証拠を読み取れないため、インポートできません。',
+  'sessions.packageImport.landed':
+    'この端末に取り込みました：引用 {citations} 件 · レビュー {reviews} 件 · 指摘 {findings} 件 · 検証 {verifications} 件',
+  'sessions.packageImport.landedSkipped': '{count} 件の証拠は取り込めませんでした：',
   'settings.appearanceDesc':
     'アプリの外観を選択します。「システム」はデバイスの設定に従い、「ライト」「ダーク」は固定されます。選択内容はこのデバイスに記憶されます。',
   'settings.applicationStorage': 'アプリケーションストレージ',

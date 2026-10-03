@@ -1485,6 +1485,11 @@ export const ko: Partial<Record<ZhKey, string>> = {
     '어느 프로젝트로 가져올지 선택되지 않았습니다.',
   'sessions.packageImport.refusal.write-failed':
     '쓰기에 실패했습니다. 디스크가 가득 찼거나 폴더에 쓸 수 없습니다.',
+  'sessions.packageImport.refusal.evidence-unreadable':
+    '이 패키지의 증거를 읽을 수 없어 가져올 수 없습니다.',
+  'sessions.packageImport.landed':
+    '이 컴퓨터에 반영했습니다: 인용 {citations}건 · 검토 {reviews}건 · 지적 {findings}건 · 검증 {verifications}건',
+  'sessions.packageImport.landedSkipped': '증거 {count}건은 반영되지 않았습니다:',
   'settings.appearanceDesc':
     '앱의 모양을 선택합니다. 시스템은 기기 설정을 따르고, 라이트/다크는 고정됩니다. 선택한 값은 이 기기에 저장됩니다.',
   'settings.applicationStorage': '애플리케이션 저장소',

@@ -37,6 +37,8 @@ export type SessionPackageRejectionReason =
   | 'unsupported-format-version'
   // The manifest is intact but the package cannot be trusted to carry what it claims.
   | 'required-evidence-missing'
+  // A required evidence member is present but is not the JSON list its kind requires.
+  | 'evidence-unreadable'
   | 'entry-path-unsafe'
   | 'entry-count-exceeded'
   | 'entry-too-large'
@@ -77,6 +79,49 @@ export type SessionPackageImportRequest = {
   confirm?: { targetProjectId?: string }
 }
 
+/**
+ * What actually became rows on this machine.
+ *
+ * Counted separately from the package's own counts on purpose: a package can carry a row this machine
+ * will not land (a citation key the target project already uses, a block that is not in the transcript
+ * it arrived with), and repeating the carried number would claim a row that is not there.
+ */
+export type SessionPackageEvidenceLanding = {
+  citations: number
+  reviews: number
+  reviewFindings: number
+  verificationRecords: number
+  /** Every row that did not land, with the name of the reason. Never silently dropped. */
+  skipped: readonly SessionPackageEvidenceSkip[]
+}
+
+/** The three evidence kinds a package carries besides the conversation. */
+export type SessionPackageEvidenceKind = 'citations' | 'review-findings' | 'verifications'
+
+/** Named reasons a packaged evidence row did not become a row here. Codes, not prose. */
+export type SessionPackageEvidenceSkipReason =
+  // The row is not the shape its kind requires (missing identity or wrong field types).
+  | 'row-unreadable'
+  // The citation's key is already used in the target project, so landing it would collide.
+  | 'reference-key-taken'
+  // The review this row belongs to was itself not landed, so there is nothing to hang it on.
+  | 'review-not-imported'
+  // The row points at a message that is not in the imported transcript.
+  | 'message-not-found'
+  // The stored block is truncated, so no faithful fingerprint of it can be computed.
+  | 'text-truncated'
+  // The session could not be read while re-deriving a pin's fingerprint.
+  | 'session-unavailable'
+  // The store refused the write.
+  | 'landing-failed'
+
+export type SessionPackageEvidenceSkip = {
+  kind: SessionPackageEvidenceKind
+  reason: SessionPackageEvidenceSkipReason
+  /** The row's own identity, when it carried one. */
+  id?: string
+}
+
 export type SessionPackageImportResult =
   | {
       ok: true
@@ -84,6 +129,8 @@ export type SessionPackageImportResult =
       /** Always read-only, always source-party: a caller cannot ask for anything else. */
       posture: typeof SESSION_PACKAGE_IMPORT_POSTURE
       notes: readonly SessionPackageNoteCode[]
+      /** What the package's evidence became on this machine. */
+      landed: SessionPackageEvidenceLanding
     }
   | {
       ok: false

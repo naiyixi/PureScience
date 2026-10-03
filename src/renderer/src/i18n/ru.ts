@@ -1506,6 +1506,11 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'sessions.packageImport.refusal.no-target-project': 'Не выбран проект для импорта.',
   'sessions.packageImport.refusal.write-failed':
     'Запись не удалась: возможно, диск заполнен или папка недоступна для записи.',
+  'sessions.packageImport.refusal.evidence-unreadable':
+    'Доказательства в этом пакете не читаются, поэтому его нельзя импортировать.',
+  'sessions.packageImport.landed':
+    'Сохранено здесь: ссылки {citations} · проверки {reviews} · замечания {findings} · подтверждения {verifications}',
+  'sessions.packageImport.landedSkipped': 'Не сохранено строк доказательств: {count}',
   'settings.appearanceDesc':
     'Выберите внешний вид приложения. «Системная» следует за устройством; «Светлая» и «Тёмная» зафиксированы. Ваш выбор запоминается на этом устройстве.',
   'settings.applicationStorage': 'Хранилище приложения',

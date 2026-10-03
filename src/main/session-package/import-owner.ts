@@ -4,8 +4,10 @@ import { dirname, join } from 'node:path'
 import type { PersistedChatMessage, PersistedChatSession } from '../../shared/session-persistence'
 import {
   SESSION_PACKAGE_IMPORT_RECORD_SUFFIX,
+  type SessionPackageEvidenceLanding,
   type SessionPackageImportRecord
 } from '../../shared/session-package-import'
+import type { ImportedEvidenceInput } from './import-evidence'
 import type { ImportedSessionDraft, SessionPackageImportDeps } from './import-session'
 
 export type SessionPackageImportOwnerDeps = {
@@ -15,6 +17,12 @@ export type SessionPackageImportOwnerDeps = {
   saveSession: (session: PersistedChatSession) => Promise<void>
   /** Absolute workspace directory for the new session id (the app's convention). */
   workspaceFor: (sessionId: string) => string
+  /**
+   * This machine's stores for the evidence the package carries. Required: a package's whole point is
+   * that its citations, findings and pins arrive with it, so an owner without these stores refuses to
+   * pretend — the landing report says which rows did not arrive.
+   */
+  landEvidence: (input: ImportedEvidenceInput) => Promise<SessionPackageEvidenceLanding>
   now?: () => Date
 }
 
@@ -89,6 +97,7 @@ export const createSessionPackageImportOwner = (
   const ports = (readPackage: (path: string) => Promise<Uint8Array>): SessionPackageImportDeps => ({
     readPackage,
     saveImportedSession,
+    landEvidence: deps.landEvidence,
     now: deps.now
   })
 

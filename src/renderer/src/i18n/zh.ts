@@ -1730,6 +1730,10 @@ export const zh = {
   'sessions.packageImport.refusal.not-confirmed': '还没有确认导入。',
   'sessions.packageImport.refusal.no-target-project': '没有选择导入到哪个项目。',
   'sessions.packageImport.refusal.write-failed': '写入失败：磁盘可能已满，或文件夹不可写。',
+  'sessions.packageImport.refusal.evidence-unreadable': '这个包携带的证据读不出来，因此无法导入。',
+  'sessions.packageImport.landed':
+    '已在本机落库：引用 {citations} · 复核 {reviews} · 审查结论 {findings} · 验证 {verifications}',
+  'sessions.packageImport.landedSkipped': '有 {count} 条证据没能落库：',
   'settings.maxInputTokens': '最大输入词元',
   'settings.maxOutputTokens': '最大输出词元',
   'settings.leaveEmptyForDefault': '留空使用默认值',

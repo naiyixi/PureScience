@@ -1405,6 +1405,11 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'sessions.packageImport.refusal.not-confirmed': '還沒有確認匯入。',
   'sessions.packageImport.refusal.no-target-project': '沒有選擇匯入到哪個專案。',
   'sessions.packageImport.refusal.write-failed': '寫入失敗：磁碟可能已滿，或資料夾不可寫。',
+  'sessions.packageImport.refusal.evidence-unreadable':
+    '這個套件攜帶的證據讀不出來，因此無法匯入。',
+  'sessions.packageImport.landed':
+    '已在本機落庫：引用 {citations} · 複核 {reviews} · 審查結論 {findings} · 驗證 {verifications}',
+  'sessions.packageImport.landedSkipped': '有 {count} 條證據沒能落庫：',
   'settings.applicationStorage': '應用程式儲存空間',
   'settings.appliesToFutureActions': '僅適用於未來的操作；已完成的操作不受影響。',
   'settings.applyingRemoteSettings': '正在套用遠端存取設定…',

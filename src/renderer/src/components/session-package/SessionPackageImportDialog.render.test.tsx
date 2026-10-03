@@ -119,6 +119,40 @@ describe('session package import dialog', () => {
     expect(container.textContent).toContain('imported-session')
   })
 
+  it('shows what the package’s evidence became here, and names the rows that did not land', async () => {
+    previewPackage.mockResolvedValue(acceptedPreview)
+    importPackage.mockResolvedValue({
+      ok: true,
+      sessionId: 'imported-session',
+      posture: {
+        readOnly: true,
+        executeAllowed: false,
+        continueAllowed: false,
+        verificationLabel: 'source-party'
+      },
+      notes: [],
+      landed: {
+        citations: 2,
+        reviews: 1,
+        reviewFindings: 6,
+        verificationRecords: 0,
+        skipped: [{ kind: 'citations', reason: 'reference-key-taken', id: 'Zhang2023' }]
+      }
+    })
+    render()
+
+    await click('Choose a package')
+    await click('Import')
+
+    const landed = container.querySelector('[data-testid="package-landed"]')?.textContent ?? ''
+    // The counts that landed are on screen (2 citations, 6 findings) rather than the package's own claim.
+    expect(landed).toContain('2')
+    expect(landed).toContain('6')
+    // A row that did not land is named with its identity and reason — not folded into a generic message.
+    expect(landed).toContain('Zhang2023')
+    expect(landed).toContain('reference-key-taken')
+  })
+
   it('reports a refused package by name and imports nothing', async () => {
     previewPackage.mockResolvedValue({ accepted: false, reason: 'required-evidence-missing' })
     render()

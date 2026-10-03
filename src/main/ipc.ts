@@ -58,7 +58,11 @@ import {
 import { ProvenanceMessageSnapshotRepository } from './artifacts/provenance-message-snapshot'
 import { ArtifactRunRegistry } from './artifacts/run-registry'
 import { createComputeIpcModule } from './compute/ipc'
-import { createReferencesIpcModule, installReferencesIpcHandlers } from './references/ipc'
+import {
+  createReferencesIpcModule,
+  createDefaultReferenceRepository,
+  installReferencesIpcHandlers
+} from './references/ipc'
 import { PdfAnnotationRepository } from './references/pdf-annotation-repository'
 import { PdfAnnotationService } from './references/pdf-annotation-service'
 import type { PdfAnnotationVersionFileResolver } from './references/pdf-annotation-service'
@@ -326,6 +330,7 @@ import {
   createSessionPackageImportOwner,
   readSessionPackageImportRecord
 } from './session-package/import-owner'
+import { landImportedEvidence } from './session-package/import-evidence'
 import { createSessionPackageFileLister } from './session-package/files'
 import {
   createSessionPackageReferenceFileLister,
@@ -1229,7 +1234,8 @@ const createApplicationModules = async (
       return null
     }
   }
-  const referencesIpcModule = createReferencesIpcModule(undefined, {
+  const referencesRepository = createDefaultReferenceRepository()
+  const referencesIpcModule = createReferencesIpcModule(referencesRepository, {
     resolvePdfFingerprint: fingerprintManagedPdf
   })
   installReferencesIpcHandlers(referencesIpcModule)
@@ -2907,20 +2913,23 @@ const createApplicationModules = async (
   // and 'reviewer:get-for-session' so the renderer's fire-and-forget reviewer calls resolve to
   // real handlers instead of no-ops. Passing the already-constructed AcpRuntime so the reviewer
   // can spawn sessions under the same agent connection.
+  // One producer of fingerprints for the whole app: the reviewer's pins and the session-package import
+  // both ask THIS instance, against the same loaded sessions the search reads. A second instance would be
+  // a second recipe, and a fingerprint nobody else can recompute is not evidence.
+  const searchEvidenceService = createSearchEvidenceService({
+    readSessionMessages: async (sessionId) => {
+      const { sessions } = await sessionPersistenceBackend.loadAll()
+      const session = sessions.find((candidate) => candidate.id === sessionId)
+      return session ? toSearchableMessages(session) : []
+    }
+  })
   const reviewerOptions = {
     acpRuntime: runtime,
     mcpEntryPath: mainEntryPath,
     // Pins are verified against the same loaded sessions the search reads, so a pin and a palette
     // hit can never disagree about what the transcript says.
     searchEvidence: {
-      verify: (line) =>
-        createSearchEvidenceService({
-          readSessionMessages: async (sessionId) => {
-            const { sessions } = await sessionPersistenceBackend.loadAll()
-            const session = sessions.find((candidate) => candidate.id === sessionId)
-            return session ? toSearchableMessages(session) : []
-          }
-        }).verify(line)
+      verify: (line) => searchEvidenceService.verify(line)
     },
     artifactProvenanceRepository,
     withSessionMutation: <Result>(
@@ -2996,7 +3005,34 @@ const createApplicationModules = async (
       owner: createSessionPackageImportOwner({
         configRoot: resolveConfigRoot(),
         saveSession: (session: PersistedChatSession) => sessionRepository.saveSession(session),
-        workspaceFor: (sessionId: string) => join(resolveDataRoot(), 'workspaces', sessionId)
+        workspaceFor: (sessionId: string) => join(resolveDataRoot(), 'workspaces', sessionId),
+        // The evidence a package carries becomes rows in the stores this app already reads: citations in
+        // the target project's library, the reviewer's findings under the imported session, and human
+        // pins re-derived (never copied) through the app's own fingerprint producer.
+        landEvidence: (input) =>
+          landImportedEvidence(
+            {
+              listReferenceKeys: async (projectId) =>
+                (await referencesRepository.listReferences(projectId)).map(
+                  (row) => row.citationKey
+                ),
+              createReference: (reference) => referencesRepository.createReference(reference),
+              createReview: (review) => reviewRepository.createReview(review),
+              addFindings: (reviewId, findings) =>
+                reviewRepository.addFindings(reviewId, [...findings]),
+              captureEvidence: (request) =>
+                searchEvidenceService.capture({
+                  action: 'capture',
+                  projectId: request.projectId,
+                  sessionId: request.sessionId,
+                  messageId: request.messageId,
+                  query: request.query,
+                  terms: [...request.terms]
+                }),
+              appendReviewEvidence: (evidence) => reviewRepository.appendReviewEvidence(evidence)
+            },
+            input
+          )
       }),
       // The picker lives at the edge, like the export's save dialog: only the adapter knows the window.
       showOpenDialog: async (window?: BrowserWindow) => {
