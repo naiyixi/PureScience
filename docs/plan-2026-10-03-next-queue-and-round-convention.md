@@ -73,6 +73,13 @@ coverage 报 indexed/pending/stale/capped。自测先红抓出真缺陷一条：
 **⚠️ S3 未接线、不对外承诺**：后台**填充**索引的 builder 与面板读数尚未落地 ⇒ 生产里索引恒为空、
 coverage 只报 indexed:0。剩两片（S3 界面九语种 + S4 真机四条断言）已立案，见
 `docs/plan-2026-10-03-S3-incremental-fulltext-index.md`。
+**v1.80.1 发布**（tag `v1.80.1` → **`dd76c03d`**，发布页建于 2026-10-03T08:50:18Z、**21 资产**、`isDraft:false`；
+`version.json` 4 平台条目各带 sha256、与 `SHA256SUMS.txt` 交叉 0 不符；正文**由我手写** 10,057 字符 /
+12,265 字节，含 mac 未签名披露；`RELEASE-CERTIFICATION.json` 的 `sourceSha = dd76c03d…` 与 tag 提交逐字符一致；
+首发 run `37110227561` 红在 build/Verify ⇒ 删 tag 重建，见下条）·
+**S3-S1b 三片全部落地**（填充器 `ed58229b` + 持有者 `d06b51dd` + 生产接线 `dd9ff596`：查询读索引并对该项目
+顺带推进一次 tick。**仍未做**：界面读数 9 语种 + 真机四条断言；且无「活跃项目」来源 ⇒ 不启定时器，
+触发点是真实搜索）。
 **v1.80.1 发版红修复**（`dd76c03d`：D1.3 的 handler 改名 `applyNamedEnvAsRuntime`（use* 前缀让 linter 正确地
 判成「hook 在回调里调用」——改名不压规则）+ `refreshNamedEnvs` 改 `useCallback` 解身份抖动 +
 S3-S2 用例补返回类型 + Web 可调用面计数 380→382。根因记牢：**只跑改动文件的 eslint 证明不了全仓 lint**，
