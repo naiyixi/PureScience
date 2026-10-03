@@ -66,5 +66,51 @@ spec 里这四段在真机上**全部验证通过**，下轮照用：
   下轮改一处（加 `notebook.state` 诊断）即可继续。
 - **V6 仍立案**，但立案内容比原来**更精确**：不是「起不了内核」（内核起得来），而是
   「**执行过的环境未被认作在用**」——这本身就是个可能的产品缺陷（见成因 2），值得下轮优先分辨。
-- **不放宽断言**：没有把 `toBe(REFUSAL)` 改成「要么拒绝要么没拒绝」。一个两种结果都算过的断言
-  等于没有断言。
+- **不放宽断言**：没有把 `toBe(REFUSAL)` 改成「要么拒绝要么没拒绝」。一个两种结果都算过的断言等于没有断言。
+
+---
+
+## 追加（同日，第二版测量）：**上面那句「可能是产品缺陷」的判断，撤回**
+
+第二版把「猜」换成了「测」——应用**自己就把答案摆在窗口里**：`notebook.state` 的载荷带
+`environments: NotebookEnvironmentStatus[]`（`src/shared/notebook.ts:723`，由
+`session-read-model.ts:198-210` 从 `kernelStatusEntries()` 映射而来，字段含 `processKey` /
+`environment` / `status`）。起完内核立刻读它：
+
+```
+[v6b] environments BEFORE any run: []
+[v6b] kernel start: ok=true  {"runId":"notebook-run-…","kernelKind":"python",…}
+[v6b] environments AFTER the run: [{"processKey":"python:default-python",
+                                    "environment":"default-python","status":"idle"}]
+[v6b] entry for lock-import-env: (absent) => live=false
+[v6b] removed — no live kernel was recorded, so nothing required a refusal
+1 passed (1.5m)
+```
+
+**内核根本不在 `lock-import-env` 上——它在 `default-python` 上**，尽管请求里写了前者。于是把调用链逐层往上读完：
+
+1. `kernel-executor.ts:216-223` 的进程键确实取请求里的 `environment`
+   （`resolveProcessKey` ← `resolveRequestEnv`）——这条让我一度以为「表里该有那个环境」；
+2. 但数据单元格的路由**不看请求**：`execution-owner.ts:192-193` 取的是
+   `admission.route`，而 `data-execution-admission.ts:80-87` 的 `route()` 用
+   `session.runtimeBinding(language)`，无绑定则退回默认环境；
+3. 决定性的是应用**自己的 agent 工具说明**（`src/main/notebook/mcp-server.ts:53,106`）：
+
+   > `// No 'environment': the env is the session's bound runtime (notebook_bind_runtime), not a per-call …`
+   > `'There is no per-call environment. …'`
+
+⇒ **请求里的 `environment` 不是逐次路由输入**，路由 = 会话绑定的运行时。**错的是我的配方**：
+我把一个 per-call 字段当成了权威，于是「内核在 A 上执行过」这件事**从未发生过**——状态表报
+`python:default-python` 是**如实的**。
+
+**据此撤回**：上面「执行过的环境未被认作在用」这条立案所暗示的产品缺陷**不成立**；`isLive` 的行为
+与状态表一致，我请求的环境压根没被选中。写在立案档 V6 行上的那句判断也一并更正。
+
+## 正确配方（第二版已按它改，正在跑）
+
+① 导入具名环境（同上）；② **在面板上把它选成运行时**——点具名环境行的
+`named-env-use`（`RuntimesPanel.tsx:640-676`：register → enable → `runtime.setSelection`），
+而 admission 会在会话无绑定时**采纳这个已保存的选择**（`runtime-service.ts:470-475` 的注释即此意）；
+③ 再 `notebook.execute`（**不传** `environment`，与 UI 同形）；④ 断言「状态表里有该环境的活条目
+⇒ 移除必须被逐字拒绝、目录仍在」/「无活条目 ⇒ 移除应当成功」——**断言的是两者的一致性**，
+两条路径都能绿、「表说活着却放行」必红。
