@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { useLanguage, type TranslationKey } from '@/i18n'
+import { JournalMetricsImport } from './JournalMetricsImport'
 import {
   buildJournalMetricsOverview,
   type JournalMetricLibrary,
@@ -402,6 +403,10 @@ export function JournalMetricsPanel(): React.JSX.Element {
           />
         </label>
       </div>
+
+      {/* The import entry lives with the table it fills: before this the command existed with no way to reach
+          it from the window (it was registered agent-only), and the reader had to take the counts on trust. */}
+      <JournalMetricsImport onImported={() => void readLibrary()} />
 
       {error !== null ? (
         <p className="text-xs text-[var(--accent)]">{error}</p>

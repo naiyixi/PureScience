@@ -98,12 +98,6 @@ const ARCHIVED: EntryLayerArchivedSurface[] = [
     reason:
       'Host/agent command; the data-root setting flow validates inside its own save path, so no user-triggered check is needed.',
     evidence: 'audit 批次 4 归档结论（U23）；host-application-commands.ts:284'
-  },
-  {
-    publicPath: 'references.importJournalMetrics',
-    reason:
-      'Data preparation, not a screen: a publisher metric table is imported through the RPC surface (probed against a real database) and the journal screening panel reads the result — the panel has no import affordance, because a file dialog plus per-row outcomes is its own slice (the panel would otherwise be the empty UI this guard was built to catch). R2-U3 shipped the READ side (references.listJournalMetrics), which is why that one is not listed here.',
-    evidence: 'docs/plan-2026-10-02-R2-U3-journal-metrics-surface.md §4（本片不做导入界面）'
   }
 ]
 

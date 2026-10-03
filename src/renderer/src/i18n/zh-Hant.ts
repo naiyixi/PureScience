@@ -3457,6 +3457,25 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'references.citationWarning.fidelityMissing': '保真探針未能還原：{field}',
   // 文献纳排分诊 (literature screening, v1.77)
   'references.journalMetrics.title': '期刊指標',
+  'references.journalMetrics.import.title': '匯入指標',
+  'references.journalMetrics.import.hint':
+    '貼上出版方表格（CSV/TSV）。每行都要有值、年份與來源——缺的一律不猜。',
+  'references.journalMetrics.import.placeholder': '刊名,issn,類型,值,年份,來源',
+  'references.journalMetrics.import.submit': '匯入',
+  'references.journalMetrics.import.busy': '匯入中…',
+  'references.journalMetrics.import.summary':
+    '已匯入 {imported} 筆 · 略過 {skipped} 筆 · 新建期刊 {journals} 本',
+  'references.journalMetrics.import.importedLine': '第 {line} 行：{kind} {value}（{year}）',
+  'references.journalMetrics.import.skippedLine': '第 {line} 行：{reason}',
+  'references.journalMetrics.import.reason.malformedRow': '行格式錯誤',
+  'references.journalMetrics.import.reason.noKind': '缺類型',
+  'references.journalMetrics.import.reason.noValue': '缺值',
+  'references.journalMetrics.import.reason.noYear': '缺年份',
+  'references.journalMetrics.import.reason.noSource': '缺來源',
+  'references.journalMetrics.import.reason.badIssn': 'ISSN 不合法',
+  'references.journalMetrics.import.reason.nameMissing': '缺刊名',
+  'references.journalMetrics.import.reason.nameAmbiguous': '刊名命中多本',
+  'references.journalMetrics.import.reason.duplicate': '重複行',
   'references.journalMetrics.hint':
     '每個數字都帶年份與來源。沒有人匯入過的指標顯示「未知」——絕不顯示成 0。',
   'references.journalMetrics.filter.partition': '分區',

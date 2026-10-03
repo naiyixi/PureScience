@@ -3668,6 +3668,25 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'references.citationWarning.fidelityMissing': '충실도 검사에서 재현하지 못한 항목: {field}',
   // 文献纳排分诊 (literature screening, v1.77)
   'references.journalMetrics.title': '저널 지표',
+  'references.journalMetrics.import.title': '지표 가져오기',
+  'references.journalMetrics.import.hint':
+    '출판사 표(CSV/TSV)를 붙여넣으세요. 각 행에 값·연도·출처가 필요하며 추측하지 않습니다.',
+  'references.journalMetrics.import.placeholder': '저널,issn,종류,값,연도,출처',
+  'references.journalMetrics.import.submit': '가져오기',
+  'references.journalMetrics.import.busy': '가져오는 중…',
+  'references.journalMetrics.import.summary':
+    '{imported}건 반영 · {skipped}건 건너뜀 · 저널 {journals}건 생성',
+  'references.journalMetrics.import.importedLine': '{line}행: {kind} {value} ({year})',
+  'references.journalMetrics.import.skippedLine': '{line}행: {reason}',
+  'references.journalMetrics.import.reason.malformedRow': '행 형식 오류',
+  'references.journalMetrics.import.reason.noKind': '종류 없음',
+  'references.journalMetrics.import.reason.noValue': '값 없음',
+  'references.journalMetrics.import.reason.noYear': '연도 없음',
+  'references.journalMetrics.import.reason.noSource': '출처 없음',
+  'references.journalMetrics.import.reason.badIssn': 'ISSN 형식 오류',
+  'references.journalMetrics.import.reason.nameMissing': '저널명 없음',
+  'references.journalMetrics.import.reason.nameAmbiguous': '이름이 여러 건과 일치',
+  'references.journalMetrics.import.reason.duplicate': '중복 행',
   'references.journalMetrics.hint':
     '모든 숫자는 연도와 출처와 함께 표시됩니다. 아무도 가져오지 않은 지표는 "알 수 없음"으로 표시되며 0으로 표시되지 않습니다.',
   'references.journalMetrics.filter.partition': '구분',

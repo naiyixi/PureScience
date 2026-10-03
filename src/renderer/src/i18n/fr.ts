@@ -3834,6 +3834,25 @@ export const fr: Partial<Record<ZhKey, string>> = {
     "Le test de fidélité n'a pas pu reproduire : {field}",
   // 文献纳排分诊 (literature screening, v1.77)
   'references.journalMetrics.title': 'Métriques des revues',
+  'references.journalMetrics.import.title': 'Importer des indicateurs',
+  'references.journalMetrics.import.hint':
+    "Collez un tableau d'éditeur (CSV/TSV). Chaque ligne exige une valeur, une année et une source ; rien n'est deviné.",
+  'references.journalMetrics.import.placeholder': 'revue,issn,type,valeur,annee,source',
+  'references.journalMetrics.import.submit': 'Importer',
+  'references.journalMetrics.import.busy': 'Importation…',
+  'references.journalMetrics.import.summary':
+    '{imported} importées · {skipped} ignorées · {journals} revues créées',
+  'references.journalMetrics.import.importedLine': 'ligne {line} : {kind} {value} ({year})',
+  'references.journalMetrics.import.skippedLine': 'ligne {line} : {reason}',
+  'references.journalMetrics.import.reason.malformedRow': 'ligne mal formée',
+  'references.journalMetrics.import.reason.noKind': 'type manquant',
+  'references.journalMetrics.import.reason.noValue': 'valeur manquante',
+  'references.journalMetrics.import.reason.noYear': 'année manquante',
+  'references.journalMetrics.import.reason.noSource': 'source manquante',
+  'references.journalMetrics.import.reason.badIssn': 'ISSN invalide',
+  'references.journalMetrics.import.reason.nameMissing': 'nom de revue manquant',
+  'references.journalMetrics.import.reason.nameAmbiguous': 'le nom correspond à plusieurs revues',
+  'references.journalMetrics.import.reason.duplicate': 'ligne en double',
   'references.journalMetrics.hint':
     'Chaque chiffre est affiché avec son année et sa source. Une métrique que personne n’a importée s’affiche « Inconnu » : jamais 0.',
   'references.journalMetrics.filter.partition': 'Catégorie',

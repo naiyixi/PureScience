@@ -3764,6 +3764,25 @@ export const en: Record<ZhKey, string> = {
   'references.citationWarning.fidelityMissing': 'The fidelity probe could not reproduce: {field}',
   // 文献纳排分诊 (literature screening, v1.77)
   'references.journalMetrics.title': 'Journal metrics',
+  'references.journalMetrics.import.title': 'Import metrics',
+  'references.journalMetrics.import.hint':
+    'Paste a publisher table (CSV/TSV). Every row needs a value, a year and a source; nothing is guessed.',
+  'references.journalMetrics.import.placeholder': 'journal,issn,kind,value,year,source',
+  'references.journalMetrics.import.submit': 'Import',
+  'references.journalMetrics.import.busy': 'Importing…',
+  'references.journalMetrics.import.summary':
+    '{imported} imported · {skipped} skipped · {journals} journals created',
+  'references.journalMetrics.import.importedLine': 'line {line}: {kind} {value} ({year})',
+  'references.journalMetrics.import.skippedLine': 'line {line}: {reason}',
+  'references.journalMetrics.import.reason.malformedRow': 'malformed row',
+  'references.journalMetrics.import.reason.noKind': 'no kind',
+  'references.journalMetrics.import.reason.noValue': 'no value',
+  'references.journalMetrics.import.reason.noYear': 'no year',
+  'references.journalMetrics.import.reason.noSource': 'no source',
+  'references.journalMetrics.import.reason.badIssn': 'invalid ISSN',
+  'references.journalMetrics.import.reason.nameMissing': 'no journal name',
+  'references.journalMetrics.import.reason.nameAmbiguous': 'name matches several journals',
+  'references.journalMetrics.import.reason.duplicate': 'duplicate row',
   'references.journalMetrics.hint':
     'Every number is shown with the year and the source it came from. A metric nobody has imported reads "Unknown" — it is never shown as a zero.',
   'references.journalMetrics.filter.partition': 'Partition',

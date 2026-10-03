@@ -3734,6 +3734,25 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'references.citationWarning.fidelityMissing': '再現度検査で再現できなかった項目：{field}',
   // 文献纳排分诊 (literature screening, v1.77)
   'references.journalMetrics.title': 'ジャーナル指標',
+  'references.journalMetrics.import.title': '指標をインポート',
+  'references.journalMetrics.import.hint':
+    '出版社の表（CSV/TSV）を貼り付けてください。各行に値・年・出典が必要です。推測はしません。',
+  'references.journalMetrics.import.placeholder': '雑誌名,issn,種別,値,年,出典',
+  'references.journalMetrics.import.submit': 'インポート',
+  'references.journalMetrics.import.busy': 'インポート中…',
+  'references.journalMetrics.import.summary':
+    '{imported} 件取り込み · {skipped} 件スキップ · 雑誌 {journals} 件を作成',
+  'references.journalMetrics.import.importedLine': '行 {line}: {kind} {value}（{year}）',
+  'references.journalMetrics.import.skippedLine': '行 {line}: {reason}',
+  'references.journalMetrics.import.reason.malformedRow': '行の形式が不正',
+  'references.journalMetrics.import.reason.noKind': '種別なし',
+  'references.journalMetrics.import.reason.noValue': '値なし',
+  'references.journalMetrics.import.reason.noYear': '年なし',
+  'references.journalMetrics.import.reason.noSource': '出典なし',
+  'references.journalMetrics.import.reason.badIssn': 'ISSN が不正',
+  'references.journalMetrics.import.reason.nameMissing': '雑誌名なし',
+  'references.journalMetrics.import.reason.nameAmbiguous': '名前が複数の雑誌に一致',
+  'references.journalMetrics.import.reason.duplicate': '重複行',
   'references.journalMetrics.hint':
     'すべての数値は年と出典とともに表示されます。誰も取り込んでいない指標は「不明」と表示され、0 として表示されることはありません。',
   'references.journalMetrics.filter.partition': '区分',

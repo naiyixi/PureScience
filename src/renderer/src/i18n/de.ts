@@ -3845,6 +3845,25 @@ export const de: Partial<Record<ZhKey, string>> = {
     'Die Treueprüfung konnte nicht wiedergeben: {field}',
   // 文献纳排分诊 (literature screening, v1.77)
   'references.journalMetrics.title': 'Zeitschriftenkennzahlen',
+  'references.journalMetrics.import.title': 'Metriken importieren',
+  'references.journalMetrics.import.hint':
+    'Verlagstabelle einfügen (CSV/TSV). Jede Zeile braucht Wert, Jahr und Quelle — nichts wird geraten.',
+  'references.journalMetrics.import.placeholder': 'journal,issn,art,wert,jahr,quelle',
+  'references.journalMetrics.import.submit': 'Importieren',
+  'references.journalMetrics.import.busy': 'Importiere…',
+  'references.journalMetrics.import.summary':
+    '{imported} importiert · {skipped} übersprungen · {journals} Zeitschriften angelegt',
+  'references.journalMetrics.import.importedLine': 'Zeile {line}: {kind} {value} ({year})',
+  'references.journalMetrics.import.skippedLine': 'Zeile {line}: {reason}',
+  'references.journalMetrics.import.reason.malformedRow': 'fehlerhafte Zeile',
+  'references.journalMetrics.import.reason.noKind': 'keine Art',
+  'references.journalMetrics.import.reason.noValue': 'kein Wert',
+  'references.journalMetrics.import.reason.noYear': 'kein Jahr',
+  'references.journalMetrics.import.reason.noSource': 'keine Quelle',
+  'references.journalMetrics.import.reason.badIssn': 'ungültige ISSN',
+  'references.journalMetrics.import.reason.nameMissing': 'kein Zeitschriftenname',
+  'references.journalMetrics.import.reason.nameAmbiguous': 'Name trifft mehrere Zeitschriften',
+  'references.journalMetrics.import.reason.duplicate': 'doppelte Zeile',
   'references.journalMetrics.hint':
     'Jede Zahl steht mit ihrem Jahr und ihrer Quelle. Eine Kennzahl, die niemand importiert hat, heißt „Unbekannt“ — sie wird nie als 0 angezeigt.',
   'references.journalMetrics.filter.partition': 'Kategorie',

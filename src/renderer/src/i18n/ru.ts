@@ -3742,6 +3742,25 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'references.citationWarning.fidelityMissing': 'Проверка точности не воспроизвела: {field}',
   // 文献纳排分诊 (literature screening, v1.77)
   'references.journalMetrics.title': 'Метрики журналов',
+  'references.journalMetrics.import.title': 'Импорт метрик',
+  'references.journalMetrics.import.hint':
+    'Вставьте таблицу издателя (CSV/TSV). В каждой строке нужны значение, год и источник — ничего не угадывается.',
+  'references.journalMetrics.import.placeholder': 'журнал,issn,тип,значение,год,источник',
+  'references.journalMetrics.import.submit': 'Импортировать',
+  'references.journalMetrics.import.busy': 'Импорт…',
+  'references.journalMetrics.import.summary':
+    'Импортировано {imported} · пропущено {skipped} · создано журналов {journals}',
+  'references.journalMetrics.import.importedLine': 'строка {line}: {kind} {value} ({year})',
+  'references.journalMetrics.import.skippedLine': 'строка {line}: {reason}',
+  'references.journalMetrics.import.reason.malformedRow': 'неверный формат строки',
+  'references.journalMetrics.import.reason.noKind': 'нет типа',
+  'references.journalMetrics.import.reason.noValue': 'нет значения',
+  'references.journalMetrics.import.reason.noYear': 'нет года',
+  'references.journalMetrics.import.reason.noSource': 'нет источника',
+  'references.journalMetrics.import.reason.badIssn': 'неверный ISSN',
+  'references.journalMetrics.import.reason.nameMissing': 'нет названия журнала',
+  'references.journalMetrics.import.reason.nameAmbiguous': 'название совпадает с несколькими',
+  'references.journalMetrics.import.reason.duplicate': 'дубликат строки',
   'references.journalMetrics.hint':
     'Каждое число показано вместе с годом и источником. Метрика, которую никто не импортировал, отображается как «Неизвестно» — и никогда как 0.',
   'references.journalMetrics.filter.partition': 'Категория',
