@@ -4061,5 +4061,16 @@ export const en: Record<ZhKey, string> = {
   'artifact.reconstructionBounded':
     'The immutable Execution Log was bounded; the reconstruction may include a provenance-gap comment.',
   'artifact.checkingPreviousScript': 'Checking for a previously generated script…',
-  'artifact.provenanceSourceLabel': 'Source'
+  'artifact.provenanceSourceLabel': 'Source',
+  'common.upTo': 'Up to {value}',
+  'settings.browseFolder': 'Browse…',
+  'settings.elapsedValue': 'Elapsed {time}',
+  'settings.doNotQuitDuringMove':
+    "Don't quit PureScience or turn off your computer until this finishes.",
+  'settings.dataMovedRestart': 'Data moved — please restart',
+  'specialist.deleteProtectedSkill': 'A selected Skill is protected and cannot be deleted.',
+  'specialist.deleteProtectedTarget': 'This Specialist is read-only and cannot be deleted.',
+  'specialist.deleteCommitFailed': 'Deletion failed and was rolled back.',
+  'specialistEditor.iconLabel': 'Icon',
+  'specialistEditor.colorLabel': 'Color'
 }

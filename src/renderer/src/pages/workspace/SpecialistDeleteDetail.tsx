@@ -64,7 +64,9 @@ const SpecialistDeleteDetail = ({
   }
 
   const capabilityLabel =
-    profile.capabilityMode === 'full' ? 'Full access' : 'Selected capabilities'
+    profile.capabilityMode === 'full'
+      ? t('specialist.fullAccess')
+      : t('specialist.selectedCapabilities')
 
   return (
     <div className="flex flex-col gap-2">

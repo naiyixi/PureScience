@@ -504,7 +504,9 @@ const SkillUploadView = ({
         {...dropZoneProps}
         className="relative mt-4 flex cursor-pointer flex-col items-center gap-3 rounded-lg border border-dashed border-border bg-muted/20 px-6 py-10 text-center transition-colors motion-reduce:transition-none hover:bg-muted/40"
       >
-        {isDragging ? <FileDropOverlay label="Drop to upload" className="rounded-lg" /> : null}
+        {isDragging ? (
+          <FileDropOverlay label={t('skillEditor.dropToUpload')} className="rounded-lg" />
+        ) : null}
         <input
           type="file"
           multiple

@@ -306,7 +306,7 @@ const StoragePanel = ({ onContinueToAgent }: StoragePanelProps): React.JSX.Eleme
                   className={cn('size-4', isCheckingStorage && 'animate-spin')}
                   aria-hidden="true"
                 />
-                {isCheckingStorage ? 'Checking…' : t('onboarding.checkAgain')}
+                {isCheckingStorage ? t('common.checking') : t('onboarding.checkAgain')}
               </Button>
               {agentRepairRequired ? (
                 <Button type="button" onClick={onContinueToAgent}>
@@ -366,7 +366,7 @@ const StoragePanel = ({ onContinueToAgent }: StoragePanelProps): React.JSX.Eleme
                   />
                   <Button type="button" variant="outline" onClick={() => void handleBrowse()}>
                     <FolderOpen className="size-4" aria-hidden="true" />
-                    Browse…
+                    {t('settings.browseFolder')}
                   </Button>
                 </div>
 
@@ -458,7 +458,7 @@ const StoragePanel = ({ onContinueToAgent }: StoragePanelProps): React.JSX.Eleme
                     </Button>
                   )}
                   <Button type="button" variant="outline" onClick={handleCancelNewPath}>
-                    Cancel
+                    {t('common.cancel')}
                   </Button>
                 </div>
               </div>

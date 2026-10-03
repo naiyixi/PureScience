@@ -738,7 +738,11 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                   </div>
                   <div>
                     <dt className="text-muted-foreground">{t('settings.specialistPerFile')}</dt>
-                    <dd>Up to {formatBytes(packagePreview.archive.limits.fileBytes)}</dd>
+                    <dd>
+                      {t('common.upTo', {
+                        value: formatBytes(packagePreview.archive.limits.fileBytes)
+                      })}
+                    </dd>
                   </div>
                 </dl>
               </section>
@@ -1038,7 +1042,7 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                 {specialist.displayName ?? specialist.name}
               </h2>
               <p className="text-xs text-muted-foreground">
-                Built-in · Version {specialist.version}
+                {t('specialist.builtin')} · {t('settings.version')} {specialist.version}
               </p>
             </div>
           </div>
@@ -1050,7 +1054,11 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
           <div className="mt-5">
             <h3 className="text-sm font-semibold text-foreground">{t('settings.capabilities')}</h3>
             <p className="mt-1 text-xs text-muted-foreground">
-              {specialist.capabilityMode === 'full' ? 'Full access' : 'Selected capabilities'}
+              {t(
+                specialist.capabilityMode === 'full'
+                  ? 'specialist.fullAccess'
+                  : 'specialist.selectedCapabilities'
+              )}
             </p>
             {skillIds.length > 0 ? (
               <ul className="mt-2 list-inside list-disc text-xs text-foreground">
@@ -1433,7 +1441,7 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                             {item.description}
                           </span>
                           <span className="block text-[11px] text-muted-foreground">
-                            Built-in · Version {item.version}
+                            {t('specialist.builtin')} · {t('settings.version')} {item.version}
                           </span>
                         </div>
                       </button>
@@ -1599,11 +1607,11 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                         const messages: Record<typeof result.code, string> = {
                           'stale-preview': t('settings.skillRelationshipsChanged'),
                           'revision-conflict': t('settings.specialistChangedRefresh'),
-                          'protected-skill': 'A selected Skill is protected and cannot be deleted.',
-                          'protected-target': 'This Specialist is read-only and cannot be deleted.',
+                          'protected-skill': t('specialist.deleteProtectedSkill'),
+                          'protected-target': t('specialist.deleteProtectedTarget'),
                           'recovery-failed': t('settings.storageRecoveryFailed'),
                           'rollback-failed': t('settings.deletionRollbackFailed'),
-                          'commit-failed': 'Deletion failed and was rolled back.'
+                          'commit-failed': t('specialist.deleteCommitFailed')
                         }
                         setDeleteError(messages[result.code])
                       }

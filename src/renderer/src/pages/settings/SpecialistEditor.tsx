@@ -567,7 +567,9 @@ const SpecialistEditor = ({
 
           <div className="mb-4 grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="mb-1.5 block text-xs font-semibold">Icon</label>
+              <label className="mb-1.5 block text-xs font-semibold">
+                {t('specialistEditor.iconLabel')}
+              </label>
               <Select
                 value={form.iconKey}
                 onValueChange={(iconKey) => setForm((prev) => ({ ...prev, iconKey }))}
@@ -602,7 +604,9 @@ const SpecialistEditor = ({
               </Select>
             </div>
             <div>
-              <label className="mb-1.5 block text-xs font-semibold">Color</label>
+              <label className="mb-1.5 block text-xs font-semibold">
+                {t('specialistEditor.colorLabel')}
+              </label>
               <Select
                 value={form.colorKey}
                 onValueChange={(colorKey) => setForm((prev) => ({ ...prev, colorKey }))}

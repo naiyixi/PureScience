@@ -4148,5 +4148,18 @@ export const de: Partial<Record<ZhKey, string>> = {
   'artifact.reconstructionBounded':
     'Das unveränderliche Ausführungsprotokoll wurde begrenzt; die Rekonstruktion kann einen Hinweis auf eine Herkunftslücke enthalten.',
   'artifact.checkingPreviousScript': 'Es wird geprüft, ob bereits ein Skript erzeugt wurde…',
-  'artifact.provenanceSourceLabel': 'Quelle'
+  'artifact.provenanceSourceLabel': 'Quelle',
+  'common.upTo': 'bis zu {value}',
+  'settings.browseFolder': 'Durchsuchen…',
+  'settings.elapsedValue': 'verstrichen {time}',
+  'settings.doNotQuitDuringMove':
+    'Beenden Sie PureScience nicht und schalten Sie den Computer erst nach Abschluss aus.',
+  'settings.dataMovedRestart': 'Daten verschoben — bitte neu starten',
+  'specialist.deleteProtectedSkill':
+    'Eine ausgewählte Fähigkeit ist geschützt und kann nicht gelöscht werden.',
+  'specialist.deleteProtectedTarget':
+    'Dieser Spezialist ist schreibgeschützt und kann nicht gelöscht werden.',
+  'specialist.deleteCommitFailed': 'Das Löschen ist fehlgeschlagen und wurde zurückgerollt.',
+  'specialistEditor.iconLabel': 'Symbol',
+  'specialistEditor.colorLabel': 'Farbe'
 }

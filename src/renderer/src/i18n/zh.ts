@@ -3794,7 +3794,17 @@ export const zh = {
   'reviewer.summaryPending': '等待审查',
   'artifact.reconstructionBounded': '不可变的执行日志已被截断；重建结果可能带有溯源缺口注释。',
   'artifact.checkingPreviousScript': '正在检查此前生成的脚本…',
-  'artifact.provenanceSourceLabel': '来源'
+  'artifact.provenanceSourceLabel': '来源',
+  'common.upTo': '最多 {value}',
+  'settings.browseFolder': '浏览…',
+  'settings.elapsedValue': '已用 {time}',
+  'settings.doNotQuitDuringMove': '移动完成前请勿退出 PureScience 或关闭电脑。',
+  'settings.dataMovedRestart': '数据已移动——请重启',
+  'specialist.deleteProtectedSkill': '所选技能受保护，无法删除。',
+  'specialist.deleteProtectedTarget': '该专才为只读，无法删除。',
+  'specialist.deleteCommitFailed': '删除失败，已回滚。',
+  'specialistEditor.iconLabel': '图标',
+  'specialistEditor.colorLabel': '颜色'
 }
 
 export type ZhKey = keyof typeof zh

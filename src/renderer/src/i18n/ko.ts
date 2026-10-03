@@ -3959,5 +3959,16 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'artifact.reconstructionBounded':
     '변경할 수 없는 실행 로그가 잘렸습니다. 재구성 결과에 출처 공백 주석이 포함될 수 있습니다.',
   'artifact.checkingPreviousScript': '이전에 생성된 스크립트를 확인하는 중…',
-  'artifact.provenanceSourceLabel': '출처'
+  'artifact.provenanceSourceLabel': '출처',
+  'common.upTo': '최대 {value}',
+  'settings.browseFolder': '찾아보기…',
+  'settings.elapsedValue': '경과 {time}',
+  'settings.doNotQuitDuringMove':
+    '완료될 때까지 PureScience를 종료하거나 컴퓨터 전원을 끄지 마세요.',
+  'settings.dataMovedRestart': '데이터를 옮겼습니다 — 다시 시작하세요',
+  'specialist.deleteProtectedSkill': '선택한 스킬은 보호되어 삭제할 수 없습니다.',
+  'specialist.deleteProtectedTarget': '이 전문가는 읽기 전용이라 삭제할 수 없습니다.',
+  'specialist.deleteCommitFailed': '삭제에 실패하여 롤백했습니다.',
+  'specialistEditor.iconLabel': '아이콘',
+  'specialistEditor.colorLabel': '색상'
 }

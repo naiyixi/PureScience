@@ -357,6 +357,9 @@ const LATIN_COGNATES = new Set<string>([
   'Notebooks',
   'Runtime',
   'Transport',
+  // 2026-10 V14b：专才编辑器的取色控件标签。es 里「Color」就是本词（西语拼写与英文同形），
+  // 与 en 同形是正确译文，不是漏翻。
+  'Color',
   'Tokens',
   'Variables',
   'variables',

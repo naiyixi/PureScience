@@ -3733,5 +3733,15 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'reviewer.summaryPending': '等待審查',
   'artifact.reconstructionBounded': '不可變的執行日誌已被截斷；重建結果可能帶有溯源缺口註釋。',
   'artifact.checkingPreviousScript': '正在檢查先前產生的指令碼…',
-  'artifact.provenanceSourceLabel': '來源'
+  'artifact.provenanceSourceLabel': '來源',
+  'common.upTo': '最多 {value}',
+  'settings.browseFolder': '瀏覽…',
+  'settings.elapsedValue': '已用 {time}',
+  'settings.doNotQuitDuringMove': '移動完成前請勿結束 PureScience 或關閉電腦。',
+  'settings.dataMovedRestart': '資料已移動——請重新啟動',
+  'specialist.deleteProtectedSkill': '所選技能受保護，無法刪除。',
+  'specialist.deleteProtectedTarget': '該專才為唯讀，無法刪除。',
+  'specialist.deleteCommitFailed': '刪除失敗，已還原。',
+  'specialistEditor.iconLabel': '圖示',
+  'specialistEditor.colorLabel': '顏色'
 }

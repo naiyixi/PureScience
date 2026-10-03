@@ -259,7 +259,7 @@ const StorageMigrationModal = ({
               </ul>
               <div className="mt-4 flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={onClose}>
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
                 <Button type="button" onClick={startMigration}>
                   {t('settings.interruptAndMove')}
@@ -295,17 +295,17 @@ const StorageMigrationModal = ({
                 className="mt-2 text-xs tabular-nums text-muted-foreground"
                 aria-label={t('settings.elapsedTime')}
               >
-                Elapsed {formatElapsed(elapsedMs)}
+                {t('settings.elapsedValue', { time: formatElapsed(elapsedMs) })}
               </p>
               <p
                 role="alert"
                 className="mt-3 rounded-lg border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive"
               >
-                Don&apos;t quit PureScience or turn off your computer until this finishes.
+                {t('settings.doNotQuitDuringMove')}
               </p>
               <div className="mt-4 flex justify-end">
                 <Button type="button" variant="outline" onClick={handleCancel}>
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
               </div>
             </>
@@ -393,7 +393,7 @@ const StorageMigrationModal = ({
                 </span>
                 <div className="min-w-0 flex-1">
                   <Dialog.Title className="text-sm font-semibold text-foreground">
-                    {isSwitchover ? 'Data moved — please restart' : t('settings.moveFailed')}
+                    {isSwitchover ? t('settings.dataMovedRestart') : t('settings.moveFailed')}
                   </Dialog.Title>
                   <Dialog.Description
                     className="mt-1 text-xs leading-relaxed text-muted-foreground"
@@ -409,7 +409,7 @@ const StorageMigrationModal = ({
               </div>
               <div className="mt-5 flex justify-end">
                 <Button type="button" variant="outline" onClick={onClose}>
-                  Close
+                  {t('common.close')}
                 </Button>
               </div>
             </>

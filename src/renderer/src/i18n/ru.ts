@@ -4038,5 +4038,17 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'artifact.reconstructionBounded':
     'Неизменяемый журнал выполнения был ограничен; в реконструкции может быть комментарий о пробеле в происхождении.',
   'artifact.checkingPreviousScript': 'Проверяем, не создан ли уже сценарий…',
-  'artifact.provenanceSourceLabel': 'Источник'
+  'artifact.provenanceSourceLabel': 'Источник',
+  'common.upTo': 'до {value}',
+  'settings.browseFolder': 'Обзор…',
+  'settings.elapsedValue': 'прошло {time}',
+  'settings.doNotQuitDuringMove':
+    'Не закрывайте PureScience и не выключайте компьютер до завершения.',
+  'settings.dataMovedRestart': 'Данные перемещены — перезапустите',
+  'specialist.deleteProtectedSkill': 'Выбранный навык защищён и не может быть удалён.',
+  'specialist.deleteProtectedTarget':
+    'Этот специалист доступен только для чтения и не может быть удалён.',
+  'specialist.deleteCommitFailed': 'Удаление не удалось, изменения откатаны.',
+  'specialistEditor.iconLabel': 'Значок',
+  'specialistEditor.colorLabel': 'Цвет'
 }

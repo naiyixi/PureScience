@@ -4110,5 +4110,17 @@ export const es: Partial<Record<ZhKey, string>> = {
   'artifact.reconstructionBounded':
     'El registro de ejecución inmutable se truncó; la reconstrucción puede incluir un comentario sobre una laguna de procedencia.',
   'artifact.checkingPreviousScript': 'Comprobando si ya existe un script generado…',
-  'artifact.provenanceSourceLabel': 'Origen'
+  'artifact.provenanceSourceLabel': 'Origen',
+  'common.upTo': 'hasta {value}',
+  'settings.browseFolder': 'Examinar…',
+  'settings.elapsedValue': 'transcurrido {time}',
+  'settings.doNotQuitDuringMove': 'No cierres PureScience ni apagues el equipo hasta que termine.',
+  'settings.dataMovedRestart': 'Datos movidos: reinicia',
+  'specialist.deleteProtectedSkill':
+    'Una habilidad seleccionada está protegida y no se puede eliminar.',
+  'specialist.deleteProtectedTarget':
+    'Este especialista es de solo lectura y no se puede eliminar.',
+  'specialist.deleteCommitFailed': 'La eliminación falló y se revirtió.',
+  'specialistEditor.iconLabel': 'Icono',
+  'specialistEditor.colorLabel': 'Color'
 }

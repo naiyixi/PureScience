@@ -4135,5 +4135,18 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'artifact.reconstructionBounded':
     "Le journal d'exécution immuable a été tronqué ; la reconstruction peut contenir un commentaire signalant une lacune de provenance.",
   'artifact.checkingPreviousScript': 'Vérification d’un script déjà généré…',
-  'artifact.provenanceSourceLabel': 'Source'
+  'artifact.provenanceSourceLabel': 'Source',
+  'common.upTo': "jusqu'à {value}",
+  'settings.browseFolder': 'Parcourir…',
+  'settings.elapsedValue': 'écoulé {time}',
+  'settings.doNotQuitDuringMove':
+    "Ne quittez pas PureScience et n'éteignez pas l'ordinateur avant la fin.",
+  'settings.dataMovedRestart': 'Données déplacées — veuillez redémarrer',
+  'specialist.deleteProtectedSkill':
+    'Une compétence sélectionnée est protégée et ne peut pas être supprimée.',
+  'specialist.deleteProtectedTarget':
+    'Ce spécialiste est en lecture seule et ne peut pas être supprimé.',
+  'specialist.deleteCommitFailed': 'La suppression a échoué et a été annulée.',
+  'specialistEditor.iconLabel': 'Icône',
+  'specialistEditor.colorLabel': 'Couleur'
 }

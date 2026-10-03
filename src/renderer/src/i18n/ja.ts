@@ -4025,5 +4025,16 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'artifact.reconstructionBounded':
     '不変の実行ログが上限に達したため、再構成の結果に来歴ギャップの注記が含まれる場合があります。',
   'artifact.checkingPreviousScript': '以前に生成されたスクリプトを確認しています…',
-  'artifact.provenanceSourceLabel': '取得元'
+  'artifact.provenanceSourceLabel': '取得元',
+  'common.upTo': '最大 {value}',
+  'settings.browseFolder': '参照…',
+  'settings.elapsedValue': '経過 {time}',
+  'settings.doNotQuitDuringMove':
+    '完了するまで PureScience を終了したり、パソコンの電源を切ったりしないでください。',
+  'settings.dataMovedRestart': 'データを移動しました — 再起動してください',
+  'specialist.deleteProtectedSkill': '選択したスキルは保護されているため削除できません。',
+  'specialist.deleteProtectedTarget': 'このスペシャリストは読み取り専用のため削除できません。',
+  'specialist.deleteCommitFailed': '削除に失敗し、ロールバックしました。',
+  'specialistEditor.iconLabel': 'アイコン',
+  'specialistEditor.colorLabel': '色'
 }
