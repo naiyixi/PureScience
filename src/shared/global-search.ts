@@ -109,6 +109,12 @@ export type GlobalSearchRequest = {
   orderBy?: GlobalSearchOrdering
   // Opaque cursor from a previous response. Absent starts at the first page.
   cursor?: string
+  // S3: when true the query runs ONE bounded index tick and waits for it before reading the index, so the
+  // response's `index` block describes the index as of this call. That is the honest "index now" action:
+  // the caller learns when the work finished instead of guessing a delay. Absent (the default) means a
+  // search never waits on indexing — the reading is then the LAST measured tick, and its age travels with
+  // it so a reader can judge staleness itself.
+  refreshIndex?: boolean
 }
 
 export type ReferenceTypeFilter = 'doi' | 'arxiv' | 'pmid' | 'pmcid'
@@ -299,6 +305,10 @@ export type GlobalSearchResponse = {
   // walk short. Honesty rule: a scope with hits > 0 and considered === 0 cannot happen, and a scope
   // whose corpus was bounded says so rather than presenting its slice as the whole class.
   coverage: Record<GlobalSearchScope, GlobalSearchScopeCoverage>
+  // S3: the incremental index's own reading — totals, staleness and when it was last measured. Present
+  // only when the caller wired an index: a response without it says nothing about the index rather than
+  // claiming it is empty, so an unwired build cannot be read as "the index holds nothing".
+  index?: GlobalSearchIndexSummary
   truncated: boolean
   scan: GlobalSearchScanReport
   appliedLimit: number
@@ -320,6 +330,26 @@ export type GlobalSearchScopeCoverage = {
   pending?: number
   stale?: boolean
   capped?: boolean
+}
+
+/**
+ * S3: the whole-index reading, so a panel can say "indexed N, M pending, last brought up to date T ago"
+ * instead of leaving the per-scope counts to be added up by the reader. Every field states what the last
+ * tick MEASURED; none of them is an optimistic guess, and a response whose caller wired no index carries
+ * no block at all (which is the honest answer — not a zero).
+ */
+export type GlobalSearchIndexSummary = {
+  /** False when no index has been built yet (or its directory is gone): the reading is EMPTY, not zero. */
+  present: boolean
+  /** Entries the index holds across every scope it covers. */
+  indexed: number
+  /** Items a tick could not bring up to date — changed since they were indexed, no change indicator,
+   *  unreadable, or cut off by the tick budget. Recomputed by the last tick from a real listing. */
+  pending: number
+  /** The storage budget refused entries, so `indexed` is a floor rather than the whole corpus. */
+  capped: boolean
+  /** When the last tick finished. Absent before any tick has run, which is itself worth saying. */
+  measuredAt?: string
 }
 
 export const normalizeSearchQuery = (query: string): string => query.trim()

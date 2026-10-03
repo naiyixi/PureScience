@@ -466,7 +466,8 @@ export const de: Partial<Record<ZhKey, string>> = {
   'runtimes.importLockEmpty': 'Fügen Sie zuerst den Inhalt der Lock-Datei ein.',
   'runtimes.importLockFailed': 'Der Import ist fehlgeschlagen: {message}',
   'runtimes.namedEnvs': 'Benannte Umgebungen',
-  'runtimes.namedEnvsDesc': 'Für Notebooks erstellte Umgebungen – auch aus einer Lock-Datei importierte. Entfernen löscht ihre Dateien; ein Notebook, das sie nutzt, muss zuerst wechseln.',
+  'runtimes.namedEnvsDesc':
+    'Für Notebooks erstellte Umgebungen – auch aus einer Lock-Datei importierte. Entfernen löscht ihre Dateien; ein Notebook, das sie nutzt, muss zuerst wechseln.',
   'runtimes.namedEnvsEmpty': 'Noch keine benannten Umgebungen.',
   'runtimes.removeNamedEnv': 'Entfernen',
   'runtimes.removeNamedEnvTitle': '„{name}“ entfernen?',
@@ -629,6 +630,13 @@ export const de: Partial<Record<ZhKey, string>> = {
   'gs.scopeCoverage': '{considered} geprüft, {contentRead} mit Inhalt gelesen',
   'gs.scopeCoverageNameOnly': 'nur Name und Pfad',
   'gs.scopeCoverageBounded': 'Obergrenze erreicht - nicht alles hier wurde geprüft',
+  'gs.indexSummary': 'Indexiert: {indexed} · {pending} ausstehend',
+  'gs.indexUpdatedAt': 'Index aktualisiert vor {minutes} Min.',
+  'gs.indexNow': 'Jetzt indexieren',
+  'gs.indexing': 'Indexierung läuft…',
+  'gs.indexAbsent': 'Noch kein Index aufgebaut - die Suche durchsucht die Dateien direkt',
+  'gs.indexCapped':
+    'Der Index hat sein Speicherlimit erreicht - einige Dateien sind nicht indexiert',
   'gs.contentScopeArtifact': 'Erzeugte Datei',
   'gs.contentScopeLiterature': 'Literatur',
   'gs.contentScopeAnnotation': 'Annotation',

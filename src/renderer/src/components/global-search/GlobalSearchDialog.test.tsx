@@ -1897,4 +1897,152 @@ describe('GlobalSearchDialog — advanced filters and evidence verification', ()
       'Evidence changed'
     )
   })
+
+  // S3: the incremental index's own reading, and the honest "index now" action. These render through the
+  // real provider on purpose — the English fallback dictionary does not interpolate, so it cannot show
+  // whether the counts actually reach the line.
+  describe('index reading', () => {
+    const indexResponse = (index: Record<string, unknown>): Record<string, unknown> => ({
+      schemaVersion: 1,
+      query: 'zzz',
+      scopes: ['messages'],
+      hits: [],
+      counts: {
+        sessions: 0,
+        messages: 0,
+        uploads: 0,
+        artifacts: 0,
+        literature: 0,
+        annotations: 0
+      },
+      coverage: {
+        sessions: { considered: 0, contentRead: 0, bounded: false },
+        messages: { considered: 0, contentRead: 0, bounded: false },
+        uploads: { considered: 0, contentRead: 0, bounded: false },
+        artifacts: { considered: 0, contentRead: 0, bounded: false },
+        literature: { considered: 0, contentRead: 0, bounded: false },
+        annotations: { considered: 0, contentRead: 0, bounded: false }
+      },
+      truncated: false,
+      scan: {
+        sessions: 0,
+        messages: 0,
+        uploads: 0,
+        artifacts: 0,
+        references: 0,
+        annotations: 0,
+        bounded: false
+      },
+      appliedLimit: 100,
+      notes: [],
+      orderBy: 'relevance',
+      index
+    })
+
+    const renderPaletteAndSearch = async (query: string): Promise<void> => {
+      await act(async () => {
+        root.render(
+          <LanguageProvider>
+            <GlobalSearchDialog
+              open
+              onOpenChange={vi.fn()}
+              isSessionPersistenceReady
+              onOpenKeyboardShortcuts={vi.fn()}
+            />
+          </LanguageProvider>
+        )
+        await new Promise((resolve) => window.setTimeout(resolve, 20))
+      })
+
+      const input = document.body.querySelector<HTMLInputElement>('input[role="combobox"]')
+      const valueSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        'value'
+      )?.set
+      await act(async () => {
+        valueSetter?.call(input, query)
+        input?.dispatchEvent(new Event('input', { bubbles: true }))
+        await new Promise((resolve) => window.setTimeout(resolve, 400))
+      })
+    }
+
+    it('shows what the index holds, how far behind it is and how old the reading is', async () => {
+      vi.mocked(window.api.search.query).mockResolvedValue(
+        indexResponse({
+          present: true,
+          indexed: 12,
+          pending: 3,
+          capped: false,
+          measuredAt: new Date(Date.now() - 5 * 60_000).toISOString()
+        }) as never
+      )
+
+      await renderPaletteAndSearch('zzz')
+
+      const summary = document.body.querySelector('[data-slot="gs-index-summary"]')
+      expect(summary).not.toBeNull()
+      expect(summary?.querySelector('[data-slot="gs-index-counts"]')?.textContent).toContain('12')
+      expect(summary?.querySelector('[data-slot="gs-index-counts"]')?.textContent).toContain('3')
+      // The age comes from the last tick's own timestamp, not from when the panel happened to render.
+      expect(summary?.querySelector('[data-slot="gs-index-age"]')?.textContent).toContain('5')
+    })
+
+    it('says no index has been built instead of reporting zero entries', async () => {
+      vi.mocked(window.api.search.query).mockResolvedValue(
+        indexResponse({ present: false, indexed: 0, pending: 0, capped: false }) as never
+      )
+
+      await renderPaletteAndSearch('zzz')
+
+      expect(document.body.querySelector('[data-slot="gs-index-absent"]')).not.toBeNull()
+      expect(document.body.querySelector('[data-slot="gs-index-counts"]')).toBeNull()
+    })
+
+    it('flags a capped index rather than presenting its count as the whole corpus', async () => {
+      vi.mocked(window.api.search.query).mockResolvedValue(
+        indexResponse({
+          present: true,
+          indexed: 5,
+          pending: 0,
+          capped: true,
+          measuredAt: new Date().toISOString()
+        }) as never
+      )
+
+      await renderPaletteAndSearch('zzz')
+
+      expect(document.body.querySelector('[data-slot="gs-index-capped"]')?.textContent).toContain(
+        'storage limit'
+      )
+    })
+
+    it('re-asks for an awaited tick when Index now is pressed, and shows the fresh reading', async () => {
+      vi.mocked(window.api.search.query).mockResolvedValue(
+        indexResponse({ present: true, indexed: 3, pending: 9, capped: false }) as never
+      )
+
+      await renderPaletteAndSearch('zzz')
+      expect(document.body.querySelector('[data-slot="gs-index-counts"]')?.textContent).toContain(
+        '9'
+      )
+
+      // The tick the button asks for answers with the reading AFTER the work it did.
+      vi.mocked(window.api.search.query).mockResolvedValue(
+        indexResponse({ present: true, indexed: 77, pending: 0, capped: false }) as never
+      )
+      const button = document.body.querySelector<HTMLButtonElement>('[data-slot="gs-index-now"]')
+      expect(button?.textContent).toContain('Index now')
+      await act(async () => {
+        button?.click()
+        await new Promise((resolve) => window.setTimeout(resolve, 20))
+      })
+
+      expect(window.api.search.query).toHaveBeenCalledWith(
+        expect.objectContaining({ refreshIndex: true, projectId: 'project-a' })
+      )
+      expect(document.body.querySelector('[data-slot="gs-index-counts"]')?.textContent).toContain(
+        '77'
+      )
+    })
+  })
 })

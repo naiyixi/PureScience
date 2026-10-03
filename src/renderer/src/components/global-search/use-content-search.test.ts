@@ -207,4 +207,109 @@ describe('useContentSearch', () => {
     const state = result.current.state
     expect(state.state === 'ready' && state.response.hits.map((hit) => hit.id)).toEqual(['m3'])
   })
+
+  // S3: the index reading travels with the response. It describes the INDEX, not the hits, so it is kept
+  // beside the results instead of being inferred from them.
+  it('reports the index reading the response carried', async () => {
+    query.mockResolvedValue({
+      ...response([{ id: 'm1' }]),
+      index: {
+        present: true,
+        indexed: 12,
+        pending: 3,
+        capped: false,
+        measuredAt: '2026-10-03T08:00:00.000Z'
+      }
+    })
+    const { result } = renderHook(() =>
+      useContentSearch({ query: '注意力', enabled: true, debounceMs: 10, projectId: 'project-1' })
+    )
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(20)
+    })
+
+    expect(result.current.indexSummary).toEqual({
+      present: true,
+      indexed: 12,
+      pending: 3,
+      capped: false,
+      measuredAt: '2026-10-03T08:00:00.000Z'
+    })
+  })
+
+  // A response without an index block means no index is wired. That has to CLEAR the reading: leaving an
+  // older number on screen would show a state nobody has measured since.
+  it('clears the index reading when a later response carries none', async () => {
+    query
+      .mockResolvedValueOnce({
+        ...response([{ id: 'm1' }]),
+        index: { present: true, indexed: 4, pending: 0, capped: false }
+      })
+      .mockResolvedValueOnce(response([{ id: 'm1' }]))
+    let filters: UseContentSearchOptions['filters'] = { role: 'user' }
+    const { rerender, result } = renderHook(() =>
+      useContentSearch({ query: '注意力', enabled: true, debounceMs: 10, filters })
+    )
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(20)
+    })
+    expect(result.current.indexSummary).toBeDefined()
+
+    filters = { role: 'agent' }
+    rerender()
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(20)
+    })
+
+    expect(result.current.indexSummary).toBeUndefined()
+  })
+
+  // "Index now" is not a client-side refresh: it asks the main process for one awaited tick and takes the
+  // reading that answers with it. The results on screen are left alone.
+  it('asks for an awaited tick when indexing is requested and takes the fresh reading', async () => {
+    query
+      .mockResolvedValueOnce({
+        ...response([{ id: 'm1' }]),
+        index: { present: true, indexed: 4, pending: 2, capped: false }
+      })
+      .mockResolvedValueOnce({
+        ...response([{ id: 'm1' }]),
+        index: { present: true, indexed: 77, pending: 0, capped: false }
+      })
+    const { result } = renderHook(() =>
+      useContentSearch({ query: '注意力', enabled: true, debounceMs: 10, projectId: 'project-1' })
+    )
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(20)
+    })
+
+    await act(async () => {
+      result.current.refreshIndex()
+      await vi.advanceTimersByTimeAsync(0)
+    })
+
+    expect(query.mock.calls[1][0]).toMatchObject({ projectId: 'project-1', refreshIndex: true })
+    expect(result.current.indexSummary).toMatchObject({ indexed: 77, pending: 0 })
+    expect(result.current.refreshingIndex).toBe(false)
+  })
+
+  // The index covers a project's files. Without a project there is nothing to index, and picking one would
+  // index the wrong corpus, so no request is sent at all.
+  it('does not ask for an index without a project', async () => {
+    query.mockResolvedValue(response([{ id: 'm1' }]))
+    const { result } = renderHook(() =>
+      useContentSearch({ query: '注意力', enabled: true, debounceMs: 10 })
+    )
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(20)
+    })
+
+    await act(async () => {
+      result.current.refreshIndex()
+      await vi.advanceTimersByTimeAsync(0)
+    })
+
+    expect(query).toHaveBeenCalledTimes(1)
+  })
 })

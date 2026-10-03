@@ -4,6 +4,7 @@ import {
   GLOBAL_SEARCH_MIN_QUERY_CHARS,
   normalizeSearchQuery,
   type GlobalSearchHitFilters,
+  type GlobalSearchIndexSummary,
   type GlobalSearchOrdering,
   type GlobalSearchRequest,
   type GlobalSearchResponse,
@@ -33,6 +34,13 @@ export type ContentSearchResult = {
   loadingMore: boolean
   /** True when the last response offered a cursor. */
   hasMore: boolean
+  /** S3: the index reading the last response carried. Absent when the app wired no index — which is a
+   *  different statement from "the index holds nothing", so the panel must not render a zero for it. */
+  indexSummary?: GlobalSearchIndexSummary
+  /** S3: true while an explicit "index now" request is in flight. */
+  refreshingIndex: boolean
+  /** S3: ask the main process for one bounded index tick and take the fresh reading it answers with. */
+  refreshIndex: () => void
 }
 
 export type UseContentSearchOptions = {
@@ -63,6 +71,9 @@ export const useContentSearch = ({
 }: UseContentSearchOptions): ContentSearchResult => {
   const [state, setState] = useState<ContentSearchState>({ state: 'idle' })
   const [loadingMore, setLoadingMore] = useState(false)
+  // S3: the index reading the last response carried, and whether an explicit "index now" is running.
+  const [indexSummary, setIndexSummary] = useState<GlobalSearchIndexSummary | undefined>(undefined)
+  const [refreshingIndex, setRefreshingIndex] = useState(false)
   const versionRef = useRef(0)
   const normalized = normalizeSearchQuery(query)
   const searchable = enabled && normalized.length >= GLOBAL_SEARCH_MIN_QUERY_CHARS
@@ -128,6 +139,9 @@ export const useContentSearch = ({
         .then((response) => {
           if (versionRef.current !== version) return
           setState({ state: 'ready', response })
+          // Assigned from every response, including the `undefined` of a build with no index wired: keeping
+          // an older reading would show a number that no longer describes anything.
+          setIndexSummary(response.index)
         })
         .catch((error: unknown) => {
           if (versionRef.current !== version) return
@@ -183,10 +197,30 @@ export const useContentSearch = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, loadingMore, normalized, projectId, scopeKey, filterKey, filterRequest, rangeRequest])
 
+  // The explicit "index now": the main process runs one bounded tick and answers with the reading as of
+  // AFTER that tick. It asks for no hits, so it never disturbs the results on screen. A no-op without a
+  // project: the index covers a project's files, and inventing one would index somebody else's corpus.
+  const refreshIndex = useCallback((): void => {
+    if (!projectId) return
+    setRefreshingIndex(true)
+    void window.api.search
+      .query({ query: normalized, projectId, refreshIndex: true })
+      .then((response) => {
+        setIndexSummary(response.index)
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        setRefreshingIndex(false)
+      })
+  }, [normalized, projectId])
+
   return {
     state,
     loadMore,
     loadingMore,
-    hasMore: state.state === 'ready' && state.response.nextCursor !== undefined
+    hasMore: state.state === 'ready' && state.response.nextCursor !== undefined,
+    indexSummary,
+    refreshingIndex,
+    refreshIndex
   }
 }

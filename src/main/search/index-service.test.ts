@@ -3,7 +3,11 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 
-import { createSearchIndexService, type SearchIndexFile } from './index-service'
+import {
+  createSearchIndexService,
+  toSearchIndexSummary,
+  type SearchIndexFile
+} from './index-service'
 
 const makeRoot = (): string => mkdtempSync(join(tmpdir(), 'ps-index-service-'))
 const NOW = '2026-10-03T00:00:00.000Z'
@@ -181,5 +185,52 @@ describe('search index service (S3-S1b)', () => {
       vi.useRealTimers()
       rmSync(root, { recursive: true, force: true })
     }
+  })
+})
+
+// The reading a panel is shown must be assembled from what a tick MEASURED. These cases pin the two ways
+// that could turn into a lie: summing the wrong map, and inventing a measurement time.
+describe('toSearchIndexSummary', () => {
+  it('sums the entries across scopes and keeps the counts that are behind', () => {
+    const summary = toSearchIndexSummary({
+      present: true,
+      records: [],
+      indexedByScope: { uploads: 2, artifacts: 3 },
+      pendingByScope: { uploads: 1 },
+      capped: false,
+      truncated: false,
+      unfingerprintable: 0,
+      unreadable: 0,
+      listBounded: false,
+      measuredAt: NOW
+    })
+
+    expect(summary).toEqual({
+      present: true,
+      indexed: 5,
+      pending: 1,
+      capped: false,
+      measuredAt: NOW
+    })
+  })
+
+  it('keeps an absent measurement time absent rather than inventing one', () => {
+    const summary = toSearchIndexSummary({
+      present: false,
+      records: [],
+      indexedByScope: {},
+      pendingByScope: {},
+      capped: false,
+      truncated: false,
+      unfingerprintable: 0,
+      unreadable: 0,
+      listBounded: false
+    })
+
+    // No tick has run: `present: false` and no timestamp. Substituting `now` would make an unbuilt index
+    // look like one measured this second.
+    expect(summary.present).toBe(false)
+    expect(summary.indexed).toBe(0)
+    expect('measuredAt' in summary).toBe(false)
   })
 })

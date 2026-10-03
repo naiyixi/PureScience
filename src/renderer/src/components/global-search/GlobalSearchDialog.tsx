@@ -119,6 +119,15 @@ const formatRelativeTime = (timestamp: number): string => {
   return days < 7 ? pluralizeTime(days, 'day') : pluralizeTime(Math.floor(days / 7), 'week')
 }
 
+// Age of the index reading, in whole minutes. `undefined` for a timestamp that cannot be read: an
+// unreadable time must not be rendered as "0 minutes ago", which would read as "just measured".
+const minutesSince = (timestamp: string): number | undefined => {
+  const at = Date.parse(timestamp)
+  if (!Number.isFinite(at)) return undefined
+
+  return Math.max(0, Math.round((Date.now() - at) / 60_000))
+}
+
 const artifactToPreviewItem = (
   artifact: ProjectFileItem
 ): ReturnType<typeof createPreviewFileItem> =>
@@ -489,6 +498,12 @@ export const GlobalSearchDialog = ({
   const contentResponse =
     contentSearch.state.state === 'ready' ? contentSearch.state.response : undefined
   const contentHits = useMemo(() => contentResponse?.hits ?? [], [contentResponse])
+  // S3: the index reading's age, in whole minutes. Undefined when the reading carries no timestamp (no
+  // tick has run) — and an unreadable timestamp is undefined too, never "0 min ago".
+  const indexAgeMinutes =
+    contentSearch.indexSummary?.measuredAt === undefined
+      ? undefined
+      : minutesSince(contentSearch.indexSummary.measuredAt)
 
   // What the current search actually asked for, in the machine-stable wording the pins already use. It is
   // printed on the result summary so the conditions a page was produced under are readable from the page
@@ -1689,6 +1704,50 @@ export const GlobalSearchDialog = ({
                           )
                         })}
                       </div>
+
+                      {/* S3: the incremental index's own reading. It is what makes "no hit" answerable —
+                          whether this corpus is in the index at all, how much of it is behind, and how old
+                          the reading is. A build with no index renders nothing here rather than a zero. */}
+                      {contentSearch.indexSummary ? (
+                        <div
+                          data-slot="gs-index-summary"
+                          className="flex flex-wrap items-center gap-2 px-4 pb-1 text-[11px] text-muted-foreground"
+                        >
+                          {contentSearch.indexSummary.present ? (
+                            <>
+                              <span data-slot="gs-index-counts">
+                                {t('gs.indexSummary', {
+                                  indexed: contentSearch.indexSummary.indexed,
+                                  pending: contentSearch.indexSummary.pending
+                                })}
+                              </span>
+                              {indexAgeMinutes !== undefined ? (
+                                <span data-slot="gs-index-age">
+                                  {t('gs.indexUpdatedAt', { minutes: indexAgeMinutes })}
+                                </span>
+                              ) : null}
+                              {contentSearch.indexSummary.capped ? (
+                                <span data-slot="gs-index-capped" className="text-destructive">
+                                  {t('gs.indexCapped')}
+                                </span>
+                              ) : null}
+                            </>
+                          ) : (
+                            <span data-slot="gs-index-absent">{t('gs.indexAbsent')}</span>
+                          )}
+                          {primaryProject ? (
+                            <button
+                              type="button"
+                              data-slot="gs-index-now"
+                              disabled={contentSearch.refreshingIndex}
+                              onClick={() => contentSearch.refreshIndex()}
+                              className="inline-flex items-center rounded-full border border-border bg-card px-2.5 py-0.5 text-[11px] text-foreground transition-colors hover:bg-muted disabled:opacity-60"
+                            >
+                              {contentSearch.refreshingIndex ? t('gs.indexing') : t('gs.indexNow')}
+                            </button>
+                          ) : null}
+                        </div>
+                      ) : null}
 
                       {contentSearch.state.state === 'searching' && contentHits.length === 0 ? (
                         <p className="px-4 py-3 text-sm text-muted-foreground">

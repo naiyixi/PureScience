@@ -1,4 +1,5 @@
 import { readSearchIndex, readSearchIndexRecords, type SearchIndexRecord } from './index-store'
+import type { GlobalSearchIndexSummary } from '../../shared/global-search'
 import {
   fingerprintOf,
   runSearchIndexTick,
@@ -80,6 +81,19 @@ export type SearchIndexService = {
   stop(): void
   snapshot(): SearchIndexSnapshot
 }
+
+/**
+ * The shared reading a panel shows, derived from one measured snapshot. Pure and total: every number
+ * comes from the snapshot the tick actually recorded, so nothing here can turn "not measured" into 0 —
+ * `present: false` and an absent `measuredAt` travel through as the honest answers they are.
+ */
+export const toSearchIndexSummary = (snapshot: SearchIndexSnapshot): GlobalSearchIndexSummary => ({
+  present: snapshot.present,
+  indexed: Object.values(snapshot.indexedByScope).reduce((total, count) => total + count, 0),
+  pending: Object.values(snapshot.pendingByScope).reduce((total, count) => total + count, 0),
+  capped: snapshot.capped,
+  ...(snapshot.measuredAt === undefined ? {} : { measuredAt: snapshot.measuredAt })
+})
 
 export const createSearchIndexService = (ports: SearchIndexServicePorts): SearchIndexService => {
   const intervalMs = ports.intervalMs ?? 5_000

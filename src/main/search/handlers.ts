@@ -1,4 +1,5 @@
 import type {
+  GlobalSearchIndexSummary,
   GlobalSearchRequest,
   GlobalSearchResponse,
   GlobalSearchScope
@@ -76,6 +77,13 @@ export type SearchHandlerPorts = {
   // on indexing, and firing it here is also the honest trigger while the app has no "active project" source
   // — what gets indexed is what someone actually searched, not a guessed workspace.
   indexTick?(projectId: string): void
+  // S3: the whole-index reading (totals + when it was last measured). Optional like `readIndex`: absent
+  // leaves the response with no `index` block rather than a zero that would read as "the index is empty".
+  readIndexSummary?(): Promise<GlobalSearchIndexSummary>
+  // S3: run exactly ONE bounded tick for this project and resolve when it is done. This is the honest
+  // "index now": the caller learns the work finished instead of guessing a delay, and the reading it gets
+  // back describes the index AFTER that tick. Absent falls back to the fire-and-forget `indexTick`.
+  indexTickNow?(projectId: string): Promise<void>
 }
 
 // How many files one query may read text from. Reading every file in a project would trade a fast
@@ -156,7 +164,13 @@ export const createSearchHandlers = (ports: SearchHandlerPorts): SearchHandlers 
     // Files and literature live per project; without a project the response says so through its notes
     // rather than quietly returning nothing.
     const projectId = request.projectId
-    if (projectId && ports.indexTick) ports.indexTick(projectId)
+    // S3: a project-scoped search advances the index. Normally that is fire-and-forget — a search never
+    // waits on indexing. An explicit "index now" instead waits for exactly one tick, so the reading it gets
+    // back describes the index AFTER that work rather than the tick before it.
+    if (projectId) {
+      if (request.refreshIndex && ports.indexTickNow) await ports.indexTickNow(projectId)
+      else if (ports.indexTick) ports.indexTick(projectId)
+    }
     const scopes: GlobalSearchScope[] = resolveSearchScopes(request.scopes)
     const filesRequested = scopes.some(isFileSearchScope)
     const listed =
@@ -250,6 +264,9 @@ export const createSearchHandlers = (ports: SearchHandlerPorts): SearchHandlers 
     return {
       ...response,
       coverage,
+      // Read at the very end so the number describes the index after this call's tick (awaited above when
+      // the caller asked for one) — and absent when no index is wired, instead of a fabricated zero.
+      ...(ports.readIndexSummary ? { index: await ports.readIndexSummary() } : {}),
       ...(notes.length > 0 ? { notes: [...new Set(notes)] } : {})
     }
   },

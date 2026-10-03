@@ -209,7 +209,11 @@ import { createRoCrateExportOwner, registerRoCrateExportIpcHandlers } from './ro
 import { RO_CRATE_EXPORT_SOFTWARE } from '../shared/ro-crate-export'
 import { createProjectFilesHandlers, registerProjectFilesIpcHandlers } from './project-files/ipc'
 import { createSearchIpcHandlers, registerSearchIpcHandlers } from './search/ipc'
-import { createSearchIndexService, type SearchIndexFile } from './search/index-service'
+import {
+  createSearchIndexService,
+  toSearchIndexSummary,
+  type SearchIndexFile
+} from './search/index-service'
 import { GLOBAL_SEARCH_FILE_LIST_MAX_PAGES } from './search/handlers'
 import {
   createSearchAnnotationCorpus,
@@ -1318,6 +1322,15 @@ const createApplicationModules = async (
     indexTick: (projectId) => {
       lastSearchedProjectId = projectId
       void searchIndexService.tick()
+    },
+    // The panel's reading: the LAST MEASURED tick, mapped to the shared shape. Never a fresh listing —
+    // a status read must not become a second walk of the corpus.
+    readIndexSummary: async () => toSearchIndexSummary(searchIndexService.snapshot()),
+    // "Index now": one bounded tick, awaited, so the caller's next reading describes the work it asked
+    // for. Same project-tracking as the fire-and-forget path, so both triggers index the same corpus.
+    indexTickNow: async (projectId) => {
+      lastSearchedProjectId = projectId
+      await searchIndexService.tick()
     },
     listFiles: async ({ projectId }) => {
       // The flat `all` collection is the cross-session read model. It is paged at the size the project

@@ -464,7 +464,8 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'runtimes.importLockEmpty': 'Collez d’abord le contenu du fichier de verrouillage.',
   'runtimes.importLockFailed': 'L’importation a échoué : {message}',
   'runtimes.namedEnvs': 'Environnements nommés',
-  'runtimes.namedEnvsDesc': 'Environnements créés pour les notebooks, y compris ceux importés d’un fichier de verrouillage. Les supprimer efface leurs fichiers ; un notebook qui les utilise doit d’abord changer.',
+  'runtimes.namedEnvsDesc':
+    'Environnements créés pour les notebooks, y compris ceux importés d’un fichier de verrouillage. Les supprimer efface leurs fichiers ; un notebook qui les utilise doit d’abord changer.',
   'runtimes.namedEnvsEmpty': 'Aucun environnement nommé pour l’instant.',
   'runtimes.removeNamedEnv': 'Supprimer',
   'runtimes.removeNamedEnvTitle': 'Supprimer « {name} » ?',
@@ -625,6 +626,14 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'gs.scopeCoverage': '{considered} examinés, {contentRead} avec contenu lu',
   'gs.scopeCoverageNameOnly': 'nom et chemin uniquement',
   'gs.scopeCoverageBounded': 'Limite atteinte - tout n’a pas été couvert ici',
+  'gs.indexSummary': 'Indexé : {indexed} · {pending} en attente',
+  'gs.indexUpdatedAt': 'index mis à jour il y a {minutes} min',
+  'gs.indexNow': 'Indexer maintenant',
+  'gs.indexing': 'Indexation…',
+  'gs.indexAbsent':
+    "Aucun index construit pour l'instant : la recherche parcourt les fichiers en direct",
+  'gs.indexCapped':
+    "L'index a atteint sa limite de stockage : certains fichiers ne sont pas indexés",
   'gs.contentScopeArtifact': 'Fichier généré',
   'gs.contentScopeLiterature': 'Référence',
   'gs.contentScopeAnnotation': 'Annotation',

@@ -211,4 +211,72 @@ describe('global search · incremental index wiring (S3)', () => {
     expect(readIndex).toHaveBeenCalled()
     expect(response.coverage.uploads.indexed).toBe(0)
   })
+
+  it('carries the whole-index reading, and omits it when no index is wired', async () => {
+    const readIndexSummary = vi.fn(async () => ({
+      present: true,
+      indexed: 9,
+      pending: 2,
+      capped: false,
+      measuredAt: '2026-10-03T08:00:00.000Z'
+    }))
+
+    const withIndex = await harness({ readIndexSummary }).query({
+      query: 'sin',
+      projectId: 'project-1',
+      scopes: ['uploads']
+    })
+    expect(withIndex.index).toEqual({
+      present: true,
+      indexed: 9,
+      pending: 2,
+      capped: false,
+      measuredAt: '2026-10-03T08:00:00.000Z'
+    })
+
+    // No port ⇒ no block at all. A zero would read as "the index is empty", which is a different statement
+    // from "this build has no index".
+    const withoutIndex = await harness().query({
+      query: 'sin',
+      projectId: 'project-1',
+      scopes: ['uploads']
+    })
+    expect(withoutIndex.index).toBeUndefined()
+  })
+
+  it('waits for exactly one tick when a refresh is asked for, then reports the fresh reading', async () => {
+    const order: string[] = []
+    const indexTickNow = vi.fn(async (projectId: string) => {
+      order.push(`tick:${projectId}`)
+    })
+    const readIndexSummary = vi.fn(async () => {
+      order.push('read')
+      return { present: true, indexed: 5, pending: 0, capped: false }
+    })
+
+    const response = await harness({ indexTickNow, readIndexSummary }).query({
+      query: 'sin',
+      projectId: 'project-1',
+      scopes: ['uploads'],
+      refreshIndex: true
+    })
+
+    // The reading must describe the index AFTER the tick, so the tick is awaited before it is taken — and
+    // the fire-and-forget trigger is not also fired.
+    expect(order).toEqual(['tick:project-1', 'read'])
+    expect(response.index).toMatchObject({ indexed: 5 })
+  })
+
+  it('falls back to the fire-and-forget tick when no awaited tick port is wired', async () => {
+    const indexTick = vi.fn()
+
+    await harness({ indexTick }).query({
+      query: 'sin',
+      projectId: 'project-1',
+      scopes: ['uploads'],
+      refreshIndex: true
+    })
+
+    expect(indexTick).toHaveBeenCalledWith('project-1')
+  })
 })

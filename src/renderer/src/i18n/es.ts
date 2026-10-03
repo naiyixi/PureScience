@@ -462,7 +462,8 @@ export const es: Partial<Record<ZhKey, string>> = {
   'runtimes.importLockEmpty': 'Pega primero el contenido del archivo de bloqueo.',
   'runtimes.importLockFailed': 'La importación falló: {message}',
   'runtimes.namedEnvs': 'Entornos con nombre',
-  'runtimes.namedEnvsDesc': 'Entornos creados para cuadernos, incluidos los importados desde un archivo de bloqueo. Eliminar borra sus archivos; un cuaderno que lo use debe cambiar antes.',
+  'runtimes.namedEnvsDesc':
+    'Entornos creados para cuadernos, incluidos los importados desde un archivo de bloqueo. Eliminar borra sus archivos; un cuaderno que lo use debe cambiar antes.',
   'runtimes.namedEnvsEmpty': 'Aún no hay entornos con nombre.',
   'runtimes.removeNamedEnv': 'Eliminar',
   'runtimes.removeNamedEnvTitle': '¿Eliminar «{name}»?',
@@ -624,6 +625,13 @@ export const es: Partial<Record<ZhKey, string>> = {
   'gs.scopeCoverage': '{considered} revisados, {contentRead} con contenido leído',
   'gs.scopeCoverageNameOnly': 'solo nombre y ruta',
   'gs.scopeCoverageBounded': 'Se alcanzó el límite: no se cubrió todo aquí',
+  'gs.indexSummary': 'Indexado: {indexed} · {pending} pendientes',
+  'gs.indexUpdatedAt': 'índice actualizado hace {minutes} min',
+  'gs.indexNow': 'Indexar ahora',
+  'gs.indexing': 'Indexando…',
+  'gs.indexAbsent': 'Todavía no hay índice: la búsqueda examina los archivos en vivo',
+  'gs.indexCapped':
+    'El índice alcanzó su límite de almacenamiento: algunos archivos no están indexados',
   'gs.contentScopeArtifact': 'Archivo generado',
   'gs.contentScopeLiterature': 'Bibliografía',
   'gs.contentScopeAnnotation': 'Anotación',
