@@ -4118,5 +4118,22 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'sessionFork.notCarried': 'Non repris : {names}',
   'sessionFork.confirm': 'Créer la copie',
   'sessionFork.unreadable': "La session source n'a pas pu être lue",
-  'sessionFork.done': 'La copie a été créée'
+  'sessionFork.done': 'La copie a été créée',
+  'checklist.resolutionOpen': 'non résolu',
+  'checklist.resolutionResolved': 'résolu',
+  'checklist.resolutionUnaddressed': 'non traité',
+  'checklist.reflagged': 'signalé à nouveau ×{count}',
+  'checklist.assessed': 'évalué ×{count}',
+  'checklist.reopen': 'Marquer comme non résolu',
+  'reviewer.summaryError': 'Erreur de révision',
+  'reviewer.summaryClean': 'Aucun problème détecté',
+  'reviewer.summaryCleanOutdated': 'Aucun problème détecté (obsolète)',
+  'reviewer.summaryFinding': '{count} constat',
+  'reviewer.summaryFindings': '{count} constats',
+  'reviewer.summaryOutdated': '{summary} (obsolète)',
+  'reviewer.summaryPending': 'Révision en attente',
+  'artifact.reconstructionBounded':
+    "Le journal d'exécution immuable a été tronqué ; la reconstruction peut contenir un commentaire signalant une lacune de provenance.",
+  'artifact.checkingPreviousScript': 'Vérification d’un script déjà généré…',
+  'artifact.provenanceSourceLabel': 'Source'
 }

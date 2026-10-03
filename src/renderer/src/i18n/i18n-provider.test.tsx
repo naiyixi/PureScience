@@ -130,4 +130,23 @@ describe('i18n 多语言体系', () => {
     })
     expect(typeof currentT).toBe('function')
   })
+
+  // Regression: the no-provider fallback used to return the raw dictionary string, so a component
+  // rendered outside LanguageProvider printed `{count}` at the user. Both paths must interpolate.
+  it('无 Provider 的回退 t 也必须替换占位符（不得原样打印 {count}）', async () => {
+    let fallbackT: ((key: string, vars?: Record<string, string | number>) => string) | undefined
+    const Harness = (): React.JSX.Element => {
+      // No LanguageProvider above this component: `useLanguage` returns the module-level fallback.
+      const { t } = useLanguage()
+      fallbackT = (key, vars) => t(key as Parameters<typeof t>[0], vars)
+      return <span>{t('checklist.assessed', { count: 3 })}</span>
+    }
+    await act(async () => {
+      root.render(<Harness />)
+    })
+    const rendered = container.textContent ?? ''
+    expect(rendered).toBe('assessed ×3')
+    expect(rendered).not.toContain('{count}')
+    expect(fallbackT?.('checklist.reflagged', { count: 2 })).toBe('re-flagged ×2')
+  })
 })

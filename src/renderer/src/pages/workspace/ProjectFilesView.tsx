@@ -1866,7 +1866,7 @@ const ProjectFilesViewContent = ({
                 disabled={catalogIndex.isRepairing}
                 onClick={() => void catalogIndex.repairIndex()}
               >
-                {catalogIndex.isRepairing ? 'Retrying...' : 'Retry'}
+                {catalogIndex.isRepairing ? t('common.retrying') : t('common.retry')}
               </Button>
             </div>
           ) : null}

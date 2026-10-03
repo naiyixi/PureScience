@@ -4131,5 +4131,22 @@ export const de: Partial<Record<ZhKey, string>> = {
   'sessionFork.notCarried': 'Nicht übernommen: {names}',
   'sessionFork.confirm': 'Kopie erstellen',
   'sessionFork.unreadable': 'Die Quellsitzung war nicht lesbar',
-  'sessionFork.done': 'Die Kopie wurde erstellt'
+  'sessionFork.done': 'Die Kopie wurde erstellt',
+  'checklist.resolutionOpen': 'offen',
+  'checklist.resolutionResolved': 'gelöst',
+  'checklist.resolutionUnaddressed': 'unbehandelt',
+  'checklist.reflagged': 'erneut markiert ×{count}',
+  'checklist.assessed': 'bewertet ×{count}',
+  'checklist.reopen': 'Als offen markieren',
+  'reviewer.summaryError': 'Prüffehler',
+  'reviewer.summaryClean': 'Keine Probleme gefunden',
+  'reviewer.summaryCleanOutdated': 'Keine Probleme gefunden (veraltet)',
+  'reviewer.summaryFinding': '{count} Befund',
+  'reviewer.summaryFindings': '{count} Befunde',
+  'reviewer.summaryOutdated': '{summary} (veraltet)',
+  'reviewer.summaryPending': 'Prüfung ausstehend',
+  'artifact.reconstructionBounded':
+    'Das unveränderliche Ausführungsprotokoll wurde begrenzt; die Rekonstruktion kann einen Hinweis auf eine Herkunftslücke enthalten.',
+  'artifact.checkingPreviousScript': 'Es wird geprüft, ob bereits ein Skript erzeugt wurde…',
+  'artifact.provenanceSourceLabel': 'Quelle'
 }

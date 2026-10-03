@@ -4044,5 +4044,22 @@ export const en: Record<ZhKey, string> = {
   'sessionFork.notCarried': 'Not carried: {names}',
   'sessionFork.confirm': 'Create the copy',
   'sessionFork.unreadable': 'The source session could not be read',
-  'sessionFork.done': 'The copy was created'
+  'sessionFork.done': 'The copy was created',
+  'checklist.resolutionOpen': 'open',
+  'checklist.resolutionResolved': 'resolved',
+  'checklist.resolutionUnaddressed': 'unaddressed',
+  'checklist.reflagged': 're-flagged ×{count}',
+  'checklist.assessed': 'assessed ×{count}',
+  'checklist.reopen': 'Reopen',
+  'reviewer.summaryError': 'Review error',
+  'reviewer.summaryClean': 'No issues found',
+  'reviewer.summaryCleanOutdated': 'No issues found (outdated)',
+  'reviewer.summaryFinding': '{count} finding',
+  'reviewer.summaryFindings': '{count} findings',
+  'reviewer.summaryOutdated': '{summary} (outdated)',
+  'reviewer.summaryPending': 'Review pending',
+  'artifact.reconstructionBounded':
+    'The immutable Execution Log was bounded; the reconstruction may include a provenance-gap comment.',
+  'artifact.checkingPreviousScript': 'Checking for a previously generated script…',
+  'artifact.provenanceSourceLabel': 'Source'
 }

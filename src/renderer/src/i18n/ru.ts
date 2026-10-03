@@ -4021,5 +4021,22 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'sessionFork.notCarried': 'Не переносится: {names}',
   'sessionFork.confirm': 'Создать копию',
   'sessionFork.unreadable': 'Исходный сеанс не удалось прочитать',
-  'sessionFork.done': 'Копия создана'
+  'sessionFork.done': 'Копия создана',
+  'checklist.resolutionOpen': 'не решено',
+  'checklist.resolutionResolved': 'решено',
+  'checklist.resolutionUnaddressed': 'не обработано',
+  'checklist.reflagged': 'отмечено повторно ×{count}',
+  'checklist.assessed': 'оценено ×{count}',
+  'checklist.reopen': 'Вернуть в «не решено»',
+  'reviewer.summaryError': 'Ошибка проверки',
+  'reviewer.summaryClean': 'Проблем не найдено',
+  'reviewer.summaryCleanOutdated': 'Проблем не найдено (устарело)',
+  'reviewer.summaryFinding': '{count} замечание',
+  'reviewer.summaryFindings': '{count} замечаний',
+  'reviewer.summaryOutdated': '{summary} (устарело)',
+  'reviewer.summaryPending': 'Проверка ожидается',
+  'artifact.reconstructionBounded':
+    'Неизменяемый журнал выполнения был ограничен; в реконструкции может быть комментарий о пробеле в происхождении.',
+  'artifact.checkingPreviousScript': 'Проверяем, не создан ли уже сценарий…',
+  'artifact.provenanceSourceLabel': 'Источник'
 }

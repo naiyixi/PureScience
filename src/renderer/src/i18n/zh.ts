@@ -3778,7 +3778,23 @@ export const zh = {
   'sessionFork.notCarried': '不携带：{names}',
   'sessionFork.confirm': '创建副本',
   'sessionFork.unreadable': '源会话无法读取',
-  'sessionFork.done': '副本已创建'
+  'sessionFork.done': '副本已创建',
+  'checklist.resolutionOpen': '未解决',
+  'checklist.resolutionResolved': '已解决',
+  'checklist.resolutionUnaddressed': '未处理',
+  'checklist.reflagged': '重复标记 ×{count}',
+  'checklist.assessed': '已评估 ×{count}',
+  'checklist.reopen': '恢复为未解决',
+  'reviewer.summaryError': '审查出错',
+  'reviewer.summaryClean': '未发现问题',
+  'reviewer.summaryCleanOutdated': '未发现问题（已过期）',
+  'reviewer.summaryFinding': '{count} 项发现',
+  'reviewer.summaryFindings': '{count} 项发现',
+  'reviewer.summaryOutdated': '{summary}（已过期）',
+  'reviewer.summaryPending': '等待审查',
+  'artifact.reconstructionBounded': '不可变的执行日志已被截断；重建结果可能带有溯源缺口注释。',
+  'artifact.checkingPreviousScript': '正在检查此前生成的脚本…',
+  'artifact.provenanceSourceLabel': '来源'
 }
 
 export type ZhKey = keyof typeof zh

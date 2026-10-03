@@ -4093,5 +4093,22 @@ export const es: Partial<Record<ZhKey, string>> = {
   'sessionFork.notCarried': 'No se traslada: {names}',
   'sessionFork.confirm': 'Crear la copia',
   'sessionFork.unreadable': 'No se pudo leer la sesión de origen',
-  'sessionFork.done': 'La copia se creó'
+  'sessionFork.done': 'La copia se creó',
+  'checklist.resolutionOpen': 'sin resolver',
+  'checklist.resolutionResolved': 'resuelto',
+  'checklist.resolutionUnaddressed': 'sin tratar',
+  'checklist.reflagged': 'marcado de nuevo ×{count}',
+  'checklist.assessed': 'evaluado ×{count}',
+  'checklist.reopen': 'Volver a marcar como sin resolver',
+  'reviewer.summaryError': 'Error de revisión',
+  'reviewer.summaryClean': 'No se encontraron problemas',
+  'reviewer.summaryCleanOutdated': 'No se encontraron problemas (desactualizado)',
+  'reviewer.summaryFinding': '{count} hallazgo',
+  'reviewer.summaryFindings': '{count} hallazgos',
+  'reviewer.summaryOutdated': '{summary} (desactualizado)',
+  'reviewer.summaryPending': 'Revisión pendiente',
+  'artifact.reconstructionBounded':
+    'El registro de ejecución inmutable se truncó; la reconstrucción puede incluir un comentario sobre una laguna de procedencia.',
+  'artifact.checkingPreviousScript': 'Comprobando si ya existe un script generado…',
+  'artifact.provenanceSourceLabel': 'Origen'
 }

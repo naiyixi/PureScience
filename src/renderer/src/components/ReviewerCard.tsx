@@ -97,7 +97,7 @@ const ItemCard = ({
             className="shrink-0 rounded bg-bg-200 px-1 py-0.5 text-[11px] text-yellow-600 dark:text-yellow-400"
             data-testid="reviewer-reflag-marker"
           >
-            re-flagged ×{reflagCount}
+            {t('checklist.reflagged', { count: reflagCount })}
           </span>
         )}
       </div>
@@ -241,14 +241,17 @@ export const ReviewerCard = ({
 
   // Compact summary line.
   const summaryText = (): string => {
-    if (isError) return 'Review error'
+    if (isError) return t('reviewer.summaryError')
     if (isComplete && !hasWarnOrFail)
-      return isStale ? 'No issues found (outdated)' : 'No issues found'
+      return isStale ? t('reviewer.summaryCleanOutdated') : t('reviewer.summaryClean')
     if (isComplete && hasWarnOrFail) {
-      const base = `${warnFailCount} finding${warnFailCount === 1 ? '' : 's'}`
-      return isStale ? `${base} (outdated)` : base
+      const base = t(
+        warnFailCount === 1 ? 'reviewer.summaryFinding' : 'reviewer.summaryFindings',
+        { count: warnFailCount }
+      )
+      return isStale ? t('reviewer.summaryOutdated', { summary: base }) : base
     }
-    return 'Review pending'
+    return t('reviewer.summaryPending')
   }
 
   // Status icon. A stale complete review always shows the warning icon (amber), even a stale pass —

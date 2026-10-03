@@ -1122,14 +1122,14 @@ const ArtifactProvenancePanel = ({
                 </p>
               ) : (
                 <p className="min-w-0 flex-1 truncate text-sm text-text-300">
-                  Checking for a previously generated script…
+                  {t('artifact.checkingPreviousScript')}
                 </p>
               )}
             </div>
             {producerInputs.length > 0 ? (
               <NotebookInputDataStrip
                 inputFiles={producerInputs}
-                label="Inputs"
+                label={t('settings.inputs')}
                 className="border-b border-border-300/50 px-4 py-2"
               />
             ) : null}
@@ -1137,8 +1137,7 @@ const ArtifactProvenancePanel = ({
             (codeReconstructionState?.state === 'ready' &&
               codeReconstructionState.sourceTruncated) ? (
               <p className="border-b border-warning-100/50 bg-warning-100/10 px-4 py-2 text-xs text-text-200">
-                The immutable Execution Log was bounded; the reconstruction may include a
-                provenance-gap comment.
+                {t('artifact.reconstructionBounded')}
               </p>
             ) : null}
             {codeReconstructionResult?.status === 'generating' ? (
@@ -1287,7 +1286,7 @@ const ArtifactProvenancePanel = ({
                   <dd className="text-text-100">
                     {asString(environment.runtime_version) ?? t('ws.versionUnavailable')}
                   </dd>
-                  <dt className="text-text-300">Source</dt>
+                  <dt className="text-text-300">{t('artifact.provenanceSourceLabel')}</dt>
                   <dd className="text-text-100">
                     {asString(environment.runtime_source) ?? 'unknown'} ·{' '}
                     {asString(environment.kernel_kind) ?? 'unknown'}

@@ -3942,5 +3942,22 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'sessionFork.notCarried': '가져오지 않음: {names}',
   'sessionFork.confirm': '복사본 만들기',
   'sessionFork.unreadable': '원본 세션을 읽을 수 없습니다',
-  'sessionFork.done': '복사본을 만들었습니다'
+  'sessionFork.done': '복사본을 만들었습니다',
+  'checklist.resolutionOpen': '미해결',
+  'checklist.resolutionResolved': '해결됨',
+  'checklist.resolutionUnaddressed': '미처리',
+  'checklist.reflagged': '재표시 ×{count}',
+  'checklist.assessed': '평가됨 ×{count}',
+  'checklist.reopen': '미해결로 되돌리기',
+  'reviewer.summaryError': '검토 오류',
+  'reviewer.summaryClean': '발견된 문제 없음',
+  'reviewer.summaryCleanOutdated': '발견된 문제 없음(오래됨)',
+  'reviewer.summaryFinding': '지적 {count}건',
+  'reviewer.summaryFindings': '지적 {count}건',
+  'reviewer.summaryOutdated': '{summary}(오래됨)',
+  'reviewer.summaryPending': '검토 대기 중',
+  'artifact.reconstructionBounded':
+    '변경할 수 없는 실행 로그가 잘렸습니다. 재구성 결과에 출처 공백 주석이 포함될 수 있습니다.',
+  'artifact.checkingPreviousScript': '이전에 생성된 스크립트를 확인하는 중…',
+  'artifact.provenanceSourceLabel': '출처'
 }

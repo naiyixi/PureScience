@@ -3717,5 +3717,21 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'sessionFork.notCarried': '不攜帶：{names}',
   'sessionFork.confirm': '建立副本',
   'sessionFork.unreadable': '來源工作階段無法讀取',
-  'sessionFork.done': '副本已建立'
+  'sessionFork.done': '副本已建立',
+  'checklist.resolutionOpen': '未解決',
+  'checklist.resolutionResolved': '已解決',
+  'checklist.resolutionUnaddressed': '未處理',
+  'checklist.reflagged': '重複標記 ×{count}',
+  'checklist.assessed': '已評估 ×{count}',
+  'checklist.reopen': '恢復為未解決',
+  'reviewer.summaryError': '審查出錯',
+  'reviewer.summaryClean': '未發現問題',
+  'reviewer.summaryCleanOutdated': '未發現問題（已過期）',
+  'reviewer.summaryFinding': '{count} 項發現',
+  'reviewer.summaryFindings': '{count} 項發現',
+  'reviewer.summaryOutdated': '{summary}（已過期）',
+  'reviewer.summaryPending': '等待審查',
+  'artifact.reconstructionBounded': '不可變的執行日誌已被截斷；重建結果可能帶有溯源缺口註釋。',
+  'artifact.checkingPreviousScript': '正在檢查先前產生的指令碼…',
+  'artifact.provenanceSourceLabel': '來源'
 }

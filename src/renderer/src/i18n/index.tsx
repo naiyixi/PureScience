@@ -45,6 +45,16 @@ type Translate = LanguageContextValue['t']
 
 const LanguageContext = createContext<LanguageContextValue | null>(null)
 
+// Interpolation for both the provider's `t` and the fallback below. The fallback used to return the
+// raw string, so a component rendered outside the provider printed `{count}` at the user instead of
+// the number — one shared helper keeps the two paths from drifting again.
+const interpolate = (text: string, vars?: Record<string, string | number>): string => {
+  if (!vars) return text
+  return text.replace(/\{(\w+)\}/g, (match, name: string) =>
+    name in vars ? String(vars[name]) : match
+  )
+}
+
 const LanguageProvider = ({ children }: { children: ReactNode }): React.JSX.Element => {
   const [preference, setPreference] = useState<LanguagePreference>(readStoredPreference)
   // The live system language; only consulted while preference === 'system'. Re-resolved when the
@@ -90,10 +100,7 @@ const LanguageProvider = ({ children }: { children: ReactNode }): React.JSX.Elem
       setLang: setPreference,
       t: (key, vars) => {
         const text = dictionaries[lang][key] ?? dictionaries.en[key] ?? key
-        if (!vars) return text
-        return text.replace(/\{(\w+)\}/g, (match, name: string) =>
-          name in vars ? String(vars[name]) : match
-        )
+        return interpolate(text, vars)
       }
     }),
     [lang, preference]
@@ -106,7 +113,7 @@ const FALLBACK_LANGUAGE_VALUE: LanguageContextValue = {
   lang: 'en',
   preference: 'en',
   setLang: () => {},
-  t: (key) => dictionaries.en[key] ?? key
+  t: (key, vars) => interpolate(dictionaries.en[key] ?? key, vars)
 }
 
 const useLanguage = (): LanguageContextValue => {

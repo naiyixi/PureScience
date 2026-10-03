@@ -12,7 +12,7 @@
 import { useEffect } from 'react'
 import { AlertTriangle, CheckCircle2, RotateCcw, ShieldCheck, XCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useLanguage } from '@/i18n'
+import { useLanguage, type TranslationKey } from '@/i18n'
 
 import type {
   VerificationChecklist,
@@ -48,10 +48,10 @@ const VerdictIcon = ({
   )
 }
 
-const RESOLUTION_LABELS: Record<FindingResolution, string> = {
-  open: 'open',
-  resolved: 'resolved',
-  unaddressed: 'unaddressed'
+const RESOLUTION_LABELS: Record<FindingResolution, TranslationKey> = {
+  open: 'checklist.resolutionOpen',
+  resolved: 'checklist.resolutionResolved',
+  unaddressed: 'checklist.resolutionUnaddressed'
 }
 
 // One claim row in the checklist.
@@ -112,14 +112,14 @@ const ClaimRow = ({
           )}
           data-testid="checklist-resolution"
         >
-          {RESOLUTION_LABELS[item.resolution]}
+          {t(RESOLUTION_LABELS[item.resolution])}
         </span>
         {item.reflagCount > 0 && (
           <span data-testid="checklist-reflag" className="text-text-400">
-            re-flagged ×{item.reflagCount}
+            {t('checklist.reflagged', { count: item.reflagCount })}
           </span>
         )}
-        <span>assessed ×{item.assessmentCount}</span>
+        <span>{t('checklist.assessed', { count: item.assessmentCount })}</span>
         {onGoToTranscript && (
           <button
             type="button"
@@ -142,7 +142,7 @@ const ClaimRow = ({
             data-testid="checklist-reopen"
           >
             <RotateCcw className="h-3 w-3" aria-hidden />
-            Reopen
+            {t('checklist.reopen')}
           </button>
         ) : (
           <button

@@ -4008,5 +4008,22 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'sessionFork.notCarried': '引き継がないもの：{names}',
   'sessionFork.confirm': 'コピーを作成',
   'sessionFork.unreadable': '元のセッションを読み込めませんでした',
-  'sessionFork.done': 'コピーを作成しました'
+  'sessionFork.done': 'コピーを作成しました',
+  'checklist.resolutionOpen': '未解決',
+  'checklist.resolutionResolved': '解決済み',
+  'checklist.resolutionUnaddressed': '未対応',
+  'checklist.reflagged': '再指摘 ×{count}',
+  'checklist.assessed': '評価済み ×{count}',
+  'checklist.reopen': '未解決に戻す',
+  'reviewer.summaryError': 'レビューエラー',
+  'reviewer.summaryClean': '問題は見つかりません',
+  'reviewer.summaryCleanOutdated': '問題は見つかりません（情報が古い）',
+  'reviewer.summaryFinding': '{count} 件の指摘',
+  'reviewer.summaryFindings': '{count} 件の指摘',
+  'reviewer.summaryOutdated': '{summary}（情報が古い）',
+  'reviewer.summaryPending': 'レビュー待ち',
+  'artifact.reconstructionBounded':
+    '不変の実行ログが上限に達したため、再構成の結果に来歴ギャップの注記が含まれる場合があります。',
+  'artifact.checkingPreviousScript': '以前に生成されたスクリプトを確認しています…',
+  'artifact.provenanceSourceLabel': '取得元'
 }
