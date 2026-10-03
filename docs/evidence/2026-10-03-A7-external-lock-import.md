@@ -112,7 +112,20 @@ commands, received 345`）。修正三处计数（internal 345 / local Web 343 /
 
 ## 6. D1.3 收口读数（执行器入口层审计 P0-8，2026-10-03，提交 `d726882a` + `b7feabd4`）
 
-真窗口（同一个 `e2e/certification/lock-import.spec.ts`，`test-results/electron/.last-run.json` = **passed**，0 失败）：
+真窗口（同一个 `e2e/certification/lock-import.spec.ts`，`test-results/electron/.last-run.json` = **passed**）。
+控制台原文（`2 passed (39.3s)`）：
+
+```
+[a7-window] instanceRoot=…/purescience-electron-e2e-SDh8EC/storage seeded=82/82
+[a7-window] success: Imported “lock-import-env” — 82 packages (82 from cache, 0 downloaded).
+[a7-window] missingEntries=0
+[a7-window] runtimeCardsForImportedEnv=0
+[a7-window] interpreter=[3, 12, 13]
+[a7-window] serviceNamedEnvs=["lock-import-env"]
+[a7-window] namedEnvRows=1
+[a7-window] namedEnvRemoved=true dirGone=true
+2 passed (39.3s)
+```
 
 | 判据          | 读数                                                                                                             |
 | ------------- | ---------------------------------------------------------------------------------------------------------------- |
