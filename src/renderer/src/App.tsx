@@ -34,6 +34,7 @@ import { useUnreadTaskViewSync } from '@/hooks/useUnreadTaskViewSync'
 import { useWindowFindAppearanceSync } from '@/hooks/useWindowFindAppearanceSync'
 import { useNavigationStore } from '@/stores/navigation-store'
 import { useNotebookEnvStore } from '@/stores/notebook-env-store'
+import { useNotificationInboxStore } from '@/stores/notification-inbox-store'
 import { useProjectStore } from '@/stores/project-store'
 import { useSettingsStore } from '@/stores/settings-store'
 import { useSessionStore } from '@/stores/session-store'
@@ -93,6 +94,7 @@ const App = (): React.JSX.Element | null => {
   const initEnv = useNotebookEnvStore((state) => state.init)
   const envUi = useNotebookEnvStore((state) => state.ui)
   const listenForPermissionChanges = usePermissionGrantsStore((state) => state.listen)
+  const listenForNotificationChanges = useNotificationInboxStore((state) => state.listen)
   const retryEnv = useNotebookEnvStore((state) => state.retry)
   const openPermissionSession = useCallback(
     (sessionId: string): void => {
@@ -305,6 +307,11 @@ const App = (): React.JSX.Element | null => {
   }, [initUpdates])
 
   useEffect(() => listenForPermissionChanges(), [listenForPermissionChanges])
+
+  // Subscribe once to the message-center broadcast. Without this the bell's unread badge only
+  // refreshed after the user opened the bell, so a background task finishing while the user was
+  // elsewhere never lit the dot. The store's `listen` also re-pulls on reconnect/visibility.
+  useEffect(() => listenForNotificationChanges(), [listenForNotificationChanges])
 
   // Mirrors the main-process provisioner once at launch (Plan A auto-runs upgradeIfNeeded and
   // broadcasts progress); the returned `ui` drives the top-level upgrade/error banner below.

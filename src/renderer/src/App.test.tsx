@@ -6,6 +6,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => {
   // Captures the onOpenSession listener so tests can fire the notification nudge directly.
   const notificationNudgeBox: { current: (() => void) | undefined } = { current: undefined }
+  // Captures the message-center change listener so tests can publish a change like main does.
+  const notificationChangeBox: { current: (() => void) | undefined } = { current: undefined }
   type NavigationState = { view: 'home' | 'workspace'; userNavigationRevision: number }
   const navigationListeners = new Set<
     (state: NavigationState, previousState: NavigationState) => void
@@ -51,11 +53,17 @@ const mocks = vi.hoisted(() => {
     initUpdates: vi.fn(),
     openSessionById: vi.fn(),
     notificationNudgeBox,
+    notificationChangeBox,
     notifications: {
       onOpenSession: vi.fn((listener: () => void) => {
         notificationNudgeBox.current = listener
         return () => undefined
       }),
+      onChanged: vi.fn((listener: () => void) => {
+        notificationChangeBox.current = listener
+        return () => undefined
+      }),
+      getSnapshot: vi.fn(),
       peekPendingOpenSession: vi.fn().mockResolvedValue(null),
       takePendingOpenSession: vi.fn().mockResolvedValue(null)
     },
@@ -257,6 +265,7 @@ vi.mock('@/pages/workspace/WorkspacePage', () => ({
 }))
 
 import App from './App'
+import { useNotificationInboxStore } from '@/stores/notification-inbox-store'
 
 describe('App startup routing', () => {
   let container: HTMLDivElement
@@ -338,6 +347,14 @@ describe('App startup routing', () => {
     mocks.notifications.peekPendingOpenSession.mockReset().mockResolvedValue(null)
     mocks.notifications.takePendingOpenSession.mockReset().mockResolvedValue(null)
     mocks.notificationNudgeBox.current = undefined
+    mocks.notificationChangeBox.current = undefined
+    mocks.notifications.onChanged.mockClear()
+    mocks.notifications.getSnapshot.mockReset().mockResolvedValue({
+      revision: 0,
+      unreadCount: 0,
+      latestSequence: 0,
+      items: []
+    })
     mocks.globalSearch.props = undefined
     mocks.closeActiveModal.handler = undefined
   })
@@ -1290,5 +1307,43 @@ describe('App startup routing', () => {
 
     expect(mocks.notifications.takePendingOpenSession).toHaveBeenCalledWith(4)
     expect(mocks.openSessionById).toHaveBeenCalledWith('s-4', 'notification')
+  })
+
+  it('lights the message-center badge from the broadcast without opening the bell', async () => {
+    mocks.settings.isLoaded = true
+    // Deterministic starting point: the inbox store is module-level state shared across tests.
+    useNotificationInboxStore.setState({
+      revision: 0,
+      unreadCount: 0,
+      latestSequence: 0,
+      items: [],
+      status: 'idle',
+      error: undefined
+    })
+    mocks.notifications.getSnapshot.mockResolvedValue({
+      revision: 1,
+      unreadCount: 2,
+      latestSequence: 2,
+      items: []
+    })
+
+    await render()
+
+    // Startup must subscribe to the main-process broadcast; without this subscription the badge
+    // only refreshed after the user opened the bell.
+    expect(mocks.notifications.onChanged).toHaveBeenCalledOnce()
+    const publishChange = mocks.notificationChangeBox.current
+    expect(publishChange).toBeDefined()
+
+    await act(async () => {
+      publishChange?.()
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+
+    // A finished background task publishes a change: the badge count is already current, with no
+    // bell interaction and no explicit refresh() from any component.
+    expect(mocks.notifications.getSnapshot.mock.calls.length).toBeGreaterThanOrEqual(2)
+    expect(useNotificationInboxStore.getState().unreadCount).toBe(2)
+    expect(useNotificationInboxStore.getState().status).toBe('ready')
   })
 })
