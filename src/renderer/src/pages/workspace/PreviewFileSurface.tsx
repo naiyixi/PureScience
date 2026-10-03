@@ -38,6 +38,7 @@ import { ArtifactEditDialog } from './ArtifactEditDialog'
 import { ExtensionPreservingFileName } from './ExtensionPreservingFileName'
 import { LocalFileHeaderActions } from './LocalFileHeaderActions'
 import { ManagedFileDownloadButton } from './ManagedFileDownloadButton'
+import { ArtifactFileOpenActions } from './ArtifactFileOpenActions'
 import {
   createPreviewFileItemForArtifactVersion,
   resolveArtifactVersionDescriptor
@@ -304,6 +305,7 @@ const PreviewFileHeader = ({
             suggestedName={item.name}
             className="bg-transparent shadow-none"
           />
+          <ArtifactFileOpenActions path={item.path} tooltipClassName={tooltipClassName} />
           {item.originSession?.state === 'deleted' ? (
             <span
               data-testid="deleted-origin-session"
