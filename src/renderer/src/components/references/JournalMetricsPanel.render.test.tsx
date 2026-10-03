@@ -32,7 +32,11 @@ vi.mock('@/i18n', () => {
       'Moved {metrics} metrics and {references} references; “{alias}” now resolves here.',
     'references.journalMetrics.merge.refusal.selfMerge': 'A journal cannot be merged into itself',
     'references.journalMetrics.merge.refusal.aliasConflict':
-      'That name already belongs to another journal'
+      'That name already belongs to another journal',
+    'references.journalMetrics.conflictBadge': 'also {count}',
+    'references.journalMetrics.conflictBadgeTitle':
+      'The same year holds more than one value from different sources; all are listed below.',
+    'references.journalMetrics.conflictLine': 'also {value} ({year} · {source})'
   }
 
   return {
@@ -111,7 +115,8 @@ describe('journal metrics table', () => {
                 value: '64.8',
                 numericValue: 64.8,
                 year: 2023,
-                source: 'Journal Citation Reports'
+                source: 'Journal Citation Reports',
+                alternatives: []
               }
             }
           }
@@ -127,6 +132,73 @@ describe('journal metrics table', () => {
     expect(text).toContain('0028-0836')
     // The column header uses the translated kind, not the store's raw word.
     expect(text).toContain('Impact factor')
+  })
+
+  it('prints BOTH values when one year holds two claims from two sources', () => {
+    render(
+      <JournalMetricsTable
+        counts={{ total: 1, matched: 1, missingMetric: 0, valueNotNumeric: 0, notMatching: 0 }}
+        kinds={['impact-factor']}
+        rows={[
+          {
+            journalId: 'j-1',
+            name: 'nature',
+            issn: '0028-0836',
+            aliases: [],
+            cells: {
+              'impact-factor': {
+                state: 'known',
+                value: '64.8',
+                numericValue: 64.8,
+                year: 2023,
+                source: 'Journal Citation Reports',
+                alternatives: [{ value: '16.6', numericValue: 16.6, source: '期刊指标库' }]
+              }
+            }
+          }
+        ]}
+        unknownLabel="Unknown"
+      />
+    )
+
+    const text = container.textContent ?? ''
+    // The hidden-until-now claim and its own source are on screen, not just the winner of the tie-break.
+    expect(text).toContain('16.6')
+    expect(text).toContain('期刊指标库')
+    expect(text).toContain('64.8')
+    expect(container.querySelector('[data-testid="journal-metric-conflict"]')).not.toBeNull()
+    expect(container.querySelectorAll('[data-testid="journal-metric-alternative"]')).toHaveLength(1)
+  })
+
+  it('shows no conflict marker when the year holds a single claim', () => {
+    render(
+      <JournalMetricsTable
+        counts={{ total: 1, matched: 1, missingMetric: 0, valueNotNumeric: 0, notMatching: 0 }}
+        kinds={['impact-factor']}
+        rows={[
+          {
+            journalId: 'j-1',
+            name: 'nature',
+            issn: null,
+            aliases: [],
+            cells: {
+              'impact-factor': {
+                state: 'known',
+                value: '64.8',
+                numericValue: 64.8,
+                year: 2023,
+                source: 'Journal Citation Reports',
+                alternatives: []
+              }
+            }
+          }
+        ]}
+        unknownLabel="Unknown"
+      />
+    )
+
+    expect(container.querySelector('[data-testid="journal-metric-conflict"]')).toBeNull()
+    expect(container.querySelectorAll('[data-testid="journal-metric-alternative"]')).toHaveLength(0)
   })
 
   it('reconciles the counts line against the total', () => {

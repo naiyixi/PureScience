@@ -4072,5 +4072,9 @@ export const en: Record<ZhKey, string> = {
   'specialist.deleteProtectedTarget': 'This Specialist is read-only and cannot be deleted.',
   'specialist.deleteCommitFailed': 'Deletion failed and was rolled back.',
   'specialistEditor.iconLabel': 'Icon',
-  'specialistEditor.colorLabel': 'Color'
+  'specialistEditor.colorLabel': 'Color',
+  'references.journalMetrics.conflictBadge': 'also {count}',
+  'references.journalMetrics.conflictBadgeTitle':
+    'The same year holds more than one value from different sources; all are listed below.',
+  'references.journalMetrics.conflictLine': 'also {value} ({year} · {source})'
 }

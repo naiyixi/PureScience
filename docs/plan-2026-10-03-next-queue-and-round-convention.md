@@ -98,7 +98,7 @@ Build/notarize-mac/publish 全 skipped ⇒ **连发布页都没有**，同一批
    正文 13,535 字节、mac 未签名已披露，并写明首发 `f690b85a` 那次 run 是 failure、已删 tag 重建。
 2. **R2-U4 三种具名拒绝的真机读数**：`self-merge` / 不存在的 id / 别名指向别刊——现在**只有单测**，
    做法照 `e2e/certification/journal-metrics-panel.spec.ts`（真窗口 + 夹具数据根 + 走界面入口）。
-3. **同日多指标不许静默取一条**（本版新立的案）：合并后同一 kind+同年份有两条主张时，视图要么并列显示（各带 source），
+3. ~~**同日多指标不许静默取一条**~~ ✅ **已交付（会话，v1.81.0 的 V11 / IC1）**：`selectClaimWithAlternatives()` + 面板并列打印 + 冲突徽标；真机读数 `docs/evidence/2026-10-03-journal-metric-conflict.md`（4 passed / 32.9s，**含原发现场景「别名合并」那一条也变成两个值**）。<br>原口径：合并后同一 kind+同年份有两条主张时，视图要么并列显示（各带 source），
    要么显式标冲突；**不许静默挑一条**。证据：`docs/evidence/2026-10-03-r2-u4-journal-alias-merge.md` §3。
 4. **egress 拦截卡"等满 60 秒"的端到端复现**：修复已完成（到点自动撤卡 + 应答失败不再静默），
    但"真窗口里等满 60 秒"的读数**未取**，做法同第 2 条。

@@ -55,6 +55,16 @@ export type JournalMetricsFilter = {
   year?: number
 }
 
+// Another claim about the SAME journal, kind and year whose value or source differs from the selected one.
+// Exists so the screen can show both instead of silently keeping one: a library that holds `64.8 (2023 ·
+// Journal Citation Reports)` and `16.6 (2023 · 中科院文献情报中心)` has two facts, and showing one of them
+// as "the" value of that year invents a third.
+export type JournalMetricAlternative = {
+  value: string
+  numericValue: number | null
+  source: string
+}
+
 export type JournalMetricCell =
   | {
       state: 'known'
@@ -62,6 +72,9 @@ export type JournalMetricCell =
       numericValue: number | null
       year: number
       source: string
+      // Every other claim for this year, each with its own source. Empty when the year has exactly one
+      // claim (or several identical ones) — never omitted when it does not, so the panel cannot drop them.
+      alternatives: JournalMetricAlternative[]
     }
   | { state: 'unknown' }
 
@@ -146,7 +159,50 @@ export const journalMetricKinds = (claims: readonly JournalMetricClaim[]): strin
   return [...kinds].sort()
 }
 
-const cellOf = (claim: JournalMetricClaim | null): JournalMetricCell =>
+// The selected claim AND the claims it would otherwise hide. Selection itself is unchanged (`selectLatestClaim`
+// above), so the screen stays deterministic; what changes is that the losers of that tie-break are handed to
+// the panel instead of being dropped. "Same claim" means the same value and the same source: two rows that
+// differ only in `fetchedAt` are one fact re-imported, not a conflict.
+export const selectClaimWithAlternatives = (
+  claims: readonly JournalMetricClaim[],
+  kind: string,
+  year?: number
+): { claim: JournalMetricClaim | null; alternatives: JournalMetricAlternative[] } => {
+  const claim = selectLatestClaim(claims, kind, year)
+  if (claim === null) return { claim: null, alternatives: [] }
+
+  const selectedValue = fold(claim.value)
+  const seen = new Set<string>()
+  const alternatives: JournalMetricAlternative[] = []
+  for (const candidate of claims) {
+    if (candidate.kind !== kind || candidate.year !== claim.year) continue
+    if (fold(candidate.value) === selectedValue && candidate.source === claim.source) continue
+    const identity = `${fold(candidate.value)}\u0000${candidate.source}`
+    if (seen.has(identity)) continue
+    seen.add(identity)
+    alternatives.push({
+      value: candidate.value,
+      numericValue: candidate.numericValue,
+      source: candidate.source
+    })
+  }
+  // Sorted so the same database always prints the same order — the tie-break above is deterministic, and the
+  // alternates must be too.
+  alternatives.sort(
+    (left, right) =>
+      left.source.localeCompare(right.source) || left.value.localeCompare(right.value)
+  )
+
+  return { claim, alternatives }
+}
+
+const cellOf = ({
+  claim,
+  alternatives
+}: {
+  claim: JournalMetricClaim | null
+  alternatives: JournalMetricAlternative[]
+}): JournalMetricCell =>
   claim === null
     ? { state: 'unknown' }
     : {
@@ -154,7 +210,8 @@ const cellOf = (claim: JournalMetricClaim | null): JournalMetricCell =>
         value: claim.value,
         numericValue: claim.numericValue,
         year: claim.year,
-        source: claim.source
+        source: claim.source,
+        alternatives
       }
 
 const withinBounds = (numericValue: number, filter: JournalMetricsFilter): boolean => {
@@ -187,7 +244,8 @@ export const buildJournalMetricsOverview = (input: {
   for (const journal of input.journals) {
     const claims = input.claims.filter((claim) => claim.journalId === journal.id)
     const cells: Record<string, JournalMetricCell> = {}
-    for (const kind of kinds) cells[kind] = cellOf(selectLatestClaim(claims, kind, filter.year))
+    for (const kind of kinds)
+      cells[kind] = cellOf(selectClaimWithAlternatives(claims, kind, filter.year))
 
     counts.total += 1
     // Only the kinds the filter actually asks about can exclude a journal; a filter about partitions says

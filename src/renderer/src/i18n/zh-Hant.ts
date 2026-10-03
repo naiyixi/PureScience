@@ -3743,5 +3743,9 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'specialist.deleteProtectedTarget': '該專才為唯讀，無法刪除。',
   'specialist.deleteCommitFailed': '刪除失敗，已還原。',
   'specialistEditor.iconLabel': '圖示',
-  'specialistEditor.colorLabel': '顏色'
+  'specialistEditor.colorLabel': '顏色',
+  'references.journalMetrics.conflictBadge': '另 {count} 條',
+  'references.journalMetrics.conflictBadgeTitle':
+    '同一年份存在來自不同來源的多個數值；下方全部列出。',
+  'references.journalMetrics.conflictLine': '同時：{value}（{year} · {source}）'
 }

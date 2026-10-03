@@ -3970,5 +3970,9 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'specialist.deleteProtectedTarget': '이 전문가는 읽기 전용이라 삭제할 수 없습니다.',
   'specialist.deleteCommitFailed': '삭제에 실패하여 롤백했습니다.',
   'specialistEditor.iconLabel': '아이콘',
-  'specialistEditor.colorLabel': '색상'
+  'specialistEditor.colorLabel': '색상',
+  'references.journalMetrics.conflictBadge': '외 {count}건',
+  'references.journalMetrics.conflictBadgeTitle':
+    '같은 연도에 서로 다른 출처의 값이 여러 개 있습니다. 아래에 모두 표시합니다.',
+  'references.journalMetrics.conflictLine': '함께: {value}({year} · {source})'
 }

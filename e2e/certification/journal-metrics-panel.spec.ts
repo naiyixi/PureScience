@@ -389,3 +389,81 @@ test('the import entry stores the good row and names the refused one', async ({ 
   const table = dialog.locator('table')
   await expect(table.locator('tr', { hasText: 'Nature' }).first()).toBeVisible()
 })
+
+// V11 (IC1). A merge can leave two claims for the SAME kind and year. Before this, the screen printed the one
+// with the newer `fetchedAt` and said nothing, so a reader could not know the year held a second value from a
+// second source (found on the real machine while reading the merge in R2-U4). The import in the test above is
+// idempotent for identical rows, but a DIFFERENT value for the same year is a second fact — so this walks the
+// user path to build one and reads the window.
+const contestedSeed = {
+  rows: [
+    {
+      issn: '0028-0836',
+      journalName: 'Nature',
+      kind: 'impact-factor',
+      value: '64.8',
+      year: 2023,
+      source: 'Journal Citation Reports'
+    },
+    {
+      issn: '0028-0836',
+      journalName: 'Nature',
+      kind: 'impact-factor',
+      value: '16.6',
+      year: 2023,
+      source: 'CAS journal metrics'
+    }
+  ]
+}
+
+test('one year with two claims shows both values, each with its own source', async ({ app }) => {
+  const page = await app.completeOnboarding()
+  await createProject(page, 'Journal metric conflict')
+
+  const importResult = await page.evaluate(async (payload) => {
+    const bridge = globalThis as unknown as {
+      api: {
+        references: {
+          importJournalMetrics: (
+            input: unknown
+          ) => Promise<{ imported: number; skipped: number; journalsCreated: number }>
+          listJournalMetrics: () => Promise<{ journals: unknown[]; claims: unknown[] }>
+        }
+      }
+    }
+    const result = await bridge.api.references.importJournalMetrics(payload)
+    const library = await bridge.api.references.listJournalMetrics()
+
+    // The store really holds two rows for that year — the assertion below is about the window, and this
+    // reading is what makes the window's two values a fact rather than a rendering accident.
+    return { result, claims: library.claims.length, journals: library.journals.length }
+  }, contestedSeed)
+  console.log(`[panel-reading] contested import: ${JSON.stringify(importResult)}`)
+  expect(importResult.result.imported).toBe(2)
+  expect(importResult.claims).toBe(2)
+
+  await page.getByTestId('workspace-references-toggle').click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toBeVisible()
+  await dialog.getByRole('button', { name: 'Journal metrics' }).click()
+
+  const table = dialog.locator('table')
+  await expect(table).toBeVisible()
+  const row = table.locator('tr', { hasText: 'Nature' }).first()
+  const rowText = (await row.innerText()).replace(/\s+/g, ' ').trim()
+  console.log(`[panel-reading] contested row: ${rowText}`)
+
+  // Both facts are on screen, each with its own source: neither value is dropped for the other.
+  expect(rowText).toContain('64.8')
+  expect(rowText).toContain('16.6')
+  expect(rowText).toContain('Journal Citation Reports')
+  expect(rowText).toContain('CAS journal metrics')
+
+  // And the conflict is marked, so the second value cannot be mistaken for an extra column.
+  const marker = row.locator('[data-testid="journal-metric-conflict"]')
+  await expect(marker).toBeVisible()
+  const markerText = (await marker.innerText()).replace(/\s+/g, ' ').trim()
+  console.log(`[panel-reading] conflict marker: ${markerText}`)
+  expect(row.locator('[data-testid="journal-metric-alternative"]')).toHaveCount(1)
+  await page.screenshot({ path: 'docs/evidence/2026-10-03-journal-metric-conflict.png' })
+})

@@ -4122,5 +4122,9 @@ export const es: Partial<Record<ZhKey, string>> = {
     'Este especialista es de solo lectura y no se puede eliminar.',
   'specialist.deleteCommitFailed': 'La eliminación falló y se revirtió.',
   'specialistEditor.iconLabel': 'Icono',
-  'specialistEditor.colorLabel': 'Color'
+  'specialistEditor.colorLabel': 'Color',
+  'references.journalMetrics.conflictBadge': 'también {count}',
+  'references.journalMetrics.conflictBadgeTitle':
+    'El mismo año tiene varios valores de fuentes distintas; todos se listan abajo.',
+  'references.journalMetrics.conflictLine': 'también {value} ({year} · {source})'
 }

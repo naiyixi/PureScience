@@ -85,12 +85,40 @@ export function JournalMetricsTable({
               }
 
               return (
-                <td key={kind} className="py-1 pr-3">
-                  <span>{cell.value}</span>
-                  {/* Every number carries the year and the source it came from, always. */}
-                  <span className="ml-1 text-[10px] text-[var(--muted-foreground)]">
-                    ({cell.year} · {cell.source})
-                  </span>
+                <td key={kind} className="py-1 pr-3 align-top">
+                  <div className="flex items-center gap-1">
+                    <span>{cell.value}</span>
+                    {/* Every number carries the year and the source it came from, always. */}
+                    <span className="text-[10px] text-[var(--muted-foreground)]">
+                      ({cell.year} · {cell.source})
+                    </span>
+                    {cell.alternatives.length > 0 ? (
+                      // The same year holds more than one claim. Both facts exist in the library, so both are
+                      // printed: silently keeping the newer `fetchedAt` would invent a single truth.
+                      <span
+                        data-testid="journal-metric-conflict"
+                        className="rounded border border-[var(--accent)] px-1 text-[10px] text-[var(--accent)]"
+                        title={t('references.journalMetrics.conflictBadgeTitle')}
+                      >
+                        {t('references.journalMetrics.conflictBadge', {
+                          count: cell.alternatives.length
+                        })}
+                      </span>
+                    ) : null}
+                  </div>
+                  {cell.alternatives.map((alternative) => (
+                    <div
+                      key={`${alternative.source}\u0000${alternative.value}`}
+                      className="text-[10px] text-[var(--muted-foreground)]"
+                      data-testid="journal-metric-alternative"
+                    >
+                      {t('references.journalMetrics.conflictLine', {
+                        value: alternative.value,
+                        year: cell.year,
+                        source: alternative.source
+                      })}
+                    </div>
+                  ))}
                 </td>
               )
             })}

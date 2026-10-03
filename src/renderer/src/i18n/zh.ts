@@ -3804,7 +3804,11 @@ export const zh = {
   'specialist.deleteProtectedTarget': '该专才为只读，无法删除。',
   'specialist.deleteCommitFailed': '删除失败，已回滚。',
   'specialistEditor.iconLabel': '图标',
-  'specialistEditor.colorLabel': '颜色'
+  'specialistEditor.colorLabel': '颜色',
+  'references.journalMetrics.conflictBadge': '另 {count} 条',
+  'references.journalMetrics.conflictBadgeTitle':
+    '同一年份存在来自不同来源的多个数值；下方全部列出。',
+  'references.journalMetrics.conflictLine': '同时：{value}（{year} · {source}）'
 }
 
 export type ZhKey = keyof typeof zh

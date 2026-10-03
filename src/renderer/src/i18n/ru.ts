@@ -4050,5 +4050,9 @@ export const ru: Partial<Record<ZhKey, string>> = {
     'Этот специалист доступен только для чтения и не может быть удалён.',
   'specialist.deleteCommitFailed': 'Удаление не удалось, изменения откатаны.',
   'specialistEditor.iconLabel': 'Значок',
-  'specialistEditor.colorLabel': 'Цвет'
+  'specialistEditor.colorLabel': 'Цвет',
+  'references.journalMetrics.conflictBadge': 'ещё {count}',
+  'references.journalMetrics.conflictBadgeTitle':
+    'За один год есть несколько значений из разных источников; все перечислены ниже.',
+  'references.journalMetrics.conflictLine': 'также {value} ({year} · {source})'
 }

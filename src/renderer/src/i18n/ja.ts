@@ -4036,5 +4036,9 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'specialist.deleteProtectedTarget': 'このスペシャリストは読み取り専用のため削除できません。',
   'specialist.deleteCommitFailed': '削除に失敗し、ロールバックしました。',
   'specialistEditor.iconLabel': 'アイコン',
-  'specialistEditor.colorLabel': '色'
+  'specialistEditor.colorLabel': '色',
+  'references.journalMetrics.conflictBadge': '他に {count} 件',
+  'references.journalMetrics.conflictBadgeTitle':
+    '同じ年でも情報源により複数の値があります。すべて下に表示しています。',
+  'references.journalMetrics.conflictLine': '併記：{value}（{year} · {source}）'
 }

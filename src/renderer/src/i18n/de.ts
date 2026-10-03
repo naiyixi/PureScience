@@ -4161,5 +4161,9 @@ export const de: Partial<Record<ZhKey, string>> = {
     'Dieser Spezialist ist schreibgeschützt und kann nicht gelöscht werden.',
   'specialist.deleteCommitFailed': 'Das Löschen ist fehlgeschlagen und wurde zurückgerollt.',
   'specialistEditor.iconLabel': 'Symbol',
-  'specialistEditor.colorLabel': 'Farbe'
+  'specialistEditor.colorLabel': 'Farbe',
+  'references.journalMetrics.conflictBadge': 'außerdem {count}',
+  'references.journalMetrics.conflictBadgeTitle':
+    'Für dasselbe Jahr gibt es mehrere Werte aus verschiedenen Quellen; alle sind unten aufgeführt.',
+  'references.journalMetrics.conflictLine': 'außerdem {value} ({year} · {source})'
 }

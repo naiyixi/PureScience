@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildJournalMetricsOverview,
   journalMetricKinds,
+  selectClaimWithAlternatives,
   selectLatestClaim,
   type JournalMetricClaim
 } from './journal-metrics-overview'
@@ -118,7 +119,9 @@ describe('buildJournalMetricsOverview', () => {
       value: '64.8',
       numericValue: 64.8,
       year: 2023,
-      source: 'Journal Citation Reports'
+      source: 'Journal Citation Reports',
+      // One claim for that year => nothing hidden. The field is present and empty, never omitted.
+      alternatives: []
     })
   })
 
@@ -228,5 +231,147 @@ describe('display names and aliases (R2-U4)', () => {
     // Sorted, so two snapshots of one library cannot disagree about the order of the same names.
     expect(aliasesById.a).toEqual(['nature london', 'the lancet'])
     expect(aliasesById.b).toEqual([])
+  })
+})
+
+// R2-U4 follow-up (V11/IC1): a merge can leave TWO claims for the same kind in the same year. The screen used
+// to print whichever had the newer `fetchedAt` and say nothing, so the reader could not know the year held a
+// second value from a second source. Selection is unchanged; the losers now travel with the cell.
+describe('same year, more than one claim (never silently one)', () => {
+  const contestedClaims = [
+    claim({
+      journalId: 'nature',
+      kind: 'impact-factor',
+      value: '64.8',
+      numericValue: 64.8,
+      year: 2023,
+      source: 'Journal Citation Reports',
+      fetchedAt: 900
+    }),
+    claim({
+      journalId: 'nature',
+      kind: 'impact-factor',
+      value: '16.6',
+      numericValue: 16.6,
+      year: 2023,
+      source: '期刊指标库',
+      fetchedAt: 10
+    })
+  ]
+
+  it('hands both claims to the cell, each keeping its own source', () => {
+    const overview = buildJournalMetricsOverview({
+      journals: [{ id: 'nature', normalizedName: 'nature', issn: null }],
+      claims: contestedClaims
+    })
+    const cell = overview.rows[0].cells['impact-factor']
+
+    expect(cell.state).toBe('known')
+    if (cell.state !== 'known') throw new Error('unreachable')
+    // The deterministic pick is still the newest `fetchedAt`...
+    expect(cell.value).toBe('64.8')
+    expect(cell.source).toBe('Journal Citation Reports')
+    // ...and the one it would have hidden is right there, with its own source and its own number.
+    expect(cell.alternatives).toEqual([{ value: '16.6', numericValue: 16.6, source: '期刊指标库' }])
+  })
+
+  it('does not call a re-import a conflict: same value + same source is one fact', () => {
+    const overview = buildJournalMetricsOverview({
+      journals: [{ id: 'nature', normalizedName: 'nature', issn: null }],
+      claims: [
+        claim({
+          journalId: 'nature',
+          kind: 'impact-factor',
+          value: '64.8',
+          year: 2023,
+          fetchedAt: 900
+        }),
+        claim({
+          journalId: 'nature',
+          kind: 'impact-factor',
+          value: '64.8',
+          year: 2023,
+          fetchedAt: 100
+        }),
+        claim({
+          journalId: 'nature',
+          kind: 'impact-factor',
+          value: '64.8',
+          year: 2023,
+          fetchedAt: 5
+        })
+      ]
+    })
+    const cell = overview.rows[0].cells['impact-factor']
+
+    if (cell.state !== 'known') throw new Error('unreachable')
+    expect(cell.alternatives).toEqual([])
+  })
+
+  it('keeps claims from OTHER years out of the conflict list', () => {
+    const { claim: selected, alternatives } = selectClaimWithAlternatives(
+      [
+        ...contestedClaims,
+        claim({
+          journalId: 'nature',
+          kind: 'impact-factor',
+          value: '50.5',
+          numericValue: 50.5,
+          year: 2022,
+          source: 'Journal Citation Reports',
+          fetchedAt: 999
+        })
+      ],
+      'impact-factor'
+    )
+
+    expect(selected?.year).toBe(2023)
+    // 2022 is a different year's fact, not a competitor for 2023 — it must not be listed here.
+    expect(alternatives.map((entry) => entry.value)).toEqual(['16.6'])
+  })
+
+  it('orders alternates deterministically, so one library cannot render two ways', () => {
+    const { alternatives } = selectClaimWithAlternatives(
+      [
+        claim({
+          journalId: 'j',
+          kind: 'impact-factor',
+          value: '64.8',
+          numericValue: 64.8,
+          year: 2023,
+          source: 'z-source',
+          fetchedAt: 900
+        }),
+        claim({
+          journalId: 'j',
+          kind: 'impact-factor',
+          value: '16.6',
+          numericValue: 16.6,
+          year: 2023,
+          source: 'b-source',
+          fetchedAt: 10
+        }),
+        claim({
+          journalId: 'j',
+          kind: 'impact-factor',
+          value: '16.6',
+          numericValue: 16.6,
+          year: 2023,
+          source: 'b-source',
+          fetchedAt: 11
+        })
+      ],
+      'impact-factor'
+    )
+
+    // Sorted by source then value, and the duplicate (same value + same source) appears once.
+    expect(alternatives).toEqual([{ value: '16.6', numericValue: 16.6, source: 'b-source' }])
+  })
+
+  it('still reports unknown (not a conflict) when the year holds nothing', () => {
+    expect(selectClaimWithAlternatives([], 'impact-factor')).toEqual({
+      claim: null,
+      alternatives: []
+    })
   })
 })
