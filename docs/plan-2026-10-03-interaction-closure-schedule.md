@@ -1,0 +1,185 @@
+# 交互闭环补齐：排期与发版号分配（2026-10-03 定稿）
+
+> 依据：`docs/evidence/2026-10-03-entry-layer-and-interaction-closure-audit.md`（52 条，P0 9 / P1 33 / P2 10）
+> 与 `docs/competitive-tracking/2026-10-03-v035-window-delta.md`（对手 v0.35.0 窗口 4 项差距）。
+> 口径沿用 v1.69 那一版：**一批 = 一个版本边界**；批次内每个单元独立走「实现 → 相关簇绿 → 双 typecheck + eslint →
+> 提交 → 推送 → 盯 CI → 进下一单元」；批次走完再走完整发版流程（CHANGELOG + 双语 README 横幅 + 全量门禁 + tag + Release）。
+> 每条验收都是**实机可验**（真入口、真执行、真数据）；单元测试只作回归网，不作完成证据。
+> **纯文档 / 测试 / 读数改动不占版本号**（写进 CHANGELOG 的「明确没做、已立案的」或并入相邻版本的小节）。
+
+## 0. 版本号现状（先定号，避免撞号）
+
+| 版本 | 状态 |
+| --- | --- |
+| v1.80.0 | **已发布**（2026-10-03，tag `f2a97d87`，run 37099590863，21 资产） |
+| v1.81.0 | **已被占用**：`docs/plan-2026-10-02-R2-U4-journal-alias-merge.md:124` 立案「同日同类多指标不静默取一条」接 v1.81.0 |
+| v1.82.0 起 | 本排期连续分配（见下表），**未开工前不许提前写进 CHANGELOG** |
+
+## 1. 排期总览
+
+| 批次 | 版本 | 主题 | 单元 | 条数 | 退出条件（一句话） |
+| --- | --- | --- | --- | --- | --- |
+| 1 | **v1.81.0** | 已立案收口 + 硬编码文案清账 | 5 | 4 + 1 合并清账 | 4 条读数落档；硬编码英文 grep 归零；9 语 `translation-quality` 绿 |
+| 2 | **v1.82.0** | 挂载点四条（后端全齐、只差接线） | 4 | 4 | 真窗口四条读数：产物面板可见、红点亮、A7 环境可删、产物可外部打开 |
+| 3 | **v1.83.0** | 数据不丢与退路 | 3 | 3 | 跨实例导入后**证据表真的有行**；迁移遗留副本两个入口都能走通 |
+| 4 | **v1.84.0** | 笔记本 / 运行时闭环 | 6 | 6 | 六条各自真机读数（含窗口直装包真的装上并回读） |
+| 5 | **v1.85.0** | 自定义 MCP / 连接器闭环 | 6 | 6 | 自定义服务器「增删改查 + 权限 + 探测」六向齐 |
+| 6 | **v1.86.0** | 文献 / 期刊闭环 | 6 | 6 | 附件历史可见、notes 可读写、整表指标可导入 |
+| 7 | **v1.87.0** | 出网 / 存储 / 视觉 / 诊断的可核性 | 8 | 8 | 每一条失败路径都有具名错误或可回读的明细 |
+| 8 | **v1.88.0** | 算力与引擎 | 4 | 4 | 任务可取消；needs-attention 有全局入口；引擎面板能下权重 |
+| 9 | **v1.89.0** | 记忆溯源与审查明细 | 3 | 3 | 徽标有真实生产者；RO-Crate 失败说得清哪条 MUST 没过 |
+| 10 | **v1.90.0** | 拍板项与死面清理 | 6 | 6 | 六条各自「建入口」或「归档并写明」二选一有结论 |
+| — | **v1.91.0+** | 对标大件（另立批次，见 §4） | 5 | — | 各自单独立项 |
+
+**合计 51 个单元（v1.81.0–v1.90.0，覆盖 52 条审计项 + 5 条既有立案 + 6 条 i18n 遗留）+ 5 个对标批次单元（v1.91.0 起，各自立项）。**
+
+## 2. 逐批次单元表
+
+### 批次 1 · v1.81.0 —— 已立案收口 + 硬编码文案清账
+
+| 单元 | 内容 | 落点 | 实机验收 |
+| --- | --- | --- | --- |
+| IC1 | 同日同类多指标**并列显示或标冲突**，不静默取一条（已立案） | `shared/journal-metrics-overview.ts:119-140`（`selectLatestClaim`/`cellOf`）、`JournalMetricsPanel.tsx` | 合并前后同一 cell 必须看到**两个值**或冲突标记 |
+| IC2 | R2-U4 三种具名拒绝的**面板级中间态 DOM** 读数 | `docs/evidence/2026-10-03-r2-u4-journal-alias-merge.md` §3 遗留 | 选择候选、确认之前那一步的 DOM 读数落档 |
+| IC3 | egress 拦截卡「**等满 60 秒**」端到端复现 | `EgressApprovalCard.tsx`、`egress-runtime.ts` | 真窗口等满 60s：卡片自动撤、应答失败不静默 |
+| IC4 | `--primary-foreground` 对比度实测 | `#4D6BFE` 上的白字，按实际字号/字重 | 对比度数值落档；不达标才微调前景色 |
+| IC5 | 硬编码英文清账（**一次做完**）：核验面板 4 处、产物溯源 `Source`、项目文件 Retry、迁移弹窗 Cancel/Close/Elapsed/Don't quit/Browse…/Checking…、存储面板、**i18n 键控遗留**（专才面空态卡/Built-in/自定义组标题/ZIP 子界面拼句/作者编辑器、连接器导入、技能上传×3） | `VerificationChecklistPanel.tsx:51-55,119,122,145`、`ReviewerCard.tsx:100`、`ArtifactProvenancePanel.tsx:1290`、`ProjectFilesView.tsx:1869`、`StorageMigrationModal.tsx:262,298,304,308,396,412`、`StoragePanel.tsx:309,369,461`、`SpecialistsPanel.tsx` | `search_files` 三类硬编码模式归零；9 语字典 zh≠en；`translation-quality.test.ts` 绿 |
+
+> IC5 把审计 P2-1/P2-2/P2-3/P2-4 与队列 A 段第 9 条**合并成一次**做——同一口径（新 UI 文案必须 9 语言）分四次做就是四倍的契约连锁。
+
+### 批次 2 · v1.82.0 —— 挂载点四条（**最优先**：只差接线，单轮可收口）
+
+| 单元 | 内容 | 落点 | 实机验收 |
+| --- | --- | --- | --- |
+| IC6 | 任务产物面板：featured outputs / 留在远端 / 收割失败 | `JobDetailModal.tsx:225-226`（现有注释占位）；数据已在 `shared/compute.ts:328-332` | 跑一个真任务，详情里列出产物并能逐条下载/定位 |
+| IC7 | 通知到达点亮红点 | `App.tsx` 启动处调 `notification-inbox-store.listen()`（照 `permission-grants-store` 写法） | 后台任务完成 → 铃铛红点**自己**亮，不用点开才刷 |
+| IC8 | A7 锁导入命名环境的**删除**与**用作运行时** | `RuntimesPanel.tsx:604-724`、`environment-management.ts:70-115` | 导入的环境：能删（二次确认 + 在用内核时拒绝）、能选为笔记本运行时 |
+| IC9 | 产物用系统程序打开 / 在文件夹中显示 | `PreviewFileSurface.tsx` 头部或右键菜单 → `artifacts.openFile` | 真机点一次，系统程序打开的是该版本文件 |
+
+### 批次 3 · v1.83.0 —— 数据不丢与退路
+
+| 单元 | 内容 | 落点 | 实机验收 |
+| --- | --- | --- | --- |
+| IC10 | 会话包**随包证据落库**（citations / review-findings / verifications） | `session-package/import-session.ts:79`（现只读 `conversation.json`）、`import.ts:22-24` | 跨实例导入后接收方**引用/复核/验证表真的有行**，条数与包内一致 |
+| IC11 | 导入会话的**只读 / 来源姿态**可见 | 侧车 `<id>.import.json`（`shared/session-package-import.ts:97-113`）→ 新增只读 IPC + 会话横幅 | 重开会话就能看到「导入自 X / 导出于 Y / 本机未验证」且标只读 |
+| IC12 | 迁移遗留副本的「**完成 / 丢弃**」 | `storage/migration-service.ts:225-233` 文案指向的动作 | 造一次未提交 marker：两个按钮都能走通，不再只给一句英文提示 |
+
+### 批次 4 · v1.84.0 —— 笔记本 / 运行时闭环（6 条）
+
+| 单元 | 内容 | 落点 |
+| --- | --- | --- |
+| IC13 | 窗口**直装 / 卸载包**（现只有"允许安装"这一个无动作的许可） | `package-manager.ts:553,1115`；`RuntimesPanel.tsx:459-477,679-721` |
+| IC14 | **会话级运行时绑定/切换** + 不可用原因 | `runtime-binding.ts:59,151-169,207,225`；`NotebookPreview.tsx:640-665` |
+| IC15 | 内核**常驻**「重启 / 关闭」（现在重启只在 R 装卸后出现） | `notebook/ipc.ts:48,51`；`NotebookPreview.tsx:816-832` |
+| IC16 | 工作区环境准备遮罩加 **Cancel** | `env-ipc.ts:27`；`EnvProvisionOverlay.tsx:55-64` |
+| IC17 | 设置页下载明细（速度/ETA/续传，与工作区同源） | `shared/download-progress.ts`；`RuntimesPanel.tsx:809,919-935` |
+| IC18 | 运行时来源（official / override）可见 | `shared/notebook-env.ts:35`；`provisioner.ts:765,1786-1800` |
+
+### 批次 5 · v1.85.0 —— 自定义 MCP / 连接器闭环（6 条）
+
+| 单元 | 内容 | 落点 |
+| --- | --- | --- |
+| IC19 | 自定义服务器**详情 + 逐工具权限**（`getConnectorDetail` 现对自定义 id 直接 throw） | `connector-settings.ts:172-194`；`ConnectorsPanel.tsx:705-771` |
+| IC20 | 自定义服务器「**跳过审批**」开关 | `connector-settings.ts:249-253`；`ConnectorDetailView.tsx:117-131` 的 `CustomServerView` 无该字段 |
+| IC21 | 自定义服务器**登出 / 撤销登录** | `connector-settings.ts:480-494`；`ConnectorsPanel.tsx:738-759` |
+| IC22 | **可用性徽标**（unavailable / unauthenticated）并禁用对应开关 | `connector-settings.ts:534-572` |
+| IC23 | **连接测试**（探活 + 工具清单预览） | `mcp-client-manager.ts:136-160` |
+| IC24 | **批量启停**纳入自定义服务器 | `ConnectorsPanel.tsx:399-409,608-662` |
+
+### 批次 6 · v1.86.0 —— 文献 / 期刊闭环（6 条）
+
+| 单元 | 内容 | 落点 |
+| --- | --- | --- |
+| IC25 | 文献**附件历史**（被替换 PDF 可回看） | `references/repository.ts:181-206` 已返回 `pdfVersions` |
+| IC26 | 文献 **notes** 可读写（现无 IPC、窗口不显示） | `references/repository.ts:404-419`；`references/ipc.ts` |
+| IC27 | 期刊指标**整表同一指标**导入（`defaultKind`） | `journal-metrics.ts:44-45,283-284`；`JournalMetricsImport.tsx:56-58` |
+| IC28 | 期刊指标**上限**筛选（`maxImpactFactor`） | `journal-metrics-overview.ts:51-52,160-165`；`JournalMetricsPanel.tsx:317-326` |
+| IC29 | 指标**手工订正 + 单刊 claim 历史**（append-only） | `journal-repository.ts:308-345,371-385`（`appendMetric`/`listMetrics` 无 IPC） |
+| IC30 | 导入**逐行归属**反馈（归到哪刊、按什么匹配、是否新建） | `journal-metrics.ts:76-100`；`JournalMetricsImport.tsx:120-132` |
+
+### 批次 7 · v1.87.0 —— 出网 / 存储 / 视觉 / 诊断的可核性（8 条）
+
+| 单元 | 内容 | 落点 |
+| --- | --- | --- |
+| IC31 | egress 读失败有错误态+重试；写失败回滚或并入写入协调器 | `NetworkPanel.tsx:326-344` |
+| IC32 | egress 接管时手动代理**显式禁用并说明** | `proxy-runtime.ts:3-4`；`NetworkPanel.tsx:507-528` |
+| IC33 | 出网审批卡**剩余有效期** + 超时具名解释 | `shared/egress.ts:133-139`；`EgressApprovalCard.tsx` |
+| IC34 | 存储信息读取失败的错误态 + 重试 | `StoragePanel.tsx:115-117` |
+| IC35 | 迁移 `staleEvidence` **明细展开**（path/runId/project/session） | `shared/storage.ts:65-78`；`StorageMigrationModal.tsx:330-342` |
+| IC36 | **视觉转译证据**只读面（哪张图由哪个模型转译成什么） | `vision/vision-evidence-repository.ts:50-73` 只写不读 |
+| IC37 | 支持包导出回读**体积与脱敏条数** | `support-bundle.ts:52-57`；`GeneralPanel.tsx:103-115` |
+| IC38 | 远程访问关闭态仍显示已保存的公网地址（只读+复制+失效说明） | `shared/remote-access.ts:53-54`；`RemoteControlPanel.tsx:432-465` |
+
+### 批次 8 · v1.88.0 —— 算力与引擎（4 条）
+
+| 单元 | 内容 | 落点 |
+| --- | --- | --- |
+| IC39 | **取消**排队/运行中的远程任务（现只有 poller 超时内部 kill） | `compute/ipc.ts`、`job-poller.ts:566-575`；`JobDetailModal.tsx` |
+| IC40 | 后台交付 **needs-attention 全局可见**（inbox 通知或全局交付视图） | `background-delivery.ts:26-45`；`JobDeliveryLedger.tsx:88-123` |
+| IC41 | 按会话清除完成通知（IPC+store 已有，**无人调用**） | `notification-inbox-ipc.ts:26-29`；`notification-inbox-store.ts:11,67-74` |
+| IC42 | **引擎面板**：可用性矩阵 + 权重下载同意门与进度 | `engines/alphafold-lookup.ts:61`、`model-weight-cache.ts:48`、`shared/engine-catalog.ts:152`（现零入口） |
+
+### 批次 9 · v1.89.0 —— 记忆溯源与审查明细（3 条）
+
+| 单元 | 内容 | 落点 |
+| --- | --- | --- |
+| IC43 | 记忆溯源**补生产者**：写 `supersededBy`（取代链）与 `lastSurfacedAt`（recall 注入时回写）；面板给「本会话回忆自记忆」只读列表 | `shared/settings.ts:450-452`（现只声明 + 持久化校验，零写入方）；`memory-recall.ts:27` |
+| IC44 | 记忆笔记**搜索/过滤**（文案已承诺 searchable） | `MemoryPanel.tsx`；`i18n/en.ts:746` |
+| IC45 | RO-Crate 失败**说得清哪条 MUST 没过** + 拒收清单展开 | `shared/ro-crate.ts:636-1032`；`RoCrateExportDialog.tsx:105-132` |
+
+### 批次 10 · v1.90.0 —— 拍板项与死面清理（6 条）
+
+> 这一批的性质是 v1.73「建入口或归档」的翻版：**二选一给出结论**，不许留「有面没人用 / 有文案没功能」。
+
+| 单元 | 内容 | 需拍板的问题 |
+| --- | --- | --- |
+| IC46 | `handoff.list` / `handoff.retry` **择一正本**（UI 现全走 `specialist.*`，该面为死面且未登记归档） | 迁 UI 到 handoff 面，还是删面并从 catalog 移除 |
+| IC47 | 通知**单条删除 / 清空** | 做，还是把 `deleteSessions` 登记为内部清理 |
+| IC48 | **RO-Crate 导入**与外部 crate 校验（`validateRoCrate` 可复用但从未用于外来 crate） | 立项做互操作，还是明确只做导出 |
+| IC49 | 期刊**合并可撤销**（现无解绑别名/拆分入口） | 做撤销，还是在 UI 明写「合并不可逆」 |
+| IC50 | 技能**导入版分叉为个人技能** | 做分叉，还是明写「导入版只读」 |
+| IC51 | 设置搜索补 **egress / 白名单 / 域名** 关键词 | 可直接做（无争议），随本批扫尾 |
+
+## 3. 关键路径与依赖
+
+```
+v1.81.0（IC1–IC5，已立案收口 + 文案清账）← **必须先做**：v1.81.0 这个号已对外立案
+（`plan-2026-10-02-R2-U4-journal-alias-merge.md:124`），挪号就要改那份文件；本批体量小，可当天收口
+v1.82.0（IC6–IC9，挂载点四条）← 紧随其后，四条互不依赖、单轮可收口、用户当轮可见
+   └─ IC8 依赖 A7 已完成（✅ v1.80.0）
+v1.83.0（数据不丢）
+   ├─ IC10/IC11 共用一次会话包读侧改动 ⇒ 同一版本边界内做，别拆两版
+   └─ IC12 的 marker 场景需要一次「造崩溃」的真机复现，先写夹具再改代码
+v1.84.0 IC13（窗口直装包）除 IC19 外无依赖，但**必须走安装授权校验**（不是绕过它）
+v1.85.0 IC19 会让 `getConnectorDetail` 支持自定义 id ⇒ IC20/IC22/IC23 都建在它上面，IC19 先落
+v1.86.0 IC27/IC28/IC29/IC30 共用 `journal-metrics*` 契约 ⇒ 一次改契约，四次验收
+v1.88.0 IC42（引擎）是新通道组（engine:*），需要契约 + 生成式 API 映射 + 9 语，**单独立项文件**
+v1.89.0 IC43 若决定不做生产者，则必须**同时删掉字段与徽标与 9 语翻译**（不留空壳）
+```
+
+## 4. 对标驱动的批次（另立，不与上面抢版本号）
+
+| 项 | 来源 | 建议落点 | 前置 |
+| --- | --- | --- | --- |
+| IC52 | 对手 #3140 会话级重放 + 讨论录制步骤 | 新批次，复用 `replay-runner` / `WriteAuditPanel` / `RunMarksRail`；先做「只读重放视图 + 对某一步提问」，**不做整会话确定性复现**（对手自己也列为未做） | 单独立项文件 |
+| IC53 | S3 增量全文索引（既有 B 段） | 索引 + 失效策略 + 验收 | — |
+| IC54 | M2 本地解析模型资产（既有 B 段） | **无已发布 SHA256 的权重不下载** | IC42 的权重同意门先有形态 |
+| IC55 | 连接器补件第二/三批（reference #10 + PDB 序列 / GEO 矩阵 / Cellosaurus / Monarch） | 并入下一个连接器批，一次铺完再验收 | — |
+| IC56 | Windows 交付面（标题栏菜单 #3201 + 代码签名 reference #9） | **等证书与主体拍板**；两项一起做，避免零散改平台代码 | 证书 |
+
+## 5. 发版号分配规则（写死，防撞号与提前写 CHANGELOG）
+
+1. **一批 = 一个版本号**；批次内不许跨版本混做，也不许一版只塞半条。
+2. 版本号在**批次开工时**才写进 `package.json` 与 CHANGELOG 草稿；**未开工的版本号不出现在任何已发布文档里**。
+3. 纯文档 / 测试 / 读数改动**不占号**（归入相邻版本的「明确没做、已立案的」或直接落档）。
+4. 批次内某单元被证明是「审计归档」（面窄低值、架构已覆盖）⇒ 按 v1.72 那版口径**落档即算完成**，但要写明结论，不许默默丢掉。
+5. 发版窗口内**停止并发推送**（`cancel-in-progress` 会把 Release 腰斩）；打 tag 前门禁必须全绿且 `git status` 干净。
+6. 版本号与主题的对应关系一旦发布**不改**；后续修正只能在新版本里写「更正」。
+
+## 6. 与既有队列的关系（防两个执行体撞车）
+
+- 本排期**接管** `docs/plan-2026-10-03-next-queue-and-round-convention.md` 的 **D 段**（那 52 条的正式排期就是本文件）。
+- 该文件的 **A 段**：第 1 条已完成；第 2 条 → IC2；第 3 条 → IC1；第 4 条 → IC3；第 5 条 → IC4；第 9 条 → IC5；
+  第 6 条（`acp:state` ack）与第 7 条（`timeoutMs` 定位）**保持独立挂账，未分配版本号**（先定位再评，不凭旧账断言）。
+- 该文件的 **B 段**：第 2/3 条 → IC53 / IC54。
+- 该文件的 **C 段**（官方目录不可达）：维持阻塞，不动。
