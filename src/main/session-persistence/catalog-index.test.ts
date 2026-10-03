@@ -1,4 +1,4 @@
-import { lstat, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
+import { lstat, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -111,6 +111,23 @@ describe('SessionRepository catalog index', () => {
     expect(scan.result.manifest).toEqual({ version: 1 })
   })
 
+  // The catalog rewrite a parse performs is a best-effort warm-up the read path does not await. Waiting for the
+  // state the assertion below is about — rather than racing the warm-up — is what keeps this test measuring the
+  // index instead of the scheduler: it failed exactly once on a loaded CI runner, while the identical job passed
+  // on the nightly lane. The bound is generous but its failure is loud: a warm-up that never lands must still
+  // fail this test rather than be waited away.
+  const waitForColdStartToReadNothing = async (dir: string): Promise<void> => {
+    for (let attempt = 0; attempt < 250; attempt += 1) {
+      const probe = coldStart(dir)
+      await probe.repository.loadCatalogWithDiagnostics()
+      if (probe.reads.length === 0) return
+      await new Promise((resolve) => setTimeout(resolve, 20))
+    }
+    throw new Error(
+      'The catalog index never settled: a cold start kept re-parsing the entry the parse had rewritten'
+    )
+  }
+
   it('re-parses exactly the entry whose document changed, and no others', async () => {
     const { dir, writes } = await setup()
     await writes.saveSession(buildSession({ id: 'sess-1' }))
@@ -134,7 +151,12 @@ describe('SessionRepository catalog index', () => {
     )
     expect(scan.result.sessions.find((entry) => entry.id === 'sess-2')?.title).toBe('My research')
 
-    // The parse rewrote that one entry, so the next cold start is back to zero reads.
+    // The parse rewrote that one entry, so the next cold start is back to zero reads — but that rewrite is a
+    // best-effort cache warm-up the read path does not await, so wait for it to land instead of racing it:
+    // without this the assertion measures the scheduler, not the index (it failed on a loaded CI runner exactly
+    // once, while the same commit passed the identical job on the nightly lane).
+    await waitForColdStartToReadNothing(dir)
+
     const next = coldStart(dir)
     await next.repository.loadCatalogWithDiagnostics()
     expect(next.reads).toEqual([])
