@@ -172,6 +172,30 @@ export const planSearchIndex = (
   return { toIndex, toDrop, unchanged: toIndex.length === 0 && toDrop.length === 0 }
 }
 
+/**
+ * The plan for ONE incremental tick. It differs from `planSearchIndex` in exactly one way, and that way is
+ * the whole reason it exists: the DROP set comes from the LISTING's visible ids, not from the candidates.
+ * A tick only re-reads what changed, so a candidate list never contains the items that were already indexed
+ * and untouched — deriving drops from it would delete every unchanged entry on the first quiet tick.
+ */
+export const planSearchIndexTick = (
+  state: SearchIndexState,
+  candidates: readonly SearchIndexCandidate[],
+  visibleIds: readonly string[]
+): SearchIndexPlan => {
+  const known = new Map(state.entries.map((entry) => [entry.id, entry]))
+  const visible = new Set(visibleIds)
+  const toIndex = candidates.filter((candidate) => {
+    const entry = known.get(candidate.id)
+    return entry === undefined || entry.fingerprint !== candidate.fingerprint
+  })
+  const toDrop = state.entries
+    .filter((entry) => !visible.has(entry.id))
+    .map((entry) => entry.id)
+    .sort()
+  return { toIndex, toDrop, unchanged: toIndex.length === 0 && toDrop.length === 0 }
+}
+
 const writeAtomic = async (path: string, contents: string): Promise<void> => {
   const temporary = `${path}.tmp`
   await writeFile(temporary, contents, 'utf8')
