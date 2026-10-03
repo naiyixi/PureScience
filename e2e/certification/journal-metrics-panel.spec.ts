@@ -345,3 +345,47 @@ test('an explicit merge folds two journals into one row and keeps the old spelli
   await expect(dialog.getByText('Merge two journals')).toBeVisible()
   await expect(confirm).toBeDisabled()
 })
+
+// The import affordance (the surface that used to exist only as an application command): pasting a publisher
+// table must produce a PER-ROW outcome — the good row stored, the refused row named — read off the real window.
+// One row deliberately has no year: "a metric without a year is not a fact" is the rule this reading is for.
+test('the import entry stores the good row and names the refused one', async ({ app }) => {
+  const page = await app.completeOnboarding()
+  await createProject(page, 'Journal metrics import')
+
+  await page.getByTestId('workspace-references-toggle').click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toBeVisible()
+  await dialog.getByRole('button', { name: 'Journal metrics' }).click()
+
+  const csv = [
+    'journal,issn,kind,value,year,source',
+    'Nature,0028-0836,impact-factor,64.8,2023,Journal Citation Reports',
+    'Nature Communications,2041-1723,impact-factor,16.6,,Journal Citation Reports'
+  ].join('\n')
+  await dialog.getByLabel('Import metrics').fill(csv)
+  await dialog.locator('[data-slot="journal-metrics-import-submit"]').click()
+
+  const summary = dialog.locator('[data-slot="journal-metrics-import-summary"]')
+  await expect(summary).toBeVisible()
+  const summaryText = (await summary.innerText()).replace(/\s+/g, ' ').trim()
+  const importedLines = (
+    await dialog.locator('[data-slot="journal-metrics-import-imported"]').allInnerTexts()
+  ).map((text) => text.replace(/\s+/g, ' ').trim())
+  const skippedLines = (
+    await dialog.locator('[data-slot="journal-metrics-import-skipped"]').allInnerTexts()
+  ).map((text) => text.replace(/\s+/g, ' ').trim())
+  console.log(`[panel-reading] import summary: ${summaryText}`)
+  console.log(`[panel-reading] import imported rows: ${JSON.stringify(importedLines)}`)
+  console.log(`[panel-reading] import skipped rows: ${JSON.stringify(skippedLines)}`)
+
+  // One row stored, one refused — and the refusal says WHICH row and WHY, not just that something failed.
+  expect(importedLines).toHaveLength(1)
+  expect(importedLines[0]).toContain('64.8')
+  expect(skippedLines).toHaveLength(1)
+  expect(skippedLines[0].toLowerCase()).toContain('no year')
+
+  // The table above now shows what the import stored, because the panel re-read the library.
+  const table = dialog.locator('table')
+  await expect(table.locator('tr', { hasText: 'Nature' }).first()).toBeVisible()
+})

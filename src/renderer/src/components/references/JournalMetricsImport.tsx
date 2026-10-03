@@ -50,8 +50,12 @@ export function JournalMetricsImport({
     if (text.trim() === '') return
     setBusy(true)
     setError(null)
+    // The store refuses ambiguous input rather than guessing which separator it was given (its own error names
+    // the requirement), so the window states it: a tab in the pasted text means TSV, otherwise the
+    // comma-separated shape every publisher export here uses.
+    const format = text.includes('\t') ? 'tsv' : 'csv'
     void window.api.references
-      .importJournalMetrics({ text })
+      .importJournalMetrics({ format, text })
       .then((next) => {
         setResult(next)
         onImported()
