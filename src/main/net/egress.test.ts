@@ -365,6 +365,62 @@ describe('EgressProxy', () => {
     expect(status).toBe(403)
   })
 
+  // V8. The approval deadline is the branch that had NO test on either side, while the workspace's card
+  // auto-withdraws on the same number: if the proxy never refuses at its own deadline, the suspended request
+  // hangs until the process-level timeout and the user sees a card vanish while the request is still open.
+  // The budget is injected (production keeps 60s) so this proves the branch in milliseconds with real I/O.
+  it('refuses a suspended request at the approval deadline, and ignores a decision that arrives late', async () => {
+    proxy = new EgressProxy({ approvalTimeoutMs: 80 })
+    proxy.setAllowlist(['allowed.test'])
+    // The peer is the "target host"; a late `allow_once` that resurrected the request would reach it.
+    let peerHits = 0
+    peer.on('request', () => {
+      peerHits += 1
+    })
+    const seen: Array<{ host: string; expiresInSec: number }> = []
+    let decideLater: ((decision: 'deny' | 'allow_once' | 'allow_always') => void) | undefined
+    const decided: string[] = []
+    proxy.setApprovalHandler((approvalRequest, decide) => {
+      seen.push({ host: approvalRequest.host, expiresInSec: approvalRequest.expiresInSec })
+      decideLater = (decision) => {
+        decided.push(decision)
+        decide(decision)
+      }
+      // The user walks away: nothing is decided while the deadline runs.
+    })
+    const port = await proxy.start()
+    const peerPort = (peer.address() as { port: number }).port
+
+    const pending = new Promise<number>((resolve, reject) => {
+      const req = httpRequest(
+        {
+          hostname: '127.0.0.1',
+          port,
+          path: '/probe',
+          headers: { host: `127.0.0.1:${peerPort}` }
+        },
+        (res) => {
+          res.resume()
+          res.on('end', () => resolve(res.statusCode ?? 0))
+        }
+      )
+      req.on('error', reject)
+      req.end()
+    })
+
+    // The suspended request is refused without an answer — this is what the card's countdown promises.
+    expect(await pending).toBe(403)
+    // And the card's number is the proxy's own deadline, not a second copy that can drift.
+    expect(seen).toEqual([{ host: `127.0.0.1:${peerPort}`, expiresInSec: 0.08 }])
+
+    // A decision that arrives after the deadline must not resurrect the request: the peer never sees it, and
+    // the late decision is what "应答失败不再静默" is about — the caller is told, not silently ignored.
+    decideLater?.('allow_once')
+    expect(decided).toEqual(['allow_once'])
+    await new Promise((resolve) => setTimeout(resolve, 30))
+    expect(peerHits).toBe(0)
+  })
+
   it('refuses immediately when no approval handler is installed (historical behavior)', async () => {
     proxy = new EgressProxy()
     proxy.setAllowlist(['127.0.0.1'])

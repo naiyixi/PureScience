@@ -54,11 +54,17 @@ let approvalSequence = 0
 // through the conversation approval handler, which suspends the request until the user decides.
 export class EgressProxy {
   private readonly server: Server
+  // How long a suspended approval waits before the request is refused without an answer. Injectable for the
+  // same reason `TimeoutController` takes its graces: the 60s deadline is the behaviour under test, and a test
+  // that has to sleep a real minute to prove it either gets skipped or gets flaky (see the expiry case in
+  // `egress.test.ts`). Production always takes the default.
+  private readonly approvalTimeoutMs: number
   private allowlist: string[] | undefined
   private listeningPort = 0
   private approvalHandler: EgressApprovalHandler | undefined
 
-  constructor() {
+  constructor(options: { approvalTimeoutMs?: number } = {}) {
+    this.approvalTimeoutMs = options.approvalTimeoutMs ?? APPROVAL_TIMEOUT_MS
     this.server = createServer((req, res) => this.handleHttp(req, res))
     this.server.on('connect', (req, socket, head) => this.handleConnect(req, socket, head))
   }
@@ -126,9 +132,9 @@ export class EgressProxy {
       settled = true
       log.warn('egress approval timed out', { requestId, host })
       onDenied()
-    }, APPROVAL_TIMEOUT_MS)
+    }, this.approvalTimeoutMs)
     this.approvalHandler(
-      { requestId, host, method, path, expiresInSec: APPROVAL_TIMEOUT_MS / 1000 },
+      { requestId, host, method, path, expiresInSec: this.approvalTimeoutMs / 1000 },
       (decision) => {
         if (settled) {
           log.info('egress decision arrived late', {
