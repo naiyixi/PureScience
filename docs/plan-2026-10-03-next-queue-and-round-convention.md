@@ -102,11 +102,9 @@ Build/notarize-mac/publish 全 skipped ⇒ **连发布页都没有**，同一批
    要么显式标冲突；**不许静默挑一条**。证据：`docs/evidence/2026-10-03-r2-u4-journal-alias-merge.md` §3。
 4. **egress 拦截卡"等满 60 秒"的端到端复现**：修复已完成（到点自动撤卡 + 应答失败不再静默），
    但"真窗口里等满 60 秒"的读数**未取**，做法同第 2 条。
-5. **`--primary-foreground` 对比度实测**：主色已改为品牌蓝 `#4D6BFE`（真机读数 `rgb(77, 107, 254)`），
-   白字在其上的对比度**未实测**——按按钮实际字号/字重测一次，不达标才微调前景色。
-6. **`acp:state` 渲染器 ack**（旧立案）：全库 grep `appliedIds` / `acknowledgeApplied` 零命中 ⇒ 仍未做。
-7. **`timeoutMs` 含冷启动**：旧账引用的 `src/main/agents/kernel-executor.ts`、`timeout-controller.ts` **已不在树上**，
-   先定位超时预算的现址再评——**在定位前不许写"已修/未修"**。
+5. ~~**`--primary-foreground` 对比度实测**~~ ✅ **已实测（会话，v1.81.0 的 V9 / IC4）：判定不达标**。真机读数：`--primary` 画成 `rgb(77,107,254)`、前景 `rgb(248,250,254)`、真实 CTA 16px/400 ⇒ 正文门槛 4.5，**实测 4.144:1**；**且前景色换纯白也只有 4.330:1**（该背景天花板）⇒ 原定「微调前景色」这条修法**不可行**，已改立**拍板项**（加深 `--primary` 到 `oklch(0.56 …)`=4.721:1，或接受并记录）。证据 `docs/evidence/2026-10-03-primary-contrast.md`。
+6. ~~**`acp:state` 渲染器 ack**~~ ✅ **已定位并给出结论（会话，v1.81.0 的 V15）**：结论是**这条旧立案问错了问题**——通道是活的（`acp.onState` 三处订阅），ack 要解决的「渲染器把缺席当回收」已由 `runtime-event-live-set.ts` 的累积语义从另一侧解决；收益（该通道 52KB→15KB/三回合）改写成一条**有守卫的优化项**（守卫=`interrupted-turn-continuation.spec.ts`），不新做 ack 协议。
+7. ~~**`timeoutMs` 含冷启动**~~ ✅ **已定位并给出结论（会话，v1.81.0 的 V10）：已修，且比老账要求更细**。**先更正老账的地址**——那两个文件**没被删，只是搬到了 `src/main/notebook/`**（老账按 `src/main/agents/` 找才误判"已不在树上"）。现址：`arm(budget)` 先按 `budget + startupGraceMs(30s)` 计时，循环回报开始时 `markStarted()` 换成纯语义预算；`executing` 分辨"超预算"与"根本没启动"并给具名原因；单测在 `kernel-executor.test.ts` 的 `describe('TimeoutController')`。
 8. **面板"确认前"中间态的 DOM 读数**（R2-U4 遗留）：选择候选、确认之前那一步的界面状态未取。
 9. **i18n 键控遗留（从本地 gitignored 档 `docs/competitive-tracking/UPDATE-PLAN-2026-09-v025.md` :341/:346 翻出来的，原文标着"下批"）**：
    专才面（`SpecialistsPanel.tsx` 的空态卡、`Built-in`、Custom 组标题、ZIP 导入子界面拼句、作者编辑器的

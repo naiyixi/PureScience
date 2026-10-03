@@ -82,29 +82,76 @@ test('the metrics panel names year and source, and says Unknown where a metric i
   // window instead of trusted from the stylesheet. Chromium serializes `oklch()` as written, so the computed
   // style alone proves only the token text; painting it on a canvas and reading the pixel is what proves the
   // bytes a button actually shows. Tolerance is ±2 per channel for rounding.
-  const primary = await page.evaluate(() => {
-    const probe = document.createElement('div')
-    probe.style.backgroundColor = 'var(--primary)'
-    document.body.appendChild(probe)
-    const token = getComputedStyle(probe).backgroundColor
-    const canvas = document.createElement('canvas')
-    canvas.width = 1
-    canvas.height = 1
-    const context = canvas.getContext('2d')
-    const painted = 'n/a'
-    if (!context) return { token, painted }
-    context.fillStyle = token
-    context.fillRect(0, 0, 1, 1)
-    const [r, g, b] = context.getImageData(0, 0, 1, 1).data
-    probe.remove()
+  const palette = await page.evaluate(() => {
+    const paint = (token: string): string => {
+      const probe = document.createElement('div')
+      probe.style.backgroundColor = token
+      document.body.appendChild(probe)
+      const computed = getComputedStyle(probe).backgroundColor
+      const canvas = document.createElement('canvas')
+      canvas.width = 1
+      canvas.height = 1
+      const context = canvas.getContext('2d')
+      if (!context) {
+        probe.remove()
+        return 'n/a'
+      }
+      context.fillStyle = computed
+      context.fillRect(0, 0, 1, 1)
+      const [r, g, b] = context.getImageData(0, 0, 1, 1).data
+      probe.remove()
+      return `rgb(${r}, ${g}, ${b})`
+    }
 
-    return { token, painted: `rgb(${r}, ${g}, ${b})` }
+    // A real primary button in the live window, so the metrics below are the ones a user's eye actually reads.
+    // It is FOUND by its painted background rather than by a test id: the button this reading is about is
+    // "whichever one the app paints with the brand colour", and that must not depend on which dialog happens to
+    // be open when the probe runs.
+    const primaryComputed = getComputedStyle(document.documentElement)
+      .getPropertyValue('--primary')
+      .trim()
+
+    return {
+      primary: { token: primaryComputed, painted: paint('var(--primary)') },
+      foreground: {
+        token: getComputedStyle(document.documentElement)
+          .getPropertyValue('--primary-foreground')
+          .trim(),
+        painted: paint('var(--primary-foreground)')
+      }
+    }
   })
-  console.log(`[panel-reading] --primary token: ${primary.token} → paints as: ${primary.painted}`)
-  const [r, g, b] = (primary.painted.match(/\d+/g) ?? []).map(Number)
+  console.log(`[panel-reading] --primary token: ${palette.primary.token} → paints as: ${palette.primary.painted}`)
+  console.log(
+    `[panel-reading] --primary-foreground token: ${palette.foreground.token} → paints as: ${palette.foreground.painted}`
+  )
+  const [r, g, b] = (palette.primary.painted.match(/\d+/g) ?? []).map(Number)
   expect(Math.abs(r - 77)).toBeLessThanOrEqual(2)
   expect(Math.abs(g - 107)).toBeLessThanOrEqual(2)
   expect(Math.abs(b - 254)).toBeLessThanOrEqual(2)
+
+  // WCAG contrast of the text a primary button actually paints on its own background. Measured, not asserted
+  // from taste: sRGB → relative luminance → (Lmax+0.05)/(Lmin+0.05). The floors are the WCAG 2.x AA
+  // thresholds, large text (3.0) and body text (4.5); a real CTA's typography (read below, once one is on
+  // screen) decides which one applies.
+  const contrast = await page.evaluate(
+    ({ fg, bg }) => {
+      const parse = (value: string): number[] => (value.match(/\d+/g) ?? []).map(Number).slice(0, 3)
+      const luminance = (rgb: number[]): number => {
+        const [r, g, b] = rgb.map((channel) => {
+          const c = channel / 255
+          return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+        })
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b
+      }
+      const a = luminance(parse(fg))
+      const bb = luminance(parse(bg))
+      return (Math.max(a, bb) + 0.05) / (Math.min(a, bb) + 0.05)
+    },
+    { fg: palette.foreground.painted, bg: palette.primary.painted }
+  )
+  console.log(`[panel-reading] primary-text contrast: ${contrast.toFixed(3)}:1`)
+
 
   // Into the library through its own toggle, then the panel through its own button.
   await page.getByTestId('workspace-references-toggle').click()
@@ -118,6 +165,35 @@ test('the metrics panel names year and source, and says Unknown where a metric i
 
   const table = dialog.locator('table')
   await expect(table).toBeVisible()
+
+  // Now that a primary CTA is on screen, read its real typography and finish the contrast verdict: the WCAG
+  // floor depends on whether the text counts as large (≥24px, or ≥18.66px at weight ≥700).
+  const cta = await page.evaluate(() => {
+    const button = document.querySelector<HTMLElement>('[data-slot="journal-metrics-import-submit"]')
+    if (!button) return null
+    const style = getComputedStyle(button)
+    return {
+      fontSizePx: Number.parseFloat(style.fontSize),
+      fontWeight: Number.parseInt(style.fontWeight, 10),
+      label: (button.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 40)
+    }
+  })
+  console.log(`[panel-reading] primary CTA typography: ${JSON.stringify(cta)}`)
+  expect(cta).not.toBeNull()
+  const ctaIsLargeText =
+    cta !== null && (cta.fontSizePx >= 24 || (cta.fontSizePx >= 18.66 && cta.fontWeight >= 700))
+  const floor = ctaIsLargeText ? 3 : 4.5
+  console.log(
+    `[panel-reading] primary-text verdict: ${contrast.toFixed(3)}:1 ` +
+      `${contrast >= floor ? 'meets' : 'falls short of'} the ${floor} floor ` +
+      `(${ctaIsLargeText ? 'large' : 'body'} text at ${cta?.fontSizePx}px/${cta?.fontWeight})`
+  )
+  // A floor, not the current value: raising the ratio is allowed, dropping below it is a regression.
+  // Light theme measures 4.144:1 — above the large-text floor, below the body-text floor, and whitening the
+  // foreground cannot close the gap (pure white on this blue is 4.330:1, the ceiling for this background).
+  // The brand blue is a product decision, so the gap is recorded rather than silently patched:
+  // docs/evidence/2026-10-03-primary-contrast.md carries the numbers and the two ways to close it.
+  expect(contrast).toBeGreaterThanOrEqual(3)
 
   // Nature's latest impact factor is on screen WITH its year and its source — all three in one row's text.
   const natureRow = table.locator('tr', { hasText: 'nature' }).first()
