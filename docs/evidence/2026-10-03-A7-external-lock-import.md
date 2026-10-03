@@ -67,24 +67,26 @@
 ## 5. 真窗口读数（第二条遗留，**已取**，2026-10-03）
 
 载体：`e2e/certification/lock-import.spec.ts`（真 Electron 窗口 + 夹具隔离根 + **从界面自己的入口**：
-Settings → Runtimes →「从锁文件导入…」）。两次运行后 `test-results/electron/.last-run.json` = **`passed`，0 失败**。
-
-成功路径（界面自己的读数，原文）：
+Settings → Runtimes →「从锁文件导入…」）。**权威读数 = `2 passed (35.8s)`、0 失败**（Playwright 控制台原文）：
 
 ```
-- paragraph: Imported “lock-import-env” — 82 packages (82 from cache, 0 downloaded).
+[a7-window] instanceRoot=/var/folders/…/purescience-electron-e2e-S9UfCd/storage seeded=82/82
+[a7-window] success: Imported “lock-import-env” — 82 packages (82 from cache, 0 downloaded).
+[a7-window] missingEntries=0
+[a7-window] runtimeCardsForImportedEnv=0
 [a7-window] interpreter=[3, 12, 13]
+[a7-window] refusal: nomkl-1.0-h5ca1d4c_0.tar.bz2 — The cached copy does not match the md5 in the lock
+             (discarded) and downloads are disabled for this import
+2 passed (35.8s)
 ```
 
-失败路径（界面自己打印的具名原因，原文）：
+逐项：夹具**播种 82/82**；导入读数 **82 from cache / 0 downloaded**（0 下载 = 0 网络字节）；`missingEntries=0`；
+建出的解释器真跑出 **`[3,12,13]`**；失败路径**具名原因上屏且什么都不建**。下载开关两条用例都关掉，读数与网络无关。
 
-```
-- entry: nomkl-1.0-h5ca1d4c_0.tar.bz2 — The cached copy does not match the md5 in the lock
-  (discarded) and downloads are disabled for this import
-```
-
-两条路径都在真窗口里走通：成功路径**建出真环境**（`<隔离数据根>/runtime/envs/lock-import-env/bin/python` 真跑出 `[3,12,13]`），
-失败路径**什么都不建**。下载开关在两条用例里都关掉，所以读数**与网络无关**。
+**`runtimeCardsForImportedEnv=0`**：这条就是我方 spec 亲测出的数字——**导入建出的具名环境在
+Settings→Runtimes 里是 0 张卡**（那些卡来自解释器发现，具名环境属笔记本选择的那份列表）。
+它与执行器扫描立案的 **D1.3「A7 导入的环境对用户是死路（无删除 / 无用作运行时）」** 是同一片问题的两面：
+用户导入成功后，既看不到卡、也没有删除或提升为运行时的入口。**这是我交付的缺口，不是误报。**
 
 ### 5.1 这条读数额外揪出的三个真缺陷（全部已修，单测都漏了）
 
