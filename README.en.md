@@ -29,7 +29,7 @@ We label every capability the way we build it: ✅ shipped **and verified on a r
 
 **Rules we do not relax**: no model weight is downloaded without a published SHA256; an imported style or skill without a licence is not installed; a field the record does not carry stays empty and is named — never filled in on its own; code a model _reconstructed_ is never certified as a reproduction; timing conclusions are only drawn from the same corpus, the same driver, measured before and after (a millisecond assertion that wobbles under load is reported as unstable rather than tuned until it passes).
 
-> 💡 **[PureScience v1.80.0 released](https://github.com/naiyixi/PureScience/releases/latest)** — Journals in the library are entities now: an ISSN, or an exact normalised name, resolves the journal; every impact factor and CAS partition carries the year and the source it came from, with `Unknown` where none was imported; two spellings of one journal merge only when you say so, and the old spelling keeps resolving; and metrics import straight from CSV/TSV with one named result per row.
+> 💡 **[PureScience v1.80.1 released](https://github.com/naiyixi/PureScience/releases/latest)** — Import an environment from an external lock file: every package is verified against the md5 the lock publishes, and a single unverifiable entry builds nothing. Named environments — including the imported one — can now be listed, used as a notebook runtime, or removed, with a live kernel's hold on one refused by name rather than reworded.
 
 <p align="center">
   <img src="docs/purescience-title.png" alt="PureScience" width="620" />
