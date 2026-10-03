@@ -349,9 +349,66 @@ test('an explicit merge folds two journals into one row and keeps the old spelli
   await dialog
     .locator('[data-slot="journal-merge-source"]')
     .selectOption({ label: 'Nature Communications' })
-  // Still inert with only one side chosen: the control cannot send a half-formed request.
-  await expect(confirm).toBeDisabled()
+
+  // --- The intermediate state, read rather than assumed: one side chosen, nothing sent. ----------------
+  const halfState = await dialog.evaluate((root) => {
+    const read = (slot: string): { value: string; label: string } => {
+      const select = root.querySelector<HTMLSelectElement>(`[data-slot="${slot}"]`)
+      return {
+        value: select?.value ?? 'missing',
+        label: select?.selectedOptions[0]?.textContent?.trim() ?? 'missing'
+      }
+    }
+    const confirmButton = root.querySelector<HTMLButtonElement>('[data-slot="journal-merge-confirm"]')
+    return {
+      source: read('journal-merge-source'),
+      target: read('journal-merge-target'),
+      confirmDisabled: confirmButton?.disabled ?? null,
+      reportedResults: root.querySelectorAll('[data-slot="journal-merge-result"]').length
+    }
+  })
+  console.log(`[panel-reading] merge intermediate (one side): ${JSON.stringify(halfState)}`)
+  expect(halfState.source.label).toBe('Nature Communications')
+  expect(halfState.target.value).toBe('')
+  expect(halfState.confirmDisabled).toBe(true)
+  expect(halfState.reportedResults).toBe(0)
+
   await dialog.locator('[data-slot="journal-merge-target"]').selectOption({ label: 'Nature' })
+
+  // Both sides chosen, still NOT confirmed: the control is armed, and the library is untouched — the state a
+  // user sits in while deciding. Read together with the store, because "the button lit up" and "something was
+  // written" are different claims.
+  const armedState = await dialog.evaluate((root) => {
+    const read = (slot: string): string =>
+      root.querySelector<HTMLSelectElement>(`[data-slot="${slot}"]`)?.selectedOptions[0]?.textContent?.trim() ??
+      'missing'
+    const confirmButton = root.querySelector<HTMLButtonElement>('[data-slot="journal-merge-confirm"]')
+    return {
+      source: read('journal-merge-source'),
+      target: read('journal-merge-target'),
+      confirmDisabled: confirmButton?.disabled ?? null,
+      reportedResults: root.querySelectorAll('[data-slot="journal-merge-result"]').length
+    }
+  })
+  const libraryBeforeConfirm = await page.evaluate(async () => {
+    const bridge = globalThis as unknown as {
+      api: {
+        references: {
+          listJournalMetrics: () => Promise<{ journals: unknown[]; aliases: unknown[] }>
+        }
+      }
+    }
+    const library = await bridge.api.references.listJournalMetrics()
+    return { journals: library.journals.length, aliases: library.aliases.length }
+  })
+  console.log(`[panel-reading] merge intermediate (armed): ${JSON.stringify(armedState)}`)
+  console.log(`[panel-reading] library before confirm: ${JSON.stringify(libraryBeforeConfirm)}`)
+  expect(armedState.source).toBe('Nature Communications')
+  expect(armedState.target).toBe('Nature')
+  expect(armedState.confirmDisabled).toBe(false)
+  expect(armedState.reportedResults).toBe(0)
+  // Arming is not acting: two journals, still no alias, and no result line yet.
+  expect(libraryBeforeConfirm).toEqual({ journals: 2, aliases: 0 })
   await expect(confirm).toBeEnabled()
 
   const result = dialog.locator('[data-slot="journal-merge-result"]')
@@ -372,11 +429,13 @@ test('an explicit merge folds two journals into one row and keeps the old spelli
     .trim()
   console.log(`[panel-reading] row after merge: ${mergedRow}`)
   expect(mergedRow).toContain('Nature')
-  // One cell, one claim: the 2023 impact factor on screen is the claim fetched last of the two the merge
-  // brought onto this journal. The view never prints two numbers in one cell — the read-back below shows both
-  // claims are kept, and the count line below the table carries how many journals the filter matched.
+  // Two claims for 2023 now live on this journal, and BOTH are printed: the selected one first, the one it
+  // would otherwise hide beside it with its own source (V11/IC1). Before that change this row carried a single
+  // number and this comment said so; the read-back below still shows the store keeps both.
   expect(mergedRow).toContain('16.6')
+  expect(mergedRow).toContain('64.8')
   expect(mergedRow).toContain('Journal Citation Reports')
+  await expect(dialog.locator('[data-testid="journal-metric-conflict"]')).toBeVisible()
   const aliasNote = dialog.locator('[data-slot="journal-alias"]')
   await expect(aliasNote).toBeVisible()
   const aliasText = (await aliasNote.innerText()).replace(/\s+/g, ' ').trim()

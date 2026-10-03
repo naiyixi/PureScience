@@ -96,20 +96,15 @@ Build/notarize-mac/publish 全 skipped ⇒ **连发布页都没有**，同一批
 1. ~~**`49b2c83c` 那份 v1.80.0 发布记录需按实际结论更正**~~ ✅ **已完成（会话，`0fabd2e6`）**——
    已按实际结论更正为「已发布」：21 资产、run `37099590863` 全绿、`sourceSha = f2a97d87…`、
    正文 13,535 字节、mac 未签名已披露，并写明首发 `f690b85a` 那次 run 是 failure、已删 tag 重建。
-2. **R2-U4 三种具名拒绝的真机读数**：`self-merge` / 不存在的 id / 别名指向别刊——现在**只有单测**，
-   做法照 `e2e/certification/journal-metrics-panel.spec.ts`（真窗口 + 夹具数据根 + 走界面入口）。
-3. ~~**同日多指标不许静默取一条**~~ ✅ **已交付（会话，v1.81.0 的 V11 / IC1）**：`selectClaimWithAlternatives()` + 面板并列打印 + 冲突徽标；真机读数 `docs/evidence/2026-10-03-journal-metric-conflict.md`（4 passed / 32.9s，**含原发现场景「别名合并」那一条也变成两个值**）。<br>原口径：合并后同一 kind+同年份有两条主张时，视图要么并列显示（各带 source），
-   要么显式标冲突；**不许静默挑一条**。证据：`docs/evidence/2026-10-03-r2-u4-journal-alias-merge.md` §3。
+2. ~~**R2-U4 三种具名拒绝的真机读数**~~ ✅ **已复核并归档（会话，v1.81.0 的 V7）**：结论是这三条**不是"该取未取的读数"，而是"单窗口按当前 UI 合法到达不了的状态"**——`self-merge` 被 UI 在 store 之前挡住（本轮已读到 `confirmDisabled` 真值）；`alias-conflict` 需要"目标名已是别刊别名"，而别名一旦写成，按该名再导入会解析回原刊、造不出第二个刊；`source/target-not-found` 需要**第二个行为者**并发删并。三条现由 jsdom 驱动（`render.test.tsx:277/:349/:250`）+ 具名理由，从"未取"挂账移出。证据 `docs/evidence/2026-10-03-r2-u4-journal-alias-merge.md` §5。
+3. ~~**同日多指标不许静默取一条**~~ ✅ **已交付（会话，v1.81.0 的 V11 / IC1）**：`selectClaimWithAlternatives()` + 面板并列打印 + 冲突徽标；真机读数 `docs/evidence/2026-10-03-journal-metric-conflict.md`（4 passed / 32.9s，**含原发现场景「别名合并」那一条也变成两个值**）。口径：合并后同一 kind+同年份有两条主张时，视图并列显示（各带 source）或显式标冲突；**不许静默挑一条**。
 4. **egress 拦截卡"等满 60 秒"的端到端复现**：修复已完成（到点自动撤卡 + 应答失败不再静默），
    但"真窗口里等满 60 秒"的读数**未取**，做法同第 2 条。
 5. ~~**`--primary-foreground` 对比度实测**~~ ✅ **已实测（会话，v1.81.0 的 V9 / IC4）：判定不达标**。真机读数：`--primary` 画成 `rgb(77,107,254)`、前景 `rgb(248,250,254)`、真实 CTA 16px/400 ⇒ 正文门槛 4.5，**实测 4.144:1**；**且前景色换纯白也只有 4.330:1**（该背景天花板）⇒ 原定「微调前景色」这条修法**不可行**，已改立**拍板项**（加深 `--primary` 到 `oklch(0.56 …)`=4.721:1，或接受并记录）。证据 `docs/evidence/2026-10-03-primary-contrast.md`。
 6. ~~**`acp:state` 渲染器 ack**~~ ✅ **已定位并给出结论（会话，v1.81.0 的 V15）**：结论是**这条旧立案问错了问题**——通道是活的（`acp.onState` 三处订阅），ack 要解决的「渲染器把缺席当回收」已由 `runtime-event-live-set.ts` 的累积语义从另一侧解决；收益（该通道 52KB→15KB/三回合）改写成一条**有守卫的优化项**（守卫=`interrupted-turn-continuation.spec.ts`），不新做 ack 协议。
 7. ~~**`timeoutMs` 含冷启动**~~ ✅ **已定位并给出结论（会话，v1.81.0 的 V10）：已修，且比老账要求更细**。**先更正老账的地址**——那两个文件**没被删，只是搬到了 `src/main/notebook/`**（老账按 `src/main/agents/` 找才误判"已不在树上"）。现址：`arm(budget)` 先按 `budget + startupGraceMs(30s)` 计时，循环回报开始时 `markStarted()` 换成纯语义预算；`executing` 分辨"超预算"与"根本没启动"并给具名原因；单测在 `kernel-executor.test.ts` 的 `describe('TimeoutController')`。
-8. **面板"确认前"中间态的 DOM 读数**（R2-U4 遗留）：选择候选、确认之前那一步的界面状态未取。
-9. **i18n 键控遗留（从本地 gitignored 档 `docs/competitive-tracking/UPDATE-PLAN-2026-09-v025.md` :341/:346 翻出来的，原文标着"下批"）**：
-   专才面（`SpecialistsPanel.tsx` 的空态卡、`Built-in`、Custom 组标题、ZIP 导入子界面拼句、作者编辑器的
-   `Description (optional)` / `Instructions`）+ **连接器导入** + **技能上传×3** —— 按「新 UI 文案必须 9 语言、zh≠en」
-   同一口径补齐；测试里断言 EN 文本的（如 `SpecialistsPanel.render.test`）要同步查。
+8. ~~**面板"确认前"中间态的 DOM 读数**（R2-U4 遗留）~~ ✅ **已取（会话，v1.81.0 的 V7）**：「只选一侧」`{target:"", label:"Choose a journal…", confirmDisabled:true, reportedResults:0}`、「两侧选齐未确认」`{source:"Nature Communications", target:"Nature", confirmDisabled:false, reportedResults:0}`、**`library before confirm: {journals:2, aliases:0}`** ⇒ 点亮 ≠ 写入。同批修掉 spec 里「一个格子只印一个数字」的过时注释。读数见 `docs/evidence/2026-10-03-r2-u4-journal-alias-merge.md` §4。
+9. ~~**i18n 键控遗留**~~ ✅ **已交付（会话，v1.81.0 的 V14a/V14b，IC5 全闭）**：专才面板（`Built-in · Version`、`Full access`/`Selected capabilities`、`Up to …`、3 条删除失败文案）、专才编辑器 `Icon`/`Color`、技能上传 `Drop to upload`、存储迁移弹窗与存储面板全部改走 `t()`；另扫出并修掉 `SpecialistDeleteDetail.tsx` 同款三元式。新增 26 键 × 9 语（各 3528 键、覆盖率 100%、zh ≠ en）；断言 EN 文本的既有渲染测试未受影响（en 值逐字未变）。
    ⚠️ 这条只存在于**那份永不推送的本地档**里：不并进本队列就会被忘掉。
 
 ### B. 大件（每件需要多轮；排在 A 之后，单独立项推进）
