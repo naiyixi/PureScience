@@ -181,3 +181,34 @@ describe('createSearchHandlers', () => {
     expect(response.scan.references).toBe(1)
   })
 })
+
+describe('global search · incremental index wiring (S3)', () => {
+  it('advances the index for the project being searched, and never without one', async () => {
+    const indexTick = vi.fn()
+    const h = harness({ indexTick })
+
+    await h.query({ query: 'sin', projectId: 'project-1', scopes: ['uploads'] })
+    expect(indexTick).toHaveBeenCalledWith('project-1')
+
+    // A project-less query has nothing to index; firing a tick anyway would index a guessed workspace.
+    indexTick.mockClear()
+    await h.query({ query: 'sin', scopes: ['uploads'] })
+    expect(indexTick).not.toHaveBeenCalled()
+  })
+
+  it('forwards the index to the service, so its records can join the scan', async () => {
+    const readIndex = vi.fn(async () => ({
+      present: true,
+      records: [],
+      pendingByScope: {},
+      capped: false
+    }))
+    const h = harness({ readIndex })
+
+    const response = await h.query({ query: 'sin', projectId: 'project-1', scopes: ['uploads'] })
+
+    // The index facts reach the response's coverage — the observable end of the forwarding.
+    expect(readIndex).toHaveBeenCalled()
+    expect(response.coverage.uploads.indexed).toBe(0)
+  })
+})

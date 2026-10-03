@@ -10,6 +10,7 @@ import {
   createGlobalSearchService,
   type SearchableAnnotation,
   type SearchableFile,
+  type SearchIndexPorts,
   type SearchableReference,
   type SearchableSession,
   type SearchableSessionMessage
@@ -69,6 +70,12 @@ export type SearchHandlerPorts = {
   // Optional: text of a project file, bounded by the caller. Absent means file hits are name-and-path
   // matches only, which the response then says out loud.
   readFileText?(fileId: string): Promise<string | undefined>
+  // S3: the incremental index. Reading it is optional — without it the search behaves exactly as before.
+  readIndex?(request: { projectId?: string }): Promise<SearchIndexPorts>
+  // S3: advances the index for the project being searched. Fire-and-forget by contract: a query never waits
+  // on indexing, and firing it here is also the honest trigger while the app has no "active project" source
+  // — what gets indexed is what someone actually searched, not a guessed workspace.
+  indexTick?(projectId: string): void
 }
 
 // How many files one query may read text from. Reading every file in a project would trade a fast
@@ -149,6 +156,7 @@ export const createSearchHandlers = (ports: SearchHandlerPorts): SearchHandlers 
     // Files and literature live per project; without a project the response says so through its notes
     // rather than quietly returning nothing.
     const projectId = request.projectId
+    if (projectId && ports.indexTick) ports.indexTick(projectId)
     const scopes: GlobalSearchScope[] = resolveSearchScopes(request.scopes)
     const filesRequested = scopes.some(isFileSearchScope)
     const listed =
@@ -205,7 +213,9 @@ export const createSearchHandlers = (ports: SearchHandlerPorts): SearchHandlers 
       listReferences: async () => references,
       // Only supplied when the caller wired one: an absent port leaves the scope empty AND says so,
       // instead of an empty list that reads like "nothing matched".
-      ...(ports.listAnnotations ? { listAnnotations: async () => annotations } : {})
+      ...(ports.listAnnotations ? { listAnnotations: async () => annotations } : {}),
+      // S3: the index ADDS to the bounded scan above. Absent ⇒ coverage carries no index facts at all.
+      ...(ports.readIndex ? { readIndex: ports.readIndex } : {})
     })
     const response = await service.query(request)
 

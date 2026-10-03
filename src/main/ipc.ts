@@ -209,6 +209,7 @@ import { createRoCrateExportOwner, registerRoCrateExportIpcHandlers } from './ro
 import { RO_CRATE_EXPORT_SOFTWARE } from '../shared/ro-crate-export'
 import { createProjectFilesHandlers, registerProjectFilesIpcHandlers } from './project-files/ipc'
 import { createSearchIpcHandlers, registerSearchIpcHandlers } from './search/ipc'
+import { createSearchIndexService, type SearchIndexFile } from './search/index-service'
 import { GLOBAL_SEARCH_FILE_LIST_MAX_PAGES } from './search/handlers'
 import {
   createSearchAnnotationCorpus,
@@ -1266,9 +1267,58 @@ const createApplicationModules = async (
     revision: getSessionRevision
   })
 
+  // S3: the incremental index. Its listing walk is deliberately SEPARATE from the query path's: that one
+  // clears and repopulates the session-scoped read model as it pages, and an index walk must not perturb a
+  // query's read. The same page bound is used, so the index sees the same corpus the query can reach.
+  // `start()` is intentionally NOT called: with no "active project" source in the app yet, the honest
+  // trigger is a real search (see indexTick below), and a timer with nothing to index would measure nothing.
+  let lastSearchedProjectId: string | undefined
+  const searchIndexService = createSearchIndexService({
+    root: resolveDataRoot(),
+    listFiles: async (projectId) => {
+      const files: SearchIndexFile[] = []
+      let cursor: string | undefined
+      let listBounded = false
+      for (let page = 0; page < GLOBAL_SEARCH_FILE_LIST_MAX_PAGES; page += 1) {
+        const result = await projectFilesHandlers.listFiles({
+          projectId,
+          collection: { kind: 'all' },
+          limit: MAX_PROJECT_FILES_PAGE_LIMIT,
+          ...(cursor ? { cursor } : {})
+        })
+        for (const item of result.items) {
+          files.push({
+            id: item.id,
+            title: item.name,
+            relativePath: item.path,
+            source: item.source,
+            // The fingerprint comes from facts the project-files index already publishes: a checksum when
+            // there is one (it changes when the BYTES change), otherwise size + mtime together.
+            ...(item.checksum ? { checksum: item.checksum } : {}),
+            ...(typeof item.size === 'number' ? { size: item.size } : {}),
+            ...(item.mtimeMs ? { modifiedAt: new Date(item.mtimeMs).toISOString() } : {})
+          })
+        }
+        if (!result.nextCursor) return { files, listBounded }
+        cursor = result.nextCursor
+        listBounded = true
+      }
+      return { files, listBounded }
+    },
+    readFileText: searchFileText,
+    activeProjectId: () => lastSearchedProjectId
+  })
+
   const searchHandlers = createSearchIpcHandlers({
     loadSessions: () => searchSessionIndex.getSessions(),
     readFileText: searchFileText,
+    // The query path reads the index and also advances it for the project being searched. Both are cheap
+    // and non-blocking: the tick is fire-and-forget, so a search never waits on indexing.
+    readIndex: () => searchIndexService.readIndex(),
+    indexTick: (projectId) => {
+      lastSearchedProjectId = projectId
+      void searchIndexService.tick()
+    },
     listFiles: async ({ projectId }) => {
       // The flat `all` collection is the cross-session read model. It is paged at the size the project
       // files contract allows — asking for more than that is rejected outright, which is exactly how this
