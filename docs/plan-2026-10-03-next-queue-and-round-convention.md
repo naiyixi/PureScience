@@ -49,6 +49,11 @@
 7. **`timeoutMs` 含冷启动**：旧账引用的 `src/main/agents/kernel-executor.ts`、`timeout-controller.ts` **已不在树上**，
    先定位超时预算的现址再评——**在定位前不许写"已修/未修"**。
 8. **面板"确认前"中间态的 DOM 读数**（R2-U4 遗留）：选择候选、确认之前那一步的界面状态未取。
+9. **i18n 键控遗留（从本地 gitignored 档 `docs/competitive-tracking/UPDATE-PLAN-2026-09-v025.md` :341/:346 翻出来的，原文标着"下批"）**：
+   专才面（`SpecialistsPanel.tsx` 的空态卡、`Built-in`、Custom 组标题、ZIP 导入子界面拼句、作者编辑器的
+   `Description (optional)` / `Instructions`）+ **连接器导入** + **技能上传×3** —— 按「新 UI 文案必须 9 语言、zh≠en」
+   同一口径补齐；测试里断言 EN 文本的（如 `SpecialistsPanel.render.test`）要同步查。
+   ⚠️ 这条只存在于**那份永不推送的本地档**里：不并进本队列就会被忘掉。
 
 ### B. 大件（每件需要多轮；排在 A 之后，单独立项推进）
 
