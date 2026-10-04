@@ -414,3 +414,51 @@ success、`Windows Full Test` run `37207924668` success ⇒ 按防重做判据**
 
 **下一轮第一步**：① 内存宽松 ⇒ 取上面那条真机读数（IC15 收口）；② 否则顺延 v1.84.0 的下一条（**IC17** 设置页下载明细 /
 **IC18** 运行时来源可见，落点见排期文件批次 4 表）。
+
+## 九、本轮追加（执行器，2026-10-05 02:27–02:5x）——让位轮 + 批次 6 前置缺口核实（只读）
+
+**本轮判定：让位（零代码提交）。** 开工时 `git status --short` 是**会话 IC21（自定义服务器登出/撤销登录）正在改的 22 个文件**：
+`connector-settings.ts`、`settings/ipc.ts`、`settings/service.ts`、`settings/workflows/connectors.ts`、`main/ipc.ts`、`preload/index.ts`、
+`preload/renderer-api.d.ts`、`ConnectorsPanel.tsx`、`settings-connectors-slice.ts`(+测试)、**9 语字典全 9 份**、
+`shared/renderer-contract-catalog.ts`、`shared/web-api-map.generated.ts`；`ConnectorsPanel.tsx` 的 mtime 是 **02:26:44**、
+`preload/index.ts` 是 **02:26**（查证时刻 02:28）⇒ 会话此刻在写。**它的触面与任何新通道的契约连锁完全相同**
+（目录 / web-api-map / renderer-api.d.ts / 9 语字典）⇒ 此刻落代码必与它撞同一批文件，按共存红线**不动工作区**。
+
+**⚠️ §八 第一步 ① 已闭，别再重做**：IC15 的真机读数**会话已经取到**——`e2e/certification/kernel-controls.spec.ts`
+**1 passed (42.0s)**（排期档 IC15 行：两控件在场且 enabled、R 横幅缺席、重启/关闭各一句回执且之后内核能重起）。
+IC17 / IC18 的真机读数也均已取（`settings-download-detail.spec.ts` 40.1s / `runtime-source-visibility.spec.ts` 15.6s）。
+⇒ §八 的「内存宽松后取 IC15 读数」作废；**执行器不要再碰这三个单元**。
+
+**CI 现状（02:27 按完整 40 位 SHA 查，读数即结论，不许外推）**：
+
+- **HEAD `5891db00` 不带任何 run**：它是纯 `docs/**`（只改排期档一行），两条车道都有 `paths:` 过滤 ⇒ **不触发是设计如此**，不是「没跑」也不是「漏跑」。
+- 最近一笔**有判决**的是 `55ea560c`：`Windows Full Test` **37220222466 success**；`Nightly` 37220222576 **cancelled**（**取消 ≠ 绿**）。
+- **IC19 `2170e77b` 两条车道都是 cancelled**（`Nightly` 37224149219 / `Windows Full Test` 37224148998，被 3 分钟后 IC20 的推送按
+  `cancel-in-progress` 顶掉）⇒ **无判决**；它的 CI 证据只能由「包含它的下一次绿色 Nightly」代替给出（CI 跑整棵树）。
+- **IC20 `3fed6d74`**：`Nightly` **37224346334** 与 `Windows Full Test` **37224346166** 在 02:27 查时仍是 **in_progress**
+  （18:24:52Z 起跑）⇒ 本轮**取不到判决**，下一轮开工第一步按完整 SHA 重查，红了先归因再谈别的。
+
+**本机环境读数 + 一次清理（不改仓库）**：开工时 swap **13.9 G / 15.36 G 已用**、空闲物理页 5,881（≈92 MB）⇒ 仍不具备
+「重建 + 起 Electron」的安全余量（本机有堆把机器打崩的前例），故继续**不取真机读数**。清理：进程表里有两枚**孤儿 e2e Electron**
+（PID 35600 起于 19:42、PID 38138 起于 19:52，**PPID 已是 1** ⇒ 其 Playwright 运行器早已退出、测试早已结束；其中一枚的临时
+profile 目录也已随之消失），两枚各常驻 ~13 MB 且不在跑任何测试 ⇒ 已 `kill`，并删掉唯一的遗留 profile
+`…/T/purescience-electron-e2e-Dp158l`。清理后空闲页 **5,881 → 9,587**（≈92 MB → ≈152 MB）、swap 前端占用未降（13.9 G→14.1 G，波动级）。
+
+**本轮产物 = 批次 6（v1.86.0 文献 / 期刊闭环，IC25–IC30）的前置缺口核实：逐条对着当前源码核，供下一位实现者直接照做（省掉一次审计）。**
+
+| 单元 | 缺口的真伪（实测） | 证据（file:line） | 是否要新通道 |
+| --- | --- | --- | --- |
+| IC25 附件历史 | **真缺口，但只在渲染层**：`pdfVersions` 全库只有 shared 类型、主进程 list 填充与主进程测试三处**消费者**，渲染层 0 命中 | `shared/references.ts:79`；`main/references/repository.ts:200-205`；面板只印当前附件 `ReferencesLibraryDialog.tsx:1180-1195`（数据来自 `references.list`，:255/:270） | **否**（数据已在 list 响应里） |
+| IC26 文献 notes 读写 | **写侧无通道**：`updateReference({notes})` 的**唯一调用点是合并路径** | `main/references/repository.ts:405`；`main/references/service.ts:434`；preload 的 `references` 面 `preload/index.ts:656-700+` **无 notes 方法** | **是（1 条）**：连锁 = 目录 / preload 测试 / web-api-map / renderer-argument-shape 计数 / entry-coverage。**读半边零代码**（`shared/references.ts:76 notes` 已在 list 响应里） |
+| IC27 整表同一指标 | **纯 UI 缺口**：共享解析器本就收 `defaultKind` 并在缺列时用它填 `kind` | `shared/journal-metrics.ts:45,277,283-284,339,363`；对话框只传 `{format,text}`（`JournalMetricsImport.tsx:63`） | **否**（入参已含） |
+| IC28 指标上限筛选 | **真缺口**：共享筛选支持上限，但 renderer 里 `maxImpactFactor` **0 命中** | `shared/journal-metrics-overview.ts:52,219,234`；面板只有下限 `JournalMetricsPanel.tsx:275,347-354,409-416` | **否** |
+| IC29 手工订正 + 单刊 claim 历史 | **写侧真缺口**（`appendMetric` 唯一调用点是导入）；**读侧已覆盖** | 写：`journal-repository.ts:308`、唯一调用 `journal-metric-import.ts:135`；读：`references.listJournalMetrics` 一次返回「journals + every claim」，面板在其上内存筛选（`preload/index.ts:686-688`） | 写侧**要**（1 条）；读侧**零代码归档候选**（差的是按刊展示，不是数据） |
+| IC30 逐行归属 | **纯 UI 缺口**：outcome 本就带匹配规则与「是否新建」两个字段，对话框没印 | `shared/journal-metrics.ts:88,91`；产生点 `journal-metric-import.ts:98-99`；对话框已导入行只印 `line/kind/value/year`（`JournalMetricsImport.tsx:118-125`） | **否** |
+
+**建议顺序（零新通道者优先，回归面小、本机可取证）**：IC28 → IC27 → IC30 → IC25（实现前先核 `ReferenceAttachmentVersion`
+是否带可下载的托管文件 id，「回看旧版」是否有真动作可做）→ IC26（加通道，连锁全修）→ IC29 写侧。
+**待核（我没核，留给实现者第一步）**：IC25 的 `ReferenceAttachmentVersion` 字段是否含可取的托管文件 id。
+
+**下一轮第一步**：① `git fetch -q origin && git log --oneline origin/main -3 && git status --short` ——
+树干净且桌面空闲 ⇒ 按上面顺序取 **IC28**（UI-only，1 键 ×9 语 + 渲染用例 + 若有真机余量补读数）；
+仍脏 / 仍活跃 ⇒ 继续让位（只读取证）；② 按**完整 40 位 SHA** 重查 `3fed6d74` 两条 run 的判决，红则先归因（读作业级注解）再动手。
